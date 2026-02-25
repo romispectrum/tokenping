@@ -1,0 +1,4 @@
+-- Optional seed data for local dev. Runs after migrations on `supabase db reset`.
+-- Add sample rows here if needed, e.g.:
+-- insert into public.notification_configs (user_id, chain_id, enabled, services, health_factor_threshold)
+-- values ('0x0000000000000000000000000000000000000001', 1, true, '{}', 1.1);
