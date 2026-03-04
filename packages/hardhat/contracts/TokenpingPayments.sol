@@ -3,26 +3,30 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "./imports/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
+/// @notice Subscription payments in ERC20. Owner can set plans, pause, withdraw received tokens, and upgrade the implementation. Users trust the owner and upgrade process.
 contract TokenpingPayments is
     Initializable,
     OwnableUpgradeable,
     PausableUpgradeable,
-    ReentrancyGuard,
+    ReentrancyGuardUpgradeable,
     UUPSUpgradeable
 {
     using SafeERC20 for IERC20;
 
-    /// @dev Average block time used for expiry timestamp estimation (seconds)
+    /// @dev Used only to estimate expiry time; actual access control uses expiryBlock.
     uint256 public constant AVERAGE_BLOCK_TIME = 12;
 
+    /// @dev Maximum allowed duration in blocks (~1 year at 12s/block). Prevents extreme durations.
+    uint256 public constant MAX_DURATION_BLOCKS = 2_628_000;
+
     struct Plan {
-        uint256 price;          // token base units (e.g. USDC has 6 decimals)
+        uint256 price; // token base units (e.g. USDC has 6 decimals)
         uint256 durationBlocks; // duration granted per payment
         bool enabled;
     }
@@ -30,18 +34,14 @@ contract TokenpingPayments is
     /// token => plan
     mapping(address => Plan) public plans;
 
-    /// user => subscription state
+    /// @dev One subscription per user; paying with any supported token updates the same expiry.
     mapping(address => uint256) public expiryBlock;
+    /// @dev Approximate expiry time (seconds); for display only. Source of truth for active is expiryBlock.
     mapping(address => uint256) public expiryTimestamp;
 
     /// EVENTS
 
-    event PlanUpdated(
-        address indexed token,
-        uint256 price,
-        uint256 durationBlocks,
-        bool enabled
-    );
+    event PlanUpdated(address indexed token, uint256 price, uint256 durationBlocks, bool enabled);
 
     event PaymentReceived(
         address indexed user,
@@ -54,36 +54,25 @@ contract TokenpingPayments is
         uint256 newExpiryTimestamp
     );
 
-    event TokensWithdrawn(
-        address indexed token,
-        address indexed to,
-        uint256 amount
-    );
+    event TokensWithdrawn(address indexed token, address indexed to, uint256 amount);
 
     /// INITIALIZER
 
     function initialize(address initialOwner) external initializer {
         __Ownable_init(initialOwner);
         __Pausable_init();
+        __ReentrancyGuard_init();
     }
 
     /// ADMIN FUNCTIONS
 
-    function setPlan(
-        address token,
-        uint256 price,
-        uint256 durationBlocks,
-        bool enabled
-    ) external onlyOwner {
+    function setPlan(address token, uint256 price, uint256 durationBlocks, bool enabled) external onlyOwner {
         require(token != address(0), "Invalid token");
         require(price > 0, "Price must be > 0");
         require(durationBlocks > 0, "Duration must be > 0");
+        require(durationBlocks <= MAX_DURATION_BLOCKS, "Duration too long");
 
-        plans[token] = Plan({
-            price: price,
-            durationBlocks: durationBlocks,
-            enabled: enabled
-        });
+        plans[token] = Plan({ price: price, durationBlocks: durationBlocks, enabled: enabled });
 
         emit PlanUpdated(token, price, durationBlocks, enabled);
     }
@@ -96,12 +85,9 @@ contract TokenpingPayments is
         _unpause();
     }
 
-    function withdrawTokens(
-        address token,
-        address to,
-        uint256 amount
-    ) external onlyOwner whenNotPaused nonReentrant {
+    function withdrawTokens(address token, address to, uint256 amount) external onlyOwner whenNotPaused nonReentrant {
         require(to != address(0), "Invalid recipient");
+        require(plans[token].price > 0, "Unknown token");
 
         IERC20(token).safeTransfer(to, amount);
 
@@ -110,33 +96,20 @@ contract TokenpingPayments is
 
     /// USER FUNCTION
 
-    function pay(address token)
-        external
-        whenNotPaused
-        nonReentrant
-    {
+    /// @notice Extends or starts the caller's single subscription; payment in the given token.
+    function pay(address token) external whenNotPaused nonReentrant {
         Plan memory plan = plans[token];
 
         require(plan.enabled, "Token not supported");
         require(plan.price > 0, "Plan not set");
 
-        IERC20(token).safeTransferFrom(
-            msg.sender,
-            address(this),
-            plan.price
-        );
+        IERC20(token).safeTransferFrom(msg.sender, address(this), plan.price);
 
-        uint256 startBlock =
-            expiryBlock[msg.sender] > block.number
-                ? expiryBlock[msg.sender]
-                : block.number;
+        uint256 startBlock = expiryBlock[msg.sender] > block.number ? expiryBlock[msg.sender] : block.number;
 
-        uint256 newExpiryBlock =
-            startBlock + plan.durationBlocks;
+        uint256 newExpiryBlock = startBlock + plan.durationBlocks;
 
-        uint256 newExpiryTimestamp =
-            block.timestamp +
-                (plan.durationBlocks * AVERAGE_BLOCK_TIME);
+        uint256 newExpiryTimestamp = block.timestamp + (plan.durationBlocks * AVERAGE_BLOCK_TIME);
 
         expiryBlock[msg.sender] = newExpiryBlock;
         expiryTimestamp[msg.sender] = newExpiryTimestamp;
@@ -159,15 +132,10 @@ contract TokenpingPayments is
         return expiryBlock[user] > block.number;
     }
 
-    function getSubscription(address user)
-        external
-        view
-        returns (
-            uint256 _expiryBlock,
-            uint256 _expiryTimestamp,
-            bool active
-        )
-    {
+    /// @dev Returns subscription state. _expiryTimestamp is an estimate for display; active is derived from _expiryBlock.
+    function getSubscription(
+        address user
+    ) external view returns (uint256 _expiryBlock, uint256 _expiryTimestamp, bool active) {
         _expiryBlock = expiryBlock[user];
         _expiryTimestamp = expiryTimestamp[user];
         active = _expiryBlock > block.number;
@@ -175,11 +143,7 @@ contract TokenpingPayments is
 
     /// UUPS
 
-    function _authorizeUpgrade(address)
-        internal
-        override
-        onlyOwner
-    {}
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 
     /// STORAGE GAP
     uint256[50] private __gap;
