@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import type { TokenpingPaywall, MockUSDC } from "../typechain-types";
+import type { TokenpingPaywall, MockUSDC, ReentrantERC20 } from "../typechain-types";
 
 async function getTokenpingPaywallFixture() {
   const [owner, user, other] = await ethers.getSigners();
@@ -323,6 +323,101 @@ describe("TokenpingPaywall", function () {
       void expect(expiryBlock).to.equal(0n);
       void expect(expiryTimestamp).to.equal(0n);
       void expect(active).to.be.false;
+    });
+  });
+
+  describe("Security: Reentrancy (ReentrantERC20)", function () {
+    // TokenpingPaywall has no ReentrancyGuard: pay() does transferFrom (external call) before updating
+    // expiry state, so a malicious token can reenter. Impact is limited (reentrant pay() pays as the token
+    // contract, not the user) but adding nonReentrant would prevent the reentrant path.
+
+    async function getReentrantFixture() {
+      const [owner, user, other] = await ethers.getSigners();
+
+      const TokenpingPaywallFactory = await ethers.getContractFactory("TokenpingPaywall");
+      const implementation = await TokenpingPaywallFactory.deploy();
+      await implementation.waitForDeployment();
+
+      const initData = TokenpingPaywallFactory.interface.encodeFunctionData("initialize", [owner.address]);
+      const ERC1967Proxy = await ethers.getContractFactory(
+        "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
+      );
+      const proxy = await ERC1967Proxy.deploy(await implementation.getAddress(), initData);
+      await proxy.waitForDeployment();
+
+      const paywall = TokenpingPaywallFactory.attach(await proxy.getAddress()) as unknown as TokenpingPaywall;
+
+      const ReentrantERC20Factory = await ethers.getContractFactory("ReentrantERC20");
+      const reentrantToken = (await ReentrantERC20Factory.deploy()) as unknown as ReentrantERC20;
+      await reentrantToken.waitForDeployment();
+
+      const price = ethers.parseUnits("3", 6);
+      const durationBlocks = 216000n;
+      await paywall.connect(owner).setPlan(await reentrantToken.getAddress(), price, durationBlocks, true);
+
+      reentrantToken.setPaywall(await paywall.getAddress());
+      reentrantToken.approvePaywall();
+
+      const mintAmount = ethers.parseUnits("10000", 6);
+      await reentrantToken.mint(user.address, mintAmount);
+      // Token needs balance so it can be the "from" in reentrant pay(); with only 1*price the nested
+      // callback reverts (token has 0), token swallows it and returns true, so only user payment completes.
+      await reentrantToken.mint(await reentrantToken.getAddress(), price);
+
+      return { paywall, reentrantToken, owner, user, other, price, durationBlocks };
+    }
+
+    it("Completes when paying with ReentrantERC20 (reentrant pay is on token contract, not user)", async function () {
+      const { paywall, reentrantToken, user, price, durationBlocks } = await getReentrantFixture();
+      const tokenAddr = await reentrantToken.getAddress();
+      await reentrantToken.connect(user).approve(await paywall.getAddress(), price);
+
+      await expect(paywall.connect(user).pay(tokenAddr)).to.not.be.reverted;
+
+      const [userExpiryBlock, , userActive] = await paywall.getSubscription(user.address);
+      const blockNum = await ethers.provider.getBlockNumber();
+      void expect(userActive).to.be.true;
+      void expect(userExpiryBlock).to.equal(BigInt(blockNum) + durationBlocks);
+    });
+
+    it("User subscription is extended exactly once per pay() call (no double-credit to user)", async function () {
+      const { paywall, reentrantToken, user, price, durationBlocks } = await getReentrantFixture();
+      const tokenAddr = await reentrantToken.getAddress();
+      await reentrantToken.connect(user).approve(await paywall.getAddress(), price);
+
+      void (await ethers.provider.getBlockNumber());
+      await paywall.connect(user).pay(tokenAddr);
+      const blockAfter = await ethers.provider.getBlockNumber();
+
+      const [userExpiryBlock] = await paywall.getSubscription(user.address);
+      const expectedExpiry = BigInt(blockAfter) + durationBlocks;
+      void expect(userExpiryBlock).to.equal(expectedExpiry);
+    });
+
+    it("Paywall receives correct token balance after reentrant pay (reentrant path reverts, only user payment)", async function () {
+      const { paywall, reentrantToken, user, price } = await getReentrantFixture();
+      const tokenAddr = await reentrantToken.getAddress();
+      await reentrantToken.connect(user).approve(await paywall.getAddress(), price);
+
+      await paywall.connect(user).pay(tokenAddr);
+
+      // No ReentrancyGuard: token reenters into pay(); nested pay() reverts (token runs out of balance).
+      // Token ignores failed .call() and returns true, so outer pay() completes. Only user payment is received.
+      const paywallBalance = await reentrantToken.balanceOf(await paywall.getAddress());
+      void expect(paywallBalance).to.equal(price);
+    });
+
+    it("WithdrawTokens with ReentrantERC20 does not reenter (transfer path, not transferFrom)", async function () {
+      const { paywall, reentrantToken, owner, user, other, price } = await getReentrantFixture();
+      const tokenAddr = await reentrantToken.getAddress();
+      await reentrantToken.connect(user).approve(await paywall.getAddress(), price);
+      await paywall.connect(user).pay(tokenAddr);
+
+      const balanceBefore = await reentrantToken.balanceOf(other.address);
+      await expect(paywall.connect(owner).withdrawTokens(tokenAddr, other.address, price))
+        .to.emit(paywall, "TokensWithdrawn")
+        .withArgs(tokenAddr, other.address, price);
+      void expect(await reentrantToken.balanceOf(other.address)).to.equal(balanceBefore + price);
     });
   });
 

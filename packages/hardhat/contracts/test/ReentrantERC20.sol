@@ -17,6 +17,12 @@ contract ReentrantERC20 is ERC20 {
         paywall = _paywall;
     }
 
+    /// @dev For security tests: allow the contract to approve the paywall so reentrant pay() can transferFrom(this, paywall, amount).
+    function approvePaywall() external {
+        require(paywall != address(0), "Paywall not set");
+        _approve(address(this), paywall, type(uint256).max);
+    }
+
     function decimals() public pure override returns (uint8) {
         return _decimals;
     }
