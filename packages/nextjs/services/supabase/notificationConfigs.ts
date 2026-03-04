@@ -18,10 +18,18 @@ function getApiBase(): string {
   return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 }
 
+/** Normalize wallet address for consistent API/DB lookups (user_id). */
+export function normalizeWalletAddress(address: string): string {
+  return address.trim().toLowerCase();
+}
+
 export const notificationConfigsService = {
   async getConfig(userId: string, chainId: number): Promise<NotificationConfig | null> {
     const base = getApiBase();
-    const res = await fetch(`${base}/api/notifications/config?userId=${encodeURIComponent(userId)}&chainId=${chainId}`);
+    // Send raw address so API can match DB rows stored with any casing (fallback query)
+    const res = await fetch(
+      `${base}/api/notifications/config?userId=${encodeURIComponent(userId.trim())}&chainId=${chainId}`,
+    );
     if (!res.ok) return null;
     const data = await res.json();
     if (data == null || typeof data !== "object") return null;
@@ -36,7 +44,8 @@ export const notificationConfigsService = {
 
   async getAllConfigs(userId: string): Promise<Record<number, NotificationConfig>> {
     const base = getApiBase();
-    const res = await fetch(`${base}/api/notifications/config?userId=${encodeURIComponent(userId)}`);
+    // Send raw address so API can match DB rows stored with any casing (fallback query)
+    const res = await fetch(`${base}/api/notifications/config?userId=${encodeURIComponent(userId.trim())}`);
     if (!res.ok) return {};
     const data = await res.json();
     if (data == null || typeof data !== "object") return {};
@@ -45,11 +54,14 @@ export const notificationConfigsService = {
 
   async upsertConfig(userId: string, config: NotificationConfig): Promise<void> {
     const base = getApiBase();
+    // Send raw address so API can find existing row (may be stored as checksummed) and update in place
+    const uid = userId.trim();
+    // config.chainId = Aave/position chain (the network this alert is for), not the wallet's connected chain
     const response = await fetch(`${base}/api/notifications/config`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        userId,
+        userId: uid,
         chainId: config.chainId,
         enabled: config.enabled,
         services: config.services,
@@ -69,10 +81,11 @@ export const notificationConfigsService = {
 
   async deleteConfig(userId: string, chainId: number): Promise<void> {
     const base = getApiBase();
+    const uid = userId.trim();
     const response = await fetch(`${base}/api/notifications/config`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, chainId }),
+      body: JSON.stringify({ userId: uid, chainId }),
     });
 
     if (!response.ok) {

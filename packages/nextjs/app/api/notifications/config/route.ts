@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { DEFAULT_HEALTH_FACTOR_THRESHOLD } from "~~/constants/notifications";
+import { isSubscriptionActive } from "~~/services/payments/checkSubscription";
 import { getSupabaseServerClient } from "~~/services/supabase/supabaseServer";
+
+/** Normalize wallet address for consistent DB lookups (PostgreSQL text comparison is case-sensitive). */
+function normalizeUserId(userId: string): string {
+  return userId.trim().toLowerCase();
+}
 
 export async function GET(request: Request) {
   try {
@@ -12,21 +18,37 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Missing or invalid userId" }, { status: 400 });
     }
 
+    const uid = normalizeUserId(userId);
+
+    // Read config without subscription check so existing config is visible after refresh.
+    // PUT/DELETE still require an active subscription.
     const supabase = getSupabaseServerClient();
+
+    const trimmed = userId.trim();
 
     if (chainIdParam != null && chainIdParam !== "") {
       const chainId = parseInt(chainIdParam, 10);
       if (Number.isNaN(chainId)) {
         return NextResponse.json({ error: "Invalid chainId" }, { status: 400 });
       }
-      const { data, error } = await supabase
+      let result = await supabase
         .from("notification_configs")
         .select("*")
-        .eq("user_id", userId.trim())
+        .eq("user_id", uid)
         .eq("chain_id", chainId)
         .single();
 
-      if (error || !data) {
+      if ((result.error || !result.data) && trimmed !== uid) {
+        result = await supabase
+          .from("notification_configs")
+          .select("*")
+          .eq("user_id", trimmed)
+          .eq("chain_id", chainId)
+          .single();
+      }
+
+      const data = result.data;
+      if (result.error || !data) {
         return NextResponse.json(null);
       }
 
@@ -39,9 +61,14 @@ export async function GET(request: Request) {
       });
     }
 
-    const { data, error } = await supabase.from("notification_configs").select("*").eq("user_id", userId.trim());
+    let result = await supabase.from("notification_configs").select("*").eq("user_id", uid);
+    if ((result.error || !result.data?.length) && trimmed !== uid) {
+      const fallback = await supabase.from("notification_configs").select("*").eq("user_id", trimmed);
+      if (fallback.data?.length) result = fallback;
+    }
 
-    if (error || !data) {
+    const data = result.data;
+    if (result.error || !data) {
       return NextResponse.json({});
     }
 
@@ -84,13 +111,25 @@ export async function PUT(request: Request) {
     if (!userId || typeof userId !== "string" || !userId.trim()) {
       return NextResponse.json({ error: "Missing or invalid userId" }, { status: 400 });
     }
+    // chainId = the Aave network this config is for (position chain), NOT the wallet's connected chain
     if (chainId == null || typeof chainId !== "number" || Number.isNaN(chainId)) {
       return NextResponse.json({ error: "Missing or invalid chainId" }, { status: 400 });
     }
 
+    const trimmed = userId.trim();
+    const uid = normalizeUserId(userId);
+
+    const active = await isSubscriptionActive(trimmed);
+    if (!active) {
+      return NextResponse.json(
+        { error: "Active subscription required to access notification config" },
+        { status: 403 },
+      );
+    }
+
     const supabase = getSupabaseServerClient();
     const row = {
-      user_id: userId.trim(),
+      user_id: uid,
       chain_id: chainId,
       enabled: enabled ?? true,
       services: Array.isArray(services) ? services : [],
@@ -99,12 +138,31 @@ export async function PUT(request: Request) {
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase.from("notification_configs").upsert(row, {
-      onConflict: "user_id,chain_id",
-    });
+    // Find existing row by either user_id form so we update in place instead of creating a duplicate
+    const { data: existingByUid } = await supabase
+      .from("notification_configs")
+      .select("id")
+      .eq("user_id", uid)
+      .eq("chain_id", chainId)
+      .maybeSingle();
+    const { data: existingByTrimmed } =
+      trimmed !== uid
+        ? await supabase
+            .from("notification_configs")
+            .select("id")
+            .eq("user_id", trimmed)
+            .eq("chain_id", chainId)
+            .maybeSingle()
+        : { data: null };
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 502 });
+    const existingId = existingByUid?.id ?? existingByTrimmed?.id;
+
+    if (existingId) {
+      const { error } = await supabase.from("notification_configs").update(row).eq("id", existingId);
+      if (error) return NextResponse.json({ error: error.message }, { status: 502 });
+    } else {
+      const { error } = await supabase.from("notification_configs").insert(row);
+      if (error) return NextResponse.json({ error: error.message }, { status: 502 });
     }
 
     return NextResponse.json({ success: true });
@@ -126,15 +184,32 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Missing or invalid chainId" }, { status: 400 });
     }
 
+    const trimmed = userId.trim();
+    const uid = normalizeUserId(userId);
+
+    const active = await isSubscriptionActive(trimmed);
+    if (!active) {
+      return NextResponse.json(
+        { error: "Active subscription required to access notification config" },
+        { status: 403 },
+      );
+    }
+
     const supabase = getSupabaseServerClient();
-    const { error } = await supabase
+    // Delete by both forms so we remove the row whether it was stored checksummed or lowercase
+    const { error: err1 } = await supabase
       .from("notification_configs")
       .delete()
-      .eq("user_id", userId.trim())
+      .eq("user_id", uid)
       .eq("chain_id", chainId);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 502 });
+    if (err1) return NextResponse.json({ error: err1.message }, { status: 502 });
+    if (trimmed !== uid) {
+      const { error: err2 } = await supabase
+        .from("notification_configs")
+        .delete()
+        .eq("user_id", trimmed)
+        .eq("chain_id", chainId);
+      if (err2) return NextResponse.json({ error: err2.message }, { status: 502 });
     }
 
     return NextResponse.json({ success: true });

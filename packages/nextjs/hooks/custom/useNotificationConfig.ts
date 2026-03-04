@@ -1,20 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAccount } from "wagmi";
 import { DEFAULT_HEALTH_FACTOR_THRESHOLD } from "~~/constants/notifications";
-import { notificationConfigsService } from "~~/services/supabase/notificationConfigs";
+import { normalizeWalletAddress, notificationConfigsService } from "~~/services/supabase/notificationConfigs";
 import type { NotificationConfig, NotificationService } from "~~/types/notifications";
 
 export type { NotificationConfig, NotificationService };
 
 export const useNotificationConfig = () => {
   const { address } = useAccount();
+  const addressRef = useRef(address);
+  addressRef.current = address;
+
   const [configs, setConfigs] = useState<Record<number, NotificationConfig>>({});
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load from Supabase on mount and when address changes
+  // Fetch configs by normalized user_id; only apply if connected wallet still matches
   useEffect(() => {
     if (!address) {
       setConfigs({});
@@ -22,16 +25,25 @@ export const useNotificationConfig = () => {
       return;
     }
 
+    const requestedUid = normalizeWalletAddress(address);
+
     const loadConfigs = async () => {
       setIsLoading(true);
       try {
         const allConfigs = await notificationConfigsService.getAllConfigs(address);
-        setConfigs(allConfigs);
+        const currentUid = addressRef.current ? normalizeWalletAddress(addressRef.current) : "";
+        if (currentUid === requestedUid) {
+          setConfigs(allConfigs);
+        }
       } catch (error) {
         console.error("Failed to load notification configs:", error);
-        setConfigs({});
+        if (addressRef.current && normalizeWalletAddress(addressRef.current) === requestedUid) {
+          setConfigs({});
+        }
       } finally {
-        setIsLoaded(true);
+        if (addressRef.current && normalizeWalletAddress(addressRef.current) === requestedUid) {
+          setIsLoaded(true);
+        }
         setIsLoading(false);
       }
     };
@@ -88,6 +100,7 @@ export const useNotificationConfig = () => {
       const updatedConfig: NotificationConfig = {
         ...currentConfig,
         ...updates,
+        chainId, // always use position chain (Aave network), never wallet's connected chain
       };
 
       try {

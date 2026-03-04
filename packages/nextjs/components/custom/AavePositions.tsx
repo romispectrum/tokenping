@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { HealthFactorBadge } from "./HealthFactorBadge";
 import { NotificationConfig } from "./NotificationConfig";
+import { SubscriptionPaywall } from "./SubscriptionPaywall";
 import { NetworkPosition, TokenPosition, useAavePositions } from "~~/hooks/custom/useAavePositions";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
 import { formatTokenAmount, formatUSD } from "~~/utils/format";
@@ -182,12 +183,16 @@ const PositionDetails = ({ position }: { position: NetworkPosition }) => {
 
   return (
     <div className="space-y-4">
-      {/* Notification Config - at the top */}
-      <NotificationConfig
-        chainId={position.chainId}
-        chainName={position.chainName}
-        currentHealthFactor={position.healthFactor}
-      />
+      {/* Notification Config - gated by subscription */}
+      <SubscriptionPaywall
+        description={`Subscribe once to configure health factor alerts on ${position.chainName} and other networks.`}
+      >
+        <NotificationConfig
+          chainId={position.chainId}
+          chainName={position.chainName}
+          currentHealthFactor={position.healthFactor}
+        />
+      </SubscriptionPaywall>
 
       {/* Position Details */}
       <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-gray-900/80 to-gray-800/50 backdrop-blur-xl">
