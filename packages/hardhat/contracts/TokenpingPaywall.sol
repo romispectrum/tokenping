@@ -1,22 +1,42 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+// Compatible with OpenZeppelin Contracts ^5.6.0
+pragma solidity ^0.8.27;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./imports/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-/// @notice Subscription payments in ERC20. Owner can set plans, pause, withdraw received tokens, and upgrade the implementation. Users trust the owner and upgrade process.
-contract TokenpingPayments is
-    Initializable,
-    OwnableUpgradeable,
-    PausableUpgradeable,
-    ReentrancyGuardUpgradeable,
-    UUPSUpgradeable
-{
+contract TokenpingPaywall is Initializable, PausableUpgradeable, OwnableUpgradeable, UUPSUpgradeable {
+    
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address initialOwner) public initializer {
+        __Pausable_init();
+        __Ownable_init(initialOwner);
+    }
+
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    function unpause() public onlyOwner {
+        _unpause();
+    }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyOwner
+    {}
+
+    /// custom
+
     using SafeERC20 for IERC20;
 
     /// @dev Used only to estimate expiry time; actual access control uses expiryBlock.
@@ -56,15 +76,7 @@ contract TokenpingPayments is
 
     event TokensWithdrawn(address indexed token, address indexed to, uint256 amount);
 
-    /// INITIALIZER
-
-    function initialize(address initialOwner) external initializer {
-        __Ownable_init(initialOwner);
-        __Pausable_init();
-        __ReentrancyGuard_init();
-    }
-
-    /// ADMIN FUNCTIONS
+    /// ADMIN (custom)
 
     function setPlan(address token, uint256 price, uint256 durationBlocks, bool enabled) external onlyOwner {
         require(token != address(0), "Invalid token");
@@ -77,15 +89,7 @@ contract TokenpingPayments is
         emit PlanUpdated(token, price, durationBlocks, enabled);
     }
 
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    function unpause() external onlyOwner {
-        _unpause();
-    }
-
-    function withdrawTokens(address token, address to, uint256 amount) external onlyOwner whenNotPaused nonReentrant {
+    function withdrawTokens(address token, address to, uint256 amount) external onlyOwner whenNotPaused {
         require(to != address(0), "Invalid recipient");
         require(plans[token].price > 0, "Unknown token");
 
@@ -97,11 +101,11 @@ contract TokenpingPayments is
     /// USER FUNCTION
 
     /// @notice Extends or starts the caller's single subscription; payment in the given token.
-    function pay(address token) external whenNotPaused nonReentrant {
+    function pay(address token) external whenNotPaused {
         Plan memory plan = plans[token];
 
-        require(plan.enabled, "Token not supported");
         require(plan.price > 0, "Plan not set");
+        require(plan.enabled, "Token not supported");
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), plan.price);
 
@@ -126,7 +130,7 @@ contract TokenpingPayments is
         );
     }
 
-    /// VIEW FUNCTIONS
+    // VIEW FUNCTIONS
 
     function isActive(address user) external view returns (bool) {
         return expiryBlock[user] > block.number;
@@ -141,10 +145,7 @@ contract TokenpingPayments is
         active = _expiryBlock > block.number;
     }
 
-    /// UUPS
-
-    function _authorizeUpgrade(address) internal override onlyOwner {}
-
     /// STORAGE GAP
+
     uint256[50] private __gap;
 }

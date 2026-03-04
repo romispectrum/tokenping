@@ -3,7 +3,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { Contract } from "ethers";
 
 /**
- * Deploys TokenpingPayments (UUPS proxy) and MockUSDC
+ * Deploys TokenpingPaywall (UUPS proxy) and MockUSDC
  * Mints 10000 USDC to a specific address
  * Configures plan: 3 USDC for ~1 month
  *
@@ -53,8 +53,8 @@ const deployTokenpingContracts: DeployFunction = async function (hre: HardhatRun
     console.log("ℹ️  MockUSDC already deployed at:", mockUSDC.address);
   }
 
-  // 2. Deploy TokenpingPayments (idempotent)
-  const existingSubscription = await hre.deployments.getOrNull("TokenpingPayments");
+  // 2. Deploy TokenpingPaywall (idempotent)
+  const existingSubscription = await hre.deployments.getOrNull("TokenpingPaywall");
   let proxyAddress: string;
   let implementationAddress: string;
   let shouldDeploySubscription = !existingSubscription;
@@ -66,28 +66,28 @@ const deployTokenpingContracts: DeployFunction = async function (hre: HardhatRun
     const code = await hre.ethers.provider.getCode(proxyAddress);
     if (!code || code === "0x") {
       console.log(
-        `\n⚠️  Found saved deployment for TokenpingPayments at ${proxyAddress}, but no code is deployed there.`,
+        `\n⚠️  Found saved deployment for TokenpingPaywall at ${proxyAddress}, but no code is deployed there.`,
       );
-      console.log("⚠️  Redeploying TokenpingPayments...");
-      await hre.deployments.delete("TokenpingPayments");
-      const maybeProxy = await hre.deployments.getOrNull("TokenpingPaymentsProxy");
-      if (maybeProxy) await hre.deployments.delete("TokenpingPaymentsProxy");
-      const maybeImpl = await hre.deployments.getOrNull("TokenpingPayments_Implementation");
-      if (maybeImpl) await hre.deployments.delete("TokenpingPayments_Implementation");
+      console.log("⚠️  Redeploying TokenpingPaywall...");
+      await hre.deployments.delete("TokenpingPaywall");
+      const maybeProxy = await hre.deployments.getOrNull("TokenpingPaywallProxy");
+      if (maybeProxy) await hre.deployments.delete("TokenpingPaywallProxy");
+      const maybeImpl = await hre.deployments.getOrNull("TokenpingPaywall_Implementation");
+      if (maybeImpl) await hre.deployments.delete("TokenpingPaywall_Implementation");
       shouldDeploySubscription = true;
     } else {
       implementationAddress = (existingSubscription as any).implementation ?? "unknown";
-      console.log("\nℹ️  TokenpingPayments already deployed at:", proxyAddress);
+      console.log("\nℹ️  TokenpingPaywall already deployed at:", proxyAddress);
       // Continue to plan config
     }
   }
 
   if (shouldDeploySubscription) {
-    // Deploy TokenpingPayments implementation (use a distinct deployment name)
-    console.log("\n3️⃣  Deploying TokenpingPayments implementation...");
-    const implementation = await deploy("TokenpingPayments_Implementation", {
+    // Deploy TokenpingPaywall implementation (use a distinct deployment name)
+    console.log("\n3️⃣  Deploying TokenpingPaywall implementation...");
+    const implementation = await deploy("TokenpingPaywall_Implementation", {
       from: deployer,
-      contract: "TokenpingPayments", // artifact name differs from deployment name
+      contract: "TokenpingPaywall", // artifact name differs from deployment name
       args: [],
       log: true,
       autoMine: true,
@@ -105,11 +105,11 @@ const deployTokenpingContracts: DeployFunction = async function (hre: HardhatRun
     console.log("\n4️⃣  Deploying ERC1967Proxy...");
 
     // Encode the initialize function call
-    const TokenpingPaymentsFactory = await hre.ethers.getContractFactory("TokenpingPayments");
-    const initData = TokenpingPaymentsFactory.interface.encodeFunctionData("initialize", [deployer]);
+    const TokenpingPaywallFactory = await hre.ethers.getContractFactory("TokenpingPaywall");
+    const initData = TokenpingPaywallFactory.interface.encodeFunctionData("initialize", [deployer]);
 
     // Deploy the proxy via hardhat-deploy so receipts/tx hashes are persisted.
-    const proxyDeployment = await deploy("TokenpingPaymentsProxy", {
+    const proxyDeployment = await deploy("TokenpingPaywallProxy", {
       from: deployer,
       contract: "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
       args: [implementationAddress, initData],
@@ -122,7 +122,7 @@ const deployTokenpingContracts: DeployFunction = async function (hre: HardhatRun
     proxyAddress = proxyDeployment.address;
 
     // Save the proxy under the expected contract name (used by the frontend/hooks)
-    await hre.deployments.save("TokenpingPayments", {
+    await hre.deployments.save("TokenpingPaywall", {
       address: proxyAddress,
       implementation: implementationAddress,
       abi: implementation.abi,
@@ -137,21 +137,21 @@ const deployTokenpingContracts: DeployFunction = async function (hre: HardhatRun
   // 4. Verify the deployment
   console.log("\n5️⃣  Verifying deployment...");
   const deployerSigner = await hre.ethers.getSigner(deployer);
-  const tokenpingPaymentsContract = await hre.ethers.getContractAt("TokenpingPayments", proxyAddress, deployerSigner);
+  const tokenpingPaywallContract = await hre.ethers.getContractAt("TokenpingPaywall", proxyAddress, deployerSigner);
 
-  const owner = await tokenpingPaymentsContract.owner();
+  const owner = await tokenpingPaywallContract.owner();
   console.log("✅ Contract owner:", owner);
-  console.log("✅ Contract paused:", await tokenpingPaymentsContract.paused());
+  console.log("✅ Contract paused:", await tokenpingPaywallContract.paused());
 
   // 5. Configure plan for MockUSDC (3 USDC / ~1 month)
   console.log("\n6️⃣  Configuring subscription plan...");
-  const currentPlan = await tokenpingPaymentsContract.plans(mockUSDC.address);
+  const currentPlan = await tokenpingPaywallContract.plans(mockUSDC.address);
   const currentPrice = currentPlan.price ?? currentPlan[0];
   const currentDuration = currentPlan.durationBlocks ?? currentPlan[1];
   const currentEnabled = currentPlan.enabled ?? currentPlan[2];
 
   if (currentPrice !== PLAN_PRICE || Number(currentDuration) !== PLAN_DURATION_BLOCKS || currentEnabled !== true) {
-    const tx = await tokenpingPaymentsContract.setPlan(mockUSDC.address, PLAN_PRICE, PLAN_DURATION_BLOCKS, true, {
+    const tx = await tokenpingPaywallContract.setPlan(mockUSDC.address, PLAN_PRICE, PLAN_DURATION_BLOCKS, true, {
       gasLimit: 1_000_000n,
     });
     await tx.wait();
@@ -171,8 +171,8 @@ const deployTokenpingContracts: DeployFunction = async function (hre: HardhatRun
   console.log("📋 DEPLOYMENT SUMMARY");
   console.log("=".repeat(60));
   console.log("MockUSDC:", mockUSDC.address);
-  console.log("TokenpingPayments (Proxy):", proxyAddress);
-  console.log("TokenpingPayments (Implementation):", implementationAddress);
+  console.log("TokenpingPaywall (Proxy):", proxyAddress);
+  console.log("TokenpingPaywall (Implementation):", implementationAddress);
   console.log("USDC Minted:", hre.ethers.formatUnits(MINT_AMOUNT, 6), "USDC");
   console.log("Mint Recipient:", MINT_RECIPIENT);
   console.log("Plan Price:", hre.ethers.formatUnits(PLAN_PRICE, 6), "USDC");
@@ -183,4 +183,4 @@ const deployTokenpingContracts: DeployFunction = async function (hre: HardhatRun
 export default deployTokenpingContracts;
 
 // Tags are useful if you have multiple deploy files and only want to run one of them.
-deployTokenpingContracts.tags = ["TokenpingPayments", "MockUSDC"];
+deployTokenpingContracts.tags = ["TokenpingPaywall", "MockUSDC"];
