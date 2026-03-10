@@ -16,16 +16,16 @@ const LendingPage: NextPage = () => {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-indigo-950">
+    <div className="min-h-screen bg-base-200 dark:bg-gradient-to-br dark:from-gray-950 dark:via-gray-900 dark:to-indigo-950">
       {/* Animated background elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 dark:bg-purple-500/10 rounded-full blur-3xl animate-pulse" />
         <div
-          className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl animate-pulse"
+          className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/20 dark:bg-indigo-500/10 rounded-full blur-3xl animate-pulse"
           style={{ animationDelay: "1s" }}
         />
         <div
-          className="absolute top-1/2 left-1/2 w-64 h-64 bg-pink-500/5 rounded-full blur-3xl animate-pulse"
+          className="absolute top-1/2 left-1/2 w-64 h-64 bg-accent/10 dark:bg-pink-500/5 rounded-full blur-3xl animate-pulse"
           style={{ animationDelay: "2s" }}
         />
       </div>
@@ -35,10 +35,12 @@ const LendingPage: NextPage = () => {
         <div className="w-full max-w-7xl mx-auto px-4 mb-8">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex flex-col">
-              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-white via-purple-200 to-indigo-400 bg-clip-text text-transparent">
+              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-neutral via-primary to-accent dark:from-white dark:via-purple-200 dark:to-indigo-400 bg-clip-text text-transparent">
                 Aave dashboard
               </h1>
-              <p className="text-sm md:text-base text-gray-400 mt-1">Positions from Aave V3</p>
+              <p className="text-sm md:text-base text-base-content/70 dark:text-gray-400 mt-1">
+                Positions from Aave V3
+              </p>
             </div>
           </div>
         </div>
@@ -50,12 +52,17 @@ const LendingPage: NextPage = () => {
           </div>
         ) : (
           <div className="w-full max-w-2xl mx-auto px-4">
-            <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-gray-900/80 to-gray-800/50 backdrop-blur-xl p-8 md:p-12 text-center">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 bg-gradient-to-b from-purple-500/20 to-transparent rounded-full blur-3xl" />
+            <div className="relative overflow-hidden rounded-3xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 backdrop-blur-xl p-8 md:p-12 text-center">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 bg-gradient-to-b from-primary/20 to-transparent dark:from-purple-500/20 rounded-full blur-3xl" />
 
               <div className="relative">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/30 mb-6">
-                  <svg className="w-10 h-10 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/30 dark:from-purple-500/20 dark:to-indigo-500/20 dark:border-purple-500/30 mb-6">
+                  <svg
+                    className="w-10 h-10 text-primary dark:text-purple-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -65,11 +72,15 @@ const LendingPage: NextPage = () => {
                   </svg>
                 </div>
 
-                <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">Connect Your Wallet</h2>
-                <p className="text-gray-400 mb-6 max-w-md mx-auto">
+                <h2 className="text-2xl md:text-3xl font-bold text-base-content dark:text-white mb-3">
+                  Connect Your Wallet
+                </h2>
+                <p className="text-base-content/70 dark:text-gray-400 mb-6 max-w-md mx-auto">
                   Connect your wallet to view your Aave lending and borrowing positions.
                 </p>
-                <p className="text-sm text-gray-500">Use the Connect button in the top right corner to get started</p>
+                <p className="text-sm text-base-content/60 dark:text-gray-500">
+                  Use the Connect button in the top right corner to get started
+                </p>
               </div>
             </div>
           </div>

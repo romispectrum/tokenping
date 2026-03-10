@@ -101,7 +101,7 @@ export function SubscriptionPaywall({ children, description }: SubscriptionPaywa
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-950/20 to-gray-900/50 backdrop-blur-xl p-5">
+      <div className="rounded-xl border border-warning/40 bg-base-100 dark:border-amber-500/30 dark:bg-gradient-to-br dark:from-amber-950/20 dark:to-gray-900/50 backdrop-blur-xl p-5">
         <div className="flex flex-col items-center text-center">
           <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/20">
             <svg className="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -113,8 +113,10 @@ export function SubscriptionPaywall({ children, description }: SubscriptionPaywa
               />
             </svg>
           </div>
-          <h3 className="mb-1 text-sm font-semibold text-white">Subscribe to configure notifications</h3>
-          <p className="mb-4 max-w-[280px] text-xs text-gray-400">
+          <h3 className="mb-1 text-sm font-semibold text-base-content dark:text-white">
+            Subscribe to configure notifications
+          </h3>
+          <p className="mb-4 max-w-[280px] text-xs text-base-content/70 dark:text-gray-400">
             {description ??
               "Pay once to unlock notification settings. You can set health factor alerts per network after subscribing."}
           </p>
@@ -125,7 +127,9 @@ export function SubscriptionPaywall({ children, description }: SubscriptionPaywa
             <p className="text-xs text-amber-400">Payment contract not configured for this network.</p>
           ) : !onCorrectChain ? (
             <div className="space-y-2">
-              <p className="text-xs text-gray-400">Switch to the subscription network to pay.</p>
+              <p className="text-xs text-base-content/70 dark:text-gray-400">
+                Switch to the subscription network to pay.
+              </p>
               <button
                 type="button"
                 onClick={() => switchChain?.({ chainId: paymentChainId })}
@@ -138,10 +142,12 @@ export function SubscriptionPaywall({ children, description }: SubscriptionPaywa
             <p className="text-xs text-amber-400">No subscription plan is available at the moment.</p>
           ) : (
             <div className="w-full max-w-xs space-y-3">
-              <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm">
-                <span className="text-gray-400">Price: </span>
-                <span className="font-semibold text-white">{formatTokenAmount(plan.price, USDC_DECIMALS)} USDC</span>
-                <span className="ml-1 text-xs text-gray-500">
+              <div className="rounded-lg border border-base-300 bg-base-200 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm text-base-content">
+                <span className="text-base-content/70 dark:text-gray-400">Price: </span>
+                <span className="font-semibold text-base-content dark:text-white">
+                  {formatTokenAmount(plan.price, USDC_DECIMALS)} USDC
+                </span>
+                <span className="ml-1 text-xs text-base-content/60 dark:text-gray-500">
                   (≈ {((Number(plan.durationBlocks) * 12) / 86400).toFixed(0)} days access)
                 </span>
               </div>

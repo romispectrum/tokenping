@@ -13,23 +13,23 @@ const LoadingSkeleton = ({ columns = 2 }: { columns?: 1 | 2 }) => (
     {[...Array(4)].map((_, i) => (
       <div
         key={i}
-        className="rounded-2xl border border-white/10 bg-gradient-to-br from-gray-900/80 to-gray-800/50 p-5 animate-pulse"
+        className="rounded-2xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 p-5 animate-pulse"
       >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/10" />
+            <div className="w-10 h-10 rounded-xl bg-base-300 dark:bg-white/10" />
             <div className="space-y-2">
-              <div className="h-4 w-24 bg-white/10 rounded" />
-              <div className="h-3 w-16 bg-white/10 rounded" />
+              <div className="h-4 w-24 bg-base-300 dark:bg-white/10 rounded" />
+              <div className="h-3 w-16 bg-base-300 dark:bg-white/10 rounded" />
             </div>
           </div>
-          <div className="h-6 w-20 bg-white/10 rounded" />
+          <div className="h-6 w-20 bg-base-300 dark:bg-white/10 rounded" />
         </div>
         <div className="grid grid-cols-3 gap-3">
           {[...Array(3)].map((_, j) => (
-            <div key={j} className="bg-white/5 rounded-xl p-3">
-              <div className="h-2 w-12 bg-white/10 rounded mb-2" />
-              <div className="h-5 w-16 bg-white/10 rounded" />
+            <div key={j} className="bg-base-200 dark:bg-white/5 rounded-xl p-3">
+              <div className="h-2 w-12 bg-base-300 dark:bg-white/10 rounded mb-2" />
+              <div className="h-5 w-16 bg-base-300 dark:bg-white/10 rounded" />
             </div>
           ))}
         </div>
@@ -57,8 +57,8 @@ const NetworkSummaryRow = ({
         "w-full text-left rounded-xl border backdrop-blur-xl transition-all",
         "px-2.5 py-1.5 flex items-center justify-between gap-2",
         isSelected
-          ? "border-purple-500/40 bg-purple-500/10 shadow-lg shadow-purple-500/10"
-          : "border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20",
+          ? "border-primary/40 bg-primary/10 shadow-lg shadow-primary/10 dark:border-purple-500/40 dark:bg-purple-500/10 dark:shadow-purple-500/10"
+          : "border-base-300 bg-base-200 hover:bg-base-300 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 dark:hover:border-white/20",
       ].join(" ")}
     >
       <div className="flex items-center gap-2 min-w-0">
@@ -73,19 +73,21 @@ const NetworkSummaryRow = ({
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <p className="font-semibold text-white truncate text-[13px] leading-none">{position.chainName}</p>
+            <p className="font-semibold text-base-content dark:text-white truncate text-[13px] leading-none">
+              {position.chainName}
+            </p>
             {position.hasPosition ? (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 leading-none">
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 leading-none">
                 Active
               </span>
             ) : (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-white/10 bg-white/5 text-gray-400 leading-none">
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-base-300 bg-base-200 text-base-content/70 dark:border-white/10 dark:bg-white/5 dark:text-gray-400 leading-none">
                 Empty
               </span>
             )}
             {hasNotification && (
               <svg
-                className="w-3.5 h-3.5 text-purple-400 shrink-0"
+                className="w-3.5 h-3.5 text-primary dark:text-purple-400 shrink-0"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -99,7 +101,7 @@ const NetworkSummaryRow = ({
               </svg>
             )}
           </div>
-          <p className="hidden sm:block text-[10px] text-gray-400 truncate leading-tight mt-0.5">
+          <p className="hidden sm:block text-[10px] text-base-content/70 dark:text-gray-400 truncate leading-tight mt-0.5">
             {formatUSD(position.totalCollateralUSD)} supplied · {formatUSD(position.totalDebtUSD)} borrowed
           </p>
         </div>
@@ -107,7 +109,7 @@ const NetworkSummaryRow = ({
 
       <div className="shrink-0">
         {position.hasPosition ? (
-          <span className="px-1.5 py-0.5 rounded-md text-[10px] font-medium border bg-white/5 border-white/10 text-gray-200 leading-none">
+          <span className="px-1.5 py-0.5 rounded-md text-[10px] font-medium border border-base-300 bg-base-200 text-base-content dark:bg-white/5 dark:border-white/10 dark:text-gray-200 leading-none">
             HF {position.healthFactor}
           </span>
         ) : null}
@@ -119,24 +121,26 @@ const NetworkSummaryRow = ({
 const CollateralRow = ({ token }: { token: TokenPosition }) => {
   const hasSupply = token.aTokenBalance > 0n;
   return (
-    <div className="flex items-center justify-between py-2 px-3 rounded-lg border border-white/5 hover:bg-white/5 transition-colors">
+    <div className="flex items-center justify-between py-2 px-3 rounded-lg border border-base-300 hover:bg-base-200 dark:border-white/5 dark:hover:bg-white/5 transition-colors">
       <div className="flex items-center gap-3 min-w-0">
         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-xs font-bold text-white shrink-0">
           {token.symbol.slice(0, 2)}
         </div>
         <div className="min-w-0">
-          <p className="font-medium text-sm text-white truncate">{token.symbol}</p>
-          <p className="text-[10px] text-gray-500 leading-tight">
+          <p className="font-medium text-sm text-base-content dark:text-white truncate">{token.symbol}</p>
+          <p className="text-[10px] text-base-content/60 dark:text-gray-500 leading-tight">
             {token.usageAsCollateralEnabled ? "Collateral enabled" : "Collateral disabled"}
           </p>
         </div>
       </div>
 
       <div className="text-right shrink-0">
-        <p className="font-semibold text-emerald-400">
+        <p className="font-semibold text-emerald-600 dark:text-emerald-400">
           {hasSupply ? formatTokenAmount(token.aTokenBalance, token.decimals) : "—"}
         </p>
-        <p className="text-[10px] text-gray-500">{hasSupply ? `${token.liquidityRate.toFixed(2)}% APY` : "\u00A0"}</p>
+        <p className="text-[10px] text-base-content/60 dark:text-gray-500">
+          {hasSupply ? `${token.liquidityRate.toFixed(2)}% APY` : "\u00A0"}
+        </p>
       </div>
     </div>
   );
@@ -149,14 +153,14 @@ const DebtRow = ({ token }: { token: TokenPosition }) => {
   const totalDebt = token.stableDebt + token.variableDebt;
 
   return (
-    <div className="flex items-center justify-between py-2 px-3 rounded-lg border border-white/5 hover:bg-white/5 transition-colors">
+    <div className="flex items-center justify-between py-2 px-3 rounded-lg border border-base-300 hover:bg-base-200 dark:border-white/5 dark:hover:bg-white/5 transition-colors">
       <div className="flex items-center gap-3 min-w-0">
         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center text-xs font-bold text-white shrink-0">
           {token.symbol.slice(0, 2)}
         </div>
         <div className="min-w-0">
-          <p className="font-medium text-sm text-white truncate">{token.symbol}</p>
-          <p className="text-[10px] text-gray-500 leading-tight">
+          <p className="font-medium text-sm text-base-content dark:text-white truncate">{token.symbol}</p>
+          <p className="text-[10px] text-base-content/60 dark:text-gray-500 leading-tight">
             {hasStableDebt && hasVariableDebt
               ? `Stable ${formatTokenAmount(token.stableDebt, token.decimals)} · Variable ${formatTokenAmount(token.variableDebt, token.decimals)}`
               : hasVariableDebt
@@ -169,8 +173,10 @@ const DebtRow = ({ token }: { token: TokenPosition }) => {
       </div>
 
       <div className="text-right shrink-0">
-        <p className="font-semibold text-red-400">{hasDebt ? formatTokenAmount(totalDebt, token.decimals) : "—"}</p>
-        <p className="text-[10px] text-gray-500">{hasDebt ? "Borrowed" : "\u00A0"}</p>
+        <p className="font-semibold text-red-600 dark:text-red-400">
+          {hasDebt ? formatTokenAmount(totalDebt, token.decimals) : "—"}
+        </p>
+        <p className="text-[10px] text-base-content/60 dark:text-gray-500">{hasDebt ? "Borrowed" : "\u00A0"}</p>
       </div>
     </div>
   );
@@ -195,10 +201,10 @@ const PositionDetails = ({ position }: { position: NetworkPosition }) => {
       </SubscriptionPaywall>
 
       {/* Position Details */}
-      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-gray-900/80 to-gray-800/50 backdrop-blur-xl">
+      <div className="relative overflow-hidden rounded-2xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 backdrop-blur-xl">
         {/* subtle glow */}
         <div
-          className="absolute inset-0 opacity-60"
+          className="absolute inset-0 opacity-60 dark:opacity-60"
           style={{
             background: `radial-gradient(circle at 50% 0%, ${position.chainColor}20 0%, transparent 55%)`,
           }}
@@ -217,8 +223,8 @@ const PositionDetails = ({ position }: { position: NetworkPosition }) => {
                 {position.chainIcon}
               </div>
               <div className="min-w-0">
-                <h3 className="font-semibold text-white truncate">{position.chainName}</h3>
-                <p className="text-xs text-gray-400">Aave V3 · Token-level positions</p>
+                <h3 className="font-semibold text-base-content dark:text-white truncate">{position.chainName}</h3>
+                <p className="text-xs text-base-content/70 dark:text-gray-400">Aave V3 · Token-level positions</p>
               </div>
             </div>
 
@@ -230,28 +236,40 @@ const PositionDetails = ({ position }: { position: NetworkPosition }) => {
           {position.hasPosition ? (
             <>
               <div className="grid grid-cols-3 gap-3 mb-4">
-                <div className="bg-white/5 rounded-xl p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Collateral</p>
-                  <p className="text-lg font-bold text-emerald-400">{formatUSD(position.totalCollateralUSD)}</p>
+                <div className="bg-base-200 dark:bg-white/5 rounded-xl p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-base-content/60 dark:text-gray-500 mb-1">
+                    Collateral
+                  </p>
+                  <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                    {formatUSD(position.totalCollateralUSD)}
+                  </p>
                 </div>
-                <div className="bg-white/5 rounded-xl p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Debt</p>
-                  <p className="text-lg font-bold text-red-400">{formatUSD(position.totalDebtUSD)}</p>
+                <div className="bg-base-200 dark:bg-white/5 rounded-xl p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-base-content/60 dark:text-gray-500 mb-1">
+                    Debt
+                  </p>
+                  <p className="text-lg font-bold text-red-600 dark:text-red-400">{formatUSD(position.totalDebtUSD)}</p>
                 </div>
-                <div className="bg-white/5 rounded-xl p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Net Worth</p>
-                  <p className="text-lg font-bold text-white">{formatUSD(position.netWorthUSD)}</p>
+                <div className="bg-base-200 dark:bg-white/5 rounded-xl p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-base-content/60 dark:text-gray-500 mb-1">
+                    Net Worth
+                  </p>
+                  <p className="text-lg font-bold text-base-content dark:text-white">
+                    {formatUSD(position.netWorthUSD)}
+                  </p>
                 </div>
               </div>
 
               {hasTokens ? (
-                <div className="border-t border-white/10 pt-3">
+                <div className="border-t border-base-300 dark:border-white/10 pt-3">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* LEFT: Collateral list */}
-                    <div className="rounded-xl border border-emerald-500/15 bg-emerald-950/10 p-3">
+                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 dark:border-emerald-500/15 dark:bg-emerald-950/10 p-3">
                       <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs font-semibold text-emerald-300">Collateral</p>
-                        <p className="text-[10px] text-gray-500">{collateralTokens.length} assets</p>
+                        <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-300">Collateral</p>
+                        <p className="text-[10px] text-base-content/60 dark:text-gray-500">
+                          {collateralTokens.length} assets
+                        </p>
                       </div>
                       {collateralTokens.length > 0 ? (
                         <div className="space-y-2">
@@ -260,15 +278,19 @@ const PositionDetails = ({ position }: { position: NetworkPosition }) => {
                           ))}
                         </div>
                       ) : (
-                        <div className="text-center py-8 text-gray-500 text-sm">No collateral supplied</div>
+                        <div className="text-center py-8 text-base-content/60 dark:text-gray-500 text-sm">
+                          No collateral supplied
+                        </div>
                       )}
                     </div>
 
                     {/* RIGHT: Debt list */}
-                    <div className="rounded-xl border border-red-500/15 bg-red-950/10 p-3">
+                    <div className="rounded-xl border border-red-500/20 bg-red-500/5 dark:border-red-500/15 dark:bg-red-950/10 p-3">
                       <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs font-semibold text-red-300">Debt</p>
-                        <p className="text-[10px] text-gray-500">{debtTokens.length} assets</p>
+                        <p className="text-xs font-semibold text-red-600 dark:text-red-300">Debt</p>
+                        <p className="text-[10px] text-base-content/60 dark:text-gray-500">
+                          {debtTokens.length} assets
+                        </p>
                       </div>
                       {debtTokens.length > 0 ? (
                         <div className="space-y-2">
@@ -277,19 +299,21 @@ const PositionDetails = ({ position }: { position: NetworkPosition }) => {
                           ))}
                         </div>
                       ) : (
-                        <div className="text-center py-8 text-gray-500 text-sm">No outstanding debt</div>
+                        <div className="text-center py-8 text-base-content/60 dark:text-gray-500 text-sm">
+                          No outstanding debt
+                        </div>
                       )}
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-10 text-gray-500">
+                <div className="text-center py-10 text-base-content/70 dark:text-gray-500">
                   <p className="text-sm">No token-level data returned for this position.</p>
                 </div>
               )}
             </>
           ) : (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-base-content/70 dark:text-gray-500">
               <p className="text-sm">No active position on {position.chainName}.</p>
             </div>
           )}
@@ -337,7 +361,7 @@ export const AavePositions = () => {
         <button
           onClick={refetch}
           disabled={isLoading}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-all disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-base-200 border border-base-300 text-sm font-medium text-base-content dark:bg-white/5 dark:border-white/10 dark:text-gray-300 hover:bg-base-300 dark:hover:bg-white/10 dark:hover:text-white transition-all disabled:opacity-50"
         >
           <svg
             className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
@@ -358,11 +382,11 @@ export const AavePositions = () => {
 
       {/* Error State */}
       {error && (
-        <div className="rounded-2xl border border-red-500/20 bg-red-950/20 p-6 text-center mb-6">
-          <p className="text-red-400">{error}</p>
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 dark:border-red-500/20 dark:bg-red-950/20 p-6 text-center mb-6">
+          <p className="text-red-600 dark:text-red-400">{error}</p>
           <button
             onClick={refetch}
-            className="mt-3 px-4 py-2 rounded-lg bg-red-500/20 text-red-400 text-sm hover:bg-red-500/30 transition-colors"
+            className="mt-3 px-4 py-2 rounded-lg bg-red-500/20 text-red-600 dark:text-red-400 text-sm hover:bg-red-500/30 transition-colors"
           >
             Try Again
           </button>
@@ -373,24 +397,32 @@ export const AavePositions = () => {
         {/* LEFT: Overview */}
         <aside className="lg:col-span-5 space-y-4">
           <div className="grid grid-cols-3 gap-3">
-            <div className="relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-950/50 to-gray-900/50 p-4">
-              <p className="text-[10px] uppercase tracking-wider text-emerald-400/80 mb-1">Total Supplied</p>
-              <p className="text-xl font-bold text-emerald-400">{formatUSD(totalCollateralUSD)}</p>
+            <div className="relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-emerald-500/10 dark:border-emerald-500/20 dark:bg-gradient-to-br dark:from-emerald-950/50 dark:to-gray-900/50 p-4">
+              <p className="text-[10px] uppercase tracking-wider text-emerald-600/90 dark:text-emerald-400/80 mb-1">
+                Total Supplied
+              </p>
+              <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                {formatUSD(totalCollateralUSD)}
+              </p>
             </div>
-            <div className="relative overflow-hidden rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-950/50 to-gray-900/50 p-4">
-              <p className="text-[10px] uppercase tracking-wider text-red-400/80 mb-1">Total Borrowed</p>
-              <p className="text-xl font-bold text-red-400">{formatUSD(totalDebtUSD)}</p>
+            <div className="relative overflow-hidden rounded-2xl border border-red-500/30 bg-red-500/10 dark:border-red-500/20 dark:bg-gradient-to-br dark:from-red-950/50 dark:to-gray-900/50 p-4">
+              <p className="text-[10px] uppercase tracking-wider text-red-600/90 dark:text-red-400/80 mb-1">
+                Total Borrowed
+              </p>
+              <p className="text-xl font-bold text-red-600 dark:text-red-400">{formatUSD(totalDebtUSD)}</p>
             </div>
-            <div className="relative overflow-hidden rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-950/50 to-gray-900/50 p-4">
-              <p className="text-[10px] uppercase tracking-wider text-purple-400/80 mb-1">Net Worth</p>
-              <p className="text-xl font-bold text-white">{formatUSD(totalNetWorthUSD)}</p>
+            <div className="relative overflow-hidden rounded-2xl border border-primary/30 bg-primary/10 dark:border-purple-500/20 dark:bg-gradient-to-br dark:from-purple-950/50 dark:to-gray-900/50 p-4">
+              <p className="text-[10px] uppercase tracking-wider text-primary/90 dark:text-purple-400/80 mb-1">
+                Net Worth
+              </p>
+              <p className="text-xl font-bold text-base-content dark:text-white">{formatUSD(totalNetWorthUSD)}</p>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-gray-900/80 to-gray-800/50 backdrop-blur-xl p-4">
+          <div className="rounded-2xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 backdrop-blur-xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-white">Networks</h3>
-              <p className="text-xs text-gray-500">{positionsWithData.length} active</p>
+              <h3 className="text-sm font-semibold text-base-content dark:text-white">Networks</h3>
+              <p className="text-xs text-base-content/60 dark:text-gray-500">{positionsWithData.length} active</p>
             </div>
 
             {isLoading ? (
@@ -410,7 +442,7 @@ export const AavePositions = () => {
             )}
 
             {!isLoading && !error && !hasAnyPosition && (
-              <div className="mt-4 text-center text-gray-500 text-sm">
+              <div className="mt-4 text-center text-base-content/70 dark:text-gray-500 text-sm">
                 No active Aave positions detected on supported networks.
               </div>
             )}
@@ -424,7 +456,7 @@ export const AavePositions = () => {
           ) : selectedPosition ? (
             <PositionDetails position={selectedPosition} />
           ) : (
-            <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-gray-900/80 to-gray-800/50 backdrop-blur-xl p-6 text-center text-gray-500">
+            <div className="rounded-2xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 backdrop-blur-xl p-6 text-center text-base-content/70 dark:text-gray-500">
               <p className="text-sm">Select a network on the left to view its Aave position.</p>
             </div>
           )}
