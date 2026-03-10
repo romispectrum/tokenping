@@ -182,7 +182,13 @@ const DebtRow = ({ token }: { token: TokenPosition }) => {
   );
 };
 
-const PositionDetails = ({ position }: { position: NetworkPosition }) => {
+const PositionDetails = ({
+  position,
+  hasNotificationConfig,
+}: {
+  position: NetworkPosition;
+  hasNotificationConfig: boolean;
+}) => {
   const hasTokens = position.tokens.length > 0;
   const collateralTokens = position.tokens.filter(t => t.aTokenBalance > 0n);
   const debtTokens = position.tokens.filter(t => t.stableDebt > 0n || t.variableDebt > 0n);
@@ -191,7 +197,12 @@ const PositionDetails = ({ position }: { position: NetworkPosition }) => {
     <div className="space-y-4">
       {/* Notification Config - gated by subscription */}
       <SubscriptionPaywall
-        description={`Subscribe once to configure health factor alerts on ${position.chainName} and other networks.`}
+        description={
+          hasNotificationConfig
+            ? `Your saved ${position.chainName} notification config is still in your account. Renew to reuse and edit it.`
+            : `Subscribe once to configure health factor alerts on ${position.chainName} and other networks.`
+        }
+        hasExistingConfig={hasNotificationConfig}
       >
         <NotificationConfig
           chainId={position.chainId}
@@ -454,7 +465,10 @@ export const AavePositions = () => {
           {isLoading ? (
             <LoadingSkeleton columns={2} />
           ) : selectedPosition ? (
-            <PositionDetails position={selectedPosition} />
+            <PositionDetails
+              position={selectedPosition}
+              hasNotificationConfig={configsLoaded && hasConfig(selectedPosition.chainId)}
+            />
           ) : (
             <div className="rounded-2xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 backdrop-blur-xl p-6 text-center text-base-content/70 dark:text-gray-500">
               <p className="text-sm">Select a network on the left to view its Aave position.</p>

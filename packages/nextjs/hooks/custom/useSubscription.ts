@@ -2,8 +2,8 @@
 
 import { useMemo } from "react";
 import { erc20Abi } from "viem";
-import { useAccount, useReadContract, useWriteContract } from "wagmi";
-import { getPaymentChainId, getPaymentContractAddress, getPaymentTokenAddress } from "~~/constants/payments";
+import { useAccount, useReadContract, useReadContracts, useWriteContract } from "wagmi";
+import { getPaymentChainId, getPaymentContractAddress, getPaymentTokenCandidates } from "~~/constants/payments";
 import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import type { AllowedChainIds } from "~~/utils/scaffold-eth";
 
@@ -15,6 +15,20 @@ const expiryTimestampByUserAbi = [
     stateMutability: "view",
     inputs: [{ name: "", type: "address" }],
     outputs: [{ name: "", type: "uint256" }],
+  },
+] as const;
+
+const plansByTokenAbi = [
+  {
+    type: "function",
+    name: "plans",
+    stateMutability: "view",
+    inputs: [{ name: "", type: "address" }],
+    outputs: [
+      { name: "price", type: "uint256" },
+      { name: "durationSeconds", type: "uint256" },
+      { name: "enabled", type: "bool" },
+    ],
   },
 ] as const;
 
@@ -32,8 +46,11 @@ export type SubscriptionInfo = {
 export function useSubscription() {
   const { address } = useAccount();
   const paymentChainId = PAYMENTS_CHAIN_ID;
-  const paymentTokenAddress = paymentChainId != null ? getPaymentTokenAddress(paymentChainId) : null;
   const paymentContractAddress = paymentChainId != null ? getPaymentContractAddress(paymentChainId) : null;
+  const paymentTokenCandidates = useMemo(
+    () => (paymentChainId != null ? getPaymentTokenCandidates(paymentChainId) : []),
+    [paymentChainId],
+  );
 
   const chainId = (paymentChainId ?? undefined) as unknown as AllowedChainIds | undefined;
 
@@ -44,13 +61,20 @@ export function useSubscription() {
     chainId,
   });
 
-  const { data: planTuple, refetch: refetchPlan } = useScaffoldReadContract({
-    contractName: "TokenpingPaywall",
-    functionName: "plans",
-    args: (paymentTokenAddress ? [paymentTokenAddress as `0x${string}`] : [undefined]) as readonly [
-      `0x${string}` | undefined,
-    ],
-    chainId,
+  const { data: plansResults, refetch: refetchPlans } = useReadContracts({
+    contracts:
+      paymentContractAddress && chainId != null
+        ? paymentTokenCandidates.map(token => ({
+            address: paymentContractAddress as `0x${string}`,
+            abi: plansByTokenAbi,
+            functionName: "plans",
+            args: [token as `0x${string}`] as const,
+            chainId,
+          }))
+        : [],
+    query: {
+      enabled: Boolean(paymentContractAddress && chainId != null && paymentTokenCandidates.length > 0),
+    },
   });
 
   const { data: expiryTimestamp, refetch: refetchExpiryTimestamp } = useReadContract({
@@ -71,11 +95,28 @@ export function useSubscription() {
 
   const { writeContractAsync: writeApproveAsync, isPending: isApprovePending } = useWriteContract();
 
-  const plan: SubscriptionPlan | null = useMemo(() => {
-    if (!planTuple || !Array.isArray(planTuple) || planTuple.length < 3) return null;
-    const [price, durationSeconds, enabled] = planTuple;
-    return { price: price as bigint, durationSeconds: durationSeconds as bigint, enabled: Boolean(enabled) };
-  }, [planTuple]);
+  const selectedPlanByToken = useMemo(() => {
+    if (!plansResults || paymentTokenCandidates.length === 0) return null;
+    const byToken = plansResults
+      .map((entry, index) => {
+        if (entry.status !== "success" || !Array.isArray(entry.result) || entry.result.length < 3) return null;
+        const [price, durationSeconds, enabled] = entry.result;
+        return {
+          token: paymentTokenCandidates[index],
+          plan: { price: price as bigint, durationSeconds: durationSeconds as bigint, enabled: Boolean(enabled) },
+        };
+      })
+      .filter(Boolean) as { token: string; plan: SubscriptionPlan }[];
+
+    if (byToken.length === 0) return null;
+
+    const enabledPlan = byToken.find(({ plan }) => plan.enabled && plan.price > 0n && plan.durationSeconds > 0n);
+    if (enabledPlan) return enabledPlan;
+    return byToken[0];
+  }, [plansResults, paymentTokenCandidates]);
+
+  const paymentTokenAddress = selectedPlanByToken?.token ?? paymentTokenCandidates[0] ?? null;
+  const plan = selectedPlanByToken?.plan ?? null;
 
   const subscription: SubscriptionInfo | null = useMemo(() => {
     return {
@@ -86,7 +127,7 @@ export function useSubscription() {
 
   const refetch = () => {
     refetchActive();
-    refetchPlan();
+    refetchPlans();
     refetchExpiryTimestamp();
   };
 

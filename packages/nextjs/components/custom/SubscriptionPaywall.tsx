@@ -14,9 +14,11 @@ type SubscriptionPaywallProps = {
   children: React.ReactNode;
   /** Optional description shown above the pay CTA when not subscribed */
   description?: string;
+  /** True when a notification config already exists in Supabase for this network */
+  hasExistingConfig?: boolean;
 };
 
-export function SubscriptionPaywall({ children, description }: SubscriptionPaywallProps) {
+export function SubscriptionPaywall({ children, description, hasExistingConfig = false }: SubscriptionPaywallProps) {
   const { address, chain } = useAccount();
   const { switchChain } = useSwitchChain();
   const {
@@ -111,11 +113,13 @@ export function SubscriptionPaywall({ children, description }: SubscriptionPaywa
             </svg>
           </div>
           <h3 className="mb-1 text-sm font-semibold text-base-content dark:text-white">
-            Subscribe to configure notifications
+            {hasExistingConfig ? "Renew subscription to edit notifications" : "Subscribe to configure notifications"}
           </h3>
           <p className="mb-4 max-w-[280px] text-xs text-base-content/70 dark:text-gray-400">
             {description ??
-              "Pay once to unlock notification settings. You can set health factor alerts per network after subscribing."}
+              (hasExistingConfig
+                ? "Your previous notification config is saved. Renew now to reuse and edit your existing settings."
+                : "Pay once to unlock notification settings. You can set health factor alerts per network after subscribing.")}
           </p>
 
           {!address ? (
@@ -154,7 +158,7 @@ export function SubscriptionPaywall({ children, description }: SubscriptionPaywa
                 disabled={busy || !canSubscribe}
                 className="w-full rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2.5 text-sm font-medium text-white transition-all shadow-lg shadow-amber-500/20 hover:from-amber-600 hover:to-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {busy ? "Processing..." : "Subscribe with USDC"}
+                {busy ? "Processing..." : hasExistingConfig ? "Renew with USDC" : "Subscribe with USDC"}
               </button>
             </div>
           )}

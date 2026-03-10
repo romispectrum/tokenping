@@ -22,84 +22,30 @@ const Home: NextPage = () => {
         />
       </div>
 
-      <div className="relative z-10 flex flex-col items-center grow pt-12 pb-24">
+      <div className="relative z-10 flex flex-col items-center grow pt-8 pb-10">
         <div className="w-full max-w-4xl mx-auto px-4">
           {/* Hero */}
-          <div className="text-center mb-14">
-            <p className="text-sm font-medium text-primary uppercase tracking-widest mb-3">DeFi notifications</p>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-5">
+          <div className="text-center mb-8">
+            <p className="text-xs font-medium text-primary dark:text-purple-300 uppercase tracking-widest mb-2">
+              DeFi notifications
+            </p>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3">
               <span className="bg-gradient-to-r from-neutral via-primary to-accent dark:from-white dark:via-purple-200 dark:to-indigo-400 bg-clip-text text-transparent">
                 Tokenping
               </span>
             </h1>
-            <p className="text-base-content/80 text-lg sm:text-xl max-w-2xl mx-auto leading-relaxed">
+            <p className="text-base-content/80 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
               Stay on top of your DeFi positions. Tokenping monitors your collateral and debt, and notifies you when you
               need to act — so you never miss a health factor warning.
             </p>
           </div>
 
-          {/* Value props */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
-            <div className="rounded-2xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gray-900/50 backdrop-blur-sm p-5 text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/20 text-primary dark:bg-purple-500/20 dark:text-purple-400 mb-3">
-                <WalletIcon className="w-6 h-6" aria-hidden />
-              </div>
-              <h3 className="text-base-content font-semibold mb-1">Connect your wallet</h3>
-              <p className="text-sm text-base-content/70 dark:text-gray-400">
-                Link your wallet once. We read positions on-chain, no custody.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gray-900/50 backdrop-blur-sm p-5 text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/20 text-primary dark:bg-indigo-500/20 dark:text-indigo-400 mb-3">
-                <ChartBarIcon className="w-6 h-6" aria-hidden />
-              </div>
-              <h3 className="text-base-content font-semibold mb-1">Track positions</h3>
-              <p className="text-sm text-base-content/70 dark:text-gray-400">
-                See collateral, debt, and health factor across supported protocols.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gray-900/50 backdrop-blur-sm p-5 text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-accent/20 text-accent dark:bg-pink-500/20 dark:text-pink-400 mb-3">
-                <BellAlertIcon className="w-6 h-6" aria-hidden />
-              </div>
-              <h3 className="text-base-content font-semibold mb-1">Get notified</h3>
-              <p className="text-sm text-base-content/70 dark:text-gray-400">
-                Configure alerts and get notified before your position is at risk.
-              </p>
-            </div>
-          </div>
-
-          {/* How notifications work */}
-          <div className="rounded-3xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gray-900/50 backdrop-blur-sm p-6 md:p-7 mb-10">
-            <h2 className="text-xl font-semibold text-base-content mb-4">How notifications work</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="rounded-2xl border border-base-300/80 dark:border-white/10 bg-base-200/60 dark:bg-gray-900/40 p-4">
-                <p className="text-sm font-medium text-base-content mb-1">1. Set your alert</p>
-                <p className="text-sm text-base-content/70 dark:text-gray-400">
-                  Choose the wallet and safety level that feels right for you.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-base-300/80 dark:border-white/10 bg-base-200/60 dark:bg-gray-900/40 p-4">
-                <p className="text-sm font-medium text-base-content mb-1">2. We check every 5 minutes</p>
-                <p className="text-sm text-base-content/70 dark:text-gray-400">
-                  Tokenping checks your latest health factor based on your saved settings.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-base-300/80 dark:border-white/10 bg-base-200/60 dark:bg-gray-900/40 p-4">
-                <p className="text-sm font-medium text-base-content mb-1">3. You get an email alert</p>
-                <p className="text-sm text-base-content/70 dark:text-gray-400">
-                  If your health factor drops below your limit, we notify you right away.
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Main CTA card */}
-          <div className="rounded-3xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 backdrop-blur-xl p-6 md:p-8">
+          <div className="rounded-3xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 backdrop-blur-xl p-5 md:p-6 mb-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
               <div>
-                <h2 className="text-xl font-semibold text-base-content mb-2">Aave positions</h2>
-                <p className="text-base-content/70 dark:text-gray-400 text-sm md:text-base max-w-lg">
+                <h2 className="text-lg md:text-xl font-semibold text-base-content mb-2">Aave positions</h2>
+                <p className="text-base-content/70 dark:text-gray-400 text-sm max-w-lg">
                   View your Aave V3 collateral and debt across networks. Set up health factor alerts to get early
                   warnings before liquidation risk increases.
                 </p>
@@ -115,15 +61,71 @@ const Home: NextPage = () => {
             </div>
 
             {!isConnected ? (
-              <p className="mt-5 text-sm text-base-content/60 flex items-center gap-2">
+              <p className="mt-4 text-sm text-base-content/60 flex items-center gap-2">
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-warning" aria-hidden />
                 Connect your wallet (top right) to see your positions on the Aave page.
               </p>
             ) : null}
           </div>
 
+          {/* Value props */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            <div className="rounded-2xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gray-900/50 backdrop-blur-sm p-4 text-center">
+              <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-primary/20 text-primary dark:bg-purple-500/20 dark:text-purple-400 mb-2">
+                <WalletIcon className="w-5 h-5" aria-hidden />
+              </div>
+              <h3 className="text-base-content font-semibold mb-1">Connect your wallet</h3>
+              <p className="text-xs sm:text-sm text-base-content/70 dark:text-gray-400">
+                Link your wallet once. We read positions on-chain, no custody.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gray-900/50 backdrop-blur-sm p-4 text-center">
+              <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-primary/20 text-primary dark:bg-indigo-500/20 dark:text-indigo-400 mb-2">
+                <ChartBarIcon className="w-5 h-5" aria-hidden />
+              </div>
+              <h3 className="text-base-content font-semibold mb-1">Track positions</h3>
+              <p className="text-xs sm:text-sm text-base-content/70 dark:text-gray-400">
+                See collateral, debt, and health factor across supported protocols.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gray-900/50 backdrop-blur-sm p-4 text-center">
+              <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-accent/20 text-accent dark:bg-pink-500/20 dark:text-pink-400 mb-2">
+                <BellAlertIcon className="w-5 h-5" aria-hidden />
+              </div>
+              <h3 className="text-base-content font-semibold mb-1">Get notified</h3>
+              <p className="text-xs sm:text-sm text-base-content/70 dark:text-gray-400">
+                Configure alerts and get notified before your position is at risk.
+              </p>
+            </div>
+          </div>
+
+          {/* How notifications work */}
+          <div className="rounded-3xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gray-900/50 backdrop-blur-sm p-5 md:p-6 mb-8">
+            <h2 className="text-lg md:text-xl font-semibold text-base-content mb-3">How notifications work</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="rounded-2xl border border-base-300/80 dark:border-white/10 bg-base-200/60 dark:bg-gray-900/40 p-3">
+                <p className="text-sm font-medium text-base-content mb-1">1. Set your alert</p>
+                <p className="text-xs sm:text-sm text-base-content/70 dark:text-gray-400">
+                  Choose the wallet and safety level that feels right for you.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-base-300/80 dark:border-white/10 bg-base-200/60 dark:bg-gray-900/40 p-3">
+                <p className="text-sm font-medium text-base-content mb-1">2. We check every 5 minutes</p>
+                <p className="text-xs sm:text-sm text-base-content/70 dark:text-gray-400">
+                  Tokenping checks your latest health factor based on your saved settings.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-base-300/80 dark:border-white/10 bg-base-200/60 dark:bg-gray-900/40 p-3">
+                <p className="text-sm font-medium text-base-content mb-1">3. You get an alert</p>
+                <p className="text-xs sm:text-sm text-base-content/70 dark:text-gray-400">
+                  If your health factor drops below your limit, we notify you right away through your selected channel.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Footer line */}
-          <p className="text-center text-base-content/60 text-sm mt-10">
+          <p className="text-center text-base-content/60 text-xs sm:text-sm mt-6">
             Tokenping — DeFi notification service. Start with Aave, more protocols coming soon.
           </p>
         </div>

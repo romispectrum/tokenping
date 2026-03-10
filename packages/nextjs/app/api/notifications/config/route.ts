@@ -3,9 +3,48 @@ import { DEFAULT_HEALTH_FACTOR_THRESHOLD } from "~~/constants/notifications";
 import { isSubscriptionActive } from "~~/services/payments/checkSubscription";
 import { getSupabaseServerClient } from "~~/services/supabase/supabaseServer";
 
+const CONFIG_CACHE_TTL_MS = 15 * 60 * 1000;
+
+type CacheEntry = {
+  data: unknown;
+  expiresAt: number;
+};
+
+const notificationConfigCache = new Map<string, CacheEntry>();
+
 /** Normalize wallet address for consistent DB lookups (PostgreSQL text comparison is case-sensitive). */
 function normalizeUserId(userId: string): string {
   return userId.trim().toLowerCase();
+}
+
+function getCacheKey(userId: string, chainId?: number) {
+  return `${userId}:${chainId ?? "all"}`;
+}
+
+function getCachedConfig(cacheKey: string) {
+  const cached = notificationConfigCache.get(cacheKey);
+  if (!cached) return { hit: false as const, data: null };
+  if (Date.now() > cached.expiresAt) {
+    notificationConfigCache.delete(cacheKey);
+    return { hit: false as const, data: null };
+  }
+
+  return { hit: true as const, data: cached.data };
+}
+
+function setCachedConfig(cacheKey: string, data: unknown) {
+  notificationConfigCache.set(cacheKey, {
+    data,
+    expiresAt: Date.now() + CONFIG_CACHE_TTL_MS,
+  });
+}
+
+function invalidateUserConfigCache(userId: string) {
+  for (const key of notificationConfigCache.keys()) {
+    if (key.startsWith(`${userId}:`)) {
+      notificationConfigCache.delete(key);
+    }
+  }
 }
 
 export async function GET(request: Request) {
@@ -19,46 +58,55 @@ export async function GET(request: Request) {
     }
 
     const uid = normalizeUserId(userId);
+    const trimmed = userId.trim();
+
+    const chainId = chainIdParam != null && chainIdParam !== "" ? parseInt(chainIdParam, 10) : undefined;
+    if (chainIdParam != null && chainIdParam !== "" && Number.isNaN(chainId)) {
+      return NextResponse.json({ error: "Invalid chainId" }, { status: 400 });
+    }
+
+    const cacheKey = getCacheKey(uid, chainId);
+    const cached = getCachedConfig(cacheKey);
+    if (cached.hit) {
+      return NextResponse.json(cached.data);
+    }
 
     // Read config without subscription check so existing config is visible after refresh.
     // PUT/DELETE still require an active subscription.
     const supabase = getSupabaseServerClient();
 
-    const trimmed = userId.trim();
-
     if (chainIdParam != null && chainIdParam !== "") {
-      const chainId = parseInt(chainIdParam, 10);
-      if (Number.isNaN(chainId)) {
-        return NextResponse.json({ error: "Invalid chainId" }, { status: 400 });
-      }
-      let result = await supabase
-        .from("notification_configs")
-        .select("*")
-        .eq("user_id", uid)
-        .eq("chain_id", chainId)
-        .single();
+      let query = supabase.from("notification_configs").select("*").eq("user_id", uid);
+      if (chainId !== undefined) query = query.eq("chain_id", chainId);
+      let result = await query.single();
 
-      if ((result.error || !result.data) && trimmed !== uid) {
+      if ((result.error || !result.data) && trimmed !== uid && chainId !== undefined) {
         result = await supabase
           .from("notification_configs")
           .select("*")
           .eq("user_id", trimmed)
           .eq("chain_id", chainId)
           .single();
+      } else if ((result.error || !result.data) && trimmed !== uid) {
+        result = await supabase.from("notification_configs").select("*").eq("user_id", trimmed).single();
       }
 
       const data = result.data;
       if (result.error || !data) {
+        setCachedConfig(cacheKey, null);
         return NextResponse.json(null);
       }
 
-      return NextResponse.json({
+      const response = {
         chainId: data.chain_id,
         enabled: data.enabled,
         services: data.services ?? [],
         healthFactorThreshold: parseFloat(String(data.health_factor_threshold)),
         email: data.email ?? undefined,
-      });
+      };
+
+      setCachedConfig(cacheKey, response);
+      return NextResponse.json(response);
     }
 
     let result = await supabase.from("notification_configs").select("*").eq("user_id", uid);
@@ -69,6 +117,7 @@ export async function GET(request: Request) {
 
     const data = result.data;
     if (result.error || !data) {
+      setCachedConfig(cacheKey, {});
       return NextResponse.json({});
     }
 
@@ -89,6 +138,7 @@ export async function GET(request: Request) {
       >,
     );
 
+    setCachedConfig(cacheKey, configs);
     return NextResponse.json(configs);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";
@@ -165,6 +215,7 @@ export async function PUT(request: Request) {
       if (error) return NextResponse.json({ error: error.message }, { status: 502 });
     }
 
+    invalidateUserConfigCache(uid);
     return NextResponse.json({ success: true });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";
@@ -212,6 +263,7 @@ export async function DELETE(request: Request) {
       if (err2) return NextResponse.json({ error: err2.message }, { status: 502 });
     }
 
+    invalidateUserConfigCache(uid);
     return NextResponse.json({ success: true });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";

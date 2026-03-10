@@ -21,14 +21,22 @@ export function getPaymentContractAddress(chainId: number): string | null {
 }
 
 /**
+ * Payment token candidates for subscription.
+ * Order matters: first token is preferred default.
+ */
+export function getPaymentTokenCandidates(chainId: number): string[] {
+  const contracts = contractsByChain[chainId];
+  if (!contracts?.TokenpingPaywall) return [];
+  if (contracts.MockUSDC?.address) return [contracts.MockUSDC.address];
+  if (chainId === 42161) return [ARBITRUM_USDC];
+  if (chainId === 1) return [MAINNET_USDC];
+  return [];
+}
+
+/**
  * Payment token address for subscription (e.g. MockUSDC on local).
  * Must match a plan configured on TokenpingPaywall.
  */
 export function getPaymentTokenAddress(chainId: number): string | null {
-  const contracts = contractsByChain[chainId];
-  if (!contracts?.TokenpingPaywall) return null;
-  if (contracts.MockUSDC?.address) return contracts.MockUSDC.address;
-  if (chainId === 42161) return ARBITRUM_USDC;
-  if (chainId === 1) return MAINNET_USDC;
-  return null;
+  return getPaymentTokenCandidates(chainId)[0] ?? null;
 }
