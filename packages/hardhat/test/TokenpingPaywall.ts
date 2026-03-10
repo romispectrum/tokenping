@@ -56,6 +56,27 @@ describe("TokenpingPaywall", function () {
       void expect(await paywall.averageBlockTime()).to.equal(12n);
       void expect(await paywall.maxDurationBlocks()).to.equal(2_628_000n);
     });
+
+    it("Should revert proxy deployment initialization with zero owner", async function () {
+      const TokenpingPaywallFactory = await ethers.getContractFactory("TokenpingPaywall");
+      const implementation = await TokenpingPaywallFactory.deploy();
+      await implementation.waitForDeployment();
+
+      const initData = TokenpingPaywallFactory.interface.encodeFunctionData("initialize", [
+        ethers.ZeroAddress,
+        12,
+        2_628_000,
+      ]);
+
+      const ERC1967Proxy = await ethers.getContractFactory(
+        "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
+      );
+
+      await expect(ERC1967Proxy.deploy(await implementation.getAddress(), initData)).to.be.revertedWithCustomError(
+        implementation,
+        "OwnableInvalidOwner",
+      );
+    });
   });
 
   describe("setAverageBlockTime / setMaxDurationBlocks (admin)", function () {
@@ -195,6 +216,23 @@ describe("TokenpingPaywall", function () {
       void expect(expiryBlock2).to.be.greaterThan(BigInt(blockNum) + durationBlocks);
     });
 
+    it("Should carry forward expiryTimestamp when renewing early", async function () {
+      const { paywall, mockUsdc, user, price, durationBlocks } = fixture;
+      const token = await mockUsdc.getAddress();
+      await mockUsdc.connect(user).approve(await paywall.getAddress(), price * 2n);
+
+      await paywall.connect(user).pay(token);
+      const [, expiryTimestamp1] = await paywall.getSubscription(user.address);
+
+      await ethers.provider.send("evm_increaseTime", [60]);
+      await ethers.provider.send("evm_mine", []);
+
+      await paywall.connect(user).pay(token);
+      const [, expiryTimestamp2] = await paywall.getSubscription(user.address);
+
+      void expect(expiryTimestamp2).to.equal(expiryTimestamp1 + durationBlocks * 12n);
+    });
+
     it("Should expire after durationBlocks and allow renewal from current block", async function () {
       const { paywall, mockUsdc, owner, user } = fixture;
       const token = await mockUsdc.getAddress();
@@ -311,14 +349,18 @@ describe("TokenpingPaywall", function () {
       ).to.be.revertedWith("Invalid recipient");
     });
 
-    it("Should revert for unknown token (no plan)", async function () {
+    it("Should allow owner to rescue unknown token (no plan) when balance exists", async function () {
       const { paywall, owner, other } = fixture;
       const UnknownToken = await ethers.getContractFactory("MockUSDC");
       const unknown = await UnknownToken.deploy();
       await unknown.waitForDeployment();
-      await expect(
-        paywall.connect(owner).withdrawTokens(await unknown.getAddress(), other.address, 1n),
-      ).to.be.revertedWith("Unknown token");
+
+      await unknown.mint(await paywall.getAddress(), 1n);
+
+      await expect(paywall.connect(owner).withdrawTokens(await unknown.getAddress(), other.address, 1n))
+        .to.emit(paywall, "TokensWithdrawn")
+        .withArgs(await unknown.getAddress(), other.address, 1n);
+      void expect(await unknown.balanceOf(other.address)).to.equal(1n);
     });
 
     it("Should allow owner to withdraw when paused (emergency)", async function () {
@@ -358,6 +400,48 @@ describe("TokenpingPaywall", function () {
 
       const balance = await mockUsdc.balanceOf(await paywall.getAddress());
       await expect(paywall.connect(owner).withdrawTokens(token, other.address, balance + 1n)).to.be.reverted;
+    });
+  });
+
+  describe("withdrawNative (admin)", function () {
+    it("Should withdraw native balance to recipient and emit NativeWithdrawn", async function () {
+      const { paywall, owner, other } = fixture;
+      const paywallAddress = await paywall.getAddress();
+      const amount = ethers.parseEther("1");
+
+      await ethers.provider.send("hardhat_setBalance", [paywallAddress, `0x${amount.toString(16)}`]);
+
+      const before = await ethers.provider.getBalance(other.address);
+      await expect(paywall.connect(owner).withdrawNative(other.address, amount))
+        .to.emit(paywall, "NativeWithdrawn")
+        .withArgs(other.address, amount);
+      const after = await ethers.provider.getBalance(other.address);
+      void expect(after - before).to.equal(amount);
+    });
+
+    it("Should revert when called by non-owner", async function () {
+      const { paywall, user, other } = fixture;
+      await expect(paywall.connect(user).withdrawNative(other.address, 1n)).to.be.revertedWithCustomError(
+        paywall,
+        "OwnableUnauthorizedAccount",
+      );
+    });
+
+    it("Should revert for zero recipient", async function () {
+      const { paywall, owner } = fixture;
+      await expect(paywall.connect(owner).withdrawNative(ethers.ZeroAddress, 1n)).to.be.revertedWith(
+        "Invalid recipient",
+      );
+    });
+
+    it("Should revert for zero amount", async function () {
+      const { paywall, owner, other } = fixture;
+      await expect(paywall.connect(owner).withdrawNative(other.address, 0n)).to.be.revertedWith("Amount must be > 0");
+    });
+
+    it("Should revert when amount exceeds native balance", async function () {
+      const { paywall, owner, other } = fixture;
+      await expect(paywall.connect(owner).withdrawNative(other.address, 1n)).to.be.revertedWith("Insufficient balance");
     });
   });
 
