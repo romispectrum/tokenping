@@ -77,24 +77,6 @@ export function useSubscription() {
     },
   });
 
-  const { data: expiryTimestamp, refetch: refetchExpiryTimestamp } = useReadContract({
-    abi: expiryTimestampByUserAbi,
-    address: (paymentContractAddress ?? undefined) as `0x${string}` | undefined,
-    functionName: "expiryTimestampByUser",
-    args: (address ? [address as `0x${string}`] : undefined) as readonly [`0x${string}`] | undefined,
-    chainId,
-    query: {
-      enabled: Boolean(address && chainId != null && paymentContractAddress),
-    },
-  });
-
-  const { writeContractAsync: payAsync, isPending: isPayPending } = useScaffoldWriteContract({
-    contractName: "TokenpingPaywall",
-    chainId,
-  });
-
-  const { writeContractAsync: writeApproveAsync, isPending: isApprovePending } = useWriteContract();
-
   const selectedPlanByToken = useMemo(() => {
     if (!plansResults || paymentTokenCandidates.length === 0) return null;
     const byToken = plansResults
@@ -118,6 +100,38 @@ export function useSubscription() {
   const paymentTokenAddress = selectedPlanByToken?.token ?? paymentTokenCandidates[0] ?? null;
   const plan = selectedPlanByToken?.plan ?? null;
 
+  const { data: expiryTimestamp, refetch: refetchExpiryTimestamp } = useReadContract({
+    abi: expiryTimestampByUserAbi,
+    address: (paymentContractAddress ?? undefined) as `0x${string}` | undefined,
+    functionName: "expiryTimestampByUser",
+    args: (address ? [address as `0x${string}`] : undefined) as readonly [`0x${string}`] | undefined,
+    chainId,
+    query: {
+      enabled: Boolean(address && chainId != null && paymentContractAddress),
+    },
+  });
+
+  const { writeContractAsync: payAsync, isPending: isPayPending } = useScaffoldWriteContract({
+    contractName: "TokenpingPaywall",
+    chainId,
+  });
+
+  const { writeContractAsync: writeApproveAsync, isPending: isApprovePending } = useWriteContract();
+
+  const { data: currentAllowance } = useReadContract({
+    address: (paymentTokenAddress ?? undefined) as `0x${string}` | undefined,
+    abi: erc20Abi,
+    functionName: "allowance",
+    args:
+      address && paymentContractAddress
+        ? [address as `0x${string}`, paymentContractAddress as `0x${string}`]
+        : undefined,
+    chainId,
+    query: {
+      enabled: Boolean(address && paymentContractAddress && paymentTokenAddress),
+    },
+  });
+
   const subscription: SubscriptionInfo | null = useMemo(() => {
     return {
       expiryTimestamp: (expiryTimestamp as bigint | undefined) ?? 0n,
@@ -131,8 +145,10 @@ export function useSubscription() {
     refetchExpiryTimestamp();
   };
 
+  /** Approve only the exact amount required for payment (never unlimited or excess). */
   const approveAsync = async (spender: `0x${string}`, amount: bigint) => {
     if (!paymentTokenAddress) throw new Error("Payment token is not configured");
+    if (amount <= 0n) throw new Error("Approval amount must be positive");
     return writeApproveAsync({
       abi: erc20Abi,
       address: paymentTokenAddress as `0x${string}`,
@@ -151,6 +167,7 @@ export function useSubscription() {
     refetch,
     payAsync,
     approveAsync,
+    currentAllowance: currentAllowance ?? 0n,
     isPayPending,
     isApprovePending,
   };

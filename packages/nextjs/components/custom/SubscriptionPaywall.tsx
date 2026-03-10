@@ -30,6 +30,7 @@ export function SubscriptionPaywall({ children, description, hasExistingConfig =
     refetch,
     payAsync,
     approveAsync,
+    currentAllowance,
     isPayPending,
     isApprovePending,
   } = useSubscription();
@@ -53,7 +54,11 @@ export function SubscriptionPaywall({ children, description, hasExistingConfig =
 
     setIsSubscribing(true);
     try {
-      await approveAsync(paymentsContract.address as `0x${string}`, plan.price);
+      // Request approval only when needed, and only for the exact payment amount (never more).
+      const spender = paymentsContract.address as `0x${string}`;
+      if (currentAllowance < plan.price) {
+        await approveAsync(spender, plan.price);
+      }
       await payAsync({
         functionName: "pay",
         args: [paymentTokenAddress as `0x${string}`],
@@ -71,6 +76,7 @@ export function SubscriptionPaywall({ children, description, hasExistingConfig =
     plan,
     paymentTokenAddress,
     paymentsContract?.address,
+    currentAllowance,
     chain?.id,
     paymentChainId,
     approveAsync,
