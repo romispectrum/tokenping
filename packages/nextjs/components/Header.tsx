@@ -90,7 +90,7 @@ export const Header = () => {
             <Image alt="SE2 logo" className="cursor-pointer" fill src="/logo.svg" />
           </div>
           <div className="flex flex-col">
-            <span className="font-bold leading-tight">Decall</span>
+            <span className="font-bold leading-tight">Tokenping</span>
             <span className="text-xs">DeFi Notification App</span>
           </div>
         </Link>

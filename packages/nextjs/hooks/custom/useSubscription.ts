@@ -28,14 +28,14 @@ export function useSubscription() {
   const chainId = (paymentChainId ?? undefined) as unknown as AllowedChainIds | undefined;
 
   const { data: isActive, refetch: refetchActive } = useScaffoldReadContract({
-    contractName: "TokenpingPayments",
+    contractName: "TokenpingPaywall",
     functionName: "isActive",
     args: (address ? [address] : [undefined]) as readonly [string | undefined],
     chainId,
   });
 
   const { data: planTuple, refetch: refetchPlan } = useScaffoldReadContract({
-    contractName: "TokenpingPayments",
+    contractName: "TokenpingPaywall",
     functionName: "plans",
     args: (paymentTokenAddress ? [paymentTokenAddress as `0x${string}`] : [undefined]) as readonly [
       `0x${string}` | undefined,
@@ -44,14 +44,14 @@ export function useSubscription() {
   });
 
   const { data: subscriptionTuple, refetch: refetchSubscription } = useScaffoldReadContract({
-    contractName: "TokenpingPayments",
+    contractName: "TokenpingPaywall",
     functionName: "getSubscription",
     args: (address ? [address] : [undefined]) as readonly [string | undefined],
     chainId,
   });
 
   const { writeContractAsync: payAsync, isPending: isPayPending } = useScaffoldWriteContract({
-    contractName: "TokenpingPayments",
+    contractName: "TokenpingPaywall",
     chainId,
   });
 

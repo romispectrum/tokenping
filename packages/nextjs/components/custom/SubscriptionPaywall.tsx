@@ -33,7 +33,7 @@ export function SubscriptionPaywall({ children, description }: SubscriptionPaywa
   } = useSubscription();
 
   const { data: paymentsContract } = useDeployedContractInfo({
-    contractName: "TokenpingPayments",
+    contractName: "TokenpingPaywall",
     chainId: (paymentChainId ?? undefined) as unknown as AllowedChainIds | undefined,
   });
 

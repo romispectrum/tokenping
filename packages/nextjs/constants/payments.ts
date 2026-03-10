@@ -4,21 +4,21 @@ import scaffoldConfig from "~~/scaffold.config";
 const contractsByChain = deployedContracts as Record<number, Record<string, { address: string }> | undefined>;
 
 /**
- * Chain ID where TokenpingPayments is deployed (first target network that has it).
+ * Chain ID where TokenpingPaywall is deployed (first target network that has it).
  */
 export function getPaymentChainId(): number | null {
   for (const chain of scaffoldConfig.targetNetworks) {
-    if (contractsByChain[chain.id]?.TokenpingPayments) return chain.id;
+    if (contractsByChain[chain.id]?.TokenpingPaywall) return chain.id;
   }
   return null;
 }
 
 /**
  * Payment token address for subscription (e.g. MockUSDC on local).
- * Must match a plan configured on TokenpingPayments.
+ * Must match a plan configured on TokenpingPaywall.
  */
 export function getPaymentTokenAddress(chainId: number): string | null {
   const contracts = contractsByChain[chainId];
-  if (!contracts?.TokenpingPayments) return null;
+  if (!contracts?.TokenpingPaywall) return null;
   return contracts.MockUSDC?.address ?? null;
 }

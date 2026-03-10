@@ -9,7 +9,11 @@ async function getTokenpingPaywallFixture() {
   const implementation = await TokenpingPaywallFactory.deploy();
   await implementation.waitForDeployment();
 
-  const initData = TokenpingPaywallFactory.interface.encodeFunctionData("initialize", [owner.address]);
+  const initData = TokenpingPaywallFactory.interface.encodeFunctionData("initialize", [
+    owner.address,
+    12, // averageBlockTime
+    2_628_000, // maxDurationBlocks
+  ]);
   const ERC1967Proxy = await ethers.getContractFactory(
     "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
   );
@@ -47,10 +51,47 @@ describe("TokenpingPaywall", function () {
       void expect(await paywall.paused()).to.be.false;
     });
 
-    it("Should expose constants", async function () {
+    it("Should expose configurable averageBlockTime and maxDurationBlocks", async function () {
       const { paywall } = fixture;
-      void expect(await paywall.AVERAGE_BLOCK_TIME()).to.equal(12n);
-      void expect(await paywall.MAX_DURATION_BLOCKS()).to.equal(2_628_000n);
+      void expect(await paywall.averageBlockTime()).to.equal(12n);
+      void expect(await paywall.maxDurationBlocks()).to.equal(2_628_000n);
+    });
+  });
+
+  describe("setAverageBlockTime / setMaxDurationBlocks (admin)", function () {
+    it("Should update averageBlockTime and emit event", async function () {
+      const { paywall, owner } = fixture;
+      await expect(paywall.connect(owner).setAverageBlockTime(15))
+        .to.emit(paywall, "AverageBlockTimeUpdated")
+        .withArgs(12n, 15n);
+      void expect(await paywall.averageBlockTime()).to.equal(15n);
+    });
+
+    it("Should update maxDurationBlocks and emit event", async function () {
+      const { paywall, owner } = fixture;
+      const newMax = 1_000_000n;
+      await expect(paywall.connect(owner).setMaxDurationBlocks(newMax))
+        .to.emit(paywall, "MaxDurationBlocksUpdated")
+        .withArgs(2_628_000n, newMax);
+      void expect(await paywall.maxDurationBlocks()).to.equal(newMax);
+    });
+
+    it("Should revert setAverageBlockTime when called by non-owner", async function () {
+      const { paywall, user } = fixture;
+      await expect(paywall.connect(user).setAverageBlockTime(15)).to.be.revertedWithCustomError(
+        paywall,
+        "OwnableUnauthorizedAccount",
+      );
+    });
+
+    it("Should revert setAverageBlockTime for zero", async function () {
+      const { paywall, owner } = fixture;
+      await expect(paywall.connect(owner).setAverageBlockTime(0)).to.be.revertedWith("Invalid averageBlockTime");
+    });
+
+    it("Should revert setMaxDurationBlocks for zero", async function () {
+      const { paywall, owner } = fixture;
+      await expect(paywall.connect(owner).setMaxDurationBlocks(0)).to.be.revertedWith("Invalid maxDurationBlocks");
     });
   });
 
@@ -99,9 +140,9 @@ describe("TokenpingPaywall", function () {
       );
     });
 
-    it("Should revert when duration exceeds MAX_DURATION_BLOCKS", async function () {
+    it("Should revert when duration exceeds maxDurationBlocks", async function () {
       const { paywall, mockUsdc, owner } = fixture;
-      const tooLong = (await paywall.MAX_DURATION_BLOCKS()) + 1n;
+      const tooLong = (await paywall.maxDurationBlocks()) + 1n;
       await expect(paywall.connect(owner).setPlan(await mockUsdc.getAddress(), 1n, tooLong, true)).to.be.revertedWith(
         "Duration too long",
       );
@@ -280,14 +321,33 @@ describe("TokenpingPaywall", function () {
       ).to.be.revertedWith("Unknown token");
     });
 
-    it("Should revert when paused", async function () {
+    it("Should allow owner to withdraw when paused (emergency)", async function () {
       const { paywall, mockUsdc, owner, user, other, price } = fixture;
       await mockUsdc.connect(user).approve(await paywall.getAddress(), price * 2n);
       await paywall.connect(user).pay(await mockUsdc.getAddress());
       await paywall.connect(owner).pause();
+      const balanceBefore = await mockUsdc.balanceOf(other.address);
+      await expect(paywall.connect(owner).withdrawTokens(await mockUsdc.getAddress(), other.address, price)).to.emit(
+        paywall,
+        "TokensWithdrawn",
+      );
+      void expect(await mockUsdc.balanceOf(other.address)).to.equal(balanceBefore + price);
+    });
+
+    it("Should revert for zero amount", async function () {
+      const { paywall, mockUsdc, owner, user, other, price } = fixture;
+      await mockUsdc.connect(user).approve(await paywall.getAddress(), price);
+      await paywall.connect(user).pay(await mockUsdc.getAddress());
       await expect(
-        paywall.connect(owner).withdrawTokens(await mockUsdc.getAddress(), other.address, price),
-      ).to.be.revertedWithCustomError(paywall, "EnforcedPause");
+        paywall.connect(owner).withdrawTokens(await mockUsdc.getAddress(), other.address, 0n),
+      ).to.be.revertedWith("Amount must be > 0");
+    });
+
+    it("Should revert for zero token address", async function () {
+      const { paywall, owner, other, price } = fixture;
+      await expect(paywall.connect(owner).withdrawTokens(ethers.ZeroAddress, other.address, price)).to.be.revertedWith(
+        "Invalid token",
+      );
     });
 
     it("Should revert when amount exceeds contract balance", async function () {
@@ -327,9 +387,8 @@ describe("TokenpingPaywall", function () {
   });
 
   describe("Security: Reentrancy (ReentrantERC20)", function () {
-    // TokenpingPaywall has no ReentrancyGuard: pay() does transferFrom (external call) before updating
-    // expiry state, so a malicious token can reenter. Impact is limited (reentrant pay() pays as the token
-    // contract, not the user) but adding nonReentrant would prevent the reentrant path.
+    // pay() and withdrawTokens() use nonReentrant. ReentrantERC20 reenters into pay() during transferFrom;
+    // the reentrant call is blocked, so only the initial payment completes.
 
     async function getReentrantFixture() {
       const [owner, user, other] = await ethers.getSigners();
@@ -338,7 +397,11 @@ describe("TokenpingPaywall", function () {
       const implementation = await TokenpingPaywallFactory.deploy();
       await implementation.waitForDeployment();
 
-      const initData = TokenpingPaywallFactory.interface.encodeFunctionData("initialize", [owner.address]);
+      const initData = TokenpingPaywallFactory.interface.encodeFunctionData("initialize", [
+        owner.address,
+        12,
+        2_628_000,
+      ]);
       const ERC1967Proxy = await ethers.getContractFactory(
         "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
       );
@@ -401,10 +464,23 @@ describe("TokenpingPaywall", function () {
 
       await paywall.connect(user).pay(tokenAddr);
 
-      // No ReentrancyGuard: token reenters into pay(); nested pay() reverts (token runs out of balance).
-      // Token ignores failed .call() and returns true, so outer pay() completes. Only user payment is received.
+      // nonReentrant blocks the reentrant pay(); token swallows the failed .call() and returns true, so outer pay() completes.
       const paywallBalance = await reentrantToken.balanceOf(await paywall.getAddress());
       void expect(paywallBalance).to.equal(price);
+    });
+
+    it("Reentrant pay() is blocked: token contract does not get a subscription", async function () {
+      const { paywall, reentrantToken, user, price } = await getReentrantFixture();
+      const tokenAddr = await reentrantToken.getAddress();
+      await reentrantToken.connect(user).approve(await paywall.getAddress(), price);
+
+      await paywall.connect(user).pay(tokenAddr);
+
+      // With nonReentrant, the reentrant pay() reverts, so the token contract never gets expiry updated.
+      const tokenContractAddress = await reentrantToken.getAddress();
+      void expect(await paywall.isActive(tokenContractAddress)).to.be.false;
+      const [, , active] = await paywall.getSubscription(tokenContractAddress);
+      void expect(active).to.be.false;
     });
 
     it("WithdrawTokens with ReentrantERC20 does not reenter (transfer path, not transferFrom)", async function () {

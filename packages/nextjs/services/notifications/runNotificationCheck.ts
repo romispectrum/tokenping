@@ -50,9 +50,21 @@ export async function runNotificationCheck(): Promise<NotificationCheckResult | 
       const hfNum = result.healthFactor === "∞" ? Infinity : parseFloat(result.healthFactor);
       if (Number.isNaN(hfNum) || hfNum >= threshold) continue;
 
+      // Use UTC so timestamp is always server time (Vercel runs in UTC)
+      const timestamp = new Intl.DateTimeFormat("en-US", {
+        timeZone: "UTC",
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+        timeZoneName: "long",
+      }).format(new Date());
+
       const subject = `Aave Health Factor Alert – ${result.chainName}`;
-      const text = `Your Aave Health Factor on ${result.chainName} is ${result.healthFactor}, which is below your threshold of ${threshold}. Consider adding collateral or repaying debt to avoid liquidation.`;
-      const html = `<p>Your Aave Health Factor on <strong>${result.chainName}</strong> is <strong>${result.healthFactor}</strong>, which is below your threshold of <strong>${threshold}</strong>.</p><p>Consider adding collateral or repaying debt to avoid liquidation.</p>`;
+      const text = `Your Aave Health Factor on ${result.chainName} is ${result.healthFactor}, which is below your threshold of ${threshold}. Consider adding collateral or repaying debt to avoid liquidation.\n\nSent at: ${timestamp}`;
+      const html = `<p>Your Aave Health Factor on <strong>${result.chainName}</strong> is <strong>${result.healthFactor}</strong>, which is below your threshold of <strong>${threshold}</strong>.</p><p>Consider adding collateral or repaying debt to avoid liquidation.</p><p><small>Created at: ${timestamp}</small></p>`;
 
       const sendResult = await sendEmail({ to: email, subject, text, html });
       if (sendResult.success) sent++;

@@ -31,7 +31,7 @@ export async function sendEmail(
     return { success: false, error: "Email service not configured (RESEND_API_KEY missing)" };
   }
 
-  const from = process.env.RESEND_FROM_EMAIL ?? "Decall <onboarding@resend.dev>";
+  const from = process.env.RESEND_FROM_EMAIL ?? "Tokenping <onboarding@resend.dev>";
   const subjectLine = subject ?? "Notification";
   const htmlContent = html ?? (text ? undefined : "<p>No content.</p>");
   const textContent = text ?? (html ? undefined : "No content.");

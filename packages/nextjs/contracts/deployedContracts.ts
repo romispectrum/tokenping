@@ -372,9 +372,14 @@ const deployedContracts = {
       },
       deployedOnBlock: 1,
     },
-    TokenpingPayments: {
+    TokenpingPaywall: {
       address: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
       abi: [
+        {
+          inputs: [],
+          stateMutability: "nonpayable",
+          type: "constructor",
+        },
         {
           inputs: [
             {
@@ -486,12 +491,50 @@ const deployedContracts = {
           inputs: [
             {
               indexed: false,
+              internalType: "uint256",
+              name: "oldValue",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "newValue",
+              type: "uint256",
+            },
+          ],
+          name: "AverageBlockTimeUpdated",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: false,
               internalType: "uint64",
               name: "version",
               type: "uint64",
             },
           ],
           name: "Initialized",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "oldValue",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "newValue",
+              type: "uint256",
+            },
+          ],
+          name: "MaxDurationBlocksUpdated",
           type: "event",
         },
         {
@@ -665,12 +708,12 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "AVERAGE_BLOCK_TIME",
+          name: "UPGRADE_INTERFACE_VERSION",
           outputs: [
             {
-              internalType: "uint256",
+              internalType: "string",
               name: "",
-              type: "uint256",
+              type: "string",
             },
           ],
           stateMutability: "view",
@@ -678,12 +721,12 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "UPGRADE_INTERFACE_VERSION",
+          name: "averageBlockTime",
           outputs: [
             {
-              internalType: "string",
+              internalType: "uint256",
               name: "",
-              type: "string",
+              type: "uint256",
             },
           ],
           stateMutability: "view",
@@ -763,6 +806,16 @@ const deployedContracts = {
               name: "initialOwner",
               type: "address",
             },
+            {
+              internalType: "uint256",
+              name: "_averageBlockTime",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "_maxDurationBlocks",
+              type: "uint256",
+            },
           ],
           name: "initialize",
           outputs: [],
@@ -783,6 +836,19 @@ const deployedContracts = {
               internalType: "bool",
               name: "",
               type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "maxDurationBlocks",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
             },
           ],
           stateMutability: "view",
@@ -879,6 +945,32 @@ const deployedContracts = {
         {
           inputs: [],
           name: "renounceOwnership",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "newAverageBlockTime",
+              type: "uint256",
+            },
+          ],
+          name: "setAverageBlockTime",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "newMaxDurationBlocks",
+              type: "uint256",
+            },
+          ],
+          name: "setMaxDurationBlocks",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",
@@ -976,7 +1068,7 @@ const deployedContracts = {
       inheritedFunctions: {},
       deployedOnBlock: 6,
     },
-    TokenpingPaymentsProxy: {
+    TokenpingPaywallProxy: {
       address: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
       abi: [
         {
@@ -1048,9 +1140,14 @@ const deployedContracts = {
       inheritedFunctions: {},
       deployedOnBlock: 6,
     },
-    TokenpingPayments_Implementation: {
+    TokenpingPaywall_Implementation: {
       address: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
       abi: [
+        {
+          inputs: [],
+          stateMutability: "nonpayable",
+          type: "constructor",
+        },
         {
           inputs: [
             {
@@ -1162,12 +1259,50 @@ const deployedContracts = {
           inputs: [
             {
               indexed: false,
+              internalType: "uint256",
+              name: "oldValue",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "newValue",
+              type: "uint256",
+            },
+          ],
+          name: "AverageBlockTimeUpdated",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: false,
               internalType: "uint64",
               name: "version",
               type: "uint64",
             },
           ],
           name: "Initialized",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "oldValue",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "newValue",
+              type: "uint256",
+            },
+          ],
+          name: "MaxDurationBlocksUpdated",
           type: "event",
         },
         {
@@ -1341,12 +1476,12 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "AVERAGE_BLOCK_TIME",
+          name: "UPGRADE_INTERFACE_VERSION",
           outputs: [
             {
-              internalType: "uint256",
+              internalType: "string",
               name: "",
-              type: "uint256",
+              type: "string",
             },
           ],
           stateMutability: "view",
@@ -1354,12 +1489,12 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "UPGRADE_INTERFACE_VERSION",
+          name: "averageBlockTime",
           outputs: [
             {
-              internalType: "string",
+              internalType: "uint256",
               name: "",
-              type: "string",
+              type: "uint256",
             },
           ],
           stateMutability: "view",
@@ -1439,6 +1574,16 @@ const deployedContracts = {
               name: "initialOwner",
               type: "address",
             },
+            {
+              internalType: "uint256",
+              name: "_averageBlockTime",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "_maxDurationBlocks",
+              type: "uint256",
+            },
           ],
           name: "initialize",
           outputs: [],
@@ -1459,6 +1604,19 @@ const deployedContracts = {
               internalType: "bool",
               name: "",
               type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "maxDurationBlocks",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
             },
           ],
           stateMutability: "view",
@@ -1555,6 +1713,32 @@ const deployedContracts = {
         {
           inputs: [],
           name: "renounceOwnership",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "newAverageBlockTime",
+              type: "uint256",
+            },
+          ],
+          name: "setAverageBlockTime",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "newMaxDurationBlocks",
+              type: "uint256",
+            },
+          ],
+          name: "setMaxDurationBlocks",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",
