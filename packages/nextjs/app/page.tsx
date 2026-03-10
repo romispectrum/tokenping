@@ -69,14 +69,39 @@ const Home: NextPage = () => {
             </div>
           </div>
 
+          {/* How notifications work */}
+          <div className="rounded-3xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gray-900/50 backdrop-blur-sm p-6 md:p-7 mb-10">
+            <h2 className="text-xl font-semibold text-base-content mb-4">How notifications work</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="rounded-2xl border border-base-300/80 dark:border-white/10 bg-base-200/60 dark:bg-gray-900/40 p-4">
+                <p className="text-sm font-medium text-base-content mb-1">1. Set your alert</p>
+                <p className="text-sm text-base-content/70 dark:text-gray-400">
+                  Choose the wallet and safety level that feels right for you.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-base-300/80 dark:border-white/10 bg-base-200/60 dark:bg-gray-900/40 p-4">
+                <p className="text-sm font-medium text-base-content mb-1">2. We check every 5 minutes</p>
+                <p className="text-sm text-base-content/70 dark:text-gray-400">
+                  Tokenping checks your latest health factor based on your saved settings.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-base-300/80 dark:border-white/10 bg-base-200/60 dark:bg-gray-900/40 p-4">
+                <p className="text-sm font-medium text-base-content mb-1">3. You get an email alert</p>
+                <p className="text-sm text-base-content/70 dark:text-gray-400">
+                  If your health factor drops below your limit, we notify you right away.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Main CTA card */}
           <div className="rounded-3xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 backdrop-blur-xl p-6 md:p-8">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
               <div>
                 <h2 className="text-xl font-semibold text-base-content mb-2">Aave positions</h2>
                 <p className="text-base-content/70 dark:text-gray-400 text-sm md:text-base max-w-lg">
-                  View your Aave V3 collateral and debt across networks. Notifications for health factor and liquidation
-                  risk are coming soon.
+                  View your Aave V3 collateral and debt across networks. Set up health factor alerts to get early
+                  warnings before liquidation risk increases.
                 </p>
               </div>
               <Link

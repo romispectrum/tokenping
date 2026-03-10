@@ -51,13 +51,13 @@ yarn chain
 
 This command starts a local Ethereum network that runs on your local machine and can be used for testing and development. Learn how to [customize your network configuration](https://docs.scaffoldeth.io/quick-start/environment#1-initialize-a-local-blockchain).
 
-3. On a second terminal, deploy the test contract:
+3. On a second terminal, deploy contracts to your local network:
 
 ```
-yarn deploy
+yarn deploy --network hardhat --deploy-mode local
 ```
 
-This command deploys a test smart contract to the local network. You can find more information about how to customize your contract and deployment script in our [documentation](https://docs.scaffoldeth.io/quick-start/environment#2-deploy-your-smart-contract).
+This command runs the local deployment flow (MockUSDC + local-safe settings). You can find more information about how to customize your contract and deployment script in our [documentation](https://docs.scaffoldeth.io/quick-start/environment#2-deploy-your-smart-contract).
 
 4. On a third terminal, start your NextJS app:
 
@@ -77,6 +77,36 @@ Visit the [What's next section of our docs](https://docs.scaffoldeth.io/quick-st
 - Edit the app config
 - Writing and running tests
 - [Setting up external services and API keys](https://docs.scaffoldeth.io/deploying/deploy-smart-contracts#configuration-of-third-party-services-for-production-grade-apps)
+
+## Deployment Modes (Local vs Production)
+
+This repository uses two separate deploy scripts selected by a mode flag:
+
+- `--deploy-mode local` uses the local deployment script (`TokenpingPaywallLocal`)
+- `--deploy-mode production` uses the production deployment script (`TokenpingPaywallProduction`)
+
+### Local deployment
+
+Use local mode only with local Hardhat network:
+
+```
+yarn deploy --network hardhat --deploy-mode local
+```
+
+### Production deployment
+
+Production mode is restricted to Ethereum Mainnet and Arbitrum One:
+
+```
+yarn deploy --network mainnet --deploy-mode production
+yarn deploy --network arbitrum --deploy-mode production
+```
+
+For production deploys, the command will prompt for your password, decrypt `DEPLOYER_PRIVATE_KEY_ENCRYPTED`, and use the runtime private key for deployment.
+
+Arbitrum production deploys are protected with an extra USDC safety check and use canonical USDC:
+
+`0xaf88d065e77c8cc2239327c5edb3a432268e5831`
 
 ## Documentation
 

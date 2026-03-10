@@ -4,11 +4,15 @@ import { runNotificationCheck } from "~~/services/notifications/runNotificationC
 function isAuthorized(request: Request): boolean {
   const auth = request.headers.get("authorization");
   const secret = process.env.CRON_SECRET;
-  if (!secret) return true; // allow when CRON_SECRET not set (e.g. local)
+  if (!secret) return false;
   return auth === `Bearer ${secret}`;
 }
 
 export async function GET(request: Request) {
+  if (!process.env.CRON_SECRET) {
+    return NextResponse.json({ error: "Server misconfigured: CRON_SECRET is required" }, { status: 500 });
+  }
+
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
