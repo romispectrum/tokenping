@@ -18,7 +18,6 @@ const deployTokenpingPaywallLocal: DeployFunction = async function (hre: Hardhat
     mode: "local",
     config: {
       profileName: "local",
-      averageBlockTimeSeconds: 12,
       planDurationDays: 30,
       maxDurationDays: 365,
       planPrice: hre.ethers.parseUnits("3", 6),

@@ -20,7 +20,6 @@ type PaymentTokenConfig = CanonicalPaymentToken | MockPaymentToken;
 
 export type TokenpingDeployConfig = {
   profileName: string;
-  averageBlockTimeSeconds: number;
   planDurationDays: number;
   maxDurationDays: number;
   planPrice: bigint;
@@ -40,11 +39,8 @@ export const deployTokenpingPaywallCore = async ({ hre, config, mode }: DeployCo
   const chainId = Number(await hre.getChainId());
 
   const secondsPerDay = 86_400;
-  const toBlockCount = (days: number, averageBlockTimeSeconds: number) =>
-    Math.ceil((days * secondsPerDay) / averageBlockTimeSeconds);
-
-  const planDurationBlocks = toBlockCount(config.planDurationDays, config.averageBlockTimeSeconds);
-  const maxDurationBlocks = toBlockCount(config.maxDurationDays, config.averageBlockTimeSeconds);
+  const planDurationSeconds = config.planDurationDays * secondsPerDay;
+  const maxDurationSeconds = config.maxDurationDays * secondsPerDay;
 
   let paymentTokenAddress: string;
   const paymentTokenLabel = config.paymentToken.label;
@@ -54,9 +50,8 @@ export const deployTokenpingPaywallCore = async ({ hre, config, mode }: DeployCo
   console.log("Deployer:", deployer);
   console.log("Network:", networkName, `(chainId=${chainId})`);
   console.log("Config profile:", config.profileName);
-  console.log("Average block time (seconds):", config.averageBlockTimeSeconds);
-  console.log("Plan duration:", config.planDurationDays, "days =", planDurationBlocks, "blocks");
-  console.log("Max duration:", config.maxDurationDays, "days =", maxDurationBlocks, "blocks");
+  console.log("Plan duration:", config.planDurationDays, "days =", planDurationSeconds, "seconds");
+  console.log("Max duration:", config.maxDurationDays, "days =", maxDurationSeconds, "seconds");
 
   if (config.paymentToken.mode === "canonical") {
     paymentTokenAddress = config.paymentToken.address;
@@ -127,11 +122,7 @@ export const deployTokenpingPaywallCore = async ({ hre, config, mode }: DeployCo
 
     console.log("\n4️⃣  Deploying ERC1967Proxy (TokenpingPaywall proxy)...");
     const TokenpingPaywallFactory = await hre.ethers.getContractFactory("TokenpingPaywall");
-    const initData = TokenpingPaywallFactory.interface.encodeFunctionData("initialize", [
-      deployer,
-      config.averageBlockTimeSeconds,
-      maxDurationBlocks,
-    ]);
+    const initData = TokenpingPaywallFactory.interface.encodeFunctionData("initialize", [deployer, maxDurationSeconds]);
 
     const proxyDeployment = await deploy("TokenpingPaywallProxy", {
       from: deployer,
@@ -167,11 +158,11 @@ export const deployTokenpingPaywallCore = async ({ hre, config, mode }: DeployCo
   console.log(`\n6️⃣  Configuring plan for ${paymentTokenLabel}...`);
   const currentPlan = await paywall.plans(paymentTokenAddress);
   const currentPrice = currentPlan.price ?? currentPlan[0];
-  const currentDuration = currentPlan.durationBlocks ?? currentPlan[1];
+  const currentDuration = currentPlan.durationSeconds ?? currentPlan[1];
   const currentEnabled = currentPlan.enabled ?? currentPlan[2];
 
-  if (currentPrice !== config.planPrice || Number(currentDuration) !== planDurationBlocks || currentEnabled !== true) {
-    const tx = await paywall.setPlan(paymentTokenAddress, config.planPrice, planDurationBlocks, true, {
+  if (currentPrice !== config.planPrice || Number(currentDuration) !== planDurationSeconds || currentEnabled !== true) {
+    const tx = await paywall.setPlan(paymentTokenAddress, config.planPrice, planDurationSeconds, true, {
       gasLimit: 1_000_000n,
     });
     await tx.wait();
@@ -179,8 +170,8 @@ export const deployTokenpingPaywallCore = async ({ hre, config, mode }: DeployCo
       "✅ Plan set:",
       hre.ethers.formatUnits(config.planPrice, 6),
       "USDC /",
-      planDurationBlocks,
-      `blocks (~${config.planDurationDays} days)`,
+      planDurationSeconds,
+      `seconds (~${config.planDurationDays} days)`,
     );
   } else {
     console.log("ℹ️  Plan already configured");
@@ -196,9 +187,9 @@ export const deployTokenpingPaywallCore = async ({ hre, config, mode }: DeployCo
     "Plan:",
     hre.ethers.formatUnits(config.planPrice, 6),
     "USDC /",
-    planDurationBlocks,
-    "blocks",
-    `(~${config.planDurationDays} days @ ${config.averageBlockTimeSeconds}s block time)`,
+    planDurationSeconds,
+    "seconds",
+    `(~${config.planDurationDays} days)`,
   );
   console.log("=".repeat(60) + "\n");
 };

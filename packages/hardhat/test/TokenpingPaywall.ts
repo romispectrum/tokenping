@@ -11,8 +11,7 @@ async function getTokenpingPaywallFixture() {
 
   const initData = TokenpingPaywallFactory.interface.encodeFunctionData("initialize", [
     owner.address,
-    12, // averageBlockTime
-    2_628_000, // maxDurationBlocks
+    31_536_000, // maxDurationSeconds (365 days)
   ]);
   const ERC1967Proxy = await ethers.getContractFactory(
     "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
@@ -27,14 +26,14 @@ async function getTokenpingPaywallFixture() {
   await mockUsdc.waitForDeployment();
 
   const price = ethers.parseUnits("3", 6);
-  const durationBlocks = 216000n; // ~30 days @ 12s/block
-  await paywall.connect(owner).setPlan(await mockUsdc.getAddress(), price, durationBlocks, true);
+  const durationSeconds = 2_592_000n; // 30 days
+  await paywall.connect(owner).setPlan(await mockUsdc.getAddress(), price, durationSeconds, true);
 
   const mintAmount = ethers.parseUnits("10000", 6);
   await mockUsdc.mint(user.address, mintAmount);
   await mockUsdc.mint(owner.address, mintAmount);
 
-  return { paywall, mockUsdc, owner, user, other, price, durationBlocks };
+  return { paywall, mockUsdc, owner, user, other, price, durationSeconds };
 }
 
 describe("TokenpingPaywall", function () {
@@ -51,10 +50,9 @@ describe("TokenpingPaywall", function () {
       void expect(await paywall.paused()).to.be.false;
     });
 
-    it("Should expose configurable averageBlockTime and maxDurationBlocks", async function () {
+    it("Should expose configurable maxDurationSeconds", async function () {
       const { paywall } = fixture;
-      void expect(await paywall.averageBlockTime()).to.equal(12n);
-      void expect(await paywall.maxDurationBlocks()).to.equal(2_628_000n);
+      void expect(await paywall.maxDurationSeconds()).to.equal(31_536_000n);
     });
 
     it("Should revert proxy deployment initialization with zero owner", async function () {
@@ -64,8 +62,7 @@ describe("TokenpingPaywall", function () {
 
       const initData = TokenpingPaywallFactory.interface.encodeFunctionData("initialize", [
         ethers.ZeroAddress,
-        12,
-        2_628_000,
+        31_536_000,
       ]);
 
       const ERC1967Proxy = await ethers.getContractFactory(
@@ -79,40 +76,27 @@ describe("TokenpingPaywall", function () {
     });
   });
 
-  describe("setAverageBlockTime / setMaxDurationBlocks (admin)", function () {
-    it("Should update averageBlockTime and emit event", async function () {
-      const { paywall, owner } = fixture;
-      await expect(paywall.connect(owner).setAverageBlockTime(15))
-        .to.emit(paywall, "AverageBlockTimeUpdated")
-        .withArgs(12n, 15n);
-      void expect(await paywall.averageBlockTime()).to.equal(15n);
-    });
-
-    it("Should update maxDurationBlocks and emit event", async function () {
+  describe("setMaxDurationSeconds (admin)", function () {
+    it("Should update maxDurationSeconds and emit event", async function () {
       const { paywall, owner } = fixture;
       const newMax = 1_000_000n;
-      await expect(paywall.connect(owner).setMaxDurationBlocks(newMax))
-        .to.emit(paywall, "MaxDurationBlocksUpdated")
-        .withArgs(2_628_000n, newMax);
-      void expect(await paywall.maxDurationBlocks()).to.equal(newMax);
+      await expect(paywall.connect(owner).setMaxDurationSeconds(newMax))
+        .to.emit(paywall, "MaxDurationSecondsUpdated")
+        .withArgs(31_536_000n, newMax);
+      void expect(await paywall.maxDurationSeconds()).to.equal(newMax);
     });
 
-    it("Should revert setAverageBlockTime when called by non-owner", async function () {
+    it("Should revert setMaxDurationSeconds when called by non-owner", async function () {
       const { paywall, user } = fixture;
-      await expect(paywall.connect(user).setAverageBlockTime(15)).to.be.revertedWithCustomError(
+      await expect(paywall.connect(user).setMaxDurationSeconds(15)).to.be.revertedWithCustomError(
         paywall,
         "OwnableUnauthorizedAccount",
       );
     });
 
-    it("Should revert setAverageBlockTime for zero", async function () {
+    it("Should revert setMaxDurationSeconds for zero", async function () {
       const { paywall, owner } = fixture;
-      await expect(paywall.connect(owner).setAverageBlockTime(0)).to.be.revertedWith("Invalid averageBlockTime");
-    });
-
-    it("Should revert setMaxDurationBlocks for zero", async function () {
-      const { paywall, owner } = fixture;
-      await expect(paywall.connect(owner).setMaxDurationBlocks(0)).to.be.revertedWith("Invalid maxDurationBlocks");
+      await expect(paywall.connect(owner).setMaxDurationSeconds(0)).to.be.revertedWith("Invalid maxDurationSeconds");
     });
   });
 
@@ -129,7 +113,7 @@ describe("TokenpingPaywall", function () {
 
       const plan = await paywall.plans(token);
       void expect(plan.price).to.equal(price);
-      void expect(plan.durationBlocks).to.equal(duration);
+      void expect(plan.durationSeconds).to.equal(duration);
       void expect(plan.enabled).to.be.true;
     });
 
@@ -161,9 +145,9 @@ describe("TokenpingPaywall", function () {
       );
     });
 
-    it("Should revert when duration exceeds maxDurationBlocks", async function () {
+    it("Should revert when duration exceeds maxDurationSeconds", async function () {
       const { paywall, mockUsdc, owner } = fixture;
-      const tooLong = (await paywall.maxDurationBlocks()) + 1n;
+      const tooLong = (await paywall.maxDurationSeconds()) + 1n;
       await expect(paywall.connect(owner).setPlan(await mockUsdc.getAddress(), 1n, tooLong, true)).to.be.revertedWith(
         "Duration too long",
       );
@@ -172,7 +156,7 @@ describe("TokenpingPaywall", function () {
 
   describe("pay (user)", function () {
     it("Should accept payment, set expiry and emit PaymentReceived with correct args", async function () {
-      const { paywall, mockUsdc, user, price, durationBlocks } = fixture;
+      const { paywall, mockUsdc, user, price, durationSeconds } = fixture;
       const token = await mockUsdc.getAddress();
       await mockUsdc.connect(user).approve(await paywall.getAddress(), price);
 
@@ -186,54 +170,52 @@ describe("TokenpingPaywall", function () {
           user.address,
           token,
           price,
-          BigInt(block!.number),
           BigInt(block!.timestamp),
-          durationBlocks,
-          BigInt(block!.number) + durationBlocks,
-          BigInt(block!.timestamp) + durationBlocks * 12n,
+          durationSeconds,
+          BigInt(block!.timestamp) + durationSeconds,
         );
 
       void expect(await paywall.isActive(user.address)).to.be.true;
-      const [expiryBlock, , active] = await paywall.getSubscription(user.address);
-      const blockNum = await ethers.provider.getBlockNumber();
-      void expect(expiryBlock).to.equal(BigInt(blockNum) + durationBlocks);
+      const [expiryTimestamp, active] = await paywall.getSubscription(user.address);
+      void expect(expiryTimestamp).to.equal(BigInt(block!.timestamp) + durationSeconds);
       void expect(active).to.be.true;
     });
 
     it("Should extend subscription when paying again before expiry", async function () {
-      const { paywall, mockUsdc, user, price, durationBlocks } = fixture;
+      const { paywall, mockUsdc, user, price, durationSeconds } = fixture;
       const token = await mockUsdc.getAddress();
       await mockUsdc.connect(user).approve(await paywall.getAddress(), price * 2n);
 
       await paywall.connect(user).pay(token);
-      const [, , active1] = await paywall.getSubscription(user.address);
+      const [, active1] = await paywall.getSubscription(user.address);
       void expect(active1).to.be.true;
 
       await paywall.connect(user).pay(token);
-      const [expiryBlock2, , active2] = await paywall.getSubscription(user.address);
+      const [expiryTimestamp2, active2] = await paywall.getSubscription(user.address);
       void expect(active2).to.be.true;
-      const blockNum = await ethers.provider.getBlockNumber();
-      void expect(expiryBlock2).to.be.greaterThan(BigInt(blockNum) + durationBlocks);
+      const latestBlock = await ethers.provider.getBlock("latest");
+      void expect(latestBlock).to.not.be.null;
+      void expect(expiryTimestamp2).to.be.greaterThan(BigInt(latestBlock!.timestamp) + durationSeconds);
     });
 
     it("Should carry forward expiryTimestamp when renewing early", async function () {
-      const { paywall, mockUsdc, user, price, durationBlocks } = fixture;
+      const { paywall, mockUsdc, user, price, durationSeconds } = fixture;
       const token = await mockUsdc.getAddress();
       await mockUsdc.connect(user).approve(await paywall.getAddress(), price * 2n);
 
       await paywall.connect(user).pay(token);
-      const [, expiryTimestamp1] = await paywall.getSubscription(user.address);
+      const [expiryTimestamp1] = await paywall.getSubscription(user.address);
 
       await ethers.provider.send("evm_increaseTime", [60]);
       await ethers.provider.send("evm_mine", []);
 
       await paywall.connect(user).pay(token);
-      const [, expiryTimestamp2] = await paywall.getSubscription(user.address);
+      const [expiryTimestamp2] = await paywall.getSubscription(user.address);
 
-      void expect(expiryTimestamp2).to.equal(expiryTimestamp1 + durationBlocks * 12n);
+      void expect(expiryTimestamp2).to.equal(expiryTimestamp1 + durationSeconds);
     });
 
-    it("Should expire after durationBlocks and allow renewal from current block", async function () {
+    it("Should expire after duration and allow renewal from current time", async function () {
       const { paywall, mockUsdc, owner, user } = fixture;
       const token = await mockUsdc.getAddress();
       const shortPrice = ethers.parseUnits("1", 6);
@@ -249,15 +231,16 @@ describe("TokenpingPaywall", function () {
       }
 
       void expect(await paywall.isActive(user.address)).to.be.false;
-      const [, , activeExpired] = await paywall.getSubscription(user.address);
+      const [, activeExpired] = await paywall.getSubscription(user.address);
       void expect(activeExpired).to.be.false;
 
       await paywall.connect(user).pay(token);
-      const [expiryAfterRenewal, , activeRenewed] = await paywall.getSubscription(user.address);
-      const blockNum = await ethers.provider.getBlockNumber();
+      const [expiryAfterRenewal, activeRenewed] = await paywall.getSubscription(user.address);
+      const currentBlock = await ethers.provider.getBlock("latest");
+      void expect(currentBlock).to.not.be.null;
       void expect(activeRenewed).to.be.true;
-      void expect(expiryAfterRenewal).to.equal(BigInt(blockNum) + shortDuration);
-      void expect(BigInt(blockNum)).to.be.greaterThan(expiryAfterPay);
+      void expect(expiryAfterRenewal).to.equal(BigInt(currentBlock!.timestamp) + shortDuration);
+      void expect(BigInt(currentBlock!.timestamp)).to.be.greaterThan(expiryAfterPay);
     });
 
     it("Should revert when token not supported (disabled plan)", async function () {
@@ -304,15 +287,16 @@ describe("TokenpingPaywall", function () {
 
       const plan = await paywall.plans(token);
       void expect(plan.price).to.equal(newPrice);
-      void expect(plan.durationBlocks).to.equal(newDuration);
+      void expect(plan.durationSeconds).to.equal(newDuration);
       void expect(plan.enabled).to.be.true;
 
       await mockUsdc.connect(user).approve(await paywall.getAddress(), newPrice);
       await paywall.connect(user).pay(token);
 
-      const [expiryBlock] = await paywall.getSubscription(user.address);
-      const blockNum = await ethers.provider.getBlockNumber();
-      void expect(expiryBlock).to.equal(BigInt(blockNum) + newDuration);
+      const [expiryTimestamp] = await paywall.getSubscription(user.address);
+      const currentBlock = await ethers.provider.getBlock("latest");
+      void expect(currentBlock).to.not.be.null;
+      void expect(expiryTimestamp).to.equal(BigInt(currentBlock!.timestamp) + newDuration);
       void expect(await mockUsdc.balanceOf(await paywall.getAddress())).to.equal(newPrice);
     });
   });
@@ -463,8 +447,7 @@ describe("TokenpingPaywall", function () {
     it("isActive and getSubscription reflect expiry correctly", async function () {
       const { paywall, user } = fixture;
       void expect(await paywall.isActive(user.address)).to.be.false;
-      const [expiryBlock, expiryTimestamp, active] = await paywall.getSubscription(user.address);
-      void expect(expiryBlock).to.equal(0n);
+      const [expiryTimestamp, active] = await paywall.getSubscription(user.address);
       void expect(expiryTimestamp).to.equal(0n);
       void expect(active).to.be.false;
     });
@@ -481,11 +464,7 @@ describe("TokenpingPaywall", function () {
       const implementation = await TokenpingPaywallFactory.deploy();
       await implementation.waitForDeployment();
 
-      const initData = TokenpingPaywallFactory.interface.encodeFunctionData("initialize", [
-        owner.address,
-        12,
-        2_628_000,
-      ]);
+      const initData = TokenpingPaywallFactory.interface.encodeFunctionData("initialize", [owner.address, 31_536_000]);
       const ERC1967Proxy = await ethers.getContractFactory(
         "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
       );
@@ -499,8 +478,8 @@ describe("TokenpingPaywall", function () {
       await reentrantToken.waitForDeployment();
 
       const price = ethers.parseUnits("3", 6);
-      const durationBlocks = 216000n;
-      await paywall.connect(owner).setPlan(await reentrantToken.getAddress(), price, durationBlocks, true);
+      const durationSeconds = 2_592_000n;
+      await paywall.connect(owner).setPlan(await reentrantToken.getAddress(), price, durationSeconds, true);
 
       reentrantToken.setPaywall(await paywall.getAddress());
       reentrantToken.approvePaywall();
@@ -511,34 +490,36 @@ describe("TokenpingPaywall", function () {
       // callback reverts (token has 0), token swallows it and returns true, so only user payment completes.
       await reentrantToken.mint(await reentrantToken.getAddress(), price);
 
-      return { paywall, reentrantToken, owner, user, other, price, durationBlocks };
+      return { paywall, reentrantToken, owner, user, other, price, durationSeconds };
     }
 
     it("Completes when paying with ReentrantERC20 (reentrant pay is on token contract, not user)", async function () {
-      const { paywall, reentrantToken, user, price, durationBlocks } = await getReentrantFixture();
+      const { paywall, reentrantToken, user, price, durationSeconds } = await getReentrantFixture();
       const tokenAddr = await reentrantToken.getAddress();
       await reentrantToken.connect(user).approve(await paywall.getAddress(), price);
 
       await expect(paywall.connect(user).pay(tokenAddr)).to.not.be.reverted;
 
-      const [userExpiryBlock, , userActive] = await paywall.getSubscription(user.address);
-      const blockNum = await ethers.provider.getBlockNumber();
+      const [userExpiryTimestamp, userActive] = await paywall.getSubscription(user.address);
+      const latestBlock = await ethers.provider.getBlock("latest");
+      void expect(latestBlock).to.not.be.null;
       void expect(userActive).to.be.true;
-      void expect(userExpiryBlock).to.equal(BigInt(blockNum) + durationBlocks);
+      void expect(userExpiryTimestamp).to.equal(BigInt(latestBlock!.timestamp) + durationSeconds);
     });
 
     it("User subscription is extended exactly once per pay() call (no double-credit to user)", async function () {
-      const { paywall, reentrantToken, user, price, durationBlocks } = await getReentrantFixture();
+      const { paywall, reentrantToken, user, price, durationSeconds } = await getReentrantFixture();
       const tokenAddr = await reentrantToken.getAddress();
       await reentrantToken.connect(user).approve(await paywall.getAddress(), price);
 
-      void (await ethers.provider.getBlockNumber());
+      void (await ethers.provider.getBlock("latest"));
       await paywall.connect(user).pay(tokenAddr);
-      const blockAfter = await ethers.provider.getBlockNumber();
+      const blockAfter = await ethers.provider.getBlock("latest");
+      void expect(blockAfter).to.not.be.null;
 
-      const [userExpiryBlock] = await paywall.getSubscription(user.address);
-      const expectedExpiry = BigInt(blockAfter) + durationBlocks;
-      void expect(userExpiryBlock).to.equal(expectedExpiry);
+      const [userExpiryTimestamp] = await paywall.getSubscription(user.address);
+      const expectedExpiry = BigInt(blockAfter!.timestamp) + durationSeconds;
+      void expect(userExpiryTimestamp).to.equal(expectedExpiry);
     });
 
     it("Paywall receives correct token balance after reentrant pay (reentrant path reverts, only user payment)", async function () {
@@ -563,7 +544,7 @@ describe("TokenpingPaywall", function () {
       // With nonReentrant, the reentrant pay() reverts, so the token contract never gets expiry updated.
       const tokenContractAddress = await reentrantToken.getAddress();
       void expect(await paywall.isActive(tokenContractAddress)).to.be.false;
-      const [, , active] = await paywall.getSubscription(tokenContractAddress);
+      const [, active] = await paywall.getSubscription(tokenContractAddress);
       void expect(active).to.be.false;
     });
 
@@ -601,7 +582,7 @@ describe("TokenpingPaywall", function () {
 
       const ownerBefore = await paywall.owner();
       const planBefore = await paywall.plans(token);
-      const [expiryBlockBefore, expiryTimestampBefore, activeBefore] = await paywall.getSubscription(user.address);
+      const [expiryTimestampBefore, activeBefore] = await paywall.getSubscription(user.address);
 
       const TokenpingPaywallFactory = await ethers.getContractFactory("TokenpingPaywall");
       const impl2 = await TokenpingPaywallFactory.deploy();
@@ -611,11 +592,10 @@ describe("TokenpingPaywall", function () {
       void expect(await paywall.owner()).to.equal(ownerBefore);
       const planAfter = await paywall.plans(token);
       void expect(planAfter.price).to.equal(planBefore.price);
-      void expect(planAfter.durationBlocks).to.equal(planBefore.durationBlocks);
+      void expect(planAfter.durationSeconds).to.equal(planBefore.durationSeconds);
       void expect(planAfter.enabled).to.equal(planBefore.enabled);
 
-      const [expiryBlockAfter, expiryTimestampAfter, activeAfter] = await paywall.getSubscription(user.address);
-      void expect(expiryBlockAfter).to.equal(expiryBlockBefore);
+      const [expiryTimestampAfter, activeAfter] = await paywall.getSubscription(user.address);
       void expect(expiryTimestampAfter).to.equal(expiryTimestampBefore);
       void expect(activeAfter).to.equal(activeBefore);
     });

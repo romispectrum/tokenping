@@ -51,10 +51,7 @@ export function SubscriptionPaywall({ children, description }: SubscriptionPaywa
 
     setIsSubscribing(true);
     try {
-      await approveAsync({
-        functionName: "approve",
-        args: [paymentsContract.address as `0x${string}`, plan.price],
-      });
+      await approveAsync(paymentsContract.address as `0x${string}`, plan.price);
       await payAsync({
         functionName: "pay",
         args: [paymentTokenAddress as `0x${string}`],
@@ -148,7 +145,7 @@ export function SubscriptionPaywall({ children, description }: SubscriptionPaywa
                   {formatTokenAmount(plan.price, USDC_DECIMALS)} USDC
                 </span>
                 <span className="ml-1 text-xs text-base-content/60 dark:text-gray-500">
-                  (≈ {((Number(plan.durationBlocks) * 12) / 86400).toFixed(0)} days access)
+                  (≈ {(Number(plan.durationSeconds) / 86400).toFixed(0)} days access)
                 </span>
               </div>
               <button

@@ -12,7 +12,6 @@ export type PaymentTokenConfig =
 export type NetworkDeployConfig = {
   chainId: number;
   name: string;
-  averageBlockTimeSeconds: number;
   planDurationDays: number;
   maxDurationDays: number;
   paymentToken: PaymentTokenConfig;

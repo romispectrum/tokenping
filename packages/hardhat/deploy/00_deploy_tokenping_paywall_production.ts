@@ -35,7 +35,6 @@ const deployTokenpingPaywallProduction: DeployFunction = async function (hre: Ha
     mode: "production",
     config: {
       profileName: networkConfig.name,
-      averageBlockTimeSeconds: networkConfig.averageBlockTimeSeconds,
       planDurationDays: networkConfig.planDurationDays,
       maxDurationDays: networkConfig.maxDurationDays,
       planPrice: hre.ethers.parseUnits("3", 6),

@@ -24,20 +24,13 @@ contract TokenpingPaywall is Initializable, PausableUpgradeable, OwnableUpgradea
         _disableInitializers();
     }
 
-    /// @param _averageBlockTime Seconds per block (for expiry timestamp estimate). Must be > 0.
-    /// @param _maxDurationBlocks Max allowed plan duration in blocks. Must be > 0.
-    function initialize(
-        address initialOwner,
-        uint256 _averageBlockTime,
-        uint256 _maxDurationBlocks
-    ) public initializer {
+    /// @param _maxDurationSeconds Max allowed plan duration in seconds. Must be > 0.
+    function initialize(address initialOwner, uint256 _maxDurationSeconds) public initializer {
         __Pausable_init();
         __Ownable_init(initialOwner);
         require(initialOwner != address(0), "Invalid owner");
-        require(_averageBlockTime > 0, "Invalid averageBlockTime");
-        require(_maxDurationBlocks > 0, "Invalid maxDurationBlocks");
-        averageBlockTime = _averageBlockTime;
-        maxDurationBlocks = _maxDurationBlocks;
+        require(_maxDurationSeconds > 0, "Invalid maxDurationSeconds");
+        maxDurationSeconds = _maxDurationSeconds;
     }
 
     function pause() public onlyOwner {
@@ -58,58 +51,49 @@ contract TokenpingPaywall is Initializable, PausableUpgradeable, OwnableUpgradea
 
     using SafeERC20 for IERC20;
 
-    /// @dev Used only to estimate expiry time; actual access control uses expiryBlock. Configurable by owner.
-    uint256 public averageBlockTime;
-
-    /// @dev Maximum allowed duration in blocks. Prevents extreme durations. Configurable by owner.
-    uint256 public maxDurationBlocks;
+    /// @dev Maximum allowed duration in seconds. Prevents extreme durations. Configurable by owner.
+    uint256 public maxDurationSeconds;
 
     struct Plan {
         uint256 price; // token base units (e.g. USDC has 6 decimals)
-        uint256 durationBlocks; // duration granted per payment
+        uint256 durationSeconds;
         bool enabled;
     }
 
     /// token => plan
     mapping(address => Plan) public plans;
 
-    /// @dev One subscription per user; paying with any supported token updates the same expiry.
-    mapping(address => uint256) public expiryBlock;
-    /// @dev Approximate expiry time (seconds); for display only. Source of truth for active is expiryBlock.
-    mapping(address => uint256) public expiryTimestamp;
+    mapping(address => uint256) public expiryTimestampByUser;
 
     /// EVENTS
 
-    event PlanUpdated(address indexed token, uint256 price, uint256 durationBlocks, bool enabled);
+    event PlanUpdated(address indexed token, uint256 price, uint256 durationSeconds, bool enabled);
 
     event PaymentReceived(
         address indexed user,
         address indexed token,
         uint256 amount,
-        uint256 paidAtBlock,
         uint256 paidAtTimestamp,
-        uint256 durationBlocks,
-        uint256 newExpiryBlock,
+        uint256 durationSeconds,
         uint256 newExpiryTimestamp
     );
 
     event TokensWithdrawn(address indexed token, address indexed to, uint256 amount);
     event NativeWithdrawn(address indexed to, uint256 amount);
 
-    event AverageBlockTimeUpdated(uint256 oldValue, uint256 newValue);
-    event MaxDurationBlocksUpdated(uint256 oldValue, uint256 newValue);
+    event MaxDurationSecondsUpdated(uint256 oldValue, uint256 newValue);
 
     /// ADMIN (custom)
 
-    function setPlan(address token, uint256 price, uint256 durationBlocks, bool enabled) external onlyOwner {
+    function setPlan(address token, uint256 price, uint256 durationSeconds, bool enabled) external onlyOwner {
         require(token != address(0), "Invalid token");
         require(price > 0, "Price must be > 0");
-        require(durationBlocks > 0, "Duration must be > 0");
-        require(durationBlocks <= maxDurationBlocks, "Duration too long");
+        require(durationSeconds > 0, "Duration must be > 0");
+        require(durationSeconds <= maxDurationSeconds, "Duration too long");
 
-        plans[token] = Plan({ price: price, durationBlocks: durationBlocks, enabled: enabled });
+        plans[token] = Plan({ price: price, durationSeconds: durationSeconds, enabled: enabled });
 
-        emit PlanUpdated(token, price, durationBlocks, enabled);
+        emit PlanUpdated(token, price, durationSeconds, enabled);
     }
 
     /// @notice Withdraws received token balance to a recipient. Callable when paused so owner can withdraw in emergencies.
@@ -141,18 +125,11 @@ contract TokenpingPaywall is Initializable, PausableUpgradeable, OwnableUpgradea
         emit NativeWithdrawn(to, amount);
     }
 
-    function setAverageBlockTime(uint256 newAverageBlockTime) external onlyOwner {
-        require(newAverageBlockTime > 0, "Invalid averageBlockTime");
-        uint256 oldValue = averageBlockTime;
-        averageBlockTime = newAverageBlockTime;
-        emit AverageBlockTimeUpdated(oldValue, newAverageBlockTime);
-    }
-
-    function setMaxDurationBlocks(uint256 newMaxDurationBlocks) external onlyOwner {
-        require(newMaxDurationBlocks > 0, "Invalid maxDurationBlocks");
-        uint256 oldValue = maxDurationBlocks;
-        maxDurationBlocks = newMaxDurationBlocks;
-        emit MaxDurationBlocksUpdated(oldValue, newMaxDurationBlocks);
+    function setMaxDurationSeconds(uint256 newMaxDurationSeconds) external onlyOwner {
+        require(newMaxDurationSeconds > 0, "Invalid maxDurationSeconds");
+        uint256 oldValue = maxDurationSeconds;
+        maxDurationSeconds = newMaxDurationSeconds;
+        emit MaxDurationSecondsUpdated(oldValue, newMaxDurationSeconds);
     }
 
     /// USER FUNCTION
@@ -174,23 +151,20 @@ contract TokenpingPaywall is Initializable, PausableUpgradeable, OwnableUpgradea
             "Fee-on-transfer not supported"
         );
 
-        uint256 startBlock = expiryBlock[msg.sender] > block.number ? expiryBlock[msg.sender] : block.number;
-        uint256 startTimestamp = expiryTimestamp[msg.sender] > block.timestamp ? expiryTimestamp[msg.sender] : block.timestamp;
-        // Overflow prevented by maxDurationBlocks and Solidity 0.8+ checked arithmetic
-        uint256 newExpiryBlock = startBlock + plan.durationBlocks;
-        uint256 newExpiryTimestamp = startTimestamp + (plan.durationBlocks * averageBlockTime);
+        uint256 startTimestamp = expiryTimestampByUser[msg.sender] > block.timestamp
+            ? expiryTimestampByUser[msg.sender]
+            : block.timestamp;
+        // Overflow prevented by maxDurationSeconds and Solidity 0.8+ checked arithmetic
+        uint256 newExpiryTimestamp = startTimestamp + plan.durationSeconds;
 
-        expiryBlock[msg.sender] = newExpiryBlock;
-        expiryTimestamp[msg.sender] = newExpiryTimestamp;
+        expiryTimestampByUser[msg.sender] = newExpiryTimestamp;
 
         emit PaymentReceived(
             msg.sender,
             token,
             plan.price,
-            block.number,
             block.timestamp,
-            plan.durationBlocks,
-            newExpiryBlock,
+            plan.durationSeconds,
             newExpiryTimestamp
         );
     }
@@ -198,19 +172,14 @@ contract TokenpingPaywall is Initializable, PausableUpgradeable, OwnableUpgradea
     // VIEW FUNCTIONS
 
     function isActive(address user) external view returns (bool) {
-        return expiryBlock[user] > block.number;
+        return expiryTimestampByUser[user] > block.timestamp;
     }
 
-    /// @dev Returns subscription state. _expiryTimestamp is an estimate for display; active is derived from _expiryBlock.
-    function getSubscription(
-        address user
-    ) external view returns (uint256 _expiryBlock, uint256 _expiryTimestamp, bool active) {
-        _expiryBlock = expiryBlock[user];
-        _expiryTimestamp = expiryTimestamp[user];
-        active = _expiryBlock > block.number;
+    function getSubscription(address user) external view returns (uint256 expiryTimestamp, bool active) {
+        expiryTimestamp = expiryTimestampByUser[user];
+        active = expiryTimestamp > block.timestamp;
     }
 
-    /// STORAGE GAP (reduced by 2 for averageBlockTime + maxDurationBlocks)
-
-    uint256[48] private __gap;
+    /// STORAGE GAP
+    uint256[50] private __gap;
 }
