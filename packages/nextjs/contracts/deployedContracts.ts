@@ -1859,25 +1859,6 @@ const deployedContracts = {
           inputs: [
             {
               indexed: false,
-              internalType: "uint256",
-              name: "oldValue",
-              type: "uint256",
-            },
-            {
-              indexed: false,
-              internalType: "uint256",
-              name: "newValue",
-              type: "uint256",
-            },
-          ],
-          name: "AverageBlockTimeUpdated",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: false,
               internalType: "uint64",
               name: "version",
               type: "uint64",
@@ -1902,7 +1883,7 @@ const deployedContracts = {
               type: "uint256",
             },
           ],
-          name: "MaxDurationBlocksUpdated",
+          name: "MaxDurationSecondsUpdated",
           type: "event",
         },
         {
@@ -1980,25 +1961,13 @@ const deployedContracts = {
             {
               indexed: false,
               internalType: "uint256",
-              name: "paidAtBlock",
-              type: "uint256",
-            },
-            {
-              indexed: false,
-              internalType: "uint256",
               name: "paidAtTimestamp",
               type: "uint256",
             },
             {
               indexed: false,
               internalType: "uint256",
-              name: "durationBlocks",
-              type: "uint256",
-            },
-            {
-              indexed: false,
-              internalType: "uint256",
-              name: "newExpiryBlock",
+              name: "durationSeconds",
               type: "uint256",
             },
             {
@@ -2029,7 +1998,7 @@ const deployedContracts = {
             {
               indexed: false,
               internalType: "uint256",
-              name: "durationBlocks",
+              name: "durationSeconds",
               type: "uint256",
             },
             {
@@ -2107,19 +2076,6 @@ const deployedContracts = {
           type: "function",
         },
         {
-          inputs: [],
-          name: "averageBlockTime",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
           inputs: [
             {
               internalType: "address",
@@ -2127,26 +2083,7 @@ const deployedContracts = {
               type: "address",
             },
           ],
-          name: "expiryBlock",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
-              name: "",
-              type: "address",
-            },
-          ],
-          name: "expiryTimestamp",
+          name: "expiryTimestampByUser",
           outputs: [
             {
               internalType: "uint256",
@@ -2169,12 +2106,7 @@ const deployedContracts = {
           outputs: [
             {
               internalType: "uint256",
-              name: "_expiryBlock",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "_expiryTimestamp",
+              name: "expiryTimestamp",
               type: "uint256",
             },
             {
@@ -2195,12 +2127,7 @@ const deployedContracts = {
             },
             {
               internalType: "uint256",
-              name: "_averageBlockTime",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "_maxDurationBlocks",
+              name: "_maxDurationSeconds",
               type: "uint256",
             },
           ],
@@ -2230,7 +2157,7 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "maxDurationBlocks",
+          name: "maxDurationSeconds",
           outputs: [
             {
               internalType: "uint256",
@@ -2304,7 +2231,7 @@ const deployedContracts = {
             },
             {
               internalType: "uint256",
-              name: "durationBlocks",
+              name: "durationSeconds",
               type: "uint256",
             },
             {
@@ -2340,24 +2267,11 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "uint256",
-              name: "newAverageBlockTime",
+              name: "newMaxDurationSeconds",
               type: "uint256",
             },
           ],
-          name: "setAverageBlockTime",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "newMaxDurationBlocks",
-              type: "uint256",
-            },
-          ],
-          name: "setMaxDurationBlocks",
+          name: "setMaxDurationSeconds",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",
@@ -2376,7 +2290,7 @@ const deployedContracts = {
             },
             {
               internalType: "uint256",
-              name: "durationBlocks",
+              name: "durationSeconds",
               type: "uint256",
             },
             {
@@ -2471,7 +2385,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 440370398,
+      deployedOnBlock: 440433470,
     },
     TokenpingPaywallProxy: {
       address: "0x79872d7529cfE1c062838fACDA004Ce4BFB16553",
@@ -2546,7 +2460,7 @@ const deployedContracts = {
       deployedOnBlock: 440370398,
     },
     TokenpingPaywall_Implementation: {
-      address: "0xc0CA6fB91Dca3F04daF02d011DCf7460FE50b43F",
+      address: "0x3067f5f1f7A23feFf856fA6CdCb17b7105CdF2b1",
       abi: [
         {
           inputs: [],
@@ -2664,25 +2578,6 @@ const deployedContracts = {
           inputs: [
             {
               indexed: false,
-              internalType: "uint256",
-              name: "oldValue",
-              type: "uint256",
-            },
-            {
-              indexed: false,
-              internalType: "uint256",
-              name: "newValue",
-              type: "uint256",
-            },
-          ],
-          name: "AverageBlockTimeUpdated",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: false,
               internalType: "uint64",
               name: "version",
               type: "uint64",
@@ -2707,7 +2602,7 @@ const deployedContracts = {
               type: "uint256",
             },
           ],
-          name: "MaxDurationBlocksUpdated",
+          name: "MaxDurationSecondsUpdated",
           type: "event",
         },
         {
@@ -2785,25 +2680,13 @@ const deployedContracts = {
             {
               indexed: false,
               internalType: "uint256",
-              name: "paidAtBlock",
-              type: "uint256",
-            },
-            {
-              indexed: false,
-              internalType: "uint256",
               name: "paidAtTimestamp",
               type: "uint256",
             },
             {
               indexed: false,
               internalType: "uint256",
-              name: "durationBlocks",
-              type: "uint256",
-            },
-            {
-              indexed: false,
-              internalType: "uint256",
-              name: "newExpiryBlock",
+              name: "durationSeconds",
               type: "uint256",
             },
             {
@@ -2834,7 +2717,7 @@ const deployedContracts = {
             {
               indexed: false,
               internalType: "uint256",
-              name: "durationBlocks",
+              name: "durationSeconds",
               type: "uint256",
             },
             {
@@ -2912,19 +2795,6 @@ const deployedContracts = {
           type: "function",
         },
         {
-          inputs: [],
-          name: "averageBlockTime",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
           inputs: [
             {
               internalType: "address",
@@ -2932,26 +2802,7 @@ const deployedContracts = {
               type: "address",
             },
           ],
-          name: "expiryBlock",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
-              name: "",
-              type: "address",
-            },
-          ],
-          name: "expiryTimestamp",
+          name: "expiryTimestampByUser",
           outputs: [
             {
               internalType: "uint256",
@@ -2974,12 +2825,7 @@ const deployedContracts = {
           outputs: [
             {
               internalType: "uint256",
-              name: "_expiryBlock",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "_expiryTimestamp",
+              name: "expiryTimestamp",
               type: "uint256",
             },
             {
@@ -3000,12 +2846,7 @@ const deployedContracts = {
             },
             {
               internalType: "uint256",
-              name: "_averageBlockTime",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "_maxDurationBlocks",
+              name: "_maxDurationSeconds",
               type: "uint256",
             },
           ],
@@ -3035,7 +2876,7 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "maxDurationBlocks",
+          name: "maxDurationSeconds",
           outputs: [
             {
               internalType: "uint256",
@@ -3109,7 +2950,7 @@ const deployedContracts = {
             },
             {
               internalType: "uint256",
-              name: "durationBlocks",
+              name: "durationSeconds",
               type: "uint256",
             },
             {
@@ -3145,24 +2986,11 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "uint256",
-              name: "newAverageBlockTime",
+              name: "newMaxDurationSeconds",
               type: "uint256",
             },
           ],
-          name: "setAverageBlockTime",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "newMaxDurationBlocks",
-              type: "uint256",
-            },
-          ],
-          name: "setMaxDurationBlocks",
+          name: "setMaxDurationSeconds",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",
@@ -3181,7 +3009,7 @@ const deployedContracts = {
             },
             {
               internalType: "uint256",
-              name: "durationBlocks",
+              name: "durationSeconds",
               type: "uint256",
             },
             {
@@ -3276,7 +3104,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 440370393,
+      deployedOnBlock: 440433463,
     },
   },
 } as const;
