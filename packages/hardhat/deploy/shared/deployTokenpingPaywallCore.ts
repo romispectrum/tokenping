@@ -120,13 +120,13 @@ export const deployTokenpingPaywallCore = async ({ hre, config, mode }: DeployCo
     });
     implementationAddress = implementation.address;
 
-    console.log("\n4️⃣  Deploying ERC1967Proxy (TokenpingPaywall proxy)...");
+    console.log("\n4️⃣  Deploying TokenpingERC1967Proxy (TokenpingPaywall proxy)...");
     const TokenpingPaywallFactory = await hre.ethers.getContractFactory("TokenpingPaywall");
     const initData = TokenpingPaywallFactory.interface.encodeFunctionData("initialize", [deployer, maxDurationSeconds]);
 
     const proxyDeployment = await deploy("TokenpingPaywallProxy", {
       from: deployer,
-      contract: "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
+      contract: "TokenpingERC1967Proxy",
       args: [implementationAddress, initData],
       log: true,
       autoMine: true,
