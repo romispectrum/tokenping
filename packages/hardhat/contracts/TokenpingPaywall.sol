@@ -14,8 +14,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 /// @notice Subscription paywall: users pay in ERC20 to extend a single subscription per address.
 /// @dev Only standard ERC20s are supported. Fee-on-transfer and deflationary tokens are NOT supported
 ///      (payment must credit this contract with at least the plan price).
-///      Only tokens that have a plan can be withdrawn via withdrawTokens; tokens sent to this contract
-///      without a plan cannot be withdrawn and are effectively stuck.
+///      Owner can rescue accidentally sent ERC20 and native ETH.
 ///      Centralization: owner can set/change plans, withdraw all received tokens, pause/unpause,
 ///      and upgrade the implementation (UUPS).
 contract TokenpingPaywall is Initializable, PausableUpgradeable, OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuard {
@@ -34,6 +33,7 @@ contract TokenpingPaywall is Initializable, PausableUpgradeable, OwnableUpgradea
     ) public initializer {
         __Pausable_init();
         __Ownable_init(initialOwner);
+        require(initialOwner != address(0), "Invalid owner");
         require(_averageBlockTime > 0, "Invalid averageBlockTime");
         require(_maxDurationBlocks > 0, "Invalid maxDurationBlocks");
         averageBlockTime = _averageBlockTime;
@@ -94,6 +94,7 @@ contract TokenpingPaywall is Initializable, PausableUpgradeable, OwnableUpgradea
     );
 
     event TokensWithdrawn(address indexed token, address indexed to, uint256 amount);
+    event NativeWithdrawn(address indexed to, uint256 amount);
 
     event AverageBlockTimeUpdated(uint256 oldValue, uint256 newValue);
     event MaxDurationBlocksUpdated(uint256 oldValue, uint256 newValue);
@@ -112,19 +113,32 @@ contract TokenpingPaywall is Initializable, PausableUpgradeable, OwnableUpgradea
     }
 
     /// @notice Withdraws received token balance to a recipient. Callable when paused so owner can withdraw in emergencies.
-    /// @param token Token that has a plan (only such tokens can be withdrawn; others sent here are stuck).
+    /// @param token Token to withdraw.
     /// @param to Recipient address.
     /// @param amount Amount to transfer.
     function withdrawTokens(address token, address to, uint256 amount) external onlyOwner nonReentrant {
         require(token != address(0), "Invalid token");
         require(to != address(0), "Invalid recipient");
         require(amount > 0, "Amount must be > 0");
-        require(plans[token].price > 0, "Unknown token");
         require(IERC20(token).balanceOf(address(this)) >= amount, "Insufficient balance");
 
         IERC20(token).safeTransfer(to, amount);
 
         emit TokensWithdrawn(token, to, amount);
+    }
+
+    /// @notice Withdraws native token balance to a recipient.
+    /// @param to Recipient address.
+    /// @param amount Native token amount to transfer.
+    function withdrawNative(address payable to, uint256 amount) external onlyOwner nonReentrant {
+        require(to != address(0), "Invalid recipient");
+        require(amount > 0, "Amount must be > 0");
+        require(address(this).balance >= amount, "Insufficient balance");
+
+        (bool ok, ) = to.call{value: amount}("");
+        require(ok, "Native transfer failed");
+
+        emit NativeWithdrawn(to, amount);
     }
 
     function setAverageBlockTime(uint256 newAverageBlockTime) external onlyOwner {
@@ -161,9 +175,10 @@ contract TokenpingPaywall is Initializable, PausableUpgradeable, OwnableUpgradea
         );
 
         uint256 startBlock = expiryBlock[msg.sender] > block.number ? expiryBlock[msg.sender] : block.number;
+        uint256 startTimestamp = expiryTimestamp[msg.sender] > block.timestamp ? expiryTimestamp[msg.sender] : block.timestamp;
         // Overflow prevented by maxDurationBlocks and Solidity 0.8+ checked arithmetic
         uint256 newExpiryBlock = startBlock + plan.durationBlocks;
-        uint256 newExpiryTimestamp = block.timestamp + (plan.durationBlocks * averageBlockTime);
+        uint256 newExpiryTimestamp = startTimestamp + (plan.durationBlocks * averageBlockTime);
 
         expiryBlock[msg.sender] = newExpiryBlock;
         expiryTimestamp[msg.sender] = newExpiryTimestamp;
