@@ -1,0 +1,35 @@
+"use client";
+
+import React from "react";
+import Link from "next/link";
+
+const X_ACCOUNT_URL = "https://x.com/tokenping";
+
+const XIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
+
+export const BetaBanner = () => {
+  return (
+    <div
+      className="bg-secondary text-secondary-content py-1.5 px-3 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-xs"
+      role="banner"
+      aria-label="App status and social"
+    >
+      <span className="font-medium">Tokenping is in beta</span>
+      <span className="hidden sm:inline opacity-80">·</span>
+      <Link
+        href={X_ACCOUNT_URL}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="inline-flex items-center gap-1 btn btn-ghost btn-xs text-secondary-content hover:bg-secondary-content/20 border-0 min-h-0 h-6"
+        aria-label="Follow Tokenping on X"
+      >
+        <span>Follow us on</span>
+        <XIcon className="w-3.5 h-3.5" />
+      </Link>
+    </div>
+  );
+};
