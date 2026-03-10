@@ -45,8 +45,10 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Sync local state from config only when not editing, so the slider/inputs aren't reset while the user is changing them
+  // Sync local state from config only when not editing, so the slider/inputs aren't reset while the user is changing them.
+  // Depend on getConfig + chainId (not config): getConfig() returns a new object every time, which would cause infinite re-renders.
   useEffect(() => {
+    const config = getConfig(chainId);
     if (config && !isEditing) {
       setEnabled(config.enabled ?? false);
       const validServices = (config.services ?? []).filter((s): s is NotificationService => s === "email");
@@ -56,7 +58,7 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
       setThreshold(nextThreshold);
       setThresholdText(formatThreshold(nextThreshold));
     }
-  }, [config, isEditing]);
+  }, [getConfig, chainId, isEditing]);
 
   if (!isLoaded) return null;
 
