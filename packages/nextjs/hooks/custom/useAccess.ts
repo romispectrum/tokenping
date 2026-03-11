@@ -32,18 +32,18 @@ const plansByTokenAbi = [
   },
 ] as const;
 
-export type SubscriptionPlan = {
+export type AccessPlan = {
   price: bigint;
   durationSeconds: bigint;
   enabled: boolean;
 };
 
-export type SubscriptionInfo = {
+export type AccessInfo = {
   expiryTimestamp: bigint;
   active: boolean;
 };
 
-export function useSubscription() {
+export function useAccess() {
   const { address } = useAccount();
   const paymentChainId = PAYMENTS_CHAIN_ID;
   const paymentContractAddress = paymentChainId != null ? getPaymentContractAddress(paymentChainId) : null;
@@ -88,7 +88,7 @@ export function useSubscription() {
           plan: { price: price as bigint, durationSeconds: durationSeconds as bigint, enabled: Boolean(enabled) },
         };
       })
-      .filter(Boolean) as { token: string; plan: SubscriptionPlan }[];
+      .filter(Boolean) as { token: string; plan: AccessPlan }[];
 
     if (byToken.length === 0) return null;
 
@@ -132,7 +132,7 @@ export function useSubscription() {
     },
   });
 
-  const subscription: SubscriptionInfo | null = useMemo(() => {
+  const access: AccessInfo | null = useMemo(() => {
     return {
       expiryTimestamp: (expiryTimestamp as bigint | undefined) ?? 0n,
       active: Boolean(isActive),
@@ -163,7 +163,7 @@ export function useSubscription() {
     paymentTokenAddress,
     isActive: Boolean(isActive),
     plan,
-    subscription,
+    access,
     refetch,
     payAsync,
     approveAsync,

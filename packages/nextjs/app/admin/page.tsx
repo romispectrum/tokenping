@@ -344,7 +344,7 @@ const AdminPage: NextPage = () => {
             <div className="card bg-base-100 border border-base-300 dark:border-white/10 shadow-sm">
               <div className="card-body">
                 <h2 className="card-title">Pause control</h2>
-                <p className="text-sm text-base-content/70">Emergency switch for subscription payments.</p>
+                <p className="text-sm text-base-content/70">Emergency switch for paywall payments.</p>
                 <div className="flex gap-3 pt-2">
                   <button className="btn btn-warning" onClick={handlePause} disabled={isBusy || Boolean(paused)}>
                     Pause

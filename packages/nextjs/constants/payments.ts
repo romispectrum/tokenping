@@ -21,7 +21,7 @@ export function getPaymentContractAddress(chainId: number): string | null {
 }
 
 /**
- * Payment token candidates for subscription.
+ * Payment token candidates for the paywall (paid access).
  * Order matters: first token is preferred default.
  */
 export function getPaymentTokenCandidates(chainId: number): string[] {
@@ -34,7 +34,7 @@ export function getPaymentTokenCandidates(chainId: number): string[] {
 }
 
 /**
- * Payment token address for subscription (e.g. MockUSDC on local).
+ * Payment token address for the paywall (e.g. MockUSDC on local).
  * Must match a plan configured on TokenpingPaywall.
  */
 export function getPaymentTokenAddress(chainId: number): string | null {

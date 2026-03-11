@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { AccessPaywall } from "./AccessPaywall";
 import { HealthFactorBadge } from "./HealthFactorBadge";
 import { NotificationConfig } from "./NotificationConfig";
-import { SubscriptionPaywall } from "./SubscriptionPaywall";
 import { NetworkPosition, TokenPosition, useAavePositions } from "~~/hooks/custom/useAavePositions";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
 import { formatTokenAmount, formatUSD } from "~~/utils/format";
@@ -195,12 +195,12 @@ const PositionDetails = ({
 
   return (
     <div className="space-y-4">
-      {/* Notification Config - gated by subscription */}
-      <SubscriptionPaywall
+      {/* Notification Config - gated by paid access */}
+      <AccessPaywall
         description={
           hasNotificationConfig
-            ? `Your saved ${position.chainName} notification config is still in your account. Renew to reuse and edit it.`
-            : `Subscribe once to configure health factor alerts on ${position.chainName} and other networks.`
+            ? `Your saved ${position.chainName} notification config is still in your account. Pay again to extend access and edit it.`
+            : `Pay once to configure health factor alerts on ${position.chainName} and other networks. No auto-charges—you pay from your wallet when you want to extend.`
         }
         hasExistingConfig={hasNotificationConfig}
       >
@@ -209,7 +209,7 @@ const PositionDetails = ({
           chainName={position.chainName}
           currentHealthFactor={position.healthFactor}
         />
-      </SubscriptionPaywall>
+      </AccessPaywall>
 
       {/* Position Details */}
       <div className="relative overflow-hidden rounded-2xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 backdrop-blur-xl">

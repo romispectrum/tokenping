@@ -33,10 +33,10 @@ function getPaymentsRpcUrl(chainId: number): string {
 }
 
 /**
- * Checks on-chain whether the user has an active subscription (has paid and not expired).
+ * Checks on-chain whether the user has active paid access (has paid and not expired).
  * Uses TokenpingPaywall.isActive(user) from the deployed contract.
  */
-export async function isSubscriptionActive(userAddress: string): Promise<boolean> {
+export async function isAccessActive(userAddress: string): Promise<boolean> {
   const chainId = getPaymentsChainId();
   if (chainId == null) return false;
 

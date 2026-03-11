@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useAccount, useSwitchChain } from "wagmi";
-import { useSubscription } from "~~/hooks/custom/useSubscription";
+import { useAccess } from "~~/hooks/custom/useAccess";
 import { useDeployedContractInfo } from "~~/hooks/scaffold-eth";
 import { formatTokenAmount } from "~~/utils/format";
 import type { AllowedChainIds } from "~~/utils/scaffold-eth";
@@ -10,15 +10,15 @@ import { notification } from "~~/utils/scaffold-eth";
 
 const USDC_DECIMALS = 6;
 
-type SubscriptionPaywallProps = {
+type AccessPaywallProps = {
   children: React.ReactNode;
-  /** Optional description shown above the pay CTA when not subscribed */
+  /** Optional description shown above the pay CTA when user has no access */
   description?: string;
   /** True when a notification config already exists in Supabase for this network */
   hasExistingConfig?: boolean;
 };
 
-export function SubscriptionPaywall({ children, description, hasExistingConfig = false }: SubscriptionPaywallProps) {
+export function AccessPaywall({ children, description, hasExistingConfig = false }: AccessPaywallProps) {
   const { address, chain } = useAccount();
   const { switchChain } = useSwitchChain();
   const {
@@ -26,35 +26,34 @@ export function SubscriptionPaywall({ children, description, hasExistingConfig =
     paymentTokenAddress,
     isActive,
     plan,
-    subscription,
+    access,
     refetch,
     payAsync,
     approveAsync,
     currentAllowance,
     isPayPending,
     isApprovePending,
-  } = useSubscription();
+  } = useAccess();
 
   const { data: paymentsContract } = useDeployedContractInfo({
     contractName: "TokenpingPaywall",
     chainId: (paymentChainId ?? undefined) as unknown as AllowedChainIds | undefined,
   });
 
-  const [isSubscribing, setIsSubscribing] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
 
-  const handleSubscribe = useCallback(async () => {
+  const handlePayForAccess = useCallback(async () => {
     if (!address || !plan?.enabled || !plan.price || !paymentTokenAddress || !paymentsContract?.address) {
-      notification.error("Subscription not available. Check plan and wallet.");
+      notification.error("Paid access not available. Check plan and wallet.");
       return;
     }
     if (chain?.id !== paymentChainId) {
-      notification.error("Switch to the correct network to subscribe.");
+      notification.error("Switch to the correct network to pay.");
       return;
     }
 
-    setIsSubscribing(true);
+    setIsPaying(true);
     try {
-      // Request approval only when needed, and only for the exact payment amount (never more).
       const spender = paymentsContract.address as `0x${string}`;
       if (currentAllowance < plan.price) {
         await approveAsync(spender, plan.price);
@@ -63,13 +62,13 @@ export function SubscriptionPaywall({ children, description, hasExistingConfig =
         functionName: "pay",
         args: [paymentTokenAddress as `0x${string}`],
       });
-      notification.success("Subscription active. You can now configure notifications.");
+      notification.success("Access active. You can now configure notifications.");
       refetch();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Subscribe failed";
+      const msg = e instanceof Error ? e.message : "Payment failed";
       notification.error(msg);
     } finally {
-      setIsSubscribing(false);
+      setIsPaying(false);
     }
   }, [
     address,
@@ -87,10 +86,10 @@ export function SubscriptionPaywall({ children, description, hasExistingConfig =
   if (isActive) {
     return (
       <div className="space-y-2">
-        {subscription?.expiryTimestamp != null && subscription.expiryTimestamp > 0n && (
+        {access?.expiryTimestamp != null && access.expiryTimestamp > 0n && (
           <p className="text-[10px] text-emerald-400/80">
-            Subscribed · Access until{" "}
-            {new Date(Number(subscription.expiryTimestamp) * 1000).toLocaleDateString(undefined, {
+            Access until{" "}
+            {new Date(Number(access.expiryTimestamp) * 1000).toLocaleDateString(undefined, {
               dateStyle: "medium",
             })}
           </p>
@@ -100,9 +99,9 @@ export function SubscriptionPaywall({ children, description, hasExistingConfig =
     );
   }
 
-  const busy = isSubscribing || isPayPending || isApprovePending;
+  const busy = isPaying || isPayPending || isApprovePending;
   const onCorrectChain = chain?.id === paymentChainId;
-  const canSubscribe = Boolean(onCorrectChain && plan?.enabled && plan.price > 0n && paymentTokenAddress);
+  const canPay = Boolean(onCorrectChain && plan?.enabled && plan.price > 0n && paymentTokenAddress);
 
   return (
     <div className="space-y-4">
@@ -119,24 +118,22 @@ export function SubscriptionPaywall({ children, description, hasExistingConfig =
             </svg>
           </div>
           <h3 className="mb-1 text-sm font-semibold text-base-content dark:text-white">
-            {hasExistingConfig ? "Renew subscription to edit notifications" : "Subscribe to configure notifications"}
+            {hasExistingConfig ? "Extend access to edit notifications" : "Pay for access to configure notifications"}
           </h3>
           <p className="mb-4 max-w-[280px] text-xs text-base-content/70 dark:text-gray-400">
             {description ??
               (hasExistingConfig
-                ? "Your previous notification config is saved. Renew now to reuse and edit your existing settings."
-                : "Pay once to unlock notification settings. You can set health factor alerts per network after subscribing.")}
+                ? "Your previous notification config is saved. Pay again to extend access and edit your settings."
+                : "Pay once to unlock notification settings. You set health factor alerts per network. No auto-charges—you pay from your wallet when you want to extend.")}
           </p>
 
           {!address ? (
-            <p className="text-xs text-amber-400">Connect your wallet to subscribe.</p>
+            <p className="text-xs text-amber-400">Connect your wallet to pay for access.</p>
           ) : !paymentChainId ? (
             <p className="text-xs text-amber-400">Payment contract not configured for this network.</p>
           ) : !onCorrectChain ? (
             <div className="space-y-2">
-              <p className="text-xs text-base-content/70 dark:text-gray-400">
-                Switch to the subscription network to pay.
-              </p>
+              <p className="text-xs text-base-content/70 dark:text-gray-400">Switch to the paywall network to pay.</p>
               <button
                 type="button"
                 onClick={() => switchChain?.({ chainId: paymentChainId })}
@@ -146,25 +143,27 @@ export function SubscriptionPaywall({ children, description, hasExistingConfig =
               </button>
             </div>
           ) : !plan?.enabled ? (
-            <p className="text-xs text-amber-400">No subscription plan is available at the moment.</p>
+            <p className="text-xs text-amber-400">No paid plan is available at the moment.</p>
           ) : (
             <div className="w-full max-w-xs space-y-3">
-              <div className="rounded-lg border border-base-300 bg-base-200 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm text-base-content">
-                <span className="text-base-content/70 dark:text-gray-400">Price: </span>
-                <span className="font-semibold text-base-content dark:text-white">
-                  {formatTokenAmount(plan.price, USDC_DECIMALS)} USDC
-                </span>
-                <span className="ml-1 text-xs text-base-content/60 dark:text-gray-500">
-                  (≈ {(Number(plan.durationSeconds) / 86400).toFixed(0)} days access)
-                </span>
+              <div className="rounded-lg border border-base-300 bg-base-200 dark:border-white/10 dark:bg-white/5 px-3 py-2.5 text-sm text-base-content">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <span className="text-base-content/70 dark:text-gray-400">Price: </span>
+                  <span className="font-semibold text-base-content dark:text-white">
+                    {formatTokenAmount(plan.price, USDC_DECIMALS)} USDC
+                  </span>
+                  <span className="text-sm font-medium text-base-content/90 dark:text-gray-300">
+                    ≈ {(Number(plan.durationSeconds) / 86400).toFixed(0)} days access
+                  </span>
+                </div>
               </div>
               <button
                 type="button"
-                onClick={handleSubscribe}
-                disabled={busy || !canSubscribe}
+                onClick={handlePayForAccess}
+                disabled={busy || !canPay}
                 className="w-full rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2.5 text-sm font-medium text-white transition-all shadow-lg shadow-amber-500/20 hover:from-amber-600 hover:to-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {busy ? "Processing..." : hasExistingConfig ? "Renew with USDC" : "Subscribe with USDC"}
+                {busy ? "Processing..." : hasExistingConfig ? "Extend access with USDC" : "Pay for access (USDC)"}
               </button>
             </div>
           )}

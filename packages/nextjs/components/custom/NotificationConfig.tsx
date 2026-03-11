@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AVAILABLE_SERVICES, DEFAULT_HEALTH_FACTOR_THRESHOLD } from "~~/constants/notifications";
+import { useAccess } from "~~/hooks/custom/useAccess";
 import { type NotificationService, useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
-import { useSubscription } from "~~/hooks/custom/useSubscription";
 import { notification } from "~~/utils/scaffold-eth";
 
 interface NotificationConfigProps {
@@ -15,7 +15,7 @@ interface NotificationConfigProps {
 
 export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: NotificationConfigProps) => {
   const { getConfig, updateConfig, deleteConfig, isLoaded } = useNotificationConfig();
-  const { isActive: isSubscriber } = useSubscription();
+  const { isActive: hasAccess } = useAccess();
   const config = getConfig(chainId);
 
   const SLIDER_MIN_HEALTH_FACTOR_THRESHOLD = 1.1;
@@ -64,11 +64,11 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
 
   const hasConfig = config !== null;
 
-  // Not subscribed and no config: paywall above is enough; show nothing here
-  if (!isSubscriber && !hasConfig) return null;
+  // No access and no config: paywall above is enough; show nothing here
+  if (!hasAccess && !hasConfig) return null;
 
-  // Not subscribed but has existing config: show read-only summary and "Subscribe to edit"
-  if (!isSubscriber && hasConfig) {
+  // No access but has existing config: show read-only summary and "Pay for access to edit"
+  if (!hasAccess && hasConfig) {
     const hf = parseFloat(currentHealthFactor);
     const belowThreshold = !isNaN(hf) && hf < threshold && enabled;
     return (
@@ -90,7 +90,7 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
               </span>
             )}
           </div>
-          <span className="text-[10px] text-amber-400">Subscribe to edit</span>
+          <span className="text-[10px] text-amber-400">Pay for access to edit</span>
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
@@ -114,9 +114,9 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
             </div>
           </div>
           {(services ?? []).includes("email") && email && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-base-content/70 dark:text-gray-400">Email:</span>
-              <span className="text-base-content font-medium truncate max-w-[180px] dark:text-white" title={email}>
+            <div className="flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-base-content/70 dark:text-gray-400 shrink-0">Email:</span>
+              <span className="min-w-0 break-all text-base-content font-medium dark:text-white" title={email}>
                 {email}
               </span>
             </div>
@@ -477,9 +477,9 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
             </div>
           </div>
           {(services ?? []).includes("email") && email && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-base-content/70 dark:text-gray-400">Email:</span>
-              <span className="text-base-content font-medium truncate max-w-[180px] dark:text-white" title={email}>
+            <div className="flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-base-content/70 dark:text-gray-400 shrink-0">Email:</span>
+              <span className="min-w-0 break-all text-base-content font-medium dark:text-white" title={email}>
                 {email}
               </span>
             </div>

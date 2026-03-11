@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { DEFAULT_HEALTH_FACTOR_THRESHOLD } from "~~/constants/notifications";
-import { isSubscriptionActive } from "~~/services/payments/checkSubscription";
+import { isAccessActive } from "~~/services/payments/checkAccess";
 import { getSupabaseServerClient } from "~~/services/supabase/supabaseServer";
 
 const CONFIG_CACHE_TTL_MS = 15 * 60 * 1000;
@@ -71,8 +71,8 @@ export async function GET(request: Request) {
       return NextResponse.json(cached.data);
     }
 
-    // Read config without subscription check so existing config is visible after refresh.
-    // PUT/DELETE still require an active subscription.
+    // Read config without access check so existing config is visible after refresh.
+    // PUT/DELETE still require active paid access.
     const supabase = getSupabaseServerClient();
 
     if (chainIdParam != null && chainIdParam !== "") {
@@ -169,12 +169,9 @@ export async function PUT(request: Request) {
     const trimmed = userId.trim();
     const uid = normalizeUserId(userId);
 
-    const active = await isSubscriptionActive(trimmed);
+    const active = await isAccessActive(trimmed);
     if (!active) {
-      return NextResponse.json(
-        { error: "Active subscription required to access notification config" },
-        { status: 403 },
-      );
+      return NextResponse.json({ error: "Active paid access required to update notification config" }, { status: 403 });
     }
 
     const supabase = getSupabaseServerClient();
@@ -238,12 +235,9 @@ export async function DELETE(request: Request) {
     const trimmed = userId.trim();
     const uid = normalizeUserId(userId);
 
-    const active = await isSubscriptionActive(trimmed);
+    const active = await isAccessActive(trimmed);
     if (!active) {
-      return NextResponse.json(
-        { error: "Active subscription required to access notification config" },
-        { status: 403 },
-      );
+      return NextResponse.json({ error: "Active paid access required to delete notification config" }, { status: 403 });
     }
 
     const supabase = getSupabaseServerClient();
