@@ -45,7 +45,7 @@ export const HeaderMenuLinks = () => {
               passHref
               className={`${
                 isActive ? "bg-secondary shadow-md" : ""
-              } hover:bg-secondary hover:shadow-md focus:!bg-secondary active:!text-neutral py-1.5 px-3 text-sm rounded-full gap-2 grid grid-flow-col`}
+              } hover:bg-secondary hover:shadow-md focus:!bg-secondary active:!text-neutral py-1.5 px-3 lg:py-1.5 lg:px-3 min-h-[2.75rem] lg:min-h-0 text-sm rounded-full gap-2 grid grid-flow-col items-center`}
             >
               {icon}
               <span>{label}</span>
@@ -70,14 +70,17 @@ export const Header = () => {
   });
 
   return (
-    <div className="sticky lg:static top-0 navbar bg-base-100 min-h-0 shrink-0 justify-between z-20 shadow-md shadow-secondary px-0 sm:px-2">
+    <div className="sticky lg:static top-0 navbar bg-base-100 min-h-0 shrink-0 justify-between z-20 shadow-md shadow-secondary px-2 sm:px-2 safe-area-inset-left safe-area-inset-right safe-area-top">
       <div className="navbar-start w-auto lg:w-1/2">
         <details className="dropdown" ref={burgerMenuRef}>
-          <summary className="ml-1 btn btn-ghost lg:hidden hover:bg-transparent">
-            <Bars3Icon className="h-1/2" />
+          <summary
+            className="ml-1 btn btn-ghost lg:hidden hover:bg-transparent touch-target-min min-h-12 w-12 p-0 flex items-center justify-center"
+            aria-label="Open menu"
+          >
+            <Bars3Icon className="h-6 w-6" aria-hidden />
           </summary>
           <ul
-            className="menu menu-compact dropdown-content mt-3 p-2 shadow-sm bg-base-100 rounded-box w-52"
+            className="menu menu-compact dropdown-content mt-3 p-2 shadow-lg bg-base-100 rounded-box w-[min(18rem,100vw-2rem)] max-h-[calc(100dvh-6rem)] overflow-y-auto"
             onClick={() => {
               burgerMenuRef?.current?.removeAttribute("open");
             }}
@@ -85,7 +88,12 @@ export const Header = () => {
             <HeaderMenuLinks />
           </ul>
         </details>
-        <Link href="/" passHref className="hidden lg:flex items-center gap-2 ml-4 mr-6 shrink-0">
+        <Link
+          href="/"
+          passHref
+          className="hidden lg:flex items-center gap-2 ml-4 mr-6 shrink-0"
+          aria-label="Tokenping home"
+        >
           <div className="flex relative w-10 h-10">
             <Image alt="SE2 logo" className="cursor-pointer" fill src="/logo.svg" />
           </div>
@@ -98,7 +106,7 @@ export const Header = () => {
           <HeaderMenuLinks />
         </ul>
       </div>
-      <div className="navbar-end grow mr-4">
+      <div className="navbar-end grow mr-2 sm:mr-4 flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
         <RainbowKitCustomConnectButton />
         {isLocalNetwork && <FaucetButton />}
       </div>

@@ -18,22 +18,27 @@ export const Footer = () => {
   return (
     <div className="min-h-0 py-5 px-1 mb-11 lg:mb-0">
       <div>
-        <div className="fixed flex justify-between items-center w-full z-10 p-4 bottom-0 left-0 pointer-events-none">
-          <div className="flex flex-col md:flex-row gap-2 pointer-events-auto">
+        <div className="fixed flex justify-between items-center w-full z-10 p-3 sm:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bottom-0 left-0 pointer-events-none safe-area-inset-left safe-area-inset-right">
+          <div className="flex flex-col sm:flex-row gap-2 pointer-events-auto">
             {nativeCurrencyPrice > 0 && (
               <div>
-                <div className="btn btn-primary btn-sm font-normal gap-1 cursor-auto">
-                  <CurrencyDollarIcon className="h-4 w-4" />
-                  <span>{nativeCurrencyPrice.toFixed(2)}</span>
+                <div className="btn btn-primary btn-sm font-normal gap-1 cursor-auto touch-target-min min-h-9">
+                  <CurrencyDollarIcon className="h-4 w-4 shrink-0" aria-hidden />
+                  <span className="truncate">{nativeCurrencyPrice.toFixed(2)}</span>
                 </div>
               </div>
             )}
             {isLocalNetwork && (
               <>
                 <Faucet />
-                <Link href="/blockexplorer" passHref className="btn btn-primary btn-sm font-normal gap-1">
-                  <MagnifyingGlassIcon className="h-4 w-4" />
-                  <span>Block Explorer</span>
+                <Link
+                  href="/blockexplorer"
+                  passHref
+                  className="btn btn-primary btn-sm font-normal gap-1 touch-target-min min-h-9"
+                >
+                  <MagnifyingGlassIcon className="h-4 w-4 shrink-0" aria-hidden />
+                  <span className="hidden sm:inline">Block Explorer</span>
+                  <span className="sm:hidden">Explorer</span>
                 </Link>
               </>
             )}

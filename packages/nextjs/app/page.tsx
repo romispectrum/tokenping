@@ -22,14 +22,14 @@ const Home: NextPage = () => {
         />
       </div>
 
-      <div className="relative z-10 flex flex-col items-center grow pt-8 pb-10">
-        <div className="w-full max-w-4xl mx-auto px-4">
+      <div className="relative z-10 flex flex-col items-center grow pt-6 sm:pt-8 pb-24 sm:pb-10">
+        <div className="w-full max-w-4xl mx-auto px-3 sm:px-4">
           {/* Hero */}
-          <div className="text-center mb-8">
+          <div className="text-center mb-6 sm:mb-8">
             <p className="text-xs font-medium text-primary dark:text-purple-300 uppercase tracking-widest mb-2">
               DeFi notifications
             </p>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3">
+            <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold mb-3">
               <span className="bg-gradient-to-r from-neutral via-primary to-accent dark:from-white dark:via-purple-200 dark:to-indigo-400 bg-clip-text text-transparent">
                 Tokenping
               </span>
@@ -41,8 +41,8 @@ const Home: NextPage = () => {
           </div>
 
           {/* Main CTA card */}
-          <div className="rounded-3xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 backdrop-blur-xl p-5 md:p-6 mb-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="rounded-2xl sm:rounded-3xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 backdrop-blur-xl p-4 sm:p-5 md:p-6 mb-4 sm:mb-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 sm:gap-6">
               <div>
                 <h2 className="text-lg md:text-xl font-semibold text-base-content mb-2">Aave positions</h2>
                 <p className="text-base-content/70 dark:text-gray-400 text-sm max-w-lg">
@@ -52,7 +52,7 @@ const Home: NextPage = () => {
               </div>
               <Link
                 href="/aave"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-primary/30 to-accent/30 border border-primary/40 text-base-content font-semibold hover:from-primary/40 hover:to-accent/40 dark:from-purple-500/30 dark:to-indigo-500/30 dark:border-purple-500/30 dark:text-white dark:hover:from-purple-500/40 dark:hover:to-indigo-500/40 transition-all shrink-0"
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 sm:px-6 sm:py-3.5 rounded-2xl bg-gradient-to-r from-primary/30 to-accent/30 border border-primary/40 text-base-content font-semibold hover:from-primary/40 hover:to-accent/40 dark:from-purple-500/30 dark:to-indigo-500/30 dark:border-purple-500/30 dark:text-white dark:hover:from-purple-500/40 dark:hover:to-indigo-500/40 transition-all shrink-0 touch-target-min min-h-[2.75rem] w-full sm:w-auto"
                 aria-label="Open Aave dashboard"
               >
                 Open Aave dashboard
@@ -69,7 +69,7 @@ const Home: NextPage = () => {
           </div>
 
           {/* Value props */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-3 mb-4 sm:mb-6">
             <div className="rounded-2xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gray-900/50 backdrop-blur-sm p-4 text-center">
               <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-primary/20 text-primary dark:bg-purple-500/20 dark:text-purple-400 mb-2">
                 <WalletIcon className="w-5 h-5" aria-hidden />

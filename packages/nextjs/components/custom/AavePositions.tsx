@@ -367,12 +367,13 @@ export const AavePositions = () => {
   if (!mounted) return null;
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+    <div className="w-full max-w-7xl mx-auto px-3 sm:px-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 sm:mb-6 gap-3 sm:gap-4">
         <button
           onClick={refetch}
           disabled={isLoading}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-base-200 border border-base-300 text-sm font-medium text-base-content dark:bg-white/5 dark:border-white/10 dark:text-gray-300 hover:bg-base-300 dark:hover:bg-white/10 dark:hover:text-white transition-all disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-base-200 border border-base-300 text-sm font-medium text-base-content dark:bg-white/5 dark:border-white/10 dark:text-gray-300 hover:bg-base-300 dark:hover:bg-white/10 dark:hover:text-white transition-all disabled:opacity-50 touch-target-min min-h-[2.75rem] w-full sm:w-auto justify-center md:justify-start"
+          aria-label={isLoading ? "Refreshing positions" : "Refresh positions"}
         >
           <svg
             className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}

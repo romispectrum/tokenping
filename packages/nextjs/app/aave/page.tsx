@@ -30,12 +30,12 @@ const LendingPage: NextPage = () => {
         />
       </div>
 
-      <div className="relative z-10 flex flex-col items-center grow pt-10 pb-20">
+      <div className="relative z-10 flex flex-col items-center grow pt-6 sm:pt-10 pb-24 sm:pb-20 overflow-x-hidden">
         {/* Hero */}
-        <div className="w-full max-w-7xl mx-auto px-4 mb-8">
+        <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 mb-6 sm:mb-8">
           <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="flex flex-col">
-              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-neutral via-primary to-accent dark:from-white dark:via-purple-200 dark:to-indigo-400 bg-clip-text text-transparent">
+            <div className="flex flex-col min-w-0">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-neutral via-primary to-accent dark:from-white dark:via-purple-200 dark:to-indigo-400 bg-clip-text text-transparent">
                 Aave dashboard
               </h1>
               <p className="text-sm md:text-base text-base-content/70 dark:text-gray-400 mt-1">
@@ -51,8 +51,8 @@ const LendingPage: NextPage = () => {
             <AavePositions />
           </div>
         ) : (
-          <div className="w-full max-w-2xl mx-auto px-4">
-            <div className="relative overflow-hidden rounded-3xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 backdrop-blur-xl p-8 md:p-12 text-center">
+          <div className="w-full max-w-2xl mx-auto px-3 sm:px-4">
+            <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 backdrop-blur-xl p-8 md:p-12 text-center">
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 bg-gradient-to-b from-primary/20 to-transparent dark:from-purple-500/20 rounded-full blur-3xl" />
 
               <div className="relative">

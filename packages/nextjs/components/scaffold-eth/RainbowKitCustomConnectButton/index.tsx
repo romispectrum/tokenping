@@ -32,8 +32,14 @@ export const RainbowKitCustomConnectButton = () => {
             {(() => {
               if (!connected) {
                 return (
-                  <button className="btn btn-primary btn-sm" onClick={openConnectModal} type="button">
-                    Connect Wallet
+                  <button
+                    className="btn btn-primary btn-sm touch-target-min min-h-9"
+                    onClick={openConnectModal}
+                    type="button"
+                    aria-label="Connect wallet"
+                  >
+                    <span className="hidden sm:inline">Connect Wallet</span>
+                    <span className="sm:hidden">Connect</span>
                   </button>
                 );
               }
