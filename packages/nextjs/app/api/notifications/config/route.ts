@@ -103,6 +103,7 @@ export async function GET(request: Request) {
         services: data.services ?? [],
         healthFactorThreshold: parseFloat(String(data.health_factor_threshold)),
         email: data.email ?? undefined,
+        phone: data.phone ?? undefined,
       };
 
       setCachedConfig(cacheKey, response);
@@ -129,12 +130,20 @@ export async function GET(request: Request) {
           services: row.services ?? [],
           healthFactorThreshold: parseFloat(String(row.health_factor_threshold)),
           email: row.email ?? undefined,
+          phone: row.phone ?? undefined,
         };
         return acc;
       },
       {} as Record<
         number,
-        { chainId: number; enabled: boolean; services: string[]; healthFactorThreshold: number; email?: string }
+        {
+          chainId: number;
+          enabled: boolean;
+          services: string[];
+          healthFactorThreshold: number;
+          email?: string;
+          phone?: string;
+        }
       >,
     );
 
@@ -149,13 +158,14 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { userId, chainId, enabled, services, healthFactorThreshold, email } = body as {
+    const { userId, chainId, enabled, services, healthFactorThreshold, email, phone } = body as {
       userId?: string;
       chainId?: number;
       enabled?: boolean;
       services?: string[];
       healthFactorThreshold?: number;
       email?: string | null;
+      phone?: string | null;
     };
 
     if (!userId || typeof userId !== "string" || !userId.trim()) {
@@ -182,6 +192,7 @@ export async function PUT(request: Request) {
       services: Array.isArray(services) ? services : [],
       health_factor_threshold: healthFactorThreshold ?? DEFAULT_HEALTH_FACTOR_THRESHOLD,
       email: email === undefined || email === null ? null : String(email).trim() || null,
+      phone: phone === undefined || phone === null ? null : String(phone).trim() || null,
       updated_at: new Date().toISOString(),
     };
 

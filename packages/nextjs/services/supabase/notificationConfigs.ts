@@ -9,6 +9,7 @@ export interface NotificationConfigRow {
   services: NotificationService[];
   health_factor_threshold: number;
   email?: string | null;
+  phone?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -39,6 +40,7 @@ export const notificationConfigsService = {
       services: data.services ?? [],
       healthFactorThreshold: parseFloat(String(data.healthFactorThreshold ?? DEFAULT_HEALTH_FACTOR_THRESHOLD)),
       email: data.email ?? undefined,
+      phone: data.phone ?? undefined,
     };
   },
 
@@ -67,6 +69,7 @@ export const notificationConfigsService = {
         services: config.services,
         healthFactorThreshold: config.healthFactorThreshold,
         email: config.email ?? null,
+        phone: config.phone ?? null,
       }),
     });
 
