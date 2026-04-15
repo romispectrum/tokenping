@@ -33,6 +33,7 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
   const [enabled, setEnabled] = useState(config?.enabled ?? false);
   const [services, setServices] = useState<NotificationService[]>(config?.services ?? []);
   const [email, setEmail] = useState(config?.email ?? "");
+  const [phone, setPhone] = useState(config?.phone ?? "");
   const [threshold, setThreshold] = useState(() =>
     clampThreshold(Number(config?.healthFactorThreshold) || DEFAULT_HEALTH_FACTOR_THRESHOLD),
   );
@@ -51,9 +52,12 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
     const config = getConfig(chainId);
     if (config && !isEditing) {
       setEnabled(config.enabled ?? false);
-      const validServices = (config.services ?? []).filter((s): s is NotificationService => s === "email");
+      const validServices = (config.services ?? []).filter(
+        (s): s is NotificationService => s === "email" || s === "signal",
+      );
       setServices(validServices.length > 0 ? validServices : config.enabled ? ["email"] : []);
       setEmail(config.email ?? "");
+      setPhone(config.phone ?? "");
       const nextThreshold = clampThreshold(Number(config.healthFactorThreshold) || DEFAULT_HEALTH_FACTOR_THRESHOLD);
       setThreshold(nextThreshold);
       setThresholdText(formatThreshold(nextThreshold));
@@ -121,6 +125,14 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
               </span>
             </div>
           )}
+          {(services ?? []).includes("signal") && phone && (
+            <div className="flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-base-content/70 dark:text-gray-400 shrink-0">Signal:</span>
+              <span className="min-w-0 break-all text-base-content font-medium dark:text-white" title={phone}>
+                {phone}
+              </span>
+            </div>
+          )}
           <div className="flex items-center justify-between text-sm">
             <span className="text-base-content/70 dark:text-gray-400">Threshold:</span>
             <span className="text-base-content font-medium dark:text-white">{threshold}</span>
@@ -158,6 +170,7 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
       services: currentServices,
       healthFactorThreshold: clampedThreshold,
       email: currentServices.includes("email") ? (email ?? "").trim() || undefined : undefined,
+      phone: currentServices.includes("signal") ? (phone ?? "").trim() || undefined : undefined,
     });
     setIsEditing(false);
   };
@@ -177,6 +190,18 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(trimmed)) {
         notification.error("Please enter a valid email address");
+        return;
+      }
+    }
+    if (currentServices.includes("signal")) {
+      const trimmed = (phone ?? "").trim();
+      if (!trimmed) {
+        notification.error("Please enter your phone number for Signal");
+        return;
+      }
+      const e164Regex = /^\+[1-9]\d{6,14}$/;
+      if (!e164Regex.test(trimmed)) {
+        notification.error("Phone number must be in E.164 format (e.g. +14155550123)");
         return;
       }
     }
@@ -203,6 +228,7 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
       setEnabled(false);
       setServices([]);
       setEmail("");
+      setPhone("");
       const nextThreshold = clampThreshold(DEFAULT_HEALTH_FACTOR_THRESHOLD);
       setThreshold(nextThreshold);
       setThresholdText(formatThreshold(nextThreshold));
@@ -218,6 +244,7 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
       setEnabled(config.enabled);
       setServices(config.services ?? []);
       setEmail(config.email ?? "");
+      setPhone(config.phone ?? "");
       const nextThreshold = clampThreshold(Number(config.healthFactorThreshold) || DEFAULT_HEALTH_FACTOR_THRESHOLD);
       setThreshold(nextThreshold);
       setThresholdText(formatThreshold(nextThreshold));
@@ -225,6 +252,7 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
       setEnabled(false);
       setServices([]);
       setEmail("");
+      setPhone("");
       const nextThreshold = clampThreshold(DEFAULT_HEALTH_FACTOR_THRESHOLD);
       setThreshold(nextThreshold);
       setThresholdText(formatThreshold(nextThreshold));
@@ -349,6 +377,23 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
             </div>
           )}
 
+          {/* Phone input when Signal service is selected */}
+          {(services ?? []).includes("signal") && (
+            <div>
+              <label className="block text-sm text-base-content dark:text-gray-300 mb-2">Signal phone number</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                placeholder="+14155550123"
+                className="w-full px-3 py-2 rounded-lg border border-base-300 bg-base-200 text-base-content placeholder-base-content/50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder-gray-500 focus:border-purple-500/50 focus:outline-none focus:ring-1 focus:ring-purple-500/30 text-sm"
+              />
+              <p className="text-xs text-base-content/70 dark:text-gray-400 mt-1">
+                E.164 format required (e.g. +14155550123). Your number must have Signal installed.
+              </p>
+            </div>
+          )}
+
           {/* Health Factor Threshold */}
           <div>
             <label className="block text-sm text-base-content dark:text-gray-300 mb-2">
@@ -431,6 +476,7 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
               disabled={
                 (services ?? []).length === 0 ||
                 ((services ?? []).includes("email") && !(email ?? "").trim()) ||
+                ((services ?? []).includes("signal") && !(phone ?? "").trim()) ||
                 isSaving
               }
               className="flex-1 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-medium hover:from-purple-600 hover:to-indigo-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/20"
@@ -481,6 +527,14 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
               <span className="text-base-content/70 dark:text-gray-400 shrink-0">Email:</span>
               <span className="min-w-0 break-all text-base-content font-medium dark:text-white" title={email}>
                 {email}
+              </span>
+            </div>
+          )}
+          {(services ?? []).includes("signal") && phone && (
+            <div className="flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-base-content/70 dark:text-gray-400 shrink-0">Signal:</span>
+              <span className="min-w-0 break-all text-base-content font-medium dark:text-white" title={phone}>
+                {phone}
               </span>
             </div>
           )}
