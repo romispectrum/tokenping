@@ -8,4 +8,5 @@ export const HEALTH_FACTOR_RISKY = 1.5;
 
 export const AVAILABLE_SERVICES: { id: NotificationService; name: string; icon: string }[] = [
   { id: "email", name: "Email", icon: "📧" },
+  { id: "signal", name: "Signal", icon: "🔒" },
 ];
