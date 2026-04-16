@@ -6,25 +6,29 @@
  * which wraps the Java-based signal-cli over HTTP.
  *
  * Required environment variables:
- *   SIGNAL_API_URL      – Base URL of the signal-cli-rest-api container, e.g. https://signal.example.com
+ *   SIGNAL_API_URL       – Base URL of the signal-cli-rest-api container, e.g. https://signal.example.com
  *   SIGNAL_SENDER_NUMBER – Registered sender phone number in E.164 format, e.g. +14155550123
+ *
+ * Recipient format:
+ *   Users provide their Signal username (e.g. "alice.42" or "@alice.42").
+ *   The @ prefix is stripped before storage and a "u:" prefix is added when
+ *   calling the API, as required by signal-cli for username-addressed messages.
  *
  * Why a separate server is needed:
  *   signal-cli is a Java binary that maintains Signal session state (identity keys,
  *   registered phone number). Vercel serverless functions are stateless and cannot run
  *   native binaries or persist state between invocations, so the CLI must run as a
  *   persistent service. Vercel functions (including the cron job) call it via HTTP.
- *
- * Note on Edge Functions:
- *   Vercel Edge Functions run on V8 isolates and can technically make fetch() calls,
- *   but the cron route (/api/cron/notifications) is a standard Node.js serverless
- *   function — not an edge function — so HTTP calls to the Signal server work fine.
  */
 
-/** E.164 phone number format: starts with +, followed by digits only */
-const E164_REGEX = /^\+[1-9]\d{6,14}$/;
+/**
+ * Signal usernames: 3–32 chars, letters/numbers/underscores, ending with a
+ * 2-digit discriminator (e.g. alice.42, my_bot.01).
+ */
+const SIGNAL_USERNAME_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9_]{0,29}\.\d{2,}$/;
 
 export interface SendSignalOptions {
+  /** Stored username without @ prefix, e.g. "alice.42" */
   to: string;
   message: string;
 }
@@ -33,8 +37,20 @@ export function isSignalConfigured(): boolean {
   return Boolean(process.env.SIGNAL_API_URL && process.env.SIGNAL_SENDER_NUMBER);
 }
 
-export function isValidE164(phone: string): boolean {
-  return E164_REGEX.test(phone.trim());
+/**
+ * Strip a leading @ and return the bare username.
+ * "alice.42" → "alice.42"
+ * "@alice.42" → "alice.42"
+ */
+export function normalizeSignalUsername(raw: string): string {
+  return raw.trim().replace(/^@/, "");
+}
+
+/**
+ * Returns true if the string (after stripping @) looks like a valid Signal username.
+ */
+export function isValidSignalUsername(raw: string): boolean {
+  return SIGNAL_USERNAME_REGEX.test(normalizeSignalUsername(raw));
 }
 
 /**
@@ -45,10 +61,13 @@ export async function sendSignalMessage(
   options: SendSignalOptions,
 ): Promise<{ success: true } | { success: false; error: string }> {
   const { to, message } = options;
-  const trimmedTo = to.trim();
+  const username = normalizeSignalUsername(to);
 
-  if (!trimmedTo || !isValidE164(trimmedTo)) {
-    return { success: false, error: "Invalid phone number – must be E.164 format (e.g. +14155550123)" };
+  if (!username || !isValidSignalUsername(username)) {
+    return {
+      success: false,
+      error: `Invalid Signal username "${username}". Expected format: alice.42 (find yours in Signal → Settings → Profile)`,
+    };
   }
 
   const apiUrl = process.env.SIGNAL_API_URL?.replace(/\/$/, "");
@@ -58,6 +77,9 @@ export async function sendSignalMessage(
     return { success: false, error: "Signal service not configured (SIGNAL_API_URL or SIGNAL_SENDER_NUMBER missing)" };
   }
 
+  // signal-cli-rest-api requires "u:" prefix for username-addressed recipients
+  const recipient = `u:${username}`;
+
   try {
     const response = await fetch(`${apiUrl}/v2/send`, {
       method: "POST",
@@ -65,7 +87,7 @@ export async function sendSignalMessage(
       body: JSON.stringify({
         message,
         number: sender,
-        recipients: [trimmedTo],
+        recipients: [recipient],
       }),
     });
 
@@ -76,7 +98,7 @@ export async function sendSignalMessage(
 
     return { success: true };
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Unknown error calling Signal API";
-    return { success: false, error: message };
+    const msg = e instanceof Error ? e.message : "Unknown error calling Signal API";
+    return { success: false, error: msg };
   }
 }

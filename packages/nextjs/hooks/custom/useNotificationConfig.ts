@@ -59,7 +59,7 @@ export const useNotificationConfig = () => {
       return {
         ...config,
         services: config.services ?? [],
-        phone: config.phone ?? undefined,
+        signalRecipient: config.signalRecipient ?? undefined,
       };
     },
     [configs],

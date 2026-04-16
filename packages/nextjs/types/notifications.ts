@@ -7,8 +7,8 @@ export interface NotificationConfig {
   services: NotificationService[];
   healthFactorThreshold: number;
   email?: string;
-  /** E.164 phone number for Signal notifications (e.g. +14155551234) */
-  phone?: string;
+  /** Signal username for notifications (e.g. alice.42, stored without @ prefix) */
+  signalRecipient?: string;
 }
 
 export interface NotificationConfigSaveContext {

@@ -103,7 +103,7 @@ export async function GET(request: Request) {
         services: data.services ?? [],
         healthFactorThreshold: parseFloat(String(data.health_factor_threshold)),
         email: data.email ?? undefined,
-        phone: data.phone ?? undefined,
+        signalRecipient: data.signal_recipient ?? undefined,
       };
 
       setCachedConfig(cacheKey, response);
@@ -130,7 +130,7 @@ export async function GET(request: Request) {
           services: row.services ?? [],
           healthFactorThreshold: parseFloat(String(row.health_factor_threshold)),
           email: row.email ?? undefined,
-          phone: row.phone ?? undefined,
+          signalRecipient: row.signal_recipient ?? undefined,
         };
         return acc;
       },
@@ -142,7 +142,7 @@ export async function GET(request: Request) {
           services: string[];
           healthFactorThreshold: number;
           email?: string;
-          phone?: string;
+          signalRecipient?: string;
         }
       >,
     );
@@ -158,14 +158,14 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { userId, chainId, enabled, services, healthFactorThreshold, email, phone } = body as {
+    const { userId, chainId, enabled, services, healthFactorThreshold, email, signalRecipient } = body as {
       userId?: string;
       chainId?: number;
       enabled?: boolean;
       services?: string[];
       healthFactorThreshold?: number;
       email?: string | null;
-      phone?: string | null;
+      signalRecipient?: string | null;
     };
 
     if (!userId || typeof userId !== "string" || !userId.trim()) {
@@ -192,7 +192,10 @@ export async function PUT(request: Request) {
       services: Array.isArray(services) ? services : [],
       health_factor_threshold: healthFactorThreshold ?? DEFAULT_HEALTH_FACTOR_THRESHOLD,
       email: email === undefined || email === null ? null : String(email).trim() || null,
-      phone: phone === undefined || phone === null ? null : String(phone).trim() || null,
+      signal_recipient:
+        signalRecipient === undefined || signalRecipient === null
+          ? null
+          : String(signalRecipient).trim().replace(/^@/, "") || null,
       updated_at: new Date().toISOString(),
     };
 

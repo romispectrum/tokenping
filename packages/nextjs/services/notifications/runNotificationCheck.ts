@@ -25,7 +25,7 @@ export async function runNotificationCheck(): Promise<NotificationCheckResult | 
     const supabase = getSupabaseServerClient();
     const { data: rows, error } = await supabase
       .from("notification_configs")
-      .select("user_id, chain_id, health_factor_threshold, email, phone, services")
+      .select("user_id, chain_id, health_factor_threshold, email, signal_recipient, services")
       .eq("enabled", true);
 
     if (error) {
@@ -36,7 +36,7 @@ export async function runNotificationCheck(): Promise<NotificationCheckResult | 
       const services = row.services as string[];
       if (!Array.isArray(services) || services.length === 0) return false;
       const wantsEmail = services.includes("email") && row.email?.trim();
-      const wantsSignal = services.includes("signal") && row.phone?.trim();
+      const wantsSignal = services.includes("signal") && row.signal_recipient?.trim();
       return wantsEmail || wantsSignal;
     });
 
@@ -90,11 +90,11 @@ export async function runNotificationCheck(): Promise<NotificationCheckResult | 
       }
 
       // Signal notification
-      if (services.includes("signal") && config.phone?.trim()) {
-        const phone = String(config.phone).trim();
-        const sendResult = await sendSignalMessage({ to: phone, message: alertText });
+      if (services.includes("signal") && config.signal_recipient?.trim()) {
+        const username = String(config.signal_recipient).trim();
+        const sendResult = await sendSignalMessage({ to: username, message: alertText });
         if (sendResult.success) signalSent++;
-        else errors.push(`signal:${phone}: ${sendResult.error}`);
+        else errors.push(`signal:${username}: ${sendResult.error}`);
       }
     }
 
