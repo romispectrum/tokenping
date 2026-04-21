@@ -195,7 +195,9 @@ export async function PUT(request: Request) {
       signal_recipient:
         signalRecipient === undefined || signalRecipient === null
           ? null
-          : String(signalRecipient).trim().replace(/^@/, "") || null,
+          : String(signalRecipient)
+              .trim()
+              .replace(/^[u:@]+/, "") || null,
       updated_at: new Date().toISOString(),
     };
 

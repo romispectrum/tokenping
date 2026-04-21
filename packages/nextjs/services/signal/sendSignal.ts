@@ -38,12 +38,14 @@ export function isSignalConfigured(): boolean {
 }
 
 /**
- * Strip a leading @ and return the bare username.
+ * Strip leading @ or u: prefix and return the bare username.
  * "alice.42" → "alice.42"
  * "@alice.42" → "alice.42"
+ * "u:alice.42" → "alice.42"
+ * "u:@alice.42" → "alice.42"
  */
 export function normalizeSignalUsername(raw: string): string {
-  return raw.trim().replace(/^@/, "");
+  return raw.trim().replace(/^[u:@]+/, "");
 }
 
 /**
