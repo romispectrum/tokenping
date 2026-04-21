@@ -34,6 +34,10 @@ That's the entire Dockerfile. The image bundles signal-cli and the REST API.
 
 ## 3. Create fly.toml
 
+**MODE choice:** For Tokenping's use case (notifications every 5 minutes from Vercel cron),
+`normal` mode is best: each request is independent, stateless, and fast enough. `json-rpc`
+is only needed for high-volume or real-time messaging.
+
 ```toml
 app = "tokenping-signal"        # change to your preferred app name
 primary_region = "iad"          # pick a region close to your Vercel deployment
@@ -41,7 +45,9 @@ primary_region = "iad"          # pick a region close to your Vercel deployment
 [build]
 
 [env]
-  MODE = "json-rpc"             # recommended production mode for signal-cli-rest-api
+  MODE = "normal"               # each request spawns a fresh signal-cli process, reads account from disk, sends, exits
+                                # simpler, more reliable, and sufficient for periodic cron jobs
+                                # switch to "json-rpc" only if sending hundreds of messages per second
 
 [http_service]
   internal_port = 8080
@@ -93,43 +99,61 @@ No extra phone number needed. signal-cli acts like Signal Desktop.
 # Open a shell inside the running container
 fly ssh console
 
-# Inside the container — generate a link URI
-signal-cli link -n "TokenpingBot"
+# Inside the container — generate a link URI.
+# --config is REQUIRED: without it, signal-cli writes to $HOME/.local/share/signal-cli
+# (i.e. /root/.local/... when you're root in `fly ssh console`), which is NOT the mounted
+# volume and NOT where the REST API daemon reads from. The account would be invisible to
+# the API and wiped on next deploy.
+signal-cli --config /home/.local/share/signal-cli link -n "TokenpingBot"
 ```
 
 This prints a `sgnl://linkdevice?...` URI and a QR code in the terminal.
 
 **On your phone:** Signal → Settings → Linked Devices → tap **+** → scan the QR code.
 
-You have about 2 minutes before the link expires. Once linked, exit the shell:
+You have about 2 minutes before the link expires. Once linked, verify the account
+landed on the mounted volume and restart so the daemon picks it up:
 
 ```bash
-exit
-```
-
-### Option B — Register a dedicated phone number
-
-Use a Twilio voice-capable long-code number (~$1/mo). Pure VoIP/SMS-only numbers
-are often blocked by Signal; voice registration is more reliable.
-
-```bash
-fly ssh console
-
-# Step 1 — get a CAPTCHA token
-# Open this URL in a browser on the same network and copy the token from the URL bar:
-# https://signalcaptchas.org/registration/generate.html
-
-# Step 2 — register (replace +1XXXXXXXXXX with your Twilio number)
-signal-cli -a +1XXXXXXXXXX register --voice --captcha <token>
-
-# Step 3 — verify (Signal calls the number and reads a 6-digit code)
-signal-cli -a +1XXXXXXXXXX verify <6-digit-code>
-
-# Step 4 — set a registration lock PIN (protects against number hijacking)
-signal-cli -a +1XXXXXXXXXX updateAccount --pin <choose-a-pin>
+signal-cli --config /home/.local/share/signal-cli listAccounts
+# should list +420XXXXXXXXXX
 
 exit
+fly machine restart
+
+# From your laptop — confirm the REST API sees the account:
+curl https://tokenping-signal.fly.dev/v1/accounts
+# → ["+420XXXXXXXXXX"]
 ```
+
+---
+
+## Common pitfalls
+
+**❌ Account doesn't work even though linking "succeeded"**
+
+If you see "Specified account does not exist" errors from `/v2/send`, the account
+data likely didn't persist. Check:
+
+1. **Did you use `--config`?** Without it, `signal-cli link` writes to `/root/.local/share/signal-cli`,
+   not the mounted volume at `/home/.local/share/signal-cli`. The account is invisible to
+   the API and lost on next deploy. **Always use:**
+   ```bash
+   signal-cli --config /home/.local/share/signal-cli link -n "TokenpingBot"
+   ```
+
+2. **Did you verify and restart after linking?**
+   ```bash
+   signal-cli --config /home/.local/share/signal-cli listAccounts
+   exit
+   fly machine restart
+   curl https://your-app.fly.dev/v1/accounts  # must return a non-empty list
+   ```
+
+3. **Is the volume actually mounted?** The Dockerfile is just `FROM bbernhard/signal-cli-rest-api:latest`.
+   It doesn't create `/home/.local/share/signal-cli` — that comes from the `[[mounts]]` section in fly.toml.
+   If you copy-pasted but didn't create the volume with `fly volumes create signal_data --region iad --size 1`,
+   the container will create a temporary `/home/.local/share/signal-cli` that disappears on restart.
 
 ---
 
@@ -163,20 +187,44 @@ You should receive the message in Signal within a few seconds.
 
 ---
 
-## 8. Keeping the server alive
+## 8. Monitoring and troubleshooting
 
-Fly.io will keep the machine running because `auto_stop_machines = false` is set
-in fly.toml. The signal-cli process in `json-rpc` mode stays resident and handles
-requests without cold-start delays.
+Fly.io keeps the machine running because `auto_stop_machines = false` is set in
+fly.toml. In `normal` mode, each send request is independent — no daemon state to
+manage, so restarts are safe.
 
-If you ever need to restart:
+**Check account is still registered after restart:**
 
 ```bash
-fly machine restart
+fly ssh console
+signal-cli --config /home/.local/share/signal-cli listAccounts
+# should list your phone number
+exit
 ```
 
-To check logs:
+**View container logs:**
 
 ```bash
 fly logs
 ```
+
+**If messages aren't sending:**
+
+1. Verify the account is on the persistent volume:
+   ```bash
+   fly ssh console
+   cat /home/.local/share/signal-cli/data/accounts.json | head -c 100
+   # should be >100 bytes if account data is present; ~39 bytes means empty
+   ```
+
+2. Verify the REST API daemon sees it:
+   ```bash
+   curl https://tokenping-signal.fly.dev/v1/accounts
+   # should return a non-empty list
+   ```
+
+3. Check the app's sender number matches the account you linked:
+   ```bash
+   echo $SIGNAL_SENDER_NUMBER
+   ```
+   (The env var is set in fly.toml `[env]` section, not visible in logs.)
