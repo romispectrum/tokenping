@@ -11,8 +11,9 @@
  *
  * Recipient format:
  *   Users provide their Signal username (e.g. "alice.42" or "@alice.42").
- *   The @ prefix is stripped before storage and a "u:" prefix is added when
- *   calling the API, as required by signal-cli for username-addressed messages.
+ *   The @ and u: prefixes are stripped before storage. We send the BARE username
+ *   to signal-cli-rest-api — the API auto-detects usernames and adds the "u:" prefix
+ *   internally before passing to signal-cli (see client.go getRecipientType).
  *
  * Why a separate server is needed:
  *   signal-cli is a Java binary that maintains Signal session state (identity keys,
@@ -79,9 +80,8 @@ export async function sendSignalMessage(
     return { success: false, error: "Signal service not configured (SIGNAL_API_URL or SIGNAL_SENDER_NUMBER missing)" };
   }
 
-  // signal-cli-rest-api requires "u:" prefix for username-addressed recipients
-  const recipient = `u:${username}`;
-
+  // signal-cli-rest-api auto-classifies non-phone strings as usernames and prepends
+  // the "u:" prefix internally, so we send the bare username.
   try {
     const response = await fetch(`${apiUrl}/v2/send`, {
       method: "POST",
@@ -89,7 +89,7 @@ export async function sendSignalMessage(
       body: JSON.stringify({
         message,
         number: sender,
-        recipients: [recipient],
+        recipients: [username],
       }),
     });
 
