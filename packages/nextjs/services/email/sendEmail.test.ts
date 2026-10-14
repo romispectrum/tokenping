@@ -20,6 +20,7 @@ const payload = (body: Record<string, unknown>) =>
   JSON.stringify({ from: DEFAULT_FROM, to: ["a@b.co"], subject: "Alert", ...body });
 
 beforeEach(() => {
+  resend.constructedWith.length = 0;
   resend.send.mockReset();
   resend.send.mockResolvedValue({ data: { id: "email-1" }, error: null });
   vi.stubEnv("RESEND_API_KEY", "re_test");
@@ -64,8 +65,10 @@ describe("isEmailConfigured", () => {
 });
 
 describe("sendEmail", () => {
-  it("constructs a single Resend client when the module loads", () => {
-    expect(resend.constructedWith).toHaveLength(1);
+  it("creates the Resend client at send time with the current key", async () => {
+    vi.stubEnv("RESEND_API_KEY", "re_rotated");
+    await sendEmail({ to: "a@b.co", subject: "Alert", text: "x" });
+    expect(resend.constructedWith).toEqual(["re_rotated"]);
   });
 
   it.each(["", "   ", "not-an-email", "a@b", "a b@c.de"])(
@@ -80,12 +83,16 @@ describe("sendEmail", () => {
     },
   );
 
-  it("reports a missing API key", async () => {
-    vi.stubEnv("RESEND_API_KEY", "");
+  it.each([
+    ["empty", ""],
+    ["unset", undefined],
+  ])("reports an %s API key without creating a client", async (_label, key) => {
+    vi.stubEnv("RESEND_API_KEY", key);
     expect(await sendEmail({ to: "a@b.co", subject: "Alert", text: "x" })).toStrictEqual({
       success: false,
       error: "Email service not configured (RESEND_API_KEY missing)",
     });
+    expect(resend.constructedWith).toHaveLength(0);
     expect(resend.send).not.toHaveBeenCalled();
   });
 
@@ -143,18 +150,28 @@ describe("sendEmail", () => {
     });
   });
 
-  it("lets SDK exceptions propagate", async () => {
-    resend.send.mockRejectedValue(new Error("boom"));
-    await expect(sendEmail({ to: "a@b.co", subject: "Alert", text: "x" })).rejects.toThrow("boom");
+  it.each([
+    ["the exception message", new Error("boom"), "boom"],
+    ["a fallback for a non-Error", "nope", "Failed to send email"],
+  ])("returns %s when the SDK throws", async (_label, thrown, expected) => {
+    resend.send.mockRejectedValue(thrown);
+    expect(await sendEmail({ to: "a@b.co", subject: "Alert", text: "x" })).toStrictEqual({
+      success: false,
+      error: expected,
+    });
   });
 });
 
-describe("sendEmail module load", () => {
-  it("throws when RESEND_API_KEY is missing", async () => {
-    // BUG(B3.0): the real Resend constructor throws at import time without a key, crashing every importing route.
+describe("sendEmail without RESEND_API_KEY (real SDK)", () => {
+  // The real Resend constructor throws without a key, so the client must not be created at import time (B3.0).
+  it("imports and reports 'not configured' instead of crashing the importing route", async () => {
     vi.stubEnv("RESEND_API_KEY", "");
     vi.doUnmock("resend");
     vi.resetModules();
-    await expect(import("~~/services/email/sendEmail")).rejects.toThrow(/Missing API key/);
+    const { sendEmail: realSendEmail } = await import("~~/services/email/sendEmail");
+    expect(await realSendEmail({ to: "a@b.co", subject: "Alert", text: "x" })).toStrictEqual({
+      success: false,
+      error: "Email service not configured (RESEND_API_KEY missing)",
+    });
   });
 });

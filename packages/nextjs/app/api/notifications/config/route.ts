@@ -8,14 +8,8 @@ import {
   parseChainId,
   parseUserId,
 } from "~~/services/api/server/http";
+import { type ConfigInput, parseConfigInput } from "~~/services/notifications/configInput";
 import {
-  getCacheKey,
-  getCachedConfig,
-  invalidateUserConfigCache,
-  setCachedConfig,
-} from "~~/services/notifications/configCache";
-import {
-  type ConfigInput,
   deleteConfigs,
   findConfigForChain,
   findConfigsForUser,
@@ -24,7 +18,6 @@ import {
   toConfigRow,
   userIdForms,
 } from "~~/services/notifications/configRepository";
-import { getLinkByUserId } from "~~/services/telegram/telegramLinks";
 
 type ConfigBody = ConfigInput & { userId?: unknown; chainId?: unknown };
 
@@ -37,34 +30,26 @@ export async function GET(request: Request) {
     const chainId = parseChainId(searchParams.get("chainId"));
     if (chainId === null) return jsonError("Invalid chainId", 400);
 
-    const forms = userIdForms(userId);
-    const cacheKey = getCacheKey(forms.normalized, chainId);
-    const cached = getCachedConfig(cacheKey);
-    if (cached.hit) return NextResponse.json(cached.data);
-
     // No access check on reads, so an existing config stays visible after access expires; PUT/DELETE require it.
-    // The Telegram link is per user (not per chain): fetched once and copied onto every config.
-    const telegramLink = await getLinkByUserId(forms.normalized);
+    // The Telegram link is per user, not per chain, and is read from /api/telegram/link.
+    const forms = userIdForms(userId);
 
     if (chainId !== undefined) {
       const row = await findConfigForChain(forms, chainId);
-      const config = row ? rowToConfig(row, telegramLink) : null;
-      setCachedConfig(cacheKey, config);
-      return NextResponse.json(config);
+      return NextResponse.json(row ? rowToConfig(row) : null);
     }
 
     const rows = await findConfigsForUser(forms);
-    const configs = Object.fromEntries(rows.map(row => [row.chain_id, rowToConfig(row, telegramLink)]));
-    setCachedConfig(cacheKey, configs);
-    return NextResponse.json(configs);
+    return NextResponse.json(Object.fromEntries(rows.map(row => [row.chain_id, rowToConfig(row)])));
   } catch (e) {
+    // Also answers failed Supabase reads, which the repository throws.
     return internalError(e);
   }
 }
 
 export async function PUT(request: Request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
     const { userId: rawUserId, chainId, ...input } = body as ConfigBody;
 
     const userId = parseUserId(rawUserId);
@@ -72,14 +57,16 @@ export async function PUT(request: Request) {
     // chainId = the Aave network this config is for (position chain), NOT the wallet's connected chain
     if (!isChainId(chainId)) return jsonError("Missing or invalid chainId", 400);
 
+    const parsed = parseConfigInput(input);
+    if ("error" in parsed) return jsonError(parsed.error, 400);
+
     const denied = await requireActiveAccess(userId, "Active paid access required to update notification config");
     if (denied) return denied;
 
     const forms = userIdForms(userId);
-    const error = await saveConfig(forms, toConfigRow(forms.normalized, chainId, input));
+    const error = await saveConfig(forms, toConfigRow(forms.normalized, chainId, parsed.value));
     if (error) return jsonError(error.message, 502);
 
-    invalidateUserConfigCache(forms.normalized);
     return NextResponse.json({ success: true });
   } catch (e) {
     return internalError(e);
@@ -103,7 +90,6 @@ export async function DELETE(request: Request) {
     const error = await deleteConfigs(forms, chainId);
     if (error) return jsonError(error.message, 502);
 
-    invalidateUserConfigCache(forms.normalized);
     return NextResponse.json({ success: true });
   } catch (e) {
     return internalError(e);

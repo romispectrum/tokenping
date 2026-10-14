@@ -23,7 +23,7 @@
  */
 import "server-only";
 import { getErrorMessage } from "~~/utils/errors";
-import { isValidSignalUsername, normalizeSignalUsername } from "~~/utils/notifications/validation";
+import { SIGNAL_USERNAME_REGEX, normalizeSignalUsername } from "~~/utils/notifications/validation";
 
 export type SendSignalOptions = {
   /** Stored username without @ prefix, e.g. "alice.42" */
@@ -35,10 +35,9 @@ export async function sendSignalMessage({
   to,
   message,
 }: SendSignalOptions): Promise<{ success: true } | { success: false; error: string }> {
+  // Normalized once: the value that passes the regex is exactly the one sent.
   const username = normalizeSignalUsername(to);
-
-  // BUG(unlisted): isValidSignalUsername normalizes (and trims) again, so "@ alice.42" passes but " alice.42" is sent.
-  if (!isValidSignalUsername(username)) {
+  if (!SIGNAL_USERNAME_REGEX.test(username)) {
     return {
       success: false,
       error: `Invalid Signal username "${username}". Expected format: alice.42 (find yours in Signal → Settings → Profile)`,

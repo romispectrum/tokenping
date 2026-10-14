@@ -11,12 +11,24 @@ export type RecordedQuery = { table: string; ops: [method: string, ...args: unkn
 
 type Responder = (query: RecordedQuery, formatted: string) => FakeQueryResult | undefined;
 
-const CHAIN_METHODS = ["select", "insert", "update", "upsert", "delete", "eq", "neq", "is", "gt", "range"];
+const CHAIN_METHODS = ["select", "insert", "update", "upsert", "delete", "eq", "neq", "is", "gt", "order", "range"];
 const TERMINAL_METHODS = ["single", "maybeSingle"];
 
 /** e.g. `notification_configs.select("*").eq("user_id","0xabc").single()` */
 export const formatQuery = ({ table, ops }: RecordedQuery) =>
   [table, ...ops.map(([method, ...args]) => `${method}(${args.map(arg => JSON.stringify(arg)).join(",")})`)].join(".");
+
+/** The inclusive `.range(from, to)` of a recorded query, if it has one. */
+export const rangeOf = ({ ops }: RecordedQuery): [from: number, to: number] | undefined => {
+  const range = ops.find(([method]) => method === "range");
+  return range && [Number(range[1]), Number(range[2])];
+};
+
+/** The part of `rows` a ranged query reads, as PostgREST serves it (so paginated reads end on an empty page). */
+export const sliceByRange = <T>(query: RecordedQuery, rows: readonly T[]) => {
+  const [from, to] = rangeOf(query) ?? [0, rows.length - 1];
+  return rows.slice(from, to + 1);
+};
 
 export const createFakeSupabase = () => {
   const queries: RecordedQuery[] = [];

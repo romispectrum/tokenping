@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DELETE, GET } from "~~/app/api/telegram/link/route";
+import { afterQueue } from "~~/services/api/server/testing/afterQueue";
 import { fakeSupabase } from "~~/services/api/server/testing/fakeSupabase";
-import { getCacheKey, getCachedConfig, setCachedConfig } from "~~/services/notifications/configCache";
 import { isAccessActive } from "~~/services/payments/checkAccess";
 import { replyToTelegramChat } from "~~/services/telegram/sendTelegram";
 
@@ -11,6 +11,10 @@ vi.mock("~~/services/supabase/supabaseServer", async () => {
 });
 vi.mock("~~/services/payments/checkAccess", () => ({ isAccessActive: vi.fn() }));
 vi.mock("~~/services/telegram/sendTelegram", () => ({ replyToTelegramChat: vi.fn() }));
+vi.mock("next/server", async importOriginal => {
+  const { afterQueue } = await import("~~/services/api/server/testing/afterQueue");
+  return { ...(await importOriginal<typeof import("next/server")>()), after: afterQueue.after };
+});
 
 const BASE_URL = "http://localhost/api/telegram/link";
 const LOWER = `0x${"cd".repeat(20)}`;
@@ -31,6 +35,7 @@ const FAREWELL =
 
 beforeEach(() => {
   fakeSupabase.reset();
+  afterQueue.reset();
   vi.mocked(isAccessActive).mockReset();
   vi.mocked(isAccessActive).mockResolvedValue(true);
   vi.mocked(replyToTelegramChat).mockReset();
@@ -114,39 +119,39 @@ describe("DELETE /api/telegram/link", () => {
     expect(fakeSupabase.queries).toHaveLength(0);
   });
 
-  it("looks the link up before deleting it, invalidates the cache and sends a farewell", async () => {
+  it("looks the link up before deleting it and sends a farewell after the response (B3.4)", async () => {
     fakeSupabase.respondByQuery({
       [linkQuery("user_id", LOWER)]: {
         data: { user_id: LOWER, chat_id: "987", username: "bob", linked_at: "2026-03-01T10:00:00Z" },
       },
     });
-    setCachedConfig(getCacheKey(LOWER, 1), { cached: true });
 
     const res = await del({ userId: MIXED });
 
     expect(await read(res)).toEqual(json(200, { success: true }));
     expect(fakeSupabase.log()).toEqual([linkQuery("user_id", LOWER), deleteQuery(LOWER)]);
-    expect(getCachedConfig(getCacheKey(LOWER, 1)).hit).toBe(false);
+    expect(replyToTelegramChat).not.toHaveBeenCalled();
+    expect(afterQueue.pending()).toBe(1);
+
+    await afterQueue.flush();
     expect(replyToTelegramChat).toHaveBeenCalledExactlyOnceWith("987", FAREWELL);
   });
 
   it("skips the farewell when nothing was linked", async () => {
     expect(await read(await del({ userId: LOWER }))).toEqual(json(200, { success: true }));
     expect(fakeSupabase.log()).toEqual([linkQuery("user_id", LOWER), deleteQuery(LOWER)]);
-    expect(replyToTelegramChat).not.toHaveBeenCalled();
+    expect(afterQueue.pending()).toBe(0);
   });
 
-  it("reports success even when the delete fails", async () => {
-    // BUG(B3.5): the delete error is ignored.
-    fakeSupabase.respondByQuery({ [deleteQuery(LOWER)]: { error: { message: "delete failed" } } });
-    expect(await read(await del({ userId: LOWER }))).toEqual(json(200, { success: true }));
-  });
-
-  it("does not wait for the farewell to be delivered", async () => {
-    vi.mocked(replyToTelegramChat).mockReturnValue(new Promise(() => {}));
+  it("returns 502 with the Supabase message and sends no farewell when the delete fails (B3.5)", async () => {
     fakeSupabase.respondByQuery({
       [linkQuery("user_id", LOWER)]: { data: { user_id: LOWER, chat_id: "987", username: null, linked_at: "x" } },
+      [deleteQuery(LOWER)]: { error: { message: "delete failed" } },
     });
-    expect(await read(await del({ userId: LOWER }))).toEqual(json(200, { success: true }));
+
+    expect(await read(await del({ userId: LOWER }))).toEqual(json(502, { error: "delete failed" }));
+
+    await afterQueue.flush();
+    expect(replyToTelegramChat).not.toHaveBeenCalled();
   });
 });

@@ -34,16 +34,11 @@ describe("sendSignalMessage", () => {
     ["@alice.42", "alice.42"],
     ["u:alice.42", "alice.42"],
     ["u:@alice.42", "alice.42"],
-    // BUG(B3.1): any leading run of "u", ":" and "@" is stripped.
-    ["ursula.42", "rsula.42"],
-    ["@uma.01", "ma.01"],
-    // BUG(unlisted): validation normalizes the recipient a second time (trimming again), but the once-normalized value
-    // is sent, so whitespace right after a stripped prefix passes validation and reaches the API.
-    ["@ alice.42", " alice.42"],
-    ["u: alice.42", " alice.42"],
-    ["@\talice.42", "\talice.42"],
-    [" @ alice.42", " alice.42"],
-    ["@ @alice.42", " @alice.42"],
+    [" @ursula.42", "ursula.42"],
+    // Only the literal "u:" / "@" prefixes are stripped, not a leading "u" (B3.1).
+    ["ursula.42", "ursula.42"],
+    ["@uma.01", "uma.01"],
+    ["uu.10", "uu.10"],
   ])("normalizes %j to %j", async (to, expected) => {
     await sendSignalMessage({ to, message: "m" });
     expect(JSON.parse(fetchMock.mock.calls[0][1].body).recipients).toEqual([expected]);
@@ -54,10 +49,18 @@ describe("sendSignalMessage", () => {
     ["   ", ""],
     ["alice", "alice"],
     ["@alice", "alice"],
-    ["uu.10", ".10"],
     ["_alice.42", "_alice.42"],
     ["alice.4", "alice.4"],
     ["@ alice", " alice"],
+    // The value that is validated is the value that would be sent: whitespace after a prefix or a second prefix
+    // makes it invalid instead of reaching the Signal API.
+    ["@ alice.42", " alice.42"],
+    ["u: alice.42", " alice.42"],
+    ["@\talice.42", "\talice.42"],
+    [" @ alice.42", " alice.42"],
+    ["@ @alice.42", " @alice.42"],
+    ["@@alice.42", "@alice.42"],
+    ["u:u:alice.42", "u:alice.42"],
   ])("rejects %j (reported as %j) before checking the configuration", async (to, reported) => {
     vi.stubEnv("SIGNAL_API_URL", "");
     expect(await sendSignalMessage({ to, message: "m" })).toStrictEqual({

@@ -12,6 +12,7 @@ export const TELEGRAM_REPLIES = {
   unsubscribed:
     "🔕 Unsubscribed. You won't receive any more Tokenping alerts here. " +
     "You can reconnect anytime from the Tokenping app.",
+  unsubscribeFailed: "Something went wrong while unsubscribing. Please send /stop again.",
   help:
     "Tokenping notifies you when your Aave Health Factor drops below a threshold you set in the app.\n\n" +
     "Commands:\n" +
@@ -26,14 +27,17 @@ export const TELEGRAM_REPLIES = {
 
 export type BotCommand = { name: "start"; token?: string } | { name: "stop" } | { name: "help" } | { name: "unknown" };
 
+/** The whole first word, optionally addressed to the bot as Telegram does in groups ("/stop@tokenping_bot"). */
+const COMMAND_PATTERN = /^\/(start|stop|help)(?:@\w+)?$/;
+
 /**
- * Commands are case-sensitive; `/start <token>` takes the first whitespace-separated word after the command.
- * BUG(S3.21): matching is by prefix, so "/stopwatch" counts as /stop and "/startabc" as /start without a token.
+ * Commands are case-sensitive and match the first word exactly ("/stopwatch" is unknown); `/start <token>` takes
+ * the next whitespace-separated word as the token.
  */
 export const parseCommand = (text: string): BotCommand => {
-  const trimmed = text.trim();
-  if (trimmed.startsWith("/start")) return { name: "start", token: trimmed.split(/\s+/)[1] };
-  if (trimmed.startsWith("/stop")) return { name: "stop" };
-  if (trimmed.startsWith("/help")) return { name: "help" };
+  const [word, token] = text.trim().split(/\s+/);
+  const name = COMMAND_PATTERN.exec(word)?.[1];
+  if (name === "start") return { name, token };
+  if (name === "stop" || name === "help") return { name };
   return { name: "unknown" };
 };

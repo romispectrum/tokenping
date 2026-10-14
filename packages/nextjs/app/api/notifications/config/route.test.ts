@@ -12,25 +12,16 @@ vi.mock("~~/services/payments/checkAccess", () => ({ isAccessActive: vi.fn() }))
 const BASE_URL = "http://localhost/api/notifications/config";
 const NOW = "2026-10-14T09:05:07.000Z";
 
-// The GET cache is module state shared by every test in this file, so each test uses its own wallet.
-let walletCounter = 0;
-const nextWallet = () => {
-  walletCounter += 1;
-  const suffix = walletCounter.toString().padStart(4, "0");
-  return { lower: `0x${"ab".repeat(18)}${suffix}`, mixed: `0x${"AB".repeat(18)}${suffix}` };
-};
+const LOWER = `0x${"ab".repeat(20)}`;
+const MIXED = `0x${"AB".repeat(20)}`;
 
-const linkQuery = (uid: string) =>
-  `user_telegram_links.select("user_id, chat_id, username, linked_at").eq("user_id","${uid}").maybeSingle()`;
 const chainQuery = (uid: string, chainId: number) =>
-  `notification_configs.select("*").eq("user_id","${uid}").eq("chain_id",${chainId}).single()`;
+  `notification_configs.select("*").eq("user_id","${uid}").eq("chain_id",${chainId}).maybeSingle()`;
 const allQuery = (uid: string) => `notification_configs.select("*").eq("user_id","${uid}")`;
 const idLookup = (uid: string, chainId: number) =>
   `notification_configs.select("id").eq("user_id","${uid}").eq("chain_id",${chainId}).maybeSingle()`;
 const deleteQuery = (uid: string, chainId: number) =>
   `notification_configs.delete().eq("user_id","${uid}").eq("chain_id",${chainId})`;
-
-const NO_ROWS = { error: { message: "JSON object requested, multiple (or no) rows returned" } };
 
 const get = (params: Record<string, string>) => GET(new Request(`${BASE_URL}?${new URLSearchParams(params)}`));
 const bodyOf = (body: unknown) => (typeof body === "string" ? body : JSON.stringify(body));
@@ -38,15 +29,6 @@ const put = (body: unknown) => PUT(new Request(BASE_URL, { method: "PUT", body: 
 const del = (body: unknown) => DELETE(new Request(BASE_URL, { method: "DELETE", body: bodyOf(body) }));
 const read = async (res: Response) => ({ status: res.status, text: await res.text() });
 const json = (status: number, body: unknown) => ({ status, text: JSON.stringify(body) });
-
-const jsonParseMessage = (raw: string) => {
-  try {
-    JSON.parse(raw);
-    return "";
-  } catch (e) {
-    return (e as Error).message;
-  }
-};
 
 const storedRow = (overrides: Record<string, unknown> = {}) => ({
   id: "row-1",
@@ -60,10 +42,6 @@ const storedRow = (overrides: Record<string, unknown> = {}) => ({
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-02T00:00:00Z",
   ...overrides,
-});
-
-const telegramLink = (uid: string, overrides: Record<string, unknown> = {}) => ({
-  data: { user_id: uid, chat_id: "123456789", username: "alice_tg", linked_at: "2026-02-01T00:00:00Z", ...overrides },
 });
 
 beforeEach(() => {
@@ -89,22 +67,40 @@ describe("GET /api/notifications/config", () => {
     expect(fakeSupabase.queries).toHaveLength(0);
   });
 
-  it.each(["abc", "x1", "-", " "])("returns 400 for chainId %j (no leading digits)", async chainId => {
-    const { lower } = nextWallet();
-    const res = await get({ userId: lower, chainId });
-    expect(await read(res)).toEqual(json(400, { error: "Invalid chainId" }));
-    expect(fakeSupabase.queries).toHaveLength(0);
+  it.each(["abc", "x1", "-", " ", "1abc", "1.9", "0x10"])(
+    "returns 400 for the non-integer chainId %j",
+    async chainId => {
+      const res = await get({ userId: LOWER, chainId });
+      expect(await read(res)).toEqual(json(400, { error: "Invalid chainId" }));
+      expect(fakeSupabase.queries).toHaveLength(0);
+    },
+  );
+
+  it("never reads the Telegram link (it has its own endpoint)", async () => {
+    fakeSupabase.respond(({ table }) =>
+      table === "user_telegram_links" ? { data: { user_id: LOWER, chat_id: "123456789" } } : undefined,
+    );
+    await get({ userId: LOWER, chainId: "1" });
+    await get({ userId: LOWER });
+    expect(fakeSupabase.queries.map(({ table }) => table)).toEqual(["notification_configs", "notification_configs"]);
+  });
+
+  it("reads the DB on every request (no in-memory cache)", async () => {
+    fakeSupabase.respondByQuery({ [chainQuery(LOWER, 1)]: { data: storedRow({ chain_id: 1, email: "old@x.io" }) } });
+    await get({ userId: LOWER, chainId: "1" });
+
+    fakeSupabase.respondByQuery({ [chainQuery(LOWER, 1)]: { data: storedRow({ chain_id: 1, email: "new@x.io" }) } });
+    const res = await get({ userId: LOWER, chainId: "1" });
+
+    expect(JSON.parse((await read(res)).text).email).toBe("new@x.io");
+    expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 1), chainQuery(LOWER, 1)]);
   });
 
   describe("single chain", () => {
-    it("returns the lowercased user's row decorated with the user-level Telegram link", async () => {
-      const { lower, mixed } = nextWallet();
-      fakeSupabase.respondByQuery({
-        [linkQuery(lower)]: telegramLink(lower),
-        [chainQuery(lower, 8453)]: { data: storedRow() },
-      });
+    it("returns the lowercased user's row", async () => {
+      fakeSupabase.respondByQuery({ [chainQuery(LOWER, 8453)]: { data: storedRow() } });
 
-      const res = await get({ userId: mixed, chainId: "8453" });
+      const res = await get({ userId: MIXED, chainId: "8453" });
 
       expect(res.headers.get("content-type")).toBe("application/json");
       expect(await read(res)).toEqual({
@@ -116,19 +112,15 @@ describe("GET /api/notifications/config", () => {
           healthFactorThreshold: 1.8,
           email: "a@b.co",
           signalRecipient: "alice.42",
-          telegramChatId: "123456789",
-          telegramUsername: "alice_tg",
         }),
       });
-      // The Telegram lookup runs before the config query; no legacy fallback once the lowercased row is found.
-      expect(fakeSupabase.log()).toEqual([linkQuery(lower), chainQuery(lower, 8453)]);
+      // No legacy fallback once the lowercased row is found.
+      expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 8453)]);
     });
 
-    it("omits null optional fields, maps null services to [] and drops a null Telegram username", async () => {
-      const { lower } = nextWallet();
+    it("omits null optional fields and maps null services to []", async () => {
       fakeSupabase.respondByQuery({
-        [linkQuery(lower)]: telegramLink(lower, { username: null }),
-        [chainQuery(lower, 1)]: {
+        [chainQuery(LOWER, 1)]: {
           data: storedRow({
             chain_id: 1,
             enabled: false,
@@ -140,44 +132,20 @@ describe("GET /api/notifications/config", () => {
         },
       });
 
-      const res = await get({ userId: lower, chainId: "1" });
+      const res = await get({ userId: LOWER, chainId: "1" });
 
       expect(await read(res)).toEqual({
         status: 200,
-        text: '{"chainId":1,"enabled":false,"services":[],"healthFactorThreshold":2,"telegramChatId":"123456789"}',
+        text: '{"chainId":1,"enabled":false,"services":[],"healthFactorThreshold":2}',
       });
     });
 
-    it("keeps an empty Telegram username (only null is dropped)", async () => {
-      const { lower } = nextWallet();
+    it("falls back to the trimmed (legacy checksummed) user id when the lowercased lookup finds no row", async () => {
       fakeSupabase.respondByQuery({
-        [linkQuery(lower)]: telegramLink(lower, { username: "" }),
-        [chainQuery(lower, 1)]: { data: storedRow({ chain_id: 1 }) },
+        [chainQuery(MIXED, 10)]: { data: storedRow({ chain_id: 10, services: ["signal"] }) },
       });
 
-      const res = await get({ userId: lower, chainId: "1" });
-
-      expect(JSON.parse((await read(res)).text)).toMatchObject({ telegramChatId: "123456789", telegramUsername: "" });
-    });
-
-    it("omits both Telegram fields when the user has no link", async () => {
-      const { lower } = nextWallet();
-      fakeSupabase.respondByQuery({ [chainQuery(lower, 1)]: { data: storedRow({ chain_id: 1 }) } });
-
-      const res = await get({ userId: lower, chainId: "1" });
-
-      expect(JSON.parse((await read(res)).text)).not.toHaveProperty("telegramChatId");
-      expect(fakeSupabase.log()).toEqual([linkQuery(lower), chainQuery(lower, 1)]);
-    });
-
-    it("falls back to the trimmed (legacy checksummed) user id when the lowercased lookup misses", async () => {
-      const { lower, mixed } = nextWallet();
-      fakeSupabase.respondByQuery({
-        [chainQuery(lower, 10)]: NO_ROWS,
-        [chainQuery(mixed, 10)]: { data: storedRow({ chain_id: 10, services: ["signal"] }) },
-      });
-
-      const res = await get({ userId: `  ${mixed}  `, chainId: "10" });
+      const res = await get({ userId: `  ${MIXED}  `, chainId: "10" });
 
       expect(JSON.parse((await read(res)).text)).toEqual({
         chainId: 10,
@@ -187,77 +155,54 @@ describe("GET /api/notifications/config", () => {
         email: "a@b.co",
         signalRecipient: "alice.42",
       });
-      expect(fakeSupabase.log()).toEqual([linkQuery(lower), chainQuery(lower, 10), chainQuery(mixed, 10)]);
+      expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 10), chainQuery(MIXED, 10)]);
     });
 
-    it("also falls back when the lowercased lookup returns no data without an error", async () => {
-      const { lower, mixed } = nextWallet();
-      fakeSupabase.respondByQuery({ [chainQuery(mixed, 10)]: { data: storedRow({ chain_id: 10 }) } });
-
-      const res = await get({ userId: mixed, chainId: "10" });
-
-      expect(JSON.parse((await read(res)).text)).toMatchObject({ chainId: 10 });
-      expect(fakeSupabase.log()).toEqual([linkQuery(lower), chainQuery(lower, 10), chainQuery(mixed, 10)]);
+    it("returns null when neither user id form has a row", async () => {
+      expect(await read(await get({ userId: MIXED, chainId: "10" }))).toEqual({ status: 200, text: "null" });
+      expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 10), chainQuery(MIXED, 10)]);
     });
 
-    it("returns null when the legacy fallback misses too", async () => {
-      const { lower, mixed } = nextWallet();
-      fakeSupabase.respondByQuery({ [chainQuery(lower, 10)]: NO_ROWS, [chainQuery(mixed, 10)]: NO_ROWS });
-
-      const res = await get({ userId: mixed, chainId: "10" });
-
-      expect(await read(res)).toEqual({ status: 200, text: "null" });
+    it("does not query the legacy form for an already-lowercase user id", async () => {
+      expect(await read(await get({ userId: LOWER, chainId: "1" }))).toEqual({ status: 200, text: "null" });
+      expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 1)]);
     });
 
-    it("does not fall back for an already-lowercase user id and caches the null result", async () => {
-      const { lower } = nextWallet();
-      // BUG(B3.2): a real query error is indistinguishable from "no row" and is cached as null for 15 minutes.
-      fakeSupabase.respondByQuery({ [chainQuery(lower, 1)]: { error: { message: "connection refused" } } });
+    it("returns 500 with the Supabase message when the lookup fails, without falling back", async () => {
+      fakeSupabase.respondByQuery({
+        [chainQuery(LOWER, 1)]: { error: { message: "connection refused" } },
+        [chainQuery(MIXED, 1)]: { data: storedRow({ chain_id: 1 }) },
+      });
 
-      expect(await read(await get({ userId: lower, chainId: "1" }))).toEqual({ status: 200, text: "null" });
-      expect(fakeSupabase.log()).toEqual([linkQuery(lower), chainQuery(lower, 1)]);
+      expect(await read(await get({ userId: MIXED, chainId: "1" }))).toEqual(
+        json(500, { error: "connection refused" }),
+      );
+      expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 1)]);
+    });
 
-      fakeSupabase.respondByQuery({ [chainQuery(lower, 1)]: { data: storedRow({ chain_id: 1 }) } });
-      expect(await read(await get({ userId: lower, chainId: "1" }))).toEqual({ status: 200, text: "null" });
-      expect(fakeSupabase.queries).toHaveLength(2);
+    it("returns 500 when the legacy lookup fails", async () => {
+      fakeSupabase.respondByQuery({ [chainQuery(MIXED, 1)]: { error: { message: "timeout" } } });
+      expect(await read(await get({ userId: MIXED, chainId: "1" }))).toEqual(json(500, { error: "timeout" }));
     });
 
     it.each([
-      ["1abc", 1],
-      ["1.9", 1],
-      ["0x10", 0],
       [" 42", 42],
       ["-5", -5],
-    ])("parses chainId %j with parseInt as %d", async (chainId, parsed) => {
-      // BUG(B3.15): parseInt accepts trailing garbage, so "1abc" is treated (and cached) as chain 1.
-      const { lower } = nextWallet();
-      fakeSupabase.respondByQuery({ [chainQuery(lower, parsed)]: { data: storedRow({ chain_id: parsed }) } });
+      ["007", 7],
+    ])("parses the integer chainId %j as %d", async (chainId, parsed) => {
+      fakeSupabase.respondByQuery({ [chainQuery(LOWER, parsed)]: { data: storedRow({ chain_id: parsed }) } });
 
-      const res = await get({ userId: lower, chainId });
+      const res = await get({ userId: LOWER, chainId });
 
       expect(JSON.parse((await read(res)).text)).toMatchObject({ chainId: parsed });
-      expect(fakeSupabase.log()).toEqual([linkQuery(lower), chainQuery(lower, parsed)]);
-    });
-
-    it("serves the cached response for the parsed chain id without any DB call", async () => {
-      const { lower, mixed } = nextWallet();
-      fakeSupabase.respondByQuery({ [chainQuery(lower, 1)]: { data: storedRow({ chain_id: 1 }) } });
-      const first = await read(await get({ userId: lower, chainId: "1abc" }));
-
-      fakeSupabase.reset();
-      const second = await read(await get({ userId: mixed, chainId: "1" }));
-
-      expect(second).toEqual(first);
-      expect(fakeSupabase.queries).toHaveLength(0);
+      expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, parsed)]);
     });
   });
 
   describe("all chains", () => {
-    it("returns configs keyed by chain id, each decorated with the Telegram link", async () => {
-      const { lower } = nextWallet();
+    it("returns configs keyed by chain id", async () => {
       fakeSupabase.respondByQuery({
-        [linkQuery(lower)]: telegramLink(lower),
-        [allQuery(lower)]: {
+        [allQuery(LOWER)]: {
           data: [
             storedRow({ chain_id: 8453, email: null }),
             storedRow({ chain_id: 1, services: ["signal"], health_factor_threshold: "1.10", signal_recipient: null }),
@@ -265,110 +210,84 @@ describe("GET /api/notifications/config", () => {
         },
       });
 
-      const res = await get({ userId: lower });
+      const res = await get({ userId: LOWER });
 
       expect(await read(res)).toEqual({
         status: 200,
         text: JSON.stringify({
-          1: {
-            chainId: 1,
-            enabled: true,
-            services: ["signal"],
-            healthFactorThreshold: 1.1,
-            email: "a@b.co",
-            telegramChatId: "123456789",
-            telegramUsername: "alice_tg",
-          },
+          1: { chainId: 1, enabled: true, services: ["signal"], healthFactorThreshold: 1.1, email: "a@b.co" },
           8453: {
             chainId: 8453,
             enabled: true,
             services: ["email", "telegram"],
             healthFactorThreshold: 1.8,
             signalRecipient: "alice.42",
-            telegramChatId: "123456789",
-            telegramUsername: "alice_tg",
           },
         }),
       });
-      expect(fakeSupabase.log()).toEqual([linkQuery(lower), allQuery(lower)]);
+      expect(fakeSupabase.log()).toEqual([allQuery(LOWER)]);
     });
 
     it("treats an empty chainId like a missing one", async () => {
-      const { lower } = nextWallet();
-      const res = await get({ userId: lower, chainId: "" });
+      const res = await get({ userId: LOWER, chainId: "" });
       expect(await read(res)).toEqual({ status: 200, text: "{}" });
-      expect(fakeSupabase.log()).toEqual([linkQuery(lower), allQuery(lower)]);
+      expect(fakeSupabase.log()).toEqual([allQuery(LOWER)]);
     });
 
     it("keeps the last row when two rows share a chain id", async () => {
-      const { lower } = nextWallet();
       fakeSupabase.respondByQuery({
-        [allQuery(lower)]: {
+        [allQuery(LOWER)]: {
           data: [storedRow({ chain_id: 1, email: "first@x.io" }), storedRow({ chain_id: 1, email: "last@x.io" })],
         },
       });
-      const res = await get({ userId: lower });
+      const res = await get({ userId: LOWER });
       expect(JSON.parse((await read(res)).text)[1].email).toBe("last@x.io");
     });
 
     it("uses the legacy rows when the lowercased query returns none", async () => {
-      const { lower, mixed } = nextWallet();
       fakeSupabase.respondByQuery({
-        [allQuery(lower)]: { data: [] },
-        [allQuery(mixed)]: { data: [storedRow({ chain_id: 137 })] },
+        [allQuery(LOWER)]: { data: [] },
+        [allQuery(MIXED)]: { data: [storedRow({ chain_id: 137 })] },
       });
 
-      const res = await get({ userId: mixed });
+      const res = await get({ userId: MIXED });
 
       expect(Object.keys(JSON.parse((await read(res)).text))).toEqual(["137"]);
-      expect(fakeSupabase.log()).toEqual([linkQuery(lower), allQuery(lower), allQuery(mixed)]);
+      expect(fakeSupabase.log()).toEqual([allQuery(LOWER), allQuery(MIXED)]);
     });
 
-    it("keeps the lowercased error result when the legacy query is empty, returning and caching {}", async () => {
-      const { lower, mixed } = nextWallet();
+    it("returns {} when neither user id form has rows", async () => {
+      fakeSupabase.respondByQuery({ [allQuery(LOWER)]: { data: [] }, [allQuery(MIXED)]: { data: [] } });
+      expect(await read(await get({ userId: MIXED }))).toEqual({ status: 200, text: "{}" });
+    });
+
+    it("returns 500 with the Supabase message when the query fails, without the legacy query", async () => {
       fakeSupabase.respondByQuery({
-        [allQuery(lower)]: { error: { message: "timeout" } },
-        [allQuery(mixed)]: { data: [] },
+        [allQuery(LOWER)]: { error: { message: "timeout" } },
+        [allQuery(MIXED)]: { data: [storedRow({ chain_id: 137 })] },
       });
-
-      expect(await read(await get({ userId: mixed }))).toEqual({ status: 200, text: "{}" });
-
-      fakeSupabase.reset();
-      expect(await read(await get({ userId: mixed }))).toEqual({ status: 200, text: "{}" });
-      expect(fakeSupabase.queries).toHaveLength(0);
+      expect(await read(await get({ userId: MIXED }))).toEqual(json(500, { error: "timeout" }));
+      expect(fakeSupabase.log()).toEqual([allQuery(LOWER)]);
     });
 
-    it("does not query the legacy form for an already-lowercase user id", async () => {
-      const { lower } = nextWallet();
-      fakeSupabase.respondByQuery({ [allQuery(lower)]: { error: { message: "timeout" } } });
-      expect(await read(await get({ userId: lower }))).toEqual({ status: 200, text: "{}" });
-      expect(fakeSupabase.log()).toEqual([linkQuery(lower), allQuery(lower)]);
-    });
-
-    it("caches per chain key separately from the all-chains key", async () => {
-      const { lower } = nextWallet();
-      await get({ userId: lower });
-      await get({ userId: lower, chainId: "1" });
-      await get({ userId: lower });
-      await get({ userId: lower, chainId: "1" });
-      expect(fakeSupabase.log()).toEqual([linkQuery(lower), allQuery(lower), linkQuery(lower), chainQuery(lower, 1)]);
+    it("returns 500 when the legacy query fails", async () => {
+      fakeSupabase.respondByQuery({ [allQuery(MIXED)]: { error: { message: "legacy timeout" } } });
+      expect(await read(await get({ userId: MIXED }))).toEqual(json(500, { error: "legacy timeout" }));
     });
   });
 
   it("returns 500 with the thrown error message", async () => {
-    const { lower } = nextWallet();
     fakeSupabase.respond(() => {
       throw new Error("db down");
     });
-    expect(await read(await get({ userId: lower }))).toEqual(json(500, { error: "db down" }));
+    expect(await read(await get({ userId: LOWER }))).toEqual(json(500, { error: "db down" }));
   });
 
   it("returns 500 'Unknown error' for a non-Error throw", async () => {
-    const { lower } = nextWallet();
     fakeSupabase.respond(() => {
       throw "nope";
     });
-    expect(await read(await get({ userId: lower, chainId: "1" }))).toEqual(json(500, { error: "Unknown error" }));
+    expect(await read(await get({ userId: LOWER, chainId: "1" }))).toEqual(json(500, { error: "Unknown error" }));
   });
 });
 
@@ -388,8 +307,9 @@ describe("PUT /api/notifications/config", () => {
   const updateQuery = (row: unknown, id: string) =>
     `notification_configs.update(${JSON.stringify(row)}).eq("id","${id}")`;
 
-  it("returns 500 with the JSON parser message for a malformed body", async () => {
-    expect(await read(await put("{"))).toEqual(json(500, { error: jsonParseMessage("{") }));
+  it("returns 400 for a malformed body, like the other routes", async () => {
+    expect(await read(await put("{"))).toEqual(json(400, { error: "Missing or invalid userId" }));
+    expect(fakeSupabase.queries).toHaveLength(0);
   });
 
   it("returns 500 for a JSON null body", async () => {
@@ -412,29 +332,26 @@ describe("PUT /api/notifications/config", () => {
     ["null", { chainId: null }],
     ["string", { chainId: "1" }],
   ])("returns 400 for a %s chainId", async (_label, extra) => {
-    const { lower } = nextWallet();
-    expect(await read(await put({ userId: lower, ...extra }))).toEqual(
+    expect(await read(await put({ userId: LOWER, ...extra }))).toEqual(
       json(400, { error: "Missing or invalid chainId" }),
     );
   });
 
   it("returns 403 without touching the DB when access is inactive, checking the trimmed raw-case id", async () => {
-    const { mixed } = nextWallet();
     vi.mocked(isAccessActive).mockResolvedValue(false);
 
-    const res = await put({ userId: ` ${mixed} `, chainId: 1 });
+    const res = await put({ userId: ` ${MIXED} `, chainId: 1 });
 
     expect(await read(res)).toEqual(json(403, { error: "Active paid access required to update notification config" }));
-    expect(isAccessActive).toHaveBeenCalledWith(mixed);
+    expect(isAccessActive).toHaveBeenCalledWith(MIXED);
     expect(fakeSupabase.queries).toHaveLength(0);
   });
 
   it("updates the existing lowercased row in place, still looking up the legacy form", async () => {
-    const { lower, mixed } = nextWallet();
-    fakeSupabase.respondByQuery({ [idLookup(lower, 8453)]: { data: { id: "row-lower" } } });
+    fakeSupabase.respondByQuery({ [idLookup(LOWER, 8453)]: { data: { id: "row-lower" } } });
 
     const res = await put({
-      userId: mixed,
+      userId: MIXED,
       chainId: 8453,
       enabled: true,
       services: ["email", "telegram"],
@@ -444,126 +361,130 @@ describe("PUT /api/notifications/config", () => {
     });
 
     expect(await read(res)).toEqual(json(200, { success: true }));
-    const row = expectedRow(lower, {
+    const row = expectedRow(LOWER, {
       services: ["email", "telegram"],
       health_factor_threshold: 1.8,
       email: "a@b.co",
       signal_recipient: "alice.42",
     });
-    expect(fakeSupabase.log()).toEqual([idLookup(lower, 8453), idLookup(mixed, 8453), updateQuery(row, "row-lower")]);
+    expect(fakeSupabase.log()).toEqual([idLookup(LOWER, 8453), idLookup(MIXED, 8453), updateQuery(row, "row-lower")]);
   });
 
   it("updates the legacy row (rewriting user_id to lowercase) when only it exists", async () => {
-    const { lower, mixed } = nextWallet();
-    fakeSupabase.respondByQuery({ [idLookup(mixed, 8453)]: { data: { id: "row-legacy" } } });
+    fakeSupabase.respondByQuery({ [idLookup(MIXED, 8453)]: { data: { id: "row-legacy" } } });
 
-    await put({ userId: mixed, chainId: 8453 });
+    await put({ userId: MIXED, chainId: 8453 });
 
-    expect(fakeSupabase.log().at(-1)).toBe(updateQuery(expectedRow(lower), "row-legacy"));
+    expect(fakeSupabase.log().at(-1)).toBe(updateQuery(expectedRow(LOWER), "row-legacy"));
   });
 
   it("prefers the lowercased row when both forms exist", async () => {
-    const { lower, mixed } = nextWallet();
     fakeSupabase.respondByQuery({
-      [idLookup(lower, 8453)]: { data: { id: "row-lower" } },
-      [idLookup(mixed, 8453)]: { data: { id: "row-legacy" } },
+      [idLookup(LOWER, 8453)]: { data: { id: "row-lower" } },
+      [idLookup(MIXED, 8453)]: { data: { id: "row-legacy" } },
     });
 
-    await put({ userId: mixed, chainId: 8453 });
+    await put({ userId: MIXED, chainId: 8453 });
 
-    expect(fakeSupabase.log().at(-1)).toBe(updateQuery(expectedRow(lower), "row-lower"));
+    expect(fakeSupabase.log().at(-1)).toBe(updateQuery(expectedRow(LOWER), "row-lower"));
   });
 
   it("inserts when no row exists, with a single lookup for an already-lowercase id", async () => {
-    const { lower } = nextWallet();
-
-    const res = await put({ userId: lower, chainId: 8453 });
+    const res = await put({ userId: LOWER, chainId: 8453 });
 
     expect(await read(res)).toEqual(json(200, { success: true }));
-    expect(fakeSupabase.log()).toEqual([idLookup(lower, 8453), insertQuery(expectedRow(lower))]);
+    expect(fakeSupabase.log()).toEqual([idLookup(LOWER, 8453), insertQuery(expectedRow(LOWER))]);
   });
 
-  it("ignores lookup errors and inserts", async () => {
-    const { lower } = nextWallet();
-    fakeSupabase.respondByQuery({ [idLookup(lower, 8453)]: { error: { message: "boom" } } });
-    await put({ userId: lower, chainId: 8453 });
-    expect(fakeSupabase.log().at(-1)).toBe(insertQuery(expectedRow(lower)));
+  it("returns 502 with the lookup error instead of inserting a duplicate row", async () => {
+    fakeSupabase.respondByQuery({ [idLookup(LOWER, 8453)]: { error: { message: "boom" } } });
+    expect(await read(await put({ userId: LOWER, chainId: 8453 }))).toEqual(json(502, { error: "boom" }));
+    expect(fakeSupabase.log()).toEqual([idLookup(LOWER, 8453)]);
+  });
+
+  it("returns 502 when the legacy-form lookup fails", async () => {
+    fakeSupabase.respondByQuery({ [idLookup(MIXED, 8453)]: { error: { message: "legacy boom" } } });
+    expect(await read(await put({ userId: MIXED, chainId: 8453 }))).toEqual(json(502, { error: "legacy boom" }));
+    expect(fakeSupabase.log().some(query => query.includes(".insert("))).toBe(false);
   });
 
   it("returns 502 with the Supabase message when the update fails", async () => {
-    const { lower } = nextWallet();
     fakeSupabase.respond((_query, formatted) => {
-      if (formatted === idLookup(lower, 8453)) return { data: { id: "row-1" } };
+      if (formatted === idLookup(LOWER, 8453)) return { data: { id: "row-1" } };
       if (formatted.includes(".update(")) return { error: { message: "update failed" } };
     });
-    expect(await read(await put({ userId: lower, chainId: 8453 }))).toEqual(json(502, { error: "update failed" }));
+    expect(await read(await put({ userId: LOWER, chainId: 8453 }))).toEqual(json(502, { error: "update failed" }));
   });
 
   it("returns 502 with the Supabase message when the insert fails", async () => {
-    const { lower } = nextWallet();
     fakeSupabase.respond((_query, formatted) =>
       formatted.includes(".insert(") ? { error: { message: "duplicate key" } } : undefined,
     );
-    expect(await read(await put({ userId: lower, chainId: 8453 }))).toEqual(json(502, { error: "duplicate key" }));
+    expect(await read(await put({ userId: LOWER, chainId: 8453 }))).toEqual(json(502, { error: "duplicate key" }));
   });
 
   it.each([
     ["enabled false is kept", { enabled: false }, { enabled: false }],
-    ["non-array services become []", { services: "email" }, { services: [] }],
-    ["threshold 0 is kept (?? not ||)", { healthFactorThreshold: 0 }, { health_factor_threshold: 0 }],
-    ["string threshold is stored as is", { healthFactorThreshold: "2" }, { health_factor_threshold: "2" }],
+    ["missing services become []", {}, { services: [] }],
+    ["threshold 0 is clamped to the minimum", { healthFactorThreshold: 0 }, { health_factor_threshold: 1.1 }],
+    ["threshold 15 is clamped to the maximum", { healthFactorThreshold: 15 }, { health_factor_threshold: 10 }],
     ["null threshold defaults", { healthFactorThreshold: null }, { health_factor_threshold: 1.5 }],
-    ["unknown services pass through", { services: ["sms"] }, { services: ["sms"] }],
-    ["blank email becomes null", { email: "   " }, { email: null }],
-    ["null email stays null", { email: null }, { email: null }],
-    ["numeric email is stringified", { email: 42 }, { email: "42" }],
-    ["email 0 is stringified (null check, not falsy)", { email: 0 }, { email: "0" }],
-    ["email false is stringified (null check, not falsy)", { email: false }, { email: "false" }],
-    ["empty email becomes null", { email: "" }, { email: null }],
-    ["signal 0 is stringified (null check, not falsy)", { signalRecipient: 0 }, { signal_recipient: "0" }],
-    ["signal false is stringified", { signalRecipient: false }, { signal_recipient: "false" }],
-    ["signal is normalized once", { signalRecipient: "@ @ alice.42" }, { signal_recipient: " @ alice.42" }],
-    ["u:@ prefix is stripped", { signalRecipient: " u:@alice.42 " }, { signal_recipient: "alice.42" }],
-    // BUG(B3.1): the character class strips any leading run of "u", ":" and "@".
-    ["leading u is stripped too", { signalRecipient: "ursula.42" }, { signal_recipient: "rsula.42" }],
-    ["prefix-only signal becomes null", { signalRecipient: "u:" }, { signal_recipient: null }],
-    ["blank signal becomes null", { signalRecipient: "  " }, { signal_recipient: null }],
-  ])("normalizes the stored row: %s", async (_label, extra, expected) => {
-    const { lower } = nextWallet();
-    await put({ userId: lower, chainId: 8453, ...extra });
-    expect(fakeSupabase.log().at(-1)).toBe(insertQuery(expectedRow(lower, expected)));
+    [
+      "a selected email is trimmed",
+      { services: ["email"], email: " a@b.co " },
+      { services: ["email"], email: "a@b.co" },
+    ],
+    [
+      "a selected Signal username keeps a leading u (B3.1)",
+      { services: ["signal"], signalRecipient: "ursula.42" },
+      { services: ["signal"], signal_recipient: "ursula.42" },
+    ],
+    [
+      "a selected Signal username loses its u:@ prefix",
+      { services: ["signal"], signalRecipient: " u:@alice.42 " },
+      { services: ["signal"], signal_recipient: "alice.42" },
+    ],
+    ["an unselected blank email becomes null", { email: "   " }, { email: null }],
+    ["an unselected numeric email is stringified", { email: 42 }, { email: "42" }],
+    [
+      "an unselected Signal value is normalized once",
+      { signalRecipient: "@ @ alice.42" },
+      { signal_recipient: " @ alice.42" },
+    ],
+    ["an unselected prefix-only Signal value becomes null", { signalRecipient: "u:" }, { signal_recipient: null }],
+  ])("stores the normalized row: %s", async (_label, extra, expected) => {
+    expect(await read(await put({ userId: LOWER, chainId: 8453, ...extra }))).toEqual(json(200, { success: true }));
+    expect(fakeSupabase.log().at(-1)).toBe(insertQuery(expectedRow(LOWER, expected)));
   });
 
-  it("invalidates every cached GET entry of the lowercased user", async () => {
-    const { lower, mixed } = nextWallet();
-    await get({ userId: lower });
-    await get({ userId: lower, chainId: "1" });
-    fakeSupabase.reset();
-
-    await put({ userId: mixed, chainId: 1 });
-    fakeSupabase.reset();
-    await get({ userId: lower });
-    await get({ userId: lower, chainId: "1" });
-
-    expect(fakeSupabase.log()).toEqual([linkQuery(lower), allQuery(lower), linkQuery(lower), chainQuery(lower, 1)]);
-  });
-
-  it("does not invalidate the cache when the write fails", async () => {
-    const { lower } = nextWallet();
-    await get({ userId: lower });
-    fakeSupabase.respond((_query, formatted) =>
-      formatted.includes(".insert(") ? { error: { message: "x" } } : undefined,
-    );
-    await put({ userId: lower, chainId: 1 });
-    fakeSupabase.reset();
-    await get({ userId: lower });
+  it.each([
+    ["a string services", { services: "email" }, "Invalid services: expected an array of email, signal, telegram"],
+    ["an unknown service", { services: ["sms"] }, "Invalid services: expected an array of email, signal, telegram"],
+    ["a string threshold", { healthFactorThreshold: "2" }, "Invalid healthFactorThreshold: expected a finite number"],
+    [
+      "a selected malformed email",
+      { services: ["email"], email: "a@b" },
+      "Invalid email address for email notifications",
+    ],
+    [
+      "a selected malformed Signal username",
+      { services: ["signal"], signalRecipient: "@ alice.42" },
+      "Invalid Signal username for Signal notifications. Expected format: alice.42",
+    ],
+  ])("returns 400 for %s before the access check or any DB call", async (_label, extra, error) => {
+    expect(await read(await put({ userId: LOWER, chainId: 8453, ...extra }))).toEqual(json(400, { error }));
+    expect(isAccessActive).not.toHaveBeenCalled();
     expect(fakeSupabase.queries).toHaveLength(0);
   });
 
+  it("returns 400 for a threshold that JSON parses as Infinity", async () => {
+    const res = await put(`{"userId":"${LOWER}","chainId":8453,"healthFactorThreshold":1e400}`);
+    expect(await read(res)).toEqual(json(400, { error: "Invalid healthFactorThreshold: expected a finite number" }));
+  });
+
   it("returns 500 when the access check throws", async () => {
-    const { lower } = nextWallet();
     vi.mocked(isAccessActive).mockRejectedValue(new Error("rpc down"));
-    expect(await read(await put({ userId: lower, chainId: 1 }))).toEqual(json(500, { error: "rpc down" }));
+    expect(await read(await put({ userId: LOWER, chainId: 1 }))).toEqual(json(500, { error: "rpc down" }));
   });
 });
 
@@ -582,53 +503,38 @@ describe("DELETE /api/notifications/config", () => {
     ["missing", {}],
     ["string", { chainId: "1" }],
   ])("returns 400 for a %s chainId", async (_label, extra) => {
-    const { lower } = nextWallet();
-    expect(await read(await del({ userId: lower, ...extra }))).toEqual(
+    expect(await read(await del({ userId: LOWER, ...extra }))).toEqual(
       json(400, { error: "Missing or invalid chainId" }),
     );
   });
 
   it("returns 403 when access is inactive", async () => {
-    const { mixed } = nextWallet();
     vi.mocked(isAccessActive).mockResolvedValue(false);
-    expect(await read(await del({ userId: mixed, chainId: 1 }))).toEqual(
+    expect(await read(await del({ userId: MIXED, chainId: 1 }))).toEqual(
       json(403, { error: "Active paid access required to delete notification config" }),
     );
-    expect(isAccessActive).toHaveBeenCalledWith(mixed);
+    expect(isAccessActive).toHaveBeenCalledWith(MIXED);
     expect(fakeSupabase.queries).toHaveLength(0);
   });
 
   it("deletes both the lowercased and the legacy row", async () => {
-    const { lower, mixed } = nextWallet();
-    expect(await read(await del({ userId: mixed, chainId: 10 }))).toEqual(json(200, { success: true }));
-    expect(fakeSupabase.log()).toEqual([deleteQuery(lower, 10), deleteQuery(mixed, 10)]);
+    expect(await read(await del({ userId: MIXED, chainId: 10 }))).toEqual(json(200, { success: true }));
+    expect(fakeSupabase.log()).toEqual([deleteQuery(LOWER, 10), deleteQuery(MIXED, 10)]);
   });
 
   it("deletes once for an already-lowercase id", async () => {
-    const { lower } = nextWallet();
-    await del({ userId: lower, chainId: 10 });
-    expect(fakeSupabase.log()).toEqual([deleteQuery(lower, 10)]);
+    await del({ userId: LOWER, chainId: 10 });
+    expect(fakeSupabase.log()).toEqual([deleteQuery(LOWER, 10)]);
   });
 
   it("returns 502 on the first delete error without running the second", async () => {
-    const { lower, mixed } = nextWallet();
-    fakeSupabase.respondByQuery({ [deleteQuery(lower, 10)]: { error: { message: "first failed" } } });
-    expect(await read(await del({ userId: mixed, chainId: 10 }))).toEqual(json(502, { error: "first failed" }));
-    expect(fakeSupabase.log()).toEqual([deleteQuery(lower, 10)]);
+    fakeSupabase.respondByQuery({ [deleteQuery(LOWER, 10)]: { error: { message: "first failed" } } });
+    expect(await read(await del({ userId: MIXED, chainId: 10 }))).toEqual(json(502, { error: "first failed" }));
+    expect(fakeSupabase.log()).toEqual([deleteQuery(LOWER, 10)]);
   });
 
   it("returns 502 when the legacy delete fails", async () => {
-    const { mixed } = nextWallet();
-    fakeSupabase.respondByQuery({ [deleteQuery(mixed, 10)]: { error: { message: "second failed" } } });
-    expect(await read(await del({ userId: mixed, chainId: 10 }))).toEqual(json(502, { error: "second failed" }));
-  });
-
-  it("invalidates the user's cached GET entries", async () => {
-    const { lower } = nextWallet();
-    await get({ userId: lower });
-    await del({ userId: lower, chainId: 1 });
-    fakeSupabase.reset();
-    await get({ userId: lower });
-    expect(fakeSupabase.log()).toEqual([linkQuery(lower), allQuery(lower)]);
+    fakeSupabase.respondByQuery({ [deleteQuery(MIXED, 10)]: { error: { message: "second failed" } } });
+    expect(await read(await del({ userId: MIXED, chainId: 10 }))).toEqual(json(502, { error: "second failed" }));
   });
 });

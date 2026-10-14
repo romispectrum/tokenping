@@ -1,9 +1,7 @@
 import { Resend } from "resend";
 import "server-only";
+import { getErrorMessage } from "~~/utils/errors";
 import { isValidEmail } from "~~/utils/notifications/validation";
-
-// BUG(B3.0): created at module load, and the SDK throws when RESEND_API_KEY is unset, so importing this module fails.
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 const DEFAULT_FROM = "Tokenping <onboarding@resend.dev>";
 const NO_CONTENT_HTML = "<p>No content.</p>";
@@ -42,19 +40,25 @@ export async function sendEmail({
     return { success: false, error: "Invalid email address" };
   }
 
-  if (!isEmailConfigured()) {
+  // The SDK constructor throws without a key, so the client is only created once the key is known to be set.
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
     return { success: false, error: "Email service not configured (RESEND_API_KEY missing)" };
   }
 
-  const { data, error } = await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL ?? DEFAULT_FROM,
-    to: [trimmedTo],
-    subject,
-    ...buildEmailBody(text, html),
-  });
+  try {
+    const { data, error } = await new Resend(apiKey).emails.send({
+      from: process.env.RESEND_FROM_EMAIL ?? DEFAULT_FROM,
+      to: [trimmedTo],
+      subject,
+      ...buildEmailBody(text, html),
+    });
 
-  if (error) {
-    return { success: false, error: error.message ?? "Failed to send email" };
+    if (error) {
+      return { success: false, error: error.message ?? "Failed to send email" };
+    }
+    return { success: true, id: data?.id };
+  } catch (e) {
+    return { success: false, error: getErrorMessage(e, "Failed to send email") };
   }
-  return { success: true, id: data?.id };
 }

@@ -1,10 +1,9 @@
 import "server-only";
-import { DEFAULT_HEALTH_FACTOR_THRESHOLD } from "~~/constants/notifications";
+import type { ConfigValues } from "~~/services/notifications/configInput";
+import { selectAllPages } from "~~/services/supabase/selectAllPages";
 import { getSupabaseServerClient } from "~~/services/supabase/supabaseServer";
-import type { UserTelegramLink } from "~~/services/telegram/telegramLinks";
 import type { NotificationConfig } from "~~/types/notifications";
 import { normalizeAddress } from "~~/utils/address";
-import { normalizeSignalUsername } from "~~/utils/notifications/validation";
 
 export type NotificationConfigRow = {
   id: string;
@@ -25,17 +24,8 @@ export type EnabledConfigRow = Pick<
   "user_id" | "chain_id" | "health_factor_threshold" | "email" | "signal_recipient" | "services"
 >;
 
-/** Services are not validated on write, so stored rows can hold ids outside NotificationService. */
+/** Rows written before services were validated can hold ids outside NotificationService. */
 export type NotificationConfigResponse = Omit<NotificationConfig, "services"> & { services: string[] };
-
-/** The PUT body fields that make up a stored config. Unvalidated: any JSON value can arrive in each. */
-export type ConfigInput = {
-  enabled?: unknown;
-  services?: unknown;
-  healthFactorThreshold?: unknown;
-  email?: unknown;
-  signalRecipient?: unknown;
-};
 
 type ConfigWriteRow = ReturnType<typeof toConfigRow>;
 
@@ -52,76 +42,75 @@ export const userIdForms = (userId: string) => {
 export type UserIdForms = ReturnType<typeof userIdForms>;
 
 /** Optional fields map null to undefined so they are omitted from the JSON response. */
-export const rowToConfig = (
-  row: NotificationConfigRow,
-  telegramLink: UserTelegramLink | null,
-): NotificationConfigResponse => ({
+export const rowToConfig = (row: NotificationConfigRow): NotificationConfigResponse => ({
   chainId: row.chain_id,
   enabled: row.enabled,
   services: row.services ?? [],
   healthFactorThreshold: parseFloat(String(row.health_factor_threshold)),
   email: row.email ?? undefined,
   signalRecipient: row.signal_recipient ?? undefined,
-  telegramChatId: telegramLink?.chatId,
-  telegramUsername: telegramLink?.username ?? undefined,
 });
 
-/**
- * Defaults: enabled, no services, the default threshold; blank email / Signal username are stored as null.
- * Other values are stored as sent (a string threshold stays a string), and email / Signal username are stringified.
- */
-export const toConfigRow = (uid: string, chainId: number, input: ConfigInput, now = new Date()) => ({
+export const toConfigRow = (uid: string, chainId: number, values: ConfigValues, now = new Date()) => ({
   user_id: uid,
   chain_id: chainId,
-  enabled: input.enabled ?? true,
-  services: Array.isArray(input.services) ? input.services : [],
-  health_factor_threshold: input.healthFactorThreshold ?? DEFAULT_HEALTH_FACTOR_THRESHOLD,
-  email: input.email == null ? null : String(input.email).trim() || null,
-  signal_recipient:
-    input.signalRecipient == null ? null : normalizeSignalUsername(String(input.signalRecipient)) || null,
+  enabled: values.enabled,
+  services: values.services,
+  health_factor_threshold: values.healthFactorThreshold,
+  email: values.email,
+  signal_recipient: values.signalRecipient,
   updated_at: now.toISOString(),
 });
 
 const configsTable = () => getSupabaseServerClient().from("notification_configs");
 
-/** BUG(B3.2): `.single()` also errors on zero rows, so a failed query is indistinguishable from "no config". */
+/** Read helpers throw on a Supabase error, so a failed query is never mistaken for "no config". */
+const dataOrThrow = <T>({ data, error }: { data: T; error: { message: string } | null }) => {
+  if (error) throw new Error(error.message);
+  return data;
+};
+
+/** The legacy form is queried only when the lowercased one has no row for the chain. */
 export async function findConfigForChain(
   { normalized, legacy }: UserIdForms,
   chainId: number,
 ): Promise<NotificationConfigRow | null> {
-  const select = (userId: string) =>
-    configsTable().select("*").eq("user_id", userId).eq("chain_id", chainId).single<NotificationConfigRow>();
+  const select = async (userId: string) =>
+    dataOrThrow(
+      await configsTable()
+        .select("*")
+        .eq("user_id", userId)
+        .eq("chain_id", chainId)
+        .maybeSingle<NotificationConfigRow>(),
+    );
 
-  let result = await select(normalized);
-  if ((result.error || !result.data) && legacy) result = await select(legacy);
-  return result.error || !result.data ? null : result.data;
+  const row = await select(normalized);
+  return row || !legacy ? row : select(legacy);
 }
 
-/**
- * The legacy rows are used only when the lowercased query returns none and the legacy query returns some.
- * A failed query yields no rows.
- */
+/** The legacy rows are used only when the lowercased query returns none. */
 export async function findConfigsForUser({ normalized, legacy }: UserIdForms): Promise<NotificationConfigRow[]> {
-  let result = await configsTable().select("*").eq("user_id", normalized);
-  if ((result.error || !result.data?.length) && legacy) {
-    const fallback = await configsTable().select("*").eq("user_id", legacy);
-    if (fallback.data?.length) result = fallback;
-  }
-  return result.error || !result.data ? [] : result.data;
+  const select = async (userId: string): Promise<NotificationConfigRow[]> =>
+    dataOrThrow(await configsTable().select("*").eq("user_id", userId)) ?? [];
+
+  const rows = await select(normalized);
+  return rows.length > 0 || !legacy ? rows : select(legacy);
 }
 
 /**
  * Updates the chain's existing row in place (preferring the lowercased row; updating a legacy row rewrites its
- * user_id to lowercase) or inserts one. Both lookups run when the forms differ and their errors are ignored.
- * Returns the write error, if any.
+ * user_id to lowercase) or inserts one. Both lookups run when the forms differ. Returns the first lookup or write
+ * error, if any — a failed lookup must not be mistaken for "no row", which would insert a duplicate.
  */
 export async function saveConfig({ normalized, legacy }: UserIdForms, row: ConfigWriteRow) {
   const findId = (userId: string) =>
     configsTable().select("id").eq("user_id", userId).eq("chain_id", row.chain_id).maybeSingle<{ id: string }>();
 
-  const { data: byNormalized } = await findId(normalized);
-  const { data: byLegacy } = legacy ? await findId(legacy) : { data: null };
-  const existingId = byNormalized?.id ?? byLegacy?.id;
+  const byNormalized = await findId(normalized);
+  if (byNormalized.error) return byNormalized.error;
+  const byLegacy = legacy ? await findId(legacy) : { data: null, error: null };
+  if (byLegacy.error) return byLegacy.error;
+  const existingId = byNormalized.data?.id ?? byLegacy.data?.id;
 
   const { error } = existingId
     ? await configsTable().update(row).eq("id", existingId)
@@ -138,12 +127,12 @@ export async function deleteConfigs({ normalized, legacy }: UserIdForms, chainId
   return (await remove(legacy)).error;
 }
 
-/** BUG(B3.7): unpaginated, so rows beyond PostgREST max_rows are silently skipped. */
-export async function findEnabledConfigs(): Promise<{
-  data: EnabledConfigRow[] | null;
-  error: { message: string } | null;
-}> {
-  return configsTable()
-    .select("user_id, chain_id, health_factor_threshold, email, signal_recipient, services")
-    .eq("enabled", true);
-}
+/** Every enabled config, read page by page so rows past the PostgREST max_rows cap are not skipped. */
+export const findEnabledConfigs = () =>
+  selectAllPages<EnabledConfigRow>((from, to) =>
+    configsTable()
+      .select("user_id, chain_id, health_factor_threshold, email, signal_recipient, services")
+      .eq("enabled", true)
+      .order("id")
+      .range(from, to),
+  );

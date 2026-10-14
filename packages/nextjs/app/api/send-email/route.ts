@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasBearerSecret } from "~~/services/api/server/auth";
 import { internalError, jsonError } from "~~/services/api/server/http";
 import { isEmailConfigured, sendEmail } from "~~/services/email/sendEmail";
 
@@ -9,7 +10,12 @@ type SendEmailBody = {
   html?: string | null;
 };
 
+/** Server-to-server only: without the CRON_SECRET bearer this would be an open email relay. */
 export async function POST(request: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return jsonError("Email relay is disabled: CRON_SECRET is not configured", 503);
+  if (!hasBearerSecret(request, secret)) return jsonError("Unauthorized", 401);
+
   try {
     const body = await request.json();
     const { to, subject, text, html } = body as SendEmailBody;

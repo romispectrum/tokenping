@@ -1,13 +1,22 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "~~/app/api/send-email/route";
+import { hasBearerSecret } from "~~/services/api/server/auth";
 import { isEmailConfigured, sendEmail } from "~~/services/email/sendEmail";
 
 vi.mock("~~/services/email/sendEmail", () => ({ isEmailConfigured: vi.fn(), sendEmail: vi.fn() }));
+vi.mock("~~/services/api/server/auth", async importOriginal => {
+  const actual = await importOriginal<typeof import("~~/services/api/server/auth")>();
+  return { ...actual, hasBearerSecret: vi.fn(actual.hasBearerSecret) };
+});
 
-const post = (body: unknown) =>
+const SECRET = "cron-s3cret";
+const AUTHORIZED = { authorization: `Bearer ${SECRET}` };
+
+const post = (body: unknown, headers: Record<string, string> = AUTHORIZED) =>
   POST(
     new Request("http://localhost/api/send-email", {
       method: "POST",
+      headers,
       body: typeof body === "string" ? body : JSON.stringify(body),
     }),
   );
@@ -24,10 +33,48 @@ const jsonParseMessage = (raw: string) => {
 };
 
 beforeEach(() => {
+  vi.stubEnv("CRON_SECRET", SECRET);
+  vi.mocked(hasBearerSecret).mockClear();
   vi.mocked(isEmailConfigured).mockReset();
   vi.mocked(isEmailConfigured).mockReturnValue(true);
   vi.mocked(sendEmail).mockReset();
   vi.mocked(sendEmail).mockResolvedValue({ success: true, id: "email-1" });
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
+describe("POST /api/send-email auth (B3.9)", () => {
+  it.each([
+    ["no Authorization header", {}],
+    ["a wrong secret", { authorization: "Bearer nope" }],
+    ["a lowercase scheme", { authorization: `bearer ${SECRET}` }],
+    ["the bare secret", { authorization: SECRET }],
+  ])("returns 401 for %s without sending", async (_label, headers) => {
+    expect(await read(await post({ to: "a@b.co" }, headers))).toEqual(json(401, { error: "Unauthorized" }));
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["unset", undefined],
+    ["empty", ""],
+  ])("returns 503 without sending when CRON_SECRET is %s, whatever the header", async (_label, secret) => {
+    vi.stubEnv("CRON_SECRET", secret);
+    expect(await read(await post({ to: "a@b.co" }, { authorization: "Bearer " }))).toEqual(
+      json(503, { error: "Email relay is disabled: CRON_SECRET is not configured" }),
+    );
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("checks the secret before reading the body", async () => {
+    expect(await read(await post("{", {}))).toEqual(json(401, { error: "Unauthorized" }));
+  });
+
+  it("checks the bearer with the constant-time hasBearerSecret", async () => {
+    await post({ to: "a@b.co" });
+    expect(hasBearerSecret).toHaveBeenCalledExactlyOnceWith(expect.any(Request), SECRET);
+  });
 });
 
 describe("POST /api/send-email", () => {

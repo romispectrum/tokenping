@@ -15,22 +15,20 @@
  *   - Token consumption is a single atomic UPDATE ... RETURNING (see telegramLinks.ts).
  *
  * Reliability:
- *   - Always return 200 quickly so Telegram doesn't retry. Internal failures
- *     are swallowed after a logged warning.
+ *   - Telegram retries any update that does not get a 2xx, so malformed bodies, ignored updates and errors thrown
+ *     by a command handler (logged with console.warn) are all answered 200. An update of the wrong shape (a JSON
+ *     null, a non-string text) still throws before the handler runs and gets a 500.
  */
-import { NextResponse } from "next/server";
-import { timingSafeEqual } from "crypto";
+import { NextResponse, after } from "next/server";
 import { TELEGRAM_REPLIES, parseCommand } from "~~/app/api/telegram/bot";
-import { invalidateUserConfigCache } from "~~/services/notifications/configCache";
+import { safeEqual } from "~~/services/api/server/auth";
 import { replyToTelegramChat } from "~~/services/telegram/sendTelegram";
 import {
   consumeLinkToken,
   deleteLinkByChatId,
-  getLinkByChatId,
   isValidStartParam,
   upsertUserTelegramLink,
 } from "~~/services/telegram/telegramLinks";
-import { normalizeAddress } from "~~/utils/address";
 
 type TelegramMessage = {
   message_id: number;
@@ -44,23 +42,16 @@ type TelegramUpdate = {
   message?: TelegramMessage;
 };
 
-// Always reply 200 OK to Telegram, even on internal errors, to avoid retries.
 const ok = () => NextResponse.json({ ok: true });
 
-/** Not awaited, so Telegram gets its 200 quickly. BUG(B3.4): serverless may drop a reply once the response is sent. */
+/** Queued with after(): the 200 goes out first, and the serverless function stays alive until the reply is sent. */
 const reply = (chatId: string, text: string) => {
-  void replyToTelegramChat(chatId, text);
+  after(() => replyToTelegramChat(chatId, text));
 };
-
-const UTF8 = new TextEncoder();
 
 function verifySecret(provided: string | null): boolean {
   const expected = process.env.TELEGRAM_WEBHOOK_SECRET;
-  if (!expected || !provided) return false;
-  const providedBytes = UTF8.encode(provided);
-  const expectedBytes = UTF8.encode(expected);
-  // timingSafeEqual throws on a length mismatch, so lengths are compared first.
-  return providedBytes.length === expectedBytes.length && timingSafeEqual(providedBytes, expectedBytes);
+  return Boolean(expected && provided && safeEqual(provided, expected));
 }
 
 async function handleStart(chatId: string, username: string | null, token: string | undefined) {
@@ -71,17 +62,16 @@ async function handleStart(chatId: string, username: string | null, token: strin
   if (!consumed) return reply(chatId, TELEGRAM_REPLIES.expiredLink);
 
   const linked = await upsertUserTelegramLink({ userId: consumed.userId, chatId, username });
-  if (!linked) return reply(chatId, TELEGRAM_REPLIES.linkSaveFailed);
-
-  invalidateUserConfigCache(normalizeAddress(consumed.userId));
-  reply(chatId, TELEGRAM_REPLIES.connected);
+  reply(chatId, linked ? TELEGRAM_REPLIES.connected : TELEGRAM_REPLIES.linkSaveFailed);
 }
 
 /** Unlinks whichever wallet is bound to this chat. */
 async function handleStop(chatId: string) {
-  const existing = await getLinkByChatId(chatId);
-  await deleteLinkByChatId(chatId);
-  if (existing) invalidateUserConfigCache(normalizeAddress(existing.userId));
+  const error = await deleteLinkByChatId(chatId);
+  if (error) {
+    console.error("telegram /stop: failed to delete the link", error);
+    return reply(chatId, TELEGRAM_REPLIES.unsubscribeFailed);
+  }
   reply(chatId, TELEGRAM_REPLIES.unsubscribed);
 }
 
@@ -94,7 +84,7 @@ export async function POST(request: Request) {
   try {
     update = (await request.json()) as TelegramUpdate;
   } catch {
-    return ok(); // malformed body — ack so Telegram doesn't retry
+    return ok();
   }
 
   const msg = update.message;
@@ -117,7 +107,6 @@ export async function POST(request: Request) {
     else if (command.name === "help") reply(chatId, TELEGRAM_REPLIES.help);
     else reply(chatId, TELEGRAM_REPLIES.unknownCommand);
   } catch (e) {
-    // Never surface internal errors to Telegram — just ack and log.
     console.warn("telegram webhook handler error", e);
   }
   return ok();

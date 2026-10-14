@@ -12,14 +12,14 @@ export const internalError = (error: unknown) => jsonError(getErrorMessage(error
 /** The trimmed user id, or null when it is missing, not a string, or blank. */
 export const parseUserId = (raw: unknown) => (typeof raw === "string" && raw.trim() ? raw.trim() : null);
 
-/**
- * Query-string chain id: undefined when absent or empty, null when it has no leading digits.
- * BUG(B3.15): parseInt semantics, so trailing garbage is ignored ("1abc" → 1).
- */
+const INTEGER_PATTERN = /^-?\d+$/;
+
+/** Query-string chain id: undefined when absent or empty, null unless it is a whole decimal (safe) integer. */
 export const parseChainId = (raw: string | null) => {
   if (raw === null || raw === "") return undefined;
-  const chainId = parseInt(raw, 10);
-  return Number.isNaN(chainId) ? null : chainId;
+  const trimmed = raw.trim();
+  const chainId = Number(trimmed);
+  return INTEGER_PATTERN.test(trimmed) && Number.isSafeInteger(chainId) ? chainId : null;
 };
 
 /** JSON-body chain id: any number except NaN (no integer or range check). */

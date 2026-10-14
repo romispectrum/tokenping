@@ -5,14 +5,13 @@
  * NOT cached, intentionally: the UI polls this during the handshake and needs
  * to see the new chat_id immediately after the webhook writes it.
  */
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { TELEGRAM_REPLIES } from "~~/app/api/telegram/bot";
 import { requireActiveAccess } from "~~/services/api/server/access";
 import { MISSING_USER_ID, internalError, jsonError, parseUserId } from "~~/services/api/server/http";
-import { invalidateUserConfigCache } from "~~/services/notifications/configCache";
 import { replyToTelegramChat } from "~~/services/telegram/sendTelegram";
 import { deleteLinkByUserId, getLinkByUserId } from "~~/services/telegram/telegramLinks";
-import { normalizeAddress } from "~~/utils/address";
+import type { TelegramLinkStatus } from "~~/types/notifications";
 
 export async function GET(request: Request) {
   try {
@@ -20,9 +19,9 @@ export async function GET(request: Request) {
     if (!userId) return jsonError(MISSING_USER_ID, 400);
 
     const link = await getLinkByUserId(userId);
-    if (!link) return NextResponse.json({ linked: false });
+    if (!link) return NextResponse.json<TelegramLinkStatus>({ linked: false });
 
-    return NextResponse.json({
+    return NextResponse.json<TelegramLinkStatus>({
       linked: true,
       chatId: link.chatId,
       username: link.username,
@@ -47,12 +46,13 @@ export async function DELETE(request: Request) {
 
     // Look up the current chat_id BEFORE deletion so we can send a farewell.
     const existing = await getLinkByUserId(trimmed);
-    await deleteLinkByUserId(trimmed);
-    invalidateUserConfigCache(normalizeAddress(trimmed));
+    const error = await deleteLinkByUserId(trimmed);
+    if (error) return jsonError(error.message, 502);
 
     if (existing?.chatId) {
-      // Best-effort and not awaited (BUG(B3.4): serverless may drop it once the response is sent).
-      void replyToTelegramChat(existing.chatId, TELEGRAM_REPLIES.disconnected);
+      const { chatId } = existing;
+      // Sent once the response is out; after() keeps serverless alive until it is delivered.
+      after(() => replyToTelegramChat(chatId, TELEGRAM_REPLIES.disconnected));
     }
 
     return NextResponse.json({ success: true });

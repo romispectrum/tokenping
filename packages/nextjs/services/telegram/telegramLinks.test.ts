@@ -1,12 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fakeSupabase } from "~~/services/api/server/testing/fakeSupabase";
+import { fakeSupabase, sliceByRange } from "~~/services/api/server/testing/fakeSupabase";
 import {
   consumeLinkToken,
   createLinkToken,
   deleteLinkByChatId,
   deleteLinkByUserId,
   getChatIdsByUser,
-  getLinkByChatId,
   getLinkByUserId,
   isValidStartParam,
   upsertUserTelegramLink,
@@ -20,6 +19,8 @@ vi.mock("~~/services/supabase/supabaseServer", async () => {
 const NOW = "2026-10-14T09:05:07.000Z";
 const LOWER = `0x${"9f".repeat(20)}`;
 const MIXED = `0x${"9F".repeat(20)}`;
+const OTHER_LOWER = `0x${"5e".repeat(20)}`;
+const OTHER_MIXED = `0x${"5E".repeat(20)}`;
 const VALID_TOKEN = "a".repeat(16);
 
 const LINK_COLUMNS = '"user_id, chat_id, username, linked_at"';
@@ -114,12 +115,9 @@ describe("link lookups", () => {
     ]);
   });
 
-  it("looks up by chat id and maps a missing username to null", async () => {
+  it("maps a missing username to null", async () => {
     fakeSupabase.respond(() => ({ data: { user_id: LOWER, chat_id: "42", linked_at: "t" } }));
-    expect(await getLinkByChatId("42")).toStrictEqual({ userId: LOWER, chatId: "42", username: null, linkedAt: "t" });
-    expect(fakeSupabase.log()).toEqual([
-      `user_telegram_links.select(${LINK_COLUMNS}).eq("chat_id","42").maybeSingle()`,
-    ]);
+    expect(await getLinkByUserId(LOWER)).toStrictEqual({ userId: LOWER, chatId: "42", username: null, linkedAt: "t" });
   });
 
   it.each([
@@ -128,43 +126,68 @@ describe("link lookups", () => {
   ])("returns null for %s", async (_label, result) => {
     fakeSupabase.respond(() => result);
     expect(await getLinkByUserId(LOWER)).toBeNull();
-    expect(await getLinkByChatId("42")).toBeNull();
   });
 });
 
 describe("getChatIdsByUser", () => {
-  it("maps every link's stringified user_id to its stringified chat_id, later rows winning", async () => {
-    fakeSupabase.respond(() => ({
-      data: [
-        { user_id: LOWER, chat_id: 1 },
-        { user_id: MIXED, chat_id: "2" },
-        { user_id: LOWER, chat_id: "3" },
-      ],
-    }));
-    expect([...(await getChatIdsByUser())]).toEqual([
-      [LOWER, "3"],
-      [MIXED, "2"],
-    ]);
-    expect(fakeSupabase.log()).toEqual(['user_telegram_links.select("user_id, chat_id")']);
+  const pageQuery = (from: number, to: number) =>
+    `user_telegram_links.select("user_id, chat_id").order("user_id").range(${from},${to})`;
+
+  it("keys every link by the normalized user id (later rows winning), with stringified chat ids", async () => {
+    const links = [
+      { user_id: LOWER, chat_id: 1 },
+      { user_id: MIXED, chat_id: "2" },
+      { user_id: ` ${OTHER_MIXED} `, chat_id: "3" },
+    ];
+    fakeSupabase.respond(query => ({ data: sliceByRange(query, links) }));
+    expect(await getChatIdsByUser()).toStrictEqual({
+      chatIdsByUser: new Map([
+        [LOWER, "2"],
+        [OTHER_LOWER, "3"],
+      ]),
+      error: null,
+    });
+    expect(fakeSupabase.log()).toEqual([pageQuery(0, 999), pageQuery(3, 1002)]);
   });
 
-  it("returns an empty map when the query fails", async () => {
-    // BUG(B3.7): the error is ignored.
+  it("reads past the 1000-row page limit until an empty page", async () => {
+    const wallet = (i: number) => `0x${i.toString(16).padStart(40, "0")}`;
+    const links = Array.from({ length: 2001 }, (_, i) => ({ user_id: wallet(i), chat_id: `${i}` }));
+    fakeSupabase.respond(query => ({ data: sliceByRange(query, links) }));
+
+    const { chatIdsByUser, error } = await getChatIdsByUser();
+
+    expect(error).toBeNull();
+    expect(chatIdsByUser.size).toBe(2001);
+    expect(chatIdsByUser.get(wallet(2000))).toBe("2000");
+    expect(fakeSupabase.log()).toEqual([
+      pageQuery(0, 999),
+      pageQuery(1000, 1999),
+      pageQuery(2000, 2999),
+      pageQuery(2001, 3000),
+    ]);
+  });
+
+  it("returns the query error with an empty map instead of hiding it (B3.7)", async () => {
     fakeSupabase.respond(() => ({ error: { message: "boom" } }));
-    expect((await getChatIdsByUser()).size).toBe(0);
+    expect(await getChatIdsByUser()).toStrictEqual({ chatIdsByUser: new Map(), error: { message: "boom" } });
   });
 });
 
 describe("link deletes", () => {
-  it("deletes by normalized user id, ignoring errors", async () => {
-    fakeSupabase.respond(() => ({ error: { message: "boom" } }));
-    await expect(deleteLinkByUserId(MIXED)).resolves.toBeUndefined();
-    expect(fakeSupabase.log()).toEqual([`user_telegram_links.delete().eq("user_id","${LOWER}")`]);
+  it.each([
+    ["by normalized user id", () => deleteLinkByUserId(MIXED), `user_telegram_links.delete().eq("user_id","${LOWER}")`],
+    ["by chat id", () => deleteLinkByChatId("42"), `user_telegram_links.delete().eq("chat_id","42")`],
+  ])("deletes %s and returns null on success", async (_label, remove, query) => {
+    expect(await remove()).toBeNull();
+    expect(fakeSupabase.log()).toEqual([query]);
   });
 
-  it("deletes by chat id, ignoring errors", async () => {
+  it.each([
+    ["by user id", () => deleteLinkByUserId(MIXED)],
+    ["by chat id", () => deleteLinkByChatId("42")],
+  ])("returns the Supabase error when deleting %s fails (B3.5)", async (_label, remove) => {
     fakeSupabase.respond(() => ({ error: { message: "boom" } }));
-    await expect(deleteLinkByChatId("42")).resolves.toBeUndefined();
-    expect(fakeSupabase.log()).toEqual([`user_telegram_links.delete().eq("chat_id","42")`]);
+    expect(await remove()).toEqual({ message: "boom" });
   });
 });

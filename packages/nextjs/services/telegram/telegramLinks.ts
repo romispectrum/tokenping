@@ -9,6 +9,7 @@
  */
 import { randomBytes } from "crypto";
 import "server-only";
+import { selectAllPages } from "~~/services/supabase/selectAllPages";
 import { getSupabaseServerClient } from "~~/services/supabase/supabaseServer";
 import { normalizeAddress } from "~~/utils/address";
 
@@ -144,38 +145,41 @@ export async function upsertUserTelegramLink(params: {
 }
 
 /** Lookup errors are reported as "no link". */
-async function findLink(column: "user_id" | "chat_id", value: string): Promise<UserTelegramLink | null> {
+export async function getLinkByUserId(userId: string): Promise<UserTelegramLink | null> {
   const { data, error } = await getSupabaseServerClient()
     .from("user_telegram_links")
     .select(LINK_COLUMNS)
-    .eq(column, value)
+    .eq("user_id", normalizeAddress(userId))
     .maybeSingle<UserTelegramLinkRow>();
   return error || !data ? null : rowToLink(data);
 }
 
-export function getLinkByUserId(userId: string): Promise<UserTelegramLink | null> {
-  return findLink("user_id", normalizeAddress(userId));
-}
-
-export function getLinkByChatId(chatId: string): Promise<UserTelegramLink | null> {
-  return findLink("chat_id", chatId);
-}
-
 /**
- * Every link as user_id → chat_id, in a single query.
- * BUG(B3.7): unpaginated (capped at PostgREST max_rows) and a failed query silently yields an empty map.
+ * Every link as normalized user_id → chat_id, read page by page. A failed query returns its error with an empty map,
+ * so the caller can report that Telegram was skipped instead of silently sending nothing.
  */
-export async function getChatIdsByUser(): Promise<Map<string, string>> {
-  const { data } = await getSupabaseServerClient().from("user_telegram_links").select("user_id, chat_id");
-  return new Map((data ?? []).map(row => [String(row.user_id), String(row.chat_id)]));
+export async function getChatIdsByUser(): Promise<{
+  chatIdsByUser: Map<string, string>;
+  error: { message: string } | null;
+}> {
+  const { data, error } = await selectAllPages<{ user_id: string; chat_id: string }>((from, to) =>
+    getSupabaseServerClient().from("user_telegram_links").select("user_id, chat_id").order("user_id").range(from, to),
+  );
+  const entries = (data ?? []).map(row => [normalizeAddress(String(row.user_id)), String(row.chat_id)] as const);
+  return { chatIdsByUser: new Map(entries), error };
 }
 
-// BUG(B3.5): both deletes ignore the Supabase error, so callers report success even when nothing was removed.
-
-export async function deleteLinkByUserId(userId: string): Promise<void> {
-  await getSupabaseServerClient().from("user_telegram_links").delete().eq("user_id", normalizeAddress(userId));
+/** Returns the Supabase error, if any, so callers never report a link as removed when it was not. */
+export async function deleteLinkByUserId(userId: string) {
+  const { error } = await getSupabaseServerClient()
+    .from("user_telegram_links")
+    .delete()
+    .eq("user_id", normalizeAddress(userId));
+  return error;
 }
 
-export async function deleteLinkByChatId(chatId: string): Promise<void> {
-  await getSupabaseServerClient().from("user_telegram_links").delete().eq("chat_id", chatId);
+/** Returns the Supabase error, if any. */
+export async function deleteLinkByChatId(chatId: string) {
+  const { error } = await getSupabaseServerClient().from("user_telegram_links").delete().eq("chat_id", chatId);
+  return error;
 }

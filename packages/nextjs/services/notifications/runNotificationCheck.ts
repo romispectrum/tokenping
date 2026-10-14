@@ -1,16 +1,19 @@
 import "server-only";
 import type { Address } from "viem";
-import { DEFAULT_HEALTH_FACTOR_THRESHOLD, NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
+import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import { getHealthFactorForWallet } from "~~/services/aave/getHealthFactor";
 import { sendEmail } from "~~/services/email/sendEmail";
 import { type EnabledConfigRow, findEnabledConfigs } from "~~/services/notifications/configRepository";
+import { type Delivery, redactRecipients, shortenAddress } from "~~/services/notifications/redact";
 import { sendSignalMessage } from "~~/services/signal/sendSignal";
 import { type TelegramSendErrorCode, sendTelegramMessage } from "~~/services/telegram/sendTelegram";
 import { deleteLinkByChatId, getChatIdsByUser } from "~~/services/telegram/telegramLinks";
 import type { NotificationService } from "~~/types/notifications";
+import { normalizeAddress } from "~~/utils/address";
 import { getErrorMessage } from "~~/utils/errors";
 import { formatUtcTimestamp } from "~~/utils/format";
 import { isBelowThreshold } from "~~/utils/healthFactor";
+import { normalizeThreshold } from "~~/utils/notifications/threshold";
 
 export type NotificationCheckResult = {
   success: true;
@@ -20,14 +23,13 @@ export type NotificationCheckResult = {
   emailsSent: number;
   signalSent: number;
   telegramSent: number;
+  /** Recipients are masked and wallets shortened; the full detail is only logged. */
   errors?: string[];
 };
 
 type Alert = { chainName: string; healthFactor: string; threshold: number; timestamp: string };
 
 type AlertMessage = { text: string; subject: string; html: string };
-
-type Delivery = { channel: NotificationService; recipient: string };
 
 type AlertSender = (
   recipient: string,
@@ -55,25 +57,20 @@ export const buildAlertEmail = ({ chainName, healthFactor, threshold, timestamp 
 
 /**
  * The channels a config can deliver to right now, in send order (email, Signal, Telegram), with trimmed recipients.
- * BUG(B3.13): `chatIdsByUser` holds lowercased user ids but is looked up with the raw config user_id, so legacy
- * checksummed rows never get Telegram alerts.
- * BUG(unlisted): Telegram counts once the user has a link, even with an empty chat id, which is never sent to.
+ * `chatIdsByUser` is keyed by normalized user id, so legacy checksummed rows still find their Telegram link.
  */
 export const getDeliverableChannels = (row: EnabledConfigRow, chatIdsByUser: Map<string, string>): Delivery[] => {
   const { services } = row;
   if (!Array.isArray(services)) return [];
 
   const deliveries: Delivery[] = [];
-  if (services.includes("email") && row.email?.trim()) {
-    deliveries.push({ channel: "email", recipient: String(row.email).trim() });
-  }
-  if (services.includes("signal") && row.signal_recipient?.trim()) {
-    deliveries.push({ channel: "signal", recipient: String(row.signal_recipient).trim() });
-  }
-  const chatId = chatIdsByUser.get(String(row.user_id));
-  if (services.includes("telegram") && chatId !== undefined) {
-    deliveries.push({ channel: "telegram", recipient: chatId });
-  }
+  const email = row.email?.trim();
+  if (services.includes("email") && email) deliveries.push({ channel: "email", recipient: email });
+  const signalRecipient = row.signal_recipient?.trim();
+  if (services.includes("signal") && signalRecipient)
+    deliveries.push({ channel: "signal", recipient: signalRecipient });
+  const chatId = chatIdsByUser.get(normalizeAddress(row.user_id));
+  if (services.includes("telegram") && chatId?.trim()) deliveries.push({ channel: "telegram", recipient: chatId });
   return deliveries;
 };
 
@@ -85,7 +82,8 @@ const ALERT_SENDERS: Record<NotificationService, AlertSender> = {
 
 /**
  * One cron pass: loads the enabled configs, reads each wallet's Aave health factor on the config's chain and, when
- * it is below the threshold, alerts every deliverable channel. Configs are processed one after another.
+ * it is below the threshold, alerts every deliverable channel. Configs are processed one after another, and a
+ * failing config is recorded in `errors` without stopping the others.
  */
 export async function runNotificationCheck(): Promise<NotificationCheckResult | { success: false; error: string }> {
   try {
@@ -94,40 +92,63 @@ export async function runNotificationCheck(): Promise<NotificationCheckResult | 
       return { success: false, error: error.message };
     }
 
-    const chatIdsByUser = await getChatIdsByUser();
-    const configs = (rows ?? []).filter(row => getDeliverableChannels(row, chatIdsByUser).length > 0);
-
-    const sent: Record<NotificationService, number> = { email: 0, signal: 0, telegram: 0 };
     const errors: string[] = [];
+    /** Logs the full detail; the response gets it with the wallet shortened and the recipients masked. */
+    const recordError = (
+      detail: string,
+      { wallet, deliveries = [] }: { wallet?: string; deliveries?: readonly Delivery[] } = {},
+    ) => {
+      const shortened = wallet ? detail.split(wallet).join(shortenAddress(wallet)) : detail;
+      errors.push(redactRecipients(shortened, deliveries));
+      console.error(`Notification check: ${detail}`);
+    };
+
+    const { chatIdsByUser, error: linksError } = await getChatIdsByUser();
+    if (linksError) {
+      recordError(`telegram: links query failed, Telegram alerts skipped this run: ${linksError.message}`);
+    }
+
+    const configs = rows.filter(row => getDeliverableChannels(row, chatIdsByUser).length > 0);
+    const sent: Record<NotificationService, number> = { email: 0, signal: 0, telegram: 0 };
 
     for (const config of configs) {
-      // BUG(B3.12): a falsy threshold (0, null, unparseable) silently becomes the default.
-      const threshold = Number(config.health_factor_threshold) || DEFAULT_HEALTH_FACTOR_THRESHOLD;
+      const { user_id: userId, chain_id: chainId } = config;
+      // Computed per config: a dead Telegram chat removed below is skipped for the user's remaining configs.
+      const deliveries = getDeliverableChannels(config, chatIdsByUser);
 
-      // BUG(B3.12): a failed read (null) is skipped without an errors[] entry.
-      const reading = await getHealthFactorForWallet(config.user_id as Address, config.chain_id);
-      if (!reading || !isBelowThreshold(reading.healthFactor, threshold)) continue;
+      try {
+        const threshold = normalizeThreshold(config.health_factor_threshold);
 
-      const alert = { ...reading, threshold, timestamp: formatUtcTimestamp(new Date()) };
-      const message = { text: buildAlertText(alert), ...buildAlertEmail(alert) };
-
-      // Recomputed per config: a dead Telegram chat removed below is skipped for the user's remaining configs.
-      for (const { channel, recipient } of getDeliverableChannels(config, chatIdsByUser)) {
-        // Only an empty Telegram chat id gets here; it is skipped without an errors[] entry.
-        if (!recipient) continue;
-
-        const result = await ALERT_SENDERS[channel](recipient, message);
-        if (result.success) {
-          sent[channel]++;
+        const reading = await getHealthFactorForWallet(userId as Address, chainId);
+        if (!reading) {
+          recordError(`healthFactor:${userId}:${chainId}: could not read the health factor`, { wallet: userId });
           continue;
         }
+        if (!isBelowThreshold(reading.healthFactor, threshold)) continue;
 
-        errors.push(`${channel}:${recipient}: ${result.error}`);
-        if (channel === "telegram" && result.code && DEAD_CHAT_CODES.includes(result.code)) {
-          // The user can re-link from the UI.
-          await deleteLinkByChatId(recipient);
-          chatIdsByUser.delete(String(config.user_id));
+        const alert = { ...reading, threshold, timestamp: formatUtcTimestamp(new Date()) };
+        const message = { text: buildAlertText(alert), ...buildAlertEmail(alert) };
+
+        for (const delivery of deliveries) {
+          const { channel, recipient } = delivery;
+          const result = await ALERT_SENDERS[channel](recipient, message);
+          if (result.success) {
+            sent[channel]++;
+            continue;
+          }
+
+          recordError(`${channel}:${recipient}: ${result.error}`, { deliveries: [delivery] });
+          if (channel === "telegram" && result.code && DEAD_CHAT_CODES.includes(result.code)) {
+            // The user can re-link from the UI.
+            const deleteError = await deleteLinkByChatId(recipient);
+            if (deleteError) {
+              console.error(`Notification check: could not remove the dead Telegram link ${recipient}`, deleteError);
+            }
+            chatIdsByUser.delete(normalizeAddress(userId));
+          }
         }
+      } catch (e) {
+        recordError(`config:${userId}:${chainId}: ${getErrorMessage(e)}`, { wallet: userId, deliveries });
       }
     }
 
