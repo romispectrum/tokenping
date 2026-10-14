@@ -9,7 +9,11 @@ export type ScaffoldConfig = {
   onlyLocalBurnerWallet: boolean;
 };
 
+// Scaffold-ETH's shared, rate-limited defaults. Set the env vars below (.env.local locally, the Vercel project
+// env in production) to use your own Alchemy key (https://dashboard.alchemyapi.io) and WalletConnect project
+// (https://cloud.walletconnect.com).
 export const DEFAULT_ALCHEMY_API_KEY = "cR4WnXePioePZ5fFrnSiR";
+const DEFAULT_WALLET_CONNECT_PROJECT_ID = "3a8170812b534d0ff9d794f19a901d64";
 
 const scaffoldConfig = {
   // The networks on which your DApp is live
@@ -19,10 +23,6 @@ const scaffoldConfig = {
   // it has no effect if you only target the local network (default is 4000)
   pollingInterval: 3000,
 
-  // This is ours Alchemy's default API key.
-  // You can get your own at https://dashboard.alchemyapi.io
-  // It's recommended to store it in an env variable:
-  // .env.local for local testing, and in the Vercel/system env config for live apps.
   alchemyApiKey: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || DEFAULT_ALCHEMY_API_KEY,
 
   // If you want to use a different RPC for a specific network, you can add it here.
@@ -32,11 +32,7 @@ const scaffoldConfig = {
     // [chains.mainnet.id]: "https://mainnet.rpc.buidlguidl.com",
   },
 
-  // This is ours WalletConnect's default project ID.
-  // You can get your own at https://cloud.walletconnect.com
-  // It's recommended to store it in an env variable:
-  // .env.local for local testing, and in the Vercel/system env config for live apps.
-  walletConnectProjectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || "3a8170812b534d0ff9d794f19a901d64",
+  walletConnectProjectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || DEFAULT_WALLET_CONNECT_PROJECT_ID,
 
   // Only show the Burner Wallet when running on hardhat network
   onlyLocalBurnerWallet: true,

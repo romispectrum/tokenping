@@ -1,9 +1,6 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
-
-const X_ACCOUNT_URL = "https://x.com/tokenping";
+import { EXTERNAL_LINK_REL, SOCIAL_LINKS } from "~~/constants/links";
 
 const XIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -20,16 +17,16 @@ export const BetaBanner = () => {
     >
       <span className="font-medium">Tokenping is in beta</span>
       <span className="hidden sm:inline opacity-80">·</span>
-      <Link
-        href={X_ACCOUNT_URL}
+      <a
+        href={SOCIAL_LINKS.x}
         target="_blank"
-        rel="noreferrer noopener"
+        rel={EXTERNAL_LINK_REL}
         className="inline-flex items-center gap-1 btn btn-ghost btn-xs text-secondary-content hover:bg-secondary-content/20 border-0 min-h-0 h-6"
         aria-label="Follow Tokenping on X"
       >
         <span>Follow us on</span>
         <XIcon className="w-3.5 h-3.5" />
-      </Link>
+      </a>
     </div>
   );
 };

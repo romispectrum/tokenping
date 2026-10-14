@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import "@rainbow-me/rainbowkit/styles.css";
 import "@scaffold-ui/components/styles.css";
 import type { Viewport } from "next";
@@ -23,7 +24,7 @@ export const metadata = getMetadata({
     "Monitor your DeFi positions and get notified before your health factor is at risk. Tokenping supports Aave and more protocols.",
 });
 
-const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
+const RootLayout = ({ children }: { children: ReactNode }) => {
   return (
     <html suppressHydrationWarning>
       <body>
@@ -35,4 +36,4 @@ const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-export default ScaffoldEthApp;
+export default RootLayout;

@@ -1,15 +1,19 @@
-import React from "react";
+"use client";
+
 import Link from "next/link";
 import { useFetchNativeCurrencyPrice } from "@scaffold-ui/hooks";
 import { hardhat } from "viem/chains";
 import { CurrencyDollarIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { SwitchTheme } from "~~/components/SwitchTheme";
 import { Faucet } from "~~/components/scaffold-eth";
+import { EXTERNAL_LINK_REL, SOCIAL_LINKS } from "~~/constants/links";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth/useTargetNetwork";
 
-/**
- * Site footer
- */
+const FOOTER_SOCIAL_LINKS = [
+  { href: SOCIAL_LINKS.telegram, label: "Telegram", ariaLabel: "Tokenping Telegram Community" },
+  { href: SOCIAL_LINKS.x, label: "X", ariaLabel: "Tokenping on X" },
+];
+
 export const Footer = () => {
   const { targetNetwork } = useTargetNetwork();
   const isLocalNetwork = targetNetwork.id === hardhat.id;
@@ -33,7 +37,6 @@ export const Footer = () => {
                 <Faucet />
                 <Link
                   href="/blockexplorer"
-                  passHref
                   className="btn btn-primary btn-sm font-normal gap-1 touch-target-min min-h-9"
                 >
                   <MagnifyingGlassIcon className="h-4 w-4 shrink-0" aria-hidden />
@@ -49,24 +52,11 @@ export const Footer = () => {
       <div className="w-full">
         <ul className="menu menu-horizontal w-full">
           <div className="flex justify-center items-center gap-4 text-sm w-full">
-            <a
-              href="https://t.me/tokenping_xyz"
-              target="_blank"
-              rel="noreferrer"
-              className="link"
-              aria-label="Tokenping Telegram Community"
-            >
-              Telegram
-            </a>
-            <a
-              href="https://x.com/tokenping"
-              target="_blank"
-              rel="noreferrer"
-              className="link"
-              aria-label="Tokenping on X"
-            >
-              X
-            </a>
+            {FOOTER_SOCIAL_LINKS.map(({ href, label, ariaLabel }) => (
+              <a key={href} href={href} target="_blank" rel={EXTERNAL_LINK_REL} className="link" aria-label={ariaLabel}>
+                {label}
+              </a>
+            ))}
           </div>
         </ul>
       </div>
