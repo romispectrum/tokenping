@@ -1,32 +1,37 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { useAccount, useSwitchChain } from "wagmi";
+import { formatDurationDays, getPaywallStatus } from "~~/components/custom/paywall/paywallStatus";
+import { PAYMENT_CHAIN_ID, PAYMENT_TOKEN_DECIMALS, PAYMENT_TOKEN_SYMBOL } from "~~/constants/payments";
 import { useAccess } from "~~/hooks/custom/useAccess";
 import { useDeployedContractInfo } from "~~/hooks/scaffold-eth";
+import { getErrorMessage } from "~~/utils/errors";
 import { formatTokenAmount } from "~~/utils/format";
-import type { AllowedChainIds } from "~~/utils/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
 
-const USDC_DECIMALS = 6;
+const STATUS_MESSAGES = {
+  connectWallet: "Connect your wallet to pay for access.",
+  unconfigured: "Payment contract not configured for this network.",
+  noPlan: "No paid plan is available at the moment.",
+};
 
 type AccessPaywallProps = {
-  children: React.ReactNode;
-  /** Optional description shown above the pay CTA when user has no access */
+  children: ReactNode;
+  /** Replaces the default copy above the pay CTA. */
   description?: string;
   /** True when a notification config already exists in Supabase for this network */
   hasExistingConfig?: boolean;
 };
 
-export function AccessPaywall({ children, description, hasExistingConfig = false }: AccessPaywallProps) {
+export const AccessPaywall = ({ children, description, hasExistingConfig = false }: AccessPaywallProps) => {
   const { address, chain } = useAccount();
   const { switchChain } = useSwitchChain();
   const {
-    paymentChainId,
     paymentTokenAddress,
     isActive,
     plan,
-    access,
+    expiryTimestamp,
     refetch,
     payAsync,
     approveAsync,
@@ -35,61 +40,50 @@ export function AccessPaywall({ children, description, hasExistingConfig = false
     isApprovePending,
   } = useAccess();
 
-  const { data: paymentsContract } = useDeployedContractInfo({
+  const { data: paywallContract } = useDeployedContractInfo({
     contractName: "TokenpingPaywall",
-    chainId: (paymentChainId ?? undefined) as unknown as AllowedChainIds | undefined,
+    chainId: PAYMENT_CHAIN_ID,
   });
 
   const [isPaying, setIsPaying] = useState(false);
 
-  const handlePayForAccess = useCallback(async () => {
-    if (!address || !plan?.enabled || !plan.price || !paymentTokenAddress || !paymentsContract?.address) {
+  const onCorrectChain = chain !== undefined && chain.id === PAYMENT_CHAIN_ID;
+
+  const handlePayForAccess = async () => {
+    if (!address || !plan?.enabled || !plan.price || !paymentTokenAddress || !paywallContract?.address) {
       notification.error("Paid access not available. Check plan and wallet.");
       return;
     }
-    if (chain?.id !== paymentChainId) {
+    if (!onCorrectChain) {
       notification.error("Switch to the correct network to pay.");
       return;
     }
 
     setIsPaying(true);
     try {
-      const spender = paymentsContract.address as `0x${string}`;
       if (currentAllowance < plan.price) {
-        await approveAsync(spender, plan.price);
+        await approveAsync(paywallContract.address, plan.price);
       }
       await payAsync({
         functionName: "pay",
-        args: [paymentTokenAddress as `0x${string}`],
+        args: [paymentTokenAddress],
       });
       notification.success("Access active. You can now configure notifications.");
       refetch();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Payment failed";
-      notification.error(msg);
+      notification.error(getErrorMessage(e, "Payment failed"));
     } finally {
       setIsPaying(false);
     }
-  }, [
-    address,
-    plan,
-    paymentTokenAddress,
-    paymentsContract?.address,
-    currentAllowance,
-    chain?.id,
-    paymentChainId,
-    approveAsync,
-    payAsync,
-    refetch,
-  ]);
+  };
 
   if (isActive) {
     return (
       <div className="space-y-2">
-        {access?.expiryTimestamp != null && access.expiryTimestamp > 0n && (
+        {expiryTimestamp > 0n && (
           <p className="text-[10px] text-emerald-400/80">
             Access until{" "}
-            {new Date(Number(access.expiryTimestamp) * 1000).toLocaleDateString(undefined, {
+            {new Date(Number(expiryTimestamp) * 1000).toLocaleDateString(undefined, {
               dateStyle: "medium",
             })}
           </p>
@@ -100,8 +94,13 @@ export function AccessPaywall({ children, description, hasExistingConfig = false
   }
 
   const busy = isPaying || isPayPending || isApprovePending;
-  const onCorrectChain = chain?.id === paymentChainId;
-  const canPay = Boolean(onCorrectChain && plan?.enabled && plan.price > 0n && paymentTokenAddress);
+  const status = getPaywallStatus({
+    address,
+    paymentChainId: PAYMENT_CHAIN_ID,
+    onCorrectChain,
+    plan,
+    paymentTokenAddress,
+  });
 
   return (
     <div className="space-y-4">
@@ -127,49 +126,49 @@ export function AccessPaywall({ children, description, hasExistingConfig = false
                 : "Pay once to unlock notification settings. You set health factor alerts per network. No auto-charges—you pay from your wallet when you want to extend.")}
           </p>
 
-          {!address ? (
-            <p className="text-xs text-amber-400">Connect your wallet to pay for access.</p>
-          ) : !paymentChainId ? (
-            <p className="text-xs text-amber-400">Payment contract not configured for this network.</p>
-          ) : !onCorrectChain ? (
+          {status.kind === "wrongChain" ? (
             <div className="space-y-2">
               <p className="text-xs text-base-content/70 dark:text-gray-400">Switch to the paywall network to pay.</p>
               <button
                 type="button"
-                onClick={() => switchChain?.({ chainId: paymentChainId })}
+                onClick={() => switchChain?.({ chainId: status.paymentChainId })}
                 className="rounded-lg border border-amber-500/40 bg-amber-500/20 px-4 py-2.5 text-sm font-medium text-amber-300 transition-all hover:bg-amber-500/30"
               >
                 Switch network
               </button>
             </div>
-          ) : !plan?.enabled ? (
-            <p className="text-xs text-amber-400">No paid plan is available at the moment.</p>
-          ) : (
+          ) : status.kind === "ready" ? (
             <div className="w-full max-w-xs space-y-3">
               <div className="rounded-lg border border-base-300 bg-base-200 dark:border-white/10 dark:bg-white/5 px-3 py-2.5 text-sm text-base-content">
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                   <span className="text-base-content/70 dark:text-gray-400">Price: </span>
                   <span className="font-semibold text-base-content dark:text-white">
-                    {formatTokenAmount(plan.price, USDC_DECIMALS)} USDC
+                    {formatTokenAmount(status.plan.price, PAYMENT_TOKEN_DECIMALS)} {PAYMENT_TOKEN_SYMBOL}
                   </span>
                   <span className="text-sm font-medium text-base-content/90 dark:text-gray-300">
-                    ≈ {(Number(plan.durationSeconds) / 86400).toFixed(0)} days access
+                    ≈ {formatDurationDays(status.plan.durationSeconds)} days access
                   </span>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={handlePayForAccess}
-                disabled={busy || !canPay}
+                disabled={busy || !status.canPay}
                 className="w-full rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2.5 text-sm font-medium text-white transition-all shadow-lg shadow-amber-500/20 hover:from-amber-600 hover:to-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {busy ? "Processing..." : hasExistingConfig ? "Extend access with USDC" : "Pay for access (USDC)"}
+                {busy
+                  ? "Processing..."
+                  : hasExistingConfig
+                    ? `Extend access with ${PAYMENT_TOKEN_SYMBOL}`
+                    : `Pay for access (${PAYMENT_TOKEN_SYMBOL})`}
               </button>
             </div>
+          ) : (
+            <p className="text-xs text-amber-400">{STATUS_MESSAGES[status.kind]}</p>
           )}
         </div>
       </div>
       {children}
     </div>
   );
-}
+};

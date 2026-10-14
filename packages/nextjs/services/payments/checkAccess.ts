@@ -1,68 +1,38 @@
 import { type Address, createPublicClient, http } from "viem";
 import { hardhat } from "viem/chains";
-import deployedContracts from "~~/contracts/deployedContracts";
-import scaffoldConfig from "~~/scaffold.config";
-import { getAlchemyHttpUrl } from "~~/utils/scaffold-eth";
+import { PAYMENT_CHAIN_ID, getPaywallContract } from "~~/constants/payments";
+import scaffoldConfig, { type ScaffoldConfig } from "~~/scaffold.config";
+import { getAlchemyHttpUrl } from "~~/utils/scaffold-eth/networks";
 
-const CONTRACT_NAME = "TokenpingPaywall";
+const LOCAL_RPC_URL = "http://127.0.0.1:8545";
 
-type DeployedContractsByChain = Record<
-  number,
-  Record<string, { address: string; abi: readonly unknown[] }> | undefined
->;
-
-function getPaymentsChainId(): number | null {
-  const chainIds = scaffoldConfig.targetNetworks.map(c => c.id);
-  const contracts = deployedContracts as unknown as DeployedContractsByChain;
-  for (const chainId of chainIds) {
-    const chainContracts = contracts[chainId];
-    if (chainContracts?.[CONTRACT_NAME]) return chainId;
-  }
-  return null;
-}
-
-function getPaymentsRpcUrl(chainId: number): string {
-  const rpcOverride = (scaffoldConfig as { rpcOverrides?: Record<number, string> }).rpcOverrides?.[chainId];
+const getPaymentRpcUrl = (chainId: number) => {
+  const rpcOverride = (scaffoldConfig.rpcOverrides as ScaffoldConfig["rpcOverrides"])?.[chainId];
   if (rpcOverride) return rpcOverride;
-  if (chainId === hardhat.id) {
-    return process.env.NEXT_PUBLIC_HARDHAT_RPC_URL ?? "http://127.0.0.1:8545";
-  }
-  const alchemyUrl = getAlchemyHttpUrl(chainId);
-  if (alchemyUrl) return alchemyUrl;
-  return "http://127.0.0.1:8545";
-}
+  if (chainId === hardhat.id) return process.env.NEXT_PUBLIC_HARDHAT_RPC_URL ?? LOCAL_RPC_URL;
+  return getAlchemyHttpUrl(chainId) || LOCAL_RPC_URL;
+};
 
-/**
- * Checks on-chain whether the user has active paid access (has paid and not expired).
- * Uses TokenpingPaywall.isActive(user) from the deployed contract.
- */
-export async function isAccessActive(userAddress: string): Promise<boolean> {
-  const chainId = getPaymentsChainId();
-  if (chainId == null) return false;
+/** Fails closed: any missing configuration or RPC error counts as no access. */
+export const isAccessActive = async (userAddress: string): Promise<boolean> => {
+  if (PAYMENT_CHAIN_ID === undefined) return false;
+  const contract = getPaywallContract(PAYMENT_CHAIN_ID);
+  if (!contract?.address || !contract.abi) return false;
 
-  const contracts = deployedContracts as unknown as DeployedContractsByChain;
-  const chainContracts = contracts[chainId];
-  const contract = chainContracts?.[CONTRACT_NAME];
-  if (!contract?.address || !contract?.abi) return false;
-
-  const rpcUrl = getPaymentsRpcUrl(chainId);
-  const chain = chainId === hardhat.id ? hardhat : scaffoldConfig.targetNetworks.find(c => c.id === chainId);
+  const chain = scaffoldConfig.targetNetworks.find(({ id }) => id === PAYMENT_CHAIN_ID);
   if (!chain) return false;
 
-  const client = createPublicClient({
-    chain,
-    transport: http(rpcUrl),
-  });
-
+  const client = createPublicClient({ chain, transport: http(getPaymentRpcUrl(PAYMENT_CHAIN_ID)) });
   try {
     const active = await client.readContract({
-      address: contract.address as Address,
-      abi: contract.abi as import("viem").Abi,
+      address: contract.address,
+      abi: contract.abi,
       functionName: "isActive",
       args: [userAddress as Address],
     });
     return active === true;
-  } catch {
+  } catch (error) {
+    console.error(`isAccessActive: TokenpingPaywall.isActive read failed on chain ${PAYMENT_CHAIN_ID}`, error);
     return false;
   }
-}
+};

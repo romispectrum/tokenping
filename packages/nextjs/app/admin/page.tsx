@@ -1,36 +1,49 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Address } from "@scaffold-ui/components";
+import { useState } from "react";
 import type { NextPage } from "next";
-import { erc20Abi, formatEther, formatUnits, isAddress, parseEther, parseUnits } from "viem";
+import { erc20Abi, isAddress } from "viem";
 import { useAccount, useBalance, useReadContract } from "wagmi";
-import { getPaymentChainId, getPaymentContractAddress, getPaymentTokenAddress } from "~~/constants/payments";
+import { ContractOverview } from "~~/app/admin/_components/ContractOverview";
+import { MaxDurationCard } from "~~/app/admin/_components/MaxDurationCard";
+import { PauseCard } from "~~/app/admin/_components/PauseCard";
+import { PlanCard } from "~~/app/admin/_components/PlanCard";
+import { TransferOwnershipCard } from "~~/app/admin/_components/TransferOwnershipCard";
+import { WithdrawNativeCard } from "~~/app/admin/_components/WithdrawNativeCard";
+import { WithdrawTokenCard } from "~~/app/admin/_components/WithdrawTokenCard";
+import {
+  type NativeWithdrawForm,
+  type ParseResult,
+  type PlanForm,
+  type TokenWithdrawForm,
+  parseMaxDuration,
+  parseNativeWithdraw,
+  parseNewOwner,
+  parsePlanForm,
+  parseTokenWithdraw,
+} from "~~/app/admin/_components/adminForms";
+import { PAYMENT_CHAIN_ID, PAYMENT_CONTRACT_ADDRESS, PAYMENT_TOKEN_ADDRESS } from "~~/constants/payments";
+import { useErc20Metadata } from "~~/hooks/custom/useErc20Metadata";
 import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
-import type { AllowedChainIds } from "~~/utils/scaffold-eth";
+import { getErrorMessage } from "~~/utils/errors";
 
 const AdminPage: NextPage = () => {
   const { address: connectedAddress, isConnected } = useAccount();
 
-  const paymentChainId = getPaymentChainId();
-  const paymentContractAddress = paymentChainId != null ? getPaymentContractAddress(paymentChainId) : null;
-  const defaultPaymentTokenAddress = paymentChainId != null ? getPaymentTokenAddress(paymentChainId) : null;
-  const chainId = (paymentChainId ?? undefined) as AllowedChainIds | undefined;
-
-  const [planTokenAddress, setPlanTokenAddress] = useState(defaultPaymentTokenAddress ?? "");
-  const [planPrice, setPlanPrice] = useState("");
-  const [planDurationSeconds, setPlanDurationSeconds] = useState("");
-  const [planEnabled, setPlanEnabled] = useState(true);
-
+  // Form state lives here (not in the cards) so typed values survive the cards unmounting on a wallet switch.
+  const [planForm, setPlanForm] = useState<PlanForm>({
+    tokenAddress: PAYMENT_TOKEN_ADDRESS ?? "",
+    price: "",
+    durationSeconds: "",
+    enabled: true,
+  });
   const [maxDurationSeconds, setMaxDurationSeconds] = useState("");
-
-  const [withdrawNativeTo, setWithdrawNativeTo] = useState("");
-  const [withdrawNativeAmountEth, setWithdrawNativeAmountEth] = useState("");
-
-  const [withdrawTokenAddress, setWithdrawTokenAddress] = useState(defaultPaymentTokenAddress ?? "");
-  const [withdrawTokenTo, setWithdrawTokenTo] = useState("");
-  const [withdrawTokenAmount, setWithdrawTokenAmount] = useState("");
-
+  const [nativeWithdrawForm, setNativeWithdrawForm] = useState<NativeWithdrawForm>({ to: "", amountEth: "" });
+  const [tokenWithdrawForm, setTokenWithdrawForm] = useState<TokenWithdrawForm>({
+    tokenAddress: PAYMENT_TOKEN_ADDRESS ?? "",
+    to: "",
+    amount: "",
+  });
   const [newOwnerAddress, setNewOwnerAddress] = useState("");
   const [txError, setTxError] = useState("");
 
@@ -41,90 +54,55 @@ const AdminPage: NextPage = () => {
   } = useScaffoldReadContract({
     contractName: "TokenpingPaywall",
     functionName: "owner",
-    chainId,
+    chainId: PAYMENT_CHAIN_ID,
   });
 
   const { data: paused, refetch: refetchPaused } = useScaffoldReadContract({
     contractName: "TokenpingPaywall",
     functionName: "paused",
-    chainId,
+    chainId: PAYMENT_CHAIN_ID,
   });
 
   const { data: maxDuration, refetch: refetchMaxDuration } = useScaffoldReadContract({
     contractName: "TokenpingPaywall",
     functionName: "maxDurationSeconds",
-    chainId,
+    chainId: PAYMENT_CHAIN_ID,
   });
 
-  const normalizedPlanToken = isAddress(planTokenAddress) ? (planTokenAddress as `0x${string}`) : undefined;
-  const normalizedWithdrawToken = isAddress(withdrawTokenAddress) ? (withdrawTokenAddress as `0x${string}`) : undefined;
-  const normalizedContractAddress =
-    paymentContractAddress && isAddress(paymentContractAddress) ? (paymentContractAddress as `0x${string}`) : undefined;
+  const planToken = isAddress(planForm.tokenAddress) ? planForm.tokenAddress : undefined;
+  const withdrawToken = isAddress(tokenWithdrawForm.tokenAddress) ? tokenWithdrawForm.tokenAddress : undefined;
 
   const { data: currentPlan, refetch: refetchPlan } = useScaffoldReadContract({
     contractName: "TokenpingPaywall",
     functionName: "plans",
-    args: [normalizedPlanToken],
-    chainId,
+    args: [planToken],
+    chainId: PAYMENT_CHAIN_ID,
   });
 
-  const { data: planTokenDecimals } = useReadContract({
-    abi: erc20Abi,
-    address: normalizedPlanToken,
-    functionName: "decimals",
-    chainId,
-    query: { enabled: Boolean(normalizedPlanToken) },
-  });
-
-  const { data: planTokenSymbol } = useReadContract({
-    abi: erc20Abi,
-    address: normalizedPlanToken,
-    functionName: "symbol",
-    chainId,
-    query: { enabled: Boolean(normalizedPlanToken) },
-  });
-
-  const { data: withdrawTokenDecimals } = useReadContract({
-    abi: erc20Abi,
-    address: normalizedWithdrawToken,
-    functionName: "decimals",
-    chainId,
-    query: { enabled: Boolean(normalizedWithdrawToken) },
-  });
-
-  const { data: withdrawTokenSymbol } = useReadContract({
-    abi: erc20Abi,
-    address: normalizedWithdrawToken,
-    functionName: "symbol",
-    chainId,
-    query: { enabled: Boolean(normalizedWithdrawToken) },
-  });
+  const planTokenMetadata = useErc20Metadata(planToken, PAYMENT_CHAIN_ID);
+  const withdrawTokenMetadata = useErc20Metadata(withdrawToken, PAYMENT_CHAIN_ID);
 
   const { data: nativeBalance, refetch: refetchNativeBalance } = useBalance({
-    address: normalizedContractAddress,
-    chainId,
-    query: { enabled: Boolean(normalizedContractAddress) },
+    address: PAYMENT_CONTRACT_ADDRESS,
+    chainId: PAYMENT_CHAIN_ID,
+    query: { enabled: Boolean(PAYMENT_CONTRACT_ADDRESS) },
   });
 
   const { data: contractTokenBalance, refetch: refetchTokenBalance } = useReadContract({
     abi: erc20Abi,
-    address: normalizedWithdrawToken,
+    address: withdrawToken,
     functionName: "balanceOf",
-    args: normalizedContractAddress ? [normalizedContractAddress] : undefined,
-    chainId,
-    query: { enabled: Boolean(normalizedWithdrawToken && normalizedContractAddress) },
+    args: PAYMENT_CONTRACT_ADDRESS ? [PAYMENT_CONTRACT_ADDRESS] : undefined,
+    chainId: PAYMENT_CHAIN_ID,
+    query: { enabled: Boolean(withdrawToken && PAYMENT_CONTRACT_ADDRESS) },
   });
 
   const { writeContractAsync, isPending, isMining } = useScaffoldWriteContract({
     contractName: "TokenpingPaywall",
-    chainId,
+    chainId: PAYMENT_CHAIN_ID,
   });
 
-  const isOwner = useMemo(() => {
-    if (!owner || !connectedAddress) return false;
-    return owner.toLowerCase() === connectedAddress.toLowerCase();
-  }, [owner, connectedAddress]);
-
+  const isOwner = Boolean(owner && connectedAddress && owner.toLowerCase() === connectedAddress.toLowerCase());
   const isBusy = isPending || isMining;
 
   const refetchAll = async () => {
@@ -138,152 +116,55 @@ const AdminPage: NextPage = () => {
     ]);
   };
 
-  const executeAdminTx = async (callback: () => Promise<unknown>) => {
+  const executeAdminTx = async (sendTx: () => Promise<unknown>) => {
     setTxError("");
     try {
-      await callback();
+      await sendTx();
       await refetchAll();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Transaction failed";
-      setTxError(message);
+      setTxError(getErrorMessage(error, "Transaction failed"));
     }
   };
 
-  const handlePause = async () => {
-    await executeAdminTx(async () => {
-      await writeContractAsync({
-        functionName: "pause",
-      });
-    });
+  /** Shows the parse error, or sends the transaction with the parsed value. */
+  const submitAdminTx = async <T,>(parsed: ParseResult<T>, sendTx: (value: T) => Promise<unknown>) => {
+    if ("error" in parsed) {
+      setTxError(parsed.error);
+      return;
+    }
+    await executeAdminTx(() => sendTx(parsed.value));
   };
 
-  const handleUnpause = async () => {
-    await executeAdminTx(async () => {
-      await writeContractAsync({
-        functionName: "unpause",
-      });
-    });
-  };
+  const handlePause = () => executeAdminTx(() => writeContractAsync({ functionName: "pause" }));
 
-  const handleSetPlan = async () => {
-    if (!normalizedPlanToken) {
-      setTxError("Enter a valid token address for plan update");
-      return;
-    }
-    if (!planPrice || !planDurationSeconds) {
-      setTxError("Enter plan price and duration");
-      return;
-    }
-    const decimals = Number(planTokenDecimals ?? 6);
-    let parsedPrice: bigint;
-    let parsedDuration: bigint;
-    try {
-      parsedPrice = parseUnits(planPrice, decimals);
-      parsedDuration = BigInt(planDurationSeconds);
-    } catch {
-      setTxError("Invalid plan values");
-      return;
-    }
+  const handleUnpause = () => executeAdminTx(() => writeContractAsync({ functionName: "unpause" }));
 
-    await executeAdminTx(async () => {
-      await writeContractAsync({
-        functionName: "setPlan",
-        args: [normalizedPlanToken, parsedPrice, parsedDuration, planEnabled],
-      });
-    });
-  };
+  const handleSetPlan = () =>
+    submitAdminTx(parsePlanForm(planForm, planTokenMetadata.decimals), args =>
+      writeContractAsync({ functionName: "setPlan", args }),
+    );
 
-  const handleSetMaxDuration = async () => {
-    if (!maxDurationSeconds) {
-      setTxError("Enter max duration in seconds");
-      return;
-    }
-    let parsedDuration: bigint;
-    try {
-      parsedDuration = BigInt(maxDurationSeconds);
-    } catch {
-      setTxError("Invalid max duration");
-      return;
-    }
+  const handleSetMaxDuration = () =>
+    submitAdminTx(parseMaxDuration(maxDurationSeconds), duration =>
+      writeContractAsync({ functionName: "setMaxDurationSeconds", args: [duration] }),
+    );
 
-    await executeAdminTx(async () => {
-      await writeContractAsync({
-        functionName: "setMaxDurationSeconds",
-        args: [parsedDuration],
-      });
-    });
-  };
+  const handleWithdrawNative = () =>
+    submitAdminTx(parseNativeWithdraw(nativeWithdrawForm), args =>
+      writeContractAsync({ functionName: "withdrawNative", args }),
+    );
 
-  const handleWithdrawNative = async () => {
-    if (!isAddress(withdrawNativeTo)) {
-      setTxError("Enter a valid destination address for native withdraw");
-      return;
-    }
-    if (!withdrawNativeAmountEth) {
-      setTxError("Enter native amount in ETH");
-      return;
-    }
-    let amount: bigint;
-    try {
-      amount = parseEther(withdrawNativeAmountEth);
-    } catch {
-      setTxError("Invalid ETH amount");
-      return;
-    }
+  const handleWithdrawToken = () =>
+    submitAdminTx(parseTokenWithdraw(tokenWithdrawForm, withdrawTokenMetadata.decimals), args =>
+      writeContractAsync({ functionName: "withdrawTokens", args }),
+    );
 
-    await executeAdminTx(async () => {
-      await writeContractAsync({
-        functionName: "withdrawNative",
-        args: [withdrawNativeTo as `0x${string}`, amount],
-      });
-    });
-  };
+  const handleTransferOwnership = () =>
+    submitAdminTx(parseNewOwner(newOwnerAddress), newOwner =>
+      writeContractAsync({ functionName: "transferOwnership", args: [newOwner] }),
+    );
 
-  const handleWithdrawToken = async () => {
-    if (!normalizedWithdrawToken) {
-      setTxError("Enter a valid token address");
-      return;
-    }
-    if (!isAddress(withdrawTokenTo)) {
-      setTxError("Enter a valid destination address for token withdraw");
-      return;
-    }
-    if (!withdrawTokenAmount) {
-      setTxError("Enter token amount");
-      return;
-    }
-
-    const decimals = Number(withdrawTokenDecimals ?? 6);
-    let amount: bigint;
-    try {
-      amount = parseUnits(withdrawTokenAmount, decimals);
-    } catch {
-      setTxError("Invalid token amount");
-      return;
-    }
-
-    await executeAdminTx(async () => {
-      await writeContractAsync({
-        functionName: "withdrawTokens",
-        args: [normalizedWithdrawToken, withdrawTokenTo as `0x${string}`, amount],
-      });
-    });
-  };
-
-  const handleTransferOwnership = async () => {
-    if (!isAddress(newOwnerAddress)) {
-      setTxError("Enter a valid new owner address");
-      return;
-    }
-    await executeAdminTx(async () => {
-      await writeContractAsync({
-        functionName: "transferOwnership",
-        args: [newOwnerAddress as `0x${string}`],
-      });
-    });
-  };
-
-  if (!paymentChainId || !paymentContractAddress) {
+  if (!PAYMENT_CHAIN_ID || !PAYMENT_CONTRACT_ADDRESS) {
     return (
       <div className="min-h-screen bg-base-200 p-6">
         <div className="max-w-4xl mx-auto alert alert-error">
@@ -296,30 +177,12 @@ const AdminPage: NextPage = () => {
   return (
     <div className="min-h-screen bg-base-200 dark:bg-gradient-to-br dark:from-gray-950 dark:via-gray-900 dark:to-indigo-950">
       <div className="relative z-10 max-w-6xl mx-auto px-4 py-8 space-y-6">
-        <div className="rounded-3xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gray-900/60 p-6">
-          <h1 className="text-2xl md:text-3xl font-bold">Admin Console</h1>
-          <p className="text-sm text-base-content/70 mt-2">
-            Private operational dashboard for `TokenpingPaywall`. This page is intentionally not linked in navigation.
-          </p>
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-            <div className="rounded-xl bg-base-200 dark:bg-base-300/10 p-3">
-              <div className="font-semibold mb-1">Contract</div>
-              <Address address={paymentContractAddress as `0x${string}`} />
-            </div>
-            <div className="rounded-xl bg-base-200 dark:bg-base-300/10 p-3">
-              <div className="font-semibold mb-1">Owner</div>
-              {owner ? <Address address={owner} /> : <span className="text-base-content/70">Loading owner...</span>}
-            </div>
-            <div className="rounded-xl bg-base-200 dark:bg-base-300/10 p-3">
-              <div className="font-semibold mb-1">Chain ID</div>
-              <span>{paymentChainId}</span>
-            </div>
-            <div className="rounded-xl bg-base-200 dark:bg-base-300/10 p-3">
-              <div className="font-semibold mb-1">Paused</div>
-              <span>{paused ? "Yes" : "No"}</span>
-            </div>
-          </div>
-        </div>
+        <ContractOverview
+          contractAddress={PAYMENT_CONTRACT_ADDRESS}
+          owner={owner}
+          chainId={PAYMENT_CHAIN_ID}
+          paused={paused}
+        />
 
         {!isConnected ? (
           <div className="alert alert-warning">
@@ -341,167 +204,45 @@ const AdminPage: NextPage = () => {
 
         {isConnected && isOwner ? (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div className="card bg-base-100 border border-base-300 dark:border-white/10 shadow-sm">
-              <div className="card-body">
-                <h2 className="card-title">Pause control</h2>
-                <p className="text-sm text-base-content/70">Emergency switch for paywall payments.</p>
-                <div className="flex gap-3 pt-2">
-                  <button className="btn btn-warning" onClick={handlePause} disabled={isBusy || Boolean(paused)}>
-                    Pause
-                  </button>
-                  <button className="btn btn-success" onClick={handleUnpause} disabled={isBusy || !paused}>
-                    Unpause
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="card bg-base-100 border border-base-300 dark:border-white/10 shadow-sm">
-              <div className="card-body">
-                <h2 className="card-title">Max duration</h2>
-                <p className="text-sm text-base-content/70">
-                  Current: {typeof maxDuration === "bigint" ? maxDuration.toString() : "0"} seconds
-                </p>
-                <input
-                  className="input input-bordered w-full"
-                  placeholder="New max duration (seconds)"
-                  value={maxDurationSeconds}
-                  onChange={event => setMaxDurationSeconds(event.target.value)}
-                />
-                <button className="btn btn-primary w-fit" onClick={handleSetMaxDuration} disabled={isBusy}>
-                  Update max duration
-                </button>
-              </div>
-            </div>
-
-            <div className="card bg-base-100 border border-base-300 dark:border-white/10 shadow-sm">
-              <div className="card-body">
-                <h2 className="card-title">Update plan</h2>
-                <p className="text-sm text-base-content/70">Set token plan price, duration, and enable status.</p>
-                <input
-                  className="input input-bordered w-full"
-                  placeholder="Token address"
-                  value={planTokenAddress}
-                  onChange={event => setPlanTokenAddress(event.target.value)}
-                />
-                <input
-                  className="input input-bordered w-full"
-                  placeholder={`Price (${planTokenSymbol ?? "token"})`}
-                  value={planPrice}
-                  onChange={event => setPlanPrice(event.target.value)}
-                />
-                <input
-                  className="input input-bordered w-full"
-                  placeholder="Duration seconds"
-                  value={planDurationSeconds}
-                  onChange={event => setPlanDurationSeconds(event.target.value)}
-                />
-                <label className="label cursor-pointer justify-start gap-3">
-                  <input
-                    type="checkbox"
-                    className="checkbox checkbox-primary"
-                    checked={planEnabled}
-                    onChange={event => setPlanEnabled(event.target.checked)}
-                  />
-                  <span className="label-text">Plan enabled</span>
-                </label>
-                <div className="text-xs text-base-content/70">
-                  Detected decimals: {typeof planTokenDecimals === "number" ? planTokenDecimals : "6 (fallback)"}
-                </div>
-                {Array.isArray(currentPlan) && currentPlan.length >= 3 ? (
-                  <div className="rounded-xl bg-base-200 dark:bg-base-300/10 p-3 text-xs">
-                    <div>
-                      Current price:{" "}
-                      {typeof currentPlan[0] === "bigint"
-                        ? formatUnits(currentPlan[0], Number(planTokenDecimals ?? 6))
-                        : "0"}{" "}
-                      {planTokenSymbol ?? ""}
-                    </div>
-                    <div>
-                      Current duration: {typeof currentPlan[1] === "bigint" ? currentPlan[1].toString() : "0"} sec
-                    </div>
-                    <div>Current enabled: {Boolean(currentPlan[2]) ? "Yes" : "No"}</div>
-                  </div>
-                ) : null}
-                <button className="btn btn-primary w-fit" onClick={handleSetPlan} disabled={isBusy}>
-                  Save plan
-                </button>
-              </div>
-            </div>
-
-            <div className="card bg-base-100 border border-base-300 dark:border-white/10 shadow-sm">
-              <div className="card-body">
-                <h2 className="card-title">Withdraw native</h2>
-                <p className="text-sm text-base-content/70">
-                  Contract native balance: {nativeBalance ? formatEther(nativeBalance.value) : "0"} ETH
-                </p>
-                <input
-                  className="input input-bordered w-full"
-                  placeholder="Destination address"
-                  value={withdrawNativeTo}
-                  onChange={event => setWithdrawNativeTo(event.target.value)}
-                />
-                <input
-                  className="input input-bordered w-full"
-                  placeholder="Amount in ETH"
-                  value={withdrawNativeAmountEth}
-                  onChange={event => setWithdrawNativeAmountEth(event.target.value)}
-                />
-                <button className="btn btn-primary w-fit" onClick={handleWithdrawNative} disabled={isBusy}>
-                  Withdraw native
-                </button>
-              </div>
-            </div>
-
-            <div className="card bg-base-100 border border-base-300 dark:border-white/10 shadow-sm">
-              <div className="card-body">
-                <h2 className="card-title">Withdraw token</h2>
-                <p className="text-sm text-base-content/70">
-                  Contract token balance:{" "}
-                  {typeof contractTokenBalance === "bigint"
-                    ? formatUnits(contractTokenBalance, Number(withdrawTokenDecimals ?? 6))
-                    : "0"}{" "}
-                  {withdrawTokenSymbol ?? ""}
-                </p>
-                <input
-                  className="input input-bordered w-full"
-                  placeholder="Token address"
-                  value={withdrawTokenAddress}
-                  onChange={event => setWithdrawTokenAddress(event.target.value)}
-                />
-                <input
-                  className="input input-bordered w-full"
-                  placeholder="Destination address"
-                  value={withdrawTokenTo}
-                  onChange={event => setWithdrawTokenTo(event.target.value)}
-                />
-                <input
-                  className="input input-bordered w-full"
-                  placeholder={`Amount (${withdrawTokenSymbol ?? "token"})`}
-                  value={withdrawTokenAmount}
-                  onChange={event => setWithdrawTokenAmount(event.target.value)}
-                />
-                <button className="btn btn-primary w-fit" onClick={handleWithdrawToken} disabled={isBusy}>
-                  Withdraw token
-                </button>
-              </div>
-            </div>
-
-            <div className="card bg-base-100 border border-base-300 dark:border-white/10 shadow-sm xl:col-span-2">
-              <div className="card-body">
-                <h2 className="card-title">Transfer ownership</h2>
-                <p className="text-sm text-base-content/70">Move contract admin rights to another wallet.</p>
-                <input
-                  className="input input-bordered w-full md:max-w-xl"
-                  placeholder="New owner address"
-                  value={newOwnerAddress}
-                  onChange={event => setNewOwnerAddress(event.target.value)}
-                />
-                <button className="btn btn-error w-fit" onClick={handleTransferOwnership} disabled={isBusy}>
-                  Transfer ownership
-                </button>
-              </div>
-            </div>
+            <PauseCard paused={paused} isBusy={isBusy} onPause={handlePause} onUnpause={handleUnpause} />
+            <MaxDurationCard
+              maxDuration={maxDuration}
+              value={maxDurationSeconds}
+              onChange={setMaxDurationSeconds}
+              isBusy={isBusy}
+              onSubmit={handleSetMaxDuration}
+            />
+            <PlanCard
+              form={planForm}
+              onChange={patch => setPlanForm(form => ({ ...form, ...patch }))}
+              tokenDecimals={planTokenMetadata.decimals}
+              tokenSymbol={planTokenMetadata.symbol}
+              currentPlan={currentPlan}
+              isBusy={isBusy}
+              onSubmit={handleSetPlan}
+            />
+            <WithdrawNativeCard
+              form={nativeWithdrawForm}
+              onChange={patch => setNativeWithdrawForm(form => ({ ...form, ...patch }))}
+              balance={nativeBalance?.value}
+              isBusy={isBusy}
+              onSubmit={handleWithdrawNative}
+            />
+            <WithdrawTokenCard
+              form={tokenWithdrawForm}
+              onChange={patch => setTokenWithdrawForm(form => ({ ...form, ...patch }))}
+              balance={contractTokenBalance}
+              tokenDecimals={withdrawTokenMetadata.decimals}
+              tokenSymbol={withdrawTokenMetadata.symbol}
+              isBusy={isBusy}
+              onSubmit={handleWithdrawToken}
+            />
+            <TransferOwnershipCard
+              value={newOwnerAddress}
+              onChange={setNewOwnerAddress}
+              isBusy={isBusy}
+              onSubmit={handleTransferOwnership}
+            />
           </div>
         ) : null}
       </div>
