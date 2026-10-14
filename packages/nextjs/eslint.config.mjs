@@ -10,13 +10,15 @@ const compat = new FlatCompat({
   baseDirectory: __dirname,
 });
 
-// Vendored Scaffold-ETH 2 code is kept as upstream ships it, including its `any` usages.
+// Vendored Scaffold-ETH 2 code is kept as upstream ships it, including its `any` usages and interfaces
+// (types/abitype augments abitype's `Register`, which only an interface can do).
 const SE2_BOILERPLATE = [
   "app/blockexplorer/**",
   "app/debug/**",
   "components/scaffold-eth/**",
   "contracts/**",
   "hooks/scaffold-eth/**",
+  "types/abitype/**",
   "utils/scaffold-eth/**",
 ];
 
@@ -34,6 +36,7 @@ export default defineConfig([
           endOfLine: "auto",
         },
       ],
+      "@typescript-eslint/consistent-type-definitions": ["error", "type"],
     },
   },
   {
@@ -41,13 +44,7 @@ export default defineConfig([
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/ban-ts-comment": "off",
-    },
-  },
-  {
-    // TEMPORARY: remove once NotificationConfig's `catch (error: any)` is gone (refactor area N).
-    files: ["components/custom/NotificationConfig.tsx"],
-    rules: {
-      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/consistent-type-definitions": "off",
     },
   },
 ]);
