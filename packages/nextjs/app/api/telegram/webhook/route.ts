@@ -20,6 +20,7 @@
  */
 import { NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
+import { TELEGRAM_REPLIES, parseCommand } from "~~/app/api/telegram/bot";
 import { invalidateUserConfigCache } from "~~/services/notifications/configCache";
 import { replyToTelegramChat } from "~~/services/telegram/sendTelegram";
 import {
@@ -27,48 +28,68 @@ import {
   deleteLinkByChatId,
   getLinkByChatId,
   isValidStartParam,
-  normalizeUserId,
   upsertUserTelegramLink,
 } from "~~/services/telegram/telegramLinks";
+import { normalizeAddress } from "~~/utils/address";
 
-// Always reply 200 OK to Telegram, even on internal errors, to avoid retries.
-function ok() {
-  return NextResponse.json({ ok: true });
-}
-
-function verifySecret(provided: string | null): boolean {
-  const expected = process.env.TELEGRAM_WEBHOOK_SECRET;
-  if (!expected || !provided) return false;
-  const enc = new TextEncoder();
-  const a = enc.encode(provided);
-  const b = enc.encode(expected);
-  if (a.length !== b.length) return false;
-  try {
-    return timingSafeEqual(a, b);
-  } catch {
-    return false;
-  }
-}
-
-interface TelegramMessage {
+type TelegramMessage = {
   message_id: number;
   from?: { id: number; username?: string; is_bot?: boolean };
   chat: { id: number; type: "private" | "group" | "supergroup" | "channel"; username?: string };
   text?: string;
-}
+};
 
-interface TelegramUpdate {
+type TelegramUpdate = {
   update_id: number;
   message?: TelegramMessage;
+};
+
+// Always reply 200 OK to Telegram, even on internal errors, to avoid retries.
+const ok = () => NextResponse.json({ ok: true });
+
+/** Not awaited, so Telegram gets its 200 quickly. BUG(B3.4): serverless may drop a reply once the response is sent. */
+const reply = (chatId: string, text: string) => {
+  void replyToTelegramChat(chatId, text);
+};
+
+const UTF8 = new TextEncoder();
+
+function verifySecret(provided: string | null): boolean {
+  const expected = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (!expected || !provided) return false;
+  const providedBytes = UTF8.encode(provided);
+  const expectedBytes = UTF8.encode(expected);
+  // timingSafeEqual throws on a length mismatch, so lengths are compared first.
+  return providedBytes.length === expectedBytes.length && timingSafeEqual(providedBytes, expectedBytes);
+}
+
+async function handleStart(chatId: string, username: string | null, token: string | undefined) {
+  if (!token) return reply(chatId, TELEGRAM_REPLIES.startWithoutToken);
+  if (!isValidStartParam(token)) return reply(chatId, TELEGRAM_REPLIES.invalidLink);
+
+  const consumed = await consumeLinkToken(token);
+  if (!consumed) return reply(chatId, TELEGRAM_REPLIES.expiredLink);
+
+  const linked = await upsertUserTelegramLink({ userId: consumed.userId, chatId, username });
+  if (!linked) return reply(chatId, TELEGRAM_REPLIES.linkSaveFailed);
+
+  invalidateUserConfigCache(normalizeAddress(consumed.userId));
+  reply(chatId, TELEGRAM_REPLIES.connected);
+}
+
+/** Unlinks whichever wallet is bound to this chat. */
+async function handleStop(chatId: string) {
+  const existing = await getLinkByChatId(chatId);
+  await deleteLinkByChatId(chatId);
+  if (existing) invalidateUserConfigCache(normalizeAddress(existing.userId));
+  reply(chatId, TELEGRAM_REPLIES.unsubscribed);
 }
 
 export async function POST(request: Request) {
-  // 1. Auth
   if (!verifySecret(request.headers.get("x-telegram-bot-api-secret-token"))) {
     return new NextResponse("forbidden", { status: 403 });
   }
 
-  // 2. Parse update (cap size — Telegram messages are small; reject anything absurd)
   let update: TelegramUpdate;
   try {
     update = (await request.json()) as TelegramUpdate;
@@ -79,102 +100,25 @@ export async function POST(request: Request) {
   const msg = update.message;
   if (!msg?.text || !msg.chat) return ok();
 
-  // 3. Private chats only in v1.
+  // Private chats only in v1 (checked before the bot filter, so bots in groups get the reply too).
   if (msg.chat.type !== "private") {
-    void replyToTelegramChat(String(msg.chat.id), "Tokenping only supports private chats. Please DM the bot directly.");
+    reply(String(msg.chat.id), TELEGRAM_REPLIES.privateChatsOnly);
     return ok();
   }
   if (msg.from?.is_bot) return ok();
 
   const chatId = String(msg.chat.id);
   const username = msg.from?.username ?? msg.chat.username ?? null;
-  const text = msg.text.trim();
+  const command = parseCommand(msg.text);
 
   try {
-    // /start <token>
-    if (text.startsWith("/start")) {
-      const parts = text.split(/\s+/);
-      const param = parts[1];
-
-      if (!param) {
-        void replyToTelegramChat(
-          chatId,
-          "Hi! To receive Aave health-factor alerts here, open Tokenping → " +
-            "Notification Settings → select Telegram → press 'Connect Telegram'.",
-        );
-        return ok();
-      }
-
-      if (!isValidStartParam(param)) {
-        void replyToTelegramChat(chatId, "❌ Invalid link. Please generate a new one in the Tokenping app.");
-        return ok();
-      }
-
-      const consumed = await consumeLinkToken(param);
-      if (!consumed) {
-        void replyToTelegramChat(
-          chatId,
-          "❌ This link has expired or was already used. Please generate a new one in the Tokenping app.",
-        );
-        return ok();
-      }
-
-      const linkOk = await upsertUserTelegramLink({
-        userId: consumed.userId,
-        chatId,
-        username,
-      });
-
-      if (!linkOk) {
-        void replyToTelegramChat(chatId, "Something went wrong saving your link. Please try again.");
-        return ok();
-      }
-
-      invalidateUserConfigCache(normalizeUserId(consumed.userId));
-
-      void replyToTelegramChat(
-        chatId,
-        "✅ Connected. You'll receive Aave health-factor alerts here when your position drops below your threshold.\n\n" +
-          "Send /stop at any time to unsubscribe.",
-      );
-      return ok();
-    }
-
-    // /stop — unlink whichever wallet is bound to this chat.
-    if (text.startsWith("/stop")) {
-      const existing = await getLinkByChatId(chatId);
-      await deleteLinkByChatId(chatId);
-      if (existing) invalidateUserConfigCache(normalizeUserId(existing.userId));
-
-      void replyToTelegramChat(
-        chatId,
-        "🔕 Unsubscribed. You won't receive any more Tokenping alerts here. " +
-          "You can reconnect anytime from the Tokenping app.",
-      );
-      return ok();
-    }
-
-    if (text.startsWith("/help")) {
-      void replyToTelegramChat(
-        chatId,
-        "Tokenping notifies you when your Aave Health Factor drops below a threshold you set in the app.\n\n" +
-          "Commands:\n" +
-          "/start <token> — link via the Tokenping app\n" +
-          "/stop — unsubscribe\n" +
-          "/help — show this message",
-      );
-      return ok();
-    }
-
-    // Unknown message — gentle nudge.
-    void replyToTelegramChat(
-      chatId,
-      "I only respond to /start, /stop, and /help. Open the Tokenping app to manage your alerts.",
-    );
-    return ok();
+    if (command.name === "start") await handleStart(chatId, username, command.token);
+    else if (command.name === "stop") await handleStop(chatId);
+    else if (command.name === "help") reply(chatId, TELEGRAM_REPLIES.help);
+    else reply(chatId, TELEGRAM_REPLIES.unknownCommand);
   } catch (e) {
     // Never surface internal errors to Telegram — just ack and log.
     console.warn("telegram webhook handler error", e);
-    return ok();
   }
+  return ok();
 }

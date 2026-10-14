@@ -21,52 +21,24 @@
  *   native binaries or persist state between invocations, so the CLI must run as a
  *   persistent service. Vercel functions (including the cron job) call it via HTTP.
  */
+import "server-only";
+import { getErrorMessage } from "~~/utils/errors";
+import { isValidSignalUsername, normalizeSignalUsername } from "~~/utils/notifications/validation";
 
-/**
- * Signal usernames: 3–32 chars, letters/numbers/underscores, ending with a
- * 2-digit discriminator (e.g. alice.42, my_bot.01).
- */
-const SIGNAL_USERNAME_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9_]{0,29}\.\d{2,}$/;
-
-export interface SendSignalOptions {
+export type SendSignalOptions = {
   /** Stored username without @ prefix, e.g. "alice.42" */
   to: string;
   message: string;
-}
+};
 
-export function isSignalConfigured(): boolean {
-  return Boolean(process.env.SIGNAL_API_URL && process.env.SIGNAL_SENDER_NUMBER);
-}
-
-/**
- * Strip leading @ or u: prefix and return the bare username.
- * "alice.42" → "alice.42"
- * "@alice.42" → "alice.42"
- * "u:alice.42" → "alice.42"
- * "u:@alice.42" → "alice.42"
- */
-export function normalizeSignalUsername(raw: string): string {
-  return raw.trim().replace(/^[u:@]+/, "");
-}
-
-/**
- * Returns true if the string (after stripping @) looks like a valid Signal username.
- */
-export function isValidSignalUsername(raw: string): boolean {
-  return SIGNAL_USERNAME_REGEX.test(normalizeSignalUsername(raw));
-}
-
-/**
- * Send a Signal message via signal-cli-rest-api.
- * Returns { success: true } or { success: false, error }.
- */
-export async function sendSignalMessage(
-  options: SendSignalOptions,
-): Promise<{ success: true } | { success: false; error: string }> {
-  const { to, message } = options;
+export async function sendSignalMessage({
+  to,
+  message,
+}: SendSignalOptions): Promise<{ success: true } | { success: false; error: string }> {
   const username = normalizeSignalUsername(to);
 
-  if (!username || !isValidSignalUsername(username)) {
+  // BUG(unlisted): isValidSignalUsername normalizes (and trims) again, so "@ alice.42" passes but " alice.42" is sent.
+  if (!isValidSignalUsername(username)) {
     return {
       success: false,
       error: `Invalid Signal username "${username}". Expected format: alice.42 (find yours in Signal → Settings → Profile)`,
@@ -80,8 +52,6 @@ export async function sendSignalMessage(
     return { success: false, error: "Signal service not configured (SIGNAL_API_URL or SIGNAL_SENDER_NUMBER missing)" };
   }
 
-  // signal-cli-rest-api auto-classifies non-phone strings as usernames and prepends
-  // the "u:" prefix internally, so we send the bare username.
   try {
     const response = await fetch(`${apiUrl}/v2/send`, {
       method: "POST",
@@ -100,7 +70,6 @@ export async function sendSignalMessage(
 
     return { success: true };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Unknown error calling Signal API";
-    return { success: false, error: msg };
+    return { success: false, error: getErrorMessage(e, "Unknown error calling Signal API") };
   }
 }

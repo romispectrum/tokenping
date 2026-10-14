@@ -5,30 +5,42 @@
  *   - user_telegram_links: user_id -> { chat_id, username, linked_at }
  *   - telegram_link_tokens: short-lived deep-link tokens for the handshake
  *
- * Server-only — uses the service role client. Never import this from a client
- * component (`"use server"` is implied by the import boundary, since these
- * functions are only called from API routes and the cron).
+ * Needs the service role client: anon/authenticated access to telegram_link_tokens is revoked.
  */
 import { randomBytes } from "crypto";
+import "server-only";
 import { getSupabaseServerClient } from "~~/services/supabase/supabaseServer";
+import { normalizeAddress } from "~~/utils/address";
 
 /** How long a deep-link token is valid before the user must regenerate. */
-export const LINK_TOKEN_TTL_MS = 10 * 60 * 1000; // 10 min
+const LINK_TOKEN_TTL_MS = 10 * 60 * 1000;
 
 /** Telegram's start-parameter max length is 64 chars (charset A-Za-z0-9_-). */
 const MAX_START_PARAM_LEN = 64;
 const START_PARAM_REGEX = /^[A-Za-z0-9_-]{16,64}$/;
 
-export interface UserTelegramLink {
+const LINK_COLUMNS = "user_id, chat_id, username, linked_at";
+
+export type UserTelegramLink = {
   userId: string;
   chatId: string;
   username: string | null;
   linkedAt: string;
-}
+};
 
-export function normalizeUserId(userId: string): string {
-  return userId.trim().toLowerCase();
-}
+type UserTelegramLinkRow = {
+  user_id: string;
+  chat_id: string;
+  username?: string | null;
+  linked_at: string;
+};
+
+const rowToLink = (row: UserTelegramLinkRow): UserTelegramLink => ({
+  userId: row.user_id,
+  chatId: row.chat_id,
+  username: row.username ?? null,
+  linkedAt: row.linked_at,
+});
 
 export function isValidStartParam(raw: string): boolean {
   return START_PARAM_REGEX.test(raw);
@@ -39,10 +51,9 @@ export function isValidStartParam(raw: string): boolean {
  * start-parameter limit. 32 bytes base64url = 43 chars, well under the cap
  * and >>128 bits of entropy.
  */
-export function generateLinkToken(): string {
-  const token = randomBytes(32).toString("base64url");
+function generateLinkToken(): string {
   // base64url is already URL-safe & matches the allowed charset.
-  return token.slice(0, MAX_START_PARAM_LEN);
+  return randomBytes(32).toString("base64url").slice(0, MAX_START_PARAM_LEN);
 }
 
 /**
@@ -51,7 +62,7 @@ export function generateLinkToken(): string {
  */
 export async function createLinkToken(userId: string): Promise<{ token: string; expiresAt: string }> {
   const supabase = getSupabaseServerClient();
-  const uid = normalizeUserId(userId);
+  const uid = normalizeAddress(userId);
 
   // Best-effort cleanup of stale unconsumed tokens for this user.
   await supabase.from("telegram_link_tokens").delete().eq("user_id", uid).is("consumed_at", null);
@@ -79,11 +90,10 @@ export async function createLinkToken(userId: string): Promise<{ token: string; 
  */
 export async function consumeLinkToken(token: string): Promise<{ userId: string } | null> {
   if (!isValidStartParam(token)) return null;
-  const supabase = getSupabaseServerClient();
 
   const nowIso = new Date().toISOString();
   // Atomic: mark consumed iff currently unconsumed AND not expired.
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseServerClient()
     .from("telegram_link_tokens")
     .update({ consumed_at: nowIso })
     .eq("token", token)
@@ -97,9 +107,8 @@ export async function consumeLinkToken(token: string): Promise<{ userId: string 
 }
 
 /**
- * Upsert (link) a user's Telegram chat. Called from the webhook after a
- * successful token consumption. Uses chat_id-conflict semantics: if the same
- * chat tries to re-link to a different wallet, the latest one wins.
+ * Links a user's Telegram chat: upserts on user_id after deleting any other wallet's link for this chat, so a chat
+ * re-linked to a new wallet keeps only the latest link.
  *
  * Returns true on success, false on error (caller decides whether to reply
  * to Telegram with an apology).
@@ -110,7 +119,7 @@ export async function upsertUserTelegramLink(params: {
   username: string | null;
 }): Promise<boolean> {
   const supabase = getSupabaseServerClient();
-  const uid = normalizeUserId(params.userId);
+  const uid = normalizeAddress(params.userId);
 
   // If this chat_id was previously linked to a DIFFERENT user_id, that link is
   // stale (user re-linked from a different wallet). Remove it first to avoid
@@ -134,50 +143,39 @@ export async function upsertUserTelegramLink(params: {
   return true;
 }
 
-/** Lookup link by wallet. */
-export async function getLinkByUserId(userId: string): Promise<UserTelegramLink | null> {
-  const supabase = getSupabaseServerClient();
-  const uid = normalizeUserId(userId);
-  const { data, error } = await supabase
+/** Lookup errors are reported as "no link". */
+async function findLink(column: "user_id" | "chat_id", value: string): Promise<UserTelegramLink | null> {
+  const { data, error } = await getSupabaseServerClient()
     .from("user_telegram_links")
-    .select("user_id, chat_id, username, linked_at")
-    .eq("user_id", uid)
-    .maybeSingle();
-  if (error || !data) return null;
-  return {
-    userId: data.user_id as string,
-    chatId: data.chat_id as string,
-    username: (data.username as string | null) ?? null,
-    linkedAt: data.linked_at as string,
-  };
+    .select(LINK_COLUMNS)
+    .eq(column, value)
+    .maybeSingle<UserTelegramLinkRow>();
+  return error || !data ? null : rowToLink(data);
 }
 
-/** Lookup link by Telegram chat_id (used by /stop and bot-blocked cleanup). */
-export async function getLinkByChatId(chatId: string): Promise<UserTelegramLink | null> {
-  const supabase = getSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("user_telegram_links")
-    .select("user_id, chat_id, username, linked_at")
-    .eq("chat_id", chatId)
-    .maybeSingle();
-  if (error || !data) return null;
-  return {
-    userId: data.user_id as string,
-    chatId: data.chat_id as string,
-    username: (data.username as string | null) ?? null,
-    linkedAt: data.linked_at as string,
-  };
+export function getLinkByUserId(userId: string): Promise<UserTelegramLink | null> {
+  return findLink("user_id", normalizeAddress(userId));
 }
 
-/** Unlink by user_id (UI Disconnect button). */
+export function getLinkByChatId(chatId: string): Promise<UserTelegramLink | null> {
+  return findLink("chat_id", chatId);
+}
+
+/**
+ * Every link as user_id → chat_id, in a single query.
+ * BUG(B3.7): unpaginated (capped at PostgREST max_rows) and a failed query silently yields an empty map.
+ */
+export async function getChatIdsByUser(): Promise<Map<string, string>> {
+  const { data } = await getSupabaseServerClient().from("user_telegram_links").select("user_id, chat_id");
+  return new Map((data ?? []).map(row => [String(row.user_id), String(row.chat_id)]));
+}
+
+// BUG(B3.5): both deletes ignore the Supabase error, so callers report success even when nothing was removed.
+
 export async function deleteLinkByUserId(userId: string): Promise<void> {
-  const supabase = getSupabaseServerClient();
-  const uid = normalizeUserId(userId);
-  await supabase.from("user_telegram_links").delete().eq("user_id", uid);
+  await getSupabaseServerClient().from("user_telegram_links").delete().eq("user_id", normalizeAddress(userId));
 }
 
-/** Unlink by chat_id (used by /stop command and bot-blocked cleanup in cron). */
 export async function deleteLinkByChatId(chatId: string): Promise<void> {
-  const supabase = getSupabaseServerClient();
-  await supabase.from("user_telegram_links").delete().eq("chat_id", chatId);
+  await getSupabaseServerClient().from("user_telegram_links").delete().eq("chat_id", chatId);
 }

@@ -13,13 +13,15 @@
  *   Forgetting to escape a single `<` or `_` aborts the entire send with
  *   400 "can't parse entities". For our short alert body, plain text is bulletproof.
  */
+import "server-only";
+import { getErrorMessage } from "~~/utils/errors";
 
-export interface SendTelegramOptions {
+export type SendTelegramOptions = {
   /** Telegram chat_id as a string (may exceed JS safe int range for groups). */
   chatId: string;
   /** Plain-text message body. No HTML / Markdown parsing applied. */
   message: string;
-}
+};
 
 /**
  * Error reasons the caller may want to act on (e.g. null out the chat_id when
@@ -75,17 +77,15 @@ function classifyError(status: number, description: string): TelegramSendErrorCo
  *   - null out a stored chat_id when code === "bot_blocked" or "chat_not_found"
  *   - back off / log on other errors
  */
-export async function sendTelegramMessage(options: SendTelegramOptions): Promise<SendTelegramResult> {
-  const { chatId, message } = options;
-
+export async function sendTelegramMessage({ chatId, message }: SendTelegramOptions): Promise<SendTelegramResult> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) {
     return { success: false, error: "TELEGRAM_BOT_TOKEN missing", code: "misconfigured" };
   }
-  if (!chatId || !chatId.trim()) {
+  if (!chatId?.trim()) {
     return { success: false, error: "chatId is required", code: "api_error" };
   }
-  if (!message || !message.trim()) {
+  if (!message?.trim()) {
     return { success: false, error: "message is required", code: "api_error" };
   }
 
@@ -124,17 +124,19 @@ export async function sendTelegramMessage(options: SendTelegramOptions): Promise
       ...(retryAfter !== undefined ? { retryAfter } : {}),
     };
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Unknown error calling Telegram API";
-    return { success: false, error: scrubToken(message), code: "network" };
+    return {
+      success: false,
+      error: scrubToken(getErrorMessage(e, "Unknown error calling Telegram API")),
+      code: "network",
+    };
   }
 }
 
 /**
- * Convenience: tell Telegram who we are. Used by the webhook to reply to the
- * user after a successful /start handshake. We deliberately keep this in the
- * same file so the bot-token usage is centralized.
+ * Best-effort bot reply (webhook command answers, the disconnect farewell): the result is discarded, so a failed
+ * reply never fails the caller. Kept here so the bot token is only read in this file.
  */
 export async function replyToTelegramChat(chatId: string, message: string): Promise<void> {
-  // Fire-and-forget — webhook should reply fast even if this fails.
+  // sendTelegramMessage already turns every failure into a result; the catch is a defensive backstop.
   await sendTelegramMessage({ chatId, message }).catch(() => {});
 }

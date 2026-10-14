@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { runNotificationCheck } from "~~/services/notifications/runNotificationCheck";
+import { respondWithNotificationCheck } from "~~/services/api/server/notificationCheck";
 
-function isAuthorized(request: Request): { ok: true } | { ok: false; reason: string } {
+type AuthResult = { ok: true } | { ok: false; reason: string };
+
+function isAuthorized(request: Request): AuthResult {
   const auth = request.headers.get("authorization");
   const vercelCron = request.headers.get("x-vercel-cron");
   const userAgent = request.headers.get("user-agent") ?? "";
@@ -14,7 +16,7 @@ function isAuthorized(request: Request): { ok: true } | { ok: false; reason: str
   }
 
   // Fallback for Vercel cron requests when CRON_SECRET is not configured.
-  // This keeps cron functional while still rejecting regular public traffic.
+  // BUG(B3.10): these headers can be spoofed by any client.
   if (vercelCron === "1" || userAgent.toLowerCase().includes("vercel-cron")) {
     return { ok: true };
   }
@@ -25,20 +27,8 @@ function isAuthorized(request: Request): { ok: true } | { ok: false; reason: str
 export async function GET(request: Request) {
   const auth = isAuthorized(request);
   if (!auth.ok) {
-    return NextResponse.json(
-      {
-        error: "Unauthorized",
-        reason: auth.reason,
-      },
-      { status: 401 },
-    );
+    return NextResponse.json({ error: "Unauthorized", reason: auth.reason }, { status: 401 });
   }
 
-  const result = await runNotificationCheck();
-
-  if (!result.success) {
-    return NextResponse.json({ error: result.error }, { status: 502 });
-  }
-
-  return NextResponse.json(result);
+  return respondWithNotificationCheck();
 }

@@ -14,31 +14,29 @@
  *   security task. See the security review in commit history for blast-radius.
  */
 import { NextResponse } from "next/server";
-import { isAccessActive } from "~~/services/payments/checkAccess";
+import { requireActiveAccess } from "~~/services/api/server/access";
+import { MISSING_USER_ID, internalError, jsonError, parseUserId } from "~~/services/api/server/http";
+import { isTelegramConfigured } from "~~/services/telegram/sendTelegram";
 import { createLinkToken } from "~~/services/telegram/telegramLinks";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { userId } = body as { userId?: string };
+    const { userId: rawUserId } = body as { userId?: unknown };
 
-    if (!userId || typeof userId !== "string" || !userId.trim()) {
-      return NextResponse.json({ error: "Missing or invalid userId" }, { status: 400 });
-    }
+    const userId = parseUserId(rawUserId);
+    if (!userId) return jsonError(MISSING_USER_ID, 400);
 
-    const trimmed = userId.trim();
-
-    const active = await isAccessActive(trimmed);
-    if (!active) {
-      return NextResponse.json({ error: "Active paid access required to connect Telegram" }, { status: 403 });
-    }
+    // Checked before the configuration, so unconfigured servers still answer 403 to wallets without access.
+    const denied = await requireActiveAccess(userId, "Active paid access required to connect Telegram");
+    if (denied) return denied;
 
     const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
-    if (!botUsername || !process.env.TELEGRAM_BOT_TOKEN) {
-      return NextResponse.json({ error: "Telegram is not configured on this server" }, { status: 503 });
+    if (!botUsername || !isTelegramConfigured()) {
+      return jsonError("Telegram is not configured on this server", 503);
     }
 
-    const { token, expiresAt } = await createLinkToken(trimmed);
+    const { token, expiresAt } = await createLinkToken(userId);
 
     return NextResponse.json({
       token,
@@ -47,7 +45,6 @@ export async function POST(request: Request) {
       deepLink: `https://t.me/${botUsername}?start=${token}`,
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return internalError(e);
   }
 }

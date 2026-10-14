@@ -1,146 +1,146 @@
-import { DEFAULT_HEALTH_FACTOR_THRESHOLD } from "~~/constants/notifications";
+import "server-only";
+import type { Address } from "viem";
+import { DEFAULT_HEALTH_FACTOR_THRESHOLD, NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import { getHealthFactorForWallet } from "~~/services/aave/getHealthFactor";
 import { sendEmail } from "~~/services/email/sendEmail";
+import { type EnabledConfigRow, findEnabledConfigs } from "~~/services/notifications/configRepository";
 import { sendSignalMessage } from "~~/services/signal/sendSignal";
-import { getSupabaseServerClient } from "~~/services/supabase/supabaseServer";
-import { sendTelegramMessage } from "~~/services/telegram/sendTelegram";
-import { deleteLinkByChatId } from "~~/services/telegram/telegramLinks";
+import { type TelegramSendErrorCode, sendTelegramMessage } from "~~/services/telegram/sendTelegram";
+import { deleteLinkByChatId, getChatIdsByUser } from "~~/services/telegram/telegramLinks";
+import type { NotificationService } from "~~/types/notifications";
+import { getErrorMessage } from "~~/utils/errors";
+import { formatUtcTimestamp } from "~~/utils/format";
+import { isBelowThreshold } from "~~/utils/healthFactor";
 
-/** Cron interval in minutes (used in response; schedule is in vercel.json). */
-export const CRON_INTERVAL_MINUTES = 5;
-
-export interface NotificationCheckResult {
+export type NotificationCheckResult = {
   success: true;
+  /** Response contract: keeps its CONSTANT_CASE key. */
   CRON_INTERVAL_MINUTES: number;
   configsChecked: number;
   emailsSent: number;
   signalSent: number;
   telegramSent: number;
   errors?: string[];
-}
+};
+
+type Alert = { chainName: string; healthFactor: string; threshold: number; timestamp: string };
+
+type AlertMessage = { text: string; subject: string; html: string };
+
+type Delivery = { channel: NotificationService; recipient: string };
+
+type AlertSender = (
+  recipient: string,
+  message: AlertMessage,
+) => Promise<{ success: true } | { success: false; error: string; code?: TelegramSendErrorCode }>;
+
+/** The chat is gone for good: the link is deleted so the cron stops failing on it every run. */
+const DEAD_CHAT_CODES: readonly TelegramSendErrorCode[] = ["bot_blocked", "chat_not_found"];
+
+export const buildAlertText = ({ chainName, healthFactor, threshold, timestamp }: Alert) =>
+  `Your Aave Health Factor on ${chainName} is ${healthFactor}, ` +
+  `which is below your threshold of ${threshold}. ` +
+  `Consider adding collateral or repaying debt to avoid liquidation.\n\nSent at: ${timestamp}`;
+
+/** The html footer says "Created at" where the text says "Sent at". */
+export const buildAlertEmail = ({ chainName, healthFactor, threshold, timestamp }: Alert) => ({
+  subject: `Aave Health Factor Alert – ${chainName}`,
+  html:
+    `<p>Your Aave Health Factor on <strong>${chainName}</strong> is ` +
+    `<strong>${healthFactor}</strong>, which is below your threshold of ` +
+    `<strong>${threshold}</strong>.</p>` +
+    `<p>Consider adding collateral or repaying debt to avoid liquidation.</p>` +
+    `<p><small>Created at: ${timestamp}</small></p>`,
+});
 
 /**
- * Fetches enabled notification configs, checks Aave health factor per wallet/chain,
- * and sends alert emails and/or Signal messages when health factor is below threshold.
+ * The channels a config can deliver to right now, in send order (email, Signal, Telegram), with trimmed recipients.
+ * BUG(B3.13): `chatIdsByUser` holds lowercased user ids but is looked up with the raw config user_id, so legacy
+ * checksummed rows never get Telegram alerts.
+ * BUG(unlisted): Telegram counts once the user has a link, even with an empty chat id, which is never sent to.
+ */
+export const getDeliverableChannels = (row: EnabledConfigRow, chatIdsByUser: Map<string, string>): Delivery[] => {
+  const { services } = row;
+  if (!Array.isArray(services)) return [];
+
+  const deliveries: Delivery[] = [];
+  if (services.includes("email") && row.email?.trim()) {
+    deliveries.push({ channel: "email", recipient: String(row.email).trim() });
+  }
+  if (services.includes("signal") && row.signal_recipient?.trim()) {
+    deliveries.push({ channel: "signal", recipient: String(row.signal_recipient).trim() });
+  }
+  const chatId = chatIdsByUser.get(String(row.user_id));
+  if (services.includes("telegram") && chatId !== undefined) {
+    deliveries.push({ channel: "telegram", recipient: chatId });
+  }
+  return deliveries;
+};
+
+const ALERT_SENDERS: Record<NotificationService, AlertSender> = {
+  email: (to, { subject, text, html }) => sendEmail({ to, subject, text, html }),
+  signal: (to, { text }) => sendSignalMessage({ to, message: text }),
+  telegram: (chatId, { text }) => sendTelegramMessage({ chatId, message: text }),
+};
+
+/**
+ * One cron pass: loads the enabled configs, reads each wallet's Aave health factor on the config's chain and, when
+ * it is below the threshold, alerts every deliverable channel. Configs are processed one after another.
  */
 export async function runNotificationCheck(): Promise<NotificationCheckResult | { success: false; error: string }> {
   try {
-    const supabase = getSupabaseServerClient();
-    const { data: rows, error } = await supabase
-      .from("notification_configs")
-      .select("user_id, chain_id, health_factor_threshold, email, signal_recipient, services")
-      .eq("enabled", true);
-
+    const { data: rows, error } = await findEnabledConfigs();
     if (error) {
       return { success: false, error: error.message };
     }
 
-    // Pull all Telegram links in one query and index by user_id. Cheaper than per-row joins.
-    const { data: linkRows } = await supabase.from("user_telegram_links").select("user_id, chat_id");
-    const telegramChatByUser = new Map<string, string>();
-    for (const row of linkRows ?? []) {
-      telegramChatByUser.set(String(row.user_id), String(row.chat_id));
-    }
+    const chatIdsByUser = await getChatIdsByUser();
+    const configs = (rows ?? []).filter(row => getDeliverableChannels(row, chatIdsByUser).length > 0);
 
-    const configs = (rows ?? []).filter(row => {
-      const services = row.services as string[];
-      if (!Array.isArray(services) || services.length === 0) return false;
-      const wantsEmail = services.includes("email") && row.email?.trim();
-      const wantsSignal = services.includes("signal") && row.signal_recipient?.trim();
-      const wantsTelegram = services.includes("telegram") && telegramChatByUser.has(String(row.user_id));
-      return wantsEmail || wantsSignal || wantsTelegram;
-    });
-
-    let emailsSent = 0;
-    let signalSent = 0;
-    let telegramSent = 0;
+    const sent: Record<NotificationService, number> = { email: 0, signal: 0, telegram: 0 };
     const errors: string[] = [];
 
     for (const config of configs) {
-      const userId = config.user_id as string;
-      const chainId = config.chain_id as number;
+      // BUG(B3.12): a falsy threshold (0, null, unparseable) silently becomes the default.
       const threshold = Number(config.health_factor_threshold) || DEFAULT_HEALTH_FACTOR_THRESHOLD;
-      const services = config.services as string[];
 
-      const result = await getHealthFactorForWallet(userId as `0x${string}`, chainId);
-      if (!result) continue;
+      // BUG(B3.12): a failed read (null) is skipped without an errors[] entry.
+      const reading = await getHealthFactorForWallet(config.user_id as Address, config.chain_id);
+      if (!reading || !isBelowThreshold(reading.healthFactor, threshold)) continue;
 
-      const hfNum = result.healthFactor === "∞" ? Infinity : parseFloat(result.healthFactor);
-      if (Number.isNaN(hfNum) || hfNum >= threshold) continue;
+      const alert = { ...reading, threshold, timestamp: formatUtcTimestamp(new Date()) };
+      const message = { text: buildAlertText(alert), ...buildAlertEmail(alert) };
 
-      // Use UTC so timestamp is always server time (Vercel runs in UTC)
-      const timestamp = new Intl.DateTimeFormat("en-US", {
-        timeZone: "UTC",
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        second: "2-digit",
-        timeZoneName: "long",
-      }).format(new Date());
+      // Recomputed per config: a dead Telegram chat removed below is skipped for the user's remaining configs.
+      for (const { channel, recipient } of getDeliverableChannels(config, chatIdsByUser)) {
+        // Only an empty Telegram chat id gets here; it is skipped without an errors[] entry.
+        if (!recipient) continue;
 
-      const alertText =
-        `Your Aave Health Factor on ${result.chainName} is ${result.healthFactor}, ` +
-        `which is below your threshold of ${threshold}. ` +
-        `Consider adding collateral or repaying debt to avoid liquidation.\n\nSent at: ${timestamp}`;
+        const result = await ALERT_SENDERS[channel](recipient, message);
+        if (result.success) {
+          sent[channel]++;
+          continue;
+        }
 
-      // Email notification
-      if (services.includes("email") && config.email?.trim()) {
-        const email = String(config.email).trim();
-        const subject = `Aave Health Factor Alert – ${result.chainName}`;
-        const html =
-          `<p>Your Aave Health Factor on <strong>${result.chainName}</strong> is ` +
-          `<strong>${result.healthFactor}</strong>, which is below your threshold of ` +
-          `<strong>${threshold}</strong>.</p>` +
-          `<p>Consider adding collateral or repaying debt to avoid liquidation.</p>` +
-          `<p><small>Created at: ${timestamp}</small></p>`;
-
-        const sendResult = await sendEmail({ to: email, subject, text: alertText, html });
-        if (sendResult.success) emailsSent++;
-        else errors.push(`email:${email}: ${sendResult.error}`);
-      }
-
-      // Signal notification
-      if (services.includes("signal") && config.signal_recipient?.trim()) {
-        const username = String(config.signal_recipient).trim();
-        const sendResult = await sendSignalMessage({ to: username, message: alertText });
-        if (sendResult.success) signalSent++;
-        else errors.push(`signal:${username}: ${sendResult.error}`);
-      }
-
-      // Telegram notification — chat_id comes from the user-level link, not per-chain.
-      if (services.includes("telegram")) {
-        const chatId = telegramChatByUser.get(String(userId));
-        if (chatId) {
-          const sendResult = await sendTelegramMessage({ chatId, message: alertText });
-          if (sendResult.success) {
-            telegramSent++;
-          } else {
-            errors.push(`telegram:${chatId}: ${sendResult.error}`);
-            // Self-heal: if the bot has been blocked or the chat is gone, drop the
-            // link so we don't keep erroring every 5 minutes. Once nulled, the user
-            // can re-link from the UI.
-            if (sendResult.code === "bot_blocked" || sendResult.code === "chat_not_found") {
-              await deleteLinkByChatId(chatId);
-              telegramChatByUser.delete(String(userId));
-            }
-          }
+        errors.push(`${channel}:${recipient}: ${result.error}`);
+        if (channel === "telegram" && result.code && DEAD_CHAT_CODES.includes(result.code)) {
+          // The user can re-link from the UI.
+          await deleteLinkByChatId(recipient);
+          chatIdsByUser.delete(String(config.user_id));
         }
       }
     }
 
     return {
       success: true,
-      CRON_INTERVAL_MINUTES,
+      CRON_INTERVAL_MINUTES: NOTIFICATION_CHECK_INTERVAL_MINUTES,
       configsChecked: configs.length,
-      emailsSent,
-      signalSent,
-      telegramSent,
+      emailsSent: sent.email,
+      signalSent: sent.signal,
+      telegramSent: sent.telegram,
       ...(errors.length > 0 && { errors }),
     };
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Unknown error";
-    return { success: false, error: message };
+    return { success: false, error: getErrorMessage(e) };
   }
 }

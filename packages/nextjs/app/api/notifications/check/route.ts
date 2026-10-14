@@ -1,21 +1,14 @@
-import { NextResponse } from "next/server";
-import { runNotificationCheck } from "~~/services/notifications/runNotificationCheck";
+import { jsonError } from "~~/services/api/server/http";
+import { respondWithNotificationCheck } from "~~/services/api/server/notificationCheck";
 
 /**
  * GET /api/notifications/check
- * For development: triggers the notification check immediately (same logic as cron).
- * Only allowed when NODE_ENV === 'development'.
+ * Development only (404 otherwise): runs the cron's notification pass immediately.
  */
 export async function GET() {
   if (process.env.NODE_ENV !== "development") {
-    return NextResponse.json({ error: "This endpoint is only available in development" }, { status: 404 });
+    return jsonError("This endpoint is only available in development", 404);
   }
 
-  const result = await runNotificationCheck();
-
-  if (!result.success) {
-    return NextResponse.json({ error: result.error }, { status: 502 });
-  }
-
-  return NextResponse.json(result);
+  return respondWithNotificationCheck();
 }
