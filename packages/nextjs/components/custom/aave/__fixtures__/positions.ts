@@ -8,7 +8,7 @@ export const SUPPLIED_USDC: TokenPosition = {
   stableDebt: 0n,
   variableDebt: 0n,
   usageAsCollateralEnabled: true,
-  liquidityRate: 3.456,
+  supplyApy: 3.456,
 };
 
 // Below 1, so formatTokenAmount keeps 6 decimals.
@@ -20,7 +20,7 @@ export const SUPPLIED_WETH_NOT_COLLATERAL: TokenPosition = {
   stableDebt: 0n,
   variableDebt: 0n,
   usageAsCollateralEnabled: false,
-  liquidityRate: 0,
+  supplyApy: 0,
 };
 
 export const VARIABLE_DEBT_DAI: TokenPosition = {
@@ -31,7 +31,7 @@ export const VARIABLE_DEBT_DAI: TokenPosition = {
   stableDebt: 0n,
   variableDebt: 250_500_000_000_000_000_000n,
   usageAsCollateralEnabled: false,
-  liquidityRate: 4.2,
+  supplyApy: 4.2,
 };
 
 export const STABLE_DEBT_USDT: TokenPosition = {
@@ -42,7 +42,7 @@ export const STABLE_DEBT_USDT: TokenPosition = {
   stableDebt: 10_000_000n,
   variableDebt: 0n,
   usageAsCollateralEnabled: false,
-  liquidityRate: 2.5,
+  supplyApy: 2.5,
 };
 
 export const MIXED_DEBT_GHO: TokenPosition = {
@@ -53,7 +53,7 @@ export const MIXED_DEBT_GHO: TokenPosition = {
   stableDebt: 1_500_000_000_000_000_000n,
   variableDebt: 2_000_000_000_000_000_000_000n,
   usageAsCollateralEnabled: false,
-  liquidityRate: 0,
+  supplyApy: 0,
 };
 
 // Supplied and borrowed, so it shows up in both lists.
@@ -65,7 +65,7 @@ export const SUPPLIED_AND_BORROWED_LINK: TokenPosition = {
   stableDebt: 0n,
   variableDebt: 5_000_000_000_000_000_000n,
   usageAsCollateralEnabled: true,
-  liquidityRate: 0.0123,
+  supplyApy: 0.0123,
 };
 
 export const ETHEREUM_POSITION: NetworkPosition = {

@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { useIsClient } from "usehooks-ts";
 import { NetworkSummaryRow } from "~~/components/custom/aave/NetworkSummaryRow";
 import { PositionDetails } from "~~/components/custom/aave/PositionDetails";
 import { PositionsSkeleton } from "~~/components/custom/aave/PositionsSkeleton";
@@ -15,9 +14,6 @@ export const AavePositions = () => {
   const { positions, isLoading, error, totalNetWorthUSD, totalCollateralUSD, totalDebtUSD, refetch } =
     useAavePositions();
   const { hasConfig, isLoaded: configsLoaded } = useNotificationConfig();
-  // The page already waits for the client. This gate also holds back the first frame until the initial fetch has set
-  // isLoading, so the "no positions" message never flashes before the skeleton.
-  const mounted = useIsClient();
   const [selectedChainId, setSelectedChainId] = useSelectedChainId(positions);
 
   const positionsWithData = useMemo(() => positions.filter(p => p.hasPosition), [positions]);
@@ -28,8 +24,6 @@ export const AavePositions = () => {
   );
 
   const hasNotification = (chainId: number) => configsLoaded && hasConfig(chainId);
-
-  if (!mounted) return null;
 
   return (
     <div className="w-full max-w-7xl mx-auto px-3 sm:px-4">

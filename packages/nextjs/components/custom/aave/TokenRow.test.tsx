@@ -20,9 +20,11 @@ describe("CollateralTokenRow", () => {
     expect(renderMarkup(<CollateralTokenRow token={SUPPLIED_WETH_NOT_COLLATERAL} />)).toMatchSnapshot();
   });
 
-  it("labels the supply rate as APY", () => {
-    // BUG(B1.4): liquidityRate is an APR but the row labels it APY.
+  it("shows the supply APY with two decimals", () => {
     expect(renderMarkup(<CollateralTokenRow token={SUPPLIED_AND_BORROWED_LINK} />)).toContain(">0.01% APY</p>");
+    expect(renderMarkup(<CollateralTokenRow token={{ ...SUPPLIED_USDC, supplyApy: 3.56197 }} />)).toContain(
+      ">3.56% APY</p>",
+    );
   });
 });
 

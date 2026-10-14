@@ -1,50 +1,34 @@
+// @vitest-environment jsdom
 import type { ReactNode } from "react";
+import { onlineManager } from "@tanstack/react-query";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AavePositions } from "~~/components/custom/AavePositions";
 import {
   ARBITRUM_EMPTY_POSITION,
   BASE_SUMMARY_ONLY_POSITION,
   ETHEREUM_POSITION,
+  POLYGON_COLLATERAL_ONLY_POSITION,
 } from "~~/components/custom/aave/__fixtures__/positions";
-import type { NetworkPosition } from "~~/services/aave/positions";
-import { renderMarkup } from "~~/utils/testing/render";
+import { type NetworkPosition, fetchAavePositions } from "~~/services/aave/positions";
+import { deferred } from "~~/utils/testing/helpers";
+import { renderWithProviders } from "~~/utils/testing/providers";
 
-const state = vi.hoisted(() => ({
-  isClient: true,
-  // useSelectedChainId has its own tests; here it just returns the selection under test.
-  selectedChainId: null as number | null,
-  selectionArgs: [] as unknown[][],
-  positions: [] as NetworkPosition[],
-  isLoading: false,
-  error: null as string | null,
-  totals: { totalNetWorthUSD: "0.00", totalCollateralUSD: "0.00", totalDebtUSD: "0.00" },
-  configsLoaded: true,
-  configuredChainIds: [] as number[],
+const USER = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
+
+vi.mock("wagmi", () => ({ useAccount: () => ({ address: USER, isConnected: true }) }));
+
+vi.mock("~~/services/aave/positions", async importOriginal => ({
+  ...(await importOriginal<typeof import("~~/services/aave/positions")>()),
+  fetchAavePositions: vi.fn(),
 }));
 
-vi.mock("usehooks-ts", () => ({ useIsClient: () => state.isClient }));
-
-vi.mock("~~/components/custom/aave/useSelectedChainId", () => ({
-  useSelectedChainId: (...args: unknown[]) => {
-    state.selectionArgs.push(args);
-    return [state.selectedChainId, () => undefined];
-  },
-}));
-
-vi.mock("~~/hooks/custom/useAavePositions", () => ({
-  useAavePositions: () => ({
-    positions: state.positions,
-    isLoading: state.isLoading,
-    error: state.error,
-    ...state.totals,
-    refetch: () => undefined,
-  }),
-}));
+const notifications = vi.hoisted(() => ({ isLoaded: true, configuredChainIds: [] as number[] }));
 
 vi.mock("~~/hooks/custom/useNotificationConfig", () => ({
   useNotificationConfig: () => ({
-    hasConfig: (chainId: number) => state.configuredChainIds.includes(chainId),
-    isLoaded: state.configsLoaded,
+    hasConfig: (chainId: number) => notifications.configuredChainIds.includes(chainId),
+    isLoaded: notifications.isLoaded,
   }),
 }));
 
@@ -56,131 +40,184 @@ vi.mock("~~/components/custom/AccessPaywall", () => ({
   ),
 }));
 
-vi.mock("~~/components/custom/NotificationConfig", () => ({
-  NotificationConfig: (props: { chainId: number }) => (
-    <div data-stub="notification-config" data-chain-id={props.chainId} />
-  ),
-}));
+// Holds an unsaved draft in local state, like the real form.
+vi.mock("~~/components/custom/NotificationConfig", async () => {
+  const { useState } = await import("react");
+  return {
+    NotificationConfig: ({ chainId }: { chainId: number }) => {
+      const [draft, setDraft] = useState("");
+      return (
+        <input
+          aria-label="Notification draft"
+          data-stub="notification-config"
+          data-chain-id={chainId}
+          value={draft}
+          onChange={event => setDraft(event.target.value)}
+        />
+      );
+    },
+  };
+});
 
-const LOADED_TOTALS = { totalNetWorthUSD: "10885.42", totalCollateralUSD: "13145.67", totalDebtUSD: "3260.25" };
+const fetchMock = vi.mocked(fetchAavePositions);
+
 const NO_POSITIONS_MESSAGE = "No active Aave positions detected on supported networks.";
+const SELECT_PROMPT = "Select a network on the left to view its Aave position.";
 const BELL_PATH = 'd="M15 17h5l-1.405-1.405';
+
+// One tag per line keeps snapshot diffs readable.
+const markup = (container: HTMLElement) => container.innerHTML.replace(/></g, ">\n<");
+
+const networksPanel = () => within(screen.getByRole("complementary"));
+const networkRow = (chainName: string) => networksPanel().getByText(chainName).closest("button")!;
+const refreshButton = () => screen.getByRole("button", { name: /^Refresh(ing)? positions$/ });
+
+// Resolves once the fetch has settled and the default network's details (or the selection prompt) are on screen.
+const renderLoaded = async (positions: NetworkPosition[]) => {
+  fetchMock.mockResolvedValueOnce(positions);
+  const view = renderWithProviders(<AavePositions />);
+  const defaultNetwork = positions.find(p => p.hasPosition) ?? positions[0];
+  await waitFor(() => {
+    expect(refreshButton().textContent).toBe("Refresh");
+    if (defaultNetwork) screen.getByRole("heading", { level: 3, name: defaultNetwork.chainName });
+    else screen.getByText(SELECT_PROMPT);
+  });
+  return view;
+};
 
 describe("AavePositions", () => {
   beforeEach(() => {
-    state.isClient = true;
-    state.selectedChainId = null;
-    state.selectionArgs = [];
-    state.positions = [];
-    state.isLoading = false;
-    state.error = null;
-    state.totals = { totalNetWorthUSD: "0.00", totalCollateralUSD: "0.00", totalDebtUSD: "0.00" };
-    state.configsLoaded = true;
-    state.configuredChainIds = [];
-  });
-
-  it("renders nothing before mounting on the client", () => {
-    state.isClient = false;
-
-    expect(renderMarkup(<AavePositions />)).toBe("");
-  });
-
-  it("passes the fetched positions to the selection hook on every render, mounted or not", () => {
-    state.positions = [ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION];
-
-    for (const isClient of [false, true]) {
-      state.isClient = isClient;
-      state.selectionArgs = [];
-
-      renderMarkup(<AavePositions />);
-
-      expect(state.selectionArgs).toHaveLength(1);
-      expect(state.selectionArgs[0]).toHaveLength(1);
-      expect(state.selectionArgs[0][0]).toBe(state.positions);
-    }
+    fetchMock.mockReset();
+    notifications.isLoaded = true;
+    notifications.configuredChainIds = [];
   });
 
   it("renders skeletons and the refreshing button while loading", () => {
-    state.isLoading = true;
+    fetchMock.mockReturnValue(deferred<NetworkPosition[]>().promise);
 
-    expect(renderMarkup(<AavePositions />)).toMatchSnapshot();
+    const { container } = renderWithProviders(<AavePositions />);
+
+    expect(screen.queryByText(NO_POSITIONS_MESSAGE)).toBeNull();
+    expect(refreshButton().getAttribute("aria-label")).toBe("Refreshing positions");
+    expect(markup(container)).toMatchSnapshot();
   });
 
-  it("renders the networks list and the selection prompt once loaded", () => {
-    state.positions = [ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION, BASE_SUMMARY_ONLY_POSITION];
-    state.totals = LOADED_TOTALS;
-    state.configuredChainIds = [ETHEREUM_POSITION.chainId, ARBITRUM_EMPTY_POSITION.chainId];
+  it("renders the networks list and the first active network's details once loaded", async () => {
+    notifications.configuredChainIds = [ETHEREUM_POSITION.chainId, ARBITRUM_EMPTY_POSITION.chainId];
 
-    const html = renderMarkup(<AavePositions />);
+    const { container } = await renderLoaded([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION, BASE_SUMMARY_ONLY_POSITION]);
 
-    expect(html.split(BELL_PATH)).toHaveLength(3);
-    expect(html).toMatchSnapshot();
+    expect(fetchMock.mock.calls).toEqual([[USER]]);
+    expect(container.innerHTML.split(BELL_PATH)).toHaveLength(3);
+    expect(container.querySelector('[data-stub="access-paywall"]')?.getAttribute("data-has-existing-config")).toBe(
+      "true",
+    );
+    expect(container.querySelector('[data-stub="notification-config"]')?.getAttribute("data-chain-id")).toBe("1");
+    expect(markup(container)).toMatchSnapshot();
   });
 
-  it("hides notification bells until configs are loaded", () => {
-    state.positions = [ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION];
-    state.configuredChainIds = [ETHEREUM_POSITION.chainId];
-    state.configsLoaded = false;
+  it("hides notification bells and does not treat a saved config as existing until configs are loaded", async () => {
+    notifications.configuredChainIds = [ETHEREUM_POSITION.chainId];
+    notifications.isLoaded = false;
 
-    expect(renderMarkup(<AavePositions />)).not.toContain(BELL_PATH);
+    const { container } = await renderLoaded([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION]);
+
+    expect(container.innerHTML).not.toContain(BELL_PATH);
+    expect(container.querySelector('[data-stub="access-paywall"]')?.getAttribute("data-has-existing-config")).toBe(
+      "false",
+    );
   });
 
-  it("renders the selected network's details", () => {
-    state.positions = [ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION, BASE_SUMMARY_ONLY_POSITION];
-    state.totals = LOADED_TOTALS;
-    state.configuredChainIds = [ETHEREUM_POSITION.chainId];
-    state.selectedChainId = ETHEREUM_POSITION.chainId;
+  it("shows the network the user selects", async () => {
+    await renderLoaded([ETHEREUM_POSITION, POLYGON_COLLATERAL_ONLY_POSITION]);
 
-    const html = renderMarkup(<AavePositions />);
+    fireEvent.click(networkRow("Polygon"));
 
-    expect(html).toContain('data-has-existing-config="true"');
-    expect(html).toMatchSnapshot();
+    expect(screen.getByRole("heading", { level: 3, name: "Polygon" })).toBeDefined();
+    expect(networkRow("Polygon").className).toContain("border-primary/40");
+    expect(networkRow("Ethereum").className).not.toContain("border-primary/40");
   });
 
-  it("does not treat a saved config as existing until configs are loaded", () => {
-    state.positions = [ETHEREUM_POSITION];
-    state.configuredChainIds = [ETHEREUM_POSITION.chainId];
-    state.configsLoaded = false;
-    state.selectedChainId = ETHEREUM_POSITION.chainId;
+  it("starts the notification form afresh when another network is selected", async () => {
+    // B0.3
+    await renderLoaded([ETHEREUM_POSITION, POLYGON_COLLATERAL_ONLY_POSITION]);
+    fireEvent.change(screen.getByLabelText("Notification draft"), { target: { value: "Ethereum draft" } });
 
-    expect(renderMarkup(<AavePositions />)).toContain('data-has-existing-config="false"');
+    fireEvent.click(networkRow("Polygon"));
+
+    const form = screen.getByLabelText<HTMLInputElement>("Notification draft");
+    expect(form.getAttribute("data-chain-id")).toBe("137");
+    expect(form.value).toBe("");
   });
 
-  it("shows the selection prompt when the selected network is not in the list", () => {
-    state.positions = [ARBITRUM_EMPTY_POSITION];
-    state.selectedChainId = ETHEREUM_POSITION.chainId;
+  it("keeps the notification form and its draft when the connection comes back", async () => {
+    await renderLoaded([ETHEREUM_POSITION]);
+    fireEvent.change(screen.getByLabelText("Notification draft"), { target: { value: "Ethereum draft" } });
+    fetchMock.mockReturnValueOnce(deferred<NetworkPosition[]>().promise);
 
-    expect(renderMarkup(<AavePositions />)).toContain("Select a network on the left to view its Aave position.");
+    await act(async () => {
+      onlineManager.setOnline(false);
+      onlineManager.setOnline(true);
+      // react-query refetches after resuming paused mutations, a few microtasks later.
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText<HTMLInputElement>("Notification draft").value).toBe("Ethereum draft");
   });
 
-  it("tells the user when no network has an active position", () => {
-    state.positions = [ARBITRUM_EMPTY_POSITION];
+  it("tells the user when no network has an active position", async () => {
+    const { container } = await renderLoaded([ARBITRUM_EMPTY_POSITION]);
 
-    const html = renderMarkup(<AavePositions />);
-
-    expect(html).toContain(NO_POSITIONS_MESSAGE);
-    expect(html).toMatchSnapshot();
+    expect(screen.getByText(NO_POSITIONS_MESSAGE)).toBeDefined();
+    expect(markup(container)).toMatchSnapshot();
   });
 
-  it("renders the error box instead of the empty message on failure", () => {
-    state.error = "Failed to fetch Aave positions";
+  it("shows the selection prompt when no network was returned", async () => {
+    await renderLoaded([]);
 
-    const html = renderMarkup(<AavePositions />);
-
-    expect(html).not.toContain(NO_POSITIONS_MESSAGE);
-    expect(html).toMatchSnapshot();
+    expect(screen.getByText(SELECT_PROMPT)).toBeDefined();
+    expect(screen.getByText(NO_POSITIONS_MESSAGE)).toBeDefined();
   });
 
-  it("keeps the active count but shows skeletons while refreshing", () => {
-    state.positions = [ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION];
-    state.totals = LOADED_TOTALS;
-    state.isLoading = true;
-    state.selectedChainId = ETHEREUM_POSITION.chainId;
+  it("renders the error box instead of the empty message on failure", async () => {
+    fetchMock.mockRejectedValueOnce(new Error("Failed to fetch Aave positions"));
 
-    const html = renderMarkup(<AavePositions />);
+    const { container } = renderWithProviders(<AavePositions />);
 
-    expect(html).toContain(">1<!-- --> active</p>");
-    expect(html).not.toContain('data-stub="notification-config"');
-    expect(html).toMatchSnapshot();
+    expect(await screen.findByRole("button", { name: "Try Again" })).toBeDefined();
+    expect(screen.queryByText(NO_POSITIONS_MESSAGE)).toBeNull();
+    expect(markup(container)).toMatchSnapshot();
+  });
+
+  it("fetches again from the Try Again button", async () => {
+    fetchMock.mockRejectedValueOnce(new Error("Failed to fetch Aave positions"));
+    renderWithProviders(<AavePositions />);
+
+    fetchMock.mockResolvedValueOnce([ETHEREUM_POSITION]);
+    fireEvent.click(await screen.findByRole("button", { name: "Try Again" }));
+
+    expect(await screen.findByRole("heading", { level: 3, name: "Ethereum" })).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Try Again" })).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the active count but shows skeletons while refreshing", async () => {
+    const { container } = await renderLoaded([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION]);
+
+    const refresh = deferred<NetworkPosition[]>();
+    fetchMock.mockReturnValueOnce(refresh.promise);
+    fireEvent.click(refreshButton());
+
+    await waitFor(() => expect(refreshButton().textContent).toBe("Refreshing..."));
+    expect((refreshButton() as HTMLButtonElement).disabled).toBe(true);
+    expect(networksPanel().getByText("1 active")).toBeDefined();
+    expect(container.querySelector('[data-stub="notification-config"]')).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(markup(container)).toMatchSnapshot();
+
+    refresh.resolve([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION]);
+    await waitFor(() => expect(refreshButton().textContent).toBe("Refresh"));
+    expect(screen.getByRole("heading", { level: 3, name: "Ethereum" })).toBeDefined();
   });
 });

@@ -39,8 +39,7 @@ export const CollateralTokenRow = ({ token }: { token: TokenPosition }) => (
     symbol={token.symbol}
     subtitle={token.usageAsCollateralEnabled ? "Collateral enabled" : "Collateral disabled"}
     amount={formatTokenAmount(token.aTokenBalance, token.decimals)}
-    // BUG(B1.4): liquidityRate is an APR.
-    caption={`${token.liquidityRate.toFixed(2)}% APY`}
+    caption={`${token.supplyApy.toFixed(2)}% APY`}
     avatarGradient="from-emerald-500 to-teal-600"
     amountColor="text-emerald-600 dark:text-emerald-400"
   />

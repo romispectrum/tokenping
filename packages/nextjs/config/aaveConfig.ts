@@ -135,3 +135,14 @@ export const ERC20_ABI = [
     type: "function",
   },
 ] as const;
+
+// Tokens that predate the ERC-20 string convention, such as MKR, return symbol() as a NUL-padded bytes32.
+export const ERC20_BYTES32_SYMBOL_ABI = [
+  {
+    inputs: [],
+    name: "symbol",
+    outputs: [{ name: "", type: "bytes32" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;

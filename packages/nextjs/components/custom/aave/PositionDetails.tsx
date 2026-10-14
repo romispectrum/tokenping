@@ -24,7 +24,9 @@ export const PositionDetails = ({ position, hasNotificationConfig }: PositionDet
       }
       hasExistingConfig={hasNotificationConfig}
     >
+      {/* Keyed by chain so switching networks discards the previous network's unsaved form. */}
       <NotificationConfig
+        key={position.chainId}
         chainId={position.chainId}
         chainName={position.chainName}
         currentHealthFactor={position.healthFactor}

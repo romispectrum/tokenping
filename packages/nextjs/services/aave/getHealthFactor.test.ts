@@ -1,37 +1,44 @@
 import { maxUint256 } from "viem";
-import { avalanche, base, bsc, gnosis, mainnet, polygon } from "viem/chains";
+import { base, bsc, mainnet, polygon } from "viem/chains";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getHealthFactorForWallet } from "~~/services/aave/getHealthFactor";
+import { AAVE_MARKETS } from "~~/config/aaveConfig";
+import type { getHealthFactorForWallet as GetHealthFactorForWallet } from "~~/services/aave/getHealthFactor";
 
 const rpc = vi.hoisted(() => ({
-  clients: [] as { chain: { id: number }; transport: { url: string } }[],
+  clients: [] as { chain: { id: number }; transport: unknown; batch?: unknown }[],
   readContract: vi.fn(),
+  getFallbackTransport: vi.fn((chain: { id: number }) => ({ fallbackFor: chain.id })),
 }));
 
 vi.mock("viem", async importOriginal => ({
   ...(await importOriginal<typeof import("viem")>()),
-  http: (url: string) => ({ url }),
-  createPublicClient: (options: { chain: { id: number }; transport: { url: string } }) => {
+  createPublicClient: (options: (typeof rpc.clients)[number]) => {
     rpc.clients.push(options);
     return { readContract: rpc.readContract };
   },
 }));
 
+vi.mock("~~/utils/rpc", () => ({ getFallbackTransport: rpc.getFallbackTransport }));
+
 const WALLET = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
-const ALCHEMY_KEY = "test-alchemy-key";
+const OTHER_WALLET = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
 
 const accountData = (healthFactor: bigint) => [100n, 50n, 10n, 8250n, 8000n, healthFactor] as const;
 
 describe("getHealthFactorForWallet", () => {
-  beforeEach(() => {
+  let getHealthFactorForWallet: typeof GetHealthFactorForWallet;
+
+  beforeEach(async () => {
+    // The service keeps its clients for the life of the module, so every test imports a fresh one.
+    vi.resetModules();
+    ({ getHealthFactorForWallet } = await import("~~/services/aave/getHealthFactor"));
     rpc.clients = [];
     rpc.readContract.mockReset();
-    vi.stubEnv("NEXT_PUBLIC_ALCHEMY_API_KEY", "");
+    rpc.getFallbackTransport.mockClear();
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
   });
 
   afterEach(() => {
-    vi.unstubAllEnvs();
     vi.restoreAllMocks();
   });
 
@@ -72,36 +79,28 @@ describe("getHealthFactorForWallet", () => {
     expect(console.warn).toHaveBeenCalledWith("Failed to read the Aave health factor on chain 137:", error);
   });
 
-  it.each([
-    [mainnet.id, "https://eth.llamarpc.com"],
-    [polygon.id, "https://polygon.llamarpc.com"],
-    [42161, "https://arb1.arbitrum.io/rpc"],
-    [10, "https://mainnet.optimism.io"],
-    [base.id, "https://mainnet.base.org"],
-    [avalanche.id, "https://api.avax.network/ext/bc/C/rpc"],
-    [gnosis.id, "https://rpc.gnosischain.com"],
-  ])("uses the public RPC for chain %i without an Alchemy key", async (chainId, url) => {
+  it.each(AAVE_MARKETS.map(({ chain }) => [chain.name, chain] as const))(
+    "reads %s through the shared fallback transport with multicall batching and one retry",
+    async (_, chain) => {
+      // B1.3, B1.5: the same RPC resolution as the dashboard, ending with the chain's public RPC.
+      rpc.readContract.mockResolvedValue(accountData(maxUint256));
+
+      await getHealthFactorForWallet(WALLET, chain.id);
+
+      expect(rpc.getFallbackTransport).toHaveBeenCalledWith(chain, { retryCount: 1 });
+      expect(rpc.clients).toEqual([{ chain, transport: { fallbackFor: chain.id }, batch: { multicall: true } }]);
+    },
+  );
+
+  it("creates one client per chain and reuses it for every later wallet, so overlapping reads share a multicall", async () => {
     rpc.readContract.mockResolvedValue(accountData(maxUint256));
 
-    await getHealthFactorForWallet(WALLET, chainId);
+    await getHealthFactorForWallet(WALLET, mainnet.id);
+    await getHealthFactorForWallet(OTHER_WALLET, mainnet.id);
+    await getHealthFactorForWallet(WALLET, polygon.id);
 
-    expect(rpc.clients[0].transport.url).toBe(url);
-  });
-
-  it.each([
-    [mainnet.id, "eth-mainnet"],
-    [polygon.id, "polygon-mainnet"],
-    [42161, "arb-mainnet"],
-    [10, "opt-mainnet"],
-    [base.id, "base-mainnet"],
-    [avalanche.id, "avax-mainnet"],
-    [gnosis.id, "gnosis-mainnet"],
-  ])("uses Alchemy for chain %i when the env key is set", async (chainId, network) => {
-    vi.stubEnv("NEXT_PUBLIC_ALCHEMY_API_KEY", ALCHEMY_KEY);
-    rpc.readContract.mockResolvedValue(accountData(maxUint256));
-
-    await getHealthFactorForWallet(WALLET, chainId);
-
-    expect(rpc.clients[0].transport.url).toBe(`https://${network}.g.alchemy.com/v2/${ALCHEMY_KEY}`);
+    expect(rpc.clients.map(({ chain }) => chain.id)).toEqual([mainnet.id, polygon.id]);
+    expect(rpc.getFallbackTransport).toHaveBeenCalledTimes(2);
+    expect(rpc.readContract.mock.calls.map(([{ args }]) => args)).toEqual([[WALLET], [OTHER_WALLET], [WALLET]]);
   });
 });
