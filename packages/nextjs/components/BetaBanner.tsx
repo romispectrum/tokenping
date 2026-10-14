@@ -10,9 +10,8 @@ const XIcon = ({ className }: { className?: string }) => (
 
 export const BetaBanner = () => {
   return (
-    <div
+    <section
       className="bg-secondary text-secondary-content py-1.5 px-3 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-xs"
-      role="banner"
       aria-label="App status and social"
     >
       <span className="font-medium">Tokenping is in beta</span>
@@ -27,6 +26,6 @@ export const BetaBanner = () => {
         <span>Follow us on</span>
         <XIcon className="w-3.5 h-3.5" />
       </a>
-    </div>
+    </section>
   );
 };

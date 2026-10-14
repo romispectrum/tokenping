@@ -12,9 +12,10 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: "cover",
+  // The browser chrome matches the root page background: --color-base-200 of each theme in styles/globals.css.
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f4f8ff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0f172a" },
+    { media: "(prefers-color-scheme: dark)", color: "#2a3655" },
   ],
 };
 
@@ -26,7 +27,7 @@ export const metadata = getMetadata({
 
 const RootLayout = ({ children }: { children: ReactNode }) => {
   return (
-    <html suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body>
         <ThemeProvider enableSystem>
           <ScaffoldEthAppWithProviders>{children}</ScaffoldEthAppWithProviders>

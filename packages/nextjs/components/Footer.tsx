@@ -20,7 +20,7 @@ export const Footer = () => {
   const { price: nativeCurrencyPrice } = useFetchNativeCurrencyPrice();
 
   return (
-    <div className="min-h-0 py-5 px-1 mb-11 lg:mb-0">
+    <footer className="min-h-0 py-5 px-1 mb-11 lg:mb-0">
       <div>
         <div className="fixed flex justify-between items-center w-full z-10 p-3 sm:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bottom-0 left-0 pointer-events-none safe-area-inset-left safe-area-inset-right">
           <div className="flex flex-col sm:flex-row gap-2 pointer-events-auto">
@@ -50,16 +50,16 @@ export const Footer = () => {
         </div>
       </div>
       <div className="w-full">
-        <ul className="menu menu-horizontal w-full">
-          <div className="flex justify-center items-center gap-4 text-sm w-full">
-            {FOOTER_SOCIAL_LINKS.map(({ href, label, ariaLabel }) => (
-              <a key={href} href={href} target="_blank" rel={EXTERNAL_LINK_REL} className="link" aria-label={ariaLabel}>
+        <ul className="flex justify-center items-center gap-4 p-2 text-sm w-full">
+          {FOOTER_SOCIAL_LINKS.map(({ href, label, ariaLabel }) => (
+            <li key={href} className="flex">
+              <a href={href} target="_blank" rel={EXTERNAL_LINK_REL} className="link" aria-label={ariaLabel}>
                 {label}
               </a>
-            ))}
-          </div>
+            </li>
+          ))}
         </ul>
       </div>
-    </div>
+    </footer>
   );
 };

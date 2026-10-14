@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+import { render, screen, within } from "@testing-library/react";
 import { arbitrum, hardhat } from "viem/chains";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Footer } from "~~/components/Footer";
@@ -23,6 +25,10 @@ describe("Footer", () => {
   beforeEach(() => {
     state.price = 0;
     state.targetNetworkId = arbitrum.id;
+  });
+
+  it("is the page's contentinfo landmark", () => {
+    expect(renderFooter()).toMatch(/^<footer[ >]/);
   });
 
   it("renders only the theme switch and social links without a price on a live network", () => {
@@ -53,20 +59,28 @@ describe("Footer", () => {
   });
 
   it("links to the Telegram community and the X account in new tabs without opener or referrer", () => {
-    const html = renderFooter();
+    render(<Footer />);
 
-    expect(html).toContain(
-      '<a href="https://t.me/tokenping_xyz" target="_blank" rel="noopener noreferrer" class="link" aria-label="Tokenping Telegram Community">Telegram</a>',
-    );
-    expect(html).toContain(
-      '<a href="https://x.com/tokenping" target="_blank" rel="noopener noreferrer" class="link" aria-label="Tokenping on X">X</a>',
-    );
+    for (const [name, href] of [
+      ["Tokenping Telegram Community", "https://t.me/tokenping_xyz"],
+      ["Tokenping on X", "https://x.com/tokenping"],
+    ]) {
+      const link = screen.getByRole("link", { name });
+      expect(link.getAttribute("href")).toBe(href);
+      expect(link.getAttribute("target")).toBe("_blank");
+      expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+    }
   });
 
-  it("wraps the social links in a <div> directly inside the menu list", () => {
-    // BUG(B4.3): a <div> as the direct child of <ul class="menu"> is invalid list markup.
-    expect(renderFooter()).toContain(
-      '<ul class="menu menu-horizontal w-full">\n<div class="flex justify-center items-center gap-4 text-sm w-full">',
-    );
+  it("puts each social link in its own item of a valid list", () => {
+    render(<Footer />);
+    const list = screen.getByRole("list");
+
+    expect(list.querySelectorAll(":scope > :not(li)")).toHaveLength(0);
+    expect(
+      within(list)
+        .getAllByRole("listitem")
+        .map(item => within(item).getByRole("link").textContent),
+    ).toEqual(["Telegram", "X"]);
   });
 });

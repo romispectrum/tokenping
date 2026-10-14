@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { BetaBanner } from "~~/components/BetaBanner";
 import { renderMarkup } from "~~/utils/testing/render";
@@ -7,17 +9,19 @@ describe("BetaBanner", () => {
     expect(renderMarkup(<BetaBanner />)).toMatchSnapshot();
   });
 
-  it("claims the banner landmark", () => {
-    // BUG(B4.1): the beta strip claims the page's banner landmark instead of the site header.
-    expect(renderMarkup(<BetaBanner />)).toMatch(/^<div [^>]*role="banner"/);
+  it("is a labelled region and leaves the banner landmark to the site header", () => {
+    render(<BetaBanner />);
+
+    expect(screen.queryByRole("banner")).toBeNull();
+    expect(screen.getByRole("region", { name: "App status and social" }).textContent).toContain("Tokenping is in beta");
   });
 
   it("opens the X account in a new tab without opener or referrer", () => {
-    const [anchor] = renderMarkup(<BetaBanner />).match(/<a [^>]*>/) ?? [];
+    render(<BetaBanner />);
+    const link = screen.getByRole("link", { name: "Follow Tokenping on X" });
 
-    expect(anchor).toContain('href="https://x.com/tokenping"');
-    expect(anchor).toContain('target="_blank"');
-    expect(anchor).toContain('rel="noopener noreferrer"');
-    expect(anchor).toContain('aria-label="Follow Tokenping on X"');
+    expect(link.getAttribute("href")).toBe("https://x.com/tokenping");
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer");
   });
 });

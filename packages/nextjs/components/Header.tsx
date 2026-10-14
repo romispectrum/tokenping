@@ -55,7 +55,7 @@ export const Header = () => {
   useOutsideClick(burgerMenuRef, closeMenu);
 
   return (
-    <div className="sticky lg:static top-0 navbar bg-base-100 min-h-0 shrink-0 justify-between z-20 shadow-md shadow-secondary px-2 sm:px-2 safe-area-inset-left safe-area-inset-right safe-area-top">
+    <header className="sticky lg:static top-0 navbar bg-base-100 min-h-0 shrink-0 justify-between z-20 shadow-md shadow-secondary px-2 sm:px-2 safe-area-inset-left safe-area-inset-right safe-area-top">
       <div className="navbar-start w-auto lg:w-1/2">
         <details className="dropdown" ref={burgerMenuRef}>
           <summary
@@ -73,7 +73,7 @@ export const Header = () => {
         </details>
         <Link href="/" className="hidden lg:flex items-center gap-2 ml-4 mr-6 shrink-0" aria-label="Tokenping home">
           <div className="flex relative w-10 h-10">
-            <Image alt="SE2 logo" className="cursor-pointer" fill src="/logo.svg" />
+            <Image alt="Tokenping logo" className="cursor-pointer" fill src="/logo.svg" />
           </div>
           <div className="flex flex-col">
             <span className="font-bold leading-tight">Tokenping</span>
@@ -88,6 +88,6 @@ export const Header = () => {
         <RainbowKitCustomConnectButton />
         {isLocalNetwork && <FaucetButton />}
       </div>
-    </div>
+    </header>
   );
 };
