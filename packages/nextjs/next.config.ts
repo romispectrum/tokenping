@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
   },
   eslint: {
     ignoreDuringBuilds: process.env.NEXT_PUBLIC_IGNORE_BUILD_ERROR === "true",
+    // `next lint` / `next build` only lint app, pages, components, lib and src by default.
+    dirs: ["app", "components", "hooks", "services", "utils", "config", "constants", "types"],
   },
   webpack: config => {
     config.resolve.fallback = { fs: false, net: false, tls: false };

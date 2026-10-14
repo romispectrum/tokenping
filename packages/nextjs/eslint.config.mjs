@@ -10,6 +10,16 @@ const compat = new FlatCompat({
   baseDirectory: __dirname,
 });
 
+// Vendored Scaffold-ETH 2 code is kept as upstream ships it, including its `any` usages.
+const SE2_BOILERPLATE = [
+  "app/blockexplorer/**",
+  "app/debug/**",
+  "components/scaffold-eth/**",
+  "contracts/**",
+  "hooks/scaffold-eth/**",
+  "utils/scaffold-eth/**",
+];
+
 export default defineConfig([
   {
     plugins: {
@@ -18,15 +28,26 @@ export default defineConfig([
     extends: compat.extends("next/core-web-vitals", "next/typescript", "prettier"),
 
     rules: {
-      "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/ban-ts-comment": "off",
-
       "prettier/prettier": [
         "warn",
         {
           endOfLine: "auto",
         },
       ],
+    },
+  },
+  {
+    files: SE2_BOILERPLATE,
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/ban-ts-comment": "off",
+    },
+  },
+  {
+    // TEMPORARY: remove once NotificationConfig's `catch (error: any)` is gone (refactor area N).
+    files: ["components/custom/NotificationConfig.tsx"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
     },
   },
 ]);

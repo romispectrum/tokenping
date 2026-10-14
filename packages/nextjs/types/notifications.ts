@@ -1,7 +1,13 @@
 /** Supported notification delivery channels */
 export type NotificationService = "email" | "signal" | "telegram";
 
-export interface NotificationConfig {
+export type NotificationServiceOption = {
+  id: NotificationService;
+  name: string;
+  icon: string;
+};
+
+export type NotificationConfig = {
   chainId: number;
   enabled: boolean;
   services: NotificationService[];
@@ -17,9 +23,4 @@ export interface NotificationConfig {
    */
   telegramChatId?: string;
   telegramUsername?: string;
-}
-
-export interface NotificationConfigSaveContext {
-  chainName?: string;
-  currentHealthFactor?: string;
-}
+};

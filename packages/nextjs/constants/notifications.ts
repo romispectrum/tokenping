@@ -1,4 +1,4 @@
-import type { NotificationService } from "~~/types/notifications";
+import type { NotificationService, NotificationServiceOption } from "~~/types/notifications";
 
 export const DEFAULT_HEALTH_FACTOR_THRESHOLD = 1.5;
 
@@ -6,8 +6,25 @@ export const DEFAULT_HEALTH_FACTOR_THRESHOLD = 1.5;
 export const HEALTH_FACTOR_CRITICAL = 1.1;
 export const HEALTH_FACTOR_RISKY = 1.5;
 
-export const AVAILABLE_SERVICES: { id: NotificationService; name: string; icon: string }[] = [
+export const NOTIFICATION_SERVICES: readonly NotificationService[] = ["email", "signal", "telegram"];
+
+export const AVAILABLE_SERVICES: NotificationServiceOption[] = [
   { id: "email", name: "Email", icon: "📧" },
   { id: "signal", name: "Signal", icon: "🔒" },
   { id: "telegram", name: "Telegram", icon: "✈️" },
 ];
+
+/** Bounds for a stored alert threshold (typed input and saved value). */
+export const HEALTH_FACTOR_THRESHOLD_MIN = 1.1;
+export const HEALTH_FACTOR_THRESHOLD_MAX = 10;
+
+/** The slider covers a narrower range than the typed input allows. */
+export const THRESHOLD_SLIDER_MIN = 1.1;
+export const THRESHOLD_SLIDER_MAX = 3;
+export const THRESHOLD_SLIDER_STEP = 0.1;
+
+/** Must match the cron schedule in vercel.json. */
+export const NOTIFICATION_CHECK_INTERVAL_MINUTES = 5;
+
+export const TELEGRAM_LINK_POLL_INTERVAL_MS = 2000;
+export const TELEGRAM_LINK_POLL_TIMEOUT_MS = 2 * 60 * 1000;
