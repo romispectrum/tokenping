@@ -10,7 +10,7 @@ export const NotificationEmptyState = ({ chainName, onCreate }: NotificationEmpt
   <NotificationCardShell>
     <div className="flex flex-col items-center justify-center py-4 text-center">
       <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center mb-3">
-        <BellIcon className="w-6 h-6 text-purple-400" />
+        <BellIcon className="w-6 h-6 text-purple-600 dark:text-purple-400" />
       </div>
       <h3 className="text-sm font-semibold text-base-content dark:text-white mb-1">Notification Settings</h3>
       <p className="text-xs text-base-content/70 dark:text-gray-400 mb-4 max-w-[240px]">

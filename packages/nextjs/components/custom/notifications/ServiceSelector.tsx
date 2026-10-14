@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { AVAILABLE_SERVICES } from "~~/constants/notifications";
 import type { NotificationService } from "~~/types/notifications";
 
@@ -12,32 +13,46 @@ type ServiceSelectorProps = {
   onToggle: (service: NotificationService) => void;
 };
 
-export const ServiceSelector = ({ services, onToggle }: ServiceSelectorProps) => (
-  <div>
-    <label className="block text-sm text-base-content dark:text-gray-300 mb-3">Notification Services</label>
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-      {AVAILABLE_SERVICES.map(service => {
-        const isSelected = services.includes(service.id);
-        return (
-          <button
-            key={service.id}
-            type="button"
-            onClick={() => onToggle(service.id)}
-            className={`${SERVICE_BUTTON_CLASS} ${isSelected ? SELECTED_SERVICE_CLASS : UNSELECTED_SERVICE_CLASS}`}
-          >
-            <span className="text-lg">{service.icon}</span>
-            <span className="text-sm font-medium">{service.name}</span>
-            {isSelected && (
-              <svg className="w-4 h-4 ml-auto text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            )}
-          </button>
-        );
-      })}
+export const ServiceSelector = ({ services, onToggle }: ServiceSelectorProps) => {
+  const headingId = useId();
+  return (
+    <div role="group" aria-labelledby={headingId}>
+      <p id={headingId} className="block text-sm text-base-content dark:text-gray-300 mb-3">
+        Notification Services
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        {AVAILABLE_SERVICES.map(service => {
+          const isSelected = services.includes(service.id);
+          return (
+            <button
+              key={service.id}
+              type="button"
+              aria-pressed={isSelected}
+              onClick={() => onToggle(service.id)}
+              className={`${SERVICE_BUTTON_CLASS} ${isSelected ? SELECTED_SERVICE_CLASS : UNSELECTED_SERVICE_CLASS}`}
+            >
+              <span className="text-lg">{service.icon}</span>
+              <span className="text-sm font-medium">{service.name}</span>
+              {isSelected && (
+                <svg
+                  className="w-4 h-4 ml-auto text-purple-600 dark:text-purple-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      {services.length === 0 && (
+        <p className="text-xs text-amber-700 dark:text-amber-400 mt-2">
+          ⚠️ Please select at least one notification service
+        </p>
+      )}
     </div>
-    {services.length === 0 && (
-      <p className="text-xs text-amber-400 mt-2">⚠️ Please select at least one notification service</p>
-    )}
-  </div>
-);
+  );
+};

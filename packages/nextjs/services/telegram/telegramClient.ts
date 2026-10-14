@@ -1,11 +1,5 @@
 import { apiUrl, readApiError } from "~~/services/api/apiClient";
-
-export type TelegramLinkStatus = {
-  linked: boolean;
-  chatId?: string;
-  username?: string | null;
-  linkedAt?: string;
-};
+import type { TelegramLinkStatus } from "~~/types/notifications";
 
 export type CreateLinkTokenResponse = {
   token: string;
@@ -14,16 +8,26 @@ export type CreateLinkTokenResponse = {
   deepLink: string;
 };
 
+/**
+ * How long the token stays valid, measured against the server's clock (its Date header) because `expiresAt` comes
+ * from that clock and the device's may be off. Null when either time is unreadable.
+ */
+const lifetimeMs = (expiresAt: string, serverDate: string | null) => {
+  const ms = Date.parse(expiresAt) - Date.parse(serverDate ?? "");
+  return Number.isFinite(ms) ? ms : null;
+};
+
 /** Browser client for the Telegram link API behind the "Connect Telegram" handshake. */
 export const telegramClient = {
-  async createLinkToken(userId: string): Promise<CreateLinkTokenResponse> {
+  async createLinkToken(userId: string) {
     const res = await fetch(apiUrl("/api/telegram/link-token"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: userId.trim() }),
     });
     if (!res.ok) throw new Error(await readApiError(res, "Failed to create Telegram link token"));
-    return res.json();
+    const body: CreateLinkTokenResponse = await res.json();
+    return { ...body, expiresInMs: lifetimeMs(body.expiresAt, res.headers.get("Date")) };
   },
 
   async getLinkStatus(userId: string): Promise<TelegramLinkStatus> {

@@ -16,10 +16,20 @@ afterEach(() => {
 });
 
 describe("createLinkToken", () => {
-  it("POSTs the trimmed address and returns the response body", async () => {
-    const body = { token: "t", botUsername: "bot", expiresAt: "2026-01-01", deepLink: "https://t.me/bot?start=t" };
-    fetchMock.mockResolvedValue(jsonResponse(body));
-    await expect(telegramClient.createLinkToken(" 0xAbC ")).resolves.toEqual(body);
+  const BODY = {
+    token: "t",
+    botUsername: "bot",
+    expiresAt: "2026-10-14T12:10:00.000Z",
+    deepLink: "https://t.me/bot?start=t",
+  };
+  const issuedAt = (serverDate: string | undefined, body: unknown = BODY) =>
+    new Response(JSON.stringify(body), {
+      headers: { "Content-Type": "application/json", ...(serverDate ? { Date: serverDate } : {}) },
+    });
+
+  it("POSTs the trimmed address and returns the body plus the token's lifetime by the server's clock", async () => {
+    fetchMock.mockResolvedValue(issuedAt("Wed, 14 Oct 2026 12:00:00 GMT"));
+    await expect(telegramClient.createLinkToken(" 0xAbC ")).resolves.toEqual({ ...BODY, expiresInMs: 10 * 60 * 1000 });
     expect(fetchMock.mock.calls).toEqual([
       [
         "/api/telegram/link-token",
@@ -28,11 +38,32 @@ describe("createLinkToken", () => {
     ]);
   });
 
+  it("does not let the device clock change the token's lifetime", async () => {
+    vi.useFakeTimers({ toFake: ["Date"], now: Date.parse("2026-10-14T12:15:00.000Z") });
+    try {
+      fetchMock.mockResolvedValue(issuedAt("Wed, 14 Oct 2026 12:00:00 GMT"));
+      const { expiresInMs } = await telegramClient.createLinkToken("0xabc");
+      expect(expiresInMs).toBe(10 * 60 * 1000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    ["without a Date header", issuedAt(undefined)],
+    ["with an unreadable Date header", issuedAt("yesterday")],
+    ["with an unreadable expiresAt", issuedAt("Wed, 14 Oct 2026 12:00:00 GMT", { ...BODY, expiresAt: "soon" })],
+  ])("reports an unknown lifetime %s", async (_, response) => {
+    fetchMock.mockResolvedValue(response);
+    const { expiresInMs } = await telegramClient.createLinkToken("0xabc");
+    expect(expiresInMs).toBeNull();
+  });
+
   it("uses NEXT_PUBLIC_APP_URL outside the browser", async () => {
     vi.unstubAllGlobals();
     vi.stubGlobal("fetch", fetchMock);
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://tokenping.example");
-    fetchMock.mockResolvedValue(jsonResponse({}));
+    fetchMock.mockResolvedValue(issuedAt(undefined));
     await telegramClient.createLinkToken("0xabc");
     expect(fetchMock.mock.calls[0][0]).toBe("https://tokenping.example/api/telegram/link-token");
   });

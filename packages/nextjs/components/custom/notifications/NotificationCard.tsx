@@ -19,7 +19,7 @@ export const NotificationCard = ({ isActive, headerRight, children }: Notificati
   <NotificationCardShell>
     <div className="flex items-center justify-between mb-3">
       <div className="flex items-center gap-2">
-        <BellIcon className="w-5 h-5 text-purple-400" />
+        <BellIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />
         <h3 className="text-sm font-semibold text-base-content dark:text-white">Notification Settings</h3>
         {isActive && <ActiveBadge />}
       </div>

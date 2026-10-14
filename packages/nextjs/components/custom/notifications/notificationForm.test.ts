@@ -4,71 +4,69 @@ import {
   buildConfigUpdate,
   canSubmitNotificationForm,
   configToFormState,
-  configToFormStateOnCancel,
   toggleService,
   validateNotificationForm,
 } from "~~/components/custom/notifications/notificationForm";
 import type { NotificationConfig, NotificationService } from "~~/types/notifications";
 
 /*
- * Verbatim logic from the pre-refactor NotificationConfig.tsx (handleStore, the Save button's `disabled`
- * expression and saveConfig), used as oracles over an input matrix in addition to the explicit examples.
+ * Reference versions of the original NotificationConfig.tsx logic (handleStore, the Save button's `disabled`
+ * expression and saveConfig), written out with literal regexes and limits and compared with the module over an input
+ * matrix. They check the order of the checks, the presence rules and the payload shape. They carry the one deliberate
+ * change, the Signal prefix rule (B0.11: an optional "u:" then an optional "@", as on the server), as a copy of that
+ * rule, so the explicit Signal cases in validateNotificationForm and buildConfigUpdate are what pin it.
  */
-const DEFAULT_HEALTH_FACTOR_THRESHOLD = 1.5;
-const legacyClampThreshold = (value: number) => Math.min(10, Math.max(1.1, value));
+const referenceNormalizeSignal = (raw: string) => raw.trim().replace(/^(?:u:)?@?/, "");
+const referenceClampThreshold = (value: number) => Math.min(10, Math.max(1.1, value));
 
-const legacyValidate = (
+const referenceValidate = (
   services: NotificationService[],
   email: string,
   signalRecipient: string,
   telegramChatId: string | undefined,
 ) => {
-  const currentServices = services ?? [];
-  if (currentServices.length === 0) return "Please select at least one notification service";
-  if (currentServices.includes("email")) {
-    const trimmed = (email ?? "").trim();
+  if (services.length === 0) return "Please select at least one notification service";
+  if (services.includes("email")) {
+    const trimmed = email.trim();
     if (!trimmed) return "Please enter your email address";
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(trimmed)) return "Please enter a valid email address";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return "Please enter a valid email address";
   }
-  if (currentServices.includes("signal")) {
-    const trimmed = (signalRecipient ?? "").trim().replace(/^@/, "");
-    if (!trimmed) return "Please enter your Signal username";
-    const usernameRegex = /^[a-zA-Z0-9][a-zA-Z0-9_]{0,29}\.\d{2,}$/;
-    if (!usernameRegex.test(trimmed)) {
+  if (services.includes("signal")) {
+    const username = referenceNormalizeSignal(signalRecipient);
+    if (!username) return "Please enter your Signal username";
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9_]{0,29}\.\d{2,}$/.test(username)) {
       return "Invalid Signal username. Expected format: alice.42 (find yours in Signal → Settings → Profile)";
     }
   }
-  if (currentServices.includes("telegram")) {
-    if (!telegramChatId) return "Please connect Telegram first using the 'Connect Telegram' button.";
+  if (services.includes("telegram") && !telegramChatId) {
+    return "Please connect Telegram first using the 'Connect Telegram' button.";
   }
   return null;
 };
 
-const legacySaveDisabled = (
+const referenceSaveDisabled = (
   services: NotificationService[],
   email: string,
   signalRecipient: string,
   telegramChatId: string | undefined,
 ) =>
-  (services ?? []).length === 0 ||
-  ((services ?? []).includes("email") && !(email ?? "").trim()) ||
-  ((services ?? []).includes("signal") && !(signalRecipient ?? "").trim()) ||
-  ((services ?? []).includes("telegram") && !telegramChatId);
+  services.length === 0 ||
+  (services.includes("email") && !email.trim()) ||
+  (services.includes("signal") && !signalRecipient.trim()) ||
+  (services.includes("telegram") && !telegramChatId);
 
-const legacyPayload = (services: NotificationService[], email: string, signalRecipient: string, threshold: number) => {
-  const currentServices = services ?? [];
-  const roundedThreshold = Math.round((threshold ?? DEFAULT_HEALTH_FACTOR_THRESHOLD) * 100) / 100;
-  return {
-    enabled: true,
-    services: currentServices,
-    healthFactorThreshold: legacyClampThreshold(roundedThreshold),
-    email: currentServices.includes("email") ? (email ?? "").trim() || undefined : undefined,
-    signalRecipient: currentServices.includes("signal")
-      ? (signalRecipient ?? "").trim().replace(/^@/, "") || undefined
-      : undefined,
-  };
-};
+const referencePayload = (
+  services: NotificationService[],
+  email: string,
+  signalRecipient: string,
+  threshold: number,
+) => ({
+  enabled: true,
+  services,
+  healthFactorThreshold: referenceClampThreshold(Math.round(threshold * 100) / 100),
+  email: services.includes("email") ? email.trim() || undefined : undefined,
+  signalRecipient: services.includes("signal") ? referenceNormalizeSignal(signalRecipient) || undefined : undefined,
+});
 
 const SERVICE_SETS: NotificationService[][] = [
   [],
@@ -79,7 +77,22 @@ const SERVICE_SETS: NotificationService[][] = [
   ["signal", "email", "telegram"],
 ];
 const EMAILS = ["", "   ", "me@example.com", "  me@example.com  ", "me@example", "a b@c.de", "@x.io"];
-const SIGNALS = ["", " ", "@", "@@alice.42", "alice.42", " @alice.42 ", "u:alice.42", "_alice.42", "alice.4", "alice"];
+const SIGNALS = [
+  "",
+  " ",
+  "@",
+  "u:",
+  "@@alice.42",
+  "alice.42",
+  " @alice.42 ",
+  "u:alice.42",
+  " u:@alice.42 ",
+  "u: alice.42",
+  "ursula.42",
+  "_alice.42",
+  "alice.4",
+  "alice",
+];
 const CHAT_IDS = [undefined, "", "123"];
 
 const CONFIG: NotificationConfig = {
@@ -89,8 +102,6 @@ const CONFIG: NotificationConfig = {
   healthFactorThreshold: 1.8,
   email: "me@example.com",
   signalRecipient: "alice.42",
-  telegramChatId: "555",
-  telegramUsername: "bob",
 };
 
 describe("EMPTY_FORM_STATE", () => {
@@ -107,7 +118,12 @@ describe("EMPTY_FORM_STATE", () => {
 });
 
 describe("configToFormState", () => {
-  it("copies a saved config, without the Telegram fields", () => {
+  // Cancel and the initial load go through this one function, so a legacy config reads the same after Cancel (B0.8).
+  it("is the empty state without a saved config", () => {
+    expect(configToFormState(null)).toBe(EMPTY_FORM_STATE);
+  });
+
+  it("copies a saved config", () => {
     expect(configToFormState(CONFIG)).toStrictEqual({
       enabled: true,
       services: ["email", "signal", "telegram"],
@@ -144,28 +160,6 @@ describe("configToFormState", () => {
   });
 });
 
-describe("configToFormStateOnCancel", () => {
-  it("returns the empty state without a config", () => {
-    expect(configToFormStateOnCancel(null)).toBe(EMPTY_FORM_STATE);
-  });
-
-  it("copies a saved config like configToFormState", () => {
-    expect(configToFormStateOnCancel(CONFIG)).toStrictEqual(configToFormState(CONFIG));
-  });
-
-  // BUG(B0.8): Cancel does not filter services or apply the email fallback, and keeps `enabled` as is.
-  it("keeps raw services and enabled", () => {
-    const legacy = { ...CONFIG, services: [] };
-    expect(configToFormStateOnCancel(legacy).services).toEqual([]);
-    expect(configToFormState(legacy).services).toEqual(["email"]);
-    const unknown = { ...CONFIG, services: ["sms"] as unknown as NotificationService[] };
-    expect(configToFormStateOnCancel(unknown).services).toEqual(["sms"]);
-    const missingEnabled = { ...CONFIG, enabled: undefined } as unknown as NotificationConfig;
-    expect(configToFormStateOnCancel(missingEnabled).enabled).toBeUndefined();
-    expect(configToFormState(missingEnabled).enabled).toBe(false);
-  });
-});
-
 describe("toggleService", () => {
   it("appends a missing service and removes a selected one, without mutating the input", () => {
     const services: NotificationService[] = ["signal"];
@@ -183,10 +177,19 @@ describe("validateNotificationForm", () => {
     [{ services: ["email"], email: "  " }, "Please enter your email address"],
     [{ services: ["email"], email: "me@example" }, "Please enter a valid email address"],
     [{ services: ["signal"], signalRecipient: " @ " }, "Please enter your Signal username"],
+    [{ services: ["signal"], signalRecipient: "u:" }, "Please enter your Signal username"],
     [
-      { services: ["signal"], signalRecipient: "u:alice.42" },
+      { services: ["signal"], signalRecipient: "u: alice.42" },
       "Invalid Signal username. Expected format: alice.42 (find yours in Signal → Settings → Profile)",
     ],
+    [
+      { services: ["signal"], signalRecipient: "@@alice.42" },
+      "Invalid Signal username. Expected format: alice.42 (find yours in Signal → Settings → Profile)",
+    ],
+    // The client accepts the same "u:" form as the server (B0.11) and keeps a leading "u" of the name (B3.1).
+    [{ services: ["signal"], signalRecipient: "u:alice.42" }, null],
+    [{ services: ["signal"], signalRecipient: " u:@alice.42 " }, null],
+    [{ services: ["signal"], signalRecipient: "ursula.42" }, null],
     [
       { services: ["telegram"], telegramChatId: "" },
       "Please connect Telegram first using the 'Connect Telegram' button.",
@@ -215,13 +218,13 @@ describe("validateNotificationForm", () => {
     ).toBe("Please enter your email address");
   });
 
-  it("matches the legacy handleStore checks for every combination", () => {
+  it("matches the reference checks for every combination", () => {
     for (const services of SERVICE_SETS)
       for (const email of EMAILS)
         for (const signalRecipient of SIGNALS)
           for (const telegramChatId of CHAT_IDS) {
             expect(validateNotificationForm({ services, email, signalRecipient, telegramChatId })).toBe(
-              legacyValidate(services, email, signalRecipient, telegramChatId),
+              referenceValidate(services, email, signalRecipient, telegramChatId),
             );
           }
   });
@@ -243,13 +246,13 @@ describe("canSubmitNotificationForm", () => {
     ).toBe(false);
   });
 
-  it("is the negation of the legacy Save `disabled` expression (without isSaving) for every combination", () => {
+  it("is the negation of the reference Save `disabled` expression (without isSaving) for every combination", () => {
     for (const services of SERVICE_SETS)
       for (const email of EMAILS)
         for (const signalRecipient of SIGNALS)
           for (const telegramChatId of CHAT_IDS) {
             expect(canSubmitNotificationForm({ services, email, signalRecipient, telegramChatId })).toBe(
-              !legacySaveDisabled(services, email, signalRecipient, telegramChatId),
+              !referenceSaveDisabled(services, email, signalRecipient, telegramChatId),
             );
           }
   });
@@ -271,6 +274,17 @@ describe("buildConfigUpdate", () => {
       email: "me@example.com",
       signalRecipient: "@alice.42",
     });
+  });
+
+  it("stores the Signal username without the 'u:' and '@' prefixes the server also strips", () => {
+    expect(
+      buildConfigUpdate({ services: ["signal"], email: "", signalRecipient: " u:@alice.42 ", threshold: 1.5 })
+        .signalRecipient,
+    ).toBe("alice.42");
+    expect(
+      buildConfigUpdate({ services: ["signal"], email: "", signalRecipient: "ursula.42", threshold: 1.5 })
+        .signalRecipient,
+    ).toBe("ursula.42");
   });
 
   it("keeps explicit undefined recipients for deselected services or blank input", () => {
@@ -297,13 +311,13 @@ describe("buildConfigUpdate", () => {
   });
 
   it.each([1.0, 1.104, 1.105, 2.999, 3.5, 10.004, 10.006, 99])(
-    "matches the legacy payload for threshold %s",
+    "matches the reference payload for threshold %s",
     threshold => {
       for (const services of SERVICE_SETS)
         for (const email of EMAILS)
           for (const signalRecipient of SIGNALS) {
             expect(buildConfigUpdate({ services, email, signalRecipient, threshold })).toStrictEqual(
-              legacyPayload(services, email, signalRecipient, threshold),
+              referencePayload(services, email, signalRecipient, threshold),
             );
           }
     },

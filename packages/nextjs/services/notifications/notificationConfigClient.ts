@@ -10,8 +10,7 @@ const CONFIG_PATH = "/api/notifications/config";
 export const notificationConfigClient = {
   async getAllConfigs(userId: string): Promise<Record<number, NotificationConfig>> {
     const res = await fetch(apiUrl(`${CONFIG_PATH}?userId=${encodeURIComponent(userId.trim())}`));
-    // BUG(B0.9): an HTTP error is reported as "no configs" instead of throwing.
-    if (!res.ok) return {};
+    if (!res.ok) throw new Error(await readApiError(res, "Failed to load notification configs"));
     const data = await res.json();
     if (data == null || typeof data !== "object") return {};
     return data as Record<number, NotificationConfig>;

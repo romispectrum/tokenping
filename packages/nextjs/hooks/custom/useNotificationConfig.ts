@@ -1,98 +1,120 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback } from "react";
+import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
 import { DEFAULT_HEALTH_FACTOR_THRESHOLD } from "~~/constants/notifications";
 import { notificationConfigClient } from "~~/services/notifications/notificationConfigClient";
 import type { NotificationConfig } from "~~/types/notifications";
 import { normalizeAddress } from "~~/utils/address";
 
+type ConfigsByChain = Record<number, NotificationConfig>;
+
+const notificationConfigsQueryKey = (address: string) => ["notificationConfigs", normalizeAddress(address)] as const;
+
 const requireAddress = (address: string | undefined) => {
   if (!address) throw new Error("Wallet not connected");
   return address;
 };
 
+// The API body is not validated; rows saved before these columns existed come back with null.
+const withFieldDefaults = (configs: ConfigsByChain): ConfigsByChain =>
+  Object.fromEntries(
+    Object.entries(configs).map(([chainId, config]) => [
+      chainId,
+      { ...config, services: config.services ?? [], signalRecipient: config.signalRecipient ?? undefined },
+    ]),
+  );
+
+// Like plain fetch: fail straight away while the browser reports offline instead of pausing (react-query's default),
+// which would leave the card hidden or Save stuck on "Saving..." until the connection returns.
+const NETWORK_MODE = "always";
+
+const removeChain = (configs: ConfigsByChain | undefined, chainId: number) => {
+  if (!configs) return configs;
+  const next = { ...configs };
+  delete next[chainId];
+  return next;
+};
+
+/**
+ * The connected wallet's notification configs by chain, in the react-query cache so every component (the positions
+ * list and each chain's settings card) sees the same data. Writes go to the cache of the wallet that made them.
+ */
 export const useNotificationConfig = () => {
   const { address } = useAccount();
-  const addressRef = useRef(address);
-  addressRef.current = address;
+  const queryClient = useQueryClient();
 
-  const [configs, setConfigs] = useState<Record<number, NotificationConfig>>({});
-  const [isLoaded, setIsLoaded] = useState(false);
+  const query = useQuery({
+    queryKey: notificationConfigsQueryKey(address ?? ""),
+    queryFn: address ? () => notificationConfigClient.getAllConfigs(address) : skipToken,
+    select: withFieldDefaults,
+    networkMode: NETWORK_MODE,
+  });
+  const configs = query.data;
 
-  // Ignore the response if the connected wallet changed while the request was in flight.
-  useEffect(() => {
-    if (!address) {
-      setConfigs({});
-      setIsLoaded(true);
-      return;
-    }
+  // The server only trims, normalizes and clamps what the settings form already sends normalized, so a write goes
+  // into the cache as sent rather than triggering a reload.
+  const { mutateAsync: saveConfig, isPending: isSaving } = useMutation({
+    mutationFn: ({ userId, config }: { userId: string; config: NotificationConfig }) =>
+      notificationConfigClient.upsertConfig(userId, config),
+    networkMode: NETWORK_MODE,
+    onSuccess: (_, { userId, config }) =>
+      queryClient.setQueryData<ConfigsByChain>(notificationConfigsQueryKey(userId), prev => ({
+        ...prev,
+        [config.chainId]: config,
+      })),
+  });
 
-    const requestedUid = normalizeAddress(address);
-    const isRequestedWallet = () => !!addressRef.current && normalizeAddress(addressRef.current) === requestedUid;
-
-    const loadConfigs = async () => {
-      try {
-        const allConfigs = await notificationConfigClient.getAllConfigs(address);
-        if (isRequestedWallet()) setConfigs(allConfigs);
-      } catch (error) {
-        console.error("Failed to load notification configs:", error);
-        if (isRequestedWallet()) setConfigs({});
-      } finally {
-        if (isRequestedWallet()) setIsLoaded(true);
-      }
-    };
-
-    loadConfigs();
-  }, [address]);
-
-  const getConfig = useCallback(
-    (chainId: number): NotificationConfig | null => {
-      const config = configs[chainId];
-      if (!config) return null;
-      // Ensure services field exists (migration safety)
-      return {
-        ...config,
-        services: config.services ?? [],
-        signalRecipient: config.signalRecipient ?? undefined,
-      };
-    },
-    [configs],
-  );
+  const { mutateAsync: removeConfig, isPending: isDeleting } = useMutation({
+    mutationFn: ({ userId, chainId }: { userId: string; chainId: number }) =>
+      notificationConfigClient.deleteConfig(userId, chainId),
+    networkMode: NETWORK_MODE,
+    onSuccess: (_, { userId, chainId }) =>
+      queryClient.setQueryData<ConfigsByChain>(notificationConfigsQueryKey(userId), prev => removeChain(prev, chainId)),
+  });
 
   const updateConfig = useCallback(
     async (chainId: number, updates: Partial<NotificationConfig>) => {
       const userId = requireAddress(address);
-      const updatedConfig: NotificationConfig = {
-        ...(configs[chainId] || {
-          chainId,
-          enabled: false,
-          services: [],
-          healthFactorThreshold: DEFAULT_HEALTH_FACTOR_THRESHOLD,
-        }),
+      const saved = queryClient.getQueryData<ConfigsByChain>(notificationConfigsQueryKey(userId))?.[chainId];
+      const config: NotificationConfig = {
+        ...(saved ?? { chainId, enabled: false, services: [], healthFactorThreshold: DEFAULT_HEALTH_FACTOR_THRESHOLD }),
         ...updates,
-        chainId, // always use position chain (Aave network), never wallet's connected chain
+        chainId, // always the position's chain (Aave network), never the wallet's connected chain
       };
-
-      await notificationConfigClient.upsertConfig(userId, updatedConfig);
-      setConfigs(prev => ({ ...prev, [chainId]: updatedConfig }));
+      await saveConfig({ userId, config });
     },
-    [address, configs],
+    [address, queryClient, saveConfig],
   );
 
   const deleteConfig = useCallback(
     async (chainId: number) => {
-      await notificationConfigClient.deleteConfig(requireAddress(address), chainId);
-      setConfigs(prev => {
-        const next = { ...prev };
-        delete next[chainId];
-        return next;
-      });
+      await removeConfig({ userId: requireAddress(address), chainId });
     },
-    [address],
+    [address, removeConfig],
   );
 
-  const hasConfig = useCallback((chainId: number) => chainId in configs, [configs]);
+  const getConfig = useCallback((chainId: number) => configs?.[chainId] ?? null, [configs]);
+  const hasConfig = useCallback((chainId: number) => !!configs && chainId in configs, [configs]);
 
-  return { isLoaded, getConfig, updateConfig, deleteConfig, hasConfig };
+  return {
+    /**
+     * False until the connected wallet's configs have been fetched once (or failed); true without a wallet. Unlike
+     * `!isPending`, a retry after a failure does not make it false again.
+     */
+    isLoaded: !address || query.isFetched,
+    // A retry puts a query without data back into "pending" (and clears its error), so count past errors to keep
+    // reporting the failure, and the Retry UI on screen, until a load succeeds. A failed background refetch keeps
+    // the last data instead.
+    isError: !configs && query.errorUpdateCount > 0,
+    isFetching: query.isFetching,
+    refetch: query.refetch,
+    isSaving,
+    isDeleting,
+    getConfig,
+    updateConfig,
+    deleteConfig,
+    hasConfig,
+  };
 };

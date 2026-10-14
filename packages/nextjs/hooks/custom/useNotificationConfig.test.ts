@@ -1,8 +1,11 @@
+// @vitest-environment jsdom
+import { onlineManager } from "@tanstack/react-query";
+import { act, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
 import type { NotificationConfig } from "~~/types/notifications";
 import { deferred } from "~~/utils/testing/helpers";
-import { renderHook } from "~~/utils/testing/hookHarness";
+import { createTestQueryClient, renderHookWithProviders } from "~~/utils/testing/providers";
 
 const mocks = vi.hoisted(() => ({
   address: undefined as string | undefined,
@@ -11,9 +14,6 @@ const mocks = vi.hoisted(() => ({
   deleteConfig: vi.fn(),
 }));
 
-vi.mock("react", async importOriginal =>
-  (await import("~~/utils/testing/hookHarness")).withFakeHooks(await importOriginal()),
-);
 vi.mock("wagmi", () => ({ useAccount: () => ({ address: mocks.address }) }));
 vi.mock("~~/services/notifications/notificationConfigClient", () => ({
   notificationConfigClient: {
@@ -32,16 +32,18 @@ const CONFIG: NotificationConfig = {
   services: ["email"],
   healthFactorThreshold: 1.8,
   email: "me@example.com",
-  telegramChatId: "555",
 };
 
 type Configs = Record<number, NotificationConfig>;
 
 const OTHER_CONFIGS: Configs = { 2: { ...CONFIG, chainId: 2 } };
 
-const mount = async () => {
-  const view = renderHook(() => useNotificationConfig());
-  await view.act();
+const render = (queryClient = createTestQueryClient()) =>
+  renderHookWithProviders(() => useNotificationConfig(), { queryClient });
+
+const renderLoaded = async () => {
+  const view = render();
+  await waitFor(() => expect(view.result.current.isLoaded).toBe(true));
   return view;
 };
 
@@ -53,177 +55,251 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  onlineManager.setOnline(true);
   vi.restoreAllMocks();
 });
 
 describe("useNotificationConfig", () => {
-  it("returns only the public API", async () => {
-    const view = await mount();
-    expect(Object.keys(view.current)).toEqual(["isLoaded", "getConfig", "updateConfig", "deleteConfig", "hasConfig"]);
+  it("returns the config API plus the load state", async () => {
+    const { result } = await renderLoaded();
+    expect(Object.keys(result.current).sort()).toEqual([
+      "deleteConfig",
+      "getConfig",
+      "hasConfig",
+      "isDeleting",
+      "isError",
+      "isFetching",
+      "isLoaded",
+      "isSaving",
+      "refetch",
+      "updateConfig",
+    ]);
   });
 
-  it("is loaded with no configs and makes no request without a wallet", async () => {
+  it("is loaded with no configs and makes no request without a wallet", () => {
     mocks.address = undefined;
-    const view = await mount();
-    expect(view.current.isLoaded).toBe(true);
-    expect(view.current.getConfig(1)).toBeNull();
+    const { result } = render();
+    expect(result.current.isLoaded).toBe(true);
+    expect(result.current.isError).toBe(false);
+    expect(result.current.getConfig(1)).toBeNull();
     expect(mocks.getAllConfigs).not.toHaveBeenCalled();
   });
 
-  it("loads the wallet's configs with the raw address", async () => {
+  it("loads the wallet's configs with the raw address and caches them under the normalized address", async () => {
     mocks.getAllConfigs.mockResolvedValue({ 1: CONFIG });
-    const view = renderHook(() => useNotificationConfig());
-    expect(view.current.isLoaded).toBe(false);
-    await view.act();
-    expect(mocks.getAllConfigs).toHaveBeenCalledWith(ADDRESS);
-    expect(view.current.isLoaded).toBe(true);
-    expect(view.current.getConfig(1)).toEqual(CONFIG);
-    expect(view.current.hasConfig(1)).toBe(true);
-    expect(view.current.hasConfig(2)).toBe(false);
+    const { result, queryClient } = render();
+    expect(result.current.isLoaded).toBe(false);
+    await waitFor(() => expect(result.current.isLoaded).toBe(true));
+    expect(mocks.getAllConfigs.mock.calls).toEqual([[ADDRESS]]);
+    expect(result.current.getConfig(1)).toEqual(CONFIG);
+    expect([result.current.hasConfig(1), result.current.hasConfig(2)]).toEqual([true, false]);
+    expect(queryClient.getQueryData(["notificationConfigs", ADDRESS.toLowerCase()])).toEqual({ 1: CONFIG });
   });
 
-  it("getConfig fills in missing services and returns a new object each call", async () => {
+  it("getConfig fills in fields older rows lack and keeps the same object while the data is unchanged", async () => {
     mocks.getAllConfigs.mockResolvedValue({ 1: { ...CONFIG, services: null, signalRecipient: null } });
-    const view = await mount();
-    const config = view.current.getConfig(1);
+    const { result, rerender } = await renderLoaded();
+    const config = result.current.getConfig(1);
     expect(config).toMatchObject({ services: [], signalRecipient: undefined });
-    expect(view.current.getConfig(1)).not.toBe(config);
+    rerender();
+    expect(result.current.getConfig(1)).toBe(config);
   });
 
-  it("ignores a response for a wallet that is no longer connected", async () => {
-    const first = deferred<Configs>();
-    mocks.getAllConfigs.mockReturnValueOnce(first.promise).mockResolvedValueOnce(OTHER_CONFIGS);
-    const view = renderHook(() => useNotificationConfig());
+  it("forgets the previous wallet's configs as soon as the wallet switches", async () => {
+    const otherConfigs = deferred<Configs>();
+    mocks.getAllConfigs.mockResolvedValueOnce({ 1: CONFIG }).mockReturnValueOnce(otherConfigs.promise);
+    const { result, rerender } = await renderLoaded();
+    expect(result.current.hasConfig(1)).toBe(true);
+
     mocks.address = OTHER_ADDRESS;
-    view.flush();
-    await view.act();
+    rerender();
+    expect(result.current.isLoaded).toBe(false);
+    expect(result.current.getConfig(1)).toBeNull();
+
+    otherConfigs.resolve(OTHER_CONFIGS);
+    await waitFor(() => expect(result.current.isLoaded).toBe(true));
+    expect([result.current.hasConfig(1), result.current.hasConfig(2)]).toEqual([false, true]);
     expect(mocks.getAllConfigs.mock.calls).toEqual([[ADDRESS], [OTHER_ADDRESS]]);
-    expect(view.current.hasConfig(2)).toBe(true);
-    await view.act(() => first.resolve({ 1: CONFIG }));
-    expect(view.current.hasConfig(1)).toBe(false);
-    expect(view.current.hasConfig(2)).toBe(true);
   });
 
-  it("keeps the new wallet's configs when the old wallet's request fails late", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  it("never shows a late response for the previous wallet", async () => {
     const first = deferred<Configs>();
     mocks.getAllConfigs.mockReturnValueOnce(first.promise).mockResolvedValueOnce(OTHER_CONFIGS);
-    const view = renderHook(() => useNotificationConfig());
+    const { result, rerender } = render();
     mocks.address = OTHER_ADDRESS;
-    view.flush();
-    await view.act();
-    expect(view.current.hasConfig(2)).toBe(true);
-    await view.act(() => first.reject(new TypeError("Failed to fetch")));
-    expect(view.current.isLoaded).toBe(true);
-    expect(view.current.hasConfig(2)).toBe(true);
-    expect(consoleError).toHaveBeenCalledWith("Failed to load notification configs:", expect.any(TypeError));
+    rerender();
+    await waitFor(() => expect(result.current.hasConfig(2)).toBe(true));
+    await act(async () => first.resolve({ 1: CONFIG }));
+    expect([result.current.hasConfig(1), result.current.hasConfig(2)]).toEqual([false, true]);
   });
 
-  it.each(["resolves", "rejects"])(
-    "stays unloaded when the old wallet's first request %s before the new wallet's",
-    async outcome => {
-      vi.spyOn(console, "error").mockImplementation(() => undefined);
-      const first = deferred<Configs>();
-      const second = deferred<Configs>();
-      mocks.getAllConfigs.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
-      const view = renderHook(() => useNotificationConfig());
-      mocks.address = OTHER_ADDRESS;
-      view.flush();
-      await view.act(() => (outcome === "resolves" ? first.resolve({ 1: CONFIG }) : first.reject(new Error("down"))));
-      expect(view.current.isLoaded).toBe(false);
-      expect(view.current.hasConfig(1)).toBe(false);
-      await view.act(() => second.resolve(OTHER_CONFIGS));
-      expect(view.current.isLoaded).toBe(true);
-      expect(view.current.hasConfig(2)).toBe(true);
-    },
-  );
-
-  it("resets to no configs when the new wallet's load fails", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const second = deferred<Configs>();
-    mocks.getAllConfigs.mockResolvedValueOnce({ 1: CONFIG }).mockReturnValueOnce(second.promise);
-    const view = await mount();
+  it("shows a wallet's cached configs at once when switching back to it", async () => {
+    mocks.getAllConfigs.mockResolvedValueOnce({ 1: CONFIG }).mockResolvedValueOnce(OTHER_CONFIGS);
+    const { result, rerender } = await renderLoaded();
     mocks.address = OTHER_ADDRESS;
-    await view.act();
-    // BUG(B0.4): the previous wallet's configs stay loaded until the new wallet's request settles.
-    expect(view.current.isLoaded).toBe(true);
-    expect(view.current.hasConfig(1)).toBe(true);
-    await view.act(() => second.reject(new TypeError("Failed to fetch")));
-    expect(view.current.isLoaded).toBe(true);
-    expect(view.current.hasConfig(1)).toBe(false);
+    rerender();
+    await waitFor(() => expect(result.current.hasConfig(2)).toBe(true));
+
+    mocks.getAllConfigs.mockReturnValueOnce(new Promise(() => undefined));
+    mocks.address = ADDRESS;
+    rerender();
+    expect(result.current.isLoaded).toBe(true);
+    expect([result.current.hasConfig(1), result.current.hasConfig(2)]).toEqual([true, false]);
   });
 
   it("clears the configs when the wallet disconnects", async () => {
     mocks.getAllConfigs.mockResolvedValue({ 1: CONFIG });
-    const view = await mount();
+    const { result, rerender } = await renderLoaded();
     mocks.address = undefined;
-    await view.act();
-    expect(view.current.isLoaded).toBe(true);
-    expect(view.current.hasConfig(1)).toBe(false);
+    rerender();
+    expect(result.current.isLoaded).toBe(true);
+    expect(result.current.hasConfig(1)).toBe(false);
     expect(mocks.getAllConfigs).toHaveBeenCalledTimes(1);
   });
 
-  it("ignores a response that arrives after the wallet disconnected", async () => {
-    const first = deferred<Configs>();
-    mocks.getAllConfigs.mockReturnValueOnce(first.promise);
-    const view = renderHook(() => useNotificationConfig());
-    mocks.address = undefined;
-    view.flush();
-    await view.act(() => first.resolve({ 1: CONFIG }));
-    expect(view.current.isLoaded).toBe(true);
-    expect(view.current.hasConfig(1)).toBe(false);
+  it("reports a failed load instead of treating it as no configs, and recovers on refetch", async () => {
+    const retry = deferred<Configs>();
+    mocks.getAllConfigs.mockRejectedValueOnce(new Error("Database error")).mockReturnValueOnce(retry.promise);
+    const { result } = render();
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.isLoaded).toBe(true);
+    expect(result.current.hasConfig(1)).toBe(false);
+
+    act(() => void result.current.refetch());
+    await waitFor(() => expect(result.current.isFetching).toBe(true));
+    // Still reported as failed (and loaded) while the retry is in flight, so the Retry UI stays on screen.
+    expect([result.current.isError, result.current.isLoaded]).toEqual([true, true]);
+    retry.resolve({ 1: CONFIG });
+    await waitFor(() => expect(result.current.isError).toBe(false));
+    expect(result.current.getConfig(1)).toEqual(CONFIG);
   });
 
-  it("treats a failed load as no configs", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    mocks.getAllConfigs.mockRejectedValue(new TypeError("Failed to fetch"));
-    const view = await mount();
-    expect(view.current.isLoaded).toBe(true);
-    expect(view.current.hasConfig(1)).toBe(false);
-    expect(consoleError).toHaveBeenCalledWith("Failed to load notification configs:", expect.any(TypeError));
+  it("keeps showing the loaded configs when a background refetch fails", async () => {
+    mocks.getAllConfigs.mockResolvedValueOnce({ 1: CONFIG }).mockRejectedValueOnce(new Error("down"));
+    const { result } = await renderLoaded();
+    await act(async () => void (await result.current.refetch()));
+    expect(mocks.getAllConfigs).toHaveBeenCalledTimes(2);
+    expect(result.current.isError).toBe(false);
+    expect(result.current.getConfig(1)).toEqual(CONFIG);
   });
 
-  it("updateConfig merges over the saved config and pins the position chain id", async () => {
+  it("shares one cache between every component that uses it", async () => {
     mocks.getAllConfigs.mockResolvedValue({ 1: CONFIG });
-    const view = await mount();
-    await view.act(() =>
-      view.current.updateConfig(1, {
+    const queryClient = createTestQueryClient();
+    const editor = render(queryClient);
+    const indicator = render(queryClient);
+    await waitFor(() => expect(indicator.result.current.hasConfig(1)).toBe(true));
+    expect(mocks.getAllConfigs).toHaveBeenCalledTimes(1);
+
+    mocks.getAllConfigs.mockReturnValue(new Promise(() => undefined));
+    await act(() => editor.result.current.updateConfig(10, { enabled: true }));
+    await waitFor(() => expect(indicator.result.current.hasConfig(10)).toBe(true));
+
+    await act(() => editor.result.current.deleteConfig(1));
+    await waitFor(() => expect(indicator.result.current.hasConfig(1)).toBe(false));
+  });
+
+  it("updateConfig merges over the saved config, pins the position chain id and caches what it sent", async () => {
+    const saved = { ...CONFIG, signalRecipient: "alice.42", services: ["email", "signal"] as const };
+    mocks.getAllConfigs.mockResolvedValue({ 1: saved });
+    const { result } = await renderLoaded();
+    const expected = { ...saved, chainId: 1, services: ["signal"], email: undefined, healthFactorThreshold: 2 };
+
+    await act(() =>
+      result.current.updateConfig(1, {
         chainId: 999,
         services: ["signal"],
         email: undefined,
-        signalRecipient: "alice.42",
+        healthFactorThreshold: 2,
       }),
     );
-    const expected = { ...CONFIG, chainId: 1, services: ["signal"], email: undefined, signalRecipient: "alice.42" };
-    expect(mocks.upsertConfig).toHaveBeenCalledWith(ADDRESS, expected);
-    expect(view.current.getConfig(1)).toEqual(expected);
+    expect(mocks.upsertConfig.mock.calls).toEqual([[ADDRESS, expected]]);
+    await waitFor(() => expect(result.current.getConfig(1)).toEqual(expected));
+  });
+
+  it("does not reload the configs after a write", async () => {
+    const { result } = await renderLoaded();
+    await act(() => result.current.updateConfig(10, { enabled: true }));
+    await waitFor(() => expect(result.current.hasConfig(10)).toBe(true));
+    await act(() => result.current.deleteConfig(10));
+    await waitFor(() => expect(result.current.hasConfig(10)).toBe(false));
+    expect(mocks.getAllConfigs).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a save or a delete while it is in flight", async () => {
+    const request = deferred<void>();
+    mocks.upsertConfig.mockReturnValue(request.promise);
+    mocks.deleteConfig.mockReturnValue(request.promise);
+    const { result } = await renderLoaded();
+    expect([result.current.isSaving, result.current.isDeleting]).toEqual([false, false]);
+
+    let saving: Promise<void> | undefined;
+    act(() => {
+      saving = result.current.updateConfig(1, { enabled: true });
+    });
+    await waitFor(() => expect([result.current.isSaving, result.current.isDeleting]).toEqual([true, false]));
+    let deleting: Promise<void> | undefined;
+    act(() => {
+      deleting = result.current.deleteConfig(1);
+    });
+    await waitFor(() => expect([result.current.isSaving, result.current.isDeleting]).toEqual([true, true]));
+
+    await act(async () => {
+      request.resolve();
+      await Promise.all([saving, deleting]);
+    });
+    await waitFor(() => expect([result.current.isSaving, result.current.isDeleting]).toEqual([false, false]));
   });
 
   it("updateConfig starts from a disabled default for a new chain", async () => {
-    const view = await mount();
-    await view.act(() => view.current.updateConfig(10, { enabled: true }));
-    expect(mocks.upsertConfig).toHaveBeenCalledWith(ADDRESS, {
-      chainId: 10,
-      enabled: true,
-      services: [],
-      healthFactorThreshold: 1.5,
-    });
-    expect(view.current.hasConfig(10)).toBe(true);
+    const { result } = await renderLoaded();
+    mocks.getAllConfigs.mockReturnValue(new Promise(() => undefined));
+    await act(() => result.current.updateConfig(10, { enabled: true }));
+    expect(mocks.upsertConfig.mock.calls).toEqual([
+      [ADDRESS, { chainId: 10, enabled: true, services: [], healthFactorThreshold: 1.5 }],
+    ]);
+    await waitFor(() => expect(result.current.hasConfig(10)).toBe(true));
   });
 
-  it("deleteConfig removes the chain's config", async () => {
+  it("deleteConfig removes only that chain's config", async () => {
     mocks.getAllConfigs.mockResolvedValue({ 1: CONFIG, 2: { ...CONFIG, chainId: 2 } });
-    const view = await mount();
-    await view.act(() => view.current.deleteConfig(1));
-    expect(mocks.deleteConfig).toHaveBeenCalledWith(ADDRESS, 1);
-    expect([view.current.hasConfig(1), view.current.hasConfig(2)]).toEqual([false, true]);
+    const { result } = await renderLoaded();
+    mocks.getAllConfigs.mockReturnValue(new Promise(() => undefined));
+    await act(() => result.current.deleteConfig(1));
+    expect(mocks.deleteConfig.mock.calls).toEqual([[ADDRESS, 1]]);
+    await waitFor(() => expect([result.current.hasConfig(1), result.current.hasConfig(2)]).toEqual([false, true]));
+  });
+
+  it("writes the result into the cache of the wallet that made the change", async () => {
+    const save = deferred<void>();
+    mocks.getAllConfigs.mockResolvedValueOnce({}).mockResolvedValueOnce(OTHER_CONFIGS);
+    mocks.upsertConfig.mockReturnValue(save.promise);
+    const { result, rerender, queryClient } = await renderLoaded();
+    let saving: Promise<void> | undefined;
+    act(() => {
+      saving = result.current.updateConfig(10, { enabled: true });
+    });
+
+    mocks.address = OTHER_ADDRESS;
+    rerender();
+    await waitFor(() => expect(result.current.hasConfig(2)).toBe(true));
+    await act(async () => {
+      save.resolve();
+      await saving;
+    });
+
+    expect(result.current.hasConfig(10)).toBe(false);
+    expect(queryClient.getQueryData<Configs>(["notificationConfigs", ADDRESS.toLowerCase()])?.[10]).toMatchObject({
+      chainId: 10,
+      enabled: true,
+    });
   });
 
   it("rejects writes without a wallet", async () => {
     mocks.address = undefined;
-    const view = await mount();
-    await expect(view.current.updateConfig(1, {})).rejects.toThrow(new Error("Wallet not connected"));
-    await expect(view.current.deleteConfig(1)).rejects.toThrow(new Error("Wallet not connected"));
+    const { result } = render();
+    await expect(result.current.updateConfig(1, {})).rejects.toThrow(new Error("Wallet not connected"));
+    await expect(result.current.deleteConfig(1)).rejects.toThrow(new Error("Wallet not connected"));
     expect(mocks.upsertConfig).not.toHaveBeenCalled();
     expect(mocks.deleteConfig).not.toHaveBeenCalled();
   });
@@ -233,10 +309,26 @@ describe("useNotificationConfig", () => {
     const saveError = new Error("Active paid access required");
     mocks.upsertConfig.mockRejectedValue(saveError);
     mocks.deleteConfig.mockRejectedValue(saveError);
-    const view = await mount();
-    await expect(view.current.updateConfig(1, { enabled: false })).rejects.toBe(saveError);
-    await expect(view.current.deleteConfig(1)).rejects.toBe(saveError);
-    view.flush();
-    expect(view.current.getConfig(1)).toEqual(CONFIG);
+    const { result } = await renderLoaded();
+    await act(async () => {
+      await expect(result.current.updateConfig(1, { enabled: false })).rejects.toBe(saveError);
+      await expect(result.current.deleteConfig(1)).rejects.toBe(saveError);
+    });
+    expect(result.current.getConfig(1)).toEqual(CONFIG);
+    expect(mocks.getAllConfigs).toHaveBeenCalledTimes(1);
+  });
+
+  it("loads and writes while the browser reports offline instead of pausing until it is back online", async () => {
+    onlineManager.setOnline(false);
+    mocks.getAllConfigs.mockResolvedValue({ 1: CONFIG });
+    const { result } = await renderLoaded();
+    expect(result.current.getConfig(1)).toEqual(CONFIG);
+
+    mocks.upsertConfig.mockRejectedValue(new TypeError("Failed to fetch"));
+    await expect(act(() => result.current.updateConfig(1, { email: "new@example.com" }))).rejects.toThrow(
+      "Failed to fetch",
+    );
+    expect(mocks.upsertConfig).toHaveBeenCalledTimes(1);
+    expect(result.current.isSaving).toBe(false);
   });
 });

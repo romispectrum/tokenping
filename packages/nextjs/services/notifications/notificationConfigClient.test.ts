@@ -52,11 +52,19 @@ describe("getAllConfigs", () => {
     await expect(client.getAllConfigs("0xabc")).resolves.toEqual({});
   });
 
-  // BUG(B0.9): an HTTP error is reported as "no configs" instead of rejecting, so the UI shows the empty state.
-  it("returns {} for an HTTP error", async () => {
+  // An HTTP error must not look like "no configs": the UI would offer to create a config the user already has.
+  it.each([
+    ["the error string", jsonResponse({ error: "Database error" }, 500), "Database error"],
+    [
+      "the fallback for a non-JSON body",
+      new Response("<html>", { status: 502 }),
+      "Failed to load notification configs",
+    ],
+    ["the fallback without an error field", jsonResponse({}, 500), "Failed to load notification configs"],
+  ])("rejects an HTTP error with %s", async (_, response, message) => {
     vi.stubGlobal("window", {});
-    fetchMock.mockResolvedValue(jsonResponse({ error: "Database error" }, 500));
-    await expect(client.getAllConfigs("0xabc")).resolves.toEqual({});
+    fetchMock.mockResolvedValue(response);
+    await expect(client.getAllConfigs("0xabc")).rejects.toThrow(new Error(message));
   });
 
   it("rejects on network errors", async () => {
@@ -71,7 +79,7 @@ describe("upsertConfig", () => {
 
   it("PUTs the trimmed raw address and the config, sending null for missing recipients", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ success: true }));
-    await client.upsertConfig(" 0xAbC ", { ...CONFIG, telegramChatId: "1", telegramUsername: "bob" });
+    await client.upsertConfig(" 0xAbC ", CONFIG);
     expect(fetchMock.mock.calls).toEqual([
       [
         "/api/notifications/config",

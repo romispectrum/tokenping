@@ -32,7 +32,7 @@ export const NotificationSummary = ({
             return service ? (
               <span
                 key={serviceId}
-                className="text-xs px-2 py-0.5 rounded-md border border-purple-500/30 bg-purple-500/10 text-purple-300"
+                className="text-xs px-2 py-0.5 rounded-md border border-purple-500/30 bg-purple-500/10 text-purple-700 dark:text-purple-300"
               >
                 {service.icon} {service.name}
               </span>
@@ -73,7 +73,7 @@ export const NotificationSummary = ({
     </div>
     {showBelowThresholdWarning && (
       <div className="mt-2 p-2 rounded-lg bg-amber-500/20 border border-amber-500/30">
-        <p className="text-xs text-amber-400">
+        <p className="text-xs text-amber-700 dark:text-amber-400">
           ⚠️ Current Health Factor ({currentHealthFactor}) is below your threshold!
         </p>
       </div>

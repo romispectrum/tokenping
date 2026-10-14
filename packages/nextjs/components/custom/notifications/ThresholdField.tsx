@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useRef } from "react";
+import { type KeyboardEvent, useId, useRef } from "react";
 import { FIELD_LABEL_CLASS } from "~~/components/custom/notifications/styles";
 import { THRESHOLD_SLIDER_MAX, THRESHOLD_SLIDER_MIN, THRESHOLD_SLIDER_STEP } from "~~/constants/notifications";
 import {
@@ -32,6 +32,7 @@ export const ThresholdField = ({
   onThresholdTextChange,
 }: ThresholdFieldProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const sliderId = useId();
 
   const handleSliderChange = (value: string) => {
     const next = clampSliderThreshold(parseFloat(value));
@@ -63,20 +64,25 @@ export const ThresholdField = ({
 
   return (
     <div>
-      <label className={FIELD_LABEL_CLASS}>
-        {/* Two text nodes on purpose: the SSR markup keeps its <!-- --> separator (pinned by the golden master). */}
-        {"Health Factor Threshold:"}{" "}
-        <span className="font-semibold text-base-content dark:text-white">{threshold}</span>
+      {/* The value is left out of the slider's name and given as its value text: the slider stops at 3, the
+          threshold does not. */}
+      <label htmlFor={sliderId} className={FIELD_LABEL_CLASS}>
+        Health Factor Threshold:{" "}
+        <span aria-hidden="true" className="font-semibold text-base-content dark:text-white">
+          {threshold}
+        </span>
       </label>
       <div className="flex items-center gap-3 flex-wrap">
         <input
+          id={sliderId}
           type="range"
           min={THRESHOLD_SLIDER_MIN}
           max={THRESHOLD_SLIDER_MAX.toFixed(1)}
           step={THRESHOLD_SLIDER_STEP}
           value={clampSliderThreshold(threshold)}
+          aria-valuetext={String(threshold)}
           onChange={e => handleSliderChange(e.target.value)}
-          className="flex-1 min-w-[120px] h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+          className="flex-1 min-w-[120px] h-2 bg-base-300 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
         />
         <input
           ref={inputRef}

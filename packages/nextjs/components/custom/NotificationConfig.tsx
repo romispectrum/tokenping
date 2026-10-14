@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAccount } from "wagmi";
 import { NotificationCard } from "~~/components/custom/notifications/NotificationCard";
 import { NotificationEmptyState } from "~~/components/custom/notifications/NotificationEmptyState";
+import { NotificationLoadError } from "~~/components/custom/notifications/NotificationLoadError";
 import { NotificationSummary } from "~~/components/custom/notifications/NotificationSummary";
 import { RecipientFields } from "~~/components/custom/notifications/RecipientFields";
 import { ServiceSelector } from "~~/components/custom/notifications/ServiceSelector";
@@ -15,13 +16,13 @@ import {
   buildConfigUpdate,
   canSubmitNotificationForm,
   configToFormState,
-  configToFormStateOnCancel,
   toggleService,
   validateNotificationForm,
 } from "~~/components/custom/notifications/notificationForm";
 import { useAccess } from "~~/hooks/custom/useAccess";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
 import { useTelegramLink } from "~~/hooks/custom/useTelegramLink";
+import { normalizeAddress } from "~~/utils/address";
 import { getErrorMessage } from "~~/utils/errors";
 import { isBelowThreshold } from "~~/utils/healthFactor";
 import { notification } from "~~/utils/scaffold-eth";
@@ -33,50 +34,42 @@ type NotificationConfigProps = {
   currentHealthFactor: string;
 };
 
-export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: NotificationConfigProps) => {
-  const { getConfig, updateConfig, deleteConfig, isLoaded } = useNotificationConfig();
+const NotificationSettings = ({
+  address,
+  chainId,
+  chainName,
+  currentHealthFactor,
+}: NotificationConfigProps & { address: string | undefined }) => {
+  const { getConfig, updateConfig, deleteConfig, isLoaded, isError, isFetching, refetch, isSaving, isDeleting } =
+    useNotificationConfig();
   const { isActive: hasAccess } = useAccess();
-  const { address } = useAccount();
-  const config = getConfig(chainId);
-
-  // This component's useNotificationConfig starts empty, so config is null on the first render; the effect hydrates.
-  const [form, setForm] = useState(EMPTY_FORM_STATE);
   const telegram = useTelegramLink(address);
-  const { setLink: setTelegramLink, stopPolling: stopTelegramPolling } = telegram;
+  const config = getConfig(chainId);
+  // What the summary shows. Editing works on a draft copy, so Cancel only has to drop the draft.
+  const saved = configToFormState(config);
+
+  const [draft, setDraft] = useState(EMPTY_FORM_STATE);
   const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
-  // Sync local state from config only when not editing, so the slider/inputs aren't reset while the user is changing them.
-  // Depend on getConfig + chainId (not config): getConfig() returns a new object every time, which would cause infinite re-renders.
-  useEffect(() => {
-    const savedConfig = getConfig(chainId);
-    if (savedConfig && !isEditing) {
-      setForm(configToFormState(savedConfig));
-      setTelegramLink(savedConfig.telegramChatId, savedConfig.telegramUsername);
-    }
-  }, [getConfig, chainId, isEditing, setTelegramLink]);
+  if (!isLoaded || !telegram.isLoaded) return null;
 
-  if (!isLoaded) return null;
+  if (isError) return <NotificationLoadError isRetrying={isFetching} onRetry={() => void refetch()} />;
 
   const hasConfig = config !== null;
 
   // No access and no config: the paywall above is enough.
   if (!hasAccess && !hasConfig) return null;
 
-  const updateForm = (patch: Partial<NotificationFormState>) => setForm(prev => ({ ...prev, ...patch }));
-  const submission = { ...form, telegramChatId: telegram.chatId };
-
   const summary = (
     <NotificationSummary
-      services={form.services}
-      email={form.email}
-      signalRecipient={form.signalRecipient}
+      services={saved.services}
+      email={saved.email}
+      signalRecipient={saved.signalRecipient}
       telegramChatId={telegram.chatId}
       telegramUsername={telegram.username}
-      threshold={form.threshold}
+      threshold={saved.threshold}
       currentHealthFactor={currentHealthFactor}
-      showBelowThresholdWarning={form.enabled && isBelowThreshold(currentHealthFactor, form.threshold)}
+      showBelowThresholdWarning={saved.enabled && isBelowThreshold(currentHealthFactor, saved.threshold)}
     />
   );
 
@@ -84,13 +77,21 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
   if (!hasAccess) {
     return (
       <NotificationCard
-        isActive={form.enabled}
-        headerRight={<span className="text-[10px] text-amber-400">Pay for access to edit</span>}
+        isActive={saved.enabled}
+        headerRight={<span className="text-[10px] text-amber-700 dark:text-amber-400">Pay for access to edit</span>}
       >
         {summary}
       </NotificationCard>
     );
   }
+
+  const startEditing = (form: NotificationFormState) => {
+    setDraft(form);
+    setIsEditing(true);
+  };
+
+  const updateDraft = (patch: Partial<NotificationFormState>) => setDraft(prev => ({ ...prev, ...patch }));
+  const submission = { ...draft, telegramChatId: telegram.chatId };
 
   const handleStore = async () => {
     const validationError = validateNotificationForm(submission);
@@ -99,51 +100,42 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
       return;
     }
 
-    setIsSaving(true);
     try {
-      await updateConfig(chainId, buildConfigUpdate(form));
+      await updateConfig(chainId, buildConfigUpdate(draft));
       notification.success("Notification configuration saved.");
       setIsEditing(false);
     } catch (error) {
       console.error("Failed to save notification config:", error);
       notification.error(getErrorMessage(error, "Failed to save configuration"));
-    } finally {
-      setIsSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    setIsDeleting(true);
     try {
       await deleteConfig(chainId);
-      setIsEditing(true);
-      setForm(EMPTY_FORM_STATE);
+      startEditing(EMPTY_FORM_STATE);
     } catch (error) {
-      // BUG(B0.10): a failed delete is only logged; the user gets no feedback.
       console.error("Failed to delete notification config:", error);
-    } finally {
-      setIsDeleting(false);
+      notification.error(getErrorMessage(error, "Failed to delete configuration"));
     }
   };
 
   const handleCancel = () => {
-    setForm(configToFormStateOnCancel(config));
-    if (config) setTelegramLink(config.telegramChatId, config.telegramUsername);
-    stopTelegramPolling();
+    telegram.cancelConnect();
     setIsEditing(false);
   };
 
   if (!hasConfig && !isEditing) {
-    return <NotificationEmptyState chainName={chainName} onCreate={() => setIsEditing(true)} />;
+    return <NotificationEmptyState chainName={chainName} onCreate={() => startEditing(EMPTY_FORM_STATE)} />;
   }
 
   return (
     <NotificationCard
-      isActive={hasConfig && form.enabled}
+      isActive={hasConfig && saved.enabled}
       headerRight={
         !isEditing && (
           <button
-            onClick={() => setIsEditing(true)}
+            onClick={() => startEditing(saved)}
             className="text-xs px-2 py-1 rounded-lg border border-base-300 bg-base-200 text-base-content dark:border-white/10 dark:bg-white/5 dark:text-gray-300 hover:bg-base-300 dark:hover:bg-white/10 dark:hover:text-white transition-colors"
           >
             Edit
@@ -154,20 +146,21 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
       {isEditing ? (
         <div className="space-y-4">
           <ServiceSelector
-            services={form.services}
-            onToggle={service => setForm(prev => ({ ...prev, services: toggleService(prev.services, service) }))}
+            services={draft.services}
+            onToggle={service => setDraft(prev => ({ ...prev, services: toggleService(prev.services, service) }))}
           />
           <RecipientFields
-            services={form.services}
-            email={form.email}
-            signalRecipient={form.signalRecipient}
-            onEmailChange={email => updateForm({ email })}
-            onSignalRecipientChange={signalRecipient => updateForm({ signalRecipient })}
+            services={draft.services}
+            email={draft.email}
+            signalRecipient={draft.signalRecipient}
+            onEmailChange={email => updateDraft({ email })}
+            onSignalRecipientChange={signalRecipient => updateDraft({ signalRecipient })}
           />
-          {form.services.includes("telegram") && (
+          {draft.services.includes("telegram") && (
             <TelegramConnectField
               chatId={telegram.chatId}
               username={telegram.username}
+              deepLink={telegram.deepLink}
               isConnecting={telegram.isConnecting}
               isDisconnecting={telegram.isDisconnecting}
               onConnect={telegram.connect}
@@ -175,11 +168,11 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
             />
           )}
           <ThresholdField
-            threshold={form.threshold}
-            thresholdText={form.thresholdText}
+            threshold={draft.threshold}
+            thresholdText={draft.thresholdText}
             chainName={chainName}
-            onThresholdChange={threshold => updateForm({ threshold })}
-            onThresholdTextChange={thresholdText => updateForm({ thresholdText })}
+            onThresholdChange={threshold => updateDraft({ threshold })}
+            onThresholdTextChange={thresholdText => updateDraft({ thresholdText })}
           />
           <div className="flex items-center gap-2 pt-2">
             <button
@@ -193,7 +186,7 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
               <button
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 font-medium hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400 font-medium hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isDeleting ? "Deleting..." : "Delete"}
               </button>
@@ -211,4 +204,10 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
       )}
     </NotificationCard>
   );
+};
+
+export const NotificationConfig = (props: NotificationConfigProps) => {
+  const { address } = useAccount();
+  // One instance per wallet, so a draft or a Telegram handshake never carries over to another account.
+  return <NotificationSettings key={address ? normalizeAddress(address) : ""} address={address} {...props} />;
 };

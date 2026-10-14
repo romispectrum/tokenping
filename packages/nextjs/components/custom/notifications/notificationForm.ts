@@ -5,7 +5,7 @@ import {
   SIGNAL_USERNAME_REGEX,
   isNotificationService,
   isValidEmail,
-  stripLeadingAt,
+  normalizeSignalUsername,
 } from "~~/utils/notifications/validation";
 
 export type NotificationFormState = {
@@ -39,33 +39,15 @@ export const EMPTY_FORM_STATE: NotificationFormState = {
  * fallbacks below also cover fields that are missing at runtime despite the types.
  */
 
-/** Hydrates the form from a saved config whenever the user is not editing. */
-export const configToFormState = (config: NotificationConfig): NotificationFormState => {
+/** The form for a saved config (or the empty form without one): what the summary shows and what editing starts from. */
+export const configToFormState = (config: NotificationConfig | null): NotificationFormState => {
+  if (!config) return EMPTY_FORM_STATE;
   const services = (config.services ?? []).filter(isNotificationService);
   const threshold = normalizeThreshold(config.healthFactorThreshold);
   return {
     enabled: config.enabled ?? false,
     // Legacy enabled configs without a valid service fall back to email.
     services: services.length > 0 ? services : config.enabled ? ["email"] : [],
-    email: config.email ?? "",
-    signalRecipient: config.signalRecipient ?? "",
-    threshold,
-    thresholdText: formatThreshold(threshold),
-  };
-};
-
-/**
- * Resets the form when editing is cancelled.
- * BUG(B0.8): unlike configToFormState, services are neither filtered nor given the email fallback and `enabled` is
- * taken as is. Cancel also ends editing, which re-runs the hydration effect, so today the difference only lasts
- * until that effect applies configToFormState.
- */
-export const configToFormStateOnCancel = (config: NotificationConfig | null): NotificationFormState => {
-  if (!config) return EMPTY_FORM_STATE;
-  const threshold = normalizeThreshold(config.healthFactorThreshold);
-  return {
-    enabled: config.enabled,
-    services: config.services ?? [],
     email: config.email ?? "",
     signalRecipient: config.signalRecipient ?? "",
     threshold,
@@ -85,8 +67,8 @@ export const validateNotificationForm = ({ services, email, signalRecipient, tel
     if (!isValidEmail(trimmed)) return "Please enter a valid email address";
   }
   if (services.includes("signal")) {
-    // Client rule: only a leading "@" is stripped, so "u:alice.42" is rejected here (see isValidSignalUsername).
-    const username = stripLeadingAt(signalRecipient);
+    // Normalized exactly as buildConfigUpdate stores it, so the value checked here is the value saved.
+    const username = normalizeSignalUsername(signalRecipient);
     if (!username) return "Please enter your Signal username";
     if (!SIGNAL_USERNAME_REGEX.test(username)) {
       return "Invalid Signal username. Expected format: alice.42 (find yours in Signal → Settings → Profile)";
@@ -119,5 +101,5 @@ export const buildConfigUpdate = ({
   healthFactorThreshold: clampThreshold(roundThreshold(threshold)),
   // The keys stay present when undefined so the merge in updateConfig clears a deselected service's recipient.
   email: services.includes("email") ? email.trim() || undefined : undefined,
-  signalRecipient: services.includes("signal") ? stripLeadingAt(signalRecipient) || undefined : undefined,
+  signalRecipient: services.includes("signal") ? normalizeSignalUsername(signalRecipient) || undefined : undefined,
 });
