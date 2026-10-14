@@ -1,37 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import type { NextPage } from "next";
+import { useIsClient } from "usehooks-ts";
 import { useAccount } from "wagmi";
 import { AavePositions } from "~~/components/custom/AavePositions";
+import { PageBackground } from "~~/components/custom/PageBackground";
 
 const LendingPage: NextPage = () => {
-  const { address: connectedAddress, isConnected } = useAccount();
-  const [mounted, setMounted] = useState(false);
+  const { address, isConnected } = useAccount();
+  const isClient = useIsClient();
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) return null;
+  // Wallet state is only known on the client, so render nothing until then to avoid a hydration mismatch.
+  if (!isClient) return null;
 
   return (
-    <div className="min-h-screen bg-base-200 dark:bg-gradient-to-br dark:from-gray-950 dark:via-gray-900 dark:to-indigo-950">
-      {/* Animated background elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 dark:bg-purple-500/10 rounded-full blur-3xl animate-pulse" />
-        <div
-          className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/20 dark:bg-indigo-500/10 rounded-full blur-3xl animate-pulse"
-          style={{ animationDelay: "1s" }}
-        />
-        <div
-          className="absolute top-1/2 left-1/2 w-64 h-64 bg-accent/10 dark:bg-pink-500/5 rounded-full blur-3xl animate-pulse"
-          style={{ animationDelay: "2s" }}
-        />
-      </div>
-
+    <PageBackground>
       <div className="relative z-10 flex flex-col items-center grow pt-6 sm:pt-10 pb-24 sm:pb-20 overflow-x-hidden">
-        {/* Hero */}
         <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 mb-6 sm:mb-8">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex flex-col min-w-0">
@@ -45,8 +29,7 @@ const LendingPage: NextPage = () => {
           </div>
         </div>
 
-        {/* Content */}
-        {isConnected && connectedAddress ? (
+        {isConnected && address ? (
           <div className="w-full">
             <AavePositions />
           </div>
@@ -86,7 +69,7 @@ const LendingPage: NextPage = () => {
           </div>
         )}
       </div>
-    </div>
+    </PageBackground>
   );
 };
 
