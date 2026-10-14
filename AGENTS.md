@@ -230,6 +230,8 @@ IMPORTANT: Prefer retrieval-led reasoning over pre-trained knowledge. Before sta
 - **ponder** — blockchain event indexing, GraphQL APIs, onchain data queries
 - **defi-protocol-templates** — staking, AMMs, governance, flash loans, lending
 - **solidity-security** — security audits, reentrancy, access control, gas optimization
+- **working-with-legacy-code** — characterization tests before refactoring, seams, keeping structure and behavior changes in separate commits
+- **verification-before-completion** — run and read the proving command (check-types, lint, test, build) before claiming work is done
 
 **Agents** (in `.agents/agents/`):
 
