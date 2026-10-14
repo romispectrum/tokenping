@@ -15,8 +15,10 @@ import { deferred } from "~~/utils/testing/helpers";
 import { renderWithProviders } from "~~/utils/testing/providers";
 
 const USER = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
+const OTHER_USER = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
 
-vi.mock("wagmi", () => ({ useAccount: () => ({ address: USER, isConnected: true }) }));
+const account = vi.hoisted(() => ({ address: "", isConnected: true }));
+vi.mock("wagmi", () => ({ useAccount: () => ({ ...account }) }));
 
 vi.mock("~~/services/aave/positions", async importOriginal => ({
   ...(await importOriginal<typeof import("~~/services/aave/positions")>()),
@@ -87,6 +89,7 @@ const renderLoaded = async (positions: NetworkPosition[]) => {
 
 describe("AavePositions", () => {
   beforeEach(() => {
+    account.address = USER;
     fetchMock.mockReset();
     notifications.isLoaded = true;
     notifications.configuredChainIds = [];
@@ -150,6 +153,23 @@ describe("AavePositions", () => {
     expect(form.value).toBe("");
   });
 
+  it("shows the next account's default network, not the previous account's pick", async () => {
+    // F12: both accounts list the same markets, so the previous pick used to stay selected.
+    const view = await renderLoaded([ETHEREUM_POSITION, POLYGON_COLLATERAL_ONLY_POSITION]);
+    fireEvent.click(networkRow("Polygon"));
+    expect(screen.getByRole("heading", { level: 3, name: "Polygon" })).toBeDefined();
+
+    fetchMock.mockResolvedValueOnce([ETHEREUM_POSITION, POLYGON_COLLATERAL_ONLY_POSITION]);
+    account.address = OTHER_USER;
+    view.rerender(<AavePositions />);
+
+    await waitFor(() => expect(refreshButton().textContent).toBe("Refresh"));
+    expect(fetchMock).toHaveBeenLastCalledWith(OTHER_USER);
+    expect(screen.getByRole("heading", { level: 3, name: "Ethereum" })).toBeDefined();
+    expect(networkRow("Ethereum").className).toContain("border-primary/40");
+    expect(networkRow("Polygon").className).not.toContain("border-primary/40");
+  });
+
   it("keeps the notification form and its draft when the connection comes back", async () => {
     await renderLoaded([ETHEREUM_POSITION]);
     fireEvent.change(screen.getByLabelText("Notification draft"), { target: { value: "Ethereum draft" } });
@@ -188,6 +208,36 @@ describe("AavePositions", () => {
     expect(await screen.findByRole("button", { name: "Try Again" })).toBeDefined();
     expect(screen.queryByText(NO_POSITIONS_MESSAGE)).toBeNull();
     expect(markup(container)).toMatchSnapshot();
+  });
+
+  it("shows only the error box, without totals or a network to select, when no network could be read", async () => {
+    // F11: the outage used to sit above $0.00 totals and a prompt to select a network that is not listed.
+    fetchMock.mockRejectedValueOnce(
+      new Error("Could not reach any Aave network. Check your connection and try again."),
+    );
+
+    renderWithProviders(<AavePositions />);
+
+    expect(await screen.findByRole("button", { name: "Try Again" })).toBeDefined();
+    expect(screen.getByText("Could not reach any Aave network. Check your connection and try again.")).toBeDefined();
+    expect(screen.queryByText("Total Supplied")).toBeNull();
+    expect(screen.queryByText("$0.00")).toBeNull();
+    expect(screen.queryByRole("complementary")).toBeNull();
+    expect(screen.queryByText(SELECT_PROMPT)).toBeNull();
+    expect(refreshButton().textContent).toBe("Refresh");
+  });
+
+  it("keeps the last positions below the error box when a refresh fails", async () => {
+    await renderLoaded([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION]);
+
+    fetchMock.mockRejectedValueOnce(new Error("rpc down"));
+    fireEvent.click(refreshButton());
+
+    expect(await screen.findByRole("button", { name: "Try Again" })).toBeDefined();
+    expect(screen.getByText("rpc down")).toBeDefined();
+    expect(screen.getByText("Total Supplied")).toBeDefined();
+    expect(networkRow("Arbitrum")).toBeDefined();
+    expect(screen.getByRole("heading", { level: 3, name: "Ethereum" })).toBeDefined();
   });
 
   it("fetches again from the Try Again button", async () => {

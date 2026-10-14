@@ -30,6 +30,15 @@ const del = (body: unknown) => DELETE(new Request(BASE_URL, { method: "DELETE", 
 const read = async (res: Response) => ({ status: res.status, text: await res.text() });
 const json = (status: number, body: unknown) => ({ status, text: JSON.stringify(body) });
 
+// JSON that parses but is not an object; the routes read it as {}. The array holds an otherwise valid body.
+const NON_OBJECT_BODIES = [
+  ["null", "null"],
+  ["an array", JSON.stringify([{ userId: LOWER, chainId: 1 }])],
+  ["a number", "5"],
+  ["a string", '"0xabc"'],
+  ["a boolean", "true"],
+];
+
 const storedRow = (overrides: Record<string, unknown> = {}) => ({
   id: "row-1",
   user_id: "ignored",
@@ -312,15 +321,16 @@ describe("PUT /api/notifications/config", () => {
     expect(fakeSupabase.queries).toHaveLength(0);
   });
 
-  it("returns 500 for a JSON null body", async () => {
-    expect(await read(await put("null"))).toEqual(
-      json(500, { error: "Cannot destructure property 'userId' of 'body' as it is null." }),
-    );
+  it.each(NON_OBJECT_BODIES)("returns 400 for a body that is %s, without the access check", async (_label, body) => {
+    expect(await read(await put(body))).toEqual(json(400, { error: "Missing or invalid userId" }));
+    expect(isAccessActive).not.toHaveBeenCalled();
+    expect(fakeSupabase.queries).toHaveLength(0);
   });
 
   it.each([
     ["missing", {}],
     ["non-string", { userId: 5, chainId: 1 }],
+    ["array", { userId: [LOWER], chainId: 1 }],
     ["blank", { userId: "  ", chainId: 1 }],
   ])("returns 400 for a %s userId", async (_label, body) => {
     expect(await read(await put(body))).toEqual(json(400, { error: "Missing or invalid userId" }));
@@ -477,6 +487,26 @@ describe("PUT /api/notifications/config", () => {
     expect(fakeSupabase.queries).toHaveLength(0);
   });
 
+  it("returns 400 for a 100k-character crafted email in under 50ms, before the access check", async () => {
+    const start = performance.now();
+    const res = await put({ userId: LOWER, chainId: 8453, services: ["email"], email: `a@${"a.".repeat(50_000)}@` });
+    expect(performance.now() - start).toBeLessThan(50);
+    expect(await read(res)).toEqual(json(400, { error: "Invalid email address for email notifications" }));
+    expect(isAccessActive).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 for a selected Signal username over 64 characters", async () => {
+    const res = await put({
+      userId: LOWER,
+      chainId: 8453,
+      services: ["signal"],
+      signalRecipient: `a.${"1".repeat(63)}`,
+    });
+    expect(await read(res)).toEqual(
+      json(400, { error: "Invalid Signal username for Signal notifications. Expected format: alice.42" }),
+    );
+  });
+
   it("returns 400 for a threshold that JSON parses as Infinity", async () => {
     const res = await put(`{"userId":"${LOWER}","chainId":8453,"healthFactorThreshold":1e400}`);
     expect(await read(res)).toEqual(json(400, { error: "Invalid healthFactorThreshold: expected a finite number" }));
@@ -493,10 +523,17 @@ describe("DELETE /api/notifications/config", () => {
     expect(await read(await del("{"))).toEqual(json(400, { error: "Missing or invalid userId" }));
   });
 
-  it("returns 500 for a JSON null body", async () => {
-    expect(await read(await del("null"))).toEqual(
-      json(500, { error: "Cannot destructure property 'userId' of 'body' as it is null." }),
-    );
+  it.each(NON_OBJECT_BODIES)("returns 400 for a body that is %s, without the access check", async (_label, body) => {
+    expect(await read(await del(body))).toEqual(json(400, { error: "Missing or invalid userId" }));
+    expect(isAccessActive).not.toHaveBeenCalled();
+    expect(fakeSupabase.queries).toHaveLength(0);
+  });
+
+  it.each([
+    ["non-string", { userId: 5, chainId: 1 }],
+    ["blank", { userId: " ", chainId: 1 }],
+  ])("returns 400 for a %s userId", async (_label, body) => {
+    expect(await read(await del(body))).toEqual(json(400, { error: "Missing or invalid userId" }));
   });
 
   it.each([

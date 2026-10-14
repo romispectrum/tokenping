@@ -21,6 +21,8 @@ export type NotificationFormState = {
 /** The Telegram link is per user and lives outside the form, but Save depends on it. */
 type SubmittableForm = Pick<NotificationFormState, "services" | "email" | "signalRecipient"> & {
   telegramChatId?: string;
+  /** The link status could not be read, so whether the wallet is linked is not known. */
+  telegramStatusUnknown?: boolean;
 };
 
 const DEFAULT_THRESHOLD = clampThreshold(DEFAULT_HEALTH_FACTOR_THRESHOLD);
@@ -59,7 +61,13 @@ export const toggleService = (services: NotificationService[], service: Notifica
   services.includes(service) ? services.filter(s => s !== service) : [...services, service];
 
 /** Returns the first problem, in the order the user sees the fields, or null when the form can be saved. */
-export const validateNotificationForm = ({ services, email, signalRecipient, telegramChatId }: SubmittableForm) => {
+export const validateNotificationForm = ({
+  services,
+  email,
+  signalRecipient,
+  telegramChatId,
+  telegramStatusUnknown,
+}: SubmittableForm) => {
   if (services.length === 0) return "Please select at least one notification service";
   if (services.includes("email")) {
     const trimmed = email.trim();
@@ -75,6 +83,7 @@ export const validateNotificationForm = ({ services, email, signalRecipient, tel
     }
   }
   if (services.includes("telegram") && !telegramChatId) {
+    if (telegramStatusUnknown) return "Couldn't check your Telegram link. Press Retry, then Save.";
     return "Please connect Telegram first using the 'Connect Telegram' button.";
   }
   return null;

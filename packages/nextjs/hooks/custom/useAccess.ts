@@ -17,18 +17,29 @@ import {
   useTransactor,
 } from "~~/hooks/scaffold-eth";
 import { getPaywallStatus } from "~~/services/payments/paywallStatus";
-import { selectPaymentPlan } from "~~/services/payments/plans";
+import { findTokenPlan, selectPaymentPlan } from "~~/services/payments/plans";
 import type { ContractAbi } from "~~/utils/scaffold-eth/contract";
 
 type PaywallAbi = ContractAbi<"TokenpingPaywall">;
 
-/** `error` is only set when the user has not been told yet: SE-2 toasts its own transaction and simulation errors. */
-export type PayForAccessResult = { paid: true } | { paid: false; error?: string };
+/**
+ * `isActive`: whether an isActive read after the payment showed the access. `error` is only set when the user has not
+ * been told yet: SE-2 toasts its own transaction and simulation errors.
+ */
+export type PayForAccessResult = { paid: true; isActive: boolean } | { paid: false; error?: string };
 
 export const PAYMENTS_PAUSED_MESSAGE = "Payments are paused right now. Try again later.";
 
+const PAID_ACCESS_UNAVAILABLE_MESSAGE = "Paid access is not available right now.";
+
 // Polled only while paused, so Pay comes back after an unpause: window-focus refetches are off app-wide.
 const PAUSED_POLL_INTERVAL_MS = 30_000;
+
+// After the pay receipt, isActive can be answered by an RPC node that has not seen that block yet.
+const ACCESS_CHECK_ATTEMPTS = 5;
+const ACCESS_CHECK_INTERVAL_MS = 2_000;
+
+const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
 const getPlanReads = () => {
   // Local copies: TypeScript does not carry the narrowing of imported bindings into the map callback.
@@ -135,22 +146,36 @@ export const useAccess = () => {
   const { writeContractAsync: writeApproveAsync } = useWriteContract();
   const writeTx = useTransactor();
 
-  /** Fresh paused() and allowance reads, an exact-amount approve (mined before `pay` is simulated), pay, then refetch. */
+  /** Re-reads isActive (and the expiry with it) until it shows the payment, at most ACCESS_CHECK_ATTEMPTS times. */
+  const confirmAccess = async () => {
+    for (let attempt = 1; ; attempt++) {
+      const [active] = await Promise.all([refetchActive(), refetchExpiryTimestamp()]);
+      if (!active.isError && active.data === true) return true;
+      if (attempt === ACCESS_CHECK_ATTEMPTS) return false;
+      await wait(ACCESS_CHECK_INTERVAL_MS);
+    }
+  };
+
+  /** Fresh plan, paused() and allowance reads, an exact-amount approve (mined before `pay` is simulated), then pay. */
   const payForAccess = async (): Promise<PayForAccessResult> => {
     const spender = paywallContract?.address;
     // A payable status implies the wallet, the token and the paywall; checking them again narrows their types.
     if (status.kind !== "ready" || !status.canPay || !address || !paymentTokenAddress || !spender) {
-      return { paid: false, error: "Paid access is not available right now." };
+      return { paid: false, error: PAID_ACCESS_UNAVAILABLE_MESSAGE };
     }
-    const { price } = status.plan;
 
-    // An approve sent while paused only wastes gas, and the cached allowance may predate a confirmed approve. A failed
-    // refetch resolves with the last cached value, so its error flag decides, not just the data.
-    const [paused, current] = await Promise.all([refetchPaused(), refetchAllowance()]);
+    // The cached reads may predate an owner change (price, plan, pause) or a confirmed approve. A failed refetch
+    // resolves with the last cached value, so its error flag decides, not just the data.
+    const [plans, paused, current] = await Promise.all([refetchPlans(), refetchPaused(), refetchAllowance()]);
     if (paused.isError || paused.data === undefined || current.isError || current.data === undefined) {
       return { paid: false, error: "Could not check the payment status. Try again in a moment." };
     }
+    // pay(token) charges plans[token] as stored when it runs, so the approve amount and the guard use the fresh plan
+    // of the token whose allowance was just read, never the one cached at render.
+    const plan = plans.isError ? null : findTokenPlan(plans.data, PAYMENT_TOKEN_CANDIDATES, paymentTokenAddress);
+    if (!plan?.enabled || plan.price === 0n) return { paid: false, error: PAID_ACCESS_UNAVAILABLE_MESSAGE };
     if (paused.data) return { paid: false, error: PAYMENTS_PAUSED_MESSAGE };
+    const { price } = plan;
 
     try {
       if (current.data < price) {
@@ -179,8 +204,8 @@ export const useAccess = () => {
     }
 
     // Awaited, so the paywall swaps to the children together with the success message, not a round trip later.
-    await Promise.all([refetchActive(), refetchPlans(), refetchExpiryTimestamp(), refetchAllowance(), refetchPaused()]);
-    return { paid: true };
+    const [hasAccess] = await Promise.all([confirmAccess(), refetchPlans(), refetchAllowance(), refetchPaused()]);
+    return { paid: true, isActive: hasAccess };
   };
 
   return {

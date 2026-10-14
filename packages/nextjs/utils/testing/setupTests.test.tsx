@@ -50,7 +50,10 @@ describe("jsdom test setup", () => {
     };
     render(<Late />);
 
-    await new Promise(resolve => setTimeout(resolve, 10));
+    // Poll by hand: waitFor would wrap the update in act and hide the warning under test.
+    for (let attempt = 0; attempt < 100 && !screen.queryByText("after"); attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
 
     expect(screen.getByText("after")).toBeDefined();
     expect(errors()).toEqual([expect.stringContaining("not wrapped in act(...)")]);

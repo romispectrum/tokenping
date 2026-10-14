@@ -218,6 +218,17 @@ describe("validateNotificationForm", () => {
     ).toBe("Please enter your email address");
   });
 
+  it("says the Telegram link could not be checked, instead of asking to connect, while its status is unknown", () => {
+    const unknown = { ...form, services: ["telegram"] as NotificationService[], telegramStatusUnknown: true };
+    expect(validateNotificationForm(unknown)).toBe("Couldn't check your Telegram link. Press Retry, then Save.");
+    expect(canSubmitNotificationForm(unknown)).toBe(false);
+    // Earlier fields still come first, and a form without Telegram does not depend on the link.
+    expect(validateNotificationForm({ ...unknown, services: ["email", "telegram"] })).toBe(
+      "Please enter your email address",
+    );
+    expect(validateNotificationForm({ ...unknown, services: ["email"], email: "me@example.com" })).toBeNull();
+  });
+
   it("matches the reference checks for every combination", () => {
     for (const services of SERVICE_SETS)
       for (const email of EMAILS)

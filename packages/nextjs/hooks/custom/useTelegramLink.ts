@@ -1,7 +1,9 @@
 "use client";
 
-import { type RefObject, useEffect, useRef, useState } from "react";
-import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type RefObject, useEffect, useRef } from "react";
+import { type QueryClient, skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useConfig } from "wagmi";
+import { getAccount } from "wagmi/actions";
 import { TELEGRAM_LINK_POLL_INTERVAL_MS, TELEGRAM_LINK_POLL_TIMEOUT_MS } from "~~/constants/notifications";
 import { telegramClient } from "~~/services/telegram/telegramClient";
 import type { TelegramLinkStatus } from "~~/types/notifications";
@@ -21,6 +23,23 @@ type PendingLink = {
 
 const telegramLinkQueryKey = (address: string) => ["telegramLink", normalizeAddress(address)] as const;
 
+const HANDSHAKE_QUERY_KEY = "telegramLinkHandshake";
+
+/**
+ * The wallet's pending handshake: null (or no data) when there is none. It is kept in the query cache, never fetched,
+ * rather than in the card, because a chain switch or a positions refresh remounts the card and the new one must keep
+ * waiting for the link.
+ */
+const handshakeQueryKey = (address: string) => [HANDSHAKE_QUERY_KEY, normalizeAddress(address)] as const;
+
+/** Ends the wallet's handshake if it is still `expected`. True only for the one caller that ended it. */
+const endHandshake = (queryClient: QueryClient, address: string, expected: PendingLink) => {
+  const queryKey = handshakeQueryKey(address);
+  if (queryClient.getQueryData(queryKey) !== expected) return false;
+  queryClient.setQueryData(queryKey, null);
+  return true;
+};
+
 /** The link token's lifetime, or the fallback window when the server's clock could not be read. */
 const handshakeTimeout = (expiresInMs: number | null) =>
   expiresInMs !== null && expiresInMs > 0 ? expiresInMs : TELEGRAM_LINK_POLL_TIMEOUT_MS;
@@ -33,13 +52,21 @@ const closeBlankTab = (tab: RefObject<Window | null>) => {
 /**
  * The wallet's Telegram link (one chat per wallet, shared by every chain's config) plus the "Connect Telegram"
  * handshake: create a link token, open the bot's deep link, then poll the link endpoint until the user presses Start
- * in Telegram or the token expires.
+ * in Telegram or the token expires. Every card of the wallet shares the handshake, and exactly one of them announces
+ * how it ended. It ends silently once the wallet disconnects or another one connects.
  */
 export const useTelegramLink = (address: string | undefined) => {
   const queryClient = useQueryClient();
-  const [pendingLink, setPendingLink] = useState<PendingLink | null>(null);
+  const wagmiConfig = useConfig();
+  const owner = address ? normalizeAddress(address) : null;
   // A tab opened during the click and not yet pointed at the bot.
   const blankTab = useRef<Window | null>(null);
+
+  const { data: pendingLink = null } = useQuery<PendingLink | null>({
+    queryKey: handshakeQueryKey(address ?? ""),
+    queryFn: skipToken,
+    staleTime: Infinity,
+  });
 
   const linkQuery = useQuery({
     queryKey: telegramLinkQueryKey(address ?? ""),
@@ -48,6 +75,9 @@ export const useTelegramLink = (address: string | undefined) => {
     // The user is in Telegram while we wait, so this tab is usually in the background.
     refetchIntervalInBackground: true,
     networkMode: NETWORK_MODE,
+    // The card stays hidden until the first read settles, so a failure must show Retry at once instead of after
+    // react-query's default retries with backoff (seconds, as on every Retry). Polls repeat on their own anyway.
+    retry: false,
   });
   const link = linkQuery.data?.linked && linkQuery.data.chatId ? linkQuery.data : undefined;
   const isLinked = !!link;
@@ -56,6 +86,7 @@ export const useTelegramLink = (address: string | undefined) => {
     mutationFn: (userId: string) => telegramClient.createLinkToken(userId),
     networkMode: NETWORK_MODE,
   });
+  const resetLinkToken = linkToken.reset;
 
   const disconnectMutation = useMutation({
     mutationFn: (userId: string) => telegramClient.disconnect(userId),
@@ -67,26 +98,45 @@ export const useTelegramLink = (address: string | undefined) => {
     onError: error => notification.error(getErrorMessage(error, "Failed to disconnect Telegram")),
   });
 
-  // A token that arrives after unmount is never applied to the tab, so do not leave it blank.
-  useEffect(() => () => closeBlankTab(blankTab), []);
+  useEffect(() => {
+    // A handshake belongs to the wallet that started it: once another wallet (or none) is connected it is over, and
+    // it must not resume if that wallet comes back.
+    queryClient.setQueriesData<PendingLink | null>(
+      { queryKey: [HANDSHAKE_QUERY_KEY], predicate: ({ queryKey, state }) => queryKey[1] !== owner && !!state.data },
+      null,
+    );
+    // On a wallet change or unmount, detach a token request still in flight so its callbacks never run, and close the
+    // tab it would have used rather than leave it blank.
+    return () => {
+      resetLinkToken();
+      closeBlankTab(blankTab);
+      // The page drops every card when the wallet disconnects (and while a new wallet's positions load or fail to), so
+      // no card may mount to end the handshake above. Read the live account instead: a remount for the same wallet,
+      // such as a chain switch, keeps it.
+      const connected = getAccount(wagmiConfig).address;
+      if (owner && (!connected || normalizeAddress(connected) !== owner)) {
+        queryClient.setQueryData(handshakeQueryKey(owner), null);
+      }
+    };
+  }, [owner, queryClient, resetLinkToken, wagmiConfig]);
+
+  const username = link?.username;
+  useEffect(() => {
+    // Every card of the wallet sees the link at once; only the one that ends the handshake announces it.
+    if (!address || !pendingLink || !isLinked || !endHandshake(queryClient, address, pendingLink)) return;
+    notification.success(username ? `Telegram connected as @${username}` : "Telegram connected");
+  }, [address, pendingLink, isLinked, username, queryClient]);
 
   useEffect(() => {
-    if (!pendingLink || !isLinked) return;
-    setPendingLink(null);
-    notification.success(link.username ? `Telegram connected as @${link.username}` : "Telegram connected");
-  }, [pendingLink, isLinked, link?.username]);
-
-  useEffect(() => {
-    if (!pendingLink) return;
+    if (!address || !pendingLink) return;
     const timer = setTimeout(
       () => {
-        setPendingLink(null);
-        notification.error("Telegram link timed out. Try again.");
+        if (endHandshake(queryClient, address, pendingLink)) notification.error("Telegram link timed out. Try again.");
       },
       Math.max(0, pendingLink.deadline - Date.now()),
     );
     return () => clearTimeout(timer);
-  }, [pendingLink]);
+  }, [address, pendingLink, queryClient]);
 
   const connect = () => {
     if (!address) {
@@ -104,7 +154,10 @@ export const useTelegramLink = (address: string | undefined) => {
           tab.opener = null;
           tab.location.href = deepLink;
         }
-        setPendingLink({ deepLink, deadline: Date.now() + handshakeTimeout(expiresInMs) });
+        queryClient.setQueryData<PendingLink | null>(handshakeQueryKey(address), {
+          deepLink,
+          deadline: Date.now() + handshakeTimeout(expiresInMs),
+        });
       },
       onError: error => {
         closeBlankTab(blankTab);
@@ -117,7 +170,7 @@ export const useTelegramLink = (address: string | undefined) => {
     // Detaches this component from a token request still in flight, so its callbacks above never run.
     linkToken.reset();
     closeBlankTab(blankTab);
-    setPendingLink(null);
+    if (address) queryClient.setQueryData(handshakeQueryKey(address), null);
   };
 
   const disconnect = () => {
@@ -130,8 +183,16 @@ export const useTelegramLink = (address: string | undefined) => {
      * `!isPending`, a refetch after a failure does not make it false again.
      */
     isLoaded: !address || linkQuery.isFetched,
+    /**
+     * The status could not be read and nothing is known about it, so the wallet must not be shown as unlinked. A retry
+     * puts a query without data back into "pending" (and clears its error), so past errors are counted to keep
+     * reporting it, and the Retry UI on screen, until a read succeeds. A failed poll keeps the last status instead.
+     */
+    isStatusUnknown: !linkQuery.data && linkQuery.errorUpdateCount > 0,
+    isCheckingStatus: linkQuery.isFetching,
+    retryStatus: () => void linkQuery.refetch(),
     chatId: link?.chatId,
-    username: link?.username,
+    username,
     /** The bot link while waiting for the user to press Start, for when the tab could not be opened. */
     deepLink: pendingLink?.deepLink,
     isConnecting: linkToken.isPending || pendingLink !== null,

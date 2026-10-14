@@ -98,9 +98,22 @@ describe("getLinkStatus", () => {
     expect(fetchMock.mock.calls).toEqual([["/api/telegram/link?userId=0xA%2Bb", { cache: "no-store" }]]);
   });
 
-  it("reports not linked for an HTTP error", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ error: "Missing or invalid userId" }, 400));
-    await expect(telegramClient.getLinkStatus("0xabc")).resolves.toEqual({ linked: false });
+  // A failed lookup means the status is unknown, not "not linked": a linked wallet must not look unlinked.
+  it.each([
+    [
+      "the error string",
+      jsonResponse({ error: "Failed to read the Telegram link" }, 500),
+      "Failed to read the Telegram link",
+    ],
+    [
+      "the fallback for a non-JSON body",
+      new Response("bad gateway", { status: 502 }),
+      "Failed to check the Telegram link",
+    ],
+    ["the fallback without an error field", jsonResponse({}, 500), "Failed to check the Telegram link"],
+  ])("rejects an HTTP error with %s", async (_, response, message) => {
+    fetchMock.mockResolvedValue(response);
+    await expect(telegramClient.getLinkStatus("0xabc")).rejects.toThrow(new Error(message));
   });
 
   it("rejects on network errors", async () => {

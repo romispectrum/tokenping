@@ -7,6 +7,7 @@ import {
   jsonError,
   parseChainId,
   parseUserId,
+  readJsonObject,
 } from "~~/services/api/server/http";
 import { type ConfigInput, parseConfigInput } from "~~/services/notifications/configInput";
 import {
@@ -49,8 +50,7 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const body = await request.json().catch(() => ({}));
-    const { userId: rawUserId, chainId, ...input } = body as ConfigBody;
+    const { userId: rawUserId, chainId, ...input }: ConfigBody = await readJsonObject(request);
 
     const userId = parseUserId(rawUserId);
     if (!userId) return jsonError(MISSING_USER_ID, 400);
@@ -75,8 +75,7 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const body = await request.json().catch(() => ({}));
-    const { userId: rawUserId, chainId } = body as ConfigBody;
+    const { userId: rawUserId, chainId }: ConfigBody = await readJsonObject(request);
 
     const userId = parseUserId(rawUserId);
     if (!userId) return jsonError(MISSING_USER_ID, 400);

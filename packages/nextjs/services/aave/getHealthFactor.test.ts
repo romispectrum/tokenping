@@ -1,4 +1,4 @@
-import { maxUint256 } from "viem";
+import { HttpRequestError, maxUint256 } from "viem";
 import { base, bsc, mainnet, polygon } from "viem/chains";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AAVE_MARKETS } from "~~/config/aaveConfig";
@@ -72,11 +72,24 @@ describe("getHealthFactorForWallet", () => {
   });
 
   it("resolves null and logs the chain when the read fails", async () => {
-    const error = new Error("rpc down");
-    rpc.readContract.mockRejectedValue(error);
+    rpc.readContract.mockRejectedValue(new Error("rpc down"));
 
     await expect(getHealthFactorForWallet(WALLET, polygon.id)).resolves.toBeNull();
-    expect(console.warn).toHaveBeenCalledWith("Failed to read the Aave health factor on chain 137:", error);
+    expect(vi.mocked(console.warn).mock.calls).toEqual([
+      ["Failed to read the Aave health factor on chain 137: rpc down"],
+    ]);
+  });
+
+  it("logs only viem's short message, not the request body it carries", async () => {
+    const calldata = `0x${"ab".repeat(2_000)}`;
+    rpc.readContract.mockRejectedValue(
+      new HttpRequestError({ url: "https://rpc.example", body: { params: [{ data: calldata }] }, status: 429 }),
+    );
+
+    await expect(getHealthFactorForWallet(WALLET, polygon.id)).resolves.toBeNull();
+    expect(vi.mocked(console.warn).mock.calls).toEqual([
+      ["Failed to read the Aave health factor on chain 137: HTTP request failed."],
+    ]);
   });
 
   it.each(AAVE_MARKETS.map(({ chain }) => [chain.name, chain] as const))(

@@ -15,16 +15,13 @@
  */
 import { NextResponse } from "next/server";
 import { requireActiveAccess } from "~~/services/api/server/access";
-import { MISSING_USER_ID, internalError, jsonError, parseUserId } from "~~/services/api/server/http";
+import { MISSING_USER_ID, internalError, jsonError, parseUserId, readJsonObject } from "~~/services/api/server/http";
 import { isTelegramConfigured } from "~~/services/telegram/sendTelegram";
 import { createLinkToken } from "~~/services/telegram/telegramLinks";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json().catch(() => ({}));
-    const { userId: rawUserId } = body as { userId?: unknown };
-
-    const userId = parseUserId(rawUserId);
+    const userId = parseUserId((await readJsonObject(request)).userId);
     if (!userId) return jsonError(MISSING_USER_ID, 400);
 
     // Checked before the configuration, so unconfigured servers still answer 403 to wallets without access.

@@ -120,12 +120,15 @@ describe("link lookups", () => {
     expect(await getLinkByUserId(LOWER)).toStrictEqual({ userId: LOWER, chatId: "42", username: null, linkedAt: "t" });
   });
 
-  it.each([
-    ["no row", {}],
-    ["an error", { error: { message: "boom" }, data: { user_id: LOWER } }],
-  ])("returns null for %s", async (_label, result) => {
-    fakeSupabase.respond(() => result);
+  it("returns null when there is no row", async () => {
+    fakeSupabase.respond(() => ({}));
     expect(await getLinkByUserId(LOWER)).toBeNull();
+  });
+
+  // Reporting a failed lookup as "no link" made the UI show a linked user as disconnected.
+  it("throws when the lookup fails, even if data came back", async () => {
+    fakeSupabase.respond(() => ({ error: { message: "boom" }, data: { user_id: LOWER } }));
+    await expect(getLinkByUserId(LOWER)).rejects.toThrow(new Error("Failed to read the Telegram link: boom"));
   });
 });
 

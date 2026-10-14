@@ -48,6 +48,7 @@ describe("useAavePositions", () => {
     const { result } = renderPositions();
 
     expect(result.current).toEqual({
+      account: USER.toLowerCase(),
       positions: [],
       isLoading: true,
       error: null,
@@ -103,7 +104,13 @@ describe("useAavePositions", () => {
     const { result } = renderPositions();
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(result.current).toMatchObject({ positions: [], isLoading: false, error: null, totalNetWorthUSD: "0.00" });
+    expect(result.current).toMatchObject({
+      account: null,
+      positions: [],
+      isLoading: false,
+      error: null,
+      totalNetWorthUSD: "0.00",
+    });
   });
 
   it("shows the loading state while refreshing, keeps the positions, then shows the new ones", async () => {
@@ -137,7 +144,12 @@ describe("useAavePositions", () => {
     switchAccount(rerender, OTHER_USER);
 
     await waitFor(() => expect(fetchMock).toHaveBeenLastCalledWith(OTHER_USER));
-    expect(result.current).toMatchObject({ positions: [], isLoading: true, totalNetWorthUSD: "0.00" });
+    expect(result.current).toMatchObject({
+      account: OTHER_USER.toLowerCase(),
+      positions: [],
+      isLoading: true,
+      totalNetWorthUSD: "0.00",
+    });
   });
 
   it("ignores a late response for the previous account", async () => {

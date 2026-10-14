@@ -113,25 +113,9 @@ vi.mock("~~/hooks/scaffold-eth", () => ({
   },
 }));
 
-// Plain inputs with the scaffold-ui props: the real ones resolve ENS names and fetch the ETH price.
+// Stand-ins with the scaffold-ui props: the real Address resolves ENS names and EtherInput fetches the ETH price.
 vi.mock("@scaffold-ui/components", () => ({
   Address: ({ address }: { address: string }) => <span data-address={address} />,
-  AddressInput: ({
-    value,
-    onChange,
-    placeholder,
-  }: {
-    value: string;
-    onChange: (value: string) => void;
-    placeholder?: string;
-  }) => (
-    <input
-      data-component="AddressInput"
-      placeholder={placeholder}
-      value={value}
-      onChange={event => onChange(event.target.value)}
-    />
-  ),
   EtherInput: ({
     defaultValue,
     onValueChange,
@@ -304,22 +288,87 @@ describe("AdminPage inputs", () => {
     setLoadedData();
   });
 
+  // Regression (F9): the address fields were scaffold-ui AddressInputs, which resolve ENS names on Ethereum mainnet,
+  // while these transactions run on Arbitrum.
   it.each([
     ["Max duration", "New max duration (seconds)", "INPUT"],
-    ["Update plan", "Token address", "AddressInput"],
+    ["Update plan", "Token address", "INPUT"],
     ["Update plan", "Price (USDC)", "INPUT"],
     ["Update plan", "Duration (seconds)", "INPUT"],
     ["Update plan", "Plan enabled", "INPUT"],
-    ["Withdraw native", "Destination address", "AddressInput"],
+    ["Withdraw native", "Destination address", "INPUT"],
     ["Withdraw native", "Amount (ETH)", "EtherInput"],
-    ["Withdraw token", "Token address", "AddressInput"],
-    ["Withdraw token", "Destination address", "AddressInput"],
+    ["Withdraw token", "Token address", "INPUT"],
+    ["Withdraw token", "Destination address", "INPUT"],
     ["Withdraw token", "Amount (USDC)", "INPUT"],
-    ["Transfer ownership", "New owner address", "AddressInput"],
+    ["Transfer ownership", "New owner address", "INPUT"],
   ])("%s has a visible %j label on its control (%s)", (cardTitle, label, component) => {
     renderPage();
     const control = card(cardTitle).getByLabelText(label);
     expect(control.getAttribute("data-component") ?? control.tagName).toBe(component);
+  });
+});
+
+describe("AdminPage address fields", () => {
+  const ADDRESS_FIELDS = [
+    ["Update plan", "Token address"],
+    ["Withdraw native", "Destination address"],
+    ["Withdraw token", "Token address"],
+    ["Withdraw token", "Destination address"],
+    ["Transfer ownership", "New owner address"],
+  ] as const;
+
+  beforeEach(() => {
+    setOwnerConnected();
+    setLoadedData();
+  });
+
+  it.each(ADDRESS_FIELDS)("%s: %j is a plain DaisyUI text input", (cardTitle, label) => {
+    renderPage();
+    const control = card(cardTitle).getByLabelText(label);
+    expect(control.getAttribute("type")).toBe("text");
+    expect(control.className.split(" ")).toEqual(expect.arrayContaining(["input", "input-bordered"]));
+  });
+
+  it.each(ADDRESS_FIELDS)("%s: %j marks an ENS name as invalid and keeps it as typed", (cardTitle, label) => {
+    renderPage();
+    type(cardTitle, label, "vitalik.eth");
+    const control = card(cardTitle).getByLabelText(label) as HTMLInputElement;
+    expect(control.value).toBe("vitalik.eth");
+    expect(control.getAttribute("aria-invalid")).toBe("true");
+  });
+
+  it.each(ADDRESS_FIELDS)("%s: %j accepts a lowercase or checksummed 0x address", (cardTitle, label) => {
+    renderPage();
+    for (const address of [NEW_OWNER, PAYWALL]) {
+      type(cardTitle, label, address);
+      expect(card(cardTitle).getByLabelText(label).getAttribute("aria-invalid")).toBeNull();
+    }
+  });
+
+  it("refuses an ENS name for the new owner instead of resolving it", async () => {
+    renderPage();
+    type("Transfer ownership", "New owner address", "vitalik.eth");
+    expect(await click("Transfer ownership")).toEqual([]);
+    expect(alertText()).toEqual(["Enter a valid new owner address"]);
+  });
+
+  it("refuses a mixed-case address with a wrong checksum as a withdraw destination", async () => {
+    renderPage();
+    type("Withdraw native", "Destination address", "0x79872D7529cfE1c062838fACDA004Ce4BFB16553");
+    expect(card("Withdraw native").getByLabelText("Destination address").getAttribute("aria-invalid")).toBe("true");
+    type("Withdraw native", "Amount (ETH)", "1");
+    expect(await click("Withdraw native")).toEqual([]);
+    expect(alertText()).toEqual(["Enter a valid destination address for native withdraw"]);
+  });
+
+  it("trims the spaces around a pasted address", async () => {
+    renderPage();
+    type("Transfer ownership", "New owner address", `  ${NEW_OWNER}\n`);
+    expect(await click("Transfer ownership")).toEqual([
+      ["writeContractAsync", { functionName: "transferOwnership", args: [NEW_OWNER] }],
+      ...REFETCH_ALL,
+    ]);
   });
 });
 

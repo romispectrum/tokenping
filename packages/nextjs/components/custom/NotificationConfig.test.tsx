@@ -17,9 +17,12 @@ const mocks = vi.hoisted(() => ({
   address: undefined as string | undefined,
   hasAccess: true,
   toasts: [] as string[],
+  wagmiConfig: {},
 }));
 
-vi.mock("wagmi", () => ({ useAccount: () => ({ address: mocks.address }) }));
+// useAccount and getAccount read the same wagmi state: the connected wallet.
+vi.mock("wagmi", () => ({ useAccount: () => ({ address: mocks.address }), useConfig: () => mocks.wagmiConfig }));
+vi.mock("wagmi/actions", () => ({ getAccount: () => ({ address: mocks.address }) }));
 vi.mock("~~/hooks/custom/useAccess", () => ({ useAccess: () => ({ isActive: mocks.hasAccess }) }));
 vi.mock("~~/utils/scaffold-eth", () => ({
   notification: {
@@ -548,6 +551,52 @@ describe("NotificationConfig: Telegram handshake", () => {
     expect(mocks.toasts).toEqual(["success: Telegram connected as @bob"]);
   });
 
+  it("offers Retry instead of Connect when the Telegram link cannot be checked, keeping the card on screen", async () => {
+    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
+    api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
+    let linkStatus: (call: Call) => Response | Promise<Response> = () =>
+      jsonResponse({ error: "Failed to read the Telegram link" }, 500);
+    api.override = call =>
+      call.method === "GET" && call.url.startsWith("/api/telegram/link?") ? linkStatus(call) : undefined;
+    await renderCard();
+    expect(summaryValue("Email:")).toBe("saved@example.com");
+    await click(button("Edit"));
+
+    const field = within(screen.getByRole("group", { name: "Telegram" }));
+    expect(field.getByRole("alert").textContent).toBe("Couldn't check your Telegram link.");
+    expect(field.queryByRole("button", { name: "Connect Telegram" })).toBeNull();
+    expect((button("Save") as HTMLButtonElement).disabled).toBe(true);
+
+    const retry = deferred<void>();
+    linkStatus = call => retry.promise.then(() => route(call));
+    await click(field.getByRole("button", { name: "Retry" }));
+    expect((field.getByRole("button", { name: "Retrying..." }) as HTMLButtonElement).disabled).toBe(true);
+    expect(field.getByRole("alert")).toBeDefined();
+
+    retry.resolve();
+    await settle();
+    expect(field.queryByRole("alert")).toBeNull();
+    expect(screen.getByText("✅ Connected as @saved_tg")).toBeDefined();
+    expect((button("Save") as HTMLButtonElement).disabled).toBe(false);
+    expect(mocks.toasts).toEqual([]);
+  });
+
+  it("offers Connect after a successful Retry for a wallet without a link", async () => {
+    let linkStatus: (call: Call) => Response | Promise<Response> = () =>
+      jsonResponse({ error: "Failed to read the Telegram link" }, 500);
+    api.override = call =>
+      call.method === "GET" && call.url.startsWith("/api/telegram/link?") ? linkStatus(call) : undefined;
+    await renderCard();
+    await click(button("Create notification config"));
+    await click(serviceToggle("Telegram"));
+    expect(screen.queryByRole("button", { name: "Connect Telegram" })).toBeNull();
+
+    linkStatus = route;
+    await click(button("Retry"));
+    expect(button("Connect Telegram")).toBeDefined();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("keeps the card on screen while a failed Telegram status is fetched again", async () => {
     api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
     let linkStatus = () => Promise.reject<Response>(new TypeError("Failed to fetch"));
@@ -562,6 +611,132 @@ describe("NotificationConfig: Telegram handshake", () => {
     await settle();
     expect(api.requests.filter(request => request.startsWith("GET /api/telegram/link?"))).toHaveLength(2);
     expect(summaryValue("Email:")).toBe("saved@example.com");
+  });
+
+  it("keeps waiting for Telegram when a chain switch remounts the card, and announces the link once", async () => {
+    const { rerender } = await renderCard();
+    await click(button("Create notification config"));
+    await click(serviceToggle("Telegram"));
+    await click(button("Connect Telegram"));
+    expect(popup.location.href).toBe(DEEP_LINK);
+
+    // AavePositions keys the card by chain, so a chain switch remounts it with a fresh form.
+    rerender(<NotificationConfig key="another-chain" {...PROPS} chainId={10} chainName="Optimism" />);
+    await settle();
+    await click(button("Create notification config"));
+    await click(serviceToggle("Telegram"));
+    expect(button("Waiting for Telegram… (open the bot and press Start)")).toBeDefined();
+    expect(screen.getByRole("link", { name: "Open Telegram" }).getAttribute("href")).toBe(DEEP_LINK);
+
+    api.links[ADDRESS.toLowerCase()] = { linked: true, chatId: "777", username: "bob", linkedAt: "now" };
+    await settle(2000);
+    expect(screen.getByText("✅ Connected as @bob")).toBeDefined();
+    expect((button("Save") as HTMLButtonElement).disabled).toBe(false);
+    expect(mocks.toasts).toEqual(["success: Telegram connected as @bob"]);
+    expect(openSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("ends a Telegram handshake when the wallet switches, so it does not resume when switching back", async () => {
+    const { rerender } = await renderCard();
+    await click(button("Create notification config"));
+    await click(serviceToggle("Telegram"));
+    await click(button("Connect Telegram"));
+
+    mocks.address = OTHER_ADDRESS;
+    rerender(<NotificationConfig {...PROPS} />);
+    await settle();
+    await click(button("Create notification config"));
+    await click(serviceToggle("Telegram"));
+    expect(button("Connect Telegram")).toBeDefined();
+    expect(screen.queryByRole("link", { name: "Open Telegram" })).toBeNull();
+
+    mocks.address = ADDRESS;
+    rerender(<NotificationConfig {...PROPS} />);
+    await settle();
+    await click(button("Create notification config"));
+    await click(serviceToggle("Telegram"));
+    expect(button("Connect Telegram")).toBeDefined();
+    const polls = () => api.requests.filter(request => request.startsWith("GET /api/telegram/link?")).length;
+    const before = polls();
+    api.links[ADDRESS.toLowerCase()] = { linked: true, chatId: "777", username: "bob", linkedAt: "now" };
+    await settle(20_000);
+    expect(polls()).toBe(before);
+    expect(mocks.toasts).toEqual([]);
+  });
+
+  describe("when the page takes the card away", () => {
+    // app/aave/page.tsx renders no card without a connected wallet, and AavePositions none while positions load (a
+    // refresh, a wallet switch) or after they all failed to, so the card can unmount without a successor.
+    const Page = ({ shown }: { shown: boolean }) => (shown ? <NotificationConfig {...PROPS} /> : null);
+    const LINKED = { linked: true, chatId: "777", username: "bob", linkedAt: "now" } as const;
+    const telegramPolls = () => api.requests.filter(request => request.startsWith("GET /api/telegram/link?")).length;
+
+    const openTelegramField = async () => {
+      await click(button("Create notification config"));
+      await click(serviceToggle("Telegram"));
+    };
+
+    const renderPage = async () => {
+      const view = renderWithProviders(<Page shown />);
+      await settle();
+      await openTelegramField();
+      await click(button("Connect Telegram"));
+      return view;
+    };
+
+    it.each([
+      ["disconnects", undefined],
+      ["switches to a wallet whose positions fail to load", OTHER_ADDRESS],
+    ])(
+      "ends a Telegram handshake when the wallet %s, so it does not resume when the wallet returns",
+      async (_, next) => {
+        const { rerender } = await renderPage();
+        mocks.address = next;
+        rerender(<Page shown={false} />);
+        await settle(30_000);
+
+        mocks.address = ADDRESS;
+        rerender(<Page shown />);
+        await settle();
+        await openTelegramField();
+        expect(button("Connect Telegram")).toBeDefined();
+        expect(screen.queryByRole("link", { name: "Open Telegram" })).toBeNull();
+        const before = telegramPolls();
+        api.links[ADDRESS.toLowerCase()] = LINKED;
+        await settle(20_000);
+        expect(telegramPolls()).toBe(before);
+        expect(mocks.toasts).toEqual([]);
+      },
+    );
+
+    it("does not report a timeout for a Telegram handshake that a disconnect ended", async () => {
+      const { rerender } = await renderPage();
+      await settle(9 * 60 * 1000);
+      mocks.address = undefined;
+      rerender(<Page shown={false} />);
+      await settle(2 * 60 * 1000);
+
+      mocks.address = ADDRESS;
+      rerender(<Page shown />);
+      await settle();
+      expect(mocks.toasts).toEqual([]);
+    });
+
+    it("keeps waiting for Telegram when a positions refresh unmounts the card for a moment", async () => {
+      const { rerender } = await renderPage();
+      rerender(<Page shown={false} />);
+      await settle();
+      rerender(<Page shown />);
+      await settle();
+      await openTelegramField();
+      expect(button("Waiting for Telegram… (open the bot and press Start)")).toBeDefined();
+      expect(screen.getByRole("link", { name: "Open Telegram" }).getAttribute("href")).toBe(DEEP_LINK);
+
+      api.links[ADDRESS.toLowerCase()] = LINKED;
+      await settle(2000);
+      expect(screen.getByText("✅ Connected as @bob")).toBeDefined();
+      expect(mocks.toasts).toEqual(["success: Telegram connected as @bob"]);
+    });
   });
 
   it("stops polling on Cancel and on unmount", async () => {
@@ -737,6 +912,15 @@ describe("NotificationConfig: light theme", () => {
       method === "GET" && url.startsWith("/api/notifications/config") ? jsonResponse({}, 500) : undefined;
     const failed = await renderCard();
     scan(failed.container);
+    failed.unmount();
+
+    mocks.hasAccess = true;
+    api.override = ({ method, url }) =>
+      method === "GET" && url.startsWith("/api/telegram/link?") ? jsonResponse({}, 500) : undefined;
+    const unknownLink = await renderCard();
+    await click(button("Edit"));
+    expect(screen.getByText("Couldn't check your Telegram link.")).toBeDefined();
+    scan(unknownLink.container);
     expect(problems).toEqual([]);
   });
 });

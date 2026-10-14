@@ -8,17 +8,8 @@ import { TransferOwnershipCard } from "~~/app/admin/_components/TransferOwnershi
 import { WithdrawNativeCard } from "~~/app/admin/_components/WithdrawNativeCard";
 import { WithdrawTokenCard } from "~~/app/admin/_components/WithdrawTokenCard";
 
-// Plain inputs with the scaffold-ui props: the real ones resolve ENS names and fetch the ETH price.
+// A plain input with the scaffold-ui props: the real EtherInput fetches the ETH price.
 vi.mock("@scaffold-ui/components", () => ({
-  AddressInput: ({
-    value,
-    onChange,
-    placeholder,
-  }: {
-    value: string;
-    onChange: (value: string) => void;
-    placeholder?: string;
-  }) => <input placeholder={placeholder} value={value} onChange={event => onChange(event.target.value)} />,
   EtherInput: ({
     defaultValue,
     onValueChange,
@@ -199,6 +190,102 @@ describe.each([
     render(card(vi.fn(), onSubmit));
     clickButton(buttonLabel);
     expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+});
+
+// Regression (F9): AddressInput resolved ENS names on Ethereum mainnet for transactions sent on Arbitrum.
+describe.each([
+  [
+    "PlanCard token",
+    (value: string, onChange: (value: string) => void) => (
+      <PlanCard
+        form={{ tokenAddress: value, price: "", durationSeconds: "", enabled: true }}
+        onChange={patch => onChange(patch.tokenAddress ?? "")}
+        tokenDecimals={6}
+        isDecimalsLoading={false}
+        tokenSymbol="USDC"
+        currentPlan={undefined}
+        isBusy={false}
+        onSubmit={vi.fn()}
+      />
+    ),
+    "Token address",
+  ],
+  [
+    "WithdrawNativeCard destination",
+    (value: string, onChange: (value: string) => void) => (
+      <WithdrawNativeCard
+        form={{ to: value, amountEth: "" }}
+        onChange={patch => onChange(patch.to ?? "")}
+        balance={undefined}
+        isBusy={false}
+        onSubmit={vi.fn()}
+      />
+    ),
+    "Destination address",
+  ],
+  [
+    "WithdrawTokenCard token",
+    (value: string, onChange: (value: string) => void) => (
+      <WithdrawTokenCard
+        form={{ tokenAddress: value, to: "", amount: "" }}
+        onChange={patch => onChange(patch.tokenAddress ?? "")}
+        balance={undefined}
+        tokenDecimals={6}
+        isDecimalsLoading={false}
+        tokenSymbol="USDC"
+        isBusy={false}
+        onSubmit={vi.fn()}
+      />
+    ),
+    "Token address",
+  ],
+  [
+    "WithdrawTokenCard destination",
+    (value: string, onChange: (value: string) => void) => (
+      <WithdrawTokenCard
+        form={{ tokenAddress: "", to: value, amount: "" }}
+        onChange={patch => onChange(patch.to ?? "")}
+        balance={undefined}
+        tokenDecimals={6}
+        isDecimalsLoading={false}
+        tokenSymbol="USDC"
+        isBusy={false}
+        onSubmit={vi.fn()}
+      />
+    ),
+    "Destination address",
+  ],
+  [
+    "TransferOwnershipCard",
+    (value: string, onChange: (value: string) => void) => (
+      <TransferOwnershipCard value={value} onChange={onChange} isBusy={false} onSubmit={vi.fn()} />
+    ),
+    "New owner address",
+  ],
+])("%s address field", (_name, card, label) => {
+  const CHECKSUMMED = "0x79872d7529cfE1c062838fACDA004Ce4BFB16553";
+
+  it.each([
+    ["empty", "", false],
+    ["lowercase hex", CHECKSUMMED.toLowerCase(), false],
+    ["checksummed", CHECKSUMMED, false],
+    ["an ENS name", "vitalik.eth", true],
+    ["too short", "0x1234", true],
+    ["mixed case with a wrong checksum", "0x79872D7529cfE1c062838fACDA004Ce4BFB16553", true],
+  ])("is a plain text input that flags a value that is %s: %j", (_label, value, isInvalid) => {
+    render(card(value, vi.fn()));
+    const control = input(label);
+    expect(control.getAttribute("type")).toBe("text");
+    expect(control.getAttribute("aria-invalid")).toBe(isInvalid ? "true" : null);
+    expect(control.classList.contains("input-error")).toBe(isInvalid);
+  });
+
+  it("passes the typed value without the spaces around it", () => {
+    const onChange = vi.fn();
+    render(card("", onChange));
+    type(label, ` ${CHECKSUMMED} `);
+    expect(onChange.mock.calls).toEqual([[CHECKSUMMED]]);
   });
 });
 

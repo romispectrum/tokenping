@@ -6,6 +6,7 @@ import {
   type AaveMarket,
   ERC20_ABI,
 } from "~~/config/aaveConfig";
+import { getReadErrorMessage } from "~~/services/aave/readErrorMessage";
 import { readTokenSymbol } from "~~/services/aave/tokenSymbol";
 import { formatHealthFactor } from "~~/utils/healthFactor";
 import { getFallbackTransport } from "~~/utils/rpc";
@@ -173,7 +174,9 @@ export const fetchAavePositions = async (user: Address) => {
   const positions = await Promise.all(
     AAVE_MARKETS.map(market =>
       fetchNetworkPosition(market, user).catch(error => {
-        console.warn(`Failed to read Aave positions on ${market.name} (chain ${market.chain.id}):`, error);
+        console.warn(
+          `Failed to read Aave positions on ${market.name} (chain ${market.chain.id}): ${getReadErrorMessage(error)}`,
+        );
         return null;
       }),
     ),

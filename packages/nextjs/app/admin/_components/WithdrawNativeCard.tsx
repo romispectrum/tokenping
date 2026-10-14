@@ -1,6 +1,7 @@
-import { AddressInput, EtherInput } from "@scaffold-ui/components";
+import { EtherInput } from "@scaffold-ui/components";
 import { formatEther } from "viem";
 import { AdminCard } from "~~/app/admin/_components/AdminCard";
+import { HexAddressInput } from "~~/app/admin/_components/HexAddressInput";
 import { LabeledField } from "~~/app/admin/_components/LabeledField";
 import type { NativeWithdrawForm } from "~~/app/admin/_components/adminForms";
 
@@ -18,7 +19,7 @@ export const WithdrawNativeCard = ({ form, onChange, balance, isBusy, onSubmit }
     description={<>Contract native balance: {balance === undefined ? "0" : formatEther(balance)} ETH</>}
   >
     <LabeledField label="Destination address">
-      <AddressInput placeholder="Destination address" value={form.to} onChange={to => onChange({ to })} />
+      <HexAddressInput placeholder="Destination address" value={form.to} onChange={to => onChange({ to })} />
     </LabeledField>
     <LabeledField label="Amount (ETH)">
       {/* Uncontrolled: defaultValue restores the typed amount when the card remounts after a wallet switch. */}

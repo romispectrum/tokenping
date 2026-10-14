@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { DELETE, GET } from "~~/app/api/telegram/link/route";
 import { afterQueue } from "~~/services/api/server/testing/afterQueue";
 import { fakeSupabase } from "~~/services/api/server/testing/fakeSupabase";
@@ -77,9 +77,12 @@ describe("GET /api/telegram/link", () => {
     expect(isAccessActive).not.toHaveBeenCalled();
   });
 
-  it("treats a lookup error as not linked", async () => {
+  // A failed lookup must not read as "not linked": clients treat any non-2xx as "status unknown".
+  it("returns 500 when the lookup fails instead of reporting the user as not linked", async () => {
     fakeSupabase.respondByQuery({ [linkQuery("user_id", LOWER)]: { error: { message: "boom" } } });
-    expect(await read(await GET(new Request(`${BASE_URL}?userId=${LOWER}`)))).toEqual(json(200, { linked: false }));
+    expect(await read(await GET(new Request(`${BASE_URL}?userId=${LOWER}`)))).toEqual(
+      json(500, { error: "Failed to read the Telegram link: boom" }),
+    );
   });
 
   it("returns 500 with the thrown message", async () => {
@@ -99,15 +102,25 @@ describe("DELETE /api/telegram/link", () => {
     expect(await read(await del(body))).toEqual(json(400, { error: "Missing or invalid userId" }));
   });
 
-  it("returns 500 for a JSON null body", async () => {
-    expect(await read(await del("null"))).toEqual(
-      json(500, { error: "Cannot destructure property 'userId' of 'body' as it is null." }),
-    );
+  it.each([
+    ["JSON null", "null"],
+    ["an array", JSON.stringify([{ userId: LOWER }])],
+    ["a number", "5"],
+    ["a string", JSON.stringify(LOWER)],
+  ])("returns 400 for a body that is %s, without the access check", async (_label, body) => {
+    expect(await read(await del(body))).toEqual(json(400, { error: "Missing or invalid userId" }));
+    expect(isAccessActive).not.toHaveBeenCalled();
+    expect(fakeSupabase.queries).toHaveLength(0);
   });
 
-  it("returns 500 for a truthy non-string userId", async () => {
-    // BUG(S3.3): unlike the other routes there is no typeof check, so `userId.trim()` throws a TypeError.
-    expect(await read(await del({ userId: 5 }))).toEqual(json(500, { error: "userId.trim is not a function" }));
+  it.each([
+    ["number", 5],
+    ["array", [LOWER]],
+    ["object", { id: LOWER }],
+    ["boolean", true],
+  ])("returns 400 for a %s userId", async (_label, userId) => {
+    expect(await read(await del({ userId }))).toEqual(json(400, { error: "Missing or invalid userId" }));
+    expect(isAccessActive).not.toHaveBeenCalled();
   });
 
   it("returns 403 when access is inactive, checking the trimmed raw-case id", async () => {
@@ -141,6 +154,20 @@ describe("DELETE /api/telegram/link", () => {
     expect(await read(await del({ userId: LOWER }))).toEqual(json(200, { success: true }));
     expect(fakeSupabase.log()).toEqual([linkQuery("user_id", LOWER), deleteQuery(LOWER)]);
     expect(afterQueue.pending()).toBe(0);
+  });
+
+  it("still disconnects, without a farewell, when the lookup before the delete fails", async () => {
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    onTestFinished(() => consoleWarn.mockRestore());
+    fakeSupabase.respondByQuery({ [linkQuery("user_id", LOWER)]: { error: { message: "lookup failed" } } });
+
+    expect(await read(await del({ userId: LOWER }))).toEqual(json(200, { success: true }));
+    expect(fakeSupabase.log()).toEqual([linkQuery("user_id", LOWER), deleteQuery(LOWER)]);
+    expect(afterQueue.pending()).toBe(0);
+    expect(consoleWarn).toHaveBeenCalledExactlyOnceWith(
+      "telegram disconnect: no farewell, the link lookup failed",
+      new Error("Failed to read the Telegram link: lookup failed"),
+    );
   });
 
   it("returns 502 with the Supabase message and sends no farewell when the delete fails (B3.5)", async () => {

@@ -6,18 +6,37 @@ type TelegramConnectFieldProps = {
   username: string | null | undefined;
   /** The bot link while a handshake waits for the user, in case the Telegram tab could not be opened. */
   deepLink: string | undefined;
+  /** The link status could not be read: offering Connect would treat a possibly linked wallet as unlinked. */
+  isStatusUnknown: boolean;
+  isCheckingStatus: boolean;
   isConnecting: boolean;
   isDisconnecting: boolean;
+  onRetryStatus: () => void;
   onConnect: () => void;
   onDisconnect: () => void;
 };
+
+const StatusUnknown = ({ isRetrying, onRetry }: { isRetrying: boolean; onRetry: () => void }) => (
+  <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-red-500/30 bg-red-500/10">
+    {/* Only the message is announced, so the Retry label changing does not repeat it. */}
+    <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+      Couldn&apos;t check your Telegram link.
+    </p>
+    <button type="button" onClick={onRetry} disabled={isRetrying} className="btn btn-sm btn-outline">
+      {isRetrying ? "Retrying..." : "Retry"}
+    </button>
+  </div>
+);
 
 export const TelegramConnectField = ({
   chatId,
   username,
   deepLink,
+  isStatusUnknown,
+  isCheckingStatus,
   isConnecting,
   isDisconnecting,
+  onRetryStatus,
   onConnect,
   onDisconnect,
 }: TelegramConnectFieldProps) => {
@@ -41,6 +60,8 @@ export const TelegramConnectField = ({
             {isDisconnecting ? "Disconnecting..." : "Disconnect"}
           </button>
         </div>
+      ) : isStatusUnknown ? (
+        <StatusUnknown isRetrying={isCheckingStatus} onRetry={onRetryStatus} />
       ) : (
         <div className="space-y-2">
           <button

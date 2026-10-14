@@ -53,25 +53,34 @@ export const useNotificationConfig = () => {
   });
   const configs = query.data;
 
+  /**
+   * Applies a successful write to the wallet's cached configs. A load still in flight may have read the configs
+   * before the write reached the server, and would overwrite this when it lands, so it is cancelled first (the
+   * cache keeps the data it had before that load).
+   */
+  const applyWrite = async (
+    userId: string,
+    update: (prev: ConfigsByChain | undefined) => ConfigsByChain | undefined,
+  ) => {
+    const queryKey = notificationConfigsQueryKey(userId);
+    await queryClient.cancelQueries({ queryKey });
+    queryClient.setQueryData<ConfigsByChain>(queryKey, update);
+  };
+
   // The server only trims, normalizes and clamps what the settings form already sends normalized, so a write goes
   // into the cache as sent rather than triggering a reload.
   const { mutateAsync: saveConfig, isPending: isSaving } = useMutation({
     mutationFn: ({ userId, config }: { userId: string; config: NotificationConfig }) =>
       notificationConfigClient.upsertConfig(userId, config),
     networkMode: NETWORK_MODE,
-    onSuccess: (_, { userId, config }) =>
-      queryClient.setQueryData<ConfigsByChain>(notificationConfigsQueryKey(userId), prev => ({
-        ...prev,
-        [config.chainId]: config,
-      })),
+    onSuccess: (_, { userId, config }) => applyWrite(userId, prev => ({ ...prev, [config.chainId]: config })),
   });
 
   const { mutateAsync: removeConfig, isPending: isDeleting } = useMutation({
     mutationFn: ({ userId, chainId }: { userId: string; chainId: number }) =>
       notificationConfigClient.deleteConfig(userId, chainId),
     networkMode: NETWORK_MODE,
-    onSuccess: (_, { userId, chainId }) =>
-      queryClient.setQueryData<ConfigsByChain>(notificationConfigsQueryKey(userId), prev => removeChain(prev, chainId)),
+    onSuccess: (_, { userId, chainId }) => applyWrite(userId, prev => removeChain(prev, chainId)),
   });
 
   const updateConfig = useCallback(

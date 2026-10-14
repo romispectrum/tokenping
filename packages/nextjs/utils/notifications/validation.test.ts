@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   EMAIL_REGEX,
+  MAX_EMAIL_LENGTH,
+  MAX_SIGNAL_RECIPIENT_LENGTH,
   SIGNAL_USERNAME_REGEX,
   isNotificationService,
   isValidEmail,
@@ -29,11 +31,28 @@ describe("EMAIL_REGEX / isValidEmail", () => {
     expect(isValidEmail("  a@b.co  ")).toBe(false);
     expect(isValidEmail("  a@b.co  ".trim())).toBe(true);
   });
+
+  // RFC 5321 caps a forward path at 256 octets including the angle brackets.
+  it("accepts up to 254 characters and rejects longer addresses", () => {
+    const atLimit = `${"a".repeat(249)}@b.co`;
+    expect(MAX_EMAIL_LENGTH).toBe(254);
+    expect(atLimit).toHaveLength(254);
+    expect(isValidEmail(atLimit)).toBe(true);
+    expect(isValidEmail(`a${atLimit}`)).toBe(false);
+  });
+
+  // EMAIL_REGEX backtracks quadratically on this shape: 100k characters took seconds before the length cap.
+  it("rejects a 100k-character crafted address in under 50ms, before running the regex", () => {
+    const crafted = `a@${"a.".repeat(50_000)}@`;
+    const start = performance.now();
+    expect(isValidEmail(crafted)).toBe(false);
+    expect(performance.now() - start).toBeLessThan(50);
+  });
 });
 
 describe("SIGNAL_USERNAME_REGEX", () => {
   it("is the regex used by NotificationConfig and sendSignal", () => {
-    expect(SIGNAL_USERNAME_REGEX.source).toBe(/^[a-zA-Z0-9][a-zA-Z0-9_]{0,29}\.\d{2,}$/.source);
+    expect(SIGNAL_USERNAME_REGEX.source).toBe(/^(?=.{1,64}$)[a-zA-Z0-9][a-zA-Z0-9_]{0,29}\.\d{2,}$/.source);
     expect(SIGNAL_USERNAME_REGEX.flags).toBe("");
   });
 
@@ -53,6 +72,25 @@ describe("SIGNAL_USERNAME_REGEX", () => {
     `a${"b".repeat(30)}.42`,
   ])("rejects %j", value => {
     expect(SIGNAL_USERNAME_REGEX.test(value)).toBe(false);
+  });
+
+  // The client form and sendSignal test the normalized value with this regex directly, so it carries the cap too.
+  it("caps the value at MAX_SIGNAL_RECIPIENT_LENGTH characters", () => {
+    const atLimit = `alice.${"4".repeat(MAX_SIGNAL_RECIPIENT_LENGTH - 6)}`;
+    expect(atLimit).toHaveLength(MAX_SIGNAL_RECIPIENT_LENGTH);
+    expect(SIGNAL_USERNAME_REGEX.test(atLimit)).toBe(true);
+    expect(SIGNAL_USERNAME_REGEX.test(`${atLimit}4`)).toBe(false);
+  });
+
+  it.each([
+    "alice.42",
+    "uma.01",
+    `alice.${"4".repeat(58)}`,
+    `alice.${"4".repeat(59)}`,
+    `a.${"1".repeat(200)}`,
+    "_a.42",
+  ])("agrees with isValidSignalUsername on the normalized value the client sends: %j", normalized => {
+    expect(SIGNAL_USERNAME_REGEX.test(normalized)).toBe(isValidSignalUsername(normalized));
   });
 });
 
@@ -129,6 +167,23 @@ describe("isValidSignalUsername", () => {
       expect(isValidSignalUsername(raw)).toBe(false);
     },
   );
+
+  it("accepts up to 64 characters of raw input and rejects longer input", () => {
+    const atLimit = `alice.${"4".repeat(58)}`;
+    expect(MAX_SIGNAL_RECIPIENT_LENGTH).toBe(64);
+    expect(atLimit).toHaveLength(64);
+    expect(isValidSignalUsername(atLimit)).toBe(true);
+    // The cap applies to the raw value, so padding that normalization would strip still counts.
+    expect(isValidSignalUsername(`${atLimit}4`)).toBe(false);
+    expect(isValidSignalUsername(` ${atLimit}`)).toBe(false);
+  });
+
+  it("rejects a 100k-character recipient in under 50ms", () => {
+    const crafted = `a.${"1".repeat(100_000)}x`;
+    const start = performance.now();
+    expect(isValidSignalUsername(crafted)).toBe(false);
+    expect(performance.now() - start).toBeLessThan(50);
+  });
 
   // The hazard in validating an already normalized value: it passes although the value that would be sent does not.
   it.each(["@@alice.42", "u:u:alice.42", "@u:alice.42", "u: alice.42"])(

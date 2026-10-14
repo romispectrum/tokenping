@@ -1,10 +1,12 @@
 "use client";
 
 import { type ReactNode, useState } from "react";
-import { useSwitchChain } from "wagmi";
-import { PAYMENT_TOKEN_DECIMALS, PAYMENT_TOKEN_SYMBOL } from "~~/constants/payments";
+import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAccount, useSwitchChain } from "wagmi";
+import { PAYMENT_CHAIN_ID, PAYMENT_TOKEN_DECIMALS, PAYMENT_TOKEN_SYMBOL } from "~~/constants/payments";
 import { PAYMENTS_PAUSED_MESSAGE, useAccess } from "~~/hooks/custom/useAccess";
 import { type PayNotice, formatDurationDays } from "~~/services/payments/paywallStatus";
+import { normalizeAddress } from "~~/utils/address";
 import { formatTokenAmount } from "~~/utils/format";
 import { notification } from "~~/utils/scaffold-eth";
 
@@ -19,6 +21,11 @@ const PAY_NOTICES: Record<PayNotice, string> = {
   statusUnavailable: "Could not load the payment status. Reload the page to try again.",
 };
 
+const ACCESS_ACTIVE_MESSAGE = "Access active. You can now configure notifications.";
+const PAYMENT_PENDING_MESSAGE = "Payment confirmed — access will appear shortly.";
+
+const PAID_WALLETS_QUERY_KEY = "paidAccessWallets";
+
 type AccessPaywallProps = {
   children: ReactNode;
   /** Replaces the default copy above the pay CTA. */
@@ -28,17 +35,39 @@ type AccessPaywallProps = {
 };
 
 export const AccessPaywall = ({ children, description, hasExistingConfig = false }: AccessPaywallProps) => {
+  const { address } = useAccount();
   const { switchChain } = useSwitchChain();
   const { isActive, expiryTimestamp, status, payForAccess } = useAccess();
+  const queryClient = useQueryClient();
 
   const [isPaying, setIsPaying] = useState(false);
+  // isActive can still read false after the receipt (a lagging RPC node, also on a later watched read), and Pay must
+  // not be offered again to a wallet that paid: it would charge twice. The wallets that paid (lowercased) live in the
+  // query cache, never fetched or collected, so the lock outlives a remount (Refresh swaps the paywall for a skeleton)
+  // and lasts until the page is reloaded.
+  const paidWalletsKey = [PAID_WALLETS_QUERY_KEY, PAYMENT_CHAIN_ID] as const;
+  const { data: paidWallets = [] } = useQuery<readonly string[]>({
+    queryKey: paidWalletsKey,
+    queryFn: skipToken,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+  const hasPaid = address !== undefined && paidWallets.includes(normalizeAddress(address));
 
   const handlePayForAccess = async () => {
+    const payer = address;
     setIsPaying(true);
     try {
       const result = await payForAccess();
-      if (result.paid) notification.success("Access active. You can now configure notifications.");
-      else if (result.error) notification.error(result.error);
+      if (result.paid) {
+        if (payer) {
+          queryClient.setQueryData<readonly string[]>(paidWalletsKey, (wallets = []) => [
+            ...wallets,
+            normalizeAddress(payer),
+          ]);
+        }
+        notification.success(result.isActive ? ACCESS_ACTIVE_MESSAGE : PAYMENT_PENDING_MESSAGE);
+      } else if (result.error) notification.error(result.error);
     } finally {
       setIsPaying(false);
     }
@@ -116,7 +145,7 @@ export const AccessPaywall = ({ children, description, hasExistingConfig = false
               <button
                 type="button"
                 onClick={handlePayForAccess}
-                disabled={isPaying || !status.canPay}
+                disabled={isPaying || hasPaid || !status.canPay}
                 className="w-full rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2.5 text-sm font-medium text-white transition-all shadow-lg shadow-amber-500/20 hover:from-amber-600 hover:to-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isPaying
@@ -125,7 +154,11 @@ export const AccessPaywall = ({ children, description, hasExistingConfig = false
                     ? `Extend access with ${PAYMENT_TOKEN_SYMBOL}`
                     : `Pay for access (${PAYMENT_TOKEN_SYMBOL})`}
               </button>
-              {status.notice ? (
+              {hasPaid ? (
+                <p role="status" className="text-xs text-emerald-600 dark:text-emerald-400">
+                  {PAYMENT_PENDING_MESSAGE}
+                </p>
+              ) : status.notice ? (
                 <p className="text-xs text-amber-600 dark:text-amber-400">{PAY_NOTICES[status.notice]}</p>
               ) : null}
             </div>

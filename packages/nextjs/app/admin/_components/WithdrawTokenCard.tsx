@@ -1,7 +1,7 @@
-import { AddressInput } from "@scaffold-ui/components";
 import { formatUnits } from "viem";
 import { AdminCard } from "~~/app/admin/_components/AdminCard";
 import { DecimalsHint } from "~~/app/admin/_components/DecimalsHint";
+import { HexAddressInput } from "~~/app/admin/_components/HexAddressInput";
 import { LabeledField } from "~~/app/admin/_components/LabeledField";
 import { FALLBACK_TOKEN_DECIMALS, type TokenWithdrawForm } from "~~/app/admin/_components/adminForms";
 
@@ -37,14 +37,14 @@ export const WithdrawTokenCard = ({
     }
   >
     <LabeledField label="Token address">
-      <AddressInput
+      <HexAddressInput
         placeholder="Token address"
         value={form.tokenAddress}
         onChange={tokenAddress => onChange({ tokenAddress })}
       />
     </LabeledField>
     <LabeledField label="Destination address">
-      <AddressInput placeholder="Destination address" value={form.to} onChange={to => onChange({ to })} />
+      <HexAddressInput placeholder="Destination address" value={form.to} onChange={to => onChange({ to })} />
     </LabeledField>
     <LabeledField label={`Amount (${tokenSymbol ?? "token"})`}>
       <input

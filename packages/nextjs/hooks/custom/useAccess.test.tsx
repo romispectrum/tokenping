@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { renderHook } from "@testing-library/react";
 import { erc20Abi } from "viem";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // The payment flow itself (approve, pay, refetch, errors) is covered end to end in AccessPaywall.test.tsx. This file
 // pins the reads useAccess configures, what it returns, and the guard the paywall UI cannot reach.
@@ -115,9 +115,11 @@ vi.mock("wagmi", () => ({
     record("useReadContracts", { ...config, contracts: config.contracts.map(withAbiName) });
     return fakeRead("plans");
   },
+  // The fake transactor below resolves at once, so an approve counts as mined when it is signed.
   useWriteContract: () => ({
-    writeContractAsync: async (variables: unknown) => {
+    writeContractAsync: async (variables: { args: readonly [string, bigint] }) => {
       actions.push(["approve", variables]);
+      state.allowance = variables.args[1];
       return "0xapprove";
     },
   }),
@@ -348,5 +350,82 @@ describe("useAccess payForAccess", () => {
       error: "Paid access is not available right now.",
     });
     expect(actions).toEqual([]);
+  });
+});
+
+describe("useAccess payForAccess with fresh reads", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const RAISED_PRICE = 2_000_000n;
+
+  const accessReads = () => actions.filter(([kind, name]) => kind === "refetch" && name === "isActive").length;
+
+  // pay(token) charges plans[token] when it runs, and the allowance was read for the selected token.
+  it("approves and pays with the fresh plan of the token selected at render, even if another one became buyable", async () => {
+    setReady();
+    state.plansResults = [plan(PRICE, 2_592_000n, false), plan(PRICE, 2_592_000n, true)];
+    const result = await runHook();
+    state.plansResults = [plan(1n, 86_400n, true), plan(RAISED_PRICE, 2_592_000n, true)];
+    state.isActive = true;
+    await expect(result.payForAccess()).resolves.toEqual({ paid: true, isActive: true });
+    expect(actions.filter(([kind]) => kind !== "refetch")).toEqual([
+      [
+        "approve",
+        {
+          abi: erc20Abi,
+          address: FIXTURE.tokenB,
+          functionName: "approve",
+          args: [FIXTURE.paywall, RAISED_PRICE],
+          chainId: FIXTURE.chainId,
+        },
+      ],
+      ["pay", { functionName: "pay", args: [FIXTURE.tokenB] }],
+    ]);
+    expect(actions.slice(0, 3)).toEqual([
+      ["refetch", "plans"],
+      ["refetch", "paused"],
+      ["refetch", "allowance"],
+    ]);
+  });
+
+  it("refuses without sending anything when the selected token's fresh plan is not buyable", async () => {
+    setReady();
+    const result = await runHook();
+    state.plansResults = [plan(PRICE, 2_592_000n, false)];
+    await expect(result.payForAccess()).resolves.toEqual({
+      paid: false,
+      error: "Paid access is not available right now.",
+    });
+    expect(actions.filter(([kind]) => kind !== "refetch")).toEqual([]);
+  });
+
+  it("reports access once the first read after the payment shows it", async () => {
+    setReady();
+    const result = await runHook();
+    state.isActive = true;
+    await expect(result.payForAccess()).resolves.toEqual({ paid: true, isActive: true });
+    expect(accessReads()).toBe(1);
+  });
+
+  // A load-balanced RPC can answer isActive from a node behind the one that returned the receipt.
+  it("re-reads isActive 5 times, 2 seconds apart, and reports a payment whose access does not show yet", async () => {
+    vi.useFakeTimers();
+    setReady();
+    const result = await runHook();
+    let settled: unknown;
+    void result.payForAccess().then(value => (settled = value));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(accessReads()).toBe(1);
+    for (const reads of [2, 3, 4, 5]) {
+      await vi.advanceTimersByTimeAsync(1_999);
+      expect(accessReads()).toBe(reads - 1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(accessReads()).toBe(reads);
+    }
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(accessReads()).toBe(5);
+    expect(settled).toEqual({ paid: true, isActive: false });
   });
 });

@@ -1,6 +1,7 @@
 import {
   type Address,
   type Hex,
+  HttpRequestError,
   decodeFunctionData,
   encodeFunctionResult,
   formatUnits,
@@ -35,6 +36,8 @@ type FakeChain = {
   // Tokens whose symbol() returns bytes32, which does not decode as a string.
   bytes32Symbols?: Record<Address, Hex>;
   decimals?: Record<Address, number>;
+  // Rejects every read on the chain with this error.
+  failure?: unknown;
 };
 
 type ClientOptions = { chain: { id: number }; transport: unknown; batch?: unknown };
@@ -48,6 +51,7 @@ const network = vi.hoisted(() => ({
 const read = async (chainId: number, { address, functionName, args = [] }: ReadCall) => {
   network.calls.push({ chainId, address, functionName });
   const chain = network.chains.get(chainId);
+  if (chain?.failure) throw chain.failure;
   const value = {
     getUserAccountData: chain?.accountData,
     getReservesList: chain?.reserves,
@@ -463,10 +467,28 @@ describe("fetchAavePositions", () => {
     const failedMarkets = AAVE_MARKETS.filter(({ chain }) => chain.id !== chains.base.id);
     expect(vi.mocked(console.warn).mock.calls).toEqual(
       failedMarkets.map(({ name, chain }) => [
-        `Failed to read Aave positions on ${name} (chain ${chain.id}):`,
-        new Error(`getUserAccountData reverted on ${chain.id}`),
+        `Failed to read Aave positions on ${name} (chain ${chain.id}): getUserAccountData reverted on ${chain.id}`,
       ]),
     );
+  });
+
+  it("warns with viem's short message, not the request body it carries", async () => {
+    const calldata = `0x${"ab".repeat(2_000)}`;
+    network.chains.set(chains.base.id, { accountData: account(0n, 0n, maxUint256) });
+    network.chains.set(chains.mainnet.id, {
+      failure: new HttpRequestError({
+        url: "https://rpc.example",
+        body: { params: [{ data: calldata }] },
+        status: 429,
+      }),
+    });
+
+    await fetchAavePositions(USER);
+
+    expect(vi.mocked(console.warn).mock.calls).toContainEqual([
+      `Failed to read Aave positions on ${MAINNET.name} (chain ${chains.mainnet.id}): HTTP request failed.`,
+    ]);
+    expect(JSON.stringify(vi.mocked(console.warn).mock.calls)).not.toContain(calldata);
   });
 
   it("rejects when every network fails", async () => {

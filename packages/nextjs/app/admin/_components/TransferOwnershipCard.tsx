@@ -1,5 +1,5 @@
-import { AddressInput } from "@scaffold-ui/components";
 import { AdminCard } from "~~/app/admin/_components/AdminCard";
+import { HexAddressInput } from "~~/app/admin/_components/HexAddressInput";
 import { LabeledField } from "~~/app/admin/_components/LabeledField";
 
 type TransferOwnershipCardProps = {
@@ -16,7 +16,7 @@ export const TransferOwnershipCard = ({ value, onChange, isBusy, onSubmit }: Tra
     className="xl:col-span-2"
   >
     <LabeledField label="New owner address" className="md:max-w-xl">
-      <AddressInput placeholder="New owner address" value={value} onChange={onChange} />
+      <HexAddressInput placeholder="New owner address" value={value} onChange={onChange} />
     </LabeledField>
     <button className="btn btn-error w-fit" onClick={onSubmit} disabled={isBusy}>
       Transfer ownership

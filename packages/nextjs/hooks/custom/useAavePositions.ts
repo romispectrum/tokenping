@@ -12,6 +12,7 @@ const NO_POSITIONS: NetworkPosition[] = [];
 export const useAavePositions = () => {
   const { address, isConnected } = useAccount();
   const user = isConnected ? address : undefined;
+  const account = user ? normalizeAddress(user) : null;
 
   // Keyed by account, so switching wallets never shows the previous account's positions or lets its late response win.
   const {
@@ -20,7 +21,7 @@ export const useAavePositions = () => {
     isFetching,
     refetch,
   } = useQuery({
-    queryKey: ["aavePositions", user ? normalizeAddress(user) : null],
+    queryKey: ["aavePositions", account],
     queryFn: user ? () => fetchAavePositions(user) : skipToken,
     // viem's fallback transport already retries every RPC endpoint; retrying the query would only delay the error.
     retry: false,
@@ -47,6 +48,8 @@ export const useAavePositions = () => {
   );
 
   return {
+    // The normalized address the positions belong to, or null without a connected wallet.
+    account,
     positions,
     // A refresh shows the loading state too, and hides the previous attempt's error while it runs.
     isLoading: isFetching,

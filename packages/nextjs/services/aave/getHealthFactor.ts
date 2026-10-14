@@ -1,5 +1,6 @@
 import { type Address, type Chain, createPublicClient } from "viem";
 import { AAVE_POOL_ABI, getAaveMarket } from "~~/config/aaveConfig";
+import { getReadErrorMessage } from "~~/services/aave/readErrorMessage";
 import { formatHealthFactor } from "~~/utils/healthFactor";
 import { getFallbackTransport } from "~~/utils/rpc";
 
@@ -48,7 +49,7 @@ export async function getHealthFactorForWallet(
 
     return { healthFactor: formatHealthFactor(healthFactor), chainName: market.name };
   } catch (error) {
-    console.warn(`Failed to read the Aave health factor on chain ${chainId}:`, error);
+    console.warn(`Failed to read the Aave health factor on chain ${chainId}: ${getReadErrorMessage(error)}`);
     return null;
   }
 }

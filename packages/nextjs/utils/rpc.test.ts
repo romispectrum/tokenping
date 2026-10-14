@@ -12,6 +12,17 @@ vi.mock("~~/scaffold.config", () => ({ default: config, DEFAULT_ALCHEMY_API_KEY:
 const KEY = "test-key";
 const alchemy = (network: string, key = KEY) => `https://${network}.g.alchemy.com/v2/${key}`;
 
+// Keyless endpoints for every Aave chain; Ethereum's and Polygon's viem defaults refuse or rate-limit keyless calls.
+const PUBLICNODE = {
+  [mainnet.id]: "https://ethereum-rpc.publicnode.com",
+  [polygon.id]: "https://polygon-bor-rpc.publicnode.com",
+  [arbitrum.id]: "https://arbitrum-one-rpc.publicnode.com",
+  [optimism.id]: "https://optimism-rpc.publicnode.com",
+  [base.id]: "https://base-rpc.publicnode.com",
+  [avalanche.id]: "https://avalanche-c-chain-rpc.publicnode.com",
+  [gnosis.id]: "https://gnosis-rpc.publicnode.com",
+};
+
 // Building the transport only creates the HTTP clients; nothing is fetched until a request is made.
 const transportUrls = (chain: Chain) =>
   getFallbackTransport(chain)({ chain }).value!.transports.map(transport => transport.value!.url);
@@ -92,20 +103,31 @@ describe("getFallbackTransport", () => {
     expect(getFallbackTransport(arbitrum)({ chain: arbitrum }).config.type).toBe("fallback");
   });
 
-  it("tries the override, then Alchemy, then the chain's public RPC", () => {
+  it("tries the override, then Alchemy, then PublicNode, then the chain's public RPC", () => {
     config.rpcOverrides = { [arbitrum.id]: "https://arb.example/rpc" };
 
     expect(transportUrls(arbitrum)).toEqual([
       "https://arb.example/rpc",
       alchemy("arb-mainnet"),
+      PUBLICNODE[arbitrum.id],
       arbitrum.rpcUrls.default.http[0],
     ]);
   });
 
-  it("ends with the public RPC alone when nothing is configured", () => {
-    config.alchemyApiKey = "";
+  it.each([mainnet, polygon, arbitrum, optimism, base, avalanche, gnosis])(
+    "reaches $name through PublicNode before its default RPC when nothing is configured",
+    chain => {
+      config.alchemyApiKey = "";
 
-    expect(transportUrls(gnosis)).toEqual([gnosis.rpcUrls.default.http[0]]);
+      expect(transportUrls(chain)).toEqual([PUBLICNODE[chain.id], chain.rpcUrls.default.http[0]]);
+    },
+  );
+
+  it("lists an override that is the PublicNode URL only once", () => {
+    config.alchemyApiKey = "";
+    config.rpcOverrides = { [polygon.id]: PUBLICNODE[polygon.id] };
+
+    expect(transportUrls(polygon)).toEqual([PUBLICNODE[polygon.id], polygon.rpcUrls.default.http[0]]);
   });
 
   it("uses the RPC of the chain it was given", () => {
@@ -119,18 +141,34 @@ describe("getFallbackTransport", () => {
     expect(transportUrls(custom)).toEqual(["https://rpc.custom.example"]);
   });
 
-  it("tries Alchemy with the shared default key only after the public RPC, like wagmiConfig", () => {
+  it("tries Alchemy with the shared default key last, after PublicNode and the public RPC", () => {
     config.alchemyApiKey = SHARED_KEY;
 
-    expect(transportUrls(mainnet)).toEqual([mainnet.rpcUrls.default.http[0], alchemy("eth-mainnet", SHARED_KEY)]);
+    expect(transportUrls(mainnet)).toEqual([
+      PUBLICNODE[mainnet.id],
+      mainnet.rpcUrls.default.http[0],
+      alchemy("eth-mainnet", SHARED_KEY),
+    ]);
+    expect(transportUrls(polygon)).toEqual([
+      PUBLICNODE[polygon.id],
+      polygon.rpcUrls.default.http[0],
+      alchemy("polygon-mainnet", SHARED_KEY),
+    ]);
 
     config.rpcOverrides = { [avalanche.id]: "https://avax.example/rpc" };
     expect(transportUrls(avalanche)).toEqual([
       "https://avax.example/rpc",
+      PUBLICNODE[avalanche.id],
       avalanche.rpcUrls.default.http[0],
       alchemy("avax-mainnet", SHARED_KEY),
     ]);
     expect(transportUrls(hardhat)).toEqual(["http://127.0.0.1:8545"]);
+  });
+
+  it("adds no PublicNode endpoint for chains outside the Aave list, e.g. Sepolia", () => {
+    config.alchemyApiKey = "";
+
+    expect(transportUrls(sepolia)).toEqual([sepolia.rpcUrls.default.http[0]]);
   });
 
   it("keeps viem's default of 3 retries over the whole list", () => {
@@ -149,6 +187,7 @@ describe("getFallbackTransport", () => {
     expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
       "https://arb.example/rpc",
       alchemy("arb-mainnet"),
+      PUBLICNODE[arbitrum.id],
       arbitrum.rpcUrls.default.http[0],
     ]);
   });

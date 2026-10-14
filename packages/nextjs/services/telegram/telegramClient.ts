@@ -34,7 +34,8 @@ export const telegramClient = {
     const res = await fetch(apiUrl(`/api/telegram/link?userId=${encodeURIComponent(userId.trim())}`), {
       cache: "no-store",
     });
-    if (!res.ok) return { linked: false };
+    // Any non-2xx means the status is unknown (the lookup failed), never "not linked".
+    if (!res.ok) throw new Error(await readApiError(res, "Failed to check the Telegram link"));
     return res.json();
   },
 

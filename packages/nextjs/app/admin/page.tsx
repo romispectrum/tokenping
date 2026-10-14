@@ -31,8 +31,6 @@ const AdminPage: NextPage = () => {
   const { address: connectedAddress, isConnected } = useAccount();
 
   // Form state lives here (not in the cards) so typed values survive the cards unmounting on a wallet switch.
-  // Inherited from scaffold-ui: AddressInput focuses itself once the ENS reverse lookup of its value finds no name,
-  // so on load focus lands on a pre-filled token address field.
   const [planForm, setPlanForm] = useState<PlanForm>({
     tokenAddress: PAYMENT_TOKEN_ADDRESS ?? "",
     price: "",

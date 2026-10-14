@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient } from "@tanstack/react-query";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { erc20Abi } from "viem";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AccessPaywall } from "~~/components/custom/AccessPaywall";
 import { deferred } from "~~/utils/testing/helpers";
+import { renderWithProviders } from "~~/utils/testing/providers";
 
 // Hoisted: useAccess reads the payment constants (mocked below) as soon as it is imported.
 const { PAYWALL, TOKEN } = vi.hoisted(() => ({
@@ -14,6 +16,8 @@ const USER = "0x1111111111111111111111111111111111111111";
 const PAYMENT_CHAIN_ID = 42161;
 const PRICE = 1_500_000n;
 const SUCCESS = "Access active. You can now configure notifications.";
+const PENDING = "Payment confirmed — access will appear shortly.";
+const UNAVAILABLE = "Paid access is not available right now.";
 
 type Plan = readonly [price: bigint, durationSeconds: bigint, enabled: boolean];
 type ReadName = "isActive" | "plans" | "expiryTimestampByUser" | "allowance" | "paused";
@@ -47,6 +51,8 @@ const { fake, resetFake } = vi.hoisted(() => {
     payImpl: undefined as (() => Promise<string | undefined>) | undefined,
     /** Allowance refetches after a mined approval that still return the old value, like a lagging RPC node. */
     staleAllowanceReads: 0,
+    /** isActive refetches after a sent payment that still return the old value, like a lagging RPC node. */
+    staleActiveReads: 0,
     /** A refetch of that read waits for the promise before it settles. */
     refetchGates: {} as Partial<Record<ReadName, Promise<void>>>,
     approvals: [] as unknown[],
@@ -77,6 +83,10 @@ const fakeRead = (name: ReadName) => ({
       fake.staleAllowanceReads -= 1;
       return { data: fake.cache[name], isError: false };
     }
+    if (name === "isActive" && fake.staleActiveReads > 0 && fake.events.some(event => event.startsWith("pay sent"))) {
+      fake.staleActiveReads -= 1;
+      return { data: fake.cache[name], isError: false };
+    }
     loadReads(name);
     return { data: fake.cache[name], isError: false };
   },
@@ -91,12 +101,19 @@ vi.mock("wagmi", () => ({
     switchChain: (args: unknown) => fake.events.push(`switchChain ${JSON.stringify(args)}`),
   }),
   useReadContract: ({ functionName }: { functionName: ReadName }) => fakeRead(functionName),
+  // One plans(token) read per candidate token; the fixture has one candidate.
   useReadContracts: () => {
+    const toResults = (plan: Plan | null | undefined) =>
+      plan === undefined ? undefined : [plan ? { status: "success", result: plan } : { status: "failure" }];
     const plans = fakeRead("plans");
-    const plan = fake.cache.plans;
     return {
       ...plans,
-      data: plan === undefined ? undefined : [plan ? { status: "success", result: plan } : { status: "failure" }],
+      data: toResults(fake.cache.plans),
+      // Like react-query, a failed refetch keeps the last results.
+      refetch: async () => {
+        const { isError } = await plans.refetch();
+        return { isError, data: toResults(fake.cache.plans) };
+      },
     };
   },
   useWriteContract: () => ({
@@ -136,22 +153,28 @@ vi.mock("~~/hooks/scaffold-eth", () => ({
     }
   },
   // Like useScaffoldWriteContract: simulates `pay` against the chain, then sends it and waits for the receipt.
+  // The simulation charges the plan stored on chain, like TokenpingPaywall.pay.
   useScaffoldWriteContract: () => ({
     isPending: false,
     isMining: false,
     writeContractAsync: async ({ args }: { functionName: "pay"; args: [string] }) => {
       if (fake.payImpl) return fake.payImpl();
+      const [price, , enabled] = fake.chain.plans ?? [0n, 0n, false];
       const revert = fake.chain.paused
         ? "EnforcedPause()"
-        : fake.chain.allowance < PRICE
-          ? "ERC20InsufficientAllowance"
-          : undefined;
+        : price === 0n
+          ? "Plan not set"
+          : !enabled
+            ? "Token not supported"
+            : fake.chain.allowance < price
+              ? "ERC20InsufficientAllowance"
+              : undefined;
       if (revert) {
         fake.toasts.push(["error", revert]);
         throw new Error(revert);
       }
       fake.events.push(`pay sent ${args[0]}`);
-      fake.chain.allowance -= PRICE;
+      fake.chain.allowance -= price;
       fake.chain.isActive = true;
       return "0xpay";
     },
@@ -178,7 +201,9 @@ vi.mock("~~/constants/payments", async importOriginal => ({
 
 type Props = Partial<Parameters<typeof AccessPaywall>[0]>;
 
-const renderPaywall = (props: Props = {}) => render(<AccessPaywall {...props}>{<div>child</div>}</AccessPaywall>);
+/** Pass the client of an earlier render to remount the paywall in the same page session. */
+const renderPaywall = (props: Props = {}, queryClient?: QueryClient) =>
+  renderWithProviders(<AccessPaywall {...props}>{<div>child</div>}</AccessPaywall>, { queryClient });
 
 const html = (props: Props = {}) => renderPaywall(props).container.innerHTML;
 
@@ -368,7 +393,8 @@ describe("AccessPaywall actions", () => {
     loadReads("allowance");
     renderPaywall();
     await pay();
-    expect(fake.events.slice(0, 6)).toEqual([
+    expect(fake.events.slice(0, 7)).toEqual([
+      "refetch plans",
       "refetch paused",
       "refetch allowance",
       `approve signed ${PAYWALL} ${PRICE}`,
@@ -423,7 +449,7 @@ describe("AccessPaywall actions", () => {
     renderPaywall();
     fake.chain.paused = true;
     await pay();
-    expect(fake.events).toEqual(["refetch paused", "refetch allowance"]);
+    expect(fake.events).toEqual(["refetch plans", "refetch paused", "refetch allowance"]);
     expect(fake.toasts).toEqual([["error", "Payments are paused right now. Try again later."]]);
   });
 
@@ -516,5 +542,186 @@ describe("AccessPaywall actions", () => {
     renderPaywall();
     await pay();
     expect(fake.toasts).toEqual([["error", "Please connect your wallet"]]);
+  });
+});
+
+describe("AccessPaywall fresh plan", () => {
+  const RAISED_PRICE = 2_000_000n;
+
+  // Regression (F7): the approve used the plan cached at page load, so after a price rise it approved the old price,
+  // `pay` reverted, and every retry skipped the approve (allowance >= the old price) and reverted again.
+  it("approves and pays the price read at click time, not the one cached at render", async () => {
+    setReady();
+    fake.chain.allowance = PRICE;
+    loadReads("allowance");
+    renderPaywall();
+    fake.chain.plans = [RAISED_PRICE, 2_592_000n, true];
+    await pay();
+    expect(fake.events.slice(0, 7)).toEqual([
+      "refetch plans",
+      "refetch paused",
+      "refetch allowance",
+      `approve signed ${PAYWALL} ${RAISED_PRICE}`,
+      "approve mined",
+      "refetch allowance",
+      `pay sent ${TOKEN}`,
+    ]);
+    expect(fake.toasts).toEqual([["success", SUCCESS]]);
+  });
+
+  it("skips the approval when the allowance covers the price read at click time", async () => {
+    setReady();
+    fake.chain.allowance = PRICE;
+    loadReads("allowance");
+    renderPaywall();
+    fake.chain.plans = [PRICE - 1n, 2_592_000n, true];
+    await pay();
+    expect(fake.events.filter(event => !event.startsWith("refetch"))).toEqual([`pay sent ${TOKEN}`]);
+  });
+
+  // Regression (F7): a plan disabled after the page loaded still got an approve (wasted gas) before `pay` reverted.
+  it.each([
+    ["disabled", [PRICE, 2_592_000n, false] as const],
+    ["priced at zero", [0n, 2_592_000n, true] as const],
+    ["removed", null],
+  ])("sends nothing when the plan was %s after the page loaded", async (_label, plan) => {
+    setReady();
+    renderPaywall();
+    fake.chain.plans = plan;
+    await pay();
+    expect(fake.events).toEqual(["refetch plans", "refetch paused", "refetch allowance"]);
+    expect(fake.toasts).toEqual([["error", UNAVAILABLE]]);
+  });
+
+  // A failed refetch keeps the last value, so the cached plan must not pass for a fresh read.
+  it("sends nothing when re-reading the plan fails at click time", async () => {
+    setReady();
+    renderPaywall();
+    fake.failingReads.add("plans");
+    await pay();
+    expect(fake.events.filter(event => !event.startsWith("refetch"))).toEqual([]);
+    expect(fake.toasts).toEqual([["error", UNAVAILABLE]]);
+  });
+});
+
+describe("AccessPaywall after a payment", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** The isActive reads since `pay` was sent. */
+  const accessReadsAfterPay = () =>
+    fake.events.slice(fake.events.indexOf(`pay sent ${TOKEN}`)).filter(event => event === "refetch isActive").length;
+
+  /** Runs due timers and settles the promises they start, inside act so React applies the state updates. */
+  const advance = (ms: number) => act(() => vi.advanceTimersByTimeAsync(ms));
+
+  // Regression (F8): one stale isActive read after the receipt toasted "Access active" next to an enabled Pay button.
+  it("re-reads isActive every 2 seconds until it shows the payment, then toasts success", async () => {
+    vi.useFakeTimers();
+    setReady();
+    fake.staleActiveReads = 2;
+    renderPaywall();
+    fireEvent.click(payButton());
+    await advance(0);
+    expect(accessReadsAfterPay()).toBe(1);
+    expect(payButton().textContent).toBe("Processing...");
+    await advance(1_999);
+    expect(accessReadsAfterPay()).toBe(1);
+    await advance(1);
+    expect(accessReadsAfterPay()).toBe(2);
+    expect(fake.toasts).toEqual([]);
+    await advance(2_000);
+    expect(accessReadsAfterPay()).toBe(3);
+    expect(fake.toasts).toEqual([["success", SUCCESS]]);
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.getByText("child")).toBeDefined();
+  });
+
+  it("gives up after 5 reads, keeps Pay disabled with a pending notice and never toasts 'Access active'", async () => {
+    vi.useFakeTimers();
+    setReady();
+    fake.staleActiveReads = Number.POSITIVE_INFINITY;
+    renderPaywall();
+    fireEvent.click(payButton());
+    await advance(60_000);
+    expect(accessReadsAfterPay()).toBe(5);
+    expect(fake.toasts).toEqual([["success", PENDING]]);
+    expect(screen.getByText(PENDING)).toBeDefined();
+    expect(payButton().textContent).toBe("Pay for access (USDC)");
+    expect(payButton().hasAttribute("disabled")).toBe(true);
+    const eventsBefore = fake.events.length;
+    fireEvent.click(payButton());
+    await advance(60_000);
+    expect(fake.events.length).toBe(eventsBefore);
+  });
+
+  // isActive is watched every block, and a lagging node can answer one of those reads with false again.
+  it("does not offer Pay again in this session when isActive reads false after a confirmed payment", async () => {
+    setReady();
+    const { rerender } = renderPaywall();
+    await pay();
+    expect(fake.toasts).toEqual([["success", SUCCESS]]);
+    fake.cache.isActive = false;
+    rerender(<AccessPaywall>{<div>child</div>}</AccessPaywall>);
+    expect(payButton().hasAttribute("disabled")).toBe(true);
+    expect(screen.getByText(PENDING)).toBeDefined();
+  });
+
+  it("shows the pending notice instead of the paused notice after a payment", async () => {
+    vi.useFakeTimers();
+    setReady();
+    fake.staleActiveReads = Number.POSITIVE_INFINITY;
+    const { rerender } = renderPaywall();
+    fireEvent.click(payButton());
+    await advance(60_000);
+    fake.cache.paused = true;
+    fake.chain.paused = true;
+    // The fake reads are not reactive: a rerender is what hands the paused read to the paywall.
+    rerender(<AccessPaywall>{<div>child</div>}</AccessPaywall>);
+    expect(screen.getByText(PENDING)).toBeDefined();
+    expect(screen.queryByText("Payments are paused right now. Try again later.")).toBeNull();
+  });
+
+  it("offers Pay again for a different wallet, and not when the wallet that paid comes back", async () => {
+    vi.useFakeTimers();
+    setReady();
+    fake.staleActiveReads = Number.POSITIVE_INFINITY;
+    const { rerender } = renderPaywall();
+    fireEvent.click(payButton());
+    await advance(60_000);
+    expect(payButton().hasAttribute("disabled")).toBe(true);
+    fake.wallet = { address: "0x2222222222222222222222222222222222222222", chainId: PAYMENT_CHAIN_ID };
+    rerender(<AccessPaywall>{<div>child</div>}</AccessPaywall>);
+    expect(payButton().hasAttribute("disabled")).toBe(false);
+    expect(screen.queryByText(PENDING)).toBeNull();
+    fake.wallet = { address: USER, chainId: PAYMENT_CHAIN_ID };
+    rerender(<AccessPaywall>{<div>child</div>}</AccessPaywall>);
+    expect(payButton().hasAttribute("disabled")).toBe(true);
+    expect(screen.getByText(PENDING)).toBeDefined();
+  });
+
+  // Regression: the lock was component state, so Refresh (which swaps the position details, paywall included, for a
+  // skeleton) handed the wallet that had just paid an enabled Pay button again while isActive still read false.
+  it("keeps Pay disabled for the wallet that paid after the paywall remounts", async () => {
+    vi.useFakeTimers();
+    setReady();
+    fake.staleActiveReads = Number.POSITIVE_INFINITY;
+    // The app's client keeps react-query's default 5-minute gcTime for unobserved queries.
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { unmount } = renderPaywall({}, queryClient);
+    fireEvent.click(payButton());
+    await advance(60_000);
+    expect(payButton().hasAttribute("disabled")).toBe(true);
+    unmount();
+    await advance(60 * 60_000);
+    renderPaywall({}, queryClient);
+    expect(payButton().hasAttribute("disabled")).toBe(true);
+    expect(screen.getByText(PENDING)).toBeDefined();
+    const eventsBefore = fake.events.length;
+    fireEvent.click(payButton());
+    await advance(60_000);
+    expect(fake.events.length).toBe(eventsBefore);
+    queryClient.clear();
   });
 });

@@ -1,7 +1,7 @@
-import { AddressInput } from "@scaffold-ui/components";
 import { formatUnits } from "viem";
 import { AdminCard } from "~~/app/admin/_components/AdminCard";
 import { DecimalsHint } from "~~/app/admin/_components/DecimalsHint";
+import { HexAddressInput } from "~~/app/admin/_components/HexAddressInput";
 import { LabeledField } from "~~/app/admin/_components/LabeledField";
 import { FALLBACK_TOKEN_DECIMALS, type PlanForm } from "~~/app/admin/_components/adminForms";
 
@@ -28,7 +28,7 @@ export const PlanCard = ({
 }: PlanCardProps) => (
   <AdminCard title="Update plan" description="Set token plan price, duration, and enable status.">
     <LabeledField label="Token address">
-      <AddressInput
+      <HexAddressInput
         placeholder="Token address"
         value={form.tokenAddress}
         onChange={tokenAddress => onChange({ tokenAddress })}

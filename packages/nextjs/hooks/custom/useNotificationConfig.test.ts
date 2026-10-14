@@ -226,6 +226,47 @@ describe("useNotificationConfig", () => {
     expect(mocks.getAllConfigs).toHaveBeenCalledTimes(1);
   });
 
+  /** Starts a reload of the configs that is answered only when the returned function is called. */
+  const holdReload = async (result: { current: ReturnType<typeof useNotificationConfig> }) => {
+    const reload = deferred<Configs>();
+    mocks.getAllConfigs.mockReturnValueOnce(reload.promise);
+    act(() => void result.current.refetch());
+    await waitFor(() => expect(result.current.isFetching).toBe(true));
+    return reload.resolve;
+  };
+
+  it("keeps a save when a reload that started before it answers after it", async () => {
+    mocks.getAllConfigs.mockResolvedValueOnce({ 1: CONFIG });
+    const { result, queryClient } = await renderLoaded();
+    const answerReload = await holdReload(result);
+
+    await act(() => result.current.updateConfig(10, { enabled: true }));
+    await waitFor(() => expect(result.current.hasConfig(10)).toBe(true));
+    // The reload read the configs before the save reached the server.
+    await act(async () => answerReload({ 1: CONFIG }));
+    await waitFor(() => expect(result.current.isFetching).toBe(false));
+    expect([result.current.hasConfig(1), result.current.hasConfig(10)]).toEqual([true, true]);
+    expect(
+      Object.keys(queryClient.getQueryData<Configs>(["notificationConfigs", ADDRESS.toLowerCase()]) ?? {}),
+    ).toEqual(["1", "10"]);
+    expect(result.current.isError).toBe(false);
+  });
+
+  it("keeps a delete when a reload that started before it answers after it", async () => {
+    mocks.getAllConfigs.mockResolvedValueOnce({ 1: CONFIG, ...OTHER_CONFIGS });
+    const { result, queryClient } = await renderLoaded();
+    const answerReload = await holdReload(result);
+
+    await act(() => result.current.deleteConfig(1));
+    await waitFor(() => expect(result.current.hasConfig(1)).toBe(false));
+    await act(async () => answerReload({ 1: CONFIG, ...OTHER_CONFIGS }));
+    await waitFor(() => expect(result.current.isFetching).toBe(false));
+    expect([result.current.hasConfig(1), result.current.hasConfig(2)]).toEqual([false, true]);
+    expect(
+      Object.keys(queryClient.getQueryData<Configs>(["notificationConfigs", ADDRESS.toLowerCase()]) ?? {}),
+    ).toEqual(["2"]);
+  });
+
   it("reports a save or a delete while it is in flight", async () => {
     const request = deferred<void>();
     mocks.upsertConfig.mockReturnValue(request.promise);

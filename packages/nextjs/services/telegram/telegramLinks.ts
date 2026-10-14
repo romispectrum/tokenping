@@ -144,14 +144,15 @@ export async function upsertUserTelegramLink(params: {
   return true;
 }
 
-/** Lookup errors are reported as "no link". */
+/** Null when the user has no link; throws when the lookup fails, so callers never mistake an outage for "not linked". */
 export async function getLinkByUserId(userId: string): Promise<UserTelegramLink | null> {
   const { data, error } = await getSupabaseServerClient()
     .from("user_telegram_links")
     .select(LINK_COLUMNS)
     .eq("user_id", normalizeAddress(userId))
     .maybeSingle<UserTelegramLinkRow>();
-  return error || !data ? null : rowToLink(data);
+  if (error) throw new Error(`Failed to read the Telegram link: ${error.message}`);
+  return data ? rowToLink(data) : null;
 }
 
 /**

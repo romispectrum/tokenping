@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { selectPaymentPlan } from "~~/services/payments/plans";
+import { findTokenPlan, selectPaymentPlan } from "~~/services/payments/plans";
 
 const TOKEN_A = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const TOKEN_B = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
@@ -42,5 +42,32 @@ describe("selectPaymentPlan", () => {
       token: TOKEN_B,
       plan: { price: 1n, durationSeconds: 2n, enabled: true },
     });
+  });
+});
+
+describe("findTokenPlan", () => {
+  it("returns the plan read for the token, whatever its state", () => {
+    expect(findTokenPlan([success(1n, 2n, true), success(0n, 0n, false)], [TOKEN_A, TOKEN_B], TOKEN_B)).toEqual({
+      price: 0n,
+      durationSeconds: 0n,
+      enabled: false,
+    });
+  });
+
+  it("matches the token address case-insensitively", () => {
+    expect(findTokenPlan([success(1n, 2n, true)], [TOKEN_A], TOKEN_A.toUpperCase().replace("0X", "0x"))).toEqual({
+      price: 1n,
+      durationSeconds: 2n,
+      enabled: true,
+    });
+  });
+
+  it.each([
+    ["the reads are loading", undefined, TOKEN_A],
+    ["the token's read failed", [success(1n, 2n, true), failure], TOKEN_B],
+    ["the token is not a candidate", [success(1n, 2n, true)], TOKEN_C],
+    ["the token has no result", [success(1n, 2n, true)], TOKEN_B],
+  ] as const)("returns null when %s", (_label, results, token) => {
+    expect(findTokenPlan(results, [TOKEN_A, TOKEN_B], token)).toBeNull();
   });
 });

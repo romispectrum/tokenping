@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { notifyManager } from "@tanstack/react-query";
+import { QueryClient, notifyManager } from "@tanstack/react-query";
 import { act } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { useTelegramLink } from "~~/hooks/custom/useTelegramLink";
@@ -12,7 +12,13 @@ const mocks = vi.hoisted(() => ({
   getLinkStatus: vi.fn(),
   disconnect: vi.fn(),
   toasts: [] as string[],
+  /** The wallet wagmi reports as connected right now. */
+  account: undefined as string | undefined,
+  wagmiConfig: {},
 }));
+
+vi.mock("wagmi", () => ({ useConfig: () => mocks.wagmiConfig }));
+vi.mock("wagmi/actions", () => ({ getAccount: () => ({ address: mocks.account }) }));
 
 vi.mock("~~/services/telegram/telegramClient", () => ({
   telegramClient: {
@@ -82,6 +88,7 @@ beforeEach(() => {
   mocks.getLinkStatus.mockReset().mockResolvedValue({ linked: false });
   mocks.disconnect.mockReset().mockResolvedValue(undefined);
   mocks.toasts = [];
+  mocks.account = ADDRESS;
 });
 
 afterEach(() => {
@@ -135,6 +142,59 @@ describe("useTelegramLink: link status", () => {
     await flush();
     expect(mocks.getLinkStatus).toHaveBeenCalledTimes(2);
     expect(first.result.current.isLoaded).toBe(true);
+  });
+
+  it("reports an unknown status, not 'not linked', when the status cannot be read, until a retry succeeds", async () => {
+    const retry = deferred<TelegramLinkStatus>();
+    mocks.getLinkStatus
+      .mockRejectedValueOnce(new Error("Failed to read the Telegram link"))
+      .mockReturnValueOnce(retry.promise);
+    const { result } = await renderLoaded(ADDRESS);
+    expect(result.current).toMatchObject({
+      isLoaded: true,
+      chatId: undefined,
+      isStatusUnknown: true,
+      isCheckingStatus: false,
+    });
+
+    act(() => result.current.retryStatus());
+    await flush();
+    // Still unknown (and loaded) while the retry is in flight, so the Retry UI stays on screen.
+    expect(result.current).toMatchObject({ isLoaded: true, isStatusUnknown: true, isCheckingStatus: true });
+    retry.resolve(LINKED);
+    await flush();
+    expect(result.current).toMatchObject({ chatId: "777", isStatusUnknown: false, isCheckingStatus: false });
+    expect(mocks.getLinkStatus).toHaveBeenCalledTimes(2);
+  });
+
+  it("knows the status once it has been read, even if a later read fails", async () => {
+    mocks.getLinkStatus.mockResolvedValueOnce(LINKED).mockRejectedValueOnce(new Error("down"));
+    const { result } = await renderLoaded(ADDRESS);
+    act(() => result.current.retryStatus());
+    await flush();
+    expect(mocks.getLinkStatus).toHaveBeenCalledTimes(2);
+    expect(result.current).toMatchObject({ chatId: "777", isStatusUnknown: false });
+  });
+
+  it("reports the status as unknown after one failed read, and retries once per Retry, whatever the client's default", async () => {
+    mocks.getLinkStatus.mockRejectedValue(new Error("Failed to read the Telegram link"));
+    // A client with react-query's defaults (like the app's) would retry three times with backoff, hiding the card,
+    // which waits for the first read, and then keeping Retry busy for seconds.
+    const queryClient = new QueryClient();
+    const { result } = await renderLoaded(ADDRESS, queryClient);
+    expect(result.current).toMatchObject({ isLoaded: true, isStatusUnknown: true, isCheckingStatus: false });
+    expect(mocks.getLinkStatus).toHaveBeenCalledTimes(1);
+
+    act(() => result.current.retryStatus());
+    await flush();
+    expect(result.current).toMatchObject({ isStatusUnknown: true, isCheckingStatus: false });
+    expect(mocks.getLinkStatus).toHaveBeenCalledTimes(2);
+    queryClient.clear();
+  });
+
+  it("is never unknown without a wallet", async () => {
+    const { result } = await renderLoaded(undefined);
+    expect(result.current.isStatusUnknown).toBe(false);
   });
 
   it("does not show the previous wallet's link after a wallet switch", async () => {
@@ -304,6 +364,8 @@ describe("useTelegramLink: connect", () => {
     await flush(2000);
 
     act(() => view.result.current.cancelConnect());
+    // The handshake lives in the query cache, which notifies its observers on the next tick.
+    await flush();
     expect(view.result.current).toMatchObject({ isConnecting: false, deepLink: undefined });
     slow.resolve(LINKED);
     await flush(20_000);
@@ -353,6 +415,180 @@ describe("useTelegramLink: connect", () => {
     await flush(20_000);
     expect(mocks.getLinkStatus).toHaveBeenCalledTimes(1);
     expect(mocks.toasts).toEqual([]);
+  });
+});
+
+describe("useTelegramLink: handshake shared between cards", () => {
+  const HANDSHAKE_KEY = ["telegramLinkHandshake", ADDRESS.toLowerCase()];
+
+  it("keeps waiting in a card mounted after the one that connected unmounts (a chain switch), with one toast", async () => {
+    const queryClient = createTestQueryClient();
+    const first = await renderLoaded(ADDRESS, queryClient);
+    await startConnect(first);
+    expect(queryClient.getQueryData(HANDSHAKE_KEY)).toEqual({ deepLink: DEEP_LINK, deadline: NOW + TEN_MINUTES });
+    first.unmount();
+
+    // Shared under the normalized address, so the casing of the address does not matter.
+    const second = await renderLoaded(ADDRESS.toLowerCase(), queryClient);
+    expect(second.result.current).toMatchObject({ isConnecting: true, deepLink: DEEP_LINK });
+    const calls = mocks.getLinkStatus.mock.calls.length;
+    await flush(2000);
+    expect(mocks.getLinkStatus).toHaveBeenCalledTimes(calls + 1);
+
+    mocks.getLinkStatus.mockResolvedValue(LINKED);
+    await flush(2000);
+    expect(second.result.current).toMatchObject({ chatId: "777", isConnecting: false, deepLink: undefined });
+    expect(mocks.toasts).toEqual(["success: Telegram connected as @bob"]);
+    expect(queryClient.getQueryData(HANDSHAKE_KEY)).toBeNull();
+    expect(popup.close).not.toHaveBeenCalled();
+  });
+
+  it("gives up at the original deadline in a remounted card", async () => {
+    const queryClient = createTestQueryClient();
+    const first = await renderLoaded(ADDRESS, queryClient);
+    await startConnect(first);
+    await flush(3 * 60 * 1000);
+    first.unmount();
+
+    const second = await renderLoaded(ADDRESS, queryClient);
+    await flush(TEN_MINUTES - 3 * 60 * 1000 - 1);
+    expect(second.result.current.isConnecting).toBe(true);
+    await flush(1);
+    expect(second.result.current).toMatchObject({ isConnecting: false, deepLink: undefined });
+    expect(mocks.toasts).toEqual(["error: Telegram link timed out. Try again."]);
+    expect(queryClient.getQueryData(HANDSHAKE_KEY)).toBeNull();
+  });
+
+  it("announces the link once when several cards are mounted", async () => {
+    const queryClient = createTestQueryClient();
+    const first = await renderLoaded(ADDRESS, queryClient);
+    const second = render(ADDRESS, queryClient);
+    await startConnect(first);
+    expect(second.result.current).toMatchObject({ isConnecting: true, deepLink: DEEP_LINK });
+
+    mocks.getLinkStatus.mockResolvedValue(LINKED);
+    await flush(2000);
+    expect([first.result.current.isConnecting, second.result.current.isConnecting]).toEqual([false, false]);
+    expect([first.result.current.chatId, second.result.current.chatId]).toEqual(["777", "777"]);
+    expect(mocks.toasts).toEqual(["success: Telegram connected as @bob"]);
+  });
+
+  it("times out once when several cards are mounted", async () => {
+    const queryClient = createTestQueryClient();
+    const first = await renderLoaded(ADDRESS, queryClient);
+    const second = render(ADDRESS, queryClient);
+    await startConnect(first);
+    expect(second.result.current.isConnecting).toBe(true);
+    await flush(TEN_MINUTES);
+    expect([first.result.current.isConnecting, second.result.current.isConnecting]).toEqual([false, false]);
+    expect(mocks.toasts).toEqual(["error: Telegram link timed out. Try again."]);
+  });
+
+  it("cancelConnect in one card stops the handshake in every card", async () => {
+    const queryClient = createTestQueryClient();
+    const first = await renderLoaded(ADDRESS, queryClient);
+    const second = render(ADDRESS, queryClient);
+    await startConnect(first);
+    act(() => second.result.current.cancelConnect());
+    await flush();
+    expect([first.result.current.isConnecting, second.result.current.isConnecting]).toEqual([false, false]);
+    const calls = mocks.getLinkStatus.mock.calls.length;
+    await flush(20_000);
+    expect(mocks.getLinkStatus).toHaveBeenCalledTimes(calls);
+    expect(mocks.toasts).toEqual([]);
+  });
+
+  it.each([
+    ["switches", OTHER_ADDRESS],
+    ["disconnects", undefined],
+  ])("ends the handshake when the wallet %s, so it does not resume when the wallet comes back", async (_, next) => {
+    const view = await renderLoaded(ADDRESS);
+    await startConnect(view);
+    mocks.account = next;
+    view.rerender({ address: next });
+    await flush();
+    expect(view.result.current).toMatchObject({ isConnecting: false, deepLink: undefined });
+
+    mocks.account = ADDRESS;
+    view.rerender({ address: ADDRESS });
+    await flush();
+    expect(view.result.current).toMatchObject({ isConnecting: false, deepLink: undefined });
+    const calls = mocks.getLinkStatus.mock.calls.length;
+    mocks.getLinkStatus.mockResolvedValue(LINKED);
+    await flush(20_000);
+    expect(mocks.getLinkStatus).toHaveBeenCalledTimes(calls);
+    expect(view.queryClient.getQueryData(HANDSHAKE_KEY)).toBeNull();
+    expect(mocks.toasts).toEqual([]);
+  });
+
+  // app/aave/page.tsx renders no card without a connected wallet, and AavePositions none while the new wallet's
+  // positions load or fail to, so the wallet can go away without any card being rendered for the next one.
+  it.each([
+    ["disconnects", undefined],
+    ["switches", OTHER_ADDRESS],
+  ])("ends the handshake when the wallet %s as its last card unmounts", async (_, next) => {
+    const queryClient = createTestQueryClient();
+    const view = await renderLoaded(ADDRESS, queryClient);
+    await startConnect(view);
+    mocks.account = next;
+    view.unmount();
+    expect(queryClient.getQueryData(HANDSHAKE_KEY)).toBeNull();
+
+    mocks.account = ADDRESS;
+    const back = await renderLoaded(ADDRESS, queryClient);
+    expect(back.result.current).toMatchObject({ isConnecting: false, deepLink: undefined });
+    const calls = mocks.getLinkStatus.mock.calls.length;
+    mocks.getLinkStatus.mockResolvedValue(LINKED);
+    await flush(20_000);
+    expect(mocks.getLinkStatus).toHaveBeenCalledTimes(calls);
+    expect(mocks.toasts).toEqual([]);
+  });
+
+  it("does not report a timeout for a handshake that a disconnect ended", async () => {
+    const queryClient = createTestQueryClient();
+    const view = await renderLoaded(ADDRESS, queryClient);
+    await startConnect(view);
+    await flush(9 * 60 * 1000);
+    mocks.account = undefined;
+    view.unmount();
+    await flush(2 * 60 * 1000);
+
+    mocks.account = ADDRESS;
+    const back = await renderLoaded(ADDRESS, queryClient);
+    expect(back.result.current.isConnecting).toBe(false);
+    expect(mocks.toasts).toEqual([]);
+  });
+
+  it("ends the previous wallet's handshake when a card mounts for another wallet", async () => {
+    const queryClient = createTestQueryClient();
+    const first = await renderLoaded(ADDRESS, queryClient);
+    await startConnect(first);
+    first.unmount();
+    (await renderLoaded(OTHER_ADDRESS, queryClient)).unmount();
+
+    const back = await renderLoaded(ADDRESS, queryClient);
+    expect(back.result.current).toMatchObject({ isConnecting: false, deepLink: undefined });
+    expect(queryClient.getQueryData(HANDSHAKE_KEY)).toBeNull();
+  });
+
+  it("ignores a link token that arrives after the wallet switched", async () => {
+    const token = deferred<typeof LINK_TOKEN>();
+    mocks.createLinkToken.mockReturnValue(token.promise);
+    const view = await renderLoaded(ADDRESS);
+    act(() => view.result.current.connect());
+    mocks.account = OTHER_ADDRESS;
+    view.rerender({ address: OTHER_ADDRESS });
+    await flush();
+    expect(popup.close).toHaveBeenCalledTimes(1);
+
+    token.resolve(LINK_TOKEN);
+    await flush();
+    expect(popup.location.href).toBe("");
+    mocks.account = ADDRESS;
+    view.rerender({ address: ADDRESS });
+    await flush();
+    expect(view.result.current).toMatchObject({ isConnecting: false, deepLink: undefined });
+    expect(view.queryClient.getQueryData(HANDSHAKE_KEY) ?? null).toBeNull();
   });
 });
 

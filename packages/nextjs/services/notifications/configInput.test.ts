@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildConfigUpdate, validateNotificationForm } from "~~/components/custom/notifications/notificationForm";
 import { type ConfigInput, parseConfigInput } from "~~/services/notifications/configInput";
 
 const DEFAULTS = {
@@ -88,8 +89,45 @@ describe("parseConfigInput", () => {
     ["whitespace after a Signal prefix", { services: ["signal"], signalRecipient: "@ alice.42" }, SIGNAL_ERROR],
     ["a doubled Signal prefix", { services: ["signal"], signalRecipient: "@@alice.42" }, SIGNAL_ERROR],
     ["a selected Signal username that is not a string", { services: ["signal"], signalRecipient: 42 }, SIGNAL_ERROR],
+    ["a selected email over 254 characters", { services: ["email"], email: `${"a".repeat(250)}@b.co` }, EMAIL_ERROR],
+    [
+      "a selected Signal username over 64 characters",
+      { services: ["signal"], signalRecipient: `alice.${"4".repeat(59)}` },
+      SIGNAL_ERROR,
+    ],
   ])("rejects %s", (_label, input, error) => {
     expect(parseConfigInput(input)).toStrictEqual({ error });
+  });
+
+  it("accepts a selected email of exactly 254 characters and a Signal username of exactly 64", () => {
+    const email = `${"a".repeat(249)}@b.co`;
+    const signalRecipient = `alice.${"4".repeat(58)}`;
+    expect(parseConfigInput({ services: ["email", "signal"], email, signalRecipient })).toStrictEqual({
+      value: { ...DEFAULTS, services: ["email", "signal"], email, signalRecipient },
+    });
+  });
+
+  it("rejects a 100k-character crafted email in under 50ms", () => {
+    const start = performance.now();
+    expect(parseConfigInput({ services: ["email"], email: `a@${"a.".repeat(50_000)}@` })).toStrictEqual({
+      error: EMAIL_ERROR,
+    });
+    expect(performance.now() - start).toBeLessThan(50);
+  });
+
+  // The client validates and builds the payload with notificationForm; anything it lets through must pass here.
+  it.each([
+    "alice.42",
+    " u:@alice.42 ",
+    `alice.${"4".repeat(58)}`,
+    `alice.${"4".repeat(59)}`,
+    `@alice.${"4".repeat(58)}`,
+    `u:@alice.${"4".repeat(59)}`,
+  ])("accepts every Signal username the client form accepts, and only those: %j", signalRecipient => {
+    const clientError = validateNotificationForm({ services: ["signal"], email: "", signalRecipient });
+    const payload = buildConfigUpdate({ services: ["signal"], email: "", signalRecipient, threshold: 1.5 });
+    const server = parseConfigInput(payload);
+    expect("value" in server).toBe(clientError === null);
   });
 
   it("reports the first problem in field order: services, threshold, email, Signal", () => {

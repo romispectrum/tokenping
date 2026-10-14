@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { internalError, isChainId, jsonError, parseChainId, parseUserId } from "~~/services/api/server/http";
+import {
+  internalError,
+  isChainId,
+  jsonError,
+  parseChainId,
+  parseUserId,
+  readJsonObject,
+} from "~~/services/api/server/http";
 
 const read = async (res: Response) => ({
   status: res.status,
@@ -26,6 +33,26 @@ describe("jsonError / internalError", () => {
       type: "application/json",
       text: JSON.stringify({ error: message }),
     });
+  });
+});
+
+describe("readJsonObject", () => {
+  const request = (body?: string) => new Request("http://localhost/api", { method: "POST", body });
+
+  it("returns a JSON object body as parsed", async () => {
+    expect(await readJsonObject(request('{"userId":"0xabc","chainId":1}'))).toEqual({ userId: "0xabc", chainId: 1 });
+  });
+
+  it.each([
+    ["an empty body", undefined],
+    ["malformed JSON", "{"],
+    ["JSON null", "null"],
+    ["an array", '[{"userId":"0xabc"}]'],
+    ["a number", "5"],
+    ["a string", '"0xabc"'],
+    ["a boolean", "true"],
+  ])("reads %s as {}", async (_label, body) => {
+    expect(await readJsonObject(request(body))).toEqual({});
   });
 });
 

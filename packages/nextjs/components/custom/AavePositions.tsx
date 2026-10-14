@@ -11,10 +11,10 @@ import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
 import { formatUSD } from "~~/utils/format";
 
 export const AavePositions = () => {
-  const { positions, isLoading, error, totalNetWorthUSD, totalCollateralUSD, totalDebtUSD, refetch } =
+  const { account, positions, isLoading, error, totalNetWorthUSD, totalCollateralUSD, totalDebtUSD, refetch } =
     useAavePositions();
   const { hasConfig, isLoaded: configsLoaded } = useNotificationConfig();
-  const [selectedChainId, setSelectedChainId] = useSelectedChainId(positions);
+  const [selectedChainId, setSelectedChainId] = useSelectedChainId(positions, account);
 
   const positionsWithData = useMemo(() => positions.filter(p => p.hasPosition), [positions]);
 
@@ -24,6 +24,10 @@ export const AavePositions = () => {
   );
 
   const hasNotification = (chainId: number) => configsLoaded && hasConfig(chainId);
+
+  // With no network read there is nothing to total or select, so the error box stands alone. A failed refresh keeps
+  // the last positions on screen below it.
+  const isTotalOutage = error !== null && positions.length === 0;
 
   return (
     <div className="w-full max-w-7xl mx-auto px-3 sm:px-4">
@@ -63,64 +67,66 @@ export const AavePositions = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <aside className="lg:col-span-5 space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            <StatCard
-              label="Total Supplied"
-              value={formatUSD(totalCollateralUSD)}
-              variant="summary"
-              tone="collateral"
-            />
-            <StatCard label="Total Borrowed" value={formatUSD(totalDebtUSD)} variant="summary" tone="debt" />
-            <StatCard label="Net Worth" value={formatUSD(totalNetWorthUSD)} variant="summary" tone="netWorth" />
-          </div>
-
-          <div className="rounded-2xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 backdrop-blur-xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-base-content dark:text-white">Networks</h3>
-              <p className="text-xs text-base-content/60 dark:text-gray-500">{positionsWithData.length} active</p>
+      {!isTotalOutage && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <aside className="lg:col-span-5 space-y-4">
+            <div className="grid grid-cols-3 gap-3">
+              <StatCard
+                label="Total Supplied"
+                value={formatUSD(totalCollateralUSD)}
+                variant="summary"
+                tone="collateral"
+              />
+              <StatCard label="Total Borrowed" value={formatUSD(totalDebtUSD)} variant="summary" tone="debt" />
+              <StatCard label="Net Worth" value={formatUSD(totalNetWorthUSD)} variant="summary" tone="netWorth" />
             </div>
 
+            <div className="rounded-2xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 backdrop-blur-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-base-content dark:text-white">Networks</h3>
+                <p className="text-xs text-base-content/60 dark:text-gray-500">{positionsWithData.length} active</p>
+              </div>
+
+              {isLoading ? (
+                <PositionsSkeleton columns={1} />
+              ) : (
+                <div className="space-y-2">
+                  {positions.map(p => (
+                    <NetworkSummaryRow
+                      key={p.chainId}
+                      position={p}
+                      isSelected={p.chainId === selectedChainId}
+                      onSelect={() => setSelectedChainId(p.chainId)}
+                      hasNotification={hasNotification(p.chainId)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {!isLoading && !error && positionsWithData.length === 0 && (
+                <div className="mt-4 text-center text-base-content/70 dark:text-gray-500 text-sm">
+                  No active Aave positions detected on supported networks.
+                </div>
+              )}
+            </div>
+          </aside>
+
+          <section className="lg:col-span-7">
             {isLoading ? (
-              <PositionsSkeleton columns={1} />
+              <PositionsSkeleton columns={2} />
+            ) : selectedPosition ? (
+              <PositionDetails
+                position={selectedPosition}
+                hasNotificationConfig={hasNotification(selectedPosition.chainId)}
+              />
             ) : (
-              <div className="space-y-2">
-                {positions.map(p => (
-                  <NetworkSummaryRow
-                    key={p.chainId}
-                    position={p}
-                    isSelected={p.chainId === selectedChainId}
-                    onSelect={() => setSelectedChainId(p.chainId)}
-                    hasNotification={hasNotification(p.chainId)}
-                  />
-                ))}
+              <div className="rounded-2xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 backdrop-blur-xl p-6 text-center text-base-content/70 dark:text-gray-500">
+                <p className="text-sm">Select a network on the left to view its Aave position.</p>
               </div>
             )}
-
-            {!isLoading && !error && positionsWithData.length === 0 && (
-              <div className="mt-4 text-center text-base-content/70 dark:text-gray-500 text-sm">
-                No active Aave positions detected on supported networks.
-              </div>
-            )}
-          </div>
-        </aside>
-
-        <section className="lg:col-span-7">
-          {isLoading ? (
-            <PositionsSkeleton columns={2} />
-          ) : selectedPosition ? (
-            <PositionDetails
-              position={selectedPosition}
-              hasNotificationConfig={hasNotification(selectedPosition.chainId)}
-            />
-          ) : (
-            <div className="rounded-2xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 backdrop-blur-xl p-6 text-center text-base-content/70 dark:text-gray-500">
-              <p className="text-sm">Select a network on the left to view its Aave position.</p>
-            </div>
-          )}
-        </section>
-      </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 };

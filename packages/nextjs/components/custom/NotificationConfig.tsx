@@ -91,7 +91,7 @@ const NotificationSettings = ({
   };
 
   const updateDraft = (patch: Partial<NotificationFormState>) => setDraft(prev => ({ ...prev, ...patch }));
-  const submission = { ...draft, telegramChatId: telegram.chatId };
+  const submission = { ...draft, telegramChatId: telegram.chatId, telegramStatusUnknown: telegram.isStatusUnknown };
 
   const handleStore = async () => {
     const validationError = validateNotificationForm(submission);
@@ -161,8 +161,11 @@ const NotificationSettings = ({
               chatId={telegram.chatId}
               username={telegram.username}
               deepLink={telegram.deepLink}
+              isStatusUnknown={telegram.isStatusUnknown}
+              isCheckingStatus={telegram.isCheckingStatus}
               isConnecting={telegram.isConnecting}
               isDisconnecting={telegram.isDisconnecting}
+              onRetryStatus={telegram.retryStatus}
               onConnect={telegram.connect}
               onDisconnect={telegram.disconnect}
             />
@@ -208,6 +211,8 @@ const NotificationSettings = ({
 
 export const NotificationConfig = (props: NotificationConfigProps) => {
   const { address } = useAccount();
-  // One instance per wallet, so a draft or a Telegram handshake never carries over to another account.
+  // One instance per wallet, so a draft never carries over to another account. The Telegram handshake outlives a
+  // remount for the same wallet (a chain switch, a positions refresh); useTelegramLink ends it once the wallet
+  // disconnects or switches, even if no card is left on the page.
   return <NotificationSettings key={address ? normalizeAddress(address) : ""} address={address} {...props} />;
 };

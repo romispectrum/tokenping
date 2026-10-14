@@ -49,10 +49,15 @@ describe("POST /api/telegram/link-token", () => {
     expect(await read(await post(body))).toEqual(json(400, { error: "Missing or invalid userId" }));
   });
 
-  it("returns 500 for a JSON null body", async () => {
-    expect(await read(await post("null"))).toEqual(
-      json(500, { error: "Cannot destructure property 'userId' of 'body' as it is null." }),
-    );
+  it.each([
+    ["JSON null", "null"],
+    ["an array", JSON.stringify([{ userId: LOWER }])],
+    ["a number", "5"],
+    ["a string", JSON.stringify(LOWER)],
+  ])("returns 400 for a body that is %s, without the access check", async (_label, body) => {
+    expect(await read(await post(body))).toEqual(json(400, { error: "Missing or invalid userId" }));
+    expect(isAccessActive).not.toHaveBeenCalled();
+    expect(fakeSupabase.queries).toHaveLength(0);
   });
 
   it("checks access (trimmed raw-case id) before the Telegram configuration", async () => {

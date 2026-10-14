@@ -2,9 +2,9 @@ import { DEFAULT_HEALTH_FACTOR_THRESHOLD, NOTIFICATION_SERVICES } from "~~/const
 import type { NotificationService } from "~~/types/notifications";
 import { clampThreshold } from "~~/utils/notifications/threshold";
 import {
-  SIGNAL_USERNAME_REGEX,
   isNotificationService,
   isValidEmail,
+  isValidSignalUsername,
   normalizeSignalUsername,
 } from "~~/utils/notifications/validation";
 
@@ -37,8 +37,8 @@ const optionalText = (raw: unknown, normalize: (value: string) => string) =>
 
 /**
  * Validates a config write and normalizes it for storage, or returns the first problem (services, threshold, email,
- * Signal). Recipients are checked only for the selected services; the others are stored without validation.
- * The Signal username is normalized once and that value is both validated and stored.
+ * Signal). Recipients are checked only for the selected services, with the shared length-capped helpers; the others
+ * are stored without validation. isValidSignalUsername normalizes the raw Signal input exactly as it is stored.
  */
 export const parseConfigInput = (input: ConfigInput): { error: string } | { value: ConfigValues } => {
   const services = input.services ?? [];
@@ -47,15 +47,13 @@ export const parseConfigInput = (input: ConfigInput): { error: string } | { valu
   const threshold = input.healthFactorThreshold ?? DEFAULT_HEALTH_FACTOR_THRESHOLD;
   if (typeof threshold !== "number" || !Number.isFinite(threshold)) return { error: THRESHOLD_ERROR };
 
-  const email = optionalText(input.email, value => value.trim());
-  if (services.includes("email") && (typeof input.email !== "string" || !email || !isValidEmail(email))) {
+  if (services.includes("email") && !(typeof input.email === "string" && isValidEmail(input.email.trim()))) {
     return { error: EMAIL_ERROR };
   }
 
-  const signalRecipient = optionalText(input.signalRecipient, normalizeSignalUsername);
   if (
     services.includes("signal") &&
-    (typeof input.signalRecipient !== "string" || !signalRecipient || !SIGNAL_USERNAME_REGEX.test(signalRecipient))
+    !(typeof input.signalRecipient === "string" && isValidSignalUsername(input.signalRecipient))
   ) {
     return { error: SIGNAL_ERROR };
   }
@@ -65,8 +63,8 @@ export const parseConfigInput = (input: ConfigInput): { error: string } | { valu
       enabled: input.enabled ?? true,
       services,
       healthFactorThreshold: clampThreshold(threshold),
-      email,
-      signalRecipient,
+      email: optionalText(input.email, value => value.trim()),
+      signalRecipient: optionalText(input.signalRecipient, normalizeSignalUsername),
     },
   };
 };
