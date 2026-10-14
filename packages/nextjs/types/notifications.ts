@@ -15,12 +15,15 @@ export type NotificationConfig = {
   email?: string;
   /** Signal username for notifications (e.g. alice.42, stored without @ prefix) */
   signalRecipient?: string;
-  /**
-   * Telegram link status for this user.
-   * NOTE: Telegram is linked at the USER level (one chat per wallet across all chains),
-   * so these fields are returned read-only from the API by joining `user_telegram_links`.
-   * They are not stored per-chain in `notification_configs`.
-   */
-  telegramChatId?: string;
-  telegramUsername?: string;
+};
+
+/**
+ * GET /api/telegram/link response. Telegram is linked per wallet (one chat across all chains), so it is not part of
+ * the per-chain NotificationConfig.
+ */
+export type TelegramLinkStatus = {
+  linked: boolean;
+  chatId?: string;
+  username?: string | null;
+  linkedAt?: string;
 };

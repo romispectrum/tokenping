@@ -6,7 +6,6 @@ import {
   isValidEmail,
   isValidSignalUsername,
   normalizeSignalUsername,
-  stripLeadingAt,
 } from "~~/utils/notifications/validation";
 
 describe("EMAIL_REGEX / isValidEmail", () => {
@@ -57,67 +56,90 @@ describe("SIGNAL_USERNAME_REGEX", () => {
   });
 });
 
-describe("normalizeSignalUsername (server semantics)", () => {
+describe("normalizeSignalUsername", () => {
   it.each([
     ["alice.42", "alice.42"],
     ["@alice.42", "alice.42"],
     ["u:alice.42", "alice.42"],
     ["u:@alice.42", "alice.42"],
     ["  @alice.42  ", "alice.42"],
-    ["@@alice.42", "alice.42"],
+    [" u:@alice.42 ", "alice.42"],
     ["", ""],
     ["   ", ""],
+    ["@", ""],
+    ["u:", ""],
+    ["u:@", ""],
+    ["@u:", "u:"],
   ])("normalizes %j to %j", (raw, expected) => {
     expect(normalizeSignalUsername(raw)).toBe(expected);
   });
 
-  it("strips any leading run of u, : and @ characters", () => {
-    // BUG(B3.1): intended to strip only the literal "@" / "u:" prefixes, but corrupts usernames starting with "u".
-    expect(normalizeSignalUsername("ursula.42")).toBe("rsula.42");
-    expect(normalizeSignalUsername("@uma.01")).toBe("ma.01");
-    expect(normalizeSignalUsername("uu.10")).toBe(".10");
-    expect(normalizeSignalUsername(":@u:bob.12")).toBe("bob.12");
+  // Regression for B3.1: the old /^[u:@]+/ stripped any leading run of "u", ":" and "@".
+  it.each([
+    ["ursula.42", "ursula.42"],
+    ["@uma.01", "uma.01"],
+    ["uu.10", "uu.10"],
+    ["u:ursula.42", "ursula.42"],
+    ["u:@uma.01", "uma.01"],
+  ])("keeps usernames that start with u intact: %j -> %j", (raw, expected) => {
+    expect(normalizeSignalUsername(raw)).toBe(expected);
+  });
+
+  it.each([
+    ["@@alice.42", "@alice.42"],
+    ["u:u:alice.42", "u:alice.42"],
+    ["@u:alice.42", "u:alice.42"],
+    [":@u:bob.12", ":@u:bob.12"],
+  ])("strips each prefix at most once and only in the order u: then @: %j -> %j", (raw, expected) => {
+    expect(normalizeSignalUsername(raw)).toBe(expected);
+  });
+
+  it.each([
+    ["@@alice.42", "@alice.42", "alice.42"],
+    ["u:u:alice.42", "u:alice.42", "alice.42"],
+    ["@u:alice.42", "u:alice.42", "alice.42"],
+    ["u: alice.42", " alice.42", "alice.42"],
+  ])("is not idempotent, so callers normalize once: %j -> %j -> %j", (raw, once, twice) => {
+    expect(normalizeSignalUsername(raw)).toBe(once);
+    expect(normalizeSignalUsername(once)).toBe(twice);
+  });
+
+  it("keeps whitespace that follows a prefix", () => {
+    expect(normalizeSignalUsername("u: alice.42")).toBe(" alice.42");
+    expect(normalizeSignalUsername("@ alice.42")).toBe(" alice.42");
   });
 
   it("is case-sensitive: an uppercase U is kept", () => {
     expect(normalizeSignalUsername("Ursula.42")).toBe("Ursula.42");
-  });
-});
-
-describe("stripLeadingAt (client semantics)", () => {
-  it.each([
-    ["alice.42", "alice.42"],
-    ["@alice.42", "alice.42"],
-    ["  @alice.42 ", "alice.42"],
-    ["@@alice.42", "@alice.42"],
-    ["u:alice.42", "u:alice.42"],
-    ["ursula.42", "ursula.42"],
-    ["@", ""],
-    ["", ""],
-  ])("normalizes %j to %j", (raw, expected) => {
-    expect(stripLeadingAt(raw)).toBe(expected);
+    expect(normalizeSignalUsername("U:alice.42")).toBe("U:alice.42");
   });
 });
 
 describe("isValidSignalUsername", () => {
-  it.each(["alice.42", "@alice.42", " u:alice.42 ", "u:@alice.42"])("accepts %j", raw => {
-    expect(isValidSignalUsername(raw)).toBe(true);
-  });
+  it.each(["alice.42", "@alice.42", " u:alice.42 ", "u:@alice.42", "ursula.42", "uu.10", "@uma.01"])(
+    "accepts %j",
+    raw => {
+      expect(isValidSignalUsername(raw)).toBe(true);
+    },
+  );
 
-  it.each(["", "@", "alice", "uu.10", "_x.42"])("rejects %j", raw => {
-    expect(isValidSignalUsername(raw)).toBe(false);
-  });
+  it.each(["", "@", "u:", "alice", "_x.42", "@@alice.42", "u: alice.42", "@ alice.42", "U:alice.42"])(
+    "rejects %j",
+    raw => {
+      expect(isValidSignalUsername(raw)).toBe(false);
+    },
+  );
 
-  it("validates the corrupted form of usernames starting with u", () => {
-    // BUG(B3.1): "ursula.42" is accepted because its normalized form "rsula.42" is valid.
-    expect(isValidSignalUsername("ursula.42")).toBe(true);
-  });
-
-  it("is more lenient than the client check, which only strips one '@'", () => {
-    const clientCheck = (raw: string) => SIGNAL_USERNAME_REGEX.test(stripLeadingAt(raw));
-    expect(clientCheck("u:alice.42")).toBe(false);
-    expect(isValidSignalUsername("u:alice.42")).toBe(true);
-  });
+  // The hazard in validating an already normalized value: it passes although the value that would be sent does not.
+  it.each(["@@alice.42", "u:u:alice.42", "@u:alice.42", "u: alice.42"])(
+    "rejects %j but accepts its normalized form, which is not a valid username",
+    raw => {
+      const normalized = normalizeSignalUsername(raw);
+      expect(isValidSignalUsername(raw)).toBe(false);
+      expect(SIGNAL_USERNAME_REGEX.test(normalized)).toBe(false);
+      expect(isValidSignalUsername(normalized)).toBe(true);
+    },
+  );
 });
 
 describe("isNotificationService", () => {

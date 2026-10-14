@@ -7,19 +7,17 @@ export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const SIGNAL_USERNAME_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9_]{0,29}\.\d{2,}$/;
 
 /**
- * Server-side Signal username normalization.
- * BUG(B3.1): the character class strips ANY leading run of "u", ":" and "@", not just the "@" / "u:" prefixes,
- * so "ursula.42" becomes "rsula.42".
+ * Strips an optional literal "u:" prefix (signal-cli's username form) and then an optional "@", e.g.
+ * "u:@alice.42" -> "alice.42". Whitespace after a prefix is kept, so the result fails SIGNAL_USERNAME_REGEX.
+ * Not idempotent ("@@alice.42" -> "@alice.42" -> "alice.42"): normalize once and test the result with
+ * SIGNAL_USERNAME_REGEX, so the value that is validated is the value that is stored or sent.
  */
-export const normalizeSignalUsername = (raw: string) => raw.trim().replace(/^[u:@]+/, "");
-
-/** Client-side Signal username normalization: only a single leading "@" is removed. */
-export const stripLeadingAt = (raw: string) => raw.trim().replace(/^@/, "");
+export const normalizeSignalUsername = (raw: string) => raw.trim().replace(/^(?:u:)?@?/, "");
 
 /** Does not trim; callers pass the trimmed address. */
 export const isValidEmail = (value: string) => EMAIL_REGEX.test(value);
 
-/** Uses the server normalization (normalizeSignalUsername) before testing. */
+/** Takes the raw input and normalizes it itself; passing an already normalized value would strip a second prefix. */
 export const isValidSignalUsername = (raw: string) => SIGNAL_USERNAME_REGEX.test(normalizeSignalUsername(raw));
 
 export const isNotificationService = (value: unknown): value is NotificationService =>
