@@ -10,13 +10,14 @@ import {
 
 const WAD = 10n ** 18n;
 
-// Verbatim copy of the inline logic in services/aave/getHealthFactor.ts and hooks/custom/useAavePositions.ts.
+// Verbatim copy of the logic formerly inlined in services/aave/getHealthFactor.ts and hooks/custom/useAavePositions.ts.
 const legacyFormatHealthFactor = (healthFactor: bigint) =>
   healthFactor >= BigInt("0xffffffffffffffffffffffffffffffff")
     ? "∞"
     : parseFloat(formatUnits(healthFactor, 18)).toFixed(2);
 
-// Verbatim copy of the cron's comparison in services/notifications/runNotificationCheck.ts (alert when NOT skipped).
+// Verbatim copy of the comparison formerly inlined in services/notifications/runNotificationCheck.ts
+// (alert when NOT skipped).
 const legacyCronAlerts = (healthFactor: string, threshold: number) => {
   const hfNum = healthFactor === "∞" ? Infinity : parseFloat(healthFactor);
   return !(Number.isNaN(hfNum) || hfNum >= threshold);

@@ -1,14 +1,9 @@
 import type { ReactNode } from "react";
-import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
 import { PageBackground } from "~~/components/custom/PageBackground";
+import { renderStaticMarkup } from "~~/utils/testing/render";
 
-// @types/react-dom is not installed, so load the server renderer untyped and declare the one function used.
-const { renderToStaticMarkup } = createRequire(import.meta.url)("react-dom/server") as {
-  renderToStaticMarkup: (node: ReactNode) => string;
-};
-
-// Verbatim copy of the wrapper and blobs inlined in app/page.tsx and app/aave/page.tsx.
+// Verbatim copy of the wrapper and blobs formerly inlined in app/page.tsx and app/aave/page.tsx.
 const LegacyBackground = ({ children }: { children: ReactNode }) => (
   <div className="min-h-screen bg-base-200 dark:bg-gradient-to-br dark:from-gray-950 dark:via-gray-900 dark:to-indigo-950">
     <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -32,13 +27,13 @@ const Content = () => <div className="relative z-10 flex flex-col items-center g
 describe("PageBackground", () => {
   it("renders the same markup as the inline page background", () => {
     expect(
-      renderToStaticMarkup(
+      renderStaticMarkup(
         <PageBackground>
           <Content />
         </PageBackground>,
       ),
     ).toBe(
-      renderToStaticMarkup(
+      renderStaticMarkup(
         <LegacyBackground>
           <Content />
         </LegacyBackground>,
@@ -47,7 +42,7 @@ describe("PageBackground", () => {
   });
 
   it("renders children after the blob layer", () => {
-    expect(renderToStaticMarkup(<PageBackground>child</PageBackground>)).toBe(
+    expect(renderStaticMarkup(<PageBackground>child</PageBackground>)).toBe(
       '<div class="min-h-screen bg-base-200 dark:bg-gradient-to-br dark:from-gray-950 dark:via-gray-900 dark:to-indigo-950">' +
         '<div class="fixed inset-0 overflow-hidden pointer-events-none">' +
         '<div class="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 dark:bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>' +

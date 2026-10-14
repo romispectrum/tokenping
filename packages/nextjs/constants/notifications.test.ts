@@ -33,7 +33,7 @@ describe("notification constants", () => {
     expect(AVAILABLE_SERVICES.map(service => service.id)).toEqual(NOTIFICATION_SERVICES);
   });
 
-  it("matches the threshold bounds inlined in NotificationConfig", () => {
+  it("matches the threshold bounds formerly inlined in NotificationConfig", () => {
     expect(HEALTH_FACTOR_THRESHOLD_MIN).toBe(1.1);
     expect(HEALTH_FACTOR_THRESHOLD_MAX).toBe(10);
     expect(THRESHOLD_SLIDER_MIN).toBe(1.1);
@@ -41,7 +41,7 @@ describe("notification constants", () => {
     expect(THRESHOLD_SLIDER_STEP).toBe(0.1);
   });
 
-  it("matches the Telegram polling timings inlined in NotificationConfig", () => {
+  it("matches the Telegram polling timings formerly inlined in NotificationConfig", () => {
     expect(TELEGRAM_LINK_POLL_INTERVAL_MS).toBe(2_000);
     expect(TELEGRAM_LINK_POLL_TIMEOUT_MS).toBe(120_000);
   });

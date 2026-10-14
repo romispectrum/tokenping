@@ -11,7 +11,7 @@ const legacyFormatTokenAmount = (amount: bigint, decimals: number) => {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits }).format(asNumber);
 };
 
-// Verbatim copy of the inline formatter in services/notifications/runNotificationCheck.ts.
+// Verbatim copy of the formatter formerly inlined in services/notifications/runNotificationCheck.ts.
 const legacyCronTimestamp = (date: Date) =>
   new Intl.DateTimeFormat("en-US", {
     timeZone: "UTC",
