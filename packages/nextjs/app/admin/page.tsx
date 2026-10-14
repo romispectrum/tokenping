@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { NextPage } from "next";
-import { erc20Abi, isAddress } from "viem";
+import { type Hash, erc20Abi, isAddress } from "viem";
 import { useAccount, useBalance, useReadContract } from "wagmi";
 import { ContractOverview } from "~~/app/admin/_components/ContractOverview";
 import { MaxDurationCard } from "~~/app/admin/_components/MaxDurationCard";
@@ -25,12 +25,14 @@ import {
 import { PAYMENT_CHAIN_ID, PAYMENT_CONTRACT_ADDRESS, PAYMENT_TOKEN_ADDRESS } from "~~/constants/payments";
 import { useErc20Metadata } from "~~/hooks/custom/useErc20Metadata";
 import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
-import { getErrorMessage } from "~~/utils/errors";
+import { getParsedError } from "~~/utils/scaffold-eth";
 
 const AdminPage: NextPage = () => {
   const { address: connectedAddress, isConnected } = useAccount();
 
   // Form state lives here (not in the cards) so typed values survive the cards unmounting on a wallet switch.
+  // Inherited from scaffold-ui: AddressInput focuses itself once the ENS reverse lookup of its value finds no name,
+  // so on load focus lands on a pre-filled token address field.
   const [planForm, setPlanForm] = useState<PlanForm>({
     tokenAddress: PAYMENT_TOKEN_ADDRESS ?? "",
     price: "",
@@ -116,18 +118,19 @@ const AdminPage: NextPage = () => {
     ]);
   };
 
-  const executeAdminTx = async (sendTx: () => Promise<unknown>) => {
+  const executeAdminTx = async (sendTx: () => Promise<Hash | undefined>) => {
     setTxError("");
     try {
-      await sendTx();
+      // undefined: nothing was sent (no wallet client, wrong network...), and SE-2 has already toasted why.
+      if ((await sendTx()) === undefined) return;
       await refetchAll();
     } catch (error) {
-      setTxError(getErrorMessage(error, "Transaction failed"));
+      setTxError(getParsedError(error));
     }
   };
 
   /** Shows the parse error, or sends the transaction with the parsed value. */
-  const submitAdminTx = async <T,>(parsed: ParseResult<T>, sendTx: (value: T) => Promise<unknown>) => {
+  const submitAdminTx = async <T,>(parsed: ParseResult<T>, sendTx: (value: T) => Promise<Hash | undefined>) => {
     if ("error" in parsed) {
       setTxError(parsed.error);
       return;
@@ -216,6 +219,7 @@ const AdminPage: NextPage = () => {
               form={planForm}
               onChange={patch => setPlanForm(form => ({ ...form, ...patch }))}
               tokenDecimals={planTokenMetadata.decimals}
+              isDecimalsLoading={planTokenMetadata.isDecimalsLoading}
               tokenSymbol={planTokenMetadata.symbol}
               currentPlan={currentPlan}
               isBusy={isBusy}
@@ -233,6 +237,7 @@ const AdminPage: NextPage = () => {
               onChange={patch => setTokenWithdrawForm(form => ({ ...form, ...patch }))}
               balance={contractTokenBalance}
               tokenDecimals={withdrawTokenMetadata.decimals}
+              isDecimalsLoading={withdrawTokenMetadata.isDecimalsLoading}
               tokenSymbol={withdrawTokenMetadata.symbol}
               isBusy={isBusy}
               onSubmit={handleWithdrawToken}

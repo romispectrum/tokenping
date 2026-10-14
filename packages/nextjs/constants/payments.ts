@@ -8,8 +8,11 @@ import type { AllowedChainIds } from "~~/utils/scaffold-eth/networks";
 // Imported by server code (checkAccess), so only type imports from utils/scaffold-eth.
 const CONTRACTS_BY_CHAIN: Partial<Record<number, Partial<Record<string, GenericContract>>>> = deployedContracts;
 
-const MAINNET_USDC: Address = "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
-const ARBITRUM_USDC: Address = "0xaf88d065e77c8cc2239327c5edb3a432268e5831";
+/** Circle's USDC per chain. Mixed-case addresses must carry a valid EIP-55 checksum: viem rejects any other. */
+export const CANONICAL_USDC: Partial<Record<number, Address>> = {
+  [mainnet.id]: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  [arbitrum.id]: "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+};
 
 export const getPaywallContract = (chainId: number) => CONTRACTS_BY_CHAIN[chainId]?.TokenpingPaywall;
 
@@ -30,9 +33,8 @@ const getPaymentTokenCandidates = (chainId: number): readonly Address[] => {
   const contracts = CONTRACTS_BY_CHAIN[chainId];
   if (!contracts?.TokenpingPaywall) return [];
   if (contracts.MockUSDC?.address) return [contracts.MockUSDC.address];
-  if (chainId === arbitrum.id) return [ARBITRUM_USDC];
-  if (chainId === mainnet.id) return [MAINNET_USDC];
-  return [];
+  const usdc = CANONICAL_USDC[chainId];
+  return usdc ? [usdc] : [];
 };
 
 export const PAYMENT_TOKEN_CANDIDATES =

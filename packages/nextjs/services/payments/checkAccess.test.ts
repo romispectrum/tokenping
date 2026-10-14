@@ -1,3 +1,5 @@
+import type { Chain, Transport } from "viem";
+import { arbitrum, bsc, hardhat, mainnet } from "viem/chains";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Fixture deployments, so these tests do not depend on the generated deployments.
@@ -13,55 +15,64 @@ const DEPLOYMENTS: Deployments = {
   31337: { TokenpingPaywall: { address: PAYWALL_HARDHAT, abi: PAYWALL_ABI } },
 };
 
-const viemMocks = vi.hoisted(() => ({
+const mocks = vi.hoisted(() => ({
   readContract: vi.fn(),
   createPublicClient: vi.fn(),
-  http: vi.fn(),
+  getFallbackTransport: vi.fn(),
 }));
 
+// Only the client is mocked: the transport is the real one, and building it sends no request.
 vi.mock("viem", async importOriginal => ({
   ...(await importOriginal<typeof import("viem")>()),
-  createPublicClient: viemMocks.createPublicClient,
-  http: viemMocks.http,
+  createPublicClient: mocks.createPublicClient,
 }));
 
+// A spy around the real implementation; utils/rpc.test.ts covers the URL policy itself.
+vi.mock("~~/utils/rpc", async importOriginal => {
+  const rpc = await importOriginal<typeof import("~~/utils/rpc")>();
+  mocks.getFallbackTransport.mockImplementation(rpc.getFallbackTransport);
+  return { ...rpc, getFallbackTransport: mocks.getFallbackTransport };
+});
+
 type ConfigOverrides = {
-  targetNetworks?: readonly { id: number; name: string }[];
-  rpcOverrides?: Record<number, string>;
+  targetNetworks?: readonly Chain[];
   deployedContracts?: Deployments;
 };
 
 const loadIsAccessActive = async (overrides: ConfigOverrides = {}) => {
   const chains = await import("viem/chains");
-  vi.doMock("~~/scaffold.config", () => ({
-    DEFAULT_ALCHEMY_API_KEY: "default-key",
-    default: {
-      targetNetworks: overrides.targetNetworks ?? [chains.arbitrum],
-      pollingInterval: 3000,
-      alchemyApiKey: "test-key",
-      rpcOverrides: overrides.rpcOverrides ?? {},
-      walletConnectProjectId: "test",
-      onlyLocalBurnerWallet: true,
-    },
-  }));
+  vi.doMock("~~/scaffold.config", async importOriginal => {
+    const config = await importOriginal<typeof import("~~/scaffold.config")>();
+    return { ...config, default: { ...config.default, targetNetworks: overrides.targetNetworks ?? [chains.arbitrum] } };
+  });
   vi.doMock("~~/contracts/deployedContracts", () => ({ default: overrides.deployedContracts ?? DEPLOYMENTS }));
   return (await import("~~/services/payments/checkAccess")).isAccessActive;
 };
 
-const readContractCall = () => viemMocks.readContract.mock.calls[0]?.[0] as Record<string, unknown> | undefined;
+const readContractCall = () => mocks.readContract.mock.calls[0]?.[0] as Record<string, unknown> | undefined;
+
+type ClientConfig = { chain: Chain; transport: Transport };
+const clientConfig = () => mocks.createPublicClient.mock.calls[0]?.[0] as ClientConfig;
+
+/** The RPC URLs the public client would try, in order. */
+const rpcUrls = () => {
+  const { chain, transport } = clientConfig();
+  const { config, value } = transport({ chain });
+  if (config.type !== "fallback") return [value?.url];
+  return (value?.transports as ReturnType<Transport>[]).map(inner => inner.value?.url);
+};
 
 beforeEach(() => {
   vi.resetModules();
   vi.doUnmock("~~/scaffold.config");
   vi.doUnmock("~~/contracts/deployedContracts");
-  viemMocks.readContract.mockReset().mockResolvedValue(true);
-  viemMocks.http.mockReset().mockImplementation((url: string) => ({ url }));
-  viemMocks.createPublicClient.mockReset().mockImplementation(() => ({ readContract: viemMocks.readContract }));
+  mocks.readContract.mockReset().mockResolvedValue(true);
+  mocks.createPublicClient.mockReset().mockImplementation(() => ({ readContract: mocks.readContract }));
+  mocks.getFallbackTransport.mockClear();
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 
 afterEach(() => {
-  vi.unstubAllEnvs();
   vi.restoreAllMocks();
 });
 
@@ -70,10 +81,9 @@ describe("isAccessActive", () => {
     const isAccessActive = await loadIsAccessActive();
     await expect(isAccessActive(USER)).resolves.toBe(true);
 
-    expect(viemMocks.http).toHaveBeenCalledWith("https://arb-mainnet.g.alchemy.com/v2/test-key");
-    const [clientConfig] = viemMocks.createPublicClient.mock.calls[0];
-    expect(clientConfig.chain.id).toBe(42161);
-    expect(clientConfig.transport).toEqual({ url: "https://arb-mainnet.g.alchemy.com/v2/test-key" });
+    expect(clientConfig().chain).toBe(arbitrum);
+    expect(mocks.getFallbackTransport.mock.calls).toEqual([[arbitrum]]);
+    expect(clientConfig().transport).toBe(mocks.getFallbackTransport.mock.results[0].value);
 
     expect(readContractCall()).toEqual({
       address: PAYWALL_ARBITRUM,
@@ -94,65 +104,41 @@ describe("isAccessActive", () => {
     ["a truthy non-boolean", 1],
     ["the string 'true'", "true"],
   ])("returns false when the contract returns %s", async (_label, value) => {
-    viemMocks.readContract.mockResolvedValue(value);
+    mocks.readContract.mockResolvedValue(value);
     const isAccessActive = await loadIsAccessActive();
     await expect(isAccessActive(USER)).resolves.toBe(false);
   });
 
   it("fails closed and logs the chain when the RPC call throws", async () => {
     const error = new Error("rate limited");
-    viemMocks.readContract.mockRejectedValue(error);
+    mocks.readContract.mockRejectedValue(error);
     const isAccessActive = await loadIsAccessActive();
     await expect(isAccessActive(USER)).resolves.toBe(false);
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("42161"), error);
   });
 
-  it("prefers an rpcOverride for the payment chain", async () => {
-    const isAccessActive = await loadIsAccessActive({ rpcOverrides: { 42161: "https://override.example" } });
+  it("uses the first target network that has the paywall", async () => {
+    const isAccessActive = await loadIsAccessActive({ targetNetworks: [mainnet, hardhat, arbitrum] });
     await isAccessActive(USER);
-    expect(viemMocks.http).toHaveBeenCalledWith("https://override.example");
-  });
-
-  it("uses NEXT_PUBLIC_HARDHAT_RPC_URL for a hardhat payment chain", async () => {
-    vi.stubEnv("NEXT_PUBLIC_HARDHAT_RPC_URL", "http://hardhat.example:8545");
-    const { hardhat } = await import("viem/chains");
-    const isAccessActive = await loadIsAccessActive({ targetNetworks: [hardhat] });
-    await isAccessActive(USER);
-    expect(viemMocks.http).toHaveBeenCalledWith("http://hardhat.example:8545");
-    expect(viemMocks.createPublicClient.mock.calls[0][0].chain).toBe(hardhat);
+    expect(clientConfig().chain).toBe(hardhat);
+    expect(mocks.getFallbackTransport.mock.calls).toEqual([[hardhat]]);
     expect(readContractCall()?.address).toBe(PAYWALL_HARDHAT);
   });
 
-  it("falls back to the local node for a hardhat payment chain without the env var", async () => {
-    vi.stubEnv("NEXT_PUBLIC_HARDHAT_RPC_URL", undefined);
-    const { hardhat } = await import("viem/chains");
-    const isAccessActive = await loadIsAccessActive({ targetNetworks: [hardhat] });
-    await isAccessActive(USER);
-    expect(viemMocks.http).toHaveBeenCalledWith("http://127.0.0.1:8545");
-  });
-
-  it("uses the first target network that has the paywall", async () => {
-    const { mainnet, hardhat, arbitrum } = await import("viem/chains");
-    const isAccessActive = await loadIsAccessActive({ targetNetworks: [mainnet, hardhat, arbitrum] });
-    await isAccessActive(USER);
-    expect(viemMocks.createPublicClient.mock.calls[0][0].chain.id).toBe(31337);
-  });
-
-  // BUG(B2.5): a chain without an Alchemy mapping falls back to a local node, which always fails in production.
-  it("falls back to the local node for a chain without an Alchemy mapping", async () => {
-    const { gnosis } = await import("viem/chains");
+  // Regression (B2.5): a chain without an Alchemy mapping used http://127.0.0.1:8545, which always fails in production.
+  it("reaches a chain without an Alchemy mapping through its public RPC, not the local node", async () => {
     const isAccessActive = await loadIsAccessActive({
-      targetNetworks: [gnosis],
-      deployedContracts: { [gnosis.id]: { TokenpingPaywall: { address: PAYWALL_ARBITRUM, abi: [] } } },
+      targetNetworks: [bsc],
+      deployedContracts: { [bsc.id]: { TokenpingPaywall: { address: PAYWALL_ARBITRUM, abi: [] } } },
     });
     await isAccessActive(USER);
-    expect(viemMocks.http).toHaveBeenCalledWith("http://127.0.0.1:8545");
+    expect(rpcUrls()).toContain(bsc.rpcUrls.default.http[0]);
+    expect(rpcUrls()).not.toContain("http://127.0.0.1:8545");
   });
 
   it("returns false without an RPC call when no target network has the paywall", async () => {
-    const { mainnet } = await import("viem/chains");
     const isAccessActive = await loadIsAccessActive({ targetNetworks: [mainnet] });
     await expect(isAccessActive(USER)).resolves.toBe(false);
-    expect(viemMocks.createPublicClient).not.toHaveBeenCalled();
+    expect(mocks.createPublicClient).not.toHaveBeenCalled();
   });
 });

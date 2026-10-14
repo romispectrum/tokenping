@@ -1,4 +1,6 @@
+import { AddressInput } from "@scaffold-ui/components";
 import { AdminCard } from "~~/app/admin/_components/AdminCard";
+import { LabeledField } from "~~/app/admin/_components/LabeledField";
 
 type TransferOwnershipCardProps = {
   value: string;
@@ -13,12 +15,9 @@ export const TransferOwnershipCard = ({ value, onChange, isBusy, onSubmit }: Tra
     description="Move contract admin rights to another wallet."
     className="xl:col-span-2"
   >
-    <input
-      className="input input-bordered w-full md:max-w-xl"
-      placeholder="New owner address"
-      value={value}
-      onChange={event => onChange(event.target.value)}
-    />
+    <LabeledField label="New owner address" className="md:max-w-xl">
+      <AddressInput placeholder="New owner address" value={value} onChange={onChange} />
+    </LabeledField>
     <button className="btn btn-error w-fit" onClick={onSubmit} disabled={isBusy}>
       Transfer ownership
     </button>

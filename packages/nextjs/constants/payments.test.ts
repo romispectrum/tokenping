@@ -1,4 +1,5 @@
-import type { Abi } from "viem";
+import { readFileSync, readdirSync } from "node:fs";
+import { type Abi, isAddress } from "viem";
 import { arbitrum, gnosis, hardhat, mainnet } from "viem/chains";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -91,14 +92,13 @@ describe("payment constants", () => {
     expect(resolved.tokenCandidates).toEqual([OTHER_MOCK_USDC]);
   });
 
-  // BUG(B2.3): mixed case with an invalid EIP-55 checksum, so viem's strict isAddress rejects it.
-  it("use the canonical USDC on mainnet, keeping its stored casing", async () => {
+  it("use the EIP-55 checksummed canonical USDC on mainnet", async () => {
     const { resolved } = await load({ targetNetworks: [mainnet], deployedContracts: paywallOnly(mainnet.id) });
     expect(resolved).toEqual({
       chainId: mainnet.id,
       contractAddress: OTHER_PAYWALL,
-      tokenCandidates: ["0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"],
-      tokenAddress: "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      tokenCandidates: ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"],
+      tokenAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     });
   });
 
@@ -118,6 +118,51 @@ describe("payment constants", () => {
     expect((await load({ targetNetworks: [hardhat, arbitrum] })).constants.PAYWALL_ABI).toBe(LOCAL_ABI);
     vi.resetModules();
     expect((await load({ targetNetworks: [mainnet] })).constants.PAYWALL_ABI).toBeUndefined();
+  });
+});
+
+describe("configured addresses", () => {
+  // viem's isAddress is strict: a mixed-case address with a wrong checksum fails, and so do the plans read and the
+  // admin form validation that use it.
+  it("every canonical payment token passes viem's strict isAddress", async () => {
+    const { CANONICAL_USDC } = (await load()).constants;
+    expect(Object.keys(CANONICAL_USDC).map(Number).sort()).toEqual([mainnet.id, arbitrum.id].sort());
+    for (const [chainId, address] of Object.entries(CANONICAL_USDC)) {
+      expect(isAddress(address ?? ""), `chain ${chainId}: ${address}`).toBe(true);
+    }
+  });
+
+  it("every generated deployment address passes viem's strict isAddress", async () => {
+    vi.doUnmock("~~/contracts/deployedContracts");
+    const { default: deployedContracts } = await import("~~/contracts/deployedContracts");
+    const addresses = Object.values(deployedContracts as Record<number, Record<string, { address: string }>>).flatMap(
+      contracts => Object.values(contracts).map(({ address }) => address),
+    );
+    expect(addresses.length).toBeGreaterThan(0);
+    for (const address of addresses) expect(isAddress(address), address).toBe(true);
+  });
+});
+
+// The deploy scripts keep their own copy of the canonical USDC addresses, which the paywall's plans are set up with.
+describe("hardhat deploy network configs", () => {
+  const CONFIG_DIR = new URL("../../hardhat/deploy/network-config/", import.meta.url);
+  const addressesIn = (file: string) =>
+    readFileSync(new URL(file, CONFIG_DIR), "utf8").match(/0x[0-9a-fA-F]{40}/g) ?? [];
+
+  it("contain only addresses that pass viem's strict isAddress", () => {
+    const addresses = readdirSync(CONFIG_DIR)
+      .filter(file => file.endsWith(".ts"))
+      .flatMap(addressesIn);
+    expect(addresses.length).toBeGreaterThan(0);
+    for (const address of addresses) expect(isAddress(address), address).toBe(true);
+  });
+
+  it.each([
+    ["mainnet.ts", mainnet.id],
+    ["arbitrum.ts", arbitrum.id],
+  ])("%s deploys with the USDC the app pays with", async (file, chainId) => {
+    const { CANONICAL_USDC } = (await load()).constants;
+    expect(addressesIn(file)).toEqual([CANONICAL_USDC[chainId]]);
   });
 });
 

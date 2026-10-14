@@ -1,5 +1,8 @@
+import { AddressInput } from "@scaffold-ui/components";
 import { formatUnits } from "viem";
 import { AdminCard } from "~~/app/admin/_components/AdminCard";
+import { DecimalsHint } from "~~/app/admin/_components/DecimalsHint";
+import { LabeledField } from "~~/app/admin/_components/LabeledField";
 import { FALLBACK_TOKEN_DECIMALS, type TokenWithdrawForm } from "~~/app/admin/_components/adminForms";
 
 type WithdrawTokenCardProps = {
@@ -7,6 +10,7 @@ type WithdrawTokenCardProps = {
   onChange: (patch: Partial<TokenWithdrawForm>) => void;
   balance: bigint | undefined;
   tokenDecimals: number | undefined;
+  isDecimalsLoading: boolean;
   tokenSymbol: string | undefined;
   isBusy: boolean;
   onSubmit: () => void;
@@ -17,6 +21,7 @@ export const WithdrawTokenCard = ({
   onChange,
   balance,
   tokenDecimals,
+  isDecimalsLoading,
   tokenSymbol,
   isBusy,
   onSubmit,
@@ -31,25 +36,26 @@ export const WithdrawTokenCard = ({
       </>
     }
   >
-    <input
-      className="input input-bordered w-full"
-      placeholder="Token address"
-      value={form.tokenAddress}
-      onChange={event => onChange({ tokenAddress: event.target.value })}
-    />
-    <input
-      className="input input-bordered w-full"
-      placeholder="Destination address"
-      value={form.to}
-      onChange={event => onChange({ to: event.target.value })}
-    />
-    <input
-      className="input input-bordered w-full"
-      placeholder={`Amount (${tokenSymbol ?? "token"})`}
-      value={form.amount}
-      onChange={event => onChange({ amount: event.target.value })}
-    />
-    <button className="btn btn-primary w-fit" onClick={onSubmit} disabled={isBusy}>
+    <LabeledField label="Token address">
+      <AddressInput
+        placeholder="Token address"
+        value={form.tokenAddress}
+        onChange={tokenAddress => onChange({ tokenAddress })}
+      />
+    </LabeledField>
+    <LabeledField label="Destination address">
+      <AddressInput placeholder="Destination address" value={form.to} onChange={to => onChange({ to })} />
+    </LabeledField>
+    <LabeledField label={`Amount (${tokenSymbol ?? "token"})`}>
+      <input
+        className="input input-bordered w-full"
+        placeholder={`Amount (${tokenSymbol ?? "token"})`}
+        value={form.amount}
+        onChange={event => onChange({ amount: event.target.value })}
+      />
+    </LabeledField>
+    <DecimalsHint decimals={tokenDecimals} isLoading={isDecimalsLoading} action="Withdrawing" />
+    <button className="btn btn-primary w-fit" onClick={onSubmit} disabled={isBusy || tokenDecimals === undefined}>
       Withdraw token
     </button>
   </AdminCard>

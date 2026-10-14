@@ -1,11 +1,14 @@
+// @vitest-environment jsdom
+import { renderHook } from "@testing-library/react";
 import { erc20Abi } from "viem";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderStaticMarkup } from "~~/utils/testing/render";
+
+// The payment flow itself (approve, pay, refetch, errors) is covered end to end in AccessPaywall.test.tsx. This file
+// pins the reads useAccess configures, what it returns, and the guard the paywall UI cannot reach.
 
 const USER = "0x1111111111111111111111111111111111111111";
-const SPENDER = "0x4444444444444444444444444444444444444444";
 
-const { FIXTURE, constants, state, calls, resetState } = vi.hoisted(() => {
+const { FIXTURE, constants, state, renders, actions, resetState } = vi.hoisted(() => {
   // The payment constants are a fixture, so these tests do not depend on scaffold.config or the deployments.
   const FIXTURE = {
     chainId: 8453,
@@ -23,23 +26,31 @@ const { FIXTURE, constants, state, calls, resetState } = vi.hoisted(() => {
   });
   const initialState = () => ({
     address: undefined as string | undefined,
+    walletChainId: undefined as number | undefined,
     isActive: undefined as boolean | undefined,
     plansResults: undefined as unknown[] | undefined,
     expiryTimestamp: undefined as bigint | undefined,
     allowance: undefined as bigint | undefined,
+    paused: undefined as boolean | undefined,
+    paywallCheck: "deployed" as "deployed" | "loading",
   });
   const constants = initialConstants();
   const state = initialState();
-  const calls: unknown[][] = [];
+  /** The hook calls of each render, in order: [hook name, config]. */
+  const renders: [string, unknown][][] = [];
+  /** Refetches and writes, i.e. anything payForAccess does. */
+  const actions: unknown[][] = [];
   return {
     FIXTURE,
     constants,
     state,
-    calls,
+    renders,
+    actions,
     resetState: () => {
       Object.assign(constants, initialConstants());
       Object.assign(state, initialState());
-      calls.length = 0;
+      renders.length = 0;
+      actions.length = 0;
     },
   };
 });
@@ -72,63 +83,81 @@ const describeAbi = (abi: unknown) => {
 
 const withAbiName = ({ abi, ...rest }: Record<string, unknown>) => ({ ...rest, abi: describeAbi(abi) });
 
-const refetch = (name: string) => () => {
-  calls.push(["refetch", name]);
-};
+const record = (hook: string, config: unknown) => renders[renders.length - 1].push([hook, config]);
+
+const readValues = (): Record<string, unknown> => ({
+  isActive: state.isActive,
+  plans: state.plansResults,
+  expiryTimestampByUser: state.expiryTimestamp,
+  allowance: state.allowance,
+  paused: state.paused,
+});
+
+const fakeRead = (name: string) => ({
+  data: readValues()[name],
+  isError: false,
+  refetch: async () => {
+    actions.push(["refetch", name]);
+    return { data: readValues()[name], isError: false };
+  },
+});
 
 vi.mock("wagmi", () => ({
-  useAccount: () => ({ address: state.address }),
+  useAccount: () => ({
+    address: state.address,
+    chain: state.walletChainId === undefined ? undefined : { id: state.walletChainId },
+  }),
   useReadContract: (config: Record<string, unknown>) => {
-    calls.push(["useReadContract", withAbiName(config)]);
-    const isAllowance = config.functionName === "allowance";
-    return {
-      data: isAllowance ? state.allowance : state.expiryTimestamp,
-      refetch: refetch(config.functionName as string),
-    };
+    record("useReadContract", withAbiName(config));
+    return fakeRead(config.functionName as string);
   },
   useReadContracts: (config: { contracts: Record<string, unknown>[]; query: unknown }) => {
-    calls.push(["useReadContracts", { ...config, contracts: config.contracts.map(withAbiName) }]);
-    return { data: state.plansResults, refetch: refetch("plans") };
+    record("useReadContracts", { ...config, contracts: config.contracts.map(withAbiName) });
+    return fakeRead("plans");
   },
   useWriteContract: () => ({
-    writeContractAsync: (variables: unknown) => {
-      calls.push(["writeApproveAsync", variables]);
-      return Promise.resolve("0xapprove");
+    writeContractAsync: async (variables: unknown) => {
+      actions.push(["approve", variables]);
+      return "0xapprove";
     },
-    isPending: false,
   }),
 }));
 
 vi.mock("~~/hooks/scaffold-eth", () => ({
   useScaffoldReadContract: (config: Record<string, unknown>) => {
-    calls.push(["useScaffoldReadContract", config]);
-    return { data: state.isActive, refetch: refetch("isActive") };
+    record("useScaffoldReadContract", config);
+    return fakeRead("isActive");
   },
   useScaffoldWriteContract: (config: Record<string, unknown>) => {
-    calls.push(["useScaffoldWriteContract", config]);
-    return { writeContractAsync: () => Promise.resolve(undefined), isPending: false };
+    record("useScaffoldWriteContract", config);
+    return {
+      writeContractAsync: async (variables: unknown) => {
+        actions.push(["pay", variables]);
+        return "0xpay";
+      },
+    };
   },
+  useDeployedContractInfo: (config: Record<string, unknown>) => {
+    record("useDeployedContractInfo", config);
+    const isLoading = state.paywallCheck === "loading";
+    return { data: isLoading ? undefined : { address: FIXTURE.paywall }, isLoading };
+  },
+  useTransactor: () => async (tx: () => Promise<string>) => tx(),
 }));
 
 type UseAccess = typeof import("~~/hooks/custom/useAccess").useAccess;
 
-const runHook = (useAccess: UseAccess) => {
-  let result: ReturnType<UseAccess> | undefined;
-  const Probe = () => {
-    result = useAccess();
-    return null;
-  };
-  renderStaticMarkup(<Probe />);
-  return result as ReturnType<UseAccess>;
+const runHook = async () => {
+  const { useAccess }: { useAccess: UseAccess } = await import("~~/hooks/custom/useAccess");
+  return renderHook(() => {
+    renders.push([]);
+    return useAccess();
+  }).result.current;
 };
 
-const loadHook = async () => (await import("~~/hooks/custom/useAccess")).useAccess;
-
-const hookCalls = () => calls.filter(([name]) => typeof name === "string" && name.startsWith("use"));
-
-/** The config of the one call to `hook` (for `functionName`, when given); call order is not part of the contract. */
+/** The config of the one call to `hook` (for `functionName`, when given) in the latest render. */
 const hookConfig = (hook: string, functionName?: string) => {
-  const matches = hookCalls().filter(
+  const matches = renders[renders.length - 1].filter(
     ([name, config]) =>
       name === hook &&
       (functionName === undefined || (config as Record<string, unknown> | undefined)?.functionName === functionName),
@@ -142,6 +171,17 @@ const plan = (price: bigint, durationSeconds: bigint, enabled: boolean) => ({
   result: [price, durationSeconds, enabled],
 });
 
+const PRICE = 1_500_000n;
+
+/** Connected on the payment chain with an enabled plan, not paused, and no allowance yet. */
+const setReady = () => {
+  state.address = USER;
+  state.walletChainId = FIXTURE.chainId;
+  state.plansResults = [plan(PRICE, 2_592_000n, true)];
+  state.paused = false;
+  state.allowance = 0n;
+};
+
 beforeEach(() => {
   resetState();
   vi.resetModules();
@@ -150,12 +190,10 @@ beforeEach(() => {
 describe("useAccess reads", () => {
   it("pins every read to the payment chain with the same args", async () => {
     state.address = USER;
-    runHook(await loadHook());
-    expect(
-      hookCalls()
-        .map(([name]) => name)
-        .sort(),
-    ).toEqual([
+    await runHook();
+    expect(renders[renders.length - 1].map(([name]) => name).sort()).toEqual([
+      "useDeployedContractInfo",
+      "useReadContract",
       "useReadContract",
       "useReadContract",
       "useReadContracts",
@@ -186,7 +224,18 @@ describe("useAccess reads", () => {
       chainId: FIXTURE.chainId,
       query: { enabled: true },
     });
+    expect(hookConfig("useReadContract", "paused")).toEqual({
+      abi: "paywallAbi",
+      address: FIXTURE.paywall,
+      functionName: "paused",
+      chainId: FIXTURE.chainId,
+      query: { enabled: true, refetchInterval: expect.any(Function) },
+    });
     expect(hookConfig("useScaffoldWriteContract")).toEqual({
+      contractName: "TokenpingPaywall",
+      chainId: FIXTURE.chainId,
+    });
+    expect(hookConfig("useDeployedContractInfo")).toEqual({
       contractName: "TokenpingPaywall",
       chainId: FIXTURE.chainId,
     });
@@ -200,28 +249,39 @@ describe("useAccess reads", () => {
     });
   });
 
+  // paused() is not watched and window-focus refetches are off, so without polling Pay never came back after an unpause.
+  it("re-reads paused() every 30 seconds while the paywall is paused", async () => {
+    await runHook();
+    const { query } = hookConfig("useReadContract", "paused") as {
+      query: { refetchInterval?: (query: { state: { data?: boolean } }) => number | false | undefined };
+    };
+    expect(query.refetchInterval?.({ state: { data: true } })).toBe(30_000);
+    expect(query.refetchInterval?.({ state: { data: false } })).toBe(false);
+    expect(query.refetchInterval?.({ state: {} })).toBe(false);
+  });
+
   it("disables the wallet-specific reads without a wallet", async () => {
-    runHook(await loadHook());
+    await runHook();
     expect(hookConfig("useScaffoldReadContract")).toMatchObject({ args: [undefined] });
     expect(hookConfig("useReadContract", "expiryTimestampByUser")).toMatchObject({
       args: undefined,
       query: { enabled: false },
     });
     expect(hookConfig("useReadContract", "allowance")).toMatchObject({ args: undefined, query: { enabled: false } });
+    expect(hookConfig("useReadContract", "paused")).toMatchObject({ query: { enabled: true } });
   });
 
   it("reads the allowance of the selected plan's token", async () => {
     state.address = USER;
     state.plansResults = [plan(1_500_000n, 2_592_000n, false), plan(2_000_000n, 86_400n, true)];
-    const result = runHook(await loadHook());
-    expect(result.paymentTokenAddress).toBe(FIXTURE.tokenB);
+    await runHook();
     expect(hookConfig("useReadContract", "allowance")).toMatchObject({
       address: FIXTURE.tokenB,
       args: [USER, FIXTURE.paywall],
     });
   });
 
-  it("disables the plans and expiry reads without a paywall deployment", async () => {
+  it("disables the plans, expiry and paused reads without a paywall deployment", async () => {
     Object.assign(constants, {
       PAYMENT_CHAIN_ID: undefined,
       PAYMENT_CONTRACT_ADDRESS: undefined,
@@ -230,83 +290,63 @@ describe("useAccess reads", () => {
       PAYWALL_ABI: undefined,
     });
     state.address = USER;
-    runHook(await loadHook());
+    await runHook();
     expect(hookConfig("useReadContracts")).toEqual({ contracts: [], query: { enabled: false } });
     expect(hookConfig("useReadContract", "expiryTimestampByUser")).toMatchObject({
       address: undefined,
       chainId: undefined,
       query: { enabled: false },
     });
+    expect(hookConfig("useReadContract", "paused")).toMatchObject({ address: undefined, query: { enabled: false } });
     expect(hookConfig("useReadContract", "allowance")).toMatchObject({ query: { enabled: false } });
   });
 });
 
 describe("useAccess state", () => {
   it("defaults while reads are loading", async () => {
-    const result = runHook(await loadHook());
+    const result = await runHook();
     expect(result.isActive).toBe(false);
-    expect(result.plan).toBeNull();
-    expect(result.paymentTokenAddress).toBe(FIXTURE.tokenA);
-    expect(result.currentAllowance).toBe(0n);
     expect(result.expiryTimestamp).toBe(0n);
+    expect(result.status).toEqual({ kind: "connectWallet" });
   });
 
-  it("exposes the loaded reads", async () => {
-    state.address = USER;
+  it("exposes access, expiry and the paywall status of the selected plan", async () => {
+    setReady();
     state.isActive = true;
-    state.plansResults = [plan(1_500_000n, 2_592_000n, true), plan(9n, 9n, true)];
     state.expiryTimestamp = 1_800_000_000n;
-    state.allowance = 7n;
-    const result = runHook(await loadHook());
+    state.plansResults = [plan(PRICE, 2_592_000n, true), plan(9n, 9n, true)];
+    const result = await runHook();
     expect(result.isActive).toBe(true);
-    expect(result.plan).toEqual({ price: 1_500_000n, durationSeconds: 2_592_000n, enabled: true });
-    expect(result.paymentTokenAddress).toBe(FIXTURE.tokenA);
-    expect(result.currentAllowance).toBe(7n);
     expect(result.expiryTimestamp).toBe(1_800_000_000n);
-  });
-
-  it("keeps a disabled plan as the fallback selection", async () => {
-    state.plansResults = [plan(0n, 0n, false), { status: "failure" }];
-    expect(runHook(await loadHook()).plan).toEqual({ price: 0n, durationSeconds: 0n, enabled: false });
-  });
-
-  it("refetches access, plans and expiry but not the allowance", async () => {
-    const result = runHook(await loadHook());
-    calls.length = 0;
-    result.refetch();
-    expect(calls.map(([, name]) => name).sort()).toEqual(["expiryTimestampByUser", "isActive", "plans"]);
+    expect(result.status).toEqual({
+      kind: "ready",
+      plan: { price: PRICE, durationSeconds: 2_592_000n, enabled: true },
+      canPay: true,
+      notice: null,
+    });
   });
 });
 
-describe("useAccess approveAsync", () => {
-  it("approves exactly the requested amount of the payment token on the payment chain", async () => {
-    const result = runHook(await loadHook());
-    calls.length = 0;
-    await expect(result.approveAsync(SPENDER, 1_500_000n)).resolves.toBe("0xapprove");
-    expect(calls).toEqual([
-      [
-        "writeApproveAsync",
-        {
-          abi: erc20Abi,
-          address: FIXTURE.tokenA,
-          functionName: "approve",
-          args: [SPENDER, 1_500_000n],
-          chainId: FIXTURE.chainId,
-        },
-      ],
-    ]);
-  });
-
-  it.each([0n, -1n])("rejects a non-positive amount (%s)", async amount => {
-    const result = runHook(await loadHook());
-    await expect(result.approveAsync(SPENDER, amount)).rejects.toThrow("Approval amount must be positive");
-  });
-
-  it("rejects before the amount check when no payment token is configured", async () => {
-    Object.assign(constants, { PAYMENT_TOKEN_CANDIDATES: [], PAYMENT_TOKEN_ADDRESS: undefined });
-    const result = runHook(await loadHook());
-    expect(result.paymentTokenAddress).toBeUndefined();
-    await expect(result.approveAsync(SPENDER, 0n)).rejects.toThrow("Payment token is not configured");
-    expect(hookConfig("useReadContracts")).toEqual({ contracts: [], query: { enabled: false } });
+describe("useAccess payForAccess", () => {
+  // The paywall disables or hides Pay in all of these states; the hook still refuses on its own.
+  it.each([
+    ["without a wallet", () => (state.address = undefined)],
+    ["on the wrong chain", () => (state.walletChainId = 1)],
+    ["without a plan", () => (state.plansResults = [{ status: "failure" }])],
+    ["while the allowance is unknown", () => (state.allowance = undefined)],
+    ["while the paywall deployment is being confirmed", () => (state.paywallCheck = "loading")],
+    [
+      "without a payment token",
+      () => Object.assign(constants, { PAYMENT_TOKEN_CANDIDATES: [], PAYMENT_TOKEN_ADDRESS: undefined }),
+    ],
+  ])("refuses with a message and sends nothing %s", async (_label, arrange) => {
+    setReady();
+    arrange();
+    const result = await runHook();
+    await expect(result.payForAccess()).resolves.toEqual({
+      paid: false,
+      error: "Paid access is not available right now.",
+    });
+    expect(actions).toEqual([]);
   });
 });

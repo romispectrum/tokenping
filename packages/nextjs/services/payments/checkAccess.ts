@@ -1,17 +1,7 @@
-import { type Address, createPublicClient, http } from "viem";
-import { hardhat } from "viem/chains";
+import { type Address, createPublicClient } from "viem";
 import { PAYMENT_CHAIN_ID, getPaywallContract } from "~~/constants/payments";
-import scaffoldConfig, { type ScaffoldConfig } from "~~/scaffold.config";
-import { getAlchemyHttpUrl } from "~~/utils/scaffold-eth/networks";
-
-const LOCAL_RPC_URL = "http://127.0.0.1:8545";
-
-const getPaymentRpcUrl = (chainId: number) => {
-  const rpcOverride = (scaffoldConfig.rpcOverrides as ScaffoldConfig["rpcOverrides"])?.[chainId];
-  if (rpcOverride) return rpcOverride;
-  if (chainId === hardhat.id) return process.env.NEXT_PUBLIC_HARDHAT_RPC_URL ?? LOCAL_RPC_URL;
-  return getAlchemyHttpUrl(chainId) || LOCAL_RPC_URL;
-};
+import scaffoldConfig from "~~/scaffold.config";
+import { getFallbackTransport } from "~~/utils/rpc";
 
 /** Fails closed: any missing configuration or RPC error counts as no access. */
 export const isAccessActive = async (userAddress: string): Promise<boolean> => {
@@ -22,7 +12,7 @@ export const isAccessActive = async (userAddress: string): Promise<boolean> => {
   const chain = scaffoldConfig.targetNetworks.find(({ id }) => id === PAYMENT_CHAIN_ID);
   if (!chain) return false;
 
-  const client = createPublicClient({ chain, transport: http(getPaymentRpcUrl(PAYMENT_CHAIN_ID)) });
+  const client = createPublicClient({ chain, transport: getFallbackTransport(chain) });
   try {
     const active = await client.readContract({
       address: contract.address,

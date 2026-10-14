@@ -12,6 +12,7 @@ const CHECKSUMMED = "0x79872d7529cfE1c062838fACDA004Ce4BFB16553";
 // Mixed case with a wrong EIP-55 checksum: viem's strict isAddress rejects it.
 const BAD_CHECKSUM = "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
 const DESTINATION = "0x2222222222222222222222222222222222222222";
+const DECIMALS_UNKNOWN = "Token decimals are unknown. Wait for them to load or check the token address";
 
 describe("parsePlanForm", () => {
   const form = { tokenAddress: TOKEN, price: "1.5", durationSeconds: "2592000", enabled: true };
@@ -23,9 +24,15 @@ describe("parsePlanForm", () => {
     });
   });
 
-  // BUG(B2.4): while decimals are unknown the price is scaled with 6 decimals, whatever the token really uses.
-  it("falls back to 6 decimals when the decimals read has no data", () => {
-    expect(parsePlanForm({ ...form, price: "10" })).toEqual({ value: [TOKEN, 10_000_000n, 2_592_000n, true] });
+  // Regression (B2.4): unknown decimals used to fall back to 6, so "10" of an 18-decimals token became 1e-11 tokens.
+  it("refuses to scale the price while the token decimals are unknown", () => {
+    expect(parsePlanForm({ ...form, price: "10" }, undefined)).toEqual({ error: DECIMALS_UNKNOWN });
+  });
+
+  it("checks the token address before the decimals", () => {
+    expect(parsePlanForm({ ...form, tokenAddress: "0x123" }, undefined)).toEqual({
+      error: "Enter a valid token address for plan update",
+    });
   });
 
   it("uses zero decimals as reported", () => {
@@ -108,9 +115,15 @@ describe("parseTokenWithdraw", () => {
     expect(parseTokenWithdraw(form, 18)).toEqual({ value: [TOKEN, DESTINATION, 12_500_000_000_000_000_000n] });
   });
 
-  // BUG(B2.4): same 6-decimals fallback as the plan form.
-  it("falls back to 6 decimals when the decimals read has no data", () => {
-    expect(parseTokenWithdraw(form)).toEqual({ value: [TOKEN, DESTINATION, 12_500_000n] });
+  // Regression (B2.4): same former 6-decimals fallback as the plan form.
+  it("refuses to scale the amount while the token decimals are unknown", () => {
+    expect(parseTokenWithdraw(form, undefined)).toEqual({ error: DECIMALS_UNKNOWN });
+  });
+
+  it("checks the token address before the decimals", () => {
+    expect(parseTokenWithdraw({ ...form, tokenAddress: "" }, undefined)).toEqual({
+      error: "Enter a valid token address",
+    });
   });
 
   it("checks the token, then the destination, then the amount", () => {

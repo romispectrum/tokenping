@@ -3,8 +3,11 @@ import { type Address, isAddress, parseEther, parseUnits } from "viem";
 // Parsers are annotated: inferred object-literal unions gain optional keys, which breaks `"error" in result` narrowing.
 export type ParseResult<T> = { error: string } | { value: T };
 
-// BUG(B2.4): also used while the decimals read is loading or failed, so an 18-decimals amount is mis-scaled.
+// Display only: balances and the current price are shown with 6 decimals until the token's decimals are read.
+// Transactions never use it; they wait for the real decimals.
 export const FALLBACK_TOKEN_DECIMALS = 6;
+
+const DECIMALS_UNKNOWN_ERROR = "Token decimals are unknown. Wait for them to load or check the token address";
 
 export type PlanForm = {
   tokenAddress: string;
@@ -35,13 +38,13 @@ const tryParse = <T>(parse: () => T, error: string): ParseResult<T> => {
 /** `setPlan` args. */
 export const parsePlanForm = (
   { tokenAddress, price, durationSeconds, enabled }: PlanForm,
-  decimals?: number,
+  decimals: number | undefined,
 ): ParseResult<readonly [Address, bigint, bigint, boolean]> => {
   if (!isAddress(tokenAddress)) return { error: "Enter a valid token address for plan update" };
+  if (decimals === undefined) return { error: DECIMALS_UNKNOWN_ERROR };
   if (!price || !durationSeconds) return { error: "Enter plan price and duration" };
   return tryParse(
-    () =>
-      [tokenAddress, parseUnits(price, decimals ?? FALLBACK_TOKEN_DECIMALS), BigInt(durationSeconds), enabled] as const,
+    () => [tokenAddress, parseUnits(price, decimals), BigInt(durationSeconds), enabled] as const,
     "Invalid plan values",
   );
 };
@@ -62,15 +65,13 @@ export const parseNativeWithdraw = ({ to, amountEth }: NativeWithdrawForm): Pars
 /** `withdrawTokens` args. */
 export const parseTokenWithdraw = (
   { tokenAddress, to, amount }: TokenWithdrawForm,
-  decimals?: number,
+  decimals: number | undefined,
 ): ParseResult<readonly [Address, Address, bigint]> => {
   if (!isAddress(tokenAddress)) return { error: "Enter a valid token address" };
+  if (decimals === undefined) return { error: DECIMALS_UNKNOWN_ERROR };
   if (!isAddress(to)) return { error: "Enter a valid destination address for token withdraw" };
   if (!amount) return { error: "Enter token amount" };
-  return tryParse(
-    () => [tokenAddress, to, parseUnits(amount, decimals ?? FALLBACK_TOKEN_DECIMALS)] as const,
-    "Invalid token amount",
-  );
+  return tryParse(() => [tokenAddress, to, parseUnits(amount, decimals)] as const, "Invalid token amount");
 };
 
 /** `transferOwnership` arg. */
