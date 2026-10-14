@@ -41,6 +41,8 @@ export const notificationConfigsService = {
       healthFactorThreshold: parseFloat(String(data.healthFactorThreshold ?? DEFAULT_HEALTH_FACTOR_THRESHOLD)),
       email: data.email ?? undefined,
       signalRecipient: data.signalRecipient ?? undefined,
+      telegramChatId: data.telegramChatId ?? undefined,
+      telegramUsername: data.telegramUsername ?? undefined,
     };
   },
 

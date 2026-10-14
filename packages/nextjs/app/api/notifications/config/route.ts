@@ -1,50 +1,18 @@
 import { NextResponse } from "next/server";
 import { DEFAULT_HEALTH_FACTOR_THRESHOLD } from "~~/constants/notifications";
+import {
+  getCacheKey,
+  getCachedConfig,
+  invalidateUserConfigCache,
+  setCachedConfig,
+} from "~~/services/notifications/configCache";
 import { isAccessActive } from "~~/services/payments/checkAccess";
 import { getSupabaseServerClient } from "~~/services/supabase/supabaseServer";
-
-const CONFIG_CACHE_TTL_MS = 15 * 60 * 1000;
-
-type CacheEntry = {
-  data: unknown;
-  expiresAt: number;
-};
-
-const notificationConfigCache = new Map<string, CacheEntry>();
+import { getLinkByUserId } from "~~/services/telegram/telegramLinks";
 
 /** Normalize wallet address for consistent DB lookups (PostgreSQL text comparison is case-sensitive). */
 function normalizeUserId(userId: string): string {
   return userId.trim().toLowerCase();
-}
-
-function getCacheKey(userId: string, chainId?: number) {
-  return `${userId}:${chainId ?? "all"}`;
-}
-
-function getCachedConfig(cacheKey: string) {
-  const cached = notificationConfigCache.get(cacheKey);
-  if (!cached) return { hit: false as const, data: null };
-  if (Date.now() > cached.expiresAt) {
-    notificationConfigCache.delete(cacheKey);
-    return { hit: false as const, data: null };
-  }
-
-  return { hit: true as const, data: cached.data };
-}
-
-function setCachedConfig(cacheKey: string, data: unknown) {
-  notificationConfigCache.set(cacheKey, {
-    data,
-    expiresAt: Date.now() + CONFIG_CACHE_TTL_MS,
-  });
-}
-
-function invalidateUserConfigCache(userId: string) {
-  for (const key of notificationConfigCache.keys()) {
-    if (key.startsWith(`${userId}:`)) {
-      notificationConfigCache.delete(key);
-    }
-  }
 }
 
 export async function GET(request: Request) {
@@ -75,6 +43,11 @@ export async function GET(request: Request) {
     // PUT/DELETE still require active paid access.
     const supabase = getSupabaseServerClient();
 
+    // Telegram link is per-user (not per-chain) — fetch once and decorate each config below.
+    const telegramLink = await getLinkByUserId(uid);
+    const telegramChatId = telegramLink?.chatId;
+    const telegramUsername = telegramLink?.username ?? undefined;
+
     if (chainIdParam != null && chainIdParam !== "") {
       let query = supabase.from("notification_configs").select("*").eq("user_id", uid);
       if (chainId !== undefined) query = query.eq("chain_id", chainId);
@@ -104,6 +77,8 @@ export async function GET(request: Request) {
         healthFactorThreshold: parseFloat(String(data.health_factor_threshold)),
         email: data.email ?? undefined,
         signalRecipient: data.signal_recipient ?? undefined,
+        telegramChatId,
+        telegramUsername,
       };
 
       setCachedConfig(cacheKey, response);
@@ -131,6 +106,8 @@ export async function GET(request: Request) {
           healthFactorThreshold: parseFloat(String(row.health_factor_threshold)),
           email: row.email ?? undefined,
           signalRecipient: row.signal_recipient ?? undefined,
+          telegramChatId,
+          telegramUsername,
         };
         return acc;
       },
@@ -143,6 +120,8 @@ export async function GET(request: Request) {
           healthFactorThreshold: number;
           email?: string;
           signalRecipient?: string;
+          telegramChatId?: string;
+          telegramUsername?: string;
         }
       >,
     );

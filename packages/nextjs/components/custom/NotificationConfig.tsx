@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useAccount } from "wagmi";
 import { AVAILABLE_SERVICES, DEFAULT_HEALTH_FACTOR_THRESHOLD } from "~~/constants/notifications";
 import { useAccess } from "~~/hooks/custom/useAccess";
 import { type NotificationService, useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
+import { telegramClient } from "~~/services/telegram/telegramClient";
 import { notification } from "~~/utils/scaffold-eth";
 
 interface NotificationConfigProps {
@@ -16,6 +18,7 @@ interface NotificationConfigProps {
 export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: NotificationConfigProps) => {
   const { getConfig, updateConfig, deleteConfig, isLoaded } = useNotificationConfig();
   const { isActive: hasAccess } = useAccess();
+  const { address } = useAccount();
   const config = getConfig(chainId);
 
   const SLIDER_MIN_HEALTH_FACTOR_THRESHOLD = 1.1;
@@ -34,6 +37,16 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
   const [services, setServices] = useState<NotificationService[]>(config?.services ?? []);
   const [email, setEmail] = useState(config?.email ?? "");
   const [signalRecipient, setSignalRecipient] = useState(config?.signalRecipient ?? "");
+
+  // Telegram link is per-user (not per-chain) and lives on user_telegram_links.
+  // The config GET response surfaces it for the current user; we also fetch live
+  // during the handshake handshake polling so we don't show stale state.
+  const [telegramChatId, setTelegramChatId] = useState<string | undefined>(config?.telegramChatId);
+  const [telegramUsername, setTelegramUsername] = useState<string | null | undefined>(config?.telegramUsername);
+  const [isConnectingTelegram, setIsConnectingTelegram] = useState(false);
+  const [isDisconnectingTelegram, setIsDisconnectingTelegram] = useState(false);
+  const telegramPollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const telegramPollDeadline = useRef<number>(0);
   const [threshold, setThreshold] = useState(() =>
     clampThreshold(Number(config?.healthFactorThreshold) || DEFAULT_HEALTH_FACTOR_THRESHOLD),
   );
@@ -53,17 +66,92 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
     if (config && !isEditing) {
       setEnabled(config.enabled ?? false);
       const validServices = (config.services ?? []).filter(
-        (s): s is NotificationService => s === "email" || s === "signal",
+        (s): s is NotificationService => s === "email" || s === "signal" || s === "telegram",
       );
       setServices(validServices.length > 0 ? validServices : config.enabled ? ["email"] : []);
       setEmail(config.email ?? "");
       setSignalRecipient(config.signalRecipient ?? "");
+      setTelegramChatId(config.telegramChatId);
+      setTelegramUsername(config.telegramUsername);
       const nextThreshold = clampThreshold(Number(config.healthFactorThreshold) || DEFAULT_HEALTH_FACTOR_THRESHOLD);
 
       setThreshold(nextThreshold);
       setThresholdText(formatThreshold(nextThreshold));
     }
   }, [getConfig, chainId, isEditing]);
+
+  // Stop polling on unmount.
+  useEffect(() => {
+    return () => {
+      if (telegramPollTimer.current) {
+        clearInterval(telegramPollTimer.current);
+        telegramPollTimer.current = null;
+      }
+    };
+  }, []);
+
+  const stopTelegramPolling = useCallback(() => {
+    if (telegramPollTimer.current) {
+      clearInterval(telegramPollTimer.current);
+      telegramPollTimer.current = null;
+    }
+    setIsConnectingTelegram(false);
+  }, []);
+
+  const handleConnectTelegram = useCallback(async () => {
+    if (!address) {
+      notification.error("Connect your wallet first");
+      return;
+    }
+    setIsConnectingTelegram(true);
+    try {
+      const { deepLink } = await telegramClient.createLinkToken(address);
+      // Open Telegram in a new tab. On mobile this opens the Telegram app.
+      window.open(deepLink, "_blank", "noopener,noreferrer");
+
+      // Poll the link endpoint every 2s for up to 2 min, looking for a chat_id.
+      telegramPollDeadline.current = Date.now() + 2 * 60 * 1000;
+      if (telegramPollTimer.current) clearInterval(telegramPollTimer.current);
+      telegramPollTimer.current = setInterval(async () => {
+        if (Date.now() > telegramPollDeadline.current) {
+          stopTelegramPolling();
+          notification.error("Telegram link timed out. Try again.");
+          return;
+        }
+        try {
+          const status = await telegramClient.getLinkStatus(address);
+          if (status.linked && status.chatId) {
+            setTelegramChatId(status.chatId);
+            setTelegramUsername(status.username ?? null);
+            stopTelegramPolling();
+            notification.success(status.username ? `Telegram connected as @${status.username}` : "Telegram connected");
+          }
+        } catch {
+          // Network blip — keep polling until deadline.
+        }
+      }, 2_000);
+    } catch (e) {
+      setIsConnectingTelegram(false);
+      const msg = e instanceof Error ? e.message : "Failed to connect Telegram";
+      notification.error(msg);
+    }
+  }, [address, stopTelegramPolling]);
+
+  const handleDisconnectTelegram = useCallback(async () => {
+    if (!address) return;
+    setIsDisconnectingTelegram(true);
+    try {
+      await telegramClient.disconnect(address);
+      setTelegramChatId(undefined);
+      setTelegramUsername(undefined);
+      notification.success("Telegram disconnected");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to disconnect Telegram";
+      notification.error(msg);
+    } finally {
+      setIsDisconnectingTelegram(false);
+    }
+  }, [address]);
 
   if (!isLoaded) return null;
 
@@ -131,6 +219,14 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
               <span className="text-base-content/70 dark:text-gray-400 shrink-0">Signal:</span>
               <span className="min-w-0 break-all text-base-content font-medium dark:text-white" title={signalRecipient}>
                 @{signalRecipient}
+              </span>
+            </div>
+          )}
+          {(services ?? []).includes("telegram") && telegramChatId && (
+            <div className="flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-base-content/70 dark:text-gray-400 shrink-0">Telegram:</span>
+              <span className="min-w-0 break-all text-base-content font-medium dark:text-white">
+                {telegramUsername ? `@${telegramUsername}` : "linked"}
               </span>
             </div>
           )}
@@ -210,6 +306,12 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
         return;
       }
     }
+    if (currentServices.includes("telegram")) {
+      if (!telegramChatId) {
+        notification.error("Please connect Telegram first using the 'Connect Telegram' button.");
+        return;
+      }
+    }
 
     setIsSaving(true);
     try {
@@ -250,6 +352,8 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
       setServices(config.services ?? []);
       setEmail(config.email ?? "");
       setSignalRecipient(config.signalRecipient ?? "");
+      setTelegramChatId(config.telegramChatId);
+      setTelegramUsername(config.telegramUsername);
       const nextThreshold = clampThreshold(Number(config.healthFactorThreshold) || DEFAULT_HEALTH_FACTOR_THRESHOLD);
       setThreshold(nextThreshold);
       setThresholdText(formatThreshold(nextThreshold));
@@ -262,6 +366,7 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
       setThreshold(nextThreshold);
       setThresholdText(formatThreshold(nextThreshold));
     }
+    stopTelegramPolling();
     setIsEditing(false);
   };
 
@@ -399,6 +504,42 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
             </div>
           )}
 
+          {/* Telegram connect/disconnect when Telegram service is selected */}
+          {(services ?? []).includes("telegram") && (
+            <div>
+              <label className="block text-sm text-base-content dark:text-gray-300 mb-2">Telegram</label>
+              {telegramChatId ? (
+                <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10">
+                  <div className="text-sm text-emerald-400 break-all">
+                    ✅ Connected{telegramUsername ? ` as @${telegramUsername}` : ""}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleDisconnectTelegram}
+                    disabled={isDisconnectingTelegram}
+                    className="text-xs px-2 py-1 rounded-md border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                  >
+                    {isDisconnectingTelegram ? "Disconnecting..." : "Disconnect"}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={handleConnectTelegram}
+                    disabled={isConnectingTelegram}
+                    className="w-full px-3 py-2 rounded-lg border border-sky-500/40 bg-sky-500/10 text-sky-300 text-sm font-medium hover:bg-sky-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isConnectingTelegram ? "Waiting for Telegram… (open the bot and press Start)" : "Connect Telegram"}
+                  </button>
+                  <p className="text-xs text-base-content/70 dark:text-gray-400">
+                    Opens our bot in Telegram. Press <strong>Start</strong> there to link this wallet to your chat.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Health Factor Threshold */}
           <div>
             <label className="block text-sm text-base-content dark:text-gray-300 mb-2">
@@ -482,6 +623,7 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
                 (services ?? []).length === 0 ||
                 ((services ?? []).includes("email") && !(email ?? "").trim()) ||
                 ((services ?? []).includes("signal") && !(signalRecipient ?? "").trim()) ||
+                ((services ?? []).includes("telegram") && !telegramChatId) ||
                 isSaving
               }
               className="flex-1 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-medium hover:from-purple-600 hover:to-indigo-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/20"
@@ -540,6 +682,14 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
               <span className="text-base-content/70 dark:text-gray-400 shrink-0">Signal:</span>
               <span className="min-w-0 break-all text-base-content font-medium dark:text-white" title={signalRecipient}>
                 @{signalRecipient}
+              </span>
+            </div>
+          )}
+          {(services ?? []).includes("telegram") && telegramChatId && (
+            <div className="flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-base-content/70 dark:text-gray-400 shrink-0">Telegram:</span>
+              <span className="min-w-0 break-all text-base-content font-medium dark:text-white">
+                {telegramUsername ? `@${telegramUsername}` : "linked"}
               </span>
             </div>
           )}
