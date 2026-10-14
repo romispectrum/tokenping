@@ -1,0 +1,46 @@
+import { apiUrl, readApiError } from "~~/services/api/apiClient";
+import type { NotificationConfig } from "~~/types/notifications";
+
+const CONFIG_PATH = "/api/notifications/config";
+
+/*
+ * Browser client for /api/notifications/config. The raw (trimmed, not lowercased) wallet address is sent so the API
+ * can also match rows stored with checksummed casing and update them in place.
+ */
+export const notificationConfigClient = {
+  async getAllConfigs(userId: string): Promise<Record<number, NotificationConfig>> {
+    const res = await fetch(apiUrl(`${CONFIG_PATH}?userId=${encodeURIComponent(userId.trim())}`));
+    // BUG(B0.9): an HTTP error is reported as "no configs" instead of throwing.
+    if (!res.ok) return {};
+    const data = await res.json();
+    if (data == null || typeof data !== "object") return {};
+    return data as Record<number, NotificationConfig>;
+  },
+
+  /** config.chainId is the Aave position's chain (the network the alert is for), not the wallet's connected chain. */
+  async upsertConfig(userId: string, config: NotificationConfig): Promise<void> {
+    const res = await fetch(apiUrl(CONFIG_PATH), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: userId.trim(),
+        chainId: config.chainId,
+        enabled: config.enabled,
+        services: config.services,
+        healthFactorThreshold: config.healthFactorThreshold,
+        email: config.email ?? null,
+        signalRecipient: config.signalRecipient ?? null,
+      }),
+    });
+    if (!res.ok) throw new Error(await readApiError(res, "Failed to save notification config"));
+  },
+
+  async deleteConfig(userId: string, chainId: number): Promise<void> {
+    const res = await fetch(apiUrl(CONFIG_PATH), {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: userId.trim(), chainId }),
+    });
+    if (!res.ok) throw new Error(await readApiError(res, "Failed to delete notification config"));
+  },
+};

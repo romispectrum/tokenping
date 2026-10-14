@@ -1,19 +1,37 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
-import { AVAILABLE_SERVICES, DEFAULT_HEALTH_FACTOR_THRESHOLD } from "~~/constants/notifications";
+import { NotificationCard } from "~~/components/custom/notifications/NotificationCard";
+import { NotificationEmptyState } from "~~/components/custom/notifications/NotificationEmptyState";
+import { NotificationSummary } from "~~/components/custom/notifications/NotificationSummary";
+import { RecipientFields } from "~~/components/custom/notifications/RecipientFields";
+import { ServiceSelector } from "~~/components/custom/notifications/ServiceSelector";
+import { TelegramConnectField } from "~~/components/custom/notifications/TelegramConnectField";
+import { ThresholdField } from "~~/components/custom/notifications/ThresholdField";
+import {
+  EMPTY_FORM_STATE,
+  type NotificationFormState,
+  buildConfigUpdate,
+  canSubmitNotificationForm,
+  configToFormState,
+  configToFormStateOnCancel,
+  toggleService,
+  validateNotificationForm,
+} from "~~/components/custom/notifications/notificationForm";
 import { useAccess } from "~~/hooks/custom/useAccess";
-import { type NotificationService, useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
-import { telegramClient } from "~~/services/telegram/telegramClient";
+import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
+import { useTelegramLink } from "~~/hooks/custom/useTelegramLink";
+import { getErrorMessage } from "~~/utils/errors";
+import { isBelowThreshold } from "~~/utils/healthFactor";
 import { notification } from "~~/utils/scaffold-eth";
 
-interface NotificationConfigProps {
+type NotificationConfigProps = {
   /** Aave/position chain (the network this config is for). Must match position.chainId, not wallet's connected chain. */
   chainId: number;
   chainName: string;
   currentHealthFactor: string;
-}
+};
 
 export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: NotificationConfigProps) => {
   const { getConfig, updateConfig, deleteConfig, isLoaded } = useNotificationConfig();
@@ -21,307 +39,74 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
   const { address } = useAccount();
   const config = getConfig(chainId);
 
-  const SLIDER_MIN_HEALTH_FACTOR_THRESHOLD = 1.1;
-  const SLIDER_MAX_HEALTH_FACTOR_THRESHOLD = 3;
-  const MIN_HEALTH_FACTOR_THRESHOLD = 1.1;
-  const MAX_HEALTH_FACTOR_THRESHOLD = 10;
-
-  const clampThreshold = (value: number) =>
-    Math.min(MAX_HEALTH_FACTOR_THRESHOLD, Math.max(MIN_HEALTH_FACTOR_THRESHOLD, value));
-  const clampSliderThreshold = (value: number) =>
-    Math.min(SLIDER_MAX_HEALTH_FACTOR_THRESHOLD, Math.max(SLIDER_MIN_HEALTH_FACTOR_THRESHOLD, value));
-  const formatThreshold = (value: number) =>
-    Number.isFinite(value) ? value.toFixed(2) : DEFAULT_HEALTH_FACTOR_THRESHOLD.toFixed(2);
-
-  const [enabled, setEnabled] = useState(config?.enabled ?? false);
-  const [services, setServices] = useState<NotificationService[]>(config?.services ?? []);
-  const [email, setEmail] = useState(config?.email ?? "");
-  const [signalRecipient, setSignalRecipient] = useState(config?.signalRecipient ?? "");
-
-  // Telegram link is per-user (not per-chain) and lives on user_telegram_links.
-  // The config GET response surfaces it for the current user; we also fetch live
-  // during the handshake handshake polling so we don't show stale state.
-  const [telegramChatId, setTelegramChatId] = useState<string | undefined>(config?.telegramChatId);
-  const [telegramUsername, setTelegramUsername] = useState<string | null | undefined>(config?.telegramUsername);
-  const [isConnectingTelegram, setIsConnectingTelegram] = useState(false);
-  const [isDisconnectingTelegram, setIsDisconnectingTelegram] = useState(false);
-  const telegramPollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const telegramPollDeadline = useRef<number>(0);
-  const [threshold, setThreshold] = useState(() =>
-    clampThreshold(Number(config?.healthFactorThreshold) || DEFAULT_HEALTH_FACTOR_THRESHOLD),
-  );
-  const thresholdInputRef = useRef<HTMLInputElement>(null);
-  const [thresholdText, setThresholdText] = useState(() => {
-    const initial = clampThreshold(Number(config?.healthFactorThreshold) || DEFAULT_HEALTH_FACTOR_THRESHOLD);
-    return formatThreshold(initial);
-  });
-  const [isEditing, setIsEditing] = useState(false); // Show create button when no config, summary when has config
+  // This component's useNotificationConfig starts empty, so config is null on the first render; the effect hydrates.
+  const [form, setForm] = useState(EMPTY_FORM_STATE);
+  const telegram = useTelegramLink(address);
+  const { setLink: setTelegramLink, stopPolling: stopTelegramPolling } = telegram;
+  const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Sync local state from config only when not editing, so the slider/inputs aren't reset while the user is changing them.
   // Depend on getConfig + chainId (not config): getConfig() returns a new object every time, which would cause infinite re-renders.
   useEffect(() => {
-    const config = getConfig(chainId);
-    if (config && !isEditing) {
-      setEnabled(config.enabled ?? false);
-      const validServices = (config.services ?? []).filter(
-        (s): s is NotificationService => s === "email" || s === "signal" || s === "telegram",
-      );
-      setServices(validServices.length > 0 ? validServices : config.enabled ? ["email"] : []);
-      setEmail(config.email ?? "");
-      setSignalRecipient(config.signalRecipient ?? "");
-      setTelegramChatId(config.telegramChatId);
-      setTelegramUsername(config.telegramUsername);
-      const nextThreshold = clampThreshold(Number(config.healthFactorThreshold) || DEFAULT_HEALTH_FACTOR_THRESHOLD);
-
-      setThreshold(nextThreshold);
-      setThresholdText(formatThreshold(nextThreshold));
+    const savedConfig = getConfig(chainId);
+    if (savedConfig && !isEditing) {
+      setForm(configToFormState(savedConfig));
+      setTelegramLink(savedConfig.telegramChatId, savedConfig.telegramUsername);
     }
-  }, [getConfig, chainId, isEditing]);
-
-  // Stop polling on unmount.
-  useEffect(() => {
-    return () => {
-      if (telegramPollTimer.current) {
-        clearInterval(telegramPollTimer.current);
-        telegramPollTimer.current = null;
-      }
-    };
-  }, []);
-
-  const stopTelegramPolling = useCallback(() => {
-    if (telegramPollTimer.current) {
-      clearInterval(telegramPollTimer.current);
-      telegramPollTimer.current = null;
-    }
-    setIsConnectingTelegram(false);
-  }, []);
-
-  const handleConnectTelegram = useCallback(async () => {
-    if (!address) {
-      notification.error("Connect your wallet first");
-      return;
-    }
-    setIsConnectingTelegram(true);
-    try {
-      const { deepLink } = await telegramClient.createLinkToken(address);
-      // Open Telegram in a new tab. On mobile this opens the Telegram app.
-      window.open(deepLink, "_blank", "noopener,noreferrer");
-
-      // Poll the link endpoint every 2s for up to 2 min, looking for a chat_id.
-      telegramPollDeadline.current = Date.now() + 2 * 60 * 1000;
-      if (telegramPollTimer.current) clearInterval(telegramPollTimer.current);
-      telegramPollTimer.current = setInterval(async () => {
-        if (Date.now() > telegramPollDeadline.current) {
-          stopTelegramPolling();
-          notification.error("Telegram link timed out. Try again.");
-          return;
-        }
-        try {
-          const status = await telegramClient.getLinkStatus(address);
-          if (status.linked && status.chatId) {
-            setTelegramChatId(status.chatId);
-            setTelegramUsername(status.username ?? null);
-            stopTelegramPolling();
-            notification.success(status.username ? `Telegram connected as @${status.username}` : "Telegram connected");
-          }
-        } catch {
-          // Network blip — keep polling until deadline.
-        }
-      }, 2_000);
-    } catch (e) {
-      setIsConnectingTelegram(false);
-      const msg = e instanceof Error ? e.message : "Failed to connect Telegram";
-      notification.error(msg);
-    }
-  }, [address, stopTelegramPolling]);
-
-  const handleDisconnectTelegram = useCallback(async () => {
-    if (!address) return;
-    setIsDisconnectingTelegram(true);
-    try {
-      await telegramClient.disconnect(address);
-      setTelegramChatId(undefined);
-      setTelegramUsername(undefined);
-      notification.success("Telegram disconnected");
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Failed to disconnect Telegram";
-      notification.error(msg);
-    } finally {
-      setIsDisconnectingTelegram(false);
-    }
-  }, [address]);
+  }, [getConfig, chainId, isEditing, setTelegramLink]);
 
   if (!isLoaded) return null;
 
   const hasConfig = config !== null;
 
-  // No access and no config: paywall above is enough; show nothing here
+  // No access and no config: the paywall above is enough.
   if (!hasAccess && !hasConfig) return null;
 
-  // No access but has existing config: show read-only summary and "Pay for access to edit"
-  if (!hasAccess && hasConfig) {
-    const hf = parseFloat(currentHealthFactor);
-    const belowThreshold = !isNaN(hf) && hf < threshold && enabled;
+  const updateForm = (patch: Partial<NotificationFormState>) => setForm(prev => ({ ...prev, ...patch }));
+  const submission = { ...form, telegramChatId: telegram.chatId };
+
+  const summary = (
+    <NotificationSummary
+      services={form.services}
+      email={form.email}
+      signalRecipient={form.signalRecipient}
+      telegramChatId={telegram.chatId}
+      telegramUsername={telegram.username}
+      threshold={form.threshold}
+      currentHealthFactor={currentHealthFactor}
+      showBelowThresholdWarning={form.enabled && isBelowThreshold(currentHealthFactor, form.threshold)}
+    />
+  );
+
+  // Access lapsed but a config exists: read-only summary.
+  if (!hasAccess) {
     return (
-      <div className="mb-4 rounded-xl border border-primary/30 bg-base-100 dark:border-purple-500/20 dark:bg-gradient-to-br dark:from-purple-950/30 dark:to-gray-900/50 backdrop-blur-xl p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-              />
-            </svg>
-            <h3 className="text-sm font-semibold text-base-content dark:text-white">Notification Settings</h3>
-            {enabled && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                Active
-              </span>
-            )}
-          </div>
-          <span className="text-[10px] text-amber-400">Pay for access to edit</span>
-        </div>
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-base-content/70 dark:text-gray-400">Services:</span>
-            <div className="flex items-center gap-1.5">
-              {(services ?? []).length > 0 ? (
-                (services ?? []).map(serviceId => {
-                  const service = AVAILABLE_SERVICES.find(s => s.id === serviceId);
-                  return service ? (
-                    <span
-                      key={serviceId}
-                      className="text-xs px-2 py-0.5 rounded-md border border-purple-500/30 bg-purple-500/10 text-purple-300"
-                    >
-                      {service.icon} {service.name}
-                    </span>
-                  ) : null;
-                })
-              ) : (
-                <span className="text-xs text-base-content/60 dark:text-gray-500">None selected</span>
-              )}
-            </div>
-          </div>
-          {(services ?? []).includes("email") && email && (
-            <div className="flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:justify-between">
-              <span className="text-base-content/70 dark:text-gray-400 shrink-0">Email:</span>
-              <span className="min-w-0 break-all text-base-content font-medium dark:text-white" title={email}>
-                {email}
-              </span>
-            </div>
-          )}
-          {(services ?? []).includes("signal") && signalRecipient && (
-            <div className="flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:justify-between">
-              <span className="text-base-content/70 dark:text-gray-400 shrink-0">Signal:</span>
-              <span className="min-w-0 break-all text-base-content font-medium dark:text-white" title={signalRecipient}>
-                @{signalRecipient}
-              </span>
-            </div>
-          )}
-          {(services ?? []).includes("telegram") && telegramChatId && (
-            <div className="flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:justify-between">
-              <span className="text-base-content/70 dark:text-gray-400 shrink-0">Telegram:</span>
-              <span className="min-w-0 break-all text-base-content font-medium dark:text-white">
-                {telegramUsername ? `@${telegramUsername}` : "linked"}
-              </span>
-            </div>
-          )}
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-base-content/70 dark:text-gray-400">Threshold:</span>
-            <span className="text-base-content font-medium dark:text-white">{threshold}</span>
-          </div>
-          {belowThreshold && (
-            <div className="mt-2 p-2 rounded-lg bg-amber-500/20 border border-amber-500/30">
-              <p className="text-xs text-amber-400">
-                ⚠️ Current Health Factor ({currentHealthFactor}) is below your threshold!
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
+      <NotificationCard
+        isActive={form.enabled}
+        headerRight={<span className="text-[10px] text-amber-400">Pay for access to edit</span>}
+      >
+        {summary}
+      </NotificationCard>
     );
   }
 
-  const hf = parseFloat(currentHealthFactor);
-  const isBelowThreshold = !isNaN(hf) && hf < threshold && enabled;
-
-  const toggleService = (serviceId: NotificationService) => {
-    setServices(prev => {
-      const currentServices = prev ?? [];
-      return currentServices.includes(serviceId)
-        ? currentServices.filter(s => s !== serviceId)
-        : [...currentServices, serviceId];
-    });
-  };
-
-  const saveConfig = async () => {
-    const currentServices = services ?? [];
-    const roundedThreshold = Math.round((threshold ?? DEFAULT_HEALTH_FACTOR_THRESHOLD) * 100) / 100;
-    const clampedThreshold = clampThreshold(roundedThreshold);
-    await updateConfig(chainId, {
-      enabled: true,
-      services: currentServices,
-      healthFactorThreshold: clampedThreshold,
-      email: currentServices.includes("email") ? (email ?? "").trim() || undefined : undefined,
-      signalRecipient: currentServices.includes("signal")
-        ? (signalRecipient ?? "").trim().replace(/^@/, "") || undefined
-        : undefined,
-    });
-    setIsEditing(false);
-  };
-
   const handleStore = async () => {
-    const currentServices = services ?? [];
-    if (currentServices.length === 0) {
-      notification.error("Please select at least one notification service");
+    const validationError = validateNotificationForm(submission);
+    if (validationError) {
+      notification.error(validationError);
       return;
-    }
-    if (currentServices.includes("email")) {
-      const trimmed = (email ?? "").trim();
-      if (!trimmed) {
-        notification.error("Please enter your email address");
-        return;
-      }
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(trimmed)) {
-        notification.error("Please enter a valid email address");
-        return;
-      }
-    }
-    if (currentServices.includes("signal")) {
-      const trimmed = (signalRecipient ?? "").trim().replace(/^@/, "");
-      if (!trimmed) {
-        notification.error("Please enter your Signal username");
-        return;
-      }
-      const usernameRegex = /^[a-zA-Z0-9][a-zA-Z0-9_]{0,29}\.\d{2,}$/;
-      if (!usernameRegex.test(trimmed)) {
-        notification.error(
-          "Invalid Signal username. Expected format: alice.42 (find yours in Signal → Settings → Profile)",
-        );
-        return;
-      }
-    }
-    if (currentServices.includes("telegram")) {
-      if (!telegramChatId) {
-        notification.error("Please connect Telegram first using the 'Connect Telegram' button.");
-        return;
-      }
     }
 
     setIsSaving(true);
     try {
-      await saveConfig();
+      await updateConfig(chainId, buildConfigUpdate(form));
       notification.success("Notification configuration saved.");
       setIsEditing(false);
-    } catch (error: any) {
-      const errorMessage = error?.message || "Failed to save configuration";
+    } catch (error) {
       console.error("Failed to save notification config:", error);
-      notification.error(errorMessage);
+      notification.error(getErrorMessage(error, "Failed to save configuration"));
     } finally {
       setIsSaving(false);
     }
@@ -332,14 +117,9 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
     try {
       await deleteConfig(chainId);
       setIsEditing(true);
-      setEnabled(false);
-      setServices([]);
-      setEmail("");
-      setSignalRecipient("");
-      const nextThreshold = clampThreshold(DEFAULT_HEALTH_FACTOR_THRESHOLD);
-      setThreshold(nextThreshold);
-      setThresholdText(formatThreshold(nextThreshold));
+      setForm(EMPTY_FORM_STATE);
     } catch (error) {
+      // BUG(B0.10): a failed delete is only logged; the user gets no feedback.
       console.error("Failed to delete notification config:", error);
     } finally {
       setIsDeleting(false);
@@ -347,285 +127,64 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
   };
 
   const handleCancel = () => {
-    if (config) {
-      setEnabled(config.enabled);
-      setServices(config.services ?? []);
-      setEmail(config.email ?? "");
-      setSignalRecipient(config.signalRecipient ?? "");
-      setTelegramChatId(config.telegramChatId);
-      setTelegramUsername(config.telegramUsername);
-      const nextThreshold = clampThreshold(Number(config.healthFactorThreshold) || DEFAULT_HEALTH_FACTOR_THRESHOLD);
-      setThreshold(nextThreshold);
-      setThresholdText(formatThreshold(nextThreshold));
-    } else {
-      setEnabled(false);
-      setServices([]);
-      setEmail("");
-      setSignalRecipient("");
-      const nextThreshold = clampThreshold(DEFAULT_HEALTH_FACTOR_THRESHOLD);
-      setThreshold(nextThreshold);
-      setThresholdText(formatThreshold(nextThreshold));
-    }
+    setForm(configToFormStateOnCancel(config));
+    if (config) setTelegramLink(config.telegramChatId, config.telegramUsername);
     stopTelegramPolling();
     setIsEditing(false);
   };
 
-  // No config and not editing: show empty state with create button
   if (!hasConfig && !isEditing) {
-    return (
-      <div className="mb-4 rounded-xl border border-primary/30 bg-base-100 dark:border-purple-500/20 dark:bg-gradient-to-br dark:from-purple-950/30 dark:to-gray-900/50 backdrop-blur-xl p-4">
-        <div className="flex flex-col items-center justify-center py-4 text-center">
-          <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center mb-3">
-            <svg className="w-6 h-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-              />
-            </svg>
-          </div>
-          <h3 className="text-sm font-semibold text-base-content dark:text-white mb-1">Notification Settings</h3>
-          <p className="text-xs text-base-content/70 dark:text-gray-400 mb-4 max-w-[240px]">
-            Get alerts when your Health Factor on {chainName} drops below a threshold you choose.
-          </p>
-          <button
-            onClick={() => setIsEditing(true)}
-            className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-sm font-medium hover:from-purple-600 hover:to-indigo-600 transition-all shadow-lg shadow-purple-500/20"
-          >
-            Create notification config
-          </button>
-        </div>
-      </div>
-    );
+    return <NotificationEmptyState chainName={chainName} onCreate={() => setIsEditing(true)} />;
   }
 
   return (
-    <div className="mb-4 rounded-xl border border-primary/30 bg-base-100 dark:border-purple-500/20 dark:bg-gradient-to-br dark:from-purple-950/30 dark:to-gray-900/50 backdrop-blur-xl p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-            />
-          </svg>
-          <h3 className="text-sm font-semibold text-base-content dark:text-white">Notification Settings</h3>
-          {hasConfig && enabled && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              Active
-            </span>
-          )}
-        </div>
-        {!isEditing && (
+    <NotificationCard
+      isActive={hasConfig && form.enabled}
+      headerRight={
+        !isEditing && (
           <button
             onClick={() => setIsEditing(true)}
             className="text-xs px-2 py-1 rounded-lg border border-base-300 bg-base-200 text-base-content dark:border-white/10 dark:bg-white/5 dark:text-gray-300 hover:bg-base-300 dark:hover:bg-white/10 dark:hover:text-white transition-colors"
           >
             Edit
           </button>
-        )}
-      </div>
-
+        )
+      }
+    >
       {isEditing ? (
         <div className="space-y-4">
-          {/* Notification Services Selection */}
-          <div>
-            <label className="block text-sm text-base-content dark:text-gray-300 mb-3">Notification Services</label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {AVAILABLE_SERVICES.map(service => {
-                const isSelected = (services ?? []).includes(service.id);
-                return (
-                  <button
-                    key={service.id}
-                    type="button"
-                    onClick={() => toggleService(service.id)}
-                    className={[
-                      "flex items-center gap-2 px-3 py-2.5 rounded-lg border transition-all text-left",
-                      isSelected
-                        ? "border-primary/40 bg-primary/20 text-primary-content dark:border-purple-500/40 dark:bg-purple-500/20 dark:text-white"
-                        : "border-base-300 bg-base-200 text-base-content dark:border-white/10 dark:bg-white/5 dark:text-gray-300 hover:border-base-content/20 hover:bg-base-300 dark:hover:border-white/20 dark:hover:bg-white/10",
-                    ].join(" ")}
-                  >
-                    <span className="text-lg">{service.icon}</span>
-                    <span className="text-sm font-medium">{service.name}</span>
-                    {isSelected && (
-                      <svg
-                        className="w-4 h-4 ml-auto text-purple-400"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            {(services ?? []).length === 0 && (
-              <p className="text-xs text-amber-400 mt-2">⚠️ Please select at least one notification service</p>
-            )}
-          </div>
-
-          {/* Email input when Email service is selected */}
-          {(services ?? []).includes("email") && (
-            <div>
-              <label className="block text-sm text-base-content dark:text-gray-300 mb-2">Email address</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full px-3 py-2 rounded-lg border border-base-300 bg-base-200 text-base-content placeholder-base-content/50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder-gray-500 focus:border-purple-500/50 focus:outline-none focus:ring-1 focus:ring-purple-500/30 text-sm"
-              />
-              <p className="text-xs text-base-content/70 dark:text-gray-400 mt-1">
-                Alerts will be sent to this address.
-              </p>
-            </div>
+          <ServiceSelector
+            services={form.services}
+            onToggle={service => setForm(prev => ({ ...prev, services: toggleService(prev.services, service) }))}
+          />
+          <RecipientFields
+            services={form.services}
+            email={form.email}
+            signalRecipient={form.signalRecipient}
+            onEmailChange={email => updateForm({ email })}
+            onSignalRecipientChange={signalRecipient => updateForm({ signalRecipient })}
+          />
+          {form.services.includes("telegram") && (
+            <TelegramConnectField
+              chatId={telegram.chatId}
+              username={telegram.username}
+              isConnecting={telegram.isConnecting}
+              isDisconnecting={telegram.isDisconnecting}
+              onConnect={telegram.connect}
+              onDisconnect={telegram.disconnect}
+            />
           )}
-
-          {/* Username input when Signal service is selected */}
-          {(services ?? []).includes("signal") && (
-            <div>
-              <label className="block text-sm text-base-content dark:text-gray-300 mb-2">Signal username</label>
-              <input
-                type="text"
-                value={signalRecipient}
-                onChange={e => setSignalRecipient(e.target.value)}
-                placeholder="@alice.42"
-                className="w-full px-3 py-2 rounded-lg border border-base-300 bg-base-200 text-base-content placeholder-base-content/50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder-gray-500 focus:border-purple-500/50 focus:outline-none focus:ring-1 focus:ring-purple-500/30 text-sm"
-              />
-              <p className="text-xs text-base-content/70 dark:text-gray-400 mt-1">
-                Find your username in Signal → Settings → Profile. Format: alice.42
-              </p>
-            </div>
-          )}
-
-          {/* Telegram connect/disconnect when Telegram service is selected */}
-          {(services ?? []).includes("telegram") && (
-            <div>
-              <label className="block text-sm text-base-content dark:text-gray-300 mb-2">Telegram</label>
-              {telegramChatId ? (
-                <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10">
-                  <div className="text-sm text-emerald-400 break-all">
-                    ✅ Connected{telegramUsername ? ` as @${telegramUsername}` : ""}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleDisconnectTelegram}
-                    disabled={isDisconnectingTelegram}
-                    className="text-xs px-2 py-1 rounded-md border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
-                  >
-                    {isDisconnectingTelegram ? "Disconnecting..." : "Disconnect"}
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={handleConnectTelegram}
-                    disabled={isConnectingTelegram}
-                    className="w-full px-3 py-2 rounded-lg border border-sky-500/40 bg-sky-500/10 text-sky-300 text-sm font-medium hover:bg-sky-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isConnectingTelegram ? "Waiting for Telegram… (open the bot and press Start)" : "Connect Telegram"}
-                  </button>
-                  <p className="text-xs text-base-content/70 dark:text-gray-400">
-                    Opens our bot in Telegram. Press <strong>Start</strong> there to link this wallet to your chat.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Health Factor Threshold */}
-          <div>
-            <label className="block text-sm text-base-content dark:text-gray-300 mb-2">
-              Health Factor Threshold:{" "}
-              <span className="font-semibold text-base-content dark:text-white">{threshold}</span>
-            </label>
-            <div className="flex items-center gap-3 flex-wrap">
-              <input
-                type="range"
-                min="1.1"
-                max="3.0"
-                step="0.1"
-                value={clampSliderThreshold(threshold)}
-                onChange={e => {
-                  const next = clampSliderThreshold(parseFloat(e.target.value));
-                  setThreshold(next);
-                  if (typeof document !== "undefined" && document.activeElement !== thresholdInputRef.current) {
-                    setThresholdText(formatThreshold(next));
-                  }
-                }}
-                className="flex-1 min-w-[120px] h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
-              />
-              <input
-                ref={thresholdInputRef}
-                type="text"
-                inputMode="decimal"
-                placeholder="1.50"
-                value={thresholdText}
-                onChange={e => {
-                  // Allow natural typing (including empty / trailing dot) and limit to 2 decimals.
-                  const nextRaw = e.target.value.replace(",", ".");
-                  if (!/^\d{0,2}(\.\d{0,2})?$/.test(nextRaw)) return;
-                  setThresholdText(nextRaw);
-
-                  // Only commit to numeric threshold when the input is a "complete" number (not empty / "." / "1.").
-                  if (nextRaw === "" || nextRaw === "." || nextRaw.endsWith(".")) return;
-                  const parsed = Number.parseFloat(nextRaw);
-                  if (!Number.isFinite(parsed)) return;
-                  const clamped = clampThreshold(Math.round(parsed * 100) / 100);
-                  setThreshold(clamped);
-                }}
-                onBlur={() => {
-                  const raw = thresholdText.replace(",", ".");
-                  if (raw === "" || raw === "." || raw.endsWith(".")) {
-                    setThresholdText(formatThreshold(threshold));
-                    return;
-                  }
-                  const parsed = Number.parseFloat(raw);
-                  if (!Number.isFinite(parsed)) {
-                    setThresholdText(formatThreshold(threshold));
-                    return;
-                  }
-                  const clamped = clampThreshold(Math.round(parsed * 100) / 100);
-                  setThreshold(clamped);
-                  setThresholdText(formatThreshold(clamped));
-                }}
-                onKeyDown={e => {
-                  // Prevent exponent/plus/minus which browsers allow in some numeric inputs.
-                  if (e.key === "e" || e.key === "E" || e.key === "+" || e.key === "-") {
-                    e.preventDefault();
-                  }
-                }}
-                className="w-20 px-2 py-1.5 rounded-lg border border-base-300 bg-base-200 text-base-content text-sm dark:border-white/10 dark:bg-white/5 dark:text-white text-right tabular-nums focus:border-purple-500/50 focus:outline-none focus:ring-1 focus:ring-purple-500/30"
-                aria-label="Health factor threshold (manual)"
-              />
-            </div>
-            <div className="flex justify-between text-xs text-base-content/60 dark:text-gray-500 mt-1">
-              <span>1.1 (Critical)</span>
-              <span>2.0 (Safe)</span>
-              <span>3.0 (Very Safe)</span>
-            </div>
-            <p className="text-xs text-base-content/70 dark:text-gray-400 mt-2">
-              {"You'll"} be notified when your Health Factor drops below {threshold} on {chainName}.
-            </p>
-          </div>
-
+          <ThresholdField
+            threshold={form.threshold}
+            thresholdText={form.thresholdText}
+            chainName={chainName}
+            onThresholdChange={threshold => updateForm({ threshold })}
+            onThresholdTextChange={thresholdText => updateForm({ thresholdText })}
+          />
           <div className="flex items-center gap-2 pt-2">
             <button
               onClick={handleStore}
-              disabled={
-                (services ?? []).length === 0 ||
-                ((services ?? []).includes("email") && !(email ?? "").trim()) ||
-                ((services ?? []).includes("signal") && !(signalRecipient ?? "").trim()) ||
-                ((services ?? []).includes("telegram") && !telegramChatId) ||
-                isSaving
-              }
+              disabled={!canSubmitNotificationForm(submission) || isSaving}
               className="flex-1 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-medium hover:from-purple-600 hover:to-indigo-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/20"
             >
               {isSaving ? "Saving..." : "Save"}
@@ -648,64 +207,8 @@ export const NotificationConfig = ({ chainId, chainName, currentHealthFactor }: 
           </div>
         </div>
       ) : (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-base-content/70 dark:text-gray-400">Services:</span>
-            <div className="flex items-center gap-1.5">
-              {(services ?? []).length > 0 ? (
-                (services ?? []).map(serviceId => {
-                  const service = AVAILABLE_SERVICES.find(s => s.id === serviceId);
-                  return service ? (
-                    <span
-                      key={serviceId}
-                      className="text-xs px-2 py-0.5 rounded-md border border-purple-500/30 bg-purple-500/10 text-purple-300"
-                    >
-                      {service.icon} {service.name}
-                    </span>
-                  ) : null;
-                })
-              ) : (
-                <span className="text-xs text-base-content/60 dark:text-gray-500">None selected</span>
-              )}
-            </div>
-          </div>
-          {(services ?? []).includes("email") && email && (
-            <div className="flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:justify-between">
-              <span className="text-base-content/70 dark:text-gray-400 shrink-0">Email:</span>
-              <span className="min-w-0 break-all text-base-content font-medium dark:text-white" title={email}>
-                {email}
-              </span>
-            </div>
-          )}
-          {(services ?? []).includes("signal") && signalRecipient && (
-            <div className="flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:justify-between">
-              <span className="text-base-content/70 dark:text-gray-400 shrink-0">Signal:</span>
-              <span className="min-w-0 break-all text-base-content font-medium dark:text-white" title={signalRecipient}>
-                @{signalRecipient}
-              </span>
-            </div>
-          )}
-          {(services ?? []).includes("telegram") && telegramChatId && (
-            <div className="flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:justify-between">
-              <span className="text-base-content/70 dark:text-gray-400 shrink-0">Telegram:</span>
-              <span className="min-w-0 break-all text-base-content font-medium dark:text-white">
-                {telegramUsername ? `@${telegramUsername}` : "linked"}
-              </span>
-            </div>
-          )}
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-base-content/70 dark:text-gray-400">Threshold:</span>
-            <span className="text-base-content font-medium dark:text-white">{threshold}</span>
-          </div>
-          {isBelowThreshold && (
-            <div className="mt-2 p-2 rounded-lg bg-amber-500/20 border border-amber-500/30">
-              <p className="text-xs text-amber-400">
-                ⚠️ Current Health Factor ({currentHealthFactor}) is below your threshold!
-              </p>
-            </div>
-          )}
-        </div>
+        summary
       )}
-    </div>
+    </NotificationCard>
   );
 };

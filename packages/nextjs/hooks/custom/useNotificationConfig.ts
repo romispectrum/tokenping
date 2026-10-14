@@ -3,10 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAccount } from "wagmi";
 import { DEFAULT_HEALTH_FACTOR_THRESHOLD } from "~~/constants/notifications";
-import { normalizeWalletAddress, notificationConfigsService } from "~~/services/supabase/notificationConfigs";
-import type { NotificationConfig, NotificationService } from "~~/types/notifications";
+import { notificationConfigClient } from "~~/services/notifications/notificationConfigClient";
+import type { NotificationConfig } from "~~/types/notifications";
+import { normalizeAddress } from "~~/utils/address";
 
-export type { NotificationConfig, NotificationService };
+const requireAddress = (address: string | undefined) => {
+  if (!address) throw new Error("Wallet not connected");
+  return address;
+};
 
 export const useNotificationConfig = () => {
   const { address } = useAccount();
@@ -15,9 +19,8 @@ export const useNotificationConfig = () => {
 
   const [configs, setConfigs] = useState<Record<number, NotificationConfig>>({});
   const [isLoaded, setIsLoaded] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch configs by normalized user_id; only apply if connected wallet still matches
+  // Ignore the response if the connected wallet changed while the request was in flight.
   useEffect(() => {
     if (!address) {
       setConfigs({});
@@ -25,26 +28,18 @@ export const useNotificationConfig = () => {
       return;
     }
 
-    const requestedUid = normalizeWalletAddress(address);
+    const requestedUid = normalizeAddress(address);
+    const isRequestedWallet = () => !!addressRef.current && normalizeAddress(addressRef.current) === requestedUid;
 
     const loadConfigs = async () => {
-      setIsLoading(true);
       try {
-        const allConfigs = await notificationConfigsService.getAllConfigs(address);
-        const currentUid = addressRef.current ? normalizeWalletAddress(addressRef.current) : "";
-        if (currentUid === requestedUid) {
-          setConfigs(allConfigs);
-        }
+        const allConfigs = await notificationConfigClient.getAllConfigs(address);
+        if (isRequestedWallet()) setConfigs(allConfigs);
       } catch (error) {
         console.error("Failed to load notification configs:", error);
-        if (addressRef.current && normalizeWalletAddress(addressRef.current) === requestedUid) {
-          setConfigs({});
-        }
+        if (isRequestedWallet()) setConfigs({});
       } finally {
-        if (addressRef.current && normalizeWalletAddress(addressRef.current) === requestedUid) {
-          setIsLoaded(true);
-        }
-        setIsLoading(false);
+        if (isRequestedWallet()) setIsLoaded(true);
       }
     };
 
@@ -65,95 +60,39 @@ export const useNotificationConfig = () => {
     [configs],
   );
 
-  const setConfig = useCallback(
-    async (chainId: number, config: NotificationConfig) => {
-      if (!address) {
-        throw new Error("Wallet not connected");
-      }
-
-      try {
-        await notificationConfigsService.upsertConfig(address, config);
-        setConfigs(prev => ({
-          ...prev,
-          [chainId]: config,
-        }));
-      } catch (error) {
-        console.error("Failed to save notification config:", error);
-        throw error;
-      }
-    },
-    [address],
-  );
-
   const updateConfig = useCallback(
     async (chainId: number, updates: Partial<NotificationConfig>) => {
-      if (!address) {
-        throw new Error("Wallet not connected");
-      }
-
-      const currentConfig = configs[chainId] || {
-        chainId,
-        enabled: false,
-        services: [],
-        healthFactorThreshold: DEFAULT_HEALTH_FACTOR_THRESHOLD,
-      };
-
+      const userId = requireAddress(address);
       const updatedConfig: NotificationConfig = {
-        ...currentConfig,
+        ...(configs[chainId] || {
+          chainId,
+          enabled: false,
+          services: [],
+          healthFactorThreshold: DEFAULT_HEALTH_FACTOR_THRESHOLD,
+        }),
         ...updates,
         chainId, // always use position chain (Aave network), never wallet's connected chain
       };
 
-      try {
-        await notificationConfigsService.upsertConfig(address, updatedConfig);
-        setConfigs(prev => ({
-          ...prev,
-          [chainId]: updatedConfig,
-        }));
-      } catch (error) {
-        console.error("Failed to update notification config:", error);
-        throw error;
-      }
+      await notificationConfigClient.upsertConfig(userId, updatedConfig);
+      setConfigs(prev => ({ ...prev, [chainId]: updatedConfig }));
     },
     [address, configs],
   );
 
   const deleteConfig = useCallback(
     async (chainId: number) => {
-      if (!address) {
-        throw new Error("Wallet not connected");
-      }
-
-      try {
-        await notificationConfigsService.deleteConfig(address, chainId);
-        setConfigs(prev => {
-          const next = { ...prev };
-          delete next[chainId];
-          return next;
-        });
-      } catch (error) {
-        console.error("Failed to delete notification config:", error);
-        throw error;
-      }
+      await notificationConfigClient.deleteConfig(requireAddress(address), chainId);
+      setConfigs(prev => {
+        const next = { ...prev };
+        delete next[chainId];
+        return next;
+      });
     },
     [address],
   );
 
-  const hasConfig = useCallback(
-    (chainId: number): boolean => {
-      return chainId in configs;
-    },
-    [configs],
-  );
+  const hasConfig = useCallback((chainId: number) => chainId in configs, [configs]);
 
-  return {
-    configs,
-    isLoaded,
-    isLoading,
-    getConfig,
-    setConfig,
-    updateConfig,
-    deleteConfig,
-    hasConfig,
-  };
+  return { isLoaded, getConfig, updateConfig, deleteConfig, hasConfig };
 };

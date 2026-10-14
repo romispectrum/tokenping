@@ -1,43 +1,33 @@
-/**
- * Client-side wrappers for the Telegram link API.
- * Used by the NotificationConfig UI for the "Connect Telegram" handshake.
- */
+import { apiUrl, readApiError } from "~~/services/api/apiClient";
 
-export interface TelegramLinkStatus {
+export type TelegramLinkStatus = {
   linked: boolean;
   chatId?: string;
   username?: string | null;
   linkedAt?: string;
-}
+};
 
-export interface CreateLinkTokenResponse {
+export type CreateLinkTokenResponse = {
   token: string;
   botUsername: string;
   expiresAt: string;
   deepLink: string;
-}
+};
 
-function getApiBase(): string {
-  if (typeof window !== "undefined") return "";
-  return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-}
-
+/** Browser client for the Telegram link API behind the "Connect Telegram" handshake. */
 export const telegramClient = {
   async createLinkToken(userId: string): Promise<CreateLinkTokenResponse> {
-    const res = await fetch(`${getApiBase()}/api/telegram/link-token`, {
+    const res = await fetch(apiUrl("/api/telegram/link-token"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: userId.trim() }),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error || "Failed to create Telegram link token");
-    }
+    if (!res.ok) throw new Error(await readApiError(res, "Failed to create Telegram link token"));
     return res.json();
   },
 
   async getLinkStatus(userId: string): Promise<TelegramLinkStatus> {
-    const res = await fetch(`${getApiBase()}/api/telegram/link?userId=${encodeURIComponent(userId.trim())}`, {
+    const res = await fetch(apiUrl(`/api/telegram/link?userId=${encodeURIComponent(userId.trim())}`), {
       cache: "no-store",
     });
     if (!res.ok) return { linked: false };
@@ -45,14 +35,11 @@ export const telegramClient = {
   },
 
   async disconnect(userId: string): Promise<void> {
-    const res = await fetch(`${getApiBase()}/api/telegram/link`, {
+    const res = await fetch(apiUrl("/api/telegram/link"), {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: userId.trim() }),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error || "Failed to disconnect Telegram");
-    }
+    if (!res.ok) throw new Error(await readApiError(res, "Failed to disconnect Telegram"));
   },
 };
