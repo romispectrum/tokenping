@@ -10,6 +10,8 @@ const PACKAGE_ROOT = path.dirname(fileURLToPath(import.meta.url));
 const SERVER_ONLY_NOOP = path.join(path.dirname(createRequire(import.meta.url).resolve("server-only")), "empty.js");
 
 export default defineConfig({
+  // Paths in this file resolve against the package, not process.cwd(), so vitest also works when started elsewhere.
+  root: PACKAGE_ROOT,
   resolve: {
     alias: [
       { find: "~~", replacement: PACKAGE_ROOT },
@@ -21,7 +23,10 @@ export default defineConfig({
     jsx: { runtime: "automatic" },
   },
   test: {
+    // Server and pure-logic tests run in node. Tests that render with @testing-library/react opt into a DOM per file
+    // with a `// @vitest-environment jsdom` docblock on the first line.
     environment: "node",
+    setupFiles: [path.join(PACKAGE_ROOT, "utils/testing/setupTests.ts")],
     include: ["**/*.test.{ts,tsx}"],
     exclude: ["**/node_modules/**", "**/.next/**"],
   },
