@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { OG_IMAGE_SIZE, OgCard } from "~~/components/seo/OgCard";
+import { OG_IMAGE_SIZE, OgCard, ogImageOptions } from "~~/components/seo/OgCard";
 import { POSTS, getPost } from "~~/content/blog";
 import { SITE_NAME } from "~~/utils/seo";
 
@@ -19,7 +19,7 @@ const PostOpenGraphImage = async ({ params }: PostOpenGraphImageProps) => {
   const post = getPost((await params).slug);
   return new ImageResponse(
     <OgCard title={post?.meta.title ?? `${SITE_NAME} blog`} footer={`${SITE_NAME} · Aave V3 guides`} />,
-    size,
+    await ogImageOptions(),
   );
 };
 

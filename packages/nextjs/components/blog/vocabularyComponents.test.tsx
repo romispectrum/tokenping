@@ -78,6 +78,15 @@ describe("Callout", () => {
     expect(screen.getByRole("note").textContent).toBe(`${label}Body`);
   });
 
+  it("shows the tone as a visible word next to its icon, not only to screen readers", async () => {
+    const { Callout } = await import("~~/components/blog/Callout");
+    const { container } = render(<Callout tone="warning">Body</Callout>);
+
+    const word = screen.getByText("Warning");
+    expect(word.closest(".sr-only")).toBeNull();
+    expect(container.querySelector("svg[aria-hidden='true']")).not.toBeNull();
+  });
+
   it("defaults to info", async () => {
     const { Callout } = await import("~~/components/blog/Callout");
     render(<Callout>Body</Callout>);

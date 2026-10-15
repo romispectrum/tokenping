@@ -1,8 +1,15 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import { CircleAlert, Plus } from "lucide-react";
 import { formatPostDate } from "~~/components/blog/formatPostDate";
+import { Alert } from "~~/components/ui/Alert";
+import { Button } from "~~/components/ui/Button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~~/components/ui/Card";
+import { Field } from "~~/components/ui/Field";
+import { Input } from "~~/components/ui/Input";
+import { Select } from "~~/components/ui/Select";
+import { cx } from "~~/components/ui/classNames";
 import {
   LIQUIDATION_THRESHOLDS_AS_OF,
   LIQUIDATION_THRESHOLD_PRESETS,
@@ -73,6 +80,22 @@ const USD_INPUT_DECIMALS = 2;
 const TOKEN_INPUT_DECIMALS = 8;
 
 const E_MODE_ISSUE_LEAD = "No result: Aave does not allow this combination.";
+
+const DEBT_KINDS = [
+  ["stable", "A stablecoin (counted at $1.00)"],
+  ["volatile", "A volatile asset, such as WETH"],
+] as const;
+
+// Product UI inside an article: flat, no marketing effects. Each group of fields is an inner panel of the card (never
+// a card in a card); the floated legend sits inside the panel instead of on its top edge.
+const PANEL_CLASS_NAME = "min-w-0 rounded-xl bg-muted p-4 sm:p-5";
+// The longest example label is wider than a 320px screen's card, so these buttons wrap onto a second line instead
+// of being clipped by the card. Button is nowrap and 32px tall, hence the overrides.
+const EXAMPLE_BUTTON_CLASS_NAME = "h-auto min-h-8 max-w-full whitespace-normal! py-1.5 text-left leading-snug";
+const LEGEND_CLASS_NAME = "float-left mb-4 w-full text-base leading-snug font-medium text-foreground";
+// A 20px native radio on the field boundary; checked is the link colour (globals.css), never pink.
+const RADIO_CLASS_NAME =
+  "radio radio-sm bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
 const LIST_FORMAT = new Intl.ListFormat("en-GB", { style: "long", type: "conjunction" });
 
@@ -203,16 +226,7 @@ const eModeConflict = (fields: CalculatorFields) => {
   );
 };
 
-/** One field per input: a visible label, an optional hint and an error, all tied to the control for screen readers. */
-const NumberField = ({
-  id,
-  label,
-  value,
-  onChange,
-  error,
-  hint,
-  placeholder,
-}: {
+type NumberFieldProps = {
   id: string;
   label: string;
   value: string;
@@ -220,68 +234,51 @@ const NumberField = ({
   error: string | null;
   hint?: string;
   placeholder?: string;
-}) => {
-  const describedBy = [hint ? `${id}-hint` : null, error ? `${id}-error` : null].filter(Boolean).join(" ");
-  return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium text-base-content">
-        {label}
-      </label>
-      <input
-        id={id}
-        type="text"
+};
+
+/**
+ * A decimal input in a Field: visible label, optional hint, error, all tied to the control for screen readers.
+ * The error is checked on every keystroke, so it is not an alert (liveError false): typing "0.5" passes through "0",
+ * and an alert would interrupt with "Enter a price above 0." mid-number. The error stays linked through
+ * aria-describedby and aria-invalid, and the results' status line speaks once typing pauses.
+ */
+const NumberField = ({ id, label, value, onChange, error, hint, placeholder }: NumberFieldProps) => (
+  <Field id={id} label={label} description={hint} error={error} liveError={false}>
+    {control => (
+      <Input
+        {...control}
         inputMode="decimal"
         autoComplete="off"
         spellCheck={false}
         placeholder={placeholder}
         value={value}
         onChange={event => onChange(event.target.value)}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy || undefined}
-        className={`input w-full tabular-nums dark:bg-white/5 ${error ? "input-error" : ""}`}
+        className="tabular-nums"
       />
-      {hint && (
-        <p id={`${id}-hint`} className="m-0 text-xs text-base-content/75 dark:text-gray-400">
-          {hint}
-        </p>
-      )}
-      {error && (
-        <p id={`${id}-error`} className="m-0 text-xs font-medium text-red-700 dark:text-red-300">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-};
+    )}
+  </Field>
+);
 
-const NameField = ({
-  id,
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
+type NameFieldProps = {
   id: string;
-  label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-}) => (
-  <div className="flex flex-col gap-1">
-    <label htmlFor={id} className="text-sm font-medium text-base-content">
-      {label}
-    </label>
-    <input
-      id={id}
-      type="text"
-      autoComplete="off"
-      maxLength={MAX_NAME_LENGTH}
-      placeholder={placeholder}
-      value={value}
-      onChange={event => onChange(event.target.value)}
-      className="input w-full dark:bg-white/5"
-    />
-  </div>
+};
+
+const NameField = ({ id, value, onChange, placeholder }: NameFieldProps) => (
+  <Field id={id} label="Asset name" optional>
+    {control => (
+      <Input
+        {...control}
+        autoComplete="off"
+        maxLength={MAX_NAME_LENGTH}
+        placeholder={placeholder}
+        value={value}
+        onChange={event => onChange(event.target.value)}
+      />
+    )}
+  </Field>
 );
 
 /** The liquidation price card of one asset, which may be in several rows (collateral, debt or both). */
@@ -597,255 +594,248 @@ export const LiquidationCalculator = () => {
   const headingId = id("heading");
   const resultsHeadingId = id("results-heading");
   const eModeIssueId = id("emode-issue");
+  const examplesLabelId = id("examples-label");
 
   return (
-    <section
-      aria-labelledby={headingId}
-      className="card my-8 border border-indigo-200 bg-indigo-50/50 dark:border-indigo-400/30 dark:bg-indigo-500/5"
-    >
-      <div className="card-body gap-4 p-4 sm:p-6">
-        <h3 id={headingId} className="card-title m-0 text-xl font-semibold leading-snug text-base-content">
-          Aave liquidation price calculator
-        </h3>
-        <p className="m-0 text-sm leading-relaxed text-base-content/90 dark:text-gray-200">
-          Enter each collateral asset and your debt to get the health factor and the prices at which the position can be
-          liquidated. It uses the Aave V3 formula: Σ(collateral value × liquidation threshold) ÷ debt value.
-        </p>
+    // From lg it reaches 64px out of the reading column on each side, so the fields sit two to a row.
+    <section aria-labelledby={headingId} className="my-10 lg:-mx-16">
+      <Card>
+        <CardHeader>
+          <CardTitle id={headingId}>Aave liquidation price calculator</CardTitle>
+          <CardDescription className="leading-relaxed">
+            Enter each collateral asset and your debt to get the health factor and the prices at which the position can
+            be liquidated. It uses the Aave V3 formula: Σ(collateral value × liquidation threshold) ÷ debt value.
+          </CardDescription>
+        </CardHeader>
 
-        <div role="group" aria-labelledby={id("examples-label")} className="flex flex-wrap items-center gap-2">
-          <span id={id("examples-label")} className="text-sm font-medium text-base-content">
-            Load a worked example:
-          </span>
-          {CALCULATOR_EXAMPLES.map(example => (
-            <button
-              key={example.id}
-              type="button"
-              className="btn btn-outline btn-sm rounded-full"
-              onClick={() => setFields(example.fields)}
-            >
-              {example.label}
-            </button>
-          ))}
-        </div>
-
-        <form noValidate onSubmit={event => event.preventDefault()} className="flex flex-col gap-4">
-          {fields.collateral.map((asset, index) => {
-            const eMode = findLiquidationThresholdPreset(asset.presetId)?.eMode;
-            const presetId = id(`collateral-${index}-preset`);
-            const presetDescribedBy = [eMode ? `${presetId}-hint` : null, eMode && eModeIssue ? eModeIssueId : null]
-              .filter(Boolean)
-              .join(" ");
-            return (
-              <fieldset
-                key={index}
-                className="fieldset gap-3 rounded-box border border-base-300 bg-base-100 p-4 text-sm dark:border-white/10 dark:bg-gray-900/60"
+        <CardContent className="flex flex-col gap-6">
+          <div role="group" aria-labelledby={examplesLabelId} className="flex flex-wrap items-center gap-2">
+            <span id={examplesLabelId} className="mr-1 text-sm leading-snug font-medium text-foreground">
+              Load a worked example:
+            </span>
+            {CALCULATOR_EXAMPLES.map(example => (
+              <Button
+                key={example.id}
+                variant="outline"
+                size="sm"
+                className={EXAMPLE_BUTTON_CLASS_NAME}
+                onClick={() => setFields(example.fields)}
               >
-                <legend className="fieldset-legend px-1 text-base">{`Collateral ${index + 1}`}</legend>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor={presetId} className="text-sm font-medium text-base-content">
-                    Aave V3 asset (fills the threshold)
-                  </label>
-                  <select
-                    id={presetId}
-                    className="select w-full dark:bg-white/5"
-                    value={asset.presetId}
-                    onChange={event => selectPreset(index, event.target.value)}
-                    aria-describedby={presetDescribedBy || undefined}
-                  >
-                    <option value="">Other asset: enter the threshold yourself</option>
-                    {PRESET_MARKETS.map(market => (
-                      <optgroup key={market} label={`${market} (read ${THRESHOLDS_DATE})`}>
-                        {LIQUIDATION_THRESHOLD_PRESETS.filter(preset => preset.market === market).map(preset => (
-                          <option key={preset.id} value={preset.id}>
-                            {`${market} ${preset.label}: ${preset.liquidationThresholdPercent}%`}
-                          </option>
-                        ))}
-                      </optgroup>
+                {example.label}
+              </Button>
+            ))}
+          </div>
+
+          <form noValidate onSubmit={event => event.preventDefault()} className="flex flex-col gap-4">
+            {fields.collateral.map((asset, index) => {
+              const eMode = findLiquidationThresholdPreset(asset.presetId)?.eMode;
+              const presetId = id(`collateral-${index}-preset`);
+              return (
+                <fieldset key={index} className={PANEL_CLASS_NAME}>
+                  <legend className={LEGEND_CLASS_NAME}>{`Collateral ${index + 1}`}</legend>
+                  <div className="clear-both flex flex-col gap-4">
+                    <Field
+                      id={presetId}
+                      label="Aave V3 asset (fills the threshold)"
+                      description={
+                        eMode
+                          ? `Counts at this threshold for ${LIST_FORMAT.format(eMode.collateralSymbols)}; other collateral keeps its own. In this E-Mode you can borrow only ${LIST_FORMAT.format(eMode.borrowableSymbols)}.`
+                          : undefined
+                      }
+                    >
+                      {control => (
+                        <Select
+                          {...control}
+                          // The E-Mode conflict under the result also describes the choice that caused it.
+                          aria-describedby={
+                            [control["aria-describedby"], eMode && eModeIssue ? eModeIssueId : null]
+                              .filter(Boolean)
+                              .join(" ") || undefined
+                          }
+                          value={asset.presetId}
+                          onChange={event => selectPreset(index, event.target.value)}
+                        >
+                          <option value="">Other asset: enter the threshold yourself</option>
+                          {PRESET_MARKETS.map(market => (
+                            <optgroup key={market} label={`${market} (read ${THRESHOLDS_DATE})`}>
+                              {LIQUIDATION_THRESHOLD_PRESETS.filter(preset => preset.market === market).map(preset => (
+                                <option key={preset.id} value={preset.id}>
+                                  {`${market} ${preset.label}: ${preset.liquidationThresholdPercent}%`}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ))}
+                        </Select>
+                      )}
+                    </Field>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <NameField
+                        id={id(`collateral-${index}-name`)}
+                        value={asset.name}
+                        onChange={name => updateCollateral(index, { name })}
+                        placeholder={eMode ? `e.g. ${eMode.collateralSymbols.slice(0, 2).join(" or ")}` : undefined}
+                      />
+                      <NumberField
+                        id={id(`collateral-${index}-amount`)}
+                        label="Amount supplied"
+                        placeholder="10"
+                        value={asset.amount}
+                        onChange={amount => updateCollateral(index, { amount })}
+                        error={checkedCollateral[index].amount.error}
+                      />
+                      <NumberField
+                        id={id(`collateral-${index}-price`)}
+                        label="Price (USD)"
+                        placeholder="2400"
+                        value={asset.price}
+                        onChange={price => updateCollateral(index, { price })}
+                        error={checkedCollateral[index].price.error}
+                        hint="Aave's oracle price, shown on the asset's page in the Aave app."
+                      />
+                      <NumberField
+                        id={id(`collateral-${index}-threshold`)}
+                        label="Liquidation threshold (%)"
+                        placeholder="83"
+                        value={asset.threshold}
+                        onChange={threshold => changeThreshold(index, threshold)}
+                        error={checkedCollateral[index].threshold.error}
+                        hint="In E-Mode, the category's threshold. On Aave V4, the collateral factor."
+                      />
+                    </div>
+                    {index === 1 && (
+                      <Button variant="ghost" size="sm" className="self-start" onClick={removeCollateral}>
+                        Remove collateral 2
+                      </Button>
+                    )}
+                  </div>
+                </fieldset>
+              );
+            })}
+
+            {fields.collateral.length === 1 && (
+              <Button
+                id={id("add-collateral")}
+                variant="outline"
+                size="sm"
+                className="self-start"
+                onClick={addCollateral}
+              >
+                <Plus aria-hidden="true" />
+                Add a second collateral
+              </Button>
+            )}
+
+            <fieldset className={PANEL_CLASS_NAME}>
+              <legend className={LEGEND_CLASS_NAME}>Debt</legend>
+              <div className="clear-both flex flex-col gap-4">
+                <fieldset className="min-w-0">
+                  <legend className="float-left mb-1 w-full text-sm leading-snug font-medium text-foreground">
+                    What did you borrow?
+                  </legend>
+                  <div className="clear-both grid gap-x-6 sm:grid-cols-2">
+                    {DEBT_KINDS.map(([kind, label]) => (
+                      <Field key={kind} id={id(`debt-kind-${kind}`)} label={label} orientation="horizontal">
+                        {control => (
+                          <input
+                            {...control}
+                            type="radio"
+                            name={id("debt-kind")}
+                            value={kind}
+                            checked={fields.debt.kind === kind}
+                            onChange={() => changeDebtKind(kind)}
+                            className={RADIO_CLASS_NAME}
+                          />
+                        )}
+                      </Field>
                     ))}
-                  </select>
-                  {eMode && (
-                    <p id={`${presetId}-hint`} className="m-0 text-xs text-base-content/75 dark:text-gray-400">
-                      {`Counts at this threshold for ${LIST_FORMAT.format(eMode.collateralSymbols)}; other collateral keeps its own. In this E-Mode you can borrow only ${LIST_FORMAT.format(eMode.borrowableSymbols)}.`}
-                    </p>
+                  </div>
+                </fieldset>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <NameField id={id("debt-name")} value={fields.debt.name} onChange={name => updateDebt({ name })} />
+                  <NumberField
+                    id={id("debt-amount")}
+                    label={fields.debt.kind === "stable" ? "Amount borrowed (USD)" : "Amount borrowed (tokens)"}
+                    placeholder={fields.debt.kind === "stable" ? "12000" : "2.5"}
+                    value={fields.debt.amount}
+                    onChange={amount => updateDebt({ amount })}
+                    error={checkedDebt.amount.error}
+                    hint="Include the interest accrued so far."
+                  />
+                  {fields.debt.kind === "volatile" && (
+                    <NumberField
+                      id={id("debt-price")}
+                      label="Price of the borrowed asset (USD)"
+                      placeholder="2400"
+                      value={fields.debt.price}
+                      onChange={price => updateDebt({ price })}
+                      error={checkedDebt.price.error}
+                    />
                   )}
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <NameField
-                    id={id(`collateral-${index}-name`)}
-                    label="Asset name (optional)"
-                    value={asset.name}
-                    onChange={name => updateCollateral(index, { name })}
-                    placeholder={eMode ? `e.g. ${eMode.collateralSymbols.slice(0, 2).join(" or ")}` : undefined}
-                  />
-                  <NumberField
-                    id={id(`collateral-${index}-amount`)}
-                    label="Amount supplied"
-                    placeholder="10"
-                    value={asset.amount}
-                    onChange={amount => updateCollateral(index, { amount })}
-                    error={checkedCollateral[index].amount.error}
-                  />
-                  <NumberField
-                    id={id(`collateral-${index}-price`)}
-                    label="Price (USD)"
-                    placeholder="2400"
-                    value={asset.price}
-                    onChange={price => updateCollateral(index, { price })}
-                    error={checkedCollateral[index].price.error}
-                    hint="Aave's oracle price, shown on the asset's page in the Aave app."
-                  />
-                  <NumberField
-                    id={id(`collateral-${index}-threshold`)}
-                    label="Liquidation threshold (%)"
-                    placeholder="83"
-                    value={asset.threshold}
-                    onChange={threshold => changeThreshold(index, threshold)}
-                    error={checkedCollateral[index].threshold.error}
-                    hint="In E-Mode, the category's threshold. On Aave V4, the collateral factor."
-                  />
-                </div>
-                {index === 1 && (
-                  <button type="button" className="btn btn-ghost btn-sm justify-self-start" onClick={removeCollateral}>
-                    Remove collateral 2
-                  </button>
-                )}
-              </fieldset>
-            );
-          })}
-
-          {fields.collateral.length === 1 && (
-            <button
-              id={id("add-collateral")}
-              type="button"
-              className="btn btn-outline btn-sm self-start rounded-full"
-              onClick={addCollateral}
-            >
-              Add a second collateral
-            </button>
-          )}
-
-          <fieldset className="fieldset gap-3 rounded-box border border-base-300 bg-base-100 p-4 text-sm dark:border-white/10 dark:bg-gray-900/60">
-            <legend className="fieldset-legend px-1 text-base">Debt</legend>
-            <fieldset className="flex flex-col gap-2 sm:flex-row sm:gap-6">
-              <legend className="mb-2 text-sm font-medium text-base-content">What did you borrow?</legend>
-              {(
-                [
-                  ["stable", "A stablecoin (counted at $1.00)"],
-                  ["volatile", "A volatile asset, such as WETH"],
-                ] as const
-              ).map(([kind, label]) => (
-                <label key={kind} className="flex cursor-pointer items-center gap-2 text-sm text-base-content">
-                  <input
-                    type="radio"
-                    name={id("debt-kind")}
-                    value={kind}
-                    checked={fields.debt.kind === kind}
-                    onChange={() => changeDebtKind(kind)}
-                    className="radio radio-sm"
-                  />
-                  {label}
-                </label>
-              ))}
+              </div>
             </fieldset>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <NameField
-                id={id("debt-name")}
-                label="Asset name (optional)"
-                value={fields.debt.name}
-                onChange={name => updateDebt({ name })}
-              />
-              <NumberField
-                id={id("debt-amount")}
-                label={fields.debt.kind === "stable" ? "Amount borrowed (USD)" : "Amount borrowed (tokens)"}
-                placeholder={fields.debt.kind === "stable" ? "12000" : "2.5"}
-                value={fields.debt.amount}
-                onChange={amount => updateDebt({ amount })}
-                error={checkedDebt.amount.error}
-                hint="Include the interest accrued so far."
-              />
-              {fields.debt.kind === "volatile" && (
-                <NumberField
-                  id={id("debt-price")}
-                  label="Price of the borrowed asset (USD)"
-                  placeholder="2400"
-                  value={fields.debt.price}
-                  onChange={price => updateDebt({ price })}
-                  error={checkedDebt.price.error}
-                />
-              )}
-            </div>
-          </fieldset>
-        </form>
+          </form>
 
-        <section
-          aria-labelledby={resultsHeadingId}
-          className="rounded-box border border-base-300 bg-base-100 p-4 dark:border-white/10 dark:bg-gray-900/60"
-        >
-          <h4 id={resultsHeadingId} className="m-0 mb-3 text-lg font-semibold leading-snug text-base-content">
-            Result
-          </h4>
-          <p role="status" className="sr-only">
-            {announcement}
-          </p>
-          {eModeIssue ? (
-            <div
-              id={eModeIssueId}
-              className="alert m-0 items-start rounded-box border-amber-300 bg-amber-50 text-sm leading-relaxed text-amber-950 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-50"
-            >
-              <ExclamationTriangleIcon className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-              <p className="m-0">
-                <span className="font-semibold">{E_MODE_ISSUE_LEAD}</span> {eModeIssue}
-              </p>
-            </div>
-          ) : results ? (
-            <>
-              <dl className="stats stats-vertical m-0 w-full rounded-box border border-base-300 dark:border-white/10">
-                {results.cards.map(card => (
-                  <div key={card.key} className={`stat px-4 py-3 ${card.danger ? "bg-red-50 dark:bg-red-500/10" : ""}`}>
-                    <dt className="stat-title whitespace-normal text-sm text-base-content/80 dark:text-gray-300">
-                      {card.title}
-                    </dt>
-                    <dd
-                      className={`stat-value m-0 text-2xl tabular-nums ${
-                        card.danger ? "text-red-700 dark:text-red-300" : "text-base-content"
-                      }`}
-                    >
-                      {card.value}
-                    </dd>
-                    <dd className="stat-desc m-0 whitespace-normal text-xs leading-relaxed text-base-content/75 dark:text-gray-400">
-                      {card.description}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-              {results.breakdown && (
-                <p className="mb-0 mt-3 text-xs leading-relaxed text-base-content/75 dark:text-gray-400">
-                  {results.breakdown}
-                </p>
-              )}
-            </>
-          ) : (
-            <p className="m-0 text-sm text-base-content/80 dark:text-gray-300">
-              Enter a number in every field to see the result.
+          <section aria-labelledby={resultsHeadingId} className="flex flex-col gap-3">
+            <h4 id={resultsHeadingId} className="m-0 text-base leading-snug">
+              Result
+            </h4>
+            <p role="status" className="sr-only">
+              {announcement}
             </p>
-          )}
-        </section>
+            {eModeIssue ? (
+              <Alert id={eModeIssueId} variant="warning">
+                <p>
+                  <span className="font-medium text-foreground">{E_MODE_ISSUE_LEAD}</span> {eModeIssue}
+                </p>
+              </Alert>
+            ) : results ? (
+              <>
+                <dl className="m-0 divide-y divide-border overflow-hidden rounded-xl border border-border">
+                  {results.cards.map(card => (
+                    <div
+                      key={card.key}
+                      className={cx("flex flex-col gap-1 px-4 py-3", card.danger && "bg-destructive-subtle")}
+                    >
+                      <dt className="text-sm text-muted-foreground">{card.title}</dt>
+                      <dd
+                        className={cx(
+                          "m-0 inline-flex items-center gap-2 text-2xl leading-tight font-bold tabular-nums",
+                          card.danger ? "text-destructive" : "text-foreground",
+                        )}
+                      >
+                        {card.danger && <CircleAlert aria-hidden="true" className="size-5 shrink-0" />}
+                        {card.value}
+                      </dd>
+                      <dd className="m-0 text-sm leading-relaxed text-muted-foreground">{card.description}</dd>
+                    </div>
+                  ))}
+                </dl>
+                {results.breakdown && (
+                  <p className="m-0 text-sm leading-relaxed text-muted-foreground tabular-nums">{results.breakdown}</p>
+                )}
+              </>
+            ) : (
+              <p className="m-0 text-sm text-muted-foreground">Enter a number in every field to see the result.</p>
+            )}
+          </section>
 
-        <noscript>
-          <p className="m-0 text-sm text-base-content/80 dark:text-gray-300">
-            The calculator needs JavaScript to recalculate. The result above is for 10 WETH at $2,400 (liquidation
-            threshold 83%) against 12,000 USDC; the worked examples on this page use the same formula.
+          <noscript>
+            <p className="m-0 text-sm text-muted-foreground">
+              The calculator needs JavaScript to recalculate. The result above is for 10 WETH at $2,400 (liquidation
+              threshold 83%) against 12,000 USDC; the worked examples on this page use the same formula.
+            </p>
+          </noscript>
+
+          <p className="m-0 text-sm leading-relaxed text-muted-foreground">
+            <strong className="font-medium text-foreground">Educational estimate, not financial advice.</strong> It uses
+            only the numbers you enter. Live Aave parameters can change: the thresholds above were read on-chain on{" "}
+            <time dateTime={LIQUIDATION_THRESHOLDS_AS_OF}>{THRESHOLDS_DATE}</time>, and governance or the Risk Stewards
+            can change them at any time. Oracle prices move, interest keeps adding to your debt, and each liquidation
+            price assumes every other price stays the same. Check your position in the Aave app before you act.
           </p>
-        </noscript>
-
-        <p className="m-0 text-xs leading-relaxed text-base-content/75 dark:text-gray-400">
-          <strong className="font-semibold text-base-content">Educational estimate, not financial advice.</strong> It
-          uses only the numbers you enter. Live Aave parameters can change: the thresholds above were read on-chain on{" "}
-          <time dateTime={LIQUIDATION_THRESHOLDS_AS_OF}>{THRESHOLDS_DATE}</time>, and governance or the Risk Stewards
-          can change them at any time. Oracle prices move, interest keeps adding to your debt, and each liquidation
-          price assumes every other price stays the same. Check your position in the Aave app before you act.
-        </p>
-      </div>
+        </CardContent>
+      </Card>
     </section>
   );
 };

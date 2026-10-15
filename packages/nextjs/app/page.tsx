@@ -1,4 +1,3 @@
-import { PageBackground } from "~~/components/custom/PageBackground";
 import { HomeHero } from "~~/components/home/HomeHero";
 import { HomeObjections } from "~~/components/home/HomeObjections";
 import {
@@ -11,6 +10,7 @@ import {
   ProblemSection,
 } from "~~/components/home/HomeSections";
 import { getHomeDescription, getHomeTitle, softwareApplicationJsonLd } from "~~/components/home/homeContent";
+import { SectionDivider } from "~~/components/home/marketingLayout";
 import { JsonLd } from "~~/components/seo/JsonLd";
 import { getAlertPlan } from "~~/services/marketing/alertPlan";
 import { pageMetadata } from "~~/utils/seo";
@@ -28,25 +28,31 @@ export const revalidate = 3600;
 
 // Proof slots (user counts, testimonials, alert stories, partner logos) stay out until real, dated proof exists
 // (marketing plan §2.6). The example alert is product evidence, not proof of use.
+//
+// Signature budget: the hero wash and the questions wash (never adjacent), two glows (the hero card and the closing
+// band, never in one view), one grain card (the hero) and the closing band's grain, a divider at each boundary
+// between two plain sections (none next to a wash or the dark band). Pink: the hero's primary action and the
+// closing band's, the same action, screens apart.
 const Home = async () => {
   // One read for the whole page: the steps, the pricing block, the objections and the JSON-LD show the same plan.
   const plan = await getAlertPlan();
 
   return (
-    <PageBackground>
-      <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 pt-6 pb-24 sm:gap-8 sm:pt-8 sm:pb-16">
-        <HomeHero />
-        <ExampleAlertSection />
-        <ProblemSection />
-        <HowItWorksSection plan={plan} />
-        <PricingSection plan={plan} />
-        <HomeObjections plan={plan} />
-        <LimitsSection />
-        <FromTheBlogSection />
-        <ClosingCtaSection />
-      </div>
+    <>
+      <HomeHero />
+      <ExampleAlertSection />
+      <SectionDivider />
+      <ProblemSection />
+      <SectionDivider />
+      <HowItWorksSection plan={plan} />
+      <SectionDivider />
+      <PricingSection plan={plan} />
+      <HomeObjections plan={plan} />
+      <LimitsSection />
+      <FromTheBlogSection />
+      <ClosingCtaSection />
       <JsonLd data={softwareApplicationJsonLd(plan)} />
-    </PageBackground>
+    </>
   );
 };
 

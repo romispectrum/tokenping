@@ -2,11 +2,19 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { AlertEndBox } from "~~/components/blog/AlertEndBox";
 import { AlertPriceText } from "~~/components/blog/AlertPrice";
-import { BlogPageShell } from "~~/components/blog/BlogPageShell";
 import { PostByline } from "~~/components/blog/PostByline";
 import { RelatedPosts } from "~~/components/blog/RelatedPosts";
+import {
+  ARTICLE_BODY_CLASS_NAME,
+  BLOG_CONTAINER_CLASS_NAME,
+  END_WASH_CLASS_NAME,
+  POST_HEADER_WASH_CLASS_NAME,
+  READING_COLUMN_CLASS_NAME,
+} from "~~/components/blog/blogLayout";
 import { Breadcrumbs } from "~~/components/seo/Breadcrumbs";
 import { JsonLd } from "~~/components/seo/JsonLd";
+import { Kicker } from "~~/components/ui/Kicker";
+import { cx } from "~~/components/ui/classNames";
 import { POSTS, getPost, getRelatedPosts } from "~~/content/blog";
 import type { PostMeta } from "~~/content/blog/types";
 import { getAlertPlan } from "~~/services/marketing/alertPlan";
@@ -55,6 +63,11 @@ export const generateMetadata = async ({ params }: BlogPostPageProps): Promise<M
   });
 };
 
+/**
+ * Three areas. The breadcrumb and the header (H1, byline) sit on the lavender wash; the article body is plain, at a
+ * reading measure, with no effects; the end area (the product box and related guides) closes the page on a second
+ * wash.
+ */
 const BlogPostPage = async ({ params }: BlogPostPageProps) => {
   const post = getPost((await params).slug);
   if (!post) notFound();
@@ -65,20 +78,41 @@ const BlogPostPage = async ({ params }: BlogPostPageProps) => {
   const PostAlertPrice = () => <AlertPriceText plan={plan} />;
 
   return (
-    <BlogPageShell>
-      <Breadcrumbs crumbs={crumbs} />
-      <article className="rounded-3xl border border-base-300 bg-base-100 p-5 sm:p-8 dark:border-white/10 dark:bg-gray-900/70">
-        <header className="mb-2">
-          <h1 className="m-0 mb-3 text-3xl sm:text-4xl font-bold leading-tight text-base-content">{meta.h1}</h1>
-          <PostByline meta={meta} />
-        </header>
-        <Content components={{ AlertPrice: PostAlertPrice }} />
-      </article>
-      <AlertEndBox plan={plan} />
-      <RelatedPosts posts={getRelatedPosts(meta.slug)} />
+    <div className="flex-1">
+      {/* The breadcrumb is site navigation, so it sits above the <article>, which starts at the post's own header. */}
+      <div className="relative isolate">
+        <div aria-hidden="true" className={POST_HEADER_WASH_CLASS_NAME} />
+        <div className={cx(BLOG_CONTAINER_CLASS_NAME, "pt-6 md:pt-10")}>
+          <div className={READING_COLUMN_CLASS_NAME}>
+            <Breadcrumbs crumbs={crumbs} />
+          </div>
+        </div>
+        <article>
+          <div className={cx(BLOG_CONTAINER_CLASS_NAME, "pb-4 md:pb-6")}>
+            <header className={cx(READING_COLUMN_CLASS_NAME, "pt-6 md:pt-10")}>
+              <Kicker>Aave V3 guide</Kicker>
+              <h1 className="text-section mb-0 max-w-[20ch]">{meta.h1}</h1>
+              <div className="mt-5">
+                <PostByline meta={meta} />
+              </div>
+            </header>
+          </div>
+          <div className={cx(BLOG_CONTAINER_CLASS_NAME, "pb-12 md:pb-20")}>
+            <div className={cx(READING_COLUMN_CLASS_NAME, ARTICLE_BODY_CLASS_NAME)}>
+              <Content components={{ AlertPrice: PostAlertPrice }} />
+            </div>
+          </div>
+        </article>
+      </div>
+      <div className={END_WASH_CLASS_NAME}>
+        <div className={cx(BLOG_CONTAINER_CLASS_NAME, "pt-4 pb-12 md:pb-20")}>
+          <AlertEndBox plan={plan} />
+          <RelatedPosts posts={getRelatedPosts(meta.slug)} />
+        </div>
+      </div>
       <JsonLd data={blogPostingJsonLd(meta)} />
       <JsonLd data={breadcrumbJsonLd(crumbs)} />
-    </BlogPageShell>
+    </div>
   );
 };
 
