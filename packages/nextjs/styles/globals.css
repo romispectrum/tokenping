@@ -1,89 +1,546 @@
+/* ==========================================================================
+   Tokenping theme: Next.js 15, Tailwind CSS 4, DaisyUI 5.
+   The single source of truth for colour, type, radius and shadow. Components use the
+   semantic utilities (bg-primary, text-muted-foreground, border-input, text-link,
+   bg-success-subtle ...), never hex. docs/design-system.md explains every role.
+   Every text and boundary pair below passes WCAG AA in both themes.
+   ========================================================================== */
 @import "tailwindcss";
 
-@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+/* .dark on <html> (next-themes) or on a band; matches the element itself too. For surface colours. */
+@custom-variant dark (&:where(.dark, .dark *));
 
-@theme {
-  --shadow-center: 0 0 12px -2px rgb(0 0 0 / 0.05);
-  --animate-pulse-fast: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
+/* The user's theme only (next-themes puts .dark on <html>), not a dark band: for UI that reports the
+   theme, such as the theme toggle's icon. */
+@custom-variant theme-dark (&:where(html.dark *));
 
+/* Touch sizing follows the pointer, not the viewport width. Tailwind 4.1 ships this variant;
+   the compiler this app resolves is 4.0, so it is declared here. */
+@custom-variant pointer-coarse (@media (pointer: coarse));
+
+/* DaisyUI components (and the Scaffold-ETH screens built on them) read their colours from the
+   semantic tokens below, so the built-in palettes are switched off. */
 @plugin "daisyui" {
-  themes:
-    light,
-    dark --prefersdark;
+  themes: false;
 }
 
+/* Shape only: colours come from the token mapping further down. Controls 10px, cards 18px,
+   checkboxes 6px (badges and switches are pills, see "DaisyUI alignment"). Flat: no depth, no noise. */
 @plugin "daisyui/theme" {
   name: "light";
-
-  --color-primary: #93bbfb;
-  --color-primary-content: #212638;
-  --color-secondary: #dae8ff;
-  --color-secondary-content: #212638;
-  --color-accent: #93bbfb;
-  --color-accent-content: #212638;
-  --color-neutral: #212638;
-  --color-neutral-content: #ffffff;
-  --color-base-100: #ffffff;
-  --color-base-200: #f4f8ff;
-  --color-base-300: #dae8ff;
-  --color-base-content: #212638;
-  --color-info: #93bbfb;
-  --color-success: #34eeb6;
-  --color-warning: #ffcf72;
-  --color-error: #ff8863;
-
-  --radius-field: 9999rem;
-  --radius-box: 1rem;
-  --tt-tailw: 6px;
+  default: true;
+  color-scheme: light;
+  --radius-selector: 0.375rem;
+  --radius-field: 0.625rem;
+  --radius-box: 1.125rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
 }
 
 @plugin "daisyui/theme" {
   name: "dark";
-
-  --color-primary: #212638;
-  --color-primary-content: #f9fbff;
-  --color-secondary: #323f61;
-  --color-secondary-content: #f9fbff;
-  --color-accent: #4969a6;
-  --color-accent-content: #f9fbff;
-  --color-neutral: #f9fbff;
-  --color-neutral-content: #385183;
-  --color-base-100: #385183;
-  --color-base-200: #2a3655;
-  --color-base-300: #212638;
-  --color-base-content: #f9fbff;
-  --color-info: #385183;
-  --color-success: #34eeb6;
-  --color-warning: #ffcf72;
-  --color-error: #ff8863;
-
-  --radius-field: 9999rem;
-  --radius-box: 1rem;
-
-  --tt-tailw: 6px;
-  --tt-bg: var(--color-primary);
+  color-scheme: dark;
+  --radius-selector: 0.375rem;
+  --radius-field: 0.625rem;
+  --radius-box: 1.125rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
 }
 
-/*
-  The default border color has changed to `currentColor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
+:root {
+  /* --- Brand palette: six colours, never altered or tinted ----------------- */
+  --brand-pink: #fe5fa9; /* expressive accent: ONE solid pink element per view */
+  --brand-violet: #9c27b0; /* structure and interaction on light */
+  --brand-cyan: #20faff; /* a spark: interaction on dark, never on a light surface */
+  --brand-plum: #4e2255; /* depth: text on the violet tint, lifted dark items */
+  --brand-night: #18001c; /* the only dark surface (never #000) */
+  --brand-white: #ffffff;
 
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
-*/
+  /* --- Neutrals --------------------------------------------------------- */
+  --ink: #171717;
+  --gray-600: #666666;
+  --gray-300: #e0e0e0;
+  --gray-100: #f6f6f6;
+
+  /* --- Semantic tokens, light ------------------------------------------- */
+  --radius: 0.625rem; /* 10px: buttons and inputs; cards use rounded-2xl */
+  --background: #ffffff;
+  --foreground: #171717; /* 17.93:1 */
+  --card: #ffffff;
+  --card-foreground: #171717;
+  --popover: #ffffff;
+  --popover-foreground: #171717;
+  --primary: #fe5fa9; /* pink */
+  --primary-foreground: #18001c; /* 7.03:1; never white on pink (2.83:1) */
+  --secondary: #f6f6f6;
+  --secondary-foreground: #171717; /* 16.59:1 */
+  --muted: #f6f6f6;
+  --muted-foreground: #666666; /* 5.74:1 on white, 5.31:1 on muted */
+  --accent: #f5e9f7; /* hover and selected surface: violet at 10% */
+  --accent-foreground: #4e2255; /* 10.62:1 */
+  --destructive: #b42318; /* 6.57:1 */
+  --destructive-foreground: #ffffff;
+  /* Hairline colour. Not named --border: DaisyUI reads --border as its border width. */
+  --border-color: #e0e0e0; /* decorative hairlines only */
+  --input: #8a8a8a; /* form-control boundary: 3.45:1 on white, 3.19:1 on muted */
+  --ring: #9c27b0; /* focus ring 6.30:1 */
+
+  --link: #9c27b0; /* 6.30:1 */
+  --kicker: #9c27b0;
+  --inverse: #18001c; /* dark button or band on light pages */
+  --inverse-foreground: #ffffff; /* 19.89:1 */
+  --success: #157347;
+  --success-foreground: #ffffff;
+  --success-subtle: #e3eee9;
+  --warning: #9a5b00;
+  --warning-foreground: #ffffff;
+  --warning-subtle: #f3ebe0;
+  --info: #9c27b0;
+  --info-foreground: #ffffff;
+  --info-subtle: #f3e5f6;
+  --destructive-subtle: #f6e5e3;
+
+  /* Chart series in validated order: chart-1, chart-2, chart-3, chart-4; chart-5 is "Other".
+     Data colours never carry status meaning. */
+  --chart-1: #9c27b0; /* violet */
+  --chart-2: #4e2255; /* plum */
+  --chart-3: #fe5fa9; /* pink: 2.83:1 on white, so label it or give it a stroke */
+  --chart-4: #c2410c; /* burnt orange, 5.2:1 */
+  --chart-5: #8f8f8f; /* "Other" */
+
+  --sidebar: #f6f6f6;
+  --sidebar-foreground: #171717;
+  --sidebar-primary: #18001c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f5e9f7;
+  --sidebar-accent-foreground: #4e2255;
+  --sidebar-border: #e0e0e0;
+  --sidebar-ring: #9c27b0;
+
+  /* --- Signature surfaces (marketing pages only) ------------------------ */
+  --grain: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAMAAAAp4XiDAAAAUVBMVEWFhYWDg4N3d3dtbW17e3t1dXWBgYGHh4d5eXlzc3OLi4ubm5uVlZWPj4+NjY19fX2JiYl/f39ra2uRkZGZmZlpaWmXl5dvb29xcXGTk5NnZ2c8TV1mAAAAG3RSTlNAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAvEOwtAAAFVklEQVR4XpWWB67c2BUFb3g557T/hRo9/WUMZHlgr4Bg8Z4qQgQJlHI4A8SzFVrapvmTF9O7dmYRFZ60YiBhJRCgh1FYhiLAmdvX0CzTOpNE77ME0Zty/nWWzchDtiqrmQDeuv3powQ5ta2eN0FY0InkqDD73lT9c9lEzwUNqgFHs9VQce3TVClFCQrSTfOiYkVJQBmpbq2L6iZavPnAPcoU0dSw0SUTqz/GtrGuXfbyyBniKykOWQWGqwwMA7QiYAxi+IlPdqo+hYHnUt5ZPfnsHJyNiDtnpJyayNBkF6cWoYGAMY92U2hXHF/C1M8uP/ZtYdiuj26UdAdQQSXQErwSOMzt/XWRWAz5GuSBIkwG1H3FabJ2OsUOUhGC6tK4EMtJO0ttC6IBD3kM0ve0tJwMdSfjZo+EEISaeTr9P3wYrGjXqyC1krcKdhMpxEnt5JetoulscpyzhXN5FRpuPHvbeQaKxFAEB6EN+cYN6xD7RYGpXpNndMmZgM5Dcs3YSNFDHUo2LGfZuukSWyUYirJAdYbF3MfqEKmjM+I2EfhA94iG3L7uKrR+GdWD73ydlIB+6hgref1QTlmgmbM3/LeX5GI1Ux1RWpgxpLuZ2+I+IjzZ8wqE4nilvQdkUdfhzI5QDWy+kw5Wgg2pGpeEVeCCA7b85BO3F9DzxB3cdqvBzWcmzbyMiqhzuYqtHRVG2y4x+KOlnyqla8AoWWpuBoYRxzXrfKuILl6SfiWCbjxoZJUaCBj1CjH7GIaDbc9kqBY3W/Rgjda1iqQcOJu2WW+76pZC9QG7M00dffe9hNnseupFL53r8F7YHSwJWUKP2q+k7RdsxyOB11n0xtOvnW4irMMFNV4H0uqwS5ExsmP9AxbDTc9JwgneAT5vTiUSm1E7BSflSt3bfa1tv8Di3R8n3Af7MNWzs49hmauE2wP+ttrq+AsWpFG2awvsuOqbipWHgtuvuaAE+A1Z/7gC9hesnr+7wqCwG8c5yAg3AL1fm8T9AZtp/bbJGwl1pNrE7RuOX7PeMRUERVaPpEs+yqeoSmuOlokqw49pgomjLeh7icHNlG19yjs6XXOMedYm5xH2YxpV2tc0Ro2jJfxC50ApuxGob7lMsxfTbeUv07TyYxpeLucEH1gNd4IKH2LAg5TdVhlCafZvpskfncCfx8pOhJzd76bJWeYFnFciwcYfubRc12Ip/ppIhA1/mSZ/RxjFDrJC5xifFjJpY2Xl5zXdguFqYyTR1zSp1Y9p+tktDYYSNflcxI0iyO4TPBdlRcpeqjK/piF5bklq77VSEaA+z8qmJTFzIWiitbnzR794USKBUaT0NTEsVjZqLaFVqJoPN9ODG70IPbfBHKK+/q/AWR0tJzYHRULOa4MP+W/HfGadZUbfw177G7j/OGbIs8TahLyynl4X4RinF793Oz+BU0saXtUHrVBFT/DnA3ctNPoGbs4hRIjTok8i+algT1lTHi4SxFvONKNrgQFAq2/gFnWMXgwffgYMJpiKYkmW3tTg3ZQ9Jq+f8XN+A5eeUKHWvJWJ2sgJ1Sop+wwhqFVijqWaJhwtD8MNlSBeWNNWTa5Z5kPZw5+LbVT99wqTdx29lMUH4OIG/D86ruKEauBjvH5xy6um/Sfj7ei6UUVk4AIl3MyD4MSSTOFgSwsH/QJWaQ5as7ZcmgBZkzjjU1UrQ74ci1gWBCSGHtuV1H2mhSnO3Wp/3fEV5a+4wz//6qy8JxjZsmxxy5+4w9CDNJY09T072iKG0EnOS0arEYgXqYnXcYHwjTtUNAcMelOd4xpkoqiTYICWFq0JSiPfPDQdnt+4/wuqcXY47QILbgAAAABJRU5ErkJggg==); /* 50x50 analog grain */
+  --shadow-card: 0 8px 26px rgb(24 0 28 / 0.08);
+  --shadow-card-hover: 0 12px 28px rgb(24 0 28 / 0.12);
+  --shadow-frame: 0 10px 30px rgb(24 0 28 / 0.14), 0 2px 8px rgb(24 0 28 / 0.08);
+}
+
+.dark {
+  color-scheme: dark;
+
+  /* Every surface derives from the night colour plus a white overlay step */
+  --background: #18001c;
+  --foreground: #ffffff; /* 19.89:1 */
+  --card: #250e28; /* +5.5% white */
+  --card-foreground: #ffffff;
+  --popover: #2a142e; /* +8% white */
+  --popover-foreground: #ffffff;
+  --primary: #fe5fa9;
+  --primary-foreground: #18001c; /* 7.03:1 */
+  --secondary: #2a142e;
+  --secondary-foreground: #ffffff;
+  --muted: #200924; /* +3.5% white */
+  --muted-foreground: #cbbfc6; /* 11.19:1 on background */
+  --accent: #341f37; /* +12% white: hover and selected */
+  --accent-foreground: #ffffff; /* 15.03:1 */
+  --destructive: #ff8a80; /* 8.71:1 */
+  --destructive-foreground: #18001c;
+  --border-color: rgb(255 255 255 / 0.1);
+  --input: #746677; /* +40% white: 3.70 on background, 3.34 card, 3.16 popover */
+  --ring: #20faff; /* cyan 15.33:1 */
+
+  --link: #20faff;
+  --kicker: #20faff;
+  --inverse: #ffffff;
+  --inverse-foreground: #18001c;
+  --success: #5ad28f;
+  --success-foreground: #18001c;
+  --success-subtle: #23222e;
+  --warning: #ffb547;
+  --warning-foreground: #18001c;
+  --warning-subtle: #3d1d23;
+  --info: #d58be6;
+  --info-foreground: #18001c;
+  --info-subtle: #36163c;
+  --destructive-subtle: #3d162c;
+
+  --chart-1: #a98bff; /* violet, separated from pink */
+  --chart-2: #20faff; /* cyan */
+  --chart-3: #fe5fa9; /* pink */
+  --chart-4: #ff9e5e; /* peach orange */
+  --chart-5: #7d757c; /* "Other" */
+
+  --sidebar: #200924;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #4e2255; /* plum, white text 12.47:1 */
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #341f37;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 0.1);
+  --sidebar-ring: #20faff;
+
+  --shadow-card: none; /* elevation on dark is a lighter surface, not a shadow */
+  --shadow-card-hover: none;
+  --shadow-frame: none;
+}
+
+/* DaisyUI colours, read from the semantic tokens. Declared on .dark as well, so a band with
+   class="dark" inside a light page re-reads them and its DaisyUI components turn dark too. */
+:root,
+.dark {
+  --color-base-100: var(--background);
+  --color-base-200: var(--muted);
+  --color-base-300: var(--border-color);
+  --color-base-content: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-content: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-content: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-content: var(--accent-foreground);
+  --color-neutral: var(--inverse);
+  --color-neutral-content: var(--inverse-foreground);
+  --color-info: var(--info);
+  --color-info-content: var(--info-foreground);
+  --color-success: var(--success);
+  --color-success-content: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-content: var(--warning-foreground);
+  --color-error: var(--destructive);
+  --color-error-content: var(--destructive-foreground);
+
+  /* @scaffold-ui/components (Address, AddressInput, Balance, EtherInput) ship a pale-blue palette of their own.
+     Unlayered here, so these win over its theme layer: fields get the --input boundary on the page colour, links
+     and toggles the link colour, skeletons the muted surface. */
+  --color-sui-primary: var(--secondary);
+  --color-sui-primary-subtle: var(--accent);
+  --color-sui-primary-neutral: var(--background);
+  --color-sui-primary-content: var(--foreground);
+  --color-sui-accent: var(--link);
+  --color-sui-base-content: var(--foreground);
+  --color-sui-warning: var(--warning);
+  --color-sui-error: var(--destructive);
+  --color-sui-input-border: var(--input);
+  --color-sui-input-border-error: var(--destructive);
+  --color-sui-input-border-disabled: var(--border-color);
+  --color-sui-input-background: var(--background);
+  --color-sui-input-text: var(--foreground);
+  --color-sui-skeleton-base: var(--muted);
+  --color-sui-skeleton-highlight: var(--accent);
+}
+
+@theme inline {
+  /* fonts: next/font variables set on <html> in app/layout.tsx */
+  --font-sans: var(--font-satoshi), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-heading: var(--font-satoshi), ui-sans-serif, system-ui, sans-serif;
+
+  /* fluid marketing sizes: hero 4.4rem, sections 3rem */
+  --text-display: clamp(2.25rem, 1.2rem + 4.2vw, 4.4rem);
+  --text-display--line-height: 1.15;
+  --text-display--letter-spacing: -0.02em;
+  --text-section: clamp(2rem, 1rem + 2.4vw, 3rem);
+  --text-section--line-height: 1.2;
+  --text-section--letter-spacing: -0.01em;
+  --text-lead: 1.125rem;
+  --text-lead--line-height: 1.8;
+
+  /* primary, secondary, accent, info, success and warning share their names with DaisyUI
+     colours; both resolve to the same token, so bg-primary and btn-primary agree. */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-subtle: var(--destructive-subtle);
+  --color-border: var(--border-color);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-link: var(--link);
+  --color-kicker: var(--kicker);
+  --color-inverse: var(--inverse);
+  --color-inverse-foreground: var(--inverse-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-subtle: var(--success-subtle);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-subtle: var(--info-subtle);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* brand colours as utilities (bg-brand-pink, text-brand-violet ...): brand moments only */
+  --color-brand-pink: var(--brand-pink);
+  --color-brand-violet: var(--brand-violet);
+  --color-brand-cyan: var(--brand-cyan);
+  --color-brand-plum: var(--brand-plum);
+  --color-brand-night: var(--brand-night);
+  --color-brand-white: var(--brand-white);
+
+  /* radius scale: sm 6, md 8, lg 10 (buttons, inputs), xl 14, 2xl 18 (cards), 3xl 22 (frames) */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  --shadow-card: var(--shadow-card);
+  --shadow-card-hover: var(--shadow-card-hover);
+  --shadow-frame: var(--shadow-frame);
+}
+
 @layer base {
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
-    border-color: var(--color-gray-200, currentColor);
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    line-height: 1.6;
+    /* Never set font-variation-settings here: it pins every weight to 400. */
+  }
+  /* A band with class="dark" on a light page: .dark switches the tokens, and this re-reads the text
+     colour, which would otherwise be inherited from the light body. A utility on the band still wins. */
+  .dark {
+    color: var(--foreground);
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 500; /* Satoshi Medium: headings are never bold */
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+  p,
+  li {
+    text-wrap: pretty;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+  a:not([class]) {
+    color: var(--link);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--brand-pink) 28%, transparent);
+  }
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--font-mono);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* --- Brand utilities ----------------------------------------------------- */
+
+/* Small uppercase label above a heading. Violet on light, cyan on dark. */
+@utility kicker {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--kicker);
+}
+
+/* Analog grain over a translucent surface (the marketing glass card). */
+@utility grain {
+  background-image: var(--grain);
+  background-blend-mode: overlay;
+}
+
+/* The brand hairline: cyan to pink and violet and back. Marketing pages only. */
+@utility divider-brand {
+  height: 1px;
+  border: 0;
+  width: 100%;
+  max-width: 864px;
+  margin-inline: auto;
+  opacity: 0.8;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklab, var(--brand-cyan) 40%, transparent) 30%,
+    color-mix(in oklab, var(--brand-pink) 55%, var(--brand-violet)) 50%,
+    color-mix(in oklab, var(--brand-cyan) 40%, transparent) 70%,
+    transparent 100%
+  );
+}
+
+/* Addresses, hashes, tx ids, digit-compared numbers: mono with tabular figures. */
+@utility font-data {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums slashed-zero;
+  letter-spacing: 0;
+}
+
+/* --- DaisyUI alignment -----------------------------------------------------
+   DaisyUI component classes compile into the utilities layer ahead of the plain utilities.
+   These rules come after both, so DaisyUI controls follow the brand rules wherever they are
+   used: Medium 500 labels, the --ring focus outline, --input boundaries (3:1), --link for
+   checked states and links (never pink), pill badges and switches, 44px touch targets. */
+@layer utilities {
+  /* DaisyUI sets 600 and 800; the brand has 500 for labels and titles, 700 for data emphasis. */
+  .btn,
+  .card-title,
+  .fieldset-legend,
+  .menu-title,
+  .footer-title,
+  .file-input::file-selector-button {
+    font-weight: 500;
+  }
+  .table :where(thead, tfoot),
+  .stat-value {
+    font-weight: 700;
+  }
+  :is(.btn, .checkbox, .radio, .toggle, .range, .tab, .link, .card):focus-visible,
+  .toggle:has(:focus-visible) {
+    outline-color: var(--ring);
+  }
+  .btn-link {
+    --btn-fg: var(--link);
+  }
+  .link {
+    text-underline-offset: 3px;
+  }
+  .link:hover {
+    text-decoration-thickness: 2px;
   }
 
+  .input,
+  .select,
+  .textarea,
+  .file-input {
+    --input-color: var(--input);
+  }
+  :is(.input, .select, .textarea, .file-input):is(
+      .input-error,
+      .select-error,
+      .textarea-error,
+      .file-input-error,
+      [aria-invalid="true"]
+    ) {
+    --input-color: var(--destructive);
+  }
+  :is(.input, .select, .textarea, .file-input):is(:focus, :focus-within) {
+    --input-color: var(--ring);
+  }
+
+  .checkbox,
+  .radio,
+  .toggle {
+    --input-color: var(--input);
+  }
+  .checkbox {
+    color: var(--background);
+  }
+  :is(.checkbox, .radio, .toggle):is(:checked, [aria-checked="true"], :indeterminate),
+  .toggle:has(> input:checked) {
+    --input-color: var(--link);
+  }
+  /* The switch is a filled track, --input off and --link on, with a thumb in the page colour
+     (DaisyUI draws an outlined track whose thumb is the boundary colour). */
+  .toggle,
+  .toggle:is(:checked, [aria-checked="true"], :has(> input:checked)) {
+    color: var(--background);
+    border-color: var(--input-color);
+    background-color: var(--input-color);
+  }
+  .toggle:disabled::before {
+    background-color: currentColor;
+  }
+
+  .badge,
+  .toggle {
+    --radius-selector: 2rem;
+  }
+
+  @media (pointer: coarse) {
+    .btn,
+    .input,
+    .select {
+      min-height: 2.75rem;
+    }
+    .btn-square,
+    .btn-circle {
+      min-width: 2.75rem;
+    }
+  }
+}
+
+/* ==========================================================================
+   Project additions: not tokens. Scaffold-ETH layout helpers and spacing defaults the
+   existing screens rely on.
+   ========================================================================== */
+@theme {
+  /* Scaffold-ETH wallet dropdowns (components/scaffold-eth) */
+  --shadow-center: 0 0 12px -2px rgb(0 0 0 / 0.05);
+}
+
+@layer base {
   p {
     margin: 1rem 0;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    margin-bottom: 0.5rem;
   }
 
   body {
@@ -92,7 +549,7 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* Safe area insets for notched devices and home indicator */
+  /* Safe area insets for notched devices and the home indicator */
   @supports (padding: env(safe-area-inset-bottom)) {
     .safe-area-bottom {
       padding-bottom: env(safe-area-inset-bottom);
@@ -108,40 +565,11 @@
     }
   }
 
-  /* Improve tap targets on touch devices for key actions */
+  /* 44px tap targets on touch screens for elements that are not DaisyUI controls */
   @media (pointer: coarse) {
     .touch-target-min {
       min-height: 2.75rem;
       min-width: 2.75rem;
     }
   }
-
-  h1,
-  h2,
-  h3,
-  h4 {
-    margin-bottom: 0.5rem;
-    line-height: 1;
-  }
-}
-
-:root,
-[data-theme] {
-  background: var(--color-base-200);
-}
-
-.btn {
-  @apply shadow-md;
-}
-
-.btn.btn-ghost {
-  @apply shadow-none;
-}
-
-.link {
-  text-underline-offset: 2px;
-}
-
-.link:hover {
-  opacity: 80%;
 }

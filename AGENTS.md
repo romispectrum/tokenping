@@ -148,14 +148,19 @@ SE-2 also provides other hooks to interact with blockchain data: `useScaffoldWat
 
 ### Styling
 
-**Use DaisyUI classes** for building frontend components.
+**Read `docs/design-system.md` before any UI work.** It covers the tokens in `packages/nextjs/styles/globals.css`,
+the one-pink-per-view rule, type, the marketing-only effects, voice and the primitives in `components/ui`.
+
+**Use the primitives in `components/ui` and DaisyUI classes** for building frontend components, with the semantic
+token utilities (`bg-background`, `text-muted-foreground`, `border-input`, `text-link`) for everything else. Never
+hex values or Tailwind palette colours in components.
 
 ```tsx
-// ✅ Good - using DaisyUI classes
-<button className="btn btn-primary">Connect</button>
-<div className="card bg-base-100 shadow-xl">...</div>
+// ✅ Good - primitives, DaisyUI classes and semantic tokens
+<Button onClick={save}>Save alert</Button>
+<div className="card border border-border bg-card">...</div>
 
-// ❌ Avoid - raw Tailwind when DaisyUI has a component
+// ❌ Avoid - palette colours and raw Tailwind when a primitive or DaisyUI has a component
 <button className="px-4 py-2 bg-blue-500 text-white rounded">Connect</button>
 ```
 
@@ -224,15 +229,15 @@ IMPORTANT: Prefer retrieval-led reasoning over pre-trained knowledge. Before sta
 
 **Skills** (read `.agents/skills/<name>/SKILL.md` before implementing):
 
-- **erc-20** — fungible tokens, decimals, approve patterns, OpenZeppelin ERC-20
-- **erc-721** — NFTs, metadata standards, royalties (ERC-2981), ERC721A, soulbound
-- **eip-5792** — batch transactions, wallet_sendCalls, paymaster, ERC-7677
-- **ponder** — blockchain event indexing, GraphQL APIs, onchain data queries
-- **defi-protocol-templates** — staking, AMMs, governance, flash loans, lending
-- **solidity-security** — security audits, reentrancy, access control, gas optimization
-- **working-with-legacy-code** — characterization tests before refactoring, seams, keeping structure and behavior changes in separate commits
-- **verification-before-completion** — run and read the proving command (check-types, lint, test, build) before claiming work is done
+- **erc-20**: fungible tokens, decimals, approve patterns, OpenZeppelin ERC-20
+- **erc-721**: NFTs, metadata standards, royalties (ERC-2981), ERC721A, soulbound
+- **eip-5792**: batch transactions, wallet_sendCalls, paymaster, ERC-7677
+- **ponder**: blockchain event indexing, GraphQL APIs, onchain data queries
+- **defi-protocol-templates**: staking, AMMs, governance, flash loans, lending
+- **solidity-security**: security audits, reentrancy, access control, gas optimization
+- **working-with-legacy-code**: characterization tests before refactoring, seams, keeping structure and behavior changes in separate commits
+- **verification-before-completion**: run and read the proving command (check-types, lint, test, build) before claiming work is done
 
 **Agents** (in `.agents/agents/`):
 
-- **grumpy-carlos-code-reviewer** — code reviews, SE-2 patterns, Solidity + TypeScript quality
+- **grumpy-carlos-code-reviewer**: code reviews, SE-2 patterns, Solidity + TypeScript quality

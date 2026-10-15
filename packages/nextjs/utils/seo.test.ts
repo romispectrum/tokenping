@@ -28,7 +28,7 @@ const RSS = { "application/rss+xml": [{ url: "/blog/feed.xml", title: "Tokenping
 
 const META: PostMeta = {
   slug: "aave-health-factor",
-  title: "Aave Health Factor Explained: Formula and Examples",
+  title: "Aave health factor explained: formula and examples",
   description: "What the Aave V3 health factor is.",
   h1: "What is the Aave health factor, and how is it calculated?",
   publishedAt: "2026-10-14",
@@ -65,8 +65,8 @@ describe("needsAbsoluteTitle", () => {
   it("drops the brand suffix only when 'title | Tokenping' would exceed 60 characters", () => {
     expect(needsAbsoluteTitle("x".repeat(48))).toBe(false);
     expect(needsAbsoluteTitle("x".repeat(49))).toBe(true);
-    expect(needsAbsoluteTitle("How to Get Notified When Your Aave Health Factor Drops")).toBe(true);
-    expect(needsAbsoluteTitle("Aave Liquidation Alert Tools Compared (2026)")).toBe(false);
+    expect(needsAbsoluteTitle("How to get notified when your Aave health factor drops")).toBe(true);
+    expect(needsAbsoluteTitle("Aave liquidation alert tools compared (2026)")).toBe(false);
   });
 });
 
@@ -235,7 +235,7 @@ describe("postOgImage", () => {
       url: "/blog/aave-health-factor/opengraph-image",
       width: 1200,
       height: 630,
-      alt: "Aave Health Factor Explained: Formula and Examples (Tokenping Aave V3 guide)",
+      alt: "Aave health factor explained: formula and examples (Tokenping Aave V3 guide)",
     });
     expect(postOgImage({ ...META, slug: "other", title: "Other" }).alt).not.toBe(postOgImage(META).alt);
   });

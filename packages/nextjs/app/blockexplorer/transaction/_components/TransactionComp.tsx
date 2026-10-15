@@ -145,6 +145,7 @@ const TransactionComp = ({ txHash }: { txHash: Hash }) => {
                 <td className="form-control">
                   <textarea
                     readOnly
+                    aria-label="Transaction input data"
                     value={transaction.input}
                     className="p-0 w-full textarea-primary bg-inherit h-[150px]"
                   />
