@@ -2,7 +2,7 @@
 
 Every on-chain, API and dated off-chain figure used in `content/blog/why-aave-health-factor-dropped.mdx`, with the call or
 endpoint, the block or timestamp, and the source URL. All times are UTC. The article's figures are the 14 Oct 2026 reads from the
-shared Aave fact sheet (`aave-facts.md`, read 2026-10-14 ~20:58–21:17 UTC); the writer re-read them on Ethereum at block
+shared Aave fact sheet (`aave-facts.md`, read 2026-10-14 ~20:58-21:17 UTC); the writer re-read them on Ethereum at block
 **26193993** (block time 1792020059 = **2026-10-14 23:20:59 UTC**) with `cast` 1.1.0 against `https://ethereum-rpc.publicnode.com`
 and found no change that affects the article. Review fixes on 2026-10-15 (UTC) added the reads marked "15 Oct" below, done with `cast`
 1.1.0 against `https://eth.drpc.org` (archive state). Re-read everything below before any update. The ScopeNote date is one shared
@@ -121,7 +121,7 @@ made whole.
 ## Tokenping facts used (product.md, code on branch feat/blog-seo, 2026-10-14)
 
 Checks every 5 minutes (`vercel.json`, `NOTIFICATION_CHECK_INTERVAL_MINUTES`); 7 networks, Aave V3 only, Ethereum Core pool only
-(`config/aaveConfig.ts`); Signal or email (articles name these two only, per the build spec); threshold 1.1–10
+(`config/aaveConfig.ts`); Signal or email (articles name these two only, per the build spec); threshold 1.1-10
 (`constants/notifications.ts`); alerts repeat on every check while below the threshold and there is no recovery message
 (`services/notifications/runNotificationCheck.ts`); they stop when HF recovers or the config is deleted (product.md §4.3), and editing (the article's "lower the threshold") or
 deleting a config requires active paid access (product.md §5.4). The article does not say that alerts continue after expiry (§5.4/§11). The alert price is not in the article body; the page template's end box reads it

@@ -1,7 +1,7 @@
 # Deploying Signal Server to Fly.io
 
 This guide sets up [signal-cli-rest-api](https://github.com/bbernhard/signal-cli-rest-api)
-on Fly.io — a persistent Docker container that Tokenping's Vercel cron calls to
+on Fly.io: a persistent Docker container that Tokenping's Vercel cron calls to
 send Signal notifications.
 
 ---
@@ -52,7 +52,7 @@ primary_region = "iad"          # pick a region close to your Vercel deployment
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = false    # keep alive — signal-cli needs a persistent process
+  auto_stop_machines = false    # keep alive: signal-cli needs a persistent process
   auto_start_machines = true
 
   [[http_service.checks]]
@@ -91,7 +91,7 @@ https://tokenping-signal.fly.dev
 
 There are two options. **Option A is the easiest.**
 
-### Option A — Link to your existing Signal account (recommended)
+### Option A: Link to your existing Signal account (recommended)
 
 No extra phone number needed. signal-cli acts like Signal Desktop.
 
@@ -99,7 +99,7 @@ No extra phone number needed. signal-cli acts like Signal Desktop.
 # Open a shell inside the running container
 fly ssh console
 
-# Inside the container — generate a link URI.
+# Inside the container: generate a link URI.
 # --config is REQUIRED: without it, signal-cli writes to $HOME/.local/share/signal-cli
 # (i.e. /root/.local/... when you're root in `fly ssh console`), which is NOT the mounted
 # volume and NOT where the REST API daemon reads from. The account would be invisible to
@@ -121,7 +121,7 @@ signal-cli --config /home/.local/share/signal-cli listAccounts
 exit
 fly machine restart
 
-# From your laptop — confirm the REST API sees the account:
+# From your laptop: confirm the REST API sees the account:
 curl https://tokenping-signal.fly.dev/v1/accounts
 # → ["+420XXXXXXXXXX"]
 ```
@@ -151,7 +151,7 @@ data likely didn't persist. Check:
    ```
 
 3. **Is the volume actually mounted?** The Dockerfile is just `FROM bbernhard/signal-cli-rest-api:latest`.
-   It doesn't create `/home/.local/share/signal-cli` — that comes from the `[[mounts]]` section in fly.toml.
+   It doesn't create `/home/.local/share/signal-cli`: that comes from the `[[mounts]]` section in fly.toml.
    If you copy-pasted but didn't create the volume with `fly volumes create signal_data --region iad --size 1`,
    the container will create a temporary `/home/.local/share/signal-cli` that disappears on restart.
 
@@ -173,7 +173,7 @@ Redeploy Vercel after adding the vars.
 ## 7. Verify it works
 
 ```bash
-# Send a test message to yourself — replace alice.42 with your Signal username
+# Send a test message to yourself: replace alice.42 with your Signal username
 curl -s -X POST https://tokenping-signal.fly.dev/v2/send \
   -H "Content-Type: application/json" \
   -d '{
@@ -190,7 +190,7 @@ You should receive the message in Signal within a few seconds.
 ## 8. Monitoring and troubleshooting
 
 Fly.io keeps the machine running because `auto_stop_machines = false` is set in
-fly.toml. In `normal` mode, each send request is independent — no daemon state to
+fly.toml. In `normal` mode, each send request is independent: no daemon state to
 manage, so restarts are safe.
 
 **Check account is still registered after restart:**

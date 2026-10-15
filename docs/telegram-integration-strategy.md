@@ -1,6 +1,6 @@
 # Telegram Integration Strategy
 
-Status: proposal — no code yet
+Status: proposal, no code yet
 Author: senior fullstack
 Scope: add Telegram as a third notification channel alongside `email` and `signal`, triggered by the same Aave health-factor cron.
 
@@ -12,11 +12,11 @@ Signal required us to self-host a stateful Java daemon ([signal-cli-rest-api on 
 
 Telegram is the opposite:
 
-- **Official, free [Bot API](https://core.telegram.org/bots/api)** — a plain HTTPS endpoint at `https://api.telegram.org/bot<TOKEN>/sendMessage`.
-- **Stateless from our side** — each call is independent, perfect for Vercel serverless + cron.
+- **Official, free [Bot API](https://core.telegram.org/bots/api)**: a plain HTTPS endpoint at `https://api.telegram.org/bot<TOKEN>/sendMessage`.
+- **Stateless from our side**: each call is independent, perfect for Vercel serverless + cron.
 - **No phone number, no daemon, no volume, no Fly.io, no `signal-cli`.**
-- **Rate limits are generous** — ~30 msg/sec global, 1 msg/sec per chat. Plenty for our cron.
-- **Rich formatting** (HTML / MarkdownV2), inline buttons, link previews — nicer UX than Signal.
+- **Rate limits are generous**: ~30 msg/sec global, 1 msg/sec per chat. Plenty for our cron.
+- **Rich formatting** (HTML / MarkdownV2), inline buttons, link previews: nicer UX than Signal.
 
 Net effect: **no new infrastructure**. Only code + one bot token secret.
 
@@ -26,7 +26,7 @@ Net effect: **no new infrastructure**. Only code + one bot token secret.
 
 This is the one non-obvious part. Everything else is trivial.
 
-**Problem.** The Telegram Bot API cannot send a message using a `@username` on its own. It requires a numeric `chat_id`. A bot only learns a user's `chat_id` **after** that user has initiated a conversation with the bot (by sending `/start` or any message). Bots cannot DM strangers — anti-spam by design.
+**Problem.** The Telegram Bot API cannot send a message using a `@username` on its own. It requires a numeric `chat_id`. A bot only learns a user's `chat_id` **after** that user has initiated a conversation with the bot (by sending `/start` or any message). Bots cannot DM strangers: anti-spam by design.
 
 **This means:** unlike Signal (where the user types their username into our UI and we send to it directly), Telegram requires a **one-time handshake** where the user opens our bot and presses Start. Only then can we store their `chat_id` and send notifications.
 
@@ -35,8 +35,8 @@ This is the one non-obvious part. Everything else is trivial.
 | Option | Flow | Pros | Cons |
 |---|---|---|---|
 | **A. Deep-link with signed token** ✅ recommended | User clicks "Connect Telegram" in our UI → opens `https://t.me/TokenpingBot?start=<token>` → bot receives `/start <token>`, we map token → user wallet, store `chat_id`. | Zero typing, zero confusion, secure, no webhook polling loops. Best UX. | Requires a webhook endpoint in Next.js to receive bot updates. |
-| **B. User pastes username, we resolve on first send** | User types `@alice`, we call `getChat` → only works if they already messaged the bot. | Mirrors Signal UX. | Fragile — most users haven't messaged the bot yet; `getChat` fails for them with a confusing error. |
-| **C. User manually pastes their `chat_id`** | User DMs bot, bot replies with their numeric id, user pastes it in our UI. | Simplest to implement. | Ugly UX — numeric ids, copy/paste, easy to mistype. |
+| **B. User pastes username, we resolve on first send** | User types `@alice`, we call `getChat` → only works if they already messaged the bot. | Mirrors Signal UX. | Fragile: most users haven't messaged the bot yet; `getChat` fails for them with a confusing error. |
+| **C. User manually pastes their `chat_id`** | User DMs bot, bot replies with their numeric id, user pastes it in our UI. | Simplest to implement. | Ugly UX: numeric ids, copy/paste, easy to mistype. |
 
 **Recommendation: Option A (deep link + webhook).** Same effort as B/C once written, dramatically better UX, and the webhook also lets us handle `/stop` (unsubscribe), `/help`, etc.
 
@@ -116,9 +116,9 @@ create index if not exists telegram_link_tokens_user_idx
   on public.telegram_link_tokens(user_id);
 ```
 
-- `telegram_chat_id` — numeric id as text (can be >2^53, so don't use bigint in JS safely).
-- `telegram_username` — cosmetic, shown in the UI as `@alice`.
-- `telegram_link_tokens` — one-shot tokens, valid ~10 min, consumed on webhook.
+- `telegram_chat_id`: numeric id as text (can be >2^53, so don't use bigint in JS safely).
+- `telegram_username`: cosmetic, shown in the UI as `@alice`.
+- `telegram_link_tokens`: one-shot tokens, valid ~10 min, consumed on webhook.
 
 ### 4.3 Types & constants
 
@@ -222,7 +222,7 @@ export async function POST(req: Request) {
 ```
 
 **Security:**
-- The secret header is Telegram's built-in auth for webhooks — always verify.
+- The secret header is Telegram's built-in auth for webhooks: always verify.
 - The start-token lookup must be: single-use (`consumed_at` = now), time-limited (reject > 10 min old), and scoped to a specific user_id/chain_id.
 
 ### 4.6 "Connect Telegram" UI (`NotificationConfig.tsx`)
@@ -232,7 +232,7 @@ When the user selects the Telegram service in the edit panel:
 1. Show button: **"Connect Telegram"**.
 2. Click → POST to a new `/api/telegram/link-token` route (auth'd by wallet signature or existing session) → returns `{ token, botUsername }`.
 3. Open `https://t.me/${botUsername}?start=${token}` in a new tab.
-4. Poll the config (or use Supabase realtime) for `telegramChatId` — once set, flip the UI to "Connected as @username" with a Disconnect button.
+4. Poll the config (or use Supabase realtime) for `telegramChatId`: once set, flip the UI to "Connected as @username" with a Disconnect button.
 5. Disconnect = clear `telegram_chat_id` locally and (optionally) send `/stop` via the bot.
 
 This is the only UI change that differs meaningfully from the Signal/email flows.
@@ -280,8 +280,8 @@ Also update `packages/nextjs/.env.example`.
 
 ## 6. Rollout & backward compatibility
 
-1. Land the Supabase migration first — nullable columns, no breaking changes.
-2. Ship types + service + webhook + UI behind nothing (no feature flag needed — it's additive; users opt in by selecting the service).
+1. Land the Supabase migration first: nullable columns, no breaking changes.
+2. Ship types + service + webhook + UI behind nothing (no feature flag needed: it's additive; users opt in by selecting the service).
 3. Register the webhook via `setWebhook` once after the first prod deploy.
 4. Announce on the landing page / README.
 
@@ -292,7 +292,7 @@ Existing email + Signal users are untouched.
 ## 7. Risks & open questions
 
 - **User blocks the bot** → we keep erroring every 5 min. Mitigation: detect `403 bot was blocked` and null the `chat_id`. Low effort, should be in v1.
-- **Group chats.** If a user adds the bot to a group, `chat.id` is negative. Decide: do we allow group delivery (useful for trading-desk teams) or reject non-private chats in the webhook? **Recommend allowing it** — costs nothing and is a nice power-user feature.
+- **Group chats.** If a user adds the bot to a group, `chat.id` is negative. Decide: do we allow group delivery (useful for trading-desk teams) or reject non-private chats in the webhook? **Recommend allowing it**: costs nothing and is a nice power-user feature.
 - **Token lifetime.** 10 min is a guess. Shorter = safer, longer = fewer "token expired" annoyances. 10 min is a reasonable default.
 - **Privacy.** `telegram_username` is cosmetic only; truth source is `telegram_chat_id`. Users can change their Telegram username any time and delivery keeps working.
 - **MarkdownV2 vs HTML.** HTML is strictly easier (fewer reserved characters to escape). Stick with HTML for the alert body; reuse the email HTML template.
@@ -306,11 +306,11 @@ Existing email + Signal users are untouched.
 |---|---|
 | Supabase migration + types + constants | S (30 min) |
 | `sendTelegram.ts` service | S (30 min) |
-| Webhook route + link-token route | M (2–3 h) |
-| UI in `NotificationConfig.tsx` | M (2–3 h) |
+| Webhook route + link-token route | M (2 to 3 h) |
+| UI in `NotificationConfig.tsx` | M (2 to 3 h) |
 | Wire into `runNotificationCheck.ts` | S (30 min) |
 | BotFather setup + webhook registration + env vars | S (30 min) |
-| Testing (ngrok + prod smoke) | M (1–2 h) |
+| Testing (ngrok + prod smoke) | M (1 to 2 h) |
 
 **Total: ~1 focused day of work.** Much smaller than Signal, which needed a whole Fly.io deploy guide.
 
@@ -318,7 +318,7 @@ Existing email + Signal users are untouched.
 
 ## 9. Summary for reviewers
 
-- **No new infrastructure** — Bot API is a plain HTTPS endpoint, unlike Signal.
-- **One UX wrinkle** — bots can't DM strangers, so users must click a deep link and press Start once. Handled via a signed one-shot token + webhook.
-- **Shape mirrors the Signal integration** — same file layout (`services/telegram/sendTelegram.ts`), same cron integration point, same config shape. Easy to review against the existing Signal PR.
+- **No new infrastructure**: Bot API is a plain HTTPS endpoint, unlike Signal.
+- **One UX wrinkle**: bots can't DM strangers, so users must click a deep link and press Start once. Handled via a signed one-shot token + webhook.
+- **Shape mirrors the Signal integration**: same file layout (`services/telegram/sendTelegram.ts`), same cron integration point, same config shape. Easy to review against the existing Signal PR.
 - **~1 day of work**, additive, behind no feature flag.

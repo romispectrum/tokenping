@@ -24,7 +24,7 @@ const CHECKSUMMED = `0x${"1C".repeat(20)}`;
 const PRIVATE_ONLY = "Tokenping only supports private chats. Please DM the bot directly.";
 const START_HELP =
   "Hi! To receive Aave health-factor alerts here, open Tokenping → " +
-  "Notification Settings → select Telegram → press 'Connect Telegram'.";
+  "Notification settings → select Telegram → press 'Connect Telegram'.";
 const INVALID_LINK = "❌ Invalid link. Please generate a new one in the Tokenping app.";
 const EXPIRED_LINK = "❌ This link has expired or was already used. Please generate a new one in the Tokenping app.";
 const SAVE_FAILED = "Something went wrong saving your link. Please try again.";
@@ -37,9 +37,9 @@ const UNSUBSCRIBED =
 const HELP =
   "Tokenping notifies you when your Aave Health Factor drops below a threshold you set in the app.\n\n" +
   "Commands:\n" +
-  "/start <token> — link via the Tokenping app\n" +
-  "/stop — unsubscribe\n" +
-  "/help — show this message";
+  "/start <token>: link via the Tokenping app\n" +
+  "/stop: unsubscribe\n" +
+  "/help: show this message";
 const UNKNOWN = "I only respond to /start, /stop, and /help. Open the Tokenping app to manage your alerts.";
 const UNSUBSCRIBE_FAILED = "Something went wrong while unsubscribing. Please send /stop again.";
 

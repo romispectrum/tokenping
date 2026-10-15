@@ -7,9 +7,9 @@
  * their chat_id to the wallet.
  *
  * Auth model:
- *   Matches the existing `/api/notifications/config` PUT/DELETE pattern —
+ *   Matches the existing `/api/notifications/config` PUT/DELETE pattern:
  *   `isAccessActive(userId)` (paid-access gate). This pattern does NOT verify
- *   that the caller controls the wallet — a known limitation across the existing
+ *   that the caller controls the wallet, a known limitation across the existing
  *   API surface. Hardening to SIWE / signed sessions is tracked as a separate
  *   security task. See the security review in commit history for blast-radius.
  */

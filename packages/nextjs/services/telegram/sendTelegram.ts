@@ -2,11 +2,11 @@
  * Telegram notification service.
  *
  * Uses the official Bot API (https://core.telegram.org/bots/api). Unlike Signal,
- * there's no daemon — the Bot API is a plain HTTPS endpoint, perfect for
+ * there's no daemon: the Bot API is a plain HTTPS endpoint, perfect for
  * Vercel serverless.
  *
  * Required env vars:
- *   TELEGRAM_BOT_TOKEN — from @BotFather
+ *   TELEGRAM_BOT_TOKEN: from @BotFather
  *
  * Why plain text instead of parse_mode: "HTML" / "MarkdownV2":
  *   Both modes have reserved characters that must be escaped per Telegram's rules.
@@ -96,7 +96,7 @@ export async function sendTelegramMessage({ chatId, message }: SendTelegramOptio
       body: JSON.stringify({
         chat_id: chatId,
         text: message,
-        // Intentionally no parse_mode — plain text avoids escaping bugs.
+        // Intentionally no parse_mode: plain text avoids escaping bugs.
         disable_web_page_preview: true,
       }),
       signal: AbortSignal.timeout(TELEGRAM_FETCH_TIMEOUT_MS),

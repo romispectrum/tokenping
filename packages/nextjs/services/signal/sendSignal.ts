@@ -6,13 +6,13 @@
  * which wraps the Java-based signal-cli over HTTP.
  *
  * Required environment variables:
- *   SIGNAL_API_URL       – Base URL of the signal-cli-rest-api container, e.g. https://signal.example.com
- *   SIGNAL_SENDER_NUMBER – Registered sender phone number in E.164 format, e.g. +14155550123
+ *   SIGNAL_API_URL:       Base URL of the signal-cli-rest-api container, e.g. https://signal.example.com
+ *   SIGNAL_SENDER_NUMBER: Registered sender phone number in E.164 format, e.g. +14155550123
  *
  * Recipient format:
  *   Users provide their Signal username (e.g. "alice.42" or "@alice.42").
  *   The @ and u: prefixes are stripped before storage. We send the BARE username
- *   to signal-cli-rest-api — the API auto-detects usernames and adds the "u:" prefix
+ *   to signal-cli-rest-api; the API auto-detects usernames and adds the "u:" prefix
  *   internally before passing to signal-cli (see client.go getRecipientType).
  *
  * Why a separate server is needed:
