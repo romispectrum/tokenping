@@ -4,28 +4,40 @@ import { renderMarkup } from "~~/utils/testing/render";
 
 const badge = (healthFactor: string) => renderMarkup(<HealthFactorBadge healthFactor={healthFactor} />);
 
+/** The badge's visible and screen-reader text, without tags. */
+const text = (markup: string) =>
+  markup
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
 describe("HealthFactorBadge", () => {
-  // B1.6: a darker text shade in light mode; dark mode keeps the -400 shade.
+  // A status colour, an icon and a word for every state; pink is never a status.
   it.each([
-    ["∞", "bg-sky-500/20 text-sky-600 dark:text-sky-400 border-sky-500/30", "No Debt"],
-    ["0.95", "bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30", "Critical"],
-    ["1.09", "bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30", "Critical"],
-    ["1.10", "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30", "Risky"],
-    ["1.49", "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30", "Risky"],
-    ["1.50", "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30", "Safe"],
-    ["12.00", "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30", "Safe"],
+    ["∞", "info", "lucide-infinity", "Health factor No debt"],
+    ["0.95", "destructive", "lucide-shield-alert", "Health factor 0.95 Critical"],
+    ["1.09", "destructive", "lucide-shield-alert", "Health factor 1.09 Critical"],
+    ["1.10", "warning", "lucide-triangle-alert", "Health factor 1.10 Risky"],
+    ["1.49", "warning", "lucide-triangle-alert", "Health factor 1.49 Risky"],
+    ["1.50", "success", "lucide-shield-check", "Health factor 1.50 Safe"],
+    ["12.00", "success", "lucide-shield-check", "Health factor 12.00 Safe"],
     // Unparseable values fall through every comparison.
-    ["n/a", "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30", "Safe"],
-  ])("renders %j as %s / %s", (healthFactor, colorClass, label) => {
-    expect(badge(healthFactor)).toBe(
-      `<span class="px-2 py-1 rounded-lg text-xs font-medium border ${colorClass}">${healthFactor}<!-- --> · <!-- -->${label}</span>`,
-    );
+    ["n/a", "success", "lucide-shield-check", "Health factor n/a Safe"],
+  ])("renders %j as the %s badge with its icon and word", (healthFactor, variant, icon, content) => {
+    const markup = badge(healthFactor);
+
+    expect(markup).toContain(`data-variant="${variant}"`);
+    expect(markup).toContain(icon);
+    expect(markup).not.toContain("bg-primary");
+    expect(text(markup)).toBe(content);
   });
 
-  it("renders an empty health factor as Safe", () => {
-    expect(badge("")).toBe(
-      '<span class="px-2 py-1 rounded-lg text-xs font-medium border bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"> · <!-- -->Safe</span>',
-    );
+  it("renders an empty health factor as Safe without a number", () => {
+    expect(text(badge(""))).toBe("Health factor Safe");
+  });
+
+  it("keeps the number in tabular figures and hides the icon from screen readers", () => {
+    expect(badge("1.85")).toMatchSnapshot();
   });
 });
 

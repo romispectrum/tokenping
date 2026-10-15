@@ -1,3 +1,6 @@
+import type { ReactNode } from "react";
+import { SERVICE_ICONS } from "~~/components/custom/notifications/serviceIcons";
+import { Alert, Badge } from "~~/components/ui";
 import { AVAILABLE_SERVICES } from "~~/constants/notifications";
 import type { NotificationService } from "~~/types/notifications";
 
@@ -12,6 +15,13 @@ type NotificationSummaryProps = {
   showBelowThresholdWarning: boolean;
 };
 
+const SummaryRow = ({ label, children }: { label: string; children: ReactNode }) => (
+  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+    <dt className="shrink-0 text-muted-foreground">{label}</dt>
+    <dd className="m-0 min-w-0 break-all text-foreground sm:text-right">{children}</dd>
+  </div>
+);
+
 export const NotificationSummary = ({
   services,
   email,
@@ -22,61 +32,42 @@ export const NotificationSummary = ({
   currentHealthFactor,
   showBelowThresholdWarning,
 }: NotificationSummaryProps) => (
-  <div className="space-y-2">
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-base-content/70 dark:text-gray-400">Services:</span>
-      <div className="flex items-center gap-1.5">
+  <div className="flex flex-col gap-4">
+    <dl className="m-0 flex flex-col gap-3 text-sm">
+      <SummaryRow label="Services">
         {services.length > 0 ? (
-          services.map(serviceId => {
-            const service = AVAILABLE_SERVICES.find(s => s.id === serviceId);
-            return service ? (
-              <span
-                key={serviceId}
-                className="text-xs px-2 py-0.5 rounded-md border border-purple-500/30 bg-purple-500/10 text-purple-700 dark:text-purple-300"
-              >
-                {service.icon} {service.name}
-              </span>
-            ) : null;
-          })
+          <ul className="m-0 flex list-none flex-wrap gap-1.5 p-0 sm:justify-end">
+            {services.map(serviceId => {
+              const service = AVAILABLE_SERVICES.find(s => s.id === serviceId);
+              if (!service) return null;
+              const Icon = SERVICE_ICONS[serviceId];
+              return (
+                <li key={serviceId}>
+                  <Badge variant="neutral">
+                    <Icon aria-hidden="true" />
+                    {service.name}
+                  </Badge>
+                </li>
+              );
+            })}
+          </ul>
         ) : (
-          <span className="text-xs text-base-content/60 dark:text-gray-500">None selected</span>
+          <span className="text-muted-foreground">None selected</span>
         )}
-      </div>
-    </div>
-    {services.includes("email") && email && (
-      <div className="flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:justify-between">
-        <span className="text-base-content/70 dark:text-gray-400 shrink-0">Email:</span>
-        <span className="min-w-0 break-all text-base-content font-medium dark:text-white" title={email}>
-          {email}
-        </span>
-      </div>
-    )}
-    {services.includes("signal") && signalRecipient && (
-      <div className="flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:justify-between">
-        <span className="text-base-content/70 dark:text-gray-400 shrink-0">Signal:</span>
-        <span className="min-w-0 break-all text-base-content font-medium dark:text-white" title={signalRecipient}>
-          @{signalRecipient}
-        </span>
-      </div>
-    )}
-    {services.includes("telegram") && telegramChatId && (
-      <div className="flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:justify-between">
-        <span className="text-base-content/70 dark:text-gray-400 shrink-0">Telegram:</span>
-        <span className="min-w-0 break-all text-base-content font-medium dark:text-white">
-          {telegramUsername ? `@${telegramUsername}` : "linked"}
-        </span>
-      </div>
-    )}
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-base-content/70 dark:text-gray-400">Threshold:</span>
-      <span className="text-base-content font-medium dark:text-white">{threshold}</span>
-    </div>
+      </SummaryRow>
+      {services.includes("email") && email && <SummaryRow label="Email">{email}</SummaryRow>}
+      {services.includes("signal") && signalRecipient && <SummaryRow label="Signal">@{signalRecipient}</SummaryRow>}
+      {services.includes("telegram") && telegramChatId && (
+        <SummaryRow label="Telegram">{telegramUsername ? `@${telegramUsername}` : "Linked"}</SummaryRow>
+      )}
+      <SummaryRow label="Threshold">
+        <span className="tabular-nums">{threshold}</span>
+      </SummaryRow>
+    </dl>
     {showBelowThresholdWarning && (
-      <div className="mt-2 p-2 rounded-lg bg-amber-500/20 border border-amber-500/30">
-        <p className="text-xs text-amber-700 dark:text-amber-400">
-          ⚠️ Current Health Factor ({currentHealthFactor}) is below your threshold!
-        </p>
-      </div>
+      <Alert variant="warning" title="Below your alert threshold">
+        Your current health factor ({currentHealthFactor}) is below your threshold of {threshold}.
+      </Alert>
     )}
   </div>
 );

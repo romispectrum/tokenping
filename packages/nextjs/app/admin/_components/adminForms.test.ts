@@ -12,7 +12,11 @@ const CHECKSUMMED = "0x79872d7529cfE1c062838fACDA004Ce4BFB16553";
 // Mixed case with a wrong EIP-55 checksum: viem's strict isAddress rejects it.
 const BAD_CHECKSUM = "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
 const DESTINATION = "0x2222222222222222222222222222222222222222";
-const DECIMALS_UNKNOWN = "Token decimals are unknown. Wait for them to load or check the token address";
+const DECIMALS_UNKNOWN = {
+  error: "The token decimals have not loaded. Wait for them, or check the token address.",
+  field: "tokenAddress",
+};
+const TOKEN_ADDRESS_ERROR = { error: "Enter the token address as a full 0x address.", field: "tokenAddress" };
 
 describe("parsePlanForm", () => {
   const form = { tokenAddress: TOKEN, price: "1.5", durationSeconds: "2592000", enabled: true };
@@ -26,13 +30,11 @@ describe("parsePlanForm", () => {
 
   // Regression (B2.4): unknown decimals used to fall back to 6, so "10" of an 18-decimals token became 1e-11 tokens.
   it("refuses to scale the price while the token decimals are unknown", () => {
-    expect(parsePlanForm({ ...form, price: "10" }, undefined)).toEqual({ error: DECIMALS_UNKNOWN });
+    expect(parsePlanForm({ ...form, price: "10" }, undefined)).toEqual(DECIMALS_UNKNOWN);
   });
 
   it("checks the token address before the decimals", () => {
-    expect(parsePlanForm({ ...form, tokenAddress: "0x123" }, undefined)).toEqual({
-      error: "Enter a valid token address for plan update",
-    });
+    expect(parsePlanForm({ ...form, tokenAddress: "0x123" }, undefined)).toEqual(TOKEN_ADDRESS_ERROR);
   });
 
   it("uses zero decimals as reported", () => {
@@ -40,24 +42,37 @@ describe("parsePlanForm", () => {
   });
 
   it.each(["", "0x123", BAD_CHECKSUM])("rejects the token address %j before anything else", tokenAddress => {
-    expect(parsePlanForm({ tokenAddress, price: "", durationSeconds: "", enabled: true }, 6)).toEqual({
-      error: "Enter a valid token address for plan update",
-    });
+    expect(parsePlanForm({ tokenAddress, price: "", durationSeconds: "", enabled: true }, 6)).toEqual(
+      TOKEN_ADDRESS_ERROR,
+    );
   });
 
   it.each([
-    ["price", { price: "" }],
-    ["duration", { durationSeconds: "" }],
-  ])("requires the %s", (_label, patch) => {
-    expect(parsePlanForm({ ...form, ...patch }, 6)).toEqual({ error: "Enter plan price and duration" });
+    ["price", { price: "" }, { error: "Enter a price, like 1.5.", field: "price" }],
+    [
+      "duration",
+      { durationSeconds: "" },
+      { error: "Enter a duration in seconds, like 2592000.", field: "durationSeconds" },
+    ],
+    [
+      "price before the duration",
+      { price: "", durationSeconds: "" },
+      { error: "Enter a price, like 1.5.", field: "price" },
+    ],
+  ])("requires the %s", (_label, patch, expected) => {
+    expect(parsePlanForm({ ...form, ...patch }, 6)).toEqual(expected);
   });
 
+  const PRICE_INVALID = { error: "Enter the price as a number, like 1.5.", field: "price" };
+  const DURATION_INVALID = { error: "Enter the duration as whole seconds, digits only.", field: "durationSeconds" };
+
   it.each([
-    ["a non-numeric price", { price: "abc" }],
-    ["a fractional duration", { durationSeconds: "1.5" }],
-    ["an exponent duration", { durationSeconds: "1e3" }],
-  ])("rejects %s", (_label, patch) => {
-    expect(parsePlanForm({ ...form, ...patch }, 6)).toEqual({ error: "Invalid plan values" });
+    ["a non-numeric price", { price: "abc" }, PRICE_INVALID],
+    ["a fractional duration", { durationSeconds: "1.5" }, DURATION_INVALID],
+    ["an exponent duration", { durationSeconds: "1e3" }, DURATION_INVALID],
+    ["a thousands-separated duration", { durationSeconds: "2,592,000" }, DURATION_INVALID],
+  ])("rejects %s at its field", (_label, patch, expected) => {
+    expect(parsePlanForm({ ...form, ...patch }, 6)).toEqual(expected);
   });
 
   it("accepts what parseUnits and BigInt accept", () => {
@@ -77,11 +92,17 @@ describe("parseMaxDuration", () => {
   });
 
   it("requires a value", () => {
-    expect(parseMaxDuration("")).toEqual({ error: "Enter max duration in seconds" });
+    expect(parseMaxDuration("")).toEqual({
+      error: "Enter a max duration in seconds, like 31536000.",
+      field: "maxDurationSeconds",
+    });
   });
 
   it.each(["abc", "1.5"])("rejects %j", raw => {
-    expect(parseMaxDuration(raw)).toEqual({ error: "Invalid max duration" });
+    expect(parseMaxDuration(raw)).toEqual({
+      error: "Enter the max duration as whole seconds, digits only.",
+      field: "maxDurationSeconds",
+    });
   });
 });
 
@@ -94,16 +115,23 @@ describe("parseNativeWithdraw", () => {
 
   it.each(["", " " + DESTINATION, BAD_CHECKSUM])("rejects the destination %j first", to => {
     expect(parseNativeWithdraw({ to, amountEth: "" })).toEqual({
-      error: "Enter a valid destination address for native withdraw",
+      error: "Enter the destination as a full 0x address.",
+      field: "to",
     });
   });
 
   it("requires an amount", () => {
-    expect(parseNativeWithdraw({ to: DESTINATION, amountEth: "" })).toEqual({ error: "Enter native amount in ETH" });
+    expect(parseNativeWithdraw({ to: DESTINATION, amountEth: "" })).toEqual({
+      error: "Enter an amount in ETH, like 0.5.",
+      field: "amountEth",
+    });
   });
 
   it("rejects a non-numeric amount", () => {
-    expect(parseNativeWithdraw({ to: DESTINATION, amountEth: "one" })).toEqual({ error: "Invalid ETH amount" });
+    expect(parseNativeWithdraw({ to: DESTINATION, amountEth: "one" })).toEqual({
+      error: "Enter the amount as a number, like 0.5.",
+      field: "amountEth",
+    });
   });
 });
 
@@ -117,27 +145,30 @@ describe("parseTokenWithdraw", () => {
 
   // Regression (B2.4): same former 6-decimals fallback as the plan form.
   it("refuses to scale the amount while the token decimals are unknown", () => {
-    expect(parseTokenWithdraw(form, undefined)).toEqual({ error: DECIMALS_UNKNOWN });
+    expect(parseTokenWithdraw(form, undefined)).toEqual(DECIMALS_UNKNOWN);
   });
 
   it("checks the token address before the decimals", () => {
-    expect(parseTokenWithdraw({ ...form, tokenAddress: "" }, undefined)).toEqual({
-      error: "Enter a valid token address",
-    });
+    expect(parseTokenWithdraw({ ...form, tokenAddress: "" }, undefined)).toEqual(TOKEN_ADDRESS_ERROR);
   });
 
   it("checks the token, then the destination, then the amount", () => {
-    expect(parseTokenWithdraw({ tokenAddress: "", to: "", amount: "" }, 6)).toEqual({
-      error: "Enter a valid token address",
-    });
+    expect(parseTokenWithdraw({ tokenAddress: "", to: "", amount: "" }, 6)).toEqual(TOKEN_ADDRESS_ERROR);
     expect(parseTokenWithdraw({ ...form, to: CHECKSUMMED.toLowerCase().slice(0, 41), amount: "" }, 6)).toEqual({
-      error: "Enter a valid destination address for token withdraw",
+      error: "Enter the destination as a full 0x address.",
+      field: "to",
     });
-    expect(parseTokenWithdraw({ ...form, amount: "" }, 6)).toEqual({ error: "Enter token amount" });
+    expect(parseTokenWithdraw({ ...form, amount: "" }, 6)).toEqual({
+      error: "Enter an amount, like 10.",
+      field: "amount",
+    });
   });
 
   it("rejects a non-numeric amount", () => {
-    expect(parseTokenWithdraw({ ...form, amount: "1,5" }, 6)).toEqual({ error: "Invalid token amount" });
+    expect(parseTokenWithdraw({ ...form, amount: "1,5" }, 6)).toEqual({
+      error: "Enter the amount as a number, like 10.",
+      field: "amount",
+    });
   });
 });
 
@@ -147,6 +178,6 @@ describe("parseNewOwner", () => {
   });
 
   it.each(["", "0x123", BAD_CHECKSUM, `${DESTINATION} `])("rejects %j", address => {
-    expect(parseNewOwner(address)).toEqual({ error: "Enter a valid new owner address" });
+    expect(parseNewOwner(address)).toEqual({ error: "Enter the new owner as a full 0x address.", field: "newOwner" });
   });
 });

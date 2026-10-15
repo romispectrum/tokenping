@@ -26,9 +26,9 @@ describe("notification constants", () => {
   it("lists the services in display order, with the same ids as NOTIFICATION_SERVICES", () => {
     expect(NOTIFICATION_SERVICES).toEqual(["email", "signal", "telegram"]);
     expect(AVAILABLE_SERVICES).toEqual([
-      { id: "email", name: "Email", icon: "📧" },
-      { id: "signal", name: "Signal", icon: "🔒" },
-      { id: "telegram", name: "Telegram", icon: "✈️" },
+      { id: "email", name: "Email" },
+      { id: "signal", name: "Signal" },
+      { id: "telegram", name: "Telegram" },
     ]);
     expect(AVAILABLE_SERVICES.map(service => service.id)).toEqual(NOTIFICATION_SERVICES);
   });

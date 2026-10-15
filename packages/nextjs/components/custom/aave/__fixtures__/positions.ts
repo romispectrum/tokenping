@@ -71,8 +71,6 @@ export const SUPPLIED_AND_BORROWED_LINK: TokenPosition = {
 export const ETHEREUM_POSITION: NetworkPosition = {
   chainId: 1,
   chainName: "Ethereum",
-  chainIcon: "⟠",
-  chainColor: "#627EEA",
   totalCollateralUSD: "12345.67",
   totalDebtUSD: "2500.00",
   healthFactor: "1.85",
@@ -91,8 +89,6 @@ export const ETHEREUM_POSITION: NetworkPosition = {
 export const POLYGON_COLLATERAL_ONLY_POSITION: NetworkPosition = {
   chainId: 137,
   chainName: "Polygon",
-  chainIcon: "⬡",
-  chainColor: "#8247E5",
   totalCollateralUSD: "1234.56",
   totalDebtUSD: "0.00",
   healthFactor: "∞",
@@ -104,8 +100,6 @@ export const POLYGON_COLLATERAL_ONLY_POSITION: NetworkPosition = {
 export const ARBITRUM_EMPTY_POSITION: NetworkPosition = {
   chainId: 42161,
   chainName: "Arbitrum",
-  chainIcon: "🔷",
-  chainColor: "#28A0F0",
   totalCollateralUSD: "0.00",
   totalDebtUSD: "0.00",
   healthFactor: "∞",
@@ -118,8 +112,6 @@ export const ARBITRUM_EMPTY_POSITION: NetworkPosition = {
 export const BASE_SUMMARY_ONLY_POSITION: NetworkPosition = {
   chainId: 8453,
   chainName: "Base",
-  chainIcon: "🔵",
-  chainColor: "#0052FF",
   totalCollateralUSD: "800.00",
   totalDebtUSD: "760.25",
   healthFactor: "1.05",
@@ -131,8 +123,6 @@ export const BASE_SUMMARY_ONLY_POSITION: NetworkPosition = {
 export const AVALANCHE_DEBT_ONLY_POSITION: NetworkPosition = {
   chainId: 43114,
   chainName: "Avalanche",
-  chainIcon: "🔺",
-  chainColor: "#E84142",
   totalCollateralUSD: "0.00",
   totalDebtUSD: "250.50",
   healthFactor: "1.30",

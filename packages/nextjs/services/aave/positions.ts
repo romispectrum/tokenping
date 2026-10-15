@@ -27,8 +27,6 @@ export type TokenPosition = {
 export type NetworkPosition = {
   chainId: number;
   chainName: string;
-  chainIcon: string;
-  chainColor: string;
   totalCollateralUSD: string;
   totalDebtUSD: string;
   healthFactor: string;
@@ -93,8 +91,6 @@ export const toNetworkPosition = (
   return {
     chainId: market.chain.id,
     chainName: market.name,
-    chainIcon: market.icon,
-    chainColor: market.color,
     totalCollateralUSD: totalCollateralUSD.toFixed(2),
     totalDebtUSD: totalDebtUSD.toFixed(2),
     healthFactor: formatHealthFactor(healthFactor),

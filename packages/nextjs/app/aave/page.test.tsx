@@ -30,12 +30,12 @@ describe("Aave page metadata", () => {
   it("has its own title, description and self canonical (marketing plan §4.2)", async () => {
     const { metadata } = await loadPage();
 
-    expect(metadata.title).toBe("Aave V3 Positions & Health Factor");
+    expect(metadata.title).toBe("Aave V3 positions and health factor");
     expect(metadata.description).toBe(
       "See your Aave V3 collateral, debt and health factor on 7 networks for free, then set a Signal or email alert threshold for each network.",
     );
     expect(metadata.alternates?.canonical).toBe("/aave");
-    expect(metadata.openGraph).toMatchObject({ url: "/aave", title: "Aave V3 Positions & Health Factor" });
+    expect(metadata.openGraph).toMatchObject({ url: "/aave", title: "Aave V3 positions and health factor" });
     expect(metadata.robots).toBeUndefined();
   });
 
@@ -65,6 +65,10 @@ describe("Aave page shell", () => {
       "Tokenping checks every 5 minutes. While the health factor stays below your threshold, every check sends another message on each channel you chose.",
     );
     expect(html).toContain('<div data-stub="aave-dashboard">');
+    // Product UI is calm: none of the marketing effects, no gradient text, no pink in the shell.
+    expect(html).not.toMatch(
+      /blur-|gradient|animate-pulse|shadow-card|grain|divider-brand|bg-clip-text|\bbg-primary\b/,
+    );
     expect(html).toMatchSnapshot();
   });
 

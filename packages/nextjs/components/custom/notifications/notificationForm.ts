@@ -60,43 +60,71 @@ export const configToFormState = (config: NotificationConfig | null): Notificati
 export const toggleService = (services: NotificationService[], service: NotificationService) =>
   services.includes(service) ? services.filter(s => s !== service) : [...services, service];
 
-/** Returns the first problem, in the order the user sees the fields, or null when the form can be saved. */
-export const validateNotificationForm = ({
+/** The parts of the form that can be wrong, in the order the form shows them. */
+export type NotificationFormField = "services" | "email" | "signalRecipient" | "telegram";
+
+export type NotificationFormErrors = Partial<Record<NotificationFormField, string>>;
+
+/** Display order: errors are listed and the first one is focused in this order. */
+export const NOTIFICATION_FORM_FIELDS: readonly NotificationFormField[] = [
+  "services",
+  "email",
+  "signalRecipient",
+  "telegram",
+];
+
+/** The services group and the threshold, plus one field for each selected service. */
+export const countFormFields = (services: readonly NotificationService[]) => 2 + services.length;
+
+/** A failed Save lists the errors at the top of the form once it shows more than 3 fields. */
+export const needsErrorSummary = (services: readonly NotificationService[]) => countFormFields(services) > 3;
+
+/** Each message says what to do to fix the field. */
+export const NOTIFICATION_FORM_ERRORS = {
+  noService: "Select at least one notification service.",
+  noEmail: "Enter your email address.",
+  invalidEmail: "Enter an email address like name@example.com.",
+  noSignal: "Enter your Signal username.",
+  invalidSignal: "Enter a Signal username like alice.42. Find yours in Signal under Settings, then Profile.",
+  telegramUnknown: "Select Try again to check your Telegram link, then save.",
+  telegramNotLinked: "Connect Telegram before you save.",
+} as const;
+
+/** Every problem in the form, by field; empty when the form can be saved. */
+export const getNotificationFormErrors = ({
   services,
   email,
   signalRecipient,
   telegramChatId,
   telegramStatusUnknown,
-}: SubmittableForm) => {
-  if (services.length === 0) return "Please select at least one notification service";
+}: SubmittableForm): NotificationFormErrors => {
+  const errors: NotificationFormErrors = {};
+  if (services.length === 0) errors.services = NOTIFICATION_FORM_ERRORS.noService;
   if (services.includes("email")) {
     const trimmed = email.trim();
-    if (!trimmed) return "Please enter your email address";
-    if (!isValidEmail(trimmed)) return "Please enter a valid email address";
+    if (!trimmed) errors.email = NOTIFICATION_FORM_ERRORS.noEmail;
+    else if (!isValidEmail(trimmed)) errors.email = NOTIFICATION_FORM_ERRORS.invalidEmail;
   }
   if (services.includes("signal")) {
     // Normalized exactly as buildConfigUpdate stores it, so the value checked here is the value saved.
     const username = normalizeSignalUsername(signalRecipient);
-    if (!username) return "Please enter your Signal username";
-    if (!SIGNAL_USERNAME_REGEX.test(username)) {
-      return "Invalid Signal username. Expected format: alice.42 (find yours in Signal → Settings → Profile)";
-    }
+    if (!username) errors.signalRecipient = NOTIFICATION_FORM_ERRORS.noSignal;
+    else if (!SIGNAL_USERNAME_REGEX.test(username)) errors.signalRecipient = NOTIFICATION_FORM_ERRORS.invalidSignal;
   }
   if (services.includes("telegram") && !telegramChatId) {
-    if (telegramStatusUnknown) return "Couldn't check your Telegram link. Press Retry, then Save.";
-    return "Please connect Telegram first using the 'Connect Telegram' button.";
+    errors.telegram = telegramStatusUnknown
+      ? NOTIFICATION_FORM_ERRORS.telegramUnknown
+      : NOTIFICATION_FORM_ERRORS.telegramNotLinked;
   }
-  return null;
+  return errors;
 };
 
-/** Presence checks that enable the Save button; formats are only checked on click by validateNotificationForm. */
-export const canSubmitNotificationForm = ({ services, email, signalRecipient, telegramChatId }: SubmittableForm) =>
-  !(
-    services.length === 0 ||
-    (services.includes("email") && !email.trim()) ||
-    (services.includes("signal") && !signalRecipient.trim()) ||
-    (services.includes("telegram") && !telegramChatId)
-  );
+/** The first problem in display order, or null when the form can be saved. */
+export const validateNotificationForm = (form: SubmittableForm) => {
+  const errors = getNotificationFormErrors(form);
+  const first = NOTIFICATION_FORM_FIELDS.find(field => errors[field] !== undefined);
+  return first ? (errors[first] ?? null) : null;
+};
 
 /** The updateConfig payload for Save. */
 export const buildConfigUpdate = ({

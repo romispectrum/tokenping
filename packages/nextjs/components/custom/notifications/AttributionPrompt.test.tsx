@@ -19,9 +19,11 @@ const LABEL = "How did you hear about Tokenping? (optional)";
 const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>();
 let consoleErrors: unknown[][];
 
+const onSent = vi.fn();
+
 const renderPrompt = ({ autoFocus }: { autoFocus?: boolean } = {}) => {
   const onClose = vi.fn();
-  render(<AttributionPrompt address={ADDRESS} autoFocus={autoFocus} onClose={onClose} />);
+  render(<AttributionPrompt address={ADDRESS} autoFocus={autoFocus} onSent={onSent} onClose={onClose} />);
   return onClose;
 };
 
@@ -36,6 +38,7 @@ const submit = async () => {
 
 beforeEach(() => {
   mocks.toasts = [];
+  onSent.mockReset();
   fetchMock.mockReset();
   fetchMock.mockResolvedValue(jsonResponse({ success: true }));
   vi.stubGlobal("fetch", fetchMock);
@@ -76,13 +79,23 @@ describe("AttributionPrompt", () => {
     expect(document.activeElement).toBe(document.body);
   });
 
-  it("enables Send only for a non-blank answer", () => {
-    renderPrompt();
-    expect(sendButton().disabled).toBe(true);
-    type("   ");
-    expect(sendButton().disabled).toBe(true);
-    type(" Reddit ");
+  it("never disables Send: a blank answer gets a message and focus, which typing an answer clears", async () => {
+    const onClose = renderPrompt();
     expect(sendButton().disabled).toBe(false);
+    expect(sendButton().getAttribute("aria-disabled")).toBeNull();
+    type("   ");
+    await submit();
+    expect(screen.getByRole("alert").textContent).toBe("Enter an answer, or select Skip.");
+    expect(input().getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(input());
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    type(" Reddit ");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(input().getAttribute("aria-invalid")).toBeNull();
+    await submit();
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it("sends the trimmed answer for the wallet, thanks the user and closes", async () => {
@@ -100,7 +113,8 @@ describe("AttributionPrompt", () => {
         },
       ],
     ]);
-    expect(mocks.toasts).toEqual(["success: Thanks for telling us."]);
+    expect(mocks.toasts).toEqual(["success: Answer sent"]);
+    expect(onSent).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalledOnce();
   });
 
@@ -114,14 +128,22 @@ describe("AttributionPrompt", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("shows Sending... and blocks a second submit while the request is in flight", async () => {
+  it("shows Sending and blocks a second submit while the request is in flight", async () => {
     const response = deferred<Response>();
     fetchMock.mockReturnValue(response.promise);
     const onClose = renderPrompt();
     type("Telegram");
     await submit();
-    expect(sendButton().textContent).toBe("Sending...");
-    expect(sendButton().disabled).toBe(true);
+    // Loading, not disabled: the button keeps focus and its colour, and ignores presses.
+    const pending = screen.getByRole<HTMLButtonElement>("button", { name: "Sending" });
+    expect([pending.getAttribute("aria-busy"), pending.getAttribute("aria-disabled"), pending.disabled]).toEqual([
+      "true",
+      "true",
+      false,
+    ]);
+    await act(async () => {
+      fireEvent.click(pending);
+    });
     await act(async () => {
       fireEvent.submit(input().form as HTMLFormElement);
     });
@@ -139,8 +161,17 @@ describe("AttributionPrompt", () => {
 
     expect(screen.getByRole("alert").textContent).toBe("Couldn't send your answer. Try again or skip.");
     expect(input().value).toBe("Farcaster");
-    expect(sendButton().textContent).toBe("Send");
+    expect(sendButton().textContent).toBe("Send answer");
     expect(sendButton().disabled).toBe(false);
+    expect(sendButton().getAttribute("aria-busy")).toBeNull();
+    // The error describes the input and marks it invalid.
+    expect(input().getAttribute("aria-invalid")).toBe("true");
+    expect(
+      (input().getAttribute("aria-describedby") ?? "").split(" ").map(id => document.getElementById(id)?.textContent),
+    ).toEqual([
+      "Helps us learn which channels work. Saved with your wallet address.",
+      "Couldn't send your answer. Try again or skip.",
+    ]);
     expect(onClose).not.toHaveBeenCalled();
     expect(mocks.toasts).toEqual([]);
     expect(String(consoleErrors[0][1])).toContain("Active paid access required to send an answer");
@@ -173,6 +204,7 @@ describe("AttributionPrompt", () => {
     type("half-typed");
     fireEvent.click(screen.getByRole("button", { name: "Skip" }));
     expect(onClose).toHaveBeenCalledOnce();
+    expect(onSent).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

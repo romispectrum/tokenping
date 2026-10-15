@@ -1,13 +1,16 @@
+import { Infinity as InfinityIcon, type LucideIcon, ShieldAlert, ShieldCheck, TriangleAlert } from "lucide-react";
+import { Badge, type BadgeVariant } from "~~/components/ui";
 import { HEALTH_FACTOR_CRITICAL, HEALTH_FACTOR_RISKY } from "~~/constants/notifications";
 import { INFINITE_HEALTH_FACTOR } from "~~/utils/healthFactor";
 
 type HealthFactorStatus = "no-debt" | "critical" | "risky" | "safe";
 
-const STATUS_STYLES: Record<HealthFactorStatus, { className: string; label: string }> = {
-  "no-debt": { className: "bg-sky-500/20 text-sky-600 dark:text-sky-400 border-sky-500/30", label: "No Debt" },
-  critical: { className: "bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30", label: "Critical" },
-  risky: { className: "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30", label: "Risky" },
-  safe: { className: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30", label: "Safe" },
+// Status colours with an icon and a word each, so the state never rests on colour alone. Never pink.
+const STATUS_DISPLAY: Record<HealthFactorStatus, { variant: BadgeVariant; label: string; Icon: LucideIcon }> = {
+  "no-debt": { variant: "info", label: "No debt", Icon: InfinityIcon },
+  critical: { variant: "destructive", label: "Critical", Icon: ShieldAlert },
+  risky: { variant: "warning", label: "Risky", Icon: TriangleAlert },
+  safe: { variant: "success", label: "Safe", Icon: ShieldCheck },
 };
 
 /** Unparseable values fail every comparison and count as safe. */
@@ -23,12 +26,17 @@ type HealthFactorBadgeProps = {
   healthFactor: string;
 };
 
+/** "1.85 Safe" with a shield; "No debt" when Aave reports no borrowing (the health factor is then infinite). */
 export const HealthFactorBadge = ({ healthFactor }: HealthFactorBadgeProps) => {
-  const { className, label } = STATUS_STYLES[getHealthFactorStatus(healthFactor)];
+  const status = getHealthFactorStatus(healthFactor);
+  const { variant, label, Icon } = STATUS_DISPLAY[status];
 
   return (
-    <span className={`px-2 py-1 rounded-lg text-xs font-medium border ${className}`}>
-      {healthFactor} · {label}
-    </span>
+    <Badge variant={variant} data-status={status}>
+      <Icon aria-hidden="true" />
+      <span className="sr-only">Health factor </span>
+      {status !== "no-debt" && healthFactor ? <span className="tabular-nums">{healthFactor}</span> : null}
+      <span>{label}</span>
+    </Badge>
   );
 };

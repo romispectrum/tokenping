@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
-import { BaseError, erc20Abi } from "viem";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { BaseError, UserRejectedRequestError, erc20Abi } from "viem";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import AdminPage from "~~/app/admin/page";
 
 // Fixture values: the constants module is mocked below, so nothing here depends on the deployment or scaffold config.
@@ -113,27 +113,6 @@ vi.mock("~~/hooks/scaffold-eth", () => ({
   },
 }));
 
-// Stand-ins with the scaffold-ui props: the real Address resolves ENS names and EtherInput fetches the ETH price.
-vi.mock("@scaffold-ui/components", () => ({
-  Address: ({ address }: { address: string }) => <span data-address={address} />,
-  EtherInput: ({
-    defaultValue,
-    onValueChange,
-    placeholder,
-  }: {
-    defaultValue?: string;
-    onValueChange?: (value: { valueInEth: string; valueInUsd: string; displayUsdMode: boolean }) => void;
-    placeholder?: string;
-  }) => (
-    <input
-      data-component="EtherInput"
-      placeholder={placeholder}
-      defaultValue={defaultValue}
-      onChange={event => onValueChange?.({ valueInEth: event.target.value, valueInUsd: "", displayUsdMode: false })}
-    />
-  ),
-}));
-
 vi.mock("~~/constants/payments", () => ({
   get PAYMENT_CHAIN_ID() {
     return state.deployed ? 42161 : undefined;
@@ -146,33 +125,86 @@ vi.mock("~~/constants/payments", () => ({
   },
 }));
 
+// jsdom has no modal dialogs: open and close by the attribute, and fire close like a browser does.
+beforeAll(() => {
+  HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
+    this.setAttribute("open", "");
+  };
+  HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
+    this.removeAttribute("open");
+    this.dispatchEvent(new Event("close"));
+  };
+});
+
 const renderPage = () => render(<AdminPage />);
 
 const html = () => renderPage().container.innerHTML;
 
-/** The body of the card whose heading is `title`. */
-const card = (title: string) => {
-  const body = screen.getByRole("heading", { name: title }).parentElement;
-  expect(body, `card "${title}"`).not.toBeNull();
-  return within(body as HTMLElement);
-};
+/** The card (a region named by its heading) whose title is `title`. */
+const card = (title: string) => within(screen.getByRole("region", { name: title }));
 
 const type = (cardTitle: string, label: string | RegExp, value: string) =>
   fireEvent.change(card(cardTitle).getByLabelText(label), { target: { value } });
 
-/** Clicks the button, lets the awaited write and refetches settle, and returns the writes and refetches it made. */
-const click = async (label: string) => {
-  const button = screen.getByRole("button", { name: label });
+/** Runs a user action, lets the awaited write and refetches settle, and returns the writes and refetches it made. */
+const settle = async (action: () => void) => {
   calls.length = 0;
   await act(async () => {
-    fireEvent.click(button);
+    action();
     await new Promise(resolve => setTimeout(resolve, 0));
   });
   return calls.filter(([kind]) => kind !== "hook");
 };
 
-/** The texts of the error alerts (the page's alerts carry no role). */
-const alertText = () => [...document.querySelectorAll(".alert-error")].map(alert => alert.textContent);
+/** Clicks the button outside any dialog. */
+const click = (label: string) => {
+  const button = screen.getAllByRole("button", { name: label }).find(element => !element.closest("dialog"));
+  if (!button) throw new Error(`No button named ${label}`);
+  return settle(() => fireEvent.click(button));
+};
+
+/** The admin actions: every button except the address chips' copy buttons, which stay usable. */
+const actionButtons = () =>
+  screen.getAllByRole("button").filter(button => !button.getAttribute("aria-label")?.startsWith("Copy "));
+
+/** The open confirm dialog. */
+const dialog = () => within(screen.getByRole("alertdialog"));
+
+/** Clicks the transfer card's button, then the confirm dialog's own "Transfer ownership". */
+const confirmTransfer = async () => {
+  await click("Transfer ownership");
+  return settle(() => fireEvent.click(dialog().getByRole("button", { name: "Transfer ownership" })));
+};
+
+/** The message a field shows (its aria-describedby error), or null. */
+const fieldError = (cardTitle: string, label: string | RegExp) => {
+  const control = card(cardTitle).getByLabelText(label);
+  const error = (control.getAttribute("aria-describedby") ?? "")
+    .split(" ")
+    .map(id => document.getElementById(id))
+    .find(element => element?.getAttribute("role") === "alert");
+  return error?.textContent ?? null;
+};
+
+/** The text blocks of an element, joined: an alert with a title reads "Title: message". */
+const textBlocks = (element: Element) =>
+  [...element.querySelectorAll("*")]
+    .filter(node => node.children.length === 0 && node.textContent)
+    .map(node => node.textContent)
+    .join(": ");
+
+/** The alerts of a variant on the page (an alert is a note; its live region announces it). */
+const alertText = (variant = "destructive") =>
+  [...document.querySelectorAll(`[role="note"][data-variant="${variant}"]`)].map(textBlocks);
+
+/** The destructive alerts inside one card. */
+const cardAlertText = (title: string) =>
+  [...screen.getByRole("region", { name: title }).querySelectorAll('[role="note"][data-variant="destructive"]')].map(
+    textBlocks,
+  );
+
+const FAILED =
+  "Transaction failed: The contract rejected this transaction, so nothing changed. The network fee was still spent if it reached the network.";
 
 /** Key order is irrelevant to wagmi/react-query (query keys are hashed with sorted keys), so serialize sorted. */
 const sortKeys = (value: unknown): unknown => {
@@ -219,6 +251,8 @@ const REFETCH_ALL = [
 
 beforeEach(() => {
   resetState();
+  // The page logs every raw transaction error (and never renders it); keep the test output readable.
+  vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
 describe("AdminPage markup", () => {
@@ -227,7 +261,7 @@ describe("AdminPage markup", () => {
     expect(html()).toMatchSnapshot();
   });
 
-  it("asks to connect a wallet and shows the loading owner", () => {
+  it("asks to connect a wallet while the owner is unknown", () => {
     expect(html()).toMatchSnapshot();
   });
 
@@ -267,8 +301,14 @@ describe("AdminPage markup", () => {
     setLoadedData();
     state.isMining = true;
     renderPage();
-    const disabled = screen.getAllByRole("button").map(button => button.hasAttribute("disabled"));
-    expect(disabled).toEqual([true, true, true, true, true, true, true]);
+    expect(actionButtons().map(button => [button.textContent, button.hasAttribute("disabled")])).toEqual([
+      ["Pause payments", true],
+      ["Update max duration", true],
+      ["Save plan", true],
+      ["Withdraw ETH", true],
+      ["Withdraw token", true],
+      ["Transfer ownership", true],
+    ]);
   });
 
   it("formats an 18-decimals plan token", () => {
@@ -296,8 +336,8 @@ describe("AdminPage inputs", () => {
     ["Update plan", "Price (USDC)", "INPUT"],
     ["Update plan", "Duration (seconds)", "INPUT"],
     ["Update plan", "Plan enabled", "INPUT"],
-    ["Withdraw native", "Destination address", "INPUT"],
-    ["Withdraw native", "Amount (ETH)", "EtherInput"],
+    ["Withdraw ETH", "Destination address", "INPUT"],
+    ["Withdraw ETH", "Amount (ETH)", "INPUT"],
     ["Withdraw token", "Token address", "INPUT"],
     ["Withdraw token", "Destination address", "INPUT"],
     ["Withdraw token", "Amount (USDC)", "INPUT"],
@@ -312,7 +352,7 @@ describe("AdminPage inputs", () => {
 describe("AdminPage address fields", () => {
   const ADDRESS_FIELDS = [
     ["Update plan", "Token address"],
-    ["Withdraw native", "Destination address"],
+    ["Withdraw ETH", "Destination address"],
     ["Withdraw token", "Token address"],
     ["Withdraw token", "Destination address"],
     ["Transfer ownership", "New owner address"],
@@ -323,25 +363,32 @@ describe("AdminPage address fields", () => {
     setLoadedData();
   });
 
-  it.each(ADDRESS_FIELDS)("%s: %j is a plain DaisyUI text input", (cardTitle, label) => {
+  it.each(ADDRESS_FIELDS)("%s: %j is a plain text Input in the data font", (cardTitle, label) => {
     renderPage();
     const control = card(cardTitle).getByLabelText(label);
     expect(control.getAttribute("type")).toBe("text");
-    expect(control.className.split(" ")).toEqual(expect.arrayContaining(["input", "input-bordered"]));
+    expect(control.getAttribute("data-slot")).toBe("input");
+    expect(control.className.split(" ")).toEqual(expect.arrayContaining(["input", "font-data"]));
   });
 
-  it.each(ADDRESS_FIELDS)("%s: %j marks an ENS name as invalid and keeps it as typed", (cardTitle, label) => {
-    renderPage();
-    type(cardTitle, label, "vitalik.eth");
-    const control = card(cardTitle).getByLabelText(label) as HTMLInputElement;
-    expect(control.value).toBe("vitalik.eth");
-    expect(control.getAttribute("aria-invalid")).toBe("true");
-  });
+  it.each(ADDRESS_FIELDS)(
+    "%s: %j keeps an ENS name as typed and flags it when the owner leaves",
+    (cardTitle, label) => {
+      renderPage();
+      type(cardTitle, label, "vitalik.eth");
+      const control = card(cardTitle).getByLabelText(label) as HTMLInputElement;
+      expect(control.value).toBe("vitalik.eth");
+      expect(control.getAttribute("aria-invalid")).toBeNull();
+      fireEvent.blur(control);
+      expect(control.getAttribute("aria-invalid")).toBe("true");
+    },
+  );
 
   it.each(ADDRESS_FIELDS)("%s: %j accepts a lowercase or checksummed 0x address", (cardTitle, label) => {
     renderPage();
     for (const address of [NEW_OWNER, PAYWALL]) {
       type(cardTitle, label, address);
+      fireEvent.blur(card(cardTitle).getByLabelText(label));
       expect(card(cardTitle).getByLabelText(label).getAttribute("aria-invalid")).toBeNull();
     }
   });
@@ -350,22 +397,23 @@ describe("AdminPage address fields", () => {
     renderPage();
     type("Transfer ownership", "New owner address", "vitalik.eth");
     expect(await click("Transfer ownership")).toEqual([]);
-    expect(alertText()).toEqual(["Enter a valid new owner address"]);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(fieldError("Transfer ownership", "New owner address")).toBe("Enter the new owner as a full 0x address.");
   });
 
   it("refuses a mixed-case address with a wrong checksum as a withdraw destination", async () => {
     renderPage();
-    type("Withdraw native", "Destination address", "0x79872D7529cfE1c062838fACDA004Ce4BFB16553");
-    expect(card("Withdraw native").getByLabelText("Destination address").getAttribute("aria-invalid")).toBe("true");
-    type("Withdraw native", "Amount (ETH)", "1");
-    expect(await click("Withdraw native")).toEqual([]);
-    expect(alertText()).toEqual(["Enter a valid destination address for native withdraw"]);
+    type("Withdraw ETH", "Destination address", "0x79872D7529cfE1c062838fACDA004Ce4BFB16553");
+    type("Withdraw ETH", "Amount (ETH)", "1");
+    expect(await click("Withdraw ETH")).toEqual([]);
+    expect(fieldError("Withdraw ETH", "Destination address")).toBe("Enter the destination as a full 0x address.");
+    expect(document.activeElement).toBe(card("Withdraw ETH").getByLabelText("Destination address"));
   });
 
   it("trims the spaces around a pasted address", async () => {
     renderPage();
     type("Transfer ownership", "New owner address", `  ${NEW_OWNER}\n`);
-    expect(await click("Transfer ownership")).toEqual([
+    expect(await confirmTransfer()).toEqual([
       ["writeContractAsync", { functionName: "transferOwnership", args: [NEW_OWNER] }],
       ...REFETCH_ALL,
     ]);
@@ -393,38 +441,109 @@ describe("AdminPage actions", () => {
   });
 
   it.each([
-    ["Pause", "pause"],
-    ["Unpause", "unpause"],
+    ["Pause payments", "pause"],
+    ["Unpause payments", "unpause"],
   ])("%s writes %s and then refetches everything", async (label, functionName) => {
-    if (label === "Unpause") state.paused = true;
+    if (functionName === "unpause") state.paused = true;
     renderPage();
     expect(await click(label)).toEqual([["writeContractAsync", { functionName }], ...REFETCH_ALL]);
     expect(alertText()).toEqual([]);
   });
 
-  it("skips the refetch and shows the error when the transaction fails", async () => {
-    state.writeImpl = () => Promise.reject(new Error("reverted"));
+  it("skips the refetch, logs the raw error and shows a plain failure when the transaction fails", async () => {
+    const error = new Error("execution reverted: 0xdeadbeef");
+    state.writeImpl = () => Promise.reject(error);
     renderPage();
-    expect(await click("Pause")).toEqual([["writeContractAsync", { functionName: "pause" }]]);
-    expect(alertText()).toEqual(["reverted"]);
+    expect(await click("Pause payments")).toEqual([["writeContractAsync", { functionName: "pause" }]]);
+    expect(alertText()).toEqual([FAILED]);
+    expect(console.error).toHaveBeenCalledWith(error);
   });
 
   // Regression (I4): the alert used to show viem's full multi-line message (details, docs link, version).
-  it("shows the parsed viem error, not the raw multi-line message", async () => {
-    const error = new BaseError("User rejected the request.");
+  it("never renders the raw viem message", async () => {
+    const error = new BaseError("Something odd happened.");
     expect(error.message).toContain("\n");
     state.writeImpl = () => Promise.reject(error);
     renderPage();
-    await click("Pause");
-    expect(alertText()).toEqual(["User rejected the request."]);
+    await click("Pause payments");
+    expect(alertText()).toEqual([
+      "Something went wrong: The transaction did not complete. Check the current values above before you try again.",
+    ]);
+  });
+
+  it("shows a cancel in the wallet as a neutral note, not a failure", async () => {
+    state.writeImpl = () => Promise.reject(new UserRejectedRequestError(new Error("User rejected the request.")));
+    renderPage();
+    await click("Pause payments");
+    expect(alertText()).toEqual([]);
+    expect(alertText("default")).toEqual([
+      "Request cancelled: You cancelled the request in your wallet. Nothing was sent.",
+    ]);
+  });
+
+  it("words a known contract revert reason", async () => {
+    state.writeImpl = () =>
+      Promise.reject({ name: "ContractFunctionRevertedError", reason: "Insufficient balance", message: "reverted" });
+    renderPage();
+    type("Withdraw ETH", "Destination address", DESTINATION);
+    type("Withdraw ETH", "Amount (ETH)", "100");
+    await click("Withdraw ETH");
+    expect(cardAlertText("Withdraw ETH")).toEqual([
+      "Transaction failed: The contract does not hold that much. Enter an amount up to the contract balance.",
+    ]);
   });
 
   // Regression (B2.2): SE-2 resolves undefined (after its own toast) when nothing was sent; that is not a success.
   it("neither refetches nor reports anything when the write resolves undefined", async () => {
     state.writeImpl = () => Promise.resolve(undefined);
     renderPage();
-    expect(await click("Pause")).toEqual([["writeContractAsync", { functionName: "pause" }]]);
+    expect(await click("Pause payments")).toEqual([["writeContractAsync", { functionName: "pause" }]]);
     expect(alertText()).toEqual([]);
+  });
+});
+
+describe("AdminPage action feedback", () => {
+  beforeEach(() => {
+    setOwnerConnected();
+    setLoadedData();
+  });
+
+  it("shows each error in the card whose action failed, and moves it with the next action", async () => {
+    renderPage();
+    await click("Save plan");
+    expect(fieldError("Update plan", /^Price \(/)).toBe("Enter a price, like 1.5.");
+    expect(cardAlertText("Payments")).toEqual([]);
+    state.writeImpl = () => Promise.reject(new Error("reverted"));
+    await click("Pause payments");
+    expect(cardAlertText("Payments")).toEqual([FAILED]);
+    expect(fieldError("Update plan", /^Price \(/)).toBeNull();
+    expect(cardAlertText("Update plan")).toEqual([]);
+  });
+
+  it.each([
+    ["the wallet prompt", { isPending: true, isMining: true }, "Waiting for your wallet", true],
+    ["the processing", { isPending: false, isMining: true }, "Pausing", false],
+  ])("shows %s of the sent action and disables every other action", async (_label, flags, loading, prompt) => {
+    state.writeImpl = () => new Promise(() => {});
+    const { rerender } = renderPage();
+    await click("Pause payments");
+    Object.assign(state, flags);
+    rerender(<AdminPage />);
+    const pending = screen.getByRole("button", { name: loading });
+    expect(pending.getAttribute("aria-busy")).toBe("true");
+    expect(pending.hasAttribute("disabled")).toBe(false);
+    const others = actionButtons().filter(button => button !== pending);
+    expect(others.map(button => button.hasAttribute("disabled"))).toEqual([true, true, true, true, true]);
+    expect(card("Payments").queryByText("Confirm the transaction in your wallet.") !== null).toBe(prompt);
+  });
+
+  it("sends nothing from a form submitted while another transaction is in flight", async () => {
+    state.isMining = true;
+    renderPage();
+    type("Max duration", "New max duration (seconds)", "86400");
+    const form = card("Max duration").getByLabelText("New max duration (seconds)").closest("form") as HTMLFormElement;
+    expect(await settle(() => fireEvent.submit(form))).toEqual([]);
+    expect(fieldError("Max duration", "New max duration (seconds)")).toBeNull();
   });
 });
 
@@ -440,25 +559,51 @@ describe("AdminPage forms", () => {
   });
 
   it.each([
-    ["Update max duration", "Enter max duration in seconds"],
-    ["Save plan", "Enter plan price and duration"],
-    ["Withdraw native", "Enter a valid destination address for native withdraw"],
-    ["Withdraw token", "Enter a valid destination address for token withdraw"],
-    ["Transfer ownership", "Enter a valid new owner address"],
-  ])("%s shows %j and does not write with the initial form", async (label, message) => {
+    [
+      "Update max duration",
+      "Max duration",
+      "New max duration (seconds)",
+      "Enter a max duration in seconds, like 31536000.",
+    ],
+    ["Save plan", "Update plan", "Price (USDC)", "Enter a price, like 1.5."],
+    ["Withdraw ETH", "Withdraw ETH", "Destination address", "Enter the destination as a full 0x address."],
+    ["Withdraw token", "Withdraw token", "Destination address", "Enter the destination as a full 0x address."],
+    ["Transfer ownership", "Transfer ownership", "New owner address", "Enter the new owner as a full 0x address."],
+  ])(
+    "%s with the initial form writes nothing, shows the message at %s %j and focuses it",
+    async (button, cardTitle, label, message) => {
+      renderPage();
+      expect(await click(button)).toEqual([]);
+      expect(fieldError(cardTitle, label)).toBe(message);
+      const control = card(cardTitle).getByLabelText(label);
+      expect(control.getAttribute("aria-invalid")).toBe("true");
+      expect(document.activeElement).toBe(control);
+      expect(alertText()).toEqual([]);
+    },
+  );
+
+  it("re-checks the failed field on change, and leaves the untouched fields alone until the next submit", async () => {
     renderPage();
-    expect(await click(label)).toEqual([]);
-    expect(alertText()).toEqual([message]);
+    await click("Save plan");
+    type("Update plan", /^Price \(/, "abc");
+    expect(fieldError("Update plan", /^Price \(/)).toBe("Enter the price as a number, like 1.5.");
+    type("Update plan", /^Price \(/, "1.5");
+    expect(fieldError("Update plan", /^Price \(/)).toBeNull();
+    expect(fieldError("Update plan", "Duration (seconds)")).toBeNull();
+    await click("Save plan");
+    expect(fieldError("Update plan", "Duration (seconds)")).toBe("Enter a duration in seconds, like 2592000.");
+    expect(document.activeElement).toBe(card("Update plan").getByLabelText("Duration (seconds)"));
   });
 
   it("replaces a validation error with the transaction error, and clears it on success", async () => {
     renderPage();
     await click("Save plan");
     state.writeImpl = () => Promise.reject(new Error("reverted"));
-    await click("Pause");
-    expect(alertText()).toEqual(["reverted"]);
+    await click("Pause payments");
+    expect(fieldError("Update plan", /^Price \(/)).toBeNull();
+    expect(alertText()).toEqual([FAILED]);
     state.writeImpl = () => Promise.resolve("0xhash");
-    await click("Pause");
+    await click("Pause payments");
     expect(alertText()).toEqual([]);
   });
 
@@ -511,9 +656,9 @@ describe("AdminPage forms", () => {
 
   it("withdraws the typed native amount to the typed address", async () => {
     renderPage();
-    type("Withdraw native", "Destination address", DESTINATION);
-    type("Withdraw native", "Amount (ETH)", "1.25");
-    expect(await click("Withdraw native")).toEqual([
+    type("Withdraw ETH", "Destination address", DESTINATION);
+    type("Withdraw ETH", "Amount (ETH)", "1.25");
+    expect(await click("Withdraw ETH")).toEqual([
       ["writeContractAsync", { functionName: "withdrawNative", args: [DESTINATION, 1_250_000_000_000_000_000n] }],
       ...REFETCH_ALL,
     ]);
@@ -528,13 +673,32 @@ describe("AdminPage forms", () => {
     ]);
   });
 
-  it("transfers ownership to the typed address", async () => {
+  it("transfers ownership to the typed address after the confirm dialog", async () => {
     renderPage();
     type("Transfer ownership", "New owner address", NEW_OWNER);
-    expect(await click("Transfer ownership")).toEqual([
+    expect(await click("Transfer ownership")).toEqual([]);
+    expect(screen.getByRole("alertdialog", { name: "Transfer ownership to 0x5555...5555?" })).toBeDefined();
+    expect(await settle(() => fireEvent.click(dialog().getByRole("button", { name: "Transfer ownership" })))).toEqual([
       ["writeContractAsync", { functionName: "transferOwnership", args: [NEW_OWNER] }],
       ...REFETCH_ALL,
     ]);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("opens the confirm dialog, not the wallet, on Enter in the new owner field", async () => {
+    renderPage();
+    type("Transfer ownership", "New owner address", NEW_OWNER);
+    const form = card("Transfer ownership").getByLabelText("New owner address").closest("form") as HTMLFormElement;
+    expect(await settle(() => fireEvent.submit(form))).toEqual([]);
+    expect(dialog().getByRole("button", { name: "Keep ownership" })).toBe(document.activeElement);
+  });
+
+  it("keeps ownership: the dialog's keep button closes it and sends nothing", async () => {
+    renderPage();
+    type("Transfer ownership", "New owner address", NEW_OWNER);
+    await click("Transfer ownership");
+    expect(await settle(() => fireEvent.click(dialog().getByRole("button", { name: "Keep ownership" })))).toEqual([]);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
   });
 });
 
@@ -565,7 +729,7 @@ describe("AdminPage token decimals", () => {
     renderPage();
     type(cardTitle, "Token address", DAI);
     expect(isDisabled(button)).toBe(true);
-    expect(card(cardTitle).getByText("Loading token decimals...")).toBeDefined();
+    expect(card(cardTitle).getByText("Loading token decimals")).toBeDefined();
   });
 
   it.each([

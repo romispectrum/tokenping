@@ -4,7 +4,6 @@ export type NotificationService = "email" | "signal" | "telegram";
 export type NotificationServiceOption = {
   id: NotificationService;
   name: string;
-  icon: string;
 };
 
 export type NotificationConfig = {

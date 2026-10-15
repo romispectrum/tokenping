@@ -137,17 +137,40 @@ const type = async (element: HTMLElement, value: string) => {
   await settle();
 };
 
-const button = (name: string | RegExp) => screen.getByRole("button", { name });
+const button = (name: string | RegExp) => screen.getByRole<HTMLButtonElement>("button", { name });
+/** Loading, not disabled: the button keeps focus and colour and ignores presses (aria-busy plus aria-disabled). */
+const isBusy = (element: HTMLElement) =>
+  element.getAttribute("aria-busy") === "true" && element.getAttribute("aria-disabled") === "true";
 const serviceToggle = (name: "Email" | "Signal" | "Telegram") =>
-  screen.getByRole("button", { name: { Email: "📧Email", Signal: "🔒Signal", Telegram: "✈️Telegram" }[name] });
-const emailInput = () => screen.getByPlaceholderText<HTMLInputElement>("you@example.com");
-const signalInput = () => screen.getByPlaceholderText<HTMLInputElement>("@alice.42");
+  screen.getByRole<HTMLInputElement>("checkbox", { name });
+const emailInput = () => screen.getByRole<HTMLInputElement>("textbox", { name: "Email address" });
+const queryEmailInput = () => screen.queryByRole<HTMLInputElement>("textbox", { name: "Email address" });
+const signalInput = () => screen.getByRole<HTMLInputElement>("textbox", { name: "Signal username" });
 const slider = () => screen.getByRole<HTMLInputElement>("slider");
 const thresholdInput = () =>
-  screen.getByRole<HTMLInputElement>("textbox", { name: "Health factor threshold (manual)" });
-/** The value next to a summary label such as "Telegram:". */
-const summaryValue = (label: string) => screen.queryByText(label)?.nextElementSibling?.textContent ?? null;
+  screen.getByRole<HTMLInputElement>("textbox", { name: "Health factor threshold (exact value)" });
+/** The value next to a summary label such as "Telegram". */
+const summaryValue = (label: string) =>
+  screen.queryAllByText(label, { selector: "dt" })[0]?.nextElementSibling?.textContent ?? null;
+/** Every message announced as an alert: the inline field errors and failure messages, in page order. */
+const alerts = () => screen.queryAllByRole("alert").map(alert => alert.textContent);
+/** The error summary a failed Save shows at the top of a form with more than 3 fields (it takes focus). */
+const errorSummary = () => document.querySelector<HTMLElement>("form [role='alert'][tabindex='-1']");
+/** The inline field errors, without the summary that repeats them. */
+const fieldErrors = () =>
+  screen
+    .queryAllByRole("alert")
+    .filter(alert => alert !== errorSummary())
+    .map(alert => alert.textContent);
+/** The card's polite live region: what happened to the last Save, Delete or attribution answer. */
+const announcement = () => document.querySelector("[aria-live='polite']")?.textContent ?? null;
 const lastRequest = (prefix: string) => api.requests.filter(request => request.startsWith(prefix)).at(-1);
+/** Delete asks first; the confirmation names the object on both of its buttons. */
+const confirmation = () => within(screen.getByRole("group", { name: "Delete this alert?" }));
+const deleteConfig = async () => {
+  await click(button("Delete alert"));
+  await click(confirmation().getByRole("button", { name: "Delete alert" }));
+};
 
 beforeAll(() => {
   // react-query notifies from a 0ms timeout, which fake timers push 1ms past a tick; notify on a microtask instead.
@@ -200,13 +223,13 @@ describe("NotificationConfig: loading and access", () => {
     api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
     const { rerender } = await renderCard();
     expect(screen.getByText("Pay for access to edit")).toBeDefined();
-    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit alert" })).toBeNull();
     expect(screen.getByText("Active")).toBeDefined();
-    expect(summaryValue("Email:")).toBe("saved@example.com");
-    expect(summaryValue("Signal:")).toBe("@saved.01");
-    expect(summaryValue("Telegram:")).toBe("@saved_tg");
-    expect(summaryValue("Threshold:")).toBe("1.8");
-    expect(screen.getByText("⚠️ Current Health Factor (1.20) is below your threshold!")).toBeDefined();
+    expect(summaryValue("Email")).toBe("saved@example.com");
+    expect(summaryValue("Signal")).toBe("@saved.01");
+    expect(summaryValue("Telegram")).toBe("@saved_tg");
+    expect(summaryValue("Threshold")).toBe("1.8");
+    expect(screen.getByText("Your current health factor (1.20) is below your threshold of 1.8.")).toBeDefined();
 
     rerender(<NotificationConfig {...PROPS} currentHealthFactor="∞" />);
     expect(screen.queryByText(/is below your threshold/)).toBeNull();
@@ -220,26 +243,26 @@ describe("NotificationConfig: loading and access", () => {
     await renderCard({ currentHealthFactor: "1.00" });
     expect(screen.queryByText("Active")).toBeNull();
     expect(screen.queryByText(/is below your threshold/)).toBeNull();
-    expect(summaryValue("Services:")).toBe("📧 Email");
-    expect(summaryValue("Threshold:")).toBe("10");
+    expect(summaryValue("Services")).toBe("Email");
+    expect(summaryValue("Threshold")).toBe("10");
   });
 
-  it("shows a load error with Retry instead of the Create state when the configs cannot be loaded", async () => {
+  it("shows a load error with Try again instead of the Create state when the configs cannot be loaded", async () => {
     api.override = ({ method, url }) =>
       method === "GET" && url.startsWith("/api/notifications/config")
         ? jsonResponse({ error: "Database error" }, 500)
         : undefined;
     await renderCard();
-    expect(screen.queryByRole("button", { name: "Create notification config" })).toBeNull();
-    // Only the message is announced, so the Retry label changing does not repeat it.
-    expect(screen.getByRole("alert").textContent).toBe("Could not load your notification settings.");
-    expect(button("Retry")).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Create alert" })).toBeNull();
+    // Only the message is announced, so the button's label changing does not repeat it.
+    expect(screen.getByRole("alert").textContent).toBe("Notification settings did not load");
+    expect(button("Try again")).toBeDefined();
 
     api.override = () => undefined;
     api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
-    await click(button("Retry"));
+    await click(button("Try again"));
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(summaryValue("Email:")).toBe("saved@example.com");
+    expect(summaryValue("Email")).toBe("saved@example.com");
   });
 
   it("keeps the load error on screen while a retry is in flight", async () => {
@@ -248,59 +271,133 @@ describe("NotificationConfig: loading and access", () => {
       method === "GET" && url.startsWith("/api/notifications/config") ? answer() : undefined;
     await renderCard();
     answer = () => new Promise<Response>(() => undefined);
-    await click(button("Retry"));
+    await click(button("Try again"));
     expect(screen.getByRole("alert")).toBeDefined();
-    expect((button("Retrying...") as HTMLButtonElement).disabled).toBe(true);
+    expect(isBusy(button("Retrying"))).toBe(true);
   });
 });
 
 describe("NotificationConfig: creating and editing", () => {
-  it("validates in field order, then saves the normalized form, accepting the 'u:' Signal form", async () => {
+  it("validates on Save, shows each error under its field, then saves the normalized form", async () => {
     await renderCard();
-    await click(button("Create notification config"));
-    await click(button("Save"));
-    expect(mocks.toasts).toEqual([]);
-    expect((button("Save") as HTMLButtonElement).disabled).toBe(true);
+    await click(button("Create alert"));
+    // Save is never disabled: it reports what is missing and moves focus there.
+    expect(button("Save alert").disabled).toBe(false);
+    await click(button("Save alert"));
+    expect(alerts()).toEqual(["Select at least one notification service."]);
+    expect(document.activeElement).toBe(serviceToggle("Email"));
 
+    // An error clears as soon as it is fixed; a field that appears afterwards stays quiet until the next Save.
     await click(serviceToggle("Email"));
+    expect(alerts()).toEqual([]);
     await type(emailInput(), "  not-an-email ");
-    await click(button("Save"));
+    await click(button("Save alert"));
+    // Three fields (services, email, threshold): no summary, focus goes to the field.
+    expect(errorSummary()).toBeNull();
+    expect(alerts()).toEqual(["Enter an email address like name@example.com."]);
+    expect(document.activeElement).toBe(emailInput());
+    expect(emailInput().getAttribute("aria-invalid")).toBe("true");
     await type(emailInput(), " me@example.com ");
+    expect(alerts()).toEqual([]);
+    expect(emailInput().getAttribute("aria-invalid")).toBeNull();
+
+    // Four fields: the failed Save shows the summary at the top and focuses it.
     await click(serviceToggle("Signal"));
     await type(signalInput(), "@");
-    await click(button("Save"));
+    await click(button("Save alert"));
+    expect(fieldErrors()).toEqual(["Enter your Signal username."]);
+    expect(errorSummary()?.textContent).toBe("Fix 1 field to saveEnter your Signal username.");
+    expect(document.activeElement).toBe(errorSummary());
+    // The message follows what is typed until the field is valid, in the summary too.
     await type(signalInput(), " @alice ");
-    await click(button("Save"));
+    expect(fieldErrors()).toEqual([
+      "Enter a Signal username like alice.42. Find yours in Signal under Settings, then Profile.",
+    ]);
+    expect(within(errorSummary() as HTMLElement).getByRole("link").textContent).toBe(
+      "Enter a Signal username like alice.42. Find yours in Signal under Settings, then Profile.",
+    );
     await type(signalInput(), " u:alice.42 ");
+    expect(alerts()).toEqual([]);
+    expect(errorSummary()).toBeNull();
     await type(thresholdInput(), "2,5");
     fireEvent.blur(thresholdInput());
-    await click(button("Save"));
-    expect(mocks.toasts).toEqual([
-      "error: Please enter a valid email address",
-      "error: Please enter your Signal username",
-      "error: Invalid Signal username. Expected format: alice.42 (find yours in Signal → Settings → Profile)",
-      "success: Notification configuration saved.",
-    ]);
+    expect(lastRequest("PUT")).toBeUndefined();
+    await click(button("Save alert"));
+    expect(mocks.toasts).toEqual(["success: Alert saved"]);
     expect(lastRequest("PUT")).toBe(
       `PUT /api/notifications/config {"userId":"${ADDRESS}","chainId":${CHAIN_ID},"enabled":true,"services":["email","signal"],"healthFactorThreshold":2.5,"email":"me@example.com","signalRecipient":"alice.42"}`,
     );
-    expect(summaryValue("Email:")).toBe("me@example.com");
-    expect(summaryValue("Signal:")).toBe("@alice.42");
-    expect(summaryValue("Threshold:")).toBe("2.5");
+    expect(summaryValue("Email")).toBe("me@example.com");
+    expect(summaryValue("Signal")).toBe("@alice.42");
+    expect(summaryValue("Threshold")).toBe("2.5");
+  });
+
+  it("lists every invalid field in a focused summary that links to each field, and submits with Enter", async () => {
+    await renderCard();
+    await click(button("Create alert"));
+    await click(serviceToggle("Telegram"));
+    await click(serviceToggle("Signal"));
+    await click(serviceToggle("Email"));
+    await type(emailInput(), "nope");
+    await act(async () => {
+      fireEvent.submit(emailInput().form as HTMLFormElement);
+    });
+    await settle();
+    expect(fieldErrors()).toEqual([
+      "Enter an email address like name@example.com.",
+      "Enter your Signal username.",
+      "Connect Telegram before you save.",
+    ]);
+
+    const summary = errorSummary() as HTMLElement;
+    expect(summary.getAttribute("role")).toBe("alert");
+    expect(document.activeElement).toBe(summary);
+    expect(within(summary).getByText("Fix 3 fields to save")).toBeDefined();
+    // In display order, each a link to its field.
+    const links = within(summary).getAllByRole("link");
+    expect(links.map(link => link.textContent)).toEqual(fieldErrors());
+    const targets = links.map(link => document.getElementById((link.getAttribute("href") ?? "").slice(1)));
+    expect(targets.map(target => target?.getAttribute("data-field"))).toEqual(["email", "signalRecipient", "telegram"]);
+    // Following a link focuses the field's control, not just the group around it.
+    await click(links[1]);
+    expect(document.activeElement).toBe(signalInput());
+    await click(links[2]);
+    expect(document.activeElement).toBe(button("Connect Telegram"));
+
+    const descriptionsOf = (input: HTMLElement) =>
+      (input.getAttribute("aria-describedby") ?? "").split(" ").map(id => document.getElementById(id)?.textContent);
+    expect(descriptionsOf(emailInput())).toEqual([
+      "Alerts are sent to this address.",
+      "Enter an email address like name@example.com.",
+    ]);
+    expect(descriptionsOf(signalInput())).toEqual([
+      "In Signal, open Settings, then Profile. It looks like alice.42.",
+      "Enter your Signal username.",
+    ]);
+    expect(api.requests.some(request => request.startsWith("PUT"))).toBe(false);
+
+    // Another failed Save focuses the summary again; fixing a field takes it off the list.
+    await type(emailInput(), "me@example.com");
+    expect(within(summary).getByText("Fix 2 fields to save")).toBeDefined();
+    await click(button("Save alert"));
+    expect(document.activeElement).toBe(errorSummary());
+    expect(within(errorSummary() as HTMLElement).getAllByRole("link")).toHaveLength(2);
   });
 
   it("opens Telegram inside the Connect click and offers the bot link until the chat is linked", async () => {
     await renderCard();
-    await click(button("Create notification config"));
+    await click(button("Create alert"));
     await click(serviceToggle("Telegram"));
-    expect((button("Save") as HTMLButtonElement).disabled).toBe(true);
+    await click(button("Save alert"));
+    expect(alerts()).toEqual(["Connect Telegram before you save."]);
+    expect(document.activeElement).toBe(button("Connect Telegram"));
 
     fireEvent.click(button("Connect Telegram"));
     expect(openSpy.mock.calls).toEqual([["", "_blank"]]);
     await settle();
     expect(popup.location.href).toBe(DEEP_LINK);
-    expect(button("Waiting for Telegram… (open the bot and press Start)")).toBeDefined();
-    const openLink = screen.getByRole("link", { name: "Open Telegram" });
+    expect(isBusy(button("Waiting for Telegram"))).toBe(true);
+    const openLink = screen.getByRole("link", { name: "Open Telegram (opens in a new tab)" });
     expect([openLink.getAttribute("href"), openLink.getAttribute("target"), openLink.getAttribute("rel")]).toEqual([
       DEEP_LINK,
       "_blank",
@@ -309,56 +406,58 @@ describe("NotificationConfig: creating and editing", () => {
 
     api.links[ADDRESS.toLowerCase()] = { linked: true, chatId: "777", username: "bob", linkedAt: "now" };
     await settle(2000);
-    expect(screen.getByText("✅ Connected as @bob")).toBeDefined();
-    expect(screen.queryByRole("link", { name: "Open Telegram" })).toBeNull();
-    expect((button("Save") as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByText("Connected as @bob")).toBeDefined();
+    expect(screen.queryByRole("link", { name: /Open Telegram/ })).toBeNull();
+    // The link fixed the field, so its error is gone.
+    expect(alerts()).toEqual([]);
     expect(mocks.toasts).toEqual(["success: Telegram connected as @bob"]);
   });
 
   it("keeps a Telegram link made while editing after Save", async () => {
     await renderCard();
-    await click(button("Create notification config"));
+    await click(button("Create alert"));
     await click(serviceToggle("Telegram"));
     await click(button("Connect Telegram"));
     api.links[ADDRESS.toLowerCase()] = { linked: true, chatId: "777", username: "bob", linkedAt: "now" };
     await settle(2000);
-    await click(button("Save"));
+    await click(button("Save alert"));
     expect(lastRequest("PUT")).toContain('"services":["telegram"]');
 
     // B0.0: the link is read from the link API, so saving a config cannot drop it.
-    expect(summaryValue("Telegram:")).toBe("@bob");
-    await click(button("Edit"));
-    expect(screen.getByText("✅ Connected as @bob")).toBeDefined();
-    expect((button("Save") as HTMLButtonElement).disabled).toBe(false);
+    expect(summaryValue("Telegram")).toBe("@bob");
+    await click(button("Edit alert"));
+    expect(screen.getByText("Connected as @bob")).toBeDefined();
+    await click(button("Save alert"));
+    expect(api.requests.filter(request => request.startsWith("PUT"))).toHaveLength(2);
   });
 
   it("shows a wallet's existing Telegram link when creating a config on another chain", async () => {
     api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
     await renderCard();
-    await click(button("Create notification config"));
+    await click(button("Create alert"));
     await click(serviceToggle("Telegram"));
-    expect(screen.getByText("✅ Connected as @saved_tg")).toBeDefined();
-    await click(button("Save"));
+    expect(screen.getByText("Connected as @saved_tg")).toBeDefined();
+    await click(button("Save alert"));
     expect(lastRequest("PUT")).toContain('"services":["telegram"]');
-    expect(mocks.toasts).toEqual(["success: Notification configuration saved."]);
-    expect(summaryValue("Telegram:")).toBe("@saved_tg");
+    expect(mocks.toasts).toEqual(["success: Alert saved"]);
+    expect(summaryValue("Telegram")).toBe("@saved_tg");
   });
 
   it("falls back to the Email service for an enabled config without valid services, also after Cancel", async () => {
     api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: { ...SAVED_CONFIG, services: [], healthFactorThreshold: 0 } };
     await renderCard();
-    expect(summaryValue("Services:")).toBe("📧 Email");
-    expect(summaryValue("Threshold:")).toBe("1.5");
-    await click(button("Edit"));
+    expect(summaryValue("Services")).toBe("Email");
+    expect(summaryValue("Threshold")).toBe("1.5");
+    await click(button("Edit alert"));
     expect(emailInput().value).toBe("saved@example.com");
     await click(button("Cancel"));
-    expect(summaryValue("Services:")).toBe("📧 Email");
+    expect(summaryValue("Services")).toBe("Email");
   });
 
   it("edits the threshold through the text input and the slider", async () => {
     api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
     await renderCard({ currentHealthFactor: "1.75" });
-    await click(button("Edit"));
+    await click(button("Edit alert"));
     const state = () => [thresholdInput().value, slider().value];
 
     await type(thresholdInput(), "abc");
@@ -381,8 +480,8 @@ describe("NotificationConfig: creating and editing", () => {
     expect(state()).toEqual(["10.00", "3"]);
     // The slider stops at 3 but announces the threshold that applies.
     expect(slider().getAttribute("aria-valuetext")).toBe("10");
-    expect(screen.getByText(/be notified when your Health Factor drops below/).textContent).toBe(
-      "You'll be notified when your Health Factor drops below 10 on Arbitrum.",
+    expect(screen.getByText(/be notified when your health factor drops below/).textContent).toBe(
+      "You'll be notified when your health factor drops below 10 on Arbitrum.",
     );
 
     const prevented = ["e", "E", "+", "-", "1"].map(key => !fireEvent.keyDown(thresholdInput(), { key }));
@@ -402,36 +501,102 @@ describe("NotificationConfig: creating and editing", () => {
   it("cancels edits back to the saved config, deletes, and cancels back to the empty state", async () => {
     api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
     await renderCard();
-    await click(button("Edit"));
+    await click(button("Edit alert"));
     await click(serviceToggle("Signal"));
     await type(emailInput(), "changed@example.com");
     await click(button("Cancel"));
-    expect(summaryValue("Email:")).toBe("saved@example.com");
-    expect(summaryValue("Signal:")).toBe("@saved.01");
+    expect(summaryValue("Email")).toBe("saved@example.com");
+    expect(summaryValue("Signal")).toBe("@saved.01");
 
-    await click(button("Edit"));
-    await click(button("Delete"));
+    await click(button("Edit alert"));
+    await deleteConfig();
     expect(lastRequest("DELETE")).toBe(
       `DELETE /api/notifications/config {"userId":"${ADDRESS}","chainId":${CHAIN_ID}}`,
     );
-    expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
-    expect(screen.queryByPlaceholderText("you@example.com")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete alert" })).toBeNull();
+    expect(queryEmailInput()).toBeNull();
     expect(mocks.toasts).toEqual([]);
+    // Announced, and focus continues at the start of the empty form instead of falling to the page.
+    expect(announcement()).toBe("Alert deleted");
+    expect(document.activeElement).toBe(serviceToggle("Email"));
     await click(button("Cancel"));
-    expect(button("Create notification config")).toBeDefined();
+    expect(button("Create alert")).toBeDefined();
+  });
+
+  it("asks before deleting, with focus on Keep alert, and Keep alert sends nothing", async () => {
+    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
+    await renderCard();
+    await click(button("Edit alert"));
+    await click(button("Delete alert"));
+    const group = screen.getByRole("group", { name: "Delete this alert?" });
+    const description = document.getElementById(group.getAttribute("aria-describedby") ?? "");
+    expect(description?.textContent).toBe("Tokenping stops sending health factor alerts for Arbitrum.");
+    // Enter on the focused button keeps the alert; Save is not on screen next to the confirmation.
+    expect(document.activeElement).toBe(confirmation().getByRole("button", { name: "Keep alert" }));
+    expect(screen.queryByRole("button", { name: "Save alert" })).toBeNull();
+    expect(confirmation().getByRole("button", { name: "Delete alert" }).className).toContain("btn-error");
+
+    await click(confirmation().getByRole("button", { name: "Keep alert" }));
+    expect(screen.queryByRole("group", { name: "Delete this alert?" })).toBeNull();
+    expect(document.activeElement).toBe(button("Delete alert"));
+    expect(api.requests.some(request => request.startsWith("DELETE"))).toBe(false);
+    expect(button("Save alert")).toBeDefined();
+  });
+
+  it("returns focus to the button that opened the form after Save and Cancel", async () => {
+    // Asked before, so no attribution prompt takes focus after the save.
+    markAttributionPrompted();
+    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: { ...SAVED_CONFIG, services: ["email"] } };
+    const { unmount } = await renderCard();
+    await click(button("Edit alert"));
+    await click(button("Save alert"));
+    expect(document.activeElement).toBe(button("Edit alert"));
+    await click(button("Edit alert"));
+    await click(button("Cancel"));
+    expect(document.activeElement).toBe(button("Edit alert"));
+    unmount();
+
+    api.configs = {};
+    await renderCard();
+    await click(button("Create alert"));
+    await click(button("Cancel"));
+    expect(document.activeElement).toBe(button("Create alert"));
+  });
+
+  it("announces a save, a delete and an answer in the card's live region, which outlives the form", async () => {
+    await renderCard();
+    await click(button("Create alert"));
+    await click(serviceToggle("Email"));
+    await type(emailInput(), "me@example.com");
+    expect(announcement()).toBe("");
+    await click(button("Save alert"));
+    expect(queryEmailInput()).toBeNull();
+    expect(announcement()).toBe("Alert saved");
+    await type(screen.getByRole("textbox", { name: "How did you hear about Tokenping? (optional)" }), "Reddit");
+    await click(button("Send answer"));
+    expect(announcement()).toBe("Answer sent");
+
+    // Editing starts quiet, so the same message announced again is a change the screen reader hears.
+    await click(button("Edit alert"));
+    expect(announcement()).toBe("");
+    await click(button("Save alert"));
+    expect(announcement()).toBe("Alert saved");
+    await click(button("Edit alert"));
+    await deleteConfig();
+    expect(announcement()).toBe("Alert deleted");
   });
 
   it("requires a connected wallet for Telegram and for saving", async () => {
     mocks.address = undefined;
     await renderCard();
-    await click(button("Create notification config"));
+    await click(button("Create alert"));
     await click(serviceToggle("Telegram"));
     await click(button("Connect Telegram"));
     expect(openSpy).not.toHaveBeenCalled();
     await click(serviceToggle("Telegram"));
     await click(serviceToggle("Email"));
     await type(emailInput(), "me@example.com");
-    await click(button("Save"));
+    await click(button("Save alert"));
     expect(mocks.toasts).toEqual(["error: Connect your wallet first", "error: Wallet not connected"]);
     expect(api.requests).toEqual([]);
   });
@@ -448,25 +613,28 @@ describe("NotificationConfig: failures", () => {
       return undefined;
     };
     await renderCard();
-    await click(button("Edit"));
+    await click(button("Edit alert"));
 
-    await click(button("Save"));
+    await click(button("Save alert"));
     put = () => new Response("<html>oops</html>", { status: 500 });
-    await click(button("Save"));
-    await click(button("Delete"));
+    await click(button("Save alert"));
+    await deleteConfig();
     del = () => new Response("not json", { status: 500 });
-    await click(button("Delete"));
+    // The confirmation stays open after a failure, so Delete can be tried again.
+    await click(confirmation().getByRole("button", { name: "Delete alert" }));
     expect(mocks.toasts).toEqual([
       "error: Active paid access required to update notification config",
       "error: Failed to save notification config",
       "error: Active paid access required to delete notification config",
       "error: Failed to delete notification config",
     ]);
-    expect(button("Delete")).toBeDefined();
+    expect(confirmation().getByRole("button", { name: "Delete alert" })).toBeDefined();
     expect(emailInput().value).toBe("saved@example.com");
+    // The toasts are not announced; the card's live region carries the last failure.
+    expect(announcement()).toBe("Failed to delete notification config");
   });
 
-  it("disables Save and Delete while their request is in flight", async () => {
+  it("keeps Save and Delete busy and ignores presses while their request is in flight", async () => {
     api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: { ...SAVED_CONFIG, services: ["email"] } };
     const put = deferred<Response>();
     const del = deferred<void>();
@@ -477,16 +645,24 @@ describe("NotificationConfig: failures", () => {
       return undefined;
     };
     await renderCard();
-    await click(button("Edit"));
+    await click(button("Edit alert"));
 
-    await click(button("Save"));
-    expect((button("Saving...") as HTMLButtonElement).disabled).toBe(true);
+    await click(button("Save alert"));
+    expect(isBusy(button("Saving"))).toBe(true);
+    // A second press (or Enter) while saving sends nothing.
+    await click(button("Saving"));
+    await act(async () => {
+      fireEvent.submit(emailInput().form as HTMLFormElement);
+    });
+    expect(api.requests.filter(request => request.startsWith("PUT"))).toHaveLength(1);
     put.resolve(jsonResponse({ error: "Database error" }, 502));
     await settle();
-    expect((button("Save") as HTMLButtonElement).disabled).toBe(false);
+    expect(button("Save alert").getAttribute("aria-busy")).toBeNull();
 
-    await click(button("Delete"));
-    expect((button("Deleting...") as HTMLButtonElement).disabled).toBe(true);
+    await deleteConfig();
+    expect(isBusy(button("Deleting"))).toBe(true);
+    await click(button("Deleting"));
+    expect(api.requests.filter(request => request.startsWith("DELETE"))).toHaveLength(1);
     del.resolve();
     await settle();
     expect(screen.queryByRole("button", { name: /^Delet/ })).toBeNull();
@@ -502,14 +678,14 @@ describe("NotificationConfig: failures", () => {
       return undefined;
     };
     await renderCard();
-    await click(button("Edit"));
-    await click(button("Disconnect"));
-    expect(screen.getByText("✅ Connected as @saved_tg")).toBeDefined();
+    await click(button("Edit alert"));
+    await click(button("Disconnect Telegram"));
+    expect(screen.getByText("Connected as @saved_tg")).toBeDefined();
 
     api.links = {};
     api.override = ({ method }) =>
       method === "POST" ? jsonResponse({ error: "Telegram is not configured on this server" }, 503) : undefined;
-    await click(button("Disconnect"));
+    await click(button("Disconnect Telegram"));
     await click(button("Connect Telegram"));
     expect(popup.close).toHaveBeenCalledTimes(1);
     expect(button("Connect Telegram")).toBeDefined();
@@ -526,22 +702,22 @@ describe("NotificationConfig: Telegram handshake", () => {
     api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
     api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
     await renderCard();
-    await click(button("Edit"));
-    await click(button("Disconnect"));
+    await click(button("Edit alert"));
+    await click(button("Disconnect Telegram"));
     expect(button("Connect Telegram")).toBeDefined();
     await click(button("Cancel"));
-    expect(summaryValue("Telegram:")).toBeNull();
-    await click(button("Edit"));
+    expect(summaryValue("Telegram")).toBeNull();
+    await click(button("Edit alert"));
     expect(button("Connect Telegram")).toBeDefined();
   });
 
   it("waits until the link token expires before giving up", async () => {
     await renderCard();
-    await click(button("Create notification config"));
+    await click(button("Create alert"));
     await click(serviceToggle("Telegram"));
     await click(button("Connect Telegram"));
     await settle(5 * 60 * 1000);
-    expect(button("Waiting for Telegram… (open the bot and press Start)")).toBeDefined();
+    expect(button("Waiting for Telegram")).toBeDefined();
     await settle(5 * 60 * 1000);
     expect(button("Connect Telegram")).toBeDefined();
     expect(mocks.toasts).toEqual(["error: Telegram link timed out. Try again."]);
@@ -551,20 +727,20 @@ describe("NotificationConfig: Telegram handshake", () => {
     // By this device's clock the token (valid until NOW + 10 min by the server's clock) expired 5 minutes ago.
     vi.setSystemTime(NOW + 15 * 60 * 1000);
     await renderCard();
-    await click(button("Create notification config"));
+    await click(button("Create alert"));
     await click(serviceToggle("Telegram"));
     await click(button("Connect Telegram"));
     await settle(5 * 60 * 1000);
-    expect(button("Waiting for Telegram… (open the bot and press Start)")).toBeDefined();
+    expect(button("Waiting for Telegram")).toBeDefined();
     expect(mocks.toasts).toEqual([]);
 
     api.links[ADDRESS.toLowerCase()] = { linked: true, chatId: "777", username: "bob", linkedAt: "now" };
     await settle(2000);
-    expect(screen.getByText("✅ Connected as @bob")).toBeDefined();
+    expect(screen.getByText("Connected as @bob")).toBeDefined();
     expect(mocks.toasts).toEqual(["success: Telegram connected as @bob"]);
   });
 
-  it("offers Retry instead of Connect when the Telegram link cannot be checked, keeping the card on screen", async () => {
+  it("offers Try again instead of Connect when the Telegram link cannot be checked, keeping the card on screen", async () => {
     api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
     api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
     let linkStatus: (call: Call) => Response | Promise<Response> = () =>
@@ -572,40 +748,51 @@ describe("NotificationConfig: Telegram handshake", () => {
     api.override = call =>
       call.method === "GET" && call.url.startsWith("/api/telegram/link?") ? linkStatus(call) : undefined;
     await renderCard();
-    expect(summaryValue("Email:")).toBe("saved@example.com");
-    await click(button("Edit"));
+    expect(summaryValue("Email")).toBe("saved@example.com");
+    await click(button("Edit alert"));
 
     const field = within(screen.getByRole("group", { name: "Telegram" }));
-    expect(field.getByRole("alert").textContent).toBe("Couldn't check your Telegram link.");
+    expect(field.getByRole("alert").textContent).toBe("Couldn't check your Telegram link");
     expect(field.queryByRole("button", { name: "Connect Telegram" })).toBeNull();
-    expect((button("Save") as HTMLButtonElement).disabled).toBe(true);
+    // Save asks for Try again instead of saving a config whose Telegram link is unknown.
+    await click(button("Save alert"));
+    expect(field.getAllByRole("alert").map(alert => alert.textContent)).toEqual([
+      "Couldn't check your Telegram link",
+      "Select Try again to check your Telegram link, then save.",
+    ]);
+    // Five fields, so the summary takes focus; its link leads to the Try again button.
+    expect(document.activeElement).toBe(errorSummary());
+    await click(within(errorSummary() as HTMLElement).getByRole("link"));
+    expect(document.activeElement).toBe(field.getByRole("button", { name: "Try again" }));
+    expect(lastRequest("PUT")).toBeUndefined();
 
     const retry = deferred<void>();
     linkStatus = call => retry.promise.then(() => route(call));
-    await click(field.getByRole("button", { name: "Retry" }));
-    expect((field.getByRole("button", { name: "Retrying..." }) as HTMLButtonElement).disabled).toBe(true);
-    expect(field.getByRole("alert")).toBeDefined();
+    await click(field.getByRole("button", { name: "Try again" }));
+    expect(isBusy(field.getByRole("button", { name: "Retrying" }))).toBe(true);
+    expect(field.getAllByRole("alert")).toHaveLength(2);
 
     retry.resolve();
     await settle();
     expect(field.queryByRole("alert")).toBeNull();
-    expect(screen.getByText("✅ Connected as @saved_tg")).toBeDefined();
-    expect((button("Save") as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByText("Connected as @saved_tg")).toBeDefined();
     expect(mocks.toasts).toEqual([]);
+    await click(button("Save alert"));
+    expect(lastRequest("PUT")).toContain('"services":["email","signal","telegram"]');
   });
 
-  it("offers Connect after a successful Retry for a wallet without a link", async () => {
+  it("offers Connect after a successful Try again for a wallet without a link", async () => {
     let linkStatus: (call: Call) => Response | Promise<Response> = () =>
       jsonResponse({ error: "Failed to read the Telegram link" }, 500);
     api.override = call =>
       call.method === "GET" && call.url.startsWith("/api/telegram/link?") ? linkStatus(call) : undefined;
     await renderCard();
-    await click(button("Create notification config"));
+    await click(button("Create alert"));
     await click(serviceToggle("Telegram"));
     expect(screen.queryByRole("button", { name: "Connect Telegram" })).toBeNull();
 
     linkStatus = route;
-    await click(button("Retry"));
+    await click(button("Try again"));
     expect(button("Connect Telegram")).toBeDefined();
     expect(screen.queryByRole("alert")).toBeNull();
   });
@@ -616,19 +803,19 @@ describe("NotificationConfig: Telegram handshake", () => {
     api.override = ({ method, url }) =>
       method === "GET" && url.startsWith("/api/telegram/link?") ? linkStatus() : undefined;
     const { rerender } = await renderCard();
-    expect(summaryValue("Email:")).toBe("saved@example.com");
+    expect(summaryValue("Email")).toBe("saved@example.com");
 
     // AavePositions keys the card by chain, so a chain switch remounts it, which fetches the failed status again.
     linkStatus = () => new Promise<Response>(() => undefined);
     rerender(<NotificationConfig key="another-chain" {...PROPS} />);
     await settle();
     expect(api.requests.filter(request => request.startsWith("GET /api/telegram/link?"))).toHaveLength(2);
-    expect(summaryValue("Email:")).toBe("saved@example.com");
+    expect(summaryValue("Email")).toBe("saved@example.com");
   });
 
   it("keeps waiting for Telegram when a chain switch remounts the card, and announces the link once", async () => {
     const { rerender } = await renderCard();
-    await click(button("Create notification config"));
+    await click(button("Create alert"));
     await click(serviceToggle("Telegram"));
     await click(button("Connect Telegram"));
     expect(popup.location.href).toBe(DEEP_LINK);
@@ -636,37 +823,36 @@ describe("NotificationConfig: Telegram handshake", () => {
     // AavePositions keys the card by chain, so a chain switch remounts it with a fresh form.
     rerender(<NotificationConfig key="another-chain" {...PROPS} chainId={10} chainName="Optimism" />);
     await settle();
-    await click(button("Create notification config"));
+    await click(button("Create alert"));
     await click(serviceToggle("Telegram"));
-    expect(button("Waiting for Telegram… (open the bot and press Start)")).toBeDefined();
-    expect(screen.getByRole("link", { name: "Open Telegram" }).getAttribute("href")).toBe(DEEP_LINK);
+    expect(button("Waiting for Telegram")).toBeDefined();
+    expect(screen.getByRole("link", { name: /Open Telegram/ }).getAttribute("href")).toBe(DEEP_LINK);
 
     api.links[ADDRESS.toLowerCase()] = { linked: true, chatId: "777", username: "bob", linkedAt: "now" };
     await settle(2000);
-    expect(screen.getByText("✅ Connected as @bob")).toBeDefined();
-    expect((button("Save") as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByText("Connected as @bob")).toBeDefined();
     expect(mocks.toasts).toEqual(["success: Telegram connected as @bob"]);
     expect(openSpy).toHaveBeenCalledTimes(1);
   });
 
   it("ends a Telegram handshake when the wallet switches, so it does not resume when switching back", async () => {
     const { rerender } = await renderCard();
-    await click(button("Create notification config"));
+    await click(button("Create alert"));
     await click(serviceToggle("Telegram"));
     await click(button("Connect Telegram"));
 
     mocks.address = OTHER_ADDRESS;
     rerender(<NotificationConfig {...PROPS} />);
     await settle();
-    await click(button("Create notification config"));
+    await click(button("Create alert"));
     await click(serviceToggle("Telegram"));
     expect(button("Connect Telegram")).toBeDefined();
-    expect(screen.queryByRole("link", { name: "Open Telegram" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Open Telegram/ })).toBeNull();
 
     mocks.address = ADDRESS;
     rerender(<NotificationConfig {...PROPS} />);
     await settle();
-    await click(button("Create notification config"));
+    await click(button("Create alert"));
     await click(serviceToggle("Telegram"));
     expect(button("Connect Telegram")).toBeDefined();
     const polls = () => api.requests.filter(request => request.startsWith("GET /api/telegram/link?")).length;
@@ -685,7 +871,7 @@ describe("NotificationConfig: Telegram handshake", () => {
     const telegramPolls = () => api.requests.filter(request => request.startsWith("GET /api/telegram/link?")).length;
 
     const openTelegramField = async () => {
-      await click(button("Create notification config"));
+      await click(button("Create alert"));
       await click(serviceToggle("Telegram"));
     };
 
@@ -713,7 +899,7 @@ describe("NotificationConfig: Telegram handshake", () => {
         await settle();
         await openTelegramField();
         expect(button("Connect Telegram")).toBeDefined();
-        expect(screen.queryByRole("link", { name: "Open Telegram" })).toBeNull();
+        expect(screen.queryByRole("link", { name: /Open Telegram/ })).toBeNull();
         const before = telegramPolls();
         api.links[ADDRESS.toLowerCase()] = LINKED;
         await settle(20_000);
@@ -742,19 +928,19 @@ describe("NotificationConfig: Telegram handshake", () => {
       rerender(<Page shown />);
       await settle();
       await openTelegramField();
-      expect(button("Waiting for Telegram… (open the bot and press Start)")).toBeDefined();
-      expect(screen.getByRole("link", { name: "Open Telegram" }).getAttribute("href")).toBe(DEEP_LINK);
+      expect(button("Waiting for Telegram")).toBeDefined();
+      expect(screen.getByRole("link", { name: /Open Telegram/ }).getAttribute("href")).toBe(DEEP_LINK);
 
       api.links[ADDRESS.toLowerCase()] = LINKED;
       await settle(2000);
-      expect(screen.getByText("✅ Connected as @bob")).toBeDefined();
+      expect(screen.getByText("Connected as @bob")).toBeDefined();
       expect(mocks.toasts).toEqual(["success: Telegram connected as @bob"]);
     });
   });
 
   it("stops polling on Cancel and on unmount", async () => {
     const { unmount } = await renderCard();
-    await click(button("Create notification config"));
+    await click(button("Create alert"));
     await click(serviceToggle("Telegram"));
     await click(button("Connect Telegram"));
     await settle(2000);
@@ -764,7 +950,7 @@ describe("NotificationConfig: Telegram handshake", () => {
     await settle(20_000);
     expect(polls()).toBe(afterCancel);
 
-    await click(button("Create notification config"));
+    await click(button("Create alert"));
     await click(serviceToggle("Telegram"));
     await click(button("Connect Telegram"));
     const beforeUnmount = polls();
@@ -780,10 +966,10 @@ describe("NotificationConfig: attribution prompt", () => {
   const attributionForm = () => screen.queryByRole("form", { name: ATTRIBUTION_LABEL });
 
   const createEmailConfig = async () => {
-    await click(button("Create notification config"));
+    await click(button("Create alert"));
     await click(serviceToggle("Email"));
     await type(emailInput(), "me@example.com");
-    await click(button("Save"));
+    await click(button("Save alert"));
   };
 
   it("asks once, after the first successful save, and Skip sends nothing", async () => {
@@ -791,18 +977,15 @@ describe("NotificationConfig: attribution prompt", () => {
     expect(attributionInput()).toBeNull();
     await createEmailConfig();
     expect(attributionInput()).not.toBeNull();
-    expect(summaryValue("Email:")).toBe("me@example.com");
+    expect(summaryValue("Email")).toBe("me@example.com");
 
     await click(button("Skip"));
     expect(attributionInput()).toBeNull();
     expect(api.requests.some(request => request.includes("/api/attribution"))).toBe(false);
 
-    await click(button("Edit"));
-    await click(button("Save"));
-    expect(mocks.toasts).toEqual([
-      "success: Notification configuration saved.",
-      "success: Notification configuration saved.",
-    ]);
+    await click(button("Edit alert"));
+    await click(button("Save alert"));
+    expect(mocks.toasts).toEqual(["success: Alert saved", "success: Alert saved"]);
     expect(attributionInput()).toBeNull();
   });
 
@@ -810,13 +993,13 @@ describe("NotificationConfig: attribution prompt", () => {
     await renderCard();
     await createEmailConfig();
     await type(attributionInput() as HTMLInputElement, "  A friend in a Telegram group ");
-    await click(button("Send"));
+    await click(button("Send answer"));
 
     expect(lastRequest("POST")).toBe(
       `POST /api/attribution ${JSON.stringify({ userId: ADDRESS, answer: "A friend in a Telegram group" })}`,
     );
     expect(api.attribution).toEqual({ [ADDRESS.toLowerCase()]: "A friend in a Telegram group" });
-    expect(mocks.toasts).toEqual(["success: Notification configuration saved.", "success: Thanks for telling us."]);
+    expect(mocks.toasts).toEqual(["success: Alert saved", "success: Answer sent"]);
     expect(attributionInput()).toBeNull();
   });
 
@@ -826,23 +1009,23 @@ describe("NotificationConfig: attribution prompt", () => {
     // The Save button that had focus is gone; the question that replaced it takes focus.
     expect(document.activeElement).toBe(attributionForm());
     await click(button("Skip"));
-    expect(document.activeElement).toBe(button("Edit"));
+    expect(document.activeElement).toBe(button("Edit alert"));
   });
 
   it("moves focus to the Edit button after Send", async () => {
     await renderCard();
     await createEmailConfig();
     await type(attributionInput() as HTMLInputElement, "Reddit");
-    await click(button("Send"));
+    await click(button("Send answer"));
     expect(attributionInput()).toBeNull();
-    expect(document.activeElement).toBe(button("Edit"));
+    expect(document.activeElement).toBe(button("Edit alert"));
   });
 
   it("takes focus again after another save while it is still open", async () => {
     await renderCard();
     await createEmailConfig();
-    await click(button("Edit"));
-    await click(button("Save"));
+    await click(button("Edit alert"));
+    await click(button("Save alert"));
     expect(document.activeElement).toBe(attributionForm());
   });
 
@@ -885,14 +1068,14 @@ describe("NotificationConfig: attribution prompt", () => {
     rerender(<NotificationConfig {...PROPS} />);
     await settle();
     await createEmailConfig();
-    expect(summaryValue("Email:")).toBe("me@example.com");
+    expect(summaryValue("Email")).toBe("me@example.com");
     expect(attributionInput()).toBeNull();
   });
 
   it("is hidden while editing and stays until Send or Skip", async () => {
     await renderCard();
     await createEmailConfig();
-    await click(button("Edit"));
+    await click(button("Edit alert"));
     expect(attributionInput()).toBeNull();
     await click(button("Cancel"));
     expect(attributionInput()).not.toBeNull();
@@ -907,7 +1090,7 @@ describe("NotificationConfig: attribution prompt", () => {
 
     // A later successful save still asks: the failed one did not count.
     api.override = () => undefined;
-    await click(button("Save"));
+    await click(button("Save alert"));
     expect(attributionInput()).not.toBeNull();
   });
 
@@ -915,7 +1098,7 @@ describe("NotificationConfig: attribution prompt", () => {
     markAttributionPrompted();
     await renderCard();
     await createEmailConfig();
-    expect(mocks.toasts).toEqual(["success: Notification configuration saved."]);
+    expect(mocks.toasts).toEqual(["success: Alert saved"]);
     expect(attributionInput()).toBeNull();
   });
 });
@@ -935,13 +1118,13 @@ describe("NotificationConfig: shared state", () => {
     );
     await settle();
     expect(screen.getByTestId("probe").textContent).toBe("false");
-    await click(button("Create notification config"));
+    await click(button("Create alert"));
     await click(serviceToggle("Email"));
     await type(emailInput(), "me@example.com");
-    await click(button("Save"));
+    await click(button("Save alert"));
     expect(screen.getByTestId("probe").textContent).toBe("true");
-    await click(button("Edit"));
-    await click(button("Delete"));
+    await click(button("Edit alert"));
+    await deleteConfig();
     expect(screen.getByTestId("probe").textContent).toBe("false");
     // Through the shared cache: the configs were loaded once and never reloaded.
     expect(api.requests.filter(request => request.startsWith("GET /api/notifications/config"))).toHaveLength(1);
@@ -955,148 +1138,185 @@ describe("NotificationConfig: shared state", () => {
         ? new Promise<Response>(resolve => (releaseOther = () => resolve(jsonResponse({}))))
         : undefined;
     const { rerender } = await renderCard();
-    await click(button("Edit"));
+    await click(button("Edit alert"));
     expect(emailInput().value).toBe("saved@example.com");
 
     mocks.address = OTHER_ADDRESS;
     rerender(<NotificationConfig {...PROPS} />);
     await settle();
-    expect(screen.queryByText("Notification Settings")).toBeNull();
+    expect(screen.queryByText("Notification settings")).toBeNull();
 
     releaseOther();
     await settle();
-    await click(button("Create notification config"));
-    expect(screen.queryByPlaceholderText("you@example.com")).toBeNull();
-    expect(serviceToggle("Email").getAttribute("aria-pressed")).toBe("false");
+    await click(button("Create alert"));
+    expect(queryEmailInput()).toBeNull();
+    expect(serviceToggle("Email").checked).toBe(false);
     expect(thresholdInput().value).toBe("1.50");
   });
 });
 
 describe("NotificationConfig: accessibility", () => {
-  it("labels every control and hides decorative icons", async () => {
+  it("labels and describes every control and hides decorative icons", async () => {
     api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
     api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
     const { container } = await renderCard();
-    await click(button("Edit"));
+    await click(button("Edit alert"));
 
-    const services = screen.getByRole("group", { name: "Notification Services" });
-    const toggles = within(services).getAllByRole("button");
-    expect(toggles.map(toggle => [toggle.textContent, toggle.getAttribute("aria-pressed")])).toEqual([
-      ["📧Email", "true"],
-      ["🔒Signal", "true"],
-      ["✈️Telegram", "true"],
+    const services = screen.getByRole("group", { name: "Notification services" });
+    const toggles = within(services).getAllByRole<HTMLInputElement>("checkbox");
+    expect(toggles.map(toggle => [toggle.labels?.[0]?.textContent, toggle.checked])).toEqual([
+      ["Email", true],
+      ["Signal", true],
+      ["Telegram", true],
     ]);
     await click(toggles[1]);
-    expect(toggles[1].getAttribute("aria-pressed")).toBe("false");
+    expect(toggles[1].checked).toBe(false);
 
     expect(screen.getByLabelText("Email address")).toBe(emailInput());
+    expect(emailInput().required).toBe(true);
+    expect(document.getElementById(emailInput().getAttribute("aria-describedby") ?? "")?.textContent).toBe(
+      "Alerts are sent to this address.",
+    );
     await click(toggles[1]);
     expect(screen.getByLabelText("Signal username")).toBe(signalInput());
     // A static name; the value is the value text, so the two cannot contradict each other.
-    expect(screen.getByRole("slider", { name: "Health Factor Threshold:" })).toBe(slider());
+    expect(screen.getByRole("slider", { name: "Health factor threshold" })).toBe(slider());
     expect(slider().getAttribute("aria-valuetext")).toBe("1.8");
-    expect(within(screen.getByRole("group", { name: "Telegram" })).getByRole("button").textContent).toBe("Disconnect");
+    for (const control of [slider(), thresholdInput()]) {
+      expect(document.getElementById(control.getAttribute("aria-describedby") ?? "")?.textContent).toBe(
+        "You'll be notified when your health factor drops below 1.8 on Arbitrum.",
+      );
+    }
+    expect(within(screen.getByRole("group", { name: "Telegram" })).getByRole("button").textContent).toBe(
+      "Disconnect Telegram",
+    );
     expect(container.querySelectorAll("label:not([for])")).toHaveLength(0);
 
     const icons = [...container.querySelectorAll("svg")];
     expect(icons.length).toBeGreaterThan(0);
     expect(icons.every(icon => icon.getAttribute("aria-hidden") === "true")).toBe(true);
   });
+
+  it("keeps one h3 in every state for the dashboard outline, titled by the empty state on first use", async () => {
+    const { unmount } = await renderCard();
+    expect(screen.getByRole("heading", { level: 3 }).textContent).toBe("No alerts on Arbitrum yet");
+    await click(button("Create alert"));
+    expect(screen.getByRole("heading", { level: 3 }).textContent).toBe("Notification settings");
+    unmount();
+
+    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
+    mocks.hasAccess = false;
+    await renderCard();
+    expect(screen.getByRole("heading", { level: 3 }).textContent).toBe("Notification settings");
+  });
 });
 
-describe("NotificationConfig: light theme", () => {
-  // Shades that only read well on a dark background must come with a light-theme shade (`text-x-700 dark:text-x-400`).
-  const DARK_ONLY_SHADE = /^(?:text-(?:amber|red|emerald|purple|sky)-(?:300|400)|bg-gray-(?:700|800|900))$/;
-  // Each light shade added for the light theme, with the shade the card used before: dark mode must keep it.
-  const ORIGINAL_DARK_SHADE: Record<string, string> = {
-    "text-amber-700": "dark:text-amber-400",
-    "text-emerald-700": "dark:text-emerald-400",
-    "text-sky-700": "dark:text-sky-300",
-    "text-purple-700": "dark:text-purple-300",
-    "text-purple-600": "dark:text-purple-400",
-    "text-red-600": "dark:text-red-400",
-    "bg-base-300": "dark:bg-gray-700",
-  };
+describe("NotificationConfig: brand", () => {
+  // En and em dash, built from their code points so this file does not contain them, even as escapes.
+  const DASHES = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
+  // A Tailwind palette colour, black or white, an arbitrary colour value or a DaisyUI base colour: the card uses the
+  // semantic tokens only, so both themes and the contrast checks follow.
+  const OFF_TOKEN_CLASS =
+    /(?:^|:)(?:text|bg|border|from|via|to|ring|outline|fill|stroke|shadow|accent|decoration|placeholder)-(?:(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d|white|black|base-|\[(?:#|rgb|hsl|oklch))/;
+  // The solid pink fill: the Button default variant (btn-primary) or a bg-primary surface.
+  const isPink = (element: Element) =>
+    (element.getAttribute("class") ?? "").split(/\s+/).some(token => token === "btn-primary" || token === "bg-primary");
 
-  /** Collects theme problems across the card states it is shown, and which light shades it saw. */
-  const themeScanner = () => {
+  /** Collects brand problems across the states it is shown, and the number of pink elements in each. */
+  const brandScanner = () => {
     const problems: string[] = [];
-    const seen = new Set<string>();
-    const scan = (root: HTMLElement) => {
-      for (const element of [root, ...root.querySelectorAll("[class]")]) {
-        const tokens = (element.getAttribute("class") ?? "").split(/\s+/);
-        for (const token of tokens) {
-          const dark = ORIGINAL_DARK_SHADE[token];
-          if (DARK_ONLY_SHADE.test(token)) problems.push(`${token} without a light shade`);
-          else if (dark && !tokens.includes(dark)) problems.push(`${token} without ${dark}`);
-          else if (dark) seen.add(token);
+    const pinkCounts: Record<string, number> = {};
+    const scan = (name: string, root: HTMLElement) => {
+      const elements = [root, ...root.querySelectorAll("[class]")];
+      for (const element of elements) {
+        for (const token of (element.getAttribute("class") ?? "").split(/\s+/)) {
+          if (OFF_TOKEN_CLASS.test(token)) problems.push(`${name}: ${token}`);
         }
       }
+      const text = root.textContent ?? "";
+      if (/\p{Extended_Pictographic}/u.test(text)) problems.push(`${name}: emoji in "${text}"`);
+      if (/\.\.\.|\u2026/.test(text)) problems.push(`${name}: trailing dots in "${text}"`);
+      if (DASHES.test(text)) problems.push(`${name}: dash in "${text}"`);
+      pinkCounts[name] = elements.filter(isPink).length;
     };
-    return { problems, seen, scan };
+    return { problems, pinkCounts, scan };
   };
 
-  it("pairs every shade in every state of the card, keeping the original dark shades", async () => {
+  it("uses tokens only and shows one pink primary, Save, while editing", async () => {
     api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
     api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
-    const { problems, seen, scan } = themeScanner();
+    const { problems, pinkCounts, scan } = brandScanner();
     const { container } = await renderCard();
-    scan(container);
-    await click(button("Edit"));
-    scan(container);
+    scan("summary", container);
+    await click(button("Edit alert"));
+    scan("edit", container);
+    expect(isPink(button("Save alert"))).toBe(true);
     await click(serviceToggle("Email"));
     await click(serviceToggle("Signal"));
     await click(serviceToggle("Telegram"));
-    scan(container);
+    await click(button("Save alert"));
+    scan("errors", container);
     await click(serviceToggle("Telegram"));
-    await click(button("Disconnect"));
+    await click(button("Disconnect Telegram"));
     await click(button("Connect Telegram"));
-    scan(container);
-    await click(button("Delete"));
+    scan("connecting", container);
+    await click(button("Delete alert"));
+    scan("confirm delete", container);
+    await click(confirmation().getByRole("button", { name: "Delete alert" }));
     await click(button("Cancel"));
-    scan(container);
+    scan("empty", container);
+    expect(isPink(button("Create alert"))).toBe(true);
     expect(problems).toEqual([]);
-    expect([...seen].sort()).toEqual(Object.keys(ORIGINAL_DARK_SHADE).sort());
+    expect(pinkCounts).toEqual({
+      summary: 0,
+      edit: 1,
+      errors: 1,
+      connecting: 1,
+      "confirm delete": 0,
+      empty: 1,
+    });
   });
 
-  it("pairs every shade in the attribution prompt, also when sending fails", async () => {
+  it("uses tokens only in the attribution prompt, also when sending fails, without a pink button", async () => {
     api.override = ({ url }) =>
       url === "/api/attribution" ? jsonResponse({ error: "Database error" }, 502) : undefined;
-    const { problems, scan } = themeScanner();
+    const { problems, pinkCounts, scan } = brandScanner();
     const { container } = await renderCard();
-    await click(button("Create notification config"));
+    await click(button("Create alert"));
     await click(serviceToggle("Email"));
     await type(emailInput(), "me@example.com");
-    await click(button("Save"));
-    scan(container);
+    await click(button("Save alert"));
+    scan("prompt", container);
     await type(screen.getByRole("textbox", { name: "How did you hear about Tokenping? (optional)" }), "Reddit");
-    await click(button("Send"));
+    await click(button("Send answer"));
     expect(screen.getByRole("alert").textContent).toBe("Couldn't send your answer. Try again or skip.");
-    scan(container);
+    scan("prompt error", container);
     expect(problems).toEqual([]);
+    expect(pinkCounts).toEqual({ prompt: 0, "prompt error": 0 });
   });
 
-  it("pairs every shade in the read-only and error states", async () => {
+  it("uses tokens only in the read-only, load error and unknown link states", async () => {
     mocks.hasAccess = false;
     api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
-    const { problems, scan } = themeScanner();
+    const { problems, pinkCounts, scan } = brandScanner();
     const readOnly = await renderCard();
-    scan(readOnly.container);
+    scan("read-only", readOnly.container);
     readOnly.unmount();
 
     api.override = ({ method, url }) =>
       method === "GET" && url.startsWith("/api/notifications/config") ? jsonResponse({}, 500) : undefined;
     const failed = await renderCard();
-    scan(failed.container);
+    scan("load error", failed.container);
     failed.unmount();
 
     mocks.hasAccess = true;
     api.override = ({ method, url }) =>
       method === "GET" && url.startsWith("/api/telegram/link?") ? jsonResponse({}, 500) : undefined;
     const unknownLink = await renderCard();
-    await click(button("Edit"));
-    expect(screen.getByText("Couldn't check your Telegram link.")).toBeDefined();
-    scan(unknownLink.container);
+    await click(button("Edit alert"));
+    expect(screen.getByText("Couldn't check your Telegram link")).toBeDefined();
+    scan("unknown link", unknownLink.container);
     expect(problems).toEqual([]);
+    expect(pinkCounts).toEqual({ "read-only": 0, "load error": 0, "unknown link": 1 });
   });
 });

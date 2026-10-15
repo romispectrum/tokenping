@@ -1,14 +1,20 @@
 "use client";
 
 import { useMemo } from "react";
+import { Layers, RotateCw } from "lucide-react";
+import { AddressChip } from "~~/components/custom/aave/AddressChip";
+import { InlineError } from "~~/components/custom/aave/InlineError";
 import { NetworkSummaryRow } from "~~/components/custom/aave/NetworkSummaryRow";
 import { PositionDetails } from "~~/components/custom/aave/PositionDetails";
-import { PositionsSkeleton } from "~~/components/custom/aave/PositionsSkeleton";
-import { StatCard } from "~~/components/custom/aave/StatCard";
+import { NetworkListSkeleton, PositionDetailsSkeleton } from "~~/components/custom/aave/PositionsSkeleton";
+import { StatCard, StatCardSkeleton } from "~~/components/custom/aave/StatCard";
 import { useSelectedChainId } from "~~/components/custom/aave/useSelectedChainId";
+import { Alert, Button, Card, EmptyState, LiveRegion } from "~~/components/ui";
 import { useAavePositions } from "~~/hooks/custom/useAavePositions";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
 import { formatUSD } from "~~/utils/format";
+
+const STAT_COUNT = 3;
 
 export const AavePositions = () => {
   const { account, positions, isLoading, error, totalNetWorthUSD, totalCollateralUSD, totalDebtUSD, refetch } =
@@ -25,107 +31,133 @@ export const AavePositions = () => {
 
   const hasNotification = (chainId: number) => configsLoaded && hasConfig(chainId);
 
-  // With no network read there is nothing to total or select, so the error box stands alone. A failed refresh keeps
-  // the last positions on screen below it.
+  // With no network read there is nothing to total or select, so the error stands alone. A failed refresh keeps the
+  // last positions on screen below it.
   const isTotalOutage = error !== null && positions.length === 0;
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-3 sm:px-4">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 sm:mb-6 gap-3 sm:gap-4">
-        <button
+    <div className="flex flex-col gap-6">
+      {/* The one action here is secondary: the view's pink belongs to the paywall or the alert form. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {account ? (
+          <p className="m-0 flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+            <span aria-hidden="true">Wallet</span>
+            <AddressChip address={account} label="Wallet" />
+          </p>
+        ) : (
+          <span />
+        )}
+        <Button
+          variant="outline"
           onClick={refetch}
-          disabled={isLoading}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-base-200 border border-base-300 text-sm font-medium text-base-content dark:bg-white/5 dark:border-white/10 dark:text-gray-300 hover:bg-base-300 dark:hover:bg-white/10 dark:hover:text-white transition-all disabled:opacity-50 touch-target-min min-h-[2.75rem] w-full sm:w-auto justify-center md:justify-start"
-          aria-label={isLoading ? "Refreshing positions" : "Refresh positions"}
+          loading={isLoading}
+          loadingText="Refreshing"
+          className="w-full sm:w-auto"
         >
-          <svg
-            className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
-          </svg>
-          {isLoading ? "Refreshing..." : "Refresh"}
-        </button>
+          <RotateCw aria-hidden="true" />
+          Refresh positions
+        </Button>
       </div>
 
-      {error && (
-        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 dark:border-red-500/20 dark:bg-red-950/20 p-6 text-center mb-6">
-          <p className="text-red-600 dark:text-red-400">{error}</p>
-          <button
-            onClick={refetch}
-            className="mt-3 px-4 py-2 rounded-lg bg-red-500/20 text-red-600 dark:text-red-400 text-sm hover:bg-red-500/30 transition-colors"
-          >
-            Try Again
-          </button>
-        </div>
-      )}
+      <LiveRegion className="sr-only">{isLoading ? "Loading positions" : ""}</LiveRegion>
 
-      {!isTotalOutage && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <aside className="lg:col-span-5 space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              <StatCard
-                label="Total Supplied"
-                value={formatUSD(totalCollateralUSD)}
-                variant="summary"
-                tone="collateral"
-              />
-              <StatCard label="Total Borrowed" value={formatUSD(totalDebtUSD)} variant="summary" tone="debt" />
-              <StatCard label="Net Worth" value={formatUSD(totalNetWorthUSD)} variant="summary" tone="netWorth" />
+      {isTotalOutage ? (
+        <Card>
+          <InlineError title="Positions did not load" detail={error} onRetry={refetch} />
+        </Card>
+      ) : (
+        <>
+          {error ? (
+            <Alert
+              role="alert"
+              variant="warning"
+              title="Refresh failed"
+              action={
+                <Button variant="outline" size="sm" onClick={refetch}>
+                  <RotateCw aria-hidden="true" />
+                  Try again
+                </Button>
+              }
+            >
+              <p>{error}</p>
+              <p>Showing the positions from the last successful load.</p>
+            </Alert>
+          ) : null}
+
+          {isLoading && positions.length === 0 ? (
+            <div className="grid gap-4 sm:grid-cols-3">
+              {Array.from({ length: STAT_COUNT }, (_, i) => (
+                <StatCardSkeleton key={i} />
+              ))}
             </div>
+          ) : (
+            <dl className="m-0 grid gap-4 sm:grid-cols-3">
+              <StatCard label="Total supplied" value={formatUSD(totalCollateralUSD)} />
+              <StatCard label="Total borrowed" value={formatUSD(totalDebtUSD)} />
+              <StatCard label="Net worth" value={formatUSD(totalNetWorthUSD)} />
+            </dl>
+          )}
 
-            <div className="rounded-2xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 backdrop-blur-xl p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-base-content dark:text-white">Networks</h3>
-                <p className="text-xs text-base-content/60 dark:text-gray-500">{positionsWithData.length} active</p>
-              </div>
+          <div aria-busy={isLoading || undefined} className="grid gap-6 lg:grid-cols-12">
+            {/* The network picker is this view's main control, so a region beside the details, not a complementary
+                aside (a named aside inside the positions region would be a nested complementary landmark). */}
+            <section aria-labelledby="networks-heading" className="min-w-0 lg:col-span-5">
+              <Card size="sm">
+                <div className="flex items-baseline justify-between gap-3 px-[var(--card-spacing)]">
+                  <h3 id="networks-heading" className="m-0 text-base font-medium text-foreground">
+                    Networks
+                  </h3>
+                  <p className="m-0 text-sm text-muted-foreground tabular-nums">{positionsWithData.length} active</p>
+                </div>
+                <div className="flex flex-col gap-3 px-2">
+                  {isLoading ? (
+                    <NetworkListSkeleton />
+                  ) : (
+                    <ul className="m-0 flex list-none flex-col gap-1 p-0">
+                      {positions.map(p => (
+                        <li key={p.chainId} className="m-0">
+                          <NetworkSummaryRow
+                            position={p}
+                            isSelected={p.chainId === selectedChainId}
+                            onSelect={() => setSelectedChainId(p.chainId)}
+                            hasNotification={hasNotification(p.chainId)}
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
 
+                  {!isLoading && !error && positionsWithData.length === 0 && (
+                    <p className="m-0 px-3 text-sm text-muted-foreground">
+                      No active Aave positions detected on supported networks.
+                    </p>
+                  )}
+                </div>
+              </Card>
+            </section>
+
+            <section aria-label="Selected network" className="min-w-0 lg:col-span-7">
               {isLoading ? (
-                <PositionsSkeleton columns={1} />
+                <PositionDetailsSkeleton />
+              ) : selectedPosition ? (
+                <PositionDetails
+                  position={selectedPosition}
+                  hasNotificationConfig={hasNotification(selectedPosition.chainId)}
+                />
               ) : (
-                <div className="space-y-2">
-                  {positions.map(p => (
-                    <NetworkSummaryRow
-                      key={p.chainId}
-                      position={p}
-                      isSelected={p.chainId === selectedChainId}
-                      onSelect={() => setSelectedChainId(p.chainId)}
-                      hasNotification={hasNotification(p.chainId)}
-                    />
-                  ))}
-                </div>
+                <Card>
+                  <EmptyState
+                    size="inline"
+                    icon={Layers}
+                    headingLevel={3}
+                    title="No network selected"
+                    description="Select a network to view its Aave position."
+                  />
+                </Card>
               )}
-
-              {!isLoading && !error && positionsWithData.length === 0 && (
-                <div className="mt-4 text-center text-base-content/70 dark:text-gray-500 text-sm">
-                  No active Aave positions detected on supported networks.
-                </div>
-              )}
-            </div>
-          </aside>
-
-          <section className="lg:col-span-7">
-            {isLoading ? (
-              <PositionsSkeleton columns={2} />
-            ) : selectedPosition ? (
-              <PositionDetails
-                position={selectedPosition}
-                hasNotificationConfig={hasNotification(selectedPosition.chainId)}
-              />
-            ) : (
-              <div className="rounded-2xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 backdrop-blur-xl p-6 text-center text-base-content/70 dark:text-gray-500">
-                <p className="text-sm">Select a network on the left to view its Aave position.</p>
-              </div>
-            )}
-          </section>
-        </div>
+            </section>
+          </div>
+        </>
       )}
     </div>
   );

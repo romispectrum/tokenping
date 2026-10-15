@@ -51,18 +51,20 @@ export const useAttributionPrompt = (address: string | undefined) => {
   const [focusOnShow, setFocusOnShow] = useState(false);
   const returnFocusRef = useRef<HTMLButtonElement>(null);
 
+  /** Opens the prompt if it is due. True when it will show and take focus, so the caller leaves focus to it. */
   const offer = () => {
-    if (!owner) return;
+    if (!owner) return false;
     // Read the cache, not the render: the save that calls this was awaited.
     const current = queryClient.getQueryData<string | null>(PROMPT_QUERY_KEY);
     if (current === undefined) {
-      if (wasAttributionPrompted()) return;
+      if (wasAttributionPrompted()) return false;
       markAttributionPrompted();
       queryClient.setQueryData(PROMPT_QUERY_KEY, owner);
     } else if (current !== owner) {
-      return;
+      return false;
     }
     setFocusOnShow(true);
+    return true;
   };
 
   const close = () => {

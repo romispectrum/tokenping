@@ -33,14 +33,14 @@ const LEGACY_SUPPORTED_CHAINS = [
   chains.gnosis,
 ];
 
-const LEGACY_CHAIN_METADATA: Record<number, { name: string; icon: string; color: string }> = {
-  [chains.mainnet.id]: { name: "Ethereum", icon: "⟠", color: "#627EEA" },
-  [chains.polygon.id]: { name: "Polygon", icon: "⬡", color: "#8247E5" },
-  [chains.arbitrum.id]: { name: "Arbitrum", icon: "🔷", color: "#28A0F0" },
-  [chains.optimism.id]: { name: "Optimism", icon: "🔴", color: "#FF0420" },
-  [chains.base.id]: { name: "Base", icon: "🔵", color: "#0052FF" },
-  [chains.avalanche.id]: { name: "Avalanche", icon: "🔺", color: "#E84142" },
-  [chains.gnosis.id]: { name: "Gnosis", icon: "🦉", color: "#04795B" },
+const LEGACY_CHAIN_METADATA: Record<number, { name: string }> = {
+  [chains.mainnet.id]: { name: "Ethereum" },
+  [chains.polygon.id]: { name: "Polygon" },
+  [chains.arbitrum.id]: { name: "Arbitrum" },
+  [chains.optimism.id]: { name: "Optimism" },
+  [chains.base.id]: { name: "Base" },
+  [chains.avalanche.id]: { name: "Avalanche" },
+  [chains.gnosis.id]: { name: "Gnosis" },
 };
 
 describe("AAVE_MARKETS", () => {
@@ -48,15 +48,13 @@ describe("AAVE_MARKETS", () => {
     expect(AAVE_MARKETS.map(market => market.chain)).toEqual(LEGACY_SUPPORTED_CHAINS);
   });
 
-  it("keeps each chain's pool, data provider and display metadata", () => {
+  it("keeps each chain's pool, data provider and display name", () => {
     expect(
-      AAVE_MARKETS.map(({ chain, pool, dataProvider, name, icon, color }) => ({
+      AAVE_MARKETS.map(({ chain, pool, dataProvider, name }) => ({
         chainId: chain.id,
         pool,
         dataProvider,
         name,
-        icon,
-        color,
       })),
     ).toEqual(
       LEGACY_SUPPORTED_CHAINS.map(chain => ({

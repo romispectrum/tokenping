@@ -1,58 +1,68 @@
 import { useId } from "react";
+import { SERVICE_ICONS } from "~~/components/custom/notifications/serviceIcons";
+import { Checkbox, cx } from "~~/components/ui";
 import { getSelectableServices } from "~~/constants/notifications";
 import type { NotificationService } from "~~/types/notifications";
 
-const SERVICE_BUTTON_CLASS = "flex items-center gap-2 px-3 py-2.5 rounded-lg border transition-all text-left";
-const SELECTED_SERVICE_CLASS =
-  "border-primary/40 bg-primary/20 text-primary-content dark:border-purple-500/40 dark:bg-purple-500/20 dark:text-white";
-const UNSELECTED_SERVICE_CLASS =
-  "border-base-300 bg-base-200 text-base-content dark:border-white/10 dark:bg-white/5 dark:text-gray-300 hover:border-base-content/20 hover:bg-base-300 dark:hover:border-white/20 dark:hover:bg-white/10";
-
 type ServiceSelectorProps = {
+  /** The group's id, for links to it (the error summary). */
+  id?: string;
   services: NotificationService[];
   onToggle: (service: NotificationService) => void;
+  /** Shown after a failed Save. */
+  error?: string;
 };
 
-export const ServiceSelector = ({ services, onToggle }: ServiceSelectorProps) => {
-  const headingId = useId();
+/**
+ * Checkboxes (the form saves with a button, so no switches), each in a choice tile that is wholly its label: the
+ * tile is the touch target and selected is the violet accent, never pink.
+ */
+export const ServiceSelector = ({ id: groupId, services, onToggle, error }: ServiceSelectorProps) => {
+  const id = useId();
+  const descriptionId = `${id}-description`;
+  const errorId = `${id}-error`;
   return (
-    <div role="group" aria-labelledby={headingId}>
-      <p id={headingId} className="block text-sm text-base-content dark:text-gray-300 mb-3">
-        Notification Services
-      </p>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+    <fieldset
+      id={groupId}
+      data-field="services"
+      aria-describedby={error ? `${descriptionId} ${errorId}` : descriptionId}
+      className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0"
+    >
+      <legend className="mb-2 p-0 text-sm leading-snug font-medium text-foreground">Notification services</legend>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-2">
         {getSelectableServices(services).map(service => {
-          const isSelected = services.includes(service.id);
+          const Icon = SERVICE_ICONS[service.id];
+          const checkboxId = `${id}-${service.id}`;
           return (
-            <button
+            <label
               key={service.id}
-              type="button"
-              aria-pressed={isSelected}
-              onClick={() => onToggle(service.id)}
-              className={`${SERVICE_BUTTON_CLASS} ${isSelected ? SELECTED_SERVICE_CLASS : UNSELECTED_SERVICE_CLASS}`}
-            >
-              <span className="text-lg">{service.icon}</span>
-              <span className="text-sm font-medium">{service.name}</span>
-              {isSelected && (
-                <svg
-                  className="w-4 h-4 ml-auto text-purple-600 dark:text-purple-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  aria-hidden="true"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+              htmlFor={checkboxId}
+              className={cx(
+                "flex min-h-10 cursor-pointer items-center gap-2.5 rounded-lg border border-input bg-background px-3 py-2",
+                "text-sm font-medium text-foreground transition-colors duration-200 ease-[ease] pointer-coarse:min-h-11",
+                "hover:bg-accent hover:text-accent-foreground has-checked:border-link has-checked:bg-accent has-checked:text-accent-foreground",
               )}
-            </button>
+            >
+              <Checkbox
+                id={checkboxId}
+                checked={services.includes(service.id)}
+                onChange={() => onToggle(service.id)}
+                aria-invalid={error ? true : undefined}
+              />
+              <Icon aria-hidden="true" className="size-4 shrink-0" />
+              {service.name}
+            </label>
           );
         })}
       </div>
-      {services.length === 0 && (
-        <p className="text-xs text-amber-700 dark:text-amber-400 mt-2">
-          ⚠️ Please select at least one notification service
+      <p id={descriptionId} className="m-0 text-sm text-muted-foreground">
+        Choose where alerts go. You can pick more than one.
+      </p>
+      {error ? (
+        <p id={errorId} role="alert" className="m-0 text-sm text-destructive">
+          {error}
         </p>
-      )}
-    </div>
+      ) : null}
+    </fieldset>
   );
 };

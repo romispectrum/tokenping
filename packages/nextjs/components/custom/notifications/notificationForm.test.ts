@@ -1,20 +1,24 @@
 import { describe, expect, it } from "vitest";
 import {
   EMPTY_FORM_STATE,
+  NOTIFICATION_FORM_ERRORS,
   buildConfigUpdate,
-  canSubmitNotificationForm,
   configToFormState,
+  countFormFields,
+  getNotificationFormErrors,
+  needsErrorSummary,
   toggleService,
   validateNotificationForm,
 } from "~~/components/custom/notifications/notificationForm";
 import type { NotificationConfig, NotificationService } from "~~/types/notifications";
 
 /*
- * Reference versions of the original NotificationConfig.tsx logic (handleStore, the Save button's `disabled`
- * expression and saveConfig), written out with literal regexes and limits and compared with the module over an input
- * matrix. They check the order of the checks, the presence rules and the payload shape. They carry the one deliberate
- * change, the Signal prefix rule (B0.11: an optional "u:" then an optional "@", as on the server), as a copy of that
- * rule, so the explicit Signal cases in validateNotificationForm and buildConfigUpdate are what pin it.
+ * Reference versions of the original NotificationConfig.tsx logic (handleStore and saveConfig), written out with
+ * literal regexes and limits and compared with the module over an input matrix. They check the order of the checks,
+ * the presence rules and the payload shape. They carry the deliberate changes: the Signal prefix rule (B0.11: an
+ * optional "u:" then an optional "@", as on the server), as a copy of that rule, so the explicit Signal cases in
+ * validateNotificationForm and buildConfigUpdate are what pin it; and the messages, rewritten to say how to fix the
+ * field now that they show under it.
  */
 const referenceNormalizeSignal = (raw: string) => raw.trim().replace(/^(?:u:)?@?/, "");
 const referenceClampThreshold = (value: number) => Math.min(10, Math.max(1.1, value));
@@ -25,35 +29,24 @@ const referenceValidate = (
   signalRecipient: string,
   telegramChatId: string | undefined,
 ) => {
-  if (services.length === 0) return "Please select at least one notification service";
+  if (services.length === 0) return "Select at least one notification service.";
   if (services.includes("email")) {
     const trimmed = email.trim();
-    if (!trimmed) return "Please enter your email address";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return "Please enter a valid email address";
+    if (!trimmed) return "Enter your email address.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return "Enter an email address like name@example.com.";
   }
   if (services.includes("signal")) {
     const username = referenceNormalizeSignal(signalRecipient);
-    if (!username) return "Please enter your Signal username";
+    if (!username) return "Enter your Signal username.";
     if (!/^[a-zA-Z0-9][a-zA-Z0-9_]{0,29}\.\d{2,}$/.test(username)) {
-      return "Invalid Signal username. Expected format: alice.42 (find yours in Signal → Settings → Profile)";
+      return "Enter a Signal username like alice.42. Find yours in Signal under Settings, then Profile.";
     }
   }
   if (services.includes("telegram") && !telegramChatId) {
-    return "Please connect Telegram first using the 'Connect Telegram' button.";
+    return "Connect Telegram before you save.";
   }
   return null;
 };
-
-const referenceSaveDisabled = (
-  services: NotificationService[],
-  email: string,
-  signalRecipient: string,
-  telegramChatId: string | undefined,
-) =>
-  services.length === 0 ||
-  (services.includes("email") && !email.trim()) ||
-  (services.includes("signal") && !signalRecipient.trim()) ||
-  (services.includes("telegram") && !telegramChatId);
 
 const referencePayload = (
   services: NotificationService[],
@@ -173,27 +166,18 @@ describe("validateNotificationForm", () => {
   const form = { services: [] as NotificationService[], email: "", signalRecipient: "", telegramChatId: undefined };
 
   it.each([
-    [{}, "Please select at least one notification service"],
-    [{ services: ["email"], email: "  " }, "Please enter your email address"],
-    [{ services: ["email"], email: "me@example" }, "Please enter a valid email address"],
-    [{ services: ["signal"], signalRecipient: " @ " }, "Please enter your Signal username"],
-    [{ services: ["signal"], signalRecipient: "u:" }, "Please enter your Signal username"],
-    [
-      { services: ["signal"], signalRecipient: "u: alice.42" },
-      "Invalid Signal username. Expected format: alice.42 (find yours in Signal → Settings → Profile)",
-    ],
-    [
-      { services: ["signal"], signalRecipient: "@@alice.42" },
-      "Invalid Signal username. Expected format: alice.42 (find yours in Signal → Settings → Profile)",
-    ],
+    [{}, NOTIFICATION_FORM_ERRORS.noService],
+    [{ services: ["email"], email: "  " }, NOTIFICATION_FORM_ERRORS.noEmail],
+    [{ services: ["email"], email: "me@example" }, NOTIFICATION_FORM_ERRORS.invalidEmail],
+    [{ services: ["signal"], signalRecipient: " @ " }, NOTIFICATION_FORM_ERRORS.noSignal],
+    [{ services: ["signal"], signalRecipient: "u:" }, NOTIFICATION_FORM_ERRORS.noSignal],
+    [{ services: ["signal"], signalRecipient: "u: alice.42" }, NOTIFICATION_FORM_ERRORS.invalidSignal],
+    [{ services: ["signal"], signalRecipient: "@@alice.42" }, NOTIFICATION_FORM_ERRORS.invalidSignal],
     // The client accepts the same "u:" form as the server (B0.11) and keeps a leading "u" of the name (B3.1).
     [{ services: ["signal"], signalRecipient: "u:alice.42" }, null],
     [{ services: ["signal"], signalRecipient: " u:@alice.42 " }, null],
     [{ services: ["signal"], signalRecipient: "ursula.42" }, null],
-    [
-      { services: ["telegram"], telegramChatId: "" },
-      "Please connect Telegram first using the 'Connect Telegram' button.",
-    ],
+    [{ services: ["telegram"], telegramChatId: "" }, NOTIFICATION_FORM_ERRORS.telegramNotLinked],
     [
       {
         services: ["email", "signal", "telegram"],
@@ -215,16 +199,15 @@ describe("validateNotificationForm", () => {
         signalRecipient: "",
         telegramChatId: undefined,
       }),
-    ).toBe("Please enter your email address");
+    ).toBe(NOTIFICATION_FORM_ERRORS.noEmail);
   });
 
   it("says the Telegram link could not be checked, instead of asking to connect, while its status is unknown", () => {
     const unknown = { ...form, services: ["telegram"] as NotificationService[], telegramStatusUnknown: true };
-    expect(validateNotificationForm(unknown)).toBe("Couldn't check your Telegram link. Press Retry, then Save.");
-    expect(canSubmitNotificationForm(unknown)).toBe(false);
+    expect(validateNotificationForm(unknown)).toBe("Select Try again to check your Telegram link, then save.");
     // Earlier fields still come first, and a form without Telegram does not depend on the link.
     expect(validateNotificationForm({ ...unknown, services: ["email", "telegram"] })).toBe(
-      "Please enter your email address",
+      NOTIFICATION_FORM_ERRORS.noEmail,
     );
     expect(validateNotificationForm({ ...unknown, services: ["email"], email: "me@example.com" })).toBeNull();
   });
@@ -241,31 +224,54 @@ describe("validateNotificationForm", () => {
   });
 });
 
-describe("canSubmitNotificationForm", () => {
-  it("only checks presence: a lone '@' Signal handle or an invalid email still enables Save", () => {
+describe("getNotificationFormErrors", () => {
+  it("reports every problem at once, each under its own field", () => {
     expect(
-      canSubmitNotificationForm({ services: ["signal"], email: "", signalRecipient: "@", telegramChatId: undefined }),
-    ).toBe(true);
-    expect(
-      canSubmitNotificationForm({ services: ["email"], email: "nope", signalRecipient: "", telegramChatId: undefined }),
-    ).toBe(true);
-    expect(canSubmitNotificationForm({ services: [], email: "a@b.co", signalRecipient: "", telegramChatId: "1" })).toBe(
-      false,
-    );
-    expect(
-      canSubmitNotificationForm({ services: ["telegram"], email: "", signalRecipient: "", telegramChatId: "" }),
-    ).toBe(false);
+      getNotificationFormErrors({
+        services: ["telegram", "signal", "email"],
+        email: "me@example",
+        signalRecipient: "",
+        telegramChatId: undefined,
+      }),
+    ).toStrictEqual({
+      email: NOTIFICATION_FORM_ERRORS.invalidEmail,
+      signalRecipient: NOTIFICATION_FORM_ERRORS.noSignal,
+      telegram: NOTIFICATION_FORM_ERRORS.telegramNotLinked,
+    });
   });
 
-  it("is the negation of the reference Save `disabled` expression (without isSaving) for every combination", () => {
-    for (const services of SERVICE_SETS)
-      for (const email of EMAILS)
-        for (const signalRecipient of SIGNALS)
-          for (const telegramChatId of CHAT_IDS) {
-            expect(canSubmitNotificationForm({ services, email, signalRecipient, telegramChatId })).toBe(
-              !referenceSaveDisabled(services, email, signalRecipient, telegramChatId),
-            );
-          }
+  it("asks only for a service when none is selected, and is empty for a valid form", () => {
+    expect(getNotificationFormErrors({ services: [], email: "", signalRecipient: "" })).toStrictEqual({
+      services: NOTIFICATION_FORM_ERRORS.noService,
+    });
+    expect(
+      getNotificationFormErrors({
+        services: ["email", "telegram"],
+        email: "me@example.com",
+        signalRecipient: "",
+        telegramChatId: "1",
+      }),
+    ).toStrictEqual({});
+  });
+
+  it("writes every message as a sentence that says what to do, without dashes", () => {
+    // En and em dash, built from their code points so this file does not contain them, even as escapes.
+    const dashes = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
+    for (const message of Object.values(NOTIFICATION_FORM_ERRORS)) {
+      expect(message).toMatch(/^(?:Select|Enter|Connect) .+\.$/);
+      expect(message).not.toMatch(dashes);
+    }
+  });
+});
+
+describe("needsErrorSummary", () => {
+  it("asks for the summary once the form shows more than 3 fields: two services or more", () => {
+    expect([[], ["email"], ["telegram"]].map(services => needsErrorSummary(services as NotificationService[]))).toEqual(
+      [false, false, false],
+    );
+    expect(needsErrorSummary(["email", "signal"])).toBe(true);
+    expect(needsErrorSummary(["email", "signal", "telegram"])).toBe(true);
+    expect(countFormFields(["email", "signal", "telegram"])).toBe(5);
   });
 });
 

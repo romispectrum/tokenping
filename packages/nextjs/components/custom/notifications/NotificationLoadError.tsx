@@ -1,4 +1,6 @@
+import { RotateCw } from "lucide-react";
 import { NotificationCard } from "~~/components/custom/notifications/NotificationCard";
+import { Alert, Button } from "~~/components/ui";
 
 type NotificationLoadErrorProps = {
   isRetrying: boolean;
@@ -7,14 +9,18 @@ type NotificationLoadErrorProps = {
 
 export const NotificationLoadError = ({ isRetrying, onRetry }: NotificationLoadErrorProps) => (
   <NotificationCard isActive={false}>
-    <div className="flex items-center justify-between gap-3">
-      {/* Not DaisyUI's text-error: its #ff8863 is 2.35:1 on the light theme's white, below WCAG AA. */}
-      <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-        Could not load your notification settings.
-      </p>
-      <button type="button" onClick={onRetry} disabled={isRetrying} className="btn btn-sm btn-outline">
-        {isRetrying ? "Retrying..." : "Retry"}
-      </button>
-    </div>
+    <Alert
+      variant="destructive"
+      // Only the message is announced, so the button's label changing does not repeat it.
+      title={<span role="alert">Notification settings did not load</span>}
+      action={
+        <Button variant="outline" size="sm" loading={isRetrying} loadingText="Retrying" onClick={onRetry}>
+          <RotateCw aria-hidden="true" />
+          Try again
+        </Button>
+      }
+    >
+      Check your connection and try again.
+    </Alert>
   </NotificationCard>
 );

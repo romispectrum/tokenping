@@ -1,16 +1,20 @@
-import { type FormEvent, useEffect, useId, useRef, useState } from "react";
-import { FIELD_LABEL_CLASS, TEXT_INPUT_CLASS } from "~~/components/custom/notifications/styles";
+import { type FormEvent, useEffect, useRef, useState } from "react";
+import { Button, Field, Input } from "~~/components/ui";
 import { submitAttributionAnswer } from "~~/services/notifications/attributionClient";
 import { ATTRIBUTION_MAX_LENGTH, parseAttributionAnswer } from "~~/services/notifications/attributionInput";
 import { notification } from "~~/utils/scaffold-eth";
 
 const SEND_FAILED = "Couldn't send your answer. Try again or skip.";
+const EMPTY_ANSWER = "Enter an answer, or select Skip.";
+const QUESTION = "How did you hear about Tokenping?";
 
 type AttributionPromptProps = {
   /** The wallet the answer is stored for. */
   address: string;
   /** Take focus on mount, so keyboard and screen-reader users land on the question that replaced the Save button. */
   autoFocus?: boolean;
+  /** Called after a successful Send, before onClose, so the card can announce it. */
+  onSent?: () => void;
   /** Called after Skip or a successful Send. */
   onClose: () => void;
 };
@@ -19,15 +23,15 @@ type AttributionPromptProps = {
  * Optional free-text "How did you hear about Tokenping?" question (free text rather than a list, so it also catches
  * channels nobody thought to offer, like a private recommendation or an AI assistant).
  */
-export const AttributionPrompt = ({ address, autoFocus = false, onClose }: AttributionPromptProps) => {
-  const labelId = useId();
-  const inputId = useId();
-  const hintId = useId();
+export const AttributionPrompt = ({ address, autoFocus = false, onSent, onClose }: AttributionPromptProps) => {
   const formRef = useRef<HTMLFormElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [answer, setAnswer] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const canSend = answer.trim() !== "" && !isSending;
+  const hasAnswer = answer.trim() !== "";
+  // "Enter an answer" no longer applies once there is one; other messages stay until the next Send.
+  const shownError = errorMessage === EMPTY_ANSWER && hasAnswer ? null : errorMessage;
 
   useEffect(() => {
     // The form, not the input: screen readers announce its name, and phones do not pop up a keyboard for an
@@ -37,7 +41,13 @@ export const AttributionPrompt = ({ address, autoFocus = false, onClose }: Attri
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!canSend) return;
+    if (isSending) return;
+    // Send stays enabled (a disabled button gives no reason and drops out of the tab order), so say what is missing.
+    if (!hasAnswer) {
+      setErrorMessage(EMPTY_ANSWER);
+      inputRef.current?.focus();
+      return;
+    }
     // The server runs the same check; doing it here lets the message say what to fix.
     const parsed = parseAttributionAnswer(answer);
     if ("error" in parsed) {
@@ -48,7 +58,8 @@ export const AttributionPrompt = ({ address, autoFocus = false, onClose }: Attri
     setErrorMessage(null);
     try {
       await submitAttributionAnswer(address, parsed.value);
-      notification.success("Thanks for telling us.");
+      notification.success("Answer sent");
+      onSent?.();
       onClose();
     } catch (error) {
       console.error("Failed to send attribution answer:", error);
@@ -61,39 +72,35 @@ export const AttributionPrompt = ({ address, autoFocus = false, onClose }: Attri
     <form
       ref={formRef}
       tabIndex={-1}
-      aria-labelledby={labelId}
+      // The visible label's text: the form is announced by the question when it takes focus.
+      aria-label={`${QUESTION} (optional)`}
       onSubmit={handleSubmit}
-      className="mt-4 pt-4 border-t border-base-300 dark:border-white/10"
+      className="mt-4 flex flex-col gap-3 border-t border-border pt-4"
     >
-      <label id={labelId} htmlFor={inputId} className={FIELD_LABEL_CLASS}>
-        How did you hear about Tokenping? <span className="text-base-content/70 dark:text-gray-400">(optional)</span>
-      </label>
-      <input
-        id={inputId}
-        type="text"
-        value={answer}
-        onChange={e => setAnswer(e.target.value)}
-        maxLength={ATTRIBUTION_MAX_LENGTH}
-        autoComplete="off"
-        aria-describedby={hintId}
-        className={TEXT_INPUT_CLASS}
-      />
-      <p id={hintId} className="text-xs text-base-content/70 dark:text-gray-400 mt-1">
-        Helps us learn which channels work. Saved with your wallet address.
-      </p>
-      {errorMessage && (
-        // Not DaisyUI's text-error: its #ff8863 is below WCAG AA on the light theme's white.
-        <p role="alert" className="text-xs text-red-600 dark:text-red-400 mt-1">
-          {errorMessage}
-        </p>
-      )}
-      <div className="flex items-center gap-2 mt-2">
-        <button type="submit" disabled={!canSend} className="btn btn-sm btn-outline">
-          {isSending ? "Sending..." : "Send"}
-        </button>
-        <button type="button" onClick={onClose} className="btn btn-sm btn-ghost">
+      <Field
+        label={QUESTION}
+        optional
+        description="Helps us learn which channels work. Saved with your wallet address."
+        error={shownError}
+      >
+        {control => (
+          <Input
+            {...control}
+            ref={inputRef}
+            value={answer}
+            onChange={e => setAnswer(e.target.value)}
+            maxLength={ATTRIBUTION_MAX_LENGTH}
+            autoComplete="off"
+          />
+        )}
+      </Field>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="submit" variant="secondary" size="sm" loading={isSending} loadingText="Sending">
+          Send answer
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onClose}>
           Skip
-        </button>
+        </Button>
       </div>
     </form>
   );

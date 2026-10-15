@@ -1,11 +1,12 @@
+import { Layers } from "lucide-react";
 import { AccessPaywall } from "~~/components/custom/AccessPaywall";
 import { HealthFactorBadge } from "~~/components/custom/HealthFactorBadge";
 import { NotificationConfig } from "~~/components/custom/NotificationConfig";
-import { ChainIcon } from "~~/components/custom/aave/ChainIcon";
 import { StatCard } from "~~/components/custom/aave/StatCard";
-import { TokenListPanel } from "~~/components/custom/aave/TokenListPanel";
-import { CollateralTokenRow, DebtTokenRow } from "~~/components/custom/aave/TokenRow";
+import { COLLATERAL_COLUMNS, CollateralTokenRow, DEBT_COLUMNS, DebtTokenRow } from "~~/components/custom/aave/TokenRow";
+import { TokenTable } from "~~/components/custom/aave/TokenTable";
 import { getCollateralTokens, getDebtTokens } from "~~/components/custom/aave/positionsView";
+import { Alert, Card } from "~~/components/ui";
 import type { NetworkPosition } from "~~/services/aave/positions";
 import { formatUSD } from "~~/utils/format";
 
@@ -14,13 +15,67 @@ type PositionDetailsProps = {
   hasNotificationConfig: boolean;
 };
 
+const PositionContent = ({ position }: { position: NetworkPosition }) => {
+  if (!position.hasPosition) {
+    return (
+      <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
+        <div className="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+          <Layers aria-hidden="true" className="size-6" strokeWidth={1.5} />
+        </div>
+        <div className="flex max-w-sm flex-col gap-1">
+          <p className="m-0 text-base font-medium text-foreground">{`No active position on ${position.chainName}`}</p>
+          <p className="m-0 text-sm text-muted-foreground">
+            {`Aave reports no collateral and no debt for this wallet on ${position.chainName}.`}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <dl className="m-0 grid gap-3 sm:grid-cols-3">
+        <StatCard variant="panel" label="Collateral" value={formatUSD(position.totalCollateralUSD)} />
+        <StatCard variant="panel" label="Debt" value={formatUSD(position.totalDebtUSD)} />
+        <StatCard variant="panel" label="Net worth" value={formatUSD(position.netWorthUSD)} />
+      </dl>
+
+      {position.tokens.length > 0 ? (
+        <>
+          <TokenTable
+            id={`supplied-${position.chainId}`}
+            title="Supplied"
+            columns={COLLATERAL_COLUMNS}
+            tokens={getCollateralTokens(position.tokens)}
+            Row={CollateralTokenRow}
+            emptyText="No collateral supplied"
+          />
+          <TokenTable
+            id={`borrowed-${position.chainId}`}
+            title="Borrowed"
+            columns={DEBT_COLUMNS}
+            tokens={getDebtTokens(position.tokens)}
+            Row={DebtTokenRow}
+            emptyText="No outstanding debt"
+          />
+        </>
+      ) : (
+        // Partial data: the account summary loaded but the per-token reads did not.
+        <Alert variant="warning" title="Token details did not load">
+          <p>The totals above come from Aave&apos;s account summary. Refresh positions to try again.</p>
+        </Alert>
+      )}
+    </>
+  );
+};
+
 export const PositionDetails = ({ position, hasNotificationConfig }: PositionDetailsProps) => (
-  <div className="space-y-4">
+  <div className="flex flex-col gap-6">
     <AccessPaywall
       description={
         hasNotificationConfig
-          ? `Your saved ${position.chainName} notification config is still in your account. Pay again to extend access and edit it.`
-          : `Pay once to configure health factor alerts on ${position.chainName} and other networks. No auto-charges—you pay from your wallet when you want to extend.`
+          ? `Your saved ${position.chainName} alert settings are still in your account. Pay again to extend access and edit them.`
+          : `Pay once to set health factor alerts on ${position.chainName} and other networks. Nothing renews automatically: you pay from your wallet when you want to extend.`
       }
       hasExistingConfig={hasNotificationConfig}
     >
@@ -33,74 +88,17 @@ export const PositionDetails = ({ position, hasNotificationConfig }: PositionDet
       />
     </AccessPaywall>
 
-    <div className="relative overflow-hidden rounded-2xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 backdrop-blur-xl">
-      {/* Glow tinted with the chain color */}
-      <div
-        className="absolute inset-0 opacity-60 dark:opacity-60"
-        style={{
-          background: `radial-gradient(circle at 50% 0%, ${position.chainColor}20 0%, transparent 55%)`,
-        }}
-      />
-
-      <div className="relative p-5">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <ChainIcon icon={position.chainIcon} color={position.chainColor} size="lg" />
-            <div className="min-w-0">
-              <h3 className="font-semibold text-base-content dark:text-white truncate">{position.chainName}</h3>
-              <p className="text-xs text-base-content/70 dark:text-gray-400">Aave V3 · Token-level positions</p>
-            </div>
-          </div>
-
-          <div className="shrink-0">
-            {position.hasPosition ? <HealthFactorBadge healthFactor={position.healthFactor} /> : null}
-          </div>
+    <Card>
+      <div className="flex items-start justify-between gap-4 px-[var(--card-spacing)]">
+        <div className="min-w-0">
+          <h3 className="m-0 truncate text-base font-medium text-foreground">{position.chainName}</h3>
+          <p className="m-0 text-sm text-muted-foreground">Aave V3 market</p>
         </div>
-
-        {position.hasPosition ? (
-          <>
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              <StatCard
-                label="Collateral"
-                value={formatUSD(position.totalCollateralUSD)}
-                variant="detail"
-                tone="collateral"
-              />
-              <StatCard label="Debt" value={formatUSD(position.totalDebtUSD)} variant="detail" tone="debt" />
-              <StatCard label="Net Worth" value={formatUSD(position.netWorthUSD)} variant="detail" tone="netWorth" />
-            </div>
-
-            {position.tokens.length > 0 ? (
-              <div className="border-t border-base-300 dark:border-white/10 pt-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <TokenListPanel
-                    title="Collateral"
-                    tone="collateral"
-                    tokens={getCollateralTokens(position.tokens)}
-                    Row={CollateralTokenRow}
-                    emptyText="No collateral supplied"
-                  />
-                  <TokenListPanel
-                    title="Debt"
-                    tone="debt"
-                    tokens={getDebtTokens(position.tokens)}
-                    Row={DebtTokenRow}
-                    emptyText="No outstanding debt"
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-10 text-base-content/70 dark:text-gray-500">
-                <p className="text-sm">No token-level data returned for this position.</p>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="text-center py-12 text-base-content/70 dark:text-gray-500">
-            <p className="text-sm">No active position on {position.chainName}.</p>
-          </div>
-        )}
+        {position.hasPosition ? <HealthFactorBadge healthFactor={position.healthFactor} /> : null}
       </div>
-    </div>
+      <div className="flex flex-col gap-6 px-[var(--card-spacing)]">
+        <PositionContent position={position} />
+      </div>
+    </Card>
   </div>
 );
