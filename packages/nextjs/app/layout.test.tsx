@@ -2,7 +2,9 @@ import type { ReactNode } from "react";
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import RootLayout, { metadata, viewport } from "~~/app/layout";
+import { serializeJsonLd } from "~~/components/seo/JsonLd";
 import manifest from "~~/public/manifest.json";
+import { DEFAULT_DESCRIPTION, DEFAULT_TITLE, siteJsonLd } from "~~/utils/seo";
 import { renderHtml } from "~~/utils/testing/render";
 
 vi.mock("~~/components/ThemeProvider", () => ({
@@ -27,9 +29,9 @@ const getThemeHexToken = (theme: "light" | "dark", token: string) => {
 };
 
 describe("root layout", () => {
-  it("wraps the page in the theme provider and the app providers", () => {
+  it("renders the site JSON-LD and wraps the page in the theme provider and the app providers", () => {
     expect(renderHtml(<RootLayout>page</RootLayout>)).toBe(
-      '<html lang="en"><head></head><body><div data-stub="theme-provider" data-enable-system="true"><div data-stub="providers">page</div></div></body></html>',
+      `<html lang="en"><head></head><body><script type="application/ld+json">${serializeJsonLd(siteJsonLd())}</script><div data-stub="theme-provider" data-enable-system="true"><div data-stub="providers">page</div></div></body></html>`,
     );
   });
 
@@ -66,24 +68,32 @@ describe("root layout", () => {
     ]);
   });
 
-  it("exports the default title and description", () => {
-    expect(metadata.title).toEqual({ default: "Tokenping — DeFi notifications", template: "%s | Tokenping" });
-    expect(metadata.description).toBe(
-      "Monitor your DeFi positions and get notified before your health factor is at risk. Tokenping supports Aave and more protocols.",
-    );
+  it("exports the default title, description and production metadataBase", () => {
+    expect(metadata.title).toEqual({ default: DEFAULT_TITLE, template: "%s | Tokenping" });
+    expect(metadata.description).toBe(DEFAULT_DESCRIPTION);
+    expect(metadata.metadataBase?.toString()).toBe("https://tokenping.xyz/");
   });
 
-  it("brands page titles in social previews as Tokenping", () => {
-    const title = { default: "Tokenping — DeFi notifications", template: "%s | Tokenping" };
+  // Only Aave V3 exists, so "more protocols" style claims must not come back.
+  it("describes the product without claims the product does not support", () => {
+    expect(`${DEFAULT_TITLE} ${DEFAULT_DESCRIPTION}`).not.toMatch(/protocols|never miss|real-time|instant/i);
+  });
 
-    expect(metadata.openGraph?.title).toEqual(title);
-    expect(metadata.twitter?.title).toEqual(title);
+  it("brands social previews as Tokenping without the Scaffold-ETH thumbnail or favicon", () => {
+    expect(metadata.openGraph).toMatchObject({ siteName: "Tokenping", title: DEFAULT_TITLE });
+    expect(metadata.twitter).toMatchObject({ site: "@tokenping", title: DEFAULT_TITLE });
+    expect(JSON.stringify(metadata)).not.toMatch(/thumbnail|favicon\.png|localhost/);
+  });
+
+  it("never sets a canonical in the layout, where every page would inherit it", () => {
+    expect(metadata.alternates).not.toHaveProperty("canonical");
   });
 });
 
-// No page links this file (getMetadata sets no `manifest`), so this pins the file's contents only.
+// No page links this file (the metadata sets no `manifest`), so this pins the file's contents only.
 describe("public/manifest.json", () => {
-  it("carries the Tokenping name", () => {
+  it("carries the Tokenping name and no Scaffold-ETH description", () => {
     expect(manifest).toMatchObject({ name: "Tokenping", short_name: "Tokenping" });
+    expect(manifest.description).not.toMatch(/scaffold/i);
   });
 });

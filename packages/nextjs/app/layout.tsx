@@ -4,8 +4,9 @@ import "@scaffold-ui/components/styles.css";
 import type { Viewport } from "next";
 import { ScaffoldEthAppWithProviders } from "~~/components/ScaffoldEthAppWithProviders";
 import { ThemeProvider } from "~~/components/ThemeProvider";
+import { JsonLd } from "~~/components/seo/JsonLd";
 import "~~/styles/globals.css";
-import { getMetadata } from "~~/utils/scaffold-eth/getMetadata";
+import { rootMetadata, siteJsonLd } from "~~/utils/seo";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -19,16 +20,13 @@ export const viewport: Viewport = {
   ],
 };
 
-export const metadata = getMetadata({
-  title: "Tokenping — DeFi notifications",
-  description:
-    "Monitor your DeFi positions and get notified before your health factor is at risk. Tokenping supports Aave and more protocols.",
-});
+export const metadata = rootMetadata();
 
 const RootLayout = ({ children }: { children: ReactNode }) => {
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
+        <JsonLd data={siteJsonLd()} />
         <ThemeProvider enableSystem>
           <ScaffoldEthAppWithProviders>{children}</ScaffoldEthAppWithProviders>
         </ThemeProvider>

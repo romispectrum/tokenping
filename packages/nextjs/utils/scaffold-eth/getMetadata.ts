@@ -1,50 +1,12 @@
 import type { Metadata } from "next";
 
-const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
-  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-  : `http://localhost:${process.env.PORT || 3000}`;
-const titleTemplate = "%s | Tokenping";
-
-export const getMetadata = ({
+/**
+ * Title and description for the Scaffold-ETH dev routes (/debug, /blockexplorer). The root layout's metadata
+ * (utils/seo rootMetadata) supplies metadataBase, the title template, icons and the social card, so this no longer
+ * sets the old localhost base URL, the "Built with Scaffold-ETH 2" thumbnail or the crane favicon. Site pages use
+ * pageMetadata from utils/seo instead.
+ */
+export const getMetadata = ({ title, description }: { title: string; description: string }): Metadata => ({
   title,
   description,
-  imageRelativePath = "/thumbnail.jpg",
-}: {
-  title: string;
-  description: string;
-  imageRelativePath?: string;
-}): Metadata => {
-  const imageUrl = `${baseUrl}${imageRelativePath}`;
-
-  return {
-    metadataBase: new URL(baseUrl),
-    title: {
-      default: title,
-      template: titleTemplate,
-    },
-    description: description,
-    openGraph: {
-      title: {
-        default: title,
-        template: titleTemplate,
-      },
-      description: description,
-      images: [
-        {
-          url: imageUrl,
-        },
-      ],
-    },
-    twitter: {
-      title: {
-        default: title,
-        template: titleTemplate,
-      },
-      description: description,
-      images: [imageUrl],
-    },
-    icons: {
-      icon: [{ url: "/favicon.png", sizes: "32x32", type: "image/png" }],
-    },
-  };
-};
+});

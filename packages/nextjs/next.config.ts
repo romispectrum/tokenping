@@ -1,3 +1,4 @@
+import createMDX from "@next/mdx";
 import type { NextConfig } from "next";
 
 // Set by `yarn vercel:yolo`, so keep the name even though it is build-only and needs no NEXT_PUBLIC_ prefix.
@@ -5,6 +6,10 @@ const IGNORE_BUILD_ERRORS = process.env.NEXT_PUBLIC_IGNORE_BUILD_ERROR === "true
 const IS_IPFS_BUILD = process.env.NEXT_PUBLIC_IPFS_BUILD === "true";
 
 const nextConfig: NextConfig = {
+  // "mdx" is listed so Next applies its vendored React aliases to .mdx modules too: without it the posts import
+  // node_modules' react/jsx-dev-runtime and crash in Server Components under `next dev`. Posts live in content/blog,
+  // and no .mdx file sits under app/, so this adds no MDX routes.
+  pageExtensions: ["tsx", "ts", "jsx", "js", "mdx"],
   reactStrictMode: true,
   devIndicators: false,
   typescript: {
@@ -13,7 +18,7 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: IGNORE_BUILD_ERRORS,
     // `next lint` / `next build` only lint app, pages, components, lib and src by default.
-    dirs: ["app", "components", "hooks", "services", "utils", "config", "constants", "types"],
+    dirs: ["app", "components", "content", "hooks", "services", "utils", "config", "constants", "types"],
   },
   webpack: config => {
     config.resolve.fallback = { fs: false, net: false, tls: false };
@@ -29,4 +34,12 @@ const nextConfig: NextConfig = {
   }),
 };
 
-export default nextConfig;
+// Blog posts are .mdx modules imported from content/blog. Plugins are named as strings so the options stay
+// serializable for Turbopack as well as webpack.
+const withMDX = createMDX({
+  options: {
+    remarkPlugins: ["remark-gfm"],
+  },
+});
+
+export default withMDX(nextConfig);

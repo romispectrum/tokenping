@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { readdirSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 // next.config reads env vars at module load, so every case imports a fresh copy.
@@ -8,7 +9,21 @@ const loadNextConfig = async (env: Record<string, string | undefined>): Promise<
   return (await import("~~/next.config")).default;
 };
 
-const LINT_DIRS = ["app", "components", "hooks", "services", "utils", "config", "constants", "types"];
+const LINT_DIRS = ["app", "components", "content", "hooks", "services", "utils", "config", "constants", "types"];
+
+type WebpackConfig = Parameters<NonNullable<NextConfig["webpack"]>>[0];
+type WebpackOptions = Parameters<NonNullable<NextConfig["webpack"]>>[1];
+type MdxRule = { test: RegExp; use: [unknown, { loader: string; options: Record<string, unknown> }] };
+
+/** The parts of webpack's config and options that next.config and @next/mdx touch. */
+const webpackFixture = () => ({
+  config: {
+    resolve: { fallback: { path: false }, alias: {} },
+    module: { rules: [] as MdxRule[] },
+    externals: [{ some: "external" }],
+  },
+  options: { defaultLoaders: { babel: "babel-loader" } } as unknown as WebpackOptions,
+});
 
 describe("next.config", () => {
   afterEach(() => {
@@ -19,16 +34,25 @@ describe("next.config", () => {
     const config = await loadNextConfig({
       NEXT_PUBLIC_IGNORE_BUILD_ERROR: undefined,
       NEXT_PUBLIC_IPFS_BUILD: undefined,
+      TURBOPACK: undefined,
     });
 
     expect(config).toEqual({
+      pageExtensions: ["tsx", "ts", "jsx", "js", "mdx"],
       reactStrictMode: true,
       devIndicators: false,
       typescript: { ignoreBuildErrors: false },
       eslint: { ignoreDuringBuilds: false, dirs: LINT_DIRS },
       webpack: expect.any(Function),
     });
-    expect(Object.keys(config)).toEqual(["reactStrictMode", "devIndicators", "typescript", "eslint", "webpack"]);
+    expect(Object.keys(config)).toEqual([
+      "pageExtensions",
+      "reactStrictMode",
+      "devIndicators",
+      "typescript",
+      "eslint",
+      "webpack",
+    ]);
   });
 
   // Build checks are skipped only when NEXT_PUBLIC_IGNORE_BUILD_ERROR is exactly "true".
@@ -52,6 +76,7 @@ describe("next.config", () => {
     const ipfs = await loadNextConfig({ NEXT_PUBLIC_IPFS_BUILD: "true" });
 
     expect(Object.keys(ipfs)).toEqual([
+      "pageExtensions",
       "reactStrictMode",
       "devIndicators",
       "typescript",
@@ -74,13 +99,57 @@ describe("next.config", () => {
 
   it("stubs node built-ins and externalizes optional logger and storage packages in webpack", async () => {
     const { webpack } = await loadNextConfig({});
-    const existingExternal = { some: "external" };
-    const webpackConfig = { resolve: { fallback: { path: false } }, externals: [existingExternal] };
+    const { config, options } = webpackFixture();
+    const [existingExternal] = config.externals;
 
-    const result = webpack?.(webpackConfig, {} as Parameters<NonNullable<NextConfig["webpack"]>>[1]);
+    const result = webpack?.(config as WebpackConfig, options);
 
-    expect(result).toBe(webpackConfig);
-    expect(webpackConfig.resolve.fallback).toEqual({ fs: false, net: false, tls: false });
-    expect(webpackConfig.externals).toEqual([existingExternal, "pino-pretty", "lokijs", "encoding"]);
+    expect(result).toBe(config);
+    expect(config.resolve.fallback).toEqual({ fs: false, net: false, tls: false });
+    expect(config.externals).toEqual([existingExternal, "pino-pretty", "lokijs", "encoding"]);
+  });
+
+  it("compiles .mdx with remark-gfm and the root mdx-components.tsx as provider", async () => {
+    const { webpack } = await loadNextConfig({});
+    const { config, options } = webpackFixture();
+
+    webpack?.(config as WebpackConfig, options);
+
+    const [rule] = config.module.rules;
+    expect(config.module.rules).toHaveLength(1);
+    expect(rule.test).toEqual(/\.mdx$/);
+    expect(rule.use[0]).toBe("babel-loader");
+    expect(rule.use[1].options).toEqual({
+      providerImportSource: "next-mdx-import-source-file",
+      remarkPlugins: ["remark-gfm"],
+    });
+    expect(config.resolve.alias).toMatchObject({
+      "next-mdx-import-source-file": expect.arrayContaining(["private-next-root-dir/mdx-components"]),
+    });
+  });
+
+  // Next applies its vendored React aliases only to files matching pageExtensions (or JS/TS). Without "mdx" there, posts
+  // import node_modules' react/jsx-dev-runtime and crash in Server Components under `next dev`.
+  it("lists mdx as a page extension so .mdx modules get Next's React aliases", async () => {
+    const { pageExtensions } = await loadNextConfig({});
+
+    expect(pageExtensions).toEqual(expect.arrayContaining(["tsx", "ts", "jsx", "js", "mdx"]));
+  });
+
+  // The flip side of the mdx page extension: an app/**/page.mdx would become a route, so posts stay in content/blog.
+  it("keeps .mdx files out of app/, where they could become routes", () => {
+    const appFiles = readdirSync(new URL("./app", import.meta.url), { recursive: true }).map(String);
+
+    expect(appFiles.filter(file => file.endsWith(".mdx"))).toEqual([]);
+  });
+
+  // Strings, not imported functions: Turbopack passes loader options across a serialization boundary.
+  it("names remark plugins as strings so the options also work under Turbopack", async () => {
+    const config = await loadNextConfig({ TURBOPACK: "1" });
+
+    expect(config.turbopack?.rules?.["#next-mdx"]).toMatchObject({
+      loaders: [{ options: { remarkPlugins: ["remark-gfm"] } }],
+      as: "*.tsx",
+    });
   });
 });
