@@ -1,0 +1,155 @@
+export const meta = {
+  slug: "safe-aave-health-factor",
+  title: "What Is a Safe Health Factor on Aave? A Buffer Table",
+  description:
+    "There is no universal safe Aave health factor. See how far prices can fall at 1.2, 1.5 or 2.0, and how to choose a buffer for your collateral.",
+  h1: "What is a safe health factor on Aave?",
+  publishedAt: "2026-10-14",
+  primaryQuestion: "What health factor is safe on Aave?",
+  readingMinutes: 11,
+};
+
+<ShortAnswer>
+  There is no single safe or "good" health factor on Aave. Aave's own help centre says the right level depends on how
+  volatile and how correlated your assets are. What the number does tell you is how far prices can move before
+  liquidation: with one volatile collateral and stablecoin debt, a health factor of 1.2 reaches 1.00 after a 16.7% price
+  fall, 1.5 after a 33.3% fall and 2.0 after a 50% fall.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Is there a safe health factor on Aave?
+
+No. Aave's help centre says there is "no universally 'safe' health factor", because the right level depends on the volatility and correlation of the assets in a position ([Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations), fetched 14 Oct 2026). It adds that lower health factors may be acceptable for correlated assets, such as stablecoins or assets closely tied to ETH.
+
+The health factor (HF) is a number that compares your collateral with your debt on one Aave market: HF = Σ(collateral value × liquidation threshold) ÷ total debt value, in USD at Aave's oracle prices. The liquidation threshold is the share of a collateral's value that counts toward the health factor, for example 83% for WETH on the Ethereum Core market (read on-chain at Ethereum block 26193284 on 14 Oct 2026). Below 1.00, a liquidator can repay part or all of your debt, and you lose collateral worth the repaid amount plus a liquidation bonus. The formula and more examples are in the guide to [what the Aave health factor is](/blog/aave-health-factor).
+
+So a "safe" health factor comes down to two choices only you can make: how large a price move your position should absorb, and how much time you need to act once prices start moving. Dashboards, Tokenping's included, label health factors with words like "Safe" or "Risky". Those labels are display bands; no level guarantees that a position can't be liquidated.
+
+## How far can prices fall before liquidation at each health factor?
+
+With one volatile collateral and stablecoin debt, an Aave position reaches a health factor of 1.00 after the collateral price falls by 1 − 1/HF. At HF 1.2 that is a 16.7% fall, at HF 1.5 it is 33.3%, and at HF 2.0 it is 50%.
+
+The derivation is short. With a single collateral, HF = (collateral amount × price × liquidation threshold) ÷ debt. If the debt is a stablecoin worth $1 and nothing else changes, the health factor moves in exact proportion to the collateral price. It reaches 1.00 when the price has fallen to 1/HF of today's price, so the fall is 1 − 1/HF.
+
+| Health factor today                                             | Price fall that brings HF to 1.00 | ETH price at HF 1.00, if ETH is $2,400 today |
+| --------------------------------------------------------------- | --------------------------------- | -------------------------------------------- |
+| 83 ÷ 80.5 ≈ 1.031 (WETH borrowed to the limit on Ethereum Core) | 3.0%                              | $2,327.71                                    |
+| 1.1                                                             | 9.1%                              | $2,181.82                                    |
+| 1.2                                                             | 16.7%                             | $2,000.00                                    |
+| 1.3                                                             | 23.1%                             | $1,846.15                                    |
+| 1.5                                                             | 33.3%                             | $1,600.00                                    |
+| 1.66 (the worked example below)                                 | 39.8%                             | $1,445.78                                    |
+| 2.0                                                             | 50.0%                             | $1,200.00                                    |
+| 3.0                                                             | 66.7%                             | $800.00                                      |
+
+A worked check on the Ethereum Core market, with the WETH liquidation threshold of 83% read on-chain on 14 Oct 2026 (Ethereum block 26193284): take 10 WETH supplied at an illustrative $2,400 ($24,000) and 12,000 USDC borrowed. HF = 24,000 × 0.83 ÷ 12,000 = 1.66. ETH reaches the liquidation line at 12,000 ÷ (10 × 0.83) = $1,445.78, which is 39.8% below $2,400, the same as 1 − 1/1.66. ETH is rounded to $2,400 here; Aave's oracle read $2,414.78 at block 26193376 the same day.
+
+The table assumes the stablecoin stays at $1, no interest accrues and the liquidation threshold doesn't change. With two collateral assets, or with debt in a volatile asset, the arithmetic changes; the guide to [calculate your Aave liquidation price](/blog/aave-liquidation-price) walks through both cases.
+
+## Why is the "safe" number different for stablecoin debt, volatile debt and E-Mode loops?
+
+The same health factor means different things for different Aave positions, because it measures the distance to liquidation in whichever price drives the position, and that depends on what you supplied and what you borrowed. This is what a health factor of 1.5 absorbs in four common setups:
+
+| Position type                        | Example                                                   | Price that drives the health factor | Move that takes HF from 1.5 to 1.00 |
+| ------------------------------------ | --------------------------------------------------------- | ----------------------------------- | ----------------------------------- |
+| Volatile collateral, stablecoin debt | WETH supplied, USDC borrowed                              | ETH price in USD                    | ETH falls 33.3%                     |
+| Stablecoin collateral, volatile debt | USDC supplied, WETH borrowed                              | ETH price in USD                    | ETH rises 50%                       |
+| Two volatile assets                  | WBTC supplied, WETH borrowed                              | BTC price divided by ETH price      | The BTC/ETH ratio falls 33.3%       |
+| Correlated E-Mode loop               | wstETH supplied, WETH borrowed in "ETH correlated" E-Mode | wstETH/ETH rate from the oracle     | The rate falls 33.3%                |
+
+**Stablecoin debt.** With stablecoin debt against ETH or BTC, the health factor follows the collateral price almost one for one. The debt side moves little: Aave's USDC price adapter on Ethereum caps the USDC price at $1.04 (read on-chain at Ethereum block 26193376 on 14 Oct 2026), so USDC debt is never valued at more than 4% above $1, and a USDC price below $1 lowers the value of the debt, which raises the health factor.
+
+**Volatile debt.** When you borrow a volatile asset against stablecoins, the health factor falls when the borrowed asset rises, and the borrowed asset can rise by HF − 1 before liquidation (50% at HF 1.5). Take 10,000 USDC supplied (liquidation threshold 78% on Ethereum Core at block 26193284, 14 Oct 2026) against WETH worth $6,000 borrowed: HF = 10,000 × 0.78 ÷ 6,000 = 1.30. If ETH started at $2,400, the position reaches HF 1.00 when ETH rises 30%, to $3,120. The stablecoin collateral can move too: on 11 March 2023 USDC fell to around $0.88, according to Gauntlet's post-mortem, and at that price the same position would sit at 8,800 × 0.78 ÷ 6,000 = 1.144.
+
+**E-Mode loops.** In the "ETH correlated" E-Mode category on Ethereum Core (LTV 93%, liquidation threshold 95% at Ethereum block 26193288, 14 Oct 2026; the same on Arbitrum), a wstETH-against-WETH loop's health factor follows the wstETH/ETH rate the oracle reports, not the dollar price of ETH. That cuts its sensitivity to ETH's market price, but a loop borrowed to its limit starts at 95 ÷ 93 = 1.0215 and reaches 1.00 after a 2.1% fall in that rate. In March 2026 a misconfigured CAPO oracle cut the effective wstETH rate by about 2.85% on the Ethereum Core and Prime markets, enough to liquidate tightly levered E-Mode loops, according to Chaos Labs' post-mortem. So for a loop, an oracle or exchange-rate error can matter more than a market crash, and if the WETH borrow rate rises above what the collateral earns, interest wears the small buffer down too. The guide on [why your Aave health factor drops on its own](/blog/why-aave-health-factor-dropped) covers that incident.
+
+## How quickly do interest and parameter changes eat into your buffer?
+
+At 14 Oct 2026 rates on Aave's Ethereum Core market (block 26193378), interest would take roughly 3% a year off the health factor of a position with WETH collateral and USDC debt, if rates and prices held; a cut to a liquidation threshold takes its share in one step. Interest lowers a health factor when the debt's borrow rate is above the collateral's supply rate, so a position whose collateral earns more than its debt costs, such as USDC supplied against WETH borrowed, drifts up instead. On Aave V3, a lower liquidation threshold applies at once to every open position using that collateral, and with a single collateral the health factor falls in the same proportion. The guide on [why your Aave health factor drops on its own](/blog/why-aave-health-factor-dropped) works through both with numbers.
+
+## How much buffer do you need to have time to act?
+
+An Aave position needs enough buffer that prices can keep moving while a warning reaches you and your repay or supply transaction confirms. There is no fixed number: it depends on how fast your collateral moves, how soon you see a warning and how reliably you can get a transaction through.
+
+Three delays add up:
+
+1. **Detection.** You open the Aave app, or a service checks on a schedule. Tokenping checks every 5 minutes, so a fast move can cross 1.00 between two checks.
+2. **Reaction.** You see the message and get to your wallet. At night or while travelling, that can take hours.
+3. **Execution.** The transaction has to be signed, sent and included in a block, and in a stressed market gas costs rise and interfaces or RPC endpoints can fail. On the Polygon forum in May 2021, a borrower tried to repay at HF 1.01, hit repeated errors and was liquidated before the repayment went through. On the Aave forum in December 2024, another reported more than an hour of repay attempts stuck pending, then a liquidation. Neither thread establishes the cause.
+
+Below 1.00, liquidation can follow quickly: Aave's help centre describes liquidations as highly competitive, often run by custom bots that react to oracle price changes and submit their transactions with high priority.
+
+So the buffer you need covers the price move that could happen during detection, reaction and execution. That puts a useful alert above the last health factor at which you could still act, not at it.
+
+## How do you choose an alert threshold, step by step?
+
+One way to choose a threshold is to start from a price, not from a health factor: pick the collateral price at which you would want to start acting, convert it into a health factor, and set the alert at or a little above that level, because checks run on a schedule and a repay can take time to confirm. The example uses an Ethereum Core position with 10 WETH supplied and 12,000 USDC borrowed, a WETH liquidation threshold of 83% (Ethereum block 26193284, 14 Oct 2026) and ETH at an illustrative $2,400. That gives HF 1.66 and a liquidation price of $1,445.78.
+
+1. **Pick the price at which you would want to start acting.** Say you would want to repay or add collateral if ETH reached $2,000, a 16.7% fall from $2,400.
+2. **Convert that price into a health factor.** With one collateral and stablecoin debt, HF at a new price = today's HF × new price ÷ today's price. Here that is 1.66 × 2,000 ÷ 2,400 = 1.38. With several collateral assets or volatile debt, the guide to [calculate your Aave liquidation price](/blog/aave-liquidation-price) shows how to work out the health factor at any price.
+3. **Check the room that is left.** At ETH $2,000 the position can still absorb a further 27.7% fall, down to $1,445.78. If that isn't enough room for the time you need to act, pick a higher price and repeat. The threshold that leaves a given further fall is 1 ÷ (1 − fall):
+
+   | Further price fall you want left when the alert fires | Alert threshold |
+   | ----------------------------------------------------- | --------------- |
+   | 10%                                                   | 1.11            |
+   | 15%                                                   | 1.18            |
+   | 20%                                                   | 1.25            |
+   | 25%                                                   | 1.33            |
+   | 33.3%                                                 | 1.50            |
+
+   These rows assume one volatile collateral and stablecoin debt.
+
+4. **Keep the threshold as a health factor, not a price.** For one collateral with stablecoin debt, a threshold keeps its meaning after you repay, add collateral or borrow more: 1.25 always leaves a 20% fall, while the ETH price at which it fires moves with the position.
+5. **Repeat for each market.** On Aave V3, each network's market has its own health factor, so positions on Arbitrum and Base need separate thresholds.
+
+In Tokenping you set this number per network, from 1.1 to 10 (the default is 1.5), and you'll get a message on Signal or email every 5 minutes while your health factor is below it. A position that normally runs below 1.1, such as an E-Mode loop near its limit, would trigger a message on every check, so Tokenping doesn't suit it. You can [check your Aave V3 health factor (free)](/aave) first; the guide on [how to set up a health factor alert](/blog/aave-health-factor-alert-setup) covers the rest.
+
+## What does borrowing the maximum do to your buffer?
+
+Borrowing the maximum leaves almost no buffer. On Aave V3, a position at its borrow limit starts at a health factor of LT ÷ LTV, which is only about 1.02 to 1.07 for the main assets on Ethereum Core and Arbitrum. For WETH on Ethereum Core that is 83 ÷ 80.5 = 1.031, so a 3.0% fall in ETH reaches the liquidation line.
+
+The gap exists because Aave V3 uses two percentages per collateral. The loan-to-value ratio (LTV) caps how much you can borrow against it; the liquidation threshold (LT), which is always at least as high, decides when you can be liquidated. A new borrow is accepted only while your debt stays within collateral × LTV. At the limit, debt = collateral × LTV, so HF = collateral × LT ÷ (collateral × LTV) = LT ÷ LTV.
+
+| Market                                 | Collateral                      | LTV   | Liquidation threshold | HF at the borrow limit (LT ÷ LTV) | Move that takes HF to 1.00              |
+| -------------------------------------- | ------------------------------- | ----- | --------------------- | --------------------------------- | --------------------------------------- |
+| Ethereum Core                          | WETH                            | 80.5% | 83%                   | 1.031                             | ETH falls 3.0% (stablecoin debt)        |
+| Ethereum Core                          | WBTC                            | 73%   | 78%                   | 1.068                             | BTC falls 6.4% (stablecoin debt)        |
+| Ethereum Core                          | USDC                            | 75%   | 78%                   | 1.040                             | The borrowed asset rises 4.0%           |
+| Arbitrum                               | WETH                            | 80%   | 84%                   | 1.050                             | ETH falls 4.8% (stablecoin debt)        |
+| Arbitrum                               | WBTC                            | 73%   | 78%                   | 1.068                             | BTC falls 6.4% (stablecoin debt)        |
+| Arbitrum                               | USDC                            | 75%   | 78%                   | 1.040                             | The borrowed asset rises 4.0%           |
+| Ethereum Core, "ETH correlated" E-Mode | wstETH or cbETH, borrowing WETH | 93%   | 95%                   | 1.0215                            | The collateral's rate to ETH falls 2.1% |
+
+The asset rows were read on-chain on 14 Oct 2026 from each market's PoolDataProvider at Ethereum block 26193284 and Arbitrum block 514855406, and were unchanged when re-read at Ethereum block 26193988 and Arbitrum block 514885451. The E-Mode row comes from the Ethereum Core Pool at blocks 26193288 and 26193990; Arbitrum's "ETH correlated" category, read from its Pool at Arbitrum blocks 514855561 and 514885562, had the same values. Governance can change any of them at any time.
+
+In dollars: 10 WETH at an illustrative $2,400 on Ethereum Core supports at most 24,000 × 0.805 = $19,320 of USDC debt. Borrowing all of it gives HF = 19,920 ÷ 19,320 = 1.031 and a liquidation price of 19,320 ÷ (10 × 0.83) = $2,327.71, only 3.0% below the start, and at 14 Oct 2026 rates interest then pushes the health factor lower even if ETH holds. With several collateral assets, HF at the limit is the weighted liquidation threshold divided by the weighted LTV, usually only a few percent above 1.
+
+The "borrow limit used" meters in apps show debt ÷ (collateral × LTV), which is not the health factor. A WETH position on Ethereum Core at 100% of its borrow limit still has an HF of about 1.031, not 1.00.
+
+<Callout tone="info">
+  Aave V4 gives each collateral one collateral factor instead of a separate LTV and liquidation threshold, so the LT ÷
+  LTV gap in this table is a V3 rule. Tokenping monitors Aave V3 positions only, on one market per network: on Ethereum
+  that is the Core market, not Prime, EtherFi or Horizon.
+</Callout>
+
+## Sources
+
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (no universally safe health factor; competitive liquidations), fetched 14 Oct 2026
+- [GenericLogic.sol, aave-v3-origin](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) (health factor formula), fetched 14 Oct 2026
+- [ValidationLogic.sol, aave-v3-origin](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol) (borrows capped by LTV; liquidation below HF 1.00), fetched 14 Oct 2026
+- [LiquidationLogic.sol, aave-v3-origin](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol) (partial or full repayment of the debt; collateral seized with a liquidation bonus), fetched 14 Oct 2026
+- [Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) (LTV and liquidation threshold at blocks 26193284 and 26193988; rates at block 26193378), fetched 14 Oct 2026
+- [Ethereum Core Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2) ("ETH correlated" E-Mode category at blocks 26193288 and 26193990), fetched 14 Oct 2026
+- [Ethereum Core AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) (ETH price $2,414.78 at block 26193376) and its [USDC price adapter](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B) (price cap $1.04 at block 26193376), fetched 14 Oct 2026
+- [PriceCapAdapterStable, aave-dao/aave-price-feeds](https://github.com/aave-dao/aave-price-feeds) (how the USDC cap works: prices above the cap are ignored, prices below $1 pass through), fetched 14 Oct 2026
+- [Arbitrum PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b) (LTV and liquidation threshold at Arbitrum blocks 514855406 and 514885451), fetched 14 Oct 2026
+- [Arbitrum Pool](https://arbiscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD) ("ETH correlated" E-Mode category, id 2, at Arbitrum blocks 514855561 and 514885562), fetched 14 Oct 2026
+- [Aave V4 overview, aave/aave-v4](https://github.com/aave/aave-v4/blob/main/docs/overview.md) (Dynamic Risk Configuration: collateral factor as the collateral parameter in V4; in V3 a liquidation threshold cut affects every open position), fetched 14 Oct 2026
+- [Spoke.sol, aave/aave-v4](https://github.com/aave/aave-v4/blob/main/src/spoke/Spoke.sol) (V4 health factor weighted by collateral factors), fetched 14 Oct 2026
+- [Gauntlet: Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (USDC low of around $0.88, 11 March 2023), fetched 14 Oct 2026
+- [Chaos Labs: Post-Mortem, Exchange Rate Misalignment on wstETH Core and Prime Instances](https://governance.aave.com/t/24269) (March 2026 CAPO incident), fetched 14 Oct 2026
+- [Polygon forum: Liquidation on polygon AAVE, JSON ERROR](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067) (May 2021), fetched 14 Oct 2026
+- [Aave forum: Repeatedly Failed Repayment Attempts Leading to Liquidation](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379) (December 2024), fetched 14 Oct 2026
+
+_Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation._

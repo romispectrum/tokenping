@@ -1,0 +1,172 @@
+export const meta = {
+  slug: "how-aave-liquidation-works",
+  title: "What Happens When Your Aave Position Is Liquidated",
+  description: "How Aave V3 liquidations work today: when they trigger, how much debt can be repaid (50% or 100%), the bonus you pay, and a worked example.",
+  h1: "What happens when your Aave position is liquidated?",
+  publishedAt: "2026-10-14",
+  primaryQuestion: "What happens when you get liquidated on Aave?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+When your Aave V3 health factor falls below 1, any other address can repay part or all of your debt and take collateral worth that amount plus a liquidation bonus, for example 5% on WETH in the Ethereum Core market. One liquidation can repay up to 50% of your debt while your health factor is above 0.95 and both your collateral in the seized asset and your debt in the repaid asset are worth at least $2,000; otherwise the whole debt in that asset can go at once. You keep the tokens you borrowed and whatever collateral and debt remain, so the bonus is what the liquidation costs you.
+</ShortAnswer>
+
+<ScopeNote />
+
+## When can an Aave position be liquidated?
+
+An Aave V3 position can be liquidated as soon as its health factor is below 1.00. The health factor divides your collateral value, weighted by each asset's liquidation threshold, by your debt value, so below 1.00 the weighted collateral no longer covers the debt (formula and example: [what the Aave health factor is](/blog/aave-health-factor)).
+
+The Aave V3.7 contracts check five things before a liquidation goes through (`validateLiquidationCall` in `ValidationLogic.sol`):
+
+1. The borrower's health factor is below 1.00.
+2. The collateral asset being seized and the debt asset being repaid are both active and **not paused**.
+3. Any liquidation grace period on either asset has ended. When Aave's emergency guardian or governance unpauses an asset, it can set a grace period of up to 4 hours.
+4. The borrower has that collateral enabled as collateral and owes the chosen debt asset.
+5. The caller is not the borrower: you cannot liquidate your own position.
+
+A frozen asset can still be liquidated, because the check looks at "paused", not "frozen". Any other address can call the Pool's `liquidationCall` function.
+
+The protocol does not warn you before a liquidation, and Aave's own app at app.aave.com does not send alerts. With one volatile collateral and stablecoin debt, you can [calculate your Aave liquidation price](/blog/aave-liquidation-price): the collateral price at which the health factor reaches 1.
+
+## How much of my debt can be liquidated at once?
+
+On Aave V3.7, the close factor (the share of your debt one liquidation may repay) is 50% of your total debt only when three conditions all hold: your health factor is above 0.95, your collateral in the asset being seized is worth at least $2,000, and your debt in the asset being repaid is worth at least $2,000. In every other case a liquidator can repay up to 100% of your debt in the chosen asset in a single transaction.
+
+| Situation at the moment of liquidation | Most that one liquidation can repay |
+|---|---|
+| Health factor above 0.95, and the chosen collateral and the chosen debt are each worth $2,000 or more | 50% of your total debt across all assets (in USD), never more than your debt in the chosen asset |
+| Health factor at or below 0.95 | 100% of your debt in the chosen asset |
+| The chosen collateral or the chosen debt is worth less than $2,000 | 100% of your debt in the chosen asset |
+
+These limits are constants in Aave's `LiquidationLogic.sol` (aave-v3-origin, read 14 Oct 2026). Since v3.3 the 50% applies to the whole position rather than to each debt asset. Aave's v3.3 notes give the example of $3,000 each of GHO, USDC and DAI debt, $9,000 in total: all $3,000 of any one of them can be repaid in one call, because 50% of the total is $4,500.
+
+A second rule prevents dust. A partial liquidation must leave at least $1,000 of debt in the repaid asset and at least $1,000 of collateral in the seized asset. Otherwise the liquidator has to take all of that debt or all of that collateral, or the transaction reverts.
+
+A liquidation takes only collateral worth the repaid debt plus the bonus, not all of your collateral. The liquidator repays the debt with their own funds, so the tokens you borrowed stay yours; as long as the collateral covers it, the bonus is what you lose.
+
+Older guides describe a flat 50% close factor, and aave.com's own Pool contract reference still says "close factor is 0.5" (fetched 14 Oct 2026). Both are out of date: a flat 50% was Aave V2's rule, and the V3.7 code these markets run uses the 50%-or-100% rule in the table.
+
+## What is the liquidation bonus, and who pays it?
+
+The liquidation bonus, often called the liquidation penalty, is the extra collateral a liquidator receives on top of the debt they repay, and the borrower pays it. At a 5% bonus, clearing 1,000 USDC of your debt costs you 1,050 USDC worth of collateral. Aave's treasury keeps part of the bonus as the liquidation protocol fee, so the liquidator gets a little less than you lose.
+
+The bonus and fee that apply belong to the collateral being seized, not to the debt. Aave V3 values read on-chain on 14 Oct 2026 (Ethereum block 26193284, Arbitrum block 514855406):
+
+| Market | Collateral seized | Liquidation bonus | Protocol fee (share of the bonus) | Collateral you lose per $1,000 repaid | Liquidator receives |
+|---|---|---|---|---|---|
+| Ethereum Core | WETH | 5% | 10% | $1,050 | $1,045 |
+| Ethereum Core | WBTC | 5% | 10% | $1,050 | $1,045 |
+| Ethereum Core | USDC | 4.5% | 20% | $1,045 | $1,036 |
+| Arbitrum | WETH | 5% | 10% | $1,050 | $1,045 |
+| Arbitrum | WBTC | 7% | 10% | $1,070 | $1,063 |
+| Arbitrum | USDC (native) | 5% | 10% | $1,050 | $1,045 |
+
+In E-Mode, if the seized asset is in your category's collateral set, the category's bonus replaces the asset's own: 1% for "ETH correlated" on Ethereum Core (read at Ethereum block 26193288, 14 Oct 2026), so each liquidation costs less. Governance can change any of these parameters, and Aave's risk stewards can adjust liquidation bonuses within set limits, so check current values in the Aave app.
+
+## Which collateral does the liquidator take?
+
+The liquidator chooses. Every Aave V3 liquidation names one collateral asset to seize and one debt asset to repay, and the liquidator picks the pair, so you have no say in which of your assets goes first. Only assets you have enabled as collateral can be seized; a supplied asset with "used as collateral" switched off cannot be taken, but it also adds nothing to your health factor.
+
+If the chosen collateral cannot cover the repayment plus the bonus, you lose all of that asset (the liquidator gets it minus the protocol fee) and less debt is repaid. Because each liquidation handles one pair, a position with several assets can be liquidated in several transactions, and while the health factor stays below 1 further liquidations can follow.
+
+## Worked example: ETH falls to $1,420, then to $1,330
+
+In this example, a liquidation at an ETH price of $1,420 repays 6,000 USDC and costs the borrower $300 of WETH; if nobody liquidates until ETH is at $1,330, all 12,000 USDC can be repaid at once and the cost doubles to $600.
+
+The position: 10 WETH collateral and 12,000 USDC debt on Aave V3 Ethereum Core. WETH has a liquidation threshold of 83%, a 5% bonus and a 10% protocol fee (read on-chain at block 26193284, 14 Oct 2026). ETH prices are illustrative, USDC is taken as $1.00 and interest is ignored.
+
+At $2,400 the health factor is 24,000 × 0.83 ÷ 12,000 = 1.66. It reaches 1 at an ETH price of 12,000 ÷ (10 × 0.83) = $1,445.78, and 0.95 at $1,373.49.
+
+| ETH price | Health factor | Most one liquidation can repay |
+|---|---|---|
+| Above about $1,445.78 | 1.00 or higher | Nothing; the position cannot be liquidated |
+| About $1,373.50 to $1,445.78 | Between 0.95 and 1.00 | 50%: 6,000 USDC |
+| About $1,260 to $1,373.49 | About 0.87 to 0.95 | 100%: 12,000 USDC |
+| Below about $1,260 | Below about 0.87 | Less than 12,000 USDC: all 10 WETH are seized and the rest becomes [bad debt](#can-a-liquidation-leave-bad-debt) |
+
+### Step 1: ETH at $1,420, health factor 0.982
+
+At $1,420 the 10 WETH are worth $14,200, so the health factor is 14,200 × 0.83 ÷ 12,000 = 0.982. That is above 0.95, and your WETH collateral and your USDC debt are each worth more than $2,000, so a liquidator can repay at most 6,000 USDC.
+
+- The liquidator repays 6,000 USDC of your debt.
+- Your position loses 6,000 × 1.05 = $6,300 of WETH (4.4366 WETH).
+- The protocol fee is 10% of the $300 bonus: $30 (0.0211 WETH) goes to the Aave treasury and the liquidator receives $6,270 (4.4155 WETH).
+- You are left with 5.5634 WETH ($7,900) and 6,000 USDC of debt: a health factor of 7,900 × 0.83 ÷ 6,000 = 1.093.
+
+Your net position (collateral minus debt) falls from $2,200 to $1,900. The $300 difference is the bonus.
+
+### Step 2: ETH at $1,330, health factor 1.024
+
+The remaining 5.5634 WETH are worth $7,399 at $1,330, a health factor of 7,399 × 0.83 ÷ 6,000 = 1.024, so the position cannot be liquidated again at this price. Its new liquidation price is about $1,299, from 6,000 ÷ (5.5634 × 0.83). Halving the debt pushed the liquidation price down; the $300 bonus was the cost.
+
+### What if nobody liquidates until ETH is at $1,330?
+
+If the first liquidation only happens with ETH already at $1,330, the original position has a health factor of 13,300 × 0.83 ÷ 12,000 = 0.920. That is at or below 0.95, so a liquidator can repay all 12,000 USDC at once. Your position loses 12,000 × 1.05 = $12,600 of WETH (9.4737 WETH), of which $60 is the protocol fee and $12,540 goes to the liquidator. You keep 0.5263 WETH ($700) and owe nothing; the dust rule does not apply because the debt was cleared completely.
+
+The net position falls from $1,300 to $700. The $600 loss is twice Step 1's, because twice as much debt was repaid at the same 5% bonus.
+
+## Can a liquidation leave bad debt?
+
+Yes. Bad debt arises when a position's collateral is worth less than its debt plus the liquidation bonus, so taking every unit of collateral still does not repay everything. Since Aave V3.3, when a liquidation uses up all of a borrower's collateral and debt remains, the contract burns the leftover debt and records it as a "deficit" on that asset. The borrower ends with no collateral and no debt, and the loss sits with the protocol.
+
+Example with Ethereum Core WETH parameters: $10,000 of WETH as the only collateral against 9,800 USDC of debt is a health factor of 0.847. Clearing all 9,800 USDC at a 5% bonus would need $10,290 of WETH, so all $10,000 of WETH is seized (about $47.62 of it as the protocol fee) and about 9,524 USDC is repaid (10,000 ÷ 1.05). The remaining 276 USDC or so becomes a deficit.
+
+Umbrella, Aave's staking backstop, can burn stakers' aTokens in the affected asset to cover such deficits; its activation started on Ethereum (Aave docs, fetched 14 Oct 2026). It protects the protocol, not the borrower, whose collateral is already gone.
+
+This has happened on Aave V3. After USDC traded at about $0.88 on 11 March 2023, Gauntlet's post-mortem recorded about $280k of bad debt on V3 Avalanche E-Mode and about $20k on V3 Arbitrum, and noted that once collateral is worth less than debt times one plus the bonus, each partial liquidation pushes an account deeper underwater. That was before v3.3 added the deficit mechanism.
+
+## Do liquidations stop when a market is frozen or an L2 sequencer goes down?
+
+No to both. On Aave V3.7, a frozen asset can still be liquidated, and liquidations on Arbitrum, Optimism and Base no longer depend on whether the L2 sequencer is up. What does block liquidations is a pause.
+
+- **Frozen:** freezing blocks new positions in an asset, but the liquidation check ignores it. In the March 2023 USDC depeg, stablecoins on Aave V3 Avalanche were frozen and liquidations continued. Bridged USDC.e on Arbitrum was frozen with an LTV of 0 on 14 Oct 2026 (Arbitrum block 514855406), yet it still counts toward the health factor at its 78% liquidation threshold and can be seized.
+- **L2 sequencer:** before v3.7, a sentinel contract on L2 markets could block liquidations and borrowing while the sequencer was down and for a grace period after it came back. Aave V3.7, which the Arbitrum, Optimism and Base V3 markets all run as of 14 Oct 2026, removed the sentinel. An outage still holds up everyone's transactions, borrowers' and liquidators' alike, but a position that fell below 1 during it can now be liquidated as soon as the sequencer is back.
+- **Paused:** a paused collateral or debt asset blocks every liquidation involving it. On unpausing, Aave's emergency guardian or governance can set a grace period of up to 4 hours in which liquidations stay blocked so borrowers can repay or add collateral; borrowing is allowed during that window.
+
+## How are liquidations different on Aave V4?
+
+Aave V4, live on Ethereum since 30 March 2026 and since then on Avalanche, Arc and Base, replaces the close factor with a target health factor and pays a bonus that grows as the health factor falls. V3 keeps running alongside it with its own rules.
+
+- **Target health factor instead of 50% or 100%.** A V4 liquidator can repay only as much debt as it takes to bring the position back to its Spoke's target health factor, 1.24 on the Ethereum Main Spoke (read on-chain at Ethereum block 26193995, 14 Oct 2026). The exception is when that would leave a very small remainder; then the whole debt in that reserve can be cleared.
+- **A rising bonus.** Aave's docs call it a Dutch auction. On the Ethereum Main Spoke the bonus starts at 90% of the asset's maximum just below a health factor of 1 and reaches the full maximum at 0.90 or lower. For WETH, with a 5.55% maximum (Aave V4 API, 14 Oct 2026), that is about 5.0% just below 1 and 5.55% at 0.90. A 10% fee comes out of the bonus, as in V3.
+
+Tokenping monitors Aave V3 positions only, not V4.
+
+## What can you do before your health factor reaches 1?
+
+Before the health factor reaches 1 you can repay debt or add collateral; both raise it right away and neither costs a bonus. Once it is below 1, a liquidator can act before you do, and even a partial liquidation costs you the bonus on the seized collateral: $300 for 6,000 USDC repaid at a 5% bonus.
+
+Leaving it to the last moment is risky because transactions can fail or stall. In May 2021 a Polygon forum user tried to repay at a health factor of 1.01, kept getting errors, and was liquidated before the repayment went through. In December 2024 an Aave forum user described more than an hour of repay attempts that kept hanging before the position was liquidated.
+
+The options are covered in [how to raise your Aave health factor](/blog/avoid-aave-liquidation), and the reasons a health factor falls while you do nothing in [why your Aave health factor drops on its own](/blog/why-aave-health-factor-dropped).
+
+Tokenping checks your Aave V3 health factor every 5 minutes on seven networks and messages you on Signal or email when it is below a threshold you choose (1.1 to 10), repeating on every check until it recovers. Liquidation costs at least the bonus on the seized collateral. An alert set above 1.0 can give you time to repay or add collateral, but a fast price move can still take the health factor below 1 between two checks, and an alert can't act for you. You can [check your Aave V3 health factor (free)](/aave) or read [how to set up a health factor alert](/blog/aave-health-factor-alert-setup).
+
+## Sources
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), aave-dao/aave-v3-origin, branch main: close factor, dust and bad-debt rules (fetched 14 Oct 2026)
+- [Aave V3 ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): liquidation conditions (fetched 14 Oct 2026)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): bad debt, whole-position close factor and its GHO/USDC/DAI example, $2,000 threshold (fetched 14 Oct 2026)
+- [Aave v3.1 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): liquidation grace period of up to 4 hours (fetched 14 Oct 2026)
+- [Aave V3 PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol): pausing and unpausing with a grace period is limited to the emergency admin or pool admin, `MAX_GRACE_PERIOD = 4 hours` (fetched 14 Oct 2026)
+- [Aave governance documentation](https://aave.com/docs/ecosystem/governance): the Protocol Emergency Guardian holds the emergency admin role (fetched 14 Oct 2026)
+- [Aave V3 Risk Stewards README](https://github.com/aave-dao/aave-v3-risk-stewards): parameters the stewards may change, within set limits (fetched 14 Oct 2026)
+- [Aave v3.7 PriceOracleSentinel removal](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/sentinel-removal.md) (fetched 14 Oct 2026)
+- [Aave V3 Pool contract reference](https://aave.com/docs/aave-v3/smart-contracts/pool), which still states the pre-v3.3 close factor (fetched 14 Oct 2026)
+- [Aave Umbrella documentation](https://aave.com/docs/aave-v3/umbrella) (fetched 14 Oct 2026)
+- [Aave V3 PoolDataProvider on Ethereum](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): reserve configuration and liquidation protocol fee for WETH, WBTC and USDC at block 26193284, re-read unchanged at block 26193992 (fetched 14 Oct 2026)
+- [Aave V3 PoolDataProvider on Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): the same reads for WETH, WBTC, native USDC and USDC.e at block 514855406 (fetched 14 Oct 2026)
+- [Aave V3 Ethereum Core Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): E-Mode category 1 "ETH correlated" at block 26193288 (fetched 14 Oct 2026)
+- [Aave V4 liquidations documentation](https://aave.com/docs/aave-v4/positions/liquidations) (fetched 14 Oct 2026)
+- [Aave V4 overview](https://github.com/aave/aave-v4/blob/main/docs/overview.md) and [V4 LiquidationLogic.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/libraries/LiquidationLogic.sol), aave/aave-v4 main (fetched 14 Oct 2026)
+- [Aave V4 Ethereum Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485): target health factor and bonus settings at block 26193995 (fetched 14 Oct 2026)
+- [Aave V4 public GraphQL API](https://api.v4.aave.com/graphql), `reserves` query: WETH maximum liquidation bonus and liquidation fee on the Ethereum Main Spoke (fetched 14 Oct 2026)
+- [Aave docs changelog](https://aave.com/docs/resources/changelog): V4 launch dates (fetched 14 Oct 2026)
+- [Gauntlet, "Aave Resilient Through USDC Volatility"](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), posted 17 Mar 2023 (fetched 14 Oct 2026)
+- [Polygon forum, "Liquidation on polygon AAVE -JSON ERROR"](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067), posted 18 May 2021 (fetched 14 Oct 2026)
+- [Aave forum, "Repeatedly Failed Repayment Attempts Leading to Liquidation"](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379), posted 23 Dec 2024 (fetched 14 Oct 2026)
+- [Aave interface pull request #2084](https://github.com/aave/interface/pull/2084), which removed the app's only alert integration in May 2024 (fetched 14 Oct 2026)
+
+*Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation.*

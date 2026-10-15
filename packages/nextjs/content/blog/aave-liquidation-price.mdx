@@ -1,0 +1,182 @@
+export const meta = {
+  slug: "aave-liquidation-price",
+  title: "How to Calculate Your Aave Liquidation Price",
+  description:
+    "The Aave V3 liquidation price formula, with worked examples for one collateral, two collaterals and volatile debt, plus a calculator.",
+  h1: "How to calculate your Aave liquidation price",
+  publishedAt: "2026-10-14",
+  primaryQuestion: "At what price will my Aave position be liquidated?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Your Aave liquidation price is the oracle price of one asset at which your health factor would fall to 1.00, with
+  every other price unchanged; past it (below for collateral, above for a borrowed asset), the position can be
+  liquidated. With one volatile collateral and stablecoin debt it equals debt ÷ (collateral amount × liquidation
+  threshold), or the current price ÷ your health factor. For example, 10 WETH backing 12,000 USDC on Aave V3 Ethereum
+  Core (WETH liquidation threshold 83% on 14 Oct 2026) can be liquidated once ETH falls below $1,445.78, counting USDC
+  at $1.00.
+</ShortAnswer>
+
+<ScopeNote />
+
+## What is a liquidation price on Aave?
+
+A liquidation price on Aave is the price of one asset in your position at which your health factor would reach exactly 1.00, with every other price unchanged. Aave V3 allows liquidation once the health factor is below 1.00. A liquidator can then repay part or all of your debt and take collateral worth that amount plus a bonus (5% for WETH collateral on Ethereum Core, read on-chain on 14 Oct 2026). The full process is in [what happens in an Aave liquidation](/blog/how-aave-liquidation-works).
+
+Keep three things in mind when you use the number:
+
+- **It is derived.** The Aave V3 Pool contract reports a health factor through `getUserAccountData`, not a liquidation price. You get the price by solving the health factor formula for one asset; [what the Aave health factor is](/blog/aave-health-factor) explains that formula.
+- **It is an oracle price.** Aave values positions with its own oracle, built on Chainlink feeds and CAPO adapters, and the Aave app shows that price as "Oracle price" on each asset's page. The last trade on an exchange can differ.
+- **It holds everything else still.** With two collateral assets or volatile debt, many combinations of prices reach 1.00, so one liquidation price only tells you how far a single asset can move on its own.
+
+## What is the formula for an Aave liquidation price?
+
+For an Aave V3 position with one volatile collateral asset and stablecoin debt, the liquidation price is debt ÷ (collateral amount × liquidation threshold), where the liquidation threshold (LT) is the share of the collateral's value that counts toward the health factor.
+
+**Liquidation price = debt ÷ (collateral amount × liquidation threshold)**
+
+This is the health factor solved for price. Aave V3 computes HF = Σ(collateral value × liquidation threshold) ÷ total debt value, in USD. With one collateral asset, HF = amount × price × LT ÷ debt. Set HF to 1 and solve for the price.
+
+Because the health factor already contains the threshold, there is a shortcut: **liquidation price = current price ÷ health factor**. The fall needed to reach it is 1 − 1 ÷ HF.
+
+Other position shapes use a variant of the same formula:
+
+| Position                                  | Liquidation price                                                 | Shortcut from your health factor                                |
+| ----------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------- |
+| One volatile collateral, stablecoin debt  | debt ÷ (amount × LT)                                              | current price ÷ HF                                              |
+| Two volatile collaterals, stablecoin debt | (debt − other collateral's value × its LT) ÷ (amount × LT)        | none for one price; both falling together: a fall of 1 − 1 ÷ HF |
+| Stablecoin collateral, volatile debt      | Σ(collateral value × LT) ÷ amount borrowed, a price on the upside | current price × HF                                              |
+| wstETH collateral, WETH debt, in E-Mode   | a wstETH/ETH price ratio: WETH debt ÷ (wstETH amount × E-Mode LT) | current ratio ÷ HF                                              |
+
+### Worked example: 10 WETH and 12,000 USDC on Ethereum Core
+
+Supply 10 WETH and borrow 12,000 USDC on Aave V3 Ethereum Core. WETH's liquidation threshold there was 83% and its LTV 80.5% (on-chain read at Ethereum block 26193284, 14 Oct 2026). This example uses ETH at $2,400 for round numbers; Aave's oracle read $2,414.78 at block 26193376 the same day. USDC counts as $1.00.
+
+| Step              | Calculation            | Result    |
+| ----------------- | ---------------------- | --------- |
+| Collateral value  | 10 × $2,400            | $24,000   |
+| Health factor     | 24,000 × 0.83 ÷ 12,000 | 1.66      |
+| Liquidation price | 12,000 ÷ (10 × 0.83)   | $1,445.78 |
+| Shortcut check    | 2,400 ÷ 1.66           | $1,445.78 |
+| Fall needed       | 1 − 1 ÷ 1.66           | 39.8%     |
+
+The borrow limit is not a safety margin. At 80.5% LTV the same 10 WETH supports up to $19,320 of debt, which gives a health factor of 1.031 and a liquidation price of $2,327.71, only 3.0% below $2,400. [How much buffer a health factor gives you](/blog/safe-aave-health-factor) covers that gap for each asset.
+
+### Which liquidation threshold should you use?
+
+Use the liquidation threshold of the Aave market your position is in. The Aave app shows it as "Liquidation threshold" under "Collateral usage" on each asset's page. The same token can have different thresholds in different markets, and governance can change them. In E-Mode, the category's threshold replaces the asset's own only for assets in the category's collateral set; any other collateral keeps its own threshold.
+
+| Aave V3 market                         | Asset                                         | LTV           | Liquidation threshold |
+| -------------------------------------- | --------------------------------------------- | ------------- | --------------------- |
+| Ethereum Core                          | WETH                                          | 80.5%         | 83%                   |
+| Ethereum Core                          | WBTC                                          | 73%           | 78%                   |
+| Ethereum Core                          | USDC                                          | 75%           | 78%                   |
+| Ethereum Core, E-Mode "ETH correlated" | WETH, wstETH, cbETH, rETH, weETH, osETH, ETHx | 93% (ETHx 0%) | 95%                   |
+| Arbitrum                               | WETH                                          | 80%           | 84%                   |
+| Arbitrum                               | WBTC                                          | 73%           | 78%                   |
+| Arbitrum                               | USDC (native)                                 | 75%           | 78%                   |
+
+Read on-chain on 14 Oct 2026 at Ethereum block 26193284 (E-Mode at block 26193288) and Arbitrum block 514855406. A re-read just after midnight UTC (Ethereum block 26194239, Arbitrum block 514896811) returned the same values and gave ETHx's 0% E-Mode LTV.
+
+### Is the formula different on Aave V4?
+
+Aave V4, live on Ethereum, Avalanche, Arc and Base, uses the same shape with two differences: a single collateral factor for each asset in each Spoke replaces the separate LTV and liquidation threshold, and the health factor is computed per Spoke. A V4 position becomes eligible for liquidation below a health factor of 1.0, so its liquidation price is debt ÷ (collateral amount × collateral factor). WETH's collateral factor on the Ethereum Main Spoke was 83% on 14 Oct 2026 (Aave V4 API), so 10 WETH against 12,000 USDC there would also liquidate below $1,445.78. Tokenping monitors Aave V3 positions only.
+
+## How do you calculate an Aave liquidation price with two collateral assets?
+
+With two collateral assets, the liquidation price of one asset assumes the other keeps its current price: subtract the other asset's weighted value from your debt, then divide by the first asset's amount times its liquidation threshold.
+
+**Liquidation price of asset A = (debt − value of B × LT of B) ÷ (amount of A × LT of A)**
+
+Example on Aave V3 Ethereum Core: 10 WETH at $2,400 (LT 83%) plus 0.2 WBTC at an illustrative $81,500 (LT 78%; the oracle read $81,528.44 on 14 Oct 2026), against 20,000 USDC of debt. The weighted collateral is 24,000 × 0.83 + 16,300 × 0.78 = 19,920 + 12,714 = 32,634, so the health factor is 32,634 ÷ 20,000 = 1.632.
+
+| Scenario                         | Liquidation price                                   | Fall needed           |
+| -------------------------------- | --------------------------------------------------- | --------------------- |
+| ETH falls, WBTC stays at $81,500 | (20,000 − 12,714) ÷ (10 × 0.83) = $877.83 per ETH   | 63.4%                 |
+| WBTC falls, ETH stays at $2,400  | (20,000 − 19,920) ÷ (0.2 × 0.78) = $512.82 per WBTC | 99.4%                 |
+| Both fall by the same percentage | ETH at $1,470.86 and WBTC at $49,948, together      | 38.7% (1 − 1 ÷ 1.632) |
+
+The first two rows look comfortable because each assumes the other asset holds its value. Here the WETH alone almost covers the debt (19,920 of weighted value against 20,000), so WBTC would have to fall 99.4% by itself. For collateral that tends to move together, the third row, a 38.7% fall in both, is the realistic test.
+
+## What if you borrowed a volatile asset instead of a stablecoin?
+
+If you borrowed a volatile asset such as WETH, your Aave position has a liquidation price on the upside: the price of the borrowed asset at which your health factor reaches 1.00. As that price rises, the debt is worth more and the health factor falls.
+
+**Liquidation price of the borrowed asset = Σ(collateral value × LT) ÷ amount borrowed**, or as a shortcut, current price × health factor.
+
+Example on Aave V3 Ethereum Core: supply 10,000 USDC (LT 78%) and borrow 2.5 WETH, worth $6,000 with ETH at $2,400. The health factor is 10,000 × 0.78 ÷ 6,000 = 1.30. The position can be liquidated once ETH rises above 7,800 ÷ 2.5 = $3,120 (also 2,400 × 1.30), a 30% rise.
+
+The stablecoin side can move too. Aave's USDC price on Ethereum is capped at $1.04, but prices below $1 pass straight through (cap read on-chain at Ethereum block 26194239). USDC has lost its peg before: on 11 March 2023 it fell to a low of around 88 cents, as Gauntlet's post-mortem on the Aave forum records. At $0.88 the same position would have a health factor of 8,800 × 0.78 ÷ 6,000 = 1.144, and the ETH liquidation price would drop from $3,120 to $2,745.60.
+
+When collateral and debt are both volatile, for example WBTC collateral against WETH debt, only the ratio between the two prices matters: the health factor reaches 1.00 when the WBTC/ETH ratio falls to the ETH debt ÷ (WBTC amount × WBTC's LT).
+
+## How does E-Mode change your liquidation price?
+
+E-Mode raises the liquidation threshold for correlated assets. When the collateral and the debt both track the same underlying price, as wstETH and WETH both track ETH, the liquidation price becomes a price ratio (wstETH/ETH) rather than a dollar price. On Aave V3 Ethereum Core, the "ETH correlated" E-Mode category had LTV 93%, a liquidation threshold of 95% and a 1% liquidation bonus on 14 Oct 2026. Its collateral set is WETH, wstETH, cbETH, rETH, weETH, osETH and ETHx, and WETH is the only asset it lets you borrow. Collateral outside that set keeps its normal threshold.
+
+With wstETH collateral and WETH debt, both sides are priced off ETH, so the dollar price of ETH mostly cancels out. What decides liquidation is the wstETH/ETH rate that Aave's oracle uses:
+
+- Supply wstETH worth 100 ETH at the oracle's rate and borrow 90 WETH. The health factor is 100 × 0.95 ÷ 90 = 1.056. If ETH's dollar price halves, both sides halve and the health factor stays at 1.056. If the oracle's wstETH/ETH rate falls 5.3% (1 − 90 ÷ 95), the position reaches 1.00.
+- At the category's maximum borrow, 93 WETH against the same collateral, the health factor starts at 95 ÷ 93 = 1.0215, and a 2.1% fall in the rate is enough.
+
+A move of that size has happened. Aave prices wstETH through a CAPO (Correlated Assets Price Oracle) adapter, which caps the exchange rate it reports. In March 2026 a misconfigured cap on the Ethereum Core and Prime markets cut the rate Aave used by about 2.85%. Chaos Labs' post-mortem (10 Mar 2026) counts roughly 10,938 wstETH of E-Mode liquidations across 34 accounts, affecting positions with a health factor below about 1.0288. The move came from the oracle's configuration, not from the market.
+
+## Why does your liquidation price move over time?
+
+Your Aave liquidation price moves even when you do nothing, because its inputs change: interest adds to your debt, supply interest adds a little to your collateral, and governance can change liquidation thresholds. Your own transactions move it too: borrowing raises it, while repaying or adding collateral lowers it.
+
+- **Interest.** Take 10 WETH and 12,000 USDC of debt on Aave V3 Ethereum Core with ETH at $2,400. On 14 Oct 2026 (block 26193378) USDC's variable borrow rate was 4.496% APR and WETH's supply rate 1.309% APR. Held constant for a year, those rates would raise the liquidation price from $1,445.78 to about $1,490 with ETH unchanged. Rates are variable: later that evening USDC's borrow rate hit 14.1% for less than an hour (block 26194180), as nearly all supplied USDC was lent out.
+- **Threshold cuts.** In Aave V3 a lower liquidation threshold applies to every open position at once, and the liquidation price scales by old LT ÷ new LT. A hypothetical cut of WETH from 83% to 80% would move the same position's liquidation price from $1,445.78 to $1,500.00. Cuts come through governance proposals or through Risk Stewards, who can adjust thresholds within configured limits.
+- **LTV changes don't count.** Lowering an asset's LTV, even to 0, reduces or removes the borrowing power it gives, but leaves the health factor and the liquidation price unchanged.
+- **Aave V4 differs.** Collateral factor changes normally apply to new positions; existing ones keep their old settings until the user borrows, withdraws or changes collateral settings, or until the Governor updates them. V4 also adds a User Risk Premium to the borrow rate for riskier collateral, so debt, and the liquidation price with it, can grow faster.
+
+## How close to your liquidation price is too close?
+
+No distance to the liquidation price is safe for everyone. For one volatile collateral with stablecoin debt, the distance is 1 − 1 ÷ HF: a health factor of 1.25 leaves room for a 20% fall, 1.5 leaves 33.3% and 2.0 leaves 50%. How much room you need depends on the collateral's volatility, how fast you can repay or add collateral, and how congested the network is at that moment. [How much buffer a health factor gives you](/blog/safe-aave-health-factor) has the full table.
+
+### How do you turn a liquidation price into a health factor alert threshold?
+
+Pick the price at which you would want to act and convert it into a health factor. For one volatile collateral with stablecoin debt, **HF at a given price = that price ÷ liquidation price**. For 10 WETH against 12,000 USDC (liquidation price $1,445.78), acting at ETH $1,800 means a health factor of 1,800 ÷ 1,445.78 = 1.245, so a threshold of about 1.25. With volatile debt it flips: HF = liquidation price ÷ price of the borrowed asset.
+
+A health factor threshold has two advantages over a price level. It follows your liquidation price as interest accrues and as you change the position, and it covers every collateral and debt asset at once. A fixed price alert drifts out of date as soon as the debt grows.
+
+Tokenping works this way: it alerts on health factor and has no price alerts. You set one threshold per network, from 1.1 to 10. Tokenping checks every 5 minutes and, on every check while your health factor is below the threshold, sends a message to each channel you chose (Signal, email or both). A fast move can cross 1.00 between two checks, so a threshold above the level where you would act buys time; it cannot stop a liquidation. The steps are in [how to set up a health factor alert](/blog/aave-health-factor-alert-setup), or you can [check your Aave V3 health factor (free)](/aave) first.
+
+## How do you work out the liquidation price of your own position?
+
+To work out your own Aave liquidation price you need each collateral amount, each collateral's liquidation threshold, your total debt and the current oracle price. The Aave app shows all four.
+
+1. Note each collateral amount, your total debt and whether your account is in E-Mode.
+2. Find each collateral's liquidation threshold on its asset page in the Aave app ("Liquidation threshold" under "Collateral usage"). In E-Mode, use the category's threshold only for collateral in the category's set; any other collateral keeps its own threshold.
+3. With one volatile collateral and stablecoin debt, divide the oracle price by your health factor. With two collaterals, the price of A is (debt − value of B × LT of B) ÷ (amount of A × LT of A). With a borrowed volatile asset, its price is Σ(collateral value × LT) ÷ amount borrowed. The calculator below handles all three.
+4. Recalculate after you borrow, repay or add collateral, and after a threshold change.
+
+Worked example on Aave V3 Arbitrum, where WETH's liquidation threshold was 84% on 14 Oct 2026: 5 WETH at $2,400 against 7,000 USDC gives a health factor of 12,000 × 0.84 ÷ 7,000 = 1.44 and a liquidation price of 2,400 ÷ 1.44 = $1,666.67, a 30.6% fall. At Ethereum Core's 83% the same position would liquidate below $1,686.75.
+
+<LiquidationCalculator />
+
+Any calculator gives today's liquidation price. Interest, threshold changes and your own transactions move it afterwards, so last month's result is worth recalculating.
+
+## Sources
+
+- [Aave V3 GenericLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): health factor formula and the E-Mode threshold applying only to the category's collateral set (fetched 14 Oct 2026)
+- [Aave V3 ValidationLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): liquidation below a health factor of 1.00, LTV checks on borrowing (fetched 14 Oct 2026)
+- [Aave V3 LiquidationLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): how much debt one liquidation can repay (fetched 14 Oct 2026)
+- [Aave V3 Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getReserveConfigurationData` at blocks 26193284 and 26194239; `getReserveData` at blocks 26193378 and 26194180 (fetched 14 Oct 2026; re-read 15 Oct 2026)
+- [Aave V3 Arbitrum PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): `getReserveConfigurationData` at Arbitrum blocks 514855406 and 514896811 (fetched 14 Oct 2026; re-read 15 Oct 2026)
+- [Aave V3 Ethereum Core Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): E-Mode category 1 "ETH correlated": collateral config and collateral, borrowable and LTV-zero bitmaps (fetched 14 Oct 2026; re-read 15 Oct 2026)
+- [AaveOracle on Ethereum](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): `getAssetPrice` at block 26193376; `getSourceOfAsset(USDC)` at block 26194239 (fetched 14 Oct 2026; re-read 15 Oct 2026)
+- [Aave USDC price adapter on Ethereum, "Capped USDC / USD"](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B): `getPriceCap` = 104000000 ($1.04) at block 26194239 (fetched 15 Oct 2026)
+- [Aave oracle documentation](https://aave.com/docs/ecosystem/oracle.md): Chainlink feeds and CAPO adapters (fetched 14 Oct 2026)
+- [Aave price feeds repository (PriceCapAdapterStable)](https://github.com/aave-dao/aave-price-feeds): how the USDC price cap works (fetched 14 Oct 2026)
+- [Gauntlet, "Aave Resilient Through USDC Volatility"](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330): USDC's low of around 88 cents on 11 March 2023 (fetched 14 Oct 2026)
+- [Chaos Labs, wstETH exchange-rate post-mortem](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): the March 2026 CAPO incident (fetched 14 Oct 2026)
+- [Aave V3 Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): how risk parameters can change between governance votes (fetched 14 Oct 2026)
+- [Aave V4 user positions documentation](https://aave.com/docs/aave-v4/positions.md): collateral factor and liquidation below a health factor of 1.0 (fetched 14 Oct 2026)
+- [Aave V4 overview (aave/aave-v4)](https://github.com/aave/aave-v4/blob/main/docs/overview.md): dynamic risk configuration and User Risk Premium (fetched 14 Oct 2026)
+- [Aave V4 API](https://api.v4.aave.com/graphql): `reserves` query, WETH collateral factor per Spoke on Ethereum (fetched 14 Oct 2026)
+- [Aave changelog](https://aave.com/docs/resources/changelog.md): V4 networks (fetched 14 Oct 2026)
+- [Aave interface source, SupplyInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/SupplyInfo.tsx) and [ReserveTopDetails.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/ReserveTopDetails.tsx): the "Liquidation threshold" and "Oracle price" labels in the Aave app (fetched 14 Oct 2026)
+
+_Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation._

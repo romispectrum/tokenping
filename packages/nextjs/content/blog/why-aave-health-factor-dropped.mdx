@@ -1,0 +1,155 @@
+export const meta = {
+  slug: "why-aave-health-factor-dropped",
+  title: "Why Did My Aave Health Factor Drop? 6 Causes",
+  description:
+    "Your Aave health factor can fall while you do nothing: price moves, interest, liquidation threshold cuts, stablecoin depegs and oracle errors, explained.",
+  h1: "Why did my Aave health factor drop when I didn't do anything?",
+  publishedAt: "2026-10-14",
+  primaryQuestion: "Why does my Aave health factor drop on its own?",
+  readingMinutes: 11,
+};
+
+<ShortAnswer>
+  Aave recalculates your health factor from oracle prices, your current balances and the current liquidation thresholds
+  every time it is read, so it moves even when you send no transactions. On Aave V3 it falls when your collateral's
+  price drops, the asset you borrowed rises, interest on your debt outgrows what your collateral earns, governance cuts
+  a liquidation threshold, a stablecoin you supplied as collateral slips below $1, or an oracle is misconfigured. Below
+  1.00, the position can be liquidated.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Figures and the block numbers they were read at: content/blog/snapshots/why-aave-health-factor-dropped.md */}
+
+## Why does the Aave health factor change on its own?
+
+The Aave health factor changes on its own because it is not stored: the protocol recomputes it from current oracle prices, balances (including accrued interest) and risk parameters every time it is read:
+
+**HF = Σ(collateral value × liquidation threshold) ÷ total debt value**
+
+Both sides are in USD at the Aave oracle price, and below 1.00 the position can be liquidated. The formula is explained in [what the Aave health factor is](/blog/aave-health-factor). On Aave V3, six things lower it without any action from you. The examples use Ethereum Core parameters read on 14 Oct 2026 and an illustrative ETH price of $2,400.
+
+| Cause                            | Lowers your health factor when                                    | How fast              | Example                                                   |
+| -------------------------------- | ----------------------------------------------------------------- | --------------------- | --------------------------------------------------------- |
+| 1. Collateral price falls        | An asset you supplied as collateral drops in price                | As fast as the market | 10 WETH against 12,000 USDC, ETH down 10%: 1.66 to 1.49   |
+| 2. Borrowed asset rises          | You borrowed a volatile asset and it goes up                      | As fast as the market | 10,000 USDC against 2.5 WETH, ETH up 10%: 1.30 to 1.18    |
+| 3. Interest                      | Your debt's borrow rate is above your collateral's supply rate    | Slow and continuous   | 10 WETH against 12,000 USDC: about 1.66 to 1.61 in a year |
+| 4. Liquidation threshold cut     | Governance or the Risk Stewards lower your collateral's threshold | All at once           | Hypothetical WETH cut from 83% to 82%: 1.66 to 1.64       |
+| 5. Stablecoin depeg              | A stablecoin you supplied as collateral falls below $1            | As fast as the market | 10,000 USDC against 2.5 WETH, USDC at $0.88: 1.30 to 1.14 |
+| 6. Oracle or exchange-rate error | The oracle values your collateral too low or your debt too high   | All at once           | March 2026: wstETH valued about 2.85% too low             |
+
+In a February 2025 Aave governance forum thread, a borrower whose position started at a health factor of 1.71 found a partial liquidation, added collateral when the health factor reached 1.01, and found a second liquidation when checking in the morning, sure that ETH had not fallen far enough to explain either. Nobody in the thread found the cause; the six causes below are where to start looking.
+
+Aave V4, live on Ethereum since 30 March 2026 and since then on Avalanche, Arc and Base, computes a health factor per Spoke, with one collateral factor per asset. Prices and interest move it the same way, but parameter changes reach existing positions differently (see [how V4 applies parameter changes, under Cause 4](#cause-4-did-governance-or-the-risk-stewards-cut-a-liquidation-threshold)).
+
+## Cause 1: Did your collateral's price fall?
+
+A fall in the price of any asset you supplied as collateral lowers your Aave health factor, because collateral is valued at the oracle price. With one volatile collateral asset and stablecoin debt, the health factor moves in proportion to the price: a 10% fall cuts it by 10%.
+
+Take 10 WETH supplied against 12,000 USDC borrowed on Aave V3 Ethereum Core, where WETH's liquidation threshold was 83% at block 26193284 (14 Oct 2026). At an illustrative $2,400 per ETH (the Aave oracle read $2,414.78 at block 26193376 that day), the health factor is 24,000 × 0.83 ÷ 12,000 = 1.66. At $2,160 it is 1.49, at $1,920 it is 1.33, and at $1,445.78, a 39.8% fall, it reaches 1.00.
+
+With several collateral assets, only the falling asset's weighted share moves. The price that counts is the Aave oracle's (on Ethereum Core, WETH uses a feed named "ETH / USD"). How far prices can fall at each health factor is in [how much buffer a health factor gives you](/blog/safe-aave-health-factor).
+
+## Cause 2: Did the price of the asset you borrowed rise?
+
+If you borrowed a volatile asset, a rise in its price lowers your Aave health factor, because debt is valued at the oracle price too.
+
+Take 10,000 USDC supplied against 2.5 WETH borrowed on Aave V3 Ethereum Core, where USDC's liquidation threshold was 78% at block 26193284 (14 Oct 2026). At an illustrative $2,400 the debt is worth $6,000 and the health factor is 10,000 × 0.78 ÷ 6,000 = 1.30. If ETH rises 10% to $2,640, it falls to 7,800 ÷ 6,600 = 1.18. At $3,120, 30% higher, it reaches 1.00.
+
+Correlated pairs such as wstETH collateral with WETH debt reduce this effect, because both sides move with ETH. The health factor then depends mainly on the wstETH-to-ETH rate the oracle reports, which swaps market risk for oracle risk (see [oracle and exchange-rate errors, Cause 6](#cause-6-did-an-oracle-or-exchange-rate-error-misprice-your-collateral)).
+
+## Cause 3: Did interest accrue on your debt faster than on your collateral?
+
+Interest lowers your Aave health factor when your debt grows faster than your collateral. Variable debt grows every second at the borrow rate, while collateral earns the usually lower supply rate. With one collateral asset, one debt asset and steady prices, the health factor drifts down when the debt's borrow rate is above the collateral's supply rate, and up when it is below.
+
+On Aave V3 Ethereum Core at block 26193378 (14 Oct 2026), USDC paid suppliers 3.800% and cost borrowers 4.496% a year; WETH paid 1.309% and cost 1.943%. These are APRs; the Aave app shows slightly higher APYs (4.60% for that USDC borrow rate). Take 10 WETH supplied (threshold 83%) against 12,000 USDC borrowed, with ETH flat at an illustrative $2,400 and rates unchanged for a year. The debt grows to about 12,550 USDC, the collateral to about 10.13 WETH, and the health factor slides from 1.66 to about 1.61. Rates are variable, so read that as scale, not a forecast.
+
+Rates can also jump. Later on 14 Oct 2026, the Ethereum Core USDC borrow rate rose to 13.67% APR in a single block (26194053, 23:32:59 UTC) as about $134M of supplied USDC left the reserve, then fell back to 4.76% about 36 minutes later (block 26194231, 00:08 UTC on 15 Oct) when it returned.
+
+The reverse position gains: 10,000 USDC supplied against 2.5 WETH borrowed earns 3.800% and pays 1.943%, so its health factor creeps from 1.30 to about 1.32 in a year. On Aave V4, a User Risk Premium adds to the borrow rate for riskier collateral, so that debt grows faster.
+
+## Cause 4: Did governance or the Risk Stewards cut a liquidation threshold?
+
+On Aave V3, cutting an asset's liquidation threshold immediately lowers the health factor of every open position that counts that asset at its normal threshold. Positions whose E-Mode category includes the asset use the category's threshold instead, and governance or the Risk Stewards can cut that one the same way. Your balances stay the same; only the share of collateral that counts shrinks.
+
+Governance changes thresholds by on-chain vote, usually after a post on the Aave governance forum. The Risk Stewards, contracts that let Aave's risk service providers adjust parameters without a full vote, can also move a threshold within set limits per update, but never to 0. Cuts also retire assets: a LlamaRisk proposal of 29 July 2026 says thresholds can be reduced gradually to remove lingering collateral.
+
+A hypothetical example, not a pending change: 10 WETH at an illustrative $2,400 against 12,000 USDC on Ethereum Core (WETH threshold 83% on 14 Oct 2026) has a health factor of 1.66. At 82% it would be 1.64; at 80%, 1.60. To check, compare the "Liquidation threshold" on the asset's page in the Aave app with recent threshold changes on the Aave governance forum.
+
+Aave V4 works differently. A collateral factor change creates a new configuration, and existing positions keep the old one until the user borrows, withdraws or changes collateral settings, unless the Governor force-updates them.
+
+## Cause 5: Did a stablecoin you supplied as collateral depeg downward?
+
+A stablecoin you supplied as collateral lowers your Aave health factor when its price falls below $1, because Aave uses the oracle price, not a fixed $1. On Aave V3 Ethereum Core, USDC is priced through an adapter named "Capped USDC / USD" with a $1.04 cap (`getPriceCap` returned 104000000, 8 decimals, at blocks 26193376 and 26193993 on 14 Oct 2026). When the market price is above the cap, the adapter reports $1.04; any lower price, including anything below $1, passes straight through.
+
+Take 10,000 USDC supplied (threshold 78%) against 2.5 WETH borrowed at an illustrative $2,400, so $6,000 of debt: a health factor of 1.30. With USDC at $0.88 it drops to 8,800 × 0.78 ÷ 6,000 = 1.14, and at about $0.77, with ETH unchanged, it reaches 1.00.
+
+The $0.88 figure is historical. On 11 March 2023, after the Silicon Valley Bank news, USDC fell to around 88 cents. Gauntlet's post-mortem records about $280,000 of bad debt on Aave V3 Avalanche E-Mode and about $20,000 on V3 Arbitrum; stablecoins on Avalanche were frozen, but the protocol was not paused, so liquidations continued.
+
+The flip side: if the stablecoin is your debt, a downward depeg lowers what you owe and raises your health factor. 10 WETH at $2,400 (threshold 83%) against 12,000 USDC goes from 1.66 to about 1.89 with USDC at $0.88. A rise above $1 lowers it, but only to about 1.60 while the cap stays at $1.04, because the oracle never values that debt above $12,480.
+
+## Cause 6: Did an oracle or exchange-rate error misprice your collateral?
+
+An oracle or exchange-rate misconfiguration can lower your Aave health factor all at once, with no market move, by valuing your collateral too low or your debt too high. Tightly levered E-Mode positions are the most exposed.
+
+The documented case is from March 2026. Aave prices wstETH with CAPO (Correlated Assets Price Oracle), which caps how fast the wstETH-to-stETH rate may rise. Chaos Labs' post-mortem of 10 March 2026 says the cap's snapshot ratio and timestamp fell out of sync, cutting the effective wstETH rate by about 2.85% on Ethereum Core and Prime. Roughly 10,938 wstETH was liquidated in E-Mode across 34 accounts with health factors below about 1.0288, with no bad debt to the protocol. The DAO approved a refund proposed on 11 March, and on 26 March 2026 the Aave Finance Committee drew 513.19 WETH from the Aave treasury to pay it (Ethereum block 24741060); individual payouts were not checked for this guide.
+
+For scale, Ethereum Core's ETH-correlated E-Mode had an LTV of 93% and a threshold of 95% on 14 Oct 2026. A position borrowed to that limit starts at 95 ÷ 93 ≈ 1.02, inside the range that error liquidated. Nothing in your own position warns you of an oracle error; distance from 1.00 is the only buffer you control.
+
+## Which changes do not lower your health factor?
+
+On Aave V3, an LTV cut (including LTV 0), a reserve freeze, a reserve pause and switching an E-Mode category to isolated do not change your health factor, because none of them changes prices, balances or liquidation thresholds. They block borrowing or other actions instead.
+
+| Change on Aave V3                    | What it blocks                                                         | Changes your health factor?                            | Can you still be liquidated?                                                                                                            |
+| ------------------------------------ | ---------------------------------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| LTV cut, including LTV 0             | New borrowing against that asset                                       | No: the health factor uses the threshold, not LTV      | Yes, below 1.00                                                                                                                         |
+| Reserve frozen                       | New supply and borrowing of that asset                                 | No                                                     | Yes, frozen reserves stay liquidatable                                                                                                  |
+| E-Mode category made isolated (V3.7) | Borrowing against collateral outside the category                      | No: that collateral gets LTV 0 and keeps its threshold | Yes, below 1.00                                                                                                                         |
+| Reserve paused                       | Supplying, withdrawing, borrowing, repaying and liquidating that asset | No                                                     | Not with that asset, as collateral or debt, while it is paused; other assets still can be. Up to 4 hours of grace can follow an unpause |
+
+A real case of the first row: after the 18 April 2026 Kelp/LayerZero rsETH bridge exploit, WETH's LTV was set to 0 on several Aave V3 instances while its threshold stayed at 83% on Ethereum Core, according to LlamaRisk's 9 May 2026 proposal to restore it. Health factors did not move because of it.
+
+## How can you find out what happened to your position?
+
+To find out what happened to an Aave position, check whether it was liquidated, then which input moved: prices, interest, thresholds or the oracle. These steps use the Aave Labs interface at app.aave.com and public governance records.
+
+1. **Check for liquidations.** Open Transaction history (app.aave.com/history) with your wallet connected and the right market selected, then filter by Liquidation. The records behind it include the time, transaction hash, collateral taken and debt repaid; developers can query them with `userTransactionHistory` in Aave's API.
+2. **Compare prices** of your collateral and debt assets with when you last checked (Causes 1, 2 and 5).
+3. **Compare your debt, in token units, with what you borrowed.** If you made no repayments and were not liquidated, the difference is accrued interest (Cause 3).
+4. **Check the liquidation threshold** on each asset's page in the Aave app, and search the governance forum for any asset whose threshold looks lower (Cause 4).
+5. **Look for incident post-mortems** on the governance forum, like the March 2026 wstETH one (Cause 6).
+
+If you were liquidated, [what happens in an Aave liquidation](/blog/how-aave-liquidation-works) explains how much can be taken at once and what it costs.
+
+## Can a health factor alert warn you before liquidation?
+
+An alert can warn you in time about a slow fall in your Aave health factor, but not about a jump that crosses 1.00 between two checks. Interest, gradual price slides and staged threshold cuts play out over hours to months, so an alert set well above 1.00 has many chances to fire. A crash, a threshold cut on a position already near the line, or an oracle error like the March 2026 wstETH one can get past 1.00 before any scheduled check reacts.
+
+Tokenping is built for the slow kind. It checks your Aave V3 health factor every 5 minutes on 7 networks and messages you on Signal or email while it is below the threshold you set (1.1 to 10). The message repeats on every check until the health factor recovers, or you lower the threshold below it or delete the alert (both need active paid access), with no "recovered" message. It covers Aave V3 only, and only the Core market on Ethereum.
+
+An alert also needs time to act on. In a 2021 Polygon forum thread, a borrower who tried to repay at a health factor of 1.01 kept hitting errors and was liquidated before the repayment went through. One option is a threshold where you would still be comfortable acting; [how much buffer a health factor gives you](/blog/safe-aave-health-factor) helps you choose it. Setup is in [how to set up a health factor alert](/blog/aave-health-factor-alert-setup), and [how to raise your Aave health factor](/blog/avoid-aave-liquidation) covers what to do when it falls. You can also [check your Aave V3 health factor (free)](/aave) first.
+
+## Sources
+
+- [Aave V3 overview](https://aave.com/docs/aave-v3/overview.md): health factor moves with oracle prices and accrued interest (fetched 14 Oct 2026)
+- [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) and [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): health factor computation, pause and freeze checks (aave-v3-origin, fetched 14 Oct 2026)
+- [Aave V3 Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): LTV, thresholds and rates at blocks 26193284, 26193378 and 26193993 (fetched 14 Oct 2026); USDC rates at blocks 26194052, 26194053, 26194230 and 26194231 (fetched 15 Oct 2026)
+- [Aave V3 Ethereum Core oracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2#readContract): WETH $2,414.78 at block 26193376 (fetched 14 Oct 2026)
+- [Capped USDC / USD adapter](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract) and its [source, PriceCapAdapterStable.sol](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol): cap 104000000 at blocks 26193376 and 26193993 (fetched 14 Oct 2026)
+- [Aave oracle documentation](https://aave.com/docs/ecosystem/oracle.md) (fetched 14 Oct 2026)
+- [Aave governance documentation](https://aave.com/docs/ecosystem/governance.md) and [Risk Stewards README](https://github.com/aave-dao/aave-v3-risk-stewards) (fetched 14 Oct 2026)
+- [ARFC: Low Adoption Asset Deprecation on Aave V3](https://governance.aave.com/t/arfc-low-adoption-asset-deprecation-on-aave-v3/25401) (LlamaRisk, 29 Jul 2026, fetched 14 Oct 2026)
+- [Aave docs changelog](https://aave.com/docs/resources/changelog.md): V4 on Ethereum from 30 Mar 2026, then Avalanche, Arc and Base (fetched 14 Oct 2026)
+- [Aave V4 documentation](https://aave.com/docs/aave-v4.md), [V4 positions](https://aave.com/docs/aave-v4/positions.md) and [V4 technical overview](https://github.com/aave/aave-v4/blob/main/docs/overview.md): per-Spoke health factor, User Risk Premium, dynamic risk configuration (fetched 14 Oct 2026)
+- [Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (Gauntlet, 17 Mar 2023, fetched 14 Oct 2026)
+- [Post-mortem: wstETH exchange-rate misalignment on Core and Prime](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269) (Chaos Labs, 10 Mar 2026, fetched 14 Oct 2026)
+- [wstETH CAPO Oracle Incident User Reimbursement](https://governance.aave.com/t/direct-to-aip-wsteth-capo-oracle-incident-user-reimbursement/24275) (TokenLogic, 11 Mar 2026, fetched 14 Oct 2026)
+- [Governance payload 413 execution](https://etherscan.io/tx/0xca0bcaa2b20b465afb332677a8425d8a10e050c4a31731feadc3a684ecb9b81e) and [Aave Finance Committee withdrawal](https://etherscan.io/tx/0x7860a20437b36af635e8be248a929c437412915b91de7c45e947475c6bb02f24): 513.19 WETH allowance from the Aave Ethereum Collector, then drawn at block 24741060 (fetched 15 Oct 2026)
+- [WETH Unfreeze and LTV Restoration Across Aave V3 Instances](https://governance.aave.com/t/direct-to-aip-weth-unfreeze-and-ltv-restoration-across-aave-v3-instances/24878) (LlamaRisk, 9 May 2026, fetched 14 Oct 2026)
+- [Aave v3.7 isolated E-Mode](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md) and [v3.1 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): isolated flag, grace period after unpause (fetched 14 Oct 2026)
+- [Aave V3 user transaction history](https://aave.com/docs/aave-v3/markets/advanced.md) and [Aave interface history filters](https://github.com/aave/interface/blob/main/src/modules/history/HistoryFilterMenu.tsx) (fetched 14 Oct 2026)
+- Aave interface reserve page, rates shown as APY: [SupplyInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/SupplyInfo.tsx) (fetched 14 Oct 2026) and [BorrowInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/BorrowInfo.tsx), "APY, variable" (fetched 15 Oct 2026)
+- [Unexpected or poorly executed settlement by the system](https://governance.aave.com/t/unexpected-or-poorly-executed-settlement-by-the-system/21120) (Aave governance forum, 17 Feb 2025, fetched 14 Oct 2026)
+- [Liquidation on polygon AAVE - JSON ERROR](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067) (Polygon forum, 18 May 2021, fetched 14 Oct 2026)
+
+_Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation._

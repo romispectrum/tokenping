@@ -1,0 +1,178 @@
+export const meta = {
+  slug: "aave-health-factor-alert-setup",
+  title: "How to Get Notified When Your Aave Health Factor Drops",
+  description:
+    "Step by step: get a Signal or email message when your Aave V3 health factor drops below a threshold you choose. What it costs and how to stop alerts.",
+  h1: "How to get an alert when your Aave health factor drops",
+  publishedAt: "2026-10-14",
+  primaryQuestion: "How do I set up a notification for when my Aave health factor drops?",
+  readingMinutes: 10,
+};
+
+<ShortAnswer>
+  Aave's own interfaces show your health factor while you have them open, but they don't message you when it falls, so
+  the warning has to come from a separate tool. With Tokenping you connect the wallet you borrow with, pay for alert
+  access on Arbitrum, set a threshold for each Aave V3 network you borrow on (seven are supported) and add a Signal
+  username or an email address. Tokenping then checks every 5 minutes and messages you on every check while your health
+  factor is below that threshold.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Does Aave send health factor alerts?
+
+No. As of 14 October 2026, Aave's own interfaces show your health factor on screen but send no email, chat message or push notification when it falls. The health factor (HF) is the value of your collateral, weighted by each asset's liquidation threshold, divided by the value of your debt; below 1.00, the position can be liquidated. The full formula is in [what the Aave health factor is](/blog/aave-health-factor).
+
+Aave's web app (app.aave.com) once linked to HAL notifications; Aave removed that integration on 30 May 2024 because the HAL service had shut down. Aave Pro, the Aave V4 app, describes health factor monitoring inside the app, and its product page mentions no notifications. Aave's help centre says regular monitoring is essential; its short tool list, labelled "Use at your own risk", has a simulator and an auto-repay service but no alert service.
+
+So staying warned means checking the app yourself or using a third-party tool. This guide sets up [Aave health factor alerts on Signal and email](/) with Tokenping; other tools are covered in [Aave liquidation alert tools compared](/blog/aave-liquidation-alert-tools).
+
+## What do you need before you start?
+
+A Tokenping health factor alert needs four things:
+
+- **An Aave V3 position with debt** on Ethereum (the Core market only), Arbitrum, Base, Optimism, Polygon, Avalanche or Gnosis. With no debt, Aave returns the largest possible value (shown as ∞) and no alert can fire. Aave V4 positions and the other Ethereum V3 markets (Prime, EtherFi and Horizon) are not covered.
+- **The wallet you borrow with.** Tokenping watches only the wallet you connect; you can't add another address.
+- **Native USDC and a little ETH on Arbitrum One, in that same wallet.** Alerts cost <AlertPrice />, paid in Circle's native USDC on Arbitrum One even when your loan is on another network. The ETH covers gas for up to two transactions.
+- **A Signal username or an email address**, or both.
+
+Setup then takes six steps:
+
+1. Connect the wallet and check your positions.
+2. Pay for alert access on Arbitrum One.
+3. Choose a network and a threshold.
+4. Choose Signal, email or both.
+5. Save the alert.
+6. Optionally, test that messages reach you.
+
+## Step 1: Connect your wallet and check your positions
+
+Open the dashboard to [check your Aave V3 health factor (free)](/aave) and connect the wallet you borrow with. Viewing positions is free and read-only: Tokenping only reads your positions on-chain and never asks for an approval or a signature on your Aave position.
+
+The **Networks** list marks each of the seven networks Active or Empty. Select the one with your loan to see its collateral, debt and health factor, and note that health factor: it helps you pick a threshold and test delivery. If the dashboard says "No active Aave positions detected on supported networks", you have probably connected a different wallet, or the loan sits in a market Tokenping doesn't read. Positions load when the page opens and when you press **Refresh**.
+
+## Step 2: Unlock alerts
+
+Saving a Tokenping alert needs paid access, which costs <AlertPrice />. The price is set in Tokenping's payment contract on Arbitrum One, and the panel shows it before you pay.
+
+1. On the selected network's panel in the [Tokenping dashboard](/aave), press **Pay for access (USDC)**. If your wallet is on another network, press **Switch network** first.
+2. Approve the USDC. The approval is for exactly the price, never an unlimited amount, and it is skipped if enough is already approved.
+3. Confirm the payment. Once it is mined, the panel shows **Access until** followed by a date.
+
+One payment unlocks alert settings on all seven networks for the wallet that paid. Nothing renews automatically: while access is active the panel shows no pay button, and once access ends it offers to pay again, which starts a new plan period. The payment contract is verified on Sourcify and has no refund function. One wallet controlled by the Tokenping team owns it and can change the price, pause payments or upgrade the contract's code.
+
+## Step 3: Choose a network and a threshold
+
+Each Tokenping alert covers one network and one threshold: the health factor below which you get messages. After paying, press **Create notification config** on the network's panel. The slider runs from 1.1 to 3.0 in steps of 0.1, and the box beside it takes any value from 1.1 to 10 with up to two decimals. The default is 1.5.
+
+There is no universally safe number. One approach: pick the collateral price at which you would act, work out the health factor at that price, and set the alert a little above it, because checks are 5 minutes apart and a repay can be slow to confirm on a busy network. [How much buffer a health factor gives you](/blog/safe-aave-health-factor) has a table of common levels.
+
+A worked example with one volatile collateral asset and stablecoin debt: WETH's liquidation threshold on the Ethereum Core market was 83% (read on-chain at block 26194005, 14 October 2026). With 10 WETH supplied, 12,000 USDC borrowed, ETH at an illustrative $2,400 (Aave's oracle read $2,415.56 at that block) and USDC at $1.00, the health factor is 10 × 2,400 × 0.83 ÷ 12,000 = 1.66. The ETH price at any health factor is that health factor × 12,000 ÷ (10 × 0.83):
+
+| Health factor                         | ETH price at that health factor | Fall from $2,400 |
+| ------------------------------------- | ------------------------------- | ---------------- |
+| 1.66 (starting point)                 | $2,400.00                       | 0%               |
+| 1.5 (possible alert threshold)        | $2,168.67                       | 9.6%             |
+| 1.3 (possible alert threshold)        | $1,879.52                       | 21.7%            |
+| 1.0 (liquidation possible below this) | $1,445.78                       | 39.8%            |
+
+With a 1.5 threshold, the first message comes once the health factor reads 1.49 or lower (it is rounded to two decimals), here when ETH is below about $2,161. ETH would then have to fall roughly another 33% before this position could be liquidated; with 1.3, that remaining cushion is about 23%. Both figures ignore interest. Interest and liquidation threshold cuts can also lower a health factor with no price move: see [why your Aave health factor drops on its own](/blog/why-aave-health-factor-dropped).
+
+## Step 4: Choose your channels
+
+Under **Notification Services**, pick Signal, email or both. Tokenping needs at least one channel, and every alert goes to each channel you select.
+
+- **Email:** type your address. If the first alert is missing, check your spam folder.
+- **Signal:** type your Signal username, with or without the @, for example `alice.42`. Signal shows it on your profile: open Settings, tap your profile and look next to the @ symbol. If you have never created a Signal username, create one in Signal first. Tokenping never asks for your phone number.
+
+Because Tokenping's Signal account isn't in your contacts, Signal may show the first alert as a message request. Accept it; if you block the sender, alerts won't reach you. Choosing both channels is a hedge, since each depends on outside services (an email provider and a self-hosted Signal relay).
+
+Tokenping stores your wallet address, the network, threshold and channels, your email address or Signal username, when the alert was created and last changed, and your answer to the optional "How did you hear about Tokenping?" question if you give one. It keeps no health factor history and no log of sent alerts.
+
+## Step 5: Save, and know what the alert looks like
+
+Press **Save**. The panel shows **Notification Settings** with an Active badge, and the network gets a bell icon in the Networks list. The first time, an optional "How did you hear about Tokenping?" question may appear; you can press **Skip**. Signal gets this text (illustrative values):
+
+> Your Aave Health Factor on Arbitrum is 1.42, which is below your threshold of 1.5. Consider adding collateral or repaying debt to avoid liquidation.
+>
+> Sent at: Oct 14, 2026, 9:05:07 PM Coordinated Universal Time
+
+The health factor is rounded to two decimals and the time is in UTC. The email carries the same message under the subject "Aave Health Factor Alert – Arbitrum", except that its last line says "Created at" instead of "Sent at".
+
+## Step 6 (optional): Check that alerts reach you
+
+Because a Tokenping alert fires whenever the health factor is below your threshold, you can test delivery without waiting for a price drop. This works for any position with debt and a health factor under 10, the highest threshold you can set.
+
+1. Note the network's current health factor, for example 1.82.
+2. Press **Edit**, set the threshold just above it (1.9 in this example) and press **Save**.
+3. Wait for the next check, which comes within 5 minutes. Each channel you picked gets one message per check.
+4. Press **Edit** again, set your real threshold back and press **Save**. The messages stop from the next check.
+
+If nothing has arrived after two or three checks (10 to 15 minutes), go through [why an alert might not work](#why-isnt-my-alert-working).
+
+## How often will you be alerted?
+
+While your health factor is below your threshold, Tokenping sends one message per selected channel on every 5-minute check. That is up to 12 messages an hour on each channel. There is no snooze, no digest and no "back to normal" message: the alerts stop once the health factor is at or above the threshold again.
+
+The check compares the health factor rounded to two decimals and fires only when it is strictly below the threshold. With a threshold of 1.5, a health factor of 1.49 triggers an alert and 1.50 does not. If a read or a message fails, Tokenping logs it, and the next check tries again if the health factor is still below the threshold.
+
+Checks are 5 minutes apart, not continuous, so a sharp fall can take a position from above your threshold to below 1.0 before any message goes out. Tokenping is in beta, relies on third parties to read positions and deliver messages, and has no uptime guarantee. Treat an alert as time to act, not as your only safeguard.
+
+## How do you change or stop alerts?
+
+Tokenping alerts stop when your health factor rises back to or above your threshold, for example after you repay or add collateral, or when you delete the alert. Changing or deleting an alert needs active access.
+
+- **Change the threshold or the channels:** press **Edit** on the network's panel, make the change and press **Save**.
+- **Stop alerts on a network:** press **Edit**, then **Delete**. There is no pause switch, and each network's alert is deleted separately.
+
+<Callout tone="warning">
+  Delete alerts you no longer want while your access is still active. After access lapses, your settings stay visible
+  but read-only ("Pay for access to edit"), deleting an alert needs another payment, and alert emails don't have an
+  unsubscribe link yet.
+</Callout>
+
+## Why isn't my alert working?
+
+When a Tokenping alert doesn't work, check six things: the connected wallet and market, the Signal username format, native USDC on Arbitrum One, that the position has debt, that every network you borrow on has an alert, and your spam folder and Signal message requests.
+
+### The dashboard shows no positions
+
+If the Tokenping dashboard shows no positions, the connected wallet is not the one you borrow with, or the loan is in a market Tokenping doesn't read: Aave V4, the Ethereum Prime, EtherFi or Horizon markets, or a network outside the seven.
+
+### Tokenping rejects your Signal username
+
+Tokenping shows an "Invalid Signal username" error, with the expected format alice.42, when the username isn't a nickname, a dot and at least two digits. An @ in front is fine. If you change your username in Signal, update the alert straight away: Signal lets someone else claim an old username soon after you drop it.
+
+### You have no USDC on Arbitrum One
+
+The Tokenping payment takes Circle's native USDC on Arbitrum One (contract `0xaf88…5831`), not bridged USDC.e, plus a little ETH for gas, in the wallet you are setting up. Move both there, for example by withdrawing from an exchange to Arbitrum One or by bridging. USDC.e you already hold has to be swapped for native USDC.
+
+### Your position has no debt
+
+With no debt, Aave returns the largest possible health factor (shown as ∞), so no threshold is ever crossed and no alert is sent.
+
+### You borrow on more than one network
+
+Each network has its own alert, threshold and channels. One payment covers all seven networks, so create an alert on each network you borrow on.
+
+### Messages don't arrive
+
+If Tokenping messages don't arrive, check your spam folder and Signal's message requests, and make sure you haven't blocked the Tokenping sender. Then run [the delivery test](#step-6-optional-check-that-alerts-reach-you): set the threshold just above your current health factor, wait for the next 5-minute check, then set it back.
+
+## What other ways are there to get alerts?
+
+Some free tools let you paste any wallet address and get alerts on Telegram or in their own mobile app. Browser extensions show the health factor in the toolbar, and some raise desktop notifications, while the browser is running. Automation services can repay debt for you; they need a smart wallet or a permission on your position, and some set minimum position sizes or charge a fee per action. Developers can build their own monitoring. [Aave liquidation alert tools compared](/blog/aave-liquidation-alert-tools) puts these side by side, including where Tokenping is the wrong fit.
+
+## Sources
+
+- [Aave interface pull request #2084, "chore: remove hal", merged 30 May 2024](https://github.com/aave/interface/pull/2084) (fetched 14 Oct 2026)
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (fetched 14 Oct 2026)
+- [Aave Pro product page](https://aave.com/pro) (fetched 14 Oct 2026)
+- [Aave docs changelog: V3.7 rollout and V4 launches](https://aave.com/docs/resources/changelog) (fetched 15 Oct 2026)
+- [Aave V3 GenericLogic.sol: health factor formula and the no-debt value](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) (fetched 14 Oct 2026)
+- Aave V3 Ethereum Core [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) and [AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) (contract pages on Etherscan): WETH liquidation threshold 83% and oracle price $2,415.56, read on-chain at block 26194005 (RPC data fetched 14 Oct 2026)
+- [TokenpingPaywall on Arbitrum One, source verified on Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553) (fetched 14 Oct 2026); plan, pause state and owner read on-chain at blocks 514885994 and 514896937
+- [Signal Support: Phone Number Privacy and Usernames](https://support.signal.org/hc/en-us/articles/6712070553754-Phone-Number-Privacy-and-Usernames) (fetched 14 Oct 2026)
+- [Signal Support: Signal Profiles and Message Requests](https://support.signal.org/hc/en-us/articles/360007459591-Signal-Profiles-and-Message-Requests) (fetched 14 Oct 2026)
+
+_Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation._
