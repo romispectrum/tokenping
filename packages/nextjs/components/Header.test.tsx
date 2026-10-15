@@ -25,7 +25,8 @@ vi.mock("~~/components/scaffold-eth", () => ({
 // Server markup, for the snapshots only.
 const renderHeaderMarkup = () => renderMarkup(<Header />);
 
-const isActive = (link: HTMLElement) => link.className.startsWith("bg-secondary shadow-md ");
+// The active link sits on the accent surface; hover:bg-accent is a different class token.
+const isActive = (link: HTMLElement) => link.classList.contains("bg-accent");
 
 const renderOpenBurgerMenu = () => {
   const { container } = render(<Header />);
@@ -63,10 +64,30 @@ describe("Header", () => {
     expect(within(banner).getByRole("link", { name: "Tokenping home" })).toBeTruthy();
   });
 
-  it("labels the logo with the Tokenping brand", () => {
+  it("names the home link once: the logo inside it is decorative", () => {
     render(<Header />);
+    const homeLink = screen.getByRole("link", { name: "Tokenping home" });
+    const logos = [...homeLink.querySelectorAll("svg")];
 
-    expect(screen.getByRole("img", { name: "Tokenping logo" }).getAttribute("src")).toBe("/logo.svg");
+    // tone "auto": the solid art for light surfaces and the outline art for dark ones
+    expect(logos.map(svg => svg.getAttribute("data-art"))).toEqual(["solid", "outline"]);
+    logos.forEach(svg => expect(svg.getAttribute("aria-hidden")).toBe("true"));
+    expect(screen.queryByRole("img")).toBeNull();
+  });
+
+  // The app shell renders the beta strip, then the header, then <main id="main">.
+  it("is preceded by the skip link, the first tab stop of the shell", () => {
+    const { container } = render(
+      <>
+        <BetaBanner />
+        <Header />
+      </>,
+    );
+    const [first] = container.querySelectorAll("a, button, summary, input");
+
+    expect(first.textContent).toBe("Skip to content");
+    expect(first.getAttribute("href")).toBe("#main");
+    expect(screen.getAllByRole("link", { name: "Skip to content" })).toHaveLength(1);
   });
 
   it("marks only the exactly matching menu link as active, as the current page", () => {
@@ -127,12 +148,11 @@ describe("Header", () => {
     expect(screen.getAllByRole("link").filter(isActive)).toEqual([]);
   });
 
-  it("names the product category under the brand, not a generic DeFi app", () => {
+  // The logo stands alone (the design system's logo rules); the hero kicker names the product category.
+  it("puts no tagline under the logo", () => {
     render(<Header />);
-    const homeLink = screen.getByRole("link", { name: "Tokenping home" });
 
-    expect(within(homeLink).getByText("Aave health factor alerts")).toBeTruthy();
-    expect(homeLink.textContent).not.toMatch(/DeFi/);
+    expect(screen.getByRole("link", { name: "Tokenping home" }).textContent).toBe("");
   });
 
   it.each(["/aave/", "/aave/positions"])("does not mark a nested or trailing-slash path (%s) as active", pathname => {
@@ -180,5 +200,68 @@ describe("Header", () => {
     fireEvent.click(within(burgerMenu).getAllByRole("listitem")[1]);
 
     expect(burgerMenu.open).toBe(false);
+  });
+
+  it("closes the burger menu on Escape and returns focus to its button", () => {
+    const burgerMenu = renderOpenBurgerMenu();
+    const dashboardLink = within(burgerMenu).getByRole("link", { name: "Dashboard" });
+    dashboardLink.focus();
+
+    fireEvent.keyDown(dashboardLink, { key: "Escape" });
+
+    expect(burgerMenu.open).toBe(false);
+    expect(document.activeElement).toBe(burgerMenu.querySelector("summary"));
+  });
+
+  it("closes the burger menu when focus moves on past it, and keeps it open while focus stays inside", () => {
+    const burgerMenu = renderOpenBurgerMenu();
+    const [homeLink, dashboardLink] = within(burgerMenu).getAllByRole("link");
+
+    fireEvent.focusOut(homeLink, { relatedTarget: dashboardLink });
+    expect(burgerMenu.open).toBe(true);
+
+    // Another window or a click on the panel's padding: no new focus target.
+    fireEvent.focusOut(dashboardLink, { relatedTarget: null });
+    expect(burgerMenu.open).toBe(true);
+
+    fireEvent.focusOut(dashboardLink, { relatedTarget: document.querySelector('[data-stub="connect"]') });
+    expect(burgerMenu.open).toBe(false);
+  });
+
+  it("closes the burger menu on a route change", () => {
+    const { container, rerender } = render(<Header />);
+    const burgerMenu = container.querySelector("details")!;
+    burgerMenu.open = true;
+
+    state.pathname = "/blog";
+    rerender(<Header />);
+
+    expect(burgerMenu.open).toBe(false);
+  });
+
+  it("gives the menu panel the 14px menu radius and room for the focus ring in its scrolling list", () => {
+    const burgerMenu = renderOpenBurgerMenu();
+    const list = within(burgerMenu).getAllByRole("list")[0];
+
+    expect(list.parentElement!.className).toContain("rounded-xl");
+    expect(list.className).toContain("overflow-y-auto");
+    expect(list.className).toContain("p-1");
+  });
+
+  it("offers the theme toggle in the bar from lg and inside the menu below it", () => {
+    render(<Header />);
+    const toggles = screen.getAllByRole("button", { name: "Toggle light or dark theme" });
+
+    expect(toggles).toHaveLength(2);
+    expect(toggles[0].closest("details")).toBeTruthy();
+    expect(toggles[1].closest("details")).toBeNull();
+  });
+
+  // The wallet button is stubbed here: its own styling lives in components/scaffold-eth.
+  it("keeps hover and the active link off pink", () => {
+    state.pathname = "/aave";
+    const html = renderHeaderMarkup();
+
+    expect(html).not.toMatch(/bg-primary|text-primary|btn-primary|bg-brand-pink/);
   });
 });

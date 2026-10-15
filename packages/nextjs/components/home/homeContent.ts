@@ -25,11 +25,12 @@ export const getChannelBadgeNames = () => getAlertChannelNames().map(capitalize)
 /** Headline A of the marketing plan (§2.1), in its Telegram variant once the bot is configured. */
 export const getHomeHeadline = () => `Aave health factor alerts on ${formatAlertChannels("and")}`;
 
-/** "Aave Health Factor Alerts on Signal & Email | Tokenping"; the Telegram variant drops the brand to stay ≤ 60. */
+/**
+ * The headline as the page title, in sentence case like every title: "Aave health factor alerts on Signal and email |
+ * Tokenping". The Telegram variant drops the brand to stay ≤ 60.
+ */
 export const getHomeTitle = () => {
-  const names = getChannelBadgeNames();
-  const channels = names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`;
-  const title = `Aave Health Factor Alerts on ${channels}`;
+  const title = getHomeHeadline();
   return needsAbsoluteTitle(title) ? title : `${title} | ${SITE_NAME}`;
 };
 

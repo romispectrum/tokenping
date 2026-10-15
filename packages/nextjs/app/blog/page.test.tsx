@@ -30,7 +30,7 @@ describe("/blog metadata", () => {
   it("has its own title, description and canonical within search-result lengths", async () => {
     const { metadata } = await loadIndex();
 
-    expect(metadata.title).toBe("Aave Health Factor & Liquidation Guides");
+    expect(metadata.title).toBe("Aave health factor and liquidation guides");
     expect(metadata.alternates?.canonical).toBe("/blog");
     expect(`${metadata.title} | Tokenping`.length).toBeLessThanOrEqual(60);
     expect(String(metadata.description).length).toBeLessThanOrEqual(155);
@@ -81,6 +81,35 @@ describe("/blog", () => {
     render(<BlogIndex />);
 
     expect(screen.getByRole("link", { name: "Subscribe with RSS" }).getAttribute("href")).toBe("/blog/feed.xml");
+  });
+
+  it("keeps the marketing moment in the hero: one pink action, the glow and the grain card, none in the guide list", async () => {
+    const { BlogIndex } = await loadIndex();
+    const { container } = render(<BlogIndex />);
+
+    const hero = screen.getByRole("region", { name: "Aave health factor and liquidation guides" });
+    const pink = [...container.querySelectorAll(".btn-primary, .bg-primary")];
+    expect(pink).toHaveLength(1);
+    expect(hero.contains(pink[0])).toBe(true);
+    expect(pink[0].textContent).toBe("Open the free dashboard");
+    expect(pink[0].getAttribute("href")).toBe("/aave");
+    for (const effect of container.querySelectorAll(".grain, [class*='from-brand-pink']")) {
+      expect(hero.contains(effect)).toBe(true);
+    }
+    expect(hero.querySelectorAll(".grain")).toHaveLength(1);
+  });
+
+  it("makes each guide card one link named by its title", async () => {
+    const { BlogIndex, blog } = await loadIndex();
+    render(<BlogIndex />);
+
+    const [hub] = blog.PUBLISHED_POSTS;
+    const card = screen.getByRole("heading", { name: hub.meta.title }).closest("article")!;
+    expect(
+      within(card)
+        .getAllByRole("link")
+        .map(link => link.getAttribute("href")),
+    ).toEqual([`/blog/${hub.meta.slug}`]);
   });
 
   it("renders a breadcrumb trail that matches its BreadcrumbList JSON-LD", async () => {

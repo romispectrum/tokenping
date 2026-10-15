@@ -1,15 +1,22 @@
+import Link from "next/link";
+import { BookOpen, Rss } from "lucide-react";
 import type { NextPage } from "next";
-import { RssIcon } from "@heroicons/react/24/outline";
-import { BlogPageShell } from "~~/components/blog/BlogPageShell";
-import { ARTICLE_LINK_CLASS_NAME } from "~~/components/blog/MdxElements";
 import { PostSummary } from "~~/components/blog/PostSummary";
+import { BLOG_CONTAINER_CLASS_NAME, HEADER_WASH_CLASS_NAME } from "~~/components/blog/blogLayout";
 import { Breadcrumbs } from "~~/components/seo/Breadcrumbs";
 import { JsonLd } from "~~/components/seo/JsonLd";
+import { EmptyState } from "~~/components/ui/EmptyState";
+import { Glow } from "~~/components/ui/Glow";
+import { GrainCard } from "~~/components/ui/GrainCard";
+import { Kicker } from "~~/components/ui/Kicker";
+import { SectionHeader } from "~~/components/ui/SectionHeader";
+import { buttonClasses } from "~~/components/ui/buttonClasses";
+import { cx } from "~~/components/ui/classNames";
 import { HUB_SLUG, PUBLISHED_POSTS } from "~~/content/blog";
 import { type Crumb, RSS_PATH, breadcrumbJsonLd, pageMetadata } from "~~/utils/seo";
 
 export const metadata = pageMetadata({
-  title: "Aave Health Factor & Liquidation Guides",
+  title: "Aave health factor and liquidation guides",
   description:
     "Guides to the Aave V3 health factor, liquidation thresholds, liquidation prices and alerts, with worked examples and dated, sourced figures.",
   path: "/blog",
@@ -19,60 +26,87 @@ export const metadata = pageMetadata({
 
 const CRUMBS: Crumb[] = [{ name: "Home", path: "/" }, { name: "Blog" }];
 
+const HERO_ACTION_CLASS_NAME = "w-full sm:w-auto sm:min-w-40";
+
+/**
+ * The hero is the page's marketing moment (wash, glow, grain card, the one pink action); the guide list below it is
+ * plain, with the marketing cards.
+ */
 const BlogIndex: NextPage = () => {
   const hub = PUBLISHED_POSTS.find(({ meta }) => meta.slug === HUB_SLUG);
   const spokes = PUBLISHED_POSTS.filter(post => post !== hub);
 
   return (
-    <BlogPageShell>
-      <Breadcrumbs crumbs={CRUMBS} />
-      <header className="mb-8">
-        <h1 className="m-0 mb-3 text-3xl sm:text-4xl font-bold leading-tight text-base-content">
-          Aave health factor and liquidation guides
-        </h1>
-        <p className="my-3 leading-relaxed text-base-content/80 dark:text-gray-300">
-          How the Aave V3 health factor works, what happens in a liquidation, how to calculate your liquidation price
-          and how to get warned before it gets close. Every figure in these guides names its source and the date it was
-          checked.
-        </p>
-        <p className="m-0 text-sm">
-          {/* A plain <a>: the feed is a route handler, not a page next/link could prefetch. */}
-          <a href={RSS_PATH} className={`inline-flex items-center gap-1.5 ${ARTICLE_LINK_CLASS_NAME}`}>
-            <RssIcon className="h-4 w-4" aria-hidden />
-            Subscribe with RSS
-          </a>
-        </p>
-      </header>
+    <div className="flex-1">
+      <section aria-labelledby="blog-title" className="relative isolate overflow-hidden pt-6 pb-16 md:pt-12 md:pb-24">
+        <div aria-hidden="true" className={HEADER_WASH_CLASS_NAME} />
+        <div className={BLOG_CONTAINER_CLASS_NAME}>
+          <Breadcrumbs crumbs={CRUMBS} />
+          {/* The glow anchors to the card's corner; the wrapper's radius clips it to the card's shape. */}
+          <div className="relative rounded-3xl">
+            <Glow placement="bottom-right" />
+            <GrainCard className="px-6 py-10 text-center sm:px-10 md:px-12 md:py-14 lg:px-16 lg:py-16">
+              <div className="mx-auto max-w-3xl">
+                <Kicker>Aave V3 guides</Kicker>
+                <h1 id="blog-title" className="text-display mb-0">
+                  Aave health factor and liquidation guides
+                </h1>
+                {/* foreground, not muted: the glow can tint the card behind this line */}
+                <p className="text-lead mx-auto mt-4 mb-0 max-w-[50ch] text-pretty text-foreground md:text-xl">
+                  How the Aave V3 health factor works, what happens in a liquidation, how to calculate your liquidation
+                  price and how to get warned before it gets close. Every figure in these guides names its source and
+                  the date it was checked.
+                </p>
+                <div className="mx-auto mt-8 flex max-w-sm flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center">
+                  <Link href="/aave" className={buttonClasses({ size: "lg", className: HERO_ACTION_CLASS_NAME })}>
+                    Open the free dashboard
+                  </Link>
+                  {/* A plain <a>: the feed is a route handler, not a page next/link could prefetch. */}
+                  <a
+                    href={RSS_PATH}
+                    className={buttonClasses({ variant: "outline", size: "lg", className: HERO_ACTION_CLASS_NAME })}
+                  >
+                    <Rss aria-hidden="true" />
+                    Subscribe with RSS
+                  </a>
+                </div>
+              </div>
+            </GrainCard>
+          </div>
+        </div>
+      </section>
 
-      {hub && (
-        <section aria-label="Start here" className="mb-6">
-          <PostSummary meta={hub.meta} featured />
-        </section>
-      )}
+      <div className={cx(BLOG_CONTAINER_CLASS_NAME, "pb-12 md:pb-20")}>
+        {hub && (
+          <section aria-label="Start here">
+            <PostSummary meta={hub.meta} featured />
+          </section>
+        )}
 
-      {spokes.length > 0 && (
-        <section aria-labelledby="all-guides">
-          <h2 id="all-guides" className="mb-4 text-xl font-bold text-base-content">
-            All guides
-          </h2>
-          <ul className="grid list-none gap-4 p-0">
-            {spokes.map(({ meta }) => (
-              <li key={meta.slug} className="m-0 p-0">
-                <PostSummary meta={meta} as="h3" />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+        {spokes.length > 0 && (
+          <section aria-labelledby="all-guides" className={cx(hub && "mt-12 md:mt-20")}>
+            <SectionHeader id="all-guides" title="All guides" align="start" />
+            <ul role="list" className="m-0 grid list-none gap-6 p-0 md:grid-cols-2 lg:grid-cols-3">
+              {spokes.map(({ meta }) => (
+                <li key={meta.slug} className="m-0 p-0">
+                  <PostSummary meta={meta} as="h3" />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
-      {PUBLISHED_POSTS.length === 0 && (
-        <p className="my-3 leading-relaxed text-base-content/80 dark:text-gray-300">
-          The first guides are being written. Subscribe with RSS to get them when they are published.
-        </p>
-      )}
+        {PUBLISHED_POSTS.length === 0 && (
+          <EmptyState
+            icon={BookOpen}
+            title="No guides yet"
+            description="The first guides are being written. Subscribe with RSS to get them when they are published."
+          />
+        )}
+      </div>
 
       <JsonLd data={breadcrumbJsonLd(CRUMBS)} />
-    </BlogPageShell>
+    </div>
   );
 };
 

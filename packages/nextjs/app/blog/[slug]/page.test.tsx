@@ -14,6 +14,12 @@ const PLAN: AlertPlan = { priceLabel: "3 USDC", days: 30 };
 
 const loadPage = () => import("~~/app/blog/[slug]/page");
 
+/** A post's own meta, so the assertions follow the copy in content/blog instead of repeating its titles. */
+const postMeta = async (slug: string) => {
+  const { getPost } = await import("~~/content/blog");
+  return getPost(slug)!.meta;
+};
+
 const renderPost = async (slug: string) => {
   const { default: BlogPostPage } = await loadPage();
   return render(await BlogPostPage({ params: Promise.resolve({ slug }) }));
@@ -54,9 +60,11 @@ describe("generateMetadata", () => {
   it("builds the post's canonical, article Open Graph with its dates, and its own card with a per-post alt", async () => {
     const { generateMetadata } = await loadPage();
     const metadata = await generateMetadata({ params: Promise.resolve({ slug: "aave-health-factor" }) });
+    const { title } = await postMeta("aave-health-factor");
 
     // 50 characters + " | Tokenping" would be 62, so the title is absolute.
-    expect(metadata.title).toEqual({ absolute: "Aave Health Factor Explained: Formula and Examples" });
+    expect(`${title} | Tokenping`.length).toBeGreaterThan(60);
+    expect(metadata.title).toEqual({ absolute: title });
     expect(metadata.alternates?.canonical).toBe("/blog/aave-health-factor");
     expect(metadata.openGraph).toMatchObject({
       type: "article",
@@ -68,7 +76,7 @@ describe("generateMetadata", () => {
           url: "/blog/aave-health-factor/opengraph-image",
           width: 1200,
           height: 630,
-          alt: "Aave Health Factor Explained: Formula and Examples (Tokenping Aave V3 guide)",
+          alt: `${title} (Tokenping Aave V3 guide)`,
         },
       ],
     });
@@ -91,8 +99,10 @@ describe("generateMetadata", () => {
   it("keeps the brand suffix when the title still fits in 60 characters", async () => {
     const { generateMetadata } = await loadPage();
     const metadata = await generateMetadata({ params: Promise.resolve({ slug: "aave-liquidation-price" }) });
+    const { title } = await postMeta("aave-liquidation-price");
 
-    expect(metadata.title).toBe("How to Calculate Your Aave Liquidation Price");
+    expect(`${title} | Tokenping`.length).toBeLessThanOrEqual(60);
+    expect(metadata.title).toBe(title);
   });
 
   it("returns nothing for an unknown slug", async () => {
@@ -111,7 +121,11 @@ describe("blog post page", () => {
       within(nav)
         .getAllByRole("listitem")
         .map(item => item.textContent),
-    ).toEqual(["Home", "Blog", "What Is a Safe Health Factor on Aave? A Buffer Table"]);
+    ).toEqual(["Home", "Blog", (await postMeta("safe-aave-health-factor")).title]);
+    // The breadcrumb is site navigation: the article starts at the post's own header.
+    const article = screen.getByRole("heading", { level: 1 }).closest("article")!;
+    expect(article.contains(nav)).toBe(false);
+    expect(article.firstElementChild?.querySelector("header h1")).not.toBeNull();
     expect(screen.getAllByRole("heading", { level: 1 }).map(heading => heading.textContent)).toEqual([
       "What is a safe health factor on Aave?",
     ]);
@@ -125,6 +139,22 @@ describe("blog post page", () => {
 
     const related = screen.getByRole("navigation", { name: "Related guides" });
     expect(within(related).getAllByRole("link")[0].getAttribute("href")).toBe("/blog/aave-health-factor");
+  });
+
+  it("keeps the article body calm: no pink and no marketing effect between the header and the end box", async () => {
+    const { container } = await renderPost("aave-liquidation-price");
+
+    const article = container.querySelector("article")!;
+    expect(article.querySelectorAll(".btn-primary, .bg-primary, .grain, .divider-brand")).toHaveLength(0);
+    expect(article.querySelectorAll("[class*='brand-pink'], [class*='brand-violet']")).toHaveLength(0);
+    // The calculator in the body is product UI on the shared primitives.
+    expect(within(article).getByRole("region", { name: "Aave liquidation price calculator" })).toBeDefined();
+
+    const endBox = screen.getByRole("complementary", { name: "About Tokenping" });
+    expect(endBox.classList.contains("dark")).toBe(true);
+    const pink = [...container.querySelectorAll(".btn-primary, .bg-primary")];
+    expect(pink).toHaveLength(1);
+    expect(endBox.contains(pink[0])).toBe(true);
   });
 
   it("does not link placeholder posts as related guides", async () => {
@@ -155,7 +185,7 @@ describe("blog post page", () => {
     expect(breadcrumbs.itemListElement.map(({ name }: { name: string }) => name)).toEqual([
       "Home",
       "Blog",
-      "What Is a Safe Health Factor on Aave? A Buffer Table",
+      (await postMeta("safe-aave-health-factor")).title,
     ]);
   });
 

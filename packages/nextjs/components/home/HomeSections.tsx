@@ -1,14 +1,19 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { formatAlertPrice } from "~~/components/blog/AlertPrice";
 import { PostSummary } from "~~/components/blog/PostSummary";
 import { HOME_BLOG_SLUGS, PROBLEM_SOURCES, getPricingCtaLabel, getPublishedPost } from "~~/components/home/homeContent";
 import {
   DashboardCta,
   ExternalLink,
-  HOME_LINK_CLASS_NAME,
+  HOME_CARD_CLASS_NAME,
   HOME_TEXT_CLASS_NAME,
   HomeSection,
 } from "~~/components/home/homeUi";
+import { Container, SECTION_CLASS_NAME, SectionDivider } from "~~/components/home/marketingLayout";
+import { GlowWash } from "~~/components/ui/Glow";
+import { buttonClasses } from "~~/components/ui/buttonClasses";
+import { cx } from "~~/components/ui/classNames";
 import { AAVE_MARKETS } from "~~/config/aaveConfig";
 import {
   DEFAULT_HEALTH_FACTOR_THRESHOLD,
@@ -47,11 +52,12 @@ export const ExampleAlertSection = () => (
     <p className={HOME_TEXT_CLASS_NAME}>
       {`Every channel gets the same text. This is the template the alert service sends, filled in with example numbers:`}
     </p>
-    <figure className="m-0 my-4">
-      <blockquote className="m-0 whitespace-pre-line rounded-2xl border border-base-300 bg-base-200 p-4 font-mono text-sm leading-relaxed text-base-content dark:border-white/10 dark:bg-gray-950/60 dark:text-gray-100">
+    <figure className="mx-0 mt-6 mb-0">
+      {/* A message, not data: Satoshi, line breaks kept */}
+      <blockquote className={cx(HOME_CARD_CLASS_NAME, "m-0 leading-relaxed whitespace-pre-line")}>
         {buildAlertText(EXAMPLE_ALERT)}
       </blockquote>
-      <figcaption className="mt-2 text-sm text-base-content/70 dark:text-gray-400">
+      <figcaption className="mt-3 text-sm text-muted-foreground">
         {`Example only: the network, numbers and time are made up. Emails arrive with the subject "${buildAlertEmail(EXAMPLE_ALERT).subject}".`}
       </figcaption>
     </figure>
@@ -63,37 +69,37 @@ export const ProblemSection = () => {
   const liquidationGuide = getPublishedPost("how-aave-liquidation-works");
   return (
     <HomeSection id="problem" title="Health factors fall while you sleep">
-      <p className={HOME_TEXT_CLASS_NAME}>
-        Aave shows your health factor in its app and warns you inside its transaction screens, but as of October 2026 it
-        doesn&apos;t send alerts. ETH drops overnight, interest keeps accruing on your debt, or a governance update
-        trims a liquidation threshold, and nothing messages you about any of it.
-      </p>
-      <p className={HOME_TEXT_CLASS_NAME}>
-        On Aave&apos;s governance forum, one borrower describes{" "}
-        <ExternalLink href={PROBLEM_SOURCES.morningLiquidation}>
-          checking in the morning to find the position liquidated again
-        </ExternalLink>
-        ; another,{" "}
-        <ExternalLink href={PROBLEM_SOURCES.failedRepays}>
-          an hour of repay transactions that kept failing until the position was liquidated
-        </ExternalLink>
-        . On the Polygon forum in 2021, before Aave V3, one borrower{" "}
-        <ExternalLink href={PROBLEM_SOURCES.polygonRepay}>tried to repay at a health factor of 1.01</ExternalLink> and
-        was liquidated before the transaction went through.
-      </p>
-      <p className={HOME_TEXT_CLASS_NAME}>
-        By the time you look, a liquidator may have taken collateral worth the repaid debt plus a bonus: 5% on WETH in
-        the Ethereum Core market as of October 2026.
-        {liquidationGuide && (
-          <>
-            {" "}
-            <Link href={postPath(liquidationGuide.meta.slug)} className={HOME_LINK_CLASS_NAME}>
-              What happens in an Aave liquidation
-            </Link>{" "}
-            walks through the rules.
-          </>
-        )}
-      </p>
+      <div className="grid gap-4">
+        <p className={HOME_TEXT_CLASS_NAME}>
+          Aave shows your health factor in its app and warns you inside its transaction screens, but as of October 2026
+          it doesn&apos;t send alerts. ETH drops overnight, interest keeps accruing on your debt, or a governance update
+          trims a liquidation threshold, and nothing messages you about any of it.
+        </p>
+        <p className={HOME_TEXT_CLASS_NAME}>
+          On Aave&apos;s governance forum, one borrower describes{" "}
+          <ExternalLink href={PROBLEM_SOURCES.morningLiquidation}>
+            checking in the morning to find the position liquidated again
+          </ExternalLink>
+          ; another,{" "}
+          <ExternalLink href={PROBLEM_SOURCES.failedRepays}>
+            an hour of repay transactions that kept failing until the position was liquidated
+          </ExternalLink>
+          . On the Polygon forum in 2021, before Aave V3, one borrower{" "}
+          <ExternalLink href={PROBLEM_SOURCES.polygonRepay}>tried to repay at a health factor of 1.01</ExternalLink> and
+          was liquidated before the transaction went through.
+        </p>
+        <p className={HOME_TEXT_CLASS_NAME}>
+          By the time you look, a liquidator may have taken collateral worth the repaid debt plus a bonus: 5% on WETH in
+          the Ethereum Core market as of October 2026.
+          {liquidationGuide && (
+            <>
+              {" "}
+              <Link href={postPath(liquidationGuide.meta.slug)}>What happens in an Aave liquidation</Link> walks through
+              the rules.
+            </>
+          )}
+        </p>
+      </div>
     </HomeSection>
   );
 };
@@ -117,7 +123,7 @@ export const HowItWorksSection = ({ plan }: HowItWorksSectionProps) => {
       body: "Two wallet transactions: an approval for exactly the price, never an unlimited one, then the payment. Nothing renews automatically.",
     },
     {
-      title: `Pick a threshold and your channels for each network (${HEALTH_FACTOR_THRESHOLD_MIN}–${HEALTH_FACTOR_THRESHOLD_MAX}, default ${DEFAULT_HEALTH_FACTOR_THRESHOLD})`,
+      title: `Pick a threshold and your channels for each network (${HEALTH_FACTOR_THRESHOLD_MIN} to ${HEALTH_FACTOR_THRESHOLD_MAX}, default ${DEFAULT_HEALTH_FACTOR_THRESHOLD})`,
       body: `Each network is a separate alert. Send it to ${formatAlertChannels("or")}, or to more than one.`,
     },
     {
@@ -127,16 +133,25 @@ export const HowItWorksSection = ({ plan }: HowItWorksSectionProps) => {
   ];
 
   return (
-    <HomeSection id="how-it-works" title="How it works, in 4 steps">
-      <ol className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2">
+    <HomeSection id="how-it-works" title="How it works, in 4 steps" width="wide">
+      <ol className="m-0 grid list-none gap-6 p-0 md:grid-cols-2">
         {steps.map(({ title, body }, index) => (
-          <li
-            key={title}
-            className="m-0 rounded-2xl border border-base-300/80 bg-base-200/60 p-4 dark:border-white/10 dark:bg-gray-900/40"
-          >
-            {/* One template string keeps the step number and title a single text node in the server HTML. */}
-            <h3 className="m-0 mb-1 text-base font-semibold leading-snug text-base-content">{`${index + 1}. ${title}`}</h3>
-            <p className="m-0 text-sm leading-relaxed text-base-content/80 dark:text-gray-300">{body}</p>
+          <li key={title} className={cx(HOME_CARD_CLASS_NAME, "m-0 flex gap-5")}>
+            {/* The numeral is drawn for the eye; the heading carries it for everyone else. 700: a key number. */}
+            <span
+              aria-hidden="true"
+              className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-plum text-lg font-bold text-brand-white dark:outline dark:outline-border"
+            >
+              {index + 1}
+            </span>
+            <div className="min-w-0 pt-1">
+              <h3 className="m-0 text-lg leading-snug font-medium">
+                {/* the space sits outside the hidden number, so accessible names keep it */}
+                <span className="sr-only">{`${index + 1}.`}</span>
+                {` ${title}`}
+              </h3>
+              <p className="mt-2 mb-0 text-[0.9375rem] leading-relaxed text-muted-foreground md:text-base">{body}</p>
+            </div>
           </li>
         ))}
       </ol>
@@ -148,7 +163,10 @@ type PricingSectionProps = {
   plan: AlertPlan | null;
 };
 
-/** Answers "can I afford this" with the live plan, or a fallback that names no number (plan §2.7 item 6). */
+/**
+ * Answers "can I afford this" with the live plan, or a fallback that names no number (plan §2.7 item 6). Its call
+ * to action is inverse: the pink stays with the hero and the closing band.
+ */
 export const PricingSection = ({ plan }: PricingSectionProps) => {
   const chainName = getPaymentChainName();
   const alertPrice = formatAlertPrice(plan);
@@ -163,30 +181,28 @@ export const PricingSection = ({ plan }: PricingSectionProps) => {
   ];
 
   return (
-    <HomeSection id="pricing" title="Pricing">
-      <dl className="m-0 grid gap-3 sm:grid-cols-2">
+    <HomeSection id="pricing" title="Pricing" width="list">
+      <dl className="m-0 grid gap-4 sm:grid-cols-2">
         {rows.map(({ term, detail }) => (
-          <div
-            key={term}
-            className="rounded-2xl border border-base-300/80 bg-base-200/60 p-4 dark:border-white/10 dark:bg-gray-900/40"
-          >
-            <dt className="text-sm font-medium text-base-content/70 dark:text-gray-400">{term}</dt>
-            <dd className="m-0 mt-1 font-semibold text-base-content">{detail}</dd>
+          <div key={term} className={HOME_CARD_CLASS_NAME}>
+            <dt className="text-sm font-medium text-muted-foreground">{term}</dt>
+            <dd className="m-0 mt-1 text-lg leading-snug font-medium">{detail}</dd>
           </div>
         ))}
       </dl>
       {plan && (
-        <p className="mt-3 mb-0 text-sm text-base-content/70 dark:text-gray-400">
+        <p className="mt-4 mb-0 text-center text-sm text-muted-foreground">
           The price is read from the payment contract and refreshed hourly.
         </p>
       )}
-      <div className="mt-5 flex flex-col items-start gap-2">
-        <Link href="/aave" className="btn btn-primary rounded-full">
+      <div className="mt-8 flex flex-col items-center gap-3">
+        <Link
+          href="/aave"
+          className={buttonClasses({ variant: "inverse", size: "lg", className: "w-full max-w-sm sm:w-auto" })}
+        >
           {getPricingCtaLabel(plan)}
         </Link>
-        <p className="m-0 text-sm text-base-content/70 dark:text-gray-400">
-          {`Paid in USDC${paidOnSuffix()}. No auto-renew.`}
-        </p>
+        <p className="m-0 text-center text-sm text-muted-foreground">{`Paid in USDC${paidOnSuffix()}. No auto-renew.`}</p>
       </div>
     </HomeSection>
   );
@@ -206,9 +222,9 @@ export const LimitsSection = () => {
 
   return (
     <HomeSection id="limits" title="Limits, stated plainly">
-      <ul className="m-0 list-disc space-y-2 pl-6 marker:text-base-content/50">
+      <ul className="m-0 list-disc space-y-3 pl-6 marker:text-muted-foreground">
         {limits.map(limit => (
-          <li key={limit} className="leading-relaxed text-base-content/90 dark:text-gray-200">
+          <li key={limit} className="leading-[1.75]">
             {limit}
           </li>
         ))}
@@ -217,35 +233,58 @@ export const LimitsSection = () => {
   );
 };
 
-/** Three guides from the cluster; hidden while none of them is published. */
+/** Three guides from the cluster, after a divider; both are left out while none of the guides is published. */
 export const FromTheBlogSection = () => {
   const posts = HOME_BLOG_SLUGS.map(getPublishedPost).filter((post): post is Post => post !== undefined);
   if (posts.length === 0) return null;
 
   return (
-    <HomeSection id="from-the-blog" title="From the blog">
-      <ul className="m-0 grid list-none gap-4 p-0">
-        {posts.map(({ meta }) => (
-          <li key={meta.slug} className="m-0 p-0">
-            <PostSummary meta={meta} as="h3" />
-          </li>
-        ))}
-      </ul>
-      <p className="mt-4 mb-0">
-        <Link href="/blog" className={HOME_LINK_CLASS_NAME}>
-          All Aave health factor and liquidation guides
-        </Link>
-      </p>
-    </HomeSection>
+    <>
+      <SectionDivider />
+      <HomeSection id="from-the-blog" title="From the blog" width="wide">
+        <ul className="m-0 grid list-none gap-6 p-0 md:grid-cols-3">
+          {posts.map(({ meta }) => (
+            <li key={meta.slug} className="m-0 flex p-0 [&>*]:w-full">
+              <PostSummary meta={meta} as="h3" />
+            </li>
+          ))}
+        </ul>
+        <p className="mt-8 mb-0 text-center">
+          <Link
+            href="/blog"
+            className="inline-flex items-center gap-1.5 font-medium text-link underline decoration-1 underline-offset-4 hover:decoration-2 pointer-coarse:min-h-11"
+          >
+            All Aave health factor and liquidation guides
+            <ArrowRight aria-hidden="true" className="size-4" />
+          </Link>
+        </p>
+      </HomeSection>
+    </>
   );
 };
 
-/** Same action as the hero, never a competing one. */
+/**
+ * Same action as the hero, never a competing one. The closing moment is a contained dark band: the `dark` class
+ * switches every token inside it in both themes, the glow wash is the page's second glow, the grain sits on top at
+ * 30%. The section padding keeps it apart from the dark footer.
+ */
 export const ClosingCtaSection = () => (
-  <HomeSection id="closing" title="Check your Aave V3 health factor, free">
-    <p className={`${HOME_TEXT_CLASS_NAME} mb-5`}>
-      {`The dashboard shows collateral, debt and health factor for the wallet you connect on all ${NETWORK_COUNT} networks. Alerts are optional and paid.`}
-    </p>
-    <DashboardCta />
-  </HomeSection>
+  <section id="closing" aria-labelledby="closing-title" className={SECTION_CLASS_NAME}>
+    <Container>
+      <div className="dark relative isolate overflow-hidden rounded-3xl border border-border bg-background px-6 py-12 text-center md:px-16 md:py-16">
+        <GlowWash />
+        <div
+          aria-hidden="true"
+          className="grain pointer-events-none absolute inset-0 -z-10 opacity-30 mix-blend-overlay print:hidden"
+        />
+        <h2 id="closing-title" className="text-section mx-auto my-0 max-w-3xl text-balance">
+          Check your Aave V3 health factor, free
+        </h2>
+        <p className="text-lead mx-auto mt-4 mb-0 max-w-[56ch] text-pretty text-muted-foreground">
+          {`The dashboard shows collateral, debt and health factor for the wallet you connect on all ${NETWORK_COUNT} networks. Alerts are optional and paid.`}
+        </p>
+        <DashboardCta />
+      </div>
+    </Container>
+  </section>
 );

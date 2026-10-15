@@ -218,7 +218,9 @@ describe("LiquidationCalculator", () => {
     const price = collateral.getByLabelText("Price (USD)");
     type(price, "0");
     expect(collateral.getByText("Enter a price above 0.")).toBeDefined();
-    expect(price.getAttribute("aria-describedby")).toMatch(/-hint .+-error$/);
+    expect(price.getAttribute("aria-describedby")).toMatch(/-description .+-error$/);
+    // Checked on every keystroke ("0" on the way to "0.5"), so the error is linked, not announced as an alert.
+    expect(screen.queryAllByRole("alert")).toEqual([]);
     type(price, "2400");
 
     type(collateral.getByLabelText("Liquidation threshold (%)"), "120");

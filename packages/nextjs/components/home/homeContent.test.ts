@@ -36,11 +36,15 @@ describe("joinList", () => {
 
 describe("home copy per channel set", () => {
   it.each([
-    [false, "Aave health factor alerts on Signal and email", "Aave Health Factor Alerts on Signal & Email | Tokenping"],
+    [
+      false,
+      "Aave health factor alerts on Signal and email",
+      "Aave health factor alerts on Signal and email | Tokenping",
+    ],
     [
       true,
       "Aave health factor alerts on Signal, Telegram and email",
-      "Aave Health Factor Alerts on Signal, Telegram & Email",
+      "Aave health factor alerts on Signal, Telegram and email",
     ],
   ])("with Telegram %s: headline %j, title %j", (telegram, headline, title) => {
     withTelegram(telegram);

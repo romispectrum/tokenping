@@ -10,7 +10,7 @@ const formatShortDate = (date: string) =>
 
 /** The standard scope line every article carries under its short answer (marketing plan §3.0). */
 export const ScopeNote = () => (
-  <p className="my-4 border-l-2 border-base-300 pl-3 text-sm leading-relaxed text-base-content/70 dark:border-white/20 dark:text-gray-400">
+  <p className="my-6 border-l-2 border-border pl-4 text-sm leading-relaxed text-muted-foreground">
     Applies to Aave V3.7, checked on the Ethereum Core, Arbitrum, Base, Optimism, Polygon, Avalanche and Gnosis markets.
     Other V3 markets and networks may run older versions. Aave V4 differences are noted where rules differ. Figures as
     of{" "}

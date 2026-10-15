@@ -8,7 +8,7 @@ type PostBylineProps = {
 
 /** Author, dates and reading time. The dateTime values are the exact datePublished / dateModified of the JSON-LD. */
 export const PostByline = ({ meta }: PostBylineProps) => (
-  <p className="m-0 flex flex-wrap gap-x-2 gap-y-1 text-sm text-base-content/70 dark:text-gray-400">
+  <p className="m-0 flex flex-wrap gap-x-2 gap-y-1 text-sm text-muted-foreground tabular-nums">
     <span>By the Tokenping team</span>
     <span aria-hidden>·</span>
     <span>

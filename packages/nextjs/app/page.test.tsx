@@ -67,7 +67,7 @@ describe("route config and metadata", () => {
   it("owns the product query with an absolute title, a self canonical and the plan's description", async () => {
     const { metadata } = await loadHome();
 
-    expect(metadata.title).toEqual({ absolute: "Aave Health Factor Alerts on Signal & Email | Tokenping" });
+    expect(metadata.title).toEqual({ absolute: "Aave health factor alerts on Signal and email | Tokenping" });
     expect(metadata.description).toBe(
       "Signal or email alerts when your Aave V3 health factor drops below your threshold on 7 networks. Checked every 5 minutes. No approvals on your position.",
     );
@@ -79,7 +79,7 @@ describe("route config and metadata", () => {
     vi.stubEnv("NEXT_PUBLIC_TELEGRAM_BOT_USERNAME", "tokenping_bot");
     const { metadata } = await loadHome();
 
-    expect(metadata.title).toEqual({ absolute: "Aave Health Factor Alerts on Signal, Telegram & Email" });
+    expect(metadata.title).toEqual({ absolute: "Aave health factor alerts on Signal, Telegram and email" });
     expect(String(metadata.description)).toContain("Signal, Telegram or email alerts");
     expect(String(metadata.description).length).toBeLessThanOrEqual(155);
   });
@@ -393,6 +393,77 @@ describe("copy rules", () => {
     expect(limits).toHaveLength(7);
     expect(limits.join(" ")).toMatch(/every 5 minutes, not in real time/);
     expect(limits.join(" ")).toMatch(/no unsubscribe link/);
+  });
+});
+
+describe("visual identity", () => {
+  it("pairs the hero's primary action with an inverse link to the steps", async () => {
+    const { container } = await renderHome();
+    const hero = screen.getByRole("region", { name: "Aave health factor alerts on Signal and email" });
+    const secondary = within(hero).getByRole("link", { name: "See how it works" });
+
+    expect(secondary.getAttribute("href")).toBe("#how-it-works");
+    expect(secondary.className).toContain("btn-neutral");
+    expect(container.querySelector("section#how-it-works")?.getAttribute("aria-labelledby")).toBe("how-it-works-title");
+  });
+
+  // One pink per view: the same primary action in the hero and in the closing band, screens apart.
+  it("makes only the two dashboard links pink; the pricing link is inverse", async () => {
+    const { container } = await renderHome();
+
+    expect([...container.querySelectorAll(".btn-primary")].map(link => link.textContent)).toEqual([
+      "Open the free dashboard",
+      "Open the free dashboard",
+    ]);
+    expect(screen.getByRole("link", { name: "Set up alerts: 3 USDC for 30 days" }).className).toContain("btn-neutral");
+  });
+
+  it("closes with an always-dark band around the second call to action", async () => {
+    await renderHome();
+    const closing = section("Check your Aave V3 health factor, free");
+    const band = closing.querySelector(".dark")!;
+
+    expect(band.className).toContain("bg-background");
+    expect(within(band as HTMLElement).getByRole("link", { name: "Open the free dashboard" })).toBeTruthy();
+  });
+
+  it("puts a brand divider only between two plain sections", async () => {
+    const { container } = await renderHome();
+    const dividers = [...container.querySelectorAll(".divider-brand")].map(divider => divider.parentElement!);
+    const neighbour = (divider: Element, side: "previousElementSibling" | "nextElementSibling") =>
+      divider[side] as HTMLElement;
+
+    expect(dividers).toHaveLength(4);
+    for (const divider of dividers)
+      for (const side of ["previousElementSibling", "nextElementSibling"] as const) {
+        const next = neighbour(divider, side);
+        expect(next.tagName).toBe("SECTION");
+        expect(next.className).not.toMatch(/via-accent|from-accent/);
+        expect(next.id).not.toBe("closing");
+      }
+  });
+
+  // At most two washed areas, never adjacent: the hero's wash layer and the questions section.
+  it("washes only the hero and the questions section", async () => {
+    const { container } = await renderHome();
+    const isWashed = (element: Element) => /(from|via)-accent/.test(element.getAttribute("class") ?? "");
+    const hero = screen.getByRole("region", { name: "Aave health factor alerts on Signal and email" });
+    const heroWashes = [...hero.querySelectorAll(":scope > *")].filter(isWashed);
+
+    expect([...container.querySelectorAll("section")].filter(isWashed).map(washed => washed.id)).toEqual(["questions"]);
+    expect(heroWashes).toHaveLength(1);
+    expect(heroWashes[0].getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("uses no legacy palette or gradient text", async () => {
+    const { container } = await renderHome();
+    // The post cards belong to the blog's own components.
+    const homeMarkup = container.cloneNode(true) as HTMLElement;
+    homeMarkup.querySelectorAll("#from-the-blog article").forEach(card => card.remove());
+
+    expect(homeMarkup.innerHTML).not.toMatch(
+      /indigo-|purple-|gray-\d|base-content|base-200|base-300|bg-clip-text|gradient-to-|rounded-full gap-2 px-8|font-semibold|font-mono/,
+    );
   });
 });
 

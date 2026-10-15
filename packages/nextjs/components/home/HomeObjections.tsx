@@ -2,13 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { formatAlertPrice } from "~~/components/blog/AlertPrice";
 import { getNetworkNames, getPaywallSourcifyUrl, getPublishedPost, joinList } from "~~/components/home/homeContent";
-import {
-  ExternalLink,
-  HOME_H3_CLASS_NAME,
-  HOME_LINK_CLASS_NAME,
-  HOME_TEXT_CLASS_NAME,
-  HomeSection,
-} from "~~/components/home/homeUi";
+import { ExternalLink, HOME_CARD_CLASS_NAME, HomeSection } from "~~/components/home/homeUi";
 import { SOCIAL_LINKS, SOURCE_CODE_URL } from "~~/constants/links";
 import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import { getAlertChannelNames } from "~~/services/marketing/alertChannels";
@@ -28,7 +22,7 @@ type HomeObjectionsProps = {
 /**
  * The blockers a borrower checks before connecting a wallet, as visible <h3> questions with prose answers: no
  * accordion that hides answers from crawlers and no FAQPage schema (marketing plan §2.4, §4.5). Every answer stays
- * within what the code and the contract do today.
+ * within what the code and the contract do today. Static cards on the lavender wash, no pink.
  */
 export const HomeObjections = ({ plan }: HomeObjectionsProps) => {
   const hasTelegram = getAlertChannelNames().includes("Telegram");
@@ -67,11 +61,8 @@ export const HomeObjections = ({ plan }: HomeObjectionsProps) => {
           factor history and no log of sent alerts, and this site runs no analytics. To read your positions, your wallet
           address is sent to RPC providers. Payments are public on {chainName}: anyone can see the paying address, the
           amount and the new expiry. Until the app checks wallet signatures, anyone who knows your wallet address can
-          look up the contact details saved for it. The{" "}
-          <Link href="/privacy" className={HOME_LINK_CLASS_NAME}>
-            privacy page
-          </Link>{" "}
-          explains this and lists every service that handles your data.
+          look up the contact details saved for it. The <Link href="/privacy">privacy page</Link> explains this and
+          lists every service that handles your data.
         </>
       ),
     },
@@ -133,11 +124,8 @@ export const HomeObjections = ({ plan }: HomeObjectionsProps) => {
           free tools exist
           {comparison ? (
             <>
-              :{" "}
-              <Link href={postPath(comparison.meta.slug)} className={HOME_LINK_CLASS_NAME}>
-                our comparison of Aave liquidation alert tools
-              </Link>{" "}
-              covers them, including where they beat Tokenping
+              : <Link href={postPath(comparison.meta.slug)}>our comparison of Aave liquidation alert tools</Link> covers
+              them, including where they beat Tokenping
             </>
           ) : null}
           . Tokenping is for people who want the alert on Signal or email, including for positions on Gnosis and
@@ -148,13 +136,15 @@ export const HomeObjections = ({ plan }: HomeObjectionsProps) => {
   ];
 
   return (
-    <HomeSection id="questions" title="Questions to ask before you connect a wallet">
-      {objections.map(({ question, answer }) => (
-        <div key={question}>
-          <h3 className={HOME_H3_CLASS_NAME}>{question}</h3>
-          <p className={HOME_TEXT_CLASS_NAME}>{answer}</p>
-        </div>
-      ))}
+    <HomeSection id="questions" title="Questions to ask before you connect a wallet" surface="wash" width="list">
+      <div className="grid gap-3">
+        {objections.map(({ question, answer }) => (
+          <div key={question} className={HOME_CARD_CLASS_NAME}>
+            <h3 className="m-0 text-lg leading-snug font-medium">{question}</h3>
+            <p className="mt-2 mb-0 leading-[1.7] text-muted-foreground">{answer}</p>
+          </div>
+        ))}
+      </div>
     </HomeSection>
   );
 };

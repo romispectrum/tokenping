@@ -1,47 +1,37 @@
 import type { ComponentPropsWithoutRef } from "react";
 import Link from "next/link";
 import type { MDXComponents } from "mdx/types";
+import { TableScrollRegion } from "~~/components/blog/TableScrollRegion";
 import { headingId, textContent } from "~~/components/blog/headingId";
 import { EXTERNAL_LINK_REL } from "~~/constants/links";
 
-// Light and dark pairs follow the site's surfaces (base-content on light, gray/indigo tints on dark). Links use
-// indigo-700 / indigo-300, which keep at least 4.5:1 on both article backgrounds; the theme's primary does not.
-export const ARTICLE_LINK_CLASS_NAME =
-  "link underline-offset-2 text-indigo-700 hover:text-indigo-900 dark:text-indigo-300 dark:hover:text-indigo-200";
+// The article body is calm: type, links and tables only. No glow, grain, wash or brand divider inside it.
+// Paragraphs and lists inherit their size and colour, so the same MDX reads at body size in the article and at the
+// smaller size inside a callout.
 
+/** An inline link in running text: the link token (violet on light, cyan on dark), always underlined. */
+const ARTICLE_LINK_CLASS_NAME = "text-link underline decoration-1 underline-offset-3 hover:decoration-2";
+
+// scroll-mt keeps an anchored heading clear of the sticky header.
 const H2 = ({ children, ...props }: ComponentPropsWithoutRef<"h2">) => (
-  <h2
-    id={headingId(textContent(children))}
-    className="mt-10 mb-3 scroll-mt-24 text-2xl font-bold leading-tight text-base-content"
-    {...props}
-  >
+  <h2 id={headingId(textContent(children))} className="mt-12 mb-4 scroll-mt-24 text-2xl leading-snug" {...props}>
     {children}
   </h2>
 );
 
 const H3 = ({ children, ...props }: ComponentPropsWithoutRef<"h3">) => (
-  <h3
-    id={headingId(textContent(children))}
-    className="mt-8 mb-2 scroll-mt-24 text-xl font-semibold leading-snug text-base-content"
-    {...props}
-  >
+  <h3 id={headingId(textContent(children))} className="mt-10 mb-3 scroll-mt-24 text-xl leading-snug" {...props}>
     {children}
   </h3>
 );
 
 const H4 = ({ children, ...props }: ComponentPropsWithoutRef<"h4">) => (
-  <h4
-    id={headingId(textContent(children))}
-    className="mt-6 mb-2 scroll-mt-24 text-lg font-semibold leading-snug text-base-content"
-    {...props}
-  >
+  <h4 id={headingId(textContent(children))} className="mt-8 mb-2 scroll-mt-24 text-lg leading-snug" {...props}>
     {children}
   </h4>
 );
 
-const Paragraph = (props: ComponentPropsWithoutRef<"p">) => (
-  <p className="my-4 leading-relaxed text-base-content/90 dark:text-gray-200" {...props} />
-);
+const Paragraph = (props: ComponentPropsWithoutRef<"p">) => <p className="my-5 leading-[1.75]" {...props} />;
 
 /** Internal paths and fragments go through next/link; anything else is external. */
 const Anchor = ({ href = "", children, ...props }: ComponentPropsWithoutRef<"a">) =>
@@ -56,69 +46,69 @@ const Anchor = ({ href = "", children, ...props }: ComponentPropsWithoutRef<"a">
   );
 
 const UnorderedList = (props: ComponentPropsWithoutRef<"ul">) => (
-  <ul className="my-4 list-disc space-y-2 pl-6 marker:text-base-content/50 dark:text-gray-200" {...props} />
+  <ul className="my-5 list-disc space-y-2 pl-6 marker:text-muted-foreground" {...props} />
 );
 
 const OrderedList = (props: ComponentPropsWithoutRef<"ol">) => (
-  <ol className="my-4 list-decimal space-y-2 pl-6 marker:text-base-content/60 dark:text-gray-200" {...props} />
+  <ol className="my-5 list-decimal space-y-2 pl-6 marker:text-muted-foreground" {...props} />
 );
 
 const ListItem = (props: ComponentPropsWithoutRef<"li">) => (
-  <li className="leading-relaxed pl-1 [&>p]:my-1 [&>ul]:my-2 [&>ol]:my-2" {...props} />
+  <li className="pl-1 leading-[1.75] [&>ol]:my-2 [&>p]:my-1 [&>ul]:my-2" {...props} />
 );
 
 const Blockquote = (props: ComponentPropsWithoutRef<"blockquote">) => (
-  <blockquote
-    className="my-6 border-l-4 border-indigo-300 pl-4 text-base-content/80 dark:border-indigo-400/60 dark:text-gray-300"
-    {...props}
-  />
+  <blockquote className="my-6 border-l-2 border-input pl-5 text-muted-foreground [&>p]:my-3" {...props} />
 );
 
+// Medium, not Bold: 700 is kept for numbers and table headers.
 const Strong = (props: ComponentPropsWithoutRef<"strong">) => (
-  <strong className="font-semibold text-base-content" {...props} />
+  <strong className="font-medium text-foreground" {...props} />
 );
 
 const InlineCode = (props: ComponentPropsWithoutRef<"code">) => (
-  <code
-    className="rounded-md bg-base-200 px-1.5 py-0.5 font-mono text-[0.875em] break-words dark:bg-white/10"
-    {...props}
-  />
+  <code className="rounded-lg bg-muted px-1.5 py-0.5 text-[0.875em] break-words text-foreground" {...props} />
 );
 
+// Focusable, so a keyboard can scroll a long line sideways.
 const Pre = (props: ComponentPropsWithoutRef<"pre">) => (
   <pre
-    className="my-6 overflow-x-auto rounded-box bg-base-200 p-4 text-sm dark:bg-black/40 [&>code]:bg-transparent [&>code]:p-0"
+    tabIndex={0}
+    className="my-6 overflow-x-auto rounded-xl border border-border bg-secondary p-4 text-sm leading-relaxed text-secondary-foreground [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-[1em]"
     {...props}
   />
 );
 
-const HorizontalRule = (props: ComponentPropsWithoutRef<"hr">) => (
-  <hr className="my-8 border-base-300 dark:border-white/10" {...props} />
-);
+const HorizontalRule = (props: ComponentPropsWithoutRef<"hr">) => <hr className="my-10 border-border" {...props} />;
 
 // A real <table> inside a focusable scroll region, so wide comparison tables scroll sideways on phones and keyboard
-// users can scroll them too.
+// users can scroll them too. The card frame and the muted header row are the shared article table; every cell
+// keeps a minimum width, so a many-column table scrolls instead of crushing its text. From lg the table reaches 80px
+// out of the reading column on each side, where the page has room.
 const Table = (props: ComponentPropsWithoutRef<"table">) => (
-  <div
-    role="region"
-    aria-label="Table, scrolls horizontally"
-    tabIndex={0}
-    className="my-6 overflow-x-auto rounded-box border border-base-300 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:border-white/10"
-  >
-    <table className="table table-sm sm:table-md w-full text-sm" {...props} />
-  </div>
+  <TableScrollRegion className="overflow-x-auto rounded-2xl border border-border bg-card text-card-foreground shadow-card">
+    <table className="w-full border-collapse text-left text-[0.9375rem] tabular-nums" {...props} />
+  </TableScrollRegion>
 );
 
 const TableHead = (props: ComponentPropsWithoutRef<"thead">) => (
-  <thead className="bg-base-200 text-base-content dark:bg-white/5" {...props} />
+  <thead className="border-b border-border bg-muted" {...props} />
+);
+
+const TableRow = (props: ComponentPropsWithoutRef<"tr">) => (
+  <tr className="border-t border-border first:border-t-0" {...props} />
 );
 
 const TableHeaderCell = (props: ComponentPropsWithoutRef<"th">) => (
-  <th className="align-bottom font-semibold text-base-content" {...props} />
+  <th
+    className="min-w-36 px-4 py-3 align-bottom lg:min-w-28 text-xs font-bold tracking-wide text-muted-foreground uppercase"
+    {...props}
+  />
 );
 
+// The first cell names the row, so it is Medium like a row header.
 const TableCell = (props: ComponentPropsWithoutRef<"td">) => (
-  <td className="align-top text-base-content/90 dark:text-gray-200" {...props} />
+  <td className="min-w-36 px-4 py-3 align-top leading-relaxed first:font-medium lg:min-w-28" {...props} />
 );
 
 export const MDX_ELEMENTS: MDXComponents = {
@@ -137,6 +127,7 @@ export const MDX_ELEMENTS: MDXComponents = {
   hr: HorizontalRule,
   table: Table,
   thead: TableHead,
+  tr: TableRow,
   th: TableHeaderCell,
   td: TableCell,
 };

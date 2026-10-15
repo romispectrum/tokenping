@@ -21,7 +21,7 @@ afterEach(() => {
 
 describe("/privacy", () => {
   it("has its own title, description and self canonical", () => {
-    expect(metadata.title).toBe("Privacy and Data");
+    expect(metadata.title).toBe("Privacy and data");
     expect(String(metadata.description).length).toBeLessThanOrEqual(155);
     expect(metadata.alternates?.canonical).toBe("/privacy");
   });
@@ -100,6 +100,19 @@ describe("/privacy", () => {
     renderPage();
 
     expect(screen.getByText("14 October 2026").getAttribute("dateTime")).toBe("2026-10-14T00:00:00Z");
+  });
+
+  it("styles inline links with the base link style and uses no legacy palette", () => {
+    const { container } = renderPage();
+    // The breadcrumb trail is a shared component with its own styles.
+    const page = container.cloneNode(true) as HTMLElement;
+    page.querySelector('nav[aria-label="Breadcrumb"]')?.remove();
+
+    for (const name of ["X", "Telegram community", "homepage"])
+      expect(screen.getByRole("link", { name }).hasAttribute("class")).toBe(false);
+    expect(page.innerHTML).not.toMatch(
+      /indigo-|purple-|gray-\d|base-content|base-200|base-300|font-bold|font-semibold/,
+    );
   });
 
   it("renders the privacy page markup", () => {

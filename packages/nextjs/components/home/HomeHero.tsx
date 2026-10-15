@@ -1,5 +1,10 @@
 import { getChannelBadgeNames, getHomeHeadline, getNetworkBadgeNames } from "~~/components/home/homeContent";
 import { DashboardCta } from "~~/components/home/homeUi";
+import { Container } from "~~/components/home/marketingLayout";
+import { Badge } from "~~/components/ui/Badge";
+import { Glow } from "~~/components/ui/Glow";
+import { GrainCard } from "~~/components/ui/GrainCard";
+import { Kicker } from "~~/components/ui/Kicker";
 import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import { formatAlertChannels } from "~~/services/marketing/alertChannels";
 
@@ -10,39 +15,51 @@ type BadgeRowProps = {
 
 const BadgeRow = ({ label, names }: BadgeRowProps) => (
   <div className="flex flex-wrap items-center justify-center gap-2">
-    <span className="text-sm font-medium text-base-content/80 dark:text-gray-300">{label}</span>
+    <span className="text-sm font-medium text-foreground">{label}</span>
     <ul className="m-0 flex list-none flex-wrap justify-center gap-2 p-0">
       {names.map(name => (
         <li key={name} className="m-0 p-0">
-          <span className="badge badge-outline badge-md border-base-content/30 text-base-content dark:border-white/30">
-            {name}
-          </span>
+          <Badge>{name}</Badge>
         </li>
       ))}
     </ul>
   </div>
 );
 
-/** Eyebrow, headline A, subhead S2, the primary action and the coverage badges (marketing plan §2.1–2.2, §2.7). */
+/**
+ * Eyebrow, headline A, subhead S2, the primary action and the coverage badges (marketing plan §2.1 to 2.2, §2.7).
+ *
+ * Layers, back to front: the lavender wash, the glow anchored to the card's bottom-right corner (the page's first of
+ * two), the grain glass card, then the content. Every text line on the card is text-foreground: the glow can tint
+ * the card behind it, and muted text over the tint drops below 4.5:1. No mascot.
+ */
 export const HomeHero = () => (
-  <section aria-labelledby="home-headline" className="pt-4 pb-2 text-center sm:pt-8">
-    <p className="m-0 mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-700 dark:text-indigo-300">
-      Aave V3 health factor alerts
-    </p>
-    <h1
-      id="home-headline"
-      className="m-0 mb-4 text-3xl font-bold leading-tight sm:text-5xl bg-gradient-to-r from-neutral via-indigo-800 to-indigo-600 bg-clip-text text-transparent dark:from-white dark:via-purple-200 dark:to-indigo-300"
-    >
-      {getHomeHeadline()}
-    </h1>
-    <p className="mx-auto mt-0 mb-6 max-w-2xl text-base leading-relaxed text-base-content/90 sm:text-lg dark:text-gray-200">
-      {`Read-only: no approvals on your Aave position and no minimum size. We check every ${NOTIFICATION_CHECK_INTERVAL_MINUTES} minutes and alert you by ${formatAlertChannels("or")} whenever your health factor is below the line you set.`}
-    </p>
-    <DashboardCta />
-    <div className="mt-6 flex flex-col items-center gap-3">
-      <BadgeRow label="Networks:" names={getNetworkBadgeNames()} />
-      <BadgeRow label="Alerts by:" names={getChannelBadgeNames()} />
-      <p className="m-0 text-xs text-base-content/70 dark:text-gray-400">Aave V3 only. On Ethereum, the Core market.</p>
-    </div>
+  <section aria-labelledby="home-headline" className="relative isolate overflow-hidden pt-6 pb-16 md:pt-12 md:pb-24">
+    <div
+      aria-hidden="true"
+      className="absolute inset-0 -z-20 bg-linear-to-b from-accent/70 via-background to-background dark:from-accent/40"
+    />
+    <Container>
+      <div className="relative rounded-3xl">
+        <Glow placement="bottom-right" />
+        <GrainCard className="px-6 py-10 sm:px-10 md:px-12 md:py-14 lg:px-16 lg:py-16">
+          <div className="mx-auto max-w-3xl text-center">
+            <Kicker>Aave V3 health factor alerts</Kicker>
+            <h1 id="home-headline" className="text-display m-0 text-balance">
+              {getHomeHeadline()}
+            </h1>
+            <p className="text-lead mx-auto mt-4 mb-0 max-w-[52ch] text-pretty text-foreground md:text-xl">
+              {`Read-only: no approvals on your Aave position and no minimum size. We check every ${NOTIFICATION_CHECK_INTERVAL_MINUTES} minutes and alert you by ${formatAlertChannels("or")} whenever your health factor is below the line you set.`}
+            </p>
+            <DashboardCta secondary={{ label: "See how it works", sectionId: "how-it-works" }} />
+            <div className="mt-8 flex flex-col items-center gap-3">
+              <BadgeRow label="Networks:" names={getNetworkBadgeNames()} />
+              <BadgeRow label="Alerts by:" names={getChannelBadgeNames()} />
+              <p className="m-0 text-sm text-foreground">Aave V3 only. On Ethereum, the Core market.</p>
+            </div>
+          </div>
+        </GrainCard>
+      </div>
+    </Container>
   </section>
 );
