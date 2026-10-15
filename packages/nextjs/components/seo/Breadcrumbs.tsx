@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import type { Crumb } from "~~/utils/seo";
 
 type BreadcrumbsProps = {
@@ -6,26 +7,36 @@ type BreadcrumbsProps = {
   crumbs: readonly Crumb[];
 };
 
+/**
+ * A quiet 14px trail above the h1: muted links that turn to the foreground colour on hover, aria-hidden chevrons,
+ * and the current page as plain text. One line: a long current-page name truncates (min-w-0 down the flex chain)
+ * instead of making the trail scroll sideways, and nothing clips the links' focus outline. Links are 44px tall on
+ * touch screens.
+ */
 export const Breadcrumbs = ({ crumbs }: BreadcrumbsProps) => (
-  // overflow-hidden + min-w-0: a long current-page name truncates instead of making the trail scroll sideways.
-  <nav
-    aria-label="Breadcrumb"
-    className="breadcrumbs overflow-hidden text-sm text-base-content/70 dark:text-gray-400 py-0 mb-4"
-  >
-    <ol>
+  <nav aria-label="Breadcrumb" className="mb-4 min-w-0 text-sm text-muted-foreground">
+    <ol className="m-0 flex min-w-0 list-none items-center gap-1.5 p-0">
       {crumbs.map(({ name, path }, index) => {
         const isCurrent = index === crumbs.length - 1;
         return (
-          <li key={`${index}-${name}`} className={isCurrent ? "min-w-0" : "shrink-0"}>
+          <li
+            key={`${index}-${name}`}
+            className={isCurrent ? "flex min-w-0 items-center" : "flex shrink-0 items-center gap-1.5"}
+          >
             {isCurrent || path === undefined ? (
-              // daisyUI makes this span a flex box, which cannot show an ellipsis itself; the inner span can.
-              <span aria-current={isCurrent ? "page" : undefined} className="min-w-0">
-                <span className="min-w-0 truncate">{name}</span>
+              <span aria-current={isCurrent ? "page" : undefined} className="block min-w-0 truncate text-foreground">
+                {name}
               </span>
             ) : (
-              <Link href={path} className="link link-hover">
-                {name}
-              </Link>
+              <>
+                <Link
+                  href={path}
+                  className="inline-flex items-center rounded-sm underline-offset-4 transition-colors duration-150 ease-[ease] hover:text-foreground hover:underline pointer-coarse:min-h-11"
+                >
+                  {name}
+                </Link>
+                <ChevronRight aria-hidden="true" className="size-3.5 shrink-0" />
+              </>
             )}
           </li>
         );

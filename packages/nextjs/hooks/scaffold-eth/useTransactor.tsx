@@ -20,8 +20,9 @@ const TxnNotification = ({ message, blockExplorerLink }: { message: string; bloc
     <div className={`flex flex-col ml-1 cursor-default`}>
       <p className="my-0">{message}</p>
       {blockExplorerLink && blockExplorerLink.length > 0 ? (
-        <a href={blockExplorerLink} target="_blank" rel="noreferrer" className="block link">
-          check out transaction
+        <a href={blockExplorerLink} target="_blank" rel="noopener noreferrer" className="block link text-link">
+          View the transaction in the block explorer
+          <span className="sr-only"> (opens in a new tab)</span>
         </a>
       ) : null}
     </div>
@@ -57,7 +58,7 @@ export const useTransactor = (_walletClient?: WalletClient): TransactionFunc => 
       // Get full transaction from public client
       const publicClient = getPublicClient(wagmiConfig);
 
-      notificationId = notification.loading(<TxnNotification message="Awaiting for user confirmation" />);
+      notificationId = notification.loading(<TxnNotification message="Waiting for your wallet" />);
       if (typeof tx === "function") {
         // Tx is already prepared by the caller
         const result = await tx();
@@ -72,7 +73,7 @@ export const useTransactor = (_walletClient?: WalletClient): TransactionFunc => 
       blockExplorerTxURL = chainId ? getBlockExplorerTxLink(chainId, transactionHash) : "";
 
       notificationId = notification.loading(
-        <TxnNotification message="Waiting for transaction to complete." blockExplorerLink={blockExplorerTxURL} />,
+        <TxnNotification message="Waiting for the transaction to confirm" blockExplorerLink={blockExplorerTxURL} />,
       );
 
       transactionReceipt = await publicClient.waitForTransactionReceipt({
@@ -83,12 +84,7 @@ export const useTransactor = (_walletClient?: WalletClient): TransactionFunc => 
 
       if (transactionReceipt.status === "reverted") throw new Error("Transaction reverted");
 
-      notification.success(
-        <TxnNotification message="Transaction completed successfully!" blockExplorerLink={blockExplorerTxURL} />,
-        {
-          icon: "🎉",
-        },
-      );
+      notification.success(<TxnNotification message="Transaction confirmed" blockExplorerLink={blockExplorerTxURL} />);
 
       if (options?.onBlockConfirmation) options.onBlockConfirmation(transactionReceipt);
     } catch (error: any) {

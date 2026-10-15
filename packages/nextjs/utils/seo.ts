@@ -32,7 +32,7 @@ export const SITE_OG_IMAGE = {
   alt: "Tokenping: Aave health factor alerts",
 };
 
-export const DEFAULT_TITLE = "Tokenping: Aave Health Factor Alerts";
+export const DEFAULT_TITLE = "Tokenping: Aave health factor alerts";
 export const DEFAULT_DESCRIPTION = `Alerts when your Aave V3 health factor drops below a threshold you choose, on ${AAVE_MARKETS.length} networks, checked every ${NOTIFICATION_CHECK_INTERVAL_MINUTES} minutes. The dashboard is free.`;
 export const ORGANIZATION_DESCRIPTION =
   "Tokenping sends a message when an Aave V3 health factor drops below the threshold its owner set.";
@@ -113,6 +113,7 @@ export const rootMetadata = (): Metadata => {
     title: { default: DEFAULT_TITLE, template: TITLE_TEMPLATE },
     description: DEFAULT_DESCRIPTION,
     applicationName: SITE_NAME,
+    manifest: "/manifest.json",
     alternates: { types: RSS_ALTERNATE },
     // No images: app/opengraph-image.tsx supplies the root card.
     openGraph: {

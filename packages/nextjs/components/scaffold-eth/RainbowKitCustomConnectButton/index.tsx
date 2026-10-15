@@ -8,15 +8,15 @@ import { WrongNetworkDropdown } from "./WrongNetworkDropdown";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Balance } from "@scaffold-ui/components";
 import { Address } from "viem";
-import { useNetworkColor } from "~~/hooks/scaffold-eth";
+import { buttonClasses } from "~~/components/ui/buttonClasses";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth/useTargetNetwork";
 import { getBlockExplorerAddressLink } from "~~/utils/scaffold-eth";
 
 /**
- * Custom Wagmi Connect Button (watch balance + custom design)
+ * Custom Wagmi Connect Button (watch balance + custom design). It sits in the header of every page, so it is outline:
+ * the page owns the one pink action in view.
  */
 export const RainbowKitCustomConnectButton = () => {
-  const networkColor = useNetworkColor();
   const { targetNetwork } = useTargetNetwork();
 
   return (
@@ -33,12 +33,12 @@ export const RainbowKitCustomConnectButton = () => {
               if (!connected) {
                 return (
                   <button
-                    className="btn btn-primary btn-sm touch-target-min min-h-9"
+                    className={buttonClasses({ variant: "outline", size: "sm" })}
                     onClick={openConnectModal}
                     type="button"
                     aria-label="Connect wallet"
                   >
-                    <span className="hidden sm:inline">Connect Wallet</span>
+                    <span className="hidden sm:inline">Connect wallet</span>
                     <span className="sm:hidden">Connect</span>
                   </button>
                 );
@@ -59,9 +59,7 @@ export const RainbowKitCustomConnectButton = () => {
                         fontSize: "0.8em",
                       }}
                     />
-                    <span className="text-xs" style={{ color: networkColor }}>
-                      {chain.name}
-                    </span>
+                    <span className="text-xs text-muted-foreground">{chain.name}</span>
                   </div>
                   <AddressInfoDropdown
                     address={account.address as Address}

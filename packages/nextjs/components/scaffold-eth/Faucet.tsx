@@ -6,6 +6,7 @@ import { Address as AddressType, createWalletClient, http, parseEther } from "vi
 import { hardhat } from "viem/chains";
 import { useAccount } from "wagmi";
 import { BanknotesIcon } from "@heroicons/react/24/outline";
+import { buttonClasses } from "~~/components/ui/buttonClasses";
 import { useTargetNetwork, useTransactor } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
 
@@ -82,7 +83,7 @@ export const Faucet = () => {
 
   return (
     <div>
-      <label htmlFor="faucet-modal" className="btn btn-primary btn-sm font-normal gap-1">
+      <label htmlFor="faucet-modal" className={buttonClasses({ variant: "outline", size: "sm" })}>
         <BanknotesIcon className="h-4 w-4" />
         <span>Faucet</span>
       </label>

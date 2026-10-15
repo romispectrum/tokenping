@@ -23,11 +23,11 @@ type NotificationOptions = {
 };
 
 const ENUM_STATUSES = {
-  success: <CheckCircleIcon className="w-7 text-success" />,
-  loading: <span className="w-6 loading loading-spinner"></span>,
-  error: <ExclamationCircleIcon className="w-7 text-error" />,
-  info: <InformationCircleIcon className="w-7 text-info" />,
-  warning: <ExclamationTriangleIcon className="w-7 text-warning" />,
+  success: <CheckCircleIcon aria-hidden="true" className="w-7 text-success" />,
+  loading: <span aria-hidden="true" className="w-6 loading loading-spinner"></span>,
+  error: <ExclamationCircleIcon aria-hidden="true" className="w-7 text-error" />,
+  info: <InformationCircleIcon aria-hidden="true" className="w-7 text-info" />,
+  warning: <ExclamationTriangleIcon aria-hidden="true" className="w-7 text-warning" />,
 };
 
 const DEFAULT_DURATION = 3000;
@@ -45,20 +45,29 @@ const Notification = ({
 }: NotificationProps) => {
   return toast.custom(
     (t: Toast) => (
+      // Announced as it appears: errors interrupt, everything else waits its turn. The popover surface and the frame
+      // shadow, like the other floating panels.
       <div
-        className={`flex flex-row items-start justify-between max-w-sm rounded-xl shadow-center shadow-accent bg-base-200 p-4 transform-gpu relative transition-all duration-500 ease-in-out space-x-2
+        role={status === "error" ? "alert" : "status"}
+        aria-live={status === "error" ? "assertive" : "polite"}
+        className={`flex flex-row items-start justify-between gap-2 max-w-sm rounded-xl border border-border bg-popover text-popover-foreground shadow-frame p-4 transform-gpu relative transition-all duration-500 ease-in-out
         ${
           position.substring(0, 3) == "top"
-            ? `hover:translate-y-1 ${t.visible ? "top-0" : "-top-96"}`
-            : `hover:-translate-y-1 ${t.visible ? "bottom-0" : "-bottom-96"}`
+            ? `motion-safe:hover:translate-y-1 ${t.visible ? "top-0" : "-top-96"}`
+            : `motion-safe:hover:-translate-y-1 ${t.visible ? "bottom-0" : "-bottom-96"}`
         }`}
       >
         <div className="leading-[0] self-center">{icon ? icon : ENUM_STATUSES[status]}</div>
         <div className={`overflow-x-hidden break-words whitespace-pre-line ${icon ? "mt-1" : ""}`}>{content}</div>
 
-        <div className={`cursor-pointer text-lg ${icon ? "mt-1" : ""}`} onClick={() => toast.dismiss(t.id)}>
-          <XMarkIcon className="w-6 cursor-pointer" onClick={() => toast.remove(t.id)} />
-        </div>
+        <button
+          type="button"
+          aria-label="Dismiss notification"
+          className="-m-1 inline-flex shrink-0 items-center justify-center rounded-lg p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring pointer-coarse:min-h-11 pointer-coarse:min-w-11"
+          onClick={() => toast.remove(t.id)}
+        >
+          <XMarkIcon aria-hidden="true" className="size-5" />
+        </button>
       </div>
     ),
     {

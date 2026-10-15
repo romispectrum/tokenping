@@ -36,7 +36,8 @@ export const SearchBar = () => {
     <form onSubmit={handleSearch} className="flex items-center justify-end mb-5 space-x-3 mx-5">
       <input
         className="border-primary bg-base-100 text-base-content placeholder:text-base-content/50 p-2 mr-2 w-full md:w-1/2 lg:w-1/3 rounded-md shadow-md focus:outline-hidden focus:ring-2 focus:ring-accent"
-        type="text"
+        type="search"
+        aria-label="Search by transaction hash or address"
         value={searchInput}
         placeholder="Search by hash or address"
         onChange={e => setSearchInput(e.target.value)}
