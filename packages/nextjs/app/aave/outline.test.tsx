@@ -21,13 +21,14 @@ vi.mock("~~/hooks/custom/useNotificationConfig", () => ({
 vi.mock("~~/components/custom/AccessPaywall", () => ({
   AccessPaywall: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
+// With hasConfig false the real card is in its first-use state, whose only h3 is the empty-state title.
 vi.mock("~~/components/custom/NotificationConfig", () => ({
-  NotificationConfig: () => <h3>Notification Settings</h3>,
+  NotificationConfig: ({ chainName }: { chainName: string }) => <h3>No alerts on {chainName} yet</h3>,
 }));
 
 describe("/aave heading outline with a connected wallet", () => {
   // The server shell owns the h1 and the dashboard's components use h3s, so the island must supply the h2 between them.
-  it("goes h1 → h2 → h3 with no skipped level", async () => {
+  it("goes h1 → h2 → h3 → h4 with no skipped level", async () => {
     vi.mocked(fetchAavePositions).mockResolvedValueOnce([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION]);
     renderWithProviders(<AavePage />);
     await waitFor(() => screen.getByRole("heading", { level: 3, name: ETHEREUM_POSITION.chainName }));
@@ -38,8 +39,11 @@ describe("/aave heading outline with a connected wallet", () => {
       "H1 Aave V3 positions and health factor alerts",
       "H2 Your Aave positions",
       "H3 Networks",
-      "H3 Notification Settings",
+      `H3 No alerts on ${ETHEREUM_POSITION.chainName} yet`,
       `H3 ${ETHEREUM_POSITION.chainName}`,
+      // the token tables inside the selected network's card
+      "H4 Supplied",
+      "H4 Borrowed",
     ]);
   });
 });

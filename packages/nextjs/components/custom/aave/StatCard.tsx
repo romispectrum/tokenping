@@ -1,52 +1,54 @@
-type StatCardVariant = "summary" | "detail";
-type StatCardTone = "collateral" | "debt" | "netWorth";
+import { Skeleton, cx } from "~~/components/ui";
 
-// Summary cards (totals across networks) are tinted with their tone; detail cards (one network) share a neutral card.
-const SUMMARY_CARD_STYLES: Record<StatCardTone, { card: string; label: string }> = {
-  collateral: {
-    card: "relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-emerald-500/10 dark:border-emerald-500/20 dark:bg-gradient-to-br dark:from-emerald-950/50 dark:to-gray-900/50 p-4",
-    label: "text-[10px] uppercase tracking-wider text-emerald-600/90 dark:text-emerald-400/80 mb-1",
-  },
-  debt: {
-    card: "relative overflow-hidden rounded-2xl border border-red-500/30 bg-red-500/10 dark:border-red-500/20 dark:bg-gradient-to-br dark:from-red-950/50 dark:to-gray-900/50 p-4",
-    label: "text-[10px] uppercase tracking-wider text-red-600/90 dark:text-red-400/80 mb-1",
-  },
-  netWorth: {
-    card: "relative overflow-hidden rounded-2xl border border-primary/30 bg-primary/10 dark:border-purple-500/20 dark:bg-gradient-to-br dark:from-purple-950/50 dark:to-gray-900/50 p-4",
-    label: "text-[10px] uppercase tracking-wider text-primary/90 dark:text-purple-400/80 mb-1",
-  },
-};
+type StatCardVariant = "card" | "panel";
 
-const DETAIL_CARD_STYLES = {
-  card: "bg-base-200 dark:bg-white/5 rounded-xl p-3",
-  label: "text-[10px] uppercase tracking-wider text-base-content/60 dark:text-gray-500 mb-1",
+const SURFACE: Record<StatCardVariant, string> = {
+  // a flat card of its own (the totals row)
+  card: "gap-2 rounded-2xl border border-border bg-card p-5 text-card-foreground sm:p-6",
+  // an inner panel inside a card: cards are never nested
+  panel: "gap-1 rounded-xl bg-muted p-4",
 };
 
 const VALUE_SIZE: Record<StatCardVariant, string> = {
-  summary: "text-xl font-bold",
-  detail: "text-lg font-bold",
-};
-
-const VALUE_COLOR: Record<StatCardTone, string> = {
-  collateral: "text-emerald-600 dark:text-emerald-400",
-  debt: "text-red-600 dark:text-red-400",
-  netWorth: "text-base-content dark:text-white",
+  card: "text-3xl tracking-tight",
+  panel: "text-xl",
 };
 
 type StatCardProps = {
   label: string;
-  value: string;
-  variant: StatCardVariant;
-  tone: StatCardTone;
+  /** Preformatted. null when the number is not known: it reads "No data", never 0. */
+  value: string | null;
+  variant?: StatCardVariant;
 };
 
-export const StatCard = ({ label, value, variant, tone }: StatCardProps) => {
-  const styles = variant === "summary" ? SUMMARY_CARD_STYLES[tone] : DETAIL_CARD_STYLES;
+/**
+ * A key number: the label, then the value in Satoshi Bold with tabular figures. Render it in a `<dl>`; each card is a
+ * dt/dd pair. Flat, no tint: the numbers are not statuses.
+ */
+export const StatCard = ({ label, value, variant = "card" }: StatCardProps) => (
+  <div className={cx("flex min-w-0 flex-col", SURFACE[variant])}>
+    <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
+    <dd
+      className={cx(
+        "m-0",
+        value === null ? "text-sm text-muted-foreground" : cx("font-bold tabular-nums", VALUE_SIZE[variant]),
+      )}
+    >
+      {value ?? "No data"}
+    </dd>
+  </div>
+);
 
-  return (
-    <div className={styles.card}>
-      <p className={styles.label}>{label}</p>
-      <p className={`${VALUE_SIZE[variant]} ${VALUE_COLOR[tone]}`}>{value}</p>
-    </div>
-  );
-};
+/**
+ * The loading footprint of a StatCard. Render the loading row as a `<div>`, not a `<dl>`: a skeleton has no dt/dd.
+ * The panel placeholder is outlined instead of muted, or the muted skeleton bars would vanish into it.
+ */
+export const StatCardSkeleton = ({ variant = "card" }: { variant?: StatCardVariant }) => (
+  <div
+    aria-hidden="true"
+    className={cx("flex flex-col", variant === "card" ? SURFACE.card : "gap-1 rounded-xl border border-border p-4")}
+  >
+    <Skeleton className="h-5 w-24" />
+    <Skeleton className={variant === "card" ? "h-9 w-32" : "h-7 w-24"} />
+  </div>
+);

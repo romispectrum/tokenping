@@ -6,8 +6,6 @@ export type AaveMarket = {
   pool: Address;
   dataProvider: Address;
   name: string;
-  icon: string;
-  color: string;
 };
 
 // Aave V3 Pool and PoolDataProvider per network, in the order the dashboard lists them.
@@ -17,56 +15,42 @@ export const AAVE_MARKETS: readonly AaveMarket[] = [
     pool: "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2",
     dataProvider: "0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3",
     name: "Ethereum",
-    icon: "⟠",
-    color: "#627EEA",
   },
   {
     chain: chains.polygon,
     pool: "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
     dataProvider: "0x69FA688f1Dc47d4B5d8029D5a35FB7a548310654",
     name: "Polygon",
-    icon: "⬡",
-    color: "#8247E5",
   },
   {
     chain: chains.arbitrum,
     pool: "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
     dataProvider: "0x69FA688f1Dc47d4B5d8029D5a35FB7a548310654",
     name: "Arbitrum",
-    icon: "🔷",
-    color: "#28A0F0",
   },
   {
     chain: chains.optimism,
     pool: "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
     dataProvider: "0x69FA688f1Dc47d4B5d8029D5a35FB7a548310654",
     name: "Optimism",
-    icon: "🔴",
-    color: "#FF0420",
   },
   {
     chain: chains.base,
     pool: "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5",
     dataProvider: "0x2d8A3C5677189723C4cB8873CfC9C8976FDF38Ac",
     name: "Base",
-    icon: "🔵",
-    color: "#0052FF",
   },
   {
     chain: chains.avalanche,
     pool: "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
     dataProvider: "0x69FA688f1Dc47d4B5d8029D5a35FB7a548310654",
     name: "Avalanche",
-    icon: "🔺",
-    color: "#E84142",
   },
   {
     chain: chains.gnosis,
     pool: "0xb50201558B00496A145fE76f7424749556E326D8",
     dataProvider: "0x501B4c19dd9C2e06E94dA7b6D5Ed4ddA013EC741",
     name: "Gnosis",
-    icon: "🦉",
-    color: "#04795B",
   },
 ];
 

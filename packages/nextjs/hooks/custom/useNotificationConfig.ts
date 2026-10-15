@@ -27,7 +27,7 @@ const withFieldDefaults = (configs: ConfigsByChain): ConfigsByChain =>
   );
 
 // Like plain fetch: fail straight away while the browser reports offline instead of pausing (react-query's default),
-// which would leave the card hidden or Save stuck on "Saving..." until the connection returns.
+// which would leave the card hidden or the Save button stuck in its saving state until the connection returns.
 const NETWORK_MODE = "always";
 
 const removeChain = (configs: ConfigsByChain | undefined, chainId: number) => {

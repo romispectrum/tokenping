@@ -173,8 +173,6 @@ const mainnetWithReserves = (overrides: Partial<FakeChain> = {}): FakeChain => (
 const MAINNET_SUMMARY = {
   chainId: chains.mainnet.id,
   chainName: "Ethereum",
-  chainIcon: "⟠",
-  chainColor: "#627EEA",
   totalCollateralUSD: "12345.68",
   totalDebtUSD: "2500.00",
   healthFactor: "3.95",
@@ -185,8 +183,6 @@ const MAINNET_SUMMARY = {
 const BASE_WITHOUT_POSITION: NetworkPosition = {
   chainId: chains.base.id,
   chainName: "Base",
-  chainIcon: "🔵",
-  chainColor: "#0052FF",
   totalCollateralUSD: "0.00",
   totalDebtUSD: "0.00",
   healthFactor: "∞",
@@ -300,8 +296,6 @@ describe("toNetworkPosition", () => {
     expect(toNetworkPosition(BASE, accountData, [])).toEqual({
       chainId: chains.base.id,
       chainName: "Base",
-      chainIcon: "🔵",
-      chainColor: "#0052FF",
       tokens: [],
       ...legacyNetworkFormat(accountData),
     });

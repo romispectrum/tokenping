@@ -9,9 +9,9 @@ export const HEALTH_FACTOR_RISKY = 1.5;
 export const NOTIFICATION_SERVICES: readonly NotificationService[] = ["email", "signal", "telegram"];
 
 export const AVAILABLE_SERVICES: NotificationServiceOption[] = [
-  { id: "email", name: "Email", icon: "📧" },
-  { id: "signal", name: "Signal", icon: "🔒" },
-  { id: "telegram", name: "Telegram", icon: "✈️" },
+  { id: "email", name: "Email" },
+  { id: "signal", name: "Signal" },
+  { id: "telegram", name: "Telegram" },
 ];
 
 /** The bot username is what makes Telegram linking work; without it the link-token route answers 503. */

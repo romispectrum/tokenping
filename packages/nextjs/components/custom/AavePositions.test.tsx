@@ -64,15 +64,18 @@ vi.mock("~~/components/custom/NotificationConfig", async () => {
 const fetchMock = vi.mocked(fetchAavePositions);
 
 const NO_POSITIONS_MESSAGE = "No active Aave positions detected on supported networks.";
-const SELECT_PROMPT = "Select a network on the left to view its Aave position.";
-const BELL_PATH = 'd="M15 17h5l-1.405-1.405';
+const SELECT_PROMPT = "Select a network to view its Aave position.";
+// The bell next to a network with a saved alert is decorative; these words carry it for screen readers.
+const ALERT_SET = "Alert set";
 
 // One tag per line keeps snapshot diffs readable.
 const markup = (container: HTMLElement) => container.innerHTML.replace(/></g, ">\n<");
 
-const networksPanel = () => within(screen.getByRole("complementary"));
+const networksPanel = () => within(screen.getByRole("region", { name: "Networks" }));
 const networkRow = (chainName: string) => networksPanel().getByText(chainName).closest("button")!;
-const refreshButton = () => screen.getByRole("button", { name: /^Refresh(ing)? positions$/ });
+const refreshButton = () => screen.getByRole("button", { name: /^(Refresh positions|Refreshing)$/ });
+// A loading button keeps its focus and colour: aria-busy, not disabled.
+const isRefreshing = () => refreshButton().getAttribute("aria-busy") === "true";
 
 // Resolves once the fetch has settled and the default network's details (or the selection prompt) are on screen.
 const renderLoaded = async (positions: NetworkPosition[]) => {
@@ -80,7 +83,7 @@ const renderLoaded = async (positions: NetworkPosition[]) => {
   const view = renderWithProviders(<AavePositions />);
   const defaultNetwork = positions.find(p => p.hasPosition) ?? positions[0];
   await waitFor(() => {
-    expect(refreshButton().textContent).toBe("Refresh");
+    expect(isRefreshing()).toBe(false);
     if (defaultNetwork) screen.getByRole("heading", { level: 3, name: defaultNetwork.chainName });
     else screen.getByText(SELECT_PROMPT);
   });
@@ -101,7 +104,9 @@ describe("AavePositions", () => {
     const { container } = renderWithProviders(<AavePositions />);
 
     expect(screen.queryByText(NO_POSITIONS_MESSAGE)).toBeNull();
-    expect(refreshButton().getAttribute("aria-label")).toBe("Refreshing positions");
+    expect(isRefreshing()).toBe(true);
+    expect(refreshButton().getAttribute("aria-disabled")).toBe("true");
+    expect(screen.getByText("Loading positions").getAttribute("aria-live")).toBe("polite");
     expect(markup(container)).toMatchSnapshot();
   });
 
@@ -111,12 +116,21 @@ describe("AavePositions", () => {
     const { container } = await renderLoaded([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION, BASE_SUMMARY_ONLY_POSITION]);
 
     expect(fetchMock.mock.calls).toEqual([[USER]]);
-    expect(container.innerHTML.split(BELL_PATH)).toHaveLength(3);
+    expect(networksPanel().getAllByText(ALERT_SET)).toHaveLength(2);
     expect(container.querySelector('[data-stub="access-paywall"]')?.getAttribute("data-has-existing-config")).toBe(
       "true",
     );
     expect(container.querySelector('[data-stub="notification-config"]')?.getAttribute("data-chain-id")).toBe("1");
+    // The dashboard's own controls are never pink: the view's one pink is the paywall's or the alert form's.
+    expect(container.querySelectorAll(".btn-primary")).toHaveLength(0);
     expect(markup(container)).toMatchSnapshot();
+  });
+
+  it("shows the connected wallet as a copyable checksummed address", async () => {
+    await renderLoaded([ETHEREUM_POSITION]);
+
+    expect(screen.getByRole("button", { name: `Copy wallet ${USER}` })).toBeDefined();
+    expect(screen.getByTitle(USER).textContent).toContain("0xd8dA...6045");
   });
 
   it("hides notification bells and does not treat a saved config as existing until configs are loaded", async () => {
@@ -125,7 +139,7 @@ describe("AavePositions", () => {
 
     const { container } = await renderLoaded([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION]);
 
-    expect(container.innerHTML).not.toContain(BELL_PATH);
+    expect(networksPanel().queryAllByText(ALERT_SET)).toHaveLength(0);
     expect(container.querySelector('[data-stub="access-paywall"]')?.getAttribute("data-has-existing-config")).toBe(
       "false",
     );
@@ -137,8 +151,8 @@ describe("AavePositions", () => {
     fireEvent.click(networkRow("Polygon"));
 
     expect(screen.getByRole("heading", { level: 3, name: "Polygon" })).toBeDefined();
-    expect(networkRow("Polygon").className).toContain("border-primary/40");
-    expect(networkRow("Ethereum").className).not.toContain("border-primary/40");
+    expect(networkRow("Polygon").getAttribute("aria-current")).toBe("true");
+    expect(networkRow("Ethereum").hasAttribute("aria-current")).toBe(false);
   });
 
   it("starts the notification form afresh when another network is selected", async () => {
@@ -163,11 +177,11 @@ describe("AavePositions", () => {
     account.address = OTHER_USER;
     view.rerender(<AavePositions />);
 
-    await waitFor(() => expect(refreshButton().textContent).toBe("Refresh"));
+    await waitFor(() => expect(isRefreshing()).toBe(false));
     expect(fetchMock).toHaveBeenLastCalledWith(OTHER_USER);
     expect(screen.getByRole("heading", { level: 3, name: "Ethereum" })).toBeDefined();
-    expect(networkRow("Ethereum").className).toContain("border-primary/40");
-    expect(networkRow("Polygon").className).not.toContain("border-primary/40");
+    expect(networkRow("Ethereum").getAttribute("aria-current")).toBe("true");
+    expect(networkRow("Polygon").hasAttribute("aria-current")).toBe(false);
   });
 
   it("keeps the notification form and its draft when the connection comes back", async () => {
@@ -205,7 +219,8 @@ describe("AavePositions", () => {
 
     const { container } = renderWithProviders(<AavePositions />);
 
-    expect(await screen.findByRole("button", { name: "Try Again" })).toBeDefined();
+    expect(await screen.findByRole("button", { name: "Try again" })).toBeDefined();
+    expect(screen.getByRole("alert").textContent).toContain("Positions did not load");
     expect(screen.queryByText(NO_POSITIONS_MESSAGE)).toBeNull();
     expect(markup(container)).toMatchSnapshot();
   });
@@ -218,13 +233,13 @@ describe("AavePositions", () => {
 
     renderWithProviders(<AavePositions />);
 
-    expect(await screen.findByRole("button", { name: "Try Again" })).toBeDefined();
+    expect(await screen.findByRole("button", { name: "Try again" })).toBeDefined();
     expect(screen.getByText("Could not reach any Aave network. Check your connection and try again.")).toBeDefined();
-    expect(screen.queryByText("Total Supplied")).toBeNull();
+    expect(screen.queryByText("Total supplied")).toBeNull();
     expect(screen.queryByText("$0.00")).toBeNull();
-    expect(screen.queryByRole("complementary")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Networks" })).toBeNull();
     expect(screen.queryByText(SELECT_PROMPT)).toBeNull();
-    expect(refreshButton().textContent).toBe("Refresh");
+    expect(isRefreshing()).toBe(false);
   });
 
   it("keeps the last positions below the error box when a refresh fails", async () => {
@@ -233,22 +248,23 @@ describe("AavePositions", () => {
     fetchMock.mockRejectedValueOnce(new Error("rpc down"));
     fireEvent.click(refreshButton());
 
-    expect(await screen.findByRole("button", { name: "Try Again" })).toBeDefined();
+    expect(await screen.findByRole("button", { name: "Try again" })).toBeDefined();
+    expect(screen.getByRole("alert").textContent).toContain("Refresh failed");
     expect(screen.getByText("rpc down")).toBeDefined();
-    expect(screen.getByText("Total Supplied")).toBeDefined();
+    expect(screen.getByText("Total supplied")).toBeDefined();
     expect(networkRow("Arbitrum")).toBeDefined();
     expect(screen.getByRole("heading", { level: 3, name: "Ethereum" })).toBeDefined();
   });
 
-  it("fetches again from the Try Again button", async () => {
+  it("fetches again from the Try again button", async () => {
     fetchMock.mockRejectedValueOnce(new Error("Failed to fetch Aave positions"));
     renderWithProviders(<AavePositions />);
 
     fetchMock.mockResolvedValueOnce([ETHEREUM_POSITION]);
-    fireEvent.click(await screen.findByRole("button", { name: "Try Again" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
 
     expect(await screen.findByRole("heading", { level: 3, name: "Ethereum" })).toBeDefined();
-    expect(screen.queryByRole("button", { name: "Try Again" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -259,15 +275,15 @@ describe("AavePositions", () => {
     fetchMock.mockReturnValueOnce(refresh.promise);
     fireEvent.click(refreshButton());
 
-    await waitFor(() => expect(refreshButton().textContent).toBe("Refreshing..."));
-    expect((refreshButton() as HTMLButtonElement).disabled).toBe(true);
+    await waitFor(() => expect(isRefreshing()).toBe(true));
+    expect(refreshButton().getAttribute("aria-disabled")).toBe("true");
     expect(networksPanel().getByText("1 active")).toBeDefined();
     expect(container.querySelector('[data-stub="notification-config"]')).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(markup(container)).toMatchSnapshot();
 
     refresh.resolve([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION]);
-    await waitFor(() => expect(refreshButton().textContent).toBe("Refresh"));
+    await waitFor(() => expect(isRefreshing()).toBe(false));
     expect(screen.getByRole("heading", { level: 3, name: "Ethereum" })).toBeDefined();
   });
 });

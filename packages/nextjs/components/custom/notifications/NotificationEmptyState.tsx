@@ -1,27 +1,30 @@
-import { BellIcon } from "~~/components/custom/notifications/BellIcon";
-import { NotificationCardShell } from "~~/components/custom/notifications/NotificationCard";
+import type { Ref } from "react";
+import { BellRing } from "lucide-react";
+import { Button, Card, CardContent, EmptyState } from "~~/components/ui";
 
 type NotificationEmptyStateProps = {
   chainName: string;
   onCreate: () => void;
+  /** The Create button, which takes focus when Cancel closes an unsaved form. */
+  createRef?: Ref<HTMLButtonElement>;
 };
 
-export const NotificationEmptyState = ({ chainName, onCreate }: NotificationEmptyStateProps) => (
-  <NotificationCardShell>
-    <div className="flex flex-col items-center justify-center py-4 text-center">
-      <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center mb-3">
-        <BellIcon className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-      </div>
-      <h3 className="text-sm font-semibold text-base-content dark:text-white mb-1">Notification Settings</h3>
-      <p className="text-xs text-base-content/70 dark:text-gray-400 mb-4 max-w-[240px]">
-        Get alerts when your Health Factor on {chainName} drops below a threshold you choose.
-      </p>
-      <button
-        onClick={onCreate}
-        className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-sm font-medium hover:from-purple-600 hover:to-indigo-600 transition-all shadow-lg shadow-purple-500/20"
-      >
-        Create notification config
-      </button>
-    </div>
-  </NotificationCardShell>
+/** First use on this network. Its button is the view's one pink primary action. */
+export const NotificationEmptyState = ({ chainName, onCreate, createRef }: NotificationEmptyStateProps) => (
+  <Card className="mb-4">
+    <CardContent>
+      <EmptyState
+        size="inline"
+        headingLevel={3}
+        icon={BellRing}
+        title={`No alerts on ${chainName} yet`}
+        description="Get a message when your health factor drops below a threshold you choose."
+        action={
+          <Button ref={createRef} onClick={onCreate}>
+            Create alert
+          </Button>
+        }
+      />
+    </CardContent>
+  </Card>
 );

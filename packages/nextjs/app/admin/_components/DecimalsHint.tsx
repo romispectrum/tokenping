@@ -5,12 +5,13 @@ type DecimalsHintProps = {
   action: string;
 };
 
+/** The token address field's description: plain text, so it fits inside the Field's description paragraph. */
 export const DecimalsHint = ({ decimals, isLoading, action }: DecimalsHintProps) => (
-  <div className="text-xs text-base-content/70">
+  <>
     {decimals !== undefined
       ? `Detected decimals: ${decimals}`
       : isLoading
-        ? "Loading token decimals..."
+        ? "Loading token decimals"
         : `Token decimals unknown: check the token address. ${action} is disabled until they load.`}
-  </div>
+  </>
 );

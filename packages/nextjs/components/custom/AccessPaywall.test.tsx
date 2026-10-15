@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { QueryClient } from "@tanstack/react-query";
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { QueryClient, useMutation } from "@tanstack/react-query";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { erc20Abi } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AccessPaywall } from "~~/components/custom/AccessPaywall";
@@ -16,7 +16,7 @@ const USER = "0x1111111111111111111111111111111111111111";
 const PAYMENT_CHAIN_ID = 42161;
 const PRICE = 1_500_000n;
 const SUCCESS = "Access active. You can now configure notifications.";
-const PENDING = "Payment confirmed — access will appear shortly.";
+const PENDING = "Payment confirmed. Access will appear shortly.";
 const UNAVAILABLE = "Paid access is not available right now.";
 
 type Plan = readonly [price: bigint, durationSeconds: bigint, enabled: boolean];
@@ -116,17 +116,22 @@ vi.mock("wagmi", () => ({
       },
     };
   },
-  useWriteContract: () => ({
-    isPending: false,
-    writeContractAsync: async (variables: { functionName: string; args: [string, bigint] }) => {
-      const { functionName, args } = variables;
-      fake.approvals.push(variables);
-      fake.events.push(`${functionName} signed ${args.join(" ")}`);
-      if (fake.approveImpl) return fake.approveImpl();
-      fake.pendingAllowance = args[1];
-      return "0xapprove";
-    },
-  }),
+  // Like wagmi: each wallet request is a react-query mutation under the ["writeContract"] key, pending until the
+  // wallet answers and holding the hash after. The paywall reads its step-by-step progress from these.
+  useWriteContract: () => {
+    const { isPending, mutateAsync } = useMutation({
+      mutationKey: ["writeContract"],
+      mutationFn: async (variables: { functionName: string; args: [string, bigint] }) => {
+        const { functionName, args } = variables;
+        fake.approvals.push(variables);
+        fake.events.push(`${functionName} signed ${args.join(" ")}`);
+        if (fake.approveImpl) return fake.approveImpl();
+        fake.pendingAllowance = args[1];
+        return "0xapprove";
+      },
+    });
+    return { isPending, writeContractAsync: mutateAsync };
+  },
 }));
 
 vi.mock("~~/hooks/scaffold-eth", () => ({
@@ -154,31 +159,34 @@ vi.mock("~~/hooks/scaffold-eth", () => ({
   },
   // Like useScaffoldWriteContract: simulates `pay` against the chain, then sends it and waits for the receipt.
   // The simulation charges the plan stored on chain, like TokenpingPaywall.pay.
-  useScaffoldWriteContract: () => ({
-    isPending: false,
-    isMining: false,
-    writeContractAsync: async ({ args }: { functionName: "pay"; args: [string] }) => {
-      if (fake.payImpl) return fake.payImpl();
-      const [price, , enabled] = fake.chain.plans ?? [0n, 0n, false];
-      const revert = fake.chain.paused
-        ? "EnforcedPause()"
-        : price === 0n
-          ? "Plan not set"
-          : !enabled
-            ? "Token not supported"
-            : fake.chain.allowance < price
-              ? "ERC20InsufficientAllowance"
-              : undefined;
-      if (revert) {
-        fake.toasts.push(["error", revert]);
-        throw new Error(revert);
-      }
-      fake.events.push(`pay sent ${args[0]}`);
-      fake.chain.allowance -= price;
-      fake.chain.isActive = true;
-      return "0xpay";
-    },
-  }),
+  // The SE-2 hook signs through wagmi's useWriteContract, so `pay` is a ["writeContract"] mutation too.
+  useScaffoldWriteContract: () => {
+    const { isPending, mutateAsync } = useMutation({
+      mutationKey: ["writeContract"],
+      mutationFn: async ({ args }: { functionName: "pay"; args: [string] }) => {
+        if (fake.payImpl) return fake.payImpl();
+        const [price, , enabled] = fake.chain.plans ?? [0n, 0n, false];
+        const revert = fake.chain.paused
+          ? "EnforcedPause()"
+          : price === 0n
+            ? "Plan not set"
+            : !enabled
+              ? "Token not supported"
+              : fake.chain.allowance < price
+                ? "ERC20InsufficientAllowance"
+                : undefined;
+        if (revert) {
+          fake.toasts.push(["error", revert]);
+          throw new Error(revert);
+        }
+        fake.events.push(`pay sent ${args[0]}`);
+        fake.chain.allowance -= price;
+        fake.chain.isActive = true;
+        return "0xpay";
+      },
+    });
+    return { isPending, isMining: false, writeContractAsync: mutateAsync };
+  },
 }));
 
 vi.mock("~~/utils/scaffold-eth", () => ({
@@ -205,9 +213,22 @@ type Props = Partial<Parameters<typeof AccessPaywall>[0]>;
 const renderPaywall = (props: Props = {}, queryClient?: QueryClient) =>
   renderWithProviders(<AccessPaywall {...props}>{<div>child</div>}</AccessPaywall>, { queryClient });
 
-const html = (props: Props = {}) => renderPaywall(props).container.innerHTML;
+// useId values depend on how many roots rendered before, so they are masked to keep snapshots order-independent.
+const html = (props: Props = {}) => renderPaywall(props).container.innerHTML.replace(/_r_[0-9a-z]+_/g, "«id»");
 
-const payButton = () => screen.getByRole("button", { name: /Pay for access|Extend access|Processing/ });
+// Its name is the label, or the loading label while the flow runs (the hidden label keeps the width).
+const payButton = () =>
+  screen.getByRole("button", { name: /^(Pay [\d,.]+ USDC|Processing|Waiting for your wallet|Approving|Paying)$/ });
+
+/** A loading button keeps its focus and colour: aria-busy and aria-disabled, not disabled. */
+const isBusy = (button: HTMLElement) =>
+  button.getAttribute("aria-busy") === "true" && button.getAttribute("aria-disabled") === "true";
+
+/** A blocked button stays in the tab order so its reason can be reached: aria-disabled without aria-busy, never disabled. */
+const isBlocked = (button: HTMLElement) =>
+  button.getAttribute("aria-disabled") === "true" &&
+  !button.hasAttribute("aria-busy") &&
+  !button.hasAttribute("disabled");
 
 /** A connected wallet on the payment chain, with every read loaded and no allowance yet. */
 const setReady = () => {
@@ -218,7 +239,7 @@ const setReady = () => {
 /** Clicks Pay and waits until the flow has finished (after a payment the paywall makes way for the children). */
 const pay = async () => {
   fireEvent.click(payButton());
-  await waitFor(() => expect(screen.queryByText("Processing...")).toBeNull());
+  await waitFor(() => expect(screen.queryByRole("button", { busy: true })).toBeNull());
 };
 
 beforeEach(() => {
@@ -293,35 +314,60 @@ describe("AccessPaywall markup", () => {
     expect(html()).toMatchSnapshot();
   });
 
-  it("rounds the access duration to whole days with toFixed", () => {
+  it("rounds the access duration to whole days with toFixed, and says when it rounded", () => {
     fake.chain.plans = [1_000_000_000n, 129_600n, true];
     setReady();
-    expect(html()).toContain(
-      '>1,000 USDC</span><span class="text-sm font-medium text-base-content/90 dark:text-gray-300">≈ 2 days access<',
-    );
+    const markup = html();
+    expect(markup).toContain('<span class="font-bold tabular-nums">1,000</span>');
+    expect(markup).toContain('<dd class="m-0 text-right text-foreground">About 2 days</dd>');
   });
 
-  it("pairs every amber and emerald text shade with a light-theme shade", () => {
+  it("states a whole number of days exactly", () => {
+    setReady();
+    expect(html()).toContain('<dd class="m-0 text-right text-foreground">30 days</dd>');
+  });
+
+  it("shows both wallet steps, the network and the fee currency before anything opens the wallet", () => {
+    setReady();
+    renderPaywall();
+    const steps = screen.getByRole("list", { name: "Payment steps" });
+    expect([...steps.querySelectorAll("li")].map(step => step.textContent)).toEqual([
+      // the step number, the step, the hint
+      "1Approve 1.5 USDCLets the paywall take exactly this amount. Skipped when an earlier approval covers it.",
+      "2Pay 1.5 USDCSends the payment and unlocks alerts.",
+    ]);
+    expect(screen.getByText("Network").nextElementSibling?.textContent).toBe("Arbitrum One");
+    expect(screen.getByText("Paid in ETH for each step, shown in your wallet")).toBeDefined();
+  });
+
+  // Theme tokens switch with light and dark; palette shades and hex values do not.
+  it("styles every state with theme tokens only, and spends the view's one pink on its single action", () => {
     const markups = [html()];
     fake.wallet = { address: USER, chainId: 1 };
     markups.push(html());
     setReady();
+    markups.push(html());
     fake.cache.isActive = true;
     fake.cache.expiryTimestampByUser = 1_800_000_000n;
     markups.push(html());
     const classes = markups.flatMap(markup => [...markup.matchAll(/class="([^"]*)"/g)].map(([, value]) => value));
-    const textShades = classes.flatMap(value => value.split(" ")).filter(name => /^text-(amber|emerald)-/.test(name));
-    // Connect wallet: icon + message; wrong chain: icon + switch button; active: expiry line.
-    expect(textShades.sort()).toEqual([
-      "text-amber-600",
-      "text-amber-600",
-      "text-amber-600",
-      "text-amber-700",
-      "text-emerald-600/90",
-    ]);
-    expect(classes.join(" ")).toContain("text-amber-600 dark:text-amber-400");
-    expect(classes.join(" ")).toContain("text-amber-700 dark:text-amber-300");
-    expect(classes.join(" ")).toContain("text-emerald-600/90 dark:text-emerald-400/80");
+    const paletteColour =
+      /(^|:)(text|bg|border|from|via|to|shadow)-(amber|emerald|red|gray|orange|sky|purple|indigo|white|black)\b/;
+
+    expect(classes.flatMap(value => value.split(" ")).filter(name => paletteColour.test(name))).toEqual([]);
+    expect(markups.join("")).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+    // en and em dash, built from their code points
+    expect(markups.join("")).not.toMatch(new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`));
+    // Connect wallet: no button; wrong chain: Switch; ready: Pay; active: none.
+    expect(markups.map(markup => markup.split("btn-primary").length - 1)).toEqual([0, 1, 1, 0]);
+  });
+
+  it("names the unlocked state with an icon and words", () => {
+    setReady();
+    fake.cache.isActive = true;
+    fake.cache.expiryTimestampByUser = 1_800_000_000n;
+    renderPaywall();
+    expect(screen.getByText(/^Alerts unlocked until/)).toBeDefined();
   });
 });
 
@@ -331,7 +377,7 @@ describe("AccessPaywall payment readiness", () => {
     setReady();
     delete fake.cache.allowance;
     renderPaywall();
-    expect(payButton().hasAttribute("disabled")).toBe(true);
+    expect(isBlocked(payButton())).toBe(true);
     expect(screen.queryByText(/paused|payment status/)).toBeNull();
   });
 
@@ -340,7 +386,7 @@ describe("AccessPaywall payment readiness", () => {
     fake.chain.paused = true;
     setReady();
     expect(html()).toMatchSnapshot();
-    expect(payButton().hasAttribute("disabled")).toBe(true);
+    expect(isBlocked(payButton())).toBe(true);
     expect(screen.getByText("Payments are paused right now. Try again later.")).toBeDefined();
   });
 
@@ -348,7 +394,7 @@ describe("AccessPaywall payment readiness", () => {
     setReady();
     delete fake.cache.paused;
     renderPaywall();
-    expect(payButton().hasAttribute("disabled")).toBe(true);
+    expect(isBlocked(payButton())).toBe(true);
   });
 
   // Paying approves the paywall, so its code must be confirmed first; Pay used to be enabled and then refuse.
@@ -356,7 +402,7 @@ describe("AccessPaywall payment readiness", () => {
     setReady();
     fake.paywallCheck = "loading";
     renderPaywall();
-    expect(payButton().hasAttribute("disabled")).toBe(true);
+    expect(isBlocked(payButton())).toBe(true);
     expect(screen.queryByText(/paused|payment status/)).toBeNull();
   });
 
@@ -364,8 +410,27 @@ describe("AccessPaywall payment readiness", () => {
     setReady();
     fake.paywallCheck = "missing";
     renderPaywall();
-    expect(payButton().hasAttribute("disabled")).toBe(true);
+    expect(isBlocked(payButton())).toBe(true);
     expect(screen.getByText("Could not load the payment status. Reload the page to try again.")).toBeDefined();
+  });
+
+  // A disabled button leaves the tab order, so keyboard and screen reader users never reached the reason beside it.
+  it("keeps a blocked Pay focusable, describes it with the reason, and ignores clicks", () => {
+    fake.chain.paused = true;
+    setReady();
+    renderPaywall();
+    const button = payButton();
+    button.focus();
+
+    expect(isBlocked(button)).toBe(true);
+    expect(document.activeElement).toBe(button);
+    expect(document.getElementById(button.getAttribute("aria-describedby")!)?.textContent).toBe(
+      "Payments are paused right now. Try again later.",
+    );
+    expect(button.className).toContain("aria-disabled:opacity-50");
+    const eventsBefore = fake.events.length;
+    fireEvent.click(button);
+    expect(fake.events.length).toBe(eventsBefore);
   });
 
   it.each(["allowance", "paused"] as const)("explains a failed %s read instead of waiting forever", name => {
@@ -373,7 +438,7 @@ describe("AccessPaywall payment readiness", () => {
     delete fake.cache[name];
     fake.failingReads.add(name);
     renderPaywall();
-    expect(payButton().hasAttribute("disabled")).toBe(true);
+    expect(isBlocked(payButton())).toBe(true);
     expect(screen.getByText("Could not load the payment status. Reload the page to try again.")).toBeDefined();
   });
 });
@@ -382,7 +447,7 @@ describe("AccessPaywall actions", () => {
   it("switches to the payment chain", () => {
     fake.wallet = { address: USER, chainId: 1 };
     renderPaywall();
-    fireEvent.click(screen.getByRole("button", { name: "Switch network" }));
+    fireEvent.click(screen.getByRole("button", { name: "Switch to Arbitrum One" }));
     expect(fake.events).toEqual([`switchChain {"chainId":${PAYMENT_CHAIN_ID}}`]);
   });
 
@@ -429,16 +494,22 @@ describe("AccessPaywall actions", () => {
     expect(fake.toasts).toEqual([["success", SUCCESS]]);
   });
 
-  it("shows Processing... and disables Pay until the approval is mined and paid", async () => {
+  it("keeps Pay busy and focused, and ignores clicks, until the approval is mined and paid", async () => {
     setReady();
     const mined = deferred<void>();
     fake.mineApproval = mined.promise;
     const { container } = renderPaywall();
+    payButton().focus();
     fireEvent.click(payButton());
     await waitFor(() => expect(fake.events).toContain(`approve signed ${PAYWALL} ${PRICE}`));
-    expect(payButton().textContent).toBe("Processing...");
-    expect(payButton().hasAttribute("disabled")).toBe(true);
-    expect(container.innerHTML).toMatchSnapshot();
+    await waitFor(() => expect(payButton().getAttribute("aria-busy")).toBe("true"));
+    expect(isBusy(payButton())).toBe(true);
+    expect(payButton().hasAttribute("disabled")).toBe(false);
+    expect(document.activeElement).toBe(payButton());
+    const eventsBefore = fake.events.length;
+    fireEvent.click(payButton());
+    expect(fake.events.length).toBe(eventsBefore);
+    expect(container.innerHTML.replace(/_r_[0-9a-z]+_/g, "«id»")).toMatchSnapshot();
     mined.resolve();
     await waitFor(() => expect(fake.toasts).toEqual([["success", SUCCESS]]));
   });
@@ -478,7 +549,7 @@ describe("AccessPaywall actions", () => {
   });
 
   // Reporting success before isActive was refetched left an enabled Pay button next to the toast.
-  it("keeps Processing... until access is refetched, then swaps to the children with the toast", async () => {
+  it("keeps Pay busy until access is refetched, then swaps to the children with the toast", async () => {
     setReady();
     fake.chain.allowance = PRICE;
     loadReads("allowance");
@@ -489,8 +560,7 @@ describe("AccessPaywall actions", () => {
     await waitFor(() => expect(fake.events).toContain("refetch isActive"));
     await Promise.resolve();
     expect(fake.toasts).toEqual([]);
-    expect(payButton().textContent).toBe("Processing...");
-    expect(payButton().hasAttribute("disabled")).toBe(true);
+    expect(isBusy(payButton())).toBe(true);
     accessRefetched.resolve();
     await waitFor(() => expect(fake.toasts).toEqual([["success", SUCCESS]]));
     expect(screen.queryByRole("button")).toBeNull();
@@ -625,7 +695,7 @@ describe("AccessPaywall after a payment", () => {
     fireEvent.click(payButton());
     await advance(0);
     expect(accessReadsAfterPay()).toBe(1);
-    expect(payButton().textContent).toBe("Processing...");
+    expect(isBusy(payButton())).toBe(true);
     await advance(1_999);
     expect(accessReadsAfterPay()).toBe(1);
     await advance(1);
@@ -648,8 +718,8 @@ describe("AccessPaywall after a payment", () => {
     expect(accessReadsAfterPay()).toBe(5);
     expect(fake.toasts).toEqual([["success", PENDING]]);
     expect(screen.getByText(PENDING)).toBeDefined();
-    expect(payButton().textContent).toBe("Pay for access (USDC)");
-    expect(payButton().hasAttribute("disabled")).toBe(true);
+    expect(payButton().textContent).toBe("Pay 1.5 USDC");
+    expect(isBlocked(payButton())).toBe(true);
     const eventsBefore = fake.events.length;
     fireEvent.click(payButton());
     await advance(60_000);
@@ -664,8 +734,10 @@ describe("AccessPaywall after a payment", () => {
     expect(fake.toasts).toEqual([["success", SUCCESS]]);
     fake.cache.isActive = false;
     rerender(<AccessPaywall>{<div>child</div>}</AccessPaywall>);
-    expect(payButton().hasAttribute("disabled")).toBe(true);
+    expect(isBlocked(payButton())).toBe(true);
     expect(screen.getByText(PENDING)).toBeDefined();
+    // The blocked Pay points at the notice that says why.
+    expect(document.getElementById(payButton().getAttribute("aria-describedby")!)?.textContent).toBe(PENDING);
   });
 
   it("shows the pending notice instead of the paused notice after a payment", async () => {
@@ -690,14 +762,14 @@ describe("AccessPaywall after a payment", () => {
     const { rerender } = renderPaywall();
     fireEvent.click(payButton());
     await advance(60_000);
-    expect(payButton().hasAttribute("disabled")).toBe(true);
+    expect(isBlocked(payButton())).toBe(true);
     fake.wallet = { address: "0x2222222222222222222222222222222222222222", chainId: PAYMENT_CHAIN_ID };
     rerender(<AccessPaywall>{<div>child</div>}</AccessPaywall>);
-    expect(payButton().hasAttribute("disabled")).toBe(false);
+    expect(isBlocked(payButton())).toBe(false);
     expect(screen.queryByText(PENDING)).toBeNull();
     fake.wallet = { address: USER, chainId: PAYMENT_CHAIN_ID };
     rerender(<AccessPaywall>{<div>child</div>}</AccessPaywall>);
-    expect(payButton().hasAttribute("disabled")).toBe(true);
+    expect(isBlocked(payButton())).toBe(true);
     expect(screen.getByText(PENDING)).toBeDefined();
   });
 
@@ -712,16 +784,113 @@ describe("AccessPaywall after a payment", () => {
     const { unmount } = renderPaywall({}, queryClient);
     fireEvent.click(payButton());
     await advance(60_000);
-    expect(payButton().hasAttribute("disabled")).toBe(true);
+    expect(isBlocked(payButton())).toBe(true);
     unmount();
     await advance(60 * 60_000);
     renderPaywall({}, queryClient);
-    expect(payButton().hasAttribute("disabled")).toBe(true);
+    expect(isBlocked(payButton())).toBe(true);
     expect(screen.getByText(PENDING)).toBeDefined();
     const eventsBefore = fake.events.length;
     fireEvent.click(payButton());
     await advance(60_000);
     expect(fake.events.length).toBe(eventsBefore);
     queryClient.clear();
+  });
+});
+
+describe("AccessPaywall transaction lifecycle", () => {
+  /** The persistent polite region that narrates the payment. */
+  const lifecycle = () => document.querySelector<HTMLElement>('[role="status"][aria-atomic="true"]')!;
+  const steps = () => within(screen.getByRole("list", { name: "Payment steps" })).getAllByRole("listitem");
+
+  it("walks through approve and pay: wallet prompt, on-chain processing with an explorer link, then the next step", async () => {
+    setReady();
+    const approveSigned = deferred<void>();
+    fake.approveImpl = async () => {
+      await approveSigned.promise;
+      fake.pendingAllowance = PRICE;
+      return "0xapprove";
+    };
+    const approveMined = deferred<void>();
+    fake.mineApproval = approveMined.promise;
+    const paySigned = deferred<void>();
+    fake.payImpl = async () => {
+      await paySigned.promise;
+      fake.chain.isActive = true;
+      return "0xpay";
+    };
+    const accessRead = deferred<void>();
+    fake.refetchGates.isActive = accessRead.promise;
+    renderPaywall();
+    expect(lifecycle().textContent).toBe("");
+
+    fireEvent.click(payButton());
+    await waitFor(() => expect(lifecycle().getAttribute("data-step")).toBe("approve-sign"));
+    expect(lifecycle().textContent).toBe(
+      "Confirm in your walletStep 1 of 2: approve 1.5 USDC. Nothing is sent until you confirm.",
+    );
+    expect(screen.getByRole("button", { name: "Waiting for your wallet" })).toBeDefined();
+    expect(steps()[0].getAttribute("aria-current")).toBe("step");
+
+    approveSigned.resolve();
+    await waitFor(() => expect(lifecycle().getAttribute("data-step")).toBe("approve-pending"));
+    expect(lifecycle().textContent).toContain("Processing on Arbitrum One");
+    expect(
+      within(lifecycle())
+        .getByRole("link", { name: /View on Arbiscan/ })
+        .getAttribute("href"),
+    ).toBe("https://arbiscan.io/tx/0xapprove");
+    expect(screen.getByRole("button", { name: "Approving" })).toBeDefined();
+
+    approveMined.resolve();
+    await waitFor(() => expect(lifecycle().getAttribute("data-step")).toBe("pay-sign"));
+    expect(lifecycle().textContent).toContain("Step 2 of 2: pay 1.5 USDC. Nothing is sent until you confirm.");
+    expect(within(steps()[0]).getByText("Done")).toBeDefined();
+    expect(steps()[1].getAttribute("aria-current")).toBe("step");
+
+    paySigned.resolve();
+    await waitFor(() => expect(lifecycle().getAttribute("data-step")).toBe("pay-pending"));
+    expect(
+      within(lifecycle())
+        .getByRole("link", { name: /View on Arbiscan/ })
+        .getAttribute("href"),
+    ).toBe("https://arbiscan.io/tx/0xpay");
+    expect(screen.getByRole("button", { name: "Paying" })).toBeDefined();
+
+    accessRead.resolve();
+    await waitFor(() => expect(fake.toasts).toEqual([["success", SUCCESS]]));
+    expect(screen.getByText("child")).toBeDefined();
+  });
+
+  it("marks the approval as not needed when the allowance already covers the price", async () => {
+    setReady();
+    fake.chain.allowance = PRICE;
+    loadReads("allowance");
+    const paySigned = deferred<void>();
+    fake.payImpl = async () => {
+      await paySigned.promise;
+      fake.chain.isActive = true;
+      return "0xpay";
+    };
+    renderPaywall();
+
+    fireEvent.click(payButton());
+    await waitFor(() => expect(lifecycle().getAttribute("data-step")).toBe("pay-sign"));
+    expect(within(steps()[0]).getByText("Not needed")).toBeDefined();
+    expect(fake.approvals).toEqual([]);
+
+    paySigned.resolve();
+    await waitFor(() => expect(fake.toasts).toEqual([["success", SUCCESS]]));
+  });
+
+  it("goes quiet again after a failed attempt, without claiming success", async () => {
+    setReady();
+    fake.approveImpl = () => Promise.reject(new Error("User rejected the request."));
+    renderPaywall();
+
+    await pay();
+    expect(lifecycle().textContent).toBe("");
+    expect(lifecycle().hasAttribute("data-step")).toBe(false);
+    expect(payButton().textContent).toBe("Pay 1.5 USDC");
   });
 });
