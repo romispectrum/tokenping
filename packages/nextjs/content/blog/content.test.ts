@@ -221,6 +221,29 @@ const findBannedPhrases = (text: string) => {
   });
 };
 
+// Voice rule: no em or en dashes anywhere in a post (meta, prose, link text, comments), whether typed, written as an
+// HTML entity (which MDX decodes) or written as a JavaScript unicode escape, with or without braces, in meta or a JSX
+// expression. Rewrite with a colon, comma, full stop or "to"; a plain hyphen is fine in ranges like 2025-2026. Checked
+// on the raw source because no part of a post may carry one. The characters and escapes are built from code points
+// and parts so this file does not contain what it bans.
+const EN_DASH = String.fromCodePoint(0x2013);
+const EM_DASH = String.fromCodePoint(0x2014);
+const DASH_PATTERN = new RegExp(
+  String.raw`[${EN_DASH}${EM_DASH}]|&[mn]dash;|&#(?:821[12]|x201[34]);|\\u(?:201[34]|\{201[34]\})`,
+  "gi",
+);
+const EN_DASH_FORMS = [EN_DASH, "ndash", "8211", "2013"];
+
+/** Every em or en dash in a post's source, by line, with a little context so the report says what to rewrite. */
+const findDashes = (source: string) =>
+  source.split("\n").flatMap((line, lineIndex) =>
+    [...line.matchAll(DASH_PATTERN)].map(({ 0: dash, index = 0 }) => {
+      const kind = EN_DASH_FORMS.some(form => dash.toLowerCase().includes(form)) ? "en dash" : "em dash";
+      const excerpt = squash(line.slice(Math.max(0, index - 30), index + dash.length + 30));
+      return `line ${lineIndex + 1}: ${kind} in "${excerpt}"`;
+    }),
+  );
+
 type LoadedPost = {
   slug: string;
   tree?: MdNode;
@@ -249,9 +272,10 @@ const parsePost = async (source: string, slug: string): Promise<LoadedPost> => {
 const FILES = readdirSync(BLOG_DIR)
   .filter(file => file.endsWith(".mdx"))
   .sort();
-const POSTS = await Promise.all(
-  FILES.map(file => parsePost(readFileSync(new URL(file, BLOG_DIR), "utf8"), file.replace(/\.mdx$/, ""))),
+const SOURCES = new Map(
+  FILES.map(file => [file.replace(/\.mdx$/, ""), readFileSync(new URL(file, BLOG_DIR), "utf8")] as const),
 );
+const POSTS = await Promise.all([...SOURCES].map(([slug, source]) => parsePost(source, slug)));
 const SLUGS = new Set(POSTS.map(({ slug }) => slug));
 
 const headingsOf = (tree: MdNode) => collect(tree, node => node.type === "heading");
@@ -274,7 +298,7 @@ const checkMeta = (post: LoadedPost): string[] => {
   if (!isNonEmpty(meta.description)) problems.push("meta.description must be a non-empty, trimmed string");
   else if (meta.description.length > MAX_DESCRIPTION_LENGTH || meta.description.length < MIN_DESCRIPTION_LENGTH)
     problems.push(
-      `meta.description is ${meta.description.length} chars (${MIN_DESCRIPTION_LENGTH}–${MAX_DESCRIPTION_LENGTH})`,
+      `meta.description is ${meta.description.length} chars (${MIN_DESCRIPTION_LENGTH} to ${MAX_DESCRIPTION_LENGTH})`,
     );
   if (!isNonEmpty(meta.h1)) problems.push("meta.h1 must be a non-empty, trimmed string");
   else if (meta.h1.length > MAX_HEADLINE_LENGTH)
@@ -483,6 +507,11 @@ describe("content/blog posts", () => {
         expect(checkMeta(post)).toEqual([]);
       });
 
+      // Placeholders too: the rule covers every character a post ships, meta included.
+      it("uses no em or en dashes", () => {
+        expect(findDashes(SOURCES.get(slug) ?? "")).toEqual([]);
+      });
+
       if (!tree || !meta) return;
 
       if (meta.stub) {
@@ -589,11 +618,54 @@ describe("findBannedPhrases", () => {
   });
 });
 
+describe("findDashes", () => {
+  const entity = (name: string) => `&${name};`;
+  const numericEntity = (code: string) => `&#${code};`;
+  const jsEscape = (code: string) => `\\u${code}`;
+
+  it.each([
+    [`Fast ${EM_DASH} and audited.`, "em dash"],
+    [`One thing${EM_DASH}the important one.`, "em dash"],
+    [`From $10k ${EN_DASH} $50k.`, "en dash"],
+    [`Blocks 26194050${EN_DASH}26194060.`, "en dash"],
+    [`Fast ${entity("mdash")} and audited.`, "em dash"],
+    [`2025${entity("ndash")}2026`, "en dash"],
+    [`Fast ${numericEntity("8212")} and audited.`, "em dash"],
+    [`2025${numericEntity("x2013")}2026`, "en dash"],
+    [`Fast ${numericEntity("X2014")} and audited.`, "em dash"],
+    [`title: "Fast ${jsEscape("2014")} and audited.",`, "em dash"],
+    [`{"2025${jsEscape("{2013}")}2026"}`, "en dash"],
+  ])("flags %j as an %s", (text, kind) => {
+    expect(findDashes(text)).toEqual([`line 1: ${kind} in "${text}"`]);
+  });
+
+  it("reports every dash with its line and nearby text", () => {
+    const source = ["No dash here.", `A ${EM_DASH} B and C ${EN_DASH} D`].join("\n");
+    expect(findDashes(source)).toEqual([
+      `line 2: em dash in "A ${EM_DASH} B and C ${EN_DASH} D"`,
+      `line 2: en dash in "A ${EM_DASH} B and C ${EN_DASH} D"`,
+    ]);
+  });
+
+  it.each([
+    "Fast and audited.",
+    "One thing: the important one.",
+    "Blocks 26194050-26194060, 2025-2026.",
+    "How to read your health factor - Tokenping",
+    "Liquidation price of A = (debt − value of B × LT of B) ÷ (amount of A × LT of A)",
+    "Contract `0xaf88...5831`.",
+    "An &amp; entity and &minus; are fine.",
+    `A minus written as ${jsEscape("2212")} is fine.`,
+  ])("does not flag %j", text => {
+    expect(findDashes(text)).toEqual([]);
+  });
+});
+
 // The full article checks on two fixtures: a post that follows the contract passes every check, and a post that
 // breaks it is caught by each one.
 const FIXTURE_META: PostMeta = {
   slug: "aave-health-factor",
-  title: "Aave Health Factor Explained: Formula and Examples",
+  title: "Aave health factor explained: formula and examples",
   description:
     "What the Aave V3 health factor is, how to calculate it with a worked example, and what happens below 1.",
   h1: "What is the Aave health factor, and how is it calculated?",
@@ -675,7 +747,7 @@ Alerts cost {"three dollars"} today.
 
 - [A source without a date](https://aave.com/docs)
 
-The end.
+The end ${EM_DASH} for now, 2025${EN_DASH}2026.
 `;
 
 const articleChecks = (tree: MdNode, meta: PostMeta, slug: string) => ({
@@ -702,6 +774,7 @@ describe("article checks", () => {
   it("pass a post that follows the content contract", async () => {
     const { tree, meta, error } = await parsePost(GOOD_ARTICLE, "aave-health-factor");
     expect(error).toBeUndefined();
+    expect(findDashes(GOOD_ARTICLE)).toEqual([]);
     expect(meta).toEqual(FIXTURE_META);
     expect(checkMeta({ slug: "aave-health-factor", meta })).toEqual([]);
     expect(articleChecks(tree!, meta!, "aave-health-factor")).toEqual({
@@ -765,5 +838,9 @@ describe("article checks", () => {
       expect.stringContaining("hard-coded alert price"),
     ]);
     expect(checks.readingTime).toEqual([expect.stringContaining("readingMinutes 30 is not an honest estimate")]);
+    expect(findDashes(BAD_ARTICLE)).toEqual([
+      expect.stringMatching(/^line \d+: em dash in "The end /),
+      expect.stringMatching(/^line \d+: en dash in "The end /),
+    ]);
   });
 });

@@ -3,9 +3,9 @@
 Post: `content/blog/how-aave-liquidation-works.mdx` (published 2026-10-14). Every on-chain value, code constant, API value and
 dated incident figure the post states is listed here with its call or source, block or timestamp, and URL.
 
-- Fact-sheet reads: 2026-10-14 ~20:58–21:23 UTC (`SCRATCH/mkt/aave-facts.md` §1.3, §4, §6.1, §7; raw output in
+- Fact-sheet reads: 2026-10-14 ~20:58-21:23 UTC (`SCRATCH/mkt/aave-facts.md` §1.3, §4, §6.1, §7; raw output in
   `SCRATCH/mkt/aave-raw/`).
-- Writer re-read: 2026-10-14 ~23:20–23:23 UTC (the same publish day in UTC), with the same scripts and RPCs. **Every re-read value
+- Writer re-read: 2026-10-14 ~23:20-23:23 UTC (the same publish day in UTC), with the same scripts and RPCs. **Every re-read value
   matched the fact sheet.** Raw output: `SCRATCH/writer-liq/{eth_params_reread,arb_params_reread,v4_main_spoke_reread,eth_emode1_reread}.txt`.
 - RPCs: `https://ethereum-rpc.publicnode.com`, `https://arbitrum-one-rpc.publicnode.com`. Tool: Foundry `cast` (read-only `eth_call`).
 - Review revision: 2026-10-15 ~00:15 UTC (local 02:15). Reviewer findings checked against the code and docs; the post now
@@ -118,7 +118,7 @@ changed 2026-03-31, commit `2f6a0fc96a`).
 | USDC ≈ $0.88 on 11 Mar 2023; ≈ $280k bad debt V3 Avalanche E-Mode, ≈ $20k V3 Arbitrum; stablecoins on V3 Avalanche frozen, liquidations continued; partial liquidations below (1 + bonus) push accounts further into insolvency | Gauntlet, https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330 | posted 2023-03-17, fetched 2026-10-14 (`aave-raw/gov_usdc_volatility_2023.json`) |
 | Polygon forum user tried to repay at HF 1.01, repeated errors, liquidated | https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067 | posted 2021-05-18, fetched 2026-10-14 (`gov/polygon-8067.json`) |
 | Aave forum user: 1 hour+ of repay attempts hanging, then liquidated (the user's suspicion about the cause is not repeated) | https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379 | posted 2024-12-23, fetched 2026-10-14 (`gov/t20379.json`) |
-| Aave's own app at app.aave.com sends no alerts; HAL integration removed (the separate mobile "Aave App" savings product is not meant) | https://github.com/aave/interface/pull/2084 (merged 2024-05-30); `market.md` §0 item 1, §A rows 1–2 and the note after table A.1 | fetched 2026-10-14 |
+| Aave's own app at app.aave.com sends no alerts; HAL integration removed (the separate mobile "Aave App" savings product is not meant) | https://github.com/aave/interface/pull/2084 (merged 2024-05-30); `market.md` §0 item 1, §A rows 1-2 and the note after table A.1 | fetched 2026-10-14 |
 | V3.7 live on all seven Tokenping pools (`POOL_REVISION` 11), named in the sequencer bullet as the Arbitrum, Optimism and Base V3 markets | `aave-facts.md` §1.2 (Arbitrum block 514857341, Optimism 158206625, Base 52611344), `aave-raw/v3_liveness_2026-10-14.txt`; Ethereum re-read above | 2026-10-14 |
 
 ## 6. Product facts used (Tokenping)

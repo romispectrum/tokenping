@@ -302,7 +302,7 @@ describe("runNotificationCheck: delivery", () => {
     expect(getHealthFactorForWallet).toHaveBeenCalledExactlyOnceWith(LOWER, 8453);
     expect(sendEmail).toHaveBeenCalledExactlyOnceWith({
       to: "a@b.co",
-      subject: "Aave Health Factor Alert – Base",
+      subject: "Aave Health Factor Alert - Base",
       text: alertText("Base", "1.20", "1.5"),
       html: alertHtml("Base", "1.20", "1.5"),
     });
@@ -508,9 +508,9 @@ describe("alert builders", () => {
     expect(buildAlertText(alert)).toBe(alertText("Arbitrum One", "1.07", "1.25"));
   });
 
-  it("builds the email subject (en dash) and html ('Created at' footer)", () => {
+  it("builds the email subject (spaced hyphen) and html ('Created at' footer)", () => {
     expect(buildAlertEmail(alert)).toStrictEqual({
-      subject: "Aave Health Factor Alert – Arbitrum One",
+      subject: "Aave Health Factor Alert - Arbitrum One",
       html: alertHtml("Arbitrum One", "1.07", "1.25"),
     });
   });

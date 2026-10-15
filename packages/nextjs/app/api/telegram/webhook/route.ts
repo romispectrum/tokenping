@@ -2,10 +2,10 @@
  * POST /api/telegram/webhook
  *
  * Telegram delivers bot updates here. Currently we handle:
- *   /start <token>  — consume the deep-link token and attach chat_id to a wallet
- *   /start          — instructions if user opened the bot without a token
- *   /stop           — unlink the bot from this chat (and the wallet behind it)
- *   /help           — short help message
+ *   /start <token>: consume the deep-link token and attach chat_id to a wallet
+ *   /start:         instructions if user opened the bot without a token
+ *   /stop:          unlink the bot from this chat (and the wallet behind it)
+ *   /help:          short help message
  *
  * Security:
  *   - Verify the secret_token via the X-Telegram-Bot-Api-Secret-Token header

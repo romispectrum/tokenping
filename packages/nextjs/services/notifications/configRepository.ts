@@ -100,7 +100,7 @@ export async function findConfigsForUser({ normalized, legacy }: UserIdForms): P
 /**
  * Updates the chain's existing row in place (preferring the lowercased row; updating a legacy row rewrites its
  * user_id to lowercase) or inserts one. Both lookups run when the forms differ. Returns the first lookup or write
- * error, if any — a failed lookup must not be mistaken for "no row", which would insert a duplicate.
+ * error, if any: a failed lookup must not be mistaken for "no row", which would insert a duplicate.
  */
 export async function saveConfig({ normalized, legacy }: UserIdForms, row: ConfigWriteRow) {
   const findId = (userId: string) =>

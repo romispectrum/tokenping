@@ -3,10 +3,10 @@
 Every on-chain, API, code, governance and product figure used in `content/blog/aave-health-factor.mdx`, with the call or
 file, the block or timestamp, and the source. Figures were first read on 2026-10-14 for the research files
 (`SCRATCH/mkt/aave-facts.md`, `SCRATCH/mkt/product.md`, `SCRATCH/mkt/market.md`) and re-read by the writer the same
-evening (2026-10-14, 23:20–23:45 UTC). All times UTC. The article quotes the first-read values with their blocks; the
+evening (2026-10-14, 23:20-23:45 UTC). All times UTC. The article quotes the first-read values with their blocks; the
 re-reads confirm them unless a row says otherwise.
 
-Revision 2026-10-15 (review fixes, about 00:15–00:45 UTC): risk parameters re-read once more (§1, unchanged); Aave V3 code
+Revision 2026-10-15 (review fixes, about 00:15-00:45 UTC): risk parameters re-read once more (§1, unchanged); Aave V3 code
 re-fetched to correct the LTV rule (§2a); E-Mode entry and isolation rules re-checked against code and the 3.2 / 3.7 docs
 (§2); DefiLlama V4 chain coverage, the Aave app's health factor source and the liquidation fee split added (§7, §8, §9a).
 Figures dropped from the article in this revision are marked "not quoted" and kept as a record for other posts. Raw files
@@ -54,9 +54,9 @@ protocol fee and status value in the table above was unchanged.
 | `getEModeCategoryBorrowableBitmap(1)`                  | 1 = reserve index 0 = WETH only                                                                                                                                                 | 26193288                                        | 26194078, same                     |
 
 Code behind "to enter a category every borrowed asset must be borrowable in it, every collateral must keep a non-zero LTV
-in it, and HF must stay ≥ 1": `ValidationLogic.validateSetUserEMode` (lines 448–498: borrowable-bitmap check for each
+in it, and HF must stay ≥ 1": `ValidationLogic.validateSetUserEMode` (lines 448-498: borrowable-bitmap check for each
 borrowed asset; `getUserReserveLtv(...) != 0` for each enabled collateral, `InvalidCollateralInEmode`) and
-`SupplyLogic.executeSetUserEMode` (lines 304–336: calls `validateHealthFactor` after switching), aave-v3-origin main,
+`SupplyLogic.executeSetUserEMode` (lines 304-336: calls `validateHealthFactor` after switching), aave-v3-origin main,
 fetched 2026-10-14 and again 2026-10-15
 (https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol).
 
@@ -67,8 +67,8 @@ The first version of the article credited this to V3.6; V3.6 instead decoupled t
 settings of assets inside a category (docs/3.6/Aave-v3.6-features.md line 20).
 
 "Isolated category (V3.7 flag): outside collateral gets LTV 0 but keeps its threshold": `ValidationLogic.getUserReserveLtv`
-(lines 524–549, returns 0 for assets outside `collateralBitmap` when `isolated`) and
-https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md (Effects 1–3 and Scenario D: entry blocked
+(lines 524-549, returns 0 for assets outside `collateralBitmap` when `isolated`) and
+https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md (Effects 1-3 and Scenario D: entry blocked
 with outside collateral enabled; switching the flag on leaves the health factor unchanged), fetched 2026-10-15. The
 article's "'ETH correlated' was not isolated at block 26193288" is the `getIsEModeCategoryIsolated(1)` row above.
 
@@ -76,8 +76,8 @@ article's "'ETH correlated' was not isolated at block 26193288" is the `getIsEMo
 
 | Action              | Code path                                                                                       | Check                                                                                                                                                                                          |
 | ------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Borrow              | `BorrowLogic.executeBorrow` line 95 → `ValidationLogic.validateHFAndLtv` (lines 346–385)        | `currentLtv != 0`, HF ≥ 1e18, and `userCollateralInBaseCurrency >= userDebtInBaseCurrency.percentDivCeil(currentLtv)` (`CollateralCannotCoverNewBorrow`): debt may not exceed collateral × LTV |
-| Withdraw            | `SupplyLogic.executeWithdraw` line 160 → `ValidationLogic.validateHFAndLtvzero` (lines 398–430) | HF ≥ 1e18 only, plus the LTV-0 ordering rule (if any collateral has LTV 0, the asset withdrawn must be an LTV-0 asset); runs only when the asset is collateral and the user has debt           |
+| Borrow              | `BorrowLogic.executeBorrow` line 95 → `ValidationLogic.validateHFAndLtv` (lines 346-385)        | `currentLtv != 0`, HF ≥ 1e18, and `userCollateralInBaseCurrency >= userDebtInBaseCurrency.percentDivCeil(currentLtv)` (`CollateralCannotCoverNewBorrow`): debt may not exceed collateral × LTV |
+| Withdraw            | `SupplyLogic.executeWithdraw` line 160 → `ValidationLogic.validateHFAndLtvzero` (lines 398-430) | HF ≥ 1e18 only, plus the LTV-0 ordering rule (if any collateral has LTV 0, the asset withdrawn must be an LTV-0 asset); runs only when the asset is collateral and the user has debt           |
 | aToken transfer     | `SupplyLogic.executeFinalizeTransfer` line 209 → `validateHFAndLtvzero`                         | same as withdraw                                                                                                                                                                               |
 | Turn collateral off | `SupplyLogic.executeUseReserveAsCollateral(false)` line 278 → `validateHFAndLtvzero`            | same as withdraw                                                                                                                                                                               |
 
@@ -105,13 +105,13 @@ dated figures to `why-aave-health-factor-dropped` (plan §3.0a gives interest dr
 | WETH supply APR          | 1.309%                                                                                                | 26193378 (ts 1792012655 = 21:17:35); re-read 26194027 and 26194077, same | aave-facts §5.2; `aave-raw/rates_eth_2026-10-14.txt`; writer |
 | USDC variable borrow APR | 4.496% (supply 3.800%)                                                                                | 26193378 (21:17:35)                                                      | aave-facts §5.2                                              |
 | USDC variable borrow APR | 4.496% (supply 3.801%); totalAToken 2,387.314M USDC                                                   | 26194052 (ts 1792020767 = 23:32:47)                                      | writer (`writer-hub-raw/usdc_rate_two_blocks.txt`)           |
-| USDC variable borrow APR | **13.669%** (supply 12.241%); totalAToken 2,253.416M USDC, about $133.9M lower than one block earlier | 26194053 (ts 1792020779 = 23:32:59)                                      | writer (binary search over blocks 26194050–26194060)         |
+| USDC variable borrow APR | **13.669%** (supply 12.241%); totalAToken 2,253.416M USDC, about $133.9M lower than one block earlier | 26194053 (ts 1792020779 = 23:32:59)                                      | writer (binary search over blocks 26194050-26194060)         |
 | USDC variable borrow APR | 14.029% (supply 12.591%); totalAToken 2,250.5M                                                        | 26194060 and 26194077 (23:37:47)                                         | writer                                                       |
 | USDC variable borrow APR | 14.037% (supply 12.598%)                                                                              | 26194086 (ts 1792021175 = 23:39:35)                                      | writer                                                       |
 
 The first version of the article said the USDC borrow rate "went from 4.496% to 13.67% APR in a single block (26194053,
 23:32:59 UTC) when the USDC supplied to the reserve fell by about $134M" (removed in the revision). The block-26193378 historical read could not be repeated on the
-PublicNode endpoint (no archive state); the 4.496% value is confirmed by the writer's reads at 26194027–26194052.
+PublicNode endpoint (no archive state); the 4.496% value is confirmed by the writer's reads at 26194027-26194052.
 Note for other posts: any article quoting "USDC borrow 4.496%" must carry block 26193378 (or similar); it was 14.04% from
 about 23:33 UTC on 2026-10-14.
 
@@ -135,7 +135,7 @@ oracle's `BASE_CURRENCY()` returned `0x0000…0000` (USD).
 | Check                                                                                                                           | Result                                                                                                                                                                                                                                        | Block                 |
 | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
 | Address with no Aave position (`0x000000000000000000000000000000000000bEEF`)                                                    | `(0, 0, 0, 0, 0, 115792089237316195423570985008687907853269984665640564039457584007913129639935)`: HF = max uint256 ≈ 1.16 × 10^77                                                                                                            | 26194000 and 26194078 |
-| Units, checked on one live borrower taken from a `Borrow` event in blocks 26193765–26194065 (address deliberately not recorded) | `currentLiquidationThreshold` 7800 and `ltv` 7300 (basis points); totalCollateralBase / totalDebtBase in USD with 8 decimals; `healthFactor` / 1e18 = 1.07072, equal to totalCollateral × avgLT ÷ 1e4 ÷ totalDebt computed from the same call | ~26194065             |
+| Units, checked on one live borrower taken from a `Borrow` event in blocks 26193765-26194065 (address deliberately not recorded) | `currentLiquidationThreshold` 7800 and `ltv` 7300 (basis points); totalCollateralBase / totalDebtBase in USD with 8 decimals; `healthFactor` / 1e18 = 1.07072, equal to totalCollateral × avgLT ÷ 1e4 ÷ totalDebt computed from the same call | ~26194065             |
 
 Code: `GenericLogic.calculateUserAccountData` (HF = Σ(value × LT) wadDiv debt ÷ 1e4, `type(uint256).max` when debt is 0;
 LTV-0 collateral still adds to the LT sum) and `ValidationLogic.HEALTH_FACTOR_LIQUIDATION_THRESHOLD = 1e18`
@@ -147,11 +147,11 @@ https://aave.com/docs/aave-v3/markets/positions ("Account Health" note, fetched 
 
 | Fact                                                                                    | Value                                                                                                                                                                                                                     | Source                                                                                                                                                              |
 | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 50% cap condition                                                                       | `healthFactor > CLOSE_FACTOR_HF_THRESHOLD` (0.95e18) and the borrower's collateral and debt in the chosen reserves each `>= MIN_BASE_MAX_CLOSE_FACTOR_THRESHOLD` (2000e8 = $2,000); otherwise 100% of that reserve's debt | `aave-raw/LiquidationLogic.sol` lines 43–64, 258–273 (aave-v3-origin main, fetched 2026-10-14)                                                                      |
+| 50% cap condition                                                                       | `healthFactor > CLOSE_FACTOR_HF_THRESHOLD` (0.95e18) and the borrower's collateral and debt in the chosen reserves each `>= MIN_BASE_MAX_CLOSE_FACTOR_THRESHOLD` (2000e8 = $2,000); otherwise 100% of that reserve's debt | `aave-raw/LiquidationLogic.sol` lines 43-64, 258-273 (aave-v3-origin main, fetched 2026-10-14)                                                                      |
 | Grace period after unpause (not quoted since the revision)                              | up to 4 hours (`MAX_GRACE_PERIOD`)                                                                                                                                                                                        | aave-facts §4.1 (PoolConfigurator, v3.1 docs)                                                                                                                       |
 | Frozen reserves stay liquidatable; paused reserves do not                               |                                                                                                                                                                                                                           | aave-facts §0.10, §4.1 (ValidationLogic.validateLiquidationCall)                                                                                                    |
 | ETH $1,420 example (not quoted since the revision; owned by how-aave-liquidation-works) | HF 0.982, up to 6,000 USDC repaid, $6,300 of WETH seized, HF after 1.093                                                                                                                                                  | aave-facts §4.4; arithmetic re-checked below                                                                                                                        |
-| Fee split on $6,000 repaid against WETH (quoted)                                        | $6,300 of WETH seized (5% bonus = $300); protocol fee 10% of the bonus = $30 to the treasury; $6,270 to the liquidator                                                                                                    | `LiquidationLogic.sol` lines 603–621 (`bonusCollateral = collateral − collateral ÷ LB`; fee = bonusCollateral × fee %), WETH fee 1000 bps (§1); aave-facts §4.3–4.4 |
+| Fee split on $6,000 repaid against WETH (quoted)                                        | $6,300 of WETH seized (5% bonus = $300); protocol fee 10% of the bonus = $30 to the treasury; $6,270 to the liquidator                                                                                                    | `LiquidationLogic.sol` lines 603-621 (`bonusCollateral = collateral − collateral ÷ LB`; fee = bonusCollateral × fee %), WETH fee 1000 bps (§1); aave-facts §4.3-4.4 |
 
 ## 8. Aave V4 figures
 
@@ -197,7 +197,7 @@ constants (dust threshold, HF ≥ 1 borrow rule).
 | Dashboard free, 7 networks (Ethereum Core, Polygon, Arbitrum, Optimism, Base, Avalanche, Gnosis), view calls only, no approvals or signatures on Aave | product.md §2, §3, §5.1, §6                 |
 | Alerts on Signal or email (Telegram not named, per build spec)                                                                                        | product.md §4.7; build-spec owner decisions |
 | Checks every 5 minutes, repeats on every check while below threshold, no recovery message                                                             | product.md §4.1, §4.3                       |
-| Price rendered by `<AlertPrice />` (on-chain `plans(USDC)` on Arbitrum; fallback text when unreadable), paid on Arbitrum                              | product.md §5.1–5.2; build-spec             |
+| Price rendered by `<AlertPrice />` (on-chain `plans(USDC)` on Arbitrum; fallback text when unreadable), paid on Arbitrum                              | product.md §5.1-5.2; build-spec             |
 | Tokenping covers Aave V3 only                                                                                                                         | product.md §1, §10; aave-facts §11          |
 
 ## 11. Arithmetic (recomputed by the writer with Python on 2026-10-14; new rows 2026-10-15)

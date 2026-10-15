@@ -78,7 +78,7 @@ describe("getPost", () => {
   it("finds a post by slug, placeholders included, and returns undefined for unknown slugs", async () => {
     const { getPost } = await loadBlog(["aave-liquidation-price"]);
 
-    expect(getPost("aave-liquidation-price")?.meta.title).toBe("How to Calculate Your Aave Liquidation Price");
+    expect(getPost("aave-liquidation-price")?.meta.title).toBe("How to calculate your Aave liquidation price");
     expect(getPost("nope")).toBeUndefined();
   });
 });

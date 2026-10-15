@@ -3,7 +3,7 @@
 End-to-end steps to enable the Telegram notification channel in Tokenping.
 
 Unlike Signal (which requires a self-hosted [signal-cli-rest-api](./signal-server-fly.md)
-container), Telegram works over the official Bot API — a plain HTTPS endpoint.
+container), Telegram works over the official Bot API: a plain HTTPS endpoint.
 No extra infrastructure is needed.
 
 ---
@@ -16,12 +16,12 @@ No extra infrastructure is needed.
 4. Pick a username ending in `bot` (e.g. `TokenpingBot`). This is the
    `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` you'll set below.
 5. BotFather replies with a token like `1234567890:ABC-DEF1234ghIklmZ`. This is
-   the `TELEGRAM_BOT_TOKEN` — treat it as a secret.
+   the `TELEGRAM_BOT_TOKEN`: treat it as a secret.
 
 Optional polish (recommended):
-- `/setdescription` — "Get Aave health-factor alerts from Tokenping."
-- `/setuserpic` — upload a logo.
-- `/setcommands` — paste:
+- `/setdescription`: "Get Aave health-factor alerts from Tokenping."
+- `/setuserpic`: upload a logo.
+- `/setcommands`: paste:
   ```
   start - Link this chat to your wallet (use the Tokenping app)
   stop - Unsubscribe from alerts
@@ -39,7 +39,7 @@ secret in the `X-Telegram-Bot-Api-Secret-Token` header. Generate one:
 openssl rand -base64 32 | tr -d '+/=' | head -c 48
 ```
 
-That's your `TELEGRAM_WEBHOOK_SECRET`. Telegram's rules: 1–256 chars from
+That's your `TELEGRAM_WEBHOOK_SECRET`. Telegram's rules: 1 to 256 chars from
 `A-Za-z0-9_-`.
 
 ---
@@ -96,7 +96,7 @@ curl "https://api.telegram.org/bot${TOKEN}/getWebhookInfo"
 
 ## 6. Smoke-test
 
-1. Open Tokenping → Notification Settings → tick **Telegram** → press
+1. Open Tokenping → Notification settings → tick **Telegram** → press
    **Connect Telegram**.
 2. Telegram opens to your bot. Press **Start**.
 3. Within a couple of seconds the UI shows "✅ Connected as @yourhandle".
@@ -133,19 +133,19 @@ Remember to re-point to your prod URL when you're done.
 
 ## Troubleshooting
 
-**"This link has expired or was already used"** — tokens are valid for 10
+**"This link has expired or was already used"**: tokens are valid for 10
 minutes and single-use. Generate a new one from the app.
 
-**Nothing happens after pressing Start** — check
+**Nothing happens after pressing Start**: check
 `curl "https://api.telegram.org/bot${TOKEN}/getWebhookInfo"` for the
 `last_error_message` field. Common causes: wrong URL, missing
 `TELEGRAM_WEBHOOK_SECRET` on Vercel, server returning 5xx.
 
-**Cron sends but Telegram doesn't deliver** — the user may have blocked the
+**Cron sends but Telegram doesn't deliver**: the user may have blocked the
 bot. The cron self-heals by deleting the `user_telegram_links` row on the
 `bot_blocked` error code; the user can simply re-link.
 
-**Group chats** — intentionally rejected in v1. The bot replies with a "DM me
+**Group chats**: intentionally rejected in v1. The bot replies with a "DM me
 directly" hint and ignores the message. If you need group support later, the
 webhook in `packages/nextjs/app/api/telegram/webhook/route.ts` is the place to
 relax the check (and re-think the unlink semantics).

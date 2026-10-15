@@ -1,6 +1,6 @@
 /**
- * GET    /api/telegram/link?userId=0x...   — read current Telegram link (uncached, used for handshake polling)
- * DELETE /api/telegram/link                — disconnect Telegram for a user (UI "Disconnect" button)
+ * GET    /api/telegram/link?userId=0x...: read current Telegram link (uncached, used for handshake polling)
+ * DELETE /api/telegram/link:              disconnect Telegram for a user (UI "Disconnect" button)
  *
  * NOT cached, intentionally: the UI polls this during the handshake and needs
  * to see the new chat_id immediately after the webhook writes it.

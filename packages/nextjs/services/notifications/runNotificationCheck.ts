@@ -45,7 +45,7 @@ export const buildAlertText = ({ chainName, healthFactor, threshold, timestamp }
 
 /** The html footer says "Created at" where the text says "Sent at". */
 export const buildAlertEmail = ({ chainName, healthFactor, threshold, timestamp }: Alert) => ({
-  subject: `Aave Health Factor Alert – ${chainName}`,
+  subject: `Aave Health Factor Alert - ${chainName}`,
   html:
     `<p>Your Aave Health Factor on <strong>${chainName}</strong> is ` +
     `<strong>${healthFactor}</strong>, which is below your threshold of ` +
