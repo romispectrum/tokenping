@@ -66,15 +66,18 @@ describe("Footer", () => {
     expect(renderFooter()).toMatchSnapshot();
   });
 
-  it("is an always-dark band with the outline logo and no pink, the local tools floating outside it", () => {
+  it("is an always-dark band with the logo and no pink, the local tools floating outside it", () => {
     state.price = 3000;
     state.targetNetworkId = hardhat.id;
     const { container } = render(<Footer />);
     const band = container.querySelector("footer > .dark")!;
 
     expect(band.className).toContain("bg-background");
-    expect(within(band as HTMLElement).getByRole("link", { name: "Tokenping home" })).toBeTruthy();
-    expect(band.querySelector('svg[data-art="outline"]')).toBeTruthy();
+    expect(
+      within(band as HTMLElement)
+        .getByRole("link", { name: "Tokenping home" })
+        .querySelector("svg"),
+    ).toBeTruthy();
     expect(band.innerHTML).not.toMatch(/bg-primary|btn-primary|text-primary|brand-pink/);
     expect(band.contains(screen.getByRole("link", { name: /Block explorer/ }))).toBe(false);
   });

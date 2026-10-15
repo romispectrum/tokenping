@@ -9,19 +9,20 @@ describe("OgCard", () => {
     );
 
     expect(OG_IMAGE_SIZE).toEqual({ width: 1200, height: 630 });
-    expect(html).toMatch(/<img src="data:image\/svg\+xml;base64,[^"]+" width="232" height="64" alt="Tokenping"\/>/);
+    expect(html).toMatch(/<img src="data:image\/svg\+xml;base64,[^"]+" width="243" height="64" alt="Tokenping"\/>/);
     expect(html).toContain(">How to calculate your Aave liquidation price<");
     expect(html).toContain(">Tokenping · Aave V3 guides<");
     expect(html).toContain(">tokenping.xyz<");
   });
 
-  it("uses the outline lockup on the night background with one pink accent", () => {
+  it("uses the lockup with a white wordmark on the night background and one pink accent", () => {
     const html = renderStaticMarkup(<OgCard title="Title" footer="Footer" />);
     const logo = Buffer.from(html.match(/base64,([^"]+)"/)?.[1] ?? "", "base64").toString();
 
     // lint-brand-ignore-next-line hex-colour: asserts the colours written into the OG image
     expect(html).toContain("background:#18001C");
-    expect(logo).toContain('stroke="#fff"'); // lint-brand-ignore hex-colour: the outline artwork's stroke
+    expect(logo).toContain('color="#FFFFFF"'); // lint-brand-ignore hex-colour: the wordmark colour on night
+    expect(logo).toContain("scale(0.036)");
     expect(html.match(/#FE5FA9/g)).toHaveLength(1);
   });
 

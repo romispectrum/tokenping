@@ -69,9 +69,8 @@ describe("Header", () => {
     const homeLink = screen.getByRole("link", { name: "Tokenping home" });
     const logos = [...homeLink.querySelectorAll("svg")];
 
-    // tone "auto": the solid art for light surfaces and the outline art for dark ones
-    expect(logos.map(svg => svg.getAttribute("data-art"))).toEqual(["solid", "outline"]);
-    logos.forEach(svg => expect(svg.getAttribute("aria-hidden")).toBe("true"));
+    expect(logos).toHaveLength(1);
+    expect(logos[0].getAttribute("aria-hidden")).toBe("true");
     expect(screen.queryByRole("img")).toBeNull();
   });
 

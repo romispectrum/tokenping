@@ -11,40 +11,37 @@ describe("brand mark", () => {
     expect(readPackageFile(path)).toBe(`${faviconSvg()}\n`);
   });
 
-  it("switches the favicon to the outline art when the browser is in dark mode", () => {
+  it("draws the favicon as the mark on its rounded gradient square", () => {
     const svg = faviconSvg();
 
-    expect(svg).toContain('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">');
-    expect(svg).toContain("@media (prefers-color-scheme:dark){.tp-light{display:none}.tp-dark{display:inline}}");
-    expect(svg).toContain(`<svg class="tp-light" viewBox="${LOGO_VIEWBOX.symbol.solid}"`);
-    expect(svg).toContain(`<svg class="tp-dark" viewBox="${LOGO_VIEWBOX.symbol.outline}"`);
+    expect(svg).toContain(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${LOGO_VIEWBOX.symbol}">`);
+    expect(svg).toContain('<rect width="64" height="64" rx="14" fill="url(#tp-symbol-gradient)"/>');
+    expect(svg).toContain('<linearGradient id="tp-symbol-gradient"');
   });
 
-  it("gives every mask in the favicon its own id", () => {
-    const ids = [...faviconSvg().matchAll(/ id="([^"]+)"/g)].map(match => match[1]);
-
-    expect(ids.length).toBeGreaterThan(0);
-    expect(new Set(ids).size).toBe(ids.length);
+  // The apple icon passes 0: iOS rounds the corners itself and would fill transparent ones with black.
+  it("squares the corners on request", () => {
+    expect(logoSvg({ variant: "symbol", cornerRadius: 0 })).toContain('rx="0"');
   });
 
-  it("draws the solid art in black by default and in the requested colour", () => {
-    expect(logoSvg({ variant: "symbol", art: "solid" })).toContain(
-      // lint-brand-ignore-next-line hex-colour: asserts the artwork's default fill
-      `viewBox="${LOGO_VIEWBOX.symbol.solid}" color="#000"`,
-    );
+  it("colours the wordmark only when asked, since a standalone file inherits no text colour", () => {
+    expect(logoSvg({ variant: "primary" })).not.toContain(" color=");
     // lint-brand-ignore-next-line hex-colour: asserts a colour passed through to the SVG
-    expect(logoSvg({ variant: "primary", art: "solid", color: "#9C27B0" })).toContain('color="#9C27B0"');
+    expect(logoSvg({ variant: "primary", color: "#FFFFFF" })).toContain(
+      // lint-brand-ignore-next-line hex-colour: asserts a colour passed through to the SVG
+      `viewBox="${LOGO_VIEWBOX.primary}" color="#FFFFFF"`,
+    );
   });
 
   it("adds the wordmark to the primary lockup only", () => {
-    const wordmark = 'transform="translate(75.72 45.07) scale(0.03505)"';
+    const wordmark = 'transform="translate(77.5 45) scale(0.036)"';
 
-    expect(logoSvg({ variant: "primary", art: "outline" })).toContain(wordmark);
-    expect(logoSvg({ variant: "symbol", art: "outline" })).not.toContain(wordmark);
+    expect(logoSvg({ variant: "primary" })).toContain(wordmark);
+    expect(logoSvg({ variant: "symbol" })).not.toContain(wordmark);
   });
 
   it("encodes an SVG as a base64 data URI for next/og", () => {
-    const svg = logoSvg({ variant: "primary", art: "outline" });
+    const svg = logoSvg({ variant: "primary" });
     const uri = svgDataUri(svg);
 
     expect(uri.startsWith("data:image/svg+xml;base64,")).toBe(true);
@@ -52,8 +49,7 @@ describe("brand mark", () => {
   });
 
   // The lockup must stay at least 100px wide at its smallest allowed height, h-7 (28px).
-  it("keeps the lockup at least 100px wide at 28px tall in both arts", () => {
-    expect(28 * viewBoxAspect(LOGO_VIEWBOX.primary.solid)).toBeGreaterThanOrEqual(100);
-    expect(28 * viewBoxAspect(LOGO_VIEWBOX.primary.outline)).toBeGreaterThanOrEqual(100);
+  it("keeps the lockup at least 100px wide at 28px tall", () => {
+    expect(28 * viewBoxAspect(LOGO_VIEWBOX.primary)).toBeGreaterThanOrEqual(100);
   });
 });

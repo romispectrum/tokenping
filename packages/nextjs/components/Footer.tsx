@@ -113,7 +113,7 @@ export const Footer = () => {
               aria-label="Tokenping home"
               className="inline-flex w-fit shrink-0 items-center rounded-lg pointer-coarse:min-h-11"
             >
-              {/* h-9: 141px wide, above the 100px lockup minimum */}
+              {/* h-9: 137px wide, above the 100px lockup minimum */}
               <TokenpingLogo title="" className="h-9 w-auto" />
             </Link>
             <p className="m-0 max-w-xs text-sm text-pretty text-muted-foreground">
