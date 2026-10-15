@@ -1,13 +1,20 @@
+import { notFound } from "next/navigation";
 import { DebugContracts } from "./_components/DebugContracts";
-import type { NextPage } from "next";
+import type { Metadata, NextPage } from "next";
+import { DEV_ROUTE_NOT_FOUND_METADATA, areDevRoutesEnabled } from "~~/utils/devRoutes";
 import { getMetadata } from "~~/utils/scaffold-eth/getMetadata";
 
-export const metadata = getMetadata({
-  title: "Debug Contracts",
-  description: "Debug your deployed 🏗 Scaffold-ETH 2 contracts in an easy way",
-});
+export const generateMetadata = (): Metadata =>
+  areDevRoutesEnabled()
+    ? getMetadata({
+        title: "Debug Contracts",
+        description: "Read and call the contracts deployed on the local development chain.",
+      })
+    : DEV_ROUTE_NOT_FOUND_METADATA;
 
 const Debug: NextPage = () => {
+  if (!areDevRoutesEnabled()) notFound();
+
   return (
     <>
       <DebugContracts />

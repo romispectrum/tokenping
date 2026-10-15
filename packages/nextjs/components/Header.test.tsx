@@ -69,13 +69,70 @@ describe("Header", () => {
     expect(screen.getByRole("img", { name: "Tokenping logo" }).getAttribute("src")).toBe("/logo.svg");
   });
 
-  it("marks only the exactly matching menu link as active", () => {
+  it("marks only the exactly matching menu link as active, as the current page", () => {
     state.pathname = "/aave";
     render(<Header />);
 
     // Desktop and mobile menus both render the links.
-    expect(screen.getAllByRole("link", { name: "Aave" }).map(isActive)).toEqual([true, true]);
+    const dashboardLinks = screen.getAllByRole("link", { name: "Dashboard" });
+    expect(dashboardLinks.map(isActive)).toEqual([true, true]);
+    expect(dashboardLinks.map(link => link.getAttribute("aria-current"))).toEqual(["page", "page"]);
     expect(screen.getAllByRole("link", { name: "Home" }).map(isActive)).toEqual([false, false]);
+    expect(screen.getAllByRole("link", { name: "Blog" }).map(isActive)).toEqual([false, false]);
+  });
+
+  it("puts both menus in the header's one navigation landmark, named Main", () => {
+    render(<Header />);
+    const nav = screen.getByRole("navigation", { name: "Main" });
+
+    expect(within(screen.getByRole("banner")).getAllByRole("navigation")).toEqual([nav]);
+    // Mobile dropdown and desktop menu.
+    for (const name of ["Home", "Dashboard", "Blog"])
+      expect(within(nav).getAllByRole("link", { name })).toHaveLength(2);
+  });
+
+  it("links the dashboard at /aave and the blog at /blog", () => {
+    render(<Header />);
+
+    expect(screen.getAllByRole("link", { name: "Dashboard" }).map(link => link.getAttribute("href"))).toEqual([
+      "/aave",
+      "/aave",
+    ]);
+    expect(screen.getAllByRole("link", { name: "Blog" }).map(link => link.getAttribute("href"))).toEqual([
+      "/blog",
+      "/blog",
+    ]);
+  });
+
+  it("highlights Blog on a post, but names only /blog itself as the current page", () => {
+    state.pathname = "/blog/aave-health-factor";
+    const { rerender } = render(<Header />);
+
+    expect(screen.getAllByRole("link", { name: "Blog" }).map(isActive)).toEqual([true, true]);
+    expect(screen.getAllByRole("link").filter(link => link.hasAttribute("aria-current"))).toEqual([]);
+
+    state.pathname = "/blog";
+    rerender(<Header />);
+
+    expect(screen.getAllByRole("link", { name: "Blog" }).map(link => link.getAttribute("aria-current"))).toEqual([
+      "page",
+      "page",
+    ]);
+  });
+
+  it("does not highlight Blog on a route that only starts with the same letters", () => {
+    state.pathname = "/blogroll";
+    render(<Header />);
+
+    expect(screen.getAllByRole("link").filter(isActive)).toEqual([]);
+  });
+
+  it("names the product category under the brand, not a generic DeFi app", () => {
+    render(<Header />);
+    const homeLink = screen.getByRole("link", { name: "Tokenping home" });
+
+    expect(within(homeLink).getByText("Aave health factor alerts")).toBeTruthy();
+    expect(homeLink.textContent).not.toMatch(/DeFi/);
   });
 
   it.each(["/aave/", "/aave/positions"])("does not mark a nested or trailing-slash path (%s) as active", pathname => {
@@ -85,7 +142,7 @@ describe("Header", () => {
     expect(screen.getAllByRole("link").filter(isActive)).toEqual([]);
   });
 
-  it("renders the menu links in order: Home, Aave", () => {
+  it("renders the menu links in order: Home, Dashboard, Blog", () => {
     render(<Header />);
     const [mobileMenu, desktopMenu] = screen.getAllByRole("list");
 
@@ -94,7 +151,7 @@ describe("Header", () => {
         within(menu)
           .getAllByRole("link")
           .map(link => link.textContent),
-      ).toEqual(["Home", "Aave"]);
+      ).toEqual(["Home", "Dashboard", "Blog"]);
     }
   });
 

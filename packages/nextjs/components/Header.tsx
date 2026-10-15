@@ -9,28 +9,36 @@ import { Bars3Icon } from "@heroicons/react/24/outline";
 import { FaucetButton, RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
 import { useOutsideClick, useTargetNetwork } from "~~/hooks/scaffold-eth";
 
-const MENU_LINKS = [
-  {
-    label: "Home",
-    href: "/",
-  },
-  {
-    label: "Aave",
-    href: "/aave",
-  },
+type MenuLink = {
+  label: string;
+  href: string;
+  /** Also active on the pages below href (every post under /blog). */
+  includesNested?: boolean;
+};
+
+const MENU_LINKS: readonly MenuLink[] = [
+  { label: "Home", href: "/" },
+  { label: "Dashboard", href: "/aave" },
+  { label: "Blog", href: "/blog", includesNested: true },
 ];
+
+const isMenuLinkActive = (pathname: string, { href, includesNested }: MenuLink) =>
+  pathname === href || (!!includesNested && pathname.startsWith(`${href}/`));
 
 const HeaderMenuLinks = () => {
   const pathname = usePathname();
 
   return (
     <>
-      {MENU_LINKS.map(({ label, href }) => {
-        const isActive = pathname === href;
+      {MENU_LINKS.map(link => {
+        const { label, href } = link;
+        const isActive = isMenuLinkActive(pathname, link);
         return (
           <li key={href}>
             <Link
               href={href}
+              // "page" only on the exact route: on a post, Blog is highlighted but is not the current page.
+              aria-current={pathname === href ? "page" : undefined}
               className={`${
                 isActive ? "bg-secondary shadow-md" : ""
               } hover:bg-secondary hover:shadow-md focus:!bg-secondary active:!text-neutral py-1.5 px-3 lg:py-1.5 lg:px-3 min-h-[2.75rem] lg:min-h-0 text-sm rounded-full gap-2 grid grid-flow-col items-center`}
@@ -56,7 +64,8 @@ export const Header = () => {
 
   return (
     <header className="sticky lg:static top-0 navbar bg-base-100 min-h-0 shrink-0 justify-between z-20 shadow-md shadow-secondary px-2 sm:px-2 safe-area-inset-left safe-area-inset-right safe-area-top">
-      <div className="navbar-start w-auto lg:w-1/2">
+      {/* One landmark for the burger menu, the logo link and the desktop menu: only one of the two menus shows at a time. */}
+      <nav aria-label="Main" className="navbar-start w-auto lg:w-1/2">
         <details className="dropdown" ref={burgerMenuRef}>
           <summary
             className="ml-1 btn btn-ghost lg:hidden hover:bg-transparent touch-target-min min-h-12 w-12 p-0 flex items-center justify-center"
@@ -77,13 +86,13 @@ export const Header = () => {
           </div>
           <div className="flex flex-col">
             <span className="font-bold leading-tight">Tokenping</span>
-            <span className="text-xs">DeFi Notification App</span>
+            <span className="text-xs">Aave health factor alerts</span>
           </div>
         </Link>
         <ul className="hidden lg:flex lg:flex-nowrap menu menu-horizontal px-1 gap-2">
           <HeaderMenuLinks />
         </ul>
-      </div>
+      </nav>
       <div className="navbar-end grow mr-2 sm:mr-4 flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
         <RainbowKitCustomConnectButton />
         {isLocalNetwork && <FaucetButton />}

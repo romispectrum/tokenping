@@ -1,121 +1,130 @@
-# 🏗 Scaffold-ETH 2
+# Tokenping
 
-<h4 align="center">
-  <a href="https://docs.scaffoldeth.io">Documentation</a> |
-  <a href="https://scaffoldeth.io">Website</a>
-</h4>
+Aave V3 health factor alerts on Signal and email.
 
-🧪 An open-source, up-to-date toolkit for building decentralized applications (dapps) on the Ethereum blockchain. It's designed to make it easier for developers to create and deploy smart contracts and build user interfaces that interact with those contracts.
+Tokenping watches the Aave V3 health factor of the wallet you connect and sends you a message when it drops below a
+threshold you choose. The dashboard is free; alerts are a paid add-on, paid in USDC on Arbitrum One.
 
-> [!NOTE]
-> 🤖 Scaffold-ETH 2 is AI-ready! It has everything agents need to build on Ethereum. Check `.agents/`, `.claude/`, `.opencode` or `.cursor/` for more info.
+- Website: https://tokenping.xyz
+- Blog (Aave health factor and liquidation guides): https://tokenping.xyz/blog
+- X: https://x.com/tokenping
+- Telegram community: https://t.me/tokenping_xyz
 
-⚙️ Built using NextJS, RainbowKit, Foundry/Hardhat, Wagmi, Viem, and Typescript.
+Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs or the Aave DAO.
 
-- ✅ **Contract Hot Reload**: Your frontend auto-adapts to your smart contract as you edit it.
-- 🪝 **[Custom hooks](https://docs.scaffoldeth.io/hooks/)**: Collection of React hooks wrapper around [wagmi](https://wagmi.sh/) to simplify interactions with smart contracts with typescript autocompletion.
-- 🧱 [**Components**](https://docs.scaffoldeth.io/components/): Collection of common web3 components to quickly build your frontend.
-- 🔥 **Burner Wallet & Local Faucet**: Quickly test your application with a burner wallet and local faucet.
-- 🔐 **Integration with Wallet Providers**: Connect to different wallet providers and interact with the Ethereum network.
+## What it does
 
-![Debug Contracts tab](https://github.com/scaffold-eth/scaffold-eth-2/assets/55535804/b237af0c-5027-4849-a5c1-2e31495cccb1)
+- **Dashboard (free, read-only).** Connect a wallet to see its Aave V3 collateral, debt and health factor on
+  Ethereum (Core market), Polygon, Arbitrum, Optimism, Base, Avalanche and Gnosis. Positions are read with view calls
+  only; the app never asks for an approval or a signature on Aave.
+- **Alerts.** One alert per network, for the connected wallet. You pick a threshold from 1.1 to 10 (default 1.5) and
+  one or more channels:
+  - Email, sent through [Resend](https://resend.com).
+  - Signal, sent to your Signal username through a self-hosted
+    [signal-cli-rest-api](https://github.com/bbernhard/signal-cli-rest-api) relay
+    ([deploy guide](docs/signal-server-fly.md)).
+  - Telegram, through the Bot API. Linking a chat needs a configured bot (`TELEGRAM_*` and
+    `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME`; see [docs/telegram-bot-setup.md](docs/telegram-bot-setup.md)). Site copy
+    names Telegram only while `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` is set.
+- **Checks every 5 minutes.** A Vercel cron calls `/api/cron/notifications` (`vercel.json`), which reads each saved
+  alert's health factor and messages every selected channel while it is below the threshold.
+- **Paid access on-chain.** `TokenpingPaywall` (an upgradeable UUPS proxy on Arbitrum One) sells access for USDC: an
+  approval for exactly the price, then `pay`. No auto-renew; paying again extends the current expiry. The price is read
+  from the contract (`plans(token)`), so the site never hard-codes it. The proxy and implementation are verified on
+  [Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553).
+- **Blog.** MDX articles in `packages/nextjs/content/blog`, rendered as Server Components with a sitemap, RSS feed and
+  JSON-LD.
 
-## Requirements
+## Limits
 
-Before you begin, you need to install the following tools:
+- Aave V3 only, one pool per network (on Ethereum, only the Core market). Aave V4, the other Ethereum V3 markets and
+  other protocols are not supported.
+- Polling, not real time: a fast price move can cross a health factor of 1.0 between two checks. Alerts reduce risk;
+  they do not prevent liquidation.
+- While a health factor is below its threshold, every check sends another message on each channel. There is no
+  cooldown, snooze or "recovered" message, and emails have no unsubscribe link yet.
+- Only the connected wallet can be watched: no watch-only addresses, and access is per paying wallet.
+- Payment is USDC on Arbitrum One only (you need a little ETH there for gas). The contract has no refund function, and
+  its owner can change the price, pause payments, withdraw funds and upgrade it.
+- The API identifies users by wallet address without a signature check (no SIWE) yet, so anyone who knows a wallet
+  address can read the contact details saved for it and, while that wallet's access is active, change or delete its
+  alerts.
+- Alerts can only be deleted in the app while the wallet's access is active.
+- Delivery depends on third parties (Resend, the Signal relay, the Telegram Bot API, public RPC providers, Vercel
+  cron). There is no published uptime guarantee.
 
-- [Node (>= v20.18.3)](https://nodejs.org/en/download/)
-- Yarn ([v1](https://classic.yarnpkg.com/en/docs/install/) or [v2+](https://yarnpkg.com/getting-started/install))
-- [Git](https://git-scm.com/downloads)
+## Repository layout
 
-## Quickstart
+| Path                        | What it holds                                                                                     |
+| --------------------------- | ------------------------------------------------------------------------------------------------- |
+| `packages/nextjs`           | The Next.js 15 App Router app: homepage, dashboard (`/aave`), blog, API routes and the alert cron |
+| `packages/hardhat`          | `TokenpingPaywall` and its deploy and upgrade scripts                                             |
+| `packages/supabase`         | Database migrations for alert settings and Telegram links ([README](packages/supabase/README.md)) |
+| `packages/tokenping-signal` | Container config for the Signal relay                                                             |
+| `docs/`                     | Signal relay and Telegram bot setup guides                                                        |
 
-To get started with Scaffold-ETH 2, follow the steps below:
+The project started from [Scaffold-ETH 2](https://scaffoldeth.io) (Hardhat flavor), so its tooling and commands apply.
 
-1. Install the latest version of Scaffold-ETH 2
+## Local development
 
-```
-npx create-eth@latest
-```
+Requirements: [Node](https://nodejs.org/en/download/) 22 (22.12 or later), 24 or 26+ (the `engines` field in
+`package.json`), Yarn, Git, and for the database
+[Docker](https://docs.docker.com/get-docker/) with the [Supabase CLI](https://supabase.com/docs/guides/cli).
 
-This command will install all the necessary packages and dependencies, so it might take a while.
+```bash
+yarn install
 
-> [!NOTE]
-> You can also initialize your project with one of our extensions to add specific features or starter-kits. Learn more in our [extensions documentation](https://docs.scaffoldeth.io/extensions/).
-
-2. Run a local network in the first terminal:
-
-```
+# 1. Local chain (terminal 1)
 yarn chain
-```
 
-This command starts a local Ethereum network that runs on your local machine and can be used for testing and development. Learn how to [customize your network configuration](https://docs.scaffoldeth.io/quick-start/environment#1-initialize-a-local-blockchain).
-
-3. On a second terminal, deploy contracts to your local network:
-
-```
+# 2. Deploy the paywall with a mock USDC to the local chain (terminal 2)
 yarn deploy --network hardhat --deploy-mode local
-```
 
-This command runs the local deployment flow (MockUSDC + local-safe settings). You can find more information about how to customize your contract and deployment script in our [documentation](https://docs.scaffoldeth.io/quick-start/environment#2-deploy-your-smart-contract).
+# 3. Local Supabase, then apply the migrations
+yarn supabase:start
+yarn supabase:reset
 
-4. On a third terminal, start your NextJS app:
+# 4. App settings: copy the template and fill in what you need (every variable is documented there)
+cp packages/nextjs/.env.example packages/nextjs/.env.local
 
-```
+# 5. Frontend at http://localhost:3000 (terminal 3)
 yarn start
 ```
 
-Visit your app on: `http://localhost:3000`. You can interact with your smart contract using the `Debug Contracts` page. You can tweak the app config in `packages/nextjs/scaffold.config.ts`.
+`packages/nextjs/scaffold.config.ts` targets Arbitrum One. The app takes payments on the first target network with a
+paywall deployment, so to pay with the local mock USDC, put `chains.hardhat` first in `targetNetworks`. The
+Scaffold-ETH dev pages (`/debug`, `/blockexplorer`) exist only while hardhat is a target network
+and answer 404 otherwise.
 
-**What's next**:
+Email needs `RESEND_API_KEY`, Signal needs `SIGNAL_API_URL` and `SIGNAL_SENDER_NUMBER`, and Telegram needs the
+`TELEGRAM_*` variables. `CRON_SECRET` protects the cron and email routes. See `packages/nextjs/.env.example`.
 
-Visit the [What's next section of our docs](https://docs.scaffoldeth.io/quick-start/environment#whats-next) to learn how to:
+### Checks
 
-- Edit your smart contracts
-- Edit your deployment scripts
-- Customize your frontend
-- Edit the app config
-- Writing and running tests
-- [Setting up external services and API keys](https://docs.scaffoldeth.io/deploying/deploy-smart-contracts#configuration-of-third-party-services-for-production-grade-apps)
-
-## Deployment Modes (Local vs Production)
-
-This repository uses two separate deploy scripts selected by a mode flag:
-
-- `--deploy-mode local` uses the local deployment script (`TokenpingPaywallLocal`)
-- `--deploy-mode production` uses the production deployment script (`TokenpingPaywallProduction`)
-
-### Local deployment
-
-Use local mode only with local Hardhat network:
-
+```bash
+yarn next:check-types   # TypeScript
+yarn lint               # ESLint for the app and the contracts
+yarn next:test          # Vitest for the app
+yarn test               # Hardhat tests for the contracts
+yarn format             # Prettier
 ```
+
+## Deployment
+
+The frontend runs on Vercel (`yarn vercel:yolo --prod`). The 5-minute cron in `vercel.json` needs a Vercel plan that
+allows it. Set the variables from `packages/nextjs/.env.example` in the Vercel project, including `CRON_SECRET` and
+`RESEND_FROM_EMAIL`.
+
+The contract has two deploy modes, selected with `--deploy-mode`:
+
+```bash
+# Local Hardhat network only: deploys TokenpingPaywallLocal with a mock USDC
 yarn deploy --network hardhat --deploy-mode local
-```
 
-### Production deployment
-
-Production mode is restricted to Ethereum Mainnet and Arbitrum One:
-
-```
-yarn deploy --network mainnet --deploy-mode production
+# Ethereum Mainnet or Arbitrum One: deploys TokenpingPaywallProduction
 yarn deploy --network arbitrum --deploy-mode production
 ```
 
-For production deploys, the command will prompt for your password, decrypt `DEPLOYER_PRIVATE_KEY_ENCRYPTED`, and use the runtime private key for deployment.
-
-Arbitrum production deploys are protected with an extra USDC safety check and use canonical USDC:
-
-`0xaf88d065e77c8cc2239327c5edb3a432268e5831`
-
-## Documentation
-
-Visit our [docs](https://docs.scaffoldeth.io) to learn all the technical details and guides of Scaffold-ETH 2.
-
-To know more about its features, check out our [website](https://scaffoldeth.io).
-
-## Contributing to Scaffold-ETH 2
-
-We welcome contributions to Scaffold-ETH 2!
-
-Please see [CONTRIBUTING.MD](https://github.com/scaffold-eth/scaffold-eth-2/blob/main/CONTRIBUTING.md) for more information and guidelines for contributing to Scaffold-ETH 2.
+Production deploys prompt for your password, decrypt `DEPLOYER_PRIVATE_KEY_ENCRYPTED` and use the key only at runtime.
+Arbitrum production deploys check that the payment token is Circle's native USDC,
+`0xaf88d065e77c8cc2239327c5edb3a432268e5831`.

@@ -1,9 +1,11 @@
+import { notFound } from "next/navigation";
 import fs from "fs";
 import path from "path";
 import { Address } from "viem";
 import { hardhat } from "viem/chains";
 import { AddressComponent } from "~~/app/blockexplorer/_components/AddressComponent";
 import deployedContracts from "~~/contracts/deployedContracts";
+import { areDevRoutesEnabled } from "~~/utils/devRoutes";
 import { isZeroAddress } from "~~/utils/scaffold-eth/common";
 import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 
@@ -89,6 +91,10 @@ export function generateStaticParams() {
 }
 
 const AddressPage = async (props: PageProps) => {
+  // The layout's gate is not enough: Next renders the layout and this page in parallel, so without this check the
+  // build-info read below would still run and fail with a 500 outside local hardhat builds.
+  if (!areDevRoutesEnabled()) notFound();
+
   const params = await props.params;
   const address = params?.address as Address;
 

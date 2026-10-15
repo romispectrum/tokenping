@@ -6,13 +6,46 @@ import { hardhat } from "viem/chains";
 import { CurrencyDollarIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { SwitchTheme } from "~~/components/SwitchTheme";
 import { Faucet } from "~~/components/scaffold-eth";
-import { EXTERNAL_LINK_REL, SOCIAL_LINKS } from "~~/constants/links";
+import { EXTERNAL_LINK_REL, SOCIAL_LINKS, SOURCE_CODE_URL } from "~~/constants/links";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth/useTargetNetwork";
+import { RSS_PATH } from "~~/utils/seo";
 
-const FOOTER_SOCIAL_LINKS = [
-  { href: SOCIAL_LINKS.telegram, label: "Telegram", ariaLabel: "Tokenping Telegram Community" },
-  { href: SOCIAL_LINKS.x, label: "X", ariaLabel: "Tokenping on X" },
+type FooterLink = {
+  label: string;
+  href: string;
+  /** page: next/link; feed: a plain same-tab link to a route handler; external: a new tab. */
+  kind: "page" | "feed" | "external";
+  /** Keeps the visible label in the accessible name and says whose profile it is. */
+  ariaLabel?: string;
+};
+
+const FOOTER_LINKS: readonly FooterLink[] = [
+  { label: "Blog", href: "/blog", kind: "page" },
+  { label: "RSS", href: RSS_PATH, kind: "feed", ariaLabel: "Tokenping blog RSS feed" },
+  { label: "GitHub", href: SOURCE_CODE_URL, kind: "external", ariaLabel: "Tokenping source code on GitHub" },
+  { label: "X", href: SOCIAL_LINKS.x, kind: "external", ariaLabel: "Tokenping on X" },
+  { label: "Telegram", href: SOCIAL_LINKS.telegram, kind: "external", ariaLabel: "Tokenping Telegram Community" },
+  { label: "Privacy", href: "/privacy", kind: "page" },
 ];
+
+const FooterLinkItem = ({ label, href, kind, ariaLabel }: FooterLink) => {
+  if (kind === "page")
+    return (
+      <Link href={href} className="link" aria-label={ariaLabel}>
+        {label}
+      </Link>
+    );
+  return (
+    <a
+      href={href}
+      className="link"
+      aria-label={ariaLabel}
+      {...(kind === "external" && { target: "_blank", rel: EXTERNAL_LINK_REL })}
+    >
+      {label}
+    </a>
+  );
+};
 
 export const Footer = () => {
   const { targetNetwork } = useTargetNetwork();
@@ -50,15 +83,18 @@ export const Footer = () => {
         </div>
       </div>
       <div className="w-full">
-        <ul className="flex justify-center items-center gap-4 p-2 text-sm w-full">
-          {FOOTER_SOCIAL_LINKS.map(({ href, label, ariaLabel }) => (
-            <li key={href} className="flex">
-              <a href={href} target="_blank" rel={EXTERNAL_LINK_REL} className="link" aria-label={ariaLabel}>
-                {label}
-              </a>
-            </li>
-          ))}
-        </ul>
+        <nav aria-label="Footer">
+          <ul className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 p-2 text-sm w-full">
+            {FOOTER_LINKS.map(link => (
+              <li key={link.href} className="flex">
+                <FooterLinkItem {...link} />
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <p className="m-0 px-4 text-center text-xs text-base-content/70">
+          Independent tool, not affiliated with Aave Labs or the Aave DAO.
+        </p>
       </div>
     </footer>
   );

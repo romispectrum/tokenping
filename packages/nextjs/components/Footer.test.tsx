@@ -31,7 +31,7 @@ describe("Footer", () => {
     expect(renderFooter()).toMatch(/^<footer[ >]/);
   });
 
-  it("renders only the theme switch and social links without a price on a live network", () => {
+  it("renders only the theme switch and the footer links without a price on a live network", () => {
     const html = renderFooter();
 
     expect(html).not.toContain('class="truncate"');
@@ -58,10 +58,11 @@ describe("Footer", () => {
     expect(html).toMatchSnapshot();
   });
 
-  it("links to the Telegram community and the X account in new tabs without opener or referrer", () => {
+  it("links GitHub, the Telegram community and the X account in new tabs without opener or referrer", () => {
     render(<Footer />);
 
     for (const [name, href] of [
+      ["Tokenping source code on GitHub", "https://github.com/romispectrum/tokenping"],
       ["Tokenping Telegram Community", "https://t.me/tokenping_xyz"],
       ["Tokenping on X", "https://x.com/tokenping"],
     ]) {
@@ -72,15 +73,49 @@ describe("Footer", () => {
     }
   });
 
-  it("puts each social link in its own item of a valid list", () => {
+  it("links the blog, its RSS feed and the privacy page in the same tab", () => {
     render(<Footer />);
-    const list = screen.getByRole("list");
+
+    for (const [name, href] of [
+      ["Blog", "/blog"],
+      ["Tokenping blog RSS feed", "/blog/feed.xml"],
+      ["Privacy", "/privacy"],
+    ]) {
+      const link = screen.getByRole("link", { name });
+      expect(link.getAttribute("href")).toBe(href);
+      expect(link.hasAttribute("target")).toBe(false);
+    }
+  });
+
+  it("keeps each visible link label inside its accessible name", () => {
+    render(<Footer />);
+    const nav = screen.getByRole("navigation", { name: "Footer" });
+
+    for (const link of within(nav).getAllByRole("link")) {
+      const name = link.getAttribute("aria-label") ?? link.textContent ?? "";
+      expect(name).toContain(link.textContent);
+    }
+  });
+
+  it("puts each footer link in its own item of a valid list, in order", () => {
+    render(<Footer />);
+    const list = within(screen.getByRole("navigation", { name: "Footer" })).getByRole("list");
 
     expect(list.querySelectorAll(":scope > :not(li)")).toHaveLength(0);
     expect(
       within(list)
         .getAllByRole("listitem")
         .map(item => within(item).getByRole("link").textContent),
-    ).toEqual(["Telegram", "X"]);
+    ).toEqual(["Blog", "RSS", "GitHub", "X", "Telegram", "Privacy"]);
+  });
+
+  it("says Tokenping is independent of Aave", () => {
+    render(<Footer />);
+
+    expect(screen.getByText("Independent tool, not affiliated with Aave Labs or the Aave DAO.")).toBeTruthy();
+  });
+
+  it("no longer promises more protocols", () => {
+    expect(renderFooter()).not.toMatch(/protocols|coming soon/i);
   });
 });

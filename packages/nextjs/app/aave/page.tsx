@@ -1,76 +1,75 @@
-"use client";
-
+import Link from "next/link";
 import type { NextPage } from "next";
-import { useIsClient } from "usehooks-ts";
-import { useAccount } from "wagmi";
-import { AavePositions } from "~~/components/custom/AavePositions";
+import { AaveDashboard } from "~~/app/aave/_components/AaveDashboard";
+import { ARTICLE_LINK_CLASS_NAME } from "~~/components/blog/MdxElements";
 import { PageBackground } from "~~/components/custom/PageBackground";
+import { getDashboardDescription, getNetworkNames, getPublishedPost, joinList } from "~~/components/home/homeContent";
+import { Breadcrumbs } from "~~/components/seo/Breadcrumbs";
+import { JsonLd } from "~~/components/seo/JsonLd";
+import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
+import { formatAlertChannels } from "~~/services/marketing/alertChannels";
+import { getPaymentChainName } from "~~/services/marketing/paymentChain";
+import { type Crumb, breadcrumbJsonLd, pageMetadata, postPath } from "~~/utils/seo";
 
-const LendingPage: NextPage = () => {
-  const { address, isConnected } = useAccount();
-  const isClient = useIsClient();
+export const metadata = pageMetadata({
+  title: "Aave V3 Positions & Health Factor",
+  description: getDashboardDescription(),
+  path: "/aave",
+});
 
-  // Wallet state is only known on the client, so render nothing until then to avoid a hydration mismatch.
-  if (!isClient) return null;
+const CRUMBS: Crumb[] = [{ name: "Home", path: "/" }, { name: "Dashboard" }];
+
+// In-app links from the marketing plan §3.9: threshold choice → the safe-HF guide, alerts → the setup guide.
+const GUIDE_LINKS = [
+  { slug: "safe-aave-health-factor", label: "How to choose a threshold" },
+  { slug: "aave-health-factor-alert-setup", label: "How alerts work" },
+];
+
+/**
+ * Server shell: the heading, the explanation and the guide links are in the initial HTML for crawlers and for
+ * visitors before the wallet UI loads; only the wallet-dependent dashboard is a client island.
+ */
+const AavePage: NextPage = () => {
+  const paymentChainName = getPaymentChainName();
+  const guides = GUIDE_LINKS.filter(({ slug }) => getPublishedPost(slug));
 
   return (
     <PageBackground>
       <div className="relative z-10 flex flex-col items-center grow pt-6 sm:pt-10 pb-24 sm:pb-20 overflow-x-hidden">
-        <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 mb-6 sm:mb-8">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="flex flex-col min-w-0">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-neutral via-primary to-accent dark:from-white dark:via-purple-200 dark:to-indigo-400 bg-clip-text text-transparent">
-                Aave dashboard
-              </h1>
-              <p className="text-sm md:text-base text-base-content/70 dark:text-gray-400 mt-1">
-                Positions from Aave V3
-              </p>
-            </div>
+        <div className="w-full max-w-7xl mx-auto px-4 mb-6 sm:mb-8">
+          <Breadcrumbs crumbs={CRUMBS} />
+          <h1 className="m-0 text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-neutral via-indigo-800 to-indigo-600 dark:from-white dark:via-purple-200 dark:to-indigo-300 bg-clip-text text-transparent">
+            Aave V3 positions and health factor alerts
+          </h1>
+          <div className="max-w-3xl text-sm md:text-base leading-relaxed text-base-content/80 dark:text-gray-300">
+            <p className="mt-3 mb-2">
+              {`Connect the wallet you borrow with to see its Aave V3 collateral, debt and health factor on ${joinList(getNetworkNames())}. Viewing is free and needs no transaction.`}
+            </p>
+            <p className="my-2">
+              {`To get a message on ${formatAlertChannels("or")} when a network's health factor drops below a threshold you choose, unlock alerts with a USDC payment${paymentChainName ? ` on ${paymentChainName}` : ""}. The current price is shown before you pay.`}
+            </p>
+            <p className="my-2">
+              {`Tokenping checks every ${NOTIFICATION_CHECK_INTERVAL_MINUTES} minutes. While the health factor stays below your threshold, every check sends another message on each channel you chose.`}
+            </p>
+            {guides.length > 0 && (
+              <ul className="m-0 mt-3 flex flex-wrap gap-x-6 gap-y-2 list-none p-0">
+                {guides.map(({ slug, label }) => (
+                  <li key={slug} className="m-0 p-0">
+                    <Link href={postPath(slug)} className={ARTICLE_LINK_CLASS_NAME}>
+                      {label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
 
-        {isConnected && address ? (
-          <div className="w-full">
-            <AavePositions />
-          </div>
-        ) : (
-          <div className="w-full max-w-2xl mx-auto px-3 sm:px-4">
-            <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-base-300 bg-base-100 dark:border-white/10 dark:bg-gradient-to-br dark:from-gray-900/80 dark:to-gray-800/50 backdrop-blur-xl p-8 md:p-12 text-center">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 bg-gradient-to-b from-primary/20 to-transparent dark:from-purple-500/20 rounded-full blur-3xl" />
-
-              <div className="relative">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/30 dark:from-purple-500/20 dark:to-indigo-500/20 dark:border-purple-500/30 mb-6">
-                  <svg
-                    className="w-10 h-10 text-primary dark:text-purple-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3"
-                    />
-                  </svg>
-                </div>
-
-                <h2 className="text-2xl md:text-3xl font-bold text-base-content dark:text-white mb-3">
-                  Connect Your Wallet
-                </h2>
-                <p className="text-base-content/70 dark:text-gray-400 mb-6 max-w-md mx-auto">
-                  Connect your wallet to view your Aave lending and borrowing positions.
-                </p>
-                <p className="text-sm text-base-content/60 dark:text-gray-500">
-                  Use the Connect button in the top right corner to get started
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+        <AaveDashboard />
       </div>
+      <JsonLd data={breadcrumbJsonLd(CRUMBS)} />
     </PageBackground>
   );
 };
 
-export default LendingPage;
+export default AavePage;
