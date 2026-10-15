@@ -3,6 +3,7 @@ import { notifyManager } from "@tanstack/react-query";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { NotificationConfig } from "~~/components/custom/NotificationConfig";
+import { markAttributionPrompted } from "~~/components/custom/notifications/attributionPromptState";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
 import type { TelegramLinkStatus } from "~~/types/notifications";
 import { deferred, jsonResponse } from "~~/utils/testing/helpers";
@@ -64,6 +65,7 @@ type Call = { method: string; url: string; body?: Record<string, unknown> };
 const api = {
   configs: {} as Record<string, Record<number, unknown>>,
   links: {} as Record<string, TelegramLinkStatus>,
+  attribution: {} as Record<string, unknown>,
   requests: [] as string[],
   override: (() => undefined) as (call: Call) => Response | Promise<Response> | undefined,
 };
@@ -93,6 +95,11 @@ const route = ({ method, url, body }: Call) => {
     return jsonResponse({ success: true });
   }
   if (path === "/api/telegram/link-token") return linkTokenResponse();
+  if (path === "/api/attribution" && method === "POST") {
+    // The first answer per wallet is kept.
+    api.attribution[user] ??= body?.answer;
+    return jsonResponse({ success: true });
+  }
   throw new Error(`Unexpected request ${method} ${url}`);
 };
 
@@ -154,10 +161,15 @@ beforeEach(() => {
   mocks.toasts = [];
   api.configs = {};
   api.links = {};
+  api.attribution = {};
   api.requests = [];
+  // The attribution prompt remembers in localStorage that this browser was asked.
+  window.localStorage.clear();
   api.override = () => undefined;
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"], now: NOW });
   vi.stubGlobal("fetch", fetchMock);
+  // Telegram is offered only when the bot is configured, as in production once the bot is set up.
+  vi.stubEnv("NEXT_PUBLIC_TELEGRAM_BOT_USERNAME", "TokenpingTestBot");
   popup = { opener: window, location: { href: "" }, close: vi.fn() };
   openSpy = vi.spyOn(window, "open").mockImplementation(() => popup as unknown as Window);
   consoleErrors = [];
@@ -167,6 +179,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
   // The component logs failed saves and deletes; anything else (such as a React act() warning) fails the test.
   expect(consoleErrors.filter(([message]) => !String(message).startsWith("Failed to"))).toEqual([]);
@@ -761,6 +774,152 @@ describe("NotificationConfig: Telegram handshake", () => {
   });
 });
 
+describe("NotificationConfig: attribution prompt", () => {
+  const ATTRIBUTION_LABEL = "How did you hear about Tokenping? (optional)";
+  const attributionInput = () => screen.queryByRole<HTMLInputElement>("textbox", { name: ATTRIBUTION_LABEL });
+  const attributionForm = () => screen.queryByRole("form", { name: ATTRIBUTION_LABEL });
+
+  const createEmailConfig = async () => {
+    await click(button("Create notification config"));
+    await click(serviceToggle("Email"));
+    await type(emailInput(), "me@example.com");
+    await click(button("Save"));
+  };
+
+  it("asks once, after the first successful save, and Skip sends nothing", async () => {
+    await renderCard();
+    expect(attributionInput()).toBeNull();
+    await createEmailConfig();
+    expect(attributionInput()).not.toBeNull();
+    expect(summaryValue("Email:")).toBe("me@example.com");
+
+    await click(button("Skip"));
+    expect(attributionInput()).toBeNull();
+    expect(api.requests.some(request => request.includes("/api/attribution"))).toBe(false);
+
+    await click(button("Edit"));
+    await click(button("Save"));
+    expect(mocks.toasts).toEqual([
+      "success: Notification configuration saved.",
+      "success: Notification configuration saved.",
+    ]);
+    expect(attributionInput()).toBeNull();
+  });
+
+  it("sends the trimmed answer for the connected wallet, then hides the prompt", async () => {
+    await renderCard();
+    await createEmailConfig();
+    await type(attributionInput() as HTMLInputElement, "  A friend in a Telegram group ");
+    await click(button("Send"));
+
+    expect(lastRequest("POST")).toBe(
+      `POST /api/attribution ${JSON.stringify({ userId: ADDRESS, answer: "A friend in a Telegram group" })}`,
+    );
+    expect(api.attribution).toEqual({ [ADDRESS.toLowerCase()]: "A friend in a Telegram group" });
+    expect(mocks.toasts).toEqual(["success: Notification configuration saved.", "success: Thanks for telling us."]);
+    expect(attributionInput()).toBeNull();
+  });
+
+  it("moves focus to the prompt after the save, and to the Edit button after Skip", async () => {
+    await renderCard();
+    await createEmailConfig();
+    // The Save button that had focus is gone; the question that replaced it takes focus.
+    expect(document.activeElement).toBe(attributionForm());
+    await click(button("Skip"));
+    expect(document.activeElement).toBe(button("Edit"));
+  });
+
+  it("moves focus to the Edit button after Send", async () => {
+    await renderCard();
+    await createEmailConfig();
+    await type(attributionInput() as HTMLInputElement, "Reddit");
+    await click(button("Send"));
+    expect(attributionInput()).toBeNull();
+    expect(document.activeElement).toBe(button("Edit"));
+  });
+
+  it("takes focus again after another save while it is still open", async () => {
+    await renderCard();
+    await createEmailConfig();
+    await click(button("Edit"));
+    await click(button("Save"));
+    expect(document.activeElement).toBe(attributionForm());
+  });
+
+  it("stays open, without taking focus, when a chain switch remounts the card", async () => {
+    api.configs[ADDRESS.toLowerCase()] = { 10: { ...SAVED_CONFIG, chainId: 10 } };
+    const { rerender } = await renderCard();
+    await createEmailConfig();
+
+    // AavePositions keys the card by chain, so selecting another network remounts it.
+    rerender(<NotificationConfig key="another-chain" {...PROPS} chainId={10} chainName="Optimism" />);
+    await settle();
+    expect(attributionInput()).not.toBeNull();
+    expect(document.activeElement).not.toBe(attributionForm());
+
+    await click(button("Skip"));
+    rerender(<NotificationConfig {...PROPS} />);
+    await settle();
+    expect(attributionInput()).toBeNull();
+  });
+
+  it("stays open when a positions refresh takes the card away for a moment", async () => {
+    // AavePositions shows a skeleton instead of the card while positions reload.
+    const Page = ({ shown }: { shown: boolean }) => (shown ? <NotificationConfig {...PROPS} /> : null);
+    const { rerender } = renderWithProviders(<Page shown />);
+    await settle();
+    await createEmailConfig();
+    rerender(<Page shown={false} />);
+    await settle();
+    rerender(<Page shown />);
+    await settle();
+    expect(attributionInput()).not.toBeNull();
+  });
+
+  it("asks once per browser, so another wallet saving later is not asked", async () => {
+    const { rerender } = await renderCard();
+    await createEmailConfig();
+    await click(button("Skip"));
+
+    mocks.address = OTHER_ADDRESS;
+    rerender(<NotificationConfig {...PROPS} />);
+    await settle();
+    await createEmailConfig();
+    expect(summaryValue("Email:")).toBe("me@example.com");
+    expect(attributionInput()).toBeNull();
+  });
+
+  it("is hidden while editing and stays until Send or Skip", async () => {
+    await renderCard();
+    await createEmailConfig();
+    await click(button("Edit"));
+    expect(attributionInput()).toBeNull();
+    await click(button("Cancel"));
+    expect(attributionInput()).not.toBeNull();
+  });
+
+  it("does not ask after a failed save", async () => {
+    api.override = ({ method }) => (method === "PUT" ? jsonResponse({ error: "Database error" }, 502) : undefined);
+    await renderCard();
+    await createEmailConfig();
+    expect(mocks.toasts).toEqual(["error: Database error"]);
+    expect(attributionInput()).toBeNull();
+
+    // A later successful save still asks: the failed one did not count.
+    api.override = () => undefined;
+    await click(button("Save"));
+    expect(attributionInput()).not.toBeNull();
+  });
+
+  it("does not ask when this browser was already asked", async () => {
+    markAttributionPrompted();
+    await renderCard();
+    await createEmailConfig();
+    expect(mocks.toasts).toEqual(["success: Notification configuration saved."]);
+    expect(attributionInput()).toBeNull();
+  });
+});
+
 describe("NotificationConfig: shared state", () => {
   const HasConfigProbe = () => {
     const { hasConfig, isLoaded } = useNotificationConfig();
@@ -898,6 +1057,23 @@ describe("NotificationConfig: light theme", () => {
     scan(container);
     expect(problems).toEqual([]);
     expect([...seen].sort()).toEqual(Object.keys(ORIGINAL_DARK_SHADE).sort());
+  });
+
+  it("pairs every shade in the attribution prompt, also when sending fails", async () => {
+    api.override = ({ url }) =>
+      url === "/api/attribution" ? jsonResponse({ error: "Database error" }, 502) : undefined;
+    const { problems, scan } = themeScanner();
+    const { container } = await renderCard();
+    await click(button("Create notification config"));
+    await click(serviceToggle("Email"));
+    await type(emailInput(), "me@example.com");
+    await click(button("Save"));
+    scan(container);
+    await type(screen.getByRole("textbox", { name: "How did you hear about Tokenping? (optional)" }), "Reddit");
+    await click(button("Send"));
+    expect(screen.getByRole("alert").textContent).toBe("Couldn't send your answer. Try again or skip.");
+    scan(container);
+    expect(problems).toEqual([]);
   });
 
   it("pairs every shade in the read-only and error states", async () => {

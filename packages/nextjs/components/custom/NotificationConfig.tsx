@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAccount } from "wagmi";
+import { AttributionPrompt } from "~~/components/custom/notifications/AttributionPrompt";
 import { NotificationCard } from "~~/components/custom/notifications/NotificationCard";
 import { NotificationEmptyState } from "~~/components/custom/notifications/NotificationEmptyState";
 import { NotificationLoadError } from "~~/components/custom/notifications/NotificationLoadError";
@@ -10,6 +11,7 @@ import { RecipientFields } from "~~/components/custom/notifications/RecipientFie
 import { ServiceSelector } from "~~/components/custom/notifications/ServiceSelector";
 import { TelegramConnectField } from "~~/components/custom/notifications/TelegramConnectField";
 import { ThresholdField } from "~~/components/custom/notifications/ThresholdField";
+import { useAttributionPrompt } from "~~/components/custom/notifications/attributionPromptState";
 import {
   EMPTY_FORM_STATE,
   type NotificationFormState,
@@ -44,6 +46,7 @@ const NotificationSettings = ({
     useNotificationConfig();
   const { isActive: hasAccess } = useAccess();
   const telegram = useTelegramLink(address);
+  const attribution = useAttributionPrompt(address);
   const config = getConfig(chainId);
   // What the summary shows. Editing works on a draft copy, so Cancel only has to drop the draft.
   const saved = configToFormState(config);
@@ -104,6 +107,7 @@ const NotificationSettings = ({
       await updateConfig(chainId, buildConfigUpdate(draft));
       notification.success("Notification configuration saved.");
       setIsEditing(false);
+      attribution.offer();
     } catch (error) {
       console.error("Failed to save notification config:", error);
       notification.error(getErrorMessage(error, "Failed to save configuration"));
@@ -135,6 +139,7 @@ const NotificationSettings = ({
       headerRight={
         !isEditing && (
           <button
+            ref={attribution.returnFocusRef}
             onClick={() => startEditing(saved)}
             className="text-xs px-2 py-1 rounded-lg border border-base-300 bg-base-200 text-base-content dark:border-white/10 dark:bg-white/5 dark:text-gray-300 hover:bg-base-300 dark:hover:bg-white/10 dark:hover:text-white transition-colors"
           >
@@ -203,7 +208,12 @@ const NotificationSettings = ({
           </div>
         </div>
       ) : (
-        summary
+        <>
+          {summary}
+          {attribution.isOpen && address && (
+            <AttributionPrompt address={address} autoFocus={attribution.focusOnShow} onClose={attribution.close} />
+          )}
+        </>
       )}
     </NotificationCard>
   );
