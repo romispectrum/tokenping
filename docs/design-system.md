@@ -92,14 +92,15 @@ flat cards, no effects. There is no mascot.
 
 ## Logo
 
-`TokenpingLogo` from `components/brand`: the bell symbol with two ping arcs, and the "Tokenping" wordmark in
-Satoshi Medium. `variant="primary"` (lockup) or `"symbol"`; `tone="auto"` shows the solid art on light and the white
-outline art on dark (a dark band included). Size by height with `w-auto`: the lockup `h-7` (110px wide) or more,
-the symbol `h-12` or more; only favicons go smaller. A home link carries the name
-(`aria-label="Tokenping home"`) and the logo gets `title=""`. Never stretch, rotate, recolour (except
-`text-brand-violet` or `text-brand-pink` on a light marketing surface), shadow or animate it. Clear space: half the
-lockup height, a quarter of the symbol height. The favicon, the PNG icons and the social cards are generated from
-the same artwork (`components/brand/logoArt.ts`).
+`TokenpingLogo` from `components/brand`: the white bell with two ping arcs on a rounded purple to indigo square,
+and the "Tokenping" wordmark in Satoshi Medium. `variant="primary"` (lockup) or `"symbol"`. The square brings its own
+background, so one drawing works on light and dark surfaces; the wordmark follows the text colour (white in a dark
+band). Size by height with `w-auto`: the lockup `h-7` (106px wide) or more, the symbol `h-8` or more; only favicons
+go smaller. A home link carries the name (`aria-label="Tokenping home"`) and the logo gets `title=""`. Never stretch,
+rotate, recolour the square, shadow or animate it; the wordmark may take `text-brand-violet` or `text-brand-pink` on
+a light marketing surface. The square's gradient is logo artwork and does not count as an accent. Clear space: half
+the lockup height, a quarter of the symbol height. The favicon, the PNG icons and the social cards are generated
+from the same artwork (`components/brand/logoArt.ts`).
 
 ## Voice
 

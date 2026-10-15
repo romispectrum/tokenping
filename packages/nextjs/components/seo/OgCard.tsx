@@ -12,10 +12,10 @@ export const OG_IMAGE_SIZE = { width: 1200, height: 630 };
 // lint-brand-ignore-next-line hex-colour: ImageResponse cannot read CSS variables
 const OG_COLORS = { background: "#18001C", text: "#FFFFFF", muted: "#CBBFC6", accent: "#FE5FA9" } as const;
 
-// The outline lockup, for a dark surface. Sized by height like everywhere else.
+// The lockup with a white wordmark, for the night surface. Sized by height like everywhere else.
 const LOGO_HEIGHT = 64;
-const LOGO_WIDTH = Math.round(LOGO_HEIGHT * viewBoxAspect(LOGO_VIEWBOX.primary.outline));
-const LOGO_SRC = svgDataUri(logoSvg({ variant: "primary", art: "outline" }));
+const LOGO_WIDTH = Math.round(LOGO_HEIGHT * viewBoxAspect(LOGO_VIEWBOX.primary));
+const LOGO_SRC = svgDataUri(logoSvg({ variant: "primary", color: OG_COLORS.text }));
 
 /**
  * Satoshi Medium (titles) and Regular (the footer line) as OTF: ImageResponse cannot read the woff2 web fonts.
@@ -44,8 +44,8 @@ type OgCardProps = {
 const titleFontSize = (title: string) => (title.length <= 40 ? 72 : title.length <= 60 ? 64 : 56);
 
 /**
- * The 1200x630 social card shared by the site card and the per-post cards: the outline lockup on the night
- * colour, the title in Satoshi Medium, one short pink bar as the only accent. Flat: no glow, grain or gradient.
+ * The 1200x630 social card shared by the site card and the per-post cards: the lockup on the night colour, the
+ * title in Satoshi Medium, one short pink bar as the only accent. Flat: no glow, grain or background gradient.
  * Satori lays out a flexbox subset only, so every element with more than one child sets display: flex.
  */
 export const OgCard = ({ title, footer }: OgCardProps) => (
