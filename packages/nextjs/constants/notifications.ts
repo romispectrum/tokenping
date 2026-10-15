@@ -14,6 +14,15 @@ export const AVAILABLE_SERVICES: NotificationServiceOption[] = [
   { id: "telegram", name: "Telegram", icon: "✈️" },
 ];
 
+/** The bot username is what makes Telegram linking work; without it the link-token route answers 503. */
+export const isTelegramConfigured = () => Boolean(process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME);
+
+/** Channels to offer: Telegram only when the bot is configured, or when it is already selected so it can be turned off. */
+export const getSelectableServices = (selected: readonly NotificationService[]) =>
+  AVAILABLE_SERVICES.filter(
+    service => service.id !== "telegram" || isTelegramConfigured() || selected.includes("telegram"),
+  );
+
 /** Bounds for a stored alert threshold (typed input and saved value). */
 export const HEALTH_FACTOR_THRESHOLD_MIN = 1.1;
 export const HEALTH_FACTOR_THRESHOLD_MAX = 10;

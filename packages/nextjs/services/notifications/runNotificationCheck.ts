@@ -12,7 +12,6 @@ import type { NotificationService } from "~~/types/notifications";
 import { normalizeAddress } from "~~/utils/address";
 import { getErrorMessage } from "~~/utils/errors";
 import { formatUtcTimestamp } from "~~/utils/format";
-import { isBelowThreshold } from "~~/utils/healthFactor";
 import { normalizeThreshold } from "~~/utils/notifications/threshold";
 
 export type NotificationCheckResult = {
@@ -124,7 +123,8 @@ export async function runNotificationCheck(): Promise<NotificationCheckResult | 
           recordError(`healthFactor:${userId}:${chainId}: could not read the health factor`, { wallet: userId });
           continue;
         }
-        if (!isBelowThreshold(reading.healthFactor, threshold)) continue;
+        // Compared exactly, not as the rounded display value (1.4996 must alert against a 1.5 threshold).
+        if (!(reading.healthFactorValue < threshold)) continue;
 
         const alert = { ...reading, threshold, timestamp: formatUtcTimestamp(new Date()) };
         const message = { text: buildAlertText(alert), ...buildAlertEmail(alert) };

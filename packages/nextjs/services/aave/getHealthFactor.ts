@@ -1,7 +1,7 @@
 import { type Address, type Chain, createPublicClient } from "viem";
 import { AAVE_POOL_ABI, getAaveMarket } from "~~/config/aaveConfig";
 import { getReadErrorMessage } from "~~/services/aave/readErrorMessage";
-import { formatHealthFactor } from "~~/utils/healthFactor";
+import { formatHealthFactorDown, toHealthFactorValue } from "~~/utils/healthFactor";
 import { getFallbackTransport } from "~~/utils/rpc";
 
 // The cron reads one wallet after another, so a hanging RPC delays every later alert. One retry caps a read whose
@@ -28,13 +28,13 @@ const getClient = (chain: Chain) => {
 };
 
 /**
- * Reads a wallet's Aave V3 health factor ("∞" or e.g. "1.25") on one chain.
- * Resolves null when the chain has no Aave market or the read fails.
+ * Reads a wallet's Aave V3 health factor on one chain: the exact value for threshold comparisons and a 2-decimal,
+ * rounded-down string ("∞" without debt) for the alert text. Resolves null when the chain has no market or the read fails.
  */
 export async function getHealthFactorForWallet(
   walletAddress: Address,
   chainId: number,
-): Promise<{ healthFactor: string; chainName: string } | null> {
+): Promise<{ healthFactor: string; healthFactorValue: number; chainName: string } | null> {
   const market = getAaveMarket(chainId);
   if (!market) return null;
 
@@ -47,7 +47,11 @@ export async function getHealthFactorForWallet(
       args: [walletAddress],
     });
 
-    return { healthFactor: formatHealthFactor(healthFactor), chainName: market.name };
+    return {
+      healthFactor: formatHealthFactorDown(healthFactor),
+      healthFactorValue: toHealthFactorValue(healthFactor),
+      chainName: market.name,
+    };
   } catch (error) {
     console.warn(`Failed to read the Aave health factor on chain ${chainId}: ${getReadErrorMessage(error)}`);
     return null;

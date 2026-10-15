@@ -79,7 +79,11 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(NOW);
   vi.mocked(getHealthFactorForWallet).mockReset();
-  vi.mocked(getHealthFactorForWallet).mockResolvedValue({ healthFactor: "1.20", chainName: "Base" });
+  vi.mocked(getHealthFactorForWallet).mockResolvedValue({
+    healthFactor: "1.20",
+    healthFactorValue: 1.2,
+    chainName: "Base",
+  });
   vi.mocked(sendEmail).mockReset();
   vi.mocked(sendEmail).mockResolvedValue({ success: true, id: "e1" });
   vi.mocked(sendSignalMessage).mockReset();
@@ -115,7 +119,11 @@ describe("runNotificationCheck: loading", () => {
     fakeSupabase.respond(query => ({
       data: sliceByRange(query, query.table === "notification_configs" ? configs : links),
     }));
-    vi.mocked(getHealthFactorForWallet).mockResolvedValue({ healthFactor: "3.00", chainName: "Base" });
+    vi.mocked(getHealthFactorForWallet).mockResolvedValue({
+      healthFactor: "3.00",
+      healthFactorValue: 3,
+      chainName: "Base",
+    });
 
     expect(await runNotificationCheck()).toEqual(summary({ configsChecked: 1003 }));
     expect(fakeSupabase.log()).toEqual([
@@ -175,7 +183,11 @@ describe("runNotificationCheck: loading", () => {
       ],
       [{ user_id: LOWER, chat_id: 555 }],
     );
-    vi.mocked(getHealthFactorForWallet).mockResolvedValue({ healthFactor: "3.00", chainName: "Base" });
+    vi.mocked(getHealthFactorForWallet).mockResolvedValue({
+      healthFactor: "3.00",
+      healthFactorValue: 3,
+      chainName: "Base",
+    });
 
     expect(await runNotificationCheck()).toEqual(summary({ configsChecked: 2 }));
     expect(vi.mocked(getHealthFactorForWallet).mock.calls).toEqual([
@@ -203,15 +215,26 @@ describe("runNotificationCheck: loading", () => {
 
 describe("runNotificationCheck: health factor", () => {
   it.each([
-    ["it is infinite", { healthFactor: "∞", chainName: "Base" }],
-    ["it is unparseable", { healthFactor: "n/a", chainName: "Base" }],
-    ["it equals the threshold", { healthFactor: "1.50", chainName: "Base" }],
-    ["it is above the threshold", { healthFactor: "1.51", chainName: "Base" }],
+    ["it is infinite", { healthFactor: "∞", healthFactorValue: Infinity, chainName: "Base" }],
+    ["it is unparseable", { healthFactor: "n/a", healthFactorValue: NaN, chainName: "Base" }],
+    ["it equals the threshold", { healthFactor: "1.50", healthFactorValue: 1.5, chainName: "Base" }],
+    ["it is above the threshold", { healthFactor: "1.51", healthFactorValue: 1.51, chainName: "Base" }],
   ])("does not alert when %s", async (_label, healthFactor) => {
     givenData([configRow()]);
     vi.mocked(getHealthFactorForWallet).mockResolvedValue(healthFactor);
     expect(await runNotificationCheck()).toEqual(summary({ configsChecked: 1 }));
     expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("alerts on the exact value when the 2-decimal display would round up to the threshold", async () => {
+    givenData([configRow()]);
+    vi.mocked(getHealthFactorForWallet).mockResolvedValue({
+      healthFactor: "1.49",
+      healthFactorValue: 1.4996,
+      chainName: "Base",
+    });
+    expect(await runNotificationCheck()).toEqual(summary({ configsChecked: 1, emailsSent: 1 }));
+    expect(vi.mocked(sendEmail).mock.calls[0][0].text).toContain("is 1.49, which is below your threshold of 1.5");
   });
 
   it("records an errors[] entry when the read fails and carries on (B3.12)", async () => {
@@ -241,7 +264,11 @@ describe("runNotificationCheck: health factor", () => {
     ["15", "9.99", "10"],
   ])("uses threshold %j (alerting at %s and printing %s)", async (stored, healthFactor, printed) => {
     givenData([configRow({ health_factor_threshold: stored })]);
-    vi.mocked(getHealthFactorForWallet).mockResolvedValue({ healthFactor, chainName: "Base" });
+    vi.mocked(getHealthFactorForWallet).mockResolvedValue({
+      healthFactor,
+      healthFactorValue: Number(healthFactor),
+      chainName: "Base",
+    });
 
     await runNotificationCheck();
 
@@ -250,7 +277,11 @@ describe("runNotificationCheck: health factor", () => {
 
   it("clamps a stored threshold above the maximum (B3.12)", async () => {
     givenData([configRow({ health_factor_threshold: "15" })]);
-    vi.mocked(getHealthFactorForWallet).mockResolvedValue({ healthFactor: "12.00", chainName: "Base" });
+    vi.mocked(getHealthFactorForWallet).mockResolvedValue({
+      healthFactor: "12.00",
+      healthFactorValue: 12,
+      chainName: "Base",
+    });
     expect(await runNotificationCheck()).toEqual(summary({ configsChecked: 1 }));
     expect(sendEmail).not.toHaveBeenCalled();
   });
@@ -292,10 +323,10 @@ describe("runNotificationCheck: delivery", () => {
   it("formats the timestamp per alert", async () => {
     givenData([configRow({ chain_id: 1 }), configRow({ chain_id: 2 })]);
     vi.mocked(getHealthFactorForWallet)
-      .mockResolvedValueOnce({ healthFactor: "1.20", chainName: "Ethereum" })
+      .mockResolvedValueOnce({ healthFactor: "1.20", healthFactorValue: 1.2, chainName: "Ethereum" })
       .mockImplementationOnce(async () => {
         vi.setSystemTime(new Date("2026-12-31T23:59:59.000Z"));
-        return { healthFactor: "1.10", chainName: "Polygon" };
+        return { healthFactor: "1.10", healthFactorValue: 1.1, chainName: "Polygon" };
       });
 
     await runNotificationCheck();

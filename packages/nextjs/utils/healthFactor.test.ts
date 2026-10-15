@@ -4,8 +4,10 @@ import {
   HEALTH_FACTOR_INFINITY_THRESHOLD,
   INFINITE_HEALTH_FACTOR,
   formatHealthFactor,
+  formatHealthFactorDown,
   isBelowThreshold,
   parseHealthFactor,
+  toHealthFactorValue,
 } from "~~/utils/healthFactor";
 
 const WAD = 10n ** 18n;
@@ -159,5 +161,23 @@ describe("isBelowThreshold", () => {
     // `Number(row.health_factor_threshold) || DEFAULT_HEALTH_FACTOR_THRESHOLD`, which is never NaN.
     expect(legacyCronAlerts("2.00", NaN)).toBe(true);
     expect(isBelowThreshold("2.00", NaN)).toBe(false);
+  });
+});
+
+describe("exact and rounded-down health factors for alerts", () => {
+  it.each([
+    [1_499_600_000_000_000_000n, "1.49", 1.4996],
+    [1_500_000_000_000_000_000n, "1.50", 1.5],
+    [999_999_999_999_999_999n, "0.99", 0.999999999999999999],
+    [12_345_000_000_000_000_000n, "12.34", 12.345],
+    [5_000_000_000_000_000n, "0.00", 0.005],
+  ])("%s → %s / %s", (raw, text, value) => {
+    expect(formatHealthFactorDown(raw)).toBe(text);
+    expect(toHealthFactorValue(raw)).toBeCloseTo(value, 12);
+  });
+
+  it("treats Aave's no-debt value as infinite", () => {
+    expect(formatHealthFactorDown(HEALTH_FACTOR_INFINITY_THRESHOLD)).toBe("∞");
+    expect(toHealthFactorValue(HEALTH_FACTOR_INFINITY_THRESHOLD)).toBe(Infinity);
   });
 });

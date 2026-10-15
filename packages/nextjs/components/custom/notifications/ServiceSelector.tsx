@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { AVAILABLE_SERVICES } from "~~/constants/notifications";
+import { getSelectableServices } from "~~/constants/notifications";
 import type { NotificationService } from "~~/types/notifications";
 
 const SERVICE_BUTTON_CLASS = "flex items-center gap-2 px-3 py-2.5 rounded-lg border transition-all text-left";
@@ -21,7 +21,7 @@ export const ServiceSelector = ({ services, onToggle }: ServiceSelectorProps) =>
         Notification Services
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        {AVAILABLE_SERVICES.map(service => {
+        {getSelectableServices(services).map(service => {
           const isSelected = services.includes(service.id);
           return (
             <button

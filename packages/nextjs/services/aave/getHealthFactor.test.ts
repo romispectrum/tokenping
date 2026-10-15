@@ -47,6 +47,7 @@ describe("getHealthFactorForWallet", () => {
 
     await expect(getHealthFactorForWallet(WALLET, mainnet.id)).resolves.toEqual({
       healthFactor: "1.53",
+      healthFactorValue: 1.535,
       chainName: "Ethereum",
     });
     expect(rpc.clients).toHaveLength(1);
@@ -62,8 +63,22 @@ describe("getHealthFactorForWallet", () => {
   it("reports an infinite health factor when there is no debt", async () => {
     rpc.readContract.mockResolvedValue(accountData(maxUint256));
 
-    await expect(getHealthFactorForWallet(WALLET, base.id)).resolves.toEqual({ healthFactor: "∞", chainName: "Base" });
+    await expect(getHealthFactorForWallet(WALLET, base.id)).resolves.toEqual({
+      healthFactor: "∞",
+      healthFactorValue: Infinity,
+      chainName: "Base",
+    });
     expect(rpc.readContract.mock.calls[0][0].address).toBe("0xA238Dd80C259a72e81d7e4664a9801593F98d1c5");
+  });
+
+  it("rounds the displayed health factor down and keeps the exact value for comparisons", async () => {
+    rpc.readContract.mockResolvedValue(accountData(1_499_600_000_000_000_000n));
+
+    await expect(getHealthFactorForWallet(WALLET, mainnet.id)).resolves.toEqual({
+      healthFactor: "1.49",
+      healthFactorValue: 1.4996,
+      chainName: "Ethereum",
+    });
   });
 
   it("resolves null without any RPC call for a chain without an Aave market", async () => {
