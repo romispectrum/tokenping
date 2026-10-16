@@ -18,7 +18,7 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: IGNORE_BUILD_ERRORS,
     // `next lint` / `next build` only lint app, pages, components, lib and src by default.
-    dirs: ["app", "components", "content", "hooks", "services", "utils", "config", "constants", "types"],
+    dirs: ["app", "components", "content", "hooks", "services", "utils", "config", "constants", "types", "scripts"],
   },
   webpack: config => {
     config.resolve.fallback = { fs: false, net: false, tls: false };
