@@ -1,14 +1,13 @@
 import { AccessPaywall } from "~~/components/custom/AccessPaywall";
-import { NotificationConfig } from "~~/components/custom/NotificationConfig";
 import type { NetworkPosition } from "~~/services/aave/positions";
 
-type PositionAlertsProps = {
+type PositionAccessProps = {
   position: NetworkPosition;
   hasNotificationConfig: boolean;
 };
 
-/** The alert settings of the selected network, behind the paywall until the wallet has paid. */
-export const PositionAlerts = ({ position, hasNotificationConfig }: PositionAlertsProps) => (
+/** The paywall for the selected network, or, once the wallet has paid, the line that says until when alerts are unlocked. */
+export const PositionAccess = ({ position, hasNotificationConfig }: PositionAccessProps) => (
   <AccessPaywall
     description={
       hasNotificationConfig
@@ -16,13 +15,5 @@ export const PositionAlerts = ({ position, hasNotificationConfig }: PositionAler
         : `Pay once to set health factor alerts on ${position.chainName} and other networks. Nothing renews automatically: you pay from your wallet when you want to extend.`
     }
     hasExistingConfig={hasNotificationConfig}
-  >
-    {/* Keyed by chain so switching networks discards the previous network's unsaved form. */}
-    <NotificationConfig
-      key={position.chainId}
-      chainId={position.chainId}
-      chainName={position.chainName}
-      currentHealthFactor={position.healthFactor}
-    />
-  </AccessPaywall>
+  />
 );
