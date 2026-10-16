@@ -6,6 +6,7 @@ import { Glow } from "~~/components/ui/Glow";
 import { GrainCard } from "~~/components/ui/GrainCard";
 import { Kicker } from "~~/components/ui/Kicker";
 import { DEFAULT_HEALTH_FACTOR_THRESHOLD, NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
+import type { Locale } from "~~/i18n/locales";
 import { formatAlertChannels } from "~~/services/marketing/alertChannels";
 import { buildAlertEmail, buildAlertText } from "~~/services/notifications/runNotificationCheck";
 import { formatUtcTimestamp } from "~~/utils/format";
@@ -66,7 +67,7 @@ const ExampleAlert = () => (
  * glass is text-foreground: the glow can tint the card behind it, and muted text over the tint drops below 4.5:1.
  * No mascot.
  */
-export const HomeHero = () => (
+export const HomeHero = ({ locale }: { locale: Locale }) => (
   <section aria-labelledby="home-headline" className="relative isolate overflow-hidden pt-6 pb-16 md:pt-12 md:pb-24">
     <div
       aria-hidden="true"
@@ -85,7 +86,11 @@ export const HomeHero = () => (
               <p className="text-lead mx-auto mt-4 mb-0 max-w-[52ch] text-pretty text-foreground md:text-xl lg:mx-0">
                 {`Read-only: no approvals on your Aave position and no minimum size. We check every ${NOTIFICATION_CHECK_INTERVAL_MINUTES} minutes and alert you by ${formatAlertChannels("or")} whenever your health factor is below the line you set.`}
               </p>
-              <DashboardCta align="start" secondary={{ label: "See how it works", sectionId: "how-it-works" }} />
+              <DashboardCta
+                locale={locale}
+                align="start"
+                secondary={{ label: "See how it works", sectionId: "how-it-works" }}
+              />
             </div>
             <div className="flex flex-col items-center gap-6 lg:items-start">
               <ExampleAlert />

@@ -11,6 +11,11 @@ const nextConfig: NextConfig = {
   // and no .mdx file sits under app/, so this adds no MDX routes.
   pageExtensions: ["tsx", "ts", "jsx", "js", "mdx"],
   reactStrictMode: true,
+  // Each language has its own root layout (app/(en), app/(cs)), so a URL that matches no route needs
+  // app/global-not-found.tsx, which brings its own <html>.
+  experimental: {
+    globalNotFound: true,
+  },
   devIndicators: false,
   typescript: {
     ignoreBuildErrors: IGNORE_BUILD_ERRORS,

@@ -12,6 +12,8 @@ import { buttonClasses } from "~~/components/ui/buttonClasses";
 import { cx } from "~~/components/ui/classNames";
 import { AAVE_MARKETS } from "~~/config/aaveConfig";
 import { EXTERNAL_LINK_REL } from "~~/constants/links";
+import type { Locale } from "~~/i18n/locales";
+import { routePath } from "~~/i18n/routes";
 
 // Shared building blocks of the homepage sections. Server Components only.
 
@@ -69,6 +71,7 @@ export const ExternalLink = ({ href, children }: ExternalLinkProps) => (
 export const DASHBOARD_CTA_MICROCOPY = `Connect a wallet to see your Aave V3 health factor on ${AAVE_MARKETS.length} networks. Viewing is read-only.`;
 
 type DashboardCtaProps = {
+  locale: Locale;
   /** A quieter second action next to it (inverse, never pink) that jumps to a section of the same page. */
   secondary?: { label: string; sectionId: string };
   /** Centred by default; "start" lines it up with left-aligned text from lg (the split hero). */
@@ -79,7 +82,7 @@ type DashboardCtaProps = {
  * The page's one primary action, used in the hero and again at the end: the same words, the same target, the
  * view's one pink element. Stacked full width (up to 384px) on phones, side by side from sm.
  */
-export const DashboardCta = ({ secondary, align = "center" }: DashboardCtaProps) => (
+export const DashboardCta = ({ locale, secondary, align = "center" }: DashboardCtaProps) => (
   <div className={cx("mt-8 flex flex-col items-center gap-3", align === "start" && "lg:items-start")}>
     <div
       className={cx(
@@ -87,7 +90,10 @@ export const DashboardCta = ({ secondary, align = "center" }: DashboardCtaProps)
         align === "start" && "lg:justify-start",
       )}
     >
-      <Link href="/aave" className={buttonClasses({ size: "lg", className: "w-full sm:w-auto sm:min-w-40" })}>
+      <Link
+        href={routePath(locale, "dashboard")}
+        className={buttonClasses({ size: "lg", className: "w-full sm:w-auto sm:min-w-40" })}
+      >
         Open the free dashboard
         <ArrowRight aria-hidden="true" />
       </Link>

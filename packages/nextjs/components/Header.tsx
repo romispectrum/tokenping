@@ -8,9 +8,13 @@ import { hardhat } from "viem/chains";
 import { TokenpingLogo } from "~~/components/brand/TokenpingLogo";
 import { Container } from "~~/components/home/marketingLayout";
 import { FaucetButton, RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
+import { LanguageSwitch } from "~~/components/ui/LanguageSwitch";
 import { ThemeToggle } from "~~/components/ui/ThemeToggle";
 import { cx } from "~~/components/ui/classNames";
 import { useOutsideClick, useTargetNetwork } from "~~/hooks/scaffold-eth";
+import { useLocale } from "~~/i18n/LocaleProvider";
+import type { Locale } from "~~/i18n/locales";
+import { routePath } from "~~/i18n/routes";
 
 type MenuLink = {
   label: string;
@@ -19,10 +23,10 @@ type MenuLink = {
   includesNested?: boolean;
 };
 
-const MENU_LINKS: readonly MenuLink[] = [
-  { label: "Home", href: "/" },
-  { label: "Dashboard", href: "/aave" },
-  { label: "Blog", href: "/blog", includesNested: true },
+const menuLinks = (locale: Locale): readonly MenuLink[] => [
+  { label: "Home", href: routePath(locale, "home") },
+  { label: "Dashboard", href: routePath(locale, "dashboard") },
+  { label: "Blog", href: routePath(locale, "blog"), includesNested: true },
 ];
 
 const isMenuLinkActive = (pathname: string, { href, includesNested }: MenuLink) =>
@@ -44,10 +48,11 @@ const MENU_PANEL_CLASS_NAME =
 
 const HeaderMenuLinks = ({ linkClassName }: { linkClassName: string }) => {
   const pathname = usePathname();
+  const locale = useLocale();
 
   return (
     <>
-      {MENU_LINKS.map(link => {
+      {menuLinks(locale).map(link => {
         const { label, href } = link;
         const isActive = isMenuLinkActive(pathname, link);
         return (
@@ -77,6 +82,7 @@ const HeaderMenuLinks = ({ linkClassName }: { linkClassName: string }) => {
  * closes on Escape (focus back on its button), when focus or a click leaves it, on a link click and on a route change.
  */
 export const Header = () => {
+  const locale = useLocale();
   const { targetNetwork } = useTargetNetwork();
   const isLocalNetwork = targetNetwork.id === hardhat.id;
   const pathname = usePathname();
@@ -110,7 +116,7 @@ export const Header = () => {
     <header className="sticky top-0 z-40 shrink-0 border-b border-border bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/70 safe-area-top">
       <Container className="flex h-16 items-center gap-2 sm:gap-4 lg:gap-8">
         <Link
-          href="/"
+          href={routePath(locale, "home")}
           aria-label="Tokenping home"
           className="inline-flex shrink-0 items-center rounded-lg pointer-coarse:min-h-11"
         >
@@ -141,6 +147,10 @@ export const Header = () => {
                 <span>Theme</span>
                 <ThemeToggle />
               </div>
+              <div className="mx-1 mb-1 flex items-center justify-between px-3 text-sm text-muted-foreground">
+                <span>Language</span>
+                <LanguageSwitch />
+              </div>
             </div>
           </details>
         </nav>
@@ -148,7 +158,8 @@ export const Header = () => {
         <div className="flex min-w-0 shrink-0 items-center gap-2">
           <RainbowKitCustomConnectButton />
           {isLocalNetwork && <FaucetButton />}
-          <div className="hidden lg:block">
+          <div className="hidden items-center gap-1 lg:flex">
+            <LanguageSwitch />
             <ThemeToggle />
           </div>
         </div>

@@ -6,10 +6,11 @@ import { ExternalLink, HOME_CARD_CLASS_NAME, HomeSection } from "~~/components/h
 import { cx } from "~~/components/ui/classNames";
 import { SOCIAL_LINKS, SOURCE_CODE_URL } from "~~/constants/links";
 import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
+import { DEFAULT_LOCALE } from "~~/i18n/locales";
+import { postPath } from "~~/i18n/routes";
 import { getAlertChannelNames } from "~~/services/marketing/alertChannels";
 import type { AlertPlan } from "~~/services/marketing/alertPlan";
 import { getPaymentChainName } from "~~/services/marketing/paymentChain";
-import { postPath } from "~~/utils/seo";
 
 type Objection = {
   question: string;
@@ -126,8 +127,11 @@ export const HomeObjections = ({ plan }: HomeObjectionsProps) => {
           free tools exist
           {comparison ? (
             <>
-              : <Link href={postPath(comparison.meta.slug)}>our comparison of Aave liquidation alert tools</Link> covers
-              them, including where they beat Tokenping
+              :{" "}
+              <Link href={postPath(DEFAULT_LOCALE, comparison.meta.slug)}>
+                our comparison of Aave liquidation alert tools
+              </Link>{" "}
+              covers them, including where they beat Tokenping
             </>
           ) : null}
           . Tokenping is for people who want the alert on Signal or email, including for positions on Gnosis and
