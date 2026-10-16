@@ -1,5 +1,7 @@
 import { useAccount, useSwitchChain } from "wagmi";
 import { ArrowsRightLeftIcon } from "@heroicons/react/24/solid";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 import { getTargetNetworks } from "~~/utils/scaffold-eth";
 
 const allowedNetworks = getTargetNetworks();
@@ -11,6 +13,7 @@ type NetworkOptionsProps = {
 export const NetworkOptions = ({ hidden = false }: NetworkOptionsProps) => {
   const { switchChain } = useSwitchChain();
   const { chain } = useAccount();
+  const t = useMessages(COMMON_MESSAGES).wallet;
 
   return (
     <>
@@ -26,7 +29,7 @@ export const NetworkOptions = ({ hidden = false }: NetworkOptionsProps) => {
               }}
             >
               <ArrowsRightLeftIcon className="h-6 w-4 ml-2 sm:ml-0" />
-              <span>Switch to {allowedNetwork.name}</span>
+              <span>{t.switchTo(allowedNetwork.name)}</span>
             </button>
           </li>
         ))}

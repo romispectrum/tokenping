@@ -16,6 +16,8 @@ import {
   useScaffoldWriteContract,
   useTransactor,
 } from "~~/hooks/scaffold-eth";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 import { getPaywallStatus } from "~~/services/payments/paywallStatus";
 import { findTokenPlan, selectPaymentPlan } from "~~/services/payments/plans";
 import type { ContractAbi } from "~~/utils/scaffold-eth/contract";
@@ -27,10 +29,6 @@ type PaywallAbi = ContractAbi<"TokenpingPaywall">;
  * been told yet: SE-2 toasts its own transaction and simulation errors.
  */
 export type PayForAccessResult = { paid: true; isActive: boolean } | { paid: false; error?: string };
-
-export const PAYMENTS_PAUSED_MESSAGE = "Payments are paused right now. Try again later.";
-
-const PAID_ACCESS_UNAVAILABLE_MESSAGE = "Paid access is not available right now.";
 
 // Polled only while paused, so Pay comes back after an unpause: window-focus refetches are off app-wide.
 const PAUSED_POLL_INTERVAL_MS = 30_000;
@@ -61,6 +59,8 @@ const IS_PAYWALL_CONFIGURED = PAYMENT_CHAIN_ID !== undefined && Boolean(PAYMENT_
 // default. The plans are one batched read and the allowance is on the ERC-20; the scaffold read hook covers neither.
 export const useAccess = () => {
   const { address, chain } = useAccount();
+  // The error messages payForAccess returns, in the page's language.
+  const t = useMessages(DASHBOARD_MESSAGES).paywall;
 
   const { data: isActive, refetch: refetchActive } = useScaffoldReadContract({
     contractName: "TokenpingPaywall",
@@ -161,20 +161,20 @@ export const useAccess = () => {
     const spender = paywallContract?.address;
     // A payable status implies the wallet, the token and the paywall; checking them again narrows their types.
     if (status.kind !== "ready" || !status.canPay || !address || !paymentTokenAddress || !spender) {
-      return { paid: false, error: PAID_ACCESS_UNAVAILABLE_MESSAGE };
+      return { paid: false, error: t.unavailable };
     }
 
     // The cached reads may predate an owner change (price, plan, pause) or a confirmed approve. A failed refetch
     // resolves with the last cached value, so its error flag decides, not just the data.
     const [plans, paused, current] = await Promise.all([refetchPlans(), refetchPaused(), refetchAllowance()]);
     if (paused.isError || paused.data === undefined || current.isError || current.data === undefined) {
-      return { paid: false, error: "Could not check the payment status. Try again in a moment." };
+      return { paid: false, error: t.checkFailed };
     }
     // pay(token) charges plans[token] as stored when it runs, so the approve amount and the guard use the fresh plan
     // of the token whose allowance was just read, never the one cached at render.
     const plan = plans.isError ? null : findTokenPlan(plans.data, PAYMENT_TOKEN_CANDIDATES, paymentTokenAddress);
-    if (!plan?.enabled || plan.price === 0n) return { paid: false, error: PAID_ACCESS_UNAVAILABLE_MESSAGE };
-    if (paused.data) return { paid: false, error: PAYMENTS_PAUSED_MESSAGE };
+    if (!plan?.enabled || plan.price === 0n) return { paid: false, error: t.unavailable };
+    if (paused.data) return { paid: false, error: t.paused };
     const { price } = plan;
 
     try {
@@ -192,7 +192,7 @@ export const useAccess = () => {
         if (!approveHash) return { paid: false };
         const approved = await refetchAllowance();
         if (approved.isError || approved.data === undefined || approved.data < price) {
-          return { paid: false, error: "The approval is confirmed but not visible yet. Try again in a moment." };
+          return { paid: false, error: t.approvalNotVisible };
         }
       }
       // undefined: nothing was sent (e.g. wallet on the wrong network), and SE-2 has said why.

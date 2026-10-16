@@ -1,6 +1,9 @@
 import { type KeyboardEvent, useId, useRef } from "react";
 import { Input } from "~~/components/ui";
 import { THRESHOLD_SLIDER_MAX, THRESHOLD_SLIDER_MIN, THRESHOLD_SLIDER_STEP } from "~~/constants/notifications";
+import { useLocale } from "~~/i18n/LocaleProvider";
+import { formatDecimal } from "~~/i18n/format";
+import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 import {
   THRESHOLD_INPUT_PATTERN,
   clampSliderThreshold,
@@ -18,9 +21,9 @@ type ThresholdFieldProps = {
 
 /** The marks under the slider: its two ends and the middle. */
 const THRESHOLD_SCALE = [
-  { value: "1.1", label: "Critical", align: "items-start text-left" },
-  { value: "2.0", label: "Safe", align: "items-center text-center" },
-  { value: "3.0", label: "Very safe", align: "items-end text-right" },
+  { value: "1.1", mark: "critical", align: "items-start text-left" },
+  { value: "2.0", mark: "safe", align: "items-center text-center" },
+  { value: "3.0", mark: "verySafe", align: "items-end text-right" },
 ] as const;
 
 // Browsers accept exponent and sign characters in some numeric inputs.
@@ -30,7 +33,10 @@ const preventExponentAndSign = (e: KeyboardEvent<HTMLInputElement>) => {
   }
 };
 
-/** A slider over the common range plus a free-text input over the full threshold range, kept in sync. */
+/**
+ * A slider over the common range plus a free-text input over the full threshold range, kept in sync. The draft text
+ * always holds a dot; on Czech pages the input shows it with a decimal comma, and either separator can be typed.
+ */
 export const ThresholdField = ({
   threshold,
   thresholdText,
@@ -38,6 +44,8 @@ export const ThresholdField = ({
   onThresholdChange,
   onThresholdTextChange,
 }: ThresholdFieldProps) => {
+  const locale = useLocale();
+  const t = ALERTS_MESSAGES[locale];
   const inputRef = useRef<HTMLInputElement>(null);
   const id = useId();
   const labelId = `${id}-label`;
@@ -76,7 +84,7 @@ export const ThresholdField = ({
   return (
     <div className="flex flex-col gap-2">
       <label id={labelId} htmlFor={sliderId} className="w-fit text-sm leading-snug font-medium text-foreground">
-        Health factor threshold
+        {t.thresholdLabel}
       </label>
       <div className="flex items-center gap-3">
         {/* The slider stops at 3 and the threshold does not, so the value text carries the threshold that applies.
@@ -90,7 +98,7 @@ export const ThresholdField = ({
           max={THRESHOLD_SLIDER_MAX.toFixed(1)}
           step={THRESHOLD_SLIDER_STEP}
           value={clampSliderThreshold(threshold)}
-          aria-valuetext={String(threshold)}
+          aria-valuetext={formatDecimal(locale, threshold)}
           aria-describedby={descriptionId}
           onChange={e => handleSliderChange(e.target.value)}
           className="range min-w-0 flex-1 text-link [--range-bg:var(--input)] [--range-fill:0] pointer-coarse:h-11"
@@ -99,12 +107,12 @@ export const ThresholdField = ({
           {/* Named by the visible label plus these words, which tell it apart from the slider. Hidden, so it is
               not read on its own; aria-labelledby still uses it. */}
           <span id={exactValueId} hidden>
-            (exact value)
+            {t.thresholdExactValue}
           </span>
           <Input
             ref={inputRef}
             inputMode="decimal"
-            value={thresholdText}
+            value={formatDecimal(locale, thresholdText)}
             onChange={e => handleTextChange(e.target.value)}
             onBlur={handleTextBlur}
             onKeyDown={preventExponentAndSign}
@@ -116,15 +124,15 @@ export const ThresholdField = ({
       </div>
       {/* Each mark is the value over its word, so the three fit a 320px screen at the 14px floor. */}
       <div className="grid grid-cols-3 gap-2 text-sm text-muted-foreground">
-        {THRESHOLD_SCALE.map(({ value, label, align }) => (
+        {THRESHOLD_SCALE.map(({ value, mark, align }) => (
           <span key={value} className={`flex flex-col ${align}`}>
-            <span>{value}</span>
-            <span>{label}</span>
+            <span>{formatDecimal(locale, value)}</span>
+            <span>{t.thresholdScale[mark]}</span>
           </span>
         ))}
       </div>
       <p id={descriptionId} className="m-0 text-sm text-muted-foreground">
-        {"You'll"} be notified when your health factor drops below {threshold} on {chainName}.
+        {t.thresholdDescription(formatDecimal(locale, threshold), chainName)}
       </p>
     </div>
   );

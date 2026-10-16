@@ -3,6 +3,8 @@
 import { useCallback, useMemo } from "react";
 import { skipToken, useQuery } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 import { type NetworkPosition, fetchAavePositions, sumUsd } from "~~/services/aave/positions";
 import { normalizeAddress } from "~~/utils/address";
 import { getErrorMessage } from "~~/utils/errors";
@@ -11,6 +13,7 @@ const NO_POSITIONS: NetworkPosition[] = [];
 
 export const useAavePositions = () => {
   const { address, isConnected } = useAccount();
+  const t = useMessages(DASHBOARD_MESSAGES).errors;
   const user = isConnected ? address : undefined;
   const account = user ? normalizeAddress(user) : null;
 
@@ -53,7 +56,7 @@ export const useAavePositions = () => {
     positions,
     // A refresh shows the loading state too, and hides the previous attempt's error while it runs.
     isLoading: isFetching,
-    error: error && !isFetching ? getErrorMessage(error, "Failed to fetch Aave positions") : null,
+    error: error && !isFetching ? getErrorMessage(error, t.fetchPositionsFailed) : null,
     ...totals,
     refetch: refresh,
   };

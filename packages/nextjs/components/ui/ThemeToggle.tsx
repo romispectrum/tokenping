@@ -3,6 +3,8 @@
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cx } from "~~/components/ui/classNames";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 
 /**
  * Flips between the light and dark theme. Hydration-safe without a mounted flag: both icons are rendered and CSS
@@ -13,11 +15,12 @@ import { cx } from "~~/components/ui/classNames";
  */
 export const ThemeToggle = ({ className }: { className?: string }) => {
   const { resolvedTheme, setTheme } = useTheme();
+  const t = useMessages(COMMON_MESSAGES);
 
   return (
     <button
       type="button"
-      aria-label="Toggle light or dark theme"
+      aria-label={t.theme.toggle}
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
       className={cx(
         "inline-flex size-10 shrink-0 items-center justify-center rounded-lg text-foreground",

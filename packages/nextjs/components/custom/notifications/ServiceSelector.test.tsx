@@ -2,6 +2,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ServiceSelector } from "~~/components/custom/notifications/ServiceSelector";
+import { LocaleProvider } from "~~/i18n/LocaleProvider";
 
 type Props = Parameters<typeof ServiceSelector>[0];
 
@@ -73,5 +74,17 @@ describe("ServiceSelector", () => {
     expect([...container.querySelectorAll("svg")].every(icon => icon.getAttribute("aria-hidden") === "true")).toBe(
       true,
     );
+  });
+
+  it("names the channels and the group in Czech", () => {
+    vi.stubEnv("NEXT_PUBLIC_TELEGRAM_BOT_USERNAME", "TokenpingBot");
+    render(
+      <LocaleProvider locale="cs">
+        <ServiceSelector services={[]} onToggle={() => undefined} error="Vyberte alespoň jeden kanál upozornění." />
+      </LocaleProvider>,
+    );
+    expect(checkboxNames()).toEqual(["E-mail", "Signal", "Telegram"]);
+    const group = screen.getByRole("group", { name: "Kanály upozornění" });
+    expect(group.textContent).toContain("Vyberte, kam upozornění posílat. Můžete zvolit i více kanálů.");
   });
 });

@@ -8,6 +8,8 @@ import { useAccount } from "wagmi";
 import { BanknotesIcon } from "@heroicons/react/24/outline";
 import { buttonClasses } from "~~/components/ui/buttonClasses";
 import { useTargetNetwork, useTransactor } from "~~/hooks/scaffold-eth";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 import { notification } from "~~/utils/scaffold-eth";
 
 // Account index to use from generated hardhat accounts.
@@ -27,6 +29,7 @@ export const Faucet = () => {
   const [faucetAddress, setFaucetAddress] = useState<AddressType>();
   const [sendValue, setSendValue] = useState("");
   const { targetNetwork } = useTargetNetwork();
+  const t = useMessages(COMMON_MESSAGES).faucet;
 
   const { chain: ConnectedChain } = useAccount();
 
@@ -40,12 +43,16 @@ export const Faucet = () => {
       } catch (error) {
         notification.error(
           <>
-            <p className="font-bold mt-0 mb-1">Cannot connect to local provider</p>
+            <p className="font-bold mt-0 mb-1">{t.noProvider}</p>
             <p className="m-0">
-              - Did you forget to run <code className="italic bg-base-300 text-base font-bold">yarn chain</code> ?
+              {t.noChainBefore}
+              <code className="italic bg-base-300 text-base font-bold">yarn chain</code>
+              {t.noChainAfter}
             </p>
             <p className="mt-1 break-normal">
-              - Or you can change <code className="italic bg-base-300 text-base font-bold">targetNetwork</code> in{" "}
+              {t.changeNetworkBefore}
+              <code className="italic bg-base-300 text-base font-bold">targetNetwork</code>
+              {t.changeNetworkMiddle}
               <code className="italic bg-base-300 text-base font-bold">scaffold.config.ts</code>
             </p>
           </>,
@@ -54,7 +61,7 @@ export const Faucet = () => {
       }
     };
     getFaucetAddress();
-  }, []);
+  }, [t]);
 
   const sendETH = async () => {
     if (!faucetAddress || !inputAddress) {
@@ -85,21 +92,21 @@ export const Faucet = () => {
     <div>
       <label htmlFor="faucet-modal" className={buttonClasses({ variant: "outline", size: "sm" })}>
         <BanknotesIcon className="h-4 w-4" />
-        <span>Faucet</span>
+        <span>{t.button}</span>
       </label>
       <input type="checkbox" id="faucet-modal" className="modal-toggle" />
       <label htmlFor="faucet-modal" className="modal cursor-pointer">
         <label className="modal-box relative">
           {/* dummy input to capture event onclick on modal box */}
           <input className="h-0 w-0 absolute top-0 left-0" />
-          <h3 className="text-xl font-bold mb-3">Local Faucet</h3>
+          <h3 className="text-xl font-bold mb-3">{t.title}</h3>
           <label htmlFor="faucet-modal" className="btn btn-ghost btn-sm btn-circle absolute right-3 top-3">
             ✕
           </label>
           <div className="space-y-3">
             <div className="flex space-x-4">
               <div>
-                <span className="text-sm font-bold">From:</span>
+                <span className="text-sm font-bold">{t.from}</span>
                 <Address
                   address={faucetAddress}
                   onlyEnsOrAddress
@@ -109,18 +116,18 @@ export const Faucet = () => {
                 />
               </div>
               <div>
-                <span className="text-sm font-bold pl-3">Available:</span>
+                <span className="text-sm font-bold pl-3">{t.available}</span>
                 <Balance address={faucetAddress} />
               </div>
             </div>
             <div className="flex flex-col space-y-3">
               <AddressInput
-                placeholder="Destination Address"
+                placeholder={t.destination}
                 value={inputAddress ?? ""}
                 onChange={value => setInputAddress(value as AddressType)}
               />
               <EtherInput
-                placeholder="Amount to send"
+                placeholder={t.amount}
                 onValueChange={({ valueInEth }) => setSendValue(valueInEth)}
                 style={{ width: "100%" }}
               />
@@ -130,7 +137,7 @@ export const Faucet = () => {
                 ) : (
                   <span className="loading loading-spinner loading-sm"></span>
                 )}
-                <span>Send</span>
+                <span>{t.send}</span>
               </button>
             </div>
           </div>

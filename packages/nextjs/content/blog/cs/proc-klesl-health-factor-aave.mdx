@@ -1,12 +1,155 @@
 export const meta = {
   slug: "proc-klesl-health-factor-aave",
-  title: "Překlad se připravuje",
-  description: "Český překlad tohoto průvodce se připravuje.",
-  h1: "Překlad se připravuje",
+  title: "Proč klesl můj health factor na Aave? 6 příčin",
+  description:
+    "Health factor na Aave může klesat, i když nic neděláte. Vysvětlujeme pohyby cen, úroky, snížení likvidačního prahu, depeg stablecoinů a chyby orákul.",
+  h1: "Proč klesl můj health factor na Aave, když se s pozicí nic nedělo?",
   publishedAt: "2026-10-14",
-  primaryQuestion: "Překlad se připravuje.",
-  readingMinutes: 1,
-  stub: true,
+  primaryQuestion: "Proč můj health factor na Aave klesá sám od sebe?",
+  readingMinutes: 14,
 };
 
-Český překlad tohoto průvodce se připravuje.
+<ShortAnswer>
+  Aave přepočítává váš health factor (faktor zdraví pozice) z cen orákula, vašich aktuálních zůstatků a aktuálních
+  likvidačních prahů při každém čtení, takže se mění, i když neodešlete žádnou transakci. Na Aave V3 klesá, když zlevní
+  váš kolaterál, zdraží aktivum, které jste si půjčili, úrok z dluhu převýší to, co vydělává kolaterál, governance sníží
+  likvidační práh, stablecoin vložený jako kolaterál sklouzne pod 1 $ nebo je orákulum špatně nakonfigurované. Pod 1,00
+  může být pozice zlikvidována.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Čísla a bloky, ve kterých byla načtena: content/blog/snapshots/why-aave-health-factor-dropped.md */}
+
+## Proč se health factor na Aave mění sám od sebe?
+
+Health factor na Aave se mění sám od sebe, protože není nikde uložený: protokol ho při každém čtení znovu spočítá z aktuálních cen orákula, zůstatků (včetně naběhlých úroků) a rizikových parametrů:
+
+**HF = Σ(hodnota kolaterálu × likvidační práh) ÷ celková hodnota dluhu**
+
+Obě strany jsou v USD podle ceny orákula Aave a pod 1,00 může být pozice zlikvidována. Vzorec vysvětluje článek [co je health factor na Aave](/cs/blog/aave-health-factor-vysvetleni). Na Aave V3 ho bez jakéhokoli vašeho zásahu snižuje šest věcí. Příklady používají parametry trhu Core na Ethereu načtené 14. října 2026 a ilustrativní cenu ETH 2 400 $.
+
+| Příčina                              | Snižuje váš health factor, když                                           | Jak rychle          | Příklad                                                    |
+| ------------------------------------ | ------------------------------------------------------------------------- | ------------------- | ---------------------------------------------------------- |
+| 1. Pokles ceny kolaterálu            | Aktivum, které jste vložili jako kolaterál, zlevní                        | Tak rychle jako trh | 10 WETH proti 12 000 USDC, ETH o 10 % níž: z 1,66 na 1,49  |
+| 2. Růst ceny vypůjčeného aktiva      | Půjčili jste si volatilní aktivum a to zdražuje                           | Tak rychle jako trh | 10 000 USDC proti 2,5 WETH, ETH o 10 % výš: z 1,30 na 1,18 |
+| 3. Úroky                             | Výpůjční sazba vašeho dluhu je vyšší než vkladová sazba vašeho kolaterálu | Pomalu a průběžně   | 10 WETH proti 12 000 USDC: zhruba z 1,66 na 1,61 za rok    |
+| 4. Snížení likvidačního prahu        | Governance nebo Risk Stewards sníží práh vašeho kolaterálu                | Najednou            | Hypotetické snížení u WETH z 83 % na 82 %: z 1,66 na 1,64  |
+| 5. Depeg stablecoinu                 | Stablecoin, který jste vložili jako kolaterál, klesne pod 1 $             | Tak rychle jako trh | 10 000 USDC proti 2,5 WETH, USDC za 0,88 $: z 1,30 na 1,14 |
+| 6. Chyba orákula nebo směnného kurzu | Orákulum ocení váš kolaterál příliš nízko nebo váš dluh příliš vysoko     | Najednou            | Březen 2026: wstETH oceněné zhruba o 2,85 % níž            |
+
+Ve vlákně na governance fóru Aave z února 2025 dlužník, jehož pozice začínala s health factorem 1,71, zjistil částečnou likvidaci, přidal kolaterál, když health factor dosáhl 1,01, a při ranní kontrole našel druhou likvidaci, přestože byl přesvědčený, že ETH nekleslo natolik, aby vysvětlilo kteroukoli z nich. Příčinu nikdo ve vlákně nenašel; šest příčin níže ukazuje, kde začít hledat.
+
+Aave V4, které na Ethereu běží od 30. března 2026 a od té doby i na sítích Avalanche, Arc a Base, počítá health factor pro každý Spoke, s jedním kolaterálovým faktorem (collateral factor) pro každé aktivum. Ceny a úroky s ním hýbou stejně, ale změny parametrů se k existujícím pozicím dostávají jinak (viz [jak V4 uplatňuje změny parametrů, v příčině 4](#pricina-4-snizila-governance-nebo-risk-stewards-likvidacni-prah)).
+
+## Příčina 1: Klesla cena vašeho kolaterálu?
+
+Pokles ceny kteréhokoli aktiva, které jste vložili jako kolaterál, snižuje váš health factor na Aave, protože kolaterál se oceňuje cenou z orákula. S jedním volatilním kolaterálovým aktivem a dluhem ve stablecoinu se health factor mění úměrně ceně: pokles o 10 % ho sníží o 10 %.
+
+Vezměme 10 WETH vložených proti 12 000 USDC vypůjčeným na Aave V3 na trhu Core na Ethereu, kde byl likvidační práh WETH v bloku 26193284 (14. října 2026) 83 %. Při ilustrativní ceně 2 400 $ za ETH (orákulum Aave ten den v bloku 26193376 ukazovalo 2 414,78 $) je health factor 24 000 × 0,83 ÷ 12 000 = 1,66. Při 2 160 $ je 1,49, při 1 920 $ je 1,33 a při 1 445,78 $, tedy po poklesu o 39,8 %, dosáhne 1,00.
+
+Při několika kolaterálových aktivech se mění jen vážený podíl aktiva, které klesá. Rozhoduje cena z orákula Aave (na trhu Core na Ethereu používá WETH feed s názvem „ETH / USD“). Jak daleko mohou ceny při jednotlivých hodnotách health factoru klesnout, najdete v článku [jakou rezervu vám health factor dává](/cs/blog/bezpecny-health-factor-aave).
+
+## Příčina 2: Zdražilo aktivum, které jste si půjčili?
+
+Pokud jste si půjčili volatilní aktivum, růst jeho ceny snižuje váš health factor na Aave, protože i dluh se oceňuje cenou z orákula.
+
+Vezměme 10 000 USDC vložených proti 2,5 WETH vypůjčeným na Aave V3 na trhu Core na Ethereu, kde byl likvidační práh USDC v bloku 26193284 (14. října 2026) 78 %. Při ilustrativní ceně 2 400 $ má dluh hodnotu 6 000 $ a health factor je 10 000 × 0,78 ÷ 6 000 = 1,30. Pokud ETH vzroste o 10 % na 2 640 $, health factor klesne na 7 800 ÷ 6 600 = 1,18. Při 3 120 $, tedy o 30 % výš, dosáhne 1,00.
+
+Korelované páry, jako kolaterál ve wstETH s dluhem ve WETH, tento efekt zmírňují, protože obě strany se hýbou s ETH. Health factor pak závisí hlavně na kurzu wstETH k ETH, který hlásí orákulum, takže tržní riziko vyměníte za riziko orákula (viz [chyby orákula a směnného kurzu, příčina 6](#pricina-6-ocenila-chyba-orakula-nebo-smenneho-kurzu-vas-kolateral-spatne)).
+
+## Příčina 3: Rostl úrok z vašeho dluhu rychleji než výnos kolaterálu?
+
+Úroky snižují váš health factor na Aave, když váš dluh roste rychleji než kolaterál. Variabilní dluh roste každou sekundu podle výpůjční sazby, zatímco kolaterál vydělává obvykle nižší vkladovou sazbu. S jedním kolaterálovým aktivem, jedním dluhovým aktivem a stabilními cenami health factor pozvolna klesá, když je výpůjční sazba dluhu vyšší než vkladová sazba kolaterálu, a roste, když je nižší.
+
+Na Aave V3 na trhu Core na Ethereu v bloku 26193378 (14. října 2026) USDC vynášelo vkladatelům 3,800 % a dlužníky stálo 4,496 % ročně; WETH vynášelo 1,309 % a stálo 1,943 %. Jde o APR; aplikace Aave ukazuje o něco vyšší APY (4,60 % pro tuto výpůjční sazbu USDC). Vezměme 10 WETH vložených (práh 83 %) proti 12 000 USDC vypůjčeným, s cenou ETH stále na ilustrativních 2 400 $ a se sazbami beze změny po celý rok. Dluh naroste zhruba na 12 550 USDC, kolaterál zhruba na 10,13 WETH a health factor sklouzne z 1,66 zhruba na 1,61. Sazby jsou variabilní, takže to berte jako řád velikosti, ne jako předpověď.
+
+Sazby mohou také prudce vyskočit. Později 14. října 2026 vzrostla výpůjční sazba USDC na trhu Core na Ethereu v jediném bloku (26194053, 23:32:59 UTC) na 13,67 % APR, když z rezervy odešlo zhruba 134 mil. $ vloženého USDC, a zhruba o 36 minut později (blok 26194231, 00:08 UTC 15. října), když se USDC vrátilo, klesla zpět na 4,76 %.
+
+Opačná pozice získává: 10 000 USDC vložených proti 2,5 WETH vypůjčeným vydělává 3,800 % a platí 1,943 %, takže její health factor za rok pozvolna vzroste z 1,30 zhruba na 1,32. Na Aave V4 přidává User Risk Premium k výpůjční sazbě přirážku za rizikovější kolaterál, takže takový dluh roste rychleji.
+
+## Příčina 4: Snížila governance nebo Risk Stewards likvidační práh?
+
+Na Aave V3 snížení likvidačního prahu aktiva hned sníží health factor každé otevřené pozice, která toto aktivum započítává s jeho běžným prahem. Pozice, jejichž kategorie E-Mode toto aktivum obsahuje, místo toho používají práh kategorie a governance nebo Risk Stewards ho mohou snížit stejným způsobem. Vaše zůstatky zůstanou stejné; zmenší se jen podíl kolaterálu, který se započítává.
+
+Governance mění prahy hlasováním on-chain, obvykle po příspěvku na governance fóru Aave. Risk Stewards, kontrakty, které poskytovatelům rizikových služeb Aave umožňují upravovat parametry bez plného hlasování, mohou práh také posunout v rámci stanovených limitů pro jednu úpravu, ale nikdy ne na 0. Snižováním prahů se aktiva také vyřazují: návrh LlamaRisk z 29. července 2026 uvádí, že prahy lze snižovat postupně, aby se odstranil zbývající kolaterál.
+
+Hypotetický příklad, nikoli chystaná změna: 10 WETH při ilustrativní ceně 2 400 $ proti 12 000 USDC na trhu Core na Ethereu (práh WETH 83 % dne 14. října 2026) má health factor 1,66. Při 82 % by byl 1,64; při 80 % 1,60. Pro kontrolu porovnejte údaj „Liquidation threshold“ (likvidační práh) na stránce aktiva v aplikaci Aave s nedávnými změnami prahů na governance fóru Aave.
+
+Aave V4 funguje jinak. Změna kolaterálového faktoru vytvoří novou konfiguraci a existující pozice si ponechají tu starou, dokud si uživatel nepůjčí, nevybere prostředky nebo nezmění nastavení kolaterálu, pokud Governor jejich aktualizaci nevynutí.
+
+## Příčina 5: Klesl stablecoin vložený jako kolaterál pod 1 $?
+
+Stablecoin, který jste vložili jako kolaterál, snižuje váš health factor na Aave, když jeho cena klesne pod 1 $, protože Aave používá cenu z orákula, ne pevný 1 $. Na Aave V3 na trhu Core na Ethereu se USDC oceňuje přes adaptér s názvem „Capped USDC / USD“ se stropem 1,04 $ (`getPriceCap` vrátil 104000000, 8 desetinných míst, v blocích 26193376 a 26193993 dne 14. října 2026). Když je tržní cena nad stropem, adaptér hlásí 1,04 $; jakákoli nižší cena, včetně čehokoli pod 1 $, projde beze změny.
+
+Vezměme 10 000 USDC vložených (práh 78 %) proti 2,5 WETH vypůjčeným při ilustrativní ceně 2 400 $, tedy dluh 6 000 $: health factor 1,30. Při ceně USDC 0,88 $ klesne na 8 800 × 0,78 ÷ 6 000 = 1,14 a zhruba při 0,77 $, s nezměněnou cenou ETH, dosáhne 1,00.
+
+Údaj 0,88 $ je historický. Dne 11. března 2023, po zprávách o Silicon Valley Bank, kleslo USDC zhruba na 88 centů. Post-mortem Gauntletu zaznamenává zhruba 280 000 $ nedobytného dluhu v E-Mode na Aave V3 na síti Avalanche a zhruba 20 000 $ na Aave V3 na síti Arbitrum; stablecoiny na síti Avalanche byly zmrazeny, ale protokol nebyl pozastaven, takže likvidace pokračovaly.
+
+Druhá strana mince: pokud je stablecoin vaším dluhem, pokles jeho ceny pod 1 $ snižuje, kolik dlužíte, a zvyšuje váš health factor. 10 WETH při 2 400 $ (práh 83 %) proti 12 000 USDC se při ceně USDC 0,88 $ posune z 1,66 zhruba na 1,89. Růst nad 1 $ health factor snižuje, ale jen zhruba na 1,60, dokud strop zůstává na 1,04 $, protože orákulum tento dluh nikdy neocení výš než na 12 480 $.
+
+## Příčina 6: Ocenila chyba orákula nebo směnného kurzu váš kolaterál špatně?
+
+Chybná konfigurace orákula nebo směnného kurzu může snížit váš health factor na Aave najednou, bez jakéhokoli pohybu trhu, tím, že ocení váš kolaterál příliš nízko nebo váš dluh příliš vysoko. Nejvíc ohrožené jsou pozice v E-Mode s vysokou pákou.
+
+Zdokumentovaný případ je z března 2026. Aave oceňuje wstETH pomocí CAPO (Correlated Assets Price Oracle), který omezuje, jak rychle smí kurz wstETH ke stETH růst. Post-mortem Chaos Labs z 10. března 2026 uvádí, že referenční poměr (snapshot ratio) a časové razítko stropu se rozešly, čímž se efektivní kurz wstETH na trzích Core a Prime na Ethereu snížil zhruba o 2,85 %. V E-Mode bylo zlikvidováno zhruba 10 938 wstETH napříč 34 účty s health factorem pod zhruba 1,0288, bez nedobytného dluhu pro protokol. DAO schválila náhradu navrženou 11. března a 26. března 2026 Aave Finance Committee na její vyplacení vybral z pokladny Aave 513,19 WETH (blok Etherea 24741060); jednotlivé výplaty se pro tohoto průvodce nekontrolovaly.
+
+Pro představu: E-Mode pro aktiva korelovaná s ETH na trhu Core na Ethereu měl 14. října 2026 LTV 93 % a práh 95 %. Pozice vypůjčená až k tomuto limitu začíná na 95 ÷ 93 ≈ 1,02, tedy v rozmezí, které tato chyba zlikvidovala. Na chybu orákula vás nic ve vaší vlastní pozici neupozorní; jedinou rezervou, kterou máte pod kontrolou, je vzdálenost od 1,00.
+
+## Které změny váš health factor nesnižují?
+
+Na Aave V3 váš health factor nezmění snížení LTV (včetně LTV 0), zmrazení rezervy, pozastavení rezervy ani přepnutí kategorie E-Mode na izolovanou, protože žádná z těchto změn nemění ceny, zůstatky ani likvidační prahy. Místo toho blokují půjčování nebo jiné akce.
+
+| Změna na Aave V3                              | Co blokuje                                                 | Mění váš health factor?                                  | Můžete být i tak zlikvidováni?                                                                                                                               |
+| --------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Snížení LTV, včetně LTV 0                     | Nové půjčky proti tomuto aktivu                            | Ne: health factor používá práh, ne LTV                   | Ano, pod 1,00                                                                                                                                                |
+| Zmrazení rezervy                              | Nové vklady a půjčky tohoto aktiva                         | Ne                                                       | Ano, zmrazené rezervy lze dál likvidovat                                                                                                                     |
+| Kategorie E-Mode změněná na izolovanou (V3.7) | Půjčky proti kolaterálu mimo kategorii                     | Ne: tento kolaterál dostane LTV 0 a ponechá si svůj práh | Ano, pod 1,00                                                                                                                                                |
+| Pozastavení rezervy                           | Vklady, výběry, půjčky, splácení a likvidace tohoto aktiva | Ne                                                       | S tímto aktivem ne, ani jako kolaterálem, ani jako dluhem, dokud je pozastavené; s jinými aktivy ano. Po obnovení může následovat až 4 hodiny ochranné lhůty |
+
+Skutečný případ prvního řádku: po exploitu mostu rsETH od Kelp/LayerZero 18. dubna 2026 bylo LTV u WETH na několika instancích Aave V3 nastaveno na 0, zatímco jeho práh na trhu Core na Ethereu zůstal na 83 %, podle návrhu LlamaRisk z 9. května 2026 na jeho obnovení. Health factor pozic se kvůli tomu nezměnil.
+
+## Jak zjistit, co se s vaší pozicí stalo?
+
+Abyste zjistili, co se stalo s pozicí na Aave, ověřte nejdřív, jestli byla zlikvidována, a potom, který vstup se změnil: ceny, úroky, prahy nebo orákulum. Tyto kroky využívají rozhraní Aave Labs na app.aave.com a veřejné záznamy governance.
+
+1. **Zkontrolujte likvidace.** S připojenou peněženkou a vybraným správným trhem otevřete „Transaction history“ (historie transakcí, app.aave.com/history) a vyfiltrujte „Liquidation“. Záznamy, ze kterých historie vychází, obsahují čas, hash transakce, odebraný kolaterál a splacený dluh; vývojáři je mohou získat dotazem `userTransactionHistory` v API Aave.
+2. **Porovnejte ceny** svých kolaterálových a dluhových aktiv s cenami z vaší poslední kontroly (příčiny 1, 2 a 5).
+3. **Porovnejte svůj dluh v jednotkách tokenu s tím, kolik jste si půjčili.** Pokud jste nic nesplatili a nebyli jste zlikvidováni, rozdíl tvoří naběhlý úrok (příčina 3).
+4. **Zkontrolujte likvidační práh** na stránce každého aktiva v aplikaci Aave a u každého aktiva, jehož práh se zdá nižší, prohledejte governance fórum (příčina 4).
+5. **Hledejte post-mortem rozbory incidentů** na governance fóru, jako ten o wstETH z března 2026 (příčina 6).
+
+Pokud jste byli zlikvidováni, článek [co se děje při likvidaci na Aave](/cs/blog/jak-funguje-likvidace-aave) vysvětluje, kolik vám může být najednou vzato a kolik to stojí.
+
+## Může vás upozornění na health factor varovat před likvidací?
+
+Upozornění vás může včas varovat před pomalým poklesem vašeho health factoru na Aave, ale ne před skokem, který překročí 1,00 mezi dvěma kontrolami. Úroky, postupné sesouvání cen a postupné snižování prahů probíhají v řádu hodin až měsíců, takže upozornění nastavené výrazně nad 1,00 má mnoho příležitostí se spustit. Propad trhu, snížení prahu u pozice, která už je blízko hranice, nebo chyba orákula jako ta s wstETH z března 2026 mohou 1,00 překročit dřív, než zareaguje jakákoli plánovaná kontrola.
+
+Tokenping je stavěný na ten pomalý druh. Každých 5 minut kontroluje váš health factor na Aave V3 na 7 sítích a posílá vám zprávy přes Signal nebo e-mail, dokud je pod prahem, který jste nastavili (1,1 až 10). Zpráva se opakuje při každé kontrole, dokud se health factor nezotaví, nebo dokud práh nesnížíte pod jeho hodnotu či upozornění nesmažete (obojí vyžaduje aktivní placený přístup), a žádnou zprávu o zotavení nepošle. Pokrývá jen Aave V3 a na Ethereu jen trh Core.
+
+Na upozornění také potřebujete čas zareagovat. Ve vlákně na fóru Polygonu z roku 2021 dlužník, který se pokusil splácet při health factoru 1,01, opakovaně narážel na chyby a byl zlikvidován dřív, než splátka prošla. Jednou z možností je práh, při kterém byste ještě v klidu jednali; s jeho volbou pomůže článek [jakou rezervu vám health factor dává](/cs/blog/bezpecny-health-factor-aave). Nastavení popisuje článek [jak nastavit upozornění na health factor](/cs/blog/nastaveni-upozorneni-health-factor-aave) a článek [jak zvýšit health factor na Aave](/cs/blog/jak-se-vyhnout-likvidaci-aave) popisuje, co dělat, když klesá. Můžete si také nejdřív [zdarma zkontrolovat svůj health factor na Aave V3](/cs/aave).
+
+## Zdroje
+
+- [Přehled Aave V3](https://aave.com/docs/aave-v3/overview.md): health factor se mění s cenami orákula a naběhlými úroky (načteno 14. října 2026)
+- [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) a [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): výpočet health factoru, kontroly pozastavení a zmrazení (aave-v3-origin, načteno 14. října 2026)
+- [PoolDataProvider Aave V3 na trhu Core na Ethereu](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): LTV, prahy a sazby v blocích 26193284, 26193378 a 26193993 (načteno 14. října 2026); sazby USDC v blocích 26194052, 26194053, 26194230 a 26194231 (načteno 15. října 2026)
+- [Orákulum Aave V3 na trhu Core na Ethereu](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2#readContract): WETH 2 414,78 $ v bloku 26193376 (načteno 14. října 2026)
+- [Adaptér Capped USDC / USD](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract) a jeho [zdrojový kód, PriceCapAdapterStable.sol](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol): strop 104000000 v blocích 26193376 a 26193993 (načteno 14. října 2026)
+- [Dokumentace orákula Aave](https://aave.com/docs/ecosystem/oracle.md) (načteno 14. října 2026)
+- [Dokumentace governance Aave](https://aave.com/docs/ecosystem/governance.md) a [README Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards) (načteno 14. října 2026)
+- [ARFC: Low Adoption Asset Deprecation on Aave V3](https://governance.aave.com/t/arfc-low-adoption-asset-deprecation-on-aave-v3/25401) (LlamaRisk, 29. července 2026, načteno 14. října 2026)
+- [Changelog dokumentace Aave](https://aave.com/docs/resources/changelog.md): V4 na Ethereu od 30. března 2026, poté Avalanche, Arc a Base (načteno 14. října 2026)
+- [Dokumentace Aave V4](https://aave.com/docs/aave-v4.md), [pozice ve V4](https://aave.com/docs/aave-v4/positions.md) a [technický přehled V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md): health factor pro každý Spoke, User Risk Premium, dynamická riziková konfigurace (načteno 14. října 2026)
+- [Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (Gauntlet, 17. března 2023, načteno 14. října 2026)
+- [Post-mortem: wstETH exchange-rate misalignment on Core and Prime](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269) (Chaos Labs, 10. března 2026, načteno 14. října 2026)
+- [wstETH CAPO Oracle Incident User Reimbursement](https://governance.aave.com/t/direct-to-aip-wsteth-capo-oracle-incident-user-reimbursement/24275) (TokenLogic, 11. března 2026, načteno 14. října 2026)
+- [Provedení governance payloadu 413](https://etherscan.io/tx/0xca0bcaa2b20b465afb332677a8425d8a10e050c4a31731feadc3a684ecb9b81e) a [výběr Aave Finance Committee](https://etherscan.io/tx/0x7860a20437b36af635e8be248a929c437412915b91de7c45e947475c6bb02f24): povolení (allowance) 513,19 WETH z Aave Ethereum Collector, poté vybráno v bloku 24741060 (načteno 15. října 2026)
+- [WETH Unfreeze and LTV Restoration Across Aave V3 Instances](https://governance.aave.com/t/direct-to-aip-weth-unfreeze-and-ltv-restoration-across-aave-v3-instances/24878) (LlamaRisk, 9. května 2026, načteno 14. října 2026)
+- [Izolovaný E-Mode v Aave v3.7](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md) a [funkce v3.1](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): příznak isolated, ochranná lhůta po obnovení (načteno 14. října 2026)
+- [Historie transakcí uživatele v Aave V3](https://aave.com/docs/aave-v3/markets/advanced.md) a [filtry historie v rozhraní Aave](https://github.com/aave/interface/blob/main/src/modules/history/HistoryFilterMenu.tsx) (načteno 14. října 2026)
+- Stránka rezervy v rozhraní Aave, sazby zobrazené jako APY: [SupplyInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/SupplyInfo.tsx) (načteno 14. října 2026) a [BorrowInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/BorrowInfo.tsx), „APY, variable“ (načteno 15. října 2026)
+- [Unexpected or poorly executed settlement by the system](https://governance.aave.com/t/unexpected-or-poorly-executed-settlement-by-the-system/21120) (governance fórum Aave, 17. února 2025, načteno 14. října 2026)
+- [Liquidation on polygon AAVE - JSON ERROR](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067) (fórum Polygonu, 18. května 2021, načteno 14. října 2026)
+
+_Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání._

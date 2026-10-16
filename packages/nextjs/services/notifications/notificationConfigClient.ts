@@ -29,6 +29,8 @@ export const notificationConfigClient = {
         healthFactorThreshold: config.healthFactorThreshold,
         email: config.email ?? null,
         signalRecipient: config.signalRecipient ?? null,
+        // The language the alert is sent in; the server stores "en" when this is missing.
+        locale: config.locale ?? "en",
       }),
     });
     if (!res.ok) throw new Error(await readApiError(res, "Failed to save notification config"));

@@ -1,6 +1,8 @@
 import type { Ref } from "react";
 import { BellRing } from "lucide-react";
 import { Button, Card, CardContent, EmptyState } from "~~/components/ui";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 
 type NotificationEmptyStateProps = {
   chainName: string;
@@ -10,21 +12,24 @@ type NotificationEmptyStateProps = {
 };
 
 /** First use on this network. Its button is the view's one pink primary action. */
-export const NotificationEmptyState = ({ chainName, onCreate, createRef }: NotificationEmptyStateProps) => (
-  <Card>
-    <CardContent>
-      <EmptyState
-        size="inline"
-        headingLevel={3}
-        icon={BellRing}
-        title={`No alerts on ${chainName} yet`}
-        description="Get a message when your health factor drops below a threshold you choose."
-        action={
-          <Button ref={createRef} onClick={onCreate}>
-            Create alert
-          </Button>
-        }
-      />
-    </CardContent>
-  </Card>
-);
+export const NotificationEmptyState = ({ chainName, onCreate, createRef }: NotificationEmptyStateProps) => {
+  const t = useMessages(ALERTS_MESSAGES);
+  return (
+    <Card>
+      <CardContent>
+        <EmptyState
+          size="inline"
+          headingLevel={3}
+          icon={BellRing}
+          title={t.emptyTitle(chainName)}
+          description={t.emptyDescription}
+          action={
+            <Button ref={createRef} onClick={onCreate}>
+              {t.createAlert}
+            </Button>
+          }
+        />
+      </CardContent>
+    </Card>
+  );
+};

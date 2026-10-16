@@ -12,8 +12,9 @@ import { LanguageSwitch } from "~~/components/ui/LanguageSwitch";
 import { ThemeToggle } from "~~/components/ui/ThemeToggle";
 import { cx } from "~~/components/ui/classNames";
 import { useOutsideClick, useTargetNetwork } from "~~/hooks/scaffold-eth";
-import { useLocale } from "~~/i18n/LocaleProvider";
+import { useLocale, useMessages } from "~~/i18n/LocaleProvider";
 import type { Locale } from "~~/i18n/locales";
+import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 import { routePath } from "~~/i18n/routes";
 
 type MenuLink = {
@@ -23,11 +24,14 @@ type MenuLink = {
   includesNested?: boolean;
 };
 
-const menuLinks = (locale: Locale): readonly MenuLink[] => [
-  { label: "Home", href: routePath(locale, "home") },
-  { label: "Dashboard", href: routePath(locale, "dashboard") },
-  { label: "Blog", href: routePath(locale, "blog"), includesNested: true },
-];
+const menuLinks = (locale: Locale): readonly MenuLink[] => {
+  const { nav } = COMMON_MESSAGES[locale].header;
+  return [
+    { label: nav.home, href: routePath(locale, "home") },
+    { label: nav.dashboard, href: routePath(locale, "dashboard") },
+    { label: nav.blog, href: routePath(locale, "blog"), includesNested: true },
+  ];
+};
 
 const isMenuLinkActive = (pathname: string, { href, includesNested }: MenuLink) =>
   pathname === href || (!!includesNested && pathname.startsWith(`${href}/`));
@@ -83,6 +87,7 @@ const HeaderMenuLinks = ({ linkClassName }: { linkClassName: string }) => {
  */
 export const Header = () => {
   const locale = useLocale();
+  const t = useMessages(COMMON_MESSAGES);
   const { targetNetwork } = useTargetNetwork();
   const isLocalNetwork = targetNetwork.id === hardhat.id;
   const pathname = usePathname();
@@ -117,20 +122,20 @@ export const Header = () => {
       <Container className="flex h-16 items-center gap-2 sm:gap-4 lg:gap-8">
         <Link
           href={routePath(locale, "home")}
-          aria-label="Tokenping home"
+          aria-label={t.homeLabel}
           className="inline-flex shrink-0 items-center rounded-lg pointer-coarse:min-h-11"
         >
           <TokenpingLogo title="" className="h-7 w-auto md:h-8" />
         </Link>
 
         {/* One landmark for both menus: only one of them shows at a time. */}
-        <nav aria-label="Main" className="ml-auto lg:ml-0 lg:flex-1">
+        <nav aria-label={t.header.navLabel} className="ml-auto lg:ml-0 lg:flex-1">
           <ul className="m-0 hidden list-none items-center gap-1 p-0 lg:flex">
             <HeaderMenuLinks linkClassName={DESKTOP_LINK_CLASS_NAME} />
           </ul>
           <details className="lg:hidden" ref={burgerMenuRef} onKeyDown={closeOnEscape} onBlur={closeOnFocusLeave}>
             <summary
-              aria-label="Open menu"
+              aria-label={t.header.openMenu}
               className="flex size-11 cursor-pointer list-none items-center justify-center rounded-lg text-foreground transition-colors duration-150 ease-[ease] hover:bg-accent hover:text-accent-foreground [&::-webkit-details-marker]:hidden"
             >
               <Menu aria-hidden="true" className="size-4" />
@@ -144,11 +149,11 @@ export const Header = () => {
                 <HeaderMenuLinks linkClassName={MOBILE_LINK_CLASS_NAME} />
               </ul>
               <div className="mx-1 mt-1 mb-1 flex items-center justify-between border-t border-border px-3 pt-2 text-sm text-muted-foreground">
-                <span>Theme</span>
+                <span>{t.header.theme}</span>
                 <ThemeToggle />
               </div>
               <div className="mx-1 mb-1 flex items-center justify-between px-3 text-sm text-muted-foreground">
-                <span>Language</span>
+                <span>{t.header.language}</span>
                 <LanguageSwitch />
               </div>
             </div>

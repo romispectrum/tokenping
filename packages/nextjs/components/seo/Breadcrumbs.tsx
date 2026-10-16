@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { DEFAULT_LOCALE, type Locale } from "~~/i18n/locales";
+import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 import type { Crumb } from "~~/utils/seo";
 
 type BreadcrumbsProps = {
   /** The same steps passed to breadcrumbJsonLd, so the visible trail and the JSON-LD cannot drift. */
   crumbs: readonly Crumb[];
+  /** The page's language, for the trail's landmark name (a server component, so a prop, not the context). */
+  locale?: Locale;
 };
 
 /**
@@ -13,8 +17,8 @@ type BreadcrumbsProps = {
  * instead of making the trail scroll sideways, and nothing clips the links' focus outline. Links are 44px tall on
  * touch screens.
  */
-export const Breadcrumbs = ({ crumbs }: BreadcrumbsProps) => (
-  <nav aria-label="Breadcrumb" className="mb-4 min-w-0 text-sm text-muted-foreground">
+export const Breadcrumbs = ({ crumbs, locale = DEFAULT_LOCALE }: BreadcrumbsProps) => (
+  <nav aria-label={COMMON_MESSAGES[locale].breadcrumbLabel} className="mb-4 min-w-0 text-sm text-muted-foreground">
     <ol className="m-0 flex min-w-0 list-none items-center gap-1.5 p-0">
       {crumbs.map(({ name, path }, index) => {
         const isCurrent = index === crumbs.length - 1;

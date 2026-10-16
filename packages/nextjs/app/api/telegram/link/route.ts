@@ -1,12 +1,15 @@
 /**
  * GET    /api/telegram/link?userId=0x...: read current Telegram link (uncached, used for handshake polling)
- * DELETE /api/telegram/link:              disconnect Telegram for a user (UI "Disconnect" button)
+ * DELETE /api/telegram/link:              disconnect Telegram for a user (UI "Disconnect" button). The body's
+ *                                         optional `locale` ("en" | "cs", the site language) picks the farewell's
+ *                                         language; anything else is English.
  *
  * NOT cached, intentionally: the UI polls this during the handshake and needs
  * to see the new chat_id immediately after the webhook writes it.
  */
 import { NextResponse, after } from "next/server";
-import { TELEGRAM_REPLIES } from "~~/app/api/telegram/bot";
+import { DEFAULT_LOCALE, isLocale } from "~~/i18n/locales";
+import { TELEGRAM_REPLIES } from "~~/i18n/messages/telegram";
 import { requireActiveAccess } from "~~/services/api/server/access";
 import { MISSING_USER_ID, internalError, jsonError, parseUserId, readJsonObject } from "~~/services/api/server/http";
 import { replyToTelegramChat } from "~~/services/telegram/sendTelegram";
@@ -35,8 +38,11 @@ export async function GET(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const userId = parseUserId((await readJsonObject(request)).userId);
+    const body = await readJsonObject(request);
+    const userId = parseUserId(body.userId);
     if (!userId) return jsonError(MISSING_USER_ID, 400);
+    // The farewell is best effort, so an unexpected locale falls back to English instead of failing the disconnect.
+    const locale = isLocale(body.locale) ? body.locale : DEFAULT_LOCALE;
 
     const denied = await requireActiveAccess(userId, "Active paid access required");
     if (denied) return denied;
@@ -53,7 +59,7 @@ export async function DELETE(request: Request) {
     if (existing?.chatId) {
       const { chatId } = existing;
       // Sent once the response is out; after() keeps serverless alive until it is delivered.
-      after(() => replyToTelegramChat(chatId, TELEGRAM_REPLIES.disconnected));
+      after(() => replyToTelegramChat(chatId, TELEGRAM_REPLIES[locale].disconnected));
     }
 
     return NextResponse.json({ success: true });

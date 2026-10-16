@@ -10,6 +10,7 @@ import {
   SUPPLIED_WETH_NOT_COLLATERAL,
   VARIABLE_DEBT_DAI,
 } from "~~/components/custom/aave/__fixtures__/positions";
+import { LocaleProvider } from "~~/i18n/LocaleProvider";
 import { renderMarkup } from "~~/utils/testing/render";
 
 // Rows are table rows, so they render inside the body of a table like TokenTable's.
@@ -70,5 +71,22 @@ describe("DebtTokenRow", () => {
     expect(html).toContain(">2,001.5</td>");
     expect(html).toContain(">Stable 1.5 · Variable 2,000</td>");
     expect(html).toMatchSnapshot();
+  });
+});
+
+describe("token rows in Czech", () => {
+  const czechRow = (node: ReactNode) => row(<LocaleProvider locale="cs">{node}</LocaleProvider>);
+
+  it("says whether a supplied token counts as collateral in Czech", () => {
+    expect(czechRow(<CollateralTokenRow token={SUPPLIED_USDC} chainId={mainnet.id} />)).toContain(">Zapnuto</td>");
+    expect(czechRow(<CollateralTokenRow token={SUPPLIED_WETH_NOT_COLLATERAL} chainId={mainnet.id} />)).toContain(
+      ">Vypnuto</td>",
+    );
+  });
+
+  it("names the rate types in Czech and keeps the amounts' format", () => {
+    const html = czechRow(<DebtTokenRow token={MIXED_DEBT_GHO} chainId={mainnet.id} />);
+
+    expect(html).toMatch(/>Stabilní [\d.,KM]+ · Variabilní [\d.,KM]+<\/td>/);
   });
 });

@@ -1,9 +1,11 @@
 import type { ComponentType } from "react";
-import type { TokenRowProps } from "~~/components/custom/aave/TokenRow";
+import type { TokenColumn, TokenRowProps } from "~~/components/custom/aave/TokenRow";
 import { cx } from "~~/components/ui";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 import type { TokenPosition } from "~~/services/aave/positions";
 
-type Column = { label: string; align: "left" | "right" };
+type Column = { column: TokenColumn; align: "left" | "right" };
 
 type TokenTableProps = {
   /** Heading id; it also names the table and its scroll region. */
@@ -21,51 +23,52 @@ type TokenTableProps = {
  * phone instead of cutting columns off; it is focusable and named, so keyboard users can scroll it too. The heading
  * structures the block, so the wrapper is a plain div: only the scroll region is a landmark, named once.
  */
-export const TokenTable = ({ id, title, columns, tokens, chainId, Row, emptyText }: TokenTableProps) => (
-  <div className="flex flex-col gap-3">
-    <div className="flex items-baseline justify-between gap-3">
-      <h4 id={id} className="m-0 text-sm font-medium text-foreground">
-        {title}
-      </h4>
-      <p className="m-0 text-sm text-muted-foreground tabular-nums">
-        {tokens.length} {tokens.length === 1 ? "asset" : "assets"}
-      </p>
-    </div>
-    {tokens.length > 0 ? (
-      <div
-        role="region"
-        aria-labelledby={id}
-        tabIndex={0}
-        className="overflow-x-auto rounded-xl border border-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-      >
-        <table aria-labelledby={id} className="w-full min-w-md border-collapse text-sm">
-          <thead>
-            <tr className="bg-muted">
-              {columns.map(({ label, align }) => (
-                <th
-                  key={label}
-                  scope="col"
-                  className={cx(
-                    "h-10 px-3 text-xs font-bold tracking-wide text-muted-foreground uppercase",
-                    align === "right" ? "text-right" : "text-left",
-                  )}
-                >
-                  {label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {tokens.map(token => (
-              <Row key={token.asset} token={token} chainId={chainId} />
-            ))}
-          </tbody>
-        </table>
+export const TokenTable = ({ id, title, columns, tokens, chainId, Row, emptyText }: TokenTableProps) => {
+  const t = useMessages(DASHBOARD_MESSAGES).tokens;
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <h4 id={id} className="m-0 text-sm font-medium text-foreground">
+          {title}
+        </h4>
+        <p className="m-0 text-sm text-muted-foreground tabular-nums">{t.count(tokens.length)}</p>
       </div>
-    ) : (
-      <p className="m-0 rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-        {emptyText}
-      </p>
-    )}
-  </div>
-);
+      {tokens.length > 0 ? (
+        <div
+          role="region"
+          aria-labelledby={id}
+          tabIndex={0}
+          className="overflow-x-auto rounded-xl border border-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        >
+          <table aria-labelledby={id} className="w-full min-w-md border-collapse text-sm">
+            <thead>
+              <tr className="bg-muted">
+                {columns.map(({ column, align }) => (
+                  <th
+                    key={column}
+                    scope="col"
+                    className={cx(
+                      "h-10 px-3 text-xs font-bold tracking-wide text-muted-foreground uppercase",
+                      align === "right" ? "text-right" : "text-left",
+                    )}
+                  >
+                    {t[column]}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {tokens.map(token => (
+                <Row key={token.asset} token={token} chainId={chainId} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="m-0 rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+          {emptyText}
+        </p>
+      )}
+    </div>
+  );
+};

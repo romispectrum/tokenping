@@ -7,6 +7,9 @@
  *   /stop:          unlink the bot from this chat (and the wallet behind it)
  *   /help:          short help message
  *
+ * Replies are in Czech when the sender's Telegram app is set to Czech or Slovak (message.from.language_code), in
+ * English otherwise.
+ *
  * Security:
  *   - Verify the secret_token via the X-Telegram-Bot-Api-Secret-Token header
  *     using a timing-safe comparison.
@@ -20,7 +23,9 @@
  *     null, a non-string text) still throws before the handler runs and gets a 500.
  */
 import { NextResponse, after } from "next/server";
-import { TELEGRAM_REPLIES, parseCommand } from "~~/app/api/telegram/bot";
+import { parseCommand, telegramLocale } from "~~/app/api/telegram/bot";
+import type { Locale } from "~~/i18n/locales";
+import { TELEGRAM_REPLIES } from "~~/i18n/messages/telegram";
 import { safeEqual } from "~~/services/api/server/auth";
 import { replyToTelegramChat } from "~~/services/telegram/sendTelegram";
 import {
@@ -32,7 +37,7 @@ import {
 
 type TelegramMessage = {
   message_id: number;
-  from?: { id: number; username?: string; is_bot?: boolean };
+  from?: { id: number; username?: string; is_bot?: boolean; language_code?: string };
   chat: { id: number; type: "private" | "group" | "supergroup" | "channel"; username?: string };
   text?: string;
 };
@@ -54,25 +59,27 @@ function verifySecret(provided: string | null): boolean {
   return Boolean(expected && provided && safeEqual(provided, expected));
 }
 
-async function handleStart(chatId: string, username: string | null, token: string | undefined) {
-  if (!token) return reply(chatId, TELEGRAM_REPLIES.startWithoutToken);
-  if (!isValidStartParam(token)) return reply(chatId, TELEGRAM_REPLIES.invalidLink);
+type Replies = (typeof TELEGRAM_REPLIES)[Locale];
+
+async function handleStart(chatId: string, username: string | null, token: string | undefined, t: Replies) {
+  if (!token) return reply(chatId, t.startWithoutToken);
+  if (!isValidStartParam(token)) return reply(chatId, t.invalidLink);
 
   const consumed = await consumeLinkToken(token);
-  if (!consumed) return reply(chatId, TELEGRAM_REPLIES.expiredLink);
+  if (!consumed) return reply(chatId, t.expiredLink);
 
   const linked = await upsertUserTelegramLink({ userId: consumed.userId, chatId, username });
-  reply(chatId, linked ? TELEGRAM_REPLIES.connected : TELEGRAM_REPLIES.linkSaveFailed);
+  reply(chatId, linked ? t.connected : t.linkSaveFailed);
 }
 
 /** Unlinks whichever wallet is bound to this chat. */
-async function handleStop(chatId: string) {
+async function handleStop(chatId: string, t: Replies) {
   const error = await deleteLinkByChatId(chatId);
   if (error) {
     console.error("telegram /stop: failed to delete the link", error);
-    return reply(chatId, TELEGRAM_REPLIES.unsubscribeFailed);
+    return reply(chatId, t.unsubscribeFailed);
   }
-  reply(chatId, TELEGRAM_REPLIES.unsubscribed);
+  reply(chatId, t.unsubscribed);
 }
 
 export async function POST(request: Request) {
@@ -89,10 +96,11 @@ export async function POST(request: Request) {
 
   const msg = update.message;
   if (!msg?.text || !msg.chat) return ok();
+  const t = TELEGRAM_REPLIES[telegramLocale(msg.from?.language_code)];
 
   // Private chats only in v1 (checked before the bot filter, so bots in groups get the reply too).
   if (msg.chat.type !== "private") {
-    reply(String(msg.chat.id), TELEGRAM_REPLIES.privateChatsOnly);
+    reply(String(msg.chat.id), t.privateChatsOnly);
     return ok();
   }
   if (msg.from?.is_bot) return ok();
@@ -102,10 +110,10 @@ export async function POST(request: Request) {
   const command = parseCommand(msg.text);
 
   try {
-    if (command.name === "start") await handleStart(chatId, username, command.token);
-    else if (command.name === "stop") await handleStop(chatId);
-    else if (command.name === "help") reply(chatId, TELEGRAM_REPLIES.help);
-    else reply(chatId, TELEGRAM_REPLIES.unknownCommand);
+    if (command.name === "start") await handleStart(chatId, username, command.token, t);
+    else if (command.name === "stop") await handleStop(chatId, t);
+    else if (command.name === "help") reply(chatId, t.help);
+    else reply(chatId, t.unknownCommand);
   } catch (e) {
     console.warn("telegram webhook handler error", e);
   }

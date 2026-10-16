@@ -1,12 +1,155 @@
 export const meta = {
   slug: "bezpecny-health-factor-aave",
-  title: "Překlad se připravuje",
-  description: "Český překlad tohoto průvodce se připravuje.",
-  h1: "Překlad se připravuje",
+  title: "Jaký health factor je na Aave bezpečný? Tabulka rezerv",
+  description:
+    "Univerzálně bezpečný health factor na Aave neexistuje. Zjistěte, o kolik mohou ceny klesnout při 1,2, 1,5 nebo 2,0 a jak zvolit rezervu pro kolaterál.",
+  h1: "Jaký health factor je na Aave bezpečný?",
   publishedAt: "2026-10-14",
-  primaryQuestion: "Překlad se připravuje.",
-  readingMinutes: 1,
-  stub: true,
+  primaryQuestion: "Jaký health factor je na Aave bezpečný?",
+  readingMinutes: 14,
 };
 
-Český překlad tohoto průvodce se připravuje.
+<ShortAnswer>
+  Neexistuje jediný bezpečný nebo „dobrý“ health factor (faktor zdraví pozice) na Aave. Podle centra nápovědy samotného
+  Aave závisí správná úroveň na tom, jak volatilní a jak korelovaná jsou vaše aktiva. Číslo vám ale říká, jak daleko se
+  ceny mohou pohnout, než dojde k likvidaci: s jedním volatilním kolaterálem a dluhem ve stablecoinu klesne health
+  factor 1,2 na 1,00 po poklesu ceny o 16,7 %, health factor 1,5 po poklesu o 33,3 % a 2,0 po poklesu o 50 %.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Existuje na Aave bezpečný health factor?
+
+Ne. Centrum nápovědy Aave uvádí, že neexistuje „žádný univerzálně ‚bezpečný‘ health factor“, protože správná úroveň závisí na volatilitě a korelaci aktiv v pozici ([Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations), načteno 14. října 2026). Dodává, že u korelovaných aktiv, jako jsou stablecoiny nebo aktiva úzce svázaná s ETH, mohou být přijatelné i nižší hodnoty health factoru.
+
+Health factor (HF) je číslo, které porovnává váš kolaterál s vaším dluhem na jednom trhu Aave: HF = Σ(hodnota kolaterálu × likvidační práh) ÷ celková hodnota dluhu, v USD podle cen orákula Aave. Likvidační práh je podíl hodnoty kolaterálu, který se započítává do health factoru, například 83 % u WETH na trhu Ethereum Core (načteno on-chain v bloku Etherea 26193284 dne 14. října 2026). Pod 1,00 může likvidátor splatit část vašeho dluhu nebo celý dluh a vy přijdete o kolaterál v hodnotě splacené částky plus likvidační bonus. Vzorec a další příklady najdete v průvodci [co je health factor na Aave](/cs/blog/aave-health-factor-vysvetleni).
+
+„Bezpečný“ health factor se tedy scvrkává na dvě rozhodnutí, která můžete udělat jen vy: jak velký cenový pohyb má vaše pozice ustát a kolik času potřebujete na reakci, jakmile se ceny začnou hýbat. Přehledy, včetně toho od Tokenpingu, označují hodnoty health factoru slovy jako „Bezpečný“ nebo „Rizikový“. Tyto štítky jsou jen pásma pro zobrazení; žádná úroveň nezaručuje, že pozici nelze zlikvidovat.
+
+## O kolik mohou ceny klesnout před likvidací při jednotlivých hodnotách health factoru?
+
+S jedním volatilním kolaterálem a dluhem ve stablecoinu dosáhne pozice na Aave health factoru 1,00 poté, co cena kolaterálu klesne o 1 − 1/HF. Při HF 1,2 je to pokles o 16,7 %, při HF 1,5 o 33,3 % a při HF 2,0 o 50 %.
+
+Odvození je krátké. S jediným kolaterálem platí HF = (množství kolaterálu × cena × likvidační práh) ÷ dluh. Pokud je dluh ve stablecoinu v hodnotě 1 $ a nic jiného se nemění, health factor se mění přesně úměrně ceně kolaterálu. Hodnoty 1,00 dosáhne, když cena klesne na 1/HF dnešní ceny, takže pokles je 1 − 1/HF.
+
+| Health factor dnes                                         | Pokles ceny, který sníží HF na 1,00 | Cena ETH při HF 1,00, pokud ETH dnes stojí 2 400 $ |
+| ---------------------------------------------------------- | ----------------------------------- | -------------------------------------------------- |
+| 83 ÷ 80,5 ≈ 1,031 (WETH, půjčka po limit na Ethereum Core) | 3,0 %                               | 2 327,71 $                                         |
+| 1,1                                                        | 9,1 %                               | 2 181,82 $                                         |
+| 1,2                                                        | 16,7 %                              | 2 000,00 $                                         |
+| 1,3                                                        | 23,1 %                              | 1 846,15 $                                         |
+| 1,5                                                        | 33,3 %                              | 1 600,00 $                                         |
+| 1,66 (příklad výpočtu níže)                                | 39,8 %                              | 1 445,78 $                                         |
+| 2,0                                                        | 50,0 %                              | 1 200,00 $                                         |
+| 3,0                                                        | 66,7 %                              | 800,00 $                                           |
+
+Kontrolní výpočet na trhu Ethereum Core s likvidačním prahem WETH 83 % načteným on-chain 14. října 2026 (blok Etherea 26193284): vezměte 10 WETH vložených za ilustrativních 2 400 $ (24 000 $) a 12 000 vypůjčených USDC. HF = 24 000 × 0,83 ÷ 12 000 = 1,66. ETH dosáhne hranice likvidace při 12 000 ÷ (10 × 0,83) = 1 445,78 $, což je 39,8 % pod 2 400 $, stejně jako 1 − 1/1,66. ETH je zde zaokrouhleno na 2 400 $; orákulum Aave ukazovalo téhož dne v bloku 26193376 cenu 2 414,78 $.
+
+Tabulka předpokládá, že stablecoin zůstane na 1 $, nenabíhá žádný úrok a likvidační práh se nemění. Se dvěma aktivy v kolaterálu nebo s dluhem ve volatilním aktivu se výpočet mění; průvodce [jak spočítat likvidační cenu na Aave](/cs/blog/likvidacni-cena-aave) prochází oba případy.
+
+## Proč se „bezpečné“ číslo liší pro dluh ve stablecoinu, volatilní dluh a smyčky v E-Mode?
+
+Stejný health factor znamená u různých pozic na Aave různé věci, protože měří vzdálenost k likvidaci v té ceně, na které pozice závisí, a ta je daná tím, co jste vložili a co jste si půjčili. Takto velký pohyb ustojí health factor 1,5 ve čtyřech běžných uspořádáních:
+
+| Typ pozice                               | Příklad                                                  | Cena, na které health factor závisí | Pohyb, který sníží HF z 1,5 na 1,00 |
+| ---------------------------------------- | -------------------------------------------------------- | ----------------------------------- | ----------------------------------- |
+| Volatilní kolaterál, dluh ve stablecoinu | Vložené WETH, vypůjčené USDC                             | Cena ETH v USD                      | ETH klesne o 33,3 %                 |
+| Kolaterál ve stablecoinu, volatilní dluh | Vložené USDC, vypůjčené WETH                             | Cena ETH v USD                      | ETH vzroste o 50 %                  |
+| Dvě volatilní aktiva                     | Vložené WBTC, vypůjčené WETH                             | Cena BTC dělená cenou ETH           | Poměr BTC/ETH klesne o 33,3 %       |
+| Korelovaná smyčka (loop) v E-Mode        | Vložené wstETH, vypůjčené WETH v E-Mode „ETH correlated“ | Kurz wstETH/ETH z orákula           | Kurz klesne o 33,3 %                |
+
+**Dluh ve stablecoinu.** U dluhu ve stablecoinu proti ETH nebo BTC sleduje health factor cenu kolaterálu téměř jedna ku jedné. Strana dluhu se hýbe jen málo: cenový adaptér Aave pro USDC na Ethereu omezuje cenu USDC na 1,04 $ (načteno on-chain v bloku Etherea 26193376 dne 14. října 2026), takže dluh v USDC se nikdy neocení na víc než 4 % nad 1 $, a cena USDC pod 1 $ snižuje hodnotu dluhu, což health factor zvyšuje.
+
+**Volatilní dluh.** Když si proti stablecoinům půjčíte volatilní aktivum, health factor klesá, když vypůjčené aktivum roste, a vypůjčené aktivum může před likvidací vzrůst o HF − 1 (při HF 1,5 o 50 %). Vezměte 10 000 vložených USDC (likvidační práh 78 % na Ethereum Core v bloku 26193284, 14. října 2026) proti vypůjčenému WETH v hodnotě 6 000 $: HF = 10 000 × 0,78 ÷ 6 000 = 1,30. Pokud ETH začínalo na 2 400 $, dosáhne pozice HF 1,00, když ETH vzroste o 30 %, na 3 120 $. Pohnout se může i stablecoinový kolaterál: 11. března 2023 kleslo USDC podle post-mortem od Gauntletu zhruba na 0,88 $ a při této ceně by stejná pozice měla health factor 8 800 × 0,78 ÷ 6 000 = 1,144.
+
+**Smyčky v E-Mode.** V kategorii E-Mode „ETH correlated“ na Ethereum Core (LTV 93 %, likvidační práh 95 % v bloku Etherea 26193288, 14. října 2026; na síti Arbitrum stejně) sleduje health factor smyčky wstETH proti WETH kurz wstETH/ETH, který hlásí orákulum, a ne dolarovou cenu ETH. To snižuje její citlivost na tržní cenu ETH, ale smyčka vypůjčená po limit začíná na 95 ÷ 93 = 1,0215 a hodnoty 1,00 dosáhne po poklesu tohoto kurzu o 2,1 %. V březnu 2026 špatně nakonfigurované orákulum CAPO snížilo efektivní kurz wstETH zhruba o 2,85 % na trzích Core a Prime na Ethereu, což podle post-mortem od Chaos Labs stačilo k likvidaci smyček v E-Mode s vysokou pákou. U smyčky tak chyba orákula nebo směnného kurzu může znamenat víc než propad trhu, a pokud úroková sazba z půjčky WETH vzroste nad to, co kolaterál vydělává, ukusuje malou rezervu i úrok. Tento incident popisuje průvodce [proč váš health factor na Aave klesá sám od sebe](/cs/blog/proc-klesl-health-factor-aave).
+
+## Jak rychle ukrajují úroky a změny parametrů z vaší rezervy?
+
+Při sazbách na trhu Ethereum Core ze 14. října 2026 (blok 26193378) by úrok ubral health factoru pozice s kolaterálem ve WETH a dluhem v USDC zhruba 3 % ročně, pokud by se sazby a ceny nezměnily; snížení likvidačního prahu si svůj podíl vezme jedním krokem. Úrok snižuje health factor, když je úroková sazba z půjčky u dluhu vyšší než sazba z vkladu u kolaterálu, takže pozice, jejíž kolaterál vydělává víc, než stojí její dluh, například vložené USDC proti vypůjčenému WETH, se naopak pomalu zvedá. Na Aave V3 platí nižší likvidační práh naráz pro všechny otevřené pozice s tímto kolaterálem a s jediným kolaterálem health factor klesne ve stejném poměru. Průvodce [proč váš health factor na Aave klesá sám od sebe](/cs/blog/proc-klesl-health-factor-aave) obojí propočítává na číslech.
+
+## Jak velkou rezervu potřebujete, abyste stihli zareagovat?
+
+Pozice na Aave potřebuje takovou rezervu, aby se ceny mohly dál pohybovat, zatímco k vám dorazí varování a potvrdí se vaše transakce se splacením nebo vložením. Pevné číslo neexistuje: záleží na tom, jak rychle se váš kolaterál hýbe, jak brzy uvidíte varování a jak spolehlivě dokážete transakci prosadit.
+
+Sčítají se tři zpoždění:
+
+1. **Zjištění.** Otevřete aplikaci Aave, nebo kontrolu podle plánu provádí služba. Tokenping kontroluje každých 5 minut, takže rychlý pohyb může překročit 1,00 mezi dvěma kontrolami.
+2. **Reakce.** Uvidíte zprávu a dostanete se ke své peněžence. V noci nebo na cestách to může trvat hodiny.
+3. **Provedení.** Transakci je třeba podepsat, odeslat a zařadit do bloku, a na vypjatém trhu rostou poplatky za gas a rozhraní nebo RPC endpointy mohou selhávat. Na fóru Polygonu se v květnu 2021 dlužník pokusil splatit při HF 1,01, opakovaně narážel na chyby a byl zlikvidován dřív, než splátka prošla. Na fóru Aave v prosinci 2024 jiný uživatel popsal víc než hodinu pokusů o splacení, které uvízly ve stavu čekání (pending), a pak likvidaci. Ani jedno vlákno příčinu neprokazuje.
+
+Pod 1,00 může likvidace následovat rychle: centrum nápovědy Aave popisuje likvidace jako vysoce konkurenční, často prováděné vlastními boty, které reagují na změny cen v orákulu a odesílají své transakce s vysokou prioritou.
+
+Rezerva, kterou potřebujete, tedy pokrývá cenový pohyb, k němuž může dojít během zjištění, reakce a provedení. Užitečné upozornění proto patří nad poslední health factor, při kterém byste ještě mohli zasáhnout, a ne přímo na něj.
+
+## Jak krok za krokem zvolit práh upozornění?
+
+Práh můžete zvolit tak, že začnete od ceny, a ne od health factoru: vyberte cenu kolaterálu, při které byste chtěli začít jednat, převeďte ji na health factor a upozornění nastavte na tuto úroveň nebo kousek nad ni, protože kontroly probíhají podle plánu a potvrzení splátky může chvíli trvat. Příklad používá pozici na Ethereum Core s 10 vloženými WETH a 12 000 vypůjčenými USDC, likvidačním prahem WETH 83 % (blok Etherea 26193284, 14. října 2026) a ETH za ilustrativních 2 400 $. To dává HF 1,66 a likvidační cenu 1 445,78 $.
+
+1. **Vyberte cenu, při které byste chtěli začít jednat.** Řekněme, že byste chtěli splatit dluh nebo přidat kolaterál, kdyby ETH kleslo na 2 000 $, což je pokles o 16,7 % z 2 400 $.
+2. **Převeďte tuto cenu na health factor.** S jedním kolaterálem a dluhem ve stablecoinu platí HF při nové ceně = dnešní HF × nová cena ÷ dnešní cena. Zde je to 1,66 × 2 000 ÷ 2 400 = 1,38. S několika aktivy v kolaterálu nebo s volatilním dluhem ukazuje průvodce [jak spočítat likvidační cenu na Aave](/cs/blog/likvidacni-cena-aave), jak zjistit health factor při libovolné ceně.
+3. **Zkontrolujte, kolik prostoru zbývá.** Při ETH za 2 000 $ pozice ustojí ještě další pokles o 27,7 %, až na 1 445,78 $. Pokud to na dobu, kterou potřebujete k reakci, nestačí, zvolte vyšší cenu a postup zopakujte. Práh, který ponechá daný další pokles, je 1 ÷ (1 − pokles):
+
+   | Další pokles ceny, který má zbývat, když upozornění přijde | Práh upozornění |
+   | ---------------------------------------------------------- | --------------- |
+   | 10 %                                                       | 1,11            |
+   | 15 %                                                       | 1,18            |
+   | 20 %                                                       | 1,25            |
+   | 25 %                                                       | 1,33            |
+   | 33,3 %                                                     | 1,50            |
+
+   Tyto řádky předpokládají jeden volatilní kolaterál a dluh ve stablecoinu.
+
+4. **Práh si držte jako health factor, ne jako cenu.** U jednoho kolaterálu s dluhem ve stablecoinu si práh zachová svůj význam i poté, co splatíte, přidáte kolaterál nebo si půjčíte víc: 1,25 vždy ponechá prostor pro pokles o 20 %, zatímco cena ETH, při které se upozornění spustí, se posouvá s pozicí.
+5. **Zopakujte to pro každý trh.** Na Aave V3 má trh na každé síti vlastní health factor, takže pozice na síti Arbitrum a na síti Base potřebují samostatné prahy.
+
+V Tokenpingu toto číslo nastavujete pro každou síť zvlášť, od 1,1 do 10 (výchozí hodnota je 1,5), a dokud je váš health factor pod ním, dostanete každých 5 minut zprávu na Signal nebo e-mail. Pozice, která běžně běží pod 1,1, například smyčka v E-Mode blízko svého limitu, by spustila zprávu při každé kontrole, takže se pro ni Tokenping nehodí. Nejdřív si můžete [zkontrolovat svůj health factor na Aave V3 (zdarma)](/cs/aave); zbytek popisuje návod [jak nastavit upozornění na health factor](/cs/blog/nastaveni-upozorneni-health-factor-aave).
+
+## Co s vaší rezervou udělá vypůjčení maxima?
+
+Po vypůjčení maxima vám nezůstane téměř žádná rezerva. Na Aave V3 začíná pozice na limitu půjčky s health factorem LT ÷ LTV, což je u hlavních aktiv na Ethereum Core a na síti Arbitrum jen zhruba 1,02 až 1,07. U WETH na Ethereum Core je to 83 ÷ 80,5 = 1,031, takže pokles ETH o 3,0 % pozici dostane na hranici likvidace.
+
+Rozdíl vzniká proto, že Aave V3 používá pro každý kolaterál dvě procentní hodnoty. Poměr půjčky k hodnotě kolaterálu (LTV, loan-to-value) omezuje, kolik si proti němu můžete půjčit; likvidační práh (LT), který je vždy alespoň stejně vysoký, rozhoduje o tom, kdy může být pozice zlikvidována. Nová půjčka je přijata jen tehdy, když váš dluh zůstane v mezích kolaterál × LTV. Na limitu platí dluh = kolaterál × LTV, takže HF = kolaterál × LT ÷ (kolaterál × LTV) = LT ÷ LTV.
+
+| Trh                                    | Kolaterál                      | LTV    | Likvidační práh | HF na limitu půjčky (LT ÷ LTV) | Pohyb, který sníží HF na 1,00            |
+| -------------------------------------- | ------------------------------ | ------ | --------------- | ------------------------------ | ---------------------------------------- |
+| Ethereum Core                          | WETH                           | 80,5 % | 83 %            | 1,031                          | ETH klesne o 3,0 % (dluh ve stablecoinu) |
+| Ethereum Core                          | WBTC                           | 73 %   | 78 %            | 1,068                          | BTC klesne o 6,4 % (dluh ve stablecoinu) |
+| Ethereum Core                          | USDC                           | 75 %   | 78 %            | 1,040                          | Vypůjčené aktivum vzroste o 4,0 %        |
+| Arbitrum                               | WETH                           | 80 %   | 84 %            | 1,050                          | ETH klesne o 4,8 % (dluh ve stablecoinu) |
+| Arbitrum                               | WBTC                           | 73 %   | 78 %            | 1,068                          | BTC klesne o 6,4 % (dluh ve stablecoinu) |
+| Arbitrum                               | USDC                           | 75 %   | 78 %            | 1,040                          | Vypůjčené aktivum vzroste o 4,0 %        |
+| Ethereum Core, E-Mode „ETH correlated“ | wstETH nebo cbETH, půjčka WETH | 93 %   | 95 %            | 1,0215                         | Kurz kolaterálu vůči ETH klesne o 2,1 %  |
+
+Řádky s aktivy byly načteny on-chain 14. října 2026 z kontraktu PoolDataProvider každého trhu v bloku Etherea 26193284 a v bloku sítě Arbitrum 514855406 a při opětovném načtení v bloku Etherea 26193988 a v bloku sítě Arbitrum 514885451 byly beze změny. Řádek E-Mode pochází z kontraktu Pool na Ethereum Core v blocích 26193288 a 26193990; kategorie „ETH correlated“ na síti Arbitrum, načtená z tamního kontraktu Pool v blocích sítě Arbitrum 514855561 a 514885562, měla stejné hodnoty. Governance může kteroukoli z těchto hodnot kdykoli změnit.
+
+V dolarech: 10 WETH za ilustrativních 2 400 $ na Ethereum Core unese nejvýše 24 000 × 0,805 = 19 320 $ dluhu v USDC. Vypůjčení celé částky dává HF = 19 920 ÷ 19 320 = 1,031 a likvidační cenu 19 320 ÷ (10 × 0,83) = 2 327,71 $, jen 3,0 % pod výchozí cenou, a při sazbách ze 14. října 2026 pak úrok tlačí health factor níž, i když ETH cenu udrží. S několika aktivy v kolaterálu je HF na limitu vážený likvidační práh dělený váženým LTV, obvykle jen o pár procent nad 1.
+
+Ukazatele „využitého limitu půjčky“ (borrow limit used) v aplikacích zobrazují dluh ÷ (kolaterál × LTV), což není health factor. Pozice s WETH na Ethereum Core na 100 % limitu půjčky má stále HF zhruba 1,031, ne 1,00.
+
+<Callout tone="info">
+  Aave V4 dává každému kolaterálu jeden collateral factor (faktor kolaterálu) místo odděleného LTV a likvidačního prahu,
+  takže rozdíl LT ÷ LTV v této tabulce je pravidlo V3. Tokenping sleduje jen pozice na Aave V3, na jednom trhu na každé
+  síti: na Ethereu je to trh Core, ne Prime, EtherFi ani Horizon.
+</Callout>
+
+## Zdroje
+
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (žádný univerzálně bezpečný health factor; konkurenční likvidace), načteno 14. října 2026
+- [GenericLogic.sol, aave-v3-origin](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) (vzorec health factoru), načteno 14. října 2026
+- [ValidationLogic.sol, aave-v3-origin](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol) (půjčky omezené LTV; likvidace pod HF 1,00), načteno 14. října 2026
+- [LiquidationLogic.sol, aave-v3-origin](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol) (částečné nebo úplné splacení dluhu; zabavení kolaterálu s likvidačním bonusem), načteno 14. října 2026
+- [PoolDataProvider na Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) (LTV a likvidační práh v blocích 26193284 a 26193988; sazby v bloku 26193378), načteno 14. října 2026
+- [Pool na Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2) (kategorie E-Mode „ETH correlated“ v blocích 26193288 a 26193990), načteno 14. října 2026
+- [AaveOracle na Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) (cena ETH 2 414,78 $ v bloku 26193376) a jeho [cenový adaptér USDC](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B) (cenový strop 1,04 $ v bloku 26193376), načteno 14. října 2026
+- [PriceCapAdapterStable, aave-dao/aave-price-feeds](https://github.com/aave-dao/aave-price-feeds) (jak funguje strop USDC: ceny nad stropem se ignorují, ceny pod 1 $ procházejí beze změny), načteno 14. října 2026
+- [PoolDataProvider na síti Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b) (LTV a likvidační práh v blocích sítě Arbitrum 514855406 a 514885451), načteno 14. října 2026
+- [Pool na síti Arbitrum](https://arbiscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD) (kategorie E-Mode „ETH correlated“, id 2, v blocích sítě Arbitrum 514855561 a 514885562), načteno 14. října 2026
+- [Přehled Aave V4, aave/aave-v4](https://github.com/aave/aave-v4/blob/main/docs/overview.md) (Dynamic Risk Configuration: collateral factor jako parametr kolaterálu ve V4; ve V3 snížení likvidačního prahu zasáhne všechny otevřené pozice), načteno 14. října 2026
+- [Spoke.sol, aave/aave-v4](https://github.com/aave/aave-v4/blob/main/src/spoke/Spoke.sol) (health factor ve V4 vážený collateral factory), načteno 14. října 2026
+- [Gauntlet: Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (minimum USDC zhruba 0,88 $, 11. března 2023), načteno 14. října 2026
+- [Chaos Labs: Post-Mortem, Exchange Rate Misalignment on wstETH Core and Prime Instances](https://governance.aave.com/t/24269) (incident CAPO z března 2026), načteno 14. října 2026
+- [Fórum Polygonu: Liquidation on polygon AAVE, JSON ERROR](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067) (květen 2021), načteno 14. října 2026
+- [Fórum Aave: Repeatedly Failed Repayment Attempts Leading to Liquidation](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379) (prosinec 2024), načteno 14. října 2026
+
+_Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání._

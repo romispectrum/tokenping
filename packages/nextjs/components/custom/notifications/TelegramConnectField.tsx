@@ -2,6 +2,8 @@ import { useId } from "react";
 import { CircleCheck, ExternalLink, RotateCw, Send } from "lucide-react";
 import { SUBTLE_DESTRUCTIVE_CLASS } from "~~/components/custom/notifications/styles";
 import { Alert, Button } from "~~/components/ui";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 
 type TelegramConnectFieldProps = {
   /** The group's id, for links to it (the error summary). */
@@ -22,19 +24,22 @@ type TelegramConnectFieldProps = {
   onDisconnect: () => void;
 };
 
-const StatusUnknown = ({ isRetrying, onRetry }: { isRetrying: boolean; onRetry: () => void }) => (
-  <Alert
-    variant="destructive"
-    // Only the message is announced, so the button's label changing does not repeat it.
-    title={<span role="alert">Couldn&apos;t check your Telegram link</span>}
-    action={
-      <Button variant="outline" size="sm" loading={isRetrying} loadingText="Retrying" onClick={onRetry}>
-        <RotateCw aria-hidden="true" />
-        Try again
-      </Button>
-    }
-  />
-);
+const StatusUnknown = ({ isRetrying, onRetry }: { isRetrying: boolean; onRetry: () => void }) => {
+  const t = useMessages(ALERTS_MESSAGES);
+  return (
+    <Alert
+      variant="destructive"
+      // Only the message is announced, so the button's label changing does not repeat it.
+      title={<span role="alert">{t.telegramStatusUnknown}</span>}
+      action={
+        <Button variant="outline" size="sm" loading={isRetrying} loadingText={t.retrying} onClick={onRetry}>
+          <RotateCw aria-hidden="true" />
+          {t.tryAgain}
+        </Button>
+      }
+    />
+  );
+};
 
 export const TelegramConnectField = ({
   id: groupId,
@@ -50,6 +55,7 @@ export const TelegramConnectField = ({
   onConnect,
   onDisconnect,
 }: TelegramConnectFieldProps) => {
+  const t = useMessages(ALERTS_MESSAGES);
   const id = useId();
   const descriptionId = `${id}-description`;
   const errorId = `${id}-error`;
@@ -62,22 +68,22 @@ export const TelegramConnectField = ({
       aria-describedby={describedBy || undefined}
       className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0"
     >
-      <legend className="mb-2 p-0 text-sm leading-snug font-medium text-foreground">Telegram</legend>
+      <legend className="mb-2 p-0 text-sm leading-snug font-medium text-foreground">{t.telegramLegend}</legend>
       {chatId ? (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted py-1 pr-1 pl-3">
           <p className="m-0 flex min-w-0 items-center gap-2 text-sm break-all text-foreground">
             <CircleCheck aria-hidden="true" className="size-4 shrink-0 text-success" />
-            Connected{username ? ` as @${username}` : ""}
+            {t.telegramConnected(username)}
           </p>
           <Button
             variant="ghost"
             size="sm"
             className={SUBTLE_DESTRUCTIVE_CLASS}
             loading={isDisconnecting}
-            loadingText="Disconnecting"
+            loadingText={t.disconnecting}
             onClick={onDisconnect}
           >
-            Disconnect Telegram
+            {t.disconnectTelegram}
           </Button>
         </div>
       ) : isStatusUnknown ? (
@@ -88,30 +94,31 @@ export const TelegramConnectField = ({
             variant="outline"
             className="w-full sm:w-auto sm:self-start"
             loading={isConnecting}
-            loadingText="Waiting for Telegram"
+            loadingText={t.waitingForTelegram}
             onClick={onConnect}
           >
             <Send aria-hidden="true" />
-            Connect Telegram
+            {t.connectTelegram}
           </Button>
           {deepLink && (
             <p className="m-0 text-sm text-muted-foreground">
-              Telegram did not open?{" "}
+              {t.telegramDidNotOpen}{" "}
               <a
                 href={deepLink}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 font-medium text-link underline underline-offset-4"
               >
-                Open Telegram
+                {t.openTelegram}
                 <ExternalLink aria-hidden="true" className="size-4" />{" "}
-                <span className="sr-only">(opens in a new tab)</span>
+                <span className="sr-only">{t.opensInNewTab}</span>
               </a>
             </p>
           )}
           <p id={descriptionId} className="m-0 text-sm text-muted-foreground">
-            Opens our bot in Telegram. Press <span className="font-medium text-foreground">Start</span> there to link
-            this wallet to your chat.
+            {t.telegramHelp.beforeStart}
+            <span className="font-medium text-foreground">{t.telegramHelp.start}</span>
+            {t.telegramHelp.afterStart}
           </p>
         </>
       )}

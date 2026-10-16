@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Post, PostMeta } from "~~/content/blog/types";
 import { buildRssFeed } from "~~/utils/rss";
-import { POST_SLUGS, mockPostStubs } from "~~/utils/testing/blogPosts";
+import { CS_POST_SLUGS, POST_SLUGS, mockPostStubs } from "~~/utils/testing/blogPosts";
 
 const post = (meta: Partial<PostMeta>): Post => ({
   meta: {
@@ -81,6 +81,54 @@ describe("GET /blog/feed.xml", () => {
 
   it("has no items while every post is a placeholder", async () => {
     const { GET } = await loadRoute(POST_SLUGS);
+    const xml = await GET().text();
+
+    expect(xml).not.toContain("<item>");
+    expect(xml).not.toContain("<lastBuildDate>");
+  });
+});
+
+describe("buildRssFeed in Czech", () => {
+  it("builds the Czech channel: Czech title, description and language, /cs links and the Czech self link", () => {
+    const xml = buildRssFeed([post({ slug: "prvni", title: "První", description: "Jedna." })], "cs");
+
+    expect(xml).toContain("<title>Tokenping blog (česky)</title>");
+    expect(xml).toContain("<link>https://tokenping.xyz/cs/blog</link>");
+    expect(xml).toContain(
+      "<description>Průvodci health factorem na Aave, rizikem likvidace a upozorněními.</description>",
+    );
+    expect(xml).toContain("<language>cs</language>");
+    expect(xml).toContain(
+      '<atom:link href="https://tokenping.xyz/cs/blog/feed.xml" rel="self" type="application/rss+xml"/>',
+    );
+    expect(xml).toContain(
+      '<item><title>První</title><link>https://tokenping.xyz/cs/blog/prvni</link><guid isPermaLink="true">https://tokenping.xyz/cs/blog/prvni</guid><pubDate>Wed, 14 Oct 2026 00:00:00 GMT</pubDate><description>Jedna.</description></item>',
+    );
+  });
+});
+
+describe("GET /cs/blog/feed.xml", () => {
+  const loadRoute = async (csStubSlugs: readonly string[]) => {
+    vi.resetModules();
+    mockPostStubs([], csStubSlugs);
+    return import("~~/app/(cs)/cs/blog/feed.xml/route");
+  };
+
+  it("is static and serves the published Czech posts at their Czech URLs, without placeholders", async () => {
+    const { GET, dynamic } = await loadRoute(["bezpecny-health-factor-aave"]);
+    const response = GET();
+
+    expect(dynamic).toBe("force-static");
+    expect(response.headers.get("Content-Type")).toBe("application/rss+xml; charset=utf-8");
+    const xml = await response.text();
+    expect(xml.match(/<item>/g)).toHaveLength(CS_POST_SLUGS.length - 1);
+    expect(xml).toContain("<link>https://tokenping.xyz/cs/blog/aave-health-factor-vysvetleni</link>");
+    expect(xml).not.toContain("bezpecny-health-factor-aave");
+    expect(xml).not.toMatch(/tokenping\.xyz\/blog\//);
+  });
+
+  it("has no items while every Czech post is a placeholder, whatever English has published", async () => {
+    const { GET } = await loadRoute(CS_POST_SLUGS);
     const xml = await GET().text();
 
     expect(xml).not.toContain("<item>");

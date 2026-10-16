@@ -4,11 +4,14 @@ import { useEffect, useId, useState } from "react";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cx } from "~~/components/ui/classNames";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 
+// The value is also the option's key in COMMON_MESSAGES.theme.
 const THEME_OPTIONS = [
-  { value: "light", label: "Light", Icon: Sun },
-  { value: "dark", label: "Dark", Icon: Moon },
-  { value: "system", label: "System", Icon: Monitor },
+  { value: "light", Icon: Sun },
+  { value: "dark", Icon: Moon },
+  { value: "system", Icon: Monitor },
 ] as const;
 
 /**
@@ -19,6 +22,7 @@ const THEME_OPTIONS = [
  */
 export const ThemeChoice = ({ className }: { className?: string }) => {
   const { theme, setTheme } = useTheme();
+  const t = useMessages(COMMON_MESSAGES).theme;
   const [mounted, setMounted] = useState(false);
   const name = useId();
 
@@ -28,8 +32,8 @@ export const ThemeChoice = ({ className }: { className?: string }) => {
 
   return (
     <fieldset className={cx("inline-flex w-fit items-center gap-1 rounded-xl bg-muted p-1", className)}>
-      <legend className="sr-only">Theme</legend>
-      {THEME_OPTIONS.map(({ value, label, Icon }) => (
+      <legend className="sr-only">{t.legend}</legend>
+      {THEME_OPTIONS.map(({ value, Icon }) => (
         <label
           key={value}
           className={cx(
@@ -49,7 +53,7 @@ export const ThemeChoice = ({ className }: { className?: string }) => {
             className="sr-only"
           />
           <Icon aria-hidden="true" className="size-4" />
-          {label}
+          {t[value]}
         </label>
       ))}
     </fieldset>

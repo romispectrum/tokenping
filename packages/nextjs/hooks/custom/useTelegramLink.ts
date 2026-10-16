@@ -5,10 +5,11 @@ import { type QueryClient, skipToken, useMutation, useQuery, useQueryClient } fr
 import { useConfig } from "wagmi";
 import { getAccount } from "wagmi/actions";
 import { TELEGRAM_LINK_POLL_INTERVAL_MS, TELEGRAM_LINK_POLL_TIMEOUT_MS } from "~~/constants/notifications";
+import { useLocale } from "~~/i18n/LocaleProvider";
+import { ALERTS_MESSAGES, requestErrorMessage } from "~~/i18n/messages/alerts";
 import { telegramClient } from "~~/services/telegram/telegramClient";
 import type { TelegramLinkStatus } from "~~/types/notifications";
 import { normalizeAddress } from "~~/utils/address";
-import { getErrorMessage } from "~~/utils/errors";
 import { notification } from "~~/utils/scaffold-eth";
 
 // Like plain fetch: fail straight away while the browser reports offline instead of pausing (react-query's default),
@@ -58,6 +59,8 @@ const closeBlankTab = (tab: RefObject<Window | null>) => {
 export const useTelegramLink = (address: string | undefined) => {
   const queryClient = useQueryClient();
   const wagmiConfig = useConfig();
+  const locale = useLocale();
+  const t = ALERTS_MESSAGES[locale];
   const owner = address ? normalizeAddress(address) : null;
   // A tab opened during the click and not yet pointed at the bot.
   const blankTab = useRef<Window | null>(null);
@@ -89,13 +92,14 @@ export const useTelegramLink = (address: string | undefined) => {
   const resetLinkToken = linkToken.reset;
 
   const disconnectMutation = useMutation({
-    mutationFn: (userId: string) => telegramClient.disconnect(userId),
+    // The bot says goodbye in the chat in the page's language.
+    mutationFn: (userId: string) => telegramClient.disconnect(userId, locale),
     networkMode: NETWORK_MODE,
     onSuccess: (_, userId) => {
       queryClient.setQueryData<TelegramLinkStatus>(telegramLinkQueryKey(userId), { linked: false });
-      notification.success("Telegram disconnected");
+      notification.success(t.telegramDisconnectedToast);
     },
-    onError: error => notification.error(getErrorMessage(error, "Failed to disconnect Telegram")),
+    onError: error => notification.error(requestErrorMessage(locale, error, t.telegramDisconnectFailed)),
   });
 
   useEffect(() => {
@@ -124,23 +128,23 @@ export const useTelegramLink = (address: string | undefined) => {
   useEffect(() => {
     // Every card of the wallet sees the link at once; only the one that ends the handshake announces it.
     if (!address || !pendingLink || !isLinked || !endHandshake(queryClient, address, pendingLink)) return;
-    notification.success(username ? `Telegram connected as @${username}` : "Telegram connected");
-  }, [address, pendingLink, isLinked, username, queryClient]);
+    notification.success(t.telegramConnectedToast(username));
+  }, [address, pendingLink, isLinked, username, queryClient, t]);
 
   useEffect(() => {
     if (!address || !pendingLink) return;
     const timer = setTimeout(
       () => {
-        if (endHandshake(queryClient, address, pendingLink)) notification.error("Telegram link timed out. Try again.");
+        if (endHandshake(queryClient, address, pendingLink)) notification.error(t.telegramTimedOut);
       },
       Math.max(0, pendingLink.deadline - Date.now()),
     );
     return () => clearTimeout(timer);
-  }, [address, pendingLink, queryClient]);
+  }, [address, pendingLink, queryClient, t]);
 
   const connect = () => {
     if (!address) {
-      notification.error("Connect your wallet first");
+      notification.error(t.connectWalletFirst);
       return;
     }
     // Popup blockers only allow window.open during the click, so open the tab now and navigate it once the token
@@ -161,7 +165,7 @@ export const useTelegramLink = (address: string | undefined) => {
       },
       onError: error => {
         closeBlankTab(blankTab);
-        notification.error(getErrorMessage(error, "Failed to connect Telegram"));
+        notification.error(requestErrorMessage(locale, error, t.telegramConnectFailed));
       },
     });
   };

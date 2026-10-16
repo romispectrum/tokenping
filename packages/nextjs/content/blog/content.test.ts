@@ -7,15 +7,22 @@ import { CALLOUT_TONES } from "~~/components/blog/Callout";
 import { headingId } from "~~/components/blog/headingId";
 import { CHILDLESS_COMPONENTS, MDX_VOCABULARY_NAMES, SINGLE_POST_COMPONENTS } from "~~/components/blog/vocabulary";
 import type { PostMeta } from "~~/content/blog/types";
+import { LOCALES, type Locale } from "~~/i18n/locales";
+import { POST_SLUGS, postKeyForSlug } from "~~/i18n/postSlugs";
+import { postPath, routePath } from "~~/i18n/routes";
 
-// Content lint for every content/blog/*.mdx post: the article contract from the blog build spec, checked on the parsed
-// MDX tree (after remark-gfm) rather than on raw text, so code, URLs and JSX attributes cannot cause false positives.
+// Content lint for every post, content/blog/*.mdx (English) and content/blog/cs/*.mdx (Czech): the article contract
+// from the blog build spec, checked on the parsed MDX tree (after remark-gfm) rather than on raw text, so code, URLs
+// and JSX attributes cannot cause false positives. Both languages get the same checks; what differs (the disclaimer,
+// the Sources heading and date wording, the pages a post may link to, the banned phrases) is in LANGUAGE_RULES.
 // Placeholder posts (`stub: true` in meta) get the meta checks and are reported as pending for the rest.
 
 const BLOG_DIR = new URL("./", import.meta.url);
 
 const ARTICLE_DISCLAIMER =
   "Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation.";
+const CS_ARTICLE_DISCLAIMER =
+  "Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání.";
 const MAX_TITLE_LENGTH = 60;
 const MAX_DESCRIPTION_LENGTH = 155;
 const MIN_DESCRIPTION_LENGTH = 50;
@@ -35,8 +42,8 @@ const META_KEYS = new Set<string>([
 ]);
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const FETCHED_DATE = /\bfetched (?:on )?\d{1,2} (?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]* \d{4}\b/i;
-// Internal paths an article may link to, besides /blog/<slug> (blog build spec, "MDX vocabulary").
-const INTERNAL_PATHS = new Set(["/", "/aave", "/blog"]);
+const CS_MONTHS = "ledna|února|března|dubna|května|června|července|srpna|září|října|listopadu|prosince";
+const CS_FETCHED_DATE = new RegExp(String.raw`(?:^|[\s(])načteno (?:dne )?\d{1,2}\. (?:${CS_MONTHS}) \d{4}(?!\d)`, "i");
 const SITE_HOST = /^https?:\/\/(?:www\.)?tokenping\.xyz(?:[/?#]|$)/i;
 
 type BannedPattern = {
@@ -210,12 +217,48 @@ const isExpression = (node: MdNode) => node.type === "mdxFlowExpression" || node
 /** `{/* … *\/}`: an expression whose parsed program has comments and no statements. */
 const isCommentExpression = (node: MdNode) => isExpression(node) && node.data?.estree?.body?.length === 0;
 
-const normalizeQuotes = (text: string) => text.replace(/[‘’]/g, "'").replace(/[“”]/g, '"');
+// Czech quotes („…“, ‚…‘) count as quotes too, so a stale English claim quoted in a Czech post is skipped alike.
+const normalizeQuotes = (text: string) => text.replace(/[‘’‚]/g, "'").replace(/[“”„]/g, '"');
 const stripQuoted = (text: string) => text.replace(/"[^"\n]*"/g, '""');
 
-const findBannedPhrases = (text: string) => {
+// Czech copy that must not appear, on top of the English list (Czech posts may quote English text, and product names,
+// prices and Aave terms stay English). The same claims as above, in Czech word forms.
+const CS_LIST_SEPARATOR = String.raw`(?:,? (?:nebo|a|i|či|&) |, | ?\/ ?)`;
+const CS_EMAIL = String.raw`e-?mail\w*`;
+const CS_BANNED_PATTERNS: readonly BannedPattern[] = [
+  { pattern: /\bnikdy (?:nebudete|nebude|nebudou) zlikvidován/i, reason: "guarantee: 'nikdy nebudete zlikvidováni'" },
+  { pattern: /\bnikdy (?:ne)?zmešk/i, reason: "guarantee: 'nikdy nezmeškáte'" },
+  { pattern: /\bv reálném čase\b/i, reason: "'v reálném čase' (alerts are checked every 5 minutes)" },
+  {
+    pattern: /\bokamžit\S* (?:upozorněn|zpráv|notifikac|varován)/i,
+    reason: "'okamžité upozornění' (alerts are checked every 5 minutes)",
+  },
+  { pattern: /\bmulti[- ]?protokol/i, reason: "'multiprotokolový' (only Aave V3 is supported)" },
+  {
+    pattern: /\bclose factor (?:je|činí) (?:vždy |pevně |fixně |napevno )?(?:50 ?%|0[.,]5\b|polovin)/i,
+    reason: "stale: since v3.3 the close factor is 50% or 100% depending on HF and position size",
+    allowQuoted: true,
+  },
+  {
+    pattern: new RegExp(
+      String.raw`\bSignal\w*(?:${CS_LIST_SEPARATOR}${CS_EMAIL})?${CS_LIST_SEPARATOR}Telegram|\bTelegram\w*(?:${CS_LIST_SEPARATOR}${CS_EMAIL})?${CS_LIST_SEPARATOR}Signal`,
+      "i",
+    ),
+    reason: "Tokenping channels: articles name Signal and email only until the Telegram bot is live",
+  },
+  {
+    pattern: /(?<![\d.,])\$?3(?:,0+)? ?USDC\b/i,
+    reason: "hard-coded alert price: use <AlertPrice /> (the owner can change the plan on-chain)",
+  },
+  {
+    pattern: /\bUSDC (?:za|na|každých) ?30 (?:dní|dnů|dny)(?!\p{L})/iu,
+    reason: "hard-coded alert plan: use <AlertPrice />",
+  },
+];
+
+const findBannedPhrases = (text: string, patterns: readonly BannedPattern[] = BANNED_PATTERNS) => {
   const normalized = normalizeQuotes(text);
-  return BANNED_PATTERNS.flatMap(({ pattern, reason, allowQuoted }) => {
+  return patterns.flatMap(({ pattern, reason, allowQuoted }) => {
     const match = (allowQuoted ? stripQuoted(normalized) : normalized).match(pattern);
     return match ? [`"${match[0]}": ${reason}`] : [];
   });
@@ -246,13 +289,14 @@ const findDashes = (source: string) =>
 
 type LoadedPost = {
   slug: string;
+  locale?: Locale;
   tree?: MdNode;
   meta?: PostMeta;
   error?: unknown;
 };
 
 /** Compiles and evaluates one post with remark-gfm, keeping the mdast tree for the checks below. */
-const parsePost = async (source: string, slug: string): Promise<LoadedPost> => {
+const parsePost = async (source: string, slug: string, locale: Locale = "en"): Promise<LoadedPost> => {
   let tree: MdNode | undefined;
   const captureTree = () => (root: MdNode) => {
     tree = root;
@@ -262,28 +306,78 @@ const parsePost = async (source: string, slug: string): Promise<LoadedPost> => {
       { value: source, path: `${slug}.mdx` },
       { ...(runtime as unknown as Parameters<typeof evaluate>[1]), remarkPlugins: [remarkGfm, captureTree] },
     );
-    return { slug, tree, meta: exports.meta as PostMeta | undefined };
+    return { slug, locale, tree, meta: exports.meta as PostMeta | undefined };
   } catch (error) {
     // The tree is captured before evaluation, so the checks can still explain what is wrong.
-    return { slug, tree, error };
+    return { slug, locale, tree, error };
   }
 };
 
-const FILES = readdirSync(BLOG_DIR)
-  .filter(file => file.endsWith(".mdx"))
-  .sort();
-const SOURCES = new Map(
-  FILES.map(file => [file.replace(/\.mdx$/, ""), readFileSync(new URL(file, BLOG_DIR), "utf8")] as const),
-);
-const POSTS = await Promise.all([...SOURCES].map(([slug, source]) => parsePost(source, slug)));
-const SLUGS = new Set(POSTS.map(({ slug }) => slug));
+const POST_DIRS: Record<Locale, URL> = { en: BLOG_DIR, cs: new URL("./cs/", BLOG_DIR) };
+
+const loadLanguage = async (locale: Locale) => {
+  const dir = POST_DIRS[locale];
+  const files = readdirSync(dir)
+    .filter(file => file.endsWith(".mdx"))
+    .sort();
+  const sources = new Map(
+    files.map(file => [file.replace(/\.mdx$/, ""), readFileSync(new URL(file, dir), "utf8")] as const),
+  );
+  const posts = await Promise.all([...sources].map(([slug, source]) => parsePost(source, slug, locale)));
+  return { files, sources, posts };
+};
+
+const LANGUAGES = Object.fromEntries(
+  await Promise.all(LOCALES.map(async locale => [locale, await loadLanguage(locale)] as const)),
+) as Record<Locale, Awaited<ReturnType<typeof loadLanguage>>>;
 
 const headingsOf = (tree: MdNode) => collect(tree, node => node.type === "heading");
 const headingIdsOf = (tree: MdNode) => headingsOf(tree).map(node => headingId(squash(textOf(node, { code: true }))));
-const HEADING_IDS = new Map(POSTS.map(({ slug, tree }) => [slug, new Set(tree ? headingIdsOf(tree) : [])]));
+
+type PostIndex = {
+  /** Every post's anchors by slug; null for a placeholder, whose headings do not exist yet. */
+  headingIds: Map<string, Set<string> | null>;
+};
+
+const indexPosts = (posts: readonly LoadedPost[]): PostIndex => ({
+  headingIds: new Map(
+    posts.map(({ slug, tree, meta }) => [slug, meta?.stub ? null : new Set(tree ? headingIdsOf(tree) : [])]),
+  ),
+});
+
+const POST_INDEX: Record<Locale, PostIndex> = {
+  en: indexPosts(LANGUAGES.en.posts),
+  cs: indexPosts(LANGUAGES.cs.posts),
+};
+
+type LanguageRules = {
+  disclaimer: string;
+  sourcesHeading: string;
+  fetchedDate: RegExp;
+  /** How the fetched date reads, for the report. */
+  fetchedFormat: string;
+  bannedPatterns: readonly BannedPattern[];
+};
+
+const LANGUAGE_RULES: Record<Locale, LanguageRules> = {
+  en: {
+    disclaimer: ARTICLE_DISCLAIMER,
+    sourcesHeading: "Sources",
+    fetchedDate: FETCHED_DATE,
+    fetchedFormat: "fetched <d Mon yyyy>",
+    bannedPatterns: BANNED_PATTERNS,
+  },
+  cs: {
+    disclaimer: CS_ARTICLE_DISCLAIMER,
+    sourcesHeading: "Zdroje",
+    fetchedDate: CS_FETCHED_DATE,
+    fetchedFormat: "načteno <d. měsíce yyyy>",
+    bannedPatterns: [...BANNED_PATTERNS, ...CS_BANNED_PATTERNS],
+  },
+};
 
 const checkMeta = (post: LoadedPost): string[] => {
-  const { meta, slug } = post;
+  const { meta, slug, locale = "en" } = post;
   if (!meta || typeof meta !== "object") return ["missing `export const meta = { … }`"];
   const problems: string[] = [];
   const unknownKeys = Object.keys(meta).filter(key => !META_KEYS.has(key));
@@ -295,15 +389,17 @@ const checkMeta = (post: LoadedPost): string[] => {
   if (!isNonEmpty(meta.title)) problems.push("meta.title must be a non-empty, trimmed string");
   else if (meta.title.length > MAX_TITLE_LENGTH)
     problems.push(`meta.title is ${meta.title.length} chars (max ${MAX_TITLE_LENGTH})`);
+  // A placeholder has no article yet: its description may be short and it asks no question.
+  const minDescriptionLength = meta.stub ? 1 : MIN_DESCRIPTION_LENGTH;
   if (!isNonEmpty(meta.description)) problems.push("meta.description must be a non-empty, trimmed string");
-  else if (meta.description.length > MAX_DESCRIPTION_LENGTH || meta.description.length < MIN_DESCRIPTION_LENGTH)
+  else if (meta.description.length > MAX_DESCRIPTION_LENGTH || meta.description.length < minDescriptionLength)
     problems.push(
       `meta.description is ${meta.description.length} chars (${MIN_DESCRIPTION_LENGTH} to ${MAX_DESCRIPTION_LENGTH})`,
     );
   if (!isNonEmpty(meta.h1)) problems.push("meta.h1 must be a non-empty, trimmed string");
   else if (meta.h1.length > MAX_HEADLINE_LENGTH)
     problems.push(`meta.h1 is ${meta.h1.length} chars (max ${MAX_HEADLINE_LENGTH})`);
-  if (!isNonEmpty(meta.primaryQuestion) || !meta.primaryQuestion.endsWith("?"))
+  if (!isNonEmpty(meta.primaryQuestion) || (!meta.stub && !meta.primaryQuestion.endsWith("?")))
     problems.push("meta.primaryQuestion must be a question ending in '?'");
 
   const isIsoDate = (value: unknown): value is string => {
@@ -323,7 +419,11 @@ const checkMeta = (post: LoadedPost): string[] => {
 
   for (const field of ["title", "description", "h1", "primaryQuestion"] as const) {
     if (typeof meta[field] === "string")
-      problems.push(...findBannedPhrases(meta[field]).map(found => `meta.${field}: ${found}`));
+      problems.push(
+        ...findBannedPhrases(meta[field], LANGUAGE_RULES[locale].bannedPatterns).map(
+          found => `meta.${field}: ${found}`,
+        ),
+      );
   }
   return problems;
 };
@@ -357,7 +457,8 @@ const checkOpening = (tree: MdNode) => {
   return problems;
 };
 
-const checkJsx = (tree: MdNode, slug: string) => {
+const checkJsx = (tree: MdNode, slug: string, locale: Locale = "en") => {
+  const key = postKeyForSlug(locale, slug) ?? slug;
   const problems: string[] = [];
   const counts = new Map<string, number>();
   for (const node of collect(tree, isJsx)) {
@@ -368,7 +469,7 @@ const checkJsx = (tree: MdNode, slug: string) => {
       continue;
     }
     const owner = SINGLE_POST_COMPONENTS[name as keyof typeof SINGLE_POST_COMPONENTS];
-    if (owner && owner !== slug) problems.push(`<${name}> belongs to ${owner} only`);
+    if (owner && owner !== key) problems.push(`<${name}> belongs to ${POST_SLUGS[owner]?.[locale] ?? owner} only`);
     if ((CHILDLESS_COMPONENTS as readonly string[]).includes(name) && node.children?.length)
       problems.push(`<${name} /> takes no children`);
     if (name === "Callout") {
@@ -420,9 +521,20 @@ const checkHeadings = (tree: MdNode) => {
   return problems;
 };
 
-const checkLinks = (tree: MdNode) => {
+/** The pages a post may link to in its language (blog build spec, "MDX vocabulary"), besides its posts. */
+const internalPaths = (locale: Locale) => [
+  routePath(locale, "home"),
+  routePath(locale, "dashboard"),
+  routePath(locale, "blog"),
+];
+
+const OTHER_LANGUAGE_PREFIX: Record<Locale, RegExp> = { en: /^\/cs(?:[/?#]|$)/, cs: /^\/(?!cs(?:[/?#]|$))/ };
+
+const checkLinks = (tree: MdNode, locale: Locale = "en", index: PostIndex = POST_INDEX[locale]) => {
   const problems: string[] = [];
   const ownIds = new Set(headingIdsOf(tree));
+  const paths = internalPaths(locale);
+  const blogPrefix = postPath(locale, "");
   const urls = collect(tree, node => node.type === "link" || node.type === "definition").map(node => node.url ?? "");
   for (const url of urls) {
     if (SITE_HOST.test(url)) {
@@ -431,13 +543,27 @@ const checkLinks = (tree: MdNode) => {
       if (!ownIds.has(url.slice(1))) problems.push(`${url}: no heading with this anchor in this post`);
     } else if (url.startsWith("/")) {
       const [pathname, hash] = url.split("#");
-      const target = pathname.match(/^\/blog\/([^/?#]+)$/)?.[1];
-      if (target !== undefined) {
-        if (!SLUGS.has(target)) problems.push(`${url}: no post with the slug "${target}"`);
-        else if (hash !== undefined && !HEADING_IDS.get(target)?.has(hash))
+      const target = pathname.startsWith(blogPrefix) ? pathname.slice(blogPrefix.length) : undefined;
+      if (OTHER_LANGUAGE_PREFIX[locale].test(url)) {
+        const english = pathname.match(/^\/blog\/([^/?#]+)$/)?.[1];
+        const translated = english && POST_SLUGS[english] ? postPath(locale, POST_SLUGS[english][locale]) : undefined;
+        problems.push(
+          `${url}: a page in the other language; link to ${translated ?? paths.join(", ")} (i18n/routes, i18n/postSlugs)`,
+        );
+      } else if (target !== undefined && /^[^/?#]+$/.test(target)) {
+        const anchors = index.headingIds.get(target);
+        const key = postKeyForSlug("en", target);
+        if (anchors === undefined) {
+          const hint = locale !== "en" && key ? `; the ${locale} slug is "${POST_SLUGS[key][locale]}"` : "";
+          problems.push(`${url}: no post with the slug "${target}"${hint}`);
+        }
+        // A placeholder's anchors do not exist yet; the link is checked again once the article replaces it.
+        else if (hash !== undefined && anchors !== null && !anchors.has(hash))
           problems.push(`${url}: no heading with the anchor "#${hash}" in ${target}`);
-      } else if (!INTERNAL_PATHS.has(pathname) || hash !== undefined) {
-        problems.push(`${url}: internal links may only point to /, /aave, /blog or /blog/<slug>`);
+      } else if (!paths.includes(pathname) || hash !== undefined) {
+        problems.push(
+          `${url}: internal links may only point to ${paths.slice(0, -1).join(", ")}, ${paths.at(-1)} or ${blogPrefix}<slug>`,
+        );
       }
     } else if (!url.startsWith("https://")) {
       problems.push(`${url || "(empty)"}: external links must be absolute https:// URLs`);
@@ -446,13 +572,14 @@ const checkLinks = (tree: MdNode) => {
   return problems;
 };
 
-const checkEnding = (tree: MdNode) => {
+const checkEnding = (tree: MdNode, locale: Locale = "en") => {
+  const { disclaimer, sourcesHeading, fetchedDate, fetchedFormat } = LANGUAGE_RULES[locale];
   const problems: string[] = [];
   const body = bodyOf(tree);
   const h2s = body.filter(node => node.type === "heading" && node.depth === 2);
   const lastH2 = h2s.at(-1);
-  if (!lastH2 || squash(textOf(lastH2)) !== "Sources") {
-    problems.push('the last H2 must be "## Sources"');
+  if (!lastH2 || squash(textOf(lastH2)) !== sourcesHeading) {
+    problems.push(`the last H2 must be "## ${sourcesHeading}"`);
     return problems;
   }
   const last = body.at(-1);
@@ -460,16 +587,16 @@ const checkEnding = (tree: MdNode) => {
     last?.type === "paragraph" &&
     last.children?.length === 1 &&
     last.children[0].type === "emphasis" &&
-    squash(textOf(last)) === ARTICLE_DISCLAIMER;
-  if (!isDisclaimer) problems.push(`the post must end with the line *${ARTICLE_DISCLAIMER}*`);
+    squash(textOf(last)) === disclaimer;
+  if (!isDisclaimer) problems.push(`the post must end with the line *${disclaimer}*`);
 
   const section = body.slice(body.indexOf(lastH2) + 1, isDisclaimer ? -1 : undefined);
   const items = section.filter(node => node.type === "list").flatMap(list => list.children ?? []);
-  if (items.length === 0) problems.push("## Sources needs a list of links");
+  if (items.length === 0) problems.push(`## ${sourcesHeading} needs a list of links`);
   for (const item of items) {
     const text = squash(textOf(item));
     if (!collect(item, node => node.type === "link").length) problems.push(`source without a link: "${text}"`);
-    if (!FETCHED_DATE.test(text)) problems.push(`source without "fetched <d Mon yyyy>": "${text}"`);
+    if (!fetchedDate.test(text)) problems.push(`source without "${fetchedFormat}": "${text}"`);
   }
   return problems;
 };
@@ -483,81 +610,108 @@ const checkReadingTime = (tree: MdNode, meta: PostMeta) => {
     : [];
 };
 
-describe("content/blog posts", () => {
-  it("finds the post files", () => {
-    expect(FILES.length).toBeGreaterThan(0);
-  });
+const LANGUAGE_DIRS: Record<Locale, string> = { en: "content/blog", cs: "content/blog/cs" };
 
-  it("have unique titles, descriptions and headlines", () => {
-    for (const field of ["title", "description", "h1"] as const) {
-      const values = POSTS.map(({ meta }) => meta?.[field]);
-      expect(new Set(values).size, `duplicate meta.${field}`).toBe(values.length);
+for (const locale of LOCALES) {
+  const { files, sources, posts } = LANGUAGES[locale];
+  const rules = LANGUAGE_RULES[locale];
+
+  describe(`${LANGUAGE_DIRS[locale]} posts`, () => {
+    it("finds the post files", () => {
+      expect(files.length).toBeGreaterThan(0);
+    });
+
+    // Placeholders share their wording, so only written articles must differ.
+    it("have unique titles, descriptions and headlines", () => {
+      for (const field of ["title", "description", "h1"] as const) {
+        const values = posts.filter(({ meta }) => !meta?.stub).map(({ meta }) => meta?.[field]);
+        expect(new Set(values).size, `duplicate meta.${field}`).toBe(values.length);
+      }
+    });
+
+    for (const post of posts) {
+      const { slug, tree, meta } = post;
+
+      describe(slug, () => {
+        it("compiles with @mdx-js/mdx and remark-gfm", () => {
+          expect(post.error, String(post.error)).toBeUndefined();
+        });
+
+        it("has valid meta", () => {
+          expect(checkMeta(post)).toEqual([]);
+        });
+
+        // Placeholders too: the rule covers every character a post ships, meta included.
+        it("uses no em or en dashes", () => {
+          expect(findDashes(sources.get(slug) ?? "")).toEqual([]);
+        });
+
+        if (!tree || !meta) return;
+
+        if (meta.stub) {
+          it("stays a short placeholder while marked as a stub", () => {
+            const words = proseOf(tree).split(" ").filter(Boolean).length;
+            expect(words, "the post has real content: remove `stub: true` from its meta").toBeLessThanOrEqual(
+              MAX_STUB_WORDS,
+            );
+          });
+          it.todo("stub: replace the placeholder with the article, then the full content checks run");
+          return;
+        }
+
+        it("exports only meta, as the first statement", () => {
+          expect(checkEsm(tree)).toEqual([]);
+        });
+
+        it("starts with <ShortAnswer> and then <ScopeNote />", () => {
+          expect(checkOpening(tree)).toEqual([]);
+        });
+
+        it("uses only the MDX vocabulary", () => {
+          expect([...checkJsx(tree, slug, locale), ...checkMarkdown(tree)]).toEqual([]);
+        });
+
+        it("has no H1, no skipped heading levels and unique anchors", () => {
+          expect(checkHeadings(tree)).toEqual([]);
+        });
+
+        it("links only to real posts, allowed pages and https sources, in its own language", () => {
+          expect(checkLinks(tree, locale)).toEqual([]);
+        });
+
+        it(`ends with ## ${rules.sourcesHeading} (fetched dates) and the disclaimer line`, () => {
+          expect(checkEnding(tree, locale)).toEqual([]);
+        });
+
+        it("contains no banned phrases and no hard-coded alert price", () => {
+          expect(findBannedPhrases(proseOf(tree), rules.bannedPatterns)).toEqual([]);
+        });
+
+        it("has an honest reading time", () => {
+          expect(checkReadingTime(tree, meta)).toEqual([]);
+        });
+      });
     }
   });
+}
 
-  for (const post of POSTS) {
-    const { slug, tree, meta } = post;
+describe("i18n/postSlugs", () => {
+  it.each(LOCALES)("pairs every post with a %s file of that slug, and every %s file with an entry", locale => {
+    const files = LANGUAGES[locale].posts.map(({ slug }) => slug).sort();
+    expect(files).toEqual(
+      Object.values(POST_SLUGS)
+        .map(slugs => slugs[locale])
+        .sort(),
+    );
+  });
 
-    describe(slug, () => {
-      it("compiles with @mdx-js/mdx and remark-gfm", () => {
-        expect(post.error, String(post.error)).toBeUndefined();
-      });
-
-      it("has valid meta", () => {
-        expect(checkMeta(post)).toEqual([]);
-      });
-
-      // Placeholders too: the rule covers every character a post ships, meta included.
-      it("uses no em or en dashes", () => {
-        expect(findDashes(SOURCES.get(slug) ?? "")).toEqual([]);
-      });
-
-      if (!tree || !meta) return;
-
-      if (meta.stub) {
-        it("stays a short placeholder while marked as a stub", () => {
-          const words = proseOf(tree).split(" ").filter(Boolean).length;
-          expect(words, "the post has real content: remove `stub: true` from its meta").toBeLessThanOrEqual(
-            MAX_STUB_WORDS,
-          );
-        });
-        it.todo("stub: replace the placeholder with the article, then the full content checks run");
-        return;
-      }
-
-      it("exports only meta, as the first statement", () => {
-        expect(checkEsm(tree)).toEqual([]);
-      });
-
-      it("starts with <ShortAnswer> and then <ScopeNote />", () => {
-        expect(checkOpening(tree)).toEqual([]);
-      });
-
-      it("uses only the MDX vocabulary", () => {
-        expect([...checkJsx(tree, slug), ...checkMarkdown(tree)]).toEqual([]);
-      });
-
-      it("has no H1, no skipped heading levels and unique anchors", () => {
-        expect(checkHeadings(tree)).toEqual([]);
-      });
-
-      it("links only to real posts, allowed pages and https sources", () => {
-        expect(checkLinks(tree)).toEqual([]);
-      });
-
-      it("ends with ## Sources (fetched dates) and the disclaimer line", () => {
-        expect(checkEnding(tree)).toEqual([]);
-      });
-
-      it("contains no banned phrases and no hard-coded alert price", () => {
-        expect(findBannedPhrases(proseOf(tree))).toEqual([]);
-      });
-
-      it("has an honest reading time", () => {
-        expect(checkReadingTime(tree, meta)).toEqual([]);
-      });
-    });
-  }
+  it("uses the English slug as the key and a distinct slug per language", () => {
+    for (const [key, slugs] of Object.entries(POST_SLUGS)) expect(slugs.en, key).toBe(key);
+    for (const locale of LOCALES) {
+      const slugs = Object.values(POST_SLUGS).map(entry => entry[locale]);
+      expect(new Set(slugs).size, locale).toBe(slugs.length);
+    }
+  });
 });
 
 // The checker itself, so a loosened pattern cannot silently pass every post.
@@ -841,6 +995,175 @@ describe("article checks", () => {
     expect(findDashes(BAD_ARTICLE)).toEqual([
       expect.stringMatching(/^line \d+: em dash in "The end /),
       expect.stringMatching(/^line \d+: en dash in "The end /),
+    ]);
+  });
+});
+
+describe("Czech findBannedPhrases", () => {
+  const czech = LANGUAGE_RULES.cs.bannedPatterns;
+
+  it.each([
+    "S upozorněním nikdy nebudete zlikvidováni.",
+    "Už nikdy nezmeškáte varování.",
+    "Upozornění v reálném čase.",
+    "Pošleme vám okamžité upozornění.",
+    "Multiprotokolový přehled.",
+    "Close factor je 50 %.",
+    "Upozornění stojí 3 USDC.",
+    "Upozornění stojí 3,00 USDC na měsíc.",
+    "Platíte v USDC na 30 dní.",
+    "Upozornění přes Signal, Telegram nebo e-mail.",
+    "Tokenping vám napíše přes Signal nebo Telegram.",
+    "Tokenping sends Telegram alerts.",
+  ])("flags %j", text => {
+    expect(findBannedPhrases(text, czech)).not.toEqual([]);
+  });
+
+  it.each([
+    "Close factor už není plošných 50 %.",
+    "Stránka Pool na aave.com stále uvádí „close factor is 0.5“.",
+    "Dluh 12 000 USDC proti 10 WETH.",
+    "Pozice s dluhem 13 USDC nebo 3 000 USDC.",
+    "Tokenping vám napíše přes Signal nebo e-mail.",
+    "Otomato posílá upozornění přes Telegram a ve své aplikaci.",
+    "Likvidace proběhne okamžitě, jakmile health factor klesne pod 1.",
+  ])("does not flag %j", text => {
+    expect(findBannedPhrases(text, czech)).toEqual([]);
+  });
+});
+
+const CS_FIXTURE_META: PostMeta = {
+  slug: "aave-health-factor-vysvetleni",
+  title: "Health factor na Aave: vzorec a příklady",
+  description:
+    "Co je health factor na Aave V3, jak ho spočítat na propočítaném příkladu a co se stane, když klesne pod 1.",
+  h1: "Co je health factor na Aave a jak se počítá?",
+  publishedAt: "2026-10-14",
+  primaryQuestion: "Co je health factor na Aave a jak se počítá?",
+  readingMinutes: 1,
+};
+
+const GOOD_CS_ARTICLE = `export const meta = ${JSON.stringify(CS_FIXTURE_META, null, 2)};
+
+<ShortAnswer>
+Health factor porovnává váš kolaterál vážený likvidačním prahem s vaším dluhem. Pod 1,00 může být pozice
+zlikvidována.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Co je health factor na Aave?
+
+Health factor je číslo. Kolik rezervy dává, popisuje [průvodce bezpečným health factorem](/cs/blog/bezpecny-health-factor-aave),
+svůj si [zkontrolujete v přehledu zdarma](/cs/aave). Upozornění stojí <AlertPrice />. Vzorec je v
+[části o výpočtu](#jak-se-pocita-health-factor).
+
+## Jak se počítá health factor?
+
+<Callout tone="warning">
+Pozastavená rezerva likvidace blokuje, zmrazená ne.
+</Callout>
+
+## Zdroje
+
+- [Dokumentace Aave V3](https://aave.com/docs) (načteno 14. října 2026)
+
+*${CS_ARTICLE_DISCLAIMER}*
+`;
+
+const BAD_CS_ARTICLE = `export const meta = ${JSON.stringify(CS_FIXTURE_META, null, 2)};
+
+<ShortAnswer>Krátce.</ShortAnswer>
+
+<ScopeNote />
+
+<LiquidationCalculator />
+
+Viz [anglický průvodce](/blog/safe-aave-health-factor), [anglický přehled](/aave), [domovská stránka](/),
+[anglický slug](/cs/blog/safe-aave-health-factor), [ochrana soukromí](/cs/ochrana-soukromi) a
+[špatná kotva](/cs/blog/bezpecny-health-factor-aave#nope).
+
+## Sources
+
+- [Dokumentace Aave V3](https://aave.com/docs) (fetched 14 Oct 2026)
+
+*${ARTICLE_DISCLAIMER}*
+`;
+
+describe("Czech article checks", () => {
+  it("pass a Czech post that follows the content contract", async () => {
+    const { tree, meta, error } = await parsePost(GOOD_CS_ARTICLE, CS_FIXTURE_META.slug, "cs");
+    expect(error).toBeUndefined();
+    expect(findDashes(GOOD_CS_ARTICLE)).toEqual([]);
+    expect(checkMeta({ slug: CS_FIXTURE_META.slug, locale: "cs", meta })).toEqual([]);
+    expect({
+      esm: checkEsm(tree!),
+      opening: checkOpening(tree!),
+      jsx: checkJsx(tree!, CS_FIXTURE_META.slug, "cs"),
+      headings: checkHeadings(tree!),
+      links: checkLinks(tree!, "cs"),
+      ending: checkEnding(tree!, "cs"),
+      banned: findBannedPhrases(proseOf(tree!), LANGUAGE_RULES.cs.bannedPatterns),
+    }).toEqual({ esm: [], opening: [], jsx: [], headings: [], links: [], ending: [], banned: [] });
+  });
+
+  it("allow the calculator in the translation of its post only", async () => {
+    const calculator = `${GOOD_CS_ARTICLE.split("## Zdroje")[0]}<LiquidationCalculator />\n`;
+    const { tree } = await parsePost(calculator, "likvidacni-cena-aave", "cs");
+
+    expect(checkJsx(tree!, "likvidacni-cena-aave", "cs")).toEqual([]);
+    expect(checkJsx(tree!, CS_FIXTURE_META.slug, "cs")).toEqual([
+      "<LiquidationCalculator> belongs to likvidacni-cena-aave only",
+    ]);
+  });
+
+  it("catch English links, English slugs, English endings and missing anchors", async () => {
+    const { tree } = await parsePost(BAD_CS_ARTICLE, CS_FIXTURE_META.slug, "cs");
+
+    expect(checkJsx(tree!, CS_FIXTURE_META.slug, "cs")).toEqual([
+      "<LiquidationCalculator> belongs to likvidacni-cena-aave only",
+    ]);
+    expect(checkLinks(tree!, "cs")).toEqual([
+      "/blog/safe-aave-health-factor: a page in the other language; link to /cs/blog/bezpecny-health-factor-aave (i18n/routes, i18n/postSlugs)",
+      "/aave: a page in the other language; link to /cs, /cs/aave, /cs/blog (i18n/routes, i18n/postSlugs)",
+      "/: a page in the other language; link to /cs, /cs/aave, /cs/blog (i18n/routes, i18n/postSlugs)",
+      '/cs/blog/safe-aave-health-factor: no post with the slug "safe-aave-health-factor"; the cs slug is "bezpecny-health-factor-aave"',
+      "/cs/ochrana-soukromi: internal links may only point to /cs, /cs/aave, /cs/blog or /cs/blog/<slug>",
+      '/cs/blog/bezpecny-health-factor-aave#nope: no heading with the anchor "#nope" in bezpecny-health-factor-aave',
+    ]);
+    expect(checkEnding(tree!, "cs")).toEqual(['the last H2 must be "## Zdroje"']);
+  });
+
+  it("report an English disclaimer and source dates under ## Zdroje", async () => {
+    const source = BAD_CS_ARTICLE.replace("## Sources", "## Zdroje");
+    const { tree } = await parsePost(source, CS_FIXTURE_META.slug, "cs");
+
+    expect(checkEnding(tree!, "cs")).toEqual([
+      `the post must end with the line *${CS_ARTICLE_DISCLAIMER}*`,
+      'source without "načteno <d. měsíce yyyy>": "Dokumentace Aave V3 (fetched 14 Oct 2026)"',
+    ]);
+  });
+
+  it("flag a link from an English post to a Czech page", async () => {
+    const { tree } = await parsePost(GOOD_ARTICLE.replace("(/aave)", "(/cs/aave)"), "aave-health-factor");
+
+    expect(checkLinks(tree!)).toEqual([
+      "/cs/aave: a page in the other language; link to /, /aave, /blog (i18n/routes, i18n/postSlugs)",
+    ]);
+  });
+
+  it("give a placeholder the meta checks without asking it for a question or a long description", () => {
+    const stub: PostMeta = {
+      ...CS_FIXTURE_META,
+      title: "Překlad se připravuje",
+      description: "Překlad se připravuje.",
+      primaryQuestion: "Překlad se připravuje.",
+      stub: true,
+    };
+    expect(checkMeta({ slug: stub.slug, locale: "cs", meta: stub })).toEqual([]);
+    expect(checkMeta({ slug: stub.slug, locale: "cs", meta: { ...stub, stub: undefined } })).toEqual([
+      "meta.description is 22 chars (50 to 155)",
+      "meta.primaryQuestion must be a question ending in '?'",
     ]);
   });
 });

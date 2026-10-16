@@ -7,6 +7,8 @@ import { hardhat } from "viem/chains";
 import { useAccount } from "wagmi";
 import { BanknotesIcon } from "@heroicons/react/24/outline";
 import { useTransactor } from "~~/hooks/scaffold-eth";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 
 // Number of ETH faucet sends to an address
 const NUM_OF_ETH = "1";
@@ -26,6 +28,7 @@ export const FaucetButton = () => {
   const { data: balance } = useWatchBalance({ address, chain: hardhat });
 
   const [loading, setLoading] = useState(false);
+  const t = useMessages(COMMON_MESSAGES).faucet;
 
   const faucetTxn = useTransactor(localWalletClient);
 
@@ -59,7 +62,7 @@ export const FaucetButton = () => {
           ? "ml-1"
           : "ml-1 tooltip tooltip-bottom tooltip-primary tooltip-open font-bold before:left-auto before:transform-none before:content-[attr(data-tip)] before:-translate-x-2/5"
       }
-      data-tip="Grab funds from faucet"
+      data-tip={t.grabFunds}
     >
       <button className="btn btn-secondary btn-sm px-2 rounded-full" onClick={sendETH} disabled={loading}>
         {!loading ? (

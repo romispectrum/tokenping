@@ -167,3 +167,96 @@ describe("formatPostDate", () => {
     expect(formatPostDate("2027-01-01")).toBe("1 January 2027");
   });
 });
+
+describe("in Czech", () => {
+  const META = {
+    slug: "s",
+    title: "t",
+    description: "d",
+    h1: "h",
+    publishedAt: "2026-10-14",
+    updatedAt: "2026-11-02",
+    primaryQuestion: "q?",
+  };
+
+  it("prints the plan as Czech prose, with a decimal comma and Czech day plurals, and a digit-free fallback", async () => {
+    const { formatAlertPrice } = await import("~~/components/blog/AlertPrice");
+
+    expect(formatAlertPrice(PLAN, "cs")).toBe("3 USDC na 30 dní");
+    expect(formatAlertPrice({ priceLabel: "1.5 USDC", days: 1 }, "cs")).toBe("1,5 USDC na 1 den");
+    expect(formatAlertPrice({ priceLabel: "2 USDC", days: 3 }, "cs")).toBe("2 USDC na 3 dny");
+    expect(formatAlertPrice({ priceLabel: "2 USDC", days: 1.5 }, "cs")).toBe("2 USDC na 1,5 dne");
+    expect(formatAlertPrice(null, "cs")).toBe("malý poplatek v USDC (aktuální cenu najdete v přehledu)");
+    expect(formatAlertPrice(null, "cs")).not.toMatch(/\d/);
+  });
+
+  it.each([
+    [14, "14 minut čtení"],
+    [1, "1 minuta čtení"],
+    [3, "3 minuty čtení"],
+    [24, "24 minut čtení"],
+  ])("writes the byline with Czech dates and %i minutes as %j", async (readingMinutes, readingTime) => {
+    const { PostByline } = await import("~~/components/blog/PostByline");
+    const { container } = render(<PostByline meta={{ ...META, readingMinutes }} locale="cs" />);
+
+    expect(container.textContent).toBe(
+      `Napsal tým Tokenpingu·Publikováno 14. října 2026·Aktualizováno 2. listopadu 2026·${readingTime}`,
+    );
+  });
+
+  it("labels the short answer, the callouts and the scope note in Czech", async () => {
+    const { ShortAnswer } = await import("~~/components/blog/ShortAnswer");
+    const { Callout } = await import("~~/components/blog/Callout");
+    const { ScopeNote } = await import("~~/components/blog/ScopeNote");
+    const { container } = render(
+      <>
+        <ShortAnswer locale="cs">
+          <p>Odpověď.</p>
+        </ShortAnswer>
+        <Callout locale="cs">Text</Callout>
+        <Callout tone="warning" locale="cs">
+          Text
+        </Callout>
+        <ScopeNote locale="cs" />
+      </>,
+    );
+
+    expect(screen.getByText("Stručná odpověď")).toBeDefined();
+    expect(screen.getAllByRole("note").map(note => note.textContent)).toEqual(["Poznámka: Text", "Varování: Text"]);
+    expect(container.querySelector("p.border-l-2")?.textContent).toBe(
+      "Platí pro Aave V3.7, ověřeno na trzích Ethereum Core, Arbitrum, Base, Optimism, Polygon, Avalanche a Gnosis. Jiné trhy a sítě V3 mohou používat starší verze. Rozdíly u Aave V4 uvádíme tam, kde se pravidla liší. Údaje k 14. 10. 2026.",
+    );
+    expect(container.querySelector("time")?.getAttribute("title")).toBe("14. října 2026");
+  });
+
+  it("writes the end box in Czech, with Czech channels, the Czech price and the Czech dashboard link", async () => {
+    vi.stubEnv("NEXT_PUBLIC_TELEGRAM_BOT_USERNAME", "");
+    const { AlertEndBox } = await import("~~/components/blog/AlertEndBox");
+    render(<AlertEndBox plan={PLAN} locale="cs" />);
+
+    const box = screen.getByRole("complementary", { name: "O Tokenpingu" });
+    expect(box.textContent).toContain(
+      "Tokenping kontroluje health factor vaší pozice na Aave V3 každých 5 minut na 7 sítích a pošle vám zprávu přes Signal nebo e-mail, když je pod vaším prahem. Přehled je zdarma, upozornění stojí 3 USDC na 30 dní s platbou na síti Arbitrum One. Upozornění vám dají čas jednat, likvidaci ale nezabrání.",
+    );
+    expect(screen.getByRole("link", { name: "Otevřít přehled zdarma" }).getAttribute("href")).toBe("/cs/aave");
+  });
+
+  it("links a Czech post card to its Czech URL with the Czech date and reading time", async () => {
+    const { PostSummary } = await import("~~/components/blog/PostSummary");
+    const { container } = render(
+      <PostSummary meta={{ ...META, slug: "likvidacni-cena-aave", readingMinutes: 15 }} locale="cs" featured />,
+    );
+
+    expect(screen.getByRole("link").getAttribute("href")).toBe("/cs/blog/likvidacni-cena-aave");
+    expect(container.textContent).toContain("Začněte tady");
+    expect(container.textContent).toContain("14. října 2026 · 15 minut čtení");
+    expect(container.textContent).toContain("Číst průvodce");
+  });
+
+  it("formats a post date in Czech", async () => {
+    const { formatPostDate } = await import("~~/components/blog/formatPostDate");
+
+    expect(formatPostDate("2026-10-14", "cs")).toBe("14. října 2026");
+    expect(formatPostDate("2027-01-01", "cs")).toBe("1. ledna 2027");
+  });
+});

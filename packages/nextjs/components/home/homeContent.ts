@@ -2,35 +2,41 @@ import { hardhat, mainnet } from "viem/chains";
 import { AAVE_MARKETS } from "~~/config/aaveConfig";
 import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import { PAYMENT_CHAIN_ID, PAYMENT_CONTRACT_ADDRESS } from "~~/constants/payments";
-import { getPost, isPublished } from "~~/content/blog";
-import { formatAlertChannels, getAlertChannelNames } from "~~/services/marketing/alertChannels";
+import { getPostByKey, isPublished } from "~~/content/blog";
+import { joinList as joinListIn } from "~~/i18n/format";
+import { DEFAULT_LOCALE, LOCALE_INFO, type Locale } from "~~/i18n/locales";
+import { HOME_MESSAGES } from "~~/i18n/messages/home";
+import { routePath } from "~~/i18n/routes";
+import { formatAlertChannels, formatAlertChannelsIn, getAlertChannelNames } from "~~/services/marketing/alertChannels";
 import type { AlertPlan } from "~~/services/marketing/alertPlan";
 import { ORGANIZATION_ID, SITE_NAME, absoluteUrl, needsAbsoluteTitle } from "~~/utils/seo";
 
-// Copy and data for the homepage (marketing plan §2) and the /aave shell. Everything that depends on the deployment
-// (channels, networks, price, payment contract) is derived here, so the visible text, the metadata and the JSON-LD
-// cannot disagree.
+// Copy and data for the homepage (marketing plan §2) and the /aave shell, per language (the words are in
+// i18n/messages/home). Everything that depends on the deployment (channels, networks, price, payment contract) is
+// derived here, so the visible text, the metadata and the JSON-LD cannot disagree.
 
 const MAX_DESCRIPTION_LENGTH = 155;
 
-const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
-
-/** "a", "a and b", "a, b and c" (no serial comma, matching the site copy). */
+/** "a", "a and b", "a, b and c" (no serial comma, matching the site copy). English; i18n/format has every language. */
 export const joinList = (items: readonly string[], conjunction: "and" | "or" = "and") =>
   items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} ${conjunction} ${items[items.length - 1]}`;
 
-/** Channel names for badges: "Signal", "Email" and, once the bot is configured, "Telegram". */
-export const getChannelBadgeNames = () => getAlertChannelNames().map(capitalize);
+/** Channel names for badges: "Signal", "Email" ("E-mail") and, once the bot is configured, "Telegram". */
+export const getChannelBadgeNames = (locale: Locale = DEFAULT_LOCALE) =>
+  getAlertChannelNames().map(name =>
+    HOME_MESSAGES[locale].channelBadge(locale === "cs" && name === "email" ? "e-mail" : name),
+  );
 
 /** Headline A of the marketing plan (§2.1), in its Telegram variant once the bot is configured. */
-export const getHomeHeadline = () => `Aave health factor alerts on ${formatAlertChannels("and")}`;
+export const getHomeHeadline = (locale: Locale = DEFAULT_LOCALE) =>
+  HOME_MESSAGES[locale].headline(formatAlertChannelsIn(locale, "conjunction"));
 
 /**
  * The headline as the page title, in sentence case like every title: "Aave health factor alerts on Signal and email |
  * Tokenping". The Telegram variant drops the brand to stay ≤ 60.
  */
-export const getHomeTitle = () => {
-  const title = getHomeHeadline();
+export const getHomeTitle = (locale: Locale = DEFAULT_LOCALE) => {
+  const title = getHomeHeadline(locale);
   return needsAbsoluteTitle(title) ? title : `${title} | ${SITE_NAME}`;
 };
 
@@ -38,11 +44,14 @@ export const getHomeTitle = () => {
  * The meta description and SoftwareApplication description. "No approvals on your position" rather than a bare
  * "Read-only": paying for alerts takes an approval and a payment on Arbitrum.
  */
-export const getHomeDescription = () => {
-  const channels = formatAlertChannels("or");
-  const full = `${channels} alerts when your Aave V3 health factor drops below your threshold on ${AAVE_MARKETS.length} networks. Checked every ${NOTIFICATION_CHECK_INTERVAL_MINUTES} minutes. No approvals on your position.`;
-  if (full.length <= MAX_DESCRIPTION_LENGTH) return full;
-  return `${channels} alerts when your Aave V3 health factor is below your threshold on ${AAVE_MARKETS.length} networks, checked every ${NOTIFICATION_CHECK_INTERVAL_MINUTES} minutes. No approvals on Aave.`;
+export const getHomeDescription = (locale: Locale = DEFAULT_LOCALE) => {
+  const input = {
+    channels: formatAlertChannelsIn(locale, "disjunction"),
+    networks: AAVE_MARKETS.length,
+    minutes: NOTIFICATION_CHECK_INTERVAL_MINUTES,
+  };
+  const full = HOME_MESSAGES[locale].description({ ...input, short: false });
+  return full.length <= MAX_DESCRIPTION_LENGTH ? full : HOME_MESSAGES[locale].description({ ...input, short: true });
 };
 
 /** The /aave meta description (marketing plan §4.2). */
@@ -50,8 +59,13 @@ export const getDashboardDescription = () =>
   `See your Aave V3 collateral, debt and health factor on ${AAVE_MARKETS.length} networks for free, then set a ${formatAlertChannels("or")} alert threshold for each network.`;
 
 /** The monitored networks in dashboard order; on Ethereum only the Core market's pool is read. */
-export const getNetworkNames = () =>
-  AAVE_MARKETS.map(({ chain, name }) => (chain.id === mainnet.id ? `${name} (Core market)` : name));
+export const getNetworkNames = (locale: Locale = DEFAULT_LOCALE) =>
+  AAVE_MARKETS.map(({ chain, name }) =>
+    chain.id === mainnet.id ? HOME_MESSAGES[locale].coreMarketNetwork(name) : name,
+  );
+
+/** The networks as one list in running text: "Ethereum (Core market), Polygon, ... and Gnosis". */
+export const getNetworkList = (locale: Locale = DEFAULT_LOCALE) => joinListIn(locale, getNetworkNames(locale));
 
 /** Badge labels: the plain network names. The Core-market note sits next to the badges. */
 export const getNetworkBadgeNames = () => AAVE_MARKETS.map(({ name }) => name);
@@ -65,13 +79,16 @@ export const getPaywallSourcifyUrl = () => {
     : `https://repo.sourcify.dev/${chainId}/${PAYMENT_CONTRACT_ADDRESS}`;
 };
 
-/** A post that readers can see: placeholders are never linked from site pages. */
-export const getPublishedPost = (slug: string) => {
-  const post = getPost(slug);
+/**
+ * A post that readers can see, in `locale`, by its key (the English slug): placeholders are never linked from site
+ * pages, and a page never links a post in another language instead.
+ */
+export const getPublishedPost = (key: string, locale: Locale = DEFAULT_LOCALE) => {
+  const post = getPostByKey(key, locale);
   return post && isPublished(post) ? post : undefined;
 };
 
-/** "From the blog" on the homepage: the hub, the alert how-to and the safe-HF guide (marketing plan §2.7, §3.9). */
+/** "From the blog" on the homepage, by key: the hub, the alert how-to and the safe-HF guide (plan §2.7, §3.9). */
 export const HOME_BLOG_SLUGS = ["aave-health-factor", "aave-health-factor-alert-setup", "safe-aave-health-factor"];
 
 /** Forum threads named in "The problem, named" (marketing market.md §B.4), each linked from its own mention. */
@@ -85,36 +102,37 @@ export const PROBLEM_SOURCES = {
 } as const;
 
 /** "Set up alerts: 3 USDC for 30 days", or a priceless label while the plan cannot be read. */
-export const getPricingCtaLabel = (plan: AlertPlan | null) =>
-  plan ? `Set up alerts: ${plan.priceLabel} for ${plan.days === 1 ? "1 day" : `${plan.days} days`}` : "Set up alerts";
+export const getPricingCtaLabel = (plan: AlertPlan | null, locale: Locale = DEFAULT_LOCALE) =>
+  HOME_MESSAGES[locale].pricingCta(plan);
 
 /**
  * The Offer for the price the page shows: `{ price: "3", priceCurrency: "USDC" }` from the plan's "3 USDC" label.
  * Undefined when there is no plan, so the JSON-LD never carries a price the visitor cannot see.
  */
-export const getAlertPlanOffer = (plan: AlertPlan | null) => {
+export const getAlertPlanOffer = (plan: AlertPlan | null, locale: Locale = DEFAULT_LOCALE) => {
   const match = plan?.priceLabel.match(/^(\d+(?:\.\d+)?) ([A-Za-z0-9.]+)$/);
   if (!plan || !match) return undefined;
   return {
     "@type": "Offer",
     price: match[1],
     priceCurrency: match[2],
-    description: `Health factor alerts for ${plan.days} days, paid in ${match[2]} from your wallet. No auto-renew.`,
-    url: absoluteUrl("/aave"),
+    description: HOME_MESSAGES[locale].offerDescription({ days: plan.days, currency: match[2] }),
+    url: absoluteUrl(routePath(locale, "dashboard")),
   };
 };
 
 /** SoftwareApplication for the homepage (marketing plan §4.4). Never aggregateRating: there are no reviews. */
-export const softwareApplicationJsonLd = (plan: AlertPlan | null) => {
-  const offer = getAlertPlanOffer(plan);
+export const softwareApplicationJsonLd = (plan: AlertPlan | null, locale: Locale = DEFAULT_LOCALE) => {
+  const offer = getAlertPlanOffer(plan, locale);
   return {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     name: SITE_NAME,
-    url: absoluteUrl("/"),
+    url: absoluteUrl(routePath(locale, "home")),
+    inLanguage: LOCALE_INFO[locale].htmlLang,
     applicationCategory: "FinanceApplication",
     operatingSystem: "Web",
-    description: getHomeDescription(),
+    description: getHomeDescription(locale),
     publisher: { "@id": ORGANIZATION_ID },
     ...(offer && { offers: offer }),
   };

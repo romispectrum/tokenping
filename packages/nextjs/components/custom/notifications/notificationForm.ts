@@ -1,4 +1,6 @@
 import { DEFAULT_HEALTH_FACTOR_THRESHOLD } from "~~/constants/notifications";
+import { DEFAULT_LOCALE, type Locale } from "~~/i18n/locales";
+import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 import type { NotificationConfig, NotificationService } from "~~/types/notifications";
 import { clampThreshold, formatThreshold, normalizeThreshold, roundThreshold } from "~~/utils/notifications/threshold";
 import {
@@ -79,49 +81,37 @@ export const countFormFields = (services: readonly NotificationService[]) => 2 +
 /** A failed Save lists the errors at the top of the form once it shows more than 3 fields. */
 export const needsErrorSummary = (services: readonly NotificationService[]) => countFormFields(services) > 3;
 
-/** Each message says what to do to fix the field. */
-export const NOTIFICATION_FORM_ERRORS = {
-  noService: "Select at least one notification service.",
-  noEmail: "Enter your email address.",
-  invalidEmail: "Enter an email address like name@example.com.",
-  noSignal: "Enter your Signal username.",
-  invalidSignal: "Enter a Signal username like alice.42. Find yours in Signal under Settings, then Profile.",
-  telegramUnknown: "Select Try again to check your Telegram link, then save.",
-  telegramNotLinked: "Connect Telegram before you save.",
-} as const;
+/** The English messages; each says what to do to fix the field. The Czech ones are in i18n/messages/alerts. */
+export const NOTIFICATION_FORM_ERRORS = ALERTS_MESSAGES.en.formErrors;
 
-/** Every problem in the form, by field; empty when the form can be saved. */
-export const getNotificationFormErrors = ({
-  services,
-  email,
-  signalRecipient,
-  telegramChatId,
-  telegramStatusUnknown,
-}: SubmittableForm): NotificationFormErrors => {
+/** Every problem in the form, by field, in the page's language; empty when the form can be saved. */
+export const getNotificationFormErrors = (
+  { services, email, signalRecipient, telegramChatId, telegramStatusUnknown }: SubmittableForm,
+  locale: Locale = DEFAULT_LOCALE,
+): NotificationFormErrors => {
+  const messages = ALERTS_MESSAGES[locale].formErrors;
   const errors: NotificationFormErrors = {};
-  if (services.length === 0) errors.services = NOTIFICATION_FORM_ERRORS.noService;
+  if (services.length === 0) errors.services = messages.noService;
   if (services.includes("email")) {
     const trimmed = email.trim();
-    if (!trimmed) errors.email = NOTIFICATION_FORM_ERRORS.noEmail;
-    else if (!isValidEmail(trimmed)) errors.email = NOTIFICATION_FORM_ERRORS.invalidEmail;
+    if (!trimmed) errors.email = messages.noEmail;
+    else if (!isValidEmail(trimmed)) errors.email = messages.invalidEmail;
   }
   if (services.includes("signal")) {
     // Normalized exactly as buildConfigUpdate stores it, so the value checked here is the value saved.
     const username = normalizeSignalUsername(signalRecipient);
-    if (!username) errors.signalRecipient = NOTIFICATION_FORM_ERRORS.noSignal;
-    else if (!SIGNAL_USERNAME_REGEX.test(username)) errors.signalRecipient = NOTIFICATION_FORM_ERRORS.invalidSignal;
+    if (!username) errors.signalRecipient = messages.noSignal;
+    else if (!SIGNAL_USERNAME_REGEX.test(username)) errors.signalRecipient = messages.invalidSignal;
   }
   if (services.includes("telegram") && !telegramChatId) {
-    errors.telegram = telegramStatusUnknown
-      ? NOTIFICATION_FORM_ERRORS.telegramUnknown
-      : NOTIFICATION_FORM_ERRORS.telegramNotLinked;
+    errors.telegram = telegramStatusUnknown ? messages.telegramUnknown : messages.telegramNotLinked;
   }
   return errors;
 };
 
 /** The first problem in display order, or null when the form can be saved. */
-export const validateNotificationForm = (form: SubmittableForm) => {
-  const errors = getNotificationFormErrors(form);
+export const validateNotificationForm = (form: SubmittableForm, locale: Locale = DEFAULT_LOCALE) => {
+  const errors = getNotificationFormErrors(form, locale);
   const first = NOTIFICATION_FORM_FIELDS.find(field => errors[field] !== undefined);
   return first ? (errors[first] ?? null) : null;
 };

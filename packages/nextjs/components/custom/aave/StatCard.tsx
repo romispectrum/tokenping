@@ -1,4 +1,6 @@
 import { Skeleton, cx } from "~~/components/ui";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 
 type StatCardVariant = "cell" | "panel";
 
@@ -36,19 +38,22 @@ type StatCardProps = {
  * A key number: the label, then the value in Satoshi Bold with tabular figures. Render it in a `<dl>`; each one is a
  * dt/dd pair. Flat, no tint: the numbers are not statuses.
  */
-export const StatCard = ({ label, value, variant = "cell" }: StatCardProps) => (
-  <div className={cx("flex min-w-0", SURFACE[variant])}>
-    <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
-    <dd
-      className={cx(
-        "m-0",
-        value === null ? "text-sm text-muted-foreground" : cx("font-bold tabular-nums", VALUE_SIZE[variant]),
-      )}
-    >
-      {value ?? "No data"}
-    </dd>
-  </div>
-);
+export const StatCard = ({ label, value, variant = "cell" }: StatCardProps) => {
+  const t = useMessages(DASHBOARD_MESSAGES);
+  return (
+    <div className={cx("flex min-w-0", SURFACE[variant])}>
+      <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
+      <dd
+        className={cx(
+          "m-0",
+          value === null ? "text-sm text-muted-foreground" : cx("font-bold tabular-nums", VALUE_SIZE[variant]),
+        )}
+      >
+        {value ?? t.totals.noData}
+      </dd>
+    </div>
+  );
+};
 
 /**
  * The loading footprint of a StatCard. Render the loading strip as a `<div>`, not a `<dl>`: a skeleton has no dt/dd.

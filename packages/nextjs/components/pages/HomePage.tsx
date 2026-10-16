@@ -18,8 +18,8 @@ import { pageMetadata } from "~~/utils/seo";
 
 export const homeMetadata = (locale: Locale) =>
   pageMetadata({
-    title: getHomeTitle(),
-    description: getHomeDescription(),
+    title: getHomeTitle(locale),
+    description: getHomeDescription(locale),
     locale,
     alternates: routeAlternates("home"),
     absoluteTitle: true,
@@ -40,16 +40,16 @@ export const HomePage = async ({ locale }: { locale: Locale }) => {
   return (
     <>
       <HomeHero locale={locale} />
-      <ProblemSection />
+      <ProblemSection locale={locale} />
       <SectionDivider />
-      <HowItWorksSection plan={plan} />
+      <HowItWorksSection plan={plan} locale={locale} />
       <SectionDivider />
-      <PricingSection plan={plan} />
-      <HomeObjections plan={plan} />
-      <LimitsSection />
-      <FromTheBlogSection />
+      <PricingSection plan={plan} locale={locale} />
+      <HomeObjections plan={plan} locale={locale} />
+      <LimitsSection locale={locale} />
+      <FromTheBlogSection locale={locale} />
       <ClosingCtaSection locale={locale} />
-      <JsonLd data={softwareApplicationJsonLd(plan)} />
+      <JsonLd data={softwareApplicationJsonLd(plan, locale)} />
     </>
   );
 };

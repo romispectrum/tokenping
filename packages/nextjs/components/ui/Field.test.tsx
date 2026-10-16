@@ -7,6 +7,7 @@ import { Input } from "~~/components/ui/Input";
 import { Select } from "~~/components/ui/Select";
 import { Switch } from "~~/components/ui/Switch";
 import { Textarea } from "~~/components/ui/Textarea";
+import { LocaleProvider } from "~~/i18n/LocaleProvider";
 
 describe("Field", () => {
   it("labels the control with a visible label", () => {
@@ -75,6 +76,18 @@ describe("Field", () => {
     );
 
     expect(screen.getByRole("textbox", { name: "Telegram username (optional)" })).toBeTruthy();
+  });
+
+  it("says (nepovinné) on a Czech page", () => {
+    render(
+      <LocaleProvider locale="cs">
+        <Field label="Uživatelské jméno na Telegramu" optional>
+          {control => <Input {...control} />}
+        </Field>
+      </LocaleProvider>,
+    );
+
+    expect(screen.getByRole("textbox", { name: "Uživatelské jméno na Telegramu (nepovinné)" })).toBeTruthy();
   });
 
   it("passes required and a given id to the control", () => {

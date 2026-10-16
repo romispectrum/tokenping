@@ -3,18 +3,22 @@ import { onlineManager } from "@tanstack/react-query";
 import { act, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
+import type { Locale } from "~~/i18n/locales";
 import type { NotificationConfig } from "~~/types/notifications";
 import { deferred } from "~~/utils/testing/helpers";
 import { createTestQueryClient, renderHookWithProviders } from "~~/utils/testing/providers";
 
 const mocks = vi.hoisted(() => ({
   address: undefined as string | undefined,
+  locale: "en" as Locale,
   getAllConfigs: vi.fn(),
   upsertConfig: vi.fn(),
   deleteConfig: vi.fn(),
 }));
 
 vi.mock("wagmi", () => ({ useAccount: () => ({ address: mocks.address }) }));
+// The page's language, which the LocaleProvider of each root layout supplies.
+vi.mock("~~/i18n/LocaleProvider", () => ({ useLocale: () => mocks.locale }));
 vi.mock("~~/services/notifications/notificationConfigClient", () => ({
   notificationConfigClient: {
     getAllConfigs: mocks.getAllConfigs,
@@ -49,6 +53,7 @@ const renderLoaded = async () => {
 
 beforeEach(() => {
   mocks.address = ADDRESS;
+  mocks.locale = "en";
   mocks.getAllConfigs.mockReset().mockResolvedValue({});
   mocks.upsertConfig.mockReset().mockResolvedValue(undefined);
   mocks.deleteConfig.mockReset().mockResolvedValue(undefined);
@@ -203,7 +208,14 @@ describe("useNotificationConfig", () => {
     const saved = { ...CONFIG, signalRecipient: "alice.42", services: ["email", "signal"] as const };
     mocks.getAllConfigs.mockResolvedValue({ 1: saved });
     const { result } = await renderLoaded();
-    const expected = { ...saved, chainId: 1, services: ["signal"], email: undefined, healthFactorThreshold: 2 };
+    const expected = {
+      ...saved,
+      chainId: 1,
+      services: ["signal"],
+      email: undefined,
+      healthFactorThreshold: 2,
+      locale: "en",
+    };
 
     await act(() =>
       result.current.updateConfig(1, {
@@ -297,9 +309,22 @@ describe("useNotificationConfig", () => {
     mocks.getAllConfigs.mockReturnValue(new Promise(() => undefined));
     await act(() => result.current.updateConfig(10, { enabled: true }));
     expect(mocks.upsertConfig.mock.calls).toEqual([
-      [ADDRESS, { chainId: 10, enabled: true, services: [], healthFactorThreshold: 1.5 }],
+      [ADDRESS, { chainId: 10, enabled: true, services: [], healthFactorThreshold: 1.5, locale: "en" }],
     ]);
     await waitFor(() => expect(result.current.hasConfig(10)).toBe(true));
+  });
+
+  it("saves the page's language with the config, replacing the language it was saved in before", async () => {
+    mocks.locale = "cs";
+    mocks.getAllConfigs.mockResolvedValue({ 1: { ...CONFIG, locale: "en" } });
+    const { result } = await renderLoaded();
+    await act(() => result.current.updateConfig(1, { healthFactorThreshold: 1.6 }));
+    await act(() => result.current.updateConfig(10, { enabled: true }));
+    expect(mocks.upsertConfig.mock.calls.map(([, config]) => [config.chainId, config.locale])).toEqual([
+      [1, "cs"],
+      [10, "cs"],
+    ]);
+    await waitFor(() => expect(result.current.getConfig(1)?.locale).toBe("cs"));
   });
 
   it("deleteConfig removes only that chain's config", async () => {

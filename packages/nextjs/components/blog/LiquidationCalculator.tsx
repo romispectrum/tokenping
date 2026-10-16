@@ -10,9 +10,12 @@ import { Field } from "~~/components/ui/Field";
 import { Input } from "~~/components/ui/Input";
 import { Select } from "~~/components/ui/Select";
 import { cx } from "~~/components/ui/classNames";
+import { useLocale } from "~~/i18n/LocaleProvider";
+import { CALCULATOR_MESSAGES } from "~~/i18n/messages/blog";
 import {
   LIQUIDATION_THRESHOLDS_AS_OF,
   LIQUIDATION_THRESHOLD_PRESETS,
+  type LiquidationThresholdPreset,
   type Position,
   type SharedAsset,
   assetNameKey,
@@ -60,6 +63,9 @@ type CalculatorFields = {
 
 type CheckedNumber = { value: number | null; error: string | null };
 
+type Messages = (typeof CALCULATOR_MESSAGES)["en"];
+type ResultMessages = Messages["results"];
+
 type ResultCard = {
   key: string;
   title: string;
@@ -72,19 +78,11 @@ const STABLE_DEBT_PRICE = 1;
 const MAX_NAME_LENGTH = 24;
 const ANNOUNCE_DELAY_MS = 600;
 const PRESET_MARKETS = ["Ethereum Core", "Arbitrum"] as const;
-const DEFAULT_COLLATERAL_NAMES = ["Collateral 1", "Collateral 2"];
-const DEFAULT_DEBT_NAME = "Debt asset";
-const THRESHOLDS_DATE = formatPostDate(LIQUIDATION_THRESHOLDS_AS_OF);
 // Decimals kept when switching the debt between a USD amount and a token amount.
 const USD_INPUT_DECIMALS = 2;
 const TOKEN_INPUT_DECIMALS = 8;
 
-const E_MODE_ISSUE_LEAD = "No result: Aave does not allow this combination.";
-
-const DEBT_KINDS = [
-  ["stable", "A stablecoin (counted at $1.00)"],
-  ["volatile", "A volatile asset, such as WETH"],
-] as const;
+const DEBT_KINDS = ["stable", "volatile"] as const;
 
 // Product UI inside an article: flat, no marketing effects. Each group of fields is an inner panel of the card (never
 // a card in a card); the floated legend sits inside the panel instead of on its top edge.
@@ -96,8 +94,6 @@ const LEGEND_CLASS_NAME = "float-left mb-4 w-full text-base leading-snug font-me
 // A 20px native radio on the field boundary; checked is the link colour (globals.css), never pink.
 const RADIO_CLASS_NAME =
   "radio radio-sm bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
-
-const LIST_FORMAT = new Intl.ListFormat("en-GB", { style: "long", type: "conjunction" });
 
 const presetCollateral = (presetId: string, amount: string, price: string): CollateralFields => {
   const preset = findLiquidationThresholdPreset(presetId);
@@ -113,10 +109,9 @@ const presetCollateral = (presetId: string, amount: string, price: string): Coll
 const EMPTY_COLLATERAL: CollateralFields = { presetId: "", name: "", amount: "", price: "", threshold: "" };
 
 /** The worked examples of the aave-liquidation-price article (fact sheet §2 examples A, B and C). */
-const CALCULATOR_EXAMPLES: readonly { id: string; label: string; fields: CalculatorFields }[] = [
+const CALCULATOR_EXAMPLES: readonly { id: keyof Messages["examples"]; fields: CalculatorFields }[] = [
   {
     id: "one-collateral",
-    label: "10 WETH, 12,000 USDC debt",
     fields: {
       collateral: [presetCollateral("ethereum-core-weth", "10", "2400")],
       debt: { kind: "stable", name: "USDC", amount: "12000", price: "" },
@@ -124,7 +119,6 @@ const CALCULATOR_EXAMPLES: readonly { id: string; label: string; fields: Calcula
   },
   {
     id: "two-collaterals",
-    label: "10 WETH + 0.2 WBTC, 20,000 USDC debt",
     fields: {
       collateral: [
         presetCollateral("ethereum-core-weth", "10", "2400"),
@@ -135,7 +129,6 @@ const CALCULATOR_EXAMPLES: readonly { id: string; label: string; fields: Calcula
   },
   {
     id: "volatile-debt",
-    label: "10,000 USDC, 2.5 WETH borrowed",
     fields: {
       collateral: [presetCollateral("ethereum-core-usdc", "10000", "1")],
       debt: { kind: "volatile", name: "WETH", amount: "2.5", price: "2400" },
@@ -145,26 +138,30 @@ const CALCULATOR_EXAMPLES: readonly { id: string; label: string; fields: Calcula
 
 const INITIAL_FIELDS = CALCULATOR_EXAMPLES[0].fields;
 
-const NUMBER_ERROR = "Enter a number such as 10 or 0.25, with a dot for decimals.";
+type ErrorMessages = Messages["errors"];
 
-const checkAmount = (text: string): CheckedNumber => {
+const checkAmount = (text: string, errors: ErrorMessages): CheckedNumber => {
   const parsed = parseDecimalInput(text);
   if (parsed.status === "empty") return { value: null, error: null };
-  if (parsed.status === "invalid") return { value: null, error: NUMBER_ERROR };
+  if (parsed.status === "invalid") return { value: null, error: errors.number };
   return { value: parsed.value, error: null };
 };
 
-const checkPrice = (text: string): CheckedNumber => {
-  const checked = checkAmount(text);
-  return checked.value === 0 ? { value: null, error: "Enter a price above 0." } : checked;
+const checkPrice = (text: string, errors: ErrorMessages): CheckedNumber => {
+  const checked = checkAmount(text, errors);
+  return checked.value === 0 ? { value: null, error: errors.price } : checked;
 };
 
-const checkThreshold = (text: string): CheckedNumber => {
-  const checked = checkAmount(text);
+const checkThreshold = (text: string, errors: ErrorMessages): CheckedNumber => {
+  const checked = checkAmount(text, errors);
   return checked.value !== null && (checked.value <= 0 || checked.value > 100)
-    ? { value: null, error: "Enter a percentage above 0 and at most 100." }
+    ? { value: null, error: errors.threshold }
     : checked;
 };
+
+/** The select's text for a preset: "Ethereum Core WETH: 83%". */
+const presetOptionLabel = (preset: LiquidationThresholdPreset, t: Messages) =>
+  `${preset.market} ${t.presetLabels[preset.id] ?? preset.label}: ${preset.liquidationThresholdPercent}%`;
 
 const displayName = (name: string, fallback: string) => name.trim() || fallback;
 
@@ -202,7 +199,7 @@ const sharedAssets = (fields: CalculatorFields): SharedAsset[] => {
  * does not include the debt (Ethereum Core "ETH correlated" lends only WETH). Null when nothing conflicts: no E-Mode
  * preset, no debt, or a volatile debt that is borrowable or unnamed.
  */
-const eModeConflict = (fields: CalculatorFields) => {
+const eModeConflict = (fields: CalculatorFields, t: Messages) => {
   const preset = fields.collateral.map(asset => findLiquidationThresholdPreset(asset.presetId)).find(p => p?.eMode);
   if (!preset?.eMode) return null;
   const { category, collateralSymbols, borrowableSymbols } = preset.eMode;
@@ -212,18 +209,17 @@ const eModeConflict = (fields: CalculatorFields) => {
   const borrowable = borrowableSymbols.map(assetNameKey);
   if (fields.debt.kind === "volatile" && (!debtKey || borrowable.includes(debtKey))) return null;
 
-  const borrowableList = LIST_FORMAT.format(borrowableSymbols);
   const ownThresholds = LIQUIDATION_THRESHOLD_PRESETS.filter(
     p => p.market === preset.market && !p.eMode && p.symbol && collateralSymbols.includes(p.symbol),
-  )
-    .map(p => `${p.market} ${p.label}: ${p.liquidationThresholdPercent}%`)
-    .join(", ");
-  const loan = fields.debt.kind === "stable" ? "a stablecoin loan" : `borrowed ${fields.debt.name.trim()}`;
-  return (
-    `${preset.market}’s “${category}” E-Mode only lets you borrow ${borrowableList}, so an account with ${loan} ` +
-    `cannot use its ${preset.liquidationThresholdPercent}% threshold. Pick the collateral’s own threshold instead` +
-    `${ownThresholds ? ` (${ownThresholds})` : ""}, or borrow ${borrowableList}.`
-  );
+  ).map(p => presetOptionLabel(p, t));
+  return t.eModeConflict({
+    market: preset.market,
+    category,
+    borrowable: borrowableSymbols,
+    loan: fields.debt.kind === "stable" ? { kind: "stable" } : { kind: "volatile", name: fields.debt.name.trim() },
+    thresholdPercent: preset.liquidationThresholdPercent,
+    ownThresholds,
+  });
 };
 
 type NumberFieldProps = {
@@ -261,13 +257,14 @@ const NumberField = ({ id, label, value, onChange, error, hint, placeholder }: N
 
 type NameFieldProps = {
   id: string;
+  label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
 };
 
-const NameField = ({ id, value, onChange, placeholder }: NameFieldProps) => (
-  <Field id={id} label="Asset name" optional>
+const NameField = ({ id, label, value, onChange, placeholder }: NameFieldProps) => (
+  <Field id={id} label={label} optional>
     {control => (
       <Input
         {...control}
@@ -287,6 +284,7 @@ const priceCard = (
   subject: SharedAsset,
   name: string,
   liquidatable: boolean,
+  t: ResultMessages,
 ): ResultCard | null => {
   const key = `price-${subject.collateral.map(i => `c${i}`).join("")}${subject.debt.map(i => `d${i}`).join("")}`;
   const [collateralIndex] = subject.collateral;
@@ -296,76 +294,61 @@ const priceCard = (
     const asset = position.collateral[collateralIndex];
     const result = collateralLiquidationPrice(position, collateralIndex);
     const now = formatUsd(asset.price);
-    return result
-      ? {
-          key,
-          title: `${name} liquidation price`,
-          value: formatUsd(result.price),
-          description: liquidatable
-            ? `The health factor gets back to 1.00 if ${name} rises ${formatPercent(result.change)} from ${now}, other prices unchanged.`
-            : `${formatPercent(result.change)} below ${now}, if every other price stays the same.`,
-        }
-      : {
-          key,
-          title: `${name} liquidation price`,
-          value: "None",
-          description: `Even at $0, ${name} alone cannot take the health factor below 1.00: the other collateral covers the debt.`,
-        };
+    if (!result) return { key, title: t.priceTitle(name), value: t.none, description: t.collateralNone(name) };
+    const move = { name, change: formatPercent(result.change), now };
+    return {
+      key,
+      title: t.priceTitle(name),
+      value: formatUsd(result.price),
+      description: liquidatable ? t.recover({ ...move, rises: true }) : t.collateralFall(move),
+    };
   }
 
   if (!isShared) {
     const debt = position.debt[subject.debt[0]];
     const result = debtLiquidationPrice(position, subject.debt[0]);
     if (!result) return null;
-    const now = formatUsd(debt.price);
+    const move = { name, change: formatPercent(result.change), now: formatUsd(debt.price) };
     return {
       key,
-      title: `${name} liquidation price (borrowed)`,
+      title: t.priceTitleBorrowed(name),
       value: formatUsd(result.price),
-      description: liquidatable
-        ? `The health factor gets back to 1.00 if ${name} falls ${formatPercent(result.change)} from ${now}, other prices unchanged.`
-        : `${formatPercent(result.change)} above ${now}: borrowed assets push the health factor down as they rise.`,
+      description: liquidatable ? t.recover({ ...move, rises: false }) : t.debtRise(move),
     };
   }
 
   // The same asset in several rows: one price moves all of them.
   const borrowed = subject.debt.length > 0;
-  const title = `${name} liquidation price${borrowed ? " (supplied and borrowed)" : ""}`;
+  const title = borrowed ? t.priceTitleShared(name) : t.priceTitle(name);
   const result = sharedAssetLiquidationPrice(position, subject);
   const currentPrice =
     collateralIndex !== undefined ? position.collateral[collateralIndex].price : position.debt[subject.debt[0]].price;
   const now = formatUsd(currentPrice);
   if (result) {
-    const direction = result.change > 0 ? "rises" : "falls";
+    const move = { name, change: formatPercent(result.change), now };
     let description: string;
     if (liquidatable) {
-      description = `The health factor gets back to 1.00 if ${name} ${direction} ${formatPercent(result.change)} from ${now}${
-        borrowed ? ", supplied and borrowed alike" : ""
-      }, other prices unchanged.`;
+      description = t.recover({ ...move, rises: result.change > 0, alike: borrowed });
     } else if (result.change > 0) {
-      description = `${formatPercent(result.change)} above ${now}: you borrowed more ${name} than your ${name} collateral counts for, so a rise pushes the health factor down. Other prices unchanged.`;
+      description = t.sharedRise(move);
     } else {
-      description = borrowed
-        ? `${formatPercent(result.change)} below ${now}, with the borrowed ${name} at the same price and every other price unchanged.`
-        : `${formatPercent(result.change)} below ${now} for every ${name} row, if every other price stays the same.`;
+      description = borrowed ? t.sharedFallBorrowed(move) : t.sharedFallRows(move);
     }
     return { key, title, value: formatUsd(result.price), description };
   }
 
   let description: string;
   if (!borrowed) {
-    description = `Even at $0, ${name} alone cannot take the health factor below 1.00: the other collateral covers the debt.`;
+    description = t.collateralNone(name);
   } else if (
     subject.collateral.length === position.collateral.filter(asset => asset.amount > 0).length &&
     subject.debt.length === position.debt.filter(debt => debt.amount > 0).length
   ) {
-    description = `${name} is both your collateral and your debt, so the two move together and its price does not change the health factor. Interest, a threshold change or your own transactions still do.`;
+    description = t.bothSidesNeutral(name);
   } else {
-    description = liquidatable
-      ? `${name} is on both sides, so the two move together: no ${name} price alone brings the health factor back to 1.00.`
-      : `${name} is on both sides, so the two move together: its price alone cannot take the health factor below 1.00.`;
+    description = liquidatable ? t.bothSidesRecover(name) : t.bothSidesSafe(name);
   }
-  return { key, title, value: "None", description };
+  return { key, title, value: t.none, description };
 };
 
 const buildResults = (
@@ -373,19 +356,16 @@ const buildResults = (
   subjects: SharedAsset[],
   collateralNames: string[],
   debtName: string,
+  t: ResultMessages,
 ): { cards: ResultCard[]; breakdown: string | null } => {
   const hf = healthFactor(position);
   const liquidatable = isLiquidatable(hf);
   const cards: ResultCard[] = [
     {
       key: "hf",
-      title: "Health factor",
+      title: t.healthFactor,
       value: formatHealthFactor(hf),
-      description: !Number.isFinite(hf)
-        ? "No debt, so there is nothing to liquidate."
-        : liquidatable
-          ? "Below 1.00: the position can be liquidated now."
-          : "The position can be liquidated below 1.00.",
+      description: !Number.isFinite(hf) ? t.noDebt : liquidatable ? t.liquidatableNow : t.liquidatableBelow,
       danger: liquidatable,
     },
   ];
@@ -401,7 +381,7 @@ const buildResults = (
   const subjectName = (subject: SharedAsset) =>
     subject.collateral.length > 0 ? collateralNames[subject.collateral[0]] : debtName;
   const addPriceCard = (subject: SharedAsset) => {
-    const card = priceCard(position, subject, subjectName(subject), liquidatable);
+    const card = priceCard(position, subject, subjectName(subject), liquidatable, t);
     if (card) cards.push(card);
   };
   const debtIsAlsoCollateral = activeSubjects.some(s => s.collateral.length > 0 && s.debt.length > 0);
@@ -411,14 +391,16 @@ const buildResults = (
   // Not when the debt is also collateral: that part of the debt would fall with it.
   const fall = uniformCollateralFall(position);
   if (position.collateral.length > 1 && fall !== null && !liquidatable && !debtIsAlsoCollateral) {
-    const prices = position.collateral
-      .map((asset, index) => `${collateralNames[index]} at ${formatUsd(asset.price * (1 - fall))}`)
-      .join(" and ");
     cards.push({
       key: "uniform",
-      title: "All collateral falls together",
+      title: t.uniformTitle,
       value: formatPercent(fall),
-      description: `If every collateral price falls this much and the debt price does not move, the health factor reaches 1.00: ${prices}.`,
+      description: t.uniformDescription(
+        position.collateral.map((asset, index) => ({
+          name: collateralNames[index],
+          price: formatUsd(asset.price * (1 - fall)),
+        })),
+      ),
     });
   }
 
@@ -435,22 +417,29 @@ const buildResults = (
       currentRatio >= 1
         ? {
             key: "ratio",
-            title: `${collateralName} ÷ ${debtName} price at liquidation`,
+            title: t.ratioTitle(collateralName, debtName),
             value: formatRatio(ratio.ratio),
-            description: `Now ${formatRatio(currentRatio)}. If both prices move, a ${formatPercent(ratio.change)} fall in this ratio takes the health factor to 1.00.`,
+            description: t.ratioDescription(formatRatio(currentRatio), formatPercent(ratio.change), true),
           }
         : {
             key: "ratio",
-            title: `${debtName} ÷ ${collateralName} price at liquidation`,
+            title: t.ratioTitle(debtName, collateralName),
             value: formatRatio(1 / ratio.ratio),
-            description: `Now ${formatRatio(1 / currentRatio)}. If both prices move, a ${formatPercent(1 / (1 + ratio.change) - 1)} rise in this ratio takes the health factor to 1.00.`,
+            description: t.ratioDescription(
+              formatRatio(1 / currentRatio),
+              formatPercent(1 / (1 + ratio.change) - 1),
+              false,
+            ),
           },
     );
   }
 
-  const breakdown = `Collateral ${formatUsd(totalCollateralValue(position))}, counted at its liquidation thresholds: ${formatUsd(
-    weightedCollateralValue(position),
-  )}. Health factor = ${formatUsd(weightedCollateralValue(position))} ÷ ${formatUsd(totalDebtValue(position))} of debt = ${formatHealthFactor(hf)}.`;
+  const breakdown = t.breakdown({
+    collateral: formatUsd(totalCollateralValue(position)),
+    weighted: formatUsd(weightedCollateralValue(position)),
+    debt: formatUsd(totalDebtValue(position)),
+    healthFactor: formatHealthFactor(hf),
+  });
   return { cards, breakdown };
 };
 
@@ -460,6 +449,9 @@ const buildResults = (
  * without) JavaScript; the inputs only start recalculating after hydration.
  */
 export const LiquidationCalculator = () => {
+  const locale = useLocale();
+  const t = CALCULATOR_MESSAGES[locale];
+  const thresholdsDate = formatPostDate(LIQUIDATION_THRESHOLDS_AS_OF, locale);
   const baseId = useId();
   const id = (suffix: string) => `${baseId}-${suffix}`;
   const [fields, setFields] = useState<CalculatorFields>(INITIAL_FIELDS);
@@ -518,7 +510,7 @@ export const LiquidationCalculator = () => {
     setFields(current => {
       if (current.debt.kind === kind) return current;
       const amount = parseDecimalInput(current.debt.amount);
-      const price = checkPrice(current.debt.price).value;
+      const price = checkPrice(current.debt.price, t.errors).value;
       let converted = "";
       if (amount.status === "valid" && price !== null) {
         converted =
@@ -531,13 +523,13 @@ export const LiquidationCalculator = () => {
     });
 
   const collateralNames = fields.collateral.map((asset, index) =>
-    displayName(asset.name, DEFAULT_COLLATERAL_NAMES[index]),
+    displayName(asset.name, t.defaultCollateralName(index + 1)),
   );
-  const debtName = displayName(fields.debt.name, DEFAULT_DEBT_NAME);
+  const debtName = displayName(fields.debt.name, t.defaultDebtName);
   const subjects = sharedAssets(fields);
 
   // One asset has one price: a row naming an asset entered in an earlier collateral row must repeat that row's price.
-  const collateralPrices = fields.collateral.map(asset => checkPrice(asset.price));
+  const collateralPrices = fields.collateral.map(asset => checkPrice(asset.price, t.errors));
   const matchEarlierPrice = (checked: CheckedNumber, rows: SharedAsset, isFirstRow: boolean): CheckedNumber => {
     const [firstIndex] = rows.collateral;
     if (isFirstRow || firstIndex === undefined) return checked;
@@ -545,25 +537,29 @@ export const LiquidationCalculator = () => {
     if (first === null || checked.value === null || checked.value === first) return checked;
     return {
       value: null,
-      error: `${collateralNames[firstIndex]} is already entered above at ${formatUsd(first)}. Use the same price: one asset has one price.`,
+      error: t.errors.samePrice(collateralNames[firstIndex], formatUsd(first)),
     };
   };
   const checkedCollateral = fields.collateral.map((asset, index) => {
     const rows = subjects.find(subject => subject.collateral.includes(index))!;
     return {
-      amount: checkAmount(asset.amount),
+      amount: checkAmount(asset.amount, t.errors),
       price: matchEarlierPrice(collateralPrices[index], rows, rows.collateral[0] === index),
-      threshold: checkThreshold(asset.threshold),
+      threshold: checkThreshold(asset.threshold, t.errors),
     };
   });
   const checkedDebt = {
-    amount: checkAmount(fields.debt.amount),
+    amount: checkAmount(fields.debt.amount, t.errors),
     price:
       fields.debt.kind === "stable"
         ? { value: STABLE_DEBT_PRICE, error: null }
-        : matchEarlierPrice(checkPrice(fields.debt.price), subjects.find(subject => subject.debt.length > 0)!, false),
+        : matchEarlierPrice(
+            checkPrice(fields.debt.price, t.errors),
+            subjects.find(subject => subject.debt.length > 0)!,
+            false,
+          ),
   };
-  const eModeIssue = eModeConflict(fields);
+  const eModeIssue = eModeConflict(fields, t);
 
   let position: Position | null = null;
   const debtAmount = checkedDebt.amount.value;
@@ -577,12 +573,11 @@ export const LiquidationCalculator = () => {
     position = { collateral, debt: [{ amount: debtAmount, price: debtPrice }] };
   }
 
-  const results = position && !eModeIssue ? buildResults(position, subjects, collateralNames, debtName) : null;
+  const results =
+    position && !eModeIssue ? buildResults(position, subjects, collateralNames, debtName, t.results) : null;
   const summary =
-    (eModeIssue && `${E_MODE_ISSUE_LEAD} ${eModeIssue}`) ||
-    (results
-      ? results.cards.map(card => `${card.title}: ${card.value}.`).join(" ")
-      : "Enter a number in every field to see the result.");
+    (eModeIssue && `${t.eModeLead} ${eModeIssue}`) ||
+    (results ? results.cards.map(card => t.results.summaryLine(card.title, card.value)).join(" ") : t.results.empty);
 
   // Screen readers hear the result once typing pauses, not after every keystroke.
   const [announcement, setAnnouncement] = useState(summary);
@@ -601,17 +596,14 @@ export const LiquidationCalculator = () => {
     <section aria-labelledby={headingId} className="my-10 lg:-mx-16">
       <Card>
         <CardHeader>
-          <CardTitle id={headingId}>Aave liquidation price calculator</CardTitle>
-          <CardDescription className="leading-relaxed">
-            Enter each collateral asset and your debt to get the health factor and the prices at which the position can
-            be liquidated. It uses the Aave V3 formula: Σ(collateral value × liquidation threshold) ÷ debt value.
-          </CardDescription>
+          <CardTitle id={headingId}>{t.title}</CardTitle>
+          <CardDescription className="leading-relaxed">{t.intro}</CardDescription>
         </CardHeader>
 
         <CardContent className="flex flex-col gap-6">
           <div role="group" aria-labelledby={examplesLabelId} className="flex flex-wrap items-center gap-2">
             <span id={examplesLabelId} className="mr-1 text-sm leading-snug font-medium text-foreground">
-              Load a worked example:
+              {t.examplesLabel}
             </span>
             {CALCULATOR_EXAMPLES.map(example => (
               <Button
@@ -621,7 +613,7 @@ export const LiquidationCalculator = () => {
                 className={EXAMPLE_BUTTON_CLASS_NAME}
                 onClick={() => setFields(example.fields)}
               >
-                {example.label}
+                {t.examples[example.id]}
               </Button>
             ))}
           </div>
@@ -632,16 +624,12 @@ export const LiquidationCalculator = () => {
               const presetId = id(`collateral-${index}-preset`);
               return (
                 <fieldset key={index} className={PANEL_CLASS_NAME}>
-                  <legend className={LEGEND_CLASS_NAME}>{`Collateral ${index + 1}`}</legend>
+                  <legend className={LEGEND_CLASS_NAME}>{t.collateralLegend(index + 1)}</legend>
                   <div className="clear-both flex flex-col gap-4">
                     <Field
                       id={presetId}
-                      label="Aave V3 asset (fills the threshold)"
-                      description={
-                        eMode
-                          ? `Counts at this threshold for ${LIST_FORMAT.format(eMode.collateralSymbols)}; other collateral keeps its own. In this E-Mode you can borrow only ${LIST_FORMAT.format(eMode.borrowableSymbols)}.`
-                          : undefined
-                      }
+                      label={t.presetLabel}
+                      description={eMode ? t.eModeHint(eMode.collateralSymbols, eMode.borrowableSymbols) : undefined}
                     >
                       {control => (
                         <Select
@@ -655,12 +643,12 @@ export const LiquidationCalculator = () => {
                           value={asset.presetId}
                           onChange={event => selectPreset(index, event.target.value)}
                         >
-                          <option value="">Other asset: enter the threshold yourself</option>
+                          <option value="">{t.otherAsset}</option>
                           {PRESET_MARKETS.map(market => (
-                            <optgroup key={market} label={`${market} (read ${THRESHOLDS_DATE})`}>
+                            <optgroup key={market} label={t.presetGroup(market, thresholdsDate)}>
                               {LIQUIDATION_THRESHOLD_PRESETS.filter(preset => preset.market === market).map(preset => (
                                 <option key={preset.id} value={preset.id}>
-                                  {`${market} ${preset.label}: ${preset.liquidationThresholdPercent}%`}
+                                  {presetOptionLabel(preset, t)}
                                 </option>
                               ))}
                             </optgroup>
@@ -671,13 +659,14 @@ export const LiquidationCalculator = () => {
                     <div className="grid gap-4 sm:grid-cols-2">
                       <NameField
                         id={id(`collateral-${index}-name`)}
+                        label={t.nameLabel}
                         value={asset.name}
                         onChange={name => updateCollateral(index, { name })}
-                        placeholder={eMode ? `e.g. ${eMode.collateralSymbols.slice(0, 2).join(" or ")}` : undefined}
+                        placeholder={eMode ? t.namePlaceholder(eMode.collateralSymbols.slice(0, 2)) : undefined}
                       />
                       <NumberField
                         id={id(`collateral-${index}-amount`)}
-                        label="Amount supplied"
+                        label={t.amountSupplied}
                         placeholder="10"
                         value={asset.amount}
                         onChange={amount => updateCollateral(index, { amount })}
@@ -685,26 +674,26 @@ export const LiquidationCalculator = () => {
                       />
                       <NumberField
                         id={id(`collateral-${index}-price`)}
-                        label="Price (USD)"
+                        label={t.price}
                         placeholder="2400"
                         value={asset.price}
                         onChange={price => updateCollateral(index, { price })}
                         error={checkedCollateral[index].price.error}
-                        hint="Aave's oracle price, shown on the asset's page in the Aave app."
+                        hint={t.priceHint}
                       />
                       <NumberField
                         id={id(`collateral-${index}-threshold`)}
-                        label="Liquidation threshold (%)"
+                        label={t.threshold}
                         placeholder="83"
                         value={asset.threshold}
                         onChange={threshold => changeThreshold(index, threshold)}
                         error={checkedCollateral[index].threshold.error}
-                        hint="In E-Mode, the category's threshold. On Aave V4, the collateral factor."
+                        hint={t.thresholdHint}
                       />
                     </div>
                     {index === 1 && (
                       <Button variant="ghost" size="sm" className="self-start" onClick={removeCollateral}>
-                        Remove collateral 2
+                        {t.removeCollateral(2)}
                       </Button>
                     )}
                   </div>
@@ -721,20 +710,20 @@ export const LiquidationCalculator = () => {
                 onClick={addCollateral}
               >
                 <Plus aria-hidden="true" />
-                Add a second collateral
+                {t.addCollateral}
               </Button>
             )}
 
             <fieldset className={PANEL_CLASS_NAME}>
-              <legend className={LEGEND_CLASS_NAME}>Debt</legend>
+              <legend className={LEGEND_CLASS_NAME}>{t.debtLegend}</legend>
               <div className="clear-both flex flex-col gap-4">
                 <fieldset className="min-w-0">
                   <legend className="float-left mb-1 w-full text-sm leading-snug font-medium text-foreground">
-                    What did you borrow?
+                    {t.debtKindLegend}
                   </legend>
                   <div className="clear-both grid gap-x-6 sm:grid-cols-2">
-                    {DEBT_KINDS.map(([kind, label]) => (
-                      <Field key={kind} id={id(`debt-kind-${kind}`)} label={label} orientation="horizontal">
+                    {DEBT_KINDS.map(kind => (
+                      <Field key={kind} id={id(`debt-kind-${kind}`)} label={t.debtKinds[kind]} orientation="horizontal">
                         {control => (
                           <input
                             {...control}
@@ -751,20 +740,25 @@ export const LiquidationCalculator = () => {
                   </div>
                 </fieldset>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <NameField id={id("debt-name")} value={fields.debt.name} onChange={name => updateDebt({ name })} />
+                  <NameField
+                    id={id("debt-name")}
+                    label={t.nameLabel}
+                    value={fields.debt.name}
+                    onChange={name => updateDebt({ name })}
+                  />
                   <NumberField
                     id={id("debt-amount")}
-                    label={fields.debt.kind === "stable" ? "Amount borrowed (USD)" : "Amount borrowed (tokens)"}
+                    label={t.debtAmount[fields.debt.kind]}
                     placeholder={fields.debt.kind === "stable" ? "12000" : "2.5"}
                     value={fields.debt.amount}
                     onChange={amount => updateDebt({ amount })}
                     error={checkedDebt.amount.error}
-                    hint="Include the interest accrued so far."
+                    hint={t.debtAmountHint}
                   />
                   {fields.debt.kind === "volatile" && (
                     <NumberField
                       id={id("debt-price")}
-                      label="Price of the borrowed asset (USD)"
+                      label={t.debtPrice}
                       placeholder="2400"
                       value={fields.debt.price}
                       onChange={price => updateDebt({ price })}
@@ -778,7 +772,7 @@ export const LiquidationCalculator = () => {
 
           <section aria-labelledby={resultsHeadingId} className="flex flex-col gap-3">
             <h4 id={resultsHeadingId} className="m-0 text-base leading-snug">
-              Result
+              {t.results.heading}
             </h4>
             <p role="status" className="sr-only">
               {announcement}
@@ -786,7 +780,7 @@ export const LiquidationCalculator = () => {
             {eModeIssue ? (
               <Alert id={eModeIssueId} variant="warning">
                 <p>
-                  <span className="font-medium text-foreground">{E_MODE_ISSUE_LEAD}</span> {eModeIssue}
+                  <span className="font-medium text-foreground">{t.eModeLead}</span> {eModeIssue}
                 </p>
               </Alert>
             ) : results ? (
@@ -816,23 +810,18 @@ export const LiquidationCalculator = () => {
                 )}
               </>
             ) : (
-              <p className="m-0 text-sm text-muted-foreground">Enter a number in every field to see the result.</p>
+              <p className="m-0 text-sm text-muted-foreground">{t.results.empty}</p>
             )}
           </section>
 
           <noscript>
-            <p className="m-0 text-sm text-muted-foreground">
-              The calculator needs JavaScript to recalculate. The result above is for 10 WETH at $2,400 (liquidation
-              threshold 83%) against 12,000 USDC; the worked examples on this page use the same formula.
-            </p>
+            <p className="m-0 text-sm text-muted-foreground">{t.noscript}</p>
           </noscript>
 
           <p className="m-0 text-sm leading-relaxed text-muted-foreground">
-            <strong className="font-medium text-foreground">Educational estimate, not financial advice.</strong> It uses
-            only the numbers you enter. Live Aave parameters can change: the thresholds above were read on-chain on{" "}
-            <time dateTime={LIQUIDATION_THRESHOLDS_AS_OF}>{THRESHOLDS_DATE}</time>, and governance or the Risk Stewards
-            can change them at any time. Oracle prices move, interest keeps adding to your debt, and each liquidation
-            price assumes every other price stays the same. Check your position in the Aave app before you act.
+            <strong className="font-medium text-foreground">{t.disclaimer.lead}</strong>
+            {` ${t.disclaimer.beforeDate}`} <time dateTime={LIQUIDATION_THRESHOLDS_AS_OF}>{thresholdsDate}</time>
+            {t.disclaimer.afterDate}
           </p>
         </CardContent>
       </Card>

@@ -6,7 +6,9 @@ import {
   BASE_SUMMARY_ONLY_POSITION,
   ETHEREUM_POSITION,
   POLYGON_COLLATERAL_ONLY_POSITION,
+  SUPPLIED_USDC,
 } from "~~/components/custom/aave/__fixtures__/positions";
+import { LocaleProvider } from "~~/i18n/LocaleProvider";
 import { renderMarkup } from "~~/utils/testing/render";
 
 describe("PositionDetails", () => {
@@ -52,5 +54,57 @@ describe("PositionDetails", () => {
     expect(html).not.toContain("Health factor");
     expect(html).not.toContain("<dl");
     expect(html).toMatchSnapshot();
+  });
+});
+
+describe("PositionDetails in Czech", () => {
+  const czech = (position: Parameters<typeof PositionDetails>[0]["position"]) =>
+    renderMarkup(
+      <LocaleProvider locale="cs">
+        <PositionDetails position={position} />
+      </LocaleProvider>,
+    );
+
+  it("labels the totals and tables in Czech and counts assets with Czech plurals", () => {
+    const html = czech(ETHEREUM_POSITION);
+
+    expect(html).toContain(">Trh Aave V3</p>");
+    expect(html).toContain(">Kolaterál</dt>");
+    expect(html).toContain(">Dluh</dt>");
+    expect(html).toContain(">Čisté jmění</dt>");
+    expect(html).toContain('<h4 id="supplied-1" class="m-0 text-sm font-medium text-foreground">Vloženo</h4>');
+    expect(html).toContain('<h4 id="borrowed-1" class="m-0 text-sm font-medium text-foreground">Vypůjčeno</h4>');
+    expect(html).toContain(">3 aktiva</p>");
+    expect(html).toContain(">4 aktiva</p>");
+    expect(html).toContain("Ikony tokenů z");
+    expect(html).toContain("(otevře se v nové záložce)");
+    expect(html).toContain("Health factor ");
+    expect(html).toContain(">Bezpečný</span>");
+    expect(html).not.toMatch(new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`));
+  });
+
+  it.each([
+    [1, "1 aktivum"],
+    [5, "5 aktiv"],
+  ])("counts %i supplied asset(s) as %j", (count, label) => {
+    const tokens = Array.from({ length: count }, (_, i) => ({
+      ...SUPPLIED_USDC,
+      asset: `0x${String(i + 1).padStart(40, "0")}` as const,
+    }));
+    const html = czech({ ...POLYGON_COLLATERAL_ONLY_POSITION, tokens });
+
+    expect(html).toContain(`>${label}</p>`);
+    expect(html).toContain(">0 aktiv</p>");
+    expect(html).toContain(">Žádný nesplacený dluh</p>");
+  });
+
+  it("explains an empty network and missing token details in Czech", () => {
+    expect(czech(ARBITRUM_EMPTY_POSITION)).toContain(
+      ">Aave pro tuto peněženku na síti Arbitrum neuvádí žádný kolaterál ani dluh.</p>",
+    );
+    expect(czech(AVALANCHE_DEBT_ONLY_POSITION)).toContain(">Žádný vložený kolaterál</p>");
+    const summaryOnly = czech(BASE_SUMMARY_ONLY_POSITION);
+    expect(summaryOnly).toContain(">Podrobnosti o tokenech se nenačetly</div>");
+    expect(summaryOnly).toContain("Součty výše pocházejí ze souhrnu účtu na Aave. Pro nový pokus obnovte pozice.");
   });
 });

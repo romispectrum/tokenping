@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { Check, CircleAlert, Copy } from "lucide-react";
 import { shortenHex, toDisplayAddress } from "~~/components/custom/aave/web3Format";
 import { cx } from "~~/components/ui";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 
 // A deterministic avatar from chart series 1, 4 and 5: never chart-3 (pink, the view's primary action) and never
 // chart-2 (cyan in dark, never a fill).
@@ -26,15 +28,9 @@ const avatarFill = (address: string) => {
 
 type CopyState = "idle" | "copied" | "failed";
 
-const COPY_ANNOUNCEMENTS: Record<CopyState, string> = {
-  idle: "",
-  copied: "Address copied",
-  failed: "Could not copy. Select the address and copy it manually.",
-};
-
 type AddressChipProps = {
   address: string;
-  /** Read before the address by screen readers ("Wallet"). */
+  /** Read before the address by screen readers ("Wallet"); "Address" by default. */
   label?: string;
   className?: string;
 };
@@ -43,7 +39,10 @@ type AddressChipProps = {
  * An address as `0x1234...abcd` in the data face, with a copy button. The full checksummed address is in `title` and
  * in the accessible name; copy confirms with an icon swap and an announced "Address copied".
  */
-export const AddressChip = ({ address, label = "Address", className }: AddressChipProps) => {
+export const AddressChip = ({ address, label: labelProp, className }: AddressChipProps) => {
+  const t = useMessages(DASHBOARD_MESSAGES).address;
+  const label = labelProp ?? t.defaultLabel;
+  const copyAnnouncements: Record<CopyState, string> = { idle: "", copied: t.copied, failed: t.copyFailed };
   const [copyState, setCopyState] = useState<CopyState>("idle");
   const resetTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const fullAddress = toDisplayAddress(address);
@@ -77,7 +76,7 @@ export const AddressChip = ({ address, label = "Address", className }: AddressCh
       <button
         type="button"
         onClick={copy}
-        aria-label={`Copy ${label.toLowerCase()} ${fullAddress}`}
+        aria-label={t.copy(label, fullAddress)}
         className="relative inline-flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 ease-[ease] after:absolute after:-inset-2 hover:bg-accent hover:text-accent-foreground"
       >
         {copyState === "copied" ? (
@@ -90,7 +89,7 @@ export const AddressChip = ({ address, label = "Address", className }: AddressCh
       </button>
       {/* Mounted from the start, so the copy result is announced. */}
       <span role="status" aria-live="polite" className="sr-only">
-        {COPY_ANNOUNCEMENTS[copyState]}
+        {copyAnnouncements[copyState]}
       </span>
     </span>
   );

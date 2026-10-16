@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
 import { DEFAULT_HEALTH_FACTOR_THRESHOLD } from "~~/constants/notifications";
+import { useLocale } from "~~/i18n/LocaleProvider";
 import { notificationConfigClient } from "~~/services/notifications/notificationConfigClient";
 import type { NotificationConfig } from "~~/types/notifications";
 import { normalizeAddress } from "~~/utils/address";
@@ -43,6 +44,7 @@ const removeChain = (configs: ConfigsByChain | undefined, chainId: number) => {
  */
 export const useNotificationConfig = () => {
   const { address } = useAccount();
+  const locale = useLocale();
   const queryClient = useQueryClient();
 
   const query = useQuery({
@@ -89,12 +91,14 @@ export const useNotificationConfig = () => {
       const saved = queryClient.getQueryData<ConfigsByChain>(notificationConfigsQueryKey(userId))?.[chainId];
       const config: NotificationConfig = {
         ...(saved ?? { chainId, enabled: false, services: [], healthFactorThreshold: DEFAULT_HEALTH_FACTOR_THRESHOLD }),
+        // Alerts are sent in the language of the page the config was last saved from.
+        locale,
         ...updates,
         chainId, // always the position's chain (Aave network), never the wallet's connected chain
       };
       await saveConfig({ userId, config });
     },
-    [address, queryClient, saveConfig],
+    [address, locale, queryClient, saveConfig],
   );
 
   const deleteConfig = useCallback(

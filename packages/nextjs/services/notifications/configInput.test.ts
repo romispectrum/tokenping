@@ -8,12 +8,14 @@ const DEFAULTS = {
   healthFactorThreshold: 1.5,
   email: null,
   signalRecipient: null,
+  locale: "en",
 };
 
 const SERVICES_ERROR = "Invalid services: expected an array of email, signal, telegram";
 const THRESHOLD_ERROR = "Invalid healthFactorThreshold: expected a finite number";
 const EMAIL_ERROR = "Invalid email address for email notifications";
 const SIGNAL_ERROR = "Invalid Signal username for Signal notifications. Expected format: alice.42";
+const LOCALE_ERROR = "Invalid locale: expected one of en, cs";
 
 describe("parseConfigInput", () => {
   it.each<[ConfigInput, Record<string, unknown>]>([
@@ -63,6 +65,11 @@ describe("parseConfigInput", () => {
     [{ signalRecipient: 0 }, { signalRecipient: "0" }],
     [{ signalRecipient: "u:" }, {}],
     [{ signalRecipient: "  " }, {}],
+    // The alert language: English when absent.
+    [{ locale: "cs" }, { locale: "cs" }],
+    [{ locale: "en" }, { locale: "en" }],
+    [{ locale: undefined }, {}],
+    [{ locale: null }, {}],
   ])("accepts %j as the defaults plus %j", (input, overrides) => {
     expect(parseConfigInput(input)).toStrictEqual({ value: { ...DEFAULTS, ...overrides } });
   });
@@ -95,6 +102,12 @@ describe("parseConfigInput", () => {
       { services: ["signal"], signalRecipient: `alice.${"4".repeat(59)}` },
       SIGNAL_ERROR,
     ],
+    ["an unsupported locale", { locale: "de" }, LOCALE_ERROR],
+    ["an upper-case locale", { locale: "CS" }, LOCALE_ERROR],
+    ["a region-tagged locale", { locale: "cs-CZ" }, LOCALE_ERROR],
+    ["an empty locale", { locale: "" }, LOCALE_ERROR],
+    ["a non-string locale", { locale: 1 }, LOCALE_ERROR],
+    ["a locale array", { locale: ["cs"] }, LOCALE_ERROR],
   ])("rejects %s", (_label, input, error) => {
     expect(parseConfigInput(input)).toStrictEqual({ error });
   });
@@ -130,13 +143,22 @@ describe("parseConfigInput", () => {
     expect("value" in server).toBe(clientError === null);
   });
 
-  it("reports the first problem in field order: services, threshold, email, Signal", () => {
-    const allBad = { services: ["email", "signal"], healthFactorThreshold: "x", email: "bad", signalRecipient: "bad" };
+  it("reports the first problem in field order: services, threshold, email, Signal, locale", () => {
+    const allBad = {
+      services: ["email", "signal"],
+      healthFactorThreshold: "x",
+      email: "bad",
+      signalRecipient: "bad",
+      locale: "de",
+    };
     expect(parseConfigInput({ ...allBad, services: ["sms"] })).toStrictEqual({ error: SERVICES_ERROR });
     expect(parseConfigInput(allBad)).toStrictEqual({ error: THRESHOLD_ERROR });
     expect(parseConfigInput({ ...allBad, healthFactorThreshold: 2 })).toStrictEqual({ error: EMAIL_ERROR });
     expect(parseConfigInput({ ...allBad, healthFactorThreshold: 2, email: "a@b.co" })).toStrictEqual({
       error: SIGNAL_ERROR,
     });
+    expect(
+      parseConfigInput({ ...allBad, healthFactorThreshold: 2, email: "a@b.co", signalRecipient: "alice.42" }),
+    ).toStrictEqual({ error: LOCALE_ERROR });
   });
 });

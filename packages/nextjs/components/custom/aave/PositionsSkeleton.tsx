@@ -1,5 +1,7 @@
 import { STAT_STRIP_CLASS_NAME, StatCardSkeleton } from "~~/components/custom/aave/StatCard";
 import { Card, Skeleton } from "~~/components/ui";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 
 // Placeholders at the geometry of the real dashboard, so nothing jumps when the data arrives.
 
@@ -75,29 +77,32 @@ export const AlertSettingsSkeleton = () => (
 );
 
 /** The whole dashboard before the wallet state is known: the toolbar, the totals and the two columns. */
-export const DashboardSkeleton = () => (
-  <div aria-busy="true" className="flex flex-col gap-4 sm:gap-6">
-    <span role="status" className="sr-only">
-      Loading your dashboard
-    </span>
-    <div aria-hidden="true" className="flex items-center justify-between gap-3">
-      <Skeleton className="h-8 w-48 rounded-full" />
-      <Skeleton className="size-11 sm:h-10 sm:w-44" />
-    </div>
-    <StatStripSkeleton />
-    <div className="grid gap-4 lg:grid-cols-12 lg:items-start lg:gap-6">
-      <Card aria-hidden="true" size="sm" className="min-w-0 lg:col-span-5">
-        <div className="px-[var(--card-spacing)]">
-          <Skeleton className="h-5 w-24" />
+export const DashboardSkeleton = () => {
+  const t = useMessages(DASHBOARD_MESSAGES);
+  return (
+    <div aria-busy="true" className="flex flex-col gap-4 sm:gap-6">
+      <span role="status" className="sr-only">
+        {t.loadingDashboard}
+      </span>
+      <div aria-hidden="true" className="flex items-center justify-between gap-3">
+        <Skeleton className="h-8 w-48 rounded-full" />
+        <Skeleton className="size-11 sm:h-10 sm:w-44" />
+      </div>
+      <StatStripSkeleton />
+      <div className="grid gap-4 lg:grid-cols-12 lg:items-start lg:gap-6">
+        <Card aria-hidden="true" size="sm" className="min-w-0 lg:col-span-5">
+          <div className="px-[var(--card-spacing)]">
+            <Skeleton className="h-5 w-24" />
+          </div>
+          <div className="px-2">
+            <NetworkListSkeleton />
+          </div>
+        </Card>
+        <div className="flex min-w-0 flex-col gap-4 sm:gap-6 lg:col-span-7">
+          <AlertSettingsSkeleton />
+          <PositionDetailsSkeleton />
         </div>
-        <div className="px-2">
-          <NetworkListSkeleton />
-        </div>
-      </Card>
-      <div className="flex min-w-0 flex-col gap-4 sm:gap-6 lg:col-span-7">
-        <AlertSettingsSkeleton />
-        <PositionDetailsSkeleton />
       </div>
     </div>
-  </div>
-);
+  );
+};

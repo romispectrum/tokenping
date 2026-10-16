@@ -30,8 +30,9 @@ import { Button, LiveRegion } from "~~/components/ui";
 import { useAccess } from "~~/hooks/custom/useAccess";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
 import { useTelegramLink } from "~~/hooks/custom/useTelegramLink";
+import { useLocale } from "~~/i18n/LocaleProvider";
+import { ALERTS_MESSAGES, requestErrorMessage } from "~~/i18n/messages/alerts";
 import { normalizeAddress } from "~~/utils/address";
-import { getErrorMessage } from "~~/utils/errors";
 import { isBelowThreshold } from "~~/utils/healthFactor";
 import { notification } from "~~/utils/scaffold-eth";
 
@@ -48,6 +49,8 @@ const NotificationSettings = ({
   chainName,
   currentHealthFactor,
 }: NotificationConfigProps & { address: string | undefined }) => {
+  const locale = useLocale();
+  const t = ALERTS_MESSAGES[locale];
   const { getConfig, updateConfig, deleteConfig, isLoaded, isError, isFetching, refetch, isSaving, isDeleting } =
     useNotificationConfig();
   const { isActive: hasAccess } = useAccess();
@@ -122,7 +125,7 @@ const NotificationSettings = ({
         headerRight={
           <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
             <Lock aria-hidden="true" className="size-4 shrink-0" />
-            Pay for access to edit
+            {t.payToEdit}
           </span>
         }
       >
@@ -142,7 +145,7 @@ const NotificationSettings = ({
 
   const updateDraft = (patch: Partial<NotificationFormState>) => setDraft(prev => ({ ...prev, ...patch }));
   const submission = { ...draft, telegramChatId: telegram.chatId, telegramStatusUnknown: telegram.isStatusUnknown };
-  const currentErrors = getNotificationFormErrors(submission);
+  const currentErrors = getNotificationFormErrors(submission, locale);
   const errorFor = (field: NotificationFormField) => (invalidFields.includes(field) ? currentErrors[field] : undefined);
   const errorSummaryItems = invalidFields.flatMap(field => {
     const message = currentErrors[field];
@@ -176,14 +179,14 @@ const NotificationSettings = ({
 
     try {
       await updateConfig(chainId, buildConfigUpdate(draft));
-      notification.success("Alert saved");
-      setAnnouncement("Alert saved");
+      notification.success(t.alertSaved);
+      setAnnouncement(t.alertSaved);
       // Save goes away with the form: the attribution prompt takes focus if it opens, otherwise Edit alert does.
       restoreFocusOnClose.current = !attribution.offer();
       setIsEditing(false);
     } catch (error) {
       console.error("Failed to save notification config:", error);
-      const message = getErrorMessage(error, "Couldn't save your alert");
+      const message = requestErrorMessage(locale, error, t.saveFailed);
       notification.error(message);
       setAnnouncement(message);
     }
@@ -194,12 +197,12 @@ const NotificationSettings = ({
     try {
       await deleteConfig(chainId);
       startEditing(EMPTY_FORM_STATE);
-      setAnnouncement("Alert deleted");
+      setAnnouncement(t.alertDeleted);
       // The Delete button is gone: continue at the start of the empty form.
       focusField("services");
     } catch (error) {
       console.error("Failed to delete notification config:", error);
-      const message = getErrorMessage(error, "Couldn't delete your alert");
+      const message = requestErrorMessage(locale, error, t.deleteFailed);
       notification.error(message);
       setAnnouncement(message);
     }
@@ -228,7 +231,7 @@ const NotificationSettings = ({
         !isEditing && (
           <Button ref={attribution.returnFocusRef} variant="outline" size="sm" onClick={() => startEditing(saved)}>
             <Pencil aria-hidden="true" />
-            Edit alert
+            {t.editAlert}
           </Button>
         )
       }
@@ -297,7 +300,7 @@ const NotificationSettings = ({
             <AttributionPrompt
               address={address}
               autoFocus={attribution.focusOnShow}
-              onSent={() => setAnnouncement("Answer sent")}
+              onSent={() => setAnnouncement(t.answerSent)}
               onClose={attribution.close}
             />
           )}

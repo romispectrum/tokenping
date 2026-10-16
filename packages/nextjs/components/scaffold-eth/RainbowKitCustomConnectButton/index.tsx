@@ -10,6 +10,8 @@ import { Balance } from "@scaffold-ui/components";
 import { Address } from "viem";
 import { buttonClasses } from "~~/components/ui/buttonClasses";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth/useTargetNetwork";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 import { getBlockExplorerAddressLink } from "~~/utils/scaffold-eth";
 
 /**
@@ -18,6 +20,7 @@ import { getBlockExplorerAddressLink } from "~~/utils/scaffold-eth";
  */
 export const RainbowKitCustomConnectButton = () => {
   const { targetNetwork } = useTargetNetwork();
+  const t = useMessages(COMMON_MESSAGES).wallet;
 
   return (
     <ConnectButton.Custom>
@@ -36,10 +39,10 @@ export const RainbowKitCustomConnectButton = () => {
                     className={buttonClasses({ variant: "outline", size: "sm" })}
                     onClick={openConnectModal}
                     type="button"
-                    aria-label="Connect wallet"
+                    aria-label={t.connect}
                   >
-                    <span className="hidden sm:inline">Connect wallet</span>
-                    <span className="sm:hidden">Connect</span>
+                    <span className="hidden sm:inline">{t.connect}</span>
+                    <span className="sm:hidden">{t.connectShort}</span>
                   </button>
                 );
               }

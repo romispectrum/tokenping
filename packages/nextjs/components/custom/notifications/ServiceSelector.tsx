@@ -2,6 +2,8 @@ import { useId } from "react";
 import { SERVICE_ICONS } from "~~/components/custom/notifications/serviceIcons";
 import { Checkbox, cx } from "~~/components/ui";
 import { getSelectableServices } from "~~/constants/notifications";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 import type { NotificationService } from "~~/types/notifications";
 
 type ServiceSelectorProps = {
@@ -18,6 +20,7 @@ type ServiceSelectorProps = {
  * tile is the touch target and selected is the violet accent, never pink.
  */
 export const ServiceSelector = ({ id: groupId, services, onToggle, error }: ServiceSelectorProps) => {
+  const t = useMessages(ALERTS_MESSAGES);
   const id = useId();
   const descriptionId = `${id}-description`;
   const errorId = `${id}-error`;
@@ -28,7 +31,7 @@ export const ServiceSelector = ({ id: groupId, services, onToggle, error }: Serv
       aria-describedby={error ? `${descriptionId} ${errorId}` : descriptionId}
       className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0"
     >
-      <legend className="mb-2 p-0 text-sm leading-snug font-medium text-foreground">Notification services</legend>
+      <legend className="mb-2 p-0 text-sm leading-snug font-medium text-foreground">{t.servicesLegend}</legend>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-2">
         {getSelectableServices(services).map(service => {
           const Icon = SERVICE_ICONS[service.id];
@@ -50,13 +53,13 @@ export const ServiceSelector = ({ id: groupId, services, onToggle, error }: Serv
                 aria-invalid={error ? true : undefined}
               />
               <Icon aria-hidden="true" className="size-4 shrink-0" />
-              {service.name}
+              {t.serviceNames[service.id]}
             </label>
           );
         })}
       </div>
       <p id={descriptionId} className="m-0 text-sm text-muted-foreground">
-        Choose where alerts go. You can pick more than one.
+        {t.servicesDescription}
       </p>
       {error ? (
         <p id={errorId} role="alert" className="m-0 text-sm text-destructive">

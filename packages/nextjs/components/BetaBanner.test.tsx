@@ -2,6 +2,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { BetaBanner } from "~~/components/BetaBanner";
+import { LocaleProvider } from "~~/i18n/LocaleProvider";
 import { renderMarkup } from "~~/utils/testing/render";
 
 describe("BetaBanner", () => {
@@ -39,5 +40,29 @@ describe("BetaBanner", () => {
     expect(link.getAttribute("href")).toBe("https://x.com/tokenping");
     expect(link.getAttribute("target")).toBe("_blank");
     expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+  });
+});
+
+describe("BetaBanner in Czech", () => {
+  const renderCzech = () =>
+    render(
+      <LocaleProvider locale="cs">
+        <BetaBanner />
+      </LocaleProvider>,
+    );
+
+  it("says the skip link, the beta status and the X link in Czech", () => {
+    const { container } = renderCzech();
+    const [first] = container.querySelectorAll("a, button");
+
+    expect(first.textContent).toBe("Přeskočit na obsah");
+    expect(first.getAttribute("href")).toBe("#main");
+    expect(screen.getByRole("region", { name: "Stav aplikace a sociální sítě" }).textContent).toContain(
+      "Tokenping je v betaverzi",
+    );
+    const link = screen.getByRole("link", { name: "Sledujte nás na X" });
+    expect(link.textContent).toBe("Sledujte nás na");
+    expect(link.getAttribute("href")).toBe("https://x.com/tokenping");
+    expect(container.innerHTML).not.toMatch(new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`));
   });
 });

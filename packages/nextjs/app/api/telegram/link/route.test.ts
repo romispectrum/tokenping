@@ -32,6 +32,9 @@ const del = (body: unknown) =>
 const FAREWELL =
   "🔕 Tokenping disconnected from this chat. You won't receive Aave alerts here anymore. " +
   "You can reconnect anytime from the Tokenping app.";
+const FAREWELL_CS =
+  "🔕 Tokenping byl od tohoto chatu odpojen. Upozornění na Aave sem už nepřijdou. " +
+  "Znovu se můžete kdykoli připojit v aplikaci Tokenping.";
 
 beforeEach(() => {
   fakeSupabase.reset();
@@ -148,6 +151,25 @@ describe("DELETE /api/telegram/link", () => {
 
     await afterQueue.flush();
     expect(replyToTelegramChat).toHaveBeenCalledExactlyOnceWith("987", FAREWELL);
+  });
+
+  it.each([
+    ["cs", FAREWELL_CS],
+    ["en", FAREWELL],
+    ["de", FAREWELL],
+    [5, FAREWELL],
+    [null, FAREWELL],
+  ])("sends the farewell for the site locale %j in its language", async (locale, farewell) => {
+    fakeSupabase.respondByQuery({
+      [linkQuery("user_id", LOWER)]: {
+        data: { user_id: LOWER, chat_id: "987", username: "bob", linked_at: "2026-03-01T10:00:00Z" },
+      },
+    });
+
+    expect(await read(await del({ userId: LOWER, locale }))).toEqual(json(200, { success: true }));
+
+    await afterQueue.flush();
+    expect(replyToTelegramChat).toHaveBeenCalledExactlyOnceWith("987", farewell);
   });
 
   it("skips the farewell when nothing was linked", async () => {

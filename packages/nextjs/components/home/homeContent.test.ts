@@ -128,3 +128,44 @@ describe("softwareApplicationJsonLd", () => {
     expect(softwareApplicationJsonLd(null)).not.toHaveProperty("aggregateRating");
   });
 });
+
+describe("Czech home copy", () => {
+  it.each([false, true])(
+    "keeps the title within 60 and the description within 155 characters (Telegram %s)",
+    telegram => {
+      withTelegram(telegram);
+
+      expect(getHomeTitle("cs").length).toBeLessThanOrEqual(60);
+      expect(getHomeDescription("cs").length).toBeLessThanOrEqual(155);
+      expect(getHomeDescription("cs")).toMatch(/^Upozornění přes Signal/);
+    },
+  );
+
+  it("names the channels the Czech way", () => {
+    withTelegram(true);
+
+    expect(getHomeHeadline("cs")).toBe("Upozornění na Aave health factor: Signal, Telegram a e-mail");
+  });
+
+  it("labels the price with a decimal comma and Czech day forms", () => {
+    expect(getPricingCtaLabel({ priceLabel: "3 USDC", days: 30 }, "cs")).toBe("Nastavit upozornění: 3 USDC na 30 dní");
+    expect(getPricingCtaLabel({ priceLabel: "0.5 USDC", days: 1 }, "cs")).toBe(
+      "Nastavit upozornění: 0,5 USDC na 1 den",
+    );
+    expect(getPricingCtaLabel({ priceLabel: "1 USDC", days: 3 }, "cs")).toBe("Nastavit upozornění: 1 USDC na 3 dny");
+    expect(getPricingCtaLabel(null, "cs")).toBe("Nastavit upozornění");
+  });
+
+  it("marks the Core market in Czech", () => {
+    expect(getNetworkNames("cs")[0]).toBe("Ethereum (trh Core)");
+  });
+
+  it("points the JSON-LD at the Czech home and dashboard", () => {
+    expect(softwareApplicationJsonLd({ priceLabel: "3 USDC", days: 30 }, "cs")).toMatchObject({
+      url: "https://tokenping.xyz/cs",
+      inLanguage: "cs",
+      offers: { url: "https://tokenping.xyz/cs/aave" },
+    });
+    expect(softwareApplicationJsonLd(null)).toMatchObject({ url: "https://tokenping.xyz/", inLanguage: "en" });
+  });
+});

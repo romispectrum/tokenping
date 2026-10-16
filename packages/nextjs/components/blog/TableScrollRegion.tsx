@@ -2,9 +2,10 @@
 
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { cx } from "~~/components/ui/classNames";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { BLOG_MESSAGES } from "~~/i18n/messages/blog";
 
-/** The region's name before hydration and without JavaScript, or when no heading precedes the table. */
-export const FALLBACK_TABLE_LABEL = "Table, scrolls horizontally";
+type TableMessages = (typeof BLOG_MESSAGES)["en"]["table"];
 
 const HEADING_TAGS = new Set(["H2", "H3", "H4"]);
 // The search for a heading never leaves the post.
@@ -27,14 +28,14 @@ const headingBefore = (element: Element) => {
  * Markdown tables have no caption, so the nearest heading above the table names it ("Table: What is the formula
  * for an Aave liquidation price?"). Tables that share a heading are numbered, so no two regions share a name.
  */
-const sectionLabel = (wrapper: HTMLElement) => {
+const sectionLabel = (wrapper: HTMLElement, messages: TableMessages) => {
   const heading = headingBefore(wrapper);
   const text = heading?.textContent?.trim();
   if (!heading || !text) return null;
   const tables = [...wrapper.ownerDocument.querySelectorAll(`[data-slot="${TABLE_SLOT}"]`)].filter(
     table => headingBefore(table) === heading,
   );
-  return tables.length > 1 ? `Table ${tables.indexOf(wrapper) + 1}: ${text}` : `Table: ${text}`;
+  return messages.label(text, tables.length > 1 ? tables.indexOf(wrapper) + 1 : undefined);
 };
 
 type TableScrollRegionProps = {
@@ -51,12 +52,13 @@ export const TableScrollRegion = ({ className, children }: TableScrollRegionProp
   const wrapperRef = useRef<HTMLDivElement>(null);
   const regionRef = useRef<HTMLDivElement>(null);
   const hintId = useId();
-  const [label, setLabel] = useState(FALLBACK_TABLE_LABEL);
+  const messages = useMessages(BLOG_MESSAGES).table;
+  const [label, setLabel] = useState(messages.fallbackLabel);
   const [overflowing, setOverflowing] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (wrapperRef.current) setLabel(sectionLabel(wrapperRef.current) ?? FALLBACK_TABLE_LABEL);
-  }, []);
+    if (wrapperRef.current) setLabel(sectionLabel(wrapperRef.current, messages) ?? messages.fallbackLabel);
+  }, [messages]);
 
   useEffect(() => {
     const region = regionRef.current;
@@ -83,7 +85,7 @@ export const TableScrollRegion = ({ className, children }: TableScrollRegionProp
       </div>
       {overflowing !== false && (
         <p id={hintId} className={cx("mt-2 mb-0 text-sm text-muted-foreground", overflowing === null && "md:hidden")}>
-          Scroll sideways to see every column.
+          {messages.scrollHint}
         </p>
       )}
     </div>

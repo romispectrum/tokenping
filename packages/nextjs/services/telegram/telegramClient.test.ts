@@ -134,6 +134,12 @@ describe("disconnect", () => {
     ]);
   });
 
+  it("sends the page's language for the bot's farewell message", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ success: true }));
+    await telegramClient.disconnect("0xAbC", "cs");
+    expect(fetchMock.mock.calls[0][1]?.body).toBe('{"userId":"0xAbC","locale":"cs"}');
+  });
+
   it.each([
     ["the error string", jsonResponse({ error: "Active paid access required" }, 403), "Active paid access required"],
     ["the fallback for a non-JSON body", new Response("oops", { status: 500 }), "Failed to disconnect Telegram"],

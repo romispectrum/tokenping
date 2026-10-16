@@ -12,8 +12,11 @@ import { buttonClasses } from "~~/components/ui/buttonClasses";
 import { cx } from "~~/components/ui/classNames";
 import { EXTERNAL_LINK_REL, SOCIAL_LINKS, SOURCE_CODE_URL } from "~~/constants/links";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth/useTargetNetwork";
-import { formatAlertChannels } from "~~/services/marketing/alertChannels";
-import { RSS_PATH } from "~~/utils/seo";
+import { useLocale, useMessages } from "~~/i18n/LocaleProvider";
+import type { Locale } from "~~/i18n/locales";
+import { COMMON_MESSAGES } from "~~/i18n/messages/common";
+import { routePath } from "~~/i18n/routes";
+import { formatAlertChannelsIn } from "~~/services/marketing/alertChannels";
 
 type FooterLink = {
   label: string;
@@ -31,30 +34,33 @@ type FooterGroup = {
   links: readonly FooterLink[];
 };
 
-const FOOTER_GROUPS: readonly FooterGroup[] = [
-  {
-    id: "resources",
-    title: "Resources",
-    links: [
-      { label: "Blog", href: "/blog", kind: "page" },
-      { label: "RSS", href: RSS_PATH, kind: "feed", ariaLabel: "Tokenping blog RSS feed" },
-      { label: "GitHub", href: SOURCE_CODE_URL, kind: "external", ariaLabel: "Tokenping source code on GitHub" },
-    ],
-  },
-  {
-    id: "community",
-    title: "Community",
-    links: [
-      { label: "X", href: SOCIAL_LINKS.x, kind: "external", ariaLabel: "Tokenping on X" },
-      { label: "Telegram", href: SOCIAL_LINKS.telegram, kind: "external", ariaLabel: "Tokenping Telegram community" },
-    ],
-  },
-  {
-    id: "legal",
-    title: "Legal",
-    links: [{ label: "Privacy", href: "/privacy", kind: "page" }],
-  },
-];
+const footerGroups = (locale: Locale): readonly FooterGroup[] => {
+  const t = COMMON_MESSAGES[locale].footer;
+  return [
+    {
+      id: "resources",
+      title: t.resources,
+      links: [
+        { label: t.blog, href: routePath(locale, "blog"), kind: "page" },
+        { label: t.rss, href: routePath(locale, "blogFeed"), kind: "feed", ariaLabel: t.rssLabel },
+        { label: "GitHub", href: SOURCE_CODE_URL, kind: "external", ariaLabel: t.githubLabel },
+      ],
+    },
+    {
+      id: "community",
+      title: t.community,
+      links: [
+        { label: "X", href: SOCIAL_LINKS.x, kind: "external", ariaLabel: t.xLabel },
+        { label: "Telegram", href: SOCIAL_LINKS.telegram, kind: "external", ariaLabel: t.telegramLabel },
+      ],
+    },
+    {
+      id: "legal",
+      title: t.legal,
+      links: [{ label: t.privacy, href: routePath(locale, "privacy"), kind: "page" }],
+    },
+  ];
+};
 
 // Muted at rest, white and underlined on hover; 32px rows for a mouse, 44px on touch screens.
 const LINK_CLASS_NAME =
@@ -85,6 +91,8 @@ const FooterLinkItem = ({ label, href, kind, ariaLabel }: FooterLink) => {
  * content. Only the local network adds a floating developer row in the page theme: the faucet and the block explorer.
  */
 export const Footer = () => {
+  const locale = useLocale();
+  const t = useMessages(COMMON_MESSAGES);
   const { targetNetwork } = useTargetNetwork();
   const isLocalNetwork = targetNetwork.id === hardhat.id;
   // No chain argument: the hook reads the mainnet WETH/DAI pool, so this is the ETH price in US dollars.
@@ -98,8 +106,8 @@ export const Footer = () => {
             <Faucet />
             <Link href="/blockexplorer" className={buttonClasses({ variant: "outline", size: "sm" })}>
               <Search aria-hidden="true" />
-              <span className="hidden sm:inline">Block explorer</span>
-              <span className="sm:hidden">Explorer</span>
+              <span className="hidden sm:inline">{t.footer.blockExplorer}</span>
+              <span className="sm:hidden">{t.footer.blockExplorerShort}</span>
             </Link>
           </div>
         </div>
@@ -109,20 +117,20 @@ export const Footer = () => {
         <Container className="grid gap-10 pt-14 pb-10 md:pt-16 lg:grid-cols-[2fr_3fr] lg:gap-12">
           <div className="flex flex-col gap-5">
             <Link
-              href="/"
-              aria-label="Tokenping home"
+              href={routePath(locale, "home")}
+              aria-label={t.homeLabel}
               className="inline-flex w-fit shrink-0 items-center rounded-lg pointer-coarse:min-h-11"
             >
               {/* h-9: 137px wide, above the 100px lockup minimum */}
               <TokenpingLogo title="" className="h-9 w-auto" />
             </Link>
             <p className="m-0 max-w-xs text-sm text-pretty text-muted-foreground">
-              {`Aave V3 health factor alerts on ${formatAlertChannels("and")}.`}
+              {t.footer.tagline(formatAlertChannelsIn(locale, "conjunction"))}
             </p>
           </div>
 
-          <nav aria-label="Footer" className="grid grid-cols-2 gap-10 sm:grid-cols-3 lg:gap-12">
-            {FOOTER_GROUPS.map(({ id, title, links }) => (
+          <nav aria-label={t.footer.navLabel} className="grid grid-cols-2 gap-10 sm:grid-cols-3 lg:gap-12">
+            {footerGroups(locale).map(({ id, title, links }) => (
               <div key={id}>
                 <h2 id={`footer-${id}`} className="m-0 text-sm font-medium text-foreground">
                   {title}
@@ -147,11 +155,11 @@ export const Footer = () => {
               isLocalNetwork ? "pb-28 sm:pb-20" : "pb-[max(2.5rem,env(safe-area-inset-bottom))]",
             )}
           >
-            <p className="m-0">Independent tool, not affiliated with Aave Labs or the Aave DAO.</p>
+            <p className="m-0">{t.footer.independence}</p>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
               {ethPrice > 0 && (
                 // Named in words: a dollar sign alone does not say which price this is.
-                <p className="m-0 tabular-nums">{`ETH price: $${ethPrice.toFixed(2)}`}</p>
+                <p className="m-0 tabular-nums">{t.footer.ethPrice(ethPrice.toFixed(2))}</p>
               )}
               <ThemeChoice />
             </div>
