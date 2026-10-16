@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HealthFactorBadge, getHealthFactorStatus } from "~~/components/custom/HealthFactorBadge";
+import { LocaleProvider } from "~~/i18n/LocaleProvider";
 import { renderMarkup } from "~~/utils/testing/render";
 
 const badge = (healthFactor: string) => renderMarkup(<HealthFactorBadge healthFactor={healthFactor} />);
@@ -54,5 +55,23 @@ describe("getHealthFactorStatus", () => {
     ["", "safe"],
   ] as const)("classifies %j as %s", (healthFactor, status) => {
     expect(getHealthFactorStatus(healthFactor)).toBe(status);
+  });
+});
+
+describe("HealthFactorBadge in Czech", () => {
+  // The value keeps the app's number format; only the words change.
+  it.each([
+    ["∞", "Health factor Bez dluhu"],
+    ["0.95", "Health factor 0.95 Kritický"],
+    ["1.25", "Health factor 1.25 Rizikový"],
+    ["1.85", "Health factor 1.85 Bezpečný"],
+  ])("renders %j as %j", (healthFactor, content) => {
+    const markup = renderMarkup(
+      <LocaleProvider locale="cs">
+        <HealthFactorBadge healthFactor={healthFactor} />
+      </LocaleProvider>,
+    );
+
+    expect(text(markup)).toBe(content);
   });
 });

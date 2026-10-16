@@ -6,7 +6,7 @@ import type { Locale } from "~~/i18n/locales";
 import { NOTIFICATION_MESSAGES } from "~~/i18n/messages/notifications";
 import { getHealthFactorForWallet } from "~~/services/aave/getHealthFactor";
 import { sendEmail } from "~~/services/email/sendEmail";
-import { type EnabledConfigRow, findEnabledConfigs } from "~~/services/notifications/configRepository";
+import { type EnabledConfigRow, findEnabledConfigs, rowLocale } from "~~/services/notifications/configRepository";
 import { type Delivery, redactRecipients, shortenAddress } from "~~/services/notifications/redact";
 import { sendSignalMessage } from "~~/services/signal/sendSignal";
 import { type TelegramSendErrorCode, sendTelegramMessage } from "~~/services/telegram/sendTelegram";
@@ -136,8 +136,10 @@ export async function runNotificationCheck(): Promise<NotificationCheckResult | 
         // Compared exactly, not as the rounded display value (1.4996 must alert against a 1.5 threshold).
         if (!(reading.healthFactorValue < threshold)) continue;
 
-        const alert = { ...reading, threshold, timestamp: formatUtcTimestamp(new Date()) };
-        const message = { text: buildAlertText(alert), ...buildAlertEmail(alert) };
+        // Sent in the language the config was saved in (English for rows from before the locale column).
+        const locale = rowLocale(config);
+        const alert = { ...reading, threshold, timestamp: formatUtcTimestamp(new Date(), locale) };
+        const message = { text: buildAlertText(alert, locale), ...buildAlertEmail(alert, locale) };
 
         for (const delivery of deliveries) {
           const { channel, recipient } = delivery;

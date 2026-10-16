@@ -9,35 +9,26 @@ import { PaymentStatus, PaymentSteps } from "~~/components/custom/aave/PaymentLi
 import { type PaymentStep, getPaymentProgress, usePaymentWrites } from "~~/components/custom/aave/paymentProgress";
 import { Alert, Button, Card, Spinner } from "~~/components/ui";
 import { PAYMENT_CHAIN_ID, PAYMENT_TOKEN_DECIMALS, PAYMENT_TOKEN_SYMBOL, SECONDS_PER_DAY } from "~~/constants/payments";
-import { PAYMENTS_PAUSED_MESSAGE, useAccess } from "~~/hooks/custom/useAccess";
+import { useAccess } from "~~/hooks/custom/useAccess";
+import { useLocale } from "~~/i18n/LocaleProvider";
+import { LOCALE_INFO } from "~~/i18n/locales";
+import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 import scaffoldConfig from "~~/scaffold.config";
-import { type PayNotice, formatDurationDays } from "~~/services/payments/paywallStatus";
+import { formatDurationDays } from "~~/services/payments/paywallStatus";
 import { normalizeAddress } from "~~/utils/address";
 import { formatTokenAmount } from "~~/utils/format";
 import { notification } from "~~/utils/scaffold-eth";
 
-const STATUS_MESSAGES = {
-  connectWallet: "Connect your wallet to pay for access.",
-  unconfigured: "Payment contract not configured for this network.",
-  noPlan: "No paid plan is available at the moment.",
-};
-
-const PAY_NOTICES: Record<PayNotice, string> = {
-  paused: PAYMENTS_PAUSED_MESSAGE,
-  statusUnavailable: "Could not load the payment status. Reload the page to try again.",
-};
-
-const ACCESS_ACTIVE_MESSAGE = "Access active. You can now configure notifications.";
-const PAYMENT_PENDING_MESSAGE = "Payment confirmed. Access will appear shortly.";
+type PaywallMessages = (typeof DASHBOARD_MESSAGES)["en"]["paywall"];
 
 // The Pay button's label while the flow runs, per step: no trailing dots, and it never says "done" early.
-const LOADING_TEXT: Record<PaymentStep, string> = {
-  preparing: "Processing",
-  "approve-sign": "Waiting for your wallet",
-  "approve-pending": "Approving",
-  "pay-sign": "Waiting for your wallet",
-  "pay-pending": "Paying",
-  failed: "Processing",
+const LOADING_TEXT: Record<PaymentStep, keyof PaywallMessages["loading"]> = {
+  preparing: "processing",
+  "approve-sign": "waitingForWallet",
+  "approve-pending": "approving",
+  "pay-sign": "waitingForWallet",
+  "pay-pending": "paying",
+  failed: "processing",
 };
 
 const PAID_WALLETS_QUERY_KEY = "paidAccessWallets";
@@ -47,11 +38,8 @@ const findTargetNetwork = (chainId: number | undefined) =>
   chainId === undefined ? undefined : scaffoldConfig.targetNetworks.find(chain => chain.id === chainId);
 
 /** "30 days" for whole days; "About 2 days" when the plan's duration had to be rounded. */
-const formatAccessPeriod = (durationSeconds: bigint) => {
-  const days = formatDurationDays(durationSeconds);
-  const period = `${days} ${days === "1" ? "day" : "days"}`;
-  return durationSeconds % BigInt(SECONDS_PER_DAY) === 0n ? period : `About ${period}`;
-};
+const formatAccessPeriod = (t: PaywallMessages, durationSeconds: bigint) =>
+  t.period(Number(formatDurationDays(durationSeconds)), durationSeconds % BigInt(SECONDS_PER_DAY) !== 0n);
 
 const DetailRow = ({ label, children }: { label: string; children: ReactNode }) => (
   <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3">
@@ -70,6 +58,8 @@ type AccessPaywallProps = {
 };
 
 export const AccessPaywall = ({ children, description, hasExistingConfig = false }: AccessPaywallProps) => {
+  const locale = useLocale();
+  const t = DASHBOARD_MESSAGES[locale].paywall;
   const { address, chain: walletChain } = useAccount();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
   const { isActive, expiryTimestamp, status, payForAccess } = useAccess();
@@ -109,7 +99,7 @@ export const AccessPaywall = ({ children, description, hasExistingConfig = false
             normalizeAddress(payer),
           ]);
         }
-        notification.success(result.isActive ? ACCESS_ACTIVE_MESSAGE : PAYMENT_PENDING_MESSAGE);
+        notification.success(result.isActive ? t.accessActive : t.paymentPending);
       } else if (result.error) notification.error(result.error);
     } finally {
       setPayStartedAt(null);
@@ -123,10 +113,11 @@ export const AccessPaywall = ({ children, description, hasExistingConfig = false
           <p className="m-0 flex items-center gap-2 text-sm text-muted-foreground">
             <CircleCheck aria-hidden="true" className="size-4 shrink-0 text-success" />
             <span>
-              Alerts unlocked until{" "}
-              {new Date(Number(expiryTimestamp) * 1000).toLocaleDateString(undefined, {
-                dateStyle: "medium",
-              })}
+              {t.unlockedUntil(
+                new Date(Number(expiryTimestamp) * 1000).toLocaleDateString(LOCALE_INFO[locale].intl, {
+                  dateStyle: "medium",
+                }),
+              )}
             </span>
           </p>
         )}
@@ -140,19 +131,19 @@ export const AccessPaywall = ({ children, description, hasExistingConfig = false
 
   const renderBody = () => {
     if (status.kind === "wrongChain") {
-      const target = findTargetNetwork(status.paymentChainId)?.name ?? "the payment network";
+      const target = findTargetNetwork(status.paymentChainId)?.name;
       return (
         <>
-          <Alert variant="warning" title="Wrong network">
-            <p>{`Your wallet is on ${walletChain?.name ?? "another network"}. Switch to ${target} to pay.`}</p>
+          <Alert variant="warning" title={t.wrongNetworkTitle}>
+            <p>{t.wrongNetworkBody(walletChain?.name, target)}</p>
           </Alert>
           <Button
             className="w-full"
             loading={isSwitching}
-            loadingText="Switching network"
+            loadingText={t.switching}
             onClick={() => switchChain?.({ chainId: status.paymentChainId })}
           >
-            {`Switch to ${target}`}
+            {t.switchTo(target)}
           </Button>
         </>
       );
@@ -164,7 +155,7 @@ export const AccessPaywall = ({ children, description, hasExistingConfig = false
           variant={status.kind === "unconfigured" ? "warning" : "default"}
           icon={status.kind === "connectWallet" ? Wallet : undefined}
         >
-          <p>{STATUS_MESSAGES[status.kind]}</p>
+          <p>{t[status.kind]}</p>
         </Alert>
       );
     }
@@ -180,7 +171,7 @@ export const AccessPaywall = ({ children, description, hasExistingConfig = false
         return (
           <p id={reasonId} className="m-0 flex items-start gap-2 text-sm text-foreground">
             <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-warning" />
-            <span>{PAY_NOTICES[notice]}</span>
+            <span>{t[notice]}</span>
           </p>
         );
       }
@@ -188,14 +179,14 @@ export const AccessPaywall = ({ children, description, hasExistingConfig = false
         return (
           <p id={reasonId} className="m-0 flex items-start gap-2 text-sm text-foreground">
             <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-            <span>{STATUS_MESSAGES.noPlan}</span>
+            <span>{t.noPlan}</span>
           </p>
         );
       }
       // Still reading the paywall, the pause state or the allowance.
       return (
         <div id={reasonId}>
-          <Spinner label="Loading payment details" />
+          <Spinner label={t.loadingDetails} />
         </div>
       );
     };
@@ -204,19 +195,17 @@ export const AccessPaywall = ({ children, description, hasExistingConfig = false
     return (
       <>
         <dl className="m-0 divide-y divide-border rounded-xl border border-border text-sm">
-          <DetailRow label="Price">
+          <DetailRow label={t.price}>
             <span className="font-bold tabular-nums">{formatTokenAmount(plan.price, PAYMENT_TOKEN_DECIMALS)}</span>{" "}
             <span className="font-medium text-muted-foreground">{PAYMENT_TOKEN_SYMBOL}</span>
           </DetailRow>
-          <DetailRow label="Access">{formatAccessPeriod(plan.durationSeconds)}</DetailRow>
+          <DetailRow label={t.access}>{formatAccessPeriod(t, plan.durationSeconds)}</DetailRow>
           {paymentChain ? (
             <>
-              <DetailRow label="Network">
+              <DetailRow label={t.network}>
                 <NetworkBadge name={paymentChain.name} testnet={paymentChain.testnet} />
               </DetailRow>
-              <DetailRow label="Network fee">
-                {`Paid in ${paymentChain.nativeCurrency.symbol} for each step, shown in your wallet`}
-              </DetailRow>
+              <DetailRow label={t.networkFee}>{t.networkFeeValue(paymentChain.nativeCurrency.symbol)}</DetailRow>
             </>
           ) : null}
         </dl>
@@ -231,10 +220,10 @@ export const AccessPaywall = ({ children, description, hasExistingConfig = false
           onClick={isBlocked ? undefined : handlePayForAccess}
           aria-disabled={isBlocked || undefined}
           loading={isPaying}
-          loadingText={LOADING_TEXT[progress?.step ?? "preparing"]}
+          loadingText={t.loading[LOADING_TEXT[progress?.step ?? "preparing"]]}
           aria-describedby={reason ? reasonId : hasPaid && !isPaying ? statusId : undefined}
         >
-          {`Pay ${amount}`}
+          {t.pay(amount)}
         </Button>
         {reason}
 
@@ -242,8 +231,8 @@ export const AccessPaywall = ({ children, description, hasExistingConfig = false
           id={statusId}
           amount={amount}
           progress={progress}
-          pendingAccessMessage={hasPaid && !isPaying ? PAYMENT_PENDING_MESSAGE : null}
-          network={paymentChain?.name ?? "the network"}
+          pendingAccessMessage={hasPaid && !isPaying ? t.paymentPending : null}
+          network={paymentChain?.name}
           explorer={explorer}
         />
       </>
@@ -259,13 +248,10 @@ export const AccessPaywall = ({ children, description, hasExistingConfig = false
           </div>
           <div className="flex min-w-0 flex-col gap-1">
             <h3 className="m-0 text-base font-medium text-foreground">
-              {hasExistingConfig ? "Extend access to edit your alerts" : "Unlock health factor alerts"}
+              {hasExistingConfig ? t.titleExtend : t.titleNew}
             </h3>
             <p className="m-0 text-sm text-muted-foreground">
-              {description ??
-                (hasExistingConfig
-                  ? "Your previous alert settings are saved. Pay again to extend access and edit them."
-                  : "Pay once to unlock alert settings and set a health factor threshold for each network. Nothing renews automatically: you pay from your wallet when you want to extend.")}
+              {description ?? (hasExistingConfig ? t.descriptionExtend : t.descriptionNew)}
             </p>
           </div>
         </div>

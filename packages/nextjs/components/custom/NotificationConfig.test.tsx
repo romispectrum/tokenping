@@ -5,7 +5,10 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { NotificationConfig } from "~~/components/custom/NotificationConfig";
 import { markAttributionPrompted } from "~~/components/custom/notifications/attributionPromptState";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
-import type { TelegramLinkStatus } from "~~/types/notifications";
+import { LocaleProvider } from "~~/i18n/LocaleProvider";
+import type { Locale } from "~~/i18n/locales";
+import { notificationConfigClient } from "~~/services/notifications/notificationConfigClient";
+import type { NotificationConfig as NotificationConfigType, TelegramLinkStatus } from "~~/types/notifications";
 import { deferred, jsonResponse } from "~~/utils/testing/helpers";
 import { renderWithProviders } from "~~/utils/testing/providers";
 
@@ -122,8 +125,12 @@ const settle = async (ms = 0) => {
 
 const PROPS = { chainId: CHAIN_ID, chainName: "Arbitrum", currentHealthFactor: "1.20" };
 
-const renderCard = async (props: Partial<typeof PROPS> = {}) => {
-  const view = renderWithProviders(<NotificationConfig {...PROPS} {...props} />);
+const renderCard = async (props: Partial<typeof PROPS> = {}, locale: Locale = "en") => {
+  const view = renderWithProviders(
+    <LocaleProvider locale={locale}>
+      <NotificationConfig {...PROPS} {...props} />
+    </LocaleProvider>,
+  );
   await settle();
   return view;
 };
@@ -165,6 +172,11 @@ const fieldErrors = () =>
 /** The card's polite live region: what happened to the last Save, Delete or attribution answer. */
 const announcement = () => document.querySelector("[aria-live='polite']")?.textContent ?? null;
 const lastRequest = (prefix: string) => api.requests.filter(request => request.startsWith(prefix)).at(-1);
+/** The JSON body of the last PUT to the config API. */
+const lastPutBody = () => {
+  const request = lastRequest("PUT /api/notifications/config ");
+  return request === undefined ? undefined : JSON.parse(request.slice(request.indexOf("{")));
+};
 /** Delete asks first; the confirmation names the object on both of its buttons. */
 const confirmation = () => within(screen.getByRole("group", { name: "Delete this alert?" }));
 const deleteConfig = async () => {
@@ -324,9 +336,18 @@ describe("NotificationConfig: creating and editing", () => {
     expect(lastRequest("PUT")).toBeUndefined();
     await click(button("Save alert"));
     expect(mocks.toasts).toEqual(["success: Alert saved"]);
-    expect(lastRequest("PUT")).toBe(
-      `PUT /api/notifications/config {"userId":"${ADDRESS}","chainId":${CHAIN_ID},"enabled":true,"services":["email","signal"],"healthFactorThreshold":2.5,"email":"me@example.com","signalRecipient":"alice.42"}`,
-    );
+    const { locale, ...body } = lastPutBody();
+    expect(body).toEqual({
+      userId: ADDRESS,
+      chainId: CHAIN_ID,
+      enabled: true,
+      services: ["email", "signal"],
+      healthFactorThreshold: 2.5,
+      email: "me@example.com",
+      signalRecipient: "alice.42",
+    });
+    // The page's language, once the client forwards it (the "saves the page's language" tests pin the hand-over).
+    expect([undefined, "en"]).toContain(locale);
     expect(summaryValue("Email")).toBe("me@example.com");
     expect(summaryValue("Signal")).toBe("@alice.42");
     expect(summaryValue("Threshold")).toBe("2.5");
@@ -1318,5 +1339,164 @@ describe("NotificationConfig: brand", () => {
     scan("unknown link", unknownLink.container);
     expect(problems).toEqual([]);
     expect(pinkCounts).toEqual({ "read-only": 0, "load error": 0, "unknown link": 1 });
+  });
+});
+
+describe("NotificationConfig: language", () => {
+  const DASHES = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
+  /** The language of each config the card handed to the API client. */
+  const savedLocales = (upsert: { mock: { calls: [string, NotificationConfigType][] } }) =>
+    upsert.mock.calls.map(([, config]) => config.locale);
+  const czechThresholdInput = () =>
+    screen.getByRole<HTMLInputElement>("textbox", { name: "Prahová hodnota health factoru (přesná hodnota)" });
+
+  it("saves the page's language with the config: English at the root", async () => {
+    const upsert = vi.spyOn(notificationConfigClient, "upsertConfig");
+    await renderCard();
+    await click(button("Create alert"));
+    await click(serviceToggle("Email"));
+    await type(emailInput(), "me@example.com");
+    await click(button("Save alert"));
+    expect(savedLocales(upsert)).toEqual(["en"]);
+  });
+
+  it("creates an alert in Czech: labels, errors, a decimal comma, and the language saved with it", async () => {
+    const upsert = vi.spyOn(notificationConfigClient, "upsertConfig");
+    await renderCard({}, "cs");
+    expect(screen.getByRole("heading", { level: 3 }).textContent).toBe(
+      "Na síti Arbitrum zatím nemáte žádné upozornění",
+    );
+    await click(button("Vytvořit upozornění"));
+    expect(screen.getByRole("group", { name: "Kanály upozornění" })).toBeDefined();
+
+    await click(button("Uložit upozornění"));
+    expect(alerts()).toEqual(["Vyberte alespoň jeden kanál upozornění."]);
+    await click(screen.getByRole("checkbox", { name: "E-mail" }));
+    const czechEmail = () => screen.getByRole<HTMLInputElement>("textbox", { name: "E-mailová adresa" });
+    expect(czechEmail().placeholder).toBe("jmeno@example.com");
+    await type(czechEmail(), "nope");
+    await click(screen.getByRole("checkbox", { name: "Signal" }));
+    await click(button("Uložit upozornění"));
+    expect(errorSummary()?.textContent).toBe(
+      "Před uložením opravte 2 pole" +
+        "Zadejte e-mailovou adresu ve tvaru jmeno@example.com." +
+        "Zadejte své uživatelské jméno v Signalu.",
+    );
+    await type(czechEmail(), "me@example.com");
+    await type(screen.getByRole("textbox", { name: "Uživatelské jméno v Signalu" }), "alice.42");
+
+    // The threshold reads and takes a decimal comma; a dot still works.
+    expect(czechThresholdInput().value).toBe("1,50");
+    expect(screen.getByText("Kritický")).toBeDefined();
+    expect(screen.getByText("1,1")).toBeDefined();
+    await type(czechThresholdInput(), "1,7");
+    expect([czechThresholdInput().value, slider().value]).toEqual(["1,7", "1.7"]);
+    expect(slider().getAttribute("aria-valuetext")).toBe("1,7");
+    expect(screen.getByText(/^Upozorníme vás/).textContent).toBe(
+      "Upozorníme vás, když váš health factor na síti Arbitrum klesne pod 1,7.",
+    );
+    await type(czechThresholdInput(), "2.25");
+    expect(czechThresholdInput().value).toBe("2,25");
+    await type(czechThresholdInput(), "1,8");
+    fireEvent.blur(czechThresholdInput());
+    expect(czechThresholdInput().value).toBe("1,80");
+
+    await click(button("Uložit upozornění"));
+    expect(mocks.toasts).toEqual(["success: Upozornění uloženo"]);
+    expect(announcement()).toBe("Upozornění uloženo");
+    expect(savedLocales(upsert)).toEqual(["cs"]);
+    expect(upsert.mock.calls[0][1]).toMatchObject({ healthFactorThreshold: 1.8, locale: "cs" });
+    expect(lastPutBody()).toMatchObject({ healthFactorThreshold: 1.8 });
+    expect([undefined, "cs"]).toContain(lastPutBody().locale);
+
+    expect(summaryValue("Kanály")).toBe("E-mailSignal");
+    expect(summaryValue("E-mail")).toBe("me@example.com");
+    expect(summaryValue("Práh")).toBe("1,8");
+    // The first save asks the attribution question, in Czech too.
+    expect(screen.getByRole("form", { name: "Jak jste se o Tokenpingu dozvěděli? (nepovinné)" })).toBeDefined();
+    await click(button("Odeslat odpověď"));
+    expect(alerts()).toEqual(["Napište odpověď, nebo vyberte Přeskočit."]);
+    await click(button("Přeskočit"));
+    expect(button("Upravit upozornění")).toBeDefined();
+  });
+
+  it("shows a saved alert, the delete confirmation and failures in Czech", async () => {
+    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: { ...SAVED_CONFIG, services: ["email"] } };
+    api.override = ({ method }) =>
+      method === "PUT"
+        ? jsonResponse({ error: "Active paid access required to update notification config" }, 403)
+        : undefined;
+    await renderCard({}, "cs");
+    expect(screen.getByText("Nastavení upozornění")).toBeDefined();
+    expect(screen.getByText("Aktivní")).toBeDefined();
+    expect(screen.getByText("Pod prahem vašeho upozornění")).toBeDefined();
+    expect(screen.getByText("Váš aktuální health factor (1,20) je pod vaším prahem 1,8.")).toBeDefined();
+
+    await click(button("Upravit upozornění"));
+    // The server answers in English; a Czech page shows its own message.
+    await click(button("Uložit upozornění"));
+    expect(mocks.toasts).toEqual(["error: Upozornění se nepodařilo uložit"]);
+    expect(announcement()).toBe("Upozornění se nepodařilo uložit");
+
+    await click(button("Smazat upozornění"));
+    const group = within(screen.getByRole("group", { name: "Smazat toto upozornění?" }));
+    expect(group.getByText("Tokenping přestane posílat upozornění na health factor pro síť Arbitrum.")).toBeDefined();
+    expect(document.activeElement).toBe(group.getByRole("button", { name: "Ponechat upozornění" }));
+    await click(group.getByRole("button", { name: "Smazat upozornění" }));
+    expect(announcement()).toBe("Upozornění smazáno");
+    expect(button("Zrušit")).toBeDefined();
+  });
+
+  it("writes Telegram, the read-only and the load error states in Czech, with no dashes anywhere", async () => {
+    const texts: string[] = [];
+    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: { ...SAVED_CONFIG, services: ["telegram"] } };
+    api.override = ({ method, url }) =>
+      method === "GET" && url.startsWith("/api/telegram/link?") ? jsonResponse({}, 500) : undefined;
+    const unknownLink = await renderCard({}, "cs");
+    await click(button("Upravit upozornění"));
+    expect(screen.getByText("Propojení s Telegramem se nepodařilo ověřit")).toBeDefined();
+    await click(button("Uložit upozornění"));
+    expect(fieldErrors()).toEqual([
+      "Propojení s Telegramem se nepodařilo ověřit",
+      "Ověřte propojení s Telegramem tlačítkem Zkusit znovu a potom uložte.",
+    ]);
+    texts.push(unknownLink.container.textContent ?? "");
+    api.override = () => undefined;
+    await click(button("Zkusit znovu"));
+    await click(button("Připojit Telegram"));
+    expect(screen.getByText(/^Otevře našeho bota v Telegramu/).textContent).toBe(
+      "Otevře našeho bota v Telegramu. Stiskněte tam Start a tato peněženka se propojí s vaším chatem.",
+    );
+    expect(screen.getByRole("link", { name: "Otevřít Telegram (otevře se v nové kartě)" })).toBeDefined();
+    api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
+    await settle(2000);
+    expect(mocks.toasts).toEqual(["success: Telegram připojen jako @saved_tg"]);
+    expect(screen.getByText("Připojeno jako @saved_tg")).toBeDefined();
+    texts.push(unknownLink.container.textContent ?? "");
+    // The bot's farewell in the chat follows the page's language.
+    await click(button("Odpojit Telegram"));
+    expect(lastRequest("DELETE /api/telegram/link")).toBe(
+      `DELETE /api/telegram/link {"userId":"${ADDRESS}","locale":"cs"}`,
+    );
+    expect(mocks.toasts.at(-1)).toBe("success: Telegram odpojen");
+    unknownLink.unmount();
+
+    mocks.hasAccess = false;
+    const readOnly = await renderCard({}, "cs");
+    expect(screen.getByText("Pro úpravy zaplaťte přístup")).toBeDefined();
+    texts.push(readOnly.container.textContent ?? "");
+    readOnly.unmount();
+
+    api.override = ({ method, url }) =>
+      method === "GET" && url.startsWith("/api/notifications/config") ? jsonResponse({}, 500) : undefined;
+    const failed = await renderCard({}, "cs");
+    expect(screen.getByRole("alert").textContent).toBe("Nastavení upozornění se nenačetlo");
+    expect(screen.getByText("Zkontrolujte připojení a zkuste to znovu.")).toBeDefined();
+    texts.push(failed.container.textContent ?? "");
+
+    for (const text of texts) {
+      expect(text).not.toMatch(DASHES);
+      expect(text).not.toMatch(/\b(?:Save|Delete|Cancel|Connect|Alert|Threshold)\b/);
+    }
   });
 });

@@ -47,6 +47,7 @@ too, and production must set it.
 
 - SQL files live in `packages/supabase/migrations/` with names like `YYYYMMDDHHMMSS_description.sql`.
 - `notification_configs` is created by `20250225120000_create_notification_configs.sql` (per-wallet, per-chain notification settings for Aave health factor alerts).
+- `notification_configs.locale` is added by `20261016000000_add_locale_to_notification_configs.sql`: the language the alert is sent in (`en` or `cs`, checked by a constraint), the site language the config was saved from. Existing rows get `en`. Apply it before deploying the Next.js code that writes `locale`, or config saves fail on the missing column.
 - `user_attribution` is created by `20261015000000_create_user_attribution.sql`: the optional "How did you hear about Tokenping?" answer, one row per wallet, first answer kept. It is service-role only (like `telegram_link_tokens`) and nothing in the app reads it back; read answers in Studio. Without `SUPABASE_SERVICE_ROLE_KEY` on the Next.js server, `POST /api/attribution` answers 503.
 
 ## Optional seed data

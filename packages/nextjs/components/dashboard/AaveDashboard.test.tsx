@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AaveDashboard } from "~~/components/dashboard/AaveDashboard";
+import { LocaleProvider } from "~~/i18n/LocaleProvider";
 import { renderMarkup } from "~~/utils/testing/render";
 
 const state = vi.hoisted(() => ({
@@ -104,5 +105,48 @@ describe("AaveDashboard", () => {
 
     state.account = { address: CONNECTED_ADDRESS, isConnected: false, isConnecting: false, isReconnecting: false };
     expect(renderMarkup(<AaveDashboard />)).not.toContain(POSITIONS_STUB);
+  });
+});
+
+describe("AaveDashboard in Czech", () => {
+  const czech = () =>
+    renderMarkup(
+      <LocaleProvider locale="cs">
+        <AaveDashboard />
+      </LocaleProvider>,
+    );
+
+  beforeEach(() => {
+    state.isClient = true;
+    state.connectModalOpen = false;
+    state.account = { address: undefined, isConnected: false, isConnecting: false, isReconnecting: false };
+  });
+
+  it("asks a disconnected visitor to connect a wallet in Czech", () => {
+    const html = czech();
+
+    expect(html).toContain(">Pro pokračování připojte peněženku</h2>");
+    expect(html).toContain("Připojení nepřesouvá žádné prostředky a nic nestojí.");
+    expect(html).toContain("Připojit peněženku");
+    expect(html).not.toContain("Connect");
+    expect(html).not.toMatch(new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`));
+  });
+
+  it("says what to do while the wallet list is open", () => {
+    state.account = { address: undefined, isConnected: false, isConnecting: true, isReconnecting: false };
+    state.connectModalOpen = true;
+    const html = czech();
+
+    expect(html).toContain("Připojování</span>");
+    expect(html).toContain(">Potvrďte připojení v peněžence.</div>");
+  });
+
+  it("announces the placeholder and names the positions in Czech", () => {
+    state.isClient = false;
+    expect(czech()).toContain(">Načítání přehledu</span>");
+
+    state.isClient = true;
+    state.account = { address: CONNECTED_ADDRESS, isConnected: true, isConnecting: false, isReconnecting: false };
+    expect(czech()).toContain('<h2 id="your-positions" class="sr-only">Vaše pozice na Aave</h2>');
   });
 });

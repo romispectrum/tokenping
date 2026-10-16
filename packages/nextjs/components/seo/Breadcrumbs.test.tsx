@@ -30,4 +30,12 @@ describe("Breadcrumbs", () => {
     expect(screen.queryByRole("link", { name: "Blog" })).toBeNull();
     expect(screen.getByText("Blog").closest("[aria-current]")?.getAttribute("aria-current")).toBe("page");
   });
+
+  it("names the trail in the page's language", () => {
+    render(<Breadcrumbs locale="cs" crumbs={[{ name: "Úvod", path: "/cs" }, { name: "Ochrana soukromí" }]} />);
+
+    const nav = screen.getByRole("navigation", { name: "Drobečková navigace" });
+    expect(within(nav).getByRole("link", { name: "Úvod" }).getAttribute("href")).toBe("/cs");
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).toBeNull();
+  });
 });

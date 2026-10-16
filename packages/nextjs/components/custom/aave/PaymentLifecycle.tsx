@@ -3,16 +3,16 @@ import { Check, CircleCheck, ExternalLink, LoaderCircle, Minus, PenLine } from "
 import type { PaymentProgress, PaymentStep } from "~~/components/custom/aave/paymentProgress";
 import { shortenHex } from "~~/components/custom/aave/web3Format";
 import { cx } from "~~/components/ui";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
+
+type PaymentMessages = (typeof DASHBOARD_MESSAGES)["en"]["payment"];
 
 type StepState = "upcoming" | "current" | "done" | "skipped";
 
 // Shown next to the step title, so the marker's tint and icon never carry the state alone.
-const STEP_STATE_TEXT: Record<StepState, string | null> = {
-  upcoming: null,
-  current: "In progress",
-  done: "Done",
-  skipped: "Not needed",
-};
+const stepStateText = (t: PaymentMessages, state: StepState) =>
+  ({ upcoming: null, current: t.inProgress, done: t.done, skipped: t.notNeeded })[state];
 
 const approveState = (progress: PaymentProgress | null): StepState => {
   if (!progress || progress.step === "preparing") return "upcoming";
@@ -64,63 +64,70 @@ type PaymentStepsProps = {
 
 /** Both wallet requests, shown before the first one opens: a two-step flow never chains a second prompt silently. */
 export const PaymentSteps = ({ amount, progress }: PaymentStepsProps) => {
+  const t = useMessages(DASHBOARD_MESSAGES).payment;
   const steps = [
-    {
-      title: `Approve ${amount}`,
-      hint: "Lets the paywall take exactly this amount. Skipped when an earlier approval covers it.",
-      state: approveState(progress),
-    },
-    { title: `Pay ${amount}`, hint: "Sends the payment and unlocks alerts.", state: payState(progress) },
+    { title: t.approveTitle(amount), hint: t.approveHint, state: approveState(progress) },
+    { title: t.payTitle(amount), hint: t.payHint, state: payState(progress) },
   ];
 
   return (
-    <ol aria-label="Payment steps" className="m-0 flex list-none flex-col gap-3 p-0">
-      {steps.map(({ title, hint, state }, index) => (
-        <li key={title} aria-current={state === "current" ? "step" : undefined} className="m-0 flex items-start gap-3">
-          <StepMarker index={index + 1} state={state} />
-          <span className="flex min-w-0 flex-col gap-0.5 text-sm">
-            <span className="flex flex-wrap items-baseline gap-x-2">
-              <span className={cx("font-medium", state === "skipped" ? "text-muted-foreground" : "text-foreground")}>
-                {title}
-              </span>
-              {STEP_STATE_TEXT[state] ? (
-                <span className="text-muted-foreground">
-                  {/* Keeps the title and the state apart when read as one line. */}
-                  <span className="sr-only">, </span>
-                  {STEP_STATE_TEXT[state]}
+    <ol aria-label={t.stepsLabel} className="m-0 flex list-none flex-col gap-3 p-0">
+      {steps.map(({ title, hint, state }, index) => {
+        const stateText = stepStateText(t, state);
+        return (
+          <li
+            key={title}
+            aria-current={state === "current" ? "step" : undefined}
+            className="m-0 flex items-start gap-3"
+          >
+            <StepMarker index={index + 1} state={state} />
+            <span className="flex min-w-0 flex-col gap-0.5 text-sm">
+              <span className="flex flex-wrap items-baseline gap-x-2">
+                <span className={cx("font-medium", state === "skipped" ? "text-muted-foreground" : "text-foreground")}>
+                  {title}
                 </span>
-              ) : null}
+                {stateText ? (
+                  <span className="text-muted-foreground">
+                    {/* Keeps the title and the state apart when read as one line. */}
+                    <span className="sr-only">, </span>
+                    {stateText}
+                  </span>
+                ) : null}
+              </span>
+              <span className="text-muted-foreground">{hint}</span>
             </span>
-            <span className="text-muted-foreground">{hint}</span>
-          </span>
-        </li>
-      ))}
+          </li>
+        );
+      })}
     </ol>
   );
 };
 
 type Explorer = { name: string; url: string };
 
-const ExplorerLink = ({ hash, explorer }: { hash: string; explorer: Explorer | undefined }) => (
-  <p className="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
-    <span className="font-data text-sm text-muted-foreground" title={hash}>
-      <span className="sr-only">Transaction </span>
-      {shortenHex(hash, { start: 10, end: 8 })}
-    </span>
-    {explorer ? (
-      <a
-        href={`${explorer.url}/tx/${hash}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1 font-medium text-link underline underline-offset-3 hover:decoration-2 pointer-coarse:min-h-11"
-      >
-        {`View on ${explorer.name}`}
-        <ExternalLink aria-hidden="true" className="size-3.5" />
-        <span className="sr-only">(opens in a new tab)</span>
-      </a>
-    ) : null}
-  </p>
-);
+const ExplorerLink = ({ hash, explorer }: { hash: string; explorer: Explorer | undefined }) => {
+  const t = useMessages(DASHBOARD_MESSAGES);
+  return (
+    <p className="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
+      <span className="font-data text-sm text-muted-foreground" title={hash}>
+        <span className="sr-only">{t.payment.transaction}</span>
+        {shortenHex(hash, { start: 10, end: 8 })}
+      </span>
+      {explorer ? (
+        <a
+          href={`${explorer.url}/tx/${hash}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 font-medium text-link underline underline-offset-3 hover:decoration-2 pointer-coarse:min-h-11"
+        >
+          {t.payment.viewOn(explorer.name)}
+          <ExternalLink aria-hidden="true" className="size-3.5" />
+          <span className="sr-only">{t.opensInNewTab}</span>
+        </a>
+      ) : null}
+    </p>
+  );
+};
 
 type StatusDisplay = { tone: "info" | "success"; icon: ReactNode; title?: string; body: string; hash?: string };
 
@@ -128,47 +135,48 @@ const SPINNER = <LoaderCircle aria-hidden="true" className="size-5 animate-spin 
 const SIGN = <PenLine aria-hidden="true" className="size-5" />;
 
 const describeStep = (
+  t: PaymentMessages,
   step: PaymentStep,
   progress: PaymentProgress,
   amount: string,
-  network: string,
+  network: string | undefined,
 ): StatusDisplay | null => {
   switch (step) {
     case "preparing":
       return {
         tone: "info",
         icon: SPINNER,
-        title: "Preparing the payment",
-        body: "Checking the current price and your approval.",
+        title: t.preparingTitle,
+        body: t.preparingBody,
       };
     case "approve-sign":
       return {
         tone: "info",
         icon: SIGN,
-        title: "Confirm in your wallet",
-        body: `Step 1 of 2: approve ${amount}. Nothing is sent until you confirm.`,
+        title: t.confirmTitle,
+        body: t.approveSignBody(amount),
       };
     case "approve-pending":
       return {
         tone: "info",
         icon: SPINNER,
-        title: `Processing on ${network}`,
-        body: "Step 1 of 2: approval submitted. Your wallet asks you to confirm the payment next.",
+        title: t.processingOn(network),
+        body: t.approvePendingBody,
         hash: progress.approveHash,
       };
     case "pay-sign":
       return {
         tone: "info",
         icon: SIGN,
-        title: "Confirm in your wallet",
-        body: `Step 2 of 2: pay ${amount}. Nothing is sent until you confirm.`,
+        title: t.confirmTitle,
+        body: t.paySignBody(amount),
       };
     case "pay-pending":
       return {
         tone: "info",
         icon: SPINNER,
-        title: `Processing on ${network}`,
-        body: "Step 2 of 2: payment submitted. Alerts unlock once the network confirms it.",
+        title: t.processingOn(network),
+        body: t.payPendingBody,
         hash: progress.payHash,
       };
     case "failed":
@@ -188,7 +196,8 @@ type PaymentStatusProps = {
   progress: PaymentProgress | null;
   /** Shown when no payment is running: the payment went through but access does not show yet. */
   pendingAccessMessage: string | null;
-  network: string;
+  /** The payment network's name; undefined when it is not one of the app's networks. */
+  network: string | undefined;
   explorer: Explorer | undefined;
 };
 
@@ -204,8 +213,9 @@ export const PaymentStatus = ({
   network,
   explorer,
 }: PaymentStatusProps) => {
+  const t = useMessages(DASHBOARD_MESSAGES).payment;
   const display: StatusDisplay | null = progress
-    ? describeStep(progress.step, progress, amount, network)
+    ? describeStep(t, progress.step, progress, amount, network)
     : pendingAccessMessage
       ? { tone: "success", icon: <CircleCheck aria-hidden="true" className="size-5" />, body: pendingAccessMessage }
       : null;

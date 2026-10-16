@@ -18,7 +18,7 @@ export const plural = (locale: Locale, count: number, forms: PluralForms) => {
   return forms[category] ?? forms.other;
 };
 
-/** A YYYY-MM-DD day as "14 October 2026" / "14. října 2026", in UTC so the server and the browser agree. */
+/** A YYYY-MM-DD day as "October 14, 2026" / "14. října 2026", in UTC so the server and the browser agree. */
 export const formatLongDate = (locale: Locale, isoDate: string) =>
   new Intl.DateTimeFormat(LOCALE_INFO[locale].intl, {
     day: "numeric",

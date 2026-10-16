@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCommand } from "~~/app/api/telegram/bot";
+import { parseCommand, telegramLocale } from "~~/app/api/telegram/bot";
 
 describe("parseCommand", () => {
   it.each([
@@ -24,5 +24,25 @@ describe("parseCommand", () => {
     ["", { name: "unknown" }],
   ])("parses %j as %j", (text, expected) => {
     expect(parseCommand(text)).toEqual(expected);
+  });
+});
+
+describe("telegramLocale", () => {
+  it.each([
+    ["cs", "cs"],
+    ["sk", "cs"],
+    ["CS", "cs"],
+    ["cs-CZ", "cs"],
+    ["sk-SK", "cs"],
+    ["en", "en"],
+    ["en-US", "en"],
+    ["de", "en"],
+    ["", "en"],
+    ["csx", "en"],
+    [undefined, "en"],
+    [null, "en"],
+    [42, "en"],
+  ])("answers the Telegram language %j in %j", (languageCode, expected) => {
+    expect(telegramLocale(languageCode)).toBe(expected);
   });
 });

@@ -5,11 +5,14 @@ import { useAccount } from "wagmi";
 import { AavePositions } from "~~/components/custom/AavePositions";
 import { DashboardSkeleton } from "~~/components/custom/aave/PositionsSkeleton";
 import { ConnectWalletGate } from "~~/components/dashboard/ConnectWalletGate";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 
 /** The wallet-dependent part of /aave. The page around it is server-rendered, so crawlers still get its text. */
 export const AaveDashboard = () => {
   const { address, isConnected, isConnecting, isReconnecting } = useAccount();
   const isClient = useIsClient();
+  const t = useMessages(DASHBOARD_MESSAGES);
 
   // Wallet state is only known on the client, and a returning wallet reconnects after load. Until then the server and
   // the first client render show the same placeholder (no hydration mismatch), never a "Connect wallet" flash.
@@ -21,7 +24,7 @@ export const AaveDashboard = () => {
     return (
       <section aria-labelledby="your-positions" className="w-full">
         <h2 id="your-positions" className="sr-only">
-          Your Aave positions
+          {t.positionsHeading}
         </h2>
         <AavePositions />
       </section>

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { render } from "@testing-library/react";
+import type { ReactNode } from "react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { NotificationCard } from "~~/components/custom/notifications/NotificationCard";
 import { NotificationEmptyState } from "~~/components/custom/notifications/NotificationEmptyState";
@@ -9,6 +10,7 @@ import { NotificationLoadError } from "~~/components/custom/notifications/Notifi
 import { NotificationSummary } from "~~/components/custom/notifications/NotificationSummary";
 import { TelegramConnectField } from "~~/components/custom/notifications/TelegramConnectField";
 import { ThresholdField } from "~~/components/custom/notifications/ThresholdField";
+import { LocaleProvider } from "~~/i18n/LocaleProvider";
 
 /*
  * The markup of the settings card's parts in the design system: flat card, token colours, lucide icons, one pink
@@ -145,5 +147,110 @@ describe("notification settings markup", () => {
     actions.unmount();
     const confirm = render(<NotificationFormActions {...ACTIONS} isConfirmingDelete />);
     expect(withStableIds(confirm.container.firstChild)).toMatchSnapshot();
+  });
+});
+
+describe("notification settings parts in Czech", () => {
+  const DASHES = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
+  const renderCs = (ui: ReactNode) => render(<LocaleProvider locale="cs">{ui}</LocaleProvider>);
+  const text = (container: HTMLElement) => {
+    const content = container.textContent ?? "";
+    expect(content).not.toMatch(DASHES);
+    return content;
+  };
+
+  it("writes the empty state, the summary and the load error in Czech, numbers with a decimal comma", () => {
+    const empty = renderCs(<NotificationEmptyState chainName="Arbitrum" onCreate={noop} />);
+    expect(text(empty.container)).toBe(
+      "Na síti Arbitrum zatím nemáte žádné upozorněníDostanete zprávu, když váš health factor klesne pod práh, který si zvolíte.Vytvořit upozornění",
+    );
+    empty.unmount();
+
+    const summary = renderCs(
+      <NotificationCard isActive>
+        <NotificationSummary
+          services={["email", "signal", "telegram"]}
+          email="me@example.com"
+          signalRecipient="alice.42"
+          telegramChatId="555"
+          telegramUsername={null}
+          threshold={1.8}
+          currentHealthFactor="1.20"
+          showBelowThresholdWarning
+        />
+      </NotificationCard>,
+    );
+    expect(text(summary.container)).toBe(
+      "Nastavení upozorněníAktivní" +
+        "KanályE-mailSignalTelegramE-mailme@example.comSignal@alice.42TelegramPropojenoPráh1,8" +
+        "Pod prahem vašeho upozorněníVáš aktuální health factor (1,20) je pod vaším prahem 1,8.",
+    );
+    summary.unmount();
+
+    const failed = renderCs(<NotificationLoadError isRetrying={false} onRetry={noop} />);
+    expect(text(failed.container)).toContain("Nastavení upozornění se nenačetlo");
+    expect(screen.getByRole("button", { name: "Zkusit znovu" })).toBeDefined();
+  });
+
+  it("writes the Telegram field in Czech in each state", () => {
+    const waiting = renderCs(<TelegramConnectField {...TELEGRAM} isConnecting deepLink="https://t.me/bot?start=tok" />);
+    expect(text(waiting.container)).toBe(
+      // The loading button keeps its label for its width.
+      "TelegramPřipojit TelegramČekáme na TelegramTelegram se neotevřel? Otevřít Telegram (otevře se v nové kartě)" +
+        "Otevře našeho bota v Telegramu. Stiskněte tam Start a tato peněženka se propojí s vaším chatem.",
+    );
+    waiting.unmount();
+    const linked = renderCs(<TelegramConnectField {...TELEGRAM} chatId="555" username="bob" />);
+    expect(text(linked.container)).toBe("TelegramPřipojeno jako @bobOdpojit Telegram");
+    linked.unmount();
+    const unknown = renderCs(<TelegramConnectField {...TELEGRAM} isStatusUnknown />);
+    expect(text(unknown.container)).toBe("TelegramPropojení s Telegramem se nepodařilo ověřitZkusit znovu");
+  });
+
+  it("shows the threshold with a decimal comma in Czech", () => {
+    const { container } = renderCs(
+      <ThresholdField
+        threshold={1.8}
+        thresholdText="1.80"
+        chainName="Arbitrum"
+        onThresholdChange={noop}
+        onThresholdTextChange={noop}
+      />,
+    );
+    expect(text(container)).toBe(
+      "Prahová hodnota health factoru(přesná hodnota)1,1Kritický2,0Bezpečný3,0Velmi bezpečný" +
+        "Upozorníme vás, když váš health factor na síti Arbitrum klesne pod 1,8.",
+    );
+    const input = screen.getByRole<HTMLInputElement>("textbox", {
+      name: "Prahová hodnota health factoru (přesná hodnota)",
+    });
+    expect(input.value).toBe("1,80");
+    expect(screen.getByRole("slider").getAttribute("aria-valuetext")).toBe("1,8");
+  });
+
+  it("counts the fields to fix with Czech plurals", () => {
+    const item = { field: "email", message: "Zadejte svou e-mailovou adresu.", targetId: "form-email" } as const;
+    const titles = [1, 2, 5].map(count => {
+      const view = renderCs(<NotificationErrorSummary items={Array(count).fill(item)} onSelect={noop} />);
+      const title = text(view.container).replace(/Zadejte.*$/, "");
+      view.unmount();
+      return title;
+    });
+    expect(titles).toEqual([
+      "Před uložením opravte 1 pole",
+      "Před uložením opravte 2 pole",
+      "Před uložením opravte 5 polí",
+    ]);
+  });
+
+  it("writes the form actions and the delete confirmation in Czech", () => {
+    const actions = renderCs(<NotificationFormActions {...ACTIONS} />);
+    expect(text(actions.container)).toBe("Smazat upozorněníZrušitUložit upozornění");
+    actions.unmount();
+    const confirm = renderCs(<NotificationFormActions {...ACTIONS} isConfirmingDelete />);
+    expect(text(confirm.container)).toBe(
+      "Smazat toto upozornění?Tokenping přestane posílat upozornění na health factor pro síť Arbitrum." +
+        "Ponechat upozorněníSmazat upozornění",
+    );
   });
 });

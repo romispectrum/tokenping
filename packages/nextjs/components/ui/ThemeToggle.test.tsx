@@ -5,6 +5,7 @@ import { ThemeProvider } from "~~/components/ThemeProvider";
 import { THEME_COLOR } from "~~/components/brand/themeColor";
 import { ThemeChoice } from "~~/components/ui/ThemeChoice";
 import { ThemeToggle } from "~~/components/ui/ThemeToggle";
+import { LocaleProvider } from "~~/i18n/LocaleProvider";
 
 // jsdom has no matchMedia, which next-themes reads for the System theme; the OS here prefers light.
 const stubMatchMedia = () => {
@@ -125,5 +126,35 @@ describe("ThemeChoice", () => {
     expect(option.className).toContain("has-checked:border-input has-checked:bg-background");
     expect(option.className).toContain("pointer-coarse:min-h-11");
     expect(option.className).not.toMatch(/primary|pink/);
+  });
+});
+
+describe("Theme controls in Czech", () => {
+  beforeEach(() => {
+    stubMatchMedia();
+    localStorage.clear();
+    document.documentElement.className = "";
+    document.documentElement.removeAttribute("data-theme");
+  });
+
+  it("names the toggle and the Light, Dark and System options in Czech", async () => {
+    renderWithTheme(
+      <LocaleProvider locale="cs">
+        <ThemeToggle />
+        <ThemeChoice />
+      </LocaleProvider>,
+    );
+
+    expect(screen.getByRole("button", { name: "Přepnout světlý nebo tmavý motiv" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Motiv" })).toBeTruthy();
+    expect((screen.getAllByRole("radio") as HTMLInputElement[]).map(radio => radio.value)).toEqual([
+      "light",
+      "dark",
+      "system",
+    ]);
+    for (const name of ["Světlý", "Tmavý", "Systém"]) expect(screen.getByRole("radio", { name })).toBeTruthy();
+
+    await act(async () => fireEvent.click(screen.getByRole("radio", { name: "Tmavý" })));
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
   });
 });

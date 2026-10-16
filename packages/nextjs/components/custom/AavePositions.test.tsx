@@ -10,6 +10,7 @@ import {
   ETHEREUM_POSITION,
   POLYGON_COLLATERAL_ONLY_POSITION,
 } from "~~/components/custom/aave/__fixtures__/positions";
+import { LocaleProvider } from "~~/i18n/LocaleProvider";
 import { type NetworkPosition, fetchAavePositions } from "~~/services/aave/positions";
 import { deferred } from "~~/utils/testing/helpers";
 import { renderWithProviders } from "~~/utils/testing/providers";
@@ -285,5 +286,103 @@ describe("AavePositions", () => {
     refresh.resolve([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION]);
     await waitFor(() => expect(isRefreshing()).toBe(false));
     expect(screen.getByRole("heading", { level: 3, name: "Ethereum" })).toBeDefined();
+  });
+});
+
+describe("AavePositions in Czech", () => {
+  const renderCzech = () =>
+    renderWithProviders(
+      <LocaleProvider locale="cs">
+        <AavePositions />
+      </LocaleProvider>,
+    );
+  const czechRefreshButton = () => screen.getByRole("button", { name: /^(Obnovit pozice|Obnovování)$/ });
+
+  beforeEach(() => {
+    account.address = USER;
+    fetchMock.mockReset();
+    notifications.isLoaded = true;
+    notifications.configuredChainIds = [];
+  });
+
+  it("labels the toolbar, the totals, the networks and the selected position in Czech", async () => {
+    notifications.configuredChainIds = [ETHEREUM_POSITION.chainId];
+    fetchMock.mockResolvedValueOnce([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION, POLYGON_COLLATERAL_ONLY_POSITION]);
+    const { container } = renderCzech();
+    await waitFor(() => {
+      expect(czechRefreshButton().getAttribute("aria-busy")).not.toBe("true");
+      screen.getByRole("heading", { level: 3, name: ETHEREUM_POSITION.chainName });
+    });
+
+    expect(screen.getByRole("button", { name: `Zkopírovat adresu ${USER}` })).toBeDefined();
+    for (const label of ["Celkem vloženo", "Celkem vypůjčeno", "Dluh", "Trh Aave V3"]) {
+      expect(screen.getByText(label)).toBeDefined();
+    }
+    expect(screen.getAllByText("Čisté jmění")).toHaveLength(2);
+
+    const networks = within(screen.getByRole("region", { name: "Sítě" }));
+    expect(networks.getByText("2 aktivní")).toBeDefined();
+    expect(networks.getByText("Upozornění nastaveno")).toBeDefined();
+    expect(networks.getByText("Bez pozice")).toBeDefined();
+    // The amounts keep the app's number format; only the words change.
+    expect(networks.getByText("vloženo $12.35K,")).toBeDefined();
+    expect(networks.getByText("vypůjčeno $2.50K")).toBeDefined();
+
+    const details = within(screen.getByRole("region", { name: "Vybraná síť" }));
+    expect(details.getByRole("heading", { level: 4, name: "Vloženo" })).toBeDefined();
+    expect(details.getByRole("heading", { level: 4, name: "Vypůjčeno" })).toBeDefined();
+    expect(details.getByText("3 aktiva")).toBeDefined();
+    expect(details.getByText("4 aktiva")).toBeDefined();
+    expect(details.getAllByRole("columnheader").map(header => header.textContent)).toEqual([
+      "Aktivum",
+      "Vloženo",
+      "APY vkladu",
+      "Kolaterál",
+      "Aktivum",
+      "Vypůjčeno",
+      "Typ sazby",
+    ]);
+    expect(container.textContent).not.toMatch(new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`));
+    expect(container.textContent).not.toMatch(/Total supplied|Networks|Refresh positions/);
+  });
+
+  it("selects a collateral-only network with one asset and no debt", async () => {
+    fetchMock.mockResolvedValueOnce([POLYGON_COLLATERAL_ONLY_POSITION]);
+    renderCzech();
+    await screen.findByRole("heading", { level: 3, name: POLYGON_COLLATERAL_ONLY_POSITION.chainName });
+
+    expect(screen.getByText("1 aktivum")).toBeDefined();
+    expect(screen.getByText("0 aktiv")).toBeDefined();
+    expect(screen.getByText("Žádný nesplacený dluh")).toBeDefined();
+  });
+
+  it("tells the user in Czech when no network has an active position", async () => {
+    fetchMock.mockResolvedValueOnce([ARBITRUM_EMPTY_POSITION]);
+    renderCzech();
+    await screen.findByRole("heading", { level: 3, name: ARBITRUM_EMPTY_POSITION.chainName });
+
+    expect(screen.getByText("Na podporovaných sítích jsme nenašli žádné aktivní pozice na Aave.")).toBeDefined();
+    expect(screen.getByText("Na síti Arbitrum nemáte žádnou aktivní pozici")).toBeDefined();
+  });
+
+  it("explains a failed load in Czech, with the Czech fallback message", async () => {
+    fetchMock.mockRejectedValueOnce(new Error(""));
+    renderCzech();
+
+    expect(await screen.findByRole("button", { name: "Zkusit znovu" })).toBeDefined();
+    expect(screen.getByRole("alert").textContent).toContain("Pozice se nenačetly");
+    expect(screen.getByRole("alert").textContent).toContain("Pozice na Aave se nepodařilo načíst");
+  });
+
+  it("keeps the last positions below a Czech warning when a refresh fails", async () => {
+    fetchMock.mockResolvedValueOnce([ETHEREUM_POSITION]);
+    renderCzech();
+    await screen.findByRole("heading", { level: 3, name: ETHEREUM_POSITION.chainName });
+
+    fetchMock.mockRejectedValueOnce(new Error("RPC down"));
+    fireEvent.click(czechRefreshButton());
+
+    expect(await screen.findByText("Obnovení se nezdařilo")).toBeDefined();
+    expect(screen.getByText("Zobrazujeme pozice z posledního úspěšného načtení.")).toBeDefined();
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { STAT_STRIP_CLASS_NAME, StatCard, StatCardSkeleton } from "~~/components/custom/aave/StatCard";
+import { LocaleProvider } from "~~/i18n/LocaleProvider";
 import { renderMarkup } from "~~/utils/testing/render";
 
 describe("StatCard", () => {
@@ -48,5 +49,19 @@ describe("StatCard", () => {
 
     expect(html).toContain("rounded-xl border border-border px-3 py-2 sm:p-4");
     expect(html).not.toContain("rounded-xl bg-muted");
+  });
+});
+
+describe("StatCard in Czech", () => {
+  it("says a missing number has no data, in Czech", () => {
+    const html = renderMarkup(
+      <LocaleProvider locale="cs">
+        <dl>
+          <StatCard label="Čisté jmění" value={null} />
+        </dl>
+      </LocaleProvider>,
+    );
+
+    expect(html).toContain(">Žádná data</dd>");
   });
 });

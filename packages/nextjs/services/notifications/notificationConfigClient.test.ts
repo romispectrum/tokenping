@@ -86,7 +86,7 @@ describe("upsertConfig", () => {
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: '{"userId":"0xAbC","chainId":42161,"enabled":true,"services":["email"],"healthFactorThreshold":1.8,"email":"me@example.com","signalRecipient":null}',
+          body: '{"userId":"0xAbC","chainId":42161,"enabled":true,"services":["email"],"healthFactorThreshold":1.8,"email":"me@example.com","signalRecipient":null,"locale":"en"}',
         },
       ],
     ]);
@@ -101,10 +101,20 @@ describe("upsertConfig", () => {
       signalRecipient: "alice.42",
     });
     expect(fetchMock.mock.calls[0][1]?.body).toBe(
-      '{"userId":"0xabc","chainId":42161,"enabled":true,"services":["signal"],"healthFactorThreshold":1.8,"email":null,"signalRecipient":"alice.42"}',
+      '{"userId":"0xabc","chainId":42161,"enabled":true,"services":["signal"],"healthFactorThreshold":1.8,"email":null,"signalRecipient":"alice.42","locale":"en"}',
     );
     await client.upsertConfig("0xabc", { ...CONFIG, email: undefined });
-    expect(fetchMock.mock.calls[1][1]?.body).toContain('"email":null,"signalRecipient":null}');
+    expect(fetchMock.mock.calls[1][1]?.body).toContain('"email":null,"signalRecipient":null,');
+  });
+
+  // The server stores "en" for a PUT without a locale, so the alert's language is always sent.
+  it("sends the alert's language, English when the config has none", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ success: true }));
+    await client.upsertConfig("0xabc", { ...CONFIG, locale: "cs" });
+    await client.upsertConfig("0xabc", CONFIG);
+
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).locale).toBe("cs");
+    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body)).locale).toBe("en");
   });
 
   it.each([

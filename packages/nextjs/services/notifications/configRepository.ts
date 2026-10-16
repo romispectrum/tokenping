@@ -1,4 +1,5 @@
 import "server-only";
+import { DEFAULT_LOCALE, isLocale } from "~~/i18n/locales";
 import type { ConfigValues } from "~~/services/notifications/configInput";
 import { selectAllPages } from "~~/services/supabase/selectAllPages";
 import { getSupabaseServerClient } from "~~/services/supabase/supabaseServer";
@@ -15,13 +16,15 @@ export type NotificationConfigRow = {
   health_factor_threshold: number | string;
   email: string | null;
   signal_recipient: string | null;
+  /** 'en' or 'cs' (checked by the database); absent before the locale migration is applied. */
+  locale?: string | null;
   created_at: string;
   updated_at: string;
 };
 
 export type EnabledConfigRow = Pick<
   NotificationConfigRow,
-  "user_id" | "chain_id" | "health_factor_threshold" | "email" | "signal_recipient" | "services"
+  "user_id" | "chain_id" | "health_factor_threshold" | "email" | "signal_recipient" | "services" | "locale"
 >;
 
 /** Rows written before services were validated can hold ids outside NotificationService. */
@@ -41,7 +44,11 @@ export const userIdForms = (userId: string) => {
 
 export type UserIdForms = ReturnType<typeof userIdForms>;
 
-/** Optional fields map null to undefined so they are omitted from the JSON response. */
+/** The row's alert language: English for anything that is not a supported locale (a row from before the column). */
+export const rowLocale = (row: Pick<NotificationConfigRow, "locale">) =>
+  isLocale(row.locale) ? row.locale : DEFAULT_LOCALE;
+
+/** Optional fields map null to undefined so they are omitted from the JSON response; locale is always present. */
 export const rowToConfig = (row: NotificationConfigRow): NotificationConfigResponse => ({
   chainId: row.chain_id,
   enabled: row.enabled,
@@ -49,6 +56,7 @@ export const rowToConfig = (row: NotificationConfigRow): NotificationConfigRespo
   healthFactorThreshold: parseFloat(String(row.health_factor_threshold)),
   email: row.email ?? undefined,
   signalRecipient: row.signal_recipient ?? undefined,
+  locale: rowLocale(row),
 });
 
 export const toConfigRow = (uid: string, chainId: number, values: ConfigValues, now = new Date()) => ({
@@ -59,6 +67,7 @@ export const toConfigRow = (uid: string, chainId: number, values: ConfigValues, 
   health_factor_threshold: values.healthFactorThreshold,
   email: values.email,
   signal_recipient: values.signalRecipient,
+  locale: values.locale,
   updated_at: now.toISOString(),
 });
 
@@ -131,7 +140,7 @@ export async function deleteConfigs({ normalized, legacy }: UserIdForms, chainId
 export const findEnabledConfigs = () =>
   selectAllPages<EnabledConfigRow>((from, to) =>
     configsTable()
-      .select("user_id, chain_id, health_factor_threshold, email, signal_recipient, services")
+      .select("user_id, chain_id, health_factor_threshold, email, signal_recipient, services, locale")
       .eq("enabled", true)
       .order("id")
       .range(from, to),

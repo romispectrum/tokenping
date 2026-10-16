@@ -1,12 +1,10 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Button, Field, Input } from "~~/components/ui";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 import { submitAttributionAnswer } from "~~/services/notifications/attributionClient";
 import { ATTRIBUTION_MAX_LENGTH, parseAttributionAnswer } from "~~/services/notifications/attributionInput";
 import { notification } from "~~/utils/scaffold-eth";
-
-const SEND_FAILED = "Couldn't send your answer. Try again or skip.";
-const EMPTY_ANSWER = "Enter an answer, or select Skip.";
-const QUESTION = "How did you hear about Tokenping?";
 
 type AttributionPromptProps = {
   /** The wallet the answer is stored for. */
@@ -24,6 +22,7 @@ type AttributionPromptProps = {
  * channels nobody thought to offer, like a private recommendation or an AI assistant).
  */
 export const AttributionPrompt = ({ address, autoFocus = false, onSent, onClose }: AttributionPromptProps) => {
+  const t = useMessages(ALERTS_MESSAGES);
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [answer, setAnswer] = useState("");
@@ -31,7 +30,7 @@ export const AttributionPrompt = ({ address, autoFocus = false, onSent, onClose 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const hasAnswer = answer.trim() !== "";
   // "Enter an answer" no longer applies once there is one; other messages stay until the next Send.
-  const shownError = errorMessage === EMPTY_ANSWER && hasAnswer ? null : errorMessage;
+  const shownError = errorMessage === t.attributionEmpty && hasAnswer ? null : errorMessage;
 
   useEffect(() => {
     // The form, not the input: screen readers announce its name, and phones do not pop up a keyboard for an
@@ -44,26 +43,26 @@ export const AttributionPrompt = ({ address, autoFocus = false, onSent, onClose 
     if (isSending) return;
     // Send stays enabled (a disabled button gives no reason and drops out of the tab order), so say what is missing.
     if (!hasAnswer) {
-      setErrorMessage(EMPTY_ANSWER);
+      setErrorMessage(t.attributionEmpty);
       inputRef.current?.focus();
       return;
     }
     // The server runs the same check; doing it here lets the message say what to fix.
     const parsed = parseAttributionAnswer(answer);
     if ("error" in parsed) {
-      setErrorMessage(parsed.error);
+      setErrorMessage(t.attributionInvalid(parsed.error));
       return;
     }
     setIsSending(true);
     setErrorMessage(null);
     try {
       await submitAttributionAnswer(address, parsed.value);
-      notification.success("Answer sent");
+      notification.success(t.answerSent);
       onSent?.();
       onClose();
     } catch (error) {
       console.error("Failed to send attribution answer:", error);
-      setErrorMessage(SEND_FAILED);
+      setErrorMessage(t.attributionSendFailed);
       setIsSending(false);
     }
   };
@@ -73,16 +72,11 @@ export const AttributionPrompt = ({ address, autoFocus = false, onSent, onClose 
       ref={formRef}
       tabIndex={-1}
       // The visible label's text: the form is announced by the question when it takes focus.
-      aria-label={`${QUESTION} (optional)`}
+      aria-label={t.attributionFormLabel}
       onSubmit={handleSubmit}
       className="mt-4 flex flex-col gap-3 border-t border-border pt-4"
     >
-      <Field
-        label={QUESTION}
-        optional
-        description="Helps us learn which channels work. Saved with your wallet address."
-        error={shownError}
-      >
+      <Field label={t.attributionQuestion} optional description={t.attributionDescription} error={shownError}>
         {control => (
           <Input
             {...control}
@@ -95,11 +89,11 @@ export const AttributionPrompt = ({ address, autoFocus = false, onSent, onClose 
         )}
       </Field>
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="submit" variant="secondary" size="sm" loading={isSending} loadingText="Sending">
-          Send answer
+        <Button type="submit" variant="secondary" size="sm" loading={isSending} loadingText={t.sending}>
+          {t.sendAnswer}
         </Button>
         <Button variant="ghost" size="sm" onClick={onClose}>
-          Skip
+          {t.skip}
         </Button>
       </div>
     </form>

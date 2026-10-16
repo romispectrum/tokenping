@@ -4,6 +4,7 @@ import { arbitrum, hardhat } from "viem/chains";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BetaBanner } from "~~/components/BetaBanner";
 import { Header } from "~~/components/Header";
+import { LocaleProvider } from "~~/i18n/LocaleProvider";
 import { renderMarkup } from "~~/utils/testing/render";
 
 // Seeded in beforeEach.
@@ -262,5 +263,71 @@ describe("Header", () => {
     const html = renderHeaderMarkup();
 
     expect(html).not.toMatch(/bg-primary|text-primary|btn-primary|bg-brand-pink/);
+  });
+});
+
+describe("Header in Czech", () => {
+  beforeEach(() => {
+    state.pathname = "/cs";
+    state.targetNetworkId = arbitrum.id;
+  });
+
+  const renderCzech = () =>
+    render(
+      <LocaleProvider locale="cs">
+        <Header />
+      </LocaleProvider>,
+    );
+
+  it("names the menu links in Czech and points them at the Czech pages", () => {
+    renderCzech();
+    const nav = screen.getByRole("navigation", { name: "Hlavní" });
+
+    for (const [name, href] of [
+      ["Úvod", "/cs"],
+      ["Přehled", "/cs/aave"],
+      ["Blog", "/cs/blog"],
+    ])
+      expect(
+        within(nav)
+          .getAllByRole("link", { name })
+          .map(link => link.getAttribute("href")),
+      ).toEqual([href, href]);
+  });
+
+  it("marks the Czech home page as the current page on /cs", () => {
+    renderCzech();
+
+    expect(screen.getAllByRole("link", { name: "Úvod" }).map(link => link.getAttribute("aria-current"))).toEqual([
+      "page",
+      "page",
+    ]);
+  });
+
+  it("highlights Blog on a Czech post", () => {
+    state.pathname = "/cs/blog/aave-health-factor-vysvetleni";
+    renderCzech();
+
+    expect(screen.getAllByRole("link", { name: "Blog" }).map(isActive)).toEqual([true, true]);
+  });
+
+  it("links the logo to the Czech home page and labels the menu, theme and language controls in Czech", () => {
+    const { container } = renderCzech();
+
+    expect(screen.getByRole("link", { name: "Úvodní stránka Tokenpingu" }).getAttribute("href")).toBe("/cs");
+    expect(container.querySelector("summary")?.getAttribute("aria-label")).toBe("Otevřít menu");
+    expect(screen.getAllByRole("button", { name: "Přepnout světlý nebo tmavý motiv" })).toHaveLength(2);
+    expect(screen.getByText("Motiv")).toBeTruthy();
+    expect(screen.getByText("Jazyk")).toBeTruthy();
+    // The switch on a Czech page leads to the English one.
+    expect(screen.getAllByRole("link", { name: "English" })[0].getAttribute("href")).toBe("/");
+  });
+
+  it("has no English menu labels and no em or en dash", () => {
+    const { container } = renderCzech();
+
+    expect(screen.queryByRole("link", { name: "Home" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Dashboard" })).toBeNull();
+    expect(container.innerHTML).not.toMatch(new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`));
   });
 });

@@ -23,13 +23,14 @@ vi.mock("~~/services/telegram/sendTelegram", () => ({ sendTelegramMessage: vi.fn
 
 const NOW = new Date("2026-10-14T09:05:07.000Z");
 const NOW_TEXT = "Oct 14, 2026, 9:05:07 AM Coordinated Universal Time";
+const NOW_TEXT_CS = "14. 10. 2026 9:05:07, koordinovaný světový čas";
 const LOWER = `0x${"3a".repeat(20)}`;
 const CHECKSUMMED = `0x${"3A".repeat(20)}`;
 const OTHER = `0x${"56".repeat(20)}`;
 const SHORT_LOWER = "0x3a3a…3a3a";
 
 const configsPage = (from: number) =>
-  'notification_configs.select("user_id, chain_id, health_factor_threshold, email, signal_recipient, services")' +
+  'notification_configs.select("user_id, chain_id, health_factor_threshold, email, signal_recipient, services, locale")' +
   `.eq("enabled",true).order("id").range(${from},${from + 999})`;
 const linksPage = (from: number) =>
   `user_telegram_links.select("user_id, chat_id").order("user_id").range(${from},${from + 999})`;
@@ -320,6 +321,59 @@ describe("runNotificationCheck: delivery", () => {
     expect(order).toEqual([...order].sort((a, b) => a - b));
   });
 
+  it("alerts a Czech config in Czech on every channel: text, subject, decimal comma and timestamp", async () => {
+    givenData(
+      [configRow({ services: ["email", "signal", "telegram"], health_factor_threshold: "1.5", locale: "cs" })],
+      [{ user_id: LOWER, chat_id: 555 }],
+    );
+
+    expect(await runNotificationCheck()).toEqual(
+      summary({ configsChecked: 1, emailsSent: 1, signalSent: 1, telegramSent: 1 }),
+    );
+
+    const text =
+      "Váš health factor na Aave v síti Base je 1,20, což je pod vaším prahem 1,5. " +
+      "Zvažte doplnění kolaterálu nebo splacení dluhu, abyste se vyhnuli likvidaci.\n\n" +
+      `Odesláno: ${NOW_TEXT_CS}`;
+    expect(sendEmail).toHaveBeenCalledExactlyOnceWith({
+      to: "a@b.co",
+      subject: "Upozornění na health factor Aave - Base",
+      text,
+      html:
+        "<p>Váš health factor na Aave v síti <strong>Base</strong> je <strong>1,20</strong>, " +
+        "což je pod vaším prahem <strong>1,5</strong>.</p>" +
+        "<p>Zvažte doplnění kolaterálu nebo splacení dluhu, abyste se vyhnuli likvidaci.</p>" +
+        `<p><small>Vytvořeno: ${NOW_TEXT_CS}</small></p>`,
+    });
+    expect(sendSignalMessage).toHaveBeenCalledExactlyOnceWith({ to: "alice.42", message: text });
+    expect(sendTelegramMessage).toHaveBeenCalledExactlyOnceWith({ chatId: "555", message: text });
+  });
+
+  it.each([
+    ["no locale column (a row from before the migration)", {}],
+    ["a null locale", { locale: null }],
+    ["an unexpected locale", { locale: "de" }],
+    ["an English locale", { locale: "en" }],
+  ])("alerts in English for %s", async (_label, overrides) => {
+    givenData([configRow(overrides)]);
+    await runNotificationCheck();
+    expect(sendEmail).toHaveBeenCalledExactlyOnceWith({
+      to: "a@b.co",
+      subject: "Aave Health Factor Alert - Base",
+      text: alertText("Base", "1.20", "1.5"),
+      html: alertHtml("Base", "1.20", "1.5"),
+    });
+  });
+
+  it("alerts each config in its own language", async () => {
+    givenData([configRow({ chain_id: 1, locale: "cs" }), configRow({ chain_id: 2, locale: "en" })]);
+    await runNotificationCheck();
+    expect(vi.mocked(sendEmail).mock.calls.map(([options]) => options.subject)).toEqual([
+      "Upozornění na health factor Aave - Base",
+      "Aave Health Factor Alert - Base",
+    ]);
+  });
+
   it("formats the timestamp per alert", async () => {
     givenData([configRow({ chain_id: 1 }), configRow({ chain_id: 2 })]);
     vi.mocked(getHealthFactorForWallet)
@@ -506,6 +560,14 @@ describe("alert builders", () => {
 
   it("builds the text exactly as the inline template did", () => {
     expect(buildAlertText(alert)).toBe(alertText("Arbitrum One", "1.07", "1.25"));
+  });
+
+  it("builds the Czech text with decimal commas", () => {
+    expect(buildAlertText({ ...alert, timestamp: NOW_TEXT_CS }, "cs")).toBe(
+      "Váš health factor na Aave v síti Arbitrum One je 1,07, což je pod vaším prahem 1,25. " +
+        "Zvažte doplnění kolaterálu nebo splacení dluhu, abyste se vyhnuli likvidaci.\n\n" +
+        `Odesláno: ${NOW_TEXT_CS}`,
+    );
   });
 
   it("builds the email subject (spaced hyphen) and html ('Created at' footer)", () => {

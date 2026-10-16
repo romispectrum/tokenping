@@ -1,6 +1,7 @@
 import { readdirSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { POST_SLUGS } from "~~/i18n/postSlugs";
 import { mockPostStubs } from "~~/utils/testing/blogPosts";
 
 // The fixed slugs of the cluster (blog build spec), hub first.
@@ -15,11 +16,15 @@ const EXPECTED_SLUGS = [
   "avoid-aave-liquidation",
 ];
 
-const MDX_FILES = readdirSync(new URL("./", import.meta.url)).filter(file => file.endsWith(".mdx"));
+const CS_SLUGS = EXPECTED_SLUGS.map(slug => POST_SLUGS[slug].cs);
 
-// Each test sets which posts are placeholders, so none depends on how many articles are written yet.
-const loadBlog = (stubSlugs: readonly string[] = []) => {
-  mockPostStubs(stubSlugs);
+const mdxFiles = (dir: string) => readdirSync(new URL(dir, import.meta.url)).filter(file => file.endsWith(".mdx"));
+const MDX_FILES = mdxFiles("./");
+const CS_MDX_FILES = mdxFiles("./cs/");
+
+// Each test sets which posts are placeholders, so none depends on how many articles are written or translated yet.
+const loadBlog = (stubSlugs: readonly string[] = [], csStubSlugs: readonly string[] = []) => {
+  mockPostStubs(stubSlugs, csStubSlugs);
   return import("~~/content/blog");
 };
 
@@ -154,5 +159,65 @@ describe("post dates", () => {
     const { getLatestPostDate } = await loadBlog(EXPECTED_SLUGS);
 
     expect(getLatestPostDate()).toBeUndefined();
+  });
+});
+
+describe("Czech posts", () => {
+  it("lists a translation of every post, in the English order, hub first", async () => {
+    const { getPosts, hubSlug } = await loadBlog();
+
+    expect(getPosts("cs").map(({ meta }) => meta.slug)).toEqual(CS_SLUGS);
+    expect(getPosts("cs")[0].meta.slug).toBe(hubSlug("cs"));
+    expect(hubSlug("cs")).toBe("aave-health-factor-vysvetleni");
+  });
+
+  it("registers every .mdx file in content/blog/cs", () => {
+    expect(CS_MDX_FILES.map(file => file.replace(/\.mdx$/, "")).sort()).toEqual([...CS_SLUGS].sort());
+  });
+
+  it("renders every Czech post body through mdx-components without an H1", async () => {
+    const { getPosts } = await loadBlog();
+    for (const { meta, Content } of getPosts("cs")) {
+      const html = renderToStaticMarkup(<Content components={{ AlertPrice: () => "3 USDC na 30 dní" }} />);
+
+      expect(html, meta.slug).not.toBe("");
+      expect(html, meta.slug).not.toMatch(/<h1[\s>]/);
+    }
+  });
+
+  it("publishes only the finished translations, independently of English", async () => {
+    const { getPublishedPosts } = await loadBlog(["aave-health-factor"], ["likvidacni-cena-aave"]);
+
+    expect(getPublishedPosts("cs").map(({ meta }) => meta.slug)).toEqual(
+      CS_SLUGS.filter(slug => slug !== "likvidacni-cena-aave"),
+    );
+    expect(getPublishedPosts("en").map(({ meta }) => meta.slug)).not.toContain("aave-health-factor");
+    expect(getPublishedPosts("cs").map(({ meta }) => meta.slug)).toContain("aave-health-factor-vysvetleni");
+  });
+
+  it("finds a Czech post by its slug or its key, and not by its English slug", async () => {
+    const { getPost, getPostByKey } = await loadBlog();
+
+    expect(getPost("likvidacni-cena-aave", "cs")?.meta.slug).toBe("likvidacni-cena-aave");
+    expect(getPostByKey("aave-liquidation-price", "cs")?.meta.slug).toBe("likvidacni-cena-aave");
+    expect(getPost("aave-liquidation-price", "cs")).toBeUndefined();
+  });
+
+  it.each(CS_SLUGS)("gives %s two or three related Czech posts, the hub among them for a spoke", async slug => {
+    const { RELATED_POST_COUNT, getRelatedPosts, hubSlug } = await loadBlog();
+    const related = getRelatedPosts(slug, "cs").map(({ meta }) => meta.slug);
+
+    expect(related.length).toBeGreaterThanOrEqual(2);
+    expect(related.length).toBeLessThanOrEqual(RELATED_POST_COUNT);
+    expect(related.every(other => CS_SLUGS.includes(other) && other !== slug)).toBe(true);
+    if (slug !== hubSlug("cs")) expect(related).toContain(hubSlug("cs"));
+  });
+
+  it("skips Czech placeholders in related posts", async () => {
+    const { getRelatedPosts } = await loadBlog([], ["aave-health-factor-vysvetleni"]);
+
+    expect(getRelatedPosts("bezpecny-health-factor-aave", "cs").map(({ meta }) => meta.slug)).not.toContain(
+      "aave-health-factor-vysvetleni",
+    );
   });
 });

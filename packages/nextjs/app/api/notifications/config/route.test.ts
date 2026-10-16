@@ -48,6 +48,7 @@ const storedRow = (overrides: Record<string, unknown> = {}) => ({
   health_factor_threshold: "1.80",
   email: "a@b.co",
   signal_recipient: "alice.42",
+  locale: "en",
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-02T00:00:00Z",
   ...overrides,
@@ -121,6 +122,7 @@ describe("GET /api/notifications/config", () => {
           healthFactorThreshold: 1.8,
           email: "a@b.co",
           signalRecipient: "alice.42",
+          locale: "en",
         }),
       });
       // No legacy fallback once the lowercased row is found.
@@ -145,8 +147,18 @@ describe("GET /api/notifications/config", () => {
 
       expect(await read(res)).toEqual({
         status: 200,
-        text: '{"chainId":1,"enabled":false,"services":[],"healthFactorThreshold":2}',
+        text: '{"chainId":1,"enabled":false,"services":[],"healthFactorThreshold":2,"locale":"en"}',
       });
+    });
+
+    it.each([
+      ["a Czech row", "cs", "cs"],
+      ["an English row", "en", "en"],
+      ["a row from before the locale column", undefined, "en"],
+    ])("returns the alert language of %s", async (_label, locale, expected) => {
+      fakeSupabase.respondByQuery({ [chainQuery(LOWER, 1)]: { data: storedRow({ chain_id: 1, locale }) } });
+      const res = await get({ userId: LOWER, chainId: "1" });
+      expect(JSON.parse((await read(res)).text).locale).toBe(expected);
     });
 
     it("falls back to the trimmed (legacy checksummed) user id when the lowercased lookup finds no row", async () => {
@@ -163,6 +175,7 @@ describe("GET /api/notifications/config", () => {
         healthFactorThreshold: 1.8,
         email: "a@b.co",
         signalRecipient: "alice.42",
+        locale: "en",
       });
       expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 10), chainQuery(MIXED, 10)]);
     });
@@ -224,13 +237,21 @@ describe("GET /api/notifications/config", () => {
       expect(await read(res)).toEqual({
         status: 200,
         text: JSON.stringify({
-          1: { chainId: 1, enabled: true, services: ["signal"], healthFactorThreshold: 1.1, email: "a@b.co" },
+          1: {
+            chainId: 1,
+            enabled: true,
+            services: ["signal"],
+            healthFactorThreshold: 1.1,
+            email: "a@b.co",
+            locale: "en",
+          },
           8453: {
             chainId: 8453,
             enabled: true,
             services: ["email", "telegram"],
             healthFactorThreshold: 1.8,
             signalRecipient: "alice.42",
+            locale: "en",
           },
         }),
       });
@@ -309,6 +330,7 @@ describe("PUT /api/notifications/config", () => {
     health_factor_threshold: 1.5,
     email: null,
     signal_recipient: null,
+    locale: "en",
     updated_at: NOW,
     ...overrides,
   });
@@ -462,6 +484,10 @@ describe("PUT /api/notifications/config", () => {
       { signal_recipient: " @ alice.42" },
     ],
     ["an unselected prefix-only Signal value becomes null", { signalRecipient: "u:" }, { signal_recipient: null }],
+    ["a Czech locale is kept", { locale: "cs" }, { locale: "cs" }],
+    ["an English locale is kept", { locale: "en" }, { locale: "en" }],
+    ["a missing locale is English", {}, { locale: "en" }],
+    ["a null locale is English", { locale: null }, { locale: "en" }],
   ])("stores the normalized row: %s", async (_label, extra, expected) => {
     expect(await read(await put({ userId: LOWER, chainId: 8453, ...extra }))).toEqual(json(200, { success: true }));
     expect(fakeSupabase.log().at(-1)).toBe(insertQuery(expectedRow(LOWER, expected)));
@@ -481,6 +507,9 @@ describe("PUT /api/notifications/config", () => {
       { services: ["signal"], signalRecipient: "@ alice.42" },
       "Invalid Signal username for Signal notifications. Expected format: alice.42",
     ],
+    ["an unsupported locale", { locale: "de" }, "Invalid locale: expected one of en, cs"],
+    ["a region-tagged locale", { locale: "cs-CZ" }, "Invalid locale: expected one of en, cs"],
+    ["a non-string locale", { locale: 1 }, "Invalid locale: expected one of en, cs"],
   ])("returns 400 for %s before the access check or any DB call", async (_label, extra, error) => {
     expect(await read(await put({ userId: LOWER, chainId: 8453, ...extra }))).toEqual(json(400, { error }));
     expect(isAccessActive).not.toHaveBeenCalled();
@@ -510,6 +539,22 @@ describe("PUT /api/notifications/config", () => {
   it("returns 400 for a threshold that JSON parses as Infinity", async () => {
     const res = await put(`{"userId":"${LOWER}","chainId":8453,"healthFactorThreshold":1e400}`);
     expect(await read(res)).toEqual(json(400, { error: "Invalid healthFactorThreshold: expected a finite number" }));
+  });
+
+  it("saves a Czech config in place and reads it back in Czech", async () => {
+    fakeSupabase.respondByQuery({ [idLookup(LOWER, 8453)]: { data: { id: "row-lower" } } });
+
+    const body = { userId: LOWER, chainId: 8453, services: ["email"], email: "a@b.co", locale: "cs" };
+    expect(await read(await put(body))).toEqual(json(200, { success: true }));
+
+    const row = expectedRow(LOWER, { services: ["email"], email: "a@b.co", locale: "cs" });
+    expect(fakeSupabase.log().at(-1)).toBe(updateQuery(row, "row-lower"));
+
+    fakeSupabase.respondByQuery({ [chainQuery(LOWER, 8453)]: { data: { ...storedRow(), ...row } } });
+    expect(JSON.parse((await read(await get({ userId: LOWER, chainId: "8453" }))).text)).toMatchObject({
+      services: ["email"],
+      locale: "cs",
+    });
   });
 
   it("returns 500 when the access check throws", async () => {

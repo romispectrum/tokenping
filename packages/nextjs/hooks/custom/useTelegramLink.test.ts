@@ -3,6 +3,7 @@ import { QueryClient, notifyManager } from "@tanstack/react-query";
 import { act } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { useTelegramLink } from "~~/hooks/custom/useTelegramLink";
+import type { Locale } from "~~/i18n/locales";
 import type { TelegramLinkStatus } from "~~/types/notifications";
 import { deferred } from "~~/utils/testing/helpers";
 import { createTestQueryClient, renderHookWithProviders } from "~~/utils/testing/providers";
@@ -15,10 +16,13 @@ const mocks = vi.hoisted(() => ({
   /** The wallet wagmi reports as connected right now. */
   account: undefined as string | undefined,
   wagmiConfig: {},
+  locale: "en" as Locale,
 }));
 
 vi.mock("wagmi", () => ({ useConfig: () => mocks.wagmiConfig }));
 vi.mock("wagmi/actions", () => ({ getAccount: () => ({ address: mocks.account }) }));
+// The page's language, which the LocaleProvider of each root layout supplies.
+vi.mock("~~/i18n/LocaleProvider", () => ({ useLocale: () => mocks.locale }));
 
 vi.mock("~~/services/telegram/telegramClient", () => ({
   telegramClient: {
@@ -89,6 +93,7 @@ beforeEach(() => {
   mocks.disconnect.mockReset().mockResolvedValue(undefined);
   mocks.toasts = [];
   mocks.account = ADDRESS;
+  mocks.locale = "en";
 });
 
 afterEach(() => {
@@ -606,7 +611,7 @@ describe("useTelegramLink: disconnect", () => {
     expect(view.result.current.isDisconnecting).toBe(true);
     request.resolve();
     await flush();
-    expect(mocks.disconnect.mock.calls).toEqual([[ADDRESS]]);
+    expect(mocks.disconnect.mock.calls).toEqual([[ADDRESS, "en"]]);
     expect(view.result.current).toMatchObject({ chatId: undefined, username: undefined, isDisconnecting: false });
     expect(other.result.current.chatId).toBeUndefined();
     expect(mocks.toasts).toEqual(["success: Telegram disconnected"]);
@@ -628,5 +633,52 @@ describe("useTelegramLink: disconnect", () => {
     await flush();
     expect(mocks.disconnect).not.toHaveBeenCalled();
     expect(mocks.toasts).toEqual([]);
+  });
+});
+
+describe("useTelegramLink: on Czech pages", () => {
+  beforeEach(() => {
+    mocks.locale = "cs";
+  });
+
+  it("announces the link in Czech", async () => {
+    const view = await renderLoaded(ADDRESS);
+    await startConnect(view);
+    mocks.getLinkStatus.mockResolvedValue(LINKED);
+    await flush(2000);
+    expect(mocks.toasts).toEqual(["success: Telegram připojen jako @bob"]);
+  });
+
+  it("reports the timeout in Czech", async () => {
+    const view = await renderLoaded(ADDRESS);
+    await startConnect(view);
+    await flush(TEN_MINUTES);
+    expect(mocks.toasts).toEqual(["error: Čas na propojení s Telegramem vypršel. Zkuste to znovu."]);
+  });
+
+  it("asks for a wallet in Czech", async () => {
+    const { result } = await renderLoaded(undefined);
+    act(() => result.current.connect());
+    expect(mocks.toasts).toEqual(["error: Nejdřív připojte peněženku"]);
+  });
+
+  it("reports failures in Czech instead of the server's English message", async () => {
+    mocks.createLinkToken.mockRejectedValue(new Error("Telegram is not configured on this server"));
+    mocks.getLinkStatus.mockResolvedValue(LINKED);
+    mocks.disconnect.mockRejectedValue(new Error("Active paid access required"));
+    const view = await renderLoaded(ADDRESS);
+    await startConnect(view);
+    act(() => view.result.current.disconnect());
+    await flush();
+    expect(mocks.toasts).toEqual(["error: Telegram se nepodařilo připojit", "error: Telegram se nepodařilo odpojit"]);
+  });
+
+  it("confirms a disconnect in Czech", async () => {
+    mocks.getLinkStatus.mockResolvedValue(LINKED);
+    const view = await renderLoaded(ADDRESS);
+    act(() => view.result.current.disconnect());
+    await flush();
+    expect(mocks.disconnect.mock.calls).toEqual([[ADDRESS, "cs"]]);
+    expect(mocks.toasts).toEqual(["success: Telegram odpojen"]);
   });
 });

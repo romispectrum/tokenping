@@ -1,12 +1,178 @@
 export const meta = {
   slug: "nastaveni-upozorneni-health-factor-aave",
-  title: "Překlad se připravuje",
-  description: "Český překlad tohoto průvodce se připravuje.",
-  h1: "Překlad se připravuje",
+  title: "Jak dostat upozornění, když klesne health factor na Aave",
+  description:
+    "Krok za krokem: zpráva přes Signal nebo e-mail, když váš health factor na Aave V3 klesne pod zvolený práh. Kolik to stojí a jak upozornění zastavit.",
+  h1: "Jak nastavit upozornění na pokles health factoru na Aave",
   publishedAt: "2026-10-14",
-  primaryQuestion: "Překlad se připravuje.",
-  readingMinutes: 1,
-  stub: true,
+  primaryQuestion: "Jak si nastavím upozornění na pokles health factoru na Aave?",
+  readingMinutes: 12,
 };
 
-Český překlad tohoto průvodce se připravuje.
+<ShortAnswer>
+  Vlastní rozhraní Aave ukazují váš health factor (faktor zdraví pozice), dokud je máte otevřená, ale když klesne,
+  žádnou zprávu vám nepošlou, takže varování musí přijít z jiného nástroje. S Tokenpingem připojíte peněženku, se kterou
+  si půjčujete, zaplatíte přístup k upozorněním na síti Arbitrum, nastavíte práh pro každou síť Aave V3, na které si
+  půjčujete (podporovaných je sedm), a zadáte uživatelské jméno v Signalu nebo e-mailovou adresu. Tokenping pak každých
+  5 minut kontroluje a při každé kontrole, kdy je váš health factor pod tímto prahem, vám pošle zprávu.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Posílá Aave upozornění na health factor?
+
+Ne. K 14. říjnu 2026 vlastní rozhraní Aave zobrazují váš health factor na obrazovce, ale když klesne, nepošlou žádný e-mail, zprávu do chatu ani push notifikaci. Health factor (HF) je hodnota vašeho kolaterálu vážená likvidačním prahem každého aktiva, vydělená hodnotou vašeho dluhu; pod 1,00 může být pozice zlikvidována. Celý vzorec najdete v článku [co je health factor na Aave](/cs/blog/aave-health-factor-vysvetleni).
+
+Webová aplikace Aave (app.aave.com) kdysi odkazovala na notifikace HAL; Aave tuto integraci odstranilo 30. května 2024, protože služba HAL skončila. Aave Pro, aplikace pro Aave V4, popisuje sledování health factoru přímo v aplikaci a její produktová stránka žádné notifikace nezmiňuje. Centrum nápovědy Aave uvádí, že pravidelné sledování je nezbytné; jeho krátký seznam nástrojů s označením „Use at your own risk“ (používejte na vlastní riziko) obsahuje simulátor a službu automatického splácení, ale žádnou službu pro upozornění.
+
+Abyste dostali varování, musíte tedy aplikaci kontrolovat sami, nebo použít nástroj třetí strany. Tento průvodce nastavuje [upozornění na health factor Aave přes Signal a e-mail](/cs) s Tokenpingem; ostatní nástroje probírá [srovnání nástrojů pro upozornění na likvidaci Aave](/cs/blog/nastroje-pro-upozorneni-na-likvidaci-aave).
+
+## Co potřebujete, než začnete?
+
+Upozornění na health factor v Tokenpingu potřebuje čtyři věci:
+
+- **Pozici na Aave V3 s dluhem** na Ethereu (pouze trh Core) nebo na síti Arbitrum, Base, Optimism, Polygon, Avalanche či Gnosis. Bez dluhu vrací Aave nejvyšší možnou hodnotu (zobrazenou jako ∞) a žádné upozornění se nemůže spustit. Pozice na Aave V4 a ostatní trhy V3 na Ethereu (Prime, EtherFi a Horizon) podporované nejsou.
+- **Peněženku, se kterou si půjčujete.** Tokenping sleduje pouze peněženku, kterou připojíte; jinou adresu přidat nelze.
+- **Nativní USDC a trochu ETH na síti Arbitrum One, ve stejné peněžence.** Upozornění stojí <AlertPrice />, placeno v nativním USDC od Circle na síti Arbitrum One, i když je vaše půjčka na jiné síti. ETH pokryje gas až za dvě transakce.
+- **Uživatelské jméno v Signalu nebo e-mailovou adresu**, případně obojí.
+
+Nastavení pak zabere šest kroků:
+
+1. Připojte peněženku a zkontrolujte své pozice.
+2. Zaplaťte přístup k upozorněním na síti Arbitrum One.
+3. Zvolte síť a práh.
+4. Zvolte Signal, e-mail nebo obojí.
+5. Uložte upozornění.
+6. Volitelně otestujte, že vám zprávy chodí.
+
+## Krok 1: Připojte peněženku a zkontrolujte své pozice
+
+Otevřete přehled, kde můžete [zkontrolovat svůj health factor na Aave V3 (zdarma)](/cs/aave), a připojte peněženku, se kterou si půjčujete. Prohlížení pozic je zdarma a jen pro čtení: Tokenping vaše pozice pouze čte on-chain a nikdy nežádá o schválení ani o podpis týkající se vaší pozice na Aave.
+
+Seznam **Sítě** ukazuje všech sedm sítí, se štítkem health factoru tam, kde máte pozici, a s nápisem „Bez pozice“ tam, kde ji nemáte. Vyberte síť se svou půjčkou, uvidíte její kolaterál, dluh a health factor. Tento health factor si poznamenejte: pomůže vám zvolit práh a otestovat doručení. Pokud přehled hlásí „Na podporovaných sítích jsme nenašli žádné aktivní pozice na Aave.“, nejspíš jste připojili jinou peněženku, nebo je půjčka na trhu, který Tokenping nečte. Pozice se načtou při otevření stránky a po stisknutí **Obnovit pozice**.
+
+## Krok 2: Odemkněte upozornění
+
+K uložení upozornění v Tokenpingu potřebujete placený přístup, který stojí <AlertPrice />. Cenu určuje platební kontrakt Tokenpingu na síti Arbitrum One a panel vám ji ukáže, než zaplatíte.
+
+1. Na panelu vybrané sítě v [přehledu Tokenpingu](/cs/aave) stiskněte **Zaplatit** (popisek obsahuje cenu v USDC). Pokud je vaše peněženka na jiné síti, stiskněte nejdřív **Přepnout na síť Arbitrum One**.
+2. Schvalte USDC. Schválení zní přesně na výši ceny, nikdy na neomezenou částku, a přeskočí se, pokud už je schváleno dost.
+3. Potvrďte platbu. Jakmile je transakce zapsána do bloku, panel ukáže **Upozornění odemčena do** a za tím datum.
+
+Jedna platba odemkne nastavení upozornění na všech sedmi sítích pro peněženku, která zaplatila. Nic se automaticky neobnovuje: dokud je přístup aktivní, panel tlačítko pro platbu nezobrazuje, a jakmile přístup skončí, nabídne novou platbu, která zahájí nové období tarifu. Platební kontrakt je ověřený na Sourcify a nemá žádnou funkci pro vrácení peněz. Vlastní ho jedna peněženka ovládaná týmem Tokenpingu, která může změnit cenu, pozastavit platby nebo aktualizovat kód kontraktu.
+
+## Krok 3: Zvolte síť a práh
+
+Každé upozornění v Tokenpingu pokrývá jednu síť a jeden práh: health factor, pod kterým vám chodí zprávy. Po zaplacení stiskněte na panelu sítě **Vytvořit upozornění**. Posuvník jde od 1,1 do 3,0 v krocích po 0,1 a pole vedle něj přijme libovolnou hodnotu od 1,1 do 10 s nejvýše dvěma desetinnými místy. Výchozí hodnota je 1,5.
+
+Univerzálně bezpečné číslo neexistuje. Jeden možný postup: zvolte cenu kolaterálu, při které byste jednali, spočítejte health factor při této ceně a upozornění nastavte kousek nad něj, protože kontroly probíhají s odstupem 5 minut a splacení se na vytížené síti může potvrzovat pomalu. Článek [jakou rezervu vám health factor dává](/cs/blog/bezpecny-health-factor-aave) obsahuje tabulku běžných úrovní.
+
+Modelový příklad s jedním volatilním aktivem jako kolaterálem a dluhem ve stablecoinu: likvidační práh WETH na trhu Core na Ethereu byl 83 % (načteno on-chain v bloku 26194005, 14. října 2026). Při 10 vložených WETH, 12 000 vypůjčených USDC, ilustrativní ceně ETH 2 400 USD (oracle Aave v tomto bloku ukazoval 2 415,56 USD) a USDC za 1,00 USD je health factor 10 × 2 400 × 0,83 ÷ 12 000 = 1,66. Cena ETH při libovolném health factoru je tento health factor × 12 000 ÷ (10 × 0,83):
+
+| Health factor                               | Cena ETH při tomto health factoru | Pokles z 2 400 USD |
+| ------------------------------------------- | --------------------------------- | ------------------ |
+| 1,66 (výchozí stav)                         | 2 400,00 USD                      | 0 %                |
+| 1,5 (možný práh upozornění)                 | 2 168,67 USD                      | 9,6 %              |
+| 1,3 (možný práh upozornění)                 | 1 879,52 USD                      | 21,7 %             |
+| 1,0 (pod touto hodnotou je možná likvidace) | 1 445,78 USD                      | 39,8 %             |
+
+S prahem 1,5 přijde první zpráva, jakmile health factor ukáže 1,49 nebo méně (zaokrouhluje se na dvě desetinná místa), v tomto příkladu když ETH klesne zhruba pod 2 161 USD. ETH by pak muselo klesnout přibližně o dalších 33 %, než by tato pozice mohla být zlikvidována; s prahem 1,3 je tato zbývající rezerva asi 23 %. Obě čísla nezahrnují úrok. Úrok a snížení likvidačního prahu mohou health factor snížit i bez jakéhokoli pohybu ceny: viz [proč váš health factor na Aave klesá sám od sebe](/cs/blog/proc-klesl-health-factor-aave).
+
+## Krok 4: Zvolte kanály
+
+V části **Kanály upozornění** vyberte Signal, e-mail nebo obojí. Tokenping potřebuje alespoň jeden kanál a každé upozornění jde do každého kanálu, který vyberete.
+
+- **E-mail:** zadejte svou adresu. Pokud první upozornění nepřijde, zkontrolujte složku se spamem.
+- **Signal:** zadejte své uživatelské jméno v Signalu, se znakem @ nebo bez něj, například `alice.42`. Signal ho ukazuje ve vašem profilu: otevřete Nastavení, klepněte na svůj profil a podívejte se vedle symbolu @. Pokud jste si v Signalu uživatelské jméno nikdy nevytvořili, nejdřív si ho tam vytvořte. Tokenping se nikdy neptá na vaše telefonní číslo.
+
+Protože účet Tokenpingu v Signalu nemáte v kontaktech, Signal může první upozornění zobrazit jako žádost o zprávu. Přijměte ji; pokud odesílatele zablokujete, upozornění k vám nedorazí. Volba obou kanálů slouží jako pojistka, protože každý z nich závisí na vnějších službách (poskytovateli e-mailu a vlastním hostovaném relé pro Signal).
+
+Tokenping ukládá adresu vaší peněženky, síť, práh a kanály, vaši e-mailovou adresu nebo uživatelské jméno v Signalu, kdy bylo upozornění vytvořeno a naposledy změněno, a vaši odpověď na nepovinnou otázku „Jak jste se o Tokenpingu dozvěděli?“, pokud ji vyplníte. Neuchovává žádnou historii health factoru ani záznam odeslaných upozornění.
+
+## Krok 5: Uložte upozornění a podívejte se, jak vypadá
+
+Stiskněte **Uložit upozornění**. Panel ukáže **Nastavení upozornění** se štítkem „Aktivní“ a síť dostane v seznamu Sítě ikonu zvonku. Napoprvé se může objevit nepovinná otázka „Jak jste se o Tokenpingu dozvěděli?“; můžete stisknout **Přeskočit**. Do Signalu přijde tento text (hodnoty jsou ilustrativní):
+
+> Váš health factor na Aave v síti Arbitrum je 1,42, což je pod vaším prahem 1,5. Zvažte doplnění kolaterálu nebo splacení dluhu, abyste se vyhnuli likvidaci.
+>
+> Odesláno: 14. 10. 2026 21:05:07, koordinovaný světový čas
+
+Health factor je zaokrouhlený na dvě desetinná místa a čas je v UTC. E-mail nese stejnou zprávu s předmětem „Upozornění na health factor Aave - Arbitrum“, jen jeho poslední řádek místo „Odesláno“ začíná slovem „Vytvořeno“.
+
+## Krok 6 (volitelný): Ověřte, že vám upozornění chodí
+
+Protože se upozornění Tokenpingu spouští vždy, když je health factor pod vaším prahem, můžete doručení otestovat, aniž byste čekali na pokles ceny. Funguje to pro každou pozici s dluhem a health factorem pod 10, což je nejvyšší práh, který lze nastavit.
+
+1. Poznamenejte si aktuální health factor dané sítě, například 1,82.
+2. Stiskněte **Upravit upozornění**, nastavte práh těsně nad tuto hodnotu (v tomto příkladu 1,9) a stiskněte **Uložit upozornění**.
+3. Počkejte na další kontrolu, která proběhne do 5 minut. Každý zvolený kanál dostane při každé kontrole jednu zprávu.
+4. Znovu stiskněte **Upravit upozornění**, vraťte svůj skutečný práh a stiskněte **Uložit upozornění**. Od další kontroly zprávy přestanou.
+
+Pokud ani po dvou nebo třech kontrolách (10 až 15 minut) nic nepřišlo, projděte si, [proč upozornění nemusí fungovat](#proc-mi-nefunguje-upozorneni).
+
+## Jak často budete upozornění dostávat?
+
+Dokud je váš health factor pod prahem, Tokenping při každé pětiminutové kontrole pošle jednu zprávu do každého zvoleného kanálu. To je až 12 zpráv za hodinu v každém kanálu. Neexistuje odložení, souhrn ani zpráva „vše je zase v pořádku“: upozornění přestanou, jakmile je health factor znovu na prahu nebo nad ním.
+
+Kontrola porovnává health factor zaokrouhlený na dvě desetinná místa a spustí se, jen když je ostře pod prahem. S prahem 1,5 spustí upozornění health factor 1,49, ale 1,50 už ne. Pokud selže čtení pozice nebo odeslání zprávy, Tokenping to zaznamená a další kontrola to zkusí znovu, pokud je health factor stále pod prahem.
+
+Kontroly probíhají s odstupem 5 minut, ne nepřetržitě, takže při prudkém poklesu se pozice může dostat z hodnoty nad vaším prahem až pod 1,0 dřív, než odejde jakákoli zpráva. Tokenping je v betaverzi, ke čtení pozic a doručování zpráv využívá třetí strany a nemá žádnou garanci dostupnosti. Berte upozornění jako čas na reakci, ne jako svou jedinou ochranu.
+
+## Jak upozornění změnit nebo zastavit?
+
+Upozornění Tokenpingu přestanou, když se váš health factor vrátí na práh nebo nad něj, například poté, co splatíte dluh nebo doplníte kolaterál, nebo když upozornění smažete. Změna i smazání upozornění vyžaduje aktivní přístup.
+
+- **Změna prahu nebo kanálů:** na panelu sítě stiskněte **Upravit upozornění**, proveďte změnu a stiskněte **Uložit upozornění**.
+- **Zastavení upozornění na síti:** stiskněte **Upravit upozornění**, pak **Smazat upozornění** a potvrďte tlačítkem **Smazat upozornění**. Přepínač pro pozastavení neexistuje a upozornění každé sítě se maže zvlášť.
+
+<Callout tone="warning">
+  Upozornění, která už nechcete, smažte, dokud je váš přístup ještě aktivní. Po vypršení přístupu zůstane nastavení
+  viditelné, ale jen pro čtení („Pro úpravy zaplaťte přístup“), smazání upozornění vyžaduje novou platbu a e-maily s
+  upozorněním zatím nemají odkaz pro odhlášení.
+</Callout>
+
+## Proč mi nefunguje upozornění?
+
+Když upozornění Tokenpingu nefunguje, zkontrolujte šest věcí: připojenou peněženku a trh, formát uživatelského jména v Signalu, nativní USDC na síti Arbitrum One, zda má pozice dluh, zda má každá síť, na které si půjčujete, své upozornění, a složku se spamem a žádosti o zprávu v Signalu.
+
+### Přehled neukazuje žádné pozice
+
+Pokud přehled Tokenpingu neukazuje žádné pozice, připojená peněženka není ta, se kterou si půjčujete, nebo je půjčka na trhu, který Tokenping nečte: na Aave V4, na trzích Prime, EtherFi nebo Horizon na Ethereu, nebo na síti mimo podporovaných sedm.
+
+### Tokenping odmítá vaše uživatelské jméno v Signalu
+
+Tokenping vás vyzve „Zadejte uživatelské jméno v Signalu ve tvaru alice.42“, když uživatelské jméno nemá podobu přezdívky, tečky a alespoň dvou číslic. Znak @ na začátku nevadí. Pokud si uživatelské jméno v Signalu změníte, upozornění hned aktualizujte: Signal dovolí někomu jinému převzít staré uživatelské jméno brzy poté, co ho přestanete používat.
+
+### Nemáte USDC na síti Arbitrum One
+
+Platba za Tokenping přijímá nativní USDC od Circle na síti Arbitrum One (kontrakt `0xaf88...5831`), ne přemostěné USDC.e, a k tomu trochu ETH na gas, a to v peněžence, kterou nastavujete. Přesuňte tam obojí, například výběrem z burzy přímo na síť Arbitrum One nebo přes most (bridge). USDC.e, které už máte, je potřeba směnit za nativní USDC.
+
+### Vaše pozice nemá dluh
+
+Bez dluhu vrací Aave nejvyšší možný health factor (zobrazený jako ∞), takže žádný práh nikdy není překročen a žádné upozornění neodejde.
+
+### Půjčujete si na více sítích
+
+Každá síť má vlastní upozornění, práh a kanály. Jedna platba pokrývá všech sedm sítí, takže vytvořte upozornění na každé síti, na které si půjčujete.
+
+### Zprávy nepřicházejí
+
+Pokud zprávy od Tokenpingu nepřicházejí, zkontrolujte složku se spamem a žádosti o zprávu v Signalu a ověřte, že jste odesílatele Tokenping nezablokovali. Pak proveďte [test doručení](#krok-6-volitelny-overte-ze-vam-upozorneni-chodi): nastavte práh těsně nad aktuální health factor, počkejte na další pětiminutovou kontrolu a pak práh vraťte zpět.
+
+## Jak jinak lze upozornění dostávat?
+
+Některé bezplatné nástroje vám umožní vložit libovolnou adresu peněženky a dostávat upozornění na Telegram nebo do jejich vlastní mobilní aplikace. Rozšíření prohlížeče ukazují health factor na liště prohlížeče a některá zobrazují i oznámení na ploše, dokud prohlížeč běží. Automatizační služby mohou dluh splatit za vás; potřebují chytrou peněženku (smart wallet) nebo oprávnění k vaší pozici a některé stanovují minimální velikost pozice nebo účtují poplatek za každou akci. Vývojáři si mohou sestavit vlastní sledování. [Srovnání nástrojů pro upozornění na likvidaci Aave](/cs/blog/nastroje-pro-upozorneni-na-likvidaci-aave) je staví vedle sebe, včetně případů, kdy Tokenping není vhodnou volbou.
+
+## Zdroje
+
+- [Pull request #2084 v rozhraní Aave, „chore: remove hal“, sloučený 30. května 2024](https://github.com/aave/interface/pull/2084) (načteno 14. října 2026)
+- [Nápověda Aave: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (načteno 14. října 2026)
+- [Produktová stránka Aave Pro](https://aave.com/pro) (načteno 14. října 2026)
+- [Changelog dokumentace Aave: zavedení V3.7 a spuštění V4](https://aave.com/docs/resources/changelog) (načteno 15. října 2026)
+- [Aave V3 GenericLogic.sol: vzorec health factoru a hodnota bez dluhu](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) (načteno 14. října 2026)
+- Aave V3 Ethereum Core [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) a [AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) (stránky kontraktů na Etherscanu): likvidační práh WETH 83 % a cena z oraclu 2 415,56 USD, načteno on-chain v bloku 26194005 (data z RPC, načteno 14. října 2026)
+- [TokenpingPaywall na síti Arbitrum One, zdrojový kód ověřený na Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553) (načteno 14. října 2026); tarif, stav pozastavení a vlastník načteny on-chain v blocích 514885994 a 514896937
+- [Podpora Signal: Phone Number Privacy and Usernames](https://support.signal.org/hc/en-us/articles/6712070553754-Phone-Number-Privacy-and-Usernames) (načteno 14. října 2026)
+- [Podpora Signal: Signal Profiles and Message Requests](https://support.signal.org/hc/en-us/articles/360007459591-Signal-Profiles-and-Message-Requests) (načteno 14. října 2026)
+
+_Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání._

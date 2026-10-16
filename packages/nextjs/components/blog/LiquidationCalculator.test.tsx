@@ -4,7 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AlertPriceText } from "~~/components/blog/AlertPrice";
 import { LiquidationCalculator } from "~~/components/blog/LiquidationCalculator";
 import { BLOG_MDX_COMPONENTS } from "~~/components/blog/mdxComponents";
+import { blogMdxComponents } from "~~/components/blog/mdxComponents";
 import AaveLiquidationPrice from "~~/content/blog/aave-liquidation-price.mdx";
+import CsAaveLiquidationPrice from "~~/content/blog/cs/likvidacni-cena-aave.mdx";
+import { LocaleProvider } from "~~/i18n/LocaleProvider";
 import { renderHtml } from "~~/utils/testing/render";
 
 afterEach(() => {
@@ -527,5 +530,156 @@ describe("LiquidationCalculator", () => {
     expect(calculatorHeading).toBeGreaterThan(0);
     expect(headings[calculatorHeading - 1]).toMatch(/^2 /);
     expect(headings[calculatorHeading + 1]).toBe("4 Result");
+  });
+});
+
+describe("LiquidationCalculator in Czech", () => {
+  const renderCzech = () =>
+    render(
+      <LocaleProvider locale="cs">
+        <LiquidationCalculator />
+      </LocaleProvider>,
+    );
+  const czechResults = () => within(screen.getByRole("region", { name: "Výsledek" }));
+  const czechRow = (title: string) => {
+    const row = czechResults().getByText(title, { selector: "dt" }).parentElement!;
+    const [value, description] = [...row.querySelectorAll("dd")].map(dd => dd.textContent);
+    return { value, description };
+  };
+  const czechTitles = () =>
+    czechResults()
+      .queryAllByRole("term")
+      .map(dt => dt.textContent);
+  // Field appends the language's "(optional)" word to the name label.
+  const NAME = /^Název aktiva/;
+
+  it("labels every field, example and preset in Czech, with the Czech thresholds date, and keeps the numbers", () => {
+    renderCzech();
+
+    expect(screen.getByRole("heading", { level: 3, name: "Kalkulačka likvidační ceny na Aave" })).toBeDefined();
+    const collateral = group("Kolaterál 1");
+    const preset = collateral.getByLabelText<HTMLSelectElement>("Aktivum na Aave V3 (vyplní práh)");
+    expect(preset.value).toBe("ethereum-core-weth");
+    expect(within(preset).getByRole("group", { name: "Arbitrum (načteno 14. října 2026)" })).toBeDefined();
+    expect(within(preset).getByRole("option", { name: "Arbitrum USDC (nativní): 78%" })).toBeDefined();
+    expect(within(preset).getByRole("option", { name: "Jiné aktivum: práh zadáte sami" })).toBeDefined();
+    expect(collateral.getByLabelText<HTMLInputElement>(NAME).value).toBe("WETH");
+    expect(collateral.getByLabelText<HTMLInputElement>("Vložené množství").value).toBe("10");
+    expect(collateral.getByLabelText<HTMLInputElement>("Cena (USD)").value).toBe("2400");
+    expect(collateral.getByLabelText<HTMLInputElement>("Likvidační práh (%)").value).toBe("83");
+    expect(group("Dluh").getByLabelText<HTMLInputElement>("Vypůjčená částka (USD)").value).toBe("12000");
+    expect(
+      group("Co jste si vypůjčili?").getByLabelText<HTMLInputElement>("Stablecoin (počítá se za $1.00)").checked,
+    ).toBe(true);
+    expect(screen.getByRole("group", { name: "Načíst propočítaný příklad:" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Přidat druhý kolaterál" })).toBeDefined();
+
+    expect(czechRow("Health factor")).toEqual({ value: "1.66", description: "Pozici lze zlikvidovat pod 1.00." });
+    expect(czechRow("Likvidační cena WETH")).toEqual({
+      value: "$1,445.78",
+      description: "O 39.8% pod $2,400.00, pokud všechny ostatní ceny zůstanou stejné.",
+    });
+    expect(
+      czechResults().getByText(/^Kolaterál \$24,000\.00, započtený podle likvidačních prahů: \$19,920\.00\./),
+    ).toBeDefined();
+  });
+
+  it("works the examples in Czech: both collaterals falling together and a volatile debt", () => {
+    renderCzech();
+    loadExample("10 WETH + 0.2 WBTC, dluh 20\u00a0000 USDC");
+    expect(czechRow("Celý kolaterál klesne najednou")).toEqual({
+      value: "38.7%",
+      description:
+        "Pokud cena každého kolaterálu klesne o tolik a cena dluhu se nezmění, health factor dosáhne 1.00: WETH za $1,470.86 a WBTC za $49,947.91.",
+    });
+
+    loadExample("10\u00a0000 USDC, vypůjčeno 2.5 WETH");
+    expect(group("Dluh").getByLabelText<HTMLInputElement>("Vypůjčené množství (tokeny)").value).toBe("2.5");
+    expect(czechRow("Likvidační cena WETH (vypůjčeno)")).toEqual({
+      value: "$3,120.00",
+      description: "O 30.0% nad $2,400.00: vypůjčená aktiva tlačí health factor dolů, když jejich cena roste.",
+    });
+    expect(czechRow("Poměr cen WETH ÷ USDC při likvidaci")).toEqual({
+      value: "3,120",
+      description: "Teď 2,400. Pokud se pohnou obě ceny, růst tohoto poměru o 30.0% dostane health factor na 1.00.",
+    });
+  });
+
+  it("explains errors, liquidatable positions and missing debt in Czech", () => {
+    renderCzech();
+    const collateral = group("Kolaterál 1");
+    const amount = collateral.getByLabelText("Vložené množství");
+    type(amount, "2,5");
+    expect(document.getElementById(amount.getAttribute("aria-describedby")!)?.textContent).toBe(
+      "Zadejte číslo, například 10 nebo 0.25. Desetinná místa oddělte tečkou.",
+    );
+    expect(czechResults().getByText("Pro výsledek zadejte číslo do každého pole.")).toBeDefined();
+    type(amount, "10");
+
+    type(collateral.getByLabelText("Cena (USD)"), "0");
+    expect(collateral.getByText("Zadejte cenu vyšší než 0.")).toBeDefined();
+    type(collateral.getByLabelText("Cena (USD)"), "1420");
+    expect(czechRow("Health factor")).toEqual({
+      value: "0.982",
+      description: "Pod 1.00: pozici lze zlikvidovat už teď.",
+    });
+    expect(czechRow("Likvidační cena WETH").description).toBe(
+      "Health factor se vrátí na 1.00, pokud cena WETH vzroste o 1.8% z $1,420.00 a ostatní ceny se nezmění.",
+    );
+
+    type(group("Dluh").getByLabelText("Vypůjčená částka (USD)"), "0");
+    expect(czechRow("Health factor")).toEqual({ value: "∞", description: "Žádný dluh, takže není co likvidovat." });
+    expect(czechTitles()).toEqual(["Health factor"]);
+  });
+
+  it("refuses the E-Mode preset against a stablecoin loan in Czech, and announces it", () => {
+    vi.useFakeTimers();
+    renderCzech();
+    const collateral = group("Kolaterál 1");
+    fireEvent.change(collateral.getByLabelText("Aktivum na Aave V3 (vyplní práh)"), {
+      target: { value: "ethereum-core-emode-eth" },
+    });
+
+    expect(collateral.getByLabelText<HTMLInputElement>(NAME).placeholder).toBe("např. WETH nebo wstETH");
+    const issue =
+      "Bez výsledku: Aave tuto kombinaci nedovoluje. E-Mode „ETH correlated“ na trhu Ethereum Core dovoluje půjčit si jen WETH, takže účet s vypůjčeným stablecoinem nemůže použít jeho práh 95%. Zvolte místo toho vlastní práh kolaterálu (Ethereum Core WETH: 83%), nebo si půjčte WETH.";
+    const select = collateral.getByLabelText("Aktivum na Aave V3 (vyplní práh)");
+    const issueId = select.getAttribute("aria-describedby")!.split(" ")[1];
+    expect(document.getElementById(issueId)?.textContent).toBe(issue);
+    expect(czechTitles()).toEqual([]);
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(screen.getByRole("status").textContent).toBe(issue);
+  });
+
+  it("announces the Czech summary and names the default assets in Czech", () => {
+    renderCzech();
+    expect(screen.getByRole("status").textContent).toBe("Health factor: 1.66. Likvidační cena WETH: $1,445.78.");
+
+    type(group("Kolaterál 1").getByLabelText(NAME), " ");
+    expect(czechRow("Likvidační cena Kolaterál 1").value).toBe("$1,445.78");
+    fireEvent.click(screen.getByRole("button", { name: "Přidat druhý kolaterál" }));
+    expect(group("Kolaterál 2").getByRole("button", { name: "Odebrat kolaterál 2" })).toBeDefined();
+  });
+
+  it("is in the server HTML of the Czech article in Czech, with the dated disclaimer", () => {
+    const html = renderHtml(
+      <LocaleProvider locale="cs">
+        <CsAaveLiquidationPrice
+          components={{ ...blogMdxComponents("cs"), AlertPrice: () => <AlertPriceText plan={null} locale="cs" /> }}
+        />
+      </LocaleProvider>,
+    );
+
+    const start = html.indexOf(">Kalkulačka likvidační ceny na Aave</h3>");
+    expect(start).toBeGreaterThan(0);
+    const calculator = html.slice(start);
+    expect(calculator).toContain("$1,445.78");
+    expect(calculator).toContain("Likvidační cena WETH");
+    expect(calculator).toMatch(/<noscript>.*Kalkulačka potřebuje k přepočítání JavaScript.*<\/noscript>/s);
+    expect(calculator).toContain("Vzdělávací odhad, nikoli finanční poradenství.");
+    expect(calculator).toContain('<time dateTime="2026-10-14">14. října 2026</time>');
+    expect(calculator).not.toMatch(/Educational estimate|Load a worked example|Amount supplied/);
   });
 });

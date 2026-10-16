@@ -43,6 +43,31 @@ const HELP =
 const UNKNOWN = "I only respond to /start, /stop, and /help. Open the Tokenping app to manage your alerts.";
 const UNSUBSCRIBE_FAILED = "Something went wrong while unsubscribing. Please send /stop again.";
 
+// The Czech replies, verbatim, for senders whose Telegram app is Czech or Slovak.
+const CS = {
+  privateOnly: "Tokenping funguje jen v soukromých chatech. Napište prosím botovi přímo.",
+  startHelp:
+    "Dobrý den! Pokud sem chcete dostávat upozornění na health factor Aave, otevřete Tokenping → " +
+    "Nastavení upozornění → vyberte Telegram → stiskněte „Připojit Telegram“.",
+  invalidLink: "❌ Neplatný odkaz. Vygenerujte si prosím nový v aplikaci Tokenping.",
+  expiredLink: "❌ Platnost odkazu vypršela nebo už byl použit. Vygenerujte si prosím nový v aplikaci Tokenping.",
+  saveFailed: "Při ukládání propojení se něco pokazilo. Zkuste to prosím znovu.",
+  connected:
+    "✅ Připojeno. Když health factor vaší pozice na Aave klesne pod váš práh, pošleme vám sem upozornění.\n\n" +
+    "Odběr můžete kdykoli zrušit příkazem /stop.",
+  unsubscribed:
+    "🔕 Odběr zrušen. Další upozornění od Tokenpingu sem už nepřijdou. " +
+    "Znovu se můžete kdykoli připojit v aplikaci Tokenping.",
+  unsubscribeFailed: "Při rušení odběru se něco pokazilo. Pošlete prosím /stop znovu.",
+  help:
+    "Tokenping vás upozorní, když váš health factor na Aave klesne pod práh, který si nastavíte v aplikaci.\n\n" +
+    "Příkazy:\n" +
+    "/start <token>: propojit přes aplikaci Tokenping\n" +
+    "/stop: zrušit odběr\n" +
+    "/help: zobrazit tuto zprávu",
+  unknown: "Reaguji jen na /start, /stop a /help. Svá upozornění spravujte v aplikaci Tokenping.",
+};
+
 const consumeQuery = (token: string) =>
   `telegram_link_tokens.update({"consumed_at":"${NOW}"}).eq("token","${token}").is("consumed_at",null).gt("expires_at","${NOW}").select("user_id").maybeSingle()`;
 const clearOtherChatLinks = (chatId: string, uid: string) =>
@@ -281,5 +306,65 @@ describe("POST /api/telegram/webhook: updates", () => {
 
     await afterQueue.flush();
     expect(replyToTelegramChat).toHaveBeenCalledOnce();
+  });
+});
+
+describe("POST /api/telegram/webhook: Czech replies", () => {
+  const czech = (message: MessageOverrides) =>
+    update({ from: { id: 7, username: "alice", language_code: "cs" }, ...message });
+
+  it.each([
+    ["/start", CS.startHelp],
+    ["/start short", CS.invalidLink],
+    ["/help", CS.help],
+    ["hello", CS.unknown],
+    ["/stop", CS.unsubscribed],
+  ])("answers %j in Czech for language_code cs", async (text, expected) => {
+    expect(await read(await post(czech({ text })))).toEqual(OK);
+    expect(replyToTelegramChat).toHaveBeenCalledExactlyOnceWith("42", expected);
+  });
+
+  it.each(["sk", "cs-CZ"])("answers in Czech for language_code %j", async language_code => {
+    await post(update({ from: { id: 7, language_code }, text: "/help" }));
+    expect(replyToTelegramChat).toHaveBeenCalledExactlyOnceWith("42", CS.help);
+  });
+
+  it.each(["en", "en-US", "de", undefined])("answers in English for language_code %j", async language_code => {
+    await post(update({ from: { id: 7, language_code }, text: "/help" }));
+    expect(replyToTelegramChat).toHaveBeenCalledExactlyOnceWith("42", HELP);
+  });
+
+  it("tells a Czech group member in Czech that only private chats are supported", async () => {
+    await post(czech({ chat: { id: -100123, type: "group" }, text: "/help" }));
+    expect(replyToTelegramChat).toHaveBeenCalledExactlyOnceWith("-100123", CS.privateOnly);
+  });
+
+  it("answers 'expired' in Czech when the token is not found", async () => {
+    await post(czech({ text: `/start ${TOKEN}` }));
+    expect(replyToTelegramChat).toHaveBeenCalledExactlyOnceWith("42", CS.expiredLink);
+  });
+
+  it("links the chat and confirms in Czech", async () => {
+    fakeSupabase.respondByQuery({ [consumeQuery(TOKEN)]: { data: { user_id: LOWER } } });
+    await post(czech({ text: `/start ${TOKEN}` }));
+    expect(fakeSupabase.log().at(-1)).toBe(upsertQuery(LOWER, "42", "alice"));
+    expect(replyToTelegramChat).toHaveBeenCalledExactlyOnceWith("42", CS.connected);
+  });
+
+  it("apologizes in Czech when saving the link fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    fakeSupabase.respond((_query, formatted) => {
+      if (formatted === consumeQuery(TOKEN)) return { data: { user_id: LOWER } };
+      if (formatted.includes(".upsert(")) return { error: { message: "unique violation" } };
+    });
+    await post(czech({ text: `/start ${TOKEN}` }));
+    expect(replyToTelegramChat).toHaveBeenCalledExactlyOnceWith("42", CS.saveFailed);
+  });
+
+  it("replies with the Czech failure message when the /stop delete fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    fakeSupabase.respondByQuery({ [deleteByChatQuery("42")]: { error: { message: "delete failed" } } });
+    await post(czech({ text: "/stop" }));
+    expect(replyToTelegramChat).toHaveBeenCalledExactlyOnceWith("42", CS.unsubscribeFailed);
   });
 });

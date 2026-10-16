@@ -13,6 +13,7 @@ import { cx } from "~~/components/ui/classNames";
 import { AAVE_MARKETS } from "~~/config/aaveConfig";
 import { EXTERNAL_LINK_REL } from "~~/constants/links";
 import type { Locale } from "~~/i18n/locales";
+import { HOME_MESSAGES } from "~~/i18n/messages/home";
 import { routePath } from "~~/i18n/routes";
 
 // Shared building blocks of the homepage sections. Server Components only.
@@ -67,8 +68,11 @@ export const ExternalLink = ({ href, children }: ExternalLinkProps) => (
   </a>
 );
 
-/** Says what the button does before the click (marketing plan §2.5). */
-export const DASHBOARD_CTA_MICROCOPY = `Connect a wallet to see your Aave V3 health factor on ${AAVE_MARKETS.length} networks. Viewing is read-only.`;
+/** The same link as a renderer for rich message text (i18n/messages/home), which places it in its own word order. */
+export const externalLinkText = (href: string) =>
+  function ExternalLinkText(text: string) {
+    return <ExternalLink href={href}>{text}</ExternalLink>;
+  };
 
 type DashboardCtaProps = {
   locale: Locale;
@@ -94,7 +98,7 @@ export const DashboardCta = ({ locale, secondary, align = "center" }: DashboardC
         href={routePath(locale, "dashboard")}
         className={buttonClasses({ size: "lg", className: "w-full sm:w-auto sm:min-w-40" })}
       >
-        Open the free dashboard
+        {HOME_MESSAGES[locale].dashboardCta}
         <ArrowRight aria-hidden="true" />
       </Link>
       {secondary ? (
@@ -115,7 +119,8 @@ export const DashboardCta = ({ locale, secondary, align = "center" }: DashboardC
         align === "start" && "lg:text-left",
       )}
     >
-      {DASHBOARD_CTA_MICROCOPY}
+      {/* Says what the button does before the click (marketing plan §2.5). */}
+      {HOME_MESSAGES[locale].dashboardCtaMicrocopy(AAVE_MARKETS.length)}
     </p>
   </div>
 );

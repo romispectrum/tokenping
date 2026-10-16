@@ -1,3 +1,4 @@
+import type { Locale } from "~~/i18n/locales";
 import { apiUrl, readApiError } from "~~/services/api/apiClient";
 import type { TelegramLinkStatus } from "~~/types/notifications";
 
@@ -39,11 +40,12 @@ export const telegramClient = {
     return res.json();
   },
 
-  async disconnect(userId: string): Promise<void> {
+  /** `locale` is the language of the bot's farewell message in the chat; the server sends English without it. */
+  async disconnect(userId: string, locale?: Locale): Promise<void> {
     const res = await fetch(apiUrl("/api/telegram/link"), {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: userId.trim() }),
+      body: JSON.stringify({ userId: userId.trim(), locale }),
     });
     if (!res.ok) throw new Error(await readApiError(res, "Failed to disconnect Telegram"));
   },

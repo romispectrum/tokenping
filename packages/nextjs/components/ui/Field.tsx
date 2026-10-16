@@ -1,5 +1,7 @@
 import { type ReactNode, useId } from "react";
 import { cx } from "~~/components/ui/classNames";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 
 /** The props a Field hands to its control: spread them on the Input, Select, Textarea, Checkbox or Switch. */
 export type FieldControlProps = {
@@ -41,6 +43,8 @@ type FieldProps = {
  *   <Field label="Email" description="We only use it for alerts." error={errors.email}>
  *     {control => <Input type="email" autoComplete="email" {...control} />}
  *   </Field>
+ *
+ * "(optional)" follows the page's language (LocaleProvider), so a Field renders inside client components only.
  */
 export const Field = ({
   label,
@@ -55,6 +59,7 @@ export const Field = ({
   children,
 }: FieldProps) => {
   const generatedId = useId();
+  const optionalLabel = useMessages(COMMON_MESSAGES).field.optional;
   const controlId = id ?? `field${generatedId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const descriptionId = `${controlId}-description`;
   const errorId = `${controlId}-error`;
@@ -74,7 +79,7 @@ export const Field = ({
       {optional ? (
         <>
           {" "}
-          <span className="font-normal text-muted-foreground">(optional)</span>
+          <span className="font-normal text-muted-foreground">{optionalLabel}</span>
         </>
       ) : null}
     </>

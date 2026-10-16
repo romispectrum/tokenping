@@ -4,6 +4,7 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { erc20Abi } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AccessPaywall } from "~~/components/custom/AccessPaywall";
+import { LocaleProvider } from "~~/i18n/LocaleProvider";
 import { deferred } from "~~/utils/testing/helpers";
 import { renderWithProviders } from "~~/utils/testing/providers";
 
@@ -251,7 +252,7 @@ describe("AccessPaywall markup", () => {
     setReady();
     fake.cache.isActive = true;
     fake.cache.expiryTimestampByUser = 1_800_000_000n;
-    const date = new Date(1_800_000_000 * 1000).toLocaleDateString(undefined, { dateStyle: "medium" });
+    const date = new Date(1_800_000_000 * 1000).toLocaleDateString("en-US", { dateStyle: "medium" });
     const markup = html();
     expect(markup).toContain(date);
     expect(markup.replace(date, "<DATE>")).toMatchSnapshot();
@@ -892,5 +893,120 @@ describe("AccessPaywall transaction lifecycle", () => {
     expect(lifecycle().textContent).toBe("");
     expect(lifecycle().hasAttribute("data-step")).toBe(false);
     expect(payButton().textContent).toBe("Pay 1.5 USDC");
+  });
+});
+
+describe("AccessPaywall in Czech", () => {
+  const renderCzech = (props: Props = {}) =>
+    renderWithProviders(
+      <LocaleProvider locale="cs">
+        <AccessPaywall {...props}>{<div>child</div>}</AccessPaywall>
+      </LocaleProvider>,
+    );
+  const czechText = (props: Props = {}) => renderCzech(props).container.textContent ?? "";
+  const czechPayButton = () => screen.getByRole("button", { name: /^Zaplatit [\d,.]+ USDC$/ });
+  const NO_DASH = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
+
+  it("dates the unlocked state in the Czech format", () => {
+    setReady();
+    fake.cache.isActive = true;
+    fake.cache.expiryTimestampByUser = 1_800_000_000n;
+    const date = new Date(1_800_000_000 * 1000).toLocaleDateString("cs-CZ", { dateStyle: "medium" });
+
+    expect(czechText()).toContain(`Upozornění odemčena do ${date}`);
+  });
+
+  it.each<[string, () => void, string]>([
+    ["no wallet", () => undefined, "Připojte peněženku, abyste mohli za přístup zaplatit."],
+    [
+      "no payment contract",
+      () => {
+        fake.wallet.address = USER;
+        fake.paymentChainId = undefined;
+      },
+      "Platební kontrakt pro tuto síť není nastavený.",
+    ],
+    [
+      "no plan",
+      () => {
+        fake.chain.plans = null;
+        setReady();
+      },
+      "Momentálně není k dispozici žádný placený tarif.",
+    ],
+  ])("explains %s in Czech", (_label, setUp, message) => {
+    setUp();
+    expect(czechText()).toContain(message);
+  });
+
+  it("asks for the payment network in Czech on the wrong chain", () => {
+    fake.wallet = { address: USER, chainId: 1 };
+    renderCzech();
+
+    expect(screen.getByText("Nesprávná síť")).toBeDefined();
+    expect(
+      screen.getByText("Vaše peněženka je na jiné síti. Pro zaplacení přepněte na síť Arbitrum One."),
+    ).toBeDefined();
+    expect(screen.getByRole("button", { name: "Přepnout na síť Arbitrum One" })).toBeDefined();
+  });
+
+  it("shows the plan, the steps and Pay in Czech, with the amount in the app's number format", () => {
+    setReady();
+    const text = czechText();
+
+    expect(text).toContain("Odemkněte upozornění na health factor");
+    expect(text).toContain("Zaplaťte jednou a odemkne se nastavení upozornění");
+    for (const label of ["Cena", "Přístup", "30 dní", "Síť", "Poplatek sítě", "Schválit 1.5 USDC"]) {
+      expect(text).toContain(label);
+    }
+    expect(text).toMatch(/Platí se v \w+ za každý krok, výši uvidíte v peněžence/);
+    expect(czechPayButton().textContent).toBe("Zaplatit 1.5 USDC");
+    expect(text).not.toMatch(NO_DASH);
+  });
+
+  it("uses the Czech extend copy for an existing config", () => {
+    setReady();
+    const text = czechText({ hasExistingConfig: true });
+
+    expect(text).toContain("Prodlužte přístup a upravte svá upozornění");
+    expect(text).toContain("Vaše dřívější nastavení upozornění zůstalo uložené.");
+  });
+
+  it.each([
+    [86_400n, "1 den"],
+    [259_200n, "3 dny"],
+    [129_600n, "Přibližně 2 dny"],
+  ])("states %s seconds of access as %j", (durationSeconds, period) => {
+    fake.chain.plans = [PRICE, durationSeconds, true];
+    setReady();
+    renderCzech();
+
+    expect(screen.getByText(period).tagName).toBe("DD");
+  });
+
+  it("explains a paused paywall in Czech", () => {
+    fake.chain.paused = true;
+    setReady();
+
+    expect(czechText()).toContain("Platby jsou momentálně pozastavené. Zkuste to později.");
+  });
+
+  it("toasts the payment's outcome in Czech", async () => {
+    setReady();
+    renderCzech();
+    fireEvent.click(czechPayButton());
+    await waitFor(() => expect(screen.queryByRole("button", { busy: true })).toBeNull());
+
+    expect(fake.toasts).toEqual([["success", "Přístup je aktivní. Teď si můžete nastavit upozornění."]]);
+  });
+
+  it("toasts a pause found at click time in Czech", async () => {
+    setReady();
+    renderCzech();
+    fake.chain.paused = true;
+    fireEvent.click(czechPayButton());
+    await waitFor(() => expect(screen.queryByRole("button", { busy: true })).toBeNull());
+
+    expect(fake.toasts).toEqual([["error", "Platby jsou momentálně pozastavené. Zkuste to později."]]);
   });
 });

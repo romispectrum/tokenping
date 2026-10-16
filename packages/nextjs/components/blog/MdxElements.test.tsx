@@ -4,6 +4,8 @@ import { render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MDX_ELEMENTS } from "~~/components/blog/MdxElements";
 import { headingId, textContent } from "~~/components/blog/headingId";
+import { blogMdxComponents } from "~~/components/blog/mdxComponents";
+import { LocaleProvider } from "~~/i18n/LocaleProvider";
 import { useMDXComponents } from "~~/mdx-components";
 import { renderStaticMarkup } from "~~/utils/testing/render";
 
@@ -19,6 +21,9 @@ describe("headingId", () => {
     ["Is the health factor different on Aave V4?", "is-the-health-factor-different-on-aave-v4"],
     ["Interest drift: 1.66 → 1.61", "interest-drift-166-161"],
     ["  Crème brûlée  ", "creme-brulee"],
+    // Czech headings lose their diacritics, so Czech anchors are plain ASCII.
+    ["Proč klesl můj health factor na Aave?", "proc-klesl-muj-health-factor-na-aave"],
+    ["Jak se počítá likvidační cena?", "jak-se-pocita-likvidacni-cena"],
   ])("%j -> %j", (text, id) => {
     expect(headingId(text)).toBe(id);
   });
@@ -208,5 +213,85 @@ describe("useMDXComponents", () => {
     );
     expect(components.AlertPrice).toBe(Override);
     expect(useMDXComponents().AlertPrice).not.toBe(Override);
+  });
+});
+
+describe("in Czech", () => {
+  const table = (cell: string) => {
+    const Table = element("table");
+    return (
+      <Table>
+        <tbody>
+          <tr>
+            <td>{cell}</td>
+          </tr>
+        </tbody>
+      </Table>
+    );
+  };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("names table regions after their heading and says they scroll, in the page's language", () => {
+    vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(640);
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(358);
+    const H2 = element("h2");
+    render(
+      <LocaleProvider locale="cs">
+        {table("a")}
+        <H2>Jaký je vzorec?</H2>
+        {table("b")}
+        {table("c")}
+      </LocaleProvider>,
+    );
+
+    expect(screen.getAllByRole("region").map(region => region.getAttribute("aria-label"))).toEqual([
+      "Tabulka, posouvá se vodorovně",
+      "Tabulka 1: Jaký je vzorec?",
+      "Tabulka 2: Jaký je vzorec?",
+    ]);
+    expect(screen.getAllByText("Posuňte tabulku do strany, abyste viděli všechny sloupce.")).toHaveLength(3);
+  });
+
+  it("server-renders the Czech fallback name and hint", () => {
+    const html = renderStaticMarkup(<LocaleProvider locale="cs">{table("a")}</LocaleProvider>);
+
+    expect(html).toContain('aria-label="Tabulka, posouvá se vodorovně"');
+    expect(html).toContain("Posuňte tabulku do strany");
+  });
+});
+
+describe("blogMdxComponents", () => {
+  const renderWith = (components: ReturnType<typeof blogMdxComponents>) => {
+    const ShortAnswer = components.ShortAnswer as ComponentType<{ children?: ReactNode }>;
+    const ScopeNote = components.ScopeNote as ComponentType;
+    const Callout = components.Callout as ComponentType<{ tone?: string; children?: ReactNode }>;
+    return render(
+      <>
+        <ShortAnswer>
+          <p>A.</p>
+        </ShortAnswer>
+        <ScopeNote />
+        <Callout tone="warning">B</Callout>
+      </>,
+    );
+  };
+
+  it("binds the language into the article components, so a Czech article needs no locale attribute", () => {
+    const { container } = renderWith(blogMdxComponents("cs"));
+
+    expect(screen.getByText("Stručná odpověď")).toBeDefined();
+    expect(container.textContent).toContain("Údaje k 14. 10. 2026.");
+    expect(screen.getByRole("note").textContent).toBe("Varování: B");
+  });
+
+  it("keeps English by default, and the styled elements of every post", () => {
+    const { container } = renderWith(blogMdxComponents());
+
+    expect(screen.getByText("Short answer")).toBeDefined();
+    expect(container.textContent).toContain("Figures as of 14 Oct 2026.");
+    expect(blogMdxComponents("cs").h2).toBe(MDX_ELEMENTS.h2);
   });
 });

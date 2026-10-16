@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { POST_SLUGS, mockPostStubs } from "~~/utils/testing/blogPosts";
+import { POST_SLUGS as POST_SLUG_PAIRS } from "~~/i18n/postSlugs";
+import { CS_POST_SLUGS, POST_SLUGS, mockPostStubs } from "~~/utils/testing/blogPosts";
 
 const APP_DIR = new URL("./", import.meta.url);
 
@@ -27,8 +28,8 @@ const pageFile = (path: string) => PAGE_FILES.get(path);
 const isClientPage = (path: string) =>
   /^(?:\s|\/\/[^\n]*\n|\/\*[\s\S]*?\*\/)*["']use client["']/.test(readFileSync(pageFile(path)!, "utf8"));
 
-const loadSitemap = async (stubSlugs: readonly string[] = []) => {
-  mockPostStubs(stubSlugs);
+const loadSitemap = async (stubSlugs: readonly string[] = [], csStubSlugs: readonly string[] = []) => {
+  mockPostStubs(stubSlugs, csStubSlugs);
   const blog = await import("~~/content/blog");
   const { default: sitemap } = await import("~~/app/sitemap");
   return { sitemap, blog };
@@ -51,26 +52,35 @@ beforeEach(() => {
 });
 
 describe("sitemap", () => {
-  it("lists the home page, /blog and every published post, with real content dates only", async () => {
+  it("lists every page in both languages, each post with its published translation, with real content dates only", async () => {
     const { sitemap, blog } = await loadSitemap(["safe-aave-health-factor"]);
+    const entries = sitemap();
+    const entry = (path: string) => entries.find(({ url }) => url === `${SITE}${path}`);
 
-    // The Czech posts are placeholders until translated, so the blog lists English only (no hreflang to a stub).
-    expect(sitemap()).toEqual([
-      ...bilingual("/", "/cs"),
-      ...bilingual("/aave", "/cs/aave"),
-      { url: `${SITE}/blog`, lastModified: blog.getLatestPostDate() },
-      ...blog.PUBLISHED_POSTS.map(({ meta }) => ({
+    expect(entries.slice(0, 4)).toEqual([...bilingual("/", "/cs"), ...bilingual("/aave", "/cs/aave")]);
+    expect(entries.slice(-2)).toEqual(bilingual("/privacy", "/cs/ochrana-soukromi"));
+    // Each language's blog index carries that language's newest content date.
+    expect(entry("/blog")).toMatchObject({ lastModified: blog.getLatestPostDate() });
+    expect(entry("/cs/blog")).toMatchObject({
+      lastModified: blog.getLatestPostDate(blog.getPublishedPosts("cs")),
+    });
+    // A post listed in both languages names both as alternates.
+    for (const { meta } of blog.PUBLISHED_POSTS) {
+      const cs = `/cs/blog/${POST_SLUG_PAIRS[meta.slug].cs}`;
+      expect(entry(`/blog/${meta.slug}`)).toEqual({
         url: `${SITE}/blog/${meta.slug}`,
         lastModified: meta.updatedAt ?? meta.publishedAt,
-      })),
-      ...bilingual("/privacy", "/cs/ochrana-soukromi"),
-    ]);
-    expect(pathsOf(sitemap())).not.toContain("/blog/safe-aave-health-factor");
+        alternates: { languages: { en: `${SITE}/blog/${meta.slug}`, cs: `${SITE}${cs}` } },
+      });
+    }
+    // A placeholder is left out, and its published translation is listed alone, with no hreflang to it.
+    expect(entry("/blog/safe-aave-health-factor")).toBeUndefined();
+    expect(entry(`/cs/blog/${POST_SLUG_PAIRS["safe-aave-health-factor"].cs}`)).not.toHaveProperty("alternates");
     expect(blog.PUBLISHED_POSTS).toHaveLength(POST_SLUGS.length - 1);
   });
 
-  it("leaves out /blog and every post while all of them are placeholders", async () => {
-    const { sitemap } = await loadSitemap(POST_SLUGS);
+  it("leaves out both blogs and every post while all of them are placeholders", async () => {
+    const { sitemap } = await loadSitemap(POST_SLUGS, CS_POST_SLUGS);
 
     expect(sitemap()).toEqual([
       ...bilingual("/", "/cs"),
@@ -81,7 +91,7 @@ describe("sitemap", () => {
 
   it("lists only pages that exist and render on the server", async () => {
     const { sitemap } = await loadSitemap();
-    const pages = pathsOf(sitemap()).filter(path => !path.startsWith("/blog/"));
+    const pages = pathsOf(sitemap()).filter(path => !path.startsWith("/blog/") && !path.startsWith("/cs/blog/"));
 
     for (const path of pages) {
       expect(pageFile(path) && existsSync(pageFile(path)!), `${path}: no page.tsx under app/ for it`).toBe(true);

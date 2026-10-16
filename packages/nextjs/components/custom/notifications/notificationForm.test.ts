@@ -10,6 +10,7 @@ import {
   toggleService,
   validateNotificationForm,
 } from "~~/components/custom/notifications/notificationForm";
+import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 import type { NotificationConfig, NotificationService } from "~~/types/notifications";
 
 /*
@@ -339,4 +340,37 @@ describe("buildConfigUpdate", () => {
           }
     },
   );
+});
+
+describe("form errors in Czech", () => {
+  const CS = ALERTS_MESSAGES.cs.formErrors;
+
+  it("reports the same problems in the page's language", () => {
+    const form = {
+      services: ["email", "signal", "telegram"] as NotificationService[],
+      email: "me@example",
+      signalRecipient: "",
+      telegramChatId: undefined,
+    };
+    expect(getNotificationFormErrors(form, "cs")).toStrictEqual({
+      email: "Zadejte e-mailovou adresu ve tvaru jmeno@example.com.",
+      signalRecipient: "Zadejte své uživatelské jméno v Signalu.",
+      telegram: "Před uložením připojte Telegram.",
+    });
+    expect(validateNotificationForm({ ...form, services: [] }, "cs")).toBe("Vyberte alespoň jeden kanál upozornění.");
+    expect(
+      validateNotificationForm({ ...form, services: ["telegram"], telegramStatusUnknown: true } as typeof form, "cs"),
+    ).toBe("Ověřte propojení s Telegramem tlačítkem Zkusit znovu a potom uložte.");
+    // English stays the default for callers without a page (the API checks).
+    expect(validateNotificationForm({ ...form, services: [] })).toBe(NOTIFICATION_FORM_ERRORS.noService);
+  });
+
+  it("has a Czech message for every English one, each a sentence without dashes", () => {
+    const dashes = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
+    expect(Object.keys(CS).sort()).toEqual(Object.keys(NOTIFICATION_FORM_ERRORS).sort());
+    for (const message of Object.values(CS)) {
+      expect(message).toMatch(/^\p{Lu}.+\.$/u);
+      expect(message).not.toMatch(dashes);
+    }
+  });
 });

@@ -19,9 +19,12 @@ import { useSelectedChainId } from "~~/components/custom/aave/useSelectedChainId
 import { Alert, Button, Card, EmptyState, LiveRegion } from "~~/components/ui";
 import { useAavePositions } from "~~/hooks/custom/useAavePositions";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 import { formatUSD } from "~~/utils/format";
 
 export const AavePositions = () => {
+  const t = useMessages(DASHBOARD_MESSAGES);
   const { account, positions, isLoading, error, totalNetWorthUSD, totalCollateralUSD, totalDebtUSD, refetch } =
     useAavePositions();
   const { hasConfig, isLoaded: configsLoaded } = useNotificationConfig();
@@ -47,8 +50,8 @@ export const AavePositions = () => {
       <div className="flex items-center justify-between gap-3">
         {account ? (
           <p className="m-0 flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
-            <span aria-hidden="true">Wallet</span>
-            <AddressChip address={account} label="Wallet" />
+            <span aria-hidden="true">{t.toolbar.wallet}</span>
+            <AddressChip address={account} label={t.toolbar.wallet} />
           </p>
         ) : (
           <span />
@@ -57,19 +60,19 @@ export const AavePositions = () => {
           variant="outline"
           onClick={refetch}
           loading={isLoading}
-          loadingText={<span className="sr-only sm:not-sr-only">Refreshing</span>}
+          loadingText={<span className="sr-only sm:not-sr-only">{t.toolbar.refreshing}</span>}
           className="shrink-0"
         >
           <RotateCw aria-hidden="true" />
-          <span className="sr-only sm:not-sr-only">Refresh positions</span>
+          <span className="sr-only sm:not-sr-only">{t.toolbar.refresh}</span>
         </Button>
       </div>
 
-      <LiveRegion className="sr-only">{isLoading ? "Loading positions" : ""}</LiveRegion>
+      <LiveRegion className="sr-only">{isLoading ? t.toolbar.loadingPositions : ""}</LiveRegion>
 
       {isTotalOutage ? (
         <Card>
-          <InlineError title="Positions did not load" detail={error} onRetry={refetch} />
+          <InlineError title={t.errors.positionsDidNotLoad} detail={error} onRetry={refetch} />
         </Card>
       ) : (
         <>
@@ -77,16 +80,16 @@ export const AavePositions = () => {
             <Alert
               role="alert"
               variant="warning"
-              title="Refresh failed"
+              title={t.errors.refreshFailed}
               action={
                 <Button variant="outline" size="sm" onClick={refetch}>
                   <RotateCw aria-hidden="true" />
-                  Try again
+                  {t.errors.tryAgain}
                 </Button>
               }
             >
               <p>{error}</p>
-              <p>Showing the positions from the last successful load.</p>
+              <p>{t.errors.showingLastPositions}</p>
             </Alert>
           ) : null}
 
@@ -94,9 +97,9 @@ export const AavePositions = () => {
             <StatStripSkeleton />
           ) : (
             <dl className={STAT_STRIP_CLASS_NAME}>
-              <StatCard label="Total supplied" value={formatUSD(totalCollateralUSD)} />
-              <StatCard label="Total borrowed" value={formatUSD(totalDebtUSD)} />
-              <StatCard label="Net worth" value={formatUSD(totalNetWorthUSD)} />
+              <StatCard label={t.totals.supplied} value={formatUSD(totalCollateralUSD)} />
+              <StatCard label={t.totals.borrowed} value={formatUSD(totalDebtUSD)} />
+              <StatCard label={t.totals.netWorth} value={formatUSD(totalNetWorthUSD)} />
             </dl>
           )}
 
@@ -110,9 +113,11 @@ export const AavePositions = () => {
                 <Card size="sm">
                   <div className="flex items-baseline justify-between gap-3 px-[var(--card-spacing)]">
                     <h3 id="networks-heading" className="m-0 text-base font-medium text-foreground">
-                      Networks
+                      {t.networks.heading}
                     </h3>
-                    <p className="m-0 text-sm text-muted-foreground tabular-nums">{positionsWithData.length} active</p>
+                    <p className="m-0 text-sm text-muted-foreground tabular-nums">
+                      {t.networks.active(positionsWithData.length)}
+                    </p>
                   </div>
                   <div className="flex flex-col gap-3 px-2">
                     {isLoading ? (
@@ -133,9 +138,7 @@ export const AavePositions = () => {
                     )}
 
                     {!isLoading && !error && positionsWithData.length === 0 && (
-                      <p className="m-0 px-3 text-sm text-muted-foreground">
-                        No active Aave positions detected on supported networks.
-                      </p>
+                      <p className="m-0 px-3 text-sm text-muted-foreground">{t.networks.noPositions}</p>
                     )}
                   </div>
                 </Card>
@@ -150,7 +153,7 @@ export const AavePositions = () => {
               ) : null}
             </div>
 
-            <section aria-label="Selected network" className="min-w-0 lg:col-span-7">
+            <section aria-label={t.networks.selectedRegion} className="min-w-0 lg:col-span-7">
               {isLoading ? (
                 <div className="flex flex-col gap-4 sm:gap-6">
                   <AlertSettingsSkeleton />
@@ -174,8 +177,8 @@ export const AavePositions = () => {
                     size="inline"
                     icon={Layers}
                     headingLevel={3}
-                    title="No network selected"
-                    description="Select a network to view its Aave position."
+                    title={t.networks.noneSelectedTitle}
+                    description={t.networks.noneSelectedDescription}
                   />
                 </Card>
               )}

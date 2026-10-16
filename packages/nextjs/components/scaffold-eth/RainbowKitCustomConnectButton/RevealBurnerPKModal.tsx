@@ -2,6 +2,8 @@ import { useRef } from "react";
 import { rainbowkitBurnerWallet } from "burner-connector";
 import { ShieldExclamationIcon } from "@heroicons/react/24/outline";
 import { useCopyToClipboard } from "~~/hooks/scaffold-eth";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 import { getParsedError, notification } from "~~/utils/scaffold-eth";
 
 const BURNER_WALLET_PK_KEY = "burnerWallet.pk";
@@ -9,14 +11,15 @@ const BURNER_WALLET_PK_KEY = "burnerWallet.pk";
 export const RevealBurnerPKModal = () => {
   const { copyToClipboard, isCopiedToClipboard } = useCopyToClipboard();
   const modalCheckboxRef = useRef<HTMLInputElement>(null);
+  const t = useMessages(COMMON_MESSAGES).wallet.burner;
 
   const handleCopyPK = async () => {
     try {
       const storage = rainbowkitBurnerWallet.useSessionStorage ? sessionStorage : localStorage;
       const burnerPK = storage?.getItem(BURNER_WALLET_PK_KEY);
-      if (!burnerPK) throw new Error("Burner wallet private key not found");
+      if (!burnerPK) throw new Error(t.notFound);
       await copyToClipboard(burnerPK);
-      notification.success("Burner wallet private key copied to clipboard");
+      notification.success(t.copied);
     } catch (e) {
       const parsedError = getParsedError(e);
       notification.error(parsedError);
@@ -36,19 +39,20 @@ export const RevealBurnerPKModal = () => {
               ✕
             </label>
             <div>
-              <p className="text-lg font-semibold m-0 p-0">Copy Burner Wallet Private Key</p>
+              <p className="text-lg font-semibold m-0 p-0">{t.title}</p>
               <div role="alert" className="alert alert-warning mt-4">
                 <ShieldExclamationIcon className="h-6 w-6" />
-                <span className="font-semibold">
-                  Burner wallets are intended for local development only and are not safe for storing real funds.
-                </span>
+                <span className="font-semibold">{t.warning}</span>
               </div>
               <p>
-                Your Private Key provides <strong>full access</strong> to your entire wallet and funds. This is
-                currently stored <strong>temporarily</strong> in your browser.
+                {t.accessBefore}
+                <strong>{t.accessStrong}</strong>
+                {t.accessMiddle}
+                <strong>{t.temporaryStrong}</strong>
+                {t.accessAfter}
               </p>
               <button className="btn btn-outline btn-error" onClick={handleCopyPK} disabled={isCopiedToClipboard}>
-                Copy Private Key To Clipboard
+                {t.copy}
               </button>
             </div>
           </label>

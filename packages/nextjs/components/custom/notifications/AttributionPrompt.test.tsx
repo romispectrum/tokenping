@@ -2,6 +2,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AttributionPrompt } from "~~/components/custom/notifications/AttributionPrompt";
+import { LocaleProvider } from "~~/i18n/LocaleProvider";
 import { deferred, jsonResponse } from "~~/utils/testing/helpers";
 
 const mocks = vi.hoisted(() => ({ toasts: [] as string[] }));
@@ -206,5 +207,50 @@ describe("AttributionPrompt", () => {
     expect(onClose).toHaveBeenCalledOnce();
     expect(onSent).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("AttributionPrompt in Czech", () => {
+  const renderCs = () => {
+    const onClose = vi.fn();
+    render(
+      <LocaleProvider locale="cs">
+        <AttributionPrompt address={ADDRESS} onSent={onSent} onClose={onClose} />
+      </LocaleProvider>,
+    );
+    return onClose;
+  };
+  const czechInput = () =>
+    screen.getByRole<HTMLInputElement>("textbox", { name: /^Jak jste se o Tokenpingu dozvěděli\?/ });
+  const czechSend = async () => {
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Odeslat odpověď" }));
+    });
+  };
+
+  it("asks the question in Czech and explains each problem in Czech", async () => {
+    const onClose = renderCs();
+    expect(screen.getByRole("form", { name: "Jak jste se o Tokenpingu dozvěděli? (nepovinné)" })).toBeDefined();
+    const hint = document.getElementById(czechInput().getAttribute("aria-describedby") ?? "");
+    expect(hint?.textContent).toBe("Pomůže nám zjistit, které kanály fungují. Uloží se s adresou vaší peněženky.");
+    expect(screen.getByRole("button", { name: "Přeskočit" })).toBeDefined();
+
+    await czechSend();
+    expect(screen.getByRole("alert").textContent).toBe("Napište odpověď, nebo vyberte Přeskočit.");
+    fireEvent.change(czechInput(), { target: { value: "Reddit\u202e" } });
+    await czechSend();
+    expect(screen.getByRole("alert").textContent).toBe(
+      "Odpověď je příliš dlouhá nebo obsahuje skryté znaky. Přepište ji a zkuste to znovu.",
+    );
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ error: "Database error" }, 502));
+    fireEvent.change(czechInput(), { target: { value: "Reddit" } });
+    await czechSend();
+    expect(screen.getByRole("alert").textContent).toBe(
+      "Odpověď se nepodařilo odeslat. Zkuste to znovu, nebo ji přeskočte.",
+    );
+    await czechSend();
+    expect(mocks.toasts).toEqual(["success: Odpověď odeslána"]);
+    expect(onClose).toHaveBeenCalledOnce();
   });
 });

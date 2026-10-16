@@ -2,6 +2,8 @@ import { useEffect, useId, useRef } from "react";
 import { Trash2, TriangleAlert } from "lucide-react";
 import { SUBTLE_DESTRUCTIVE_CLASS } from "~~/components/custom/notifications/styles";
 import { Button } from "~~/components/ui";
+import { useMessages } from "~~/i18n/LocaleProvider";
+import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 
 type NotificationFormActionsProps = {
   chainName: string;
@@ -32,6 +34,7 @@ export const NotificationFormActions = ({
   onKeep,
   onConfirmDelete,
 }: NotificationFormActionsProps) => {
+  const t = useMessages(ALERTS_MESSAGES);
   const id = useId();
   const titleId = `${id}-title`;
   const descriptionId = `${id}-description`;
@@ -58,19 +61,19 @@ export const NotificationFormActions = ({
           <TriangleAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-destructive" />
           <div className="flex flex-col gap-1">
             <p id={titleId} className="m-0 text-sm font-medium text-foreground">
-              Delete this alert?
+              {t.deleteTitle}
             </p>
             <p id={descriptionId} className="m-0 text-sm text-muted-foreground">
-              Tokenping stops sending health factor alerts for {chainName}.
+              {t.deleteDescription(chainName)}
             </p>
           </div>
         </div>
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button ref={keepRef} variant="secondary" onClick={onKeep}>
-            Keep alert
+            {t.keepAlert}
           </Button>
-          <Button variant="destructive" loading={isDeleting} loadingText="Deleting" onClick={onConfirmDelete}>
-            Delete alert
+          <Button variant="destructive" loading={isDeleting} loadingText={t.deleting} onClick={onConfirmDelete}>
+            {t.deleteAlert}
           </Button>
         </div>
       </div>
@@ -87,14 +90,14 @@ export const NotificationFormActions = ({
           onClick={onRequestDelete}
         >
           <Trash2 aria-hidden="true" />
-          Delete alert
+          {t.deleteAlert}
         </Button>
       ) : null}
       <Button variant="secondary" onClick={onCancel}>
-        Cancel
+        {t.cancel}
       </Button>
-      <Button type="submit" loading={isSaving} loadingText="Saving">
-        Save alert
+      <Button type="submit" loading={isSaving} loadingText={t.saving}>
+        {t.saveAlert}
       </Button>
     </div>
   );
