@@ -1,5 +1,6 @@
 import { BellRing } from "lucide-react";
 import { HealthFactorBadge } from "~~/components/custom/HealthFactorBadge";
+import { NetworkIcon } from "~~/components/custom/aave/NetworkIcon";
 import { Badge } from "~~/components/ui";
 import { useMessages } from "~~/i18n/LocaleProvider";
 import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
@@ -27,23 +28,26 @@ export const NetworkSummaryRow = ({ position, isSelected, onSelect, hasNotificat
       aria-current={isSelected ? "true" : undefined}
       className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-foreground transition-colors duration-150 ease-[ease] hover:bg-accent/60 aria-[current=true]:bg-accent aria-[current=true]:text-accent-foreground aria-[current=true]:shadow-[inset_2px_0_0_var(--ring)]"
     >
-      <span className="flex min-w-0 flex-col gap-0.5">
-        <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
-          <span className="truncate">{position.marketName}</span>
-          {hasNotification ? (
-            <>
-              <BellRing aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-              <span className="sr-only">{t.alertSet}</span>
-            </>
+      <span className="flex min-w-0 items-center gap-2.5">
+        <NetworkIcon chainId={position.chainId} name={position.chainName} />
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
+            <span className="truncate">{position.marketName}</span>
+            {hasNotification ? (
+              <>
+                <BellRing aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                <span className="sr-only">{t.alertSet}</span>
+              </>
+            ) : null}
+          </span>
+          {position.hasPosition ? (
+            // Wraps between the two totals on a phone instead of cutting "borrowed" off.
+            <span className="text-sm text-muted-foreground tabular-nums">
+              <span className="whitespace-nowrap">{t.supplied(formatUSD(position.totalCollateralUSD))}</span>{" "}
+              <span className="whitespace-nowrap">{t.borrowed(formatUSD(position.totalDebtUSD))}</span>
+            </span>
           ) : null}
         </span>
-        {position.hasPosition ? (
-          // Wraps between the two totals on a phone instead of cutting "borrowed" off.
-          <span className="text-sm text-muted-foreground tabular-nums">
-            <span className="whitespace-nowrap">{t.supplied(formatUSD(position.totalCollateralUSD))}</span>{" "}
-            <span className="whitespace-nowrap">{t.borrowed(formatUSD(position.totalDebtUSD))}</span>
-          </span>
-        ) : null}
       </span>
       {position.hasPosition ? (
         <HealthFactorBadge healthFactor={position.healthFactor} />

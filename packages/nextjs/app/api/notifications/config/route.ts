@@ -24,7 +24,7 @@ import {
 
 type ConfigBody = ConfigInput & { userId?: unknown; chainId?: unknown; market?: unknown };
 
-const INVALID_MARKET = "Invalid market: expected v3 or a lowercased Aave V4 Spoke address";
+const INVALID_MARKET = "Invalid market: expected v3 or the lowercased address of an Aave V3 Pool or V4 Spoke";
 
 /** The market in a query string or body: "v3" when absent, null when it is not a market id. */
 const parseMarket = (raw: unknown): MarketId | null => {
@@ -71,8 +71,8 @@ export async function PUT(request: Request) {
     if (!isChainId(chainId)) return jsonError("Missing or invalid chainId", 400);
     const market = parseMarket(rawMarket);
     if (market === null) return jsonError(INVALID_MARKET, 400);
-    // A V4 Spoke must be one the cron reads. A V3 chain id stays unchecked, as before V4.
-    if (market !== V3_MARKET_ID && !resolveMarket(chainId, market)) return jsonError("Unknown Aave V4 Spoke", 400);
+    // A market named by address must be one the cron reads. A chain's main V3 market stays unchecked, as before.
+    if (market !== V3_MARKET_ID && !resolveMarket(chainId, market)) return jsonError("Unknown Aave market", 400);
 
     const parsed = parseConfigInput(input);
     if ("error" in parsed) return jsonError(parsed.error, 400);
@@ -97,7 +97,7 @@ export async function DELETE(request: Request) {
     const userId = parseUserId(rawUserId);
     if (!userId) return jsonError(MISSING_USER_ID, 400);
     if (!isChainId(chainId)) return jsonError("Missing or invalid chainId", 400);
-    // Not checked against the Spokes the app reads, so a config for a Spoke it no longer lists can still be deleted.
+    // Not checked against the markets the app reads, so a config for a market it no longer lists can still be deleted.
     const market = parseMarket(rawMarket);
     if (market === null) return jsonError(INVALID_MARKET, 400);
 

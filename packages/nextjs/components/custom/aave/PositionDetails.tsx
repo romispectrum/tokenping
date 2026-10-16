@@ -1,5 +1,6 @@
 import { Layers } from "lucide-react";
 import { HealthFactorBadge } from "~~/components/custom/HealthFactorBadge";
+import { NetworkIcon } from "~~/components/custom/aave/NetworkIcon";
 import { StatCard } from "~~/components/custom/aave/StatCard";
 import {
   COLLATERAL_COLUMNS,
@@ -96,9 +97,12 @@ export const PositionDetails = ({ position }: PositionDetailsProps) => {
   return (
     <Card>
       <div className="flex items-start justify-between gap-4 px-[var(--card-spacing)]">
-        <div className="min-w-0">
-          <h3 className="m-0 truncate text-base font-medium text-foreground">{position.marketName}</h3>
-          <p className="m-0 text-sm text-muted-foreground">{t.position.market(position.version)}</p>
+        <div className="flex min-w-0 items-center gap-3">
+          <NetworkIcon chainId={position.chainId} name={position.chainName} className="size-8" />
+          <div className="min-w-0">
+            <h3 className="m-0 truncate text-base font-medium text-foreground">{position.marketName}</h3>
+            <p className="m-0 text-sm text-muted-foreground">{t.position.market(position.version)}</p>
+          </div>
         </div>
         {position.hasPosition ? <HealthFactorBadge healthFactor={position.healthFactor} /> : null}
       </div>

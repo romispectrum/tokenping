@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AAVE_NETWORK_NAMES, AAVE_V3_NETWORKS } from "~~/config/aaveConfig";
 import { mockPostStubs } from "~~/utils/testing/blogPosts";
 import { renderMarkup } from "~~/utils/testing/render";
 
@@ -31,9 +32,10 @@ describe("Aave page metadata", () => {
     const { metadata } = await loadPage();
 
     expect(metadata.title).toBe("Aave V3 and V4 positions and health factor");
-    // 8 networks: the 7 Aave V3 ones and Arc, which only has Aave V4.
+    // 22 networks: the 21 Aave V3 ones and Arc, which only has Aave V4.
+    expect(AAVE_NETWORK_NAMES).toHaveLength(22);
     expect(metadata.description).toBe(
-      "See your Aave V3 and V4 collateral, debt and health factor on 8 networks for free, then set a Signal or email alert threshold for each market.",
+      "See your Aave V3 and V4 collateral, debt and health factor on 22 networks for free, then set a Signal or email alert threshold for each market.",
     );
     expect(metadata.alternates?.canonical).toBe("/aave");
     expect(metadata.openGraph).toMatchObject({ url: "/aave", title: "Aave V3 and V4 positions and health factor" });
@@ -44,6 +46,7 @@ describe("Aave page metadata", () => {
     vi.stubEnv("NEXT_PUBLIC_TELEGRAM_BOT_USERNAME", "tokenping_bot");
     const { metadata } = await loadPage();
 
+    expect(String(metadata.description)).toContain("on 22 networks");
     expect(String(metadata.description)).toContain("a Signal, Telegram or email alert threshold");
     expect(String(metadata.description).length).toBeLessThanOrEqual(155);
   });
@@ -56,7 +59,7 @@ describe("Aave page shell", () => {
 
     expect(html).toContain(">Aave V3 and V4 positions and health factor alerts</h1>");
     expect(html).toContain(
-      "Connect the wallet you borrow with to see its collateral, debt and health factor on Aave V3 on Ethereum (Core market), Polygon, Arbitrum, Optimism, Base, Avalanche and Gnosis, and in every Aave V4 Spoke on Ethereum, Avalanche, Arc and Base. Viewing is free and needs no transaction.",
+      "Connect the wallet you borrow with to see its collateral, debt and health factor on Aave V3 on Ethereum (Core, Prime, EtherFi and Horizon markets), Polygon, Arbitrum, Optimism, Base, Avalanche, Gnosis, Metis, BNB Chain, Scroll, ZKsync, Linea, Sonic, Celo, Soneium, Plasma, Ink, MegaETH, Mantle, X Layer and Monad, and in every Aave V4 Spoke on Ethereum, Avalanche, Arc and Base. Viewing is free and needs no transaction.",
     );
     expect(html).toContain(
       "To get a message on Signal or email when a market&#x27;s health factor drops below a threshold you choose, unlock alerts with a USDC payment on Arbitrum One.",
@@ -71,6 +74,23 @@ describe("Aave page shell", () => {
       /blur-|gradient|animate-pulse|shadow-card|grain|divider-brand|bg-clip-text|\bbg-primary\b/,
     );
     expect(html).toMatchSnapshot();
+  });
+
+  it("names every Aave V3 network once in the intro, Ethereum with its four markets", async () => {
+    const { default: AavePage } = await loadPage();
+    const intro = renderMarkup(<AavePage />).match(/<p class="m-0">(Connect the wallet[^<]*)<\/p>/)?.[1] ?? "";
+
+    const ETHEREUM_MARKETS = "Ethereum (Core, Prime, EtherFi and Horizon markets)";
+    const v3List = intro.match(/ on Aave V3 on (.*?), and in every Aave V4 Spoke/)?.[1] ?? "";
+
+    expect(AAVE_V3_NETWORKS).toHaveLength(21);
+    expect(v3List.startsWith(`${ETHEREUM_MARKETS}, Polygon`)).toBe(true);
+    // Every V3 network once, in dashboard order; Arc runs only Aave V4, so it is named with the Spokes instead.
+    expect(v3List.replace(ETHEREUM_MARKETS, "Ethereum").split(/, | and /)).toEqual(
+      AAVE_V3_NETWORKS.map(({ name }) => name),
+    );
+    expect(v3List).not.toContain("Arc");
+    expect(intro).toContain("in every Aave V4 Spoke on Ethereum, Avalanche, Arc and Base.");
   });
 
   // The site header already links home; the dashboard has no breadcrumb trail and so no BreadcrumbList either.

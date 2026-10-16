@@ -10,7 +10,7 @@ import {
 } from "viem";
 import * as chains from "viem/chains";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AAVE_MARKETS, type AaveMarket, ERC20_ABI } from "~~/config/aaveConfig";
+import { AAVE_MARKETS, type AaveMarket, ERC20_ABI, arc, getAaveMarket, marketLabel } from "~~/config/aaveConfig";
 import {
   type NetworkPosition,
   type TokenPosition,
@@ -29,7 +29,8 @@ type ReserveData = readonly [bigint, bigint, bigint, bigint, bigint, bigint, big
 type ReadCall = { address: Address; functionName: string; args?: readonly Address[] };
 type RawCall = { to: Address; data: Hex };
 
-type FakeChain = {
+// One market's Pool and data provider, and the token contracts on its chain. A market without a fake reverts.
+type FakeMarket = {
   accountData?: AccountData;
   reserves?: Address[];
   reserveData?: Record<Address, ReserveData>;
@@ -37,27 +38,44 @@ type FakeChain = {
   // Tokens whose symbol() returns bytes32, which does not decode as a string.
   bytes32Symbols?: Record<Address, Hex>;
   decimals?: Record<Address, number>;
-  // Rejects every read on the chain with this error.
+  // Rejects every read of the market's Pool and data provider with this error.
   failure?: unknown;
 };
 
 type ClientOptions = { chain: { id: number }; transport: unknown; batch?: unknown };
 
 const network = vi.hoisted(() => ({
-  chains: new Map<number, FakeChain>(),
+  markets: new Map<AaveMarket, FakeMarket>(),
   clients: [] as ClientOptions[],
   calls: [] as { chainId: number; address: string; functionName: string }[],
 }));
 
+// The market whose Pool or data provider a read is addressed to.
+const marketAt = (chainId: number, address: Address) =>
+  AAVE_MARKETS.find(
+    market => market.chain.id === chainId && (market.pool === address || market.dataProvider === address),
+  );
+
+// Token contracts belong to the chain, not to a market, so any fake market on the chain may describe them.
+const tokenOn = (chainId: number, address: Address) => {
+  const fakes = [...network.markets].filter(([market]) => market.chain.id === chainId).map(([, fake]) => fake);
+  return {
+    symbol: fakes.map(fake => fake.symbols?.[address]).find(symbol => symbol !== undefined),
+    bytes32Symbol: fakes.map(fake => fake.bytes32Symbols?.[address]).find(symbol => symbol !== undefined),
+    decimals: fakes.map(fake => fake.decimals?.[address]).find(decimals => decimals !== undefined),
+  };
+};
+
 const read = async (chainId: number, { address, functionName, args = [] }: ReadCall) => {
   network.calls.push({ chainId, address, functionName });
-  const chain = network.chains.get(chainId);
-  if (chain?.failure) throw chain.failure;
+  const market = marketAt(chainId, address);
+  const fake = market && network.markets.get(market);
+  if (fake?.failure) throw fake.failure;
   const value = {
-    getUserAccountData: chain?.accountData,
-    getReservesList: chain?.reserves,
-    getUserReserveData: chain?.reserveData?.[args[0]],
-    decimals: chain?.decimals?.[address],
+    getUserAccountData: address === market?.pool ? fake?.accountData : undefined,
+    getReservesList: address === market?.pool ? fake?.reserves : undefined,
+    getUserReserveData: address === market?.dataProvider ? fake?.reserveData?.[args[0]] : undefined,
+    decimals: tokenOn(chainId, address).decimals,
   }[functionName];
   if (value === undefined) throw new Error(`${functionName} reverted on ${chainId}`);
   return value;
@@ -67,10 +85,9 @@ const read = async (chainId: number, { address, functionName, args = [] }: ReadC
 const rawCall = async (chainId: number, { to, data }: RawCall) => {
   const { functionName } = decodeFunctionData({ abi: ERC20_ABI, data });
   network.calls.push({ chainId, address: to, functionName });
-  const chain = network.chains.get(chainId);
-  const symbol = chain?.symbols?.[to];
+  const { symbol, bytes32Symbol } = tokenOn(chainId, to);
   const returnData =
-    chain?.bytes32Symbols?.[to] ??
+    bytes32Symbol ??
     (symbol === undefined
       ? undefined
       : encodeFunctionResult({ abi: ERC20_ABI, functionName: "symbol", result: symbol }));
@@ -100,8 +117,14 @@ const DAI = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
 const WBTC = "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599";
 const MKR = "0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2";
 
-const MAINNET = AAVE_MARKETS[0];
-const BASE = AAVE_MARKETS[4];
+// Ethereum's Core market (the chain's main one) and its Prime market, keyed by its Pool address.
+const PRIME_ID = "0x4e033931ad43597d96d6bcc25c280717730b58b1";
+const MAINNET = getAaveMarket(chains.mainnet.id)!;
+const PRIME = getAaveMarket(chains.mainnet.id, PRIME_ID)!;
+const BASE = getAaveMarket(chains.base.id)!;
+const ETHEREUM_MARKETS = AAVE_MARKETS.filter(({ chain }) => chain.id === chains.mainnet.id);
+// Every V3 chain once, in AAVE_MARKETS order: one client each.
+const V3_CHAINS = [...new Map(AAVE_MARKETS.map(({ chain }) => [chain.id, chain])).values()];
 
 // 0.035 ray, i.e. a 3.5% APR.
 const RATE_3_5_PERCENT = 35_000_000_000_000_000_000_000_000n;
@@ -161,7 +184,7 @@ const DAI_TOKEN: TokenPosition = {
 
 const MAINNET_ACCOUNT = account(1_234_567_890_123n, 250_000_000_000n, 3_950_000_000_000_000_000n);
 
-const mainnetWithReserves = (overrides: Partial<FakeChain> = {}): FakeChain => ({
+const mainnetWithReserves = (overrides: Partial<FakeMarket> = {}): FakeMarket => ({
   accountData: MAINNET_ACCOUNT,
   reserves: [USDC, WBTC, DAI],
   reserveData: {
@@ -178,7 +201,7 @@ const MAINNET_SUMMARY = {
   key: "1:v3",
   version: 3,
   marketId: "v3",
-  marketName: "Ethereum",
+  marketName: "Ethereum (Core)",
   chainId: chains.mainnet.id,
   chainName: "Ethereum",
   totalCollateralUSD: "12345.68",
@@ -201,6 +224,15 @@ const BASE_WITHOUT_POSITION: NetworkPosition = {
   netWorthUSD: "0.00",
   tokens: [],
   hasPosition: false,
+};
+
+const PRIME_WITHOUT_POSITION: NetworkPosition = {
+  ...BASE_WITHOUT_POSITION,
+  key: `1:${PRIME_ID}`,
+  marketId: PRIME_ID,
+  marketName: "Ethereum (Prime)",
+  chainId: chains.mainnet.id,
+  chainName: "Ethereum",
 };
 
 // Verbatim copies of the inline formatting from the original hooks/custom/useAavePositions.ts.
@@ -287,6 +319,10 @@ describe("toNetworkPosition", () => {
     });
   });
 
+  it("keys a further market on a chain by its Pool address and names it with its market", () => {
+    expect(toNetworkPosition(PRIME, account(0n, 0n, maxUint256), [])).toEqual(PRIME_WITHOUT_POSITION);
+  });
+
   it("reports a negative net worth and an infinite health factor as-is", () => {
     expect(toNetworkPosition(BASE, account(0n, 10_000_000_000n, maxUint256), [])).toMatchObject({
       totalCollateralUSD: "0.00",
@@ -355,7 +391,7 @@ describe("sumUsd", () => {
 
 describe("fetchAavePositions", () => {
   beforeEach(() => {
-    network.chains = new Map();
+    network.markets = new Map();
     network.clients = [];
     network.calls = [];
     vi.mocked(fetchAaveV4Positions).mockReset();
@@ -367,11 +403,17 @@ describe("fetchAavePositions", () => {
     vi.restoreAllMocks();
   });
 
-  const callsOn = (chainId: number) => network.calls.filter(call => call.chainId === chainId);
+  // A market's reads: on its Pool, its data provider and its reserves' tokens, not on the chain's other markets.
+  const callsOn = (market: AaveMarket) => {
+    const others = AAVE_MARKETS.filter(other => other.chain.id === market.chain.id && other !== market).flatMap(
+      ({ pool, dataProvider }): string[] => [pool, dataProvider],
+    );
+    return network.calls.filter(call => call.chainId === market.chain.id && !others.includes(call.address));
+  };
 
-  it("returns reachable networks in market order with the user's non-empty reserves", async () => {
-    network.chains.set(chains.base.id, { accountData: account(0n, 0n, maxUint256) });
-    network.chains.set(chains.mainnet.id, mainnetWithReserves());
+  it("returns reachable markets in market order with the user's non-empty reserves", async () => {
+    network.markets.set(BASE, { accountData: account(0n, 0n, maxUint256) });
+    network.markets.set(MAINNET, mainnetWithReserves());
 
     await expect(fetchAavePositions(USER)).resolves.toEqual([
       { ...MAINNET_SUMMARY, tokens: [USDC_TOKEN, DAI_TOKEN] },
@@ -379,14 +421,15 @@ describe("fetchAavePositions", () => {
     ]);
   });
 
-  it("creates one client per market with the shared fallback transport and multicall batching", async () => {
+  it("creates one client per chain, not per market, with the shared fallback transport and multicall batching", async () => {
     // B1.3, B1.5: the same RPC resolution as the alert cron; S1.17: parallel reads share multicalls.
-    network.chains.set(chains.base.id, { accountData: account(0n, 0n, maxUint256) });
+    network.markets.set(BASE, { accountData: account(0n, 0n, maxUint256) });
 
     await fetchAavePositions(USER);
 
+    expect(V3_CHAINS.length).toBeLessThan(AAVE_MARKETS.length);
     expect(network.clients).toEqual(
-      AAVE_MARKETS.map(({ chain }: AaveMarket) => ({
+      V3_CHAINS.map(chain => ({
         chain,
         transport: { fallbackFor: chain.id },
         batch: { multicall: true },
@@ -394,13 +437,29 @@ describe("fetchAavePositions", () => {
     );
   });
 
+  it("reads every market on a chain through its one client, each from its own Pool", async () => {
+    network.markets.set(MAINNET, mainnetWithReserves());
+    network.markets.set(PRIME, { accountData: account(0n, 0n, maxUint256) });
+
+    await expect(fetchAavePositions(USER)).resolves.toEqual([
+      { ...MAINNET_SUMMARY, tokens: [USDC_TOKEN, DAI_TOKEN] },
+      PRIME_WITHOUT_POSITION,
+    ]);
+    expect(network.clients.filter(({ chain }) => chain.id === chains.mainnet.id)).toHaveLength(1);
+    expect(
+      network.calls
+        .filter(call => call.chainId === chains.mainnet.id && call.functionName === "getUserAccountData")
+        .map(({ address }) => address),
+    ).toEqual(ETHEREUM_MARKETS.map(({ pool }) => pool));
+  });
+
   it("reads the account data, the reserve list and every reserve's user data, then token metadata only for reserves with a balance", async () => {
     // S1.17: WBTC is empty, so its symbol() and decimals() are not read.
-    network.chains.set(chains.mainnet.id, mainnetWithReserves());
+    network.markets.set(MAINNET, mainnetWithReserves());
 
     await fetchAavePositions(USER);
 
-    expect(callsOn(chains.mainnet.id)).toEqual([
+    expect(callsOn(MAINNET)).toEqual([
       { chainId: chains.mainnet.id, address: MAINNET.pool, functionName: "getUserAccountData" },
       { chainId: chains.mainnet.id, address: MAINNET.pool, functionName: "getReservesList" },
       ...[USDC, WBTC, DAI].map(() => ({
@@ -415,24 +474,24 @@ describe("fetchAavePositions", () => {
     ]);
   });
 
-  it("skips the reserve list for a network without a position", async () => {
-    network.chains.set(chains.base.id, { accountData: account(0n, 0n, maxUint256), reserves: [USDC] });
+  it("skips the reserve list for a market without a position", async () => {
+    network.markets.set(BASE, { accountData: account(0n, 0n, maxUint256), reserves: [USDC] });
 
     await fetchAavePositions(USER);
 
-    expect(callsOn(chains.base.id).map(call => call.functionName)).toEqual(["getUserAccountData"]);
+    expect(callsOn(BASE).map(call => call.functionName)).toEqual(["getUserAccountData"]);
   });
 
   it("keeps the summary when the reserve list cannot be read", async () => {
-    network.chains.set(chains.mainnet.id, mainnetWithReserves({ reserves: undefined }));
+    network.markets.set(MAINNET, mainnetWithReserves({ reserves: undefined }));
 
     await expect(fetchAavePositions(USER)).resolves.toEqual([{ ...MAINNET_SUMMARY, tokens: [] }]);
   });
 
   it("keeps a reserve whose symbol() returns bytes32, like MKR", async () => {
     // B1.0: MKR's row used to disappear while the totals still included it.
-    network.chains.set(
-      chains.mainnet.id,
+    network.markets.set(
+      MAINNET,
       mainnetWithReserves({
         reserves: [MKR, USDC],
         reserveData: { [MKR]: reserve(5n, 0n, 0n), [USDC]: reserve(1_000_000_000n, 0n, 0n, RATE_3_5_PERCENT, true) },
@@ -459,35 +518,38 @@ describe("fetchAavePositions", () => {
         ],
       },
     ]);
-    expect(callsOn(chains.mainnet.id).filter(({ functionName }) => functionName === "symbol")).toEqual([
+    expect(callsOn(MAINNET).filter(({ functionName }) => functionName === "symbol")).toEqual([
       { chainId: chains.mainnet.id, address: MKR, functionName: "symbol" },
       { chainId: chains.mainnet.id, address: USDC, functionName: "symbol" },
     ]);
   });
 
   it("drops a reserve whose token metadata cannot be read", async () => {
-    network.chains.set(chains.mainnet.id, mainnetWithReserves({ decimals: { [USDC]: 6 } }));
+    network.markets.set(MAINNET, mainnetWithReserves({ decimals: { [USDC]: 6 } }));
 
     await expect(fetchAavePositions(USER)).resolves.toEqual([{ ...MAINNET_SUMMARY, tokens: [USDC_TOKEN] }]);
   });
 
-  it("warns about each network it leaves out", async () => {
-    network.chains.set(chains.base.id, { accountData: account(0n, 0n, maxUint256) });
+  it("warns about each market it leaves out, by its label", async () => {
+    network.markets.set(BASE, { accountData: account(0n, 0n, maxUint256) });
 
     await expect(fetchAavePositions(USER)).resolves.toEqual([BASE_WITHOUT_POSITION]);
 
-    const failedMarkets = AAVE_MARKETS.filter(({ chain }) => chain.id !== chains.base.id);
+    const failedMarkets = AAVE_MARKETS.filter(market => market !== BASE);
     expect(vi.mocked(console.warn).mock.calls).toEqual(
-      failedMarkets.map(({ name, chain }) => [
-        `Failed to read Aave positions on ${name} (chain ${chain.id}): getUserAccountData reverted on ${chain.id}`,
+      failedMarkets.map(market => [
+        `Failed to read Aave positions on ${marketLabel(market)} (chain ${market.chain.id}): getUserAccountData reverted on ${market.chain.id}`,
       ]),
+    );
+    expect(vi.mocked(console.warn).mock.calls.flat()).toContain(
+      "Failed to read Aave positions on Ethereum (Prime) (chain 1): getUserAccountData reverted on 1",
     );
   });
 
   it("warns with viem's short message, not the request body it carries", async () => {
     const calldata = `0x${"ab".repeat(2_000)}`;
-    network.chains.set(chains.base.id, { accountData: account(0n, 0n, maxUint256) });
-    network.chains.set(chains.mainnet.id, {
+    network.markets.set(BASE, { accountData: account(0n, 0n, maxUint256) });
+    network.markets.set(MAINNET, {
       failure: new HttpRequestError({
         url: "https://rpc.example",
         body: { params: [{ data: calldata }] },
@@ -498,17 +560,17 @@ describe("fetchAavePositions", () => {
     await fetchAavePositions(USER);
 
     expect(vi.mocked(console.warn).mock.calls).toContainEqual([
-      `Failed to read Aave positions on ${MAINNET.name} (chain ${chains.mainnet.id}): HTTP request failed.`,
+      `Failed to read Aave positions on Ethereum (Core) (chain ${chains.mainnet.id}): HTTP request failed.`,
     ]);
     expect(JSON.stringify(vi.mocked(console.warn).mock.calls)).not.toContain(calldata);
   });
 
-  it("rejects when every network fails and no V4 Spoke can be read", async () => {
+  it("rejects when every market fails and no V4 Spoke can be read", async () => {
     // B1.2: a total outage used to look like "no positions" instead of an error.
     await expect(fetchAavePositions(USER)).rejects.toThrow(
       "Could not reach any Aave network. Check your connection and try again.",
     );
-    expect(network.clients).toHaveLength(AAVE_MARKETS.length);
+    expect(network.clients).toHaveLength(V3_CHAINS.length);
     expect(console.warn).toHaveBeenCalledTimes(AAVE_MARKETS.length);
   });
 
@@ -531,9 +593,9 @@ describe("fetchAavePositions", () => {
       chainName: "Arc",
     };
 
-    it("reads the V4 Spokes for the same user and lists them after every V3 network", async () => {
-      network.chains.set(chains.base.id, { accountData: account(0n, 0n, maxUint256) });
-      network.chains.set(chains.mainnet.id, mainnetWithReserves());
+    it("reads the V4 Spokes for the same user and lists them after every V3 market", async () => {
+      network.markets.set(BASE, { accountData: account(0n, 0n, maxUint256) });
+      network.markets.set(MAINNET, mainnetWithReserves());
       vi.mocked(fetchAaveV4Positions).mockResolvedValue([LIDO_POSITION, ARC_POSITION]);
 
       await expect(fetchAavePositions(USER)).resolves.toEqual([
@@ -542,18 +604,36 @@ describe("fetchAavePositions", () => {
         LIDO_POSITION,
         ARC_POSITION,
       ]);
-      expect(fetchAaveV4Positions).toHaveBeenCalledExactlyOnceWith(USER);
+      expect(fetchAaveV4Positions).toHaveBeenCalledExactlyOnceWith(USER, expect.any(Function));
     });
 
-    it("resolves with the V4 Spokes alone when no V3 network can be read", async () => {
+    it("hands the V4 Spokes the clients the V3 markets used, so a chain's markets and Spokes share one", async () => {
+      network.markets.set(MAINNET, { accountData: account(0n, 0n, maxUint256) });
+
+      await fetchAavePositions(USER);
+
+      const clientFor = vi.mocked(fetchAaveV4Positions).mock.calls[0][1]!;
+      const created = network.clients.length;
+      expect(clientFor(chains.mainnet)).toBe(clientFor(chains.mainnet));
+      expect(network.clients).toHaveLength(created);
+      clientFor(arc);
+      expect(network.clients).toHaveLength(created + 1);
+      expect(network.clients.at(-1)).toEqual({
+        chain: arc,
+        transport: { fallbackFor: arc.id },
+        batch: { multicall: true },
+      });
+    });
+
+    it("resolves with the V4 Spokes alone when no V3 market can be read", async () => {
       vi.mocked(fetchAaveV4Positions).mockResolvedValue([ARC_POSITION]);
 
       await expect(fetchAavePositions(USER)).resolves.toEqual([ARC_POSITION]);
       expect(console.warn).toHaveBeenCalledTimes(AAVE_MARKETS.length);
     });
 
-    it("resolves with the V3 networks alone when no V4 Spoke can be read", async () => {
-      network.chains.set(chains.base.id, { accountData: account(0n, 0n, maxUint256) });
+    it("resolves with the V3 markets alone when no V4 Spoke can be read", async () => {
+      network.markets.set(BASE, { accountData: account(0n, 0n, maxUint256) });
 
       await expect(fetchAavePositions(USER)).resolves.toEqual([BASE_WITHOUT_POSITION]);
     });

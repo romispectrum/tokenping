@@ -1,17 +1,17 @@
-import { type Address, type Chain, type ContractFunctionReturnType, createPublicClient, formatUnits } from "viem";
+import { type Address, type ContractFunctionReturnType, formatUnits } from "viem";
 import {
   AAVE_V4_SPOKES,
   AAVE_V4_SPOKE_ABI,
   type AaveV4Spoke,
+  addressMarketId,
   marketKey,
   marketLabel,
-  v4MarketId,
 } from "~~/config/aaveConfig";
+import { type AaveClient, type AaveClientFor, createAaveClientCache } from "~~/services/aave/client";
 import type { NetworkPosition, TokenPosition } from "~~/services/aave/positions";
 import { getReadErrorMessage } from "~~/services/aave/readErrorMessage";
 import { readTokenSymbol } from "~~/services/aave/tokenSymbol";
 import { formatHealthFactor } from "~~/utils/healthFactor";
-import { getFallbackTransport } from "~~/utils/rpc";
 
 type V4AccountData = ContractFunctionReturnType<typeof AAVE_V4_SPOKE_ABI, "view", "getUserAccountData">;
 
@@ -33,7 +33,7 @@ export const toV4NetworkPosition = (
 ): NetworkPosition => {
   const totalCollateralUSD = parseFloat(formatUnits(accountData.totalCollateralValue, VALUE_DECIMALS));
   const totalDebtUSD = parseFloat(formatUnits(accountData.totalDebtValueRay, DEBT_VALUE_RAY_DECIMALS));
-  const marketId = v4MarketId(spoke.spoke);
+  const marketId = addressMarketId(spoke.spoke);
 
   return {
     key: marketKey(spoke.chain.id, marketId),
@@ -51,17 +51,11 @@ export const toV4NetworkPosition = (
   };
 };
 
-// One client per chain, so the reads of every Spoke on it share multicall batches (see positions.ts).
-const createSpokeClient = (chain: Chain) =>
-  createPublicClient({ chain, transport: getFallbackTransport(chain), batch: { multicall: true } });
-
-type SpokeClient = ReturnType<typeof createSpokeClient>;
-
 /**
  * Null when the user neither supplies nor borrows the reserve, or when its reads fail. V4 debt has no stable part:
  * the drawn debt and the risk premium both accrue at the variable rate, so the total is the variable debt.
  */
-const fetchV4TokenPosition = async (client: SpokeClient, spoke: Address, reserveId: bigint, user: Address) => {
+const fetchV4TokenPosition = async (client: AaveClient, spoke: Address, reserveId: bigint, user: Address) => {
   try {
     const args = [reserveId, user] as const;
     const [supplied, debt, [usageAsCollateralEnabled]] = await Promise.all([
@@ -93,7 +87,7 @@ const fetchV4TokenPosition = async (client: SpokeClient, spoke: Address, reserve
   }
 };
 
-const fetchV4TokenPositions = async (client: SpokeClient, spoke: Address, user: Address) => {
+const fetchV4TokenPositions = async (client: AaveClient, spoke: Address, user: Address) => {
   const count = await client.readContract({ address: spoke, abi: AAVE_V4_SPOKE_ABI, functionName: "getReserveCount" });
   // Reserve ids run from 0 to getReserveCount() - 1.
   const ids = Array.from({ length: Number(count) }, (_, id) => BigInt(id));
@@ -101,7 +95,7 @@ const fetchV4TokenPositions = async (client: SpokeClient, spoke: Address, user: 
   return tokens.filter((token): token is TokenPosition => token !== null);
 };
 
-const fetchSpokePosition = async (client: SpokeClient, spoke: AaveV4Spoke, user: Address) => {
+const fetchSpokePosition = async (client: AaveClient, spoke: AaveV4Spoke, user: Address) => {
   const accountData = await client.readContract({
     address: spoke.spoke,
     abi: AAVE_V4_SPOKE_ABI,
@@ -119,19 +113,9 @@ const fetchSpokePosition = async (client: SpokeClient, spoke: AaveV4Spoke, user:
 
 /**
  * One position per reachable Aave V4 Spoke, in AAVE_V4_SPOKES order, with or without a position. Spokes whose reads
- * fail are logged and left out.
+ * fail are logged and left out. `clientFor` is shared with the V3 reads, so a chain's markets share one client.
  */
-export const fetchAaveV4Positions = async (user: Address) => {
-  const clients = new Map<number, SpokeClient>();
-  const clientFor = (chain: Chain) => {
-    let client = clients.get(chain.id);
-    if (!client) {
-      client = createSpokeClient(chain);
-      clients.set(chain.id, client);
-    }
-    return client;
-  };
-
+export const fetchAaveV4Positions = async (user: Address, clientFor: AaveClientFor = createAaveClientCache()) => {
   const positions = await Promise.all(
     AAVE_V4_SPOKES.map(spoke =>
       // Inside the promise chain, so a client that cannot be created fails only its Spokes.

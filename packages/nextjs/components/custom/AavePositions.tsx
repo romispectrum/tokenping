@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import { Layers, RotateCw } from "lucide-react";
+import { ChevronDown, Layers, RotateCw } from "lucide-react";
 import { NotificationConfig } from "~~/components/custom/NotificationConfig";
 import { AddressChip } from "~~/components/custom/aave/AddressChip";
 import { InlineError } from "~~/components/custom/aave/InlineError";
@@ -15,20 +15,17 @@ import {
   StatStripSkeleton,
 } from "~~/components/custom/aave/PositionsSkeleton";
 import { STAT_STRIP_CLASS_NAME, StatCard } from "~~/components/custom/aave/StatCard";
-import { getListedPositions } from "~~/components/custom/aave/positionsView";
+import { partitionPositions } from "~~/components/custom/aave/positionsView";
 import { useSelectedMarketKey } from "~~/components/custom/aave/useSelectedMarketKey";
 import { Alert, Button, Card, EmptyState, LiveRegion } from "~~/components/ui";
-import { AAVE_V4_NETWORK_NAMES, AAVE_V4_SPOKES } from "~~/config/aaveConfig";
 import { useAavePositions } from "~~/hooks/custom/useAavePositions";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
-import { useLocale, useMessages } from "~~/i18n/LocaleProvider";
-import { joinList } from "~~/i18n/format";
+import { useMessages } from "~~/i18n/LocaleProvider";
 import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 import type { NetworkPosition } from "~~/services/aave/positions";
 import { formatUSD } from "~~/utils/format";
 
 export const AavePositions = () => {
-  const locale = useLocale();
   const t = useMessages(DASHBOARD_MESSAGES);
   const {
     account,
@@ -47,11 +44,30 @@ export const AavePositions = () => {
     [configsLoaded, hasConfig],
   );
 
-  // The totals above count every market; the list and the selection only the listed ones.
-  const positions = useMemo(() => getListedPositions(allPositions, hasNotification), [allPositions, hasNotification]);
-  const hasListedV4 = positions.some(p => p.version === 4);
+  // The markets with a position or an alert are listed open, the rest folded; the selection prefers the open ones.
+  const { active, other } = useMemo(
+    () => partitionPositions(allPositions, hasNotification),
+    [allPositions, hasNotification],
+  );
+  const positions = useMemo(() => [...active, ...other], [active, other]);
 
   const [selectedKey, setSelectedKey] = useSelectedMarketKey(positions, account);
+
+  // A helper, not a nested component: a component defined here would remount its rows on every render.
+  const marketList = (markets: readonly NetworkPosition[]) => (
+    <ul className="m-0 flex list-none flex-col gap-1 p-0">
+      {markets.map(p => (
+        <li key={p.key} className="m-0">
+          <NetworkSummaryRow
+            position={p}
+            isSelected={p.key === selectedKey}
+            onSelect={() => setSelectedKey(p.key)}
+            hasNotification={hasNotification(p)}
+          />
+        </li>
+      ))}
+    </ul>
+  );
 
   const positionsWithData = useMemo(() => positions.filter(p => p.hasPosition), [positions]);
 
@@ -141,29 +157,29 @@ export const AavePositions = () => {
                     {isLoading ? (
                       <NetworkListSkeleton />
                     ) : (
-                      <ul className="m-0 flex list-none flex-col gap-1 p-0">
-                        {positions.map(p => (
-                          <li key={p.key} className="m-0">
-                            <NetworkSummaryRow
-                              position={p}
-                              isSelected={p.key === selectedKey}
-                              onSelect={() => setSelectedKey(p.key)}
-                              hasNotification={hasNotification(p)}
-                            />
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                      <>
+                        {active.length > 0 && marketList(active)}
 
-                    {!isLoading && !error && positionsWithData.length === 0 && (
-                      <p className="m-0 px-3 text-sm text-muted-foreground">{t.networks.noPositions}</p>
-                    )}
+                        {!error && positionsWithData.length === 0 && (
+                          <p className="m-0 px-3 text-sm text-muted-foreground">{t.networks.noPositions}</p>
+                        )}
 
-                    {/* Says that V4 was read too, since its Spokes are only listed once they hold a position. */}
-                    {!isLoading && !hasListedV4 && allPositions.some(p => p.version === 4) && (
-                      <p className="m-0 px-3 text-sm text-muted-foreground">
-                        {t.networks.noV4Positions(AAVE_V4_SPOKES.length, joinList(locale, AAVE_V4_NETWORK_NAMES))}
-                      </p>
+                        {/* Folded unless nothing is open above it, so the empty markets never bury the active ones
+                            and still show what was checked. A native disclosure: no state, no live region. */}
+                        {other.length > 0 && (
+                          <details open={active.length === 0} className="group">
+                            <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-foreground hover:bg-accent/60 [&::-webkit-details-marker]:hidden">
+                              <ChevronDown
+                                aria-hidden="true"
+                                className="size-4 shrink-0 transition-transform duration-150 ease-[ease] group-open:rotate-180"
+                              />
+                              {t.networks.otherMarkets(other.length)}
+                            </summary>
+                            <p className="m-0 px-3 pb-2 text-sm text-muted-foreground">{t.networks.otherMarketsHint}</p>
+                            {marketList(other)}
+                          </details>
+                        )}
+                      </>
                     )}
                   </div>
                 </Card>

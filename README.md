@@ -14,13 +14,14 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs o
 
 ## What it does
 
-- **Dashboard (free, read-only).** Connect a wallet to see its collateral, debt and health factor on Aave V3 on
-  Ethereum (Core market), Polygon, Arbitrum, Optimism, Base, Avalanche and Gnosis, and in every Aave V4 Spoke on
-  Ethereum, Avalanche, Arc and Base (20 Spokes, listed in `packages/nextjs/config/aaveConfig.ts`). V4 keeps a separate
-  position and health factor in each Spoke, so each Spoke is its own market; the dashboard lists a Spoke once the
-  wallet has a position or an alert in it. Positions are read with view calls only; the app never asks for an approval
-  or a signature on Aave.
-- **Alerts.** One alert per market (a V3 network or a V4 Spoke), for the connected wallet. You pick a threshold from 1.1 to 10 (default 1.5) and
+- **Dashboard (free, read-only).** Connect a wallet to see its collateral, debt and health factor in every Aave V3
+  market on a mainnet (24 markets on 21 networks, Ethereum's Core, Prime, EtherFi and Horizon among them) and in every
+  Aave V4 Spoke (20 Spokes on Ethereum, Avalanche, Arc and Base). Both lists live in
+  `packages/nextjs/config/aaveConfig.ts`. Each V3 market and each V4 Spoke keeps a separate position and health factor,
+  so each is its own market; the dashboard lists the markets where the wallet has a position or an alert and folds the
+  rest away. Network logos and token icons come from CoinGecko and are served by the site. Positions are read with
+  view calls only; the app never asks for an approval or a signature on Aave.
+- **Alerts.** One alert per market (a V3 market or a V4 Spoke), for the connected wallet. You pick a threshold from 1.1 to 10 (default 1.5) and
   one or more channels:
   - Email, sent through [Resend](https://resend.com).
   - Signal, sent to your Signal username through a self-hosted
@@ -40,8 +41,11 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs o
 
 ## Limits
 
-- On Aave V3, one pool per network (on Ethereum, only the Core market). The other Ethereum V3 markets, other networks
-  and other protocols are not supported. A new Aave V4 Spoke is read only once it is added to `AAVE_V4_SPOKES`.
+- Aave only. Harmony's V3 market is left out: frozen since 2022 with fixed price feeds, so a health factor there never
+  moves. A new Aave market or V4 Spoke is read only once it is added to `AAVE_MARKETS` or `AAVE_V4_SPOKES`, then
+  `yarn next:token-icons` and `yarn next:network-icons` fetch its icons.
+- Scroll, ZKsync, Metis, Soneium and Sonic are being wound down by Aave governance (ARFC of July 2026). Positions
+  there are still watched: they can still be liquidated, and the wind-down raises their borrow rates.
 - A V4 Spoke counts only collateral and debt, as V3 does: a wallet that only supplies assets that are not collateral
   shows no position there. The dashboard shows no supply APY for V4 reserves.
 - Polling, not real time: a fast price move can cross a health factor of 1.0 between two checks. Alerts reduce risk;

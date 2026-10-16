@@ -58,10 +58,10 @@ const readHealthFactor = async (client: Client, market: AaveMarket | AaveV4Spoke
 };
 
 /**
- * Reads a wallet's Aave health factor in one market, the chain's V3 Pool or one of its V4 Spokes: the exact value for
+ * Reads a wallet's Aave health factor in one market, one of the chain's V3 Pools or V4 Spokes: the exact value for
  * threshold comparisons and a 2-decimal, rounded-down string ("∞" without debt) for the alert text. `chainName` is
- * the market's name in alerts ("Ethereum", "Ethereum (V4 Lido)"). Resolves null when the app does not read that
- * market or the read fails.
+ * the market's name in alerts ("Polygon", "Ethereum (Core)", "Ethereum (V4 Lido)"). Resolves null when the app does
+ * not read that market or the read fails.
  */
 export async function getHealthFactorForWallet(
   walletAddress: Address,

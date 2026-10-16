@@ -1,5 +1,6 @@
 import {
   type Address,
+  type Chain,
   type Hex,
   HttpRequestError,
   decodeFunctionData,
@@ -10,6 +11,7 @@ import {
 import * as chains from "viem/chains";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AAVE_V4_SPOKES, type AaveV4Spoke, ERC20_ABI, arc } from "~~/config/aaveConfig";
+import type { AaveClient } from "~~/services/aave/client";
 import type { NetworkPosition, TokenPosition } from "~~/services/aave/positions";
 import { fetchAaveV4Positions, hasOpenV4Position, toV4NetworkPosition } from "~~/services/aave/v4Positions";
 
@@ -268,6 +270,28 @@ describe("fetchAaveV4Positions", () => {
         batch: { multicall: true },
       })),
     );
+  });
+
+  it("reads through the clients it is given and creates none of its own", async () => {
+    // fetchAavePositions passes the cache its V3 reads use, so a chain's Pools and Spokes share one client.
+    const clientFor = vi.fn(
+      (chain: Chain) =>
+        ({
+          readContract: (request: ReadCall) => read(chain.id, request),
+          call: (request: RawCall) => rawCall(chain.id, request),
+        }) as unknown as AaveClient,
+    );
+    givenLidoPosition();
+
+    const positions = await fetchAaveV4Positions(USER, clientFor);
+
+    expect(positions.find(({ marketId }) => marketId === LIDO_ID)).toEqual({
+      ...LIDO_SUMMARY,
+      tokens: [WSTETH_TOKEN, WETH_TOKEN],
+    });
+    expect(network.clients).toEqual([]);
+    // Asked once per Spoke, with the Spoke's chain; the cache answers a chain's Spokes with one client.
+    expect(clientFor.mock.calls.map(([chain]) => chain.id)).toEqual(AAVE_V4_SPOKES.map(({ chain }) => chain.id));
   });
 
   it("reads every Spoke's account data for the user on the Spoke's chain", async () => {

@@ -8,6 +8,7 @@ import {
   ARBITRUM_EMPTY_POSITION,
   BASE_SUMMARY_ONLY_POSITION,
   ETHEREUM_POSITION,
+  ETHEREUM_PRIME_POSITION,
   ETHEREUM_V4_LIDO_POSITION,
   ETHEREUM_V4_MAIN_EMPTY_POSITION,
   POLYGON_COLLATERAL_ONLY_POSITION,
@@ -76,8 +77,7 @@ const fetchMock = vi.mocked(fetchAavePositions);
 
 const NO_POSITIONS_MESSAGE = "No active Aave positions detected in supported markets.";
 const SELECT_PROMPT = "Select a market to view its Aave position.";
-const NO_V4_POSITIONS_MESSAGE =
-  "Aave V4: no position in any of its 20 Spokes on Ethereum, Avalanche, Arc and Base. A Spoke is listed here once this wallet has collateral or debt in it.";
+const OTHER_MARKETS_HINT = "Markets Tokenping checked where this wallet has no position and no alert.";
 // The bell next to a market with a saved alert is decorative; these words carry it for screen readers.
 const ALERT_SET = "Alert set";
 
@@ -86,16 +86,21 @@ const markup = (container: HTMLElement) => container.innerHTML.replace(/></g, ">
 
 const networksPanel = () => within(screen.getByRole("region", { name: "Markets" }));
 const networkRow = (marketName: string) => networksPanel().getByText(marketName).closest("button")!;
+// The folded markets are a native <details> (role group) inside the markets panel; null when every market is active.
+const otherMarkets = () => networksPanel().queryByRole("group") as HTMLDetailsElement | null;
 const refreshButton = () => screen.getByRole("button", { name: /^(Refresh positions|Refreshing)$/ });
 // A loading button keeps its focus and colour: aria-busy, not disabled.
 const isRefreshing = () => refreshButton().getAttribute("aria-busy") === "true";
 
-/** The markets the list shows: every V3 one, and a V4 Spoke with a position or a loaded alert. */
-const listed = (positions: NetworkPosition[]) =>
-  positions.filter(
-    p =>
-      p.version === 3 || p.hasPosition || (notifications.isLoaded && notifications.configuredMarkets.includes(p.key)),
-  );
+/** Whether the list shows a market open: it has a position, or a saved alert once the alerts are loaded. */
+const isActive = (p: NetworkPosition) =>
+  p.hasPosition || (notifications.isLoaded && notifications.configuredMarkets.includes(p.key));
+
+/** The markets in list order: the active ones open first, then the folded rest, each side in fetch order. */
+const listed = (positions: NetworkPosition[]) => [
+  ...positions.filter(isActive),
+  ...positions.filter(p => !isActive(p)),
+];
 
 // Resolves once the fetch has settled and the default market's details (or the selection prompt) are on screen.
 const renderLoaded = async (positions: NetworkPosition[]) => {
@@ -220,10 +225,11 @@ describe("AavePositions", () => {
     expect(screen.getByLabelText<HTMLInputElement>("Notification draft").value).toBe("Ethereum draft");
   });
 
-  it("tells the user when no network has an active position", async () => {
+  it("tells the user when no network has an active position, with every market folded but open", async () => {
     const { container } = await renderLoaded([ARBITRUM_EMPTY_POSITION]);
 
     expect(screen.getByText(NO_POSITIONS_MESSAGE)).toBeDefined();
+    expect(otherMarkets()?.open).toBe(true);
     expect(markup(container)).toMatchSnapshot();
   });
 
@@ -232,6 +238,8 @@ describe("AavePositions", () => {
 
     expect(screen.getByText(SELECT_PROMPT)).toBeDefined();
     expect(screen.getByText(NO_POSITIONS_MESSAGE)).toBeDefined();
+    expect(otherMarkets()).toBeNull();
+    expect(networksPanel().queryAllByRole("listitem")).toHaveLength(0);
   });
 
   it("renders the error box instead of the empty message on failure", async () => {
@@ -272,7 +280,8 @@ describe("AavePositions", () => {
     expect(screen.getByRole("alert").textContent).toContain("Refresh failed");
     expect(screen.getByText("rpc down")).toBeDefined();
     expect(screen.getByText("Total supplied")).toBeDefined();
-    expect(networkRow("Arbitrum")).toBeDefined();
+    expect(networkRow("Ethereum")).toBeDefined();
+    expect(otherMarkets()?.contains(networkRow("Arbitrum"))).toBe(true);
     expect(screen.getByRole("heading", { level: 3, name: "Ethereum" })).toBeDefined();
   });
 
@@ -320,57 +329,65 @@ describe("AavePositions with Aave V4 Spokes", () => {
     notifications.configuredMarkets = [];
   });
 
-  it("leaves an empty Spoke without an alert out of the list and says no V4 position was found", async () => {
+  it("folds an empty Spoke without an alert among the other markets, like an empty V3 market", async () => {
     await renderLoaded([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION, ETHEREUM_V4_MAIN_EMPTY_POSITION]);
 
-    expect(networksPanel().queryByText(V4_MAIN)).toBeNull();
-    expect(networksPanel().getAllByRole("listitem")).toHaveLength(2);
-    expect(networksPanel().getByText(NO_V4_POSITIONS_MESSAGE)).toBeDefined();
+    expect(otherMarkets()?.open).toBe(false);
+    expect(
+      within(otherMarkets()!)
+        .getAllByRole("listitem")
+        .map(item => item.textContent),
+    ).toEqual([expect.stringContaining("Arbitrum"), expect.stringContaining(V4_MAIN)]);
+    expect(otherMarkets()?.contains(networkRow("Ethereum"))).toBe(false);
+    expect(networksPanel().getByText("Other markets (2)")).toBeDefined();
     expect(networksPanel().getByText("1 active")).toBeDefined();
   });
 
-  it("lists a Spoke with a position on its own row, beside the same chain's V3 market, without the V4 note", async () => {
+  it("lists a Spoke with a position open, beside the same chain's V3 market", async () => {
     await renderLoaded([ETHEREUM_POSITION, ETHEREUM_V4_MAIN_EMPTY_POSITION, ETHEREUM_V4_LIDO_POSITION]);
 
-    expect(networksPanel().getByText("Ethereum")).toBeDefined();
-    expect(networkRow(LIDO)).toBeDefined();
-    expect(networksPanel().queryByText(V4_MAIN)).toBeNull();
+    expect(otherMarkets()?.contains(networkRow("Ethereum"))).toBe(false);
+    expect(otherMarkets()?.contains(networkRow(LIDO))).toBe(false);
+    expect(otherMarkets()?.contains(networkRow(V4_MAIN))).toBe(true);
+    expect(networksPanel().getByText("Other markets (1)")).toBeDefined();
     expect(networksPanel().getByText("2 active")).toBeDefined();
-    expect(screen.queryByText(NO_V4_POSITIONS_MESSAGE)).toBeNull();
   });
 
-  it("lists an empty Spoke that has an alert, with its bell, once the alerts are loaded", async () => {
+  it("lists an empty Spoke that has an alert open, with its bell, once the alerts are loaded", async () => {
     notifications.configuredMarkets = [ETHEREUM_V4_MAIN_EMPTY_POSITION.key];
     await renderLoaded([ETHEREUM_POSITION, ETHEREUM_V4_MAIN_EMPTY_POSITION]);
 
     expect(within(networkRow(V4_MAIN)).getByText(ALERT_SET)).toBeDefined();
     expect(within(networkRow(V4_MAIN)).getByText("No position")).toBeDefined();
     expect(within(networkRow("Ethereum")).queryByText(ALERT_SET)).toBeNull();
-    expect(screen.queryByText(NO_V4_POSITIONS_MESSAGE)).toBeNull();
+    expect(otherMarkets()).toBeNull();
+    expect(networksPanel().getByText("1 active")).toBeDefined();
   });
 
-  it("does not list an empty Spoke for its alert before the alerts are loaded", async () => {
+  it("folds an empty Spoke despite its alert before the alerts are loaded", async () => {
     notifications.configuredMarkets = [ETHEREUM_V4_MAIN_EMPTY_POSITION.key];
     notifications.isLoaded = false;
     await renderLoaded([ETHEREUM_POSITION, ETHEREUM_V4_MAIN_EMPTY_POSITION]);
 
-    expect(networksPanel().queryByText(V4_MAIN)).toBeNull();
-    expect(networksPanel().getByText(NO_V4_POSITIONS_MESSAGE)).toBeDefined();
+    expect(otherMarkets()?.contains(networkRow(V4_MAIN))).toBe(true);
+    expect(networksPanel().queryByText(ALERT_SET)).toBeNull();
   });
 
-  it("shows no V4 note when no Spoke was read, or while positions load", async () => {
-    await renderLoaded([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION]);
-    expect(screen.queryByText(NO_V4_POSITIONS_MESSAGE)).toBeNull();
+  it("lists a second V3 market on one chain by its market name, keyed by its pool", async () => {
+    await renderLoaded([ETHEREUM_POSITION, ETHEREUM_PRIME_POSITION, ETHEREUM_V4_LIDO_POSITION]);
 
-    const refresh = deferred<NetworkPosition[]>();
-    fetchMock.mockReturnValueOnce(refresh.promise);
-    fireEvent.click(refreshButton());
-    await waitFor(() => expect(isRefreshing()).toBe(true));
-    expect(screen.queryByText(NO_V4_POSITIONS_MESSAGE)).toBeNull();
+    expect(networksPanel().getByText("3 active")).toBeDefined();
+    expect(otherMarkets()).toBeNull();
 
-    refresh.resolve([ETHEREUM_POSITION, ETHEREUM_V4_MAIN_EMPTY_POSITION]);
-    await waitFor(() => expect(isRefreshing()).toBe(false));
-    expect(networksPanel().getByText(NO_V4_POSITIONS_MESSAGE)).toBeDefined();
+    fireEvent.click(networkRow(ETHEREUM_PRIME_POSITION.marketName));
+
+    expect(screen.getByRole("heading", { level: 3, name: ETHEREUM_PRIME_POSITION.marketName })).toBeDefined();
+    expect(screen.getByText("Aave V3 market")).toBeDefined();
+    expect(configStub().dataset).toMatchObject({
+      chainId: "1",
+      market: ETHEREUM_PRIME_POSITION.marketId,
+      chainName: ETHEREUM_PRIME_POSITION.marketName,
+    });
   });
 
   it("shows the selected Spoke by its market name, as a V4 Spoke, with no Supply APY column", async () => {
@@ -421,6 +438,148 @@ describe("AavePositions with Aave V4 Spokes", () => {
   });
 });
 
+describe("AavePositions folding the markets without a position or an alert", () => {
+  const summary = () => networksPanel().getByText(/^Other markets \(\d+\)$/);
+
+  beforeEach(() => {
+    account.address = USER;
+    fetchMock.mockReset();
+    notifications.isLoaded = true;
+    notifications.configuredMarkets = [];
+  });
+
+  it("shows the active markets open and the rest, in their order, under a summary with their count", async () => {
+    await renderLoaded([
+      ARBITRUM_EMPTY_POSITION,
+      ETHEREUM_POSITION,
+      ETHEREUM_V4_MAIN_EMPTY_POSITION,
+      POLYGON_COLLATERAL_ONLY_POSITION,
+    ]);
+
+    const rows = networksPanel()
+      .getAllByRole("listitem")
+      .map(item => within(item).getByRole("button").textContent);
+    expect(rows).toEqual([
+      expect.stringContaining("Ethereum"),
+      expect.stringContaining("Polygon"),
+      expect.stringContaining("Arbitrum"),
+      expect.stringContaining("Ethereum (V4 Main)"),
+    ]);
+    expect(rows[0]).not.toContain("V4");
+    const folded = otherMarkets()!;
+    expect(folded.tagName).toBe("DETAILS");
+    expect(folded.contains(networkRow("Ethereum"))).toBe(false);
+    expect(folded.contains(networkRow("Polygon"))).toBe(false);
+    expect(folded.contains(networkRow("Arbitrum"))).toBe(true);
+    expect(folded.contains(networkRow("Ethereum (V4 Main)"))).toBe(true);
+    expect(summary().tagName).toBe("SUMMARY");
+    expect(summary().textContent).toBe("Other markets (2)");
+    expect(within(folded).getByText(OTHER_MARKETS_HINT)).toBeDefined();
+    expect(screen.queryByText(NO_POSITIONS_MESSAGE)).toBeNull();
+  });
+
+  it("keeps the group folded while a market is active", async () => {
+    await renderLoaded([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION]);
+
+    expect(otherMarkets()?.open).toBe(false);
+    expect(otherMarkets()?.hasAttribute("open")).toBe(false);
+  });
+
+  it("opens the group when no market is active, so the list is never blank", async () => {
+    await renderLoaded([ARBITRUM_EMPTY_POSITION, ETHEREUM_V4_MAIN_EMPTY_POSITION]);
+
+    expect(otherMarkets()?.open).toBe(true);
+    expect(summary().textContent).toBe("Other markets (2)");
+    expect(screen.getByText(NO_POSITIONS_MESSAGE)).toBeDefined();
+    expect(networksPanel().getByText("0 active")).toBeDefined();
+  });
+
+  it("renders no group, and no hint, when every market is active", async () => {
+    notifications.configuredMarkets = [ARBITRUM_EMPTY_POSITION.key];
+    await renderLoaded([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION]);
+
+    expect(otherMarkets()).toBeNull();
+    expect(screen.queryByText(/^Other markets/)).toBeNull();
+    expect(screen.queryByText(OTHER_MARKETS_HINT)).toBeNull();
+  });
+
+  it("treats a V3 market with only an alert as active, with its bell, once the alerts are loaded", async () => {
+    notifications.configuredMarkets = [ARBITRUM_EMPTY_POSITION.key];
+    await renderLoaded([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION, POLYGON_COLLATERAL_ONLY_POSITION]);
+
+    expect(otherMarkets()).toBeNull();
+    expect(within(networkRow("Arbitrum")).getByText(ALERT_SET)).toBeDefined();
+    expect(within(networkRow("Arbitrum")).getByText("No position")).toBeDefined();
+    // The count above the list is of positions, not of open rows.
+    expect(networksPanel().getByText("2 active")).toBeDefined();
+  });
+
+  it("selects an alert-only market over a folded one listed before it", async () => {
+    notifications.configuredMarkets = [ETHEREUM_V4_MAIN_EMPTY_POSITION.key];
+    fetchMock.mockResolvedValueOnce([ARBITRUM_EMPTY_POSITION, ETHEREUM_V4_MAIN_EMPTY_POSITION]);
+    renderWithProviders(<AavePositions />);
+
+    expect(await screen.findByRole("heading", { level: 3, name: "Ethereum (V4 Main)" })).toBeDefined();
+    expect(networkRow("Ethereum (V4 Main)").getAttribute("aria-current")).toBe("true");
+    expect(networkRow("Arbitrum").hasAttribute("aria-current")).toBe(false);
+    expect(otherMarkets()?.contains(networkRow("Arbitrum"))).toBe(true);
+  });
+
+  it("lets the user pick a folded market, which stays folded in the list but is shown in the details", async () => {
+    await renderLoaded([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION]);
+    expect(screen.getByRole("heading", { level: 3, name: "Ethereum" })).toBeDefined();
+
+    fireEvent.click(networkRow("Arbitrum"));
+
+    expect(screen.getByRole("heading", { level: 3, name: "Arbitrum" })).toBeDefined();
+    expect(screen.getByText("No active position on Arbitrum")).toBeDefined();
+    expect(networkRow("Arbitrum").getAttribute("aria-current")).toBe("true");
+    expect(networkRow("Ethereum").hasAttribute("aria-current")).toBe(false);
+    expect(otherMarkets()?.contains(networkRow("Arbitrum"))).toBe(true);
+    expect(screen.getByLabelText("Notification draft").getAttribute("data-chain-id")).toBe("42161");
+  });
+
+  it("moves a market out of the group once its alert is loaded, keeping the selection", async () => {
+    notifications.configuredMarkets = [ARBITRUM_EMPTY_POSITION.key];
+    notifications.isLoaded = false;
+    const view = await renderLoaded([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION]);
+    expect(otherMarkets()?.contains(networkRow("Arbitrum"))).toBe(true);
+
+    notifications.isLoaded = true;
+    view.rerender(<AavePositions />);
+
+    expect(otherMarkets()).toBeNull();
+    expect(within(networkRow("Arbitrum")).getByText(ALERT_SET)).toBeDefined();
+    expect(networkRow("Ethereum").getAttribute("aria-current")).toBe("true");
+  });
+
+  it("hides the group while positions refresh and folds it again once they are back", async () => {
+    await renderLoaded([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION]);
+    expect(otherMarkets()).not.toBeNull();
+
+    const refresh = deferred<NetworkPosition[]>();
+    fetchMock.mockReturnValueOnce(refresh.promise);
+    fireEvent.click(refreshButton());
+    await waitFor(() => expect(isRefreshing()).toBe(true));
+    expect(otherMarkets()).toBeNull();
+    expect(screen.queryByText(OTHER_MARKETS_HINT)).toBeNull();
+
+    refresh.resolve([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION, ETHEREUM_V4_MAIN_EMPTY_POSITION]);
+    await waitFor(() => expect(isRefreshing()).toBe(false));
+    expect(otherMarkets()?.open).toBe(false);
+    expect(summary().textContent).toBe("Other markets (2)");
+  });
+
+  it("does not show the group under a failed load", async () => {
+    fetchMock.mockRejectedValueOnce(new Error("Failed to fetch Aave positions"));
+    renderWithProviders(<AavePositions />);
+
+    expect(await screen.findByRole("button", { name: "Try again" })).toBeDefined();
+    expect(screen.queryByRole("group")).toBeNull();
+    expect(screen.queryByText(OTHER_MARKETS_HINT)).toBeNull();
+  });
+});
+
 describe("AavePositions in Czech", () => {
   const renderCzech = () =>
     renderWithProviders(
@@ -459,6 +618,14 @@ describe("AavePositions in Czech", () => {
     // The amounts keep the app's number format; only the words change.
     expect(networks.getByText("vloženo $12.35K,")).toBeDefined();
     expect(networks.getByText("vypůjčeno $2.50K")).toBeDefined();
+    // Arbitrum, with neither a position nor an alert, is the one folded market.
+    const folded = networks.getByRole("group");
+    expect(within(folded).getByText("Další trhy (1)").tagName).toBe("SUMMARY");
+    expect(
+      within(folded).getByText("Trhy, které Tokenping zkontroloval a kde tato peněženka nemá pozici ani upozornění."),
+    ).toBeDefined();
+    expect(folded.contains(networks.getByText("Arbitrum"))).toBe(true);
+    expect(folded.contains(networks.getByText("Polygon"))).toBe(false);
 
     const details = within(screen.getByRole("region", { name: "Vybraný trh" }));
     expect(details.getByRole("heading", { level: 4, name: "Vloženo" })).toBeDefined();
@@ -497,16 +664,17 @@ describe("AavePositions in Czech", () => {
     expect(screen.getByText("Na síti Arbitrum nemáte žádnou aktivní pozici")).toBeDefined();
   });
 
-  it("explains in Czech that no V4 Spoke holds a position, and names a selected Spoke", async () => {
+  it("folds an empty Spoke under the Czech summary, and names a selected Spoke", async () => {
     fetchMock.mockResolvedValueOnce([ETHEREUM_POSITION, ETHEREUM_V4_MAIN_EMPTY_POSITION]);
     const view = renderCzech();
     await screen.findByRole("heading", { level: 3, name: ETHEREUM_POSITION.marketName });
 
-    expect(
-      screen.getByText(
-        "Aave V4: v žádném z 20 trhů (Spoke) na sítích Ethereum, Avalanche, Arc a Base nemáte pozici. Trh se tu zobrazí, jakmile v něm tato peněženka bude mít kolaterál nebo dluh.",
-      ),
-    ).toBeDefined();
+    const networks = within(screen.getByRole("region", { name: "Trhy" }));
+    expect(networks.getByText("Další trhy (1)")).toBeDefined();
+    expect(networks.getByRole("group").contains(networks.getByText(ETHEREUM_V4_MAIN_EMPTY_POSITION.marketName))).toBe(
+      true,
+    );
+    expect(screen.queryByText(/Other markets/)).toBeNull();
 
     fetchMock.mockResolvedValueOnce([ETHEREUM_POSITION, ETHEREUM_V4_LIDO_POSITION]);
     fireEvent.click(czechRefreshButton());
@@ -517,8 +685,21 @@ describe("AavePositions in Czech", () => {
     expect(details.getByRole("heading", { level: 3, name: ETHEREUM_V4_LIDO_POSITION.marketName })).toBeDefined();
     expect(details.getByText("Spoke Aave V4")).toBeDefined();
     expect(details.queryByText("APY vkladu")).toBeNull();
-    expect(screen.queryByText(/^Aave V4: v žádném/)).toBeNull();
+    expect(screen.queryByRole("group")).toBeNull();
+    expect(screen.queryByText(/^Další trhy/)).toBeNull();
     expect(view.container.textContent).not.toMatch(new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`));
+  });
+
+  it("counts the folded markets with Czech plurals and opens them when nothing is active", async () => {
+    fetchMock.mockResolvedValueOnce([ARBITRUM_EMPTY_POSITION, ETHEREUM_V4_MAIN_EMPTY_POSITION]);
+    renderCzech();
+    await screen.findByRole("heading", { level: 3, name: ARBITRUM_EMPTY_POSITION.chainName });
+
+    const networks = within(screen.getByRole("region", { name: "Trhy" }));
+    expect(networks.getByText("Další trhy (2)").tagName).toBe("SUMMARY");
+    expect((networks.getByRole("group") as HTMLDetailsElement).open).toBe(true);
+    expect(networks.getByText("0 aktivních")).toBeDefined();
+    expect(screen.getByText("Na podporovaných trzích jsme nenašli žádné aktivní pozice na Aave.")).toBeDefined();
   });
 
   it("explains a failed load in Czech, with the Czech fallback message", async () => {

@@ -5,7 +5,7 @@ import {
   getHomeDescription,
   getHomeHeadline,
   getHomeTitle,
-  getNetworkBadgeNames,
+  getNetworkBadges,
   getNetworkNames,
   getPaywallSourcifyUrl,
   getPricingCtaLabel,
@@ -70,37 +70,48 @@ describe("home copy per channel set", () => {
     withTelegram(false);
 
     expect(getHomeDescription()).toBe(
-      "Signal or email alerts when your Aave V3 or V4 health factor drops below your threshold on 8 networks. Checked every 5 minutes. No approvals on Aave.",
+      "Signal or email alerts when your Aave V3 or V4 health factor drops below your threshold on 22 networks. Checked every 5 minutes. No approvals on Aave.",
     );
   });
 });
 
+const V3_NETWORKS = [
+  "Polygon",
+  "Arbitrum",
+  "Optimism",
+  "Base",
+  "Avalanche",
+  "Gnosis",
+  "Metis",
+  "BNB Chain",
+  "Scroll",
+  "ZKsync",
+  "Linea",
+  "Sonic",
+  "Celo",
+  "Soneium",
+  "Plasma",
+  "Ink",
+  "MegaETH",
+  "Mantle",
+  "X Layer",
+  "Monad",
+];
+
 describe("getNetworkNames", () => {
-  it("lists the 7 Aave V3 networks in dashboard order and marks Ethereum as the Core market only", () => {
-    expect(getNetworkNames()).toEqual([
-      "Ethereum (Core market)",
-      "Polygon",
-      "Arbitrum",
-      "Optimism",
-      "Base",
-      "Avalanche",
-      "Gnosis",
-    ]);
+  it("lists the 21 Aave V3 networks in dashboard order and names Ethereum's four markets", () => {
+    expect(getNetworkNames()).toEqual(["Ethereum (Core, Prime, EtherFi and Horizon markets)", ...V3_NETWORKS]);
   });
 });
 
 describe("network badges and the V4 list", () => {
-  it("badges every network Tokenping reads, V3 first, then Arc, which only has Aave V4", () => {
-    expect(getNetworkBadgeNames()).toEqual([
-      "Ethereum",
-      "Polygon",
-      "Arbitrum",
-      "Optimism",
-      "Base",
-      "Avalanche",
-      "Gnosis",
-      "Arc",
-    ]);
+  it("badges every network Tokenping reads with its chain id, V3 first, then Arc, which only has Aave V4", () => {
+    const badges = getNetworkBadges();
+
+    expect(badges.map(({ name }) => name)).toEqual(["Ethereum", ...V3_NETWORKS, "Arc"]);
+    expect(badges).toHaveLength(22);
+    expect(badges[0]).toEqual({ chainId: 1, name: "Ethereum" });
+    expect(badges.at(-1)).toEqual({ chainId: 5042, name: "Arc" });
   });
 
   it("names the Aave V4 networks in running text, in either language", () => {
@@ -178,8 +189,8 @@ describe("Czech home copy", () => {
     expect(getPricingCtaLabel(null, "cs")).toBe("Nastavit upozornění");
   });
 
-  it("marks the Core market in Czech", () => {
-    expect(getNetworkNames("cs")[0]).toBe("Ethereum (trh Core)");
+  it("names Ethereum's markets in Czech", () => {
+    expect(getNetworkNames("cs")[0]).toBe("Ethereum (trhy Core, Prime, EtherFi a Horizon)");
   });
 
   it("points the JSON-LD at the Czech home and dashboard", () => {

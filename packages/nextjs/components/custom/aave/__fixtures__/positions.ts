@@ -151,6 +151,22 @@ export const AVALANCHE_DEBT_ONLY_POSITION: NetworkPosition = {
   hasPosition: true,
 };
 
+// A second V3 market on Ethereum: keyed by its Pool address like a V4 Spoke, named after Aave's market.
+export const ETHEREUM_PRIME_POSITION: NetworkPosition = {
+  key: "1:0x4e033931ad43597d96d6bcc25c280717730b58b1",
+  version: 3,
+  marketId: "0x4e033931ad43597d96d6bcc25c280717730b58b1",
+  marketName: "Ethereum (Prime)",
+  chainId: 1,
+  chainName: "Ethereum",
+  totalCollateralUSD: "2000.00",
+  totalDebtUSD: "500.00",
+  healthFactor: "3.10",
+  netWorthUSD: "1500.00",
+  tokens: [SUPPLIED_WETH_NOT_COLLATERAL, VARIABLE_DEBT_DAI],
+  hasPosition: true,
+};
+
 // An Aave V4 Spoke: no supply APY, debt as variable only.
 export const ETHEREUM_V4_LIDO_POSITION: NetworkPosition = {
   key: "1:0xe1900480ac69f0b296841cd01cc37546d92f35cd",

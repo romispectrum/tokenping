@@ -19,8 +19,8 @@ type HomeMessages = {
   headline: (channels: string) => string;
   /** The meta description; `short` is the fallback once the full one passes 155 characters. */
   description: (input: { channels: string; networks: number; minutes: number; short: boolean }) => string;
-  /** The /aave line of the market's network names: "Ethereum (Core market)". */
-  coreMarketNetwork: (name: string) => string;
+  /** "Ethereum (Core, Prime, EtherFi and Horizon markets)": a network with several V3 markets, `markets` joined. */
+  networkMarkets: (name: string, markets: string) => string;
   /** A channel as a badge: "Email" / "E-mail". */
   channelBadge: (name: string) => string;
   pricingCta: (plan: AlertPlan | null) => string;
@@ -32,8 +32,8 @@ type HomeMessages = {
   seeHowItWorks: string;
   networksLabel: string;
   channelsLabel: string;
-  /** Under the network badges: V3's networks and Ethereum market, then V4's Spokes and their networks. */
-  coverageNote: (input: { v3Networks: number; spokes: number; v4NetworkList: string }) => string;
+  /** Under the network badges: V3's networks and markets, then V4's Spokes and networks, counts only. */
+  coverageNote: (input: { v3Networks: number; v3Markets: number; spokes: number; v4Networks: number }) => string;
   exampleAlertLabel: string;
   exampleAlertCaption: (subject: string) => string;
 
@@ -53,7 +53,7 @@ type HomeMessages = {
   steps: (input: {
     plan: AlertPlan | null;
     paymentChain: string | undefined;
-    /** The Aave V3 networks; V4 Spokes are listed per wallet. */
+    /** The networks with an Aave V3 market. */
     v3Networks: number;
     minutes: number;
     channels: string;
@@ -75,8 +75,9 @@ type HomeMessages = {
     paymentChain: string | undefined;
     hasTelegram: boolean;
     minutes: number;
-    /** The Aave V3 networks in running text, Ethereum marked as the Core market. */
+    /** The Aave V3 networks in running text, a network with several markets naming them. */
     networkList: string;
+    v3Markets: number;
     /** The networks Aave V4 runs on, in running text. */
     v4NetworkList: string;
     spokes: number;
@@ -96,6 +97,7 @@ type HomeMessages = {
   limitsTitle: string;
   limits: (input: {
     v3Networks: number;
+    v3Markets: number;
     v4NetworkList: string;
     minutes: number;
     paymentChain: string | undefined;
@@ -127,6 +129,14 @@ const csEveryMinutes = (minutes: number) =>
 
 const csPrice = (plan: AlertPlan) => `${formatDecimal("cs", plan.priceLabel)} ${csForDays(plan.days)}`;
 
+/** "na 21 sítích", "na 1 síti". */
+const csOnNetworks = (networks: number) =>
+  plural("cs", networks, { one: `na ${networks} síti`, other: `na ${networks} sítích` });
+
+/** "24 trhů", "2 trhy", "1 trh". */
+const csMarkets = (markets: number) =>
+  plural("cs", markets, { one: `${markets} trh`, few: `${markets} trhy`, other: `${markets} trhů` });
+
 /** "na síti Arbitrum One", or the payment network unnamed. */
 const csOnChain = (chainName: string | undefined) => (chainName ? `na síti ${chainName}` : "na platební síti");
 
@@ -137,7 +147,7 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
       short
         ? `${channels} alerts when your Aave V3 or V4 health factor is below your threshold, on ${networks} networks, every ${minutes} minutes. No approvals on Aave.`
         : `${channels} alerts when your Aave V3 or V4 health factor drops below your threshold on ${networks} networks. Checked every ${minutes} minutes. No approvals on Aave.`,
-    coreMarketNetwork: name => `${name} (Core market)`,
+    networkMarkets: (name, markets) => `${name} (${markets} markets)`,
     channelBadge: capitalize,
     pricingCta: plan => (plan ? `Set up alerts: ${plan.priceLabel} for ${enDays(plan.days)}` : "Set up alerts"),
     offerDescription: ({ days, currency }) =>
@@ -149,8 +159,8 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
     seeHowItWorks: "See how it works",
     networksLabel: "Networks:",
     channelsLabel: "Alerts by:",
-    coverageNote: ({ v3Networks, spokes, v4NetworkList }) =>
-      `Aave V3 on ${v3Networks} networks, on Ethereum the Core market only. Aave V4 in every Spoke on ${v4NetworkList}, ${spokes} in all.`,
+    coverageNote: ({ v3Networks, v3Markets, spokes, v4Networks }) =>
+      `Aave V3 on ${v3Networks} networks (${v3Markets} markets). Aave V4: ${spokes} Spokes on ${v4Networks} networks.`,
     exampleAlertLabel: "What an alert says",
     exampleAlertCaption: subject =>
       `Example only: the network, numbers and time are made up. Emails arrive with the subject "${subject}".`,
@@ -187,7 +197,7 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
       return [
         {
           title: "Connect the wallet you borrow with (read-only, free)",
-          body: `The dashboard shows that wallet's collateral, debt and health factor on Aave V3 on all ${v3Networks} networks, and in every Aave V4 Spoke where the wallet has collateral or debt. Tokenping watches the wallet you connect; you can't add another address.`,
+          body: `The dashboard shows that wallet's collateral, debt and health factor in every Aave V3 market on all ${v3Networks} networks and in every Aave V4 Spoke. Tokenping watches the wallet you connect; you can't add another address.`,
         },
         {
           title: plan
@@ -197,7 +207,7 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
         },
         {
           title: `Pick a threshold and your channels for each market (${threshold.min} to ${threshold.max}, default ${threshold.default})`,
-          body: `Each Aave V3 network and each Aave V4 Spoke is a separate alert, because V4 keeps a separate position with its own health factor in every Spoke. Send it to ${channels}, or to more than one.`,
+          body: `Each Aave V3 market and each Aave V4 Spoke is a separate alert, because a position and its health factor belong to one market: Ethereum has several V3 markets, and V4 keeps a separate position in every Spoke. Send it to ${channels}, or to more than one.`,
         },
         {
           title: `We check every ${minutes} minutes and message you while you're below it`,
@@ -222,7 +232,17 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
     pricingFootnote: paymentChain => `Paid in USDC${paymentChain ? ` on ${paymentChain}` : ""}. No auto-renew.`,
 
     questionsTitle: "Questions to ask before you connect a wallet",
-    questions: ({ alertPrice, paymentChain, hasTelegram, minutes, networkList, v4NetworkList, spokes, links }) => {
+    questions: ({
+      alertPrice,
+      paymentChain,
+      hasTelegram,
+      minutes,
+      networkList,
+      v3Markets,
+      v4NetworkList,
+      spokes,
+      links,
+    }) => {
       const chainName = paymentChain ?? "the payment network";
       return [
         {
@@ -240,7 +260,7 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
         {
           question: "What do you store?",
           answer: rich(
-            "Your wallet address, the networks, Aave V4 Spokes and thresholds you set, the channels you picked, and your email address and/or Signal username",
+            "Your wallet address, the markets and thresholds you set, the channels you picked, and your email address and/or Signal username",
             hasTelegram ? ", plus your Telegram chat ID and username if you link Telegram" : "",
             '. If you answer the optional "How did you hear about Tokenping?" question, that answer too. Tokenping keeps no health factor history and no log of sent alerts, and this site runs no analytics. To read your positions, your wallet address is sent to RPC providers. Payments are public on ',
             chainName,
@@ -272,7 +292,7 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
         {
           question: "Is my position supported?",
           answer: rich(
-            `Aave V3 on ${networkList}. Aave V4 in every Spoke on ${v4NetworkList}: ${spokes} Spokes, taken from Aave's V4 API on 16 October 2026. Not supported: the other Aave V3 markets on Ethereum (Prime/Lido, EtherFi, Horizon), other Aave networks and other protocols. You get one alert per V3 network and one per V4 Spoke, for the wallet you connect. The dashboard lists a V4 Spoke once the wallet has collateral or debt in it, or an alert saved for it.`,
+            `Aave V3 on ${networkList}: ${v3Markets} markets, taken from the Aave Address Book on 16 October 2026. Aave V4 in every Spoke on ${v4NetworkList}: ${spokes} Spokes, taken from Aave's V4 API on 16 October 2026. Aave governance is winding down the V3 markets on Scroll, ZKsync, Metis, Soneium and Sonic; Tokenping still watches them, because open positions there can still be liquidated and the wind-down raises their borrow rates on purpose. Not supported: Aave V3 on Harmony, frozen since 2022 with price feeds that no longer move, so a health factor there never changes; and other protocols. You get one alert per V3 market and one per V4 Spoke, for the wallet you connect. The dashboard lists the markets where the wallet has a position or a saved alert and folds the rest under "Other markets".`,
           ),
         },
         {
@@ -315,12 +335,12 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
     },
 
     limitsTitle: "Limits, stated plainly",
-    limits: ({ v3Networks, v4NetworkList, minutes, paymentChain }) => [
-      `Aave V3 on ${v3Networks} networks, and on Ethereum only the Core market. Aave V4 in every Spoke on ${v4NetworkList}. No other Aave markets or networks, and no other protocols.`,
-      "The dashboard lists an Aave V4 Spoke only when the wallet has a position or a saved alert in it, and shows no supply APY for V4 positions.",
+    limits: ({ v3Networks, v3Markets, v4NetworkList, minutes, paymentChain }) => [
+      `Every Aave V3 market on ${v3Networks} networks (${v3Markets} markets) and every Aave V4 Spoke on ${v4NetworkList}. No Aave V3 on Harmony, and no other protocols.`,
+      'The dashboard lists the markets where the wallet has a position or a saved alert and folds the rest under "Other markets". It shows no supply APY for V4 positions.',
       `Checks run every ${minutes} minutes, not in real time. A fast drop can liquidate a position between two checks.`,
       "While you're below your threshold, every check sends another message on each channel. There is no snooze, digest or recovery message.",
-      "One threshold per V3 network or V4 Spoke, for the connected wallet only. No watch-only addresses, price alerts or portfolio-wide alerts.",
+      "One threshold per V3 market or V4 Spoke, for the connected wallet only. No watch-only addresses, price alerts or portfolio-wide alerts.",
       `Payment is in USDC${paymentChain ? ` on ${paymentChain}` : ""} only: no card payments, and the contract has no refund function.`,
       "Emails have no unsubscribe link yet, and deleting an alert needs active access.",
       "Tokenping is in beta. Delivery depends on third-party services, and there is no uptime guarantee.",
@@ -343,7 +363,7 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
       short
         ? `Upozornění přes ${channels}, když je health factor na Aave V3 či V4 pod prahem (${networks} sítí), kontrola ${csEveryMinutes(minutes)}. Bez schválení na Aave.`
         : `Upozornění přes ${channels}, když health factor na Aave V3 či V4 klesne pod váš práh, na ${networks} sítích. Kontrola ${csEveryMinutes(minutes)}. Bez schválení na Aave.`,
-    coreMarketNetwork: name => `${name} (trh Core)`,
+    networkMarkets: (name, markets) => `${name} (trhy ${markets})`,
     channelBadge: capitalize,
     pricingCta: plan => (plan ? `Nastavit upozornění: ${csPrice(plan)}` : "Nastavit upozornění"),
     offerDescription: ({ days, currency }) =>
@@ -355,8 +375,8 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
     seeHowItWorks: "Zjistit, jak to funguje",
     networksLabel: "Sítě:",
     channelsLabel: "Upozornění přes:",
-    coverageNote: ({ v3Networks, spokes, v4NetworkList }) =>
-      `Aave V3 na ${v3Networks} sítích, na Ethereu jen trh Core. Aave V4 v každém Spoke na sítích ${v4NetworkList}, celkem ${spokes}.`,
+    coverageNote: ({ v3Networks, v3Markets, spokes, v4Networks }) =>
+      `Aave V3 ${csOnNetworks(v3Networks)} (${csMarkets(v3Markets)}). Aave V4: ${csMarkets(spokes)} (Spoke) ${csOnNetworks(v4Networks)}.`,
     exampleAlertLabel: "Co vám upozornění napíše",
     exampleAlertCaption: subject =>
       `Jen ukázka: síť, čísla i čas jsou smyšlené. E-maily chodí s předmětem „${subject}“.`,
@@ -390,7 +410,7 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
       return [
         {
           title: "Připojte peněženku, se kterou si půjčujete (jen pro čtení, zdarma)",
-          body: `Přehled ukáže kolaterál, dluh a health factor této peněženky na Aave V3 na všech ${v3Networks} sítích a v každém Spoke Aave V4, kde má peněženka kolaterál nebo dluh. Tokenping hlídá peněženku, kterou připojíte; jinou adresu přidat nelze.`,
+          body: `Přehled ukáže kolaterál, dluh a health factor této peněženky na každém trhu Aave V3 na všech ${v3Networks} sítích a v každém Spoke Aave V4. Tokenping hlídá peněženku, kterou připojíte; jinou adresu přidat nelze.`,
         },
         {
           title: plan
@@ -400,7 +420,7 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
         },
         {
           title: `Pro každý trh zvolte práh a kanály (od ${formatDecimal("cs", threshold.min)} do ${formatDecimal("cs", threshold.max)}, výchozí ${formatDecimal("cs", threshold.default)})`,
-          body: `Každá síť Aave V3 i každý Spoke Aave V4 má samostatné upozornění, protože V4 vede v každém Spoke samostatnou pozici s vlastním health factorem. Nechte si ho posílat přes ${channels}, případně do více kanálů zároveň.`,
+          body: `Každý trh Aave V3 i každý Spoke Aave V4 má samostatné upozornění, protože pozice a její health factor patří vždy k jednomu trhu: Ethereum má několik trhů V3 a V4 vede v každém Spoke samostatnou pozici. Nechte si ho posílat přes ${channels}, případně do více kanálů zároveň.`,
         },
         {
           title: `Kontrolujeme ${csEveryMinutes(minutes)} a píšeme vám, dokud jste pod prahem`,
@@ -426,7 +446,17 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
       `Platba v USDC${paymentChain ? ` na síti ${paymentChain}` : ""}. Bez automatického obnovení.`,
 
     questionsTitle: "Na co se zeptat, než připojíte peněženku",
-    questions: ({ alertPrice, paymentChain, hasTelegram, minutes, networkList, v4NetworkList, spokes, links }) => {
+    questions: ({
+      alertPrice,
+      paymentChain,
+      hasTelegram,
+      minutes,
+      networkList,
+      v3Markets,
+      v4NetworkList,
+      spokes,
+      links,
+    }) => {
       const onChain = csOnChain(paymentChain);
       return [
         {
@@ -447,7 +477,7 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
         {
           question: "Co ukládáte?",
           answer: rich(
-            "Adresu vaší peněženky, sítě, Spoky Aave V4 a prahy, které nastavíte, zvolené kanály a vaši e-mailovou adresu nebo uživatelské jméno na Signalu, případně obojí",
+            "Adresu vaší peněženky, trhy a prahy, které nastavíte, zvolené kanály a vaši e-mailovou adresu nebo uživatelské jméno na Signalu, případně obojí",
             hasTelegram ? ", a pokud propojíte Telegram, také ID chatu a uživatelské jméno na Telegramu" : "",
             `. Pokud odpovíte na nepovinnou otázku „Jak jste se o Tokenpingu dozvěděli?“, uložíme i tuto odpověď. Tokenping neuchovává historii health factoru ani záznam odeslaných upozornění a tento web nepoužívá žádnou analytiku. Aby bylo možné načíst vaše pozice, posílá se adresa vaší peněženky poskytovatelům RPC. Platby jsou ${onChain} veřejné: kdokoli vidí platící adresu, částku a nové datum vypršení. Dokud aplikace neověřuje podpisy peněženky, může si kdokoli, kdo zná adresu vaší peněženky, zobrazit kontaktní údaje k ní uložené. Vše vysvětluje `,
             links.privacy("stránka o ochraně soukromí"),
@@ -471,7 +501,7 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
         {
           question: "Je moje pozice podporovaná?",
           answer: rich(
-            `Aave V3 na sítích ${networkList}. Aave V4 v každém Spoke na sítích ${v4NetworkList}: celkem ${spokes}, podle API Aave V4 ke 16. říjnu 2026. Nepodporujeme: ostatní trhy Aave V3 na Ethereu (Prime/Lido, EtherFi, Horizon), další sítě Aave ani jiné protokoly. Máte jedno upozornění na každou síť V3 a jedno na každý Spoke V4, pro peněženku, kterou připojíte. Přehled ukáže Spoke V4, jakmile v něm má peněženka kolaterál nebo dluh, nebo je pro něj uložené upozornění.`,
+            `Aave V3 na sítích ${networkList}: celkem ${csMarkets(v3Markets)}, podle Aave Address Book ke 16. říjnu 2026. Aave V4 v každém Spoke na sítích ${v4NetworkList}: celkem ${spokes}, podle API Aave V4 ke 16. říjnu 2026. Trhy Aave V3 na sítích Scroll, ZKsync, Metis, Soneium a Sonic governance Aave postupně ukončuje; Tokenping je dál hlídá, protože otevřené pozice tam stále mohou být zlikvidovány a ukončování záměrně zvyšuje jejich úrokové sazby z půjček. Nepodporujeme: trh Aave V3 na síti Harmony (zamrzlý od roku 2022, s cenovými zdroji, které se už nehýbou, takže se tam health factor nikdy nezmění) ani jiné protokoly. Máte jedno upozornění na každý trh V3 a jedno na každý Spoke V4, pro peněženku, kterou připojíte. Přehled uvádí trhy, kde má peněženka pozici nebo uložené upozornění; ostatní skládá pod „Další trhy“.`,
           ),
         },
         {
@@ -510,12 +540,12 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
     },
 
     limitsTitle: "Omezení bez příkras",
-    limits: ({ v3Networks, v4NetworkList, minutes, paymentChain }) => [
-      `Aave V3 na ${v3Networks} sítích, na Ethereu jen trh Core. Aave V4 v každém Spoke na sítích ${v4NetworkList}. Žádné další trhy ani sítě Aave a žádné jiné protokoly.`,
-      "Přehled ukáže Spoke Aave V4, jen když v něm má peněženka pozici nebo uložené upozornění, a u pozic na V4 neukazuje APY vkladu.",
+    limits: ({ v3Networks, v3Markets, v4NetworkList, minutes, paymentChain }) => [
+      `Každý trh Aave V3 ${csOnNetworks(v3Networks)} (${csMarkets(v3Markets)}) a každý Spoke Aave V4 na sítích ${v4NetworkList}. Bez trhu Aave V3 na síti Harmony a bez jiných protokolů.`,
+      "Přehled uvádí trhy, kde má peněženka pozici nebo uložené upozornění, a ostatní skládá pod „Další trhy“. U pozic na V4 neukazuje APY vkladu.",
       `Kontroly probíhají ${csEveryMinutes(minutes)}, ne v reálném čase. Při rychlém propadu může být pozice zlikvidována mezi dvěma kontrolami.`,
       "Dokud jste pod prahem, každá kontrola pošle do každého kanálu další zprávu. Chybí odložení, souhrnná zpráva i zpráva o návratu nad práh.",
-      "Jeden práh na síť V3 nebo Spoke V4, jen pro připojenou peněženku. Žádné adresy jen ke sledování, cenová upozornění ani upozornění na celé portfolio.",
+      "Jeden práh na trh V3 nebo Spoke V4, jen pro připojenou peněženku. Žádné adresy jen ke sledování, cenová upozornění ani upozornění na celé portfolio.",
       `Platí se jen v USDC${paymentChain ? ` na síti ${paymentChain}` : ""}: kartou zaplatit nelze a kontrakt nemá funkci pro vrácení peněz.`,
       "E-maily zatím nemají odkaz pro odhlášení a smazání upozornění vyžaduje aktivní přístup.",
       "Tokenping je v betě. Doručení závisí na službách třetích stran a dostupnost není zaručená.",

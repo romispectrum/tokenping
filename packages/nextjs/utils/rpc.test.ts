@@ -1,7 +1,29 @@
 import { type Chain, defineChain } from "viem";
-import { arbitrum, avalanche, base, gnosis, hardhat, mainnet, optimism, polygon, sepolia } from "viem/chains";
+import {
+  arbitrum,
+  avalanche,
+  base,
+  bsc,
+  celo,
+  gnosis,
+  hardhat,
+  ink,
+  linea,
+  mainnet,
+  mantle,
+  metis,
+  optimism,
+  plasma,
+  polygon,
+  scroll,
+  sepolia,
+  soneium,
+  sonic,
+  xLayer,
+  zksync,
+} from "viem/chains";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { arc } from "~~/config/aaveConfig";
+import { AAVE_CHAINS, arc, megaEth, monad } from "~~/config/aaveConfig";
 import { getFallbackTransport, getRpcUrls } from "~~/utils/rpc";
 
 const { config, SHARED_KEY } = vi.hoisted(() => ({
@@ -13,7 +35,8 @@ vi.mock("~~/scaffold.config", () => ({ default: config, DEFAULT_ALCHEMY_API_KEY:
 const KEY = "test-key";
 const alchemy = (network: string, key = KEY) => `https://${network}.g.alchemy.com/v2/${key}`;
 
-// Keyless endpoints for every Aave chain; Ethereum's and Polygon's viem defaults refuse or rate-limit keyless calls.
+// Keyless endpoints for every Aave chain PublicNode serves; Ethereum's and Polygon's viem defaults refuse or
+// rate-limit keyless calls.
 const PUBLICNODE = {
   [mainnet.id]: "https://ethereum-rpc.publicnode.com",
   [polygon.id]: "https://polygon-bor-rpc.publicnode.com",
@@ -23,7 +46,38 @@ const PUBLICNODE = {
   [avalanche.id]: "https://avalanche-c-chain-rpc.publicnode.com",
   [gnosis.id]: "https://gnosis-rpc.publicnode.com",
   [arc.id]: "https://arc-rpc.publicnode.com",
+  [bsc.id]: "https://bsc-rpc.publicnode.com",
+  [scroll.id]: "https://scroll-rpc.publicnode.com",
+  [linea.id]: "https://linea-rpc.publicnode.com",
+  [metis.id]: "https://metis-rpc.publicnode.com",
+  [soneium.id]: "https://soneium-rpc.publicnode.com",
+  [sonic.id]: "https://sonic-rpc.publicnode.com",
+  [celo.id]: "https://celo-rpc.publicnode.com",
+  [mantle.id]: "https://mantle-rpc.publicnode.com",
+  [ink.id]: "https://ink-rpc.publicnode.com",
 };
+const PUBLICNODE_CHAINS = [
+  mainnet,
+  polygon,
+  arbitrum,
+  optimism,
+  base,
+  avalanche,
+  gnosis,
+  arc,
+  bsc,
+  scroll,
+  linea,
+  metis,
+  soneium,
+  sonic,
+  celo,
+  mantle,
+  ink,
+];
+
+// Aave chains PublicNode does not serve: after any override (and Alchemy, where it has them) comes their own RPC.
+const OWN_RPC_CHAINS = [zksync, plasma, xLayer, megaEth, monad];
 
 // Building the transport only creates the HTTP clients; nothing is fetched until a request is made.
 const transportUrls = (chain: Chain) =>
@@ -48,6 +102,17 @@ describe("getRpcUrls", () => {
     { chain: base, network: "base-mainnet" },
     { chain: avalanche, network: "avax-mainnet" },
     { chain: gnosis, network: "gnosis-mainnet" },
+    { chain: bsc, network: "bnb-mainnet" },
+    { chain: scroll, network: "scroll-mainnet" },
+    { chain: zksync, network: "zksync-mainnet" },
+    { chain: linea, network: "linea-mainnet" },
+    { chain: metis, network: "metis-mainnet" },
+    { chain: soneium, network: "soneium-mainnet" },
+    { chain: sonic, network: "sonic-mainnet" },
+    { chain: celo, network: "celo-mainnet" },
+    { chain: mantle, network: "mantle-mainnet" },
+    { chain: ink, network: "ink-mainnet" },
+    { chain: monad, network: "monad-mainnet" },
   ])("builds the Alchemy URL for $chain.name ($network)", ({ chain, network }) => {
     expect(getRpcUrls(chain.id)).toEqual([alchemy(network)]);
   });
@@ -74,9 +139,12 @@ describe("getRpcUrls", () => {
   it("returns only the override, or nothing, for chains Alchemy does not serve", () => {
     expect(getRpcUrls(hardhat.id)).toEqual([]);
     expect(getRpcUrls(999_999)).toEqual([]);
+    // Aave chains without an Alchemy network.
+    for (const chain of [arc, plasma, xLayer, megaEth]) expect(getRpcUrls(chain.id), chain.name).toEqual([]);
 
-    config.rpcOverrides = { [hardhat.id]: "http://node.local:8545" };
+    config.rpcOverrides = { [hardhat.id]: "http://node.local:8545", [plasma.id]: "https://plasma.example/rpc" };
     expect(getRpcUrls(hardhat.id)).toEqual(["http://node.local:8545"]);
+    expect(getRpcUrls(plasma.id)).toEqual(["https://plasma.example/rpc"]);
   });
 
   it("drops an empty override", () => {
@@ -116,7 +184,7 @@ describe("getFallbackTransport", () => {
     ]);
   });
 
-  it.each([mainnet, polygon, arbitrum, optimism, base, avalanche, gnosis, arc])(
+  it.each(PUBLICNODE_CHAINS)(
     "reaches $name through PublicNode before its default RPC when nothing is configured",
     chain => {
       config.alchemyApiKey = "";
@@ -124,6 +192,20 @@ describe("getFallbackTransport", () => {
       expect(transportUrls(chain)).toEqual([PUBLICNODE[chain.id], chain.rpcUrls.default.http[0]]);
     },
   );
+
+  it("covers every Aave chain with PublicNode or, failing that, its own RPC", () => {
+    config.alchemyApiKey = "";
+
+    expect(AAVE_CHAINS.map(({ chain }) => chain)).toEqual(expect.arrayContaining(PUBLICNODE_CHAINS));
+    expect(new Set(AAVE_CHAINS.map(({ chain }) => chain.id))).toEqual(
+      new Set([...PUBLICNODE_CHAINS, ...OWN_RPC_CHAINS].map(({ id }) => id)),
+    );
+    for (const { chain, name } of AAVE_CHAINS) {
+      const urls = transportUrls(chain);
+      expect(urls.at(-1), name).toBe(chain.rpcUrls.default.http[0]);
+      for (const url of urls) expect(url, name).toMatch(/^https:\/\//);
+    }
+  });
 
   // Arc hosts only Aave V4 and has no Alchemy network, so a configured key adds nothing there.
   it("reaches Arc through an override, PublicNode and its RPC, never Alchemy", () => {
@@ -136,6 +218,39 @@ describe("getFallbackTransport", () => {
       PUBLICNODE[arc.id],
       "https://rpc.quicknode.mainnet.arc.io",
     ]);
+  });
+
+  // Plasma, X Layer and MegaETH are on neither PublicNode nor Alchemy: an override, then the chain's own RPC.
+  it.each([
+    { chain: plasma, rpc: "https://rpc.plasma.to" },
+    { chain: xLayer, rpc: "https://rpc.xlayer.tech" },
+    { chain: megaEth, rpc: "https://mainnet.megaeth.com/rpc" },
+  ])(
+    "reaches $chain.name through an override and then its own RPC alone, even with an Alchemy key",
+    ({ chain, rpc }) => {
+      expect(chain.rpcUrls.default.http[0]).toBe(rpc);
+      expect(transportUrls(chain)).toEqual([rpc]);
+
+      config.rpcOverrides = { [chain.id]: "https://own.example/rpc" };
+      expect(transportUrls(chain)).toEqual(["https://own.example/rpc", rpc]);
+
+      config.alchemyApiKey = "";
+      expect(transportUrls(chain)).toEqual(["https://own.example/rpc", rpc]);
+    },
+  );
+
+  // ZKsync and Monad are not on PublicNode but Alchemy serves them.
+  it.each([
+    { chain: zksync, network: "zksync-mainnet", rpc: "https://mainnet.era.zksync.io" },
+    { chain: monad, network: "monad-mainnet", rpc: "https://rpc.monad.xyz" },
+  ])("reaches $chain.name through Alchemy and then its own RPC, without PublicNode", ({ chain, network, rpc }) => {
+    expect(transportUrls(chain)).toEqual([alchemy(network), rpc]);
+
+    config.alchemyApiKey = "";
+    expect(transportUrls(chain)).toEqual([rpc]);
+
+    config.rpcOverrides = { [chain.id]: "https://own.example/rpc" };
+    expect(transportUrls(chain)).toEqual(["https://own.example/rpc", rpc]);
   });
 
   it("lists an override that is the PublicNode URL only once", () => {
@@ -169,6 +284,7 @@ describe("getFallbackTransport", () => {
       polygon.rpcUrls.default.http[0],
       alchemy("polygon-mainnet", SHARED_KEY),
     ]);
+    expect(transportUrls(monad)).toEqual(["https://rpc.monad.xyz", alchemy("monad-mainnet", SHARED_KEY)]);
 
     config.rpcOverrides = { [avalanche.id]: "https://avax.example/rpc" };
     expect(transportUrls(avalanche)).toEqual([

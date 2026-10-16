@@ -3,6 +3,7 @@ import { NetworkSummaryRow } from "~~/components/custom/aave/NetworkSummaryRow";
 import {
   ARBITRUM_EMPTY_POSITION,
   ETHEREUM_POSITION,
+  ETHEREUM_PRIME_POSITION,
   ETHEREUM_V4_LIDO_POSITION,
   ETHEREUM_V4_MAIN_EMPTY_POSITION,
   POLYGON_COLLATERAL_ONLY_POSITION,
@@ -11,7 +12,39 @@ import { renderMarkup } from "~~/utils/testing/render";
 
 const noop = () => undefined;
 
+const NETWORK_ICON = /<img [^>]*src="\/network-icons\/([a-z-]+)\.webp"/;
+
 describe("NetworkSummaryRow", () => {
+  it("leads with the network's logo, decorative beside the market name", () => {
+    const html = renderMarkup(
+      <NetworkSummaryRow position={ETHEREUM_POSITION} isSelected={false} onSelect={noop} hasNotification={false} />,
+    );
+
+    expect(html.match(NETWORK_ICON)?.[1]).toBe("ethereum");
+    expect(html).toMatch(/<span aria-hidden="true" class="[^"]*size-5[^"]*">\s*<img [^>]*alt=""/);
+    expect(html.indexOf("<img")).toBeLessThan(html.indexOf('<span class="truncate">Ethereum</span>'));
+  });
+
+  it("gives every market on one chain that chain's logo", () => {
+    for (const position of [ETHEREUM_PRIME_POSITION, ETHEREUM_V4_LIDO_POSITION, ETHEREUM_V4_MAIN_EMPTY_POSITION]) {
+      const html = renderMarkup(
+        <NetworkSummaryRow position={position} isSelected={false} onSelect={noop} hasNotification={false} />,
+      );
+
+      expect(html.match(NETWORK_ICON)?.[1], position.marketName).toBe("ethereum");
+      expect(html).toContain(`<span class="truncate">${position.marketName}</span>`);
+    }
+    const polygon = renderMarkup(
+      <NetworkSummaryRow
+        position={POLYGON_COLLATERAL_ONLY_POSITION}
+        isSelected={false}
+        onSelect={noop}
+        hasNotification={false}
+      />,
+    );
+    expect(polygon.match(NETWORK_ICON)?.[1]).toBe("polygon-pos");
+  });
+
   it("renders a selected active network with a notification bell", () => {
     const html = renderMarkup(
       <NetworkSummaryRow position={ETHEREUM_POSITION} isSelected onSelect={noop} hasNotification />,

@@ -1,16 +1,13 @@
-import {
-  getChannelBadgeNames,
-  getHomeHeadline,
-  getNetworkBadgeNames,
-  getV4NetworkList,
-} from "~~/components/home/homeContent";
+import type { ReactNode } from "react";
+import { NetworkIcon } from "~~/components/custom/aave/NetworkIcon";
+import { getChannelBadgeNames, getHomeHeadline, getNetworkBadges } from "~~/components/home/homeContent";
 import { DashboardCta } from "~~/components/home/homeUi";
 import { Container } from "~~/components/home/marketingLayout";
 import { Badge } from "~~/components/ui/Badge";
 import { Glow } from "~~/components/ui/Glow";
 import { GrainCard } from "~~/components/ui/GrainCard";
 import { Kicker } from "~~/components/ui/Kicker";
-import { AAVE_MARKETS, AAVE_V4_SPOKES } from "~~/config/aaveConfig";
+import { AAVE_MARKETS, AAVE_V3_NETWORKS, AAVE_V4_NETWORK_NAMES, AAVE_V4_SPOKES } from "~~/config/aaveConfig";
 import { DEFAULT_HEALTH_FACTOR_THRESHOLD, NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import type { Locale } from "~~/i18n/locales";
 import { HOME_MESSAGES } from "~~/i18n/messages/home";
@@ -28,21 +25,32 @@ const exampleAlert = (locale: Locale) => ({
 
 type BadgeRowProps = {
   label: string;
-  names: readonly string[];
+  /** Each badge's text, with a decorative icon before it where there is one (the network logos). */
+  items: readonly { name: string; icon?: ReactNode }[];
 };
 
-const BadgeRow = ({ label, names }: BadgeRowProps) => (
+const BadgeRow = ({ label, items }: BadgeRowProps) => (
   <div className="flex flex-wrap items-center justify-center gap-2 lg:justify-start">
     <span className="text-sm font-medium text-foreground">{label}</span>
     <ul className="m-0 flex list-none flex-wrap justify-center gap-1.5 p-0 sm:gap-2 lg:justify-start">
-      {names.map(name => (
+      {items.map(({ name, icon }) => (
         <li key={name} className="m-0 p-0">
-          <Badge>{name}</Badge>
+          <Badge>
+            {icon}
+            {name}
+          </Badge>
         </li>
       ))}
     </ul>
   </div>
 );
+
+/** The network badges, each with its logo (served by this site, like the token icons) before the name. */
+const networkBadgeItems = () =>
+  getNetworkBadges().map(({ chainId, name }) => ({
+    name,
+    icon: <NetworkIcon chainId={chainId} name={name} className="size-3.5" />,
+  }));
 
 /**
  * Product evidence allowed today (marketing plan §2.6): the exact message, built by the code that sends it. It is
@@ -111,13 +119,14 @@ export const HomeHero = ({ locale }: { locale: Locale }) => {
               <div className="flex flex-col items-center gap-6 lg:items-start">
                 <ExampleAlert locale={locale} />
                 <div className="flex flex-col items-center gap-2 sm:gap-3 lg:items-start">
-                  <BadgeRow label={t.networksLabel} names={getNetworkBadgeNames()} />
-                  <BadgeRow label={t.channelsLabel} names={getChannelBadgeNames(locale)} />
+                  <BadgeRow label={t.networksLabel} items={networkBadgeItems()} />
+                  <BadgeRow label={t.channelsLabel} items={getChannelBadgeNames(locale).map(name => ({ name }))} />
                   <p className="m-0 text-sm text-foreground">
                     {t.coverageNote({
-                      v3Networks: AAVE_MARKETS.length,
+                      v3Networks: AAVE_V3_NETWORKS.length,
+                      v3Markets: AAVE_MARKETS.length,
                       spokes: AAVE_V4_SPOKES.length,
-                      v4NetworkList: getV4NetworkList(locale),
+                      v4Networks: AAVE_V4_NETWORK_NAMES.length,
                     })}
                   </p>
                 </div>

@@ -130,7 +130,7 @@ describe("AlertEndBox", () => {
     render(<AlertEndBox plan={PLAN} />);
 
     expect(screen.getByRole("complementary", { name: "About Tokenping" }).textContent).toContain(
-      "Tokenping checks your Aave V3 and V4 health factor every 5 minutes on 8 networks and messages you on Signal or email when it is below your threshold. The dashboard is free; alerts cost 3 USDC per 30 days, paid on Arbitrum One. Alerts give you time to act; they don't prevent liquidation.",
+      "Tokenping checks your Aave V3 and V4 health factor every 5 minutes on 22 networks and messages you on Signal or email when it is below your threshold. The dashboard is free; alerts cost 3 USDC per 30 days, paid on Arbitrum One. Alerts give you time to act; they don't prevent liquidation.",
     );
   });
 
@@ -236,7 +236,7 @@ describe("in Czech", () => {
 
     const box = screen.getByRole("complementary", { name: "O Tokenpingu" });
     expect(box.textContent).toContain(
-      "Tokenping kontroluje health factor vaší pozice na Aave V3 a V4 každých 5 minut na 8 sítích a pošle vám zprávu přes Signal nebo e-mail, když je pod vaším prahem. Přehled je zdarma, upozornění stojí 3 USDC na 30 dní s platbou na síti Arbitrum One. Upozornění vám dají čas jednat, likvidaci ale nezabrání.",
+      "Tokenping kontroluje health factor vaší pozice na Aave V3 a V4 každých 5 minut na 22 sítích a pošle vám zprávu přes Signal nebo e-mail, když je pod vaším prahem. Přehled je zdarma, upozornění stojí 3 USDC na 30 dní s platbou na síti Arbitrum One. Upozornění vám dají čas jednat, likvidaci ale nezabrání.",
     );
     expect(screen.getByRole("link", { name: "Otevřít přehled zdarma" }).getAttribute("href")).toBe("/cz/aave");
   });
