@@ -41,7 +41,7 @@ const networkNames = (locale: Locale) =>
  * visitors before the wallet UI loads; only the wallet-dependent dashboard is a client island. Product UI is calm:
  * a plain page header and flat surfaces, none of the marketing effects.
  */
-/** The dashboard page of one language; app/(en)/aave/page.tsx and app/(cs)/cs/aave/page.tsx render it. */
+/** The dashboard page of one language; app/(en)/aave/page.tsx and app/(cs)/cz/aave/page.tsx render it. */
 export const DashboardPage = ({ locale }: { locale: Locale }) => {
   const { page } = DASHBOARD_MESSAGES[locale];
   const channels = formatAlertChannelsIn(locale, "disjunction");

@@ -32,7 +32,7 @@ export const homeMetadata = (locale: Locale) =>
 // band, never in one view), one grain card (the hero) and the closing band's grain, a divider at each of the three
 // boundaries between two plain sections (none next to a wash or the dark band). Pink: the hero's primary action and
 // the closing band's, the same action, screens apart.
-/** The home page of one language; app/(en)/page.tsx and app/(cs)/cs/page.tsx render it. */
+/** The home page of one language; app/(en)/page.tsx and app/(cs)/cz/page.tsx render it. */
 export const HomePage = async ({ locale }: { locale: Locale }) => {
   // One read for the whole page: the steps, the pricing block, the objections and the JSON-LD show the same plan.
   const plan = await getAlertPlan();

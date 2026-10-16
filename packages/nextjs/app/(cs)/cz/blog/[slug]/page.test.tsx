@@ -13,7 +13,7 @@ vi.mock("~~/services/marketing/alertPlan", () => ({ getAlertPlan: mocks.getAlert
 
 const PLAN: AlertPlan = { priceLabel: "3 USDC", days: 30 };
 
-const loadPage = () => import("~~/app/(cs)/cs/blog/[slug]/page");
+const loadPage = () => import("~~/app/(cs)/cz/blog/[slug]/page");
 
 /** A Czech post's own meta, so the assertions follow the translation instead of repeating its titles. */
 const postMeta = async (slug: string) => {
@@ -62,15 +62,15 @@ describe("generateMetadata", () => {
     const metadata = await generateMetadata({ params: Promise.resolve({ slug: "likvidacni-cena-aave" }) });
     const { title } = await postMeta("likvidacni-cena-aave");
 
-    expect(metadata.alternates?.canonical).toBe("/cs/blog/likvidacni-cena-aave");
+    expect(metadata.alternates?.canonical).toBe("/cz/blog/likvidacni-cena-aave");
     expect(metadata.alternates?.languages).toMatchObject({
       en: "/blog/aave-liquidation-price",
-      cs: "/cs/blog/likvidacni-cena-aave",
+      cs: "/cz/blog/likvidacni-cena-aave",
     });
     expect(metadata.openGraph).toMatchObject({
       type: "article",
       locale: "cs_CZ",
-      url: "/cs/blog/likvidacni-cena-aave",
+      url: "/cz/blog/likvidacni-cena-aave",
       images: [expect.objectContaining({ alt: `${title} (průvodce Aave V3 od Tokenpingu)` })],
     });
     expect(metadata.robots).toBeUndefined();
@@ -85,7 +85,7 @@ describe("generateMetadata", () => {
     expect(stub.robots).toEqual({ index: false, follow: false });
   });
 
-  it("returns nothing for an English slug under /cs/blog", async () => {
+  it("returns nothing for an English slug under /cz/blog", async () => {
     const { generateMetadata } = await loadPage();
 
     await expect(generateMetadata({ params: Promise.resolve({ slug: "aave-liquidation-price" }) })).resolves.toEqual(
@@ -105,7 +105,7 @@ describe("Czech blog post page", () => {
         .getAllByRole("listitem")
         .map(item => item.textContent),
     ).toEqual(["Domů", "Blog", meta.title]);
-    expect(within(nav).getByRole("link", { name: "Blog" }).getAttribute("href")).toBe("/cs/blog");
+    expect(within(nav).getByRole("link", { name: "Blog" }).getAttribute("href")).toBe("/cz/blog");
     expect(screen.getAllByRole("heading", { level: 1 }).map(heading => heading.textContent)).toEqual([meta.h1]);
     expect(within(header()).getByText("Průvodce Aave V3")).toBeDefined();
     expect(header().textContent).toContain("Napsal tým Tokenpingu");
@@ -123,14 +123,14 @@ describe("Czech blog post page", () => {
     const endBox = screen.getByRole("complementary", { name: "O Tokenpingu" });
     expect(endBox.textContent).toContain("upozornění stojí 3 USDC na 30 dní s platbou na síti Arbitrum One");
     expect(endBox.textContent).toContain("likvidaci ale nezabrání");
-    expect(within(endBox).getByRole("link", { name: "Otevřít přehled zdarma" }).getAttribute("href")).toBe("/cs/aave");
+    expect(within(endBox).getByRole("link", { name: "Otevřít přehled zdarma" }).getAttribute("href")).toBe("/cz/aave");
 
     const related = screen.getByRole("navigation", { name: "Související průvodci" });
     const hrefs = within(related)
       .getAllByRole("link")
       .map(link => link.getAttribute("href"));
-    expect(hrefs[0]).toBe("/cs/blog/aave-health-factor-vysvetleni");
-    expect(hrefs.every(href => href?.startsWith("/cs/blog/"))).toBe(true);
+    expect(hrefs[0]).toBe("/cz/blog/aave-health-factor-vysvetleni");
+    expect(hrefs.every(href => href?.startsWith("/cz/blog/"))).toBe(true);
   });
 
   it("shows the calculator in Czech in the Czech liquidation price article", async () => {
@@ -161,7 +161,7 @@ describe("Czech blog post page", () => {
       within(related)
         .getAllByRole("link")
         .map(link => link.getAttribute("href")),
-    ).not.toContain("/cs/blog/aave-health-factor-vysvetleni");
+    ).not.toContain("/cz/blog/aave-health-factor-vysvetleni");
   });
 
   it("emits BlogPosting and BreadcrumbList JSON-LD with the Czech names", async () => {
@@ -172,7 +172,7 @@ describe("Czech blog post page", () => {
     expect(posting).toMatchObject({
       "@type": "BlogPosting",
       headline: meta.h1,
-      mainEntityOfPage: { "@id": "https://tokenping.xyz/cs/blog/bezpecny-health-factor-aave" },
+      mainEntityOfPage: { "@id": "https://tokenping.xyz/cz/blog/bezpecny-health-factor-aave" },
     });
     expect(breadcrumbs.itemListElement.map(({ name }: { name: string }) => name)).toEqual(["Domů", "Blog", meta.title]);
   });

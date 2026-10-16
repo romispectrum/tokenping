@@ -1,4 +1,4 @@
-// The site's languages. English is served at the root, Czech under /cs (see i18n/routes.ts).
+// The site's languages. English is served at the root, Czech under /cz (see i18n/routes.ts).
 
 export const LOCALES = ["en", "cs"] as const;
 

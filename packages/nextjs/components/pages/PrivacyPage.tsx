@@ -50,7 +50,7 @@ const PolicySection = ({ title, children }: PolicySectionProps) => (
  * "private" or "secure": settings are tied to a wallet address without a wallet-ownership check yet, so the config
  * and Telegram link reads answer anyone who sends an address, and writes only check that address's paid access.
  */
-/** The privacy page of one language; app/(en)/privacy and app/(cs)/cs/ochrana-soukromi render it. */
+/** The privacy page of one language; app/(en)/privacy and app/(cs)/cz/ochrana-soukromi render it. */
 export const PrivacyPage = ({ locale }: { locale: Locale }) => {
   const t = PRIVACY_MESSAGES[locale];
   const CRUMBS = crumbs(locale);

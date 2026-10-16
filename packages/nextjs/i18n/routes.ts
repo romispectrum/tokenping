@@ -1,17 +1,17 @@
 import { DEFAULT_LOCALE, LOCALES, type Locale, type Localized } from "~~/i18n/locales";
 import { POST_SLUGS, postKeyForSlug } from "~~/i18n/postSlugs";
 
-// Every public page's path in each language. English keeps the original URLs at the root; Czech lives under /cs with
+// Every public page's path in each language. English keeps the original URLs at the root; Czech lives under /cz with
 // Czech words where a path has words. The single source for links, canonicals, hreflang, the sitemap and the switcher.
 
 export type StaticRoute = "home" | "dashboard" | "blog" | "blogFeed" | "privacy";
 
 const STATIC_PATHS: Record<StaticRoute, Localized<string>> = {
-  home: { en: "/", cs: "/cs" },
-  dashboard: { en: "/aave", cs: "/cs/aave" },
-  blog: { en: "/blog", cs: "/cs/blog" },
-  blogFeed: { en: "/blog/feed.xml", cs: "/cs/blog/feed.xml" },
-  privacy: { en: "/privacy", cs: "/cs/ochrana-soukromi" },
+  home: { en: "/", cs: "/cz" },
+  dashboard: { en: "/aave", cs: "/cz/aave" },
+  blog: { en: "/blog", cs: "/cz/blog" },
+  blogFeed: { en: "/blog/feed.xml", cs: "/cz/blog/feed.xml" },
+  privacy: { en: "/privacy", cs: "/cz/ochrana-soukromi" },
 };
 
 export const routePath = (locale: Locale, route: StaticRoute) => STATIC_PATHS[route][locale];
@@ -29,9 +29,9 @@ export const postAlternates = (key: string): Localized<string> | undefined => {
   return Object.fromEntries(LOCALES.map(locale => [locale, postPath(locale, slugs[locale])])) as Localized<string>;
 };
 
-/** The language a path belongs to: Czech for /cs and below, English otherwise. */
+/** The language a path belongs to: Czech for /cz and below, English otherwise. */
 export const localeFromPath = (pathname: string): Locale =>
-  pathname === "/cs" || pathname.startsWith("/cs/") ? "cs" : DEFAULT_LOCALE;
+  pathname === "/cz" || pathname.startsWith("/cz/") ? "cs" : DEFAULT_LOCALE;
 
 const stripTrailingSlash = (pathname: string) => (pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname);
 

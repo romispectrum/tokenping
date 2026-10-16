@@ -162,9 +162,9 @@ describe("Czech home copy", () => {
 
   it("points the JSON-LD at the Czech home and dashboard", () => {
     expect(softwareApplicationJsonLd({ priceLabel: "3 USDC", days: 30 }, "cs")).toMatchObject({
-      url: "https://tokenping.xyz/cs",
+      url: "https://tokenping.xyz/cz",
       inLanguage: "cs",
-      offers: { url: "https://tokenping.xyz/cs/aave" },
+      offers: { url: "https://tokenping.xyz/cz/aave" },
     });
     expect(softwareApplicationJsonLd(null)).toMatchObject({ url: "https://tokenping.xyz/", inLanguage: "en" });
   });

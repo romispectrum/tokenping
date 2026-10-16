@@ -21,7 +21,7 @@ const mockCzechGuides = (stubSlugs: readonly string[] = []) => {
   }
 };
 
-const loadPage = () => import("~~/app/(cs)/cs/aave/page");
+const loadPage = () => import("~~/app/(cs)/cz/aave/page");
 
 const renderPage = async () => {
   const { default: AavePage } = await loadPage();
@@ -39,15 +39,15 @@ afterEach(() => {
 });
 
 describe("Czech Aave page metadata", () => {
-  it("has a Czech title and description and a self canonical under /cs", async () => {
+  it("has a Czech title and description and a self canonical under /cz", async () => {
     const { metadata } = await loadPage();
 
     expect(metadata.title).toBe("Pozice na Aave V3 a health factor");
     expect(metadata.description).toBe(
       "Zdarma uvidíte kolaterál, dluh a health factor na Aave V3 na 7 sítích. Pak si pro každou síť nastavte práh upozornění přes Signal nebo e-mail.",
     );
-    expect(metadata.alternates?.canonical).toBe("/cs/aave");
-    expect(metadata.openGraph).toMatchObject({ url: "/cs/aave", title: "Pozice na Aave V3 a health factor" });
+    expect(metadata.alternates?.canonical).toBe("/cz/aave");
+    expect(metadata.openGraph).toMatchObject({ url: "/cz/aave", title: "Pozice na Aave V3 a health factor" });
   });
 
   it("names Telegram once the bot is configured, within 155 characters", async () => {
@@ -80,14 +80,14 @@ describe("Czech Aave page shell", () => {
     expect(html).not.toMatch(/Connect the wallet|What alerts cost/);
   });
 
-  it("links the Czech threshold and alert setup guides under /cs/blog", async () => {
+  it("links the Czech threshold and alert setup guides under /cz/blog", async () => {
     await renderPage();
 
     expect(screen.getByRole("link", { name: "Jak zvolit práh" }).getAttribute("href")).toBe(
-      "/cs/blog/bezpecny-health-factor-aave",
+      "/cz/blog/bezpecny-health-factor-aave",
     );
     expect(screen.getByRole("link", { name: "Jak fungují upozornění" }).getAttribute("href")).toBe(
-      "/cs/blog/nastaveni-upozorneni-health-factor-aave",
+      "/cz/blog/nastaveni-upozorneni-health-factor-aave",
     );
   });
 

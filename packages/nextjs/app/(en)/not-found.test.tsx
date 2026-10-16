@@ -60,9 +60,9 @@ describe("global-not-found", () => {
       ["Go to the home page", "/"],
       ["Open the dashboard", "/aave"],
       ["Read the blog", "/blog"],
-      ["Přejít na úvodní stránku", "/cs"],
-      ["Otevřít přehled", "/cs/aave"],
-      ["Číst blog", "/cs/blog"],
+      ["Přejít na úvodní stránku", "/cz"],
+      ["Otevřít přehled", "/cz/aave"],
+      ["Číst blog", "/cz/blog"],
     ]);
     expect(links.map(link => link.className.includes("btn-primary"))).toEqual([
       true,

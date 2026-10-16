@@ -8,7 +8,7 @@ const APP_DIR = new URL("./", import.meta.url);
 // Not indexable: noindex (/admin) or a 404 outside local hardhat builds (/debug, /blockexplorer).
 const NON_INDEXED_PREFIXES = ["/admin", "/debug", "/blockexplorer"];
 
-/** Every app/**\/page.tsx without a dynamic segment, by its URL path ("/", "/aave", "/cs/blog", …). */
+/** Every app/**\/page.tsx without a dynamic segment, by its URL path ("/", "/aave", "/cz/blog", …). */
 const staticPageFiles = (dir = APP_DIR, prefix = ""): [string, URL][] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((entry): [string, URL][] => {
     if (entry.isDirectory()) {
@@ -57,16 +57,16 @@ describe("sitemap", () => {
     const entries = sitemap();
     const entry = (path: string) => entries.find(({ url }) => url === `${SITE}${path}`);
 
-    expect(entries.slice(0, 4)).toEqual([...bilingual("/", "/cs"), ...bilingual("/aave", "/cs/aave")]);
-    expect(entries.slice(-2)).toEqual(bilingual("/privacy", "/cs/ochrana-soukromi"));
+    expect(entries.slice(0, 4)).toEqual([...bilingual("/", "/cz"), ...bilingual("/aave", "/cz/aave")]);
+    expect(entries.slice(-2)).toEqual(bilingual("/privacy", "/cz/ochrana-soukromi"));
     // Each language's blog index carries that language's newest content date.
     expect(entry("/blog")).toMatchObject({ lastModified: blog.getLatestPostDate() });
-    expect(entry("/cs/blog")).toMatchObject({
+    expect(entry("/cz/blog")).toMatchObject({
       lastModified: blog.getLatestPostDate(blog.getPublishedPosts("cs")),
     });
     // A post listed in both languages names both as alternates.
     for (const { meta } of blog.PUBLISHED_POSTS) {
-      const cs = `/cs/blog/${POST_SLUG_PAIRS[meta.slug].cs}`;
+      const cs = `/cz/blog/${POST_SLUG_PAIRS[meta.slug].cs}`;
       expect(entry(`/blog/${meta.slug}`)).toEqual({
         url: `${SITE}/blog/${meta.slug}`,
         lastModified: meta.updatedAt ?? meta.publishedAt,
@@ -75,7 +75,7 @@ describe("sitemap", () => {
     }
     // A placeholder is left out, and its published translation is listed alone, with no hreflang to it.
     expect(entry("/blog/safe-aave-health-factor")).toBeUndefined();
-    expect(entry(`/cs/blog/${POST_SLUG_PAIRS["safe-aave-health-factor"].cs}`)).not.toHaveProperty("alternates");
+    expect(entry(`/cz/blog/${POST_SLUG_PAIRS["safe-aave-health-factor"].cs}`)).not.toHaveProperty("alternates");
     expect(blog.PUBLISHED_POSTS).toHaveLength(POST_SLUGS.length - 1);
   });
 
@@ -83,15 +83,15 @@ describe("sitemap", () => {
     const { sitemap } = await loadSitemap(POST_SLUGS, CS_POST_SLUGS);
 
     expect(sitemap()).toEqual([
-      ...bilingual("/", "/cs"),
-      ...bilingual("/aave", "/cs/aave"),
-      ...bilingual("/privacy", "/cs/ochrana-soukromi"),
+      ...bilingual("/", "/cz"),
+      ...bilingual("/aave", "/cz/aave"),
+      ...bilingual("/privacy", "/cz/ochrana-soukromi"),
     ]);
   });
 
   it("lists only pages that exist and render on the server", async () => {
     const { sitemap } = await loadSitemap();
-    const pages = pathsOf(sitemap()).filter(path => !path.startsWith("/blog/") && !path.startsWith("/cs/blog/"));
+    const pages = pathsOf(sitemap()).filter(path => !path.startsWith("/blog/") && !path.startsWith("/cz/blog/"));
 
     for (const path of pages) {
       expect(pageFile(path) && existsSync(pageFile(path)!), `${path}: no page.tsx under app/ for it`).toBe(true);
@@ -107,7 +107,7 @@ describe("sitemap", () => {
         !NON_INDEXED_PREFIXES.some(prefix => path === prefix || path.startsWith(`${prefix}/`)) &&
         !isClientPage(path) &&
         (path !== "/blog" || blog.PUBLISHED_POSTS.length > 0) &&
-        (path !== "/cs/blog" || blog.getPublishedPosts("cs").length > 0),
+        (path !== "/cz/blog" || blog.getPublishedPosts("cs").length > 0),
     );
 
     // A new Server Component page (e.g. /privacy, or /aave once it stops being a client page) fails here until
