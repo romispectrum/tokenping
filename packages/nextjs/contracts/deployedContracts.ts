@@ -1031,11 +1031,11 @@ const deployedContracts = {
             },
             {
               internalType: "bytes",
-              name: "_data",
+              name: "data",
               type: "bytes",
             },
           ],
-          stateMutability: "payable",
+          stateMutability: "nonpayable",
           type: "constructor",
         },
         {
