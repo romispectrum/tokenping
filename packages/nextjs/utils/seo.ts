@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
-import { AAVE_MARKETS } from "~~/config/aaveConfig";
 import { SOCIAL_LINKS } from "~~/constants/links";
-import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import type { PostMeta } from "~~/content/blog/types";
+import { DEFAULT_LOCALE, LOCALES, LOCALE_INFO, type Locale, type Localized } from "~~/i18n/locales";
+import { SEO_MESSAGES } from "~~/i18n/messages/seo";
+import { postKeyForSlug } from "~~/i18n/postSlugs";
+import { postAlternates, postPath, routePath } from "~~/i18n/routes";
 
 // Canonicals, the sitemap, RSS and JSON-LD always name production, also on previews and local or IPFS builds.
 // `||` rather than `??`, so an empty NEXT_PUBLIC_SITE_URL= line in an env file still falls back.
@@ -12,8 +14,9 @@ export const TITLE_TEMPLATE = `%s | ${SITE_NAME}`;
 const TITLE_SUFFIX = TITLE_TEMPLATE.replace("%s", "");
 const MAX_TITLE_LENGTH = 60;
 export const TWITTER_HANDLE = "@tokenping";
-export const RSS_PATH = "/blog/feed.xml";
-export const RSS_TITLE = `${SITE_NAME} blog`;
+/** The English feed; each language has its own (routePath(locale, "blogFeed")). */
+export const RSS_PATH = routePath(DEFAULT_LOCALE, "blogFeed");
+export const RSS_TITLE = SEO_MESSAGES.en.rssTitle;
 export const ORGANIZATION_ID = `${SITE_URL}/#organization`;
 export const WEBSITE_ID = `${SITE_URL}/#website`;
 /**
@@ -24,22 +27,39 @@ export const WEBSITE_ID = `${SITE_URL}/#website`;
 export const SAME_AS = [SOCIAL_LINKS.x, SOCIAL_LINKS.telegram];
 /** 512x512 PNG of the Tokenping mark, served by app/logo.png/route.tsx. */
 export const LOGO_PATH = "/logo.png";
-/** The site-wide social card, served by app/opengraph-image.tsx. */
-export const SITE_OG_IMAGE = {
-  url: "/opengraph-image",
-  width: 1200,
-  height: 630,
-  alt: "Tokenping: Aave health factor alerts",
-};
+const OG_SIZE = { width: 1200, height: 630 };
 
-export const DEFAULT_TITLE = "Tokenping: Aave health factor alerts";
-export const DEFAULT_DESCRIPTION = `Alerts when your Aave V3 health factor drops below a threshold you choose, on ${AAVE_MARKETS.length} networks, checked every ${NOTIFICATION_CHECK_INTERVAL_MINUTES} minutes. The dashboard is free.`;
-export const ORGANIZATION_DESCRIPTION =
-  "Tokenping sends a message when an Aave V3 health factor drops below the threshold its owner set.";
+/** The site-wide social card of a language, served by app/og/[locale]/route.tsx. */
+export const siteOgImage = (locale: Locale) => ({
+  url: `/og/${locale}`,
+  ...OG_SIZE,
+  alt: SEO_MESSAGES[locale].siteOgAlt,
+});
+
+export const SITE_OG_IMAGE = siteOgImage(DEFAULT_LOCALE);
+
+export const DEFAULT_TITLE = SEO_MESSAGES.en.defaultTitle;
+export const DEFAULT_DESCRIPTION = SEO_MESSAGES.en.defaultDescription;
+export const ORGANIZATION_DESCRIPTION = SEO_MESSAGES.en.organizationDescription;
 
 export const absoluteUrl = (path = "/") => new URL(path, `${SITE_URL}/`).toString();
 
-const RSS_ALTERNATE = { "application/rss+xml": [{ url: RSS_PATH, title: RSS_TITLE }] };
+const rssAlternate = (locale: Locale) => ({
+  "application/rss+xml": [{ url: routePath(locale, "blogFeed"), title: SEO_MESSAGES[locale].rssTitle }],
+});
+
+/**
+ * hreflang for the languages a page is published in; x-default is the English page when there is one. Undefined
+ * for a page in one language only: hreflang only makes sense between translations.
+ */
+const languageAlternates = (paths: Partial<Localized<string>>) => {
+  const published = LOCALES.filter(locale => paths[locale] !== undefined);
+  if (published.length < 2) return undefined;
+  return {
+    ...Object.fromEntries(published.map(locale => [LOCALE_INFO[locale].htmlLang, paths[locale]])),
+    ...(paths[DEFAULT_LOCALE] && { "x-default": paths[DEFAULT_LOCALE] }),
+  };
+};
 
 /** Midnight UTC of a YYYY-MM-DD day: the one timestamp the byline, og:article times and JSON-LD all print. */
 export const toIsoDateTime = (date: string) => `${date}T00:00:00Z`;
@@ -50,8 +70,15 @@ export const needsAbsoluteTitle = (title: string) => title.length + TITLE_SUFFIX
 type PageMetadataInput = {
   title: string;
   description: string;
-  /** Canonical path, e.g. "/", "/aave", "/blog/aave-health-factor". */
-  path: string;
+  /** The page's language; English when left out. */
+  locale?: Locale;
+  /** Canonical path of a page that exists in one language only, e.g. "/admin". */
+  path?: string;
+  /**
+   * The page's path in each language it is published in (i18n/routes): the canonical is this locale's, hreflang
+   * lists them all. Leave out a language whose translation is not published.
+   */
+  alternates?: Partial<Localized<string>>;
   /** Bypasses the "%s | Tokenping" template. */
   absoluteTitle?: boolean;
   noIndex?: boolean;
@@ -60,10 +87,9 @@ type PageMetadataInput = {
   publishedAt?: string;
   modifiedAt?: string;
   /**
-   * The social card. `false` when the route has its own opengraph-image file: Next applies a segment's file image
-   * only while the page's openGraph has no `images` key.
+   * The social card; the language's site card when left out.
    */
-  ogImage?: typeof SITE_OG_IMAGE | false;
+  ogImage?: typeof SITE_OG_IMAGE;
 };
 
 /**
@@ -73,61 +99,77 @@ type PageMetadataInput = {
 export const pageMetadata = ({
   title,
   description,
+  locale = DEFAULT_LOCALE,
   path,
+  alternates,
   absoluteTitle = false,
   noIndex = false,
   type = "website",
   publishedAt,
   modifiedAt,
-  ogImage = SITE_OG_IMAGE,
-}: PageMetadataInput): Metadata => ({
-  title: absoluteTitle ? { absolute: title } : title,
-  description,
-  alternates: { canonical: path, types: RSS_ALTERNATE },
-  ...(noIndex && { robots: { index: false, follow: false } }),
-  openGraph: {
-    type,
-    url: path,
-    siteName: SITE_NAME,
-    locale: "en_US",
-    title,
+  ogImage = siteOgImage(locale),
+}: PageMetadataInput): Metadata => {
+  const canonical = alternates?.[locale] ?? path ?? routePath(locale, "home");
+  const languages = alternates && languageAlternates(alternates);
+  return {
+    title: absoluteTitle ? { absolute: title } : title,
     description,
-    ...(ogImage && { images: [ogImage] }),
-    ...(type === "article" &&
-      publishedAt && {
-        publishedTime: toIsoDateTime(publishedAt),
-        modifiedTime: toIsoDateTime(modifiedAt ?? publishedAt),
-        authors: [SITE_URL],
+    alternates: {
+      canonical,
+      ...(languages && { languages }),
+      types: rssAlternate(locale),
+    },
+    ...(noIndex && { robots: { index: false, follow: false } }),
+    openGraph: {
+      type,
+      url: canonical,
+      siteName: SITE_NAME,
+      locale: LOCALE_INFO[locale].ogLocale,
+      ...(languages && {
+        alternateLocale: LOCALES.filter(other => other !== locale && alternates?.[other] !== undefined).map(
+          other => LOCALE_INFO[other].ogLocale,
+        ),
       }),
-  },
-  // No images: Next copies og:image into twitter:image when twitter sets none.
-  twitter: { card: "summary_large_image", site: TWITTER_HANDLE, title, description },
-});
+      title,
+      description,
+      images: [ogImage],
+      ...(type === "article" &&
+        publishedAt && {
+          publishedTime: toIsoDateTime(publishedAt),
+          modifiedTime: toIsoDateTime(modifiedAt ?? publishedAt),
+          authors: [SITE_URL],
+        }),
+    },
+    // No images: Next copies og:image into twitter:image when twitter sets none.
+    twitter: { card: "summary_large_image", site: TWITTER_HANDLE, title, description },
+  };
+};
 
 /** Root layout defaults. Never a canonical here: every child would inherit it and point at "/". */
-export const rootMetadata = (): Metadata => {
+export const rootMetadata = (locale: Locale = DEFAULT_LOCALE): Metadata => {
   const google = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION;
   const bing = process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION;
+  const { defaultTitle, defaultDescription } = SEO_MESSAGES[locale];
   return {
     metadataBase: new URL(SITE_URL),
-    title: { default: DEFAULT_TITLE, template: TITLE_TEMPLATE },
-    description: DEFAULT_DESCRIPTION,
+    title: { default: defaultTitle, template: TITLE_TEMPLATE },
+    description: defaultDescription,
     applicationName: SITE_NAME,
     manifest: "/manifest.json",
-    alternates: { types: RSS_ALTERNATE },
-    // No images: app/opengraph-image.tsx supplies the root card.
+    alternates: { types: rssAlternate(locale) },
+    // No images: every page sets its card through pageMetadata (the language's site card by default).
     openGraph: {
       type: "website",
       siteName: SITE_NAME,
-      locale: "en_US",
-      title: DEFAULT_TITLE,
-      description: DEFAULT_DESCRIPTION,
+      locale: LOCALE_INFO[locale].ogLocale,
+      title: defaultTitle,
+      description: defaultDescription,
     },
     twitter: {
       card: "summary_large_image",
       site: TWITTER_HANDLE,
-      title: DEFAULT_TITLE,
-      description: DEFAULT_DESCRIPTION,
+      title: defaultTitle,
+      description: defaultDescription,
     },
     ...((google || bing) && {
       verification: {
@@ -142,8 +184,8 @@ const SCHEMA_CONTEXT = "https://schema.org";
 
 const ORGANIZATION_REF = { "@id": ORGANIZATION_ID };
 
-/** The site-wide JSON-LD graph: the Organization behind Tokenping and the WebSite it publishes. */
-export const siteJsonLd = () => ({
+/** The site-wide JSON-LD graph: the Organization behind Tokenping and the WebSite it publishes, in both languages. */
+export const siteJsonLd = (locale: Locale = DEFAULT_LOCALE) => ({
   "@context": SCHEMA_CONTEXT,
   "@graph": [
     {
@@ -152,7 +194,7 @@ export const siteJsonLd = () => ({
       name: SITE_NAME,
       url: SITE_URL,
       logo: { "@type": "ImageObject", url: absoluteUrl(LOGO_PATH), width: 512, height: 512 },
-      description: ORGANIZATION_DESCRIPTION,
+      description: SEO_MESSAGES[locale].organizationDescription,
       sameAs: SAME_AS,
     },
     {
@@ -160,7 +202,7 @@ export const siteJsonLd = () => ({
       "@id": WEBSITE_ID,
       name: SITE_NAME,
       url: SITE_URL,
-      inLanguage: "en",
+      inLanguage: LOCALES.map(code => LOCALE_INFO[code].htmlLang),
       publisher: ORGANIZATION_REF,
     },
   ],
@@ -183,28 +225,30 @@ export const breadcrumbJsonLd = (crumbs: readonly Crumb[]) => ({
   })),
 });
 
-export const postPath = (slug: string) => `/blog/${slug}`;
+/** The post's paths in every language, from its slug in `locale`; undefined for a post with no translation entry. */
+export const postAlternatesFor = (locale: Locale, slug: string) => {
+  const key = postKeyForSlug(locale, slug);
+  return key ? postAlternates(key) : undefined;
+};
 
 /**
- * The post's social card (app/blog/[slug]/opengraph-image.tsx) with alt text naming the post. Set on the page because
- * a file image's `alt` export is one static string for every slug.
+ * The post's social card (app/og/[locale]/[slug]/route.tsx) with alt text naming the post.
  */
-export const postOgImage = (meta: PostMeta) => ({
-  url: `${postPath(meta.slug)}/opengraph-image`,
-  width: SITE_OG_IMAGE.width,
-  height: SITE_OG_IMAGE.height,
-  alt: `${meta.title} (${SITE_NAME} Aave V3 guide)`,
+export const postOgImage = (meta: PostMeta, locale: Locale = DEFAULT_LOCALE) => ({
+  url: `/og/${locale}/${meta.slug}`,
+  ...OG_SIZE,
+  alt: SEO_MESSAGES[locale].postOgAlt(meta.title),
 });
 
 /** BlogPosting for one post, built from the same meta that renders the headline and byline. */
-export const blogPostingJsonLd = (meta: PostMeta) => {
-  const url = absoluteUrl(postPath(meta.slug));
+export const blogPostingJsonLd = (meta: PostMeta, locale: Locale = DEFAULT_LOCALE) => {
+  const url = absoluteUrl(postPath(locale, meta.slug));
   return {
     "@context": SCHEMA_CONTEXT,
     "@type": "BlogPosting",
     headline: meta.h1,
     description: meta.description,
-    image: absoluteUrl(postOgImage(meta).url),
+    image: absoluteUrl(postOgImage(meta, locale).url),
     datePublished: toIsoDateTime(meta.publishedAt),
     dateModified: toIsoDateTime(meta.updatedAt ?? meta.publishedAt),
     author: { "@type": "Organization", "@id": ORGANIZATION_ID, name: SITE_NAME, url: SITE_URL },
@@ -212,6 +256,6 @@ export const blogPostingJsonLd = (meta: PostMeta) => {
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
     url,
     isPartOf: { "@id": WEBSITE_ID },
-    inLanguage: "en",
+    inLanguage: LOCALE_INFO[locale].htmlLang,
   };
 };

@@ -3,7 +3,8 @@ import { ArrowRight } from "lucide-react";
 import { formatPostDate } from "~~/components/blog/formatPostDate";
 import { cx } from "~~/components/ui/classNames";
 import type { PostMeta } from "~~/content/blog/types";
-import { postPath } from "~~/utils/seo";
+import { DEFAULT_LOCALE } from "~~/i18n/locales";
+import { postPath } from "~~/i18n/routes";
 
 type PostSummaryProps = {
   meta: PostMeta;
@@ -31,7 +32,7 @@ export const PostSummary = ({ meta, as: Heading = "h2", featured = false }: Post
     {featured && <p className="kicker m-0">Start here</p>}
     <Heading className={cx("m-0 leading-snug", featured ? "text-2xl md:text-3xl" : "text-lg")}>
       <Link
-        href={postPath(meta.slug)}
+        href={postPath(DEFAULT_LOCALE, meta.slug)}
         className="text-foreground no-underline after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-hidden"
       >
         {meta.title}

@@ -55,10 +55,13 @@ describe("next.config", () => {
       typescript: { ignoreBuildErrors: false },
       eslint: { ignoreDuringBuilds: false, dirs: LINT_DIRS },
       webpack: expect.any(Function),
+      // One root layout per language needs app/global-not-found.tsx for URLs that match no route.
+      experimental: { globalNotFound: true },
     });
     expect(Object.keys(config)).toEqual([
       "pageExtensions",
       "reactStrictMode",
+      "experimental",
       "devIndicators",
       "typescript",
       "eslint",
@@ -89,6 +92,7 @@ describe("next.config", () => {
     expect(Object.keys(ipfs)).toEqual([
       "pageExtensions",
       "reactStrictMode",
+      "experimental",
       "devIndicators",
       "typescript",
       "eslint",

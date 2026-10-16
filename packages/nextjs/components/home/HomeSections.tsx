@@ -22,10 +22,11 @@ import {
   NOTIFICATION_CHECK_INTERVAL_MINUTES,
 } from "~~/constants/notifications";
 import type { Post } from "~~/content/blog/types";
+import { DEFAULT_LOCALE, type Locale } from "~~/i18n/locales";
+import { postPath } from "~~/i18n/routes";
 import { formatAlertChannels } from "~~/services/marketing/alertChannels";
 import type { AlertPlan } from "~~/services/marketing/alertPlan";
 import { getPaymentChainName } from "~~/services/marketing/paymentChain";
-import { postPath } from "~~/utils/seo";
 
 const NETWORK_COUNT = AAVE_MARKETS.length;
 const CHECK_MINUTES = NOTIFICATION_CHECK_INTERVAL_MINUTES;
@@ -66,8 +67,10 @@ export const ProblemSection = () => {
           {liquidationGuide && (
             <>
               {" "}
-              <Link href={postPath(liquidationGuide.meta.slug)}>What happens in an Aave liquidation</Link> walks through
-              the rules.
+              <Link href={postPath(DEFAULT_LOCALE, liquidationGuide.meta.slug)}>
+                What happens in an Aave liquidation
+              </Link>{" "}
+              walks through the rules.
             </>
           )}
         </p>
@@ -257,7 +260,7 @@ export const FromTheBlogSection = () => {
  * switches every token inside it in both themes, the glow wash is the page's second glow, the grain sits on top at
  * 30%. The section padding keeps it apart from the dark footer.
  */
-export const ClosingCtaSection = () => (
+export const ClosingCtaSection = ({ locale }: { locale: Locale }) => (
   <section id="closing" aria-labelledby="closing-title" className={SECTION_CLASS_NAME}>
     <Container>
       <div className="dark relative isolate overflow-hidden rounded-3xl border border-border bg-background px-6 py-12 text-center md:px-16 md:py-16">
@@ -272,7 +275,7 @@ export const ClosingCtaSection = () => (
         <p className="text-lead mx-auto mt-4 mb-0 max-w-[56ch] text-pretty text-muted-foreground">
           {`The dashboard shows collateral, debt and health factor for the wallet you connect on all ${NETWORK_COUNT} networks. Alerts are optional and paid.`}
         </p>
-        <DashboardCta />
+        <DashboardCta locale={locale} />
       </div>
     </Container>
   </section>

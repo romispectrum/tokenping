@@ -96,14 +96,14 @@ describe("pageMetadata", () => {
     expect(metadata.robots).toEqual({ index: false, follow: false });
   });
 
-  it("adds article times and leaves images to the route's own opengraph-image file", () => {
+  it("adds article times and the post's own card", () => {
     const metadata = pageMetadata({
       title: "Post",
       description: "d",
       path: "/blog/post",
       type: "article",
       publishedAt: "2026-10-14",
-      ogImage: false,
+      ogImage: postOgImage(META),
     });
 
     expect(metadata.openGraph).toMatchObject({
@@ -113,8 +113,8 @@ describe("pageMetadata", () => {
       modifiedTime: "2026-10-14T00:00:00Z",
       authors: ["https://tokenping.xyz"],
     });
-    // Next applies a segment's opengraph-image only while openGraph has no `images` key at all.
-    expect(metadata.openGraph).not.toHaveProperty("images");
+    expect(metadata.openGraph).toHaveProperty("images", [postOgImage(META)]);
+    // Next copies og:image into twitter:image when twitter sets none.
     expect(metadata.twitter).not.toHaveProperty("images");
   });
 
@@ -198,7 +198,7 @@ describe("siteJsonLd", () => {
           "@id": "https://tokenping.xyz/#website",
           name: "Tokenping",
           url: "https://tokenping.xyz",
-          inLanguage: "en",
+          inLanguage: ["en", "cs"],
           publisher: { "@id": ORGANIZATION_ID },
         },
       ],
@@ -230,9 +230,10 @@ describe("breadcrumbJsonLd", () => {
 });
 
 describe("postOgImage", () => {
-  it("points at the post's opengraph-image route with alt text that names the post", () => {
+  // Fixed URLs served by app/og: an opengraph-image file inside a route group would get a hashed URL.
+  it("points at the post's card route with alt text that names the post", () => {
     expect(postOgImage(META)).toEqual({
-      url: "/blog/aave-health-factor/opengraph-image",
+      url: "/og/en/aave-health-factor",
       width: 1200,
       height: 630,
       alt: "Aave health factor explained: formula and examples (Tokenping Aave V3 guide)",
@@ -248,7 +249,7 @@ describe("blogPostingJsonLd", () => {
       "@type": "BlogPosting",
       headline: META.h1,
       description: META.description,
-      image: "https://tokenping.xyz/blog/aave-health-factor/opengraph-image",
+      image: "https://tokenping.xyz/og/en/aave-health-factor",
       datePublished: "2026-10-14T00:00:00Z",
       dateModified: "2026-10-14T00:00:00Z",
       author: { "@type": "Organization", "@id": ORGANIZATION_ID, name: "Tokenping", url: "https://tokenping.xyz" },

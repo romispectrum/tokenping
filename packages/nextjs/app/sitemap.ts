@@ -1,23 +1,65 @@
 import type { MetadataRoute } from "next";
-import { PUBLISHED_POSTS, getLatestPostDate, getPostLastModified } from "~~/content/blog";
-import { absoluteUrl, postPath } from "~~/utils/seo";
+import { getLatestPostDate, getPostByKey, getPostLastModified, getPublishedPosts, isPublished } from "~~/content/blog";
+import { LOCALES, LOCALE_INFO, type Locale, type Localized } from "~~/i18n/locales";
+import { POST_SLUGS } from "~~/i18n/postSlugs";
+import { type StaticRoute, postPath, routeAlternates } from "~~/i18n/routes";
+import { absoluteUrl } from "~~/utils/seo";
 
-// Canonical, indexable, server-rendered 200 URLs only; app/sitemap.test.ts checks every path against its route file.
-// Left out: /admin, /debug, /blockexplorer and /api; placeholder posts (and /blog while it lists none); any
-// client-rendered page. /aave is listed because its page is a server shell around the wallet island (marketing plan
-// §4.7). lastModified is a real content date or absent, never the build time; priority and changeFrequency are left
-// out because Google ignores them.
+// Canonical, indexable, server-rendered 200 URLs only, in every language; app/sitemap.test.ts checks every path
+// against its route file. Each URL lists its translations (hreflang) when there is more than one. Left out: /admin,
+// /debug, /blockexplorer and /api; placeholder posts (and a language's /blog while it lists none); any
+// client-rendered page. The dashboard is listed because its page is a server shell around the wallet island
+// (marketing plan §4.7). lastModified is a real content date or absent, never the build time; priority and
+// changeFrequency are left out because Google ignores them.
+
+type Entry = MetadataRoute.Sitemap[number];
+
+/** One URL per language in `paths`, each naming the others as alternates. */
+const entries = (paths: Partial<Localized<string>>, lastModified?: (locale: Locale) => string | undefined): Entry[] => {
+  const locales = LOCALES.filter(locale => paths[locale] !== undefined);
+  const languages =
+    locales.length > 1
+      ? Object.fromEntries(locales.map(locale => [LOCALE_INFO[locale].htmlLang, absoluteUrl(paths[locale]!)]))
+      : undefined;
+  return locales.map(locale => {
+    const modified = lastModified?.(locale);
+    return {
+      url: absoluteUrl(paths[locale]!),
+      ...(modified && { lastModified: modified }),
+      ...(languages && { alternates: { languages } }),
+    };
+  });
+};
+
+const staticRoute = (route: StaticRoute) => entries(routeAlternates(route));
+
 const sitemap = (): MetadataRoute.Sitemap => {
-  const latestPostDate = getLatestPostDate();
+  // A language's blog index is listed once it has a published post.
+  const blogPaths = Object.fromEntries(
+    LOCALES.filter(locale => getLatestPostDate(getPublishedPosts(locale))).map(locale => [
+      locale,
+      routeAlternates("blog")[locale],
+    ]),
+  );
+  const posts = Object.keys(POST_SLUGS).flatMap(key => {
+    const published = LOCALES.flatMap(locale => {
+      const post = getPostByKey(key, locale);
+      return post && isPublished(post) ? [[locale, post] as const] : [];
+    });
+    return entries(
+      Object.fromEntries(published.map(([locale, post]) => [locale, postPath(locale, post.meta.slug)])),
+      locale => {
+        const post = published.find(([published]) => published === locale)?.[1];
+        return post && getPostLastModified(post);
+      },
+    );
+  });
   return [
-    { url: absoluteUrl("/") },
-    { url: absoluteUrl("/aave") },
-    ...(latestPostDate ? [{ url: absoluteUrl("/blog"), lastModified: latestPostDate }] : []),
-    ...PUBLISHED_POSTS.map(post => ({
-      url: absoluteUrl(postPath(post.meta.slug)),
-      lastModified: getPostLastModified(post),
-    })),
-    { url: absoluteUrl("/privacy") },
+    ...staticRoute("home"),
+    ...staticRoute("dashboard"),
+    ...entries(blogPaths, locale => getLatestPostDate(getPublishedPosts(locale))),
+    ...posts,
+    ...staticRoute("privacy"),
   ];
 };
 
