@@ -1,4 +1,5 @@
 import { formatUnits } from "viem";
+import { LOCALE_INFO, type Locale } from "~~/i18n/locales";
 
 const USD_COMPACT_FORMATTER = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -32,20 +33,27 @@ export function formatTokenAmount(amount: bigint, decimals: number): string {
   return formatter.format(asNumber);
 }
 
-// Created lazily so client bundles that only use the number formatters can tree-shake it.
-let utcTimestampFormatter: Intl.DateTimeFormat | undefined;
+// Created lazily so client bundles that only use the number formatters can tree-shake them.
+const utcTimestampFormatters = new Map<Locale, Intl.DateTimeFormat>();
 
-/** e.g. "Oct 14, 2026, 9:05:07 AM Coordinated Universal Time". Pinned to UTC so alerts read the same on any host. */
-export const formatUtcTimestamp = (date: Date) => {
-  utcTimestampFormatter ??= new Intl.DateTimeFormat("en-US", {
-    timeZone: "UTC",
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    timeZoneName: "long",
-  });
-  return utcTimestampFormatter.format(date);
+/**
+ * e.g. "Oct 14, 2026, 9:05:07 AM Coordinated Universal Time" / "14. 10. 2026 9:05:07 koordinovaný světový čas".
+ * Pinned to UTC so alerts read the same on any host.
+ */
+export const formatUtcTimestamp = (date: Date, locale: Locale = "en") => {
+  let formatter = utcTimestampFormatters.get(locale);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(LOCALE_INFO[locale].intl, {
+      timeZone: "UTC",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+      timeZoneName: "long",
+    });
+    utcTimestampFormatters.set(locale, formatter);
+  }
+  return formatter.format(date);
 };
