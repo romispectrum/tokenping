@@ -1,9 +1,8 @@
 import { hardhat } from "viem/chains";
-import { AAVE_CHAINS, AAVE_NETWORK_NAMES, AAVE_V3_NETWORKS, AAVE_V4_NETWORK_NAMES } from "~~/config/aaveConfig";
+import { AAVE_CHAINS, AAVE_NETWORK_NAMES } from "~~/config/aaveConfig";
 import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import { PAYMENT_CHAIN_ID, PAYMENT_CONTRACT_ADDRESS } from "~~/constants/payments";
 import { getPostByKey, isPublished } from "~~/content/blog";
-import { joinList as joinListIn } from "~~/i18n/format";
 import { DEFAULT_LOCALE, LOCALE_INFO, type Locale } from "~~/i18n/locales";
 import { HOME_MESSAGES } from "~~/i18n/messages/home";
 import { routePath } from "~~/i18n/routes";
@@ -58,22 +57,7 @@ export const getHomeDescription = (locale: Locale = DEFAULT_LOCALE) => {
 export const getDashboardDescription = () =>
   `See your Aave V3 and V4 collateral, debt and health factor on ${AAVE_NETWORK_NAMES.length} networks for free, then set ${formatAlertChannels("or")} alerts for each market.`;
 
-/**
- * The Aave V3 networks in dashboard order, a network with several markets naming them: "Ethereum (Core, Prime,
- * EtherFi and Horizon markets)", "Polygon".
- */
-export const getNetworkNames = (locale: Locale = DEFAULT_LOCALE) =>
-  AAVE_V3_NETWORKS.map(({ name, marketNames }) =>
-    marketNames.length > 1 ? HOME_MESSAGES[locale].networkMarkets(name, joinListIn(locale, marketNames)) : name,
-  );
-
-/** The V3 networks as one list in running text: "Ethereum (Core, ... markets), Polygon, ... and Monad". */
-export const getNetworkList = (locale: Locale = DEFAULT_LOCALE) => joinListIn(locale, getNetworkNames(locale));
-
-/** The networks Aave V4 runs on, in running text: "Ethereum, Avalanche, Arc and Base". */
-export const getV4NetworkList = (locale: Locale = DEFAULT_LOCALE) => joinListIn(locale, AAVE_V4_NETWORK_NAMES);
-
-/** The hero's badges: every network with a market Tokenping reads, V3 or V4, with the chain id its logo is keyed by. */
+/** The hero's logo strip: every network with a market Tokenping reads, V3 or V4, with the chain id its logo is keyed by. */
 export const getNetworkBadges = () => AAVE_CHAINS.map(({ chain, name }) => ({ chainId: chain.id, name }));
 
 /** The paywall's public Sourcify page, or undefined on a local build, where the contract is not verified anywhere. */
