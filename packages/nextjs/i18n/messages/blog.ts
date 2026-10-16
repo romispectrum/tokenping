@@ -92,7 +92,7 @@ const csEveryMinutes = (minutes: number) =>
     other: `každých ${minutes} minut`,
   });
 
-/** "na 7 sítích", "na 1 síti". */
+/** "na 22 sítích", "na 1 síti". */
 const csOnNetworks = (networks: number) =>
   plural("cs", networks, { one: `na ${networks} síti`, other: `na ${networks} sítích` });
 

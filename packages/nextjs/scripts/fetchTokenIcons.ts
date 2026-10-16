@@ -14,10 +14,10 @@
  */
 import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import sharp from "sharp";
 import { type Address, type Chain, createPublicClient } from "viem";
-import { AAVE_MARKETS, AAVE_POOL_ABI, AAVE_V4_SPOKES, AAVE_V4_SPOKE_ABI, getAaveMarket } from "~~/config/aaveConfig";
+import { AAVE_CHAINS, AAVE_MARKETS, AAVE_POOL_ABI, AAVE_V4_SPOKES, AAVE_V4_SPOKE_ABI } from "~~/config/aaveConfig";
 import { TOKEN_ICONS as PREVIOUS_ICONS } from "~~/config/tokenIcons.generated";
+import { type EncodedIcon, encodeIconImage } from "~~/scripts/iconImage";
 import { requestWithRetry } from "~~/scripts/requestWithRetry";
 import {
   COINGECKO_PLATFORMS,
@@ -30,7 +30,7 @@ import {
 } from "~~/scripts/tokenIconSources";
 import { readTokenSymbol } from "~~/services/aave/tokenSymbol";
 import { getFallbackTransport } from "~~/utils/rpc";
-import { TOKEN_ICON_DIR, TOKEN_ICON_SIZE, tokenIconKey } from "~~/utils/tokenIcons";
+import { TOKEN_ICON_DIR, tokenIconKey } from "~~/utils/tokenIcons";
 
 // The package script runs from packages/nextjs.
 const ICON_DIR = join(process.cwd(), "public", TOKEN_ICON_DIR);
@@ -39,22 +39,9 @@ const GENERATED_MODULE = join(process.cwd(), "config", "tokenIcons.generated.ts"
 const API_KEY = process.env.COINGECKO_API_KEY;
 // Demo keys allow 30 calls a minute; without a key CoinGecko allows roughly 5 to 15.
 const API_PAUSE_MS = API_KEY ? 2_100 : 6_000;
-// The image CDNs answer a deleted object with 403, not 404.
-const IMAGE_GONE_STATUSES = [403, 404];
 // A refresh that would take icons away from more reserves than this points at a broken source (a blocked CDN, a new URL
 // shape, a renamed platform) rather than a few stale logos, so it stops before writing anything.
 const MAX_LOST_ICONS = 5;
-
-// The logos are uploaded by token issuers: only the PNG, JPEG and WebP decoders are needed, so the rest stay off.
-sharp.block({
-  operation: [
-    "VipsForeignLoadSvg",
-    "VipsForeignLoadHeif",
-    "VipsForeignLoadNsgif",
-    "VipsForeignLoadTiff",
-    "VipsForeignLoadVips",
-  ],
-});
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -83,11 +70,6 @@ const fetchContractLogo = async (platform: string, address: Address) => {
   return coin?.image?.large;
 };
 
-/** Every chain with an Aave market, V3 networks first in dashboard order, then the V4-only ones. */
-const AAVE_CHAINS = [
-  ...new Map([...AAVE_MARKETS, ...AAVE_V4_SPOKES].map(({ chain, name }) => [chain.id, { chain, name }])).values(),
-];
-
 type ReserveClient = ReturnType<typeof createPublicClient>;
 
 const readSpokeReserves = async (client: ReserveClient, spoke: Address) => {
@@ -105,11 +87,12 @@ const readSpokeReserves = async (client: ReserveClient, spoke: Address) => {
   );
 };
 
-/** The chain's reserve tokens: its V3 Pool's, then each V4 Spoke's, each address once. */
+/** The chain's reserve tokens: each V3 Pool's, then each V4 Spoke's, each address once. */
 const readChainReserves = async (client: ReserveClient, chain: Chain) => {
-  const market = getAaveMarket(chain.id);
   const lists = await Promise.all([
-    market ? client.readContract({ address: market.pool, abi: AAVE_POOL_ABI, functionName: "getReservesList" }) : [],
+    ...AAVE_MARKETS.filter(market => market.chain.id === chain.id).map(({ pool }) =>
+      client.readContract({ address: pool, abi: AAVE_POOL_ABI, functionName: "getReservesList" }),
+    ),
     ...AAVE_V4_SPOKES.filter(spoke => spoke.chain.id === chain.id).map(({ spoke }) => readSpokeReserves(client, spoke)),
   ]);
   const byAddress = new Map<string, Address>();
@@ -118,27 +101,9 @@ const readChainReserves = async (client: ReserveClient, chain: Chain) => {
   return [...byAddress.values()];
 };
 
-type EncodedIcon = { webp: Uint8Array } | { problem: string };
-
-/**
- * Downloads an image and encodes it as a square WebP, transparent unless it is in WHITE_BACKED_IMAGES. Nothing is
- * written here: main writes every icon at once, after its checks pass.
- */
-const encodeIcon = async ({ id, largeUrl }: CoinGeckoImage): Promise<EncodedIcon> => {
-  const bytes = await requestWithRetry(largeUrl, response => response.arrayBuffer(), {
-    goneStatuses: IMAGE_GONE_STATUSES,
-  });
-  if (!bytes) return { problem: "image gone" };
-  try {
-    const whiteBacked = WHITE_BACKED_IMAGES.has(id);
-    const background = whiteBacked ? { r: 255, g: 255, b: 255, alpha: 1 } : { r: 0, g: 0, b: 0, alpha: 0 };
-    const icon = sharp(bytes).resize(TOKEN_ICON_SIZE, TOKEN_ICON_SIZE, { fit: "contain", background });
-    if (whiteBacked) icon.flatten({ background });
-    return { webp: new Uint8Array(await icon.webp({ quality: 90, effort: 6 }).toBuffer()) };
-  } catch (error) {
-    return { problem: `image unusable: ${error instanceof Error ? error.message : String(error)}` };
-  }
-};
+/** A coin's logo as a square WebP, on a white disc when it is in WHITE_BACKED_IMAGES. */
+const encodeIcon = ({ id, largeUrl }: CoinGeckoImage): Promise<EncodedIcon> =>
+  encodeIconImage(largeUrl, WHITE_BACKED_IMAGES.has(id));
 
 const main = async () => {
   console.log(

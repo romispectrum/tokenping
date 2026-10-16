@@ -38,10 +38,15 @@ export const resolveSelectedMarketKey = (positions: readonly NetworkPosition[], 
 };
 
 /**
- * The markets the list shows: every V3 network, and a V4 Spoke only when the wallet has a position in it or an alert
- * saved for it, so twenty empty Spokes don't bury the networks.
+ * Splits the markets into the ones the list shows open, where the wallet has a position or an alert, and the rest,
+ * which it folds away: with forty-odd markets, the empty ones would bury the active ones. Both keep their order.
  */
-export const getListedPositions = (
+export const partitionPositions = (
   positions: readonly NetworkPosition[],
   hasAlert: (position: NetworkPosition) => boolean,
-) => positions.filter(p => p.version === 3 || p.hasPosition || hasAlert(p));
+) => {
+  const active: NetworkPosition[] = [];
+  const other: NetworkPosition[] = [];
+  for (const position of positions) (position.hasPosition || hasAlert(position) ? active : other).push(position);
+  return { active, other };
+};

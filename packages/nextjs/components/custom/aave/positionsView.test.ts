@@ -4,6 +4,7 @@ import {
   AVALANCHE_DEBT_ONLY_POSITION,
   BASE_SUMMARY_ONLY_POSITION,
   ETHEREUM_POSITION,
+  ETHEREUM_PRIME_POSITION,
   ETHEREUM_V4_LIDO_POSITION,
   ETHEREUM_V4_MAIN_EMPTY_POSITION,
   MIXED_DEBT_GHO,
@@ -18,7 +19,7 @@ import {
   formatDebtBreakdown,
   getCollateralTokens,
   getDebtTokens,
-  getListedPositions,
+  partitionPositions,
   resolveSelectedMarketKey,
 } from "~~/components/custom/aave/positionsView";
 import type { NetworkPosition, TokenPosition } from "~~/services/aave/positions";
@@ -136,49 +137,67 @@ describe("resolveSelectedMarketKey", () => {
   });
 });
 
-describe("getListedPositions", () => {
+describe("partitionPositions", () => {
+  // Markets in dashboard order, V3 and V4 mixed, with empty ones between the active ones.
   const ALL = [
     ETHEREUM_POSITION,
     ARBITRUM_EMPTY_POSITION,
+    ETHEREUM_PRIME_POSITION,
     BASE_SUMMARY_ONLY_POSITION,
     ETHEREUM_V4_MAIN_EMPTY_POSITION,
     ETHEREUM_V4_LIDO_POSITION,
   ];
   const noAlert = () => false;
+  const alertOn =
+    (...keys: string[]) =>
+    (position: NetworkPosition) =>
+      keys.includes(position.key);
 
-  it("keeps every V3 market, active or not, and a V4 Spoke only with a position", () => {
-    expect(getListedPositions(ALL, noAlert)).toEqual([
+  it("opens the markets with a position and folds the empty ones, each side in dashboard order", () => {
+    expect(partitionPositions(ALL, noAlert)).toEqual({
+      active: [ETHEREUM_POSITION, ETHEREUM_PRIME_POSITION, BASE_SUMMARY_ONLY_POSITION, ETHEREUM_V4_LIDO_POSITION],
+      other: [ARBITRUM_EMPTY_POSITION, ETHEREUM_V4_MAIN_EMPTY_POSITION],
+    });
+  });
+
+  it("treats an empty market with an alert as active, whether it is a V3 market or a V4 Spoke", () => {
+    const { active, other } = partitionPositions(
+      ALL,
+      alertOn(ARBITRUM_EMPTY_POSITION.key, ETHEREUM_V4_MAIN_EMPTY_POSITION.key),
+    );
+
+    expect(active).toEqual(ALL);
+    expect(other).toEqual([]);
+  });
+
+  it("keeps an alert-only market in its place among the active ones", () => {
+    const { active, other } = partitionPositions(ALL, alertOn(ETHEREUM_V4_MAIN_EMPTY_POSITION.key));
+
+    expect(active).toEqual([
       ETHEREUM_POSITION,
-      ARBITRUM_EMPTY_POSITION,
+      ETHEREUM_PRIME_POSITION,
       BASE_SUMMARY_ONLY_POSITION,
+      ETHEREUM_V4_MAIN_EMPTY_POSITION,
       ETHEREUM_V4_LIDO_POSITION,
     ]);
+    expect(other).toEqual([ARBITRUM_EMPTY_POSITION]);
   });
 
-  it("keeps an empty V4 Spoke that has an alert, in its place in the list", () => {
-    const hasAlert = (position: NetworkPosition) => position.key === ETHEREUM_V4_MAIN_EMPTY_POSITION.key;
+  it("folds an empty V3 market and an empty V4 Spoke alike", () => {
+    const { active, other } = partitionPositions([ARBITRUM_EMPTY_POSITION, ETHEREUM_V4_MAIN_EMPTY_POSITION], noAlert);
 
-    expect(getListedPositions(ALL, hasAlert)).toEqual(ALL);
+    expect(active).toEqual([]);
+    expect(other).toEqual([ARBITRUM_EMPTY_POSITION, ETHEREUM_V4_MAIN_EMPTY_POSITION]);
   });
 
-  it("asks about alerts only for empty V4 Spokes, and an alert never hides a market", () => {
-    const asked: string[] = [];
-    const hasAlert = (position: NetworkPosition) => {
-      asked.push(position.key);
-      return false;
-    };
-
-    getListedPositions(ALL, hasAlert);
-
-    expect(asked).toEqual([ETHEREUM_V4_MAIN_EMPTY_POSITION.key]);
-    expect(getListedPositions([ETHEREUM_POSITION, ETHEREUM_V4_LIDO_POSITION], () => true)).toEqual([
-      ETHEREUM_POSITION,
-      ETHEREUM_V4_LIDO_POSITION,
-    ]);
+  it("never folds a market with a position, whatever the alerts say", () => {
+    expect(partitionPositions([ETHEREUM_POSITION, ETHEREUM_V4_LIDO_POSITION], () => true)).toEqual({
+      active: [ETHEREUM_POSITION, ETHEREUM_V4_LIDO_POSITION],
+      other: [],
+    });
   });
 
-  it("lists nothing when only empty V4 Spokes without alerts were read", () => {
-    expect(getListedPositions([ETHEREUM_V4_MAIN_EMPTY_POSITION], noAlert)).toEqual([]);
-    expect(getListedPositions([], noAlert)).toEqual([]);
+  it("returns two empty lists for no markets", () => {
+    expect(partitionPositions([], noAlert)).toEqual({ active: [], other: [] });
   });
 });

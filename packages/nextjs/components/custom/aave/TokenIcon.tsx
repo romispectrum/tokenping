@@ -11,8 +11,8 @@ type TokenIconProps = {
 
 const ICON_CLASS = "size-6 shrink-0 rounded-full";
 
-/** The first letter or digit of a symbol, else its first character, else "?". */
-const initialOf = (symbol: string) =>
+/** The first letter or digit of a symbol or name, else its first character, else "?". */
+export const initialOf = (symbol: string) =>
   (symbol.match(/[A-Za-z0-9]/)?.[0] ?? symbol.trim().charAt(0)).toUpperCase() || "?";
 
 /**

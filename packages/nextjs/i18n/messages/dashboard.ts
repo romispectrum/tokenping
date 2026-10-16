@@ -11,11 +11,11 @@ type DashboardMessages = {
     /** The meta description; `channels` is the alert channels joined with "or" ("Signal or email"). */
     metaDescription: (networkCount: number, channels: string) => string;
     title: string;
-    /** "Ethereum (Core market)": on Ethereum only the Core market's pool is read. */
-    coreMarket: (networkName: string) => string;
+    /** "Ethereum (Core, Prime, EtherFi and Horizon markets)": a network with several V3 markets, `markets` joined. */
+    networkMarkets: (networkName: string, markets: string) => string;
     /**
-     * `v3Networks` is every network read on Aave V3, joined ("Ethereum (Core market), Polygon ... and Gnosis");
-     * `v4Networks` every network with Aave V4 Spokes ("Ethereum, Avalanche, Arc and Base").
+     * `v3Networks` is every network read on Aave V3, joined ("Ethereum (Core, Prime, EtherFi and Horizon markets),
+     * Polygon ... and Monad"); `v4Networks` every network with Aave V4 Spokes ("Ethereum, Avalanche, Arc and Base").
      */
     intro: (v3Networks: string, v4Networks: string) => string;
     disclosureSummary: string;
@@ -62,8 +62,9 @@ type DashboardMessages = {
     selectedRegion: string;
     noneSelectedTitle: string;
     noneSelectedDescription: string;
-    /** Under the list when the wallet has no V4 position: Spokes are listed only once they hold one. */
-    noV4Positions: (spokeCount: number, networks: string) => string;
+    /** The folded group of markets where the wallet has neither a position nor an alert. */
+    otherMarkets: (count: number) => string;
+    otherMarketsHint: string;
     alertSet: string;
     /** "$1,200.00 supplied," (the comma ends the first half of the row's two totals). */
     supplied: (usd: string) => string;
@@ -186,7 +187,7 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
       metaDescription: (networkCount, channels) =>
         `See your Aave V3 and V4 collateral, debt and health factor on ${networkCount} networks for free, then set a ${channels} alert threshold for each market.`,
       title: "Aave V3 and V4 positions and health factor alerts",
-      coreMarket: name => `${name} (Core market)`,
+      networkMarkets: (name, markets) => `${name} (${markets} markets)`,
       intro: (v3Networks, v4Networks) =>
         `Connect the wallet you borrow with to see its collateral, debt and health factor on Aave V3 on ${v3Networks}, and in every Aave V4 Spoke on ${v4Networks}. Viewing is free and needs no transaction.`,
       disclosureSummary: "What alerts cost and how often we check",
@@ -233,8 +234,8 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
       selectedRegion: "Selected market",
       noneSelectedTitle: "No market selected",
       noneSelectedDescription: "Select a market to view its Aave position.",
-      noV4Positions: (spokeCount, networks) =>
-        `Aave V4: no position in any of its ${spokeCount} Spokes on ${networks}. A Spoke is listed here once this wallet has collateral or debt in it.`,
+      otherMarkets: count => `Other markets (${count})`,
+      otherMarketsHint: "Markets Tokenping checked where this wallet has no position and no alert.",
       alertSet: "Alert set",
       supplied: usd => `${usd} supplied,`,
       borrowed: usd => `${usd} borrowed`,
@@ -258,7 +259,7 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
       borrowedTitle: "Borrowed",
       noCollateral: "No collateral supplied",
       noDebt: "No outstanding debt",
-      tokenIconsFrom: "Token icons from",
+      tokenIconsFrom: "Token and network icons from",
       tokenDetailsFailedTitle: "Token details did not load",
       tokenDetailsFailedBody: "The totals above come from Aave's account summary. Refresh positions to try again.",
     },
@@ -353,7 +354,7 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
       metaDescription: (networkCount, channels) =>
         `Zdarma uvidíte kolaterál, dluh a health factor na Aave V3 a V4 na ${networkCount} sítích. Pro každý trh pak nastavte práh upozornění přes ${channels}.`,
       title: "Pozice na Aave V3 a V4 a upozornění na health factor",
-      coreMarket: name => `${name} (trh Core)`,
+      networkMarkets: (name, markets) => `${name} (trhy ${markets})`,
       intro: (v3Networks, v4Networks) =>
         `Připojte peněženku, se kterou si půjčujete, a uvidíte její kolaterál, dluh a health factor na Aave V3 na sítích ${v3Networks} a ve všech trzích (Spoke) Aave V4 na sítích ${v4Networks}. Prohlížení je zdarma a nevyžaduje žádnou transakci.`,
       disclosureSummary: "Kolik upozornění stojí a jak často kontrolujeme",
@@ -395,13 +396,14 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
     },
     networks: {
       heading: "Trhy",
-      active: count => `${count} aktivní`,
+      active: count =>
+        plural("cs", count, { one: `${count} aktivní`, few: `${count} aktivní`, other: `${count} aktivních` }),
       noPositions: "Na podporovaných trzích jsme nenašli žádné aktivní pozice na Aave.",
       selectedRegion: "Vybraný trh",
       noneSelectedTitle: "Není vybraný žádný trh",
       noneSelectedDescription: "Vyberte trh a zobrazí se jeho pozice na Aave.",
-      noV4Positions: (spokeCount, networks) =>
-        `Aave V4: v žádném z ${spokeCount} trhů (Spoke) na sítích ${networks} nemáte pozici. Trh se tu zobrazí, jakmile v něm tato peněženka bude mít kolaterál nebo dluh.`,
+      otherMarkets: count => `Další trhy (${count})`,
+      otherMarketsHint: "Trhy, které Tokenping zkontroloval a kde tato peněženka nemá pozici ani upozornění.",
       alertSet: "Upozornění nastaveno",
       supplied: usd => `vloženo ${usd},`,
       borrowed: usd => `vypůjčeno ${usd}`,
@@ -426,7 +428,7 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
       borrowedTitle: "Vypůjčeno",
       noCollateral: "Žádný vložený kolaterál",
       noDebt: "Žádný nesplacený dluh",
-      tokenIconsFrom: "Ikony tokenů z",
+      tokenIconsFrom: "Ikony tokenů a sítí z",
       tokenDetailsFailedTitle: "Podrobnosti o tokenech se nenačetly",
       tokenDetailsFailedBody: "Součty výše pocházejí ze souhrnu účtu na Aave. Pro nový pokus obnovte pozice.",
     },

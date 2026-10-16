@@ -19,7 +19,9 @@ const MIXED = `0x${"AB".repeat(20)}`;
 const LIDO_SPOKE = "0xe1900480ac69f0b296841cd01cc37546d92f35cd";
 const MAIN_SPOKE = "0x94e7a5dcbe816e498b89ab752661904e2f56c485";
 const NOT_A_SPOKE = `0x${"12".repeat(20)}`;
-const INVALID_MARKET = "Invalid market: expected v3 or a lowercased Aave V4 Spoke address";
+// Ethereum's Prime market: a V3 Pool beside the chain's main one, stored by its address like a Spoke.
+const PRIME_POOL = "0x4e033931ad43597d96d6bcc25c280717730b58b1";
+const INVALID_MARKET = "Invalid market: expected v3 or the lowercased address of an Aave V3 Pool or V4 Spoke";
 
 const chainQuery = (uid: string, chainId: number, market = "v3") =>
   `notification_configs.select("*").eq("user_id","${uid}").eq("chain_id",${chainId}).eq("market","${market}").maybeSingle()`;
@@ -262,7 +264,18 @@ describe("GET /api/notifications/config", () => {
       expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 1, LIDO_SPOKE), chainQuery(MIXED, 1, LIDO_SPOKE)]);
     });
 
-    // Reads are not checked against the Spokes the app lists, like the rest of GET.
+    it("reads a further V3 market's row by its Pool address", async () => {
+      fakeSupabase.respondByQuery({
+        [chainQuery(LOWER, 1, PRIME_POOL)]: { data: storedRow({ chain_id: 1, market: PRIME_POOL }) },
+      });
+
+      const res = await get({ userId: LOWER, chainId: "1", market: PRIME_POOL });
+
+      expect(JSON.parse((await read(res)).text)).toMatchObject({ chainId: 1, market: PRIME_POOL });
+      expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 1, PRIME_POOL)]);
+    });
+
+    // Reads are not checked against the markets the app lists, like the rest of GET.
     it("looks up a well-formed market that is no Spoke", async () => {
       expect(await read(await get({ userId: LOWER, chainId: "1", market: NOT_A_SPOKE }))).toEqual({
         status: 200,
@@ -462,11 +475,12 @@ describe("PUT /api/notifications/config", () => {
   });
 
   it.each([
-    ["an address that is no Spoke", 1, NOT_A_SPOKE],
+    ["an address that is no market", 1, NOT_A_SPOKE],
     ["a Spoke on another chain", 8453, LIDO_SPOKE],
+    ["a V3 Pool on another chain", 8453, PRIME_POOL],
   ])("returns 400 for %s before the access check or any DB call", async (_label, chainId, market) => {
     expect(await read(await put({ userId: LOWER, chainId, market }))).toEqual(
-      json(400, { error: "Unknown Aave V4 Spoke" }),
+      json(400, { error: "Unknown Aave market" }),
     );
     expect(isAccessActive).not.toHaveBeenCalled();
     expect(fakeSupabase.queries).toHaveLength(0);
@@ -510,6 +524,18 @@ describe("PUT /api/notifications/config", () => {
       idLookup(LOWER, 1, LIDO_SPOKE),
       idLookup(MIXED, 1, LIDO_SPOKE),
       insertQuery(expectedRow(LOWER, { chain_id: 1, market: LIDO_SPOKE, health_factor_threshold: 1.3 })),
+    ]);
+  });
+
+  it("stores a further V3 market's config under its Pool address, apart from the chain's v3 row", async () => {
+    fakeSupabase.respondByQuery({ [idLookup(LOWER, 1)]: { data: { id: "row-v3" } } });
+
+    const res = await put({ userId: LOWER, chainId: 1, market: PRIME_POOL, healthFactorThreshold: 2 });
+
+    expect(await read(res)).toEqual(json(200, { success: true }));
+    expect(fakeSupabase.log()).toEqual([
+      idLookup(LOWER, 1, PRIME_POOL),
+      insertQuery(expectedRow(LOWER, { chain_id: 1, market: PRIME_POOL, health_factor_threshold: 2 })),
     ]);
   });
 

@@ -140,21 +140,14 @@ describe("Czech copy", () => {
     for (const english of ENGLISH_HEADINGS) expect(headings).not.toContain(english);
   });
 
-  it("shows the network badges and the Czech channel badges", async () => {
-    await renderHome();
+  it("shows the 22 network badges and the Czech channel badges", async () => {
+    const { container } = await renderHome();
+    const badges = screen.getAllByText(/.+/, { selector: ".badge" }).map(badge => badge.textContent);
 
-    expect(screen.getAllByText(/.+/, { selector: ".badge" }).map(badge => badge.textContent)).toEqual([
-      "Ethereum",
-      "Polygon",
-      "Arbitrum",
-      "Optimism",
-      "Base",
-      "Avalanche",
-      "Gnosis",
-      "Arc",
-      "Signal",
-      "E-mail",
-    ]);
+    expect(badges).toHaveLength(24);
+    expect(badges.slice(0, 2)).toEqual(["Ethereum", "Polygon"]);
+    expect(badges.slice(-3)).toEqual(["Arc", "Signal", "E-mail"]);
+    expect(container.querySelectorAll(".badge img")).toHaveLength(22);
   });
 
   it("quotes the Czech alert template with a Czech timestamp and decimal commas", async () => {
@@ -204,19 +197,31 @@ describe("Czech copy", () => {
     await renderHome();
     const answer = screen.getByRole("heading", { name: "Je moje pozice podporovaná?" }).nextElementSibling!.textContent;
 
-    expect(answer).toContain(
-      "Aave V3 na sítích Ethereum (trh Core), Polygon, Arbitrum, Optimism, Base, Avalanche a Gnosis.",
+    expect(answer).toMatch(
+      /^Aave V3 na sítích Ethereum \(trhy Core, Prime, EtherFi a Horizon\), Polygon, Arbitrum, .+ a Monad: celkem 24 trhů, podle Aave Address Book ke 16\. říjnu 2026\./,
     );
     expect(answer).toContain(
       "Aave V4 v každém Spoke na sítích Ethereum, Avalanche, Arc a Base: celkem 20, podle API Aave V4 ke 16. říjnu 2026.",
     );
-    expect(answer).not.toMatch(/Nepodporujeme: Aave V4/);
+    expect(answer).toContain(
+      "Scroll, ZKsync, Metis, Soneium a Sonic governance Aave postupně ukončuje; Tokenping je dál hlídá",
+    );
+    expect(answer).toContain("Nepodporujeme: trh Aave V3 na síti Harmony");
+    expect(answer).toContain("ostatní skládá pod „Další trhy“");
+    expect(answer).not.toMatch(/Prime\/Lido|jen trh Core|Nepodporujeme: Aave V4/);
   });
 
   it("keeps the eight limits and the eight questions", async () => {
     await renderHome();
+    const limits = within(section("Omezení bez příkras"))
+      .getAllByRole("listitem")
+      .map(item => item.textContent);
 
-    expect(within(section("Omezení bez příkras")).getAllByRole("listitem")).toHaveLength(8);
+    expect(limits).toHaveLength(8);
+    expect(limits[0]).toBe(
+      "Každý trh Aave V3 na 21 sítích (24 trhů) a každý Spoke Aave V4 na sítích Ethereum, Avalanche, Arc a Base. Bez trhu Aave V3 na síti Harmony a bez jiných protokolů.",
+    );
+    expect(screen.getByText("Aave V3 na 21 sítích (24 trhů). Aave V4: 20 trhů (Spoke) na 4 sítích.")).toBeTruthy();
     expect(
       within(section("Na co se zeptat, než připojíte peněženku")).getAllByRole("heading", { level: 3 }),
     ).toHaveLength(8);

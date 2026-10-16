@@ -1,21 +1,51 @@
 import { type Chain, type FallbackTransportConfig, fallback, http } from "viem";
-import { arbitrum, avalanche, base, gnosis, hardhat, mainnet, optimism, polygon } from "viem/chains";
-import { arc } from "~~/config/aaveConfig";
+import {
+  arbitrum,
+  avalanche,
+  base,
+  bsc,
+  celo,
+  gnosis,
+  hardhat,
+  ink,
+  linea,
+  mainnet,
+  mantle,
+  metis,
+  optimism,
+  polygon,
+  scroll,
+  soneium,
+  sonic,
+  zksync,
+} from "viem/chains";
+import { arc, monad } from "~~/config/aaveConfig";
 import scaffoldConfig, { DEFAULT_ALCHEMY_API_KEY, type ScaffoldConfig } from "~~/scaffold.config";
 import { RPC_CHAIN_NAMES } from "~~/utils/scaffold-eth/networks";
 
 const LOCAL_RPC_URL = "http://127.0.0.1:8545";
 
-// SE-2's Alchemy network names do not cover Avalanche and Gnosis, which host Aave markets.
+// SE-2's Alchemy network names stop at the chains it targets; these are the other Aave chains Alchemy serves.
 const ALCHEMY_NETWORKS: Record<number, string> = {
   ...RPC_CHAIN_NAMES,
   [avalanche.id]: "avax-mainnet",
   [gnosis.id]: "gnosis-mainnet",
+  [bsc.id]: "bnb-mainnet",
+  [scroll.id]: "scroll-mainnet",
+  [zksync.id]: "zksync-mainnet",
+  [linea.id]: "linea-mainnet",
+  [metis.id]: "metis-mainnet",
+  [soneium.id]: "soneium-mainnet",
+  [sonic.id]: "sonic-mainnet",
+  [mantle.id]: "mantle-mainnet",
+  [ink.id]: "ink-mainnet",
+  [monad.id]: "monad-mainnet",
 };
 
-// Keyless endpoints for every chain with an Aave market. viem's defaults alone are not enough: Ethereum's
-// (eth.merkle.io) rate-limits and Polygon's (polygon-rpc.com) refuses keyless calls, which left both chains without
-// a working endpoint when the app has no Alchemy key of its own.
+// Keyless endpoints for every Aave chain PublicNode serves (checked 16 Oct 2026). viem's defaults alone are not
+// enough: Ethereum's (eth.merkle.io) rate-limits and Polygon's (polygon-rpc.com) refuses keyless calls, which left
+// both chains without a working endpoint when the app has no Alchemy key of its own. ZKsync, Plasma, X Layer, MegaETH
+// and Monad are not on PublicNode and use their chain's own RPC.
 const PUBLICNODE_RPC_URLS: Record<number, string> = {
   [mainnet.id]: "https://ethereum-rpc.publicnode.com",
   [polygon.id]: "https://polygon-bor-rpc.publicnode.com",
@@ -25,6 +55,15 @@ const PUBLICNODE_RPC_URLS: Record<number, string> = {
   [avalanche.id]: "https://avalanche-c-chain-rpc.publicnode.com",
   [gnosis.id]: "https://gnosis-rpc.publicnode.com",
   [arc.id]: "https://arc-rpc.publicnode.com",
+  [bsc.id]: "https://bsc-rpc.publicnode.com",
+  [scroll.id]: "https://scroll-rpc.publicnode.com",
+  [linea.id]: "https://linea-rpc.publicnode.com",
+  [metis.id]: "https://metis-rpc.publicnode.com",
+  [soneium.id]: "https://soneium-rpc.publicnode.com",
+  [sonic.id]: "https://sonic-rpc.publicnode.com",
+  [celo.id]: "https://celo-rpc.publicnode.com",
+  [mantle.id]: "https://mantle-rpc.publicnode.com",
+  [ink.id]: "https://ink-rpc.publicnode.com",
 };
 
 const isUrl = (url: string | undefined): url is string => !!url;

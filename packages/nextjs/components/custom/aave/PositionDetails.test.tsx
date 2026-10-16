@@ -5,6 +5,7 @@ import {
   AVALANCHE_DEBT_ONLY_POSITION,
   BASE_SUMMARY_ONLY_POSITION,
   ETHEREUM_POSITION,
+  ETHEREUM_PRIME_POSITION,
   ETHEREUM_V4_LIDO_POSITION,
   ETHEREUM_V4_MAIN_EMPTY_POSITION,
   POLYGON_COLLATERAL_ONLY_POSITION,
@@ -25,7 +26,29 @@ describe("PositionDetails", () => {
     expect(html.split("<table").length - 1).toBe(2);
     // The details card is flat product UI: no shadow and no pink of its own (the alert settings own the view's pink).
     expect(html).not.toMatch(/shadow-card|\bbg-primary\b/);
+    expect(html).toContain("Token and network icons from");
     expect(html).toMatchSnapshot();
+  });
+
+  it("puts the network's logo, larger than in the list, before the market name in the header", () => {
+    const html = renderMarkup(<PositionDetails position={ETHEREUM_POSITION} />);
+    const header = html.slice(0, html.indexOf("<h3"));
+
+    expect(header).toMatch(/<span aria-hidden="true" class="[^"]*size-8[^"]*">\s*<img [^>]*alt=""/);
+    expect(header).toContain('src="/network-icons/ethereum.webp"');
+    expect(html.match(/network-icons/g)).toHaveLength(1);
+  });
+
+  it("shows the chain's logo for a second V3 market and for a V4 Spoke on that chain", () => {
+    for (const position of [ETHEREUM_PRIME_POSITION, ETHEREUM_V4_LIDO_POSITION]) {
+      const html = renderMarkup(<PositionDetails position={position} />);
+
+      expect(html, position.marketName).toContain('src="/network-icons/ethereum.webp"');
+      expect(html).toContain(`>${position.marketName}</h3>`);
+    }
+    expect(renderMarkup(<PositionDetails position={ARBITRUM_EMPTY_POSITION} />)).toContain(
+      'src="/network-icons/arbitrum-one.webp"',
+    );
   });
 
   it("renders the empty debt list for a collateral-only position", () => {
@@ -123,7 +146,8 @@ describe("PositionDetails in Czech", () => {
     expect(html).toContain('<h4 id="borrowed-1-v3" class="m-0 text-sm font-medium text-foreground">Vypůjčeno</h4>');
     expect(html).toContain(">3 aktiva</p>");
     expect(html).toContain(">4 aktiva</p>");
-    expect(html).toContain("Ikony tokenů z");
+    expect(html).toContain("Ikony tokenů a sítí z");
+    expect(html).not.toContain("Token and network icons");
     expect(html).toContain("(otevře se v nové záložce)");
     expect(html).toContain("Health factor ");
     expect(html).toContain(">Bezpečný</span>");

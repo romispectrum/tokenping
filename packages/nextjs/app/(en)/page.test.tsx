@@ -14,8 +14,34 @@ const PLAN: AlertPlan = { priceLabel: "3 USDC", days: 30 };
 
 const HOME_BLOG_SLUGS = ["aave-health-factor", "aave-health-factor-alert-setup", "safe-aave-health-factor"];
 
-// The Aave V3 networks, then Arc, which only has Aave V4.
-const NETWORKS = ["Ethereum", "Polygon", "Arbitrum", "Optimism", "Base", "Avalanche", "Gnosis", "Arc"];
+// The Aave V3 networks in dashboard order, then Arc, which only has Aave V4.
+const NETWORKS = [
+  "Ethereum",
+  "Polygon",
+  "Arbitrum",
+  "Optimism",
+  "Base",
+  "Avalanche",
+  "Gnosis",
+  "Metis",
+  "BNB Chain",
+  "Scroll",
+  "ZKsync",
+  "Linea",
+  "Sonic",
+  "Celo",
+  "Soneium",
+  "Plasma",
+  "Ink",
+  "MegaETH",
+  "Mantle",
+  "X Layer",
+  "Monad",
+  "Arc",
+];
+
+/** The V3 network list as the objections write it, Ethereum's four markets named. */
+const V3_NETWORK_LIST = `Ethereum (Core, Prime, EtherFi and Horizon markets), ${NETWORKS.slice(1, -2).join(", ")} and Monad`;
 
 const loadHome = () => import("~~/app/(en)/page");
 
@@ -70,7 +96,7 @@ describe("route config and metadata", () => {
 
     expect(metadata.title).toEqual({ absolute: "Aave health factor alerts on Signal and email | Tokenping" });
     expect(metadata.description).toBe(
-      "Signal or email alerts when your Aave V3 or V4 health factor drops below your threshold on 8 networks. Checked every 5 minutes. No approvals on Aave.",
+      "Signal or email alerts when your Aave V3 or V4 health factor drops below your threshold on 22 networks. Checked every 5 minutes. No approvals on Aave.",
     );
     expect(metadata.alternates?.canonical).toBe("/");
     expect(metadata.openGraph).toMatchObject({ url: "/", type: "website" });
@@ -109,14 +135,21 @@ describe("hero", () => {
     expect(screen.getByText("Telegram", { selector: ".badge" })).toBeTruthy();
   });
 
-  it("shows the 8 network badges and the channel badges", async () => {
-    await renderHome();
+  it("shows the 22 network badges, each with its logo, and the channel badges", async () => {
+    const { container } = await renderHome();
 
     expect(screen.getAllByText(/.+/, { selector: ".badge" }).map(badge => badge.textContent)).toEqual([
       ...NETWORKS,
       "Signal",
       "Email",
     ]);
+    // The logos are served by this site and decorative: the network's name is the badge's text.
+    const logos = [...container.querySelectorAll(".badge img")];
+    expect(logos).toHaveLength(NETWORKS.length);
+    expect(logos[0].getAttribute("src")).toBe("/network-icons/ethereum.webp");
+    expect(logos[0].closest("[aria-hidden='true']")).not.toBeNull();
+    logos.forEach(logo => expect(logo.getAttribute("alt")).toBe(""));
+    expect(screen.getByText("Aave V3 on 21 networks (24 markets). Aave V4: 20 Spokes on 4 networks.")).toBeTruthy();
   });
 
   it("repeats one primary action that says what happens, in the hero and at the end", async () => {
@@ -126,7 +159,7 @@ describe("hero", () => {
     expect(ctas.map(link => link.getAttribute("href"))).toEqual(["/aave", "/aave"]);
     expect(
       screen.getAllByText(
-        "Connect a wallet to see your Aave V3 and V4 health factors on 8 networks. Viewing is read-only.",
+        "Connect a wallet to see your Aave V3 and V4 health factors on 22 networks. Viewing is read-only.",
       ),
     ).toHaveLength(2);
   });
@@ -289,19 +322,23 @@ describe("objections", () => {
     expect(within(objections).getByRole("link", { name: "privacy page" }).getAttribute("href")).toBe("/privacy");
   });
 
-  it("names V3 and V4 coverage, the Ethereum Core market and what is not supported", async () => {
+  it("names V3 and V4 coverage, Ethereum's four markets, the wind-down and what is not supported", async () => {
     await renderHome();
     const answer = screen.getByRole("heading", { name: "Is my position supported?" }).nextElementSibling!.textContent;
 
     expect(answer).toContain(
-      "Aave V3 on Ethereum (Core market), Polygon, Arbitrum, Optimism, Base, Avalanche and Gnosis.",
+      `Aave V3 on ${V3_NETWORK_LIST}: 24 markets, taken from the Aave Address Book on 16 October 2026.`,
     );
     expect(answer).toContain(
       "Aave V4 in every Spoke on Ethereum, Avalanche, Arc and Base: 20 Spokes, taken from Aave's V4 API on 16 October 2026.",
     );
-    expect(answer).toContain("one alert per V3 network and one per V4 Spoke");
-    expect(answer).toContain("Prime/Lido, EtherFi, Horizon");
-    expect(answer).not.toMatch(/Not supported: Aave V4/);
+    expect(answer).toContain(
+      "winding down the V3 markets on Scroll, ZKsync, Metis, Soneium and Sonic; Tokenping still watches them",
+    );
+    expect(answer).toContain("Not supported: Aave V3 on Harmony");
+    expect(answer).toContain("one alert per V3 market and one per V4 Spoke");
+    expect(answer).toContain('folds the rest under "Other markets"');
+    expect(answer).not.toMatch(/Prime\/Lido|Core market only|Not supported: Aave V4/);
   });
 
   it("mentions Telegram data and /stop only once the bot is configured", async () => {
@@ -399,7 +436,10 @@ describe("copy rules", () => {
 
     expect(limits).toHaveLength(8);
     expect(limits[0]).toBe(
-      "Aave V3 on 7 networks, and on Ethereum only the Core market. Aave V4 in every Spoke on Ethereum, Avalanche, Arc and Base. No other Aave markets or networks, and no other protocols.",
+      "Every Aave V3 market on 21 networks (24 markets) and every Aave V4 Spoke on Ethereum, Avalanche, Arc and Base. No Aave V3 on Harmony, and no other protocols.",
+    );
+    expect(limits[1]).toBe(
+      'The dashboard lists the markets where the wallet has a position or a saved alert and folds the rest under "Other markets". It shows no supply APY for V4 positions.',
     );
     expect(limits.join(" ")).toMatch(/shows no supply APY for V4 positions/);
     expect(limits.join(" ")).toMatch(/every 5 minutes, not in real time/);

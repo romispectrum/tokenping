@@ -8,7 +8,7 @@ import {
 } from "~~/components/home/homeContent";
 import { HOME_CARD_CLASS_NAME, HomeSection, externalLinkText } from "~~/components/home/homeUi";
 import { cx } from "~~/components/ui/classNames";
-import { AAVE_V4_SPOKES } from "~~/config/aaveConfig";
+import { AAVE_MARKETS, AAVE_V4_SPOKES } from "~~/config/aaveConfig";
 import { SOCIAL_LINKS, SOURCE_CODE_URL } from "~~/constants/links";
 import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import type { Locale } from "~~/i18n/locales";
@@ -40,6 +40,7 @@ export const HomeObjections = ({ plan, locale }: HomeObjectionsProps) => {
     hasTelegram: getAlertChannelNames().includes("Telegram"),
     minutes: NOTIFICATION_CHECK_INTERVAL_MINUTES,
     networkList: getNetworkList(locale),
+    v3Markets: AAVE_MARKETS.length,
     v4NetworkList: getV4NetworkList(locale),
     spokes: AAVE_V4_SPOKES.length,
     links: {

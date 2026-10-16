@@ -20,7 +20,7 @@ import { Container, SECTION_CLASS_NAME, SectionDivider } from "~~/components/hom
 import { GlowWash } from "~~/components/ui/Glow";
 import { buttonClasses } from "~~/components/ui/buttonClasses";
 import { cx } from "~~/components/ui/classNames";
-import { AAVE_MARKETS, AAVE_NETWORK_NAMES } from "~~/config/aaveConfig";
+import { AAVE_MARKETS, AAVE_NETWORK_NAMES, AAVE_V3_NETWORKS } from "~~/config/aaveConfig";
 import {
   DEFAULT_HEALTH_FACTOR_THRESHOLD,
   HEALTH_FACTOR_THRESHOLD_MAX,
@@ -37,7 +37,8 @@ import { getPaymentChainName } from "~~/services/marketing/paymentChain";
 
 /** Every network with a market Tokenping reads, V3 or V4. */
 const NETWORK_COUNT = AAVE_NETWORK_NAMES.length;
-const V3_NETWORK_COUNT = AAVE_MARKETS.length;
+const V3_NETWORK_COUNT = AAVE_V3_NETWORKS.length;
+const V3_MARKET_COUNT = AAVE_MARKETS.length;
 const CHECK_MINUTES = NOTIFICATION_CHECK_INTERVAL_MINUTES;
 
 type LocaleProps = {
@@ -172,6 +173,7 @@ export const LimitsSection = ({ locale }: LocaleProps) => {
   const t = HOME_MESSAGES[locale];
   const limits = t.limits({
     v3Networks: V3_NETWORK_COUNT,
+    v3Markets: V3_MARKET_COUNT,
     v4NetworkList: getV4NetworkList(locale),
     minutes: CHECK_MINUTES,
     paymentChain: getPaymentChainName(),

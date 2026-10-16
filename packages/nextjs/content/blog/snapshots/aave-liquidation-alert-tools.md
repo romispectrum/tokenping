@@ -75,8 +75,11 @@ AaveProtocolDataProvider `0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD` (= `getPoo
 ## 2. Tokenping row (product facts, not re-derived)
 
 From `SCRATCH/mkt/product.md` (2026-10-14), spot-checked in this branch:
-- Aave V3 on 7 networks, one pool each, Ethereum Core only (P§2; `config/aaveConfig.ts`). Since 2026-10-16 also every Aave V4
-  Spoke on Ethereum, Avalanche, Arc and Base, 20 in all, one alert each (`config/aaveConfig.ts`, `AAVE_V4_SPOKES`).
+- Since 2026-10-16: every Aave V3 market on a mainnet except Harmony's (24 markets on 21 networks, Ethereum's Core, Prime,
+  EtherFi and Horizon included; `config/aaveConfig.ts`, `AAVE_MARKETS`, from bgd-labs/aave-address-book) and every Aave V4
+  Spoke on Ethereum, Avalanche, Arc and Base, 20 in all (`AAVE_V4_SPOKES`), one alert per market. Before that day: 7
+  networks, one pool each, Ethereum Core only (P§2). The "better choice" bullet on Prime/EtherFi/Horizon, Plasma, Monad and
+  Mantle was replaced by one on Harmony and other protocols on 2026-10-16.
 - Check every 5 minutes: `vercel.json` `"schedule": "*/5 * * * *"`; configs processed one after another (P§4.2).
 - Repeats on every check while below, no recovery message (P§4.3); one config per (wallet, chain) (P§4.6); connected wallet
   only (P§4.6, P§10.6).
@@ -162,7 +165,8 @@ From `SCRATCH/mkt/product.md` (2026-10-14), spot-checked in this branch:
 - `getUserAccountData` health factor has 18 decimals and returns max uint256 with no debt: aave-facts.md §2, §11.
 - Aave V4 live (Ethereum, Avalanche, Arc, Base) and V3.7 on the seven Tokenping networks: aave-facts.md §1.1-1.2 (used by
   the shared `<ScopeNote />` and the V4 lines).
-- Ethereum's other V3 markets (Prime/Lido, EtherFi, Horizon): aave-facts.md §1.2.
+- Ethereum's other V3 markets (Prime/Lido, EtherFi, Horizon), covered by Tokenping since 2026-10-16 and still named in the
+  DeFi Saver row: aave-facts.md §1.2.
 
 ## 6. Not stated by vendors (shown as "Not stated" in the article)
 

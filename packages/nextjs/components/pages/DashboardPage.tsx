@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { BookOpen, ChevronDown } from "lucide-react";
-import { mainnet } from "viem/chains";
 import { AaveDashboard } from "~~/components/dashboard/AaveDashboard";
 import { Container } from "~~/components/home/marketingLayout";
-import { AAVE_MARKETS, AAVE_NETWORK_NAMES, AAVE_V4_NETWORK_NAMES } from "~~/config/aaveConfig";
+import { AAVE_NETWORK_NAMES, AAVE_V3_NETWORKS, AAVE_V4_NETWORK_NAMES } from "~~/config/aaveConfig";
 import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import { getPostByKey, isPublished } from "~~/content/blog";
 import { joinList } from "~~/i18n/format";
@@ -30,10 +29,10 @@ const GUIDE_LINKS = [
   { key: "aave-health-factor-alert-setup", label: "guideAlerts" },
 ] as const;
 
-/** The Aave V3 networks in dashboard order; on Ethereum only the Core market's pool is read. */
+/** The Aave V3 networks in dashboard order, a network with several markets naming them: "Ethereum (Core, ... markets)". */
 const v3NetworkNames = (locale: Locale) =>
-  AAVE_MARKETS.map(({ chain, name }) =>
-    chain.id === mainnet.id ? DASHBOARD_MESSAGES[locale].page.coreMarket(name) : name,
+  AAVE_V3_NETWORKS.map(({ name, marketNames }) =>
+    marketNames.length > 1 ? DASHBOARD_MESSAGES[locale].page.networkMarkets(name, joinList(locale, marketNames)) : name,
   );
 
 /**
