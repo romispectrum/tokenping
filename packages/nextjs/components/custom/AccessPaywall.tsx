@@ -61,7 +61,8 @@ const DetailRow = ({ label, children }: { label: string; children: ReactNode }) 
 );
 
 type AccessPaywallProps = {
-  children: ReactNode;
+  /** What the paid access unlocks, rendered after the status; nothing when the caller lays it out elsewhere. */
+  children?: ReactNode;
   /** Replaces the default copy above the pay CTA. */
   description?: string;
   /** True when a notification config already exists in Supabase for this network */

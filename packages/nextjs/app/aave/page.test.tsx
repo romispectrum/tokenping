@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockPostStubs } from "~~/utils/testing/blogPosts";
 import { renderMarkup } from "~~/utils/testing/render";
@@ -72,25 +72,12 @@ describe("Aave page shell", () => {
     expect(html).toMatchSnapshot();
   });
 
-  it("shows a breadcrumb that matches its BreadcrumbList JSON-LD", async () => {
+  // The site header already links home; the dashboard has no breadcrumb trail and so no BreadcrumbList either.
+  it("has no breadcrumb trail and no breadcrumb structured data", async () => {
     const { container } = await renderPage();
-    const breadcrumb = screen.getByRole("navigation", { name: "Breadcrumb" });
-    const [jsonLd] = [...container.querySelectorAll('script[type="application/ld+json"]')].map(script =>
-      JSON.parse(script.textContent ?? ""),
-    );
 
-    expect(within(breadcrumb).getByRole("link", { name: "Home" }).getAttribute("href")).toBe("/");
-    expect(within(breadcrumb).getByText("Dashboard").closest("[aria-current]")?.getAttribute("aria-current")).toBe(
-      "page",
-    );
-    expect(jsonLd).toEqual({
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Home", item: "https://tokenping.xyz/" },
-        { "@type": "ListItem", position: 2, name: "Dashboard" },
-      ],
-    });
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).toBeNull();
+    expect(container.querySelector('script[type="application/ld+json"]')).toBeNull();
   });
 
   it("links the threshold and alert setup guides", async () => {

@@ -4,20 +4,16 @@ import type { NextPage } from "next";
 import { AaveDashboard } from "~~/app/aave/_components/AaveDashboard";
 import { getDashboardDescription, getNetworkNames, getPublishedPost, joinList } from "~~/components/home/homeContent";
 import { Container } from "~~/components/home/marketingLayout";
-import { Breadcrumbs } from "~~/components/seo/Breadcrumbs";
-import { JsonLd } from "~~/components/seo/JsonLd";
 import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import { formatAlertChannels } from "~~/services/marketing/alertChannels";
 import { getPaymentChainName } from "~~/services/marketing/paymentChain";
-import { type Crumb, breadcrumbJsonLd, pageMetadata, postPath } from "~~/utils/seo";
+import { pageMetadata, postPath } from "~~/utils/seo";
 
 export const metadata = pageMetadata({
   title: "Aave V3 positions and health factor",
   description: getDashboardDescription(),
   path: "/aave",
 });
-
-const CRUMBS: Crumb[] = [{ name: "Home", path: "/" }, { name: "Dashboard" }];
 
 // In-app links from the marketing plan §3.9: threshold choice → the safe-HF guide, alerts → the setup guide.
 const GUIDE_LINKS = [
@@ -39,10 +35,6 @@ const AavePage: NextPage = () => {
     <Container className="flex flex-col gap-6 pt-6 pb-12 md:pt-8 md:pb-16">
       {/* Title beside the explanation from lg, on the same 5/7 tracks as the dashboard grid below. */}
       <header className="grid lg:grid-cols-12 lg:items-start lg:gap-x-6">
-        {/* The breadcrumb trail brings its own 16px gap below it, so the title and the text share one top edge. */}
-        <div className="lg:col-span-12">
-          <Breadcrumbs crumbs={CRUMBS} />
-        </div>
         <h1 className="m-0 text-2xl font-medium tracking-tight text-foreground lg:col-span-5">
           Aave V3 positions and health factor alerts
         </h1>
@@ -90,7 +82,6 @@ const AavePage: NextPage = () => {
       </header>
 
       <AaveDashboard />
-      <JsonLd data={breadcrumbJsonLd(CRUMBS)} />
     </Container>
   );
 };

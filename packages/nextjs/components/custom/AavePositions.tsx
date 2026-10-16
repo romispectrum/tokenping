@@ -2,10 +2,11 @@
 
 import { useMemo } from "react";
 import { Layers, RotateCw } from "lucide-react";
+import { NotificationConfig } from "~~/components/custom/NotificationConfig";
 import { AddressChip } from "~~/components/custom/aave/AddressChip";
 import { InlineError } from "~~/components/custom/aave/InlineError";
 import { NetworkSummaryRow } from "~~/components/custom/aave/NetworkSummaryRow";
-import { PositionAlerts } from "~~/components/custom/aave/PositionAlerts";
+import { PositionAccess } from "~~/components/custom/aave/PositionAccess";
 import { PositionDetails } from "~~/components/custom/aave/PositionDetails";
 import {
   AlertSettingsSkeleton,
@@ -99,46 +100,55 @@ export const AavePositions = () => {
             </dl>
           )}
 
-          {/* From lg, two columns: the network picker on the left, which stays in view while the right column
-              scrolls, so switching networks never needs a scroll back up; the selected network's alert settings and
-              then its position on the right. */}
+          {/* From lg, two columns: the network picker and the payment on the left, the selected network's alert
+              settings and then its position on the right. */}
           <div aria-busy={isLoading || undefined} className="grid gap-4 lg:grid-cols-12 lg:items-start lg:gap-6">
             {/* The network picker is this view's main control, so a region beside the details, not a complementary
                 aside (a named aside inside the positions region would be a nested complementary landmark). */}
-            <section aria-labelledby="networks-heading" className="min-w-0 lg:sticky lg:top-20 lg:col-span-5">
-              <Card size="sm">
-                <div className="flex items-baseline justify-between gap-3 px-[var(--card-spacing)]">
-                  <h3 id="networks-heading" className="m-0 text-base font-medium text-foreground">
-                    Networks
-                  </h3>
-                  <p className="m-0 text-sm text-muted-foreground tabular-nums">{positionsWithData.length} active</p>
-                </div>
-                <div className="flex flex-col gap-3 px-2">
-                  {isLoading ? (
-                    <NetworkListSkeleton />
-                  ) : (
-                    <ul className="m-0 flex list-none flex-col gap-1 p-0">
-                      {positions.map(p => (
-                        <li key={p.chainId} className="m-0">
-                          <NetworkSummaryRow
-                            position={p}
-                            isSelected={p.chainId === selectedChainId}
-                            onSelect={() => setSelectedChainId(p.chainId)}
-                            hasNotification={hasNotification(p.chainId)}
-                          />
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+            <div className="flex min-w-0 flex-col gap-4 sm:gap-6 lg:col-span-5">
+              <section aria-labelledby="networks-heading" className="min-w-0">
+                <Card size="sm">
+                  <div className="flex items-baseline justify-between gap-3 px-[var(--card-spacing)]">
+                    <h3 id="networks-heading" className="m-0 text-base font-medium text-foreground">
+                      Networks
+                    </h3>
+                    <p className="m-0 text-sm text-muted-foreground tabular-nums">{positionsWithData.length} active</p>
+                  </div>
+                  <div className="flex flex-col gap-3 px-2">
+                    {isLoading ? (
+                      <NetworkListSkeleton />
+                    ) : (
+                      <ul className="m-0 flex list-none flex-col gap-1 p-0">
+                        {positions.map(p => (
+                          <li key={p.chainId} className="m-0">
+                            <NetworkSummaryRow
+                              position={p}
+                              isSelected={p.chainId === selectedChainId}
+                              onSelect={() => setSelectedChainId(p.chainId)}
+                              hasNotification={hasNotification(p.chainId)}
+                            />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
 
-                  {!isLoading && !error && positionsWithData.length === 0 && (
-                    <p className="m-0 px-3 text-sm text-muted-foreground">
-                      No active Aave positions detected on supported networks.
-                    </p>
-                  )}
-                </div>
-              </Card>
-            </section>
+                    {!isLoading && !error && positionsWithData.length === 0 && (
+                      <p className="m-0 px-3 text-sm text-muted-foreground">
+                        No active Aave positions detected on supported networks.
+                      </p>
+                    )}
+                  </div>
+                </Card>
+              </section>
+
+              {/* Absent while refreshing, like the details: the paywall restarts with the new data. */}
+              {!isLoading && selectedPosition ? (
+                <PositionAccess
+                  position={selectedPosition}
+                  hasNotificationConfig={hasNotification(selectedPosition.chainId)}
+                />
+              ) : null}
+            </div>
 
             <section aria-label="Selected network" className="min-w-0 lg:col-span-7">
               {isLoading ? (
@@ -147,11 +157,14 @@ export const AavePositions = () => {
                   <PositionDetailsSkeleton />
                 </div>
               ) : selectedPosition ? (
-                // Absent while refreshing, like the details: the paywall and the form restart with the new data.
                 <div className="flex flex-col gap-4 sm:gap-6">
-                  <PositionAlerts
-                    position={selectedPosition}
-                    hasNotificationConfig={hasNotification(selectedPosition.chainId)}
+                  {/* Keyed by chain so switching networks discards the previous network's unsaved form. It shows a
+                      locked summary until the wallet has paid, and nothing while there is neither access nor a config. */}
+                  <NotificationConfig
+                    key={selectedPosition.chainId}
+                    chainId={selectedPosition.chainId}
+                    chainName={selectedPosition.chainName}
+                    currentHealthFactor={selectedPosition.healthFactor}
                   />
                   <PositionDetails position={selectedPosition} />
                 </div>
