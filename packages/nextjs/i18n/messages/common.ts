@@ -129,7 +129,7 @@ export const COMMON_MESSAGES: Localized<CommonMessages> = {
       language: "Language",
     },
     footer: {
-      tagline: channels => `Aave V3 health factor alerts on ${channels}.`,
+      tagline: channels => `Aave V3 and V4 health factor alerts on ${channels}.`,
       navLabel: "Footer",
       resources: "Resources",
       community: "Community",
@@ -222,7 +222,7 @@ export const COMMON_MESSAGES: Localized<CommonMessages> = {
       language: "Jazyk",
     },
     footer: {
-      tagline: channels => `Upozornění na Aave V3 health factor přes ${channels}.`,
+      tagline: channels => `Upozornění na Aave V3 a V4 health factor přes ${channels}.`,
       navLabel: "Patička",
       resources: "Zdroje",
       community: "Komunita",

@@ -135,7 +135,7 @@ describe("root layout", () => {
     expect(metadata.metadataBase?.toString()).toBe("https://tokenping.xyz/");
   });
 
-  // Only Aave V3 exists, so "more protocols" style claims must not come back.
+  // Only Aave (V3 and V4) is supported, so "more protocols" style claims must not come back.
   it("describes the product without claims the product does not support", () => {
     expect(`${DEFAULT_TITLE} ${DEFAULT_DESCRIPTION}`).not.toMatch(/protocols|never miss|real-time|instant/i);
   });

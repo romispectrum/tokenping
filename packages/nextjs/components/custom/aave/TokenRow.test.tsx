@@ -47,6 +47,15 @@ describe("CollateralTokenRow", () => {
     );
   });
 
+  it("leaves the rate cell out on Aave V4, which has no supply APY, so the row matches its three columns", () => {
+    const html = row(<CollateralTokenRow token={{ ...SUPPLIED_USDC, supplyApy: null }} chainId={mainnet.id} />);
+
+    expect(html.match(/<td /g)).toHaveLength(2);
+    expect(html).not.toContain("%</td>");
+    expect(html).toMatch(/<td class="[^"]*text-right font-data[^"]*">1,234\.56<\/td>/);
+    expect(html).toContain(">Enabled</td>");
+  });
+
   // Amounts are compared digit by digit: right-aligned in the data face. Rates are Satoshi tabular figures.
   it("sets the amount in the data face and the rate in tabular figures, both right-aligned", () => {
     const html = row(<CollateralTokenRow token={SUPPLIED_USDC} chainId={mainnet.id} />);

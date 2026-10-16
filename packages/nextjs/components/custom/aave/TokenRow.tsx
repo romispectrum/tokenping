@@ -29,14 +29,17 @@ const AssetCell = ({ token, chainId }: TokenRowProps) => (
   </th>
 );
 
-/** A token with a supply balance: asset, amount supplied, supply APY, whether it counts as collateral. */
+/**
+ * A token with a supply balance: asset, amount supplied, supply APY (none on Aave V4, whose table leaves the column
+ * out), whether it counts as collateral.
+ */
 export const CollateralTokenRow = ({ token, chainId }: TokenRowProps) => {
   const t = useMessages(DASHBOARD_MESSAGES).tokens;
   return (
     <tr className="border-t border-border">
       <AssetCell token={token} chainId={chainId} />
       <td className={AMOUNT_CELL}>{formatTokenAmount(token.aTokenBalance, token.decimals)}</td>
-      <td className={NUMBER_CELL}>{`${token.supplyApy.toFixed(2)}%`}</td>
+      {token.supplyApy === null ? null : <td className={NUMBER_CELL}>{`${token.supplyApy.toFixed(2)}%`}</td>}
       <td className={TEXT_CELL}>{token.usageAsCollateralEnabled ? t.enabled : t.disabled}</td>
     </tr>
   );
@@ -64,6 +67,9 @@ export const COLLATERAL_COLUMNS = [
   { column: "supplyApy", align: "right" },
   { column: "collateral", align: "left" },
 ] as const;
+
+/** Aave V4 has no per-reserve supply rate to read, so its supply table has no APY column. */
+export const V4_COLLATERAL_COLUMNS = COLLATERAL_COLUMNS.filter(({ column }) => column !== "supplyApy");
 
 export const DEBT_COLUMNS = [
   { column: "asset", align: "left" },

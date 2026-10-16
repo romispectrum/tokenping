@@ -28,9 +28,11 @@ const LOWER = `0x${"3a".repeat(20)}`;
 const CHECKSUMMED = `0x${"3A".repeat(20)}`;
 const OTHER = `0x${"56".repeat(20)}`;
 const SHORT_LOWER = "0x3a3a…3a3a";
+// Ethereum's Lido Spoke, as notification_configs.market stores it.
+const LIDO_SPOKE = "0xe1900480ac69f0b296841cd01cc37546d92f35cd";
 
 const configsPage = (from: number) =>
-  'notification_configs.select("user_id, chain_id, health_factor_threshold, email, signal_recipient, services, locale")' +
+  'notification_configs.select("user_id, chain_id, market, health_factor_threshold, email, signal_recipient, services, locale")' +
   `.eq("enabled",true).order("id").range(${from},${from + 999})`;
 const linksPage = (from: number) =>
   `user_telegram_links.select("user_id, chat_id").order("user_id").range(${from},${from + 999})`;
@@ -43,6 +45,7 @@ type Row = Record<string, unknown>;
 const configRow = (overrides: Row = {}): Row => ({
   user_id: LOWER,
   chain_id: 8453,
+  market: "v3",
   health_factor_threshold: "1.5",
   email: "a@b.co",
   signal_recipient: "alice.42",
@@ -166,7 +169,7 @@ describe("runNotificationCheck: loading", () => {
       }),
     );
     expect(sendTelegramMessage).not.toHaveBeenCalled();
-    expect(vi.mocked(getHealthFactorForWallet).mock.calls).toEqual([[LOWER, 2]]);
+    expect(vi.mocked(getHealthFactorForWallet).mock.calls).toEqual([[LOWER, 2, "v3"]]);
   });
 
   it("checks only configs that have at least one deliverable channel", async () => {
@@ -192,8 +195,8 @@ describe("runNotificationCheck: loading", () => {
 
     expect(await runNotificationCheck()).toEqual(summary({ configsChecked: 2 }));
     expect(vi.mocked(getHealthFactorForWallet).mock.calls).toEqual([
-      [LOWER, 7],
-      [LOWER, 8],
+      [LOWER, 7, "v3"],
+      [LOWER, 8, "v3"],
     ]);
   });
 
@@ -255,6 +258,51 @@ describe("runNotificationCheck: health factor", () => {
   });
 
   it.each([
+    ["a V3 row", "v3", "v3"],
+    ["a V4 row", LIDO_SPOKE, LIDO_SPOKE],
+    ["a row from before the market column", undefined, "v3"],
+    ["a null market", null, "v3"],
+    ["a market the database would not store", "0x1234", "v3"],
+  ])("reads the health factor in the market of %s", async (_label, market, expected) => {
+    givenData([configRow({ chain_id: 1, market })]);
+    await runNotificationCheck();
+    expect(vi.mocked(getHealthFactorForWallet).mock.calls).toEqual([[LOWER, 1, expected]]);
+  });
+
+  it("alerts a V4 config under the market name the read returns", async () => {
+    givenData([configRow({ chain_id: 1, market: LIDO_SPOKE })]);
+    vi.mocked(getHealthFactorForWallet).mockResolvedValue({
+      healthFactor: "1.20",
+      healthFactorValue: 1.2,
+      chainName: "Ethereum (V4 Lido)",
+    });
+
+    expect(await runNotificationCheck()).toEqual(summary({ configsChecked: 1, emailsSent: 1 }));
+    expect(vi.mocked(sendEmail).mock.calls[0][0]).toMatchObject({
+      subject: "Aave Health Factor Alert - Ethereum (V4 Lido)",
+      text: alertText("Ethereum (V4 Lido)", "1.20", "1.5"),
+    });
+  });
+
+  it("names a V4 config's failed read by its chain and Spoke, apart from the chain's V3 config", async () => {
+    givenData([configRow({ chain_id: 1, market: LIDO_SPOKE }), configRow({ chain_id: 1 })]);
+    vi.mocked(getHealthFactorForWallet).mockResolvedValue(null);
+
+    expect(await runNotificationCheck()).toEqual(
+      summary({
+        configsChecked: 2,
+        errors: [
+          `healthFactor:${SHORT_LOWER}:1:${LIDO_SPOKE}: could not read the health factor`,
+          `healthFactor:${SHORT_LOWER}:1: could not read the health factor`,
+        ],
+      }),
+    );
+    expect(consoleError).toHaveBeenCalledWith(
+      `Notification check: healthFactor:${LOWER}:1:${LIDO_SPOKE}: could not read the health factor`,
+    );
+  });
+
+  it.each([
     // The shared normalizeThreshold, as in the UI: falsy or unparseable values use the 1.5 default, then 1.1-10.
     ["0", "1.49", "1.5"],
     [null, "1.49", "1.5"],
@@ -300,7 +348,7 @@ describe("runNotificationCheck: delivery", () => {
     expect(JSON.stringify(result)).toBe(
       JSON.stringify(summary({ configsChecked: 1, emailsSent: 1, signalSent: 1, telegramSent: 1 })),
     );
-    expect(getHealthFactorForWallet).toHaveBeenCalledExactlyOnceWith(LOWER, 8453);
+    expect(getHealthFactorForWallet).toHaveBeenCalledExactlyOnceWith(LOWER, 8453, "v3");
     expect(sendEmail).toHaveBeenCalledExactlyOnceWith({
       to: "a@b.co",
       subject: "Aave Health Factor Alert - Base",
@@ -332,7 +380,7 @@ describe("runNotificationCheck: delivery", () => {
     );
 
     const text =
-      "Váš health factor na Aave v síti Base je 1,20, což je pod vaším prahem 1,5. " +
+      "Váš health factor na Aave na síti Base je 1,20, což je pod vaším prahem 1,5. " +
       "Zvažte doplnění kolaterálu nebo splacení dluhu, abyste se vyhnuli likvidaci.\n\n" +
       `Odesláno: ${NOW_TEXT_CS}`;
     expect(sendEmail).toHaveBeenCalledExactlyOnceWith({
@@ -340,7 +388,7 @@ describe("runNotificationCheck: delivery", () => {
       subject: "Upozornění na health factor Aave - Base",
       text,
       html:
-        "<p>Váš health factor na Aave v síti <strong>Base</strong> je <strong>1,20</strong>, " +
+        "<p>Váš health factor na Aave na síti <strong>Base</strong> je <strong>1,20</strong>, " +
         "což je pod vaším prahem <strong>1,5</strong>.</p>" +
         "<p>Zvažte doplnění kolaterálu nebo splacení dluhu, abyste se vyhnuli likvidaci.</p>" +
         `<p><small>Vytvořeno: ${NOW_TEXT_CS}</small></p>`,
@@ -532,6 +580,16 @@ describe("runNotificationCheck: delivery", () => {
     expect(consoleError).toHaveBeenCalledWith(`Notification check: config:${LOWER}:1: rpc exploded`);
   });
 
+  it("records a V4 config that throws by its chain and Spoke", async () => {
+    givenData([configRow({ chain_id: 1, market: LIDO_SPOKE })]);
+    vi.mocked(getHealthFactorForWallet).mockRejectedValueOnce(new Error("rpc exploded"));
+
+    expect(await runNotificationCheck()).toEqual(
+      summary({ configsChecked: 1, errors: [`config:${SHORT_LOWER}:1:${LIDO_SPOKE}: rpc exploded`] }),
+    );
+    expect(consoleError).toHaveBeenCalledWith(`Notification check: config:${LOWER}:1:${LIDO_SPOKE}: rpc exploded`);
+  });
+
   it.each([
     ["'Unknown error' for a non-Error throw", "nope", "Unknown error"],
     [
@@ -564,10 +622,18 @@ describe("alert builders", () => {
 
   it("builds the Czech text with decimal commas", () => {
     expect(buildAlertText({ ...alert, timestamp: NOW_TEXT_CS }, "cs")).toBe(
-      "Váš health factor na Aave v síti Arbitrum One je 1,07, což je pod vaším prahem 1,25. " +
+      "Váš health factor na Aave na síti Arbitrum One je 1,07, což je pod vaším prahem 1,25. " +
         "Zvažte doplnění kolaterálu nebo splacení dluhu, abyste se vyhnuli likvidaci.\n\n" +
         `Odesláno: ${NOW_TEXT_CS}`,
     );
+  });
+
+  it("calls a V4 Spoke a market in Czech, not a network", () => {
+    const spoke = { ...alert, chainName: "Ethereum (V4 Lido)", timestamp: NOW_TEXT_CS };
+
+    expect(buildAlertText(spoke, "cs")).toMatch(/^Váš health factor na Aave na trhu Ethereum \(V4 Lido\) je 1,07,/);
+    expect(buildAlertEmail(spoke, "cs").html).toContain("na Aave na trhu <strong>Ethereum (V4 Lido)</strong> je");
+    expect(buildAlertText(spoke)).toMatch(/^Your Aave Health Factor on Ethereum \(V4 Lido\) is 1.07,/);
   });
 
   it("builds the email subject (spaced hyphen) and html ('Created at' footer)", () => {

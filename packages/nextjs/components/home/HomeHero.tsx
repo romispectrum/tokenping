@@ -1,10 +1,16 @@
-import { getChannelBadgeNames, getHomeHeadline, getNetworkBadgeNames } from "~~/components/home/homeContent";
+import {
+  getChannelBadgeNames,
+  getHomeHeadline,
+  getNetworkBadgeNames,
+  getV4NetworkList,
+} from "~~/components/home/homeContent";
 import { DashboardCta } from "~~/components/home/homeUi";
 import { Container } from "~~/components/home/marketingLayout";
 import { Badge } from "~~/components/ui/Badge";
 import { Glow } from "~~/components/ui/Glow";
 import { GrainCard } from "~~/components/ui/GrainCard";
 import { Kicker } from "~~/components/ui/Kicker";
+import { AAVE_MARKETS, AAVE_V4_SPOKES } from "~~/config/aaveConfig";
 import { DEFAULT_HEALTH_FACTOR_THRESHOLD, NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import type { Locale } from "~~/i18n/locales";
 import { HOME_MESSAGES } from "~~/i18n/messages/home";
@@ -107,7 +113,13 @@ export const HomeHero = ({ locale }: { locale: Locale }) => {
                 <div className="flex flex-col items-center gap-2 sm:gap-3 lg:items-start">
                   <BadgeRow label={t.networksLabel} names={getNetworkBadgeNames()} />
                   <BadgeRow label={t.channelsLabel} names={getChannelBadgeNames(locale)} />
-                  <p className="m-0 text-sm text-foreground">{t.coverageNote}</p>
+                  <p className="m-0 text-sm text-foreground">
+                    {t.coverageNote({
+                      v3Networks: AAVE_MARKETS.length,
+                      spokes: AAVE_V4_SPOKES.length,
+                      v4NetworkList: getV4NetworkList(locale),
+                    })}
+                  </p>
                 </div>
               </div>
             </div>

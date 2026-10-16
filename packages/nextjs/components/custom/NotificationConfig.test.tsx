@@ -38,6 +38,9 @@ vi.mock("~~/utils/scaffold-eth", () => ({
 const ADDRESS = "0xAbCdEf0000000000000000000000000000000001";
 const OTHER_ADDRESS = "0x1234500000000000000000000000000000000002";
 const CHAIN_ID = 42161;
+const MARKET = "v3";
+/** The key the config API lists a market's config under. */
+const MARKET_KEY = `${CHAIN_ID}:${MARKET}`;
 const NOW = Date.parse("2026-10-14T12:00:00.000Z");
 const DEEP_LINK = "https://t.me/bot?start=tok";
 const LINK_TOKEN = {
@@ -54,6 +57,7 @@ const linkTokenResponse = () =>
 
 const SAVED_CONFIG = {
   chainId: CHAIN_ID,
+  market: MARKET,
   enabled: true,
   services: ["email", "signal", "telegram"],
   healthFactorThreshold: 1.8,
@@ -66,7 +70,7 @@ type Call = { method: string; url: string; body?: Record<string, unknown> };
 
 /** In-memory API state, keyed by lowercased wallet. `override` answers a request instead (failures, slow responses). */
 const api = {
-  configs: {} as Record<string, Record<number, unknown>>,
+  configs: {} as Record<string, Record<string, unknown>>,
   links: {} as Record<string, TelegramLinkStatus>,
   attribution: {} as Record<string, unknown>,
   requests: [] as string[],
@@ -81,15 +85,18 @@ const route = ({ method, url, body }: Call) => {
   if (path === "/api/notifications/config") {
     if (method === "GET") return jsonResponse(api.configs[userOf(url)] ?? {});
     const chainId = Number(body?.chainId);
+    // Like the server: keyed by chain and market, "v3" when the body has none.
+    const market = String(body?.market ?? "v3");
+    const key = `${chainId}:${market}`;
     if (method === "PUT") {
       const { enabled, services, healthFactorThreshold, email, signalRecipient } = body ?? {};
-      const config = { chainId, enabled, services, healthFactorThreshold };
+      const config = { chainId, market, enabled, services, healthFactorThreshold };
       api.configs[user] = {
         ...api.configs[user],
-        [chainId]: { ...config, ...(email ? { email } : {}), ...(signalRecipient ? { signalRecipient } : {}) },
+        [key]: { ...config, ...(email ? { email } : {}), ...(signalRecipient ? { signalRecipient } : {}) },
       };
     }
-    if (method === "DELETE") delete api.configs[user]?.[chainId];
+    if (method === "DELETE") delete api.configs[user]?.[key];
     return jsonResponse({ success: true });
   }
   if (path === "/api/telegram/link") {
@@ -123,7 +130,7 @@ const settle = async (ms = 0) => {
   await act(() => vi.advanceTimersByTimeAsync(0));
 };
 
-const PROPS = { chainId: CHAIN_ID, chainName: "Arbitrum", currentHealthFactor: "1.20" };
+const PROPS = { chainId: CHAIN_ID, market: MARKET, chainName: "Arbitrum", currentHealthFactor: "1.20" };
 
 const renderCard = async (props: Partial<typeof PROPS> = {}, locale: Locale = "en") => {
   const view = renderWithProviders(
@@ -231,7 +238,7 @@ describe("NotificationConfig: loading and access", () => {
 
   it("shows a read-only summary, with the Telegram link from the link API, when access lapsed", async () => {
     mocks.hasAccess = false;
-    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
     api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
     const { rerender } = await renderCard();
     expect(screen.getByText("Pay for access to edit")).toBeDefined();
@@ -250,7 +257,7 @@ describe("NotificationConfig: loading and access", () => {
   it("hides the Active badge and warning for a disabled config and drops unknown services", async () => {
     mocks.hasAccess = false;
     api.configs[ADDRESS.toLowerCase()] = {
-      [CHAIN_ID]: { ...SAVED_CONFIG, enabled: false, services: ["email", "sms"], healthFactorThreshold: 25 },
+      [MARKET_KEY]: { ...SAVED_CONFIG, enabled: false, services: ["email", "sms"], healthFactorThreshold: 25 },
     };
     await renderCard({ currentHealthFactor: "1.00" });
     expect(screen.queryByText("Active")).toBeNull();
@@ -271,7 +278,7 @@ describe("NotificationConfig: loading and access", () => {
     expect(button("Try again")).toBeDefined();
 
     api.override = () => undefined;
-    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
     await click(button("Try again"));
     expect(screen.queryByRole("alert")).toBeNull();
     expect(summaryValue("Email")).toBe("saved@example.com");
@@ -340,6 +347,7 @@ describe("NotificationConfig: creating and editing", () => {
     expect(body).toEqual({
       userId: ADDRESS,
       chainId: CHAIN_ID,
+      market: MARKET,
       enabled: true,
       services: ["email", "signal"],
       healthFactorThreshold: 2.5,
@@ -465,7 +473,7 @@ describe("NotificationConfig: creating and editing", () => {
   });
 
   it("falls back to the Email service for an enabled config without valid services, also after Cancel", async () => {
-    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: { ...SAVED_CONFIG, services: [], healthFactorThreshold: 0 } };
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: { ...SAVED_CONFIG, services: [], healthFactorThreshold: 0 } };
     await renderCard();
     expect(summaryValue("Services")).toBe("Email");
     expect(summaryValue("Threshold")).toBe("1.5");
@@ -476,7 +484,7 @@ describe("NotificationConfig: creating and editing", () => {
   });
 
   it("edits the threshold through the text input and the slider", async () => {
-    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
     await renderCard({ currentHealthFactor: "1.75" });
     await click(button("Edit alert"));
     const state = () => [thresholdInput().value, slider().value];
@@ -520,7 +528,7 @@ describe("NotificationConfig: creating and editing", () => {
   });
 
   it("cancels edits back to the saved config, deletes, and cancels back to the empty state", async () => {
-    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
     await renderCard();
     await click(button("Edit alert"));
     await click(serviceToggle("Signal"));
@@ -532,7 +540,7 @@ describe("NotificationConfig: creating and editing", () => {
     await click(button("Edit alert"));
     await deleteConfig();
     expect(lastRequest("DELETE")).toBe(
-      `DELETE /api/notifications/config {"userId":"${ADDRESS}","chainId":${CHAIN_ID}}`,
+      `DELETE /api/notifications/config {"userId":"${ADDRESS}","chainId":${CHAIN_ID},"market":"${MARKET}"}`,
     );
     expect(screen.queryByRole("button", { name: "Delete alert" })).toBeNull();
     expect(queryEmailInput()).toBeNull();
@@ -545,7 +553,7 @@ describe("NotificationConfig: creating and editing", () => {
   });
 
   it("asks before deleting, with focus on Keep alert, and Keep alert sends nothing", async () => {
-    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
     await renderCard();
     await click(button("Edit alert"));
     await click(button("Delete alert"));
@@ -567,7 +575,7 @@ describe("NotificationConfig: creating and editing", () => {
   it("returns focus to the button that opened the form after Save and Cancel", async () => {
     // Asked before, so no attribution prompt takes focus after the save.
     markAttributionPrompted();
-    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: { ...SAVED_CONFIG, services: ["email"] } };
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: { ...SAVED_CONFIG, services: ["email"] } };
     const { unmount } = await renderCard();
     await click(button("Edit alert"));
     await click(button("Save alert"));
@@ -625,7 +633,7 @@ describe("NotificationConfig: creating and editing", () => {
 
 describe("NotificationConfig: failures", () => {
   it("reports save and delete failures with the server's message", async () => {
-    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: { ...SAVED_CONFIG, services: ["email", "signal"] } };
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: { ...SAVED_CONFIG, services: ["email", "signal"] } };
     let put = () => jsonResponse({ error: "Active paid access required to update notification config" }, 403);
     let del = () => jsonResponse({ error: "Active paid access required to delete notification config" }, 403);
     api.override = ({ method, url }) => {
@@ -656,7 +664,7 @@ describe("NotificationConfig: failures", () => {
   });
 
   it("keeps Save and Delete busy and ignores presses while their request is in flight", async () => {
-    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: { ...SAVED_CONFIG, services: ["email"] } };
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: { ...SAVED_CONFIG, services: ["email"] } };
     const put = deferred<Response>();
     const del = deferred<void>();
     api.override = call => {
@@ -691,7 +699,7 @@ describe("NotificationConfig: failures", () => {
   });
 
   it("reports Telegram connect and disconnect failures", async () => {
-    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
     api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
     api.override = ({ method, url }) => {
       if (method === "DELETE" && url === "/api/telegram/link") return jsonResponse({ error: "Database error" }, 500);
@@ -720,7 +728,7 @@ describe("NotificationConfig: failures", () => {
 
 describe("NotificationConfig: Telegram handshake", () => {
   it("stays disconnected after Disconnect and Cancel", async () => {
-    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
     api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
     await renderCard();
     await click(button("Edit alert"));
@@ -762,7 +770,7 @@ describe("NotificationConfig: Telegram handshake", () => {
   });
 
   it("offers Try again instead of Connect when the Telegram link cannot be checked, keeping the card on screen", async () => {
-    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
     api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
     let linkStatus: (call: Call) => Response | Promise<Response> = () =>
       jsonResponse({ error: "Failed to read the Telegram link" }, 500);
@@ -819,14 +827,14 @@ describe("NotificationConfig: Telegram handshake", () => {
   });
 
   it("keeps the card on screen while a failed Telegram status is fetched again", async () => {
-    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
     let linkStatus = () => Promise.reject<Response>(new TypeError("Failed to fetch"));
     api.override = ({ method, url }) =>
       method === "GET" && url.startsWith("/api/telegram/link?") ? linkStatus() : undefined;
     const { rerender } = await renderCard();
     expect(summaryValue("Email")).toBe("saved@example.com");
 
-    // AavePositions keys the card by chain, so a chain switch remounts it, which fetches the failed status again.
+    // AavePositions keys the card by market, so a chain switch remounts it, which fetches the failed status again.
     linkStatus = () => new Promise<Response>(() => undefined);
     rerender(<NotificationConfig key="another-chain" {...PROPS} />);
     await settle();
@@ -841,7 +849,7 @@ describe("NotificationConfig: Telegram handshake", () => {
     await click(button("Connect Telegram"));
     expect(popup.location.href).toBe(DEEP_LINK);
 
-    // AavePositions keys the card by chain, so a chain switch remounts it with a fresh form.
+    // AavePositions keys the card by market, so a chain switch remounts it with a fresh form.
     rerender(<NotificationConfig key="another-chain" {...PROPS} chainId={10} chainName="Optimism" />);
     await settle();
     await click(button("Create alert"));
@@ -1051,11 +1059,11 @@ describe("NotificationConfig: attribution prompt", () => {
   });
 
   it("stays open, without taking focus, when a chain switch remounts the card", async () => {
-    api.configs[ADDRESS.toLowerCase()] = { 10: { ...SAVED_CONFIG, chainId: 10 } };
+    api.configs[ADDRESS.toLowerCase()] = { "10:v3": { ...SAVED_CONFIG, chainId: 10 } };
     const { rerender } = await renderCard();
     await createEmailConfig();
 
-    // AavePositions keys the card by chain, so selecting another network remounts it.
+    // AavePositions keys the card by market, so selecting another market remounts it.
     rerender(<NotificationConfig key="another-chain" {...PROPS} chainId={10} chainName="Optimism" />);
     await settle();
     expect(attributionInput()).not.toBeNull();
@@ -1127,7 +1135,7 @@ describe("NotificationConfig: attribution prompt", () => {
 describe("NotificationConfig: shared state", () => {
   const HasConfigProbe = () => {
     const { hasConfig, isLoaded } = useNotificationConfig();
-    return <p data-testid="probe">{isLoaded ? String(hasConfig(CHAIN_ID)) : "loading"}</p>;
+    return <p data-testid="probe">{isLoaded ? String(hasConfig({ chainId: CHAIN_ID, market: MARKET })) : "loading"}</p>;
   };
 
   it("updates other components (the positions list) when a config is created or deleted", async () => {
@@ -1152,7 +1160,7 @@ describe("NotificationConfig: shared state", () => {
   });
 
   it("does not show or reuse the previous wallet's settings after a wallet switch", async () => {
-    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
     let releaseOther: () => void = () => undefined;
     api.override = ({ method, url }) =>
       method === "GET" && url === `/api/notifications/config?userId=${OTHER_ADDRESS}`
@@ -1176,9 +1184,89 @@ describe("NotificationConfig: shared state", () => {
   });
 });
 
+describe("NotificationConfig: two markets on one chain", () => {
+  // Aave V3 and V4's Lido Spoke on Ethereum: one chain, two alerts.
+  const LIDO_SPOKE = "0xe1900480ac69f0b296841cd01cc37546d92f35cd";
+  const ETHEREUM_V3 = { ...PROPS, chainId: 1, market: "v3", chainName: "Ethereum" };
+  const ETHEREUM_LIDO = { ...PROPS, chainId: 1, market: LIDO_SPOKE, chainName: "Ethereum (V4 Lido)" };
+  const V3_ALERT = { ...SAVED_CONFIG, chainId: 1, market: "v3", services: ["email"] };
+
+  const MarketsProbe = () => {
+    const { hasConfig, isLoaded } = useNotificationConfig();
+    const markets = [ETHEREUM_V3, ETHEREUM_LIDO].map(({ chainId, market }) => String(hasConfig({ chainId, market })));
+    return <p data-testid="markets">{isLoaded ? markets.join(" ") : "loading"}</p>;
+  };
+  const markets = () => screen.getByTestId("markets").textContent;
+
+  const renderMarket = (props: typeof ETHEREUM_V3) => (
+    <>
+      <MarketsProbe />
+      <NotificationConfig key={`${props.chainId}:${props.market}`} {...props} />
+    </>
+  );
+
+  it("creates and deletes the Spoke's alert with its market, leaving the V3 alert on the same chain alone", async () => {
+    api.configs[ADDRESS.toLowerCase()] = { "1:v3": V3_ALERT };
+    const { rerender } = renderWithProviders(renderMarket(ETHEREUM_LIDO));
+    await settle();
+    expect(markets()).toBe("true false");
+    // The V3 alert on the chain is not the Spoke's.
+    expect(screen.getByRole("heading", { level: 3 }).textContent).toBe("No alerts on Ethereum (V4 Lido) yet");
+
+    await click(button("Create alert"));
+    await click(serviceToggle("Email"));
+    await type(emailInput(), "lido@example.com");
+    await click(button("Save alert"));
+    expect(lastPutBody()).toMatchObject({ userId: ADDRESS, chainId: 1, market: LIDO_SPOKE, email: "lido@example.com" });
+    expect(markets()).toBe("true true");
+    expect(api.configs[ADDRESS.toLowerCase()]).toMatchObject({
+      "1:v3": V3_ALERT,
+      [`1:${LIDO_SPOKE}`]: { chainId: 1, market: LIDO_SPOKE, email: "lido@example.com" },
+    });
+
+    // Selecting the V3 market shows its own saved alert.
+    rerender(renderMarket(ETHEREUM_V3));
+    await settle();
+    expect(summaryValue("Email")).toBe("saved@example.com");
+
+    rerender(renderMarket(ETHEREUM_LIDO));
+    await settle();
+    expect(summaryValue("Email")).toBe("lido@example.com");
+    await click(button("Edit alert"));
+    await deleteConfig();
+    expect(lastRequest("DELETE")).toBe(
+      `DELETE /api/notifications/config {"userId":"${ADDRESS}","chainId":1,"market":"${LIDO_SPOKE}"}`,
+    );
+    expect(markets()).toBe("true false");
+    expect(Object.keys(api.configs[ADDRESS.toLowerCase()])).toEqual(["1:v3"]);
+  });
+
+  it("sends the V3 market with a save and a delete on the V3 card, keeping the Spoke's alert", async () => {
+    const lidoAlert = { ...V3_ALERT, market: LIDO_SPOKE, email: "lido@example.com" };
+    api.configs[ADDRESS.toLowerCase()] = { "1:v3": V3_ALERT, [`1:${LIDO_SPOKE}`]: lidoAlert };
+    renderWithProviders(renderMarket(ETHEREUM_V3));
+    await settle();
+    expect(markets()).toBe("true true");
+    expect(summaryValue("Email")).toBe("saved@example.com");
+
+    await click(button("Edit alert"));
+    await type(emailInput(), "v3@example.com");
+    await click(button("Save alert"));
+    expect(lastPutBody()).toMatchObject({ chainId: 1, market: "v3", email: "v3@example.com" });
+
+    await click(button("Edit alert"));
+    await deleteConfig();
+    expect(lastRequest("DELETE")).toBe(
+      `DELETE /api/notifications/config {"userId":"${ADDRESS}","chainId":1,"market":"v3"}`,
+    );
+    expect(markets()).toBe("false true");
+    expect(api.configs[ADDRESS.toLowerCase()]).toEqual({ [`1:${LIDO_SPOKE}`]: lidoAlert });
+  });
+});
+
 describe("NotificationConfig: accessibility", () => {
   it("labels and describes every control and hides decorative icons", async () => {
-    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
     api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
     const { container } = await renderCard();
     await click(button("Edit alert"));
@@ -1225,7 +1313,7 @@ describe("NotificationConfig: accessibility", () => {
     expect(screen.getByRole("heading", { level: 3 }).textContent).toBe("Notification settings");
     unmount();
 
-    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
     mocks.hasAccess = false;
     await renderCard();
     expect(screen.getByRole("heading", { level: 3 }).textContent).toBe("Notification settings");
@@ -1264,7 +1352,7 @@ describe("NotificationConfig: brand", () => {
   };
 
   it("uses tokens only and shows one pink primary, Save, while editing", async () => {
-    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
     api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
     const { problems, pinkCounts, scan } = brandScanner();
     const { container } = await renderCard();
@@ -1318,7 +1406,7 @@ describe("NotificationConfig: brand", () => {
 
   it("uses tokens only in the read-only, load error and unknown link states", async () => {
     mocks.hasAccess = false;
-    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: SAVED_CONFIG };
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
     const { problems, pinkCounts, scan } = brandScanner();
     const readOnly = await renderCard();
     scan("read-only", readOnly.container);
@@ -1421,7 +1509,7 @@ describe("NotificationConfig: language", () => {
   });
 
   it("shows a saved alert, the delete confirmation and failures in Czech", async () => {
-    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: { ...SAVED_CONFIG, services: ["email"] } };
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: { ...SAVED_CONFIG, services: ["email"] } };
     api.override = ({ method }) =>
       method === "PUT"
         ? jsonResponse({ error: "Active paid access required to update notification config" }, 403)
@@ -1449,7 +1537,7 @@ describe("NotificationConfig: language", () => {
 
   it("writes Telegram, the read-only and the load error states in Czech, with no dashes anywhere", async () => {
     const texts: string[] = [];
-    api.configs[ADDRESS.toLowerCase()] = { [CHAIN_ID]: { ...SAVED_CONFIG, services: ["telegram"] } };
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: { ...SAVED_CONFIG, services: ["telegram"] } };
     api.override = ({ method, url }) =>
       method === "GET" && url.startsWith("/api/telegram/link?") ? jsonResponse({}, 500) : undefined;
     const unknownLink = await renderCard({}, "cs");

@@ -14,7 +14,7 @@ type NetworkSummaryRowProps = {
 };
 
 /**
- * One network in the list: a button that shows the network in the details panel. The list has one current choice,
+ * One market in the list (a V3 network or a V4 Spoke): a button that shows it in the details panel. The list has one current choice,
  * so the selected row is aria-current (a pressed toggle would suggest it can be unpressed). It is drawn with the
  * violet tint plus a 2px edge in the ring colour, so it never rests on the tint alone; hover is a lighter tint.
  */
@@ -29,7 +29,7 @@ export const NetworkSummaryRow = ({ position, isSelected, onSelect, hasNotificat
     >
       <span className="flex min-w-0 flex-col gap-0.5">
         <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
-          <span className="truncate">{position.chainName}</span>
+          <span className="truncate">{position.marketName}</span>
           {hasNotification ? (
             <>
               <BellRing aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />

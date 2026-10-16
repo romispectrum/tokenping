@@ -1,3 +1,4 @@
+import { csOnMarket } from "~~/i18n/format";
 import type { Localized } from "~~/i18n/locales";
 
 // The alert itself, sent by email, Signal and Telegram in the language the alert was saved in. The numbers arrive
@@ -28,12 +29,12 @@ export const NOTIFICATION_MESSAGES: Localized<NotificationMessages> = {
   },
   cs: {
     alertText: ({ chainName, healthFactor, threshold, timestamp }) =>
-      `Váš health factor na Aave v síti ${chainName} je ${healthFactor}, ` +
+      `Váš health factor na Aave ${csOnMarket(chainName)} je ${healthFactor}, ` +
       `což je pod vaším prahem ${threshold}. ` +
       `Zvažte doplnění kolaterálu nebo splacení dluhu, abyste se vyhnuli likvidaci.\n\nOdesláno: ${timestamp}`,
     alertSubject: chainName => `Upozornění na health factor Aave - ${chainName}`,
     alertHtml: ({ chainName, healthFactor, threshold, timestamp }) =>
-      `<p>Váš health factor na Aave v síti <strong>${chainName}</strong> je ` +
+      `<p>Váš health factor na Aave ${csOnMarket(chainName).replace(chainName, `<strong>${chainName}</strong>`)} je ` +
       `<strong>${healthFactor}</strong>, což je pod vaším prahem ` +
       `<strong>${threshold}</strong>.</p>` +
       `<p>Zvažte doplnění kolaterálu nebo splacení dluhu, abyste se vyhnuli likvidaci.</p>` +

@@ -10,7 +10,7 @@ import {
 import { SectionHeader } from "~~/components/ui/SectionHeader";
 import { buttonClasses } from "~~/components/ui/buttonClasses";
 import { cx } from "~~/components/ui/classNames";
-import { AAVE_MARKETS } from "~~/config/aaveConfig";
+import { AAVE_NETWORK_NAMES } from "~~/config/aaveConfig";
 import { EXTERNAL_LINK_REL } from "~~/constants/links";
 import type { Locale } from "~~/i18n/locales";
 import { HOME_MESSAGES } from "~~/i18n/messages/home";
@@ -120,7 +120,7 @@ export const DashboardCta = ({ locale, secondary, align = "center" }: DashboardC
       )}
     >
       {/* Says what the button does before the click (marketing plan §2.5). */}
-      {HOME_MESSAGES[locale].dashboardCtaMicrocopy(AAVE_MARKETS.length)}
+      {HOME_MESSAGES[locale].dashboardCtaMicrocopy(AAVE_NETWORK_NAMES.length)}
     </p>
   </div>
 );

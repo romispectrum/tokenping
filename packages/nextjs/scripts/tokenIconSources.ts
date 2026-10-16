@@ -1,10 +1,11 @@
 import type { Address } from "viem";
 import { arbitrum, avalanche, base, gnosis, mainnet, optimism, polygon } from "viem/chains";
+import { arc } from "~~/config/aaveConfig";
 import { tokenIconKey } from "~~/utils/tokenIcons";
 
 // The pure parts of scripts/fetchTokenIcons.ts, kept apart so they are testable without the network.
 
-/** CoinGecko asset platform ids (GET /asset_platforms) of the Aave V3 chains. */
+/** CoinGecko asset platform ids (GET /asset_platforms) of the chains with an Aave V3 or V4 market. */
 export const COINGECKO_PLATFORMS: Readonly<Record<number, string>> = {
   [mainnet.id]: "ethereum",
   [polygon.id]: "polygon-pos",
@@ -13,6 +14,7 @@ export const COINGECKO_PLATFORMS: Readonly<Record<number, string>> = {
   [base.id]: "base",
   [avalanche.id]: "avalanche",
   [gnosis.id]: "xdai",
+  [arc.id]: "arc",
 };
 
 /**

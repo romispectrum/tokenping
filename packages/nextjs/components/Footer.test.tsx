@@ -212,7 +212,9 @@ describe("Footer in Czech", () => {
     state.price = 1234.567;
     renderCzech();
 
-    expect(screen.getByText(/^Upozornění na Aave V3 health factor přes Signal(, Telegram)? a e-mail\.$/)).toBeTruthy();
+    expect(
+      screen.getByText(/^Upozornění na Aave V3 a V4 health factor přes Signal(, Telegram)? a e-mail\.$/),
+    ).toBeTruthy();
     expect(screen.getByText("Nezávislý nástroj, který není spojen s Aave Labs ani s Aave DAO.")).toBeTruthy();
     expect(screen.getByText("Cena ETH: $1234.57")).toBeTruthy();
   });

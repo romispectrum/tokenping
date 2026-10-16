@@ -1,4 +1,5 @@
 import "server-only";
+import { type MarketId, type MarketRef, V3_MARKET_ID, isMarketId, marketKey } from "~~/config/aaveConfig";
 import { DEFAULT_LOCALE, isLocale } from "~~/i18n/locales";
 import type { ConfigValues } from "~~/services/notifications/configInput";
 import { selectAllPages } from "~~/services/supabase/selectAllPages";
@@ -10,6 +11,8 @@ export type NotificationConfigRow = {
   id: string;
   user_id: string;
   chain_id: number;
+  /** 'v3' or a V4 Spoke's lowercased address (checked by the database). */
+  market?: string | null;
   enabled: boolean;
   services: string[] | null;
   /** numeric column: PostgREST may return it as a string */
@@ -24,7 +27,7 @@ export type NotificationConfigRow = {
 
 export type EnabledConfigRow = Pick<
   NotificationConfigRow,
-  "user_id" | "chain_id" | "health_factor_threshold" | "email" | "signal_recipient" | "services" | "locale"
+  "user_id" | "chain_id" | "market" | "health_factor_threshold" | "email" | "signal_recipient" | "services" | "locale"
 >;
 
 /** Rows written before services were validated can hold ids outside NotificationService. */
@@ -48,9 +51,21 @@ export type UserIdForms = ReturnType<typeof userIdForms>;
 export const rowLocale = (row: Pick<NotificationConfigRow, "locale">) =>
   isLocale(row.locale) ? row.locale : DEFAULT_LOCALE;
 
-/** Optional fields map null to undefined so they are omitted from the JSON response; locale is always present. */
+/** The row's market: V3 for anything that is not a market id (a row from before the column). */
+export const rowMarket = (row: Pick<NotificationConfigRow, "market">): MarketId =>
+  isMarketId(row.market) ? row.market : V3_MARKET_ID;
+
+/** The key GET /api/notifications/config lists a row under: marketKey(chain, market). */
+export const rowMarketKey = (row: Pick<NotificationConfigRow, "chain_id" | "market">) =>
+  marketKey(row.chain_id, rowMarket(row));
+
+/**
+ * Optional fields map null to undefined so they are omitted from the JSON response; market and locale are always
+ * present.
+ */
 export const rowToConfig = (row: NotificationConfigRow): NotificationConfigResponse => ({
   chainId: row.chain_id,
+  market: rowMarket(row),
   enabled: row.enabled,
   services: row.services ?? [],
   healthFactorThreshold: parseFloat(String(row.health_factor_threshold)),
@@ -59,9 +74,10 @@ export const rowToConfig = (row: NotificationConfigRow): NotificationConfigRespo
   locale: rowLocale(row),
 });
 
-export const toConfigRow = (uid: string, chainId: number, values: ConfigValues, now = new Date()) => ({
+export const toConfigRow = (uid: string, { chainId, market }: MarketRef, values: ConfigValues, now = new Date()) => ({
   user_id: uid,
   chain_id: chainId,
+  market,
   enabled: values.enabled,
   services: values.services,
   health_factor_threshold: values.healthFactorThreshold,
@@ -79,10 +95,10 @@ const dataOrThrow = <T>({ data, error }: { data: T; error: { message: string } |
   return data;
 };
 
-/** The legacy form is queried only when the lowercased one has no row for the chain. */
-export async function findConfigForChain(
+/** The legacy form is queried only when the lowercased one has no row for the market. */
+export async function findConfigForMarket(
   { normalized, legacy }: UserIdForms,
-  chainId: number,
+  { chainId, market }: MarketRef,
 ): Promise<NotificationConfigRow | null> {
   const select = async (userId: string) =>
     dataOrThrow(
@@ -90,6 +106,7 @@ export async function findConfigForChain(
         .select("*")
         .eq("user_id", userId)
         .eq("chain_id", chainId)
+        .eq("market", market)
         .maybeSingle<NotificationConfigRow>(),
     );
 
@@ -107,13 +124,18 @@ export async function findConfigsForUser({ normalized, legacy }: UserIdForms): P
 }
 
 /**
- * Updates the chain's existing row in place (preferring the lowercased row; updating a legacy row rewrites its
+ * Updates the market's existing row in place (preferring the lowercased row; updating a legacy row rewrites its
  * user_id to lowercase) or inserts one. Both lookups run when the forms differ. Returns the first lookup or write
  * error, if any: a failed lookup must not be mistaken for "no row", which would insert a duplicate.
  */
 export async function saveConfig({ normalized, legacy }: UserIdForms, row: ConfigWriteRow) {
   const findId = (userId: string) =>
-    configsTable().select("id").eq("user_id", userId).eq("chain_id", row.chain_id).maybeSingle<{ id: string }>();
+    configsTable()
+      .select("id")
+      .eq("user_id", userId)
+      .eq("chain_id", row.chain_id)
+      .eq("market", row.market)
+      .maybeSingle<{ id: string }>();
 
   const byNormalized = await findId(normalized);
   if (byNormalized.error) return byNormalized.error;
@@ -127,9 +149,10 @@ export async function saveConfig({ normalized, legacy }: UserIdForms, row: Confi
   return error;
 }
 
-/** Deletes the chain's row under both user id forms, stopping at the first error. Returns that error, if any. */
-export async function deleteConfigs({ normalized, legacy }: UserIdForms, chainId: number) {
-  const remove = (userId: string) => configsTable().delete().eq("user_id", userId).eq("chain_id", chainId);
+/** Deletes the market's row under both user id forms, stopping at the first error. Returns that error, if any. */
+export async function deleteConfigs({ normalized, legacy }: UserIdForms, { chainId, market }: MarketRef) {
+  const remove = (userId: string) =>
+    configsTable().delete().eq("user_id", userId).eq("chain_id", chainId).eq("market", market);
 
   const { error } = await remove(normalized);
   if (error || !legacy) return error;
@@ -140,7 +163,7 @@ export async function deleteConfigs({ normalized, legacy }: UserIdForms, chainId
 export const findEnabledConfigs = () =>
   selectAllPages<EnabledConfigRow>((from, to) =>
     configsTable()
-      .select("user_id, chain_id, health_factor_threshold, email, signal_recipient, services, locale")
+      .select("user_id, chain_id, market, health_factor_threshold, email, signal_recipient, services, locale")
       .eq("enabled", true)
       .order("id")
       .range(from, to),

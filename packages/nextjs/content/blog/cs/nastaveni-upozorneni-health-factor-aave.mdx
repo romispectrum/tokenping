@@ -2,9 +2,10 @@ export const meta = {
   slug: "nastaveni-upozorneni-health-factor-aave",
   title: "Jak dostat upozornění, když klesne health factor na Aave",
   description:
-    "Krok za krokem: zpráva přes Signal nebo e-mail, když váš health factor na Aave V3 klesne pod zvolený práh. Kolik to stojí a jak upozornění zastavit.",
+    "Krok za krokem: zpráva přes Signal nebo e-mail, když váš health factor na Aave V3 či V4 klesne pod zvolený práh. Kolik to stojí a jak upozornění zastavit.",
   h1: "Jak nastavit upozornění na pokles health factoru na Aave",
   publishedAt: "2026-10-14",
+  updatedAt: "2026-10-16",
   primaryQuestion: "Jak si nastavím upozornění na pokles health factoru na Aave?",
   readingMinutes: 12,
 };
@@ -12,9 +13,10 @@ export const meta = {
 <ShortAnswer>
   Vlastní rozhraní Aave ukazují váš health factor (faktor zdraví pozice), dokud je máte otevřená, ale když klesne,
   žádnou zprávu vám nepošlou, takže varování musí přijít z jiného nástroje. S Tokenpingem připojíte peněženku, se kterou
-  si půjčujete, zaplatíte přístup k upozorněním na síti Arbitrum, nastavíte práh pro každou síť Aave V3, na které si
-  půjčujete (podporovaných je sedm), a zadáte uživatelské jméno v Signalu nebo e-mailovou adresu. Tokenping pak každých
-  5 minut kontroluje a při každé kontrole, kdy je váš health factor pod tímto prahem, vám pošle zprávu.
+  si půjčujete, zaplatíte přístup k upozorněním na síti Arbitrum, nastavíte práh pro každý trh, na kterém si půjčujete
+  (každou ze sedmi sítí Aave V3, nebo každý Spoke Aave V4 na sítích Ethereum, Avalanche, Arc a Base), a zadáte
+  uživatelské jméno v Signalu nebo e-mailovou adresu. Tokenping pak každých 5 minut kontroluje a při každé kontrole, kdy
+  je váš health factor pod tímto prahem, vám pošle zprávu.
 </ShortAnswer>
 
 <ScopeNote />
@@ -31,7 +33,7 @@ Abyste dostali varování, musíte tedy aplikaci kontrolovat sami, nebo použít
 
 Upozornění na health factor v Tokenpingu potřebuje čtyři věci:
 
-- **Pozici na Aave V3 s dluhem** na Ethereu (pouze trh Core) nebo na síti Arbitrum, Base, Optimism, Polygon, Avalanche či Gnosis. Bez dluhu vrací Aave nejvyšší možnou hodnotu (zobrazenou jako ∞) a žádné upozornění se nemůže spustit. Pozice na Aave V4 a ostatní trhy V3 na Ethereu (Prime, EtherFi a Horizon) podporované nejsou.
+- **Pozici na Aave V3 nebo V4 s dluhem.** Na Aave V3: na Ethereu (pouze trh Core) nebo na síti Arbitrum, Base, Optimism, Polygon, Avalanche či Gnosis. Na Aave V4: v kterémkoli Spoke na sítích Ethereum, Avalanche, Arc nebo Base (k 16. říjnu 2026 jich je 20). Bez dluhu vrací Aave nejvyšší možnou hodnotu (zobrazenou jako ∞) a žádné upozornění se nemůže spustit. Ostatní trhy V3 na Ethereu (Prime, EtherFi a Horizon) podporované nejsou.
 - **Peněženku, se kterou si půjčujete.** Tokenping sleduje pouze peněženku, kterou připojíte; jinou adresu přidat nelze.
 - **Nativní USDC a trochu ETH na síti Arbitrum One, ve stejné peněžence.** Upozornění stojí <AlertPrice />, placeno v nativním USDC od Circle na síti Arbitrum One, i když je vaše půjčka na jiné síti. ETH pokryje gas až za dvě transakce.
 - **Uživatelské jméno v Signalu nebo e-mailovou adresu**, případně obojí.
@@ -49,7 +51,7 @@ Nastavení pak zabere šest kroků:
 
 Otevřete přehled, kde můžete [zkontrolovat svůj health factor na Aave V3 (zdarma)](/cz/aave), a připojte peněženku, se kterou si půjčujete. Prohlížení pozic je zdarma a jen pro čtení: Tokenping vaše pozice pouze čte on-chain a nikdy nežádá o schválení ani o podpis týkající se vaší pozice na Aave.
 
-Seznam **Sítě** ukazuje všech sedm sítí, se štítkem health factoru tam, kde máte pozici, a s nápisem „Bez pozice“ tam, kde ji nemáte. Vyberte síť se svou půjčkou, uvidíte její kolaterál, dluh a health factor. Tento health factor si poznamenejte: pomůže vám zvolit práh a otestovat doručení. Pokud přehled hlásí „Na podporovaných sítích jsme nenašli žádné aktivní pozice na Aave.“, nejspíš jste připojili jinou peněženku, nebo je půjčka na trhu, který Tokenping nečte. Pozice se načtou při otevření stránky a po stisknutí **Obnovit pozice**.
+Seznam **Trhy** ukazuje všech sedm sítí Aave V3, se štítkem health factoru tam, kde máte pozici, a s nápisem „Bez pozice“ tam, kde ji nemáte. Spoke Aave V4 se v seznamu objeví, jen když v něm má peněženka kolaterál nebo dluh, nebo když je pro něj uložené upozornění. Vyberte trh se svou půjčkou, uvidíte jeho kolaterál, dluh a health factor. Tento health factor si poznamenejte: pomůže vám zvolit práh a otestovat doručení. Pokud přehled hlásí „Na podporovaných trzích jsme nenašli žádné aktivní pozice na Aave.“, nejspíš jste připojili jinou peněženku, nebo je půjčka na trhu, který Tokenping nečte. Pozice se načtou při otevření stránky a po stisknutí **Obnovit pozice**.
 
 ## Krok 2: Odemkněte upozornění
 
@@ -59,11 +61,11 @@ K uložení upozornění v Tokenpingu potřebujete placený přístup, který st
 2. Schvalte USDC. Schválení zní přesně na výši ceny, nikdy na neomezenou částku, a přeskočí se, pokud už je schváleno dost.
 3. Potvrďte platbu. Jakmile je transakce zapsána do bloku, panel ukáže **Upozornění odemčena do** a za tím datum.
 
-Jedna platba odemkne nastavení upozornění na všech sedmi sítích pro peněženku, která zaplatila. Nic se automaticky neobnovuje: dokud je přístup aktivní, panel tlačítko pro platbu nezobrazuje, a jakmile přístup skončí, nabídne novou platbu, která zahájí nové období tarifu. Platební kontrakt je ověřený na Sourcify a nemá žádnou funkci pro vrácení peněz. Vlastní ho jedna peněženka ovládaná týmem Tokenpingu, která může změnit cenu, pozastavit platby nebo aktualizovat kód kontraktu.
+Jedna platba odemkne nastavení upozornění na všech sítích a ve všech Spokech Aave V4 pro peněženku, která zaplatila. Nic se automaticky neobnovuje: dokud je přístup aktivní, panel tlačítko pro platbu nezobrazuje, a jakmile přístup skončí, nabídne novou platbu, která zahájí nové období tarifu. Platební kontrakt je ověřený na Sourcify a nemá žádnou funkci pro vrácení peněz. Vlastní ho jedna peněženka ovládaná týmem Tokenpingu, která může změnit cenu, pozastavit platby nebo aktualizovat kód kontraktu.
 
 ## Krok 3: Zvolte síť a práh
 
-Každé upozornění v Tokenpingu pokrývá jednu síť a jeden práh: health factor, pod kterým vám chodí zprávy. Po zaplacení stiskněte na panelu sítě **Vytvořit upozornění**. Posuvník jde od 1,1 do 3,0 v krocích po 0,1 a pole vedle něj přijme libovolnou hodnotu od 1,1 do 10 s nejvýše dvěma desetinnými místy. Výchozí hodnota je 1,5.
+Každé upozornění v Tokenpingu pokrývá jeden trh a jeden práh: health factor, pod kterým vám chodí zprávy. Trhem je síť Aave V3 nebo Spoke Aave V4, protože V4 vede v každém Spoke samostatnou pozici s vlastním health factorem. Po zaplacení stiskněte na panelu trhu **Vytvořit upozornění**. Posuvník jde od 1,1 do 3,0 v krocích po 0,1 a pole vedle něj přijme libovolnou hodnotu od 1,1 do 10 s nejvýše dvěma desetinnými místy. Výchozí hodnota je 1,5.
 
 Univerzálně bezpečné číslo neexistuje. Jeden možný postup: zvolte cenu kolaterálu, při které byste jednali, spočítejte health factor při této ceně a upozornění nastavte kousek nad něj, protože kontroly probíhají s odstupem 5 minut a splacení se na vytížené síti může potvrzovat pomalu. Článek [jakou rezervu vám health factor dává](/cz/blog/bezpecny-health-factor-aave) obsahuje tabulku běžných úrovní.
 
@@ -87,11 +89,11 @@ V části **Kanály upozornění** vyberte Signal, e-mail nebo obojí. Tokenping
 
 Protože účet Tokenpingu v Signalu nemáte v kontaktech, Signal může první upozornění zobrazit jako žádost o zprávu. Přijměte ji; pokud odesílatele zablokujete, upozornění k vám nedorazí. Volba obou kanálů slouží jako pojistka, protože každý z nich závisí na vnějších službách (poskytovateli e-mailu a vlastním hostovaném relé pro Signal).
 
-Tokenping ukládá adresu vaší peněženky, síť, práh a kanály, vaši e-mailovou adresu nebo uživatelské jméno v Signalu, kdy bylo upozornění vytvořeno a naposledy změněno, a vaši odpověď na nepovinnou otázku „Jak jste se o Tokenpingu dozvěděli?“, pokud ji vyplníte. Neuchovává žádnou historii health factoru ani záznam odeslaných upozornění.
+Tokenping ukládá adresu vaší peněženky, síť (a u upozornění na Aave V4 také Spoke), práh a kanály, vaši e-mailovou adresu nebo uživatelské jméno v Signalu, kdy bylo upozornění vytvořeno a naposledy změněno, a vaši odpověď na nepovinnou otázku „Jak jste se o Tokenpingu dozvěděli?“, pokud ji vyplníte. Neuchovává žádnou historii health factoru ani záznam odeslaných upozornění.
 
 ## Krok 5: Uložte upozornění a podívejte se, jak vypadá
 
-Stiskněte **Uložit upozornění**. Panel ukáže **Nastavení upozornění** se štítkem „Aktivní“ a síť dostane v seznamu Sítě ikonu zvonku. Napoprvé se může objevit nepovinná otázka „Jak jste se o Tokenpingu dozvěděli?“; můžete stisknout **Přeskočit**. Do Signalu přijde tento text (hodnoty jsou ilustrativní):
+Stiskněte **Uložit upozornění**. Panel ukáže **Nastavení upozornění** se štítkem „Aktivní“ a trh dostane v seznamu Trhy ikonu zvonku. Napoprvé se může objevit nepovinná otázka „Jak jste se o Tokenpingu dozvěděli?“; můžete stisknout **Přeskočit**. Do Signalu přijde tento text (hodnoty jsou ilustrativní):
 
 > Váš health factor na Aave v síti Arbitrum je 1,42, což je pod vaším prahem 1,5. Zvažte doplnění kolaterálu nebo splacení dluhu, abyste se vyhnuli likvidaci.
 >
@@ -133,11 +135,11 @@ Upozornění Tokenpingu přestanou, když se váš health factor vrátí na prá
 
 ## Proč mi nefunguje upozornění?
 
-Když upozornění Tokenpingu nefunguje, zkontrolujte šest věcí: připojenou peněženku a trh, formát uživatelského jména v Signalu, nativní USDC na síti Arbitrum One, zda má pozice dluh, zda má každá síť, na které si půjčujete, své upozornění, a složku se spamem a žádosti o zprávu v Signalu.
+Když upozornění Tokenpingu nefunguje, zkontrolujte šest věcí: připojenou peněženku a trh, formát uživatelského jména v Signalu, nativní USDC na síti Arbitrum One, zda má pozice dluh, zda má každá síť a každý Spoke Aave V4, kde si půjčujete, své upozornění, a složku se spamem a žádosti o zprávu v Signalu.
 
 ### Přehled neukazuje žádné pozice
 
-Pokud přehled Tokenpingu neukazuje žádné pozice, připojená peněženka není ta, se kterou si půjčujete, nebo je půjčka na trhu, který Tokenping nečte: na Aave V4, na trzích Prime, EtherFi nebo Horizon na Ethereu, nebo na síti mimo podporovaných sedm.
+Pokud přehled Tokenpingu neukazuje žádné pozice, připojená peněženka není ta, se kterou si půjčujete, nebo je půjčka na trhu, který Tokenping nečte: na trzích Prime, EtherFi nebo Horizon na Aave V3 na Ethereu, nebo na síti mimo osm podporovaných (sedm sítí V3 a k nim Arc, kde je jen Aave V4).
 
 ### Tokenping odmítá vaše uživatelské jméno v Signalu
 
@@ -153,7 +155,7 @@ Bez dluhu vrací Aave nejvyšší možný health factor (zobrazený jako ∞), t
 
 ### Půjčujete si na více sítích
 
-Každá síť má vlastní upozornění, práh a kanály. Jedna platba pokrývá všech sedm sítí, takže vytvořte upozornění na každé síti, na které si půjčujete.
+Každá síť i každý Spoke Aave V4 má vlastní upozornění, práh a kanály. Jedna platba pokrývá všechny, takže vytvořte upozornění pro každou síť a každý Spoke, kde si půjčujete.
 
 ### Zprávy nepřicházejí
 

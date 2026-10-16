@@ -5,6 +5,8 @@ import {
   AVALANCHE_DEBT_ONLY_POSITION,
   BASE_SUMMARY_ONLY_POSITION,
   ETHEREUM_POSITION,
+  ETHEREUM_V4_LIDO_POSITION,
+  ETHEREUM_V4_MAIN_EMPTY_POSITION,
   POLYGON_COLLATERAL_ONLY_POSITION,
   SUPPLIED_USDC,
 } from "~~/components/custom/aave/__fixtures__/positions";
@@ -16,8 +18,10 @@ describe("PositionDetails", () => {
     const html = renderMarkup(<PositionDetails position={ETHEREUM_POSITION} />);
 
     expect(html).toContain('<h3 class="m-0 truncate text-base font-medium text-foreground">Ethereum</h3>');
-    expect(html).toContain('<h4 id="supplied-1"');
-    expect(html).toContain('<h4 id="borrowed-1"');
+    expect(html).toContain(">Aave V3 market</p>");
+    expect(html).toContain(">Supply APY</th>");
+    expect(html).toContain('<h4 id="supplied-1-v3"');
+    expect(html).toContain('<h4 id="borrowed-1-v3"');
     expect(html.split("<table").length - 1).toBe(2);
     // The details card is flat product UI: no shadow and no pink of its own (the alert settings own the view's pink).
     expect(html).not.toMatch(/shadow-card|\bbg-primary\b/);
@@ -57,6 +61,49 @@ describe("PositionDetails", () => {
   });
 });
 
+describe("PositionDetails for an Aave V4 Spoke", () => {
+  const LIDO_IDS = "1-0xe1900480ac69f0b296841cd01cc37546d92f35cd";
+
+  it("names the Spoke, and leaves the Supply APY column out of the supply table", () => {
+    const html = renderMarkup(<PositionDetails position={ETHEREUM_V4_LIDO_POSITION} />);
+
+    expect(html).toContain('<h3 class="m-0 truncate text-base font-medium text-foreground">Ethereum (V4 Lido)</h3>');
+    expect(html).toContain(">Aave V4 Spoke</p>");
+    expect(html).not.toContain("Aave V3 market");
+    expect(html).not.toContain("Supply APY");
+    // Three header cells and three cells per supplied row: asset, amount and collateral, with no empty rate cell.
+    const supplied = html.slice(
+      html.indexOf(`<h4 id="supplied-${LIDO_IDS}"`),
+      html.indexOf(`<h4 id="borrowed-${LIDO_IDS}"`),
+    );
+    expect(supplied).toContain(`<table aria-labelledby="supplied-${LIDO_IDS}"`);
+    expect(supplied.match(/<th scope="col"/g)).toHaveLength(3);
+    expect(supplied.match(/<td /g)).toHaveLength(2);
+    expect(supplied).toContain(">Enabled</td>");
+    expect(supplied).not.toContain("%</td>");
+    expect(html).toContain(`<table aria-labelledby="borrowed-${LIDO_IDS}"`);
+    expect(html).toContain(">Variable 250.5</td>");
+  });
+
+  it("keeps the ids of two markets on one chain apart", () => {
+    const v3 = renderMarkup(<PositionDetails position={ETHEREUM_POSITION} />);
+    const v4 = renderMarkup(<PositionDetails position={ETHEREUM_V4_LIDO_POSITION} />);
+    const ids = (html: string) => [...html.matchAll(/ id="([^"]+)"/g)].map(([, id]) => id);
+
+    expect(ids(v4)).toEqual([`supplied-${LIDO_IDS}`, `borrowed-${LIDO_IDS}`]);
+    expect(ids(v3).filter(id => ids(v4).includes(id))).toEqual([]);
+  });
+
+  it("names an empty Spoke in its no-position message", () => {
+    const html = renderMarkup(<PositionDetails position={ETHEREUM_V4_MAIN_EMPTY_POSITION} />);
+
+    expect(html).toContain(">Ethereum (V4 Main)</h3>");
+    expect(html).toContain(">Aave V4 Spoke</p>");
+    expect(html).toContain(">No active position on Ethereum (V4 Main)</p>");
+    expect(html).not.toContain("<table");
+  });
+});
+
 describe("PositionDetails in Czech", () => {
   const czech = (position: Parameters<typeof PositionDetails>[0]["position"]) =>
     renderMarkup(
@@ -72,8 +119,8 @@ describe("PositionDetails in Czech", () => {
     expect(html).toContain(">Kolaterál</dt>");
     expect(html).toContain(">Dluh</dt>");
     expect(html).toContain(">Čisté jmění</dt>");
-    expect(html).toContain('<h4 id="supplied-1" class="m-0 text-sm font-medium text-foreground">Vloženo</h4>');
-    expect(html).toContain('<h4 id="borrowed-1" class="m-0 text-sm font-medium text-foreground">Vypůjčeno</h4>');
+    expect(html).toContain('<h4 id="supplied-1-v3" class="m-0 text-sm font-medium text-foreground">Vloženo</h4>');
+    expect(html).toContain('<h4 id="borrowed-1-v3" class="m-0 text-sm font-medium text-foreground">Vypůjčeno</h4>');
     expect(html).toContain(">3 aktiva</p>");
     expect(html).toContain(">4 aktiva</p>");
     expect(html).toContain("Ikony tokenů z");
@@ -96,6 +143,16 @@ describe("PositionDetails in Czech", () => {
     expect(html).toContain(`>${label}</p>`);
     expect(html).toContain(">0 aktiv</p>");
     expect(html).toContain(">Žádný nesplacený dluh</p>");
+  });
+
+  it("calls a V4 Spoke a Spoke in Czech and leaves out the APY column", () => {
+    const html = czech(ETHEREUM_V4_LIDO_POSITION);
+
+    expect(html).toContain(">Ethereum (V4 Lido)</h3>");
+    expect(html).toContain(">Spoke Aave V4</p>");
+    expect(html).not.toContain("Trh Aave V3");
+    expect(html).not.toContain("APY vkladu");
+    expect(czech(ETHEREUM_POSITION)).toContain(">APY vkladu</th>");
   });
 
   it("explains an empty network and missing token details in Czech", () => {

@@ -8,6 +8,8 @@ import {
   ARBITRUM_EMPTY_POSITION,
   BASE_SUMMARY_ONLY_POSITION,
   ETHEREUM_POSITION,
+  ETHEREUM_V4_LIDO_POSITION,
+  ETHEREUM_V4_MAIN_EMPTY_POSITION,
   POLYGON_COLLATERAL_ONLY_POSITION,
 } from "~~/components/custom/aave/__fixtures__/positions";
 import { LocaleProvider } from "~~/i18n/LocaleProvider";
@@ -26,13 +28,19 @@ vi.mock("~~/services/aave/positions", async importOriginal => ({
   fetchAavePositions: vi.fn(),
 }));
 
-const notifications = vi.hoisted(() => ({ isLoaded: true, configuredChainIds: [] as number[] }));
+// Saved alerts by market key ("1:v3"). hasConfig is one function, stable across renders like the real hook's.
+const notifications = vi.hoisted(() => {
+  const state = {
+    isLoaded: true,
+    configuredMarkets: [] as string[],
+    hasConfig: ({ chainId, market }: { chainId: number; market: string }) =>
+      state.configuredMarkets.includes(`${chainId}:${market}`),
+  };
+  return state;
+});
 
 vi.mock("~~/hooks/custom/useNotificationConfig", () => ({
-  useNotificationConfig: () => ({
-    hasConfig: (chainId: number) => notifications.configuredChainIds.includes(chainId),
-    isLoaded: notifications.isLoaded,
-  }),
+  useNotificationConfig: () => ({ hasConfig: notifications.hasConfig, isLoaded: notifications.isLoaded }),
 }));
 
 vi.mock("~~/components/custom/AccessPaywall", () => ({
@@ -47,13 +55,15 @@ vi.mock("~~/components/custom/AccessPaywall", () => ({
 vi.mock("~~/components/custom/NotificationConfig", async () => {
   const { useState } = await import("react");
   return {
-    NotificationConfig: ({ chainId }: { chainId: number }) => {
+    NotificationConfig: ({ chainId, market, chainName }: { chainId: number; market: string; chainName: string }) => {
       const [draft, setDraft] = useState("");
       return (
         <input
           aria-label="Notification draft"
           data-stub="notification-config"
           data-chain-id={chainId}
+          data-market={market}
+          data-chain-name={chainName}
           value={draft}
           onChange={event => setDraft(event.target.value)}
         />
@@ -64,28 +74,37 @@ vi.mock("~~/components/custom/NotificationConfig", async () => {
 
 const fetchMock = vi.mocked(fetchAavePositions);
 
-const NO_POSITIONS_MESSAGE = "No active Aave positions detected on supported networks.";
-const SELECT_PROMPT = "Select a network to view its Aave position.";
-// The bell next to a network with a saved alert is decorative; these words carry it for screen readers.
+const NO_POSITIONS_MESSAGE = "No active Aave positions detected in supported markets.";
+const SELECT_PROMPT = "Select a market to view its Aave position.";
+const NO_V4_POSITIONS_MESSAGE =
+  "Aave V4: no position in any of its 20 Spokes on Ethereum, Avalanche, Arc and Base. A Spoke is listed here once this wallet has collateral or debt in it.";
+// The bell next to a market with a saved alert is decorative; these words carry it for screen readers.
 const ALERT_SET = "Alert set";
 
 // One tag per line keeps snapshot diffs readable.
 const markup = (container: HTMLElement) => container.innerHTML.replace(/></g, ">\n<");
 
-const networksPanel = () => within(screen.getByRole("region", { name: "Networks" }));
-const networkRow = (chainName: string) => networksPanel().getByText(chainName).closest("button")!;
+const networksPanel = () => within(screen.getByRole("region", { name: "Markets" }));
+const networkRow = (marketName: string) => networksPanel().getByText(marketName).closest("button")!;
 const refreshButton = () => screen.getByRole("button", { name: /^(Refresh positions|Refreshing)$/ });
 // A loading button keeps its focus and colour: aria-busy, not disabled.
 const isRefreshing = () => refreshButton().getAttribute("aria-busy") === "true";
 
-// Resolves once the fetch has settled and the default network's details (or the selection prompt) are on screen.
+/** The markets the list shows: every V3 one, and a V4 Spoke with a position or a loaded alert. */
+const listed = (positions: NetworkPosition[]) =>
+  positions.filter(
+    p =>
+      p.version === 3 || p.hasPosition || (notifications.isLoaded && notifications.configuredMarkets.includes(p.key)),
+  );
+
+// Resolves once the fetch has settled and the default market's details (or the selection prompt) are on screen.
 const renderLoaded = async (positions: NetworkPosition[]) => {
   fetchMock.mockResolvedValueOnce(positions);
   const view = renderWithProviders(<AavePositions />);
-  const defaultNetwork = positions.find(p => p.hasPosition) ?? positions[0];
+  const defaultMarket = listed(positions).find(p => p.hasPosition) ?? listed(positions)[0];
   await waitFor(() => {
     expect(isRefreshing()).toBe(false);
-    if (defaultNetwork) screen.getByRole("heading", { level: 3, name: defaultNetwork.chainName });
+    if (defaultMarket) screen.getByRole("heading", { level: 3, name: defaultMarket.marketName });
     else screen.getByText(SELECT_PROMPT);
   });
   return view;
@@ -96,7 +115,7 @@ describe("AavePositions", () => {
     account.address = USER;
     fetchMock.mockReset();
     notifications.isLoaded = true;
-    notifications.configuredChainIds = [];
+    notifications.configuredMarkets = [];
   });
 
   it("renders skeletons and the refreshing button while loading", () => {
@@ -112,7 +131,7 @@ describe("AavePositions", () => {
   });
 
   it("renders the networks list and the first active network's details once loaded", async () => {
-    notifications.configuredChainIds = [ETHEREUM_POSITION.chainId, ARBITRUM_EMPTY_POSITION.chainId];
+    notifications.configuredMarkets = [ETHEREUM_POSITION.key, ARBITRUM_EMPTY_POSITION.key];
 
     const { container } = await renderLoaded([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION, BASE_SUMMARY_ONLY_POSITION]);
 
@@ -135,7 +154,7 @@ describe("AavePositions", () => {
   });
 
   it("hides notification bells and does not treat a saved config as existing until configs are loaded", async () => {
-    notifications.configuredChainIds = [ETHEREUM_POSITION.chainId];
+    notifications.configuredMarkets = [ETHEREUM_POSITION.key];
     notifications.isLoaded = false;
 
     const { container } = await renderLoaded([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION]);
@@ -238,7 +257,7 @@ describe("AavePositions", () => {
     expect(screen.getByText("Could not reach any Aave network. Check your connection and try again.")).toBeDefined();
     expect(screen.queryByText("Total supplied")).toBeNull();
     expect(screen.queryByText("$0.00")).toBeNull();
-    expect(screen.queryByRole("region", { name: "Networks" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Markets" })).toBeNull();
     expect(screen.queryByText(SELECT_PROMPT)).toBeNull();
     expect(isRefreshing()).toBe(false);
   });
@@ -289,6 +308,119 @@ describe("AavePositions", () => {
   });
 });
 
+describe("AavePositions with Aave V4 Spokes", () => {
+  const LIDO = ETHEREUM_V4_LIDO_POSITION.marketName;
+  const V4_MAIN = ETHEREUM_V4_MAIN_EMPTY_POSITION.marketName;
+  const configStub = () => screen.getByLabelText<HTMLInputElement>("Notification draft");
+
+  beforeEach(() => {
+    account.address = USER;
+    fetchMock.mockReset();
+    notifications.isLoaded = true;
+    notifications.configuredMarkets = [];
+  });
+
+  it("leaves an empty Spoke without an alert out of the list and says no V4 position was found", async () => {
+    await renderLoaded([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION, ETHEREUM_V4_MAIN_EMPTY_POSITION]);
+
+    expect(networksPanel().queryByText(V4_MAIN)).toBeNull();
+    expect(networksPanel().getAllByRole("listitem")).toHaveLength(2);
+    expect(networksPanel().getByText(NO_V4_POSITIONS_MESSAGE)).toBeDefined();
+    expect(networksPanel().getByText("1 active")).toBeDefined();
+  });
+
+  it("lists a Spoke with a position on its own row, beside the same chain's V3 market, without the V4 note", async () => {
+    await renderLoaded([ETHEREUM_POSITION, ETHEREUM_V4_MAIN_EMPTY_POSITION, ETHEREUM_V4_LIDO_POSITION]);
+
+    expect(networksPanel().getByText("Ethereum")).toBeDefined();
+    expect(networkRow(LIDO)).toBeDefined();
+    expect(networksPanel().queryByText(V4_MAIN)).toBeNull();
+    expect(networksPanel().getByText("2 active")).toBeDefined();
+    expect(screen.queryByText(NO_V4_POSITIONS_MESSAGE)).toBeNull();
+  });
+
+  it("lists an empty Spoke that has an alert, with its bell, once the alerts are loaded", async () => {
+    notifications.configuredMarkets = [ETHEREUM_V4_MAIN_EMPTY_POSITION.key];
+    await renderLoaded([ETHEREUM_POSITION, ETHEREUM_V4_MAIN_EMPTY_POSITION]);
+
+    expect(within(networkRow(V4_MAIN)).getByText(ALERT_SET)).toBeDefined();
+    expect(within(networkRow(V4_MAIN)).getByText("No position")).toBeDefined();
+    expect(within(networkRow("Ethereum")).queryByText(ALERT_SET)).toBeNull();
+    expect(screen.queryByText(NO_V4_POSITIONS_MESSAGE)).toBeNull();
+  });
+
+  it("does not list an empty Spoke for its alert before the alerts are loaded", async () => {
+    notifications.configuredMarkets = [ETHEREUM_V4_MAIN_EMPTY_POSITION.key];
+    notifications.isLoaded = false;
+    await renderLoaded([ETHEREUM_POSITION, ETHEREUM_V4_MAIN_EMPTY_POSITION]);
+
+    expect(networksPanel().queryByText(V4_MAIN)).toBeNull();
+    expect(networksPanel().getByText(NO_V4_POSITIONS_MESSAGE)).toBeDefined();
+  });
+
+  it("shows no V4 note when no Spoke was read, or while positions load", async () => {
+    await renderLoaded([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION]);
+    expect(screen.queryByText(NO_V4_POSITIONS_MESSAGE)).toBeNull();
+
+    const refresh = deferred<NetworkPosition[]>();
+    fetchMock.mockReturnValueOnce(refresh.promise);
+    fireEvent.click(refreshButton());
+    await waitFor(() => expect(isRefreshing()).toBe(true));
+    expect(screen.queryByText(NO_V4_POSITIONS_MESSAGE)).toBeNull();
+
+    refresh.resolve([ETHEREUM_POSITION, ETHEREUM_V4_MAIN_EMPTY_POSITION]);
+    await waitFor(() => expect(isRefreshing()).toBe(false));
+    expect(networksPanel().getByText(NO_V4_POSITIONS_MESSAGE)).toBeDefined();
+  });
+
+  it("shows the selected Spoke by its market name, as a V4 Spoke, with no Supply APY column", async () => {
+    notifications.configuredMarkets = [ETHEREUM_POSITION.key];
+    const { container } = await renderLoaded([ETHEREUM_POSITION, ETHEREUM_V4_LIDO_POSITION]);
+    const paywall = () =>
+      container.querySelector('[data-stub="access-paywall"]')?.getAttribute("data-has-existing-config");
+    expect(paywall()).toBe("true");
+
+    fireEvent.click(networkRow(LIDO));
+
+    const details = within(screen.getByRole("region", { name: "Selected market" }));
+    expect(details.getByRole("heading", { level: 3, name: LIDO })).toBeDefined();
+    expect(details.getByText("Aave V4 Spoke")).toBeDefined();
+    expect(details.queryByText("Aave V3 market")).toBeNull();
+    expect(details.getAllByRole("columnheader").map(header => header.textContent)).toEqual([
+      "Asset",
+      "Supplied",
+      "Collateral",
+      "Asset",
+      "Borrowed",
+      "Rate type",
+    ]);
+    expect(networkRow(LIDO).getAttribute("aria-current")).toBe("true");
+    expect(networkRow("Ethereum").hasAttribute("aria-current")).toBe(false);
+    // The V3 alert on the same chain is not the Spoke's.
+    expect(paywall()).toBe("false");
+    expect(configStub().dataset).toMatchObject({
+      chainId: "1",
+      market: ETHEREUM_V4_LIDO_POSITION.marketId,
+      chainName: LIDO,
+    });
+  });
+
+  it("starts the notification form afresh between two markets on one chain", async () => {
+    await renderLoaded([ETHEREUM_POSITION, ETHEREUM_V4_LIDO_POSITION]);
+    fireEvent.change(configStub(), { target: { value: "V3 draft" } });
+
+    fireEvent.click(networkRow(LIDO));
+
+    expect(configStub().dataset).toMatchObject({ chainId: "1", market: ETHEREUM_V4_LIDO_POSITION.marketId });
+    expect(configStub().value).toBe("");
+
+    fireEvent.click(networkRow("Ethereum"));
+
+    expect(configStub().dataset).toMatchObject({ chainId: "1", market: "v3", chainName: "Ethereum" });
+    expect(configStub().value).toBe("");
+  });
+});
+
 describe("AavePositions in Czech", () => {
   const renderCzech = () =>
     renderWithProviders(
@@ -302,11 +434,11 @@ describe("AavePositions in Czech", () => {
     account.address = USER;
     fetchMock.mockReset();
     notifications.isLoaded = true;
-    notifications.configuredChainIds = [];
+    notifications.configuredMarkets = [];
   });
 
   it("labels the toolbar, the totals, the networks and the selected position in Czech", async () => {
-    notifications.configuredChainIds = [ETHEREUM_POSITION.chainId];
+    notifications.configuredMarkets = [ETHEREUM_POSITION.key];
     fetchMock.mockResolvedValueOnce([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION, POLYGON_COLLATERAL_ONLY_POSITION]);
     const { container } = renderCzech();
     await waitFor(() => {
@@ -320,7 +452,7 @@ describe("AavePositions in Czech", () => {
     }
     expect(screen.getAllByText("Čisté jmění")).toHaveLength(2);
 
-    const networks = within(screen.getByRole("region", { name: "Sítě" }));
+    const networks = within(screen.getByRole("region", { name: "Trhy" }));
     expect(networks.getByText("2 aktivní")).toBeDefined();
     expect(networks.getByText("Upozornění nastaveno")).toBeDefined();
     expect(networks.getByText("Bez pozice")).toBeDefined();
@@ -328,7 +460,7 @@ describe("AavePositions in Czech", () => {
     expect(networks.getByText("vloženo $12.35K,")).toBeDefined();
     expect(networks.getByText("vypůjčeno $2.50K")).toBeDefined();
 
-    const details = within(screen.getByRole("region", { name: "Vybraná síť" }));
+    const details = within(screen.getByRole("region", { name: "Vybraný trh" }));
     expect(details.getByRole("heading", { level: 4, name: "Vloženo" })).toBeDefined();
     expect(details.getByRole("heading", { level: 4, name: "Vypůjčeno" })).toBeDefined();
     expect(details.getByText("3 aktiva")).toBeDefined();
@@ -343,7 +475,7 @@ describe("AavePositions in Czech", () => {
       "Typ sazby",
     ]);
     expect(container.textContent).not.toMatch(new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`));
-    expect(container.textContent).not.toMatch(/Total supplied|Networks|Refresh positions/);
+    expect(container.textContent).not.toMatch(/Total supplied|Markets|Refresh positions/);
   });
 
   it("selects a collateral-only network with one asset and no debt", async () => {
@@ -361,8 +493,32 @@ describe("AavePositions in Czech", () => {
     renderCzech();
     await screen.findByRole("heading", { level: 3, name: ARBITRUM_EMPTY_POSITION.chainName });
 
-    expect(screen.getByText("Na podporovaných sítích jsme nenašli žádné aktivní pozice na Aave.")).toBeDefined();
+    expect(screen.getByText("Na podporovaných trzích jsme nenašli žádné aktivní pozice na Aave.")).toBeDefined();
     expect(screen.getByText("Na síti Arbitrum nemáte žádnou aktivní pozici")).toBeDefined();
+  });
+
+  it("explains in Czech that no V4 Spoke holds a position, and names a selected Spoke", async () => {
+    fetchMock.mockResolvedValueOnce([ETHEREUM_POSITION, ETHEREUM_V4_MAIN_EMPTY_POSITION]);
+    const view = renderCzech();
+    await screen.findByRole("heading", { level: 3, name: ETHEREUM_POSITION.marketName });
+
+    expect(
+      screen.getByText(
+        "Aave V4: v žádném z 20 trhů (Spoke) na sítích Ethereum, Avalanche, Arc a Base nemáte pozici. Trh se tu zobrazí, jakmile v něm tato peněženka bude mít kolaterál nebo dluh.",
+      ),
+    ).toBeDefined();
+
+    fetchMock.mockResolvedValueOnce([ETHEREUM_POSITION, ETHEREUM_V4_LIDO_POSITION]);
+    fireEvent.click(czechRefreshButton());
+    await waitFor(() => expect(czechRefreshButton().getAttribute("aria-busy")).not.toBe("true"));
+    fireEvent.click(screen.getByText(ETHEREUM_V4_LIDO_POSITION.marketName).closest("button")!);
+
+    const details = within(screen.getByRole("region", { name: "Vybraný trh" }));
+    expect(details.getByRole("heading", { level: 3, name: ETHEREUM_V4_LIDO_POSITION.marketName })).toBeDefined();
+    expect(details.getByText("Spoke Aave V4")).toBeDefined();
+    expect(details.queryByText("APY vkladu")).toBeNull();
+    expect(screen.queryByText(/^Aave V4: v žádném/)).toBeNull();
+    expect(view.container.textContent).not.toMatch(new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`));
   });
 
   it("explains a failed load in Czech, with the Czech fallback message", async () => {

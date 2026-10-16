@@ -1,5 +1,14 @@
 import { type Address, type Chain, createPublicClient } from "viem";
-import { AAVE_POOL_ABI, getAaveMarket } from "~~/config/aaveConfig";
+import {
+  AAVE_POOL_ABI,
+  AAVE_V4_SPOKE_ABI,
+  type AaveMarket,
+  type AaveV4Spoke,
+  type MarketId,
+  V3_MARKET_ID,
+  marketLabel,
+  resolveMarket,
+} from "~~/config/aaveConfig";
 import { getReadErrorMessage } from "~~/services/aave/readErrorMessage";
 import { formatHealthFactorDown, toHealthFactorValue } from "~~/utils/healthFactor";
 import { getFallbackTransport } from "~~/utils/rpc";
@@ -27,33 +36,52 @@ const getClient = (chain: Chain) => {
   return client;
 };
 
+type Client = ReturnType<typeof getClient>;
+
+const readHealthFactor = async (client: Client, market: AaveMarket | AaveV4Spoke, walletAddress: Address) => {
+  if ("spoke" in market) {
+    const { healthFactor } = await client.readContract({
+      address: market.spoke,
+      abi: AAVE_V4_SPOKE_ABI,
+      functionName: "getUserAccountData",
+      args: [walletAddress],
+    });
+    return healthFactor;
+  }
+  const [, , , , , healthFactor] = await client.readContract({
+    address: market.pool,
+    abi: AAVE_POOL_ABI,
+    functionName: "getUserAccountData",
+    args: [walletAddress],
+  });
+  return healthFactor;
+};
+
 /**
- * Reads a wallet's Aave V3 health factor on one chain: the exact value for threshold comparisons and a 2-decimal,
- * rounded-down string ("∞" without debt) for the alert text. Resolves null when the chain has no market or the read fails.
+ * Reads a wallet's Aave health factor in one market, the chain's V3 Pool or one of its V4 Spokes: the exact value for
+ * threshold comparisons and a 2-decimal, rounded-down string ("∞" without debt) for the alert text. `chainName` is
+ * the market's name in alerts ("Ethereum", "Ethereum (V4 Lido)"). Resolves null when the app does not read that
+ * market or the read fails.
  */
 export async function getHealthFactorForWallet(
   walletAddress: Address,
   chainId: number,
+  marketId: MarketId = V3_MARKET_ID,
 ): Promise<{ healthFactor: string; healthFactorValue: number; chainName: string } | null> {
-  const market = getAaveMarket(chainId);
+  const market = resolveMarket(chainId, marketId);
   if (!market) return null;
 
-  const client = getClient(market.chain);
   try {
-    const [, , , , , healthFactor] = await client.readContract({
-      address: market.pool,
-      abi: AAVE_POOL_ABI,
-      functionName: "getUserAccountData",
-      args: [walletAddress],
-    });
-
+    const healthFactor = await readHealthFactor(getClient(market.chain), market, walletAddress);
     return {
       healthFactor: formatHealthFactorDown(healthFactor),
       healthFactorValue: toHealthFactorValue(healthFactor),
-      chainName: market.name,
+      chainName: marketLabel(market),
     };
   } catch (error) {
-    console.warn(`Failed to read the Aave health factor on chain ${chainId}: ${getReadErrorMessage(error)}`);
+    console.warn(
+      `Failed to read the Aave health factor on ${marketLabel(market)} (chain ${chainId}): ${getReadErrorMessage(error)}`,
+    );
     return null;
   }
 }

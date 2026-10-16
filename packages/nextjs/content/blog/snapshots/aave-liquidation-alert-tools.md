@@ -75,7 +75,8 @@ AaveProtocolDataProvider `0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD` (= `getPoo
 ## 2. Tokenping row (product facts, not re-derived)
 
 From `SCRATCH/mkt/product.md` (2026-10-14), spot-checked in this branch:
-- 7 networks, one pool each, Ethereum Core only (P§2; `config/aaveConfig.ts`); Aave V3 only (P§1, P§10.1).
+- Aave V3 on 7 networks, one pool each, Ethereum Core only (P§2; `config/aaveConfig.ts`). Since 2026-10-16 also every Aave V4
+  Spoke on Ethereum, Avalanche, Arc and Base, 20 in all, one alert each (`config/aaveConfig.ts`, `AAVE_V4_SPOKES`).
 - Check every 5 minutes: `vercel.json` `"schedule": "*/5 * * * *"`; configs processed one after another (P§4.2).
 - Repeats on every check while below, no recovery message (P§4.3); one config per (wallet, chain) (P§4.6); connected wallet
   only (P§4.6, P§10.6).

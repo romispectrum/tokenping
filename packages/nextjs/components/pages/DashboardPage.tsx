@@ -3,7 +3,7 @@ import { BookOpen, ChevronDown } from "lucide-react";
 import { mainnet } from "viem/chains";
 import { AaveDashboard } from "~~/components/dashboard/AaveDashboard";
 import { Container } from "~~/components/home/marketingLayout";
-import { AAVE_MARKETS } from "~~/config/aaveConfig";
+import { AAVE_MARKETS, AAVE_NETWORK_NAMES, AAVE_V4_NETWORK_NAMES } from "~~/config/aaveConfig";
 import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import { getPostByKey, isPublished } from "~~/content/blog";
 import { joinList } from "~~/i18n/format";
@@ -18,7 +18,7 @@ export const dashboardMetadata = (locale: Locale) => {
   const { page } = DASHBOARD_MESSAGES[locale];
   return pageMetadata({
     title: page.metaTitle,
-    description: page.metaDescription(AAVE_MARKETS.length, formatAlertChannelsIn(locale, "disjunction")),
+    description: page.metaDescription(AAVE_NETWORK_NAMES.length, formatAlertChannelsIn(locale, "disjunction")),
     locale,
     alternates: routeAlternates("dashboard"),
   });
@@ -30,8 +30,8 @@ const GUIDE_LINKS = [
   { key: "aave-health-factor-alert-setup", label: "guideAlerts" },
 ] as const;
 
-/** The monitored networks in dashboard order; on Ethereum only the Core market's pool is read. */
-const networkNames = (locale: Locale) =>
+/** The Aave V3 networks in dashboard order; on Ethereum only the Core market's pool is read. */
+const v3NetworkNames = (locale: Locale) =>
   AAVE_MARKETS.map(({ chain, name }) =>
     chain.id === mainnet.id ? DASHBOARD_MESSAGES[locale].page.coreMarket(name) : name,
   );
@@ -59,7 +59,9 @@ export const DashboardPage = ({ locale }: { locale: Locale }) => {
         <h1 className="m-0 text-2xl font-medium tracking-tight text-foreground lg:col-span-5">{page.title}</h1>
         <div className="mt-3 flex flex-col gap-3 lg:col-span-7 lg:mt-0">
           <div className="flex max-w-prose flex-col gap-2 text-sm text-muted-foreground">
-            <p className="m-0">{page.intro(joinList(locale, networkNames(locale)))}</p>
+            <p className="m-0">
+              {page.intro(joinList(locale, v3NetworkNames(locale)), joinList(locale, AAVE_V4_NETWORK_NAMES))}
+            </p>
             {/* Folded by default: the alert and check facts are in the HTML for crawlers and a tap away for a
                 first visit, and they stop costing a phone's screen on every visit after it. */}
             <details className="group">

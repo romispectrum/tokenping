@@ -1,5 +1,5 @@
 import { hardhat, mainnet } from "viem/chains";
-import { AAVE_MARKETS } from "~~/config/aaveConfig";
+import { AAVE_MARKETS, AAVE_NETWORK_NAMES, AAVE_V4_NETWORK_NAMES } from "~~/config/aaveConfig";
 import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import { PAYMENT_CHAIN_ID, PAYMENT_CONTRACT_ADDRESS } from "~~/constants/payments";
 import { getPostByKey, isPublished } from "~~/content/blog";
@@ -41,13 +41,13 @@ export const getHomeTitle = (locale: Locale = DEFAULT_LOCALE) => {
 };
 
 /**
- * The meta description and SoftwareApplication description. "No approvals on your position" rather than a bare
- * "Read-only": paying for alerts takes an approval and a payment on Arbitrum.
+ * The meta description and SoftwareApplication description. "No approvals on Aave" rather than a bare "Read-only":
+ * paying for alerts takes an approval and a payment on Arbitrum.
  */
 export const getHomeDescription = (locale: Locale = DEFAULT_LOCALE) => {
   const input = {
     channels: formatAlertChannelsIn(locale, "disjunction"),
-    networks: AAVE_MARKETS.length,
+    networks: AAVE_NETWORK_NAMES.length,
     minutes: NOTIFICATION_CHECK_INTERVAL_MINUTES,
   };
   const full = HOME_MESSAGES[locale].description({ ...input, short: false });
@@ -56,19 +56,22 @@ export const getHomeDescription = (locale: Locale = DEFAULT_LOCALE) => {
 
 /** The /aave meta description (marketing plan §4.2). */
 export const getDashboardDescription = () =>
-  `See your Aave V3 collateral, debt and health factor on ${AAVE_MARKETS.length} networks for free, then set a ${formatAlertChannels("or")} alert threshold for each network.`;
+  `See your Aave V3 and V4 collateral, debt and health factor on ${AAVE_NETWORK_NAMES.length} networks for free, then set ${formatAlertChannels("or")} alerts for each market.`;
 
-/** The monitored networks in dashboard order; on Ethereum only the Core market's pool is read. */
+/** The Aave V3 networks in dashboard order; on Ethereum only the Core market's pool is read. */
 export const getNetworkNames = (locale: Locale = DEFAULT_LOCALE) =>
   AAVE_MARKETS.map(({ chain, name }) =>
     chain.id === mainnet.id ? HOME_MESSAGES[locale].coreMarketNetwork(name) : name,
   );
 
-/** The networks as one list in running text: "Ethereum (Core market), Polygon, ... and Gnosis". */
+/** The V3 networks as one list in running text: "Ethereum (Core market), Polygon, ... and Gnosis". */
 export const getNetworkList = (locale: Locale = DEFAULT_LOCALE) => joinListIn(locale, getNetworkNames(locale));
 
-/** Badge labels: the plain network names. The Core-market note sits next to the badges. */
-export const getNetworkBadgeNames = () => AAVE_MARKETS.map(({ name }) => name);
+/** The networks Aave V4 runs on, in running text: "Ethereum, Avalanche, Arc and Base". */
+export const getV4NetworkList = (locale: Locale = DEFAULT_LOCALE) => joinListIn(locale, AAVE_V4_NETWORK_NAMES);
+
+/** Badge labels: every network with a market Tokenping reads, V3 or V4. The coverage note sits next to the badges. */
+export const getNetworkBadgeNames = () => AAVE_NETWORK_NAMES;
 
 /** The paywall's public Sourcify page, or undefined on a local build, where the contract is not verified anywhere. */
 export const getPaywallSourcifyUrl = () => {

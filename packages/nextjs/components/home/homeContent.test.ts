@@ -5,9 +5,11 @@ import {
   getHomeDescription,
   getHomeHeadline,
   getHomeTitle,
+  getNetworkBadgeNames,
   getNetworkNames,
   getPaywallSourcifyUrl,
   getPricingCtaLabel,
+  getV4NetworkList,
   joinList,
   softwareApplicationJsonLd,
 } from "~~/components/home/homeContent";
@@ -68,13 +70,13 @@ describe("home copy per channel set", () => {
     withTelegram(false);
 
     expect(getHomeDescription()).toBe(
-      "Signal or email alerts when your Aave V3 health factor drops below your threshold on 7 networks. Checked every 5 minutes. No approvals on your position.",
+      "Signal or email alerts when your Aave V3 or V4 health factor drops below your threshold on 8 networks. Checked every 5 minutes. No approvals on Aave.",
     );
   });
 });
 
 describe("getNetworkNames", () => {
-  it("lists the 7 networks in dashboard order and marks Ethereum as the Core market only", () => {
+  it("lists the 7 Aave V3 networks in dashboard order and marks Ethereum as the Core market only", () => {
     expect(getNetworkNames()).toEqual([
       "Ethereum (Core market)",
       "Polygon",
@@ -84,6 +86,26 @@ describe("getNetworkNames", () => {
       "Avalanche",
       "Gnosis",
     ]);
+  });
+});
+
+describe("network badges and the V4 list", () => {
+  it("badges every network Tokenping reads, V3 first, then Arc, which only has Aave V4", () => {
+    expect(getNetworkBadgeNames()).toEqual([
+      "Ethereum",
+      "Polygon",
+      "Arbitrum",
+      "Optimism",
+      "Base",
+      "Avalanche",
+      "Gnosis",
+      "Arc",
+    ]);
+  });
+
+  it("names the Aave V4 networks in running text, in either language", () => {
+    expect(getV4NetworkList()).toBe("Ethereum, Avalanche, Arc and Base");
+    expect(getV4NetworkList("cs")).toBe("Ethereum, Avalanche, Arc a Base");
   });
 });
 

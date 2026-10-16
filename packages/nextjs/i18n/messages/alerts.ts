@@ -1,4 +1,4 @@
-import { plural } from "~~/i18n/format";
+import { capitalize, csForMarket, csOnMarket, plural } from "~~/i18n/format";
 import type { Locale, Localized } from "~~/i18n/locales";
 import type { NotificationService } from "~~/types/notifications";
 import { getErrorMessage } from "~~/utils/errors";
@@ -209,7 +209,7 @@ export const ALERTS_MESSAGES: Localized<AlertsMessages> = {
     active: "Aktivní",
     payToEdit: "Pro úpravy zaplaťte přístup",
     editAlert: "Upravit upozornění",
-    emptyTitle: chainName => `Na síti ${chainName} zatím nemáte žádné upozornění`,
+    emptyTitle: chainName => `${capitalize(csOnMarket(chainName))} zatím nemáte žádné upozornění`,
     emptyDescription: "Dostanete zprávu, když váš health factor klesne pod práh, který si zvolíte.",
     createAlert: "Vytvořit upozornění",
     loadErrorTitle: "Nastavení upozornění se nenačetlo",
@@ -243,7 +243,7 @@ export const ALERTS_MESSAGES: Localized<AlertsMessages> = {
     thresholdExactValue: "(přesná hodnota)",
     thresholdScale: { critical: "Kritický", safe: "Bezpečný", verySafe: "Velmi bezpečný" },
     thresholdDescription: (threshold, chainName) =>
-      `Upozorníme vás, když váš health factor na síti ${chainName} klesne pod ${threshold}.`,
+      `Upozorníme vás, když váš health factor ${csOnMarket(chainName)} klesne pod ${threshold}.`,
     saveAlert: "Uložit upozornění",
     saving: "Ukládáme",
     cancel: "Zrušit",
@@ -251,7 +251,7 @@ export const ALERTS_MESSAGES: Localized<AlertsMessages> = {
     deleting: "Mažeme",
     keepAlert: "Ponechat upozornění",
     deleteTitle: "Smazat toto upozornění?",
-    deleteDescription: chainName => `Tokenping přestane posílat upozornění na health factor pro síť ${chainName}.`,
+    deleteDescription: chainName => `Tokenping přestane posílat upozornění na health factor ${csForMarket(chainName)}.`,
     errorSummaryTitle: count =>
       plural("cs", count, {
         one: `Před uložením opravte ${count} pole`,

@@ -126,7 +126,7 @@ changed 2026-03-31, commit `2f6a0fc96a`).
 | Claim | Source |
 |---|---|
 | Checks every 5 minutes | `vercel.json` `*/5 * * * *`; `NOTIFICATION_CHECK_INTERVAL_MINUTES = 5` (`product.md` §4.1) |
-| Seven networks, Aave V3 only, no V4 | `config/aaveConfig.ts` (`product.md` §2, §10.1; `aave-facts.md` §11) |
+| Aave V3 on seven networks; since 2026-10-16 every Aave V4 Spoke on Ethereum, Avalanche, Arc and Base (20), one alert per Spoke | `config/aaveConfig.ts` (`AAVE_MARKETS`, `AAVE_V4_SPOKES`; `product.md` §2) |
 | Signal or email (Telegram not named: blog build spec) | `product.md` §4.7 |
 | Threshold 1.1 to 10 | `constants/notifications.ts` (`product.md` §4.5) |
 | Alert repeats on every check while below threshold | `runNotificationCheck.ts` (`product.md` §4.3) |

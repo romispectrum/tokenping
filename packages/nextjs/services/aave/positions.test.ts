@@ -22,6 +22,7 @@ import {
   toSupplyApy,
   toTokenPosition,
 } from "~~/services/aave/positions";
+import { fetchAaveV4Positions } from "~~/services/aave/v4Positions";
 
 type AccountData = readonly [bigint, bigint, bigint, bigint, bigint, bigint];
 type ReserveData = readonly [bigint, bigint, bigint, bigint, bigint, bigint, bigint, number, boolean];
@@ -89,6 +90,9 @@ vi.mock("viem", async importOriginal => ({
 }));
 
 vi.mock("~~/utils/rpc", () => ({ getFallbackTransport: (chain: { id: number }) => ({ fallbackFor: chain.id }) }));
+
+// The V4 Spokes have their own tests (v4Positions.test.ts); here they are a list fetchAavePositions appends.
+vi.mock("~~/services/aave/v4Positions", () => ({ fetchAaveV4Positions: vi.fn() }));
 
 const USER = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
@@ -171,6 +175,10 @@ const mainnetWithReserves = (overrides: Partial<FakeChain> = {}): FakeChain => (
 });
 
 const MAINNET_SUMMARY = {
+  key: "1:v3",
+  version: 3,
+  marketId: "v3",
+  marketName: "Ethereum",
   chainId: chains.mainnet.id,
   chainName: "Ethereum",
   totalCollateralUSD: "12345.68",
@@ -181,6 +189,10 @@ const MAINNET_SUMMARY = {
 };
 
 const BASE_WITHOUT_POSITION: NetworkPosition = {
+  key: "8453:v3",
+  version: 3,
+  marketId: "v3",
+  marketName: "Base",
   chainId: chains.base.id,
   chainName: "Base",
   totalCollateralUSD: "0.00",
@@ -294,6 +306,10 @@ describe("toNetworkPosition", () => {
     [account(50n, 49n, 2n ** 128n - 2n)],
   ])("matches the original formatting for %s", accountData => {
     expect(toNetworkPosition(BASE, accountData, [])).toEqual({
+      key: "8453:v3",
+      version: 3,
+      marketId: "v3",
+      marketName: "Base",
       chainId: chains.base.id,
       chainName: "Base",
       tokens: [],
@@ -342,6 +358,8 @@ describe("fetchAavePositions", () => {
     network.chains = new Map();
     network.clients = [];
     network.calls = [];
+    vi.mocked(fetchAaveV4Positions).mockReset();
+    vi.mocked(fetchAaveV4Positions).mockResolvedValue([]);
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
   });
 
@@ -485,12 +503,59 @@ describe("fetchAavePositions", () => {
     expect(JSON.stringify(vi.mocked(console.warn).mock.calls)).not.toContain(calldata);
   });
 
-  it("rejects when every network fails", async () => {
+  it("rejects when every network fails and no V4 Spoke can be read", async () => {
     // B1.2: a total outage used to look like "no positions" instead of an error.
     await expect(fetchAavePositions(USER)).rejects.toThrow(
       "Could not reach any Aave network. Check your connection and try again.",
     );
     expect(network.clients).toHaveLength(AAVE_MARKETS.length);
     expect(console.warn).toHaveBeenCalledTimes(AAVE_MARKETS.length);
+  });
+
+  describe("with Aave V4", () => {
+    const LIDO_POSITION: NetworkPosition = {
+      ...BASE_WITHOUT_POSITION,
+      key: "1:0xe1900480ac69f0b296841cd01cc37546d92f35cd",
+      version: 4,
+      marketId: "0xe1900480ac69f0b296841cd01cc37546d92f35cd",
+      marketName: "Ethereum (V4 Lido)",
+      chainId: chains.mainnet.id,
+      chainName: "Ethereum",
+    };
+    const ARC_POSITION: NetworkPosition = {
+      ...LIDO_POSITION,
+      key: "5042:0xb843bdc3a87a05e77e07df9fe48928b3a34b134d",
+      marketId: "0xb843bdc3a87a05e77e07df9fe48928b3a34b134d",
+      marketName: "Arc (V4 Main)",
+      chainId: 5042,
+      chainName: "Arc",
+    };
+
+    it("reads the V4 Spokes for the same user and lists them after every V3 network", async () => {
+      network.chains.set(chains.base.id, { accountData: account(0n, 0n, maxUint256) });
+      network.chains.set(chains.mainnet.id, mainnetWithReserves());
+      vi.mocked(fetchAaveV4Positions).mockResolvedValue([LIDO_POSITION, ARC_POSITION]);
+
+      await expect(fetchAavePositions(USER)).resolves.toEqual([
+        { ...MAINNET_SUMMARY, tokens: [USDC_TOKEN, DAI_TOKEN] },
+        BASE_WITHOUT_POSITION,
+        LIDO_POSITION,
+        ARC_POSITION,
+      ]);
+      expect(fetchAaveV4Positions).toHaveBeenCalledExactlyOnceWith(USER);
+    });
+
+    it("resolves with the V4 Spokes alone when no V3 network can be read", async () => {
+      vi.mocked(fetchAaveV4Positions).mockResolvedValue([ARC_POSITION]);
+
+      await expect(fetchAavePositions(USER)).resolves.toEqual([ARC_POSITION]);
+      expect(console.warn).toHaveBeenCalledTimes(AAVE_MARKETS.length);
+    });
+
+    it("resolves with the V3 networks alone when no V4 Spoke can be read", async () => {
+      network.chains.set(chains.base.id, { accountData: account(0n, 0n, maxUint256) });
+
+      await expect(fetchAavePositions(USER)).resolves.toEqual([BASE_WITHOUT_POSITION]);
+    });
   });
 });

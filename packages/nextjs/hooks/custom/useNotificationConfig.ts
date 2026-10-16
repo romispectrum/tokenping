@@ -3,13 +3,17 @@
 import { useCallback } from "react";
 import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
+import { type MarketRef, V3_MARKET_ID, marketKey } from "~~/config/aaveConfig";
 import { DEFAULT_HEALTH_FACTOR_THRESHOLD } from "~~/constants/notifications";
 import { useLocale } from "~~/i18n/LocaleProvider";
 import { notificationConfigClient } from "~~/services/notifications/notificationConfigClient";
 import type { NotificationConfig } from "~~/types/notifications";
 import { normalizeAddress } from "~~/utils/address";
 
-type ConfigsByChain = Record<number, NotificationConfig>;
+/** Keyed by marketKey(chainId, market), as GET /api/notifications/config returns them. */
+type ConfigsByMarket = Record<string, NotificationConfig>;
+
+const refKey = ({ chainId, market }: MarketRef) => marketKey(chainId, market);
 
 const notificationConfigsQueryKey = (address: string) => ["notificationConfigs", normalizeAddress(address)] as const;
 
@@ -19,11 +23,16 @@ const requireAddress = (address: string | undefined) => {
 };
 
 // The API body is not validated; rows saved before these columns existed come back with null.
-const withFieldDefaults = (configs: ConfigsByChain): ConfigsByChain =>
+const withFieldDefaults = (configs: ConfigsByMarket): ConfigsByMarket =>
   Object.fromEntries(
-    Object.entries(configs).map(([chainId, config]) => [
-      chainId,
-      { ...config, services: config.services ?? [], signalRecipient: config.signalRecipient ?? undefined },
+    Object.entries(configs).map(([key, config]) => [
+      key,
+      {
+        ...config,
+        market: config.market ?? V3_MARKET_ID,
+        services: config.services ?? [],
+        signalRecipient: config.signalRecipient ?? undefined,
+      },
     ]),
   );
 
@@ -31,16 +40,17 @@ const withFieldDefaults = (configs: ConfigsByChain): ConfigsByChain =>
 // which would leave the card hidden or the Save button stuck in its saving state until the connection returns.
 const NETWORK_MODE = "always";
 
-const removeChain = (configs: ConfigsByChain | undefined, chainId: number) => {
+const removeMarket = (configs: ConfigsByMarket | undefined, ref: MarketRef) => {
   if (!configs) return configs;
   const next = { ...configs };
-  delete next[chainId];
+  delete next[refKey(ref)];
   return next;
 };
 
 /**
- * The connected wallet's notification configs by chain, in the react-query cache so every component (the positions
- * list and each chain's settings card) sees the same data. Writes go to the cache of the wallet that made them.
+ * The connected wallet's notification configs by market (a chain's V3 Pool or a V4 Spoke), in the react-query cache
+ * so every component (the market list and each market's settings card) sees the same data. Writes go to the cache of
+ * the wallet that made them.
  */
 export const useNotificationConfig = () => {
   const { address } = useAccount();
@@ -62,11 +72,11 @@ export const useNotificationConfig = () => {
    */
   const applyWrite = async (
     userId: string,
-    update: (prev: ConfigsByChain | undefined) => ConfigsByChain | undefined,
+    update: (prev: ConfigsByMarket | undefined) => ConfigsByMarket | undefined,
   ) => {
     const queryKey = notificationConfigsQueryKey(userId);
     await queryClient.cancelQueries({ queryKey });
-    queryClient.setQueryData<ConfigsByChain>(queryKey, update);
+    queryClient.setQueryData<ConfigsByMarket>(queryKey, update);
   };
 
   // The server only trims, normalizes and clamps what the settings form already sends normalized, so a write goes
@@ -75,26 +85,32 @@ export const useNotificationConfig = () => {
     mutationFn: ({ userId, config }: { userId: string; config: NotificationConfig }) =>
       notificationConfigClient.upsertConfig(userId, config),
     networkMode: NETWORK_MODE,
-    onSuccess: (_, { userId, config }) => applyWrite(userId, prev => ({ ...prev, [config.chainId]: config })),
+    onSuccess: (_, { userId, config }) =>
+      applyWrite(userId, prev => ({
+        ...prev,
+        [refKey({ chainId: config.chainId, market: config.market ?? V3_MARKET_ID })]: config,
+      })),
   });
 
   const { mutateAsync: removeConfig, isPending: isDeleting } = useMutation({
-    mutationFn: ({ userId, chainId }: { userId: string; chainId: number }) =>
-      notificationConfigClient.deleteConfig(userId, chainId),
+    mutationFn: ({ userId, ref }: { userId: string; ref: MarketRef }) =>
+      notificationConfigClient.deleteConfig(userId, ref),
     networkMode: NETWORK_MODE,
-    onSuccess: (_, { userId, chainId }) => applyWrite(userId, prev => removeChain(prev, chainId)),
+    onSuccess: (_, { userId, ref }) => applyWrite(userId, prev => removeMarket(prev, ref)),
   });
 
   const updateConfig = useCallback(
-    async (chainId: number, updates: Partial<NotificationConfig>) => {
+    async (ref: MarketRef, updates: Partial<NotificationConfig>) => {
       const userId = requireAddress(address);
-      const saved = queryClient.getQueryData<ConfigsByChain>(notificationConfigsQueryKey(userId))?.[chainId];
+      const saved = queryClient.getQueryData<ConfigsByMarket>(notificationConfigsQueryKey(userId))?.[refKey(ref)];
       const config: NotificationConfig = {
-        ...(saved ?? { chainId, enabled: false, services: [], healthFactorThreshold: DEFAULT_HEALTH_FACTOR_THRESHOLD }),
+        ...(saved ?? { enabled: false, services: [], healthFactorThreshold: DEFAULT_HEALTH_FACTOR_THRESHOLD }),
         // Alerts are sent in the language of the page the config was last saved from.
         locale,
         ...updates,
-        chainId, // always the position's chain (Aave network), never the wallet's connected chain
+        // Always the position's market, never the wallet's connected chain.
+        chainId: ref.chainId,
+        market: ref.market,
       };
       await saveConfig({ userId, config });
     },
@@ -102,14 +118,14 @@ export const useNotificationConfig = () => {
   );
 
   const deleteConfig = useCallback(
-    async (chainId: number) => {
-      await removeConfig({ userId: requireAddress(address), chainId });
+    async (ref: MarketRef) => {
+      await removeConfig({ userId: requireAddress(address), ref });
     },
     [address, removeConfig],
   );
 
-  const getConfig = useCallback((chainId: number) => configs?.[chainId] ?? null, [configs]);
-  const hasConfig = useCallback((chainId: number) => !!configs && chainId in configs, [configs]);
+  const getConfig = useCallback((ref: MarketRef) => configs?.[refKey(ref)] ?? null, [configs]);
+  const hasConfig = useCallback((ref: MarketRef) => !!configs && refKey(ref) in configs, [configs]);
 
   return {
     /**

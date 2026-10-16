@@ -1,6 +1,7 @@
 import { type Chain, defineChain } from "viem";
 import { arbitrum, avalanche, base, gnosis, hardhat, mainnet, optimism, polygon, sepolia } from "viem/chains";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { arc } from "~~/config/aaveConfig";
 import { getFallbackTransport, getRpcUrls } from "~~/utils/rpc";
 
 const { config, SHARED_KEY } = vi.hoisted(() => ({
@@ -21,6 +22,7 @@ const PUBLICNODE = {
   [base.id]: "https://base-rpc.publicnode.com",
   [avalanche.id]: "https://avalanche-c-chain-rpc.publicnode.com",
   [gnosis.id]: "https://gnosis-rpc.publicnode.com",
+  [arc.id]: "https://arc-rpc.publicnode.com",
 };
 
 // Building the transport only creates the HTTP clients; nothing is fetched until a request is made.
@@ -114,7 +116,7 @@ describe("getFallbackTransport", () => {
     ]);
   });
 
-  it.each([mainnet, polygon, arbitrum, optimism, base, avalanche, gnosis])(
+  it.each([mainnet, polygon, arbitrum, optimism, base, avalanche, gnosis, arc])(
     "reaches $name through PublicNode before its default RPC when nothing is configured",
     chain => {
       config.alchemyApiKey = "";
@@ -122,6 +124,19 @@ describe("getFallbackTransport", () => {
       expect(transportUrls(chain)).toEqual([PUBLICNODE[chain.id], chain.rpcUrls.default.http[0]]);
     },
   );
+
+  // Arc hosts only Aave V4 and has no Alchemy network, so a configured key adds nothing there.
+  it("reaches Arc through an override, PublicNode and its RPC, never Alchemy", () => {
+    expect(getRpcUrls(arc.id)).toEqual([]);
+    expect(transportUrls(arc)).toEqual([PUBLICNODE[arc.id], "https://rpc.quicknode.mainnet.arc.io"]);
+
+    config.rpcOverrides = { [arc.id]: "https://arc.example/rpc" };
+    expect(transportUrls(arc)).toEqual([
+      "https://arc.example/rpc",
+      PUBLICNODE[arc.id],
+      "https://rpc.quicknode.mainnet.arc.io",
+    ]);
+  });
 
   it("lists an override that is the PublicNode URL only once", () => {
     config.alchemyApiKey = "";
