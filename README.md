@@ -109,6 +109,22 @@ yarn test               # Hardhat tests for the contracts
 yarn format             # Prettier
 ```
 
+### Token icons
+
+The dashboard shows each Aave reserve's CoinGecko icon. The icons are downloaded once into
+`packages/nextjs/public/token-icons` and served by the site, so a visitor's browser never contacts CoinGecko. Refresh
+them when Aave lists a new asset:
+
+```bash
+yarn next:token-icons
+```
+
+It reads every market's reserves on-chain, rewrites the icons and `packages/nextjs/config/tokenIcons.generated.ts`, and
+lists the reserves CoinGecko has no logo for (the dashboard shows their first letter). It reads
+`packages/nextjs/.env.local`, so a free CoinGecko Demo key in `COINGECKO_API_KEY` there speeds it up. Look over the
+changed icons before committing: a broken CoinGecko image goes in `IMAGE_OVERRIDES` and dark artwork that vanishes on the
+dark theme in `WHITE_BACKED_IMAGES`, both in `packages/nextjs/scripts/tokenIconSources.ts`.
+
 ## Deployment
 
 The frontend runs on Vercel (`yarn vercel:yolo --prod`). The 5-minute cron in `vercel.json` needs a Vercel plan that

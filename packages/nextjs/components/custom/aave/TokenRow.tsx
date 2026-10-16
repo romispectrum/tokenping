@@ -1,3 +1,4 @@
+import { TokenIcon } from "~~/components/custom/aave/TokenIcon";
 import { formatDebtBreakdown } from "~~/components/custom/aave/positionsView";
 import type { TokenPosition } from "~~/services/aave/positions";
 import { formatTokenAmount } from "~~/utils/format";
@@ -10,12 +11,26 @@ const AMOUNT_CELL = `${CELL} text-right font-data whitespace-nowrap`;
 const NUMBER_CELL = `${CELL} text-right tabular-nums whitespace-nowrap`;
 const TEXT_CELL = `${CELL} text-muted-foreground`;
 
-/** A token with a supply balance: asset, amount supplied, supply APY, whether it counts as collateral. */
-export const CollateralTokenRow = ({ token }: { token: TokenPosition }) => (
-  <tr className="border-t border-border">
-    <th scope="row" className={`${ASSET_CELL} text-left`}>
+export type TokenRowProps = {
+  token: TokenPosition;
+  /** The market's chain: a reserve's icon is looked up by chain and address. */
+  chainId: number;
+};
+
+const AssetCell = ({ token, chainId }: TokenRowProps) => (
+  <th scope="row" className={`${ASSET_CELL} text-left`}>
+    {/* A block flex box: an inline one would sit on the text baseline, about 2px above the row's centre. */}
+    <span className="flex items-center gap-2">
+      <TokenIcon chainId={chainId} address={token.asset} symbol={token.symbol} />
       {token.symbol}
-    </th>
+    </span>
+  </th>
+);
+
+/** A token with a supply balance: asset, amount supplied, supply APY, whether it counts as collateral. */
+export const CollateralTokenRow = ({ token, chainId }: TokenRowProps) => (
+  <tr className="border-t border-border">
+    <AssetCell token={token} chainId={chainId} />
     <td className={AMOUNT_CELL}>{formatTokenAmount(token.aTokenBalance, token.decimals)}</td>
     <td className={NUMBER_CELL}>{`${token.supplyApy.toFixed(2)}%`}</td>
     <td className={TEXT_CELL}>{token.usageAsCollateralEnabled ? "Enabled" : "Disabled"}</td>
@@ -23,11 +38,9 @@ export const CollateralTokenRow = ({ token }: { token: TokenPosition }) => (
 );
 
 /** A token with stable and/or variable debt: asset, total borrowed, and the split by rate type. */
-export const DebtTokenRow = ({ token }: { token: TokenPosition }) => (
+export const DebtTokenRow = ({ token, chainId }: TokenRowProps) => (
   <tr className="border-t border-border">
-    <th scope="row" className={`${ASSET_CELL} text-left`}>
-      {token.symbol}
-    </th>
+    <AssetCell token={token} chainId={chainId} />
     <td className={AMOUNT_CELL}>{formatTokenAmount(token.stableDebt + token.variableDebt, token.decimals)}</td>
     <td className={TEXT_CELL}>{formatDebtBreakdown(token)}</td>
   </tr>

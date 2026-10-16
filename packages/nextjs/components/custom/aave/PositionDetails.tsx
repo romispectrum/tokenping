@@ -47,6 +47,7 @@ const PositionContent = ({ position }: { position: NetworkPosition }) => {
             title="Supplied"
             columns={COLLATERAL_COLUMNS}
             tokens={getCollateralTokens(position.tokens)}
+            chainId={position.chainId}
             Row={CollateralTokenRow}
             emptyText="No collateral supplied"
           />
@@ -55,9 +56,22 @@ const PositionContent = ({ position }: { position: NetworkPosition }) => {
             title="Borrowed"
             columns={DEBT_COLUMNS}
             tokens={getDebtTokens(position.tokens)}
+            chainId={position.chainId}
             Row={DebtTokenRow}
             emptyText="No outstanding debt"
           />
+          <p className="m-0 text-xs text-muted-foreground">
+            Token icons from{" "}
+            <a
+              href="https://www.coingecko.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-link underline underline-offset-3 hover:decoration-2"
+            >
+              CoinGecko
+              <span className="sr-only"> (opens in a new tab)</span>
+            </a>
+          </p>
         </>
       ) : (
         // Partial data: the account summary loaded but the per-token reads did not.

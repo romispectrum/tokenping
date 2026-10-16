@@ -9,7 +9,18 @@ const loadNextConfig = async (env: Record<string, string | undefined>): Promise<
   return (await import("~~/next.config")).default;
 };
 
-const LINT_DIRS = ["app", "components", "content", "hooks", "services", "utils", "config", "constants", "types"];
+const LINT_DIRS = [
+  "app",
+  "components",
+  "content",
+  "hooks",
+  "services",
+  "utils",
+  "config",
+  "constants",
+  "types",
+  "scripts",
+];
 
 type WebpackConfig = Parameters<NonNullable<NextConfig["webpack"]>>[0];
 type WebpackOptions = Parameters<NonNullable<NextConfig["webpack"]>>[1];

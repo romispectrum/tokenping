@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import type { TokenRowProps } from "~~/components/custom/aave/TokenRow";
 import { cx } from "~~/components/ui";
 import type { TokenPosition } from "~~/services/aave/positions";
 
@@ -10,7 +11,8 @@ type TokenTableProps = {
   title: string;
   columns: readonly Column[];
   tokens: readonly TokenPosition[];
-  Row: ComponentType<{ token: TokenPosition }>;
+  chainId: number;
+  Row: ComponentType<TokenRowProps>;
   emptyText: string;
 };
 
@@ -19,7 +21,7 @@ type TokenTableProps = {
  * phone instead of cutting columns off; it is focusable and named, so keyboard users can scroll it too. The heading
  * structures the block, so the wrapper is a plain div: only the scroll region is a landmark, named once.
  */
-export const TokenTable = ({ id, title, columns, tokens, Row, emptyText }: TokenTableProps) => (
+export const TokenTable = ({ id, title, columns, tokens, chainId, Row, emptyText }: TokenTableProps) => (
   <div className="flex flex-col gap-3">
     <div className="flex items-baseline justify-between gap-3">
       <h4 id={id} className="m-0 text-sm font-medium text-foreground">
@@ -55,7 +57,7 @@ export const TokenTable = ({ id, title, columns, tokens, Row, emptyText }: Token
           </thead>
           <tbody>
             {tokens.map(token => (
-              <Row key={token.asset} token={token} />
+              <Row key={token.asset} token={token} chainId={chainId} />
             ))}
           </tbody>
         </table>
