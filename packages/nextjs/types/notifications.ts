@@ -1,3 +1,5 @@
+import type { Locale } from "~~/i18n/locales";
+
 /** Supported notification delivery channels */
 export type NotificationService = "email" | "signal" | "telegram";
 
@@ -14,6 +16,8 @@ export type NotificationConfig = {
   email?: string;
   /** Signal username for notifications (e.g. alice.42, stored without @ prefix) */
   signalRecipient?: string;
+  /** The language the alert is sent in: the site language it was saved from. English when absent (older rows). */
+  locale?: Locale;
 };
 
 /**

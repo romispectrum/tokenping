@@ -39,3 +39,10 @@ export const joinList = (
   type: "conjunction" | "disjunction" = "conjunction",
 ) =>
   items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} ${LIST_WORDS[locale][type]} ${items.at(-1)}`;
+
+/**
+ * A number the user reads in running text: as written in English ("1.42"), with a decimal comma in Czech ("1,42").
+ * Takes the already-formatted string (a health factor such as "1.42" or "∞") or a number.
+ */
+export const formatDecimal = (locale: Locale, value: string | number) =>
+  locale === "cs" ? String(value).replace(".", ",") : String(value);

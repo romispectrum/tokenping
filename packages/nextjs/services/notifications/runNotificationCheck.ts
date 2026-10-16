@@ -1,6 +1,9 @@
 import "server-only";
 import type { Address } from "viem";
 import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
+import { formatDecimal } from "~~/i18n/format";
+import type { Locale } from "~~/i18n/locales";
+import { NOTIFICATION_MESSAGES } from "~~/i18n/messages/notifications";
 import { getHealthFactorForWallet } from "~~/services/aave/getHealthFactor";
 import { sendEmail } from "~~/services/email/sendEmail";
 import { type EnabledConfigRow, findEnabledConfigs } from "~~/services/notifications/configRepository";
@@ -38,21 +41,28 @@ type AlertSender = (
 /** The chat is gone for good: the link is deleted so the cron stops failing on it every run. */
 const DEAD_CHAT_CODES: readonly TelegramSendErrorCode[] = ["bot_blocked", "chat_not_found"];
 
-export const buildAlertText = ({ chainName, healthFactor, threshold, timestamp }: Alert) =>
-  `Your Aave Health Factor on ${chainName} is ${healthFactor}, ` +
-  `which is below your threshold of ${threshold}. ` +
-  `Consider adding collateral or repaying debt to avoid liquidation.\n\nSent at: ${timestamp}`;
+/** The alert's text (Signal, Telegram and the email's plain part) in `locale`, English by default. */
+export const buildAlertText = ({ chainName, healthFactor, threshold, timestamp }: Alert, locale: Locale = "en") =>
+  NOTIFICATION_MESSAGES[locale].alertText({
+    chainName,
+    healthFactor: formatDecimal(locale, healthFactor),
+    threshold: formatDecimal(locale, threshold),
+    timestamp,
+  });
 
-/** The html footer says "Created at" where the text says "Sent at". */
-export const buildAlertEmail = ({ chainName, healthFactor, threshold, timestamp }: Alert) => ({
-  subject: `Aave Health Factor Alert - ${chainName}`,
-  html:
-    `<p>Your Aave Health Factor on <strong>${chainName}</strong> is ` +
-    `<strong>${healthFactor}</strong>, which is below your threshold of ` +
-    `<strong>${threshold}</strong>.</p>` +
-    `<p>Consider adding collateral or repaying debt to avoid liquidation.</p>` +
-    `<p><small>Created at: ${timestamp}</small></p>`,
-});
+/** The alert email's subject and html in `locale`, English by default. */
+export const buildAlertEmail = ({ chainName, healthFactor, threshold, timestamp }: Alert, locale: Locale = "en") => {
+  const t = NOTIFICATION_MESSAGES[locale];
+  return {
+    subject: t.alertSubject(chainName),
+    html: t.alertHtml({
+      chainName,
+      healthFactor: formatDecimal(locale, healthFactor),
+      threshold: formatDecimal(locale, threshold),
+      timestamp,
+    }),
+  };
+};
 
 /**
  * The channels a config can deliver to right now, in send order (email, Signal, Telegram), with trimmed recipients.
