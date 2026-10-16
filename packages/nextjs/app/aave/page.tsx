@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen } from "lucide-react";
+import { BookOpen, ChevronDown } from "lucide-react";
 import type { NextPage } from "next";
 import { AaveDashboard } from "~~/app/aave/_components/AaveDashboard";
 import { getDashboardDescription, getNetworkNames, getPublishedPost, joinList } from "~~/components/home/homeContent";
@@ -37,40 +37,56 @@ const AavePage: NextPage = () => {
   return (
     // The site container, so the page shares its edge with the header and the footer.
     <Container className="flex flex-col gap-6 pt-6 pb-12 md:pt-8 md:pb-16">
-      <header className="flex flex-col gap-3">
-        {/* The breadcrumb trail brings its own 16px gap above the title. */}
-        <div>
+      {/* Title beside the explanation from lg, on the same 5/7 tracks as the dashboard grid below. */}
+      <header className="grid lg:grid-cols-12 lg:items-start lg:gap-x-6">
+        {/* The breadcrumb trail brings its own 16px gap below it, so the title and the text share one top edge. */}
+        <div className="lg:col-span-12">
           <Breadcrumbs crumbs={CRUMBS} />
-          <h1 className="m-0 text-2xl font-medium tracking-tight text-foreground">
-            Aave V3 positions and health factor alerts
-          </h1>
         </div>
-        <div className="flex max-w-prose flex-col gap-2 text-sm text-muted-foreground">
-          <p className="m-0">
-            {`Connect the wallet you borrow with to see its Aave V3 collateral, debt and health factor on ${joinList(getNetworkNames())}. Viewing is free and needs no transaction.`}
-          </p>
-          <p className="m-0">
-            {`To get a message on ${formatAlertChannels("or")} when a network's health factor drops below a threshold you choose, unlock alerts with a USDC payment${paymentChainName ? ` on ${paymentChainName}` : ""}. The current price is shown before you pay.`}
-          </p>
-          <p className="m-0">
-            {`Tokenping checks every ${NOTIFICATION_CHECK_INTERVAL_MINUTES} minutes. While the health factor stays below your threshold, every check sends another message on each channel you chose.`}
-          </p>
+        <h1 className="m-0 text-2xl font-medium tracking-tight text-foreground lg:col-span-5">
+          Aave V3 positions and health factor alerts
+        </h1>
+        <div className="mt-3 flex flex-col gap-3 lg:col-span-7 lg:mt-0">
+          <div className="flex max-w-prose flex-col gap-2 text-sm text-muted-foreground">
+            <p className="m-0">
+              {`Connect the wallet you borrow with to see its Aave V3 collateral, debt and health factor on ${joinList(getNetworkNames())}. Viewing is free and needs no transaction.`}
+            </p>
+            {/* Folded by default: the alert and check facts are in the HTML for crawlers and a tap away for a
+                first visit, and they stop costing a phone's screen on every visit after it. */}
+            <details className="group">
+              <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 rounded-sm font-medium text-foreground pointer-coarse:min-h-11 [&::-webkit-details-marker]:hidden">
+                What alerts cost and how often we check
+                <ChevronDown
+                  aria-hidden="true"
+                  className="size-4 shrink-0 transition-transform duration-150 ease-[ease] group-open:rotate-180"
+                />
+              </summary>
+              <div className="flex flex-col gap-2 pt-2">
+                <p className="m-0">
+                  {`To get a message on ${formatAlertChannels("or")} when a network's health factor drops below a threshold you choose, unlock alerts with a USDC payment${paymentChainName ? ` on ${paymentChainName}` : ""}. The current price is shown before you pay.`}
+                </p>
+                <p className="m-0">
+                  {`Tokenping checks every ${NOTIFICATION_CHECK_INTERVAL_MINUTES} minutes. While the health factor stays below your threshold, every check sends another message on each channel you chose.`}
+                </p>
+              </div>
+            </details>
+          </div>
+          {guides.length > 0 && (
+            <ul className="m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0 text-sm">
+              {guides.map(({ slug, label }) => (
+                <li key={slug} className="m-0 p-0">
+                  <Link
+                    href={postPath(slug)}
+                    className="inline-flex items-center gap-1.5 font-medium text-link underline underline-offset-3 hover:decoration-2 pointer-coarse:min-h-11"
+                  >
+                    <BookOpen aria-hidden="true" className="size-4 shrink-0" />
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-        {guides.length > 0 && (
-          <ul className="m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0 text-sm">
-            {guides.map(({ slug, label }) => (
-              <li key={slug} className="m-0 p-0">
-                <Link
-                  href={postPath(slug)}
-                  className="inline-flex items-center gap-1.5 font-medium text-link underline underline-offset-3 hover:decoration-2 pointer-coarse:min-h-11"
-                >
-                  <BookOpen aria-hidden="true" className="size-4 shrink-0" />
-                  {label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
       </header>
 
       <AaveDashboard />

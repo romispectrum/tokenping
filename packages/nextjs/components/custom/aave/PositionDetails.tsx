@@ -1,7 +1,5 @@
 import { Layers } from "lucide-react";
-import { AccessPaywall } from "~~/components/custom/AccessPaywall";
 import { HealthFactorBadge } from "~~/components/custom/HealthFactorBadge";
-import { NotificationConfig } from "~~/components/custom/NotificationConfig";
 import { StatCard } from "~~/components/custom/aave/StatCard";
 import { COLLATERAL_COLUMNS, CollateralTokenRow, DEBT_COLUMNS, DebtTokenRow } from "~~/components/custom/aave/TokenRow";
 import { TokenTable } from "~~/components/custom/aave/TokenTable";
@@ -12,10 +10,9 @@ import { formatUSD } from "~~/utils/format";
 
 type PositionDetailsProps = {
   position: NetworkPosition;
-  hasNotificationConfig: boolean;
 };
 
-const PositionContent = ({ position }: { position: NetworkPosition }) => {
+const PositionContent = ({ position }: PositionDetailsProps) => {
   if (!position.hasPosition) {
     return (
       <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
@@ -34,7 +31,8 @@ const PositionContent = ({ position }: { position: NetworkPosition }) => {
 
   return (
     <>
-      <dl className="m-0 grid gap-3 sm:grid-cols-3">
+      {/* Three label-value rows on a phone, three panels side by side from sm. */}
+      <dl className="m-0 grid gap-2 sm:grid-cols-3 sm:gap-3">
         <StatCard variant="panel" label="Collateral" value={formatUSD(position.totalCollateralUSD)} />
         <StatCard variant="panel" label="Debt" value={formatUSD(position.totalDebtUSD)} />
         <StatCard variant="panel" label="Net worth" value={formatUSD(position.netWorthUSD)} />
@@ -66,7 +64,7 @@ const PositionContent = ({ position }: { position: NetworkPosition }) => {
               href="https://www.coingecko.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-link underline underline-offset-3 hover:decoration-2"
+              className="inline-flex items-center text-link underline underline-offset-3 hover:decoration-2 pointer-coarse:min-h-11"
             >
               CoinGecko
               <span className="sr-only"> (opens in a new tab)</span>
@@ -83,36 +81,18 @@ const PositionContent = ({ position }: { position: NetworkPosition }) => {
   );
 };
 
-export const PositionDetails = ({ position, hasNotificationConfig }: PositionDetailsProps) => (
-  <div className="flex flex-col gap-6">
-    <AccessPaywall
-      description={
-        hasNotificationConfig
-          ? `Your saved ${position.chainName} alert settings are still in your account. Pay again to extend access and edit them.`
-          : `Pay once to set health factor alerts on ${position.chainName} and other networks. Nothing renews automatically: you pay from your wallet when you want to extend.`
-      }
-      hasExistingConfig={hasNotificationConfig}
-    >
-      {/* Keyed by chain so switching networks discards the previous network's unsaved form. */}
-      <NotificationConfig
-        key={position.chainId}
-        chainId={position.chainId}
-        chainName={position.chainName}
-        currentHealthFactor={position.healthFactor}
-      />
-    </AccessPaywall>
-
-    <Card>
-      <div className="flex items-start justify-between gap-4 px-[var(--card-spacing)]">
-        <div className="min-w-0">
-          <h3 className="m-0 truncate text-base font-medium text-foreground">{position.chainName}</h3>
-          <p className="m-0 text-sm text-muted-foreground">Aave V3 market</p>
-        </div>
-        {position.hasPosition ? <HealthFactorBadge healthFactor={position.healthFactor} /> : null}
+/** The selected network's position: its health factor, the three totals and the token tables. */
+export const PositionDetails = ({ position }: PositionDetailsProps) => (
+  <Card>
+    <div className="flex items-start justify-between gap-4 px-[var(--card-spacing)]">
+      <div className="min-w-0">
+        <h3 className="m-0 truncate text-base font-medium text-foreground">{position.chainName}</h3>
+        <p className="m-0 text-sm text-muted-foreground">Aave V3 market</p>
       </div>
-      <div className="flex flex-col gap-6 px-[var(--card-spacing)]">
-        <PositionContent position={position} />
-      </div>
-    </Card>
-  </div>
+      {position.hasPosition ? <HealthFactorBadge healthFactor={position.healthFactor} /> : null}
+    </div>
+    <div className="flex flex-col gap-4 px-[var(--card-spacing)] sm:gap-6">
+      <PositionContent position={position} />
+    </div>
+  </Card>
 );

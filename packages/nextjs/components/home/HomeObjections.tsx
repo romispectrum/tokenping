@@ -3,6 +3,7 @@ import Link from "next/link";
 import { formatAlertPrice } from "~~/components/blog/AlertPrice";
 import { getNetworkNames, getPaywallSourcifyUrl, getPublishedPost, joinList } from "~~/components/home/homeContent";
 import { ExternalLink, HOME_CARD_CLASS_NAME, HomeSection } from "~~/components/home/homeUi";
+import { cx } from "~~/components/ui/classNames";
 import { SOCIAL_LINKS, SOURCE_CODE_URL } from "~~/constants/links";
 import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import { getAlertChannelNames } from "~~/services/marketing/alertChannels";
@@ -22,7 +23,8 @@ type HomeObjectionsProps = {
 /**
  * The blockers a borrower checks before connecting a wallet, as visible <h3> questions with prose answers: no
  * accordion that hides answers from crawlers and no FAQPage schema (marketing plan §2.4, §4.5). Every answer stays
- * within what the code and the contract do today. Static cards on the lavender wash, no pink.
+ * within what the code and the contract do today. Static cards on the lavender wash, no pink; two columns from lg so
+ * the longest section of the page is also readable at about 60 characters a line.
  */
 export const HomeObjections = ({ plan }: HomeObjectionsProps) => {
   const hasTelegram = getAlertChannelNames().includes("Telegram");
@@ -136,12 +138,17 @@ export const HomeObjections = ({ plan }: HomeObjectionsProps) => {
   ];
 
   return (
-    <HomeSection id="questions" title="Questions to ask before you connect a wallet" surface="wash" width="list">
-      <div className="grid gap-3">
+    <HomeSection id="questions" title="Questions to ask before you connect a wallet" surface="wash" width="wide">
+      {/* Two balanced columns from lg (the browser splits the uneven answers); one column before, since two
+          columns on a tablet drop the answers under 45 characters a line. The margin is the gap in both modes:
+          multicol ignores grid gaps. */}
+      <div className="lg:columns-2 lg:gap-x-4">
         {objections.map(({ question, answer }) => (
-          <div key={question} className={HOME_CARD_CLASS_NAME}>
+          <div key={question} className={cx(HOME_CARD_CLASS_NAME, "mb-3 break-inside-avoid lg:mb-4")}>
             <h3 className="m-0 text-lg leading-snug font-medium">{question}</h3>
-            <p className="mt-2 mb-0 leading-[1.7] text-muted-foreground">{answer}</p>
+            <p className="mt-2 mb-0 text-[0.9375rem] leading-relaxed text-muted-foreground md:text-base md:leading-[1.7]">
+              {answer}
+            </p>
           </div>
         ))}
       </div>

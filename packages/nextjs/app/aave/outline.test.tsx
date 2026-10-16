@@ -39,6 +39,7 @@ describe("/aave heading outline with a connected wallet", () => {
       "H1 Aave V3 positions and health factor alerts",
       "H2 Your Aave positions",
       "H3 Networks",
+      // the selected network's alert settings, then its position
       `H3 No alerts on ${ETHEREUM_POSITION.chainName} yet`,
       `H3 ${ETHEREUM_POSITION.chainName}`,
       // the token tables inside the selected network's card

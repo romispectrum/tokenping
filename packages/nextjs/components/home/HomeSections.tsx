@@ -25,8 +25,6 @@ import type { Post } from "~~/content/blog/types";
 import { formatAlertChannels } from "~~/services/marketing/alertChannels";
 import type { AlertPlan } from "~~/services/marketing/alertPlan";
 import { getPaymentChainName } from "~~/services/marketing/paymentChain";
-import { buildAlertEmail, buildAlertText } from "~~/services/notifications/runNotificationCheck";
-import { formatUtcTimestamp } from "~~/utils/format";
 import { postPath } from "~~/utils/seo";
 
 const NETWORK_COUNT = AAVE_MARKETS.length;
@@ -37,32 +35,6 @@ const paidOnSuffix = () => {
   const chainName = getPaymentChainName();
   return chainName ? ` on ${chainName}` : "";
 };
-
-/** Illustrative values for the real alert template; the section says they are examples. */
-const EXAMPLE_ALERT = {
-  chainName: "Arbitrum",
-  healthFactor: "1.42",
-  threshold: DEFAULT_HEALTH_FACTOR_THRESHOLD,
-  timestamp: formatUtcTimestamp(new Date("2026-10-14T03:05:00Z")),
-};
-
-/** Product evidence allowed today (marketing plan §2.6): the exact message, built by the code that sends it. */
-export const ExampleAlertSection = () => (
-  <HomeSection id="example-alert" title="What an alert says">
-    <p className={HOME_TEXT_CLASS_NAME}>
-      {`Every channel gets the same text. This is the template the alert service sends, filled in with example numbers:`}
-    </p>
-    <figure className="mx-0 mt-6 mb-0">
-      {/* A message, not data: Satoshi, line breaks kept */}
-      <blockquote className={cx(HOME_CARD_CLASS_NAME, "m-0 leading-relaxed whitespace-pre-line")}>
-        {buildAlertText(EXAMPLE_ALERT)}
-      </blockquote>
-      <figcaption className="mt-3 text-sm text-muted-foreground">
-        {`Example only: the network, numbers and time are made up. Emails arrive with the subject "${buildAlertEmail(EXAMPLE_ALERT).subject}".`}
-      </figcaption>
-    </figure>
-  </HomeSection>
-);
 
 /** The push: what goes wrong without an alert, with each forum account linked to its own thread (plan §2.3). */
 export const ProblemSection = () => {
@@ -134,23 +106,33 @@ export const HowItWorksSection = ({ plan }: HowItWorksSectionProps) => {
 
   return (
     <HomeSection id="how-it-works" title="How it works, in 4 steps" width="wide">
-      <ol className="m-0 grid list-none gap-6 p-0 md:grid-cols-2">
+      {/* On a phone each card puts the title beside the numeral and the body under both, the whole card wide; from
+          sm the numeral stands beside the text. */}
+      <ol className="m-0 grid list-none gap-6 p-0 lg:grid-cols-2">
         {steps.map(({ title, body }, index) => (
-          <li key={title} className={cx(HOME_CARD_CLASS_NAME, "m-0 flex gap-5")}>
+          <li
+            key={title}
+            className={cx(
+              HOME_CARD_CLASS_NAME,
+              "m-0 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 sm:flex sm:items-start sm:gap-5",
+            )}
+          >
             {/* The numeral is drawn for the eye; the heading carries it for everyone else. 700: a key number. */}
             <span
               aria-hidden="true"
-              className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-plum text-lg font-bold text-brand-white dark:outline dark:outline-border"
+              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-plum text-base font-bold text-brand-white sm:size-12 sm:text-lg dark:outline dark:outline-border"
             >
               {index + 1}
             </span>
-            <div className="min-w-0 pt-1">
+            <div className="contents sm:block sm:min-w-0 sm:pt-1">
               <h3 className="m-0 text-lg leading-snug font-medium">
                 {/* the space sits outside the hidden number, so accessible names keep it */}
                 <span className="sr-only">{`${index + 1}.`}</span>
                 {` ${title}`}
               </h3>
-              <p className="mt-2 mb-0 text-[0.9375rem] leading-relaxed text-muted-foreground md:text-base">{body}</p>
+              <p className="col-span-2 m-0 text-[0.9375rem] leading-relaxed text-muted-foreground sm:mt-2 md:text-base">
+                {body}
+              </p>
             </div>
           </li>
         ))}
@@ -181,28 +163,34 @@ export const PricingSection = ({ plan }: PricingSectionProps) => {
   ];
 
   return (
-    <HomeSection id="pricing" title="Pricing" width="list">
-      <dl className="m-0 grid gap-4 sm:grid-cols-2">
-        {rows.map(({ term, detail }) => (
-          <div key={term} className={HOME_CARD_CLASS_NAME}>
-            <dt className="text-sm font-medium text-muted-foreground">{term}</dt>
-            <dd className="m-0 mt-1 text-lg leading-snug font-medium">{detail}</dd>
-          </div>
-        ))}
-      </dl>
-      {plan && (
-        <p className="mt-4 mb-0 text-center text-sm text-muted-foreground">
-          The price is read from the payment contract and refreshed hourly.
-        </p>
-      )}
-      <div className="mt-8 flex flex-col items-center gap-3">
-        <Link
-          href="/aave"
-          className={buttonClasses({ variant: "inverse", size: "lg", className: "w-full max-w-sm sm:w-auto" })}
-        >
-          {getPricingCtaLabel(plan)}
-        </Link>
-        <p className="m-0 text-center text-sm text-muted-foreground">{`Paid in USDC${paidOnSuffix()}. No auto-renew.`}</p>
+    <HomeSection id="pricing" title="Pricing" width="wide">
+      {/* One price list beside its action from lg: the eye crosses once instead of dropping through five rows. */}
+      <div className="lg:grid lg:grid-cols-12 lg:items-center lg:gap-x-12">
+        <dl className={cx(HOME_CARD_CLASS_NAME, "m-0 flex flex-col py-2 md:py-3 lg:col-span-7")}>
+          {rows.map(({ term, detail }) => (
+            <div
+              key={term}
+              className="flex flex-col gap-0.5 border-t border-border py-3 first:border-t-0 sm:flex-row sm:items-baseline sm:gap-6"
+            >
+              <dt className="text-sm font-medium text-muted-foreground sm:w-28 sm:shrink-0">{term}</dt>
+              <dd className="m-0 text-lg leading-snug font-medium">{detail}</dd>
+            </div>
+          ))}
+        </dl>
+        <div className="mt-8 flex flex-col items-center gap-3 lg:col-span-5 lg:mt-0 lg:items-start">
+          {plan && (
+            <p className="m-0 text-center text-sm text-muted-foreground lg:text-left">
+              The price is read from the payment contract and refreshed hourly.
+            </p>
+          )}
+          <Link
+            href="/aave"
+            className={buttonClasses({ variant: "inverse", size: "lg", className: "w-full max-w-sm sm:w-auto" })}
+          >
+            {getPricingCtaLabel(plan)}
+          </Link>
+          <p className="m-0 text-center text-sm text-muted-foreground lg:text-left">{`Paid in USDC${paidOnSuffix()}. No auto-renew.`}</p>
+        </div>
       </div>
     </HomeSection>
   );
@@ -221,10 +209,11 @@ export const LimitsSection = () => {
   ];
 
   return (
-    <HomeSection id="limits" title="Limits, stated plainly">
-      <ul className="m-0 list-disc space-y-3 pl-6 marker:text-muted-foreground">
+    <HomeSection id="limits" title="Limits, stated plainly" width="wide">
+      {/* A checklist in two columns from lg; the margin is the gap, because multicol ignores space-y. */}
+      <ul className="m-0 list-disc pl-6 marker:text-muted-foreground lg:columns-2 lg:gap-x-12">
         {limits.map(limit => (
-          <li key={limit} className="leading-[1.75]">
+          <li key={limit} className="mb-3 break-inside-avoid leading-relaxed md:leading-[1.75]">
             {limit}
           </li>
         ))}

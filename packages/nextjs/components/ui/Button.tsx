@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentProps, MouseEvent } from "react";
+import type { ComponentProps, MouseEvent, ReactNode } from "react";
 import { LoaderCircle } from "lucide-react";
 import { type ButtonSize, type ButtonVariant, buttonClasses } from "~~/components/ui/buttonClasses";
 
@@ -10,7 +10,7 @@ type ButtonProps = ComponentProps<"button"> & {
   /** Pending work: shows a spinner, sets aria-busy and blocks clicks while the button keeps focus and colour. */
   loading?: boolean;
   /** Label while loading, without trailing dots ("Saving"). Keep it no longer than the label. */
-  loadingText?: string;
+  loadingText?: ReactNode;
 };
 
 /**
