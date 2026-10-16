@@ -528,7 +528,7 @@ const internalPaths = (locale: Locale) => [
   routePath(locale, "blog"),
 ];
 
-const OTHER_LANGUAGE_PREFIX: Record<Locale, RegExp> = { en: /^\/cs(?:[/?#]|$)/, cs: /^\/(?!cs(?:[/?#]|$))/ };
+const OTHER_LANGUAGE_PREFIX: Record<Locale, RegExp> = { en: /^\/cz(?:[/?#]|$)/, cs: /^\/(?!cz(?:[/?#]|$))/ };
 
 const checkLinks = (tree: MdNode, locale: Locale = "en", index: PostIndex = POST_INDEX[locale]) => {
   const problems: string[] = [];
@@ -1054,8 +1054,8 @@ zlikvidována.
 
 ## Co je health factor na Aave?
 
-Health factor je číslo. Kolik rezervy dává, popisuje [průvodce bezpečným health factorem](/cs/blog/bezpecny-health-factor-aave),
-svůj si [zkontrolujete v přehledu zdarma](/cs/aave). Upozornění stojí <AlertPrice />. Vzorec je v
+Health factor je číslo. Kolik rezervy dává, popisuje [průvodce bezpečným health factorem](/cz/blog/bezpecny-health-factor-aave),
+svůj si [zkontrolujete v přehledu zdarma](/cz/aave). Upozornění stojí <AlertPrice />. Vzorec je v
 [části o výpočtu](#jak-se-pocita-health-factor).
 
 ## Jak se počítá health factor?
@@ -1080,8 +1080,8 @@ const BAD_CS_ARTICLE = `export const meta = ${JSON.stringify(CS_FIXTURE_META, nu
 <LiquidationCalculator />
 
 Viz [anglický průvodce](/blog/safe-aave-health-factor), [anglický přehled](/aave), [domovská stránka](/),
-[anglický slug](/cs/blog/safe-aave-health-factor), [ochrana soukromí](/cs/ochrana-soukromi) a
-[špatná kotva](/cs/blog/bezpecny-health-factor-aave#nope).
+[anglický slug](/cz/blog/safe-aave-health-factor), [ochrana soukromí](/cz/ochrana-soukromi) a
+[špatná kotva](/cz/blog/bezpecny-health-factor-aave#nope).
 
 ## Sources
 
@@ -1124,12 +1124,12 @@ describe("Czech article checks", () => {
       "<LiquidationCalculator> belongs to likvidacni-cena-aave only",
     ]);
     expect(checkLinks(tree!, "cs")).toEqual([
-      "/blog/safe-aave-health-factor: a page in the other language; link to /cs/blog/bezpecny-health-factor-aave (i18n/routes, i18n/postSlugs)",
-      "/aave: a page in the other language; link to /cs, /cs/aave, /cs/blog (i18n/routes, i18n/postSlugs)",
-      "/: a page in the other language; link to /cs, /cs/aave, /cs/blog (i18n/routes, i18n/postSlugs)",
-      '/cs/blog/safe-aave-health-factor: no post with the slug "safe-aave-health-factor"; the cs slug is "bezpecny-health-factor-aave"',
-      "/cs/ochrana-soukromi: internal links may only point to /cs, /cs/aave, /cs/blog or /cs/blog/<slug>",
-      '/cs/blog/bezpecny-health-factor-aave#nope: no heading with the anchor "#nope" in bezpecny-health-factor-aave',
+      "/blog/safe-aave-health-factor: a page in the other language; link to /cz/blog/bezpecny-health-factor-aave (i18n/routes, i18n/postSlugs)",
+      "/aave: a page in the other language; link to /cz, /cz/aave, /cz/blog (i18n/routes, i18n/postSlugs)",
+      "/: a page in the other language; link to /cz, /cz/aave, /cz/blog (i18n/routes, i18n/postSlugs)",
+      '/cz/blog/safe-aave-health-factor: no post with the slug "safe-aave-health-factor"; the cs slug is "bezpecny-health-factor-aave"',
+      "/cz/ochrana-soukromi: internal links may only point to /cz, /cz/aave, /cz/blog or /cz/blog/<slug>",
+      '/cz/blog/bezpecny-health-factor-aave#nope: no heading with the anchor "#nope" in bezpecny-health-factor-aave',
     ]);
     expect(checkEnding(tree!, "cs")).toEqual(['the last H2 must be "## Zdroje"']);
   });
@@ -1145,10 +1145,10 @@ describe("Czech article checks", () => {
   });
 
   it("flag a link from an English post to a Czech page", async () => {
-    const { tree } = await parsePost(GOOD_ARTICLE.replace("(/aave)", "(/cs/aave)"), "aave-health-factor");
+    const { tree } = await parsePost(GOOD_ARTICLE.replace("(/aave)", "(/cz/aave)"), "aave-health-factor");
 
     expect(checkLinks(tree!)).toEqual([
-      "/cs/aave: a page in the other language; link to /, /aave, /blog (i18n/routes, i18n/postSlugs)",
+      "/cz/aave: a page in the other language; link to /, /aave, /blog (i18n/routes, i18n/postSlugs)",
     ]);
   });
 

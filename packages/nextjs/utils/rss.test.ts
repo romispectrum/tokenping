@@ -89,29 +89,29 @@ describe("GET /blog/feed.xml", () => {
 });
 
 describe("buildRssFeed in Czech", () => {
-  it("builds the Czech channel: Czech title, description and language, /cs links and the Czech self link", () => {
+  it("builds the Czech channel: Czech title, description and language, /cz links and the Czech self link", () => {
     const xml = buildRssFeed([post({ slug: "prvni", title: "První", description: "Jedna." })], "cs");
 
     expect(xml).toContain("<title>Tokenping blog (česky)</title>");
-    expect(xml).toContain("<link>https://tokenping.xyz/cs/blog</link>");
+    expect(xml).toContain("<link>https://tokenping.xyz/cz/blog</link>");
     expect(xml).toContain(
       "<description>Průvodci health factorem na Aave, rizikem likvidace a upozorněními.</description>",
     );
     expect(xml).toContain("<language>cs</language>");
     expect(xml).toContain(
-      '<atom:link href="https://tokenping.xyz/cs/blog/feed.xml" rel="self" type="application/rss+xml"/>',
+      '<atom:link href="https://tokenping.xyz/cz/blog/feed.xml" rel="self" type="application/rss+xml"/>',
     );
     expect(xml).toContain(
-      '<item><title>První</title><link>https://tokenping.xyz/cs/blog/prvni</link><guid isPermaLink="true">https://tokenping.xyz/cs/blog/prvni</guid><pubDate>Wed, 14 Oct 2026 00:00:00 GMT</pubDate><description>Jedna.</description></item>',
+      '<item><title>První</title><link>https://tokenping.xyz/cz/blog/prvni</link><guid isPermaLink="true">https://tokenping.xyz/cz/blog/prvni</guid><pubDate>Wed, 14 Oct 2026 00:00:00 GMT</pubDate><description>Jedna.</description></item>',
     );
   });
 });
 
-describe("GET /cs/blog/feed.xml", () => {
+describe("GET /cz/blog/feed.xml", () => {
   const loadRoute = async (csStubSlugs: readonly string[]) => {
     vi.resetModules();
     mockPostStubs([], csStubSlugs);
-    return import("~~/app/(cs)/cs/blog/feed.xml/route");
+    return import("~~/app/(cs)/cz/blog/feed.xml/route");
   };
 
   it("is static and serves the published Czech posts at their Czech URLs, without placeholders", async () => {
@@ -122,7 +122,7 @@ describe("GET /cs/blog/feed.xml", () => {
     expect(response.headers.get("Content-Type")).toBe("application/rss+xml; charset=utf-8");
     const xml = await response.text();
     expect(xml.match(/<item>/g)).toHaveLength(CS_POST_SLUGS.length - 1);
-    expect(xml).toContain("<link>https://tokenping.xyz/cs/blog/aave-health-factor-vysvetleni</link>");
+    expect(xml).toContain("<link>https://tokenping.xyz/cz/blog/aave-health-factor-vysvetleni</link>");
     expect(xml).not.toContain("bezpecny-health-factor-aave");
     expect(xml).not.toMatch(/tokenping\.xyz\/blog\//);
   });

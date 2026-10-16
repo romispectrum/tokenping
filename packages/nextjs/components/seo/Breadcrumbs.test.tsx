@@ -32,10 +32,10 @@ describe("Breadcrumbs", () => {
   });
 
   it("names the trail in the page's language", () => {
-    render(<Breadcrumbs locale="cs" crumbs={[{ name: "Úvod", path: "/cs" }, { name: "Ochrana soukromí" }]} />);
+    render(<Breadcrumbs locale="cs" crumbs={[{ name: "Úvod", path: "/cz" }, { name: "Ochrana soukromí" }]} />);
 
     const nav = screen.getByRole("navigation", { name: "Drobečková navigace" });
-    expect(within(nav).getByRole("link", { name: "Úvod" }).getAttribute("href")).toBe("/cs");
+    expect(within(nav).getByRole("link", { name: "Úvod" }).getAttribute("href")).toBe("/cz");
     expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).toBeNull();
   });
 });

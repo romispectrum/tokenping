@@ -7,7 +7,7 @@ import { CS_POST_SLUGS, mockPostStubs } from "~~/utils/testing/blogPosts";
 const loadIndex = async (csStubSlugs: readonly string[] = []) => {
   mockPostStubs([], csStubSlugs);
   const blog = await import("~~/content/blog");
-  const page = await import("~~/app/(cs)/cs/blog/page");
+  const page = await import("~~/app/(cs)/cz/blog/page");
   return { blog, BlogIndex: page.default, metadata: page.metadata };
 };
 
@@ -20,22 +20,22 @@ const postLinks = () =>
   screen
     .queryAllByRole("link")
     .map(link => link.getAttribute("href") ?? "")
-    .filter(href => /^\/(?:cs\/)?blog\/[^/]+$/.test(href) && !href.endsWith(".xml"));
+    .filter(href => /^\/(?:cz\/)?blog\/[^/]+$/.test(href) && !href.endsWith(".xml"));
 
 beforeEach(() => {
   vi.resetModules();
 });
 
-describe("/cs/blog metadata", () => {
+describe("/cz/blog metadata", () => {
   it("has a Czech title, description and canonical within search-result lengths, with hreflang to /blog", async () => {
     const { metadata } = await loadIndex();
 
     expect(metadata.title).toBe("Průvodci health factorem a likvidací na Aave");
-    expect(metadata.alternates?.canonical).toBe("/cs/blog");
-    expect(metadata.alternates?.languages).toMatchObject({ en: "/blog", cs: "/cs/blog" });
+    expect(metadata.alternates?.canonical).toBe("/cz/blog");
+    expect(metadata.alternates?.languages).toMatchObject({ en: "/blog", cs: "/cz/blog" });
     expect(`${metadata.title} | Tokenping`.length).toBeLessThanOrEqual(60);
     expect(String(metadata.description).length).toBeLessThanOrEqual(155);
-    expect(metadata.openGraph).toMatchObject({ url: "/cs/blog", locale: "cs_CZ" });
+    expect(metadata.openGraph).toMatchObject({ url: "/cz/blog", locale: "cs_CZ" });
     expect(metadata.robots).toBeUndefined();
   });
 
@@ -46,7 +46,7 @@ describe("/cs/blog metadata", () => {
   });
 });
 
-describe("/cs/blog", () => {
+describe("/cz/blog", () => {
   it("renders the Czech H1, the Czech hub first and then every other published Czech post with its Czech date", async () => {
     const { BlogIndex, blog } = await loadIndex(["likvidacni-cena-aave"]);
     render(<BlogIndex />);
@@ -54,10 +54,10 @@ describe("/cs/blog", () => {
     expect(screen.getAllByRole("heading", { level: 1 }).map(heading => heading.textContent)).toEqual([
       "Průvodci health factorem a likvidací na Aave",
     ]);
-    const published = blog.getPublishedPosts("cs").map(({ meta }) => `/cs/blog/${meta.slug}`);
+    const published = blog.getPublishedPosts("cs").map(({ meta }) => `/cz/blog/${meta.slug}`);
     expect(postLinks()).toEqual(published);
-    expect(postLinks()).not.toContain("/cs/blog/likvidacni-cena-aave");
-    expect(postLinks()[0]).toBe(`/cs/blog/${blog.hubSlug("cs")}`);
+    expect(postLinks()).not.toContain("/cz/blog/likvidacni-cena-aave");
+    expect(postLinks()[0]).toBe(`/cz/blog/${blog.hubSlug("cs")}`);
     expect(screen.getAllByText("14. října 2026")).toHaveLength(published.length);
     expect(screen.getByRole("region", { name: "Začněte tady" })).toBeDefined();
     expect(screen.getByRole("heading", { level: 2, name: "Všichni průvodci" })).toBeDefined();
@@ -75,7 +75,7 @@ describe("/cs/blog", () => {
       within(card)
         .getAllByRole("link")
         .map(link => link.getAttribute("href")),
-    ).toEqual([`/cs/blog/${hub.meta.slug}`]);
+    ).toEqual([`/cz/blog/${hub.meta.slug}`]);
   });
 
   it("says the translations are coming, points to the English guides and links no placeholder while none is published", async () => {
@@ -95,11 +95,11 @@ describe("/cs/blog", () => {
     const { BlogIndex } = await loadIndex();
     const { container } = render(<BlogIndex />);
 
-    expect(screen.getByRole("link", { name: "Odebírat přes RSS" }).getAttribute("href")).toBe("/cs/blog/feed.xml");
+    expect(screen.getByRole("link", { name: "Odebírat přes RSS" }).getAttribute("href")).toBe("/cz/blog/feed.xml");
     const pink = [...container.querySelectorAll(".btn-primary, .bg-primary")];
     expect(pink).toHaveLength(1);
     expect(pink[0].textContent).toBe("Otevřít přehled zdarma");
-    expect(pink[0].getAttribute("href")).toBe("/cs/aave");
+    expect(pink[0].getAttribute("href")).toBe("/cz/aave");
   });
 
   it("renders a Czech breadcrumb trail that matches its BreadcrumbList JSON-LD", async () => {
@@ -112,13 +112,13 @@ describe("/cs/blog", () => {
         .getAllByRole("listitem")
         .map(item => item.textContent),
     ).toEqual(["Domů", "Blog"]);
-    expect(within(nav).getByRole("link", { name: "Domů" }).getAttribute("href")).toBe("/cs");
+    expect(within(nav).getByRole("link", { name: "Domů" }).getAttribute("href")).toBe("/cz");
     expect(jsonLdBlocks(container)).toEqual([
       {
         "@context": "https://schema.org",
         "@type": "BreadcrumbList",
         itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Domů", item: "https://tokenping.xyz/cs" },
+          { "@type": "ListItem", position: 1, name: "Domů", item: "https://tokenping.xyz/cz" },
           { "@type": "ListItem", position: 2, name: "Blog" },
         ],
       },

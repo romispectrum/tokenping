@@ -238,7 +238,7 @@ describe("in Czech", () => {
     expect(box.textContent).toContain(
       "Tokenping kontroluje health factor vaší pozice na Aave V3 každých 5 minut na 7 sítích a pošle vám zprávu přes Signal nebo e-mail, když je pod vaším prahem. Přehled je zdarma, upozornění stojí 3 USDC na 30 dní s platbou na síti Arbitrum One. Upozornění vám dají čas jednat, likvidaci ale nezabrání.",
     );
-    expect(screen.getByRole("link", { name: "Otevřít přehled zdarma" }).getAttribute("href")).toBe("/cs/aave");
+    expect(screen.getByRole("link", { name: "Otevřít přehled zdarma" }).getAttribute("href")).toBe("/cz/aave");
   });
 
   it("links a Czech post card to its Czech URL with the Czech date and reading time", async () => {
@@ -247,7 +247,7 @@ describe("in Czech", () => {
       <PostSummary meta={{ ...META, slug: "likvidacni-cena-aave", readingMinutes: 15 }} locale="cs" featured />,
     );
 
-    expect(screen.getByRole("link").getAttribute("href")).toBe("/cs/blog/likvidacni-cena-aave");
+    expect(screen.getByRole("link").getAttribute("href")).toBe("/cz/blog/likvidacni-cena-aave");
     expect(container.textContent).toContain("Začněte tady");
     expect(container.textContent).toContain("14. října 2026 · 15 minut čtení");
     expect(container.textContent).toContain("Číst průvodce");

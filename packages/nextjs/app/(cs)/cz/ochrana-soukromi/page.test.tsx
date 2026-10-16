@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import PrivacyPage, { metadata } from "~~/app/(cs)/cs/ochrana-soukromi/page";
+import PrivacyPage, { metadata } from "~~/app/(cs)/cz/ochrana-soukromi/page";
 import { renderMarkup } from "~~/utils/testing/render";
 
 const renderPage = () => render(<PrivacyPage />);
@@ -19,12 +19,12 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe("/cs/ochrana-soukromi", () => {
+describe("/cz/ochrana-soukromi", () => {
   it("has a Czech title and description, a self canonical and the English alternate", () => {
     expect(metadata.title).toBe("Ochrana soukromí a data");
     expect(String(metadata.description).length).toBeLessThanOrEqual(155);
-    expect(metadata.alternates?.canonical).toBe("/cs/ochrana-soukromi");
-    expect(metadata.alternates?.languages).toMatchObject({ en: "/privacy", cs: "/cs/ochrana-soukromi" });
+    expect(metadata.alternates?.canonical).toBe("/cz/ochrana-soukromi");
+    expect(metadata.alternates?.languages).toMatchObject({ en: "/privacy", cs: "/cz/ochrana-soukromi" });
   });
 
   it("titles the page and every section in Czech", () => {
@@ -93,7 +93,7 @@ describe("/cs/ochrana-soukromi", () => {
     );
     const trail = screen.getByRole("navigation", { name: "Drobečková navigace" });
 
-    expect(within(trail).getByRole("link", { name: "Úvod" }).getAttribute("href")).toBe("/cs");
+    expect(within(trail).getByRole("link", { name: "Úvod" }).getAttribute("href")).toBe("/cz");
     expect(jsonLd.itemListElement.map(({ name }: { name: string }) => name)).toEqual(["Úvod", "Ochrana soukromí"]);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
@@ -112,7 +112,7 @@ describe("/cs/ochrana-soukromi", () => {
     expect(screen.getByRole("link", { name: "komunity na Telegramu" }).getAttribute("href")).toBe(
       "https://t.me/tokenping_xyz",
     );
-    expect(screen.getByRole("link", { name: "úvodní stránce" }).getAttribute("href")).toBe("/cs");
+    expect(screen.getByRole("link", { name: "úvodní stránce" }).getAttribute("href")).toBe("/cz");
   });
 
   it("uses Czech quotation marks and no em or en dash", () => {

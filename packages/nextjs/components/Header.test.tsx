@@ -268,7 +268,7 @@ describe("Header", () => {
 
 describe("Header in Czech", () => {
   beforeEach(() => {
-    state.pathname = "/cs";
+    state.pathname = "/cz";
     state.targetNetworkId = arbitrum.id;
   });
 
@@ -284,9 +284,9 @@ describe("Header in Czech", () => {
     const nav = screen.getByRole("navigation", { name: "Hlavní" });
 
     for (const [name, href] of [
-      ["Úvod", "/cs"],
-      ["Přehled", "/cs/aave"],
-      ["Blog", "/cs/blog"],
+      ["Úvod", "/cz"],
+      ["Přehled", "/cz/aave"],
+      ["Blog", "/cz/blog"],
     ])
       expect(
         within(nav)
@@ -295,7 +295,7 @@ describe("Header in Czech", () => {
       ).toEqual([href, href]);
   });
 
-  it("marks the Czech home page as the current page on /cs", () => {
+  it("marks the Czech home page as the current page on /cz", () => {
     renderCzech();
 
     expect(screen.getAllByRole("link", { name: "Úvod" }).map(link => link.getAttribute("aria-current"))).toEqual([
@@ -305,7 +305,7 @@ describe("Header in Czech", () => {
   });
 
   it("highlights Blog on a Czech post", () => {
-    state.pathname = "/cs/blog/aave-health-factor-vysvetleni";
+    state.pathname = "/cz/blog/aave-health-factor-vysvetleni";
     renderCzech();
 
     expect(screen.getAllByRole("link", { name: "Blog" }).map(isActive)).toEqual([true, true]);
@@ -314,7 +314,7 @@ describe("Header in Czech", () => {
   it("links the logo to the Czech home page and labels the menu, theme and language controls in Czech", () => {
     const { container } = renderCzech();
 
-    expect(screen.getByRole("link", { name: "Úvodní stránka Tokenpingu" }).getAttribute("href")).toBe("/cs");
+    expect(screen.getByRole("link", { name: "Úvodní stránka Tokenpingu" }).getAttribute("href")).toBe("/cz");
     expect(container.querySelector("summary")?.getAttribute("aria-label")).toBe("Otevřít menu");
     expect(screen.getAllByRole("button", { name: "Přepnout světlý nebo tmavý motiv" })).toHaveLength(2);
     expect(screen.getByText("Motiv")).toBeTruthy();

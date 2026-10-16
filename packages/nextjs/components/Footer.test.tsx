@@ -180,10 +180,10 @@ describe("Footer in Czech", () => {
     renderCzech();
 
     for (const [name, href] of [
-      ["Úvodní stránka Tokenpingu", "/cs"],
-      ["Blog", "/cs/blog"],
-      ["RSS kanál blogu Tokenping", "/cs/blog/feed.xml"],
-      ["Ochrana soukromí", "/cs/ochrana-soukromi"],
+      ["Úvodní stránka Tokenpingu", "/cz"],
+      ["Blog", "/cz/blog"],
+      ["RSS kanál blogu Tokenping", "/cz/blog/feed.xml"],
+      ["Ochrana soukromí", "/cz/ochrana-soukromi"],
     ]) {
       const link = screen.getByRole("link", { name });
       expect(link.getAttribute("href")).toBe(href);

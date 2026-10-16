@@ -34,7 +34,7 @@ const mockCzechPostStubs = (stubKeys: readonly string[] = []) => {
   }
 };
 
-const loadHome = () => import("~~/app/(cs)/cs/page");
+const loadHome = () => import("~~/app/(cs)/cz/page");
 
 const renderHome = async () => {
   const { default: Home } = await loadHome();
@@ -94,15 +94,15 @@ afterEach(() => {
 });
 
 describe("metadata", () => {
-  it("has a Czech title and description, a /cs canonical and hreflang to the English home", async () => {
+  it("has a Czech title and description, a /cz canonical and hreflang to the English home", async () => {
     const { metadata } = await loadHome();
 
     // Too long for the " | Tokenping" suffix within 60 characters, so the title stands alone.
     expect(metadata.title).toEqual({ absolute: "Upozornění na Aave health factor přes Signal a e-mail" });
     expect(String(metadata.description)).toMatch(/^Upozornění přes Signal nebo e-mail, když health factor/);
     expect(String(metadata.description).length).toBeLessThanOrEqual(155);
-    expect(metadata.alternates?.canonical).toBe("/cs");
-    expect(metadata.alternates?.languages).toMatchObject({ en: "/", cs: "/cs" });
+    expect(metadata.alternates?.canonical).toBe("/cz");
+    expect(metadata.alternates?.languages).toMatchObject({ en: "/", cs: "/cz" });
   });
 
   it("keeps the Telegram variant within 155 characters", async () => {
@@ -183,7 +183,7 @@ describe("Czech copy", () => {
     ).toBeTruthy();
     expect(within(section("Ceník")).getByText("3 USDC na 30 dní")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Nastavit upozornění: 3 USDC na 30 dní" }).getAttribute("href")).toBe(
-      "/cs/aave",
+      "/cz/aave",
     );
   });
 
@@ -224,12 +224,12 @@ describe("links", () => {
     const hrefs = internalHrefs(container);
 
     expect(hrefs.length).toBeGreaterThan(0);
-    for (const href of hrefs) expect(href).toMatch(/^\/cs(\/|$)/);
+    for (const href of hrefs) expect(href).toMatch(/^\/cz(\/|$)/);
     expect(
       screen.getAllByRole("link", { name: "Otevřít přehled zdarma" }).map(link => link.getAttribute("href")),
-    ).toEqual(["/cs/aave", "/cs/aave"]);
+    ).toEqual(["/cz/aave", "/cz/aave"]);
     expect(screen.getByRole("link", { name: "stránka o ochraně soukromí" }).getAttribute("href")).toBe(
-      "/cs/ochrana-soukromi",
+      "/cz/ochrana-soukromi",
     );
   });
 
@@ -240,18 +240,18 @@ describe("links", () => {
       .getAllByRole("heading", { level: 3 })
       .map(heading => within(heading).getByRole("link").getAttribute("href"));
 
-    expect(postLinks).toEqual(HOME_BLOG_KEYS.map(key => `/cs/blog/${csSlug(key)}`));
+    expect(postLinks).toEqual(HOME_BLOG_KEYS.map(key => `/cz/blog/${csSlug(key)}`));
     expect(
       within(blog)
         .getByRole("link", { name: "Všichni průvodci health factorem a likvidací na Aave" })
         .getAttribute("href"),
-    ).toBe("/cs/blog");
+    ).toBe("/cz/blog");
     expect(screen.getByRole("link", { name: "Jak funguje likvidace na Aave" }).getAttribute("href")).toBe(
-      `/cs/blog/${csSlug("how-aave-liquidation-works")}`,
+      `/cz/blog/${csSlug("how-aave-liquidation-works")}`,
     );
     expect(
       screen.getByRole("link", { name: "srovnání nástrojů pro upozornění na likvidaci na Aave" }).getAttribute("href"),
-    ).toBe(`/cs/blog/${csSlug("aave-liquidation-alert-tools")}`);
+    ).toBe(`/cz/blog/${csSlug("aave-liquidation-alert-tools")}`);
   });
 
   // An untranslated guide is a placeholder: the Czech page links nothing there, never the English post instead.
@@ -276,9 +276,9 @@ describe("JSON-LD", () => {
 
     expect(app).toMatchObject({
       "@type": "SoftwareApplication",
-      url: "https://tokenping.xyz/cs",
+      url: "https://tokenping.xyz/cz",
       inLanguage: "cs",
-      offers: { price: "3", priceCurrency: "USDC", url: "https://tokenping.xyz/cs/aave" },
+      offers: { price: "3", priceCurrency: "USDC", url: "https://tokenping.xyz/cz/aave" },
     });
     expect(app.description).toMatch(/^Upozornění přes Signal nebo e-mail/);
     expect(app.offers.description).toContain("na 30 dní");

@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import NotFound, { metadata } from "~~/app/(cs)/cs/not-found";
+import NotFound, { metadata } from "~~/app/(cs)/cz/not-found";
 
-describe("/cs not-found", () => {
+describe("/cz not-found", () => {
   it("has a Czech title", () => {
     expect(metadata.title).toBe("Stránka nenalezena");
   });
@@ -17,9 +17,9 @@ describe("/cs not-found", () => {
     expect(screen.getByText("Stránka, kterou hledáte, neexistuje.")).toBeTruthy();
     expect(screen.getByRole("navigation", { name: "Stránky" })).toBeTruthy();
     expect(screen.getAllByRole("link").map(link => [link.textContent, link.getAttribute("href")])).toEqual([
-      ["Přejít na úvodní stránku", "/cs"],
-      ["Otevřít přehled", "/cs/aave"],
-      ["Číst blog", "/cs/blog"],
+      ["Přejít na úvodní stránku", "/cz"],
+      ["Otevřít přehled", "/cz/aave"],
+      ["Číst blog", "/cz/blog"],
     ]);
   });
 
