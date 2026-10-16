@@ -30,12 +30,13 @@ describe("Aave page metadata", () => {
   it("has its own title, description and self canonical (marketing plan §4.2)", async () => {
     const { metadata } = await loadPage();
 
-    expect(metadata.title).toBe("Aave V3 positions and health factor");
+    expect(metadata.title).toBe("Aave V3 and V4 positions and health factor");
+    // 8 networks: the 7 Aave V3 ones and Arc, which only has Aave V4.
     expect(metadata.description).toBe(
-      "See your Aave V3 collateral, debt and health factor on 7 networks for free, then set a Signal or email alert threshold for each network.",
+      "See your Aave V3 and V4 collateral, debt and health factor on 8 networks for free, then set a Signal or email alert threshold for each market.",
     );
     expect(metadata.alternates?.canonical).toBe("/aave");
-    expect(metadata.openGraph).toMatchObject({ url: "/aave", title: "Aave V3 positions and health factor" });
+    expect(metadata.openGraph).toMatchObject({ url: "/aave", title: "Aave V3 and V4 positions and health factor" });
     expect(metadata.robots).toBeUndefined();
   });
 
@@ -53,12 +54,12 @@ describe("Aave page shell", () => {
     const { default: AavePage } = await loadPage();
     const html = renderMarkup(<AavePage />);
 
-    expect(html).toContain(">Aave V3 positions and health factor alerts</h1>");
+    expect(html).toContain(">Aave V3 and V4 positions and health factor alerts</h1>");
     expect(html).toContain(
-      "Connect the wallet you borrow with to see its Aave V3 collateral, debt and health factor on Ethereum (Core market), Polygon, Arbitrum, Optimism, Base, Avalanche and Gnosis. Viewing is free and needs no transaction.",
+      "Connect the wallet you borrow with to see its collateral, debt and health factor on Aave V3 on Ethereum (Core market), Polygon, Arbitrum, Optimism, Base, Avalanche and Gnosis, and in every Aave V4 Spoke on Ethereum, Avalanche, Arc and Base. Viewing is free and needs no transaction.",
     );
     expect(html).toContain(
-      "To get a message on Signal or email when a network&#x27;s health factor drops below a threshold you choose, unlock alerts with a USDC payment on Arbitrum One.",
+      "To get a message on Signal or email when a market&#x27;s health factor drops below a threshold you choose, unlock alerts with a USDC payment on Arbitrum One.",
     );
     // States the repeat behaviour (product limit), and keeps the no-JS text above check_render.sh's 800-char floor.
     expect(html).toContain(

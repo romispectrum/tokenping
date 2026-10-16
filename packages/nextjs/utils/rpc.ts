@@ -1,5 +1,6 @@
 import { type Chain, type FallbackTransportConfig, fallback, http } from "viem";
 import { arbitrum, avalanche, base, gnosis, hardhat, mainnet, optimism, polygon } from "viem/chains";
+import { arc } from "~~/config/aaveConfig";
 import scaffoldConfig, { DEFAULT_ALCHEMY_API_KEY, type ScaffoldConfig } from "~~/scaffold.config";
 import { RPC_CHAIN_NAMES } from "~~/utils/scaffold-eth/networks";
 
@@ -23,6 +24,7 @@ const PUBLICNODE_RPC_URLS: Record<number, string> = {
   [base.id]: "https://base-rpc.publicnode.com",
   [avalanche.id]: "https://avalanche-c-chain-rpc.publicnode.com",
   [gnosis.id]: "https://gnosis-rpc.publicnode.com",
+  [arc.id]: "https://arc-rpc.publicnode.com",
 };
 
 const isUrl = (url: string | undefined): url is string => !!url;

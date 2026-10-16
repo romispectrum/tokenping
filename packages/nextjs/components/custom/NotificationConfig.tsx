@@ -27,6 +27,7 @@ import {
   toggleService,
 } from "~~/components/custom/notifications/notificationForm";
 import { Button, LiveRegion } from "~~/components/ui";
+import type { MarketId } from "~~/config/aaveConfig";
 import { useAccess } from "~~/hooks/custom/useAccess";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
 import { useTelegramLink } from "~~/hooks/custom/useTelegramLink";
@@ -39,6 +40,9 @@ import { notification } from "~~/utils/scaffold-eth";
 type NotificationConfigProps = {
   /** Aave/position chain (the network this config is for). Must match position.chainId, not wallet's connected chain. */
   chainId: number;
+  /** The market on that chain: position.marketId ("v3" or a V4 Spoke). */
+  market: MarketId;
+  /** The market's name in copy: position.marketName ("Ethereum", "Ethereum (V4 Lido)"). */
   chainName: string;
   currentHealthFactor: string;
 };
@@ -46,6 +50,7 @@ type NotificationConfigProps = {
 const NotificationSettings = ({
   address,
   chainId,
+  market,
   chainName,
   currentHealthFactor,
 }: NotificationConfigProps & { address: string | undefined }) => {
@@ -56,7 +61,8 @@ const NotificationSettings = ({
   const { isActive: hasAccess } = useAccess();
   const telegram = useTelegramLink(address);
   const attribution = useAttributionPrompt(address);
-  const config = getConfig(chainId);
+  const marketRef = { chainId, market };
+  const config = getConfig(marketRef);
   // What the summary shows. Editing works on a draft copy, so Cancel only has to drop the draft.
   const saved = configToFormState(config);
 
@@ -178,7 +184,7 @@ const NotificationSettings = ({
     setErrorSummaryRequest(0);
 
     try {
-      await updateConfig(chainId, buildConfigUpdate(draft));
+      await updateConfig(marketRef, buildConfigUpdate(draft));
       notification.success(t.alertSaved);
       setAnnouncement(t.alertSaved);
       // Save goes away with the form: the attribution prompt takes focus if it opens, otherwise Edit alert does.
@@ -195,7 +201,7 @@ const NotificationSettings = ({
   const handleDelete = async () => {
     setAnnouncement("");
     try {
-      await deleteConfig(chainId);
+      await deleteConfig(marketRef);
       startEditing(EMPTY_FORM_STATE);
       setAnnouncement(t.alertDeleted);
       // The Delete button is gone: continue at the start of the empty form.

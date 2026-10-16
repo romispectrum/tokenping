@@ -3,6 +3,9 @@ import { notificationConfigClient as client } from "~~/services/notifications/no
 import type { NotificationConfig } from "~~/types/notifications";
 import { jsonResponse } from "~~/utils/testing/helpers";
 
+// The Ethereum Lido Spoke, as a market id.
+const LIDO_SPOKE = "0xe1900480ac69f0b296841cd01cc37546d92f35cd";
+
 const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>();
 
 const CONFIG: NotificationConfig = {
@@ -26,8 +29,8 @@ afterEach(() => {
 describe("getAllConfigs", () => {
   it("sends the trimmed, URL-encoded raw address (not lowercased) to a relative URL in the browser", async () => {
     vi.stubGlobal("window", {});
-    fetchMock.mockResolvedValue(jsonResponse({ 42161: CONFIG }));
-    await expect(client.getAllConfigs("  0xAbC+1 ")).resolves.toEqual({ 42161: CONFIG });
+    fetchMock.mockResolvedValue(jsonResponse({ "42161:v3": CONFIG }));
+    await expect(client.getAllConfigs("  0xAbC+1 ")).resolves.toEqual({ "42161:v3": CONFIG });
     expect(fetchMock.mock.calls).toEqual([["/api/notifications/config?userId=0xAbC%2B1"]]);
   });
 
@@ -40,7 +43,10 @@ describe("getAllConfigs", () => {
 
   it("returns the body without normalizing it", async () => {
     vi.stubGlobal("window", {});
-    const raw = { 1: { chainId: 1, services: null, healthFactorThreshold: "2.5" } };
+    const raw = {
+      "1:v3": { chainId: 1, market: "v3", services: null, healthFactorThreshold: "2.5" },
+      [`1:${LIDO_SPOKE}`]: { chainId: 1, market: LIDO_SPOKE, services: [], healthFactorThreshold: 1.5 },
+    };
     fetchMock.mockResolvedValue(jsonResponse(raw));
     await expect(client.getAllConfigs("0xabc")).resolves.toEqual(raw);
   });
@@ -86,7 +92,7 @@ describe("upsertConfig", () => {
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: '{"userId":"0xAbC","chainId":42161,"enabled":true,"services":["email"],"healthFactorThreshold":1.8,"email":"me@example.com","signalRecipient":null,"locale":"en"}',
+          body: '{"userId":"0xAbC","chainId":42161,"market":"v3","enabled":true,"services":["email"],"healthFactorThreshold":1.8,"email":"me@example.com","signalRecipient":null,"locale":"en"}',
         },
       ],
     ]);
@@ -101,10 +107,16 @@ describe("upsertConfig", () => {
       signalRecipient: "alice.42",
     });
     expect(fetchMock.mock.calls[0][1]?.body).toBe(
-      '{"userId":"0xabc","chainId":42161,"enabled":true,"services":["signal"],"healthFactorThreshold":1.8,"email":null,"signalRecipient":"alice.42","locale":"en"}',
+      '{"userId":"0xabc","chainId":42161,"market":"v3","enabled":true,"services":["signal"],"healthFactorThreshold":1.8,"email":null,"signalRecipient":"alice.42","locale":"en"}',
     );
     await client.upsertConfig("0xabc", { ...CONFIG, email: undefined });
     expect(fetchMock.mock.calls[1][1]?.body).toContain('"email":null,"signalRecipient":null,');
+  });
+
+  it("sends the config's V4 Spoke as the market", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ success: true }));
+    await client.upsertConfig("0xabc", { ...CONFIG, chainId: 1, market: LIDO_SPOKE });
+    expect(fetchMock.mock.calls[0][1]?.body).toContain(`"chainId":1,"market":"${LIDO_SPOKE}","enabled":true,`);
   });
 
   // The server stores "en" for a PUT without a locale, so the alert's language is always sent.
@@ -137,15 +149,25 @@ describe("upsertConfig", () => {
 describe("deleteConfig", () => {
   beforeEach(() => vi.stubGlobal("window", {}));
 
-  it("DELETEs with the trimmed raw address and chain id", async () => {
+  it("DELETEs with the trimmed raw address, the chain id and the market", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ success: true }));
-    await client.deleteConfig(" 0xAbC ", 10);
+    await client.deleteConfig(" 0xAbC ", { chainId: 10, market: "v3" });
     expect(fetchMock.mock.calls).toEqual([
       [
         "/api/notifications/config",
-        { method: "DELETE", headers: { "Content-Type": "application/json" }, body: '{"userId":"0xAbC","chainId":10}' },
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: '{"userId":"0xAbC","chainId":10,"market":"v3"}',
+        },
       ],
     ]);
+  });
+
+  it("DELETEs a V4 Spoke's config by its market", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ success: true }));
+    await client.deleteConfig("0xabc", { chainId: 1, market: LIDO_SPOKE });
+    expect(fetchMock.mock.calls[0][1]?.body).toBe(`{"userId":"0xabc","chainId":1,"market":"${LIDO_SPOKE}"}`);
   });
 
   it.each([
@@ -155,6 +177,6 @@ describe("deleteConfig", () => {
     ["the fallback without an error field", jsonResponse({}, 500), "Failed to delete notification config"],
   ])("rejects with %s", async (_, response, message) => {
     fetchMock.mockResolvedValue(response);
-    await expect(client.deleteConfig("0xabc", 1)).rejects.toThrow(new Error(message));
+    await expect(client.deleteConfig("0xabc", { chainId: 1, market: "v3" })).rejects.toThrow(new Error(message));
   });
 });

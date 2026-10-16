@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { PositionAccess } from "~~/components/custom/aave/PositionAccess";
-import { ETHEREUM_POSITION } from "~~/components/custom/aave/__fixtures__/positions";
+import { ETHEREUM_POSITION, ETHEREUM_V4_LIDO_POSITION } from "~~/components/custom/aave/__fixtures__/positions";
 import { LocaleProvider } from "~~/i18n/LocaleProvider";
 import { renderMarkup } from "~~/utils/testing/render";
 
@@ -15,11 +15,23 @@ vi.mock("~~/components/custom/AccessPaywall", () => ({
 }));
 
 describe("PositionAccess", () => {
-  it("names the network in the paywall's pitch", () => {
+  it("names the market in the paywall's pitch", () => {
     const html = renderMarkup(<PositionAccess position={ETHEREUM_POSITION} hasNotificationConfig={false} />);
 
     expect(html).toContain('data-has-existing-config="false"');
-    expect(html).toContain('data-description="Pay once to set health factor alerts on Ethereum and other networks.');
+    expect(html).toContain('data-description="Pay once to set health factor alerts on Ethereum and other markets.');
+  });
+
+  it("names a V4 Spoke by its market name, not only its network", () => {
+    const pitch = renderMarkup(<PositionAccess position={ETHEREUM_V4_LIDO_POSITION} hasNotificationConfig={false} />);
+    const extend = renderMarkup(<PositionAccess position={ETHEREUM_V4_LIDO_POSITION} hasNotificationConfig />);
+
+    expect(pitch).toContain(
+      'data-description="Pay once to set health factor alerts on Ethereum (V4 Lido) and other markets.',
+    );
+    expect(extend).toContain(
+      'data-description="Your saved Ethereum (V4 Lido) alert settings are still in your account.',
+    );
   });
 
   it("offers to extend access when the network already has a saved config", () => {
@@ -50,9 +62,9 @@ describe("PositionAccess in Czech", () => {
       </LocaleProvider>,
     );
 
-  it("names the network in the Czech pitch", () => {
+  it("names the market in the Czech pitch", () => {
     expect(czech(false)).toContain(
-      'data-description="Zaplaťte jednou a nastavte si upozornění na health factor na síti Ethereum i na dalších sítích.',
+      'data-description="Zaplaťte jednou a nastavte si upozornění na health factor na síti Ethereum i na dalších trzích.',
     );
   });
 

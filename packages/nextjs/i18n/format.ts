@@ -46,3 +46,15 @@ export const joinList = (
  */
 export const formatDecimal = (locale: Locale, value: string | number) =>
   locale === "cs" ? String(value).replace(".", ",") : String(value);
+
+// A V4 Spoke's market name ends "(V4 Spoke)" (config/aaveConfig marketLabel); a V3 market is named by its network.
+const isV4MarketName = (name: string) => / \(V4 [^)]+\)$/.test(name);
+
+/** Czech "na síti Ethereum" for a V3 market, "na trhu Ethereum (V4 Lido)" for a V4 Spoke, which is no network. */
+export const csOnMarket = (name: string) => (isV4MarketName(name) ? `na trhu ${name}` : `na síti ${name}`);
+
+/** Czech "pro síť Ethereum" for a V3 market, "pro trh Ethereum (V4 Lido)" for a V4 Spoke. */
+export const csForMarket = (name: string) => (isV4MarketName(name) ? `pro trh ${name}` : `pro síť ${name}`);
+
+/** The text with its first letter upper case, for a phrase that starts a sentence. */
+export const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);

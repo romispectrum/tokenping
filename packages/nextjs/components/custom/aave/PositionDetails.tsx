@@ -1,7 +1,13 @@
 import { Layers } from "lucide-react";
 import { HealthFactorBadge } from "~~/components/custom/HealthFactorBadge";
 import { StatCard } from "~~/components/custom/aave/StatCard";
-import { COLLATERAL_COLUMNS, CollateralTokenRow, DEBT_COLUMNS, DebtTokenRow } from "~~/components/custom/aave/TokenRow";
+import {
+  COLLATERAL_COLUMNS,
+  CollateralTokenRow,
+  DEBT_COLUMNS,
+  DebtTokenRow,
+  V4_COLLATERAL_COLUMNS,
+} from "~~/components/custom/aave/TokenRow";
 import { TokenTable } from "~~/components/custom/aave/TokenTable";
 import { getCollateralTokens, getDebtTokens } from "~~/components/custom/aave/positionsView";
 import { Alert, Card } from "~~/components/ui";
@@ -23,13 +29,15 @@ const PositionContent = ({ position }: PositionDetailsProps) => {
           <Layers aria-hidden="true" className="size-6" strokeWidth={1.5} />
         </div>
         <div className="flex max-w-sm flex-col gap-1">
-          <p className="m-0 text-base font-medium text-foreground">{t.position.noPositionTitle(position.chainName)}</p>
-          <p className="m-0 text-sm text-muted-foreground">{t.position.noPositionDetail(position.chainName)}</p>
+          <p className="m-0 text-base font-medium text-foreground">{t.position.noPositionTitle(position.marketName)}</p>
+          <p className="m-0 text-sm text-muted-foreground">{t.position.noPositionDetail(position.marketName)}</p>
         </div>
       </div>
     );
   }
 
+  // Ids from the market key: one chain can list several markets.
+  const tableId = position.key.replace(":", "-");
   return (
     <>
       {/* Three label-value rows on a phone, three panels side by side from sm. */}
@@ -42,16 +50,16 @@ const PositionContent = ({ position }: PositionDetailsProps) => {
       {position.tokens.length > 0 ? (
         <>
           <TokenTable
-            id={`supplied-${position.chainId}`}
+            id={`supplied-${tableId}`}
             title={t.position.suppliedTitle}
-            columns={COLLATERAL_COLUMNS}
+            columns={position.version === 4 ? V4_COLLATERAL_COLUMNS : COLLATERAL_COLUMNS}
             tokens={getCollateralTokens(position.tokens)}
             chainId={position.chainId}
             Row={CollateralTokenRow}
             emptyText={t.position.noCollateral}
           />
           <TokenTable
-            id={`borrowed-${position.chainId}`}
+            id={`borrowed-${tableId}`}
             title={t.position.borrowedTitle}
             columns={DEBT_COLUMNS}
             tokens={getDebtTokens(position.tokens)}
@@ -82,15 +90,15 @@ const PositionContent = ({ position }: PositionDetailsProps) => {
   );
 };
 
-/** The selected network's position: its health factor, the three totals and the token tables. */
+/** The selected market's position: its health factor, the three totals and the token tables. */
 export const PositionDetails = ({ position }: PositionDetailsProps) => {
   const t = useMessages(DASHBOARD_MESSAGES);
   return (
     <Card>
       <div className="flex items-start justify-between gap-4 px-[var(--card-spacing)]">
         <div className="min-w-0">
-          <h3 className="m-0 truncate text-base font-medium text-foreground">{position.chainName}</h3>
-          <p className="m-0 text-sm text-muted-foreground">{t.position.market}</p>
+          <h3 className="m-0 truncate text-base font-medium text-foreground">{position.marketName}</h3>
+          <p className="m-0 text-sm text-muted-foreground">{t.position.market(position.version)}</p>
         </div>
         {position.hasPosition ? <HealthFactorBadge healthFactor={position.healthFactor} /> : null}
       </div>

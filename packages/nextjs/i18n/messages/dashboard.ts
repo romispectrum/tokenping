@@ -1,4 +1,4 @@
-import { plural } from "~~/i18n/format";
+import { capitalize, csForMarket, csOnMarket, plural } from "~~/i18n/format";
 import type { Localized } from "~~/i18n/locales";
 
 // The dashboard (/aave): the server-rendered page around the wallet island, the positions, the paywall and its payment
@@ -13,8 +13,11 @@ type DashboardMessages = {
     title: string;
     /** "Ethereum (Core market)": on Ethereum only the Core market's pool is read. */
     coreMarket: (networkName: string) => string;
-    /** `networks` is every monitored network, joined ("Ethereum (Core market), Polygon ... and Gnosis"). */
-    intro: (networks: string) => string;
+    /**
+     * `v3Networks` is every network read on Aave V3, joined ("Ethereum (Core market), Polygon ... and Gnosis");
+     * `v4Networks` every network with Aave V4 Spokes ("Ethereum, Avalanche, Arc and Base").
+     */
+    intro: (v3Networks: string, v4Networks: string) => string;
     disclosureSummary: string;
     /** `paymentChain` is the network alerts are paid on; undefined when no target network has a paywall. */
     alertsCost: (channels: string, paymentChain: string | undefined) => string;
@@ -59,6 +62,8 @@ type DashboardMessages = {
     selectedRegion: string;
     noneSelectedTitle: string;
     noneSelectedDescription: string;
+    /** Under the list when the wallet has no V4 position: Spokes are listed only once they hold one. */
+    noV4Positions: (spokeCount: number, networks: string) => string;
     alertSet: string;
     /** "$1,200.00 supplied," (the comma ends the first half of the row's two totals). */
     supplied: (usd: string) => string;
@@ -74,7 +79,8 @@ type DashboardMessages = {
     safe: string;
   };
   position: {
-    market: string;
+    /** The kind of market, under its name in the details card. */
+    market: (version: 3 | 4) => string;
     noPositionTitle: (chainName: string) => string;
     noPositionDetail: (chainName: string) => string;
     collateral: string;
@@ -176,16 +182,16 @@ type DashboardMessages = {
 export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
   en: {
     page: {
-      metaTitle: "Aave V3 positions and health factor",
+      metaTitle: "Aave V3 and V4 positions and health factor",
       metaDescription: (networkCount, channels) =>
-        `See your Aave V3 collateral, debt and health factor on ${networkCount} networks for free, then set a ${channels} alert threshold for each network.`,
-      title: "Aave V3 positions and health factor alerts",
+        `See your Aave V3 and V4 collateral, debt and health factor on ${networkCount} networks for free, then set a ${channels} alert threshold for each market.`,
+      title: "Aave V3 and V4 positions and health factor alerts",
       coreMarket: name => `${name} (Core market)`,
-      intro: networks =>
-        `Connect the wallet you borrow with to see its Aave V3 collateral, debt and health factor on ${networks}. Viewing is free and needs no transaction.`,
+      intro: (v3Networks, v4Networks) =>
+        `Connect the wallet you borrow with to see its collateral, debt and health factor on Aave V3 on ${v3Networks}, and in every Aave V4 Spoke on ${v4Networks}. Viewing is free and needs no transaction.`,
       disclosureSummary: "What alerts cost and how often we check",
       alertsCost: (channels, paymentChain) =>
-        `To get a message on ${channels} when a network's health factor drops below a threshold you choose, unlock alerts with a USDC payment${paymentChain ? ` on ${paymentChain}` : ""}. The current price is shown before you pay.`,
+        `To get a message on ${channels} when a market's health factor drops below a threshold you choose, unlock alerts with a USDC payment${paymentChain ? ` on ${paymentChain}` : ""}. The current price is shown before you pay.`,
       checks: minutes =>
         `Tokenping checks every ${minutes} minutes. While the health factor stays below your threshold, every check sends another message on each channel you chose.`,
       guideThreshold: "How to choose a threshold",
@@ -194,7 +200,7 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
     gate: {
       title: "Connect a wallet to continue",
       description:
-        "Tokenping needs your wallet address to show your Aave V3 positions. Connecting does not move funds or cost a fee.",
+        "Tokenping needs your wallet address to show your Aave positions. Connecting does not move funds or cost a fee.",
       connect: "Connect wallet",
       connecting: "Connecting",
       approveInWallet: "Approve the connection in your wallet.",
@@ -221,12 +227,14 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
       noData: "No data",
     },
     networks: {
-      heading: "Networks",
+      heading: "Markets",
       active: count => `${count} active`,
-      noPositions: "No active Aave positions detected on supported networks.",
-      selectedRegion: "Selected network",
-      noneSelectedTitle: "No network selected",
-      noneSelectedDescription: "Select a network to view its Aave position.",
+      noPositions: "No active Aave positions detected in supported markets.",
+      selectedRegion: "Selected market",
+      noneSelectedTitle: "No market selected",
+      noneSelectedDescription: "Select a market to view its Aave position.",
+      noV4Positions: (spokeCount, networks) =>
+        `Aave V4: no position in any of its ${spokeCount} Spokes on ${networks}. A Spoke is listed here once this wallet has collateral or debt in it.`,
       alertSet: "Alert set",
       supplied: usd => `${usd} supplied,`,
       borrowed: usd => `${usd} borrowed`,
@@ -240,7 +248,7 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
       safe: "Safe",
     },
     position: {
-      market: "Aave V3 market",
+      market: version => (version === 4 ? "Aave V4 Spoke" : "Aave V3 market"),
       noPositionTitle: chainName => `No active position on ${chainName}`,
       noPositionDetail: chainName => `Aave reports no collateral and no debt for this wallet on ${chainName}.`,
       collateral: "Collateral",
@@ -282,7 +290,7 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
         "Pay once to unlock alert settings and set a health factor threshold for each network. Nothing renews automatically: you pay from your wallet when you want to extend.",
       descriptionExtend: "Your previous alert settings are saved. Pay again to extend access and edit them.",
       networkDescriptionNew: chainName =>
-        `Pay once to set health factor alerts on ${chainName} and other networks. Nothing renews automatically: you pay from your wallet when you want to extend.`,
+        `Pay once to set health factor alerts on ${chainName} and other markets. Nothing renews automatically: you pay from your wallet when you want to extend.`,
       networkDescriptionExtend: chainName =>
         `Your saved ${chainName} alert settings are still in your account. Pay again to extend access and edit them.`,
       connectWallet: "Connect your wallet to pay for access.",
@@ -341,16 +349,16 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
   },
   cs: {
     page: {
-      metaTitle: "Pozice na Aave V3 a health factor",
+      metaTitle: "Pozice na Aave V3 a V4 a health factor",
       metaDescription: (networkCount, channels) =>
-        `Zdarma uvidíte kolaterál, dluh a health factor na Aave V3 na ${networkCount} sítích. Pak si pro každou síť nastavte práh upozornění přes ${channels}.`,
-      title: "Pozice na Aave V3 a upozornění na health factor",
+        `Zdarma uvidíte kolaterál, dluh a health factor na Aave V3 a V4 na ${networkCount} sítích. Pro každý trh pak nastavte práh upozornění přes ${channels}.`,
+      title: "Pozice na Aave V3 a V4 a upozornění na health factor",
       coreMarket: name => `${name} (trh Core)`,
-      intro: networks =>
-        `Připojte peněženku, se kterou si půjčujete, a uvidíte její kolaterál, dluh a health factor na Aave V3 na sítích ${networks}. Prohlížení je zdarma a nevyžaduje žádnou transakci.`,
+      intro: (v3Networks, v4Networks) =>
+        `Připojte peněženku, se kterou si půjčujete, a uvidíte její kolaterál, dluh a health factor na Aave V3 na sítích ${v3Networks} a ve všech trzích (Spoke) Aave V4 na sítích ${v4Networks}. Prohlížení je zdarma a nevyžaduje žádnou transakci.`,
       disclosureSummary: "Kolik upozornění stojí a jak často kontrolujeme",
       alertsCost: (channels, paymentChain) =>
-        `Pokud chcete dostat zprávu přes ${channels}, když health factor na některé síti klesne pod zvolený práh, odemkněte upozornění platbou v USDC${paymentChain ? ` na síti ${paymentChain}` : ""}. Aktuální cenu uvidíte před zaplacením.`,
+        `Pokud chcete dostat zprávu přes ${channels}, když health factor na některém trhu klesne pod zvolený práh, odemkněte upozornění platbou v USDC${paymentChain ? ` na síti ${paymentChain}` : ""}. Aktuální cenu uvidíte před zaplacením.`,
       checks: minutes =>
         `Tokenping kontroluje ${plural("cs", minutes, { one: "každou minutu", few: `každé ${minutes} minuty`, other: `každých ${minutes} minut` })}. Dokud health factor zůstává pod vaším prahem, každá kontrola pošle další zprávu do každého kanálu, který jste zvolili.`,
       guideThreshold: "Jak zvolit práh",
@@ -359,7 +367,7 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
     gate: {
       title: "Pro pokračování připojte peněženku",
       description:
-        "Tokenping potřebuje adresu vaší peněženky, aby mohl zobrazit vaše pozice na Aave V3. Připojení nepřesouvá žádné prostředky a nic nestojí.",
+        "Tokenping potřebuje adresu vaší peněženky, aby mohl zobrazit vaše pozice na Aave. Připojení nepřesouvá žádné prostředky a nic nestojí.",
       connect: "Připojit peněženku",
       connecting: "Připojování",
       approveInWallet: "Potvrďte připojení v peněžence.",
@@ -386,12 +394,14 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
       noData: "Žádná data",
     },
     networks: {
-      heading: "Sítě",
+      heading: "Trhy",
       active: count => `${count} aktivní`,
-      noPositions: "Na podporovaných sítích jsme nenašli žádné aktivní pozice na Aave.",
-      selectedRegion: "Vybraná síť",
-      noneSelectedTitle: "Není vybraná žádná síť",
-      noneSelectedDescription: "Vyberte síť a zobrazí se její pozice na Aave.",
+      noPositions: "Na podporovaných trzích jsme nenašli žádné aktivní pozice na Aave.",
+      selectedRegion: "Vybraný trh",
+      noneSelectedTitle: "Není vybraný žádný trh",
+      noneSelectedDescription: "Vyberte trh a zobrazí se jeho pozice na Aave.",
+      noV4Positions: (spokeCount, networks) =>
+        `Aave V4: v žádném z ${spokeCount} trhů (Spoke) na sítích ${networks} nemáte pozici. Trh se tu zobrazí, jakmile v něm tato peněženka bude mít kolaterál nebo dluh.`,
       alertSet: "Upozornění nastaveno",
       supplied: usd => `vloženo ${usd},`,
       borrowed: usd => `vypůjčeno ${usd}`,
@@ -405,9 +415,10 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
       safe: "Bezpečný",
     },
     position: {
-      market: "Trh Aave V3",
-      noPositionTitle: chainName => `Na síti ${chainName} nemáte žádnou aktivní pozici`,
-      noPositionDetail: chainName => `Aave pro tuto peněženku na síti ${chainName} neuvádí žádný kolaterál ani dluh.`,
+      market: version => (version === 4 ? "Spoke Aave V4" : "Trh Aave V3"),
+      noPositionTitle: chainName => `${capitalize(csOnMarket(chainName))} nemáte žádnou aktivní pozici`,
+      noPositionDetail: chainName =>
+        `Aave pro tuto peněženku ${csOnMarket(chainName)} neuvádí žádný kolaterál ani dluh.`,
       collateral: "Kolaterál",
       debt: "Dluh",
       netWorth: "Čisté jmění",
@@ -448,9 +459,9 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
       descriptionExtend:
         "Vaše dřívější nastavení upozornění zůstalo uložené. Zaplaťte znovu, tím prodloužíte přístup a nastavení můžete upravit.",
       networkDescriptionNew: chainName =>
-        `Zaplaťte jednou a nastavte si upozornění na health factor na síti ${chainName} i na dalších sítích. Nic se automaticky neobnovuje: když budete chtít přístup prodloužit, zaplatíte znovu ze své peněženky.`,
+        `Zaplaťte jednou a nastavte si upozornění na health factor ${csOnMarket(chainName)} i na dalších trzích. Nic se automaticky neobnovuje: když budete chtít přístup prodloužit, zaplatíte znovu ze své peněženky.`,
       networkDescriptionExtend: chainName =>
-        `Vaše uložené nastavení upozornění pro síť ${chainName} ve vašem účtu zůstává. Zaplaťte znovu, tím prodloužíte přístup a nastavení můžete upravit.`,
+        `Vaše uložené nastavení upozornění ${csForMarket(chainName)} ve vašem účtu zůstává. Zaplaťte znovu, tím prodloužíte přístup a nastavení můžete upravit.`,
       connectWallet: "Připojte peněženku, abyste mohli za přístup zaplatit.",
       unconfigured: "Platební kontrakt pro tuto síť není nastavený.",
       noPlan: "Momentálně není k dispozici žádný placený tarif.",

@@ -31,18 +31,18 @@ describe("/aave heading outline with a connected wallet", () => {
   it("goes h1 → h2 → h3 → h4 with no skipped level", async () => {
     vi.mocked(fetchAavePositions).mockResolvedValueOnce([ETHEREUM_POSITION, ARBITRUM_EMPTY_POSITION]);
     renderWithProviders(<AavePage />);
-    await waitFor(() => screen.getByRole("heading", { level: 3, name: ETHEREUM_POSITION.chainName }));
+    await waitFor(() => screen.getByRole("heading", { level: 3, name: ETHEREUM_POSITION.marketName }));
 
     const outline = screen.getAllByRole("heading").map(heading => `${heading.tagName} ${heading.textContent}`);
 
     expect(outline).toEqual([
-      "H1 Aave V3 positions and health factor alerts",
+      "H1 Aave V3 and V4 positions and health factor alerts",
       "H2 Your Aave positions",
-      "H3 Networks",
-      // the selected network's alert settings, then its position
-      `H3 No alerts on ${ETHEREUM_POSITION.chainName} yet`,
-      `H3 ${ETHEREUM_POSITION.chainName}`,
-      // the token tables inside the selected network's card
+      "H3 Markets",
+      // the selected market's alert settings, then its position
+      `H3 No alerts on ${ETHEREUM_POSITION.marketName} yet`,
+      `H3 ${ETHEREUM_POSITION.marketName}`,
+      // the token tables inside the selected market's card
       "H4 Supplied",
       "H4 Borrowed",
     ]);

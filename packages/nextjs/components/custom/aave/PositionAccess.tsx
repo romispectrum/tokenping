@@ -8,15 +8,15 @@ type PositionAccessProps = {
   hasNotificationConfig: boolean;
 };
 
-/** The paywall for the selected network, or, once the wallet has paid, the line that says until when alerts are unlocked. */
+/** The paywall for the selected market, or, once the wallet has paid, the line that says until when alerts are unlocked. */
 export const PositionAccess = ({ position, hasNotificationConfig }: PositionAccessProps) => {
   const t = useMessages(DASHBOARD_MESSAGES).paywall;
   return (
     <AccessPaywall
       description={
         hasNotificationConfig
-          ? t.networkDescriptionExtend(position.chainName)
-          : t.networkDescriptionNew(position.chainName)
+          ? t.networkDescriptionExtend(position.marketName)
+          : t.networkDescriptionNew(position.marketName)
       }
       hasExistingConfig={hasNotificationConfig}
     />

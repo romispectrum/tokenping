@@ -1,7 +1,7 @@
 import { HttpRequestError, maxUint256 } from "viem";
 import { base, bsc, mainnet, polygon } from "viem/chains";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AAVE_MARKETS } from "~~/config/aaveConfig";
+import { AAVE_MARKETS, AAVE_V4_SPOKES, arc } from "~~/config/aaveConfig";
 import type { getHealthFactorForWallet as GetHealthFactorForWallet } from "~~/services/aave/getHealthFactor";
 
 const rpc = vi.hoisted(() => ({
@@ -23,7 +23,22 @@ vi.mock("~~/utils/rpc", () => ({ getFallbackTransport: rpc.getFallbackTransport 
 const WALLET = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
 const OTHER_WALLET = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
 
+// Ethereum's Lido Spoke and Arc's Main Spoke, as market ids.
+const LIDO_SPOKE = "0xe1900480ac69f0b296841cd01cc37546d92f35cd";
+const ARC_MAIN_SPOKE = "0xb843bdc3a87a05e77e07df9fe48928b3a34b134d";
+
 const accountData = (healthFactor: bigint) => [100n, 50n, 10n, 8250n, 8000n, healthFactor] as const;
+
+// A V4 Spoke returns its account data as a struct; the values beside the health factor do not matter here.
+const v4AccountData = (healthFactor: bigint) => ({
+  riskPremium: 0n,
+  avgCollateralFactor: 0n,
+  healthFactor,
+  totalCollateralValue: 1n,
+  totalDebtValueRay: 1n,
+  activeCollateralCount: 1n,
+  borrowCount: 1n,
+});
 
 describe("getHealthFactorForWallet", () => {
   let getHealthFactorForWallet: typeof GetHealthFactorForWallet;
@@ -86,12 +101,61 @@ describe("getHealthFactorForWallet", () => {
     expect(rpc.clients).toHaveLength(0);
   });
 
-  it("resolves null and logs the chain when the read fails", async () => {
+  it("reads the V3 Pool for the explicit v3 market", async () => {
+    rpc.readContract.mockResolvedValue(accountData(maxUint256));
+
+    await expect(getHealthFactorForWallet(WALLET, mainnet.id, "v3")).resolves.toMatchObject({ chainName: "Ethereum" });
+    expect(rpc.readContract.mock.calls[0][0].address).toBe("0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2");
+  });
+
+  it("reads getUserAccountData from a V4 Spoke and names the market with its Spoke", async () => {
+    rpc.readContract.mockResolvedValue(v4AccountData(2_028_074_091_781_711_275n));
+
+    await expect(getHealthFactorForWallet(WALLET, mainnet.id, LIDO_SPOKE)).resolves.toEqual({
+      healthFactor: "2.02",
+      healthFactorValue: 2.028074091781711275,
+      chainName: "Ethereum (V4 Lido)",
+    });
+    expect(rpc.clients.map(({ chain }) => chain)).toEqual([mainnet]);
+    expect(rpc.readContract).toHaveBeenCalledTimes(1);
+    expect(rpc.readContract.mock.calls[0][0]).toMatchObject({
+      address: "0xe1900480ac69f0B296841Cd01cC37546d92F35Cd",
+      functionName: "getUserAccountData",
+      args: [WALLET],
+    });
+  });
+
+  it("reports an infinite health factor for a V4 Spoke without debt", async () => {
+    rpc.readContract.mockResolvedValue(v4AccountData(maxUint256));
+
+    await expect(getHealthFactorForWallet(WALLET, arc.id, ARC_MAIN_SPOKE)).resolves.toEqual({
+      healthFactor: "∞",
+      healthFactorValue: Infinity,
+      chainName: "Arc (V4 Main)",
+    });
+    expect(rpc.clients).toEqual([{ chain: arc, transport: { fallbackFor: arc.id }, batch: { multicall: true } }]);
+  });
+
+  it.each([
+    ["a chain without an Aave market", bsc.id, "v3"],
+    ["a V3 market on a V4-only chain", arc.id, "v3"],
+    ["an address that is no Spoke", mainnet.id, `0x${"12".repeat(20)}`],
+    ["a Spoke on another chain", base.id, LIDO_SPOKE],
+    ["a checksummed Spoke address", mainnet.id, "0xe1900480ac69f0B296841Cd01cC37546d92F35Cd"],
+  ])("resolves null without any RPC call for %s", async (_, chainId, market) => {
+    await expect(getHealthFactorForWallet(WALLET, chainId, market)).resolves.toBeNull();
+    expect(rpc.clients).toHaveLength(0);
+    expect(rpc.readContract).not.toHaveBeenCalled();
+  });
+
+  it("resolves null and logs the market and chain when the read fails", async () => {
     rpc.readContract.mockRejectedValue(new Error("rpc down"));
 
     await expect(getHealthFactorForWallet(WALLET, polygon.id)).resolves.toBeNull();
+    await expect(getHealthFactorForWallet(WALLET, mainnet.id, LIDO_SPOKE)).resolves.toBeNull();
     expect(vi.mocked(console.warn).mock.calls).toEqual([
-      ["Failed to read the Aave health factor on chain 137: rpc down"],
+      ["Failed to read the Aave health factor on Polygon (chain 137): rpc down"],
+      ["Failed to read the Aave health factor on Ethereum (V4 Lido) (chain 1): rpc down"],
     ]);
   });
 
@@ -103,7 +167,7 @@ describe("getHealthFactorForWallet", () => {
 
     await expect(getHealthFactorForWallet(WALLET, polygon.id)).resolves.toBeNull();
     expect(vi.mocked(console.warn).mock.calls).toEqual([
-      ["Failed to read the Aave health factor on chain 137: HTTP request failed."],
+      ["Failed to read the Aave health factor on Polygon (chain 137): HTTP request failed."],
     ]);
   });
 
@@ -130,5 +194,23 @@ describe("getHealthFactorForWallet", () => {
     expect(rpc.clients.map(({ chain }) => chain.id)).toEqual([mainnet.id, polygon.id]);
     expect(rpc.getFallbackTransport).toHaveBeenCalledTimes(2);
     expect(rpc.readContract.mock.calls.map(([{ args }]) => args)).toEqual([[WALLET], [OTHER_WALLET], [WALLET]]);
+  });
+
+  it("shares the chain's client between its V3 Pool and every V4 Spoke on it", async () => {
+    rpc.readContract.mockImplementation(({ address }) =>
+      Promise.resolve(
+        address === "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2" ? accountData(maxUint256) : v4AccountData(maxUint256),
+      ),
+    );
+    const ethereumSpokes = AAVE_V4_SPOKES.filter(({ chain }) => chain.id === mainnet.id);
+
+    await getHealthFactorForWallet(WALLET, mainnet.id);
+    for (const { spoke } of ethereumSpokes) await getHealthFactorForWallet(WALLET, mainnet.id, spoke.toLowerCase());
+
+    expect(rpc.clients.map(({ chain }) => chain.id)).toEqual([mainnet.id]);
+    expect(rpc.readContract.mock.calls.map(([{ address }]) => address)).toEqual([
+      "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2",
+      ...ethereumSpokes.map(({ spoke }) => spoke),
+    ]);
   });
 });

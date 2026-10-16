@@ -134,7 +134,7 @@ export const BLOG_MESSAGES: Localized<BlogMessages> = {
       label: "About Tokenping",
       title: "Health factor alerts from Tokenping",
       body: ({ minutes, networks, channels, price, paymentChain }) =>
-        `Tokenping checks your Aave V3 health factor every ${minutes} minutes on ${networks} networks and messages you on ${channels} when it is below your threshold. The dashboard is free; alerts cost ${price}${paymentChain ? `, paid on ${paymentChain}` : ""}. Alerts give you time to act; they don't prevent liquidation.`,
+        `Tokenping checks your Aave V3 and V4 health factor every ${minutes} minutes on ${networks} networks and messages you on ${channels} when it is below your threshold. The dashboard is free; alerts cost ${price}${paymentChain ? `, paid on ${paymentChain}` : ""}. Alerts give you time to act; they don't prevent liquidation.`,
       cta: "Open the free dashboard",
     },
     alertPrice: {
@@ -182,7 +182,7 @@ export const BLOG_MESSAGES: Localized<BlogMessages> = {
       label: "O Tokenpingu",
       title: "Upozornění na health factor od Tokenpingu",
       body: ({ minutes, networks, channels, price, paymentChain }) =>
-        `Tokenping kontroluje health factor vaší pozice na Aave V3 ${csEveryMinutes(minutes)} ${csOnNetworks(networks)} a pošle vám zprávu přes ${channels}, když je pod vaším prahem. Přehled je zdarma, upozornění stojí ${price}${paymentChain ? ` s platbou na síti ${paymentChain}` : ""}. Upozornění vám dají čas jednat, likvidaci ale nezabrání.`,
+        `Tokenping kontroluje health factor vaší pozice na Aave V3 a V4 ${csEveryMinutes(minutes)} ${csOnNetworks(networks)} a pošle vám zprávu přes ${channels}, když je pod vaším prahem. Přehled je zdarma, upozornění stojí ${price}${paymentChain ? ` s platbou na síti ${paymentChain}` : ""}. Upozornění vám dají čas jednat, likvidaci ale nezabrání.`,
       cta: "Otevřít přehled zdarma",
     },
     alertPrice: {

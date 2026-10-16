@@ -1,12 +1,18 @@
 import "server-only";
 import type { Address } from "viem";
+import { V3_MARKET_ID, marketKey } from "~~/config/aaveConfig";
 import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import { formatDecimal } from "~~/i18n/format";
 import type { Locale } from "~~/i18n/locales";
 import { NOTIFICATION_MESSAGES } from "~~/i18n/messages/notifications";
 import { getHealthFactorForWallet } from "~~/services/aave/getHealthFactor";
 import { sendEmail } from "~~/services/email/sendEmail";
-import { type EnabledConfigRow, findEnabledConfigs, rowLocale } from "~~/services/notifications/configRepository";
+import {
+  type EnabledConfigRow,
+  findEnabledConfigs,
+  rowLocale,
+  rowMarket,
+} from "~~/services/notifications/configRepository";
 import { type Delivery, redactRecipients, shortenAddress } from "~~/services/notifications/redact";
 import { sendSignalMessage } from "~~/services/signal/sendSignal";
 import { type TelegramSendErrorCode, sendTelegramMessage } from "~~/services/telegram/sendTelegram";
@@ -90,7 +96,8 @@ const ALERT_SENDERS: Record<NotificationService, AlertSender> = {
 };
 
 /**
- * One cron pass: loads the enabled configs, reads each wallet's Aave health factor on the config's chain and, when
+ * One cron pass: loads the enabled configs, reads each wallet's Aave health factor in the config's market (the
+ * chain's V3 Pool or a V4 Spoke) and, when
  * it is below the threshold, alerts every deliverable channel. Configs are processed one after another, and a
  * failing config is recorded in `errors` without stopping the others.
  */
@@ -122,15 +129,18 @@ export async function runNotificationCheck(): Promise<NotificationCheckResult | 
 
     for (const config of configs) {
       const { user_id: userId, chain_id: chainId } = config;
+      const market = rowMarket(config);
+      // How errors name the market: the chain id for V3, as before V4, else "chain:spoke".
+      const marketId = market === V3_MARKET_ID ? String(chainId) : marketKey(chainId, market);
       // Computed per config: a dead Telegram chat removed below is skipped for the user's remaining configs.
       const deliveries = getDeliverableChannels(config, chatIdsByUser);
 
       try {
         const threshold = normalizeThreshold(config.health_factor_threshold);
 
-        const reading = await getHealthFactorForWallet(userId as Address, chainId);
+        const reading = await getHealthFactorForWallet(userId as Address, chainId, market);
         if (!reading) {
-          recordError(`healthFactor:${userId}:${chainId}: could not read the health factor`, { wallet: userId });
+          recordError(`healthFactor:${userId}:${marketId}: could not read the health factor`, { wallet: userId });
           continue;
         }
         // Compared exactly, not as the rounded display value (1.4996 must alert against a 1.5 threshold).
@@ -160,7 +170,7 @@ export async function runNotificationCheck(): Promise<NotificationCheckResult | 
           }
         }
       } catch (e) {
-        recordError(`config:${userId}:${chainId}: ${getErrorMessage(e)}`, { wallet: userId, deliveries });
+        recordError(`config:${userId}:${marketId}: ${getErrorMessage(e)}`, { wallet: userId, deliveries });
       }
     }
 

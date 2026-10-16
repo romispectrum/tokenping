@@ -15,13 +15,19 @@ const NOW = "2026-10-14T09:05:07.000Z";
 const LOWER = `0x${"ab".repeat(20)}`;
 const MIXED = `0x${"AB".repeat(20)}`;
 
-const chainQuery = (uid: string, chainId: number) =>
-  `notification_configs.select("*").eq("user_id","${uid}").eq("chain_id",${chainId}).maybeSingle()`;
+// Aave V4 Spokes as market ids: Ethereum's Lido and Main Spokes, and an address that is no Spoke.
+const LIDO_SPOKE = "0xe1900480ac69f0b296841cd01cc37546d92f35cd";
+const MAIN_SPOKE = "0x94e7a5dcbe816e498b89ab752661904e2f56c485";
+const NOT_A_SPOKE = `0x${"12".repeat(20)}`;
+const INVALID_MARKET = "Invalid market: expected v3 or a lowercased Aave V4 Spoke address";
+
+const chainQuery = (uid: string, chainId: number, market = "v3") =>
+  `notification_configs.select("*").eq("user_id","${uid}").eq("chain_id",${chainId}).eq("market","${market}").maybeSingle()`;
 const allQuery = (uid: string) => `notification_configs.select("*").eq("user_id","${uid}")`;
-const idLookup = (uid: string, chainId: number) =>
-  `notification_configs.select("id").eq("user_id","${uid}").eq("chain_id",${chainId}).maybeSingle()`;
-const deleteQuery = (uid: string, chainId: number) =>
-  `notification_configs.delete().eq("user_id","${uid}").eq("chain_id",${chainId})`;
+const idLookup = (uid: string, chainId: number, market = "v3") =>
+  `notification_configs.select("id").eq("user_id","${uid}").eq("chain_id",${chainId}).eq("market","${market}").maybeSingle()`;
+const deleteQuery = (uid: string, chainId: number, market = "v3") =>
+  `notification_configs.delete().eq("user_id","${uid}").eq("chain_id",${chainId}).eq("market","${market}")`;
 
 const get = (params: Record<string, string>) => GET(new Request(`${BASE_URL}?${new URLSearchParams(params)}`));
 const bodyOf = (body: unknown) => (typeof body === "string" ? body : JSON.stringify(body));
@@ -43,6 +49,7 @@ const storedRow = (overrides: Record<string, unknown> = {}) => ({
   id: "row-1",
   user_id: "ignored",
   chain_id: 8453,
+  market: "v3",
   enabled: true,
   services: ["email", "telegram"],
   health_factor_threshold: "1.80",
@@ -86,6 +93,15 @@ describe("GET /api/notifications/config", () => {
     },
   );
 
+  it.each(["V3", "v4", "0x1234", MAIN_SPOKE.toUpperCase().replace("0X", "0x"), ` ${MAIN_SPOKE}`])(
+    "returns 400 for the market %j without touching the DB",
+    async market => {
+      const res = await get({ userId: LOWER, chainId: "1", market });
+      expect(await read(res)).toEqual(json(400, { error: INVALID_MARKET }));
+      expect(fakeSupabase.queries).toHaveLength(0);
+    },
+  );
+
   it("never reads the Telegram link (it has its own endpoint)", async () => {
     fakeSupabase.respond(({ table }) =>
       table === "user_telegram_links" ? { data: { user_id: LOWER, chat_id: "123456789" } } : undefined,
@@ -106,7 +122,7 @@ describe("GET /api/notifications/config", () => {
     expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 1), chainQuery(LOWER, 1)]);
   });
 
-  describe("single chain", () => {
+  describe("single market", () => {
     it("returns the lowercased user's row", async () => {
       fakeSupabase.respondByQuery({ [chainQuery(LOWER, 8453)]: { data: storedRow() } });
 
@@ -117,6 +133,7 @@ describe("GET /api/notifications/config", () => {
         status: 200,
         text: JSON.stringify({
           chainId: 8453,
+          market: "v3",
           enabled: true,
           services: ["email", "telegram"],
           healthFactorThreshold: 1.8,
@@ -147,7 +164,7 @@ describe("GET /api/notifications/config", () => {
 
       expect(await read(res)).toEqual({
         status: 200,
-        text: '{"chainId":1,"enabled":false,"services":[],"healthFactorThreshold":2,"locale":"en"}',
+        text: '{"chainId":1,"market":"v3","enabled":false,"services":[],"healthFactorThreshold":2,"locale":"en"}',
       });
     });
 
@@ -170,6 +187,7 @@ describe("GET /api/notifications/config", () => {
 
       expect(JSON.parse((await read(res)).text)).toEqual({
         chainId: 10,
+        market: "v3",
         enabled: true,
         services: ["signal"],
         healthFactorThreshold: 1.8,
@@ -219,10 +237,43 @@ describe("GET /api/notifications/config", () => {
       expect(JSON.parse((await read(res)).text)).toMatchObject({ chainId: parsed });
       expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, parsed)]);
     });
+
+    it.each([
+      ["a missing", {}],
+      ["an empty", { market: "" }],
+      ["the V3", { market: "v3" }],
+    ])("reads the chain's V3 row for %s market", async (_label, params) => {
+      fakeSupabase.respondByQuery({ [chainQuery(LOWER, 1)]: { data: storedRow({ chain_id: 1 }) } });
+
+      const res = await get({ userId: LOWER, chainId: "1", ...params });
+
+      expect(JSON.parse((await read(res)).text)).toMatchObject({ chainId: 1, market: "v3" });
+      expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 1)]);
+    });
+
+    it("reads a V4 Spoke's row by its market, falling back to the legacy user id form", async () => {
+      fakeSupabase.respondByQuery({
+        [chainQuery(MIXED, 1, LIDO_SPOKE)]: { data: storedRow({ chain_id: 1, market: LIDO_SPOKE }) },
+      });
+
+      const res = await get({ userId: MIXED, chainId: "1", market: LIDO_SPOKE });
+
+      expect(JSON.parse((await read(res)).text)).toMatchObject({ chainId: 1, market: LIDO_SPOKE });
+      expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 1, LIDO_SPOKE), chainQuery(MIXED, 1, LIDO_SPOKE)]);
+    });
+
+    // Reads are not checked against the Spokes the app lists, like the rest of GET.
+    it("looks up a well-formed market that is no Spoke", async () => {
+      expect(await read(await get({ userId: LOWER, chainId: "1", market: NOT_A_SPOKE }))).toEqual({
+        status: 200,
+        text: "null",
+      });
+      expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 1, NOT_A_SPOKE)]);
+    });
   });
 
-  describe("all chains", () => {
-    it("returns configs keyed by chain id", async () => {
+  describe("all markets", () => {
+    it("returns configs keyed by chain id and market, in row order", async () => {
       fakeSupabase.respondByQuery({
         [allQuery(LOWER)]: {
           data: [
@@ -237,25 +288,53 @@ describe("GET /api/notifications/config", () => {
       expect(await read(res)).toEqual({
         status: 200,
         text: JSON.stringify({
-          1: {
-            chainId: 1,
-            enabled: true,
-            services: ["signal"],
-            healthFactorThreshold: 1.1,
-            email: "a@b.co",
-            locale: "en",
-          },
-          8453: {
+          "8453:v3": {
             chainId: 8453,
+            market: "v3",
             enabled: true,
             services: ["email", "telegram"],
             healthFactorThreshold: 1.8,
             signalRecipient: "alice.42",
             locale: "en",
           },
+          "1:v3": {
+            chainId: 1,
+            market: "v3",
+            enabled: true,
+            services: ["signal"],
+            healthFactorThreshold: 1.1,
+            email: "a@b.co",
+            locale: "en",
+          },
         }),
       });
       expect(fakeSupabase.log()).toEqual([allQuery(LOWER)]);
+    });
+
+    it("returns a V4 row and a V3 row on the same chain under their own keys", async () => {
+      fakeSupabase.respondByQuery({
+        [allQuery(LOWER)]: {
+          data: [
+            storedRow({ chain_id: 1, email: "v3@x.io" }),
+            storedRow({ chain_id: 1, market: LIDO_SPOKE, email: "lido@x.io" }),
+            // A row from before the market column is a V3 row.
+            storedRow({ chain_id: 10, market: undefined, email: "old@x.io" }),
+          ],
+        },
+      });
+
+      const configs = JSON.parse((await read(await get({ userId: LOWER }))).text);
+
+      expect(Object.keys(configs)).toEqual(["1:v3", `1:${LIDO_SPOKE}`, "10:v3"]);
+      expect(configs["1:v3"]).toMatchObject({ chainId: 1, market: "v3", email: "v3@x.io" });
+      expect(configs[`1:${LIDO_SPOKE}`]).toMatchObject({ chainId: 1, market: LIDO_SPOKE, email: "lido@x.io" });
+      expect(configs["10:v3"]).toMatchObject({ chainId: 10, market: "v3", email: "old@x.io" });
+    });
+
+    it("ignores the market without a chainId, still checking that it is well formed", async () => {
+      expect(await read(await get({ userId: LOWER, market: LIDO_SPOKE }))).toEqual({ status: 200, text: "{}" });
+      expect(fakeSupabase.log()).toEqual([allQuery(LOWER)]);
+      expect(await read(await get({ userId: LOWER, market: "nope" }))).toEqual(json(400, { error: INVALID_MARKET }));
     });
 
     it("treats an empty chainId like a missing one", async () => {
@@ -264,14 +343,14 @@ describe("GET /api/notifications/config", () => {
       expect(fakeSupabase.log()).toEqual([allQuery(LOWER)]);
     });
 
-    it("keeps the last row when two rows share a chain id", async () => {
+    it("keeps the last row when two rows share a market", async () => {
       fakeSupabase.respondByQuery({
         [allQuery(LOWER)]: {
           data: [storedRow({ chain_id: 1, email: "first@x.io" }), storedRow({ chain_id: 1, email: "last@x.io" })],
         },
       });
       const res = await get({ userId: LOWER });
-      expect(JSON.parse((await read(res)).text)[1].email).toBe("last@x.io");
+      expect(JSON.parse((await read(res)).text)["1:v3"].email).toBe("last@x.io");
     });
 
     it("uses the legacy rows when the lowercased query returns none", async () => {
@@ -282,7 +361,7 @@ describe("GET /api/notifications/config", () => {
 
       const res = await get({ userId: MIXED });
 
-      expect(Object.keys(JSON.parse((await read(res)).text))).toEqual(["137"]);
+      expect(Object.keys(JSON.parse((await read(res)).text))).toEqual(["137:v3"]);
       expect(fakeSupabase.log()).toEqual([allQuery(LOWER), allQuery(MIXED)]);
     });
 
@@ -325,6 +404,7 @@ describe("PUT /api/notifications/config", () => {
   const expectedRow = (uid: string, overrides: Record<string, unknown> = {}) => ({
     user_id: uid,
     chain_id: 8453,
+    market: "v3",
     enabled: true,
     services: [],
     health_factor_threshold: 1.5,
@@ -367,6 +447,81 @@ describe("PUT /api/notifications/config", () => {
     expect(await read(await put({ userId: LOWER, ...extra }))).toEqual(
       json(400, { error: "Missing or invalid chainId" }),
     );
+  });
+
+  it.each([
+    ["an uppercase", "V3"],
+    ["a checksummed Spoke", "0xe1900480ac69f0B296841Cd01cC37546d92F35Cd"],
+    ["a short", "0x1234"],
+    ["a numeric", 3],
+    ["an object", { spoke: LIDO_SPOKE }],
+  ])("returns 400 for %s market before the access check or any DB call", async (_label, market) => {
+    expect(await read(await put({ userId: LOWER, chainId: 1, market }))).toEqual(json(400, { error: INVALID_MARKET }));
+    expect(isAccessActive).not.toHaveBeenCalled();
+    expect(fakeSupabase.queries).toHaveLength(0);
+  });
+
+  it.each([
+    ["an address that is no Spoke", 1, NOT_A_SPOKE],
+    ["a Spoke on another chain", 8453, LIDO_SPOKE],
+  ])("returns 400 for %s before the access check or any DB call", async (_label, chainId, market) => {
+    expect(await read(await put({ userId: LOWER, chainId, market }))).toEqual(
+      json(400, { error: "Unknown Aave V4 Spoke" }),
+    );
+    expect(isAccessActive).not.toHaveBeenCalled();
+    expect(fakeSupabase.queries).toHaveLength(0);
+  });
+
+  it("checks the chainId before the market", async () => {
+    expect(await read(await put({ userId: LOWER, chainId: "1", market: "nope" }))).toEqual(
+      json(400, { error: "Missing or invalid chainId" }),
+    );
+  });
+
+  it("checks the market before the config values", async () => {
+    expect(await read(await put({ userId: LOWER, chainId: 1, market: "nope", services: "email" }))).toEqual(
+      json(400, { error: INVALID_MARKET }),
+    );
+  });
+
+  it.each([
+    ["a missing", {}],
+    ["a null", { market: null }],
+    ["an empty", { market: "" }],
+    ["the V3", { market: "v3" }],
+  ])("stores %s market as the chain's V3 market", async (_label, extra) => {
+    expect(await read(await put({ userId: LOWER, chainId: 8453, ...extra }))).toEqual(json(200, { success: true }));
+    expect(fakeSupabase.log()).toEqual([idLookup(LOWER, 8453), insertQuery(expectedRow(LOWER))]);
+  });
+
+  // As before V4: a V3 config is not checked against the chains with an Aave market.
+  it("stores a V3 config for a chain without an Aave market", async () => {
+    expect(await read(await put({ userId: LOWER, chainId: 56 }))).toEqual(json(200, { success: true }));
+    expect(fakeSupabase.log().at(-1)).toBe(insertQuery(expectedRow(LOWER, { chain_id: 56 })));
+  });
+
+  it("stores a V4 Spoke's config under its market, apart from the chain's V3 row", async () => {
+    fakeSupabase.respondByQuery({ [idLookup(LOWER, 1)]: { data: { id: "row-v3" } } });
+
+    const res = await put({ userId: MIXED, chainId: 1, market: LIDO_SPOKE, healthFactorThreshold: 1.3 });
+
+    expect(await read(res)).toEqual(json(200, { success: true }));
+    expect(fakeSupabase.log()).toEqual([
+      idLookup(LOWER, 1, LIDO_SPOKE),
+      idLookup(MIXED, 1, LIDO_SPOKE),
+      insertQuery(expectedRow(LOWER, { chain_id: 1, market: LIDO_SPOKE, health_factor_threshold: 1.3 })),
+    ]);
+  });
+
+  it("updates a V4 Spoke's existing row in place", async () => {
+    fakeSupabase.respondByQuery({ [idLookup(LOWER, 1, MAIN_SPOKE)]: { data: { id: "row-main" } } });
+
+    await put({ userId: LOWER, chainId: 1, market: MAIN_SPOKE });
+
+    expect(fakeSupabase.log()).toEqual([
+      idLookup(LOWER, 1, MAIN_SPOKE),
+      updateQuery(expectedRow(LOWER, { chain_id: 1, market: MAIN_SPOKE }), "row-main"),
+    ]);
   });
 
   it("returns 403 without touching the DB when access is inactive, checking the trimmed raw-case id", async () => {
@@ -613,6 +768,41 @@ describe("DELETE /api/notifications/config", () => {
     fakeSupabase.respondByQuery({ [deleteQuery(LOWER, 10)]: { error: { message: "first failed" } } });
     expect(await read(await del({ userId: MIXED, chainId: 10 }))).toEqual(json(502, { error: "first failed" }));
     expect(fakeSupabase.log()).toEqual([deleteQuery(LOWER, 10)]);
+  });
+
+  it.each([
+    ["an uppercase", "V3"],
+    ["a checksummed Spoke", "0xe1900480ac69f0B296841Cd01cC37546d92F35Cd"],
+    ["a numeric", 3],
+  ])("returns 400 for %s market before the access check", async (_label, market) => {
+    expect(await read(await del({ userId: LOWER, chainId: 1, market }))).toEqual(json(400, { error: INVALID_MARKET }));
+    expect(isAccessActive).not.toHaveBeenCalled();
+    expect(fakeSupabase.queries).toHaveLength(0);
+  });
+
+  it.each([
+    ["a null", { market: null }],
+    ["an empty", { market: "" }],
+    ["the V3", { market: "v3" }],
+  ])("deletes the chain's V3 row for %s market", async (_label, extra) => {
+    await del({ userId: LOWER, chainId: 10, ...extra });
+    expect(fakeSupabase.log()).toEqual([deleteQuery(LOWER, 10)]);
+  });
+
+  it("deletes a V4 Spoke's row under both user id forms", async () => {
+    expect(await read(await del({ userId: MIXED, chainId: 1, market: LIDO_SPOKE }))).toEqual(
+      json(200, { success: true }),
+    );
+    expect(fakeSupabase.log()).toEqual([deleteQuery(LOWER, 1, LIDO_SPOKE), deleteQuery(MIXED, 1, LIDO_SPOKE)]);
+  });
+
+  // Unlike PUT, so a config for a Spoke the app no longer lists can still be removed.
+  it.each([
+    ["an address that is no Spoke", 1, NOT_A_SPOKE],
+    ["a Spoke on another chain", 8453, LIDO_SPOKE],
+  ])("deletes the row of %s", async (_label, chainId, market) => {
+    expect(await read(await del({ userId: LOWER, chainId, market }))).toEqual(json(200, { success: true }));
+    expect(fakeSupabase.log()).toEqual([deleteQuery(LOWER, chainId, market)]);
   });
 
   it("returns 502 when the legacy delete fails", async () => {

@@ -5,9 +5,14 @@ import {
   AAVE_POOL_DATA_PROVIDER_ABI,
   type AaveMarket,
   ERC20_ABI,
+  type MarketId,
+  V3_MARKET_ID,
+  marketKey,
+  marketLabel,
 } from "~~/config/aaveConfig";
 import { getReadErrorMessage } from "~~/services/aave/readErrorMessage";
 import { readTokenSymbol } from "~~/services/aave/tokenSymbol";
+import { fetchAaveV4Positions } from "~~/services/aave/v4Positions";
 import { formatHealthFactor } from "~~/utils/healthFactor";
 import { getFallbackTransport } from "~~/utils/rpc";
 
@@ -19,13 +24,23 @@ export type TokenPosition = {
   stableDebt: bigint;
   variableDebt: bigint;
   usageAsCollateralEnabled: boolean;
-  /** Supply APY in percent. */
-  supplyApy: number;
+  /** Supply APY in percent; null on Aave V4, whose Spokes have no per-reserve rate to read. */
+  supplyApy: number | null;
 };
 
-// USD amounts are pre-formatted with toFixed(2); healthFactor is "∞" or a 2-decimal string.
+/**
+ * One market's position: a V3 network or a V4 Spoke. USD amounts are pre-formatted with toFixed(2); healthFactor is
+ * "∞" or a 2-decimal string.
+ */
 export type NetworkPosition = {
+  /** marketKey(chainId, marketId): unique across every market. */
+  key: string;
+  version: 3 | 4;
+  marketId: MarketId;
+  /** The market's name in the dashboard and in alerts (config/aaveConfig marketLabel). */
+  marketName: string;
   chainId: number;
+  /** The network's name. */
   chainName: string;
   totalCollateralUSD: string;
   totalDebtUSD: string;
@@ -89,6 +104,10 @@ export const toNetworkPosition = (
   const totalDebtUSD = parseFloat(formatUnits(totalDebtBase, BASE_CURRENCY_DECIMALS));
 
   return {
+    key: marketKey(market.chain.id, V3_MARKET_ID),
+    version: 3,
+    marketId: V3_MARKET_ID,
+    marketName: marketLabel(market),
     chainId: market.chain.id,
     chainName: market.name,
     totalCollateralUSD: totalCollateralUSD.toFixed(2),
@@ -100,7 +119,7 @@ export const toNetworkPosition = (
   };
 };
 
-/** Sums an already rounded USD field across networks and rounds the total to cents. */
+/** Sums an already rounded USD field across markets and rounds the total to cents. */
 export const sumUsd = (positions: readonly NetworkPosition[], field: UsdField) =>
   positions.reduce((sum, position) => sum + parseFloat(position[field]), 0).toFixed(2);
 
@@ -162,11 +181,7 @@ const fetchNetworkPosition = async (market: AaveMarket, user: Address) => {
   return toNetworkPosition(market, accountData, tokens);
 };
 
-/**
- * One position per reachable Aave market, in AAVE_MARKETS order. Networks whose reads fail are logged and left out;
- * rejects when none can be read.
- */
-export const fetchAavePositions = async (user: Address) => {
+const fetchAaveV3Positions = async (user: Address) => {
   const positions = await Promise.all(
     AAVE_MARKETS.map(market =>
       fetchNetworkPosition(market, user).catch(error => {
@@ -177,7 +192,17 @@ export const fetchAavePositions = async (user: Address) => {
       }),
     ),
   );
-  const reachable = positions.filter((position): position is NetworkPosition => position !== null);
+  return positions.filter((position): position is NetworkPosition => position !== null);
+};
+
+/**
+ * One position per reachable Aave market: the V3 networks in AAVE_MARKETS order, then every V4 Spoke in
+ * AAVE_V4_SPOKES order, with or without a position. Markets whose reads fail are logged and left out; rejects when
+ * none can be read.
+ */
+export const fetchAavePositions = async (user: Address) => {
+  const [v3, v4] = await Promise.all([fetchAaveV3Positions(user), fetchAaveV4Positions(user)]);
+  const reachable = [...v3, ...v4];
   if (reachable.length === 0) throw new Error("Could not reach any Aave network. Check your connection and try again.");
   return reachable;
 };

@@ -67,7 +67,7 @@ const SECTION_HEADINGS = [
   "Na co se zeptat, než připojíte peněženku",
   "Omezení bez příkras",
   "Z blogu",
-  "Zkontrolujte svůj health factor na Aave V3 zdarma",
+  "Zkontrolujte svůj health factor na Aave V3 a V4 zdarma",
 ];
 
 const ENGLISH_HEADINGS = [
@@ -77,7 +77,7 @@ const ENGLISH_HEADINGS = [
   "Questions to ask before you connect a wallet",
   "Limits, stated plainly",
   "From the blog",
-  "Check your Aave V3 health factor, free",
+  "Check your Aave V3 and V4 health factor, free",
   "What an alert says",
 ];
 
@@ -151,6 +151,7 @@ describe("Czech copy", () => {
       "Base",
       "Avalanche",
       "Gnosis",
+      "Arc",
       "Signal",
       "E-mail",
     ]);
@@ -199,19 +200,23 @@ describe("Czech copy", () => {
     expect(pageText(container)).not.toMatch(/\d+([.,]\d+)? USDC/);
   });
 
-  it("lists the supported networks in Czech", async () => {
+  it("lists the supported networks and V4 Spokes in Czech", async () => {
     await renderHome();
     const answer = screen.getByRole("heading", { name: "Je moje pozice podporovaná?" }).nextElementSibling!.textContent;
 
     expect(answer).toContain(
       "Aave V3 na sítích Ethereum (trh Core), Polygon, Arbitrum, Optimism, Base, Avalanche a Gnosis.",
     );
+    expect(answer).toContain(
+      "Aave V4 v každém Spoke na sítích Ethereum, Avalanche, Arc a Base: celkem 20, podle API Aave V4 ke 16. říjnu 2026.",
+    );
+    expect(answer).not.toMatch(/Nepodporujeme: Aave V4/);
   });
 
-  it("keeps the seven limits and the eight questions", async () => {
+  it("keeps the eight limits and the eight questions", async () => {
     await renderHome();
 
-    expect(within(section("Omezení bez příkras")).getAllByRole("listitem")).toHaveLength(7);
+    expect(within(section("Omezení bez příkras")).getAllByRole("listitem")).toHaveLength(8);
     expect(
       within(section("Na co se zeptat, než připojíte peněženku")).getAllByRole("heading", { level: 3 }),
     ).toHaveLength(8);

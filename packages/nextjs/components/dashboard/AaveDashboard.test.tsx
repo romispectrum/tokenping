@@ -56,6 +56,8 @@ describe("AaveDashboard", () => {
     expect(html).not.toContain(POSITIONS_STUB);
     expect(html).not.toContain("<h1");
     expect(html).toContain(GATE_TITLE);
+    // V3 and V4 alike: the gate does not name a version.
+    expect(html).toContain("Tokenping needs your wallet address to show your Aave positions.");
     expect(html).toContain("Connecting does not move funds or cost a fee.");
     expect(html.split("btn-primary").length - 1).toBe(1);
     expect(html).toMatchSnapshot();
@@ -126,6 +128,7 @@ describe("AaveDashboard in Czech", () => {
     const html = czech();
 
     expect(html).toContain(">Pro pokračování připojte peněženku</h2>");
+    expect(html).toContain("aby mohl zobrazit vaše pozice na Aave.");
     expect(html).toContain("Připojení nepřesouvá žádné prostředky a nic nestojí.");
     expect(html).toContain("Připojit peněženku");
     expect(html).not.toContain("Connect");

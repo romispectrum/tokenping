@@ -29,6 +29,10 @@ const renderPost = async (slug: string) => {
 const publishedTime = () =>
   within(screen.getByRole("heading", { level: 1 }).closest("header")!).getByText("14 October 2026");
 
+/** The byline's "Updated" <time>: the posts were last updated when Tokenping added Aave V4. */
+const updatedTime = () =>
+  within(screen.getByRole("heading", { level: 1 }).closest("header")!).getByText("16 October 2026");
+
 const jsonLdBlocks = (container: HTMLElement) =>
   [...container.querySelectorAll('script[type="application/ld+json"]')].map(script =>
     JSON.parse(script.textContent ?? ""),
@@ -70,7 +74,7 @@ describe("generateMetadata", () => {
       type: "article",
       url: "/blog/aave-health-factor",
       publishedTime: "2026-10-14T00:00:00Z",
-      modifiedTime: "2026-10-14T00:00:00Z",
+      modifiedTime: "2026-10-16T00:00:00Z",
       images: [
         {
           url: "/og/en/aave-health-factor",
@@ -174,12 +178,14 @@ describe("blog post page", () => {
     const { container } = await renderPost("safe-aave-health-factor");
     const [posting, breadcrumbs] = jsonLdBlocks(container);
     const published = publishedTime().getAttribute("dateTime");
+    const updated = updatedTime().getAttribute("dateTime");
 
+    expect(updated).toBe("2026-10-16T00:00:00Z");
     expect(posting).toMatchObject({
       "@type": "BlogPosting",
       headline: "What is a safe health factor on Aave?",
       datePublished: published,
-      dateModified: published,
+      dateModified: updated,
       mainEntityOfPage: { "@id": "https://tokenping.xyz/blog/safe-aave-health-factor" },
     });
     expect(breadcrumbs.itemListElement.map(({ name }: { name: string }) => name)).toEqual([

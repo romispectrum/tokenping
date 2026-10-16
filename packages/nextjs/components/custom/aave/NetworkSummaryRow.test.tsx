@@ -3,6 +3,8 @@ import { NetworkSummaryRow } from "~~/components/custom/aave/NetworkSummaryRow";
 import {
   ARBITRUM_EMPTY_POSITION,
   ETHEREUM_POSITION,
+  ETHEREUM_V4_LIDO_POSITION,
+  ETHEREUM_V4_MAIN_EMPTY_POSITION,
   POLYGON_COLLATERAL_ONLY_POSITION,
 } from "~~/components/custom/aave/__fixtures__/positions";
 import { renderMarkup } from "~~/utils/testing/render";
@@ -59,5 +61,25 @@ describe("NetworkSummaryRow", () => {
     expect(html).not.toContain("supplied");
     expect(html).toContain(">No position</span>");
     expect(html).toMatchSnapshot();
+  });
+
+  it("names a V4 Spoke by its market name, so two markets on one chain read apart", () => {
+    const active = renderMarkup(
+      <NetworkSummaryRow position={ETHEREUM_V4_LIDO_POSITION} isSelected={false} onSelect={noop} hasNotification />,
+    );
+    const empty = renderMarkup(
+      <NetworkSummaryRow
+        position={ETHEREUM_V4_MAIN_EMPTY_POSITION}
+        isSelected={false}
+        onSelect={noop}
+        hasNotification={false}
+      />,
+    );
+
+    expect(active).toContain('<span class="truncate">Ethereum (V4 Lido)</span>');
+    expect(active).toContain(">Alert set</span>");
+    expect(active).toContain("Health factor");
+    expect(empty).toContain('<span class="truncate">Ethereum (V4 Main)</span>');
+    expect(empty).toContain(">No position</span>");
   });
 });

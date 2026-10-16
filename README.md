@@ -1,8 +1,8 @@
 # Tokenping
 
-Aave V3 health factor alerts on Signal and email.
+Aave V3 and V4 health factor alerts on Signal and email.
 
-Tokenping watches the Aave V3 health factor of the wallet you connect and sends you a message when it drops below a
+Tokenping watches the Aave V3 and V4 health factor of the wallet you connect and sends you a message when it drops below a
 threshold you choose. The dashboard is free; alerts are a paid add-on, paid in USDC on Arbitrum One.
 
 - Website: https://tokenping.xyz
@@ -14,10 +14,13 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs o
 
 ## What it does
 
-- **Dashboard (free, read-only).** Connect a wallet to see its Aave V3 collateral, debt and health factor on
-  Ethereum (Core market), Polygon, Arbitrum, Optimism, Base, Avalanche and Gnosis. Positions are read with view calls
-  only; the app never asks for an approval or a signature on Aave.
-- **Alerts.** One alert per network, for the connected wallet. You pick a threshold from 1.1 to 10 (default 1.5) and
+- **Dashboard (free, read-only).** Connect a wallet to see its collateral, debt and health factor on Aave V3 on
+  Ethereum (Core market), Polygon, Arbitrum, Optimism, Base, Avalanche and Gnosis, and in every Aave V4 Spoke on
+  Ethereum, Avalanche, Arc and Base (20 Spokes, listed in `packages/nextjs/config/aaveConfig.ts`). V4 keeps a separate
+  position and health factor in each Spoke, so each Spoke is its own market; the dashboard lists a Spoke once the
+  wallet has a position or an alert in it. Positions are read with view calls only; the app never asks for an approval
+  or a signature on Aave.
+- **Alerts.** One alert per market (a V3 network or a V4 Spoke), for the connected wallet. You pick a threshold from 1.1 to 10 (default 1.5) and
   one or more channels:
   - Email, sent through [Resend](https://resend.com).
   - Signal, sent to your Signal username through a self-hosted
@@ -37,8 +40,10 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs o
 
 ## Limits
 
-- Aave V3 only, one pool per network (on Ethereum, only the Core market). Aave V4, the other Ethereum V3 markets and
-  other protocols are not supported.
+- On Aave V3, one pool per network (on Ethereum, only the Core market). The other Ethereum V3 markets, other networks
+  and other protocols are not supported. A new Aave V4 Spoke is read only once it is added to `AAVE_V4_SPOKES`.
+- A V4 Spoke counts only collateral and debt, as V3 does: a wallet that only supplies assets that are not collateral
+  shows no position there. The dashboard shows no supply APY for V4 reserves.
 - Polling, not real time: a fast price move can cross a health factor of 1.0 between two checks. Alerts reduce risk;
   they do not prevent liquidation.
 - While a health factor is below its threshold, every check sends another message on each channel. There is no

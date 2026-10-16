@@ -42,12 +42,12 @@ describe("Czech Aave page metadata", () => {
   it("has a Czech title and description and a self canonical under /cz", async () => {
     const { metadata } = await loadPage();
 
-    expect(metadata.title).toBe("Pozice na Aave V3 a health factor");
+    expect(metadata.title).toBe("Pozice na Aave V3 a V4 a health factor");
     expect(metadata.description).toBe(
-      "Zdarma uvidíte kolaterál, dluh a health factor na Aave V3 na 7 sítích. Pak si pro každou síť nastavte práh upozornění přes Signal nebo e-mail.",
+      "Zdarma uvidíte kolaterál, dluh a health factor na Aave V3 a V4 na 8 sítích. Pro každý trh pak nastavte práh upozornění přes Signal nebo e-mail.",
     );
     expect(metadata.alternates?.canonical).toBe("/cz/aave");
-    expect(metadata.openGraph).toMatchObject({ url: "/cz/aave", title: "Pozice na Aave V3 a health factor" });
+    expect(metadata.openGraph).toMatchObject({ url: "/cz/aave", title: "Pozice na Aave V3 a V4 a health factor" });
   });
 
   it("names Telegram once the bot is configured, within 155 characters", async () => {
@@ -64,13 +64,13 @@ describe("Czech Aave page shell", () => {
     const { default: AavePage } = await loadPage();
     const html = renderMarkup(<AavePage />);
 
-    expect(html).toContain(">Pozice na Aave V3 a upozornění na health factor</h1>");
+    expect(html).toContain(">Pozice na Aave V3 a V4 a upozornění na health factor</h1>");
     expect(html).toContain(
-      "Připojte peněženku, se kterou si půjčujete, a uvidíte její kolaterál, dluh a health factor na Aave V3 na sítích Ethereum (trh Core), Polygon, Arbitrum, Optimism, Base, Avalanche a Gnosis. Prohlížení je zdarma a nevyžaduje žádnou transakci.",
+      "Připojte peněženku, se kterou si půjčujete, a uvidíte její kolaterál, dluh a health factor na Aave V3 na sítích Ethereum (trh Core), Polygon, Arbitrum, Optimism, Base, Avalanche a Gnosis a ve všech trzích (Spoke) Aave V4 na sítích Ethereum, Avalanche, Arc a Base. Prohlížení je zdarma a nevyžaduje žádnou transakci.",
     );
     expect(html).toContain("Kolik upozornění stojí a jak často kontrolujeme");
     expect(html).toContain(
-      "Pokud chcete dostat zprávu přes Signal nebo e-mail, když health factor na některé síti klesne pod zvolený práh, odemkněte upozornění platbou v USDC na síti Arbitrum One.",
+      "Pokud chcete dostat zprávu přes Signal nebo e-mail, když health factor na některém trhu klesne pod zvolený práh, odemkněte upozornění platbou v USDC na síti Arbitrum One.",
     );
     expect(html).toContain(
       "Tokenping kontroluje každých 5 minut. Dokud health factor zůstává pod vaším prahem, každá kontrola pošle další zprávu do každého kanálu, který jste zvolili.",

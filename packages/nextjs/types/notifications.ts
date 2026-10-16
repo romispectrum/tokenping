@@ -1,3 +1,4 @@
+import type { MarketId } from "~~/config/aaveConfig";
 import type { Locale } from "~~/i18n/locales";
 
 /** Supported notification delivery channels */
@@ -10,6 +11,8 @@ export type NotificationServiceOption = {
 
 export type NotificationConfig = {
   chainId: number;
+  /** The market on the chain: "v3" (the chain's V3 Pool) or a V4 Spoke's lowercased address. "v3" when absent. */
+  market?: MarketId;
   enabled: boolean;
   services: NotificationService[];
   healthFactorThreshold: number;

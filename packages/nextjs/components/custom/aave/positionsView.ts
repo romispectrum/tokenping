@@ -26,12 +26,22 @@ export const formatDebtBreakdown = (
 };
 
 /**
- * The network to show: the current selection while it is still listed, otherwise the first active network, otherwise
- * the first listed one. A default, once chosen, sticks even if another network becomes the first active one later.
+ * The market to show, by position.key: the current selection while it is still listed, otherwise the first active
+ * market, otherwise the first listed one. A default, once chosen, sticks even if another market becomes the first
+ * active one later.
  */
-export const resolveSelectedChainId = (positions: readonly NetworkPosition[], selectedChainId: number | null) => {
-  const preferred = positions.find(p => p.hasPosition)?.chainId ?? positions[0]?.chainId;
-  if (!preferred) return selectedChainId;
-  if (selectedChainId === null) return preferred;
-  return positions.some(p => p.chainId === selectedChainId) ? selectedChainId : preferred;
+export const resolveSelectedMarketKey = (positions: readonly NetworkPosition[], selectedKey: string | null) => {
+  const preferred = positions.find(p => p.hasPosition)?.key ?? positions[0]?.key;
+  if (!preferred) return selectedKey;
+  if (selectedKey === null) return preferred;
+  return positions.some(p => p.key === selectedKey) ? selectedKey : preferred;
 };
+
+/**
+ * The markets the list shows: every V3 network, and a V4 Spoke only when the wallet has a position in it or an alert
+ * saved for it, so twenty empty Spokes don't bury the networks.
+ */
+export const getListedPositions = (
+  positions: readonly NetworkPosition[],
+  hasAlert: (position: NetworkPosition) => boolean,
+) => positions.filter(p => p.version === 3 || p.hasPosition || hasAlert(p));

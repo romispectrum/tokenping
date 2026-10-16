@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
-import { AAVE_MARKETS } from "~~/config/aaveConfig";
+import { AAVE_MARKETS, AAVE_V4_SPOKES } from "~~/config/aaveConfig";
 import { TOKEN_ICONS } from "~~/config/tokenIcons.generated";
 import { WHITE_BACKED_IMAGES } from "~~/scripts/tokenIconSources";
 import { TOKEN_ICON_DIR, TOKEN_ICON_SIZE } from "~~/utils/tokenIcons";
@@ -12,7 +12,7 @@ const ICON_DIR = new URL(`../public/${TOKEN_ICON_DIR}/`, import.meta.url);
 // Dotfiles are not icons: Finder drops a .DS_Store into any folder it opens.
 const ICON_FILES = readdirSync(ICON_DIR).filter(file => !file.startsWith("."));
 const ICONS = new Set(Object.values(TOKEN_ICONS));
-const MARKET_CHAIN_IDS = new Set(AAVE_MARKETS.map(({ chain }) => chain.id));
+const MARKET_CHAIN_IDS = new Set([...AAVE_MARKETS, ...AAVE_V4_SPOKES].map(({ chain }) => chain.id));
 
 const readIcon = (icon: string) => sharp(readFileSync(new URL(`${icon}.webp`, ICON_DIR))).metadata();
 

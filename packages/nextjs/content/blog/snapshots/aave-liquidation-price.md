@@ -81,7 +81,7 @@ reported 4.496% at block 26194050 and 14.17% / 14.11% at blocks 26194100 and 261
 those blocks when the writer tried to re-read them (pruned node, about 128 blocks of history), so the article relies only on
 the writer's own reads above. Raw: `writer-liqprice-raw/usdc_rates_series.txt`, `reread_fix_eth.txt`, `rates_recheck.txt`.
 
-## 5. Aave V4 (API, not monitored by Tokenping)
+## 5. Aave V4 (API; Tokenping monitors V4 Spokes since 2026-10-16)
 
 | Figure                                        | Value                                                                                                          | Endpoint / source                                                                                       | As of              |
 | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------ |
@@ -130,4 +130,4 @@ and keeps the $0.88 arithmetic.
 | On every check while below threshold, one message to each selected channel (Signal, email or both) | P§4.2 step 3, P§4.3                                 |
 | Threshold range 1.1-10, one config per wallet per network                                          | P§4.5, P§4.6                                        |
 | No liquidation-price or asset-price alerts                                                         | P§10.5                                              |
-| Aave V3 only; Signal and email channels in articles                                                | P§10.1, P§10.2, build spec owner decision           |
+| Aave V3 and V4 (V4 since 2026-10-16, `AAVE_V4_SPOKES`); Signal and email channels in articles      | P§10.1, P§10.2, build spec owner decision           |

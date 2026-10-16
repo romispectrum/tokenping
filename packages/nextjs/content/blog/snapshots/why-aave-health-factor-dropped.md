@@ -120,7 +120,7 @@ made whole.
 
 ## Tokenping facts used (product.md, code on branch feat/blog-seo, 2026-10-14)
 
-Checks every 5 minutes (`vercel.json`, `NOTIFICATION_CHECK_INTERVAL_MINUTES`); 7 networks, Aave V3 only, Ethereum Core pool only
+Checks every 5 minutes (`vercel.json`, `NOTIFICATION_CHECK_INTERVAL_MINUTES`); Aave V3 on 7 networks, Ethereum Core pool only; since 2026-10-16 also every Aave V4 Spoke (Ethereum, Avalanche, Arc, Base), so 8 networks in all
 (`config/aaveConfig.ts`); Signal or email (articles name these two only, per the build spec); threshold 1.1-10
 (`constants/notifications.ts`); alerts repeat on every check while below the threshold and there is no recovery message
 (`services/notifications/runNotificationCheck.ts`); they stop when HF recovers or the config is deleted (product.md §4.3), and editing (the article's "lower the threshold") or

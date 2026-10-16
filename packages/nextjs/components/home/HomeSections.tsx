@@ -2,7 +2,13 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { formatAlertPrice } from "~~/components/blog/AlertPrice";
 import { PostSummary } from "~~/components/blog/PostSummary";
-import { HOME_BLOG_SLUGS, PROBLEM_SOURCES, getPricingCtaLabel, getPublishedPost } from "~~/components/home/homeContent";
+import {
+  HOME_BLOG_SLUGS,
+  PROBLEM_SOURCES,
+  getPricingCtaLabel,
+  getPublishedPost,
+  getV4NetworkList,
+} from "~~/components/home/homeContent";
 import {
   DashboardCta,
   HOME_CARD_CLASS_NAME,
@@ -14,7 +20,7 @@ import { Container, SECTION_CLASS_NAME, SectionDivider } from "~~/components/hom
 import { GlowWash } from "~~/components/ui/Glow";
 import { buttonClasses } from "~~/components/ui/buttonClasses";
 import { cx } from "~~/components/ui/classNames";
-import { AAVE_MARKETS } from "~~/config/aaveConfig";
+import { AAVE_MARKETS, AAVE_NETWORK_NAMES } from "~~/config/aaveConfig";
 import {
   DEFAULT_HEALTH_FACTOR_THRESHOLD,
   HEALTH_FACTOR_THRESHOLD_MAX,
@@ -29,7 +35,9 @@ import { formatAlertChannelsIn } from "~~/services/marketing/alertChannels";
 import type { AlertPlan } from "~~/services/marketing/alertPlan";
 import { getPaymentChainName } from "~~/services/marketing/paymentChain";
 
-const NETWORK_COUNT = AAVE_MARKETS.length;
+/** Every network with a market Tokenping reads, V3 or V4. */
+const NETWORK_COUNT = AAVE_NETWORK_NAMES.length;
+const V3_NETWORK_COUNT = AAVE_MARKETS.length;
 const CHECK_MINUTES = NOTIFICATION_CHECK_INTERVAL_MINUTES;
 
 type LocaleProps = {
@@ -71,7 +79,7 @@ export const HowItWorksSection = ({ plan, locale }: PlanProps) => {
   const steps = t.steps({
     plan,
     paymentChain: getPaymentChainName(),
-    networks: NETWORK_COUNT,
+    v3Networks: V3_NETWORK_COUNT,
     minutes: CHECK_MINUTES,
     channels: formatAlertChannelsIn(locale, "disjunction"),
     threshold: {
@@ -162,7 +170,12 @@ export const PricingSection = ({ plan, locale }: PlanProps) => {
 /** A documented limit lowers anxiety more than adjectives do (plan §2.7 item 8, product limits). */
 export const LimitsSection = ({ locale }: LocaleProps) => {
   const t = HOME_MESSAGES[locale];
-  const limits = t.limits({ networks: NETWORK_COUNT, minutes: CHECK_MINUTES, paymentChain: getPaymentChainName() });
+  const limits = t.limits({
+    v3Networks: V3_NETWORK_COUNT,
+    v4NetworkList: getV4NetworkList(locale),
+    minutes: CHECK_MINUTES,
+    paymentChain: getPaymentChainName(),
+  });
 
   return (
     <HomeSection id="limits" title={t.limitsTitle} width="wide">

@@ -3,7 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { formatAlertPrice } from "~~/components/blog/AlertPrice";
 import { GlowWash } from "~~/components/ui/Glow";
 import { buttonClasses } from "~~/components/ui/buttonClasses";
-import { AAVE_MARKETS } from "~~/config/aaveConfig";
+import { AAVE_NETWORK_NAMES } from "~~/config/aaveConfig";
 import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import { DEFAULT_LOCALE, type Locale } from "~~/i18n/locales";
 import { BLOG_MESSAGES } from "~~/i18n/messages/blog";
@@ -38,7 +38,7 @@ export const AlertEndBox = ({ plan, locale = DEFAULT_LOCALE }: AlertEndBoxProps)
       <p className="text-lead mx-auto mt-4 mb-0 max-w-[60ch] text-pretty text-muted-foreground">
         {t.body({
           minutes: NOTIFICATION_CHECK_INTERVAL_MINUTES,
-          networks: AAVE_MARKETS.length,
+          networks: AAVE_NETWORK_NAMES.length,
           channels: formatAlertChannelsIn(locale, "disjunction"),
           price: formatAlertPrice(plan, locale),
           paymentChain: getPaymentChainName(),

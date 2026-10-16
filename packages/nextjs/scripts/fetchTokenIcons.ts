@@ -1,12 +1,13 @@
 /**
- * Downloads a CoinGecko icon for every Aave V3 reserve into public/token-icons and writes the table the dashboard
+ * Downloads a CoinGecko icon for every Aave V3 and V4 reserve into public/token-icons and writes the table the dashboard
  * reads, config/tokenIcons.generated.ts. Run it from the repo root when Aave lists a new asset or a logo changes:
  *
  *   yarn next:token-icons
  *
  * The icons are served from this site, so a visitor's browser never contacts CoinGecko (see the privacy page).
  *
- * Reserves come from each market's Pool.getReservesList(). Icons come from CoinGecko's token list for the chain (one
+ * Reserves come from each V3 Pool's getReservesList() and each V4 Spoke's getReserve(id), merged per chain: the same
+ * token in several markets of a chain has one icon. Icons come from CoinGecko's token list for the chain (one
  * request, no key), then from the per-address API for reserves the list lacks. That API is rate-limited; a free Demo
  * key in COINGECKO_API_KEY (packages/nextjs/.env.local, or the shell) raises the limit. A reserve CoinGecko has no logo
  * for gets no entry, and the dashboard draws its first letter instead.
@@ -14,8 +15,8 @@
 import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import sharp from "sharp";
-import { type Address, createPublicClient } from "viem";
-import { AAVE_MARKETS, AAVE_POOL_ABI } from "~~/config/aaveConfig";
+import { type Address, type Chain, createPublicClient } from "viem";
+import { AAVE_MARKETS, AAVE_POOL_ABI, AAVE_V4_SPOKES, AAVE_V4_SPOKE_ABI, getAaveMarket } from "~~/config/aaveConfig";
 import { TOKEN_ICONS as PREVIOUS_ICONS } from "~~/config/tokenIcons.generated";
 import { requestWithRetry } from "~~/scripts/requestWithRetry";
 import {
@@ -82,6 +83,41 @@ const fetchContractLogo = async (platform: string, address: Address) => {
   return coin?.image?.large;
 };
 
+/** Every chain with an Aave market, V3 networks first in dashboard order, then the V4-only ones. */
+const AAVE_CHAINS = [
+  ...new Map([...AAVE_MARKETS, ...AAVE_V4_SPOKES].map(({ chain, name }) => [chain.id, { chain, name }])).values(),
+];
+
+type ReserveClient = ReturnType<typeof createPublicClient>;
+
+const readSpokeReserves = async (client: ReserveClient, spoke: Address) => {
+  const count = await client.readContract({ address: spoke, abi: AAVE_V4_SPOKE_ABI, functionName: "getReserveCount" });
+  return Promise.all(
+    Array.from({ length: Number(count) }, async (_, id) => {
+      const { underlying } = await client.readContract({
+        address: spoke,
+        abi: AAVE_V4_SPOKE_ABI,
+        functionName: "getReserve",
+        args: [BigInt(id)],
+      });
+      return underlying;
+    }),
+  );
+};
+
+/** The chain's reserve tokens: its V3 Pool's, then each V4 Spoke's, each address once. */
+const readChainReserves = async (client: ReserveClient, chain: Chain) => {
+  const market = getAaveMarket(chain.id);
+  const lists = await Promise.all([
+    market ? client.readContract({ address: market.pool, abi: AAVE_POOL_ABI, functionName: "getReservesList" }) : [],
+    ...AAVE_V4_SPOKES.filter(spoke => spoke.chain.id === chain.id).map(({ spoke }) => readSpokeReserves(client, spoke)),
+  ]);
+  const byAddress = new Map<string, Address>();
+  for (const address of lists.flat())
+    if (!byAddress.has(address.toLowerCase())) byAddress.set(address.toLowerCase(), address);
+  return [...byAddress.values()];
+};
+
 type EncodedIcon = { webp: Uint8Array } | { problem: string };
 
 /**
@@ -116,14 +152,11 @@ const main = async () => {
   /** Why a reserve has no icon, by tokenIconKey. */
   const missing = new Map<string, string>();
 
-  for (const { chain, pool, name } of AAVE_MARKETS) {
+  for (const { chain, name } of AAVE_CHAINS) {
     const platform = COINGECKO_PLATFORMS[chain.id];
     if (!platform) throw new Error(`No CoinGecko platform id for ${name} (chain ${chain.id})`);
-    const client = createPublicClient({ chain, transport: getFallbackTransport(chain) });
-    const [reserves, listed] = await Promise.all([
-      client.readContract({ address: pool, abi: AAVE_POOL_ABI, functionName: "getReservesList" }),
-      fetchTokenListLogos(platform),
-    ]);
+    const client = createPublicClient({ chain, transport: getFallbackTransport(chain), batch: { multicall: true } });
+    const [reserves, listed] = await Promise.all([readChainReserves(client, chain), fetchTokenListLogos(platform)]);
     console.log(`${name}: ${reserves.length} reserves`);
 
     for (const address of reserves) {
@@ -176,7 +209,7 @@ const main = async () => {
   for (const file of await readdir(ICON_DIR)) {
     if (!file.startsWith(".") && !encoded.has(file.replace(/\.webp$/, ""))) await rm(join(ICON_DIR, file));
   }
-  const chainNames = new Map(AAVE_MARKETS.map(({ chain, name }) => [chain.id, name]));
+  const chainNames = new Map(AAVE_CHAINS.map(({ chain, name }) => [chain.id, name]));
   await writeFile(GENERATED_MODULE, renderTokenIconsModule(kept, chainNames));
 
   console.log(`\n${kept.length} reserves mapped to ${encoded.size} icons in public/${TOKEN_ICON_DIR}.`);

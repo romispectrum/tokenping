@@ -69,6 +69,10 @@ export const SUPPLIED_AND_BORROWED_LINK: TokenPosition = {
 };
 
 export const ETHEREUM_POSITION: NetworkPosition = {
+  key: "1:v3",
+  version: 3,
+  marketId: "v3",
+  marketName: "Ethereum",
   chainId: 1,
   chainName: "Ethereum",
   totalCollateralUSD: "12345.67",
@@ -87,6 +91,10 @@ export const ETHEREUM_POSITION: NetworkPosition = {
 };
 
 export const POLYGON_COLLATERAL_ONLY_POSITION: NetworkPosition = {
+  key: "137:v3",
+  version: 3,
+  marketId: "v3",
+  marketName: "Polygon",
   chainId: 137,
   chainName: "Polygon",
   totalCollateralUSD: "1234.56",
@@ -98,6 +106,10 @@ export const POLYGON_COLLATERAL_ONLY_POSITION: NetworkPosition = {
 };
 
 export const ARBITRUM_EMPTY_POSITION: NetworkPosition = {
+  key: "42161:v3",
+  version: 3,
+  marketId: "v3",
+  marketName: "Arbitrum",
   chainId: 42161,
   chainName: "Arbitrum",
   totalCollateralUSD: "0.00",
@@ -110,6 +122,10 @@ export const ARBITRUM_EMPTY_POSITION: NetworkPosition = {
 
 // Token details failed to load, so only the account summary is known.
 export const BASE_SUMMARY_ONLY_POSITION: NetworkPosition = {
+  key: "8453:v3",
+  version: 3,
+  marketId: "v3",
+  marketName: "Base",
   chainId: 8453,
   chainName: "Base",
   totalCollateralUSD: "800.00",
@@ -121,6 +137,10 @@ export const BASE_SUMMARY_ONLY_POSITION: NetworkPosition = {
 };
 
 export const AVALANCHE_DEBT_ONLY_POSITION: NetworkPosition = {
+  key: "43114:v3",
+  version: 3,
+  marketId: "v3",
+  marketName: "Avalanche",
   chainId: 43114,
   chainName: "Avalanche",
   totalCollateralUSD: "0.00",
@@ -129,4 +149,38 @@ export const AVALANCHE_DEBT_ONLY_POSITION: NetworkPosition = {
   netWorthUSD: "-250.50",
   tokens: [VARIABLE_DEBT_DAI],
   hasPosition: true,
+};
+
+// An Aave V4 Spoke: no supply APY, debt as variable only.
+export const ETHEREUM_V4_LIDO_POSITION: NetworkPosition = {
+  key: "1:0xe1900480ac69f0b296841cd01cc37546d92f35cd",
+  version: 4,
+  marketId: "0xe1900480ac69f0b296841cd01cc37546d92f35cd",
+  marketName: "Ethereum (V4 Lido)",
+  chainId: 1,
+  chainName: "Ethereum",
+  totalCollateralUSD: "5000.00",
+  totalDebtUSD: "3000.00",
+  healthFactor: "1.42",
+  netWorthUSD: "2000.00",
+  tokens: [
+    { ...SUPPLIED_USDC, supplyApy: null },
+    { ...VARIABLE_DEBT_DAI, supplyApy: null },
+  ],
+  hasPosition: true,
+};
+
+export const ETHEREUM_V4_MAIN_EMPTY_POSITION: NetworkPosition = {
+  key: "1:0x94e7a5dcbe816e498b89ab752661904e2f56c485",
+  version: 4,
+  marketId: "0x94e7a5dcbe816e498b89ab752661904e2f56c485",
+  marketName: "Ethereum (V4 Main)",
+  chainId: 1,
+  chainName: "Ethereum",
+  totalCollateralUSD: "0.00",
+  totalDebtUSD: "0.00",
+  healthFactor: "∞",
+  netWorthUSD: "0.00",
+  tokens: [],
+  hasPosition: false,
 };

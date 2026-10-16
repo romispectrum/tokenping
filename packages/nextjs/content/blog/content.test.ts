@@ -64,7 +64,7 @@ const BANNED_PATTERNS: readonly BannedPattern[] = [
   { pattern: /\bnever miss(?:es|ed)?\b/i, reason: "guarantee: 'never miss'" },
   { pattern: /\breal[- ]time\b/i, reason: "'real-time' (alerts are checked every 5 minutes)" },
   { pattern: /\binstant(?:ly|aneous|aneously)?\b/i, reason: "'instant' (alerts are checked every 5 minutes)" },
-  { pattern: /\bmulti[- ]?protocol\b/i, reason: "'multi-protocol' (only Aave V3 is supported)" },
+  { pattern: /\bmulti[- ]?protocol\b/i, reason: "'multi-protocol' (only Aave is supported)" },
   { pattern: /\bopen[- ]source[- ]licen[cs]ed\b/i, reason: "'open-source licensed' (the repo has no LICENSE)" },
   { pattern: /\bsecure settings\b/i, reason: "'secure settings' (settings are not access-controlled)" },
   { pattern: /\bonly you can see\b/i, reason: "'only you can see' (settings are not access-controlled)" },
@@ -233,7 +233,7 @@ const CS_BANNED_PATTERNS: readonly BannedPattern[] = [
     pattern: /\bokamžit\S* (?:upozorněn|zpráv|notifikac|varován)/i,
     reason: "'okamžité upozornění' (alerts are checked every 5 minutes)",
   },
-  { pattern: /\bmulti[- ]?protokol/i, reason: "'multiprotokolový' (only Aave V3 is supported)" },
+  { pattern: /\bmulti[- ]?protokol/i, reason: "'multiprotokolový' (only Aave is supported)" },
   {
     pattern: /\bclose factor (?:je|činí) (?:vždy |pevně |fixně |napevno )?(?:50 ?%|0[.,]5\b|polovin)/i,
     reason: "stale: since v3.3 the close factor is 50% or 100% depending on HF and position size",

@@ -14,7 +14,8 @@ const PLAN: AlertPlan = { priceLabel: "3 USDC", days: 30 };
 
 const HOME_BLOG_SLUGS = ["aave-health-factor", "aave-health-factor-alert-setup", "safe-aave-health-factor"];
 
-const NETWORKS = ["Ethereum", "Polygon", "Arbitrum", "Optimism", "Base", "Avalanche", "Gnosis"];
+// The Aave V3 networks, then Arc, which only has Aave V4.
+const NETWORKS = ["Ethereum", "Polygon", "Arbitrum", "Optimism", "Base", "Avalanche", "Gnosis", "Arc"];
 
 const loadHome = () => import("~~/app/(en)/page");
 
@@ -69,7 +70,7 @@ describe("route config and metadata", () => {
 
     expect(metadata.title).toEqual({ absolute: "Aave health factor alerts on Signal and email | Tokenping" });
     expect(metadata.description).toBe(
-      "Signal or email alerts when your Aave V3 health factor drops below your threshold on 7 networks. Checked every 5 minutes. No approvals on your position.",
+      "Signal or email alerts when your Aave V3 or V4 health factor drops below your threshold on 8 networks. Checked every 5 minutes. No approvals on Aave.",
     );
     expect(metadata.alternates?.canonical).toBe("/");
     expect(metadata.openGraph).toMatchObject({ url: "/", type: "website" });
@@ -108,7 +109,7 @@ describe("hero", () => {
     expect(screen.getByText("Telegram", { selector: ".badge" })).toBeTruthy();
   });
 
-  it("shows the 7 network badges and the channel badges", async () => {
+  it("shows the 8 network badges and the channel badges", async () => {
     await renderHome();
 
     expect(screen.getAllByText(/.+/, { selector: ".badge" }).map(badge => badge.textContent)).toEqual([
@@ -124,7 +125,9 @@ describe("hero", () => {
 
     expect(ctas.map(link => link.getAttribute("href"))).toEqual(["/aave", "/aave"]);
     expect(
-      screen.getAllByText("Connect a wallet to see your Aave V3 health factor on 7 networks. Viewing is read-only."),
+      screen.getAllByText(
+        "Connect a wallet to see your Aave V3 and V4 health factors on 8 networks. Viewing is read-only.",
+      ),
     ).toHaveLength(2);
   });
 });
@@ -150,7 +153,7 @@ describe("page outline", () => {
       "Questions to ask before you connect a wallet",
       "Limits, stated plainly",
       "From the blog",
-      "Check your Aave V3 health factor, free",
+      "Check your Aave V3 and V4 health factor, free",
     ]);
   });
 });
@@ -286,15 +289,19 @@ describe("objections", () => {
     expect(within(objections).getByRole("link", { name: "privacy page" }).getAttribute("href")).toBe("/privacy");
   });
 
-  it("names V3 coverage, the Ethereum Core market and what is not supported", async () => {
+  it("names V3 and V4 coverage, the Ethereum Core market and what is not supported", async () => {
     await renderHome();
     const answer = screen.getByRole("heading", { name: "Is my position supported?" }).nextElementSibling!.textContent;
 
     expect(answer).toContain(
       "Aave V3 on Ethereum (Core market), Polygon, Arbitrum, Optimism, Base, Avalanche and Gnosis.",
     );
-    expect(answer).toContain("Aave V4");
+    expect(answer).toContain(
+      "Aave V4 in every Spoke on Ethereum, Avalanche, Arc and Base: 20 Spokes, taken from Aave's V4 API on 16 October 2026.",
+    );
+    expect(answer).toContain("one alert per V3 network and one per V4 Spoke");
     expect(answer).toContain("Prime/Lido, EtherFi, Horizon");
+    expect(answer).not.toMatch(/Not supported: Aave V4/);
   });
 
   it("mentions Telegram data and /stop only once the bot is configured", async () => {
@@ -390,7 +397,11 @@ describe("copy rules", () => {
       .getAllByRole("listitem")
       .map(item => item.textContent);
 
-    expect(limits).toHaveLength(7);
+    expect(limits).toHaveLength(8);
+    expect(limits[0]).toBe(
+      "Aave V3 on 7 networks, and on Ethereum only the Core market. Aave V4 in every Spoke on Ethereum, Avalanche, Arc and Base. No other Aave markets or networks, and no other protocols.",
+    );
+    expect(limits.join(" ")).toMatch(/shows no supply APY for V4 positions/);
     expect(limits.join(" ")).toMatch(/every 5 minutes, not in real time/);
     expect(limits.join(" ")).toMatch(/no unsubscribe link/);
   });
@@ -420,7 +431,7 @@ describe("visual identity", () => {
 
   it("closes with an always-dark band around the second call to action", async () => {
     await renderHome();
-    const closing = section("Check your Aave V3 health factor, free");
+    const closing = section("Check your Aave V3 and V4 health factor, free");
     const band = closing.querySelector(".dark")!;
 
     expect(band.className).toContain("bg-background");
