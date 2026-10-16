@@ -1,14 +1,8 @@
 import Link from "next/link";
 import { formatAlertPrice } from "~~/components/blog/AlertPrice";
-import {
-  getNetworkList,
-  getPaywallSourcifyUrl,
-  getPublishedPost,
-  getV4NetworkList,
-} from "~~/components/home/homeContent";
+import { getPaywallSourcifyUrl, getPublishedPost } from "~~/components/home/homeContent";
 import { HOME_CARD_CLASS_NAME, HomeSection, externalLinkText } from "~~/components/home/homeUi";
 import { cx } from "~~/components/ui/classNames";
-import { AAVE_MARKETS, AAVE_V4_SPOKES } from "~~/config/aaveConfig";
 import { SOCIAL_LINKS, SOURCE_CODE_URL } from "~~/constants/links";
 import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import type { Locale } from "~~/i18n/locales";
@@ -24,10 +18,10 @@ type HomeObjectionsProps = {
 };
 
 /**
- * The blockers a borrower checks before connecting a wallet, as visible <h3> questions with prose answers: no
+ * The blockers a borrower checks before connecting a wallet, as visible <h3> questions with short prose answers: no
  * accordion that hides answers from crawlers and no FAQPage schema (marketing plan §2.4, §4.5). Every answer stays
- * within what the code and the contract do today. Static cards on the lavender wash, no pink; two columns from lg so
- * the longest section of the page is also readable at about 60 characters a line.
+ * within what the code and the contract do today and points to the page that has the detail. Static cards on the
+ * lavender wash, no pink; two columns from lg.
  */
 export const HomeObjections = ({ plan, locale }: HomeObjectionsProps) => {
   const t = HOME_MESSAGES[locale];
@@ -39,10 +33,6 @@ export const HomeObjections = ({ plan, locale }: HomeObjectionsProps) => {
     paymentChain: getPaymentChainName(),
     hasTelegram: getAlertChannelNames().includes("Telegram"),
     minutes: NOTIFICATION_CHECK_INTERVAL_MINUTES,
-    networkList: getNetworkList(locale),
-    v3Markets: AAVE_MARKETS.length,
-    v4NetworkList: getV4NetworkList(locale),
-    spokes: AAVE_V4_SPOKES.length,
     links: {
       sourcify: sourcifyUrl ? externalLinkText(sourcifyUrl) : undefined,
       sourceCode: externalLinkText(SOURCE_CODE_URL),

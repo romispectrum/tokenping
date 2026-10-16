@@ -62,7 +62,8 @@ const internalHrefs = (container: HTMLElement) =>
 
 const SECTION_HEADINGS = [
   "Health factor klesá, i když spíte",
-  "Jak to funguje, ve 4 krocích",
+  "Jak to funguje",
+  "Všechny trhy Aave, každý s vlastním upozorněním",
   "Ceník",
   "Na co se zeptat, než připojíte peněženku",
   "Omezení bez příkras",
@@ -72,7 +73,9 @@ const SECTION_HEADINGS = [
 
 const ENGLISH_HEADINGS = [
   "Health factors fall while you sleep",
-  "How it works, in 4 steps",
+  "How it works",
+  "Where to put your line",
+  "Every Aave market, one alert each",
   "Pricing",
   "Questions to ask before you connect a wallet",
   "Limits, stated plainly",
@@ -80,6 +83,9 @@ const ENGLISH_HEADINGS = [
   "Check your Aave V3 and V4 health factor, free",
   "What an alert says",
 ];
+
+// The Aave V3 networks in dashboard order, then Arc, which only has Aave V4; the names are the same in Czech.
+const NETWORK_COUNT = 22;
 
 beforeEach(() => {
   vi.resetModules();
@@ -140,14 +146,69 @@ describe("Czech copy", () => {
     for (const english of ENGLISH_HEADINGS) expect(headings).not.toContain(english);
   });
 
-  it("shows the 22 network badges and the Czech channel badges", async () => {
+  it("names the logo strip and the coverage line in Czech, and badges the Czech channel names", async () => {
     const { container } = await renderHome();
-    const badges = screen.getAllByText(/.+/, { selector: ".badge" }).map(badge => badge.textContent);
+    const strip = screen.getByRole("list", { name: "Sítě" });
+    const items = within(strip).getAllByRole("listitem");
 
-    expect(badges).toHaveLength(24);
-    expect(badges.slice(0, 2)).toEqual(["Ethereum", "Polygon"]);
-    expect(badges.slice(-3)).toEqual(["Arc", "Signal", "E-mail"]);
-    expect(container.querySelectorAll(".badge img")).toHaveLength(22);
+    expect(items).toHaveLength(NETWORK_COUNT);
+    expect(items.slice(0, 2).map(item => item.textContent)).toEqual(["Ethereum", "Polygon"]);
+    expect(items.at(-1)?.textContent).toBe("Arc");
+    items.forEach(item => expect(item.querySelector(".sr-only")?.textContent).toBe(item.textContent));
+    expect(strip.querySelectorAll("img")).toHaveLength(NETWORK_COUNT);
+    expect(screen.getByText("22 sítí, 44 trhů")).toBeTruthy();
+    expect(screen.getAllByText(/.+/, { selector: ".badge" }).map(badge => badge.textContent)).toEqual([
+      "Signal",
+      "E-mail",
+    ]);
+    expect(container.querySelector(".badge img")).toBeNull();
+  });
+
+  it("draws the chart's figures with a decimal comma", async () => {
+    await renderHome();
+    const chart = within(section("Health factor klesá, i když spíte")).getByRole("figure");
+
+    expect(within(chart).getByText("1,5").nextElementSibling?.textContent).toBe("váš práh");
+    expect(within(chart).getByText("Upozornění odesláno (1,49)").textContent).toBe("03:05 Upozornění odesláno (1,49)");
+    expect(within(chart).getByText("Podíváte se do telefonu").textContent).toBe("08:00 Podíváte se do telefonu");
+    expect(chart.querySelector("figcaption")?.textContent).toBe(
+      "Ukázková noc se smyšlenými čísly: upozornění odchází ve 3:05, při první kontrole, která najde health factor pod 1,5, pět hodin předtím, než se podíváte.",
+    );
+  });
+
+  it("lists the four steps in Czech, then the scale with Czech zones and a decimal comma", async () => {
+    await renderHome();
+    const howItWorks = section("Jak to funguje");
+
+    expect(within(howItWorks).getAllByRole("listitem")).toHaveLength(4);
+    expect(
+      within(howItWorks)
+        .getAllByRole("heading", { level: 3 })
+        .map(heading => heading.textContent),
+    ).toEqual([
+      "1. Připojte peněženku, se kterou si půjčujete",
+      "2. Odemkněte upozornění za 3 USDC",
+      "3. Pro každý trh zvolte hranici",
+      "4. Dostávejte zprávy, dokud jste pod ní",
+      "Kam hranici umístit",
+    ]);
+    expect(within(howItWorks).getByText("Výchozí 1,5")).toBeTruthy();
+    expect([...howItWorks.querySelectorAll("dt")].map(term => term.textContent)).toEqual([
+      "Kritický",
+      "Rizikový",
+      "Bezpečný",
+    ]);
+    expect([...howItWorks.querySelectorAll("dd")].map(detail => detail.textContent)).toEqual([
+      "Pod 1,1",
+      "1,1 až 1,5",
+      "1,5 a více",
+    ]);
+    expect(
+      within(howItWorks).getByText("Libovolná hodnota od 1,1 do 10. Štítky v přehledu používají stejná pásma."),
+    ).toBeTruthy();
+    expect(within(howItWorks).getByRole("link", { name: "Jak zvolit práh" }).getAttribute("href")).toBe(
+      `/cz/blog/${csSlug("safe-aave-health-factor")}`,
+    );
   });
 
   it("quotes the Czech alert template with a Czech timestamp and decimal commas", async () => {
@@ -170,10 +231,13 @@ describe("Czech copy", () => {
   it("states the live price in Czech in the steps, the pricing block and its call to action", async () => {
     await renderHome();
 
+    expect(screen.getByText("Odemkněte upozornění za 3 USDC", { selector: "h3" }).textContent).toBe(
+      "2. Odemkněte upozornění za 3 USDC",
+    );
     expect(
-      screen.getByRole("heading", {
-        name: "2. Odemkněte upozornění: 3 USDC na 30 dní, platba na síti Arbitrum One (schválení, pak platba)",
-      }),
+      screen.getByText(
+        "Na 30 dní, platba v USDC na síti Arbitrum One: schválení přesně této částky, pak platba. Bez automatického obnovení.",
+      ),
     ).toBeTruthy();
     expect(within(section("Ceník")).getByText("3 USDC na 30 dní")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Nastavit upozornění: 3 USDC na 30 dní" }).getAttribute("href")).toBe(
@@ -193,38 +257,55 @@ describe("Czech copy", () => {
     expect(pageText(container)).not.toMatch(/\d+([.,]\d+)? USDC/);
   });
 
-  it("lists the supported networks and V4 Spokes in Czech", async () => {
+  it("shows every network as a tile with Czech market counts, under a dated lead and the wind-down note", async () => {
     await renderHome();
-    const answer = screen.getByRole("heading", { name: "Je moje pozice podporovaná?" }).nextElementSibling!.textContent;
+    const coverage = section("Všechny trhy Aave, každý s vlastním upozorněním");
+    const tiles = within(coverage).getAllByRole("listitem");
 
-    expect(answer).toMatch(
-      /^Aave V3 na sítích Ethereum \(trhy Core, Prime, EtherFi a Horizon\), Polygon, Arbitrum, .+ a Monad: celkem 24 trhů, podle Aave Address Book ke 16\. říjnu 2026\./,
-    );
-    expect(answer).toContain(
-      "Aave V4 v každém Spoke na sítích Ethereum, Avalanche, Arc a Base: celkem 20, podle API Aave V4 ke 16. říjnu 2026.",
-    );
-    expect(answer).toContain(
-      "Scroll, ZKsync, Metis, Soneium a Sonic governance Aave postupně ukončuje; Tokenping je dál hlídá",
-    );
-    expect(answer).toContain("Nepodporujeme: trh Aave V3 na síti Harmony");
-    expect(answer).toContain("ostatní skládá pod „Další trhy“");
-    expect(answer).not.toMatch(/Prime\/Lido|jen trh Core|Nepodporujeme: Aave V4/);
+    expect(
+      within(coverage).getByText(
+        "Aave V3: 24 trhů na 21 sítích. Aave V4: 20 trhů (Spoke) na 4 sítích. Podle Aave Address Book a API Aave V4 ke 16. říjnu 2026.",
+      ),
+    ).toBeTruthy();
+    expect(tiles).toHaveLength(NETWORK_COUNT);
+    expect(within(tiles[0]).getByText("Ethereum")).toBeTruthy();
+    expect(within(tiles[0]).getByText("4 trhy V3 · 13 trhů V4 (Spoke)")).toBeTruthy();
+    expect(within(tiles[1]).getByText("1 trh V3")).toBeTruthy();
+    expect(within(tiles[4]).getByText("1 trh V3 · 1 trh V4 (Spoke)")).toBeTruthy();
+    expect(within(tiles[21]).getByText("Arc")).toBeTruthy();
+    expect(within(tiles[21]).getByText("3 trhy V4 (Spoke)")).toBeTruthy();
+    expect(
+      within(coverage).getByText(
+        "Trhy na sítích Scroll, ZKsync, Metis, Soneium a Sonic governance Aave postupně ukončuje; otevřené pozice tam dál hlídáme. Nepokrýváme trh Aave V3 na síti Harmony, zamrzlý od roku 2022, ani jiné protokoly.",
+      ),
+    ).toBeTruthy();
   });
 
-  it("keeps the eight limits and the eight questions", async () => {
+  it("keeps the six limits and the seven questions, coverage having moved to its own section", async () => {
     await renderHome();
     const limits = within(section("Omezení bez příkras"))
       .getAllByRole("listitem")
       .map(item => item.textContent);
 
-    expect(limits).toHaveLength(8);
+    expect(limits).toHaveLength(6);
     expect(limits[0]).toBe(
-      "Každý trh Aave V3 na 21 sítích (24 trhů) a každý Spoke Aave V4 na sítích Ethereum, Avalanche, Arc a Base. Bez trhu Aave V3 na síti Harmony a bez jiných protokolů.",
+      "Kontroly každých 5 minut, ne v reálném čase: při rychlém propadu může health factor klesnout pod 1,0 mezi dvěma kontrolami.",
     );
-    expect(screen.getByText("Aave V3 na 21 sítích (24 trhů). Aave V4: 20 trhů (Spoke) na 4 sítích.")).toBeTruthy();
+    expect(limits[3]).toBe("Jen USDC na síti Arbitrum One: bez platby kartou a bez vracení peněz.");
     expect(
-      within(section("Na co se zeptat, než připojíte peněženku")).getAllByRole("heading", { level: 3 }),
-    ).toHaveLength(8);
+      within(section("Na co se zeptat, než připojíte peněženku"))
+        .getAllByRole("heading", { level: 3 })
+        .map(heading => heading.textContent),
+    ).toEqual([
+      "Může Tokenping sáhnout na mé prostředky?",
+      "Co ukládáte?",
+      "Kolik to stojí?",
+      "Co když upozornění nedorazí?",
+      "Jak upozornění zastavím?",
+      "Můžu sledovat peněženku, kterou nepřipojím?",
+      "Jiné nástroje jsou zdarma. Proč platit?",
+    ]);
+    expect(screen.queryByRole("heading", { name: "Je moje pozice podporovaná?" })).toBeNull();
   });
 });
 
@@ -256,12 +337,15 @@ describe("links", () => {
         .getByRole("link", { name: "Všichni průvodci health factorem a likvidací na Aave" })
         .getAttribute("href"),
     ).toBe("/cz/blog");
-    expect(screen.getByRole("link", { name: "Jak funguje likvidace na Aave" }).getAttribute("href")).toBe(
+    expect(screen.getByRole("link", { name: "jak funguje likvidace na Aave" }).getAttribute("href")).toBe(
       `/cz/blog/${csSlug("how-aave-liquidation-works")}`,
     );
-    expect(
-      screen.getByRole("link", { name: "srovnání nástrojů pro upozornění na likvidaci na Aave" }).getAttribute("href"),
-    ).toBe(`/cz/blog/${csSlug("aave-liquidation-alert-tools")}`);
+    expect(screen.getByRole("link", { name: "Jak zvolit práh" }).getAttribute("href")).toBe(
+      `/cz/blog/${csSlug("safe-aave-health-factor")}`,
+    );
+    expect(screen.getByRole("link", { name: "srovnání" }).getAttribute("href")).toBe(
+      `/cz/blog/${csSlug("aave-liquidation-alert-tools")}`,
+    );
   });
 
   // An untranslated guide is a placeholder: the Czech page links nothing there, never the English post instead.
@@ -273,9 +357,10 @@ describe("links", () => {
 
     expect(screen.queryByRole("region", { name: "Z blogu" })).toBeNull();
     expect(container.querySelector('a[href*="/blog/"]')).toBeNull();
+    expect(screen.getByRole("heading", { name: "Kam hranici umístit" })).toBeTruthy();
     expect(
       screen.getByRole("heading", { name: "Jiné nástroje jsou zdarma. Proč platit?" }).nextElementSibling!.textContent,
-    ).toContain("existují bezplatné nástroje. Tokenping je pro ty");
+    ).toContain("bezplatné nástroje existují. Tokenping je pro upozornění přes Signal nebo e-mail");
   });
 });
 

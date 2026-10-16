@@ -41,16 +41,18 @@ type HomeSectionProps = {
   /** The section's id (an in-page link target); the heading gets `${id}-title`. */
   id: string;
   title: string;
+  /** One sentence under the heading, in the header formula's lead slot. */
+  lead?: ReactNode;
   surface?: SectionSurface;
   width?: keyof typeof CONTENT_WIDTHS;
   children: ReactNode;
 };
 
 /** A section with the one header formula: one <h2>, so the page outline is h1, h2, h3 with no skipped level. */
-export const HomeSection = ({ id, title, surface = "plain", width = "prose", children }: HomeSectionProps) => (
+export const HomeSection = ({ id, title, lead, surface = "plain", width = "prose", children }: HomeSectionProps) => (
   <section id={id} aria-labelledby={`${id}-title`} className={cx(SECTION_CLASS_NAME, SECTION_SURFACES[surface])}>
     <Container>
-      <SectionHeader id={`${id}-title`} title={title} />
+      <SectionHeader id={`${id}-title`} title={title} lead={lead} />
       <div className={CONTENT_WIDTHS[width] || undefined}>{children}</div>
     </Container>
   </section>
