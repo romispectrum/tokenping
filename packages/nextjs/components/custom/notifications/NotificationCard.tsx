@@ -11,7 +11,7 @@ type NotificationCardProps = {
 
 /** The flat product card every state of the notification settings sits in. Its h3 is part of the dashboard outline. */
 export const NotificationCard = ({ isActive, headerRight, children }: NotificationCardProps) => (
-  <Card className="mb-4">
+  <Card>
     <CardHeader>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -24,7 +24,8 @@ export const NotificationCard = ({ isActive, headerRight, children }: Notificati
             </Badge>
           ) : null}
         </div>
-        {headerRight}
+        {/* ml-auto keeps the control at the right edge when the row wraps on a narrow card. */}
+        {headerRight ? <div className="ml-auto">{headerRight}</div> : null}
       </div>
     </CardHeader>
     <CardContent>{children}</CardContent>

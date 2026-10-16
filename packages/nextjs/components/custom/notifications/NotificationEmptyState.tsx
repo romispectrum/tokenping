@@ -11,7 +11,7 @@ type NotificationEmptyStateProps = {
 
 /** First use on this network. Its button is the view's one pink primary action. */
 export const NotificationEmptyState = ({ chainName, onCreate, createRef }: NotificationEmptyStateProps) => (
-  <Card className="mb-4">
+  <Card>
     <CardContent>
       <EmptyState
         size="inline"

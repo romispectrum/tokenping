@@ -21,7 +21,7 @@ describe("PositionsSkeleton", () => {
     const html = renderMarkup(<PositionDetailsSkeleton />);
 
     expect(html).toContain('data-slot="card"');
-    expect(count(html, "rounded-xl border border-border p-4")).toBe(3);
+    expect(count(html, "rounded-xl border border-border px-3 py-2 sm:p-4")).toBe(3);
     expect(count(html, "h-12")).toBe(3);
     expect(html).toMatchSnapshot();
   });

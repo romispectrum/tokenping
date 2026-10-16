@@ -22,7 +22,7 @@ vi.mock("~~/components/custom/AavePositions", () => ({ AavePositions: () => <div
 
 const CONNECTED_ADDRESS = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
 const POSITIONS_STUB = '<div data-stub="aave-positions">';
-const SKELETON = '<div aria-busy="true" class="flex flex-col gap-6">';
+const SKELETON = '<div aria-busy="true" class="flex flex-col gap-4 sm:gap-6">';
 const GATE_TITLE = ">Connect a wallet to continue</h2>";
 
 describe("AaveDashboard", () => {

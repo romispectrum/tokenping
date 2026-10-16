@@ -19,11 +19,11 @@ import { EXTERNAL_LINK_REL } from "~~/constants/links";
  * A paragraph of running text. Inline links inside it are plain <a> or <Link> without a class: the base styles give
  * them the link colour and an underline.
  */
-export const HOME_TEXT_CLASS_NAME = "m-0 leading-[1.75]";
+export const HOME_TEXT_CLASS_NAME = "m-0 leading-relaxed md:leading-[1.75]";
 
-/** A marketing card: flat card surface plus the card shadow (none in dark), 24px padding (28px from md). */
+/** A marketing card: flat card surface plus the card shadow (none in dark), 20px padding (28px from md). */
 export const HOME_CARD_CLASS_NAME =
-  "rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-card md:p-7";
+  "rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-card md:p-7";
 
 const CONTENT_WIDTHS = {
   /** Running text at a reading measure. */
@@ -71,15 +71,22 @@ export const DASHBOARD_CTA_MICROCOPY = `Connect a wallet to see your Aave V3 hea
 type DashboardCtaProps = {
   /** A quieter second action next to it (inverse, never pink) that jumps to a section of the same page. */
   secondary?: { label: string; sectionId: string };
+  /** Centred by default; "start" lines it up with left-aligned text from lg (the split hero). */
+  align?: "center" | "start";
 };
 
 /**
  * The page's one primary action, used in the hero and again at the end: the same words, the same target, the
  * view's one pink element. Stacked full width (up to 384px) on phones, side by side from sm.
  */
-export const DashboardCta = ({ secondary }: DashboardCtaProps) => (
-  <div className="mt-8 flex flex-col items-center gap-3">
-    <div className="flex w-full max-w-sm flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center">
+export const DashboardCta = ({ secondary, align = "center" }: DashboardCtaProps) => (
+  <div className={cx("mt-8 flex flex-col items-center gap-3", align === "start" && "lg:items-start")}>
+    <div
+      className={cx(
+        "flex w-full max-w-sm flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center",
+        align === "start" && "lg:justify-start",
+      )}
+    >
       <Link href="/aave" className={buttonClasses({ size: "lg", className: "w-full sm:w-auto sm:min-w-40" })}>
         Open the free dashboard
         <ArrowRight aria-hidden="true" />
@@ -96,6 +103,13 @@ export const DashboardCta = ({ secondary }: DashboardCtaProps) => (
       ) : null}
     </div>
     {/* foreground, not muted: in the hero a glow can tint the card behind this line */}
-    <p className="m-0 max-w-md text-center text-sm text-pretty text-foreground">{DASHBOARD_CTA_MICROCOPY}</p>
+    <p
+      className={cx(
+        "m-0 max-w-md text-center text-sm text-pretty text-foreground",
+        align === "start" && "lg:text-left",
+      )}
+    >
+      {DASHBOARD_CTA_MICROCOPY}
+    </p>
   </div>
 );

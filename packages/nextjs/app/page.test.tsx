@@ -144,7 +144,6 @@ describe("page outline", () => {
     await renderHome();
 
     expect(screen.getAllByRole("heading", { level: 2 }).map(heading => heading.textContent)).toEqual([
-      "What an alert says",
       "Health factors fall while you sleep",
       "How it works, in 4 steps",
       "Pricing",
@@ -159,7 +158,8 @@ describe("page outline", () => {
 describe("product evidence and the problem", () => {
   it("quotes the real alert template, built by the code that sends alerts", async () => {
     await renderHome();
-    const alert = section("What an alert says");
+    // The hero's right column: a figure named by its label, not a section of its own.
+    const alert = screen.getByRole("figure", { name: "What an alert says" });
     const example = {
       chainName: "Arbitrum",
       healthFactor: "1.42",
@@ -433,7 +433,7 @@ describe("visual identity", () => {
     const neighbour = (divider: Element, side: "previousElementSibling" | "nextElementSibling") =>
       divider[side] as HTMLElement;
 
-    expect(dividers).toHaveLength(4);
+    expect(dividers).toHaveLength(3);
     for (const divider of dividers)
       for (const side of ["previousElementSibling", "nextElementSibling"] as const) {
         const next = neighbour(divider, side);

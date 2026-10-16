@@ -2,7 +2,6 @@ import { HomeHero } from "~~/components/home/HomeHero";
 import { HomeObjections } from "~~/components/home/HomeObjections";
 import {
   ClosingCtaSection,
-  ExampleAlertSection,
   FromTheBlogSection,
   HowItWorksSection,
   LimitsSection,
@@ -27,12 +26,12 @@ export const metadata = pageMetadata({
 export const revalidate = 3600;
 
 // Proof slots (user counts, testimonials, alert stories, partner logos) stay out until real, dated proof exists
-// (marketing plan §2.6). The example alert is product evidence, not proof of use.
+// (marketing plan §2.6). The example alert is product evidence, not proof of use: it is the hero's right column.
 //
 // Signature budget: the hero wash and the questions wash (never adjacent), two glows (the hero card and the closing
-// band, never in one view), one grain card (the hero) and the closing band's grain, a divider at each boundary
-// between two plain sections (none next to a wash or the dark band). Pink: the hero's primary action and the
-// closing band's, the same action, screens apart.
+// band, never in one view), one grain card (the hero) and the closing band's grain, a divider at each of the three
+// boundaries between two plain sections (none next to a wash or the dark band). Pink: the hero's primary action and
+// the closing band's, the same action, screens apart.
 const Home = async () => {
   // One read for the whole page: the steps, the pricing block, the objections and the JSON-LD show the same plan.
   const plan = await getAlertPlan();
@@ -40,8 +39,6 @@ const Home = async () => {
   return (
     <>
       <HomeHero />
-      <ExampleAlertSection />
-      <SectionDivider />
       <ProblemSection />
       <SectionDivider />
       <HowItWorksSection plan={plan} />
