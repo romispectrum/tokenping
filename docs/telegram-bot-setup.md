@@ -61,17 +61,33 @@ Redeploy after adding the vars.
 
 ## 4. Apply the database migration
 
+From `packages/`, link the hosted project once (`supabase link --project-ref <ref>`), then push every migration that
+is not applied yet:
+
 ```bash
-yarn workspace @se-2/supabase migrate   # or however migrations are applied
+supabase db push
 ```
 
-This creates `user_telegram_links` and `telegram_link_tokens`.
+Or paste `packages/supabase/migrations/20260527000000_add_telegram_integration.sql` into the Supabase SQL editor.
+It creates `user_telegram_links` and `telegram_link_tokens`. The server also needs `SUPABASE_SERVICE_ROLE_KEY`:
+`telegram_link_tokens` is service-role only, so without the key linking fails.
 
 ---
 
 ## 5. Register the webhook with Telegram
 
-Once your app is deployed (or running on a public URL via ngrok for local dev):
+Once your app is deployed, run from the repo root:
+
+```bash
+yarn next:telegram-webhook
+```
+
+It reads `TELEGRAM_BOT_TOKEN` and `TELEGRAM_WEBHOOK_SECRET` from the shell environment, `packages/nextjs/.env.local` or
+`packages/nextjs/.env`, registers `https://tokenping.xyz/api/telegram/webhook` (or `NEXT_PUBLIC_SITE_URL` plus the
+path) and prints `getWebhookInfo`. It never prints the token or the secret. `yarn next:telegram-webhook info` only
+shows the current webhook; `yarn next:telegram-webhook set <url>` registers another URL, such as an ngrok tunnel.
+
+The same by hand:
 
 ```bash
 TOKEN='<paste TELEGRAM_BOT_TOKEN>'
