@@ -2,10 +2,10 @@
  * POST /api/telegram/webhook
  *
  * Telegram delivers bot updates here. Currently we handle:
- *   /start <token>: consume the deep-link token and attach chat_id to a wallet
- *   /start:         instructions if user opened the bot without a token
- *   /stop:          unlink the bot from this chat (and the wallet behind it)
- *   /help:          short help message
+ *   /start: remember this chat under the sender's username, so alerts that name the username reach it. Anything
+ *           after the command (an old deep-link token) is ignored. A sender without a username is told to set one.
+ *   /stop:  forget this chat, which stops every alert to it
+ *   /help:  short help message
  *
  * Replies are in Czech when the sender's Telegram app is set to Czech or Slovak (message.from.language_code), in
  * English otherwise.
@@ -15,7 +15,8 @@
  *     using a timing-safe comparison.
  *   - Restrict to private chats only (`msg.chat.type === "private"`) in v1.
  *     Group chats expose alerts to every member and complicate the unlink flow.
- *   - Token consumption is a single atomic UPDATE ... RETURNING (see telegramLinks.ts).
+ *   - The chat is stored under the username Telegram reports for the sender, never one taken from the message
+ *     text, so only the account that owns a username can link it (see telegramChats.ts).
  *
  * Reliability:
  *   - Telegram retries any update that does not get a 2xx, so malformed bodies, ignored updates and errors thrown
@@ -28,12 +29,8 @@ import type { Locale } from "~~/i18n/locales";
 import { TELEGRAM_REPLIES } from "~~/i18n/messages/telegram";
 import { safeEqual } from "~~/services/api/server/auth";
 import { replyToTelegramChat } from "~~/services/telegram/sendTelegram";
-import {
-  consumeLinkToken,
-  deleteLinkByChatId,
-  isValidStartParam,
-  upsertUserTelegramLink,
-} from "~~/services/telegram/telegramLinks";
+import { deleteTelegramChat, linkTelegramChat } from "~~/services/telegram/telegramChats";
+import { TELEGRAM_USERNAME_REGEX, normalizeTelegramUsername } from "~~/utils/notifications/validation";
 
 type TelegramMessage = {
   message_id: number;
@@ -61,22 +58,24 @@ function verifySecret(provided: string | null): boolean {
 
 type Replies = (typeof TELEGRAM_REPLIES)[Locale];
 
-async function handleStart(chatId: string, username: string | null, token: string | undefined, t: Replies) {
-  if (!token) return reply(chatId, t.startWithoutToken);
-  if (!isValidStartParam(token)) return reply(chatId, t.invalidLink);
+/** Links this chat to the sender's username; a sender without one (or with one Telegram should never issue) is told why. */
+async function handleStart(chatId: string, rawUsername: string | null, t: Replies) {
+  const username = rawUsername ? normalizeTelegramUsername(rawUsername) : "";
+  if (!TELEGRAM_USERNAME_REGEX.test(username)) return reply(chatId, t.noUsername);
 
-  const consumed = await consumeLinkToken(token);
-  if (!consumed) return reply(chatId, t.expiredLink);
-
-  const linked = await upsertUserTelegramLink({ userId: consumed.userId, chatId, username });
-  reply(chatId, linked ? t.connected : t.linkSaveFailed);
+  const error = await linkTelegramChat({ chatId, username });
+  if (error) {
+    console.error("telegram /start: failed to link the chat", error);
+    return reply(chatId, t.linkSaveFailed);
+  }
+  reply(chatId, t.linked(username));
 }
 
-/** Unlinks whichever wallet is bound to this chat. */
+/** Forgets this chat: no alert reaches it until it sends /start again. */
 async function handleStop(chatId: string, t: Replies) {
-  const error = await deleteLinkByChatId(chatId);
+  const error = await deleteTelegramChat(chatId);
   if (error) {
-    console.error("telegram /stop: failed to delete the link", error);
+    console.error("telegram /stop: failed to delete the chat", error);
     return reply(chatId, t.unsubscribeFailed);
   }
   reply(chatId, t.unsubscribed);
@@ -106,11 +105,12 @@ export async function POST(request: Request) {
   if (msg.from?.is_bot) return ok();
 
   const chatId = String(msg.chat.id);
+  // In a private chat the sender is the chat, so its username is the sender's.
   const username = msg.from?.username ?? msg.chat.username ?? null;
   const command = parseCommand(msg.text);
 
   try {
-    if (command.name === "start") await handleStart(chatId, username, command.token, t);
+    if (command.name === "start") await handleStart(chatId, username, t);
     else if (command.name === "stop") await handleStop(chatId, t);
     else if (command.name === "help") reply(chatId, t.help);
     else reply(chatId, t.unknownCommand);

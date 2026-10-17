@@ -19,17 +19,13 @@ export type NotificationConfig = {
   email?: string;
   /** Signal username for notifications (e.g. alice.42, stored without @ prefix) */
   signalRecipient?: string;
+  /** Telegram username the alert goes to (e.g. alice_eth, lowercased, stored without @). */
+  telegramUsername?: string;
   /** The language the alert is sent in: the site language it was saved from. English when absent (older rows). */
   locale?: Locale;
 };
 
-/**
- * GET /api/telegram/link response. Telegram is linked per wallet (one chat across all chains), so it is not part of
- * the per-chain NotificationConfig.
- */
-export type TelegramLinkStatus = {
+/** GET /api/telegram/status response: whether the username has pressed Start in the bot. */
+export type TelegramUsernameStatus = {
   linked: boolean;
-  chatId?: string;
-  username?: string | null;
-  linkedAt?: string;
 };

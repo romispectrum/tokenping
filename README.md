@@ -27,7 +27,8 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs o
   - Signal, sent to your Signal username through a self-hosted
     [signal-cli-rest-api](https://github.com/bbernhard/signal-cli-rest-api) relay
     ([deploy guide](docs/signal-server-fly.md)).
-  - Telegram, through the Bot API. Linking a chat needs a configured bot (`TELEGRAM_*` and
+  - Telegram, to your Telegram username through the Bot API. The account presses Start in the bot once, since a
+    bot cannot message someone who never wrote to it. Needs a configured bot (`TELEGRAM_*` and
     `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME`; see [docs/telegram-bot-setup.md](docs/telegram-bot-setup.md)). Site copy
     names Telegram only while `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` is set.
 - **Checks every 5 minutes.** A Vercel cron calls `/api/cron/notifications` (`vercel.json`), which reads each saved
@@ -68,7 +69,7 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs o
 | --------------------------- | ------------------------------------------------------------------------------------------------- |
 | `packages/nextjs`           | The Next.js 15 App Router app: homepage, dashboard (`/aave`), blog, API routes and the alert cron |
 | `packages/hardhat`          | `TokenpingPaywall` and its deploy and upgrade scripts                                             |
-| `packages/supabase`         | Database migrations for alert settings and Telegram links ([README](packages/supabase/README.md)) |
+| `packages/supabase`         | Database migrations for alert settings and Telegram chats ([README](packages/supabase/README.md)) |
 | `packages/tokenping-signal` | Container config for the Signal relay                                                             |
 | `docs/`                     | Signal relay and Telegram bot setup guides                                                        |
 

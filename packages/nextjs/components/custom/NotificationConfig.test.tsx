@@ -8,13 +8,14 @@ import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
 import { LocaleProvider } from "~~/i18n/LocaleProvider";
 import type { Locale } from "~~/i18n/locales";
 import { notificationConfigClient } from "~~/services/notifications/notificationConfigClient";
-import type { NotificationConfig as NotificationConfigType, TelegramLinkStatus } from "~~/types/notifications";
+import type { NotificationConfig as NotificationConfigType } from "~~/types/notifications";
 import { deferred, jsonResponse } from "~~/utils/testing/helpers";
 import { renderWithProviders } from "~~/utils/testing/providers";
 
 /*
  * The notification settings card against its real hooks and API clients, with a small in-memory API behind a mocked
- * `fetch`. Timers are fake so the Telegram polling can be stepped through.
+ * `fetch`. Timers are fake so the Telegram username check (the typing pause, the retry and the polling) and the test
+ * message cooldown can be stepped through.
  */
 
 const mocks = vi.hoisted(() => ({
@@ -42,18 +43,8 @@ const MARKET = "v3";
 /** The key the config API lists a market's config under. */
 const MARKET_KEY = `${CHAIN_ID}:${MARKET}`;
 const NOW = Date.parse("2026-10-14T12:00:00.000Z");
-const DEEP_LINK = "https://t.me/bot?start=tok";
-const LINK_TOKEN = {
-  token: "tok",
-  botUsername: "bot",
-  expiresAt: new Date(NOW + 10 * 60 * 1000).toISOString(),
-  deepLink: DEEP_LINK,
-};
-/** The server issues LINK_TOKEN at NOW by its own clock, which it reports in the Date header. */
-const linkTokenResponse = () =>
-  new Response(JSON.stringify(LINK_TOKEN), {
-    headers: { "Content-Type": "application/json", Date: new Date(NOW).toUTCString() },
-  });
+/** The Telegram bot people press Start in. */
+const BOT = "TokenpingTestBot";
 
 const SAVED_CONFIG = {
   chainId: CHAIN_ID,
@@ -63,16 +54,21 @@ const SAVED_CONFIG = {
   healthFactorThreshold: 1.8,
   email: "saved@example.com",
   signalRecipient: "saved.01",
+  telegramUsername: "saved_tg",
 };
-const SAVED_LINK: TelegramLinkStatus = { linked: true, chatId: "555", username: "saved_tg", linkedAt: "then" };
 
 type Call = { method: string; url: string; body?: Record<string, unknown> };
+
+const TEST_COOLDOWN_MS = 15 * 60_000;
 
 /** In-memory API state, keyed by lowercased wallet. `override` answers a request instead (failures, slow responses). */
 const api = {
   configs: {} as Record<string, Record<string, unknown>>,
-  links: {} as Record<string, TelegramLinkStatus>,
+  /** The Telegram usernames that have pressed Start in the bot. */
+  linked: new Set<string>(),
   attribution: {} as Record<string, unknown>,
+  /** When each wallet's next test message per channel is allowed (ISO), as the server's notification_test_sends. */
+  testRetryTimes: {} as Record<string, Record<string, string>>,
   requests: [] as string[],
   override: (() => undefined) as (call: Call) => Response | Promise<Response> | undefined,
 };
@@ -89,22 +85,43 @@ const route = ({ method, url, body }: Call) => {
     const market = String(body?.market ?? "v3");
     const key = `${chainId}:${market}`;
     if (method === "PUT") {
-      const { enabled, services, healthFactorThreshold, email, signalRecipient } = body ?? {};
+      const { enabled, services, healthFactorThreshold, email, signalRecipient, telegramUsername } = body ?? {};
       const config = { chainId, market, enabled, services, healthFactorThreshold };
       api.configs[user] = {
         ...api.configs[user],
-        [key]: { ...config, ...(email ? { email } : {}), ...(signalRecipient ? { signalRecipient } : {}) },
+        [key]: {
+          ...config,
+          ...(email ? { email } : {}),
+          ...(signalRecipient ? { signalRecipient } : {}),
+          ...(telegramUsername ? { telegramUsername } : {}),
+        },
       };
     }
     if (method === "DELETE") delete api.configs[user]?.[key];
     return jsonResponse({ success: true });
   }
-  if (path === "/api/telegram/link") {
-    if (method === "GET") return jsonResponse(api.links[userOf(url)] ?? { linked: false });
-    delete api.links[user];
-    return jsonResponse({ success: true });
+  if (path === "/api/notifications/test") {
+    if (method === "GET") {
+      // Like the server: a channel's time only while it is still in the future, null otherwise.
+      const stored = api.testRetryTimes[userOf(url)] ?? {};
+      const retryAt = (channel: string) =>
+        stored[channel] && Date.parse(stored[channel]) > Date.now() ? stored[channel] : null;
+      return jsonResponse({ email: retryAt("email"), signal: retryAt("signal"), telegram: retryAt("telegram") });
+    }
+    const channel = String(body?.channel);
+    const blocked = api.testRetryTimes[user]?.[channel];
+    if (blocked && Date.parse(blocked) > Date.now()) {
+      return jsonResponse({ error: "One test message per channel every 15 minutes", retryAt: blocked }, 429);
+    }
+    const sentAt = new Date(Date.now()).toISOString();
+    const retryAt = new Date(Date.now() + TEST_COOLDOWN_MS).toISOString();
+    api.testRetryTimes[user] = { ...api.testRetryTimes[user], [channel]: retryAt };
+    return jsonResponse({ sentAt, retryAt });
   }
-  if (path === "/api/telegram/link-token") return linkTokenResponse();
+  if (path === "/api/telegram/status" && method === "GET") {
+    const username = new URL(url, "http://test").searchParams.get("username") ?? "";
+    return jsonResponse({ linked: api.linked.has(username) });
+  }
   if (path === "/api/attribution" && method === "POST") {
     // The first answer per wallet is kept.
     api.attribution[user] ??= body?.answer;
@@ -120,8 +137,6 @@ const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
   return (await api.override({ method, url, body })) ?? route({ method, url, body });
 });
 
-let popup: { opener: unknown; location: { href: string }; close: ReturnType<typeof vi.fn> };
-let openSpy: ReturnType<typeof vi.spyOn>;
 let consoleErrors: unknown[][];
 
 /** Advances the fake clock and lets requests and re-renders settle. */
@@ -160,12 +175,23 @@ const serviceToggle = (name: "Email" | "Signal" | "Telegram") =>
 const emailInput = () => screen.getByRole<HTMLInputElement>("textbox", { name: "Email address" });
 const queryEmailInput = () => screen.queryByRole<HTMLInputElement>("textbox", { name: "Email address" });
 const signalInput = () => screen.getByRole<HTMLInputElement>("textbox", { name: "Signal username" });
+const telegramInput = () => screen.getByRole<HTMLInputElement>("textbox", { name: "Telegram username" });
+/** The polite line under the Telegram input: whether the typed username has pressed Start in the bot. */
+const telegramStatus = () =>
+  within(document.querySelector<HTMLElement>("[data-field='telegram']") as HTMLElement).getByRole("status");
+const statusRequests = () => api.requests.filter(request => request.startsWith("GET /api/telegram/status"));
 const slider = () => screen.getByRole<HTMLInputElement>("slider");
 const thresholdInput = () =>
   screen.getByRole<HTMLInputElement>("textbox", { name: "Health factor threshold (exact value)" });
-/** The value next to a summary label such as "Telegram". */
+/** The value next to a summary label such as "Telegram", without the row's Send test button. */
 const summaryValue = (label: string) =>
-  screen.queryAllByText(label, { selector: "dt" })[0]?.nextElementSibling?.textContent ?? null;
+  screen.queryAllByText(label, { selector: "dt" })[0]?.nextElementSibling?.firstElementChild?.textContent ?? null;
+/** A summary row's Send test button, named by its channel: "Send test (Email)", "Again in 12 min (Email)". */
+const testButton = (channel: string) =>
+  screen.getByRole<HTMLButtonElement>("button", { name: new RegExp(`\\(${channel}\\)$`) });
+const queryTestButtons = () =>
+  screen.queryAllByRole("button", { name: /^(?:Send test|Again in|Sending|Poslat test|Znovu za|Odesíláme)/ });
+const testRequests = () => api.requests.filter(request => request.includes("/api/notifications/test"));
 /** Every message announced as an alert: the inline field errors and failure messages, in page order. */
 const alerts = () => screen.queryAllByRole("alert").map(alert => alert.textContent);
 /** The error summary a failed Save shows at the top of a form with more than 3 fields (it takes focus). */
@@ -176,8 +202,16 @@ const fieldErrors = () =>
     .queryAllByRole("alert")
     .filter(alert => alert !== errorSummary())
     .map(alert => alert.textContent);
-/** The card's polite live region: what happened to the last Save, Delete or attribution answer. */
-const announcement = () => document.querySelector("[aria-live='polite']")?.textContent ?? null;
+/**
+ * The card's polite live region: what happened to the last Save, Delete or attribution answer. The Telegram status
+ * line is a live region of its own, with the status role.
+ */
+const announcement = () => document.querySelector("[aria-live='polite']:not([role='status'])")?.textContent ?? null;
+/** A summary note (an Alert) by the start of its text. */
+const noteStartingWith = (prefix: string) =>
+  screen.queryAllByRole("note").find(note => note.textContent?.startsWith(prefix)) ?? null;
+/** The summary's "press Start in the bot" warning for a saved username that has not pressed it. */
+const notLinkedWarning = () => noteStartingWith("Not linked yet");
 const lastRequest = (prefix: string) => api.requests.filter(request => request.startsWith(prefix)).at(-1);
 /** The JSON body of the last PUT to the config API. */
 const lastPutBody = () => {
@@ -202,8 +236,9 @@ beforeEach(() => {
   mocks.hasAccess = true;
   mocks.toasts = [];
   api.configs = {};
-  api.links = {};
+  api.linked = new Set();
   api.attribution = {};
+  api.testRetryTimes = {};
   api.requests = [];
   // The attribution prompt remembers in localStorage that this browser was asked.
   window.localStorage.clear();
@@ -211,9 +246,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"], now: NOW });
   vi.stubGlobal("fetch", fetchMock);
   // Telegram is offered only when the bot is configured, as in production once the bot is set up.
-  vi.stubEnv("NEXT_PUBLIC_TELEGRAM_BOT_USERNAME", "TokenpingTestBot");
-  popup = { opener: window, location: { href: "" }, close: vi.fn() };
-  openSpy = vi.spyOn(window, "open").mockImplementation(() => popup as unknown as Window);
+  vi.stubEnv("NEXT_PUBLIC_TELEGRAM_BOT_USERNAME", BOT);
   consoleErrors = [];
   vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => void consoleErrors.push(args));
 });
@@ -236,10 +269,10 @@ describe("NotificationConfig: loading and access", () => {
     expect(container.innerHTML).toBe("");
   });
 
-  it("shows a read-only summary, with the Telegram link from the link API, when access lapsed", async () => {
+  it("shows a read-only summary, with the saved Telegram username, when access lapsed", async () => {
     mocks.hasAccess = false;
     api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
-    api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
+    api.linked.add("saved_tg");
     const { rerender } = await renderCard();
     expect(screen.getByText("Pay for access to edit")).toBeDefined();
     expect(screen.queryByRole("button", { name: "Edit alert" })).toBeNull();
@@ -247,6 +280,7 @@ describe("NotificationConfig: loading and access", () => {
     expect(summaryValue("Email")).toBe("saved@example.com");
     expect(summaryValue("Signal")).toBe("@saved.01");
     expect(summaryValue("Telegram")).toBe("@saved_tg");
+    expect(notLinkedWarning()).toBeNull();
     expect(summaryValue("Threshold")).toBe("1.8");
     expect(screen.getByText("Your current health factor (1.20) is below your threshold of 1.8.")).toBeDefined();
 
@@ -353,6 +387,7 @@ describe("NotificationConfig: creating and editing", () => {
       healthFactorThreshold: 2.5,
       email: "me@example.com",
       signalRecipient: "alice.42",
+      telegramUsername: null,
     });
     // The page's language, once the client forwards it (the "saves the page's language" tests pin the hand-over).
     expect([undefined, "en"]).toContain(locale);
@@ -375,7 +410,7 @@ describe("NotificationConfig: creating and editing", () => {
     expect(fieldErrors()).toEqual([
       "Enter an email address like name@example.com.",
       "Enter your Signal username.",
-      "Connect Telegram before you save.",
+      "Enter your Telegram username.",
     ]);
 
     const summary = errorSummary() as HTMLElement;
@@ -391,7 +426,7 @@ describe("NotificationConfig: creating and editing", () => {
     await click(links[1]);
     expect(document.activeElement).toBe(signalInput());
     await click(links[2]);
-    expect(document.activeElement).toBe(button("Connect Telegram"));
+    expect(document.activeElement).toBe(telegramInput());
 
     const descriptionsOf = (input: HTMLElement) =>
       (input.getAttribute("aria-describedby") ?? "").split(" ").map(id => document.getElementById(id)?.textContent);
@@ -403,6 +438,10 @@ describe("NotificationConfig: creating and editing", () => {
       "In Signal, open Settings, then Profile. It looks like alice.42.",
       "Enter your Signal username.",
     ]);
+    expect(descriptionsOf(telegramInput())).toEqual([
+      "Alerts go to this Telegram account. Find it in Telegram under Settings, then Username.",
+      "Enter your Telegram username.",
+    ]);
     expect(api.requests.some(request => request.startsWith("PUT"))).toBe(false);
 
     // Another failed Save focuses the summary again; fixing a field takes it off the list.
@@ -411,65 +450,6 @@ describe("NotificationConfig: creating and editing", () => {
     await click(button("Save alert"));
     expect(document.activeElement).toBe(errorSummary());
     expect(within(errorSummary() as HTMLElement).getAllByRole("link")).toHaveLength(2);
-  });
-
-  it("opens Telegram inside the Connect click and offers the bot link until the chat is linked", async () => {
-    await renderCard();
-    await click(button("Create alert"));
-    await click(serviceToggle("Telegram"));
-    await click(button("Save alert"));
-    expect(alerts()).toEqual(["Connect Telegram before you save."]);
-    expect(document.activeElement).toBe(button("Connect Telegram"));
-
-    fireEvent.click(button("Connect Telegram"));
-    expect(openSpy.mock.calls).toEqual([["", "_blank"]]);
-    await settle();
-    expect(popup.location.href).toBe(DEEP_LINK);
-    expect(isBusy(button("Waiting for Telegram"))).toBe(true);
-    const openLink = screen.getByRole("link", { name: "Open Telegram (opens in a new tab)" });
-    expect([openLink.getAttribute("href"), openLink.getAttribute("target"), openLink.getAttribute("rel")]).toEqual([
-      DEEP_LINK,
-      "_blank",
-      "noopener noreferrer",
-    ]);
-
-    api.links[ADDRESS.toLowerCase()] = { linked: true, chatId: "777", username: "bob", linkedAt: "now" };
-    await settle(2000);
-    expect(screen.getByText("Connected as @bob")).toBeDefined();
-    expect(screen.queryByRole("link", { name: /Open Telegram/ })).toBeNull();
-    // The link fixed the field, so its error is gone.
-    expect(alerts()).toEqual([]);
-    expect(mocks.toasts).toEqual(["success: Telegram connected as @bob"]);
-  });
-
-  it("keeps a Telegram link made while editing after Save", async () => {
-    await renderCard();
-    await click(button("Create alert"));
-    await click(serviceToggle("Telegram"));
-    await click(button("Connect Telegram"));
-    api.links[ADDRESS.toLowerCase()] = { linked: true, chatId: "777", username: "bob", linkedAt: "now" };
-    await settle(2000);
-    await click(button("Save alert"));
-    expect(lastRequest("PUT")).toContain('"services":["telegram"]');
-
-    // B0.0: the link is read from the link API, so saving a config cannot drop it.
-    expect(summaryValue("Telegram")).toBe("@bob");
-    await click(button("Edit alert"));
-    expect(screen.getByText("Connected as @bob")).toBeDefined();
-    await click(button("Save alert"));
-    expect(api.requests.filter(request => request.startsWith("PUT"))).toHaveLength(2);
-  });
-
-  it("shows a wallet's existing Telegram link when creating a config on another chain", async () => {
-    api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
-    await renderCard();
-    await click(button("Create alert"));
-    await click(serviceToggle("Telegram"));
-    expect(screen.getByText("Connected as @saved_tg")).toBeDefined();
-    await click(button("Save alert"));
-    expect(lastRequest("PUT")).toContain('"services":["telegram"]');
-    expect(mocks.toasts).toEqual(["success: Alert saved"]);
-    expect(summaryValue("Telegram")).toBe("@saved_tg");
   });
 
   it("falls back to the Email service for an enabled config without valid services, also after Cancel", async () => {
@@ -615,18 +595,14 @@ describe("NotificationConfig: creating and editing", () => {
     expect(announcement()).toBe("Alert deleted");
   });
 
-  it("requires a connected wallet for Telegram and for saving", async () => {
+  it("requires a connected wallet for saving", async () => {
     mocks.address = undefined;
     await renderCard();
     await click(button("Create alert"));
-    await click(serviceToggle("Telegram"));
-    await click(button("Connect Telegram"));
-    expect(openSpy).not.toHaveBeenCalled();
-    await click(serviceToggle("Telegram"));
     await click(serviceToggle("Email"));
     await type(emailInput(), "me@example.com");
     await click(button("Save alert"));
-    expect(mocks.toasts).toEqual(["error: Connect your wallet first", "error: Wallet not connected"]);
+    expect(mocks.toasts).toEqual(["error: Wallet not connected"]);
     expect(api.requests).toEqual([]);
   });
 });
@@ -697,295 +673,510 @@ describe("NotificationConfig: failures", () => {
     expect(screen.queryByRole("button", { name: /^Delet/ })).toBeNull();
     expect(mocks.toasts).toEqual(["error: Database error"]);
   });
-
-  it("reports Telegram connect and disconnect failures", async () => {
-    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
-    api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
-    api.override = ({ method, url }) => {
-      if (method === "DELETE" && url === "/api/telegram/link") return jsonResponse({ error: "Database error" }, 500);
-      if (method === "POST") return jsonResponse({ error: "Telegram is not configured on this server" }, 503);
-      return undefined;
-    };
-    await renderCard();
-    await click(button("Edit alert"));
-    await click(button("Disconnect Telegram"));
-    expect(screen.getByText("Connected as @saved_tg")).toBeDefined();
-
-    api.links = {};
-    api.override = ({ method }) =>
-      method === "POST" ? jsonResponse({ error: "Telegram is not configured on this server" }, 503) : undefined;
-    await click(button("Disconnect Telegram"));
-    await click(button("Connect Telegram"));
-    expect(popup.close).toHaveBeenCalledTimes(1);
-    expect(button("Connect Telegram")).toBeDefined();
-    expect(mocks.toasts).toEqual([
-      "error: Database error",
-      "success: Telegram disconnected",
-      "error: Telegram is not configured on this server",
-    ]);
-  });
 });
 
-describe("NotificationConfig: Telegram handshake", () => {
-  it("stays disconnected after Disconnect and Cancel", async () => {
-    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
-    api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
-    await renderCard();
-    await click(button("Edit alert"));
-    await click(button("Disconnect Telegram"));
-    expect(button("Connect Telegram")).toBeDefined();
-    await click(button("Cancel"));
-    expect(summaryValue("Telegram")).toBeNull();
-    await click(button("Edit alert"));
-    expect(button("Connect Telegram")).toBeDefined();
-  });
-
-  it("waits until the link token expires before giving up", async () => {
+describe("NotificationConfig: Telegram username", () => {
+  it("asks for a Telegram username on Save, focuses its input and says what a valid one looks like", async () => {
     await renderCard();
     await click(button("Create alert"));
     await click(serviceToggle("Telegram"));
-    await click(button("Connect Telegram"));
-    await settle(5 * 60 * 1000);
-    expect(button("Waiting for Telegram")).toBeDefined();
-    await settle(5 * 60 * 1000);
-    expect(button("Connect Telegram")).toBeDefined();
-    expect(mocks.toasts).toEqual(["error: Telegram link timed out. Try again."]);
-  });
+    expect(telegramInput().value).toBe("");
+    expect(telegramStatus().textContent).toBe("");
 
-  it("keeps waiting for the token's full lifetime when the device clock runs ahead of the server", async () => {
-    // By this device's clock the token (valid until NOW + 10 min by the server's clock) expired 5 minutes ago.
-    vi.setSystemTime(NOW + 15 * 60 * 1000);
-    await renderCard();
-    await click(button("Create alert"));
-    await click(serviceToggle("Telegram"));
-    await click(button("Connect Telegram"));
-    await settle(5 * 60 * 1000);
-    expect(button("Waiting for Telegram")).toBeDefined();
-    expect(mocks.toasts).toEqual([]);
-
-    api.links[ADDRESS.toLowerCase()] = { linked: true, chatId: "777", username: "bob", linkedAt: "now" };
-    await settle(2000);
-    expect(screen.getByText("Connected as @bob")).toBeDefined();
-    expect(mocks.toasts).toEqual(["success: Telegram connected as @bob"]);
-  });
-
-  it("offers Try again instead of Connect when the Telegram link cannot be checked, keeping the card on screen", async () => {
-    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
-    api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
-    let linkStatus: (call: Call) => Response | Promise<Response> = () =>
-      jsonResponse({ error: "Failed to read the Telegram link" }, 500);
-    api.override = call =>
-      call.method === "GET" && call.url.startsWith("/api/telegram/link?") ? linkStatus(call) : undefined;
-    await renderCard();
-    expect(summaryValue("Email")).toBe("saved@example.com");
-    await click(button("Edit alert"));
-
-    const field = within(screen.getByRole("group", { name: "Telegram" }));
-    expect(field.getByRole("alert").textContent).toBe("Couldn't check your Telegram link");
-    expect(field.queryByRole("button", { name: "Connect Telegram" })).toBeNull();
-    // Save asks for Try again instead of saving a config whose Telegram link is unknown.
     await click(button("Save alert"));
-    expect(field.getAllByRole("alert").map(alert => alert.textContent)).toEqual([
-      "Couldn't check your Telegram link",
-      "Select Try again to check your Telegram link, then save.",
+    // Three fields (services, Telegram, threshold): no summary, focus goes to the input.
+    expect(errorSummary()).toBeNull();
+    expect(alerts()).toEqual(["Enter your Telegram username."]);
+    expect(document.activeElement).toBe(telegramInput());
+    expect(telegramInput().getAttribute("aria-invalid")).toBe("true");
+
+    // The message follows what is typed; an invalid name is not checked with the bot.
+    await type(telegramInput(), "alice-eth");
+    expect(alerts()).toEqual([
+      "Enter a Telegram username like alice_eth: 4 to 32 letters, digits or underscores, starting with a letter and not ending with _.",
     ]);
-    // Five fields, so the summary takes focus; its link leads to the Try again button.
-    expect(document.activeElement).toBe(errorSummary());
-    await click(within(errorSummary() as HTMLElement).getByRole("link"));
-    expect(document.activeElement).toBe(field.getByRole("button", { name: "Try again" }));
+    await settle(400);
+    expect(telegramStatus().textContent).toBe("");
+    expect(statusRequests()).toEqual([]);
+    await click(button("Save alert"));
+    expect(document.activeElement).toBe(telegramInput());
     expect(lastRequest("PUT")).toBeUndefined();
 
-    const retry = deferred<void>();
-    linkStatus = call => retry.promise.then(() => route(call));
-    await click(field.getByRole("button", { name: "Try again" }));
-    expect(isBusy(field.getByRole("button", { name: "Retrying" }))).toBe(true);
-    expect(field.getAllByRole("alert")).toHaveLength(2);
-
-    retry.resolve();
-    await settle();
-    expect(field.queryByRole("alert")).toBeNull();
-    expect(screen.getByText("Connected as @saved_tg")).toBeDefined();
-    expect(mocks.toasts).toEqual([]);
-    await click(button("Save alert"));
-    expect(lastRequest("PUT")).toContain('"services":["email","signal","telegram"]');
+    await type(telegramInput(), "@Alice_Eth");
+    expect(alerts()).toEqual([]);
+    expect(telegramInput().getAttribute("aria-invalid")).toBeNull();
   });
 
-  it("offers Connect after a successful Try again for a wallet without a link", async () => {
-    let linkStatus: (call: Call) => Response | Promise<Response> = () =>
-      jsonResponse({ error: "Failed to read the Telegram link" }, 500);
-    api.override = call =>
-      call.method === "GET" && call.url.startsWith("/api/telegram/link?") ? linkStatus(call) : undefined;
+  it("saves a username that has not pressed Start yet, normalized, and says where to press Start", async () => {
     await renderCard();
     await click(button("Create alert"));
     await click(serviceToggle("Telegram"));
-    expect(screen.queryByRole("button", { name: "Connect Telegram" })).toBeNull();
-
-    linkStatus = route;
-    await click(button("Try again"));
-    expect(button("Connect Telegram")).toBeDefined();
-    expect(screen.queryByRole("alert")).toBeNull();
-  });
-
-  it("keeps the card on screen while a failed Telegram status is fetched again", async () => {
-    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
-    let linkStatus = () => Promise.reject<Response>(new TypeError("Failed to fetch"));
-    api.override = ({ method, url }) =>
-      method === "GET" && url.startsWith("/api/telegram/link?") ? linkStatus() : undefined;
-    const { rerender } = await renderCard();
-    expect(summaryValue("Email")).toBe("saved@example.com");
-
-    // AavePositions keys the card by market, so a chain switch remounts it, which fetches the failed status again.
-    linkStatus = () => new Promise<Response>(() => undefined);
-    rerender(<NotificationConfig key="another-chain" {...PROPS} />);
-    await settle();
-    expect(api.requests.filter(request => request.startsWith("GET /api/telegram/link?"))).toHaveLength(2);
-    expect(summaryValue("Email")).toBe("saved@example.com");
-  });
-
-  it("keeps waiting for Telegram when a chain switch remounts the card, and announces the link once", async () => {
-    const { rerender } = await renderCard();
-    await click(button("Create alert"));
-    await click(serviceToggle("Telegram"));
-    await click(button("Connect Telegram"));
-    expect(popup.location.href).toBe(DEEP_LINK);
-
-    // AavePositions keys the card by market, so a chain switch remounts it with a fresh form.
-    rerender(<NotificationConfig key="another-chain" {...PROPS} chainId={10} chainName="Optimism" />);
-    await settle();
-    await click(button("Create alert"));
-    await click(serviceToggle("Telegram"));
-    expect(button("Waiting for Telegram")).toBeDefined();
-    expect(screen.getByRole("link", { name: /Open Telegram/ }).getAttribute("href")).toBe(DEEP_LINK);
-
-    api.links[ADDRESS.toLowerCase()] = { linked: true, chatId: "777", username: "bob", linkedAt: "now" };
-    await settle(2000);
-    expect(screen.getByText("Connected as @bob")).toBeDefined();
-    expect(mocks.toasts).toEqual(["success: Telegram connected as @bob"]);
-    expect(openSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it("ends a Telegram handshake when the wallet switches, so it does not resume when switching back", async () => {
-    const { rerender } = await renderCard();
-    await click(button("Create alert"));
-    await click(serviceToggle("Telegram"));
-    await click(button("Connect Telegram"));
-
-    mocks.address = OTHER_ADDRESS;
-    rerender(<NotificationConfig {...PROPS} />);
-    await settle();
-    await click(button("Create alert"));
-    await click(serviceToggle("Telegram"));
-    expect(button("Connect Telegram")).toBeDefined();
-    expect(screen.queryByRole("link", { name: /Open Telegram/ })).toBeNull();
-
-    mocks.address = ADDRESS;
-    rerender(<NotificationConfig {...PROPS} />);
-    await settle();
-    await click(button("Create alert"));
-    await click(serviceToggle("Telegram"));
-    expect(button("Connect Telegram")).toBeDefined();
-    const polls = () => api.requests.filter(request => request.startsWith("GET /api/telegram/link?")).length;
-    const before = polls();
-    api.links[ADDRESS.toLowerCase()] = { linked: true, chatId: "777", username: "bob", linkedAt: "now" };
-    await settle(20_000);
-    expect(polls()).toBe(before);
-    expect(mocks.toasts).toEqual([]);
-  });
-
-  describe("when the page takes the card away", () => {
-    // app/aave/page.tsx renders no card without a connected wallet, and AavePositions none while positions load (a
-    // refresh, a wallet switch) or after they all failed to, so the card can unmount without a successor.
-    const Page = ({ shown }: { shown: boolean }) => (shown ? <NotificationConfig {...PROPS} /> : null);
-    const LINKED = { linked: true, chatId: "777", username: "bob", linkedAt: "now" } as const;
-    const telegramPolls = () => api.requests.filter(request => request.startsWith("GET /api/telegram/link?")).length;
-
-    const openTelegramField = async () => {
-      await click(button("Create alert"));
-      await click(serviceToggle("Telegram"));
-    };
-
-    const renderPage = async () => {
-      const view = renderWithProviders(<Page shown />);
-      await settle();
-      await openTelegramField();
-      await click(button("Connect Telegram"));
-      return view;
-    };
-
-    it.each([
-      ["disconnects", undefined],
-      ["switches to a wallet whose positions fail to load", OTHER_ADDRESS],
-    ])(
-      "ends a Telegram handshake when the wallet %s, so it does not resume when the wallet returns",
-      async (_, next) => {
-        const { rerender } = await renderPage();
-        mocks.address = next;
-        rerender(<Page shown={false} />);
-        await settle(30_000);
-
-        mocks.address = ADDRESS;
-        rerender(<Page shown />);
-        await settle();
-        await openTelegramField();
-        expect(button("Connect Telegram")).toBeDefined();
-        expect(screen.queryByRole("link", { name: /Open Telegram/ })).toBeNull();
-        const before = telegramPolls();
-        api.links[ADDRESS.toLowerCase()] = LINKED;
-        await settle(20_000);
-        expect(telegramPolls()).toBe(before);
-        expect(mocks.toasts).toEqual([]);
-      },
+    await type(telegramInput(), " @Alice_Eth ");
+    // Checked once typing pauses, under the name as it is stored.
+    expect(telegramStatus().textContent).toBe("Checking");
+    await settle(400);
+    expect(statusRequests()).toEqual(["GET /api/telegram/status?username=alice_eth"]);
+    expect(telegramStatus().textContent).toBe(
+      `Not linked yet: press Start in @${BOT} once.Open @${BOT} (opens in a new tab)`,
     );
+    expect(within(telegramStatus()).getByRole("link").getAttribute("href")).toBe(`https://t.me/${BOT}`);
 
-    it("does not report a timeout for a Telegram handshake that a disconnect ended", async () => {
-      const { rerender } = await renderPage();
-      await settle(9 * 60 * 1000);
-      mocks.address = undefined;
-      rerender(<Page shown={false} />);
-      await settle(2 * 60 * 1000);
-
-      mocks.address = ADDRESS;
-      rerender(<Page shown />);
-      await settle();
-      expect(mocks.toasts).toEqual([]);
+    // Not having pressed Start does not block Save.
+    await click(button("Save alert"));
+    expect(mocks.toasts).toEqual(["success: Alert saved"]);
+    expect(lastPutBody()).toMatchObject({
+      services: ["telegram"],
+      email: null,
+      signalRecipient: null,
+      telegramUsername: "alice_eth",
     });
+    expect(api.configs[ADDRESS.toLowerCase()][MARKET_KEY]).toMatchObject({ telegramUsername: "alice_eth" });
+    expect(summaryValue("Telegram")).toBe("@alice_eth");
+    // The summary keeps saying so, with the bot link, until that account presses Start.
+    expect(notLinkedWarning()?.textContent).toBe(
+      `Not linked yet: press Start in @${BOT} once.Open @${BOT} (opens in a new tab)`,
+    );
+    const link = within(notLinkedWarning() as HTMLElement).getByRole("link");
+    expect([link.getAttribute("href"), link.getAttribute("target"), link.getAttribute("rel")]).toEqual([
+      `https://t.me/${BOT}`,
+      "_blank",
+      "noopener noreferrer",
+    ]);
 
-    it("keeps waiting for Telegram when a positions refresh unmounts the card for a moment", async () => {
-      const { rerender } = await renderPage();
-      rerender(<Page shown={false} />);
-      await settle();
-      rerender(<Page shown />);
-      await settle();
-      await openTelegramField();
-      expect(button("Waiting for Telegram")).toBeDefined();
-      expect(screen.getByRole("link", { name: /Open Telegram/ }).getAttribute("href")).toBe(DEEP_LINK);
-
-      api.links[ADDRESS.toLowerCase()] = LINKED;
-      await settle(2000);
-      expect(screen.getByText("Connected as @bob")).toBeDefined();
-      expect(mocks.toasts).toEqual(["success: Telegram connected as @bob"]);
+    // The summary does not poll; it asks again when the tab gets focus back from Telegram.
+    api.linked.add("alice_eth");
+    await settle(60_000);
+    expect(notLinkedWarning()).not.toBeNull();
+    await act(async () => {
+      window.dispatchEvent(new Event("visibilitychange"));
     });
+    await settle();
+    expect(notLinkedWarning()).toBeNull();
+    expect(summaryValue("Telegram")).toBe("@alice_eth");
   });
 
-  it("stops polling on Cancel and on unmount", async () => {
+  it("turns to linked while the form is open once the account presses Start, then stops asking", async () => {
+    await renderCard();
+    await click(button("Create alert"));
+    await click(serviceToggle("Telegram"));
+    await type(telegramInput(), "alice_eth");
+    await settle(400);
+    expect(telegramStatus().textContent).toMatch(/^Not linked yet/);
+
+    api.linked.add("alice_eth");
+    await settle(3000);
+    // A polite live region, so the change is announced while the person comes back from Telegram.
+    expect(telegramStatus().getAttribute("aria-live")).toBe("polite");
+    expect(telegramStatus().textContent).toBe("@alice_eth is linked: alerts will arrive in your Telegram chat.");
+    const asked = statusRequests().length;
+    await settle(60_000);
+    expect(statusRequests()).toHaveLength(asked);
+  });
+
+  it("says when the status cannot be checked, still saves, and warns about nothing in the summary", async () => {
+    api.override = ({ url }) =>
+      url.startsWith("/api/telegram/status") ? jsonResponse({ error: "Database error" }, 500) : undefined;
+    await renderCard();
+    await click(button("Create alert"));
+    await click(serviceToggle("Telegram"));
+    await type(telegramInput(), "alice_eth");
+    await settle(400);
+    // Asked once more before giving up.
+    expect(telegramStatus().textContent).toBe("Checking");
+    await settle(1000);
+    expect(statusRequests()).toHaveLength(2);
+    expect(telegramStatus().textContent).toBe("Couldn't check whether this username is linked. You can still save.");
+
+    await click(button("Save alert"));
+    expect(mocks.toasts).toEqual(["success: Alert saved"]);
+    expect(lastPutBody()).toMatchObject({ telegramUsername: "alice_eth" });
+    expect(summaryValue("Telegram")).toBe("@alice_eth");
+    // Unknown is not "not linked".
+    await settle(5000);
+    expect(notLinkedWarning()).toBeNull();
+  });
+
+  it("edits a saved username, keeps it after Cancel, and drops it when Telegram is deselected", async () => {
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
+    api.linked.add("saved_tg");
+    await renderCard();
+    expect(summaryValue("Telegram")).toBe("@saved_tg");
+    expect(notLinkedWarning()).toBeNull();
+
+    await click(button("Edit alert"));
+    expect(telegramInput().value).toBe("saved_tg");
+    expect(telegramStatus().textContent).toBe("@saved_tg is linked: alerts will arrive in your Telegram chat.");
+    await type(telegramInput(), "other_name");
+    await click(button("Cancel"));
+    expect(summaryValue("Telegram")).toBe("@saved_tg");
+    await click(button("Edit alert"));
+    expect(telegramInput().value).toBe("saved_tg");
+
+    await click(serviceToggle("Telegram"));
+    expect(screen.queryByRole("textbox", { name: "Telegram username" })).toBeNull();
+    await click(button("Save alert"));
+    expect(lastPutBody()).toMatchObject({ services: ["email", "signal"], telegramUsername: null });
+    expect(api.configs[ADDRESS.toLowerCase()][MARKET_KEY]).not.toHaveProperty("telegramUsername");
+    expect(summaryValue("Telegram")).toBeNull();
+  });
+
+  it("shows the card without waiting for the Telegram status", async () => {
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
+    api.override = ({ url }) =>
+      url.startsWith("/api/telegram/status") ? new Promise<Response>(() => undefined) : undefined;
+    await renderCard();
+    expect(summaryValue("Email")).toBe("saved@example.com");
+    expect(summaryValue("Telegram")).toBe("@saved_tg");
+    // Still asking, so nothing is claimed yet.
+    expect(notLinkedWarning()).toBeNull();
+  });
+
+  it("shows the Telegram row only while Telegram is selected, and the warning only with a bot to link to", async () => {
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: { ...SAVED_CONFIG, services: ["email"] } };
+    const emailOnly = await renderCard();
+    expect(summaryValue("Telegram")).toBeNull();
+    expect(statusRequests()).toEqual([]);
+    emailOnly.unmount();
+
+    vi.stubEnv("NEXT_PUBLIC_TELEGRAM_BOT_USERNAME", "");
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: { ...SAVED_CONFIG, services: ["telegram"] } };
+    await renderCard();
+    expect(summaryValue("Telegram")).toBe("@saved_tg");
+    expect(statusRequests()).toEqual(["GET /api/telegram/status?username=saved_tg"]);
+    expect(notLinkedWarning()).toBeNull();
+  });
+
+  it("stops asking on Cancel and on unmount", async () => {
     const { unmount } = await renderCard();
     await click(button("Create alert"));
     await click(serviceToggle("Telegram"));
-    await click(button("Connect Telegram"));
-    await settle(2000);
+    await type(telegramInput(), "alice_eth");
+    // A response body is read on the real event loop, so an answer lands at the end of the step it was asked in.
+    await settle(400);
+    await settle(3000);
+    expect(statusRequests()).toHaveLength(2);
     await click(button("Cancel"));
-    const polls = () => api.requests.filter(request => request.startsWith("GET /api/telegram/link")).length;
-    const afterCancel = polls();
-    await settle(20_000);
-    expect(polls()).toBe(afterCancel);
+    const afterCancel = statusRequests().length;
+    await settle(60_000);
+    expect(statusRequests()).toHaveLength(afterCancel);
 
     await click(button("Create alert"));
     await click(serviceToggle("Telegram"));
-    await click(button("Connect Telegram"));
-    const beforeUnmount = polls();
+    await type(telegramInput(), "alice_eth");
+    await settle(400);
+    const beforeUnmount = statusRequests().length;
+    expect(beforeUnmount).toBeGreaterThan(afterCancel);
     unmount();
-    await settle(20_000);
-    expect(polls()).toBe(beforeUnmount);
+    await settle(60_000);
+    expect(statusRequests()).toHaveLength(beforeUnmount);
+  });
+});
+
+describe("NotificationConfig: Send test", () => {
+  const LIMIT_NOTE = "A test sends this alert and your position as they are now. One per channel every 15 minutes.";
+  const inMinutes = (minutes: number) => new Date(NOW + minutes * 60_000).toISOString();
+  const testNames = () =>
+    queryTestButtons().map(element => [element.textContent, (element as HTMLButtonElement).disabled]);
+  const lastTestBody = () => {
+    const request = lastRequest("POST /api/notifications/test ");
+    return request === undefined ? undefined : JSON.parse(request.slice(request.indexOf("{")));
+  };
+
+  it("puts a Send test button on every saved channel, with the limit note, and reads the cooldowns once", async () => {
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
+    api.linked.add("saved_tg");
+    await renderCard();
+    expect(queryTestButtons().map(element => element.getAttribute("type"))).toEqual(["button", "button", "button"]);
+    expect(testNames()).toEqual([
+      ["Send test (Email)", false],
+      ["Send test (Signal)", false],
+      ["Send test (Telegram)", false],
+    ]);
+    // Each in its channel's row, so the three buttons are told apart by name.
+    expect(testButton("Email").closest("dd")?.previousElementSibling?.textContent).toBe("Email");
+    expect(testButton("Telegram").closest("dd")?.firstElementChild?.textContent).toBe("@saved_tg");
+    expect(screen.getByText(LIMIT_NOTE)).toBeDefined();
+    expect(testRequests()).toEqual([`GET /api/notifications/test?userId=${ADDRESS}`]);
+    // Outline buttons: the summary still has no pink of its own.
+    expect(queryTestButtons().every(element => !element.className.includes("btn-primary"))).toBe(true);
+  });
+
+  it("shows a button only for the channels the alert sends by", async () => {
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: { ...SAVED_CONFIG, services: ["signal"] } };
+    await renderCard();
+    expect(testNames()).toEqual([["Send test (Signal)", false]]);
+    expect(screen.getByText(LIMIT_NOTE)).toBeDefined();
+  });
+
+  it("shows no buttons and no note without access, since the server would refuse the send", async () => {
+    mocks.hasAccess = false;
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
+    api.linked.add("saved_tg");
+    await renderCard();
+    expect(summaryValue("Email")).toBe("saved@example.com");
+    expect(queryTestButtons()).toEqual([]);
+    expect(screen.queryByText(LIMIT_NOTE)).toBeNull();
+    expect(testRequests().some(request => request.startsWith("POST"))).toBe(false);
+  });
+
+  it("shows no buttons while the form is open, and none before an alert is saved", async () => {
+    await renderCard();
+    expect(queryTestButtons()).toEqual([]);
+    await click(button("Create alert"));
+    await click(serviceToggle("Email"));
+    await type(emailInput(), "me@example.com");
+    expect(queryTestButtons()).toEqual([]);
+    await click(button("Save alert"));
+    await click(button("Skip"));
+    expect(testNames()).toEqual([["Send test (Email)", false]]);
+  });
+
+  it("keeps Telegram's button off while the saved username has not pressed Start, and turns it on once it has", async () => {
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
+    await renderCard();
+    expect(notLinkedWarning()).not.toBeNull();
+    expect(testNames()).toEqual([
+      ["Send test (Email)", false],
+      ["Send test (Signal)", false],
+      ["Send test (Telegram)", true],
+    ]);
+
+    api.linked.add("saved_tg");
+    await act(async () => {
+      window.dispatchEvent(new Event("visibilitychange"));
+    });
+    await settle();
+    expect(notLinkedWarning()).toBeNull();
+    expect(testButton("Telegram").disabled).toBe(false);
+  });
+
+  it("leaves Telegram's button on while the link status is still unknown or being checked", async () => {
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: { ...SAVED_CONFIG, services: ["telegram"] } };
+    api.override = ({ url }) =>
+      url.startsWith("/api/telegram/status") ? new Promise<Response>(() => undefined) : undefined;
+    const checking = await renderCard();
+    expect(testButton("Telegram").disabled).toBe(false);
+    checking.unmount();
+
+    api.override = ({ url }) =>
+      url.startsWith("/api/telegram/status") ? jsonResponse({ error: "Database error" }, 500) : undefined;
+    await renderCard();
+    await settle(1000);
+    expect(testButton("Telegram").disabled).toBe(false);
+  });
+
+  it("sends a test for the saved market and channel, says so, and counts down until the button is back", async () => {
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
+    api.linked.add("saved_tg");
+    await renderCard();
+    await click(testButton("Email"));
+
+    // Only the market and the channel: the recipient is the saved one, read by the server.
+    expect(lastTestBody()).toEqual({ userId: ADDRESS, chainId: CHAIN_ID, market: MARKET, channel: "email" });
+    expect(mocks.toasts).toEqual(["success: Test message sent by Email. Check that it arrived."]);
+    expect(announcement()).toBe("Test message sent by Email. Check that it arrived.");
+    expect(testNames()).toEqual([
+      ["Again in 15 min (Email)", true],
+      ["Send test (Signal)", false],
+      ["Send test (Telegram)", false],
+    ]);
+
+    await settle(60_000);
+    expect(testButton("Email").textContent).toBe("Again in 14 min (Email)");
+    await settle(13 * 60_000);
+    expect(testButton("Email").textContent).toBe("Again in 1 min (Email)");
+    expect(testButton("Email").disabled).toBe(true);
+    // The clock ticks while the channel cools down, so the button turns back on by itself.
+    await settle(60_000);
+    expect(testButton("Email").textContent).toBe("Send test (Email)");
+    expect(testButton("Email").disabled).toBe(false);
+    // No new read was needed for that.
+    expect(testRequests().filter(request => request.startsWith("GET"))).toHaveLength(1);
+
+    await click(testButton("Email"));
+    expect(testRequests().filter(request => request.startsWith("POST"))).toHaveLength(2);
+    expect(testButton("Email").textContent).toBe("Again in 15 min (Email)");
+  });
+
+  it("announces the same success again for a second channel", async () => {
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
+    api.linked.add("saved_tg");
+    await renderCard();
+    await click(testButton("Signal"));
+    await click(testButton("Telegram"));
+    expect(
+      testRequests()
+        .filter(request => request.startsWith("POST"))
+        .map(request => JSON.parse(request.slice(request.indexOf("{"))).channel),
+    ).toEqual(["signal", "telegram"]);
+    expect(mocks.toasts).toEqual([
+      "success: Test message sent by Signal. Check that it arrived.",
+      "success: Test message sent by Telegram. Check that it arrived.",
+    ]);
+    expect(announcement()).toBe("Test message sent by Telegram. Check that it arrived.");
+    expect(testNames()).toEqual([
+      ["Send test (Email)", false],
+      ["Again in 15 min (Signal)", true],
+      ["Again in 15 min (Telegram)", true],
+    ]);
+  });
+
+  it("shows the cooldown the server reports, so a reload or another tab never offers a refused click", async () => {
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
+    api.linked.add("saved_tg");
+    api.testRetryTimes[ADDRESS.toLowerCase()] = { signal: inMinutes(12), telegram: inMinutes(-1) };
+    await renderCard();
+    expect(testNames()).toEqual([
+      ["Send test (Email)", false],
+      ["Again in 12 min (Signal)", true],
+      ["Send test (Telegram)", false],
+    ]);
+    // A part of a minute counts as a whole one.
+    await settle(30_000);
+    expect(testButton("Signal").textContent).toBe("Again in 12 min (Signal)");
+    await settle(30_000);
+    expect(testButton("Signal").textContent).toBe("Again in 11 min (Signal)");
+  });
+
+  /** Sent from another tab after this one read the cooldowns: the server refuses the click (429) with its time. */
+  const refusedEmailClick = async () => {
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
+    api.linked.add("saved_tg");
+    await renderCard();
+    api.testRetryTimes[ADDRESS.toLowerCase()] = { email: inMinutes(9) };
+    await click(testButton("Email"));
+  };
+
+  it("answers a click the server refuses (another tab sent first) with when the channel frees up", async () => {
+    await refusedEmailClick();
+    expect(testButton("Email").textContent).toBe("Again in 9 min (Email)");
+    expect(testButton("Email").disabled).toBe(true);
+    expect(mocks.toasts).toEqual([expect.stringMatching(/^error: Again in \d+ min$/)]);
+    expect(announcement()).toMatch(/^Again in \d+ min$/);
+  });
+
+  // The toast counts from the 429's own retryAt: the countdown of the render the click happened in predates it.
+  it("says in the toast and the announcement how long the refused channel has to wait", async () => {
+    await refusedEmailClick();
+    expect(mocks.toasts).toEqual(["error: Again in 9 min"]);
+    expect(announcement()).toBe("Again in 9 min");
+  });
+
+  it("reports a failed send with the server's reason and leaves the button on to try again", async () => {
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
+    api.linked.add("saved_tg");
+    let answer: () => Response | Promise<Response> = () =>
+      jsonResponse({ error: "@saved_tg has not pressed Start in @TokenpingTestBot yet" }, 409);
+    api.override = ({ method, url }) => (method === "POST" && url === "/api/notifications/test" ? answer() : undefined);
+    await renderCard();
+    await click(testButton("Telegram"));
+    answer = () => new Response("<html>oops</html>", { status: 502 });
+    await click(testButton("Telegram"));
+    // A 429 without a time to wait for is reported like any refusal.
+    answer = () => jsonResponse({ error: "One test message per channel every 15 minutes" }, 429);
+    await click(testButton("Telegram"));
+    answer = () => Promise.reject(new TypeError("Failed to fetch"));
+    await click(testButton("Telegram"));
+
+    expect(mocks.toasts).toEqual([
+      "error: @saved_tg has not pressed Start in @TokenpingTestBot yet",
+      "error: Failed to send the test message",
+      "error: One test message per channel every 15 minutes",
+      "error: Failed to fetch",
+    ]);
+    expect(announcement()).toBe("Failed to fetch");
+    expect(testButton("Telegram").textContent).toBe("Send test (Telegram)");
+    expect(testButton("Telegram").disabled).toBe(false);
+  });
+
+  it("keeps the sending button busy and the other channels off while a test is on its way", async () => {
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
+    api.linked.add("saved_tg");
+    const post = deferred<void>();
+    api.override = call =>
+      call.method === "POST" && call.url === "/api/notifications/test"
+        ? post.promise.then(() => route(call))
+        : undefined;
+    await renderCard();
+    await click(testButton("Signal"));
+
+    const sending = screen.getByRole<HTMLButtonElement>("button", { name: "Sending" });
+    expect(isBusy(sending)).toBe(true);
+    expect(sending.disabled).toBe(false);
+    expect(testButton("Email").disabled).toBe(true);
+    expect(testButton("Telegram").disabled).toBe(true);
+    // A second press while it is on its way sends nothing.
+    await click(sending);
+    expect(testRequests().filter(request => request.startsWith("POST"))).toHaveLength(1);
+    expect(announcement()).toBe("");
+
+    post.resolve();
+    await settle();
+    expect(testNames()).toEqual([
+      ["Send test (Email)", false],
+      ["Again in 15 min (Signal)", true],
+      ["Send test (Telegram)", false],
+    ]);
+  });
+
+  it("reads the other wallet's cooldowns after a wallet switch", async () => {
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: { ...SAVED_CONFIG, services: ["email"] } };
+    api.configs[OTHER_ADDRESS.toLowerCase()] = { [MARKET_KEY]: { ...SAVED_CONFIG, services: ["email"] } };
+    api.testRetryTimes[ADDRESS.toLowerCase()] = { email: inMinutes(5) };
+    const { rerender } = await renderCard();
+    expect(testButton("Email").textContent).toBe("Again in 5 min (Email)");
+
+    mocks.address = OTHER_ADDRESS;
+    rerender(
+      <LocaleProvider locale="en">
+        <NotificationConfig {...PROPS} />
+      </LocaleProvider>,
+    );
+    await settle();
+    expect(testButton("Email").textContent).toBe("Send test (Email)");
+    expect(testRequests()).toEqual([
+      `GET /api/notifications/test?userId=${ADDRESS}`,
+      `GET /api/notifications/test?userId=${OTHER_ADDRESS}`,
+    ]);
+  });
+
+  it("writes the buttons, the note and every answer in Czech, with no dashes", async () => {
+    const DASHES = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
+    api.linked.add("saved_tg");
+    api.override = ({ method, url, body }) =>
+      method === "POST" && url === "/api/notifications/test" && body?.channel === "telegram"
+        ? jsonResponse({ error: "Telegram is not configured" }, 503)
+        : undefined;
+    const { container } = await renderCard({}, "cs");
+    expect(testNames()).toEqual([
+      ["Poslat test (E-mail)", false],
+      ["Poslat test (Signal)", false],
+      ["Poslat test (Telegram)", false],
+    ]);
+    expect(
+      screen.getByText("Test pošle toto upozornění a vaši pozici tak, jak jsou teď. Jeden na kanál za 15 minut."),
+    ).toBeDefined();
+
+    await click(screen.getByRole("button", { name: "Poslat test (E-mail)" }));
+    expect(announcement()).toBe("Testovací zpráva odeslána přes E-mail. Zkontrolujte, že dorazila.");
+    expect(testNames()[0]).toEqual(["Znovu za 15 min (E-mail)", true]);
+
+    api.testRetryTimes[ADDRESS.toLowerCase()].signal = inMinutes(3);
+    await click(screen.getByRole("button", { name: "Poslat test (Signal)" }));
+    expect(testNames()[1]).toEqual(["Znovu za 3 min (Signal)", true]);
+    expect(announcement()).toMatch(/^Znovu za \d+ min$/);
+
+    // The server answers in English; a Czech page shows its own message.
+    await click(screen.getByRole("button", { name: "Poslat test (Telegram)" }));
+    expect(announcement()).toBe("Testovací zprávu se nepodařilo odeslat");
+    expect(mocks.toasts).toEqual([
+      "success: Testovací zpráva odeslána přes E-mail. Zkontrolujte, že dorazila.",
+      expect.stringMatching(/^error: Znovu za \d+ min$/),
+      "error: Testovací zprávu se nepodařilo odeslat",
+    ]);
+    expect(container.textContent).not.toMatch(DASHES);
+    expect(container.textContent).not.toMatch(/\b(?:Send|Again|Sending|minutes)\b/);
   });
 });
 
@@ -1267,7 +1458,7 @@ describe("NotificationConfig: two markets on one chain", () => {
 describe("NotificationConfig: accessibility", () => {
   it("labels and describes every control and hides decorative icons", async () => {
     api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
-    api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
+    api.linked.add("saved_tg");
     const { container } = await renderCard();
     await click(button("Edit alert"));
 
@@ -1296,9 +1487,12 @@ describe("NotificationConfig: accessibility", () => {
         "You'll be notified when your health factor drops below 1.8 on Arbitrum.",
       );
     }
-    expect(within(screen.getByRole("group", { name: "Telegram" })).getByRole("button").textContent).toBe(
-      "Disconnect Telegram",
+    expect(screen.getByLabelText("Telegram username")).toBe(telegramInput());
+    expect(telegramInput().required).toBe(true);
+    expect(document.getElementById(telegramInput().getAttribute("aria-describedby") ?? "")?.textContent).toBe(
+      "Alerts go to this Telegram account. Find it in Telegram under Settings, then Username.",
     );
+    expect(telegramStatus().textContent).toBe("@saved_tg is linked: alerts will arrive in your Telegram chat.");
     expect(container.querySelectorAll("label:not([for])")).toHaveLength(0);
 
     const icons = [...container.querySelectorAll("svg")];
@@ -1353,7 +1547,7 @@ describe("NotificationConfig: brand", () => {
 
   it("uses tokens only and shows one pink primary, Save, while editing", async () => {
     api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
-    api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
+    api.linked.add("saved_tg");
     const { problems, pinkCounts, scan } = brandScanner();
     const { container } = await renderCard();
     scan("summary", container);
@@ -1366,9 +1560,10 @@ describe("NotificationConfig: brand", () => {
     await click(button("Save alert"));
     scan("errors", container);
     await click(serviceToggle("Telegram"));
-    await click(button("Disconnect Telegram"));
-    await click(button("Connect Telegram"));
-    scan("connecting", container);
+    await type(telegramInput(), "new_name");
+    await settle(400);
+    expect(telegramStatus().textContent).toMatch(/^Not linked yet/);
+    scan("not linked", container);
     await click(button("Delete alert"));
     scan("confirm delete", container);
     await click(confirmation().getByRole("button", { name: "Delete alert" }));
@@ -1380,7 +1575,7 @@ describe("NotificationConfig: brand", () => {
       summary: 0,
       edit: 1,
       errors: 1,
-      connecting: 1,
+      "not linked": 1,
       "confirm delete": 0,
       empty: 1,
     });
@@ -1409,6 +1604,8 @@ describe("NotificationConfig: brand", () => {
     api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
     const { problems, pinkCounts, scan } = brandScanner();
     const readOnly = await renderCard();
+    // saved_tg has not pressed Start, so the summary shows its warning too.
+    expect(notLinkedWarning()).not.toBeNull();
     scan("read-only", readOnly.container);
     readOnly.unmount();
 
@@ -1420,10 +1617,11 @@ describe("NotificationConfig: brand", () => {
 
     mocks.hasAccess = true;
     api.override = ({ method, url }) =>
-      method === "GET" && url.startsWith("/api/telegram/link?") ? jsonResponse({}, 500) : undefined;
+      method === "GET" && url.startsWith("/api/telegram/status") ? jsonResponse({}, 500) : undefined;
     const unknownLink = await renderCard();
     await click(button("Edit alert"));
-    expect(screen.getByText("Couldn't check your Telegram link")).toBeDefined();
+    await settle(1000);
+    expect(telegramStatus().textContent).toBe("Couldn't check whether this username is linked. You can still save.");
     scan("unknown link", unknownLink.container);
     expect(problems).toEqual([]);
     expect(pinkCounts).toEqual({ "read-only": 0, "load error": 0, "unknown link": 1 });
@@ -1537,37 +1735,51 @@ describe("NotificationConfig: language", () => {
 
   it("writes Telegram, the read-only and the load error states in Czech, with no dashes anywhere", async () => {
     const texts: string[] = [];
+    const czechTelegramInput = () =>
+      screen.getByRole<HTMLInputElement>("textbox", { name: "Uživatelské jméno na Telegramu" });
     api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: { ...SAVED_CONFIG, services: ["telegram"] } };
-    api.override = ({ method, url }) =>
-      method === "GET" && url.startsWith("/api/telegram/link?") ? jsonResponse({}, 500) : undefined;
-    const unknownLink = await renderCard({}, "cs");
+    api.override = ({ url }) => (url.startsWith("/api/telegram/status") ? jsonResponse({}, 500) : undefined);
+    const card = await renderCard({}, "cs");
     await click(button("Upravit upozornění"));
-    expect(screen.getByText("Propojení s Telegramem se nepodařilo ověřit")).toBeDefined();
+    expect(czechTelegramInput().value).toBe("saved_tg");
+    await settle(1000);
+    expect(telegramStatus().textContent).toBe(
+      "Nepodařilo se ověřit, jestli je toto jméno propojené. Uložit můžete i tak.",
+    );
+    texts.push(card.container.textContent ?? "");
+
+    await type(czechTelegramInput(), "");
     await click(button("Uložit upozornění"));
+    expect(fieldErrors()).toEqual(["Zadejte své uživatelské jméno na Telegramu."]);
+    await type(czechTelegramInput(), "rom");
     expect(fieldErrors()).toEqual([
-      "Propojení s Telegramem se nepodařilo ověřit",
-      "Ověřte propojení s Telegramem tlačítkem Zkusit znovu a potom uložte.",
+      "Zadejte uživatelské jméno na Telegramu ve tvaru alice_eth: 4 až 32 písmen, číslic nebo podtržítek, na začátku písmeno a na konci ne _.",
     ]);
-    texts.push(unknownLink.container.textContent ?? "");
+    texts.push(card.container.textContent ?? "");
+
     api.override = () => undefined;
-    await click(button("Zkusit znovu"));
-    await click(button("Připojit Telegram"));
-    expect(screen.getByText(/^Otevře našeho bota v Telegramu/).textContent).toBe(
-      "Otevře našeho bota v Telegramu. Stiskněte tam Start a tato peněženka se propojí s vaším chatem.",
+    await type(czechTelegramInput(), "@Novy_Ucet");
+    expect(telegramStatus().textContent).toBe("Ověřujeme");
+    await settle(400);
+    expect(telegramStatus().textContent).toBe(
+      `Zatím nepropojeno: jednou stiskněte Start v @${BOT}.Otevřít @${BOT} (otevře se v nové kartě)`,
     );
-    expect(screen.getByRole("link", { name: "Otevřít Telegram (otevře se v nové kartě)" })).toBeDefined();
-    api.links[ADDRESS.toLowerCase()] = SAVED_LINK;
-    await settle(2000);
-    expect(mocks.toasts).toEqual(["success: Telegram připojen jako @saved_tg"]);
-    expect(screen.getByText("Připojeno jako @saved_tg")).toBeDefined();
-    texts.push(unknownLink.container.textContent ?? "");
-    // The bot's farewell in the chat follows the page's language.
-    await click(button("Odpojit Telegram"));
-    expect(lastRequest("DELETE /api/telegram/link")).toBe(
-      `DELETE /api/telegram/link {"userId":"${ADDRESS}","locale":"cs"}`,
+    texts.push(card.container.textContent ?? "");
+
+    await click(button("Uložit upozornění"));
+    expect(summaryValue("Telegram")).toBe("@novy_ucet");
+    expect(noteStartingWith("Zatím nepropojeno")?.textContent).toBe(
+      `Zatím nepropojeno: jednou stiskněte Start v @${BOT}.Otevřít @${BOT} (otevře se v nové kartě)`,
     );
-    expect(mocks.toasts.at(-1)).toBe("success: Telegram odpojen");
-    unknownLink.unmount();
+    texts.push(card.container.textContent ?? "");
+
+    api.linked.add("novy_ucet");
+    await click(button("Upravit upozornění"));
+    expect(telegramStatus().textContent).toBe(
+      "Propojeno: @novy_ucet. Upozornění budou chodit do vašeho chatu na Telegramu.",
+    );
+    texts.push(card.container.textContent ?? "");
+    card.unmount();
 
     mocks.hasAccess = false;
     const readOnly = await renderCard({}, "cs");
@@ -1584,7 +1796,7 @@ describe("NotificationConfig: language", () => {
 
     for (const text of texts) {
       expect(text).not.toMatch(DASHES);
-      expect(text).not.toMatch(/\b(?:Save|Delete|Cancel|Connect|Alert|Threshold)\b/);
+      expect(text).not.toMatch(/\b(?:Save|Delete|Cancel|Connect|Alert|Threshold|Checking|linked)\b/);
     }
   });
 });

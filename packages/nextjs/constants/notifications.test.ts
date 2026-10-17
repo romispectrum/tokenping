@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   AVAILABLE_SERVICES,
   DEFAULT_HEALTH_FACTOR_THRESHOLD,
@@ -8,11 +8,14 @@ import {
   HEALTH_FACTOR_THRESHOLD_MIN,
   NOTIFICATION_CHECK_INTERVAL_MINUTES,
   NOTIFICATION_SERVICES,
-  TELEGRAM_LINK_POLL_INTERVAL_MS,
-  TELEGRAM_LINK_POLL_TIMEOUT_MS,
+  TELEGRAM_STATUS_POLL_INTERVAL_MS,
+  TELEGRAM_STATUS_POLL_TIMEOUT_MS,
   THRESHOLD_SLIDER_MAX,
   THRESHOLD_SLIDER_MIN,
   THRESHOLD_SLIDER_STEP,
+  getSelectableServices,
+  getTelegramBotUsername,
+  isTelegramConfigured,
 } from "~~/constants/notifications";
 import vercelConfig from "~~/vercel.json";
 
@@ -41,13 +44,45 @@ describe("notification constants", () => {
     expect(THRESHOLD_SLIDER_STEP).toBe(0.1);
   });
 
-  it("matches the Telegram polling timings formerly inlined in NotificationConfig", () => {
-    expect(TELEGRAM_LINK_POLL_INTERVAL_MS).toBe(2_000);
-    expect(TELEGRAM_LINK_POLL_TIMEOUT_MS).toBe(120_000);
+  it("polls a Telegram username's status every 3 seconds for up to 5 minutes", () => {
+    expect(TELEGRAM_STATUS_POLL_INTERVAL_MS).toBe(3_000);
+    expect(TELEGRAM_STATUS_POLL_TIMEOUT_MS).toBe(300_000);
   });
 
   it("matches the cron schedule in vercel.json", () => {
     const cron = vercelConfig.crons.find(entry => entry.path === "/api/cron/notifications");
     expect(cron?.schedule).toBe(`*/${NOTIFICATION_CHECK_INTERVAL_MINUTES} * * * *`);
+  });
+});
+
+describe("Telegram bot configuration", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it.each([
+    ["tokenping_bot", "tokenping_bot", true],
+    ["@tokenping_bot", "tokenping_bot", true],
+    ["", undefined, false],
+    ["@", undefined, false],
+  ])("reads NEXT_PUBLIC_TELEGRAM_BOT_USERNAME %j as %j (configured: %s)", (env, username, configured) => {
+    vi.stubEnv("NEXT_PUBLIC_TELEGRAM_BOT_USERNAME", env);
+    expect(getTelegramBotUsername()).toBe(username);
+    expect(isTelegramConfigured()).toBe(configured);
+  });
+
+  it("is unconfigured when the variable is unset", () => {
+    vi.stubEnv("NEXT_PUBLIC_TELEGRAM_BOT_USERNAME", undefined);
+    expect(getTelegramBotUsername()).toBeUndefined();
+    expect(isTelegramConfigured()).toBe(false);
+  });
+
+  it.each([
+    ["tokenping_bot", [], ["email", "signal", "telegram"]],
+    ["", [], ["email", "signal"]],
+    ["", ["telegram"], ["email", "signal", "telegram"]],
+  ] as const)("with the bot %j and %j selected, offers %j", (env, selected, offered) => {
+    vi.stubEnv("NEXT_PUBLIC_TELEGRAM_BOT_USERNAME", env);
+    expect(getSelectableServices(selected).map(service => service.id)).toEqual(offered);
   });
 });

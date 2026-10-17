@@ -9,8 +9,8 @@ const LOCAL_SUPABASE_ANON_KEY =
 let serverClient: SupabaseClient | null = null;
 
 /**
- * Lazily created singleton. Prefers the service role key: the Telegram token table is not readable or writable
- * with the anon key.
+ * Lazily created singleton. Prefers the service role key: user_attribution is not readable or writable with the
+ * anon key.
  */
 export function getSupabaseServerClient(): SupabaseClient {
   serverClient ??= createClient(

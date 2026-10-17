@@ -15,137 +15,53 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe("createLinkToken", () => {
-  const BODY = {
-    token: "t",
-    botUsername: "bot",
-    expiresAt: "2026-10-14T12:10:00.000Z",
-    deepLink: "https://t.me/bot?start=t",
-  };
-  const issuedAt = (serverDate: string | undefined, body: unknown = BODY) =>
-    new Response(JSON.stringify(body), {
-      headers: { "Content-Type": "application/json", ...(serverDate ? { Date: serverDate } : {}) },
-    });
-
-  it("POSTs the trimmed address and returns the body plus the token's lifetime by the server's clock", async () => {
-    fetchMock.mockResolvedValue(issuedAt("Wed, 14 Oct 2026 12:00:00 GMT"));
-    await expect(telegramClient.createLinkToken(" 0xAbC ")).resolves.toEqual({ ...BODY, expiresInMs: 10 * 60 * 1000 });
-    expect(fetchMock.mock.calls).toEqual([
-      [
-        "/api/telegram/link-token",
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: '{"userId":"0xAbC"}' },
-      ],
-    ]);
+describe("getUsernameStatus", () => {
+  it.each([true, false])("GETs the status without caching and returns linked:%s", async linked => {
+    fetchMock.mockResolvedValue(jsonResponse({ linked }));
+    await expect(telegramClient.getUsernameStatus("alice_eth")).resolves.toEqual({ linked });
+    expect(fetchMock.mock.calls).toEqual([["/api/telegram/status?username=alice_eth", { cache: "no-store" }]]);
   });
 
-  it("does not let the device clock change the token's lifetime", async () => {
-    vi.useFakeTimers({ toFake: ["Date"], now: Date.parse("2026-10-14T12:15:00.000Z") });
-    try {
-      fetchMock.mockResolvedValue(issuedAt("Wed, 14 Oct 2026 12:00:00 GMT"));
-      const { expiresInMs } = await telegramClient.createLinkToken("0xabc");
-      expect(expiresInMs).toBe(10 * 60 * 1000);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it.each([
-    ["without a Date header", issuedAt(undefined)],
-    ["with an unreadable Date header", issuedAt("yesterday")],
-    ["with an unreadable expiresAt", issuedAt("Wed, 14 Oct 2026 12:00:00 GMT", { ...BODY, expiresAt: "soon" })],
-  ])("reports an unknown lifetime %s", async (_, response) => {
-    fetchMock.mockResolvedValue(response);
-    const { expiresInMs } = await telegramClient.createLinkToken("0xabc");
-    expect(expiresInMs).toBeNull();
+  it("URL-encodes the username as given, without trimming or normalizing it", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ linked: false }));
+    await telegramClient.getUsernameStatus(" @a+b&c=d ");
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/telegram/status?username=%20%40a%2Bb%26c%3Dd%20");
   });
 
   it("uses NEXT_PUBLIC_APP_URL outside the browser", async () => {
     vi.unstubAllGlobals();
     vi.stubGlobal("fetch", fetchMock);
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://tokenping.example");
-    fetchMock.mockResolvedValue(issuedAt(undefined));
-    await telegramClient.createLinkToken("0xabc");
-    expect(fetchMock.mock.calls[0][0]).toBe("https://tokenping.example/api/telegram/link-token");
+    fetchMock.mockResolvedValue(jsonResponse({ linked: false }));
+    await telegramClient.getUsernameStatus("alice_eth");
+    expect(fetchMock.mock.calls[0][0]).toBe("https://tokenping.example/api/telegram/status?username=alice_eth");
   });
 
+  // A failed lookup means the status is unknown, not "not linked": a linked username must not look unlinked.
   it.each([
     [
       "the error string",
-      jsonResponse({ error: "Telegram is not configured on this server" }, 503),
-      "Telegram is not configured on this server",
+      jsonResponse({ error: "Missing or invalid Telegram username" }, 400),
+      "Missing or invalid Telegram username",
+    ],
+    [
+      "the server's message for a failed lookup",
+      jsonResponse({ error: "Failed to read the Telegram chat: boom" }, 500),
+      "Failed to read the Telegram chat: boom",
     ],
     [
       "the fallback for a non-JSON body",
       new Response("bad gateway", { status: 502 }),
-      "Failed to create Telegram link token",
+      "Failed to check the Telegram username",
     ],
-    ["the fallback without an error field", jsonResponse({}, 500), "Failed to create Telegram link token"],
-  ])("rejects with %s", async (_, response, message) => {
-    fetchMock.mockResolvedValue(response);
-    await expect(telegramClient.createLinkToken("0xabc")).rejects.toThrow(new Error(message));
-  });
-});
-
-describe("getLinkStatus", () => {
-  it("GETs the URL-encoded trimmed address without caching", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ linked: true, chatId: "1", username: null, linkedAt: "now" }));
-    await expect(telegramClient.getLinkStatus(" 0xA+b ")).resolves.toEqual({
-      linked: true,
-      chatId: "1",
-      username: null,
-      linkedAt: "now",
-    });
-    expect(fetchMock.mock.calls).toEqual([["/api/telegram/link?userId=0xA%2Bb", { cache: "no-store" }]]);
-  });
-
-  // A failed lookup means the status is unknown, not "not linked": a linked wallet must not look unlinked.
-  it.each([
-    [
-      "the error string",
-      jsonResponse({ error: "Failed to read the Telegram link" }, 500),
-      "Failed to read the Telegram link",
-    ],
-    [
-      "the fallback for a non-JSON body",
-      new Response("bad gateway", { status: 502 }),
-      "Failed to check the Telegram link",
-    ],
-    ["the fallback without an error field", jsonResponse({}, 500), "Failed to check the Telegram link"],
+    ["the fallback without an error field", jsonResponse({}, 500), "Failed to check the Telegram username"],
   ])("rejects an HTTP error with %s", async (_, response, message) => {
     fetchMock.mockResolvedValue(response);
-    await expect(telegramClient.getLinkStatus("0xabc")).rejects.toThrow(new Error(message));
+    await expect(telegramClient.getUsernameStatus("alice_eth")).rejects.toThrow(new Error(message));
   });
 
   it("rejects on network errors", async () => {
     fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
-    await expect(telegramClient.getLinkStatus("0xabc")).rejects.toThrow("Failed to fetch");
-  });
-});
-
-describe("disconnect", () => {
-  it("DELETEs with the trimmed address", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ success: true }));
-    await expect(telegramClient.disconnect(" 0xAbC ")).resolves.toBeUndefined();
-    expect(fetchMock.mock.calls).toEqual([
-      [
-        "/api/telegram/link",
-        { method: "DELETE", headers: { "Content-Type": "application/json" }, body: '{"userId":"0xAbC"}' },
-      ],
-    ]);
-  });
-
-  it("sends the page's language for the bot's farewell message", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ success: true }));
-    await telegramClient.disconnect("0xAbC", "cs");
-    expect(fetchMock.mock.calls[0][1]?.body).toBe('{"userId":"0xAbC","locale":"cs"}');
-  });
-
-  it.each([
-    ["the error string", jsonResponse({ error: "Active paid access required" }, 403), "Active paid access required"],
-    ["the fallback for a non-JSON body", new Response("oops", { status: 500 }), "Failed to disconnect Telegram"],
-    ["the fallback without an error field", jsonResponse({}, 500), "Failed to disconnect Telegram"],
-  ])("rejects with %s", async (_, response, message) => {
-    fetchMock.mockResolvedValue(response);
-    await expect(telegramClient.disconnect("0xabc")).rejects.toThrow(new Error(message));
+    await expect(telegramClient.getUsernameStatus("alice_eth")).rejects.toThrow("Failed to fetch");
   });
 });

@@ -18,17 +18,25 @@ import type { NotificationConfig, NotificationService } from "~~/types/notificat
  * literal regexes and limits and compared with the module over an input matrix. They check the order of the checks,
  * the presence rules and the payload shape. They carry the deliberate changes: the Signal prefix rule (B0.11: an
  * optional "u:" then an optional "@", as on the server), as a copy of that rule, so the explicit Signal cases in
- * validateNotificationForm and buildConfigUpdate are what pin it; and the messages, rewritten to say how to fix the
- * field now that they show under it.
+ * validateNotificationForm and buildConfigUpdate are what pin it; the messages, rewritten to say how to fix the
+ * field now that they show under it; and Telegram as a typed username like Signal's (it used to need a chat linked
+ * to the wallet), which saves whether or not that account has pressed Start in the bot yet.
  */
 const referenceNormalizeSignal = (raw: string) => raw.trim().replace(/^(?:u:)?@?/, "");
+const referenceNormalizeTelegram = (raw: string) =>
+  raw
+    .trim()
+    .replace(/^(?:https?:\/\/)?(?:www\.)?(?:t|telegram)\.me\//i, "")
+    .replace(/^@/, "")
+    .replace(/\/+$/, "")
+    .toLowerCase();
 const referenceClampThreshold = (value: number) => Math.min(10, Math.max(1.1, value));
 
 const referenceValidate = (
   services: NotificationService[],
   email: string,
   signalRecipient: string,
-  telegramChatId: string | undefined,
+  telegramUsername: string,
 ) => {
   if (services.length === 0) return "Select at least one notification service.";
   if (services.includes("email")) {
@@ -43,8 +51,12 @@ const referenceValidate = (
       return "Enter a Signal username like alice.42. Find yours in Signal under Settings, then Profile.";
     }
   }
-  if (services.includes("telegram") && !telegramChatId) {
-    return "Connect Telegram before you save.";
+  if (services.includes("telegram")) {
+    const username = referenceNormalizeTelegram(telegramUsername);
+    if (!username) return "Enter your Telegram username.";
+    if (telegramUsername.length > 64 || !/^[a-z][a-z0-9_]{2,30}[a-z0-9]$/.test(username)) {
+      return "Enter a Telegram username like alice_eth: 4 to 32 letters, digits or underscores, starting with a letter and not ending with _.";
+    }
   }
   return null;
 };
@@ -53,6 +65,7 @@ const referencePayload = (
   services: NotificationService[],
   email: string,
   signalRecipient: string,
+  telegramUsername: string,
   threshold: number,
 ) => ({
   enabled: true,
@@ -60,6 +73,9 @@ const referencePayload = (
   healthFactorThreshold: referenceClampThreshold(Math.round(threshold * 100) / 100),
   email: services.includes("email") ? email.trim() || undefined : undefined,
   signalRecipient: services.includes("signal") ? referenceNormalizeSignal(signalRecipient) || undefined : undefined,
+  telegramUsername: services.includes("telegram")
+    ? referenceNormalizeTelegram(telegramUsername) || undefined
+    : undefined,
 });
 
 const SERVICE_SETS: NotificationService[][] = [
@@ -87,7 +103,26 @@ const SIGNALS = [
   "alice.4",
   "alice",
 ];
-const CHAT_IDS = [undefined, "", "123"];
+const TELEGRAMS = [
+  "",
+  "  ",
+  "@",
+  "https://t.me/",
+  "alice_eth",
+  " @Alice_Eth ",
+  "https://t.me/alice_eth/",
+  "telegram.me/Alice_Eth",
+  "@@alice_eth",
+  "abcd",
+  "abc",
+  "1alice",
+  "alice_",
+  "alice-eth",
+  "a".repeat(32),
+  "a".repeat(33),
+  // A valid name, but more than the 64 characters the input takes.
+  `${" ".repeat(40)}alice_eth${" ".repeat(20)}`,
+];
 
 const CONFIG: NotificationConfig = {
   chainId: 42161,
@@ -96,6 +131,7 @@ const CONFIG: NotificationConfig = {
   healthFactorThreshold: 1.8,
   email: "me@example.com",
   signalRecipient: "alice.42",
+  telegramUsername: "alice_eth",
 };
 
 describe("EMPTY_FORM_STATE", () => {
@@ -105,6 +141,7 @@ describe("EMPTY_FORM_STATE", () => {
       services: [],
       email: "",
       signalRecipient: "",
+      telegramUsername: "",
       threshold: 1.5,
       thresholdText: "1.50",
     });
@@ -123,6 +160,7 @@ describe("configToFormState", () => {
       services: ["email", "signal", "telegram"],
       email: "me@example.com",
       signalRecipient: "alice.42",
+      telegramUsername: "alice_eth",
       threshold: 1.8,
       thresholdText: "1.80",
     });
@@ -164,7 +202,7 @@ describe("toggleService", () => {
 });
 
 describe("validateNotificationForm", () => {
-  const form = { services: [] as NotificationService[], email: "", signalRecipient: "", telegramChatId: undefined };
+  const form = { services: [] as NotificationService[], email: "", signalRecipient: "", telegramUsername: "" };
 
   it.each([
     [{}, NOTIFICATION_FORM_ERRORS.noService],
@@ -178,13 +216,24 @@ describe("validateNotificationForm", () => {
     [{ services: ["signal"], signalRecipient: "u:alice.42" }, null],
     [{ services: ["signal"], signalRecipient: " u:@alice.42 " }, null],
     [{ services: ["signal"], signalRecipient: "ursula.42" }, null],
-    [{ services: ["telegram"], telegramChatId: "" }, NOTIFICATION_FORM_ERRORS.telegramNotLinked],
+    [{ services: ["telegram"] }, NOTIFICATION_FORM_ERRORS.noTelegram],
+    [{ services: ["telegram"], telegramUsername: " @ " }, NOTIFICATION_FORM_ERRORS.noTelegram],
+    [{ services: ["telegram"], telegramUsername: "https://t.me/" }, NOTIFICATION_FORM_ERRORS.noTelegram],
+    [{ services: ["telegram"], telegramUsername: "rom" }, NOTIFICATION_FORM_ERRORS.invalidTelegram],
+    [{ services: ["telegram"], telegramUsername: "alice-eth" }, NOTIFICATION_FORM_ERRORS.invalidTelegram],
+    [{ services: ["telegram"], telegramUsername: "alice_" }, NOTIFICATION_FORM_ERRORS.invalidTelegram],
+    [{ services: ["telegram"], telegramUsername: "1alice" }, NOTIFICATION_FORM_ERRORS.invalidTelegram],
+    // Pasted the way Telegram shows it: with "@", in capitals or as a t.me link.
+    [{ services: ["telegram"], telegramUsername: " @Alice_Eth " }, null],
+    [{ services: ["telegram"], telegramUsername: "https://t.me/alice_eth" }, null],
+    // Not checked while Telegram is not selected.
+    [{ services: ["email"], email: "me@example.com", telegramUsername: "rom" }, null],
     [
       {
         services: ["email", "signal", "telegram"],
         email: " me@example.com ",
         signalRecipient: " @alice.42 ",
-        telegramChatId: "1",
+        telegramUsername: "@alice_eth",
       },
       null,
     ],
@@ -198,28 +247,18 @@ describe("validateNotificationForm", () => {
         services: ["telegram", "signal", "email"],
         email: "",
         signalRecipient: "",
-        telegramChatId: undefined,
+        telegramUsername: "",
       }),
     ).toBe(NOTIFICATION_FORM_ERRORS.noEmail);
-  });
-
-  it("says the Telegram link could not be checked, instead of asking to connect, while its status is unknown", () => {
-    const unknown = { ...form, services: ["telegram"] as NotificationService[], telegramStatusUnknown: true };
-    expect(validateNotificationForm(unknown)).toBe("Select Try again to check your Telegram link, then save.");
-    // Earlier fields still come first, and a form without Telegram does not depend on the link.
-    expect(validateNotificationForm({ ...unknown, services: ["email", "telegram"] })).toBe(
-      NOTIFICATION_FORM_ERRORS.noEmail,
-    );
-    expect(validateNotificationForm({ ...unknown, services: ["email"], email: "me@example.com" })).toBeNull();
   });
 
   it("matches the reference checks for every combination", () => {
     for (const services of SERVICE_SETS)
       for (const email of EMAILS)
         for (const signalRecipient of SIGNALS)
-          for (const telegramChatId of CHAT_IDS) {
-            expect(validateNotificationForm({ services, email, signalRecipient, telegramChatId })).toBe(
-              referenceValidate(services, email, signalRecipient, telegramChatId),
+          for (const telegramUsername of TELEGRAMS) {
+            expect(validateNotificationForm({ services, email, signalRecipient, telegramUsername })).toBe(
+              referenceValidate(services, email, signalRecipient, telegramUsername),
             );
           }
   });
@@ -232,17 +271,19 @@ describe("getNotificationFormErrors", () => {
         services: ["telegram", "signal", "email"],
         email: "me@example",
         signalRecipient: "",
-        telegramChatId: undefined,
+        telegramUsername: "@",
       }),
     ).toStrictEqual({
       email: NOTIFICATION_FORM_ERRORS.invalidEmail,
       signalRecipient: NOTIFICATION_FORM_ERRORS.noSignal,
-      telegram: NOTIFICATION_FORM_ERRORS.telegramNotLinked,
+      telegram: NOTIFICATION_FORM_ERRORS.noTelegram,
     });
   });
 
   it("asks only for a service when none is selected, and is empty for a valid form", () => {
-    expect(getNotificationFormErrors({ services: [], email: "", signalRecipient: "" })).toStrictEqual({
+    expect(
+      getNotificationFormErrors({ services: [], email: "", signalRecipient: "", telegramUsername: "" }),
+    ).toStrictEqual({
       services: NOTIFICATION_FORM_ERRORS.noService,
     });
     expect(
@@ -250,7 +291,19 @@ describe("getNotificationFormErrors", () => {
         services: ["email", "telegram"],
         email: "me@example.com",
         signalRecipient: "",
-        telegramChatId: "1",
+        telegramUsername: "alice_eth",
+      }),
+    ).toStrictEqual({});
+  });
+
+  it("does not ask for the Telegram account to have pressed Start: a valid username is enough to save", () => {
+    // The form knows nothing about the link; the status line under the field says whether Start was pressed.
+    expect(
+      getNotificationFormErrors({
+        services: ["telegram"],
+        email: "",
+        signalRecipient: "",
+        telegramUsername: "x_never",
       }),
     ).toStrictEqual({});
   });
@@ -259,7 +312,7 @@ describe("getNotificationFormErrors", () => {
     // En and em dash, built from their code points so this file does not contain them, even as escapes.
     const dashes = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
     for (const message of Object.values(NOTIFICATION_FORM_ERRORS)) {
-      expect(message).toMatch(/^(?:Select|Enter|Connect) .+\.$/);
+      expect(message).toMatch(/^(?:Select|Enter) .+\.$/);
       expect(message).not.toMatch(dashes);
     }
   });
@@ -283,6 +336,7 @@ describe("buildConfigUpdate", () => {
         services: ["email", "signal"],
         email: " me@example.com ",
         signalRecipient: " @@alice.42 ",
+        telegramUsername: "",
         threshold: 2.345,
       }),
     ).toStrictEqual({
@@ -291,18 +345,28 @@ describe("buildConfigUpdate", () => {
       healthFactorThreshold: 2.35,
       email: "me@example.com",
       signalRecipient: "@alice.42",
+      telegramUsername: undefined,
     });
   });
 
   it("stores the Signal username without the 'u:' and '@' prefixes the server also strips", () => {
-    expect(
-      buildConfigUpdate({ services: ["signal"], email: "", signalRecipient: " u:@alice.42 ", threshold: 1.5 })
-        .signalRecipient,
-    ).toBe("alice.42");
-    expect(
-      buildConfigUpdate({ services: ["signal"], email: "", signalRecipient: "ursula.42", threshold: 1.5 })
-        .signalRecipient,
-    ).toBe("ursula.42");
+    const signal = (signalRecipient: string) =>
+      buildConfigUpdate({ services: ["signal"], email: "", signalRecipient, telegramUsername: "", threshold: 1.5 })
+        .signalRecipient;
+    expect(signal(" u:@alice.42 ")).toBe("alice.42");
+    expect(signal("ursula.42")).toBe("ursula.42");
+  });
+
+  it("stores the Telegram username as the server does: lowercased, without '@' or a t.me link", () => {
+    const telegram = (telegramUsername: string) =>
+      buildConfigUpdate({ services: ["telegram"], email: "", signalRecipient: "", telegramUsername, threshold: 1.5 })
+        .telegramUsername;
+    expect([" @Alice_Eth ", "https://t.me/Alice_Eth/", "telegram.me/alice_eth", "alice_eth"].map(telegram)).toEqual([
+      "alice_eth",
+      "alice_eth",
+      "alice_eth",
+      "alice_eth",
+    ]);
   });
 
   it("keeps explicit undefined recipients for deselected services or blank input", () => {
@@ -310,6 +374,7 @@ describe("buildConfigUpdate", () => {
       services: ["telegram"],
       email: "me@example.com",
       signalRecipient: "alice.42",
+      telegramUsername: "@alice_eth",
       threshold: 1.5,
     });
     expect(update).toStrictEqual({
@@ -318,13 +383,38 @@ describe("buildConfigUpdate", () => {
       healthFactorThreshold: 1.5,
       email: undefined,
       signalRecipient: undefined,
+      telegramUsername: "alice_eth",
     });
-    expect(Object.keys(update)).toEqual(["enabled", "services", "healthFactorThreshold", "email", "signalRecipient"]);
+    expect(Object.keys(update)).toEqual([
+      "enabled",
+      "services",
+      "healthFactorThreshold",
+      "email",
+      "signalRecipient",
+      "telegramUsername",
+    ]);
+    // A deselected Telegram clears the saved username, like a deselected Signal clears its recipient.
+    const withoutTelegram = buildConfigUpdate({
+      services: ["email"],
+      email: "me@example.com",
+      signalRecipient: "",
+      telegramUsername: "alice_eth",
+      threshold: 1.5,
+    });
+    expect(Object.keys(withoutTelegram)).toContain("telegramUsername");
+    expect(withoutTelegram.telegramUsername).toBeUndefined();
     expect(
-      buildConfigUpdate({ services: ["email", "signal"], email: "  ", signalRecipient: " @ ", threshold: 1.5 }),
+      buildConfigUpdate({
+        services: ["email", "signal", "telegram"],
+        email: "  ",
+        signalRecipient: " @ ",
+        telegramUsername: " @ ",
+        threshold: 1.5,
+      }),
     ).toMatchObject({
       email: undefined,
       signalRecipient: undefined,
+      telegramUsername: undefined,
     });
   });
 
@@ -333,11 +423,12 @@ describe("buildConfigUpdate", () => {
     threshold => {
       for (const services of SERVICE_SETS)
         for (const email of EMAILS)
-          for (const signalRecipient of SIGNALS) {
-            expect(buildConfigUpdate({ services, email, signalRecipient, threshold })).toStrictEqual(
-              referencePayload(services, email, signalRecipient, threshold),
-            );
-          }
+          for (const signalRecipient of SIGNALS)
+            for (const telegramUsername of TELEGRAMS) {
+              expect(
+                buildConfigUpdate({ services, email, signalRecipient, telegramUsername, threshold }),
+              ).toStrictEqual(referencePayload(services, email, signalRecipient, telegramUsername, threshold));
+            }
     },
   );
 });
@@ -350,17 +441,17 @@ describe("form errors in Czech", () => {
       services: ["email", "signal", "telegram"] as NotificationService[],
       email: "me@example",
       signalRecipient: "",
-      telegramChatId: undefined,
+      telegramUsername: "",
     };
     expect(getNotificationFormErrors(form, "cs")).toStrictEqual({
       email: "Zadejte e-mailovou adresu ve tvaru jmeno@example.com.",
       signalRecipient: "Zadejte své uživatelské jméno v Signalu.",
-      telegram: "Před uložením připojte Telegram.",
+      telegram: "Zadejte své uživatelské jméno na Telegramu.",
     });
     expect(validateNotificationForm({ ...form, services: [] }, "cs")).toBe("Vyberte alespoň jeden kanál upozornění.");
-    expect(
-      validateNotificationForm({ ...form, services: ["telegram"], telegramStatusUnknown: true } as typeof form, "cs"),
-    ).toBe("Ověřte propojení s Telegramem tlačítkem Zkusit znovu a potom uložte.");
+    expect(validateNotificationForm({ ...form, services: ["telegram"], telegramUsername: "alice-eth" }, "cs")).toBe(
+      "Zadejte uživatelské jméno na Telegramu ve tvaru alice_eth: 4 až 32 písmen, číslic nebo podtržítek, na začátku písmeno a na konci ne _.",
+    );
     // English stays the default for callers without a page (the API checks).
     expect(validateNotificationForm({ ...form, services: [] })).toBe(NOTIFICATION_FORM_ERRORS.noService);
   });

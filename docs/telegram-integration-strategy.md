@@ -1,5 +1,10 @@
 # Telegram Integration Strategy
 
+> **Superseded (October 2026).** The wallet-bound deep-link handshake described below was replaced: an alert now
+> names a Telegram username, typed like the Signal username, and the bot links that username's chat when the
+> account sends `/start`. See [telegram-bot-setup.md](telegram-bot-setup.md) and
+> `packages/supabase/migrations/20261018000000_telegram_usernames.sql`. This page is kept for the reasoning.
+
 Status: proposal, no code yet
 Author: senior fullstack
 Scope: add Telegram as a third notification channel alongside `email` and `signal`, triggered by the same Aave health-factor cron.

@@ -31,6 +31,11 @@ describe("/privacy", () => {
 
     expect(screen.getByText("Your email address, if you chose email.")).toBeTruthy();
     expect(screen.getByText("Your Signal username, if you chose Signal.")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "When you last sent a test message on each channel, to allow one test per channel every 15 minutes.",
+      ),
+    ).toBeTruthy();
     expect(screen.getByText("A log of the alerts we sent.")).toBeTruthy();
     expect(screen.getByText(/the site uses none, and Tokenping sets no cookies/)).toBeTruthy();
     // Everything the app itself keeps in the browser: next-themes, wagmi/RainbowKit and the attribution prompt flag.
@@ -51,7 +56,7 @@ describe("/privacy", () => {
       "RPC providers (PublicNode, Alchemy and the networks' public endpoints)",
       "WalletConnect",
     ]);
-    expect(screen.queryByText(/Telegram chat ID/)).toBeNull();
+    expect(screen.queryByText(/Telegram username you type/)).toBeNull();
   });
 
   it("adds Telegram's data, processor and /stop once the bot is configured", () => {
@@ -60,7 +65,11 @@ describe("/privacy", () => {
     renderPage();
 
     expect(processorNames()).toContain("Telegram");
-    expect(screen.getByText(/we also store your Telegram chat ID, your Telegram username/)).toBeTruthy();
+    // The username typed into the alert, then the chat once that account presses Start; no wallet-bound code any more.
+    expect(screen.getByText(/^If you choose Telegram/).textContent).toBe(
+      "If you choose Telegram, we store the Telegram username you type into the alert. When that account presses Start in the Tokenping bot, we also store its chat ID and when it pressed Start, so alerts can reach it. Anyone can check whether a Telegram username has pressed Start in the bot.",
+    );
+    expect(screen.queryByText(/one-time code/)).toBeNull();
     expect(screen.getByText(/Sending \/stop to the Tokenping bot/)).toBeTruthy();
     expect(screen.getByText(/anyone who knows your wallet address/).textContent).toContain(
       "can look up the email address, Signal username and Telegram username saved for it",

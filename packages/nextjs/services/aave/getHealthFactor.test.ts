@@ -2,7 +2,10 @@ import { HttpRequestError, maxUint256 } from "viem";
 import { base, bsc, harmonyOne, mainnet, polygon } from "viem/chains";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AAVE_MARKETS, AAVE_V3_NETWORKS, AAVE_V4_SPOKES, arc } from "~~/config/aaveConfig";
-import type { getHealthFactorForWallet as GetHealthFactorForWallet } from "~~/services/aave/getHealthFactor";
+import type {
+  getHealthFactorForWallet as GetHealthFactorForWallet,
+  getMarketSnapshot as GetMarketSnapshot,
+} from "~~/services/aave/getHealthFactor";
 
 const rpc = vi.hoisted(() => ({
   clients: [] as { chain: { id: number }; transport: unknown; batch?: unknown }[],
@@ -252,5 +255,175 @@ describe("getHealthFactorForWallet", () => {
       ...ethereumMarkets.map(({ pool }) => pool),
       ...ethereumSpokes.map(({ spoke }) => spoke),
     ]);
+  });
+});
+
+describe("getMarketSnapshot", () => {
+  let getMarketSnapshot: typeof GetMarketSnapshot;
+  let getHealthFactorForWallet: typeof GetHealthFactorForWallet;
+
+  // V3 reports USD with 8 decimals: [collateral, debt, available borrows, liquidation threshold, LTV, health factor].
+  const v3Account = (collateralBase: bigint, debtBase: bigint, healthFactor: bigint) =>
+    [collateralBase, debtBase, 0n, 8250n, 8000n, healthFactor] as const;
+  // A V4 Spoke reports values with 26 decimals, and its debt value scaled by a ray on top (53).
+  const v4Account = (totalCollateralValue: bigint, totalDebtValueRay: bigint, healthFactor: bigint) => ({
+    riskPremium: 0n,
+    avgCollateralFactor: 0n,
+    healthFactor,
+    totalCollateralValue,
+    totalDebtValueRay,
+    activeCollateralCount: 1n,
+    borrowCount: 1n,
+  });
+
+  beforeEach(async () => {
+    vi.resetModules();
+    ({ getMarketSnapshot, getHealthFactorForWallet } = await import("~~/services/aave/getHealthFactor"));
+    rpc.clients = [];
+    rpc.readContract.mockReset();
+    rpc.getFallbackTransport.mockClear();
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("reads a V3 Pool's health factor, collateral and debt in USD from its 8-decimal base", async () => {
+    // $12,345.67891234 supplied, $5,432.10 borrowed.
+    rpc.readContract.mockResolvedValue(v3Account(1_234_567_891_234n, 543_210_000_000n, 1_818_181_818_181_818_181n));
+
+    await expect(getMarketSnapshot(WALLET, mainnet.id)).resolves.toEqual({
+      chainName: "Ethereum (Core)",
+      healthFactor: "1.81",
+      healthFactorValue: 1.818181818181818181,
+      collateralUSD: 12345.67891234,
+      debtUSD: 5432.1,
+      hasPosition: true,
+    });
+    expect(rpc.readContract).toHaveBeenCalledTimes(1);
+    expect(rpc.readContract.mock.calls[0][0]).toMatchObject({
+      address: "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2",
+      functionName: "getUserAccountData",
+      args: [WALLET],
+    });
+  });
+
+  it("reads a further V3 market's Pool by its address", async () => {
+    rpc.readContract.mockResolvedValue(v3Account(250_000_000_000n, 200_000_000_000n, 1_049_999_999_999_999_999n));
+
+    await expect(getMarketSnapshot(WALLET, mainnet.id, PRIME_ID)).resolves.toEqual({
+      chainName: "Ethereum (Prime)",
+      healthFactor: "1.04",
+      healthFactorValue: 1.049999999999999999,
+      collateralUSD: 2500,
+      debtUSD: 2000,
+      hasPosition: true,
+    });
+    expect(rpc.readContract.mock.calls[0][0].address).toBe(PRIME_POOL);
+  });
+
+  it("reads a V4 Spoke's values with 26 decimals and its debt value with 53", async () => {
+    // $8,912.345678 of collateral, $4,056.789 of debt.
+    rpc.readContract.mockResolvedValue(
+      v4Account(8_912_345_678n * 10n ** 20n, 4_056_789n * 10n ** 50n, 2_028_074_091_781_711_275n),
+    );
+
+    await expect(getMarketSnapshot(WALLET, mainnet.id, LIDO_SPOKE)).resolves.toEqual({
+      chainName: "Ethereum (V4 Lido)",
+      healthFactor: "2.02",
+      healthFactorValue: 2.028074091781711275,
+      collateralUSD: 8912.345678,
+      debtUSD: 4056.789,
+      hasPosition: true,
+    });
+    expect(rpc.readContract.mock.calls[0][0]).toMatchObject({
+      address: "0xe1900480ac69f0B296841Cd01cC37546d92F35Cd",
+      functionName: "getUserAccountData",
+      args: [WALLET],
+    });
+  });
+
+  it("reports no position when Aave counts neither collateral nor debt, in V3 and in V4", async () => {
+    const empty = {
+      healthFactor: "∞",
+      healthFactorValue: Infinity,
+      collateralUSD: 0,
+      debtUSD: 0,
+      hasPosition: false,
+    };
+    rpc.readContract.mockResolvedValueOnce(v3Account(0n, 0n, maxUint256));
+    await expect(getMarketSnapshot(WALLET, polygon.id)).resolves.toEqual({ chainName: "Polygon", ...empty });
+
+    rpc.readContract.mockResolvedValueOnce(v4Account(0n, 0n, maxUint256));
+    await expect(getMarketSnapshot(WALLET, arc.id, ARC_MAIN_SPOKE)).resolves.toEqual({
+      chainName: "Arc (V4 Main)",
+      ...empty,
+    });
+  });
+
+  it("reports an infinite health factor for collateral without debt, which is still a position", async () => {
+    rpc.readContract.mockResolvedValue(v3Account(98_765_432_100n, 0n, maxUint256));
+
+    await expect(getMarketSnapshot(WALLET, base.id)).resolves.toEqual({
+      chainName: "Base",
+      healthFactor: "∞",
+      healthFactorValue: Infinity,
+      collateralUSD: 987.654321,
+      debtUSD: 0,
+      hasPosition: true,
+    });
+  });
+
+  it("counts debt without collateral as a position", async () => {
+    rpc.readContract.mockResolvedValue(v3Account(0n, 1_500_000_000n, 0n));
+
+    await expect(getMarketSnapshot(WALLET, polygon.id)).resolves.toMatchObject({
+      healthFactor: "0.00",
+      healthFactorValue: 0,
+      collateralUSD: 0,
+      debtUSD: 15,
+      hasPosition: true,
+    });
+  });
+
+  it.each([
+    ["a chain without an Aave market", harmonyOne.id, "v3"],
+    ["a V3 market on a V4-only chain", arc.id, "v3"],
+    ["an address that is no market", mainnet.id, `0x${"12".repeat(20)}`],
+    ["a Spoke on another chain", base.id, LIDO_SPOKE],
+    ["a checksummed Spoke address", mainnet.id, "0xe1900480ac69f0B296841Cd01cC37546d92F35Cd"],
+  ])("resolves null without any RPC call for %s", async (_, chainId, market) => {
+    await expect(getMarketSnapshot(WALLET, chainId, market)).resolves.toBeNull();
+    expect(rpc.clients).toHaveLength(0);
+    expect(rpc.readContract).not.toHaveBeenCalled();
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  it("resolves null and warns with the market, the chain and viem's short message when the read fails", async () => {
+    rpc.readContract.mockRejectedValueOnce(new Error("rpc down"));
+    await expect(getMarketSnapshot(WALLET, polygon.id)).resolves.toBeNull();
+    rpc.readContract.mockRejectedValueOnce(
+      new HttpRequestError({ url: "https://rpc.example", body: { params: [{ data: "0xabcdef" }] }, status: 503 }),
+    );
+    await expect(getMarketSnapshot(WALLET, mainnet.id, LIDO_SPOKE)).resolves.toBeNull();
+
+    expect(vi.mocked(console.warn).mock.calls).toEqual([
+      ["Failed to read the Aave position on Polygon (chain 137): rpc down"],
+      ["Failed to read the Aave position on Ethereum (V4 Lido) (chain 1): HTTP request failed."],
+    ]);
+  });
+
+  it("shares the chain's client, transport and one retry with the alert check", async () => {
+    rpc.readContract.mockResolvedValue(v3Account(0n, 0n, maxUint256));
+
+    await getHealthFactorForWallet(WALLET, mainnet.id);
+    await getMarketSnapshot(OTHER_WALLET, mainnet.id);
+
+    expect(rpc.clients).toEqual([
+      { chain: mainnet, transport: { fallbackFor: mainnet.id }, batch: { multicall: true } },
+    ]);
+    expect(rpc.getFallbackTransport).toHaveBeenCalledWith(mainnet, { retryCount: 1 });
+    expect(rpc.readContract.mock.calls.map(([{ args }]) => args)).toEqual([[WALLET], [OTHER_WALLET]]);
   });
 });

@@ -1,16 +1,18 @@
 // @vitest-environment jsdom
 import type { ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NotificationCard } from "~~/components/custom/notifications/NotificationCard";
 import { NotificationEmptyState } from "~~/components/custom/notifications/NotificationEmptyState";
 import { NotificationErrorSummary } from "~~/components/custom/notifications/NotificationErrorSummary";
 import { NotificationFormActions } from "~~/components/custom/notifications/NotificationFormActions";
 import { NotificationLoadError } from "~~/components/custom/notifications/NotificationLoadError";
 import { NotificationSummary } from "~~/components/custom/notifications/NotificationSummary";
-import { TelegramConnectField } from "~~/components/custom/notifications/TelegramConnectField";
+import { TelegramUsernameField } from "~~/components/custom/notifications/TelegramUsernameField";
 import { ThresholdField } from "~~/components/custom/notifications/ThresholdField";
 import { LocaleProvider } from "~~/i18n/LocaleProvider";
+import { jsonResponse } from "~~/utils/testing/helpers";
+import { renderWithProviders } from "~~/utils/testing/providers";
 
 /*
  * The markup of the settings card's parts in the design system: flat card, token colours, lucide icons, one pink
@@ -44,17 +46,44 @@ const withStableIds = (root: ChildNode | null) => {
   return root;
 };
 
-const TELEGRAM = {
-  chatId: undefined,
-  username: undefined,
-  deepLink: undefined,
-  isStatusUnknown: false,
-  isCheckingStatus: false,
-  isConnecting: false,
-  isDisconnecting: false,
-  onRetryStatus: noop,
-  onConnect: noop,
-  onDisconnect: noop,
+const BOT = "tokenping_bot";
+/** The Telegram usernames that have pressed Start in the bot, as the status API answers. */
+const LINKED_USERNAMES = ["alice_eth"];
+
+/**
+ * Renders with a query client and waits until the status API has answered for `username`, so the Telegram status
+ * shown is the settled one rather than "Checking".
+ */
+const renderAnswered = async (ui: ReactNode, username: string) => {
+  const view = renderWithProviders(ui);
+  await waitFor(() =>
+    expect(view.queryClient.getQueryState(["telegramUsernameStatus", username])?.status).toBe("success"),
+  );
+  return view;
+};
+
+beforeEach(() => {
+  vi.stubEnv("NEXT_PUBLIC_TELEGRAM_BOT_USERNAME", BOT);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) =>
+      jsonResponse({
+        linked: LINKED_USERNAMES.includes(new URL(url, "http://test").searchParams.get("username") ?? ""),
+      }),
+    ),
+  );
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
+
+/** The summary's Send test buttons: Email cooling down for 12 minutes, Signal's test on its way. */
+const TEST_SENDS = {
+  waitFor: (channel: string) => (channel === "email" ? 12 * 60_000 : 0),
+  sendingChannel: "signal" as const,
+  onSend: noop,
 };
 
 const ACTIONS = {
@@ -75,20 +104,53 @@ describe("notification settings markup", () => {
     expect(withStableIds(container.firstChild)).toMatchSnapshot();
   });
 
-  it("renders the saved summary in the card, with the Active badge and the below-threshold warning", () => {
-    const { container } = render(
+  it("renders the saved summary in the card, with the Active badge and the below-threshold warning", async () => {
+    const { container } = await renderAnswered(
       <NotificationCard isActive>
         <NotificationSummary
           services={["email", "signal", "telegram"]}
           email="me@example.com"
           signalRecipient="alice.42"
-          telegramChatId="555"
-          telegramUsername="bob"
+          telegramUsername="alice_eth"
           threshold={1.8}
           currentHealthFactor="1.20"
           showBelowThresholdWarning
         />
       </NotificationCard>,
+      "alice_eth",
+    );
+    expect(withStableIds(container.firstChild)).toMatchSnapshot();
+  });
+
+  it("renders the summary's warning, with the link to the bot, while the saved Telegram username has not pressed Start", async () => {
+    const { container } = await renderAnswered(
+      <NotificationSummary
+        services={["telegram"]}
+        email=""
+        signalRecipient=""
+        telegramUsername="carol"
+        threshold={1.5}
+        currentHealthFactor="2.00"
+        showBelowThresholdWarning={false}
+      />,
+      "carol",
+    );
+    expect(withStableIds(container.firstChild)).toMatchSnapshot();
+  });
+
+  it("renders the summary's Send test buttons: one cooling down, one sending, Telegram's off while not linked, and the limit note", async () => {
+    const { container } = await renderAnswered(
+      <NotificationSummary
+        services={["email", "signal", "telegram"]}
+        email="me@example.com"
+        signalRecipient="alice.42"
+        telegramUsername="carol"
+        threshold={1.5}
+        currentHealthFactor="2.00"
+        showBelowThresholdWarning={false}
+        testSends={TEST_SENDS}
+      />,
+      "carol",
     );
     expect(withStableIds(container.firstChild)).toMatchSnapshot();
   });
@@ -98,20 +160,31 @@ describe("notification settings markup", () => {
     expect(withStableIds(container.firstChild)).toMatchSnapshot();
   });
 
-  it("renders the Telegram field while waiting for the bot, and with an error", () => {
-    const { container } = render(
-      <TelegramConnectField
-        {...TELEGRAM}
-        isConnecting
-        deepLink="https://t.me/bot?start=tok"
-        error="Connect Telegram before you save."
+  it("renders the Telegram username field with an error and no status", () => {
+    const { container } = renderWithProviders(
+      <TelegramUsernameField
+        id="form-telegram"
+        value="rom"
+        error="Enter a Telegram username like alice_eth: 4 to 32 letters, digits or underscores, starting with a letter and not ending with _."
+        onChange={noop}
       />,
     );
     expect(withStableIds(container.firstChild)).toMatchSnapshot();
   });
 
-  it("renders the linked Telegram field", () => {
-    const { container } = render(<TelegramConnectField {...TELEGRAM} chatId="555" username="bob" />);
+  it("renders the Telegram username field not linked yet, with the link to the bot", async () => {
+    const { container } = await renderAnswered(
+      <TelegramUsernameField id="form-telegram" value="carol" onChange={noop} />,
+      "carol",
+    );
+    expect(withStableIds(container.firstChild)).toMatchSnapshot();
+  });
+
+  it("renders the linked Telegram username field", async () => {
+    const { container } = await renderAnswered(
+      <TelegramUsernameField id="form-telegram" value="alice_eth" onChange={noop} />,
+      "alice_eth",
+    );
     expect(withStableIds(container.firstChild)).toMatchSnapshot();
   });
 
@@ -133,7 +206,7 @@ describe("notification settings markup", () => {
       <NotificationErrorSummary
         items={[
           { field: "email", message: "Enter your email address.", targetId: "form-email" },
-          { field: "telegram", message: "Connect Telegram before you save.", targetId: "form-telegram" },
+          { field: "telegram", message: "Enter your Telegram username.", targetId: "form-telegram" },
         ]}
         onSelect={noop}
       />,
@@ -159,30 +232,33 @@ describe("notification settings parts in Czech", () => {
     return content;
   };
 
-  it("writes the empty state, the summary and the load error in Czech, numbers with a decimal comma", () => {
+  it("writes the empty state, the summary and the load error in Czech, numbers with a decimal comma", async () => {
     const empty = renderCs(<NotificationEmptyState chainName="Arbitrum" onCreate={noop} />);
     expect(text(empty.container)).toBe(
       "Na síti Arbitrum zatím nemáte žádné upozorněníDostanete zprávu, když váš health factor klesne pod práh, který si zvolíte.Vytvořit upozornění",
     );
     empty.unmount();
 
-    const summary = renderCs(
-      <NotificationCard isActive>
-        <NotificationSummary
-          services={["email", "signal", "telegram"]}
-          email="me@example.com"
-          signalRecipient="alice.42"
-          telegramChatId="555"
-          telegramUsername={null}
-          threshold={1.8}
-          currentHealthFactor="1.20"
-          showBelowThresholdWarning
-        />
-      </NotificationCard>,
+    const summary = await renderAnswered(
+      <LocaleProvider locale="cs">
+        <NotificationCard isActive>
+          <NotificationSummary
+            services={["email", "signal", "telegram"]}
+            email="me@example.com"
+            signalRecipient="alice.42"
+            telegramUsername="carol"
+            threshold={1.8}
+            currentHealthFactor="1.20"
+            showBelowThresholdWarning
+          />
+        </NotificationCard>
+      </LocaleProvider>,
+      "carol",
     );
     expect(text(summary.container)).toBe(
       "Nastavení upozorněníAktivní" +
-        "KanályE-mailSignalTelegramE-mailme@example.comSignal@alice.42TelegramPropojenoPráh1,8" +
+        "KanályE-mailSignalTelegramE-mailme@example.comSignal@alice.42Telegram@carolPráh1,8" +
+        `Zatím nepropojeno: jednou stiskněte Start v @${BOT}.Otevřít @${BOT} (otevře se v nové kartě)` +
         "Pod prahem vašeho upozorněníVáš aktuální health factor (1,20) je pod vaším prahem 1,8.",
     );
     summary.unmount();
@@ -192,19 +268,44 @@ describe("notification settings parts in Czech", () => {
     expect(screen.getByRole("button", { name: "Zkusit znovu" })).toBeDefined();
   });
 
-  it("writes the Telegram field in Czech in each state", () => {
-    const waiting = renderCs(<TelegramConnectField {...TELEGRAM} isConnecting deepLink="https://t.me/bot?start=tok" />);
-    expect(text(waiting.container)).toBe(
-      // The loading button keeps its label for its width.
-      "TelegramPřipojit TelegramČekáme na TelegramTelegram se neotevřel? Otevřít Telegram (otevře se v nové kartě)" +
-        "Otevře našeho bota v Telegramu. Stiskněte tam Start a tato peněženka se propojí s vaším chatem.",
+  it("writes the summary's Send test buttons and the limit note in Czech", async () => {
+    const summary = await renderAnswered(
+      <LocaleProvider locale="cs">
+        <NotificationSummary
+          services={["email", "signal", "telegram"]}
+          email="me@example.com"
+          signalRecipient="alice.42"
+          telegramUsername="alice_eth"
+          threshold={1.5}
+          currentHealthFactor="2.00"
+          showBelowThresholdWarning={false}
+          testSends={{ ...TEST_SENDS, sendingChannel: undefined }}
+        />
+      </LocaleProvider>,
+      "alice_eth",
     );
-    waiting.unmount();
-    const linked = renderCs(<TelegramConnectField {...TELEGRAM} chatId="555" username="bob" />);
-    expect(text(linked.container)).toBe("TelegramPřipojeno jako @bobOdpojit Telegram");
-    linked.unmount();
-    const unknown = renderCs(<TelegramConnectField {...TELEGRAM} isStatusUnknown />);
-    expect(text(unknown.container)).toBe("TelegramPropojení s Telegramem se nepodařilo ověřitZkusit znovu");
+    expect(text(summary.container)).toBe(
+      "KanályE-mailSignalTelegram" +
+        "E-mailme@example.comZnovu za 12 min (E-mail)" +
+        "Signal@alice.42Poslat test (Signal)" +
+        "Telegram@alice_ethPoslat test (Telegram)" +
+        "Práh1,5" +
+        "Test pošle toto upozornění a vaši pozici tak, jak jsou teď. Jeden na kanál za 15 minut.",
+    );
+  });
+
+  it("writes the Telegram username field in Czech", async () => {
+    const linked = await renderAnswered(
+      <LocaleProvider locale="cs">
+        <TelegramUsernameField value="alice_eth" onChange={noop} />
+      </LocaleProvider>,
+      "alice_eth",
+    );
+    expect(text(linked.container)).toBe(
+      "Uživatelské jméno na Telegramu" +
+        "Upozornění půjdou na tento účet na Telegramu. Uživatelské jméno najdete v Telegramu v Nastavení, v části Uživatelské jméno." +
+        "Propojeno: @alice_eth. Upozornění budou chodit do vašeho chatu na Telegramu.",
+    );
   });
 
   it("shows the threshold with a decimal comma in Czech", () => {

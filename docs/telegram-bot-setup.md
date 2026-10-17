@@ -23,8 +23,8 @@ Optional polish (recommended):
 - `/setuserpic`: upload a logo.
 - `/setcommands`: paste:
   ```
-  start - Link this chat to your wallet (use the Tokenping app)
-  stop - Unsubscribe from alerts
+  start - Link this chat to your Telegram username
+  stop - Stop all Tokenping alerts in this chat
   help - Show usage
   ```
 
@@ -69,8 +69,9 @@ supabase db push
 ```
 
 Or paste `packages/supabase/migrations/20260527000000_add_telegram_integration.sql` into the Supabase SQL editor.
-It creates `user_telegram_links` and `telegram_link_tokens`. The server also needs `SUPABASE_SERVICE_ROLE_KEY`:
-`telegram_link_tokens` is service-role only, so without the key linking fails.
+Telegram needs two of them: `20260527000000_add_telegram_integration.sql` (the original tables) and
+`20261018000000_telegram_usernames.sql`, which replaces them with `telegram_chats` (username to chat id) and adds
+`notification_configs.telegram_username`. Neither needs `SUPABASE_SERVICE_ROLE_KEY`.
 
 ---
 
@@ -112,13 +113,15 @@ curl "https://api.telegram.org/bot${TOKEN}/getWebhookInfo"
 
 ## 6. Smoke-test
 
-1. Open Tokenping → Notification settings → tick **Telegram** → press
-   **Connect Telegram**.
-2. Telegram opens to your bot. Press **Start**.
-3. Within a couple of seconds the UI shows "✅ Connected as @yourhandle".
-4. Force a notification by lowering the Health Factor threshold above your
-   current HF and waiting for the next 5-minute cron tick (or trigger
-   `/api/cron/notifications` manually with the `CRON_SECRET`).
+How it works for a user: they type their Telegram username into the alert, like the Signal username, and press
+**Start** in the bot once. A bot cannot message someone who never wrote to it, or look a person up by username, so
+that one Start is unavoidable; after it, typing the name is all any later alert needs.
+
+1. Open Tokenping, edit an alert, tick **Telegram** and type your username (`@` optional).
+2. The field says "Not linked yet: press Start in @YourBot once" with a link. Open it and press **Start**.
+3. The bot replies "Linked @yourname", and within a few seconds the field turns to "linked". Save the alert.
+4. Force a notification by setting the threshold above your current health factor and waiting for the next
+   5-minute cron tick (or trigger `/api/cron/notifications` manually with the `CRON_SECRET`).
 
 ---
 
@@ -149,8 +152,11 @@ Remember to re-point to your prod URL when you're done.
 
 ## Troubleshooting
 
-**"This link has expired or was already used"**: tokens are valid for 10
-minutes and single-use. Generate a new one from the app.
+**"Your Telegram account has no username yet"**: the bot links by username, so the account needs one (Telegram,
+Settings, Username). Set it, type it into the alert, send `/start` again.
+
+**The field still says "not linked" after Start**: the username typed into the alert must be the account's current
+one. After a username change, type the new name and send `/start` again: the bot moves the chat to the new name.
 
 **Nothing happens after pressing Start**: check
 `curl "https://api.telegram.org/bot${TOKEN}/getWebhookInfo"` for the
@@ -158,8 +164,8 @@ minutes and single-use. Generate a new one from the app.
 `TELEGRAM_WEBHOOK_SECRET` on Vercel, server returning 5xx.
 
 **Cron sends but Telegram doesn't deliver**: the user may have blocked the
-bot. The cron self-heals by deleting the `user_telegram_links` row on the
-`bot_blocked` error code; the user can simply re-link.
+bot. The cron self-heals by deleting the chat's `telegram_chats` row on the
+`bot_blocked` error code; the user sends `/start` again to get alerts back.
 
 **Group chats**: intentionally rejected in v1. The bot replies with a "DM me
 directly" hint and ignores the message. If you need group support later, the

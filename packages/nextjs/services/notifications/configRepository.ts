@@ -19,6 +19,8 @@ export type NotificationConfigRow = {
   health_factor_threshold: number | string;
   email: string | null;
   signal_recipient: string | null;
+  /** Lowercased, without "@" (checked by the database); absent before the telegram_usernames migration. */
+  telegram_username?: string | null;
   /** 'en' or 'cs' (checked by the database); absent before the locale migration is applied. */
   locale?: string | null;
   created_at: string;
@@ -27,7 +29,15 @@ export type NotificationConfigRow = {
 
 export type EnabledConfigRow = Pick<
   NotificationConfigRow,
-  "user_id" | "chain_id" | "market" | "health_factor_threshold" | "email" | "signal_recipient" | "services" | "locale"
+  | "user_id"
+  | "chain_id"
+  | "market"
+  | "health_factor_threshold"
+  | "email"
+  | "signal_recipient"
+  | "telegram_username"
+  | "services"
+  | "locale"
 >;
 
 /** Rows written before services were validated can hold ids outside NotificationService. */
@@ -71,6 +81,7 @@ export const rowToConfig = (row: NotificationConfigRow): NotificationConfigRespo
   healthFactorThreshold: parseFloat(String(row.health_factor_threshold)),
   email: row.email ?? undefined,
   signalRecipient: row.signal_recipient ?? undefined,
+  telegramUsername: row.telegram_username ?? undefined,
   locale: rowLocale(row),
 });
 
@@ -83,6 +94,7 @@ export const toConfigRow = (uid: string, { chainId, market }: MarketRef, values:
   health_factor_threshold: values.healthFactorThreshold,
   email: values.email,
   signal_recipient: values.signalRecipient,
+  telegram_username: values.telegramUsername,
   locale: values.locale,
   updated_at: now.toISOString(),
 });
@@ -163,7 +175,9 @@ export async function deleteConfigs({ normalized, legacy }: UserIdForms, { chain
 export const findEnabledConfigs = () =>
   selectAllPages<EnabledConfigRow>((from, to) =>
     configsTable()
-      .select("user_id, chain_id, market, health_factor_threshold, email, signal_recipient, services, locale")
+      .select(
+        "user_id, chain_id, market, health_factor_threshold, email, signal_recipient, telegram_username, services, locale",
+      )
       .eq("enabled", true)
       .order("id")
       .range(from, to),

@@ -51,7 +51,12 @@ describe("/cz/ochrana-soukromi", () => {
       within(screen.getByRole("heading", { name: "Co ukládáme, když uložíte upozornění" }).parentElement!)
         .getAllByRole("listitem")
         .map(item => item.textContent),
-    ).toHaveLength(6);
+    ).toHaveLength(7);
+    expect(
+      screen.getByText(
+        "Kdy jste naposledy poslali testovací zprávu na jednotlivý kanál, aby šel poslat jeden test na kanál za 15 minut.",
+      ),
+    ).toBeTruthy();
     expect(processorNames()).toEqual([
       "Vercel",
       "Supabase",
@@ -60,7 +65,7 @@ describe("/cz/ochrana-soukromi", () => {
       "Poskytovatelé RPC (PublicNode, Alchemy a veřejné endpointy jednotlivých sítí)",
       "WalletConnect",
     ]);
-    expect(screen.queryByText(/ID vašeho chatu na Telegramu/)).toBeNull();
+    expect(screen.queryByText(/uživatelské jméno na Telegramu, které zadáte/)).toBeNull();
   });
 
   it("adds Telegram's data, processor and /stop once the bot is configured", () => {
@@ -69,7 +74,10 @@ describe("/cz/ochrana-soukromi", () => {
     renderPage();
 
     expect(processorNames()).toContain("Telegram");
-    expect(screen.getByText(/ukládáme také ID vašeho chatu na Telegramu/)).toBeTruthy();
+    expect(screen.getByText(/^Pokud zvolíte Telegram/).textContent).toBe(
+      "Pokud zvolíte Telegram, ukládáme uživatelské jméno na Telegramu, které zadáte do upozornění. Když tento účet stiskne Start v botovi Tokenpingu, uložíme také ID jeho chatu a čas, kdy Start stiskl, aby k němu upozornění mohla chodit. Kdokoli si může ověřit, jestli dané uživatelské jméno na Telegramu stisklo Start v botovi.",
+    );
+    expect(screen.queryByText(/jednorázový kód/)).toBeNull();
     expect(screen.getByText(/pošlete \/stop/)).toBeTruthy();
     expect(screen.getByText(/kdokoli, kdo zná adresu vaší peněženky/).textContent).toContain(
       "zobrazit e-mailovou adresu, uživatelské jméno na Signalu a uživatelské jméno na Telegramu",

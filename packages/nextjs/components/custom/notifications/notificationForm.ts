@@ -7,7 +7,9 @@ import {
   SIGNAL_USERNAME_REGEX,
   isNotificationService,
   isValidEmail,
+  isValidTelegramUsername,
   normalizeSignalUsername,
+  normalizeTelegramUsername,
 } from "~~/utils/notifications/validation";
 
 export type NotificationFormState = {
@@ -15,17 +17,14 @@ export type NotificationFormState = {
   services: NotificationService[];
   email: string;
   signalRecipient: string;
+  /** As typed: "@Alice_Eth" is fine, it is normalized on Save. */
+  telegramUsername: string;
   threshold: number;
   /** What the manual threshold input shows; may be incomplete while typing (e.g. "1."). */
   thresholdText: string;
 };
 
-/** The Telegram link is per user and lives outside the form, but Save depends on it. */
-type SubmittableForm = Pick<NotificationFormState, "services" | "email" | "signalRecipient"> & {
-  telegramChatId?: string;
-  /** The link status could not be read, so whether the wallet is linked is not known. */
-  telegramStatusUnknown?: boolean;
-};
+type SubmittableForm = Pick<NotificationFormState, "services" | "email" | "signalRecipient" | "telegramUsername">;
 
 const DEFAULT_THRESHOLD = clampThreshold(DEFAULT_HEALTH_FACTOR_THRESHOLD);
 
@@ -34,6 +33,7 @@ export const EMPTY_FORM_STATE: NotificationFormState = {
   services: [],
   email: "",
   signalRecipient: "",
+  telegramUsername: "",
   threshold: DEFAULT_THRESHOLD,
   thresholdText: formatThreshold(DEFAULT_THRESHOLD),
 };
@@ -54,6 +54,7 @@ export const configToFormState = (config: NotificationConfig | null): Notificati
     services: services.length > 0 ? services : config.enabled ? ["email"] : [],
     email: config.email ?? "",
     signalRecipient: config.signalRecipient ?? "",
+    telegramUsername: config.telegramUsername ?? "",
     threshold,
     thresholdText: formatThreshold(threshold),
   };
@@ -86,7 +87,7 @@ export const NOTIFICATION_FORM_ERRORS = ALERTS_MESSAGES.en.formErrors;
 
 /** Every problem in the form, by field, in the page's language; empty when the form can be saved. */
 export const getNotificationFormErrors = (
-  { services, email, signalRecipient, telegramChatId, telegramStatusUnknown }: SubmittableForm,
+  { services, email, signalRecipient, telegramUsername }: SubmittableForm,
   locale: Locale = DEFAULT_LOCALE,
 ): NotificationFormErrors => {
   const messages = ALERTS_MESSAGES[locale].formErrors;
@@ -103,8 +104,10 @@ export const getNotificationFormErrors = (
     if (!username) errors.signalRecipient = messages.noSignal;
     else if (!SIGNAL_USERNAME_REGEX.test(username)) errors.signalRecipient = messages.invalidSignal;
   }
-  if (services.includes("telegram") && !telegramChatId) {
-    errors.telegram = telegramStatusUnknown ? messages.telegramUnknown : messages.telegramNotLinked;
+  // Not having pressed Start in the bot yet does not block Save: the form says so, and alerts start once they do.
+  if (services.includes("telegram")) {
+    if (!normalizeTelegramUsername(telegramUsername)) errors.telegram = messages.noTelegram;
+    else if (!isValidTelegramUsername(telegramUsername)) errors.telegram = messages.invalidTelegram;
   }
   return errors;
 };
@@ -121,12 +124,16 @@ export const buildConfigUpdate = ({
   services,
   email,
   signalRecipient,
+  telegramUsername,
   threshold,
-}: Pick<NotificationFormState, "services" | "email" | "signalRecipient" | "threshold">) => ({
+}: Pick<NotificationFormState, "services" | "email" | "signalRecipient" | "telegramUsername" | "threshold">) => ({
   enabled: true,
   services,
   healthFactorThreshold: clampThreshold(roundThreshold(threshold)),
   // The keys stay present when undefined so the merge in updateConfig clears a deselected service's recipient.
   email: services.includes("email") ? email.trim() || undefined : undefined,
   signalRecipient: services.includes("signal") ? normalizeSignalUsername(signalRecipient) || undefined : undefined,
+  telegramUsername: services.includes("telegram")
+    ? normalizeTelegramUsername(telegramUsername) || undefined
+    : undefined,
 });

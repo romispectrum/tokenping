@@ -37,5 +37,30 @@ export const isValidEmail = (value: string) => value.length <= MAX_EMAIL_LENGTH 
 export const isValidSignalUsername = (raw: string) =>
   raw.length <= MAX_SIGNAL_RECIPIENT_LENGTH && SIGNAL_USERNAME_REGEX.test(normalizeSignalUsername(raw));
 
+/** Raw input cap: a 32-character username with an "https://t.me/" prefix and some whitespace fits. */
+export const MAX_TELEGRAM_INPUT_LENGTH = 64;
+
+/**
+ * A Telegram username as stored: 4 to 32 lowercase letters, digits and underscores, starting with a letter and not
+ * ending with an underscore (4-character names exist as collectibles). The same check as the database's.
+ */
+export const TELEGRAM_USERNAME_REGEX = /^[a-z][a-z0-9_]{2,30}[a-z0-9]$/;
+
+/**
+ * What people paste for their Telegram account, as stored: trims, drops a leading "@" or a "t.me/" link, and
+ * lowercases (Telegram usernames are case-insensitive). "@Alice_Eth", "https://t.me/alice_eth" -> "alice_eth".
+ */
+export const normalizeTelegramUsername = (raw: string) =>
+  raw
+    .trim()
+    .replace(/^(?:https?:\/\/)?(?:www\.)?(?:t|telegram)\.me\//i, "")
+    .replace(/^@/, "")
+    .replace(/\/+$/, "")
+    .toLowerCase();
+
+/** Takes the raw input and normalizes it itself; the raw length is capped before any regex runs. */
+export const isValidTelegramUsername = (raw: string) =>
+  raw.length <= MAX_TELEGRAM_INPUT_LENGTH && TELEGRAM_USERNAME_REGEX.test(normalizeTelegramUsername(raw));
+
 export const isNotificationService = (value: unknown): value is NotificationService =>
   (NOTIFICATION_SERVICES as readonly unknown[]).includes(value);

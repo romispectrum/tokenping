@@ -113,11 +113,16 @@ describe("useNotificationConfig", () => {
 
   it("getConfig fills in fields older rows lack and keeps the same object while the data is unchanged", async () => {
     mocks.getAllConfigs.mockResolvedValue({
-      "1:v3": { ...CONFIG, market: undefined, services: null, signalRecipient: null },
+      "1:v3": { ...CONFIG, market: undefined, services: null, signalRecipient: null, telegramUsername: null },
     });
     const { result, rerender } = await renderLoaded();
     const config = result.current.getConfig(ETHEREUM);
-    expect(config).toMatchObject({ market: "v3", services: [], signalRecipient: undefined });
+    expect(config).toMatchObject({
+      market: "v3",
+      services: [],
+      signalRecipient: undefined,
+      telegramUsername: undefined,
+    });
     rerender();
     expect(result.current.getConfig(ETHEREUM)).toBe(config);
   });
@@ -217,15 +222,22 @@ describe("useNotificationConfig", () => {
   });
 
   it("updateConfig merges over the saved config, pins the position's market and caches what it sent", async () => {
-    const saved = { ...CONFIG, signalRecipient: "alice.42", services: ["email", "signal"] as const };
+    const saved = {
+      ...CONFIG,
+      signalRecipient: "alice.42",
+      telegramUsername: "alice_eth",
+      services: ["email", "signal", "telegram"] as const,
+    };
     mocks.getAllConfigs.mockResolvedValue({ "1:v3": saved });
     const { result } = await renderLoaded();
+    // An explicit undefined clears a deselected service's recipient: the Telegram username too.
     const expected = {
       ...saved,
       chainId: 1,
       market: "v3",
       services: ["signal"],
       email: undefined,
+      telegramUsername: undefined,
       healthFactorThreshold: 2,
       locale: "en",
     };
@@ -236,6 +248,7 @@ describe("useNotificationConfig", () => {
         market: LIDO_SPOKE,
         services: ["signal"],
         email: undefined,
+        telegramUsername: undefined,
         healthFactorThreshold: 2,
       }),
     );

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { type MarketId, V3_MARKET_ID, isMarketId, resolveMarket } from "~~/config/aaveConfig";
+import { V3_MARKET_ID, resolveMarket } from "~~/config/aaveConfig";
 import { requireActiveAccess } from "~~/services/api/server/access";
 import {
   MISSING_USER_ID,
@@ -10,6 +10,7 @@ import {
   parseUserId,
   readJsonObject,
 } from "~~/services/api/server/http";
+import { INVALID_MARKET, parseMarket } from "~~/services/api/server/market";
 import { type ConfigInput, parseConfigInput } from "~~/services/notifications/configInput";
 import {
   deleteConfigs,
@@ -24,14 +25,6 @@ import {
 
 type ConfigBody = ConfigInput & { userId?: unknown; chainId?: unknown; market?: unknown };
 
-const INVALID_MARKET = "Invalid market: expected v3 or the lowercased address of an Aave V3 Pool or V4 Spoke";
-
-/** The market in a query string or body: "v3" when absent, null when it is not a market id. */
-const parseMarket = (raw: unknown): MarketId | null => {
-  if (raw === undefined || raw === null || raw === "") return V3_MARKET_ID;
-  return isMarketId(raw) ? raw : null;
-};
-
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -44,7 +37,7 @@ export async function GET(request: Request) {
     if (market === null) return jsonError(INVALID_MARKET, 400);
 
     // No access check on reads, so an existing config stays visible after access expires; PUT/DELETE require it.
-    // The Telegram link is per user, not per market, and is read from /api/telegram/link.
+    // A config carries its Telegram username; whether it has pressed Start is read from /api/telegram/status.
     const forms = userIdForms(userId);
 
     if (chainId !== undefined) {

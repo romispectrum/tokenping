@@ -26,6 +26,7 @@ const row = (overrides: Partial<NotificationConfigRow> = {}): NotificationConfig
   health_factor_threshold: "1.80",
   email: "a@b.co",
   signal_recipient: "alice.42",
+  telegram_username: "alice_eth",
   locale: "cs",
   created_at: "c",
   updated_at: "u",
@@ -44,7 +45,7 @@ describe("userIdForms", () => {
 });
 
 describe("rowToConfig", () => {
-  it("maps a full row in response key order, without Telegram fields", () => {
+  it("maps a full row in response key order", () => {
     expect(JSON.stringify(rowToConfig(row()))).toBe(
       JSON.stringify({
         chainId: 8453,
@@ -54,15 +55,24 @@ describe("rowToConfig", () => {
         healthFactorThreshold: 1.8,
         email: "a@b.co",
         signalRecipient: "alice.42",
+        telegramUsername: "alice_eth",
         locale: "cs",
       }),
     );
   });
 
   it("drops null optionals and maps null services to [], keeping the locale", () => {
-    expect(JSON.stringify(rowToConfig(row({ services: null, email: null, signal_recipient: null })))).toBe(
+    const empty = row({ services: null, email: null, signal_recipient: null, telegram_username: null });
+    expect(JSON.stringify(rowToConfig(empty))).toBe(
       '{"chainId":8453,"market":"v3","enabled":true,"services":[],"healthFactorThreshold":1.8,"locale":"cs"}',
     );
+  });
+
+  it("leaves the Telegram username out of the JSON for a row from before the telegram_username column", () => {
+    const legacy = row();
+    delete legacy.telegram_username;
+    expect(rowToConfig(legacy).telegramUsername).toBeUndefined();
+    expect(JSON.stringify(rowToConfig(legacy))).not.toContain("telegramUsername");
   });
 
   it("keeps a V4 row's Spoke as its market", () => {
@@ -128,6 +138,7 @@ describe("toConfigRow", () => {
     healthFactorThreshold: 1.8,
     email: "a@b.co",
     signalRecipient: "ursula.42",
+    telegramUsername: "alice_eth",
     locale: "cs" as const,
   };
 
@@ -142,10 +153,17 @@ describe("toConfigRow", () => {
         health_factor_threshold: 1.8,
         email: "a@b.co",
         signal_recipient: "ursula.42",
+        telegram_username: "alice_eth",
         locale: "cs",
         updated_at: "2026-10-14T09:05:07.000Z",
       }),
     );
+  });
+
+  // A null clears a username the row held: the key is always written.
+  it("writes a null Telegram username", () => {
+    const row = toConfigRow("0xabc", { chainId: 10, market: "v3" }, { ...values, telegramUsername: null }, NOW);
+    expect(row).toHaveProperty("telegram_username", null);
   });
 
   it("writes a V4 Spoke as the market", () => {

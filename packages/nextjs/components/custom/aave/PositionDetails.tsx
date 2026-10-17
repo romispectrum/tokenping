@@ -77,7 +77,8 @@ const PositionContent = ({ position }: PositionDetailsProps) => {
               className="inline-flex items-center text-link underline underline-offset-3 hover:decoration-2 pointer-coarse:min-h-11"
             >
               CoinGecko
-              <span className="sr-only">{` ${t.opensInNewTab}`}</span>
+              {/* the space sits outside the hidden text, so the link's accessible name keeps it */}{" "}
+              <span className="sr-only">{t.opensInNewTab}</span>
             </a>
           </p>
         </>

@@ -12,7 +12,6 @@ import { NotificationLoadError } from "~~/components/custom/notifications/Notifi
 import { NotificationSummary } from "~~/components/custom/notifications/NotificationSummary";
 import { RecipientFields } from "~~/components/custom/notifications/RecipientFields";
 import { ServiceSelector } from "~~/components/custom/notifications/ServiceSelector";
-import { TelegramConnectField } from "~~/components/custom/notifications/TelegramConnectField";
 import { ThresholdField } from "~~/components/custom/notifications/ThresholdField";
 import { useAttributionPrompt } from "~~/components/custom/notifications/attributionPromptState";
 import {
@@ -30,9 +29,11 @@ import { Button, LiveRegion } from "~~/components/ui";
 import type { MarketId } from "~~/config/aaveConfig";
 import { useAccess } from "~~/hooks/custom/useAccess";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
-import { useTelegramLink } from "~~/hooks/custom/useTelegramLink";
+import { useNotificationTests } from "~~/hooks/custom/useNotificationTests";
 import { useLocale } from "~~/i18n/LocaleProvider";
 import { ALERTS_MESSAGES, requestErrorMessage } from "~~/i18n/messages/alerts";
+import { TestSendError } from "~~/services/notifications/notificationTestClient";
+import type { NotificationService } from "~~/types/notifications";
 import { normalizeAddress } from "~~/utils/address";
 import { isBelowThreshold } from "~~/utils/healthFactor";
 import { notification } from "~~/utils/scaffold-eth";
@@ -59,8 +60,8 @@ const NotificationSettings = ({
   const { getConfig, updateConfig, deleteConfig, isLoaded, isError, isFetching, refetch, isSaving, isDeleting } =
     useNotificationConfig();
   const { isActive: hasAccess } = useAccess();
-  const telegram = useTelegramLink(address);
   const attribution = useAttributionPrompt(address);
+  const tests = useNotificationTests();
   const marketRef = { chainId, market };
   const config = getConfig(marketRef);
   // What the summary shows. Editing works on a draft copy, so Cancel only has to drop the draft.
@@ -101,11 +102,30 @@ const NotificationSettings = ({
     (attribution.returnFocusRef.current ?? createRef.current)?.focus();
   }, [isEditing, attribution.returnFocusRef]);
 
-  if (!isLoaded || !telegram.isLoaded) return null;
+  if (!isLoaded) return null;
 
   if (isError) return <NotificationLoadError isRetrying={isFetching} onRetry={() => void refetch()} />;
 
   const hasConfig = config !== null;
+
+  const handleSendTest = async (channel: NotificationService) => {
+    const channelName = t.serviceNames[channel];
+    setAnnouncement("");
+    try {
+      await tests.send(marketRef, channel);
+      notification.success(t.testSent(channelName));
+      setAnnouncement(t.testSent(channelName));
+    } catch (error) {
+      // Refused by the 15-minute limit: say when it frees up, counted from the server's answer (this render's
+      // countdown predates it).
+      const message =
+        error instanceof TestSendError && error.retryAt
+          ? t.testAgainIn(Math.max(1, Math.ceil((Date.parse(error.retryAt) - Date.now()) / 60_000)))
+          : requestErrorMessage(locale, error, t.testFailed);
+      notification.error(message);
+      setAnnouncement(message);
+    }
+  };
 
   // No access and no config: the paywall above is enough.
   if (!hasAccess && !hasConfig) return null;
@@ -115,11 +135,20 @@ const NotificationSettings = ({
       services={saved.services}
       email={saved.email}
       signalRecipient={saved.signalRecipient}
-      telegramChatId={telegram.chatId}
-      telegramUsername={telegram.username}
+      telegramUsername={saved.telegramUsername}
       threshold={saved.threshold}
       currentHealthFactor={currentHealthFactor}
       showBelowThresholdWarning={saved.enabled && isBelowThreshold(currentHealthFactor, saved.threshold)}
+      // The server refuses a test without access, so the buttons only show with it.
+      testSends={
+        hasAccess
+          ? {
+              waitFor: tests.waitFor,
+              sendingChannel: tests.sendingChannel,
+              onSend: channel => void handleSendTest(channel),
+            }
+          : undefined
+      }
     />
   );
 
@@ -150,15 +179,14 @@ const NotificationSettings = ({
   };
 
   const updateDraft = (patch: Partial<NotificationFormState>) => setDraft(prev => ({ ...prev, ...patch }));
-  const submission = { ...draft, telegramChatId: telegram.chatId, telegramStatusUnknown: telegram.isStatusUnknown };
-  const currentErrors = getNotificationFormErrors(submission, locale);
+  const currentErrors = getNotificationFormErrors(draft, locale);
   const errorFor = (field: NotificationFormField) => (invalidFields.includes(field) ? currentErrors[field] : undefined);
   const errorSummaryItems = invalidFields.flatMap(field => {
     const message = currentErrors[field];
     return message === undefined ? [] : [{ field, message, targetId: fieldIds[field] }];
   });
 
-  /** Focuses the first control of a field: a checkbox, an input or the Telegram button. */
+  /** Focuses the first control of a field: a checkbox or an input. */
   const focusField = (field: NotificationFormField) =>
     formRef.current
       ?.querySelector<HTMLElement>(`[data-field="${field}"] input, [data-field="${field}"] button`)
@@ -215,7 +243,6 @@ const NotificationSettings = ({
   };
 
   const handleCancel = () => {
-    telegram.cancelConnect();
     restoreFocusOnClose.current = true;
     setIsEditing(false);
   };
@@ -256,30 +283,18 @@ const NotificationSettings = ({
           <RecipientFields
             emailFieldId={fieldIds.email}
             signalFieldId={fieldIds.signalRecipient}
+            telegramFieldId={fieldIds.telegram}
             services={draft.services}
             email={draft.email}
             signalRecipient={draft.signalRecipient}
+            telegramUsername={draft.telegramUsername}
             emailError={errorFor("email")}
             signalError={errorFor("signalRecipient")}
+            telegramError={errorFor("telegram")}
             onEmailChange={email => updateDraft({ email })}
             onSignalRecipientChange={signalRecipient => updateDraft({ signalRecipient })}
+            onTelegramUsernameChange={telegramUsername => updateDraft({ telegramUsername })}
           />
-          {draft.services.includes("telegram") && (
-            <TelegramConnectField
-              id={fieldIds.telegram}
-              chatId={telegram.chatId}
-              username={telegram.username}
-              deepLink={telegram.deepLink}
-              isStatusUnknown={telegram.isStatusUnknown}
-              isCheckingStatus={telegram.isCheckingStatus}
-              isConnecting={telegram.isConnecting}
-              isDisconnecting={telegram.isDisconnecting}
-              error={errorFor("telegram")}
-              onRetryStatus={telegram.retryStatus}
-              onConnect={telegram.connect}
-              onDisconnect={telegram.disconnect}
-            />
-          )}
           <ThresholdField
             threshold={draft.threshold}
             thresholdText={draft.thresholdText}
@@ -319,8 +334,6 @@ const NotificationSettings = ({
 
 export const NotificationConfig = (props: NotificationConfigProps) => {
   const { address } = useAccount();
-  // One instance per wallet, so a draft never carries over to another account. The Telegram handshake outlives a
-  // remount for the same wallet (a chain switch, a positions refresh); useTelegramLink ends it once the wallet
-  // disconnects or switches, even if no card is left on the page.
+  // One instance per wallet, so a draft never carries over to another account.
   return <NotificationSettings key={address ? normalizeAddress(address) : ""} address={address} {...props} />;
 };

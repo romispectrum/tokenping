@@ -1,3 +1,4 @@
+import { TelegramUsernameField } from "~~/components/custom/notifications/TelegramUsernameField";
 import { Field, Input } from "~~/components/ui";
 import { useMessages } from "~~/i18n/LocaleProvider";
 import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
@@ -7,27 +8,35 @@ type RecipientFieldsProps = {
   /** The fields' ids, for links to them (the error summary). */
   emailFieldId?: string;
   signalFieldId?: string;
+  telegramFieldId?: string;
   services: NotificationService[];
   email: string;
   signalRecipient: string;
+  telegramUsername: string;
   /** Shown after a failed Save. */
   emailError?: string;
   signalError?: string;
+  telegramError?: string;
   onEmailChange: (email: string) => void;
   onSignalRecipientChange: (signalRecipient: string) => void;
+  onTelegramUsernameChange: (telegramUsername: string) => void;
 };
 
-/** Email and Signal recipient inputs, each shown only while its service is selected. */
+/** Email, Signal and Telegram recipient inputs, each shown only while its service is selected. */
 export const RecipientFields = ({
   emailFieldId,
   signalFieldId,
+  telegramFieldId,
   services,
   email,
   signalRecipient,
+  telegramUsername,
   emailError,
   signalError,
+  telegramError,
   onEmailChange,
   onSignalRecipientChange,
+  onTelegramUsernameChange,
 }: RecipientFieldsProps) => {
   const t = useMessages(ALERTS_MESSAGES);
   return (
@@ -66,6 +75,14 @@ export const RecipientFields = ({
             )}
           </Field>
         </div>
+      )}
+      {services.includes("telegram") && (
+        <TelegramUsernameField
+          id={telegramFieldId}
+          value={telegramUsername}
+          error={telegramError}
+          onChange={onTelegramUsernameChange}
+        />
       )}
     </>
   );

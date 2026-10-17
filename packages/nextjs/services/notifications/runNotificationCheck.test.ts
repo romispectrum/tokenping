@@ -32,13 +32,13 @@ const SHORT_LOWER = "0x3a3a…3a3a";
 const LIDO_SPOKE = "0xe1900480ac69f0b296841cd01cc37546d92f35cd";
 
 const configsPage = (from: number) =>
-  'notification_configs.select("user_id, chain_id, market, health_factor_threshold, email, signal_recipient, services, locale")' +
+  'notification_configs.select("user_id, chain_id, market, health_factor_threshold, email, signal_recipient, telegram_username, services, locale")' +
   `.eq("enabled",true).order("id").range(${from},${from + 999})`;
-const linksPage = (from: number) =>
-  `user_telegram_links.select("user_id, chat_id").order("user_id").range(${from},${from + 999})`;
+const chatsPage = (from: number) =>
+  `telegram_chats.select("username, chat_id").order("chat_id").range(${from},${from + 999})`;
 const CONFIGS_QUERY = configsPage(0);
-const LINKS_QUERY = linksPage(0);
-const deleteByChat = (chatId: string) => `user_telegram_links.delete().eq("chat_id","${chatId}")`;
+const CHATS_QUERY = chatsPage(0);
+const deleteByChat = (chatId: string) => `telegram_chats.delete().eq("chat_id","${chatId}")`;
 const deletes = () => fakeSupabase.log().filter(query => query.includes(".delete()"));
 
 type Row = Record<string, unknown>;
@@ -49,12 +49,15 @@ const configRow = (overrides: Row = {}): Row => ({
   health_factor_threshold: "1.5",
   email: "a@b.co",
   signal_recipient: "alice.42",
+  telegram_username: "alice_eth",
   services: ["email"],
   ...overrides,
 });
+// The chat that pressed Start as the default config row's Telegram username.
+const ALICE_CHAT = { username: "alice_eth", chat_id: "555" };
 
-const givenData = (rows: Row[], links: Row[] = []) =>
-  fakeSupabase.respondByQuery({ [CONFIGS_QUERY]: { data: rows }, [LINKS_QUERY]: { data: links } });
+const givenData = (rows: Row[], chats: Row[] = []) =>
+  fakeSupabase.respondByQuery({ [CONFIGS_QUERY]: { data: rows }, [CHATS_QUERY]: { data: chats } });
 
 const alertText = (chainName: string, healthFactor: string, threshold: string, timestamp = NOW_TEXT) =>
   `Your Aave Health Factor on ${chainName} is ${healthFactor}, which is below your threshold of ${threshold}. ` +
@@ -102,26 +105,27 @@ afterEach(() => {
 });
 
 describe("runNotificationCheck: loading", () => {
-  it("fails with the Supabase message when the configs query errors, before loading links", async () => {
+  it("fails with the Supabase message when the configs query errors, before loading the Telegram chats", async () => {
     fakeSupabase.respondByQuery({ [CONFIGS_QUERY]: { error: { message: "permission denied" } } });
     expect(await runNotificationCheck()).toEqual({ success: false, error: "permission denied" });
     expect(fakeSupabase.log()).toEqual([CONFIGS_QUERY]);
   });
 
-  it("loads enabled configs and all Telegram links page by page, omitting `errors` when there are none", async () => {
+  it("loads enabled configs and all Telegram chats page by page, omitting `errors` when there are none", async () => {
     givenData([]);
     const result = await runNotificationCheck();
     expect(JSON.stringify(result)).toBe(JSON.stringify(summary()));
-    expect(fakeSupabase.log()).toEqual([CONFIGS_QUERY, LINKS_QUERY]);
+    expect(fakeSupabase.log()).toEqual([CONFIGS_QUERY, CHATS_QUERY]);
   });
 
-  it("reads enabled configs and links past the 1000-row page limit (B3.7)", async () => {
+  it("reads enabled configs and Telegram chats past the 1000-row page limit (B3.7)", async () => {
     const wallet = (i: number) => `0x${i.toString(16).padStart(40, "0")}`;
-    const wallets = Array.from({ length: 1003 }, (_, i) => wallet(i));
-    const configs = wallets.map(user_id => configRow({ user_id, services: ["telegram"] }));
-    const links = wallets.map((user_id, i) => ({ user_id, chat_id: `${i}` }));
+    const configs = Array.from({ length: 1003 }, (_, i) =>
+      configRow({ user_id: wallet(i), services: ["telegram"], telegram_username: `user_${i}` }),
+    );
+    const chats = Array.from({ length: 1003 }, (_, i) => ({ username: `user_${i}`, chat_id: `${i}` }));
     fakeSupabase.respond(query => ({
-      data: sliceByRange(query, query.table === "notification_configs" ? configs : links),
+      data: sliceByRange(query, query.table === "notification_configs" ? configs : chats),
     }));
     vi.mocked(getHealthFactorForWallet).mockResolvedValue({
       healthFactor: "3.00",
@@ -134,9 +138,9 @@ describe("runNotificationCheck: loading", () => {
       configsPage(0),
       configsPage(1000),
       configsPage(1003),
-      linksPage(0),
-      linksPage(1000),
-      linksPage(1003),
+      chatsPage(0),
+      chatsPage(1000),
+      chatsPage(1003),
     ]);
   });
 
@@ -150,7 +154,7 @@ describe("runNotificationCheck: loading", () => {
     expect(getHealthFactorForWallet).not.toHaveBeenCalled();
   });
 
-  it("skips Telegram for the run with an errors[] entry when the links query fails (B3.7)", async () => {
+  it("skips Telegram for the run with an errors[] entry when the chats query fails (B3.7)", async () => {
     fakeSupabase.respondByQuery({
       [CONFIGS_QUERY]: {
         data: [
@@ -158,14 +162,14 @@ describe("runNotificationCheck: loading", () => {
           configRow({ chain_id: 2, services: ["email", "telegram"] }),
         ],
       },
-      [LINKS_QUERY]: { error: { message: "links failed" } },
+      [CHATS_QUERY]: { error: { message: "chats failed" } },
     });
 
     expect(await runNotificationCheck()).toEqual(
       summary({
         configsChecked: 1,
         emailsSent: 1,
-        errors: ["telegram: links query failed, Telegram alerts skipped this run: links failed"],
+        errors: ["telegram: chats query failed, Telegram alerts skipped this run: chats failed"],
       }),
     );
     expect(sendTelegramMessage).not.toHaveBeenCalled();
@@ -179,13 +183,15 @@ describe("runNotificationCheck: loading", () => {
         configRow({ chain_id: 2, services: null }),
         configRow({ chain_id: 3, services: ["email"], email: "   " }),
         configRow({ chain_id: 4, services: ["signal"], signal_recipient: null }),
-        configRow({ chain_id: 5, services: ["telegram"], user_id: OTHER }),
+        configRow({ chain_id: 5, services: ["telegram"], telegram_username: "not_started" }),
         configRow({ chain_id: 6, services: ["sms"] }),
         configRow({ chain_id: 7, services: ["email"] }),
         configRow({ chain_id: 8, services: ["telegram"] }),
         configRow({ chain_id: 9, services: "email" }),
+        configRow({ chain_id: 10, services: ["telegram"], telegram_username: null }),
+        configRow({ chain_id: 11, services: ["telegram"], telegram_username: undefined }),
       ],
-      [{ user_id: LOWER, chat_id: 555 }],
+      [{ username: "alice_eth", chat_id: 555 }],
     );
     vi.mocked(getHealthFactorForWallet).mockResolvedValue({
       healthFactor: "3.00",
@@ -200,17 +206,34 @@ describe("runNotificationCheck: loading", () => {
     ]);
   });
 
-  it("matches Telegram links for a checksummed (legacy) config user_id (B3.13)", async () => {
-    givenData([configRow({ user_id: CHECKSUMMED, services: ["telegram"] })], [{ user_id: LOWER, chat_id: "555" }]);
-    expect(await runNotificationCheck()).toEqual(summary({ configsChecked: 1, telegramSent: 1 }));
-    expect(sendTelegramMessage).toHaveBeenCalledExactlyOnceWith({
-      chatId: "555",
-      message: alertText("Base", "1.20", "1.5"),
-    });
+  it("sends Telegram to the chat its username pressed Start in, whichever wallet the config is for", async () => {
+    givenData(
+      [
+        configRow({ chain_id: 1, user_id: CHECKSUMMED, services: ["telegram"] }),
+        configRow({ chain_id: 2, user_id: OTHER, services: ["telegram"] }),
+        configRow({ chain_id: 3, services: ["telegram"], telegram_username: "bob_eth" }),
+      ],
+      [ALICE_CHAT, { username: "bob_eth", chat_id: 777 }],
+    );
+    expect(await runNotificationCheck()).toEqual(summary({ configsChecked: 3, telegramSent: 3 }));
+    expect(vi.mocked(sendTelegramMessage).mock.calls.map(([{ chatId }]) => chatId)).toEqual(["555", "555", "777"]);
   });
 
-  it("does not check a Telegram-only config whose link has an empty chat id", async () => {
-    givenData([configRow({ services: ["telegram"] })], [{ user_id: LOWER, chat_id: "" }]);
+  it("does not check a Telegram-only config whose username has not pressed Start", async () => {
+    givenData([configRow({ services: ["telegram"], telegram_username: "not_started" })], [ALICE_CHAT]);
+    expect(await runNotificationCheck()).toEqual(summary());
+    expect(getHealthFactorForWallet).not.toHaveBeenCalled();
+    expect(sendTelegramMessage).not.toHaveBeenCalled();
+  });
+
+  it("still sends the other channels of a config whose Telegram username has no chat", async () => {
+    givenData([configRow({ services: ["email", "telegram"], telegram_username: "not_started" })], [ALICE_CHAT]);
+    expect(await runNotificationCheck()).toEqual(summary({ configsChecked: 1, emailsSent: 1 }));
+    expect(sendTelegramMessage).not.toHaveBeenCalled();
+  });
+
+  it("does not check a Telegram-only config whose chat has an empty chat id", async () => {
+    givenData([configRow({ services: ["telegram"] })], [{ username: "alice_eth", chat_id: "" }]);
     expect(await runNotificationCheck()).toEqual(summary());
     expect(getHealthFactorForWallet).not.toHaveBeenCalled();
     expect(sendTelegramMessage).not.toHaveBeenCalled();
@@ -340,7 +363,7 @@ describe("runNotificationCheck: delivery", () => {
   it("alerts every channel in order with the exact copy", async () => {
     givenData(
       [configRow({ services: ["telegram", "signal", "email"], email: " a@b.co ", signal_recipient: " alice.42 " })],
-      [{ user_id: LOWER, chat_id: 555 }],
+      [{ username: "alice_eth", chat_id: 555 }],
     );
 
     const result = await runNotificationCheck();
@@ -372,7 +395,7 @@ describe("runNotificationCheck: delivery", () => {
   it("alerts a Czech config in Czech on every channel: text, subject, decimal comma and timestamp", async () => {
     givenData(
       [configRow({ services: ["email", "signal", "telegram"], health_factor_threshold: "1.5", locale: "cs" })],
-      [{ user_id: LOWER, chat_id: 555 }],
+      [{ username: "alice_eth", chat_id: 555 }],
     );
 
     expect(await runNotificationCheck()).toEqual(
@@ -440,14 +463,17 @@ describe("runNotificationCheck: delivery", () => {
   });
 
   it("only sends to the channels the config selected", async () => {
-    givenData([configRow({ services: ["signal"] })], [{ user_id: LOWER, chat_id: "555" }]);
+    givenData([configRow({ services: ["signal"] })], [ALICE_CHAT]);
     expect(await runNotificationCheck()).toEqual(summary({ configsChecked: 1, signalSent: 1 }));
     expect(sendEmail).not.toHaveBeenCalled();
     expect(sendTelegramMessage).not.toHaveBeenCalled();
   });
 
   it("collects channel errors with masked recipients, logging the full detail", async () => {
-    givenData([configRow({ services: ["email", "signal", "telegram"] })], [{ user_id: LOWER, chat_id: "123456789" }]);
+    givenData(
+      [configRow({ services: ["email", "signal", "telegram"] })],
+      [{ username: "alice_eth", chat_id: "123456789" }],
+    );
     vi.mocked(sendEmail).mockResolvedValue({ success: false, error: "Invalid email address" });
     vi.mocked(sendSignalMessage).mockResolvedValue({ success: false, error: "Signal API responded with 400: bad" });
     vi.mocked(sendTelegramMessage).mockResolvedValue({ success: false, error: "Forbidden", code: "api_error" });
@@ -475,7 +501,10 @@ describe("runNotificationCheck: delivery", () => {
   });
 
   it("masks recipients that a provider error echoes", async () => {
-    givenData([configRow({ services: ["email", "signal", "telegram"] })], [{ user_id: LOWER, chat_id: "123456789" }]);
+    givenData(
+      [configRow({ services: ["email", "signal", "telegram"] })],
+      [{ username: "alice_eth", chat_id: "123456789" }],
+    );
     vi.mocked(sendEmail).mockResolvedValue({ success: false, error: "a@b.co bounced" });
     vi.mocked(sendSignalMessage).mockResolvedValue({ success: false, error: 'Invalid Signal username "alice.42"' });
     vi.mocked(sendTelegramMessage).mockResolvedValue({
@@ -497,43 +526,65 @@ describe("runNotificationCheck: delivery", () => {
   });
 
   it.each(["bot_blocked", "chat_not_found"] as const)(
-    "drops the Telegram link on %s and skips it for the user's remaining configs",
+    "drops the Telegram chat on %s and skips it for every later config naming the username",
     async code => {
       givenData(
         [
           configRow({ chain_id: 1, services: ["telegram", "email"] }),
           configRow({ chain_id: 2, services: ["telegram", "email"] }),
+          configRow({ chain_id: 3, user_id: OTHER, services: ["telegram", "email"] }),
         ],
-        [{ user_id: LOWER, chat_id: "555" }],
+        [ALICE_CHAT],
       );
       vi.mocked(sendTelegramMessage).mockResolvedValue({ success: false, error: "blocked", code });
 
       const result = await runNotificationCheck();
 
       expect(result).toEqual(
-        summary({ configsChecked: 2, emailsSent: 2, telegramSent: 0, errors: ["telegram:***: blocked"] }),
+        summary({ configsChecked: 3, emailsSent: 3, telegramSent: 0, errors: ["telegram:***: blocked"] }),
       );
       expect(sendTelegramMessage).toHaveBeenCalledOnce();
       expect(deletes()).toEqual([deleteByChat("555")]);
     },
   );
 
-  it("drops the dead chat of a checksummed config user_id for the user's remaining configs", async () => {
+  it("keeps alerting other usernames' chats after one chat dies", async () => {
     givenData(
       [
-        configRow({ chain_id: 1, user_id: CHECKSUMMED, services: ["telegram"] }),
-        configRow({ chain_id: 2, services: ["telegram", "email"] }),
+        configRow({ chain_id: 1, services: ["telegram"] }),
+        configRow({ chain_id: 2, services: ["telegram"], telegram_username: "bob_eth" }),
+        configRow({ chain_id: 3, services: ["telegram"] }),
       ],
-      [{ user_id: LOWER, chat_id: "555" }],
+      [ALICE_CHAT, { username: "bob_eth", chat_id: "777" }],
     );
-    vi.mocked(sendTelegramMessage).mockResolvedValue({ success: false, error: "blocked", code: "bot_blocked" });
+    vi.mocked(sendTelegramMessage).mockImplementation(async ({ chatId }) =>
+      chatId === "555" ? { success: false, error: "blocked", code: "bot_blocked" } : { success: true },
+    );
+
+    expect(await runNotificationCheck()).toEqual(
+      summary({ configsChecked: 3, telegramSent: 1, errors: ["telegram:***: blocked"] }),
+    );
+    expect(vi.mocked(sendTelegramMessage).mock.calls.map(([{ chatId }]) => chatId)).toEqual(["555", "777"]);
+    expect(deletes()).toEqual([deleteByChat("555")]);
+  });
+
+  it("skips every username that pointed at the dead chat", async () => {
+    givenData(
+      [
+        configRow({ chain_id: 1, services: ["telegram"] }),
+        configRow({ chain_id: 2, services: ["telegram"], telegram_username: "old_name" }),
+      ],
+      [ALICE_CHAT, { username: "old_name", chat_id: "555" }],
+    );
+    vi.mocked(sendTelegramMessage).mockResolvedValue({ success: false, error: "gone", code: "chat_not_found" });
 
     await runNotificationCheck();
 
     expect(sendTelegramMessage).toHaveBeenCalledOnce();
+    expect(deletes()).toEqual([deleteByChat("555")]);
   });
 
-  it("logs a failed dead-link delete and still skips the chat for the rest of the run", async () => {
+  it("logs a failed dead-chat delete and still skips the chat for the rest of the run", async () => {
     fakeSupabase.respond((_query, formatted) => {
       if (formatted === CONFIGS_QUERY) {
         return {
@@ -543,7 +594,7 @@ describe("runNotificationCheck: delivery", () => {
           ],
         };
       }
-      if (formatted === LINKS_QUERY) return { data: [{ user_id: LOWER, chat_id: "555" }] };
+      if (formatted === CHATS_QUERY) return { data: [ALICE_CHAT] };
       if (formatted === deleteByChat("555")) return { error: { message: "delete failed" } };
     });
     vi.mocked(sendTelegramMessage).mockResolvedValue({ success: false, error: "blocked", code: "bot_blocked" });
@@ -552,21 +603,22 @@ describe("runNotificationCheck: delivery", () => {
       summary({ configsChecked: 2, emailsSent: 1, errors: ["telegram:***: blocked"] }),
     );
     expect(sendTelegramMessage).toHaveBeenCalledOnce();
-    expect(consoleError).toHaveBeenCalledWith("Notification check: could not remove the dead Telegram link 555", {
+    expect(consoleError).toHaveBeenCalledWith("Notification check: could not remove the dead Telegram chat 555", {
       message: "delete failed",
     });
   });
 
-  it.each(["rate_limited", "network", "misconfigured", "api_error"] as const)("keeps the link on %s", async code => {
+  it.each(["rate_limited", "network", "misconfigured", "api_error"] as const)("keeps the chat on %s", async code => {
     givenData(
       [configRow({ chain_id: 1, services: ["telegram"] }), configRow({ chain_id: 2, services: ["telegram"] })],
-      [{ user_id: LOWER, chat_id: "555" }],
+      [ALICE_CHAT],
     );
     vi.mocked(sendTelegramMessage).mockResolvedValue({ success: false, error: "x", code });
 
     const result = await runNotificationCheck();
 
     expect(result).toMatchObject({ errors: ["telegram:***: x", "telegram:***: x"] });
+    expect(sendTelegramMessage).toHaveBeenCalledTimes(2);
     expect(deletes()).toEqual([]);
   });
 
@@ -645,7 +697,7 @@ describe("alert builders", () => {
 });
 
 describe("getDeliverableChannels", () => {
-  const links = new Map([[LOWER, "555"]]);
+  const chats = new Map([["alice_eth", "555"]]);
   const asRow = (overrides: Row) => configRow(overrides) as EnabledConfigRow;
 
   it.each([
@@ -655,26 +707,40 @@ describe("getDeliverableChannels", () => {
     ],
     [{ services: ["email"], email: "  " }, []],
     [{ services: ["signal"], signal_recipient: null }, []],
-    [{ services: ["telegram"], user_id: OTHER }, []],
+    // Telegram follows the username, not the wallet.
+    [{ services: ["telegram"], user_id: OTHER }, ["telegram"]],
     [{ services: ["telegram"], user_id: CHECKSUMMED }, ["telegram"]],
-    [{ services: ["telegram"], user_id: ` ${CHECKSUMMED} ` }, ["telegram"]],
+    [{ services: ["telegram"], telegram_username: " alice_eth " }, ["telegram"]],
+    [{ services: ["telegram"], telegram_username: "not_started" }, []],
+    [{ services: ["telegram"], telegram_username: null }, []],
+    [{ services: ["telegram"], telegram_username: undefined }, []],
+    [{ services: ["telegram"], telegram_username: "  " }, []],
+    // Looked up as stored: the database keeps usernames lowercased.
+    [{ services: ["telegram"], telegram_username: "Alice_Eth" }, []],
+    [{ services: ["email"], telegram_username: "alice_eth" }, ["email"]],
     [{ services: [] }, []],
     [{ services: null }, []],
     [{ services: "email" }, []],
     [{ services: ["sms"] }, []],
   ])("for %j returns channels %j", (overrides, channels) => {
-    expect(getDeliverableChannels(asRow(overrides), links).map(({ channel }) => channel)).toEqual(channels);
+    expect(getDeliverableChannels(asRow(overrides), chats).map(({ channel }) => channel)).toEqual(channels);
   });
 
-  it.each(["", "  "])("leaves out Telegram for a link with the empty chat id %j", chatId => {
-    expect(getDeliverableChannels(asRow({ services: ["telegram"] }), new Map([[LOWER, chatId]]))).toStrictEqual([]);
+  it.each(["", "  "])("leaves out Telegram for a chat with the empty chat id %j", chatId => {
+    expect(getDeliverableChannels(asRow({ services: ["telegram"] }), new Map([["alice_eth", chatId]]))).toStrictEqual(
+      [],
+    );
   });
 
-  it("returns trimmed recipients and the linked chat id", () => {
+  it("leaves out Telegram when no chat is linked at all", () => {
+    expect(getDeliverableChannels(asRow({ services: ["telegram"] }), new Map())).toStrictEqual([]);
+  });
+
+  it("returns trimmed recipients and the username's chat id", () => {
     expect(
       getDeliverableChannels(
         asRow({ services: ["email", "signal", "telegram"], email: " a@b.co ", signal_recipient: "\talice.42 " }),
-        links,
+        chats,
       ),
     ).toStrictEqual([
       { channel: "email", recipient: "a@b.co" },
