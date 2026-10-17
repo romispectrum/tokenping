@@ -153,6 +153,13 @@ const BANNED_PATTERNS: readonly BannedPattern[] = [
     reason: "hard-coded alert price: use <AlertPrice /> (the owner can change the plan on-chain)",
   },
   { pattern: /\bUSDC (?:per|for|every|\/) ?30 days\b/i, reason: "hard-coded alert plan: use <AlertPrice />" },
+  // Owner's rule: "free" never appears in published content. Say what is paid; for other tools "costs nothing" or
+  // "at no charge"; for Tokenping's dashboard only "needs no payment".
+  {
+    pattern: /\bfree\b/i,
+    reason: "'free' must not appear: say what is paid, 'costs nothing', 'at no charge' or 'needs no payment'",
+  },
+  { pattern: /\bfreemium\b/i, reason: "'freemium' must not appear: write 'a no-cost tier plus paid plans'" },
 ];
 
 type MdAttribute = { type: string; name?: string; value?: unknown };
@@ -254,6 +261,12 @@ const CS_BANNED_PATTERNS: readonly BannedPattern[] = [
     pattern: /\bUSDC (?:za|na|každých) ?30 (?:dní|dnů|dny)(?!\p{L})/iu,
     reason: "hard-coded alert plan: use <AlertPrice />",
   },
+  // The Czech forms of "free"; "bez poplatku" is fine.
+  {
+    pattern: /\bzdarma\b/i,
+    reason: "'zdarma' must not appear: write 'nic nestojí', 'bez poplatku' or 'nevyžaduje platbu'",
+  },
+  { pattern: /\bbezplatn/i, reason: "'bezplatný' must not appear: write 'bez poplatku' or 'nic nestojí'" },
 ];
 
 const findBannedPhrases = (text: string, patterns: readonly BannedPattern[] = BANNED_PATTERNS) => {
@@ -742,6 +755,9 @@ describe("findBannedPhrases", () => {
     "Tokenping messages you on Signal or Telegram.",
     "Alerts arrive on Signal or email [or Telegram].",
     "Tokenping sends Telegram alerts.",
+    "Check your health factor for free.",
+    "Free alerts on Telegram.",
+    "A freemium alert service.",
   ])("flags %j", text => {
     expect(findBannedPhrases(text)).not.toEqual([]);
   });
@@ -767,6 +783,9 @@ describe("findBannedPhrases", () => {
     "Tokenping messages you on Signal or email.",
     "Otomato sends alerts on Telegram and in its mobile app.",
     "DeFi Saver Notify: in-app, email, Telegram.",
+    "Otomato's core alerts cost nothing; the extensions come at no charge.",
+    "Looking at your positions needs no payment.",
+    "A frozen reserve does not block liquidations.",
   ])("does not flag %j", text => {
     expect(findBannedPhrases(text)).toEqual([]);
   });
@@ -844,7 +863,7 @@ position can be liquidated.
 
 The health factor is a number {/* inline note */}. Below 1.00 a liquidator can repay up to 100% of the debt when
 HF is at or below 0.95. Otomato sends alerts on Telegram. See [how much buffer a health factor gives you](/blog/safe-aave-health-factor) or
-[check your Aave V3 health factor (free)](/aave). Alerts cost <AlertPrice />. Formula details are in
+[check your Aave V3 health factor](/aave). Alerts cost <AlertPrice />. Formula details are in
 [the formula section](#how-is-the-health-factor-calculated).
 
 ## How is the health factor calculated?
@@ -883,7 +902,7 @@ Intro paragraph first.
 
 <LiquidationCalculator />
 
-Real-time alerts for 3 USDC. See [a missing post](/blog/nope), [a bad anchor](/blog/safe-aave-health-factor#nope),
+Real-time alerts for 3 USDC, free to try. See [a missing post](/blog/nope), [a bad anchor](/blog/safe-aave-health-factor#nope),
 [privacy](/privacy), [plain http](http://example.com) and [our site](https://tokenping.xyz/aave).
 
 The debt ceiling limits new borrows. On Arbitrum, liquidations pause while the sequencer is down. A liquidator can
@@ -990,6 +1009,7 @@ describe("article checks", () => {
       expect.stringContaining("HF ≤ 0.95"),
       expect.stringContaining("articles name Signal and email only"),
       expect.stringContaining("hard-coded alert price"),
+      expect.stringContaining("'free' must not appear"),
     ]);
     expect(checks.readingTime).toEqual([expect.stringContaining("readingMinutes 30 is not an honest estimate")]);
     expect(findDashes(BAD_ARTICLE)).toEqual([
@@ -1015,6 +1035,9 @@ describe("Czech findBannedPhrases", () => {
     "Upozornění přes Signal, Telegram nebo e-mail.",
     "Tokenping vám napíše přes Signal nebo Telegram.",
     "Tokenping sends Telegram alerts.",
+    "Přehled je zdarma.",
+    "Bezplatná upozornění na Telegram.",
+    "Otomato nabízí bezplatnou úroveň.",
   ])("flags %j", text => {
     expect(findBannedPhrases(text, czech)).not.toEqual([]);
   });
@@ -1027,6 +1050,7 @@ describe("Czech findBannedPhrases", () => {
     "Tokenping vám napíše přes Signal nebo e-mail.",
     "Otomato posílá upozornění přes Telegram a ve své aplikaci.",
     "Likvidace proběhne okamžitě, jakmile health factor klesne pod 1.",
+    "Základní sledování je bez poplatku a nic nestojí; přehled nevyžaduje platbu.",
   ])("does not flag %j", text => {
     expect(findBannedPhrases(text, czech)).toEqual([]);
   });
@@ -1055,7 +1079,7 @@ zlikvidována.
 ## Co je health factor na Aave?
 
 Health factor je číslo. Kolik rezervy dává, popisuje [průvodce bezpečným health factorem](/cz/blog/bezpecny-health-factor-aave),
-svůj si [zkontrolujete v přehledu zdarma](/cz/aave). Upozornění stojí <AlertPrice />. Vzorec je v
+svůj si [zkontrolujete v přehledu](/cz/aave). Upozornění stojí <AlertPrice />. Vzorec je v
 [části o výpočtu](#jak-se-pocita-health-factor).
 
 ## Jak se počítá health factor?

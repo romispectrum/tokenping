@@ -3,13 +3,14 @@ import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ScaffoldEthApp } from "~~/components/ScaffoldEthAppWithProviders";
 
-// The frame's own markup only: the strip, header and footer have their own tests.
+// The frame's own markup only: the skip link, the beta tab, header and footer have their own tests.
 vi.mock("~~/components/BetaBanner", () => ({
-  BetaBanner: () => (
-    <a href="#main" data-stub="beta-banner">
+  SkipLink: () => (
+    <a href="#main" data-stub="skip-link">
       Skip to content
     </a>
   ),
+  BetaBanner: () => <section data-stub="beta-banner" />,
 }));
 vi.mock("~~/components/Header", () => ({ Header: () => <header data-stub="header" /> }));
 vi.mock("~~/components/Footer", () => ({ Footer: () => <footer data-stub="footer" /> }));
@@ -32,12 +33,13 @@ describe("ScaffoldEthApp", () => {
     expect(container.querySelector('a[href="#main"]')).not.toBeNull();
   });
 
-  it("renders the beta strip, which holds the skip link, before the header", () => {
+  it("renders the skip link first, then the header, and the beta tab after the main content", () => {
     const { container } = render(<ScaffoldEthApp>content</ScaffoldEthApp>);
 
     const order = Array.from(container.querySelectorAll("[data-stub]")).map(element =>
       element.getAttribute("data-stub"),
     );
-    expect(order).toEqual(["beta-banner", "header", "footer"]);
+    expect(order).toEqual(["skip-link", "header", "beta-banner", "footer"]);
+    expect(container.querySelector("main")?.nextElementSibling?.getAttribute("data-stub")).toBe("beta-banner");
   });
 });

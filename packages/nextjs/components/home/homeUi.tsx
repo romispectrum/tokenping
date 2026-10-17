@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { formatAlertPrice } from "~~/components/blog/AlertPrice";
 import {
   Container,
   SECTION_CLASS_NAME,
@@ -10,11 +11,11 @@ import {
 import { SectionHeader } from "~~/components/ui/SectionHeader";
 import { buttonClasses } from "~~/components/ui/buttonClasses";
 import { cx } from "~~/components/ui/classNames";
-import { AAVE_NETWORK_NAMES } from "~~/config/aaveConfig";
 import { EXTERNAL_LINK_REL } from "~~/constants/links";
 import type { Locale } from "~~/i18n/locales";
 import { HOME_MESSAGES } from "~~/i18n/messages/home";
 import { routePath } from "~~/i18n/routes";
+import type { AlertPlan } from "~~/services/marketing/alertPlan";
 
 // Shared building blocks of the homepage sections. Server Components only.
 
@@ -78,6 +79,8 @@ export const externalLinkText = (href: string) =>
 
 type DashboardCtaProps = {
   locale: Locale;
+  /** The live plan, for the price in the line under the button; null reads as the priceless fallback. */
+  plan: AlertPlan | null;
   /** A quieter second action next to it (inverse, never pink) that jumps to a section of the same page. */
   secondary?: { label: string; sectionId: string };
   /** Centred by default; "start" lines it up with left-aligned text from lg (the split hero). */
@@ -88,7 +91,7 @@ type DashboardCtaProps = {
  * The page's one primary action, used in the hero and again at the end: the same words, the same target, the
  * view's one pink element. Stacked full width (up to 384px) on phones, side by side from sm.
  */
-export const DashboardCta = ({ locale, secondary, align = "center" }: DashboardCtaProps) => (
+export const DashboardCta = ({ locale, plan, secondary, align = "center" }: DashboardCtaProps) => (
   <div className={cx("mt-8 flex flex-col items-center gap-3", align === "start" && "lg:items-start")}>
     <div
       className={cx(
@@ -121,8 +124,8 @@ export const DashboardCta = ({ locale, secondary, align = "center" }: DashboardC
         align === "start" && "lg:text-left",
       )}
     >
-      {/* Says what the button does before the click (marketing plan §2.5). */}
-      {HOME_MESSAGES[locale].dashboardCtaMicrocopy(AAVE_NETWORK_NAMES.length)}
+      {/* Says what the button does before the click, and what alerts cost (marketing plan §2.5). */}
+      {HOME_MESSAGES[locale].dashboardCtaMicrocopy(formatAlertPrice(plan, locale))}
     </p>
   </div>
 );

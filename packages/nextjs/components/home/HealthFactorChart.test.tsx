@@ -22,7 +22,7 @@ describe("HealthFactorChart", () => {
     const figure = screen.getByRole("figure");
 
     expect(figure.querySelector("figcaption")?.textContent).toBe(
-      "An example night, numbers made up: the alert goes out at 03:05, the first check that finds the health factor below 1.5, five hours before you look.",
+      "An example night. The alert goes out at 03:05, the first check below 1.5, five hours before you look.",
     );
   });
 

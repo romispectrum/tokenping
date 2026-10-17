@@ -3,8 +3,10 @@ import type { ComponentType } from "react";
 import { render, screen, within } from "@testing-library/react";
 import type { MDXComponents } from "mdx/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ARTICLE_BODY_CLASS_NAME } from "~~/components/blog/blogLayout";
 import type { AlertPlan } from "~~/services/marketing/alertPlan";
 import { mockPostStubs } from "~~/utils/testing/blogPosts";
+import { FREE_WORDS } from "~~/utils/testing/copyRules";
 
 const mocks = vi.hoisted(() => ({ getAlertPlan: vi.fn() }));
 
@@ -137,9 +139,11 @@ describe("blog post page", () => {
     expect(publishedTime().getAttribute("dateTime")).toBe("2026-10-14T00:00:00Z");
 
     const endBox = screen.getByRole("complementary", { name: "About Tokenping" });
-    expect(endBox.textContent).toContain("alerts cost 3 USDC per 30 days, paid on Arbitrum One");
+    expect(endBox.textContent).toContain(
+      "Alerts cost 3 USDC per 30 days, paid on Arbitrum One; looking at your positions needs no payment.",
+    );
     expect(endBox.textContent).toContain("they don't prevent liquidation");
-    expect(within(endBox).getByRole("link", { name: "Open the free dashboard" }).getAttribute("href")).toBe("/aave");
+    expect(within(endBox).getByRole("link", { name: "Open the dashboard" }).getAttribute("href")).toBe("/aave");
 
     const related = screen.getByRole("navigation", { name: "Related guides" });
     expect(within(related).getAllByRole("link")[0].getAttribute("href")).toBe("/blog/aave-health-factor");
@@ -200,8 +204,23 @@ describe("blog post page", () => {
     await renderPost("aave-health-factor");
 
     expect(screen.getByRole("complementary", { name: "About Tokenping" }).textContent).toContain(
-      "alerts cost a small USDC fee (see the dashboard for the current price), paid on Arbitrum One",
+      "Alerts cost a small USDC fee (see the dashboard for the current price), paid on Arbitrum One; looking at your positions needs no payment.",
     );
+  });
+
+  // The article body is the writers' (content/blog) and may compare tools that cost nothing; the page's own copy, the
+  // end box and the metadata included, says what alerts cost and never describes the dashboard by what it does not.
+  it("never describes the dashboard by what it does not cost, outside the article body", async () => {
+    const { generateMetadata } = await loadPage();
+    const metadata = await generateMetadata({ params: Promise.resolve({ slug: "safe-aave-health-factor" }) });
+    const { container } = await renderPost("safe-aave-health-factor");
+    const page = container.cloneNode(true) as HTMLElement;
+    const body = [...page.querySelectorAll("article div")].find(div => div.className.includes(ARTICLE_BODY_CLASS_NAME));
+
+    expect(body).toBeDefined();
+    body!.remove();
+    expect(page.textContent).not.toMatch(FREE_WORDS);
+    expect(String(metadata.description)).not.toMatch(FREE_WORDS);
   });
 
   it("reads the plan once and gives the body's <AlertPrice /> the same price as the end box", async () => {

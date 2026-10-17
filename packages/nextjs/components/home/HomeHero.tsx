@@ -12,6 +12,7 @@ import { DEFAULT_HEALTH_FACTOR_THRESHOLD, NOTIFICATION_CHECK_INTERVAL_MINUTES } 
 import type { Locale } from "~~/i18n/locales";
 import { HOME_MESSAGES } from "~~/i18n/messages/home";
 import { formatAlertChannelsIn } from "~~/services/marketing/alertChannels";
+import type { AlertPlan } from "~~/services/marketing/alertPlan";
 import { buildAlertEmail, buildAlertText } from "~~/services/notifications/runNotificationCheck";
 import { formatUtcTimestamp } from "~~/utils/format";
 
@@ -111,7 +112,7 @@ const ExampleAlert = ({ locale }: { locale: Locale }) => {
  * glass is text-foreground: the glow can tint the card behind it, and muted text over the tint drops below 4.5:1.
  * No mascot.
  */
-export const HomeHero = ({ locale }: { locale: Locale }) => {
+export const HomeHero = ({ locale, plan }: { locale: Locale; plan: AlertPlan | null }) => {
   const t = HOME_MESSAGES[locale];
   return (
     <section aria-labelledby="home-headline" className="relative isolate overflow-hidden pt-6 pb-16 md:pt-12 md:pb-24">
@@ -137,6 +138,7 @@ export const HomeHero = ({ locale }: { locale: Locale }) => {
                 </p>
                 <DashboardCta
                   locale={locale}
+                  plan={plan}
                   align="start"
                   secondary={{ label: t.seeHowItWorks, sectionId: "how-it-works" }}
                 />

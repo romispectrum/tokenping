@@ -12,7 +12,7 @@ Signal required us to self-host a stateful Java daemon ([signal-cli-rest-api on 
 
 Telegram is the opposite:
 
-- **Official, free [Bot API](https://core.telegram.org/bots/api)**: a plain HTTPS endpoint at `https://api.telegram.org/bot<TOKEN>/sendMessage`.
+- **Official [Bot API](https://core.telegram.org/bots/api)**: a plain HTTPS endpoint at `https://api.telegram.org/bot<TOKEN>/sendMessage`.
 - **Stateless from our side**: each call is independent, perfect for Vercel serverless + cron.
 - **No phone number, no daemon, no volume, no Fly.io, no `signal-cli`.**
 - **Rate limits are generous**: ~30 msg/sec global, 1 msg/sec per chat. Plenty for our cron.

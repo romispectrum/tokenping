@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AAVE_NETWORK_NAMES, AAVE_V3_NETWORKS } from "~~/config/aaveConfig";
 import { mockPostStubs } from "~~/utils/testing/blogPosts";
+import { FREE_WORDS } from "~~/utils/testing/copyRules";
 import { renderMarkup } from "~~/utils/testing/render";
 
 // The wallet UI is a client island with its own tests (AaveDashboard.test.tsx); here it is a marker.
@@ -35,7 +36,7 @@ describe("Aave page metadata", () => {
     // 22 networks: the 21 Aave V3 ones and Arc, which only has Aave V4.
     expect(AAVE_NETWORK_NAMES).toHaveLength(22);
     expect(metadata.description).toBe(
-      "See your Aave V3 and V4 collateral, debt and health factor on 22 networks for free, then set a Signal or email alert threshold for each market.",
+      "See your Aave V3 and V4 collateral, debt and health factor on 22 networks, then set Signal or email alerts, one threshold per market.",
     );
     expect(metadata.alternates?.canonical).toBe("/aave");
     expect(metadata.openGraph).toMatchObject({ url: "/aave", title: "Aave V3 and V4 positions and health factor" });
@@ -47,8 +48,16 @@ describe("Aave page metadata", () => {
     const { metadata } = await loadPage();
 
     expect(String(metadata.description)).toContain("on 22 networks");
-    expect(String(metadata.description)).toContain("a Signal, Telegram or email alert threshold");
+    expect(String(metadata.description)).toContain("then set Signal, Telegram or email alerts");
     expect(String(metadata.description).length).toBeLessThanOrEqual(155);
+  });
+
+  it("never describes viewing by what it does not cost", async () => {
+    const { metadata } = await loadPage();
+    const { container } = await renderPage();
+
+    expect(container.textContent).not.toMatch(FREE_WORDS);
+    expect(String(metadata.description)).not.toMatch(FREE_WORDS);
   });
 });
 
@@ -59,7 +68,7 @@ describe("Aave page shell", () => {
 
     expect(html).toContain(">Aave V3 and V4 positions and health factor alerts</h1>");
     expect(html).toContain(
-      "Connect the wallet you borrow with to see its collateral, debt and health factor on Aave V3 on Ethereum (Core, Prime, EtherFi and Horizon markets), Polygon, Arbitrum, Optimism, Base, Avalanche, Gnosis, Metis, BNB Chain, Scroll, ZKsync, Linea, Sonic, Celo, Soneium, Plasma, Ink, MegaETH, Mantle, X Layer and Monad, and in every Aave V4 Spoke on Ethereum, Avalanche, Arc and Base. Viewing is free and needs no transaction.",
+      "Connect the wallet you borrow with to see its collateral, debt and health factor on Aave V3 on Ethereum (Core, Prime, EtherFi and Horizon markets), Polygon, Arbitrum, Optimism, Base, Avalanche, Gnosis, Metis, BNB Chain, Scroll, ZKsync, Linea, Sonic, Celo, Soneium, Plasma, Ink, MegaETH, Mantle, X Layer and Monad, and in every Aave V4 Spoke on Ethereum, Avalanche, Arc and Base. Viewing needs no transaction.",
     );
     expect(html).toContain(
       "To get a message on Signal or email when a market&#x27;s health factor drops below a threshold you choose, unlock alerts with a USDC payment on Arbitrum One.",

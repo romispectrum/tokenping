@@ -2,6 +2,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST_SLUGS, mockPostStubs } from "~~/utils/testing/blogPosts";
+import { FREE_WORDS } from "~~/utils/testing/copyRules";
 
 // Each test sets which posts are placeholders, so none depends on how many articles are written yet.
 const loadIndex = async (stubSlugs: readonly string[] = []) => {
@@ -83,6 +84,14 @@ describe("/blog", () => {
     expect(screen.getByRole("link", { name: "Subscribe with RSS" }).getAttribute("href")).toBe("/blog/feed.xml");
   });
 
+  it("never describes the dashboard by what it does not cost", async () => {
+    const { BlogIndex, metadata } = await loadIndex();
+    const { container } = render(<BlogIndex />);
+
+    expect(container.textContent).not.toMatch(FREE_WORDS);
+    expect(String(metadata.description)).not.toMatch(FREE_WORDS);
+  });
+
   it("keeps the marketing moment in the hero: one pink action, the glow and the grain card, none in the guide list", async () => {
     const { BlogIndex } = await loadIndex();
     const { container } = render(<BlogIndex />);
@@ -91,7 +100,7 @@ describe("/blog", () => {
     const pink = [...container.querySelectorAll(".btn-primary, .bg-primary")];
     expect(pink).toHaveLength(1);
     expect(hero.contains(pink[0])).toBe(true);
-    expect(pink[0].textContent).toBe("Open the free dashboard");
+    expect(pink[0].textContent).toBe("Open the dashboard");
     expect(pink[0].getAttribute("href")).toBe("/aave");
     for (const effect of container.querySelectorAll(".grain, [class*='from-brand-pink']")) {
       expect(hero.contains(effect)).toBe(true);

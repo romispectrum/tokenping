@@ -41,7 +41,7 @@ export const HomePage = async ({ locale }: { locale: Locale }) => {
 
   return (
     <>
-      <HomeHero locale={locale} />
+      <HomeHero locale={locale} plan={plan} />
       <ProblemSection locale={locale} />
       <SectionDivider />
       <HowItWorksSection plan={plan} locale={locale} />
@@ -52,7 +52,7 @@ export const HomePage = async ({ locale }: { locale: Locale }) => {
       <HomeObjections plan={plan} locale={locale} />
       <LimitsSection locale={locale} />
       <FromTheBlogSection locale={locale} />
-      <ClosingCtaSection locale={locale} />
+      <ClosingCtaSection plan={plan} locale={locale} />
       <JsonLd data={softwareApplicationJsonLd(plan, locale)} />
     </>
   );

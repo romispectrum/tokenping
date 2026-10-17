@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { BetaBanner } from "~~/components/BetaBanner";
+import { BetaBanner, SkipLink } from "~~/components/BetaBanner";
 import { LocaleProvider } from "~~/i18n/LocaleProvider";
 import { renderMarkup } from "~~/utils/testing/render";
 
@@ -17,13 +17,16 @@ describe("BetaBanner", () => {
     expect(screen.getByRole("region", { name: "App status and social" }).textContent).toContain("Tokenping is in beta");
   });
 
-  it("starts with the skip link to the main content, outside the strip's region", () => {
-    const { container } = render(<BetaBanner />);
-    const [first] = container.querySelectorAll("a, button");
+  it("is fixed to the right edge, halfway down, in vertical writing, under the header's layer", () => {
+    render(<BetaBanner />);
+    const region = screen.getByRole("region", { name: "App status and social" });
 
-    expect(first.textContent).toBe("Skip to content");
-    expect(first.getAttribute("href")).toBe("#main");
-    expect(first.closest("section")).toBeNull();
+    expect(region.className).toContain("fixed");
+    expect(region.className).toContain("right-0");
+    expect(region.className).toContain("top-1/2");
+    expect(region.className).toContain("-translate-y-1/2");
+    expect(region.className).toContain("z-30");
+    expect(region.firstElementChild?.className).toContain("[writing-mode:vertical-rl]");
   });
 
   it("keeps the visible words in the X link's name", () => {
@@ -43,16 +46,25 @@ describe("BetaBanner", () => {
   });
 });
 
+describe("SkipLink", () => {
+  it("links to the main content and is not inside a region", () => {
+    const { container } = render(<SkipLink />);
+    const [first] = container.querySelectorAll("a, button");
+
+    expect(first.textContent).toBe("Skip to content");
+    expect(first.getAttribute("href")).toBe("#main");
+    expect(first.closest("section")).toBeNull();
+  });
+});
+
 describe("BetaBanner in Czech", () => {
-  const renderCzech = () =>
-    render(
+  it("says the skip link, the beta status and the X link in Czech", () => {
+    const { container } = render(
       <LocaleProvider locale="cs">
+        <SkipLink />
         <BetaBanner />
       </LocaleProvider>,
     );
-
-  it("says the skip link, the beta status and the X link in Czech", () => {
-    const { container } = renderCzech();
     const [first] = container.querySelectorAll("a, button");
 
     expect(first.textContent).toBe("Přeskočit na obsah");

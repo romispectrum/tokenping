@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AlertPlan } from "~~/services/marketing/alertPlan";
 import { buildAlertEmail, buildAlertText } from "~~/services/notifications/runNotificationCheck";
 import { mockPostStubs } from "~~/utils/testing/blogPosts";
+import { FREE_WORDS } from "~~/utils/testing/copyRules";
 import { renderMarkup } from "~~/utils/testing/render";
 
 const mocks = vi.hoisted(() => ({ getAlertPlan: vi.fn() }));
@@ -48,7 +49,7 @@ const SECTION_HEADINGS = [
   "Questions to ask before you connect a wallet",
   "Limits, stated plainly",
   "From the blog",
-  "Check your Aave V3 and V4 health factor, free",
+  "Set up your Aave health factor alert",
 ];
 
 const loadHome = () => import("~~/app/(en)/page");
@@ -186,14 +187,12 @@ describe("hero", () => {
 
   it("repeats one primary action that says what happens, in the hero and at the end", async () => {
     await renderHome();
-    const ctas = screen.getAllByRole("link", { name: "Open the free dashboard" });
+    const ctas = screen.getAllByRole("link", { name: "Open the dashboard" });
 
     expect(ctas.map(link => link.getAttribute("href"))).toEqual(["/aave", "/aave"]);
-    expect(
-      screen.getAllByText(
-        "Connect a wallet to see your Aave V3 and V4 health factors on 22 networks. Viewing is read-only.",
-      ),
-    ).toHaveLength(2);
+    expect(screen.getAllByText("Connect a wallet, see every position. Alerts cost 3 USDC per 30 days.")).toHaveLength(
+      2,
+    );
   });
 });
 
@@ -214,14 +213,13 @@ describe("page outline", () => {
     expect(screen.getAllByRole("heading", { level: 2 }).map(heading => heading.textContent)).toEqual(SECTION_HEADINGS);
   });
 
-  // Each section says one thing next to its visual; the guides carry the detail. Measured at 1372 words after the
-  // redesign (questions 364, problem 188, coverage 163 of which the 22 tiles are 115, hero 159 of which the example
-  // alert is 59, blog cards 156, steps and scale 148, limits 83, pricing 58, closing 53): the ceiling keeps it from
-  // growing back, and drops once the copy is cut further.
-  it("stays under 1400 words", async () => {
+  // Each section says one thing next to its visual; the guides carry the detail. Measured at 1132 words after the
+  // copy cut (questions 302, blog cards 156, coverage 153, hero 136, problem 134, steps and scale 102, limits 59,
+  // pricing 54, closing 36): the ceiling keeps it from growing back, and drops once the copy is cut further.
+  it("stays under 1150 words", async () => {
     const { container } = await renderHome();
 
-    expect(wordCount(container)).toBeLessThan(1400);
+    expect(wordCount(container)).toBeLessThan(1150);
   });
 });
 
@@ -240,10 +238,10 @@ describe("product evidence and the problem", () => {
     };
 
     expect(within(alert).getByText(/Sent at:/).textContent).toBe(buildAlertText(example));
-    expect(within(alert).getByText(/Example only/).textContent).toContain(`"${buildAlertEmail(example).subject}"`);
+    expect(within(alert).getByText(/^Example\./).textContent).toContain(`"${buildAlertEmail(example).subject}"`);
   });
 
-  it("links each forum account to its own thread and dates the 1.01 case to the Polygon forum in 2021", async () => {
+  it("links each forum account to its own thread, the 1.01 repay included", async () => {
     await renderHome();
     const problem = section("Health factors fall while you sleep");
     const links = within(problem)
@@ -256,8 +254,8 @@ describe("product evidence and the problem", () => {
       "https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067",
     ]);
     links.forEach(link => expect(link.getAttribute("rel")).toBe("noopener noreferrer"));
-    expect(links[2].closest("p")?.textContent).toContain(
-      "on the Polygon forum (2021), one borrower tried to repay at a health factor of 1.01 and was liquidated first.",
+    expect(links[2].closest("p")?.textContent).toBe(
+      "Borrowers describe waking up to a liquidated position, an hour of failing repay transactions and a repay at 1.01 that came too late.",
     );
   });
 
@@ -269,19 +267,19 @@ describe("product evidence and the problem", () => {
     expect(within(chart).getByText("Alert sent (1.49)").textContent).toBe("03:05 Alert sent (1.49)");
     expect(within(chart).getByText("You check your phone").textContent).toBe("08:00 You check your phone");
     expect(chart.querySelector("figcaption")?.textContent).toBe(
-      "An example night, numbers made up: the alert goes out at 03:05, the first check that finds the health factor below 1.5, five hours before you look.",
+      "An example night. The alert goes out at 03:05, the first check below 1.5, five hours before you look.",
     );
     expect(
       within(problem)
         .getAllByRole("listitem")
         .map(cause => cause.textContent),
     ).toEqual([
-      "Prices dropETH falls overnight and your collateral is worth less.",
-      "Interest accruesYour debt grows every second, even while prices hold.",
-      "Thresholds changeA governance update can trim a liquidation threshold.",
+      "Prices dropETH falls and your collateral is worth less.",
+      "Interest accruesYour debt grows every second.",
+      "Thresholds changeGovernance can trim a liquidation threshold.",
     ]);
     expect(within(problem).queryByRole("heading", { level: 3 })).toBeNull();
-    expect(within(problem).getByRole("link", { name: "how an Aave liquidation works" }).getAttribute("href")).toBe(
+    expect(within(problem).getByRole("link", { name: "how a liquidation works" }).getAttribute("href")).toBe(
       "/blog/how-aave-liquidation-works",
     );
   });
@@ -322,9 +320,7 @@ describe("how it works", () => {
       "1.1 to 1.5",
       "1.5 and above",
     ]);
-    expect(
-      within(howItWorks).getByText("Any value from 1.1 to 10. The dashboard's badges use the same zones."),
-    ).toBeTruthy();
+    expect(within(howItWorks).getByText("Any value from 1.1 to 10.")).toBeTruthy();
   });
 
   it("keeps the scale but drops its guide link while the safe health factor guide is a placeholder", async () => {
@@ -345,7 +341,7 @@ describe("coverage", () => {
 
     expect(
       within(coverage).getByText(
-        "Aave V3: 24 markets on 21 networks. Aave V4: 20 Spokes on 4 networks. From Aave's address book and V4 API, 16 October 2026.",
+        "24 Aave V3 markets on 21 networks and 20 Aave V4 Spokes on 4 networks, as of 16 October 2026.",
       ),
     ).toBeTruthy();
     expect(tiles).toHaveLength(NETWORKS.length);
@@ -364,25 +360,25 @@ describe("coverage", () => {
 
     expect(
       within(section("Every Aave market, one alert each")).getByText(
-        "Scroll, ZKsync, Metis, Soneium and Sonic are being wound down by Aave governance; open positions there are still watched. Not covered: Aave V3 on Harmony, frozen since 2022, and other protocols.",
+        "Scroll, ZKsync, Metis, Soneium and Sonic are being wound down by Aave governance and are still watched. Not covered: Aave V3 on Harmony, and other protocols.",
       ),
     ).toBeTruthy();
   });
 });
 
 describe("price", () => {
-  it("shows the live plan in the steps, the pricing block and its call to action", async () => {
+  it("shows the live plan in the steps, the three pricing rows and its call to action", async () => {
     await renderHome();
+    const pricing = section("Pricing");
 
     expect(screen.getByText("Unlock alerts for 3 USDC", { selector: "h3" }).textContent).toBe(
       "2. Unlock alerts for 3 USDC",
     );
-    expect(
-      screen.getByText(
-        "30 days, paid in USDC on Arbitrum One: an approval for exactly the price, then the payment. No auto-renew.",
-      ),
-    ).toBeTruthy();
-    expect(within(section("Pricing")).getByText("3 USDC per 30 days")).toBeTruthy();
+    expect(screen.getByText("30 days, paid in USDC on Arbitrum One. No auto-renew.")).toBeTruthy();
+    // No row for viewing: the page says what alerts cost and leaves it there.
+    expect([...pricing.querySelectorAll("dt")].map(term => term.textContent)).toEqual(["Alerts", "Renewal", "Payment"]);
+    expect(within(pricing).getByText("3 USDC per 30 days")).toBeTruthy();
+    expect(within(pricing).getByText("Looking at your positions needs no payment.")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Set up alerts: 3 USDC for 30 days" }).getAttribute("href")).toBe("/aave");
   });
 
@@ -393,7 +389,7 @@ describe("price", () => {
     expect(screen.getByText("Unlock alerts with a small USDC payment", { selector: "h3" }).textContent).toBe(
       "2. Unlock alerts with a small USDC payment",
     );
-    expect(screen.getByText(/^Paid in USDC on Arbitrum One: an approval for exactly the price/)).toBeTruthy();
+    expect(screen.getByText("Paid in USDC on Arbitrum One. No auto-renew.")).toBeTruthy();
     expect(
       within(section("Pricing")).getByText("A small USDC fee (see the dashboard for the current price)"),
     ).toBeTruthy();
@@ -450,7 +446,7 @@ describe("objections", () => {
       "What if an alert doesn't arrive?",
       "How do I stop the alerts?",
       "Can I watch a wallet I don't connect?",
-      "Other tools are free. Why pay?",
+      "Other tools cost nothing. Why pay?",
     ]);
     questions.forEach(heading => expect(heading.nextElementSibling?.tagName).toBe("P"));
     expect(container.querySelector("details, summary")).toBeNull();
@@ -479,8 +475,8 @@ describe("objections", () => {
     vi.stubEnv("NEXT_PUBLIC_TELEGRAM_BOT_USERNAME", "tokenping_bot");
     const telegram = await renderHome();
 
-    expect(pageText(telegram.container)).toContain("email, Signal username, Telegram chat.");
-    expect(pageText(telegram.container)).toContain("In Telegram, /stop to the bot also works.");
+    expect(pageText(telegram.container)).toContain("(email, Signal username, Telegram chat).");
+    expect(pageText(telegram.container)).toContain("In Telegram, /stop works too.");
   });
 
   it("says who can look up saved contact details, and points to the privacy page", async () => {
@@ -488,7 +484,7 @@ describe("objections", () => {
     const answer = screen.getByRole("heading", { name: "What do you store?" }).nextElementSibling!.textContent;
 
     expect(answer).toContain(
-      "Until wallet signatures are checked, anyone who knows your address can read the contact details saved for it. The privacy page has the full list.",
+      "Payments are public on Arbitrum One, and until wallet signatures are checked, anyone who knows your address can read its contact details. The privacy page has the full list.",
     );
   });
 
@@ -498,7 +494,7 @@ describe("objections", () => {
     const answer = screen.getByRole("heading", { name: "How do I stop the alerts?" }).nextElementSibling as HTMLElement;
 
     expect(answer.textContent).toContain(
-      "or when you delete the alert, which needs active access. If your access has expired, message us on X or in our Telegram community. No snooze",
+      "or when you delete the alert (needs active access). Access expired? Message us on X or in our Telegram community. No snooze",
     );
     expect(within(answer).getByRole("link", { name: "X" }).getAttribute("href")).toBe("https://x.com/tokenping");
     expect(within(answer).getByRole("link", { name: "Telegram community" }).getAttribute("href")).toBe(
@@ -519,8 +515,10 @@ describe("objections", () => {
 
     expect(screen.queryByRole("link", { name: /comparison/ })).toBeNull();
     expect(
-      screen.getByRole("heading", { name: "Other tools are free. Why pay?" }).nextElementSibling!.textContent,
-    ).toContain("free tools exist. Tokenping is for alerts on Signal or email, in every Aave market.");
+      screen.getByRole("heading", { name: "Other tools cost nothing. Why pay?" }).nextElementSibling!.textContent,
+    ).toBe(
+      "If a Telegram bot or a mobile app suits you, use one. Tokenping is for alerts on Signal or email, in every Aave market.",
+    );
   });
 });
 
@@ -565,13 +563,22 @@ describe("copy rules", () => {
 
     // One line each; coverage moved to its own section.
     expect(limits).toEqual([
-      "Checks every 5 minutes, not in real time: a fast drop can cross 1.0 between two checks.",
-      "Every check below your line sends another message: no snooze, digest or recovery message.",
-      "One line per market, for the connected wallet only: no watch-only addresses or portfolio-wide alerts.",
-      "USDC on Arbitrum One only: no card payments and no refunds.",
-      "Emails have no unsubscribe link yet, and deleting an alert needs active access.",
-      "Beta: delivery depends on third-party services, with no uptime guarantee.",
+      "Checks every 5 minutes, not in real time.",
+      "Every check below your line sends another message: no snooze or digest.",
+      "One line per market, for the connected wallet only.",
+      "USDC on Arbitrum One only: no cards, no refunds.",
+      "No unsubscribe link in emails yet; deleting an alert needs active access.",
+      "Beta: third-party delivery, no uptime guarantee.",
     ]);
+  });
+
+  // The page says what alerts cost; nothing on it, the JSON-LD and the metadata included, is described as free.
+  it("never describes anything by what it does not cost", async () => {
+    const { metadata } = await loadHome();
+    const { container } = await renderHome();
+
+    expect(container.textContent).not.toMatch(FREE_WORDS);
+    expect(String(metadata.description)).not.toMatch(FREE_WORDS);
   });
 });
 
@@ -591,19 +598,19 @@ describe("visual identity", () => {
     const { container } = await renderHome();
 
     expect([...container.querySelectorAll(".btn-primary")].map(link => link.textContent)).toEqual([
-      "Open the free dashboard",
-      "Open the free dashboard",
+      "Open the dashboard",
+      "Open the dashboard",
     ]);
     expect(screen.getByRole("link", { name: "Set up alerts: 3 USDC for 30 days" }).className).toContain("btn-neutral");
   });
 
   it("closes with an always-dark band around the second call to action", async () => {
     await renderHome();
-    const closing = section("Check your Aave V3 and V4 health factor, free");
+    const closing = section("Set up your Aave health factor alert");
     const band = closing.querySelector(".dark")!;
 
     expect(band.className).toContain("bg-background");
-    expect(within(band as HTMLElement).getByRole("link", { name: "Open the free dashboard" })).toBeTruthy();
+    expect(within(band as HTMLElement).getByRole("link", { name: "Open the dashboard" })).toBeTruthy();
   });
 
   it("puts a brand divider only between two plain sections", async () => {
