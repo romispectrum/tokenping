@@ -114,7 +114,7 @@ export const BLOG_MESSAGES: Localized<BlogMessages> = {
         "Guides to the Aave V3 health factor, liquidation thresholds, liquidation prices and alerts, with worked examples and dated, sourced figures.",
       kicker: "Aave V3 guides",
       lead: "How the Aave V3 health factor works, what happens in a liquidation, how to calculate your liquidation price and how to get warned before it gets close. Every figure in these guides names its source and the date it was checked.",
-      dashboardCta: "Open the free dashboard",
+      dashboardCta: "Open the dashboard",
       rss: "Subscribe with RSS",
       startHere: "Start here",
       allGuides: "All guides",
@@ -134,8 +134,8 @@ export const BLOG_MESSAGES: Localized<BlogMessages> = {
       label: "About Tokenping",
       title: "Health factor alerts from Tokenping",
       body: ({ minutes, networks, channels, price, paymentChain }) =>
-        `Tokenping checks your Aave V3 and V4 health factor every ${minutes} minutes on ${networks} networks and messages you on ${channels} when it is below your threshold. The dashboard is free; alerts cost ${price}${paymentChain ? `, paid on ${paymentChain}` : ""}. Alerts give you time to act; they don't prevent liquidation.`,
-      cta: "Open the free dashboard",
+        `Tokenping checks your Aave V3 and V4 health factor every ${minutes} minutes on ${networks} networks and messages you on ${channels} when it is below your threshold. Alerts cost ${price}${paymentChain ? `, paid on ${paymentChain}` : ""}; looking at your positions needs no payment. Alerts give you time to act; they don't prevent liquidation.`,
+      cta: "Open the dashboard",
     },
     alertPrice: {
       fallback: "a small USDC fee (see the dashboard for the current price)",
@@ -161,7 +161,7 @@ export const BLOG_MESSAGES: Localized<BlogMessages> = {
         "Průvodci health factorem na Aave V3, likvidačními prahy, likvidační cenou a upozorněními, s propočítanými příklady a datovanými údaji se zdroji.",
       kicker: "Průvodci Aave V3",
       lead: "Jak funguje health factor na Aave V3, co se děje při likvidaci, jak spočítat likvidační cenu vaší pozice a jak dostat varování dřív, než se k ní cena přiblíží. Každý údaj v těchto průvodcích uvádí svůj zdroj a datum, kdy byl ověřen.",
-      dashboardCta: "Otevřít přehled zdarma",
+      dashboardCta: "Otevřít přehled",
       rss: "Odebírat přes RSS",
       startHere: "Začněte tady",
       allGuides: "Všichni průvodci",
@@ -182,8 +182,8 @@ export const BLOG_MESSAGES: Localized<BlogMessages> = {
       label: "O Tokenpingu",
       title: "Upozornění na health factor od Tokenpingu",
       body: ({ minutes, networks, channels, price, paymentChain }) =>
-        `Tokenping kontroluje health factor vaší pozice na Aave V3 a V4 ${csEveryMinutes(minutes)} ${csOnNetworks(networks)} a pošle vám zprávu přes ${channels}, když je pod vaším prahem. Přehled je zdarma, upozornění stojí ${price}${paymentChain ? ` s platbou na síti ${paymentChain}` : ""}. Upozornění vám dají čas jednat, likvidaci ale nezabrání.`,
-      cta: "Otevřít přehled zdarma",
+        `Tokenping kontroluje health factor vaší pozice na Aave V3 a V4 ${csEveryMinutes(minutes)} ${csOnNetworks(networks)} a pošle vám zprávu přes ${channels}, když je pod vaším prahem. Upozornění stojí ${price}${paymentChain ? ` s platbou na síti ${paymentChain}` : ""}; prohlížení pozic nevyžaduje žádnou platbu. Upozornění vám dají čas jednat, likvidaci ale nezabrání.`,
+      cta: "Otevřít přehled",
     },
     alertPrice: {
       fallback: "malý poplatek v USDC (aktuální cenu najdete v přehledu)",

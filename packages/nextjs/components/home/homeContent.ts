@@ -55,7 +55,7 @@ export const getHomeDescription = (locale: Locale = DEFAULT_LOCALE) => {
 
 /** The /aave meta description (marketing plan §4.2). */
 export const getDashboardDescription = () =>
-  `See your Aave V3 and V4 collateral, debt and health factor on ${AAVE_NETWORK_NAMES.length} networks for free, then set ${formatAlertChannels("or")} alerts for each market.`;
+  `See your Aave V3 and V4 collateral, debt and health factor on ${AAVE_NETWORK_NAMES.length} networks, then set ${formatAlertChannels("or")} alerts, one threshold per market.`;
 
 /** The hero's logo strip: every network with a market Tokenping reads, V3 or V4, with the chain id its logo is keyed by. */
 export const getNetworkBadges = () => AAVE_CHAINS.map(({ chain, name }) => ({ chainId: chain.id, name }));

@@ -79,8 +79,8 @@ const HeaderMenuLinks = ({ linkClassName }: { linkClassName: string }) => {
 /**
  * The sticky 64px bar: logo, the main links, the wallet button and the theme toggle. Below lg the links move into a
  * menu panel (44px rows, plus the theme toggle). The logo lockup keeps at least 110px of width (h-7, h-8 from md) and
- * never shrinks; it carries no tagline. The bar is translucent over the hero wash. The skip link comes before it, at
- * the start of the beta strip.
+ * never shrinks; it carries no tagline. The bar is translucent over the hero wash and sits at the very top of the
+ * page; the skip link comes before it in the DOM, and the beta tab on the right edge comes after the main content.
  *
  * The menu is a disclosure, not a modal: the page stays live behind it, so focus is not trapped. Instead the panel
  * closes on Escape (focus back on its button), when focus or a click leaves it, on a link click and on a route change.

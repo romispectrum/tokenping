@@ -3,7 +3,7 @@
 Aave V3 and V4 health factor alerts on Signal and email.
 
 Tokenping watches the Aave V3 and V4 health factor of the wallet you connect and sends you a message when it drops below a
-threshold you choose. The dashboard is free; alerts are a paid add-on, paid in USDC on Arbitrum One.
+threshold you choose. Alerts are paid in USDC on Arbitrum One; looking at your positions needs no payment.
 
 - Website: https://tokenping.xyz
 - Blog (Aave health factor and liquidation guides): https://tokenping.xyz/blog
@@ -14,7 +14,7 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs o
 
 ## What it does
 
-- **Dashboard (free, read-only).** Connect a wallet to see its collateral, debt and health factor in every Aave V3
+- **Dashboard (read-only, no payment).** Connect a wallet to see its collateral, debt and health factor in every Aave V3
   market on a mainnet (24 markets on 21 networks, Ethereum's Core, Prime, EtherFi and Horizon among them) and in every
   Aave V4 Spoke (20 Spokes on Ethereum, Avalanche, Arc and Base). Both lists live in
   `packages/nextjs/config/aaveConfig.ts`. Each V3 market and each V4 Spoke keeps a separate position and health factor,
@@ -130,7 +130,7 @@ yarn next:token-icons
 
 It reads every market's reserves on-chain, rewrites the icons and `packages/nextjs/config/tokenIcons.generated.ts`, and
 lists the reserves CoinGecko has no logo for (the dashboard shows their first letter). It reads
-`packages/nextjs/.env.local`, so a free CoinGecko Demo key in `COINGECKO_API_KEY` there speeds it up. Look over the
+`packages/nextjs/.env.local`, so a CoinGecko Demo key in `COINGECKO_API_KEY` there speeds it up. Look over the
 changed icons before committing: a broken CoinGecko image goes in `IMAGE_OVERRIDES` and dark artwork that vanishes on the
 dark theme in `WHITE_BACKED_IMAGES`, both in `packages/nextjs/scripts/tokenIconSources.ts`.
 

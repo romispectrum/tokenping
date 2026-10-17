@@ -131,7 +131,7 @@ changed 2026-03-31, commit `2f6a0fc96a`).
 | Threshold 1.1 to 10 | `constants/notifications.ts` (`product.md` §4.5) |
 | Alert repeats on every check while below threshold | `runNotificationCheck.ts` (`product.md` §4.3) |
 | A fast move can cross the threshold and 1.0 between two checks | `product.md` §10.3 ("Polling, not real-time … a fast price move can liquidate a position between checks") |
-| Dashboard free | `/aave` (`product.md` §3, §11); price itself comes from the shared end box (`getAlertPlan`), not hard-coded |
+| Dashboard link (`/aave`) | `product.md` §3, §11; price itself comes from the shared end box (`getAlertPlan`), not hard-coded |
 
 ## 7. Worked arithmetic (illustrative prices; recomputed by the writer with python3, interest ignored, USDC = $1.00)
 

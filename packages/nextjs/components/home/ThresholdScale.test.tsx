@@ -43,7 +43,7 @@ describe("ThresholdScale", () => {
 
     expect(screen.getByText("liquidation").textContent).toBe("1 liquidation");
     expect(screen.getByText("2")).toBeTruthy();
-    expect(screen.getByText("Any value from 1.1 to 10. The dashboard's badges use the same zones.")).toBeTruthy();
+    expect(screen.getByText("Any value from 1.1 to 10.")).toBeTruthy();
   });
 
   it("writes every number with a decimal comma in Czech", () => {
@@ -55,7 +55,7 @@ describe("ThresholdScale", () => {
       ["Rizikový", "1,1 až 1,5"],
       ["Bezpečný", "1,5 a více"],
     ]);
-    expect(screen.getByText("Libovolná hodnota od 1,1 do 10. Štítky v přehledu používají stejná pásma.")).toBeTruthy();
+    expect(screen.getByText("Libovolná hodnota od 1,1 do 10.")).toBeTruthy();
     expect(container.textContent).not.toContain("1.5");
   });
 

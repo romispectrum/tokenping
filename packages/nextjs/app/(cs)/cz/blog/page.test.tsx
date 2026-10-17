@@ -2,6 +2,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CS_POST_SLUGS, mockPostStubs } from "~~/utils/testing/blogPosts";
+import { FREE_WORDS } from "~~/utils/testing/copyRules";
 
 // Each test sets which Czech posts are placeholders, so none depends on how many translations are finished yet.
 const loadIndex = async (csStubSlugs: readonly string[] = []) => {
@@ -98,8 +99,16 @@ describe("/cz/blog", () => {
     expect(screen.getByRole("link", { name: "Odebírat přes RSS" }).getAttribute("href")).toBe("/cz/blog/feed.xml");
     const pink = [...container.querySelectorAll(".btn-primary, .bg-primary")];
     expect(pink).toHaveLength(1);
-    expect(pink[0].textContent).toBe("Otevřít přehled zdarma");
+    expect(pink[0].textContent).toBe("Otevřít přehled");
     expect(pink[0].getAttribute("href")).toBe("/cz/aave");
+  });
+
+  it("never describes the dashboard by what it does not cost", async () => {
+    const { BlogIndex, metadata } = await loadIndex();
+    const { container } = render(<BlogIndex />);
+
+    expect(container.textContent).not.toMatch(FREE_WORDS);
+    expect(String(metadata.description)).not.toMatch(FREE_WORDS);
   });
 
   it("renders a Czech breadcrumb trail that matches its BreadcrumbList JSON-LD", async () => {

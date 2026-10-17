@@ -27,13 +27,7 @@ import { Container, SECTION_CLASS_NAME, SectionDivider } from "~~/components/hom
 import { GlowWash } from "~~/components/ui/Glow";
 import { buttonClasses } from "~~/components/ui/buttonClasses";
 import { cx } from "~~/components/ui/classNames";
-import {
-  AAVE_MARKETS,
-  AAVE_NETWORK_NAMES,
-  AAVE_V3_NETWORKS,
-  AAVE_V4_NETWORK_NAMES,
-  AAVE_V4_SPOKES,
-} from "~~/config/aaveConfig";
+import { AAVE_MARKETS, AAVE_V3_NETWORKS, AAVE_V4_NETWORK_NAMES, AAVE_V4_SPOKES } from "~~/config/aaveConfig";
 import {
   DEFAULT_HEALTH_FACTOR_THRESHOLD,
   HEALTH_FACTOR_THRESHOLD_MAX,
@@ -49,8 +43,6 @@ import { formatAlertChannelsIn } from "~~/services/marketing/alertChannels";
 import type { AlertPlan } from "~~/services/marketing/alertPlan";
 import { getPaymentChainName } from "~~/services/marketing/paymentChain";
 
-/** Every network with a market Tokenping reads, V3 or V4. */
-const NETWORK_COUNT = AAVE_NETWORK_NAMES.length;
 const CHECK_MINUTES = NOTIFICATION_CHECK_INTERVAL_MINUTES;
 
 type LocaleProps = {
@@ -250,9 +242,7 @@ export const PricingSection = ({ plan, locale }: PlanProps) => {
           >
             {getPricingCtaLabel(plan, locale)}
           </Link>
-          <p className="m-0 text-center text-sm text-muted-foreground lg:text-left">
-            {t.pricingFootnote(paymentChain)}
-          </p>
+          <p className="m-0 text-center text-sm text-muted-foreground lg:text-left">{t.pricingFootnote}</p>
         </div>
       </div>
     </HomeSection>
@@ -319,7 +309,7 @@ export const FromTheBlogSection = ({ locale }: LocaleProps) => {
  * switches every token inside it in both themes, the glow wash is the page's second glow, the grain sits on top at
  * 30%. The section padding keeps it apart from the dark footer.
  */
-export const ClosingCtaSection = ({ locale }: LocaleProps) => (
+export const ClosingCtaSection = ({ plan, locale }: PlanProps) => (
   <section id="closing" aria-labelledby="closing-title" className={SECTION_CLASS_NAME}>
     <Container>
       <div className="dark relative isolate overflow-hidden rounded-3xl border border-border bg-background px-6 py-12 text-center md:px-16 md:py-16">
@@ -332,9 +322,9 @@ export const ClosingCtaSection = ({ locale }: LocaleProps) => (
           {HOME_MESSAGES[locale].closingTitle}
         </h2>
         <p className="text-lead mx-auto mt-4 mb-0 max-w-[56ch] text-pretty text-muted-foreground">
-          {HOME_MESSAGES[locale].closingLead(NETWORK_COUNT)}
+          {HOME_MESSAGES[locale].closingLead(formatAlertPrice(plan, locale))}
         </p>
-        <DashboardCta locale={locale} />
+        <DashboardCta locale={locale} plan={plan} />
       </div>
     </Container>
   </section>

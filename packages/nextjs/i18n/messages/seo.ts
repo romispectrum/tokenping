@@ -25,7 +25,7 @@ const minutes = NOTIFICATION_CHECK_INTERVAL_MINUTES;
 export const SEO_MESSAGES: Localized<SeoMessages> = {
   en: {
     defaultTitle: "Tokenping: Aave health factor alerts",
-    defaultDescription: `Alerts when your Aave V3 or V4 health factor drops below a threshold you choose, on ${networks} networks, checked every ${minutes} minutes. The dashboard is free.`,
+    defaultDescription: `Alerts when your Aave V3 or V4 health factor drops below a threshold you choose, on ${networks} networks, checked every ${minutes} minutes.`,
     organizationDescription:
       "Tokenping sends a message when an Aave V3 or V4 health factor drops below the threshold its owner set.",
     siteOgAlt: "Tokenping: Aave health factor alerts",
@@ -37,7 +37,7 @@ export const SEO_MESSAGES: Localized<SeoMessages> = {
   },
   cs: {
     defaultTitle: "Tokenping: upozornění na Aave health factor",
-    defaultDescription: `Upozornění, když health factor vaší pozice na Aave V3 či V4 klesne pod zvolený práh, na ${networks} sítích, s kontrolou každých ${minutes} minut. Přehled je zdarma.`,
+    defaultDescription: `Upozornění, když health factor vaší pozice na Aave V3 či V4 klesne pod zvolený práh, na ${networks} sítích, s kontrolou každých ${minutes} minut.`,
     organizationDescription:
       "Tokenping pošle zprávu, když health factor pozice na Aave V3 či V4 klesne pod práh, který si její majitel nastavil.",
     siteOgAlt: "Tokenping: upozornění na Aave health factor",

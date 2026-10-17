@@ -6,6 +6,7 @@ import { POST_SLUGS } from "~~/i18n/postSlugs";
 import type { AlertPlan } from "~~/services/marketing/alertPlan";
 import { buildAlertEmail, buildAlertText } from "~~/services/notifications/runNotificationCheck";
 import { mockPostStubs } from "~~/utils/testing/blogPosts";
+import { FREE_WORDS } from "~~/utils/testing/copyRules";
 
 const mocks = vi.hoisted(() => ({ getAlertPlan: vi.fn() }));
 
@@ -68,7 +69,7 @@ const SECTION_HEADINGS = [
   "Na co se zeptat, než připojíte peněženku",
   "Omezení bez příkras",
   "Z blogu",
-  "Zkontrolujte svůj health factor na Aave V3 a V4 zdarma",
+  "Nastavte si upozornění na health factor v Aave",
 ];
 
 const ENGLISH_HEADINGS = [
@@ -80,7 +81,7 @@ const ENGLISH_HEADINGS = [
   "Questions to ask before you connect a wallet",
   "Limits, stated plainly",
   "From the blog",
-  "Check your Aave V3 and V4 health factor, free",
+  "Set up your Aave health factor alert",
   "What an alert says",
 ];
 
@@ -172,7 +173,7 @@ describe("Czech copy", () => {
     expect(within(chart).getByText("Upozornění odesláno (1,49)").textContent).toBe("03:05 Upozornění odesláno (1,49)");
     expect(within(chart).getByText("Podíváte se do telefonu").textContent).toBe("08:00 Podíváte se do telefonu");
     expect(chart.querySelector("figcaption")?.textContent).toBe(
-      "Ukázková noc se smyšlenými čísly: upozornění odchází ve 3:05, při první kontrole, která najde health factor pod 1,5, pět hodin předtím, než se podíváte.",
+      "Ukázková noc. Upozornění odchází ve 3:05, při první kontrole pod 1,5, pět hodin předtím, než se podíváte.",
     );
   });
 
@@ -203,9 +204,7 @@ describe("Czech copy", () => {
       "1,1 až 1,5",
       "1,5 a více",
     ]);
-    expect(
-      within(howItWorks).getByText("Libovolná hodnota od 1,1 do 10. Štítky v přehledu používají stejná pásma."),
-    ).toBeTruthy();
+    expect(within(howItWorks).getByText("Libovolná hodnota od 1,1 do 10.")).toBeTruthy();
     expect(within(howItWorks).getByRole("link", { name: "Jak zvolit práh" }).getAttribute("href")).toBe(
       `/cz/blog/${csSlug("safe-aave-health-factor")}`,
     );
@@ -225,24 +224,31 @@ describe("Czech copy", () => {
     expect(text).toBe(buildAlertText(example, "cs"));
     expect(text).toContain("1,42");
     expect(text).toContain("1,5");
-    expect(within(alert).getByText(/Jen ukázka/).textContent).toContain(`„${buildAlertEmail(example, "cs").subject}“`);
+    expect(within(alert).getByText(/^Ukázka\./).textContent).toContain(`„${buildAlertEmail(example, "cs").subject}“`);
   });
 
-  it("states the live price in Czech in the steps, the pricing block and its call to action", async () => {
+  it("states the live price in Czech in the steps, the pricing rows, the call to action and under both buttons", async () => {
     await renderHome();
+    const pricing = section("Ceník");
 
     expect(screen.getByText("Odemkněte upozornění za 3 USDC", { selector: "h3" }).textContent).toBe(
       "2. Odemkněte upozornění za 3 USDC",
     );
-    expect(
-      screen.getByText(
-        "Na 30 dní, platba v USDC na síti Arbitrum One: schválení přesně této částky, pak platba. Bez automatického obnovení.",
-      ),
-    ).toBeTruthy();
-    expect(within(section("Ceník")).getByText("3 USDC na 30 dní")).toBeTruthy();
+    expect(screen.getByText("Na 30 dní, platba v USDC na síti Arbitrum One. Bez automatického obnovení.")).toBeTruthy();
+    // No row for viewing: the page says what alerts cost and leaves it there.
+    expect([...pricing.querySelectorAll("dt")].map(term => term.textContent)).toEqual([
+      "Upozornění",
+      "Obnovení",
+      "Platba",
+    ]);
+    expect(within(pricing).getByText("3 USDC na 30 dní")).toBeTruthy();
+    expect(within(pricing).getByText("Prohlížení pozic nevyžaduje žádnou platbu.")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Nastavit upozornění: 3 USDC na 30 dní" }).getAttribute("href")).toBe(
       "/cz/aave",
     );
+    expect(
+      screen.getAllByText("Připojte peněženku a uvidíte všechny pozice. Upozornění stojí 3 USDC na 30 dní."),
+    ).toHaveLength(2);
   });
 
   it("writes a decimal price with a comma and falls back to no number without a plan", async () => {
@@ -264,7 +270,7 @@ describe("Czech copy", () => {
 
     expect(
       within(coverage).getByText(
-        "Aave V3: 24 trhů na 21 sítích. Aave V4: 20 trhů (Spoke) na 4 sítích. Podle Aave Address Book a API Aave V4 ke 16. říjnu 2026.",
+        "24 trhů Aave V3 na 21 sítích a 20 trhů (Spoke) Aave V4 na 4 sítích, ke 16. říjnu 2026.",
       ),
     ).toBeTruthy();
     expect(tiles).toHaveLength(NETWORK_COUNT);
@@ -276,7 +282,7 @@ describe("Czech copy", () => {
     expect(within(tiles[21]).getByText("3 trhy V4 (Spoke)")).toBeTruthy();
     expect(
       within(coverage).getByText(
-        "Trhy na sítích Scroll, ZKsync, Metis, Soneium a Sonic governance Aave postupně ukončuje; otevřené pozice tam dál hlídáme. Nepokrýváme trh Aave V3 na síti Harmony, zamrzlý od roku 2022, ani jiné protokoly.",
+        "Trhy na sítích Scroll, ZKsync, Metis, Soneium a Sonic governance Aave postupně ukončuje a dál je hlídáme. Nepokrýváme trh Aave V3 na síti Harmony ani jiné protokoly.",
       ),
     ).toBeTruthy();
   });
@@ -288,10 +294,8 @@ describe("Czech copy", () => {
       .map(item => item.textContent);
 
     expect(limits).toHaveLength(6);
-    expect(limits[0]).toBe(
-      "Kontroly každých 5 minut, ne v reálném čase: při rychlém propadu může health factor klesnout pod 1,0 mezi dvěma kontrolami.",
-    );
-    expect(limits[3]).toBe("Jen USDC na síti Arbitrum One: bez platby kartou a bez vracení peněz.");
+    expect(limits[0]).toBe("Kontroly každých 5 minut, ne v reálném čase.");
+    expect(limits[3]).toBe("Jen USDC na síti Arbitrum One: bez karty, bez vracení peněz.");
     expect(
       within(section("Na co se zeptat, než připojíte peněženku"))
         .getAllByRole("heading", { level: 3 })
@@ -303,7 +307,7 @@ describe("Czech copy", () => {
       "Co když upozornění nedorazí?",
       "Jak upozornění zastavím?",
       "Můžu sledovat peněženku, kterou nepřipojím?",
-      "Jiné nástroje jsou zdarma. Proč platit?",
+      "Jiné nástroje nic nestojí. Proč platit?",
     ]);
     expect(screen.queryByRole("heading", { name: "Je moje pozice podporovaná?" })).toBeNull();
   });
@@ -316,9 +320,10 @@ describe("links", () => {
 
     expect(hrefs.length).toBeGreaterThan(0);
     for (const href of hrefs) expect(href).toMatch(/^\/cz(\/|$)/);
-    expect(
-      screen.getAllByRole("link", { name: "Otevřít přehled zdarma" }).map(link => link.getAttribute("href")),
-    ).toEqual(["/cz/aave", "/cz/aave"]);
+    expect(screen.getAllByRole("link", { name: "Otevřít přehled" }).map(link => link.getAttribute("href"))).toEqual([
+      "/cz/aave",
+      "/cz/aave",
+    ]);
     expect(screen.getByRole("link", { name: "stránka o ochraně soukromí" }).getAttribute("href")).toBe(
       "/cz/ochrana-soukromi",
     );
@@ -337,7 +342,7 @@ describe("links", () => {
         .getByRole("link", { name: "Všichni průvodci health factorem a likvidací na Aave" })
         .getAttribute("href"),
     ).toBe("/cz/blog");
-    expect(screen.getByRole("link", { name: "jak funguje likvidace na Aave" }).getAttribute("href")).toBe(
+    expect(screen.getByRole("link", { name: "jak funguje likvidace" }).getAttribute("href")).toBe(
       `/cz/blog/${csSlug("how-aave-liquidation-works")}`,
     );
     expect(screen.getByRole("link", { name: "Jak zvolit práh" }).getAttribute("href")).toBe(
@@ -359,8 +364,10 @@ describe("links", () => {
     expect(container.querySelector('a[href*="/blog/"]')).toBeNull();
     expect(screen.getByRole("heading", { name: "Kam hranici umístit" })).toBeTruthy();
     expect(
-      screen.getByRole("heading", { name: "Jiné nástroje jsou zdarma. Proč platit?" }).nextElementSibling!.textContent,
-    ).toContain("bezplatné nástroje existují. Tokenping je pro upozornění přes Signal nebo e-mail");
+      screen.getByRole("heading", { name: "Jiné nástroje nic nestojí. Proč platit?" }).nextElementSibling!.textContent,
+    ).toBe(
+      "Pokud vám vyhovuje bot na Telegramu nebo mobilní aplikace, použijte je. Tokenping je pro upozornění přes Signal nebo e-mail, na každém trhu Aave.",
+    );
   });
 });
 
@@ -385,8 +392,8 @@ describe("design rules", () => {
     const { container } = await renderHome();
 
     expect([...container.querySelectorAll(".btn-primary")].map(link => link.textContent)).toEqual([
-      "Otevřít přehled zdarma",
-      "Otevřít přehled zdarma",
+      "Otevřít přehled",
+      "Otevřít přehled",
     ]);
   });
 
@@ -400,5 +407,14 @@ describe("design rules", () => {
     const { container } = await renderHome();
 
     expect(pageText(container)).not.toMatch(/(?<!\p{L})(tvůj|tvoje|tvá|tvé|tvých|tebe|tobě|ti)(?!\p{L})/iu);
+  });
+
+  // The page says what alerts cost; nothing on it, the JSON-LD and the metadata included, is described as zdarma.
+  it("never describes anything by what it does not cost", async () => {
+    const { metadata } = await loadHome();
+    const { container } = await renderHome();
+
+    expect(container.textContent).not.toMatch(FREE_WORDS);
+    expect(String(metadata.description)).not.toMatch(FREE_WORDS);
   });
 });

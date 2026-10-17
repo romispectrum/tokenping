@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AAVE_V3_NETWORKS } from "~~/config/aaveConfig";
 import type { PostMeta } from "~~/content/blog/types";
+import { FREE_WORDS } from "~~/utils/testing/copyRules";
 import { renderMarkup } from "~~/utils/testing/render";
 
 vi.mock("~~/components/dashboard/AaveDashboard", () => ({ AaveDashboard: () => <div data-stub="aave-dashboard" /> }));
@@ -46,7 +47,7 @@ describe("Czech Aave page metadata", () => {
     expect(metadata.title).toBe("Pozice na Aave V3 a V4 a health factor");
     // 22 networks: the 21 Aave V3 ones and Arc, which only has Aave V4.
     expect(metadata.description).toBe(
-      "Zdarma uvidíte kolaterál, dluh a health factor na Aave V3 a V4 na 22 sítích. Pro každý trh pak nastavte práh upozornění přes Signal nebo e-mail.",
+      "Uvidíte kolaterál, dluh a health factor na Aave V3 a V4 na 22 sítích. Pak si nastavte upozornění přes Signal nebo e-mail, jeden práh na trh.",
     );
     expect(metadata.alternates?.canonical).toBe("/cz/aave");
     expect(metadata.openGraph).toMatchObject({ url: "/cz/aave", title: "Pozice na Aave V3 a V4 a health factor" });
@@ -60,6 +61,14 @@ describe("Czech Aave page metadata", () => {
     expect(String(metadata.description)).toContain("přes Signal, Telegram nebo e-mail");
     expect(String(metadata.description).length).toBeLessThanOrEqual(155);
   });
+
+  it("never describes viewing by what it does not cost", async () => {
+    const { metadata } = await loadPage();
+    const { container } = await renderPage();
+
+    expect(container.textContent).not.toMatch(FREE_WORDS);
+    expect(String(metadata.description)).not.toMatch(FREE_WORDS);
+  });
 });
 
 describe("Czech Aave page shell", () => {
@@ -69,7 +78,7 @@ describe("Czech Aave page shell", () => {
 
     expect(html).toContain(">Pozice na Aave V3 a V4 a upozornění na health factor</h1>");
     expect(html).toContain(
-      "Připojte peněženku, se kterou si půjčujete, a uvidíte její kolaterál, dluh a health factor na Aave V3 na sítích Ethereum (trhy Core, Prime, EtherFi a Horizon), Polygon, Arbitrum, Optimism, Base, Avalanche, Gnosis, Metis, BNB Chain, Scroll, ZKsync, Linea, Sonic, Celo, Soneium, Plasma, Ink, MegaETH, Mantle, X Layer a Monad a ve všech trzích (Spoke) Aave V4 na sítích Ethereum, Avalanche, Arc a Base. Prohlížení je zdarma a nevyžaduje žádnou transakci.",
+      "Připojte peněženku, se kterou si půjčujete, a uvidíte její kolaterál, dluh a health factor na Aave V3 na sítích Ethereum (trhy Core, Prime, EtherFi a Horizon), Polygon, Arbitrum, Optimism, Base, Avalanche, Gnosis, Metis, BNB Chain, Scroll, ZKsync, Linea, Sonic, Celo, Soneium, Plasma, Ink, MegaETH, Mantle, X Layer a Monad a ve všech trzích (Spoke) Aave V4 na sítích Ethereum, Avalanche, Arc a Base. Prohlížení nevyžaduje žádnou transakci.",
     );
     // The same 21 V3 networks as the English page, Ethereum's four markets in Czech word order ("trhy Core, ...").
     expect(html).not.toContain("markets)");

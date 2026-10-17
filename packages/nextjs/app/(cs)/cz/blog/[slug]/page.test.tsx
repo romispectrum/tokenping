@@ -3,9 +3,11 @@ import type { ComponentType } from "react";
 import { render, screen, within } from "@testing-library/react";
 import type { MDXComponents } from "mdx/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ARTICLE_BODY_CLASS_NAME } from "~~/components/blog/blogLayout";
 import { formatLongDate } from "~~/i18n/format";
 import type { AlertPlan } from "~~/services/marketing/alertPlan";
 import { mockPostStubs } from "~~/utils/testing/blogPosts";
+import { FREE_WORDS } from "~~/utils/testing/copyRules";
 
 const mocks = vi.hoisted(() => ({ getAlertPlan: vi.fn() }));
 
@@ -121,9 +123,11 @@ describe("Czech blog post page", () => {
     expect(article.textContent).not.toMatch(/Short answer|Figures as of|Note: /);
 
     const endBox = screen.getByRole("complementary", { name: "O Tokenpingu" });
-    expect(endBox.textContent).toContain("upozornění stojí 3 USDC na 30 dní s platbou na síti Arbitrum One");
+    expect(endBox.textContent).toContain(
+      "Upozornění stojí 3 USDC na 30 dní s platbou na síti Arbitrum One; prohlížení pozic nevyžaduje žádnou platbu.",
+    );
     expect(endBox.textContent).toContain("likvidaci ale nezabrání");
-    expect(within(endBox).getByRole("link", { name: "Otevřít přehled zdarma" }).getAttribute("href")).toBe("/cz/aave");
+    expect(within(endBox).getByRole("link", { name: "Otevřít přehled" }).getAttribute("href")).toBe("/cz/aave");
 
     const related = screen.getByRole("navigation", { name: "Související průvodci" });
     const hrefs = within(related)
@@ -182,8 +186,23 @@ describe("Czech blog post page", () => {
     await renderPost("aave-health-factor-vysvetleni");
 
     expect(screen.getByRole("complementary", { name: "O Tokenpingu" }).textContent).toContain(
-      "upozornění stojí malý poplatek v USDC (aktuální cenu najdete v přehledu) s platbou na síti Arbitrum One",
+      "Upozornění stojí malý poplatek v USDC (aktuální cenu najdete v přehledu) s platbou na síti Arbitrum One; prohlížení pozic nevyžaduje žádnou platbu.",
     );
+  });
+
+  // The article body is the translators' (content/blog/cs) and may compare tools that cost nothing; the page's own
+  // copy, the end box and the metadata included, says what alerts cost and never calls the dashboard zdarma.
+  it("never describes the dashboard by what it does not cost, outside the article body", async () => {
+    const { generateMetadata } = await loadPage();
+    const metadata = await generateMetadata({ params: Promise.resolve({ slug: "bezpecny-health-factor-aave" }) });
+    const { container } = await renderPost("bezpecny-health-factor-aave");
+    const page = container.cloneNode(true) as HTMLElement;
+    const body = [...page.querySelectorAll("article div")].find(div => div.className.includes(ARTICLE_BODY_CLASS_NAME));
+
+    expect(body).toBeDefined();
+    body!.remove();
+    expect(page.textContent).not.toMatch(FREE_WORDS);
+    expect(String(metadata.description)).not.toMatch(FREE_WORDS);
   });
 
   it("gives the body's <AlertPrice /> the Czech price of the end box", async () => {

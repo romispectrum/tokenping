@@ -7,22 +7,23 @@ import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
 import { useTheme } from "next-themes";
 import { Toaster } from "react-hot-toast";
 import { WagmiProvider } from "wagmi";
-import { BetaBanner } from "~~/components/BetaBanner";
+import { BetaBanner, SkipLink } from "~~/components/BetaBanner";
 import { Footer } from "~~/components/Footer";
 import { Header } from "~~/components/Header";
 import { BlockieAvatar } from "~~/components/scaffold-eth";
 import { wagmiConfig } from "~~/services/web3/wagmiConfig";
 
 /**
- * The page frame. BetaBanner comes first because it holds the skip link, the first tab stop on every page; the link
- * targets <main id="main">, which takes focus programmatically only (tabIndex -1, no outline) and clears the sticky
- * 64px header when the browser scrolls to it.
+ * The page frame. The skip link comes first, the first tab stop on every page; it targets <main id="main">, which
+ * takes focus programmatically only (tabIndex -1, no outline) and clears the sticky 64px header when the browser
+ * scrolls to it. The header is the first thing on screen; the beta tab is fixed to the right edge and comes after the
+ * main content in the tab order.
  */
 export const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   return (
     <>
       <div className="flex flex-col min-h-screen min-h-[100dvh] overflow-x-hidden">
-        <BetaBanner />
+        <SkipLink />
         <Header />
         <main
           id="main"
@@ -31,6 +32,7 @@ export const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
         >
           {children}
         </main>
+        <BetaBanner />
         <Footer />
       </div>
       <Toaster />

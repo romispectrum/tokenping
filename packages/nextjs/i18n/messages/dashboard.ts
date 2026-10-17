@@ -185,11 +185,11 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
     page: {
       metaTitle: "Aave V3 and V4 positions and health factor",
       metaDescription: (networkCount, channels) =>
-        `See your Aave V3 and V4 collateral, debt and health factor on ${networkCount} networks for free, then set a ${channels} alert threshold for each market.`,
+        `See your Aave V3 and V4 collateral, debt and health factor on ${networkCount} networks, then set ${channels} alerts, one threshold per market.`,
       title: "Aave V3 and V4 positions and health factor alerts",
       networkMarkets: (name, markets) => `${name} (${markets} markets)`,
       intro: (v3Networks, v4Networks) =>
-        `Connect the wallet you borrow with to see its collateral, debt and health factor on Aave V3 on ${v3Networks}, and in every Aave V4 Spoke on ${v4Networks}. Viewing is free and needs no transaction.`,
+        `Connect the wallet you borrow with to see its collateral, debt and health factor on Aave V3 on ${v3Networks}, and in every Aave V4 Spoke on ${v4Networks}. Viewing needs no transaction.`,
       disclosureSummary: "What alerts cost and how often we check",
       alertsCost: (channels, paymentChain) =>
         `To get a message on ${channels} when a market's health factor drops below a threshold you choose, unlock alerts with a USDC payment${paymentChain ? ` on ${paymentChain}` : ""}. The current price is shown before you pay.`,
@@ -352,11 +352,11 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
     page: {
       metaTitle: "Pozice na Aave V3 a V4 a health factor",
       metaDescription: (networkCount, channels) =>
-        `Zdarma uvidíte kolaterál, dluh a health factor na Aave V3 a V4 na ${networkCount} sítích. Pro každý trh pak nastavte práh upozornění přes ${channels}.`,
+        `Uvidíte kolaterál, dluh a health factor na Aave V3 a V4 na ${networkCount} sítích. Pak si nastavte upozornění přes ${channels}, jeden práh na trh.`,
       title: "Pozice na Aave V3 a V4 a upozornění na health factor",
       networkMarkets: (name, markets) => `${name} (trhy ${markets})`,
       intro: (v3Networks, v4Networks) =>
-        `Připojte peněženku, se kterou si půjčujete, a uvidíte její kolaterál, dluh a health factor na Aave V3 na sítích ${v3Networks} a ve všech trzích (Spoke) Aave V4 na sítích ${v4Networks}. Prohlížení je zdarma a nevyžaduje žádnou transakci.`,
+        `Připojte peněženku, se kterou si půjčujete, a uvidíte její kolaterál, dluh a health factor na Aave V3 na sítích ${v3Networks} a ve všech trzích (Spoke) Aave V4 na sítích ${v4Networks}. Prohlížení nevyžaduje žádnou transakci.`,
       disclosureSummary: "Kolik upozornění stojí a jak často kontrolujeme",
       alertsCost: (channels, paymentChain) =>
         `Pokud chcete dostat zprávu přes ${channels}, když health factor na některém trhu klesne pod zvolený práh, odemkněte upozornění platbou v USDC${paymentChain ? ` na síti ${paymentChain}` : ""}. Aktuální cenu uvidíte před zaplacením.`,

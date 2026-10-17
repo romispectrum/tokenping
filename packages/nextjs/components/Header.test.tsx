@@ -2,7 +2,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { arbitrum, hardhat } from "viem/chains";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { BetaBanner } from "~~/components/BetaBanner";
+import { BetaBanner, SkipLink } from "~~/components/BetaBanner";
 import { Header } from "~~/components/Header";
 import { LocaleProvider } from "~~/i18n/LocaleProvider";
 import { renderMarkup } from "~~/utils/testing/render";
@@ -52,7 +52,7 @@ describe("Header", () => {
     expect(renderHeaderMarkup()).toMatchSnapshot();
   });
 
-  it("is the page's only banner landmark, next to the beta strip", () => {
+  it("is the page's only banner landmark, next to the beta tab", () => {
     render(
       <>
         <BetaBanner />
@@ -75,11 +75,11 @@ describe("Header", () => {
     expect(screen.queryByRole("img")).toBeNull();
   });
 
-  // The app shell renders the beta strip, then the header, then <main id="main">.
+  // The app shell renders the skip link, then the header, then <main id="main">, then the beta tab.
   it("is preceded by the skip link, the first tab stop of the shell", () => {
     const { container } = render(
       <>
-        <BetaBanner />
+        <SkipLink />
         <Header />
       </>,
     );
@@ -130,7 +130,10 @@ describe("Header", () => {
     const { rerender } = render(<Header />);
 
     expect(screen.getAllByRole("link", { name: "Blog" }).map(isActive)).toEqual([true, true]);
-    expect(screen.getAllByRole("link").filter(link => link.hasAttribute("aria-current"))).toEqual([]);
+    // The language menu marks the current language with aria-current too; only the menu links are checked here.
+    expect(
+      screen.getAllByRole("link").filter(link => link.hasAttribute("aria-current") && !link.hasAttribute("hreflang")),
+    ).toEqual([]);
 
     state.pathname = "/blog";
     rerender(<Header />);
