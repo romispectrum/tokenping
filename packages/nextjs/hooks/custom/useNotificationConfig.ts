@@ -32,6 +32,7 @@ const withFieldDefaults = (configs: ConfigsByMarket): ConfigsByMarket =>
         market: config.market ?? V3_MARKET_ID,
         services: config.services ?? [],
         signalRecipient: config.signalRecipient ?? undefined,
+        telegramUsername: config.telegramUsername ?? undefined,
       },
     ]),
   );

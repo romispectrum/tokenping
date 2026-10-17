@@ -92,7 +92,7 @@ describe("upsertConfig", () => {
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: '{"userId":"0xAbC","chainId":42161,"market":"v3","enabled":true,"services":["email"],"healthFactorThreshold":1.8,"email":"me@example.com","signalRecipient":null,"locale":"en"}',
+          body: '{"userId":"0xAbC","chainId":42161,"market":"v3","enabled":true,"services":["email"],"healthFactorThreshold":1.8,"email":"me@example.com","signalRecipient":null,"telegramUsername":null,"locale":"en"}',
         },
       ],
     ]);
@@ -107,10 +107,23 @@ describe("upsertConfig", () => {
       signalRecipient: "alice.42",
     });
     expect(fetchMock.mock.calls[0][1]?.body).toBe(
-      '{"userId":"0xabc","chainId":42161,"market":"v3","enabled":true,"services":["signal"],"healthFactorThreshold":1.8,"email":null,"signalRecipient":"alice.42","locale":"en"}',
+      '{"userId":"0xabc","chainId":42161,"market":"v3","enabled":true,"services":["signal"],"healthFactorThreshold":1.8,"email":null,"signalRecipient":"alice.42","telegramUsername":null,"locale":"en"}',
     );
     await client.upsertConfig("0xabc", { ...CONFIG, email: undefined });
-    expect(fetchMock.mock.calls[1][1]?.body).toContain('"email":null,"signalRecipient":null,');
+    expect(fetchMock.mock.calls[1][1]?.body).toContain('"email":null,"signalRecipient":null,"telegramUsername":null,');
+  });
+
+  it("sends the Telegram username as the config holds it, after the Signal recipient", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ success: true }));
+    await client.upsertConfig("0xabc", {
+      ...CONFIG,
+      services: ["telegram"],
+      email: undefined,
+      telegramUsername: "alice_eth",
+    });
+    expect(fetchMock.mock.calls[0][1]?.body).toBe(
+      '{"userId":"0xabc","chainId":42161,"market":"v3","enabled":true,"services":["telegram"],"healthFactorThreshold":1.8,"email":null,"signalRecipient":null,"telegramUsername":"alice_eth","locale":"en"}',
+    );
   });
 
   it("sends the config's V4 Spoke as the market", async () => {

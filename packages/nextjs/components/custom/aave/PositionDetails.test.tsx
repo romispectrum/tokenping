@@ -27,6 +27,8 @@ describe("PositionDetails", () => {
     // The details card is flat product UI: no shadow and no pink of its own (the alert settings own the view's pink).
     expect(html).not.toMatch(/shadow-card|\bbg-primary\b/);
     expect(html).toContain("Token and network icons from");
+    // The space before the hidden "(opens in a new tab)" sits outside it, so the link's accessible name keeps it.
+    expect(html).toContain('CoinGecko<!-- --> <span class="sr-only">(opens in a new tab)</span>');
     expect(html).toMatchSnapshot();
   });
 

@@ -76,9 +76,10 @@ export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = {
         "Your email address, if you chose email.",
         "Your Signal username, if you chose Signal.",
         "When the alert was created and last changed.",
+        "When you last sent a test message on each channel, to allow one test per channel every 15 minutes.",
       ],
       telegram:
-        "If you link Telegram, we also store your Telegram chat ID, your Telegram username and when you linked it. Linking uses a one-time code tied to your wallet address that expires after 10 minutes.",
+        "If you choose Telegram, we store the Telegram username you type into the alert. When that account presses Start in the Tokenping bot, we also store its chat ID and when it pressed Start, so alerts can reach it. Anyone can check whether a Telegram username has pressed Start in the bot.",
       attribution: `If you answer the optional ${ATTRIBUTION_QUESTION_EN} question after saving an alert, we store your answer and the time with your wallet address.`,
     },
     notStored: {
@@ -180,9 +181,10 @@ export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = {
         "Vaši e-mailovou adresu, pokud jste zvolili e-mail.",
         "Vaše uživatelské jméno na Signalu, pokud jste zvolili Signal.",
         "Kdy bylo upozornění vytvořeno a kdy naposledy změněno.",
+        "Kdy jste naposledy poslali testovací zprávu na jednotlivý kanál, aby šel poslat jeden test na kanál za 15 minut.",
       ],
       telegram:
-        "Pokud propojíte Telegram, ukládáme také ID vašeho chatu na Telegramu, vaše uživatelské jméno na Telegramu a čas propojení. Propojení používá jednorázový kód svázaný s adresou vaší peněženky, jehož platnost vyprší po 10 minutách.",
+        "Pokud zvolíte Telegram, ukládáme uživatelské jméno na Telegramu, které zadáte do upozornění. Když tento účet stiskne Start v botovi Tokenpingu, uložíme také ID jeho chatu a čas, kdy Start stiskl, aby k němu upozornění mohla chodit. Kdokoli si může ověřit, jestli dané uživatelské jméno na Telegramu stisklo Start v botovi.",
       attribution: `Pokud po uložení upozornění odpovíte na nepovinnou otázku ${ATTRIBUTION_QUESTION_CS}, uložíme vaši odpověď a čas spolu s adresou vaší peněženky.`,
     },
     notStored: {

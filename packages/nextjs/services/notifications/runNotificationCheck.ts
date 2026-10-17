@@ -16,9 +16,8 @@ import {
 import { type Delivery, redactRecipients, shortenAddress } from "~~/services/notifications/redact";
 import { sendSignalMessage } from "~~/services/signal/sendSignal";
 import { type TelegramSendErrorCode, sendTelegramMessage } from "~~/services/telegram/sendTelegram";
-import { deleteLinkByChatId, getChatIdsByUser } from "~~/services/telegram/telegramLinks";
+import { deleteTelegramChat, getChatIdsByUsername } from "~~/services/telegram/telegramChats";
 import type { NotificationService } from "~~/types/notifications";
-import { normalizeAddress } from "~~/utils/address";
 import { getErrorMessage } from "~~/utils/errors";
 import { formatUtcTimestamp } from "~~/utils/format";
 import { normalizeThreshold } from "~~/utils/notifications/threshold";
@@ -72,9 +71,10 @@ export const buildAlertEmail = ({ chainName, healthFactor, threshold, timestamp 
 
 /**
  * The channels a config can deliver to right now, in send order (email, Signal, Telegram), with trimmed recipients.
- * `chatIdsByUser` is keyed by normalized user id, so legacy checksummed rows still find their Telegram link.
+ * Telegram goes to the chat its username pressed Start in (`chatIdsByUsername`); a username that has not pressed
+ * Start yet has no chat, so Telegram is skipped for it until it does.
  */
-export const getDeliverableChannels = (row: EnabledConfigRow, chatIdsByUser: Map<string, string>): Delivery[] => {
+export const getDeliverableChannels = (row: EnabledConfigRow, chatIdsByUsername: Map<string, string>): Delivery[] => {
   const { services } = row;
   if (!Array.isArray(services)) return [];
 
@@ -84,12 +84,14 @@ export const getDeliverableChannels = (row: EnabledConfigRow, chatIdsByUser: Map
   const signalRecipient = row.signal_recipient?.trim();
   if (services.includes("signal") && signalRecipient)
     deliveries.push({ channel: "signal", recipient: signalRecipient });
-  const chatId = chatIdsByUser.get(normalizeAddress(row.user_id));
+  const telegramUsername = row.telegram_username?.trim();
+  const chatId = telegramUsername ? chatIdsByUsername.get(telegramUsername) : undefined;
   if (services.includes("telegram") && chatId?.trim()) deliveries.push({ channel: "telegram", recipient: chatId });
   return deliveries;
 };
 
-const ALERT_SENDERS: Record<NotificationService, AlertSender> = {
+/** How each channel sends a message; also used by the test messages (app/api/notifications/test). */
+export const ALERT_SENDERS: Record<NotificationService, AlertSender> = {
   email: (to, { subject, text, html }) => sendEmail({ to, subject, text, html }),
   signal: (to, { text }) => sendSignalMessage({ to, message: text }),
   telegram: (chatId, { text }) => sendTelegramMessage({ chatId, message: text }),
@@ -119,12 +121,12 @@ export async function runNotificationCheck(): Promise<NotificationCheckResult | 
       console.error(`Notification check: ${detail}`);
     };
 
-    const { chatIdsByUser, error: linksError } = await getChatIdsByUser();
-    if (linksError) {
-      recordError(`telegram: links query failed, Telegram alerts skipped this run: ${linksError.message}`);
+    const { chatIdsByUsername, error: chatsError } = await getChatIdsByUsername();
+    if (chatsError) {
+      recordError(`telegram: chats query failed, Telegram alerts skipped this run: ${chatsError.message}`);
     }
 
-    const configs = rows.filter(row => getDeliverableChannels(row, chatIdsByUser).length > 0);
+    const configs = rows.filter(row => getDeliverableChannels(row, chatIdsByUsername).length > 0);
     const sent: Record<NotificationService, number> = { email: 0, signal: 0, telegram: 0 };
 
     for (const config of configs) {
@@ -132,8 +134,8 @@ export async function runNotificationCheck(): Promise<NotificationCheckResult | 
       const market = rowMarket(config);
       // How errors name the market: the chain id for V3, as before V4, else "chain:spoke".
       const marketId = market === V3_MARKET_ID ? String(chainId) : marketKey(chainId, market);
-      // Computed per config: a dead Telegram chat removed below is skipped for the user's remaining configs.
-      const deliveries = getDeliverableChannels(config, chatIdsByUser);
+      // Computed per config: a dead Telegram chat removed below is skipped for every later config that names it.
+      const deliveries = getDeliverableChannels(config, chatIdsByUsername);
 
       try {
         const threshold = normalizeThreshold(config.health_factor_threshold);
@@ -161,12 +163,14 @@ export async function runNotificationCheck(): Promise<NotificationCheckResult | 
 
           recordError(`${channel}:${recipient}: ${result.error}`, { deliveries: [delivery] });
           if (channel === "telegram" && result.code && DEAD_CHAT_CODES.includes(result.code)) {
-            // The user can re-link from the UI.
-            const deleteError = await deleteLinkByChatId(recipient);
+            // Its owner gets alerts again by sending /start to the bot.
+            const deleteError = await deleteTelegramChat(recipient);
             if (deleteError) {
-              console.error(`Notification check: could not remove the dead Telegram link ${recipient}`, deleteError);
+              console.error(`Notification check: could not remove the dead Telegram chat ${recipient}`, deleteError);
             }
-            chatIdsByUser.delete(normalizeAddress(userId));
+            for (const [username, chatId] of chatIdsByUsername) {
+              if (chatId === recipient) chatIdsByUsername.delete(username);
+            }
           }
         }
       } catch (e) {

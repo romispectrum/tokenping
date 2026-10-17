@@ -14,8 +14,12 @@ export const AVAILABLE_SERVICES: NotificationServiceOption[] = [
   { id: "telegram", name: "Telegram" },
 ];
 
-/** The bot username is what makes Telegram linking work; without it the link-token route answers 503. */
-export const isTelegramConfigured = () => Boolean(process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME);
+/** The bot's username, without "@": people press Start there once. Undefined while no bot is configured. */
+export const getTelegramBotUsername = () =>
+  process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME?.replace(/^@/, "") || undefined;
+
+/** The bot username is what the site needs to offer Telegram: the form sends people to the bot to press Start. */
+export const isTelegramConfigured = () => Boolean(getTelegramBotUsername());
 
 /** Channels to offer: Telegram only when the bot is configured, or when it is already selected so it can be turned off. */
 export const getSelectableServices = (selected: readonly NotificationService[]) =>
@@ -35,5 +39,9 @@ export const THRESHOLD_SLIDER_STEP = 0.1;
 /** Must match the cron schedule in vercel.json. */
 export const NOTIFICATION_CHECK_INTERVAL_MINUTES = 5;
 
-export const TELEGRAM_LINK_POLL_INTERVAL_MS = 2000;
-export const TELEGRAM_LINK_POLL_TIMEOUT_MS = 2 * 60 * 1000;
+/** One test message per wallet and channel this often; the database enforces it (claim_notification_test_send). */
+export const TEST_SEND_COOLDOWN_MINUTES = 15;
+
+/** While a typed Telegram username has not pressed Start, the form asks again this often, for this long. */
+export const TELEGRAM_STATUS_POLL_INTERVAL_MS = 3000;
+export const TELEGRAM_STATUS_POLL_TIMEOUT_MS = 5 * 60 * 1000;

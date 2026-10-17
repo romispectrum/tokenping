@@ -32,6 +32,7 @@ export const notificationConfigClient = {
         healthFactorThreshold: config.healthFactorThreshold,
         email: config.email ?? null,
         signalRecipient: config.signalRecipient ?? null,
+        telegramUsername: config.telegramUsername ?? null,
         // The language the alert is sent in; the server stores "en" when this is missing.
         locale: config.locale ?? "en",
       }),

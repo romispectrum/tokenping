@@ -1,52 +1,14 @@
-import type { Locale } from "~~/i18n/locales";
 import { apiUrl, readApiError } from "~~/services/api/apiClient";
-import type { TelegramLinkStatus } from "~~/types/notifications";
+import type { TelegramUsernameStatus } from "~~/types/notifications";
 
-export type CreateLinkTokenResponse = {
-  token: string;
-  botUsername: string;
-  expiresAt: string;
-  deepLink: string;
-};
-
-/**
- * How long the token stays valid, measured against the server's clock (its Date header) because `expiresAt` comes
- * from that clock and the device's may be off. Null when either time is unreadable.
- */
-const lifetimeMs = (expiresAt: string, serverDate: string | null) => {
-  const ms = Date.parse(expiresAt) - Date.parse(serverDate ?? "");
-  return Number.isFinite(ms) ? ms : null;
-};
-
-/** Browser client for the Telegram link API behind the "Connect Telegram" handshake. */
+/** Browser client for /api/telegram/status: whether a Telegram username has pressed Start in the bot. */
 export const telegramClient = {
-  async createLinkToken(userId: string) {
-    const res = await fetch(apiUrl("/api/telegram/link-token"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: userId.trim() }),
-    });
-    if (!res.ok) throw new Error(await readApiError(res, "Failed to create Telegram link token"));
-    const body: CreateLinkTokenResponse = await res.json();
-    return { ...body, expiresInMs: lifetimeMs(body.expiresAt, res.headers.get("Date")) };
-  },
-
-  async getLinkStatus(userId: string): Promise<TelegramLinkStatus> {
-    const res = await fetch(apiUrl(`/api/telegram/link?userId=${encodeURIComponent(userId.trim())}`), {
+  /** `username` is already normalized (lowercased, no "@"). Any non-2xx throws: the status is unknown, not "no". */
+  async getUsernameStatus(username: string): Promise<TelegramUsernameStatus> {
+    const res = await fetch(apiUrl(`/api/telegram/status?username=${encodeURIComponent(username)}`), {
       cache: "no-store",
     });
-    // Any non-2xx means the status is unknown (the lookup failed), never "not linked".
-    if (!res.ok) throw new Error(await readApiError(res, "Failed to check the Telegram link"));
+    if (!res.ok) throw new Error(await readApiError(res, "Failed to check the Telegram username"));
     return res.json();
-  },
-
-  /** `locale` is the language of the bot's farewell message in the chat; the server sends English without it. */
-  async disconnect(userId: string, locale?: Locale): Promise<void> {
-    const res = await fetch(apiUrl("/api/telegram/link"), {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: userId.trim(), locale }),
-    });
-    if (!res.ok) throw new Error(await readApiError(res, "Failed to disconnect Telegram"));
   },
 };

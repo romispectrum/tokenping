@@ -1,4 +1,4 @@
-import { type Address, type Chain, createPublicClient } from "viem";
+import { type Address, type Chain, createPublicClient, formatUnits } from "viem";
 import {
   AAVE_POOL_ABI,
   AAVE_V4_SPOKE_ABI,
@@ -38,23 +38,43 @@ const getClient = (chain: Chain) => {
 
 type Client = ReturnType<typeof getClient>;
 
-const readHealthFactor = async (client: Client, market: AaveMarket | AaveV4Spoke, walletAddress: Address) => {
+// V3 reports USD with 8 decimals; a V4 Spoke with 26, and its debt value is also scaled by a ray (27 more).
+const V3_BASE_DECIMALS = 8;
+const V4_VALUE_DECIMALS = 26;
+const V4_DEBT_VALUE_RAY_DECIMALS = V4_VALUE_DECIMALS + 27;
+
+type AccountReading = { healthFactor: bigint; collateralUSD: number; debtUSD: number };
+
+/** One getUserAccountData call: the health factor and the USD collateral and debt Aave counts for it. */
+const readAccount = async (
+  client: Client,
+  market: AaveMarket | AaveV4Spoke,
+  walletAddress: Address,
+): Promise<AccountReading> => {
   if ("spoke" in market) {
-    const { healthFactor } = await client.readContract({
+    const { healthFactor, totalCollateralValue, totalDebtValueRay } = await client.readContract({
       address: market.spoke,
       abi: AAVE_V4_SPOKE_ABI,
       functionName: "getUserAccountData",
       args: [walletAddress],
     });
-    return healthFactor;
+    return {
+      healthFactor,
+      collateralUSD: Number(formatUnits(totalCollateralValue, V4_VALUE_DECIMALS)),
+      debtUSD: Number(formatUnits(totalDebtValueRay, V4_DEBT_VALUE_RAY_DECIMALS)),
+    };
   }
-  const [, , , , , healthFactor] = await client.readContract({
+  const [totalCollateralBase, totalDebtBase, , , , healthFactor] = await client.readContract({
     address: market.pool,
     abi: AAVE_POOL_ABI,
     functionName: "getUserAccountData",
     args: [walletAddress],
   });
-  return healthFactor;
+  return {
+    healthFactor,
+    collateralUSD: Number(formatUnits(totalCollateralBase, V3_BASE_DECIMALS)),
+    debtUSD: Number(formatUnits(totalDebtBase, V3_BASE_DECIMALS)),
+  };
 };
 
 /**
@@ -72,7 +92,7 @@ export async function getHealthFactorForWallet(
   if (!market) return null;
 
   try {
-    const healthFactor = await readHealthFactor(getClient(market.chain), market, walletAddress);
+    const { healthFactor } = await readAccount(getClient(market.chain), market, walletAddress);
     return {
       healthFactor: formatHealthFactorDown(healthFactor),
       healthFactorValue: toHealthFactorValue(healthFactor),
@@ -81,6 +101,48 @@ export async function getHealthFactorForWallet(
   } catch (error) {
     console.warn(
       `Failed to read the Aave health factor on ${marketLabel(market)} (chain ${chainId}): ${getReadErrorMessage(error)}`,
+    );
+    return null;
+  }
+}
+
+export type MarketSnapshot = {
+  /** The market's name in messages ("Ethereum (Core)"). */
+  chainName: string;
+  /** 2 decimals rounded down, or "∞" without debt, as in the alerts. */
+  healthFactor: string;
+  healthFactorValue: number;
+  collateralUSD: number;
+  debtUSD: number;
+  /** Aave counts collateral or debt for the wallet in this market. */
+  hasPosition: boolean;
+};
+
+/**
+ * The wallet's position in one market right now, for a test message: the health factor as alerts show it, plus the
+ * collateral and debt. Resolves null when the app does not read that market or the read fails.
+ */
+export async function getMarketSnapshot(
+  walletAddress: Address,
+  chainId: number,
+  marketId: MarketId = V3_MARKET_ID,
+): Promise<MarketSnapshot | null> {
+  const market = resolveMarket(chainId, marketId);
+  if (!market) return null;
+
+  try {
+    const { healthFactor, collateralUSD, debtUSD } = await readAccount(getClient(market.chain), market, walletAddress);
+    return {
+      chainName: marketLabel(market),
+      healthFactor: formatHealthFactorDown(healthFactor),
+      healthFactorValue: toHealthFactorValue(healthFactor),
+      collateralUSD,
+      debtUSD,
+      hasPosition: collateralUSD > 0 || debtUSD > 0,
+    };
+  } catch (error) {
+    console.warn(
+      `Failed to read the Aave position on ${marketLabel(market)} (chain ${chainId}): ${getReadErrorMessage(error)}`,
     );
     return null;
   }

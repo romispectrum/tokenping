@@ -15,8 +15,9 @@ export type BotCommand = { name: "start"; token?: string } | { name: "stop" } | 
 const COMMAND_PATTERN = /^\/(start|stop|help)(?:@\w+)?$/;
 
 /**
- * Commands are case-sensitive and match the first word exactly ("/stopwatch" is unknown); `/start <token>` takes
- * the next whitespace-separated word as the token.
+ * Commands are case-sensitive and match the first word exactly ("/stopwatch" is unknown). `/start <token>` keeps the
+ * next whitespace-separated word as the token: Telegram sends it for a t.me/<bot>?start=<token> link. The webhook
+ * links by username and ignores it, so old deep links still work as a plain /start.
  */
 export const parseCommand = (text: string): BotCommand => {
   const [word, token] = text.trim().split(/\s+/);

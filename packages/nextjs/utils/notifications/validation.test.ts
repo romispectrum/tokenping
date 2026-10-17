@@ -3,11 +3,15 @@ import {
   EMAIL_REGEX,
   MAX_EMAIL_LENGTH,
   MAX_SIGNAL_RECIPIENT_LENGTH,
+  MAX_TELEGRAM_INPUT_LENGTH,
   SIGNAL_USERNAME_REGEX,
+  TELEGRAM_USERNAME_REGEX,
   isNotificationService,
   isValidEmail,
   isValidSignalUsername,
+  isValidTelegramUsername,
   normalizeSignalUsername,
+  normalizeTelegramUsername,
 } from "~~/utils/notifications/validation";
 
 describe("EMAIL_REGEX / isValidEmail", () => {
@@ -193,6 +197,136 @@ describe("isValidSignalUsername", () => {
       expect(isValidSignalUsername(raw)).toBe(false);
       expect(SIGNAL_USERNAME_REGEX.test(normalized)).toBe(false);
       expect(isValidSignalUsername(normalized)).toBe(true);
+    },
+  );
+});
+
+describe("TELEGRAM_USERNAME_REGEX", () => {
+  // The same pattern as the telegram_chats and notification_configs.telegram_username checks in the migration.
+  it("is the database's check", () => {
+    expect(TELEGRAM_USERNAME_REGEX.source).toBe(/^[a-z][a-z0-9_]{2,30}[a-z0-9]$/.source);
+    expect(TELEGRAM_USERNAME_REGEX.flags).toBe("");
+  });
+
+  it.each(["abcd", "alice_eth", "a1_2", "a__b", "abc9", "a".repeat(32)])("accepts the stored form %j", value => {
+    expect(TELEGRAM_USERNAME_REGEX.test(value)).toBe(true);
+  });
+
+  it.each(["", "abc", "a".repeat(33), "Alice_eth", "@alice_eth", "9lives", "_alice", "alice_", "alice.eth", "ali ce"])(
+    "rejects %j",
+    value => {
+      expect(TELEGRAM_USERNAME_REGEX.test(value)).toBe(false);
+    },
+  );
+});
+
+describe("normalizeTelegramUsername", () => {
+  it.each([
+    ["alice_eth", "alice_eth"],
+    ["Alice_Eth", "alice_eth"],
+    ["@Alice_Eth", "alice_eth"],
+    ["  @alice_eth  ", "alice_eth"],
+    ["t.me/alice_eth", "alice_eth"],
+    ["T.ME/Alice_Eth", "alice_eth"],
+    ["telegram.me/alice_eth", "alice_eth"],
+    ["https://t.me/alice_eth", "alice_eth"],
+    ["http://t.me/alice_eth", "alice_eth"],
+    ["https://www.t.me/alice_eth", "alice_eth"],
+    ["HTTPS://Telegram.Me/Alice_Eth/", "alice_eth"],
+    [" https://t.me/alice_eth/// ", "alice_eth"],
+    ["t.me/@alice_eth", "alice_eth"],
+    ["alice_eth/", "alice_eth"],
+    ["", ""],
+    ["   ", ""],
+    ["@", ""],
+    ["t.me/", ""],
+  ])("normalizes %j to %j", (raw, expected) => {
+    expect(normalizeTelegramUsername(raw)).toBe(expected);
+  });
+
+  it.each([
+    ["@@alice_eth", "@alice_eth"],
+    ["@ alice_eth", " alice_eth"],
+    ["@t.me/alice_eth", "t.me/alice_eth"],
+    ["https://t.me/alice_eth?start=abc", "alice_eth?start=abc"],
+    ["https://t.me/s/alice_eth", "s/alice_eth"],
+    ["ftp://t.me/alice_eth", "ftp://t.me/alice_eth"],
+    ["https://example.com/alice_eth", "https://example.com/alice_eth"],
+    ["xt.me/alice_eth", "xt.me/alice_eth"],
+  ])("strips each prefix once and only at the start: %j -> %j", (raw, expected) => {
+    expect(normalizeTelegramUsername(raw)).toBe(expected);
+  });
+});
+
+describe("isValidTelegramUsername", () => {
+  it.each([
+    "abcd",
+    "alice_eth",
+    "Alice_Eth",
+    "ALICE_ETH",
+    "@alice_eth",
+    " @Alice_Eth ",
+    "t.me/alice_eth",
+    "https://t.me/Alice_Eth",
+    "https://telegram.me/alice_eth/",
+    "a".repeat(32),
+    `@${"a".repeat(32)}`,
+  ])("accepts %j", raw => {
+    expect(isValidTelegramUsername(raw)).toBe(true);
+  });
+
+  it.each([
+    ["empty", ""],
+    ["blank", "   "],
+    ["only an @", "@"],
+    ["3 characters", "abc"],
+    ["33 characters", "a".repeat(33)],
+    ["a trailing underscore", "alice_eth_"],
+    ["a leading underscore", "_alice_eth"],
+    ["a leading digit", "1alice"],
+    ["a dot", "alice.eth"],
+    ["a hyphen", "alice-eth"],
+    ["an inner space", "alice eth"],
+    ["two @", "@@alice_eth"],
+    ["a space after the @", "@ alice_eth"],
+    ["a non-ASCII letter", "románek"],
+    ["a link with a query", "https://t.me/alice_eth?start=abc"],
+    ["a link to another site", "https://example.com/alice_eth"],
+    ["a Signal username", "alice.42"],
+  ])("rejects %s: %j", (_label, raw) => {
+    expect(isValidTelegramUsername(raw)).toBe(false);
+  });
+
+  it("accepts up to 64 characters of raw input and rejects longer input", () => {
+    const atLimit = `${" ".repeat(32)}${"a".repeat(32)}`;
+    expect(MAX_TELEGRAM_INPUT_LENGTH).toBe(64);
+    expect(atLimit).toHaveLength(64);
+    expect(isValidTelegramUsername(atLimit)).toBe(true);
+    // The cap applies to the raw value, so padding that normalization would strip still counts.
+    expect(isValidTelegramUsername(` ${atLimit}`)).toBe(false);
+    expect(isValidTelegramUsername(`${atLimit}/`)).toBe(false);
+  });
+
+  it("fits a 32-character username behind the longest link prefix", () => {
+    const link = `https://www.telegram.me/${"a".repeat(32)}/`;
+    expect(link.length).toBeLessThanOrEqual(MAX_TELEGRAM_INPUT_LENGTH);
+    expect(isValidTelegramUsername(link)).toBe(true);
+  });
+
+  it("rejects a 100k-character input in under 50ms", () => {
+    const crafted = `a${"_".repeat(100_000)}`;
+    const start = performance.now();
+    expect(isValidTelegramUsername(crafted)).toBe(false);
+    expect(performance.now() - start).toBeLessThan(50);
+  });
+
+  it.each(["alice_eth", "@Alice_Eth", "https://t.me/Alice_Eth/", "abcd", "a".repeat(32)])(
+    "normalizes the valid %j to a value that is valid as stored",
+    raw => {
+      const stored = normalizeTelegramUsername(raw);
+      expect(TELEGRAM_USERNAME_REGEX.test(stored)).toBe(true);
+      expect(isValidTelegramUsername(stored)).toBe(true);
+      expect(normalizeTelegramUsername(stored)).toBe(stored);
     },
   );
 });

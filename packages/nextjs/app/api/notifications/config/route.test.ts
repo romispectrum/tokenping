@@ -22,6 +22,8 @@ const NOT_A_SPOKE = `0x${"12".repeat(20)}`;
 // Ethereum's Prime market: a V3 Pool beside the chain's main one, stored by its address like a Spoke.
 const PRIME_POOL = "0x4e033931ad43597d96d6bcc25c280717730b58b1";
 const INVALID_MARKET = "Invalid market: expected v3 or the lowercased address of an Aave V3 Pool or V4 Spoke";
+const TELEGRAM_ERROR =
+  "Invalid Telegram username for Telegram notifications. Expected 4 to 32 letters, digits or underscores, e.g. alice_eth";
 
 const chainQuery = (uid: string, chainId: number, market = "v3") =>
   `notification_configs.select("*").eq("user_id","${uid}").eq("chain_id",${chainId}).eq("market","${market}").maybeSingle()`;
@@ -57,6 +59,7 @@ const storedRow = (overrides: Record<string, unknown> = {}) => ({
   health_factor_threshold: "1.80",
   email: "a@b.co",
   signal_recipient: "alice.42",
+  telegram_username: "alice_eth",
   locale: "en",
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-02T00:00:00Z",
@@ -104,9 +107,9 @@ describe("GET /api/notifications/config", () => {
     },
   );
 
-  it("never reads the Telegram link (it has its own endpoint)", async () => {
+  it("never reads the Telegram chats (whether a username pressed Start has its own endpoint)", async () => {
     fakeSupabase.respond(({ table }) =>
-      table === "user_telegram_links" ? { data: { user_id: LOWER, chat_id: "123456789" } } : undefined,
+      table === "telegram_chats" ? { data: { username: "alice_eth", chat_id: "123456789" } } : undefined,
     );
     await get({ userId: LOWER, chainId: "1" });
     await get({ userId: LOWER });
@@ -141,6 +144,7 @@ describe("GET /api/notifications/config", () => {
           healthFactorThreshold: 1.8,
           email: "a@b.co",
           signalRecipient: "alice.42",
+          telegramUsername: "alice_eth",
           locale: "en",
         }),
       });
@@ -158,6 +162,7 @@ describe("GET /api/notifications/config", () => {
             health_factor_threshold: 2,
             email: null,
             signal_recipient: null,
+            telegram_username: null,
           }),
         },
       });
@@ -195,6 +200,7 @@ describe("GET /api/notifications/config", () => {
         healthFactorThreshold: 1.8,
         email: "a@b.co",
         signalRecipient: "alice.42",
+        telegramUsername: "alice_eth",
         locale: "en",
       });
       expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 10), chainQuery(MIXED, 10)]);
@@ -291,7 +297,13 @@ describe("GET /api/notifications/config", () => {
         [allQuery(LOWER)]: {
           data: [
             storedRow({ chain_id: 8453, email: null }),
-            storedRow({ chain_id: 1, services: ["signal"], health_factor_threshold: "1.10", signal_recipient: null }),
+            storedRow({
+              chain_id: 1,
+              services: ["signal"],
+              health_factor_threshold: "1.10",
+              signal_recipient: null,
+              telegram_username: null,
+            }),
           ],
         },
       });
@@ -308,6 +320,7 @@ describe("GET /api/notifications/config", () => {
             services: ["email", "telegram"],
             healthFactorThreshold: 1.8,
             signalRecipient: "alice.42",
+            telegramUsername: "alice_eth",
             locale: "en",
           },
           "1:v3": {
@@ -423,6 +436,7 @@ describe("PUT /api/notifications/config", () => {
     health_factor_threshold: 1.5,
     email: null,
     signal_recipient: null,
+    telegram_username: null,
     locale: "en",
     updated_at: NOW,
     ...overrides,
@@ -571,6 +585,7 @@ describe("PUT /api/notifications/config", () => {
       healthFactorThreshold: 1.8,
       email: " a@b.co ",
       signalRecipient: "@alice.42",
+      telegramUsername: "@Alice_Eth",
     });
 
     expect(await read(res)).toEqual(json(200, { success: true }));
@@ -579,6 +594,7 @@ describe("PUT /api/notifications/config", () => {
       health_factor_threshold: 1.8,
       email: "a@b.co",
       signal_recipient: "alice.42",
+      telegram_username: "alice_eth",
     });
     expect(fakeSupabase.log()).toEqual([idLookup(LOWER, 8453), idLookup(MIXED, 8453), updateQuery(row, "row-lower")]);
   });
@@ -665,6 +681,27 @@ describe("PUT /api/notifications/config", () => {
       { signal_recipient: " @ alice.42" },
     ],
     ["an unselected prefix-only Signal value becomes null", { signalRecipient: "u:" }, { signal_recipient: null }],
+    [
+      "a selected Telegram username is lowercased without its @",
+      { services: ["telegram"], telegramUsername: " @Alice_Eth " },
+      { services: ["telegram"], telegram_username: "alice_eth" },
+    ],
+    [
+      "a selected Telegram username loses its t.me link",
+      { services: ["telegram"], telegramUsername: "https://t.me/Alice_Eth" },
+      { services: ["telegram"], telegram_username: "alice_eth" },
+    ],
+    [
+      "an unselected valid Telegram username is kept, normalized",
+      { telegramUsername: "@Alice_Eth" },
+      { telegram_username: "alice_eth" },
+    ],
+    ["an unselected invalid Telegram username becomes null", { telegramUsername: "abc" }, { telegram_username: null }],
+    [
+      "an unselected non-string Telegram username becomes null",
+      { telegramUsername: 1234 },
+      { telegram_username: null },
+    ],
     ["a Czech locale is kept", { locale: "cs" }, { locale: "cs" }],
     ["an English locale is kept", { locale: "en" }, { locale: "en" }],
     ["a missing locale is English", {}, { locale: "en" }],
@@ -687,6 +724,23 @@ describe("PUT /api/notifications/config", () => {
       "a selected malformed Signal username",
       { services: ["signal"], signalRecipient: "@ alice.42" },
       "Invalid Signal username for Signal notifications. Expected format: alice.42",
+    ],
+    ["a selected Telegram username that is missing", { services: ["telegram"] }, TELEGRAM_ERROR],
+    ["a selected Telegram username that is null", { services: ["telegram"], telegramUsername: null }, TELEGRAM_ERROR],
+    [
+      "a selected Telegram username of 3 characters",
+      { services: ["telegram"], telegramUsername: "abc" },
+      TELEGRAM_ERROR,
+    ],
+    [
+      "a selected Telegram username with a trailing underscore",
+      { services: ["telegram"], telegramUsername: "alice_eth_" },
+      TELEGRAM_ERROR,
+    ],
+    [
+      "a selected Telegram username over 64 raw characters",
+      { services: ["telegram"], telegramUsername: `${" ".repeat(60)}alice_eth` },
+      TELEGRAM_ERROR,
     ],
     ["an unsupported locale", { locale: "de" }, "Invalid locale: expected one of en, cs"],
     ["a region-tagged locale", { locale: "cs-CZ" }, "Invalid locale: expected one of en, cs"],
@@ -736,6 +790,31 @@ describe("PUT /api/notifications/config", () => {
       services: ["email"],
       locale: "cs",
     });
+  });
+
+  it("saves a Telegram username in place and reads it back as stored", async () => {
+    fakeSupabase.respondByQuery({ [idLookup(LOWER, 8453)]: { data: { id: "row-lower" } } });
+
+    const body = { userId: LOWER, chainId: 8453, services: ["telegram"], telegramUsername: "t.me/Alice_Eth" };
+    expect(await read(await put(body))).toEqual(json(200, { success: true }));
+
+    const row = expectedRow(LOWER, { services: ["telegram"], telegram_username: "alice_eth" });
+    expect(fakeSupabase.log().at(-1)).toBe(updateQuery(row, "row-lower"));
+
+    fakeSupabase.respondByQuery({ [chainQuery(LOWER, 8453)]: { data: { ...storedRow(), ...row } } });
+    expect(JSON.parse((await read(await get({ userId: LOWER, chainId: "8453" }))).text)).toMatchObject({
+      services: ["telegram"],
+      telegramUsername: "alice_eth",
+    });
+  });
+
+  it("clears a stored Telegram username when Telegram is deselected and none is sent", async () => {
+    fakeSupabase.respondByQuery({ [idLookup(LOWER, 8453)]: { data: { id: "row-lower" } } });
+
+    await put({ userId: LOWER, chainId: 8453, services: ["email"], email: "a@b.co", telegramUsername: null });
+
+    const row = expectedRow(LOWER, { services: ["email"], email: "a@b.co", telegram_username: null });
+    expect(fakeSupabase.log().at(-1)).toBe(updateQuery(row, "row-lower"));
   });
 
   it("returns 500 when the access check throws", async () => {
