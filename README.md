@@ -106,8 +106,9 @@ paywall deployment, so to pay with the local mock USDC, put `chains.hardhat` fir
 Scaffold-ETH dev pages (`/debug`, `/blockexplorer`) exist only while hardhat is a target network
 and answer 404 otherwise.
 
-Email needs `RESEND_API_KEY`, Signal needs `SIGNAL_API_URL` and `SIGNAL_SENDER_NUMBER`, and Telegram needs the
-`TELEGRAM_*` variables. `CRON_SECRET` protects the cron and email routes. See `packages/nextjs/.env.example`.
+Email needs `RESEND_API_KEY`, Signal needs `SIGNAL_API_URL`, `SIGNAL_SENDER_NUMBER` and `SIGNAL_API_TOKEN`, and
+Telegram needs the `TELEGRAM_*` variables. `CRON_SECRET` protects the cron and email routes. See
+`packages/nextjs/.env.example`.
 
 ### Checks
 

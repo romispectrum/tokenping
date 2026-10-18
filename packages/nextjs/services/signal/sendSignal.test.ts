@@ -12,6 +12,7 @@ beforeEach(() => {
   vi.stubGlobal("fetch", fetchMock);
   vi.stubEnv("SIGNAL_API_URL", "https://signal.example");
   vi.stubEnv("SIGNAL_SENDER_NUMBER", " +14155550123 ");
+  vi.stubEnv("SIGNAL_API_TOKEN", " relay-token ");
 });
 
 afterEach(() => {
@@ -20,11 +21,11 @@ afterEach(() => {
 });
 
 describe("sendSignalMessage", () => {
-  it("posts the bare username to /v2/send with the trimmed sender number", async () => {
+  it("posts the bare username to /v2/send with the trimmed sender number and relay token", async () => {
     expect(await sendSignalMessage({ to: "alice.42", message: "HF alert" })).toStrictEqual({ success: true });
     expect(fetchMock).toHaveBeenCalledExactlyOnceWith("https://signal.example/v2/send", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: "Bearer relay-token" },
       body: '{"message":"HF alert","number":"+14155550123","recipients":["alice.42"]}',
     });
   });
@@ -74,12 +75,15 @@ describe("sendSignalMessage", () => {
     ["the API URL is missing", "SIGNAL_API_URL", ""],
     ["the sender number is missing", "SIGNAL_SENDER_NUMBER", undefined],
     ["the sender number is blank", "SIGNAL_SENDER_NUMBER", "   "],
+    ["the relay token is missing", "SIGNAL_API_TOKEN", undefined],
+    ["the relay token is blank", "SIGNAL_API_TOKEN", "   "],
   ])("reports not configured when %s", async (_label, envName, value) => {
     vi.stubEnv(envName, value);
     expect(await sendSignalMessage({ to: "alice.42", message: "m" })).toStrictEqual({
       success: false,
-      error: "Signal service not configured (SIGNAL_API_URL or SIGNAL_SENDER_NUMBER missing)",
+      error: "Signal service not configured (SIGNAL_API_URL, SIGNAL_SENDER_NUMBER or SIGNAL_API_TOKEN missing)",
     });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it.each([
