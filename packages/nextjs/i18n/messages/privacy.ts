@@ -14,12 +14,14 @@ type ProcessorFacts = {
   hasTelegram: boolean;
 };
 
-/** "<before> <link> <middle> <link> <after>", the spaces around the links written by the page. */
+/** "<before> <link> <middle> <link> <or> <link> <after>", the spaces around the links written by the page. */
 type ContactText = {
   before: string;
   x: string;
   middle: string;
   telegram: string;
+  or: string;
+  signal: string;
   after: string;
 };
 
@@ -72,7 +74,7 @@ export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = {
       items: [
         "Your wallet address.",
         "The network the alert is for, and your threshold.",
-        "The channels you picked.",
+        "The channels you picked, and the language of each.",
         "Your email address, if you chose email.",
         "Your Signal username, if you chose Signal.",
         "When the alert was created and last changed.",
@@ -156,8 +158,10 @@ export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = {
       contact: {
         before: `If your access has expired, or you want your ${ATTRIBUTION_QUESTION_EN} answer removed, message us on`,
         x: "X",
-        middle: "or in our",
-        telegram: "Telegram community",
+        middle: "or in our community on",
+        telegram: "Telegram",
+        or: "or",
+        signal: "Signal",
         after: "and we'll delete it.",
       },
       payments: "Payments on the blockchain can't be deleted by anyone.",
@@ -183,7 +187,7 @@ export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = {
       items: [
         "Adresu vaší peněženky.",
         "Síť, pro kterou upozornění platí, a váš práh.",
-        "Kanály, které jste zvolili.",
+        "Kanály, které jste zvolili, a jazyk každého z nich.",
         "Vaši e-mailovou adresu, pokud jste zvolili e-mail.",
         "Vaše uživatelské jméno na Signalu, pokud jste zvolili Signal.",
         "Kdy bylo upozornění vytvořeno a kdy naposledy změněno.",
@@ -270,8 +274,10 @@ export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = {
       contact: {
         before: `Pokud vám vypršel přístup nebo chcete odstranit svou odpověď na otázku ${ATTRIBUTION_QUESTION_CS}, napište nám na`,
         x: "X",
-        middle: "nebo do naší",
-        telegram: "komunity na Telegramu",
+        middle: "nebo do naší komunity na",
+        telegram: "Telegramu",
+        or: "či",
+        signal: "Signalu",
         after: "a smažeme to.",
       },
       payments: "Platby na blockchainu nemůže smazat nikdo.",

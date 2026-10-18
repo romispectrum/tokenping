@@ -39,6 +39,7 @@ type CommonMessages = {
     githubLabel: string;
     xLabel: string;
     telegramLabel: string;
+    signalLabel: string;
     privacy: string;
     independence: string;
     /** The price arrives formatted ("1234.57"). */
@@ -140,6 +141,7 @@ export const COMMON_MESSAGES: Localized<CommonMessages> = {
       githubLabel: "Tokenping source code on GitHub",
       xLabel: "Tokenping on X",
       telegramLabel: "Tokenping Telegram community",
+      signalLabel: "Tokenping Signal community",
       privacy: "Privacy",
       independence: "Independent tool, not affiliated with Aave Labs or the Aave DAO.",
       ethPrice: price => `ETH price: $${price}`,
@@ -233,6 +235,7 @@ export const COMMON_MESSAGES: Localized<CommonMessages> = {
       githubLabel: "Zdrojový kód Tokenpingu na GitHubu",
       xLabel: "Tokenping na X",
       telegramLabel: "Komunita Tokenpingu na Telegramu",
+      signalLabel: "Komunita Tokenpingu na Signalu",
       privacy: "Ochrana soukromí",
       independence: "Nezávislý nástroj, který není spojen s Aave Labs ani s Aave DAO.",
       ethPrice: price => `Cena ETH: $${price}`,

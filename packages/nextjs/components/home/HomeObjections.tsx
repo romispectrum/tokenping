@@ -39,6 +39,7 @@ export const HomeObjections = ({ plan, locale }: HomeObjectionsProps) => {
       privacy: text => <Link href={routePath(locale, "privacy")}>{text}</Link>,
       x: externalLinkText(SOCIAL_LINKS.x),
       telegramCommunity: externalLinkText(SOCIAL_LINKS.telegram),
+      signalCommunity: externalLinkText(SOCIAL_LINKS.signal),
       comparison: comparison && (text => <Link href={postPath(locale, comparison.meta.slug)}>{text}</Link>),
     },
   });

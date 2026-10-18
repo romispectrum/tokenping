@@ -98,6 +98,7 @@ type HomeMessages = {
       privacy: LinkText;
       x: LinkText;
       telegramCommunity: LinkText;
+      signalCommunity: LinkText;
       /** Undefined while the comparison post is not published in this language. */
       comparison?: LinkText;
     };
@@ -316,8 +317,10 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
           answer: rich(
             "They stop once your health factor is back above your line, or when you delete the alert (needs active access). Access expired? Message us on ",
             links.x("X"),
-            " or in our ",
-            links.telegramCommunity("Telegram community"),
+            " or in our community on ",
+            links.telegramCommunity("Telegram"),
+            " or ",
+            links.signalCommunity("Signal"),
             ".",
             hasTelegram ? " In Telegram, /stop works too." : "",
             " No snooze and no unsubscribe link yet.",
@@ -523,8 +526,10 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
           answer: rich(
             "Přestanou, jakmile se health factor vrátí nad vaši hranici, nebo když upozornění smažete (vyžaduje aktivní přístup). Přístup vypršel? Napište nám na ",
             links.x("X"),
-            " nebo do naší ",
-            links.telegramCommunity("komunity na Telegramu"),
+            " nebo do naší komunity na ",
+            links.telegramCommunity("Telegramu"),
+            " či ",
+            links.signalCommunity("Signalu"),
             ".",
             hasTelegram ? " V Telegramu funguje i /stop." : "",
             " Odložení ani odkaz pro odhlášení zatím nejsou.",
