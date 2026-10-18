@@ -52,6 +52,8 @@ vi.mock("~~/components/ThemeProvider", () => ({
   ),
 }));
 
+vi.mock("@vercel/analytics/next", () => ({ Analytics: () => <div data-stub="analytics" /> }));
+
 vi.mock("~~/components/ScaffoldEthAppWithProviders", () => ({
   ScaffoldEthAppWithProviders: ({ children }: { children: ReactNode }) => <div data-stub="providers">{children}</div>,
 }));
@@ -65,9 +67,18 @@ const backgroundToken = (selector: ":root" | ".dark") =>
   )?.[1]?.toUpperCase();
 
 describe("root layout", () => {
+  it("leaves Vercel Web Analytics out of the IPFS build, which has no Vercel endpoint to report to", () => {
+    vi.stubEnv("NEXT_PUBLIC_IPFS_BUILD", "true");
+    try {
+      expect(renderHtml(<RootLayout>page</RootLayout>)).not.toContain('data-stub="analytics"');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("renders the site JSON-LD and wraps the page in the theme provider and the app providers", () => {
     expect(renderHtml(<RootLayout>page</RootLayout>)).toBe(
-      `<html lang="en" class="local--font-satoshi google--font-geist-mono"><head></head><body><script type="application/ld+json">${serializeJsonLd(siteJsonLd())}</script><div data-stub="theme-provider" data-attribute="class,data-theme" data-default-theme="light" data-enable-system="true" data-disable-transition="true"><div data-stub="providers">page</div></div></body></html>`,
+      `<html lang="en" class="local--font-satoshi google--font-geist-mono"><head></head><body><script type="application/ld+json">${serializeJsonLd(siteJsonLd())}</script><div data-stub="theme-provider" data-attribute="class,data-theme" data-default-theme="light" data-enable-system="true" data-disable-transition="true"><div data-stub="providers">page</div></div><div data-stub="analytics"></div></body></html>`,
     );
   });
 

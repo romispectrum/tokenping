@@ -87,7 +87,7 @@ export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = {
       items: [
         "Your positions or a history of your health factor. They are read live and not saved.",
         "A log of the alerts we sent.",
-        `Analytics, tracking pixels or advertising cookies: the site uses none, and Tokenping sets no cookies. Your browser keeps your theme choice, your wallet connection and whether it has already shown you the ${ATTRIBUTION_QUESTION_EN} question in its own local storage.`,
+        `Tracking pixels or advertising cookies: the site uses none, and Tokenping sets no cookies. Your browser keeps your theme choice, your wallet connection and whether it has already shown you the ${ATTRIBUTION_QUESTION_EN} question in its own local storage.`,
         "IP addresses in our database. Vercel still handles every request, as listed below. When an alert check or a message fails, the error, which can include your wallet address and the recipient, goes to our server logs.",
       ],
     },
@@ -106,6 +106,12 @@ export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = {
           name: "Vercel",
           role: `Hosts this site and runs the alert check every ${minutes} minutes.`,
           receives: "Every request to the site, including your IP address, and our server logs.",
+        },
+        {
+          name: "Vercel Web Analytics",
+          role: "Counts page views, without cookies.",
+          receives:
+            "For each page view: the page address, the site you came from, your approximate location, and your browser, operating system and device type. A visitor is a hash of the request that changes every 24 hours, so visits cannot be linked across days or sites.",
         },
         { name: "Supabase", role: "Our database.", receives: "The alert settings listed above." },
         { name: "Resend", role: "Sends alert emails.", receives: "Your email address and the alert text." },
@@ -192,7 +198,7 @@ export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = {
       items: [
         "Vaše pozice ani historii vašeho health factoru. Čtou se živě a neukládají se.",
         "Záznam odeslaných upozornění.",
-        `Analytiku, sledovací pixely ani reklamní cookies: web nic z toho nepoužívá a Tokenping nenastavuje žádné cookies. Váš prohlížeč si ve svém vlastním místním úložišti (local storage) uchovává zvolený motiv, připojení peněženky a to, zda vám už zobrazil otázku ${ATTRIBUTION_QUESTION_CS}.`,
+        `Sledovací pixely ani reklamní cookies: web nic z toho nepoužívá a Tokenping nenastavuje žádné cookies. Váš prohlížeč si ve svém vlastním místním úložišti (local storage) uchovává zvolený motiv, připojení peněženky a to, zda vám už zobrazil otázku ${ATTRIBUTION_QUESTION_CS}.`,
         "IP adresy v naší databázi. Každý požadavek přesto zpracovává Vercel, jak je uvedeno níže. Když kontrola upozornění nebo odeslání zprávy selže, chyba, která může obsahovat adresu vaší peněženky a příjemce, se zapíše do našich serverových logů.",
       ],
     },
@@ -212,6 +218,12 @@ export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = {
           name: "Vercel",
           role: `Hostuje tento web a každých ${minutes} minut spouští kontrolu upozornění.`,
           receives: "Každý požadavek na web včetně vaší IP adresy a naše serverové logy.",
+        },
+        {
+          name: "Vercel Web Analytics",
+          role: "Počítá zobrazení stránek, bez cookies.",
+          receives:
+            "U každého zobrazení stránky: adresu stránky, web, ze kterého jste přišli, vaši přibližnou polohu a váš prohlížeč, operační systém a typ zařízení. Návštěvník je otisk (hash) požadavku, který se každých 24 hodin mění, takže návštěvy nelze propojit mezi dny ani weby.",
         },
         { name: "Supabase", role: "Naše databáze.", receives: "Nastavení upozornění uvedená výše." },
         { name: "Resend", role: "Odesílá upozornění e-mailem.", receives: "Vaše e-mailová adresa a text upozornění." },
