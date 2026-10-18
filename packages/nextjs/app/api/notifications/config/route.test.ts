@@ -24,6 +24,7 @@ const PRIME_POOL = "0x4e033931ad43597d96d6bcc25c280717730b58b1";
 const INVALID_MARKET = "Invalid market: expected v3 or the lowercased address of an Aave V3 Pool or V4 Spoke";
 const TELEGRAM_ERROR =
   "Invalid Telegram username for Telegram notifications. Expected 4 to 32 letters, digits or underscores, e.g. alice_eth";
+const CHANNEL_LOCALES_ERROR = "Invalid channelLocales: expected an object of email, signal, telegram to one of en, cs";
 
 const chainQuery = (uid: string, chainId: number, market = "v3") =>
   `notification_configs.select("*").eq("user_id","${uid}").eq("chain_id",${chainId}).eq("market","${market}").maybeSingle()`;
@@ -146,6 +147,7 @@ describe("GET /api/notifications/config", () => {
           signalRecipient: "alice.42",
           telegramUsername: "alice_eth",
           locale: "en",
+          channelLocales: { email: "en", telegram: "en" },
         }),
       });
       // No legacy fallback once the lowercased row is found.
@@ -171,7 +173,7 @@ describe("GET /api/notifications/config", () => {
 
       expect(await read(res)).toEqual({
         status: 200,
-        text: '{"chainId":1,"market":"v3","enabled":false,"services":[],"healthFactorThreshold":2,"locale":"en"}',
+        text: '{"chainId":1,"market":"v3","enabled":false,"services":[],"healthFactorThreshold":2,"locale":"en","channelLocales":{}}',
       });
     });
 
@@ -183,6 +185,18 @@ describe("GET /api/notifications/config", () => {
       fakeSupabase.respondByQuery({ [chainQuery(LOWER, 1)]: { data: storedRow({ chain_id: 1, locale }) } });
       const res = await get({ userId: LOWER, chainId: "1" });
       expect(JSON.parse((await read(res)).text).locale).toBe(expected);
+    });
+
+    it.each([
+      ["its own language", { signal_locale: "cs" }, "cs"],
+      ["no language of its own: the row's", { signal_locale: null }, "en"],
+      ["a row from before the channel language columns: the row's", {}, "en"],
+    ])("returns a selected channel's language: %s", async (_label, columns, expected) => {
+      fakeSupabase.respondByQuery({
+        [chainQuery(LOWER, 1)]: { data: storedRow({ chain_id: 1, services: ["signal"], ...columns }) },
+      });
+      const res = await get({ userId: LOWER, chainId: "1" });
+      expect(JSON.parse((await read(res)).text).channelLocales).toStrictEqual({ signal: expected });
     });
 
     it("falls back to the trimmed (legacy checksummed) user id when the lowercased lookup finds no row", async () => {
@@ -202,6 +216,7 @@ describe("GET /api/notifications/config", () => {
         signalRecipient: "alice.42",
         telegramUsername: "alice_eth",
         locale: "en",
+        channelLocales: { signal: "en" },
       });
       expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 10), chainQuery(MIXED, 10)]);
     });
@@ -322,6 +337,7 @@ describe("GET /api/notifications/config", () => {
             signalRecipient: "alice.42",
             telegramUsername: "alice_eth",
             locale: "en",
+            channelLocales: { email: "en", telegram: "en" },
           },
           "1:v3": {
             chainId: 1,
@@ -331,6 +347,7 @@ describe("GET /api/notifications/config", () => {
             healthFactorThreshold: 1.1,
             email: "a@b.co",
             locale: "en",
+            channelLocales: { signal: "en" },
           },
         }),
       });
@@ -438,6 +455,9 @@ describe("PUT /api/notifications/config", () => {
     signal_recipient: null,
     telegram_username: null,
     locale: "en",
+    email_locale: null,
+    signal_locale: null,
+    telegram_locale: null,
     updated_at: NOW,
     ...overrides,
   });
@@ -706,6 +726,12 @@ describe("PUT /api/notifications/config", () => {
     ["an English locale is kept", { locale: "en" }, { locale: "en" }],
     ["a missing locale is English", {}, { locale: "en" }],
     ["a null locale is English", { locale: null }, { locale: "en" }],
+    [
+      "each channel's language",
+      { channelLocales: { email: "cs", telegram: "en" } },
+      { email_locale: "cs", telegram_locale: "en" },
+    ],
+    ["no channel languages", { channelLocales: {} }, {}],
   ])("stores the normalized row: %s", async (_label, extra, expected) => {
     expect(await read(await put({ userId: LOWER, chainId: 8453, ...extra }))).toEqual(json(200, { success: true }));
     expect(fakeSupabase.log().at(-1)).toBe(insertQuery(expectedRow(LOWER, expected)));
@@ -745,6 +771,8 @@ describe("PUT /api/notifications/config", () => {
     ["an unsupported locale", { locale: "de" }, "Invalid locale: expected one of en, cs"],
     ["a region-tagged locale", { locale: "cs-CZ" }, "Invalid locale: expected one of en, cs"],
     ["a non-string locale", { locale: 1 }, "Invalid locale: expected one of en, cs"],
+    ["an unsupported channel language", { channelLocales: { signal: "de" } }, CHANNEL_LOCALES_ERROR],
+    ["a language for an unknown channel", { channelLocales: { sms: "cs" } }, CHANNEL_LOCALES_ERROR],
   ])("returns 400 for %s before the access check or any DB call", async (_label, extra, error) => {
     expect(await read(await put({ userId: LOWER, chainId: 8453, ...extra }))).toEqual(json(400, { error }));
     expect(isAccessActive).not.toHaveBeenCalled();
@@ -789,6 +817,39 @@ describe("PUT /api/notifications/config", () => {
     expect(JSON.parse((await read(await get({ userId: LOWER, chainId: "8453" }))).text)).toMatchObject({
       services: ["email"],
       locale: "cs",
+    });
+  });
+
+  // A new channel starts in the page's language, and a later edit can change it without touching the others.
+  it("saves a channel's language, changes it later, and reads each one back", async () => {
+    fakeSupabase.respondByQuery({ [idLookup(LOWER, 8453)]: { data: { id: "row-lower" } } });
+    const body = {
+      userId: LOWER,
+      chainId: 8453,
+      services: ["email", "signal"],
+      email: "a@b.co",
+      signalRecipient: "alice.42",
+      locale: "en",
+      channelLocales: { email: "en", signal: "en" },
+    };
+    expect(await read(await put(body))).toEqual(json(200, { success: true }));
+    expect(await read(await put({ ...body, channelLocales: { email: "en", signal: "cs" } }))).toEqual(
+      json(200, { success: true }),
+    );
+
+    const row = expectedRow(LOWER, {
+      services: ["email", "signal"],
+      email: "a@b.co",
+      signal_recipient: "alice.42",
+      email_locale: "en",
+      signal_locale: "cs",
+    });
+    expect(fakeSupabase.log().at(-1)).toBe(updateQuery(row, "row-lower"));
+
+    fakeSupabase.respondByQuery({ [chainQuery(LOWER, 8453)]: { data: { ...storedRow(), ...row } } });
+    expect(JSON.parse((await read(await get({ userId: LOWER, chainId: "8453" }))).text).channelLocales).toStrictEqual({
+      email: "en",
+      signal: "cs",
     });
   });
 

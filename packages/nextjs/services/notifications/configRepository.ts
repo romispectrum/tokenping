@@ -1,11 +1,12 @@
 import "server-only";
 import { type MarketId, type MarketRef, V3_MARKET_ID, isMarketId, marketKey } from "~~/config/aaveConfig";
-import { DEFAULT_LOCALE, isLocale } from "~~/i18n/locales";
+import { DEFAULT_LOCALE, type Locale, isLocale } from "~~/i18n/locales";
 import type { ConfigValues } from "~~/services/notifications/configInput";
 import { selectAllPages } from "~~/services/supabase/selectAllPages";
 import { getSupabaseServerClient } from "~~/services/supabase/supabaseServer";
-import type { NotificationConfig } from "~~/types/notifications";
+import type { ChannelLocales, NotificationConfig, NotificationService } from "~~/types/notifications";
 import { normalizeAddress } from "~~/utils/address";
+import { isNotificationService } from "~~/utils/notifications/validation";
 
 export type NotificationConfigRow = {
   id: string;
@@ -23,6 +24,10 @@ export type NotificationConfigRow = {
   telegram_username?: string | null;
   /** 'en' or 'cs' (checked by the database); absent before the locale migration is applied. */
   locale?: string | null;
+  /** Each channel's own language, 'en' or 'cs'; null (or absent before that migration) means `locale`. */
+  email_locale?: string | null;
+  signal_locale?: string | null;
+  telegram_locale?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -38,6 +43,9 @@ export type EnabledConfigRow = Pick<
   | "telegram_username"
   | "services"
   | "locale"
+  | "email_locale"
+  | "signal_locale"
+  | "telegram_locale"
 >;
 
 /** Rows written before services were validated can hold ids outside NotificationService. */
@@ -61,6 +69,29 @@ export type UserIdForms = ReturnType<typeof userIdForms>;
 export const rowLocale = (row: Pick<NotificationConfigRow, "locale">) =>
   isLocale(row.locale) ? row.locale : DEFAULT_LOCALE;
 
+type ChannelLocaleColumns = Pick<
+  NotificationConfigRow,
+  "locale" | "email_locale" | "signal_locale" | "telegram_locale"
+>;
+
+const CHANNEL_LOCALE_COLUMNS = {
+  email: "email_locale",
+  signal: "signal_locale",
+  telegram: "telegram_locale",
+} as const satisfies Record<NotificationService, keyof ChannelLocaleColumns>;
+
+/** The language `channel`'s alerts are sent in: its own, else the row's (English for rows from before both). */
+export const rowChannelLocale = (row: ChannelLocaleColumns, channel: NotificationService): Locale => {
+  const own = row[CHANNEL_LOCALE_COLUMNS[channel]];
+  return isLocale(own) ? own : rowLocale(row);
+};
+
+/** The language each selected channel is sent in, so the form and the summary show what actually goes out. */
+const rowChannelLocales = (row: ChannelLocaleColumns & Pick<NotificationConfigRow, "services">): ChannelLocales =>
+  Object.fromEntries(
+    (row.services ?? []).filter(isNotificationService).map(channel => [channel, rowChannelLocale(row, channel)]),
+  );
+
 /** The row's market: V3 for anything that is not a market id (a row from before the column). */
 export const rowMarket = (row: Pick<NotificationConfigRow, "market">): MarketId =>
   isMarketId(row.market) ? row.market : V3_MARKET_ID;
@@ -70,8 +101,8 @@ export const rowMarketKey = (row: Pick<NotificationConfigRow, "chain_id" | "mark
   marketKey(row.chain_id, rowMarket(row));
 
 /**
- * Optional fields map null to undefined so they are omitted from the JSON response; market and locale are always
- * present.
+ * Optional fields map null to undefined so they are omitted from the JSON response; market, locale and
+ * channelLocales are always present.
  */
 export const rowToConfig = (row: NotificationConfigRow): NotificationConfigResponse => ({
   chainId: row.chain_id,
@@ -83,6 +114,7 @@ export const rowToConfig = (row: NotificationConfigRow): NotificationConfigRespo
   signalRecipient: row.signal_recipient ?? undefined,
   telegramUsername: row.telegram_username ?? undefined,
   locale: rowLocale(row),
+  channelLocales: rowChannelLocales(row),
 });
 
 export const toConfigRow = (uid: string, { chainId, market }: MarketRef, values: ConfigValues, now = new Date()) => ({
@@ -96,6 +128,9 @@ export const toConfigRow = (uid: string, { chainId, market }: MarketRef, values:
   signal_recipient: values.signalRecipient,
   telegram_username: values.telegramUsername,
   locale: values.locale,
+  email_locale: values.channelLocales.email,
+  signal_locale: values.channelLocales.signal,
+  telegram_locale: values.channelLocales.telegram,
   updated_at: now.toISOString(),
 });
 
@@ -171,14 +206,12 @@ export async function deleteConfigs({ normalized, legacy }: UserIdForms, { chain
   return (await remove(legacy)).error;
 }
 
+/** What the cron reads of each enabled config. One literal, so supabase-js can type the rows. */
+const ENABLED_CONFIG_COLUMNS =
+  "user_id, chain_id, market, health_factor_threshold, email, signal_recipient, telegram_username, services, locale, email_locale, signal_locale, telegram_locale";
+
 /** Every enabled config, read page by page so rows past the PostgREST max_rows cap are not skipped. */
 export const findEnabledConfigs = () =>
   selectAllPages<EnabledConfigRow>((from, to) =>
-    configsTable()
-      .select(
-        "user_id, chain_id, market, health_factor_threshold, email, signal_recipient, telegram_username, services, locale",
-      )
-      .eq("enabled", true)
-      .order("id")
-      .range(from, to),
+    configsTable().select(ENABLED_CONFIG_COLUMNS).eq("enabled", true).order("id").range(from, to),
   );

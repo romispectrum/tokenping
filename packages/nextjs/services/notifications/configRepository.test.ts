@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   type NotificationConfigRow,
+  rowChannelLocale,
   rowLocale,
   rowMarket,
   rowMarketKey,
@@ -57,6 +58,7 @@ describe("rowToConfig", () => {
         signalRecipient: "alice.42",
         telegramUsername: "alice_eth",
         locale: "cs",
+        channelLocales: { email: "cs" },
       }),
     );
   });
@@ -64,8 +66,18 @@ describe("rowToConfig", () => {
   it("drops null optionals and maps null services to [], keeping the locale", () => {
     const empty = row({ services: null, email: null, signal_recipient: null, telegram_username: null });
     expect(JSON.stringify(rowToConfig(empty))).toBe(
-      '{"chainId":8453,"market":"v3","enabled":true,"services":[],"healthFactorThreshold":1.8,"locale":"cs"}',
+      '{"chainId":8453,"market":"v3","enabled":true,"services":[],"healthFactorThreshold":1.8,"locale":"cs","channelLocales":{}}',
     );
+  });
+
+  // What the form and the summary show: the language each selected channel actually goes out in.
+  it("lists the language of each selected channel: its own, else the row's", () => {
+    const mixed = row({ services: ["email", "signal", "telegram", "sms"], locale: "cs", signal_locale: "en" });
+    expect(rowToConfig(mixed).channelLocales).toStrictEqual({ email: "cs", signal: "en", telegram: "cs" });
+    // An unselected channel's language is not listed.
+    expect(rowToConfig(row({ services: ["email"], telegram_locale: "en" })).channelLocales).toStrictEqual({
+      email: "cs",
+    });
   });
 
   it("leaves the Telegram username out of the JSON for a row from before the telegram_username column", () => {
@@ -100,6 +112,30 @@ describe("rowLocale", () => {
   ])("reads the stored locale %j as %j", (locale, expected) => {
     expect(rowLocale({ locale })).toBe(expected);
     expect(rowToConfig(row({ locale })).locale).toBe(expected);
+  });
+});
+
+describe("rowChannelLocale", () => {
+  it.each([
+    ["en", "cs", "en"],
+    ["cs", "en", "cs"],
+    // No language of its own (null, or a row from before the column): the row's.
+    [null, "cs", "cs"],
+    [undefined, "cs", "cs"],
+    // Anything unexpected falls through to the row's, and to English after that.
+    ["de", "cs", "cs"],
+    [null, null, "en"],
+  ])("reads Telegram's own %j over the row's %j as %j", (own, locale, expected) => {
+    expect(rowChannelLocale({ locale, telegram_locale: own }, "telegram")).toBe(expected);
+  });
+
+  it("reads each channel's own column", () => {
+    const languages = { locale: "en", email_locale: "cs", signal_locale: null, telegram_locale: "cs" };
+    expect((["email", "signal", "telegram"] as const).map(channel => rowChannelLocale(languages, channel))).toEqual([
+      "cs",
+      "en",
+      "cs",
+    ]);
   });
 });
 
@@ -140,6 +176,7 @@ describe("toConfigRow", () => {
     signalRecipient: "ursula.42",
     telegramUsername: "alice_eth",
     locale: "cs" as const,
+    channelLocales: { email: "en" as const, signal: null, telegram: "cs" as const },
   };
 
   it("maps parsed config values to the row columns (values and key order)", () => {
@@ -155,6 +192,9 @@ describe("toConfigRow", () => {
         signal_recipient: "ursula.42",
         telegram_username: "alice_eth",
         locale: "cs",
+        email_locale: "en",
+        signal_locale: null,
+        telegram_locale: "cs",
         updated_at: "2026-10-14T09:05:07.000Z",
       }),
     );

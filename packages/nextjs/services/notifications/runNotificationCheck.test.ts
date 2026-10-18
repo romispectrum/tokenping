@@ -32,7 +32,7 @@ const SHORT_LOWER = "0x3a3a…3a3a";
 const LIDO_SPOKE = "0xe1900480ac69f0b296841cd01cc37546d92f35cd";
 
 const configsPage = (from: number) =>
-  'notification_configs.select("user_id, chain_id, market, health_factor_threshold, email, signal_recipient, telegram_username, services, locale")' +
+  'notification_configs.select("user_id, chain_id, market, health_factor_threshold, email, signal_recipient, telegram_username, services, locale, email_locale, signal_locale, telegram_locale")' +
   `.eq("enabled",true).order("id").range(${from},${from + 999})`;
 const chatsPage = (from: number) =>
   `telegram_chats.select("username, chat_id").order("chat_id").range(${from},${from + 999})`;
@@ -434,6 +434,42 @@ describe("runNotificationCheck: delivery", () => {
       text: alertText("Base", "1.20", "1.5"),
       html: alertHtml("Base", "1.20", "1.5"),
     });
+  });
+
+  it("alerts each channel in its own language, and channels without one in the config's", async () => {
+    givenData(
+      [
+        configRow({
+          services: ["email", "signal", "telegram"],
+          health_factor_threshold: "1.5",
+          locale: "cs",
+          signal_locale: "en",
+          telegram_locale: "cs",
+        }),
+      ],
+      [{ username: "alice_eth", chat_id: 555 }],
+    );
+
+    expect(await runNotificationCheck()).toEqual(
+      summary({ configsChecked: 1, emailsSent: 1, signalSent: 1, telegramSent: 1 }),
+    );
+
+    const czech =
+      "Váš health factor na Aave na síti Base je 1,20, což je pod vaším prahem 1,5. " +
+      "Zvažte doplnění kolaterálu nebo splacení dluhu, abyste se vyhnuli likvidaci.\n\n" +
+      `Odesláno: ${NOW_TEXT_CS}`;
+    expect(vi.mocked(sendEmail).mock.calls[0][0].subject).toBe("Upozornění na health factor Aave - Base");
+    expect(sendSignalMessage).toHaveBeenCalledExactlyOnceWith({
+      to: "alice.42",
+      message: alertText("Base", "1.20", "1.5"),
+    });
+    expect(sendTelegramMessage).toHaveBeenCalledExactlyOnceWith({ chatId: "555", message: czech });
+  });
+
+  it("alerts an English config's Czech channel in Czech", async () => {
+    givenData([configRow({ locale: "en", email_locale: "cs" })]);
+    await runNotificationCheck();
+    expect(vi.mocked(sendEmail).mock.calls[0][0].subject).toBe("Upozornění na health factor Aave - Base");
   });
 
   it("alerts each config in its own language", async () => {

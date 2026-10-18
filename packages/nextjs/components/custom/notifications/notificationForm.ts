@@ -1,7 +1,7 @@
 import { DEFAULT_HEALTH_FACTOR_THRESHOLD } from "~~/constants/notifications";
-import { DEFAULT_LOCALE, type Locale } from "~~/i18n/locales";
+import { DEFAULT_LOCALE, type Locale, isLocale } from "~~/i18n/locales";
 import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
-import type { NotificationConfig, NotificationService } from "~~/types/notifications";
+import type { ChannelLocales, NotificationConfig, NotificationService } from "~~/types/notifications";
 import { clampThreshold, formatThreshold, normalizeThreshold, roundThreshold } from "~~/utils/notifications/threshold";
 import {
   SIGNAL_USERNAME_REGEX,
@@ -22,6 +22,11 @@ export type NotificationFormState = {
   threshold: number;
   /** What the manual threshold input shows; may be incomplete while typing (e.g. "1."). */
   thresholdText: string;
+  /**
+   * The language picked for each channel. A channel without one shows and saves the page's language, so a new
+   * channel starts in the language the person is reading.
+   */
+  channelLocales: ChannelLocales;
 };
 
 type SubmittableForm = Pick<NotificationFormState, "services" | "email" | "signalRecipient" | "telegramUsername">;
@@ -36,6 +41,7 @@ export const EMPTY_FORM_STATE: NotificationFormState = {
   telegramUsername: "",
   threshold: DEFAULT_THRESHOLD,
   thresholdText: formatThreshold(DEFAULT_THRESHOLD),
+  channelLocales: {},
 };
 
 /*
@@ -57,8 +63,20 @@ export const configToFormState = (config: NotificationConfig | null): Notificati
     telegramUsername: config.telegramUsername ?? "",
     threshold,
     thresholdText: formatThreshold(threshold),
+    channelLocales: Object.fromEntries(
+      Object.entries(config.channelLocales ?? {}).filter(
+        ([channel, locale]) => isNotificationService(channel) && isLocale(locale),
+      ),
+    ),
   };
 };
+
+/** The language `channel` is sent in: the one picked for it, else `pageLocale`. */
+export const channelLocaleOf = (
+  form: Pick<NotificationFormState, "channelLocales">,
+  channel: NotificationService,
+  pageLocale: Locale,
+) => form.channelLocales[channel] ?? pageLocale;
 
 export const toggleService = (services: NotificationService[], service: NotificationService) =>
   services.includes(service) ? services.filter(s => s !== service) : [...services, service];
@@ -119,14 +137,19 @@ export const validateNotificationForm = (form: SubmittableForm, locale: Locale =
   return first ? (errors[first] ?? null) : null;
 };
 
-/** The updateConfig payload for Save. */
-export const buildConfigUpdate = ({
-  services,
-  email,
-  signalRecipient,
-  telegramUsername,
-  threshold,
-}: Pick<NotificationFormState, "services" | "email" | "signalRecipient" | "telegramUsername" | "threshold">) => ({
+/** The updateConfig payload for Save. Every selected channel gets a language: the picked one, else `pageLocale`. */
+export const buildConfigUpdate = (
+  {
+    services,
+    email,
+    signalRecipient,
+    telegramUsername,
+    threshold,
+    channelLocales = {},
+  }: Pick<NotificationFormState, "services" | "email" | "signalRecipient" | "telegramUsername" | "threshold"> &
+    Partial<Pick<NotificationFormState, "channelLocales">>,
+  pageLocale: Locale = DEFAULT_LOCALE,
+) => ({
   enabled: true,
   services,
   healthFactorThreshold: clampThreshold(roundThreshold(threshold)),
@@ -136,4 +159,7 @@ export const buildConfigUpdate = ({
   telegramUsername: services.includes("telegram")
     ? normalizeTelegramUsername(telegramUsername) || undefined
     : undefined,
+  channelLocales: Object.fromEntries(
+    services.map(channel => [channel, channelLocaleOf({ channelLocales }, channel, pageLocale)]),
+  ) as ChannelLocales,
 });

@@ -3,6 +3,7 @@ import {
   EMPTY_FORM_STATE,
   NOTIFICATION_FORM_ERRORS,
   buildConfigUpdate,
+  channelLocaleOf,
   configToFormState,
   countFormFields,
   getNotificationFormErrors,
@@ -76,6 +77,8 @@ const referencePayload = (
   telegramUsername: services.includes("telegram")
     ? referenceNormalizeTelegram(telegramUsername) || undefined
     : undefined,
+  // No language picked and no page language given: every selected channel in English.
+  channelLocales: Object.fromEntries(services.map(service => [service, "en"])),
 });
 
 const SERVICE_SETS: NotificationService[][] = [
@@ -144,6 +147,7 @@ describe("EMPTY_FORM_STATE", () => {
       telegramUsername: "",
       threshold: 1.5,
       thresholdText: "1.50",
+      channelLocales: {},
     });
   });
 });
@@ -163,6 +167,20 @@ describe("configToFormState", () => {
       telegramUsername: "alice_eth",
       threshold: 1.8,
       thresholdText: "1.80",
+      channelLocales: {},
+    });
+  });
+
+  it("copies each channel's saved language, dropping unknown channels and languages", () => {
+    const channelLocales = {
+      email: "cs",
+      signal: "en",
+      telegram: "de",
+      sms: "cs",
+    } as unknown as NotificationConfig["channelLocales"];
+    expect(configToFormState({ ...CONFIG, channelLocales }).channelLocales).toStrictEqual({
+      email: "cs",
+      signal: "en",
     });
   });
 
@@ -189,6 +207,15 @@ describe("configToFormState", () => {
   ])("normalizes threshold %s to %s (%s)", (healthFactorThreshold, threshold, thresholdText) => {
     const state = configToFormState({ ...CONFIG, healthFactorThreshold });
     expect([state.threshold, state.thresholdText]).toEqual([threshold, thresholdText]);
+  });
+});
+
+describe("channelLocaleOf", () => {
+  it("is the language picked for the channel, else the page's", () => {
+    const form = { channelLocales: { signal: "cs" } as const };
+    expect(channelLocaleOf(form, "signal", "en")).toBe("cs");
+    expect(channelLocaleOf(form, "email", "en")).toBe("en");
+    expect(channelLocaleOf(form, "email", "cs")).toBe("cs");
   });
 });
 
@@ -346,7 +373,26 @@ describe("buildConfigUpdate", () => {
       email: "me@example.com",
       signalRecipient: "@alice.42",
       telegramUsername: undefined,
+      channelLocales: { email: "en", signal: "en" },
     });
+  });
+
+  it("gives every selected channel a language: the one picked for it, else the page's", () => {
+    const form = {
+      services: ["email", "telegram"] as NotificationService[],
+      email: "me@example.com",
+      signalRecipient: "",
+      telegramUsername: "alice_eth",
+      threshold: 1.5,
+      // Signal's pick is dropped with Signal itself, like its recipient.
+      channelLocales: { telegram: "en", signal: "en" } as const,
+    };
+    expect(buildConfigUpdate(form, "cs").channelLocales).toStrictEqual({ email: "cs", telegram: "en" });
+    expect(buildConfigUpdate({ ...form, channelLocales: {} }, "cs").channelLocales).toStrictEqual({
+      email: "cs",
+      telegram: "cs",
+    });
+    expect(buildConfigUpdate({ ...form, services: [] }, "cs").channelLocales).toStrictEqual({});
   });
 
   it("stores the Signal username without the 'u:' and '@' prefixes the server also strips", () => {
@@ -384,6 +430,7 @@ describe("buildConfigUpdate", () => {
       email: undefined,
       signalRecipient: undefined,
       telegramUsername: "alice_eth",
+      channelLocales: { telegram: "en" },
     });
     expect(Object.keys(update)).toEqual([
       "enabled",
@@ -392,6 +439,7 @@ describe("buildConfigUpdate", () => {
       "email",
       "signalRecipient",
       "telegramUsername",
+      "channelLocales",
     ]);
     // A deselected Telegram clears the saved username, like a deselected Signal clears its recipient.
     const withoutTelegram = buildConfigUpdate({

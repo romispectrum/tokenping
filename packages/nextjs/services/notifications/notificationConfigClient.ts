@@ -33,8 +33,10 @@ export const notificationConfigClient = {
         email: config.email ?? null,
         signalRecipient: config.signalRecipient ?? null,
         telegramUsername: config.telegramUsername ?? null,
-        // The language the alert is sent in; the server stores "en" when this is missing.
+        // The page's language; the server stores "en" when this is missing. Each channel listed in channelLocales is
+        // sent in its own language, the others in this one.
         locale: config.locale ?? "en",
+        channelLocales: config.channelLocales ?? {},
       }),
     });
     if (!res.ok) throw new Error(await readApiError(res, "Failed to save notification config"));

@@ -6,6 +6,7 @@ import { AVAILABLE_SERVICES, TEST_SEND_COOLDOWN_MINUTES, getTelegramBotUsername 
 import { useTelegramUsernameStatus } from "~~/hooks/custom/useTelegramUsernameStatus";
 import { useLocale } from "~~/i18n/LocaleProvider";
 import { formatDecimal } from "~~/i18n/format";
+import { LOCALE_INFO, type Locale } from "~~/i18n/locales";
 import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 import type { NotificationService } from "~~/types/notifications";
 
@@ -24,19 +25,22 @@ type NotificationSummaryProps = {
   signalRecipient: string;
   /** As saved: lowercased, without "@". */
   telegramUsername: string;
+  /** The language each channel's alerts are written in. */
+  channelLocales: Record<NotificationService, Locale>;
   threshold: number;
   currentHealthFactor: string;
   showBelowThresholdWarning: boolean;
   testSends?: SummaryTestSends;
 };
 
-type SummaryRowProps = { label: string; children: ReactNode; action?: ReactNode };
+type SummaryRowProps = { label: string; children: ReactNode; language?: ReactNode; action?: ReactNode };
 
-const SummaryRow = ({ label, children, action }: SummaryRowProps) => (
+const SummaryRow = ({ label, children, language, action }: SummaryRowProps) => (
   <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
     <dt className="shrink-0 text-muted-foreground">{label}</dt>
     <dd className="m-0 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-foreground sm:justify-end sm:text-right">
       <span className="min-w-0 break-all">{children}</span>
+      {language}
       {action}
     </dd>
   </div>
@@ -47,6 +51,7 @@ export const NotificationSummary = ({
   email,
   signalRecipient,
   telegramUsername,
+  channelLocales,
   threshold,
   currentHealthFactor,
   showBelowThresholdWarning,
@@ -68,6 +73,16 @@ export const NotificationSummary = ({
         onSend={() => testSends.onSend(channel)}
       />
     );
+  // The language after the recipient, named in itself ("Čeština"), so a wrong pick is easy to spot.
+  const language = (channel: NotificationService) => {
+    const { name, htmlLang } = LOCALE_INFO[channelLocales[channel]];
+    return (
+      <span className="text-muted-foreground">
+        <span className="sr-only">{`${t.summaryLanguage}: `}</span>
+        <span lang={htmlLang}>{name}</span>
+      </span>
+    );
+  };
   const showsEmail = services.includes("email") && Boolean(email);
   const showsSignal = services.includes("signal") && Boolean(signalRecipient);
   // The user's own number, written the way the form takes it: "1,5" in Czech.
@@ -96,18 +111,22 @@ export const NotificationSummary = ({
           )}
         </SummaryRow>
         {showsEmail && (
-          <SummaryRow label={t.summaryEmail} action={testButton("email")}>
+          <SummaryRow label={t.summaryEmail} language={language("email")} action={testButton("email")}>
             {email}
           </SummaryRow>
         )}
         {showsSignal && (
-          <SummaryRow label={t.summarySignal} action={testButton("signal")}>
+          <SummaryRow label={t.summarySignal} language={language("signal")} action={testButton("signal")}>
             @{signalRecipient}
           </SummaryRow>
         )}
         {showsTelegram && (
           // A username that has not pressed Start cannot get a message yet; the warning below says what to do.
-          <SummaryRow label={t.summaryTelegram} action={testButton("telegram", telegram.status === "notLinked")}>
+          <SummaryRow
+            label={t.summaryTelegram}
+            language={language("telegram")}
+            action={testButton("telegram", telegram.status === "notLinked")}
+          >
             @{telegramUsername}
           </SummaryRow>
         )}

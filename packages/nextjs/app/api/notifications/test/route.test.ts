@@ -454,6 +454,17 @@ describe("POST /api/notifications/test: sending", () => {
     expect(message.text).toContain("Teď: health factor 1,42 (rizikový)");
   });
 
+  it("writes the message in the channel's own language when it has one", async () => {
+    savedAlert(storedRow({ locale: "en", email_locale: "cs", health_factor_threshold: "1.85" }));
+    await post(VALID_BODY);
+    expect(mocks.send.email.mock.calls[0][1].subject).toBe("Testovací zpráva Tokenpingu - Base");
+
+    vi.clearAllMocks();
+    savedAlert(storedRow({ locale: "cs", email_locale: "en" }));
+    await post(VALID_BODY);
+    expect(mocks.send.email.mock.calls[0][1].text).toBe(EXPECTED_TEXT);
+  });
+
   it("writes English for a row saved before the language column", async () => {
     savedAlert(storedRow({ locale: undefined }));
     await post(VALID_BODY);

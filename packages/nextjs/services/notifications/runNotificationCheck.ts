@@ -10,7 +10,7 @@ import { sendEmail } from "~~/services/email/sendEmail";
 import {
   type EnabledConfigRow,
   findEnabledConfigs,
-  rowLocale,
+  rowChannelLocale,
   rowMarket,
 } from "~~/services/notifications/configRepository";
 import { type Delivery, redactRecipients, shortenAddress } from "~~/services/notifications/redact";
@@ -148,14 +148,18 @@ export async function runNotificationCheck(): Promise<NotificationCheckResult | 
         // Compared exactly, not as the rounded display value (1.4996 must alert against a 1.5 threshold).
         if (!(reading.healthFactorValue < threshold)) continue;
 
-        // Sent in the language the config was saved in (English for rows from before the locale column).
-        const locale = rowLocale(config);
-        const alert = { ...reading, threshold, timestamp: formatUtcTimestamp(new Date(), locale) };
-        const message = { text: buildAlertText(alert, locale), ...buildAlertEmail(alert, locale) };
+        // Each channel in its own language (the config's when it has none), each language built once.
+        const now = new Date();
+        const buildMessage = (locale: Locale): AlertMessage => {
+          const alert = { ...reading, threshold, timestamp: formatUtcTimestamp(now, locale) };
+          return { text: buildAlertText(alert, locale), ...buildAlertEmail(alert, locale) };
+        };
+        const messages: Partial<Record<Locale, AlertMessage>> = {};
 
         for (const delivery of deliveries) {
           const { channel, recipient } = delivery;
-          const result = await ALERT_SENDERS[channel](recipient, message);
+          const locale = rowChannelLocale(config, channel);
+          const result = await ALERT_SENDERS[channel](recipient, (messages[locale] ??= buildMessage(locale)));
           if (result.success) {
             sent[channel]++;
             continue;

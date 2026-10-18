@@ -85,7 +85,8 @@ const route = ({ method, url, body }: Call) => {
     const market = String(body?.market ?? "v3");
     const key = `${chainId}:${market}`;
     if (method === "PUT") {
-      const { enabled, services, healthFactorThreshold, email, signalRecipient, telegramUsername } = body ?? {};
+      const { enabled, services, healthFactorThreshold, email, signalRecipient, telegramUsername, channelLocales } =
+        body ?? {};
       const config = { chainId, market, enabled, services, healthFactorThreshold };
       api.configs[user] = {
         ...api.configs[user],
@@ -94,6 +95,8 @@ const route = ({ method, url, body }: Call) => {
           ...(email ? { email } : {}),
           ...(signalRecipient ? { signalRecipient } : {}),
           ...(telegramUsername ? { telegramUsername } : {}),
+          // The client sends a language for each selected channel only, which is what the server lists back.
+          ...(channelLocales ? { channelLocales } : {}),
         },
       };
     }
@@ -388,6 +391,8 @@ describe("NotificationConfig: creating and editing", () => {
       email: "me@example.com",
       signalRecipient: "alice.42",
       telegramUsername: null,
+      // Both new channels start in the page's language.
+      channelLocales: { email: "en", signal: "en" },
     });
     // The page's language, once the client forwards it (the "saves the page's language" tests pin the hand-over).
     expect([undefined, "en"]).toContain(locale);
@@ -1704,6 +1709,65 @@ describe("NotificationConfig: language", () => {
     expect(alerts()).toEqual(["Napište odpověď, nebo vyberte Přeskočit."]);
     await click(button("Přeskočit"));
     expect(button("Upravit upozornění")).toBeDefined();
+  });
+
+  it("starts each new channel in the page's language, saves each channel's pick and shows it in the summary", async () => {
+    await renderCard({}, "cs");
+    await click(button("Vytvořit upozornění"));
+    await click(screen.getByRole("checkbox", { name: "E-mail" }));
+    await click(screen.getByRole("checkbox", { name: "Signal" }));
+    const emailLanguage = () => screen.getByRole<HTMLSelectElement>("combobox", { name: "Jazyk e-mailů" });
+    const signalLanguage = () => screen.getByRole<HTMLSelectElement>("combobox", { name: "Jazyk zpráv na Signalu" });
+    expect([emailLanguage().value, signalLanguage().value]).toEqual(["cs", "cs"]);
+    // Each language is named in itself.
+    expect([...signalLanguage().options].map(option => [option.value, option.text, option.lang])).toEqual([
+      ["en", "English", "en"],
+      ["cs", "Čeština", "cs"],
+    ]);
+
+    await type(screen.getByRole("textbox", { name: "E-mailová adresa" }), "me@example.com");
+    await type(screen.getByRole("textbox", { name: "Uživatelské jméno v Signalu" }), "alice.42");
+    fireEvent.change(signalLanguage(), { target: { value: "en" } });
+    await settle();
+    await click(button("Uložit upozornění"));
+
+    expect(lastPutBody()).toMatchObject({ locale: "cs", channelLocales: { email: "cs", signal: "en" } });
+    const summaryRow = (label: string) =>
+      screen.getAllByText(label, { selector: "dt" })[0].nextElementSibling?.textContent;
+    expect(summaryRow("E-mail")).toContain("Jazyk: Čeština");
+    expect(summaryRow("Signal")).toContain("Jazyk: English");
+  });
+
+  it("keeps a saved channel's language on a page in another language, and lets an edit change it", async () => {
+    api.configs[ADDRESS.toLowerCase()] = {
+      [MARKET_KEY]: { ...SAVED_CONFIG, services: ["email"], locale: "cs", channelLocales: { email: "cs" } },
+    };
+    await renderCard();
+    expect(screen.getAllByText("Email", { selector: "dt" })[0].nextElementSibling?.textContent).toContain(
+      "Language: Čeština",
+    );
+
+    await click(button("Edit alert"));
+    const emailLanguage = () => screen.getByRole<HTMLSelectElement>("combobox", { name: "Email language" });
+    expect(emailLanguage().value).toBe("cs");
+    await click(serviceToggle("Telegram"));
+    await type(telegramInput(), "alice_eth");
+    // A channel added on an English page starts in English; the saved one keeps Czech until it is changed.
+    expect(screen.getByRole<HTMLSelectElement>("combobox", { name: "Telegram language" }).value).toBe("en");
+    await click(button("Save alert"));
+    expect(lastPutBody()).toMatchObject({ locale: "en", channelLocales: { email: "cs", telegram: "en" } });
+
+    await click(button("Edit alert"));
+    fireEvent.change(emailLanguage(), { target: { value: "en" } });
+    await settle();
+    await click(button("Save alert"));
+    expect(lastPutBody()).toMatchObject({ channelLocales: { email: "en", telegram: "en" } });
+    // Cancel drops an unsaved change.
+    await click(button("Edit alert"));
+    fireEvent.change(emailLanguage(), { target: { value: "cs" } });
+    await click(button("Cancel"));
+    await click(button("Edit alert"));
+    expect(emailLanguage().value).toBe("en");
   });
 
   it("shows a saved alert, the delete confirmation and failures in Czech", async () => {
