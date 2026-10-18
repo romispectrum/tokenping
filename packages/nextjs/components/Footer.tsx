@@ -52,6 +52,7 @@ const footerGroups = (locale: Locale): readonly FooterGroup[] => {
       links: [
         { label: "X", href: SOCIAL_LINKS.x, kind: "external", ariaLabel: t.xLabel },
         { label: "Telegram", href: SOCIAL_LINKS.telegram, kind: "external", ariaLabel: t.telegramLabel },
+        { label: "Signal", href: SOCIAL_LINKS.signal, kind: "external", ariaLabel: t.signalLabel },
       ],
     },
     {

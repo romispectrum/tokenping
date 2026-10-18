@@ -114,12 +114,13 @@ describe("/cz/ochrana-soukromi", () => {
     expect(screen.getByText(/^Naposledy aktualizováno/)).toBeTruthy();
   });
 
-  it("links X, the Telegram community and the Czech home page", () => {
+  it("links X, the Telegram and Signal communities and the Czech home page", () => {
     renderPage();
 
     expect(screen.getByRole("link", { name: "X" }).getAttribute("href")).toBe("https://x.com/tokenping");
-    expect(screen.getByRole("link", { name: "komunity na Telegramu" }).getAttribute("href")).toBe(
-      "https://t.me/tokenping_xyz",
+    expect(screen.getByRole("link", { name: "Telegramu" }).getAttribute("href")).toBe("https://t.me/tokenping_xyz");
+    expect(screen.getByRole("link", { name: "Signalu" }).getAttribute("href")).toBe(
+      "https://signal.group/#CjQKIMs3x5VYgyCxm2IolF2E4BMuaMQz2T3iEcMpG-q9dSPnEhDFdhbdbCg-W4poA14HJDRS",
     );
     expect(screen.getByRole("link", { name: "úvodní stránce" }).getAttribute("href")).toBe("/cz");
   });

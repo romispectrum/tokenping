@@ -494,11 +494,14 @@ describe("objections", () => {
     const answer = screen.getByRole("heading", { name: "How do I stop the alerts?" }).nextElementSibling as HTMLElement;
 
     expect(answer.textContent).toContain(
-      "or when you delete the alert (needs active access). Access expired? Message us on X or in our Telegram community. No snooze",
+      "or when you delete the alert (needs active access). Access expired? Message us on X or in our community on Telegram or Signal. No snooze",
     );
     expect(within(answer).getByRole("link", { name: "X" }).getAttribute("href")).toBe("https://x.com/tokenping");
-    expect(within(answer).getByRole("link", { name: "Telegram community" }).getAttribute("href")).toBe(
+    expect(within(answer).getByRole("link", { name: "Telegram" }).getAttribute("href")).toBe(
       "https://t.me/tokenping_xyz",
+    );
+    expect(within(answer).getByRole("link", { name: "Signal" }).getAttribute("href")).toBe(
+      "https://signal.group/#CjQKIMs3x5VYgyCxm2IolF2E4BMuaMQz2T3iEcMpG-q9dSPnEhDFdhbdbCg-W4poA14HJDRS",
     );
   });
 

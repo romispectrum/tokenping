@@ -83,13 +83,17 @@ describe("Footer", () => {
     expect(band.contains(screen.getByRole("link", { name: /Block explorer/ }))).toBe(false);
   });
 
-  it("links GitHub, the Telegram community and the X account in new tabs without opener or referrer", () => {
+  it("links GitHub, the X account and the Telegram and Signal communities in new tabs without opener or referrer", () => {
     render(<Footer />);
 
     for (const [name, href] of [
       ["Tokenping source code on GitHub", "https://github.com/romispectrum/tokenping"],
       ["Tokenping Telegram community", "https://t.me/tokenping_xyz"],
       ["Tokenping on X", "https://x.com/tokenping"],
+      [
+        "Tokenping Signal community",
+        "https://signal.group/#CjQKIMs3x5VYgyCxm2IolF2E4BMuaMQz2T3iEcMpG-q9dSPnEhDFdhbdbCg-W4poA14HJDRS",
+      ],
     ]) {
       const link = screen.getByRole("link", { name });
       expect(link.getAttribute("href")).toBe(href);
@@ -133,7 +137,7 @@ describe("Footer", () => {
           .getAllByRole("listitem")
           .map(item => within(item).getByRole("link").textContent),
       ),
-    ).toEqual(["Blog", "RSS", "GitHub", "X", "Telegram", "Privacy"]);
+    ).toEqual(["Blog", "RSS", "GitHub", "X", "Telegram", "Signal", "Privacy"]);
   });
 
   it("names each link column with its heading", () => {

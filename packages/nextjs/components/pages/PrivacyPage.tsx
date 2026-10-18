@@ -141,6 +141,10 @@ export const PrivacyPage = ({ locale }: { locale: Locale }) => {
                     <a href={SOCIAL_LINKS.telegram} rel={EXTERNAL_LINK_REL}>
                       {t.retention.contact.telegram}
                     </a>{" "}
+                    {t.retention.contact.or}{" "}
+                    <a href={SOCIAL_LINKS.signal} rel={EXTERNAL_LINK_REL}>
+                      {t.retention.contact.signal}
+                    </a>{" "}
                     {t.retention.contact.after}
                   </li>
                   <li>{t.retention.payments}</li>

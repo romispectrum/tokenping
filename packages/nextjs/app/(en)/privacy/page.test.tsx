@@ -118,7 +118,7 @@ describe("/privacy", () => {
     const page = container.cloneNode(true) as HTMLElement;
     page.querySelector('nav[aria-label="Breadcrumb"]')?.remove();
 
-    for (const name of ["X", "Telegram community", "homepage"])
+    for (const name of ["X", "Telegram", "Signal", "homepage"])
       expect(screen.getByRole("link", { name }).hasAttribute("class")).toBe(false);
     expect(page.innerHTML).not.toMatch(
       /indigo-|purple-|gray-\d|base-content|base-200|base-300|font-bold|font-semibold/,
