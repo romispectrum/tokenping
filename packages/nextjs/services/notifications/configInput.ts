@@ -20,6 +20,7 @@ export type ConfigInput = {
   signalRecipient?: unknown;
   telegramUsername?: unknown;
   locale?: unknown;
+  channelLocales?: unknown;
 };
 
 export type ConfigValues = {
@@ -31,8 +32,10 @@ export type ConfigValues = {
   signalRecipient: string | null;
   /** Lowercased, without "@"; null unless it is a valid username (the database checks the format). */
   telegramUsername: string | null;
-  /** The language the alerts are sent in. */
+  /** The page language the alert was saved from: the language of every channel without its own. */
   locale: Locale;
+  /** Each channel's own language; null falls back to `locale`. */
+  channelLocales: Record<NotificationService, Locale | null>;
 };
 
 const SERVICES_ERROR = `Invalid services: expected an array of ${NOTIFICATION_SERVICES.join(", ")}`;
@@ -42,14 +45,28 @@ const SIGNAL_ERROR = "Invalid Signal username for Signal notifications. Expected
 const TELEGRAM_ERROR =
   "Invalid Telegram username for Telegram notifications. Expected 4 to 32 letters, digits or underscores, e.g. alice_eth";
 const LOCALE_ERROR = `Invalid locale: expected one of ${LOCALES.join(", ")}`;
+const CHANNEL_LOCALES_ERROR = `Invalid channelLocales: expected an object of ${NOTIFICATION_SERVICES.join(", ")} to one of ${LOCALES.join(", ")}`;
 
 /** Blank values become null; anything else is stringified. */
 const optionalText = (raw: unknown, normalize: (value: string) => string) =>
   raw == null ? null : normalize(String(raw)) || null;
 
+/** Missing or null is no language for any channel, as is a null value; any other key or value is an error (null). */
+const parseChannelLocales = (raw: unknown): Record<NotificationService, Locale | null> | null => {
+  const locales: Record<NotificationService, Locale | null> = { email: null, signal: null, telegram: null };
+  if (raw == null) return locales;
+  if (typeof raw !== "object" || Array.isArray(raw)) return null;
+  for (const [channel, locale] of Object.entries(raw)) {
+    if (!isNotificationService(channel) || !(locale === null || isLocale(locale))) return null;
+    locales[channel] = locale;
+  }
+  return locales;
+};
+
 /**
  * Validates a config write and normalizes it for storage, or returns the first problem (services, threshold, email,
- * Signal, Telegram, locale). A missing or null locale is English. Recipients are checked only for the selected
+ * Signal, Telegram, locale, channel languages). A missing or null locale is English; a channel without a language
+ * of its own is sent in `locale`. Recipients are checked only for the selected
  * services, with the shared length-capped helpers; the others are stored without validation, except a Telegram
  * username, which is stored only when valid because the database checks its format. isValidSignalUsername and
  * isValidTelegramUsername normalize the raw input exactly as it is stored.
@@ -79,6 +96,9 @@ export const parseConfigInput = (input: ConfigInput): { error: string } | { valu
   const locale = input.locale ?? DEFAULT_LOCALE;
   if (!isLocale(locale)) return { error: LOCALE_ERROR };
 
+  const channelLocales = parseChannelLocales(input.channelLocales);
+  if (!channelLocales) return { error: CHANNEL_LOCALES_ERROR };
+
   return {
     value: {
       enabled: input.enabled ?? true,
@@ -88,6 +108,7 @@ export const parseConfigInput = (input: ConfigInput): { error: string } | { valu
       signalRecipient: optionalText(input.signalRecipient, normalizeSignalUsername),
       telegramUsername,
       locale,
+      channelLocales,
     },
   };
 };

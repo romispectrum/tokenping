@@ -106,7 +106,7 @@ export const useNotificationConfig = () => {
       const saved = queryClient.getQueryData<ConfigsByMarket>(notificationConfigsQueryKey(userId))?.[refKey(ref)];
       const config: NotificationConfig = {
         ...(saved ?? { enabled: false, services: [], healthFactorThreshold: DEFAULT_HEALTH_FACTOR_THRESHOLD }),
-        // Alerts are sent in the language of the page the config was last saved from.
+        // The page's language: what a channel without a language of its own (an older client's save) is sent in.
         locale,
         ...updates,
         // Always the position's market, never the wallet's connected chain.

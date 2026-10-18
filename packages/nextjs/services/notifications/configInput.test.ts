@@ -10,6 +10,7 @@ const DEFAULTS = {
   signalRecipient: null,
   telegramUsername: null,
   locale: "en",
+  channelLocales: { email: null, signal: null, telegram: null },
 };
 
 const SERVICES_ERROR = "Invalid services: expected an array of email, signal, telegram";
@@ -19,6 +20,7 @@ const SIGNAL_ERROR = "Invalid Signal username for Signal notifications. Expected
 const TELEGRAM_ERROR =
   "Invalid Telegram username for Telegram notifications. Expected 4 to 32 letters, digits or underscores, e.g. alice_eth";
 const LOCALE_ERROR = "Invalid locale: expected one of en, cs";
+const CHANNEL_LOCALES_ERROR = "Invalid channelLocales: expected an object of email, signal, telegram to one of en, cs";
 
 describe("parseConfigInput", () => {
   it.each<[ConfigInput, Record<string, unknown>]>([
@@ -110,6 +112,19 @@ describe("parseConfigInput", () => {
     [{ locale: "en" }, { locale: "en" }],
     [{ locale: undefined }, {}],
     [{ locale: null }, {}],
+    // Each channel's own language: none (the row's locale) when absent or null.
+    [{ channelLocales: { signal: "cs" } }, { channelLocales: { email: null, signal: "cs", telegram: null } }],
+    [
+      { channelLocales: { email: "en", signal: null, telegram: "cs" } },
+      { channelLocales: { email: "en", signal: null, telegram: "cs" } },
+    ],
+    [
+      { locale: "cs", channelLocales: { email: "en" } },
+      { locale: "cs", channelLocales: { email: "en", signal: null, telegram: null } },
+    ],
+    [{ channelLocales: {} }, {}],
+    [{ channelLocales: null }, {}],
+    [{ channelLocales: undefined }, {}],
   ])("accepts %j as the defaults plus %j", (input, overrides) => {
     expect(parseConfigInput(input)).toStrictEqual({ value: { ...DEFAULTS, ...overrides } });
   });
@@ -196,6 +211,11 @@ describe("parseConfigInput", () => {
     ["an empty locale", { locale: "" }, LOCALE_ERROR],
     ["a non-string locale", { locale: 1 }, LOCALE_ERROR],
     ["a locale array", { locale: ["cs"] }, LOCALE_ERROR],
+    ["an unsupported channel language", { channelLocales: { email: "de" } }, CHANNEL_LOCALES_ERROR],
+    ["an upper-case channel language", { channelLocales: { telegram: "CS" } }, CHANNEL_LOCALES_ERROR],
+    ["a language for an unknown channel", { channelLocales: { sms: "en" } }, CHANNEL_LOCALES_ERROR],
+    ["channel languages as an array", { channelLocales: ["en"] }, CHANNEL_LOCALES_ERROR],
+    ["channel languages as a string", { channelLocales: "cs" }, CHANNEL_LOCALES_ERROR],
   ])("rejects %s", (_label, input, error) => {
     expect(parseConfigInput(input)).toStrictEqual({ error });
   });
@@ -244,7 +264,12 @@ describe("parseConfigInput", () => {
     expect(validateNotificationForm(form)).toBeNull();
     const payload = buildConfigUpdate({ ...form, services: ["telegram"], threshold: 1.5 });
     expect(parseConfigInput(payload)).toStrictEqual({
-      value: { ...DEFAULTS, services: ["telegram"], telegramUsername: stored },
+      value: {
+        ...DEFAULTS,
+        services: ["telegram"],
+        telegramUsername: stored,
+        channelLocales: { email: null, signal: null, telegram: "en" },
+      },
     });
   });
 
@@ -258,7 +283,7 @@ describe("parseConfigInput", () => {
     },
   );
 
-  it("reports the first problem in field order: services, threshold, email, Signal, Telegram, locale", () => {
+  it("reports the first problem in field order: services, threshold, email, Signal, Telegram, locale, channel languages", () => {
     const allBad = {
       services: ["email", "signal", "telegram"],
       healthFactorThreshold: "x",
@@ -266,6 +291,7 @@ describe("parseConfigInput", () => {
       signalRecipient: "bad",
       telegramUsername: "bad",
       locale: "de",
+      channelLocales: { email: "de" },
     };
     expect(parseConfigInput({ ...allBad, services: ["sms"] })).toStrictEqual({ error: SERVICES_ERROR });
     expect(parseConfigInput(allBad)).toStrictEqual({ error: THRESHOLD_ERROR });
@@ -285,5 +311,15 @@ describe("parseConfigInput", () => {
         telegramUsername: "alice_eth",
       }),
     ).toStrictEqual({ error: LOCALE_ERROR });
+    expect(
+      parseConfigInput({
+        ...allBad,
+        healthFactorThreshold: 2,
+        email: "a@b.co",
+        signalRecipient: "alice.42",
+        telegramUsername: "alice_eth",
+        locale: "cs",
+      }),
+    ).toStrictEqual({ error: CHANNEL_LOCALES_ERROR });
   });
 });

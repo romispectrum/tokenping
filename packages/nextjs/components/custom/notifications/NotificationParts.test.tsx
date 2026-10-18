@@ -47,6 +47,8 @@ const withStableIds = (root: ChildNode | null) => {
 };
 
 const BOT = "tokenping_bot";
+/** Signal in Czech, the rest in English: the summary names each channel's language. */
+const CHANNEL_LOCALES = { email: "en", signal: "cs", telegram: "en" } as const;
 /** The Telegram usernames that have pressed Start in the bot, as the status API answers. */
 const LINKED_USERNAMES = ["alice_eth"];
 
@@ -112,6 +114,7 @@ describe("notification settings markup", () => {
           email="me@example.com"
           signalRecipient="alice.42"
           telegramUsername="alice_eth"
+          channelLocales={CHANNEL_LOCALES}
           threshold={1.8}
           currentHealthFactor="1.20"
           showBelowThresholdWarning
@@ -129,6 +132,7 @@ describe("notification settings markup", () => {
         email=""
         signalRecipient=""
         telegramUsername="carol"
+        channelLocales={CHANNEL_LOCALES}
         threshold={1.5}
         currentHealthFactor="2.00"
         showBelowThresholdWarning={false}
@@ -145,6 +149,7 @@ describe("notification settings markup", () => {
         email="me@example.com"
         signalRecipient="alice.42"
         telegramUsername="carol"
+        channelLocales={CHANNEL_LOCALES}
         threshold={1.5}
         currentHealthFactor="2.00"
         showBelowThresholdWarning={false}
@@ -247,6 +252,7 @@ describe("notification settings parts in Czech", () => {
             email="me@example.com"
             signalRecipient="alice.42"
             telegramUsername="carol"
+            channelLocales={CHANNEL_LOCALES}
             threshold={1.8}
             currentHealthFactor="1.20"
             showBelowThresholdWarning
@@ -257,7 +263,8 @@ describe("notification settings parts in Czech", () => {
     );
     expect(text(summary.container)).toBe(
       "Nastavení upozorněníAktivní" +
-        "KanályE-mailSignalTelegramE-mailme@example.comSignal@alice.42Telegram@carolPráh1,8" +
+        "KanályE-mailSignalTelegram" +
+        "E-mailme@example.comJazyk: EnglishSignal@alice.42Jazyk: ČeštinaTelegram@carolJazyk: EnglishPráh1,8" +
         `Zatím nepropojeno: jednou stiskněte Start v @${BOT}.Otevřít @${BOT} (otevře se v nové kartě)` +
         "Pod prahem vašeho upozorněníVáš aktuální health factor (1,20) je pod vaším prahem 1,8.",
     );
@@ -276,6 +283,7 @@ describe("notification settings parts in Czech", () => {
           email="me@example.com"
           signalRecipient="alice.42"
           telegramUsername="alice_eth"
+          channelLocales={CHANNEL_LOCALES}
           threshold={1.5}
           currentHealthFactor="2.00"
           showBelowThresholdWarning={false}
@@ -286,9 +294,9 @@ describe("notification settings parts in Czech", () => {
     );
     expect(text(summary.container)).toBe(
       "KanályE-mailSignalTelegram" +
-        "E-mailme@example.comZnovu za 12 min (E-mail)" +
-        "Signal@alice.42Poslat test (Signal)" +
-        "Telegram@alice_ethPoslat test (Telegram)" +
+        "E-mailme@example.comJazyk: EnglishZnovu za 12 min (E-mail)" +
+        "Signal@alice.42Jazyk: ČeštinaPoslat test (Signal)" +
+        "Telegram@alice_ethJazyk: EnglishPoslat test (Telegram)" +
         "Práh1,5" +
         "Test pošle toto upozornění a vaši pozici tak, jak jsou teď. Jeden na kanál za 15 minut.",
     );

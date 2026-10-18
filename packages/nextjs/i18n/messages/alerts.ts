@@ -54,6 +54,8 @@ type AlertsMessages = {
   openBot: (bot: string) => string;
   telegramStatusUnknown: string;
   opensInNewTab: string;
+  // The language each channel's alerts are written in
+  channelLanguageLabels: Record<NotificationService, string>;
   // Threshold
   thresholdLabel: string;
   thresholdExactValue: string;
@@ -77,6 +79,8 @@ type AlertsMessages = {
   summaryEmail: string;
   summarySignal: string;
   summaryTelegram: string;
+  /** Read before the channel's language in the summary ("Language: English"); visually hidden. */
+  summaryLanguage: string;
   /** Under the username in the summary while it has not pressed Start. */
   summaryTelegramNotLinked: (bot: string) => string;
   summaryThreshold: string;
@@ -145,6 +149,7 @@ export const ALERTS_MESSAGES: Localized<AlertsMessages> = {
     openBot: bot => `Open @${bot}`,
     telegramStatusUnknown: "Couldn't check whether this username is linked. You can still save.",
     opensInNewTab: "(opens in a new tab)",
+    channelLanguageLabels: { email: "Email language", signal: "Signal language", telegram: "Telegram language" },
     thresholdLabel: "Health factor threshold",
     thresholdExactValue: "(exact value)",
     thresholdScale: { critical: "Critical", safe: "Safe", verySafe: "Very safe" },
@@ -175,6 +180,7 @@ export const ALERTS_MESSAGES: Localized<AlertsMessages> = {
     summaryEmail: "Email",
     summarySignal: "Signal",
     summaryTelegram: "Telegram",
+    summaryLanguage: "Language",
     summaryTelegramNotLinked: bot => `Not linked yet: press Start in @${bot} once.`,
     summaryThreshold: "Threshold",
     sendTest: "Send test",
@@ -233,6 +239,11 @@ export const ALERTS_MESSAGES: Localized<AlertsMessages> = {
     openBot: bot => `Otevřít @${bot}`,
     telegramStatusUnknown: "Nepodařilo se ověřit, jestli je toto jméno propojené. Uložit můžete i tak.",
     opensInNewTab: "(otevře se v nové kartě)",
+    channelLanguageLabels: {
+      email: "Jazyk e-mailů",
+      signal: "Jazyk zpráv na Signalu",
+      telegram: "Jazyk zpráv na Telegramu",
+    },
     thresholdLabel: "Prahová hodnota health factoru",
     thresholdExactValue: "(přesná hodnota)",
     thresholdScale: { critical: "Kritický", safe: "Bezpečný", verySafe: "Velmi bezpečný" },
@@ -268,6 +279,7 @@ export const ALERTS_MESSAGES: Localized<AlertsMessages> = {
     summaryEmail: "E-mail",
     summarySignal: "Signal",
     summaryTelegram: "Telegram",
+    summaryLanguage: "Jazyk",
     summaryTelegramNotLinked: bot => `Zatím nepropojeno: jednou stiskněte Start v @${bot}.`,
     summaryThreshold: "Práh",
     sendTest: "Poslat test",

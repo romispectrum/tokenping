@@ -21,9 +21,13 @@ export type NotificationConfig = {
   signalRecipient?: string;
   /** Telegram username the alert goes to (e.g. alice_eth, lowercased, stored without @). */
   telegramUsername?: string;
-  /** The language the alert is sent in: the site language it was saved from. English when absent (older rows). */
+  /** The site language the alert was last saved from. A channel without its own language is sent in this one. */
   locale?: Locale;
+  /** The language each channel's alerts are sent in. Only set for the channels that have one. */
+  channelLocales?: ChannelLocales;
 };
+
+export type ChannelLocales = Partial<Record<NotificationService, Locale>>;
 
 /** GET /api/telegram/status response: whether the username has pressed Start in the bot. */
 export type TelegramUsernameStatus = {

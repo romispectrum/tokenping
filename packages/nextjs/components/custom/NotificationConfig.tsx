@@ -20,6 +20,7 @@ import {
   type NotificationFormField,
   type NotificationFormState,
   buildConfigUpdate,
+  channelLocaleOf,
   configToFormState,
   getNotificationFormErrors,
   needsErrorSummary,
@@ -27,10 +28,12 @@ import {
 } from "~~/components/custom/notifications/notificationForm";
 import { Button, LiveRegion } from "~~/components/ui";
 import type { MarketId } from "~~/config/aaveConfig";
+import { NOTIFICATION_SERVICES } from "~~/constants/notifications";
 import { useAccess } from "~~/hooks/custom/useAccess";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
 import { useNotificationTests } from "~~/hooks/custom/useNotificationTests";
 import { useLocale } from "~~/i18n/LocaleProvider";
+import type { Locale } from "~~/i18n/locales";
 import { ALERTS_MESSAGES, requestErrorMessage } from "~~/i18n/messages/alerts";
 import { TestSendError } from "~~/services/notifications/notificationTestClient";
 import type { NotificationService } from "~~/types/notifications";
@@ -66,6 +69,11 @@ const NotificationSettings = ({
   const config = getConfig(marketRef);
   // What the summary shows. Editing works on a draft copy, so Cancel only has to drop the draft.
   const saved = configToFormState(config);
+  /** Every channel's language, the page's where none was picked: what the selects and the summary show. */
+  const channelLocalesOf = (form: NotificationFormState) =>
+    Object.fromEntries(
+      NOTIFICATION_SERVICES.map(channel => [channel, channelLocaleOf(form, channel, locale)]),
+    ) as Record<NotificationService, Locale>;
 
   const [draft, setDraft] = useState(EMPTY_FORM_STATE);
   const [isEditing, setIsEditing] = useState(false);
@@ -136,6 +144,7 @@ const NotificationSettings = ({
       email={saved.email}
       signalRecipient={saved.signalRecipient}
       telegramUsername={saved.telegramUsername}
+      channelLocales={channelLocalesOf(saved)}
       threshold={saved.threshold}
       currentHealthFactor={currentHealthFactor}
       showBelowThresholdWarning={saved.enabled && isBelowThreshold(currentHealthFactor, saved.threshold)}
@@ -212,7 +221,7 @@ const NotificationSettings = ({
     setErrorSummaryRequest(0);
 
     try {
-      await updateConfig(marketRef, buildConfigUpdate(draft));
+      await updateConfig(marketRef, buildConfigUpdate(draft, locale));
       notification.success(t.alertSaved);
       setAnnouncement(t.alertSaved);
       // Save goes away with the form: the attribution prompt takes focus if it opens, otherwise Edit alert does.
@@ -288,12 +297,16 @@ const NotificationSettings = ({
             email={draft.email}
             signalRecipient={draft.signalRecipient}
             telegramUsername={draft.telegramUsername}
+            channelLocales={channelLocalesOf(draft)}
             emailError={errorFor("email")}
             signalError={errorFor("signalRecipient")}
             telegramError={errorFor("telegram")}
             onEmailChange={email => updateDraft({ email })}
             onSignalRecipientChange={signalRecipient => updateDraft({ signalRecipient })}
             onTelegramUsernameChange={telegramUsername => updateDraft({ telegramUsername })}
+            onChannelLocaleChange={(channel, channelLocale) =>
+              setDraft(prev => ({ ...prev, channelLocales: { ...prev.channelLocales, [channel]: channelLocale } }))
+            }
           />
           <ThresholdField
             threshold={draft.threshold}

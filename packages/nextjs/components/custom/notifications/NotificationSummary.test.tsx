@@ -33,6 +33,7 @@ const renderSummary = (props: Partial<SummaryProps> = {}) =>
       email="me@example.com"
       signalRecipient="alice.42"
       telegramUsername="alice_eth"
+      channelLocales={{ email: "en", signal: "en", telegram: "en" }}
       threshold={1.5}
       currentHealthFactor="2.00"
       showBelowThresholdWarning={false}

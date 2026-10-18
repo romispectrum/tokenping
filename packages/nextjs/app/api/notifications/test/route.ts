@@ -2,7 +2,8 @@
  * GET  /api/notifications/test?userId=0x...: when each channel's next test message is allowed, as
  *      `{ email, signal, telegram }`, each an ISO time or null when a test can be sent now.
  * POST /api/notifications/test { userId, chainId, market, channel }: sends one test message on `channel` for the
- *      saved alert in that market, with the alert as saved and the position as it is right now.
+ *      saved alert in that market, with the alert as saved and the position as it is right now, in the language
+ *      the alert uses for that channel.
  *
  * The recipient always comes from the saved alert, never from the request, so the button cannot be used to message
  * an arbitrary address. One test per wallet and channel every TEST_SEND_COOLDOWN_MINUTES, enforced by the database
@@ -31,7 +32,7 @@ import { INVALID_MARKET, parseMarket } from "~~/services/api/server/market";
 import {
   type NotificationConfigRow,
   findConfigForMarket,
-  rowLocale,
+  rowChannelLocale,
   userIdForms,
 } from "~~/services/notifications/configRepository";
 import { ALERT_SENDERS } from "~~/services/notifications/runNotificationCheck";
@@ -108,7 +109,7 @@ export async function POST(request: Request) {
     }
 
     try {
-      const locale = rowLocale(config);
+      const locale = rowChannelLocale(config, channel);
       const known = resolveMarket(chainId, market);
       const message = buildTestMessage({
         // The name when the position read fails (the snapshot names the market otherwise).
