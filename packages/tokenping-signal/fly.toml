@@ -8,6 +8,8 @@ primary_region = 'iad'
 
 [build]
 
+# SIGNAL_API_TOKEN is a secret (`fly secrets set SIGNAL_API_TOKEN=...`), never an [env] value. Without it the
+# machine refuses to start. See docs/signal-server-fly.md.
 [env]
   MODE = 'normal'
 
@@ -16,6 +18,7 @@ primary_region = 'iad'
   destination = '/home/.local/share/signal-cli'
   initial_size = '1gb'
 
+# 8080 is Caddy, which checks the token. signal-cli-rest-api itself listens on 8081, which Fly does not route.
 [http_service]
   internal_port = 8080
   force_https = true
@@ -27,6 +30,7 @@ primary_region = 'iad'
     timeout = '10s'
     grace_period = '30s'
     method = 'GET'
+    # The one route Caddy serves without the token.
     path = '/v1/health'
 
 [[vm]]

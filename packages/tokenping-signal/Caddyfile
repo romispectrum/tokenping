@@ -1,0 +1,33 @@
+# Public front door of the relay. signal-cli-rest-api itself has no auth, so every route except the
+# health check needs "Authorization: Bearer <SIGNAL_API_TOKEN>". entrypoint.sh refuses to start
+# without a token, so {$SIGNAL_API_TOKEN} is never empty here.
+{
+	admin off
+	persist_config off
+	auto_https off
+}
+
+:8080 {
+	# Fly's health check (fly.toml) calls this without the token. Rewritten so that a path which only
+	# normalizes to /v1/health cannot reach any other route.
+	@health {
+		method GET
+		path /v1/health
+	}
+	handle @health {
+		rewrite * /v1/health
+		reverse_proxy 127.0.0.1:8081
+	}
+
+	@authorized header Authorization "Bearer {$SIGNAL_API_TOKEN}"
+	handle @authorized {
+		reverse_proxy 127.0.0.1:8081 {
+			header_up -Authorization
+		}
+	}
+
+	handle {
+		header WWW-Authenticate Bearer
+		respond 401
+	}
+}

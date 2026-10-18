@@ -8,6 +8,7 @@
  * Required environment variables:
  *   SIGNAL_API_URL:       Base URL of the signal-cli-rest-api container, e.g. https://signal.example.com
  *   SIGNAL_SENDER_NUMBER: Registered sender phone number in E.164 format, e.g. +14155550123
+ *   SIGNAL_API_TOKEN:     Shared secret the relay's proxy requires as "Authorization: Bearer <token>"
  *
  * Recipient format:
  *   Users provide their Signal username (e.g. "alice.42" or "@alice.42").
@@ -46,15 +47,19 @@ export async function sendSignalMessage({
 
   const apiUrl = process.env.SIGNAL_API_URL?.replace(/\/$/, "");
   const sender = process.env.SIGNAL_SENDER_NUMBER?.trim();
+  const token = process.env.SIGNAL_API_TOKEN?.trim();
 
-  if (!apiUrl || !sender) {
-    return { success: false, error: "Signal service not configured (SIGNAL_API_URL or SIGNAL_SENDER_NUMBER missing)" };
+  if (!apiUrl || !sender || !token) {
+    return {
+      success: false,
+      error: "Signal service not configured (SIGNAL_API_URL, SIGNAL_SENDER_NUMBER or SIGNAL_API_TOKEN missing)",
+    };
   }
 
   try {
     const response = await fetch(`${apiUrl}/v2/send`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({
         message,
         number: sender,
