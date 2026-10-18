@@ -50,6 +50,7 @@ describe("/privacy", () => {
 
     expect(processorNames()).toEqual([
       "Vercel",
+      "Vercel Web Analytics",
       "Supabase",
       "Resend",
       "Fly.io (our Signal relay)",

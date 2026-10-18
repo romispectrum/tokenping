@@ -59,6 +59,7 @@ describe("/cz/ochrana-soukromi", () => {
     ).toBeTruthy();
     expect(processorNames()).toEqual([
       "Vercel",
+      "Vercel Web Analytics",
       "Supabase",
       "Resend",
       "Fly.io (náš přenosový server pro Signal)",

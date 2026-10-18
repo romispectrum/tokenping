@@ -3,6 +3,7 @@ import { Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import "@rainbow-me/rainbowkit/styles.css";
 import "@scaffold-ui/components/styles.css";
+import { Analytics } from "@vercel/analytics/next";
 import type { Viewport } from "next";
 import { ScaffoldEthAppWithProviders } from "~~/components/ScaffoldEthAppWithProviders";
 import { ThemeProvider } from "~~/components/ThemeProvider";
@@ -69,6 +70,9 @@ export const rootDocument = ({ locale, children }: RootDocumentProps) => (
           <ScaffoldEthAppWithProviders>{children}</ScaffoldEthAppWithProviders>
         </LocaleProvider>
       </ThemeProvider>
+      {/* Vercel Web Analytics: cookieless page counts (see the privacy page). The IPFS build has no Vercel endpoint
+          to report to, so it is left out there; in development it only logs to the console. */}
+      {process.env.NEXT_PUBLIC_IPFS_BUILD !== "true" && <Analytics />}
     </body>
   </html>
 );
