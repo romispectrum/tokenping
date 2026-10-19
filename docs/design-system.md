@@ -100,7 +100,9 @@ go smaller. A home link carries the name (`aria-label="Tokenping home"`) and the
 rotate, recolour the square, shadow or animate it; the wordmark may take `text-brand-violet` or `text-brand-pink` on
 a light marketing surface. The square's gradient is logo artwork and does not count as an accent. Clear space: half
 the lockup height, a quarter of the symbol height. The favicon, the PNG icons and the social cards are generated
-from the same artwork (`components/brand/logoArt.ts`).
+from the same artwork (`components/brand/logoArt.ts`). `app/favicon.ico` (16, 32 and 48px, for Safari and search
+results) is the one static copy: after changing the artwork, rebuild it from `/logo.png` with
+`magick logo.png -filter Lanczos -define icon:auto-resize=48,32,16 app/favicon.ico`.
 
 ## Voice
 
