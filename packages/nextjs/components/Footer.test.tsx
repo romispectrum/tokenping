@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { arbitrum, hardhat } from "viem/chains";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Footer } from "~~/components/Footer";
@@ -37,6 +37,30 @@ describe("Footer", () => {
     expect(html).not.toContain('class="truncate"');
     expect(html).not.toContain('data-stub="faucet"');
     expect(html).toMatchSnapshot();
+  });
+
+  it("shows the donation name and address, and the copy button copies the full address", async () => {
+    const address = "0x4f57c97f76E8d1C889eaA74A02E150BE1e0EDe25";
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    render(<Footer />);
+
+    const donate = within(screen.getByRole("region", { name: "Support Tokenping" }));
+    expect(donate.getByText("romispectrum.eth")).toBeDefined();
+    fireEvent.click(donate.getByRole("button", { name: `Copy donation address ${address}` }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledExactlyOnceWith(address));
+    expect(await donate.findByText("Address copied")).toBeDefined();
+  });
+
+  it("names the donation block in Czech", () => {
+    render(
+      <LocaleProvider locale="cs">
+        <Footer />
+      </LocaleProvider>,
+    );
+    expect(
+      within(screen.getByRole("region", { name: "Podpořte Tokenping" })).getByText("romispectrum.eth"),
+    ).toBeDefined();
   });
 
   it("shows the ETH price with two decimals when it is positive, named in words", () => {

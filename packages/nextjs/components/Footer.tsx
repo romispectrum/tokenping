@@ -5,12 +5,13 @@ import { useFetchNativeCurrencyPrice } from "@scaffold-ui/hooks";
 import { Search } from "lucide-react";
 import { hardhat } from "viem/chains";
 import { TokenpingLogo } from "~~/components/brand/TokenpingLogo";
+import { AddressChip } from "~~/components/custom/aave/AddressChip";
 import { Container } from "~~/components/home/marketingLayout";
 import { Faucet } from "~~/components/scaffold-eth";
 import { ThemeChoice } from "~~/components/ui/ThemeChoice";
 import { buttonClasses } from "~~/components/ui/buttonClasses";
 import { cx } from "~~/components/ui/classNames";
-import { EXTERNAL_LINK_REL, SOCIAL_LINKS, SOURCE_CODE_URL } from "~~/constants/links";
+import { DONATION, EXTERNAL_LINK_REL, SOCIAL_LINKS, SOURCE_CODE_URL } from "~~/constants/links";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth/useTargetNetwork";
 import { useLocale, useMessages } from "~~/i18n/LocaleProvider";
 import type { Locale } from "~~/i18n/locales";
@@ -128,6 +129,16 @@ export const Footer = () => {
             <p className="m-0 max-w-xs text-sm text-pretty text-muted-foreground">
               {t.footer.tagline(formatAlertChannelsIn(locale, "conjunction"))}
             </p>
+            {/* The name and the address as plain text with a copy button: no ENS lookup, so no RPC call per page. */}
+            <section aria-labelledby="footer-donate" className="flex flex-col gap-2">
+              <h2 id="footer-donate" className="m-0 text-sm font-medium text-foreground">
+                {t.footer.donate}
+              </h2>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <span className="font-data text-sm text-foreground">{DONATION.ens}</span>
+                <AddressChip address={DONATION.address} label={t.footer.donationAddress} />
+              </div>
+            </section>
           </div>
 
           <nav aria-label={t.footer.navLabel} className="grid grid-cols-2 gap-10 sm:grid-cols-3 lg:gap-12">
