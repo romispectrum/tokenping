@@ -108,7 +108,7 @@ const presetCollateral = (presetId: string, amount: string, price: string): Coll
 
 const EMPTY_COLLATERAL: CollateralFields = { presetId: "", name: "", amount: "", price: "", threshold: "" };
 
-/** The worked examples of the aave-liquidation-price article (fact sheet §2 examples A, B and C). */
+/** The worked examples of the aave-liquidation-price article (examples A, B and C). */
 const CALCULATOR_EXAMPLES: readonly { id: keyof Messages["examples"]; fields: CalculatorFields }[] = [
   {
     id: "one-collateral",

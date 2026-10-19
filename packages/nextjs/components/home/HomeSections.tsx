@@ -69,7 +69,7 @@ const IconDisc = ({ Icon, className }: { Icon: LucideIcon; className?: string })
 );
 
 /**
- * The push (plan §2.3): a night on a chart, then what moves a health factor in three lines, the forum accounts (each
+ * The push: a night on a chart, then what moves a health factor in three lines, the forum accounts (each
  * linked to its thread) and the liquidator's bonus. The chart carries the section; the prose is a column beside it.
  */
 export const ProblemSection = ({ locale }: LocaleProps) => {
@@ -125,8 +125,8 @@ type PlanProps = LocaleProps & {
 };
 
 /**
- * The four real steps, payment included (plan §2.7 item 5), one short card each, then the scale a threshold sits on
- * (the dashboard's own zones) with the guide that helps choose one (plan §3.9).
+ * The four real steps, payment included, one short card each, then the scale a threshold sits on
+ * (the dashboard's own zones) with the guide that helps choose one.
  */
 export const HowItWorksSection = ({ plan, locale }: PlanProps) => {
   const t = HOME_MESSAGES[locale];
@@ -211,7 +211,7 @@ export const CoverageSection = ({ locale }: LocaleProps) => {
 };
 
 /**
- * Answers "can I afford this" with the live plan, or a fallback that names no number (plan §2.7 item 6). Its call
+ * Answers "can I afford this" with the live plan, or a fallback that names no number. Its call
  * to action is inverse: the pink stays with the hero and the closing band.
  */
 export const PricingSection = ({ plan, locale }: PlanProps) => {
@@ -249,7 +249,7 @@ export const PricingSection = ({ plan, locale }: PlanProps) => {
   );
 };
 
-/** A documented limit lowers anxiety more than adjectives do (plan §2.7 item 8, product limits). One line each. */
+/** A documented limit lowers anxiety more than adjectives do. One line each. */
 export const LimitsSection = ({ locale }: LocaleProps) => {
   const t = HOME_MESSAGES[locale];
   const limits = t.limits({ minutes: CHECK_MINUTES, paymentChain: getPaymentChainName() });

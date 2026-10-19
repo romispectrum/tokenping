@@ -10,7 +10,7 @@ import { formatAlertChannelsIn, getAlertChannelNames } from "~~/services/marketi
 import type { AlertPlan } from "~~/services/marketing/alertPlan";
 import { ORGANIZATION_ID, SITE_NAME, absoluteUrl, needsAbsoluteTitle } from "~~/utils/seo";
 
-// Copy and data for the homepage (marketing plan §2) and the /aave shell, per language (the words are in
+// Copy and data for the homepage and the /aave shell, per language (the words are in
 // i18n/messages/home). Everything that depends on the deployment (channels, networks, price, payment contract) is
 // derived here, so the visible text, the metadata and the JSON-LD cannot disagree.
 
@@ -26,7 +26,7 @@ export const getChannelBadgeNames = (locale: Locale = DEFAULT_LOCALE) =>
     HOME_MESSAGES[locale].channelBadge(locale === "cs" && name === "email" ? "e-mail" : name),
   );
 
-/** Headline A of the marketing plan (§2.1), in its Telegram variant once the bot is configured. */
+/** The homepage headline, in its Telegram variant once the bot is configured. */
 export const getHomeHeadline = (locale: Locale = DEFAULT_LOCALE) =>
   HOME_MESSAGES[locale].headline(formatAlertChannelsIn(locale, "conjunction"));
 
@@ -74,7 +74,7 @@ export const getPublishedPost = (key: string, locale: Locale = DEFAULT_LOCALE) =
   return post && isPublished(post) ? post : undefined;
 };
 
-/** "From the blog" on the homepage, by key: the hub, the alert how-to and the safe-HF guide (plan §2.7, §3.9). */
+/** "From the blog" on the homepage, by key: the hub, the alert how-to and the safe-HF guide. */
 export const HOME_BLOG_SLUGS = ["aave-health-factor", "aave-health-factor-alert-setup", "safe-aave-health-factor"];
 
 /** Forum threads named in "The problem, named" (marketing market.md §B.4), each linked from its own mention. */
@@ -107,7 +107,7 @@ export const getAlertPlanOffer = (plan: AlertPlan | null, locale: Locale = DEFAU
   };
 };
 
-/** SoftwareApplication for the homepage (marketing plan §4.4). Never aggregateRating: there are no reviews. */
+/** SoftwareApplication for the homepage. Never aggregateRating: there are no reviews. */
 export const softwareApplicationJsonLd = (plan: AlertPlan | null, locale: Locale = DEFAULT_LOCALE) => {
   const offer = getAlertPlanOffer(plan, locale);
   return {

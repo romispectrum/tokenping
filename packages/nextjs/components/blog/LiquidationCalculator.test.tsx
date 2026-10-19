@@ -248,7 +248,7 @@ describe("LiquidationCalculator", () => {
       description: "The health factor gets back to 1.00 if WETH rises 1.8% from $1,420.00, other prices unchanged.",
     });
 
-    // Two collaterals at §4.4's $1,420 ETH: no "falls together" row once the position is already liquidatable.
+    // Two collaterals at the $1,420 ETH example: no "falls together" row once the position is already liquidatable.
     loadExample("10 WETH + 0.2 WBTC, 20,000 USDC debt");
     type(group("Collateral 1").getByLabelText("Price (USD)"), "1420");
     type(group("Collateral 2").getByLabelText("Price (USD)"), "50000");

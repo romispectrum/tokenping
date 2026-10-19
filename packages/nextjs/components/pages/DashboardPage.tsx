@@ -23,7 +23,7 @@ export const dashboardMetadata = (locale: Locale) => {
   });
 };
 
-// In-app links from the marketing plan §3.9: threshold choice → the safe-HF guide, alerts → the setup guide.
+// In-app links: threshold choice → the safe-HF guide, alerts → the setup guide.
 const GUIDE_LINKS = [
   { key: "safe-aave-health-factor", label: "guideThreshold" },
   { key: "aave-health-factor-alert-setup", label: "guideAlerts" },

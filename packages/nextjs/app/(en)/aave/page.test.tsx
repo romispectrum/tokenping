@@ -29,7 +29,7 @@ afterEach(() => {
 });
 
 describe("Aave page metadata", () => {
-  it("has its own title, description and self canonical (marketing plan §4.2)", async () => {
+  it("has its own title, description and self canonical", async () => {
     const { metadata } = await loadPage();
 
     expect(metadata.title).toBe("Aave V3 and V4 positions and health factor");

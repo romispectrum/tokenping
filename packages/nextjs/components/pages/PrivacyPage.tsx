@@ -46,7 +46,7 @@ const PolicySection = ({ title, children }: PolicySectionProps) => (
 );
 
 /**
- * Plain-language data page, written from the code (marketing product facts §7, §10.9). It must not call the product
+ * Plain-language data page, written from the code. It must not call the product
  * "private" or "secure": settings are tied to a wallet address without a wallet-ownership check yet, so the config
  * and Telegram link reads answer anyone who sends an address, and writes only check that address's paid access.
  */

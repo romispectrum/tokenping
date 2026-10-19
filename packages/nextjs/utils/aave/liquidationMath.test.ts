@@ -24,7 +24,7 @@ import {
   weightedCollateralValue,
 } from "~~/utils/aave/liquidationMath";
 
-// Worked examples from the fact sheet (aave-facts.md §2, §4.4, §5.2, §6.1) and the aave-liquidation-price article.
+// Worked examples from the blog's Aave articles, aave-liquidation-price included.
 // Prices are the illustrative round numbers those use; thresholds are Ethereum Core / Arbitrum values read 14 Oct 2026.
 const USDC_DEBT = (amount: number) => ({ amount, price: 1 });
 
@@ -87,12 +87,12 @@ describe("health factor (Σ collateral × LT ÷ debt)", () => {
     expect(formatHealthFactor(healthFactor(at(EXAMPLE_C, [0.88])))).toBe("1.144");
   });
 
-  it("liquidation examples (§4.4): ETH $1,420 → HF 0.982, ETH $1,330 → HF 0.920, both liquidatable", () => {
+  it("liquidation examples: ETH $1,420 → HF 0.982, ETH $1,330 → HF 0.920, both liquidatable", () => {
     const at1420 = healthFactor(at(EXAMPLE_A, [1420]));
     const at1330 = healthFactor(at(EXAMPLE_A, [1330]));
     expect(at1420).toBeCloseTo(0.98216, 4);
     expect(formatHealthFactor(at1420)).toBe("0.982");
-    expect(formatHealthFactor(at1330)).toBe("0.919"); // 0.91991…: truncated below 1, the fact sheet rounds to 0.920
+    expect(formatHealthFactor(at1330)).toBe("0.919"); // 0.91991…: truncated below 1, where rounding would give 0.920
     expect(at1330).toBeCloseTo(0.92, 3);
     expect(isLiquidatable(at1420)).toBe(true);
     expect(isLiquidatable(at1330)).toBe(true);

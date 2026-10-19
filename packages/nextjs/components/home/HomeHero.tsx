@@ -79,7 +79,7 @@ const ChannelBadges = ({ locale }: { locale: Locale }) => (
 );
 
 /**
- * Product evidence allowed today (marketing plan §2.6): the exact message, built by the code that sends it. It is
+ * Product evidence: the exact message, built by the code that sends it. It is
  * the hero's visual, an opaque inner panel on the glass (never a nested card), so muted text is fine inside it.
  */
 const ExampleAlert = ({ locale }: { locale: Locale }) => {
@@ -104,7 +104,7 @@ const ExampleAlert = ({ locale }: { locale: Locale }) => {
 
 /**
  * Eyebrow, headline A, subhead S2 and the primary action on the left; the example alert, the network logos and the
- * channel badges on the right from lg, under them before (marketing plan §2.1 to 2.2, §2.6, §2.7). On a phone the
+ * channel badges on the right from lg, under them before. On a phone the
  * headline and the primary action stay in the first screen, the panel follows the microcopy.
  *
  * Layers, back to front: the lavender wash, the glow anchored to the card's bottom-right corner (the page's first of

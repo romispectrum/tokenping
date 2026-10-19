@@ -26,8 +26,8 @@ export const homeMetadata = (locale: Locale) =>
     absoluteTitle: true,
   });
 
-// Proof slots (user counts, testimonials, alert stories, partner logos) stay out until real, dated proof exists
-// (marketing plan §2.6). The example alert is product evidence, not proof of use: it is the hero's right column.
+// Proof slots (user counts, testimonials, alert stories, partner logos) stay out until real, dated proof exists.
+// The example alert is product evidence, not proof of use: it is the hero's right column.
 //
 // Signature budget: the hero wash and the questions wash (never adjacent), two glows (the hero card and the closing
 // band, never in one view), one grain card (the hero) and the closing band's grain, a divider at each of the four

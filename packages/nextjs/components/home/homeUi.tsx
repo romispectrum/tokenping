@@ -124,7 +124,7 @@ export const DashboardCta = ({ locale, plan, secondary, align = "center" }: Dash
         align === "start" && "lg:text-left",
       )}
     >
-      {/* Says what the button does before the click, and what alerts cost (marketing plan §2.5). */}
+      {/* Says what the button does before the click, and what alerts cost. */}
       {HOME_MESSAGES[locale].dashboardCtaMicrocopy(formatAlertPrice(plan, locale))}
     </p>
   </div>

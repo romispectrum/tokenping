@@ -17,8 +17,7 @@ export const ORGANIZATION_ID = `${SITE_URL}/#organization`;
 export const WEBSITE_ID = `${SITE_URL}/#website`;
 /**
  * Profiles that identify the Organization (the highest-value JSON-LD field for entity resolution). The GitHub repo
- * (https://github.com/romispectrum/tokenping) joins once its README describes Tokenping instead of Scaffold-ETH 2
- * (marketing plan §4.4).
+ * (https://github.com/romispectrum/tokenping) joins once the repository is public.
  */
 export const SAME_AS = [SOCIAL_LINKS.x, SOCIAL_LINKS.telegram];
 /** 512x512 PNG of the Tokenping mark, served by app/logo.png/route.tsx. */
