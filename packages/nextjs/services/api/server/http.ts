@@ -1,13 +1,21 @@
 import { NextResponse } from "next/server";
 import "server-only";
-import { getErrorMessage } from "~~/utils/errors";
 
 export const MISSING_USER_ID = "Missing or invalid userId";
 
+export const INTERNAL_ERROR = "Something went wrong. Please try again.";
+
 export const jsonError = (message: string, status: number) => NextResponse.json({ error: message }, { status });
 
-/** 500 carrying the thrown error's message, or "Unknown error". */
-export const internalError = (error: unknown) => jsonError(getErrorMessage(error), 500);
+/**
+ * 500 with a generic `message`; the error itself goes to the server log only. A Supabase, RPC or provider message can
+ * name tables, columns, hosts or settings, so it never reaches the caller. `logPrefix` names the route, e.g.
+ * "PUT /api/notifications/config".
+ */
+export const internalError = (logPrefix: string, error: unknown, message = INTERNAL_ERROR) => {
+  console.error(`${logPrefix}: failed`, error);
+  return jsonError(message, 500);
+};
 
 /** The JSON body when it is an object; malformed JSON, null, arrays and primitives read as {}. */
 export const readJsonObject = async (request: Request): Promise<Record<string, unknown>> => {

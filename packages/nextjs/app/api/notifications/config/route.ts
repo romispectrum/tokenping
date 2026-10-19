@@ -25,6 +25,10 @@ import {
 
 type ConfigBody = ConfigInput & { userId?: unknown; chainId?: unknown; market?: unknown };
 
+/** Code and message only: a constraint violation's `details` repeat the row, with its email and usernames. */
+const logDatabaseError = (logPrefix: string, { code, message }: { code?: string; message: string }) =>
+  console.error(`${logPrefix}: database error`, { code, message });
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -50,7 +54,7 @@ export async function GET(request: Request) {
     return NextResponse.json(Object.fromEntries(rows.map(row => [rowMarketKey(row), rowToConfig(row)])));
   } catch (e) {
     // Also answers failed Supabase reads, which the repository throws.
-    return internalError(e);
+    return internalError("GET /api/notifications/config", e, "Could not load your alerts. Please try again.");
   }
 }
 
@@ -75,11 +79,14 @@ export async function PUT(request: Request) {
 
     const forms = userIdForms(userId);
     const error = await saveConfig(forms, toConfigRow(forms.normalized, { chainId, market }, parsed.value));
-    if (error) return jsonError(error.message, 502);
+    if (error) {
+      logDatabaseError("PUT /api/notifications/config", error);
+      return jsonError("Could not save the alert. Please try again.", 502);
+    }
 
     return NextResponse.json({ success: true });
   } catch (e) {
-    return internalError(e);
+    return internalError("PUT /api/notifications/config", e, "Could not save the alert. Please try again.");
   }
 }
 
@@ -100,10 +107,13 @@ export async function DELETE(request: Request) {
     // Deletes both user id forms, so the row goes whether it was stored checksummed or lowercase.
     const forms = userIdForms(userId);
     const error = await deleteConfigs(forms, { chainId, market });
-    if (error) return jsonError(error.message, 502);
+    if (error) {
+      logDatabaseError("DELETE /api/notifications/config", error);
+      return jsonError("Could not delete the alert. Please try again.", 502);
+    }
 
     return NextResponse.json({ success: true });
   } catch (e) {
-    return internalError(e);
+    return internalError("DELETE /api/notifications/config", e, "Could not delete the alert. Please try again.");
   }
 }

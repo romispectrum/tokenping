@@ -25,6 +25,9 @@ const INVALID_MARKET = "Invalid market: expected v3 or the lowercased address of
 const TELEGRAM_ERROR =
   "Invalid Telegram username for Telegram notifications. Expected 4 to 32 letters, digits or underscores, e.g. alice_eth";
 const CHANNEL_LOCALES_ERROR = "Invalid channelLocales: expected an object of email, signal, telegram to one of en, cs";
+const LOAD_FAILED = "Could not load your alerts. Please try again.";
+const SAVE_FAILED = "Could not save the alert. Please try again.";
+const DELETE_FAILED = "Could not delete the alert. Please try again.";
 
 const chainQuery = (uid: string, chainId: number, market = "v3") =>
   `notification_configs.select("*").eq("user_id","${uid}").eq("chain_id",${chainId}).eq("market","${market}").maybeSingle()`;
@@ -67,17 +70,27 @@ const storedRow = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+let consoleError: ReturnType<typeof vi.spyOn>;
+
 beforeEach(() => {
   fakeSupabase.reset();
   vi.mocked(isAccessActive).mockReset();
   vi.mocked(isAccessActive).mockResolvedValue(true);
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date(NOW));
+  consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
+
+/** The one error the route logged: [prefix, detail]. */
+const loggedError = () => {
+  expect(consoleError).toHaveBeenCalledOnce();
+  return consoleError.mock.calls[0];
+};
 
 describe("GET /api/notifications/config", () => {
   it.each([
@@ -231,21 +244,21 @@ describe("GET /api/notifications/config", () => {
       expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 1)]);
     });
 
-    it("returns 500 with the Supabase message when the lookup fails, without falling back", async () => {
+    it("returns a generic 500 when the lookup fails, logging the Supabase message, without falling back", async () => {
       fakeSupabase.respondByQuery({
         [chainQuery(LOWER, 1)]: { error: { message: "connection refused" } },
         [chainQuery(MIXED, 1)]: { data: storedRow({ chain_id: 1 }) },
       });
 
-      expect(await read(await get({ userId: MIXED, chainId: "1" }))).toEqual(
-        json(500, { error: "connection refused" }),
-      );
+      expect(await read(await get({ userId: MIXED, chainId: "1" }))).toEqual(json(500, { error: LOAD_FAILED }));
       expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 1)]);
+      expect(loggedError()).toEqual(["GET /api/notifications/config: failed", new Error("connection refused")]);
     });
 
-    it("returns 500 when the legacy lookup fails", async () => {
+    it("returns a generic 500 when the legacy lookup fails", async () => {
       fakeSupabase.respondByQuery({ [chainQuery(MIXED, 1)]: { error: { message: "timeout" } } });
-      expect(await read(await get({ userId: MIXED, chainId: "1" }))).toEqual(json(500, { error: "timeout" }));
+      expect(await read(await get({ userId: MIXED, chainId: "1" }))).toEqual(json(500, { error: LOAD_FAILED }));
+      expect(loggedError()[1]).toEqual(new Error("timeout"));
     });
 
     it.each([
@@ -413,33 +426,38 @@ describe("GET /api/notifications/config", () => {
       expect(await read(await get({ userId: MIXED }))).toEqual({ status: 200, text: "{}" });
     });
 
-    it("returns 500 with the Supabase message when the query fails, without the legacy query", async () => {
+    it("returns a generic 500 when the query fails, logging the Supabase message, without the legacy query", async () => {
       fakeSupabase.respondByQuery({
         [allQuery(LOWER)]: { error: { message: "timeout" } },
         [allQuery(MIXED)]: { data: [storedRow({ chain_id: 137 })] },
       });
-      expect(await read(await get({ userId: MIXED }))).toEqual(json(500, { error: "timeout" }));
+      expect(await read(await get({ userId: MIXED }))).toEqual(json(500, { error: LOAD_FAILED }));
       expect(fakeSupabase.log()).toEqual([allQuery(LOWER)]);
+      expect(loggedError()[1]).toEqual(new Error("timeout"));
     });
 
-    it("returns 500 when the legacy query fails", async () => {
+    it("returns a generic 500 when the legacy query fails", async () => {
       fakeSupabase.respondByQuery({ [allQuery(MIXED)]: { error: { message: "legacy timeout" } } });
-      expect(await read(await get({ userId: MIXED }))).toEqual(json(500, { error: "legacy timeout" }));
+      expect(await read(await get({ userId: MIXED }))).toEqual(json(500, { error: LOAD_FAILED }));
+      expect(loggedError()[1]).toEqual(new Error("legacy timeout"));
     });
   });
 
-  it("returns 500 with the thrown error message", async () => {
+  it("returns a generic 500 when something throws, logging what was thrown", async () => {
+    const thrown = new Error("SUPABASE_SERVICE_ROLE_KEY is not set.");
     fakeSupabase.respond(() => {
-      throw new Error("db down");
+      throw thrown;
     });
-    expect(await read(await get({ userId: LOWER }))).toEqual(json(500, { error: "db down" }));
+    expect(await read(await get({ userId: LOWER }))).toEqual(json(500, { error: LOAD_FAILED }));
+    expect(loggedError()).toEqual(["GET /api/notifications/config: failed", thrown]);
   });
 
-  it("returns 500 'Unknown error' for a non-Error throw", async () => {
+  it("returns a generic 500 for a non-Error throw", async () => {
     fakeSupabase.respond(() => {
       throw "nope";
     });
-    expect(await read(await get({ userId: LOWER, chainId: "1" }))).toEqual(json(500, { error: "Unknown error" }));
+    expect(await read(await get({ userId: LOWER, chainId: "1" }))).toEqual(json(500, { error: LOAD_FAILED }));
+    expect(loggedError()[1]).toBe("nope");
   });
 });
 
@@ -645,31 +663,44 @@ describe("PUT /api/notifications/config", () => {
     expect(fakeSupabase.log()).toEqual([idLookup(LOWER, 8453), insertQuery(expectedRow(LOWER))]);
   });
 
-  it("returns 502 with the lookup error instead of inserting a duplicate row", async () => {
+  it("returns a generic 502 on a failed lookup instead of inserting a duplicate row, logging the message", async () => {
     fakeSupabase.respondByQuery({ [idLookup(LOWER, 8453)]: { error: { message: "boom" } } });
-    expect(await read(await put({ userId: LOWER, chainId: 8453 }))).toEqual(json(502, { error: "boom" }));
+    expect(await read(await put({ userId: LOWER, chainId: 8453 }))).toEqual(json(502, { error: SAVE_FAILED }));
     expect(fakeSupabase.log()).toEqual([idLookup(LOWER, 8453)]);
+    expect(loggedError()).toEqual([
+      "PUT /api/notifications/config: database error",
+      { code: undefined, message: "boom" },
+    ]);
   });
 
-  it("returns 502 when the legacy-form lookup fails", async () => {
+  it("returns a generic 502 when the legacy-form lookup fails", async () => {
     fakeSupabase.respondByQuery({ [idLookup(MIXED, 8453)]: { error: { message: "legacy boom" } } });
-    expect(await read(await put({ userId: MIXED, chainId: 8453 }))).toEqual(json(502, { error: "legacy boom" }));
+    expect(await read(await put({ userId: MIXED, chainId: 8453 }))).toEqual(json(502, { error: SAVE_FAILED }));
     expect(fakeSupabase.log().some(query => query.includes(".insert("))).toBe(false);
   });
 
-  it("returns 502 with the Supabase message when the update fails", async () => {
+  it("returns a generic 502 when the update fails", async () => {
     fakeSupabase.respond((_query, formatted) => {
       if (formatted === idLookup(LOWER, 8453)) return { data: { id: "row-1" } };
       if (formatted.includes(".update(")) return { error: { message: "update failed" } };
     });
-    expect(await read(await put({ userId: LOWER, chainId: 8453 }))).toEqual(json(502, { error: "update failed" }));
+    expect(await read(await put({ userId: LOWER, chainId: 8453 }))).toEqual(json(502, { error: SAVE_FAILED }));
   });
 
-  it("returns 502 with the Supabase message when the insert fails", async () => {
-    fakeSupabase.respond((_query, formatted) =>
-      formatted.includes(".insert(") ? { error: { message: "duplicate key" } } : undefined,
-    );
-    expect(await read(await put({ userId: LOWER, chainId: 8453 }))).toEqual(json(502, { error: "duplicate key" }));
+  it("returns a generic 502 when the insert fails, logging only the code and message", async () => {
+    // A constraint violation as PostgREST returns it: `details` repeats the row, so it stays out of the log.
+    const violation = {
+      code: "23514",
+      message:
+        'new row for relation "notification_configs" violates check constraint "notification_configs_locale_check"',
+      details: "Failing row contains (row-1, 0xabab..., 8453, t, {email}, 1.5, a@b.co, ...).",
+    };
+    fakeSupabase.respond((_query, formatted) => (formatted.includes(".insert(") ? { error: violation } : undefined));
+    expect(await read(await put({ userId: LOWER, chainId: 8453 }))).toEqual(json(502, { error: SAVE_FAILED }));
+    expect(loggedError()).toEqual([
+      "PUT /api/notifications/config: database error",
+      { code: violation.code, message: violation.message },
+    ]);
   });
 
   it.each([
@@ -878,9 +909,11 @@ describe("PUT /api/notifications/config", () => {
     expect(fakeSupabase.log().at(-1)).toBe(updateQuery(row, "row-lower"));
   });
 
-  it("returns 500 when the access check throws", async () => {
-    vi.mocked(isAccessActive).mockRejectedValue(new Error("rpc down"));
-    expect(await read(await put({ userId: LOWER, chainId: 1 }))).toEqual(json(500, { error: "rpc down" }));
+  it("returns a generic 500 when the access check throws, logging the error", async () => {
+    const thrown = new Error("rpc down");
+    vi.mocked(isAccessActive).mockRejectedValue(thrown);
+    expect(await read(await put({ userId: LOWER, chainId: 1 }))).toEqual(json(500, { error: SAVE_FAILED }));
+    expect(loggedError()).toEqual(["PUT /api/notifications/config: failed", thrown]);
   });
 });
 
@@ -930,10 +963,14 @@ describe("DELETE /api/notifications/config", () => {
     expect(fakeSupabase.log()).toEqual([deleteQuery(LOWER, 10)]);
   });
 
-  it("returns 502 on the first delete error without running the second", async () => {
+  it("returns a generic 502 on the first delete error without running the second, logging the message", async () => {
     fakeSupabase.respondByQuery({ [deleteQuery(LOWER, 10)]: { error: { message: "first failed" } } });
-    expect(await read(await del({ userId: MIXED, chainId: 10 }))).toEqual(json(502, { error: "first failed" }));
+    expect(await read(await del({ userId: MIXED, chainId: 10 }))).toEqual(json(502, { error: DELETE_FAILED }));
     expect(fakeSupabase.log()).toEqual([deleteQuery(LOWER, 10)]);
+    expect(loggedError()).toEqual([
+      "DELETE /api/notifications/config: database error",
+      { code: undefined, message: "first failed" },
+    ]);
   });
 
   it.each([
@@ -971,8 +1008,15 @@ describe("DELETE /api/notifications/config", () => {
     expect(fakeSupabase.log()).toEqual([deleteQuery(LOWER, chainId, market)]);
   });
 
-  it("returns 502 when the legacy delete fails", async () => {
+  it("returns a generic 502 when the legacy delete fails", async () => {
     fakeSupabase.respondByQuery({ [deleteQuery(MIXED, 10)]: { error: { message: "second failed" } } });
-    expect(await read(await del({ userId: MIXED, chainId: 10 }))).toEqual(json(502, { error: "second failed" }));
+    expect(await read(await del({ userId: MIXED, chainId: 10 }))).toEqual(json(502, { error: DELETE_FAILED }));
+  });
+
+  it("returns a generic 500 when the access check throws, logging the error", async () => {
+    const thrown = new Error("rpc down");
+    vi.mocked(isAccessActive).mockRejectedValue(thrown);
+    expect(await read(await del({ userId: LOWER, chainId: 1 }))).toEqual(json(500, { error: DELETE_FAILED }));
+    expect(loggedError()).toEqual(["DELETE /api/notifications/config: failed", thrown]);
   });
 });
