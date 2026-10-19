@@ -1,7 +1,9 @@
+import { getAddress } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET, POST } from "~~/app/api/notifications/test/route";
 import type { MarketSnapshot } from "~~/services/aave/getHealthFactor";
 import { fakeSupabase } from "~~/services/api/server/testing/fakeSupabase";
+import { siteRequest } from "~~/services/api/server/testing/siteRequest";
 import { isAccessActive } from "~~/services/payments/checkAccess";
 
 /*
@@ -43,8 +45,10 @@ const NOW_TEXT = "Oct 14, 2026, 9:05:07 AM Coordinated Universal Time";
 const RETRY_AT = "2026-10-14T09:20:07.000Z";
 const BOT = "tokenping_bot";
 
+// The signed-in wallet, and the EIP-55 form a legacy row may be stored under.
 const LOWER = `0x${"ab".repeat(20)}`;
-const MIXED = `0x${"AB".repeat(20)}`;
+const CHECKSUMMED = getAddress(LOWER);
+const OTHER_WALLET = `0x${"cd".repeat(20)}`;
 // Ethereum's Lido Spoke as a market id.
 const LIDO_SPOKE = "0xe1900480ac69f0b296841cd01cc37546d92f35cd";
 const INVALID_MARKET = "Invalid market: expected v3 or the lowercased address of an Aave V3 Pool or V4 Spoke";
@@ -92,11 +96,12 @@ const EXPECTED_TEXT =
   "That is below your threshold, so the next check sends a real alert.\n\n" +
   `Checked every 5 minutes. Sent at: ${NOW_TEXT}`;
 
-const VALID_BODY = { userId: LOWER, chainId: 8453, market: "v3", channel: "email" };
+const VALID_BODY = { chainId: 8453, market: "v3", channel: "email" };
 
-const get = (query: string) => GET(new Request(`${BASE_URL}${query}`));
-const post = (body: unknown) =>
-  POST(new Request(BASE_URL, { method: "POST", body: typeof body === "string" ? body : JSON.stringify(body) }));
+// Requests from the site's own page, signed in as `wallet` (LOWER unless a test says otherwise).
+const get = (query = "", wallet: string | null = LOWER) => GET(siteRequest(`${BASE_URL}${query}`, { wallet }));
+const post = (body: unknown, wallet: string | null = LOWER, headers?: Record<string, string | undefined>) =>
+  POST(siteRequest(BASE_URL, { method: "POST", body, wallet, headers }));
 const read = async (res: Response) => ({ status: res.status, body: await res.json() });
 
 /** Answers the config lookup with `row` (none when null), and the Telegram chat lookup with `chatId`. */
@@ -140,13 +145,22 @@ afterEach(() => {
 });
 
 describe("GET /api/notifications/test", () => {
-  it.each([
-    ["missing", ""],
-    ["empty", "?userId="],
-    ["blank", "?userId=%20%20"],
-  ])("returns 400 for a %s userId without touching the database", async (_, query) => {
-    expect(await read(await get(query))).toEqual({ status: 400, body: { error: "Missing or invalid userId" } });
+  it("returns 401 without a session, without touching the database", async () => {
+    expect(await read(await get("", null))).toEqual({ status: 401, body: { error: "Sign in with your wallet first" } });
     expect(mocks.events).toEqual([]);
+  });
+
+  it("returns 403 when an older client's userId names another wallet", async () => {
+    expect(await read(await get(`?userId=${OTHER_WALLET}`))).toEqual({
+      status: 403,
+      body: { error: "userId does not match the signed-in wallet" },
+    });
+    expect(mocks.events).toEqual([]);
+  });
+
+  it("reads the signed-in wallet's limits, whatever wallet the session is for", async () => {
+    await get("", OTHER_WALLET);
+    expect(fakeSupabase.log()).toEqual([retryTimesQuery(OTHER_WALLET)]);
   });
 
   it("returns when each channel can send again, for the lowercased wallet, never cached and without an access check", async () => {
@@ -154,7 +168,7 @@ describe("GET /api/notifications/test", () => {
       [retryTimesQuery(LOWER)]: { data: [{ channel: "signal", sent_at: "2026-10-14T09:00:00.000Z" }] },
     });
 
-    const res = await get(`?userId=${MIXED}`);
+    const res = await get(`?userId=${CHECKSUMMED}`);
 
     expect(await read(res)).toEqual({
       status: 200,
@@ -167,18 +181,66 @@ describe("GET /api/notifications/test", () => {
 
   it("returns 500 with the reason when the limit cannot be read", async () => {
     fakeSupabase.respondByQuery({ [retryTimesQuery(LOWER)]: { error: { message: "connection refused" } } });
-    expect(await read(await get(`?userId=${LOWER}`))).toEqual({
+    expect(await read(await get())).toEqual({
       status: 500,
       body: { error: "Failed to read the test message limit: connection refused" },
     });
   });
 });
 
+describe("POST /api/notifications/test: sign-in and cross-site checks", () => {
+  it("returns 401 without a session, before checking the body, access or the database", async () => {
+    expect(await read(await post({}, null))).toEqual({
+      status: 401,
+      body: { error: "Sign in with your wallet first" },
+    });
+    expect(isAccessActive).not.toHaveBeenCalled();
+    expect(mocks.events).toEqual([]);
+  });
+
+  it("returns 403 when an older client's userId names another wallet", async () => {
+    savedAlert();
+    expect(await read(await post({ ...VALID_BODY, userId: OTHER_WALLET }))).toEqual({
+      status: 403,
+      body: { error: "userId does not match the signed-in wallet" },
+    });
+    expect(mocks.events).toEqual([]);
+    expect(nothingSent()).toBe(true);
+  });
+
+  it("accepts a userId that names the signed-in wallet", async () => {
+    savedAlert();
+    expect((await post({ ...VALID_BODY, userId: CHECKSUMMED })).status).toBe(200);
+  });
+
+  it("sends for the signed-in wallet only: another wallet's session finds no alert of LOWER's", async () => {
+    savedAlert();
+    expect((await post(VALID_BODY, OTHER_WALLET)).status).toBe(404);
+    expect(vi.mocked(isAccessActive).mock.calls).toEqual([[getAddress(OTHER_WALLET)]]);
+    expect(nothingSent()).toBe(true);
+  });
+
+  it("returns 403 for a request from another site", async () => {
+    savedAlert();
+    expect(await read(await post(VALID_BODY, LOWER, { origin: "https://evil.example" }))).toEqual({
+      status: 403,
+      body: { error: "Cross-site request refused" },
+    });
+    expect(nothingSent()).toBe(true);
+  });
+
+  it("returns 415 for a text/plain body, which a cross-site form can send", async () => {
+    savedAlert();
+    expect(await read(await post(VALID_BODY, LOWER, { "content-type": "text/plain" }))).toEqual({
+      status: 415,
+      body: { error: "Content-Type must be application/json" },
+    });
+    expect(nothingSent()).toBe(true);
+  });
+});
+
 describe("POST /api/notifications/test: input", () => {
   it.each([
-    ["no userId", { ...VALID_BODY, userId: undefined }, "Missing or invalid userId"],
-    ["a blank userId", { ...VALID_BODY, userId: "  " }, "Missing or invalid userId"],
-    ["a numeric userId", { ...VALID_BODY, userId: 42 }, "Missing or invalid userId"],
     ["no chainId", { ...VALID_BODY, chainId: undefined }, "Missing or invalid chainId"],
     ["a string chainId", { ...VALID_BODY, chainId: "8453" }, "Missing or invalid chainId"],
     ["a null chainId", { ...VALID_BODY, chainId: null }, "Missing or invalid chainId"],
@@ -200,20 +262,16 @@ describe("POST /api/notifications/test: input", () => {
     ["null", "null"],
     ["an array", JSON.stringify([VALID_BODY])],
   ])("reads %s as an empty body", async (_, body) => {
-    expect(await read(await post(body))).toEqual({ status: 400, body: { error: "Missing or invalid userId" } });
+    expect(await read(await post(body))).toEqual({ status: 400, body: { error: "Missing or invalid chainId" } });
     expect(mocks.events).toEqual([]);
   });
 
-  it("checks the fields in order: userId, chainId, market, channel", async () => {
+  it("checks the fields in order: chainId, market, channel", async () => {
     expect((await read(await post({ chainId: "x", market: "V3", channel: "sms" }))).body.error).toBe(
-      "Missing or invalid userId",
-    );
-    expect((await read(await post({ userId: LOWER, chainId: "x", market: "V3", channel: "sms" }))).body.error).toBe(
       "Missing or invalid chainId",
     );
-    expect((await read(await post({ userId: LOWER, chainId: 1, market: "V3", channel: "sms" }))).body.error).toBe(
-      INVALID_MARKET,
-    );
+    expect((await read(await post({ chainId: 1, market: "V3", channel: "sms" }))).body.error).toBe(INVALID_MARKET);
+    expect((await read(await post({ chainId: 1, market: "v3", channel: "sms" }))).body.error).toBe(INVALID_CHANNEL);
   });
 
   it("reads the V3 market when the body has none", async () => {
@@ -224,32 +282,32 @@ describe("POST /api/notifications/test: input", () => {
 });
 
 describe("POST /api/notifications/test: access and the saved alert", () => {
-  it("returns 403 without active access, checking the trimmed wallet as sent, before any database call", async () => {
+  it("returns 403 without active access, checking the signed-in wallet, before any database call", async () => {
     vi.mocked(isAccessActive).mockResolvedValue(false);
     savedAlert();
 
-    expect(await read(await post({ ...VALID_BODY, userId: `  ${MIXED} ` }))).toEqual({
+    expect(await read(await post(VALID_BODY))).toEqual({
       status: 403,
       body: { error: NO_ACCESS },
     });
-    expect(vi.mocked(isAccessActive).mock.calls).toEqual([[MIXED]]);
+    expect(vi.mocked(isAccessActive).mock.calls).toEqual([[CHECKSUMMED]]);
     expect(mocks.events).toEqual([]);
     expect(nothingSent()).toBe(true);
   });
 
   it("returns 404 when the wallet has no saved alert for the market, under either form of its id", async () => {
-    expect(await read(await post({ ...VALID_BODY, userId: MIXED }))).toEqual({
+    expect(await read(await post(VALID_BODY))).toEqual({
       status: 404,
       body: { error: "No saved alert for this market" },
     });
-    expect(fakeSupabase.log()).toEqual([configQuery(LOWER), configQuery(MIXED)]);
+    expect(fakeSupabase.log()).toEqual([configQuery(LOWER), configQuery(CHECKSUMMED)]);
     expect(mocks.rpcCalls).toEqual([]);
   });
 
   it("returns 404 for another market's alert on the same chain", async () => {
     savedAlert(storedRow({ chain_id: 1, market: "v3" }));
     expect((await post({ ...VALID_BODY, chainId: 1, market: LIDO_SPOKE })).status).toBe(404);
-    expect(fakeSupabase.log()).toEqual([configQuery(LOWER, 1, LIDO_SPOKE)]);
+    expect(fakeSupabase.log()).toEqual([configQuery(LOWER, 1, LIDO_SPOKE), configQuery(CHECKSUMMED, 1, LIDO_SPOKE)]);
   });
 
   it("returns 500 with the reason when the alert cannot be read", async () => {
@@ -327,11 +385,11 @@ describe("POST /api/notifications/test: access and the saved alert", () => {
 describe("POST /api/notifications/test: the limit", () => {
   it("claims the lowercased wallet's slot for the channel, with the 15-minute cooldown, after the recipient checks", async () => {
     fakeSupabase.respondByQuery({
-      [configQuery(MIXED)]: { data: storedRow({ user_id: MIXED }) },
+      [configQuery(CHECKSUMMED)]: { data: storedRow({ user_id: CHECKSUMMED }) },
       [chatQuery("alice_eth")]: { data: { chat_id: "123456789" } },
     });
 
-    expect((await post({ ...VALID_BODY, userId: ` ${MIXED} `, channel: "telegram" })).status).toBe(200);
+    expect((await post({ ...VALID_BODY, channel: "telegram" })).status).toBe(200);
     expect(mocks.rpcCalls).toEqual([
       {
         fn: "claim_notification_test_send",
@@ -497,9 +555,9 @@ describe("POST /api/notifications/test: sending", () => {
   });
 
   it("reads the position as the wallet id the alert is saved under", async () => {
-    fakeSupabase.respondByQuery({ [configQuery(MIXED)]: { data: storedRow({ user_id: MIXED }) } });
-    expect((await post({ ...VALID_BODY, userId: MIXED })).status).toBe(200);
-    expect(mocks.getMarketSnapshot.mock.calls).toEqual([[MIXED, 8453, "v3"]]);
+    fakeSupabase.respondByQuery({ [configQuery(CHECKSUMMED)]: { data: storedRow({ user_id: CHECKSUMMED }) } });
+    expect((await post({ ...VALID_BODY, userId: CHECKSUMMED })).status).toBe(200);
+    expect(mocks.getMarketSnapshot.mock.calls).toEqual([[CHECKSUMMED, 8453, "v3"]]);
   });
 });
 
@@ -509,7 +567,7 @@ describe("POST /api/notifications/test: giving the slot back", () => {
     claimed(true, "2026-10-14 09:05:07.123456+00");
     mocks.send.signal.mockResolvedValue({ success: false, error: "Signal relay returned 503" });
 
-    expect(await read(await post({ ...VALID_BODY, userId: MIXED, channel: "signal" }))).toEqual({
+    expect(await read(await post({ ...VALID_BODY, channel: "signal" }))).toEqual({
       status: 502,
       body: { error: "Signal relay returned 503" },
     });

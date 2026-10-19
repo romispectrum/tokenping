@@ -4,22 +4,17 @@
  * Stores the optional "How did you hear about Tokenping?" answer the settings card offers once after an alert is saved.
  * POST only, on purpose: there is no GET, and no other route reads the answers back (see attributionRepository).
  *
- * Auth model: the same paid-access gate as config writes (`isAccessActive(userId)`). Like the rest of the API it does
- * not prove the caller controls the wallet (no SIWE yet).
- *
- * Accepted risk: paying wallets are public (PaymentReceived events), so anyone can send an answer for any wallet with
- * active access. Only the first answer per wallet is kept, so a spoofed answer can never replace a real one, but it
- * can pre-empt a wallet that has not answered yet: the real answer is then dropped while the user is still thanked.
- * Latest-wins would let anyone overwrite every real answer at any time, and a cap of a few rows per wallet only means
- * a spoofer sends a few more requests, so neither helps without wallet signatures. The answers are marketing input
- * only; read them as indicative (bulk spoofing shows up as many rows with near-identical created_at).
+ * Auth model: the answer is stored for the signed-in wallet (the session cookie from Sign-in with Ethereum, 401
+ * without one), which must have the same paid access as config writes. A `userId` an older client still sends must
+ * name that wallet (403 otherwise). Only the first answer per wallet is kept, so a second browser or a second prompt
+ * never replaces it.
  *
  * Errors: the details go to the server log, never to the caller, so a response reveals nothing about the table.
  */
 import { NextResponse } from "next/server";
-import { isAddress } from "viem";
 import { requireActiveAccess } from "~~/services/api/server/access";
-import { MISSING_USER_ID, jsonError, parseUserId, readJsonObject } from "~~/services/api/server/http";
+import { jsonError, readJsonObject, rejectCrossSiteRequest } from "~~/services/api/server/http";
+import { requireSessionWallet } from "~~/services/api/server/session";
 import { parseAttributionAnswer } from "~~/services/notifications/attributionInput";
 import { canStoreAttribution, saveAttributionAnswer } from "~~/services/notifications/attributionRepository";
 
@@ -27,11 +22,13 @@ const LOG_PREFIX = "POST /api/attribution:";
 
 export async function POST(request: Request) {
   try {
+    const refused = rejectCrossSiteRequest(request);
+    if (refused) return refused;
     const body = await readJsonObject(request);
 
-    // A real address only (viem's strict check also rejects a wrong EIP-55 checksum), so nothing else is stored.
-    const userId = parseUserId(body.userId);
-    if (!userId || !isAddress(userId)) return jsonError(MISSING_USER_ID, 400);
+    const session = requireSessionWallet(request, body.userId);
+    if (session.response) return session.response;
+    const userId = session.wallet;
 
     const parsed = parseAttributionAnswer(body.answer);
     if ("error" in parsed) return jsonError(parsed.error, 400);

@@ -11,7 +11,20 @@ export type RecordedQuery = { table: string; ops: [method: string, ...args: unkn
 
 type Responder = (query: RecordedQuery, formatted: string) => FakeQueryResult | undefined;
 
-const CHAIN_METHODS = ["select", "insert", "update", "upsert", "delete", "eq", "neq", "is", "gt", "order", "range"];
+const CHAIN_METHODS = [
+  "select",
+  "insert",
+  "update",
+  "upsert",
+  "delete",
+  "eq",
+  "neq",
+  "is",
+  "gt",
+  "lt",
+  "order",
+  "range",
+];
 const TERMINAL_METHODS = ["single", "maybeSingle"];
 
 /** e.g. `notification_configs.select("*").eq("user_id","0xabc").single()` */

@@ -1,18 +1,21 @@
 /**
- * GET  /api/notifications/test?userId=0x...: when each channel's next test message is allowed, as
+ * GET  /api/notifications/test: when each of the signed-in wallet's channels can send its next test message, as
  *      `{ email, signal, telegram }`, each an ISO time or null when a test can be sent now.
- * POST /api/notifications/test { userId, chainId, market, channel }: sends one test message on `channel` for the
- *      saved alert in that market, with the alert as saved and the position as it is right now, in the language
- *      the alert uses for that channel.
+ * POST /api/notifications/test { chainId, market, channel }: sends one test message on `channel` for the signed-in
+ *      wallet's saved alert in that market, with the alert as saved and the position as it is right now, in the
+ *      language the alert uses for that channel.
+ *
+ * Both act for the wallet of the session cookie (401 without one). A `userId` an older client still sends must name
+ * that wallet (403 otherwise).
  *
  * The recipient always comes from the saved alert, never from the request, so the button cannot be used to message
  * an arbitrary address. One test per wallet and channel every TEST_SEND_COOLDOWN_MINUTES, enforced by the database
  * (claim_notification_test_send). The slot is claimed before anything else; when the send fails it is given back,
  * so a broken channel can be tried again at once.
  *
- * Responses: 200 { sentAt, retryAt }; 400 bad input or a channel the alert does not use; 403 without active access;
- * 404 no saved alert for that market; 409 a Telegram username that has not pressed Start; 429 { error, retryAt };
- * 502 the provider refused the message.
+ * Responses: 200 { sentAt, retryAt }; 400 bad input or a channel the alert does not use; 401 not signed in; 403
+ * cross-site or without active access; 404 no saved alert for that market; 409 a Telegram username that has not
+ * pressed Start; 415 not JSON; 429 { error, retryAt }; 502 the provider refused the message.
  */
 import { NextResponse } from "next/server";
 import type { Address } from "viem";
@@ -21,14 +24,14 @@ import { getTelegramBotUsername } from "~~/constants/notifications";
 import { getMarketSnapshot } from "~~/services/aave/getHealthFactor";
 import { requireActiveAccess } from "~~/services/api/server/access";
 import {
-  MISSING_USER_ID,
   internalError,
   isChainId,
   jsonError,
-  parseUserId,
   readJsonObject,
+  rejectCrossSiteRequest,
 } from "~~/services/api/server/http";
 import { INVALID_MARKET, parseMarket } from "~~/services/api/server/market";
+import { requireSessionWallet } from "~~/services/api/server/session";
 import {
   type NotificationConfigRow,
   findConfigForMarket,
@@ -68,10 +71,10 @@ const recipientFor = async (config: NotificationConfigRow, channel: Notification
 
 export async function GET(request: Request) {
   try {
-    const userId = parseUserId(new URL(request.url).searchParams.get("userId"));
-    if (!userId) return jsonError(MISSING_USER_ID, 400);
+    const session = requireSessionWallet(request, new URL(request.url).searchParams.get("userId"));
+    if (session.response) return session.response;
     // No access check, like the config read: it only says when each button can be used again.
-    return NextResponse.json(await getTestSendRetryTimes(userId), { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json(await getTestSendRetryTimes(session.wallet), { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     return internalError(e);
   }
@@ -79,9 +82,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const refused = rejectCrossSiteRequest(request);
+    if (refused) return refused;
     const body = await readJsonObject(request);
-    const userId = parseUserId(body.userId);
-    if (!userId) return jsonError(MISSING_USER_ID, 400);
+    const session = requireSessionWallet(request, body.userId);
+    if (session.response) return session.response;
+    const userId = session.wallet;
     if (!isChainId(body.chainId)) return jsonError("Missing or invalid chainId", 400);
     const market = parseMarket(body.market);
     if (market === null) return jsonError(INVALID_MARKET, 400);
