@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { SignInRequiredError } from "~~/services/api/apiClient";
 import { submitAttributionAnswer } from "~~/services/notifications/attributionClient";
 import { jsonResponse } from "~~/utils/testing/helpers";
 
@@ -15,11 +16,11 @@ afterEach(() => {
 });
 
 describe("submitAttributionAnswer", () => {
-  it("POSTs the trimmed raw address (not lowercased) and the answer as JSON to a relative URL in the browser", async () => {
+  it("POSTs only the answer as JSON to a relative URL in the browser (the session cookie names the wallet)", async () => {
     vi.stubGlobal("window", {});
     fetchMock.mockResolvedValue(jsonResponse({ success: true }));
 
-    await expect(submitAttributionAnswer("  0xAbC ", "A friend")).resolves.toBeUndefined();
+    await expect(submitAttributionAnswer("A friend")).resolves.toBeUndefined();
 
     expect(fetchMock.mock.calls).toEqual([
       [
@@ -27,7 +28,7 @@ describe("submitAttributionAnswer", () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: '{"userId":"0xAbC","answer":"A friend"}',
+          body: '{"answer":"A friend"}',
         },
       ],
     ]);
@@ -36,7 +37,7 @@ describe("submitAttributionAnswer", () => {
   it("uses NEXT_PUBLIC_APP_URL outside the browser", async () => {
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://tokenping.example");
     fetchMock.mockResolvedValue(jsonResponse({ success: true }));
-    await submitAttributionAnswer("0xabc", "X");
+    await submitAttributionAnswer("X");
     expect(fetchMock.mock.calls[0][0]).toBe("https://tokenping.example/api/attribution");
   });
 
@@ -50,6 +51,12 @@ describe("submitAttributionAnswer", () => {
   ])("throws %s on failure", async (_label, response, message) => {
     vi.stubGlobal("window", {});
     fetchMock.mockResolvedValue(response);
-    await expect(submitAttributionAnswer("0xabc", "X")).rejects.toThrow(message);
+    await expect(submitAttributionAnswer("X")).rejects.toThrow(message);
+  });
+
+  it("throws SignInRequiredError for a 401", async () => {
+    vi.stubGlobal("window", {});
+    fetchMock.mockResolvedValue(jsonResponse({ error: "Sign in with your wallet first" }, 401));
+    await expect(submitAttributionAnswer("X")).rejects.toBeInstanceOf(SignInRequiredError);
   });
 });

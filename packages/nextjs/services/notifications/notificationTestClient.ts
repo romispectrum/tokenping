@@ -1,5 +1,5 @@
 import type { MarketRef } from "~~/config/aaveConfig";
-import { apiUrl, readApiError } from "~~/services/api/apiClient";
+import { SignInRequiredError, apiError, apiUrl, readApiError } from "~~/services/api/apiClient";
 import type { NotificationService } from "~~/types/notifications";
 
 const TEST_PATH = "/api/notifications/test";
@@ -18,21 +18,25 @@ export class TestSendError extends Error {
   }
 }
 
-/** Browser client for /api/notifications/test: the "Send test" buttons in an alert's summary. */
+/** Browser client for /api/notifications/test: the "Send test" buttons in an alert's summary, for the signed-in wallet. */
 export const notificationTestClient = {
-  async getRetryTimes(userId: string): Promise<TestRetryTimes> {
-    const res = await fetch(apiUrl(`${TEST_PATH}?userId=${encodeURIComponent(userId.trim())}`), { cache: "no-store" });
-    if (!res.ok) throw new Error(await readApiError(res, "Failed to read the test message limit"));
+  async getRetryTimes(): Promise<TestRetryTimes> {
+    const res = await fetch(apiUrl(TEST_PATH), { cache: "no-store" });
+    if (!res.ok) throw await apiError(res, "Failed to read the test message limit");
     return res.json();
   },
 
-  /** Resolves with when the next test on `channel` is allowed; throws TestSendError when the server refuses. */
-  async send(userId: string, { chainId, market }: MarketRef, channel: NotificationService) {
+  /**
+   * Resolves with when the next test on `channel` is allowed; throws TestSendError when the server refuses, and
+   * SignInRequiredError without a session.
+   */
+  async send({ chainId, market }: MarketRef, channel: NotificationService) {
     const res = await fetch(apiUrl(TEST_PATH), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: userId.trim(), chainId, market, channel }),
+      body: JSON.stringify({ chainId, market, channel }),
     });
+    if (res.status === 401) throw new SignInRequiredError(await readApiError(res, "Sign in with your wallet first"));
     if (res.status === 429) {
       const body = (await res.json().catch(() => ({}))) as { error?: string; retryAt?: string };
       throw new TestSendError(body.error ?? "One test message per channel every 15 minutes", body.retryAt);

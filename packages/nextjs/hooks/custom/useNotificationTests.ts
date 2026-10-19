@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
 import type { MarketRef } from "~~/config/aaveConfig";
+import { signOutOn401, useWalletSession } from "~~/hooks/custom/useWalletSession";
 import {
   type TestRetryTimes,
   TestSendError,
@@ -20,16 +21,21 @@ const TICK_MS = 15_000;
 /**
  * The "Send test" buttons' state for the connected wallet: when each channel can be used again, read from the
  * server (which enforces the limit) and updated by every send, so a reload or another tab never shows a stale
- * button. The clock ticks while any channel is cooling down, so its button turns back on by itself.
+ * button. The clock ticks while any channel is cooling down, so its button turns back on by itself. Like the
+ * configs, nothing is read until the wallet has signed in, and a 401 marks it signed out.
  */
 export const useNotificationTests = () => {
   const { address } = useAccount();
   const queryClient = useQueryClient();
+  const { isSignedIn, markSignedOut } = useWalletSession();
   const [now, setNow] = useState(() => Date.now());
 
   const query = useQuery({
     queryKey: queryKey(address ?? ""),
-    queryFn: address ? () => notificationTestClient.getRetryTimes(address) : skipToken,
+    queryFn:
+      address && isSignedIn
+        ? () => signOutOn401(() => notificationTestClient.getRetryTimes(), markSignedOut)
+        : skipToken,
     networkMode: "always",
   });
 
@@ -59,8 +65,9 @@ export const useNotificationTests = () => {
     }));
 
   const mutation = useMutation({
-    mutationFn: ({ userId, ref, channel }: { userId: string; ref: MarketRef; channel: NotificationService }) =>
-      notificationTestClient.send(userId, ref, channel),
+    // userId names the cache the cooldown goes to; the server sends for the signed-in wallet.
+    mutationFn: ({ ref, channel }: { userId: string; ref: MarketRef; channel: NotificationService }) =>
+      signOutOn401(() => notificationTestClient.send(ref, channel), markSignedOut),
     networkMode: "always",
     onSuccess: ({ retryAt }, { userId, channel }) => {
       setNow(Date.now());

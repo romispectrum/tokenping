@@ -14,6 +14,7 @@ import {
   QrCodeIcon,
 } from "@heroicons/react/24/outline";
 import { BlockieAvatar } from "~~/components/scaffold-eth";
+import { useSignOut } from "~~/hooks/custom/useWalletSession";
 import { useCopyToClipboard, useOutsideClick } from "~~/hooks/scaffold-eth";
 import { useMessages } from "~~/i18n/LocaleProvider";
 import { COMMON_MESSAGES } from "~~/i18n/messages/common";
@@ -38,6 +39,7 @@ export const AddressInfoDropdown = ({
   blockExplorerAddressLink,
 }: AddressInfoDropdownProps) => {
   const { disconnect } = useDisconnect();
+  const signOut = useSignOut();
   const { connector } = useAccount();
   const t = useMessages(COMMON_MESSAGES).wallet;
   const checkSumAddress = getAddress(address);
@@ -128,7 +130,11 @@ export const AddressInfoDropdown = ({
             <button
               className="menu-item text-error h-8 btn-sm rounded-xl! flex gap-3 py-3"
               type="button"
-              onClick={() => disconnect()}
+              onClick={() => {
+                // The alert settings' session ends with the connection.
+                signOut();
+                disconnect();
+              }}
             >
               <ArrowLeftOnRectangleIcon className="h-6 w-4 ml-2 sm:ml-0" /> <span>{t.disconnect}</span>
             </button>
