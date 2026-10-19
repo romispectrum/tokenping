@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "~~/app/api/send-email/route";
 import { hasBearerSecret } from "~~/services/api/server/auth";
+import { INTERNAL_ERROR } from "~~/services/api/server/http";
 import { isEmailConfigured, sendEmail } from "~~/services/email/sendEmail";
 
 vi.mock("~~/services/email/sendEmail", () => ({ isEmailConfigured: vi.fn(), sendEmail: vi.fn() }));
@@ -23,14 +24,7 @@ const post = (body: unknown, headers: Record<string, string> = AUTHORIZED) =>
 const read = async (res: Response) => ({ status: res.status, text: await res.text() });
 const json = (status: number, body: unknown) => ({ status, text: JSON.stringify(body) });
 
-const jsonParseMessage = (raw: string) => {
-  try {
-    JSON.parse(raw);
-    return "";
-  } catch (e) {
-    return (e as Error).message;
-  }
-};
+let consoleError: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
   vi.stubEnv("CRON_SECRET", SECRET);
@@ -39,10 +33,12 @@ beforeEach(() => {
   vi.mocked(isEmailConfigured).mockReturnValue(true);
   vi.mocked(sendEmail).mockReset();
   vi.mocked(sendEmail).mockResolvedValue({ success: true, id: "email-1" });
+  consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.restoreAllMocks();
 });
 
 describe("POST /api/send-email auth (B3.9)", () => {
@@ -78,14 +74,12 @@ describe("POST /api/send-email auth (B3.9)", () => {
 });
 
 describe("POST /api/send-email", () => {
-  it("returns 500 with the JSON parser message for a malformed body", async () => {
-    expect(await read(await post("{"))).toEqual(json(500, { error: jsonParseMessage("{") }));
-  });
-
-  it("returns 500 for a JSON null body", async () => {
-    expect(await read(await post("null"))).toEqual(
-      json(500, { error: "Cannot destructure property 'to' of 'body' as it is null." }),
-    );
+  it.each([
+    ["a malformed body", "{"],
+    ["a JSON null body", "null"],
+  ])("returns a generic 500 for %s, logging the error", async (_label, body) => {
+    expect(await read(await post(body))).toEqual(json(500, { error: INTERNAL_ERROR }));
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith("POST /api/send-email: failed", expect.any(Error));
   });
 
   it.each([
@@ -142,8 +136,10 @@ describe("POST /api/send-email", () => {
     expect(await read(await post({ to: "a@b.co" }))).toEqual(json(status, { error }));
   });
 
-  it("returns 500 when sending throws", async () => {
-    vi.mocked(sendEmail).mockRejectedValue(new Error("socket hang up"));
-    expect(await read(await post({ to: "a@b.co" }))).toEqual(json(500, { error: "socket hang up" }));
+  it("returns a generic 500 when sending throws, logging the error", async () => {
+    const thrown = new Error("socket hang up");
+    vi.mocked(sendEmail).mockRejectedValue(thrown);
+    expect(await read(await post({ to: "a@b.co" }))).toEqual(json(500, { error: INTERNAL_ERROR }));
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith("POST /api/send-email: failed", thrown);
   });
 });

@@ -36,14 +36,11 @@ beforeEach(() => {
   fakeSupabase.reset();
   vi.mocked(isAccessActive).mockReset();
   vi.mocked(isAccessActive).mockResolvedValue(true);
-  // user_attribution is service-role only; the route refuses to try without the key.
-  vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key");
   consoleErrors = [];
   vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => void consoleErrors.push(args));
 });
 
 afterEach(() => {
-  vi.unstubAllEnvs();
   vi.restoreAllMocks();
 });
 
@@ -128,31 +125,6 @@ describe("POST /api/attribution", () => {
     const body = `{"userId":"${LOWER}","answer":"ok\\ud800"}`;
     expect(await read(await post(body))).toEqual(json(400, { error: "Answer contains invalid characters" }));
     expect(fakeSupabase.queries).toHaveLength(0);
-  });
-
-  it.each([
-    ["unset", undefined],
-    ["empty", ""],
-  ])(
-    "returns 503 and logs the cause when SUPABASE_SERVICE_ROLE_KEY is %s, without trying the insert",
-    async (_, key) => {
-      vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", key);
-      expect(await read(await post({ userId: LOWER, answer: "X" }))).toEqual(
-        json(503, { error: "Answers are not collected on this server" }),
-      );
-      expect(fakeSupabase.queries).toHaveLength(0);
-      expect(consoleErrors).toHaveLength(1);
-      expect(String(consoleErrors[0][0])).toContain("SUPABASE_SERVICE_ROLE_KEY is not set");
-    },
-  );
-
-  it("still answers 403 to a wallet without access when the key is unset", async () => {
-    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", undefined);
-    vi.mocked(isAccessActive).mockResolvedValue(false);
-    expect(await read(await post({ userId: LOWER, answer: "X" }))).toEqual(
-      json(403, { error: "Active paid access required to send an answer" }),
-    );
-    expect(consoleErrors).toEqual([]);
   });
 
   it("returns a generic 502 when the insert fails, logging only the code and message", async () => {

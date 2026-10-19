@@ -71,7 +71,8 @@ supabase db push
 Or paste `packages/supabase/migrations/20260527000000_add_telegram_integration.sql` into the Supabase SQL editor.
 Telegram needs two of them: `20260527000000_add_telegram_integration.sql` (the original tables) and
 `20261018000000_telegram_usernames.sql`, which replaces them with `telegram_chats` (username to chat id) and adds
-`notification_configs.telegram_username`. Neither needs `SUPABASE_SERVICE_ROLE_KEY`.
+`notification_configs.telegram_username`. Like every table, they are service-role only, so the deployment needs
+`SUPABASE_SERVICE_ROLE_KEY` (local development against `supabase start` does without it).
 
 ---
 

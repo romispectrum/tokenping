@@ -24,15 +24,16 @@ const read = async (res: Response) => ({ status: res.status, text: await res.tex
 
 // No `reason`: it revealed whether CRON_SECRET is configured (B3.10).
 const UNAUTHORIZED = { status: 401, text: '{"error":"Unauthorized"}' };
-const FALLBACK_WARNING = "CRON_SECRET is not set: authorized the cron run by its Vercel headers, which can be spoofed";
+const NO_SECRET_ERROR =
+  "CRON_SECRET is not set: refused the cron run. Set CRON_SECRET in the Vercel project; Vercel then sends it as the bearer.";
 
-let consoleWarn: ReturnType<typeof vi.spyOn>;
+let consoleError: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
   vi.mocked(runNotificationCheck).mockReset();
   vi.mocked(runNotificationCheck).mockResolvedValue(RESULT);
   vi.mocked(hasBearerSecret).mockClear();
-  consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -42,22 +43,14 @@ afterEach(() => {
 
 describe("GET /api/cron/notifications auth", () => {
   it.each([
-    // [label, CRON_SECRET, headers, authorized]
-    ["matching bearer", "s3cret", { authorization: "Bearer s3cret" }, true],
-    ["wrong bearer", "s3cret", { authorization: "Bearer nope" }, false],
-    ["bearer with different casing", "s3cret", { authorization: "bearer s3cret" }, false],
-    ["missing bearer", "s3cret", {}, false],
-    [
-      "Vercel headers while a secret is set",
-      "s3cret",
-      { "x-vercel-cron": "1", "user-agent": "vercel-cron/1.0" },
-      false,
-    ],
-    ["x-vercel-cron other than 1", undefined, { "x-vercel-cron": "true" }, false],
-    ["a bearer token without a secret", undefined, { authorization: "Bearer anything" }, false],
-    ["no headers and no secret", undefined, {}, false],
-  ])("%s → authorized: %s", async (_label, secret, headers, authorized) => {
-    vi.stubEnv("CRON_SECRET", secret);
+    // [label, headers, authorized]
+    ["matching bearer", { authorization: "Bearer s3cret" }, true],
+    ["wrong bearer", { authorization: "Bearer nope" }, false],
+    ["bearer with different casing", { authorization: "bearer s3cret" }, false],
+    ["missing bearer", {}, false],
+    ["Vercel cron headers without the bearer", { "x-vercel-cron": "1", "user-agent": "vercel-cron/1.0" }, false],
+  ])("with CRON_SECRET set, %s → authorized: %s", async (_label, headers, authorized) => {
+    vi.stubEnv("CRON_SECRET", "s3cret");
 
     const res = await get(headers);
 
@@ -68,7 +61,8 @@ describe("GET /api/cron/notifications auth", () => {
       expect(await read(res)).toEqual(UNAUTHORIZED);
       expect(runNotificationCheck).not.toHaveBeenCalled();
     }
-    expect(consoleWarn).not.toHaveBeenCalled();
+    // A wrong bearer is a caller's mistake, not a misconfiguration: nothing is logged.
+    expect(consoleError).not.toHaveBeenCalled();
   });
 
   it("checks the bearer with the constant-time hasBearerSecret", async () => {
@@ -77,17 +71,23 @@ describe("GET /api/cron/notifications auth", () => {
     expect(hasBearerSecret).toHaveBeenCalledExactlyOnceWith(expect.any(Request), "s3cret");
   });
 
+  // Any client can send the Vercel headers, so without the secret no request runs the check.
   it.each([
     ["x-vercel-cron: 1", undefined, { "x-vercel-cron": "1" }],
-    ["a vercel-cron user agent (any case)", undefined, { "user-agent": "Mozilla Vercel-Cron/1.0" }],
-    ["x-vercel-cron: 1 (an empty secret counts as none)", "", { "x-vercel-cron": "1" }],
-  ])("still accepts %s without a secret, warning every time", async (_label, secret, headers) => {
+    ["a vercel-cron user agent", undefined, { "user-agent": "vercel-cron/1.0" }],
+    ["both Vercel headers", undefined, { "x-vercel-cron": "1", "user-agent": "vercel-cron/1.0" }],
+    ["a bearer token", undefined, { authorization: "Bearer anything" }],
+    ["an empty bearer against an empty secret", "", { authorization: "Bearer " }],
+    ["no headers", undefined, {}],
+  ])("without CRON_SECRET, refuses %s and logs why every time", async (_label, secret, headers) => {
     vi.stubEnv("CRON_SECRET", secret);
 
-    expect(await read(await get(headers))).toEqual({ status: 200, text: JSON.stringify(RESULT) });
-    expect(await read(await get(headers))).toEqual({ status: 200, text: JSON.stringify(RESULT) });
+    expect(await read(await get(headers))).toEqual(UNAUTHORIZED);
+    expect(await read(await get(headers))).toEqual(UNAUTHORIZED);
 
-    expect(consoleWarn.mock.calls).toEqual([[FALLBACK_WARNING], [FALLBACK_WARNING]]);
+    expect(runNotificationCheck).not.toHaveBeenCalled();
+    expect(hasBearerSecret).not.toHaveBeenCalled();
+    expect(consoleError.mock.calls).toEqual([[NO_SECRET_ERROR], [NO_SECRET_ERROR]]);
   });
 });
 

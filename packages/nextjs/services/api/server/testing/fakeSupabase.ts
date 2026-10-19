@@ -5,13 +5,29 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * query sequence and filters; the result is produced by `respond` when the chain is awaited.
  */
 
-export type FakeQueryResult = { data?: unknown; error?: { message: string } | null };
+export type FakeQueryResult = { data?: unknown; count?: number; error?: { message: string } | null };
 
 export type RecordedQuery = { table: string; ops: [method: string, ...args: unknown[]][] };
 
 type Responder = (query: RecordedQuery, formatted: string) => FakeQueryResult | undefined;
 
-const CHAIN_METHODS = ["select", "insert", "update", "upsert", "delete", "eq", "neq", "is", "gt", "order", "range"];
+/** What an awaited chain resolves to, as supabase-js answers: every field present, null when unset. */
+type FakeResponse = { data: unknown; count: number | null; error: { message: string } | null };
+
+const CHAIN_METHODS = [
+  "select",
+  "insert",
+  "update",
+  "upsert",
+  "delete",
+  "eq",
+  "neq",
+  "in",
+  "is",
+  "gt",
+  "order",
+  "range",
+];
 const TERMINAL_METHODS = ["single", "maybeSingle"];
 
 /** e.g. `notification_configs.select("*").eq("user_id","0xabc").single()` */
@@ -34,14 +50,14 @@ export const createFakeSupabase = () => {
   const queries: RecordedQuery[] = [];
   let responder: Responder = () => undefined;
 
-  const resultOf = (query: RecordedQuery) => {
+  const resultOf = (query: RecordedQuery): FakeResponse => {
     const result = responder(query, formatQuery(query)) ?? {};
-    return { data: result.data ?? null, error: result.error ?? null };
+    return { data: result.data ?? null, count: result.count ?? null, error: result.error ?? null };
   };
 
   const thenable = (query: RecordedQuery) => ({
     then: <T, E = never>(
-      onFulfilled?: (value: { data: unknown; error: { message: string } | null }) => T | PromiseLike<T>,
+      onFulfilled?: (value: FakeResponse) => T | PromiseLike<T>,
       onRejected?: (reason: unknown) => E | PromiseLike<E>,
     ) =>
       Promise.resolve()

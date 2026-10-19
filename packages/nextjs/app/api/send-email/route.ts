@@ -41,6 +41,6 @@ export async function POST(request: Request) {
       message: "Email sent successfully",
     });
   } catch (e) {
-    return internalError(e);
+    return internalError("POST /api/send-email", e);
   }
 }

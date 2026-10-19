@@ -1,3 +1,4 @@
+import type { PostgrestError } from "@supabase/supabase-js";
 import "server-only";
 import { type MarketId, type MarketRef, V3_MARKET_ID, isMarketId, marketKey } from "~~/config/aaveConfig";
 import { DEFAULT_LOCALE, type Locale, isLocale } from "~~/i18n/locales";
@@ -171,11 +172,21 @@ export async function findConfigsForUser({ normalized, legacy }: UserIdForms): P
 }
 
 /**
- * Updates the market's existing row in place (preferring the lowercased row; updating a legacy row rewrites its
- * user_id to lowercase) or inserts one. Both lookups run when the forms differ. Returns the first lookup or write
- * error, if any: a failed lookup must not be mistaken for "no row", which would insert a duplicate.
+ * How many alerts one wallet can have. PUT already keeps a wallet to one alert per market the app reads (44 in October
+ * 2026), so this is a backstop for when that list grows: rows nobody needs would only slow the cron for everyone.
  */
-export async function saveConfig({ normalized, legacy }: UserIdForms, row: ConfigWriteRow) {
+export const MAX_CONFIGS_PER_WALLET = 50;
+
+export type SaveConfigResult = { status: "saved" } | { status: "limit" } | { status: "failed"; error: PostgrestError };
+
+/**
+ * Updates the market's existing row in place (preferring the lowercased row; updating a legacy row rewrites its
+ * user_id to lowercase) or inserts one while the wallet has fewer than MAX_CONFIGS_PER_WALLET rows under either form.
+ * Both lookups run when the forms differ. Stops at the first lookup, count or write error: a failed lookup must not
+ * be mistaken for "no row", which would insert a duplicate. Two inserts at once can both pass the count, so the cap
+ * can be passed by a few rows, never by more than the concurrent requests.
+ */
+export async function saveConfig({ normalized, legacy }: UserIdForms, row: ConfigWriteRow): Promise<SaveConfigResult> {
   const findId = (userId: string) =>
     configsTable()
       .select("id")
@@ -183,17 +194,22 @@ export async function saveConfig({ normalized, legacy }: UserIdForms, row: Confi
       .eq("chain_id", row.chain_id)
       .eq("market", row.market)
       .maybeSingle<{ id: string }>();
+  const done = ({ error }: { error: PostgrestError | null }): SaveConfigResult =>
+    error ? { status: "failed", error } : { status: "saved" };
 
   const byNormalized = await findId(normalized);
-  if (byNormalized.error) return byNormalized.error;
+  if (byNormalized.error) return { status: "failed", error: byNormalized.error };
   const byLegacy = legacy ? await findId(legacy) : { data: null, error: null };
-  if (byLegacy.error) return byLegacy.error;
+  if (byLegacy.error) return { status: "failed", error: byLegacy.error };
   const existingId = byNormalized.data?.id ?? byLegacy.data?.id;
+  if (existingId) return done(await configsTable().update(row).eq("id", existingId));
 
-  const { error } = existingId
-    ? await configsTable().update(row).eq("id", existingId)
-    : await configsTable().insert(row);
-  return error;
+  const { count, error } = await configsTable()
+    .select("id", { count: "exact", head: true })
+    .in("user_id", legacy ? [normalized, legacy] : [normalized]);
+  if (error) return { status: "failed", error };
+  if ((count ?? 0) >= MAX_CONFIGS_PER_WALLET) return { status: "limit" };
+  return done(await configsTable().insert(row));
 }
 
 /** Deletes the market's row under both user id forms, stopping at the first error. Returns that error, if any. */

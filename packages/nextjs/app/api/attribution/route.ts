@@ -21,7 +21,7 @@ import { isAddress } from "viem";
 import { requireActiveAccess } from "~~/services/api/server/access";
 import { MISSING_USER_ID, jsonError, parseUserId, readJsonObject } from "~~/services/api/server/http";
 import { parseAttributionAnswer } from "~~/services/notifications/attributionInput";
-import { canStoreAttribution, saveAttributionAnswer } from "~~/services/notifications/attributionRepository";
+import { saveAttributionAnswer } from "~~/services/notifications/attributionRepository";
 
 const LOG_PREFIX = "POST /api/attribution:";
 
@@ -38,14 +38,6 @@ export async function POST(request: Request) {
 
     const denied = await requireActiveAccess(userId, "Active paid access required to send an answer");
     if (denied) return denied;
-
-    // Checked after the access gate, like Telegram's configuration, so wallets without access still get 403.
-    if (!canStoreAttribution()) {
-      console.error(
-        `${LOG_PREFIX} SUPABASE_SERVICE_ROLE_KEY is not set. user_attribution accepts service-role writes only, so no answer can be stored.`,
-      );
-      return jsonError("Answers are not collected on this server", 503);
-    }
 
     const error = await saveAttributionAnswer(userId, parsed.value);
     if (error) {
