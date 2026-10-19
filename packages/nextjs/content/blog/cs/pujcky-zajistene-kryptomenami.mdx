@@ -1,0 +1,177 @@
+export const meta = {
+  slug: "pujcky-zajistene-kryptomenami",
+  title: "Půjčky zajištěné kryptoměnami: jak fungují a k čemu slouží",
+  description:
+    "Jak krok za krokem funguje nadměrně zajištěná půjčka na Aave, čím se liší od úvěru v bance i od centralizovaného věřitele, k čemu slouží a jaká má rizika.",
+  h1: "Jak fungují půjčky zajištěné kryptoměnami a proč si je lidé berou?",
+  publishedAt: "2026-10-19",
+  primaryQuestion: "Jak funguje půjčka zajištěná kryptoměnami a proč si ji lidé berou?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  Půjčka zajištěná kryptoměnami vám umožní půjčit si, obvykle stablecoin jako USDC, proti kryptoměně, kterou vložíte
+  jako kolaterál, a nemusíte ji prodat. Na Aave je taková půjčka nadměrně zajištěná: 19. října 2026 jste si na trhu
+  Ethereum Core mohli půjčit nejvýše 73 % hodnoty WBTC nebo 80,5 % hodnoty WETH. Protokol kontroluje jen kolaterál,
+  půjčka nemá datum splatnosti a úrok je proměnlivý. Když hodnota kolaterálu klesne natolik, že váš health factor
+  (faktor zdraví pozice) spadne pod 1, část kolaterálu se prodá na splacení dluhu a vy zaplatíte penále. Lidé si tyto
+  půjčky berou, aby získali peníze bez prodeje, překlenuli výpadek příjmů, refinancovali, použili páku nebo se
+  zajistili, a každé z těchto použití nese riziko likvidace, úrokové sazby i stablecoinu.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Všechna čísla z blockchainu, čísla bloků a zdroje k tomuto článku: content/blog/snapshots/crypto-backed-loans.md */}
+
+## Co je půjčka zajištěná kryptoměnami?
+
+Půjčka zajištěná kryptoměnami je půjčka, za kterou ručíte kryptoměnou vloženou jako kolaterál. Na půjčovacím protokolu, jako je Aave, je nadměrně zajištěná: kolaterál musí mít vyšší hodnotu než půjčka a místo kontroly vašich příjmů se protokol spoléhá na to, že část kolaterálu prodá, pokud jeho hodnota klesne příliš nízko. Dokud půjčka trvá, kolaterál zůstává váš, i se všemi pohyby jeho ceny, a jakmile dluh splatíte, můžete si ho vzít zpět.
+
+Většina lidí si půjčuje stablecoiny, tedy tokeny, které sledují měnu: USDC a USDT sledují americký dolar, EURC euro. Kolaterálem bývá volatilní aktivum. Na trzích Aave na Ethereu a na síti Arbitrum má ether podobu WETH a bitcoin podobu tokenu, který ho zastupuje, například WBTC nebo cbBTC.
+
+O tom, kolik si můžete půjčit a kdy je půjčka v ohrožení, rozhodují u každého aktiva v kolaterálu dvě čísla:
+
+- **Poměr půjčky k hodnotě (LTV)** je nejvyšší částka, kterou si proti aktivu můžete půjčit, jako podíl z jeho hodnoty.
+- **Likvidační práh** je podíl hodnoty aktiva, který se započítává do vašeho health factoru. Když má takto vážený kolaterál nižší hodnotu než váš dluh, health factor je pod 1 a pozici lze zlikvidovat.
+
+| Trh           | Kolaterál | LTV (výpůjční limit) | Likvidační práh | Likvidační bonus |
+| ------------- | --------- | -------------------- | --------------- | ---------------- |
+| Ethereum Core | WETH      | 80,5 %               | 83 %            | 5 %              |
+| Ethereum Core | WBTC      | 73 %                 | 78 %            | 5 %              |
+| Ethereum Core | cbBTC     | 73 %                 | 78 %            | 7,5 %            |
+| Arbitrum      | WETH      | 80 %                 | 84 %            | 5 %              |
+| Arbitrum      | WBTC      | 73 %                 | 78 %            | 7 %              |
+
+Hodnoty byly načteny on-chain 19. října 2026 z PoolDataProvideru každého trhu, v bloku 26225342 na Ethereu a v bloku 516228495 na síti Arbitrum. cbBTC na trhu Aave na síti Arbitrum není. Governance Aave může kteroukoli z hodnot změnit. Jak se LTV a likvidační práh liší, podrobněji vysvětluje průvodce [co je health factor na Aave](/cz/blog/aave-health-factor-vysvetleni).
+
+## Jak funguje půjčka na Aave krok za krokem?
+
+Aave V3 je sada chytrých kontraktů na každé síti a app.aave.com je jedno z rozhraní k nim. Centrum nápovědy Aave popisuje půjčení a splacení v několika krocích; tady je, co každý z nich obnáší.
+
+### Krok 1: Vložte kolaterál
+
+Připojte peněženku, zvolte aktivum, které chcete vložit, například WBTC, a vložte ho. Zkontrolujte, že je zapnuté jako kolaterál, protože jen kolaterál se počítá do toho, kolik si můžete půjčit. Tokeny leží v kontraktu Pool daného trhu, kde si je mohou půjčovat jiní uživatelé (za to dostáváte malý výnos). Kolaterál můžete vybrat po splacení, nebo jeho část i během půjčky, pokud váš health factor zůstane i potom na 1 nebo výš.
+
+### Krok 2: Půjčte si stablecoin
+
+Zvolte stablecoin a částku pod svým výpůjčním limitem, tedy pod hodnotou kolaterálu vynásobenou jeho LTV. Tokeny dorazí do vaší peněženky a úrok začne nabíhat hned, se sazbou, kterou protokol určuje podle toho, jaká část aktiva je vypůjčená, a podle parametrů, které může měnit governance (centrum nápovědy Aave, Borrow Tokens). Aave V3 má dnes jen proměnlivou sazbu: referenční dokumentace kontraktu Pool uvádí, že půjčky vždy používají režim proměnlivé sazby, a starou stabilní sazbu označuje od verze v3.2 za zrušenou.
+
+Proměnlivé úrokové sazby 19. října 2026 jako roční APY, jak je ukazuje aplikace Aave (blok 26225342 na Ethereu, blok 516228495 na síti Arbitrum):
+
+| Trh           | USDC   | USDT (na síti Arbitrum USD₮0) | GHO    | EURC                             |
+| ------------- | ------ | ----------------------------- | ------ | -------------------------------- |
+| Ethereum Core | 4,58 % | 4,17 %                        | 4,60 % | 4,12 %                           |
+| Arbitrum      | 3,45 % | 4,21 %                        | 4,59 % | žádný otevřený eurový stablecoin |
+
+Sazby se mění neustále a umí skočit. Sazba USDC na Ethereum Core 14. října 2026 vyskočila během jediného bloku na 13,67 % APR a asi o 36 minut později se vrátila zpět, jak ukazuje průvodce [proč klesl váš health factor na Aave](/cz/blog/proc-klesl-health-factor-aave#pricina-3-rostl-urok-z-vaseho-dluhu-rychleji-nez-vynos-kolateralu).
+
+### Krok 3: Sledujte health factor
+
+Health factor (HF) je váš kolaterál vážený likvidačním prahem každého aktiva, vydělený vaším dluhem. Příklad: alice na Ethereum Core vloží 1 WBTC při ilustrativní ceně bitcoinu 80 000 $ (orákulum Aave ukazovalo 82 680,33 $ v bloku Etherea 26225364 dne 19. října 2026) a půjčí si 24 000 USDC:
+
+- Výpůjční limit: 80 000 × 0,73 = 58 400 $.
+- Health factor: 80 000 × 0,78 ÷ 24 000 = 2,60.
+- Likvidační cena: 24 000 ÷ 0,78 = 30 769,23 $, tedy o 61,5 % pod 80 000 $.
+
+Health factor klesá, když klesá bitcoin, a pomalu i s tím, jak přibývá úrok: kdyby sazba USDC zůstala na 4,58 % ročně, dluh by po roce činil asi 25 099 USDC a likvidační cena by se posunula nahoru na zhruba 32 179 $. Jak to spočítat pro vlastní pozici, ukazuje průvodce [jak spočítat likvidační cenu na Aave](/cz/blog/likvidacni-cena-aave); kolik místa si nechat, rozebírá [jaký health factor je na Aave bezpečný](/cz/blog/bezpecny-health-factor-aave).
+
+### Krok 4: Splaťte, kdy uznáte za vhodné
+
+Datum splatnosti neexistuje. Výpůjční funkce Aave žádnou dobu trvání nepřijímá a celý dluh nebo jeho část můžete splatit kdykoli, v aktivu, které jste si půjčili (referenční dokumentace kontraktu Pool Aave V3; centrum nápovědy Aave, Repay Tokens). Úplné splacení uvolní váš kolaterál. Splácet lze i kolaterálem: na trzích na Ethereu a na síti Arbitrum umí rozhraní Aave prodat část kolaterálu za aktivum dluhu a splatit v jediné transakci (dokumentace Aave, swap features).
+
+### Krok 5: Vězte, co se stane pod health factorem 1
+
+Pod 1 může vaši pozici zlikvidovat kdokoli: splatí část vašeho dluhu a vezme si kolaterál v hodnotě této částky plus likvidační bonus. Jedna likvidace smí splatit až 50 % dluhu, dokud je health factor nad 0,95 a kolaterál i dluh mají každý hodnotu alespoň 2 000 $, a až 100 %, když je health factor 0,95 nebo nižší nebo když jeden z nich má hodnotu pod 2 000 $ (centrum nápovědy Aave).
+
+Kdyby bitcoin brzy poté, co si alice půjčila, klesl na 30 000 $, její health factor by byl 30 000 × 0,78 ÷ 24 000 = 0,975. Likvidátor by mohl splatit 12 000 USDC a vzít si 12 000 × 1,05 ÷ 30 000 = 0,42 WBTC. alice by si ponechala 0,58 WBTC proti 12 000 USDC dluhu a její health factor by byl 1,13. Přišla by o kolaterál za 600 $ nad rámec splaceného dluhu a 0,42 WBTC by se prodalo na dně. Úplná pravidla popisuje průvodce [co se stane, když je vaše pozice na Aave zlikvidována](/cz/blog/jak-funguje-likvidace-aave).
+
+## Čím se půjčka zajištěná kryptoměnami liší od úvěru v bance?
+
+Hlavní rozdíly jsou v tom, na co se věřitel dívá, kdy splácíte a co se stane, když kolaterál ztratí hodnotu:
+
+|                                | Půjčka na Aave                                                                         | Běžný bankovní úvěr                                              |
+| ------------------------------ | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Co rozhoduje o výši půjčky     | Hodnota vašeho kolaterálu a jeho LTV                                                   | Obvykle váš příjem a úvěrová historie, k tomu případné zajištění |
+| Kontroly vaší osoby            | Žádné ze strany protokolu, ten se dívá jen na kolaterál                                | Obvykle ověření totožnosti, příjmů a úvěrové historie            |
+| Doba trvání                    | Žádná: splácíte, kdy chcete                                                            | Obvykle pevná doba a splátkový kalendář                          |
+| Úrok                           | Proměnlivý, přepočítává se podle toho, jak se mění půjčování na trhu                   | Pevný nebo proměnlivý, podle smlouvy                             |
+| Když kolaterál ztratí hodnotu  | Automatická likvidace třetími stranami, jakmile je health factor pod 1, bez upozornění | Podle smlouvy: žádost o další zajištění, jednání, vymáhání       |
+| Kdo drží kolaterál             | Chytrý kontrakt daného trhu                                                            | Věřitel nebo jím zvolený správce (custodian)                     |
+| Když kolaterál na dluh nestačí | Schodek je ztrátou protokolu, ne pohledávkou vůči vám                                  | Podle smlouvy a zákona                                           |
+
+Poslední řádek vyplývá z toho, jak Aave V3.3 a novější řeší likvidaci, která spotřebuje veškerý kolaterál: zbylý dluh se odepíše jako deficit u daného aktiva, jak vysvětluje [část o nedobytném dluhu](/cz/blog/jak-funguje-likvidace-aave#muze-likvidace-zanechat-nedobytny-dluh). O kolaterál v tu chvíli už ale přijdete.
+
+## Čím se liší od centralizovaného kryptověřitele?
+
+Centralizovaný věřitel si váš kolaterál bere do vlastní úschovy. Půjčka může vypadat velmi podobně, ale stáváte se věřitelem dané firmy, a když firma zkrachuje, váš kolaterál může uvíznout u ní. Rok 2022 ukázal, co to znamená:
+
+- **Celsius** zmrazil výběry zákazníků 12. června 2022 a 13. července 2022 podal návrh na bankrot. Podle americké komise pro obchodování s komoditními futures (CFTC) u něj zákazníci měli uloženo asi 20 miliard dolarů. V lednu 2023 americký konkurzní soud v New Yorku rozhodl, že kryptoměny na účtech Celsius Earn se podle obchodních podmínek staly majetkem společnosti Celsius, takže tito zákazníci skončili jako nezajištění věřitelé.
+- **Voyager Digital** 1. července 2022 pozastavil obchodování, vklady i výběry poté, co fond Three Arrows Capital neplatil splátky půjčky 15 250 BTC a 350 milionů dolarů v USDC, a 5. července 2022 podal návrh na ochranu podle kapitoly 11 amerického konkurzního zákona.
+- **Genesis** podle americké komise pro cenné papíry (SEC) v listopadu 2022 přestal investorům programu Gemini Earn dovolovat výběry; v té době od nich držel aktiva za asi 900 milionů dolarů. Návrh podle kapitoly 11 podal 19. ledna 2023.
+- **BlockFi** podal návrh podle kapitoly 11 dne 28. listopadu 2022, pár dní poté, co při pádu burzy FTX pozastavil výběry.
+
+Na Aave leží kolaterál ve veřejném chytrém kontraktu, jehož pravidla si může přečíst kdokoli, a ne v rozvaze nějaké firmy. Jedna sada rizik se tím mění za jinou, kterou popisuje [část o rizicích](#jaka-jsou-rizika-pujcky-zajistene-kryptomenami) níže: chyby v kódu, chyby orákul, rozhodnutí governance a úschova za zabaleným bitcoinem. Jedno z nich je důležité právě tady: nouzový správce (emergency admin) nebo správce trhu (pool admin) Aave může aktivum pozastavit, a dokud je pozastavené, nikdo ho nemůže vybrat ani splatit (kontrakty PoolConfigurator a ValidationLogic od Aave).
+
+## K čemu lidé půjčky zajištěné kryptoměnami používají?
+
+### Peníze bez prodeje
+
+Jedním z důvodů je získat peníze a kryptoměnu si přitom ponechat, často proto, že majitel čeká její růst nebo ji chce držet roky. Půjčka zachovává celý potenciální růst kolaterálu i celý jeho propad, přidává úrok a při dostatečném poklesu ceny může vynutit prodej v nejhorší chvíli.
+
+Tím, že si půjčíte, kolaterál neprodáváte: zůstává váš. Zda má vložení kolaterálu, samotná půjčka, úrok nebo likvidace daňové důsledky, závisí na vaší zemi a někdy i na podmínkách protokolu. Například pokyny britského daňového úřadu uvádějí, že na podmínkách DeFi platformy záleží, zda je předání kolaterálu zcizením (disposal), a pokud není, považují prodej kolaterálu při likvidaci za zcizení samotným dlužníkem (HMRC Cryptoassets Manual, CRYPTO61640). Tento průvodce daňové poradenství neposkytuje; ověřte si pravidla platná tam, kde žijete.
+
+### Výdaje a překlenutí výpadku
+
+Někteří si půjčují, aby pokryli výdaj, než dorazí očekávané peníze, například účet splatný před prodejem nebo před výplatou. Háček je v tom, že půjčku za vás nic neukončí: nemá datum splatnosti, sazba může během čekání růst a převod stablecoinů na peníze na bankovním účtu, a pak zpět kvůli splacení, stojí něco navíc.
+
+### Refinancování
+
+Půjčku jinde lze převést na Aave, pokud je sazba na Aave nižší, a na Aave lze dluh v jediné transakci přepnout z jednoho stablecoinu na jiný pomocí funkce debt swap v rozhraní (dokumentace Aave, swap features). Háček: sazby jsou proměnlivé, takže dnes levnější aktivum může být za měsíc dražší, a přechod z dolarového stablecoinu na eurový mění měnu, kterou dlužíte, o čemž je průvodce [shortování fiatu půjčkou na Aave](/cz/blog/short-fiatu-pujckou-na-aave).
+
+### Páka
+
+Kdo chce větší expozici, půjčí si stablecoiny, koupí za ně víc kolaterálu a vloží ho také. Kdyby alice za svých 24 000 USDC koupila při ceně 80 000 $ dalších 0,3 WBTC a vložila je, držela by 1,3 WBTC proti 24 000 USDC: health factor 3,38 a likvidační cena 23 668,64 $. Každý pohyb bitcoinu ji teď zasáhne 1,3krát silněji, než kdyby prostě držela 1 bitcoin, a opakování této smyčky tlačí health factor k 1.
+
+### Zajištění a short
+
+Půjčit si aktivum a prodat ho je sázka na jeho pokles: vložíte stablecoiny, půjčíte si WETH a prodáte ho, a pozice vydělává, když ETH klesá, a blíží se likvidaci, když ETH roste (o kolik může vzrůst, ukazuje průvodce [jaký health factor je na Aave bezpečný](/cz/blog/bezpecny-health-factor-aave)). Půjčka dolarového nebo eurového stablecoinu proti bitcoinu je zrcadlový obraz, short na měnu vůči kolaterálu, kterému někteří bitcoineři říkají shortování fiatu; s čísly ho rozebírá průvodce [shortování fiatu půjčkou na Aave](/cz/blog/short-fiatu-pujckou-na-aave).
+
+## Jaká jsou rizika půjčky zajištěné kryptoměnami?
+
+- **Likvidace.** Pod health factorem 1 může být část dluhu nebo celý dluh splacen z vašeho kolaterálu a vy navíc přijdete o bonus: 5 % až 7,5 % u aktiv z první tabulky. Likvidace provádějí soupeřící boti, takže mohou přijít rychle (centrum nápovědy Aave).
+- **Kolísání kolaterálu.** Bitcoin byl na vrcholu zhruba na 69 000 $ v listopadu 2021 a v polovině června 2022 zhruba na 17 000 $, což je pokles asi o 75 %, a po krachu FTX v listopadu 2022 spadl pod 16 000 $ (blog ECB). S likvidačním prahem WBTC 78 % by i půjčka na 20 % hodnoty kolaterálu, sjednaná na vrcholu roku 2021, byla do poloviny června 2022 zlikvidována.
+- **Proměnlivé úrokové sazby.** Sazba není pevná na žádné období a úrok snižuje váš health factor v čase, i když ceny stojí.
+- **Ztráta vazby stablecoinu (depeg).** USDC 11. března 2023 klesl zhruba na 0,88 $ poté, co Circle oznámil, že 3,3 miliardy dolarů jeho rezerv leží v Silicon Valley Bank, a 13. března byl zpět nad 0,99 $ (příspěvek Gauntletu na fóru Aave; Circle). TerraUSD, algoritmický stablecoin, ztratil vazbu v květnu 2022 a spadl skoro na nulu, což podle americké SEC smazalo tržní hodnotu 40 miliard dolarů. Když klesne stablecoin, který dlužíte, váš dluh zlevní; když klesne stablecoin, který máte jako kolaterál, klesne váš health factor.
+- **Zabalený bitcoin.** Bitcoin na Aave je token krytý bitcoinem, který drží někdo jiný nebo který spravuje most (bridge). Například WBTC uvádí, že každý token je krytý bitcoinem v úschově. Kdyby krytí selhalo, token by mohl ztratit hodnotu bez ohledu na to, co dělá samotný bitcoin.
+- **Chytré kontrakty, orákula a governance.** Chyba v kódu, špatná cena nebo změna parametru může pozici zasáhnout bez jakéhokoli pohybu trhu. V březnu 2026 nesouladné orákulum směnného kurzu na trzích Aave Ethereum Core a Prime snížilo efektivní kurz wstETH asi o 2,85 % a spustilo likvidace zhruba 10 938 wstETH na 34 účtech, podle analýzy Chaos Labs (post-mortem) ([víc o chybách orákul](/cz/blog/proc-klesl-health-factor-aave#pricina-6-ocenila-chyba-orakula-nebo-smenneho-kurzu-vas-kolateral-spatne)). Governance může také snížit likvidační práh pro všechny otevřené pozice ([víc o snížení prahu](/cz/blog/proc-klesl-health-factor-aave#pricina-4-snizila-governance-nebo-risk-stewards-likvidacni-prah)).
+- **Všechno děláte sami.** Klíče máte vy, transakce posíláte vy a na rychlém trhu může potvrzení splátky trvat déle, než čekáte.
+
+## Jak mít půjčku pod dohledem?
+
+Vlastní rozhraní Aave ukazují váš health factor, dokud je máte otevřená, ale když klesne, nic vám nepošlou, jak vysvětluje [průvodce upozorněními na health factor](/cz/blog/nastaveni-upozorneni-health-factor-aave#posila-aave-upozorneni-na-health-factor). Jedna z možností je zvolit health factor, při kterém byste jednali, tedy splatili část dluhu nebo přidali kolaterál, a nechat se samostatným nástrojem upozornit, až se tam pozice dostane. Tokenping kontroluje každých 5 minut a posílá vám zprávu, dokud je váš health factor pod prahem, který si nastavíte; postup popisuje [průvodce nastavením](/cz/blog/nastaveni-upozorneni-health-factor-aave). Upozornění vám dá čas jednat, ne ochranu; co s tím časem dělat, rozebírá průvodce [jak se vyhnout likvidaci na Aave](/cz/blog/jak-se-vyhnout-likvidaci-aave).
+
+## Zdroje
+
+- [PoolDataProvider Aave V3 na trhu Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) a [PoolDataProvider na síti Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): LTV, likvidační prahy, bonusy a proměnlivé sazby načtené on-chain v bloku Etherea 26225342 a v bloku sítě Arbitrum 516228495 (data z RPC načteno 19. října 2026)
+- [AaveOracle Aave V3 na trhu Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): cena WBTC 82 680,33 $ v bloku Etherea 26225364 (data z RPC načteno 19. října 2026)
+- [Aave Help: Borrow Tokens](https://aave.com/help/borrowing/borrow-tokens) (načteno 19. října 2026)
+- [Aave Help: Repay Tokens](https://aave.com/help/borrowing/repay-tokens) (načteno 19. října 2026)
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (načteno 19. října 2026)
+- [Referenční dokumentace kontraktu Pool Aave V3](https://aave.com/docs/aave-v3/smart-contracts/pool): parametry půjčky a splátky, jen proměnlivá sazba, stabilní sazba zrušená ve v3.2 (načteno 19. října 2026)
+- [Dokumentace Aave: swap features](https://aave.com/docs/aave-v3/smart-contracts/swap-features): splacení kolaterálem a debt swap (načteno 19. října 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) a [PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol), aave-v3-origin: výběry během půjčky, pozastavení a kdo ho může nastavit (načteno 19. října 2026)
+- [Tisková zpráva CFTC 8749-23 o Celsius Network](https://www.cftc.gov/PressRoom/PressReleases/8749-23), 13. července 2023: asi 20 miliard dolarů vkladů, výběry zmrazené 12. června 2022, návrh na bankrot 13. července 2022 (načteno 19. října 2026)
+- [Americký konkurzní soud, jižní obvod New Yorku: rozhodnutí o vlastnictví aktiv na účtech Celsius Earn](https://www.nysb.uscourts.gov/sites/default/files/opinions/312902_1822_opinion.pdf), 4. ledna 2023 (načteno 19. října 2026)
+- [Voyager Digital: tržní aktualizace](https://www.newswire.ca/news-releases/voyager-digital-provides-market-update-851734302.html), 1. července 2022, a [Voyager Digital: oznámení o řízení podle kapitoly 11](https://www.newswire.ca/news-releases/voyager-digital-commences-financial-restructuring-process-to-maximize-value-for-all-stakeholders-888320107.html), 5. července 2022 (obojí načteno 19. října 2026)
+- [Tisková zpráva SEC 2023-7 o Genesis a programu Gemini Earn](https://www.sec.gov/news/press-release/2023-7), 12. ledna 2023 (načteno 19. října 2026)
+- [Tisková zpráva SEC 2024-37 o Genesis](https://www.sec.gov/newsroom/press-releases/2024-37), 19. března 2024: návrhy podle kapitoly 11 podané 19. ledna 2023 (načteno 19. října 2026)
+- [CoinDesk: BlockFi Files for Bankruptcy as FTX Contagion Spreads](https://www.coindesk.com/policy/2022/11/28/ftx-fallout-continues-as-crypto-lender-blockfi-declares-bankruptcy), 28. listopadu 2022 (načteno 19. října 2026)
+- [Blog ECB: Bitcoin's last stand](https://www.ecb.europa.eu/press/blog/date/2022/html/ecb.blog221130~5301eecd19.en.html), 30. listopadu 2022: pokles zhruba z 69 000 $ zhruba na 17 000 $ a pod 16 000 $ (načteno 19. října 2026)
+- [Gauntlet: Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), fórum governance Aave, 17. března 2023 (načteno 19. října 2026)
+- [Circle: $3.3 Billion of USDC Reserve Risk Removed, Dollar De-peg Closes](https://www.circle.com/pressroom/3-3-billion-of-usdc-reserve-risk-removed-dollar-de-peg-closes), 12. března 2023 (načteno 19. října 2026)
+- [Tisková zpráva SEC 2024-73 o Terraform](https://www.sec.gov/newsroom/press-releases/2024-73), 13. června 2024: ztráta vazby UST v květnu 2022 (načteno 19. října 2026)
+- [WBTC](https://wbtc.network/): jak je WBTC kryté (načteno 19. října 2026)
+- [Chaos Labs: Post-Mortem, Exchange Rate Misalignment on wstETH Core and Prime Instances](https://governance.aave.com/t/24269), fórum governance Aave, 10. března 2026 (načteno 19. října 2026)
+- [HMRC Cryptoassets Manual, CRYPTO61640: DeFi lending and staking, collateral](https://www.gov.uk/hmrc-internal-manuals/cryptoassets-manual/crypto61640), aktualizováno 28. listopadu 2025 (načteno 19. října 2026)
+
+_Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání._

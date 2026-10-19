@@ -1,0 +1,177 @@
+export const meta = {
+  slug: "crypto-backed-loans",
+  title: "Crypto-backed loans: how they work and why people use them",
+  description:
+    "How an overcollateralised crypto loan works on Aave step by step, how it differs from a bank or a centralised lender, what people use it for and the risks.",
+  h1: "How do crypto-backed loans work, and why do people take them?",
+  publishedAt: "2026-10-19",
+  primaryQuestion: "How does a crypto-backed loan work, and why do people use one?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  A crypto-backed loan lets you borrow, usually a stablecoin such as USDC, against crypto you deposit as collateral,
+  without selling it. On Aave the loan is overcollateralised: on 19 October 2026 you could borrow up to 73% of the value
+  of WBTC or 80.5% of the value of WETH on the Ethereum Core market. The protocol checks only the collateral, there is
+  no repayment date and the interest rate is variable. If the collateral's value falls far enough that your health
+  factor drops below 1, part of it is sold to repay the debt, and you pay a penalty. People use these loans to get cash
+  without selling, to bridge a gap, to refinance, for leverage or to hedge, and every one of those uses carries
+  liquidation, rate and stablecoin risk.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Every on-chain figure, block number and source behind this post: content/blog/snapshots/crypto-backed-loans.md */}
+
+## What is a crypto-backed loan?
+
+A crypto-backed loan is a loan secured by crypto you deposit as collateral. On a lending protocol such as Aave it is overcollateralised: the collateral must be worth more than the loan, and instead of checking your income the protocol relies on being able to sell part of the collateral if its value falls too far. While the loan is open the collateral stays yours, with all of its price moves, and you can take it back once the debt is repaid.
+
+Most people borrow stablecoins, tokens that track a currency: USDC and USDT follow the US dollar, EURC follows the euro. The collateral is usually a volatile asset. On Aave's Ethereum and Arbitrum markets, ether comes as WETH and bitcoin as a token that represents it, such as WBTC or cbBTC.
+
+Two numbers per collateral asset decide how much you can borrow and when the loan is in danger:
+
+- The **loan-to-value ratio (LTV)** is the most you can borrow against the asset, as a share of its value.
+- The **liquidation threshold** is the share of the asset's value that counts toward your health factor. When your collateral, weighted this way, is worth less than your debt, the health factor is below 1 and the position can be liquidated.
+
+| Market        | Collateral | LTV (borrow limit) | Liquidation threshold | Liquidation bonus |
+| ------------- | ---------- | ------------------ | --------------------- | ----------------- |
+| Ethereum Core | WETH       | 80.5%              | 83%                   | 5%                |
+| Ethereum Core | WBTC       | 73%                | 78%                   | 5%                |
+| Ethereum Core | cbBTC      | 73%                | 78%                   | 7.5%              |
+| Arbitrum      | WETH       | 80%                | 84%                   | 5%                |
+| Arbitrum      | WBTC       | 73%                | 78%                   | 7%                |
+
+These values were read on-chain on 19 October 2026 from each market's PoolDataProvider, at Ethereum block 26225342 and Arbitrum block 516228495. cbBTC is not listed on Aave's Arbitrum market. Aave governance can change any of them. How LTV and the liquidation threshold differ is explained in more depth in [what the Aave health factor is](/blog/aave-health-factor).
+
+## How does a loan on Aave work, step by step?
+
+Aave V3 is a set of smart contracts on each network, and app.aave.com is one interface to them. Aave's help centre describes borrowing and repaying in a handful of steps; this is what each one involves.
+
+### Step 1: Supply collateral
+
+Connect your wallet, choose the asset to supply, for example WBTC, and supply it. Check that it is switched on as collateral, because only collateral counts toward what you can borrow. The tokens sit in the market's Pool contract, where other users can borrow them (that is what the small supply rate pays for). You can withdraw your collateral after repaying, or part of it while you still owe, as long as your health factor stays at 1 or above afterwards.
+
+### Step 2: Borrow a stablecoin
+
+Pick the stablecoin and an amount below your borrow limit, which is the collateral's value times its LTV. The tokens arrive in your wallet, and interest starts to accrue at once, at a rate the protocol sets from how much of the asset is borrowed and from parameters governance can change (Aave help centre, Borrow Tokens). Aave V3 now has only a variable rate: its Pool reference says borrows always use the variable rate mode and marks the old stable rate as deprecated since v3.2.
+
+Variable borrow rates on 19 October 2026, as yearly APY like the Aave app shows them (Ethereum block 26225342, Arbitrum block 516228495):
+
+| Market        | USDC  | USDT (USD₮0 on Arbitrum) | GHO   | EURC                    |
+| ------------- | ----- | ------------------------ | ----- | ----------------------- |
+| Ethereum Core | 4.58% | 4.17%                    | 4.60% | 4.12%                   |
+| Arbitrum      | 3.45% | 4.21%                    | 4.59% | no euro stablecoin open |
+
+These rates change all the time and can jump. On 14 October 2026 the USDC rate on Ethereum Core rose to 13.67% APR in a single block and fell back about 36 minutes later, as [why your Aave health factor drops on its own](/blog/why-aave-health-factor-dropped#cause-3-did-interest-accrue-on-your-debt-faster-than-on-your-collateral) shows.
+
+### Step 3: Watch the health factor
+
+The health factor (HF) is your collateral, weighted by each asset's liquidation threshold, divided by your debt. Take alice, who supplies 1 WBTC on Ethereum Core when bitcoin is at an illustrative $80,000 (Aave's oracle read $82,680.33 at Ethereum block 26225364 on 19 October 2026) and borrows 24,000 USDC:
+
+- Borrow limit: 80,000 × 0.73 = $58,400.
+- Health factor: 80,000 × 0.78 ÷ 24,000 = 2.60.
+- Liquidation price: 24,000 ÷ 0.78 = $30,769.23, which is 61.5% below $80,000.
+
+The health factor falls when bitcoin falls, and slowly as interest is added: if the USDC rate stayed at 4.58% a year, the debt would be about 25,099 USDC after a year, and the liquidation price would have moved up to about $32,179. To work this out for your own position, see [how to calculate your Aave liquidation price](/blog/aave-liquidation-price); for how much room to leave, see [what a safe health factor on Aave is](/blog/safe-aave-health-factor).
+
+### Step 4: Repay when you choose
+
+There is no repayment date. Aave's borrow function takes no term at all, and you can repay all or part of the debt at any time, in the asset you borrowed (Aave V3 Pool reference; Aave help centre, Repay Tokens). Repaying in full releases your collateral. You can also repay with collateral: on the Ethereum and Arbitrum markets, Aave's interface can sell part of your collateral for the debt asset and repay in one transaction (Aave docs, swap features).
+
+### Step 5: Know what happens below a health factor of 1
+
+Below 1, anyone can liquidate the position: they repay part of your debt and take collateral worth that amount plus a liquidation bonus. One liquidation can repay up to 50% of the debt while the health factor is above 0.95 and the collateral and the debt are each worth at least $2,000, and up to 100% when the health factor is at or below 0.95 or either of them is worth less than $2,000 (Aave help centre).
+
+If bitcoin fell to $30,000 soon after alice borrowed, her health factor would be 30,000 × 0.78 ÷ 24,000 = 0.975. A liquidator could repay 12,000 USDC and take 12,000 × 1.05 ÷ 30,000 = 0.42 WBTC, leaving her 0.58 WBTC against 12,000 USDC, a health factor of 1.13. She would lose $600 of collateral beyond the debt repaid, and 0.42 WBTC would be sold at the low. The full rules are in [what happens when your Aave position is liquidated](/blog/how-aave-liquidation-works).
+
+## How is a crypto-backed loan different from a bank loan?
+
+The main differences are what the lender looks at, when you repay and what happens when the collateral loses value:
+
+|                                           | Loan on Aave                                                                        | Typical bank loan                                                                  |
+| ----------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| What decides how much you can borrow      | The value of your collateral and its LTV                                            | Usually your income and credit history, plus any collateral                        |
+| Checks on you                             | None by the protocol, which looks only at the collateral                            | Usually identity, income and credit checks                                         |
+| Term                                      | None: repay whenever you like                                                       | Usually a fixed term and a repayment schedule                                      |
+| Interest                                  | Variable, recalculated as borrowing in the market changes                           | Fixed or variable, as the contract says                                            |
+| If the collateral loses value             | Automatic liquidation by third parties once the health factor is below 1, no notice | Depends on the contract: a request for more collateral, a negotiation, enforcement |
+| Who holds the collateral                  | The market's smart contract                                                         | The lender, or a custodian it chooses                                              |
+| If the collateral does not cover the debt | The shortfall becomes a loss for the protocol, not a claim on you                   | Depends on the contract and the law                                                |
+
+The last row follows from how Aave V3.3 and later handle a liquidation that uses up all the collateral: the leftover debt is written off as a deficit on the asset, as [the section on bad debt](/blog/how-aave-liquidation-works#can-a-liquidation-leave-bad-debt) explains. You have still lost the collateral by then.
+
+## How is it different from a centralised crypto lender?
+
+A centralised lender takes your collateral into its own custody. The loan can look much the same, but you become the company's creditor, and if it fails, your collateral can be stuck with it. 2022 showed what that means:
+
+- **Celsius** froze customer withdrawals on 12 June 2022 and filed for bankruptcy on 13 July 2022. According to the US Commodity Futures Trading Commission, customers had deposited about $20 billion with it. In January 2023 the US bankruptcy court in New York ruled that crypto in Celsius's Earn accounts had become Celsius's property under its terms of use, which left those customers as unsecured creditors.
+- **Voyager Digital** suspended trading, deposits and withdrawals on 1 July 2022, after Three Arrows Capital failed to make payments on a loan of 15,250 BTC and $350 million in USDC, and filed for Chapter 11 bankruptcy on 5 July 2022.
+- **Genesis** stopped investors in the Gemini Earn programme from withdrawing in November 2022, when it held about $900 million of their assets, according to the US Securities and Exchange Commission, and filed for Chapter 11 on 19 January 2023.
+- **BlockFi** filed for Chapter 11 on 28 November 2022, days after suspending withdrawals as FTX collapsed.
+
+On Aave the collateral sits in a public smart contract whose rules anyone can read, not on a company's balance sheet. That swaps one set of risks for another, covered under [the risks](#what-are-the-risks-of-a-crypto-backed-loan) below: bugs, oracle errors, governance decisions and the custody behind wrapped bitcoin. One of them matters here: Aave's emergency admin or pool admin can pause an asset, and while it is paused nobody can withdraw or repay it (Aave's PoolConfigurator and ValidationLogic contracts).
+
+## What do people use crypto-backed loans for?
+
+### Cash without selling
+
+One reason is to get money while keeping the crypto, often because the holder expects it to rise or wants to keep it for years. The loan keeps all of the collateral's upside and all of its downside, adds interest, and can force a sale at the worst moment if the price falls far enough.
+
+Taking the loan does not sell your collateral: it stays yours. Whether supplying collateral, the loan, the interest or a liquidation has tax consequences depends on your country, and sometimes on the protocol's terms. The UK tax authority's guidance, for example, says it depends on a DeFi lending platform's terms whether giving it collateral counts as a disposal, and where it does not, treats the sale of collateral in a liquidation as the borrower's own (HMRC Cryptoassets Manual, CRYPTO61640). This guide does not give tax advice; check the rules where you live.
+
+### Spending or bridging a gap
+
+Some borrow to cover an expense before money they expect arrives, such as a bill due before a sale or a salary. The trade-off is that nothing ends the loan for you: there is no repayment date, the rate can rise while you wait, and turning stablecoins into money in a bank account, and back again to repay, has costs of its own.
+
+### Refinancing
+
+A loan elsewhere can be moved to Aave if Aave's rate is lower, and on Aave a debt can be switched from one stablecoin to another in a single transaction with the interface's debt swap (Aave docs, swap features). The trade-off: rates are variable, so today's cheaper asset can be dearer next month, and switching from a dollar stablecoin to a euro one changes which currency you owe, which is the subject of [shorting fiat with an Aave loan](/blog/short-fiat-with-aave).
+
+### Leverage
+
+To increase exposure, some borrow stablecoins, buy more of the collateral and supply that too. If alice used her 24,000 USDC to buy 0.3 WBTC at $80,000 and supplied it, she would hold 1.3 WBTC against 24,000 USDC: a health factor of 3.38 and a liquidation price of $23,668.64. Every move in bitcoin now hits her 1.3 times as hard as holding 1 bitcoin outright, and repeating the loop pushes the health factor toward 1.
+
+### Hedging and shorting
+
+Borrowing an asset and selling it is a bet that it will fall: supply stablecoins, borrow WETH and sell it, and the position gains if ETH falls and moves toward liquidation if ETH rises (the [safe health factor guide](/blog/safe-aave-health-factor) shows how far it can rise). Borrowing a dollar or euro stablecoin against bitcoin is the mirror image, a short on the currency against the collateral, which some bitcoiners call shorting fiat; [shorting fiat with an Aave loan](/blog/short-fiat-with-aave) works through it with numbers.
+
+## What are the risks of a crypto-backed loan?
+
+- **Liquidation.** Below a health factor of 1, part or all of the debt can be repaid with your collateral, and you lose the bonus on top: 5% to 7.5% for the assets in the first table. Liquidations are run by competing bots, so they can follow quickly (Aave help centre).
+- **Collateral volatility.** Bitcoin peaked at about $69,000 in November 2021 and was at about $17,000 by mid-June 2022, a fall of about 75%, and it went below $16,000 after FTX failed in November 2022 (ECB blog). With WBTC's 78% liquidation threshold, even a loan of 20% of the collateral's value taken at the 2021 peak would have been liquidated by mid-June 2022.
+- **Variable interest rates.** The rate is not fixed for any period, and interest lowers your health factor over time even when prices stand still.
+- **Stablecoin depegs.** USDC fell to around $0.88 on 11 March 2023, after Circle said $3.3 billion of its reserves were at Silicon Valley Bank, and was back above $0.99 by 13 March (Gauntlet's post on the Aave forum; Circle). TerraUSD, an algorithmic stablecoin, lost its peg in May 2022 and fell close to zero, which the US SEC says wiped out $40 billion in market value. If the stablecoin you owe drops, your debt gets cheaper; if a stablecoin you use as collateral drops, your health factor falls.
+- **Wrapped bitcoin.** Bitcoin on Aave is a token backed by bitcoin someone else holds or a bridge controls. WBTC, for example, says each token is backed by bitcoin held in custody. If that backing failed, the token could lose value whatever bitcoin itself did.
+- **Smart contracts, oracles and governance.** A bug, a wrong price or a parameter change can hit a position with no market move. In March 2026 a misaligned exchange-rate oracle on Aave's Ethereum Core and Prime markets cut the effective wstETH rate by about 2.85% and triggered liquidations of about 10,938 wstETH across 34 accounts, according to Chaos Labs' post-mortem ([more on oracle errors](/blog/why-aave-health-factor-dropped#cause-6-did-an-oracle-or-exchange-rate-error-misprice-your-collateral)). Governance can also lower a liquidation threshold for every open position ([more on threshold cuts](/blog/why-aave-health-factor-dropped#cause-4-did-governance-or-the-risk-stewards-cut-a-liquidation-threshold)).
+- **Doing it yourself.** You hold the keys, you send the transactions, and in a fast market a repayment can take longer to confirm than you expect.
+
+## How do you keep watch on a loan?
+
+Aave's own interfaces show your health factor while you have them open but don't message you when it falls, as [the guide to health factor alerts](/blog/aave-health-factor-alert-setup#does-aave-send-health-factor-alerts) explains. One way to keep watch is to pick the health factor at which you would act, by repaying part of the debt or adding collateral, and have a separate tool warn you when the position gets there. Tokenping checks every 5 minutes and messages you while your health factor is below the threshold you set; [the setup guide](/blog/aave-health-factor-alert-setup) walks through it. An alert gives you time to act, not protection, and [how to avoid liquidation on Aave](/blog/avoid-aave-liquidation) covers what to do with that time.
+
+## Sources
+
+- Aave V3 Ethereum Core [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) and Arbitrum [PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): LTV, liquidation thresholds, bonuses and variable borrow rates read on-chain at Ethereum block 26225342 and Arbitrum block 516228495 (RPC data fetched 19 Oct 2026)
+- [Aave V3 Ethereum Core AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): WBTC price $82,680.33 at Ethereum block 26225364 (RPC data fetched 19 Oct 2026)
+- [Aave Help: Borrow Tokens](https://aave.com/help/borrowing/borrow-tokens) (fetched 19 Oct 2026)
+- [Aave Help: Repay Tokens](https://aave.com/help/borrowing/repay-tokens) (fetched 19 Oct 2026)
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (fetched 19 Oct 2026)
+- [Aave V3 Pool smart contract reference](https://aave.com/docs/aave-v3/smart-contracts/pool): borrow and repay parameters, variable rate only, stable rate deprecated in v3.2 (fetched 19 Oct 2026)
+- [Aave docs: swap features](https://aave.com/docs/aave-v3/smart-contracts/swap-features): repay with collateral and debt swap (fetched 19 Oct 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) and [PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol), aave-v3-origin: withdrawals while borrowing, pauses and who can set them (fetched 19 Oct 2026)
+- [CFTC press release 8749-23 on Celsius Network](https://www.cftc.gov/PressRoom/PressReleases/8749-23), 13 July 2023: about $20 billion deposited, withdrawals frozen on 12 June 2022, bankruptcy filed on 13 July 2022 (fetched 19 Oct 2026)
+- [US Bankruptcy Court, Southern District of New York: opinion on ownership of Celsius Earn account assets](https://www.nysb.uscourts.gov/sites/default/files/opinions/312902_1822_opinion.pdf), 4 January 2023 (fetched 19 Oct 2026)
+- [Voyager Digital: market update](https://www.newswire.ca/news-releases/voyager-digital-provides-market-update-851734302.html), 1 July 2022, and [Voyager Digital: Chapter 11 announcement](https://www.newswire.ca/news-releases/voyager-digital-commences-financial-restructuring-process-to-maximize-value-for-all-stakeholders-888320107.html), 5 July 2022 (both fetched 19 Oct 2026)
+- [SEC press release 2023-7 on Genesis and the Gemini Earn programme](https://www.sec.gov/news/press-release/2023-7), 12 January 2023 (fetched 19 Oct 2026)
+- [SEC press release 2024-37 on Genesis](https://www.sec.gov/newsroom/press-releases/2024-37), 19 March 2024: Chapter 11 petitions filed on 19 January 2023 (fetched 19 Oct 2026)
+- [CoinDesk: BlockFi files for bankruptcy as FTX contagion spreads](https://www.coindesk.com/policy/2022/11/28/ftx-fallout-continues-as-crypto-lender-blockfi-declares-bankruptcy), 28 November 2022 (fetched 19 Oct 2026)
+- [The ECB Blog: Bitcoin's last stand](https://www.ecb.europa.eu/press/blog/date/2022/html/ecb.blog221130~5301eecd19.en.html), 30 November 2022: the fall from about $69,000 to about $17,000 and below $16,000 (fetched 19 Oct 2026)
+- [Gauntlet: Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), Aave governance forum, 17 March 2023 (fetched 19 Oct 2026)
+- [Circle: $3.3 Billion of USDC Reserve Risk Removed, Dollar De-peg Closes](https://www.circle.com/pressroom/3-3-billion-of-usdc-reserve-risk-removed-dollar-de-peg-closes), 12 March 2023 (fetched 19 Oct 2026)
+- [SEC press release 2024-73 on Terraform](https://www.sec.gov/newsroom/press-releases/2024-73), 13 June 2024: the UST depeg of May 2022 (fetched 19 Oct 2026)
+- [WBTC](https://wbtc.network/): how WBTC is backed (fetched 19 Oct 2026)
+- [Chaos Labs: Post-Mortem, Exchange Rate Misalignment on wstETH Core and Prime Instances](https://governance.aave.com/t/24269), Aave governance forum, 10 March 2026 (fetched 19 Oct 2026)
+- [HMRC Cryptoassets Manual, CRYPTO61640: DeFi lending and staking, collateral](https://www.gov.uk/hmrc-internal-manuals/cryptoassets-manual/crypto61640), updated 28 November 2025 (fetched 19 Oct 2026)
+
+_Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation._

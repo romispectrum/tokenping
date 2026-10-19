@@ -7,6 +7,7 @@ import AaveLiquidationAlertTools, {
 } from "~~/content/blog/aave-liquidation-alert-tools.mdx";
 import AaveLiquidationPrice, { meta as aaveLiquidationPrice } from "~~/content/blog/aave-liquidation-price.mdx";
 import AvoidAaveLiquidation, { meta as avoidAaveLiquidation } from "~~/content/blog/avoid-aave-liquidation.mdx";
+import CryptoBackedLoans, { meta as cryptoBackedLoans } from "~~/content/blog/crypto-backed-loans.mdx";
 import CsAaveHealthFactor, { meta as csAaveHealthFactor } from "~~/content/blog/cs/aave-health-factor-vysvetleni.mdx";
 import CsSafeAaveHealthFactor, {
   meta as csSafeAaveHealthFactor,
@@ -27,6 +28,8 @@ import CsAaveLiquidationAlertTools, {
 import CsWhyAaveHealthFactorDropped, {
   meta as csWhyAaveHealthFactorDropped,
 } from "~~/content/blog/cs/proc-klesl-health-factor-aave.mdx";
+import CsCryptoBackedLoans, { meta as csCryptoBackedLoans } from "~~/content/blog/cs/pujcky-zajistene-kryptomenami.mdx";
+import CsShortFiatWithAave, { meta as csShortFiatWithAave } from "~~/content/blog/cs/short-fiatu-pujckou-na-aave.mdx";
 import CsPrivateAaveLiquidationAlerts, {
   meta as csPrivateAaveLiquidationAlerts,
 } from "~~/content/blog/cs/soukroma-upozorneni-na-likvidaci-aave.mdx";
@@ -37,6 +40,7 @@ import PrivateAaveLiquidationAlerts, {
   meta as privateAaveLiquidationAlerts,
 } from "~~/content/blog/private-aave-liquidation-alerts.mdx";
 import SafeAaveHealthFactor, { meta as safeAaveHealthFactor } from "~~/content/blog/safe-aave-health-factor.mdx";
+import ShortFiatWithAave, { meta as shortFiatWithAave } from "~~/content/blog/short-fiat-with-aave.mdx";
 import type { Post } from "~~/content/blog/types";
 import WhyAaveHealthFactorDropped, {
   meta as whyAaveHealthFactorDropped,
@@ -55,6 +59,8 @@ export const POSTS: readonly Post[] = [
   { meta: aaveLiquidationAlertTools, Content: AaveLiquidationAlertTools },
   { meta: avoidAaveLiquidation, Content: AvoidAaveLiquidation },
   { meta: privateAaveLiquidationAlerts, Content: PrivateAaveLiquidationAlerts },
+  { meta: cryptoBackedLoans, Content: CryptoBackedLoans },
+  { meta: shortFiatWithAave, Content: ShortFiatWithAave },
 ];
 
 /** The Czech translations (content/blog/cs), in the same order. Slugs pair with English through i18n/postSlugs. */
@@ -68,6 +74,8 @@ const CS_POSTS: readonly Post[] = [
   { meta: csAaveLiquidationAlertTools, Content: CsAaveLiquidationAlertTools },
   { meta: csAvoidAaveLiquidation, Content: CsAvoidAaveLiquidation },
   { meta: csPrivateAaveLiquidationAlerts, Content: CsPrivateAaveLiquidationAlerts },
+  { meta: csCryptoBackedLoans, Content: CsCryptoBackedLoans },
+  { meta: csShortFiatWithAave, Content: CsShortFiatWithAave },
 ];
 
 const POSTS_BY_LOCALE: Localized<readonly Post[]> = { en: POSTS, cs: CS_POSTS };
@@ -153,6 +161,21 @@ export const RELATED_SLUGS: Record<string, readonly string[]> = {
     "aave-health-factor-alert-setup",
     "aave-liquidation-alert-tools",
     "safe-aave-health-factor",
+  ],
+  "crypto-backed-loans": [
+    "aave-health-factor",
+    "short-fiat-with-aave",
+    "how-aave-liquidation-works",
+    "safe-aave-health-factor",
+    "aave-liquidation-price",
+    "aave-health-factor-alert-setup",
+  ],
+  "short-fiat-with-aave": [
+    "aave-health-factor",
+    "crypto-backed-loans",
+    "safe-aave-health-factor",
+    "aave-liquidation-price",
+    "aave-health-factor-alert-setup",
   ],
 };
 
