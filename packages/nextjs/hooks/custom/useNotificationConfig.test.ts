@@ -4,6 +4,7 @@ import { act, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
 import type { Locale } from "~~/i18n/locales";
+import { SignInRequiredError } from "~~/services/api/apiClient";
 import type { NotificationConfig } from "~~/types/notifications";
 import { deferred } from "~~/utils/testing/helpers";
 import { createTestQueryClient, renderHookWithProviders } from "~~/utils/testing/providers";
@@ -14,9 +15,21 @@ const mocks = vi.hoisted(() => ({
   getAllConfigs: vi.fn(),
   upsertConfig: vi.fn(),
   deleteConfig: vi.fn(),
+  /** Whether the connected wallet is the signed-in one (useWalletSession). */
+  signedIn: true,
+  markSignedOut: vi.fn(),
 }));
 
 vi.mock("wagmi", () => ({ useAccount: () => ({ address: mocks.address }) }));
+// The real signOutOn401, so a 401 reaches markSignedOut as in the app.
+vi.mock("~~/hooks/custom/useWalletSession", async importOriginal => ({
+  ...(await importOriginal<typeof import("~~/hooks/custom/useWalletSession")>()),
+  useWalletSession: () => ({
+    isSignedIn: !!mocks.address && mocks.signedIn,
+    isChecking: false,
+    markSignedOut: mocks.markSignedOut,
+  }),
+}));
 // The page's language, which the LocaleProvider of each root layout supplies.
 vi.mock("~~/i18n/LocaleProvider", () => ({ useLocale: () => mocks.locale }));
 vi.mock("~~/services/notifications/notificationConfigClient", () => ({
@@ -64,6 +77,8 @@ const renderLoaded = async () => {
 beforeEach(() => {
   mocks.address = ADDRESS;
   mocks.locale = "en";
+  mocks.signedIn = true;
+  mocks.markSignedOut.mockReset();
   mocks.getAllConfigs.mockReset().mockResolvedValue({});
   mocks.upsertConfig.mockReset().mockResolvedValue(undefined);
   mocks.deleteConfig.mockReset().mockResolvedValue(undefined);
@@ -91,6 +106,55 @@ describe("useNotificationConfig", () => {
     ]);
   });
 
+  it("is loaded with no configs and makes no request before the wallet signs in", () => {
+    mocks.signedIn = false;
+    const { result } = render();
+    expect(result.current.isLoaded).toBe(true);
+    expect(result.current.isError).toBe(false);
+    expect(result.current.hasConfig(ETHEREUM)).toBe(false);
+    expect(mocks.getAllConfigs).not.toHaveBeenCalled();
+  });
+
+  it("hides the configs it loaded once the session ends, and shows them again after signing in", async () => {
+    mocks.getAllConfigs.mockResolvedValue({ "1:v3": CONFIG });
+    const { result, rerender } = await renderLoaded();
+    expect(result.current.hasConfig(ETHEREUM)).toBe(true);
+
+    mocks.signedIn = false;
+    rerender();
+    expect(result.current.getConfig(ETHEREUM)).toBeNull();
+
+    mocks.signedIn = true;
+    rerender();
+    await waitFor(() => expect(result.current.getConfig(ETHEREUM)).toEqual(CONFIG));
+  });
+
+  it("marks the wallet signed out when the load answers 401", async () => {
+    mocks.getAllConfigs.mockRejectedValue(new SignInRequiredError("Sign in with your wallet first"));
+    render();
+    await waitFor(() => expect(mocks.markSignedOut).toHaveBeenCalled());
+    expect(mocks.getAllConfigs).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["a save", (hook: ReturnType<typeof useNotificationConfig>) => hook.updateConfig(ETHEREUM, { enabled: true })],
+    ["a delete", (hook: ReturnType<typeof useNotificationConfig>) => hook.deleteConfig(ETHEREUM)],
+  ])("marks the wallet signed out when %s answers 401, and still rejects", async (_label, write) => {
+    const signedOut = new SignInRequiredError("Sign in with your wallet first");
+    mocks.upsertConfig.mockRejectedValue(signedOut);
+    mocks.deleteConfig.mockRejectedValue(signedOut);
+    const { result } = await renderLoaded();
+    await act(() => expect(write(result.current)).rejects.toBe(signedOut));
+    expect(mocks.markSignedOut).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not mark the wallet signed out for other failures", async () => {
+    mocks.upsertConfig.mockRejectedValue(new Error("Active paid access required"));
+    const { result } = await renderLoaded();
+    await act(() => expect(result.current.updateConfig(ETHEREUM, { enabled: true })).rejects.toThrow());
+    expect(mocks.markSignedOut).not.toHaveBeenCalled();
+  });
+
   it("is loaded with no configs and makes no request without a wallet", () => {
     mocks.address = undefined;
     const { result } = render();
@@ -100,12 +164,12 @@ describe("useNotificationConfig", () => {
     expect(mocks.getAllConfigs).not.toHaveBeenCalled();
   });
 
-  it("loads the wallet's configs with the raw address and caches them under the normalized address", async () => {
+  it("loads the signed-in wallet's configs and caches them under the normalized address", async () => {
     mocks.getAllConfigs.mockResolvedValue({ "1:v3": CONFIG });
     const { result, queryClient } = render();
     expect(result.current.isLoaded).toBe(false);
     await waitFor(() => expect(result.current.isLoaded).toBe(true));
-    expect(mocks.getAllConfigs.mock.calls).toEqual([[ADDRESS]]);
+    expect(mocks.getAllConfigs.mock.calls).toEqual([[]]);
     expect(result.current.getConfig(ETHEREUM)).toEqual(CONFIG);
     expect([result.current.hasConfig(ETHEREUM), result.current.hasConfig(CHAIN_2)]).toEqual([true, false]);
     expect(queryClient.getQueryData(["notificationConfigs", ADDRESS.toLowerCase()])).toEqual({ "1:v3": CONFIG });
@@ -141,7 +205,7 @@ describe("useNotificationConfig", () => {
     otherConfigs.resolve(OTHER_CONFIGS);
     await waitFor(() => expect(result.current.isLoaded).toBe(true));
     expect([result.current.hasConfig(ETHEREUM), result.current.hasConfig(CHAIN_2)]).toEqual([false, true]);
-    expect(mocks.getAllConfigs.mock.calls).toEqual([[ADDRESS], [OTHER_ADDRESS]]);
+    expect(mocks.getAllConfigs.mock.calls).toEqual([[], []]);
   });
 
   it("never shows a late response for the previous wallet", async () => {
@@ -252,7 +316,7 @@ describe("useNotificationConfig", () => {
         healthFactorThreshold: 2,
       }),
     );
-    expect(mocks.upsertConfig.mock.calls).toEqual([[ADDRESS, expected]]);
+    expect(mocks.upsertConfig.mock.calls).toEqual([[expected]]);
     await waitFor(() => expect(result.current.getConfig(ETHEREUM)).toEqual(expected));
   });
 
@@ -336,7 +400,7 @@ describe("useNotificationConfig", () => {
     mocks.getAllConfigs.mockReturnValue(new Promise(() => undefined));
     await act(() => result.current.updateConfig(OPTIMISM, { enabled: true }));
     expect(mocks.upsertConfig.mock.calls).toEqual([
-      [ADDRESS, { chainId: 10, market: "v3", enabled: true, services: [], healthFactorThreshold: 1.5, locale: "en" }],
+      [{ chainId: 10, market: "v3", enabled: true, services: [], healthFactorThreshold: 1.5, locale: "en" }],
     ]);
     await waitFor(() => expect(result.current.hasConfig(OPTIMISM)).toBe(true));
   });
@@ -347,7 +411,7 @@ describe("useNotificationConfig", () => {
     const { result } = await renderLoaded();
     await act(() => result.current.updateConfig(ETHEREUM, { healthFactorThreshold: 1.6 }));
     await act(() => result.current.updateConfig(OPTIMISM, { enabled: true }));
-    expect(mocks.upsertConfig.mock.calls.map(([, config]) => [config.chainId, config.locale])).toEqual([
+    expect(mocks.upsertConfig.mock.calls.map(([config]) => [config.chainId, config.locale])).toEqual([
       [1, "cs"],
       [10, "cs"],
     ]);
@@ -359,7 +423,7 @@ describe("useNotificationConfig", () => {
     const { result } = await renderLoaded();
     mocks.getAllConfigs.mockReturnValue(new Promise(() => undefined));
     await act(() => result.current.deleteConfig(ETHEREUM));
-    expect(mocks.deleteConfig.mock.calls).toEqual([[ADDRESS, ETHEREUM]]);
+    expect(mocks.deleteConfig.mock.calls).toEqual([[ETHEREUM]]);
     await waitFor(() =>
       expect([result.current.hasConfig(ETHEREUM), result.current.hasConfig(CHAIN_2)]).toEqual([false, true]),
     );
@@ -394,7 +458,7 @@ describe("useNotificationConfig", () => {
         locale: "en",
       };
       // A new market starts from the default, not from the V3 alert on the same chain.
-      expect(mocks.upsertConfig.mock.calls).toEqual([[ADDRESS, sent]]);
+      expect(mocks.upsertConfig.mock.calls).toEqual([[sent]]);
       await waitFor(() => expect(result.current.hasConfig(ETHEREUM_LIDO)).toBe(true));
       expect(result.current.getConfig(ETHEREUM_LIDO)).toEqual(sent);
       expect(result.current.getConfig(ETHEREUM)).toEqual(CONFIG);
@@ -410,9 +474,7 @@ describe("useNotificationConfig", () => {
 
       await act(() => result.current.updateConfig(ETHEREUM_LIDO, { healthFactorThreshold: 1.25 }));
 
-      expect(mocks.upsertConfig.mock.calls).toEqual([
-        [ADDRESS, { ...LIDO_CONFIG, healthFactorThreshold: 1.25, locale: "en" }],
-      ]);
+      expect(mocks.upsertConfig.mock.calls).toEqual([[{ ...LIDO_CONFIG, healthFactorThreshold: 1.25, locale: "en" }]]);
       await waitFor(() => expect(result.current.getConfig(ETHEREUM_LIDO)?.healthFactorThreshold).toBe(1.25));
       expect(result.current.getConfig(ETHEREUM)).toEqual(CONFIG);
     });
@@ -424,16 +486,13 @@ describe("useNotificationConfig", () => {
 
       await act(() => result.current.deleteConfig(ETHEREUM_LIDO));
 
-      expect(mocks.deleteConfig.mock.calls).toEqual([[ADDRESS, ETHEREUM_LIDO]]);
+      expect(mocks.deleteConfig.mock.calls).toEqual([[ETHEREUM_LIDO]]);
       await waitFor(() => expect(result.current.hasConfig(ETHEREUM_LIDO)).toBe(false));
       expect(result.current.hasConfig(ETHEREUM)).toBe(true);
 
       await act(() => result.current.deleteConfig(ETHEREUM));
 
-      expect(mocks.deleteConfig.mock.calls).toEqual([
-        [ADDRESS, ETHEREUM_LIDO],
-        [ADDRESS, ETHEREUM],
-      ]);
+      expect(mocks.deleteConfig.mock.calls).toEqual([[ETHEREUM_LIDO], [ETHEREUM]]);
       await waitFor(() => expect(result.current.hasConfig(ETHEREUM)).toBe(false));
       expect(mocks.getAllConfigs).toHaveBeenCalledTimes(1);
     });

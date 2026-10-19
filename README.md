@@ -56,9 +56,12 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs o
 - Only the connected wallet can be watched: no watch-only addresses, and access is per paying wallet.
 - Payment is USDC on Arbitrum One only (you need a little ETH there for gas). The contract has no refund function, and
   its owner can change the price, pause payments, withdraw funds and upgrade it.
-- The API identifies users by wallet address without a signature check (no SIWE) yet, so anyone who knows a wallet
-  address can read the contact details saved for it and, while that wallet's access is active, change or delete its
-  alerts.
+- The alert API acts only for a wallet that has signed in with Ethereum (EIP-4361). An ordinary wallet's signature is
+  checked locally; a smart wallet's (ERC-1271, ERC-6492) only through the app's own RPC (`NEXT_PUBLIC_ALCHEMY_API_KEY`
+  or `rpcOverrides`), never a public one, so without one smart wallets cannot sign in. A session is an HttpOnly cookie
+  signed with `SESSION_SECRET` that lasts 7 days; disconnecting the wallet while the site is open clears it, but a
+  copied cookie stays valid until it expires, and rotating `SESSION_SECRET` ends every session. Sign-in needs the
+  `auth_nonces` table and the Supabase service role key, and has no rate limit of its own.
 - Alerts can only be deleted in the app while the wallet's access is active.
 - Delivery depends on third parties (Resend, the Signal relay, the Telegram Bot API, public RPC providers, Vercel
   cron). There is no published uptime guarantee.
@@ -108,8 +111,9 @@ and answer 404 otherwise.
 
 Email needs `RESEND_API_KEY`, Signal needs `SIGNAL_API_URL`, `SIGNAL_SENDER_NUMBER` and `SIGNAL_API_TOKEN`, and
 Telegram needs the `TELEGRAM_*` variables. `CRON_SECRET` protects the cron and email routes: without it the cron
-refuses every run and no alerts go out. Locally the server talks to `supabase start` with its demo service-role key, so
-`SUPABASE_SERVICE_ROLE_KEY` can stay empty. See `packages/nextjs/.env.example`.
+refuses every run and no alerts go out. Signing in to the alert settings needs the `auth_nonces` migration; locally a
+random `SESSION_SECRET` stands in when none is set, and the server talks to `supabase start` with its demo
+service-role key, so `SUPABASE_SERVICE_ROLE_KEY` can stay empty. See `packages/nextjs/.env.example`.
 
 ### Checks
 
@@ -141,8 +145,10 @@ dark theme in `WHITE_BACKED_IMAGES`, both in `packages/nextjs/scripts/tokenIconS
 
 The frontend runs on Vercel (`yarn vercel:yolo --prod`). The 5-minute cron in `vercel.json` needs a Vercel plan that
 allows it. Set the variables from `packages/nextjs/.env.example` in the Vercel project, including `SUPABASE_URL`,
-`SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET` and `RESEND_FROM_EMAIL`. Without the service-role key the API refuses to
-reach the database, and without `CRON_SECRET` the cron refuses to run; both log why.
+`SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `RESEND_FROM_EMAIL` and `SESSION_SECRET` (`openssl rand -hex 32`, a
+different one for Production and Preview), and apply the Supabase migrations first. Without the service-role key the
+API refuses to reach the database, without `CRON_SECRET` the cron refuses to run, and without `SESSION_SECRET`
+sign-in and every alert route answer 503; each logs why.
 
 The contract has two deploy modes, selected with `--deploy-mode`:
 

@@ -14,7 +14,6 @@ vi.mock("~~/utils/scaffold-eth", () => ({
   },
 }));
 
-const ADDRESS = "0xAbCdEf0000000000000000000000000000000001";
 const LABEL = "How did you hear about Tokenping? (optional)";
 
 const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>();
@@ -24,7 +23,7 @@ const onSent = vi.fn();
 
 const renderPrompt = ({ autoFocus }: { autoFocus?: boolean } = {}) => {
   const onClose = vi.fn();
-  render(<AttributionPrompt address={ADDRESS} autoFocus={autoFocus} onSent={onSent} onClose={onClose} />);
+  render(<AttributionPrompt autoFocus={autoFocus} onSent={onSent} onClose={onClose} />);
   return onClose;
 };
 
@@ -110,7 +109,8 @@ describe("AttributionPrompt", () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: ADDRESS, answer: "A friend on X" }),
+          // No wallet: the server stores the answer for the signed-in one.
+          body: JSON.stringify({ answer: "A friend on X" }),
         },
       ],
     ]);
@@ -215,7 +215,7 @@ describe("AttributionPrompt in Czech", () => {
     const onClose = vi.fn();
     render(
       <LocaleProvider locale="cs">
-        <AttributionPrompt address={ADDRESS} onSent={onSent} onClose={onClose} />
+        <AttributionPrompt onSent={onSent} onClose={onClose} />
       </LocaleProvider>,
     );
     return onClose;

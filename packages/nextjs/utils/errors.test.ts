@@ -1,5 +1,6 @@
+import { UserRejectedRequestError } from "viem";
 import { describe, expect, it } from "vitest";
-import { getErrorMessage } from "~~/utils/errors";
+import { getErrorMessage, isUserRejection } from "~~/utils/errors";
 
 describe("getErrorMessage", () => {
   it("returns the message of an Error", () => {
@@ -34,5 +35,34 @@ describe("getErrorMessage", () => {
 
   it("allows an empty fallback", () => {
     expect(getErrorMessage(null, "")).toBe("");
+  });
+});
+
+describe("isUserRejection", () => {
+  it.each([
+    ["viem's UserRejectedRequestError", new UserRejectedRequestError(new Error("User rejected the request."))],
+    ["an EIP-1193 error with code 4001", Object.assign(new Error("User denied message signature."), { code: 4001 })],
+    [
+      "a wrapper whose cause is a rejection",
+      new Error("SignMessageError", { cause: new Error("x", { cause: { code: 4001 } }) }),
+    ],
+  ])("recognises %s", (_label, error) => {
+    expect(isUserRejection(error)).toBe(true);
+  });
+
+  it.each([
+    ["another error", new Error("Connector not connected.")],
+    ["another code", Object.assign(new Error("Internal"), { code: -32603 })],
+    ["a string", "rejected"],
+    ["null", null],
+    ["undefined", undefined],
+  ])("does not count %s", (_label, error) => {
+    expect(isUserRejection(error)).toBe(false);
+  });
+
+  it("stops on a cause chain that loops", () => {
+    const looped: { cause?: unknown } = {};
+    looped.cause = looped;
+    expect(isUserRejection(looped)).toBe(false);
   });
 });

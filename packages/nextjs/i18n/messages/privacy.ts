@@ -89,16 +89,16 @@ export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = {
       items: [
         "Your positions or a history of your health factor. They are read live and not saved.",
         "A log of the alerts we sent.",
-        `Tracking pixels or advertising cookies: the site uses none, and Tokenping sets no cookies. Your browser keeps your theme choice, your wallet connection and whether it has already shown you the ${ATTRIBUTION_QUESTION_EN} question in its own local storage.`,
+        `Tracking pixels or advertising cookies: the site uses none. When you sign in with your wallet, Tokenping sets one cookie that only says which wallet signed in; it lasts 7 days or until you disconnect the wallet on this site. While you sign in, a second cookie holds the sign-in request for five minutes. Your browser keeps your theme choice, your wallet connection, which wallets have signed in on it and whether it has already shown you the ${ATTRIBUTION_QUESTION_EN} question in its own local storage.`,
         "IP addresses in our database. Vercel still handles every request, as listed below. When an alert check or a message fails, the error, which can include your wallet address and the recipient, goes to our server logs.",
       ],
     },
     whoCanSee: {
       title: "Who can see your alert settings",
       tiedToWallet:
-        "Alert settings are tied to a wallet address, not to an account with a password, and the app does not yet ask you to sign a message proving that you own the wallet.",
+        "Alert settings are tied to a wallet address, not to an account with a password. To see or change them, you sign a message with that wallet, which proves the address is yours. It is not a transaction and costs no gas, and one signature lasts 7 days on that browser.",
       anyone: hasTelegram =>
-        `Until the app checks wallet signatures, anyone who knows your wallet address can look up the email address${hasTelegram ? ", Signal username and Telegram username" : " and Signal username"} saved for it and, while that wallet's access is active, change or delete its alerts. The public payment records described below show which wallets have paid.`,
+        `Only someone who can sign with your wallet can see the email address${hasTelegram ? ", Signal username and Telegram username" : " and Signal username"} saved for it, or change or delete its alerts. The public payment records described below still show which wallets have paid.`,
       dontEnter: "Don't enter an email address or Signal username you wouldn't want linked to your wallet address.",
     },
     processors: {
@@ -133,8 +133,9 @@ export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = {
           : []),
         {
           name: "RPC providers (PublicNode, Alchemy and the networks' public endpoints)",
-          role: "Answer the blockchain reads: from your browser for the dashboard, and from our server for alert checks.",
-          receives: "The wallet address being read, and your IP address for reads made from your browser.",
+          role: "Answer the blockchain reads: from your browser for the dashboard, and from our server for alert checks and to check sign-in signatures from smart wallets.",
+          receives:
+            "The wallet address being read (and, when you sign in, your signature), and your IP address for reads made from your browser.",
         },
         {
           name: "WalletConnect",
@@ -202,16 +203,16 @@ export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = {
       items: [
         "Vaše pozice ani historii vašeho health factoru. Čtou se živě a neukládají se.",
         "Záznam odeslaných upozornění.",
-        `Sledovací pixely ani reklamní cookies: web nic z toho nepoužívá a Tokenping nenastavuje žádné cookies. Váš prohlížeč si ve svém vlastním místním úložišti (local storage) uchovává zvolený motiv, připojení peněženky a to, zda vám už zobrazil otázku ${ATTRIBUTION_QUESTION_CS}.`,
+        `Sledovací pixely ani reklamní cookies: web nic z toho nepoužívá. Když se přihlásíte peněženkou, Tokenping nastaví jednu cookie, která říká jen to, která peněženka se přihlásila; platí 7 dní nebo do chvíle, kdy peněženku na tomto webu odpojíte. Během přihlašování drží druhá cookie na pět minut žádost o přihlášení. Váš prohlížeč si ve svém vlastním místním úložišti (local storage) uchovává zvolený motiv, připojení peněženky, které peněženky se v něm přihlásily, a to, zda vám už zobrazil otázku ${ATTRIBUTION_QUESTION_CS}.`,
         "IP adresy v naší databázi. Každý požadavek přesto zpracovává Vercel, jak je uvedeno níže. Když kontrola upozornění nebo odeslání zprávy selže, chyba, která může obsahovat adresu vaší peněženky a příjemce, se zapíše do našich serverových logů.",
       ],
     },
     whoCanSee: {
       title: "Kdo vidí nastavení vašich upozornění",
       tiedToWallet:
-        "Nastavení upozornění je svázané s adresou peněženky, ne s účtem s heslem, a aplikace po vás zatím nežádá podpis zprávy, kterým byste prokázali, že peněženku vlastníte.",
+        "Nastavení upozornění je svázané s adresou peněženky, ne s účtem s heslem. Abyste je mohli zobrazit nebo změnit, podepíšete touto peněženkou zprávu, která prokáže, že adresa patří vám. Nejde o transakci, takže neplatíte žádný gas, a jeden podpis v daném prohlížeči platí 7 dní.",
       anyone: hasTelegram =>
-        `Dokud aplikace neověřuje podpisy peněženek, může si kdokoli, kdo zná adresu vaší peněženky, zobrazit e-mailovou adresu${hasTelegram ? ", uživatelské jméno na Signalu a uživatelské jméno na Telegramu" : " a uživatelské jméno na Signalu"}, které jsou k ní uložené, a dokud má tato peněženka aktivní přístup, může její upozornění změnit nebo smazat. Veřejné záznamy o platbách popsané níže ukazují, které peněženky zaplatily.`,
+        `E-mailovou adresu${hasTelegram ? ", uživatelské jméno na Signalu a uživatelské jméno na Telegramu" : " a uživatelské jméno na Signalu"}, které jsou k vaší peněžence uložené, si může zobrazit a její upozornění změnit nebo smazat jen ten, kdo umí podepisovat vaší peněženkou. Veřejné záznamy o platbách popsané níže přesto ukazují, které peněženky zaplatily.`,
       dontEnter:
         "Nezadávejte e-mailovou adresu ani uživatelské jméno na Signalu, které nechcete mít spojené s adresou své peněženky.",
     },
@@ -247,8 +248,9 @@ export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = {
           : []),
         {
           name: "Poskytovatelé RPC (PublicNode, Alchemy a veřejné endpointy jednotlivých sítí)",
-          role: "Odpovídají na čtení z blockchainu: z vašeho prohlížeče pro přehled a z našeho serveru pro kontroly upozornění.",
-          receives: "Adresa čtené peněženky a u čtení z vašeho prohlížeče také vaše IP adresa.",
+          role: "Odpovídají na čtení z blockchainu: z vašeho prohlížeče pro přehled a z našeho serveru pro kontroly upozornění a pro ověření podpisu při přihlášení chytrou peněženkou.",
+          receives:
+            "Adresa čtené peněženky (a při přihlášení váš podpis) a u čtení z vašeho prohlížeče také vaše IP adresa.",
         },
         {
           name: "WalletConnect",

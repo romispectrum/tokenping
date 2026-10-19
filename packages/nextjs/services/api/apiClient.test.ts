@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiUrl, readApiError } from "~~/services/api/apiClient";
+import { SignInRequiredError, apiError, apiUrl, readApiError } from "~~/services/api/apiClient";
 
 const FALLBACK = "Failed to do the thing";
 
@@ -99,5 +99,23 @@ describe("readApiError", () => {
 
   it("does not look at the status code", async () => {
     expect(await readApiError(jsonResponse({ error: "ok but error" }, 200), FALLBACK)).toBe("ok but error");
+  });
+});
+
+describe("apiError", () => {
+  it("is a SignInRequiredError for a 401, with the API's reason", async () => {
+    const error = await apiError(jsonResponse({ error: "Sign in with your wallet first" }, 401), FALLBACK);
+    expect(error).toBeInstanceOf(SignInRequiredError);
+    expect([error.name, error.message]).toEqual(["SignInRequiredError", "Sign in with your wallet first"]);
+  });
+
+  it.each([400, 403, 500])("is a plain Error for a %i", async status => {
+    const error = await apiError(jsonResponse({ error: "Nope" }, status), FALLBACK);
+    expect(error).not.toBeInstanceOf(SignInRequiredError);
+    expect(error.message).toBe("Nope");
+  });
+
+  it("falls back like readApiError", async () => {
+    expect((await apiError(new Response("<html>", { status: 401 }), FALLBACK)).message).toBe(FALLBACK);
   });
 });

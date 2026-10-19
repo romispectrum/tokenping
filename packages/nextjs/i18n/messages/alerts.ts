@@ -1,10 +1,11 @@
 import { capitalize, csForMarket, csOnMarket, plural } from "~~/i18n/format";
 import type { Locale, Localized } from "~~/i18n/locales";
+import { SignInRequiredError } from "~~/services/api/apiClient";
 import type { NotificationService } from "~~/types/notifications";
 import { getErrorMessage } from "~~/utils/errors";
 
-// The alert settings card on the dashboard: the empty state, the form, the summary, the Telegram username's link
-// status, the toasts and the attribution question. The alert message itself is in notifications.ts.
+// The alert settings card on the dashboard: signing in, the empty state, the form, the summary, the Telegram
+// username's link status, the toasts and the attribution question. The alert message itself is in notifications.ts.
 
 /** What a failed Save says under a field (and in the error summary). Each one says how to fix the field. */
 export type NotificationFormErrorMessages = {
@@ -23,6 +24,17 @@ type AlertsMessages = {
   active: string;
   payToEdit: string;
   editAlert: string;
+  // Signing in with the wallet before alerts load (Sign-in with Ethereum)
+  signInTitle: string;
+  signInDescription: string;
+  signIn: string;
+  signingIn: string;
+  /** The wallet's "Sign in" line, in the message it signs. One line, no line breaks. */
+  signInStatement: string;
+  signInRejected: string;
+  signInFailed: string;
+  /** A request answered 401: the session ended (expired, or signed in with another wallet in another tab). */
+  signInExpired: string;
   // First use on a network
   emptyTitle: (chainName: string) => string;
   emptyDescription: string;
@@ -125,6 +137,15 @@ export const ALERTS_MESSAGES: Localized<AlertsMessages> = {
     active: "Active",
     payToEdit: "Pay for access to edit",
     editAlert: "Edit alert",
+    signInTitle: "Sign in to manage your alerts",
+    signInDescription:
+      "Your wallet signs a message that proves the address is yours. It is not a transaction and costs no gas.",
+    signIn: "Sign in with wallet",
+    signingIn: "Waiting for your wallet",
+    signInStatement: "Sign in to Tokenping to see and edit your health factor alerts.",
+    signInRejected: "You declined the signature request. Sign in to see and edit your alerts.",
+    signInFailed: "Couldn't sign you in. Try again.",
+    signInExpired: "Your sign-in has ended. Sign in with your wallet again.",
     emptyTitle: chainName => `No alerts on ${chainName} yet`,
     emptyDescription: "Get a message when your health factor drops below a threshold you choose.",
     createAlert: "Create alert",
@@ -213,6 +234,15 @@ export const ALERTS_MESSAGES: Localized<AlertsMessages> = {
     active: "Aktivní",
     payToEdit: "Pro úpravy zaplaťte přístup",
     editAlert: "Upravit upozornění",
+    signInTitle: "Přihlaste se ke správě upozornění",
+    signInDescription:
+      "Peněženka podepíše zprávu, která potvrdí, že adresa patří vám. Nejde o transakci, takže neplatíte žádný gas.",
+    signIn: "Přihlásit se peněženkou",
+    signingIn: "Čekáme na vaši peněženku",
+    signInStatement: "Přihlášení do Tokenpingu pro zobrazení a úpravy upozornění na health factor.",
+    signInRejected: "Žádost o podpis jste odmítli. Pro zobrazení a úpravy upozornění se přihlaste.",
+    signInFailed: "Přihlášení se nepodařilo. Zkuste to znovu.",
+    signInExpired: "Vaše přihlášení skončilo. Přihlaste se peněženkou znovu.",
     emptyTitle: chainName => `${capitalize(csOnMarket(chainName))} zatím nemáte žádné upozornění`,
     emptyDescription: "Dostanete zprávu, když váš health factor klesne pod práh, který si zvolíte.",
     createAlert: "Vytvořit upozornění",
@@ -312,7 +342,9 @@ export const ALERTS_MESSAGES: Localized<AlertsMessages> = {
 
 /**
  * A failed request's message for a toast. The API answers in English, so English shows the server's reason and Czech
- * shows its own fallback.
+ * shows its own fallback. An ended session says so in either language.
  */
-export const requestErrorMessage = (locale: Locale, error: unknown, fallback: string) =>
-  locale === "en" ? getErrorMessage(error, fallback) : fallback;
+export const requestErrorMessage = (locale: Locale, error: unknown, fallback: string) => {
+  if (error instanceof SignInRequiredError) return ALERTS_MESSAGES[locale].signInExpired;
+  return locale === "en" ? getErrorMessage(error, fallback) : fallback;
+};

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { notifyManager } from "@tanstack/react-query";
 import { act, fireEvent, screen, within } from "@testing-library/react";
+import { UserRejectedRequestError, getAddress } from "viem";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { NotificationConfig } from "~~/components/custom/NotificationConfig";
 import { markAttributionPrompted } from "~~/components/custom/notifications/attributionPromptState";
@@ -20,13 +21,20 @@ import { renderWithProviders } from "~~/utils/testing/providers";
 
 const mocks = vi.hoisted(() => ({
   address: undefined as string | undefined,
+  chainId: undefined as number | undefined,
   hasAccess: true,
   toasts: [] as string[],
   wagmiConfig: {},
+  /** The wallet's signature prompt (wagmi's signMessageAsync). */
+  signMessage: vi.fn<(args: { account: string; message: string }) => Promise<string>>(),
 }));
 
 // useAccount and getAccount read the same wagmi state: the connected wallet.
-vi.mock("wagmi", () => ({ useAccount: () => ({ address: mocks.address }), useConfig: () => mocks.wagmiConfig }));
+vi.mock("wagmi", () => ({
+  useAccount: () => ({ address: mocks.address, chainId: mocks.chainId }),
+  useConfig: () => mocks.wagmiConfig,
+  useSignMessage: () => ({ signMessageAsync: mocks.signMessage }),
+}));
 vi.mock("wagmi/actions", () => ({ getAccount: () => ({ address: mocks.address }) }));
 vi.mock("~~/hooks/custom/useAccess", () => ({ useAccess: () => ({ isActive: mocks.hasAccess }) }));
 vi.mock("~~/utils/scaffold-eth", () => ({
@@ -61,8 +69,12 @@ type Call = { method: string; url: string; body?: Record<string, unknown> };
 
 const TEST_COOLDOWN_MS = 15 * 60_000;
 
-/** In-memory API state, keyed by lowercased wallet. `override` answers a request instead (failures, slow responses). */
+/**
+ * In-memory API state, keyed by lowercased wallet. `session` is the wallet of the session cookie: the alert routes act
+ * for it and answer 401 without one, like the server. `override` answers a request instead (failures, slow responses).
+ */
 const api = {
+  session: null as string | null,
   configs: {} as Record<string, Record<string, unknown>>,
   /** The Telegram usernames that have pressed Start in the bot. */
   linked: new Set<string>(),
@@ -73,13 +85,36 @@ const api = {
   override: (() => undefined) as (call: Call) => Response | Promise<Response> | undefined,
 };
 
-const userOf = (url: string) => (new URL(url, "http://test").searchParams.get("userId") ?? "").toLowerCase();
+const NONCE = "0123456789abcdef0123456789abcdef";
+const SIGNATURE = "0x5167";
+
+const SIGNED_OUT_PATHS = ["/api/notifications/config", "/api/notifications/test", "/api/attribution"];
 
 const route = ({ method, url, body }: Call) => {
   const path = url.split("?")[0];
-  const user = String(body?.userId ?? "").toLowerCase();
+  if (path === "/api/auth/session" && method === "GET") return jsonResponse({ address: api.session });
+  if (path === "/api/auth/nonce" && method === "POST") {
+    return jsonResponse({ nonce: NONCE, issuedAt: new Date(Date.now()).toISOString() });
+  }
+  if (path === "/api/auth/verify" && method === "POST") {
+    // The signer is the message's address line; the real route also checks the signature, site and nonce.
+    const signer =
+      String(body?.message)
+        .match(/\n(0x[0-9a-fA-F]{40})\n/)?.[1]
+        .toLowerCase() ?? null;
+    api.session = signer;
+    return jsonResponse({ address: signer });
+  }
+  if (path === "/api/auth/logout" && method === "POST") {
+    api.session = null;
+    return jsonResponse({ success: true });
+  }
+  if (SIGNED_OUT_PATHS.includes(path) && !api.session) {
+    return jsonResponse({ error: "Sign in with your wallet first" }, 401);
+  }
+  const user = api.session ?? "";
   if (path === "/api/notifications/config") {
-    if (method === "GET") return jsonResponse(api.configs[userOf(url)] ?? {});
+    if (method === "GET") return jsonResponse(api.configs[user] ?? {});
     const chainId = Number(body?.chainId);
     // Like the server: keyed by chain and market, "v3" when the body has none.
     const market = String(body?.market ?? "v3");
@@ -106,7 +141,7 @@ const route = ({ method, url, body }: Call) => {
   if (path === "/api/notifications/test") {
     if (method === "GET") {
       // Like the server: a channel's time only while it is still in the future, null otherwise.
-      const stored = api.testRetryTimes[userOf(url)] ?? {};
+      const stored = api.testRetryTimes[user] ?? {};
       const retryAt = (channel: string) =>
         stored[channel] && Date.parse(stored[channel]) > Date.now() ? stored[channel] : null;
       return jsonResponse({ email: retryAt("email"), signal: retryAt("signal"), telegram: retryAt("telegram") });
@@ -173,6 +208,9 @@ const button = (name: string | RegExp) => screen.getByRole<HTMLButtonElement>("b
 /** Loading, not disabled: the button keeps focus and colour and ignores presses (aria-busy plus aria-disabled). */
 const isBusy = (element: HTMLElement) =>
   element.getAttribute("aria-busy") === "true" && element.getAttribute("aria-disabled") === "true";
+/** The solid pink fill: the Button default variant (btn-primary) or a bg-primary surface. */
+const isPink = (element: Element) =>
+  (element.getAttribute("class") ?? "").split(/\s+/).some(token => token === "btn-primary" || token === "bg-primary");
 const serviceToggle = (name: "Email" | "Signal" | "Telegram") =>
   screen.getByRole<HTMLInputElement>("checkbox", { name });
 const emailInput = () => screen.getByRole<HTMLInputElement>("textbox", { name: "Email address" });
@@ -236,6 +274,10 @@ afterAll(() => notifyManager.setScheduler(callback => setTimeout(callback, 0)));
 
 beforeEach(() => {
   mocks.address = ADDRESS;
+  mocks.chainId = undefined;
+  // Signed in as the connected wallet, unless a test says otherwise.
+  api.session = ADDRESS.toLowerCase();
+  mocks.signMessage.mockReset().mockResolvedValue(SIGNATURE);
   mocks.hasAccess = true;
   mocks.toasts = [];
   api.configs = {};
@@ -333,6 +375,198 @@ describe("NotificationConfig: loading and access", () => {
   });
 });
 
+describe("NotificationConfig: signing in", () => {
+  const SIGN_IN_TITLE = "Sign in to manage your alerts";
+  const authRequests = () => api.requests.filter(request => request.includes("/api/auth/"));
+  const alertRequests = () =>
+    api.requests.filter(request => SIGNED_OUT_PATHS.some(path => request.includes(` ${path}`)));
+  const signedMessage = () => mocks.signMessage.mock.calls[0]?.[0].message;
+
+  beforeEach(() => {
+    api.session = null;
+  });
+
+  it("asks a wallet with access to sign in before it loads any alert, then loads them", async () => {
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
+    await renderCard();
+    expect(screen.getByRole("heading", { level: 3 }).textContent).toBe(SIGN_IN_TITLE);
+    expect(
+      screen.getByText(
+        "Your wallet signs a message that proves the address is yours. It is not a transaction and costs no gas.",
+      ),
+    ).toBeDefined();
+    expect(alertRequests()).toEqual([]);
+    expect(mocks.signMessage).not.toHaveBeenCalled();
+
+    await click(button("Sign in with wallet"));
+
+    expect(mocks.signMessage.mock.calls).toEqual([[{ account: ADDRESS, message: expect.any(String) }]]);
+    expect(authRequests()).toEqual([
+      "GET /api/auth/session",
+      "POST /api/auth/nonce",
+      `POST /api/auth/verify ${JSON.stringify({ message: signedMessage(), signature: SIGNATURE })}`,
+    ]);
+    expect(alertRequests()).toEqual(["GET /api/notifications/config", "GET /api/notifications/test"]);
+    expect(screen.queryByText(SIGN_IN_TITLE)).toBeNull();
+    expect(summaryValue("Email")).toBe("saved@example.com");
+  });
+
+  it("signs an EIP-4361 message for this site, the connected wallet and its chain, with the server's nonce", async () => {
+    mocks.chainId = 8453;
+    await renderCard();
+    await click(button("Sign in with wallet"));
+    expect(signedMessage()).toBe(
+      `${window.location.host} wants you to sign in with your Ethereum account:\n` +
+        `${getAddress(ADDRESS)}\n\n` +
+        "Sign in to Tokenping to see and edit your health factor alerts.\n\n" +
+        `URI: ${window.location.origin}\n` +
+        "Version: 1\n" +
+        "Chain ID: 8453\n" +
+        `Nonce: ${NONCE}\n` +
+        "Issued At: 2026-10-14T12:00:00.000Z\n" +
+        "Expiration Time: 2026-10-14T12:05:00.000Z",
+    );
+  });
+
+  it("names the site's network when the wallet is on a chain the server cannot check signatures on", async () => {
+    mocks.chainId = 31337;
+    await renderCard();
+    await click(button("Sign in with wallet"));
+    expect(signedMessage()).toContain("\nChain ID: 42161\n");
+  });
+
+  it("keeps the button and says so when the wallet declines, and signs in on the next try", async () => {
+    mocks.signMessage.mockRejectedValueOnce(new UserRejectedRequestError(new Error("User rejected the request.")));
+    await renderCard();
+    await click(button("Sign in with wallet"));
+
+    expect(screen.getByText("You declined the signature request. Sign in to see and edit your alerts.")).toBeDefined();
+    expect(authRequests()).toEqual(["GET /api/auth/session", "POST /api/auth/nonce"]);
+    expect(alertRequests()).toEqual([]);
+    expect(consoleErrors).toEqual([]);
+
+    await click(button("Sign in with wallet"));
+    expect(screen.queryByText(/You declined/)).toBeNull();
+    expect(button("Create alert")).toBeDefined();
+  });
+
+  it("says signing in failed when the server refuses, and logs why", async () => {
+    api.override = ({ url }) =>
+      url === "/api/auth/verify" ? jsonResponse({ error: "The signature does not match this wallet" }, 401) : undefined;
+    await renderCard();
+    await click(button("Sign in with wallet"));
+    expect(screen.getByText("Couldn't sign you in. Try again.")).toBeDefined();
+    expect(alertRequests()).toEqual([]);
+    expect(String(consoleErrors[0]?.[0])).toBe("Failed to sign in:");
+  });
+
+  it("shows the button as busy, waiting for the wallet, while the signature is pending", async () => {
+    const signature = deferred<string>();
+    mocks.signMessage.mockReturnValue(signature.promise);
+    await renderCard();
+    await click(button("Sign in with wallet"));
+    expect(isBusy(button("Waiting for your wallet"))).toBe(true);
+    signature.resolve(SIGNATURE);
+    await settle();
+    expect(button("Create alert")).toBeDefined();
+  });
+
+  it("offers a wallet whose access lapsed a secondary Sign in if it signed in here before, then its alert read-only", async () => {
+    window.localStorage.setItem("tokenping:signed-in-wallets", JSON.stringify([ADDRESS.toLowerCase()]));
+    mocks.hasAccess = false;
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
+    const { container } = await renderCard();
+    // The paywall above has the view's pink button.
+    expect(isPink(button("Sign in with wallet"))).toBe(false);
+    expect([container, ...container.querySelectorAll("[class]")].filter(isPink)).toHaveLength(0);
+
+    await click(button("Sign in with wallet"));
+    expect(screen.getByText("Pay for access to edit")).toBeDefined();
+    expect(summaryValue("Email")).toBe("saved@example.com");
+  });
+
+  it("remembers on this browser which wallets signed in", async () => {
+    await renderCard();
+    await click(button("Sign in with wallet"));
+    expect(JSON.parse(window.localStorage.getItem("tokenping:signed-in-wallets") ?? "null")).toEqual([
+      ADDRESS.toLowerCase(),
+    ]);
+  });
+
+  it("renders nothing for a wallet without access and without a session, and loads nothing", async () => {
+    mocks.hasAccess = false;
+    const { container } = await renderCard();
+    expect(container.innerHTML).toBe("");
+    expect(alertRequests()).toEqual([]);
+  });
+
+  it("renders nothing while the session is being read", async () => {
+    api.override = ({ url }) => (url === "/api/auth/session" ? new Promise<Response>(() => undefined) : undefined);
+    const { container } = await renderCard();
+    expect(container.innerHTML).toBe("");
+  });
+
+  it("asks again when the session ends during an edit, and keeps the draft for after signing in", async () => {
+    api.session = ADDRESS.toLowerCase();
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: { ...SAVED_CONFIG, services: ["email"] } };
+    await renderCard();
+    await click(button("Edit alert"));
+    await type(emailInput(), "new@example.com");
+
+    api.session = null;
+    await click(button("Save alert"));
+    expect(mocks.toasts).toEqual(["error: Your sign-in has ended. Sign in with your wallet again."]);
+    expect(screen.getByRole("heading", { level: 3 }).textContent).toBe(SIGN_IN_TITLE);
+
+    await click(button("Sign in with wallet"));
+    expect(emailInput().value).toBe("new@example.com");
+    await click(button("Save alert"));
+    expect(mocks.toasts.at(-1)).toBe("success: Alert saved");
+    expect(api.configs[ADDRESS.toLowerCase()][MARKET_KEY]).toMatchObject({ email: "new@example.com" });
+  });
+
+  it("asks the new wallet to sign in after a wallet switch, as the session is the old wallet's", async () => {
+    api.session = ADDRESS.toLowerCase();
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
+    const { rerender } = await renderCard();
+    expect(summaryValue("Email")).toBe("saved@example.com");
+
+    mocks.address = OTHER_ADDRESS;
+    rerender(<NotificationConfig {...PROPS} />);
+    await settle();
+    expect(screen.getByRole("heading", { level: 3 }).textContent).toBe(SIGN_IN_TITLE);
+    expect(summaryValue("Email")).toBeNull();
+
+    await click(button("Sign in with wallet"));
+    expect(mocks.signMessage.mock.calls[0][0].account).toBe(OTHER_ADDRESS);
+    expect(api.session).toBe(OTHER_ADDRESS.toLowerCase());
+    expect(button("Create alert")).toBeDefined();
+  });
+
+  it("makes Sign in the view's one pink action, in tokens only", async () => {
+    const { container } = await renderCard();
+    expect(isPink(button("Sign in with wallet"))).toBe(true);
+    expect([container, ...container.querySelectorAll("[class]")].filter(isPink)).toHaveLength(1);
+  });
+
+  it("asks in Czech, with no dashes", async () => {
+    mocks.signMessage.mockRejectedValueOnce(new UserRejectedRequestError(new Error("User rejected the request.")));
+    const { container } = await renderCard({}, "cs");
+    expect(screen.getByRole("heading", { level: 3 }).textContent).toBe("Přihlaste se ke správě upozornění");
+    await click(button("Přihlásit se peněženkou"));
+    expect(
+      screen.getByText("Žádost o podpis jste odmítli. Pro zobrazení a úpravy upozornění se přihlaste."),
+    ).toBeDefined();
+    expect(container.textContent).not.toMatch(new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`));
+    mocks.signMessage.mockReturnValue(new Promise(() => undefined));
+    await click(button("Přihlásit se peněženkou"));
+    expect(isBusy(button("Čekáme na vaši peněženku"))).toBe(true);
+    expect(signedMessage()).toContain(
+      "\n\nPřihlášení do Tokenpingu pro zobrazení a úpravy upozornění na health factor.\n\n",
+    );
+  });
+});
+
 describe("NotificationConfig: creating and editing", () => {
   it("validates on Save, shows each error under its field, then saves the normalized form", async () => {
     await renderCard();
@@ -382,7 +616,6 @@ describe("NotificationConfig: creating and editing", () => {
     expect(mocks.toasts).toEqual(["success: Alert saved"]);
     const { locale, ...body } = lastPutBody();
     expect(body).toEqual({
-      userId: ADDRESS,
       chainId: CHAIN_ID,
       market: MARKET,
       enabled: true,
@@ -524,9 +757,7 @@ describe("NotificationConfig: creating and editing", () => {
 
     await click(button("Edit alert"));
     await deleteConfig();
-    expect(lastRequest("DELETE")).toBe(
-      `DELETE /api/notifications/config {"userId":"${ADDRESS}","chainId":${CHAIN_ID},"market":"${MARKET}"}`,
-    );
+    expect(lastRequest("DELETE")).toBe(`DELETE /api/notifications/config {"chainId":${CHAIN_ID},"market":"${MARKET}"}`);
     expect(screen.queryByRole("button", { name: "Delete alert" })).toBeNull();
     expect(queryEmailInput()).toBeNull();
     expect(mocks.toasts).toEqual([]);
@@ -901,7 +1132,7 @@ describe("NotificationConfig: Send test", () => {
     expect(testButton("Email").closest("dd")?.previousElementSibling?.textContent).toBe("Email");
     expect(testButton("Telegram").closest("dd")?.firstElementChild?.textContent).toBe("@saved_tg");
     expect(screen.getByText(LIMIT_NOTE)).toBeDefined();
-    expect(testRequests()).toEqual([`GET /api/notifications/test?userId=${ADDRESS}`]);
+    expect(testRequests()).toEqual(["GET /api/notifications/test"]);
     // Outline buttons: the summary still has no pink of its own.
     expect(queryTestButtons().every(element => !element.className.includes("btn-primary"))).toBe(true);
   });
@@ -977,7 +1208,7 @@ describe("NotificationConfig: Send test", () => {
     await click(testButton("Email"));
 
     // Only the market and the channel: the recipient is the saved one, read by the server.
-    expect(lastTestBody()).toEqual({ userId: ADDRESS, chainId: CHAIN_ID, market: MARKET, channel: "email" });
+    expect(lastTestBody()).toEqual({ chainId: CHAIN_ID, market: MARKET, channel: "email" });
     expect(mocks.toasts).toEqual(["success: Test message sent by Email. Check that it arrived."]);
     expect(announcement()).toBe("Test message sent by Email. Check that it arrived.");
     expect(testNames()).toEqual([
@@ -1138,11 +1369,11 @@ describe("NotificationConfig: Send test", () => {
       </LocaleProvider>,
     );
     await settle();
+    // The session is still the first wallet's: nothing is read for the new one until it signs in.
+    expect(testRequests()).toEqual(["GET /api/notifications/test"]);
+    await click(button("Sign in with wallet"));
     expect(testButton("Email").textContent).toBe("Send test (Email)");
-    expect(testRequests()).toEqual([
-      `GET /api/notifications/test?userId=${ADDRESS}`,
-      `GET /api/notifications/test?userId=${OTHER_ADDRESS}`,
-    ]);
+    expect(testRequests()).toEqual(["GET /api/notifications/test", "GET /api/notifications/test"]);
   });
 
   it("writes the buttons, the note and every answer in Czech, with no dashes", async () => {
@@ -1221,7 +1452,7 @@ describe("NotificationConfig: attribution prompt", () => {
     await click(button("Send answer"));
 
     expect(lastRequest("POST")).toBe(
-      `POST /api/attribution ${JSON.stringify({ userId: ADDRESS, answer: "A friend in a Telegram group" })}`,
+      `POST /api/attribution ${JSON.stringify({ answer: "A friend in a Telegram group" })}`,
     );
     expect(api.attribution).toEqual({ [ADDRESS.toLowerCase()]: "A friend in a Telegram group" });
     expect(mocks.toasts).toEqual(["success: Alert saved", "success: Answer sent"]);
@@ -1292,6 +1523,7 @@ describe("NotificationConfig: attribution prompt", () => {
     mocks.address = OTHER_ADDRESS;
     rerender(<NotificationConfig {...PROPS} />);
     await settle();
+    await click(button("Sign in with wallet"));
     await createEmailConfig();
     expect(summaryValue("Email")).toBe("me@example.com");
     expect(attributionInput()).toBeNull();
@@ -1359,7 +1591,7 @@ describe("NotificationConfig: shared state", () => {
     api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
     let releaseOther: () => void = () => undefined;
     api.override = ({ method, url }) =>
-      method === "GET" && url === `/api/notifications/config?userId=${OTHER_ADDRESS}`
+      method === "GET" && url === "/api/notifications/config" && api.session === OTHER_ADDRESS.toLowerCase()
         ? new Promise<Response>(resolve => (releaseOther = () => resolve(jsonResponse({}))))
         : undefined;
     const { rerender } = await renderCard();
@@ -1369,6 +1601,10 @@ describe("NotificationConfig: shared state", () => {
     mocks.address = OTHER_ADDRESS;
     rerender(<NotificationConfig {...PROPS} />);
     await settle();
+    // The session is the first wallet's, so the new one has to sign in before anything loads.
+    expect(screen.queryByText("Notification settings")).toBeNull();
+    expect(emailInput).toThrow();
+    await click(button("Sign in with wallet"));
     expect(screen.queryByText("Notification settings")).toBeNull();
 
     releaseOther();
@@ -1413,7 +1649,8 @@ describe("NotificationConfig: two markets on one chain", () => {
     await click(serviceToggle("Email"));
     await type(emailInput(), "lido@example.com");
     await click(button("Save alert"));
-    expect(lastPutBody()).toMatchObject({ userId: ADDRESS, chainId: 1, market: LIDO_SPOKE, email: "lido@example.com" });
+    expect(lastPutBody()).toMatchObject({ chainId: 1, market: LIDO_SPOKE, email: "lido@example.com" });
+    expect(lastPutBody()).not.toHaveProperty("userId");
     expect(markets()).toBe("true true");
     expect(api.configs[ADDRESS.toLowerCase()]).toMatchObject({
       "1:v3": V3_ALERT,
@@ -1430,9 +1667,7 @@ describe("NotificationConfig: two markets on one chain", () => {
     expect(summaryValue("Email")).toBe("lido@example.com");
     await click(button("Edit alert"));
     await deleteConfig();
-    expect(lastRequest("DELETE")).toBe(
-      `DELETE /api/notifications/config {"userId":"${ADDRESS}","chainId":1,"market":"${LIDO_SPOKE}"}`,
-    );
+    expect(lastRequest("DELETE")).toBe(`DELETE /api/notifications/config {"chainId":1,"market":"${LIDO_SPOKE}"}`);
     expect(markets()).toBe("true false");
     expect(Object.keys(api.configs[ADDRESS.toLowerCase()])).toEqual(["1:v3"]);
   });
@@ -1452,9 +1687,7 @@ describe("NotificationConfig: two markets on one chain", () => {
 
     await click(button("Edit alert"));
     await deleteConfig();
-    expect(lastRequest("DELETE")).toBe(
-      `DELETE /api/notifications/config {"userId":"${ADDRESS}","chainId":1,"market":"v3"}`,
-    );
+    expect(lastRequest("DELETE")).toBe(`DELETE /api/notifications/config {"chainId":1,"market":"v3"}`);
     expect(markets()).toBe("false true");
     expect(api.configs[ADDRESS.toLowerCase()]).toEqual({ [`1:${LIDO_SPOKE}`]: lidoAlert });
   });
@@ -1526,9 +1759,6 @@ describe("NotificationConfig: brand", () => {
   // semantic tokens only, so both themes and the contrast checks follow.
   const OFF_TOKEN_CLASS =
     /(?:^|:)(?:text|bg|border|from|via|to|ring|outline|fill|stroke|shadow|accent|decoration|placeholder)-(?:(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d|white|black|base-|\[(?:#|rgb|hsl|oklch))/;
-  // The solid pink fill: the Button default variant (btn-primary) or a bg-primary surface.
-  const isPink = (element: Element) =>
-    (element.getAttribute("class") ?? "").split(/\s+/).some(token => token === "btn-primary" || token === "bg-primary");
 
   /** Collects brand problems across the states it is shown, and the number of pink elements in each. */
   const brandScanner = () => {
@@ -1636,8 +1866,8 @@ describe("NotificationConfig: brand", () => {
 describe("NotificationConfig: language", () => {
   const DASHES = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
   /** The language of each config the card handed to the API client. */
-  const savedLocales = (upsert: { mock: { calls: [string, NotificationConfigType][] } }) =>
-    upsert.mock.calls.map(([, config]) => config.locale);
+  const savedLocales = (upsert: { mock: { calls: [NotificationConfigType][] } }) =>
+    upsert.mock.calls.map(([config]) => config.locale);
   const czechThresholdInput = () =>
     screen.getByRole<HTMLInputElement>("textbox", { name: "Prahová hodnota health factoru (přesná hodnota)" });
 
@@ -1696,7 +1926,7 @@ describe("NotificationConfig: language", () => {
     expect(mocks.toasts).toEqual(["success: Upozornění uloženo"]);
     expect(announcement()).toBe("Upozornění uloženo");
     expect(savedLocales(upsert)).toEqual(["cs"]);
-    expect(upsert.mock.calls[0][1]).toMatchObject({ healthFactorThreshold: 1.8, locale: "cs" });
+    expect(upsert.mock.calls[0][0]).toMatchObject({ healthFactorThreshold: 1.8, locale: "cs" });
     expect(lastPutBody()).toMatchObject({ healthFactorThreshold: 1.8 });
     expect([undefined, "cs"]).toContain(lastPutBody().locale);
 
