@@ -4,8 +4,10 @@ import { UserRejectedRequestError, getAddress } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   WALLET_SESSION_QUERY_KEY,
+  hasSignedInHere,
   signOutOn401,
   useSignOut,
+  useSignOutOnDisconnect,
   useWalletSession,
   useWalletSignIn,
 } from "~~/hooks/custom/useWalletSession";
@@ -20,14 +22,19 @@ const mocks = vi.hoisted(() => ({
   locale: "en" as Locale,
   signMessage: vi.fn<(args: { account: string; message: string }) => Promise<string>>(),
   getSession: vi.fn<() => Promise<string | null>>(),
-  getNonce: vi.fn<() => Promise<string>>(),
+  getNonce: vi.fn<() => Promise<{ nonce: string; issuedAt: string }>>(),
   verify: vi.fn<(message: string, signature: string) => Promise<string>>(),
   logout: vi.fn<() => Promise<void>>(),
+  /** The onDisconnect wagmi's useAccountEffect was given. */
+  onDisconnect: undefined as (() => void) | undefined,
 }));
 
 vi.mock("wagmi", () => ({
   useAccount: () => ({ address: mocks.address, chainId: mocks.chainId }),
   useSignMessage: () => ({ signMessageAsync: mocks.signMessage }),
+  useAccountEffect: ({ onDisconnect }: { onDisconnect?: () => void }) => {
+    mocks.onDisconnect = onDisconnect;
+  },
 }));
 vi.mock("~~/i18n/LocaleProvider", () => ({ useLocale: () => mocks.locale }));
 vi.mock("~~/services/auth/authClient", () => ({
@@ -43,13 +50,14 @@ const render = () =>
   renderHookWithProviders(() => ({ session: useWalletSession(), signIn: useWalletSignIn(), signOut: useSignOut() }));
 
 beforeEach(() => {
+  window.localStorage.clear();
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(NOW);
   mocks.address = ADDRESS;
   mocks.chainId = undefined;
   mocks.locale = "en";
   mocks.getSession.mockReset().mockResolvedValue(null);
-  mocks.getNonce.mockReset().mockResolvedValue(NONCE);
+  mocks.getNonce.mockReset().mockResolvedValue({ nonce: NONCE, issuedAt: NOW.toISOString() });
   mocks.signMessage.mockReset().mockResolvedValue("0x5167");
   mocks.verify
     .mockReset()
@@ -114,6 +122,17 @@ describe("useWalletSignIn", () => {
     // The session came from the verify answer, not from asking again.
     expect(mocks.getSession).toHaveBeenCalledTimes(1);
     expect(result.current.signIn.error).toBeNull();
+  });
+
+  it("writes the server's time as Issued At, whatever this computer's clock says", async () => {
+    vi.setSystemTime(new Date("2026-10-19T11:40:00.000Z"));
+    mocks.getNonce.mockResolvedValue({ nonce: NONCE, issuedAt: "2026-10-19T12:00:00.000Z" });
+    const { result } = render();
+    act(() => result.current.signIn.signIn());
+    await waitFor(() => expect(mocks.signMessage).toHaveBeenCalled());
+    expect(mocks.signMessage.mock.calls[0][0].message).toContain(
+      "\nIssued At: 2026-10-19T12:00:00.000Z\nExpiration Time: 2026-10-19T12:05:00.000Z",
+    );
   });
 
   it("writes the wallet's line in the page's language", async () => {
@@ -193,5 +212,50 @@ describe("signOutOn401", () => {
       "Database error",
     );
     expect(onSignedOut).not.toHaveBeenCalled();
+  });
+});
+
+describe("hasSignedInHere", () => {
+  it("is true, in any casing, for a wallet that signed in on this browser, once", async () => {
+    const { result } = render();
+    expect(hasSignedInHere(ADDRESS)).toBe(false);
+    act(() => result.current.signIn.signIn());
+    await waitFor(() => expect(result.current.session.isSignedIn).toBe(true));
+    act(() => result.current.signIn.signIn());
+    await waitFor(() => expect(mocks.verify).toHaveBeenCalledTimes(2));
+    expect(hasSignedInHere(ADDRESS.toLowerCase())).toBe(true);
+    expect(hasSignedInHere(OTHER)).toBe(false);
+    expect(window.localStorage.getItem("tokenping:signed-in-wallets")).toBe(JSON.stringify([ADDRESS.toLowerCase()]));
+  });
+
+  it.each([
+    ["unreadable JSON", "{"],
+    ["something other than a list", JSON.stringify({ wallet: ADDRESS.toLowerCase() })],
+  ])("reads %s as no wallets", (_label, stored) => {
+    window.localStorage.setItem("tokenping:signed-in-wallets", stored);
+    expect(hasSignedInHere(ADDRESS)).toBe(false);
+  });
+
+  it("reads blocked storage as no wallets", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("SecurityError");
+    });
+    expect(hasSignedInHere(ADDRESS)).toBe(false);
+  });
+});
+
+describe("useSignOutOnDisconnect", () => {
+  it("signs out when the wallet disconnects, from the site or from the wallet app", async () => {
+    mocks.getSession.mockResolvedValue(ADDRESS.toLowerCase());
+    const { result } = renderHookWithProviders(() => {
+      useSignOutOnDisconnect();
+      return useWalletSession();
+    });
+    await waitFor(() => expect(result.current.isSignedIn).toBe(true));
+    expect(mocks.logout).not.toHaveBeenCalled();
+
+    act(() => mocks.onDisconnect?.());
+    expect(mocks.logout).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(result.current.isSignedIn).toBe(false));
   });
 });

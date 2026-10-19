@@ -11,6 +11,7 @@ import { BetaBanner, SkipLink } from "~~/components/BetaBanner";
 import { Footer } from "~~/components/Footer";
 import { Header } from "~~/components/Header";
 import { BlockieAvatar } from "~~/components/scaffold-eth";
+import { useSignOutOnDisconnect } from "~~/hooks/custom/useWalletSession";
 import { SignInRequiredError } from "~~/services/api/apiClient";
 import { wagmiConfig } from "~~/services/web3/wagmiConfig";
 
@@ -99,6 +100,12 @@ export const queryClient = new QueryClient({
   },
 });
 
+/** Ends the alert settings' session when the wallet disconnects. Needs the wagmi and react-query providers above it. */
+const SignOutOnDisconnect = () => {
+  useSignOutOnDisconnect();
+  return null;
+};
+
 export const ScaffoldEthAppWithProviders = ({ children }: { children: React.ReactNode }) => {
   const { resolvedTheme } = useTheme();
   const isDarkMode = resolvedTheme === "dark";
@@ -112,6 +119,7 @@ export const ScaffoldEthAppWithProviders = ({ children }: { children: React.Reac
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <ProgressBar height="3px" color="var(--link)" />
+        <SignOutOnDisconnect />
         <RainbowKitProvider avatar={BlockieAvatar} theme={brandRainbowKitTheme(mounted && isDarkMode)}>
           <ScaffoldEthApp>{children}</ScaffoldEthApp>
         </RainbowKitProvider>

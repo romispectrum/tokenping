@@ -93,7 +93,9 @@ const SIGNED_OUT_PATHS = ["/api/notifications/config", "/api/notifications/test"
 const route = ({ method, url, body }: Call) => {
   const path = url.split("?")[0];
   if (path === "/api/auth/session" && method === "GET") return jsonResponse({ address: api.session });
-  if (path === "/api/auth/nonce" && method === "POST") return jsonResponse({ nonce: NONCE });
+  if (path === "/api/auth/nonce" && method === "POST") {
+    return jsonResponse({ nonce: NONCE, issuedAt: new Date(Date.now()).toISOString() });
+  }
   if (path === "/api/auth/verify" && method === "POST") {
     // The signer is the message's address line; the real route also checks the signature, site and nonce.
     const signer =
@@ -467,6 +469,28 @@ describe("NotificationConfig: signing in", () => {
     signature.resolve(SIGNATURE);
     await settle();
     expect(button("Create alert")).toBeDefined();
+  });
+
+  it("offers a wallet whose access lapsed a secondary Sign in if it signed in here before, then its alert read-only", async () => {
+    window.localStorage.setItem("tokenping:signed-in-wallets", JSON.stringify([ADDRESS.toLowerCase()]));
+    mocks.hasAccess = false;
+    api.configs[ADDRESS.toLowerCase()] = { [MARKET_KEY]: SAVED_CONFIG };
+    const { container } = await renderCard();
+    // The paywall above has the view's pink button.
+    expect(isPink(button("Sign in with wallet"))).toBe(false);
+    expect([container, ...container.querySelectorAll("[class]")].filter(isPink)).toHaveLength(0);
+
+    await click(button("Sign in with wallet"));
+    expect(screen.getByText("Pay for access to edit")).toBeDefined();
+    expect(summaryValue("Email")).toBe("saved@example.com");
+  });
+
+  it("remembers on this browser which wallets signed in", async () => {
+    await renderCard();
+    await click(button("Sign in with wallet"));
+    expect(JSON.parse(window.localStorage.getItem("tokenping:signed-in-wallets") ?? "null")).toEqual([
+      ADDRESS.toLowerCase(),
+    ]);
   });
 
   it("renders nothing for a wallet without access and without a session, and loads nothing", async () => {

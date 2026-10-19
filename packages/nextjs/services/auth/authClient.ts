@@ -18,10 +18,11 @@ export const authClient = {
     return typeof address === "string" ? address : null;
   },
 
-  async getNonce(): Promise<string> {
+  /** A nonce for the message, and the server's time to write in it as Issued At. */
+  async getNonce(): Promise<{ nonce: string; issuedAt: string }> {
     const res = await post("nonce");
     if (!res.ok) throw await apiError(res, "Failed to start signing in");
-    return ((await res.json()) as { nonce: string }).nonce;
+    return (await res.json()) as { nonce: string; issuedAt: string };
   },
 
   /** Sends the signed message; resolves with the wallet now signed in, lowercased. */

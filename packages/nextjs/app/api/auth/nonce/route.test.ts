@@ -32,10 +32,12 @@ afterEach(() => {
 describe("POST /api/auth/nonce", () => {
   it("answers a fresh nonce, stores it for five minutes and binds it to this browser with an HttpOnly cookie", async () => {
     const res = await post();
-    const { nonce } = (await res.json()) as { nonce: string };
+    const { nonce, issuedAt } = (await res.json()) as { nonce: string; issuedAt: string };
 
     expect(res.status).toBe(200);
     expect(nonce).toMatch(/^[0-9a-f]{32}$/);
+    // The server's clock, for the message's Issued At.
+    expect(issuedAt).toBe(NOW);
     expect(res.headers.get("cache-control")).toBe("no-store");
     expect(res.headers.get("set-cookie")).toBe(
       `tokenping-sign-in-nonce=${nonce}; Path=/api/auth; Expires=Mon, 19 Oct 2026 12:05:00 GMT; Max-Age=300; HttpOnly; SameSite=strict`,

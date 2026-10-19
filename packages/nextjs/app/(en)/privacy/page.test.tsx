@@ -41,9 +41,10 @@ describe("/privacy", () => {
     expect(screen.getByText(/the site uses none/).textContent).toContain(
       "When you sign in with your wallet, Tokenping sets one cookie that only says which wallet signed in; it lasts 7 days or until you disconnect the wallet on this site. While you sign in, a second cookie holds the sign-in request for five minutes.",
     );
-    // Everything the app itself keeps in the browser: next-themes, wagmi/RainbowKit and the attribution prompt flag.
+    // Everything the app itself keeps in the browser: next-themes, wagmi/RainbowKit, the wallets that signed in (so a
+    // lapsed one is offered a sign-in) and the attribution prompt flag.
     expect(screen.getByText(/the site uses none/).textContent).toContain(
-      'Your browser keeps your theme choice, your wallet connection and whether it has already shown you the "How did you hear about Tokenping?" question in its own local storage.',
+      'Your browser keeps your theme choice, your wallet connection, which wallets have signed in on it and whether it has already shown you the "How did you hear about Tokenping?" question in its own local storage.',
     );
     expect(screen.getByText(/How did you hear about Tokenping\?.*we store your answer/)).toBeTruthy();
   });

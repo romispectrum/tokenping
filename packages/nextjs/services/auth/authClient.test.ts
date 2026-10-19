@@ -24,9 +24,9 @@ describe("authClient", () => {
     expect(fetchMock.mock.calls[0]).toEqual(["/api/auth/session", { cache: "no-store" }]);
   });
 
-  it("asks for a nonce with a POST that has no body", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ nonce: "abc" }));
-    expect(await authClient.getNonce()).toBe("abc");
+  it("asks for a nonce and the server's time with a POST that has no body", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ nonce: "abc", issuedAt: "2026-10-19T12:00:00.000Z" }));
+    expect(await authClient.getNonce()).toEqual({ nonce: "abc", issuedAt: "2026-10-19T12:00:00.000Z" });
     expect(fetchMock.mock.calls).toEqual([["/api/auth/nonce", { method: "POST" }]]);
   });
 

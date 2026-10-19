@@ -4,6 +4,8 @@ import { useMessages } from "~~/i18n/LocaleProvider";
 import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 
 type NotificationSignInProps = {
+  /** The view's pink primary action: true once the wallet has paid, when the paywall is gone. */
+  isPrimary: boolean;
   isSigningIn: boolean;
   /** Why the last attempt failed (a declined signature, or anything else), or null. */
   errorMessage: string | null;
@@ -12,9 +14,10 @@ type NotificationSignInProps = {
 
 /**
  * Before the alerts load: the wallet signs a sign-in message once, so the API knows the address is the visitor's own.
- * Shown only to a wallet with paid access, where the paywall is gone, so its button is the view's one pink action.
+ * For a wallet with paid access its button is the view's one pink action; for one whose access lapsed it is secondary,
+ * since the paywall's button is.
  */
-export const NotificationSignIn = ({ isSigningIn, errorMessage, onSignIn }: NotificationSignInProps) => {
+export const NotificationSignIn = ({ isPrimary, isSigningIn, errorMessage, onSignIn }: NotificationSignInProps) => {
   const t = useMessages(ALERTS_MESSAGES);
   return (
     <Card>
@@ -26,7 +29,12 @@ export const NotificationSignIn = ({ isSigningIn, errorMessage, onSignIn }: Noti
           title={t.signInTitle}
           description={t.signInDescription}
           action={
-            <Button onClick={onSignIn} loading={isSigningIn} loadingText={t.signingIn}>
+            <Button
+              variant={isPrimary ? "default" : "secondary"}
+              onClick={onSignIn}
+              loading={isSigningIn}
+              loadingText={t.signingIn}
+            >
               {t.signIn}
             </Button>
           }

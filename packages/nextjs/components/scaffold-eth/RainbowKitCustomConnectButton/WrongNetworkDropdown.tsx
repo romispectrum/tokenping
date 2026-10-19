@@ -1,13 +1,11 @@
 import { NetworkOptions } from "./NetworkOptions";
 import { useDisconnect } from "wagmi";
 import { ArrowLeftOnRectangleIcon, ChevronDownIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
-import { useSignOut } from "~~/hooks/custom/useWalletSession";
 import { useMessages } from "~~/i18n/LocaleProvider";
 import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 
 export const WrongNetworkDropdown = () => {
   const { disconnect } = useDisconnect();
-  const signOut = useSignOut();
   const t = useMessages(COMMON_MESSAGES).wallet;
 
   return (
@@ -30,10 +28,7 @@ export const WrongNetworkDropdown = () => {
           <button
             className="menu-item text-error btn-sm rounded-xl! flex gap-3 py-3"
             type="button"
-            onClick={() => {
-              signOut();
-              disconnect();
-            }}
+            onClick={() => disconnect()}
           >
             <ArrowLeftOnRectangleIcon className="h-6 w-4 ml-2 sm:ml-0" />
             <span>{t.disconnect}</span>
