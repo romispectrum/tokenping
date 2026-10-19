@@ -22,7 +22,7 @@ export const privacyMetadata = (locale: Locale) =>
   });
 
 /** Change only when the content below changes. */
-const LAST_UPDATED = "2026-10-14";
+const LAST_UPDATED = "2026-10-19";
 
 const crumbs = (locale: Locale): Crumb[] => [
   { name: PRIVACY_MESSAGES[locale].crumbHome, path: routePath(locale, "home") },
