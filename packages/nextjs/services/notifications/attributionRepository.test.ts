@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeSupabase } from "~~/services/api/server/testing/fakeSupabase";
 import * as repository from "~~/services/notifications/attributionRepository";
 
@@ -12,22 +12,6 @@ const LOWER = MIXED.toLowerCase();
 
 beforeEach(() => {
   fakeSupabase.reset();
-});
-
-afterEach(() => {
-  vi.unstubAllEnvs();
-});
-
-describe("canStoreAttribution", () => {
-  it("is true only when the server client gets the service role key, which the table requires", () => {
-    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key");
-    expect(repository.canStoreAttribution()).toBe(true);
-    // getSupabaseServerClient skips an empty key too and falls back to the anon key.
-    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "");
-    expect(repository.canStoreAttribution()).toBe(false);
-    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", undefined);
-    expect(repository.canStoreAttribution()).toBe(false);
-  });
 });
 
 describe("saveAttributionAnswer", () => {
@@ -46,6 +30,6 @@ describe("saveAttributionAnswer", () => {
   });
 
   it("offers no way to read answers back", () => {
-    expect(Object.keys(repository)).toEqual(["canStoreAttribution", "saveAttributionAnswer"]);
+    expect(Object.keys(repository)).toEqual(["saveAttributionAnswer"]);
   });
 });
