@@ -1,4 +1,4 @@
-# Deploying Signal Server to Fly.io
+# Deploying the Signal relay to Fly.io
 
 This guide runs [signal-cli-rest-api](https://github.com/bbernhard/signal-cli-rest-api) on Fly.io: a
 persistent Docker container that Tokenping's Vercel functions (the cron at `/api/cron/notifications` and the

@@ -1,92 +1,48 @@
-# Welcome to Scaffold-ETH 2 Contributing Guide
+# Contributing to Tokenping
 
-Thank you for investing your time in contributing to Scaffold-ETH 2!
+Tokenping sends Aave health factor alerts by email, Signal and Telegram. It started from Scaffold-ETH 2 and keeps its
+tooling, but this guide is Tokenping's own.
 
-This guide aims to provide an overview of the contribution workflow to help us make the contribution process effective for everyone involved.
+## Get oriented
 
-## About the Project
+- [README.md](README.md): what the product does, its limits, how to run it and how to deploy it.
+- [docs/architecture.md](docs/architecture.md): how the browser, the Next.js routes, Supabase, the cron, Resend, the
+  Signal relay, Telegram and the paywall contract fit together.
+- [AGENTS.md](AGENTS.md): code conventions (hooks, API routes, database access, styling, TypeScript). It is written for
+  coding agents, and people can follow it as well.
+- [docs/design-system.md](docs/design-system.md) before any UI work, and [docs/i18n.md](docs/i18n.md) before adding a
+  page or a string.
 
-Scaffold-ETH 2 is a minimal and forkable repo providing builders with a starter kit to build decentralized applications on Ethereum.
+## Ways to help
 
-Read the [README](README.md) to get an overview of the project.
+- Report a bug or a wrong number: say what you did, what you expected and what happened, with the network, market and
+  wallet type (never a private key or seed phrase).
+- Suggest a feature or discuss a change before starting something large, so the work fits the product's limits.
+- Improve the documentation: when you change behavior, change the docs in the same pull request.
 
-### Vision
+## Making a change
 
-The goal of Scaffold-ETH 2 is to provide the primary building blocks for a decentralized application.
+1. Set up locally as described in the README ("Local development").
+2. Keep a pull request to one purpose. Mixing a fix with a restyle makes both harder to review.
+3. Run the checks that apply:
+   ```bash
+   yarn next:check-types   # TypeScript
+   yarn lint               # ESLint for the app and the contracts
+   yarn next:test          # Vitest for the app
+   yarn test               # Hardhat tests, if you changed a contract
+   yarn format             # Prettier
+   ```
+   CI runs only the lint and type checks, so the tests are yours to run.
+4. Write user-facing text in English and Czech, in the voice described in the design system (sentence case, plain words,
+   no em dashes or en dashes).
+5. A database change is a new file in `packages/supabase/migrations/`, never an edit of an applied one. List it in
+   `packages/supabase/README.md`.
+6. A new environment variable goes into `packages/nextjs/.env.example` and the table in the README.
+7. Commit messages follow the history: a type, an optional scope and a short summary, for example
+   `fix(cron): refuse cron runs without CRON_SECRET` or `docs: update the Signal relay guide`.
+8. Describe what changed and why in the pull request, with a screenshot for UI changes.
 
-The repo can be forked to include integrations and more features, but we want to keep the `main` branch simple and minimal.
+## Secrets
 
-### Project Status
-
-The project is under active development.
-
-You can view the open Issues, follow the development process, and contribute to the project.
-
-### Rules
-
-1. All code contributions require an Issue to be created and agreed upon by core contributors before submitting a Pull Request. This ensures proper discussion, alignment, and consensus on the proposed changes.
-2. Contributors must be humans, not bots.
-3. First-time contributions must not contain only spelling or grammatical fixes.
-
-## Getting started
-
-You can contribute to this repo in many ways:
-
-- Solve open issues
-- Report bugs or feature requests
-- Improve the documentation
-
-Contributions are made via Issues and Pull Requests (PRs). A few general guidelines for contributions:
-
-- Search for existing Issues and PRs before creating your own.
-- Contributions should only fix/add the functionality in the issue OR address style issues, not both.
-- If you're running into an error, please give context. Explain what you're trying to do and how to reproduce the error.
-- Please use the same formatting in the code repository. You can configure your IDE to do it by using the prettier / linting config files included in each package.
-- If applicable, please edit the README.md file to reflect the changes.
-
-### Issues
-
-Issues should be used to report problems, request a new feature, or discuss potential changes before a PR is created.
-
-#### Solve an issue
-
-Scan through our [existing issues](https://github.com/scaffold-eth/scaffold-eth-2/issues) to find one that interests you.
-
-If a contributor is working on the issue, they will be assigned to the individual. If you find an issue to work on, you are welcome to assign it to yourself and open a PR with a fix for it.
-
-#### Create a new issue
-
-If a related issue doesn't exist, you can open a new issue.
-
-Some tips to follow when you are creating an issue:
-
-- Provide as much context as possible. Over-communicate to give the most details to the reader.
-- Include the steps to reproduce the issue or the reason for adding the feature.
-- Screenshots, videos, etc., are highly appreciated.
-
-### Pull Requests
-
-#### Pull Request Process
-
-We follow the ["fork-and-pull" Git workflow](https://github.com/susam/gitpr)
-
-1. Fork the repo
-2. Clone the project
-3. Create a new branch with a descriptive name
-4. Commit your changes to the new branch
-5. Push changes to your fork
-6. Open a PR in our repository and tag one of the maintainers to review your PR
-
-Here are some tips for a high-quality pull request:
-
-- Create a title for the PR that accurately defines the work done.
-- Structure the description neatly to make it easy to consume by the readers. For example, you can include bullet points and screenshots instead of having one large paragraph.
-- Add the link to the issue if applicable.
-- Have a good commit message that summarises the work done.
-
-Once you submit your PR:
-
-- We may ask questions, request additional information, or ask for changes to be made before a PR can be merged. Please note that these are to make the PR clear for everyone involved and aim to create a frictionless interaction process.
-- As you update your PR and apply changes, mark each conversation resolved.
-
-Once the PR is approved, we'll "squash-and-merge" to keep the git commit history clean.
+Never commit `.env` files, API keys, bot tokens, session secrets or private keys. The templates
+(`packages/nextjs/.env.example`, `packages/hardhat/.env.example`) hold no secrets.

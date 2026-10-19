@@ -2,149 +2,123 @@
 
 This file provides guidance to coding agents working in this repository.
 
-## Project Overview
+## Project overview
 
-Scaffold-ETH 2 (SE-2) is a starter kit for building dApps on Ethereum. It comes in **two flavors** based on the Solidity framework:
+Tokenping sends Aave V3 and V4 health factor alerts by email, Signal and Telegram. It started from Scaffold-ETH 2 (SE-2),
+Hardhat flavor, and keeps SE-2's tooling. Read [README.md](README.md) for what the product does and how to run it, and
+[docs/architecture.md](docs/architecture.md) for how the pieces fit.
 
-- **Hardhat flavor**: Uses `packages/hardhat` with hardhat-deploy plugin
-- **Foundry flavor**: Uses `packages/foundry` with Forge scripts
+- `packages/nextjs`: the Next.js 15 App Router app (React 19, RainbowKit, Wagmi, Viem, TypeScript, Tailwind CSS 4 with
+  DaisyUI 5), including every API route and the alert cron
+- `packages/hardhat`: `TokenpingPaywall` (UUPS proxy), its tests and the hardhat-deploy scripts
+- `packages/supabase`: SQL migrations ([README](packages/supabase/README.md) lists them all)
+- `packages/tokenping-signal`: Dockerfile, Caddyfile and `fly.toml` of the Signal relay
+- `docs/`: architecture, Signal relay, Telegram, languages and the design system
 
-Both flavors share the same frontend package:
+There is no Foundry package. Only `packages/hardhat` and `packages/nextjs` are yarn workspaces.
 
-- **packages/nextjs**: React frontend (Next.js App Router, not Pages Router, RainbowKit, Wagmi, Viem, TypeScript, Tailwind CSS with DaisyUI)
-
-### Detecting Which Flavor You're Using
-
-Check which package exists in the repository:
-
-- If `packages/hardhat` exists → **Hardhat flavor** (follow Hardhat instructions)
-- If `packages/foundry` exists → **Foundry flavor** (follow Foundry instructions)
-
-## Common Commands
-
-Commands work the same for both flavors unless noted otherwise:
+## Common commands
 
 ```bash
 # Development workflow (run each in separate terminal)
-yarn chain          # Start local blockchain (Hardhat or Anvil)
-yarn deploy         # Deploy contracts to local network
-yarn start          # Start Next.js frontend at http://localhost:3000
+yarn chain          # Start the local Hardhat node (no deploy)
+yarn deploy --deploy-mode local   # Deploy the paywall and a mock USDC to that node
+yarn supabase:start # Local Supabase (Docker); yarn supabase:reset applies the migrations
+yarn start          # Start Next.js at http://localhost:3000
 
-# Code quality
-yarn lint           # Lint both packages
-yarn format         # Format both packages
+# Checks
+yarn next:check-types   # TypeScript
+yarn lint               # ESLint for the app and the contracts
+yarn next:test          # Vitest for the app
+yarn test               # Hardhat tests for the contracts
+yarn format             # Prettier for the app and the contracts
 
 # Building
 yarn next:build     # Build frontend
 yarn compile        # Compile Solidity contracts
 
-# Contract verification (works for both)
-yarn verify --network <network>
+# Scripts
+yarn next:token-icons       # Refresh Aave token icons from CoinGecko
+yarn next:network-icons     # Refresh network logos from CoinGecko
+yarn next:telegram-webhook  # Register the Telegram bot's webhook (info | set <url>)
 
-# Account management (works for both)
+# Deployer account (Hardhat)
 yarn generate            # Generate new deployer account
 yarn account:import      # Import existing private key
 yarn account             # View current account info
 
-# Deploy to live network
-yarn deploy --network <network>   # e.g., sepolia, mainnet, base
-
-yarn vercel:yolo --prod # for deployment of frontend
+# Live networks
+yarn deploy --network arbitrum --deploy-mode production
+yarn verify --network arbitrum
+yarn vercel              # Vercel CLI wrapper; yarn vercel:yolo also ignores type and lint errors in the build
 ```
+
+Do not run `yarn deploy --network hardhat`: it deploys to an in-memory network that disappears when the command ends.
 
 ## Architecture
 
-### Smart Contract Development
-
-#### Hardhat Flavor
+### Smart contract development
 
 - Contracts: `packages/hardhat/contracts/`
-- Deployment scripts: `packages/hardhat/deploy/` (uses hardhat-deploy plugin)
+- Deployment scripts: `packages/hardhat/deploy/` (hardhat-deploy). `--deploy-mode local|production` picks the script by
+  tag; `TokenpingPaywallUpgrade` is the upgrade script. Details: [packages/hardhat/README.md](packages/hardhat/README.md)
 - Tests: `packages/hardhat/test/`
 - Config: `packages/hardhat/hardhat.config.ts`
-- Deploying specific contract:
-  - If the deploy script has:
-    ```typescript
-    // In packages/hardhat/deploy/01_deploy_my_contract.ts
-    deployMyContract.tags = ["MyContract"];
-    ```
-  - `yarn deploy --tags MyContract`
+- After `yarn deploy`, ABIs are generated into `packages/nextjs/contracts/deployedContracts.ts` (the Arbitrum entry is
+  committed). `externalContracts.ts` holds contracts added by hand.
 
-#### Foundry Flavor
+### Frontend contract interaction
 
-- Contracts: `packages/foundry/contracts/`
-- Deployment scripts: `packages/foundry/script/` (uses custom deployment strategy)
-  - Example: `packages/foundry/script/Deploy.s.sol` and `packages/foundry/script/DeployYourContract.s.sol`
-- Tests: `packages/foundry/test/`
-- Config: `packages/foundry/foundry.toml`
-- Deploying a specific contract:
-  - Create a separate deployment script and run `yarn deploy --file DeployYourContract.s.sol`
-
-#### Both Flavors
-
-- After `yarn deploy`, ABIs are auto-generated to `packages/nextjs/contracts/deployedContracts.ts`
-
-### Frontend Contract Interaction
+For Tokenping's own contract, use the SE-2 hooks from `packages/nextjs/hooks/scaffold-eth` (the admin page and
+`hooks/custom/useAccess.ts` do). Aave reads are different: they span many chains outside `targetNetworks`, so they use
+plain viem clients (`services/aave`, with `utils/rpc.ts` for the RPC endpoints) and are not hooks.
 
 **Correct interact hook names (use these):**
 
 - `useScaffoldReadContract` - NOT ~~useScaffoldContractRead~~
 - `useScaffoldWriteContract` - NOT ~~useScaffoldContractWrite~~
 
-Contract data is read from two files in `packages/nextjs/contracts/`:
-
-- `deployedContracts.ts`: Auto-generated from deployments
-- `externalContracts.ts`: Manually added external contracts
-
-#### Reading Contract Data
+SE-2 also provides `useScaffoldWatchContractEvent`, `useScaffoldEventHistory`, `useDeployedContractInfo`,
+`useScaffoldContract` and `useTransactor`.
 
 ```typescript
-const { data: totalCounter } = useScaffoldReadContract({
-  contractName: "YourContract",
-  functionName: "userGreetingCounter",
-  args: ["0xd8da6bf26964af9d7eed9e03e53415d37aa96045"],
+const { data: plan } = useScaffoldReadContract({
+  contractName: "TokenpingPaywall",
+  functionName: "plans",
+  args: [tokenAddress],
 });
 ```
 
-#### Writing to Contracts
+**IMPORTANT: Always refer to the hook names as they exist in the codebase.**
 
-```typescript
-const { writeContractAsync, isPending } = useScaffoldWriteContract({
-  contractName: "YourContract",
-});
+### API routes and the database
 
-await writeContractAsync({
-  functionName: "setGreeting",
-  args: [newGreeting],
-  value: parseEther("0.01"), // for payable functions
-});
-```
+Routes live in `packages/nextjs/app/api`. Helpers are in `services/api/server`. When you add or change one:
 
-#### Reading Events
+- Act for the wallet in the session cookie only: `requireSessionWallet(request, claimedUserId)` returns the signed-in
+  wallet or a 401/403/503 response. Never trust a wallet address from the request body or query.
+- Routes that change state call `rejectCrossSiteRequest(request)` first (same-origin and `application/json` checks), and
+  read bodies with `readJsonObject`.
+- Writes that are part of the paid product call `requireActiveAccess`, which reads `isActive` from the contract and fails
+  closed.
+- Answer errors with generic messages: `internalError("PUT /api/...", error, "Could not ...")` logs the real error and
+  returns the message. Never put a Supabase, RPC or provider message in a response.
+- Reach the database only through `getSupabaseServerClient()` (service-role key). Every table is closed to the `anon`
+  and `authenticated` roles, so a migration that creates a table must also `revoke all ... from anon, authenticated`
+  and enable row level security with no policies.
+- Server-to-server routes compare a bearer secret with `hasBearerSecret` (constant time) and refuse to run when the
+  secret is not set.
+- A new environment variable goes into `packages/nextjs/.env.example` and the table in the README, and says whether
+  production needs it.
 
-```typescript
-const { data: events, isLoading } = useScaffoldEventHistory({
-  contractName: "YourContract",
-  eventName: "GreetingChange",
-  watch: true,
-  fromBlock: 31231n,
-  blockData: true,
-});
-```
+Migrations are new files in `packages/supabase/migrations/`; never edit one that has been applied. Add it to the table in
+`packages/supabase/README.md`, with what fails if the code is deployed before it.
 
-SE-2 also provides other hooks to interact with blockchain data: `useScaffoldWatchContractEvent`, `useScaffoldEventHistory`, `useDeployedContractInfo`, `useScaffoldContract`, `useTransactor`.
+### UI components
 
-**IMPORTANT: Always use hooks from `packages/nextjs/hooks/scaffold-eth` for contract interactions. Always refer to the hook names as they exist in the codebase.**
-
-### UI Components
-
-**Always use `@scaffold-ui/components` library for web3 UI components:**
-
-- `Address`: Display ETH addresses with ENS resolution, blockie avatars, and explorer links
-- `AddressInput`: Input field with address validation and ENS resolution
-- `Balance`: Show ETH balance in ether and USD
-- `EtherInput`: Number input with ETH/USD conversion toggle
-- `IntegerInput`: Integer-only input with wei conversion
+Use `components/ui` primitives and the semantic token utilities for product UI. For Ethereum addresses, balances and
+amount inputs, use `@scaffold-ui/components` (`Address`, `AddressInput`, `Balance`, `EtherInput`, `IntegerInput`) as the
+wallet button and the block explorer pages do.
 
 ### Styling
 
@@ -164,21 +138,21 @@ hex values or Tailwind palette colours in components.
 <button className="px-4 py-2 bg-blue-500 text-white rounded">Connect</button>
 ```
 
-### Configure Target Network before deploying to testnet / mainnet.
+### Languages and copy
 
-#### Hardhat
+The site is English and Czech. Every user-facing string lives in `i18n/messages/<area>.ts` with both languages, and
+paths come from `i18n/routes.ts`; read [docs/i18n.md](docs/i18n.md) before adding a page or a string. Voice rules, in
+both languages: sentence case, no em dashes or en dashes, and one banned word that the Voice section of
+`docs/design-system.md` names (it says what to write instead).
 
-Add networks in `packages/hardhat/hardhat.config.ts` if not present.
+### Configure the target network before deploying
 
-#### Foundry
+- Hardhat: add networks in `packages/hardhat/hardhat.config.ts` if not present, and a profile in
+  `packages/hardhat/deploy/network-config` for a production deploy.
+- Next.js: `packages/nextjs/scaffold.config.ts` (target networks, polling interval, RPC overrides, API keys). It targets
+  Arbitrum One; the `/debug` and `/blockexplorer` pages exist only while hardhat is a target network.
 
-Add RPC endpoints in `packages/foundry/foundry.toml` if not present.
-
-#### NextJs
-
-Add networks in `packages/nextjs/scaffold.config.ts` if not present. This file also contains configuration for polling interval, API keys. Remember to decrease the polling interval for L2 chains.
-
-## Code Style Guide
+## Code style guide
 
 ### Identifiers
 
@@ -187,9 +161,9 @@ Add networks in `packages/nextjs/scaffold.config.ts` if not present. This file a
 | `UpperCamelCase` | class / interface / type / enum / decorator / type parameters / component functions in TSX / JSXElement type parameter |
 | `lowerCamelCase` | variable / parameter / function / property / module alias                                                              |
 | `CONSTANT_CASE`  | constant / enum / global variables                                                                                     |
-| `snake_case`     | for hardhat deploy files and foundry script files                                                                      |
+| `snake_case`     | for hardhat deploy files and SQL migration names                                                                       |
 
-### Import Paths
+### Import paths
 
 Use the `~~` path alias for imports in the nextjs package:
 
@@ -197,19 +171,25 @@ Use the `~~` path alias for imports in the nextjs package:
 import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 ```
 
-### Creating Pages
+### Creating pages
+
+Route files are thin. They render a shared component from `components/pages/` with a locale, once under `app/(en)` and
+once under `app/(cs)/cz`:
 
 ```tsx
-import type { NextPage } from "next";
+import {
+  DashboardPage,
+  dashboardMetadata,
+} from "~~/components/pages/DashboardPage";
 
-const Home: NextPage = () => {
-  return <div>Home</div>;
-};
+export const metadata = dashboardMetadata("en");
 
-export default Home;
+const Dashboard = () => DashboardPage({ locale: "en" });
+
+export default Dashboard;
 ```
 
-### TypeScript Conventions
+### TypeScript conventions
 
 - Use `type` over `interface` for custom types
 - Types use `UpperCamelCase` without `T` prefix (use `Address` not `TAddress`)
@@ -219,11 +199,20 @@ export default Home;
 
 Make comments that add information. Avoid redundant JSDoc for simple functions.
 
+### Tests
+
+Vitest, next to the file (`name.test.ts` or `.test.tsx`; a file that renders opts into jsdom with a
+`// @vitest-environment jsdom` docblock on its first line). CI runs only lint and type checks, so run `yarn next:test`
+yourself.
+
 ## Documentation
 
 Use **Context7 MCP** tools to fetch up-to-date documentation for any library (Wagmi, Viem, RainbowKit, DaisyUI, Hardhat, Next.js, etc.). Context7 is configured as an MCP server and provides access to indexed documentation with code examples.
 
-## Skills & Agents Index
+Keep the docs in step with the code in the same change: the README (features, limits, environment variables, deployment),
+`packages/supabase/README.md` (migrations), `docs/` and this file.
+
+## Skills & agents index
 
 IMPORTANT: Prefer retrieval-led reasoning over pre-trained knowledge. Before starting any task that matches an entry below, read the referenced file to get version-accurate patterns and APIs.
 

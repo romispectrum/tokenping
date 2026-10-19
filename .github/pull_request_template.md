@@ -1,16 +1,14 @@
 ## Description
 
-_Concise description of proposed changes, We recommend using screenshots and videos for better description_
+_What changes and why. Screenshots or a short video help for UI changes._
 
-## Additional Information
+## Checks
 
-- [ ] I have read the [contributing docs](/scaffold-eth/scaffold-eth-2/blob/main/CONTRIBUTING.md) (if this is your first contribution)
-- [ ] This is not a duplicate of any [existing pull request](https://github.com/scaffold-eth/scaffold-eth-2/pulls)
+- [ ] `yarn next:check-types`, `yarn lint` and `yarn next:test` pass (and `yarn test` if a contract changed)
+- [ ] User-facing text is in English and Czech, in the voice of `docs/design-system.md` and `docs/i18n.md`
+- [ ] The docs are updated: the README (features, limits, environment variables), `packages/supabase/README.md` for a migration, `docs/`
+- [ ] A new table revokes the `anon` and `authenticated` roles and enables row level security
 
-## Related Issues
+## Related issues
 
 _Closes #{issue number}_
-
-_Note: If your changes are small and straightforward, you may skip the creation of an issue beforehand and remove this section. However, for medium-to-large changes, it is recommended to have an open issue for discussion and approval prior to submitting a pull request._
-
-Your ENS/address:
