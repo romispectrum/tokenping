@@ -84,6 +84,20 @@ export const getRpcUrls = (chainId: number) => {
   return [rpcOverrides?.[chainId], isSharedAlchemyKey() ? undefined : getAlchemyUrl(chainId)].filter(isUrl);
 };
 
+/**
+ * Only the configured endpoints (getRpcUrls), for answers that must not come from a public RPC anyone could run, such
+ * as whether a smart wallet accepts a signature. Undefined when the chain has none.
+ */
+export const getConfiguredTransport = (chainId: number, config?: FallbackTransportConfig) => {
+  const urls = getRpcUrls(chainId);
+  return urls.length > 0
+    ? fallback(
+        urls.map(url => http(url)),
+        config,
+      )
+    : undefined;
+};
+
 const getPublicRpcUrl = (chain: Chain) =>
   chain.id === hardhat.id ? (process.env.NEXT_PUBLIC_HARDHAT_RPC_URL ?? LOCAL_RPC_URL) : chain.rpcUrls.default.http[0];
 
