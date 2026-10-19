@@ -1,6 +1,8 @@
+import { getAddress } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DELETE, GET, PUT } from "~~/app/api/notifications/config/route";
 import { fakeSupabase } from "~~/services/api/server/testing/fakeSupabase";
+import { siteRequest } from "~~/services/api/server/testing/siteRequest";
 import { isAccessActive } from "~~/services/payments/checkAccess";
 
 vi.mock("~~/services/supabase/supabaseServer", async () => {
@@ -12,8 +14,12 @@ vi.mock("~~/services/payments/checkAccess", () => ({ isAccessActive: vi.fn() }))
 const BASE_URL = "http://localhost/api/notifications/config";
 const NOW = "2026-10-14T09:05:07.000Z";
 
+// The signed-in wallet as the session holds it, and as legacy rows may store it (the EIP-55 form the old client sent).
 const LOWER = `0x${"ab".repeat(20)}`;
-const MIXED = `0x${"AB".repeat(20)}`;
+const CHECKSUMMED = getAddress(LOWER);
+// A wallet whose address has no letters, so its EIP-55 form is its lowercase form and there is no legacy lookup.
+const DIGITS = `0x${"12".repeat(20)}`;
+const OTHER_WALLET = `0x${"cd".repeat(20)}`;
 
 // Aave V4 Spokes as market ids: Ethereum's Lido and Main Spokes, and an address that is no Spoke.
 const LIDO_SPOKE = "0xe1900480ac69f0b296841cd01cc37546d92f35cd";
@@ -41,17 +47,20 @@ const deleteQuery = (uid: string, chainId: number, market = "v3") =>
 const countQuery = (...uids: string[]) =>
   `notification_configs.select("id",{"count":"exact","head":true}).in("user_id",${JSON.stringify(uids)})`;
 
-const get = (params: Record<string, string>) => GET(new Request(`${BASE_URL}?${new URLSearchParams(params)}`));
-const bodyOf = (body: unknown) => (typeof body === "string" ? body : JSON.stringify(body));
-const put = (body: unknown) => PUT(new Request(BASE_URL, { method: "PUT", body: bodyOf(body) }));
-const del = (body: unknown) => DELETE(new Request(BASE_URL, { method: "DELETE", body: bodyOf(body) }));
+// Each request comes from the site's own page with the session of `wallet` (LOWER unless a test says otherwise).
+const get = (params: Record<string, string> = {}, wallet: string | null = LOWER) =>
+  GET(siteRequest(`${BASE_URL}?${new URLSearchParams(params)}`, { wallet }));
+const put = (body: unknown, wallet: string | null = LOWER) =>
+  PUT(siteRequest(BASE_URL, { method: "PUT", body, wallet }));
+const del = (body: unknown, wallet: string | null = LOWER) =>
+  DELETE(siteRequest(BASE_URL, { method: "DELETE", body, wallet }));
 const read = async (res: Response) => ({ status: res.status, text: await res.text() });
 const json = (status: number, body: unknown) => ({ status, text: JSON.stringify(body) });
 
 // JSON that parses but is not an object; the routes read it as {}. The array holds an otherwise valid body.
 const NON_OBJECT_BODIES = [
   ["null", "null"],
-  ["an array", JSON.stringify([{ userId: LOWER, chainId: 1 }])],
+  ["an array", JSON.stringify([{ chainId: 1 }])],
   ["a number", "5"],
   ["a string", '"0xabc"'],
   ["a boolean", "true"],
@@ -97,20 +106,10 @@ const loggedError = () => {
 };
 
 describe("GET /api/notifications/config", () => {
-  it.each([
-    ["missing", {}],
-    ["empty", { userId: "" }],
-    ["blank", { userId: "   " }],
-  ])("returns 400 for a %s userId without touching the DB", async (_label, params) => {
-    const res = await get(params as Record<string, string>);
-    expect(await read(res)).toEqual(json(400, { error: "Missing or invalid userId" }));
-    expect(fakeSupabase.queries).toHaveLength(0);
-  });
-
   it.each(["abc", "x1", "-", " ", "1abc", "1.9", "0x10"])(
     "returns 400 for the non-integer chainId %j",
     async chainId => {
-      const res = await get({ userId: LOWER, chainId });
+      const res = await get({ chainId });
       expect(await read(res)).toEqual(json(400, { error: "Invalid chainId" }));
       expect(fakeSupabase.queries).toHaveLength(0);
     },
@@ -119,7 +118,7 @@ describe("GET /api/notifications/config", () => {
   it.each(["V3", "v4", "0x1234", MAIN_SPOKE.toUpperCase().replace("0X", "0x"), ` ${MAIN_SPOKE}`])(
     "returns 400 for the market %j without touching the DB",
     async market => {
-      const res = await get({ userId: LOWER, chainId: "1", market });
+      const res = await get({ chainId: "1", market });
       expect(await read(res)).toEqual(json(400, { error: INVALID_MARKET }));
       expect(fakeSupabase.queries).toHaveLength(0);
     },
@@ -129,17 +128,18 @@ describe("GET /api/notifications/config", () => {
     fakeSupabase.respond(({ table }) =>
       table === "telegram_chats" ? { data: { username: "alice_eth", chat_id: "123456789" } } : undefined,
     );
-    await get({ userId: LOWER, chainId: "1" });
-    await get({ userId: LOWER });
-    expect(fakeSupabase.queries.map(({ table }) => table)).toEqual(["notification_configs", "notification_configs"]);
+    await get({ chainId: "1" });
+    await get({});
+    // Each read tries the lowercased and then the legacy user id form.
+    expect(fakeSupabase.queries.map(({ table }) => table)).toEqual(Array(4).fill("notification_configs"));
   });
 
   it("reads the DB on every request (no in-memory cache)", async () => {
     fakeSupabase.respondByQuery({ [chainQuery(LOWER, 1)]: { data: storedRow({ chain_id: 1, email: "old@x.io" }) } });
-    await get({ userId: LOWER, chainId: "1" });
+    await get({ chainId: "1" });
 
     fakeSupabase.respondByQuery({ [chainQuery(LOWER, 1)]: { data: storedRow({ chain_id: 1, email: "new@x.io" }) } });
-    const res = await get({ userId: LOWER, chainId: "1" });
+    const res = await get({ chainId: "1" });
 
     expect(JSON.parse((await read(res)).text).email).toBe("new@x.io");
     expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 1), chainQuery(LOWER, 1)]);
@@ -149,7 +149,7 @@ describe("GET /api/notifications/config", () => {
     it("returns the lowercased user's row", async () => {
       fakeSupabase.respondByQuery({ [chainQuery(LOWER, 8453)]: { data: storedRow() } });
 
-      const res = await get({ userId: MIXED, chainId: "8453" });
+      const res = await get({ chainId: "8453" });
 
       expect(res.headers.get("content-type")).toBe("application/json");
       expect(await read(res)).toEqual({
@@ -186,7 +186,7 @@ describe("GET /api/notifications/config", () => {
         },
       });
 
-      const res = await get({ userId: LOWER, chainId: "1" });
+      const res = await get({ chainId: "1" });
 
       expect(await read(res)).toEqual({
         status: 200,
@@ -200,7 +200,7 @@ describe("GET /api/notifications/config", () => {
       ["a row from before the locale column", undefined, "en"],
     ])("returns the alert language of %s", async (_label, locale, expected) => {
       fakeSupabase.respondByQuery({ [chainQuery(LOWER, 1)]: { data: storedRow({ chain_id: 1, locale }) } });
-      const res = await get({ userId: LOWER, chainId: "1" });
+      const res = await get({ chainId: "1" });
       expect(JSON.parse((await read(res)).text).locale).toBe(expected);
     });
 
@@ -212,16 +212,16 @@ describe("GET /api/notifications/config", () => {
       fakeSupabase.respondByQuery({
         [chainQuery(LOWER, 1)]: { data: storedRow({ chain_id: 1, services: ["signal"], ...columns }) },
       });
-      const res = await get({ userId: LOWER, chainId: "1" });
+      const res = await get({ chainId: "1" });
       expect(JSON.parse((await read(res)).text).channelLocales).toStrictEqual({ signal: expected });
     });
 
     it("falls back to the trimmed (legacy checksummed) user id when the lowercased lookup finds no row", async () => {
       fakeSupabase.respondByQuery({
-        [chainQuery(MIXED, 10)]: { data: storedRow({ chain_id: 10, services: ["signal"] }) },
+        [chainQuery(CHECKSUMMED, 10)]: { data: storedRow({ chain_id: 10, services: ["signal"] }) },
       });
 
-      const res = await get({ userId: `  ${MIXED}  `, chainId: "10" });
+      const res = await get({ chainId: "10" });
 
       expect(JSON.parse((await read(res)).text)).toEqual({
         chainId: 10,
@@ -235,33 +235,33 @@ describe("GET /api/notifications/config", () => {
         locale: "en",
         channelLocales: { signal: "en" },
       });
-      expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 10), chainQuery(MIXED, 10)]);
+      expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 10), chainQuery(CHECKSUMMED, 10)]);
     });
 
     it("returns null when neither user id form has a row", async () => {
-      expect(await read(await get({ userId: MIXED, chainId: "10" }))).toEqual({ status: 200, text: "null" });
-      expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 10), chainQuery(MIXED, 10)]);
+      expect(await read(await get({ chainId: "10" }))).toEqual({ status: 200, text: "null" });
+      expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 10), chainQuery(CHECKSUMMED, 10)]);
     });
 
-    it("does not query the legacy form for an already-lowercase user id", async () => {
-      expect(await read(await get({ userId: LOWER, chainId: "1" }))).toEqual({ status: 200, text: "null" });
-      expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 1)]);
+    it("does not query a legacy form for a wallet whose EIP-55 form is lowercase", async () => {
+      expect(await read(await get({ chainId: "1" }, DIGITS))).toEqual({ status: 200, text: "null" });
+      expect(fakeSupabase.log()).toEqual([chainQuery(DIGITS, 1)]);
     });
 
     it("returns a generic 500 when the lookup fails, logging the Supabase message, without falling back", async () => {
       fakeSupabase.respondByQuery({
         [chainQuery(LOWER, 1)]: { error: { message: "connection refused" } },
-        [chainQuery(MIXED, 1)]: { data: storedRow({ chain_id: 1 }) },
+        [chainQuery(CHECKSUMMED, 1)]: { data: storedRow({ chain_id: 1 }) },
       });
 
-      expect(await read(await get({ userId: MIXED, chainId: "1" }))).toEqual(json(500, { error: LOAD_FAILED }));
+      expect(await read(await get({ chainId: "1" }))).toEqual(json(500, { error: LOAD_FAILED }));
       expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 1)]);
       expect(loggedError()).toEqual(["GET /api/notifications/config: failed", new Error("connection refused")]);
     });
 
     it("returns a generic 500 when the legacy lookup fails", async () => {
-      fakeSupabase.respondByQuery({ [chainQuery(MIXED, 1)]: { error: { message: "timeout" } } });
-      expect(await read(await get({ userId: MIXED, chainId: "1" }))).toEqual(json(500, { error: LOAD_FAILED }));
+      fakeSupabase.respondByQuery({ [chainQuery(CHECKSUMMED, 1)]: { error: { message: "timeout" } } });
+      expect(await read(await get({ chainId: "1" }))).toEqual(json(500, { error: LOAD_FAILED }));
       expect(loggedError()[1]).toEqual(new Error("timeout"));
     });
 
@@ -272,7 +272,7 @@ describe("GET /api/notifications/config", () => {
     ])("parses the integer chainId %j as %d", async (chainId, parsed) => {
       fakeSupabase.respondByQuery({ [chainQuery(LOWER, parsed)]: { data: storedRow({ chain_id: parsed }) } });
 
-      const res = await get({ userId: LOWER, chainId });
+      const res = await get({ chainId });
 
       expect(JSON.parse((await read(res)).text)).toMatchObject({ chainId: parsed });
       expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, parsed)]);
@@ -285,7 +285,7 @@ describe("GET /api/notifications/config", () => {
     ])("reads the chain's V3 row for %s market", async (_label, params) => {
       fakeSupabase.respondByQuery({ [chainQuery(LOWER, 1)]: { data: storedRow({ chain_id: 1 }) } });
 
-      const res = await get({ userId: LOWER, chainId: "1", ...params });
+      const res = await get({ chainId: "1", ...params });
 
       expect(JSON.parse((await read(res)).text)).toMatchObject({ chainId: 1, market: "v3" });
       expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 1)]);
@@ -293,13 +293,13 @@ describe("GET /api/notifications/config", () => {
 
     it("reads a V4 Spoke's row by its market, falling back to the legacy user id form", async () => {
       fakeSupabase.respondByQuery({
-        [chainQuery(MIXED, 1, LIDO_SPOKE)]: { data: storedRow({ chain_id: 1, market: LIDO_SPOKE }) },
+        [chainQuery(CHECKSUMMED, 1, LIDO_SPOKE)]: { data: storedRow({ chain_id: 1, market: LIDO_SPOKE }) },
       });
 
-      const res = await get({ userId: MIXED, chainId: "1", market: LIDO_SPOKE });
+      const res = await get({ chainId: "1", market: LIDO_SPOKE });
 
       expect(JSON.parse((await read(res)).text)).toMatchObject({ chainId: 1, market: LIDO_SPOKE });
-      expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 1, LIDO_SPOKE), chainQuery(MIXED, 1, LIDO_SPOKE)]);
+      expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 1, LIDO_SPOKE), chainQuery(CHECKSUMMED, 1, LIDO_SPOKE)]);
     });
 
     it("reads a further V3 market's row by its Pool address", async () => {
@@ -307,7 +307,7 @@ describe("GET /api/notifications/config", () => {
         [chainQuery(LOWER, 1, PRIME_POOL)]: { data: storedRow({ chain_id: 1, market: PRIME_POOL }) },
       });
 
-      const res = await get({ userId: LOWER, chainId: "1", market: PRIME_POOL });
+      const res = await get({ chainId: "1", market: PRIME_POOL });
 
       expect(JSON.parse((await read(res)).text)).toMatchObject({ chainId: 1, market: PRIME_POOL });
       expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 1, PRIME_POOL)]);
@@ -315,11 +315,11 @@ describe("GET /api/notifications/config", () => {
 
     // Reads are not checked against the markets the app lists, like the rest of GET.
     it("looks up a well-formed market that is no Spoke", async () => {
-      expect(await read(await get({ userId: LOWER, chainId: "1", market: NOT_A_SPOKE }))).toEqual({
+      expect(await read(await get({ chainId: "1", market: NOT_A_SPOKE }))).toEqual({
         status: 200,
         text: "null",
       });
-      expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 1, NOT_A_SPOKE)]);
+      expect(fakeSupabase.log()).toEqual([chainQuery(LOWER, 1, NOT_A_SPOKE), chainQuery(CHECKSUMMED, 1, NOT_A_SPOKE)]);
     });
   });
 
@@ -340,7 +340,7 @@ describe("GET /api/notifications/config", () => {
         },
       });
 
-      const res = await get({ userId: LOWER });
+      const res = await get({});
 
       expect(await read(res)).toEqual({
         status: 200,
@@ -383,7 +383,7 @@ describe("GET /api/notifications/config", () => {
         },
       });
 
-      const configs = JSON.parse((await read(await get({ userId: LOWER }))).text);
+      const configs = JSON.parse((await read(await get({}))).text);
 
       expect(Object.keys(configs)).toEqual(["1:v3", `1:${LIDO_SPOKE}`, "10:v3"]);
       expect(configs["1:v3"]).toMatchObject({ chainId: 1, market: "v3", email: "v3@x.io" });
@@ -392,15 +392,15 @@ describe("GET /api/notifications/config", () => {
     });
 
     it("ignores the market without a chainId, still checking that it is well formed", async () => {
-      expect(await read(await get({ userId: LOWER, market: LIDO_SPOKE }))).toEqual({ status: 200, text: "{}" });
-      expect(fakeSupabase.log()).toEqual([allQuery(LOWER)]);
-      expect(await read(await get({ userId: LOWER, market: "nope" }))).toEqual(json(400, { error: INVALID_MARKET }));
+      expect(await read(await get({ market: LIDO_SPOKE }))).toEqual({ status: 200, text: "{}" });
+      expect(fakeSupabase.log()).toEqual([allQuery(LOWER), allQuery(CHECKSUMMED)]);
+      expect(await read(await get({ market: "nope" }))).toEqual(json(400, { error: INVALID_MARKET }));
     });
 
     it("treats an empty chainId like a missing one", async () => {
-      const res = await get({ userId: LOWER, chainId: "" });
+      const res = await get({ chainId: "" });
       expect(await read(res)).toEqual({ status: 200, text: "{}" });
-      expect(fakeSupabase.log()).toEqual([allQuery(LOWER)]);
+      expect(fakeSupabase.log()).toEqual([allQuery(LOWER), allQuery(CHECKSUMMED)]);
     });
 
     it("keeps the last row when two rows share a market", async () => {
@@ -409,40 +409,40 @@ describe("GET /api/notifications/config", () => {
           data: [storedRow({ chain_id: 1, email: "first@x.io" }), storedRow({ chain_id: 1, email: "last@x.io" })],
         },
       });
-      const res = await get({ userId: LOWER });
+      const res = await get({});
       expect(JSON.parse((await read(res)).text)["1:v3"].email).toBe("last@x.io");
     });
 
     it("uses the legacy rows when the lowercased query returns none", async () => {
       fakeSupabase.respondByQuery({
         [allQuery(LOWER)]: { data: [] },
-        [allQuery(MIXED)]: { data: [storedRow({ chain_id: 137 })] },
+        [allQuery(CHECKSUMMED)]: { data: [storedRow({ chain_id: 137 })] },
       });
 
-      const res = await get({ userId: MIXED });
+      const res = await get({});
 
       expect(Object.keys(JSON.parse((await read(res)).text))).toEqual(["137:v3"]);
-      expect(fakeSupabase.log()).toEqual([allQuery(LOWER), allQuery(MIXED)]);
+      expect(fakeSupabase.log()).toEqual([allQuery(LOWER), allQuery(CHECKSUMMED)]);
     });
 
     it("returns {} when neither user id form has rows", async () => {
-      fakeSupabase.respondByQuery({ [allQuery(LOWER)]: { data: [] }, [allQuery(MIXED)]: { data: [] } });
-      expect(await read(await get({ userId: MIXED }))).toEqual({ status: 200, text: "{}" });
+      fakeSupabase.respondByQuery({ [allQuery(LOWER)]: { data: [] }, [allQuery(CHECKSUMMED)]: { data: [] } });
+      expect(await read(await get({}))).toEqual({ status: 200, text: "{}" });
     });
 
     it("returns a generic 500 when the query fails, logging the Supabase message, without the legacy query", async () => {
       fakeSupabase.respondByQuery({
         [allQuery(LOWER)]: { error: { message: "timeout" } },
-        [allQuery(MIXED)]: { data: [storedRow({ chain_id: 137 })] },
+        [allQuery(CHECKSUMMED)]: { data: [storedRow({ chain_id: 137 })] },
       });
-      expect(await read(await get({ userId: MIXED }))).toEqual(json(500, { error: LOAD_FAILED }));
+      expect(await read(await get({}))).toEqual(json(500, { error: LOAD_FAILED }));
       expect(fakeSupabase.log()).toEqual([allQuery(LOWER)]);
       expect(loggedError()[1]).toEqual(new Error("timeout"));
     });
 
     it("returns a generic 500 when the legacy query fails", async () => {
-      fakeSupabase.respondByQuery({ [allQuery(MIXED)]: { error: { message: "legacy timeout" } } });
-      expect(await read(await get({ userId: MIXED }))).toEqual(json(500, { error: LOAD_FAILED }));
+      fakeSupabase.respondByQuery({ [allQuery(CHECKSUMMED)]: { error: { message: "legacy timeout" } } });
+      expect(await read(await get({}))).toEqual(json(500, { error: LOAD_FAILED }));
       expect(loggedError()[1]).toEqual(new Error("legacy timeout"));
     });
   });
@@ -452,7 +452,7 @@ describe("GET /api/notifications/config", () => {
     fakeSupabase.respond(() => {
       throw thrown;
     });
-    expect(await read(await get({ userId: LOWER }))).toEqual(json(500, { error: LOAD_FAILED }));
+    expect(await read(await get({}))).toEqual(json(500, { error: LOAD_FAILED }));
     expect(loggedError()).toEqual(["GET /api/notifications/config: failed", thrown]);
   });
 
@@ -460,7 +460,7 @@ describe("GET /api/notifications/config", () => {
     fakeSupabase.respond(() => {
       throw "nope";
     });
-    expect(await read(await get({ userId: LOWER, chainId: "1" }))).toEqual(json(500, { error: LOAD_FAILED }));
+    expect(await read(await get({ chainId: "1" }))).toEqual(json(500, { error: LOAD_FAILED }));
     expect(loggedError()[1]).toBe("nope");
   });
 });
@@ -487,25 +487,15 @@ describe("PUT /api/notifications/config", () => {
   const updateQuery = (row: unknown, id: string) =>
     `notification_configs.update(${JSON.stringify(row)}).eq("id","${id}")`;
 
-  it("returns 400 for a malformed body, like the other routes", async () => {
-    expect(await read(await put("{"))).toEqual(json(400, { error: "Missing or invalid userId" }));
+  it("reads a malformed body as empty, like the other routes", async () => {
+    expect(await read(await put("{"))).toEqual(json(400, { error: "Missing or invalid chainId" }));
     expect(fakeSupabase.queries).toHaveLength(0);
   });
 
-  it.each(NON_OBJECT_BODIES)("returns 400 for a body that is %s, without the access check", async (_label, body) => {
-    expect(await read(await put(body))).toEqual(json(400, { error: "Missing or invalid userId" }));
+  it.each(NON_OBJECT_BODIES)("reads a body that is %s as empty, without the access check", async (_label, body) => {
+    expect(await read(await put(body))).toEqual(json(400, { error: "Missing or invalid chainId" }));
     expect(isAccessActive).not.toHaveBeenCalled();
     expect(fakeSupabase.queries).toHaveLength(0);
-  });
-
-  it.each([
-    ["missing", {}],
-    ["non-string", { userId: 5, chainId: 1 }],
-    ["array", { userId: [LOWER], chainId: 1 }],
-    ["blank", { userId: "  ", chainId: 1 }],
-  ])("returns 400 for a %s userId", async (_label, body) => {
-    expect(await read(await put(body))).toEqual(json(400, { error: "Missing or invalid userId" }));
-    expect(isAccessActive).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -515,9 +505,7 @@ describe("PUT /api/notifications/config", () => {
     ["fractional", { chainId: 8453.5 }],
     ["unsafe integer", { chainId: 2 ** 53 }],
   ])("returns 400 for a %s chainId before the access check or any DB call", async (_label, extra) => {
-    expect(await read(await put({ userId: LOWER, ...extra }))).toEqual(
-      json(400, { error: "Missing or invalid chainId" }),
-    );
+    expect(await read(await put({ ...extra }))).toEqual(json(400, { error: "Missing or invalid chainId" }));
     expect(isAccessActive).not.toHaveBeenCalled();
     expect(fakeSupabase.queries).toHaveLength(0);
   });
@@ -529,7 +517,7 @@ describe("PUT /api/notifications/config", () => {
     ["a numeric", 3],
     ["an object", { spoke: LIDO_SPOKE }],
   ])("returns 400 for %s market before the access check or any DB call", async (_label, market) => {
-    expect(await read(await put({ userId: LOWER, chainId: 1, market }))).toEqual(json(400, { error: INVALID_MARKET }));
+    expect(await read(await put({ chainId: 1, market }))).toEqual(json(400, { error: INVALID_MARKET }));
     expect(isAccessActive).not.toHaveBeenCalled();
     expect(fakeSupabase.queries).toHaveLength(0);
   });
@@ -544,21 +532,19 @@ describe("PUT /api/notifications/config", () => {
     // Arc has Aave V4 Spokes only.
     ["the V3 market of a V4-only chain", 5042, "v3"],
   ])("returns 400 for %s before the access check or any DB call", async (_label, chainId, market) => {
-    expect(await read(await put({ userId: LOWER, chainId, market }))).toEqual(
-      json(400, { error: "Unknown Aave market" }),
-    );
+    expect(await read(await put({ chainId, market }))).toEqual(json(400, { error: "Unknown Aave market" }));
     expect(isAccessActive).not.toHaveBeenCalled();
     expect(fakeSupabase.queries).toHaveLength(0);
   });
 
   it("checks the chainId before the market", async () => {
-    expect(await read(await put({ userId: LOWER, chainId: "1", market: "nope" }))).toEqual(
+    expect(await read(await put({ chainId: "1", market: "nope" }))).toEqual(
       json(400, { error: "Missing or invalid chainId" }),
     );
   });
 
   it("checks the market before the config values", async () => {
-    expect(await read(await put({ userId: LOWER, chainId: 1, market: "nope", services: "email" }))).toEqual(
+    expect(await read(await put({ chainId: 1, market: "nope", services: "email" }))).toEqual(
       json(400, { error: INVALID_MARKET }),
     );
   });
@@ -569,25 +555,30 @@ describe("PUT /api/notifications/config", () => {
     ["an empty", { market: "" }],
     ["the V3", { market: "v3" }],
   ])("stores %s market as the chain's V3 market", async (_label, extra) => {
-    expect(await read(await put({ userId: LOWER, chainId: 8453, ...extra }))).toEqual(json(200, { success: true }));
-    expect(fakeSupabase.log()).toEqual([idLookup(LOWER, 8453), countQuery(LOWER), insertQuery(expectedRow(LOWER))]);
+    expect(await read(await put({ chainId: 8453, ...extra }))).toEqual(json(200, { success: true }));
+    expect(fakeSupabase.log()).toEqual([
+      idLookup(LOWER, 8453),
+      idLookup(CHECKSUMMED, 8453),
+      countQuery(LOWER, CHECKSUMMED),
+      insertQuery(expectedRow(LOWER)),
+    ]);
   });
 
   it("stores the V3 config of every chain with an Aave V3 market", async () => {
-    expect(await read(await put({ userId: LOWER, chainId: 56 }))).toEqual(json(200, { success: true }));
+    expect(await read(await put({ chainId: 56 }))).toEqual(json(200, { success: true }));
     expect(fakeSupabase.log().at(-1)).toBe(insertQuery(expectedRow(LOWER, { chain_id: 56 })));
   });
 
   it("stores a V4 Spoke's config under its market, apart from the chain's V3 row", async () => {
     fakeSupabase.respondByQuery({ [idLookup(LOWER, 1)]: { data: { id: "row-v3" } } });
 
-    const res = await put({ userId: MIXED, chainId: 1, market: LIDO_SPOKE, healthFactorThreshold: 1.3 });
+    const res = await put({ chainId: 1, market: LIDO_SPOKE, healthFactorThreshold: 1.3 });
 
     expect(await read(res)).toEqual(json(200, { success: true }));
     expect(fakeSupabase.log()).toEqual([
       idLookup(LOWER, 1, LIDO_SPOKE),
-      idLookup(MIXED, 1, LIDO_SPOKE),
-      countQuery(LOWER, MIXED),
+      idLookup(CHECKSUMMED, 1, LIDO_SPOKE),
+      countQuery(LOWER, CHECKSUMMED),
       insertQuery(expectedRow(LOWER, { chain_id: 1, market: LIDO_SPOKE, health_factor_threshold: 1.3 })),
     ]);
   });
@@ -595,12 +586,13 @@ describe("PUT /api/notifications/config", () => {
   it("stores a further V3 market's config under its Pool address, apart from the chain's v3 row", async () => {
     fakeSupabase.respondByQuery({ [idLookup(LOWER, 1)]: { data: { id: "row-v3" } } });
 
-    const res = await put({ userId: LOWER, chainId: 1, market: PRIME_POOL, healthFactorThreshold: 2 });
+    const res = await put({ chainId: 1, market: PRIME_POOL, healthFactorThreshold: 2 });
 
     expect(await read(res)).toEqual(json(200, { success: true }));
     expect(fakeSupabase.log()).toEqual([
       idLookup(LOWER, 1, PRIME_POOL),
-      countQuery(LOWER),
+      idLookup(CHECKSUMMED, 1, PRIME_POOL),
+      countQuery(LOWER, CHECKSUMMED),
       insertQuery(expectedRow(LOWER, { chain_id: 1, market: PRIME_POOL, health_factor_threshold: 2 })),
     ]);
   });
@@ -608,21 +600,22 @@ describe("PUT /api/notifications/config", () => {
   it("updates a V4 Spoke's existing row in place", async () => {
     fakeSupabase.respondByQuery({ [idLookup(LOWER, 1, MAIN_SPOKE)]: { data: { id: "row-main" } } });
 
-    await put({ userId: LOWER, chainId: 1, market: MAIN_SPOKE });
+    await put({ chainId: 1, market: MAIN_SPOKE });
 
     expect(fakeSupabase.log()).toEqual([
       idLookup(LOWER, 1, MAIN_SPOKE),
+      idLookup(CHECKSUMMED, 1, MAIN_SPOKE),
       updateQuery(expectedRow(LOWER, { chain_id: 1, market: MAIN_SPOKE }), "row-main"),
     ]);
   });
 
-  it("returns 403 without touching the DB when access is inactive, checking the trimmed raw-case id", async () => {
+  it("returns 403 without touching the DB when access is inactive, checking the signed-in wallet", async () => {
     vi.mocked(isAccessActive).mockResolvedValue(false);
 
-    const res = await put({ userId: ` ${MIXED} `, chainId: 1 });
+    const res = await put({ chainId: 1 });
 
     expect(await read(res)).toEqual(json(403, { error: "Active paid access required to update notification config" }));
-    expect(isAccessActive).toHaveBeenCalledWith(MIXED);
+    expect(isAccessActive).toHaveBeenCalledWith(CHECKSUMMED);
     expect(fakeSupabase.queries).toHaveLength(0);
   });
 
@@ -630,7 +623,6 @@ describe("PUT /api/notifications/config", () => {
     fakeSupabase.respondByQuery({ [idLookup(LOWER, 8453)]: { data: { id: "row-lower" } } });
 
     const res = await put({
-      userId: MIXED,
       chainId: 8453,
       enabled: true,
       services: ["email", "telegram"],
@@ -648,13 +640,17 @@ describe("PUT /api/notifications/config", () => {
       signal_recipient: "alice.42",
       telegram_username: "alice_eth",
     });
-    expect(fakeSupabase.log()).toEqual([idLookup(LOWER, 8453), idLookup(MIXED, 8453), updateQuery(row, "row-lower")]);
+    expect(fakeSupabase.log()).toEqual([
+      idLookup(LOWER, 8453),
+      idLookup(CHECKSUMMED, 8453),
+      updateQuery(row, "row-lower"),
+    ]);
   });
 
   it("updates the legacy row (rewriting user_id to lowercase) when only it exists", async () => {
-    fakeSupabase.respondByQuery({ [idLookup(MIXED, 8453)]: { data: { id: "row-legacy" } } });
+    fakeSupabase.respondByQuery({ [idLookup(CHECKSUMMED, 8453)]: { data: { id: "row-legacy" } } });
 
-    await put({ userId: MIXED, chainId: 8453 });
+    await put({ chainId: 8453 });
 
     expect(fakeSupabase.log().at(-1)).toBe(updateQuery(expectedRow(LOWER), "row-legacy"));
   });
@@ -662,52 +658,64 @@ describe("PUT /api/notifications/config", () => {
   it("prefers the lowercased row when both forms exist", async () => {
     fakeSupabase.respondByQuery({
       [idLookup(LOWER, 8453)]: { data: { id: "row-lower" } },
-      [idLookup(MIXED, 8453)]: { data: { id: "row-legacy" } },
+      [idLookup(CHECKSUMMED, 8453)]: { data: { id: "row-legacy" } },
     });
 
-    await put({ userId: MIXED, chainId: 8453 });
+    await put({ chainId: 8453 });
 
     expect(fakeSupabase.log().at(-1)).toBe(updateQuery(expectedRow(LOWER), "row-lower"));
   });
 
-  it("inserts when no row exists, with a single lookup for an already-lowercase id", async () => {
-    const res = await put({ userId: LOWER, chainId: 8453 });
+  it("inserts when no row exists, with a single lookup for a wallet whose EIP-55 form is lowercase", async () => {
+    const res = await put({ chainId: 8453 }, DIGITS);
 
     expect(await read(res)).toEqual(json(200, { success: true }));
-    expect(fakeSupabase.log()).toEqual([idLookup(LOWER, 8453), countQuery(LOWER), insertQuery(expectedRow(LOWER))]);
+    expect(fakeSupabase.log()).toEqual([idLookup(DIGITS, 8453), countQuery(DIGITS), insertQuery(expectedRow(DIGITS))]);
   });
 
   describe("the limit of 50 alerts per wallet", () => {
     it("inserts the wallet's 50th alert", async () => {
-      fakeSupabase.respondByQuery({ [countQuery(LOWER)]: { count: 49 } });
-      expect(await read(await put({ userId: LOWER, chainId: 8453 }))).toEqual(json(200, { success: true }));
+      fakeSupabase.respondByQuery({ [countQuery(LOWER, CHECKSUMMED)]: { count: 49 } });
+      expect(await read(await put({ chainId: 8453 }))).toEqual(json(200, { success: true }));
       expect(fakeSupabase.log().at(-1)).toBe(insertQuery(expectedRow(LOWER)));
     });
 
     it.each([50, 51, 400])("returns 409 without inserting when the wallet already has %d alerts", async count => {
-      fakeSupabase.respondByQuery({ [countQuery(LOWER)]: { count } });
-      expect(await read(await put({ userId: LOWER, chainId: 8453 }))).toEqual(json(409, { error: LIMIT_REACHED }));
-      expect(fakeSupabase.log()).toEqual([idLookup(LOWER, 8453), countQuery(LOWER)]);
+      fakeSupabase.respondByQuery({ [countQuery(LOWER, CHECKSUMMED)]: { count } });
+      expect(await read(await put({ chainId: 8453 }))).toEqual(json(409, { error: LIMIT_REACHED }));
+      expect(fakeSupabase.log()).toEqual([
+        idLookup(LOWER, 8453),
+        idLookup(CHECKSUMMED, 8453),
+        countQuery(LOWER, CHECKSUMMED),
+      ]);
     });
 
     it("counts the alerts stored under the legacy user id form too", async () => {
-      fakeSupabase.respondByQuery({ [countQuery(LOWER, MIXED)]: { count: 50 } });
-      expect(await read(await put({ userId: MIXED, chainId: 8453 }))).toEqual(json(409, { error: LIMIT_REACHED }));
+      fakeSupabase.respondByQuery({ [countQuery(LOWER, CHECKSUMMED)]: { count: 50 } });
+      expect(await read(await put({ chainId: 8453 }))).toEqual(json(409, { error: LIMIT_REACHED }));
     });
 
     it("still updates an existing alert, without counting", async () => {
       fakeSupabase.respondByQuery({
         [idLookup(LOWER, 8453)]: { data: { id: "row-lower" } },
-        [countQuery(LOWER)]: { count: 50 },
+        [countQuery(LOWER, CHECKSUMMED)]: { count: 50 },
       });
-      expect(await read(await put({ userId: LOWER, chainId: 8453 }))).toEqual(json(200, { success: true }));
-      expect(fakeSupabase.log()).toEqual([idLookup(LOWER, 8453), updateQuery(expectedRow(LOWER), "row-lower")]);
+      expect(await read(await put({ chainId: 8453 }))).toEqual(json(200, { success: true }));
+      expect(fakeSupabase.log()).toEqual([
+        idLookup(LOWER, 8453),
+        idLookup(CHECKSUMMED, 8453),
+        updateQuery(expectedRow(LOWER), "row-lower"),
+      ]);
     });
 
     it("returns a generic 502 without inserting when the count fails", async () => {
-      fakeSupabase.respondByQuery({ [countQuery(LOWER)]: { error: { message: "timeout" } } });
-      expect(await read(await put({ userId: LOWER, chainId: 8453 }))).toEqual(json(502, { error: SAVE_FAILED }));
-      expect(fakeSupabase.log()).toEqual([idLookup(LOWER, 8453), countQuery(LOWER)]);
+      fakeSupabase.respondByQuery({ [countQuery(LOWER, CHECKSUMMED)]: { error: { message: "timeout" } } });
+      expect(await read(await put({ chainId: 8453 }))).toEqual(json(502, { error: SAVE_FAILED }));
+      expect(fakeSupabase.log()).toEqual([
+        idLookup(LOWER, 8453),
+        idLookup(CHECKSUMMED, 8453),
+        countQuery(LOWER, CHECKSUMMED),
+      ]);
       expect(loggedError()).toEqual([
         "PUT /api/notifications/config: database error",
         { code: undefined, message: "timeout" },
@@ -717,7 +725,7 @@ describe("PUT /api/notifications/config", () => {
 
   it("returns a generic 502 on a failed lookup instead of inserting a duplicate row, logging the message", async () => {
     fakeSupabase.respondByQuery({ [idLookup(LOWER, 8453)]: { error: { message: "boom" } } });
-    expect(await read(await put({ userId: LOWER, chainId: 8453 }))).toEqual(json(502, { error: SAVE_FAILED }));
+    expect(await read(await put({ chainId: 8453 }))).toEqual(json(502, { error: SAVE_FAILED }));
     expect(fakeSupabase.log()).toEqual([idLookup(LOWER, 8453)]);
     expect(loggedError()).toEqual([
       "PUT /api/notifications/config: database error",
@@ -726,8 +734,8 @@ describe("PUT /api/notifications/config", () => {
   });
 
   it("returns a generic 502 when the legacy-form lookup fails", async () => {
-    fakeSupabase.respondByQuery({ [idLookup(MIXED, 8453)]: { error: { message: "legacy boom" } } });
-    expect(await read(await put({ userId: MIXED, chainId: 8453 }))).toEqual(json(502, { error: SAVE_FAILED }));
+    fakeSupabase.respondByQuery({ [idLookup(CHECKSUMMED, 8453)]: { error: { message: "legacy boom" } } });
+    expect(await read(await put({ chainId: 8453 }))).toEqual(json(502, { error: SAVE_FAILED }));
     expect(fakeSupabase.log().some(query => query.includes(".insert("))).toBe(false);
   });
 
@@ -736,7 +744,7 @@ describe("PUT /api/notifications/config", () => {
       if (formatted === idLookup(LOWER, 8453)) return { data: { id: "row-1" } };
       if (formatted.includes(".update(")) return { error: { message: "update failed" } };
     });
-    expect(await read(await put({ userId: LOWER, chainId: 8453 }))).toEqual(json(502, { error: SAVE_FAILED }));
+    expect(await read(await put({ chainId: 8453 }))).toEqual(json(502, { error: SAVE_FAILED }));
   });
 
   it("returns a generic 502 when the insert fails, logging only the code and message", async () => {
@@ -748,7 +756,7 @@ describe("PUT /api/notifications/config", () => {
       details: "Failing row contains (row-1, 0xabab..., 8453, t, {email}, 1.5, a@b.co, ...).",
     };
     fakeSupabase.respond((_query, formatted) => (formatted.includes(".insert(") ? { error: violation } : undefined));
-    expect(await read(await put({ userId: LOWER, chainId: 8453 }))).toEqual(json(502, { error: SAVE_FAILED }));
+    expect(await read(await put({ chainId: 8453 }))).toEqual(json(502, { error: SAVE_FAILED }));
     expect(loggedError()).toEqual([
       "PUT /api/notifications/config: database error",
       { code: violation.code, message: violation.message },
@@ -816,7 +824,7 @@ describe("PUT /api/notifications/config", () => {
     ],
     ["no channel languages", { channelLocales: {} }, {}],
   ])("stores the normalized row: %s", async (_label, extra, expected) => {
-    expect(await read(await put({ userId: LOWER, chainId: 8453, ...extra }))).toEqual(json(200, { success: true }));
+    expect(await read(await put({ chainId: 8453, ...extra }))).toEqual(json(200, { success: true }));
     expect(fakeSupabase.log().at(-1)).toBe(insertQuery(expectedRow(LOWER, expected)));
   });
 
@@ -857,14 +865,14 @@ describe("PUT /api/notifications/config", () => {
     ["an unsupported channel language", { channelLocales: { signal: "de" } }, CHANNEL_LOCALES_ERROR],
     ["a language for an unknown channel", { channelLocales: { sms: "cs" } }, CHANNEL_LOCALES_ERROR],
   ])("returns 400 for %s before the access check or any DB call", async (_label, extra, error) => {
-    expect(await read(await put({ userId: LOWER, chainId: 8453, ...extra }))).toEqual(json(400, { error }));
+    expect(await read(await put({ chainId: 8453, ...extra }))).toEqual(json(400, { error }));
     expect(isAccessActive).not.toHaveBeenCalled();
     expect(fakeSupabase.queries).toHaveLength(0);
   });
 
   it("returns 400 for a 100k-character crafted email in under 50ms, before the access check", async () => {
     const start = performance.now();
-    const res = await put({ userId: LOWER, chainId: 8453, services: ["email"], email: `a@${"a.".repeat(50_000)}@` });
+    const res = await put({ chainId: 8453, services: ["email"], email: `a@${"a.".repeat(50_000)}@` });
     expect(performance.now() - start).toBeLessThan(50);
     expect(await read(res)).toEqual(json(400, { error: "Invalid email address for email notifications" }));
     expect(isAccessActive).not.toHaveBeenCalled();
@@ -872,7 +880,6 @@ describe("PUT /api/notifications/config", () => {
 
   it("returns 400 for a selected Signal username over 64 characters", async () => {
     const res = await put({
-      userId: LOWER,
       chainId: 8453,
       services: ["signal"],
       signalRecipient: `a.${"1".repeat(63)}`,
@@ -883,21 +890,21 @@ describe("PUT /api/notifications/config", () => {
   });
 
   it("returns 400 for a threshold that JSON parses as Infinity", async () => {
-    const res = await put(`{"userId":"${LOWER}","chainId":8453,"healthFactorThreshold":1e400}`);
+    const res = await put(`{"chainId":8453,"healthFactorThreshold":1e400}`);
     expect(await read(res)).toEqual(json(400, { error: "Invalid healthFactorThreshold: expected a finite number" }));
   });
 
   it("saves a Czech config in place and reads it back in Czech", async () => {
     fakeSupabase.respondByQuery({ [idLookup(LOWER, 8453)]: { data: { id: "row-lower" } } });
 
-    const body = { userId: LOWER, chainId: 8453, services: ["email"], email: "a@b.co", locale: "cs" };
+    const body = { chainId: 8453, services: ["email"], email: "a@b.co", locale: "cs" };
     expect(await read(await put(body))).toEqual(json(200, { success: true }));
 
     const row = expectedRow(LOWER, { services: ["email"], email: "a@b.co", locale: "cs" });
     expect(fakeSupabase.log().at(-1)).toBe(updateQuery(row, "row-lower"));
 
     fakeSupabase.respondByQuery({ [chainQuery(LOWER, 8453)]: { data: { ...storedRow(), ...row } } });
-    expect(JSON.parse((await read(await get({ userId: LOWER, chainId: "8453" }))).text)).toMatchObject({
+    expect(JSON.parse((await read(await get({ chainId: "8453" }))).text)).toMatchObject({
       services: ["email"],
       locale: "cs",
     });
@@ -907,7 +914,6 @@ describe("PUT /api/notifications/config", () => {
   it("saves a channel's language, changes it later, and reads each one back", async () => {
     fakeSupabase.respondByQuery({ [idLookup(LOWER, 8453)]: { data: { id: "row-lower" } } });
     const body = {
-      userId: LOWER,
       chainId: 8453,
       services: ["email", "signal"],
       email: "a@b.co",
@@ -930,7 +936,7 @@ describe("PUT /api/notifications/config", () => {
     expect(fakeSupabase.log().at(-1)).toBe(updateQuery(row, "row-lower"));
 
     fakeSupabase.respondByQuery({ [chainQuery(LOWER, 8453)]: { data: { ...storedRow(), ...row } } });
-    expect(JSON.parse((await read(await get({ userId: LOWER, chainId: "8453" }))).text).channelLocales).toStrictEqual({
+    expect(JSON.parse((await read(await get({ chainId: "8453" }))).text).channelLocales).toStrictEqual({
       email: "en",
       signal: "cs",
     });
@@ -939,14 +945,14 @@ describe("PUT /api/notifications/config", () => {
   it("saves a Telegram username in place and reads it back as stored", async () => {
     fakeSupabase.respondByQuery({ [idLookup(LOWER, 8453)]: { data: { id: "row-lower" } } });
 
-    const body = { userId: LOWER, chainId: 8453, services: ["telegram"], telegramUsername: "t.me/Alice_Eth" };
+    const body = { chainId: 8453, services: ["telegram"], telegramUsername: "t.me/Alice_Eth" };
     expect(await read(await put(body))).toEqual(json(200, { success: true }));
 
     const row = expectedRow(LOWER, { services: ["telegram"], telegram_username: "alice_eth" });
     expect(fakeSupabase.log().at(-1)).toBe(updateQuery(row, "row-lower"));
 
     fakeSupabase.respondByQuery({ [chainQuery(LOWER, 8453)]: { data: { ...storedRow(), ...row } } });
-    expect(JSON.parse((await read(await get({ userId: LOWER, chainId: "8453" }))).text)).toMatchObject({
+    expect(JSON.parse((await read(await get({ chainId: "8453" }))).text)).toMatchObject({
       services: ["telegram"],
       telegramUsername: "alice_eth",
     });
@@ -955,7 +961,7 @@ describe("PUT /api/notifications/config", () => {
   it("clears a stored Telegram username when Telegram is deselected and none is sent", async () => {
     fakeSupabase.respondByQuery({ [idLookup(LOWER, 8453)]: { data: { id: "row-lower" } } });
 
-    await put({ userId: LOWER, chainId: 8453, services: ["email"], email: "a@b.co", telegramUsername: null });
+    await put({ chainId: 8453, services: ["email"], email: "a@b.co", telegramUsername: null });
 
     const row = expectedRow(LOWER, { services: ["email"], email: "a@b.co", telegram_username: null });
     expect(fakeSupabase.log().at(-1)).toBe(updateQuery(row, "row-lower"));
@@ -964,27 +970,20 @@ describe("PUT /api/notifications/config", () => {
   it("returns a generic 500 when the access check throws, logging the error", async () => {
     const thrown = new Error("rpc down");
     vi.mocked(isAccessActive).mockRejectedValue(thrown);
-    expect(await read(await put({ userId: LOWER, chainId: 1 }))).toEqual(json(500, { error: SAVE_FAILED }));
+    expect(await read(await put({ chainId: 1 }))).toEqual(json(500, { error: SAVE_FAILED }));
     expect(loggedError()).toEqual(["PUT /api/notifications/config: failed", thrown]);
   });
 });
 
 describe("DELETE /api/notifications/config", () => {
   it("treats a malformed body as empty", async () => {
-    expect(await read(await del("{"))).toEqual(json(400, { error: "Missing or invalid userId" }));
+    expect(await read(await del("{"))).toEqual(json(400, { error: "Missing or invalid chainId" }));
   });
 
-  it.each(NON_OBJECT_BODIES)("returns 400 for a body that is %s, without the access check", async (_label, body) => {
-    expect(await read(await del(body))).toEqual(json(400, { error: "Missing or invalid userId" }));
+  it.each(NON_OBJECT_BODIES)("reads a body that is %s as empty, without the access check", async (_label, body) => {
+    expect(await read(await del(body))).toEqual(json(400, { error: "Missing or invalid chainId" }));
     expect(isAccessActive).not.toHaveBeenCalled();
     expect(fakeSupabase.queries).toHaveLength(0);
-  });
-
-  it.each([
-    ["non-string", { userId: 5, chainId: 1 }],
-    ["blank", { userId: " ", chainId: 1 }],
-  ])("returns 400 for a %s userId", async (_label, body) => {
-    expect(await read(await del(body))).toEqual(json(400, { error: "Missing or invalid userId" }));
   });
 
   it.each([
@@ -992,34 +991,32 @@ describe("DELETE /api/notifications/config", () => {
     ["string", { chainId: "1" }],
     ["fractional", { chainId: 1.5 }],
   ])("returns 400 for a %s chainId", async (_label, extra) => {
-    expect(await read(await del({ userId: LOWER, ...extra }))).toEqual(
-      json(400, { error: "Missing or invalid chainId" }),
-    );
+    expect(await read(await del({ ...extra }))).toEqual(json(400, { error: "Missing or invalid chainId" }));
     expect(fakeSupabase.queries).toHaveLength(0);
   });
 
   it("returns 403 when access is inactive", async () => {
     vi.mocked(isAccessActive).mockResolvedValue(false);
-    expect(await read(await del({ userId: MIXED, chainId: 1 }))).toEqual(
+    expect(await read(await del({ chainId: 1 }))).toEqual(
       json(403, { error: "Active paid access required to delete notification config" }),
     );
-    expect(isAccessActive).toHaveBeenCalledWith(MIXED);
+    expect(isAccessActive).toHaveBeenCalledWith(CHECKSUMMED);
     expect(fakeSupabase.queries).toHaveLength(0);
   });
 
   it("deletes both the lowercased and the legacy row", async () => {
-    expect(await read(await del({ userId: MIXED, chainId: 10 }))).toEqual(json(200, { success: true }));
-    expect(fakeSupabase.log()).toEqual([deleteQuery(LOWER, 10), deleteQuery(MIXED, 10)]);
+    expect(await read(await del({ chainId: 10 }))).toEqual(json(200, { success: true }));
+    expect(fakeSupabase.log()).toEqual([deleteQuery(LOWER, 10), deleteQuery(CHECKSUMMED, 10)]);
   });
 
-  it("deletes once for an already-lowercase id", async () => {
-    await del({ userId: LOWER, chainId: 10 });
-    expect(fakeSupabase.log()).toEqual([deleteQuery(LOWER, 10)]);
+  it("deletes once for a wallet whose EIP-55 form is lowercase", async () => {
+    await del({ chainId: 10 }, DIGITS);
+    expect(fakeSupabase.log()).toEqual([deleteQuery(DIGITS, 10)]);
   });
 
   it("returns a generic 502 on the first delete error without running the second, logging the message", async () => {
     fakeSupabase.respondByQuery({ [deleteQuery(LOWER, 10)]: { error: { message: "first failed" } } });
-    expect(await read(await del({ userId: MIXED, chainId: 10 }))).toEqual(json(502, { error: DELETE_FAILED }));
+    expect(await read(await del({ chainId: 10 }))).toEqual(json(502, { error: DELETE_FAILED }));
     expect(fakeSupabase.log()).toEqual([deleteQuery(LOWER, 10)]);
     expect(loggedError()).toEqual([
       "DELETE /api/notifications/config: database error",
@@ -1032,7 +1029,7 @@ describe("DELETE /api/notifications/config", () => {
     ["a checksummed Spoke", "0xe1900480ac69f0B296841Cd01cC37546d92F35Cd"],
     ["a numeric", 3],
   ])("returns 400 for %s market before the access check", async (_label, market) => {
-    expect(await read(await del({ userId: LOWER, chainId: 1, market }))).toEqual(json(400, { error: INVALID_MARKET }));
+    expect(await read(await del({ chainId: 1, market }))).toEqual(json(400, { error: INVALID_MARKET }));
     expect(isAccessActive).not.toHaveBeenCalled();
     expect(fakeSupabase.queries).toHaveLength(0);
   });
@@ -1042,15 +1039,13 @@ describe("DELETE /api/notifications/config", () => {
     ["an empty", { market: "" }],
     ["the V3", { market: "v3" }],
   ])("deletes the chain's V3 row for %s market", async (_label, extra) => {
-    await del({ userId: LOWER, chainId: 10, ...extra });
-    expect(fakeSupabase.log()).toEqual([deleteQuery(LOWER, 10)]);
+    await del({ chainId: 10, ...extra });
+    expect(fakeSupabase.log()).toEqual([deleteQuery(LOWER, 10), deleteQuery(CHECKSUMMED, 10)]);
   });
 
   it("deletes a V4 Spoke's row under both user id forms", async () => {
-    expect(await read(await del({ userId: MIXED, chainId: 1, market: LIDO_SPOKE }))).toEqual(
-      json(200, { success: true }),
-    );
-    expect(fakeSupabase.log()).toEqual([deleteQuery(LOWER, 1, LIDO_SPOKE), deleteQuery(MIXED, 1, LIDO_SPOKE)]);
+    expect(await read(await del({ chainId: 1, market: LIDO_SPOKE }))).toEqual(json(200, { success: true }));
+    expect(fakeSupabase.log()).toEqual([deleteQuery(LOWER, 1, LIDO_SPOKE), deleteQuery(CHECKSUMMED, 1, LIDO_SPOKE)]);
   });
 
   // Unlike PUT, so a config for a Spoke the app no longer lists can still be removed.
@@ -1058,19 +1053,122 @@ describe("DELETE /api/notifications/config", () => {
     ["an address that is no Spoke", 1, NOT_A_SPOKE],
     ["a Spoke on another chain", 8453, LIDO_SPOKE],
   ])("deletes the row of %s", async (_label, chainId, market) => {
-    expect(await read(await del({ userId: LOWER, chainId, market }))).toEqual(json(200, { success: true }));
-    expect(fakeSupabase.log()).toEqual([deleteQuery(LOWER, chainId, market)]);
+    expect(await read(await del({ chainId, market }))).toEqual(json(200, { success: true }));
+    expect(fakeSupabase.log()).toEqual([
+      deleteQuery(LOWER, chainId, market),
+      deleteQuery(CHECKSUMMED, chainId, market),
+    ]);
   });
 
   it("returns a generic 502 when the legacy delete fails", async () => {
-    fakeSupabase.respondByQuery({ [deleteQuery(MIXED, 10)]: { error: { message: "second failed" } } });
-    expect(await read(await del({ userId: MIXED, chainId: 10 }))).toEqual(json(502, { error: DELETE_FAILED }));
+    fakeSupabase.respondByQuery({ [deleteQuery(CHECKSUMMED, 10)]: { error: { message: "second failed" } } });
+    expect(await read(await del({ chainId: 10 }))).toEqual(json(502, { error: DELETE_FAILED }));
   });
 
   it("returns a generic 500 when the access check throws, logging the error", async () => {
     const thrown = new Error("rpc down");
     vi.mocked(isAccessActive).mockRejectedValue(thrown);
-    expect(await read(await del({ userId: LOWER, chainId: 1 }))).toEqual(json(500, { error: DELETE_FAILED }));
+    expect(await read(await del({ chainId: 1 }))).toEqual(json(500, { error: DELETE_FAILED }));
     expect(loggedError()).toEqual(["DELETE /api/notifications/config: failed", thrown]);
+  });
+});
+
+describe("sign-in and cross-site checks", () => {
+  type Init = { wallet?: string | null; userId?: unknown; headers?: Record<string, string | undefined> };
+  const send: Record<"GET" | "PUT" | "DELETE", (init: Init) => Promise<Response>> = {
+    GET: ({ wallet = LOWER, userId, headers }) =>
+      GET(
+        siteRequest(
+          userId === undefined ? BASE_URL : `${BASE_URL}?${new URLSearchParams({ userId: String(userId) })}`,
+          {
+            wallet,
+            headers,
+          },
+        ),
+      ),
+    PUT: ({ wallet = LOWER, userId, headers }) =>
+      PUT(siteRequest(BASE_URL, { method: "PUT", body: { userId, chainId: 1 }, wallet, headers })),
+    DELETE: ({ wallet = LOWER, userId, headers }) =>
+      DELETE(siteRequest(BASE_URL, { method: "DELETE", body: { userId, chainId: 1 }, wallet, headers })),
+  };
+  const METHODS = ["GET", "PUT", "DELETE"] as const;
+  const WRITES = ["PUT", "DELETE"] as const;
+  const SIGN_IN_REQUIRED = json(401, { error: "Sign in with your wallet first" });
+
+  it.each(METHODS)("%s answers 401 without a session, before reading the DB or the access", async method => {
+    expect(await read(await send[method]({ wallet: null }))).toEqual(SIGN_IN_REQUIRED);
+    expect(fakeSupabase.queries).toHaveLength(0);
+    expect(isAccessActive).not.toHaveBeenCalled();
+  });
+
+  it.each(METHODS)("%s answers 401 for a forged session cookie", async method => {
+    const forged = `tokenping-session=v1.${Buffer.from(JSON.stringify({ sub: LOWER, iat: 0, exp: 9e9 })).toString("base64url")}.bad`;
+    expect(await read(await send[method]({ wallet: null, headers: { cookie: forged } }))).toEqual(SIGN_IN_REQUIRED);
+    expect(fakeSupabase.queries).toHaveLength(0);
+  });
+
+  it.each(METHODS)("%s answers 403 when an older client's userId names another wallet", async method => {
+    expect(await read(await send[method]({ userId: OTHER_WALLET }))).toEqual(
+      json(403, { error: "userId does not match the signed-in wallet" }),
+    );
+    expect(fakeSupabase.queries).toHaveLength(0);
+    expect(isAccessActive).not.toHaveBeenCalled();
+  });
+
+  it.each(METHODS)("%s accepts a userId that names the signed-in wallet in any casing", async method => {
+    expect((await send[method]({ userId: ` ${CHECKSUMMED} ` })).status).toBe(200);
+  });
+
+  it.each(METHODS)("%s acts for the signed-in wallet only", async method => {
+    await send[method]({ wallet: OTHER_WALLET });
+    const userIds = fakeSupabase.queries.flatMap(({ ops }) =>
+      ops.filter(([op, column]) => op === "eq" && column === "user_id"),
+    );
+    expect(userIds.map(([, , value]) => value)).toEqual([OTHER_WALLET, getAddress(OTHER_WALLET)]);
+  });
+
+  it("checks paid access for the signed-in wallet", async () => {
+    vi.mocked(isAccessActive).mockResolvedValue(false);
+    await send.PUT({ wallet: OTHER_WALLET });
+    expect(isAccessActive).toHaveBeenCalledWith(getAddress(OTHER_WALLET));
+  });
+
+  it.each(WRITES)("%s answers 403 for a request from another site, before the session", async method => {
+    expect(await read(await send[method]({ headers: { origin: "https://evil.example" } }))).toEqual(
+      json(403, { error: "Cross-site request refused" }),
+    );
+    expect(fakeSupabase.queries).toHaveLength(0);
+  });
+
+  it.each(WRITES)("%s answers 403 without Origin unless Sec-Fetch-Site says same-origin", async method => {
+    expect((await send[method]({ headers: { origin: undefined } })).status).toBe(403);
+    expect((await send[method]({ headers: { origin: undefined, "sec-fetch-site": "cross-site" } })).status).toBe(403);
+    expect((await send[method]({ headers: { origin: undefined, "sec-fetch-site": "same-origin" } })).status).toBe(200);
+  });
+
+  it.each(WRITES)("%s answers 415 for a body that is not declared as JSON", async method => {
+    for (const contentType of ["text/plain", "application/x-www-form-urlencoded", undefined]) {
+      expect(await read(await send[method]({ headers: { "content-type": contentType } }))).toEqual(
+        json(415, { error: "Content-Type must be application/json" }),
+      );
+    }
+    expect(fakeSupabase.queries).toHaveLength(0);
+  });
+
+  it.each(WRITES)("%s accepts JSON with a charset", async method => {
+    expect((await send[method]({ headers: { "content-type": "application/json; charset=utf-8" } })).status).toBe(200);
+  });
+
+  it.each(METHODS)("%s answers 503 in production without SESSION_SECRET", async method => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("SESSION_SECRET", "");
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      expect(await read(await send[method]({ wallet: null }))).toEqual(
+        json(503, { error: "Sign-in is not available on this server" }),
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

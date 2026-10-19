@@ -25,6 +25,7 @@ const CHAIN_METHODS = [
   "in",
   "is",
   "gt",
+  "lt",
   "order",
   "range",
 ];

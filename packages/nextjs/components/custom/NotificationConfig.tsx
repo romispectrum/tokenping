@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useEffect, useId, useRef, useState } from "react";
+import { type FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Lock, Pencil } from "lucide-react";
 import { useAccount } from "wagmi";
 import { AttributionPrompt } from "~~/components/custom/notifications/AttributionPrompt";
@@ -9,6 +9,7 @@ import { NotificationEmptyState } from "~~/components/custom/notifications/Notif
 import { NotificationErrorSummary } from "~~/components/custom/notifications/NotificationErrorSummary";
 import { NotificationFormActions } from "~~/components/custom/notifications/NotificationFormActions";
 import { NotificationLoadError } from "~~/components/custom/notifications/NotificationLoadError";
+import { NotificationSignIn } from "~~/components/custom/notifications/NotificationSignIn";
 import { NotificationSummary } from "~~/components/custom/notifications/NotificationSummary";
 import { RecipientFields } from "~~/components/custom/notifications/RecipientFields";
 import { ServiceSelector } from "~~/components/custom/notifications/ServiceSelector";
@@ -32,12 +33,14 @@ import { NOTIFICATION_SERVICES } from "~~/constants/notifications";
 import { useAccess } from "~~/hooks/custom/useAccess";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
 import { useNotificationTests } from "~~/hooks/custom/useNotificationTests";
+import { hasSignedInHere, useWalletSession, useWalletSignIn } from "~~/hooks/custom/useWalletSession";
 import { useLocale } from "~~/i18n/LocaleProvider";
 import type { Locale } from "~~/i18n/locales";
 import { ALERTS_MESSAGES, requestErrorMessage } from "~~/i18n/messages/alerts";
 import { TestSendError } from "~~/services/notifications/notificationTestClient";
 import type { NotificationService } from "~~/types/notifications";
 import { normalizeAddress } from "~~/utils/address";
+import { isUserRejection } from "~~/utils/errors";
 import { isBelowThreshold } from "~~/utils/healthFactor";
 import { notification } from "~~/utils/scaffold-eth";
 
@@ -63,6 +66,9 @@ const NotificationSettings = ({
   const { getConfig, updateConfig, deleteConfig, isLoaded, isError, isFetching, refetch, isSaving, isDeleting } =
     useNotificationConfig();
   const { isActive: hasAccess } = useAccess();
+  const session = useWalletSession();
+  const walletSignIn = useWalletSignIn();
+  const signedInHereBefore = useMemo(() => !!address && hasSignedInHere(address), [address]);
   const attribution = useAttributionPrompt(address);
   const tests = useNotificationTests();
   const marketRef = { chainId, market };
@@ -109,6 +115,33 @@ const NotificationSettings = ({
     // The button that opened the form: Edit alert for a saved config, otherwise Create alert.
     (attribution.returnFocusRef.current ?? createRef.current)?.focus();
   }, [isEditing, attribution.returnFocusRef]);
+
+  useEffect(() => {
+    if (walletSignIn.error && !isUserRejection(walletSignIn.error)) {
+      console.error("Failed to sign in:", walletSignIn.error);
+    }
+  }, [walletSignIn.error]);
+
+  // The API answers only for the signed-in wallet. A wallet that paid signs in here, once per session; a draft being
+  // edited survives a session that ends, and is back after signing in again. Without paid access the paywall is
+  // enough, except for a wallet that has signed in on this browser before: its access may have lapsed with an alert
+  // still saved, which it can see read-only after signing in.
+  if (address && !session.isSignedIn) {
+    if (session.isChecking || (!hasAccess && !signedInHereBefore)) return null;
+    const signInError = walletSignIn.error
+      ? isUserRejection(walletSignIn.error)
+        ? t.signInRejected
+        : t.signInFailed
+      : null;
+    return (
+      <NotificationSignIn
+        isPrimary={hasAccess}
+        isSigningIn={walletSignIn.isSigningIn}
+        errorMessage={signInError}
+        onSignIn={walletSignIn.signIn}
+      />
+    );
+  }
 
   if (!isLoaded) return null;
 
@@ -332,7 +365,6 @@ const NotificationSettings = ({
           {summary}
           {attribution.isOpen && address && (
             <AttributionPrompt
-              address={address}
               autoFocus={attribution.focusOnShow}
               onSent={() => setAnnouncement(t.answerSent)}
               onClose={attribution.close}

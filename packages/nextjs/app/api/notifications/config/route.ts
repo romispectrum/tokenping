@@ -2,15 +2,15 @@ import { NextResponse } from "next/server";
 import { resolveMarket } from "~~/config/aaveConfig";
 import { requireActiveAccess } from "~~/services/api/server/access";
 import {
-  MISSING_USER_ID,
   internalError,
   isChainId,
   jsonError,
   parseChainId,
-  parseUserId,
   readJsonObject,
+  rejectCrossSiteRequest,
 } from "~~/services/api/server/http";
 import { INVALID_MARKET, parseMarket } from "~~/services/api/server/market";
+import { requireSessionWallet } from "~~/services/api/server/session";
 import { type ConfigInput, parseConfigInput } from "~~/services/notifications/configInput";
 import {
   MAX_CONFIGS_PER_WALLET,
@@ -24,6 +24,8 @@ import {
   userIdForms,
 } from "~~/services/notifications/configRepository";
 
+// Every handler acts for the signed-in wallet (the session cookie), never for a wallet named in the request. A
+// `userId` an older client still sends must name that same wallet, or the request is refused (403).
 type ConfigBody = ConfigInput & { userId?: unknown; chainId?: unknown; market?: unknown };
 
 /** Code and message only: a constraint violation's `details` repeat the row, with its email and usernames. */
@@ -33,8 +35,9 @@ const logDatabaseError = (logPrefix: string, { code, message }: { code?: string;
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = parseUserId(searchParams.get("userId"));
-    if (!userId) return jsonError(MISSING_USER_ID, 400);
+    const session = requireSessionWallet(request, searchParams.get("userId"));
+    if (session.response) return session.response;
+    const userId = session.wallet;
 
     const chainId = parseChainId(searchParams.get("chainId"));
     if (chainId === null) return jsonError("Invalid chainId", 400);
@@ -61,10 +64,13 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const { userId: rawUserId, chainId, market: rawMarket, ...input }: ConfigBody = await readJsonObject(request);
+    const refused = rejectCrossSiteRequest(request);
+    if (refused) return refused;
+    const { userId: claimedUserId, chainId, market: rawMarket, ...input }: ConfigBody = await readJsonObject(request);
 
-    const userId = parseUserId(rawUserId);
-    if (!userId) return jsonError(MISSING_USER_ID, 400);
+    const session = requireSessionWallet(request, claimedUserId);
+    if (session.response) return session.response;
+    const userId = session.wallet;
     // chainId = the Aave network this config is for (position chain), NOT the wallet's connected chain
     if (!isChainId(chainId)) return jsonError("Missing or invalid chainId", 400);
     const market = parseMarket(rawMarket);
@@ -99,10 +105,13 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const { userId: rawUserId, chainId, market: rawMarket }: ConfigBody = await readJsonObject(request);
+    const refused = rejectCrossSiteRequest(request);
+    if (refused) return refused;
+    const { userId: claimedUserId, chainId, market: rawMarket }: ConfigBody = await readJsonObject(request);
 
-    const userId = parseUserId(rawUserId);
-    if (!userId) return jsonError(MISSING_USER_ID, 400);
+    const session = requireSessionWallet(request, claimedUserId);
+    if (session.response) return session.response;
+    const userId = session.wallet;
     if (!isChainId(chainId)) return jsonError("Missing or invalid chainId", 400);
     // Not checked against the markets the app reads, so a config for a market it no longer lists can still be deleted.
     const market = parseMarket(rawMarket);

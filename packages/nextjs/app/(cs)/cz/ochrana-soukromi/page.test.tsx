@@ -80,17 +80,22 @@ describe("/cz/ochrana-soukromi", () => {
     );
     expect(screen.queryByText(/jednorázový kód/)).toBeNull();
     expect(screen.getByText(/pošlete \/stop/)).toBeTruthy();
-    expect(screen.getByText(/kdokoli, kdo zná adresu vaší peněženky/).textContent).toContain(
-      "zobrazit e-mailovou adresu, uživatelské jméno na Signalu a uživatelské jméno na Telegramu",
+    expect(screen.getByText(/jen ten, kdo umí podepisovat vaší peněženkou/).textContent).toContain(
+      "E-mailovou adresu, uživatelské jméno na Signalu a uživatelské jméno na Telegramu, které jsou k vaší peněžence uložené",
     );
   });
 
-  it("says plainly that settings are not protected by a wallet signature, and never calls them safe", () => {
+  it("says that seeing or changing alert settings takes a wallet signature, and never calls them safe", () => {
     const { container } = renderPage();
 
-    expect(screen.getByText(/aplikace po vás zatím nežádá podpis zprávy/)).toBeTruthy();
-    expect(screen.getByText(/kdokoli, kdo zná adresu vaší peněženky/).textContent).toBe(
-      "Dokud aplikace neověřuje podpisy peněženek, může si kdokoli, kdo zná adresu vaší peněženky, zobrazit e-mailovou adresu a uživatelské jméno na Signalu, které jsou k ní uložené, a dokud má tato peněženka aktivní přístup, může její upozornění změnit nebo smazat. Veřejné záznamy o platbách popsané níže ukazují, které peněženky zaplatily.",
+    expect(screen.getByText(/^Nastavení upozornění je svázané/).textContent).toBe(
+      "Nastavení upozornění je svázané s adresou peněženky, ne s účtem s heslem. Abyste je mohli zobrazit nebo změnit, podepíšete touto peněženkou zprávu, která prokáže, že adresa patří vám. Nejde o transakci, takže neplatíte žádný gas, a jeden podpis v daném prohlížeči platí 7 dní.",
+    );
+    expect(screen.getByText(/jen ten, kdo umí podepisovat vaší peněženkou/).textContent).toBe(
+      "E-mailovou adresu a uživatelské jméno na Signalu, které jsou k vaší peněžence uložené, si může zobrazit a její upozornění změnit nebo smazat jen ten, kdo umí podepisovat vaší peněženkou. Veřejné záznamy o platbách popsané níže přesto ukazují, které peněženky zaplatily.",
+    );
+    expect(screen.getByText(/web nic z toho nepoužívá/).textContent).toContain(
+      "Když se přihlásíte peněženkou, Tokenping nastaví jednu cookie, která říká jen to, která peněženka se přihlásila; platí 7 dní nebo do chvíle, kdy peněženku na tomto webu odpojíte. Během přihlašování drží druhá cookie na pět minut žádost o přihlášení.",
     );
     expect(container.textContent).not.toMatch(/bezpečn|soukromé|jen vy vidíte/i);
   });
@@ -110,7 +115,7 @@ describe("/cz/ochrana-soukromi", () => {
   it("dates the page in Czech with a machine-readable time", () => {
     renderPage();
 
-    expect(screen.getByText("14. října 2026").getAttribute("dateTime")).toBe("2026-10-14T00:00:00Z");
+    expect(screen.getByText("19. října 2026").getAttribute("dateTime")).toBe("2026-10-19T00:00:00Z");
     expect(screen.getByText(/^Naposledy aktualizováno/)).toBeTruthy();
   });
 

@@ -7,8 +7,6 @@ import { ATTRIBUTION_MAX_LENGTH, parseAttributionAnswer } from "~~/services/noti
 import { notification } from "~~/utils/scaffold-eth";
 
 type AttributionPromptProps = {
-  /** The wallet the answer is stored for. */
-  address: string;
   /** Take focus on mount, so keyboard and screen-reader users land on the question that replaced the Save button. */
   autoFocus?: boolean;
   /** Called after a successful Send, before onClose, so the card can announce it. */
@@ -19,9 +17,10 @@ type AttributionPromptProps = {
 
 /**
  * Optional free-text "How did you hear about Tokenping?" question (free text rather than a list, so it also catches
- * channels nobody thought to offer, like a private recommendation or an AI assistant).
+ * channels nobody thought to offer, like a private recommendation or an AI assistant). The answer is stored for the
+ * signed-in wallet.
  */
-export const AttributionPrompt = ({ address, autoFocus = false, onSent, onClose }: AttributionPromptProps) => {
+export const AttributionPrompt = ({ autoFocus = false, onSent, onClose }: AttributionPromptProps) => {
   const t = useMessages(ALERTS_MESSAGES);
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -56,7 +55,7 @@ export const AttributionPrompt = ({ address, autoFocus = false, onSent, onClose 
     setIsSending(true);
     setErrorMessage(null);
     try {
-      await submitAttributionAnswer(address, parsed.value);
+      await submitAttributionAnswer(parsed.value);
       notification.success(t.answerSent);
       onSent?.();
       onClose();

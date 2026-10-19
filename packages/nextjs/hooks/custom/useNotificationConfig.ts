@@ -5,6 +5,7 @@ import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/reac
 import { useAccount } from "wagmi";
 import { type MarketRef, V3_MARKET_ID, marketKey } from "~~/config/aaveConfig";
 import { DEFAULT_HEALTH_FACTOR_THRESHOLD } from "~~/constants/notifications";
+import { signOutOn401, useWalletSession } from "~~/hooks/custom/useWalletSession";
 import { useLocale } from "~~/i18n/LocaleProvider";
 import { notificationConfigClient } from "~~/services/notifications/notificationConfigClient";
 import type { NotificationConfig } from "~~/types/notifications";
@@ -51,20 +52,26 @@ const removeMarket = (configs: ConfigsByMarket | undefined, ref: MarketRef) => {
 /**
  * The connected wallet's notification configs by market (a chain's V3 Pool or a V4 Spoke), in the react-query cache
  * so every component (the market list and each market's settings card) sees the same data. Writes go to the cache of
- * the wallet that made them.
+ * the wallet that made them. Nothing loads until the wallet has signed in (useWalletSession): the API reads and
+ * writes the configs of the signed-in wallet only. A 401 marks the wallet signed out, so the card asks again.
  */
 export const useNotificationConfig = () => {
   const { address } = useAccount();
   const locale = useLocale();
   const queryClient = useQueryClient();
+  const { isSignedIn, markSignedOut } = useWalletSession();
 
   const query = useQuery({
     queryKey: notificationConfigsQueryKey(address ?? ""),
-    queryFn: address ? () => notificationConfigClient.getAllConfigs(address) : skipToken,
+    queryFn:
+      address && isSignedIn
+        ? () => signOutOn401(() => notificationConfigClient.getAllConfigs(), markSignedOut)
+        : skipToken,
     select: withFieldDefaults,
     networkMode: NETWORK_MODE,
   });
-  const configs = query.data;
+  // Configs cached before a sign-out stay hidden until the wallet signs in again.
+  const configs = isSignedIn ? query.data : undefined;
 
   /**
    * Applies a successful write to the wallet's cached configs. A load still in flight may have read the configs
@@ -83,8 +90,9 @@ export const useNotificationConfig = () => {
   // The server only trims, normalizes and clamps what the settings form already sends normalized, so a write goes
   // into the cache as sent rather than triggering a reload.
   const { mutateAsync: saveConfig, isPending: isSaving } = useMutation({
-    mutationFn: ({ userId, config }: { userId: string; config: NotificationConfig }) =>
-      notificationConfigClient.upsertConfig(userId, config),
+    // userId names the cache the write goes to; the server saves it for the signed-in wallet.
+    mutationFn: ({ config }: { userId: string; config: NotificationConfig }) =>
+      signOutOn401(() => notificationConfigClient.upsertConfig(config), markSignedOut),
     networkMode: NETWORK_MODE,
     onSuccess: (_, { userId, config }) =>
       applyWrite(userId, prev => ({
@@ -94,8 +102,8 @@ export const useNotificationConfig = () => {
   });
 
   const { mutateAsync: removeConfig, isPending: isDeleting } = useMutation({
-    mutationFn: ({ userId, ref }: { userId: string; ref: MarketRef }) =>
-      notificationConfigClient.deleteConfig(userId, ref),
+    mutationFn: ({ ref }: { userId: string; ref: MarketRef }) =>
+      signOutOn401(() => notificationConfigClient.deleteConfig(ref), markSignedOut),
     networkMode: NETWORK_MODE,
     onSuccess: (_, { userId, ref }) => applyWrite(userId, prev => removeMarket(prev, ref)),
   });
@@ -130,10 +138,11 @@ export const useNotificationConfig = () => {
 
   return {
     /**
-     * False until the connected wallet's configs have been fetched once (or failed); true without a wallet. Unlike
-     * `!isPending`, a retry after a failure does not make it false again.
+     * False until the connected wallet's configs have been fetched once (or failed); true without a wallet or before
+     * it signs in (there is nothing to load then). Unlike `!isPending`, a retry after a failure does not make it
+     * false again.
      */
-    isLoaded: !address || query.isFetched,
+    isLoaded: !address || !isSignedIn || query.isFetched,
     // A retry puts a query without data back into "pending" (and clears its error), so count past errors to keep
     // reporting the failure, and the Retry UI on screen, until a load succeeds. A failed background refetch keeps
     // the last data instead.
