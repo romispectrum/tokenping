@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { SignInRequiredError } from "~~/services/api/apiClient";
 import { notificationConfigClient as client } from "~~/services/notifications/notificationConfigClient";
 import type { NotificationConfig } from "~~/types/notifications";
 import { jsonResponse } from "~~/utils/testing/helpers";
@@ -27,18 +28,26 @@ afterEach(() => {
 });
 
 describe("getAllConfigs", () => {
-  it("sends the trimmed, URL-encoded raw address (not lowercased) to a relative URL in the browser", async () => {
+  it("asks a relative URL in the browser, naming no wallet (the session cookie says which)", async () => {
     vi.stubGlobal("window", {});
     fetchMock.mockResolvedValue(jsonResponse({ "42161:v3": CONFIG }));
-    await expect(client.getAllConfigs("  0xAbC+1 ")).resolves.toEqual({ "42161:v3": CONFIG });
-    expect(fetchMock.mock.calls).toEqual([["/api/notifications/config?userId=0xAbC%2B1"]]);
+    await expect(client.getAllConfigs()).resolves.toEqual({ "42161:v3": CONFIG });
+    expect(fetchMock.mock.calls).toEqual([["/api/notifications/config"]]);
+  });
+
+  it("rejects a 401 with SignInRequiredError", async () => {
+    vi.stubGlobal("window", {});
+    fetchMock.mockResolvedValue(jsonResponse({ error: "Sign in with your wallet first" }, 401));
+    const error = await client.getAllConfigs().catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(SignInRequiredError);
+    expect(error).toHaveProperty("message", "Sign in with your wallet first");
   });
 
   it("uses NEXT_PUBLIC_APP_URL outside the browser", async () => {
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://tokenping.example");
     fetchMock.mockResolvedValue(jsonResponse({}));
-    await client.getAllConfigs("0xabc");
-    expect(fetchMock.mock.calls[0][0]).toBe("https://tokenping.example/api/notifications/config?userId=0xabc");
+    await client.getAllConfigs();
+    expect(fetchMock.mock.calls[0][0]).toBe("https://tokenping.example/api/notifications/config");
   });
 
   it("returns the body without normalizing it", async () => {
@@ -48,14 +57,14 @@ describe("getAllConfigs", () => {
       [`1:${LIDO_SPOKE}`]: { chainId: 1, market: LIDO_SPOKE, services: [], healthFactorThreshold: 1.5 },
     };
     fetchMock.mockResolvedValue(jsonResponse(raw));
-    await expect(client.getAllConfigs("0xabc")).resolves.toEqual(raw);
+    await expect(client.getAllConfigs()).resolves.toEqual(raw);
   });
 
   it("returns {} for a null or non-object body", async () => {
     vi.stubGlobal("window", {});
     fetchMock.mockResolvedValueOnce(jsonResponse(null)).mockResolvedValueOnce(jsonResponse("nope"));
-    await expect(client.getAllConfigs("0xabc")).resolves.toEqual({});
-    await expect(client.getAllConfigs("0xabc")).resolves.toEqual({});
+    await expect(client.getAllConfigs()).resolves.toEqual({});
+    await expect(client.getAllConfigs()).resolves.toEqual({});
   });
 
   // An HTTP error must not look like "no configs": the UI would offer to create a config the user already has.
@@ -70,29 +79,29 @@ describe("getAllConfigs", () => {
   ])("rejects an HTTP error with %s", async (_, response, message) => {
     vi.stubGlobal("window", {});
     fetchMock.mockResolvedValue(response);
-    await expect(client.getAllConfigs("0xabc")).rejects.toThrow(new Error(message));
+    await expect(client.getAllConfigs()).rejects.toThrow(new Error(message));
   });
 
   it("rejects on network errors", async () => {
     vi.stubGlobal("window", {});
     fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
-    await expect(client.getAllConfigs("0xabc")).rejects.toThrow("Failed to fetch");
+    await expect(client.getAllConfigs()).rejects.toThrow("Failed to fetch");
   });
 });
 
 describe("upsertConfig", () => {
   beforeEach(() => vi.stubGlobal("window", {}));
 
-  it("PUTs the trimmed raw address and the config, sending null for missing recipients", async () => {
+  it("PUTs the config without a wallet, sending null for missing recipients", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ success: true }));
-    await client.upsertConfig(" 0xAbC ", CONFIG);
+    await client.upsertConfig(CONFIG);
     expect(fetchMock.mock.calls).toEqual([
       [
         "/api/notifications/config",
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: '{"userId":"0xAbC","chainId":42161,"market":"v3","enabled":true,"services":["email"],"healthFactorThreshold":1.8,"email":"me@example.com","signalRecipient":null,"telegramUsername":null,"locale":"en","channelLocales":{}}',
+          body: '{"chainId":42161,"market":"v3","enabled":true,"services":["email"],"healthFactorThreshold":1.8,"email":"me@example.com","signalRecipient":null,"telegramUsername":null,"locale":"en","channelLocales":{}}',
         },
       ],
     ]);
@@ -100,43 +109,43 @@ describe("upsertConfig", () => {
 
   it("sends null for a missing email too, so the key stays in the body", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ success: true }));
-    await client.upsertConfig("0xabc", {
+    await client.upsertConfig({
       ...CONFIG,
       services: ["signal"],
       email: undefined,
       signalRecipient: "alice.42",
     });
     expect(fetchMock.mock.calls[0][1]?.body).toBe(
-      '{"userId":"0xabc","chainId":42161,"market":"v3","enabled":true,"services":["signal"],"healthFactorThreshold":1.8,"email":null,"signalRecipient":"alice.42","telegramUsername":null,"locale":"en","channelLocales":{}}',
+      '{"chainId":42161,"market":"v3","enabled":true,"services":["signal"],"healthFactorThreshold":1.8,"email":null,"signalRecipient":"alice.42","telegramUsername":null,"locale":"en","channelLocales":{}}',
     );
-    await client.upsertConfig("0xabc", { ...CONFIG, email: undefined });
+    await client.upsertConfig({ ...CONFIG, email: undefined });
     expect(fetchMock.mock.calls[1][1]?.body).toContain('"email":null,"signalRecipient":null,"telegramUsername":null,');
   });
 
   it("sends the Telegram username as the config holds it, after the Signal recipient", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ success: true }));
-    await client.upsertConfig("0xabc", {
+    await client.upsertConfig({
       ...CONFIG,
       services: ["telegram"],
       email: undefined,
       telegramUsername: "alice_eth",
     });
     expect(fetchMock.mock.calls[0][1]?.body).toBe(
-      '{"userId":"0xabc","chainId":42161,"market":"v3","enabled":true,"services":["telegram"],"healthFactorThreshold":1.8,"email":null,"signalRecipient":null,"telegramUsername":"alice_eth","locale":"en","channelLocales":{}}',
+      '{"chainId":42161,"market":"v3","enabled":true,"services":["telegram"],"healthFactorThreshold":1.8,"email":null,"signalRecipient":null,"telegramUsername":"alice_eth","locale":"en","channelLocales":{}}',
     );
   });
 
   it("sends the config's V4 Spoke as the market", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ success: true }));
-    await client.upsertConfig("0xabc", { ...CONFIG, chainId: 1, market: LIDO_SPOKE });
+    await client.upsertConfig({ ...CONFIG, chainId: 1, market: LIDO_SPOKE });
     expect(fetchMock.mock.calls[0][1]?.body).toContain(`"chainId":1,"market":"${LIDO_SPOKE}","enabled":true,`);
   });
 
   // The server stores "en" for a PUT without a locale, so the alert's language is always sent.
   it("sends the alert's language, English when the config has none", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ success: true }));
-    await client.upsertConfig("0xabc", { ...CONFIG, locale: "cs" });
-    await client.upsertConfig("0xabc", CONFIG);
+    await client.upsertConfig({ ...CONFIG, locale: "cs" });
+    await client.upsertConfig(CONFIG);
 
     expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).locale).toBe("cs");
     expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body)).locale).toBe("en");
@@ -155,23 +164,28 @@ describe("upsertConfig", () => {
     ],
   ])("rejects with %s", async (_, response, message) => {
     fetchMock.mockResolvedValue(response);
-    await expect(client.upsertConfig("0xabc", CONFIG)).rejects.toThrow(new Error(message));
+    await expect(client.upsertConfig(CONFIG)).rejects.toThrow(new Error(message));
+  });
+
+  it("rejects a 401 with SignInRequiredError", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ error: "Sign in with your wallet first" }, 401));
+    await expect(client.upsertConfig(CONFIG)).rejects.toBeInstanceOf(SignInRequiredError);
   });
 });
 
 describe("deleteConfig", () => {
   beforeEach(() => vi.stubGlobal("window", {}));
 
-  it("DELETEs with the trimmed raw address, the chain id and the market", async () => {
+  it("DELETEs with the chain id and the market, without a wallet", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ success: true }));
-    await client.deleteConfig(" 0xAbC ", { chainId: 10, market: "v3" });
+    await client.deleteConfig({ chainId: 10, market: "v3" });
     expect(fetchMock.mock.calls).toEqual([
       [
         "/api/notifications/config",
         {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
-          body: '{"userId":"0xAbC","chainId":10,"market":"v3"}',
+          body: '{"chainId":10,"market":"v3"}',
         },
       ],
     ]);
@@ -179,8 +193,8 @@ describe("deleteConfig", () => {
 
   it("DELETEs a V4 Spoke's config by its market", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ success: true }));
-    await client.deleteConfig("0xabc", { chainId: 1, market: LIDO_SPOKE });
-    expect(fetchMock.mock.calls[0][1]?.body).toBe(`{"userId":"0xabc","chainId":1,"market":"${LIDO_SPOKE}"}`);
+    await client.deleteConfig({ chainId: 1, market: LIDO_SPOKE });
+    expect(fetchMock.mock.calls[0][1]?.body).toBe(`{"chainId":1,"market":"${LIDO_SPOKE}"}`);
   });
 
   it.each([
@@ -190,6 +204,11 @@ describe("deleteConfig", () => {
     ["the fallback without an error field", jsonResponse({}, 500), "Failed to delete notification config"],
   ])("rejects with %s", async (_, response, message) => {
     fetchMock.mockResolvedValue(response);
-    await expect(client.deleteConfig("0xabc", { chainId: 1, market: "v3" })).rejects.toThrow(new Error(message));
+    await expect(client.deleteConfig({ chainId: 1, market: "v3" })).rejects.toThrow(new Error(message));
+  });
+
+  it("rejects a 401 with SignInRequiredError", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ error: "Sign in with your wallet first" }, 401));
+    await expect(client.deleteConfig({ chainId: 1, market: "v3" })).rejects.toBeInstanceOf(SignInRequiredError);
   });
 });

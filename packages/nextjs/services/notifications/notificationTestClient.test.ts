@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { SignInRequiredError } from "~~/services/api/apiClient";
 import { TestSendError, notificationTestClient as client } from "~~/services/notifications/notificationTestClient";
 import { jsonResponse } from "~~/utils/testing/helpers";
 
@@ -30,11 +31,16 @@ afterEach(() => {
 });
 
 describe("getRetryTimes", () => {
-  it("asks for the trimmed, URL-encoded raw address (not lowercased), never from a cache", async () => {
+  it("asks without naming a wallet (the session cookie says which), never from a cache", async () => {
     const times = { email: null, signal: RETRY_AT, telegram: null };
     fetchMock.mockResolvedValue(jsonResponse(times));
-    await expect(client.getRetryTimes("  0xAbC+1 ")).resolves.toEqual(times);
-    expect(fetchMock.mock.calls).toEqual([["/api/notifications/test?userId=0xAbC%2B1", { cache: "no-store" }]]);
+    await expect(client.getRetryTimes()).resolves.toEqual(times);
+    expect(fetchMock.mock.calls).toEqual([["/api/notifications/test", { cache: "no-store" }]]);
+  });
+
+  it("rejects a 401 with SignInRequiredError", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ error: "Sign in with your wallet first" }, 401));
+    await expect(client.getRetryTimes()).rejects.toBeInstanceOf(SignInRequiredError);
   });
 
   it("uses NEXT_PUBLIC_APP_URL outside the browser", async () => {
@@ -42,8 +48,8 @@ describe("getRetryTimes", () => {
     vi.stubGlobal("fetch", fetchMock);
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://tokenping.example");
     fetchMock.mockResolvedValue(jsonResponse({ email: null, signal: null, telegram: null }));
-    await client.getRetryTimes("0xabc");
-    expect(fetchMock.mock.calls[0][0]).toBe("https://tokenping.example/api/notifications/test?userId=0xabc");
+    await client.getRetryTimes();
+    expect(fetchMock.mock.calls[0][0]).toBe("https://tokenping.example/api/notifications/test");
   });
 
   it.each([
@@ -56,20 +62,20 @@ describe("getRetryTimes", () => {
     ["the fallback without an error field", jsonResponse({}, 400), "Failed to read the test message limit"],
   ])("rejects an HTTP error with %s", async (_, response, message) => {
     fetchMock.mockResolvedValue(response);
-    await expect(client.getRetryTimes("0xabc")).rejects.toThrow(new Error(message));
+    await expect(client.getRetryTimes()).rejects.toThrow(new Error(message));
   });
 
   it("rejects on network errors", async () => {
     fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
-    await expect(client.getRetryTimes("0xabc")).rejects.toThrow("Failed to fetch");
+    await expect(client.getRetryTimes()).rejects.toThrow("Failed to fetch");
   });
 });
 
 describe("send", () => {
-  it("POSTs the trimmed raw address, the market and the channel, and nothing about the recipient", async () => {
+  it("POSTs the market and the channel, and nothing about the wallet or the recipient", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ sentAt: "2026-10-14T09:05:07.000Z", retryAt: RETRY_AT }));
 
-    await expect(client.send(" 0xAbC ", { chainId: 1, market: LIDO_SPOKE }, "telegram")).resolves.toEqual({
+    await expect(client.send({ chainId: 1, market: LIDO_SPOKE }, "telegram")).resolves.toEqual({
       sentAt: "2026-10-14T09:05:07.000Z",
       retryAt: RETRY_AT,
     });
@@ -79,7 +85,7 @@ describe("send", () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: `{"userId":"0xAbC","chainId":1,"market":"${LIDO_SPOKE}","channel":"telegram"}`,
+          body: `{"chainId":1,"market":"${LIDO_SPOKE}","channel":"telegram"}`,
         },
       ],
     ]);
@@ -90,7 +96,7 @@ describe("send", () => {
       jsonResponse({ error: "One test message per channel every 15 minutes", retryAt: RETRY_AT }, 429),
     );
 
-    const error = await rejectionOf(client.send("0xabc", { chainId: 8453, market: "v3" }, "email"));
+    const error = await rejectionOf(client.send({ chainId: 8453, market: "v3" }, "email"));
     expect(error).toBeInstanceOf(TestSendError);
     expect(error).toMatchObject({
       name: "TestSendError",
@@ -102,7 +108,7 @@ describe("send", () => {
   it("rejects a 429 without a JSON body with the limit's message and no time", async () => {
     fetchMock.mockResolvedValue(new Response("Too Many Requests", { status: 429 }));
 
-    const error = await rejectionOf(client.send("0xabc", { chainId: 8453, market: "v3" }, "email"));
+    const error = await rejectionOf(client.send({ chainId: 8453, market: "v3" }, "email"));
     expect(error).toBeInstanceOf(TestSendError);
     expect(error).toMatchObject({ message: "One test message per channel every 15 minutes", retryAt: undefined });
   });
@@ -125,14 +131,21 @@ describe("send", () => {
   ])("rejects %s with a TestSendError without a time", async (_, response, message) => {
     fetchMock.mockResolvedValue(response);
 
-    const error = await rejectionOf(client.send("0xabc", { chainId: 8453, market: "v3" }, "signal"));
+    const error = await rejectionOf(client.send({ chainId: 8453, market: "v3" }, "signal"));
     expect(error).toBeInstanceOf(TestSendError);
     expect(error).toMatchObject({ message, retryAt: undefined });
   });
 
+  it("rejects a 401 with SignInRequiredError, not a TestSendError", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ error: "Sign in with your wallet first" }, 401));
+    const error = await rejectionOf(client.send({ chainId: 8453, market: "v3" }, "email"));
+    expect(error).toBeInstanceOf(SignInRequiredError);
+    expect(error).toHaveProperty("message", "Sign in with your wallet first");
+  });
+
   it("rejects on network errors with the original error", async () => {
     fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
-    const error = await rejectionOf(client.send("0xabc", { chainId: 8453, market: "v3" }, "email"));
+    const error = await rejectionOf(client.send({ chainId: 8453, market: "v3" }, "email"));
     expect(error).toBeInstanceOf(TypeError);
   });
 });

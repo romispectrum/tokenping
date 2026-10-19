@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { ScaffoldEthApp } from "~~/components/ScaffoldEthAppWithProviders";
+import { ScaffoldEthApp, queryClient, retryUnlessSignedOut } from "~~/components/ScaffoldEthAppWithProviders";
+import { SignInRequiredError } from "~~/services/api/apiClient";
 
 // The frame's own markup only: the skip link, the beta tab, header and footer have their own tests.
 vi.mock("~~/components/BetaBanner", () => ({
@@ -41,5 +42,18 @@ describe("ScaffoldEthApp", () => {
     );
     expect(order).toEqual(["skip-link", "header", "beta-banner", "footer"]);
     expect(container.querySelector("main")?.nextElementSibling?.getAttribute("data-stub")).toBe("beta-banner");
+  });
+});
+
+describe("queryClient", () => {
+  it("retries a failed query three times, but never a 401: only signing in again helps", () => {
+    expect(queryClient.getDefaultOptions().queries?.retry).toBe(retryUnlessSignedOut);
+    expect([0, 1, 2, 3].map(count => retryUnlessSignedOut(count, new Error("Network error")))).toEqual([
+      true,
+      true,
+      true,
+      false,
+    ]);
+    expect(retryUnlessSignedOut(0, new SignInRequiredError("Sign in with your wallet first"))).toBe(false);
   });
 });

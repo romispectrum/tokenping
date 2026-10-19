@@ -11,6 +11,7 @@ import { BetaBanner, SkipLink } from "~~/components/BetaBanner";
 import { Footer } from "~~/components/Footer";
 import { Header } from "~~/components/Header";
 import { BlockieAvatar } from "~~/components/scaffold-eth";
+import { SignInRequiredError } from "~~/services/api/apiClient";
 import { wagmiConfig } from "~~/services/web3/wagmiConfig";
 
 /**
@@ -85,10 +86,15 @@ const brandRainbowKitTheme = (isDarkMode: boolean): Theme => {
   };
 };
 
+/** react-query's three retries, except after a 401 from the alert API: only signing in again helps then. */
+export const retryUnlessSignedOut = (failureCount: number, error: Error) =>
+  !(error instanceof SignInRequiredError) && failureCount < 3;
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
+      retry: retryUnlessSignedOut,
     },
   },
 });

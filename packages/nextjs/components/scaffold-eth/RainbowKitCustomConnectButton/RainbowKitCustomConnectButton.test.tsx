@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { arbitrum, mainnet } from "viem/chains";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RainbowKitCustomConnectButton } from "~~/components/scaffold-eth/RainbowKitCustomConnectButton";
@@ -14,8 +14,8 @@ type ConnectState = {
   chain?: { id: number; name: string; unsupported?: boolean };
 };
 
-// Seeded in beforeEach: what RainbowKit hands its custom button.
-const state = vi.hoisted(() => ({ connect: {} as ConnectState }));
+// Seeded in beforeEach: what RainbowKit hands its custom button. `calls` records disconnects and sign-outs in order.
+const state = vi.hoisted(() => ({ connect: {} as ConnectState, calls: [] as string[] }));
 
 vi.mock("@rainbow-me/rainbowkit", () => ({
   ConnectButton: {
@@ -30,11 +30,13 @@ vi.mock("burner-connector", () => ({ rainbowkitBurnerWallet: { useSessionStorage
 
 vi.mock("wagmi", () => ({
   useAccount: () => ({ chain: state.connect.chain, connector: { id: "injected" } }),
-  useDisconnect: () => ({ disconnect: () => undefined }),
+  useDisconnect: () => ({ disconnect: () => void state.calls.push("disconnect") }),
   useSwitchChain: () => ({ switchChain: () => undefined }),
 }));
 
 vi.mock("~~/components/scaffold-eth", () => ({ BlockieAvatar: () => null }));
+
+vi.mock("~~/hooks/custom/useWalletSession", () => ({ useSignOut: () => () => void state.calls.push("sign out") }));
 
 vi.mock("~~/hooks/scaffold-eth", () => ({
   useCopyToClipboard: () => ({ copyToClipboard: () => undefined, isCopiedToClipboard: false }),
@@ -56,6 +58,7 @@ const renderButton = (locale: Locale) =>
 describe("RainbowKitCustomConnectButton", () => {
   beforeEach(() => {
     state.connect = {};
+    state.calls = [];
   });
 
   it("asks to connect a wallet, in English and in Czech", () => {
@@ -101,5 +104,15 @@ describe("RainbowKitCustomConnectButton", () => {
 
     for (const text of ["Copy address", "View QR Code", "View on Block Explorer", "Disconnect"])
       expect(screen.getByText(text)).toBeTruthy();
+  });
+
+  it.each([
+    ["the account menu", { id: arbitrum.id, name: arbitrum.name }],
+    ["the wrong network menu", { id: mainnet.id, name: mainnet.name }],
+  ])("ends the alert settings' session when Disconnect is pressed in %s", (_label, chain) => {
+    state.connect = { account: { address: ADDRESS, displayName: "0xd8dA…6045" }, chain };
+    renderButton("en");
+    fireEvent.click(screen.getByRole("button", { name: "Disconnect" }));
+    expect(state.calls).toEqual(["sign out", "disconnect"]);
   });
 });

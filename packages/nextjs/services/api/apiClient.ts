@@ -17,3 +17,17 @@ export const readApiError = async (res: Response, fallback: string) => {
   const raw = Array.isArray(body?.error) ? body.error[0] : body?.error;
   return raw && String(raw).trim() && String(raw) !== "undefined" ? String(raw) : fallback;
 };
+
+/** A 401 from a route that needs a signed-in wallet: there is no session, or it has expired. */
+export class SignInRequiredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SignInRequiredError";
+  }
+}
+
+/** The error to throw for a failed response: SignInRequiredError for a 401, otherwise an Error with the API's reason. */
+export const apiError = async (res: Response, fallback: string) => {
+  const message = await readApiError(res, fallback);
+  return res.status === 401 ? new SignInRequiredError(message) : new Error(message);
+};

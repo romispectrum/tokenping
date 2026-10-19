@@ -3,6 +3,7 @@ import { notifyManager } from "@tanstack/react-query";
 import { act } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { useNotificationTests } from "~~/hooks/custom/useNotificationTests";
+import { SignInRequiredError } from "~~/services/api/apiClient";
 import { TestSendError } from "~~/services/notifications/notificationTestClient";
 import { deferred } from "~~/utils/testing/helpers";
 import { createTestQueryClient, renderHookWithProviders } from "~~/utils/testing/providers";
@@ -11,9 +12,20 @@ const mocks = vi.hoisted(() => ({
   address: undefined as string | undefined,
   getRetryTimes: vi.fn(),
   send: vi.fn(),
+  signedIn: true,
+  markSignedOut: vi.fn(),
 }));
 
 vi.mock("wagmi", () => ({ useAccount: () => ({ address: mocks.address }) }));
+// The real signOutOn401, so a 401 reaches markSignedOut as in the app.
+vi.mock("~~/hooks/custom/useWalletSession", async importOriginal => ({
+  ...(await importOriginal<typeof import("~~/hooks/custom/useWalletSession")>()),
+  useWalletSession: () => ({
+    isSignedIn: !!mocks.address && mocks.signedIn,
+    isChecking: false,
+    markSignedOut: mocks.markSignedOut,
+  }),
+}));
 vi.mock("~~/services/notifications/notificationTestClient", async importOriginal => ({
   ...(await importOriginal<typeof import("~~/services/notifications/notificationTestClient")>()),
   notificationTestClient: { getRetryTimes: mocks.getRetryTimes, send: mocks.send },
@@ -45,6 +57,8 @@ afterAll(() => notifyManager.setScheduler(callback => setTimeout(callback, 0)));
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"], now: NOW });
   mocks.address = ADDRESS;
+  mocks.signedIn = true;
+  mocks.markSignedOut.mockReset();
   mocks.getRetryTimes.mockReset().mockResolvedValue(NONE);
   mocks.send.mockReset().mockResolvedValue({ sentAt: iso(0), retryAt: iso(15 * MINUTE) });
 });
@@ -62,7 +76,7 @@ describe("useNotificationTests: the cooldowns", () => {
     expect(waits(result)).toEqual([0, 0, 0]);
     await flush();
 
-    expect(mocks.getRetryTimes.mock.calls).toEqual([[ADDRESS]]);
+    expect(mocks.getRetryTimes.mock.calls).toEqual([[]]);
     expect(queryClient.getQueryData(["notificationTestRetryTimes", ADDRESS.toLowerCase()])).toEqual({
       email: null,
       signal: iso(12 * MINUTE),
@@ -128,8 +142,9 @@ describe("useNotificationTests: the cooldowns", () => {
   });
 
   it("reads the new wallet's cooldowns after a wallet switch", async () => {
-    mocks.getRetryTimes.mockImplementation(async (userId: string) =>
-      userId === ADDRESS ? { ...NONE, email: iso(5 * MINUTE) } : NONE,
+    // The server answers for the signed-in wallet, which follows the connected one here.
+    mocks.getRetryTimes.mockImplementation(async () =>
+      mocks.address === ADDRESS ? { ...NONE, email: iso(5 * MINUTE) } : NONE,
     );
     const { result, rerender } = render();
     await flush();
@@ -138,7 +153,7 @@ describe("useNotificationTests: the cooldowns", () => {
     mocks.address = OTHER_ADDRESS;
     rerender();
     await flush();
-    expect(mocks.getRetryTimes.mock.calls).toEqual([[ADDRESS], [OTHER_ADDRESS]]);
+    expect(mocks.getRetryTimes).toHaveBeenCalledTimes(2);
     expect(result.current.waitFor("email")).toBe(0);
   });
 });
@@ -155,7 +170,7 @@ describe("useNotificationTests: sending", () => {
     });
 
     expect(answer).toEqual({ sentAt: iso(0), retryAt: iso(15 * MINUTE) });
-    expect(mocks.send.mock.calls).toEqual([[ADDRESS, MARKET, "email"]]);
+    expect(mocks.send.mock.calls).toEqual([[MARKET, "email"]]);
     expect(queryClient.getQueryData(["notificationTestRetryTimes", ADDRESS.toLowerCase()])).toEqual({
       email: iso(15 * MINUTE),
       signal: iso(3 * MINUTE),
@@ -253,5 +268,32 @@ describe("useNotificationTests: sending", () => {
   it("counts a refused send's cooldown from the moment it was answered", async () => {
     const { result } = await refusedAfterIdle();
     expect(result.current.waitFor("email")).toBe(9 * MINUTE);
+  });
+});
+
+describe("useNotificationTests: the session", () => {
+  it("reads nothing before the wallet signs in, and leaves every button on", async () => {
+    mocks.signedIn = false;
+    const { result } = render();
+    await flush();
+    expect(mocks.getRetryTimes).not.toHaveBeenCalled();
+    expect(waits(result)).toEqual([0, 0, 0]);
+  });
+
+  it("marks the wallet signed out when the read answers 401", async () => {
+    mocks.getRetryTimes.mockRejectedValue(new SignInRequiredError("Sign in with your wallet first"));
+    render();
+    await flush(10_000);
+    expect(mocks.markSignedOut).toHaveBeenCalled();
+    expect(mocks.getRetryTimes).toHaveBeenCalledTimes(1);
+  });
+
+  it("marks the wallet signed out when a send answers 401, and still rejects", async () => {
+    const signedOut = new SignInRequiredError("Sign in with your wallet first");
+    mocks.send.mockRejectedValue(signedOut);
+    const { result } = render();
+    await flush();
+    await act(() => expect(result.current.send(MARKET, "email")).rejects.toBe(signedOut));
+    expect(mocks.markSignedOut).toHaveBeenCalledTimes(1);
   });
 });
