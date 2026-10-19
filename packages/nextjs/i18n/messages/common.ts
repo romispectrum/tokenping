@@ -41,6 +41,9 @@ type CommonMessages = {
     telegramLabel: string;
     signalLabel: string;
     privacy: string;
+    /** The donation block under the tagline: its heading, and the address's name for screen readers. */
+    donate: string;
+    donationAddress: string;
     independence: string;
     /** The price arrives formatted ("1234.57"). */
     ethPrice: (price: string) => string;
@@ -143,6 +146,8 @@ export const COMMON_MESSAGES: Localized<CommonMessages> = {
       telegramLabel: "Tokenping Telegram community",
       signalLabel: "Tokenping Signal community",
       privacy: "Privacy",
+      donate: "Support Tokenping",
+      donationAddress: "Donation address",
       independence: "Independent tool, not affiliated with Aave Labs or the Aave DAO.",
       ethPrice: price => `ETH price: $${price}`,
       blockExplorer: "Block explorer",
@@ -237,6 +242,8 @@ export const COMMON_MESSAGES: Localized<CommonMessages> = {
       telegramLabel: "Komunita Tokenpingu na Telegramu",
       signalLabel: "Komunita Tokenpingu na Signalu",
       privacy: "Ochrana soukromí",
+      donate: "Podpořte Tokenping",
+      donationAddress: "Adresa pro dary",
       independence: "Nezávislý nástroj, který není spojen s Aave Labs ani s Aave DAO.",
       ethPrice: price => `Cena ETH: $${price}`,
       blockExplorer: "Průzkumník bloků",

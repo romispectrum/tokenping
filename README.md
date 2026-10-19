@@ -265,3 +265,8 @@ yarn deploy --network arbitrum --deploy-mode production
 Production deploys prompt for your password, decrypt `DEPLOYER_PRIVATE_KEY_ENCRYPTED` and use the key only at runtime.
 Arbitrum production deploys check that the payment token is Circle's native USDC,
 `0xaf88d065e77c8cc2239327c5edb3a432268e5831`. Upgrades and verification: [packages/hardhat/README.md](packages/hardhat/README.md).
+
+## Support
+
+Donations are welcome at **romispectrum.eth** (`0x4f57c97f76E8d1C889eaA74A02E150BE1e0EDe25`). The site's footer shows
+the same address with a copy button.
