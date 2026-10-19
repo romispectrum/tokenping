@@ -27,9 +27,15 @@ import CsAaveLiquidationAlertTools, {
 import CsWhyAaveHealthFactorDropped, {
   meta as csWhyAaveHealthFactorDropped,
 } from "~~/content/blog/cs/proc-klesl-health-factor-aave.mdx";
+import CsPrivateAaveLiquidationAlerts, {
+  meta as csPrivateAaveLiquidationAlerts,
+} from "~~/content/blog/cs/soukroma-upozorneni-na-likvidaci-aave.mdx";
 import HowAaveLiquidationWorks, {
   meta as howAaveLiquidationWorks,
 } from "~~/content/blog/how-aave-liquidation-works.mdx";
+import PrivateAaveLiquidationAlerts, {
+  meta as privateAaveLiquidationAlerts,
+} from "~~/content/blog/private-aave-liquidation-alerts.mdx";
 import SafeAaveHealthFactor, { meta as safeAaveHealthFactor } from "~~/content/blog/safe-aave-health-factor.mdx";
 import type { Post } from "~~/content/blog/types";
 import WhyAaveHealthFactorDropped, {
@@ -48,6 +54,7 @@ export const POSTS: readonly Post[] = [
   { meta: aaveHealthFactorAlertSetup, Content: AaveHealthFactorAlertSetup },
   { meta: aaveLiquidationAlertTools, Content: AaveLiquidationAlertTools },
   { meta: avoidAaveLiquidation, Content: AvoidAaveLiquidation },
+  { meta: privateAaveLiquidationAlerts, Content: PrivateAaveLiquidationAlerts },
 ];
 
 /** The Czech translations (content/blog/cs), in the same order. Slugs pair with English through i18n/postSlugs. */
@@ -60,6 +67,7 @@ const CS_POSTS: readonly Post[] = [
   { meta: csAaveHealthFactorAlertSetup, Content: CsAaveHealthFactorAlertSetup },
   { meta: csAaveLiquidationAlertTools, Content: CsAaveLiquidationAlertTools },
   { meta: csAvoidAaveLiquidation, Content: CsAvoidAaveLiquidation },
+  { meta: csPrivateAaveLiquidationAlerts, Content: CsPrivateAaveLiquidationAlerts },
 ];
 
 const POSTS_BY_LOCALE: Localized<readonly Post[]> = { en: POSTS, cs: CS_POSTS };
@@ -139,6 +147,12 @@ export const RELATED_SLUGS: Record<string, readonly string[]> = {
     "how-aave-liquidation-works",
     "why-aave-health-factor-dropped",
     "aave-liquidation-alert-tools",
+  ],
+  "private-aave-liquidation-alerts": [
+    "aave-health-factor",
+    "aave-health-factor-alert-setup",
+    "aave-liquidation-alert-tools",
+    "safe-aave-health-factor",
   ],
 };
 

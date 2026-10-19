@@ -14,6 +14,7 @@ const EXPECTED_SLUGS = [
   "aave-health-factor-alert-setup",
   "aave-liquidation-alert-tools",
   "avoid-aave-liquidation",
+  "private-aave-liquidation-alerts",
 ];
 
 const CS_SLUGS = EXPECTED_SLUGS.map(slug => POST_SLUGS[slug].cs);
@@ -33,7 +34,7 @@ beforeEach(() => {
 });
 
 describe("POSTS", () => {
-  it("lists the eight cluster posts, hub first", async () => {
+  it("lists the nine cluster posts, hub first", async () => {
     const { HUB_SLUG, POSTS } = await loadBlog();
 
     expect(POSTS.map(({ meta }) => meta.slug)).toEqual(EXPECTED_SLUGS);

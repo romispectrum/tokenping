@@ -1,0 +1,189 @@
+export const meta = {
+  slug: "soukroma-upozorneni-na-likvidaci-aave",
+  title: "Upozornění na Aave a soukromí: co Tokenping ukládá",
+  description:
+    "Co Tokenping ukládá, co je veřejné na blockchainu a jak e-mailový alias a uživatelská jména v Signalu a na Telegramu zařídí, že vás kontakty neprozradí.",
+  h1: "Jak dostávat upozornění na health factor Aave, aniž byste Tokenpingu prozradili, kdo jste",
+  publishedAt: "2026-10-19",
+  primaryQuestion:
+    "Dá se dostávat upozornění na health factor Aave, aniž by se moje identita propojila s adresou mé peněženky?",
+  readingMinutes: 11,
+};
+
+<ShortAnswer>
+  Tokenping nemá účet s heslem: přihlásíte se podpisem zprávy své peněženky a ukládá adresu vaší peněženky vedle
+  kontaktu, který pro upozornění zadáte. Zadejte proto kontakty, které o vás nic neříkají: e-mailový alias místo vlastní
+  adresy, uživatelské jméno v Signalu se skrytým telefonním číslem a uživatelské jméno i jméno na Telegramu, které vás
+  neprozradí. Kontakt pak nebude říkat, kdo jste. Anonymní tím ale nejste: vaše platba je veřejná na síti Arbitrum One,
+  peněženka, kterou jste někde spojili se svou osobou, zůstává spojená a služby, které upozornění doručují, si vedou
+  vlastní záznamy.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Co Tokenping ukládá a co neshromažďuje?
+
+K 19. říjnu 2026 uložení upozornění zapíše do databáze Tokenpingu jeden řádek na peněženku, síť a trh (pool Aave V3 nebo Spoke Aave V4). Řádek obsahuje:
+
+- Adresu vaší peněženky.
+- Síť, trh a váš práh.
+- Kanály, které jste zvolili, a jazyk každého z nich.
+- E-mailovou adresu, uživatelské jméno v Signalu a uživatelské jméno na Telegramu, které jste zadali, u kanálů, které jste zvolili.
+- Kdy bylo upozornění vytvořeno a naposledy změněno a kdy jste naposledy poslali testovací zprávu na jednotlivý kanál. Tak funguje limit jednoho testu na kanál za 15 minut.
+
+Stisknutí Start v botovi Tokenpingu na Telegramu uloží také ID vašeho chatu a čas, v samostatné tabulce. Pokud odpovíte na nepovinnou otázku „Jak jste se o Tokenpingu dozvěděli?“, uloží se vaše odpověď a čas spolu s adresou vaší peněženky.
+
+Tokenping nežádá ani neukládá jméno, telefonní číslo, heslo ani ověření totožnosti. Nepoužívá sledovací pixely ani reklamní cookies, neukládá historii vašich pozic (čtou se živě z blockchainu) a ve své databázi nevede záznam odeslaných upozornění. Úplný seznam je na [stránce o ochraně soukromí](/cz/ochrana-soukromi); tento průvodce vysvětluje, co pro vás znamená a co s tím můžete udělat.
+
+## Jak funguje přihlášení bez účtu?
+
+Nastavení upozornění patří k adrese peněženky, ne k účtu. Abyste je mohli otevřít nebo změnit, podepíšete touto peněženkou zprávu. Jde o zprávu Sign-in with Ethereum (EIP-4361), která uvádí web, vaši adresu a náhodný jednorázový kód. Podpis není transakce: nestojí žádný gas a neschvaluje žádný token. Server ověří podpis a jednorázový kód přijme jen jednou, do 5 minut. Kód se ukládá bez vaší adresy a po použití se smaže.
+
+Potom web nastaví jednu cookie relace. Nese adresu vaší peněženky a čas vypršení a podpis vytvořený tajným klíčem serveru, aby ji nešlo zfalšovat (je podepsaná, ne šifrovaná), a skripty na stránce ji nepřečtou (HttpOnly). Platí 7 dní a web ji smaže, když na něm peněženku odpojíte. Během přihlašování drží druhá cookie na těch pár minut jednorázový kód. Každá cesta rozhraní API pro upozornění pak jedná jen za peněženku z cookie a požadavek, který uvádí jinou peněženku, se odmítne.
+
+Prohlížení pozic nevyžaduje přihlášení ani platbu. Počty zobrazení stránek zajišťuje Vercel Web Analytics, který podle svých slov rozpoznává návštěvníka podle otisku (hash) vytvořeného z požadavku místo cookies třetích stran a tuto relaci po 24 hodinách zahodí.
+
+## Kdo si může přečíst kontaktní údaje, které uložíte?
+
+Přes aplikaci jen ten, kdo umí podepisovat vaší peněženkou. Zobrazení, změna i smazání upozornění a odeslání testovací zprávy vyžadují vaši relační cookie a požadavek, který uvádí jinou peněženku, se odmítne. Tabulky databáze jsou zavřené veřejnému klíči Supabase (anon): zabezpečení na úrovni řádků je zapnuté bez jediné politiky a veřejné role nemají žádná oprávnění. Dostane se k nim jen server Tokenpingu s klíčem service-role.
+
+Můžete si to ověřit a nemusíte to brát na víru, protože kód Tokenpingu je veřejný. Cesty, které čtou a zapisují upozornění, jsou v [`packages/nextjs/app/api/notifications`](https://github.com/romispectrum/tokenping/tree/main/packages/nextjs/app/api/notifications), cesty pro přihlášení v [`packages/nextjs/app/api/auth`](https://github.com/romispectrum/tokenping/tree/main/packages/nextjs/app/api/auth) a migrace, které zavírají tabulky veřejnému klíči, v [`packages/supabase/migrations`](https://github.com/romispectrum/tokenping/tree/main/packages/supabase/migrations).
+
+To ale neznamená, že je nevidí nikdo:
+
+- Řádky si mohou přečíst lidé, kteří Tokenping provozují, a hostitel jeho databáze.
+- Kdokoli se může zeptat, jestli dané uživatelské jméno na Telegramu stisklo Start v botovi. Odpověď zní ano, nebo ne, nikdy ID chatu.
+- Když kontrola upozornění nebo odeslání zprávy selže, chyba může obsahovat adresu vaší peněženky a příjemce a zapíše se do serverových logů.
+
+Stránka o ochraně soukromí radí nezadávat e-mailovou adresu ani uživatelské jméno v Signalu, které byste nechtěli mít spojené s adresou své peněženky. Zbytek tohoto průvodce ukazuje, jak se tím řídit.
+
+## Které další služby s vašimi daty pracují?
+
+Tokenping běží na dalších poskytovatelích a každý z nich vidí část toho, co mu předáte. Tato tabulka je seznam ze stránky o ochraně soukromí ve zkrácené podobě.
+
+| Služba                     | Co dělá                                                               | Co vidí                                                                                      |
+| -------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Vercel                     | Hostuje web a každých 5 minut spouští kontrolu upozornění             | Každý požadavek včetně vaší IP adresy a serverové logy                                       |
+| Vercel Web Analytics       | Počítá zobrazení stránek                                              | Adresu stránky, odkazující web, přibližnou polohu, prohlížeč, operační systém a typ zařízení |
+| Supabase                   | Databáze                                                              | Řádky popsané výše                                                                           |
+| Resend                     | Odesílá upozornění e-mailem                                           | Vaši e-mailovou adresu a text upozornění                                                     |
+| Přenosový server na Fly.io | Předává upozornění do Signalu                                         | Vaše uživatelské jméno v Signalu a text upozornění (vidí je i Signal)                        |
+| Telegram                   | Doručuje upozornění přes své Bot API                                  | ID vašeho chatu a text upozornění                                                            |
+| Poskytovatelé RPC          | Odpovídají na čtení z blockchainu                                     | Adresu čtené peněženky a vaši IP adresu, když čtení provádí váš prohlížeč                    |
+| WalletConnect              | Zprostředkovává spojení s aplikací vaší peněženky, pokud ji používáte | To, co si aplikace peněženky a web při připojení vyměňují                                    |
+
+Text upozornění uvádí trh, váš health factor, váš práh a čas. Adresu vaší peněženky neobsahuje.
+
+Poskytovatelé mají vlastní záznamy. Dodatek Resendu o zpracování osobních údajů uvádí metadata, e-mailovou adresu a obsah zprávy jako minimum osobních údajů, které pro zákazníka zpracovává, a jeho dokumentace říká, že data o e-mailech uchovává 30 dní u všech tarifů, u tarifu Enterprise s pružnou dobou uchování. Signal uvádí, že obsah zpráv nemůže dešifrovat ani jinak zpřístupnit. Zásady ochrany osobních údajů Telegramu říkají, že cloudové chaty jsou uložené na jeho serverech silně šifrované, zatímco koncové šifrování se týká tajných chatů (Secret Chats).
+
+## Co zůstává veřejné na blockchainu?
+
+Platba za upozornění je transakce na síti Arbitrum One. Platební kontrakt každou zaznamená do veřejné události: adresa plátce, token, částka, čas, zakoupené období a nové datum vypršení. Přečíst si ji může kdokoli a nikdo ji nemůže smazat. Zdrojový kód kontraktu je [ověřený na Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553).
+
+Nic z vašeho upozornění se na blockchain nezapisuje: ani práh, ani váš e-mailový alias, ani uživatelské jméno v Signalu, ani uživatelské jméno na Telegramu. Vaše pozice na Aave jsou také veřejné. ethereum.org popisuje blockchain jako „veřejnou databázi“ a Tokenping čte vaši pozici voláními pro čtení, která může provést kdokoli. Spojení vaší peněženky s jejími pozicemi na Tokenpingu nikdy nezáviselo.
+
+## Co může Tokenping propojit a co ne?
+
+Tokenping může propojit adresu vaší peněženky s kontakty, které pro ni uložíte, s trhy, na kterých si půjčujete, s vašimi prahy a s tím, kdy jste zaplatili. Bez tohoto propojení služba fungovat nemůže: upozornění potřebuje peněženku ke sledování a místo, kam zprávu poslat.
+
+Z toho, co ukládá ve své databázi, nedokáže Tokenping nic z toho spojit s vaším jménem, telefonním číslem ani jinými účty, pokud to za něj neudělá sám zadaný kontakt. E-mailová adresa s vaším jménem nebo uživatelské jméno, které používáte na jiných webech, dělá přesně to. V tom spočívá smysl aliasu a anonymního uživatelského jména: kontakt o tom, kdo jste, nic neříká. Vaše IP adresa je věc jiná: s každým požadavkem se dostane k Vercelu, ne do databáze Tokenpingu, a skrýt ji je mimo rámec tohoto průvodce.
+
+Co dokáže někdo zvenčí, je jiný seznam a nic z něj Tokenping nepotřebuje:
+
+- Pokud má vaše peněženka primární jméno ENS, může ho z adresy vyhledat kterákoli aplikace.
+- Pokud jste peněženku financovali z burzy, kde jste ověřili svou totožnost, burza o tom výběru obvykle vede záznam.
+- Všude, kde jste adresu uvedli vedle svého jména nebo přezdívky, jsou obě spojené.
+- Vaše platba je veřejná, takže kdokoli vidí, že adresa zaplatila a do kdy.
+
+## Jak místo skutečné adresy použít e-mailový alias?
+
+E-mailový alias je další adresa, která přeposílá poštu do vaší skutečné schránky. Tokenping a jeho poskytovatel e-mailu vidí jen alias. SimpleLogin, službu, kterou tento průvodce používá jako příklad, vidí obojí, protože mezi nimi poštu přeposílá. Provozuje ho společnost Proton AG, je open source a jeho ceník uvádí tarif, který nic nestojí, s omezeným počtem aliasů.
+
+1. Vytvořte si účet na SimpleLogin a zvolte schránku, která má přeposlaná upozornění přijímat.
+2. V přehledu stiskněte **Random Alias** a pro levou část zvolte náhodná slova nebo UUID. Vlastní alias také funguje, ale nedávejte do něj své jméno, přezdívky ani nic, co používáte na jiných webech. SimpleLogin také umožňuje k aliasu připojit poznámku, například „Tokenping“, abyste věděli, k čemu slouží.
+3. Do formuláře upozornění zadejte alias jako e-mailovou adresu (například `alice-aave@example.com`) a upozornění uložte.
+4. Stiskněte **Poslat test** u e-mailu a zkontrolujte, že zpráva dorazí do vaší skutečné schránky. Pokud ne, podívejte se do složky se spamem. Zbývající kontroly najdete v [průvodci nastavením](/cz/blog/nastaveni-upozorneni-health-factor-aave).
+
+Upozornění Tokenpingu chodí jen jedním směrem, takže na ně nikdy neodpovídáte a stačí alias, který jen přijímá. Až Tokenping přestanete používat, smažte nejdřív upozornění a potom alias, aby žádný uložený kontakt nepřežil svůj účel.
+
+Alias neskryje všechno. SimpleLogin a poskytovatel vaší schránky upozornění pořád vidí, takže alias skrývá vaši adresu před Tokenpingem a Resendem, ne před službou, která přeposílá. Alias, který používáte i pro jinou službu, obě spojuje. A nemění to, co zpráva říká: trh, váš health factor a váš práh.
+
+SimpleLogin není jediná možnost. DuckDuckGo Email Protection, Firefox Relay (od Mozilly), addy.io a Apple Hide My Email (součást předplatného iCloud+) také nabízejí adresy, které přeposílají na tu vaši. Jejich limity se liší, takže si před spoléháním na kteroukoli přečtěte stránku poskytovatele.
+
+## Jak místo telefonního čísla použít uživatelské jméno v Signalu?
+
+Uživatelské jméno v Signalu umožňuje začít konverzaci bez vašeho telefonního čísla a právě to Tokenping žádá: jeho formulář se na číslo nikdy neptá. Kroky vycházejí z podpůrných stránek Signalu.
+
+1. **Vytvořte uživatelské jméno.** V Signalu otevřete svůj profil a klepněte na symbol @. Uživatelská jména mají 3 až 32 znaků (a-z, 0-9 a \_) a končí alespoň dvěma číslicemi. Formulář Tokenpingu očekává tvar `alice.42`: vaši přezdívku, tečku a číslice. Zvolte přezdívku, která není vaším jménem ani přezdívkou, kterou používáte jinde.
+2. **Skryjte své číslo.** Otevřete Nastavení, potom Soukromí (Privacy) a Telefonní číslo (Phone Number) a u volby „Who can see my number“ (kdo vidí mé číslo) zvolte Nobody (nikdo). Lidé, kteří vaše číslo už mají uložené v kontaktech, ho přesto uvidí. Pokud chcete být dosažitelní jen přes uživatelské jméno, nastavte Nobody i u volby „Who can find me by my number“ (kdo mě najde podle čísla).
+3. **Zkontrolujte jméno v profilu.** Profil v Signalu má povinné křestní jméno a nepovinnou fotku a stránka Signalu uvádí, že můžete použít přezdívku, jeden znak nebo emoji. Přijetím žádosti o zprávu odesílateli umožníte váš profil vidět.
+4. **Zadejte jméno do upozornění a pošlete test.** Zadejte ho do pole pro uživatelské jméno v Signalu, uložte a stiskněte **Poslat test** u Signalu. Protože účet Tokenpingu v Signalu nemáte v kontaktech, první zpráva může přijít jako žádost o zprávu. Kroky 2 a 3 udělejte dřív, než ji přijmete.
+
+Signal uvádí, že pokud žádost nepřijmete, odesílatel uvidí jen uživatelské jméno, na které psal. Pokud ji přijmete, uvidí vaše jméno v profilu a podle nastavení čísla možná i vaše telefonní číslo.
+
+Uživatelské jméno je jen způsob, jak začít konverzaci. Samotný Signal pořád má telefonní číslo, se kterým jste se registrovali, a nic z toho to nemění. Když uživatelské jméno změníte nebo smažete, Signal uvádí, že si staré může brzy zabrat kdokoli, a Tokenping dál posílá na uložené uživatelské jméno, takže upozornění ihned upravte.
+
+## Jak zařídit, aby vás účet na Telegramu neprozradil?
+
+Telegram je z těch tří nejslabší volba, takže si to přečtěte, než ho zvolíte. Tokenping může psát jen na účet na Telegramu, který v jeho botovi stiskl Start, takže do upozornění napíšete své @uživatelské jméno a jednou stisknete Start. Účet tedy musí mít uživatelské jméno a Telegram uvádí, že uživatelská jména jsou veřejná: díky nim vás lidé najdou ve vyhledávání a ti, kdo vás najdou, vám mohou psát, i když neznají vaše číslo. Samotné FAQ Telegramu doporučuje uživatelské jméno nenastavovat, pokud vám to není příjemné.
+
+1. **Zvolte uživatelské jméno, v němž není nic z vás.** Použijte a-z, 0-9 a podtržítka; Tokenping přijme 4 až 32 znaků. Nastavíte ho v Nastavení Telegramu.
+2. **Zkontrolujte zobrazované jméno a fotku.** Zásady ochrany osobních údajů Telegramu říkají, že zobrazované jméno nemusí být vaše skutečné jméno. Bot vidí vaše veřejné jméno, uživatelské jméno a profilové fotky.
+3. **Zkontrolujte nastavení čísla.** Otevřete Nastavení, potom Soukromí a zabezpečení (Privacy and Security) a Telefonní číslo (Phone Number). Ve výchozím stavu číslo vidí jen lidé, které máte v kontaktech, a podle Telegramu ho nevidí ani ten, kdo vás najde přes uživatelské jméno. Bot ho nevidí, pokud mu ho sami nedáte.
+4. **Propojte účet.** Zadejte uživatelské jméno do upozornění, stiskněte Start v botovi a počkejte, až formulář ukáže, že je propojeno.
+
+Kód Tokenpingu si ukládá jen ID vašeho chatu a uživatelské jméno, ale Bot API Telegramu předává botovi s každou zprávou vaše křestní jméno a, pokud jsou k dispozici, příjmení, uživatelské jméno a kód jazyka. Kdokoli může ověřit, jestli dané uživatelské jméno stisklo Start. Odeslání /stop botovi váš chat odpojí.
+
+## Má smysl použít samostatnou peněženku?
+
+Jen pokud si z ní půjčujete. Tokenping sleduje peněženku, kterou připojíte, a nic jiného, a přístup patří peněžence, která zaplatila, takže nemůžete zaplatit z jedné adresy a sledovat pozici vedenou na jiné. Peněženka, kterou používáte jen pro Aave, drží pozici, platbu i upozornění na jedné adrese. Způsob, jakým ji financujete, přesto zanechává veřejnou stopu, platba Tokenpingu je veřejná a peněženka zůstává pseudonymní, ne anonymní. Přesun půjčky na novou peněženku obvykle znamená pozici zavřít a znovu otevřít, s náklady a rizikem likvidace, které to přináší, takže ho tento průvodce nedoporučuje.
+
+## Co který krok chrání a co ne?
+
+| Krok                                                         | Co zůstane skryté před Tokenpingem a jeho poskytovateli | Co neskryje                                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| E-mailový alias                                              | Vaši skutečnou e-mailovou adresu                        | Služba s aliasem vidí obě adresy i upozornění a dorazí vám do skutečné schránky     |
+| Uživatelské jméno v Signalu, skryté číslo                    | Vaše telefonní číslo                                    | Signal pořád má vaše číslo a přijetí žádosti sdílí jméno v profilu                  |
+| Uživatelské jméno a jméno na Telegramu, které vás neprozradí | Vaše skutečné jméno a telefonní číslo                   | Uživatelské jméno je veřejné a Telegram chat ukládá na svých serverech              |
+| Peněženka jen pro Aave                                       | Spojení s další historií té peněženky                   | Financování a platba Tokenpingu jsou veřejné                                        |
+| Smazání upozornění                                           | Uložený řádek včetně kontaktu                           | Platbu na blockchainu a to, co si každý poskytovatel ponechává podle svých pravidel |
+
+## Jak smazat to, co Tokenping ukládá?
+
+Smažte upozornění v přehledu: stiskněte **Upravit upozornění**, potom **Smazat upozornění** a potvrďte. Tím se odstraní nastavení pro daný trh včetně e-mailové adresy a uživatelského jména v Signalu a je k tomu potřeba aktivní přístup. Upozornění každého trhu se maže zvlášť.
+
+<Callout tone="warning">
+  Konec přístupu nic nesmaže: upozornění i kontakt v něm zůstávají uložené, dokud upozornění nesmažete. Smažte
+  upozornění, která nechcete, dokud máte přístup aktivní. Pokud vám vypršel, stránka o ochraně soukromí uvádí, kde
+  napsat týmu, aby vaše nastavení smazal.
+</Callout>
+
+Na Telegramu váš chat odpojí odeslání /stop botovi. Nepovinnou odpověď na otázku „Jak jste se o Tokenpingu dozvěděli?“ můžete nechat odstranit na požádání, přes stejné kontakty na stránce o ochraně soukromí. Platbu na blockchainu nemůže smazat nikdo.
+
+Kód za tím vším je v [repozitáři Tokenpingu](https://github.com/romispectrum/tokenping). Pokud některé tvrzení v tomto průvodci s kódem nesedí, napište týmu přes kontakty na stránce o ochraně soukromí.
+
+## Zdroje
+
+- [Stránka o ochraně soukromí Tokenpingu](/cz/ochrana-soukromi) (načteno 19. října 2026; naposledy aktualizováno 19. října 2026): co se ukládá, kdo s daty pracuje, co je veřejné a jak data smazat
+- [Zdrojový kód Tokenpingu na GitHubu](https://github.com/romispectrum/tokenping) (načteno 19. října 2026; repozitář je veřejný): přihlášení v `packages/nextjs/app/api/auth`, kontrola relace v `packages/nextjs/services/api/server/session.ts`, ukládání upozornění v `packages/nextjs/services/notifications`, cesty pro Telegram v `packages/nextjs/app/api/telegram`, migrace v `packages/supabase/migrations` a platební kontrakt v `packages/hardhat/contracts`
+- [TokenpingPaywall na síti Arbitrum One, zdrojový kód ověřený na Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553) (načteno 19. října 2026): událost PaymentReceived
+- [SimpleLogin](https://simplelogin.io/) (načteno 19. října 2026): co alias dělá, kdo ho provozuje, open source
+- [Ceník SimpleLogin](https://simplelogin.io/pricing/) (načteno 19. října 2026): tarif, který nic nestojí, s omezeným počtem aliasů
+- [Dokumentace SimpleLogin: vytvoření aliasu](https://simplelogin.io/docs/getting-started/create-alias/) (načteno 19. října 2026)
+- [DuckDuckGo Email Protection](https://duckduckgo.com/duckduckgo-help-pages/email-protection/what-is-duckduckgo-email-protection) (načteno 19. října 2026)
+- [Firefox Relay](https://relay.firefox.com/) (načteno 19. října 2026)
+- [addy.io](https://addy.io/) (načteno 19. října 2026)
+- [Podpora Apple: Hide My Email s iCloud+](https://support.apple.com/en-us/102548) (načteno 19. října 2026)
+- [Podpora Signalu: Phone Number Privacy and Usernames](https://support.signal.org/hc/en-us/articles/6712070553754-Phone-Number-Privacy-and-Usernames) (načteno 19. října 2026)
+- [Podpora Signalu: Signal Profiles and Message Requests](https://support.signal.org/hc/en-us/articles/360007459591-Signal-Profiles-and-Message-Requests) (načteno 19. října 2026)
+- [Zásady ochrany osobních údajů Signalu](https://signal.org/legal/) (načteno 19. října 2026)
+- [FAQ Telegramu](https://telegram.org/faq) (načteno 19. října 2026): uživatelská jména, viditelnost telefonního čísla, co vidí boti
+- [Zásady ochrany osobních údajů Telegramu](https://telegram.org/privacy) (načteno 19. října 2026)
+- [Telegram Bot API: objekty User a Chat](https://core.telegram.org/bots/api) (načteno 19. října 2026)
+- [Dodatek Resendu o zpracování osobních údajů](https://resend.com/legal/dpa) (načteno 19. října 2026)
+- [Dokumentace Resendu: dlouhodobé uchování dat o e-mailech](https://www.resend.com/docs/webhooks/how-to-store-webhooks-data) (načteno 19. října 2026)
+- [Vercel Web Analytics: ochrana soukromí a shoda s předpisy](https://vercel.com/docs/analytics/privacy-policy) (načteno 19. října 2026)
+- [Dokumentace ENS: primární jména](https://docs.ens.domains/web/reverse) (načteno 19. října 2026)
+- [ethereum.org: úvod do Etherea](https://ethereum.org/en/developers/docs/intro-to-ethereum/) (načteno 19. října 2026)
+
+_Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání._
