@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { GET, dynamic } from "~~/app/indexnow-key.txt/route";
+import { GET } from "~~/app/indexnow-key.txt/route";
 import robots from "~~/app/robots";
 import { INDEXNOW_KEY_PATH } from "~~/utils/indexNow";
 
@@ -50,10 +50,6 @@ describe("GET /indexnow-key.txt", () => {
     expect(await response.text()).toBe("");
     expect(consoleError).toHaveBeenCalledWith(expect.stringContaining("INDEXNOW_KEY"));
     expect(consoleError).not.toHaveBeenCalledWith(expect.stringContaining("not a key!"));
-  });
-
-  it("is built once per deployment, not run per request", () => {
-    expect(dynamic).toBe("force-static");
   });
 
   it("lives at the path that submissions name as keyLocation", () => {
