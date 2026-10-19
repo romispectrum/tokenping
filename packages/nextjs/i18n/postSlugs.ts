@@ -24,6 +24,8 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     en: "private-aave-liquidation-alerts",
     cs: "soukroma-upozorneni-na-likvidaci-aave",
   },
+  "crypto-backed-loans": { en: "crypto-backed-loans", cs: "pujcky-zajistene-kryptomenami" },
+  "short-fiat-with-aave": { en: "short-fiat-with-aave", cs: "short-fiatu-pujckou-na-aave" },
 };
 
 /** The English slug (the post's key) for a slug in any language, or undefined. */
