@@ -20,6 +20,6 @@ export async function GET(request: Request) {
     const linked = await isTelegramUsernameLinked(normalizeTelegramUsername(raw));
     return NextResponse.json<TelegramUsernameStatus>({ linked }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
-    return internalError(e);
+    return internalError("GET /api/telegram/status", e, "Could not check the Telegram username");
   }
 }

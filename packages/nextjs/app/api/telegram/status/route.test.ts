@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "~~/app/api/telegram/status/route";
 import { fakeSupabase } from "~~/services/api/server/testing/fakeSupabase";
 
@@ -15,9 +15,17 @@ const chatQuery = (username: string) => `telegram_chats.select("chat_id").eq("us
 const get = (query: string) => GET(new Request(`${BASE_URL}${query}`));
 const read = async (res: Response) => ({ status: res.status, text: await res.text() });
 const json = (status: number, body: unknown) => ({ status, text: JSON.stringify(body) });
+const LOOKUP_FAILED = json(500, { error: "Could not check the Telegram username" });
+
+let consoleError: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
   fakeSupabase.reset();
+  consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe("GET /api/telegram/status", () => {
@@ -87,15 +95,19 @@ describe("GET /api/telegram/status", () => {
   // A failed lookup must not read as "not linked": the form treats any non-2xx as "status unknown".
   it("returns 500 when the lookup fails instead of reporting the username as not linked", async () => {
     fakeSupabase.respondByQuery({ [chatQuery("alice_eth")]: { error: { message: "boom" } } });
-    expect(await read(await get("?username=alice_eth"))).toEqual(
-      json(500, { error: "Failed to read the Telegram chat: boom" }),
+    expect(await read(await get("?username=alice_eth"))).toEqual(LOOKUP_FAILED);
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+      "GET /api/telegram/status: failed",
+      new Error("Failed to read the Telegram chat: boom"),
     );
   });
 
-  it("returns 500 with the thrown message", async () => {
+  it("returns a generic 500 when something throws, logging the error", async () => {
+    const thrown = new Error("db down");
     fakeSupabase.respond(() => {
-      throw new Error("db down");
+      throw thrown;
     });
-    expect(await read(await get("?username=alice_eth"))).toEqual(json(500, { error: "db down" }));
+    expect(await read(await get("?username=alice_eth"))).toEqual(LOOKUP_FAILED);
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith("GET /api/telegram/status: failed", thrown);
   });
 });
