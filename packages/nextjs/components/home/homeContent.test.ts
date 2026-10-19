@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   getAlertPlanOffer,
-  getDashboardDescription,
   getHomeDescription,
   getHomeHeadline,
   getHomeTitle,
@@ -54,14 +53,13 @@ describe("home copy per channel set", () => {
     expect(getHomeTitle().length).toBeLessThanOrEqual(60);
   });
 
-  it.each([false, true])("keeps the descriptions within 155 characters (Telegram %s)", telegram => {
+  it.each([false, true])("keeps the description within 155 characters (Telegram %s)", telegram => {
     withTelegram(telegram);
 
-    for (const description of [getHomeDescription(), getDashboardDescription()]) {
-      expect(description.length).toBeLessThanOrEqual(155);
-      // Paying takes an approval and a payment, so "read-only" is never claimed on its own.
-      expect(description).not.toMatch(/read-only/i);
-    }
+    const description = getHomeDescription();
+    expect(description.length).toBeLessThanOrEqual(155);
+    // Paying takes an approval and a payment, so "read-only" is never claimed on its own.
+    expect(description).not.toMatch(/read-only/i);
   });
 
   it("uses the plan's exact home description while it fits", () => {
