@@ -18,7 +18,10 @@ import {
 
 const KEY = "0123456789abcdef0123456789abcdef";
 
-/** The XML Next serves at /sitemap.xml for app/sitemap.ts, from Next's own serializer. */
+/**
+ * The XML Next serves at /sitemap.xml for app/sitemap.ts, from Next's own serializer: an internal module, so a Next
+ * upgrade that moves it breaks this import, not the script.
+ */
 const SITEMAP_XML = resolveSitemap(sitemap());
 const SITEMAP_URLS = sitemap().map(({ url }) => url);
 
@@ -246,7 +249,7 @@ describe("run", () => {
     expect(code).toBe(0);
     expect(posts[0].body.urlList).toEqual(["https://tokenping.xyz/blog/new", "https://tokenping.xyz/cz/blog/nove"]);
     expect(log).toContain("2 of 4 sitemap URLs changed on or after 2026-10-15.");
-    expect(log).toContain("1 pages have no date");
+    expect(log).toContain("Pages with no date in the sitemap, sent only by a run without --since: 1.");
   });
 
   it("sends nothing and exits 0 when nothing changed since the day", async () => {
@@ -275,6 +278,17 @@ describe("run", () => {
     expect(posts).toEqual([]);
     expect(log).toContain(SITEMAP_URLS[0]);
     expect(error).toContain("HTTP 404");
+  });
+
+  it("exits 1 in a dry run without a deployed key even when nothing changed", async () => {
+    const { code, log, error } = await runWith(
+      ["--dry-run", "--since", "2999-01-01"],
+      fakeFetch({ key: new Response(null, { status: 404 }) }),
+    );
+
+    expect(code).toBe(1);
+    expect(log).toContain("Nothing to submit.");
+    expect(error).toContain("A real run would stop here.");
   });
 
   it("stops before sending anything while the key file answers 404", async () => {
@@ -361,7 +375,7 @@ describe("run", () => {
     expect(posts[1].body.urlList[0]).toBe(`https://tokenping.xyz/page-${MAX_URLS_PER_REQUEST}`);
     expect(log).toContain("Batch 1 of 3");
     expect(error).toContain("Batch 2 of 3");
-    expect(error).toContain("Stopped: 1 batches were not sent.");
+    expect(error).toContain("Stopped. Batches not sent: 1.");
   });
 
   it("exits 1 with the usage for an unknown option, before any request", async () => {

@@ -62,15 +62,11 @@ export const parseSitemap = (xml: string): SitemapEntry[] =>
     return url ? [{ url, ...(lastModified && { lastModified }) }] : [];
   });
 
-/** True only for an https://tokenping.xyz/ URL: no other scheme, host, port or user info. */
-export const isSiteUrl = (url: string) => {
-  try {
-    const parsed = new URL(url);
-    return parsed.origin === SITE_ORIGIN && !parsed.username && !parsed.password && url.startsWith(`${SITE_ORIGIN}/`);
-  } catch {
-    return false;
-  }
-};
+/**
+ * True only for an https://tokenping.xyz/ URL. The prefix ends at the slash after the host, so it also rules out any
+ * other scheme, host, port or user info.
+ */
+export const isSiteUrl = (url: string) => url.startsWith(`${SITE_ORIGIN}/`) && URL.canParse(url);
 
 /** A real calendar day written YYYY-MM-DD. */
 export const isIsoDate = (value: string) =>
@@ -168,10 +164,12 @@ export const run = async (
       : !isIndexNowKey(key)
         ? `${KEY_LOCATION} does not hold an IndexNow key (8 to 128 letters, digits or dashes).`
         : undefined;
-    if (keyProblem && !dryRun) {
-      error(keyProblem);
-      return 1;
+    if (keyProblem) {
+      // A dry run goes on to list the URLs, but still exits 1: the real run would stop here.
+      error(dryRun ? `${keyProblem} A real run would stop here.` : keyProblem);
+      if (!dryRun) return 1;
     }
+    const done = keyProblem ? 1 : 0;
 
     const sitemapResponse = await get(SITEMAP_URL);
     if (!sitemapResponse.ok) {
@@ -198,18 +196,16 @@ export const run = async (
     if (since !== undefined) {
       const undated = entries.filter(({ lastModified }) => lastModified === undefined).length;
       log(`${urls.length} of ${entries.length} sitemap URLs changed on or after ${since}.`);
-      if (undated > 0) log(`${undated} pages have no date in the sitemap, so only a run without --since sends them.`);
+      if (undated > 0) log(`Pages with no date in the sitemap, sent only by a run without --since: ${undated}.`);
     }
     if (urls.length === 0) {
       log("Nothing to submit.");
-      return 0;
+      return done;
     }
     if (dryRun) {
       log(`Dry run: would send ${urls.length} URLs to ${endpoint} with the key from ${KEY_LOCATION}:`);
       for (const url of urls) log(`  ${url}`);
-      if (!keyProblem) return 0;
-      error(`${keyProblem} A real run would stop there.`);
-      return 1;
+      return done;
     }
 
     const parts = batches(urls);
@@ -233,7 +229,7 @@ export const run = async (
         `${label}: HTTP ${response.status}, ${STATUS_MEANINGS[response.status] ?? "not accepted"}` +
           `${retryAfter ? ` (Retry-After: ${retryAfter})` : ""}${details}`,
       );
-      if (index < parts.length - 1) error(`Stopped: ${parts.length - index - 1} batches were not sent.`);
+      if (index < parts.length - 1) error(`Stopped. Batches not sent: ${parts.length - index - 1}.`);
       return 1;
     }
     return 0;
