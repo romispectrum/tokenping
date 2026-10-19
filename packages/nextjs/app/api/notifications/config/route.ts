@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { V3_MARKET_ID, resolveMarket } from "~~/config/aaveConfig";
+import { resolveMarket } from "~~/config/aaveConfig";
 import { requireActiveAccess } from "~~/services/api/server/access";
 import {
   MISSING_USER_ID,
@@ -13,6 +13,7 @@ import {
 import { INVALID_MARKET, parseMarket } from "~~/services/api/server/market";
 import { type ConfigInput, parseConfigInput } from "~~/services/notifications/configInput";
 import {
+  MAX_CONFIGS_PER_WALLET,
   deleteConfigs,
   findConfigForMarket,
   findConfigsForUser,
@@ -68,8 +69,8 @@ export async function PUT(request: Request) {
     if (!isChainId(chainId)) return jsonError("Missing or invalid chainId", 400);
     const market = parseMarket(rawMarket);
     if (market === null) return jsonError(INVALID_MARKET, 400);
-    // A market named by address must be one the cron reads. A chain's main V3 market stays unchecked, as before.
-    if (market !== V3_MARKET_ID && !resolveMarket(chainId, market)) return jsonError("Unknown Aave market", 400);
+    // Only a market the cron reads, a chain's main V3 market included: an alert anywhere else could never fire.
+    if (!resolveMarket(chainId, market)) return jsonError("Unknown Aave market", 400);
 
     const parsed = parseConfigInput(input);
     if ("error" in parsed) return jsonError(parsed.error, 400);
@@ -78,9 +79,15 @@ export async function PUT(request: Request) {
     if (denied) return denied;
 
     const forms = userIdForms(userId);
-    const error = await saveConfig(forms, toConfigRow(forms.normalized, { chainId, market }, parsed.value));
-    if (error) {
-      logDatabaseError("PUT /api/notifications/config", error);
+    const saved = await saveConfig(forms, toConfigRow(forms.normalized, { chainId, market }, parsed.value));
+    if (saved.status === "limit") {
+      return jsonError(
+        `A wallet can have up to ${MAX_CONFIGS_PER_WALLET} alerts. Delete one before adding another.`,
+        409,
+      );
+    }
+    if (saved.status === "failed") {
+      logDatabaseError("PUT /api/notifications/config", saved.error);
       return jsonError("Could not save the alert. Please try again.", 502);
     }
 

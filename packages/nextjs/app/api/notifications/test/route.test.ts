@@ -197,6 +197,7 @@ describe("POST /api/notifications/test: input", () => {
     ["no chainId", { ...VALID_BODY, chainId: undefined }, "Missing or invalid chainId"],
     ["a string chainId", { ...VALID_BODY, chainId: "8453" }, "Missing or invalid chainId"],
     ["a null chainId", { ...VALID_BODY, chainId: null }, "Missing or invalid chainId"],
+    ["a fractional chainId", { ...VALID_BODY, chainId: 8453.5 }, "Missing or invalid chainId"],
     ["an uppercase market", { ...VALID_BODY, market: "V3" }, INVALID_MARKET],
     ["an address that is no market", { ...VALID_BODY, market: "0x1234" }, INVALID_MARKET],
     ["a checksummed Spoke", { ...VALID_BODY, market: "0xe1900480ac69f0B296841Cd01cC37546d92F35Cd" }, INVALID_MARKET],
