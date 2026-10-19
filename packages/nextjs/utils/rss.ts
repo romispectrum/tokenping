@@ -9,8 +9,6 @@ const RSS_DESCRIPTIONS: Localized<string> = {
   cs: "Průvodci health factorem na Aave, rizikem likvidace a upozorněními.",
 };
 
-export const RSS_DESCRIPTION = RSS_DESCRIPTIONS.en;
-
 const XML_ENTITIES: Record<string, string> = { "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" };
 const escapeXml = (value: string) => value.replace(/[<>&'"]/g, char => XML_ENTITIES[char]);
 

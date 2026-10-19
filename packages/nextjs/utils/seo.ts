@@ -3,8 +3,7 @@ import { SOCIAL_LINKS } from "~~/constants/links";
 import type { PostMeta } from "~~/content/blog/types";
 import { DEFAULT_LOCALE, LOCALES, LOCALE_INFO, type Locale, type Localized } from "~~/i18n/locales";
 import { SEO_MESSAGES } from "~~/i18n/messages/seo";
-import { postKeyForSlug } from "~~/i18n/postSlugs";
-import { postAlternates, postPath, routePath } from "~~/i18n/routes";
+import { postPath, routePath } from "~~/i18n/routes";
 
 // Canonicals, the sitemap, RSS and JSON-LD always name production, also on previews and local or IPFS builds.
 // `||` rather than `??`, so an empty NEXT_PUBLIC_SITE_URL= line in an env file still falls back.
@@ -14,9 +13,6 @@ export const TITLE_TEMPLATE = `%s | ${SITE_NAME}`;
 const TITLE_SUFFIX = TITLE_TEMPLATE.replace("%s", "");
 const MAX_TITLE_LENGTH = 60;
 export const TWITTER_HANDLE = "@tokenping";
-/** The English feed; each language has its own (routePath(locale, "blogFeed")). */
-export const RSS_PATH = routePath(DEFAULT_LOCALE, "blogFeed");
-export const RSS_TITLE = SEO_MESSAGES.en.rssTitle;
 export const ORGANIZATION_ID = `${SITE_URL}/#organization`;
 export const WEBSITE_ID = `${SITE_URL}/#website`;
 /**
@@ -40,7 +36,6 @@ export const SITE_OG_IMAGE = siteOgImage(DEFAULT_LOCALE);
 
 export const DEFAULT_TITLE = SEO_MESSAGES.en.defaultTitle;
 export const DEFAULT_DESCRIPTION = SEO_MESSAGES.en.defaultDescription;
-export const ORGANIZATION_DESCRIPTION = SEO_MESSAGES.en.organizationDescription;
 
 export const absoluteUrl = (path = "/") => new URL(path, `${SITE_URL}/`).toString();
 
@@ -224,12 +219,6 @@ export const breadcrumbJsonLd = (crumbs: readonly Crumb[]) => ({
     ...(path !== undefined && index < crumbs.length - 1 && { item: absoluteUrl(path) }),
   })),
 });
-
-/** The post's paths in every language, from its slug in `locale`; undefined for a post with no translation entry. */
-export const postAlternatesFor = (locale: Locale, slug: string) => {
-  const key = postKeyForSlug(locale, slug);
-  return key ? postAlternates(key) : undefined;
-};
 
 /**
  * The post's social card (app/og/[locale]/[slug]/route.tsx) with alt text naming the post.
