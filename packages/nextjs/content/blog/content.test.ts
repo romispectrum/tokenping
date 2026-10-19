@@ -539,6 +539,7 @@ const internalPaths = (locale: Locale) => [
   routePath(locale, "home"),
   routePath(locale, "dashboard"),
   routePath(locale, "blog"),
+  routePath(locale, "privacy"),
 ];
 
 const OTHER_LANGUAGE_PREFIX: Record<Locale, RegExp> = { en: /^\/cz(?:[/?#]|$)/, cs: /^\/(?!cz(?:[/?#]|$))/ };
@@ -863,8 +864,8 @@ position can be liquidated.
 
 The health factor is a number {/* inline note */}. Below 1.00 a liquidator can repay up to 100% of the debt when
 HF is at or below 0.95. Otomato sends alerts on Telegram. See [how much buffer a health factor gives you](/blog/safe-aave-health-factor) or
-[check your Aave V3 health factor](/aave). Alerts cost <AlertPrice />. Formula details are in
-[the formula section](#how-is-the-health-factor-calculated).
+[check your Aave V3 health factor](/aave). Alerts cost <AlertPrice />. What the site stores is on the
+[privacy page](/privacy). Formula details are in [the formula section](#how-is-the-health-factor-calculated).
 
 ## How is the health factor calculated?
 
@@ -903,7 +904,7 @@ Intro paragraph first.
 <LiquidationCalculator />
 
 Real-time alerts for 3 USDC, free to try. See [a missing post](/blog/nope), [a bad anchor](/blog/safe-aave-health-factor#nope),
-[privacy](/privacy), [plain http](http://example.com) and [our site](https://tokenping.xyz/aave).
+[admin](/admin), [plain http](http://example.com) and [our site](https://tokenping.xyz/aave).
 
 The debt ceiling limits new borrows. On Arbitrum, liquidations pause while the sequencer is down. A liquidator can
 repay 100% when HF < 0.95. Alerts arrive on Signal, Telegram or email.[^1]
@@ -994,7 +995,7 @@ describe("article checks", () => {
     expect(checks.links).toEqual([
       '/blog/nope: no post with the slug "nope"',
       '/blog/safe-aave-health-factor#nope: no heading with the anchor "#nope" in safe-aave-health-factor',
-      "/privacy: internal links may only point to /, /aave, /blog or /blog/<slug>",
+      "/admin: internal links may only point to /, /aave, /blog, /privacy or /blog/<slug>",
       "http://example.com: external links must be absolute https:// URLs",
       "https://tokenping.xyz/aave: link to tokenping.xyz pages with a relative path",
     ]);
@@ -1079,8 +1080,8 @@ zlikvidována.
 ## Co je health factor na Aave?
 
 Health factor je číslo. Kolik rezervy dává, popisuje [průvodce bezpečným health factorem](/cz/blog/bezpecny-health-factor-aave),
-svůj si [zkontrolujete v přehledu](/cz/aave). Upozornění stojí <AlertPrice />. Vzorec je v
-[části o výpočtu](#jak-se-pocita-health-factor).
+svůj si [zkontrolujete v přehledu](/cz/aave). Upozornění stojí <AlertPrice />. Co web ukládá, je na
+[stránce o ochraně soukromí](/cz/ochrana-soukromi). Vzorec je v [části o výpočtu](#jak-se-pocita-health-factor).
 
 ## Jak se počítá health factor?
 
@@ -1104,7 +1105,7 @@ const BAD_CS_ARTICLE = `export const meta = ${JSON.stringify(CS_FIXTURE_META, nu
 <LiquidationCalculator />
 
 Viz [anglický průvodce](/blog/safe-aave-health-factor), [anglický přehled](/aave), [domovská stránka](/),
-[anglický slug](/cz/blog/safe-aave-health-factor), [ochrana soukromí](/cz/ochrana-soukromi) a
+[anglický slug](/cz/blog/safe-aave-health-factor), [správa](/cz/admin) a
 [špatná kotva](/cz/blog/bezpecny-health-factor-aave#nope).
 
 ## Sources
@@ -1149,10 +1150,10 @@ describe("Czech article checks", () => {
     ]);
     expect(checkLinks(tree!, "cs")).toEqual([
       "/blog/safe-aave-health-factor: a page in the other language; link to /cz/blog/bezpecny-health-factor-aave (i18n/routes, i18n/postSlugs)",
-      "/aave: a page in the other language; link to /cz, /cz/aave, /cz/blog (i18n/routes, i18n/postSlugs)",
-      "/: a page in the other language; link to /cz, /cz/aave, /cz/blog (i18n/routes, i18n/postSlugs)",
+      "/aave: a page in the other language; link to /cz, /cz/aave, /cz/blog, /cz/ochrana-soukromi (i18n/routes, i18n/postSlugs)",
+      "/: a page in the other language; link to /cz, /cz/aave, /cz/blog, /cz/ochrana-soukromi (i18n/routes, i18n/postSlugs)",
       '/cz/blog/safe-aave-health-factor: no post with the slug "safe-aave-health-factor"; the cs slug is "bezpecny-health-factor-aave"',
-      "/cz/ochrana-soukromi: internal links may only point to /cz, /cz/aave, /cz/blog or /cz/blog/<slug>",
+      "/cz/admin: internal links may only point to /cz, /cz/aave, /cz/blog, /cz/ochrana-soukromi or /cz/blog/<slug>",
       '/cz/blog/bezpecny-health-factor-aave#nope: no heading with the anchor "#nope" in bezpecny-health-factor-aave',
     ]);
     expect(checkEnding(tree!, "cs")).toEqual(['the last H2 must be "## Zdroje"']);
@@ -1172,7 +1173,7 @@ describe("Czech article checks", () => {
     const { tree } = await parsePost(GOOD_ARTICLE.replace("(/aave)", "(/cz/aave)"), "aave-health-factor");
 
     expect(checkLinks(tree!)).toEqual([
-      "/cz/aave: a page in the other language; link to /, /aave, /blog (i18n/routes, i18n/postSlugs)",
+      "/cz/aave: a page in the other language; link to /, /aave, /blog, /privacy (i18n/routes, i18n/postSlugs)",
     ]);
   });
 

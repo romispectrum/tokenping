@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { formatPostDate } from "~~/components/blog/formatPostDate";
 import { CS_POST_SLUGS, mockPostStubs } from "~~/utils/testing/blogPosts";
 import { FREE_WORDS } from "~~/utils/testing/copyRules";
 
@@ -59,7 +60,11 @@ describe("/cz/blog", () => {
     expect(postLinks()).toEqual(published);
     expect(postLinks()).not.toContain("/cz/blog/likvidacni-cena-aave");
     expect(postLinks()[0]).toBe(`/cz/blog/${blog.hubSlug("cs")}`);
-    expect(screen.getAllByText("14. října 2026")).toHaveLength(published.length);
+    // Each card shows its own Czech publish date: as many cards as posts share a day.
+    const dates = blog.getPublishedPosts("cs").map(({ meta }) => formatPostDate(meta.publishedAt, "cs"));
+    for (const date of new Set(dates)) {
+      expect(screen.getAllByText(date)).toHaveLength(dates.filter(other => other === date).length);
+    }
     expect(screen.getByRole("region", { name: "Začněte tady" })).toBeDefined();
     expect(screen.getByRole("heading", { level: 2, name: "Všichni průvodci" })).toBeDefined();
   });

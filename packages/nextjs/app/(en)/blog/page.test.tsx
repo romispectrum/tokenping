@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { formatPostDate } from "~~/components/blog/formatPostDate";
 import { POST_SLUGS, mockPostStubs } from "~~/utils/testing/blogPosts";
 import { FREE_WORDS } from "~~/utils/testing/copyRules";
 
@@ -58,7 +59,11 @@ describe("/blog", () => {
     expect(postLinks()).toEqual(published);
     expect(postLinks()).not.toContain("/blog/aave-liquidation-price");
     expect(postLinks()[0]).toBe(`/blog/${blog.HUB_SLUG}`);
-    expect(screen.getAllByText("14 October 2026")).toHaveLength(published.length);
+    // Each card shows its own publish date: as many cards as posts share a day.
+    const dates = blog.PUBLISHED_POSTS.map(({ meta }) => formatPostDate(meta.publishedAt, "en"));
+    for (const date of new Set(dates)) {
+      expect(screen.getAllByText(date)).toHaveLength(dates.filter(other => other === date).length);
+    }
   });
 
   it("shows every published post's description", async () => {
