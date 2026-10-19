@@ -133,6 +133,7 @@ each has tests next to it.
 | `Kicker`, `SectionHeader` | The one heading formula. |
 | `GrainCard`, `Glow`, `GlowWash`, `BrandDivider` | Marketing pages only. |
 | `ThemeToggle`, `ThemeChoice` | `ThemeToggle` flips light and dark (top bar); `ThemeChoice` offers Light, Dark and System (footer, settings). |
+| `LanguageSwitch` | The language menu in the header: a disclosure with one plain link per language (each language has its own root layout, so switching is a full page load). Import it from `~~/components/ui/LanguageSwitch`; the index does not re-export it. See [i18n.md](i18n.md). |
 
 DaisyUI components used directly (`btn`, `input`, `checkbox`, `toggle`, `badge`, `menu`, `card-title`, `table` ...)
 take their colours from the tokens and follow the same focus, boundary, checked and weight rules (500 for titles and
