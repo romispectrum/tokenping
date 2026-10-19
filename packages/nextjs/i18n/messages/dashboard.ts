@@ -144,6 +144,10 @@ type DashboardMessages = {
     /** The access period; `about` when the plan's duration had to be rounded to whole days. */
     period: (days: number, about: boolean) => string;
     pay: (amount: string) => string;
+    /** While access is active: one more plan period, paid on top of the current end date. */
+    extend: (days: number, amount: string) => string;
+    extendHint: (days: number) => string;
+    accessExtended: (date: string) => string;
     accessActive: string;
     paymentPending: string;
     loading: {
@@ -315,6 +319,11 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
         return about ? `About ${period}` : period;
       },
       pay: amount => `Pay ${amount}`,
+      extend: (days, amount) =>
+        `Add ${plural("en", days, { one: `${days} day`, other: `${days} days` })} for ${amount}`,
+      extendHint: days =>
+        `Each payment adds ${plural("en", days, { one: `${days} day`, other: `${days} days` })} after your current end date. Pay as many times as you like; nothing renews on its own.`,
+      accessExtended: date => `Access extended until ${date}.`,
       accessActive: "Access active. You can now configure notifications.",
       paymentPending: "Payment confirmed. Access will appear shortly.",
       loading: {
@@ -485,6 +494,11 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
         return about ? `Přibližně ${period}` : period;
       },
       pay: amount => `Zaplatit ${amount}`,
+      extend: (days, amount) =>
+        `Přidat ${plural("cs", days, { one: `${days} den`, few: `${days} dny`, other: `${days} dní` })} za ${amount}`,
+      extendHint: days =>
+        `Každá platba přidá ${plural("cs", days, { one: `${days} den`, few: `${days} dny`, other: `${days} dní` })} k datu, kdy vám přístup končí. Platit můžete, kolikrát chcete; nic se neobnovuje samo.`,
+      accessExtended: date => `Přístup je prodloužený do ${date}.`,
       accessActive: "Přístup je aktivní. Teď si můžete nastavit upozornění.",
       paymentPending: "Platba je potvrzená. Přístup se brzy zobrazí.",
       loading: {

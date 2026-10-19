@@ -73,6 +73,12 @@ export const AccessPaywall = ({ children, description, hasExistingConfig = false
   const [payStartedAt, setPayStartedAt] = useState<number | null>(null);
   const isPaying = payStartedAt !== null;
   const progress = payStartedAt === null ? null : getPaymentProgress(writes, payStartedAt);
+  // The end date after a payment made while access was active, until the expiry read catches up (an RPC node can lag
+  // behind the receipt). Shown at once, so nobody pays again because the old date is still on screen.
+  const [extendedUntil, setExtendedUntil] = useState<bigint | null>(null);
+  const shownExpiry = extendedUntil !== null && extendedUntil > expiryTimestamp ? extendedUntil : expiryTimestamp;
+  const formatExpiry = (timestamp: bigint) =>
+    new Date(Number(timestamp) * 1000).toLocaleDateString(LOCALE_INFO[locale].intl, { dateStyle: "medium" });
 
   // isActive can still read false after the receipt (a lagging RPC node, also on a later watched read), and Pay must
   // not be offered again to a wallet that paid: it would charge twice. The wallets that paid (lowercased) live in the
@@ -106,28 +112,94 @@ export const AccessPaywall = ({ children, description, hasExistingConfig = false
     }
   };
 
+  /**
+   * One more plan period while access is active. The paywall stacks payments (each one starts at the current end date
+   * while it is in the future), so this pays the same plan again and works out the new end date the way the contract
+   * does.
+   */
+  const handleExtendAccess = async (durationSeconds: bigint) => {
+    const startedFrom = shownExpiry;
+    setPayStartedAt(Date.now());
+    try {
+      const result = await payForAccess();
+      if (result.paid) {
+        const now = BigInt(Math.floor(Date.now() / 1000));
+        const newExpiry = (startedFrom > now ? startedFrom : now) + durationSeconds;
+        setExtendedUntil(newExpiry);
+        notification.success(t.accessExtended(formatExpiry(newExpiry)));
+      } else if (result.error) notification.error(result.error);
+    } finally {
+      setPayStartedAt(null);
+    }
+  };
+
+  // While access is active: pay ahead, as often as the user likes. Not the view's primary action, so outline.
+  const renderExtendAccess = () => {
+    if (status.kind === "wrongChain") {
+      const target = findTargetNetwork(status.paymentChainId)?.name;
+      return (
+        <Button
+          variant="outline"
+          size="sm"
+          className="self-start"
+          loading={isSwitching}
+          loadingText={t.switching}
+          onClick={() => switchChain?.({ chainId: status.paymentChainId })}
+        >
+          {t.switchTo(target)}
+        </Button>
+      );
+    }
+    if (status.kind !== "ready") return null;
+    const { plan, canPay, notice } = status;
+    const amount = `${formatTokenAmount(plan.price, PAYMENT_TOKEN_DECIMALS)} ${PAYMENT_TOKEN_SYMBOL}`;
+    const days = Number(formatDurationDays(plan.durationSeconds));
+    const isBlocked = !isPaying && !canPay;
+    return (
+      <div className="flex flex-col items-start gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={isBlocked ? undefined : () => void handleExtendAccess(plan.durationSeconds)}
+          aria-disabled={isBlocked || undefined}
+          loading={isPaying}
+          loadingText={t.loading[LOADING_TEXT[progress?.step ?? "preparing"]]}
+          aria-describedby={reasonId}
+        >
+          {t.extend(days, amount)}
+        </Button>
+        <p id={reasonId} className="m-0 text-sm text-muted-foreground">
+          {isBlocked && notice ? t[notice] : t.extendHint(days)}
+        </p>
+        <PaymentStatus
+          id={statusId}
+          amount={amount}
+          progress={progress}
+          pendingAccessMessage={null}
+          network={paymentChain?.name}
+          explorer={explorer}
+        />
+      </div>
+    );
+  };
+
+  const paymentChain = findTargetNetwork(PAYMENT_CHAIN_ID);
+  const explorer = paymentChain?.blockExplorers?.default;
+
   if (isActive) {
     return (
       <div className="flex flex-col gap-4">
-        {expiryTimestamp > 0n && (
+        {shownExpiry > 0n && (
           <p className="m-0 flex items-center gap-2 text-sm text-muted-foreground">
             <CircleCheck aria-hidden="true" className="size-4 shrink-0 text-success" />
-            <span>
-              {t.unlockedUntil(
-                new Date(Number(expiryTimestamp) * 1000).toLocaleDateString(LOCALE_INFO[locale].intl, {
-                  dateStyle: "medium",
-                }),
-              )}
-            </span>
+            <span>{t.unlockedUntil(formatExpiry(shownExpiry))}</span>
           </p>
         )}
+        {renderExtendAccess()}
         {children}
       </div>
     );
   }
-
-  const paymentChain = findTargetNetwork(PAYMENT_CHAIN_ID);
-  const explorer = paymentChain?.blockExplorers?.default;
 
   const renderBody = () => {
     if (status.kind === "wrongChain") {

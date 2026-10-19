@@ -359,7 +359,7 @@ describe("AccessPaywall markup", () => {
     expect(markups.join("")).not.toMatch(/#[0-9a-f]{3,8}\b/i);
     // en and em dash, built from their code points
     expect(markups.join("")).not.toMatch(new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`));
-    // Connect wallet: no button; wrong chain: Switch; ready: Pay; active: none.
+    // Connect wallet: no button; wrong chain: Switch; ready: Pay; active: none (paying ahead is an outline button).
     expect(markups.map(markup => markup.split("btn-primary").length - 1)).toEqual([0, 1, 1, 0]);
   });
 
@@ -564,7 +564,9 @@ describe("AccessPaywall actions", () => {
     expect(isBusy(payButton())).toBe(true);
     accessRefetched.resolve();
     await waitFor(() => expect(fake.toasts).toEqual([["success", SUCCESS]]));
-    expect(screen.queryByRole("button")).toBeNull();
+    // The Pay flow made way for the children; only the outline "pay ahead" button remains.
+    expect(screen.queryByRole("button", { name: /^Pay / })).toBeNull();
+    expect(screen.getByRole("button", { name: "Add 30 days for 1.5 USDC" })).toBeDefined();
     expect(screen.getByText("child")).toBeDefined();
   });
 
@@ -613,6 +615,109 @@ describe("AccessPaywall actions", () => {
     renderPaywall();
     await pay();
     expect(fake.toasts).toEqual([["error", "Please connect your wallet"]]);
+  });
+});
+
+describe("AccessPaywall paying ahead", () => {
+  const EXPIRY = 1_800_000_000n;
+  const PERIOD = 2_592_000n;
+  const day = (timestamp: bigint) =>
+    new Date(Number(timestamp) * 1000).toLocaleDateString("en-US", { dateStyle: "medium" });
+  const extendButton = () =>
+    screen.getByRole("button", {
+      name: /^(Add 30 days for 1\.5 USDC|Processing|Waiting for your wallet|Approving|Paying)$/,
+    });
+  const extend = async () => {
+    fireEvent.click(extendButton());
+    await waitFor(() => expect(screen.queryByRole("button", { busy: true })).toBeNull());
+  };
+  const setActive = () => {
+    setReady();
+    fake.chain.isActive = true;
+    fake.chain.expiryTimestampByUser = EXPIRY;
+    loadReads();
+  };
+
+  it("offers one more period while access is active, as an outline button with the hint, next to the children", () => {
+    setActive();
+    renderPaywall();
+    const button = extendButton();
+    expect(button.className).not.toContain("btn-primary");
+    expect(button.className).toContain("border-input");
+    expect(button.getAttribute("aria-describedby")).toBeTruthy();
+    expect(document.getElementById(button.getAttribute("aria-describedby") as string)?.textContent).toBe(
+      "Each payment adds 30 days after your current end date. Pay as many times as you like; nothing renews on its own.",
+    );
+    expect(screen.getByText(`Alerts unlocked until ${day(EXPIRY)}`)).toBeDefined();
+    expect(screen.getByText("child")).toBeDefined();
+  });
+
+  it("pays the plan again, approving the exact price, and shows the new end date at once", async () => {
+    setActive();
+    renderPaywall();
+    await extend();
+
+    expect(fake.events.filter(event => /signed|pay sent/.test(event))).toEqual([
+      `approve signed ${PAYWALL} ${PRICE}`,
+      `pay sent ${TOKEN}`,
+    ]);
+    // The expiry read still returns the old date, like a lagging node: the card shows the contract's new one anyway.
+    expect(fake.chain.expiryTimestampByUser).toBe(EXPIRY);
+    expect(screen.getByText(`Alerts unlocked until ${day(EXPIRY + PERIOD)}`)).toBeDefined();
+    expect(fake.toasts).toEqual([["success", `Access extended until ${day(EXPIRY + PERIOD)}.`]]);
+  });
+
+  it("adds one period per payment, as often as the user pays", async () => {
+    setActive();
+    renderPaywall();
+    await extend();
+    await extend();
+    expect(fake.events.filter(event => event.startsWith("pay sent"))).toHaveLength(2);
+    expect(screen.getByText(`Alerts unlocked until ${day(EXPIRY + 2n * PERIOD)}`)).toBeDefined();
+  });
+
+  it("shows the end date the chain reports once it is later than the one worked out", () => {
+    setActive();
+    fake.cache.expiryTimestampByUser = EXPIRY + 3n * PERIOD;
+    renderPaywall();
+    expect(screen.getByText(`Alerts unlocked until ${day(EXPIRY + 3n * PERIOD)}`)).toBeDefined();
+  });
+
+  it("offers a network switch instead while the wallet is on another network", () => {
+    setActive();
+    fake.wallet.chainId = 1;
+    renderPaywall();
+    fireEvent.click(screen.getByRole("button", { name: /^Switch to / }));
+    expect(fake.events).toContain(`switchChain {"chainId":${PAYMENT_CHAIN_ID}}`);
+    expect(screen.queryByRole("button", { name: /^Add / })).toBeNull();
+  });
+
+  it("blocks the button and says why while the paywall is paused", () => {
+    setActive();
+    fake.chain.paused = true;
+    loadReads("paused");
+    renderPaywall();
+    const button = extendButton();
+    expect(isBlocked(button)).toBe(true);
+    fireEvent.click(button);
+    expect(fake.events.filter(event => /signed|pay sent/.test(event))).toEqual([]);
+  });
+
+  it("writes the button and the hint in Czech", () => {
+    setActive();
+    renderWithProviders(
+      <LocaleProvider locale="cs">
+        <AccessPaywall>
+          <div>child</div>
+        </AccessPaywall>
+      </LocaleProvider>,
+    );
+    expect(screen.getByRole("button", { name: "Přidat 30 dní za 1.5 USDC" })).toBeDefined();
+    expect(
+      screen.getByText(
+        "Každá platba přidá 30 dní k datu, kdy vám přístup končí. Platit můžete, kolikrát chcete; nic se neobnovuje samo.",
+      ),
+    ).toBeDefined();
   });
 });
 
@@ -705,7 +810,9 @@ describe("AccessPaywall after a payment", () => {
     await advance(2_000);
     expect(accessReadsAfterPay()).toBe(3);
     expect(fake.toasts).toEqual([["success", SUCCESS]]);
-    expect(screen.queryByRole("button")).toBeNull();
+    // The Pay flow made way for the children; only the outline "pay ahead" button remains.
+    expect(screen.queryByRole("button", { name: /^Pay / })).toBeNull();
+    expect(screen.getByRole("button", { name: "Add 30 days for 1.5 USDC" })).toBeDefined();
     expect(screen.getByText("child")).toBeDefined();
   });
 
