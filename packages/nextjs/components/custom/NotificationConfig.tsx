@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useEffect, useId, useRef, useState } from "react";
+import { type FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Lock, Pencil } from "lucide-react";
 import { useAccount } from "wagmi";
 import { AttributionPrompt } from "~~/components/custom/notifications/AttributionPrompt";
@@ -33,7 +33,7 @@ import { NOTIFICATION_SERVICES } from "~~/constants/notifications";
 import { useAccess } from "~~/hooks/custom/useAccess";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
 import { useNotificationTests } from "~~/hooks/custom/useNotificationTests";
-import { useWalletSession, useWalletSignIn } from "~~/hooks/custom/useWalletSession";
+import { hasSignedInHere, useWalletSession, useWalletSignIn } from "~~/hooks/custom/useWalletSession";
 import { useLocale } from "~~/i18n/LocaleProvider";
 import type { Locale } from "~~/i18n/locales";
 import { ALERTS_MESSAGES, requestErrorMessage } from "~~/i18n/messages/alerts";
@@ -68,6 +68,7 @@ const NotificationSettings = ({
   const { isActive: hasAccess } = useAccess();
   const session = useWalletSession();
   const walletSignIn = useWalletSignIn();
+  const signedInHereBefore = useMemo(() => !!address && hasSignedInHere(address), [address]);
   const attribution = useAttributionPrompt(address);
   const tests = useNotificationTests();
   const marketRef = { chainId, market };
@@ -121,11 +122,12 @@ const NotificationSettings = ({
     }
   }, [walletSignIn.error]);
 
-  // The API answers only for the signed-in wallet. Without paid access and without a session there is nothing to
-  // offer: the paywall is enough. A wallet that paid signs in here, once per session; a draft being edited survives
-  // a session that ends, and is back after signing in again.
+  // The API answers only for the signed-in wallet. A wallet that paid signs in here, once per session; a draft being
+  // edited survives a session that ends, and is back after signing in again. Without paid access the paywall is
+  // enough, except for a wallet that has signed in on this browser before: its access may have lapsed with an alert
+  // still saved, which it can see read-only after signing in.
   if (address && !session.isSignedIn) {
-    if (session.isChecking || !hasAccess) return null;
+    if (session.isChecking || (!hasAccess && !signedInHereBefore)) return null;
     const signInError = walletSignIn.error
       ? isUserRejection(walletSignIn.error)
         ? t.signInRejected
@@ -133,6 +135,7 @@ const NotificationSettings = ({
       : null;
     return (
       <NotificationSignIn
+        isPrimary={hasAccess}
         isSigningIn={walletSignIn.isSigningIn}
         errorMessage={signInError}
         onSignIn={walletSignIn.signIn}

@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Address } from "viem";
-import { useAccount, useSignMessage } from "wagmi";
+import { useAccount, useAccountEffect, useSignMessage } from "wagmi";
 import { useLocale } from "~~/i18n/LocaleProvider";
 import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 import { SignInRequiredError } from "~~/services/api/apiClient";
@@ -13,6 +13,36 @@ import { normalizeAddress } from "~~/utils/address";
 
 /** The signed-in wallet (lowercased) or null, in the react-query cache so every component sees the same answer. */
 export const WALLET_SESSION_QUERY_KEY = ["walletSession"] as const;
+
+/** The wallets (lowercased) that have signed in on this browser. */
+const SIGNED_IN_WALLETS_KEY = "tokenping:signed-in-wallets";
+
+const readSignedInWallets = (): string[] => {
+  try {
+    const stored: unknown = JSON.parse(window.localStorage.getItem(SIGNED_IN_WALLETS_KEY) ?? "[]");
+    return Array.isArray(stored) ? stored.filter((wallet): wallet is string => typeof wallet === "string") : [];
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Whether `address` has signed in on this browser before, so the card can offer a wallet whose access lapsed to sign
+ * in again and see its alert. A per-browser hint only: storage errors read as "no".
+ */
+export const hasSignedInHere = (address: string) => readSignedInWallets().includes(normalizeAddress(address));
+
+/** Best effort: without storage, a wallet whose access lapsed is simply not offered a sign-in. */
+const rememberSignedIn = (address: string) => {
+  const wallet = normalizeAddress(address);
+  const wallets = readSignedInWallets();
+  if (wallets.includes(wallet)) return;
+  try {
+    window.localStorage.setItem(SIGNED_IN_WALLETS_KEY, JSON.stringify([...wallets, wallet]));
+  } catch {
+    // Nothing to do; see above.
+  }
+};
 
 /**
  * Runs an alert API request; when it fails with a 401 (the session ended), calls `onSignedOut` before rethrowing, so
@@ -56,7 +86,7 @@ export const useWalletSession = () => {
 };
 
 /**
- * Signs the connected wallet in: a nonce from the server, an EIP-4361 message for this site in the page's language,
+ * Signs the connected wallet in: a nonce and the time from the server, an EIP-4361 message for this site in the page's language,
  * the wallet's signature (wagmi), then the server checks it and sets the session cookie. A declined signature or any
  * other failure is left in `error`; signing in again clears it.
  */
@@ -68,20 +98,24 @@ export const useWalletSignIn = () => {
 
   const mutation = useMutation({
     mutationFn: async (wallet: Address) => {
-      const nonce = await authClient.getNonce();
+      const { nonce, issuedAt } = await authClient.getNonce();
       const message = buildSignInMessage({
         address: wallet,
         chainId: signInChainId(chainId),
         nonce,
         statement: ALERTS_MESSAGES[locale].signInStatement,
         origin: window.location.origin,
-        now: new Date(),
+        // The server's clock: it checks freshness against its own, whatever this computer's clock says.
+        now: new Date(issuedAt),
       });
       const signature = await signMessageAsync({ account: wallet, message });
       return authClient.verify(message, signature);
     },
     networkMode: "always",
-    onSuccess: signedIn => queryClient.setQueryData(WALLET_SESSION_QUERY_KEY, signedIn),
+    onSuccess: signedIn => {
+      rememberSignedIn(signedIn);
+      queryClient.setQueryData(WALLET_SESSION_QUERY_KEY, signedIn);
+    },
   });
 
   const { mutate } = mutation;
@@ -92,11 +126,20 @@ export const useWalletSignIn = () => {
   return { signIn, isSigningIn: mutation.isPending, error: mutation.error };
 };
 
-/** Ends the session (on wallet disconnect). Best effort: the wallet disconnects whether or not the request succeeds. */
+/** Ends the session. Best effort: the wallet disconnects whether or not the request succeeds. */
 export const useSignOut = () => {
   const queryClient = useQueryClient();
   return useCallback(() => {
     queryClient.setQueryData(WALLET_SESSION_QUERY_KEY, null);
     authClient.logout().catch(error => console.error("Failed to sign out:", error));
   }, [queryClient]);
+};
+
+/**
+ * Ends the session whenever the wallet disconnects, from the site's menu or from the wallet app itself. Mounted once,
+ * at the app root.
+ */
+export const useSignOutOnDisconnect = () => {
+  const signOut = useSignOut();
+  useAccountEffect({ onDisconnect: signOut });
 };
