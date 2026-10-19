@@ -2,19 +2,21 @@ import { hasBearerSecret } from "~~/services/api/server/auth";
 import { jsonError } from "~~/services/api/server/http";
 import { respondWithNotificationCheck } from "~~/services/api/server/notificationCheck";
 
+/**
+ * Vercel sends `Authorization: Bearer <CRON_SECRET>` with every cron run once CRON_SECRET is set in the project, so
+ * the bearer is the only proof accepted. The x-vercel-cron and user-agent headers are never trusted: any client can
+ * send them.
+ */
 function isAuthorized(request: Request): boolean {
-  // Preferred auth: shared bearer secret (set CRON_SECRET in Vercel env vars)
   const secret = process.env.CRON_SECRET;
-  if (secret) return hasBearerSecret(request, secret);
-
-  // Fallback for Vercel cron requests when CRON_SECRET is not configured. These headers can be spoofed by any client,
-  // but rejecting them would silently stop all alerts on a deployment without the secret.
-  const userAgent = request.headers.get("user-agent") ?? "";
-  if (request.headers.get("x-vercel-cron") === "1" || userAgent.toLowerCase().includes("vercel-cron")) {
-    console.warn("CRON_SECRET is not set: authorized the cron run by its Vercel headers, which can be spoofed");
-    return true;
+  if (!secret) {
+    // Logged on every refused run, so a deployment without the secret shows why no alerts go out.
+    console.error(
+      "CRON_SECRET is not set: refused the cron run. Set CRON_SECRET in the Vercel project; Vercel then sends it as the bearer.",
+    );
+    return false;
   }
-  return false;
+  return hasBearerSecret(request, secret);
 }
 
 export async function GET(request: Request) {
