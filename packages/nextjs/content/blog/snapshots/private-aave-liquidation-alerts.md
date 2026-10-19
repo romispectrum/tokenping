@@ -68,6 +68,12 @@ read in a browser; the Telegram FAQ was read in a browser as well, to quote exac
 | https://ethereum.org/en/developers/docs/intro-to-ethereum/ | "A blockchain is a public database ..." (the post quotes three words) |
 | https://ethereum.org/en/developers/docs/accounts/ | Read; it does not say addresses are public or pseudonymous, so the post does not cite it |
 
+The post also points readers to the public repository so they can check the storage and access claims themselves:
+`https://github.com/romispectrum/tokenping` and its `tree/main` pages for `packages/nextjs/app/api/notifications`,
+`packages/nextjs/app/api/auth`, `packages/nextjs/app/api/telegram` and `packages/supabase/migrations` all answered HTTP
+200 on 2026-10-19 (the post links the repository and the notifications, auth and migrations pages). It says the code is "public", not "open
+source": the README notes that the repository has no LICENSE file, and the content test bans "open-source licensed".
+
 ## 3. Production checks (2026-10-19, read-only)
 
 - The live privacy page matches `i18n/messages/privacy.ts`: last updated 19 October 2026, Telegram listed as a
