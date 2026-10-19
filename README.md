@@ -56,9 +56,10 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs o
 - Only the connected wallet can be watched: no watch-only addresses, and access is per paying wallet.
 - Payment is USDC on Arbitrum One only (you need a little ETH there for gas). The contract has no refund function, and
   its owner can change the price, pause payments, withdraw funds and upgrade it.
-- The API identifies users by wallet address without a signature check (no SIWE) yet, so anyone who knows a wallet
-  address can read the contact details saved for it and, while that wallet's access is active, change or delete its
-  alerts.
+- The alert API acts only for a wallet that has signed in with Ethereum (EIP-4361; smart wallets through ERC-1271 and
+  ERC-6492). A session is an HttpOnly cookie signed with `SESSION_SECRET` that lasts 7 days; disconnecting on the site
+  clears it, but a copied cookie stays valid until it expires, and rotating `SESSION_SECRET` ends every session.
+  Sign-in needs the `auth_nonces` table and the Supabase service role key.
 - Alerts can only be deleted in the app while the wallet's access is active.
 - Delivery depends on third parties (Resend, the Signal relay, the Telegram Bot API, public RPC providers, Vercel
   cron). There is no published uptime guarantee.
@@ -107,7 +108,8 @@ Scaffold-ETH dev pages (`/debug`, `/blockexplorer`) exist only while hardhat is 
 and answer 404 otherwise.
 
 Email needs `RESEND_API_KEY`, Signal needs `SIGNAL_API_URL`, `SIGNAL_SENDER_NUMBER` and `SIGNAL_API_TOKEN`, and
-Telegram needs the `TELEGRAM_*` variables. `CRON_SECRET` protects the cron and email routes. See
+Telegram needs the `TELEGRAM_*` variables. `CRON_SECRET` protects the cron and email routes. Signing in to the alert
+settings needs the `auth_nonces` migration; locally a random `SESSION_SECRET` stands in when none is set. See
 `packages/nextjs/.env.example`.
 
 ### Checks
@@ -139,8 +141,9 @@ dark theme in `WHITE_BACKED_IMAGES`, both in `packages/nextjs/scripts/tokenIconS
 ## Deployment
 
 The frontend runs on Vercel (`yarn vercel:yolo --prod`). The 5-minute cron in `vercel.json` needs a Vercel plan that
-allows it. Set the variables from `packages/nextjs/.env.example` in the Vercel project, including `CRON_SECRET` and
-`RESEND_FROM_EMAIL`.
+allows it. Set the variables from `packages/nextjs/.env.example` in the Vercel project, including `CRON_SECRET`,
+`RESEND_FROM_EMAIL` and `SESSION_SECRET` (`openssl rand -hex 32`; without it sign-in and every alert route answer
+503), and apply the Supabase migrations first.
 
 The contract has two deploy modes, selected with `--deploy-mode`:
 

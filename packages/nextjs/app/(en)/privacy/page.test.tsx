@@ -37,7 +37,10 @@ describe("/privacy", () => {
       ),
     ).toBeTruthy();
     expect(screen.getByText("A log of the alerts we sent.")).toBeTruthy();
-    expect(screen.getByText(/the site uses none, and Tokenping sets no cookies/)).toBeTruthy();
+    // The session cookie after signing in with the wallet, and the nonce cookie while signing in: nothing else.
+    expect(screen.getByText(/the site uses none/).textContent).toContain(
+      "When you sign in with your wallet, Tokenping sets one cookie that only says which wallet signed in; it lasts 7 days or until you disconnect the wallet on this site. While you sign in, a second cookie holds the sign-in request for five minutes.",
+    );
     // Everything the app itself keeps in the browser: next-themes, wagmi/RainbowKit and the attribution prompt flag.
     expect(screen.getByText(/the site uses none/).textContent).toContain(
       'Your browser keeps your theme choice, your wallet connection and whether it has already shown you the "How did you hear about Tokenping?" question in its own local storage.',
@@ -72,25 +75,28 @@ describe("/privacy", () => {
     );
     expect(screen.queryByText(/one-time code/)).toBeNull();
     expect(screen.getByText(/Sending \/stop to the Tokenping bot/)).toBeTruthy();
-    expect(screen.getByText(/anyone who knows your wallet address/).textContent).toContain(
-      "can look up the email address, Signal username and Telegram username saved for it",
+    expect(screen.getByText(/^Only someone who can sign with your wallet/).textContent).toContain(
+      "can see the email address, Signal username and Telegram username saved for it",
     );
   });
 
-  it("says plainly that settings are not protected by a wallet signature, and never calls them private or secure", () => {
+  it("says that seeing or changing alert settings takes a wallet signature, and never calls them private or secure", () => {
     const { container } = renderPage();
 
-    expect(screen.getByText(/does not yet ask you to sign a message proving that you own the wallet/)).toBeTruthy();
+    expect(screen.getByText(/^Alert settings are tied to a wallet address/).textContent).toBe(
+      "Alert settings are tied to a wallet address, not to an account with a password. To see or change them, you sign a message with that wallet, which proves the address is yours. It is not a transaction and costs no gas, and one signature lasts 7 days on that browser.",
+    );
     expect(container.textContent).not.toMatch(/\bprivate\b|\bsecure\b|only you can see/i);
   });
 
-  // The config API answers reads for any address, and writes check only that address's paid access (product §10.9).
-  it("says who can read and change alert settings until wallet signatures are checked", () => {
+  // The alert API acts only for the wallet of the session cookie, which Sign-in with Ethereum sets.
+  it("says only the wallet's signer can read and change its alert settings, while payments stay public", () => {
     renderPage();
 
-    expect(screen.getByText(/anyone who knows your wallet address/).textContent).toBe(
-      "Until the app checks wallet signatures, anyone who knows your wallet address can look up the email address and Signal username saved for it and, while that wallet's access is active, change or delete its alerts. The public payment records described below show which wallets have paid.",
+    expect(screen.getByText(/^Only someone who can sign with your wallet/).textContent).toBe(
+      "Only someone who can sign with your wallet can see the email address and Signal username saved for it, or change or delete its alerts. The public payment records described below still show which wallets have paid.",
     );
+    expect(screen.queryByText(/anyone who knows your wallet address/)).toBeNull();
   });
 
   it("shows a breadcrumb with matching BreadcrumbList JSON-LD and one h1", () => {
@@ -109,7 +115,7 @@ describe("/privacy", () => {
   it("dates the page with a machine-readable time", () => {
     renderPage();
 
-    expect(screen.getByText("14 October 2026").getAttribute("dateTime")).toBe("2026-10-14T00:00:00Z");
+    expect(screen.getByText("19 October 2026").getAttribute("dateTime")).toBe("2026-10-19T00:00:00Z");
   });
 
   it("styles inline links with the base link style and uses no legacy palette", () => {
