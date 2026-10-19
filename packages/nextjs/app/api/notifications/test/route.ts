@@ -12,7 +12,8 @@
  *
  * Responses: 200 { sentAt, retryAt }; 400 bad input or a channel the alert does not use; 403 without active access;
  * 404 no saved alert for that market; 409 a Telegram username that has not pressed Start; 429 { error, retryAt };
- * 502 the provider refused the message.
+ * 502 the provider refused the message. A 500 or 502 carries a generic message: the provider's or the database's
+ * reason can name the relay, its settings or a table, so it goes to the server log only.
  */
 import { NextResponse } from "next/server";
 import type { Address } from "viem";
@@ -45,6 +46,8 @@ import { isNotificationService } from "~~/utils/notifications/validation";
 
 type Recipient = { recipient: string } | { error: string; status: number };
 
+const CHANNEL_NAMES: Record<NotificationService, string> = { email: "email", signal: "Signal", telegram: "Telegram" };
+
 /** Where the saved alert sends `channel`: the stored address or username, and for Telegram the chat it started. */
 const recipientFor = async (config: NotificationConfigRow, channel: NotificationService): Promise<Recipient> => {
   if (channel === "email") {
@@ -73,7 +76,7 @@ export async function GET(request: Request) {
     // No access check, like the config read: it only says when each button can be used again.
     return NextResponse.json(await getTestSendRetryTimes(userId), { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
-    return internalError(e);
+    return internalError("GET /api/notifications/test", e, "Could not read the test message limit");
   }
 }
 
@@ -120,8 +123,9 @@ export async function POST(request: Request) {
       });
       const result = await ALERT_SENDERS[channel](target.recipient, message);
       if (!result.success) {
+        console.error(`POST /api/notifications/test: the ${channel} provider refused the message`, result.error);
         await releaseTestSend(userId, channel, claim.sentAt);
-        return jsonError(result.error, 502);
+        return jsonError(`Could not send the test message by ${CHANNEL_NAMES[channel]}. Please try again later.`, 502);
       }
     } catch (e) {
       await releaseTestSend(userId, channel, claim.sentAt);
@@ -130,6 +134,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ sentAt: claim.sentAt, retryAt: claim.retryAt });
   } catch (e) {
-    return internalError(e);
+    return internalError("POST /api/notifications/test", e, "Could not send the test message. Please try again.");
   }
 }

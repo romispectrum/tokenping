@@ -107,8 +107,9 @@ Scaffold-ETH dev pages (`/debug`, `/blockexplorer`) exist only while hardhat is 
 and answer 404 otherwise.
 
 Email needs `RESEND_API_KEY`, Signal needs `SIGNAL_API_URL`, `SIGNAL_SENDER_NUMBER` and `SIGNAL_API_TOKEN`, and
-Telegram needs the `TELEGRAM_*` variables. `CRON_SECRET` protects the cron and email routes. See
-`packages/nextjs/.env.example`.
+Telegram needs the `TELEGRAM_*` variables. `CRON_SECRET` protects the cron and email routes: without it the cron
+refuses every run and no alerts go out. Locally the server talks to `supabase start` with its demo service-role key, so
+`SUPABASE_SERVICE_ROLE_KEY` can stay empty. See `packages/nextjs/.env.example`.
 
 ### Checks
 
@@ -139,8 +140,9 @@ dark theme in `WHITE_BACKED_IMAGES`, both in `packages/nextjs/scripts/tokenIconS
 ## Deployment
 
 The frontend runs on Vercel (`yarn vercel:yolo --prod`). The 5-minute cron in `vercel.json` needs a Vercel plan that
-allows it. Set the variables from `packages/nextjs/.env.example` in the Vercel project, including `CRON_SECRET` and
-`RESEND_FROM_EMAIL`.
+allows it. Set the variables from `packages/nextjs/.env.example` in the Vercel project, including `SUPABASE_URL`,
+`SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET` and `RESEND_FROM_EMAIL`. Without the service-role key the API refuses to
+reach the database, and without `CRON_SECRET` the cron refuses to run; both log why.
 
 The contract has two deploy modes, selected with `--deploy-mode`:
 

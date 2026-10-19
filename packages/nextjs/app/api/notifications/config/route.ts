@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { V3_MARKET_ID, resolveMarket } from "~~/config/aaveConfig";
+import { resolveMarket } from "~~/config/aaveConfig";
 import { requireActiveAccess } from "~~/services/api/server/access";
 import {
   MISSING_USER_ID,
@@ -13,6 +13,7 @@ import {
 import { INVALID_MARKET, parseMarket } from "~~/services/api/server/market";
 import { type ConfigInput, parseConfigInput } from "~~/services/notifications/configInput";
 import {
+  MAX_CONFIGS_PER_WALLET,
   deleteConfigs,
   findConfigForMarket,
   findConfigsForUser,
@@ -24,6 +25,10 @@ import {
 } from "~~/services/notifications/configRepository";
 
 type ConfigBody = ConfigInput & { userId?: unknown; chainId?: unknown; market?: unknown };
+
+/** Code and message only: a constraint violation's `details` repeat the row, with its email and usernames. */
+const logDatabaseError = (logPrefix: string, { code, message }: { code?: string; message: string }) =>
+  console.error(`${logPrefix}: database error`, { code, message });
 
 export async function GET(request: Request) {
   try {
@@ -50,7 +55,7 @@ export async function GET(request: Request) {
     return NextResponse.json(Object.fromEntries(rows.map(row => [rowMarketKey(row), rowToConfig(row)])));
   } catch (e) {
     // Also answers failed Supabase reads, which the repository throws.
-    return internalError(e);
+    return internalError("GET /api/notifications/config", e, "Could not load your alerts. Please try again.");
   }
 }
 
@@ -64,8 +69,8 @@ export async function PUT(request: Request) {
     if (!isChainId(chainId)) return jsonError("Missing or invalid chainId", 400);
     const market = parseMarket(rawMarket);
     if (market === null) return jsonError(INVALID_MARKET, 400);
-    // A market named by address must be one the cron reads. A chain's main V3 market stays unchecked, as before.
-    if (market !== V3_MARKET_ID && !resolveMarket(chainId, market)) return jsonError("Unknown Aave market", 400);
+    // Only a market the cron reads, a chain's main V3 market included: an alert anywhere else could never fire.
+    if (!resolveMarket(chainId, market)) return jsonError("Unknown Aave market", 400);
 
     const parsed = parseConfigInput(input);
     if ("error" in parsed) return jsonError(parsed.error, 400);
@@ -74,12 +79,21 @@ export async function PUT(request: Request) {
     if (denied) return denied;
 
     const forms = userIdForms(userId);
-    const error = await saveConfig(forms, toConfigRow(forms.normalized, { chainId, market }, parsed.value));
-    if (error) return jsonError(error.message, 502);
+    const saved = await saveConfig(forms, toConfigRow(forms.normalized, { chainId, market }, parsed.value));
+    if (saved.status === "limit") {
+      return jsonError(
+        `A wallet can have up to ${MAX_CONFIGS_PER_WALLET} alerts. Delete one before adding another.`,
+        409,
+      );
+    }
+    if (saved.status === "failed") {
+      logDatabaseError("PUT /api/notifications/config", saved.error);
+      return jsonError("Could not save the alert. Please try again.", 502);
+    }
 
     return NextResponse.json({ success: true });
   } catch (e) {
-    return internalError(e);
+    return internalError("PUT /api/notifications/config", e, "Could not save the alert. Please try again.");
   }
 }
 
@@ -100,10 +114,13 @@ export async function DELETE(request: Request) {
     // Deletes both user id forms, so the row goes whether it was stored checksummed or lowercase.
     const forms = userIdForms(userId);
     const error = await deleteConfigs(forms, { chainId, market });
-    if (error) return jsonError(error.message, 502);
+    if (error) {
+      logDatabaseError("DELETE /api/notifications/config", error);
+      return jsonError("Could not delete the alert. Please try again.", 502);
+    }
 
     return NextResponse.json({ success: true });
   } catch (e) {
-    return internalError(e);
+    return internalError("DELETE /api/notifications/config", e, "Could not delete the alert. Please try again.");
   }
 }

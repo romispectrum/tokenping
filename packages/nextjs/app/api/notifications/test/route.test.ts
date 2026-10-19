@@ -50,6 +50,7 @@ const LIDO_SPOKE = "0xe1900480ac69f0b296841cd01cc37546d92f35cd";
 const INVALID_MARKET = "Invalid market: expected v3 or the lowercased address of an Aave V3 Pool or V4 Spoke";
 const INVALID_CHANNEL = "Invalid channel: expected email, signal or telegram";
 const NO_ACCESS = "Active paid access required to send a test message";
+const SEND_FAILED = "Could not send the test message. Please try again.";
 
 const configQuery = (uid: string, chainId = 8453, market = "v3") =>
   `notification_configs.select("*").eq("user_id","${uid}").eq("chain_id",${chainId}).eq("market","${market}").maybeSingle()`;
@@ -110,6 +111,14 @@ const claimed = (claimedSlot = true, sentAt = NOW, retryAt = RETRY_AT) => {
   mocks.claim = { data: { claimed: claimedSlot, sent_at: sentAt, retry_at: retryAt }, error: null };
 };
 
+let consoleError: ReturnType<typeof vi.spyOn>;
+
+/** The one error the route logged: [prefix, detail]. */
+const loggedError = () => {
+  expect(consoleError).toHaveBeenCalledOnce();
+  return consoleError.mock.calls[0];
+};
+
 const allSenders = () => Object.values(mocks.send);
 const nothingSent = () => allSenders().every(sender => sender.mock.calls.length === 0);
 
@@ -132,11 +141,13 @@ beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_TELEGRAM_BOT_USERNAME", BOT);
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date(NOW));
+  consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllEnvs();
+  vi.restoreAllMocks();
 });
 
 describe("GET /api/notifications/test", () => {
@@ -165,12 +176,16 @@ describe("GET /api/notifications/test", () => {
     expect(isAccessActive).not.toHaveBeenCalled();
   });
 
-  it("returns 500 with the reason when the limit cannot be read", async () => {
+  it("returns a generic 500 when the limit cannot be read, logging the reason", async () => {
     fakeSupabase.respondByQuery({ [retryTimesQuery(LOWER)]: { error: { message: "connection refused" } } });
     expect(await read(await get(`?userId=${LOWER}`))).toEqual({
       status: 500,
-      body: { error: "Failed to read the test message limit: connection refused" },
+      body: { error: "Could not read the test message limit" },
     });
+    expect(loggedError()).toEqual([
+      "GET /api/notifications/test: failed",
+      new Error("Failed to read the test message limit: connection refused"),
+    ]);
   });
 });
 
@@ -182,6 +197,7 @@ describe("POST /api/notifications/test: input", () => {
     ["no chainId", { ...VALID_BODY, chainId: undefined }, "Missing or invalid chainId"],
     ["a string chainId", { ...VALID_BODY, chainId: "8453" }, "Missing or invalid chainId"],
     ["a null chainId", { ...VALID_BODY, chainId: null }, "Missing or invalid chainId"],
+    ["a fractional chainId", { ...VALID_BODY, chainId: 8453.5 }, "Missing or invalid chainId"],
     ["an uppercase market", { ...VALID_BODY, market: "V3" }, INVALID_MARKET],
     ["an address that is no market", { ...VALID_BODY, market: "0x1234" }, INVALID_MARKET],
     ["a checksummed Spoke", { ...VALID_BODY, market: "0xe1900480ac69f0B296841Cd01cC37546d92F35Cd" }, INVALID_MARKET],
@@ -252,10 +268,11 @@ describe("POST /api/notifications/test: access and the saved alert", () => {
     expect(fakeSupabase.log()).toEqual([configQuery(LOWER, 1, LIDO_SPOKE)]);
   });
 
-  it("returns 500 with the reason when the alert cannot be read", async () => {
+  it("returns a generic 500 when the alert cannot be read, logging the reason", async () => {
     fakeSupabase.respondByQuery({ [configQuery(LOWER)]: { error: { message: "timeout" } } });
-    expect(await read(await post(VALID_BODY))).toEqual({ status: 500, body: { error: "timeout" } });
+    expect(await read(await post(VALID_BODY))).toEqual({ status: 500, body: { error: SEND_FAILED } });
     expect(mocks.rpcCalls).toEqual([]);
+    expect(loggedError()).toEqual(["POST /api/notifications/test: failed", new Error("timeout")]);
   });
 
   it.each([
@@ -311,16 +328,17 @@ describe("POST /api/notifications/test: access and the saved alert", () => {
     });
   });
 
-  it("returns 500 when the Telegram chat cannot be read, without claiming", async () => {
+  it("returns a generic 500 when the Telegram chat cannot be read, without claiming", async () => {
     fakeSupabase.respondByQuery({
       [configQuery(LOWER)]: { data: storedRow() },
       [chatQuery("alice_eth")]: { error: { message: "connection reset" } },
     });
     expect(await read(await post({ ...VALID_BODY, channel: "telegram" }))).toEqual({
       status: 500,
-      body: { error: "Failed to read the Telegram chat: connection reset" },
+      body: { error: SEND_FAILED },
     });
     expect(mocks.rpcCalls).toEqual([]);
+    expect(loggedError()[1]).toEqual(new Error("Failed to read the Telegram chat: connection reset"));
   });
 });
 
@@ -363,14 +381,14 @@ describe("POST /api/notifications/test: the limit", () => {
     expect(mocks.events).toEqual(["notification_configs", "claim_notification_test_send"]);
   });
 
-  it("returns 500 when the limit cannot be checked, and neither reads the position nor sends", async () => {
+  it("returns a generic 500 when the limit cannot be checked, and neither reads the position nor sends", async () => {
     savedAlert();
     mocks.claim = { data: null, error: { message: "permission denied for function" } };
 
-    expect(await read(await post(VALID_BODY))).toEqual({
-      status: 500,
-      body: { error: "Failed to check the test message limit: permission denied for function" },
-    });
+    expect(await read(await post(VALID_BODY))).toEqual({ status: 500, body: { error: SEND_FAILED } });
+    expect(loggedError()[1]).toEqual(
+      new Error("Failed to check the test message limit: permission denied for function"),
+    );
     expect(mocks.getMarketSnapshot).not.toHaveBeenCalled();
     expect(nothingSent()).toBe(true);
   });
@@ -504,15 +522,19 @@ describe("POST /api/notifications/test: sending", () => {
 });
 
 describe("POST /api/notifications/test: giving the slot back", () => {
-  it("returns 502 with the provider's reason when the send fails, and gives back exactly the slot it claimed", async () => {
+  it("returns a generic 502 when the send fails, logs the provider's reason, and gives back exactly the slot it claimed", async () => {
     savedAlert();
     claimed(true, "2026-10-14 09:05:07.123456+00");
     mocks.send.signal.mockResolvedValue({ success: false, error: "Signal relay returned 503" });
 
     expect(await read(await post({ ...VALID_BODY, userId: MIXED, channel: "signal" }))).toEqual({
       status: 502,
-      body: { error: "Signal relay returned 503" },
+      body: { error: "Could not send the test message by Signal. Please try again later." },
     });
+    expect(loggedError()).toEqual([
+      "POST /api/notifications/test: the signal provider refused the message",
+      "Signal relay returned 503",
+    ]);
     expect(fakeSupabase.log()).toEqual([
       configQuery(LOWER),
       releaseQuery(LOWER, "signal", "2026-10-14 09:05:07.123456+00"),
@@ -532,27 +554,28 @@ describe("POST /api/notifications/test: giving the slot back", () => {
 
     expect(await read(await post(VALID_BODY))).toEqual({
       status: 502,
-      body: { error: "Resend: domain not verified" },
+      body: { error: "Could not send the test message by email. Please try again later." },
     });
     expect(fakeSupabase.log().at(-1)).toBe(releaseQuery(LOWER, "email", NOW));
   });
 
-  it("returns 500 and gives the slot back when sending throws", async () => {
+  it("returns a generic 500 and gives the slot back when sending throws", async () => {
     savedAlert();
     mocks.send.telegram.mockRejectedValue(new Error("fetch failed"));
 
     expect(await read(await post({ ...VALID_BODY, channel: "telegram" }))).toEqual({
       status: 500,
-      body: { error: "fetch failed" },
+      body: { error: SEND_FAILED },
     });
+    expect(loggedError()).toEqual(["POST /api/notifications/test: failed", new Error("fetch failed")]);
     expect(fakeSupabase.log().at(-1)).toBe(releaseQuery(LOWER, "telegram", NOW));
   });
 
-  it("returns 500 and gives the slot back when reading the position throws", async () => {
+  it("returns a generic 500 and gives the slot back when reading the position throws", async () => {
     savedAlert();
     mocks.getMarketSnapshot.mockRejectedValue(new Error("RPC exploded"));
 
-    expect(await read(await post(VALID_BODY))).toEqual({ status: 500, body: { error: "RPC exploded" } });
+    expect(await read(await post(VALID_BODY))).toEqual({ status: 500, body: { error: SEND_FAILED } });
     expect(fakeSupabase.log().at(-1)).toBe(releaseQuery(LOWER, "email", NOW));
     expect(nothingSent()).toBe(true);
   });

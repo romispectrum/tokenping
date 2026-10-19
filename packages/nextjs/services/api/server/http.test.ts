@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+  INTERNAL_ERROR,
   internalError,
   isChainId,
   jsonError,
@@ -24,14 +25,27 @@ describe("jsonError / internalError", () => {
   });
 
   it.each([
-    ["an Error's message", new Error("db down"), "db down"],
-    ["'Unknown error' for a non-Error", "nope", "Unknown error"],
-    ["'Unknown error' for an empty message", new Error(""), "Unknown error"],
-  ])("internalError uses %s", async (_label, thrown, message) => {
-    expect(await read(internalError(thrown))).toEqual({
+    ["an Error", new Error('relation "notification_configs" does not exist')],
+    ["a non-Error", "nope"],
+    ["an Error without a message", new Error("")],
+  ])("internalError answers a generic 500 for %s and logs the error itself", async (_label, thrown) => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    expect(await read(internalError("GET /api/thing", thrown))).toEqual({
       status: 500,
       type: "application/json",
-      text: JSON.stringify({ error: message }),
+      text: JSON.stringify({ error: INTERNAL_ERROR }),
+    });
+    expect(consoleError.mock.calls).toEqual([["GET /api/thing: failed", thrown]]);
+    consoleError.mockRestore();
+  });
+
+  it("internalError can answer with the route's own message", async () => {
+    vi.spyOn(console, "error").mockImplementationOnce(() => {});
+    expect(await read(internalError("PUT /api/thing", new Error("db down"), "Could not save the thing"))).toEqual({
+      status: 500,
+      type: "application/json",
+      text: '{"error":"Could not save the thing"}',
     });
   });
 });
@@ -95,10 +109,14 @@ describe("parseChainId", () => {
 describe("isChainId", () => {
   it.each([
     [1, true],
+    [42161, true],
     [0, true],
     [-1, true],
-    [1.5, true],
-    [Infinity, true],
+    [Number.MAX_SAFE_INTEGER, true],
+    [1.5, false],
+    [1e21, false],
+    [Number.MAX_SAFE_INTEGER + 1, false],
+    [Infinity, false],
     [NaN, false],
     ["1", false],
     [null, false],
