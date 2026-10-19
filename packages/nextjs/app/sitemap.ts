@@ -8,9 +8,9 @@ import { absoluteUrl } from "~~/utils/seo";
 // Canonical, indexable, server-rendered 200 URLs only, in every language; app/sitemap.test.ts checks every path
 // against its route file. Each URL lists its translations (hreflang) when there is more than one. Left out: /admin,
 // /debug, /blockexplorer and /api; placeholder posts (and a language's /blog while it lists none); any
-// client-rendered page. The dashboard is listed because its page is a server shell around the wallet island
-// (marketing plan §4.7). lastModified is a real content date or absent, never the build time; priority and
-// changeFrequency are left out because Google ignores them.
+// client-rendered page. The dashboard is listed because its page is a server shell around the wallet island.
+// lastModified is a real content date or absent, never the build time; priority and changeFrequency are left out
+// because Google ignores them.
 
 type Entry = MetadataRoute.Sitemap[number];
 

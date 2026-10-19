@@ -19,7 +19,7 @@ type HomeObjectionsProps = {
 
 /**
  * The blockers a borrower checks before connecting a wallet, as visible <h3> questions with short prose answers: no
- * accordion that hides answers from crawlers and no FAQPage schema (marketing plan §2.4, §4.5). Every answer stays
+ * accordion that hides answers from crawlers and no FAQPage schema. Every answer stays
  * within what the code and the contract do today and points to the page that has the detail. Static cards on the
  * lavender wash, no pink; two columns from lg.
  */

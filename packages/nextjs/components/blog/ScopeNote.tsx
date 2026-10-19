@@ -14,7 +14,7 @@ const formatShortDate = (date: string, locale: Locale) =>
     timeZone: "UTC",
   }).format(new Date(`${date}T00:00:00Z`));
 
-/** The standard scope line every article carries under its short answer (marketing plan §3.0). */
+/** The standard scope line every article carries under its short answer. */
 export const ScopeNote = ({ locale = DEFAULT_LOCALE }: { locale?: Locale }) => {
   const { text, figuresAsOf } = BLOG_MESSAGES[locale].scopeNote;
   return (

@@ -53,7 +53,7 @@ type BannedPattern = {
   allowQuoted?: boolean;
 };
 
-// Copy that must not appear (marketing plan §4.5, product facts §11) and stale Aave claims (Aave fact sheet §9).
+// Copy that must not appear, and stale Aave claims.
 // Each pattern targets the claim, not the topic: "Isolation Mode was removed in V3.7" and "the close factor is no
 // longer a flat 50%" pass.
 const NOT_CORRECTED = String.raw`(?! (?:no longer|not|gone|removed|deprecated|replaced|retired))`;

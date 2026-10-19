@@ -103,7 +103,7 @@ export const HUB_SLUG = "aave-health-factor";
 /** The hub post's slug in a language. */
 export const hubSlug = (locale: Locale = DEFAULT_LOCALE) => POST_SLUGS[HUB_SLUG][locale];
 
-// The cluster's internal link map (marketing plan §3.9), keyed by English slug, most relevant first. The page template shows the first
+// The cluster's internal link map, keyed by English slug, most relevant first. The page template shows the first
 // RELATED_POST_COUNT published entries under each post; the articles themselves carry the full set of in-text links.
 export const RELATED_SLUGS: Record<string, readonly string[]> = {
   "aave-health-factor": [

@@ -190,7 +190,7 @@ describe("siteJsonLd", () => {
           url: "https://tokenping.xyz",
           logo: { "@type": "ImageObject", url: "https://tokenping.xyz/logo.png", width: 512, height: 512 },
           description: expect.any(String),
-          // GitHub joins once the repo README describes Tokenping (marketing plan §4.4).
+          // GitHub joins once the repository is public.
           sameAs: ["https://x.com/tokenping", "https://t.me/tokenping_xyz"],
         },
         {
