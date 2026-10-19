@@ -58,7 +58,6 @@ type BannedPattern = {
 // longer a flat 50%" pass.
 const NOT_CORRECTED = String.raw`(?! (?:no longer|not|gone|removed|deprecated|replaced|retired))`;
 const NOT_NEGATED = String.raw`(?<!(?:no longer|not|never|n't) )`;
-const LIST_SEPARATOR = String.raw`(?:,? (?:or|and|&|plus) |, | ?\/ ?)`;
 const BANNED_PATTERNS: readonly BannedPattern[] = [
   { pattern: /\bnever (?:get|be|getting|being) liquidated\b/i, reason: "guarantee: 'never get liquidated'" },
   { pattern: /\bnever miss(?:es|ed)?\b/i, reason: "guarantee: 'never miss'" },
@@ -130,23 +129,11 @@ const BANNED_PATTERNS: readonly BannedPattern[] = [
     allowQuoted: true,
   },
   { pattern: /bgd-labs\/aave-capo/i, reason: "stale: the bgd-labs/aave-capo path moved", allowQuoted: true },
-  // Articles name Signal and email only (blog build spec). No researched competitor offers Signal, so Signal listed
-  // together with Telegram is a claim about Tokenping; competitors' Telegram bots may still be described.
-  {
-    pattern: new RegExp(
-      String.raw`\bSignal(?:${LIST_SEPARATOR}e-?mail)?${LIST_SEPARATOR}Telegram\b|\bTelegram(?:${LIST_SEPARATOR}e-?mail)?${LIST_SEPARATOR}Signal\b`,
-      "i",
-    ),
-    reason: "Tokenping channels: articles name Signal and email only until the Telegram bot is live",
-  },
+  // Tokenping sends alerts on Signal, Telegram and email, so articles may name all three. The plan's bracketed
+  // placeholder from the time Telegram was not live yet must still not ship.
   {
     pattern: /\[(?:or |and |plus |\+ ?)?Telegram\b[^\]]*\]/i,
-    reason: "the plan's [Telegram variant] placeholder must not ship: articles name Signal and email only",
-  },
-  {
-    pattern: /\bTelegram alerts?\b/i,
-    reason:
-      "'Telegram alerts' is not safe copy until the bot is live (product facts §11); for a competitor write 'alerts on Telegram'",
+    reason: "the plan's [Telegram variant] placeholder must not ship: write the channels out",
   },
   {
     pattern: /(?<![\d.,])\$?3(?:\.0+)? ?USDC\b/i,
@@ -230,8 +217,6 @@ const stripQuoted = (text: string) => text.replace(/"[^"\n]*"/g, '""');
 
 // Czech copy that must not appear, on top of the English list (Czech posts may quote English text, and product names,
 // prices and Aave terms stay English). The same claims as above, in Czech word forms.
-const CS_LIST_SEPARATOR = String.raw`(?:,? (?:nebo|a|i|či|&) |, | ?\/ ?)`;
-const CS_EMAIL = String.raw`e-?mail\w*`;
 const CS_BANNED_PATTERNS: readonly BannedPattern[] = [
   { pattern: /\bnikdy (?:nebudete|nebude|nebudou) zlikvidován/i, reason: "guarantee: 'nikdy nebudete zlikvidováni'" },
   { pattern: /\bnikdy (?:ne)?zmešk/i, reason: "guarantee: 'nikdy nezmeškáte'" },
@@ -245,13 +230,6 @@ const CS_BANNED_PATTERNS: readonly BannedPattern[] = [
     pattern: /\bclose factor (?:je|činí) (?:vždy |pevně |fixně |napevno )?(?:50 ?%|0[.,]5\b|polovin)/i,
     reason: "stale: since v3.3 the close factor is 50% or 100% depending on HF and position size",
     allowQuoted: true,
-  },
-  {
-    pattern: new RegExp(
-      String.raw`\bSignal\w*(?:${CS_LIST_SEPARATOR}${CS_EMAIL})?${CS_LIST_SEPARATOR}Telegram|\bTelegram\w*(?:${CS_LIST_SEPARATOR}${CS_EMAIL})?${CS_LIST_SEPARATOR}Signal`,
-      "i",
-    ),
-    reason: "Tokenping channels: articles name Signal and email only until the Telegram bot is live",
   },
   {
     pattern: /(?<![\d.,])\$?3(?:,0+)? ?USDC\b/i,
@@ -752,10 +730,7 @@ describe("findBannedPhrases", () => {
     "The sequencer sentinel blocks liquidations for an hour.",
     "A liquidator can repay 100% of the debt when HF < 0.95.",
     "All of it can be liquidated if the health factor is below 0.95.",
-    "Get alerts on Signal, Telegram or email.",
-    "Tokenping messages you on Signal or Telegram.",
     "Alerts arrive on Signal or email [or Telegram].",
-    "Tokenping sends Telegram alerts.",
     "Check your health factor for free.",
     "Free alerts on Telegram.",
     "A freemium alert service.",
@@ -782,6 +757,7 @@ describe("findBannedPhrases", () => {
     "Up to 100% can be repaid when HF is at or below 0.95, written HF ≤ 0.95.",
     'The V4 overview says "100% when HF < 0.95"; the code uses ≤.',
     "Tokenping messages you on Signal or email.",
+    "Tokenping sends alerts on Signal, Telegram and email.",
     "Otomato sends alerts on Telegram and in its mobile app.",
     "DeFi Saver Notify: in-app, email, Telegram.",
     "Otomato's core alerts cost nothing; the extensions come at no charge.",
@@ -907,7 +883,7 @@ Real-time alerts for 3 USDC, free to try. See [a missing post](/blog/nope), [a b
 [admin](/admin), [plain http](http://example.com) and [our site](https://tokenping.xyz/aave).
 
 The debt ceiling limits new borrows. On Arbitrum, liquidations pause while the sequencer is down. A liquidator can
-repay 100% when HF < 0.95. Alerts arrive on Signal, Telegram or email.[^1]
+repay 100% when HF < 0.95. Alerts arrive on Signal or email [or Telegram].[^1]
 
 ![HF chart](http://example.com/chart.png)
 
@@ -1008,7 +984,7 @@ describe("article checks", () => {
       expect.stringContaining("debt ceilings were removed"),
       expect.stringContaining("sequencer downtime no longer pauses liquidations"),
       expect.stringContaining("HF ≤ 0.95"),
-      expect.stringContaining("articles name Signal and email only"),
+      expect.stringContaining("[Telegram variant] placeholder must not ship"),
       expect.stringContaining("hard-coded alert price"),
       expect.stringContaining("'free' must not appear"),
     ]);
@@ -1033,9 +1009,6 @@ describe("Czech findBannedPhrases", () => {
     "Upozornění stojí 3 USDC.",
     "Upozornění stojí 3,00 USDC na měsíc.",
     "Platíte v USDC na 30 dní.",
-    "Upozornění přes Signal, Telegram nebo e-mail.",
-    "Tokenping vám napíše přes Signal nebo Telegram.",
-    "Tokenping sends Telegram alerts.",
     "Přehled je zdarma.",
     "Bezplatná upozornění na Telegram.",
     "Otomato nabízí bezplatnou úroveň.",
@@ -1049,6 +1022,7 @@ describe("Czech findBannedPhrases", () => {
     "Dluh 12 000 USDC proti 10 WETH.",
     "Pozice s dluhem 13 USDC nebo 3 000 USDC.",
     "Tokenping vám napíše přes Signal nebo e-mail.",
+    "Tokenping posílá upozornění přes Signal, Telegram i e-mail.",
     "Otomato posílá upozornění přes Telegram a ve své aplikaci.",
     "Likvidace proběhne okamžitě, jakmile health factor klesne pod 1.",
     "Základní sledování je bez poplatku a nic nestojí; přehled nevyžaduje platbu.",
