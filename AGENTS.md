@@ -41,6 +41,7 @@ yarn compile        # Compile Solidity contracts
 yarn next:token-icons       # Refresh Aave token icons from CoinGecko
 yarn next:network-icons     # Refresh network logos from CoinGecko
 yarn next:telegram-webhook  # Register the Telegram bot's webhook (info | set <url>)
+yarn next:indexnow          # Tell IndexNow engines about the live sitemap's pages after a deploy (--since, --dry-run)
 
 # Deployer account (Hardhat)
 yarn generate            # Generate new deployer account

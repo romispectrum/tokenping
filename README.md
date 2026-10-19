@@ -45,7 +45,8 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs o
   from the contract (`plans(token)`), so the site never hard-codes it. The proxy and implementation are verified on
   [Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553).
 - **Blog.** MDX articles in `packages/nextjs/content/blog` (English, and Czech in `content/blog/cs`), rendered as Server
-  Components with a sitemap, RSS feed and JSON-LD.
+  Components with a sitemap, RSS feed and JSON-LD. `yarn next:indexnow` tells Bing, Seznam and Yandex about new and
+  changed pages through [IndexNow](#indexnow).
 - **English and Czech.** The whole site is published in both languages; see [docs/i18n.md](docs/i18n.md).
 - **Analytics.** [Vercel Web Analytics](https://vercel.com/docs/analytics) counts page views without cookies. It is
   left out of the IPFS build (`yarn ipfs`). The privacy page lists it.
@@ -179,6 +180,7 @@ explained). In the table, "production" means a Vercel production deployment. Ser
 | `TELEGRAM_WEBHOOK_SECRET`                                                    | For Telegram alerts | Checked on every webhook call; the same value registered with `yarn next:telegram-webhook`.                                                                                     |
 | `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME`                                          | For Telegram alerts | The bot's username without `@`. The site offers Telegram only while this is set.                                                                                                |
 | `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`, `NEXT_PUBLIC_BING_SITE_VERIFICATION` | Optional            | Search Console and Bing Webmaster meta-tag tokens; not needed with DNS verification.                                                                                            |
+| `INDEXNOW_KEY`                                                               | Optional            | The [IndexNow](#indexnow) key, served at `/indexnow-key.txt` (404 without it); read at build time. Generate one with `openssl rand -hex 16`.                                    |
 | `COINGECKO_API_KEY`                                                          | Optional            | A CoinGecko Demo key for `yarn next:token-icons`. The app does not read it.                                                                                                     |
 
 Set by tooling or by Vercel, not in the template: `NEXT_PUBLIC_HARDHAT_RPC_URL` (the local node, default
@@ -245,10 +247,41 @@ Order for a new deployment:
 7. **Check the cron.** Vercel runs it every 5 minutes; to run it by hand, call
    `GET /api/cron/notifications` with `Authorization: Bearer <CRON_SECRET>`. It answers with the number of alerts
    checked and messages sent per channel.
+8. **Tell search engines** (optional): `yarn next:indexnow`, see [IndexNow](#indexnow).
 
 When you upgrade a live deployment, apply new migrations before the code that needs them, with one exception: migration
 `20261021000000_lock_down_server_only_tables.sql` takes the database away from the anon key, so apply it only once the
 running deployment uses `SUPABASE_SERVICE_ROLE_KEY`.
+
+### IndexNow
+
+Bing, Seznam, Yandex and the other engines in [IndexNow](https://www.indexnow.org) share every URL they are told about
+and can crawl it within hours instead of waiting to find it. Google does not take part; it reads the sitemap.
+
+1. Generate a key with `openssl rand -hex 16`. It is public by design (the engines fetch it from the site to check that
+   whoever submits URLs controls it), but it stays out of the repository.
+2. Add it as `INDEXNOW_KEY` to the Vercel project's Production environment and redeploy. Then
+   `https://tokenping.xyz/indexnow-key.txt` shows the key alone; without the variable it answers 404.
+3. After a deploy that adds or changes pages, run from the repo root:
+
+```bash
+yarn next:indexnow --since 2026-10-19
+```
+
+`--since` sends only the pages whose sitemap date is on or after that day: posts and the blog indexes. The home,
+dashboard and privacy pages have no date in the sitemap, so only a run without `--since` sends them; that run sends every
+page in both languages and suits the first submission. `--dry-run` lists the URLs and sends nothing, and `--engine bing`
+(or `seznam`, `yandex`, `naver`, `yep`, `amazon`) sends to that engine instead of `api.indexnow.org`.
+
+The script reads the key and the URLs from the live site (`/indexnow-key.txt` and `/sitemap.xml`), so it needs no local
+variables and never sends a page that is not deployed yet. It sends only `https://tokenping.xyz/` URLs, in batches of up
+to 10,000, prints each batch's HTTP status and exits with 1 when one is refused. 200 means accepted; 202 means received, with
+the key still to be checked. `api.indexnow.org` answers 202 even for a key file that does not exist, which is why the
+script checks the live key file itself before it sends anything.
+
+It does not run on every build. A build does not know which pages changed, IndexNow asks for changed URLs only and
+throttles sites that resend unchanged ones (422 or 429), preview deployments must not submit, and a build runs before
+its pages and key file are live.
 
 ### Contract
 
