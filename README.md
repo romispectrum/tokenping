@@ -56,10 +56,12 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs o
 - Only the connected wallet can be watched: no watch-only addresses, and access is per paying wallet.
 - Payment is USDC on Arbitrum One only (you need a little ETH there for gas). The contract has no refund function, and
   its owner can change the price, pause payments, withdraw funds and upgrade it.
-- The alert API acts only for a wallet that has signed in with Ethereum (EIP-4361; smart wallets through ERC-1271 and
-  ERC-6492). A session is an HttpOnly cookie signed with `SESSION_SECRET` that lasts 7 days; disconnecting on the site
-  clears it, but a copied cookie stays valid until it expires, and rotating `SESSION_SECRET` ends every session.
-  Sign-in needs the `auth_nonces` table and the Supabase service role key.
+- The alert API acts only for a wallet that has signed in with Ethereum (EIP-4361). An ordinary wallet's signature is
+  checked locally; a smart wallet's (ERC-1271, ERC-6492) only through the app's own RPC (`NEXT_PUBLIC_ALCHEMY_API_KEY`
+  or `rpcOverrides`), never a public one, so without one smart wallets cannot sign in. A session is an HttpOnly cookie
+  signed with `SESSION_SECRET` that lasts 7 days; disconnecting the wallet while the site is open clears it, but a
+  copied cookie stays valid until it expires, and rotating `SESSION_SECRET` ends every session. Sign-in needs the
+  `auth_nonces` table and the Supabase service role key, and has no rate limit of its own.
 - Alerts can only be deleted in the app while the wallet's access is active.
 - Delivery depends on third parties (Resend, the Signal relay, the Telegram Bot API, public RPC providers, Vercel
   cron). There is no published uptime guarantee.
@@ -142,8 +144,8 @@ dark theme in `WHITE_BACKED_IMAGES`, both in `packages/nextjs/scripts/tokenIconS
 
 The frontend runs on Vercel (`yarn vercel:yolo --prod`). The 5-minute cron in `vercel.json` needs a Vercel plan that
 allows it. Set the variables from `packages/nextjs/.env.example` in the Vercel project, including `CRON_SECRET`,
-`RESEND_FROM_EMAIL` and `SESSION_SECRET` (`openssl rand -hex 32`; without it sign-in and every alert route answer
-503), and apply the Supabase migrations first.
+`RESEND_FROM_EMAIL` and `SESSION_SECRET` (`openssl rand -hex 32`, a different one for Production and Preview; without
+it sign-in and every alert route answer 503), and apply the Supabase migrations first.
 
 The contract has two deploy modes, selected with `--deploy-mode`:
 

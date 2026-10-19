@@ -9,7 +9,7 @@ import { buildSignInMessage } from "~~/services/auth/signInMessage";
 
 /*
  * The route against the real message check, session token and signature check. The nonce table is the fake Supabase
- * client; the RPC is down, so signatures are checked by ECDSA recovery (as for an ordinary wallet when the RPC fails).
+ * client. Ordinary wallets' signatures are recovered locally; the app's own RPC, asked only for anything else, is down.
  */
 
 vi.mock("~~/services/supabase/supabaseServer", async () => {
@@ -21,7 +21,7 @@ vi.mock("~~/utils/rpc", async () => {
   const down = (async () => {
     throw new Error("fetch failed");
   }) as EIP1193RequestFn;
-  return { getFallbackTransport: () => custom({ request: down }) };
+  return { getConfiguredTransport: () => custom({ request: down }) };
 });
 
 const ROUTE_URL = "http://localhost/api/auth/verify";

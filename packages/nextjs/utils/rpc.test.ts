@@ -24,7 +24,7 @@ import {
 } from "viem/chains";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AAVE_CHAINS, arc, megaEth, monad } from "~~/config/aaveConfig";
-import { getFallbackTransport, getRpcUrls } from "~~/utils/rpc";
+import { getConfiguredTransport, getFallbackTransport, getRpcUrls } from "~~/utils/rpc";
 
 const { config, SHARED_KEY } = vi.hoisted(() => ({
   config: { alchemyApiKey: "", rpcOverrides: {} as Record<number, string> },
@@ -336,5 +336,24 @@ describe("getFallbackTransport", () => {
 
       expect(transportUrls(hardhat)).toEqual(["http://override.local:8545", "http://hardhat.internal:8545"]);
     });
+  });
+});
+
+describe("getConfiguredTransport", () => {
+  const configuredUrls = (chainId: number) =>
+    getConfiguredTransport(chainId)?.({ chain: arbitrum }).value!.transports.map(transport => transport.value!.url);
+
+  it("uses the rpcOverrides entry and the app's own Alchemy key, never a public endpoint", () => {
+    config.rpcOverrides = { [arbitrum.id]: "https://arb.example/rpc" };
+    expect(configuredUrls(arbitrum.id)).toEqual(["https://arb.example/rpc", alchemy("arb-mainnet")]);
+  });
+
+  it("is undefined with Scaffold-ETH's shared Alchemy key and no override", () => {
+    config.alchemyApiKey = SHARED_KEY;
+    expect(getConfiguredTransport(arbitrum.id)).toBeUndefined();
+  });
+
+  it("is undefined on a chain Alchemy does not serve, without an override", () => {
+    expect(getConfiguredTransport(plasma.id)).toBeUndefined();
   });
 });
