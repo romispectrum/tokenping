@@ -36,5 +36,5 @@ export const parseChainId = (raw: string | null) => {
   return INTEGER_PATTERN.test(trimmed) && Number.isSafeInteger(chainId) ? chainId : null;
 };
 
-/** JSON-body chain id: any number except NaN (no integer or range check). */
-export const isChainId = (value: unknown): value is number => typeof value === "number" && !Number.isNaN(value);
+/** JSON-body chain id: a safe integer, like the column it is stored in. The route checks that the app reads it. */
+export const isChainId = (value: unknown): value is number => Number.isSafeInteger(value);

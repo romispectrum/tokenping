@@ -109,10 +109,14 @@ describe("parseChainId", () => {
 describe("isChainId", () => {
   it.each([
     [1, true],
+    [42161, true],
     [0, true],
     [-1, true],
-    [1.5, true],
-    [Infinity, true],
+    [Number.MAX_SAFE_INTEGER, true],
+    [1.5, false],
+    [1e21, false],
+    [Number.MAX_SAFE_INTEGER + 1, false],
+    [Infinity, false],
     [NaN, false],
     ["1", false],
     [null, false],

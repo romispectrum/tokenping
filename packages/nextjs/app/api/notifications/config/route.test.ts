@@ -28,6 +28,7 @@ const CHANNEL_LOCALES_ERROR = "Invalid channelLocales: expected an object of ema
 const LOAD_FAILED = "Could not load your alerts. Please try again.";
 const SAVE_FAILED = "Could not save the alert. Please try again.";
 const DELETE_FAILED = "Could not delete the alert. Please try again.";
+const LIMIT_REACHED = "A wallet can have up to 50 alerts. Delete one before adding another.";
 
 const chainQuery = (uid: string, chainId: number, market = "v3") =>
   `notification_configs.select("*").eq("user_id","${uid}").eq("chain_id",${chainId}).eq("market","${market}").maybeSingle()`;
@@ -36,6 +37,9 @@ const idLookup = (uid: string, chainId: number, market = "v3") =>
   `notification_configs.select("id").eq("user_id","${uid}").eq("chain_id",${chainId}).eq("market","${market}").maybeSingle()`;
 const deleteQuery = (uid: string, chainId: number, market = "v3") =>
   `notification_configs.delete().eq("user_id","${uid}").eq("chain_id",${chainId}).eq("market","${market}")`;
+// Runs before an insert only: how many alerts the wallet has under either user id form.
+const countQuery = (...uids: string[]) =>
+  `notification_configs.select("id",{"count":"exact","head":true}).in("user_id",${JSON.stringify(uids)})`;
 
 const get = (params: Record<string, string>) => GET(new Request(`${BASE_URL}?${new URLSearchParams(params)}`));
 const bodyOf = (body: unknown) => (typeof body === "string" ? body : JSON.stringify(body));
@@ -508,10 +512,14 @@ describe("PUT /api/notifications/config", () => {
     ["missing", {}],
     ["null", { chainId: null }],
     ["string", { chainId: "1" }],
-  ])("returns 400 for a %s chainId", async (_label, extra) => {
+    ["fractional", { chainId: 8453.5 }],
+    ["unsafe integer", { chainId: 2 ** 53 }],
+  ])("returns 400 for a %s chainId before the access check or any DB call", async (_label, extra) => {
     expect(await read(await put({ userId: LOWER, ...extra }))).toEqual(
       json(400, { error: "Missing or invalid chainId" }),
     );
+    expect(isAccessActive).not.toHaveBeenCalled();
+    expect(fakeSupabase.queries).toHaveLength(0);
   });
 
   it.each([
@@ -530,6 +538,11 @@ describe("PUT /api/notifications/config", () => {
     ["an address that is no market", 1, NOT_A_SPOKE],
     ["a Spoke on another chain", 8453, LIDO_SPOKE],
     ["a V3 Pool on another chain", 8453, PRIME_POOL],
+    ["the V3 market of a chain without Aave", 31337, "v3"],
+    ["the V3 market of a chain id that is no chain", 0, "v3"],
+    ["the V3 market of a negative chain id", -1, "v3"],
+    // Arc has Aave V4 Spokes only.
+    ["the V3 market of a V4-only chain", 5042, "v3"],
   ])("returns 400 for %s before the access check or any DB call", async (_label, chainId, market) => {
     expect(await read(await put({ userId: LOWER, chainId, market }))).toEqual(
       json(400, { error: "Unknown Aave market" }),
@@ -557,11 +570,10 @@ describe("PUT /api/notifications/config", () => {
     ["the V3", { market: "v3" }],
   ])("stores %s market as the chain's V3 market", async (_label, extra) => {
     expect(await read(await put({ userId: LOWER, chainId: 8453, ...extra }))).toEqual(json(200, { success: true }));
-    expect(fakeSupabase.log()).toEqual([idLookup(LOWER, 8453), insertQuery(expectedRow(LOWER))]);
+    expect(fakeSupabase.log()).toEqual([idLookup(LOWER, 8453), countQuery(LOWER), insertQuery(expectedRow(LOWER))]);
   });
 
-  // As before V4: a V3 config is not checked against the chains with an Aave market.
-  it("stores a V3 config for a chain without an Aave market", async () => {
+  it("stores the V3 config of every chain with an Aave V3 market", async () => {
     expect(await read(await put({ userId: LOWER, chainId: 56 }))).toEqual(json(200, { success: true }));
     expect(fakeSupabase.log().at(-1)).toBe(insertQuery(expectedRow(LOWER, { chain_id: 56 })));
   });
@@ -575,6 +587,7 @@ describe("PUT /api/notifications/config", () => {
     expect(fakeSupabase.log()).toEqual([
       idLookup(LOWER, 1, LIDO_SPOKE),
       idLookup(MIXED, 1, LIDO_SPOKE),
+      countQuery(LOWER, MIXED),
       insertQuery(expectedRow(LOWER, { chain_id: 1, market: LIDO_SPOKE, health_factor_threshold: 1.3 })),
     ]);
   });
@@ -587,6 +600,7 @@ describe("PUT /api/notifications/config", () => {
     expect(await read(res)).toEqual(json(200, { success: true }));
     expect(fakeSupabase.log()).toEqual([
       idLookup(LOWER, 1, PRIME_POOL),
+      countQuery(LOWER),
       insertQuery(expectedRow(LOWER, { chain_id: 1, market: PRIME_POOL, health_factor_threshold: 2 })),
     ]);
   });
@@ -660,7 +674,45 @@ describe("PUT /api/notifications/config", () => {
     const res = await put({ userId: LOWER, chainId: 8453 });
 
     expect(await read(res)).toEqual(json(200, { success: true }));
-    expect(fakeSupabase.log()).toEqual([idLookup(LOWER, 8453), insertQuery(expectedRow(LOWER))]);
+    expect(fakeSupabase.log()).toEqual([idLookup(LOWER, 8453), countQuery(LOWER), insertQuery(expectedRow(LOWER))]);
+  });
+
+  describe("the limit of 50 alerts per wallet", () => {
+    it("inserts the wallet's 50th alert", async () => {
+      fakeSupabase.respondByQuery({ [countQuery(LOWER)]: { count: 49 } });
+      expect(await read(await put({ userId: LOWER, chainId: 8453 }))).toEqual(json(200, { success: true }));
+      expect(fakeSupabase.log().at(-1)).toBe(insertQuery(expectedRow(LOWER)));
+    });
+
+    it.each([50, 51, 400])("returns 409 without inserting when the wallet already has %d alerts", async count => {
+      fakeSupabase.respondByQuery({ [countQuery(LOWER)]: { count } });
+      expect(await read(await put({ userId: LOWER, chainId: 8453 }))).toEqual(json(409, { error: LIMIT_REACHED }));
+      expect(fakeSupabase.log()).toEqual([idLookup(LOWER, 8453), countQuery(LOWER)]);
+    });
+
+    it("counts the alerts stored under the legacy user id form too", async () => {
+      fakeSupabase.respondByQuery({ [countQuery(LOWER, MIXED)]: { count: 50 } });
+      expect(await read(await put({ userId: MIXED, chainId: 8453 }))).toEqual(json(409, { error: LIMIT_REACHED }));
+    });
+
+    it("still updates an existing alert, without counting", async () => {
+      fakeSupabase.respondByQuery({
+        [idLookup(LOWER, 8453)]: { data: { id: "row-lower" } },
+        [countQuery(LOWER)]: { count: 50 },
+      });
+      expect(await read(await put({ userId: LOWER, chainId: 8453 }))).toEqual(json(200, { success: true }));
+      expect(fakeSupabase.log()).toEqual([idLookup(LOWER, 8453), updateQuery(expectedRow(LOWER), "row-lower")]);
+    });
+
+    it("returns a generic 502 without inserting when the count fails", async () => {
+      fakeSupabase.respondByQuery({ [countQuery(LOWER)]: { error: { message: "timeout" } } });
+      expect(await read(await put({ userId: LOWER, chainId: 8453 }))).toEqual(json(502, { error: SAVE_FAILED }));
+      expect(fakeSupabase.log()).toEqual([idLookup(LOWER, 8453), countQuery(LOWER)]);
+      expect(loggedError()).toEqual([
+        "PUT /api/notifications/config: database error",
+        { code: undefined, message: "timeout" },
+      ]);
+    });
   });
 
   it("returns a generic 502 on a failed lookup instead of inserting a duplicate row, logging the message", async () => {
@@ -938,10 +990,12 @@ describe("DELETE /api/notifications/config", () => {
   it.each([
     ["missing", {}],
     ["string", { chainId: "1" }],
+    ["fractional", { chainId: 1.5 }],
   ])("returns 400 for a %s chainId", async (_label, extra) => {
     expect(await read(await del({ userId: LOWER, ...extra }))).toEqual(
       json(400, { error: "Missing or invalid chainId" }),
     );
+    expect(fakeSupabase.queries).toHaveLength(0);
   });
 
   it("returns 403 when access is inactive", async () => {
