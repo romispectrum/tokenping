@@ -28,6 +28,12 @@ beforeEach(() => {
   vi.resetModules();
 });
 
+/** The order /blog lists guides in after the hub: latest publish date first, same-day guides in registration order. */
+const latestFirst = <T extends { meta: { publishedAt: string } }>(posts: readonly T[]) =>
+  posts
+    .map((post, index) => ({ post, index }))
+    .sort((a, b) => b.post.meta.publishedAt.localeCompare(a.post.meta.publishedAt) || a.index - b.index)
+    .map(({ post }) => post);
 describe("/blog metadata", () => {
   it("has its own title, description and canonical within search-result lengths", async () => {
     const { metadata } = await loadIndex();
@@ -48,14 +54,15 @@ describe("/blog metadata", () => {
 });
 
 describe("/blog", () => {
-  it("renders one H1, the hub first and then every other published post with its date", async () => {
+  it("renders one H1, the hub first and then every other published post, latest first, with its date", async () => {
     const { BlogIndex, blog } = await loadIndex(["aave-liquidation-price"]);
     render(<BlogIndex />);
 
     expect(screen.getAllByRole("heading", { level: 1 }).map(heading => heading.textContent)).toEqual([
       "Aave health factor and liquidation guides",
     ]);
-    const published = blog.PUBLISHED_POSTS.map(({ meta }) => `/blog/${meta.slug}`);
+    const [hub, ...rest] = blog.PUBLISHED_POSTS;
+    const published = [hub, ...latestFirst(rest)].map(({ meta }) => `/blog/${meta.slug}`);
     expect(postLinks()).toEqual(published);
     expect(postLinks()).not.toContain("/blog/aave-liquidation-price");
     expect(postLinks()[0]).toBe(`/blog/${blog.HUB_SLUG}`);
@@ -124,6 +131,21 @@ describe("/blog", () => {
         .getAllByRole("link")
         .map(link => link.getAttribute("href")),
     ).toEqual([`/blog/${hub.meta.slug}`]);
+  });
+
+  it("keeps the hub as Start here and lists the other guides latest first, same-day guides in their usual order", async () => {
+    const { BlogIndex, blog } = await loadIndex();
+    render(<BlogIndex />);
+
+    const start = screen.getByRole("region", { name: "Start here" });
+    expect(within(start).getByRole("heading").textContent).toBe(blog.PUBLISHED_POSTS[0].meta.title);
+    const listed = within(screen.getByRole("region", { name: "All guides" }))
+      .getAllByRole("heading", { level: 3 })
+      .map(heading => heading.textContent);
+    expect(listed).toEqual(latestFirst(blog.PUBLISHED_POSTS.slice(1)).map(({ meta }) => meta.title));
+    // The latest guide is the first card.
+    const latest = blog.PUBLISHED_POSTS.slice(1).reduce((a, b) => (b.meta.publishedAt > a.meta.publishedAt ? b : a));
+    expect(listed[0]).toBe(latest.meta.title);
   });
 
   it("renders a breadcrumb trail that matches its BreadcrumbList JSON-LD", async () => {

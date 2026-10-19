@@ -11,7 +11,7 @@ import { Kicker } from "~~/components/ui/Kicker";
 import { SectionHeader } from "~~/components/ui/SectionHeader";
 import { buttonClasses } from "~~/components/ui/buttonClasses";
 import { cx } from "~~/components/ui/classNames";
-import { getPublishedPosts, hubSlug } from "~~/content/blog";
+import { getPublishedPosts, hubSlug, newestFirst } from "~~/content/blog";
 import { DEFAULT_LOCALE, type Locale } from "~~/i18n/locales";
 import { BLOG_MESSAGES } from "~~/i18n/messages/blog";
 import { routeAlternates, routePath } from "~~/i18n/routes";
@@ -41,7 +41,8 @@ const HERO_ACTION_CLASS_NAME = "w-full sm:w-auto sm:min-w-40";
 export const BlogIndexPage = ({ locale }: { locale: Locale }) => {
   const posts = getPublishedPosts(locale);
   const hub = posts.find(({ meta }) => meta.slug === hubSlug(locale));
-  const spokes = posts.filter(post => post !== hub);
+  // The hub stays the Start here card; every other guide follows, the latest first.
+  const spokes = newestFirst(posts.filter(post => post !== hub));
   const CRUMBS = crumbs(locale);
   const t = BLOG_MESSAGES[locale].index;
 
