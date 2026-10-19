@@ -28,6 +28,12 @@ beforeEach(() => {
   vi.resetModules();
 });
 
+/** The order /blog lists guides in after the hub: latest publish date first, same-day guides in registration order. */
+const latestFirst = <T extends { meta: { publishedAt: string } }>(posts: readonly T[]) =>
+  posts
+    .map((post, index) => ({ post, index }))
+    .sort((a, b) => b.post.meta.publishedAt.localeCompare(a.post.meta.publishedAt) || a.index - b.index)
+    .map(({ post }) => post);
 describe("/cz/blog metadata", () => {
   it("has a Czech title, description and canonical within search-result lengths, with hreflang to /blog", async () => {
     const { metadata } = await loadIndex();
@@ -49,14 +55,15 @@ describe("/cz/blog metadata", () => {
 });
 
 describe("/cz/blog", () => {
-  it("renders the Czech H1, the Czech hub first and then every other published Czech post with its Czech date", async () => {
+  it("renders the Czech H1, the Czech hub first and then every other published Czech post, latest first, with its Czech date", async () => {
     const { BlogIndex, blog } = await loadIndex(["likvidacni-cena-aave"]);
     render(<BlogIndex />);
 
     expect(screen.getAllByRole("heading", { level: 1 }).map(heading => heading.textContent)).toEqual([
       "Průvodci health factorem a likvidací na Aave",
     ]);
-    const published = blog.getPublishedPosts("cs").map(({ meta }) => `/cz/blog/${meta.slug}`);
+    const [hub, ...rest] = blog.getPublishedPosts("cs");
+    const published = [hub, ...latestFirst(rest)].map(({ meta }) => `/cz/blog/${meta.slug}`);
     expect(postLinks()).toEqual(published);
     expect(postLinks()).not.toContain("/cz/blog/likvidacni-cena-aave");
     expect(postLinks()[0]).toBe(`/cz/blog/${blog.hubSlug("cs")}`);

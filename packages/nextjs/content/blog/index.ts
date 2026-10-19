@@ -48,7 +48,7 @@ import WhyAaveHealthFactorDropped, {
 import { DEFAULT_LOCALE, type Locale, type Localized } from "~~/i18n/locales";
 import { POST_SLUGS, postKeyForSlug } from "~~/i18n/postSlugs";
 
-/** Every English post, hub first: /blog, the sitemap and the RSS feed list them in this order. */
+/** Every English post, hub first: the sitemap and the RSS feed list them in this order; /blog sorts the guides by date. */
 export const POSTS: readonly Post[] = [
   { meta: aaveHealthFactor, Content: AaveHealthFactor },
   { meta: safeAaveHealthFactor, Content: SafeAaveHealthFactor },
@@ -96,6 +96,10 @@ export const getPublishedPosts = (locale: Locale = DEFAULT_LOCALE): readonly Pos
 
 /** The English posts readers and crawlers can discover, hub first. */
 export const PUBLISHED_POSTS: readonly Post[] = getPublishedPosts(DEFAULT_LOCALE);
+
+/** Latest publish date first; posts published the same day keep their order above. */
+export const newestFirst = (posts: readonly Post[]): Post[] =>
+  [...posts].sort((a, b) => b.meta.publishedAt.localeCompare(a.meta.publishedAt));
 
 /** The hub's key: its English slug. */
 export const HUB_SLUG = "aave-health-factor";
