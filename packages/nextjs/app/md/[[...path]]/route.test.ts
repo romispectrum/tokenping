@@ -17,10 +17,10 @@ const PAGE_HTML =
 const SITEMAP_PATHS = sitemap().map(({ url }) => new URL(url).pathname);
 
 /** The request next.config.ts rewrites to this route: the page's own URL, `path` its segments. */
-const get = (path: string, accept: string | null = MARKDOWN) => {
+const get = (path: string, accept: string | null = MARKDOWN, origin = ORIGIN) => {
   const headers = accept === null ? undefined : { accept };
   const segments = path === "/" ? undefined : path.slice(1).split("/");
-  return GET(new NextRequest(`${ORIGIN}${path}`, { headers }), { params: Promise.resolve({ path: segments }) });
+  return GET(new NextRequest(`${origin}${path}`, { headers }), { params: Promise.resolve({ path: segments }) });
 };
 
 const htmlResponse = (html = PAGE_HTML, init: ResponseInit = {}) =>
@@ -37,6 +37,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
 });
 
@@ -127,6 +128,29 @@ describe("GET /md/[[...path]]", () => {
       expect(fetchMock).not.toHaveBeenCalled();
     },
   );
+
+  it.each(["http://localhost:3000", ORIGIN])("fetches the page from %s", async origin => {
+    vi.stubEnv("VERCEL", undefined);
+
+    expect((await get("/privacy", MARKDOWN, origin)).status).toBe(200);
+    expect(String(fetchMock.mock.calls[0][0])).toBe(`${origin}/privacy`);
+  });
+
+  // Off Vercel the Host header could be forged, and it decides what the server fetches.
+  it("answers 404 without fetching anything for another host outside Vercel", async () => {
+    vi.stubEnv("VERCEL", undefined);
+
+    expect((await get("/privacy", MARKDOWN, "https://attacker.example")).status).toBe(404);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  // On Vercel the Host is always one of the project's domains: a preview URL, an alias or the production domain.
+  it("fetches the page from the request's own host on Vercel", async () => {
+    vi.stubEnv("VERCEL", "1");
+
+    expect((await get("/privacy", MARKDOWN, "https://tokenping-git-main.vercel.app")).status).toBe(200);
+    expect(String(fetchMock.mock.calls[0][0])).toBe("https://tokenping-git-main.vercel.app/privacy");
+  });
 
   it.each([
     ["the page answers 500", () => htmlResponse("error", { status: 500 })],

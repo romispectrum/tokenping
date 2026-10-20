@@ -29,54 +29,102 @@ const findElement = (node: HastNode, matches: (element: HastElement) => boolean)
   return undefined;
 };
 
-// Scripts (JSON-LD among them), styles and icons carry no prose, and neither do form controls.
+// Scripts (JSON-LD among them), styles and icons carry no prose, and neither do forms: their labels mean nothing
+// without the controls.
 const DROPPED_TAGS = new Set([
   ...["script", "style", "template", "noscript", "svg"],
-  ...["button", "input", "select", "textarea"],
+  ...["form", "button", "input", "select", "textarea"],
 ]);
+
+const classNames = ({ properties }: HastElement) =>
+  Array.isArray(properties.className) ? properties.className.map(String) : [];
+
+// The page as a desktop browser shows it: `md:hidden` content (a table's "scroll sideways" hint) is for phones, and a
+// `hidden` class with no breakpoint that shows the element again hides it everywhere.
+const HIDDEN_CLASS = /^(?:(?:sm|md|lg):)?hidden$/;
+const SHOWN_CLASS = /^(?:sm|md|lg):(?:block|inline|inline-block|flex|inline-flex|grid|inline-grid|table|contents)$/;
+
+const isHiddenOnDesktop = (element: HastElement) => {
+  const names = classNames(element);
+  return names.some(name => HIDDEN_CLASS.test(name)) && !names.some(name => SHOWN_CLASS.test(name));
+};
 
 /**
  * What a reader of the page would not get: hidden elements, anything hidden from assistive technology (decorative
- * icons and duplicates of visible text) and images without alt text.
+ * icons and duplicates of visible text), live regions (status text that repeats what is on screen, or a loading
+ * message) and images without alt text.
  */
-const isDropped = ({ tagName, properties }: HastElement) =>
-  DROPPED_TAGS.has(tagName) ||
-  properties.hidden !== undefined ||
-  String(properties.ariaHidden) === "true" ||
-  (tagName === "img" && !properties.alt);
+const isDropped = (element: HastElement) => {
+  const { tagName, properties } = element;
+  return (
+    DROPPED_TAGS.has(tagName) ||
+    properties.hidden !== undefined ||
+    String(properties.ariaHidden) === "true" ||
+    properties.role === "status" ||
+    properties.ariaLive !== undefined ||
+    isHiddenOnDesktop(element) ||
+    (tagName === "img" && !properties.alt)
+  );
+};
 
 // Flex and grid items are laid out apart, so two <span>s in a flex column read as two lines on screen but would run
-// together as "Prices dropETH falls" in markdown. Each item gets its own block, or a space around it inside an element
-// that takes only inline content (a byline <p>). Lists and tables keep their children, and list items, table parts and
-// definition terms are never wrapped: the converter finds them by tag (a <dl> may group each term in a <div>).
+// together as "Prices dropETH falls" in markdown. Each item gets its own block, or a space around it where only inline
+// content may go (in a byline <p>, or in an inline-flex box). Lists and tables keep their children, and list items,
+// table parts and definition terms are never wrapped: the converter finds them by tag (a <dl> may group each term in a
+// <div>).
 const LAYOUT_CLASSES = new Set(["flex", "inline-flex", "grid", "inline-grid"]);
+const INLINE_LAYOUT_CLASSES = new Set(["inline-flex", "inline-grid"]);
 const INLINE_CONTAINERS = new Set(["a", "p", "h1", "h2", "h3", "h4", "h5", "h6", "summary", "label", "th", "td"]);
 const LIST_CONTAINERS = new Set(["ul", "ol", "dl", "table", "thead", "tbody", "tfoot", "tr"]);
 const STRUCTURAL_TAGS = new Set(["li", "dt", "dd", "thead", "tbody", "tfoot", "tr", "th", "td", "caption", "summary"]);
+// Line breaks that CSS keeps, as in the example alert on the home page.
+const PRESERVED_BREAK_CLASSES = new Set(["whitespace-pre", "whitespace-pre-line", "whitespace-pre-wrap"]);
 
-const isLayoutContainer = ({ tagName, properties, children }: HastElement) =>
-  !LIST_CONTAINERS.has(tagName) &&
-  Array.isArray(properties.className) &&
-  properties.className.some(name => LAYOUT_CLASSES.has(String(name))) &&
-  children.filter(child => child.type === "element").length > 1;
+type HastChild = HastElement["children"][number];
 
-const asBlock = (child: HastElement["children"][number]): HastElement["children"][number] =>
+const isLayoutContainer = (element: HastElement) =>
+  !LIST_CONTAINERS.has(element.tagName) &&
+  classNames(element).some(name => LAYOUT_CLASSES.has(name)) &&
+  element.children.filter(child => child.type === "element").length > 1;
+
+const asBlock = (child: HastChild): HastChild =>
   child.type !== "element" || STRUCTURAL_TAGS.has(child.tagName)
     ? child
     : { type: "element", tagName: "div", properties: {}, children: [child] };
 
-/** Drops what isn't content (React's <!-- --> text separators included) and sets flex and grid items apart. */
-const prune = (element: HastElement) => {
+const textNode = (value: string): HastChild => ({ type: "text", value });
+const lineBreak = (): HastChild => ({ type: "element", tagName: "br", properties: {}, children: [] });
+
+const spaced = (children: HastChild[]) =>
+  children.flatMap((child, index) => (index === 0 ? [child] : [textNode(" "), child]));
+
+/** Each run of line breaks in the text becomes one <br>. */
+const withBreaks = (children: HastChild[]) =>
+  children.flatMap(child =>
+    child.type !== "text"
+      ? [child]
+      : child.value
+          .split(/\s*\n\s*/)
+          .flatMap((line, index) => [...(index > 0 ? [lineBreak()] : []), ...(line ? [textNode(line)] : [])]),
+  );
+
+/**
+ * Drops what isn't content (React's <!-- --> text separators included), sets flex and grid items apart and keeps line
+ * breaks that CSS shows. `inline` is true inside an element that takes only inline content.
+ */
+const prune = (element: HastElement, inline = false) => {
   element.children = element.children.filter(
     child => child.type !== "comment" && (child.type !== "element" || !isDropped(child)),
   );
-  for (const child of element.children) if (child.type === "element") prune(child);
+  const inlineContent = inline || INLINE_CONTAINERS.has(element.tagName);
+  for (const child of element.children) if (child.type === "element") prune(child, inlineContent);
+  const names = classNames(element);
+  if (names.some(name => PRESERVED_BREAK_CLASSES.has(name))) element.children = withBreaks(element.children);
   if (!isLayoutContainer(element)) return;
-  element.children = INLINE_CONTAINERS.has(element.tagName)
-    ? element.children.flatMap((child, index) =>
-        index === 0 ? [child] : [{ type: "text" as const, value: " " }, child],
-      )
-    : element.children.map(asBlock);
+  element.children =
+    inlineContent || names.some(name => INLINE_LAYOUT_CLASSES.has(name))
+      ? spaced(element.children)
+      : element.children.map(asBlock);
 };
 
 /** Links and images point at the live site, so the markdown works without the page it came from. */
