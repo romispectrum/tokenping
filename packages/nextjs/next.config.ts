@@ -19,6 +19,29 @@ const homeLinkHeader = ({ feed, privacy }: { feed: string; privacy: string }) =>
     `<${privacy}>; rel="privacy-policy"`,
   ].join(", ");
 
+// Markdown for agents: a public page requested with `Accept: text/markdown` is answered by app/md/[[...path]]/route.ts.
+// Only the page patterns of i18n/routes (next.config.test.ts checks them against the sitemap), so feeds, images, the
+// API and the developer pages never match, and a request without text/markdown in Accept never sees the rewrite.
+// Before the filesystem, so the prerendered page is not served instead.
+const MARKDOWN_PAGES = [
+  "/",
+  "/aave",
+  "/blog",
+  "/blog/:slug([^./]+)",
+  "/privacy",
+  "/cz",
+  "/cz/aave",
+  "/cz/blog",
+  "/cz/blog/:slug([^./]+)",
+  "/cz/ochrana-soukromi",
+];
+const ACCEPTS_MARKDOWN = { type: "header", key: "accept", value: ".*text/markdown.*" } as const;
+const markdownRewrite = (source: string) => ({
+  source,
+  has: [ACCEPTS_MARKDOWN],
+  destination: source === "/" ? "/md" : `/md${source.replace(/\(.*\)/, "")}`,
+});
+
 const nextConfig: NextConfig = {
   // "mdx" is listed so Next applies its vendored React aliases to .mdx modules too: without it the posts import
   // node_modules' react/jsx-dev-runtime and crash in Server Components under `next dev`. Posts live in content/blog,
@@ -46,10 +69,17 @@ const nextConfig: NextConfig = {
     config.externals.push("pino-pretty", "lokijs", "encoding");
     return config;
   },
-  // A static export has no server to send headers.
+  // A static export has no server to send headers or rewrite requests.
   ...(!IS_IPFS_BUILD && {
+    // Not on a markdown request: Next keeps a config header over a route's header of the same name, so the markdown
+    // route sends these links itself, after the page's canonical.
     headers: async () =>
-      HOME_LINKS.map(({ source, ...paths }) => ({ source, headers: [{ key: "Link", value: homeLinkHeader(paths) }] })),
+      HOME_LINKS.map(({ source, ...paths }) => ({
+        source,
+        missing: [ACCEPTS_MARKDOWN],
+        headers: [{ key: "Link", value: homeLinkHeader(paths) }],
+      })),
+    rewrites: async () => ({ beforeFiles: MARKDOWN_PAGES.map(markdownRewrite), afterFiles: [], fallback: [] }),
   }),
   ...(IS_IPFS_BUILD && {
     output: "export",
