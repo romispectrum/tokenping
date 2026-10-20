@@ -156,24 +156,32 @@ describe("hero", () => {
     expect(screen.getByText("Telegram", { selector: ".badge" })).toBeTruthy();
   });
 
-  it("shows the 22 network logos, each named for assistive technology and on hover, and the coverage line", async () => {
+  it("shows the 22 network logos, each named once for assistive technology and on hover, and the coverage line", async () => {
     await renderHome();
     const strip = screen.getByRole("list", { name: "Networks" });
     const items = within(strip).getAllByRole("listitem");
+    // getByRole throws unless the item holds exactly one image that assistive technology reads.
+    const logos = items.map(item => within(item).getByRole("img"));
 
-    // The names are in the coverage section: here each one is read out or shown on hover only.
-    expect(items.map(item => item.textContent)).toEqual(NETWORKS);
-    expect(items.map(item => item.getAttribute("title"))).toEqual(NETWORKS);
-    items.forEach(item => expect(item.querySelector(".sr-only")?.textContent).toBe(item.textContent));
-    // The logos are served by this site and decorative.
-    const logos = [...strip.querySelectorAll("img")];
-    expect(logos).toHaveLength(NETWORKS.length);
-    expect(logos[0].getAttribute("src")).toBe("/network-icons/ethereum.webp");
-    logos.forEach(logo => {
-      expect(logo.getAttribute("alt")).toBe("");
-      expect(logo.closest("[aria-hidden='true']")).not.toBeNull();
+    // The names are in the coverage section: here each logo is the name, read out or shown on hover only, and no
+    // hidden text or title on the item repeats it.
+    expect(logos.map(logo => logo.getAttribute("alt"))).toEqual(NETWORKS);
+    expect(logos.map(logo => logo.getAttribute("title"))).toEqual(NETWORKS);
+    items.forEach(item => {
+      expect(item.textContent).toBe("");
+      expect(item.hasAttribute("title")).toBe(false);
     });
+    // The logos are served by this site.
+    expect(logos[0].getAttribute("src")).toBe("/network-icons/ethereum.webp");
     expect(screen.getByText("22 networks, 44 markets")).toBeTruthy();
+  });
+
+  it("gives every image on the page an alt, so none is left empty", async () => {
+    const { container } = await renderHome();
+    const images = [...container.querySelectorAll("img")];
+
+    expect(images.length).toBeGreaterThan(NETWORKS.length);
+    images.forEach(image => expect(image.getAttribute("alt")?.trim(), image.getAttribute("src") ?? "").toBeTruthy());
   });
 
   it("badges only the channels, each with a decorative glyph before its name", async () => {
@@ -346,9 +354,11 @@ describe("coverage", () => {
     ).toBeTruthy();
     expect(tiles).toHaveLength(NETWORKS.length);
     NETWORKS.forEach((name, index) => expect(within(tiles[index]).getByText(name)).toBeTruthy());
-    tiles.forEach(tile =>
-      expect(tile.querySelector("img")?.getAttribute("src")).toMatch(/^\/network-icons\/.+\.webp$/),
-    );
+    tiles.forEach(tile => {
+      expect(tile.querySelector("img")?.getAttribute("src")).toMatch(/^\/network-icons\/.+\.webp$/);
+      // The written name is read, the logo beside it is not.
+      expect(within(tile).queryByRole("img")).toBeNull();
+    });
     expect(within(tiles[0]).getByText("4 V3 markets · 13 V4 Spokes")).toBeTruthy();
     expect(within(tiles[1]).getByText("1 V3 market")).toBeTruthy();
     expect(within(tiles[4]).getByText("1 V3 market · 1 V4 Spoke")).toBeTruthy();

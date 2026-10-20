@@ -149,3 +149,6 @@ legends, 700 for table headers and stat values), so the Scaffold-ETH screens mat
   icon-only controls).
 - Icons are lucide-react, `size-4` in controls and `size-5` or `size-6` with `strokeWidth={1.5}` in content;
   decorative icons are `aria-hidden`, icon-only buttons have an `aria-label`.
+- No `<img>` has an empty alt (SEO checkers flag one). A logo beside its written name (`NetworkIcon`, `TokenIcon`)
+  takes the name as alt and is `aria-hidden`, so the name is read once; a logo on its own (`NetworkIcon standalone`,
+  the hero's network strip) is the name, in its alt and as a hover `title`.
