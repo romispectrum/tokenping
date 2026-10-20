@@ -69,6 +69,8 @@ user's theme is dark, for UI that reports the theme, such as the toggle's icon.
 
 - **Satoshi** for every word (`font-sans`, the default). **Geist Mono** through `font-data` for addresses, hashes,
   transaction ids and numbers compared digit by digit, nothing else.
+- Both load through `next/font` in `components/RootDocument.tsx`, with `display: "swap"` and a metric-matched fallback.
+  Only Satoshi's upright face is preloaded; its italic (same family) and Geist Mono load on the pages that use them.
 - Weights: 400 body; 500 headings, buttons, labels, nav (`h1` to `h6` are 500 already); 700 only for data emphasis
   (table headers, totals, key numbers, kickers, the uppercase `brand` badge). Never 600.
 - Marketing: `text-display` (hero h1), `text-section` (section h2), `text-lead` (sublines), `Kicker`. Product UI:
