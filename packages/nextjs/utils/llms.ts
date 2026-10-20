@@ -20,6 +20,7 @@ import { SEO_MESSAGES } from "~~/i18n/messages/seo";
 import { postPath, routePath } from "~~/i18n/routes";
 import { formatAlertChannelsIn } from "~~/services/marketing/alertChannels";
 import { getPaymentChainName } from "~~/services/marketing/paymentChain";
+import { AAVE_ALERTS_SKILL_DESCRIPTION, aaveAlertsSkillPath } from "~~/utils/agentSkills";
 import { SITE_NAME, absoluteUrl } from "~~/utils/seo";
 
 const link = (title: string, path: string, notes?: string) =>
@@ -85,6 +86,7 @@ export const buildLlmsTxt = () => {
     "## Optional",
     "",
     link("Sitemap", "/sitemap.xml", "every page, with its English and Czech versions"),
+    link("Agent skill: Aave health factor alerts", aaveAlertsSkillPath(), AAVE_ALERTS_SKILL_DESCRIPTION),
     link(SEO_MESSAGES.en.rssTitle, routePath("en", "blogFeed"), "new guides in English"),
     link(SEO_MESSAGES.cs.rssTitle, routePath("cs", "blogFeed"), "new guides in Czech"),
     "",

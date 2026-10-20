@@ -3,6 +3,7 @@ import { GET } from "~~/app/llms.txt/route";
 import { getPublishedPosts, hubSlug } from "~~/content/blog";
 import { LOCALES } from "~~/i18n/locales";
 import { postPath } from "~~/i18n/routes";
+import { AAVE_ALERTS_SKILL_DESCRIPTION, aaveAlertsSkillPath } from "~~/utils/agentSkills";
 import { buildLlmsTxt } from "~~/utils/llms";
 
 const text = buildLlmsTxt();
@@ -54,6 +55,12 @@ describe("llms.txt", () => {
       return getPublishedPosts("en").find(({ meta }) => meta.slug === slug)?.meta.publishedAt ?? "";
     });
     expect(dates).toEqual([...dates].sort().reverse());
+  });
+
+  it("lists the agent skill under Optional, with the description the skills index gives it", () => {
+    expect(section("Optional")).toContain(
+      `- [Agent skill: Aave health factor alerts](https://tokenping.xyz${aaveAlertsSkillPath()}): ${AAVE_ALERTS_SKILL_DESCRIPTION}`,
+    );
   });
 
   it("links the Czech pages under /cz in the Czech section", () => {
