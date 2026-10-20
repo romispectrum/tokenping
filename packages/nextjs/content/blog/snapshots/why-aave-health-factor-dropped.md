@@ -121,7 +121,7 @@ made whole.
 ## Tokenping facts used (product.md, code on branch feat/blog-seo, 2026-10-14)
 
 Checks every 5 minutes (`vercel.json`, `NOTIFICATION_CHECK_INTERVAL_MINUTES`); since 2026-10-16 every Aave V3 market on 21 networks (24 markets, Ethereum's four included, Harmony left out) and every Aave V4 Spoke (Ethereum, Avalanche, Arc, Base), so 22 networks in all; before that day 7 networks, Ethereum Core pool only
-(`config/aaveConfig.ts`); Signal or email (articles name these two only, per the build spec); threshold 1.1-10
+(`config/aaveConfig.ts`); Signal or email (articles name these two only, per the build spec; superseded 2026-10-20: Signal, Telegram or email, see the update at the end); threshold 1.1-10
 (`constants/notifications.ts`); alerts repeat on every check while below the threshold and there is no recovery message
 (`services/notifications/runNotificationCheck.ts`); they stop when HF recovers or the config is deleted (product.md §4.3), and editing (the article's "lower the threshold") or
 deleting a config requires active paid access (product.md §5.4). The article does not say that alerts continue after expiry (§5.4/§11). The alert price is not in the article body; the page template's end box reads it
@@ -135,3 +135,14 @@ on-chain.
 - Who received the AFC's WETH outflows and whether each user was paid in full (not checked; a forum user wrote on 2026-04-01 that one
   payment looked ~20 WETH short). The article says individual payouts were not checked.
 - Deployed Risk Steward `maxPercentChange` / `minDelay` values for LT (UNVERIFIED).
+
+## Update of 2026-10-20
+
+The post now names Telegram next to Signal and email as Tokenping's alert channels, in English and Czech: EN "messages you on Signal, Telegram or email", CS "posílá vám zprávy přes Signal, Telegram nebo e-mail".
+`updatedAt` moved to 2026-10-20 in both languages; nothing else in the post changed and no other figure was re-read.
+Basis: the code at `d9b351f` (`main`) sends each alert by email, Signal and Telegram
+(`packages/nextjs/services/notifications/runNotificationCheck.ts:77-98`); the alert form offers Telegram while
+`NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` is set (`packages/nextjs/constants/notifications.ts:24-28`), and production has it
+set (the live homepage title read "Aave health factor alerts on Signal, Telegram and email" on 2026-10-20). The build
+spec's rule that articles name Signal and email only was dropped in `b7623e4` (2026-10-19); the earlier entry that cites it
+is kept as history and marked superseded.
