@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { RainbowKitProvider, type Theme, darkTheme, lightTheme, useConnectModal } from "@rainbow-me/rainbowkit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
@@ -101,6 +102,13 @@ export const queryClient = new QueryClient({
   },
 });
 
+// RainbowKit's stylesheet only styles its modals, which nobody can open before hydration, so it loads in the browser
+// afterwards instead of being inlined into every page's HTML.
+const RainbowKitStyles = dynamic(
+  () => import("~~/components/RainbowKitStyles").then(module => module.RainbowKitStyles),
+  { ssr: false },
+);
+
 /** Ends the alert settings' session when the wallet disconnects. Needs the wagmi and react-query providers above it. */
 const SignOutOnDisconnect = () => {
   useSignOutOnDisconnect();
@@ -131,6 +139,7 @@ export const ScaffoldEthAppWithProviders = ({ children }: { children: React.Reac
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <ProgressBar height="3px" color="var(--link)" />
+        <RainbowKitStyles />
         <SignOutOnDisconnect />
         <RainbowKitProvider avatar={BlockieAvatar} theme={brandRainbowKitTheme(mounted && isDarkMode)}>
           <StartWalletSdksWithConnectModal />
