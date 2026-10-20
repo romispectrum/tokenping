@@ -41,7 +41,7 @@ type CommonMessages = {
     telegramLabel: string;
     signalLabel: string;
     privacy: string;
-    /** The donation block under the tagline: its heading, and the address's name for screen readers. */
+    /** The donation block under the tagline: its title, and the address's name for screen readers. */
     donate: string;
     donationAddress: string;
     independence: string;
