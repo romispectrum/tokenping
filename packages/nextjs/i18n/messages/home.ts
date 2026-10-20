@@ -285,9 +285,9 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
           answer: rich(
             "Your wallet address, your alerts and the contact details you give (email, Signal username",
             hasTelegram ? ", Telegram chat" : "",
-            "). No history and no cookies; page views are counted anonymously. Payments are public on ",
+            "). No history and no tracking cookies; page views are counted anonymously. Only someone who can sign with your wallet can read those contact details, but payments are public on ",
             chainName,
-            ", and until wallet signatures are checked, anyone who knows your address can read its contact details. The ",
+            ". The ",
             links.privacy("privacy page"),
             " has the full list.",
           ),
@@ -502,7 +502,7 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
           answer: rich(
             "Adresu vaší peněženky, vaše upozornění a kontakty, které zadáte (e-mail, jméno na Signalu",
             hasTelegram ? ", chat na Telegramu" : "",
-            `). Žádnou historii a žádné cookies; zobrazení stránek počítáme anonymně. Platby jsou ${onChain} veřejné a dokud neověřujeme podpisy peněženky, může si kontakty uložené k adrese zobrazit kdokoli, kdo ji zná. Úplný seznam má `,
+            `). Žádnou historii a žádné sledovací cookies; zobrazení stránek počítáme anonymně. Uložené kontakty si zobrazí jen ten, kdo umí podepisovat vaší peněženkou, ale platby jsou ${onChain} veřejné. Úplný seznam má `,
             links.privacy("stránka o ochraně soukromí"),
             ".",
           ),

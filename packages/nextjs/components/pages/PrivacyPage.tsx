@@ -47,8 +47,8 @@ const PolicySection = ({ title, children }: PolicySectionProps) => (
 
 /**
  * Plain-language data page, written from the code. It must not call the product
- * "private" or "secure": settings are tied to a wallet address without a wallet-ownership check yet, so the config
- * and Telegram link reads answer anyone who sends an address, and writes only check that address's paid access.
+ * "private" or "secure": payments are public on chain, and the people who run Tokenping and its hosts can read what
+ * is stored. Alert settings are read and changed only for the wallet signed in with SIWE (services/api/server).
  */
 /** The privacy page of one language; app/(en)/privacy and app/(cs)/cz/ochrana-soukromi render it. */
 export const PrivacyPage = ({ locale }: { locale: Locale }) => {

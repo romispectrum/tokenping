@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SOCIAL_LINKS } from "~~/constants/links";
+import { SOCIAL_LINKS, SOURCE_CODE_URL } from "~~/constants/links";
 import type { PostMeta } from "~~/content/blog/types";
 import { DEFAULT_LOCALE, LOCALES, LOCALE_INFO, type Locale, type Localized } from "~~/i18n/locales";
 import { SEO_MESSAGES } from "~~/i18n/messages/seo";
@@ -16,10 +16,10 @@ export const TWITTER_HANDLE = "@tokenping";
 export const ORGANIZATION_ID = `${SITE_URL}/#organization`;
 export const WEBSITE_ID = `${SITE_URL}/#website`;
 /**
- * Profiles that identify the Organization (the highest-value JSON-LD field for entity resolution). The GitHub repo
- * (https://github.com/romispectrum/tokenping) joins once the repository is public.
+ * Profiles that identify the Organization (the highest-value JSON-LD field for entity resolution). The Signal group
+ * invite is left out: it is a join link, not a public profile.
  */
-export const SAME_AS = [SOCIAL_LINKS.x, SOCIAL_LINKS.telegram];
+export const SAME_AS = [SOCIAL_LINKS.x, SOCIAL_LINKS.telegram, SOURCE_CODE_URL];
 /** 512x512 PNG of the Tokenping mark, served by app/logo.png/route.tsx. */
 export const LOGO_PATH = "/logo.png";
 const OG_SIZE = { width: 1200, height: 630 };
