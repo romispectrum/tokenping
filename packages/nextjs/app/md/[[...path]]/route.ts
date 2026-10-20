@@ -4,6 +4,7 @@ import { LOCALES } from "~~/i18n/locales";
 import { routePath } from "~~/i18n/routes";
 import { MARKDOWN_CONTENT_TYPE, acceptsMarkdown, estimateTokens, htmlToMarkdown } from "~~/utils/markdown";
 import { CONTENT_SIGNAL } from "~~/utils/robots";
+import { SITE_URL } from "~~/utils/seo";
 
 // Markdown for agents: next.config.ts rewrites a public page requested with `Accept: text/markdown` here, and this
 // answers with the page's own HTML (fetched from this deployment) converted by utils/markdown.ts. Only pages the
@@ -35,14 +36,23 @@ type MarkdownRouteContext = {
 
 const notFound = () => new Response(null, { status: 404 });
 
+// NextURL already turns 127.0.0.1 and [::1] into localhost.
+const TRUSTED_HOSTNAMES = new Set(["localhost", new URL(SITE_URL).hostname]);
+
+/**
+ * The page is fetched from the request's own origin. On Vercel the Host is always one of this project's domains;
+ * anywhere else (next start behind a proxy) a forged Host would pick what the server fetches, so only this machine and
+ * the site itself are trusted there.
+ */
+const isTrustedOrigin = ({ hostname }: URL) => process.env.VERCEL === "1" || TRUSTED_HOSTNAMES.has(hostname);
+
 export const GET = async (request: NextRequest, { params }: MarkdownRouteContext) => {
   if (!acceptsMarkdown(request.headers.get("accept"))) return notFound();
   const path = `/${(await params).path?.join("/") ?? ""}`;
   const canonical = CANONICAL_URLS.get(path);
-  if (!canonical) return notFound();
+  if (!canonical || !isTrustedOrigin(request.nextUrl)) return notFound();
 
-  // Same origin as the request, which on Vercel is one of this project's domains. Accept: text/html, so the rewrite
-  // does not send this fetch back here.
+  // Accept: text/html, so the rewrite does not send this fetch back here.
   let markdown: string | undefined;
   try {
     const page = await fetch(new URL(path, request.nextUrl.origin), {

@@ -10,8 +10,8 @@ const page = (main: string, head = "<title>Guide | Tokenping</title>") =>
   `<main id="main">${main}</main>` +
   `<footer><a href="/privacy">Privacy</a></footer></body></html>`;
 
-/** The markdown after the front matter. */
-const body = (main: string) => htmlToMarkdown(page(main), PAGE_URL)?.split("---\n\n")[1];
+/** The markdown after the front matter, which ends at the second "---" line. */
+const body = (main: string) => htmlToMarkdown(page(main), PAGE_URL)?.split(/^---$/m).slice(2).join("---").slice(2);
 
 describe("htmlToMarkdown", () => {
   it("converts <main> to markdown with front matter, a GFM table and absolute links", () => {
@@ -78,6 +78,28 @@ describe("htmlToMarkdown", () => {
     ).toBe("Rated five.\n\n![Alert email](https://tokenping.xyz/alert.png)\n");
   });
 
+  it("drops forms, live regions and what a desktop browser hides", () => {
+    expect(
+      body(
+        [
+          '<form><label>Amount supplied<input name="amount"></label></form>',
+          "<h4>Result</h4>",
+          '<p role="status" class="sr-only">Health factor: 1.66.</p><p aria-live="polite">Loading</p>',
+          "<p>Health factor 1.66</p>",
+          '<p class="sr-only">For screen readers</p>',
+          '<p class="mt-2 text-sm md:hidden">Scroll sideways to see every column.</p>',
+          '<p class="hidden">Toggled by a script</p><p class="hidden sm:block">Shown from sm up</p>',
+        ].join(""),
+      ),
+    ).toBe("#### Result\n\nHealth factor 1.66\n\nFor screen readers\n\nShown from sm up\n");
+  });
+
+  it("keeps the line breaks that whitespace-pre-line shows", () => {
+    expect(body('<blockquote class="whitespace-pre-line">Below 1.5.\n\nSent at: 03:05</blockquote>')).toBe(
+      "> Below 1.5.\\\n> Sent at: 03:05\n",
+    );
+  });
+
   it("drops React's <!-- --> text separators", () => {
     expect(body("<p>Below <!-- -->1.5<!-- --> now</p>")).toBe("Below 1.5 now\n");
   });
@@ -110,6 +132,15 @@ describe("htmlToMarkdown", () => {
           "<span>Published <time>14 October 2026</time></span></p>",
       ),
     ).toBe("By the team Published 14 October 2026\n");
+  });
+
+  it("separates the items of an inline-flex box, or of a flex box inside a paragraph, with a space", () => {
+    expect(
+      body(
+        '<p>Pay <span class="flex gap-1"><img alt="USDC" src="/usdc.png"><span>USDC</span></span> now</p>' +
+          '<div><span class="inline-flex gap-1"><span>3 USDC</span><span>per 30 days</span></span></div>',
+      ),
+    ).toBe("Pay ![USDC](https://tokenping.xyz/usdc.png) USDC now\n\n3 USDC per 30 days\n");
   });
 
   it("keeps a definition list whose terms are grouped in flex <div>s", () => {
