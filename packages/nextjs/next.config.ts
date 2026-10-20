@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
   // and no .mdx file sits under app/, so this adds no MDX routes.
   pageExtensions: ["tsx", "ts", "jsx", "js", "mdx"],
   reactStrictMode: true,
+  // No "X-Powered-By: Next.js" header: it tells scanners the framework and helps nobody.
+  poweredByHeader: false,
   // Each language has its own root layout (app/(en), app/(cs)), so a URL that matches no route needs
   // app/global-not-found.tsx, which brings its own <html>.
   experimental: {

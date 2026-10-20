@@ -51,6 +51,7 @@ describe("next.config", () => {
     expect(config).toEqual({
       pageExtensions: ["tsx", "ts", "jsx", "js", "mdx"],
       reactStrictMode: true,
+      poweredByHeader: false,
       devIndicators: false,
       typescript: { ignoreBuildErrors: false },
       eslint: { ignoreDuringBuilds: false, dirs: LINT_DIRS },
@@ -61,6 +62,7 @@ describe("next.config", () => {
     expect(Object.keys(config)).toEqual([
       "pageExtensions",
       "reactStrictMode",
+      "poweredByHeader",
       "experimental",
       "devIndicators",
       "typescript",
@@ -92,6 +94,7 @@ describe("next.config", () => {
     expect(Object.keys(ipfs)).toEqual([
       "pageExtensions",
       "reactStrictMode",
+      "poweredByHeader",
       "experimental",
       "devIndicators",
       "typescript",
