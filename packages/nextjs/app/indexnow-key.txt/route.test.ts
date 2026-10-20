@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GET } from "~~/app/indexnow-key.txt/route";
-import robots from "~~/app/robots";
 import { INDEXNOW_KEY_PATH } from "~~/utils/indexNow";
+import { buildRobotsTxt } from "~~/utils/robots";
 
 const KEY = "0123456789abcdef0123456789abcdef";
 
@@ -58,10 +58,10 @@ describe("GET /indexnow-key.txt", () => {
 
   // The engines fetch the key file before they trust a submission; a robots.txt Disallow would hide it from them.
   it("is not disallowed for crawlers", () => {
-    const { rules } = robots();
-    const disallowed = (Array.isArray(rules) ? rules : [rules]).flatMap(({ disallow = [] }) =>
-      Array.isArray(disallow) ? disallow : [disallow],
-    );
+    const disallowed = buildRobotsTxt()
+      .split("\n")
+      .filter(line => line.startsWith("Disallow: "))
+      .map(line => line.slice("Disallow: ".length));
 
     expect(disallowed.filter(path => INDEXNOW_KEY_PATH.startsWith(path))).toEqual([]);
   });
