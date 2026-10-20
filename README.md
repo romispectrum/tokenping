@@ -52,8 +52,9 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs o
   `search=yes, ai-input=yes, ai-train=yes`, `/llms.txt` lists the pages and guides for AI tools, both homepages send
   an RFC 8288 `Link` header to it, the RSS feed and the privacy page (`next.config.ts`), `/.well-known/agent-skills/`
   lists one agent skill for assistants that help a borrower with health factor alerts (`utils/agentSkills.ts`, built
-  from the same constants as the pages, with its digest taken from the served text), and the site-wide JSON-LD names the
-  X, Telegram and GitHub profiles. Every page is server-rendered, so crawlers that run no JavaScript
+  from the same constants as the pages, with its digest taken from the served text), `/.well-known/ard.json` (and the
+  older `ai-catalog.json`) lists that skill in an Agentic Resource Discovery manifest (`utils/ard.ts`), and the
+  site-wide JSON-LD names the X, Telegram and GitHub profiles. Every page is server-rendered, so crawlers that run no JavaScript
   read the full text. A request for a sitemap page with `text/markdown` in its `Accept` header gets the page as
   markdown (`text/markdown; charset=utf-8`): front matter with its title, description, canonical URL and language,
   then its `<main>` with GFM tables and absolute links. `next.config.ts` rewrites only those requests, and only page
