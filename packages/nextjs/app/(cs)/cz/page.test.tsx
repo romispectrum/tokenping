@@ -153,9 +153,10 @@ describe("Czech copy", () => {
     const items = within(strip).getAllByRole("listitem");
 
     expect(items).toHaveLength(NETWORK_COUNT);
-    expect(items.slice(0, 2).map(item => item.textContent)).toEqual(["Ethereum", "Polygon"]);
-    expect(items.at(-1)?.textContent).toBe("Arc");
-    items.forEach(item => expect(item.querySelector(".sr-only")?.textContent).toBe(item.textContent));
+    const logos = items.map(item => within(item).getByRole("img"));
+    expect(logos.slice(0, 2).map(logo => logo.getAttribute("alt"))).toEqual(["Ethereum", "Polygon"]);
+    expect(logos.at(-1)?.getAttribute("alt")).toBe("Arc");
+    items.forEach(item => expect(item.textContent).toBe(""));
     expect(strip.querySelectorAll("img")).toHaveLength(NETWORK_COUNT);
     expect(screen.getByText("22 sítí, 44 trhů")).toBeTruthy();
     expect(screen.getAllByText(/.+/, { selector: ".badge" }).map(badge => badge.textContent)).toEqual([

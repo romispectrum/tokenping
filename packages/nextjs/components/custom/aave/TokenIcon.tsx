@@ -18,7 +18,8 @@ export const initialOf = (symbol: string) =>
 /**
  * A 24px icon for an Aave reserve, from CoinGecko but served by this site (scripts/fetchTokenIcons.ts), so the
  * browser never contacts CoinGecko. A reserve CoinGecko had no logo for gets its initial on a muted disc. Always
- * decorative: the symbol is written next to it.
+ * decorative, the symbol is written next to it: the icon is aria-hidden, with the symbol as alt only because SEO
+ * checkers flag an empty one (NetworkIcon does the same).
  */
 export const TokenIcon = ({ chainId, address, symbol }: TokenIconProps) => {
   const icon = TOKEN_ICONS[tokenIconKey(chainId, address)];
@@ -33,5 +34,15 @@ export const TokenIcon = ({ chainId, address, symbol }: TokenIconProps) => {
     );
   }
   // Already a 64px WebP: the optimizer has nothing to add, and the static IPFS export has no optimizer at all.
-  return <Image src={tokenIconSrc(icon)} alt="" width={24} height={24} unoptimized className={ICON_CLASS} />;
+  return (
+    <Image
+      src={tokenIconSrc(icon)}
+      alt={symbol}
+      aria-hidden="true"
+      width={24}
+      height={24}
+      unoptimized
+      className={ICON_CLASS}
+    />
+  );
 };

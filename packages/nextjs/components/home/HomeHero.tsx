@@ -34,7 +34,7 @@ const CHANNEL_ICONS: Record<string, LucideIcon> = {
 
 /**
  * Every network Tokenping reads, as its logo (served by this site, like the token icons): the names are in the
- * coverage section, so the strip reads at a glance and names each one only for assistive tech and on hover.
+ * coverage section, so the strip reads at a glance and each logo names its network for assistive tech and on hover.
  */
 const NetworkLogoStrip = ({ locale }: { locale: Locale }) => {
   const t = HOME_MESSAGES[locale];
@@ -45,9 +45,8 @@ const NetworkLogoStrip = ({ locale }: { locale: Locale }) => {
         className="m-0 flex max-w-sm list-none flex-wrap justify-center gap-1.5 p-0 lg:justify-start"
       >
         {getNetworkBadges().map(({ chainId, name }) => (
-          <li key={chainId} title={name} className="m-0 p-0">
-            <NetworkIcon chainId={chainId} name={name} className="size-7" />
-            <span className="sr-only">{name}</span>
+          <li key={chainId} className="m-0 p-0">
+            <NetworkIcon chainId={chainId} name={name} standalone className="size-7" />
           </li>
         ))}
       </ul>

@@ -15,7 +15,8 @@ describe("TokenIcon", () => {
 
     expect(icon).toBeDefined();
     expect(html).toContain(`src="/token-icons/${icon}.webp"`);
-    expect(html).toContain('alt=""');
+    // Named for crawlers, which flag an empty alt, but hidden from assistive technology: the symbol is read once.
+    expect(html).toMatch(/^<img alt="USDC" aria-hidden="true" /);
     expect(html).toContain('width="24" height="24"');
     // Never routed through the image optimizer, and never a CoinGecko URL: the browser only talks to this site.
     expect(html).not.toContain("/_next/image");

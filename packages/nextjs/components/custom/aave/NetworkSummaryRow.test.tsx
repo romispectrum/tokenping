@@ -21,7 +21,7 @@ describe("NetworkSummaryRow", () => {
     );
 
     expect(html.match(NETWORK_ICON)?.[1]).toBe("ethereum");
-    expect(html).toMatch(/<span aria-hidden="true" class="[^"]*size-5[^"]*">\s*<img [^>]*alt=""/);
+    expect(html).toMatch(/<span aria-hidden="true" class="[^"]*size-5[^"]*">\s*<img [^>]*alt="Ethereum"/);
     expect(html.indexOf("<img")).toBeLessThan(html.indexOf('<span class="truncate">Ethereum</span>'));
   });
 

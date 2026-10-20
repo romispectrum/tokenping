@@ -36,7 +36,7 @@ describe("PositionDetails", () => {
     const html = renderMarkup(<PositionDetails position={ETHEREUM_POSITION} />);
     const header = html.slice(0, html.indexOf("<h3"));
 
-    expect(header).toMatch(/<span aria-hidden="true" class="[^"]*size-8[^"]*">\s*<img [^>]*alt=""/);
+    expect(header).toMatch(/<span aria-hidden="true" class="[^"]*size-8[^"]*">\s*<img [^>]*alt="Ethereum"/);
     expect(header).toContain('src="/network-icons/ethereum.webp"');
     expect(html.match(/network-icons/g)).toHaveLength(1);
   });
