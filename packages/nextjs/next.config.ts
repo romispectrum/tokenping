@@ -31,6 +31,11 @@ const nextConfig: NextConfig = {
   // app/global-not-found.tsx, which brings its own <html>.
   experimental: {
     globalNotFound: true,
+    // The CSS goes into each page's <head> (production builds only) instead of two render-blocking stylesheet
+    // requests, so the hero paints as soon as the HTML arrives. Most visits are first visits from search, which had
+    // no cached CSS to gain from. The cost: every HTML response carries the CSS, twice (the <style> and the RSC
+    // payload), about 35 KB more with brotli. Client-side navigation still loads stylesheets.
+    inlineCss: true,
   },
   devIndicators: false,
   typescript: {
