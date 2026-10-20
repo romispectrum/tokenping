@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 import { readdirSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { LOCALES } from "~~/i18n/locales";
+import { routePath } from "~~/i18n/routes";
 
 // next.config reads env vars at module load, so every case imports a fresh copy.
 const loadNextConfig = async (env: Record<string, string | undefined>): Promise<NextConfig> => {
@@ -56,6 +58,7 @@ describe("next.config", () => {
       typescript: { ignoreBuildErrors: false },
       eslint: { ignoreDuringBuilds: false, dirs: LINT_DIRS },
       webpack: expect.any(Function),
+      headers: expect.any(Function),
       // One root layout per language needs app/global-not-found.tsx for URLs that match no route.
       experimental: { globalNotFound: true },
     });
@@ -68,7 +71,28 @@ describe("next.config", () => {
       "typescript",
       "eslint",
       "webpack",
+      "headers",
     ]);
+  });
+
+  it("sends a Link header on each homepage pointing at llms.txt and that language's feed and privacy page", async () => {
+    const config = await loadNextConfig({ NEXT_PUBLIC_IPFS_BUILD: undefined });
+
+    expect(await config.headers!()).toEqual(
+      LOCALES.map(locale => ({
+        source: routePath(locale, "home"),
+        headers: [
+          {
+            key: "Link",
+            value: [
+              '</llms.txt>; rel="describedby"; type="text/plain"',
+              `<${routePath(locale, "blogFeed")}>; rel="alternate"; type="application/rss+xml"`,
+              `<${routePath(locale, "privacy")}>; rel="privacy-policy"`,
+            ].join(", "),
+          },
+        ],
+      })),
+    );
   });
 
   // Build checks are skipped only when NEXT_PUBLIC_IGNORE_BUILD_ERROR is exactly "true".
@@ -104,6 +128,7 @@ describe("next.config", () => {
       "trailingSlash",
       "images",
     ]);
+    expect(ipfs).not.toHaveProperty("headers");
     expect(ipfs.output).toBe("export");
     expect(ipfs.trailingSlash).toBe(true);
     expect(ipfs.images).toEqual({ unoptimized: true });
