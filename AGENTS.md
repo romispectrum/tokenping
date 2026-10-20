@@ -139,6 +139,10 @@ hex values or Tailwind palette colours in components.
 <button className="px-4 py-2 bg-blue-500 text-white rounded">Connect</button>
 ```
 
+Production builds inline the CSS into every page's `<head>` (`experimental.inlineCss`), so a stylesheet imported by
+the root document weighs on every page's HTML. Load a stylesheet that only some UI needs with that UI, the way
+`components/RainbowKitStyles.tsx` loads RainbowKit's modal styles after hydration.
+
 ### Languages and copy
 
 The site is English and Czech. Every user-facing string lives in `i18n/messages/<area>.ts` with both languages, and
