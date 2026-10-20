@@ -52,8 +52,10 @@ describe("CoverageGrid", () => {
       const logo = tile.querySelector("img");
 
       expect(logo?.getAttribute("src"), name).toBe(`/network-icons/${NETWORK_ICONS[chain.id]}.webp`);
-      expect(logo?.getAttribute("alt")).toBe("");
+      // The logo is named for crawlers but hidden from assistive technology, so the written name is read once.
+      expect(logo?.getAttribute("alt")).toBe(name);
       expect(logo?.closest("[aria-hidden='true']")).not.toBeNull();
+      expect(within(tile as HTMLElement).queryByRole("img")).toBeNull();
       expect(within(tile as HTMLElement).getByText(name)).toBeTruthy();
     });
     expect(within(tiles[0] as HTMLElement).getByText("4 V3 markets · 13 V4 Spokes")).toBeTruthy();
