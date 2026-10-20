@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RainbowKitProvider, type Theme, darkTheme, lightTheme } from "@rainbow-me/rainbowkit";
+import { RainbowKitProvider, type Theme, darkTheme, lightTheme, useConnectModal } from "@rainbow-me/rainbowkit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
 import { useTheme } from "next-themes";
@@ -13,6 +13,7 @@ import { Header } from "~~/components/Header";
 import { BlockieAvatar } from "~~/components/scaffold-eth";
 import { useSignOutOnDisconnect } from "~~/hooks/custom/useWalletSession";
 import { SignInRequiredError } from "~~/services/api/apiClient";
+import { startWalletSdks } from "~~/services/web3/deferWalletSdks";
 import { wagmiConfig } from "~~/services/web3/wagmiConfig";
 
 /**
@@ -106,6 +107,17 @@ const SignOutOnDisconnect = () => {
   return null;
 };
 
+/** Starts the wallet SDKs that wait for the connect modal (deferWalletSdks). Needs RainbowKit's provider above it. */
+export const StartWalletSdksWithConnectModal = () => {
+  const { connectModalOpen } = useConnectModal();
+
+  useEffect(() => {
+    if (connectModalOpen) startWalletSdks();
+  }, [connectModalOpen]);
+
+  return null;
+};
+
 export const ScaffoldEthAppWithProviders = ({ children }: { children: React.ReactNode }) => {
   const { resolvedTheme } = useTheme();
   const isDarkMode = resolvedTheme === "dark";
@@ -121,6 +133,7 @@ export const ScaffoldEthAppWithProviders = ({ children }: { children: React.Reac
         <ProgressBar height="3px" color="var(--link)" />
         <SignOutOnDisconnect />
         <RainbowKitProvider avatar={BlockieAvatar} theme={brandRainbowKitTheme(mounted && isDarkMode)}>
+          <StartWalletSdksWithConnectModal />
           <ScaffoldEthApp>{children}</ScaffoldEthApp>
         </RainbowKitProvider>
       </QueryClientProvider>

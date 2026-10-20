@@ -10,6 +10,7 @@ import {
 import { rainbowkitBurnerWallet } from "burner-connector";
 import * as chains from "viem/chains";
 import scaffoldConfig from "~~/scaffold.config";
+import { deferWalletSdk } from "~~/services/web3/deferWalletSdks";
 
 const { onlyLocalBurnerWallet, targetNetworks } = scaffoldConfig;
 
@@ -26,7 +27,8 @@ const wallets = [
 ];
 
 /**
- * wagmi connectors for the wagmi context
+ * wagmi connectors for the wagmi context. Wallet SDKs that call their own servers start when the connect modal opens
+ * (deferWalletSdks), not on every page load.
  */
 export const wagmiConnectors = () => {
   // Only create connectors on client-side to avoid SSR issues
@@ -47,5 +49,5 @@ export const wagmiConnectors = () => {
       appName: "Tokenping",
       projectId: scaffoldConfig.walletConnectProjectId,
     },
-  );
+  ).map(deferWalletSdk);
 };
