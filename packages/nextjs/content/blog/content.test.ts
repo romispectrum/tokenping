@@ -65,8 +65,11 @@ const BANNED_PATTERNS: readonly BannedPattern[] = [
   { pattern: /\binstant(?:ly|aneous|aneously)?\b/i, reason: "'instant' (alerts are checked every 5 minutes)" },
   { pattern: /\bmulti[- ]?protocol\b/i, reason: "'multi-protocol' (only Aave is supported)" },
   { pattern: /\bopen[- ]source[- ]licen[cs]ed\b/i, reason: "'open-source licensed' (the repo has no LICENSE)" },
-  { pattern: /\bsecure settings\b/i, reason: "'secure settings' (settings are not access-controlled)" },
-  { pattern: /\bonly you can see\b/i, reason: "'only you can see' (settings are not access-controlled)" },
+  { pattern: /\bsecure settings\b/i, reason: "'secure settings' (Tokenping's operators and hosts can read them)" },
+  {
+    pattern: /\bonly you can see\b/i,
+    reason: "'only you can see' (Tokenping's operators and hosts can read settings)",
+  },
   {
     pattern: /\balerts? (?:keeps?|continues?) (?:running|working|firing|coming) after\b/i,
     reason: "'alerts keep running after your subscription ends' must not be marketed",

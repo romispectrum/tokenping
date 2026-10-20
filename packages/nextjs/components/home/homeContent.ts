@@ -93,7 +93,8 @@ export const getPricingCtaLabel = (plan: AlertPlan | null, locale: Locale = DEFA
 
 /**
  * The Offer for the price the page shows: `{ price: "3", priceCurrency: "USDC" }` from the plan's "3 USDC" label.
- * Undefined when there is no plan, so the JSON-LD never carries a price the visitor cannot see.
+ * Undefined when there is no plan, so the JSON-LD never carries a price the visitor cannot see. A plan exists only
+ * while the paywall sells it (services/marketing/alertPlan), so it is always InStock.
  */
 export const getAlertPlanOffer = (plan: AlertPlan | null, locale: Locale = DEFAULT_LOCALE) => {
   const match = plan?.priceLabel.match(/^(\d+(?:\.\d+)?) ([A-Za-z0-9.]+)$/);
@@ -102,6 +103,7 @@ export const getAlertPlanOffer = (plan: AlertPlan | null, locale: Locale = DEFAU
     "@type": "Offer",
     price: match[1],
     priceCurrency: match[2],
+    availability: "https://schema.org/InStock",
     description: HOME_MESSAGES[locale].offerDescription({ days: plan.days, currency: match[2] }),
     url: absoluteUrl(routePath(locale, "dashboard")),
   };

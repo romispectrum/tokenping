@@ -127,6 +127,7 @@ describe("getAlertPlanOffer", () => {
       "@type": "Offer",
       price: "3",
       priceCurrency: "USDC",
+      availability: "https://schema.org/InStock",
       description: "Health factor alerts for 30 days, paid in USDC from your wallet. No auto-renew.",
       url: "https://tokenping.xyz/aave",
     });

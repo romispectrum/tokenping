@@ -479,12 +479,12 @@ describe("objections", () => {
     expect(pageText(telegram.container)).toContain("In Telegram, /stop works too.");
   });
 
-  it("says who can look up saved contact details, and points to the privacy page", async () => {
+  it("says only the wallet's signer can read saved contact details, and points to the privacy page", async () => {
     await renderHome();
     const answer = screen.getByRole("heading", { name: "What do you store?" }).nextElementSibling!.textContent;
 
     expect(answer).toContain(
-      "Payments are public on Arbitrum One, and until wallet signatures are checked, anyone who knows your address can read its contact details. The privacy page has the full list.",
+      "Only someone who can sign with your wallet can read those contact details, but payments are public on Arbitrum One. The privacy page has the full list.",
     );
   });
 
