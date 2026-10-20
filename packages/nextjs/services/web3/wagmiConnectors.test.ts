@@ -3,9 +3,15 @@ import { describe, expect, it, vi } from "vitest";
 import scaffoldConfig from "~~/scaffold.config";
 import { wagmiConnectors } from "~~/services/web3/wagmiConnectors";
 
-const { connectorsForWallets } = vi.hoisted(() => ({ connectorsForWallets: vi.fn(() => []) }));
+const { connectorsForWallets } = vi.hoisted(() => ({
+  connectorsForWallets: vi.fn((): unknown[] => ["walletConnectConnector", "baseAccountConnector"]),
+}));
 
 vi.mock("@rainbow-me/rainbowkit", () => ({ connectorsForWallets }));
+
+vi.mock("~~/services/web3/deferWalletSdks", () => ({
+  deferWalletSdk: (connector: unknown) => ({ deferred: connector }),
+}));
 
 vi.mock("@rainbow-me/rainbowkit/wallets", () => ({
   baseAccount: "baseAccount",
@@ -26,5 +32,9 @@ describe("wagmiConnectors", () => {
       appName: "Tokenping",
       projectId: scaffoldConfig.walletConnectProjectId,
     });
+  });
+
+  it("holds back every wallet SDK until the connect modal opens (deferWalletSdks decides which ones wait)", () => {
+    expect(wagmiConnectors()).toEqual([{ deferred: "walletConnectConnector" }, { deferred: "baseAccountConnector" }]);
   });
 });
