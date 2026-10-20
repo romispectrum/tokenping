@@ -5,6 +5,20 @@ import type { NextConfig } from "next";
 const IGNORE_BUILD_ERRORS = process.env.NEXT_PUBLIC_IGNORE_BUILD_ERROR === "true";
 const IS_IPFS_BUILD = process.env.NEXT_PUBLIC_IPFS_BUILD === "true";
 
+// RFC 8288 Link headers on each homepage, for agents that look for a machine-readable description before parsing the
+// HTML: /llms.txt, the language's RSS feed and its privacy page. No api-catalog or service-doc: Tokenping has no public
+// API. The paths repeat i18n/routes (this file can't use the ~~ alias), and next.config.test.ts checks they match.
+const HOME_LINKS = [
+  { source: "/", feed: "/blog/feed.xml", privacy: "/privacy" },
+  { source: "/cz", feed: "/cz/blog/feed.xml", privacy: "/cz/ochrana-soukromi" },
+];
+const homeLinkHeader = ({ feed, privacy }: { feed: string; privacy: string }) =>
+  [
+    '</llms.txt>; rel="describedby"; type="text/plain"',
+    `<${feed}>; rel="alternate"; type="application/rss+xml"`,
+    `<${privacy}>; rel="privacy-policy"`,
+  ].join(", ");
+
 const nextConfig: NextConfig = {
   // "mdx" is listed so Next applies its vendored React aliases to .mdx modules too: without it the posts import
   // node_modules' react/jsx-dev-runtime and crash in Server Components under `next dev`. Posts live in content/blog,
@@ -32,6 +46,11 @@ const nextConfig: NextConfig = {
     config.externals.push("pino-pretty", "lokijs", "encoding");
     return config;
   },
+  // A static export has no server to send headers.
+  ...(!IS_IPFS_BUILD && {
+    headers: async () =>
+      HOME_LINKS.map(({ source, ...paths }) => ({ source, headers: [{ key: "Link", value: homeLinkHeader(paths) }] })),
+  }),
   ...(IS_IPFS_BUILD && {
     output: "export",
     trailingSlash: true,

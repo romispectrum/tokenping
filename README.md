@@ -48,8 +48,9 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs o
   Components with a sitemap, RSS feed and JSON-LD. `yarn next:indexnow` tells Bing, Seznam and Yandex about new and
   changed pages through [IndexNow](#indexnow).
 - **Search and AI crawlers.** `app/robots.ts` names the search and AI-answer crawlers and the training crawlers
-  separately (both allowed, `/api/` closed), `/llms.txt` lists the pages and guides for AI tools, and the site-wide
-  JSON-LD names the X, Telegram and GitHub profiles. Every page is server-rendered, so crawlers that run no JavaScript
+  separately (both allowed, `/api/` closed), `/llms.txt` lists the pages and guides for AI tools, both homepages send
+  an RFC 8288 `Link` header to it, the RSS feed and the privacy page (`next.config.ts`), and the site-wide JSON-LD
+  names the X, Telegram and GitHub profiles. Every page is server-rendered, so crawlers that run no JavaScript
   read the full text.
 - **English and Czech.** The whole site is published in both languages; see [docs/i18n.md](docs/i18n.md).
 - **Analytics.** [Vercel Web Analytics](https://vercel.com/docs/analytics) counts page views without cookies. It is
