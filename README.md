@@ -264,6 +264,10 @@ Order for a new deployment:
    checked and messages sent per channel.
 8. **Tell search engines** (optional): `yarn next:indexnow`, see [IndexNow](#indexnow).
 
+The app sends security headers on every response (`next.config.ts`, described in
+[docs/architecture.md](docs/architecture.md#how-the-server-is-locked-down)). Pages may be framed only by the site itself
+and Safe; if you embed Tokenping anywhere else, add that origin to `FRAME_ANCESTORS` there.
+
 When you upgrade a live deployment, apply new migrations before the code that needs them, with one exception: migration
 `20261021000000_lock_down_server_only_tables.sql` takes the database away from the anon key, so apply it only once the
 running deployment uses `SUPABASE_SERVICE_ROLE_KEY`.

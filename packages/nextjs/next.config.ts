@@ -19,6 +19,24 @@ const homeLinkHeader = ({ feed, privacy }: { feed: string; privacy: string }) =>
     `<${privacy}>; rel="privacy-policy"`,
   ].join(", ");
 
+// Security headers on every response (a static export has no server to send them). Deliberately small:
+// - nosniff: a response is only run or styled as the type it is served as.
+// - Referrer-Policy: what browsers already default to, written down.
+// - Permissions-Policy: the powerful features the site never asks for, off for it and for anything it embeds.
+// - frame-ancestors: only this site and Safe{Wallet} may frame the pages, so another site cannot put the dashboard (it
+//   connects a wallet and takes a payment) in an invisible frame and steer clicks. The "safe" wagmi connector
+//   (services/web3/deferWalletSdks.ts) only works inside Safe's iframe, which is why X-Frame-Options (DENY, SAMEORIGIN:
+//   it cannot list an origin) is not used. Safe's mobile app opens apps in a WebView, which this does not affect.
+// No full Content-Security-Policy: Next's inline scripts, RainbowKit, WalletConnect, Base Account and the RPC providers
+// make a strict script-src and connect-src a project of its own.
+const FRAME_ANCESTORS = ["'self'", "https://safe.global", "https://*.safe.global"];
+const SECURITY_HEADERS = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
+  { key: "Content-Security-Policy", value: `frame-ancestors ${FRAME_ANCESTORS.join(" ")}` },
+];
+
 // Markdown for agents: a public page requested with `Accept: text/markdown` is answered by app/md/[[...path]]/route.ts.
 // Only the page patterns of i18n/routes (next.config.test.ts checks them against the sitemap), so feeds, images, the
 // API and the developer pages never match, and a request without text/markdown in Accept never sees the rewrite.
@@ -78,12 +96,14 @@ const nextConfig: NextConfig = {
   ...(!IS_IPFS_BUILD && {
     // Not on a markdown request: Next keeps a config header over a route's header of the same name, so the markdown
     // route sends these links itself, after the page's canonical.
-    headers: async () =>
-      HOME_LINKS.map(({ source, ...paths }) => ({
+    headers: async () => [
+      { source: "/:path*", headers: SECURITY_HEADERS },
+      ...HOME_LINKS.map(({ source, ...paths }) => ({
         source,
         missing: [ACCEPTS_MARKDOWN],
         headers: [{ key: "Link", value: homeLinkHeader(paths) }],
       })),
+    ],
     rewrites: async () => ({ beforeFiles: MARKDOWN_PAGES.map(markdownRewrite), afterFiles: [], fallback: [] }),
   }),
   ...(IS_IPFS_BUILD && {
