@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useFetchNativeCurrencyPrice } from "@scaffold-ui/hooks";
 import { Search } from "lucide-react";
 import { hardhat } from "viem/chains";
 import { TokenpingLogo } from "~~/components/brand/TokenpingLogo";
@@ -12,6 +11,7 @@ import { ThemeChoice } from "~~/components/ui/ThemeChoice";
 import { buttonClasses } from "~~/components/ui/buttonClasses";
 import { cx } from "~~/components/ui/classNames";
 import { DONATION, EXTERNAL_LINK_REL, SOCIAL_LINKS, SOURCE_CODE_URL } from "~~/constants/links";
+import { useEthPrice } from "~~/hooks/custom/useEthPrice";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth/useTargetNetwork";
 import { useLocale, useMessages } from "~~/i18n/LocaleProvider";
 import type { Locale } from "~~/i18n/locales";
@@ -101,8 +101,8 @@ export const Footer = () => {
   const t = useMessages(COMMON_MESSAGES);
   const { targetNetwork } = useTargetNetwork();
   const isLocalNetwork = targetNetwork.id === hardhat.id;
-  // No chain argument: the hook reads the mainnet WETH/DAI pool, so this is the ETH price in US dollars.
-  const { price: ethPrice } = useFetchNativeCurrencyPrice();
+  // From this site's API, which reads the mainnet DAI/WETH pool server-side: no RPC call from the browser for it.
+  const ethPrice = useEthPrice();
 
   return (
     <footer>
@@ -173,7 +173,7 @@ export const Footer = () => {
           >
             <p className="m-0">{t.footer.independence}</p>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-              {ethPrice > 0 && (
+              {ethPrice !== null && (
                 // Named in words: a dollar sign alone does not say which price this is.
                 <p className="m-0 tabular-nums">{t.footer.ethPrice(ethPrice.toFixed(2))}</p>
               )}

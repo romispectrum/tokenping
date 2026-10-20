@@ -6,9 +6,9 @@ import { Footer } from "~~/components/Footer";
 import { LocaleProvider } from "~~/i18n/LocaleProvider";
 import { renderMarkup } from "~~/utils/testing/render";
 
-const state = vi.hoisted(() => ({ price: 0, targetNetworkId: 42161 }));
+const state = vi.hoisted(() => ({ price: null as number | null, targetNetworkId: 42161 }));
 
-vi.mock("@scaffold-ui/hooks", () => ({ useFetchNativeCurrencyPrice: () => ({ price: state.price }) }));
+vi.mock("~~/hooks/custom/useEthPrice", () => ({ useEthPrice: () => state.price }));
 
 vi.mock("~~/hooks/scaffold-eth/useTargetNetwork", () => ({
   useTargetNetwork: () => ({ targetNetwork: { id: state.targetNetworkId } }),
@@ -22,7 +22,7 @@ const renderFooter = () => renderMarkup(<Footer />);
 
 describe("Footer", () => {
   beforeEach(() => {
-    state.price = 0;
+    state.price = null;
     state.targetNetworkId = arbitrum.id;
   });
 
@@ -63,7 +63,7 @@ describe("Footer", () => {
     ).toBeDefined();
   });
 
-  it("shows the ETH price with two decimals when it is positive, named in words", () => {
+  it("shows the ETH price with two decimals once it is known, named in words", () => {
     state.price = 1234.567;
 
     expect(renderFooter()).toContain('<p class="m-0 tabular-nums">ETH price: $1234.57</p>');
@@ -200,7 +200,7 @@ describe("Footer", () => {
 
 describe("Footer in Czech", () => {
   beforeEach(() => {
-    state.price = 0;
+    state.price = null;
     state.targetNetworkId = arbitrum.id;
   });
 

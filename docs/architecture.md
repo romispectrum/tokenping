@@ -38,8 +38,8 @@ Next.js route.
 
 | Piece            | Where it lives                        | What it does                                                                                                                                           |
 | ---------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Browser          | `packages/nextjs` (client components) | Connects the wallet, reads Aave positions and the paywall straight from RPC providers, takes payments, signs in, edits alerts.                         |
-| Next.js routes   | `packages/nextjs/app/api`             | Sign-in, alert storage, test messages, the Telegram webhook and status check, and the cron.                                                            |
+| Browser          | `packages/nextjs` (client components) | Connects the wallet (its SDKs start with the connect modal), reads Aave positions and the paywall from RPC providers, pays, signs in, edits alerts.    |
+| Next.js routes   | `packages/nextjs/app/api`             | Sign-in, alert storage, test messages, the Telegram webhook and status check, the footer's ETH price (read server-side) and the cron.                  |
 | Supabase         | `packages/supabase`                   | Postgres with five tables: alerts, Telegram chats, test-message slots, sign-in nonces and the optional attribution answer. Only the server reaches it. |
 | Vercel cron      | `packages/nextjs/vercel.json`         | Calls the check route every 5 minutes.                                                                                                                 |
 | Resend           | external                              | Sends alert emails.                                                                                                                                    |
@@ -52,6 +52,12 @@ Next.js route.
 
 **Looking at positions.** Needs no payment and no sign-in. The browser asks RPC providers for the wallet's Aave data in
 every V3 market and V4 Spoke listed in `config/aaveConfig.ts`. Nothing is sent to the server or stored.
+
+**Connecting a wallet.** Injected wallets and Safe start on load. Every other wallet's SDK (WalletConnect, Base Account,
+the MetaMask SDK) starts when the connect modal opens or when something asks it to connect, and on load only for the
+wallet this browser connected last (`services/web3/deferWalletSdks.ts`). A visitor who never opens the modal sends those
+services nothing. The footer's ETH price comes from `/api/eth-price`, which reads the chain on the server at most every
+five minutes.
 
 **Paying for access.** The browser approves exactly the price in USDC, then calls `pay` on the contract. Access runs
 for the plan's duration and paying again extends it. The price and plan are read from the contract.
