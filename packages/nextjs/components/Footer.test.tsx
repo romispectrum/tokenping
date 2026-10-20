@@ -164,7 +164,7 @@ describe("Footer", () => {
     ).toEqual(["Blog", "RSS", "GitHub", "X", "Telegram", "Signal", "Privacy"]);
   });
 
-  it("names each link column with its heading", () => {
+  it("names each link column with its visible title", () => {
     render(<Footer />);
     const nav = screen.getByRole("navigation", { name: "Footer" });
 
@@ -173,11 +173,18 @@ describe("Footer", () => {
         .getAllByRole("list")
         .map(list => list.getAttribute("aria-labelledby")),
     ).toEqual(["footer-resources", "footer-community", "footer-legal"]);
-    expect(
-      within(nav)
-        .getAllByRole("heading", { level: 2 })
-        .map(heading => heading.textContent),
-    ).toEqual(["Resources", "Community", "Legal"]);
+    for (const name of ["Resources", "Community", "Legal"])
+      expect(within(nav).getByRole("list", { name }).previousElementSibling?.textContent).toBe(name);
+  });
+
+  // Headings here would end every page's outline with the same footer sections, after the page's own.
+  it("has no headings, so the page's outline ends with its own sections", () => {
+    render(<Footer />);
+
+    expect(within(screen.getByRole("contentinfo")).queryAllByRole("heading")).toHaveLength(0);
+    expect(screen.getByRole("region", { name: "Support Tokenping" }).firstElementChild?.textContent).toBe(
+      "Support Tokenping",
+    );
   });
 
   it("says Tokenping is independent of Aave", () => {
@@ -223,11 +230,8 @@ describe("Footer in Czech", () => {
     renderCzech();
     const nav = screen.getByRole("navigation", { name: "Patička" });
 
-    expect(
-      within(nav)
-        .getAllByRole("heading", { level: 2 })
-        .map(heading => heading.textContent),
-    ).toEqual(["Zdroje", "Komunita", "Právní informace"]);
+    for (const name of ["Zdroje", "Komunita", "Právní informace"])
+      expect(within(nav).getByRole("list", { name }).previousElementSibling?.textContent).toBe(name);
     for (const name of ["Zdrojový kód Tokenpingu na GitHubu", "Tokenping na X", "Komunita Tokenpingu na Telegramu"])
       expect(within(nav).getByRole("link", { name })).toBeTruthy();
     for (const link of within(nav).getAllByRole("link")) {
