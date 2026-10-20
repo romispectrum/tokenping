@@ -29,7 +29,7 @@ type FooterLink = {
 };
 
 type FooterGroup = {
-  /** Also the heading id, prefixed with "footer-". */
+  /** Also the title's id, prefixed with "footer-": the title names the column's list. */
   id: string;
   title: string;
   links: readonly FooterLink[];
@@ -63,6 +63,10 @@ const footerGroups = (locale: Locale): readonly FooterGroup[] => {
     },
   ];
 };
+
+// The footer's titles are labels, not headings: as h2s they ended every page's outline with the same four sections.
+// Each names its region or list instead; text-balance keeps the wrapping they had as headings.
+const TITLE_CLASS_NAME = "m-0 text-sm font-medium text-balance text-foreground";
 
 // Muted at rest, white and underlined on hover; 32px rows for a mouse, 44px on touch screens.
 const LINK_CLASS_NAME =
@@ -131,9 +135,9 @@ export const Footer = () => {
             </p>
             {/* The name and the address as plain text with a copy button: no ENS lookup, so no RPC call per page. */}
             <section aria-labelledby="footer-donate" className="flex flex-col gap-2">
-              <h2 id="footer-donate" className="m-0 text-sm font-medium text-foreground">
+              <p id="footer-donate" className={TITLE_CLASS_NAME}>
                 {t.footer.donate}
-              </h2>
+              </p>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                 <span className="font-data text-sm text-foreground">{DONATION.ens}</span>
                 <AddressChip address={DONATION.address} label={t.footer.donationAddress} />
@@ -144,9 +148,9 @@ export const Footer = () => {
           <nav aria-label={t.footer.navLabel} className="grid grid-cols-2 gap-10 sm:grid-cols-3 lg:gap-12">
             {footerGroups(locale).map(({ id, title, links }) => (
               <div key={id}>
-                <h2 id={`footer-${id}`} className="m-0 text-sm font-medium text-foreground">
+                <p id={`footer-${id}`} className={TITLE_CLASS_NAME}>
                   {title}
-                </h2>
+                </p>
                 <ul aria-labelledby={`footer-${id}`} className="m-0 mt-3 flex list-none flex-col gap-1 p-0 md:mt-4">
                   {links.map(link => (
                     <li key={link.href} className="m-0 flex p-0">
