@@ -130,6 +130,17 @@ instead". No rate figure is printed; the full example belongs to `why-aave-healt
 | Check every 5 minutes                                                                                                                                                                                        | `vercel.json` cron `*/5 * * * *`; `constants/notifications.ts` `NOTIFICATION_CHECK_INTERVAL_MINUTES = 5`                                      |
 | Threshold per network, range 1.1-10, default 1.5                                                                                                                                                             | `constants/notifications.ts`; one config per (wallet, chain) in `packages/supabase/migrations/20250225120000_create_notification_configs.sql` |
 | Message every 5 minutes per channel while below the threshold                                                                                                                                                | `services/notifications/runNotificationCheck.ts` (no cooldown or dedupe)                                                                      |
-| Channels named in the post: Signal and email only                                                                                                                                                            | blog build spec owner decision                                                                                                                |
+| Channels named in the post: Signal and email only (superseded 2026-10-20: Signal, Telegram and email, see the update at the end)                                                                                                                                                            | blog build spec owner decision                                                                                                                |
 | Dashboard labels ("Safe", "Risky")                                                                                                                                                                           | `constants/notifications.ts`, `components/custom/HealthFactorBadge.tsx`                                                                       |
 | Aave V3: every market on 21 networks, 24 Pools (Ethereum: Core, Prime, EtherFi and Horizon since 2026-10-16, Core only before); Aave V4: every Spoke on Ethereum, Avalanche, Arc and Base (since 2026-10-16) | `config/aaveConfig.ts` (`AAVE_MARKETS`, `AAVE_V3_NETWORKS`, `AAVE_V4_SPOKES`); product.md §10.1; `aave-facts.md` §1.2, §11                    |
+
+## Update of 2026-10-20
+
+The post now names Telegram next to Signal and email as Tokenping's alert channels, in English and Czech: EN "a message on Signal, Telegram or email every 5 minutes", CS "zprávu na Signal, Telegram nebo e-mail".
+`updatedAt` moved to 2026-10-20 in both languages; nothing else in the post changed and no other figure was re-read.
+Basis: the code at `d9b351f` (`main`) sends each alert by email, Signal and Telegram
+(`packages/nextjs/services/notifications/runNotificationCheck.ts:77-98`); the alert form offers Telegram while
+`NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` is set (`packages/nextjs/constants/notifications.ts:24-28`), and production has it
+set (the live homepage title read "Aave health factor alerts on Signal, Telegram and email" on 2026-10-20). The build
+spec's rule that articles name Signal and email only was dropped in `b7623e4` (2026-10-19); the earlier entry that cites it
+is kept as history and marked superseded.

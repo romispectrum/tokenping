@@ -127,7 +127,7 @@ changed 2026-03-31, commit `2f6a0fc96a`).
 |---|---|
 | Checks every 5 minutes | `vercel.json` `*/5 * * * *`; `NOTIFICATION_CHECK_INTERVAL_MINUTES = 5` (`product.md` §4.1) |
 | Every Aave V3 market on 21 networks (24 markets since 2026-10-16; seven networks before) and every Aave V4 Spoke on Ethereum, Avalanche, Arc and Base (20), one alert per market | `config/aaveConfig.ts` (`AAVE_MARKETS`, `AAVE_V3_NETWORKS`, `AAVE_V4_SPOKES`; `product.md` §2) |
-| Signal or email (Telegram not named: blog build spec) | `product.md` §4.7 |
+| Signal or email (Telegram not named: blog build spec; superseded 2026-10-20: Signal, Telegram or email, see the update at the end) | `product.md` §4.7 |
 | Threshold 1.1 to 10 | `constants/notifications.ts` (`product.md` §4.5) |
 | Alert repeats on every check while below threshold | `runNotificationCheck.ts` (`product.md` §4.3) |
 | A fast move can cross the threshold and 1.0 between two checks | `product.md` §10.3 ("Polling, not real-time … a fast price move can liquidate a position between checks") |
@@ -160,3 +160,14 @@ Inputs: 10 WETH, 12,000 USDC debt, WETH LT 0.83, bonus 1.05, protocol fee 10% of
   reserve can be cleared in one call with room to spare. (The earlier $3,000 USDC + $3,000 USDT version was dropped: it only works at
   exact equality, because the cap applies when reserve debt `>` 50% of total, and a cent of extra USDC interest would leave dust that
   `MustNotLeaveDust` rejects.)
+
+## Update of 2026-10-20
+
+The post now names Telegram next to Signal and email as Tokenping's alert channels, in English and Czech: EN "messages you on Signal, Telegram or email", CS "pošle vám zprávu přes Signal, Telegram nebo e-mailem".
+`updatedAt` moved to 2026-10-20 in both languages; nothing else in the post changed and no other figure was re-read.
+Basis: the code at `d9b351f` (`main`) sends each alert by email, Signal and Telegram
+(`packages/nextjs/services/notifications/runNotificationCheck.ts:77-98`); the alert form offers Telegram while
+`NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` is set (`packages/nextjs/constants/notifications.ts:24-28`), and production has it
+set (the live homepage title read "Aave health factor alerts on Signal, Telegram and email" on 2026-10-20). The build
+spec's rule that articles name Signal and email only was dropped in `b7623e4` (2026-10-19); the earlier entry that cites it
+is kept as history and marked superseded.
