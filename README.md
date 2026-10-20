@@ -52,7 +52,12 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs o
   `search=yes, ai-input=yes, ai-train=yes`, `/llms.txt` lists the pages and guides for AI tools, both homepages send
   an RFC 8288 `Link` header to it, the RSS feed and the privacy page (`next.config.ts`), and the site-wide JSON-LD
   names the X, Telegram and GitHub profiles. Every page is server-rendered, so crawlers that run no JavaScript
-  read the full text.
+  read the full text. A request for a sitemap page with `text/markdown` in its `Accept` header gets the page as
+  markdown (`text/markdown; charset=utf-8`): front matter with its title, description and canonical URL, then its
+  `<main>` with GFM tables and absolute links. `next.config.ts` rewrites only those requests, and only page paths, to
+  `app/md/[[...path]]/route.ts`, which converts the page's own HTML (`utils/markdown.ts`) and answers with
+  `Vary: Accept`, a canonical `Link`, the Content Signal and an `x-markdown-tokens` estimate. Every other request,
+  browsers and search crawlers included, gets the HTML as before.
 - **English and Czech.** The whole site is published in both languages; see [docs/i18n.md](docs/i18n.md).
 - **Analytics.** [Vercel Web Analytics](https://vercel.com/docs/analytics) counts page views without cookies. It is
   left out of the IPFS build (`yarn ipfs`). The privacy page lists it.
