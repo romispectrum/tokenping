@@ -1,8 +1,16 @@
+import type { Rewrite } from "next/dist/lib/load-custom-routes";
+import { getPathMatch } from "next/dist/shared/lib/router/utils/path-match";
+import { matchHas, prepareDestination } from "next/dist/shared/lib/router/utils/prepare-destination";
 import type { NextConfig } from "next";
 import { readdirSync } from "node:fs";
+import type { IncomingMessage } from "node:http";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import sitemap from "~~/app/sitemap";
 import { LOCALES } from "~~/i18n/locales";
 import { routePath } from "~~/i18n/routes";
+import { acceptsMarkdown } from "~~/utils/markdown";
+
+const ACCEPTS_MARKDOWN = { type: "header", key: "accept", value: ".*text/markdown.*" };
 
 // next.config reads env vars at module load, so every case imports a fresh copy.
 const loadNextConfig = async (env: Record<string, string | undefined>): Promise<NextConfig> => {
@@ -59,6 +67,7 @@ describe("next.config", () => {
       eslint: { ignoreDuringBuilds: false, dirs: LINT_DIRS },
       webpack: expect.any(Function),
       headers: expect.any(Function),
+      rewrites: expect.any(Function),
       // One root layout per language needs app/global-not-found.tsx for URLs that match no route.
       experimental: { globalNotFound: true },
     });
@@ -72,6 +81,7 @@ describe("next.config", () => {
       "eslint",
       "webpack",
       "headers",
+      "rewrites",
     ]);
   });
 
@@ -81,6 +91,7 @@ describe("next.config", () => {
     expect(await config.headers!()).toEqual(
       LOCALES.map(locale => ({
         source: routePath(locale, "home"),
+        missing: [ACCEPTS_MARKDOWN],
         headers: [
           {
             key: "Link",
@@ -129,6 +140,7 @@ describe("next.config", () => {
       "images",
     ]);
     expect(ipfs).not.toHaveProperty("headers");
+    expect(ipfs).not.toHaveProperty("rewrites");
     expect(ipfs.output).toBe("export");
     expect(ipfs.trailingSlash).toBe(true);
     expect(ipfs.images).toEqual({ unoptimized: true });
@@ -194,5 +206,120 @@ describe("next.config", () => {
       loaders: [{ options: { remarkPlugins: ["remark-gfm"] } }],
       as: "*.tsx",
     });
+  });
+});
+
+// Next's own matchers, as its router runs them, so these cases are what `next start` and the build do.
+const requestWith = (accept: string | undefined) =>
+  ({ headers: accept === undefined ? {} : { accept } }) as unknown as IncomingMessage;
+
+/** The path Next serves for a request: the destination of the first rewrite that matches, or undefined. */
+const rewrittenPath = (rules: Rewrite[], path: string, accept: string | undefined) => {
+  for (const rule of rules) {
+    const params = getPathMatch(rule.source, { strict: true, removeUnnamedParams: true })(path);
+    if (!params || !matchHas(requestWith(accept), {}, rule.has, rule.missing)) continue;
+    return prepareDestination({ appendParamsToQuery: false, destination: rule.destination, params, query: {} })
+      .parsedDestination.pathname;
+  }
+  return undefined;
+};
+
+const MARKDOWN = "text/markdown, text/html;q=0.9, */*;q=0.8";
+const BROWSER =
+  "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8," +
+  "application/signed-exchange;v=b3;q=0.7";
+/** Every page the sitemap lists, by path. */
+const SITEMAP_PATHS = sitemap().map(({ url }) => new URL(url).pathname);
+
+describe("next.config markdown rewrites", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  const loadRewrites = async () => {
+    const rewrites = await (await loadNextConfig({ NEXT_PUBLIC_IPFS_BUILD: undefined })).rewrites!();
+    if (Array.isArray(rewrites)) throw new Error("expected beforeFiles, afterFiles and fallback");
+    const { beforeFiles = [], afterFiles = [], fallback = [] } = rewrites;
+    return { beforeFiles, afterFiles, fallback };
+  };
+
+  // A page is prerendered, so a rewrite checked after the filesystem would never see it.
+  it("rewrites before the filesystem, with nothing after it", async () => {
+    const rewrites = await loadRewrites();
+
+    expect(rewrites.afterFiles).toEqual([]);
+    expect(rewrites.fallback).toEqual([]);
+    for (const rule of rewrites.beforeFiles) {
+      expect(rule).toEqual({ source: expect.any(String), has: [ACCEPTS_MARKDOWN], destination: expect.any(String) });
+    }
+  });
+
+  it("sends a markdown request for every page in the sitemap to the markdown route", async () => {
+    const { beforeFiles } = await loadRewrites();
+
+    expect(SITEMAP_PATHS).toEqual(expect.arrayContaining(["/", "/cz", "/aave", "/cz/blog", "/cz/ochrana-soukromi"]));
+    for (const path of SITEMAP_PATHS) {
+      expect(rewrittenPath(beforeFiles, path, MARKDOWN), path).toBe(path === "/" ? "/md" : `/md${path}`);
+    }
+  });
+
+  it.each([undefined, BROWSER, "*/*", "text/html", "application/json", "TEXT/HTML"])(
+    "leaves every page alone for Accept %j",
+    async accept => {
+      const { beforeFiles } = await loadRewrites();
+
+      for (const path of SITEMAP_PATHS) expect(rewrittenPath(beforeFiles, path, accept), path).toBeUndefined();
+    },
+  );
+
+  // An agent may send text/markdown with every request it makes, so only page paths are rewritten.
+  it.each([
+    "/blog/feed.xml",
+    "/cz/blog/feed.xml",
+    "/robots.txt",
+    "/llms.txt",
+    "/sitemap.xml",
+    "/indexnow-key.txt",
+    "/manifest.json",
+    "/favicon.ico",
+    "/logo.png",
+    "/icon.svg",
+    "/apple-icon",
+    "/og/en",
+    "/og/cs/aave-health-factor-vysvetleni",
+    "/api/auth/session",
+    "/api/cron/notifications",
+    "/_next/static/chunks/main.js",
+    "/admin",
+    "/debug",
+    "/blockexplorer",
+    "/aave/extra",
+    "/blog/a/b",
+    "/md",
+    "/md/aave",
+  ])("leaves %s alone, also for a markdown request", async path => {
+    const { beforeFiles } = await loadRewrites();
+
+    expect(rewrittenPath(beforeFiles, path, MARKDOWN)).toBeUndefined();
+  });
+
+  it("rewrites for the same Accept values the markdown route answers", async () => {
+    const { beforeFiles } = await loadRewrites();
+    const accepts = [MARKDOWN, "text/markdown", "text/html, text/markdown;q=0.5", BROWSER, "*/*", "text/plain", ""];
+
+    for (const accept of accepts) {
+      expect(rewrittenPath(beforeFiles, "/aave", accept) !== undefined, accept).toBe(acceptsMarkdown(accept));
+    }
+  });
+
+  // The markdown route sends the home links itself, after the canonical: Next would keep this header over its own.
+  it("sends the home page Link header with the HTML only", async () => {
+    const rules = await (await loadNextConfig({ NEXT_PUBLIC_IPFS_BUILD: undefined })).headers!();
+
+    for (const { has, missing } of rules) {
+      expect(matchHas(requestWith(BROWSER), {}, has, missing)).not.toBe(false);
+      expect(matchHas(requestWith(undefined), {}, has, missing)).not.toBe(false);
+      expect(matchHas(requestWith(MARKDOWN), {}, has, missing)).toBe(false);
+    }
   });
 });
