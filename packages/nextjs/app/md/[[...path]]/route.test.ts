@@ -94,7 +94,8 @@ describe("GET /md/[[...path]]", () => {
   // next.config.ts leaves its home page Link header off markdown requests, because it would replace this one.
   it("names the canonical and then the home page links that next.config.ts sends with the HTML", async () => {
     const { default: nextConfig } = await import("~~/next.config");
-    const homeRules = await nextConfig.headers!();
+    // The homepage rules carry the Link header; the catch-all rule carries the security headers.
+    const homeRules = (await nextConfig.headers!()).filter(({ headers }) => headers.some(({ key }) => key === "Link"));
 
     expect(homeRules.map(({ source }) => source)).toEqual(["/", "/cz"]);
     for (const { source, headers } of homeRules) {

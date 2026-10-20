@@ -119,6 +119,11 @@ alert as saved with the live position, and gives the slot back if the provider r
 - Production without `SESSION_SECRET` (32 characters or more) answers 503 on sign-in and on every alert route.
 - A wallet can hold at most 50 alerts.
 - `/api/send-email` is a server-to-server route behind the same bearer secret. Nothing in the app calls it.
+- Every response carries `X-Content-Type-Options: nosniff`, a `Referrer-Policy`, a `Permissions-Policy` that turns off
+  camera, microphone, geolocation and payment, and `Content-Security-Policy: frame-ancestors` naming only the site itself
+  and Safe, so another site cannot frame the dashboard (`next.config.ts`; Vercel adds HSTS). `X-Frame-Options` is not used,
+  because it cannot name Safe's origin and the "safe" wallet connector only works inside Safe's iframe. There is no full
+  Content-Security-Policy yet: Next's inline scripts and the wallet SDKs' hosts would need a policy of their own.
 
 ## Where to look in the code
 

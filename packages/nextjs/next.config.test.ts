@@ -89,7 +89,9 @@ describe("next.config", () => {
   it("sends a Link header on each homepage pointing at llms.txt and that language's feed and privacy page", async () => {
     const config = await loadNextConfig({ NEXT_PUBLIC_IPFS_BUILD: undefined });
 
-    expect(await config.headers!()).toEqual(
+    const linkRules = (await config.headers!()).filter(({ headers }) => headers.some(({ key }) => key === "Link"));
+
+    expect(linkRules).toEqual(
       LOCALES.map(locale => ({
         source: routePath(locale, "home"),
         missing: [ACCEPTS_MARKDOWN],
@@ -105,6 +107,54 @@ describe("next.config", () => {
         ],
       })),
     );
+  });
+
+  describe("security headers", () => {
+    const securityRule = async () => {
+      const rules = await (await loadNextConfig({ NEXT_PUBLIC_IPFS_BUILD: undefined })).headers!();
+      return rules.find(({ source }) => source === "/:path*");
+    };
+    const valueOf = (headers: { key: string; value: string }[] | undefined, key: string) =>
+      headers?.find(header => header.key === key)?.value;
+
+    it("sends nosniff, a referrer policy and a permissions policy on every path, whatever the request", async () => {
+      const rule = await securityRule();
+
+      expect(rule).toBeDefined();
+      // No has or missing: a markdown request, a crawler and a browser all get them.
+      expect(rule).not.toHaveProperty("has");
+      expect(rule).not.toHaveProperty("missing");
+      expect(valueOf(rule?.headers, "X-Content-Type-Options")).toBe("nosniff");
+      expect(valueOf(rule?.headers, "Referrer-Policy")).toBe("strict-origin-when-cross-origin");
+      expect(valueOf(rule?.headers, "Permissions-Policy")).toBe("camera=(), microphone=(), geolocation=(), payment=()");
+    });
+
+    // The "safe" connector needs the Safe app's iframe; X-Frame-Options could not list its origin.
+    it("lets only this site and Safe frame the pages, with frame-ancestors and not X-Frame-Options", async () => {
+      const rule = await securityRule();
+      const csp = valueOf(rule?.headers, "Content-Security-Policy");
+
+      expect(csp).toBe("frame-ancestors 'self' https://safe.global https://*.safe.global");
+      expect(csp).not.toMatch(/'none'| \*(;|$| )/);
+      expect(rule?.headers.map(({ key }) => key)).not.toContain("X-Frame-Options");
+    });
+
+    // Only a script-src and connect-src policy would need the wallet SDKs' hosts: it is not shipped.
+    it("does not set a full Content-Security-Policy that wallet SDKs and Next's inline scripts would break", async () => {
+      const csp = valueOf((await securityRule())?.headers, "Content-Security-Policy");
+
+      expect(csp).not.toMatch(/script-src|default-src|connect-src|style-src|frame-src/);
+    });
+
+    it("does not share a header name with the homepage Link rules, which Next would let override each other", async () => {
+      const rules = await (await loadNextConfig({ NEXT_PUBLIC_IPFS_BUILD: undefined })).headers!();
+      const security = rules.filter(({ source }) => source === "/:path*").flatMap(({ headers }) => headers);
+      const others = rules.filter(({ source }) => source !== "/:path*").flatMap(({ headers }) => headers);
+      const securityKeys = new Set(security.map(({ key }) => key.toLowerCase()));
+
+      expect(others.length).toBeGreaterThan(0);
+      for (const { key } of others) expect(securityKeys.has(key.toLowerCase()), key).toBe(false);
+    });
   });
 
   // Build checks are skipped only when NEXT_PUBLIC_IGNORE_BUILD_ERROR is exactly "true".
@@ -315,8 +365,11 @@ describe("next.config markdown rewrites", () => {
 
   // The markdown route sends the home links itself, after the canonical: Next would keep this header over its own.
   it("sends the home page Link header with the HTML only", async () => {
-    const rules = await (await loadNextConfig({ NEXT_PUBLIC_IPFS_BUILD: undefined })).headers!();
+    const rules = (await (await loadNextConfig({ NEXT_PUBLIC_IPFS_BUILD: undefined })).headers!()).filter(
+      ({ headers }) => headers.some(({ key }) => key === "Link"),
+    );
 
+    expect(rules).toHaveLength(LOCALES.length);
     for (const { has, missing } of rules) {
       expect(matchHas(requestWith(BROWSER), {}, has, missing)).not.toBe(false);
       expect(matchHas(requestWith(undefined), {}, has, missing)).not.toBe(false);
