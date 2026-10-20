@@ -13,16 +13,30 @@ import { LOCALE_INFO, type Locale } from "~~/i18n/locales";
 import "~~/styles/globals.css";
 import { siteJsonLd } from "~~/utils/seo";
 
-// Satoshi, the only typeface for words. The variable font's real weight axis is 300 to 900. The italic stays in this
-// family although it is preloaded with the upright face: in a separate localFont it would be another family, and italic
-// text (MDX emphasis, the blog disclaimers) would get a slanted copy of the upright face instead.
+// Satoshi, the only typeface for words. The variable font's real weight axis is 300 to 900. Each face is its own
+// localFont so that only the upright one is preloaded: the italic (MDX emphasis, the blog disclaimers) is on few pages,
+// and preloading it on every page took bandwidth from the first paint. Both name the family "Satoshi" in their
+// @font-face, so they stay one family and italic text gets the real italic, not a slanted copy of the upright face.
 const satoshi = localFont({
-  src: [
-    { path: "../app/fonts/Satoshi-Variable.woff2", weight: "300 900", style: "normal" },
-    { path: "../app/fonts/Satoshi-VariableItalic.woff2", weight: "300 900", style: "italic" },
-  ],
+  src: "../app/fonts/Satoshi-Variable.woff2",
+  weight: "300 900",
+  style: "normal",
+  declarations: [{ prop: "font-family", value: "Satoshi" }],
   variable: "--font-satoshi",
   display: "swap",
+});
+
+// Fetched only where italic text is shown. Nothing reads its variable: the class is on <html> only to reference it.
+const satoshiItalic = localFont({
+  src: "../app/fonts/Satoshi-VariableItalic.woff2",
+  weight: "300 900",
+  style: "italic",
+  declarations: [{ prop: "font-family", value: "Satoshi" }],
+  variable: "--font-satoshi-italic",
+  display: "swap",
+  preload: false,
+  // The upright face's metric-matched fallback already covers the family.
+  adjustFontFallback: false,
 });
 
 // Data only: addresses, hashes, tx ids and digit-compared numbers (the font-data utility). Not preloaded: most
@@ -60,7 +74,7 @@ export const rootDocument = ({ locale, children }: RootDocumentProps) => (
   <html
     lang={LOCALE_INFO[locale].htmlLang}
     suppressHydrationWarning
-    className={`${satoshi.variable} ${geistMono.variable}`}
+    className={`${satoshi.variable} ${satoshiItalic.variable} ${geistMono.variable}`}
   >
     <body>
       <JsonLd data={siteJsonLd(locale)} />

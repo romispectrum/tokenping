@@ -78,7 +78,7 @@ describe("root layout", () => {
 
   it("renders the site JSON-LD and wraps the page in the theme provider and the app providers", () => {
     expect(renderHtml(<RootLayout>page</RootLayout>)).toBe(
-      `<html lang="en" class="local--font-satoshi google--font-geist-mono"><head></head><body><script type="application/ld+json">${serializeJsonLd(siteJsonLd())}</script><div data-stub="theme-provider" data-attribute="class,data-theme" data-default-theme="light" data-enable-system="true" data-disable-transition="true"><div data-stub="providers">page</div></div><div data-stub="analytics"></div></body></html>`,
+      `<html lang="en" class="local--font-satoshi local--font-satoshi-italic google--font-geist-mono"><head></head><body><script type="application/ld+json">${serializeJsonLd(siteJsonLd())}</script><div data-stub="theme-provider" data-attribute="class,data-theme" data-default-theme="light" data-enable-system="true" data-disable-transition="true"><div data-stub="providers">page</div></div><div data-stub="analytics"></div></body></html>`,
     );
   });
 
@@ -109,19 +109,24 @@ describe("root layout", () => {
     });
   });
 
-  // Satoshi's upright and italic share one family, so italic text gets the real italic; the data font waits until a
-  // page uses it instead of competing with the hero text.
-  it("preloads Satoshi with its italic in the same family and leaves the data font unpreloaded", () => {
+  // Satoshi's upright and italic are one family (both @font-face rules name it), so italic text gets the real italic.
+  // Only the upright face is preloaded: the italic and the data font wait until a page uses them instead of competing
+  // with the hero text.
+  it("preloads only Satoshi's upright face, keeps its italic in the same family and leaves the data font unpreloaded", () => {
+    const family = [{ prop: "font-family", value: "Satoshi" }];
     expect(fontCalls.local).toEqual([
+      expect.objectContaining({ variable: "--font-satoshi", weight: "300 900", style: "normal", declarations: family }),
       expect.objectContaining({
-        variable: "--font-satoshi",
-        src: [
-          expect.objectContaining({ weight: "300 900", style: "normal" }),
-          expect.objectContaining({ weight: "300 900", style: "italic" }),
-        ],
+        variable: "--font-satoshi-italic",
+        weight: "300 900",
+        style: "italic",
+        declarations: family,
+        preload: false,
+        adjustFontFallback: false,
       }),
     ]);
     expect(fontCalls.local[0]).not.toHaveProperty("preload", false);
+    expect(fontCalls.local[0]).not.toHaveProperty("adjustFontFallback", false);
     expect(fontCalls.google).toEqual([expect.objectContaining({ variable: "--font-geist-mono", preload: false })]);
   });
 
