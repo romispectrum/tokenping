@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
-import "@rainbow-me/rainbowkit/styles.css";
 import "@scaffold-ui/components/styles.css";
 import { Analytics } from "@vercel/analytics/next";
 import type { Viewport } from "next";
