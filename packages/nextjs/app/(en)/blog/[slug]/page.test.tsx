@@ -31,9 +31,9 @@ const renderPost = async (slug: string) => {
 const publishedTime = () =>
   within(screen.getByRole("heading", { level: 1 }).closest("header")!).getByText("14 October 2026");
 
-/** The byline's "Updated" <time>: the posts were last updated when Tokenping added Aave V4. */
+/** The byline's "Updated" <time>: the posts were last updated when they started naming Telegram as an alert channel. */
 const updatedTime = () =>
-  within(screen.getByRole("heading", { level: 1 }).closest("header")!).getByText("16 October 2026");
+  within(screen.getByRole("heading", { level: 1 }).closest("header")!).getByText("20 October 2026");
 
 const jsonLdBlocks = (container: HTMLElement) =>
   [...container.querySelectorAll('script[type="application/ld+json"]')].map(script =>
@@ -76,7 +76,7 @@ describe("generateMetadata", () => {
       type: "article",
       url: "/blog/aave-health-factor",
       publishedTime: "2026-10-14T00:00:00Z",
-      modifiedTime: "2026-10-16T00:00:00Z",
+      modifiedTime: "2026-10-20T00:00:00Z",
       images: [
         {
           url: "/og/en/aave-health-factor",
@@ -184,7 +184,7 @@ describe("blog post page", () => {
     const published = publishedTime().getAttribute("dateTime");
     const updated = updatedTime().getAttribute("dateTime");
 
-    expect(updated).toBe("2026-10-16T00:00:00Z");
+    expect(updated).toBe("2026-10-20T00:00:00Z");
     expect(posting).toMatchObject({
       "@type": "BlogPosting",
       headline: "What is a safe health factor on Aave?",
