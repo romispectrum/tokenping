@@ -1,0 +1,142 @@
+export const meta = {
+  slug: "aave-market-wind-down",
+  title: "What happens when Aave winds down a market",
+  description:
+    "Aave is winding down its Scroll, ZKsync, Metis, Soneium and Sonic markets. What still works, what borrowers pay there, what may come next and how to leave.",
+  h1: "What happens to your Aave loan when a network's market is wound down?",
+  publishedAt: "2026-10-25",
+  primaryQuestion: "What happens to my Aave loan when Aave winds down the market it is in?",
+  readingMinutes: 9,
+};
+
+<ShortAnswer>
+  Aave governance has frozen its V3 markets on Scroll, ZKsync, Metis, Soneium and Sonic and is winding them down. A
+  frozen market blocks new supplies and new borrowing, but you can still repay, withdraw while the pool has tokens,
+  and be liquidated. Since 20 Sep 2026 every borrowed asset in the five markets carries a 99% reserve factor and a base rate
+  of at least 5%, so debt there costs more and collateral earns almost nothing. No liquidation threshold has been cut yet,
+  but Aave's plan allows gradual cuts and fixed price feeds, and either can move a health factor in one step.
+  Repaying and withdrawing is the way out.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Figures and the block numbers they were read at: content/blog/snapshots/aave-market-wind-down.md */}
+
+## Which Aave markets are being wound down?
+
+Five Aave V3 markets are being wound down: Scroll, ZKsync, Metis, Soneium and Sonic. Every reserve in all five was frozen when read on 25 Oct 2026, none was paused, and each had an LTV of 0 and supply and borrow caps of 1:
+
+| Network | Decided in                              | Frozen since | Aave version | Supplied / borrowed (25 Oct 2026) |
+| ------- | --------------------------------------- | ------------ | ------------ | --------------------------------- |
+| ZKsync  | AIP 451 (Feb 2026), then AIP 521        | 28 Feb 2026  | v3.6         | about $837k / $135k               |
+| Soneium | AIP 451 (Feb 2026), then AIP 521        | 27 Feb 2026  | v3.6         | about $115k / $24k                |
+| Metis   | AIP 451 (Feb 2026), then AIP 521        | 3 Mar 2026   | v3.6         | about $292k / $24k                |
+| Scroll  | AIP 470 (Apr 2026), then AIP 521        | 20 Apr 2026  | v3.7         | about $1.90M / $260k              |
+| Sonic   | AIP 521 (Sep 2026)                      | 20 Sep 2026  | v3.7         | about $7.30M / $1.63M             |
+
+The reasons given were low use and low revenue. The proposal that started it said the ZKsync, Metis and Soneium markets lacked product market fit, with annualized revenue of roughly $3,000 to $50,000. For Scroll, proposals pointed to governance instability in the Scroll ecosystem and then, in April 2026, to its total value locked falling from about $227M to $23.3M in a week after ether.fi moved to OP Mainnet. Sonic followed in July 2026, when LlamaRisk reported its deposits had fallen from $28.9M to $7.6M and the market earned under $5,000 a quarter. The same July proposal also covers Aave on Aptos, which Tokenping doesn't read.
+
+Three of the markets run Aave v3.6 rather than v3.7, the version this site's guides check against. The rules for a frozen reserve described below are the same in both.
+
+## What has Aave governance done so far, and in what order?
+
+Aave governance has moved in steps: first discussion and caps, then a freeze, then costlier debt, each by a separate vote or risk steward action:
+
+1. **11 Sep 2025:** a proposal raises Scroll's reserve factor to 50% and cuts its caps, citing governance instability in the Scroll ecosystem.
+2. **19 Nov 2025:** a TEMP CHECK proposes winding down ZKsync, Metis and Soneium; its Snapshot vote passes on 5 Dec 2025, and the follow-up ARFC on 8 Feb 2026.
+3. **10 Feb 2026:** Chaos Labs, as risk steward, cuts supply and borrow caps across underused markets, ZKsync, Metis, Soneium and Sonic among them.
+4. **27 Feb to 3 Mar 2026:** AIP 451 freezes every reserve on Soneium, ZKsync and Metis. Its ZKsync payload only set LTVs to 0, so ZKsync's reserves were frozen separately and first read frozen on 28 Feb 2026.
+5. **10 Apr 2026:** Scroll's caps cut to 1 after ether.fi left, with loopers sitting at health factors of about 1.00 to 1.05.
+6. **20 Apr 2026:** AIP 470 freezes Scroll and raises its reserve factors to 85% (50% for WETH); the same day AIP 473 moves Scroll and Sonic to Aave v3.7.
+7. **29 Jul 2026:** LlamaRisk's "Low Adoption Asset Deprecation" ARFC puts all five markets on a whole-market deprecation.
+8. **20 Sep 2026:** AIP 521 freezes every reserve in all five with caps of 1 and gives every borrowed reserve a 99% reserve factor and a 5% base rate.
+9. **12 Oct 2026:** AIP 526 fixes the price of SCR on Scroll at $0.0335 and gives it a 20% base rate.
+
+## What can you still do in a frozen Aave market?
+
+In a frozen Aave market you can repay, withdraw while the pool has tokens, and turn collateral on or off, and anyone can still liquidate you; you can't supply or borrow. A paused reserve, which none of the five was on 25 Oct 2026, blocks everything, repayments and liquidations included. Read from the contract's validation code:
+
+| Action                       | Frozen reserve                          | Paused reserve |
+| ---------------------------- | --------------------------------------- | -------------- |
+| Supply                       | Blocked                                 | Blocked        |
+| Borrow                       | Blocked                                 | Blocked        |
+| Repay                        | Allowed, also with aTokens              | Blocked        |
+| Withdraw                     | Allowed, if the pool holds the tokens and your health factor stays at 1 or more | Blocked |
+| Turn collateral on or off    | Allowed, if your health factor stays at 1 or more | Blocked |
+| Be liquidated                | Allowed                                 | Blocked        |
+
+Freezing also sets every LTV to 0, which only stops new borrowing; [frozen markets and liquidations](/blog/how-aave-liquidation-works#do-liquidations-stop-when-a-market-is-frozen-or-an-l2-sequencer-goes-down) explains why liquidations go on regardless.
+
+## Does a frozen market lower your health factor?
+
+No. A freeze and an LTV of 0 leave your health factor as it was, because the health factor is computed from liquidation thresholds, not LTV. On all five markets, every liquidation threshold read on 25 Oct 2026 was the same as on 15 Jan 2026, before the first freeze: 83% for WETH on Scroll, Metis, Soneium and Sonic, 78% on ZKsync, and 78% for USDC on Scroll, ZKsync and Sonic, for example.
+
+What does lower it in these markets is interest, which keeps running, and any later threshold cut or price feed change (see [what could come next](#what-could-come-next-in-a-market-being-wound-down)).
+
+## What do borrowers pay in a market being wound down?
+
+Borrowers in these markets pay at least 5% a year on every borrowed asset, and far more where an asset is almost fully lent out. A 5% base rate means the rate never falls below 5%, whatever the utilization. A 99% reserve factor sends 99% of the interest to Aave's treasury, so suppliers, your collateral included, earn almost nothing.
+
+Read on 25 Oct 2026:
+
+- **ZKsync USDC:** 50.00% APR. Every supplied USDC was lent out, so the rate sat at the top of its curve (5% base, 5% slope 1, 40% slope 2) and suppliers had nothing left to withdraw.
+- **Sonic USDC:** 18.31% APR, at 96.8% utilization, with about $41,000 available against $1.39M supplied.
+- **Scroll SCR:** 20.05% APR, from the 20% base rate AIP 526 set.
+- **Most other borrowed assets:** about 5% to 10%, for example Scroll USDC 8.26%, Soneium USDC.e 10.11% and WETH 5.05% to 5.15%.
+
+At these rates interest becomes a real threat to a health factor. Take a position on ZKsync with WETH collateral at its 78% threshold and USDC debt at 50% APR, starting at a health factor of 1.56 with ETH flat: it falls to about 1.50 in a month and 1.22 in six months, and crosses 1.00 after about 325 days. How rates reach such levels is in [how Aave interest rates work](/blog/aave-interest-rates#why-do-aave-borrow-rates-spike).
+
+## What could come next in a market being wound down?
+
+LlamaRisk's July 2026 proposal sets out what follows if borrowers stay: higher rate curves, then gradual liquidation threshold cuts per asset where keeping the exposure is judged risky, then fixed price feeds so the market can be retired. None of the five markets had a threshold cut by 25 Oct 2026, and only Scroll's SCR has a fixed price so far.
+
+Each of those steps acts on your position differently:
+
+- **A higher rate curve** makes the debt grow faster, the same slow pressure as above.
+- **A liquidation threshold cut** lowers the health factor of every position using that asset at once, without any price move; [Cause 4 of why your health factor drops](/blog/why-aave-health-factor-dropped#cause-4-did-governance-or-the-risk-stewards-cut-a-liquidation-threshold) shows by how much.
+- **A fixed price feed** stops the health factor following that asset's market price; from then on, the price governance sets is the one that counts.
+
+## What happened in earlier Aave wind-downs?
+
+Earlier Aave wind-downs followed the same path, and the last steps did liquidate positions that stayed:
+
+- **Aave V3 on Fantom (2022):** frozen in September 2022, after a proposal noting about $30 of daily fees for Aave's treasury, which left users able only to withdraw, repay and be liquidated.
+- **Aave V3 on Harmony (2022):** frozen after the Horizon bridge exploit; users could withdraw according to the liquidity available.
+- **Aave V2 on Ethereum and Polygon (2023):** after freezes and higher rates, liquidation thresholds were cut in steps. Before the December 2023 cut, Chaos Labs counted 111 accounts with about $110,000 on Ethereum and 64 accounts with about $10,800 on Polygon at risk of liquidation from the change.
+- **Aave V2 on Polygon and Avalanche (2025 to 2026):** frozen in July 2025, then an 85% reserve factor and 5% base rates from August 2025 to push borrowers to move. In March 2026 Chaos Labs proposed a uniform 4% cut to every collateral threshold on V2 Ethereum, matching cuts on Polygon and Avalanche, and higher liquidation bonuses where price feeds were fixed.
+
+Nothing guarantees the five current markets will go the same way, but each step so far has followed this order.
+
+## How do you leave a market that is being wound down?
+
+You leave by repaying first and withdrawing after, because supplying is blocked and repaying is the only way left to raise your health factor:
+
+1. **Repay your debt.** You need the borrowed token on that network. Aave's docs list the interface's repay-with-collateral and debt swap features on Sonic, but not on Metis, Scroll, ZKsync or Soneium.
+2. **Withdraw your collateral.** Each withdrawal must leave your health factor at 1 or more, so withdraw after repaying, or in steps.
+3. **Check the pool's liquidity.** You can only withdraw tokens the pool still holds. On 25 Oct 2026, ZKsync's USDC suppliers could withdraw nothing until borrowers repaid, and Sonic's USDC pool held about $41,000.
+
+If you can't repay everything at once, [how to raise your Aave health factor](/blog/avoid-aave-liquidation) covers partial repayments and what each one buys you.
+
+## Can an alert help while a market is wound down?
+
+An alert can warn you about the slow part of a wind-down, interest piling up at 5% to 50%, but a threshold cut or a fixed price feed can move your health factor in one step between two checks. Tokenping still reads all five markets: it checks your Aave V3 and V4 health factor every 5 minutes on 22 networks and messages you on Signal, Telegram or email while it is below the threshold you set (1.1 to 10).
+
+In a market being wound down, leave more room than usual: [how much buffer a health factor gives you](/blog/safe-aave-health-factor) helps you choose, and [how to set up a health factor alert](/blog/aave-health-factor-alert-setup) covers the steps. You can [check your Aave V3 health factor](/aave) first; looking at your positions needs no payment. An alert gives you time to act; in a market that is closing, the safest action is to leave.
+
+## Sources
+
+- [TEMP CHECK: Focussing the Aave V3 Multichain Strategy](https://governance.aave.com/t/temp-check-focussing-the-aave-v3-multichain-strategy/23434) (ACI, 19 Nov 2025, fetched 25 Oct 2026)
+- [ARFC: Focussing the Aave V3 Multichain Strategy, Phase 1](https://governance.aave.com/t/arfc-focussing-the-aave-v3-multichain-strategy-phase-1/23954) (ACI, 29 Jan 2026, fetched 25 Oct 2026)
+- [Chaos Labs Risk Stewards: caps reduction on low-demand assets](https://governance.aave.com/t/chaos-labs-risk-stewards-supply-and-borrow-caps-reduction-across-low-demand-assets-on-aave-v3-10-02-26/24037) (10 Feb 2026, fetched 25 Oct 2026)
+- [AIP 451](https://vote.onaave.com/proposal/?proposalId=451): freeze of the ZKsync, Metis and Soneium reserves (fetched 25 Oct 2026)
+- [Direct-to-AIP: risk parameter adjustments for Aave V3 Scroll](https://governance.aave.com/t/direct-to-aip-risk-parameter-adjustments-for-aave-v3-scroll-instance/23113) (ACI, 11 Sep 2025), [Risk Stewards: Scroll caps](https://governance.aave.com/t/risk-stewards-change-of-supply-borrow-caps-on-aave-v3-scroll-2026-04-10/24430) (LlamaRisk, 10 Apr 2026) and [Aave V3 Scroll instance deprecation](https://governance.aave.com/t/direct-to-aip-aave-v3-scroll-instance-deprecation/24432) (fetched 25 Oct 2026)
+- [AIP 470](https://vote.onaave.com/proposal/?proposalId=470), [AIP 473](https://vote.onaave.com/proposal/?proposalId=473), [AIP 521](https://vote.onaave.com/proposal/?proposalId=521) and [AIP 526](https://vote.onaave.com/proposal/?proposalId=526) (fetched 25 Oct 2026)
+- [ARFC: Low Adoption Asset Deprecation on Aave V3](https://governance.aave.com/t/arfc-low-adoption-asset-deprecation-on-aave-v3/25401) (LlamaRisk, 29 Jul 2026, fetched 25 Oct 2026)
+- Aave V3 PoolDataProvider on [Scroll](https://scrollscan.com/address/0xBEa2B648f05887eCbF1d115da8b7E4A317975A51#readContract), [ZKsync](https://era.zksync.network/address/0x9057ac7b2D35606F8AD5aE2FCBafcD94E58D9927#readContract), [Metis](https://explorer.metis.io/address/0x602BeF1d4c381e5a29f0C562A310416A73D8Be19), [Soneium](https://soneium.blockscout.com/address/0x4a24b44b252db149B5B9BCec4dc3c2752807d626) and [Sonic](https://sonicscan.org/address/0xc0a344397cfa89dF1e1d3e4fb330834D789cF2CD#readContract), with each Pool and the ZKsync and Sonic USDC interest rate strategies: every reserve's flags, LTV, threshold, caps, reserve factor, rates, liquidity, deficit and the Pool revision, at Scroll block 35492432, ZKsync 72632724, Metis 23321705, Soneium 29897280 and Sonic 81600241 (fetched 25 Oct 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol) and [IPoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/interfaces/IPoolConfigurator.sol): what frozen and paused reserves allow, and LTV 0 (aave-v3-origin, fetched 25 Oct 2026)
+- [ARC: Aave V3 Fantom freeze reserves](https://governance.aave.com/t/arc-aave-v3-fantom-freeze-reserves/9166) (2 Aug 2022) and [Aave V3 Harmony freeze reserves](https://governance.aave.com/t/aave-v3-harmony-freeze-reserves/8863) (13 Jul 2022) (fetched 25 Oct 2026)
+- [ARFC: Aave V2 markets deprecation plan](https://governance.aave.com/t/arfc-aave-v2-markets-deprecation-plan/14870) (18 Sep 2023) and [ARFC: V2 Ethereum and Polygon LT reductions](https://governance.aave.com/t/arfc-v2-ethereum-and-polygon-lt-reductions-12-04-2023/15747) (Dec 2023) (fetched 25 Oct 2026)
+- [Direct-to-AIP: Aave V2 non-Ethereum pools next deprecation steps](https://governance.aave.com/t/direct-to-aip-aave-v2-non-ethereum-pools-next-deprecation-steps/22445), [ARFC: Aave V2 deprecation update](https://governance.aave.com/t/arfc-aave-v2-deprecation-update/23008) (Aug 2025) and [ARFC: Continued deprecation steps of Aave V2 markets](https://governance.aave.com/t/arfc-continued-deprecation-steps-of-aave-v2-markets/24351) (Chaos Labs, Mar 2026) (fetched 25 Oct 2026)
+- [Aave swap features](https://aave.com/docs/aave-v3/smart-contracts/swap-features.md): markets with debt swap and repay with collateral (fetched 25 Oct 2026)
+
+*Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation.*

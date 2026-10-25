@@ -28,6 +28,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
   "short-fiat-with-aave": { en: "short-fiat-with-aave", cs: "short-fiatu-pujckou-na-aave" },
   "aave-interest-rates": { en: "aave-interest-rates", cs: "urokove-sazby-aave" },
   "aave-alerts-do-not-disturb": { en: "aave-alerts-do-not-disturb", cs: "upozorneni-aave-rezim-nerusit" },
+  "aave-market-wind-down": { en: "aave-market-wind-down", cs: "ukonceni-trhu-aave" },
 };
 
 /** The English slug (the post's key) for a slug in any language, or undefined. */

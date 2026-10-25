@@ -93,7 +93,9 @@ const v3SecondaryMarket = (
 // PoolDataProvider answered on chain), in the order the dashboard lists them: the markets read before October 2026
 // first, then by launch. Harmony is left out: frozen since 2022, with fixed price feeds since Chainlink left the chain,
 // so a health factor there never moves. Scroll, ZKsync, Metis, Soneium and Sonic are being wound down by Aave
-// governance (ARFC of July 2026); their open positions can still be liquidated, so they stay until they are empty.
+// governance: ZKsync, Metis and Soneium frozen by AIP 451 (Feb 2026), Scroll by AIP 470 (Apr 2026), and all five,
+// Sonic included, under the July 2026 ARFC by AIP 521 (Sep 2026). Their open positions can still be liquidated, so they
+// stay until they are empty (content/blog/aave-market-wind-down.mdx).
 export const AAVE_MARKETS: readonly AaveMarket[] = [
   v3Market(
     chains.mainnet,

@@ -19,6 +19,7 @@ const EXPECTED_SLUGS = [
   "short-fiat-with-aave",
   "aave-interest-rates",
   "aave-alerts-do-not-disturb",
+  "aave-market-wind-down",
 ];
 
 const CS_SLUGS = EXPECTED_SLUGS.map(slug => POST_SLUGS[slug].cs);

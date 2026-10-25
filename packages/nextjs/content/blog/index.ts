@@ -8,6 +8,7 @@ import AaveLiquidationAlertTools, {
   meta as aaveLiquidationAlertTools,
 } from "~~/content/blog/aave-liquidation-alert-tools.mdx";
 import AaveLiquidationPrice, { meta as aaveLiquidationPrice } from "~~/content/blog/aave-liquidation-price.mdx";
+import AaveMarketWindDown, { meta as aaveMarketWindDown } from "~~/content/blog/aave-market-wind-down.mdx";
 import AvoidAaveLiquidation, { meta as avoidAaveLiquidation } from "~~/content/blog/avoid-aave-liquidation.mdx";
 import CryptoBackedLoans, { meta as cryptoBackedLoans } from "~~/content/blog/crypto-backed-loans.mdx";
 import CsAaveHealthFactor, { meta as csAaveHealthFactor } from "~~/content/blog/cs/aave-health-factor-vysvetleni.mdx";
@@ -35,6 +36,7 @@ import CsShortFiatWithAave, { meta as csShortFiatWithAave } from "~~/content/blo
 import CsPrivateAaveLiquidationAlerts, {
   meta as csPrivateAaveLiquidationAlerts,
 } from "~~/content/blog/cs/soukroma-upozorneni-na-likvidaci-aave.mdx";
+import CsAaveMarketWindDown, { meta as csAaveMarketWindDown } from "~~/content/blog/cs/ukonceni-trhu-aave.mdx";
 import CsAaveAlertsDoNotDisturb, {
   meta as csAaveAlertsDoNotDisturb,
 } from "~~/content/blog/cs/upozorneni-aave-rezim-nerusit.mdx";
@@ -69,6 +71,7 @@ export const POSTS: readonly Post[] = [
   { meta: shortFiatWithAave, Content: ShortFiatWithAave },
   { meta: aaveInterestRates, Content: AaveInterestRates },
   { meta: aaveAlertsDoNotDisturb, Content: AaveAlertsDoNotDisturb },
+  { meta: aaveMarketWindDown, Content: AaveMarketWindDown },
 ];
 
 /** The Czech translations (content/blog/cs), in the same order. Slugs pair with English through i18n/postSlugs. */
@@ -86,6 +89,7 @@ const CS_POSTS: readonly Post[] = [
   { meta: csShortFiatWithAave, Content: CsShortFiatWithAave },
   { meta: csAaveInterestRates, Content: CsAaveInterestRates },
   { meta: csAaveAlertsDoNotDisturb, Content: CsAaveAlertsDoNotDisturb },
+  { meta: csAaveMarketWindDown, Content: CsAaveMarketWindDown },
 ];
 
 const POSTS_BY_LOCALE: Localized<readonly Post[]> = { en: POSTS, cs: CS_POSTS };
@@ -154,6 +158,7 @@ export const RELATED_SLUGS: Record<string, readonly string[]> = {
     "aave-interest-rates",
     "safe-aave-health-factor",
     "how-aave-liquidation-works",
+    "aave-market-wind-down",
     "aave-health-factor-alert-setup",
   ],
   "aave-health-factor-alert-setup": [
@@ -200,6 +205,14 @@ export const RELATED_SLUGS: Record<string, readonly string[]> = {
     "safe-aave-health-factor",
     "avoid-aave-liquidation",
     "aave-liquidation-alert-tools",
+  ],
+  "aave-market-wind-down": [
+    "aave-health-factor",
+    "why-aave-health-factor-dropped",
+    "aave-interest-rates",
+    "avoid-aave-liquidation",
+    "how-aave-liquidation-works",
+    "safe-aave-health-factor",
   ],
   "aave-alerts-do-not-disturb": [
     "aave-health-factor",
