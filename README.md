@@ -53,8 +53,9 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs o
   from the contract (`plans(token)`), so the site never hard-codes it. The proxy and implementation are verified on
   [Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553).
 - **Blog.** MDX articles in `packages/nextjs/content/blog` (English, and Czech in `content/blog/cs`), rendered as Server
-  Components with a sitemap, RSS feed and JSON-LD. `yarn next:indexnow` tells Bing, Seznam and Yandex about new and
-  changed pages through [IndexNow](#indexnow).
+  Components with a sitemap (`/sitemap.xml`, written by `utils/sitemap.ts` in the schema's element order, with hreflang
+  links), RSS feed and JSON-LD. `yarn next:indexnow` tells Bing, Seznam and Yandex about new and changed pages through
+  [IndexNow](#indexnow).
 - **Search and AI crawlers.** robots.txt (`utils/robots.ts`) names the search and AI-answer crawlers and the training
   crawlers separately (both allowed, `/api/` closed) and carries a [Content Signal](https://contentsignals.org) of
   `search=yes, ai-input=yes, ai-train=yes`, `/llms.txt` lists the pages and guides for AI tools, both homepages send
@@ -307,9 +308,10 @@ and can crawl it within hours instead of waiting to find it. Google does not tak
 yarn next:indexnow --since 2026-10-19
 ```
 
-`--since` sends only the pages whose sitemap date is on or after that day: posts and the blog indexes. The home,
-dashboard and privacy pages have no date in the sitemap, so only a run without `--since` sends them; that run sends every
-page in both languages and suits the first submission. `--dry-run` lists the URLs and sends nothing, and `--engine bing`
+`--since` sends only the pages whose sitemap date is on or after that day. Every page has one: a post's is its
+`updatedAt` or `publishedAt`, a blog index's is its newest post's, and the home, dashboard and privacy pages' are in
+`packages/nextjs/constants/pageDates.ts`, to move with their content. A run without `--since` sends every page in both
+languages and suits the first submission. `--dry-run` lists the URLs and sends nothing, and `--engine bing`
 (or `seznam`, `yandex`, `naver`, `yep`, `amazon`) sends to that engine instead of `api.indexnow.org`.
 
 The script reads the key and the URLs from the live site (`/indexnow-key.txt` and `/sitemap.xml`), so it needs no local

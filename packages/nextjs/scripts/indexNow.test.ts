@@ -1,6 +1,4 @@
-import { resolveSitemap } from "next/dist/build/webpack/loaders/metadata/resolve-route-data";
 import { describe, expect, it, vi } from "vitest";
-import sitemap from "~~/app/sitemap";
 import {
   ENDPOINTS,
   KEY_LOCATION,
@@ -15,17 +13,25 @@ import {
   requestBody,
   run,
 } from "~~/scripts/indexNow";
+import { renderSitemapXml, sitemapEntries as sitemap } from "~~/utils/sitemap";
 
 const KEY = "0123456789abcdef0123456789abcdef";
 
-/**
- * The XML Next serves at /sitemap.xml for app/sitemap.ts, from Next's own serializer: an internal module, so a Next
- * upgrade that moves it breaks this import, not the script.
- */
-const SITEMAP_XML = resolveSitemap(sitemap());
+/** The XML app/sitemap.xml/route.ts serves. */
+const SITEMAP_XML = renderSitemapXml(sitemap());
 const SITEMAP_URLS = sitemap().map(({ url }) => url);
 
-const sitemapXml = (entries: { url: string; lastModified?: string }[]) => resolveSitemap(entries);
+/** A minimal sitemap of `entries`; a page without a date has no <lastmod>, as any sitemap may. */
+const sitemapXml = (entries: { url: string; lastModified?: string }[]) =>
+  [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ...entries.map(
+      ({ url, lastModified }) =>
+        `<url><loc>${url}</loc>${lastModified ? `<lastmod>${lastModified}</lastmod>` : ""}</url>`,
+    ),
+    "</urlset>",
+  ].join("\n");
 
 type Reply = Response | Error;
 
@@ -73,16 +79,14 @@ const runWith = async (argv: string[], fetchMock = fakeFetch()) => {
 };
 
 describe("parseSitemap", () => {
-  it("reads back every URL and content date of app/sitemap.ts, in its order", () => {
-    expect(parseSitemap(SITEMAP_XML)).toEqual(
-      sitemap().map(({ url, lastModified }) => ({ url, ...(lastModified && { lastModified }) })),
-    );
+  it("reads back every URL and content date of the sitemap, in its order", () => {
+    expect(parseSitemap(SITEMAP_XML)).toEqual(sitemap().map(({ url, lastModified }) => ({ url, lastModified })));
   });
 
   it("covers the English and the Czech pages", () => {
     const urls = parseSitemap(SITEMAP_XML).map(({ url }) => url);
 
-    expect(urls).toEqual(expect.arrayContaining(["https://tokenping.xyz/", "https://tokenping.xyz/cz"]));
+    expect(urls).toEqual(expect.arrayContaining(["https://tokenping.xyz", "https://tokenping.xyz/cz"]));
     expect(urls.filter(url => url.startsWith("https://tokenping.xyz/cz/blog/")).length).toBeGreaterThan(0);
   });
 
@@ -104,7 +108,7 @@ describe("isSiteUrl", () => {
 
   it.each([
     "http://tokenping.xyz/",
-    "https://tokenping.xyz",
+    "https://tokenping.xyzz",
     "https://www.tokenping.xyz/",
     "https://tokenping.xyz.example.com/",
     "https://tokenping.xyz:8443/",

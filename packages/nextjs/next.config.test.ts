@@ -5,10 +5,10 @@ import type { NextConfig } from "next";
 import { readdirSync } from "node:fs";
 import type { IncomingMessage } from "node:http";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import sitemap from "~~/app/sitemap";
 import { LOCALES } from "~~/i18n/locales";
 import { routePath } from "~~/i18n/routes";
 import { acceptsMarkdown } from "~~/utils/markdown";
+import { sitemapEntries } from "~~/utils/sitemap";
 
 const ACCEPTS_MARKDOWN = { type: "header", key: "accept", value: ".*text/markdown.*" };
 
@@ -280,7 +280,7 @@ const BROWSER =
   "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8," +
   "application/signed-exchange;v=b3;q=0.7";
 /** Every page the sitemap lists, by path. */
-const SITEMAP_PATHS = sitemap().map(({ url }) => new URL(url).pathname);
+const SITEMAP_PATHS = sitemapEntries().map(({ url }) => new URL(url).pathname);
 
 describe("next.config markdown rewrites", () => {
   afterEach(() => {

@@ -1,17 +1,17 @@
 import type { NextRequest } from "next/server";
-import sitemap from "~~/app/sitemap";
 import { LOCALES } from "~~/i18n/locales";
 import { routePath } from "~~/i18n/routes";
 import { MARKDOWN_CONTENT_TYPE, acceptsMarkdown, estimateTokens, htmlToMarkdown } from "~~/utils/markdown";
 import { CONTENT_SIGNAL } from "~~/utils/robots";
 import { SITE_URL } from "~~/utils/seo";
+import { sitemapEntries } from "~~/utils/sitemap";
 
 // Markdown for agents: next.config.ts rewrites a public page requested with `Accept: text/markdown` here, and this
 // answers with the page's own HTML (fetched from this deployment) converted by utils/markdown.ts. Only pages the
 // sitemap lists, and only for a markdown request: a browser or a crawler that opens /md/... gets a 404.
 
 /** Each sitemap page's path, with its canonical URL. */
-const CANONICAL_URLS = new Map(sitemap().map(({ url }) => [new URL(url).pathname, url]));
+const CANONICAL_URLS = new Map(sitemapEntries().map(({ url }) => [new URL(url).pathname, url]));
 
 /** The Link entries next.config.ts sends with each home page's HTML; route.test.ts checks they are the same. */
 const HOME_LINKS = new Map(

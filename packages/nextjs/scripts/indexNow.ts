@@ -54,7 +54,7 @@ const tagText = (xml: string, tag: string) => {
   return match ? unescapeXml(match[1].trim()) : undefined;
 };
 
-/** The <url> entries of a sitemap as app/sitemap.ts renders it: one <loc> each, <lastmod> when the page has a date. */
+/** The <url> entries of a sitemap as utils/sitemap.ts renders it: one <loc> each, <lastmod> when the page has a date. */
 export const parseSitemap = (xml: string): SitemapEntry[] =>
   [...xml.matchAll(/<url>([\s\S]*?)<\/url>/g)].flatMap(([, entry]) => {
     const url = tagText(entry, "loc");
@@ -63,10 +63,11 @@ export const parseSitemap = (xml: string): SitemapEntry[] =>
   });
 
 /**
- * True only for an https://tokenping.xyz/ URL. The prefix ends at the slash after the host, so it also rules out any
- * other scheme, host, port or user info.
+ * True only for the site's root (written without a trailing slash, as its canonical is) or an https://tokenping.xyz/
+ * URL. The prefix ends at the slash after the host, so it also rules out any other scheme, host, port or user info.
  */
-export const isSiteUrl = (url: string) => url.startsWith(`${SITE_ORIGIN}/`) && URL.canParse(url);
+export const isSiteUrl = (url: string) =>
+  url === SITE_ORIGIN || (url.startsWith(`${SITE_ORIGIN}/`) && URL.canParse(url));
 
 /** A real calendar day written YYYY-MM-DD. */
 export const isIsoDate = (value: string) =>

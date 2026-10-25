@@ -7,6 +7,7 @@ import { JsonLd } from "~~/components/seo/JsonLd";
 import { isMorphoEnabled } from "~~/config/morpho";
 import { EXTERNAL_LINK_REL, SOCIAL_LINKS } from "~~/constants/links";
 import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
+import { privacyUpdated } from "~~/constants/pageDates";
 import type { Locale } from "~~/i18n/locales";
 import { PRIVACY_MESSAGES } from "~~/i18n/messages/privacy";
 import { routeAlternates, routePath } from "~~/i18n/routes";
@@ -21,11 +22,6 @@ export const privacyMetadata = (locale: Locale) =>
     locale,
     alternates: routeAlternates("privacy"),
   });
-
-/** Change only when the content below changes. */
-const LAST_UPDATED = "2026-10-19";
-/** The date the Morpho disclosures were added: the page's date once Morpho is enabled. */
-const MORPHO_LAST_UPDATED = "2026-10-25";
 
 const crumbs = (locale: Locale): Crumb[] => [
   { name: PRIVACY_MESSAGES[locale].crumbHome, path: routePath(locale, "home") },
@@ -60,7 +56,8 @@ export const PrivacyPage = ({ locale }: { locale: Locale }) => {
   const hasTelegram = getAlertChannelNames().includes("Telegram");
   const hasMorpho = isMorphoEnabled();
   const processors = t.processors.list({ minutes: NOTIFICATION_CHECK_INTERVAL_MINUTES, hasTelegram, hasMorpho });
-  const lastUpdated = hasMorpho ? MORPHO_LAST_UPDATED : LAST_UPDATED;
+  // Change it in constants/pageDates.ts with the content below; the sitemap gives the same date.
+  const lastUpdated = privacyUpdated();
 
   return (
     <div className="relative isolate flex-1">

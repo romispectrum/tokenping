@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "~~/app/md/[[...path]]/route";
-import sitemap from "~~/app/sitemap";
 import { estimateTokens } from "~~/utils/markdown";
 import { CONTENT_SIGNAL } from "~~/utils/robots";
+import { sitemapEntries } from "~~/utils/sitemap";
 
 const ORIGIN = "https://tokenping.xyz";
 const MARKDOWN = "text/markdown, text/html;q=0.9, */*;q=0.8";
@@ -14,7 +14,7 @@ const PAGE_HTML =
   "</body></html>";
 
 /** Every page the sitemap lists, by path. */
-const SITEMAP_PATHS = sitemap().map(({ url }) => new URL(url).pathname);
+const SITEMAP_PATHS = sitemapEntries().map(({ url }) => new URL(url).pathname);
 
 /** The request next.config.ts rewrites to this route: the page's own URL, `path` its segments. */
 const get = (path: string, accept: string | null = MARKDOWN, origin = ORIGIN) => {
@@ -80,13 +80,16 @@ describe("GET /md/[[...path]]", () => {
     expect(init).toMatchObject({ headers: { Accept: "text/html" }, cache: "no-store", redirect: "error" });
   });
 
+  /** A page's canonical as the page writes it: the site's root without a trailing slash. */
+  const canonicalOf = (path: string) => (path === "/" ? ORIGIN : `${ORIGIN}${path}`);
+
   it("serves every page the sitemap lists, the home pages included", async () => {
     expect(SITEMAP_PATHS).toEqual(expect.arrayContaining(["/", "/cz", "/aave", "/privacy", "/cz/ochrana-soukromi"]));
     for (const path of SITEMAP_PATHS) {
       const response = await get(path);
 
       expect(response.status, path).toBe(200);
-      expect(response.headers.get("link"), path).toMatch(new RegExp(`^<${ORIGIN}${path}>; rel="canonical"`));
+      expect(response.headers.get("link"), path).toMatch(new RegExp(`^<${canonicalOf(path)}>; rel="canonical"`));
     }
     expect(fetchMock).toHaveBeenCalledTimes(SITEMAP_PATHS.length);
   });
@@ -101,7 +104,7 @@ describe("GET /md/[[...path]]", () => {
     for (const { source, headers } of homeRules) {
       const [{ value }] = headers;
 
-      expect((await get(source)).headers.get("link")).toBe(`<${ORIGIN}${source}>; rel="canonical", ${value}`);
+      expect((await get(source)).headers.get("link")).toBe(`<${canonicalOf(source)}>; rel="canonical", ${value}`);
     }
     expect((await get("/privacy")).headers.get("link")).toBe(`<${ORIGIN}/privacy>; rel="canonical"`);
   });
