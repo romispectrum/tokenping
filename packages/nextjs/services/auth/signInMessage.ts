@@ -2,6 +2,7 @@ import { type Chain, getAddress } from "viem";
 import { mainnet } from "viem/chains";
 import { createSiweMessage } from "viem/siwe";
 import { AAVE_CHAINS } from "~~/config/aaveConfig";
+import { MORPHO_CHAINS } from "~~/config/morpho";
 import scaffoldConfig from "~~/scaffold.config";
 
 // Sign-in with Ethereum (EIP-4361), shared by the browser, which writes the message, and the verify route, which
@@ -11,16 +12,19 @@ import scaffoldConfig from "~~/scaffold.config";
 export const SIGN_IN_TTL_SECONDS = 5 * 60;
 
 /**
- * The chains a sign-in may name: the site's own networks, Ethereum, and every chain with an Aave market Tokenping
- * reads. A smart wallet's signature is checked on the chain the message names (EIP-4361: where a contract account
- * must be resolved), so the server needs an RPC for each one.
+ * The chains a sign-in may name: the site's own networks, Ethereum, and every chain with an Aave or Morpho market
+ * Tokenping reads (Morpho's whether or not its page is switched on: a list built once, at load). A smart wallet's
+ * signature is checked on the chain the message names (EIP-4361: where a contract account must be resolved), so the
+ * server needs an RPC for each one.
  */
 export const SIGN_IN_CHAINS: readonly Chain[] = [
   ...new Map(
-    [...scaffoldConfig.targetNetworks, mainnet, ...AAVE_CHAINS.map(({ chain }) => chain)].map(chain => [
-      chain.id,
-      chain,
-    ]),
+    [
+      ...scaffoldConfig.targetNetworks,
+      mainnet,
+      ...AAVE_CHAINS.map(({ chain }) => chain),
+      ...MORPHO_CHAINS.map(({ chain }) => chain),
+    ].map(chain => [chain.id, chain]),
   ).values(),
 ];
 

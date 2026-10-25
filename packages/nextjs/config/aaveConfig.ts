@@ -1,5 +1,6 @@
 import { type Address, type Chain, defineChain } from "viem";
 import * as chains from "viem/chains";
+import type { Protocol } from "~~/config/protocols";
 
 // Chains viem 2.39 has no definition for. The RPCs are the ones chainlist (and, for Arc, Aave's V4 API) list, and
 // Multicall3 sits at its usual address on each.
@@ -41,8 +42,11 @@ export type MarketId = string;
 
 export const V3_MARKET_ID: MarketId = "v3";
 
-/** A market by its chain and its id within the chain: what an alert config is stored under. */
-export type MarketRef = { chainId: number; market: MarketId };
+/**
+ * A market by its chain and its id within the chain: what an alert config is stored under. Without a protocol it is an
+ * Aave market, as every market was before Morpho (config/protocols.ts).
+ */
+export type MarketRef = { chainId: number; market: MarketId; protocol?: Protocol };
 
 export const addressMarketId = (address: Address): MarketId => address.toLowerCase();
 

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  AAVE_THRESHOLD_RANGE,
+  MORPHO_THRESHOLD_RANGE,
   THRESHOLD_INPUT_PATTERN,
   clampSliderThreshold,
   clampThreshold,
@@ -7,6 +9,7 @@ import {
   normalizeThreshold,
   parseThresholdInput,
   roundThreshold,
+  thresholdRangeFor,
 } from "~~/utils/notifications/threshold";
 
 // Verbatim copy of the parse in NotificationConfig's threshold input onBlur handler
@@ -208,6 +211,41 @@ describe("parseThresholdInput", () => {
     ];
     for (const value of samples) {
       expect(parseThresholdInput(value)).toBe(legacyParse(value));
+    }
+  });
+});
+
+describe("Morpho's threshold range", () => {
+  it("is 1.02 to 10 for both Morpho protocols, and Aave's stays 1.1 to 10", () => {
+    expect(thresholdRangeFor("morpho-blue")).toBe(MORPHO_THRESHOLD_RANGE);
+    expect(thresholdRangeFor("morpho-midnight")).toBe(MORPHO_THRESHOLD_RANGE);
+    expect(thresholdRangeFor("aave")).toBe(AAVE_THRESHOLD_RANGE);
+    expect(thresholdRangeFor()).toBe(AAVE_THRESHOLD_RANGE);
+    expect([MORPHO_THRESHOLD_RANGE.min, MORPHO_THRESHOLD_RANGE.max]).toEqual([1.02, 10]);
+    expect([AAVE_THRESHOLD_RANGE.min, AAVE_THRESHOLD_RANGE.max]).toEqual([1.1, 10]);
+  });
+
+  it("clamps, normalizes and parses to 1.02 with the Morpho range and to 1.1 without one", () => {
+    expect(clampThreshold(1.05, MORPHO_THRESHOLD_RANGE)).toBe(1.05);
+    expect(clampThreshold(1.01, MORPHO_THRESHOLD_RANGE)).toBe(1.02);
+    expect(clampThreshold(1.05)).toBe(1.1);
+    expect(normalizeThreshold("1.03", MORPHO_THRESHOLD_RANGE)).toBe(1.03);
+    expect(normalizeThreshold("1.03")).toBe(1.1);
+    expect(parseThresholdInput("1,04", MORPHO_THRESHOLD_RANGE)).toBe(1.04);
+    expect(parseThresholdInput("1.01", MORPHO_THRESHOLD_RANGE)).toBe(1.02);
+    expect(parseThresholdInput("1.04")).toBe(1.1);
+  });
+
+  it("keeps the Morpho slider between 1.02 and 2", () => {
+    expect(clampSliderThreshold(1, MORPHO_THRESHOLD_RANGE)).toBe(1.02);
+    expect(clampSliderThreshold(1.37, MORPHO_THRESHOLD_RANGE)).toBe(1.37);
+    expect(clampSliderThreshold(4, MORPHO_THRESHOLD_RANGE)).toBe(2);
+  });
+
+  it("puts its lowest mark at its minimum, as Aave's does", () => {
+    for (const range of [AAVE_THRESHOLD_RANGE, MORPHO_THRESHOLD_RANGE]) {
+      expect(Number(range.scale[0].value)).toBe(range.min);
+      expect(Number(range.scale[2].value)).toBe(range.sliderMax);
     }
   });
 });

@@ -17,6 +17,13 @@ describe("csOnMarket and csForMarket", () => {
     for (const market of AAVE_MARKETS) expect(csOnMarket(marketLabel(market))).toMatch(/^na síti /);
     for (const spoke of AAVE_V4_SPOKES) expect(csOnMarket(marketLabel(spoke))).toMatch(/^na trhu /);
   });
+
+  // A Morpho market's label ("OETH/USDC (86%)") names a market, which no regex on Aave labels could tell.
+  it("follow an explicit kind over the label", () => {
+    expect(csOnMarket("OETH/USDC (86%)", "market")).toBe("na trhu OETH/USDC (86%)");
+    expect(csForMarket("OETH/USDC (86%)", "market")).toBe("pro trh OETH/USDC (86%)");
+    expect(csOnMarket("Ethereum (V4 Lido)", "network")).toBe("na síti Ethereum (V4 Lido)");
+  });
 });
 
 describe("capitalize", () => {

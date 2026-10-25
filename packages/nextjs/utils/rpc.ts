@@ -17,15 +17,18 @@ import {
   scroll,
   soneium,
   sonic,
+  unichain,
+  worldchain,
   zksync,
 } from "viem/chains";
 import { arc, monad } from "~~/config/aaveConfig";
+import { hyperEvm, katana, robinhood, stable, tempo } from "~~/config/chains";
 import scaffoldConfig, { DEFAULT_ALCHEMY_API_KEY, type ScaffoldConfig } from "~~/scaffold.config";
 import { RPC_CHAIN_NAMES } from "~~/utils/scaffold-eth/networks";
 
 const LOCAL_RPC_URL = "http://127.0.0.1:8545";
 
-// SE-2's Alchemy network names stop at the chains it targets; these are the other Aave chains Alchemy serves.
+// SE-2's Alchemy network names stop at the chains it targets; these are the other Aave and Morpho chains Alchemy serves.
 const ALCHEMY_NETWORKS: Record<number, string> = {
   ...RPC_CHAIN_NAMES,
   [avalanche.id]: "avax-mainnet",
@@ -40,12 +43,19 @@ const ALCHEMY_NETWORKS: Record<number, string> = {
   [mantle.id]: "mantle-mainnet",
   [ink.id]: "ink-mainnet",
   [monad.id]: "monad-mainnet",
+  [unichain.id]: "unichain-mainnet",
+  [worldchain.id]: "worldchain-mainnet",
+  [hyperEvm.id]: "hyperliquid-mainnet",
+  [katana.id]: "katana-mainnet",
+  [robinhood.id]: "robinhood-mainnet",
+  [stable.id]: "stable-mainnet",
+  [tempo.id]: "tempo-mainnet",
 };
 
-// Keyless endpoints for every Aave chain PublicNode serves (checked 16 Oct 2026). viem's defaults alone are not
-// enough: Ethereum's (eth.merkle.io) rate-limits and Polygon's (polygon-rpc.com) refuses keyless calls, which left
-// both chains without a working endpoint when the app has no Alchemy key of its own. ZKsync, Plasma, X Layer, MegaETH
-// and Monad are not on PublicNode and use their chain's own RPC.
+// Keyless endpoints for every Aave and Morpho chain PublicNode serves (checked 16 Oct 2026, the Morpho ones 25 Oct).
+// viem's defaults alone are not enough: Ethereum's (eth.merkle.io) rate-limits and Polygon's (polygon-rpc.com) refuses
+// keyless calls, which left both chains without a working endpoint when the app has no Alchemy key of its own. ZKsync,
+// Plasma, X Layer, MegaETH, Monad, World Chain, Katana and Stable are not on PublicNode and use their chain's own RPC.
 const PUBLICNODE_RPC_URLS: Record<number, string> = {
   [mainnet.id]: "https://ethereum-rpc.publicnode.com",
   [polygon.id]: "https://polygon-bor-rpc.publicnode.com",
@@ -64,6 +74,10 @@ const PUBLICNODE_RPC_URLS: Record<number, string> = {
   [celo.id]: "https://celo-rpc.publicnode.com",
   [mantle.id]: "https://mantle-rpc.publicnode.com",
   [ink.id]: "https://ink-rpc.publicnode.com",
+  [unichain.id]: "https://unichain-rpc.publicnode.com",
+  [hyperEvm.id]: "https://hyperliquid-rpc.publicnode.com",
+  [robinhood.id]: "https://robinhood-rpc.publicnode.com",
+  [tempo.id]: "https://tempo-rpc.publicnode.com",
 };
 
 const isUrl = (url: string | undefined): url is string => !!url;
@@ -102,7 +116,7 @@ const getPublicRpcUrl = (chain: Chain) =>
   chain.id === hardhat.id ? (process.env.NEXT_PUBLIC_HARDHAT_RPC_URL ?? LOCAL_RPC_URL) : chain.rpcUrls.default.http[0];
 
 /**
- * Tries the configured RPC endpoints in order, then PublicNode for the Aave chains, then the chain's own public RPC
+ * Tries the configured RPC endpoints in order, then PublicNode for the Aave and Morpho chains, then the chain's own public RPC
  * (the local node for hardhat), then Alchemy with Scaffold-ETH's shared key when no key of our own is set. A URL that
  * appears twice, e.g. an override pointing at PublicNode, is tried once.
  * viem's fallback retries the whole list (retryCount 3 unless `config` says otherwise) and gives each endpoint a 10s

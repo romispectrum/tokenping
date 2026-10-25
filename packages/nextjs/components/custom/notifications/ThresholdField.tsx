@@ -1,11 +1,12 @@
 import { type KeyboardEvent, useId, useRef } from "react";
 import { Input } from "~~/components/ui";
-import { THRESHOLD_SLIDER_MAX, THRESHOLD_SLIDER_MIN, THRESHOLD_SLIDER_STEP } from "~~/constants/notifications";
 import { useLocale } from "~~/i18n/LocaleProvider";
 import { formatDecimal } from "~~/i18n/format";
 import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 import {
+  AAVE_THRESHOLD_RANGE,
   THRESHOLD_INPUT_PATTERN,
+  type ThresholdRange,
   clampSliderThreshold,
   formatThreshold,
   parseThresholdInput,
@@ -17,14 +18,12 @@ type ThresholdFieldProps = {
   chainName: string;
   onThresholdChange: (threshold: number) => void;
   onThresholdTextChange: (thresholdText: string) => void;
+  /** The protocol's thresholds and slider; Aave's when left out. */
+  range?: ThresholdRange;
 };
 
-/** The marks under the slider: its two ends and the middle. */
-const THRESHOLD_SCALE = [
-  { value: "1.1", mark: "critical", align: "items-start text-left" },
-  { value: "2.0", mark: "safe", align: "items-center text-center" },
-  { value: "3.0", mark: "verySafe", align: "items-end text-right" },
-] as const;
+/** Where each of the three marks under the slider sits: its two ends and the middle. */
+const SCALE_ALIGN = ["items-start text-left", "items-center text-center", "items-end text-right"] as const;
 
 // Browsers accept exponent and sign characters in some numeric inputs.
 const preventExponentAndSign = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -43,6 +42,7 @@ export const ThresholdField = ({
   chainName,
   onThresholdChange,
   onThresholdTextChange,
+  range = AAVE_THRESHOLD_RANGE,
 }: ThresholdFieldProps) => {
   const locale = useLocale();
   const t = ALERTS_MESSAGES[locale];
@@ -54,7 +54,7 @@ export const ThresholdField = ({
   const descriptionId = `${id}-description`;
 
   const handleSliderChange = (value: string) => {
-    const next = clampSliderThreshold(parseFloat(value));
+    const next = clampSliderThreshold(parseFloat(value), range);
     onThresholdChange(next);
     // Leave the text alone while the user is typing in it.
     if (typeof document !== "undefined" && document.activeElement !== inputRef.current) {
@@ -67,12 +67,12 @@ export const ThresholdField = ({
     const nextRaw = value.replace(",", ".");
     if (!THRESHOLD_INPUT_PATTERN.test(nextRaw)) return;
     onThresholdTextChange(nextRaw);
-    const parsed = parseThresholdInput(nextRaw);
+    const parsed = parseThresholdInput(nextRaw, range);
     if (parsed !== null) onThresholdChange(parsed);
   };
 
   const handleTextBlur = () => {
-    const parsed = parseThresholdInput(thresholdText);
+    const parsed = parseThresholdInput(thresholdText, range);
     if (parsed === null) {
       onThresholdTextChange(formatThreshold(threshold));
       return;
@@ -87,17 +87,18 @@ export const ThresholdField = ({
         {t.thresholdLabel}
       </label>
       <div className="flex items-center gap-3">
-        {/* The slider stops at 3 and the threshold does not, so the value text carries the threshold that applies.
+        {/* The slider stops at the top of its range (3 for Aave, 2 for Morpho) and the threshold does not, so the value
+            text carries the threshold that applies.
             No fill: DaisyUI paints it as a full-height bar, which would make the dark theme's cyan a large fill.
             The thumb ring is --link (never pink) on the --input track. On touch screens the input box, which is
             the hit area, grows to 44px while the track and thumb keep their size. */}
         <input
           id={sliderId}
           type="range"
-          min={THRESHOLD_SLIDER_MIN}
-          max={THRESHOLD_SLIDER_MAX.toFixed(1)}
-          step={THRESHOLD_SLIDER_STEP}
-          value={clampSliderThreshold(threshold)}
+          min={range.sliderMin}
+          max={range.sliderMax.toFixed(1)}
+          step={range.sliderStep}
+          value={clampSliderThreshold(threshold, range)}
           aria-valuetext={formatDecimal(locale, threshold)}
           aria-describedby={descriptionId}
           onChange={e => handleSliderChange(e.target.value)}
@@ -124,8 +125,8 @@ export const ThresholdField = ({
       </div>
       {/* Each mark is the value over its word, so the three fit a 320px screen at the 14px floor. */}
       <div className="grid grid-cols-3 gap-2 text-sm text-muted-foreground">
-        {THRESHOLD_SCALE.map(({ value, mark, align }) => (
-          <span key={value} className={`flex flex-col ${align}`}>
+        {range.scale.map(({ value, mark }, index) => (
+          <span key={value} className={`flex flex-col ${SCALE_ALIGN[index]}`}>
             <span>{formatDecimal(locale, value)}</span>
             <span>{t.thresholdScale[mark]}</span>
           </span>

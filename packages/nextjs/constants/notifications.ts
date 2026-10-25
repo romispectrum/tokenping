@@ -31,6 +31,12 @@ export const getSelectableServices = (selected: readonly NotificationService[]) 
 export const HEALTH_FACTOR_THRESHOLD_MIN = 1.1;
 export const HEALTH_FACTOR_THRESHOLD_MAX = 10;
 
+/**
+ * Morpho alerts may go lower: borrowers in high-LLTV markets (94.5% to 98%) often run at a health factor of 1.02 to
+ * 1.08, where a 1.1 alert would fire on every check.
+ */
+export const MORPHO_HEALTH_FACTOR_THRESHOLD_MIN = 1.02;
+
 /** The slider covers a narrower range than the typed input allows. */
 export const THRESHOLD_SLIDER_MIN = 1.1;
 export const THRESHOLD_SLIDER_MAX = 3;

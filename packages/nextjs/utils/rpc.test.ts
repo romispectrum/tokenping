@@ -19,11 +19,14 @@ import {
   sepolia,
   soneium,
   sonic,
+  unichain,
+  worldchain,
   xLayer,
   zksync,
 } from "viem/chains";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AAVE_CHAINS, arc, megaEth, monad } from "~~/config/aaveConfig";
+import { hyperEvm, katana, robinhood, stable, tempo } from "~~/config/chains";
 import { getConfiguredTransport, getFallbackTransport, getRpcUrls } from "~~/utils/rpc";
 
 const { config, SHARED_KEY } = vi.hoisted(() => ({
@@ -355,5 +358,36 @@ describe("getConfiguredTransport", () => {
 
   it("is undefined on a chain Alchemy does not serve, without an override", () => {
     expect(getConfiguredTransport(plasma.id)).toBeUndefined();
+  });
+});
+
+describe("Morpho's chains", () => {
+  it.each([
+    { chain: unichain, network: "unichain-mainnet" },
+    { chain: worldchain, network: "worldchain-mainnet" },
+    { chain: hyperEvm, network: "hyperliquid-mainnet" },
+    { chain: katana, network: "katana-mainnet" },
+    { chain: robinhood, network: "robinhood-mainnet" },
+    { chain: stable, network: "stable-mainnet" },
+    { chain: tempo, network: "tempo-mainnet" },
+  ])("builds the Alchemy URL for $chain.name ($network)", ({ chain, network }) => {
+    expect(getRpcUrls(chain.id)).toEqual([alchemy(network)]);
+  });
+
+  it.each([
+    { chain: unichain, url: "https://unichain-rpc.publicnode.com" },
+    { chain: hyperEvm, url: "https://hyperliquid-rpc.publicnode.com" },
+    { chain: robinhood, url: "https://robinhood-rpc.publicnode.com" },
+    { chain: tempo, url: "https://tempo-rpc.publicnode.com" },
+  ])("tries PublicNode, then its own RPC, for $chain.name", ({ chain, url }) => {
+    config.alchemyApiKey = "";
+
+    expect(transportUrls(chain)).toEqual([url, chain.rpcUrls.default.http[0]]);
+  });
+
+  it.each([worldchain, katana, stable])("uses its own RPC for $name, which PublicNode does not serve", chain => {
+    config.alchemyApiKey = "";
+
+    expect(transportUrls(chain)).toEqual([chain.rpcUrls.default.http[0]]);
   });
 });

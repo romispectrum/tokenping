@@ -50,11 +50,22 @@ export const formatDecimal = (locale: Locale, value: string | number) =>
 // A V4 Spoke's market name ends "(V4 Spoke)" (config/aaveConfig marketLabel); a V3 market is named by its network.
 const isV4MarketName = (name: string) => / \(V4 [^)]+\)$/.test(name);
 
+/**
+ * What a market's name names: a network (an Aave V3 market is named by its network) or a market of its own (an Aave V4
+ * Spoke, a Morpho market). Callers that know it pass it; otherwise it is read from an Aave label.
+ */
+export type MarketNameKind = "network" | "market";
+
+const marketNameKind = (name: string, kind?: MarketNameKind): MarketNameKind =>
+  kind ?? (isV4MarketName(name) ? "market" : "network");
+
 /** Czech "na síti Ethereum" for a V3 market, "na trhu Ethereum (V4 Lido)" for a V4 Spoke, which is no network. */
-export const csOnMarket = (name: string) => (isV4MarketName(name) ? `na trhu ${name}` : `na síti ${name}`);
+export const csOnMarket = (name: string, kind?: MarketNameKind) =>
+  marketNameKind(name, kind) === "market" ? `na trhu ${name}` : `na síti ${name}`;
 
 /** Czech "pro síť Ethereum" for a V3 market, "pro trh Ethereum (V4 Lido)" for a V4 Spoke. */
-export const csForMarket = (name: string) => (isV4MarketName(name) ? `pro trh ${name}` : `pro síť ${name}`);
+export const csForMarket = (name: string, kind?: MarketNameKind) =>
+  marketNameKind(name, kind) === "market" ? `pro trh ${name}` : `pro síť ${name}`;
 
 /** The text with its first letter upper case, for a phrase that starts a sentence. */
 export const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
