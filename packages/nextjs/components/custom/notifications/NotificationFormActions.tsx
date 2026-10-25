@@ -3,10 +3,13 @@ import { Trash2, TriangleAlert } from "lucide-react";
 import { SUBTLE_DESTRUCTIVE_CLASS } from "~~/components/custom/notifications/styles";
 import { Button } from "~~/components/ui";
 import { useMessages } from "~~/i18n/LocaleProvider";
+import type { MarketNameKind } from "~~/i18n/format";
 import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 
 type NotificationFormActionsProps = {
   chainName: string;
+  /** What `chainName` names, for Czech grammar; read from an Aave label when left out. */
+  chainNameKind?: MarketNameKind;
   /** Delete is offered only for a saved config. */
   canDelete: boolean;
   isSaving: boolean;
@@ -25,6 +28,7 @@ type NotificationFormActionsProps = {
  */
 export const NotificationFormActions = ({
   chainName,
+  chainNameKind,
   canDelete,
   isSaving,
   isDeleting,
@@ -64,7 +68,7 @@ export const NotificationFormActions = ({
               {t.deleteTitle}
             </p>
             <p id={descriptionId} className="m-0 text-sm text-muted-foreground">
-              {t.deleteDescription(chainName)}
+              {t.deleteDescription(chainName, chainNameKind)}
             </p>
           </div>
         </div>

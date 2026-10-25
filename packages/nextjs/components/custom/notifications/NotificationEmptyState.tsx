@@ -2,17 +2,25 @@ import type { Ref } from "react";
 import { BellRing } from "lucide-react";
 import { Button, Card, CardContent, EmptyState } from "~~/components/ui";
 import { useMessages } from "~~/i18n/LocaleProvider";
+import type { MarketNameKind } from "~~/i18n/format";
 import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 
 type NotificationEmptyStateProps = {
   chainName: string;
+  /** What `chainName` names, for Czech grammar; read from an Aave label when left out. */
+  chainNameKind?: MarketNameKind;
   onCreate: () => void;
   /** The Create button, which takes focus when Cancel closes an unsaved form. */
   createRef?: Ref<HTMLButtonElement>;
 };
 
 /** First use on this network. Its button is the view's one pink primary action. */
-export const NotificationEmptyState = ({ chainName, onCreate, createRef }: NotificationEmptyStateProps) => {
+export const NotificationEmptyState = ({
+  chainName,
+  chainNameKind,
+  onCreate,
+  createRef,
+}: NotificationEmptyStateProps) => {
   const t = useMessages(ALERTS_MESSAGES);
   return (
     <Card>
@@ -21,7 +29,7 @@ export const NotificationEmptyState = ({ chainName, onCreate, createRef }: Notif
           size="inline"
           headingLevel={3}
           icon={BellRing}
-          title={t.emptyTitle(chainName)}
+          title={t.emptyTitle(chainName, chainNameKind)}
           description={t.emptyDescription}
           action={
             <Button ref={createRef} onClick={onCreate}>

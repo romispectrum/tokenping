@@ -1,7 +1,7 @@
 import { type KeyboardEvent, useId, useRef } from "react";
 import { Input } from "~~/components/ui";
 import { useLocale } from "~~/i18n/LocaleProvider";
-import { formatDecimal } from "~~/i18n/format";
+import { type MarketNameKind, formatDecimal } from "~~/i18n/format";
 import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 import {
   AAVE_THRESHOLD_RANGE,
@@ -16,6 +16,8 @@ type ThresholdFieldProps = {
   threshold: number;
   thresholdText: string;
   chainName: string;
+  /** What `chainName` names, for Czech grammar; read from an Aave label when left out. */
+  chainNameKind?: MarketNameKind;
   onThresholdChange: (threshold: number) => void;
   onThresholdTextChange: (thresholdText: string) => void;
   /** The protocol's thresholds and slider; Aave's when left out. */
@@ -40,6 +42,7 @@ export const ThresholdField = ({
   threshold,
   thresholdText,
   chainName,
+  chainNameKind,
   onThresholdChange,
   onThresholdTextChange,
   range = AAVE_THRESHOLD_RANGE,
@@ -133,7 +136,7 @@ export const ThresholdField = ({
         ))}
       </div>
       <p id={descriptionId} className="m-0 text-sm text-muted-foreground">
-        {t.thresholdDescription(formatDecimal(locale, threshold), chainName)}
+        {t.thresholdDescription(formatDecimal(locale, threshold), chainName, chainNameKind)}
       </p>
     </div>
   );

@@ -13,6 +13,7 @@ import {
 } from "~~/components/custom/notifications/notificationForm";
 import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 import type { NotificationConfig, NotificationService } from "~~/types/notifications";
+import { MORPHO_THRESHOLD_RANGE } from "~~/utils/notifications/threshold";
 
 /*
  * Reference versions of the original NotificationConfig.tsx logic (handleStore and saveConfig), written out with
@@ -511,5 +512,31 @@ describe("form errors in Czech", () => {
       expect(message).toMatch(/^\p{Lu}.+\.$/u);
       expect(message).not.toMatch(dashes);
     }
+  });
+});
+
+describe("a Morpho alert's threshold range", () => {
+  it("keeps a threshold below Aave's 1.1 minimum, within Morpho's", () => {
+    const config = { ...CONFIG, healthFactorThreshold: 1.03 };
+    expect(configToFormState(config).threshold).toBe(1.1);
+    expect(configToFormState(config, MORPHO_THRESHOLD_RANGE)).toMatchObject({ threshold: 1.03, thresholdText: "1.03" });
+
+    const form = { services: ["email" as const], email: "me@example.com", signalRecipient: "", telegramUsername: "" };
+    expect(buildConfigUpdate({ ...form, threshold: 1.0 }, "en", MORPHO_THRESHOLD_RANGE).healthFactorThreshold).toBe(
+      1.02,
+    );
+    expect(buildConfigUpdate({ ...form, threshold: 1.0 }).healthFactorThreshold).toBe(1.1);
+  });
+});
+
+describe("alert copy for a market that is no network", () => {
+  const cs = ALERTS_MESSAGES.cs;
+  it("says na trhu and pro trh in Czech when the name is a market's, as for an Aave V4 Spoke", () => {
+    const name = "Base (WETH/USDC)";
+    expect(cs.emptyTitle(name, "market")).toBe("Na trhu Base (WETH/USDC) zatím nemáte žádné upozornění");
+    expect(cs.thresholdDescription("1,05", name, "market")).toContain("health factor na trhu Base (WETH/USDC) klesne");
+    expect(cs.deleteDescription(name, "market")).toContain("pro trh Base (WETH/USDC).");
+    // Left out, an Aave label's own form: a V3 market is its network.
+    expect(cs.emptyTitle("Base")).toBe("Na síti Base zatím nemáte žádné upozornění");
   });
 });

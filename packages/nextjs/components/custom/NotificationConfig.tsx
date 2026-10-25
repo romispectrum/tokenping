@@ -28,13 +28,15 @@ import {
   toggleService,
 } from "~~/components/custom/notifications/notificationForm";
 import { Button, LiveRegion } from "~~/components/ui";
-import type { MarketId } from "~~/config/aaveConfig";
+import type { MarketId, MarketRef } from "~~/config/aaveConfig";
+import { type Protocol, isMorphoProtocol } from "~~/config/protocols";
 import { NOTIFICATION_SERVICES } from "~~/constants/notifications";
 import { useAccess } from "~~/hooks/custom/useAccess";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
 import { useNotificationTests } from "~~/hooks/custom/useNotificationTests";
 import { hasSignedInHere, useWalletSession, useWalletSignIn } from "~~/hooks/custom/useWalletSession";
 import { useLocale } from "~~/i18n/LocaleProvider";
+import type { MarketNameKind } from "~~/i18n/format";
 import type { Locale } from "~~/i18n/locales";
 import { ALERTS_MESSAGES, requestErrorMessage } from "~~/i18n/messages/alerts";
 import { TestSendError } from "~~/services/notifications/notificationTestClient";
@@ -42,15 +44,20 @@ import type { NotificationService } from "~~/types/notifications";
 import { normalizeAddress } from "~~/utils/address";
 import { isUserRejection } from "~~/utils/errors";
 import { isBelowThreshold } from "~~/utils/healthFactor";
+import { thresholdRangeFor } from "~~/utils/notifications/threshold";
 import { notification } from "~~/utils/scaffold-eth";
 
 type NotificationConfigProps = {
-  /** Aave/position chain (the network this config is for). Must match position.chainId, not wallet's connected chain. */
+  /** The position's chain (the network this config is for). Must match position.chainId, not wallet's connected chain. */
   chainId: number;
-  /** The market on that chain: position.marketId ("v3" or a V4 Spoke). */
+  /** The market on that chain: position.marketId ("v3" or a V4 Spoke), or a Morpho market id. */
   market: MarketId;
+  /** Aave's when left out. Sets the threshold range and the alert's protocol. */
+  protocol?: Protocol;
   /** The market's name in copy: position.marketName ("Ethereum", "Ethereum (V4 Lido)"). */
   chainName: string;
+  /** What `chainName` names, for Czech grammar; read from an Aave label when left out. */
+  chainNameKind?: MarketNameKind;
   currentHealthFactor: string;
 };
 
@@ -58,7 +65,9 @@ const NotificationSettings = ({
   address,
   chainId,
   market,
+  protocol,
   chainName,
+  chainNameKind,
   currentHealthFactor,
 }: NotificationConfigProps & { address: string | undefined }) => {
   const locale = useLocale();
@@ -71,10 +80,12 @@ const NotificationSettings = ({
   const signedInHereBefore = useMemo(() => !!address && hasSignedInHere(address), [address]);
   const attribution = useAttributionPrompt(address);
   const tests = useNotificationTests();
-  const marketRef = { chainId, market };
+  // An Aave ref names no protocol, as before Morpho.
+  const marketRef: MarketRef = isMorphoProtocol(protocol) ? { chainId, market, protocol } : { chainId, market };
+  const range = thresholdRangeFor(protocol);
   const config = getConfig(marketRef);
   // What the summary shows. Editing works on a draft copy, so Cancel only has to drop the draft.
-  const saved = configToFormState(config);
+  const saved = configToFormState(config, range);
   /** Every channel's language, the page's where none was picked: what the selects and the summary show. */
   const channelLocalesOf = (form: NotificationFormState) =>
     Object.fromEntries(
@@ -254,7 +265,7 @@ const NotificationSettings = ({
     setErrorSummaryRequest(0);
 
     try {
-      await updateConfig(marketRef, buildConfigUpdate(draft, locale));
+      await updateConfig(marketRef, buildConfigUpdate(draft, locale, range));
       notification.success(t.alertSaved);
       setAnnouncement(t.alertSaved);
       // Save goes away with the form: the attribution prompt takes focus if it opens, otherwise Edit alert does.
@@ -293,6 +304,7 @@ const NotificationSettings = ({
     return (
       <NotificationEmptyState
         chainName={chainName}
+        chainNameKind={chainNameKind}
         createRef={createRef}
         onCreate={() => startEditing(EMPTY_FORM_STATE)}
       />
@@ -345,11 +357,14 @@ const NotificationSettings = ({
             threshold={draft.threshold}
             thresholdText={draft.thresholdText}
             chainName={chainName}
+            chainNameKind={chainNameKind}
+            range={range}
             onThresholdChange={threshold => updateDraft({ threshold })}
             onThresholdTextChange={thresholdText => updateDraft({ thresholdText })}
           />
           <NotificationFormActions
             chainName={chainName}
+            chainNameKind={chainNameKind}
             canDelete={hasConfig}
             isSaving={isSaving}
             isDeleting={isDeleting}

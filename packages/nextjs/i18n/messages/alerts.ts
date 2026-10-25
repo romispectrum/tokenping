@@ -1,4 +1,4 @@
-import { capitalize, csForMarket, csOnMarket, plural } from "~~/i18n/format";
+import { type MarketNameKind, capitalize, csForMarket, csOnMarket, plural } from "~~/i18n/format";
 import type { Locale, Localized } from "~~/i18n/locales";
 import { SignInRequiredError } from "~~/services/api/apiClient";
 import type { NotificationService } from "~~/types/notifications";
@@ -36,7 +36,8 @@ type AlertsMessages = {
   /** A request answered 401: the session ended (expired, or signed in with another wallet in another tab). */
   signInExpired: string;
   // First use on a network
-  emptyTitle: (chainName: string) => string;
+  /** `kind` says what the name names, for Czech; an Aave label's own form when left out. */
+  emptyTitle: (chainName: string, kind?: MarketNameKind) => string;
   emptyDescription: string;
   createAlert: string;
   // The configs did not load
@@ -72,7 +73,7 @@ type AlertsMessages = {
   thresholdLabel: string;
   thresholdExactValue: string;
   thresholdScale: { critical: string; safe: string; verySafe: string };
-  thresholdDescription: (threshold: string, chainName: string) => string;
+  thresholdDescription: (threshold: string, chainName: string, kind?: MarketNameKind) => string;
   // Form actions and the delete confirmation
   saveAlert: string;
   saving: string;
@@ -81,7 +82,7 @@ type AlertsMessages = {
   deleting: string;
   keepAlert: string;
   deleteTitle: string;
-  deleteDescription: (chainName: string) => string;
+  deleteDescription: (chainName: string, kind?: MarketNameKind) => string;
   // Errors
   errorSummaryTitle: (count: number) => string;
   formErrors: NotificationFormErrorMessages;
@@ -243,7 +244,7 @@ export const ALERTS_MESSAGES: Localized<AlertsMessages> = {
     signInRejected: "Žádost o podpis jste odmítli. Pro zobrazení a úpravy upozornění se přihlaste.",
     signInFailed: "Přihlášení se nepodařilo. Zkuste to znovu.",
     signInExpired: "Vaše přihlášení skončilo. Přihlaste se peněženkou znovu.",
-    emptyTitle: chainName => `${capitalize(csOnMarket(chainName))} zatím nemáte žádné upozornění`,
+    emptyTitle: (chainName, kind) => `${capitalize(csOnMarket(chainName, kind))} zatím nemáte žádné upozornění`,
     emptyDescription: "Dostanete zprávu, když váš health factor klesne pod práh, který si zvolíte.",
     createAlert: "Vytvořit upozornění",
     loadErrorTitle: "Nastavení upozornění se nenačetlo",
@@ -277,8 +278,8 @@ export const ALERTS_MESSAGES: Localized<AlertsMessages> = {
     thresholdLabel: "Prahová hodnota health factoru",
     thresholdExactValue: "(přesná hodnota)",
     thresholdScale: { critical: "Kritický", safe: "Bezpečný", verySafe: "Velmi bezpečný" },
-    thresholdDescription: (threshold, chainName) =>
-      `Upozorníme vás, když váš health factor ${csOnMarket(chainName)} klesne pod ${threshold}.`,
+    thresholdDescription: (threshold, chainName, kind) =>
+      `Upozorníme vás, když váš health factor ${csOnMarket(chainName, kind)} klesne pod ${threshold}.`,
     saveAlert: "Uložit upozornění",
     saving: "Ukládáme",
     cancel: "Zrušit",
@@ -286,7 +287,8 @@ export const ALERTS_MESSAGES: Localized<AlertsMessages> = {
     deleting: "Mažeme",
     keepAlert: "Ponechat upozornění",
     deleteTitle: "Smazat toto upozornění?",
-    deleteDescription: chainName => `Tokenping přestane posílat upozornění na health factor ${csForMarket(chainName)}.`,
+    deleteDescription: (chainName, kind) =>
+      `Tokenping přestane posílat upozornění na health factor ${csForMarket(chainName, kind)}.`,
     errorSummaryTitle: count =>
       plural("cs", count, {
         one: `Před uložením opravte ${count} pole`,

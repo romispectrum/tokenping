@@ -2,7 +2,13 @@ import { DEFAULT_HEALTH_FACTOR_THRESHOLD } from "~~/constants/notifications";
 import { DEFAULT_LOCALE, type Locale, isLocale } from "~~/i18n/locales";
 import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 import type { ChannelLocales, NotificationConfig, NotificationService } from "~~/types/notifications";
-import { clampThreshold, formatThreshold, normalizeThreshold, roundThreshold } from "~~/utils/notifications/threshold";
+import {
+  type ThresholdRange,
+  clampThreshold,
+  formatThreshold,
+  normalizeThreshold,
+  roundThreshold,
+} from "~~/utils/notifications/threshold";
 import {
   SIGNAL_USERNAME_REGEX,
   isNotificationService,
@@ -49,11 +55,14 @@ export const EMPTY_FORM_STATE: NotificationFormState = {
  * fallbacks below also cover fields that are missing at runtime despite the types.
  */
 
-/** The form for a saved config (or the empty form without one): what the summary shows and what editing starts from. */
-export const configToFormState = (config: NotificationConfig | null): NotificationFormState => {
+/**
+ * The form for a saved config (or the empty form without one): what the summary shows and what editing starts from.
+ * The threshold is kept within `range`, the protocol's (Aave's when left out).
+ */
+export const configToFormState = (config: NotificationConfig | null, range?: ThresholdRange): NotificationFormState => {
   if (!config) return EMPTY_FORM_STATE;
   const services = (config.services ?? []).filter(isNotificationService);
-  const threshold = normalizeThreshold(config.healthFactorThreshold);
+  const threshold = normalizeThreshold(config.healthFactorThreshold, range);
   return {
     enabled: config.enabled ?? false,
     // Legacy enabled configs without a valid service fall back to email.
@@ -137,7 +146,10 @@ export const validateNotificationForm = (form: SubmittableForm, locale: Locale =
   return first ? (errors[first] ?? null) : null;
 };
 
-/** The updateConfig payload for Save. Every selected channel gets a language: the picked one, else `pageLocale`. */
+/**
+ * The updateConfig payload for Save. Every selected channel gets a language: the picked one, else `pageLocale`. The
+ * threshold is kept within `range`, the protocol's (Aave's when left out).
+ */
 export const buildConfigUpdate = (
   {
     services,
@@ -149,10 +161,11 @@ export const buildConfigUpdate = (
   }: Pick<NotificationFormState, "services" | "email" | "signalRecipient" | "telegramUsername" | "threshold"> &
     Partial<Pick<NotificationFormState, "channelLocales">>,
   pageLocale: Locale = DEFAULT_LOCALE,
+  range?: ThresholdRange,
 ) => ({
   enabled: true,
   services,
-  healthFactorThreshold: clampThreshold(roundThreshold(threshold)),
+  healthFactorThreshold: clampThreshold(roundThreshold(threshold), range),
   // The keys stay present when undefined so the merge in updateConfig clears a deselected service's recipient.
   email: services.includes("email") ? email.trim() || undefined : undefined,
   signalRecipient: services.includes("signal") ? normalizeSignalUsername(signalRecipient) || undefined : undefined,
