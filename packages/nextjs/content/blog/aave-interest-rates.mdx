@@ -1,0 +1,156 @@
+export const meta = {
+  slug: "aave-interest-rates",
+  title: "How Aave interest rates work, and why they spike",
+  description:
+    "Aave borrow rates follow a utilization curve: gentle up to an optimal level, steep above it. The formula, real parameters, why rates spike and what to do.",
+  h1: "How do Aave interest rates work, and why do borrow rates spike?",
+  publishedAt: "2026-10-25",
+  primaryQuestion: "How does Aave set its borrow and supply rates, and why do they spike?",
+  readingMinutes: 9,
+};
+
+<ShortAnswer>
+  On Aave V3, each asset's variable borrow rate follows a curve set by governance: it rises gently with utilization,
+  the share of the supplied tokens that is borrowed, up to an optimal level, then steeply above it. Suppliers earn the
+  borrow rate times utilization, minus the reserve factor. Rates are recalculated at every supply, borrow, repayment
+  and withdrawal, so one large withdrawal can push utilization past the optimal level and multiply the rate within a
+  block: USDC on Ethereum Core went from 4.50% to 13.67% APR on 14 Oct 2026 and was back at 4.76% about 36 minutes
+  later. All Aave V3 debt is variable.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Figures and the block numbers they were read at: content/blog/snapshots/aave-interest-rates.md */}
+
+## What sets the borrow rate on Aave?
+
+On Aave V3, an asset's borrow rate is set by two things: its utilization and its interest rate parameters. Utilization is the share of the asset's pool that is lent out: debt divided by debt plus the tokens still available. The parameters are four numbers per asset, set by Aave governance, and Aave's Risk Stewards may adjust them within capped steps and minimum delays:
+
+- **Optimal usage ratio:** the utilization at which the curve bends.
+- **Base rate:** the borrow rate at 0% utilization.
+- **Slope 1:** how much the rate rises from 0% to the optimal usage ratio.
+- **Slope 2:** how much more it rises from the optimal usage ratio to 100%.
+
+Read on 25 Oct 2026 at Ethereum block 26269328 and Arbitrum block 518125419, the parameters and rates of a few common assets were:
+
+| Market and asset | Optimal usage | Base | Slope 1 | Slope 2 | Utilization | Borrow APR | Supply APR |
+| ---------------- | ------------- | ---- | ------- | ------- | ----------- | ---------- | ---------- |
+| Ethereum Core USDC | 94% | 0% | 4.5% | 10% | 93.72% | 4.49% | 3.78% |
+| Ethereum Core USDT | 92% | 0% | 4.5% | 10% | 87.81% | 4.30% | 3.39% |
+| Ethereum Core WETH | 92% | 0% | 2.2% | 6% | 81.31% | 1.94% | 1.31% |
+| Ethereum Core GHO | 99% | 4.5% | 0% | 0% | not used | 4.50% | 0% |
+| Arbitrum USDC | 90% | 0% | 4% | 10% | 77.32% | 3.44% | 2.39% |
+
+GHO is the exception: both its slopes are zero, so its rate stays flat whatever the utilization, and it is changed by hand (see [GHO and Aave V4](#how-are-rates-set-for-gho-and-on-aave-v4)).
+
+## How is the Aave borrow rate calculated?
+
+The Aave V3 borrow rate is a straight line up to the optimal usage ratio and a much steeper line above it. With U for utilization:
+
+**Up to the optimal usage ratio: borrow rate = base + slope 1 × U ÷ optimal usage ratio**
+
+**Above it: borrow rate = base + slope 1 + slope 2 × (U − optimal usage ratio) ÷ (1 − optimal usage ratio)**
+
+In the contract, U is total debt divided by total debt plus the tokens the pool still holds. With USDC's Ethereum Core parameters, the rate at each utilization is:
+
+| Utilization | Borrow APR |
+| ----------- | ---------- |
+| 50%         | 2.39%      |
+| 80%         | 3.83%      |
+| 90%         | 4.31%      |
+| 94% (optimal) | 4.50%    |
+| 95%         | 6.17%      |
+| 96%         | 7.83%      |
+| 98%         | 11.17%     |
+| 100%        | 14.50%     |
+
+Below 94%, ten points of utilization move the rate by less than half a point. Above it, each point adds about 1.67 points, and the last six points of utilization more than triple the rate. Read on 25 Oct 2026, USDC sat at 93.72%, just below the bend: 4.5% × 0.9372 ÷ 0.94 gives the 4.49% it was charging.
+
+The curve is meant to work this way. Below the optimal level, cheap borrowing keeps the pool in use; above it, the steep rate makes borrowing expensive enough that some borrowers repay and some holders supply, which brings utilization back down and leaves tokens available for suppliers who want to withdraw.
+
+## Why do Aave borrow rates spike?
+
+Aave borrow rates spike when utilization crosses the optimal usage ratio, usually because a large supplier withdraws or a large borrower borrows. The rate is recalculated in the same transaction, and every borrower of that asset pays the new rate from that moment until the next change.
+
+On 14 Oct 2026, one withdrawal of exactly 133,898,000 USDC from Ethereum Core pushed utilization from 93.92% to 99.50% in a single block:
+
+| Ethereum block (UTC)          | What happened                         | Utilization | USDC borrow APR |
+| ----------------------------- | ------------------------------------- | ----------- | --------------- |
+| 26194052 (14 Oct, 23:32:47)   | Before                                | 93.92%      | 4.50%           |
+| 26194053 (14 Oct, 23:32:59)   | 133,898,000 USDC withdrawn            | 99.50%      | 13.67%          |
+| 26194088 (14 Oct, 23:39:59)   | Highest point in the window           | about 99.8% | 14.18%          |
+| 26194231 (15 Oct, 00:08:35)   | The same address supplied 133,898,000 USDC back | 94.16% | 4.76% |
+
+Borrowers paid about three times the usual rate for 36 minutes, and the formula above reproduces each of those rates from the utilization. A spike lasts as long as utilization stays high: here the same tokens came back, but in other cases it takes new suppliers or repayments, drawn in by the high rate, to bring it down.
+
+Two other things change a borrow rate. Governance or the Risk Stewards can change the four parameters, which moves the whole curve at once. And between transactions the rate does not change: Aave recalculates it at every supply, borrow, repayment, withdrawal and liquidation of that asset, and interest builds up at that rate, second by second, until the next one.
+
+## Why do suppliers earn less than borrowers pay?
+
+Suppliers earn less than borrowers pay because only the borrowed part of the pool pays interest, and the protocol keeps a share of it. The supply rate is:
+
+**Supply rate = borrow rate × utilization × (1 − reserve factor)**
+
+For Ethereum Core USDC on 25 Oct 2026: 4.4866% × 0.9372 × (1 − 0.10) = 3.78%. The reserve factor, 10% for USDC and 15% for WETH, goes to Aave's treasury. Where a reserve carries a deficit from bad debt, the contract also counts it in the supply side, which lowers the supply rate slightly.
+
+## What is the difference between APR and APY on Aave?
+
+The contracts store rates as APR, and the Aave app shows APY, which adds compounding. The app's math library compounds the APR every second over a year of 31,536,000 seconds:
+
+**APY = (1 + APR ÷ 31,536,000)^31,536,000 − 1**
+
+The 4.4866% APR on Ethereum Core USDC shows in the app as a 4.59% APY. At these levels the gap is about a tenth of a point; at a 14% APR it is about one point (15.0% APY).
+
+## How do rate spikes affect your health factor?
+
+A short spike barely moves your health factor; a high rate that lasts for months does. Interest adds to your debt, and more debt lowers the health factor, as [the interest cause in why your health factor drops](/blog/why-aave-health-factor-dropped#cause-3-did-interest-accrue-on-your-debt-faster-than-on-your-collateral) explains.
+
+Take 10 WETH supplied against 12,000 USDC borrowed on Ethereum Core, with WETH's 83% liquidation threshold (read on 14 Oct 2026) and an illustrative ETH price of $2,400: the health factor is 1.66. Counting what the WETH earns at its 1.31% supply rate:
+
+| How long the rate lasts | At 4.49% (25 Oct 2026) | At 14.50% (the curve's top) |
+| ----------------------- | ---------------------- | --------------------------- |
+| 36 minutes              | about 0.04 USDC of interest, 1.66 | about 0.12 USDC, 1.66 |
+| 30 days                 | about 1.66             | about 1.64                  |
+| One year                | about 1.61             | about 1.45                  |
+
+The 14 Oct spike cost this position about 12 cents. A market that stays at the top of its curve for a year would take it from 1.66 to about 1.45 with no price move at all, which is why a slow drift is worth an alert threshold with room to spare ([how much buffer a health factor gives you](/blog/safe-aave-health-factor#how-quickly-do-interest-and-parameter-changes-eat-into-your-buffer)).
+
+## What can you do when your borrow rate jumps?
+
+When your borrow rate jumps, first check the asset's utilization on its page in the Aave app: just above the optimal usage ratio, the rate falls back as soon as utilization does. Then you have four options, each with a cost:
+
+- **Wait.** A spike caused by one large withdrawal can end when those tokens come back, as on 14 Oct 2026. Nothing guarantees they will, and you pay the high rate meanwhile.
+- **Repay part of the debt.** It lowers both your interest and your risk; [how to raise your Aave health factor](/blog/avoid-aave-liquidation) covers repaying with your own tokens or with your collateral.
+- **Swap the debt to another asset.** The Aave Labs interface has a debt swap that replaces one borrowed asset with another in one transaction, on the Ethereum Core, Prime and EtherFi markets and on Arbitrum, Avalanche, Base, BNB Chain, Optimism, Polygon, Gnosis and Sonic, according to Aave's docs. It isn't listed for Metis, Scroll, ZKsync, Celo, Soneium, Linea, Plasma or Ink. The new asset has its own curve and its own risk if its price moves differently from your old debt.
+- **Borrow in another market.** Each market has its own pool and its own utilization: on 25 Oct 2026, USDC cost 4.49% on Ethereum Core and 3.44% on Arbitrum. Moving means repaying in one market and borrowing in another, with collateral on that network.
+
+## How are rates set for GHO and on Aave V4?
+
+GHO, Aave's own stablecoin, has a flat borrow rate chosen by people rather than by the curve. On Ethereum Core its parameters have both slopes at zero, so the rate is the base rate, 4.50% on 25 Oct 2026. It is changed through a GHO steward contract by a 2-of-3 Risk Council: by at most 5 percentage points per update and at most once a day. The last change, on 3 Oct 2026, raised it from 4.25% to 4.50%; since November 2024 it has been changed 44 times, between 3.00% and 14.50%. The old discount for stkAAVE holders was removed with Aave v3.4.
+
+Aave V4 keeps a utilization curve, but its docs describe it as configured per asset at the Hub, the pool that lends to every Spoke. On top of that shared rate, each borrower pays a User Risk Premium that depends on the quality of their collateral: Aave's example is a 50% premium on a 5% base rate, giving 7.5%. Two V4 borrowers of the same asset can therefore pay different rates, and the [V4 section of the health factor guide](/blog/aave-health-factor#is-the-health-factor-different-on-aave-v4) covers what else V4 changes.
+
+## Can you get a fixed rate on Aave?
+
+No. Aave V3 once had a stable rate option, but it was fully deprecated in 2024 after a bug report, and Aave v3.2 removed the code. Every Aave V3 loan pays the variable rate, and GHO's flat rate can still be changed at any time within its steward's limits.
+
+## Can an alert warn you about rising rates?
+
+A health factor alert doesn't watch rates; it watches what rates do to your position. Tokenping checks your Aave V3 and V4 health factor every 5 minutes on 22 networks and messages you on Signal, Telegram or email while it is below the threshold you set (1.1 to 10). A spike like the one on 14 Oct 2026 won't trigger it, because it barely moves the health factor; months of high interest will, once the debt has grown enough to cross your threshold.
+
+If you want a message about the rate itself, some other tools send rate alerts, and [our comparison of Aave alert tools](/blog/aave-liquidation-alert-tools) lists what each one watches. Setup for a health factor alert is in [how to set up a health factor alert](/blog/aave-health-factor-alert-setup), and you can [check your Aave V3 health factor](/aave) first; looking at your positions needs no payment.
+
+## Sources
+
+- [DefaultReserveInterestRateStrategyV2.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/misc/DefaultReserveInterestRateStrategyV2.sol) and [ReserveLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ReserveLogic.sol): the rate curve, the usage ratio, the supply rate and when rates are recalculated (aave-v3-origin, fetched 25 Oct 2026)
+- [Aave V3 Ethereum Core interest rate strategy](https://etherscan.io/address/0x9ec6F08190DeA04A54f8Afc53Db96134e5E3FdFB#readContract) and [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): parameters and rates at block 26269328; USDC at blocks 26194052, 26194053, 26194088, 26194230 and 26194231 (fetched 25 Oct 2026)
+- [Aave V3 Arbitrum interest rate strategy](https://arbiscan.io/address/0x429F16dBA3B9e1900087Cbaa7b50D38Bc60fB73F#readContract): USDC parameters and rates at block 518125419 (fetched 25 Oct 2026)
+- [Aave Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): interest rate parameters among the values stewards may change, with a maximum change and a minimum delay per update (fetched 25 Oct 2026)
+- [calculateCompoundedRate in aave-utilities](https://github.com/aave/aave-utilities/blob/master/packages/math-utils/src/formatters/compounded-interest/calculate-compounded-interest.ts): APR to APY over 31,536,000 seconds (fetched 25 Oct 2026)
+- [Aave swap features](https://aave.com/docs/aave-v3/smart-contracts/swap-features.md): debt swap and repay with collateral, and the markets that support them (fetched 25 Oct 2026)
+- [GHO Stewards: October 2026 GHO borrow rate update](https://governance.aave.com/t/gho-stewards-october-2026-gho-borrow-rate-update/25754) (TokenLogic, 2 Oct 2026, fetched 25 Oct 2026) and the [GHO steward contract](https://etherscan.io/address/0x98217A06721Ebf727f2C8d9aD7718ec28b7aAe34#readContract): limits per update and rate history since November 2024 (fetched 25 Oct 2026)
+- [Aave v3.4 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.4/Aave-v3.4-features.md): removal of the stkAAVE discount on GHO (fetched 25 Oct 2026)
+- [BGD: Full deprecation of stable rate](https://governance.aave.com/t/bgd-full-deprecation-of-stable-rate/16473) (31 Jan 2024) and [Aave v3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): stable rate removed (fetched 25 Oct 2026)
+- [Aave V4 documentation](https://aave.com/docs/aave-v4.md) and [V4 positions](https://aave.com/docs/aave-v4/positions.md): the rate curve per Hub asset and the User Risk Premium (fetched 25 Oct 2026)
+
+*Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation.*

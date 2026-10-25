@@ -1,7 +1,9 @@
+import AaveAlertsDoNotDisturb, { meta as aaveAlertsDoNotDisturb } from "~~/content/blog/aave-alerts-do-not-disturb.mdx";
 import AaveHealthFactorAlertSetup, {
   meta as aaveHealthFactorAlertSetup,
 } from "~~/content/blog/aave-health-factor-alert-setup.mdx";
 import AaveHealthFactor, { meta as aaveHealthFactor } from "~~/content/blog/aave-health-factor.mdx";
+import AaveInterestRates, { meta as aaveInterestRates } from "~~/content/blog/aave-interest-rates.mdx";
 import AaveLiquidationAlertTools, {
   meta as aaveLiquidationAlertTools,
 } from "~~/content/blog/aave-liquidation-alert-tools.mdx";
@@ -33,6 +35,10 @@ import CsShortFiatWithAave, { meta as csShortFiatWithAave } from "~~/content/blo
 import CsPrivateAaveLiquidationAlerts, {
   meta as csPrivateAaveLiquidationAlerts,
 } from "~~/content/blog/cs/soukroma-upozorneni-na-likvidaci-aave.mdx";
+import CsAaveAlertsDoNotDisturb, {
+  meta as csAaveAlertsDoNotDisturb,
+} from "~~/content/blog/cs/upozorneni-aave-rezim-nerusit.mdx";
+import CsAaveInterestRates, { meta as csAaveInterestRates } from "~~/content/blog/cs/urokove-sazby-aave.mdx";
 import HowAaveLiquidationWorks, {
   meta as howAaveLiquidationWorks,
 } from "~~/content/blog/how-aave-liquidation-works.mdx";
@@ -61,6 +67,8 @@ export const POSTS: readonly Post[] = [
   { meta: privateAaveLiquidationAlerts, Content: PrivateAaveLiquidationAlerts },
   { meta: cryptoBackedLoans, Content: CryptoBackedLoans },
   { meta: shortFiatWithAave, Content: ShortFiatWithAave },
+  { meta: aaveInterestRates, Content: AaveInterestRates },
+  { meta: aaveAlertsDoNotDisturb, Content: AaveAlertsDoNotDisturb },
 ];
 
 /** The Czech translations (content/blog/cs), in the same order. Slugs pair with English through i18n/postSlugs. */
@@ -76,6 +84,8 @@ const CS_POSTS: readonly Post[] = [
   { meta: csPrivateAaveLiquidationAlerts, Content: CsPrivateAaveLiquidationAlerts },
   { meta: csCryptoBackedLoans, Content: CsCryptoBackedLoans },
   { meta: csShortFiatWithAave, Content: CsShortFiatWithAave },
+  { meta: csAaveInterestRates, Content: CsAaveInterestRates },
+  { meta: csAaveAlertsDoNotDisturb, Content: CsAaveAlertsDoNotDisturb },
 ];
 
 const POSTS_BY_LOCALE: Localized<readonly Post[]> = { en: POSTS, cs: CS_POSTS };
@@ -141,6 +151,7 @@ export const RELATED_SLUGS: Record<string, readonly string[]> = {
   "why-aave-health-factor-dropped": [
     "aave-health-factor",
     "avoid-aave-liquidation",
+    "aave-interest-rates",
     "safe-aave-health-factor",
     "how-aave-liquidation-works",
     "aave-health-factor-alert-setup",
@@ -148,6 +159,7 @@ export const RELATED_SLUGS: Record<string, readonly string[]> = {
   "aave-health-factor-alert-setup": [
     "aave-health-factor",
     "safe-aave-health-factor",
+    "aave-alerts-do-not-disturb",
     "aave-liquidation-alert-tools",
     "why-aave-health-factor-dropped",
   ],
@@ -164,6 +176,7 @@ export const RELATED_SLUGS: Record<string, readonly string[]> = {
     "aave-health-factor",
     "aave-health-factor-alert-setup",
     "aave-liquidation-alert-tools",
+    "aave-alerts-do-not-disturb",
     "safe-aave-health-factor",
   ],
   "crypto-backed-loans": [
@@ -180,6 +193,20 @@ export const RELATED_SLUGS: Record<string, readonly string[]> = {
     "safe-aave-health-factor",
     "aave-liquidation-price",
     "aave-health-factor-alert-setup",
+  ],
+  "aave-interest-rates": [
+    "aave-health-factor",
+    "why-aave-health-factor-dropped",
+    "safe-aave-health-factor",
+    "avoid-aave-liquidation",
+    "aave-liquidation-alert-tools",
+  ],
+  "aave-alerts-do-not-disturb": [
+    "aave-health-factor",
+    "aave-health-factor-alert-setup",
+    "safe-aave-health-factor",
+    "avoid-aave-liquidation",
+    "private-aave-liquidation-alerts",
   ],
 };
 

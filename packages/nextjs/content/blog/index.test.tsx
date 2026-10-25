@@ -17,6 +17,8 @@ const EXPECTED_SLUGS = [
   "private-aave-liquidation-alerts",
   "crypto-backed-loans",
   "short-fiat-with-aave",
+  "aave-interest-rates",
+  "aave-alerts-do-not-disturb",
 ];
 
 const CS_SLUGS = EXPECTED_SLUGS.map(slug => POST_SLUGS[slug].cs);
@@ -36,7 +38,7 @@ beforeEach(() => {
 });
 
 describe("POSTS", () => {
-  it("lists the eleven cluster posts, hub first", async () => {
+  it("lists the cluster posts, hub first", async () => {
     const { HUB_SLUG, POSTS } = await loadBlog();
 
     expect(POSTS.map(({ meta }) => meta.slug)).toEqual(EXPECTED_SLUGS);

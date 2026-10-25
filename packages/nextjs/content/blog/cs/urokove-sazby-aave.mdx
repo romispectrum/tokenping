@@ -1,0 +1,156 @@
+export const meta = {
+  slug: "urokove-sazby-aave",
+  title: "Jak fungují úrokové sazby na Aave a proč prudce rostou",
+  description:
+    "Výpůjční sazby na Aave sledují křivku využití: do optimální úrovně rostou pozvolna, nad ní strmě. Vzorec, skutečné parametry, proč sazby skáčou a co dělat.",
+  h1: "Jak fungují úrokové sazby na Aave a proč výpůjční sazby prudce rostou?",
+  publishedAt: "2026-10-25",
+  primaryQuestion: "Jak Aave určuje výpůjční a vkladové sazby a proč prudce rostou?",
+  readingMinutes: 9,
+};
+
+<ShortAnswer>
+  Na Aave V3 se variabilní výpůjční sazba každého aktiva řídí křivkou, kterou nastavuje governance: s využitím, tedy
+  podílem vložených tokenů, které jsou půjčené, roste do optimální úrovně pozvolna a nad ní strmě. Vkladatelé dostávají
+  výpůjční sazbu vynásobenou využitím a sníženou o rezervní faktor. Sazby se přepočítávají při každém vkladu, výpůjčce,
+  splátce a výběru, takže jediný velký výběr může posunout využití nad optimální úroveň a sazbu během jednoho bloku
+  znásobit: USDC na trhu Core na Ethereu stouplo 14. října 2026 ze 4,50 % na 13,67 % APR a zhruba po 36 minutách bylo
+  zpět na 4,76 %. Veškerý dluh na Aave V3 je variabilní.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Čísla a bloky, ve kterých byla načtena: content/blog/snapshots/aave-interest-rates.md */}
+
+## Co určuje výpůjční sazbu na Aave?
+
+Na Aave V3 určují výpůjční sazbu aktiva dvě věci: jeho využití a jeho úrokové parametry. Využití je podíl poolu aktiva, který je půjčený: dluh vydělený součtem dluhu a tokenů, které jsou ještě k dispozici. Parametry jsou čtyři čísla pro každé aktivum, která nastavuje governance Aave, a Risk Stewards Aave je mohou upravovat v omezených krocích a s minimálními odstupy:
+
+- **Optimální míra využití:** využití, při kterém se křivka láme.
+- **Základní sazba:** výpůjční sazba při 0% využití.
+- **Sklon 1:** o kolik sazba vzroste od 0 % do optimální míry využití.
+- **Sklon 2:** o kolik vzroste dál od optimální míry využití do 100 %.
+
+Parametry a sazby několika běžných aktiv, načtené 25. října 2026 v bloku 26269328 na Ethereu a v bloku 518125419 na síti Arbitrum:
+
+| Trh a aktivum | Optimální využití | Základ | Sklon 1 | Sklon 2 | Využití | Výpůjční APR | Vkladová APR |
+| ------------- | ----------------- | ------ | ------- | ------- | ------- | ------------ | ------------ |
+| Ethereum Core USDC | 94 % | 0 % | 4,5 % | 10 % | 93,72 % | 4,49 % | 3,78 % |
+| Ethereum Core USDT | 92 % | 0 % | 4,5 % | 10 % | 87,81 % | 4,30 % | 3,39 % |
+| Ethereum Core WETH | 92 % | 0 % | 2,2 % | 6 % | 81,31 % | 1,94 % | 1,31 % |
+| Ethereum Core GHO | 99 % | 4,5 % | 0 % | 0 % | nepoužívá se | 4,50 % | 0 % |
+| Arbitrum USDC | 90 % | 0 % | 4 % | 10 % | 77,32 % | 3,44 % | 2,39 % |
+
+Výjimkou je GHO: oba jeho sklony jsou nulové, takže sazba zůstává stejná bez ohledu na využití a mění se ručně (viz [GHO a Aave V4](#jak-se-urcuji-sazby-u-gho-a-na-aave-v4)).
+
+## Jak se výpůjční sazba na Aave počítá?
+
+Výpůjční sazba na Aave V3 je do optimální míry využití přímka a nad ní mnohem strmější přímka. Kde U je využití:
+
+**Do optimální míry využití: výpůjční sazba = základ + sklon 1 × U ÷ optimální míra využití**
+
+**Nad ní: výpůjční sazba = základ + sklon 1 + sklon 2 × (U − optimální míra využití) ÷ (1 − optimální míra využití)**
+
+V kontraktu je U celkový dluh vydělený součtem celkového dluhu a tokenů, které pool ještě drží. S parametry USDC na trhu Core na Ethereu vychází sazba při jednotlivých úrovních využití takto:
+
+| Využití | Výpůjční APR |
+| ------- | ------------ |
+| 50 % | 2,39 % |
+| 80 % | 3,83 % |
+| 90 % | 4,31 % |
+| 94 % (optimum) | 4,50 % |
+| 95 % | 6,17 % |
+| 96 % | 7,83 % |
+| 98 % | 11,17 % |
+| 100 % | 14,50 % |
+
+Pod 94 % posune deset bodů využití sazbu o méně než půl procentního bodu. Nad touto hranicí přidá každý bod zhruba 1,67 bodu a posledních šest bodů využití sazbu víc než ztrojnásobí. Při čtení 25. října 2026 bylo USDC na 93,72 %, těsně pod zlomem: 4,5 % × 0,9372 ÷ 0,94 dává 4,49 %, které tehdy účtovalo.
+
+Křivka tak funguje záměrně. Pod optimální úrovní udrží levné půjčování pool v pohybu; nad ní je půjčování natolik drahé, že část dlužníků splácí a část držitelů vkládá, což využití zase sníží a vkladatelům, kteří chtějí vybírat, zůstanou tokeny k dispozici.
+
+## Proč výpůjční sazby na Aave prudce rostou?
+
+Výpůjční sazby na Aave prudce rostou, když využití překročí optimální míru, obvykle proto, že velký vkladatel vybere nebo velký dlužník si půjčí. Sazba se přepočítá ve stejné transakci a každý dlužník daného aktiva platí od té chvíle novou sazbu až do další změny.
+
+Dne 14. října 2026 posunul jediný výběr přesně 133 898 000 USDC z trhu Core na Ethereu využití během jednoho bloku z 93,92 % na 99,50 %:
+
+| Blok na Ethereu (UTC) | Co se stalo | Využití | Výpůjční APR u USDC |
+| --------------------- | ----------- | ------- | ------------------- |
+| 26194052 (14. 10., 23:32:47) | Před výběrem | 93,92 % | 4,50 % |
+| 26194053 (14. 10., 23:32:59) | Výběr 133 898 000 USDC | 99,50 % | 13,67 % |
+| 26194088 (14. 10., 23:39:59) | Nejvyšší bod v tomto okně | zhruba 99,8 % | 14,18 % |
+| 26194231 (15. 10., 00:08:35) | Stejná adresa vložila 133 898 000 USDC zpět | 94,16 % | 4,76 % |
+
+Dlužníci platili 36 minut zhruba trojnásobek obvyklé sazby a vzorec výše z využití přesně dopočítá každou z těchto sazeb. Skok trvá, dokud zůstává využití vysoko: tady se vrátily tytéž tokeny, jindy ho sníží až noví vkladatelé nebo splátky, které vysoká sazba přiláká.
+
+Výpůjční sazbu mění ještě dvě další věci. Governance nebo Risk Stewards mohou změnit čtyři parametry, čímž se posune celá křivka najednou. A mezi transakcemi se sazba nemění: Aave ji přepočítá při každém vkladu, výpůjčce, splátce, výběru a likvidaci daného aktiva a úrok narůstá touto sazbou sekundu po sekundě až do další z nich.
+
+## Proč vkladatelé vydělávají méně, než dlužníci platí?
+
+Vkladatelé vydělávají méně, než dlužníci platí, protože úrok platí jen půjčená část poolu a protokol si z něj ponechává podíl. Vkladová sazba je:
+
+**Vkladová sazba = výpůjční sazba × využití × (1 − rezervní faktor)**
+
+U USDC na trhu Core na Ethereu 25. října 2026: 4,4866 % × 0,9372 × (1 − 0,10) = 3,78 %. Rezervní faktor (reserve factor), 10 % u USDC a 15 % u WETH, jde do pokladny Aave. Pokud má rezerva deficit ze špatného dluhu, kontrakt ho započítá i na straně vkladů, což vkladovou sazbu mírně sníží.
+
+## Jaký je rozdíl mezi APR a APY na Aave?
+
+Kontrakty ukládají sazby jako APR a aplikace Aave ukazuje APY, které přidává složené úročení. Matematická knihovna aplikace úročí APR každou sekundu po dobu roku o 31 536 000 sekundách:
+
+**APY = (1 + APR ÷ 31 536 000)^31 536 000 − 1**
+
+Sazba 4,4866 % APR u USDC na trhu Core na Ethereu se v aplikaci zobrazí jako 4,59 % APY. Na těchto úrovních je rozdíl zhruba desetina procentního bodu; při 14 % APR je to zhruba jeden bod (15,0 % APY).
+
+## Jak skoky sazeb ovlivní váš health factor?
+
+Krátký skok váš health factor (faktor zdraví pozice) skoro nepohne; vysoká sazba, která trvá měsíce, ano. Úrok zvyšuje váš dluh a vyšší dluh snižuje health factor, jak vysvětluje [příčina s úroky v článku o tom, proč klesá health factor](/cz/blog/proc-klesl-health-factor-aave#pricina-3-rostl-urok-z-vaseho-dluhu-rychleji-nez-vynos-kolateralu).
+
+Vezměte 10 WETH vložených proti 12 000 USDC vypůjčeným na trhu Core na Ethereu, s likvidačním prahem WETH 83 % (načteno 14. října 2026) a ilustrativní cenou ETH 2 400 $: health factor je 1,66. Se započtením toho, co WETH vydělává při vkladové sazbě 1,31 %:
+
+| Jak dlouho sazba trvá | Při 4,49 % (25. října 2026) | Při 14,50 % (vrchol křivky) |
+| --------------------- | --------------------------- | --------------------------- |
+| 36 minut | zhruba 0,04 USDC úroku, 1,66 | zhruba 0,12 USDC, 1,66 |
+| 30 dní | zhruba 1,66 | zhruba 1,64 |
+| Jeden rok | zhruba 1,61 | zhruba 1,45 |
+
+Skok ze 14. října stál tuto pozici zhruba 12 centů. Trh, který by rok zůstal na vrcholu své křivky, by ji bez jakéhokoli pohybu cen srazil z 1,66 zhruba na 1,45. Proto se u pomalého poklesu vyplatí práh upozornění s dostatečnou rezervou ([jakou rezervu vám health factor dává](/cz/blog/bezpecny-health-factor-aave#jak-rychle-ukrajuji-uroky-a-zmeny-parametru-z-vasi-rezervy)).
+
+## Co dělat, když vaše výpůjční sazba vyskočí?
+
+Když vaše výpůjční sazba vyskočí, podívejte se nejdřív na využití aktiva na jeho stránce v aplikaci Aave: těsně nad optimální mírou využití sazba klesne hned, jak klesne využití. Pak máte čtyři možnosti, každou s nějakou cenou:
+
+- **Počkat.** Skok způsobený jedním velkým výběrem může skončit, když se tokeny vrátí, jako 14. října 2026. Nic nezaručuje, že se vrátí, a mezitím platíte vysokou sazbu.
+- **Splatit část dluhu.** Sníží to úrok i riziko; [jak zvýšit health factor na Aave](/cz/blog/jak-se-vyhnout-likvidaci-aave) popisuje splacení vlastními tokeny i kolaterálem.
+- **Vyměnit dluh za jiné aktivum.** Rozhraní Aave Labs nabízí výměnu dluhu (debt swap), která jedním krokem nahradí jedno vypůjčené aktivum jiným, podle dokumentace Aave na trzích Core, Prime a EtherFi na Ethereu a na sítích Arbitrum, Avalanche, Base, BNB Chain, Optimism, Polygon, Gnosis a Sonic. Pro sítě Metis, Scroll, ZKsync, Celo, Soneium, Linea, Plasma a Ink uvedená není. Nové aktivum má vlastní křivku a vlastní riziko, pokud se jeho cena hýbe jinak než váš dosavadní dluh.
+- **Půjčit si na jiném trhu.** Každý trh má vlastní pool a vlastní využití: 25. října 2026 stálo USDC na trhu Core na Ethereu 4,49 % a na síti Arbitrum 3,44 %. Přesun znamená splatit na jednom trhu a půjčit si na jiném, s kolaterálem na té síti.
+
+## Jak se určují sazby u GHO a na Aave V4?
+
+GHO, vlastní stablecoin Aave, má pevnou výpůjční sazbu, kterou volí lidé, ne křivka. Na trhu Core na Ethereu má oba sklony nulové, takže sazba se rovná základní sazbě, 25. října 2026 to bylo 4,50 %. Mění ji přes kontrakt GHO steward rada Risk Council se schválením dvou ze tří členů: nejvýš o 5 procentních bodů najednou a nejvýš jednou denně. Poslední změna 3. října 2026 ji zvedla ze 4,25 % na 4,50 %; od listopadu 2024 se měnila 44krát, v rozmezí 3,00 % až 14,50 %. Dřívější slevu pro držitele stkAAVE zrušila verze Aave v3.4.
+
+Aave V4 si křivku podle využití ponechává, ale jeho dokumentace ji popisuje jako nastavenou pro každé aktivum v Hubu, poolu, který půjčuje všem trhům (Spoke). Navíc ke společné sazbě platí každý dlužník přirážku User Risk Premium, která závisí na kvalitě jeho kolaterálu: příklad z dokumentace Aave je 50% přirážka k 5% základní sazbě, tedy 7,5 %. Dva dlužníci stejného aktiva na V4 tak mohou platit různé sazby a [část o V4 v průvodci health factorem](/cz/blog/aave-health-factor-vysvetleni#lisi-se-health-factor-na-aave-v4) popisuje, co dalšího V4 mění.
+
+## Dá se na Aave půjčit s pevnou sazbou?
+
+Ne. Aave V3 kdysi nabízelo stabilní sazbu, ale v roce 2024 byla po nahlášení chyby úplně ukončena a Aave v3.2 odstranilo její kód. Každá půjčka na Aave V3 platí variabilní sazbu a pevnou sazbu GHO lze kdykoli změnit v mezích jeho stewarda.
+
+## Upozorní vás upozornění na rostoucí sazby?
+
+Upozornění na health factor nesleduje sazby, sleduje, co sazby dělají s vaší pozicí. Tokenping kontroluje váš health factor na Aave V3 a V4 každých 5 minut na 22 sítích a posílá vám zprávy přes Signal, Telegram nebo e-mail, dokud je pod prahem, který si nastavíte (1,1 až 10). Skok jako ten 14. října 2026 ho nespustí, protože health factor skoro nezmění; měsíce vysokého úroku ano, jakmile dluh naroste natolik, že váš práh překročí.
+
+Pokud chcete zprávu přímo o sazbě, některé jiné nástroje upozornění na sazby posílají a [porovnání nástrojů pro upozornění na Aave](/cz/blog/nastroje-pro-upozorneni-na-likvidaci-aave) uvádí, co který z nich sleduje. Nastavení upozornění na health factor popisuje návod [jak nastavit upozornění na health factor](/cz/blog/nastaveni-upozorneni-health-factor-aave) a nejdřív si můžete [zkontrolovat svůj health factor na Aave V3](/cz/aave); prohlížení pozic nevyžaduje platbu.
+
+## Zdroje
+
+- [DefaultReserveInterestRateStrategyV2.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/misc/DefaultReserveInterestRateStrategyV2.sol) a [ReserveLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ReserveLogic.sol): křivka sazeb, míra využití, vkladová sazba a kdy se sazby přepočítávají (aave-v3-origin, načteno 25. října 2026)
+- [Úroková strategie Aave V3 na trhu Core na Ethereu](https://etherscan.io/address/0x9ec6F08190DeA04A54f8Afc53Db96134e5E3FdFB#readContract) a [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): parametry a sazby v bloku 26269328; USDC v blocích 26194052, 26194053, 26194088, 26194230 a 26194231 (načteno 25. října 2026)
+- [Úroková strategie Aave V3 na síti Arbitrum](https://arbiscan.io/address/0x429F16dBA3B9e1900087Cbaa7b50D38Bc60fB73F#readContract): parametry a sazby USDC v bloku 518125419 (načteno 25. října 2026)
+- [Aave Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): úrokové parametry mezi hodnotami, které mohou stewardi měnit, s maximální změnou a minimálním odstupem mezi úpravami (načteno 25. října 2026)
+- [calculateCompoundedRate v aave-utilities](https://github.com/aave/aave-utilities/blob/master/packages/math-utils/src/formatters/compounded-interest/calculate-compounded-interest.ts): převod APR na APY přes 31 536 000 sekund (načteno 25. října 2026)
+- [Funkce výměny na Aave](https://aave.com/docs/aave-v3/smart-contracts/swap-features.md): výměna dluhu, splacení kolaterálem a trhy, které je podporují (načteno 25. října 2026)
+- [GHO Stewards: October 2026 GHO borrow rate update](https://governance.aave.com/t/gho-stewards-october-2026-gho-borrow-rate-update/25754) (TokenLogic, 2. října 2026, načteno 25. října 2026) a [kontrakt GHO steward](https://etherscan.io/address/0x98217A06721Ebf727f2C8d9aD7718ec28b7aAe34#readContract): limity jedné úpravy a historie sazby od listopadu 2024 (načteno 25. října 2026)
+- [Aave v3.4 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.4/Aave-v3.4-features.md): zrušení slevy na GHO pro stkAAVE (načteno 25. října 2026)
+- [BGD: Full deprecation of stable rate](https://governance.aave.com/t/bgd-full-deprecation-of-stable-rate/16473) (31. ledna 2024) a [Aave v3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): odstranění stabilní sazby (načteno 25. října 2026)
+- [Dokumentace Aave V4](https://aave.com/docs/aave-v4.md) a [pozice na V4](https://aave.com/docs/aave-v4/positions.md): křivka sazeb pro každé aktivum Hubu a přirážka User Risk Premium (načteno 25. října 2026)
+
+*Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání.*
