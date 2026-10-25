@@ -91,6 +91,15 @@ describe("send", () => {
     ]);
   });
 
+  it("names a Morpho alert's protocol before the channel", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ sentAt: RETRY_AT, retryAt: RETRY_AT }));
+    const market = `0x${"3a".repeat(32)}`;
+    await client.send({ chainId: 8453, market, protocol: "morpho-blue" }, "email");
+    expect(fetchMock.mock.calls[0][1]?.body).toBe(
+      `{"chainId":8453,"market":"${market}","protocol":"morpho-blue","channel":"email"}`,
+    );
+  });
+
   it("rejects a 429 with a TestSendError carrying the server's message and when to try again", async () => {
     fetchMock.mockResolvedValue(
       jsonResponse({ error: "One test message per channel every 15 minutes", retryAt: RETRY_AT }, 429),

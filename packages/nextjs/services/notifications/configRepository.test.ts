@@ -1,12 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
+import type { MidnightMarketParams } from "~~/services/morpho/types";
 import {
   type NotificationConfigRow,
   rowChannelLocale,
   rowLocale,
   rowMarket,
   rowMarketKey,
+  rowMarketRef,
+  rowProtocol,
   rowToConfig,
   toConfigRow,
+  toMorphoConfigRow,
   userIdForms,
 } from "~~/services/notifications/configRepository";
 
@@ -16,6 +20,7 @@ const NOW = new Date("2026-10-14T09:05:07.000Z");
 
 // The Ethereum Lido Spoke, as notification_configs.market stores it.
 const LIDO_SPOKE = "0xe1900480ac69f0b296841cd01cc37546d92f35cd";
+const MORPHO_ID = `0x${"3a".repeat(32)}`;
 
 const row = (overrides: Partial<NotificationConfigRow> = {}): NotificationConfigRow => ({
   id: "row-1",
@@ -91,6 +96,18 @@ describe("rowToConfig", () => {
     expect(rowToConfig(row({ chain_id: 1, market: LIDO_SPOKE })).market).toBe(LIDO_SPOKE);
   });
 
+  it("names a Morpho alert's protocol after its market, and keeps its market id as stored", () => {
+    const morpho = rowToConfig(row({ protocol: "morpho-midnight", market: MORPHO_ID, market_params: {} }));
+    expect(Object.keys(morpho).slice(0, 4)).toEqual(["chainId", "market", "protocol", "enabled"]);
+    expect(morpho).toMatchObject({ market: MORPHO_ID, protocol: "morpho-midnight" });
+    expect(JSON.stringify(morpho)).not.toContain("market_params");
+  });
+
+  it("leaves the protocol out for an Aave row, with or without the column", () => {
+    expect("protocol" in rowToConfig(row({ protocol: "aave" }))).toBe(false);
+    expect("protocol" in rowToConfig(row())).toBe(false);
+  });
+
   it.each([
     [2, 2],
     ["1.10", 1.1],
@@ -156,12 +173,55 @@ describe("rowMarket", () => {
   });
 });
 
+describe("rowProtocol", () => {
+  it.each([
+    [undefined, "aave"],
+    [null, "aave"],
+    ["aave", "aave"],
+    ["morpho-blue", "morpho-blue"],
+    ["morpho-midnight", "morpho-midnight"],
+    // A protocol a later version added: never read as Aave.
+    ["compound", null],
+    ["", null],
+  ])("reads the stored protocol %j as %j", (protocol, expected) => {
+    expect(rowProtocol({ protocol })).toBe(expected);
+  });
+});
+
+describe("rowMarketRef", () => {
+  it("reads an Aave row as before Morpho, without a protocol", () => {
+    expect(rowMarketRef({ chain_id: 1, market: LIDO_SPOKE })).toStrictEqual({ chainId: 1, market: LIDO_SPOKE });
+    expect(rowMarketRef({ chain_id: 1, protocol: "aave", market: null })).toStrictEqual({ chainId: 1, market: "v3" });
+  });
+
+  it("reads a Morpho row with its protocol", () => {
+    expect(rowMarketRef({ chain_id: 8453, protocol: "morpho-blue", market: MORPHO_ID })).toStrictEqual({
+      protocol: "morpho-blue",
+      chainId: 8453,
+      market: MORPHO_ID,
+    });
+  });
+
+  // Coercing these to V3, as an Aave row's market is, would alert on another position.
+  it.each([
+    ["a Morpho row with an Aave market", { protocol: "morpho-blue", market: "v3" }],
+    ["a Morpho row with an uppercase id", { protocol: "morpho-blue", market: MORPHO_ID.toUpperCase() }],
+    ["a Morpho row without a market", { protocol: "morpho-midnight", market: null }],
+    ["a row of an unknown protocol", { protocol: "compound", market: MORPHO_ID }],
+  ])("has no market for %s", (_label, stored) => {
+    expect(rowMarketRef({ chain_id: 1, ...stored })).toBeNull();
+    expect(rowMarketKey({ chain_id: 1, ...stored })).toBeNull();
+  });
+});
+
 describe("rowMarketKey", () => {
   it.each([
     [{ chain_id: 8453, market: "v3" }, "8453:v3"],
     [{ chain_id: 1, market: LIDO_SPOKE }, `1:${LIDO_SPOKE}`],
     [{ chain_id: 10, market: null }, "10:v3"],
     [{ chain_id: 10 }, "10:v3"],
+    [{ chain_id: 8453, protocol: "aave", market: "v3" }, "8453:v3"],
+    [{ chain_id: 8453, protocol: "morpho-blue", market: MORPHO_ID }, `morpho-blue:8453:${MORPHO_ID}`],
   ])("keys %j as %j", (stored, expected) => {
     expect(rowMarketKey(stored)).toBe(expected);
   });
@@ -218,5 +278,36 @@ describe("toConfigRow", () => {
     vi.setSystemTime(NOW);
     expect(toConfigRow("0xabc", { chainId: 1, market: "v3" }, values).updated_at).toBe("2026-10-14T09:05:07.000Z");
     vi.useRealTimers();
+  });
+});
+
+describe("toMorphoConfigRow", () => {
+  const values = {
+    enabled: true,
+    services: ["email" as const],
+    healthFactorThreshold: 1.05,
+    email: "a@b.co",
+    signalRecipient: null,
+    telegramUsername: null,
+    locale: "en" as const,
+    channelLocales: { email: null, signal: null, telegram: null },
+  };
+  const params: MidnightMarketParams = {
+    kind: "midnight",
+    loanToken: { address: "0x00000000000000000000000000000000000000b1", symbol: "USDC", decimals: 6 },
+    collaterals: [],
+    maturity: 1_793_372_400,
+  };
+  const ref = { protocol: "morpho-midnight" as const, chainId: 1, market: MORPHO_ID };
+
+  it("adds the protocol and the market parameters after the columns every alert writes", () => {
+    const written = toMorphoConfigRow("0xabc", ref, values, params, NOW);
+    expect(Object.keys(written).slice(-3)).toEqual(["updated_at", "protocol", "market_params"]);
+    expect(written).toMatchObject({ market: MORPHO_ID, protocol: "morpho-midnight", market_params: params });
+  });
+
+  // An update then keeps the parameters the row has.
+  it("leaves the parameters out when there are none to write", () => {
+    expect("market_params" in toMorphoConfigRow("0xabc", ref, values, undefined, NOW)).toBe(false);
   });
 });

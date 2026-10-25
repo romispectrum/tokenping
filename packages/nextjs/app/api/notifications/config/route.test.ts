@@ -1,8 +1,12 @@
 import { getAddress } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DELETE, GET, PUT } from "~~/app/api/notifications/config/route";
+import { getMorphoChain } from "~~/config/morpho";
 import { fakeSupabase } from "~~/services/api/server/testing/fakeSupabase";
 import { siteRequest } from "~~/services/api/server/testing/siteRequest";
+import { MorphoApiError } from "~~/services/morpho/api";
+import { readListedMarketParams, refreshMarketParams } from "~~/services/morpho/params";
+import type { BlueMarketParams, MidnightMarketParams } from "~~/services/morpho/types";
 import { isAccessActive } from "~~/services/payments/checkAccess";
 
 vi.mock("~~/services/supabase/supabaseServer", async () => {
@@ -10,6 +14,7 @@ vi.mock("~~/services/supabase/supabaseServer", async () => {
   return { getSupabaseServerClient: () => fakeSupabase.client };
 });
 vi.mock("~~/services/payments/checkAccess", () => ({ isAccessActive: vi.fn() }));
+vi.mock("~~/services/morpho/params", () => ({ readListedMarketParams: vi.fn(), refreshMarketParams: vi.fn() }));
 
 const BASE_URL = "http://localhost/api/notifications/config";
 const NOW = "2026-10-14T09:05:07.000Z";
@@ -1170,5 +1175,329 @@ describe("sign-in and cross-site checks", () => {
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+});
+
+describe("Morpho alerts", () => {
+  const BLUE_ID = `0x${"3a".repeat(32)}`;
+  const MIDNIGHT_ID = `0x${"5c".repeat(32)}`;
+  const TOKEN = { address: "0x00000000000000000000000000000000000000b1", symbol: "USDC", decimals: 6 } as const;
+  const COLLATERAL = { address: "0x00000000000000000000000000000000000000b2", symbol: "OETH", decimals: 18 } as const;
+  const BLUE: BlueMarketParams = {
+    kind: "blue",
+    loanToken: TOKEN,
+    collateralToken: COLLATERAL,
+    oracle: "0x00000000000000000000000000000000000000e1",
+    irm: "0x00000000000000000000000000000000000000c1",
+    lltv: "860000000000000000",
+    preLiquidations: [],
+  };
+  const REFRESHED: BlueMarketParams = {
+    ...BLUE,
+    preLiquidations: [
+      {
+        address: "0x00000000000000000000000000000000000000d1",
+        preLltv: "832603694978499652",
+        oracle: "0x00000000000000000000000000000000000000e2",
+      },
+    ],
+  };
+  const MIDNIGHT: MidnightMarketParams = {
+    kind: "midnight",
+    loanToken: TOKEN,
+    collaterals: [
+      { token: COLLATERAL, lltv: "915000000000000000", oracle: "0x00000000000000000000000000000000000000f1" },
+    ],
+    maturity: 1_793_372_400,
+  };
+  const UNKNOWN_MORPHO_MARKET = json(400, { error: "Unknown Morpho market" });
+  const INVALID_MORPHO_MARKET = "Invalid market: expected a lowercased Morpho market id (0x and 64 hex characters)";
+  const INVALID_PROTOCOL = "Invalid protocol: expected aave, morpho-blue or morpho-midnight";
+
+  const blueBody = (extra: Record<string, unknown> = {}) => ({
+    chainId: 8453,
+    protocol: "morpho-blue",
+    market: BLUE_ID,
+    ...extra,
+  });
+  // DIGITS has no letters, so there is no legacy user id form and each lookup runs once.
+  const morphoRow = (overrides: Record<string, unknown> = {}) =>
+    storedRow({ protocol: "morpho-blue", market: BLUE_ID, market_params: BLUE, ...overrides });
+  const insertQuery = (row: unknown) => `notification_configs.insert(${JSON.stringify(row)})`;
+  const updateQuery = (row: unknown, id: string) =>
+    `notification_configs.update(${JSON.stringify(row)}).eq("id","${id}")`;
+  const writtenRow = (overrides: Record<string, unknown> = {}) => ({
+    user_id: DIGITS,
+    chain_id: 8453,
+    market: BLUE_ID,
+    enabled: true,
+    services: [],
+    health_factor_threshold: 1.5,
+    email: null,
+    signal_recipient: null,
+    telegram_username: null,
+    locale: "en",
+    email_locale: null,
+    signal_locale: null,
+    telegram_locale: null,
+    updated_at: NOW,
+    protocol: "morpho-blue",
+    market_params: BLUE,
+    ...overrides,
+  });
+
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", "true");
+    vi.mocked(readListedMarketParams).mockReset();
+    vi.mocked(readListedMarketParams).mockResolvedValue(BLUE);
+    vi.mocked(refreshMarketParams).mockReset();
+    vi.mocked(refreshMarketParams).mockImplementation(async (_client, _chain, _id, stored) => stored);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  describe("GET", () => {
+    it("lists a Morpho alert under its protocol's key, naming the protocol after the market", async () => {
+      fakeSupabase.respondByQuery({ [allQuery(DIGITS)]: { data: [storedRow(), morphoRow()] } });
+
+      const body = JSON.parse((await read(await get({}, DIGITS))).text);
+
+      expect(Object.keys(body)).toEqual(["8453:v3", `morpho-blue:8453:${BLUE_ID}`]);
+      expect(Object.keys(body[`morpho-blue:8453:${BLUE_ID}`]).slice(0, 4)).toEqual([
+        "chainId",
+        "market",
+        "protocol",
+        "enabled",
+      ]);
+      expect(body[`morpho-blue:8453:${BLUE_ID}`]).toMatchObject({ market: BLUE_ID, protocol: "morpho-blue" });
+      // The stored parameters stay on the server.
+      expect(JSON.stringify(body)).not.toContain("market_params");
+      expect("protocol" in body["8453:v3"]).toBe(false);
+    });
+
+    it("skips and logs a row whose market it cannot read, rather than showing it as an Aave alert", async () => {
+      fakeSupabase.respondByQuery({
+        [allQuery(DIGITS)]: {
+          data: [
+            storedRow(),
+            morphoRow({ id: "bad-id", market: LIDO_SPOKE }),
+            storedRow({ id: "future", protocol: "compound", market: BLUE_ID }),
+          ],
+        },
+      });
+
+      const body = JSON.parse((await read(await get({}, DIGITS))).text);
+
+      expect(Object.keys(body)).toEqual(["8453:v3"]);
+      expect(consoleError).toHaveBeenCalledTimes(2);
+      expect((consoleError.mock.calls as unknown[][]).map(call => call[1])).toEqual([
+        { id: "bad-id", protocol: "morpho-blue" },
+        { id: "future", protocol: "compound" },
+      ]);
+    });
+
+    it("reads one Morpho alert by protocol and market id", async () => {
+      fakeSupabase.respondByQuery({ [chainQuery(DIGITS, 8453, BLUE_ID)]: { data: morphoRow() } });
+
+      const res = await get({ chainId: "8453", protocol: "morpho-blue", market: BLUE_ID }, DIGITS);
+
+      expect(JSON.parse((await read(res)).text)).toMatchObject({ protocol: "morpho-blue", market: BLUE_ID });
+    });
+
+    it.each([
+      [{ protocol: "morpho" }, INVALID_PROTOCOL],
+      [{ protocol: "morpho-blue" }, INVALID_MORPHO_MARKET],
+      [{ protocol: "morpho-blue", market: LIDO_SPOKE }, INVALID_MORPHO_MARKET],
+      [{ protocol: "morpho-blue", market: BLUE_ID.toUpperCase().replace("0X", "0x") }, INVALID_MORPHO_MARKET],
+      [{ protocol: "aave", market: BLUE_ID }, INVALID_MARKET],
+    ])("returns 400 for %j without touching the DB", async (params, error) => {
+      expect(await read(await get({ chainId: "8453", ...params }))).toEqual(json(400, { error }));
+      expect(await read(await get(params))).toEqual(json(400, { error }));
+      expect(fakeSupabase.queries).toHaveLength(0);
+    });
+  });
+
+  describe("PUT a new alert", () => {
+    it("saves a listed market with the parameters read from the chain", async () => {
+      expect(await read(await put(blueBody({ healthFactorThreshold: 1.05 }), DIGITS))).toEqual(
+        json(200, { success: true }),
+      );
+
+      const chain = getMorphoChain(8453);
+      expect(readListedMarketParams).toHaveBeenCalledWith(expect.anything(), chain, "morpho-blue", BLUE_ID);
+      expect(fakeSupabase.log()).toEqual([
+        chainQuery(DIGITS, 8453, BLUE_ID),
+        idLookup(DIGITS, 8453, BLUE_ID),
+        countQuery(DIGITS),
+        insertQuery(writtenRow({ health_factor_threshold: 1.05 })),
+      ]);
+    });
+
+    it("saves a listed Midnight market", async () => {
+      vi.mocked(readListedMarketParams).mockResolvedValue(MIDNIGHT);
+      const body = { chainId: 1, protocol: "morpho-midnight", market: MIDNIGHT_ID };
+
+      expect(await read(await put(body, DIGITS))).toEqual(json(200, { success: true }));
+      expect(fakeSupabase.log().at(-1)).toBe(
+        insertQuery(
+          writtenRow({ chain_id: 1, market: MIDNIGHT_ID, protocol: "morpho-midnight", market_params: MIDNIGHT }),
+        ),
+      );
+    });
+
+    it.each([
+      [1.0, 1.02],
+      [1.02, 1.02],
+      [12, 10],
+    ])("clamps the threshold %j to Morpho's range as %j", async (sent, stored) => {
+      await put(blueBody({ healthFactorThreshold: sent }), DIGITS);
+      expect(fakeSupabase.log().at(-1)).toBe(insertQuery(writtenRow({ health_factor_threshold: stored })));
+    });
+
+    it("keeps Aave's 1.1 minimum for an Aave alert", async () => {
+      await put({ chainId: 8453, healthFactorThreshold: 1.02 }, DIGITS);
+      expect(fakeSupabase.log().at(-1)).toContain('"health_factor_threshold":1.1,');
+    });
+
+    it("refuses a new alert while Morpho is not enabled, without asking Morpho's API", async () => {
+      vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", "");
+
+      expect(await read(await put(blueBody(), DIGITS))).toEqual(
+        json(404, { error: "Morpho alerts are not available" }),
+      );
+      expect(readListedMarketParams).not.toHaveBeenCalled();
+      expect(fakeSupabase.log()).toEqual([chainQuery(DIGITS, 8453, BLUE_ID)]);
+    });
+
+    it("refuses a market Morpho's app does not list or the chain does not have", async () => {
+      vi.mocked(readListedMarketParams).mockResolvedValue(null);
+
+      expect(await read(await put(blueBody(), DIGITS))).toEqual(UNKNOWN_MORPHO_MARKET);
+      expect(fakeSupabase.log()).toEqual([chainQuery(DIGITS, 8453, BLUE_ID)]);
+    });
+
+    it("answers 503 and saves nothing when Morpho's API cannot answer", async () => {
+      vi.mocked(readListedMarketParams).mockRejectedValue(new MorphoApiError("Morpho API answered 502"));
+
+      expect(await read(await put(blueBody(), DIGITS))).toEqual(
+        json(503, { error: "Could not verify the Morpho market. Please try again later." }),
+      );
+      expect(fakeSupabase.log().some(query => query.includes(".insert("))).toBe(false);
+      expect(loggedError()).toEqual([
+        "PUT /api/notifications/config: Morpho API unavailable",
+        "Morpho API answered 502",
+      ]);
+    });
+
+    it("answers a generic 500 when the chain cannot be read", async () => {
+      vi.mocked(readListedMarketParams).mockRejectedValue(
+        new Error("HTTP request failed. URL: https://rpc.example/key"),
+      );
+
+      expect(await read(await put(blueBody(), DIGITS))).toEqual(json(500, { error: SAVE_FAILED }));
+      expect(fakeSupabase.log().some(query => query.includes(".insert("))).toBe(false);
+    });
+
+    it.each([
+      ["Blue on a chain Morpho's app does not cover", { chainId: 56 }],
+      ["Midnight on a chain without Midnight", { chainId: 42161, protocol: "morpho-midnight" }],
+    ])("refuses %s before the access check or any DB call", async (_label, extra) => {
+      expect(await read(await put(blueBody(extra), DIGITS))).toEqual(UNKNOWN_MORPHO_MARKET);
+      expect(isAccessActive).not.toHaveBeenCalled();
+      expect(fakeSupabase.queries).toHaveLength(0);
+    });
+
+    it("refuses a new Midnight alert where Morpho's API cannot say which markets are listed", async () => {
+      // Tempo has a Midnight contract, but no listing data.
+      const body = { chainId: 4217, protocol: "morpho-midnight", market: MIDNIGHT_ID };
+      expect(await read(await put(body, DIGITS))).toEqual(UNKNOWN_MORPHO_MARKET);
+      expect(readListedMarketParams).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [{ protocol: "morpho" }, INVALID_PROTOCOL],
+      [{ protocol: "morpho-blue", market: undefined }, INVALID_MORPHO_MARKET],
+      [{ protocol: "morpho-blue", market: "v3" }, INVALID_MORPHO_MARKET],
+      [{ protocol: "aave", market: BLUE_ID }, INVALID_MARKET],
+    ])("returns 400 for %j before the access check or any DB call", async (extra, error) => {
+      expect(await read(await put(blueBody(extra), DIGITS))).toEqual(json(400, { error }));
+      expect(isAccessActive).not.toHaveBeenCalled();
+      expect(fakeSupabase.queries).toHaveLength(0);
+    });
+
+    it("checks paid access before asking Morpho's API", async () => {
+      vi.mocked(isAccessActive).mockResolvedValue(false);
+
+      expect((await put(blueBody(), DIGITS)).status).toBe(403);
+      expect(readListedMarketParams).not.toHaveBeenCalled();
+      expect(fakeSupabase.queries).toHaveLength(0);
+    });
+  });
+
+  describe("PUT an existing alert", () => {
+    beforeEach(() => {
+      fakeSupabase.respondByQuery({
+        [chainQuery(DIGITS, 8453, BLUE_ID)]: { data: morphoRow() },
+        [idLookup(DIGITS, 8453, BLUE_ID)]: { data: { id: "row-1" } },
+      });
+    });
+
+    it("updates it with the parameters brought up to date", async () => {
+      vi.mocked(refreshMarketParams).mockResolvedValue(REFRESHED);
+
+      expect(await read(await put(blueBody({ healthFactorThreshold: 1.2 }), DIGITS))).toEqual(
+        json(200, { success: true }),
+      );
+
+      expect(refreshMarketParams).toHaveBeenCalledWith(expect.anything(), getMorphoChain(8453), BLUE_ID, BLUE);
+      expect(readListedMarketParams).not.toHaveBeenCalled();
+      expect(fakeSupabase.log()).toEqual([
+        chainQuery(DIGITS, 8453, BLUE_ID),
+        idLookup(DIGITS, 8453, BLUE_ID),
+        updateQuery(writtenRow({ health_factor_threshold: 1.2, market_params: REFRESHED }), "row-1"),
+      ]);
+    });
+
+    it("keeps working while Morpho is not enabled", async () => {
+      vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", "");
+      expect(await read(await put(blueBody(), DIGITS))).toEqual(json(200, { success: true }));
+    });
+
+    it("treats a row with unreadable parameters as a new alert", async () => {
+      fakeSupabase.respondByQuery({
+        [chainQuery(DIGITS, 8453, BLUE_ID)]: { data: morphoRow({ market_params: { kind: "blue" } }) },
+        [idLookup(DIGITS, 8453, BLUE_ID)]: { data: { id: "row-1" } },
+      });
+
+      expect(await read(await put(blueBody(), DIGITS))).toEqual(json(200, { success: true }));
+      expect(refreshMarketParams).not.toHaveBeenCalled();
+      expect(readListedMarketParams).toHaveBeenCalledOnce();
+      expect(fakeSupabase.log().at(-1)).toBe(updateQuery(writtenRow(), "row-1"));
+    });
+  });
+
+  describe("DELETE", () => {
+    it("deletes a Morpho alert without Morpho's API, whether or not Morpho is enabled", async () => {
+      vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", "");
+
+      expect(await read(await del(blueBody(), DIGITS))).toEqual(json(200, { success: true }));
+      expect(fakeSupabase.log()).toEqual([deleteQuery(DIGITS, 8453, BLUE_ID)]);
+      expect(readListedMarketParams).not.toHaveBeenCalled();
+      expect(refreshMarketParams).not.toHaveBeenCalled();
+    });
+
+    it("deletes an alert on a chain Morpho no longer covers", async () => {
+      expect(await read(await del(blueBody({ chainId: 56 }), DIGITS))).toEqual(json(200, { success: true }));
+    });
+
+    it.each([
+      [{ protocol: "morpho" }, INVALID_PROTOCOL],
+      [{ market: LIDO_SPOKE }, INVALID_MORPHO_MARKET],
+    ])("returns 400 for %j", async (extra, error) => {
+      expect(await read(await del(blueBody(extra), DIGITS))).toEqual(json(400, { error }));
+      expect(fakeSupabase.queries).toHaveLength(0);
+    });
   });
 });

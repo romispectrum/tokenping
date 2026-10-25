@@ -1,7 +1,7 @@
 # Supabase
 
-The database of Tokenping: Postgres on Supabase, used by `packages/nextjs` for alert settings, Telegram chats, test
-message limits, sign-in nonces and the optional attribution answer. This folder holds the migrations, the local stack's
+The database of Tokenping: Postgres on Supabase, used by `packages/nextjs` for alert settings, Morpho maturity
+reminders, Telegram chats, test message limits, sign-in nonces and the optional attribution answer. This folder holds the migrations, the local stack's
 config and an empty seed file.
 
 ## Local stack
@@ -49,13 +49,14 @@ database answer with a generic error (500, or 502 for the cron run) and the serv
 
 ## Tables
 
-| Table                     | Holds                                                                                          | Changed by                                                |
-| ------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `notification_configs`    | One alert per wallet, chain and market: channels, threshold, recipients, language per channel  | `PUT` and `DELETE /api/notifications/config`              |
-| `telegram_chats`          | The chat each Telegram username opened by pressing Start in the bot                            | `POST /api/telegram/webhook`, and the cron on a dead chat |
-| `notification_test_sends` | The last test message per wallet and channel, for the one-per-15-minutes limit                 | `POST /api/notifications/test`                            |
-| `auth_nonces`             | Sign-in with Ethereum nonces, valid five minutes, deleted when used                            | `POST /api/auth/nonce` and `POST /api/auth/verify`        |
-| `user_attribution`        | The optional "How did you hear about Tokenping?" answer, one row per wallet, first answer kept | `POST /api/attribution`                                   |
+| Table                             | Holds                                                                                          | Changed by                                                |
+| --------------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `notification_configs`            | One alert per wallet, chain and market: channels, threshold, recipients, language per channel  | `PUT` and `DELETE /api/notifications/config`              |
+| `notification_maturity_reminders` | The reminders sent before a Morpho Midnight market matures, one per alert, kind and maturity   | The cron                                                  |
+| `telegram_chats`                  | The chat each Telegram username opened by pressing Start in the bot                            | `POST /api/telegram/webhook`, and the cron on a dead chat |
+| `notification_test_sends`         | The last test message per wallet and channel, for the one-per-15-minutes limit                 | `POST /api/notifications/test`                            |
+| `auth_nonces`                     | Sign-in with Ethereum nonces, valid five minutes, deleted when used                            | `POST /api/auth/nonce` and `POST /api/auth/verify`        |
+| `user_attribution`                | The optional "How did you hear about Tokenping?" answer, one row per wallet, first answer kept | `POST /api/attribution`                                   |
 
 `claim_notification_test_send()` is the function behind the test limit: one statement that takes the slot, so two clicks
 or two tabs can never both send. Nothing in the app reads `user_attribution` back; read the answers in Studio.
@@ -86,6 +87,7 @@ Every migration in order:
 | `20261020000000` | `add_channel_locales_to_notification_configs`     | Adds `email_locale`, `signal_locale` and `telegram_locale` (`en`, `cs` or null). Null means the row's `locale`.                                                                                                                                              |
 | `20261021000000` | `lock_down_server_only_tables`                    | Drops the "for local dev" policies of `notification_configs`, `telegram_chats` and `notification_test_sends`, revokes every privilege of `anon` and `authenticated` on them, and makes `claim_notification_test_send()` executable by the service role only. |
 | `20261022000000` | `create_auth_nonces`                              | Creates `auth_nonces`, service role only.                                                                                                                                                                                                                    |
+| `20261025000000` | `add_protocol_to_notification_configs`            | Adds `protocol` (`aave`, `morpho-blue` or `morpho-midnight`, default `aave`) and `market_params` (a Morpho market's fixed parameters, null for Aave), checks `market` per protocol, and creates `notification_maturity_reminders`, service role only.        |
 
 Supabase runs each migration once. All but `20250225120000` and `20260527000000` are also safe to run again. Comments
 inside the older migrations describe the app as it was when they were written (for example, before wallet sign-in
@@ -115,6 +117,7 @@ first makes these fail.
 | `20261019000000` | The "Send test" buttons.                                                                   |
 | `20261020000000` | Saving an alert and the cron run (the per-channel language columns).                       |
 | `20261022000000` | Signing in, so nobody can open their alert settings.                                       |
+| `20261025000000` | Every alert read, save and cron run, Aave included (the `protocol` column).                |
 
 **Upgrading a live deployment.** One migration works the other way round. `20261021000000` closes the tables to the anon
 key. Older versions of the app fell back to the anon key when `SUPABASE_SERVICE_ROLE_KEY` was not set, so before

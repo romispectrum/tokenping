@@ -6,6 +6,7 @@ import { jsonResponse } from "~~/utils/testing/helpers";
 
 // The Ethereum Lido Spoke, as a market id.
 const LIDO_SPOKE = "0xe1900480ac69f0b296841cd01cc37546d92f35cd";
+const MORPHO_ID = `0x${"3a".repeat(32)}`;
 
 const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>();
 
@@ -141,6 +142,17 @@ describe("upsertConfig", () => {
     expect(fetchMock.mock.calls[0][1]?.body).toContain(`"chainId":1,"market":"${LIDO_SPOKE}","enabled":true,`);
   });
 
+  it("names a Morpho alert's protocol after its market, and never Aave's", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ success: true }));
+    await client.upsertConfig({ ...CONFIG, chainId: 8453, market: MORPHO_ID, protocol: "morpho-blue" });
+    await client.upsertConfig({ ...CONFIG, protocol: "aave" });
+
+    expect(fetchMock.mock.calls[0][1]?.body).toContain(
+      `"chainId":8453,"market":"${MORPHO_ID}","protocol":"morpho-blue","enabled":true,`,
+    );
+    expect(fetchMock.mock.calls[1][1]?.body).not.toContain("protocol");
+  });
+
   // The server stores "en" for a PUT without a locale, so the alert's language is always sent.
   it("sends the alert's language, English when the config has none", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ success: true }));
@@ -195,6 +207,16 @@ describe("deleteConfig", () => {
     fetchMock.mockResolvedValue(jsonResponse({ success: true }));
     await client.deleteConfig({ chainId: 1, market: LIDO_SPOKE });
     expect(fetchMock.mock.calls[0][1]?.body).toBe(`{"chainId":1,"market":"${LIDO_SPOKE}"}`);
+  });
+
+  it("DELETEs a Morpho config by its protocol and market", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ success: true }));
+    await client.deleteConfig({ chainId: 8453, market: MORPHO_ID, protocol: "morpho-midnight" });
+    await client.deleteConfig({ chainId: 10, market: "v3", protocol: "aave" });
+    expect(fetchMock.mock.calls[0][1]?.body).toBe(
+      `{"chainId":8453,"market":"${MORPHO_ID}","protocol":"morpho-midnight"}`,
+    );
+    expect(fetchMock.mock.calls[1][1]?.body).toBe('{"chainId":10,"market":"v3"}');
   });
 
   it.each([

@@ -12,6 +12,7 @@ import {
   findEnabledConfigs,
   rowChannelLocale,
   rowMarket,
+  rowProtocol,
 } from "~~/services/notifications/configRepository";
 import { type Delivery, redactRecipients, shortenAddress } from "~~/services/notifications/redact";
 import { sendSignalMessage } from "~~/services/signal/sendSignal";
@@ -126,7 +127,10 @@ export async function runNotificationCheck(): Promise<NotificationCheckResult | 
       recordError(`telegram: chats query failed, Telegram alerts skipped this run: ${chatsError.message}`);
     }
 
-    const configs = rows.filter(row => getDeliverableChannels(row, chatIdsByUsername).length > 0);
+    // Aave only: a Morpho market id read as an Aave market would check another position.
+    const configs = rows.filter(
+      row => rowProtocol(row) === "aave" && getDeliverableChannels(row, chatIdsByUsername).length > 0,
+    );
     const sent: Record<NotificationService, number> = { email: 0, signal: 0, telegram: 0 };
 
     for (const config of configs) {

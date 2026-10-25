@@ -3,7 +3,8 @@
 import { useCallback } from "react";
 import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
-import { type MarketRef, V3_MARKET_ID, marketKey } from "~~/config/aaveConfig";
+import { type MarketRef, V3_MARKET_ID } from "~~/config/aaveConfig";
+import { isMorphoProtocol, marketRefKey } from "~~/config/protocols";
 import { DEFAULT_HEALTH_FACTOR_THRESHOLD } from "~~/constants/notifications";
 import { signOutOn401, useWalletSession } from "~~/hooks/custom/useWalletSession";
 import { useLocale } from "~~/i18n/LocaleProvider";
@@ -11,10 +12,8 @@ import { notificationConfigClient } from "~~/services/notifications/notification
 import type { NotificationConfig } from "~~/types/notifications";
 import { normalizeAddress } from "~~/utils/address";
 
-/** Keyed by marketKey(chainId, market), as GET /api/notifications/config returns them. */
+/** Keyed by marketRefKey, as GET /api/notifications/config returns them. */
 type ConfigsByMarket = Record<string, NotificationConfig>;
-
-const refKey = ({ chainId, market }: MarketRef) => marketKey(chainId, market);
 
 const notificationConfigsQueryKey = (address: string) => ["notificationConfigs", normalizeAddress(address)] as const;
 
@@ -45,7 +44,7 @@ const NETWORK_MODE = "always";
 const removeMarket = (configs: ConfigsByMarket | undefined, ref: MarketRef) => {
   if (!configs) return configs;
   const next = { ...configs };
-  delete next[refKey(ref)];
+  delete next[marketRefKey(ref)];
   return next;
 };
 
@@ -97,7 +96,8 @@ export const useNotificationConfig = () => {
     onSuccess: (_, { userId, config }) =>
       applyWrite(userId, prev => ({
         ...prev,
-        [refKey({ chainId: config.chainId, market: config.market ?? V3_MARKET_ID })]: config,
+        [marketRefKey({ chainId: config.chainId, market: config.market ?? V3_MARKET_ID, protocol: config.protocol })]:
+          config,
       })),
   });
 
@@ -111,7 +111,7 @@ export const useNotificationConfig = () => {
   const updateConfig = useCallback(
     async (ref: MarketRef, updates: Partial<NotificationConfig>) => {
       const userId = requireAddress(address);
-      const saved = queryClient.getQueryData<ConfigsByMarket>(notificationConfigsQueryKey(userId))?.[refKey(ref)];
+      const saved = queryClient.getQueryData<ConfigsByMarket>(notificationConfigsQueryKey(userId))?.[marketRefKey(ref)];
       const config: NotificationConfig = {
         ...(saved ?? { enabled: false, services: [], healthFactorThreshold: DEFAULT_HEALTH_FACTOR_THRESHOLD }),
         // The page's language: what a channel without a language of its own (an older client's save) is sent in.
@@ -120,6 +120,7 @@ export const useNotificationConfig = () => {
         // Always the position's market, never the wallet's connected chain.
         chainId: ref.chainId,
         market: ref.market,
+        ...(isMorphoProtocol(ref.protocol) && { protocol: ref.protocol }),
       };
       await saveConfig({ userId, config });
     },
@@ -133,8 +134,8 @@ export const useNotificationConfig = () => {
     [address, removeConfig],
   );
 
-  const getConfig = useCallback((ref: MarketRef) => configs?.[refKey(ref)] ?? null, [configs]);
-  const hasConfig = useCallback((ref: MarketRef) => !!configs && refKey(ref) in configs, [configs]);
+  const getConfig = useCallback((ref: MarketRef) => configs?.[marketRefKey(ref)] ?? null, [configs]);
+  const hasConfig = useCallback((ref: MarketRef) => !!configs && marketRefKey(ref) in configs, [configs]);
 
   return {
     /**

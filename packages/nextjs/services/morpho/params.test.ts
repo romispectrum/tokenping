@@ -1,8 +1,14 @@
-import type { Address, Hex } from "viem";
+import { type Address, type Hex, getAddress } from "viem";
 import { describe, expect, it, vi } from "vitest";
 import { getMorphoChain } from "~~/config/morpho";
 import type { MorphoClient } from "~~/services/morpho/client";
-import { readBlueMarketParams, readMidnightMarketParams } from "~~/services/morpho/params";
+import {
+  readBlueMarketParams,
+  readListedMarketParams,
+  readMidnightMarketParams,
+  refreshMarketParams,
+} from "~~/services/morpho/params";
+import type { BlueMarketParams } from "~~/services/morpho/types";
 
 const ETHEREUM = getMorphoChain(1)!;
 const ARBITRUM = getMorphoChain(42161)!;
@@ -159,5 +165,123 @@ describe("readMidnightMarketParams", () => {
         MARKET,
       ),
     ).toBe(null);
+  });
+});
+
+/** Morpho's API answering a Blue market's listing (GraphQL) or a Midnight one's (REST). */
+const listingFetch = (listing: { listed: boolean; preLiquidations?: Address[] } | null | Error) =>
+  vi.fn(async (input: string | URL | Request) => {
+    if (listing instanceof Error) throw listing;
+    const json = (body: unknown) => new Response(JSON.stringify(body));
+    if (String(input).endsWith("/graphql")) {
+      return json({
+        data: {
+          marketById: listing && {
+            marketId: MARKET,
+            listed: listing.listed,
+            preLiquidations: { items: (listing.preLiquidations ?? []).map(address => ({ address })) },
+          },
+        },
+      });
+    }
+    return json({ data: listing ? [{ market_id: MARKET, chain_id: 1, listed: listing.listed }] : [] });
+  }) as unknown as typeof fetch;
+
+// The API's addresses come back checksummed, and the contract is called at that address.
+const PRE_A_API = getAddress(PRE_A);
+
+const BLUE_CLIENT = () =>
+  fakeClient(
+    blueAnswer(success([USDC, OETH, ORACLE, IRM, 860000000000000000n]), {
+      [PRE_A_API]: { fromFactory: true, id: MARKET },
+    }),
+  );
+
+describe("readListedMarketParams", () => {
+  it("reads a listed Blue market with the pre-liquidation contracts the API names", async () => {
+    const params = await readListedMarketParams(
+      BLUE_CLIENT(),
+      ETHEREUM,
+      "morpho-blue",
+      MARKET,
+      listingFetch({ listed: true, preLiquidations: [PRE_A] }),
+    );
+    expect(params).toMatchObject({ kind: "blue", preLiquidations: [{ address: PRE_A_API }] });
+  });
+
+  it("reads a listed Midnight market", async () => {
+    const client = fakeClient(
+      tokens,
+      vi.fn(async () => ({ loanToken: USDC, collateralParams: [], maturity: 1_793_372_400n })),
+    );
+    const params = await readListedMarketParams(
+      client,
+      ETHEREUM,
+      "morpho-midnight",
+      MARKET,
+      listingFetch({ listed: true }),
+    );
+    expect(params).toMatchObject({ kind: "midnight", maturity: 1_793_372_400 });
+  });
+
+  it("returns null without reading the chain for a market the API does not list or know", async () => {
+    for (const listing of [{ listed: false }, null]) {
+      const client = BLUE_CLIENT();
+      expect(await readListedMarketParams(client, ETHEREUM, "morpho-blue", MARKET, listingFetch(listing))).toBe(null);
+      expect(client.multicall).not.toHaveBeenCalled();
+    }
+  });
+
+  it("throws MorphoApiError when the API cannot answer", async () => {
+    await expect(
+      readListedMarketParams(BLUE_CLIENT(), ETHEREUM, "morpho-blue", MARKET, listingFetch(new TypeError("offline"))),
+    ).rejects.toThrow("Morpho API unreachable");
+  });
+});
+
+describe("refreshMarketParams", () => {
+  const STORED: BlueMarketParams = {
+    kind: "blue",
+    loanToken: { address: USDC, symbol: "USDC", decimals: 6 },
+    collateralToken: { address: OETH, symbol: "OETH", decimals: 18 },
+    oracle: ORACLE,
+    irm: IRM,
+    lltv: "860000000000000000",
+    preLiquidations: [],
+  };
+
+  it("picks up a pre-liquidation contract added since, even on a market delisted since", async () => {
+    const params = await refreshMarketParams(
+      BLUE_CLIENT(),
+      ETHEREUM,
+      MARKET,
+      STORED,
+      listingFetch({ listed: false, preLiquidations: [PRE_A] }),
+    );
+    expect(params).toEqual({
+      ...STORED,
+      preLiquidations: [{ address: PRE_A_API, preLltv: "832603694978499652", oracle: PRE_ORACLE }],
+    });
+  });
+
+  it("keeps the stored parameters when the API or the chain cannot answer", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await refreshMarketParams(BLUE_CLIENT(), ETHEREUM, MARKET, STORED, listingFetch(new Error("down")))).toBe(
+      STORED,
+    );
+    expect(consoleError).toHaveBeenCalledOnce();
+    expect(await refreshMarketParams(BLUE_CLIENT(), ETHEREUM, MARKET, STORED, listingFetch(null))).toBe(STORED);
+    const broken = fakeClient(() => failure());
+    expect(
+      await refreshMarketParams(broken, ETHEREUM, MARKET, STORED, listingFetch({ listed: true, preLiquidations: [] })),
+    ).toBe(STORED);
+    consoleError.mockRestore();
+  });
+
+  it("never asks about a Midnight market, whose parameters cannot change", async () => {
+    const stored = { kind: "midnight" as const, loanToken: STORED.loanToken, collaterals: [], maturity: 1 };
+    const fetchImpl = listingFetch({ listed: true });
+    expect(await refreshMarketParams(BLUE_CLIENT(), ETHEREUM, MARKET, stored, fetchImpl)).toBe(stored);
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });

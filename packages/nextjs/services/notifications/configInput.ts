@@ -1,7 +1,7 @@
 import { DEFAULT_HEALTH_FACTOR_THRESHOLD, NOTIFICATION_SERVICES } from "~~/constants/notifications";
 import { DEFAULT_LOCALE, LOCALES, type Locale, isLocale } from "~~/i18n/locales";
 import type { NotificationService } from "~~/types/notifications";
-import { clampThreshold } from "~~/utils/notifications/threshold";
+import { type ThresholdRange, clampThreshold } from "~~/utils/notifications/threshold";
 import {
   isNotificationService,
   isValidEmail,
@@ -69,9 +69,13 @@ const parseChannelLocales = (raw: unknown): Record<NotificationService, Locale |
  * of its own is sent in `locale`. Recipients are checked only for the selected
  * services, with the shared length-capped helpers; the others are stored without validation, except a Telegram
  * username, which is stored only when valid because the database checks its format. isValidSignalUsername and
- * isValidTelegramUsername normalize the raw input exactly as it is stored.
+ * isValidTelegramUsername normalize the raw input exactly as it is stored. The threshold is clamped to `range`
+ * (Aave's unless the alert is Morpho's).
  */
-export const parseConfigInput = (input: ConfigInput): { error: string } | { value: ConfigValues } => {
+export const parseConfigInput = (
+  input: ConfigInput,
+  range?: ThresholdRange,
+): { error: string } | { value: ConfigValues } => {
   const services = input.services ?? [];
   if (!Array.isArray(services) || !services.every(isNotificationService)) return { error: SERVICES_ERROR };
 
@@ -103,7 +107,7 @@ export const parseConfigInput = (input: ConfigInput): { error: string } | { valu
     value: {
       enabled: input.enabled ?? true,
       services,
-      healthFactorThreshold: clampThreshold(threshold),
+      healthFactorThreshold: clampThreshold(threshold, range),
       email: optionalText(input.email, value => value.trim()),
       signalRecipient: optionalText(input.signalRecipient, normalizeSignalUsername),
       telegramUsername,

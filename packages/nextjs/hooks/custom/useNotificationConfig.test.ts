@@ -498,6 +498,43 @@ describe("useNotificationConfig", () => {
     });
   });
 
+  describe("a Morpho market (keyed by its protocol, so it never meets an Aave key)", () => {
+    const MORPHO_ID = `0x${"3a".repeat(32)}`;
+    const MORPHO_BLUE = { protocol: "morpho-blue" as const, chainId: 1, market: MORPHO_ID };
+    const MORPHO_KEY = `morpho-blue:1:${MORPHO_ID}`;
+
+    it("reads, saves and deletes it under its own key, sending its protocol", async () => {
+      mocks.getAllConfigs.mockResolvedValue({ "1:v3": CONFIG });
+      const { result, queryClient } = await renderLoaded();
+      mocks.getAllConfigs.mockReturnValue(new Promise(() => undefined));
+
+      await act(() => result.current.updateConfig(MORPHO_BLUE, { enabled: true, healthFactorThreshold: 1.05 }));
+
+      const sent = {
+        enabled: true,
+        services: [],
+        healthFactorThreshold: 1.05,
+        locale: "en",
+        chainId: 1,
+        market: MORPHO_ID,
+        protocol: "morpho-blue",
+      };
+      expect(mocks.upsertConfig.mock.calls).toEqual([[sent]]);
+      await waitFor(() => expect(result.current.getConfig(MORPHO_BLUE)).toEqual(sent));
+      expect(result.current.getConfig({ chainId: 1, market: MORPHO_ID })).toBeNull();
+      expect(Object.keys(queryClient.getQueryData<Configs>(["notificationConfigs", ADDRESS.toLowerCase()])!)).toEqual([
+        "1:v3",
+        MORPHO_KEY,
+      ]);
+
+      await act(() => result.current.deleteConfig(MORPHO_BLUE));
+
+      expect(mocks.deleteConfig.mock.calls).toEqual([[MORPHO_BLUE]]);
+      await waitFor(() => expect(result.current.hasConfig(MORPHO_BLUE)).toBe(false));
+      expect(result.current.getConfig(ETHEREUM)).toEqual(CONFIG);
+    });
+  });
+
   it("writes the result into the cache of the wallet that made the change", async () => {
     const save = deferred<void>();
     mocks.getAllConfigs.mockResolvedValueOnce({}).mockResolvedValueOnce(OTHER_CONFIGS);

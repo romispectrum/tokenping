@@ -1,5 +1,6 @@
 import { type Address, type ContractFunctionParameters, type Hex, isAddressEqual, zeroAddress } from "viem";
 import type { MorphoChain } from "~~/config/morpho";
+import type { MorphoProtocol } from "~~/config/protocols";
 import {
   ERC20_METADATA_ABI,
   MORPHO_BLUE_ABI,
@@ -7,8 +8,15 @@ import {
   PRE_LIQUIDATION_ABI,
   PRE_LIQUIDATION_FACTORY_ABI,
 } from "~~/services/morpho/abis";
+import { fetchMorphoListing } from "~~/services/morpho/api";
 import type { MorphoClient } from "~~/services/morpho/client";
-import type { BlueMarketParams, BluePreLiquidation, MidnightMarketParams, MorphoToken } from "~~/services/morpho/types";
+import type {
+  BlueMarketParams,
+  BluePreLiquidation,
+  MidnightMarketParams,
+  MorphoMarketParams,
+  MorphoToken,
+} from "~~/services/morpho/types";
 
 // A market's fixed parameters, read from the chain rather than taken from Morpho's API: the API only says which
 // markets are listed and which pre-liquidation contracts exist, and each contract is checked against Morpho's factory.
@@ -128,4 +136,46 @@ export const readMidnightMarketParams = async (
     })),
     maturity: Number(market.maturity),
   };
+};
+
+/**
+ * The parameters of a market a new alert may watch: listed in Morpho's app and present on the chain. Null when the API
+ * does not list it or the chain does not have it. Throws MorphoApiError when the API cannot answer, so a market nobody
+ * could verify is never saved.
+ */
+export const readListedMarketParams = async (
+  client: MorphoClient,
+  chain: MorphoChain,
+  protocol: MorphoProtocol,
+  marketId: Hex,
+  fetchImpl?: typeof fetch,
+): Promise<MorphoMarketParams | null> => {
+  const listing = await fetchMorphoListing(protocol, chain.chain.id, marketId, fetchImpl);
+  if (!listing?.listed) return null;
+  return protocol === "morpho-blue"
+    ? readBlueMarketParams(client, chain, marketId, listing.preLiquidations)
+    : readMidnightMarketParams(client, chain, marketId);
+};
+
+/**
+ * A saved alert's parameters brought up to date. Only a Blue market's pre-liquidation contracts can change (Morpho can
+ * add one after the alert was saved); everything else is fixed when the market is created. Keeps `stored` when the API
+ * or the chain cannot answer, so editing an alert never depends on them, and a market delisted since keeps its alert.
+ */
+export const refreshMarketParams = async (
+  client: MorphoClient,
+  chain: MorphoChain,
+  marketId: Hex,
+  stored: MorphoMarketParams,
+  fetchImpl?: typeof fetch,
+): Promise<MorphoMarketParams> => {
+  if (stored.kind !== "blue") return stored;
+  try {
+    const listing = await fetchMorphoListing("morpho-blue", chain.chain.id, marketId, fetchImpl);
+    if (!listing) return stored;
+    return (await readBlueMarketParams(client, chain, marketId, listing.preLiquidations)) ?? stored;
+  } catch (error) {
+    console.error("refreshMarketParams: kept the stored parameters", error);
+    return stored;
+  }
 };

@@ -1,4 +1,5 @@
 import type { MarketRef } from "~~/config/aaveConfig";
+import { isMorphoProtocol } from "~~/config/protocols";
 import { SignInRequiredError, apiError, apiUrl, readApiError } from "~~/services/api/apiClient";
 import type { NotificationService } from "~~/types/notifications";
 
@@ -30,11 +31,11 @@ export const notificationTestClient = {
    * Resolves with when the next test on `channel` is allowed; throws TestSendError when the server refuses, and
    * SignInRequiredError without a session.
    */
-  async send({ chainId, market }: MarketRef, channel: NotificationService) {
+  async send({ chainId, market, protocol }: MarketRef, channel: NotificationService) {
     const res = await fetch(apiUrl(TEST_PATH), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chainId, market, channel }),
+      body: JSON.stringify({ chainId, market, ...(isMorphoProtocol(protocol) && { protocol }), channel }),
     });
     if (res.status === 401) throw new SignInRequiredError(await readApiError(res, "Sign in with your wallet first"));
     if (res.status === 429) {

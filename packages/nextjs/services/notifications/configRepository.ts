@@ -1,7 +1,9 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import "server-only";
-import { type MarketId, type MarketRef, V3_MARKET_ID, isMarketId, marketKey } from "~~/config/aaveConfig";
+import { type MarketId, type MarketRef, V3_MARKET_ID, isMarketId } from "~~/config/aaveConfig";
+import { type MorphoProtocol, type Protocol, isMorphoMarketId, isProtocol, marketRefKey } from "~~/config/protocols";
 import { DEFAULT_LOCALE, type Locale, isLocale } from "~~/i18n/locales";
+import type { MorphoMarketParams } from "~~/services/morpho/types";
 import type { ConfigValues } from "~~/services/notifications/configInput";
 import { selectAllPages } from "~~/services/supabase/selectAllPages";
 import { getSupabaseServerClient } from "~~/services/supabase/supabaseServer";
@@ -13,8 +15,15 @@ export type NotificationConfigRow = {
   id: string;
   user_id: string;
   chain_id: number;
-  /** 'v3' or a V4 Spoke's lowercased address (checked by the database). */
+  /** 'aave', 'morpho-blue' or 'morpho-midnight' (checked by the database); absent before the protocol migration. */
+  protocol?: string | null;
+  /**
+   * Aave: 'v3' or a V3 Pool's or V4 Spoke's lowercased address. Morpho: the lowercased market id (bytes32). Checked by
+   * the database per protocol.
+   */
   market?: string | null;
+  /** Morpho only: the market's fixed parameters as JSON (services/morpho/storedParams.ts checks them). Null for Aave. */
+  market_params?: unknown;
   enabled: boolean;
   services: string[] | null;
   /** numeric column: PostgREST may return it as a string */
@@ -37,6 +46,7 @@ export type EnabledConfigRow = Pick<
   NotificationConfigRow,
   | "user_id"
   | "chain_id"
+  | "protocol"
   | "market"
   | "health_factor_threshold"
   | "email"
@@ -52,7 +62,11 @@ export type EnabledConfigRow = Pick<
 /** Rows written before services were validated can hold ids outside NotificationService. */
 export type NotificationConfigResponse = Omit<NotificationConfig, "services"> & { services: string[] };
 
-type ConfigWriteRow = ReturnType<typeof toConfigRow>;
+/** An Aave alert writes the columns it always has (protocol defaults to 'aave'); a Morpho one adds its own two. */
+export type ConfigWriteRow = ReturnType<typeof toConfigRow> & {
+  protocol?: MorphoProtocol;
+  market_params?: MorphoMarketParams;
+};
 
 /**
  * New rows store the lowercased address, but legacy rows may still hold the trimmed, often checksummed form, so
@@ -93,31 +107,57 @@ const rowChannelLocales = (row: ChannelLocaleColumns & Pick<NotificationConfigRo
     (row.services ?? []).filter(isNotificationService).map(channel => [channel, rowChannelLocale(row, channel)]),
   );
 
-/** The row's market: V3 for anything that is not a market id (a row from before the column). */
+/** The row's protocol: Aave for a row without one (every row before Morpho), null for one this code does not know. */
+export const rowProtocol = (row: Pick<NotificationConfigRow, "protocol">): Protocol | null => {
+  if (row.protocol == null) return "aave";
+  return isProtocol(row.protocol) ? row.protocol : null;
+};
+
+/** An Aave row's market: V3 for anything that is not a market id (a row from before the column). */
 export const rowMarket = (row: Pick<NotificationConfigRow, "market">): MarketId =>
   isMarketId(row.market) ? row.market : V3_MARKET_ID;
 
-/** The key GET /api/notifications/config lists a row under: marketKey(chain, market). */
-export const rowMarketKey = (row: Pick<NotificationConfigRow, "chain_id" | "market">) =>
-  marketKey(row.chain_id, rowMarket(row));
+/**
+ * The market a row's alert watches. An Aave ref carries no protocol, as before Morpho. Null for a Morpho row whose id
+ * is not a Morpho market id and for a protocol this code does not know: read as Aave, it would watch another position.
+ */
+export const rowMarketRef = (
+  row: Pick<NotificationConfigRow, "chain_id" | "protocol" | "market">,
+): MarketRef | null => {
+  const protocol = rowProtocol(row);
+  if (protocol === "aave") return { chainId: row.chain_id, market: rowMarket(row) };
+  return protocol && isMorphoMarketId(row.market) ? { protocol, chainId: row.chain_id, market: row.market } : null;
+};
+
+/** The key GET /api/notifications/config lists a row under (marketRefKey), or null for a row it cannot read. */
+export const rowMarketKey = (row: Pick<NotificationConfigRow, "chain_id" | "protocol" | "market">) => {
+  const ref = rowMarketRef(row);
+  return ref && marketRefKey(ref);
+};
 
 /**
  * Optional fields map null to undefined so they are omitted from the JSON response; market, locale and
- * channelLocales are always present.
+ * channelLocales are always present. `protocol` is present for Morpho only, so an Aave config reads as it always did.
  */
-export const rowToConfig = (row: NotificationConfigRow): NotificationConfigResponse => ({
-  chainId: row.chain_id,
-  market: rowMarket(row),
-  enabled: row.enabled,
-  services: row.services ?? [],
-  healthFactorThreshold: parseFloat(String(row.health_factor_threshold)),
-  email: row.email ?? undefined,
-  signalRecipient: row.signal_recipient ?? undefined,
-  telegramUsername: row.telegram_username ?? undefined,
-  locale: rowLocale(row),
-  channelLocales: rowChannelLocales(row),
-});
+export const rowToConfig = (row: NotificationConfigRow): NotificationConfigResponse => {
+  const protocol = rowProtocol(row);
+  const morpho = protocol !== null && protocol !== "aave" ? protocol : undefined;
+  return {
+    chainId: row.chain_id,
+    market: morpho ? String(row.market) : rowMarket(row),
+    ...(morpho ? { protocol: morpho } : {}),
+    enabled: row.enabled,
+    services: row.services ?? [],
+    healthFactorThreshold: parseFloat(String(row.health_factor_threshold)),
+    email: row.email ?? undefined,
+    signalRecipient: row.signal_recipient ?? undefined,
+    telegramUsername: row.telegram_username ?? undefined,
+    locale: rowLocale(row),
+    channelLocales: rowChannelLocales(row),
+  };
+};
 
+/** The columns every alert writes; a Morpho alert adds `protocol` and `market_params` (toMorphoConfigRow). */
 export const toConfigRow = (uid: string, { chainId, market }: MarketRef, values: ConfigValues, now = new Date()) => ({
   user_id: uid,
   chain_id: chainId,
@@ -135,6 +175,22 @@ export const toConfigRow = (uid: string, { chainId, market }: MarketRef, values:
   updated_at: now.toISOString(),
 });
 
+/**
+ * A Morpho alert's row. `marketParams` is left out when undefined, so an update keeps the stored parameters; the
+ * protocol is written every time, so the row can never pass for another protocol's.
+ */
+export const toMorphoConfigRow = (
+  uid: string,
+  ref: MarketRef & { protocol: MorphoProtocol },
+  values: ConfigValues,
+  marketParams: MorphoMarketParams | undefined,
+  now = new Date(),
+): ConfigWriteRow => ({
+  ...toConfigRow(uid, ref, values, now),
+  protocol: ref.protocol,
+  ...(marketParams ? { market_params: marketParams } : {}),
+});
+
 const configsTable = () => getSupabaseServerClient().from("notification_configs");
 
 /** Read helpers throw on a Supabase error, so a failed query is never mistaken for "no config". */
@@ -143,7 +199,11 @@ const dataOrThrow = <T>({ data, error }: { data: T; error: { message: string } |
   return data;
 };
 
-/** The legacy form is queried only when the lowercased one has no row for the market. */
+/**
+ * The legacy form is queried only when the lowercased one has no row for the market. Lookups by market alone are
+ * exact: an Aave id ('v3' or 40 hex characters) never equals a Morpho one (64), and the unique key is (user, chain,
+ * market).
+ */
 export async function findConfigForMarket(
   { normalized, legacy }: UserIdForms,
   { chainId, market }: MarketRef,
@@ -172,8 +232,9 @@ export async function findConfigsForUser({ normalized, legacy }: UserIdForms): P
 }
 
 /**
- * How many alerts one wallet can have. PUT already keeps a wallet to one alert per market the app reads (44 in October
- * 2026), so this is a backstop for when that list grows: rows nobody needs would only slow the cron for everyone.
+ * How many alerts one wallet can have, Aave and Morpho together. PUT already keeps a wallet to one alert per market
+ * the app reads (44 Aave markets in October 2026, and the listed Morpho markets it borrows in), so this is a backstop:
+ * rows nobody needs would only slow the cron for everyone.
  */
 export const MAX_CONFIGS_PER_WALLET = 50;
 
@@ -224,7 +285,7 @@ export async function deleteConfigs({ normalized, legacy }: UserIdForms, { chain
 
 /** What the cron reads of each enabled config. One literal, so supabase-js can type the rows. */
 const ENABLED_CONFIG_COLUMNS =
-  "user_id, chain_id, market, health_factor_threshold, email, signal_recipient, telegram_username, services, locale, email_locale, signal_locale, telegram_locale";
+  "user_id, chain_id, protocol, market, health_factor_threshold, email, signal_recipient, telegram_username, services, locale, email_locale, signal_locale, telegram_locale";
 
 /** Every enabled config, read page by page so rows past the PostgREST max_rows cap are not skipped. */
 export const findEnabledConfigs = () =>

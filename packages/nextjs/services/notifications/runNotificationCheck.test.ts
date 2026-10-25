@@ -32,7 +32,7 @@ const SHORT_LOWER = "0x3a3a…3a3a";
 const LIDO_SPOKE = "0xe1900480ac69f0b296841cd01cc37546d92f35cd";
 
 const configsPage = (from: number) =>
-  'notification_configs.select("user_id, chain_id, market, health_factor_threshold, email, signal_recipient, telegram_username, services, locale, email_locale, signal_locale, telegram_locale")' +
+  'notification_configs.select("user_id, chain_id, protocol, market, health_factor_threshold, email, signal_recipient, telegram_username, services, locale, email_locale, signal_locale, telegram_locale")' +
   `.eq("enabled",true).order("id").range(${from},${from + 999})`;
 const chatsPage = (from: number) =>
   `telegram_chats.select("username, chat_id").order("chat_id").range(${from},${from + 999})`;
@@ -203,6 +203,21 @@ describe("runNotificationCheck: loading", () => {
     expect(vi.mocked(getHealthFactorForWallet).mock.calls).toEqual([
       [LOWER, 7, "v3"],
       [LOWER, 8, "v3"],
+    ]);
+  });
+
+  it("never reads a Morpho market as an Aave one", async () => {
+    givenData([
+      configRow({ chain_id: 1, protocol: "morpho-blue", market: `0x${"3a".repeat(32)}` }),
+      configRow({ chain_id: 2, protocol: "compound" }),
+      configRow({ chain_id: 3, protocol: "aave" }),
+      configRow({ chain_id: 4 }),
+    ]);
+
+    expect(await runNotificationCheck()).toEqual(summary({ configsChecked: 2, emailsSent: 2 }));
+    expect(vi.mocked(getHealthFactorForWallet).mock.calls).toEqual([
+      [LOWER, 3, "v3"],
+      [LOWER, 4, "v3"],
     ]);
   });
 

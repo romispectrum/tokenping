@@ -1,4 +1,5 @@
 import type { MarketId } from "~~/config/aaveConfig";
+import type { Protocol } from "~~/config/protocols";
 import type { Locale } from "~~/i18n/locales";
 
 /** Supported notification delivery channels */
@@ -11,8 +12,13 @@ export type NotificationServiceOption = {
 
 export type NotificationConfig = {
   chainId: number;
-  /** The market on the chain: "v3" (the chain's V3 Pool) or a V4 Spoke's lowercased address. "v3" when absent. */
+  /**
+   * The market on the chain. Aave: "v3" (the chain's V3 Pool) or a V3 Pool's or V4 Spoke's lowercased address, "v3"
+   * when absent. Morpho: the market id.
+   */
   market?: MarketId;
+  /** Absent for Aave, as every config was before Morpho. */
+  protocol?: Protocol;
   enabled: boolean;
   services: NotificationService[];
   healthFactorThreshold: number;
