@@ -17,15 +17,21 @@ import {
   scroll,
   soneium,
   sonic,
+  unichain,
+  worldchain,
   xLayer,
   zksync,
 } from "viem/chains";
 import { arc, megaEth, monad } from "~~/config/aaveConfig";
+import { hyperEvm, katana, robinhood, stable } from "~~/config/chains";
 import { tokenIconKey } from "~~/utils/tokenIcons";
 
 // The pure parts of scripts/fetchTokenIcons.ts, kept apart so they are testable without the network.
 
-/** CoinGecko asset platform ids (GET /asset_platforms) of the chains with an Aave V3 or V4 market. */
+/**
+ * CoinGecko asset platform ids (GET /asset_platforms) of the chains with an Aave V3 or V4 market, then of the Morpho
+ * chains Aave does not cover. Tempo has no platform on CoinGecko (25 Oct 2026), so it shows its first letter.
+ */
 export const COINGECKO_PLATFORMS: Readonly<Record<number, string>> = {
   [mainnet.id]: "ethereum",
   [polygon.id]: "polygon-pos",
@@ -49,6 +55,12 @@ export const COINGECKO_PLATFORMS: Readonly<Record<number, string>> = {
   [xLayer.id]: "x-layer",
   [megaEth.id]: "megaeth",
   [monad.id]: "monad",
+  [unichain.id]: "unichain",
+  [worldchain.id]: "world-chain",
+  [hyperEvm.id]: "hyperevm",
+  [katana.id]: "katana",
+  [robinhood.id]: "robinhood",
+  [stable.id]: "stable",
 };
 
 /**

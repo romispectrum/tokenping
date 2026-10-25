@@ -7,6 +7,8 @@ const APP_DIR = new URL("./", import.meta.url);
 
 // Not indexable: noindex (/admin) or a 404 outside local hardhat builds (/debug, /blockexplorer).
 const NON_INDEXED_PREFIXES = ["/admin", "/debug", "/blockexplorer"];
+// A 404 until NEXT_PUBLIC_MORPHO_ENABLED is "true", and listed from then on.
+const MORPHO_PAGES = ["/morpho", "/cz/morpho"];
 
 /** Every app/**\/page.tsx without a dynamic segment, by its URL path ("/", "/aave", "/cz/blog", …). */
 const staticPageFiles = (dir = APP_DIR, prefix = ""): [string, URL][] =>
@@ -49,6 +51,7 @@ const bilingual = (en: string, cs: string) => {
 
 beforeEach(() => {
   vi.resetModules();
+  vi.unstubAllEnvs();
 });
 
 describe("sitemap", () => {
@@ -106,6 +109,7 @@ describe("sitemap", () => {
       path =>
         !NON_INDEXED_PREFIXES.some(prefix => path === prefix || path.startsWith(`${prefix}/`)) &&
         !isClientPage(path) &&
+        !MORPHO_PAGES.includes(path) &&
         (path !== "/blog" || blog.PUBLISHED_POSTS.length > 0) &&
         (path !== "/cz/blog" || blog.getPublishedPosts("cs").length > 0),
     );
@@ -113,6 +117,25 @@ describe("sitemap", () => {
     // A new Server Component page (e.g. /privacy, or /aave once it stops being a client page) fails here until
     // app/sitemap.ts lists it.
     for (const path of expected) expect(listed.has(path), `${path}: add it to app/sitemap.ts`).toBe(true);
+  });
+
+  it("lists the Morpho dashboard after Aave's only while Morpho is enabled", async () => {
+    const off = pathsOf((await loadSitemap()).sitemap());
+    expect(off.filter(path => MORPHO_PAGES.includes(path))).toEqual([]);
+
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", "true");
+    const entries = (await loadSitemap()).sitemap();
+
+    expect(entries.slice(0, 6)).toEqual([
+      ...bilingual("/", "/cz"),
+      ...bilingual("/aave", "/cz/aave"),
+      ...bilingual("/morpho", "/cz/morpho"),
+    ]);
+    for (const path of MORPHO_PAGES) {
+      expect(pageFile(path) && existsSync(pageFile(path)!), path).toBe(true);
+      expect(isClientPage(path), path).toBe(false);
+    }
   });
 
   it("never lists dev, admin or API routes", async () => {

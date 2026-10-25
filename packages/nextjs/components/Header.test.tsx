@@ -178,6 +178,34 @@ describe("Header", () => {
     }
   });
 
+  it("links the Morpho dashboard after Aave's only while Morpho is enabled, in each language", () => {
+    vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", "true");
+    try {
+      const { unmount } = render(<Header />);
+      const [, desktopMenu] = screen.getAllByRole("list");
+      expect(
+        within(desktopMenu)
+          .getAllByRole("link")
+          .map(link => [link.textContent, link.getAttribute("href")]),
+      ).toEqual([
+        ["Home", "/"],
+        ["Dashboard", "/aave"],
+        ["Morpho", "/morpho"],
+        ["Blog", "/blog"],
+      ]);
+      unmount();
+
+      render(
+        <LocaleProvider locale="cs">
+          <Header />
+        </LocaleProvider>,
+      );
+      expect(screen.getAllByRole("link", { name: "Morpho" })[0].getAttribute("href")).toBe("/cz/morpho");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("shows the faucet button only on the local network", () => {
     const { rerender } = render(<Header />);
 

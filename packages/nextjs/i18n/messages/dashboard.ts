@@ -5,6 +5,15 @@ import type { Localized } from "~~/i18n/locales";
 // flow. Amounts and health factors arrive already formatted: the dashboard keeps the app's number format in both
 // languages, so only the words change.
 
+/** What a dashboard's wallet gate says before a wallet is connected. */
+export type GateMessages = {
+  title: string;
+  description: string;
+  connect: string;
+  connecting: string;
+  approveInWallet: string;
+};
+
 type DashboardMessages = {
   page: {
     metaTitle: string;
@@ -25,13 +34,7 @@ type DashboardMessages = {
     guideThreshold: string;
     guideAlerts: string;
   };
-  gate: {
-    title: string;
-    description: string;
-    connect: string;
-    connecting: string;
-    approveInWallet: string;
-  };
+  gate: GateMessages;
   /** The sr-only h2 above the positions. */
   positionsHeading: string;
   loadingDashboard: string;

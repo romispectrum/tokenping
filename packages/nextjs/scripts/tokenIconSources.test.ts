@@ -2,6 +2,8 @@ import { format, resolveConfig } from "prettier";
 import { arbitrum, mainnet, polygon } from "viem/chains";
 import { describe, expect, it } from "vitest";
 import { AAVE_CHAINS, arc } from "~~/config/aaveConfig";
+import { tempo } from "~~/config/chains";
+import { MORPHO_CHAINS } from "~~/config/morpho";
 import {
   COINGECKO_PLATFORMS,
   IMAGE_OVERRIDES,
@@ -18,10 +20,11 @@ const WETH = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
 const ARB_USDC = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
 
 describe("COINGECKO_PLATFORMS", () => {
-  it("names a CoinGecko platform for every Aave chain, and for no other", () => {
+  it("names a CoinGecko platform for every Aave chain and every Morpho chain CoinGecko knows, and for no other", () => {
     for (const { chain, name } of AAVE_CHAINS) expect(COINGECKO_PLATFORMS[chain.id], name).toBeTruthy();
+    const morphoOnly = MORPHO_CHAINS.filter(({ chain }) => chain.id !== tempo.id);
     expect(new Set(Object.keys(COINGECKO_PLATFORMS).map(Number))).toEqual(
-      new Set(AAVE_CHAINS.map(({ chain }) => chain.id)),
+      new Set([...AAVE_CHAINS, ...morphoOnly].map(({ chain }) => chain.id)),
     );
   });
 

@@ -4,7 +4,8 @@ import type { ReactNode } from "react";
 import { useIsClient } from "usehooks-ts";
 import { useAccount } from "wagmi";
 import { DashboardSkeleton } from "~~/components/custom/aave/PositionsSkeleton";
-import { ConnectWalletGate, type GateMessages } from "~~/components/dashboard/ConnectWalletGate";
+import { ConnectWalletGate } from "~~/components/dashboard/ConnectWalletGate";
+import type { GateMessages } from "~~/i18n/messages/dashboard";
 
 type WalletDashboardProps = {
   /** The positions region's name, read by screen readers. */

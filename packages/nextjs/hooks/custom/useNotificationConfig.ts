@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
 import { type MarketRef, V3_MARKET_ID } from "~~/config/aaveConfig";
@@ -136,6 +136,14 @@ export const useNotificationConfig = () => {
 
   const getConfig = useCallback((ref: MarketRef) => configs?.[marketRefKey(ref)] ?? null, [configs]);
   const hasConfig = useCallback((ref: MarketRef) => !!configs && marketRefKey(ref) in configs, [configs]);
+  // An Aave ref names no protocol, as getConfig expects.
+  const savedRefs = useMemo<MarketRef[]>(
+    () =>
+      Object.values(configs ?? {}).map(({ chainId, market = V3_MARKET_ID, protocol }) =>
+        isMorphoProtocol(protocol) ? { chainId, market, protocol } : { chainId, market },
+      ),
+    [configs],
+  );
 
   return {
     /**
@@ -156,5 +164,7 @@ export const useNotificationConfig = () => {
     updateConfig,
     deleteConfig,
     hasConfig,
+    /** The market of every saved config, in the order the API listed them; empty until they load. */
+    savedRefs,
   };
 };

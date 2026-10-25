@@ -44,11 +44,13 @@ const SECURITY_HEADERS = [
 const MARKDOWN_PAGES = [
   "/",
   "/aave",
+  "/morpho",
   "/blog",
   "/blog/:slug([^./]+)",
   "/privacy",
   "/cz",
   "/cz/aave",
+  "/cz/morpho",
   "/cz/blog",
   "/cz/blog/:slug([^./]+)",
   "/cz/ochrana-soukromi",

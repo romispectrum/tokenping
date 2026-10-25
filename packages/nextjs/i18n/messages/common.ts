@@ -18,7 +18,8 @@ type CommonMessages = {
   /** The logo link's accessible name, in the header and the footer. */
   homeLabel: string;
   header: {
-    nav: { home: string; dashboard: string; blog: string };
+    /** `morpho` shows only while Morpho is enabled. */
+    nav: { home: string; dashboard: string; morpho: string; blog: string };
     /** The main navigation landmark's name. */
     navLabel: string;
     openMenu: string;
@@ -126,7 +127,7 @@ export const COMMON_MESSAGES: Localized<CommonMessages> = {
     },
     homeLabel: "Tokenping home",
     header: {
-      nav: { home: "Home", dashboard: "Dashboard", blog: "Blog" },
+      nav: { home: "Home", dashboard: "Dashboard", morpho: "Morpho", blog: "Blog" },
       navLabel: "Main",
       openMenu: "Open menu",
       theme: "Theme",
@@ -222,7 +223,7 @@ export const COMMON_MESSAGES: Localized<CommonMessages> = {
     },
     homeLabel: "Úvodní stránka Tokenpingu",
     header: {
-      nav: { home: "Úvod", dashboard: "Přehled", blog: "Blog" },
+      nav: { home: "Úvod", dashboard: "Přehled", morpho: "Morpho", blog: "Blog" },
       navLabel: "Hlavní",
       openMenu: "Otevřít menu",
       theme: "Motiv",

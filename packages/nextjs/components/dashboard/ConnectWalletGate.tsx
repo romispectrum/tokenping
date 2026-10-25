@@ -3,14 +3,7 @@
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { Wallet } from "lucide-react";
 import { Button, EmptyState, LiveRegion } from "~~/components/ui";
-
-export type GateMessages = {
-  title: string;
-  description: string;
-  connect: string;
-  connecting: string;
-  approveInWallet: string;
-};
+import type { GateMessages } from "~~/i18n/messages/dashboard";
 
 type ConnectWalletGateProps = {
   /** wagmi's isConnecting: true for a connection the visitor asked for, and also for wagmi's own checks. */

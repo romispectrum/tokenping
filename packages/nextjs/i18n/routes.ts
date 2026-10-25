@@ -4,11 +4,13 @@ import { POST_SLUGS, postKeyForSlug } from "~~/i18n/postSlugs";
 // Every public page's path in each language. English keeps the original URLs at the root; Czech lives under /cz with
 // Czech words where a path has words. The single source for links, canonicals, hreflang, the sitemap and the switcher.
 
-export type StaticRoute = "home" | "dashboard" | "blog" | "blogFeed" | "privacy";
+export type StaticRoute = "home" | "dashboard" | "morpho" | "blog" | "blogFeed" | "privacy";
 
 const STATIC_PATHS: Record<StaticRoute, Localized<string>> = {
   home: { en: "/", cs: "/cz" },
   dashboard: { en: "/aave", cs: "/cz/aave" },
+  // Published only while NEXT_PUBLIC_MORPHO_ENABLED is "true" (config/morpho.ts isMorphoEnabled); a 404 otherwise.
+  morpho: { en: "/morpho", cs: "/cz/morpho" },
   blog: { en: "/blog", cs: "/cz/blog" },
   blogFeed: { en: "/blog/feed.xml", cs: "/cz/blog/feed.xml" },
   privacy: { en: "/privacy", cs: "/cz/ochrana-soukromi" },

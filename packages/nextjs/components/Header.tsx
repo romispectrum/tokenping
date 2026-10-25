@@ -11,6 +11,7 @@ import { FaucetButton, RainbowKitCustomConnectButton } from "~~/components/scaff
 import { LanguageSwitch } from "~~/components/ui/LanguageSwitch";
 import { ThemeToggle } from "~~/components/ui/ThemeToggle";
 import { cx } from "~~/components/ui/classNames";
+import { isMorphoEnabled } from "~~/config/morpho";
 import { useOutsideClick, useTargetNetwork } from "~~/hooks/scaffold-eth";
 import { useLocale, useMessages } from "~~/i18n/LocaleProvider";
 import type { Locale } from "~~/i18n/locales";
@@ -29,6 +30,7 @@ const menuLinks = (locale: Locale): readonly MenuLink[] => {
   return [
     { label: nav.home, href: routePath(locale, "home") },
     { label: nav.dashboard, href: routePath(locale, "dashboard") },
+    ...(isMorphoEnabled() ? [{ label: nav.morpho, href: routePath(locale, "morpho") }] : []),
     { label: nav.blog, href: routePath(locale, "blog"), includesNested: true },
   ];
 };

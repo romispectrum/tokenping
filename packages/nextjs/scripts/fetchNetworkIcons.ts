@@ -1,6 +1,6 @@
 /**
- * Downloads CoinGecko's logo for every network with an Aave market into public/network-icons and writes the table the
- * dashboard reads, config/networkIcons.generated.ts. Run it from the repo root when a network is added:
+ * Downloads CoinGecko's logo for every network with an Aave or Morpho market into public/network-icons and writes the
+ * table the dashboards read, config/networkIcons.generated.ts. Run it from the repo root when a network is added:
  *
  *   yarn next:network-icons
  *
@@ -11,6 +11,7 @@
 import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { AAVE_CHAINS } from "~~/config/aaveConfig";
+import { MORPHO_CHAINS } from "~~/config/morpho";
 import { NETWORK_ICONS as PREVIOUS_ICONS } from "~~/config/networkIcons.generated";
 import { encodeIconImage } from "~~/scripts/iconImage";
 import { requestWithRetry } from "~~/scripts/requestWithRetry";
@@ -28,6 +29,12 @@ const GENERATED_MODULE = join(process.cwd(), "config", "networkIcons.generated.t
 
 type AssetPlatform = { id: string; image?: { large?: string | null } | null };
 
+/** Every network a dashboard shows: Aave's, then the Morpho ones Aave does not cover. */
+const NETWORKS = [
+  ...AAVE_CHAINS,
+  ...MORPHO_CHAINS.filter(({ chain }) => !AAVE_CHAINS.some(aave => aave.chain.id === chain.id)),
+].map(({ chain, name }) => ({ chain, name }));
+
 const main = async () => {
   const platforms = await requestWithRetry(
     "https://api.coingecko.com/api/v3/asset_platforms",
@@ -39,9 +46,12 @@ const main = async () => {
   const entries: NetworkIconEntry[] = [];
   const encoded = new Map<string, Uint8Array>();
   const missing: string[] = [];
-  for (const { chain, name } of AAVE_CHAINS) {
+  for (const { chain, name } of NETWORKS) {
     const platform = COINGECKO_PLATFORMS[chain.id];
-    if (!platform) throw new Error(`No CoinGecko platform id for ${name} (chain ${chain.id})`);
+    if (!platform) {
+      missing.push(`${name} (chain ${chain.id}): no CoinGecko platform`);
+      continue;
+    }
     const url = platformsById.get(platform)?.image?.large;
     if (!isCoinGeckoImageUrl(url)) {
       missing.push(`${name} (${platform}): no logo in the asset platform list`);
@@ -56,7 +66,7 @@ const main = async () => {
     entries.push({ chainId: chain.id, name, icon: platform });
   }
 
-  const lost = AAVE_CHAINS.filter(
+  const lost = NETWORKS.filter(
     ({ chain }) => PREVIOUS_ICONS[chain.id] && !entries.some(entry => entry.chainId === chain.id),
   );
   if (lost.length > 0) {

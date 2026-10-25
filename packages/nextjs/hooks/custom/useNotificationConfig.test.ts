@@ -102,7 +102,20 @@ describe("useNotificationConfig", () => {
       "isLoaded",
       "isSaving",
       "refetch",
+      "savedRefs",
       "updateConfig",
+    ]);
+  });
+
+  it("lists every saved config's market, a Morpho one with its protocol and an Aave one without", async () => {
+    const morpho = { ...CONFIG, chainId: 8453, market: `0x${"3a".repeat(32)}`, protocol: "morpho-blue" as const };
+    mocks.getAllConfigs.mockResolvedValue({ "1:v3": CONFIG, [LIDO_KEY]: { ...CONFIG, market: LIDO_SPOKE }, m: morpho });
+    const { result } = await renderLoaded();
+
+    expect(result.current.savedRefs).toEqual([
+      { chainId: 1, market: "v3" },
+      { chainId: 1, market: LIDO_SPOKE },
+      { chainId: 8453, market: morpho.market, protocol: "morpho-blue" },
     ]);
   });
 

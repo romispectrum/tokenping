@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { isMorphoEnabled } from "~~/config/morpho";
 import { getLatestPostDate, getPostByKey, getPostLastModified, getPublishedPosts, isPublished } from "~~/content/blog";
 import { LOCALES, LOCALE_INFO, type Locale, type Localized } from "~~/i18n/locales";
 import { POST_SLUGS } from "~~/i18n/postSlugs";
@@ -8,7 +9,8 @@ import { absoluteUrl } from "~~/utils/seo";
 // Canonical, indexable, server-rendered 200 URLs only, in every language; app/sitemap.test.ts checks every path
 // against its route file. Each URL lists its translations (hreflang) when there is more than one. Left out: /admin,
 // /debug, /blockexplorer and /api; placeholder posts (and a language's /blog while it lists none); any
-// client-rendered page. The dashboard is listed because its page is a server shell around the wallet island.
+// client-rendered page. The dashboards are listed because their pages are server shells around the wallet island; the
+// Morpho one only while Morpho is enabled (a 404 otherwise).
 // lastModified is a real content date or absent, never the build time; priority and changeFrequency are left out
 // because Google ignores them.
 
@@ -57,6 +59,7 @@ const sitemap = (): MetadataRoute.Sitemap => {
   return [
     ...staticRoute("home"),
     ...staticRoute("dashboard"),
+    ...(isMorphoEnabled() ? staticRoute("morpho") : []),
     ...entries(blogPaths, locale => getLatestPostDate(getPublishedPosts(locale))),
     ...posts,
     ...staticRoute("privacy"),
