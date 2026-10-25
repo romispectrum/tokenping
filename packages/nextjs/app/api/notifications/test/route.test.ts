@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   claim: { data: null as unknown, error: null as { message: string } | null },
   rpcCalls: [] as { fn: string; args: unknown }[],
   getMarketSnapshot: vi.fn(),
+  readBlueHealth: vi.fn(),
   send: { email: vi.fn(), signal: vi.fn(), telegram: vi.fn() },
 }));
 
@@ -37,6 +38,7 @@ vi.mock("~~/services/supabase/supabaseServer", async () => {
 });
 vi.mock("~~/services/payments/checkAccess", () => ({ isAccessActive: vi.fn() }));
 vi.mock("~~/services/aave/getHealthFactor", () => ({ getMarketSnapshot: mocks.getMarketSnapshot }));
+vi.mock("~~/services/morpho/health", () => ({ readBlueHealth: mocks.readBlueHealth, readMidnightHealth: vi.fn() }));
 vi.mock("~~/services/notifications/runNotificationCheck", () => ({ ALERT_SENDERS: mocks.send }));
 
 const BASE_URL = "http://localhost/api/notifications/test";
@@ -636,5 +638,91 @@ describe("POST /api/notifications/test: giving the slot back", () => {
     expect(await read(await post(VALID_BODY))).toEqual({ status: 500, body: { error: SEND_FAILED } });
     expect(fakeSupabase.log().at(-1)).toBe(releaseQuery(LOWER, "email", NOW));
     expect(nothingSent()).toBe(true);
+  });
+});
+
+describe("POST /api/notifications/test: a Morpho alert", () => {
+  const MARKET = `0x${"7e".repeat(32)}`;
+  const BLUE = {
+    kind: "blue",
+    loanToken: { address: "0x00000000000000000000000000000000000000b1", symbol: "USDC", decimals: 6 },
+    collateralToken: { address: "0x00000000000000000000000000000000000000b2", symbol: "OETH", decimals: 18 },
+    oracle: "0x00000000000000000000000000000000000000e1",
+    irm: "0x00000000000000000000000000000000000000c1",
+    lltv: "860000000000000000",
+    preLiquidations: [],
+  };
+  const morphoRow = (overrides: Record<string, unknown> = {}) =>
+    storedRow({
+      protocol: "morpho-blue",
+      market: MARKET,
+      market_params: BLUE,
+      health_factor_threshold: "1.05",
+      ...overrides,
+    });
+  const BODY = { chainId: 8453, protocol: "morpho-blue", market: MARKET, channel: "email" };
+
+  beforeEach(() => {
+    mocks.readBlueHealth.mockReset().mockImplementation(async () => {
+      mocks.events.push("read position");
+      return {
+        healthFactor: 1_286_481_888_882_701_105n,
+        line: "lltv",
+        debt: 55_113_361_618n,
+        collateralValue: 82_444_583_206n,
+        timestamp: 1_792_014_892,
+      };
+    });
+  });
+
+  it("sends the alert's market and position, read from the chain, in the loan token", async () => {
+    savedAlert(morphoRow());
+
+    expect((await post(BODY)).status).toBe(200);
+
+    expect(mocks.events).toEqual([
+      "notification_configs",
+      "claim_notification_test_send",
+      "read position",
+      "send email",
+    ]);
+    expect(mocks.readBlueHealth.mock.calls[0].slice(2)).toEqual([MARKET, LOWER, BLUE]);
+    const [recipient, message] = mocks.send.email.mock.calls[0];
+    expect(recipient).toBe("saved@example.com");
+    expect(message.subject).toBe("Tokenping test message - Morpho OETH/USDC (86% LLTV), Base");
+    expect(message.text).toBe(
+      "Test message from Tokenping: alerts on this channel work.\n\n" +
+        "Your alert: Morpho OETH/USDC (86% LLTV), Base, when the health factor drops below 1.05.\n" +
+        "Right now: health factor 1.28 (Risky), collateral 82,444.58 USDC, debt 55,113.36 USDC.\n" +
+        "That is above your threshold, so no alert would be sent now.\n\n" +
+        `Checked every 5 minutes. Sent at: ${NOW_TEXT}`,
+    );
+  });
+
+  it("still sends when the position cannot be read", async () => {
+    savedAlert(morphoRow());
+    mocks.readBlueHealth.mockRejectedValue(new Error("rpc down"));
+
+    expect((await post(BODY)).status).toBe(200);
+    expect(mocks.send.email.mock.calls[0][1].text).toContain("Right now: your position could not be read.");
+  });
+
+  it("answers 500 without claiming the slot for an alert whose stored market cannot be read", async () => {
+    savedAlert(morphoRow({ market_params: { kind: "blue" } }));
+
+    expect(await read(await post(BODY))).toEqual({ status: 500, body: { error: SEND_FAILED } });
+    expect(mocks.rpcCalls).toEqual([]);
+    expect(nothingSent()).toBe(true);
+  });
+
+  it("looks the alert up by its Morpho market, and refuses a Morpho protocol with an Aave market", async () => {
+    savedAlert(null);
+    expect((await post(BODY)).status).toBe(404);
+    expect(fakeSupabase.log()[0]).toBe(configQuery(LOWER, 8453, MARKET));
+
+    expect(await read(await post({ ...BODY, market: "v3" }))).toEqual({
+      status: 400,
+      body: { error: "Invalid market: expected a lowercased Morpho market id (0x and 64 hex characters)" },
+    });
   });
 });

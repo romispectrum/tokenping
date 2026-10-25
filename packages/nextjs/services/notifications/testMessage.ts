@@ -42,18 +42,29 @@ type TestMessageInput = {
 };
 
 /**
- * The "Send test" message for every channel, in the alert's language: `text` for Signal, Telegram and the email's
- * plain part, `subject` and `html` for the email. Built from the saved alert and the position as it is right now.
+ * A test message for every channel from the market's `name` and what to say about the position: `text` for Signal,
+ * Telegram and the email's plain part, `subject` and `html` for the email. Shared by Aave and Morpho.
  */
-export const buildTestMessage = ({ chainName, snapshot, threshold, locale, now = new Date() }: TestMessageInput) => {
+export const renderTestMessage = ({
+  name,
+  position,
+  threshold,
+  locale,
+  now = new Date(),
+}: {
+  name: string;
+  position: TestPosition;
+  threshold: number;
+  locale: Locale;
+  now?: Date;
+}) => {
   const t = NOTIFICATION_MESSAGES[locale];
-  const name = snapshot?.chainName ?? chainName;
   const lines = t.testLines({
     chainName: name,
     threshold: formatDecimal(locale, threshold),
     minutes: NOTIFICATION_CHECK_INTERVAL_MINUTES,
     timestamp: formatUtcTimestamp(now, locale),
-    position: toTestPosition(snapshot, threshold, locale),
+    position,
   });
   const [first, ...rest] = lines;
   return {
@@ -66,3 +77,16 @@ export const buildTestMessage = ({ chainName, snapshot, threshold, locale, now =
     ].join(""),
   };
 };
+
+/**
+ * The "Send test" message of an Aave alert, in the alert's language. Built from the saved alert and the position as it
+ * is right now.
+ */
+export const buildTestMessage = ({ chainName, snapshot, threshold, locale, now = new Date() }: TestMessageInput) =>
+  renderTestMessage({
+    name: snapshot?.chainName ?? chainName,
+    position: toTestPosition(snapshot, threshold, locale),
+    threshold,
+    locale,
+    now,
+  });

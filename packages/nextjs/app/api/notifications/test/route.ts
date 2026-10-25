@@ -1,9 +1,9 @@
 /**
  * GET  /api/notifications/test: when each of the signed-in wallet's channels can send its next test message, as
  *      `{ email, signal, telegram }`, each an ISO time or null when a test can be sent now.
- * POST /api/notifications/test { chainId, market, channel }: sends one test message on `channel` for the signed-in
- *      wallet's saved alert in that market, with the alert as saved and the position as it is right now, in the
- *      language the alert uses for that channel.
+ * POST /api/notifications/test { chainId, market, protocol?, channel }: sends one test message on `channel` for the
+ *      signed-in wallet's saved alert in that market (Aave's unless `protocol` names Morpho's), with the alert as saved
+ *      and the position as it is right now, in the language the alert uses for that channel.
  *
  * Both act for the wallet of the session cookie (401 without one). A `userId` an older client still sends must name
  * that wallet (403 otherwise).
@@ -21,7 +21,8 @@
  */
 import { NextResponse } from "next/server";
 import type { Address } from "viem";
-import { marketLabel, resolveMarket } from "~~/config/aaveConfig";
+import { type MarketRef, marketLabel, resolveMarket } from "~~/config/aaveConfig";
+import { isMorphoProtocol } from "~~/config/protocols";
 import { getTelegramBotUsername } from "~~/constants/notifications";
 import { getMarketSnapshot } from "~~/services/aave/getHealthFactor";
 import { requireActiveAccess } from "~~/services/api/server/access";
@@ -32,20 +33,23 @@ import {
   readJsonObject,
   rejectCrossSiteRequest,
 } from "~~/services/api/server/http";
-import { INVALID_MARKET, parseMarket } from "~~/services/api/server/market";
+import { parseAlertMarket } from "~~/services/api/server/market";
 import { requireSessionWallet } from "~~/services/api/server/session";
+import { createMorphoClient } from "~~/services/morpho/client";
 import {
   type NotificationConfigRow,
   findConfigForMarket,
   rowChannelLocale,
   userIdForms,
 } from "~~/services/notifications/configRepository";
+import { type MorphoAlert, readMorphoHealth, toMorphoAlert } from "~~/services/notifications/morphoAlerts";
+import { buildMorphoTestMessage } from "~~/services/notifications/morphoMessages";
 import { ALERT_SENDERS } from "~~/services/notifications/runNotificationCheck";
 import { buildTestMessage } from "~~/services/notifications/testMessage";
 import { claimTestSend, getTestSendRetryTimes, releaseTestSend } from "~~/services/notifications/testSends";
 import { getChatIdByUsername } from "~~/services/telegram/telegramChats";
 import type { NotificationService } from "~~/types/notifications";
-import { normalizeThreshold } from "~~/utils/notifications/threshold";
+import { MORPHO_THRESHOLD_RANGE, normalizeThreshold } from "~~/utils/notifications/threshold";
 import { isNotificationService } from "~~/utils/notifications/validation";
 
 type Recipient = { recipient: string } | { error: string; status: number };
@@ -73,6 +77,42 @@ const recipientFor = async (config: NotificationConfigRow, channel: Notification
   };
 };
 
+/** An Aave alert's test message, with the position as it is right now. */
+const aaveTestMessage = async (
+  { chainId, market }: MarketRef,
+  config: NotificationConfigRow,
+  channel: NotificationService,
+) => {
+  const known = resolveMarket(chainId, market);
+  return buildTestMessage({
+    // The name when the position read fails (the snapshot names the market otherwise).
+    chainName: known ? marketLabel(known) : `chain ${chainId}`,
+    snapshot: await getMarketSnapshot(config.user_id as Address, chainId, market),
+    threshold: normalizeThreshold(config.health_factor_threshold),
+    locale: rowChannelLocale(config, channel),
+  });
+};
+
+/** A Morpho alert's test message, with the position read from the chain (one retry: someone is waiting for it). */
+const morphoTestMessage = async (
+  config: NotificationConfigRow,
+  alert: MorphoAlert<NotificationConfigRow>,
+  channel: NotificationService,
+) => {
+  const reading = await readMorphoHealth(
+    createMorphoClient(alert.chain.chain, 1),
+    alert,
+    config.user_id as Address,
+  ).catch(() => null);
+  return buildMorphoTestMessage({
+    chainName: alert.chain.name,
+    params: alert.params,
+    reading,
+    threshold: normalizeThreshold(config.health_factor_threshold, MORPHO_THRESHOLD_RANGE),
+    locale: rowChannelLocale(config, channel),
+  });
+};
+
 export async function GET(request: Request) {
   try {
     const session = requireSessionWallet(request, new URL(request.url).searchParams.get("userId"));
@@ -93,18 +133,21 @@ export async function POST(request: Request) {
     if (session.response) return session.response;
     const userId = session.wallet;
     if (!isChainId(body.chainId)) return jsonError("Missing or invalid chainId", 400);
-    const market = parseMarket(body.market);
-    if (market === null) return jsonError(INVALID_MARKET, 400);
+    const market = parseAlertMarket(body.protocol, body.market);
+    if ("error" in market) return jsonError(market.error, 400);
     const channel = body.channel;
     if (!isNotificationService(channel)) return jsonError("Invalid channel: expected email, signal or telegram", 400);
     const chainId = body.chainId;
+    const ref: MarketRef = { chainId, ...market };
 
     const denied = await requireActiveAccess(userId, "Active paid access required to send a test message");
     if (denied) return denied;
 
-    const config = await findConfigForMarket(userIdForms(userId), { chainId, market });
+    const config = await findConfigForMarket(userIdForms(userId), ref);
     if (!config) return jsonError("No saved alert for this market", 404);
     if (!(config.services ?? []).includes(channel)) return jsonError(`This alert does not send by ${channel}`, 400);
+    const morpho = isMorphoProtocol(ref.protocol) ? toMorphoAlert(config) : undefined;
+    if (morpho === null) throw new Error("The saved Morpho alert cannot be read");
 
     const target = await recipientFor(config, channel);
     if ("error" in target) return jsonError(target.error, target.status);
@@ -119,15 +162,9 @@ export async function POST(request: Request) {
     }
 
     try {
-      const locale = rowChannelLocale(config, channel);
-      const known = resolveMarket(chainId, market);
-      const message = buildTestMessage({
-        // The name when the position read fails (the snapshot names the market otherwise).
-        chainName: known ? marketLabel(known) : `chain ${chainId}`,
-        snapshot: await getMarketSnapshot(config.user_id as Address, chainId, market),
-        threshold: normalizeThreshold(config.health_factor_threshold),
-        locale,
-      });
+      const message = morpho
+        ? await morphoTestMessage(config, morpho, channel)
+        : await aaveTestMessage(ref, config, channel);
       const result = await ALERT_SENDERS[channel](target.recipient, message);
       if (!result.success) {
         console.error(`POST /api/notifications/test: the ${channel} provider refused the message`, result.error);

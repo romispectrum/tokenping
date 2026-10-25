@@ -44,10 +44,12 @@ export type NotificationConfigRow = {
 
 export type EnabledConfigRow = Pick<
   NotificationConfigRow,
+  | "id"
   | "user_id"
   | "chain_id"
   | "protocol"
   | "market"
+  | "market_params"
   | "health_factor_threshold"
   | "email"
   | "signal_recipient"
@@ -285,7 +287,7 @@ export async function deleteConfigs({ normalized, legacy }: UserIdForms, { chain
 
 /** What the cron reads of each enabled config. One literal, so supabase-js can type the rows. */
 const ENABLED_CONFIG_COLUMNS =
-  "user_id, chain_id, protocol, market, health_factor_threshold, email, signal_recipient, telegram_username, services, locale, email_locale, signal_locale, telegram_locale";
+  "id, user_id, chain_id, protocol, market, market_params, health_factor_threshold, email, signal_recipient, telegram_username, services, locale, email_locale, signal_locale, telegram_locale";
 
 /** Every enabled config, read page by page so rows past the PostgREST max_rows cap are not skipped. */
 export const findEnabledConfigs = () =>

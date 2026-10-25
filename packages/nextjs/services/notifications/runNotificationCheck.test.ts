@@ -2,8 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getHealthFactorForWallet } from "~~/services/aave/getHealthFactor";
 import { fakeSupabase, rangeOf, sliceByRange } from "~~/services/api/server/testing/fakeSupabase";
 import { sendEmail } from "~~/services/email/sendEmail";
+import { readBlueHealth, readMidnightHealth } from "~~/services/morpho/health";
+import { NO_DEBT_HEALTH_FACTOR } from "~~/services/morpho/math";
+import type { BlueMarketParams, MidnightMarketParams, MorphoReading } from "~~/services/morpho/types";
 import type { EnabledConfigRow } from "~~/services/notifications/configRepository";
 import {
+  MORPHO_READ_BUDGET_MS,
   buildAlertEmail,
   buildAlertText,
   getDeliverableChannels,
@@ -17,6 +21,7 @@ vi.mock("~~/services/supabase/supabaseServer", async () => {
   return { getSupabaseServerClient: () => fakeSupabase.client };
 });
 vi.mock("~~/services/aave/getHealthFactor", () => ({ getHealthFactorForWallet: vi.fn() }));
+vi.mock("~~/services/morpho/health", () => ({ readBlueHealth: vi.fn(), readMidnightHealth: vi.fn() }));
 vi.mock("~~/services/email/sendEmail", () => ({ sendEmail: vi.fn() }));
 vi.mock("~~/services/signal/sendSignal", () => ({ sendSignalMessage: vi.fn() }));
 vi.mock("~~/services/telegram/sendTelegram", () => ({ sendTelegramMessage: vi.fn() }));
@@ -32,7 +37,7 @@ const SHORT_LOWER = "0x3a3a…3a3a";
 const LIDO_SPOKE = "0xe1900480ac69f0b296841cd01cc37546d92f35cd";
 
 const configsPage = (from: number) =>
-  'notification_configs.select("user_id, chain_id, protocol, market, health_factor_threshold, email, signal_recipient, telegram_username, services, locale, email_locale, signal_locale, telegram_locale")' +
+  'notification_configs.select("id, user_id, chain_id, protocol, market, market_params, health_factor_threshold, email, signal_recipient, telegram_username, services, locale, email_locale, signal_locale, telegram_locale")' +
   `.eq("enabled",true).order("id").range(${from},${from + 999})`;
 const chatsPage = (from: number) =>
   `telegram_chats.select("username, chat_id").order("chat_id").range(${from},${from + 999})`;
@@ -203,21 +208,6 @@ describe("runNotificationCheck: loading", () => {
     expect(vi.mocked(getHealthFactorForWallet).mock.calls).toEqual([
       [LOWER, 7, "v3"],
       [LOWER, 8, "v3"],
-    ]);
-  });
-
-  it("never reads a Morpho market as an Aave one", async () => {
-    givenData([
-      configRow({ chain_id: 1, protocol: "morpho-blue", market: `0x${"3a".repeat(32)}` }),
-      configRow({ chain_id: 2, protocol: "compound" }),
-      configRow({ chain_id: 3, protocol: "aave" }),
-      configRow({ chain_id: 4 }),
-    ]);
-
-    expect(await runNotificationCheck()).toEqual(summary({ configsChecked: 2, emailsSent: 2 }));
-    expect(vi.mocked(getHealthFactorForWallet).mock.calls).toEqual([
-      [LOWER, 3, "v3"],
-      [LOWER, 4, "v3"],
     ]);
   });
 
@@ -713,6 +703,300 @@ describe("runNotificationCheck: delivery", () => {
       throw new Error("db down");
     });
     expect(await runNotificationCheck()).toEqual({ success: false, error: "db down" });
+  });
+});
+
+describe("runNotificationCheck: Morpho", () => {
+  // Not starting with the wallet's hex, which the errors shorten wherever it appears.
+  const BLUE_ID = `0x${"7e".repeat(32)}`;
+  const MIDNIGHT_ID = `0x${"5c".repeat(32)}`;
+  const USDC = { address: "0x00000000000000000000000000000000000000b1", symbol: "USDC", decimals: 6 } as const;
+  const OETH = { address: "0x00000000000000000000000000000000000000b2", symbol: "OETH", decimals: 18 } as const;
+  const BLUE: BlueMarketParams = {
+    kind: "blue",
+    loanToken: USDC,
+    collateralToken: OETH,
+    oracle: "0x00000000000000000000000000000000000000e1",
+    irm: "0x00000000000000000000000000000000000000c1",
+    lltv: "860000000000000000",
+    preLiquidations: [],
+  };
+  // Matures on 30 Oct 2026 at 15:00 UTC.
+  const MATURITY = 1_793_372_400;
+  const MIDNIGHT: MidnightMarketParams = {
+    kind: "midnight",
+    loanToken: USDC,
+    collaterals: [{ token: OETH, lltv: "915000000000000000", oracle: "0x00000000000000000000000000000000000000f1" }],
+    maturity: MATURITY,
+  };
+  const DAY = 86_400;
+
+  const blueRow = (overrides: Row = {}) =>
+    configRow({
+      id: "cfg-blue",
+      protocol: "morpho-blue",
+      market: BLUE_ID,
+      market_params: BLUE,
+      health_factor_threshold: "1.05",
+      ...overrides,
+    });
+  const midnightRow = (overrides: Row = {}) =>
+    configRow({
+      id: "cfg-mid",
+      protocol: "morpho-midnight",
+      market: MIDNIGHT_ID,
+      market_params: MIDNIGHT,
+      health_factor_threshold: "1.05",
+      ...overrides,
+    });
+  const reading = (healthFactor: bigint, overrides: Partial<MorphoReading> = {}): MorphoReading => ({
+    healthFactor,
+    line: "lltv",
+    debt: 501_010_136_638n,
+    collateralValue: 605_597_015_103n,
+    timestamp: MATURITY - 10 * DAY,
+    ...overrides,
+  });
+  const HEALTHY = 1_106_008_099_032_485_108n;
+  const BELOW = 1_049_999_999_999_999_999n;
+
+  const claimQuery = (kind: string, configId = "cfg-mid") =>
+    `notification_maturity_reminders.upsert(${JSON.stringify({ config_id: configId, kind, maturity: "2026-10-30T15:00:00.000Z" })},{"onConflict":"config_id,kind,maturity","ignoreDuplicates":true}).select("sent_at")`;
+  const releaseQuery = (kind: string, sentAt: string, configId = "cfg-mid") =>
+    `notification_maturity_reminders.delete().eq("config_id","${configId}").eq("kind","${kind}").eq("maturity","2026-10-30T15:00:00.000Z").eq("sent_at","${sentAt}")`;
+  const SENT_AT = "2026-10-14T09:05:07.123+00:00";
+
+  const given = (rows: Row[], extra: Record<string, { data?: unknown; error?: { message: string } }> = {}) =>
+    fakeSupabase.respondByQuery({ [CONFIGS_QUERY]: { data: rows }, [CHATS_QUERY]: { data: [] }, ...extra });
+  const emails = () => vi.mocked(sendEmail).mock.calls.map(([email]) => email);
+
+  beforeEach(() => {
+    vi.mocked(readBlueHealth).mockReset();
+    vi.mocked(readMidnightHealth).mockReset();
+  });
+
+  it("alerts a Blue position below its threshold, compared exactly, with the market named", async () => {
+    given([blueRow()]);
+    vi.mocked(readBlueHealth).mockResolvedValue(reading(BELOW));
+
+    expect(await runNotificationCheck()).toEqual(summary({ configsChecked: 1, emailsSent: 1 }));
+    expect(vi.mocked(readBlueHealth).mock.calls[0].slice(1)).toEqual([
+      expect.objectContaining({ name: "Base" }),
+      BLUE_ID,
+      LOWER,
+      BLUE,
+    ]);
+    expect(emails()).toEqual([
+      {
+        to: "a@b.co",
+        subject: "Morpho health factor alert - Base",
+        text:
+          "Your Morpho health factor on Base is 1.04, which is below your threshold of 1.05.\n" +
+          "Market: OETH/USDC (86% LLTV).\n" +
+          "Consider adding collateral or repaying debt to avoid liquidation.\n\n" +
+          `Sent at: ${NOW_TEXT}`,
+        html:
+          "<p>Your Morpho health factor on Base is 1.04, which is below your threshold of 1.05.</p>" +
+          "<p>Market: OETH/USDC (86% LLTV).</p>" +
+          "<p>Consider adding collateral or repaying debt to avoid liquidation.</p>" +
+          `<p><small>Sent at: ${NOW_TEXT}</small></p>`,
+      },
+    ]);
+  });
+
+  it("sends nothing at or above the threshold, and nothing without debt", async () => {
+    given([blueRow(), blueRow({ chain_id: 1 })]);
+    vi.mocked(readBlueHealth)
+      .mockResolvedValueOnce(reading(1_050_000_000_000_000_000n))
+      .mockResolvedValueOnce(reading(NO_DEBT_HEALTH_FACTOR, { debt: 0n }));
+
+    expect(await runNotificationCheck()).toEqual(summary({ configsChecked: 2 }));
+  });
+
+  it("explains a health factor measured against the borrower's pre-liquidation, in Czech too", async () => {
+    given([blueRow({ locale: "cs" })]);
+    vi.mocked(readBlueHealth).mockResolvedValue(reading(BELOW, { line: "pre-liquidation" }));
+
+    await runNotificationCheck();
+
+    expect(emails()[0]).toMatchObject({
+      subject: "Upozornění na health factor Morpho - Base",
+      text: expect.stringContaining(
+        // Czech number formats space with a no-break space: "86 %", "501 010,14".
+        "Váš health factor na Morpho na síti Base je 1,04, což je pod vaším prahem 1,05.\nTrh: OETH/USDC (86\u00a0% LLTV).\n" +
+          "Na tomto trhu jste zapnuli předběžnou likvidaci",
+      ),
+    });
+  });
+
+  it("accepts a Morpho threshold down to 1.02, below Aave's minimum", async () => {
+    given([blueRow({ health_factor_threshold: "1.02" })]);
+    vi.mocked(readBlueHealth).mockResolvedValue(reading(1_019_000_000_000_000_000n));
+
+    await runNotificationCheck();
+
+    expect(emails()[0].text).toContain("is 1.01, which is below your threshold of 1.02.");
+  });
+
+  it("records a position it cannot read, or an alert it cannot read, and carries on", async () => {
+    given([
+      blueRow(),
+      blueRow({ chain_id: 1, market_params: { kind: "blue" } }),
+      blueRow({ chain_id: 56 }),
+      configRow({ chain_id: 10, protocol: "compound" }),
+      configRow({ chain_id: 8453 }),
+    ]);
+    vi.mocked(readBlueHealth).mockResolvedValue(null);
+
+    const result = await runNotificationCheck();
+
+    expect(result).toMatchObject({ configsChecked: 4, emailsSent: 1 });
+    expect(result.success && result.errors).toEqual([
+      `config:${SHORT_LOWER}:morpho-blue:1:${BLUE_ID}: unreadable Morpho alert`,
+      `config:${SHORT_LOWER}:morpho-blue:56:${BLUE_ID}: unreadable Morpho alert`,
+      `healthFactor:${SHORT_LOWER}:morpho-blue:8453:${BLUE_ID}: could not read the health factor`,
+    ]);
+    expect(readBlueHealth).toHaveBeenCalledOnce();
+    // The Aave alert after them still goes out.
+    expect(getHealthFactorForWallet).toHaveBeenCalledWith(LOWER, 8453, "v3");
+  });
+
+  it("reads Morpho positions before the Aave alerts", async () => {
+    given([configRow(), blueRow()]);
+    vi.mocked(readBlueHealth).mockResolvedValue(reading(BELOW));
+
+    await runNotificationCheck();
+
+    expect(emails().map(({ subject }) => subject)).toEqual([
+      "Morpho health factor alert - Base",
+      "Aave Health Factor Alert - Base",
+    ]);
+  });
+
+  it("records the positions not read within the run's time limit and reads the rest", async () => {
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+    vi.setSystemTime(NOW);
+    given([blueRow(), blueRow({ chain_id: 1 })]);
+    vi.mocked(readBlueHealth).mockImplementation((_client, chain) =>
+      chain.chain.id === 1 ? Promise.resolve(reading(BELOW)) : new Promise<MorphoReading | null>(() => undefined),
+    );
+
+    const run = runNotificationCheck();
+    await vi.advanceTimersByTimeAsync(MORPHO_READ_BUDGET_MS);
+    const result = await run;
+
+    expect(result).toMatchObject({ emailsSent: 1 });
+    expect(result.success && result.errors).toEqual([
+      `healthFactor:${SHORT_LOWER}:morpho-blue:8453:${BLUE_ID}: not read within this run's time limit`,
+    ]);
+  });
+
+  describe("Midnight maturity", () => {
+    it("reminds once in the last 7 days: claims the reminder, then sends it", async () => {
+      given([midnightRow()], { [claimQuery("7d")]: { data: [{ sent_at: SENT_AT }] } });
+      vi.mocked(readMidnightHealth).mockResolvedValue(reading(HEALTHY, { timestamp: MATURITY - 3 * DAY }));
+
+      expect(await runNotificationCheck()).toEqual(summary({ configsChecked: 1, emailsSent: 1 }));
+      expect(fakeSupabase.log()).toContain(claimQuery("7d"));
+      expect(emails()).toEqual([
+        {
+          to: "a@b.co",
+          subject: "Morpho loan matures within 7 days - Base",
+          text:
+            "Your Morpho fixed-rate loan on Base matures within 7 days, on Oct 30, 2026, 3:00:00 PM Coordinated Universal Time.\n" +
+            "Market: USDC fixed rate, matures October 30, 2026.\n" +
+            "Debt: 501,010.14 USDC.\n" +
+            "After maturity, any debt left unpaid can be liquidated, so repay it before then.\n\n" +
+            `Sent at: ${NOW_TEXT}`,
+          html: expect.stringContaining("<p>Debt: 501,010.14 USDC.</p>"),
+        },
+      ]);
+    });
+
+    it("sends nothing when another run already took the reminder", async () => {
+      given([midnightRow()], { [claimQuery("7d")]: { data: [] } });
+      vi.mocked(readMidnightHealth).mockResolvedValue(reading(HEALTHY, { timestamp: MATURITY - 3 * DAY }));
+
+      expect(await runNotificationCheck()).toEqual(summary({ configsChecked: 1 }));
+      expect(sendEmail).not.toHaveBeenCalled();
+    });
+
+    it("gives the reminder back when no channel took it, so the next run tries again", async () => {
+      given([midnightRow()], { [claimQuery("1d")]: { data: [{ sent_at: SENT_AT }] } });
+      vi.mocked(readMidnightHealth).mockResolvedValue(reading(HEALTHY, { timestamp: MATURITY - 3600 }));
+      vi.mocked(sendEmail).mockResolvedValue({ success: false, error: "provider down" });
+
+      await runNotificationCheck();
+
+      expect(fakeSupabase.log().slice(-2)).toEqual([claimQuery("1d"), releaseQuery("1d", SENT_AT)]);
+    });
+
+    it("does not send a reminder whose claim fails", async () => {
+      given([midnightRow()], { [claimQuery("1d")]: { error: { message: "db down" } } });
+      vi.mocked(readMidnightHealth).mockResolvedValue(reading(HEALTHY, { timestamp: MATURITY - 3600 }));
+
+      const result = await runNotificationCheck();
+
+      expect(sendEmail).not.toHaveBeenCalled();
+      expect(result.success && result.errors).toEqual([
+        `config:${SHORT_LOWER}:morpho-midnight:8453:${MIDNIGHT_ID}: Failed to claim the maturity reminder: db down`,
+      ]);
+    });
+
+    it("reminds in the last day with its own message, in Czech too", async () => {
+      given([midnightRow({ locale: "cs" })], { [claimQuery("1d")]: { data: [{ sent_at: SENT_AT }] } });
+      vi.mocked(readMidnightHealth).mockResolvedValue(reading(HEALTHY, { timestamp: MATURITY - 3600 }));
+
+      await runNotificationCheck();
+
+      expect(emails()[0]).toMatchObject({
+        subject: "Splatnost úvěru na Morpho do 24 hodin - Base",
+        text: expect.stringContaining(
+          "Trh: USDC s pevnou sazbou, splatnost 30. října 2026.\nDluh: 501\u00a0010,14 USDC.",
+        ),
+      });
+    });
+
+    it("alerts on every check after maturity while debt remains, without a claim", async () => {
+      given([midnightRow()]);
+      vi.mocked(readMidnightHealth).mockResolvedValue(reading(HEALTHY, { timestamp: MATURITY + 60 }));
+
+      await runNotificationCheck();
+      await runNotificationCheck();
+
+      expect(emails().map(({ subject }) => subject)).toEqual([
+        "Morpho loan past maturity - Base",
+        "Morpho loan past maturity - Base",
+      ]);
+      expect(emails()[0].text).toContain(
+        "reached maturity on Oct 30, 2026, 3:00:00 PM Coordinated Universal Time and still has 501,010.14 USDC of debt.",
+      );
+      expect(fakeSupabase.log().some(query => query.includes("notification_maturity_reminders"))).toBe(false);
+    });
+
+    it("sends the health alert and the reminder when both apply, and nothing for a repaid loan", async () => {
+      given([midnightRow(), midnightRow({ id: "cfg-repaid", chain_id: 1 })], {
+        [claimQuery("7d")]: { data: [{ sent_at: SENT_AT }] },
+      });
+      vi.mocked(readMidnightHealth)
+        .mockResolvedValueOnce(reading(BELOW, { timestamp: MATURITY - 3 * DAY }))
+        .mockResolvedValueOnce(reading(NO_DEBT_HEALTH_FACTOR, { debt: 0n, timestamp: MATURITY + 60 }));
+
+      await runNotificationCheck();
+
+      expect(emails().map(({ subject }) => subject)).toEqual([
+        "Morpho health factor alert - Base",
+        "Morpho loan matures within 7 days - Base",
+      ]);
+    });
+
+    it("sends no reminder more than 7 days before maturity", async () => {
+      given([midnightRow()]);
+      vi.mocked(readMidnightHealth).mockResolvedValue(reading(HEALTHY, { timestamp: MATURITY - 7 * DAY - 1 }));
+
+      expect(await runNotificationCheck()).toEqual(summary({ configsChecked: 1 }));
+      expect(fakeSupabase.log().some(query => query.includes("notification_maturity_reminders"))).toBe(false);
+    });
   });
 });
 
