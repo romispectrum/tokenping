@@ -146,3 +146,13 @@ Basis: the code at `d9b351f` (`main`) sends each alert by email, Signal and Tele
 set (the live homepage title read "Aave health factor alerts on Signal, Telegram and email" on 2026-10-20). The build
 spec's rule that articles name Signal and email only was dropped in `b7623e4` (2026-10-19); the earlier entry that cites it
 is kept as history and marked superseded.
+
+## Update of 2026-10-25: the USDC spike's peak
+
+Cause 3 said the Ethereum Core USDC borrow rate "rose to 13.67% … then fell back to 4.76%", which read as if 13.67% was the
+high. Re-read on 2026-10-25 against `https://eth.drpc.org` (archive): the rate kept rising after block 26194053 and peaked at
+**14.1846%** APR at block **26194088** (2026-10-14 23:39:59 UTC), `getReserveData(USDC)` field 7 =
+141846412485223274182280950. The sentence now says it "jumped to 13.67% … reached 14.18% within seven minutes, and fell back
+to 4.76% about 36 minutes after the jump", in both languages, and links to the new `aave-interest-rates` guide, whose snapshot
+lists every block of the spike with its utilization. The other Cause 3 figures (block 26193378 rates, the $134M withdrawal,
+block 26194231) were re-read the same day and are unchanged.
