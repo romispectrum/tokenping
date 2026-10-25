@@ -69,6 +69,14 @@ describe("/cz/ochrana-soukromi", () => {
     expect(screen.queryByText(/uživatelské jméno na Telegramu, které zadáte/)).toBeNull();
   });
 
+  it("names Morpho's API in Czech, after the RPC providers, while Morpho is enabled", () => {
+    vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", "true");
+    renderPage();
+
+    expect(processorNames()).toContain("API Morpho");
+    expect(screen.getByText(/^Na přehledu Morpho váš prohlížeč navíc posílá adresu vaší peněženky/)).toBeTruthy();
+  });
+
   it("adds Telegram's data, processor and /stop once the bot is configured", () => {
     cleanup();
     vi.stubEnv("NEXT_PUBLIC_TELEGRAM_BOT_USERNAME", "tokenping_bot");

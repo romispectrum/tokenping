@@ -32,6 +32,14 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs o
     to your chat (`telegram_chats`). Needs a configured bot (`TELEGRAM_*` and `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME`) and
     `yarn next:telegram-webhook` once after deploying; see [docs/telegram-bot-setup.md](docs/telegram-bot-setup.md).
     Site copy names Telegram only while `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` is set.
+- **Morpho (off until `NEXT_PUBLIC_MORPHO_ENABLED` is `true`).** `/morpho` lists the wallet's borrow positions in the
+  markets the Morpho app lists, on its 14 networks (`packages/nextjs/config/morpho.ts`): Morpho Blue (variable rate)
+  and Morpho Midnight (fixed rate). Morpho's public API finds the markets; health factors are computed from the chain
+  with Morpho's own math (`services/morpho`), in the browser and in the cron, so checks never depend on the API. A
+  Morpho threshold goes down to 1.02. A borrower who opted into a Blue market's pre-liquidation is measured against
+  that earlier line. A Midnight loan also gets one reminder 7 days and one 1 day before it matures
+  (`notification_maturity_reminders`), then an alert at every check after maturity while debt remains. The same paid
+  access covers Aave and Morpho alerts, and the 50-alert limit counts both.
 - **Language per channel.** Each channel is sent in English or Czech, chosen next to its recipient. A channel starts in
   the language of the page you added it from.
 - **Send test.** Every channel has a "Send test" button that sends the alert as saved, with your position right now.
@@ -70,13 +78,19 @@ How the pieces fit together, with a diagram: [docs/architecture.md](docs/archite
 
 ## Limits
 
-- Aave only. Harmony's V3 market is left out: frozen since 2022 with fixed price feeds, so a health factor there never
+- Aave, and Morpho behind its switch. Harmony's V3 market is left out: frozen since 2022 with fixed price feeds, so a health factor there never
   moves. A new Aave market or V4 Spoke is read only once it is added to `AAVE_MARKETS` or `AAVE_V4_SPOKES`, then
   `yarn next:token-icons` and `yarn next:network-icons` fetch its icons.
 - Scroll, ZKsync, Metis, Soneium and Sonic are being wound down by Aave governance (ARFC of July 2026). Positions
   there are still watched: they can still be liquidated, and the wind-down raises their borrow rates.
 - A V4 Spoke counts only collateral and debt, as V3 does: a wallet that only supplies assets that are not collateral
   shows no position there. The dashboard shows no supply APY for V4 reserves.
+- Morpho: a new alert needs a market the Morpho app lists, checked through Morpho's API when it is saved (saving answers
+  503 while the API is down); an alert keeps running if its market is delisted later. Midnight alerts are offered where
+  the API lists Midnight markets (Ethereum, Base, Arc and Robinhood Chain), so not on Tempo. A Blue market's
+  pre-liquidation contracts are read when an alert is saved or edited, so one Morpho adds later counts once the alert
+  is saved again. Amounts are in the loan token, with no USD prices. The cron spends at most 20 seconds per run reading
+  Morpho positions; one not read by then is read on the next run.
 - Polling, not real time: a fast price move can cross a health factor of 1.0 between two checks. Alerts reduce risk;
   they do not prevent liquidation.
 - While a health factor is below its threshold, every check sends another message on each channel. There is no
@@ -237,8 +251,8 @@ lists the reserves CoinGecko has no logo for (the dashboard shows their first le
 changed icons before committing: a broken CoinGecko image goes in `IMAGE_OVERRIDES` and dark artwork that vanishes on the
 dark theme in `WHITE_BACKED_IMAGES`, both in `packages/nextjs/scripts/tokenIconSources.ts`.
 
-Network logos work the same way: `yarn next:network-icons` downloads them into `packages/nextjs/public/network-icons`
-and rewrites `config/networkIcons.generated.ts`. Run it when a network is added.
+Network logos work the same way: `yarn next:network-icons` downloads the logo of every Aave and Morpho network into
+`packages/nextjs/public/network-icons` and rewrites `config/networkIcons.generated.ts`. Run it when a network is added.
 
 ## Deployment
 
@@ -272,6 +286,11 @@ and Safe; if you embed Tokenping anywhere else, add that origin to `FRAME_ANCEST
 When you upgrade a live deployment, apply new migrations before the code that needs them, with one exception: migration
 `20261021000000_lock_down_server_only_tables.sql` takes the database away from the anon key, so apply it only once the
 running deployment uses `SUPABASE_SERVICE_ROLE_KEY`.
+
+Morpho goes live in three steps: apply `20261025000000_add_protocol_to_notification_configs.sql` (without it every
+alert read and the cron fail, Aave's included), deploy, then set `NEXT_PUBLIC_MORPHO_ENABLED=true` and deploy again.
+Once Morpho alerts exist, do not roll the code back to a version before that migration: it would read their market
+ids as Aave V3 markets.
 
 ### IndexNow
 

@@ -4,6 +4,7 @@ import { formatPostDate } from "~~/components/blog/formatPostDate";
 import { Container } from "~~/components/home/marketingLayout";
 import { Breadcrumbs } from "~~/components/seo/Breadcrumbs";
 import { JsonLd } from "~~/components/seo/JsonLd";
+import { isMorphoEnabled } from "~~/config/morpho";
 import { EXTERNAL_LINK_REL, SOCIAL_LINKS } from "~~/constants/links";
 import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import type { Locale } from "~~/i18n/locales";
@@ -23,6 +24,8 @@ export const privacyMetadata = (locale: Locale) =>
 
 /** Change only when the content below changes. */
 const LAST_UPDATED = "2026-10-19";
+/** The date the Morpho disclosures were added: the page's date once Morpho is enabled. */
+const MORPHO_LAST_UPDATED = "2026-10-25";
 
 const crumbs = (locale: Locale): Crumb[] => [
   { name: PRIVACY_MESSAGES[locale].crumbHome, path: routePath(locale, "home") },
@@ -55,7 +58,9 @@ export const PrivacyPage = ({ locale }: { locale: Locale }) => {
   const t = PRIVACY_MESSAGES[locale];
   const CRUMBS = crumbs(locale);
   const hasTelegram = getAlertChannelNames().includes("Telegram");
-  const processors = t.processors.list({ minutes: NOTIFICATION_CHECK_INTERVAL_MINUTES, hasTelegram });
+  const hasMorpho = isMorphoEnabled();
+  const processors = t.processors.list({ minutes: NOTIFICATION_CHECK_INTERVAL_MINUTES, hasTelegram, hasMorpho });
+  const lastUpdated = hasMorpho ? MORPHO_LAST_UPDATED : LAST_UPDATED;
 
   return (
     <div className="relative isolate flex-1">
@@ -72,7 +77,7 @@ export const PrivacyPage = ({ locale }: { locale: Locale }) => {
               <h1 className="text-section m-0 text-balance">{t.title}</h1>
               <p className="mt-3 mb-0 text-sm text-muted-foreground">
                 {`${t.lastUpdated} `}
-                <time dateTime={toIsoDateTime(LAST_UPDATED)}>{formatPostDate(LAST_UPDATED, locale)}</time>
+                <time dateTime={toIsoDateTime(lastUpdated)}>{formatPostDate(lastUpdated, locale)}</time>
               </p>
             </header>
 
@@ -81,6 +86,7 @@ export const PrivacyPage = ({ locale }: { locale: Locale }) => {
 
               <PolicySection title={t.withoutUs.title}>
                 <p className={TEXT_CLASS_NAME}>{t.withoutUs.text}</p>
+                {hasMorpho && <p className={TEXT_CLASS_NAME}>{t.withoutUs.morpho}</p>}
               </PolicySection>
 
               <PolicySection title={t.stored.title}>

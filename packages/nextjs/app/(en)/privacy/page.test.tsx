@@ -81,6 +81,24 @@ describe("/privacy", () => {
     );
   });
 
+  it("names Morpho's API and what the Morpho dashboard sends, dated, only while Morpho is enabled", () => {
+    renderPage();
+    expect(processorNames()).not.toContain("Morpho's API");
+    expect(screen.queryByText(/Morpho dashboard/)).toBeNull();
+
+    cleanup();
+    vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", "true");
+    renderPage();
+
+    expect(processorNames().slice(-3)).toEqual([
+      "RPC providers (PublicNode, Alchemy and the networks' public endpoints)",
+      "Morpho's API",
+      "WalletConnect",
+    ]);
+    expect(screen.getByText(/^On the Morpho dashboard, your browser also sends your wallet address/)).toBeTruthy();
+    expect(screen.getByText("25 October 2026").getAttribute("dateTime")).toBe("2026-10-25T00:00:00Z");
+  });
+
   it("says that seeing or changing alert settings takes a wallet signature, and never calls them private or secure", () => {
     const { container } = renderPage();
 

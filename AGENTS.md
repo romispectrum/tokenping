@@ -4,8 +4,9 @@ This file provides guidance to coding agents working in this repository.
 
 ## Project overview
 
-Tokenping sends Aave V3 and V4 health factor alerts by email, Signal and Telegram. It started from Scaffold-ETH 2 (SE-2),
-Hardhat flavor, and keeps SE-2's tooling. Read [README.md](README.md) for what the product does and how to run it, and
+Tokenping sends Aave V3 and V4 health factor alerts by email, Signal and Telegram, and Morpho Blue and Midnight alerts
+while `NEXT_PUBLIC_MORPHO_ENABLED` is `true`. It started from Scaffold-ETH 2 (SE-2), Hardhat flavor, and keeps SE-2's
+tooling. Read [README.md](README.md) for what the product does and how to run it, and
 [docs/architecture.md](docs/architecture.md) for how the pieces fit.
 
 - `packages/nextjs`: the Next.js 15 App Router app (React 19, RainbowKit, Wagmi, Viem, TypeScript, Tailwind CSS 4 with
@@ -71,8 +72,9 @@ Do not run `yarn deploy --network hardhat`: it deploys to an in-memory network t
 ### Frontend contract interaction
 
 For Tokenping's own contract, use the SE-2 hooks from `packages/nextjs/hooks/scaffold-eth` (the admin page and
-`hooks/custom/useAccess.ts` do). Aave reads are different: they span many chains outside `targetNetworks`, so they use
-plain viem clients (`services/aave`, with `utils/rpc.ts` for the RPC endpoints) and are not hooks.
+`hooks/custom/useAccess.ts` do). Aave and Morpho reads are different: they span many chains outside `targetNetworks`,
+so they use plain viem clients (`services/aave`, `services/morpho`, with `utils/rpc.ts` for the RPC endpoints) and are
+not hooks.
 
 **Correct interact hook names (use these):**
 

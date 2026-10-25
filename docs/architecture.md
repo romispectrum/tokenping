@@ -1,8 +1,9 @@
 # Architecture
 
 How the pieces of Tokenping fit together. Tokenping is one Next.js app on Vercel, a Supabase database, a payment
-contract on Arbitrum One, and a small Signal relay on Fly.io. There is no other backend: every server-side job is a
-Next.js route.
+contract on Arbitrum One, and a small Signal relay on Fly.io. Alerts watch Aave V3 and V4 markets and, while
+`NEXT_PUBLIC_MORPHO_ENABLED` is `true`, Morpho Blue and Midnight markets. There is no other backend: every
+server-side job is a Next.js route.
 
 ## The pieces
 
@@ -29,29 +30,37 @@ Next.js route.
    |
    v                   The cron run reads Supabase and the chains, then sends:
  RPC providers
- (Aave V3 and V4)      Resend ................ email
+ (Aave, Morpho)        Resend ................ email
                        Signal relay on Fly.io  Signal
                        Telegram Bot API ...... Telegram
 
  Telegram --> POST /api/telegram/webhook --> Supabase (telegram_chats)
+
+ Browser (/morpho) and PUT /api/notifications/config --> Morpho API (which listed markets; never the health factor)
 ```
 
-| Piece            | Where it lives                        | What it does                                                                                                                                           |
-| ---------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Browser          | `packages/nextjs` (client components) | Connects the wallet (its SDKs start with the connect modal), reads Aave positions and the paywall from RPC providers, pays, signs in, edits alerts.    |
-| Next.js routes   | `packages/nextjs/app/api`             | Sign-in, alert storage, test messages, the Telegram webhook and status check, the footer's ETH price (read server-side) and the cron.                  |
-| Supabase         | `packages/supabase`                   | Postgres with five tables: alerts, Telegram chats, test-message slots, sign-in nonces and the optional attribution answer. Only the server reaches it. |
-| Vercel cron      | `packages/nextjs/vercel.json`         | Calls the check route every 5 minutes.                                                                                                                 |
-| Resend           | external                              | Sends alert emails.                                                                                                                                    |
-| Signal relay     | `packages/tokenping-signal`           | `signal-cli-rest-api` behind a Caddy proxy that requires a bearer token. Sends Signal messages. See [signal-server-fly.md](signal-server-fly.md).      |
-| Telegram         | external                              | The Bot API sends messages; the webhook tells the app which chat belongs to which username. See [telegram-bot-setup.md](telegram-bot-setup.md).        |
-| Paywall contract | `packages/hardhat`                    | `TokenpingPaywall` sells access for USDC and answers `isActive(wallet)`.                                                                               |
-| RPC providers    | external                              | Answer every chain read, from the browser (dashboard) and from the server (alert checks, access checks, smart wallet sign-in).                         |
+| Piece            | Where it lives                        | What it does                                                                                                                                                                     |
+| ---------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Browser          | `packages/nextjs` (client components) | Connects the wallet (its SDKs start with the connect modal), reads Aave and Morpho positions and the paywall from RPC providers, pays, signs in, edits alerts.                   |
+| Next.js routes   | `packages/nextjs/app/api`             | Sign-in, alert storage, test messages, the Telegram webhook and status check, the footer's ETH price (read server-side) and the cron.                                            |
+| Supabase         | `packages/supabase`                   | Postgres with six tables: alerts, Morpho maturity reminders, Telegram chats, test-message slots, sign-in nonces and the optional attribution answer. Only the server reaches it. |
+| Vercel cron      | `packages/nextjs/vercel.json`         | Calls the check route every 5 minutes.                                                                                                                                           |
+| Resend           | external                              | Sends alert emails.                                                                                                                                                              |
+| Signal relay     | `packages/tokenping-signal`           | `signal-cli-rest-api` behind a Caddy proxy that requires a bearer token. Sends Signal messages. See [signal-server-fly.md](signal-server-fly.md).                                |
+| Telegram         | external                              | The Bot API sends messages; the webhook tells the app which chat belongs to which username. See [telegram-bot-setup.md](telegram-bot-setup.md).                                  |
+| Paywall contract | `packages/hardhat`                    | `TokenpingPaywall` sells access for USDC and answers `isActive(wallet)`.                                                                                                         |
+| RPC providers    | external                              | Answer every chain read, from the browser (dashboard) and from the server (alert checks, access checks, smart wallet sign-in).                                                   |
+| Morpho API       | external (`api.morpho.org`)           | Says which listed Morpho markets a wallet borrows in (the /morpho dashboard) and whether a market is listed (saving a new Morpho alert). No SLA.                                 |
 
 ## Flows
 
 **Looking at positions.** Needs no payment and no sign-in. The browser asks RPC providers for the wallet's Aave data in
 every V3 market and V4 Spoke listed in `config/aaveConfig.ts`. Nothing is sent to the server or stored.
+
+**Looking at Morpho positions** (while Morpho is enabled). The browser asks Morpho's API which listed Blue and
+Midnight markets the wallet borrows in, then reads each market and position from the chain with the same readers the
+cron uses (`services/morpho`), so the page shows the number alerts are checked against. Markets with a saved alert are
+read too, even when the API no longer lists them.
 
 **Connecting a wallet.** Injected wallets and Safe start on load. Every other wallet's SDK (WalletConnect, Base Account,
 the MetaMask SDK) starts when the connect modal opens or when something asks it to connect, and on load only for the
@@ -75,13 +84,23 @@ for the plan's duration and paying again extends it. The price and plan are read
 **Saving an alert.** `PUT /api/notifications/config` takes the wallet from the session cookie, never from the request.
 It checks the request came from the site's own pages and is JSON, validates the market, threshold, recipients and
 languages, asks the contract whether the wallet has active access, enforces the limit of 50 alerts per wallet, and
-writes the row to `notification_configs`. Reading alerts needs the session but not active access.
+writes the row to `notification_configs`. Reading alerts needs the session but not active access. A new Morpho alert
+(`protocol` `morpho-blue` or `morpho-midnight`) also needs Morpho enabled and a market Morpho's API lists; its fixed
+parameters (tokens, oracles, LLTVs, a Midnight maturity, a Blue market's pre-liquidation contracts) are read from the
+chain and stored in `market_params`, and an API outage answers 503 rather than saving an unverified market. Editing or
+deleting an existing Morpho alert never depends on the API or the switch.
 
 **The 5-minute check.** Vercel calls `GET /api/cron/notifications` with `Authorization: Bearer <CRON_SECRET>`. The route
 loads every enabled alert and every linked Telegram chat, then for each alert reads the wallet's health factor in the
 alert's market (a V3 Pool or a V4 Spoke) over RPC. When the health factor is below the threshold it sends one message
 on each selected channel, in that channel's language. A Telegram chat that has blocked the bot is deleted from
 `telegram_chats`. The run does not look at paid access: a saved alert keeps firing after access lapses.
+
+Morpho alerts are read first, from the chain only, with their stored market parameters: chains side by side, four
+positions at a time on each, within 20 seconds per run. A Blue position, or a Midnight one before maturity, alerts
+below its threshold, measured against a pre-liquidation line when the borrower opted into one. A Midnight loan also
+gets a reminder in its last 7 days and in its last day, each claimed in `notification_maturity_reminders` before it is
+sent (and given back when no channel took it), then an alert at every check after maturity while debt remains.
 
 **Linking Telegram.** A bot cannot message someone who never wrote to it, so the person types their `@username` into the
 alert and presses Start in the bot once. Telegram posts that update to `POST /api/telegram/webhook`, which checks the
@@ -95,15 +114,16 @@ alert as saved with the live position, and gives the slot back if the provider r
 
 ## Where state lives
 
-| State              | Where                     | Notes                                                                                                         |
-| ------------------ | ------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Paid access        | The paywall contract      | Read with `isActive(wallet)` on every alert write; fails closed on any read error.                            |
-| Alerts             | `notification_configs`    | One row per wallet, chain and market. Each channel has its own language column, and `locale` is the fallback. |
-| Telegram links     | `telegram_chats`          | Chat id and lowercase username, written by the webhook.                                                       |
-| Test limit         | `notification_test_sends` | Last test per wallet and channel.                                                                             |
-| Sign-in nonces     | `auth_nonces`             | Deleted when used; expired ones are swept when a new one is issued.                                           |
-| Sessions           | A signed cookie           | Nothing is stored on the server, so rotating `SESSION_SECRET` ends every session.                             |
-| Attribution answer | `user_attribution`        | The optional "How did you hear about Tokenping?" answer. Nothing in the app reads it back.                    |
+| State              | Where                             | Notes                                                                                                                                                                                 |
+| ------------------ | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Paid access        | The paywall contract              | Read with `isActive(wallet)` on every alert write; fails closed on any read error.                                                                                                    |
+| Alerts             | `notification_configs`            | One row per wallet, chain and market. Each channel has its own language column, and `locale` is the fallback. `protocol` and, for Morpho, `market_params` say what the alert watches. |
+| Maturity reminders | `notification_maturity_reminders` | One row per Morpho Midnight alert, reminder (7 days or 1 day) and maturity, so each goes out once.                                                                                    |
+| Telegram links     | `telegram_chats`                  | Chat id and lowercase username, written by the webhook.                                                                                                                               |
+| Test limit         | `notification_test_sends`         | Last test per wallet and channel.                                                                                                                                                     |
+| Sign-in nonces     | `auth_nonces`                     | Deleted when used; expired ones are swept when a new one is issued.                                                                                                                   |
+| Sessions           | A signed cookie                   | Nothing is stored on the server, so rotating `SESSION_SECRET` ends every session.                                                                                                     |
+| Attribution answer | `user_attribution`                | The optional "How did you hear about Tokenping?" answer. Nothing in the app reads it back.                                                                                            |
 
 ## How the server is locked down
 
@@ -135,6 +155,9 @@ alert as saved with the live position, and gives the slot back if the provider r
 | The cron pass                | `packages/nextjs/services/notifications/runNotificationCheck.ts`  |
 | Channel senders              | `services/email`, `services/signal`, `services/telegram`          |
 | Aave markets and Spokes      | `packages/nextjs/config/aaveConfig.ts`                            |
+| Morpho chains and switch     | `packages/nextjs/config/morpho.ts`, `config/protocols.ts`         |
+| Morpho readers and API       | `packages/nextjs/services/morpho`                                 |
+| Morpho alerts in the cron    | `services/notifications/morphoAlerts.ts`, `morphoMessages.ts`     |
 | RPC endpoints                | `packages/nextjs/utils/rpc.ts`                                    |
 | Contract and deploy scripts  | `packages/hardhat`                                                |
 | Migrations                   | `packages/supabase/migrations`                                    |
