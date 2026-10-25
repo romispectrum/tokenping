@@ -1,6 +1,7 @@
-import { type Address, type Hex, getAddress } from "viem";
+import { type Address, ContractFunctionRevertedError, type Hex, getAddress } from "viem";
 import { describe, expect, it, vi } from "vitest";
 import { getMorphoChain } from "~~/config/morpho";
+import { MORPHO_MIDNIGHT_ABI } from "~~/services/morpho/abis";
 import type { MorphoClient } from "~~/services/morpho/client";
 import {
   readBlueMarketParams,
@@ -152,7 +153,11 @@ describe("readMidnightMarketParams", () => {
 
   it("returns null for an unknown market or a chain without Midnight", async () => {
     const reverts = vi.fn(async () => {
-      throw new Error("MarketNotCreated");
+      throw new ContractFunctionRevertedError({
+        abi: MORPHO_MIDNIGHT_ABI,
+        functionName: "toMarket",
+        message: "MarketNotCreated",
+      });
     });
     expect(await readMidnightMarketParams(fakeClient(tokens, reverts), ETHEREUM, MARKET)).toBe(null);
     expect(
@@ -196,6 +201,17 @@ const BLUE_CLIENT = () =>
       [PRE_A_API]: { fromFactory: true, id: MARKET },
     }),
   );
+
+describe("readMidnightMarketParams when the chain does not answer", () => {
+  it("throws rather than call the market unknown", async () => {
+    const offline = vi.fn(async () => {
+      throw new Error("HTTP request failed");
+    });
+    await expect(readMidnightMarketParams(fakeClient(tokens, offline), ETHEREUM, MARKET)).rejects.toThrow(
+      "HTTP request failed",
+    );
+  });
+});
 
 describe("readListedMarketParams", () => {
   it("reads a listed Blue market with the pre-liquidation contracts the API names", async () => {
@@ -262,6 +278,19 @@ describe("refreshMarketParams", () => {
       ...STORED,
       preLiquidations: [{ address: PRE_A_API, preLltv: "832603694978499652", oracle: PRE_ORACLE }],
     });
+  });
+
+  it("keeps a stored pre-liquidation contract the API's answer leaves out, checked again", async () => {
+    const stored = {
+      ...STORED,
+      preLiquidations: [{ address: PRE_A_API, preLltv: "832603694978499652", oracle: PRE_ORACLE }],
+    };
+    const client = BLUE_CLIENT();
+    const params = await refreshMarketParams(client, ETHEREUM, MARKET, stored, listingFetch({ listed: true }));
+
+    expect(params.kind === "blue" && params.preLiquidations.map(({ address }) => address)).toEqual([PRE_A_API]);
+    const calls = vi.mocked(client.multicall).mock.calls[0][0].contracts as unknown as { functionName: string }[];
+    expect(calls.filter(({ functionName }) => functionName === "isPreLiquidation")).toHaveLength(1);
   });
 
   it("keeps the stored parameters when the API or the chain cannot answer", async () => {

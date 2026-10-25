@@ -99,6 +99,35 @@ describe("fetchMorphoPositions", () => {
 });
 
 describe("fetchMorphoListing", () => {
+  it("returns null for a Blue market the API answers NOT_FOUND for, as it does for an id it does not know", async () => {
+    const notFound = fakeFetch(
+      () => ({ errors: [{ message: "No results matching given parameters", status: "NOT_FOUND" }], data: null }),
+      noMidnight,
+    );
+    expect(await fetchMorphoListing("morpho-blue", 1, id("ab"), notFound as unknown as typeof fetch)).toBe(null);
+  });
+
+  it("fails with MorphoApiError, never a TypeError, when the API answers in another shape", async () => {
+    const notJson = vi.fn(async () => new Response("<html>", { status: 200 }));
+    await expect(
+      fetchMorphoListing("morpho-blue", 1, id("ab"), notJson as unknown as typeof fetch),
+    ).rejects.toBeInstanceOf(MorphoApiError);
+
+    const odd = fakeFetch(
+      () => ({}),
+      () => ({ data: { not: "a list" } }),
+    );
+    await expect(
+      fetchMorphoListing("morpho-midnight", 1, id("ab"), odd as unknown as typeof fetch),
+    ).rejects.toBeInstanceOf(MorphoApiError);
+    await expect(
+      fetchMorphoPositions(
+        USER,
+        fakeFetch(() => ({ data: { marketPositions: null } }), noMidnight) as unknown as typeof fetch,
+      ),
+    ).rejects.toBeInstanceOf(MorphoApiError);
+  });
+
   it("reads a Blue market's listing and its pre-liquidation contracts", async () => {
     const fetchImpl = fakeFetch(
       ({ variables }) => ({

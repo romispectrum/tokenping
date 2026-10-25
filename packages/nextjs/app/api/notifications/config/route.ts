@@ -65,7 +65,8 @@ const morphoMarketParams = async (
   const marketId = ref.market as Hex;
   const existing = await findConfigForMarket(forms, ref);
   if (existing && isStoredMarketParams(ref.protocol, existing.market_params)) {
-    return { params: await refreshMarketParams(client, chain, marketId, existing.market_params) };
+    const refreshed = await refreshMarketParams(client, chain, marketId, existing.market_params);
+    return { params: isStoredMarketParams(ref.protocol, refreshed) ? refreshed : existing.market_params };
   }
 
   if (!isMorphoEnabled()) return { response: jsonError("Morpho alerts are not available", 404) };
@@ -74,7 +75,11 @@ const morphoMarketParams = async (
   }
   try {
     const params = await readListedMarketParams(client, chain, ref.protocol, marketId);
-    return params ? { params } : { response: jsonError("Unknown Morpho market", 400) };
+    // Checked as the cron will read it back: a market it could not read (a Midnight market without collateral, say)
+    // is refused now rather than saved as an alert that never fires.
+    return params && isStoredMarketParams(ref.protocol, params)
+      ? { params }
+      : { response: jsonError("Unknown Morpho market", 400) };
   } catch (e) {
     if (!(e instanceof MorphoApiError)) throw e;
     console.error("PUT /api/notifications/config: Morpho API unavailable", e.message);

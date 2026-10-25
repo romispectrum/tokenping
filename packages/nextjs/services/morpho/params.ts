@@ -1,4 +1,13 @@
-import { type Address, type ContractFunctionParameters, type Hex, isAddressEqual, zeroAddress } from "viem";
+import {
+  type Address,
+  BaseError,
+  type ContractFunctionParameters,
+  ContractFunctionRevertedError,
+  type Hex,
+  getAddress,
+  isAddressEqual,
+  zeroAddress,
+} from "viem";
 import type { MorphoChain } from "~~/config/morpho";
 import type { MorphoProtocol } from "~~/config/protocols";
 import {
@@ -120,9 +129,11 @@ export const readMidnightMarketParams = async (
       functionName: "toMarket",
       args: [marketId],
     })) as MidnightMarketStruct;
-  } catch {
-    // toMarket reverts (MarketNotCreated) for an id this Midnight does not know.
-    return null;
+  } catch (error) {
+    // toMarket reverts (MarketNotCreated) for an id this Midnight does not know. Anything else (the RPC did not answer)
+    // is thrown: an outage is not an unknown market.
+    if (error instanceof BaseError && error.walk(cause => cause instanceof ContractFunctionRevertedError)) return null;
+    throw error;
   }
   const tokens = await readTokens(client, [market.loanToken, ...market.collateralParams.map(({ token }) => token)]);
   if (!tokens) return null;
@@ -158,9 +169,11 @@ export const readListedMarketParams = async (
 };
 
 /**
- * A saved alert's parameters brought up to date. Only a Blue market's pre-liquidation contracts can change (Morpho can
- * add one after the alert was saved); everything else is fixed when the market is created. Keeps `stored` when the API
- * or the chain cannot answer, so editing an alert never depends on them, and a market delisted since keeps its alert.
+ * A saved alert's parameters brought up to date. Only a Blue market's pre-liquidation contracts can change (anyone can
+ * create one with Morpho's factory after the alert was saved); everything else is fixed when the market is created. The
+ * stored contracts are checked again with the API's, so an API answer that leaves one out never drops it. Keeps
+ * `stored` when the API or the chain cannot answer, so editing an alert never depends on them, and a market delisted
+ * since keeps its alert.
  */
 export const refreshMarketParams = async (
   client: MorphoClient,
@@ -173,7 +186,10 @@ export const refreshMarketParams = async (
   try {
     const listing = await fetchMorphoListing("morpho-blue", chain.chain.id, marketId, fetchImpl);
     if (!listing) return stored;
-    return (await readBlueMarketParams(client, chain, marketId, listing.preLiquidations)) ?? stored;
+    const candidates = [
+      ...new Set([...stored.preLiquidations.map(({ address }) => address), ...listing.preLiquidations].map(getAddress)),
+    ];
+    return (await readBlueMarketParams(client, chain, marketId, candidates)) ?? stored;
   } catch (error) {
     console.error("refreshMarketParams: kept the stored parameters", error);
     return stored;

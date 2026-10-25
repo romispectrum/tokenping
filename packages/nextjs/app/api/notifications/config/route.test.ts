@@ -1371,6 +1371,14 @@ describe("Morpho alerts", () => {
       expect(fakeSupabase.log()).toEqual([chainQuery(DIGITS, 8453, BLUE_ID)]);
     });
 
+    it("refuses a market whose parameters the cron could not read back", async () => {
+      vi.mocked(readListedMarketParams).mockResolvedValue({ ...MIDNIGHT, collaterals: [] });
+      const body = { chainId: 1, protocol: "morpho-midnight", market: MIDNIGHT_ID };
+
+      expect(await read(await put(body, DIGITS))).toEqual(UNKNOWN_MORPHO_MARKET);
+      expect(fakeSupabase.log().some(query => query.includes(".insert("))).toBe(false);
+    });
+
     it("refuses a market Morpho's app does not list or the chain does not have", async () => {
       vi.mocked(readListedMarketParams).mockResolvedValue(null);
 

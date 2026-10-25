@@ -105,16 +105,20 @@ export const readBlueHealth = async (
   let line: MorphoReading["line"] = "lltv";
 
   // A pre-liquidation the borrower authorised can start before the LLTV, priced by its own oracle: alert on the lower line.
-  preLiquidations.forEach(({ preLltv }, index) => {
+  // Not knowing whether it is authorised, or its price when it is, gives no reading: the LLTV line alone could read safe
+  // while the position is being pre-liquidated.
+  for (const [index, { preLltv }] of preLiquidations.entries()) {
     const authorised = ok<boolean>(results[4 + index * 2]);
+    if (authorised === undefined) return null;
+    if (!authorised) continue;
     const prePrice = ok<bigint>(results[5 + index * 2]);
-    if (!authorised || prePrice === undefined) return;
+    if (prePrice === undefined) return null;
     const preHealthFactor = healthFactorWad(maxBorrowAt(collateral, prePrice, BigInt(preLltv)), borrowed);
     if (preHealthFactor < healthFactor) {
       healthFactor = preHealthFactor;
       line = "pre-liquidation";
     }
-  });
+  }
 
   return {
     healthFactor,

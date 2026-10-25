@@ -87,6 +87,16 @@ describe("readBlueHealth", () => {
     expect(reading).toMatchObject({ healthFactor: 1245499504889228330n, line: "pre-liquidation" });
   });
 
+  it("returns nothing when an authorised pre-liquidation, or whether it is authorised, cannot be read", async () => {
+    const read = (overrides: Record<string, unknown[]>) =>
+      readBlueHealth(fakeClient(blueAnswers(overrides)), ETHEREUM, MARKET, USER, BLUE);
+
+    expect(await read({ isAuthorized: [failure()] })).toBe(null);
+    expect(await read({ isAuthorized: [success(true)], price: [success(PRICE), failure()] })).toBe(null);
+    // Not authorised: its price does not matter.
+    expect(await read({ price: [success(PRICE), failure()] })).toMatchObject({ line: "lltv" });
+  });
+
   it("reads no interest rate for a market without an IRM", async () => {
     const client = fakeClient(blueAnswers());
     const reading = await readBlueHealth(client, ETHEREUM, MARKET, USER, {

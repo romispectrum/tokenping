@@ -37,17 +37,37 @@ const request = async (fetchImpl: Fetch, url: string, init?: RequestInit) => {
     throw new MorphoApiError(`Morpho API unreachable: ${String(error)}`);
   }
   if (!response.ok) throw new MorphoApiError(`Morpho API answered ${response.status}`);
-  return (await response.json()) as unknown;
+  try {
+    return (await response.json()) as unknown;
+  } catch {
+    throw new MorphoApiError("Morpho API answered with something that is not JSON");
+  }
 };
 
+/**
+ * A GraphQL answer's data. Null when the API says it has nothing for these parameters (every error NOT_FOUND, as for a
+ * market id it does not know); any other error is a MorphoApiError.
+ */
 const graphql = async <T>(fetchImpl: Fetch, query: string, variables: Record<string, unknown>) => {
   const body = (await request(fetchImpl, `${MORPHO_API_URL}/graphql`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ query, variables }),
-  })) as { data?: T; errors?: unknown[] };
-  if (body.errors?.length || !body.data) throw new MorphoApiError("Morpho API returned GraphQL errors");
+  })) as { data?: T | null; errors?: { status?: unknown }[] } | null;
+  const errors = Array.isArray(body?.errors) ? body.errors : [];
+  if (errors.length > 0 && errors.every(error => error?.status === "NOT_FOUND")) return null;
+  if (errors.length > 0 || !body?.data) throw new MorphoApiError("Morpho API returned GraphQL errors");
   return body.data;
+};
+
+/** Runs a lookup, so that an answer of an unexpected shape fails as MorphoApiError like an outage, not as a TypeError. */
+const asApiError = async <T>(lookup: () => Promise<T>) => {
+  try {
+    return await lookup();
+  } catch (error) {
+    if (error instanceof MorphoApiError) throw error;
+    throw new MorphoApiError(`Morpho API answered in an unexpected shape: ${String(error)}`);
+  }
 };
 
 const preLiquidationAddresses = (items: unknown): Address[] =>
@@ -58,7 +78,7 @@ const preLiquidationAddresses = (items: unknown): Address[] =>
 const BLUE_POSITIONS_QUERY = `query BluePositions($user: [String!], $first: Int, $skip: Int) {
   marketPositions(first: $first, skip: $skip, where: { userAddress_in: $user, borrowShares_gte: "1", marketListed: true }) {
     pageInfo { countTotal count }
-    items { market { marketId listed chain { id } preLiquidations(first: 20) { items { address } } } }
+    items { market { marketId listed chain { id } preLiquidations(first: 100) { items { address } } } }
   }
 }`;
 
@@ -74,11 +94,13 @@ type BluePositionsData = {
 const fetchBluePositions = async (address: Address, fetchImpl: Fetch): Promise<MorphoPositionRef[]> => {
   const positions: MorphoPositionRef[] = [];
   for (let page = 0; page < MAX_PAGES; page++) {
-    const { marketPositions } = await graphql<BluePositionsData>(fetchImpl, BLUE_POSITIONS_QUERY, {
+    const data = await graphql<BluePositionsData>(fetchImpl, BLUE_POSITIONS_QUERY, {
       user: [address],
       first: PAGE_SIZE,
       skip: page * PAGE_SIZE,
     });
+    if (!data) break;
+    const { marketPositions } = data;
     for (const { market } of marketPositions.items) {
       const marketId = market.marketId?.toLowerCase();
       if (!market.listed || !BLUE_CHAIN_IDS.has(market.chain?.id) || !isMorphoMarketId(marketId)) continue;
@@ -132,43 +154,46 @@ const fetchMidnightPositions = async (address: Address, fetchImpl: Fetch): Promi
 };
 
 /** Every listed Morpho Blue and Midnight market the wallet borrows in, on the chains Tokenping covers. */
-export const fetchMorphoPositions = async (address: Address, fetchImpl: Fetch = fetch) => {
-  const [blue, midnight] = await Promise.all([
-    fetchBluePositions(address, fetchImpl),
-    fetchMidnightPositions(address, fetchImpl),
-  ]);
-  return [...blue, ...midnight];
-};
+export const fetchMorphoPositions = (address: Address, fetchImpl: Fetch = fetch) =>
+  asApiError(async () => {
+    const [blue, midnight] = await Promise.all([
+      fetchBluePositions(address, fetchImpl),
+      fetchMidnightPositions(address, fetchImpl),
+    ]);
+    return [...blue, ...midnight];
+  });
 
 /** Whether a market is listed and, for Blue, its pre-liquidation contracts. Null when the API does not know it. */
 export type MorphoListing = { listed: boolean; preLiquidations: Address[] };
 
 const BLUE_MARKET_QUERY = `query BlueMarket($marketId: String!, $chainId: Int!) {
-  marketById(marketId: $marketId, chainId: $chainId) { marketId listed preLiquidations(first: 20) { items { address } } }
+  marketById(marketId: $marketId, chainId: $chainId) { marketId listed preLiquidations(first: 100) { items { address } } }
 }`;
 
-export const fetchMorphoListing = async (
+export const fetchMorphoListing = (
   protocol: MorphoProtocol,
   chainId: number,
   marketId: Hex,
   fetchImpl: Fetch = fetch,
-): Promise<MorphoListing | null> => {
-  if (protocol === "morpho-blue") {
-    const { marketById } = await graphql<{
-      marketById: { marketId: string; listed: boolean; preLiquidations?: { items?: unknown } } | null;
-    }>(fetchImpl, BLUE_MARKET_QUERY, { marketId, chainId });
-    if (!marketById || marketById.marketId?.toLowerCase() !== marketId.toLowerCase()) return null;
-    return {
-      listed: marketById.listed === true,
-      preLiquidations: preLiquidationAddresses(marketById.preLiquidations?.items),
-    };
-  }
-  const params = new URLSearchParams({ market_ids: marketId, chain_ids: String(chainId) });
-  const body = (await request(fetchImpl, `${MORPHO_API_URL}/v0/midnight/markets?${params}`)) as {
-    data?: { market_id: string; chain_id: number; listed: boolean }[];
-  };
-  const market = body.data?.find(
-    ({ market_id, chain_id }) => market_id?.toLowerCase() === marketId.toLowerCase() && chain_id === chainId,
-  );
-  return market ? { listed: market.listed === true, preLiquidations: [] } : null;
-};
+): Promise<MorphoListing | null> =>
+  asApiError(async () => {
+    if (protocol === "morpho-blue") {
+      const data = await graphql<{
+        marketById: { marketId: string; listed: boolean; preLiquidations?: { items?: unknown } } | null;
+      }>(fetchImpl, BLUE_MARKET_QUERY, { marketId, chainId });
+      const market = data?.marketById;
+      if (!market || market.marketId?.toLowerCase() !== marketId.toLowerCase()) return null;
+      return {
+        listed: market.listed === true,
+        preLiquidations: preLiquidationAddresses(market.preLiquidations?.items),
+      };
+    }
+    const params = new URLSearchParams({ market_ids: marketId, chain_ids: String(chainId) });
+    const body = (await request(fetchImpl, `${MORPHO_API_URL}/v0/midnight/markets?${params}`)) as {
+      data?: { market_id: string; chain_id: number; listed: boolean }[];
+    } | null;
+    const market = (body?.data ?? []).find(
+      ({ market_id, chain_id }) => market_id?.toLowerCase() === marketId.toLowerCase() && chain_id === chainId,
+    );
+    return market ? { listed: market.listed === true, preLiquidations: [] } : null;
+  });
