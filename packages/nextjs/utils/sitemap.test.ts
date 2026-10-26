@@ -34,7 +34,8 @@ const loadSitemap = async (stubSlugs: readonly string[] = [], csStubSlugs: reado
   mockPostStubs(stubSlugs, csStubSlugs);
   const blog = await import("~~/content/blog");
   const { sitemapEntries: sitemap, renderSitemapXml } = await import("~~/utils/sitemap");
-  return { sitemap, renderSitemapXml, blog };
+  const { blogPostMetadata } = await import("~~/components/pages/BlogPostPage");
+  return { sitemap, renderSitemapXml, blog, blogPostMetadata };
 };
 
 const pathsOf = (entries: { url: string }[]) => entries.map(({ url }) => new URL(url).pathname);
@@ -43,17 +44,11 @@ const SITE = "https://tokenping.xyz";
 /** A path's URL as the page's canonical writes it: the root without a trailing slash. */
 const url = (path: string) => (path === "/" ? SITE : `${SITE}${path}`);
 
-/**
- * A page published in English and Czech: one entry per language, each with its date, and listing both with English
- * as x-default (hreflang), as the pages' own links do.
- */
-const bilingual = (en: string, cs: string, lastModified: string) => {
-  const alternates = { languages: { en: url(en), cs: url(cs), "x-default": url(en) } };
-  return [
-    { url: url(en), lastModified, alternates },
-    { url: url(cs), lastModified, alternates },
-  ];
-};
+/** A page published in English and Czech: one entry per language, each with its date. */
+const bilingual = (en: string, cs: string, lastModified: string) => [
+  { url: url(en), lastModified },
+  { url: url(cs), lastModified },
+];
 
 const HOME_PAGES = bilingual("/", "/cz", "2026-10-20");
 const AAVE_PAGES = bilingual("/aave", "/cz/aave", "2026-10-19");
@@ -78,20 +73,33 @@ describe("sitemapEntries", () => {
     expect(entry("/cz/blog")).toMatchObject({
       lastModified: blog.getLatestPostDate(blog.getPublishedPosts("cs")),
     });
-    // A post listed in both languages names both as alternates, English as x-default.
+    // Each published post is listed with its own content date, in each language it is published in.
     for (const { meta } of blog.PUBLISHED_POSTS) {
-      const en = `${SITE}/blog/${meta.slug}`;
-      const cs = `${SITE}/cz/blog/${POST_SLUG_PAIRS[meta.slug].cs}`;
       expect(entry(`/blog/${meta.slug}`)).toEqual({
-        url: en,
+        url: `${SITE}/blog/${meta.slug}`,
         lastModified: meta.updatedAt ?? meta.publishedAt,
-        alternates: { languages: { en, cs, "x-default": en } },
       });
+      expect(entry(`/cz/blog/${POST_SLUG_PAIRS[meta.slug].cs}`)).toBeDefined();
     }
-    // A placeholder is left out, and its published translation is listed alone, with no hreflang to it.
+    // A placeholder is left out, and its published translation is listed alone.
     expect(entry("/blog/safe-aave-health-factor")).toBeUndefined();
-    expect(entry(`/cz/blog/${POST_SLUG_PAIRS["safe-aave-health-factor"].cs}`)).not.toHaveProperty("alternates");
+    expect(entry(`/cz/blog/${POST_SLUG_PAIRS["safe-aave-health-factor"].cs}`)).toBeDefined();
     expect(blog.PUBLISHED_POSTS).toHaveLength(POST_SLUGS.length - 1);
+  });
+
+  // hreflang lives in each page's <head>, not in the sitemap: a listed post names its published translation there,
+  // English as x-default, and a post whose translation is a placeholder names none.
+  it("leaves hreflang to the pages, which name only published translations", async () => {
+    const { blog, blogPostMetadata } = await loadSitemap(["safe-aave-health-factor"]);
+    const [post] = blog.PUBLISHED_POSTS;
+    const cs = POST_SLUG_PAIRS[post.meta.slug].cs;
+
+    expect(blogPostMetadata("en", post.meta.slug).alternates?.languages).toEqual({
+      en: `/blog/${post.meta.slug}`,
+      cs: `/cz/blog/${cs}`,
+      "x-default": `/blog/${post.meta.slug}`,
+    });
+    expect(blogPostMetadata("cs", POST_SLUG_PAIRS["safe-aave-health-factor"].cs).alternates?.languages).toBeUndefined();
   });
 
   it("leaves out both blogs and every post while all of them are placeholders", async () => {
@@ -161,32 +169,24 @@ describe("renderSitemapXml", () => {
       [...block.matchAll(/<([a-z:]+)[\s>/]/g)].map(([, name]) => name),
     );
 
-  it("writes loc and lastmod in the schema's order, then the hreflang links, and no changefreq or priority", async () => {
+  // The sitemap namespace alone: an element in the XHTML namespace makes browsers drop their XML tree view and show the
+  // file as one line of text.
+  it("writes loc then lastmod in the sitemap namespace alone: no hreflang links, changefreq or priority", async () => {
     const { sitemap, renderSitemapXml } = await loadSitemap();
     const xml = await renderSitemapXml(sitemap());
 
     expect(xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>')).toBe(true);
-    expect(xml).toContain(
-      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
-    );
+    expect(xml).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
     expect(xml.trimEnd().endsWith("</urlset>")).toBe(true);
     const orders = elementOrder(xml);
     expect(orders).toHaveLength(sitemap().length);
-    for (const order of orders) {
-      expect(order.slice(0, 2)).toEqual(["loc", "lastmod"]);
-      expect(order.slice(2).every(name => name === "xhtml:link")).toBe(true);
-    }
-    expect(xml).not.toMatch(/<changefreq>|<priority>/);
-    // The home page in the URL standard's normal form, dated by the day only, English as x-default.
-    expect(xml).toContain(
-      "<url><loc>https://tokenping.xyz/</loc><lastmod>2026-10-20</lastmod>" +
-        '<xhtml:link rel="alternate" hreflang="en" href="https://tokenping.xyz/"/>' +
-        '<xhtml:link rel="alternate" hreflang="cs" href="https://tokenping.xyz/cz"/>' +
-        '<xhtml:link rel="alternate" hreflang="x-default" href="https://tokenping.xyz/"/></url>',
-    );
+    for (const order of orders) expect(order).toEqual(["loc", "lastmod"]);
+    expect(xml).not.toMatch(/xhtml|hreflang|<changefreq>|<priority>/);
+    // The home page in the URL standard's normal form, dated by the day only.
+    expect(xml).toContain("<url><loc>https://tokenping.xyz/</loc><lastmod>2026-10-20</lastmod></url>");
   });
 
-  it("escapes what XML reserves, and leaves out the xhtml namespace without alternates", async () => {
+  it("escapes what XML reserves", async () => {
     const { renderSitemapXml } = await loadSitemap();
     const xml = await renderSitemapXml([{ url: `${SITE}/a?b=1&c=<2>`, lastModified: "2026-10-25" }]);
 

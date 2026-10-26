@@ -1,7 +1,7 @@
 import { SitemapStream, streamToPromise } from "sitemap";
 import { PAGE_UPDATED } from "~~/constants/pageDates";
 import { getLatestPostDate, getPostByKey, getPostLastModified, getPublishedPosts, isPublished } from "~~/content/blog";
-import { DEFAULT_LOCALE, LOCALES, LOCALE_INFO, type Locale, type Localized } from "~~/i18n/locales";
+import { LOCALES, type Locale, type Localized } from "~~/i18n/locales";
 import { POST_SLUGS } from "~~/i18n/postSlugs";
 import { type StaticRoute, postPath, routeAlternates } from "~~/i18n/routes";
 import { SITE_URL, absoluteUrl } from "~~/utils/seo";
@@ -11,54 +11,35 @@ import { SITE_URL, absoluteUrl } from "~~/utils/seo";
 // language's /blog while it lists none); any client-rendered page. The dashboards are listed because their pages are
 // server shells around the wallet island; the Morpho one included.
 //
-// app/sitemap.xml/route.ts serves it with renderSitemapXml (the `sitemap` package) rather than through Next's sitemap
-// file convention, whose serializer writes the hreflang links before <lastmod>: the sitemap schema wants loc and lastmod
-// first, and strict validators reject anything else.
+// app/sitemap.xml/route.ts serves it with renderSitemapXml (the `sitemap` package): the plain sitemaps.org 0.9 format,
+// <loc> and <lastmod> only.
 //
 // No changefreq or priority: Google ignores both, and a guessed value says nothing. Each page's lastmod is the day its
 // own content last changed, never a site-wide or build date.
+//
+// No hreflang either: every page already names its English and Czech versions in its own <head> (utils/seo.ts
+// pageMetadata), which Google treats the same as sitemap hreflang. Repeating them here as <xhtml:link> put XHTML
+// elements in the file, and browsers then show it as one run-on line of text instead of an XML tree.
 
 export type SitemapEntry = {
   /** The page's canonical URL, written as the page's own <link rel="canonical"> writes it. */
   url: string;
   /** YYYY-MM-DD: when the page's content last changed. Never the build time. */
   lastModified: string;
-  /** hreflang to URL, x-default included, when the page is published in more than one language. */
-  alternates?: { languages: Record<string, string> };
 };
 
 /** A path's URL as its canonical writes it: the site's root without a trailing slash, as Next renders "/". */
 const pageUrl = (path: string) => (path === "/" ? SITE_URL : absoluteUrl(path));
 
-/**
- * One entry per language in `paths`, each naming every language's URL as an alternate, with English as x-default,
- * as the pages' own hreflang links do.
- */
+/** One entry per language in `paths` that has a date. */
 const entries = (
   paths: Partial<Localized<string>>,
   lastModified: (locale: Locale) => string | undefined,
-): SitemapEntry[] => {
-  const locales = LOCALES.filter(locale => paths[locale] !== undefined);
-  const defaultPath = paths[DEFAULT_LOCALE];
-  const languages =
-    locales.length > 1
-      ? {
-          ...Object.fromEntries(locales.map(locale => [LOCALE_INFO[locale].htmlLang, pageUrl(paths[locale]!)])),
-          ...(defaultPath !== undefined && { "x-default": pageUrl(defaultPath) }),
-        }
-      : undefined;
-  return locales.flatMap(locale => {
+): SitemapEntry[] =>
+  LOCALES.filter(locale => paths[locale] !== undefined).flatMap(locale => {
     const modified = lastModified(locale);
-    if (modified === undefined) return [];
-    return [
-      {
-        url: pageUrl(paths[locale]!),
-        lastModified: modified,
-        ...(languages && { alternates: { languages } }),
-      },
-    ];
+    return modified === undefined ? [] : [{ url: pageUrl(paths[locale]!), lastModified: modified }];
   });
-};
 
 const staticRoute = (route: StaticRoute, date: string) => entries(routeAlternates(route), () => date);
 
@@ -94,8 +75,8 @@ export const sitemapEntries = (): SitemapEntry[] => {
 };
 
 /**
- * The sitemaps.org 0.9 XML of `entries`, written by the `sitemap` package: the schema's element order (loc, lastmod,
- * then the hreflang links), XML escaping and YYYY-MM-DD dates. It writes every URL in the URL
+ * The sitemaps.org 0.9 XML of `entries`, written by the `sitemap` package: the schema's element order (loc, then
+ * lastmod), XML escaping and YYYY-MM-DD dates, in the sitemap namespace alone. It writes every URL in the URL
  * standard's normal form, so the home page comes out as "https://tokenping.xyz/" (the same address as the bare origin
  * the page's canonical uses).
  */
@@ -103,15 +84,9 @@ export const renderSitemapXml = async (sitemap: readonly SitemapEntry[]) => {
   const stream = new SitemapStream({
     hostname: SITE_URL,
     lastmodDateOnly: true,
-    xmlns: { news: false, xhtml: sitemap.some(({ alternates }) => alternates), image: false, video: false },
+    xmlns: { news: false, xhtml: false, image: false, video: false },
   });
-  for (const { url, lastModified, alternates } of sitemap) {
-    stream.write({
-      url,
-      lastmod: lastModified,
-      links: Object.entries(alternates?.languages ?? {}).map(([lang, href]) => ({ lang, url: href })),
-    });
-  }
+  for (const { url, lastModified } of sitemap) stream.write({ url, lastmod: lastModified });
   stream.end();
   return (await streamToPromise(stream)).toString();
 };
