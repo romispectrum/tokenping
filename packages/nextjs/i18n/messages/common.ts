@@ -126,7 +126,7 @@ export const COMMON_MESSAGES: Localized<CommonMessages> = {
     },
     homeLabel: "Tokenping home",
     header: {
-      nav: { home: "Home", dashboard: "Dashboard", morpho: "Morpho", blog: "Blog" },
+      nav: { home: "Home", dashboard: "Aave", morpho: "Morpho", blog: "Blog" },
       navLabel: "Main",
       openMenu: "Open menu",
       theme: "Theme",
@@ -222,7 +222,7 @@ export const COMMON_MESSAGES: Localized<CommonMessages> = {
     },
     homeLabel: "Úvodní stránka Tokenpingu",
     header: {
-      nav: { home: "Úvod", dashboard: "Přehled", morpho: "Morpho", blog: "Blog" },
+      nav: { home: "Úvod", dashboard: "Aave", morpho: "Morpho", blog: "Blog" },
       navLabel: "Hlavní",
       openMenu: "Otevřít menu",
       theme: "Motiv",

@@ -95,7 +95,7 @@ describe("Header", () => {
     render(<Header />);
 
     // Desktop and mobile menus both render the links.
-    const dashboardLinks = screen.getAllByRole("link", { name: "Dashboard" });
+    const dashboardLinks = screen.getAllByRole("link", { name: "Aave" });
     expect(dashboardLinks.map(isActive)).toEqual([true, true]);
     expect(dashboardLinks.map(link => link.getAttribute("aria-current"))).toEqual(["page", "page"]);
     expect(screen.getAllByRole("link", { name: "Home" }).map(isActive)).toEqual([false, false]);
@@ -108,14 +108,13 @@ describe("Header", () => {
 
     expect(within(screen.getByRole("banner")).getAllByRole("navigation")).toEqual([nav]);
     // Mobile dropdown and desktop menu.
-    for (const name of ["Home", "Dashboard", "Blog"])
-      expect(within(nav).getAllByRole("link", { name })).toHaveLength(2);
+    for (const name of ["Home", "Aave", "Blog"]) expect(within(nav).getAllByRole("link", { name })).toHaveLength(2);
   });
 
   it("links the dashboard at /aave and the blog at /blog", () => {
     render(<Header />);
 
-    expect(screen.getAllByRole("link", { name: "Dashboard" }).map(link => link.getAttribute("href"))).toEqual([
+    expect(screen.getAllByRole("link", { name: "Aave" }).map(link => link.getAttribute("href"))).toEqual([
       "/aave",
       "/aave",
     ]);
@@ -165,7 +164,7 @@ describe("Header", () => {
     expect(screen.getAllByRole("link").filter(isActive)).toEqual([]);
   });
 
-  it("renders the menu links in order: Home, Dashboard, Morpho, Blog", () => {
+  it("renders the menu links in order: Home, Aave, Morpho, Blog", () => {
     render(<Header />);
     const [mobileMenu, desktopMenu] = screen.getAllByRole("list");
 
@@ -174,7 +173,7 @@ describe("Header", () => {
         within(menu)
           .getAllByRole("link")
           .map(link => link.textContent),
-      ).toEqual(["Home", "Dashboard", "Morpho", "Blog"]);
+      ).toEqual(["Home", "Aave", "Morpho", "Blog"]);
     }
   });
 
@@ -187,7 +186,7 @@ describe("Header", () => {
         .map(link => [link.textContent, link.getAttribute("href")]),
     ).toEqual([
       ["Home", "/"],
-      ["Dashboard", "/aave"],
+      ["Aave", "/aave"],
       ["Morpho", "/morpho"],
       ["Blog", "/blog"],
     ]);
@@ -230,7 +229,7 @@ describe("Header", () => {
 
   it("closes the burger menu on Escape and returns focus to its button", () => {
     const burgerMenu = renderOpenBurgerMenu();
-    const dashboardLink = within(burgerMenu).getByRole("link", { name: "Dashboard" });
+    const dashboardLink = within(burgerMenu).getByRole("link", { name: "Aave" });
     dashboardLink.focus();
 
     fireEvent.keyDown(dashboardLink, { key: "Escape" });
@@ -311,7 +310,7 @@ describe("Header in Czech", () => {
 
     for (const [name, href] of [
       ["Úvod", "/cz"],
-      ["Přehled", "/cz/aave"],
+      ["Aave", "/cz/aave"],
       ["Blog", "/cz/blog"],
     ])
       expect(
@@ -353,7 +352,6 @@ describe("Header in Czech", () => {
     const { container } = renderCzech();
 
     expect(screen.queryByRole("link", { name: "Home" })).toBeNull();
-    expect(screen.queryByRole("link", { name: "Dashboard" })).toBeNull();
     expect(container.innerHTML).not.toMatch(new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`));
   });
 });
