@@ -174,49 +174,45 @@ describe("renderSitemapXml", () => {
 
   it("writes loc, lastmod, changefreq and priority in the schema's order, then the hreflang links", async () => {
     const { sitemap, renderSitemapXml } = await loadSitemap();
-    const xml = renderSitemapXml(sitemap());
+    const xml = await renderSitemapXml(sitemap());
 
-    expect(xml.split("\n").slice(0, 2)).toEqual([
-      '<?xml version="1.0" encoding="UTF-8"?>',
+    expect(xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>')).toBe(true);
+    expect(xml).toContain(
       '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
-    ]);
-    expect(xml.endsWith("</urlset>\n")).toBe(true);
+    );
+    expect(xml.trimEnd().endsWith("</urlset>")).toBe(true);
     const orders = elementOrder(xml);
     expect(orders).toHaveLength(sitemap().length);
     for (const order of orders) {
       expect(order.slice(0, 4)).toEqual(["loc", "lastmod", "changefreq", "priority"]);
       expect(order.slice(4).every(name => name === "xhtml:link")).toBe(true);
     }
+    // The home page in the URL standard's normal form, dated by the day only, English as x-default.
     expect(xml).toContain(
-      [
-        "  <url>",
-        "    <loc>https://tokenping.xyz</loc>",
-        "    <lastmod>2026-10-20</lastmod>",
-        "    <changefreq>weekly</changefreq>",
-        "    <priority>1.0</priority>",
-        '    <xhtml:link rel="alternate" hreflang="en" href="https://tokenping.xyz"/>',
-        '    <xhtml:link rel="alternate" hreflang="cs" href="https://tokenping.xyz/cz"/>',
-        '    <xhtml:link rel="alternate" hreflang="x-default" href="https://tokenping.xyz"/>',
-        "  </url>",
-      ].join("\n"),
+      "<url><loc>https://tokenping.xyz/</loc><lastmod>2026-10-20</lastmod><changefreq>weekly</changefreq><priority>1.0</priority>" +
+        '<xhtml:link rel="alternate" hreflang="en" href="https://tokenping.xyz/"/>' +
+        '<xhtml:link rel="alternate" hreflang="cs" href="https://tokenping.xyz/cz"/>' +
+        '<xhtml:link rel="alternate" hreflang="x-default" href="https://tokenping.xyz/"/></url>',
     );
   });
 
   it("escapes what XML reserves, and leaves out the xhtml namespace without alternates", async () => {
     const { renderSitemapXml } = await loadSitemap();
-    const xml = renderSitemapXml([
+    const xml = await renderSitemapXml([
       { url: `${SITE}/a?b=1&c=<2>`, lastModified: "2026-10-25", changeFrequency: "yearly", priority: 0.3 },
     ]);
 
-    expect(xml).toContain("<loc>https://tokenping.xyz/a?b=1&amp;c=&lt;2&gt;</loc>");
-    expect(xml).toContain("<priority>0.3</priority>");
+    // The URL is first put in its normal form (the query's < and > percent-encoded), then escaped for XML.
+    expect(xml).toContain("<loc>https://tokenping.xyz/a?b=1&amp;c=%3C2%3E</loc>");
+    expect(xml).toContain("<lastmod>2026-10-25</lastmod><changefreq>yearly</changefreq><priority>0.3</priority>");
     expect(xml).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
   });
 
-  it("reads back as the same URLs and dates, in order, as the IndexNow script parses it", async () => {
+  it("reads back as the same addresses and dates, in order, as the IndexNow script parses it", async () => {
     const { sitemap, renderSitemapXml } = await loadSitemap();
-    expect(parseSitemap(renderSitemapXml(sitemap()))).toEqual(
-      sitemap().map(({ url, lastModified }) => ({ url, lastModified })),
-    );
+    const normal = (url: string) => new URL(url).toString();
+    expect(
+      parseSitemap(await renderSitemapXml(sitemap())).map(({ url, lastModified }) => [normal(url), lastModified]),
+    ).toEqual(sitemap().map(({ url, lastModified }) => [normal(url), lastModified]));
   });
 });

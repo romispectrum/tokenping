@@ -1,3 +1,4 @@
+import { type EnumChangefreq, SitemapStream, streamToPromise } from "sitemap";
 import { PAGE_UPDATED } from "~~/constants/pageDates";
 import { getLatestPostDate, getPostByKey, getPostLastModified, getPublishedPosts, isPublished } from "~~/content/blog";
 import { DEFAULT_LOCALE, LOCALES, LOCALE_INFO, type Locale, type Localized } from "~~/i18n/locales";
@@ -10,9 +11,9 @@ import { SITE_URL, absoluteUrl } from "~~/utils/seo";
 // language's /blog while it lists none); any client-rendered page. The dashboards are listed because their pages are
 // server shells around the wallet island; the Morpho one included.
 //
-// app/sitemap.xml/route.ts serves it with renderSitemapXml rather than through Next's sitemap file convention, whose
-// serializer writes the hreflang links before <lastmod>: the sitemap schema wants loc, lastmod, changefreq and
-// priority first, and strict validators reject anything else.
+// app/sitemap.xml/route.ts serves it with renderSitemapXml (the `sitemap` package) rather than through Next's sitemap
+// file convention, whose serializer writes the hreflang links before <lastmod>: the sitemap schema wants loc, lastmod,
+// changefreq and priority first, and strict validators reject anything else.
 
 export type ChangeFrequency = "daily" | "weekly" | "monthly" | "yearly";
 
@@ -108,39 +109,27 @@ export const sitemapEntries = (): SitemapEntry[] => {
   ];
 };
 
-const escapeXml = (text: string) =>
-  text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-
 /**
- * The sitemaps.org 0.9 XML of `entries`: in each <url>, loc, lastmod, changefreq and priority in the schema's order,
- * then the hreflang links (xhtml:link, Google's extension, which the schema allows only after them).
+ * The sitemaps.org 0.9 XML of `entries`, written by the `sitemap` package: the schema's element order (loc, lastmod,
+ * changefreq, priority, then the hreflang links), XML escaping and YYYY-MM-DD dates. It writes every URL in the URL
+ * standard's normal form, so the home page comes out as "https://tokenping.xyz/" (the same address as the bare origin
+ * the page's canonical uses).
  */
-export const renderSitemapXml = (sitemap: readonly SitemapEntry[]) => {
-  const hasAlternates = sitemap.some(({ alternates }) => alternates);
-  const urls = sitemap.map(({ url, lastModified, changeFrequency, priority, alternates }) =>
-    [
-      "  <url>",
-      `    <loc>${escapeXml(url)}</loc>`,
-      `    <lastmod>${lastModified}</lastmod>`,
-      `    <changefreq>${changeFrequency}</changefreq>`,
-      `    <priority>${priority.toFixed(1)}</priority>`,
-      ...Object.entries(alternates?.languages ?? {}).map(
-        ([hreflang, href]) =>
-          `    <xhtml:link rel="alternate" hreflang="${escapeXml(hreflang)}" href="${escapeXml(href)}"/>`,
-      ),
-      "  </url>",
-    ].join("\n"),
-  );
-  return [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"${hasAlternates ? ' xmlns:xhtml="http://www.w3.org/1999/xhtml"' : ""}>`,
-    ...urls,
-    "</urlset>",
-    "",
-  ].join("\n");
+export const renderSitemapXml = async (sitemap: readonly SitemapEntry[]) => {
+  const stream = new SitemapStream({
+    hostname: SITE_URL,
+    lastmodDateOnly: true,
+    xmlns: { news: false, xhtml: sitemap.some(({ alternates }) => alternates), image: false, video: false },
+  });
+  for (const { url, lastModified, changeFrequency, priority, alternates } of sitemap) {
+    stream.write({
+      url,
+      lastmod: lastModified,
+      changefreq: changeFrequency as EnumChangefreq,
+      priority,
+      links: Object.entries(alternates?.languages ?? {}).map(([lang, href]) => ({ lang, url: href })),
+    });
+  }
+  stream.end();
+  return (await streamToPromise(stream)).toString();
 };

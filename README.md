@@ -53,7 +53,7 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs o
   from the contract (`plans(token)`), so the site never hard-codes it. The proxy and implementation are verified on
   [Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553).
 - **Blog.** MDX articles in `packages/nextjs/content/blog` (English, and Czech in `content/blog/cs`), rendered as Server
-  Components with a sitemap (`/sitemap.xml`, written by `utils/sitemap.ts` in the schema's element order, with hreflang
+  Components with a sitemap (`/sitemap.xml`, written by the `sitemap` package in the schema's element order, with hreflang
   links), RSS feed and JSON-LD. `yarn next:indexnow` tells Bing, Seznam and Yandex about new and changed pages through
   [IndexNow](#indexnow).
 - **Search and AI crawlers.** robots.txt (`utils/robots.ts`) names the search and AI-answer crawlers and the training

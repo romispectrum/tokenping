@@ -17,9 +17,9 @@ import { renderSitemapXml, sitemapEntries as sitemap } from "~~/utils/sitemap";
 
 const KEY = "0123456789abcdef0123456789abcdef";
 
-/** The XML app/sitemap.xml/route.ts serves. */
-const SITEMAP_XML = renderSitemapXml(sitemap());
-const SITEMAP_URLS = sitemap().map(({ url }) => url);
+/** The XML app/sitemap.xml/route.ts serves, and its URLs as the script reads them (the home page as ".../"). */
+const SITEMAP_XML = await renderSitemapXml(sitemap());
+const SITEMAP_URLS = parseSitemap(SITEMAP_XML).map(({ url }) => url);
 
 /** A minimal sitemap of `entries`; a page without a date has no <lastmod>, as any sitemap may. */
 const sitemapXml = (entries: { url: string; lastModified?: string }[]) =>
@@ -80,13 +80,16 @@ const runWith = async (argv: string[], fetchMock = fakeFetch()) => {
 
 describe("parseSitemap", () => {
   it("reads back every URL and content date of the sitemap, in its order", () => {
-    expect(parseSitemap(SITEMAP_XML)).toEqual(sitemap().map(({ url, lastModified }) => ({ url, lastModified })));
+    const normal = (url: string) => new URL(url).toString();
+    expect(parseSitemap(SITEMAP_XML).map(({ url, lastModified }) => [normal(url), lastModified])).toEqual(
+      sitemap().map(({ url, lastModified }) => [normal(url), lastModified]),
+    );
   });
 
   it("covers the English and the Czech pages", () => {
     const urls = parseSitemap(SITEMAP_XML).map(({ url }) => url);
 
-    expect(urls).toEqual(expect.arrayContaining(["https://tokenping.xyz", "https://tokenping.xyz/cz"]));
+    expect(urls).toEqual(expect.arrayContaining(["https://tokenping.xyz/", "https://tokenping.xyz/cz"]));
     expect(urls.filter(url => url.startsWith("https://tokenping.xyz/cz/blog/")).length).toBeGreaterThan(0);
   });
 

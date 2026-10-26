@@ -4,5 +4,7 @@ import { renderSitemapXml, sitemapEntries } from "~~/utils/sitemap";
 // per deployment.
 export const dynamic = "force-static";
 
-export const GET = () =>
-  new Response(renderSitemapXml(sitemapEntries()), { headers: { "Content-Type": "application/xml; charset=utf-8" } });
+export const GET = async () =>
+  new Response(await renderSitemapXml(sitemapEntries()), {
+    headers: { "Content-Type": "application/xml; charset=utf-8" },
+  });
