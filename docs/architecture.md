@@ -1,9 +1,8 @@
 # Architecture
 
 How the pieces of Tokenping fit together. Tokenping is one Next.js app on Vercel, a Supabase database, a payment
-contract on Arbitrum One, and a small Signal relay on Fly.io. Alerts watch Aave V3 and V4 markets and, while
-`NEXT_PUBLIC_MORPHO_ENABLED` is `true`, Morpho Blue and Midnight markets. There is no other backend: every
-server-side job is a Next.js route.
+contract on Arbitrum One, and a small Signal relay on Fly.io. Alerts watch Aave V3 and V4 markets and Morpho Blue and
+Midnight markets. There is no other backend: every server-side job is a Next.js route.
 
 ## The pieces
 
@@ -57,7 +56,7 @@ server-side job is a Next.js route.
 **Looking at positions.** Needs no payment and no sign-in. The browser asks RPC providers for the wallet's Aave data in
 every V3 market and V4 Spoke listed in `config/aaveConfig.ts`. Nothing is sent to the server or stored.
 
-**Looking at Morpho positions** (while Morpho is enabled). The browser asks Morpho's API which listed Blue and
+**Looking at Morpho positions.** The browser asks Morpho's API which listed Blue and
 Midnight markets the wallet borrows in, then reads each market and position from the chain with the same readers the
 cron uses (`services/morpho`), so the page shows the number alerts are checked against. Markets with a saved alert are
 read too, even when the API no longer lists them.
@@ -85,10 +84,10 @@ for the plan's duration and paying again extends it. The price and plan are read
 It checks the request came from the site's own pages and is JSON, validates the market, threshold, recipients and
 languages, asks the contract whether the wallet has active access, enforces the limit of 50 alerts per wallet, and
 writes the row to `notification_configs`. Reading alerts needs the session but not active access. A new Morpho alert
-(`protocol` `morpho-blue` or `morpho-midnight`) also needs Morpho enabled and a market Morpho's API lists; its fixed
+(`protocol` `morpho-blue` or `morpho-midnight`) also needs a market Morpho's API lists; its fixed
 parameters (tokens, oracles, LLTVs, a Midnight maturity, a Blue market's pre-liquidation contracts) are read from the
 chain and stored in `market_params`, and an API outage answers 503 rather than saving an unverified market. Editing or
-deleting an existing Morpho alert never depends on the API or the switch.
+deleting an existing Morpho alert never depends on the API.
 
 **The 5-minute check.** Vercel calls `GET /api/cron/notifications` with `Authorization: Bearer <CRON_SECRET>`. The route
 loads every enabled alert and every linked Telegram chat, then for each alert reads the wallet's health factor in the
@@ -155,7 +154,7 @@ alert as saved with the live position, and gives the slot back if the provider r
 | The cron pass                | `packages/nextjs/services/notifications/runNotificationCheck.ts`  |
 | Channel senders              | `services/email`, `services/signal`, `services/telegram`          |
 | Aave markets and Spokes      | `packages/nextjs/config/aaveConfig.ts`                            |
-| Morpho chains and switch     | `packages/nextjs/config/morpho.ts`, `config/protocols.ts`         |
+| Morpho chains                | `packages/nextjs/config/morpho.ts`, `config/protocols.ts`         |
 | Morpho readers and API       | `packages/nextjs/services/morpho`                                 |
 | Morpho alerts in the cron    | `services/notifications/morphoAlerts.ts`, `morphoMessages.ts`     |
 | RPC endpoints                | `packages/nextjs/utils/rpc.ts`                                    |

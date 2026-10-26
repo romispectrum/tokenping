@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { Hex } from "viem";
 import { type MarketRef, resolveMarket } from "~~/config/aaveConfig";
-import { type MorphoChain, getMorphoChain, isMorphoEnabled } from "~~/config/morpho";
+import { type MorphoChain, getMorphoChain } from "~~/config/morpho";
 import { type MorphoProtocol, isMorphoProtocol } from "~~/config/protocols";
 import { requireActiveAccess } from "~~/services/api/server/access";
 import {
@@ -52,9 +52,9 @@ const morphoChainFor = ({ protocol, chainId }: MorphoRef) => {
 };
 
 /**
- * The market parameters a Morpho alert is saved with. An existing alert keeps working whatever Morpho's API or the
- * flag says (it is only brought up to date when they answer). A new one needs Morpho enabled, and a market Morpho's app
- * lists and the chain has: a market nobody could verify is refused, never saved.
+ * The market parameters a Morpho alert is saved with. An existing alert keeps working whatever Morpho's API says (it is
+ * only brought up to date when the API answers). A new one needs a market Morpho's app lists and the chain has: a
+ * market nobody could verify is refused, never saved.
  */
 const morphoMarketParams = async (
   forms: UserIdForms,
@@ -69,7 +69,6 @@ const morphoMarketParams = async (
     return { params: isStoredMarketParams(ref.protocol, refreshed) ? refreshed : existing.market_params };
   }
 
-  if (!isMorphoEnabled()) return { response: jsonError("Morpho alerts are not available", 404) };
   if (ref.protocol === "morpho-midnight" && !chain.midnightListed) {
     return { response: jsonError("Unknown Morpho market", 400) };
   }

@@ -4,9 +4,8 @@ This file provides guidance to coding agents working in this repository.
 
 ## Project overview
 
-Tokenping sends Aave V3 and V4 health factor alerts by email, Signal and Telegram, and Morpho Blue and Midnight alerts
-while `NEXT_PUBLIC_MORPHO_ENABLED` is `true`. It started from Scaffold-ETH 2 (SE-2), Hardhat flavor, and keeps SE-2's
-tooling. Read [README.md](README.md) for what the product does and how to run it, and
+Tokenping sends Aave V3 and V4 and Morpho Blue and Midnight health factor alerts by email, Signal and Telegram. It
+started from Scaffold-ETH 2 (SE-2), Hardhat flavor, and keeps SE-2's tooling. Read [README.md](README.md) for what the product does and how to run it, and
 [docs/architecture.md](docs/architecture.md) for how the pieces fit.
 
 - `packages/nextjs`: the Next.js 15 App Router app (React 19, RainbowKit, Wagmi, Viem, TypeScript, Tailwind CSS 4 with

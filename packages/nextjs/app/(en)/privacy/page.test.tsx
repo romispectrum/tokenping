@@ -59,6 +59,7 @@ describe("/privacy", () => {
       "Resend",
       "Fly.io (our Signal relay)",
       "RPC providers (PublicNode, Alchemy and the networks' public endpoints)",
+      "Morpho's API",
       "WalletConnect",
     ]);
     expect(screen.queryByText(/Telegram username you type/)).toBeNull();
@@ -81,13 +82,7 @@ describe("/privacy", () => {
     );
   });
 
-  it("names Morpho's API and what the Morpho dashboard sends, dated, only while Morpho is enabled", () => {
-    renderPage();
-    expect(processorNames()).not.toContain("Morpho's API");
-    expect(screen.queryByText(/Morpho dashboard/)).toBeNull();
-
-    cleanup();
-    vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", "true");
+  it("names Morpho's API and what the Morpho dashboard sends, and is dated by them", () => {
     renderPage();
 
     expect(processorNames().slice(-3)).toEqual([
@@ -134,7 +129,7 @@ describe("/privacy", () => {
   it("dates the page with a machine-readable time", () => {
     renderPage();
 
-    expect(screen.getByText("19 October 2026").getAttribute("dateTime")).toBe("2026-10-19T00:00:00Z");
+    expect(screen.getByText("25 October 2026").getAttribute("dateTime")).toBe("2026-10-25T00:00:00Z");
   });
 
   it("styles inline links with the base link style and uses no legacy palette", () => {

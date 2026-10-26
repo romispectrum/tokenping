@@ -32,7 +32,7 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs o
     to your chat (`telegram_chats`). Needs a configured bot (`TELEGRAM_*` and `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME`) and
     `yarn next:telegram-webhook` once after deploying; see [docs/telegram-bot-setup.md](docs/telegram-bot-setup.md).
     Site copy names Telegram only while `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` is set.
-- **Morpho (off until `NEXT_PUBLIC_MORPHO_ENABLED` is `true`).** `/morpho` lists the wallet's borrow positions in the
+- **Morpho.** `/morpho` lists the wallet's borrow positions in the
   markets the Morpho app lists, on its 14 networks (`packages/nextjs/config/morpho.ts`): Morpho Blue (variable rate)
   and Morpho Midnight (fixed rate). Morpho's public API finds the markets; health factors are computed from the chain
   with Morpho's own math (`services/morpho`), in the browser and in the cron, so checks never depend on the API. A
@@ -79,7 +79,7 @@ How the pieces fit together, with a diagram: [docs/architecture.md](docs/archite
 
 ## Limits
 
-- Aave, and Morpho behind its switch. Harmony's V3 market is left out: frozen since 2022 with fixed price feeds, so a health factor there never
+- Aave and Morpho. Harmony's V3 market is left out: frozen since 2022 with fixed price feeds, so a health factor there never
   moves. A new Aave market or V4 Spoke is read only once it is added to `AAVE_MARKETS` or `AAVE_V4_SPOKES`, then
   `yarn next:token-icons` and `yarn next:network-icons` fetch its icons.
 - Scroll, ZKsync, Metis, Soneium and Sonic are being wound down by Aave governance (ARFC of July 2026). Positions
@@ -209,7 +209,6 @@ explained). In the table, "production" means a Vercel production deployment. Ser
 | `TELEGRAM_BOT_TOKEN`                                                         | For Telegram alerts | The bot's token from BotFather.                                                                                                                                                 |
 | `TELEGRAM_WEBHOOK_SECRET`                                                    | For Telegram alerts | Checked on every webhook call; the same value registered with `yarn next:telegram-webhook`.                                                                                     |
 | `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME`                                          | For Telegram alerts | The bot's username without `@`. The site offers Telegram only while this is set.                                                                                                |
-| `NEXT_PUBLIC_MORPHO_ENABLED`                                                 | Optional            | `true` shows the /morpho page and allows Morpho alerts; off by default. Read at build time. Apply the Supabase migrations before switching it on.                               |
 | `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`, `NEXT_PUBLIC_BING_SITE_VERIFICATION` | Optional            | Search Console and Bing Webmaster meta-tag tokens; not needed with DNS verification.                                                                                            |
 | `INDEXNOW_KEY`                                                               | Optional            | The [IndexNow](#indexnow) key, served at `/indexnow-key.txt` (404 without it); read at build time. Generate one with `openssl rand -hex 16`.                                    |
 | `COINGECKO_API_KEY`                                                          | Optional            | A CoinGecko Demo key for `yarn next:token-icons`. The app does not read it.                                                                                                     |
@@ -288,10 +287,9 @@ When you upgrade a live deployment, apply new migrations before the code that ne
 `20261021000000_lock_down_server_only_tables.sql` takes the database away from the anon key, so apply it only once the
 running deployment uses `SUPABASE_SERVICE_ROLE_KEY`.
 
-Morpho goes live in three steps: apply `20261025000000_add_protocol_to_notification_configs.sql` (without it every
-alert read and the cron fail, Aave's included), deploy, then set `NEXT_PUBLIC_MORPHO_ENABLED=true` and deploy again.
-Once Morpho alerts exist, do not roll the code back to a version before that migration: it would read their market
-ids as Aave V3 markets.
+Morpho needs no setting, only its migration: apply `20261025000000_add_protocol_to_notification_configs.sql` before
+deploying (without it every alert read and the cron fail, Aave's included). Once Morpho alerts exist, do not roll the
+code back to a version before that migration: it would read their market ids as Aave V3 markets.
 
 ### IndexNow
 

@@ -2,7 +2,7 @@
 import type { ComponentType } from "react";
 import { render, screen, within } from "@testing-library/react";
 import type { MDXComponents } from "mdx/types";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ARTICLE_BODY_CLASS_NAME } from "~~/components/blog/blogLayout";
 import type { AlertPlan } from "~~/services/marketing/alertPlan";
 import { mockPostStubs } from "~~/utils/testing/blogPosts";
@@ -48,23 +48,14 @@ beforeEach(() => {
   mocks.getAlertPlan.mockReset().mockResolvedValue(PLAN);
 });
 
-afterEach(() => {
-  vi.unstubAllEnvs();
-});
-
 describe("route config", () => {
   it("prerenders every post, 404s unknown slugs and revalidates hourly with the price cache", async () => {
     const { generateStaticParams, dynamicParams, revalidate } = await loadPage();
-    const { POSTS, isMorphoPost } = await import("~~/content/blog");
+    const { POSTS } = await import("~~/content/blog");
     const { ALERT_PLAN_REVALIDATE_SECONDS } = await vi.importActual<typeof import("~~/services/marketing/alertPlan")>(
       "~~/services/marketing/alertPlan",
     );
 
-    // The Morpho guides are left out while Morpho is off, so their URLs are a 404.
-    expect(generateStaticParams()).toEqual(
-      POSTS.filter(post => !isMorphoPost(post)).map(({ meta }) => ({ slug: meta.slug })),
-    );
-    vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", "true");
     expect(generateStaticParams()).toEqual(POSTS.map(({ meta }) => ({ slug: meta.slug })));
     expect(dynamicParams).toBe(false);
     expect(revalidate).toBe(ALERT_PLAN_REVALIDATE_SECONDS);
@@ -259,15 +250,7 @@ describe("blog post page", () => {
 });
 
 describe("a Morpho guide", () => {
-  it("is a 404 while Morpho is off", async () => {
-    const { default: BlogPostPage, generateMetadata } = await loadPage();
-
-    await expect(BlogPostPage({ params: Promise.resolve({ slug: "morpho-health-factor" }) })).rejects.toThrow();
-    await expect(generateMetadata({ params: Promise.resolve({ slug: "morpho-health-factor" }) })).resolves.toEqual({});
-  });
-
-  it("carries Morpho's label, card and end box once Morpho is on", async () => {
-    vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", "true");
+  it("carries Morpho's label, card and end box", async () => {
     const { generateMetadata } = await loadPage();
     const metadata = await generateMetadata({ params: Promise.resolve({ slug: "morpho-health-factor" }) });
     const { title } = await postMeta("morpho-health-factor");
@@ -288,8 +271,7 @@ describe("a Morpho guide", () => {
     expect(JSON.stringify(metadata.openGraph?.images)).toContain(`${title} (Tokenping Morpho guide)`);
   });
 
-  it("keeps Aave's label and end box under an Aave guide while Morpho is on", async () => {
-    vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", "true");
+  it("keeps Aave's label and end box under an Aave guide", async () => {
     await renderPost("aave-health-factor");
 
     expect(screen.getByText("Aave V3 guide")).toBeTruthy();

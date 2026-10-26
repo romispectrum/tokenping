@@ -2,13 +2,12 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST_SLUGS as POST_SLUG_PAIRS } from "~~/i18n/postSlugs";
 import { parseSitemap } from "~~/scripts/indexNow";
-import { CS_POST_SLUGS, MORPHO_POST_SLUGS, POST_SLUGS, mockPostStubs } from "~~/utils/testing/blogPosts";
+import { CS_POST_SLUGS, POST_SLUGS, mockPostStubs } from "~~/utils/testing/blogPosts";
 
 const APP_DIR = new URL("../app/", import.meta.url);
 
 // Not indexable: noindex (/admin) or a 404 outside local hardhat builds (/debug, /blockexplorer).
 const NON_INDEXED_PREFIXES = ["/admin", "/debug", "/blockexplorer"];
-// A 404 until NEXT_PUBLIC_MORPHO_ENABLED is "true", and listed from then on.
 const MORPHO_PAGES = ["/morpho", "/cz/morpho"];
 
 /** Every app/**\/page.tsx without a dynamic segment, by its URL path ("/", "/aave", "/cz/blog", …). */
@@ -63,11 +62,12 @@ const bilingual = (en: string, cs: string, kind: Kind, lastModified: string) => 
 
 const HOME_PAGES = bilingual("/", "/cz", HOME, "2026-10-20");
 const AAVE_PAGES = bilingual("/aave", "/cz/aave", DASHBOARD, "2026-10-19");
-const PRIVACY_PAGES = bilingual("/privacy", "/cz/ochrana-soukromi", PRIVACY, "2026-10-19");
+const MORPHO_DASHBOARD_PAGES = bilingual("/morpho", "/cz/morpho", DASHBOARD, "2026-10-25");
+// The privacy page carries the date its Morpho disclosures were added.
+const PRIVACY_PAGES = bilingual("/privacy", "/cz/ochrana-soukromi", PRIVACY, "2026-10-25");
 
 beforeEach(() => {
   vi.resetModules();
-  vi.unstubAllEnvs();
 });
 
 describe("sitemapEntries", () => {
@@ -76,7 +76,7 @@ describe("sitemapEntries", () => {
     const entries = sitemap();
     const entry = (path: string) => entries.find(({ url }) => url === `${SITE}${path}`);
 
-    expect(entries.slice(0, 4)).toEqual([...HOME_PAGES, ...AAVE_PAGES]);
+    expect(entries.slice(0, 6)).toEqual([...HOME_PAGES, ...AAVE_PAGES, ...MORPHO_DASHBOARD_PAGES]);
     expect(entries.slice(-2)).toEqual(PRIVACY_PAGES);
     // Each language's blog index carries that language's newest content date.
     expect(entry("/blog")).toMatchObject({
@@ -102,15 +102,13 @@ describe("sitemapEntries", () => {
     // A placeholder is left out, and its published translation is listed alone, with no hreflang to it.
     expect(entry("/blog/safe-aave-health-factor")).toBeUndefined();
     expect(entry(`/cz/blog/${POST_SLUG_PAIRS["safe-aave-health-factor"].cs}`)).not.toHaveProperty("alternates");
-    // The Morpho guides wait for Morpho to be enabled.
-    expect(blog.PUBLISHED_POSTS).toHaveLength(POST_SLUGS.length - MORPHO_POST_SLUGS.length - 1);
-    for (const slug of MORPHO_POST_SLUGS) expect(entry(`/blog/${slug}`), slug).toBeUndefined();
+    expect(blog.PUBLISHED_POSTS).toHaveLength(POST_SLUGS.length - 1);
   });
 
   it("leaves out both blogs and every post while all of them are placeholders", async () => {
     const { sitemap } = await loadSitemap(POST_SLUGS, CS_POST_SLUGS);
 
-    expect(sitemap()).toEqual([...HOME_PAGES, ...AAVE_PAGES, ...PRIVACY_PAGES]);
+    expect(sitemap()).toEqual([...HOME_PAGES, ...AAVE_PAGES, ...MORPHO_DASHBOARD_PAGES, ...PRIVACY_PAGES]);
   });
 
   it("lists only pages that exist and render on the server", async () => {
@@ -130,7 +128,6 @@ describe("sitemapEntries", () => {
       path =>
         !NON_INDEXED_PREFIXES.some(prefix => path === prefix || path.startsWith(`${prefix}/`)) &&
         !isClientPage(path) &&
-        !MORPHO_PAGES.includes(path) &&
         (path !== "/blog" || blog.PUBLISHED_POSTS.length > 0) &&
         (path !== "/cz/blog" || blog.getPublishedPosts("cs").length > 0),
     );
@@ -140,21 +137,10 @@ describe("sitemapEntries", () => {
     for (const path of expected) expect(listed.has(path), `${path}: add it to utils/sitemap.ts`).toBe(true);
   });
 
-  it("lists the Morpho dashboard after Aave's only while Morpho is enabled, and dates privacy by it", async () => {
-    const off = pathsOf((await loadSitemap()).sitemap());
-    expect(off.filter(path => MORPHO_PAGES.includes(path))).toEqual([]);
-
-    vi.resetModules();
-    vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", "true");
+  it("lists the Morpho dashboard after Aave's, as a server-rendered page", async () => {
     const entries = (await loadSitemap()).sitemap();
 
-    expect(entries.slice(0, 6)).toEqual([
-      ...HOME_PAGES,
-      ...AAVE_PAGES,
-      ...bilingual("/morpho", "/cz/morpho", DASHBOARD, "2026-10-25"),
-    ]);
-    // The privacy page lists Morpho's API from then on, and carries that change's date.
-    expect(entries.slice(-2)).toEqual(bilingual("/privacy", "/cz/ochrana-soukromi", PRIVACY, "2026-10-25"));
+    expect(entries.slice(0, 6)).toEqual([...HOME_PAGES, ...AAVE_PAGES, ...MORPHO_DASHBOARD_PAGES]);
     for (const path of MORPHO_PAGES) {
       expect(pageFile(path) && existsSync(pageFile(path)!), path).toBe(true);
       expect(isClientPage(path), path).toBe(false);

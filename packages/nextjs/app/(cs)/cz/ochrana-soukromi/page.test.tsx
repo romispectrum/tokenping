@@ -64,13 +64,13 @@ describe("/cz/ochrana-soukromi", () => {
       "Resend",
       "Fly.io (náš přenosový server pro Signal)",
       "Poskytovatelé RPC (PublicNode, Alchemy a veřejné endpointy jednotlivých sítí)",
+      "API Morpho",
       "WalletConnect",
     ]);
     expect(screen.queryByText(/uživatelské jméno na Telegramu, které zadáte/)).toBeNull();
   });
 
-  it("names Morpho's API in Czech, after the RPC providers, while Morpho is enabled", () => {
-    vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", "true");
+  it("names Morpho's API in Czech, after the RPC providers", () => {
     renderPage();
 
     expect(processorNames()).toContain("API Morpho");
@@ -123,7 +123,7 @@ describe("/cz/ochrana-soukromi", () => {
   it("dates the page in Czech with a machine-readable time", () => {
     renderPage();
 
-    expect(screen.getByText("19. října 2026").getAttribute("dateTime")).toBe("2026-10-19T00:00:00Z");
+    expect(screen.getByText("25. října 2026").getAttribute("dateTime")).toBe("2026-10-25T00:00:00Z");
     expect(screen.getByText(/^Naposledy aktualizováno/)).toBeTruthy();
   });
 

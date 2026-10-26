@@ -12,8 +12,6 @@ export type PrivacyProcessor = {
 type ProcessorFacts = {
   minutes: number;
   hasTelegram: boolean;
-  /** Morpho is enabled (NEXT_PUBLIC_MORPHO_ENABLED), so the site talks to Morpho's API. */
-  hasMorpho: boolean;
 };
 
 /** "<before> <link> <middle> <link> <or> <link> <after>", the spaces around the links written by the page. */
@@ -36,7 +34,6 @@ type PrivacyMessages = {
   /** Followed by a space and the date. */
   lastUpdated: string;
   intro: string;
-  /** `morpho` is added while Morpho is enabled. */
   withoutUs: { title: string; text: string; morpho: string };
   stored: { title: string; items: readonly string[]; telegram: string; attribution: string };
   notStored: { title: string; items: readonly string[] };
@@ -108,7 +105,7 @@ export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = {
     },
     processors: {
       title: "Who handles your data",
-      list: ({ minutes, hasTelegram, hasMorpho }) => [
+      list: ({ minutes, hasTelegram }) => [
         {
           name: "Vercel",
           role: `Hosts this site and runs the alert check every ${minutes} minutes.`,
@@ -142,15 +139,11 @@ export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = {
           receives:
             "The wallet address being read (and, when you sign in, your signature), and your IP address for reads made from your browser.",
         },
-        ...(hasMorpho
-          ? [
-              {
-                name: "Morpho's API",
-                role: "Finds the listed Morpho markets your wallet borrows in, for the Morpho dashboard, and tells our server whether a market is listed when you save a Morpho alert.",
-                receives: "Your wallet address, and your IP address for the lookups your browser makes.",
-              },
-            ]
-          : []),
+        {
+          name: "Morpho's API",
+          role: "Finds the listed Morpho markets your wallet borrows in, for the Morpho dashboard, and tells our server whether a market is listed when you save a Morpho alert.",
+          receives: "Your wallet address, and your IP address for the lookups your browser makes.",
+        },
         {
           name: "WalletConnect",
           role: "Relays the connection between this site and your wallet app, if you connect with WalletConnect.",
@@ -234,7 +227,7 @@ export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = {
     },
     processors: {
       title: "Kdo s vašimi daty pracuje",
-      list: ({ minutes, hasTelegram, hasMorpho }) => [
+      list: ({ minutes, hasTelegram }) => [
         {
           name: "Vercel",
           role: `Hostuje tento web a každých ${minutes} minut spouští kontrolu upozornění.`,
@@ -268,15 +261,11 @@ export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = {
           receives:
             "Adresa čtené peněženky (a při přihlášení váš podpis) a u čtení z vašeho prohlížeče také vaše IP adresa.",
         },
-        ...(hasMorpho
-          ? [
-              {
-                name: "API Morpho",
-                role: "Pro přehled Morpho zjišťuje, ve kterých trzích uvedených v aplikaci Morpho si vaše peněženka půjčuje, a našemu serveru při uložení upozornění na Morpho říká, zda je trh uvedený.",
-                receives: "Adresa vaší peněženky a u dotazů z vašeho prohlížeče také vaše IP adresa.",
-              },
-            ]
-          : []),
+        {
+          name: "API Morpho",
+          role: "Pro přehled Morpho zjišťuje, ve kterých trzích uvedených v aplikaci Morpho si vaše peněženka půjčuje, a našemu serveru při uložení upozornění na Morpho říká, zda je trh uvedený.",
+          receives: "Adresa vaší peněženky a u dotazů z vašeho prohlížeče také vaše IP adresa.",
+        },
         {
           name: "WalletConnect",
           role: "Zprostředkovává spojení mezi tímto webem a aplikací vaší peněženky, pokud se připojujete přes WalletConnect.",

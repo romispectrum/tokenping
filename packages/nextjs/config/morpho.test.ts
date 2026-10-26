@@ -1,25 +1,10 @@
 import { getAddress } from "viem";
 import * as viemChains from "viem/chains";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { AAVE_CHAINS } from "~~/config/aaveConfig";
 import { hyperEvm, robinhood, stable, tempo } from "~~/config/chains";
-import { MORPHO_CHAINS, MORPHO_MIDNIGHT_CHAINS, getMorphoChain, isMorphoEnabled } from "~~/config/morpho";
+import { MORPHO_CHAINS, MORPHO_MIDNIGHT_CHAINS, getMorphoChain } from "~~/config/morpho";
 import { getFallbackTransport } from "~~/utils/rpc";
-
-afterEach(() => {
-  vi.unstubAllEnvs();
-});
-
-describe("isMorphoEnabled", () => {
-  it("is on only for exactly 'true'", () => {
-    for (const value of [undefined, "", "1", "TRUE", "yes"]) {
-      vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", value);
-      expect(isMorphoEnabled(), String(value)).toBe(false);
-    }
-    vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", "true");
-    expect(isMorphoEnabled()).toBe(true);
-  });
-});
 
 describe("MORPHO_CHAINS", () => {
   it("lists the 14 chains Morpho's app covers, each once", () => {

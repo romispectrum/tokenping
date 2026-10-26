@@ -165,7 +165,7 @@ describe("Header", () => {
     expect(screen.getAllByRole("link").filter(isActive)).toEqual([]);
   });
 
-  it("renders the menu links in order: Home, Dashboard, Blog", () => {
+  it("renders the menu links in order: Home, Dashboard, Morpho, Blog", () => {
     render(<Header />);
     const [mobileMenu, desktopMenu] = screen.getAllByRole("list");
 
@@ -174,36 +174,31 @@ describe("Header", () => {
         within(menu)
           .getAllByRole("link")
           .map(link => link.textContent),
-      ).toEqual(["Home", "Dashboard", "Blog"]);
+      ).toEqual(["Home", "Dashboard", "Morpho", "Blog"]);
     }
   });
 
-  it("links the Morpho dashboard after Aave's only while Morpho is enabled, in each language", () => {
-    vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", "true");
-    try {
-      const { unmount } = render(<Header />);
-      const [, desktopMenu] = screen.getAllByRole("list");
-      expect(
-        within(desktopMenu)
-          .getAllByRole("link")
-          .map(link => [link.textContent, link.getAttribute("href")]),
-      ).toEqual([
-        ["Home", "/"],
-        ["Dashboard", "/aave"],
-        ["Morpho", "/morpho"],
-        ["Blog", "/blog"],
-      ]);
-      unmount();
+  it("links the Morpho dashboard after Aave's, in each language", () => {
+    const { unmount } = render(<Header />);
+    const [, desktopMenu] = screen.getAllByRole("list");
+    expect(
+      within(desktopMenu)
+        .getAllByRole("link")
+        .map(link => [link.textContent, link.getAttribute("href")]),
+    ).toEqual([
+      ["Home", "/"],
+      ["Dashboard", "/aave"],
+      ["Morpho", "/morpho"],
+      ["Blog", "/blog"],
+    ]);
+    unmount();
 
-      render(
-        <LocaleProvider locale="cs">
-          <Header />
-        </LocaleProvider>,
-      );
-      expect(screen.getAllByRole("link", { name: "Morpho" })[0].getAttribute("href")).toBe("/cz/morpho");
-    } finally {
-      vi.unstubAllEnvs();
-    }
+    render(
+      <LocaleProvider locale="cs">
+        <Header />
+      </LocaleProvider>,
+    );
+    expect(screen.getAllByRole("link", { name: "Morpho" })[0].getAttribute("href")).toBe("/cz/morpho");
   });
 
   it("shows the faucet button only on the local network", () => {

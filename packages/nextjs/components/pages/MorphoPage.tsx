@@ -20,9 +20,9 @@ export const morphoMetadata = (locale: Locale) => {
 };
 
 /**
- * The Morpho dashboard page of one language; app/(en)/morpho/page.tsx and app/(cs)/cz/morpho/page.tsx render it while
- * Morpho is enabled. A server shell like /aave: the heading and the explanation are in the initial HTML, and only the
- * wallet-dependent dashboard is a client island.
+ * The Morpho dashboard page of one language; app/(en)/morpho/page.tsx and app/(cs)/cz/morpho/page.tsx render it. A
+ * server shell like /aave: the heading and the explanation are in the initial HTML, and only the wallet-dependent
+ * dashboard is a client island.
  */
 export const MorphoPage = ({ locale }: { locale: Locale }) => {
   const { page } = MORPHO_MESSAGES[locale];

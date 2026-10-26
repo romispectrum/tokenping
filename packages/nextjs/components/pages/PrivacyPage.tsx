@@ -4,10 +4,9 @@ import { formatPostDate } from "~~/components/blog/formatPostDate";
 import { Container } from "~~/components/home/marketingLayout";
 import { Breadcrumbs } from "~~/components/seo/Breadcrumbs";
 import { JsonLd } from "~~/components/seo/JsonLd";
-import { isMorphoEnabled } from "~~/config/morpho";
 import { EXTERNAL_LINK_REL, SOCIAL_LINKS } from "~~/constants/links";
 import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
-import { privacyUpdated } from "~~/constants/pageDates";
+import { PAGE_UPDATED } from "~~/constants/pageDates";
 import type { Locale } from "~~/i18n/locales";
 import { PRIVACY_MESSAGES } from "~~/i18n/messages/privacy";
 import { routeAlternates, routePath } from "~~/i18n/routes";
@@ -54,10 +53,9 @@ export const PrivacyPage = ({ locale }: { locale: Locale }) => {
   const t = PRIVACY_MESSAGES[locale];
   const CRUMBS = crumbs(locale);
   const hasTelegram = getAlertChannelNames().includes("Telegram");
-  const hasMorpho = isMorphoEnabled();
-  const processors = t.processors.list({ minutes: NOTIFICATION_CHECK_INTERVAL_MINUTES, hasTelegram, hasMorpho });
+  const processors = t.processors.list({ minutes: NOTIFICATION_CHECK_INTERVAL_MINUTES, hasTelegram });
   // Change it in constants/pageDates.ts with the content below; the sitemap gives the same date.
-  const lastUpdated = privacyUpdated();
+  const lastUpdated = PAGE_UPDATED.privacy;
 
   return (
     <div className="relative isolate flex-1">
@@ -83,7 +81,7 @@ export const PrivacyPage = ({ locale }: { locale: Locale }) => {
 
               <PolicySection title={t.withoutUs.title}>
                 <p className={TEXT_CLASS_NAME}>{t.withoutUs.text}</p>
-                {hasMorpho && <p className={TEXT_CLASS_NAME}>{t.withoutUs.morpho}</p>}
+                <p className={TEXT_CLASS_NAME}>{t.withoutUs.morpho}</p>
               </PolicySection>
 
               <PolicySection title={t.stored.title}>

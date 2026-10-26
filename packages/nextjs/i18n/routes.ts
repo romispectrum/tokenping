@@ -9,7 +9,6 @@ export type StaticRoute = "home" | "dashboard" | "morpho" | "blog" | "blogFeed" 
 const STATIC_PATHS: Record<StaticRoute, Localized<string>> = {
   home: { en: "/", cs: "/cz" },
   dashboard: { en: "/aave", cs: "/cz/aave" },
-  // Published only while NEXT_PUBLIC_MORPHO_ENABLED is "true" (config/morpho.ts isMorphoEnabled); a 404 otherwise.
   morpho: { en: "/morpho", cs: "/cz/morpho" },
   blog: { en: "/blog", cs: "/cz/blog" },
   blogFeed: { en: "/blog/feed.xml", cs: "/cz/blog/feed.xml" },

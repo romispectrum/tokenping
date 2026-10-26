@@ -15,7 +15,7 @@ import { Breadcrumbs } from "~~/components/seo/Breadcrumbs";
 import { JsonLd } from "~~/components/seo/JsonLd";
 import { Kicker } from "~~/components/ui/Kicker";
 import { cx } from "~~/components/ui/classNames";
-import { getPost, getPostByKey, getPosts, getRelatedPosts, isAvailable, isPublished } from "~~/content/blog";
+import { getPost, getPostByKey, getPosts, getRelatedPosts, isPublished } from "~~/content/blog";
 import type { PostMeta } from "~~/content/blog/types";
 import { LOCALES, type Locale } from "~~/i18n/locales";
 import { BLOG_MESSAGES } from "~~/i18n/messages/blog";
@@ -37,17 +37,8 @@ type BlogPostPageProps = {
   slug: string;
 };
 
-/** Every post slug of a language, for its route's generateStaticParams. A post that is not available is a 404. */
-export const blogPostParams = (locale: Locale) =>
-  getPosts(locale)
-    .filter(isAvailable)
-    .map(({ meta }) => ({ slug: meta.slug }));
-
-/** A post of `locale` that exists on the site (see isAvailable). */
-const availablePost = (locale: Locale, slug: string) => {
-  const post = getPost(slug, locale);
-  return post && isAvailable(post) ? post : undefined;
-};
+/** Every post slug of a language, for its route's generateStaticParams. */
+export const blogPostParams = (locale: Locale) => getPosts(locale).map(({ meta }) => ({ slug: meta.slug }));
 
 const postCrumbs = (locale: Locale, meta: PostMeta): Crumb[] => {
   const { home, blog } = BLOG_MESSAGES[locale].crumbs;
@@ -71,7 +62,7 @@ const publishedAlternates = (locale: Locale, slug: string) => {
 };
 
 export const blogPostMetadata = (locale: Locale, slug: string) => {
-  const post = availablePost(locale, slug);
+  const post = getPost(slug, locale);
   if (!post) return {};
   const { meta } = post;
   return pageMetadata({
@@ -95,7 +86,7 @@ export const blogPostMetadata = (locale: Locale, slug: string) => {
  * wash.
  */
 export const BlogPostPage = async ({ locale, slug }: BlogPostPageProps) => {
-  const post = availablePost(locale, slug);
+  const post = getPost(slug, locale);
   if (!post) notFound();
   const { meta, Content } = post;
   const crumbs = postCrumbs(locale, meta);

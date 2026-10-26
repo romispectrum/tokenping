@@ -18,7 +18,6 @@ type CommonMessages = {
   /** The logo link's accessible name, in the header and the footer. */
   homeLabel: string;
   header: {
-    /** `morpho` shows only while Morpho is enabled. */
     nav: { home: string; dashboard: string; morpho: string; blog: string };
     /** The main navigation landmark's name. */
     navLabel: string;

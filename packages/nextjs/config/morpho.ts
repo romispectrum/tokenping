@@ -3,13 +3,6 @@ import { arbitrum, base, mainnet, optimism, polygon, unichain, worldchain } from
 import { arc, monad } from "~~/config/aaveConfig";
 import { hyperEvm, katana, robinhood, stable, tempo } from "~~/config/chains";
 
-/**
- * Morpho support is built but stays hidden until NEXT_PUBLIC_MORPHO_ENABLED is "true": off, there is no /morpho page,
- * header link or sitemap entry, and new Morpho alerts are refused. Read at call time so tests can stub it; Next inlines
- * the literal at build time, so changing it needs a redeploy.
- */
-export const isMorphoEnabled = () => process.env.NEXT_PUBLIC_MORPHO_ENABLED === "true";
-
 /** Morpho's public API: GraphQL at /graphql for Morpho Blue, REST under /v0/midnight for Midnight. */
 export const MORPHO_API_URL = "https://api.morpho.org";
 

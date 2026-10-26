@@ -1247,15 +1247,10 @@ describe("Morpho alerts", () => {
   });
 
   beforeEach(() => {
-    vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", "true");
     vi.mocked(readListedMarketParams).mockReset();
     vi.mocked(readListedMarketParams).mockResolvedValue(BLUE);
     vi.mocked(refreshMarketParams).mockReset();
     vi.mocked(refreshMarketParams).mockImplementation(async (_client, _chain, _id, stored) => stored);
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
   });
 
   describe("GET", () => {
@@ -1361,16 +1356,6 @@ describe("Morpho alerts", () => {
       expect(fakeSupabase.log().at(-1)).toContain('"health_factor_threshold":1.1,');
     });
 
-    it("refuses a new alert while Morpho is not enabled, without asking Morpho's API", async () => {
-      vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", "");
-
-      expect(await read(await put(blueBody(), DIGITS))).toEqual(
-        json(404, { error: "Morpho alerts are not available" }),
-      );
-      expect(readListedMarketParams).not.toHaveBeenCalled();
-      expect(fakeSupabase.log()).toEqual([chainQuery(DIGITS, 8453, BLUE_ID)]);
-    });
-
     it("refuses a market whose parameters the cron could not read back", async () => {
       vi.mocked(readListedMarketParams).mockResolvedValue({ ...MIDNIGHT, collaterals: [] });
       const body = { chainId: 1, protocol: "morpho-midnight", market: MIDNIGHT_ID };
@@ -1468,11 +1453,6 @@ describe("Morpho alerts", () => {
       ]);
     });
 
-    it("keeps working while Morpho is not enabled", async () => {
-      vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", "");
-      expect(await read(await put(blueBody(), DIGITS))).toEqual(json(200, { success: true }));
-    });
-
     it("treats a row with unreadable parameters as a new alert", async () => {
       fakeSupabase.respondByQuery({
         [chainQuery(DIGITS, 8453, BLUE_ID)]: { data: morphoRow({ market_params: { kind: "blue" } }) },
@@ -1487,9 +1467,7 @@ describe("Morpho alerts", () => {
   });
 
   describe("DELETE", () => {
-    it("deletes a Morpho alert without Morpho's API, whether or not Morpho is enabled", async () => {
-      vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", "");
-
+    it("deletes a Morpho alert without Morpho's API", async () => {
       expect(await read(await del(blueBody(), DIGITS))).toEqual(json(200, { success: true }));
       expect(fakeSupabase.log()).toEqual([deleteQuery(DIGITS, 8453, BLUE_ID)]);
       expect(readListedMarketParams).not.toHaveBeenCalled();

@@ -1,5 +1,4 @@
-import { isMorphoEnabled } from "~~/config/morpho";
-import { PAGE_UPDATED, privacyUpdated } from "~~/constants/pageDates";
+import { PAGE_UPDATED } from "~~/constants/pageDates";
 import { getLatestPostDate, getPostByKey, getPostLastModified, getPublishedPosts, isPublished } from "~~/content/blog";
 import { DEFAULT_LOCALE, LOCALES, LOCALE_INFO, type Locale, type Localized } from "~~/i18n/locales";
 import { POST_SLUGS } from "~~/i18n/postSlugs";
@@ -9,7 +8,7 @@ import { SITE_URL, absoluteUrl } from "~~/utils/seo";
 // The sitemap: canonical, indexable, server-rendered 200 URLs only, in every language; utils/sitemap.test.ts checks
 // every path against its route file. Left out: /admin, /debug, /blockexplorer and /api; placeholder posts (and a
 // language's /blog while it lists none); any client-rendered page. The dashboards are listed because their pages are
-// server shells around the wallet island; the Morpho one only while Morpho is enabled (a 404 otherwise).
+// server shells around the wallet island; the Morpho one included.
 //
 // app/sitemap.xml/route.ts serves it with renderSitemapXml rather than through Next's sitemap file convention, whose
 // serializer writes the hreflang links before <lastmod>: the sitemap schema wants loc, lastmod, changefreq and
@@ -102,10 +101,10 @@ export const sitemapEntries = (): SitemapEntry[] => {
   return [
     ...staticRoute("home", HOME, PAGE_UPDATED.home),
     ...staticRoute("dashboard", DASHBOARD, PAGE_UPDATED.dashboard),
-    ...(isMorphoEnabled() ? staticRoute("morpho", DASHBOARD, PAGE_UPDATED.morpho) : []),
+    ...staticRoute("morpho", DASHBOARD, PAGE_UPDATED.morpho),
     ...entries(blogPaths, BLOG_INDEX, locale => blogDates[locale]),
     ...posts,
-    ...staticRoute("privacy", PRIVACY, privacyUpdated()),
+    ...staticRoute("privacy", PRIVACY, PAGE_UPDATED.privacy),
   ];
 };
 

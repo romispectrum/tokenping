@@ -1,4 +1,3 @@
-import { isMorphoEnabled } from "~~/config/morpho";
 import AaveAlertsDoNotDisturb, { meta as aaveAlertsDoNotDisturb } from "~~/content/blog/aave-alerts-do-not-disturb.mdx";
 import AaveHealthFactorAlertSetup, {
   meta as aaveHealthFactorAlertSetup,
@@ -93,7 +92,7 @@ export const POSTS: readonly Post[] = [
   { meta: aaveInterestRates, Content: AaveInterestRates },
   { meta: aaveAlertsDoNotDisturb, Content: AaveAlertsDoNotDisturb },
   { meta: aaveMarketWindDown, Content: AaveMarketWindDown },
-  // The Morpho guides, their hub first: published only while Morpho is enabled (isAvailable).
+  // The Morpho guides, their hub first.
   { meta: morphoHealthFactor, Content: MorphoHealthFactor },
   { meta: howMorphoLiquidationWorks, Content: HowMorphoLiquidationWorks },
   { meta: morphoPreLiquidation, Content: MorphoPreLiquidation },
@@ -127,21 +126,12 @@ const POSTS_BY_LOCALE: Localized<readonly Post[]> = { en: POSTS, cs: CS_POSTS };
 /** Every post of a language, hub first. */
 export const getPosts = (locale: Locale = DEFAULT_LOCALE) => POSTS_BY_LOCALE[locale];
 
-/** A guide about Morpho (`protocol: "morpho"`) rather than Aave. */
-export const isMorphoPost = ({ meta }: Post) => meta.protocol === "morpho";
-
 /**
- * Whether a post exists on the site at all. A Morpho guide exists only while Morpho is enabled, so it goes live together
- * with /morpho, which it links to; otherwise its URL is a 404, like /morpho itself.
+ * False for a placeholder (`stub: true`). Placeholders still render at their URL, but with noindex, and stay out of
+ * /blog, the sitemap, the RSS feed and related-post links, so deploying before an article is written does not publish
+ * its placeholder.
  */
-export const isAvailable = (post: Post) => !isMorphoPost(post) || isMorphoEnabled();
-
-/**
- * False for a placeholder (`stub: true`) and for a post that is not available. Placeholders still render at their
- * URL, but with noindex, and stay out of /blog, the sitemap, the RSS feed and related-post links, so deploying before an
- * article is written does not publish its placeholder.
- */
-export const isPublished = (post: Post) => !post.meta.stub && isAvailable(post);
+export const isPublished = ({ meta }: Post) => !meta.stub;
 
 /** The posts of a language readers and crawlers can discover, hub first. */
 export const getPublishedPosts = (locale: Locale = DEFAULT_LOCALE): readonly Post[] =>
@@ -264,7 +254,6 @@ export const RELATED_SLUGS: Record<string, readonly string[]> = {
     "private-aave-liquidation-alerts",
   ],
   // The Morpho guides link to each other, their own hub first, and to the Aave guides that explain the shared ideas.
-  // No Aave guide lists them: they are a 404 while Morpho is off.
   "morpho-health-factor": [
     "how-morpho-liquidation-works",
     "morpho-pre-liquidation",

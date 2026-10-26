@@ -1,13 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Post, PostMeta } from "~~/content/blog/types";
 import { buildRssFeed } from "~~/utils/rss";
-import {
-  CS_MORPHO_POST_SLUGS,
-  CS_POST_SLUGS,
-  MORPHO_POST_SLUGS,
-  POST_SLUGS,
-  mockPostStubs,
-} from "~~/utils/testing/blogPosts";
+import { CS_POST_SLUGS, POST_SLUGS, mockPostStubs } from "~~/utils/testing/blogPosts";
 
 const post = (meta: Partial<PostMeta>): Post => ({
   meta: {
@@ -80,8 +74,7 @@ describe("GET /blog/feed.xml", () => {
     expect(dynamic).toBe("force-static");
     expect(response.headers.get("Content-Type")).toBe("application/rss+xml; charset=utf-8");
     const xml = await response.text();
-    // The Morpho guides wait for Morpho to be enabled.
-    expect(xml.match(/<item>/g)).toHaveLength(POST_SLUGS.length - MORPHO_POST_SLUGS.length - 1);
+    expect(xml.match(/<item>/g)).toHaveLength(POST_SLUGS.length - 1);
     expect(xml).toContain("<link>https://tokenping.xyz/blog/aave-health-factor</link>");
     expect(xml).not.toContain("safe-aave-health-factor");
   });
@@ -128,7 +121,7 @@ describe("GET /cz/blog/feed.xml", () => {
     expect(dynamic).toBe("force-static");
     expect(response.headers.get("Content-Type")).toBe("application/rss+xml; charset=utf-8");
     const xml = await response.text();
-    expect(xml.match(/<item>/g)).toHaveLength(CS_POST_SLUGS.length - CS_MORPHO_POST_SLUGS.length - 1);
+    expect(xml.match(/<item>/g)).toHaveLength(CS_POST_SLUGS.length - 1);
     expect(xml).toContain("<link>https://tokenping.xyz/cz/blog/aave-health-factor-vysvetleni</link>");
     expect(xml).not.toContain("bezpecny-health-factor-aave");
     expect(xml).not.toMatch(/tokenping\.xyz\/blog\//);

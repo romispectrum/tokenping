@@ -332,15 +332,12 @@ const headingIdsOf = (tree: MdNode) => headingsOf(tree).map(node => headingId(sq
 type PostIndex = {
   /** Every post's anchors by slug; null for a placeholder, whose headings do not exist yet. */
   headingIds: Map<string, Set<string> | null>;
-  /** The slugs of the Morpho guides, which exist only while Morpho is enabled. */
-  morpho: Set<string>;
 };
 
 const indexPosts = (posts: readonly LoadedPost[]): PostIndex => ({
   headingIds: new Map(
     posts.map(({ slug, tree, meta }) => [slug, meta?.stub ? null : new Set(tree ? headingIdsOf(tree) : [])]),
   ),
-  morpho: new Set(posts.filter(({ meta }) => meta?.protocol === "morpho").map(({ slug }) => slug)),
 });
 
 const POST_INDEX: Record<Locale, PostIndex> = {
@@ -521,24 +518,21 @@ const checkHeadings = (tree: MdNode) => {
   return problems;
 };
 
-/**
- * The pages a post may link to in its language (blog build spec, "MDX vocabulary"), besides its posts. A Morpho guide
- * may also link to /morpho: both exist only while Morpho is enabled.
- */
-const internalPaths = (locale: Locale, isMorpho = false) => [
+/** The pages a post may link to in its language (blog build spec, "MDX vocabulary"), besides its posts. */
+const internalPaths = (locale: Locale) => [
   routePath(locale, "home"),
   routePath(locale, "dashboard"),
-  ...(isMorpho ? [routePath(locale, "morpho")] : []),
+  routePath(locale, "morpho"),
   routePath(locale, "blog"),
   routePath(locale, "privacy"),
 ];
 
 const OTHER_LANGUAGE_PREFIX: Record<Locale, RegExp> = { en: /^\/cz(?:[/?#]|$)/, cs: /^\/(?!cz(?:[/?#]|$))/ };
 
-const checkLinks = (tree: MdNode, locale: Locale = "en", index: PostIndex = POST_INDEX[locale], isMorpho = false) => {
+const checkLinks = (tree: MdNode, locale: Locale = "en", index: PostIndex = POST_INDEX[locale]) => {
   const problems: string[] = [];
   const ownIds = new Set(headingIdsOf(tree));
-  const paths = internalPaths(locale, isMorpho);
+  const paths = internalPaths(locale);
   const blogPrefix = postPath(locale, "");
   const urls = collect(tree, node => node.type === "link" || node.type === "definition").map(node => node.url ?? "");
   for (const url of urls) {
@@ -561,10 +555,6 @@ const checkLinks = (tree: MdNode, locale: Locale = "en", index: PostIndex = POST
         if (anchors === undefined) {
           const hint = locale !== "en" && key ? `; the ${locale} slug is "${POST_SLUGS[key][locale]}"` : "";
           problems.push(`${url}: no post with the slug "${target}"${hint}`);
-        } else if (index.morpho.has(target) && !isMorpho) {
-          problems.push(
-            `${url}: a Morpho guide, which is a 404 while Morpho is off; only Morpho guides may link to it`,
-          );
         }
         // A placeholder's anchors do not exist yet; the link is checked again once the article replaces it.
         else if (hash !== undefined && anchors !== null && !anchors.has(hash))
@@ -685,7 +675,7 @@ for (const locale of LOCALES) {
         });
 
         it("links only to real posts, allowed pages and https sources, in its own language", () => {
-          expect(checkLinks(tree, locale, POST_INDEX[locale], meta.protocol === "morpho")).toEqual([]);
+          expect(checkLinks(tree, locale)).toEqual([]);
         });
 
         it(`ends with ## ${rules.sourcesHeading} (fetched dates) and the disclaimer line`, () => {
@@ -988,7 +978,7 @@ describe("article checks", () => {
     expect(checks.links).toEqual([
       '/blog/nope: no post with the slug "nope"',
       '/blog/safe-aave-health-factor#nope: no heading with the anchor "#nope" in safe-aave-health-factor',
-      "/admin: internal links may only point to /, /aave, /blog, /privacy or /blog/<slug>",
+      "/admin: internal links may only point to /, /aave, /morpho, /blog, /privacy or /blog/<slug>",
       "http://example.com: external links must be absolute https:// URLs",
       "https://tokenping.xyz/aave: link to tokenping.xyz pages with a relative path",
     ]);
@@ -1141,10 +1131,10 @@ describe("Czech article checks", () => {
     ]);
     expect(checkLinks(tree!, "cs")).toEqual([
       "/blog/safe-aave-health-factor: a page in the other language; link to /cz/blog/bezpecny-health-factor-aave (i18n/routes, i18n/postSlugs)",
-      "/aave: a page in the other language; link to /cz, /cz/aave, /cz/blog, /cz/ochrana-soukromi (i18n/routes, i18n/postSlugs)",
-      "/: a page in the other language; link to /cz, /cz/aave, /cz/blog, /cz/ochrana-soukromi (i18n/routes, i18n/postSlugs)",
+      "/aave: a page in the other language; link to /cz, /cz/aave, /cz/morpho, /cz/blog, /cz/ochrana-soukromi (i18n/routes, i18n/postSlugs)",
+      "/: a page in the other language; link to /cz, /cz/aave, /cz/morpho, /cz/blog, /cz/ochrana-soukromi (i18n/routes, i18n/postSlugs)",
       '/cz/blog/safe-aave-health-factor: no post with the slug "safe-aave-health-factor"; the cs slug is "bezpecny-health-factor-aave"',
-      "/cz/admin: internal links may only point to /cz, /cz/aave, /cz/blog, /cz/ochrana-soukromi or /cz/blog/<slug>",
+      "/cz/admin: internal links may only point to /cz, /cz/aave, /cz/morpho, /cz/blog, /cz/ochrana-soukromi or /cz/blog/<slug>",
       '/cz/blog/bezpecny-health-factor-aave#nope: no heading with the anchor "#nope" in bezpecny-health-factor-aave',
     ]);
     expect(checkEnding(tree!, "cs")).toEqual(['the last H2 must be "## Zdroje"']);
@@ -1164,7 +1154,7 @@ describe("Czech article checks", () => {
     const { tree } = await parsePost(GOOD_ARTICLE.replace("(/aave)", "(/cz/aave)"), "aave-health-factor");
 
     expect(checkLinks(tree!)).toEqual([
-      "/cz/aave: a page in the other language; link to /, /aave, /blog, /privacy (i18n/routes, i18n/postSlugs)",
+      "/cz/aave: a page in the other language; link to /, /aave, /morpho, /blog, /privacy (i18n/routes, i18n/postSlugs)",
     ]);
   });
 

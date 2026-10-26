@@ -1,6 +1,6 @@
 import { readdirSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST_SLUGS } from "~~/i18n/postSlugs";
 import { mockPostStubs } from "~~/utils/testing/blogPosts";
 
@@ -22,7 +22,7 @@ const AAVE_SLUGS = [
   "aave-market-wind-down",
 ];
 
-// The Morpho guides, their own hub first: published only while Morpho is enabled.
+// The Morpho guides, their own hub first.
 const MORPHO_SLUGS = [
   "morpho-health-factor",
   "how-morpho-liquidation-works",
@@ -31,7 +31,6 @@ const MORPHO_SLUGS = [
 ];
 
 const EXPECTED_SLUGS = [...AAVE_SLUGS, ...MORPHO_SLUGS];
-const enableMorpho = () => vi.stubEnv("NEXT_PUBLIC_MORPHO_ENABLED", "true");
 
 const CS_SLUGS = EXPECTED_SLUGS.map(slug => POST_SLUGS[slug].cs);
 
@@ -47,10 +46,6 @@ const loadBlog = (stubSlugs: readonly string[] = [], csStubSlugs: readonly strin
 
 beforeEach(() => {
   vi.resetModules();
-});
-
-afterEach(() => {
-  vi.unstubAllEnvs();
 });
 
 describe("POSTS", () => {
@@ -84,30 +79,12 @@ describe("PUBLISHED_POSTS", () => {
     ]);
 
     expect(PUBLISHED_POSTS.map(({ meta }) => meta.slug)).toEqual(
-      AAVE_SLUGS.filter(slug => slug !== "safe-aave-health-factor" && slug !== "aave-liquidation-price"),
+      EXPECTED_SLUGS.filter(slug => slug !== "safe-aave-health-factor" && slug !== "aave-liquidation-price"),
     );
     expect(POSTS.filter(post => !isPublished(post)).map(({ meta }) => meta.slug)).toEqual([
       "safe-aave-health-factor",
       "aave-liquidation-price",
-      ...MORPHO_SLUGS,
     ]);
-  });
-
-  it("publishes the Morpho guides, in either language, only while Morpho is enabled", async () => {
-    const { getPublishedPosts, isAvailable, getPostByKey } = await loadBlog();
-    const morphoIn = (locale: "en" | "cs") =>
-      getPublishedPosts(locale)
-        .map(({ meta }) => meta.slug)
-        .filter(slug => MORPHO_SLUGS.some(key => POST_SLUGS[key][locale] === slug));
-
-    expect(morphoIn("en")).toEqual([]);
-    expect(morphoIn("cs")).toEqual([]);
-    expect(isAvailable(getPostByKey("morpho-health-factor")!)).toBe(false);
-
-    enableMorpho();
-    expect(morphoIn("en")).toEqual(MORPHO_SLUGS);
-    expect(morphoIn("cs")).toEqual(MORPHO_SLUGS.map(key => POST_SLUGS[key].cs));
-    expect(isAvailable(getPostByKey("morpho-health-factor")!)).toBe(true);
   });
 
   it("is empty while every post is a placeholder", async () => {
@@ -129,7 +106,6 @@ describe("getPost", () => {
 
 describe("getRelatedPosts", () => {
   it.each(EXPECTED_SLUGS)("gives %s two or three other existing posts", async slug => {
-    enableMorpho();
     const { RELATED_POST_COUNT, getRelatedPosts } = await loadBlog();
     const related = getRelatedPosts(slug).map(({ meta }) => meta.slug);
 
@@ -140,23 +116,12 @@ describe("getRelatedPosts", () => {
   });
 
   it("links every spoke back to its hub: the Aave guides to Aave's, the Morpho guides to Morpho's", async () => {
-    enableMorpho();
     const { HUB_SLUG, MORPHO_HUB_SLUG, getRelatedPosts } = await loadBlog();
     for (const slug of EXPECTED_SLUGS.filter(slug => slug !== HUB_SLUG && slug !== MORPHO_HUB_SLUG)) {
       expect(
         getRelatedPosts(slug).map(({ meta }) => meta.slug),
         slug,
       ).toContain(MORPHO_SLUGS.includes(slug) ? MORPHO_HUB_SLUG : HUB_SLUG);
-    }
-  });
-
-  it("never lists a Morpho guide under an Aave guide, since it is a 404 while Morpho is off", async () => {
-    const { RELATED_SLUGS } = await loadBlog();
-    for (const slug of AAVE_SLUGS) {
-      expect(
-        RELATED_SLUGS[slug].filter(other => MORPHO_SLUGS.includes(other)),
-        slug,
-      ).toEqual([]);
     }
   });
 
@@ -240,7 +205,7 @@ describe("Czech posts", () => {
     const { getPublishedPosts } = await loadBlog(["aave-health-factor"], ["likvidacni-cena-aave"]);
 
     expect(getPublishedPosts("cs").map(({ meta }) => meta.slug)).toEqual(
-      AAVE_SLUGS.map(slug => POST_SLUGS[slug].cs).filter(slug => slug !== "likvidacni-cena-aave"),
+      CS_SLUGS.filter(slug => slug !== "likvidacni-cena-aave"),
     );
     expect(getPublishedPosts("en").map(({ meta }) => meta.slug)).not.toContain("aave-health-factor");
     expect(getPublishedPosts("cs").map(({ meta }) => meta.slug)).toContain("aave-health-factor-vysvetleni");
@@ -255,7 +220,6 @@ describe("Czech posts", () => {
   });
 
   it.each(CS_SLUGS)("gives %s two or three related Czech posts, the hub among them for a spoke", async slug => {
-    enableMorpho();
     const { RELATED_POST_COUNT, getRelatedPosts, hubSlug } = await loadBlog();
     const related = getRelatedPosts(slug, "cs").map(({ meta }) => meta.slug);
     const hub = MORPHO_SLUGS.some(key => POST_SLUGS[key].cs === slug)
