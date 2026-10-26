@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { NETWORK_ICONS } from "~~/config/networkIcons.generated";
+import { SUPPORTED_NETWORKS } from "~~/config/networks";
 import type { AlertPlan } from "~~/services/marketing/alertPlan";
 import { buildAlertEmail, buildAlertText } from "~~/services/notifications/runNotificationCheck";
 import { mockPostStubs } from "~~/utils/testing/blogPosts";
@@ -13,9 +15,9 @@ vi.mock("~~/services/marketing/alertPlan", () => ({ getAlertPlan: mocks.getAlert
 
 const PLAN: AlertPlan = { priceLabel: "3 USDC", days: 30 };
 
-const HOME_BLOG_SLUGS = ["aave-health-factor", "aave-health-factor-alert-setup", "safe-aave-health-factor"];
+const HOME_BLOG_SLUGS = ["aave-health-factor", "morpho-health-factor", "aave-health-factor-alert-setup"];
 
-// The Aave V3 networks in dashboard order, then Arc, which only has Aave V4.
+// The Aave V3 networks in dashboard order, then Arc, which only has Aave V4, then the networks only Morpho adds.
 const NETWORKS = [
   "Ethereum",
   "Polygon",
@@ -39,17 +41,30 @@ const NETWORKS = [
   "X Layer",
   "Monad",
   "Arc",
+  "Unichain",
+  "World Chain",
+  "HyperEVM",
+  "Katana",
+  "Robinhood Chain",
+  "Stable",
+  "Tempo",
 ];
+
+const HEADLINE = "Aave and Morpho health factor alerts on Signal and email";
+
+/** Whether a network has a logo yet (yarn next:network-icons); one without shows its initial instead. */
+const hasLogo = (name: string) =>
+  Boolean(NETWORK_ICONS[SUPPORTED_NETWORKS.find(network => network.name === name)!.chain.id]);
 
 const SECTION_HEADINGS = [
   "Health factors fall while you sleep",
   "How it works",
-  "Every Aave market, one alert each",
+  "Every Aave market and every listed Morpho market",
   "Pricing",
   "Questions to ask before you connect a wallet",
   "Limits, stated plainly",
   "From the blog",
-  "Set up your Aave health factor alert",
+  "Set up your Aave or Morpho health factor alert",
 ];
 
 const loadHome = () => import("~~/app/(en)/page");
@@ -115,9 +130,10 @@ describe("route config and metadata", () => {
   it("owns the product query with an absolute title, a self canonical and the plan's description", async () => {
     const { metadata } = await loadHome();
 
-    expect(metadata.title).toEqual({ absolute: "Aave health factor alerts on Signal and email | Tokenping" });
+    // The headline is too long for the " | Tokenping" suffix, so it is the whole title.
+    expect(metadata.title).toEqual({ absolute: HEADLINE });
     expect(metadata.description).toBe(
-      "Signal or email alerts when your Aave V3 or V4 health factor drops below your threshold on 22 networks. Checked every 5 minutes. No approvals on Aave.",
+      "Signal or email alerts when your Aave or Morpho health factor drops below your threshold, on 29 networks. Checked every 5 minutes.",
     );
     expect(metadata.alternates?.canonical).toBe("/");
     expect(metadata.openGraph).toMatchObject({ url: "/", type: "website" });
@@ -127,7 +143,8 @@ describe("route config and metadata", () => {
     vi.stubEnv("NEXT_PUBLIC_TELEGRAM_BOT_USERNAME", "tokenping_bot");
     const { metadata } = await loadHome();
 
-    expect(metadata.title).toEqual({ absolute: "Aave health factor alerts on Signal, Telegram and email" });
+    // Naming Telegram too passes 60 characters: the title drops the channels and keeps the brand.
+    expect(metadata.title).toEqual({ absolute: "Aave and Morpho health factor alerts | Tokenping" });
     expect(String(metadata.description)).toContain("Signal, Telegram or email alerts");
     expect(String(metadata.description).length).toBeLessThanOrEqual(155);
   });
@@ -137,9 +154,7 @@ describe("hero", () => {
   it("has one h1: headline A, naming the live channels", async () => {
     await renderHome();
 
-    expect(screen.getAllByRole("heading", { level: 1 }).map(heading => heading.textContent)).toEqual([
-      "Aave health factor alerts on Signal and email",
-    ]);
+    expect(screen.getAllByRole("heading", { level: 1 }).map(heading => heading.textContent)).toEqual([HEADLINE]);
   });
 
   it("names Telegram in the headline and the badges only once the bot is configured", async () => {
@@ -151,12 +166,12 @@ describe("hero", () => {
     await renderHome();
 
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
-      "Aave health factor alerts on Signal, Telegram and email",
+      "Aave and Morpho health factor alerts on Signal, Telegram and email",
     );
     expect(screen.getByText("Telegram", { selector: ".badge" })).toBeTruthy();
   });
 
-  it("shows the 22 network logos, each named once for assistive technology and on hover, and the coverage line", async () => {
+  it("shows the 29 network logos, each named once for assistive technology and on hover, and the coverage line", async () => {
     await renderHome();
     const strip = screen.getByRole("list", { name: "Networks" });
     const items = within(strip).getAllByRole("listitem");
@@ -164,16 +179,16 @@ describe("hero", () => {
     const logos = items.map(item => within(item).getByRole("img"));
 
     // The names are in the coverage section: here each logo is the name, read out or shown on hover only, and no
-    // hidden text or title on the item repeats it.
-    expect(logos.map(logo => logo.getAttribute("alt"))).toEqual(NETWORKS);
+    // hidden text or title on the item repeats it. A network without a logo shows its initial, named the same way.
+    expect(logos.map(logo => logo.getAttribute("alt") ?? logo.getAttribute("aria-label"))).toEqual(NETWORKS);
     expect(logos.map(logo => logo.getAttribute("title"))).toEqual(NETWORKS);
-    items.forEach(item => {
-      expect(item.textContent).toBe("");
+    items.forEach((item, index) => {
+      expect(item.textContent).toBe(hasLogo(NETWORKS[index]) ? "" : NETWORKS[index][0]);
       expect(item.hasAttribute("title")).toBe(false);
     });
     // The logos are served by this site.
     expect(logos[0].getAttribute("src")).toBe("/network-icons/ethereum.webp");
-    expect(screen.getByText("22 networks, 44 markets")).toBeTruthy();
+    expect(screen.getByText("29 networks")).toBeTruthy();
   });
 
   it("gives every image on the page an alt, so none is left empty", async () => {
@@ -193,11 +208,13 @@ describe("hero", () => {
     expect(container.querySelector(".badge img")).toBeNull();
   });
 
-  it("repeats one primary action that says what happens, in the hero and at the end", async () => {
+  it("repeats one primary action that says what happens, in the hero and at the end, with the Morpho dashboard beside it", async () => {
     await renderHome();
-    const ctas = screen.getAllByRole("link", { name: "Open the dashboard" });
+    const ctas = screen.getAllByRole("link", { name: "Open the Aave dashboard" });
+    const morpho = screen.getAllByRole("link", { name: "Open the Morpho dashboard" });
 
     expect(ctas.map(link => link.getAttribute("href"))).toEqual(["/aave", "/aave"]);
+    expect(morpho.map(link => link.getAttribute("href"))).toEqual(["/morpho", "/morpho"]);
     expect(screen.getAllByText("Connect a wallet, see every position. Alerts cost 3 USDC per 30 days.")).toHaveLength(
       2,
     );
@@ -221,13 +238,13 @@ describe("page outline", () => {
     expect(screen.getAllByRole("heading", { level: 2 }).map(heading => heading.textContent)).toEqual(SECTION_HEADINGS);
   });
 
-  // Each section says one thing next to its visual; the guides carry the detail. Measured at 1132 words after the
-  // copy cut (questions 302, blog cards 156, coverage 153, hero 136, problem 134, steps and scale 102, limits 59,
-  // pricing 54, closing 36): the ceiling keeps it from growing back, and drops once the copy is cut further.
-  it("stays under 1150 words", async () => {
+  // Each section says one thing next to its visual; the guides carry the detail. Measured at 1226 words once Morpho
+  // joined Aave (questions 359, coverage 204 with 29 tiles, blog cards 145, problem 137, hero 121, steps and scale
+  // 106, limits 59, pricing 54, closing 41): the ceiling keeps it from growing back, and drops once the copy is cut.
+  it("stays under 1250 words", async () => {
     const { container } = await renderHome();
 
-    expect(wordCount(container)).toBeLessThan(1150);
+    expect(wordCount(container)).toBeLessThan(1250);
   });
 });
 
@@ -284,7 +301,7 @@ describe("product evidence and the problem", () => {
     ).toEqual([
       "Prices dropETH falls and your collateral is worth less.",
       "Interest accruesYour debt grows every second.",
-      "Thresholds changeGovernance can trim a liquidation threshold.",
+      "Thresholds changeOn Aave, governance can trim a liquidation threshold.",
     ]);
     expect(within(problem).queryByRole("heading", { level: 3 })).toBeNull();
     expect(within(problem).getByRole("link", { name: "how a liquidation works" }).getAttribute("href")).toBe(
@@ -344,33 +361,37 @@ describe("how it works", () => {
 describe("coverage", () => {
   it("shows every network as a tile with what is read there, under a dated lead", async () => {
     await renderHome();
-    const coverage = section("Every Aave market, one alert each");
+    const coverage = section("Every Aave market and every listed Morpho market");
     const tiles = within(coverage).getAllByRole("listitem");
 
     expect(
       within(coverage).getByText(
-        "24 Aave V3 markets on 21 networks and 20 Aave V4 Spokes on 4 networks, as of 16 October 2026.",
+        "24 Aave V3 markets on 21 networks and 20 Aave V4 Spokes on 4 networks, as of 16 October 2026, plus every listed Morpho market on 14 networks.",
       ),
     ).toBeTruthy();
     expect(tiles).toHaveLength(NETWORKS.length);
     NETWORKS.forEach((name, index) => expect(within(tiles[index]).getByText(name)).toBeTruthy());
-    tiles.forEach(tile => {
-      expect(tile.querySelector("img")?.getAttribute("src")).toMatch(/^\/network-icons\/.+\.webp$/);
-      // The written name is read, the logo beside it is not.
+    tiles.forEach((tile, index) => {
+      if (hasLogo(NETWORKS[index]))
+        expect(tile.querySelector("img")?.getAttribute("src")).toMatch(/^\/network-icons\/.+\.webp$/);
+      // The written name is read, the logo (or the initial) beside it is not.
       expect(within(tile).queryByRole("img")).toBeNull();
     });
-    expect(within(tiles[0]).getByText("4 V3 markets · 13 V4 Spokes")).toBeTruthy();
-    expect(within(tiles[1]).getByText("1 V3 market")).toBeTruthy();
-    expect(within(tiles[4]).getByText("1 V3 market · 1 V4 Spoke")).toBeTruthy();
-    expect(within(tiles[21]).getByText("3 V4 Spokes")).toBeTruthy();
+    expect(within(tiles[0]).getByText("4 V3 markets · 13 V4 Spokes · Morpho")).toBeTruthy();
+    expect(within(tiles[1]).getByText("1 V3 market · Morpho")).toBeTruthy();
+    expect(within(tiles[4]).getByText("1 V3 market · 1 V4 Spoke · Morpho")).toBeTruthy();
+    expect(within(tiles[6]).getByText("1 V3 market")).toBeTruthy();
+    expect(within(tiles[21]).getByText("3 V4 Spokes · Morpho")).toBeTruthy();
+    // The networks only Morpho adds.
+    for (const tile of tiles.slice(22)) expect(within(tile).getByText("Morpho")).toBeTruthy();
   });
 
   it("names the wind-down markets and what is not covered in one line", async () => {
     await renderHome();
 
     expect(
-      within(section("Every Aave market, one alert each")).getByText(
-        "Scroll, ZKsync, Metis, Soneium and Sonic are being wound down by Aave governance and are still watched. Not covered: Aave V3 on Harmony, and other protocols.",
+      within(section("Every Aave market and every listed Morpho market")).getByText(
+        "Scroll, ZKsync, Metis, Soneium and Sonic are being wound down by Aave governance and are still watched. Not covered: Aave V3 on Harmony, unlisted Morpho markets and other protocols.",
       ),
     ).toBeTruthy();
   });
@@ -453,6 +474,7 @@ describe("objections", () => {
       "Can Tokenping touch my funds?",
       "What do you store?",
       "What does it cost?",
+      "Which Morpho loans are covered?",
       "What if an alert doesn't arrive?",
       "How do I stop the alerts?",
       "Can I watch a wallet I don't connect?",
@@ -530,13 +552,13 @@ describe("objections", () => {
     expect(
       screen.getByRole("heading", { name: "Other tools cost nothing. Why pay?" }).nextElementSibling!.textContent,
     ).toBe(
-      "If a Telegram bot or a mobile app suits you, use one. Tokenping is for alerts on Signal or email, in every Aave market.",
+      "If a Telegram bot or a mobile app suits you, use one. Tokenping is for alerts on Signal or email, in every Aave and listed Morpho market.",
     );
   });
 });
 
 describe("from the blog", () => {
-  it("links the hub, the alert how-to and the safe health factor guide, then the whole blog", async () => {
+  it("links the Aave hub, the Morpho hub and the alert how-to, then the whole blog", async () => {
     await renderHome();
     const blog = section("From the blog");
     const postLinks = within(blog)
@@ -544,9 +566,7 @@ describe("from the blog", () => {
       .map(heading => within(heading).getByRole("link").getAttribute("href"));
 
     expect(postLinks).toEqual(HOME_BLOG_SLUGS.map(slug => `/blog/${slug}`));
-    expect(
-      within(blog).getByRole("link", { name: "All Aave health factor and liquidation guides" }).getAttribute("href"),
-    ).toBe("/blog");
+    expect(within(blog).getByRole("link", { name: "All Aave and Morpho guides" }).getAttribute("href")).toBe("/blog");
   });
 
   it("is left out while none of its posts is published, and never links a placeholder", async () => {
@@ -596,14 +616,13 @@ describe("copy rules", () => {
 });
 
 describe("visual identity", () => {
-  it("pairs the hero's primary action with an inverse link to the steps", async () => {
-    const { container } = await renderHome();
-    const hero = screen.getByRole("region", { name: "Aave health factor alerts on Signal and email" });
-    const secondary = within(hero).getByRole("link", { name: "See how it works" });
+  it("pairs the hero's primary action with an inverse link to the Morpho dashboard", async () => {
+    await renderHome();
+    const hero = screen.getByRole("region", { name: HEADLINE });
+    const secondary = within(hero).getByRole("link", { name: "Open the Morpho dashboard" });
 
-    expect(secondary.getAttribute("href")).toBe("#how-it-works");
+    expect(secondary.getAttribute("href")).toBe("/morpho");
     expect(secondary.className).toContain("btn-neutral");
-    expect(container.querySelector("section#how-it-works")?.getAttribute("aria-labelledby")).toBe("how-it-works-title");
   });
 
   // One pink per view: the same primary action in the hero and in the closing band, screens apart.
@@ -611,19 +630,20 @@ describe("visual identity", () => {
     const { container } = await renderHome();
 
     expect([...container.querySelectorAll(".btn-primary")].map(link => link.textContent)).toEqual([
-      "Open the dashboard",
-      "Open the dashboard",
+      "Open the Aave dashboard",
+      "Open the Aave dashboard",
     ]);
     expect(screen.getByRole("link", { name: "Set up alerts: 3 USDC for 30 days" }).className).toContain("btn-neutral");
   });
 
   it("closes with an always-dark band around the second call to action", async () => {
     await renderHome();
-    const closing = section("Set up your Aave health factor alert");
+    const closing = section("Set up your Aave or Morpho health factor alert");
     const band = closing.querySelector(".dark")!;
 
     expect(band.className).toContain("bg-background");
-    expect(within(band as HTMLElement).getByRole("link", { name: "Open the dashboard" })).toBeTruthy();
+    expect(within(band as HTMLElement).getByRole("link", { name: "Open the Aave dashboard" })).toBeTruthy();
+    expect(within(band as HTMLElement).getByRole("link", { name: "Open the Morpho dashboard" })).toBeTruthy();
   });
 
   it("puts a brand divider only between two plain sections", async () => {
@@ -647,7 +667,7 @@ describe("visual identity", () => {
   it("washes only the hero and the questions section", async () => {
     const { container } = await renderHome();
     const isWashed = (element: Element) => /(from|via)-accent/.test(element.getAttribute("class") ?? "");
-    const hero = screen.getByRole("region", { name: "Aave health factor alerts on Signal and email" });
+    const hero = screen.getByRole("region", { name: HEADLINE });
     const heroWashes = [...hero.querySelectorAll(":scope > *")].filter(isWashed);
 
     expect([...container.querySelectorAll("section")].filter(isWashed).map(washed => washed.id)).toEqual(["questions"]);

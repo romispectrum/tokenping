@@ -34,14 +34,23 @@ const latestFirst = <T extends { meta: { publishedAt: string } }>(posts: readonl
     .map((post, index) => ({ post, index }))
     .sort((a, b) => b.post.meta.publishedAt.localeCompare(a.post.meta.publishedAt) || a.index - b.index)
     .map(({ post }) => post);
+
+/** The Aave hub, then the Morpho hub (both Start here cards), then every other guide latest first. */
+const indexOrder = <T extends { meta: { slug: string; publishedAt: string } }>(
+  posts: readonly T[],
+  morphoHub: string,
+) => {
+  const [hub, ...rest] = posts;
+  const hubs = rest.filter(({ meta }) => meta.slug === morphoHub);
+  return [hub, ...hubs, ...latestFirst(rest.filter(post => !hubs.includes(post)))];
+};
 describe("/cz/blog metadata", () => {
   it("has a Czech title, description and canonical within search-result lengths, with hreflang to /blog", async () => {
     const { metadata } = await loadIndex();
 
-    expect(metadata.title).toBe("Průvodci health factorem a likvidací na Aave");
+    expect(metadata.title).toEqual({ absolute: "Průvodci health factorem a likvidací na Aave a Morpho" });
     expect(metadata.alternates?.canonical).toBe("/cz/blog");
     expect(metadata.alternates?.languages).toMatchObject({ en: "/blog", cs: "/cz/blog" });
-    expect(`${metadata.title} | Tokenping`.length).toBeLessThanOrEqual(60);
     expect(String(metadata.description).length).toBeLessThanOrEqual(155);
     expect(metadata.openGraph).toMatchObject({ url: "/cz/blog", locale: "cs_CZ" });
     expect(metadata.robots).toBeUndefined();
@@ -60,10 +69,10 @@ describe("/cz/blog", () => {
     render(<BlogIndex />);
 
     expect(screen.getAllByRole("heading", { level: 1 }).map(heading => heading.textContent)).toEqual([
-      "Průvodci health factorem a likvidací na Aave",
+      "Průvodci health factorem a likvidací na Aave a Morpho",
     ]);
-    const [hub, ...rest] = blog.getPublishedPosts("cs");
-    const published = [hub, ...latestFirst(rest)].map(({ meta }) => `/cz/blog/${meta.slug}`);
+    const morphoHub = blog.getPostByKey(blog.MORPHO_HUB_SLUG, "cs")!.meta.slug;
+    const published = indexOrder(blog.getPublishedPosts("cs"), morphoHub).map(({ meta }) => `/cz/blog/${meta.slug}`);
     expect(postLinks()).toEqual(published);
     expect(postLinks()).not.toContain("/cz/blog/likvidacni-cena-aave");
     expect(postLinks()[0]).toBe(`/cz/blog/${blog.hubSlug("cs")}`);
@@ -111,8 +120,9 @@ describe("/cz/blog", () => {
     expect(screen.getByRole("link", { name: "Odebírat přes RSS" }).getAttribute("href")).toBe("/cz/blog/feed.xml");
     const pink = [...container.querySelectorAll(".btn-primary, .bg-primary")];
     expect(pink).toHaveLength(1);
-    expect(pink[0].textContent).toBe("Otevřít přehled");
+    expect(pink[0].textContent).toBe("Otevřít přehled Aave");
     expect(pink[0].getAttribute("href")).toBe("/cz/aave");
+    expect(screen.getByRole("link", { name: "Otevřít přehled Morpho" }).getAttribute("href")).toBe("/cz/morpho");
   });
 
   it("never describes the dashboard by what it does not cost", async () => {

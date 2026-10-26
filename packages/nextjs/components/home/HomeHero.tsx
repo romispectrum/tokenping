@@ -7,7 +7,6 @@ import { Badge } from "~~/components/ui/Badge";
 import { Glow } from "~~/components/ui/Glow";
 import { GrainCard } from "~~/components/ui/GrainCard";
 import { Kicker } from "~~/components/ui/Kicker";
-import { AAVE_CHAINS, AAVE_MARKETS, AAVE_V4_SPOKES } from "~~/config/aaveConfig";
 import { DEFAULT_HEALTH_FACTOR_THRESHOLD, NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import type { Locale } from "~~/i18n/locales";
 import { HOME_MESSAGES } from "~~/i18n/messages/home";
@@ -50,9 +49,7 @@ const NetworkLogoStrip = ({ locale }: { locale: Locale }) => {
           </li>
         ))}
       </ul>
-      <p className="m-0 text-sm font-medium text-foreground">
-        {t.heroCoverage({ networks: AAVE_CHAINS.length, markets: AAVE_MARKETS.length + AAVE_V4_SPOKES.length })}
-      </p>
+      <p className="m-0 text-sm font-medium text-foreground">{t.heroCoverage(getNetworkBadges().length)}</p>
     </div>
   );
 };
@@ -135,12 +132,7 @@ export const HomeHero = ({ locale, plan }: { locale: Locale; plan: AlertPlan | n
                     channels: formatAlertChannelsIn(locale, "disjunction"),
                   })}
                 </p>
-                <DashboardCta
-                  locale={locale}
-                  plan={plan}
-                  align="start"
-                  secondary={{ label: t.seeHowItWorks, sectionId: "how-it-works" }}
-                />
+                <DashboardCta locale={locale} plan={plan} align="start" />
               </div>
               <div className="flex flex-col items-center gap-6 lg:items-start">
                 <ExampleAlert locale={locale} />

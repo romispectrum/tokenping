@@ -20,8 +20,10 @@ const rich = (...parts: ReactNode[]) => createElement(Fragment, null, ...parts);
 
 type HomeMessages = {
   // Metadata, headline and JSON-LD (homeContent)
-  /** Headline A: "Aave health factor alerts on Signal and email" (channels joined with "and"). */
+  /** Headline A: "Aave and Morpho health factor alerts on Signal and email" (channels joined with "and"). */
   headline: (channels: string) => string;
+  /** The headline without the channels: the page title when the full headline would pass 60 characters. */
+  shortHeadline: string;
   /** The meta description; `short` is the fallback once the full one passes 155 characters. */
   description: (input: { channels: string; networks: number; minutes: number; short: boolean }) => string;
   /** A channel as a badge: "Email" / "E-mail". */
@@ -32,16 +34,16 @@ type HomeMessages = {
   // Hero
   kicker: string;
   heroLead: (input: { minutes: number; channels: string }) => string;
-  seeHowItWorks: string;
-  /** Names the logo strip for assistive tech; `heroCoverage` reads next to it: "22 networks, 44 markets". */
+  /** Names the logo strip for assistive tech; `heroCoverage` reads next to it: "29 networks". */
   networksLabel: string;
-  heroCoverage: (input: { networks: number; markets: number }) => string;
+  heroCoverage: (networks: number) => string;
   channelsLabel: string;
   exampleAlertLabel: string;
   exampleAlertCaption: (subject: string) => string;
 
-  // The primary action, in the hero and the closing band
+  // The primary action (the Aave dashboard) and the Morpho dashboard beside it, in the hero and the closing band
   dashboardCta: string;
+  morphoDashboardCta: string;
   /** Under the button: what it opens and what alerts cost (`alertPrice` is "3 USDC per 30 days" or the fallback). */
   dashboardCtaMicrocopy: (alertPrice: string) => string;
 
@@ -63,6 +65,8 @@ type HomeMessages = {
     minutes: number;
     channels: string;
     threshold: { min: number; max: number; default: number };
+    /** Morpho's lowest threshold, below Aave's. */
+    morphoMin: number;
   }) => { title: string; body: string }[];
   scaleTitle: string;
   scale: ThresholdScaleLabels;
@@ -71,7 +75,13 @@ type HomeMessages = {
 
   // Coverage
   coverageTitle: string;
-  coverageLead: (input: { v3Markets: number; v3Networks: number; spokes: number; v4Networks: number }) => string;
+  coverageLead: (input: {
+    v3Markets: number;
+    v3Networks: number;
+    spokes: number;
+    v4Networks: number;
+    morphoNetworks: number;
+  }) => string;
   coverage: CoverageGridLabels;
   /** The wind-down markets and what is left out. */
   coverageNote: string;
@@ -91,6 +101,8 @@ type HomeMessages = {
     paymentChain: string | undefined;
     hasTelegram: boolean;
     minutes: number;
+    /** Morpho's lowest threshold, below Aave's. */
+    morphoMin: number;
     links: {
       /** Undefined while the paywall is not verified anywhere (a local build). */
       sourcify?: LinkText;
@@ -101,6 +113,7 @@ type HomeMessages = {
       signalCommunity: LinkText;
       /** Undefined while the comparison post is not published in this language. */
       comparison?: LinkText;
+      morphoDashboard: LinkText;
     };
   }) => { question: string; answer: ReactNode }[];
 
@@ -151,27 +164,28 @@ const csOnChain = (chainName: string | undefined) => (chainName ? `na síti ${ch
 
 export const HOME_MESSAGES: Localized<HomeMessages> = {
   en: {
-    headline: channels => `Aave health factor alerts on ${channels}`,
+    headline: channels => `Aave and Morpho health factor alerts on ${channels}`,
+    shortHeadline: "Aave and Morpho health factor alerts",
     description: ({ channels, networks, minutes, short }) =>
       short
-        ? `${channels} alerts when your Aave V3 or V4 health factor is below your threshold, on ${networks} networks, every ${minutes} minutes. No approvals on Aave.`
-        : `${channels} alerts when your Aave V3 or V4 health factor drops below your threshold on ${networks} networks. Checked every ${minutes} minutes. No approvals on Aave.`,
+        ? `${channels} alerts when your Aave or Morpho health factor is below your threshold, on ${networks} networks, every ${minutes} minutes.`
+        : `${channels} alerts when your Aave or Morpho health factor drops below your threshold, on ${networks} networks. Checked every ${minutes} minutes.`,
     channelBadge: capitalize,
     pricingCta: plan => (plan ? `Set up alerts: ${plan.priceLabel} for ${enDays(plan.days)}` : "Set up alerts"),
     offerDescription: ({ days, currency }) =>
       `Health factor alerts for ${days} days, paid in ${currency} from your wallet. No auto-renew.`,
 
-    kicker: "Aave V3 and V4 health factor alerts",
+    kicker: "Aave V3 and V4, Morpho Blue and Midnight",
     heroLead: ({ minutes, channels }) =>
       `Checked every ${minutes} minutes. A message on ${channels} while you are below your line. Read-only, no approvals.`,
-    seeHowItWorks: "See how it works",
     networksLabel: "Networks",
-    heroCoverage: ({ networks, markets }) => `${networks} networks, ${markets} markets`,
+    heroCoverage: networks => `${networks} networks`,
     channelsLabel: "Alerts by:",
     exampleAlertLabel: "What an alert says",
     exampleAlertCaption: subject => `Example. Emails arrive with the subject "${subject}".`,
 
-    dashboardCta: "Open the dashboard",
+    dashboardCta: "Open the Aave dashboard",
+    morphoDashboardCta: "Open the Morpho dashboard",
     dashboardCtaMicrocopy: alertPrice => `Connect a wallet, see every position. Alerts cost ${alertPrice}.`,
 
     problemTitle: "Health factors fall while you sleep",
@@ -179,7 +193,7 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
     problemCauses: [
       { title: "Prices drop", body: "ETH falls and your collateral is worth less." },
       { title: "Interest accrues", body: "Your debt grows every second." },
-      { title: "Thresholds change", body: "Governance can trim a liquidation threshold." },
+      { title: "Thresholds change", body: "On Aave, governance can trim a liquidation threshold." },
     ],
     problemEvidence: ({ morning, failedRepays, polygon }) =>
       rich(
@@ -205,12 +219,12 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
     },
 
     howItWorksTitle: "How it works",
-    steps: ({ plan, paymentChain, minutes, channels, threshold }) => {
+    steps: ({ plan, paymentChain, minutes, channels, threshold, morphoMin }) => {
       const paidOn = paymentChain ? ` on ${paymentChain}` : "";
       return [
         {
           title: "Connect the wallet you borrow with",
-          body: "Read-only. Every market on one page.",
+          body: "Read-only. Aave and Morpho, one page each.",
         },
         {
           title: plan ? `Unlock alerts for ${plan.priceLabel}` : "Unlock alerts with a small USDC payment",
@@ -218,7 +232,7 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
         },
         {
           title: "Pick a line for each market",
-          body: `From ${threshold.min} to ${threshold.max}, default ${threshold.default}.`,
+          body: `From ${threshold.min} (${morphoMin} on Morpho) to ${threshold.max}, default ${threshold.default}.`,
         },
         {
           title: "Get a message while you're below it",
@@ -240,15 +254,16 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
     },
     scaleGuide: "How to choose a threshold",
 
-    coverageTitle: "Every Aave market, one alert each",
-    coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks }) =>
-      `${v3Markets} Aave V3 markets on ${v3Networks} networks and ${spokes} Aave V4 Spokes on ${v4Networks} networks, as of 16 October 2026.`,
+    coverageTitle: "Every Aave market and every listed Morpho market",
+    coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks, morphoNetworks }) =>
+      `${v3Markets} Aave V3 markets on ${v3Networks} networks and ${spokes} Aave V4 Spokes on ${v4Networks} networks, as of 16 October 2026, plus every listed Morpho market on ${morphoNetworks} networks.`,
     coverage: {
       v3Markets: count => (count === 1 ? "1 V3 market" : `${count} V3 markets`),
       v4Spokes: count => (count === 1 ? "1 V4 Spoke" : `${count} V4 Spokes`),
+      morpho: "Morpho",
     },
     coverageNote:
-      "Scroll, ZKsync, Metis, Soneium and Sonic are being wound down by Aave governance and are still watched. Not covered: Aave V3 on Harmony, and other protocols.",
+      "Scroll, ZKsync, Metis, Soneium and Sonic are being wound down by Aave governance and are still watched. Not covered: Aave V3 on Harmony, unlisted Morpho markets and other protocols.",
 
     pricingTitle: "Pricing",
     pricingRows: ({ alertPrice, paymentChain }) => [
@@ -265,13 +280,13 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
     pricingFootnote: "Looking at your positions needs no payment.",
 
     questionsTitle: "Questions to ask before you connect a wallet",
-    questions: ({ alertPrice, paymentChain, hasTelegram, minutes, links }) => {
+    questions: ({ alertPrice, paymentChain, hasTelegram, minutes, morphoMin, links }) => {
       const chainName = paymentChain ?? "the payment network";
       return [
         {
           question: "Can Tokenping touch my funds?",
           answer: rich(
-            "No. Tokenping only reads your positions and never asks for an approval or a signature on Aave. The only transactions are the payment on ",
+            "No. Tokenping only reads your positions and never asks for an approval or a signature on Aave or Morpho. The only transactions are the payment on ",
             chainName,
             ": an approval for exactly the price, then the payment. The contract",
             links.sourcify && rich(" ", "is ", links.sourcify("verified on Sourcify"), " and its"),
@@ -300,6 +315,14 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
             ", in USDC on ",
             chainName,
             ", plus a little ETH for gas. Looking at your positions needs no payment. No auto-renew, no refunds.",
+          ),
+        },
+        {
+          question: "Which Morpho loans are covered?",
+          answer: rich(
+            `Morpho Blue (variable rate) and Morpho Midnight (fixed rate) loans in markets the Morpho app lists, with thresholds from ${morphoMin}. A fixed-rate loan also gets reminders before it matures. The same plan covers them: open the `,
+            links.morphoDashboard("Morpho dashboard"),
+            ".",
           ),
         },
         {
@@ -335,7 +358,7 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
           answer: rich(
             "If a Telegram bot or a mobile app suits you, use one",
             links.comparison ? rich(": ", links.comparison("our comparison"), " covers them") : null,
-            ". Tokenping is for alerts on Signal or email, in every Aave market.",
+            ". Tokenping is for alerts on Signal or email, in every Aave and listed Morpho market.",
           ),
         },
       ];
@@ -352,37 +375,34 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
     ],
 
     blogTitle: "From the blog",
-    allGuides: "All Aave health factor and liquidation guides",
+    allGuides: "All Aave and Morpho guides",
 
-    closingTitle: "Set up your Aave health factor alert",
+    closingTitle: "Set up your Aave or Morpho health factor alert",
     closingLead: alertPrice => `${capitalize(alertPrice)}, paid from your wallet. No auto-renew.`,
   },
   cs: {
-    // The headline is also the page title: the Telegram variant (63 characters with "přes") takes a colon to stay ≤ 60.
-    headline: channels => {
-      const headline = `Upozornění na Aave health factor přes ${channels}`;
-      return headline.length <= 60 ? headline : `Upozornění na Aave health factor: ${channels}`;
-    },
+    headline: channels => `Upozornění na health factor na Aave a Morpho přes ${channels}`,
+    shortHeadline: "Upozornění na health factor na Aave a Morpho",
     description: ({ channels, networks, minutes, short }) =>
       short
-        ? `Upozornění přes ${channels}, když je health factor na Aave V3 či V4 pod prahem (${networks} sítí), kontrola ${csEveryMinutes(minutes)}. Bez schválení na Aave.`
-        : `Upozornění přes ${channels}, když health factor na Aave V3 či V4 klesne pod váš práh, na ${networks} sítích. Kontrola ${csEveryMinutes(minutes)}. Bez schválení na Aave.`,
+        ? `Upozornění přes ${channels}, když je health factor na Aave či Morpho pod prahem (${csNetworks(networks)}), kontrola ${csEveryMinutes(minutes)}.`
+        : `Upozornění přes ${channels}, když health factor na Aave či Morpho klesne pod váš práh, ${csOnNetworks(networks)}. Kontrola ${csEveryMinutes(minutes)}.`,
     channelBadge: capitalize,
     pricingCta: plan => (plan ? `Nastavit upozornění: ${csPrice(plan)}` : "Nastavit upozornění"),
     offerDescription: ({ days, currency }) =>
       `Upozornění na health factor ${csForDays(days)}, placená v ${currency} z vaší peněženky. Bez automatického obnovení.`,
 
-    kicker: "Upozornění na health factor v Aave V3 a V4",
+    kicker: "Aave V3 a V4, Morpho Blue a Midnight",
     heroLead: ({ minutes, channels }) =>
       `Kontrola ${csEveryMinutes(minutes)}. Zpráva přes ${channels}, dokud jste pod svou hranicí. Jen pro čtení, bez schválení.`,
-    seeHowItWorks: "Zjistit, jak to funguje",
     networksLabel: "Sítě",
-    heroCoverage: ({ networks, markets }) => `${csNetworks(networks)}, ${csMarkets(markets)}`,
+    heroCoverage: networks => csNetworks(networks),
     channelsLabel: "Upozornění přes:",
     exampleAlertLabel: "Co vám upozornění napíše",
     exampleAlertCaption: subject => `Ukázka. E-maily chodí s předmětem „${subject}“.`,
 
-    dashboardCta: "Otevřít přehled",
+    dashboardCta: "Otevřít přehled Aave",
+    morphoDashboardCta: "Otevřít přehled Morpho",
     dashboardCtaMicrocopy: alertPrice => `Připojte peněženku a uvidíte všechny pozice. Upozornění stojí ${alertPrice}.`,
 
     problemTitle: "Health factor klesá, i když spíte",
@@ -390,7 +410,7 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
     problemCauses: [
       { title: "Ceny klesají", body: "ETH spadne a váš kolaterál má nižší hodnotu." },
       { title: "Úrok přibývá", body: "Váš dluh roste každou vteřinu." },
-      { title: "Prahy se mění", body: "Governance může snížit likvidační práh." },
+      { title: "Prahy se mění", body: "Na Aave může governance snížit likvidační práh." },
     ],
     problemEvidence: ({ morning, failedRepays, polygon }) =>
       rich(
@@ -417,12 +437,12 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
     },
 
     howItWorksTitle: "Jak to funguje",
-    steps: ({ plan, paymentChain, minutes, channels, threshold }) => {
+    steps: ({ plan, paymentChain, minutes, channels, threshold, morphoMin }) => {
       const paidOn = paymentChain ? ` na síti ${paymentChain}` : "";
       return [
         {
           title: "Připojte peněženku, se kterou si půjčujete",
-          body: "Jen pro čtení. Všechny trhy na jedné stránce.",
+          body: "Jen pro čtení. Aave a Morpho, každý na své stránce.",
         },
         {
           title: plan
@@ -432,7 +452,7 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
         },
         {
           title: "Pro každý trh zvolte hranici",
-          body: `Od ${formatDecimal("cs", threshold.min)} do ${formatDecimal("cs", threshold.max)}, výchozí ${formatDecimal("cs", threshold.default)}.`,
+          body: `Od ${formatDecimal("cs", threshold.min)} (na Morpho od ${formatDecimal("cs", morphoMin)}) do ${formatDecimal("cs", threshold.max)}, výchozí ${formatDecimal("cs", threshold.default)}.`,
         },
         {
           title: "Dostávejte zprávy, dokud jste pod ní",
@@ -454,15 +474,16 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
     },
     scaleGuide: "Jak zvolit práh",
 
-    coverageTitle: "Všechny trhy Aave, každý s vlastním upozorněním",
-    coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks }) =>
-      `${csMarkets(v3Markets)} Aave V3 ${csOnNetworks(v3Networks)} a ${csMarkets(spokes)} (Spoke) Aave V4 ${csOnNetworks(v4Networks)}, ke 16. říjnu 2026.`,
+    coverageTitle: "Všechny trhy Aave a všechny uvedené trhy Morpho",
+    coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks, morphoNetworks }) =>
+      `${csMarkets(v3Markets)} Aave V3 ${csOnNetworks(v3Networks)} a ${csMarkets(spokes)} (Spoke) Aave V4 ${csOnNetworks(v4Networks)}, ke 16. říjnu 2026, a k tomu všechny uvedené trhy Morpho ${csOnNetworks(morphoNetworks)}.`,
     coverage: {
       v3Markets: count => `${csMarkets(count)} V3`,
       v4Spokes: count => `${csMarkets(count)} V4 (Spoke)`,
+      morpho: "Morpho",
     },
     coverageNote:
-      "Trhy na sítích Scroll, ZKsync, Metis, Soneium a Sonic governance Aave postupně ukončuje a dál je hlídáme. Nepokrýváme trh Aave V3 na síti Harmony ani jiné protokoly.",
+      "Trhy na sítích Scroll, ZKsync, Metis, Soneium a Sonic governance Aave postupně ukončuje a dál je hlídáme. Nepokrýváme trh Aave V3 na síti Harmony, neuvedené trhy Morpho ani jiné protokoly.",
 
     pricingTitle: "Ceník",
     pricingRows: ({ alertPrice, paymentChain }) => [
@@ -479,13 +500,13 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
     pricingFootnote: "Prohlížení pozic nevyžaduje žádnou platbu.",
 
     questionsTitle: "Na co se zeptat, než připojíte peněženku",
-    questions: ({ alertPrice, paymentChain, hasTelegram, minutes, links }) => {
+    questions: ({ alertPrice, paymentChain, hasTelegram, minutes, morphoMin, links }) => {
       const onChain = csOnChain(paymentChain);
       return [
         {
           question: "Může Tokenping sáhnout na mé prostředky?",
           answer: rich(
-            `Ne. Tokenping vaše pozice jen čte a na Aave nikdy nežádá o schválení ani o podpis. Jediné transakce jsou platba ${onChain}: schválení přesně této částky, pak platba. `,
+            `Ne. Tokenping vaše pozice jen čte a na Aave ani na Morpho nikdy nežádá o schválení ani o podpis. Jediné transakce jsou platba ${onChain}: schválení přesně této částky, pak platba. `,
             links.sourcify
               ? rich(
                   "Kontrakt je ",
@@ -511,6 +532,14 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
           question: "Kolik to stojí?",
           answer: rich(
             `Upozornění stojí ${alertPrice}, v USDC ${onChain}, plus trochu ETH na gas. Prohlížení pozic nevyžaduje žádnou platbu. Bez automatického obnovení, bez vracení peněz.`,
+          ),
+        },
+        {
+          question: "Které půjčky na Morpho pokrýváte?",
+          answer: rich(
+            `Půjčky na Morpho Blue (variabilní sazba) a Morpho Midnight (pevná sazba) na trzích, které uvádí aplikace Morpho, s prahem už od ${formatDecimal("cs", morphoMin)}. Půjčka s pevnou sazbou navíc dostane připomínky před splatností. Pokrývá je stejná platba: otevřete `,
+            links.morphoDashboard("přehled Morpho"),
+            ".",
           ),
         },
         {
@@ -544,7 +573,7 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
           answer: rich(
             "Pokud vám vyhovuje bot na Telegramu nebo mobilní aplikace, použijte je",
             links.comparison ? rich(": popisuje je naše ", links.comparison("srovnání")) : null,
-            ". Tokenping je pro upozornění přes Signal nebo e-mail, na každém trhu Aave.",
+            ". Tokenping je pro upozornění přes Signal nebo e-mail, na každém trhu Aave a uvedeném trhu Morpho.",
           ),
         },
       ];
@@ -561,9 +590,9 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
     ],
 
     blogTitle: "Z blogu",
-    allGuides: "Všichni průvodci health factorem a likvidací na Aave",
+    allGuides: "Všichni průvodci k Aave a Morpho",
 
-    closingTitle: "Nastavte si upozornění na health factor v Aave",
+    closingTitle: "Nastavte si upozornění na health factor na Aave nebo Morpho",
     closingLead: alertPrice => `${capitalize(alertPrice)}, platí se z vaší peněženky. Bez automatického obnovení.`,
   },
 };

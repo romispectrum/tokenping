@@ -28,10 +28,12 @@ import { GlowWash } from "~~/components/ui/Glow";
 import { buttonClasses } from "~~/components/ui/buttonClasses";
 import { cx } from "~~/components/ui/classNames";
 import { AAVE_MARKETS, AAVE_V3_NETWORKS, AAVE_V4_NETWORK_NAMES, AAVE_V4_SPOKES } from "~~/config/aaveConfig";
+import { MORPHO_CHAINS } from "~~/config/morpho";
 import {
   DEFAULT_HEALTH_FACTOR_THRESHOLD,
   HEALTH_FACTOR_THRESHOLD_MAX,
   HEALTH_FACTOR_THRESHOLD_MIN,
+  MORPHO_HEALTH_FACTOR_THRESHOLD_MIN,
   NOTIFICATION_CHECK_INTERVAL_MINUTES,
 } from "~~/constants/notifications";
 import type { Post } from "~~/content/blog/types";
@@ -135,6 +137,7 @@ export const HowItWorksSection = ({ plan, locale }: PlanProps) => {
     paymentChain: getPaymentChainName(),
     minutes: CHECK_MINUTES,
     channels: formatAlertChannelsIn(locale, "disjunction"),
+    morphoMin: MORPHO_HEALTH_FACTOR_THRESHOLD_MIN,
     threshold: {
       min: HEALTH_FACTOR_THRESHOLD_MIN,
       max: HEALTH_FACTOR_THRESHOLD_MAX,
@@ -201,6 +204,7 @@ export const CoverageSection = ({ locale }: LocaleProps) => {
         v3Networks: AAVE_V3_NETWORKS.length,
         spokes: AAVE_V4_SPOKES.length,
         v4Networks: AAVE_V4_NETWORK_NAMES.length,
+        morphoNetworks: MORPHO_CHAINS.length,
       })}
       width="wide"
     >

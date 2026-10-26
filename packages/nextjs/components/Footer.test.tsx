@@ -187,10 +187,10 @@ describe("Footer", () => {
     );
   });
 
-  it("says Tokenping is independent of Aave", () => {
+  it("says Tokenping is independent of Aave and Morpho", () => {
     render(<Footer />);
 
-    expect(screen.getByText("Independent tool, not affiliated with Aave Labs or the Aave DAO.")).toBeTruthy();
+    expect(screen.getByText("Independent tool, not affiliated with Aave Labs, the Aave DAO or Morpho.")).toBeTruthy();
   });
 
   it("no longer promises more protocols", () => {
@@ -240,14 +240,14 @@ describe("Footer in Czech", () => {
     }
   });
 
-  it("says what Tokenping is, that it is independent of Aave and what ETH costs, in Czech", () => {
+  it("says what Tokenping is, that it is independent of Aave and Morpho and what ETH costs, in Czech", () => {
     state.price = 1234.567;
     renderCzech();
 
     expect(
-      screen.getByText(/^Upozornění na Aave V3 a V4 health factor přes Signal(, Telegram)? a e-mail\.$/),
+      screen.getByText(/^Upozornění na health factor na Aave a Morpho přes Signal(, Telegram)? a e-mail\.$/),
     ).toBeTruthy();
-    expect(screen.getByText("Nezávislý nástroj, který není spojen s Aave Labs ani s Aave DAO.")).toBeTruthy();
+    expect(screen.getByText("Nezávislý nástroj, který není spojen s Aave Labs, Aave DAO ani s Morpho.")).toBeTruthy();
     expect(screen.getByText("Cena ETH: $1234.57")).toBeTruthy();
   });
 

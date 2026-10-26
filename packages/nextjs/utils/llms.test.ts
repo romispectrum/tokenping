@@ -17,7 +17,9 @@ const section = (heading: string) => {
 describe("llms.txt", () => {
   it("follows the llms.txt layout: H1, a summary quote, plain details, then H2 link lists ending with Optional", () => {
     expect(lines[0]).toBe("# Tokenping");
-    expect(lines[2]).toMatch(/^> Tokenping sends a message when an Aave V3 or V4 health factor drops/);
+    expect(lines[2]).toMatch(
+      /^> Tokenping sends a message when an Aave V3, Aave V4, Morpho Blue or Morpho Midnight health factor drops/,
+    );
     const headings = lines.filter(line => line.startsWith("#"));
     expect(headings).toEqual(["# Tokenping", "## Pages", "## Guides", "## Czech", "## Optional"]);
     // Everything under an H2 is a link list item: "- [name](url)" with optional ": notes".
@@ -29,12 +31,19 @@ describe("llms.txt", () => {
 
   it("states the product facts from the site's own constants", () => {
     expect(text).toMatch(/- Checks: every \d+ minutes/);
-    expect(text).toMatch(/threshold its owner chose \(1\.1 to 10\)/);
+    expect(text).toMatch(/threshold its owner chose \(1\.1 to 10 on Aave, 1\.02 to 10 on Morpho\)/);
     expect(text).toMatch(/every Aave V3 market \(\d+ markets on \d+ networks\) and every Aave V4 Spoke \(\d+\)/);
+    expect(text).toMatch(
+      /- Morpho coverage: every Morpho Blue \(variable-rate\) and Morpho Midnight \(fixed-rate\) market/,
+    );
+    expect(text).toContain("](https://tokenping.xyz/morpho): ");
+    expect(text).toContain(
+      "[Agent skill: Morpho health factor alerts](https://tokenping.xyz/.well-known/agent-skills/",
+    );
     expect(text).toContain(
       "Nothing renews automatically; each payment adds one plan period after the current end date.",
     );
-    expect(text).toContain("Independent tool, not affiliated with Aave Labs or the Aave DAO.");
+    expect(text).toContain("Independent tool, not affiliated with Aave Labs, the Aave DAO or Morpho.");
     // The price lives on chain and in the paywall: never written into a static file.
     expect(text).not.toMatch(/\d+(\.\d+)? USDC/);
   });

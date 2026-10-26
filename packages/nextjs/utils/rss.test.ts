@@ -28,7 +28,7 @@ describe("buildRssFeed", () => {
         "<channel>",
         "<title>Tokenping blog</title>",
         "<link>https://tokenping.xyz/blog</link>",
-        "<description>Guides to the Aave health factor, liquidation risk and alerts.</description>",
+        "<description>Guides to the Aave and Morpho health factor, liquidation risk and alerts.</description>",
         "<language>en</language>",
         "<lastBuildDate>Wed, 14 Oct 2026 00:00:00 GMT</lastBuildDate>",
         '<atom:link href="https://tokenping.xyz/blog/feed.xml" rel="self" type="application/rss+xml"/>',
@@ -95,7 +95,7 @@ describe("buildRssFeed in Czech", () => {
     expect(xml).toContain("<title>Tokenping blog (česky)</title>");
     expect(xml).toContain("<link>https://tokenping.xyz/cz/blog</link>");
     expect(xml).toContain(
-      "<description>Průvodci health factorem na Aave, rizikem likvidace a upozorněními.</description>",
+      "<description>Průvodci health factorem na Aave a Morpho, rizikem likvidace a upozorněními.</description>",
     );
     expect(xml).toContain("<language>cs</language>");
     expect(xml).toContain(

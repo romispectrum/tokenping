@@ -1,14 +1,18 @@
 import { NetworkIcon } from "~~/components/custom/aave/NetworkIcon";
 import { cx } from "~~/components/ui/classNames";
-import { AAVE_CHAINS, AAVE_MARKETS, AAVE_V4_SPOKES } from "~~/config/aaveConfig";
+import { AAVE_MARKETS, AAVE_V4_SPOKES } from "~~/config/aaveConfig";
+import { getMorphoChain } from "~~/config/morpho";
+import { SUPPORTED_NETWORKS } from "~~/config/networks";
 
-// Every network Tokenping reads, as a tile with its logo and what is read there, instead of a sentence of 22 names.
+// Every network Tokenping reads, as a tile with its logo and what is read there, instead of a sentence of 29 names.
 
 export type CoverageGridLabels = {
   /** "4 V3 markets", "1 V3 market". */
   v3Markets: (count: number) => string;
   /** "13 V4 Spokes", "1 V4 Spoke". */
   v4Spokes: (count: number) => string;
+  /** On a network with Morpho: "Morpho". */
+  morpho: string;
 };
 
 type CoverageGridProps = {
@@ -16,14 +20,19 @@ type CoverageGridProps = {
   className?: string;
 };
 
-/** The networks in AAVE_CHAINS order with their market counts; a network with one V3 market and no Spoke says so too. */
+/**
+ * The networks in SUPPORTED_NETWORKS order (Aave's, then Morpho's others) with what is read on each: the Aave market
+ * counts, and Morpho where Tokenping reads it.
+ */
 export const getCoverageTiles = (labels: CoverageGridLabels) =>
-  AAVE_CHAINS.map(({ chain, name }) => {
+  SUPPORTED_NETWORKS.map(({ chain, name }) => {
     const v3 = AAVE_MARKETS.filter(market => market.chain.id === chain.id).length;
     const v4 = AAVE_V4_SPOKES.filter(spoke => spoke.chain.id === chain.id).length;
-    const details = [v3 > 0 ? labels.v3Markets(v3) : null, v4 > 0 ? labels.v4Spokes(v4) : null].filter(
-      (detail): detail is string => detail !== null,
-    );
+    const details = [
+      v3 > 0 ? labels.v3Markets(v3) : null,
+      v4 > 0 ? labels.v4Spokes(v4) : null,
+      getMorphoChain(chain.id) ? labels.morpho : null,
+    ].filter((detail): detail is string => detail !== null);
     return { chainId: chain.id, name, detail: details.join(" · ") };
   });
 

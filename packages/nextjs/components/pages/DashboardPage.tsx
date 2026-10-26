@@ -1,14 +1,15 @@
 import Link from "next/link";
-import { BookOpen, ChevronDown } from "lucide-react";
+import { ArrowRight, BookOpen, ChevronDown } from "lucide-react";
 import { AaveDashboard } from "~~/components/dashboard/AaveDashboard";
 import { Container } from "~~/components/home/marketingLayout";
+import { PAGE_LINK_CLASS_NAME } from "~~/components/pages/pageLinks";
 import { AAVE_NETWORK_NAMES, AAVE_V3_NETWORKS, AAVE_V4_NETWORK_NAMES } from "~~/config/aaveConfig";
 import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import { getPostByKey, isPublished } from "~~/content/blog";
 import { joinList } from "~~/i18n/format";
 import type { Locale } from "~~/i18n/locales";
 import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
-import { postPath, routeAlternates } from "~~/i18n/routes";
+import { postPath, routeAlternates, routePath } from "~~/i18n/routes";
 import { formatAlertChannelsIn } from "~~/services/marketing/alertChannels";
 import { getPaymentChainName } from "~~/services/marketing/paymentChain";
 import { pageMetadata } from "~~/utils/seo";
@@ -77,21 +78,22 @@ export const DashboardPage = ({ locale }: { locale: Locale }) => {
               </div>
             </details>
           </div>
-          {guides.length > 0 && (
-            <ul className="m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0 text-sm">
-              {guides.map(({ slug, label }) => (
-                <li key={slug} className="m-0 p-0">
-                  <Link
-                    href={postPath(locale, slug)}
-                    className="inline-flex items-center gap-1.5 font-medium text-link underline underline-offset-3 hover:decoration-2 pointer-coarse:min-h-11"
-                  >
-                    <BookOpen aria-hidden="true" className="size-4 shrink-0" />
-                    {label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
+          <ul className="m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0 text-sm">
+            {guides.map(({ slug, label }) => (
+              <li key={slug} className="m-0 p-0">
+                <Link href={postPath(locale, slug)} className={PAGE_LINK_CLASS_NAME}>
+                  <BookOpen aria-hidden="true" className="size-4 shrink-0" />
+                  {label}
+                </Link>
+              </li>
+            ))}
+            <li className="m-0 p-0">
+              <Link href={routePath(locale, "morpho")} className={PAGE_LINK_CLASS_NAME}>
+                <ArrowRight aria-hidden="true" className="size-4 shrink-0" />
+                {page.morphoDashboard}
+              </Link>
+            </li>
+          </ul>
         </div>
       </header>
 

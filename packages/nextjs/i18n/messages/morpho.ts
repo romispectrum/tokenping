@@ -15,6 +15,11 @@ type MorphoMessages = {
     checks: (minutes: number) => string;
     access: string;
     notAffiliated: string;
+    guideHealthFactor: string;
+    guideLiquidation: string;
+    guideMidnight: string;
+    /** The link to the Aave dashboard, for a borrower who is on the wrong page. */
+    aaveDashboard: string;
   };
   positionsHeading: string;
   gate: GateMessages;
@@ -55,16 +60,20 @@ type MorphoMessages = {
 export const MORPHO_MESSAGES: Localized<MorphoMessages> = {
   en: {
     page: {
-      metaTitle: "Morpho positions and health factor alerts",
+      metaTitle: "Morpho health factor alerts for Blue and Midnight loans",
       metaDescription: (networkCount, channels) =>
-        `See your Morpho borrow positions on ${networkCount} networks and get a health factor alert by ${channels} before liquidation.`,
-      title: "Morpho positions",
+        `Health factor alerts for Morpho Blue and Midnight loans by ${channels}, on ${networkCount} networks, with reminders before a fixed-rate loan matures.`,
+      title: "Morpho Blue and Midnight positions and health factor alerts",
       intro: networks =>
         `Your borrow positions in the markets the Morpho app lists, on ${networks}: variable-rate loans (Morpho Blue) and fixed-rate loans (Morpho Midnight). Health factors are read from the chain.`,
       checks: minutes =>
         `Alerts are checked every ${minutes} minutes. A fixed-rate loan also gets a reminder 7 days and 1 day before it matures, and an alert at every check after maturity while debt remains.`,
       access: "One access payment covers your Aave and Morpho alerts.",
       notAffiliated: "Tokenping is not affiliated with Morpho.",
+      guideHealthFactor: "How the Morpho health factor works",
+      guideLiquidation: "How Morpho liquidation works",
+      guideMidnight: "Morpho Midnight fixed-rate loans",
+      aaveDashboard: "Borrowing on Aave? Open the Aave dashboard",
     },
     positionsHeading: "Your Morpho positions",
     gate: {
@@ -117,16 +126,20 @@ export const MORPHO_MESSAGES: Localized<MorphoMessages> = {
   },
   cs: {
     page: {
-      metaTitle: "Pozice na Morpho a upozornění na health factor",
+      metaTitle: "Upozornění na health factor na Morpho Blue a Midnight",
       metaDescription: (networkCount, channels) =>
-        `Prohlédněte si své vypůjčené pozice na Morpho na ${networkCount} sítích a dostaňte upozornění na health factor přes ${channels} dřív, než přijde likvidace.`,
-      title: "Pozice na Morpho",
+        `Upozornění na health factor na Morpho Blue a Midnight přes ${channels}, na ${networkCount} sítích, s připomínkou před splatností půjčky.`,
+      title: "Pozice a upozornění na health factor na Morpho Blue a Midnight",
       intro: networks =>
         `Vaše vypůjčené pozice v trzích, které uvádí aplikace Morpho, na sítích ${networks}: půjčky s variabilní sazbou (Morpho Blue) a s pevnou sazbou (Morpho Midnight). Health factor se čte přímo z blockchainu.`,
       checks: minutes =>
         `Upozornění kontrolujeme ${plural("cs", minutes, { one: "každou minutu", few: `každé ${minutes} minuty`, other: `každých ${minutes} minut` })}. Půjčka s pevnou sazbou navíc dostane připomínku 7 dní a 1 den před splatností a po splatnosti upozornění při každé kontrole, dokud na ní zbývá dluh.`,
       access: "Jedna platba za přístup pokrývá upozornění na Aave i na Morpho.",
       notAffiliated: "Tokenping není s Morpho nijak spojený.",
+      guideHealthFactor: "Jak funguje health factor na Morpho",
+      guideLiquidation: "Jak funguje likvidace na Morpho",
+      guideMidnight: "Půjčky s pevnou sazbou na Morpho Midnight",
+      aaveDashboard: "Půjčujete si na Aave? Otevřete přehled Aave",
     },
     positionsHeading: "Vaše pozice na Morpho",
     gate: {

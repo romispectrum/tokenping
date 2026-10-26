@@ -11,15 +11,17 @@ import { Kicker } from "~~/components/ui/Kicker";
 import { SectionHeader } from "~~/components/ui/SectionHeader";
 import { buttonClasses } from "~~/components/ui/buttonClasses";
 import { cx } from "~~/components/ui/classNames";
-import { getPublishedPosts, hubSlug, newestFirst } from "~~/content/blog";
+import { MORPHO_HUB_SLUG, getPostByKey, getPublishedPosts, hubSlug, isPublished, newestFirst } from "~~/content/blog";
 import { DEFAULT_LOCALE, type Locale } from "~~/i18n/locales";
 import { BLOG_MESSAGES } from "~~/i18n/messages/blog";
 import { routeAlternates, routePath } from "~~/i18n/routes";
-import { type Crumb, breadcrumbJsonLd, pageMetadata } from "~~/utils/seo";
+import { type Crumb, breadcrumbJsonLd, needsAbsoluteTitle, pageMetadata } from "~~/utils/seo";
 
 export const blogIndexMetadata = (locale: Locale) =>
   pageMetadata({
     title: BLOG_MESSAGES[locale].index.title,
+    // Naming both protocols leaves no room for the " | Tokenping" suffix within 60 characters.
+    absoluteTitle: needsAbsoluteTitle(BLOG_MESSAGES[locale].index.title),
     description: BLOG_MESSAGES[locale].index.description,
     locale,
     alternates: routeAlternates("blog"),
@@ -40,9 +42,13 @@ const HERO_ACTION_CLASS_NAME = "w-full sm:w-auto sm:min-w-40";
  */
 export const BlogIndexPage = ({ locale }: { locale: Locale }) => {
   const posts = getPublishedPosts(locale);
-  const hub = posts.find(({ meta }) => meta.slug === hubSlug(locale));
-  // The hub stays the Start here card; every other guide follows, the latest first.
-  const spokes = newestFirst(posts.filter(post => post !== hub));
+  const aaveHub = posts.find(({ meta }) => meta.slug === hubSlug(locale));
+  const morphoHub = getPostByKey(MORPHO_HUB_SLUG, locale);
+  // Each protocol's hub is a Start here card; every other guide follows, the latest first.
+  const hubs = [aaveHub, morphoHub && isPublished(morphoHub) ? morphoHub : undefined].filter(
+    (post): post is NonNullable<typeof post> => post !== undefined,
+  );
+  const spokes = newestFirst(posts.filter(post => !hubs.includes(post)));
   const CRUMBS = crumbs(locale);
   const t = BLOG_MESSAGES[locale].index;
 
@@ -72,6 +78,12 @@ export const BlogIndexPage = ({ locale }: { locale: Locale }) => {
                   >
                     {t.dashboardCta}
                   </Link>
+                  <Link
+                    href={routePath(locale, "morpho")}
+                    className={buttonClasses({ variant: "inverse", size: "lg", className: HERO_ACTION_CLASS_NAME })}
+                  >
+                    {t.morphoDashboardCta}
+                  </Link>
                   {/* A plain <a>: the feed is a route handler, not a page next/link could prefetch. */}
                   <a
                     href={routePath(locale, "blogFeed")}
@@ -88,14 +100,16 @@ export const BlogIndexPage = ({ locale }: { locale: Locale }) => {
       </section>
 
       <div className={cx(BLOG_CONTAINER_CLASS_NAME, "pb-12 md:pb-20")}>
-        {hub && (
-          <section aria-label={t.startHere}>
-            <PostSummary meta={hub.meta} locale={locale} featured />
+        {hubs.length > 0 && (
+          <section aria-label={t.startHere} className="grid gap-6 md:grid-cols-2">
+            {hubs.map(({ meta }) => (
+              <PostSummary key={meta.slug} meta={meta} locale={locale} featured />
+            ))}
           </section>
         )}
 
         {spokes.length > 0 && (
-          <section aria-labelledby="all-guides" className={cx(hub && "mt-12 md:mt-20")}>
+          <section aria-labelledby="all-guides" className={cx(hubs.length > 0 && "mt-12 md:mt-20")}>
             <SectionHeader id="all-guides" title={t.allGuides} align="start" />
             <ul role="list" className="m-0 grid list-none gap-6 p-0 md:grid-cols-2 lg:grid-cols-3">
               {spokes.map(({ meta }) => (

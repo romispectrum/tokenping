@@ -1,16 +1,17 @@
 # Tokenping
 
-Aave V3 and V4 health factor alerts by email, Signal and Telegram.
+Aave and Morpho health factor alerts by email, Signal and Telegram.
 
-Tokenping watches the Aave V3 and V4 health factor of the wallet you connect and sends you a message when it drops below a
-threshold you choose. Alerts are paid in USDC on Arbitrum One; looking at your positions needs no payment.
+Tokenping watches the health factor of the wallet you connect on Aave V3 and V4 and on Morpho Blue and Midnight, and sends
+you a message when it drops below a threshold you choose. Alerts are paid in USDC on Arbitrum One; looking at your
+positions needs no payment.
 
 - Website: https://tokenping.xyz
-- Blog (Aave health factor and liquidation guides): https://tokenping.xyz/blog
+- Blog (Aave and Morpho health factor and liquidation guides): https://tokenping.xyz/blog
 - X: https://x.com/tokenping
 - Telegram community: https://t.me/tokenping_xyz
 
-Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs or the Aave DAO.
+Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs, the Aave DAO or Morpho.
 
 ## What it does
 

@@ -29,7 +29,7 @@ export const TELEGRAM_REPLIES: Localized<TelegramReplies> = {
     unsubscribed: "Stopped. No more Tokenping alerts will arrive here. Send /start to receive them again.",
     unsubscribeFailed: "Something went wrong while stopping alerts. Please send /stop again.",
     help:
-      "Tokenping messages you when your Aave health factor drops below a threshold you set in the app.\n\n" +
+      "Tokenping messages you when your Aave or Morpho health factor drops below a threshold you set in the app.\n\n" +
       "Type your Telegram username into your alert on Tokenping, then send /start here once.\n\n" +
       "Commands:\n" +
       "/start: link this chat to your username\n" +
@@ -49,7 +49,7 @@ export const TELEGRAM_REPLIES: Localized<TelegramReplies> = {
     unsubscribed: "Zastaveno. Další upozornění od Tokenpingu sem nepřijdou. Příkazem /start je znovu zapnete.",
     unsubscribeFailed: "Při zastavování upozornění se něco pokazilo. Pošlete prosím /stop znovu.",
     help:
-      "Tokenping vám napíše, když váš health factor na Aave klesne pod práh, který si nastavíte v aplikaci.\n\n" +
+      "Tokenping vám napíše, když váš health factor na Aave nebo Morpho klesne pod práh, který si nastavíte v aplikaci.\n\n" +
       "Zadejte své uživatelské jméno na Telegramu do upozornění na Tokenpingu a potom sem jednou pošlete /start.\n\n" +
       "Příkazy:\n" +
       "/start: propojit tento chat s vaším uživatelským jménem\n" +

@@ -81,8 +81,8 @@ type DashboardCtaProps = {
   locale: Locale;
   /** The live plan, for the price in the line under the button; null reads as the priceless fallback. */
   plan: AlertPlan | null;
-  /** A quieter second action next to it (inverse, never pink) that jumps to a section of the same page. */
-  secondary?: { label: string; sectionId: string };
+  /** A quieter second action next to it (inverse, never pink): the Morpho dashboard by default. */
+  secondary?: { label: string; href: string };
   /** Centred by default; "start" lines it up with left-aligned text from lg (the split hero). */
   align?: "center" | "start";
 };
@@ -91,7 +91,12 @@ type DashboardCtaProps = {
  * The page's one primary action, used in the hero and again at the end: the same words, the same target, the
  * view's one pink element. Stacked full width (up to 384px) on phones, side by side from sm.
  */
-export const DashboardCta = ({ locale, plan, secondary, align = "center" }: DashboardCtaProps) => (
+export const DashboardCta = ({
+  locale,
+  plan,
+  secondary = { label: HOME_MESSAGES[locale].morphoDashboardCta, href: routePath(locale, "morpho") },
+  align = "center",
+}: DashboardCtaProps) => (
   <div className={cx("mt-8 flex flex-col items-center gap-3", align === "start" && "lg:items-start")}>
     <div
       className={cx(
@@ -106,16 +111,12 @@ export const DashboardCta = ({ locale, plan, secondary, align = "center" }: Dash
         {HOME_MESSAGES[locale].dashboardCta}
         <ArrowRight aria-hidden="true" />
       </Link>
-      {secondary ? (
-        // A plain fragment link, not next/link: the browser then moves the keyboard's starting point to the section,
-        // so the next Tab continues there instead of back in the hero.
-        <a
-          href={`#${secondary.sectionId}`}
-          className={buttonClasses({ variant: "inverse", size: "lg", className: "w-full sm:w-auto sm:min-w-40" })}
-        >
-          {secondary.label}
-        </a>
-      ) : null}
+      <Link
+        href={secondary.href}
+        className={buttonClasses({ variant: "inverse", size: "lg", className: "w-full sm:w-auto sm:min-w-40" })}
+      >
+        {secondary.label}
+      </Link>
     </div>
     {/* foreground, not muted: in the hero a glow can tint the card behind this line */}
     <p

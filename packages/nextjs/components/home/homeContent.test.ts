@@ -35,15 +35,16 @@ describe("joinList", () => {
 
 describe("home copy per channel set", () => {
   it.each([
+    // The brand goes first when the headline alone fits, then the channels.
     [
       false,
-      "Aave health factor alerts on Signal and email",
-      "Aave health factor alerts on Signal and email | Tokenping",
+      "Aave and Morpho health factor alerts on Signal and email",
+      "Aave and Morpho health factor alerts on Signal and email",
     ],
     [
       true,
-      "Aave health factor alerts on Signal, Telegram and email",
-      "Aave health factor alerts on Signal, Telegram and email",
+      "Aave and Morpho health factor alerts on Signal, Telegram and email",
+      "Aave and Morpho health factor alerts | Tokenping",
     ],
   ])("with Telegram %s: headline %j, title %j", (telegram, headline, title) => {
     withTelegram(telegram);
@@ -66,7 +67,7 @@ describe("home copy per channel set", () => {
     withTelegram(false);
 
     expect(getHomeDescription()).toBe(
-      "Signal or email alerts when your Aave V3 or V4 health factor drops below your threshold on 22 networks. Checked every 5 minutes. No approvals on Aave.",
+      "Signal or email alerts when your Aave or Morpho health factor drops below your threshold, on 29 networks. Checked every 5 minutes.",
     );
   });
 });
@@ -94,14 +95,17 @@ const V3_NETWORKS = [
   "Monad",
 ];
 
+// The networks only Morpho brings, after Aave's.
+const MORPHO_ONLY_NETWORKS = ["Unichain", "World Chain", "HyperEVM", "Katana", "Robinhood Chain", "Stable", "Tempo"];
+
 describe("getNetworkBadges", () => {
-  it("lists every network Tokenping reads with its chain id, V3 first, then Arc, which only has Aave V4", () => {
+  it("lists every network Tokenping reads with its chain id: Aave's (V3, then Arc's V4), then Morpho's others", () => {
     const badges = getNetworkBadges();
 
-    expect(badges.map(({ name }) => name)).toEqual(["Ethereum", ...V3_NETWORKS, "Arc"]);
-    expect(badges).toHaveLength(22);
+    expect(badges.map(({ name }) => name)).toEqual(["Ethereum", ...V3_NETWORKS, "Arc", ...MORPHO_ONLY_NETWORKS]);
+    expect(badges).toHaveLength(29);
     expect(badges[0]).toEqual({ chainId: 1, name: "Ethereum" });
-    expect(badges.at(-1)).toEqual({ chainId: 5042, name: "Arc" });
+    expect(badges.at(-1)).toEqual({ chainId: 4217, name: "Tempo" });
   });
 });
 
@@ -163,7 +167,8 @@ describe("Czech home copy", () => {
   it("names the channels the Czech way", () => {
     withTelegram(true);
 
-    expect(getHomeHeadline("cs")).toBe("Upozornění na Aave health factor: Signal, Telegram a e-mail");
+    expect(getHomeHeadline("cs")).toBe("Upozornění na health factor na Aave a Morpho přes Signal, Telegram a e-mail");
+    expect(getHomeTitle("cs")).toBe("Upozornění na health factor na Aave a Morpho | Tokenping");
   });
 
   it("labels the price with a decimal comma and Czech day forms", () => {

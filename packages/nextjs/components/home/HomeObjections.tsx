@@ -4,7 +4,7 @@ import { getPaywallSourcifyUrl, getPublishedPost } from "~~/components/home/home
 import { HOME_CARD_CLASS_NAME, HomeSection, externalLinkText } from "~~/components/home/homeUi";
 import { cx } from "~~/components/ui/classNames";
 import { SOCIAL_LINKS, SOURCE_CODE_URL } from "~~/constants/links";
-import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
+import { MORPHO_HEALTH_FACTOR_THRESHOLD_MIN, NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import type { Locale } from "~~/i18n/locales";
 import { HOME_MESSAGES } from "~~/i18n/messages/home";
 import { postPath, routePath } from "~~/i18n/routes";
@@ -33,6 +33,7 @@ export const HomeObjections = ({ plan, locale }: HomeObjectionsProps) => {
     paymentChain: getPaymentChainName(),
     hasTelegram: getAlertChannelNames().includes("Telegram"),
     minutes: NOTIFICATION_CHECK_INTERVAL_MINUTES,
+    morphoMin: MORPHO_HEALTH_FACTOR_THRESHOLD_MIN,
     links: {
       sourcify: sourcifyUrl ? externalLinkText(sourcifyUrl) : undefined,
       sourceCode: externalLinkText(SOURCE_CODE_URL),
@@ -41,6 +42,7 @@ export const HomeObjections = ({ plan, locale }: HomeObjectionsProps) => {
       telegramCommunity: externalLinkText(SOCIAL_LINKS.telegram),
       signalCommunity: externalLinkText(SOCIAL_LINKS.signal),
       comparison: comparison && (text => <Link href={postPath(locale, comparison.meta.slug)}>{text}</Link>),
+      morphoDashboard: text => <Link href={routePath(locale, "morpho")}>{text}</Link>,
     },
   });
 

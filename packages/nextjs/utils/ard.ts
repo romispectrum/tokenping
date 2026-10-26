@@ -1,7 +1,14 @@
 // The ARD manifest (Agentic Resource Discovery, https://agenticresourcediscovery.org): a list of the agent resources
-// the site publishes. Tokenping publishes one, the agent skill of utils/agentSkills.ts; it has no MCP server, A2A agent
-// or API to list, and an entry for something it does not run would only send agents to errors.
-import { AAVE_ALERTS_SKILL_DESCRIPTION, AAVE_ALERTS_SKILL_NAME, aaveAlertsSkillPath } from "~~/utils/agentSkills";
+// the site publishes. Tokenping publishes two, the agent skills of utils/agentSkills.ts (Aave and Morpho); it has no MCP
+// server, A2A agent or API to list, and an entry for something it does not run would only send agents to errors.
+import {
+  AAVE_ALERTS_SKILL_DESCRIPTION,
+  AAVE_ALERTS_SKILL_NAME,
+  MORPHO_ALERTS_SKILL_DESCRIPTION,
+  MORPHO_ALERTS_SKILL_NAME,
+  aaveAlertsSkillPath,
+  morphoAlertsSkillPath,
+} from "~~/utils/agentSkills";
 import { ORGANIZATION_ID, SITE_NAME, SITE_URL, absoluteUrl } from "~~/utils/seo";
 
 // The current spec reads /.well-known/ard.json; /.well-known/ai-catalog.json is its predecessor's path, which consumers
@@ -12,6 +19,13 @@ const SPEC_VERSION = "1.0";
 
 /** The agent skill media type of the ARD spec; the skill file itself is served as text/markdown. */
 const AGENT_SKILL_MEDIA_TYPE = "application/agent-skills+md";
+
+const MORPHO_REPRESENTATIVE_QUERIES = [
+  "how do I get an alert when my Morpho health factor drops",
+  "how does liquidation work on Morpho Blue",
+  "what happens when my Morpho Midnight loan matures",
+  "what health factor should I set an alert at on Morpho",
+];
 
 const REPRESENTATIVE_QUERIES = [
   "how do I get an alert when my Aave health factor drops",
@@ -32,6 +46,14 @@ export const buildArdManifest = () => ({
       type: AGENT_SKILL_MEDIA_TYPE,
       url: absoluteUrl(aaveAlertsSkillPath()),
       representativeQueries: REPRESENTATIVE_QUERIES,
+    },
+    {
+      identifier: `urn:air:${new URL(SITE_URL).hostname}:skill:${MORPHO_ALERTS_SKILL_NAME}`,
+      displayName: "Morpho health factor alerts",
+      description: MORPHO_ALERTS_SKILL_DESCRIPTION,
+      type: AGENT_SKILL_MEDIA_TYPE,
+      url: absoluteUrl(morphoAlertsSkillPath()),
+      representativeQueries: MORPHO_REPRESENTATIVE_QUERIES,
     },
   ],
 });

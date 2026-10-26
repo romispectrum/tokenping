@@ -1,5 +1,5 @@
 import { hardhat } from "viem/chains";
-import { AAVE_CHAINS, AAVE_NETWORK_NAMES } from "~~/config/aaveConfig";
+import { SUPPORTED_NETWORKS } from "~~/config/networks";
 import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import { PAYMENT_CHAIN_ID, PAYMENT_CONTRACT_ADDRESS } from "~~/constants/payments";
 import { getPostByKey, isPublished } from "~~/content/blog";
@@ -31,30 +31,32 @@ export const getHomeHeadline = (locale: Locale = DEFAULT_LOCALE) =>
   HOME_MESSAGES[locale].headline(formatAlertChannelsIn(locale, "conjunction"));
 
 /**
- * The headline as the page title, in sentence case like every title: "Aave health factor alerts on Signal and email |
- * Tokenping". The Telegram variant drops the brand to stay ≤ 60.
+ * The headline as the page title, in sentence case like every title, within 60 characters: with the brand when it fits,
+ * then without it, then the headline without the channels ("Aave and Morpho health factor alerts | Tokenping").
  */
 export const getHomeTitle = (locale: Locale = DEFAULT_LOCALE) => {
   const title = getHomeHeadline(locale);
-  return needsAbsoluteTitle(title) ? title : `${title} | ${SITE_NAME}`;
+  if (!needsAbsoluteTitle(title)) return `${title} | ${SITE_NAME}`;
+  if (title.length <= 60) return title;
+  return `${HOME_MESSAGES[locale].shortHeadline} | ${SITE_NAME}`;
 };
 
 /**
- * The meta description and SoftwareApplication description. "No approvals on Aave" rather than a bare "Read-only":
- * paying for alerts takes an approval and a payment on Arbitrum.
+ * The meta description and SoftwareApplication description, with every network Tokenping reads (Aave's and Morpho's).
+ * Never a bare "Read-only": paying for alerts takes an approval and a payment on Arbitrum.
  */
 export const getHomeDescription = (locale: Locale = DEFAULT_LOCALE) => {
   const input = {
     channels: formatAlertChannelsIn(locale, "disjunction"),
-    networks: AAVE_NETWORK_NAMES.length,
+    networks: SUPPORTED_NETWORKS.length,
     minutes: NOTIFICATION_CHECK_INTERVAL_MINUTES,
   };
   const full = HOME_MESSAGES[locale].description({ ...input, short: false });
   return full.length <= MAX_DESCRIPTION_LENGTH ? full : HOME_MESSAGES[locale].description({ ...input, short: true });
 };
 
-/** The hero's logo strip: every network with a market Tokenping reads, V3 or V4, with the chain id its logo is keyed by. */
-export const getNetworkBadges = () => AAVE_CHAINS.map(({ chain, name }) => ({ chainId: chain.id, name }));
+/** The hero's logo strip: every network Tokenping reads (Aave and Morpho), with the chain id its logo is keyed by. */
+export const getNetworkBadges = () => SUPPORTED_NETWORKS.map(({ chain, name }) => ({ chainId: chain.id, name }));
 
 /** The paywall's public Sourcify page, or undefined on a local build, where the contract is not verified anywhere. */
 export const getPaywallSourcifyUrl = () => {
@@ -74,8 +76,8 @@ export const getPublishedPost = (key: string, locale: Locale = DEFAULT_LOCALE) =
   return post && isPublished(post) ? post : undefined;
 };
 
-/** "From the blog" on the homepage, by key: the hub, the alert how-to and the safe-HF guide. */
-export const HOME_BLOG_SLUGS = ["aave-health-factor", "aave-health-factor-alert-setup", "safe-aave-health-factor"];
+/** "From the blog" on the homepage, by key: the Aave hub, the Morpho hub and the alert how-to. */
+export const HOME_BLOG_SLUGS = ["aave-health-factor", "morpho-health-factor", "aave-health-factor-alert-setup"];
 
 /** Forum threads named in "The problem, named" (marketing market.md §B.4), each linked from its own mention. */
 export const PROBLEM_SOURCES = {

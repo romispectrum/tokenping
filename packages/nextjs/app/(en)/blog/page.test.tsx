@@ -34,13 +34,20 @@ const latestFirst = <T extends { meta: { publishedAt: string } }>(posts: readonl
     .map((post, index) => ({ post, index }))
     .sort((a, b) => b.post.meta.publishedAt.localeCompare(a.post.meta.publishedAt) || a.index - b.index)
     .map(({ post }) => post);
+
+/** The Aave hub, then the Morpho hub (both Start here cards), then every other guide latest first. */
+const indexOrder = <T extends { meta: { slug: string; publishedAt: string } }>(posts: readonly T[]) => {
+  const [hub, ...rest] = posts;
+  const morphoHub = rest.filter(({ meta }) => meta.slug === "morpho-health-factor");
+  return [hub, ...morphoHub, ...latestFirst(rest.filter(post => !morphoHub.includes(post)))];
+};
 describe("/blog metadata", () => {
   it("has its own title, description and canonical within search-result lengths", async () => {
     const { metadata } = await loadIndex();
 
-    expect(metadata.title).toBe("Aave health factor and liquidation guides");
+    // Too long for the " | Tokenping" suffix, so the title stands alone.
+    expect(metadata.title).toEqual({ absolute: "Aave and Morpho health factor and liquidation guides" });
     expect(metadata.alternates?.canonical).toBe("/blog");
-    expect(`${metadata.title} | Tokenping`.length).toBeLessThanOrEqual(60);
     expect(String(metadata.description).length).toBeLessThanOrEqual(155);
     expect(metadata.openGraph).toMatchObject({ url: "/blog", images: [expect.objectContaining({ width: 1200 })] });
     expect(metadata.robots).toBeUndefined();
@@ -59,10 +66,9 @@ describe("/blog", () => {
     render(<BlogIndex />);
 
     expect(screen.getAllByRole("heading", { level: 1 }).map(heading => heading.textContent)).toEqual([
-      "Aave health factor and liquidation guides",
+      "Aave and Morpho health factor and liquidation guides",
     ]);
-    const [hub, ...rest] = blog.PUBLISHED_POSTS;
-    const published = [hub, ...latestFirst(rest)].map(({ meta }) => `/blog/${meta.slug}`);
+    const published = indexOrder(blog.PUBLISHED_POSTS).map(({ meta }) => `/blog/${meta.slug}`);
     expect(postLinks()).toEqual(published);
     expect(postLinks()).not.toContain("/blog/aave-liquidation-price");
     expect(postLinks()[0]).toBe(`/blog/${blog.HUB_SLUG}`);
@@ -108,12 +114,16 @@ describe("/blog", () => {
     const { BlogIndex } = await loadIndex();
     const { container } = render(<BlogIndex />);
 
-    const hero = screen.getByRole("region", { name: "Aave health factor and liquidation guides" });
+    const hero = screen.getByRole("region", { name: "Aave and Morpho health factor and liquidation guides" });
     const pink = [...container.querySelectorAll(".btn-primary, .bg-primary")];
     expect(pink).toHaveLength(1);
     expect(hero.contains(pink[0])).toBe(true);
-    expect(pink[0].textContent).toBe("Open the dashboard");
+    expect(pink[0].textContent).toBe("Open the Aave dashboard");
     expect(pink[0].getAttribute("href")).toBe("/aave");
+    // The Morpho dashboard sits beside it, inverse: one pink per view.
+    const morpho = within(hero).getByRole("link", { name: "Open the Morpho dashboard" });
+    expect(morpho.getAttribute("href")).toBe("/morpho");
+    expect(morpho.className).not.toMatch(/btn-primary|bg-primary/);
     for (const effect of container.querySelectorAll(".grain, [class*='from-brand-pink']")) {
       expect(hero.contains(effect)).toBe(true);
     }
@@ -133,19 +143,38 @@ describe("/blog", () => {
     ).toEqual([`/blog/${hub.meta.slug}`]);
   });
 
-  it("keeps the hub as Start here and lists the other guides latest first, same-day guides in their usual order", async () => {
+  it("keeps the Aave and Morpho hubs as Start here and lists the other guides latest first, same-day guides in their usual order", async () => {
     const { BlogIndex, blog } = await loadIndex();
     render(<BlogIndex />);
 
+    const [aaveHub, morphoHub, ...others] = indexOrder(blog.PUBLISHED_POSTS);
     const start = screen.getByRole("region", { name: "Start here" });
-    expect(within(start).getByRole("heading").textContent).toBe(blog.PUBLISHED_POSTS[0].meta.title);
+    expect(
+      within(start)
+        .getAllByRole("heading")
+        .map(heading => heading.textContent),
+    ).toEqual([aaveHub.meta.title, morphoHub.meta.title]);
+    expect(morphoHub.meta.slug).toBe(blog.MORPHO_HUB_SLUG);
     const listed = within(screen.getByRole("region", { name: "All guides" }))
       .getAllByRole("heading", { level: 3 })
       .map(heading => heading.textContent);
-    expect(listed).toEqual(latestFirst(blog.PUBLISHED_POSTS.slice(1)).map(({ meta }) => meta.title));
+    expect(listed).toEqual(others.map(({ meta }) => meta.title));
     // The latest guide is the first card.
-    const latest = blog.PUBLISHED_POSTS.slice(1).reduce((a, b) => (b.meta.publishedAt > a.meta.publishedAt ? b : a));
+    const latest = others.reduce((a, b) => (b.meta.publishedAt > a.meta.publishedAt ? b : a));
     expect(listed[0]).toBe(latest.meta.title);
+  });
+
+  it("keeps the Aave hub alone as Start here while the Morpho hub is a placeholder", async () => {
+    const { BlogIndex, blog } = await loadIndex(["morpho-health-factor"]);
+    render(<BlogIndex />);
+
+    const start = screen.getByRole("region", { name: "Start here" });
+    expect(
+      within(start)
+        .getAllByRole("heading")
+        .map(heading => heading.textContent),
+    ).toEqual([blog.PUBLISHED_POSTS[0].meta.title]);
+    expect(postLinks()).not.toContain("/blog/morpho-health-factor");
   });
 
   it("renders a breadcrumb trail that matches its BreadcrumbList JSON-LD", async () => {

@@ -33,6 +33,8 @@ type DashboardMessages = {
     checks: (minutes: number) => string;
     guideThreshold: string;
     guideAlerts: string;
+    /** The link to the Morpho dashboard, for a borrower who is on the wrong page. */
+    morphoDashboard: string;
   };
   gate: GateMessages;
   /** The sr-only h2 above the positions. */
@@ -204,6 +206,7 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
         `Tokenping checks every ${minutes} minutes. While the health factor stays below your threshold, every check sends another message on each channel you chose.`,
       guideThreshold: "How to choose a threshold",
       guideAlerts: "How alerts work",
+      morphoDashboard: "Borrowing on Morpho? Open the Morpho dashboard",
     },
     gate: {
       title: "Connect a wallet to continue",
@@ -376,6 +379,7 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
         `Tokenping kontroluje ${plural("cs", minutes, { one: "každou minutu", few: `každé ${minutes} minuty`, other: `každých ${minutes} minut` })}. Dokud health factor zůstává pod vaším prahem, každá kontrola pošle další zprávu do každého kanálu, který jste zvolili.`,
       guideThreshold: "Jak zvolit práh",
       guideAlerts: "Jak fungují upozornění",
+      morphoDashboard: "Půjčujete si na Morpho? Otevřete přehled Morpho",
     },
     gate: {
       title: "Pro pokračování připojte peněženku",

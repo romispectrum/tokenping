@@ -27,6 +27,7 @@ type BlogMessages = {
     kicker: string;
     lead: string;
     dashboardCta: string;
+    morphoDashboardCta: string;
     rss: string;
     startHere: string;
     allGuides: string;
@@ -115,12 +116,13 @@ export const BLOG_MESSAGES: Localized<BlogMessages> = {
   en: {
     crumbs: { home: "Home", blog: "Blog" },
     index: {
-      title: "Aave health factor and liquidation guides",
+      title: "Aave and Morpho health factor and liquidation guides",
       description:
-        "Guides to the Aave V3 health factor, liquidation thresholds, liquidation prices and alerts, with worked examples and dated, sourced figures.",
-      kicker: "Aave V3 guides",
-      lead: "How the Aave V3 health factor works, what happens in a liquidation, how to calculate your liquidation price and how to get warned before it gets close. Every figure in these guides names its source and the date it was checked.",
-      dashboardCta: "Open the dashboard",
+        "Guides to the Aave and Morpho health factor, liquidations, liquidation prices and alerts, with worked examples and dated, sourced figures.",
+      kicker: "Aave and Morpho guides",
+      lead: "How the health factor works on Aave and on Morpho, what happens in a liquidation, how to calculate your liquidation price and how to get warned before it gets close. Every figure in these guides names its source and the date it was checked.",
+      dashboardCta: "Open the Aave dashboard",
+      morphoDashboardCta: "Open the Morpho dashboard",
       rss: "Subscribe with RSS",
       startHere: "Start here",
       allGuides: "All guides",
@@ -171,12 +173,13 @@ export const BLOG_MESSAGES: Localized<BlogMessages> = {
   cs: {
     crumbs: { home: "Domů", blog: "Blog" },
     index: {
-      title: "Průvodci health factorem a likvidací na Aave",
+      title: "Průvodci health factorem a likvidací na Aave a Morpho",
       description:
-        "Průvodci health factorem na Aave V3, likvidačními prahy, likvidační cenou a upozorněními, s propočítanými příklady a datovanými údaji se zdroji.",
-      kicker: "Průvodci Aave V3",
-      lead: "Jak funguje health factor na Aave V3, co se děje při likvidaci, jak spočítat likvidační cenu vaší pozice a jak dostat varování dřív, než se k ní cena přiblíží. Každý údaj v těchto průvodcích uvádí svůj zdroj a datum, kdy byl ověřen.",
-      dashboardCta: "Otevřít přehled",
+        "Průvodci health factorem na Aave a Morpho, likvidacemi, likvidační cenou a upozorněními, s propočítanými příklady a datovanými údaji se zdroji.",
+      kicker: "Průvodci Aave a Morpho",
+      lead: "Jak funguje health factor na Aave a na Morpho, co se děje při likvidaci, jak spočítat likvidační cenu vaší pozice a jak dostat varování dřív, než se k ní cena přiblíží. Každý údaj v těchto průvodcích uvádí svůj zdroj a datum, kdy byl ověřen.",
+      dashboardCta: "Otevřít přehled Aave",
+      morphoDashboardCta: "Otevřít přehled Morpho",
       rss: "Odebírat přes RSS",
       startHere: "Začněte tady",
       allGuides: "Všichni průvodci",

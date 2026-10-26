@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { NETWORK_ICONS } from "~~/config/networkIcons.generated";
+import { SUPPORTED_NETWORKS } from "~~/config/networks";
 import type { PostMeta } from "~~/content/blog/types";
 import { POST_SLUGS } from "~~/i18n/postSlugs";
 import type { AlertPlan } from "~~/services/marketing/alertPlan";
@@ -15,7 +17,7 @@ vi.mock("~~/services/marketing/alertPlan", () => ({ getAlertPlan: mocks.getAlert
 const PLAN: AlertPlan = { priceLabel: "3 USDC", days: 30 };
 
 /** The homepage's "From the blog" posts, by key (the English slug). */
-const HOME_BLOG_KEYS = ["aave-health-factor", "aave-health-factor-alert-setup", "safe-aave-health-factor"];
+const HOME_BLOG_KEYS = ["aave-health-factor", "morpho-health-factor", "aave-health-factor-alert-setup"];
 
 const csSlug = (key: string) => POST_SLUGS[key].cs;
 
@@ -64,29 +66,32 @@ const internalHrefs = (container: HTMLElement) =>
 const SECTION_HEADINGS = [
   "Health factor klesá, i když spíte",
   "Jak to funguje",
-  "Všechny trhy Aave, každý s vlastním upozorněním",
+  "Všechny trhy Aave a všechny uvedené trhy Morpho",
   "Ceník",
   "Na co se zeptat, než připojíte peněženku",
   "Omezení bez příkras",
   "Z blogu",
-  "Nastavte si upozornění na health factor v Aave",
+  "Nastavte si upozornění na health factor na Aave nebo Morpho",
 ];
 
 const ENGLISH_HEADINGS = [
   "Health factors fall while you sleep",
   "How it works",
   "Where to put your line",
-  "Every Aave market, one alert each",
+  "Every Aave market and every listed Morpho market",
   "Pricing",
   "Questions to ask before you connect a wallet",
   "Limits, stated plainly",
   "From the blog",
-  "Set up your Aave health factor alert",
+  "Set up your Aave or Morpho health factor alert",
   "What an alert says",
 ];
 
-// The Aave V3 networks in dashboard order, then Arc, which only has Aave V4; the names are the same in Czech.
-const NETWORK_COUNT = 22;
+// The Aave V3 networks in dashboard order, then Arc, which only has Aave V4, then the networks only Morpho adds; the
+// names are the same in Czech.
+const NETWORK_COUNT = 29;
+/** The networks with a logo yet (yarn next:network-icons); the others show their initial. */
+const LOGO_COUNT = SUPPORTED_NETWORKS.filter(({ chain }) => NETWORK_ICONS[chain.id]).length;
 
 beforeEach(() => {
   vi.resetModules();
@@ -104,8 +109,8 @@ describe("metadata", () => {
   it("has a Czech title and description, a /cz canonical and hreflang to the English home", async () => {
     const { metadata } = await loadHome();
 
-    // Too long for the " | Tokenping" suffix within 60 characters, so the title stands alone.
-    expect(metadata.title).toEqual({ absolute: "Upozornění na Aave health factor přes Signal a e-mail" });
+    // The headline with its channels passes 60 characters, so the title drops them and keeps the brand.
+    expect(metadata.title).toEqual({ absolute: "Upozornění na health factor na Aave a Morpho | Tokenping" });
     expect(String(metadata.description)).toMatch(/^Upozornění přes Signal nebo e-mail, když health factor/);
     expect(String(metadata.description).length).toBeLessThanOrEqual(155);
     expect(metadata.alternates?.canonical).toBe("/cz");
@@ -126,7 +131,7 @@ describe("Czech copy", () => {
     await renderHome();
 
     expect(screen.getAllByRole("heading", { level: 1 }).map(heading => heading.textContent)).toEqual([
-      "Upozornění na Aave health factor přes Signal a e-mail",
+      "Upozornění na health factor na Aave a Morpho přes Signal a e-mail",
     ]);
     expect(screen.getAllByRole("heading", { level: 2 }).map(heading => heading.textContent)).toEqual(SECTION_HEADINGS);
   });
@@ -136,7 +141,7 @@ describe("Czech copy", () => {
     await renderHome();
 
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
-      "Upozornění na Aave health factor: Signal, Telegram a e-mail",
+      "Upozornění na health factor na Aave a Morpho přes Signal, Telegram a e-mail",
     );
   });
 
@@ -154,11 +159,12 @@ describe("Czech copy", () => {
 
     expect(items).toHaveLength(NETWORK_COUNT);
     const logos = items.map(item => within(item).getByRole("img"));
-    expect(logos.slice(0, 2).map(logo => logo.getAttribute("alt"))).toEqual(["Ethereum", "Polygon"]);
-    expect(logos.at(-1)?.getAttribute("alt")).toBe("Arc");
-    items.forEach(item => expect(item.textContent).toBe(""));
-    expect(strip.querySelectorAll("img")).toHaveLength(NETWORK_COUNT);
-    expect(screen.getByText("22 sítí, 44 trhů")).toBeTruthy();
+    const nameOf = (logo: HTMLElement) => logo.getAttribute("alt") ?? logo.getAttribute("aria-label");
+    expect(logos.slice(0, 2).map(nameOf)).toEqual(["Ethereum", "Polygon"]);
+    expect(nameOf(logos[21])).toBe("Arc");
+    expect(nameOf(logos.at(-1)!)).toBe("Tempo");
+    expect(strip.querySelectorAll("img")).toHaveLength(LOGO_COUNT);
+    expect(screen.getByText("29 sítí")).toBeTruthy();
     expect(screen.getAllByText(/.+/, { selector: ".badge" }).map(badge => badge.textContent)).toEqual([
       "Signal",
       "E-mail",
@@ -266,29 +272,32 @@ describe("Czech copy", () => {
 
   it("shows every network as a tile with Czech market counts, under a dated lead and the wind-down note", async () => {
     await renderHome();
-    const coverage = section("Všechny trhy Aave, každý s vlastním upozorněním");
+    const coverage = section("Všechny trhy Aave a všechny uvedené trhy Morpho");
     const tiles = within(coverage).getAllByRole("listitem");
 
     expect(
       within(coverage).getByText(
-        "24 trhů Aave V3 na 21 sítích a 20 trhů (Spoke) Aave V4 na 4 sítích, ke 16. říjnu 2026.",
+        "24 trhů Aave V3 na 21 sítích a 20 trhů (Spoke) Aave V4 na 4 sítích, ke 16. říjnu 2026, a k tomu všechny uvedené trhy Morpho na 14 sítích.",
       ),
     ).toBeTruthy();
     expect(tiles).toHaveLength(NETWORK_COUNT);
     expect(within(tiles[0]).getByText("Ethereum")).toBeTruthy();
-    expect(within(tiles[0]).getByText("4 trhy V3 · 13 trhů V4 (Spoke)")).toBeTruthy();
-    expect(within(tiles[1]).getByText("1 trh V3")).toBeTruthy();
-    expect(within(tiles[4]).getByText("1 trh V3 · 1 trh V4 (Spoke)")).toBeTruthy();
+    expect(within(tiles[0]).getByText("4 trhy V3 · 13 trhů V4 (Spoke) · Morpho")).toBeTruthy();
+    expect(within(tiles[1]).getByText("1 trh V3 · Morpho")).toBeTruthy();
+    expect(within(tiles[4]).getByText("1 trh V3 · 1 trh V4 (Spoke) · Morpho")).toBeTruthy();
+    expect(within(tiles[6]).getByText("1 trh V3")).toBeTruthy();
     expect(within(tiles[21]).getByText("Arc")).toBeTruthy();
-    expect(within(tiles[21]).getByText("3 trhy V4 (Spoke)")).toBeTruthy();
+    expect(within(tiles[21]).getByText("3 trhy V4 (Spoke) · Morpho")).toBeTruthy();
+    expect(within(tiles[28]).getByText("Tempo")).toBeTruthy();
+    expect(within(tiles[28]).getByText("Morpho")).toBeTruthy();
     expect(
       within(coverage).getByText(
-        "Trhy na sítích Scroll, ZKsync, Metis, Soneium a Sonic governance Aave postupně ukončuje a dál je hlídáme. Nepokrýváme trh Aave V3 na síti Harmony ani jiné protokoly.",
+        "Trhy na sítích Scroll, ZKsync, Metis, Soneium a Sonic governance Aave postupně ukončuje a dál je hlídáme. Nepokrýváme trh Aave V3 na síti Harmony, neuvedené trhy Morpho ani jiné protokoly.",
       ),
     ).toBeTruthy();
   });
 
-  it("keeps the six limits and the seven questions, coverage having moved to its own section", async () => {
+  it("keeps the six limits and the eight questions, coverage having moved to its own section", async () => {
     await renderHome();
     const limits = within(section("Omezení bez příkras"))
       .getAllByRole("listitem")
@@ -305,6 +314,7 @@ describe("Czech copy", () => {
       "Může Tokenping sáhnout na mé prostředky?",
       "Co ukládáte?",
       "Kolik to stojí?",
+      "Které půjčky na Morpho pokrýváte?",
       "Co když upozornění nedorazí?",
       "Jak upozornění zastavím?",
       "Můžu sledovat peněženku, kterou nepřipojím?",
@@ -321,10 +331,13 @@ describe("links", () => {
 
     expect(hrefs.length).toBeGreaterThan(0);
     for (const href of hrefs) expect(href).toMatch(/^\/cz(\/|$)/);
-    expect(screen.getAllByRole("link", { name: "Otevřít přehled" }).map(link => link.getAttribute("href"))).toEqual([
-      "/cz/aave",
-      "/cz/aave",
-    ]);
+    expect(
+      screen.getAllByRole("link", { name: "Otevřít přehled Aave" }).map(link => link.getAttribute("href")),
+    ).toEqual(["/cz/aave", "/cz/aave"]);
+    expect(
+      screen.getAllByRole("link", { name: "Otevřít přehled Morpho" }).map(link => link.getAttribute("href")),
+    ).toEqual(["/cz/morpho", "/cz/morpho"]);
+    expect(screen.getByRole("link", { name: "přehled Morpho" }).getAttribute("href")).toBe("/cz/morpho");
     expect(screen.getByRole("link", { name: "stránka o ochraně soukromí" }).getAttribute("href")).toBe(
       "/cz/ochrana-soukromi",
     );
@@ -338,11 +351,9 @@ describe("links", () => {
       .map(heading => within(heading).getByRole("link").getAttribute("href"));
 
     expect(postLinks).toEqual(HOME_BLOG_KEYS.map(key => `/cz/blog/${csSlug(key)}`));
-    expect(
-      within(blog)
-        .getByRole("link", { name: "Všichni průvodci health factorem a likvidací na Aave" })
-        .getAttribute("href"),
-    ).toBe("/cz/blog");
+    expect(within(blog).getByRole("link", { name: "Všichni průvodci k Aave a Morpho" }).getAttribute("href")).toBe(
+      "/cz/blog",
+    );
     expect(screen.getByRole("link", { name: "jak funguje likvidace" }).getAttribute("href")).toBe(
       `/cz/blog/${csSlug("how-aave-liquidation-works")}`,
     );
@@ -367,7 +378,7 @@ describe("links", () => {
     expect(
       screen.getByRole("heading", { name: "Jiné nástroje nic nestojí. Proč platit?" }).nextElementSibling!.textContent,
     ).toBe(
-      "Pokud vám vyhovuje bot na Telegramu nebo mobilní aplikace, použijte je. Tokenping je pro upozornění přes Signal nebo e-mail, na každém trhu Aave.",
+      "Pokud vám vyhovuje bot na Telegramu nebo mobilní aplikace, použijte je. Tokenping je pro upozornění přes Signal nebo e-mail, na každém trhu Aave a uvedeném trhu Morpho.",
     );
   });
 });
@@ -393,8 +404,8 @@ describe("design rules", () => {
     const { container } = await renderHome();
 
     expect([...container.querySelectorAll(".btn-primary")].map(link => link.textContent)).toEqual([
-      "Otevřít přehled",
-      "Otevřít přehled",
+      "Otevřít přehled Aave",
+      "Otevřít přehled Aave",
     ]);
   });
 

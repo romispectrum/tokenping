@@ -76,7 +76,7 @@ describe("generateMetadata", () => {
       type: "article",
       url: "/blog/aave-health-factor",
       publishedTime: "2026-10-14T00:00:00Z",
-      modifiedTime: "2026-10-20T00:00:00Z",
+      modifiedTime: "2026-10-26T00:00:00Z",
       images: [
         {
           url: "/og/en/aave-health-factor",

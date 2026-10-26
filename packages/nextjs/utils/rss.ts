@@ -5,8 +5,8 @@ import { postPath, routePath } from "~~/i18n/routes";
 import { absoluteUrl, toIsoDateTime } from "~~/utils/seo";
 
 const RSS_DESCRIPTIONS: Localized<string> = {
-  en: "Guides to the Aave health factor, liquidation risk and alerts.",
-  cs: "Průvodci health factorem na Aave, rizikem likvidace a upozorněními.",
+  en: "Guides to the Aave and Morpho health factor, liquidation risk and alerts.",
+  cs: "Průvodci health factorem na Aave a Morpho, rizikem likvidace a upozorněními.",
 };
 
 const XML_ENTITIES: Record<string, string> = { "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" };
