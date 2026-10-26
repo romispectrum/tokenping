@@ -11,6 +11,7 @@ const IS_IPFS_BUILD = process.env.NEXT_PUBLIC_IPFS_BUILD === "true";
 const HOME_LINKS = [
   { source: "/", feed: "/blog/feed.xml", privacy: "/privacy" },
   { source: "/cz", feed: "/cz/blog/feed.xml", privacy: "/cz/ochrana-soukromi" },
+  { source: "/es", feed: "/es/blog/feed.xml", privacy: "/es/privacidad" },
 ];
 const homeLinkHeader = ({ feed, privacy }: { feed: string; privacy: string }) =>
   [
@@ -60,6 +61,12 @@ const MARKDOWN_PAGES = [
   "/cz/blog",
   "/cz/blog/:slug([^./]+)",
   "/cz/ochrana-soukromi",
+  "/es",
+  "/es/aave",
+  "/es/morpho",
+  "/es/blog",
+  "/es/blog/:slug([^./]+)",
+  "/es/privacidad",
 ];
 const ACCEPTS_MARKDOWN = { type: "header", key: "accept", value: ".*text/markdown.*" } as const;
 const markdownRewrite = (source: string) => ({

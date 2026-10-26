@@ -21,9 +21,9 @@ describe("llms.txt", () => {
       /^> Tokenping sends a message when an Aave V3, Aave V4, Morpho Blue or Morpho Midnight health factor drops/,
     );
     const headings = lines.filter(line => line.startsWith("#"));
-    expect(headings).toEqual(["# Tokenping", "## Pages", "## Guides", "## Czech", "## Optional"]);
+    expect(headings).toEqual(["# Tokenping", "## Pages", "## Guides", "## Czech", "## Spanish", "## Optional"]);
     // Everything under an H2 is a link list item: "- [name](url)" with optional ": notes".
-    for (const heading of ["Pages", "Guides", "Czech", "Optional"]) {
+    for (const heading of ["Pages", "Guides", "Czech", "Spanish", "Optional"]) {
       for (const line of section(heading))
         expect(line).toMatch(/^- \[[^\]]+\]\(https:\/\/tokenping\.xyz\/[^)]*\)(: .+)?$/);
     }
@@ -76,6 +76,13 @@ describe("llms.txt", () => {
     const czech = section("Czech");
     expect(czech[0]).toMatch(/^- \[Tokenping\]\(https:\/\/tokenping\.xyz\/cz\): /);
     expect(czech.every(line => line.includes("(https://tokenping.xyz/cz"))).toBe(true);
+  });
+
+  it("links the Spanish pages and every Spanish guide under /es in the Spanish section", () => {
+    const spanish = section("Spanish");
+    expect(spanish[0]).toMatch(/^- \[Tokenping\]\(https:\/\/tokenping\.xyz\/es\): /);
+    expect(spanish.every(line => line.includes("(https://tokenping.xyz/es"))).toBe(true);
+    expect(spanish.filter(line => line.includes("(https://tokenping.xyz/es/blog/"))).toHaveLength(18);
   });
 
   it("uses no em or en dashes and never the banned words", () => {

@@ -9,12 +9,13 @@ import { CHILDLESS_COMPONENTS, MDX_VOCABULARY_NAMES, SINGLE_POST_COMPONENTS } fr
 import type { PostMeta } from "~~/content/blog/types";
 import { LOCALES, type Locale } from "~~/i18n/locales";
 import { POST_SLUGS, postKeyForSlug } from "~~/i18n/postSlugs";
-import { postPath, routePath } from "~~/i18n/routes";
+import { localeFromPath, postPath, routePath } from "~~/i18n/routes";
 
-// Content lint for every post, content/blog/*.mdx (English) and content/blog/cs/*.mdx (Czech): the article contract
-// from the blog build spec, checked on the parsed MDX tree (after remark-gfm) rather than on raw text, so code, URLs
-// and JSX attributes cannot cause false positives. Both languages get the same checks; what differs (the disclaimer,
-// the Sources heading and date wording, the pages a post may link to, the banned phrases) is in LANGUAGE_RULES.
+// Content lint for every post, content/blog/*.mdx (English), content/blog/cs/*.mdx (Czech) and content/blog/es/*.mdx
+// (Spanish): the article contract from the blog build spec, checked on the parsed MDX tree (after remark-gfm) rather
+// than on raw text, so code, URLs and JSX attributes cannot cause false positives. Every language gets the same checks;
+// what differs (the disclaimer, the Sources heading and date wording, the pages a post may link to, the banned
+// phrases) is in LANGUAGE_RULES.
 // Placeholder posts (`stub: true` in meta) get the meta checks and are reported as pending for the rest.
 
 const BLOG_DIR = new URL("./", import.meta.url);
@@ -23,6 +24,8 @@ const ARTICLE_DISCLAIMER =
   "Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation.";
 const CS_ARTICLE_DISCLAIMER =
   "Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání.";
+const ES_ARTICLE_DISCLAIMER =
+  "Contenido educativo, no asesoramiento financiero. Las alertas reducen el riesgo, pero no evitan la liquidación.";
 const MAX_TITLE_LENGTH = 60;
 const MAX_DESCRIPTION_LENGTH = 155;
 const MIN_DESCRIPTION_LENGTH = 50;
@@ -45,6 +48,11 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const FETCHED_DATE = /\bfetched (?:on )?\d{1,2} (?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]* \d{4}\b/i;
 const CS_MONTHS = "ledna|února|března|dubna|května|června|července|srpna|září|října|listopadu|prosince";
 const CS_FETCHED_DATE = new RegExp(String.raw`(?:^|[\s(])načteno (?:dne )?\d{1,2}\. (?:${CS_MONTHS}) \d{4}(?!\d)`, "i");
+const ES_MONTHS = "enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre";
+const ES_FETCHED_DATE = new RegExp(
+  String.raw`(?:^|[\s(])consultad[oa] el \d{1,2} de (?:${ES_MONTHS}) de \d{4}(?!\d)`,
+  "i",
+);
 const SITE_HOST = /^https?:\/\/(?:www\.)?tokenping\.xyz(?:[/?#]|$)/i;
 
 type BannedPattern = {
@@ -251,6 +259,34 @@ const CS_BANNED_PATTERNS: readonly BannedPattern[] = [
   { pattern: /\bbezplatn/i, reason: "'bezplatný' must not appear: write 'bez poplatku' or 'nic nestojí'" },
 ];
 
+// Spanish copy that must not appear, on top of the English list (Spanish posts may quote English text, and product
+// names, prices and Aave terms stay English). The same claims as above, in Spanish word forms.
+const ES_BANNED_PATTERNS: readonly BannedPattern[] = [
+  { pattern: /\bnunca (?:serás|será|serán|te) liquidad/i, reason: "guarantee: 'nunca serás liquidado'" },
+  { pattern: /\bnunca te (?:perderás|pierdas)\b/i, reason: "guarantee: 'nunca te perderás'" },
+  { pattern: /\ben tiempo real\b/i, reason: "'en tiempo real' (alerts are checked every 5 minutes)" },
+  {
+    pattern: /\b(?:instantáne\S*|al instante)\b|\b(?:alertas?|avisos?|notificaci\S*|mensajes?) inmediat/i,
+    reason: "'instantáneo' (alerts are checked every 5 minutes)",
+  },
+  { pattern: /\bmulti[- ]?protocolo/i, reason: "'multiprotocolo' (name the protocols: Aave and Morpho)" },
+  {
+    pattern: /\b(?:close factor|factor de cierre) (?:es|=) (?:siempre |fijo de |un |una )?(?:50 ?%|0\.5\b|la mitad)/i,
+    reason: "stale: since v3.3 the close factor is 50% or 100% depending on HF and position size",
+    allowQuoted: true,
+  },
+  {
+    pattern: /\bUSDC (?:por|cada|para) 30 días\b/i,
+    reason: "hard-coded alert plan: use <AlertPrice />",
+  },
+  // The Spanish forms of "free"; "sin comisión" and "no cuesta nada" are fine.
+  {
+    pattern: /\bgratis\b/i,
+    reason: "'gratis' must not appear: write 'no cuesta nada', 'sin comisión' or 'no requiere pago'",
+  },
+  { pattern: /\bgratuit/i, reason: "'gratuito' must not appear: write 'sin comisión' or 'no cuesta nada'" },
+];
+
 const findBannedPhrases = (text: string, patterns: readonly BannedPattern[] = BANNED_PATTERNS) => {
   const normalized = normalizeQuotes(text);
   return patterns.flatMap(({ pattern, reason, allowQuoted }) => {
@@ -308,7 +344,11 @@ const parsePost = async (source: string, slug: string, locale: Locale = "en"): P
   }
 };
 
-const POST_DIRS: Record<Locale, URL> = { en: BLOG_DIR, cs: new URL("./cs/", BLOG_DIR) };
+const POST_DIRS: Record<Locale, URL> = {
+  en: BLOG_DIR,
+  cs: new URL("./cs/", BLOG_DIR),
+  es: new URL("./es/", BLOG_DIR),
+};
 
 const loadLanguage = async (locale: Locale) => {
   const dir = POST_DIRS[locale];
@@ -343,6 +383,7 @@ const indexPosts = (posts: readonly LoadedPost[]): PostIndex => ({
 const POST_INDEX: Record<Locale, PostIndex> = {
   en: indexPosts(LANGUAGES.en.posts),
   cs: indexPosts(LANGUAGES.cs.posts),
+  es: indexPosts(LANGUAGES.es.posts),
 };
 
 type LanguageRules = {
@@ -368,6 +409,13 @@ const LANGUAGE_RULES: Record<Locale, LanguageRules> = {
     fetchedDate: CS_FETCHED_DATE,
     fetchedFormat: "načteno <d. měsíce yyyy>",
     bannedPatterns: [...BANNED_PATTERNS, ...CS_BANNED_PATTERNS],
+  },
+  es: {
+    disclaimer: ES_ARTICLE_DISCLAIMER,
+    sourcesHeading: "Fuentes",
+    fetchedDate: ES_FETCHED_DATE,
+    fetchedFormat: "consultado el <d de mes de yyyy>",
+    bannedPatterns: [...BANNED_PATTERNS, ...ES_BANNED_PATTERNS],
   },
 };
 
@@ -527,8 +575,6 @@ const internalPaths = (locale: Locale) => [
   routePath(locale, "privacy"),
 ];
 
-const OTHER_LANGUAGE_PREFIX: Record<Locale, RegExp> = { en: /^\/cz(?:[/?#]|$)/, cs: /^\/(?!cz(?:[/?#]|$))/ };
-
 const checkLinks = (tree: MdNode, locale: Locale = "en", index: PostIndex = POST_INDEX[locale]) => {
   const problems: string[] = [];
   const ownIds = new Set(headingIdsOf(tree));
@@ -543,9 +589,11 @@ const checkLinks = (tree: MdNode, locale: Locale = "en", index: PostIndex = POST
     } else if (url.startsWith("/")) {
       const [pathname, hash] = url.split("#");
       const target = pathname.startsWith(blogPrefix) ? pathname.slice(blogPrefix.length) : undefined;
-      if (OTHER_LANGUAGE_PREFIX[locale].test(url)) {
-        const english = pathname.match(/^\/blog\/([^/?#]+)$/)?.[1];
-        const translated = english && POST_SLUGS[english] ? postPath(locale, POST_SLUGS[english][locale]) : undefined;
+      const linked = localeFromPath(pathname);
+      if (linked !== locale) {
+        const slug = pathname.startsWith(postPath(linked, "")) ? pathname.slice(postPath(linked, "").length) : "";
+        const key = postKeyForSlug(linked, slug);
+        const translated = key ? postPath(locale, POST_SLUGS[key][locale]) : undefined;
         problems.push(
           `${url}: a page in the other language; link to ${translated ?? paths.join(", ")} (i18n/routes, i18n/postSlugs)`,
         );
@@ -609,7 +657,7 @@ const checkReadingTime = (tree: MdNode, meta: PostMeta) => {
     : [];
 };
 
-const LANGUAGE_DIRS: Record<Locale, string> = { en: "content/blog", cs: "content/blog/cs" };
+const LANGUAGE_DIRS: Record<Locale, string> = { en: "content/blog", cs: "content/blog/cs", es: "content/blog/es" };
 
 for (const locale of LOCALES) {
   const { files, sources, posts } = LANGUAGES[locale];

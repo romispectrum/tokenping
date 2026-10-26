@@ -1953,6 +1953,7 @@ describe("NotificationConfig: language", () => {
     expect([...signalLanguage().options].map(option => [option.value, option.text, option.lang])).toEqual([
       ["en", "English", "en"],
       ["cs", "Čeština", "cs"],
+      ["es", "Español", "es"],
     ]);
 
     await type(screen.getByRole("textbox", { name: "E-mailová adresa" }), "me@example.com");

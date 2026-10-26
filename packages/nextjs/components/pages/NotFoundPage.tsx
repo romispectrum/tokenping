@@ -4,7 +4,7 @@ import { Container } from "~~/components/home/marketingLayout";
 import { GrainCard } from "~~/components/ui/GrainCard";
 import { Kicker } from "~~/components/ui/Kicker";
 import { buttonClasses } from "~~/components/ui/buttonClasses";
-import { LOCALE_INFO, type Locale } from "~~/i18n/locales";
+import { DEFAULT_LOCALE, LOCALES, LOCALE_INFO, type Locale } from "~~/i18n/locales";
 import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 import { routePath } from "~~/i18n/routes";
 
@@ -25,7 +25,7 @@ type NotFoundMessageProps = {
   locale: Locale;
   /** The id of the heading, which names the section. */
   headingId?: string;
-  /** The page's h1, or the h2 of the translation under it on the bilingual 404. */
+  /** The page's h1, or the h2 of a translation under it on the multilingual 404. */
   headingLevel?: 1 | 2;
   /** Only the first message's home link is the view's pink action. */
   primary?: boolean;
@@ -89,14 +89,16 @@ export const NotFoundPage = ({ locale }: { locale: Locale }) => (
 
 /**
  * The 404 for a URL that matches no route (app/global-not-found.tsx), which cannot tell the language: English with
- * its h1 and the pink home link, then the same message in Czech (lang="cs", an h2, outline links to the Czech pages)
- * under a hairline.
+ * its h1 and the pink home link, then the same message in each other language (its lang, an h2, outline links to its
+ * pages), each under a hairline.
  */
-export const BilingualNotFoundPage = () => (
+export const MultilingualNotFoundPage = () => (
   <NotFoundShell>
-    <NotFoundMessage locale="en" headingId="not-found-title" />
-    <div lang={LOCALE_INFO.cs.htmlLang} className="mt-10 border-t border-border pt-10">
-      <NotFoundMessage locale="cs" headingLevel={2} primary={false} />
-    </div>
+    <NotFoundMessage locale={DEFAULT_LOCALE} headingId="not-found-title" />
+    {LOCALES.filter(locale => locale !== DEFAULT_LOCALE).map(locale => (
+      <div key={locale} lang={LOCALE_INFO[locale].htmlLang} className="mt-10 border-t border-border pt-10">
+        <NotFoundMessage locale={locale} headingLevel={2} primary={false} />
+      </div>
+    ))}
   </NotFoundShell>
 );

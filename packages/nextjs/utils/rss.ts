@@ -7,6 +7,7 @@ import { absoluteUrl, toIsoDateTime } from "~~/utils/seo";
 const RSS_DESCRIPTIONS: Localized<string> = {
   en: "Guides to the Aave and Morpho health factor, liquidation risk and alerts.",
   cs: "Průvodci health factorem na Aave a Morpho, rizikem likvidace a upozorněními.",
+  es: "Guías sobre el factor de salud en Aave y Morpho, el riesgo de liquidación y las alertas.",
 };
 
 const XML_ENTITIES: Record<string, string> = { "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" };

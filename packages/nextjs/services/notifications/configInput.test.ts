@@ -19,8 +19,9 @@ const EMAIL_ERROR = "Invalid email address for email notifications";
 const SIGNAL_ERROR = "Invalid Signal username for Signal notifications. Expected format: alice.42";
 const TELEGRAM_ERROR =
   "Invalid Telegram username for Telegram notifications. Expected 4 to 32 letters, digits or underscores, e.g. alice_eth";
-const LOCALE_ERROR = "Invalid locale: expected one of en, cs";
-const CHANNEL_LOCALES_ERROR = "Invalid channelLocales: expected an object of email, signal, telegram to one of en, cs";
+const LOCALE_ERROR = "Invalid locale: expected one of en, cs, es";
+const CHANNEL_LOCALES_ERROR =
+  "Invalid channelLocales: expected an object of email, signal, telegram to one of en, cs, es";
 
 describe("parseConfigInput", () => {
   it.each<[ConfigInput, Record<string, unknown>]>([
@@ -109,11 +110,13 @@ describe("parseConfigInput", () => {
     [{ telegramUsername: `${" ".repeat(60)}alice_eth` }, {}],
     // The alert language: English when absent.
     [{ locale: "cs" }, { locale: "cs" }],
+    [{ locale: "es" }, { locale: "es" }],
     [{ locale: "en" }, { locale: "en" }],
     [{ locale: undefined }, {}],
     [{ locale: null }, {}],
     // Each channel's own language: none (the row's locale) when absent or null.
     [{ channelLocales: { signal: "cs" } }, { channelLocales: { email: null, signal: "cs", telegram: null } }],
+    [{ channelLocales: { telegram: "es" } }, { channelLocales: { email: null, signal: null, telegram: "es" } }],
     [
       { channelLocales: { email: "en", signal: null, telegram: "cs" } },
       { channelLocales: { email: "en", signal: null, telegram: "cs" } },

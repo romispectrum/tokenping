@@ -1,0 +1,201 @@
+export const meta = {
+  slug: "factor-de-salud-aave",
+  title: "Factor de salud de Aave explicado: fórmula y ejemplos",
+  description:
+    "Qué es el factor de salud de Aave V3, cómo calcularlo con un ejemplo resuelto, por qué cambia por sí solo y qué pasa cuando baja de 1.",
+  h1: "¿Qué es el factor de salud de Aave y cómo se calcula?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "¿Qué es el factor de salud de Aave y cómo se calcula?",
+  readingMinutes: 18,
+};
+
+<ShortAnswer>
+  El factor de salud (health factor) de Aave es un número que muestra cuán cerca está una posición de préstamo de la
+  liquidación: el valor de tu colateral, con cada activo ponderado por su umbral de liquidación, dividido entre el valor
+  de tu deuda. En Aave V3, en cuanto baja de 1.00, los liquidadores pueden pagar una parte o la totalidad de tu deuda y
+  quedarse con colateral por ese valor más una bonificación. Por ejemplo, 10 WETH a $2,400 con un umbral de liquidación
+  del 83%, frente a una deuda de 12,000 USDC, da 24,000 × 0.83 ÷ 12,000 = 1.66.
+</ShortAnswer>
+
+<ScopeNote />
+
+## ¿Qué es el factor de salud en Aave?
+
+El factor de salud es un número que compara lo que vale tu colateral en Aave, después de un descuento de seguridad, con lo que debes. Cada activo de colateral cuenta solo hasta su umbral de liquidación, así que $24,000 de WETH en Aave V3 Ethereum Core, donde el umbral de WETH era del 83% en el bloque 26193284 (14 de octubre de 2026), cuentan como $19,920. Divide eso entre tu deuda y tienes el factor de salud.
+
+- **1.00 o más:** la posición no se puede liquidar. Cuanto más alto es el número, más pueden moverse antes los precios en tu contra.
+- **Menos de 1.00:** la posición se puede liquidar.
+- **Sin deuda:** no hay nada que liquidar. El contrato devuelve el número más grande que puede almacenar, y las aplicaciones muestran ∞ o un espacio en blanco.
+
+Un factor de salud de 1.66 significa que tu colateral ponderado equivale a 1.66 veces tu deuda, no que estés a un 66% de la liquidación. Con un solo activo volátil como colateral y deuda en stablecoins, el precio del colateral tiene que caer 1 − 1 ÷ HF para llegar a 1.00: alrededor de un 39.8% desde 1.66.
+
+En Aave V3, cada mercado de cada red tiene su propio factor de salud. Si pides prestado en Arbitrum y en Base, tienes dos, y un problema en uno no afecta al otro. En Ethereum, los mercados Core, Prime, EtherFi y Horizon también son independientes.
+
+## ¿Cómo se calcula el factor de salud de Aave?
+
+Aave V3 multiplica el valor en USD de cada activo de colateral por el umbral de liquidación de ese activo, suma los resultados y divide entre tu deuda total en USD:
+
+**HF = Σ (valor del colateral en USD × umbral de liquidación) ÷ valor total de la deuda en USD**
+
+Este es el cálculo de `GenericLogic.calculateUserAccountData`, que el Pool de Aave V3 ejecuta en los préstamos, los retiros y las liquidaciones (aave-v3-origin, rama main, consultado el 14 de octubre de 2026). Detalles del código que importan si lo calculas tú mismo:
+
+- **Los precios vienen del oráculo de Aave**, no de un exchange, en USD con 8 decimales.
+- **Solo cuentan los activos habilitados como colateral.** Un activo con LTV 0 sigue contando según su umbral de liquidación, aunque no da capacidad de préstamo.
+- **Cuenta toda la deuda**, a su precio del oráculo, incluido el interés acumulado hasta el momento.
+- **El E-Mode sustituye el umbral** de los activos que están en el conjunto de colaterales de tu categoría de E-Mode.
+- **El resultado tiene 18 decimales.** 1.66 se devuelve como 1660000000000000000, y la liquidación es posible por debajo de 1e18.
+- **Sin deuda se devuelve el uint256 máximo**, alrededor de 1.16 × 10^77. La API de Aave devuelve null en su lugar.
+
+La misma fórmula puede usar el umbral de liquidación promedio que informa `getUserAccountData`: HF = colateral total × umbral de liquidación promedio ÷ deuda total, donde el promedio es Σ(colateral × LT) ÷ Σ colateral.
+
+## Ejemplo resuelto: ¿cuál es el factor de salud de 10 WETH frente a 12,000 USDC?
+
+El factor de salud de 10 WETH de colateral frente a una deuda de 12,000 USDC en Aave V3 Ethereum Core es 1.66, con ETH a $2,400 y USDC a $1.00. El precio de ETH está redondeado para que las cifras sean limpias; el oráculo de Aave marcaba $2,414.78 en el bloque 26193376 de Ethereum el 14 de octubre de 2026. Los parámetros de WETH se leyeron en el bloque 26193284 el mismo día: LTV 80.5%, umbral de liquidación 83%.
+
+1. Valor del colateral: 10 × $2,400 = $24,000.
+2. Colateral ponderado: $24,000 × 0.83 = $19,920.
+3. Factor de salud: $19,920 ÷ $12,000 = **1.66**.
+4. Límite de préstamo: $24,000 × 0.805 = $19,320, así que podrías pedir prestados otros $7,320.
+5. Precio de liquidación de ETH, donde HF = 1: $12,000 ÷ (10 × 0.83) = **$1,445.78**, una caída del 39.8% desde $2,400.
+
+Para calcular el precio de tu propia posición, consulta [calcula tu precio de liquidación en Aave](/es/blog/precio-de-liquidacion-aave).
+
+### ¿Qué cambia con un segundo activo de colateral?
+
+Con dos activos de colateral, cada uno se pondera por su propio umbral de liquidación antes de sumarlos. Mantén los 10 WETH ($24,000, LT 83%), añade 0.2 WBTC a un precio ilustrativo de $81,500 ($16,300, LT 78% y LTV 73% en Ethereum Core en el bloque 26193284) y pide prestados 20,000 USDC:
+
+- Colateral ponderado: 24,000 × 0.83 + 16,300 × 0.78 = 19,920 + 12,714 = 32,634.
+- Factor de salud: 32,634 ÷ 20,000 = **1.632**.
+- Umbral de liquidación promedio: 32,634 ÷ 40,300 = 80.98%.
+- Límite de préstamo: 24,000 × 0.805 + 16,300 × 0.73 = $31,219.
+
+### ¿Qué cambia cuando pides prestado un activo volátil?
+
+Cuando la deuda es un activo volátil, el factor de salud baja cuando sube el precio de ese activo, porque la deuda vale más. Deposita 10,000 USDC (LT 78% en Ethereum Core en el bloque 26193284) y pide prestado WETH por valor de $6,000: HF = 7,800 ÷ 6,000 = **1.30**. Si ETH sube un 30%, la deuda vale $7,800 y el HF llega a 1.00. El colateral sigue importando: con USDC a $0.88, HF = 8,800 × 0.78 ÷ 6,000 = 1.144.
+
+## Factor de salud, LTV y umbral de liquidación: ¿en qué se diferencian?
+
+El LTV (loan-to-value, relación entre préstamo y valor) limita cuánto puedes pedir prestado, el umbral de liquidación decide cuándo pueden liquidarte y el factor de salud combina el umbral de liquidación con tu deuda real. Aave V3 comprueba el LTV solo cuando pides prestado. Retirar colateral o dejar de usarlo como colateral solo exige que el factor de salud quede en 1 o más, y los liquidadores solo miran el factor de salud.
+
+| Término                    | Qué es                                                                   | Dónde se aplica                                                                   | Ejemplo: 10 WETH a $2,400 ($24,000), deuda de 12,000 USDC |
+| -------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| LTV (loan-to-value)        | Lo máximo que puedes pedir prestado con un colateral, como % de su valor | Solo préstamos nuevos                                                             | 80.5% para WETH: un límite de $19,320                     |
+| Umbral de liquidación (LT) | El % del valor de un colateral que cuenta para el factor de salud        | Liquidación y retiros (el HF debe quedar en 1 o más)                              | 83% para WETH: cuentan $19,920                            |
+| Factor de salud (HF)       | Σ(colateral × LT) ÷ deuda                                                | Por debajo de 1.00, la posición se puede liquidar                                 | 1.66                                                      |
+| Límite de préstamo usado   | Deuda ÷ (colateral × LTV), un indicador que muestran muchas aplicaciones | No se guarda on-chain; se rechaza un préstamo que lo llevaría por encima del 100% | 62.1%                                                     |
+
+El "límite de préstamo usado" no es 1 ÷ HF (60.2% aquí), porque se basa en el LTV y no en el umbral de liquidación. Te dice cuánto margen te queda para pedir prestado, no cuán cerca está la liquidación.
+
+Como los retiros no están limitados por el LTV, un retiro puede acercar una posición a la liquidación más que un préstamo. Con 10 WETH a $2,400 frente a 12,000 USDC, el contrato acepta un retiro de hasta unos 3.98 WETH ($9,542), que deja el factor de salud en 1.00. Un préstamo se detiene en el límite del LTV, donde el factor de salud sigue siendo 1.031.
+
+El umbral de liquidación siempre es al menos tan alto como el LTV. Valores vigentes el 14 de octubre de 2026, leídos con un multicall por red:
+
+| Mercado       | Activo        | LTV   | Umbral de liquidación |
+| ------------- | ------------- | ----- | --------------------- |
+| Ethereum Core | WETH          | 80.5% | 83%                   |
+| Ethereum Core | WBTC          | 73%   | 78%                   |
+| Ethereum Core | USDC          | 75%   | 78%                   |
+| Arbitrum      | WETH          | 80%   | 84%                   |
+| Arbitrum      | WBTC          | 73%   | 78%                   |
+| Arbitrum      | USDC (nativo) | 75%   | 78%                   |
+
+Los valores de Ethereum son del bloque 26193284 (20:58:47 UTC) y los de Arbitrum, del bloque 514855406 (20:58:57 UTC). La gobernanza y los Risk Stewards pueden cambiarlos, así que revisa el activo en la aplicación de Aave antes de basarte en ellos.
+
+## ¿Por qué pedir prestado el máximo deja un factor de salud de solo 1.03 aproximadamente?
+
+Con un solo activo de colateral, pedir prestado todo lo que permite el LTV deja un factor de salud de LT ÷ LTV, que está apenas por encima de 1; con varios, es el LT ponderado ÷ el LTV ponderado. Para WETH en Aave V3 Ethereum Core eso da 83 ÷ 80.5 = 1.031 (bloque 26193284, 14 de octubre de 2026). Con 10 WETH a $2,400 ($24,000), pedir prestado todo el límite de $19,320 da HF = 19,920 ÷ 19,320 = 1.031 y lleva el precio de liquidación a $2,327.71, solo un 3.0% por debajo de $2,400. La misma división da 1.068 para WBTC (78 ÷ 73) y 1.04 para USDC (78 ÷ 75) en Ethereum Core. Dicho de otro modo, una posición que pidió prestado hasta su límite queda a solo un pequeño porcentaje de la liquidación. Para ver la tabla por activo y cómo elegir tu margen de seguridad, consulta [cuánto margen te da un factor de salud](/es/blog/factor-de-salud-seguro-aave).
+
+## ¿Qué pasa cuando el factor de salud baja de 1?
+
+Cuando un factor de salud de Aave V3 baja de 1.00, un liquidador puede pagar una parte o la totalidad de tu deuda y quedarse con tu colateral con un descuento, la bonificación de liquidación. En Ethereum Core la bonificación de WETH era del 5% en el bloque 26193284 (14 de octubre de 2026), así que saldar $6,000 de tu deuda te cuesta $6,300 de WETH: $6,270 van al liquidador y $30, una comisión del protocolo equivalente al 10% de la bonificación, a la tesorería de Aave.
+
+Una liquidación puede pagar hasta el 50% de tu deuda total, o hasta el 100% de la deuda en una reserva cuando el factor de salud está en 0.95 o menos, o cuando tu colateral o tu deuda en las reservas implicadas valen menos de $2,000. Las reservas congeladas se pueden seguir liquidando; las pausadas, no. Las reglas completas, un ejemplo resuelto y qué pasa con la deuda incobrable están en [qué pasa en una liquidación de Aave](/es/blog/como-funciona-la-liquidacion-en-aave). Las formas de actuar antes de que el factor de salud llegue a 1 están en [cómo subir tu factor de salud en Aave](/es/blog/como-evitar-la-liquidacion-en-aave).
+
+## ¿Qué hace que tu factor de salud cambie aunque no hagas nada?
+
+Tu factor de salud de Aave cambia por sí solo porque se recalcula a partir de los precios del oráculo y del interés acumulado cada vez que se consulta. Las causas habituales:
+
+- **Cae el precio de tu colateral.** Con colateral en WETH y deuda en USDC, el factor de salud se mueve al mismo ritmo que ETH.
+- **Sube el precio del activo que pediste prestado.** Con deuda volátil, una subida baja el factor de salud.
+- **Se acumula interés.** La deuda suele crecer más rápido de lo que rinde el colateral, y las tasas variables de préstamo pueden dispararse.
+- **La gobernanza o los Risk Stewards bajan un umbral de liquidación.** En V3, el nuevo umbral se aplica a la vez a todas las posiciones abiertas.
+- **Una stablecoin que depositaste pierde su paridad a la baja.** El adaptador de precios de Aave para USDC en Ethereum lo limita a $1.04, pero deja pasar tal cual los precios por debajo de $1 (bloque 26193376, 14 de octubre de 2026).
+- **Un oráculo está mal configurado.** En marzo de 2026, un error en la tasa de cambio de wstETH provocó liquidaciones en E-Mode en los mercados Ethereum Core y Prime.
+
+Un recorte del LTV (incluido LTV 0) o la congelación de una reserva limita los nuevos préstamos, pero no baja tu factor de salud. Cada causa se explica con fechas y ejemplos en [por qué tu factor de salud de Aave baja por sí solo](/es/blog/por-que-bajo-el-factor-de-salud-aave).
+
+## ¿Cómo cambia el E-Mode el factor de salud?
+
+El E-Mode (Efficiency Mode, modo de eficiencia) sube el LTV y el umbral de liquidación de los activos cuyos precios se mueven juntos, así que la misma posición muestra un factor de salud más alto. En Aave V3 Ethereum Core, la categoría "ETH correlated" usa un LTV del 93%, un umbral de liquidación del 95% y una bonificación de liquidación del 1% (bloque 26193288, 14 de octubre de 2026). Su conjunto de colaterales es WETH, wstETH, cbETH, rETH, weETH, osETH y ETHx, y WETH es el único activo que puedes pedir prestado en ella.
+
+Lo que cambia para el factor de salud en esa categoría:
+
+- **El umbral más alto entra en la fórmula.** Deposita wstETH por valor de $10,000 y pide prestado WETH por valor de $9,000: HF = 10,000 × 0.95 ÷ 9,000 = 1.056.
+- **El margen en el límite de préstamo es más estrecho.** 95 ÷ 93 = 1.0215, así que una posición que pidió prestado hasta su límite está a alrededor de un 2.1% de la liquidación.
+- **Importa la relación entre precios, no el precio en dólares.** Con colateral en wstETH y deuda en WETH, una caída de ETH mueve ambos lados a la vez. Un cambio en la tasa wstETH/ETH que usa el oráculo, sea real o causado por un error de configuración, mueve el HF directamente. El error de marzo de 2026 movió esa tasa alrededor de un 2.85%, y el informe post mortem de Chaos Labs señala liquidaciones de posiciones por debajo de un factor de salud de alrededor de 1.0288.
+
+Para entrar en una categoría, cada activo del que tienes deuda debe poder pedirse prestado en ella, cada activo que usas como colateral debe conservar en ella un LTV distinto de cero, y el factor de salud debe quedar en 1 o más con la configuración de la categoría. Por eso la posición de 10 WETH / 12,000 USDC no puede usar "ETH correlated" en Ethereum Core: USDC no está en su conjunto de activos que se pueden pedir prestados. El colateral fuera del conjunto de la categoría conserva su LTV y su umbral normales (desde V3.2). Si la gobernanza marca una categoría como aislada (un indicador de V3.7), ese colateral externo recibe LTV 0 pero conserva su umbral: no añade capacidad de préstamo, pero sigue contando para tu factor de salud. "ETH correlated" en Ethereum Core no estaba aislada en el bloque 26193288.
+
+## ¿Es diferente el factor de salud en Aave V4?
+
+Sí. Aave V4 sigue permitiendo la liquidación por debajo de un factor de salud de 1, pero calcula el número por Spoke, con un único factor de colateral por activo en lugar de valores separados de LTV y umbral de liquidación. Un Spoke es un mercado de préstamos de V4 con su propia configuración de riesgo que toma liquidez de un Hub compartido. Según el registro de cambios de la documentación de Aave, V4 se lanzó en Ethereum el 30 de marzo de 2026, en Avalanche el 15 de julio de 2026, en Arc el 16 de septiembre de 2026 y en Base el 7 de octubre de 2026. V3 sigue funcionando, y los siete mercados de V3 que se tratan aquí usan V3.7.
+
+- **Un factor de salud por Spoke.** Las posiciones en distintos Spokes no se afectan entre sí. En V3 la unidad es el mercado: un Pool en una red.
+- **Un factor de colateral (CF) por activo.** HF = Σ(valor del colateral × CF) ÷ valor de la deuda. El ejemplo de la documentación de Aave: $10,000 de ETH con un CF del 80% frente a $6,000 de GHO da 1.333. En el Ethereum Main Spoke, el CF de WETH era del 83% el 14 de octubre de 2026 (API de Aave V4), igual que su umbral de liquidación en V3, así que 10 WETH frente a 12,000 USDC también mostrarían 1.66 allí.
+- **Los cambios de parámetros suelen aplicarse a las posiciones nuevas.** Una posición existente en V4 conserva su CF anterior hasta que el prestatario pide prestado, retira o cambia la configuración del colateral, salvo que la gobernanza fuerce una actualización. En V3, un recorte del umbral afecta a la vez a todas las posiciones abiertas.
+- **Un colateral más arriesgado implica pagar más interés.** La User Risk Premium de V4 añade un recargo a la tasa de préstamo según la calidad del colateral, así que la deuda puede crecer más rápido.
+- **Las liquidaciones funcionan de otra manera.** No hay factor de cierre (close factor): los liquidadores pagan solo lo suficiente para llevar el HF hasta el objetivo del Spoke (1.24 en el Ethereum Main Spoke en el bloque 26194078, 14 de octubre de 2026), y la bonificación crece a medida que baja el HF.
+
+El 14 de octubre de 2026, DefiLlama mostraba unos 17.09 mil millones de dólares de TVL en Aave V3 y unos 0.66 mil millones en V4, sin contar los montos prestados. Su cifra de V4 cubría Ethereum, Avalanche y Arc, todavía no el mercado de Base (comprobado el 15 de octubre de 2026). Los ejemplos de esta guía cubren solo Aave V3. Tokenping cubre ambas versiones, con una alerta por mercado de V3 y una por Spoke de V4.
+
+## ¿En qué se diferencia el factor de salud de Aave del de Morpho?
+
+Morpho, otro protocolo de préstamos, parte de la misma idea (colateral ponderado por un umbral y dividido entre la deuda), pero con reglas distintas a su alrededor. Cada mercado de Morpho Blue tiene un solo token de colateral y un solo token de préstamo, así que cada préstamo allí tiene su propio factor de salud. Su LTV de liquidación (LLTV) se fija cuando se crea el mercado, la gobernanza no puede cambiarlo y puedes pedir prestado justo hasta él, hasta un factor de salud de 1.00. En Aave V3, todo tu colateral y tu deuda en un mercado comparten un factor de salud, la gobernanza puede cambiar los umbrales y un préstamo máximo se detiene en el LTV, que es más bajo. [La guía del factor de salud de Morpho](/es/blog/factor-de-salud-morpho) explica su fórmula, un ejemplo resuelto y los mercados de tasa fija Midnight de Morpho, y el [panel de Morpho](/es/morpho) de Tokenping muestra esas posiciones.
+
+## ¿Cómo consultas tu factor de salud de Aave?
+
+Puedes consultar tu factor de salud de Aave V3 en la aplicación de Aave, en un panel como el de Tokenping o llamando a `getUserAccountData` en el contrato Pool del mercado. Los tres parten de los mismos precios, saldos y parámetros on-chain, así que deberían coincidir casi por completo. La aplicación de Aave calcula el número en tu navegador; Tokenping y una llamada directa lo leen de `getUserAccountData`.
+
+- **La aplicación de Aave (app.aave.com)** muestra el factor de salud del mercado seleccionado, así que cambia de mercado para ver cada red. Avisa de un factor de salud bajo dentro de los flujos de transacción, pero no envía notificaciones push, y la página de ayuda de Aave pide a quienes piden prestado que vigilen su factor de salud con regularidad.
+- **El panel de Tokenping** te permite [consultar tu factor de salud de Aave en 22 redes](/es/aave): cada mercado de Aave V3 en 21 redes (24 mercados, entre ellos Core, Prime, EtherFi y Horizon de Ethereum) y cada Spoke de Aave V4 en Ethereum, Avalanche, Arc y Base. Conecta tu billetera y muestra el colateral, la deuda y el factor de salud de cada mercado donde la billetera tiene una posición o una alerta guardada, con el resto agrupado en "Otros mercados", todo leído solo con llamadas de consulta (view), así que no se aprueba ni se firma nada en Aave.
+- **El contrato.** `getUserAccountData(address)` en un Pool de V3 funciona con cualquier dirección. Devuelve el colateral y la deuda totales (USD, 8 decimales), lo que aún puedes pedir prestado, el umbral de liquidación y el LTV promedio (en puntos básicos: 8300 significa 83%) y el factor de salud con 18 decimales.
+
+| Red                                    | Contrato Pool de Aave V3                     |
+| -------------------------------------- | -------------------------------------------- |
+| Ethereum (mercado Core)                | `0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2` |
+| Polygon, Arbitrum, Optimism, Avalanche | `0x794a61358D6845594F94dc1DB02A252b5b4814aD` |
+| Base                                   | `0xA238Dd80C259a72e81d7e4664a9801593F98d1c5` |
+| Gnosis                                 | `0xb50201558B00496A145fE76f7424749556E326D8` |
+
+Los siete Pools devolvían la revisión 11 (V3.7) el 14 de octubre de 2026.
+
+Si prefieres no estar revisándolo todo el tiempo, Tokenping puede enviarte un mensaje por Signal, Telegram o correo electrónico mientras tu factor de salud esté por debajo de un nivel que elijas. Las alertas cuestan <AlertPrice />, con pago en Arbitrum. Tokenping comprueba cada 5 minutos y repite el mensaje en cada comprobación mientras sigas por debajo del umbral, así que un salto de precio que cruce 1.00 entre dos comprobaciones aún puede liquidarte antes. Una opción es poner la alerta en el factor de salud en el que todavía querrías actuar: [cuánto margen te da un factor de salud](/es/blog/factor-de-salud-seguro-aave) te ayuda a elegirlo, y [cómo configurar una alerta del factor de salud](/es/blog/configurar-alertas-factor-de-salud-aave) explica los pasos. Para otras opciones de alertas y automatización, incluidas herramientas que pueden pagar la deuda por ti, consulta la [comparativa de herramientas de alertas de liquidación de Aave](/es/blog/herramientas-de-alertas-de-liquidacion-aave).
+
+## Fuentes
+
+- [Aave V3 GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): fórmula del factor de salud, 18 decimales, uint256 máximo sin deuda (rama main, consultado el 14 de octubre de 2026)
+- [Aave V3 ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [BorrowLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/BorrowLogic.sol) y [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol): LTV comprobado solo en los préstamos, comprobación del factor de salud en los retiros y al desactivar un colateral, reglas de entrada al E-Mode, condición de liquidación (consultado el 14 de octubre de 2026, comprobado de nuevo el 15 de octubre de 2026)
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): regla del factor de cierre del 50% y del 100%, comisión del protocolo tomada de la bonificación (consultado el 14 de octubre de 2026)
+- [Referencia del Pool de Aave V3](https://aave.com/docs/aave-v3/smart-contracts/pool): getUserAccountData (consultado el 14 de octubre de 2026)
+- [Documentación de Aave: posiciones](https://aave.com/docs/aave-v3/markets/positions): factor de salud null sin préstamo (consultado el 14 de octubre de 2026)
+- [Documentación de Aave: visión general de V3](https://aave.com/docs/aave-v3/overview): el factor de salud se mueve con los precios del oráculo y el interés (consultado el 14 de octubre de 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): LTV, umbral, bonificación y comisión del protocolo por liquidación en el bloque 26193284 (consultado el 14 de octubre de 2026)
+- [PoolDataProvider, Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): parámetros en el bloque 514855406 (consultado el 14 de octubre de 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): precio de WETH y límite del adaptador de USDC en el bloque 26193376 (consultado el 14 de octubre de 2026)
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): configuración del E-Mode "ETH correlated" e indicador de aislamiento en el bloque 26193288, revisión del Pool (consultado el 14 de octubre de 2026)
+- [Funciones de Aave V3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): el colateral fuera de una categoría de E-Mode conserva su propio LTV y umbral (consultado el 15 de octubre de 2026)
+- [E-Mode aislado de Aave V3.7](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md): LTV 0 para el colateral externo, entrada bloqueada, factor de salud sin cambios al activarlo (consultado el 15 de octubre de 2026)
+- [aave-price-feeds](https://github.com/aave-dao/aave-price-feeds): adaptador de stablecoin con límite (consultado el 14 de octubre de 2026)
+- [Aave V3 Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): quién puede ajustar el LTV y los umbrales (consultado el 14 de octubre de 2026)
+- [Post mortem de Chaos Labs, tasa de cambio de wstETH](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): publicado el 10 de marzo de 2026 (consultado el 14 de octubre de 2026)
+- [Registro de cambios de la documentación de Aave](https://aave.com/docs/resources/changelog): despliegue de V3.7, fechas de lanzamiento de V4 (consultado el 14 de octubre de 2026)
+- [Documentación de Aave V4](https://aave.com/docs/aave-v4) y [posiciones en V4](https://aave.com/docs/aave-v4/positions): factor de salud por Spoke, factor de colateral, User Risk Premium (consultado el 14 de octubre de 2026)
+- [Visión general de Aave V4 en GitHub](https://github.com/aave/aave-v4/blob/main/docs/overview.md): configuración dinámica del riesgo (consultado el 14 de octubre de 2026)
+- [API de Aave V4](https://api.v4.aave.com/graphql): configuración de las reservas del Ethereum Main Spoke (consultado el 14 de octubre de 2026)
+- [Aave V4 Ethereum Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485): factor de salud objetivo en el bloque 26194078 (consultado el 14 de octubre de 2026)
+- [API de protocolos de DefiLlama](https://api.llama.fi/protocols): TVL de Aave V3 y V4 (consultado el 14 de octubre de 2026); redes contadas para V4 (consultado el 15 de octubre de 2026)
+- [Código fuente de la aplicación de Aave, useUserSummaryAndIncentives.ts](https://github.com/aave/interface/blob/main/src/hooks/pool/useUserSummaryAndIncentives.ts): la aplicación calcula el factor de salud en el navegador (consultado el 15 de octubre de 2026)
+- [Ayuda de Aave: liquidaciones](https://aave.com/help/borrowing/liquidations) (consultado el 14 de octubre de 2026)
+
+*Contenido educativo, no asesoramiento financiero. Las alertas reducen el riesgo, pero no evitan la liquidación.*

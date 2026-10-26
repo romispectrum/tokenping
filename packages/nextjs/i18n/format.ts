@@ -2,23 +2,26 @@ import { LOCALE_INFO, type Locale } from "~~/i18n/locales";
 
 type PluralForms = {
   one: string;
-  /** Czech 2 to 4 ("2 sítě"); English never uses it. */
+  /** Czech 2 to 4 ("2 sítě"); English and Spanish never use it. */
   few?: string;
-  /** Czech fractions ("1,5 sítě"). */
+  /** Czech fractions ("1,5 sítě"); Spanish uses it for a million and up, and falls back to `other` there. */
   many?: string;
   other: string;
 };
 
 /**
- * The plural form for a count, by the language's CLDR rules: English one/other, Czech one/few/many/other. A missing
- * form falls back to `other`. Write the number into the form yourself: plural("cs", n, { one: `${n} síť`, ... }).
+ * The plural form for a count, by the language's CLDR rules: English and Spanish one/other, Czech one/few/many/other.
+ * A missing form falls back to `other`. Write the number into the form yourself: plural("cs", n, { one: `${n} síť`, ... }).
  */
 export const plural = (locale: Locale, count: number, forms: PluralForms) => {
   const category = new Intl.PluralRules(LOCALE_INFO[locale].intl).select(count) as keyof PluralForms;
   return forms[category] ?? forms.other;
 };
 
-/** A YYYY-MM-DD day as "October 14, 2026" / "14. října 2026", in UTC so the server and the browser agree. */
+/**
+ * A YYYY-MM-DD day as "October 14, 2026" / "14. října 2026" / "14 de octubre de 2026", in UTC so the server and the
+ * browser agree.
+ */
 export const formatLongDate = (locale: Locale, isoDate: string) =>
   new Intl.DateTimeFormat(LOCALE_INFO[locale].intl, {
     day: "numeric",
@@ -30,19 +33,35 @@ export const formatLongDate = (locale: Locale, isoDate: string) =>
 const LIST_WORDS: Record<Locale, Record<"conjunction" | "disjunction", string>> = {
   en: { conjunction: "and", disjunction: "or" },
   cs: { conjunction: "a", disjunction: "nebo" },
+  es: { conjunction: "y", disjunction: "o" },
 };
 
-/** A list the site's way, with no comma before the last word: "A, B and C" / "A, B a C" / "A, B nebo C". */
+/**
+ * Spanish "y" turns into "e" before an i sound ("Signal e Ink", but "y hierro"), "o" into "u" before an o sound
+ * ("Arbitrum u OP Mainnet").
+ */
+const spanishListWord = (word: string, next: string) => {
+  if (word === "y" && /^h?i(?![aeouáéó])/i.test(next)) return "e";
+  if (word === "o" && /^h?[oó]/i.test(next)) return "u";
+  return word;
+};
+
+/** A list the site's way, with no comma before the last word: "A, B and C" / "A, B a C" / "A, B y C" / "A, B nebo C". */
 export const joinList = (
   locale: Locale,
   items: readonly string[],
   type: "conjunction" | "disjunction" = "conjunction",
-) =>
-  items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} ${LIST_WORDS[locale][type]} ${items.at(-1)}`;
+) => {
+  if (items.length <= 1) return items[0] ?? "";
+  const last = items.at(-1)!;
+  const word = locale === "es" ? spanishListWord(LIST_WORDS.es[type], last) : LIST_WORDS[locale][type];
+  return `${items.slice(0, -1).join(", ")} ${word} ${last}`;
+};
 
 /**
  * A number the user reads in running text: as written in English ("1.42"), with a decimal comma in Czech ("1,42").
- * Takes the already-formatted string (a health factor such as "1.42" or "∞") or a number.
+ * Spanish keeps the decimal point, as Latin America writes it and the app shows it. Takes the already-formatted
+ * string (a health factor such as "1.42" or "∞") or a number.
  */
 export const formatDecimal = (locale: Locale, value: string | number) =>
   locale === "cs" ? String(value).replace(".", ",") : String(value);
@@ -66,6 +85,13 @@ export const csOnMarket = (name: string, kind?: MarketNameKind) =>
 /** Czech "pro síť Ethereum" for a V3 market, "pro trh Ethereum (V4 Lido)" for a V4 Spoke. */
 export const csForMarket = (name: string, kind?: MarketNameKind) =>
   marketNameKind(name, kind) === "market" ? `pro trh ${name}` : `pro síť ${name}`;
+
+/** Spanish "la red" before a V3 market's name (its network's), "el mercado" before a V4 Spoke's or a Morpho market's. */
+export const esMarketNoun = (name: string, kind?: MarketNameKind) =>
+  marketNameKind(name, kind) === "market" ? "el mercado" : "la red";
+
+/** Spanish "la red Ethereum" for a V3 market, "el mercado Ethereum (V4 Lido)" for a V4 Spoke. */
+export const esMarket = (name: string, kind?: MarketNameKind) => `${esMarketNoun(name, kind)} ${name}`;
 
 /** The text with its first letter upper case, for a phrase that starts a sentence. */
 export const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);

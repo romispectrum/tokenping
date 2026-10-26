@@ -32,9 +32,9 @@ export type NotificationConfigRow = {
   signal_recipient: string | null;
   /** Lowercased, without "@" (checked by the database); absent before the telegram_usernames migration. */
   telegram_username?: string | null;
-  /** 'en' or 'cs' (checked by the database); absent before the locale migration is applied. */
+  /** 'en', 'cs' or 'es' (checked by the database); absent before the locale migration is applied. */
   locale?: string | null;
-  /** Each channel's own language, 'en' or 'cs'; null (or absent before that migration) means `locale`. */
+  /** Each channel's own language, 'en', 'cs' or 'es'; null (or absent before that migration) means `locale`. */
   email_locale?: string | null;
   signal_locale?: string | null;
   telegram_locale?: string | null;

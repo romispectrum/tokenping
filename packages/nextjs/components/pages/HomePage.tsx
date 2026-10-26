@@ -41,7 +41,7 @@ export const homeMetadata = (locale: Locale) =>
 // boundaries between two plain sections (none next to a wash or the dark band). Pink: the hero's primary action and
 // the closing band's, the same action, screens apart. Each section carries one visual (the alert, the chart, the
 // scale, the logo grid, the price list) and as few words as it needs around it.
-/** The home page of one language; app/(en)/page.tsx and app/(cs)/cz/page.tsx render it. */
+/** The home page of one language; app/(en)/page.tsx, app/(cs)/cz/page.tsx and app/(es)/es/page.tsx render it. */
 export const HomePage = async ({ locale }: { locale: Locale }) => {
   // One read for the whole page: the steps, the pricing block, the objections and the JSON-LD show the same plan.
   const plan = await getAlertPlan();

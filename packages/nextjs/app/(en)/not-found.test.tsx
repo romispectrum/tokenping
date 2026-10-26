@@ -37,15 +37,16 @@ describe("not-found", () => {
   });
 });
 
-// A URL that matches no route cannot tell its language: the message comes in English, then in Czech.
+// A URL that matches no route cannot tell its language: the message comes in English, then in Czech and Spanish.
 describe("global-not-found", () => {
   it("keeps the English title on the English document", () => {
     expect(globalMetadata.title).toBe("Page not found");
   });
 
-  it("says it in English with the one h1 and the one pink link, then in Czech under lang=cs", () => {
+  it("says it in English with the one h1 and the one pink link, then in Czech and Spanish under their lang", () => {
     const { container } = render(<GlobalNotFound />);
     const czech = container.querySelector('[lang="cs"]') as HTMLElement;
+    const spanish = container.querySelector('[lang="es"]') as HTMLElement;
 
     expect(screen.getAllByRole("heading", { level: 1 }).map(heading => heading.textContent)).toEqual([
       "Page not found",
@@ -54,6 +55,8 @@ describe("global-not-found", () => {
     expect(within(czech).getByText("Chyba 404")).toBeTruthy();
     expect(within(czech).getByText("Stránka, kterou hledáte, neexistuje.")).toBeTruthy();
     expect(czech.contains(screen.getByRole("heading", { level: 1 }))).toBe(false);
+    expect(within(spanish).getByRole("heading", { level: 2 }).textContent).toBe("Página no encontrada");
+    expect(within(spanish).getByText("La página que buscas no existe.")).toBeTruthy();
 
     const links = screen.getAllByRole("link");
     expect(links.map(link => [link.textContent, link.getAttribute("href")])).toEqual([
@@ -63,6 +66,9 @@ describe("global-not-found", () => {
       ["Přejít na úvodní stránku", "/cz"],
       ["Otevřít přehled", "/cz/aave"],
       ["Číst blog", "/cz/blog"],
+      ["Ir a la página de inicio", "/es"],
+      ["Abrir el panel", "/es/aave"],
+      ["Leer el blog", "/es/blog"],
     ]);
     expect(links.map(link => link.className.includes("btn-primary"))).toEqual([
       true,
@@ -71,15 +77,20 @@ describe("global-not-found", () => {
       false,
       false,
       false,
+      false,
+      false,
+      false,
     ]);
     expect(within(czech).getAllByRole("link")).toHaveLength(3);
+    expect(within(spanish).getAllByRole("link")).toHaveLength(3);
   });
 
-  it("names the two link lists apart and uses no em or en dash", () => {
+  it("names the three link lists apart and uses no em or en dash", () => {
     const { container } = render(<GlobalNotFound />);
 
     expect(screen.getByRole("navigation", { name: "Pages" })).toBeTruthy();
     expect(screen.getByRole("navigation", { name: "Stránky" })).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: "Páginas" })).toBeTruthy();
     expect(container.innerHTML).not.toMatch(new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`));
   });
 });

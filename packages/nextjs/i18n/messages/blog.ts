@@ -4,8 +4,8 @@ import type { AlertPlan } from "~~/services/marketing/alertPlan";
 
 // The blog around the articles: /blog, a post's header, byline and end area, the article components (ShortAnswer,
 // ScopeNote, Callout, AlertPrice, the table regions) and the liquidation price calculator. The articles themselves
-// are content/blog/*.mdx and content/blog/cs/*.mdx. Rich text is split into the words around the markup, so each
-// language keeps its own word order.
+// are content/blog/*.mdx, content/blog/cs/*.mdx and content/blog/es/*.mdx. Rich text is split into the words around
+// the markup, so each language keeps its own word order.
 
 type EndBoxFields = {
   minutes: number;
@@ -111,6 +111,14 @@ const csForDays = (days: number) =>
     many: `${formatDecimal("cs", days)} dne`,
     other: `${days} dní`,
   })}`;
+
+/** "cada 5 minutos", "cada minuto". */
+const esEveryMinutes = (minutes: number) =>
+  plural("es", minutes, { one: "cada minuto", other: `cada ${minutes} minutos` });
+
+/** "en 22 redes", "en 1 red". */
+const esOnNetworks = (networks: number) =>
+  plural("es", networks, { one: `en ${networks} red`, other: `en ${networks} redes` });
 
 export const BLOG_MESSAGES: Localized<BlogMessages> = {
   en: {
@@ -228,9 +236,67 @@ export const BLOG_MESSAGES: Localized<BlogMessages> = {
       scrollHint: "Posuňte tabulku do strany, abyste viděli všechny sloupce.",
     },
   },
+  es: {
+    crumbs: { home: "Inicio", blog: "Blog" },
+    index: {
+      title: "Guías del factor de salud y la liquidación en Aave y Morpho",
+      description:
+        "Guías sobre el factor de salud en Aave y Morpho, liquidaciones, precios de liquidación y alertas, con ejemplos resueltos y cifras con fecha y fuente.",
+      kicker: "Guías de Aave y Morpho",
+      lead: "Cómo funciona el factor de salud en Aave y en Morpho, qué pasa en una liquidación, cómo calcular tu precio de liquidación y cómo recibir un aviso antes de que el precio se acerque a ese nivel. Cada cifra de estas guías indica su fuente y la fecha en que se verificó.",
+      dashboardCta: "Abrir el panel de Aave",
+      morphoDashboardCta: "Abrir el panel de Morpho",
+      rss: "Suscribirse por RSS",
+      startHere: "Empieza aquí",
+      allGuides: "Todas las guías",
+      empty: {
+        title: "Aún no hay guías",
+        description: "Estamos preparando las guías en español. Suscríbete por RSS para recibirlas cuando se publiquen.",
+        otherLanguage: "Leer las guías en inglés",
+      },
+    },
+    post: {
+      kicker: "Guía de Aave V3",
+      morphoKicker: "Guía de Morpho",
+      byline: { author: "Por el equipo de Tokenping", published: "Publicado", updated: "Actualizado" },
+      readingTime: minutes => `${minutes} min de lectura`,
+      readGuide: "Leer la guía",
+      related: "Guías relacionadas",
+    },
+    endBox: {
+      label: "Sobre Tokenping",
+      title: "Alertas del factor de salud con Tokenping",
+      body: ({ minutes, networks, channels, price, paymentChain }) =>
+        `Tokenping revisa el factor de salud de tus posiciones en Aave V3 y V4 ${esEveryMinutes(minutes)} ${esOnNetworks(networks)} y te envía un mensaje por ${channels} cuando está por debajo de tu umbral. Las alertas cuestan ${price}${paymentChain ? `, con pago en la red ${paymentChain}` : ""}; ver tus posiciones no requiere pago. Las alertas te dan tiempo para actuar, pero no evitan la liquidación.`,
+      cta: "Abrir el panel",
+      morpho: {
+        title: "Alertas del factor de salud en Morpho con Tokenping",
+        body: ({ minutes, networks, channels, price, paymentChain }) =>
+          `Tokenping revisa el factor de salud de tus préstamos en Morpho Blue y Midnight ${esEveryMinutes(minutes)} ${esOnNetworks(networks)} y te envía un mensaje por ${channels} cuando está por debajo de tu umbral, con recordatorios antes de que venza un préstamo a tasa fija. Las alertas cuestan ${price}${paymentChain ? `, con pago en la red ${paymentChain}` : ""}, el mismo plan que las alertas de Aave; ver tus posiciones no requiere pago. Las alertas te dan tiempo para actuar, pero no evitan la liquidación.`,
+        cta: "Abrir el panel de Morpho",
+      },
+    },
+    alertPrice: {
+      fallback: "una pequeña tarifa en USDC (consulta el precio actual en el panel)",
+      plan: ({ priceLabel, days }) => `${priceLabel} por ${plural("es", days, { one: "día", other: `${days} días` })}`,
+    },
+    callout: { info: "Nota", warning: "Advertencia" },
+    shortAnswer: "Respuesta breve",
+    scopeNote: {
+      text: "Se aplica a Aave V3.7 y se verificó en los mercados Ethereum Core, Arbitrum, Base, Optimism, Polygon, Avalanche y Gnosis. Otros mercados y redes de V3 pueden usar versiones anteriores. Las diferencias de Aave V4 se indican donde las reglas no son las mismas.",
+      morphoText:
+        "Se aplica a los mercados de Morpho Blue y Morpho Midnight que figuran en la aplicación de Morpho. Cada mercado define su propio colateral, oráculo y LLTV, así que revisa las cifras del tuyo.",
+      figuresAsOf: "Cifras consultadas el",
+    },
+    table: {
+      fallbackLabel: "Tabla, se desplaza en horizontal",
+      label: (heading, index) => (index === undefined ? `Tabla: ${heading}` : `Tabla ${index}: ${heading}`),
+      scrollHint: "Desplázate hacia los lados para ver todas las columnas.",
+    },
+  },
 };
 
-// The calculator keeps the app's number format in both languages ("$1,445.78", "1.66", "39.8%"), like the
+// The calculator keeps the app's number format in every language ("$1,445.78", "1.66", "39.8%"), like the
 // dashboard, and its inputs take a dot for decimals; only the words change.
 
 type DebtLoan = { kind: "stable" } | { kind: "volatile"; name: string };
@@ -544,6 +610,116 @@ export const CALCULATOR_MESSAGES: Localized<CalculatorMessages> = {
         "Vychází jen z čísel, která zadáte. Živé parametry Aave se mohou měnit: prahy výše byly načteny z blockchainu",
       afterDate:
         " a governance nebo Risk Stewards je mohou kdykoli změnit. Ceny z orákula se hýbou, k dluhu stále přibývá úrok a každá likvidační cena předpokládá, že ostatní ceny zůstanou stejné. Než začnete jednat, zkontrolujte svou pozici v aplikaci Aave.",
+    },
+  },
+  es: {
+    title: "Calculadora del precio de liquidación en Aave",
+    intro:
+      "Indica cada activo de tu colateral y tu deuda para obtener el factor de salud y los precios a los que la posición puede ser liquidada. La calculadora usa la fórmula de Aave V3: Σ(valor del colateral × umbral de liquidación) ÷ valor de la deuda.",
+    examplesLabel: "Cargar un ejemplo resuelto:",
+    examples: {
+      "one-collateral": "10 WETH, deuda de 12,000 USDC",
+      "two-collaterals": "10 WETH + 0.2 WBTC, deuda de 20,000 USDC",
+      "volatile-debt": "10,000 USDC, deuda de 2.5 WETH",
+    },
+    defaultCollateralName: index => `Colateral ${index}`,
+    defaultDebtName: "Activo de la deuda",
+    collateralLegend: index => `Colateral ${index}`,
+    presetLabel: "Activo de Aave V3 (el umbral se completa solo)",
+    eModeHint: (collateral, borrowable) =>
+      `Este umbral cuenta para ${joinList("es", collateral)}; el resto del colateral conserva el suyo. En este E-Mode solo puedes pedir prestado ${joinList("es", borrowable)}.`,
+    otherAsset: "Otro activo: indica tú el umbral",
+    presetGroup: (market, date) => `${market} (datos del ${date})`,
+    presetLabels: {
+      "ethereum-core-emode-eth": "E-Mode “ETH correlated” (p. ej., WETH, wstETH, weETH)",
+      "arbitrum-usdc": "USDC (nativo)",
+    },
+    nameLabel: "Nombre del activo",
+    namePlaceholder: symbols => `p. ej., ${joinList("es", symbols, "disjunction")}`,
+    amountSupplied: "Cantidad depositada",
+    price: "Precio (USD)",
+    priceHint: "El precio del oráculo de Aave, que aparece en la página del activo en la aplicación de Aave.",
+    threshold: "Umbral de liquidación (%)",
+    thresholdHint: "En E-Mode, el umbral de la categoría. En Aave V4, el factor de colateral (collateral factor).",
+    removeCollateral: index => `Quitar el colateral ${index}`,
+    addCollateral: "Agregar un segundo colateral",
+    debtLegend: "Deuda",
+    debtKindLegend: "¿Qué pediste prestado?",
+    debtKinds: { stable: "Una stablecoin (se cuenta a $1.00)", volatile: "Un activo volátil, como WETH" },
+    debtAmount: { stable: "Monto de la deuda (USD)", volatile: "Cantidad de la deuda (tokens)" },
+    debtAmountHint: "Incluye los intereses acumulados hasta ahora.",
+    debtPrice: "Precio del activo de la deuda (USD)",
+    errors: {
+      number: "Escribe un número como 10 o 0.25, con punto para los decimales.",
+      price: "Escribe un precio mayor que 0.",
+      threshold: "Escribe un porcentaje mayor que 0 y de 100 como máximo.",
+      samePrice: (name, price) =>
+        `Ya indicaste ${name} arriba a ${price}. Usa el mismo precio: un activo tiene un solo precio.`,
+    },
+    eModeLead: "Sin resultado: Aave no permite esta combinación.",
+    eModeConflict: ({ market, category, borrowable, loan, thresholdPercent, ownThresholds }) => {
+      const borrowableList = joinList("es", borrowable);
+      const loanText = loan.kind === "stable" ? "un préstamo en stablecoin" : `deuda en ${loan.name}`;
+      const own = ownThresholds.length ? ` (${ownThresholds.join(", ")})` : "";
+      return (
+        `El E-Mode “${category}” de ${market} solo permite pedir prestado ${borrowableList}, así que una cuenta con ${loanText} ` +
+        `no puede usar el umbral del ${thresholdPercent}% de ese E-Mode. Elige en su lugar el umbral propio del colateral${own}, o pide prestado ${borrowableList}.`
+      );
+    },
+    results: {
+      heading: "Resultado",
+      empty: "Escribe un número en cada campo para ver el resultado.",
+      summaryLine: (title, value) => `${title}: ${value}.`,
+      healthFactor: "Factor de salud",
+      noDebt: "Sin deuda, así que no hay nada que liquidar.",
+      liquidatableNow: "Por debajo de 1.00: la posición se puede liquidar ahora.",
+      liquidatableBelow: "La posición se puede liquidar por debajo de 1.00.",
+      none: "Ninguno",
+      priceTitle: name => `Precio de liquidación de ${name}`,
+      priceTitleBorrowed: name => `Precio de liquidación de ${name} (deuda)`,
+      priceTitleShared: name => `Precio de liquidación de ${name} (depositado y en deuda)`,
+      recover: ({ name, change, now, rises, alike }) =>
+        `El factor de salud vuelve a 1.00 si ${name}${alike ? " (el depositado y el de la deuda)" : ""} ${
+          rises ? "sube" : "baja"
+        } ${change} desde ${now}, con los demás precios sin cambios.`,
+      collateralFall: ({ change, now }) =>
+        `${change} por debajo de ${now}, si todos los demás precios se mantienen iguales.`,
+      collateralNone: name =>
+        `Incluso a $0, ${name} por sí solo no puede llevar el factor de salud por debajo de 1.00: el resto del colateral cubre la deuda.`,
+      debtRise: ({ change, now }) =>
+        `${change} por encima de ${now}: los activos de la deuda bajan el factor de salud cuando su precio sube.`,
+      sharedRise: ({ name, change, now }) =>
+        `${change} por encima de ${now}: pediste prestado más ${name} de lo que cuenta tu colateral en ${name}, así que una subida baja el factor de salud. Los demás precios, sin cambios.`,
+      sharedFallBorrowed: ({ name, change, now }) =>
+        `${change} por debajo de ${now}, con el ${name} de la deuda al mismo precio y todos los demás precios sin cambios.`,
+      sharedFallRows: ({ name, change, now }) =>
+        `${change} por debajo de ${now} en cada fila de ${name}, si todos los demás precios se mantienen iguales.`,
+      bothSidesNeutral: name =>
+        `${name} es a la vez tu colateral y tu deuda, así que ambos se mueven juntos y su precio no cambia el factor de salud. Los intereses, un cambio de umbral o tus propias transacciones sí lo cambian.`,
+      bothSidesRecover: name =>
+        `${name} está en ambos lados, así que ambos se mueven juntos: ningún precio de ${name} por sí solo devuelve el factor de salud a 1.00.`,
+      bothSidesSafe: name =>
+        `${name} está en ambos lados, así que ambos se mueven juntos: su precio por sí solo no puede llevar el factor de salud por debajo de 1.00.`,
+      uniformTitle: "Todo el colateral baja a la vez",
+      uniformDescription: prices =>
+        `Si el precio de cada colateral baja este porcentaje y el precio de la deuda no se mueve, el factor de salud llega a 1.00: ${joinList(
+          "es",
+          prices.map(({ name, price }) => `${name} a ${price}`),
+        )}.`,
+      ratioTitle: (numerator, denominator) => `Relación de precios ${numerator} ÷ ${denominator} en la liquidación`,
+      ratioDescription: (now, change, falls) =>
+        `Ahora ${now}. Si ambos precios se mueven, ${falls ? "una baja" : "una subida"} de ${change} en esta relación lleva el factor de salud a 1.00.`,
+      breakdown: ({ collateral, weighted, debt, healthFactor }) =>
+        `Colateral ${collateral}, contado según sus umbrales de liquidación: ${weighted}. Factor de salud = ${weighted} ÷ ${debt} de deuda = ${healthFactor}.`,
+    },
+    noscript:
+      "La calculadora necesita JavaScript para recalcular. El resultado de arriba corresponde a 10 WETH a $2,400 (umbral de liquidación del 83%) frente a una deuda de 12,000 USDC; los ejemplos resueltos de esta página usan la misma fórmula.",
+    disclaimer: {
+      lead: "Estimación educativa, no asesoramiento financiero.",
+      beforeDate:
+        "Se basa solo en los números que indicas. Los parámetros vigentes de Aave pueden cambiar: los umbrales de arriba se leyeron de la blockchain el",
+      afterDate:
+        ", y la gobernanza o los Risk Stewards pueden cambiarlos en cualquier momento. Los precios del oráculo se mueven, los intereses siguen sumándose a tu deuda y cada precio de liquidación supone que todos los demás precios se mantienen iguales. Revisa tu posición en la aplicación de Aave antes de actuar.",
     },
   },
 };

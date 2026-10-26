@@ -114,10 +114,11 @@ results) is the one static copy: after changing the artwork, rebuild it from `/l
 - Links name their destination; never "Learn more" or "Click here".
 - Loading labels have no trailing dots: "Saving", "Processing", "Waiting for your wallet".
 - Plain words where money or keys are involved; no hype words; never invent facts, names, prices or metrics.
-- Never "free" (nor "zdarma" or "bezplatný" in Czech), anywhere: copy, articles, metadata, README. Say what alerts
-  cost and leave it there; where the point is that looking needs no payment, say exactly that ("looking at your
-  positions needs no payment", "prohlížení pozic nevyžaduje platbu"). For other tools: "costs nothing", "at no
-  charge", "a no-cost tier". The blog's content lint rejects the word.
+- Never "free" (nor "zdarma" or "bezplatný" in Czech, nor "gratis" or "gratuito" in Spanish), anywhere: copy,
+  articles, metadata, README. Say what alerts cost and leave it there; where the point is that looking needs no
+  payment, say exactly that ("looking at your positions needs no payment", "prohlížení pozic nevyžaduje platbu", "ver
+  tus posiciones no requiere pago"). For other tools: "costs nothing", "at no charge", "a no-cost tier" ("no cuesta
+  nada", "sin comisión"). The blog's content lint rejects the word.
 
 ## Primitives
 

@@ -14,10 +14,19 @@ export const getAlertChannelNames = (): string[] =>
 export const formatAlertChannels = (conjunction: "or" | "and" = "or", names = getAlertChannelNames()) =>
   names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} ${conjunction} ${names[names.length - 1]}`;
 
-const CHANNEL_NAMES_CS: Record<string, string> = { Signal: "Signal", Telegram: "Telegram", email: "e-mail" };
-
-/** The alert channels named in a language, for running text: "Signal nebo e-mail", "Signal, Telegram a e-mail". */
-export const formatAlertChannelsIn = (locale: Locale, type: "conjunction" | "disjunction" = "disjunction") => {
-  const names = getAlertChannelNames();
-  return joinList(locale, locale === "cs" ? names.map(name => CHANNEL_NAMES_CS[name] ?? name) : names, type);
+// How each language writes a channel in running text, where it differs from English.
+const CHANNEL_NAMES: Partial<Record<Locale, Record<string, string>>> = {
+  cs: { email: "e-mail" },
+  es: { email: "correo electrónico" },
 };
+
+/**
+ * The alert channels named in a language, for running text: "Signal nebo e-mail", "Signal, Telegram a e-mail",
+ * "Signal, Telegram y correo electrónico".
+ */
+export const formatAlertChannelsIn = (locale: Locale, type: "conjunction" | "disjunction" = "disjunction") =>
+  joinList(
+    locale,
+    getAlertChannelNames().map(name => CHANNEL_NAMES[locale]?.[name] ?? name),
+    type,
+  );

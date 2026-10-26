@@ -53,6 +53,48 @@ import CsAaveAlertsDoNotDisturb, {
   meta as csAaveAlertsDoNotDisturb,
 } from "~~/content/blog/cs/upozorneni-aave-rezim-nerusit.mdx";
 import CsAaveInterestRates, { meta as csAaveInterestRates } from "~~/content/blog/cs/urokove-sazby-aave.mdx";
+import EsAaveAlertsDoNotDisturb, {
+  meta as esAaveAlertsDoNotDisturb,
+} from "~~/content/blog/es/alertas-aave-modo-no-molestar.mdx";
+import EsPrivateAaveLiquidationAlerts, {
+  meta as esPrivateAaveLiquidationAlerts,
+} from "~~/content/blog/es/alertas-aave-y-privacidad.mdx";
+import EsAaveMarketWindDown, { meta as esAaveMarketWindDown } from "~~/content/blog/es/cierre-de-mercados-aave.mdx";
+import EsAvoidAaveLiquidation, {
+  meta as esAvoidAaveLiquidation,
+} from "~~/content/blog/es/como-evitar-la-liquidacion-en-aave.mdx";
+import EsHowAaveLiquidationWorks, {
+  meta as esHowAaveLiquidationWorks,
+} from "~~/content/blog/es/como-funciona-la-liquidacion-en-aave.mdx";
+import EsHowMorphoLiquidationWorks, {
+  meta as esHowMorphoLiquidationWorks,
+} from "~~/content/blog/es/como-funciona-la-liquidacion-en-morpho.mdx";
+import EsAaveHealthFactorAlertSetup, {
+  meta as esAaveHealthFactorAlertSetup,
+} from "~~/content/blog/es/configurar-alertas-factor-de-salud-aave.mdx";
+import EsAaveHealthFactor, { meta as esAaveHealthFactor } from "~~/content/blog/es/factor-de-salud-aave.mdx";
+import EsMorphoHealthFactor, { meta as esMorphoHealthFactor } from "~~/content/blog/es/factor-de-salud-morpho.mdx";
+import EsSafeAaveHealthFactor, {
+  meta as esSafeAaveHealthFactor,
+} from "~~/content/blog/es/factor-de-salud-seguro-aave.mdx";
+import EsAaveLiquidationAlertTools, {
+  meta as esAaveLiquidationAlertTools,
+} from "~~/content/blog/es/herramientas-de-alertas-de-liquidacion-aave.mdx";
+import EsMorphoMidnightFixedRateLoans, {
+  meta as esMorphoMidnightFixedRateLoans,
+} from "~~/content/blog/es/morpho-midnight-prestamos-a-tasa-fija.mdx";
+import EsWhyAaveHealthFactorDropped, {
+  meta as esWhyAaveHealthFactorDropped,
+} from "~~/content/blog/es/por-que-bajo-el-factor-de-salud-aave.mdx";
+import EsAaveLiquidationPrice, {
+  meta as esAaveLiquidationPrice,
+} from "~~/content/blog/es/precio-de-liquidacion-aave.mdx";
+import EsMorphoPreLiquidation, { meta as esMorphoPreLiquidation } from "~~/content/blog/es/preliquidacion-morpho.mdx";
+import EsCryptoBackedLoans, {
+  meta as esCryptoBackedLoans,
+} from "~~/content/blog/es/prestamos-respaldados-por-cripto.mdx";
+import EsShortFiatWithAave, { meta as esShortFiatWithAave } from "~~/content/blog/es/short-de-moneda-fiat-con-aave.mdx";
+import EsAaveInterestRates, { meta as esAaveInterestRates } from "~~/content/blog/es/tasas-de-interes-aave.mdx";
 import HowAaveLiquidationWorks, {
   meta as howAaveLiquidationWorks,
 } from "~~/content/blog/how-aave-liquidation-works.mdx";
@@ -121,7 +163,29 @@ const CS_POSTS: readonly Post[] = [
   { meta: csMorphoMidnightFixedRateLoans, Content: CsMorphoMidnightFixedRateLoans },
 ];
 
-const POSTS_BY_LOCALE: Localized<readonly Post[]> = { en: POSTS, cs: CS_POSTS };
+/** The Spanish translations (content/blog/es), in the same order. Slugs pair with English through i18n/postSlugs. */
+const ES_POSTS: readonly Post[] = [
+  { meta: esAaveHealthFactor, Content: EsAaveHealthFactor },
+  { meta: esSafeAaveHealthFactor, Content: EsSafeAaveHealthFactor },
+  { meta: esHowAaveLiquidationWorks, Content: EsHowAaveLiquidationWorks },
+  { meta: esAaveLiquidationPrice, Content: EsAaveLiquidationPrice },
+  { meta: esWhyAaveHealthFactorDropped, Content: EsWhyAaveHealthFactorDropped },
+  { meta: esAaveHealthFactorAlertSetup, Content: EsAaveHealthFactorAlertSetup },
+  { meta: esAaveLiquidationAlertTools, Content: EsAaveLiquidationAlertTools },
+  { meta: esAvoidAaveLiquidation, Content: EsAvoidAaveLiquidation },
+  { meta: esPrivateAaveLiquidationAlerts, Content: EsPrivateAaveLiquidationAlerts },
+  { meta: esCryptoBackedLoans, Content: EsCryptoBackedLoans },
+  { meta: esShortFiatWithAave, Content: EsShortFiatWithAave },
+  { meta: esAaveInterestRates, Content: EsAaveInterestRates },
+  { meta: esAaveAlertsDoNotDisturb, Content: EsAaveAlertsDoNotDisturb },
+  { meta: esAaveMarketWindDown, Content: EsAaveMarketWindDown },
+  { meta: esMorphoHealthFactor, Content: EsMorphoHealthFactor },
+  { meta: esHowMorphoLiquidationWorks, Content: EsHowMorphoLiquidationWorks },
+  { meta: esMorphoPreLiquidation, Content: EsMorphoPreLiquidation },
+  { meta: esMorphoMidnightFixedRateLoans, Content: EsMorphoMidnightFixedRateLoans },
+];
+
+const POSTS_BY_LOCALE: Localized<readonly Post[]> = { en: POSTS, cs: CS_POSTS, es: ES_POSTS };
 
 /** Every post of a language, hub first. */
 export const getPosts = (locale: Locale = DEFAULT_LOCALE) => POSTS_BY_LOCALE[locale];

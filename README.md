@@ -41,7 +41,7 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs, 
   that earlier line. A Midnight loan also gets one reminder 7 days and one 1 day before it matures
   (`notification_maturity_reminders`), then an alert at every check after maturity while debt remains. The same paid
   access covers Aave and Morpho alerts, and the 50-alert limit counts both.
-- **Language per channel.** Each channel is sent in English or Czech, chosen next to its recipient. A channel starts in
+- **Language per channel.** Each channel is sent in English, Czech or Spanish, chosen next to its recipient. A channel starts in
   the language of the page you added it from.
 - **Send test.** Every channel has a "Send test" button that sends the alert as saved, with your position right now.
   The limit is one test per channel every 15 minutes, enforced in the database.
@@ -53,7 +53,8 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs, 
   approval for exactly the price, then `pay`. No auto-renew; paying again extends the current expiry. The price is read
   from the contract (`plans(token)`), so the site never hard-codes it. The proxy and implementation are verified on
   [Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553).
-- **Blog.** MDX articles in `packages/nextjs/content/blog` (English, and Czech in `content/blog/cs`), rendered as Server
+- **Blog.** MDX articles in `packages/nextjs/content/blog` (English, Czech in `content/blog/cs` and Spanish in
+  `content/blog/es`), rendered as Server
   Components with a sitemap (`/sitemap.xml`, written by the `sitemap` package: each page's URL and its own last-changed
   date, nothing else; hreflang is in each page's `<head>`, and Google ignores changefreq and priority), RSS feed and
   JSON-LD. `yarn next:indexnow` tells Bing, Seznam and Yandex about new and changed pages through
@@ -80,7 +81,8 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs, 
   `Vary: Accept`, a canonical `Link`, the Content Signal and an `x-markdown-tokens` estimate. Every other request,
   browsers and search crawlers included, gets the HTML as before. On a preview behind Vercel Authentication the route
   cannot fetch the page, so markdown requests there answer 502.
-- **English and Czech.** The whole site is published in both languages; see [docs/i18n.md](docs/i18n.md).
+- **English, Czech and Spanish.** The whole site, the guides included, is published in all three languages (Czech
+  under `/cz`, neutral Spanish under `/es`); see [docs/i18n.md](docs/i18n.md).
 - **Analytics.** [Vercel Web Analytics](https://vercel.com/docs/analytics) counts page views without cookies. It is
   left out of the IPFS build (`yarn ipfs`). The privacy page lists it.
 
@@ -145,7 +147,7 @@ not in this repository.
 - [docs/telegram-bot-setup.md](docs/telegram-bot-setup.md) and
   [docs/telegram-integration-strategy.md](docs/telegram-integration-strategy.md): setting up the bot, and why it links a
   username to a chat.
-- [docs/i18n.md](docs/i18n.md): the English and Czech wiring and the Czech voice.
+- [docs/i18n.md](docs/i18n.md): how the three languages are wired, and the Czech and Spanish voice and glossaries.
 - [docs/design-system.md](docs/design-system.md): tokens, components and the voice for the UI.
 - [AGENTS.md](AGENTS.md) and [CONTRIBUTING.md](CONTRIBUTING.md): code conventions and how to contribute.
 

@@ -27,15 +27,19 @@ describe("LanguageSwitch", () => {
     expect(languageLinks()).toEqual([
       ["EnglishEN", "/blog/aave-health-factor"],
       ["ČeštinaCZ", "/cz/blog/aave-health-factor-vysvetleni"],
+      ["EspañolES", "/es/blog/factor-de-salud-aave"],
     ]);
-    const [english, czech] = screen.getAllByRole("link");
+    const [english, czech, spanish] = screen.getAllByRole("link");
     expect(english.getAttribute("aria-current")).toBe("true");
     expect(czech.getAttribute("aria-current")).toBeNull();
     expect(czech.getAttribute("lang")).toBe("cs");
     expect(czech.getAttribute("hreflang")).toBe("cs");
+    expect(spanish.getAttribute("lang")).toBe("es");
+    expect(spanish.getAttribute("hreflang")).toBe("es");
     // The short codes and the check are decoration: the options are named by the language alone.
     expect(screen.getByRole("link", { name: "English" })).toBe(english);
     expect(screen.getByRole("link", { name: "Čeština" })).toBe(czech);
+    expect(screen.getByRole("link", { name: "Español" })).toBe(spanish);
   });
 
   it("closes on Escape and puts focus back on the button", () => {

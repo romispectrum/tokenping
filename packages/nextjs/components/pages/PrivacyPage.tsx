@@ -48,7 +48,7 @@ const PolicySection = ({ title, children }: PolicySectionProps) => (
  * "private" or "secure": payments are public on chain, and the people who run Tokenping and its hosts can read what
  * is stored. Alert settings are read and changed only for the wallet signed in with SIWE (services/api/server).
  */
-/** The privacy page of one language; app/(en)/privacy and app/(cs)/cz/ochrana-soukromi render it. */
+/** The privacy page of one language; app/(en)/privacy, app/(cs)/cz/ochrana-soukromi and app/(es)/es/privacidad render it. */
 export const PrivacyPage = ({ locale }: { locale: Locale }) => {
   const t = PRIVACY_MESSAGES[locale];
   const CRUMBS = crumbs(locale);

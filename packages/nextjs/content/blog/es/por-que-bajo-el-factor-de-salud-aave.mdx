@@ -1,0 +1,156 @@
+export const meta = {
+  slug: "por-que-bajo-el-factor-de-salud-aave",
+  title: "¿Por qué bajó mi factor de salud en Aave? 6 causas",
+  description:
+    "Tu factor de salud en Aave puede caer sin que hagas nada: precios, intereses, recortes de umbral, pérdidas de paridad y errores de oráculo, explicados.",
+  h1: "¿Por qué bajó mi factor de salud en Aave si no hice nada?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-25",
+  primaryQuestion: "¿Por qué mi factor de salud en Aave baja por sí solo?",
+  readingMinutes: 16,
+};
+
+<ShortAnswer>
+  Aave recalcula tu factor de salud (health factor) a partir de los precios del oráculo, tus saldos actuales y los
+  umbrales de liquidación vigentes cada vez que se lee, así que cambia aunque no envíes ninguna transacción. En Aave V3
+  baja cuando cae el precio de tu colateral, sube el activo que pediste prestado, los intereses de tu deuda crecen más
+  que lo que rinde tu colateral, la gobernanza recorta un umbral de liquidación, una stablecoin que depositaste como
+  colateral cae por debajo de $1 o un oráculo está mal configurado. Por debajo de 1.00, la posición se puede liquidar.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Las cifras y los bloques en los que se leyeron: content/blog/snapshots/why-aave-health-factor-dropped.md */}
+
+## ¿Por qué el factor de salud de Aave cambia por sí solo?
+
+El factor de salud de Aave cambia por sí solo porque no se almacena: el protocolo lo recalcula a partir de los precios actuales del oráculo, los saldos (incluidos los intereses acumulados) y los parámetros de riesgo cada vez que se lee:
+
+**HF = Σ(valor del colateral × umbral de liquidación) ÷ valor total de la deuda**
+
+Ambos lados se expresan en USD al precio del oráculo de Aave, y por debajo de 1.00 la posición se puede liquidar. La fórmula se explica en [qué es el factor de salud de Aave](/es/blog/factor-de-salud-aave). En Aave V3, seis cosas lo bajan sin que hagas nada. Los ejemplos usan parámetros de Ethereum Core leídos el 14 de octubre de 2026 y un precio ilustrativo de ETH de $2,400.
+
+| Causa                                     | Baja tu factor de salud cuando                                                  | Con qué rapidez            | Ejemplo                                                       |
+| ----------------------------------------- | ------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------- |
+| 1. Cae el precio del colateral            | Un activo que depositaste como colateral baja de precio                         | Tan rápido como el mercado | 10 WETH contra 12,000 USDC, ETH baja un 10%: de 1.66 a 1.49   |
+| 2. Sube el activo prestado                | Pediste prestado un activo volátil y su precio sube                             | Tan rápido como el mercado | 10,000 USDC contra 2.5 WETH, ETH sube un 10%: de 1.30 a 1.18  |
+| 3. Intereses                              | La tasa de préstamo de tu deuda supera la tasa de depósito de tu colateral      | Lento y continuo           | 10 WETH contra 12,000 USDC: de unos 1.66 a 1.61 en un año     |
+| 4. Recorte del umbral de liquidación      | La gobernanza o los Risk Stewards bajan el umbral de tu colateral               | De golpe                   | Recorte hipotético de WETH del 83% al 82%: de 1.66 a 1.64     |
+| 5. Pérdida de paridad de una stablecoin   | Una stablecoin que depositaste como colateral cae por debajo de $1              | Tan rápido como el mercado | 10,000 USDC contra 2.5 WETH, USDC a $0.88: de 1.30 a 1.14     |
+| 6. Error del oráculo o de la tasa de cambio | El oráculo valora tu colateral demasiado bajo o tu deuda demasiado alta       | De golpe                   | Marzo de 2026: wstETH valorado alrededor de un 2.85% por debajo |
+
+En un hilo del foro de gobernanza de Aave de febrero de 2025, un prestatario cuya posición empezó con un factor de salud de 1.71 se encontró con una liquidación parcial, añadió colateral cuando el factor de salud llegó a 1.01 y, al revisar por la mañana, se encontró con una segunda liquidación, convencido de que ETH no había caído lo suficiente para explicar ninguna de las dos. Nadie en el hilo encontró la causa; las seis causas de abajo son por donde empezar a buscar.
+
+Aave V4, activo en Ethereum desde el 30 de marzo de 2026 y desde entonces en Avalanche, Arc y Base, calcula un factor de salud por Spoke, con un factor de colateral por activo. Los precios y los intereses lo mueven de la misma forma, pero los cambios de parámetros llegan de otra manera a las posiciones existentes (consulta [cómo aplica V4 los cambios de parámetros, en la causa 4](#causa-4-la-gobernanza-o-los-risk-stewards-recortaron-un-umbral-de-liquidacion)).
+
+## Causa 1: ¿Cayó el precio de tu colateral?
+
+Una caída del precio de cualquier activo que depositaste como colateral baja tu factor de salud en Aave, porque el colateral se valora al precio del oráculo. Con un solo activo volátil como colateral y deuda en stablecoins, el factor de salud se mueve en proporción al precio: una caída del 10% lo reduce un 10%.
+
+Toma 10 WETH depositados contra 12,000 USDC prestados en Aave V3 Ethereum Core, donde el umbral de liquidación de WETH era del 83% en el bloque 26193284 (14 de octubre de 2026). A un precio ilustrativo de $2,400 por ETH (el oráculo de Aave marcaba $2,414.78 en el bloque 26193376 ese día), el factor de salud es 24,000 × 0.83 ÷ 12,000 = 1.66. A $2,160 es 1.49, a $1,920 es 1.33 y a $1,445.78, una caída del 39.8%, llega a 1.00.
+
+Con varios activos de colateral, solo se mueve la parte ponderada del activo que cae. El precio que cuenta es el del oráculo de Aave (en Ethereum Core, WETH usa una fuente de precios llamada "ETH / USD"). Cuánto pueden caer los precios con cada factor de salud se explica en [cuánto margen te da un factor de salud](/es/blog/factor-de-salud-seguro-aave).
+
+## Causa 2: ¿Subió el precio del activo que pediste prestado?
+
+Si pediste prestado un activo volátil, una subida de su precio baja tu factor de salud en Aave, porque la deuda también se valora al precio del oráculo.
+
+Toma 10,000 USDC depositados contra 2.5 WETH prestados en Aave V3 Ethereum Core, donde el umbral de liquidación de USDC era del 78% en el bloque 26193284 (14 de octubre de 2026). A un precio ilustrativo de $2,400, la deuda vale $6,000 y el factor de salud es 10,000 × 0.78 ÷ 6,000 = 1.30. Si ETH sube un 10% hasta $2,640, el factor de salud baja a 7,800 ÷ 6,600 = 1.18. A $3,120, un 30% más, llega a 1.00.
+
+Los pares correlacionados, como wstETH de colateral con deuda en WETH, reducen este efecto, porque ambos lados se mueven con ETH. El factor de salud depende entonces sobre todo de la tasa de wstETH a ETH que reporta el oráculo, lo que cambia riesgo de mercado por riesgo de oráculo (consulta [errores del oráculo y de la tasa de cambio, en la causa 6](#causa-6-un-error-del-oraculo-o-de-la-tasa-de-cambio-valoro-mal-tu-colateral)).
+
+## Causa 3: ¿Se acumularon intereses en tu deuda más rápido que en tu colateral?
+
+Los intereses bajan tu factor de salud en Aave cuando tu deuda crece más rápido que tu colateral. La deuda variable crece cada segundo a la tasa de préstamo, mientras que el colateral rinde la tasa de depósito, normalmente más baja. Con un activo de colateral, un activo de deuda y precios estables, el factor de salud baja poco a poco cuando la tasa de préstamo de la deuda supera la tasa de depósito del colateral, y sube cuando está por debajo.
+
+En Aave V3 Ethereum Core, en el bloque 26193378 (14 de octubre de 2026), USDC pagaba a los depositantes un 3.800% anual y costaba a los prestatarios un 4.496%; WETH pagaba un 1.309% y costaba un 1.943%. Son APR; la aplicación de Aave muestra APY algo más altos (4.60% para esa tasa de préstamo de USDC). Toma 10 WETH depositados (umbral del 83%) contra 12,000 USDC prestados, con ETH estable a un precio ilustrativo de $2,400 y las tasas sin cambios durante un año. La deuda crece a unos 12,550 USDC, el colateral a unos 10.13 WETH, y el factor de salud baja de 1.66 a unos 1.61. Las tasas son variables, así que tómalo como una idea de la escala, no como un pronóstico.
+
+Las tasas también pueden dispararse. Más tarde, el mismo 14 de octubre de 2026, la tasa de préstamo de USDC en Ethereum Core saltó al 13.67% APR en un solo bloque (26194053, 23:32:59 UTC) cuando salieron de la reserva unos $134M de USDC depositados, llegó al 14.18% en siete minutos y volvió al 4.76% unos 36 minutos después del salto (bloque 26194231, 00:08 UTC del 15 de octubre), cuando esos fondos regresaron. Por qué un solo retiro puede triplicar una tasa se explica en [cómo funcionan las tasas de interés de Aave](/es/blog/tasas-de-interes-aave).
+
+La posición inversa gana: 10,000 USDC depositados contra 2.5 WETH prestados rinden un 3.800% y pagan un 1.943%, así que su factor de salud sube poco a poco de 1.30 a unos 1.32 en un año. En Aave V4, una User Risk Premium (prima de riesgo del usuario) se suma a la tasa de préstamo cuando el colateral es más riesgoso, así que esa deuda crece más rápido.
+
+## Causa 4: ¿La gobernanza o los Risk Stewards recortaron un umbral de liquidación?
+
+En Aave V3, recortar el umbral de liquidación de un activo baja de inmediato el factor de salud de toda posición abierta que cuenta ese activo con su umbral normal. Las posiciones cuya categoría de E-Mode incluye el activo usan en cambio el umbral de la categoría, y la gobernanza o los Risk Stewards pueden recortarlo de la misma forma. Tus saldos no cambian; solo se reduce la parte del colateral que cuenta.
+
+La gobernanza cambia los umbrales mediante votación en la cadena, normalmente después de una publicación en el foro de gobernanza de Aave. Los Risk Stewards, contratos que permiten a los proveedores de servicios de riesgo de Aave ajustar parámetros sin una votación completa, también pueden mover un umbral dentro de unos límites fijados por actualización, pero nunca a 0. Los recortes también sirven para retirar activos: una propuesta de LlamaRisk del 29 de julio de 2026 dice que los umbrales se pueden reducir de forma gradual para eliminar el colateral que queda, y los cinco mercados que Aave está cerrando se tratan en [qué pasa cuando Aave cierra un mercado](/es/blog/cierre-de-mercados-aave).
+
+Un ejemplo hipotético, no un cambio pendiente: 10 WETH a un precio ilustrativo de $2,400 contra 12,000 USDC en Ethereum Core (umbral de WETH del 83% el 14 de octubre de 2026) tienen un factor de salud de 1.66. Con el 82% sería 1.64; con el 80%, 1.60. Para comprobarlo, compara el umbral de liquidación ("Liquidation threshold") de la página del activo en la aplicación de Aave con los cambios recientes de umbral en el foro de gobernanza de Aave.
+
+Aave V4 funciona de otra manera. Un cambio del factor de colateral crea una configuración nueva, y las posiciones existentes conservan la anterior hasta que el usuario pide prestado, retira o cambia la configuración del colateral, salvo que el Governor las actualice de forma forzosa.
+
+## Causa 5: ¿Una stablecoin que depositaste como colateral perdió su paridad a la baja?
+
+Una stablecoin que depositaste como colateral baja tu factor de salud en Aave cuando su precio cae por debajo de $1, porque Aave usa el precio del oráculo, no un $1 fijo. En Aave V3 Ethereum Core, USDC se valora mediante un adaptador llamado "Capped USDC / USD" con un tope de $1.04 (`getPriceCap` devolvió 104000000, con 8 decimales, en los bloques 26193376 y 26193993 el 14 de octubre de 2026). Cuando el precio de mercado está por encima del tope, el adaptador reporta $1.04; cualquier precio más bajo, incluido cualquiera por debajo de $1, pasa sin cambios.
+
+Toma 10,000 USDC depositados (umbral del 78%) contra 2.5 WETH prestados a un precio ilustrativo de $2,400, es decir, $6,000 de deuda: un factor de salud de 1.30. Con USDC a $0.88 baja a 8,800 × 0.78 ÷ 6,000 = 1.14, y a unos $0.77, con ETH sin cambios, llega a 1.00.
+
+La cifra de $0.88 es histórica. El 11 de marzo de 2023, tras la noticia de Silicon Valley Bank, USDC cayó a unos 88 centavos. El informe post mortem de Gauntlet registra unos $280,000 de deuda incobrable en el E-Mode de Aave V3 Avalanche y unos $20,000 en V3 Arbitrum; las stablecoins en Avalanche se congelaron, pero el protocolo no se pausó, así que las liquidaciones continuaron.
+
+La otra cara: si la stablecoin es tu deuda, una pérdida de paridad a la baja reduce lo que debes y sube tu factor de salud. 10 WETH a $2,400 (umbral del 83%) contra 12,000 USDC pasan de 1.66 a unos 1.89 con USDC a $0.88. Una subida por encima de $1 lo baja, pero solo hasta unos 1.60 mientras el tope siga en $1.04, porque el oráculo nunca valora esa deuda por encima de $12,480.
+
+## Causa 6: ¿Un error del oráculo o de la tasa de cambio valoró mal tu colateral?
+
+Una mala configuración del oráculo o de la tasa de cambio puede bajar tu factor de salud en Aave de golpe, sin ningún movimiento del mercado, al valorar tu colateral demasiado bajo o tu deuda demasiado alta. Las posiciones de E-Mode con mucho apalancamiento son las más expuestas.
+
+El caso documentado es de marzo de 2026. Aave valora wstETH con CAPO (Correlated Assets Price Oracle), que limita la velocidad a la que puede subir la tasa de wstETH a stETH. El informe post mortem de Chaos Labs del 10 de marzo de 2026 dice que la relación de referencia guardada del tope y su marca de tiempo se desincronizaron, lo que redujo la tasa efectiva de wstETH en alrededor de un 2.85% en Ethereum Core y Prime. Se liquidaron unos 10,938 wstETH en E-Mode en 34 cuentas con factores de salud por debajo de aproximadamente 1.0288, sin deuda incobrable para el protocolo. La DAO aprobó un reembolso propuesto el 11 de marzo, y el 26 de marzo de 2026 el Aave Finance Committee retiró 513.19 WETH de la tesorería de Aave para pagarlo (bloque 24741060 de Ethereum); los pagos individuales no se verificaron para esta guía.
+
+Como referencia, el E-Mode correlacionado con ETH de Ethereum Core tenía un LTV del 93% y un umbral del 95% el 14 de octubre de 2026. Una posición con préstamo hasta ese límite empieza en 95 ÷ 93 ≈ 1.02, dentro del rango que liquidó ese error. Nada en tu propia posición te avisa de un error del oráculo; la distancia a 1.00 es el único margen que controlas.
+
+## ¿Qué cambios no bajan tu factor de salud?
+
+En Aave V3, un recorte del LTV (incluido un LTV de 0), el congelamiento de una reserva, la pausa de una reserva y convertir una categoría de E-Mode en aislada no cambian tu factor de salud, porque ninguno de ellos cambia precios, saldos ni umbrales de liquidación. Lo que hacen es bloquear nuevos préstamos u otras acciones.
+
+| Cambio en Aave V3                                  | Qué bloquea                                                                  | ¿Cambia tu factor de salud?                             | ¿Te pueden seguir liquidando?                                                                                                                        |
+| -------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Recorte del LTV, incluido un LTV de 0              | Nuevos préstamos contra ese activo                                           | No: el factor de salud usa el umbral, no el LTV         | Sí, por debajo de 1.00                                                                                                                               |
+| Reserva congelada                                  | Nuevos depósitos y préstamos de ese activo                                   | No                                                      | Sí, las reservas congeladas siguen siendo liquidables                                                                                                |
+| Categoría de E-Mode convertida en aislada (V3.7)   | Pedir prestado contra colateral de fuera de la categoría                     | No: ese colateral recibe LTV 0 y conserva su umbral     | Sí, por debajo de 1.00                                                                                                                               |
+| Reserva pausada                                    | Depositar, retirar, pedir prestado, pagar deuda y liquidar con ese activo    | No                                                      | No con ese activo, ni como colateral ni como deuda, mientras esté pausado; con otros activos sí. Tras reanudarla puede haber hasta 4 horas de gracia |
+
+Un caso real de la primera fila: tras el ataque al puente de rsETH de Kelp/LayerZero del 18 de abril de 2026, el LTV de WETH se fijó en 0 en varias instancias de Aave V3 mientras su umbral se mantenía en el 83% en Ethereum Core, según la propuesta de LlamaRisk del 9 de mayo de 2026 para restablecerlo. Los factores de salud no se movieron por ese cambio.
+
+## ¿Cómo puedes averiguar qué le pasó a tu posición?
+
+Para averiguar qué le pasó a una posición de Aave, comprueba si fue liquidada y luego qué dato cambió: los precios, los intereses, los umbrales o el oráculo. Estos pasos usan la interfaz de Aave Labs en app.aave.com y los registros públicos de gobernanza.
+
+1. **Busca liquidaciones.** Abre el historial de transacciones (Transaction history, en app.aave.com/history) con tu billetera conectada y el mercado correcto seleccionado, y filtra por Liquidation. Los registros que hay detrás incluyen la hora, el hash de la transacción, el colateral tomado y la deuda pagada; los desarrolladores pueden consultarlos con `userTransactionHistory` en la API de Aave.
+2. **Compara los precios** de tus activos de colateral y de deuda con los de la última vez que revisaste (causas 1, 2 y 5).
+3. **Compara tu deuda, en unidades del token, con lo que pediste prestado.** Si no hiciste pagos y no te liquidaron, la diferencia son intereses acumulados (causa 3).
+4. **Revisa el umbral de liquidación** en la página de cada activo en la aplicación de Aave, y busca en el foro de gobernanza cualquier activo cuyo umbral parezca más bajo (causa 4).
+5. **Busca informes post mortem de incidentes** en el foro de gobernanza, como el de wstETH de marzo de 2026 (causa 6).
+
+Si te liquidaron, [qué pasa en una liquidación de Aave](/es/blog/como-funciona-la-liquidacion-en-aave) explica cuánto se puede tomar de una vez y cuánto cuesta.
+
+## ¿Puede una alerta del factor de salud avisarte antes de la liquidación?
+
+Una alerta puede avisarte a tiempo de una caída lenta de tu factor de salud en Aave, pero no de un salto que cruce 1.00 entre dos revisiones. Los intereses, las bajadas graduales de precio y los recortes de umbral por etapas se desarrollan a lo largo de horas o meses, así que una alerta fijada bastante por encima de 1.00 tiene muchas oportunidades de dispararse. Un desplome, un recorte de umbral en una posición que ya está cerca de la línea o un error de oráculo como el de wstETH de marzo de 2026 pueden cruzar 1.00 antes de que reaccione cualquier revisión programada.
+
+Tokenping está pensado para el caso lento. Revisa tu factor de salud de Aave V3 y V4 cada 5 minutos en 22 redes y te escribe por Signal, Telegram o correo electrónico mientras esté por debajo del umbral que fijaste (de 1.1 a 10). El mensaje se repite en cada revisión hasta que el factor de salud se recupera, o hasta que bajas el umbral por debajo de él o eliminas la alerta (ambas cosas requieren acceso de pago activo), sin ningún mensaje de "recuperado". En Aave V3 cubre todos los mercados, incluidos los cuatro de Ethereum; en Aave V4, todos los Spokes; cada mercado tiene su propia alerta.
+
+Una alerta también necesita tiempo para que puedas actuar. En un hilo del foro de Polygon de 2021, un prestatario que intentó pagar su deuda con un factor de salud de 1.01 se topó una y otra vez con errores y fue liquidado antes de que el pago se completara. Una opción es un umbral en el que todavía te sentirías cómodo actuando; [cuánto margen te da un factor de salud](/es/blog/factor-de-salud-seguro-aave) te ayuda a elegirlo. La configuración se explica en [cómo configurar una alerta del factor de salud](/es/blog/configurar-alertas-factor-de-salud-aave), y [cómo subir tu factor de salud en Aave](/es/blog/como-evitar-la-liquidacion-en-aave) explica qué hacer cuando baja. También puedes [revisar primero tu factor de salud en Aave V3](/es/aave).
+
+## Fuentes
+
+- [Descripción general de Aave V3](https://aave.com/docs/aave-v3/overview.md): el factor de salud se mueve con los precios del oráculo y los intereses acumulados (consultado el 14 de octubre de 2026)
+- [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) y [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): cálculo del factor de salud, comprobaciones de pausa y congelamiento (aave-v3-origin, consultado el 14 de octubre de 2026)
+- [PoolDataProvider de Aave V3 Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): LTV, umbrales y tasas en los bloques 26193284, 26193378 y 26193993 (consultado el 14 de octubre de 2026); tasas de USDC en los bloques 26194052, 26194053, 26194230 y 26194231 (consultado el 15 de octubre de 2026)
+- [Oráculo de Aave V3 Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2#readContract): WETH a $2,414.78 en el bloque 26193376 (consultado el 14 de octubre de 2026)
+- [Adaptador Capped USDC / USD](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract) y su [código fuente, PriceCapAdapterStable.sol](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol): tope de 104000000 en los bloques 26193376 y 26193993 (consultado el 14 de octubre de 2026)
+- [Documentación del oráculo de Aave](https://aave.com/docs/ecosystem/oracle.md) (consultado el 14 de octubre de 2026)
+- [Documentación de gobernanza de Aave](https://aave.com/docs/ecosystem/governance.md) y [README de Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards) (consultado el 14 de octubre de 2026)
+- [ARFC: Low Adoption Asset Deprecation on Aave V3](https://governance.aave.com/t/arfc-low-adoption-asset-deprecation-on-aave-v3/25401) (LlamaRisk, 29 de julio de 2026, consultado el 14 de octubre de 2026)
+- [Registro de cambios de la documentación de Aave](https://aave.com/docs/resources/changelog.md): V4 en Ethereum desde el 30 de marzo de 2026, luego en Avalanche, Arc y Base (consultado el 14 de octubre de 2026)
+- [Documentación de Aave V4](https://aave.com/docs/aave-v4.md), [posiciones en V4](https://aave.com/docs/aave-v4/positions.md) y [descripción técnica de V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md): factor de salud por Spoke, User Risk Premium, configuración de riesgo dinámica (consultado el 14 de octubre de 2026)
+- [Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (Gauntlet, 17 de marzo de 2023, consultado el 14 de octubre de 2026)
+- [Post-mortem: wstETH exchange-rate misalignment on Core and Prime](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269) (Chaos Labs, 10 de marzo de 2026, consultado el 14 de octubre de 2026)
+- [wstETH CAPO Oracle Incident User Reimbursement](https://governance.aave.com/t/direct-to-aip-wsteth-capo-oracle-incident-user-reimbursement/24275) (TokenLogic, 11 de marzo de 2026, consultado el 14 de octubre de 2026)
+- [Ejecución del payload de gobernanza 413](https://etherscan.io/tx/0xca0bcaa2b20b465afb332677a8425d8a10e050c4a31731feadc3a684ecb9b81e) y [retiro del Aave Finance Committee](https://etherscan.io/tx/0x7860a20437b36af635e8be248a929c437412915b91de7c45e947475c6bb02f24): asignación de 513.19 WETH desde el Aave Ethereum Collector, retirados después en el bloque 24741060 (consultado el 15 de octubre de 2026)
+- [WETH Unfreeze and LTV Restoration Across Aave V3 Instances](https://governance.aave.com/t/direct-to-aip-weth-unfreeze-and-ltv-restoration-across-aave-v3-instances/24878) (LlamaRisk, 9 de mayo de 2026, consultado el 14 de octubre de 2026)
+- [E-Mode aislado de Aave v3.7](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md) y [funciones de v3.1](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): indicador de aislamiento, período de gracia tras reanudar una reserva (consultado el 14 de octubre de 2026)
+- [Historial de transacciones del usuario en Aave V3](https://aave.com/docs/aave-v3/markets/advanced.md) y [filtros del historial de la interfaz de Aave](https://github.com/aave/interface/blob/main/src/modules/history/HistoryFilterMenu.tsx) (consultado el 14 de octubre de 2026)
+- Página de reserva de la interfaz de Aave, con las tasas mostradas como APY: [SupplyInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/SupplyInfo.tsx) (consultado el 14 de octubre de 2026) y [BorrowInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/BorrowInfo.tsx), "APY, variable" (consultado el 15 de octubre de 2026)
+- [Unexpected or poorly executed settlement by the system](https://governance.aave.com/t/unexpected-or-poorly-executed-settlement-by-the-system/21120) (foro de gobernanza de Aave, 17 de febrero de 2025, consultado el 14 de octubre de 2026)
+- [Liquidation on polygon AAVE - JSON ERROR](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067) (foro de Polygon, 18 de mayo de 2021, consultado el 14 de octubre de 2026)
+
+*Contenido educativo, no asesoramiento financiero. Las alertas reducen el riesgo, pero no evitan la liquidación.*

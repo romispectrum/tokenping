@@ -33,7 +33,7 @@ const GUIDE_LINKS = [
 ] as const;
 
 /**
- * The Morpho dashboard page of one language; app/(en)/morpho/page.tsx and app/(cs)/cz/morpho/page.tsx render it. A
+ * The Morpho dashboard page of one language; app/(en)/morpho, app/(cs)/cz/morpho and app/(es)/es/morpho render it. A
  * server shell like /aave: the heading and the explanation are in the initial HTML, and only the wallet-dependent
  * dashboard is a client island.
  */

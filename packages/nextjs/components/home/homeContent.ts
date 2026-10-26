@@ -21,10 +21,13 @@ const MAX_DESCRIPTION_LENGTH = 155;
 export const joinList = (items: readonly string[], conjunction: "and" | "or" = "and") =>
   items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} ${conjunction} ${items[items.length - 1]}`;
 
-/** Channel names for badges: "Signal", "Email" ("E-mail") and, once the bot is configured, "Telegram". */
+// A badge's short name for email where a language has its own: "E-mail", "Correo".
+const EMAIL_BADGE: Partial<Record<Locale, string>> = { cs: "e-mail", es: "correo" };
+
+/** Channel names for badges: "Signal", "Email" ("E-mail", "Correo") and, once the bot is configured, "Telegram". */
 export const getChannelBadgeNames = (locale: Locale = DEFAULT_LOCALE) =>
   getAlertChannelNames().map(name =>
-    HOME_MESSAGES[locale].channelBadge(locale === "cs" && name === "email" ? "e-mail" : name),
+    HOME_MESSAGES[locale].channelBadge(name === "email" ? (EMAIL_BADGE[locale] ?? name) : name),
   );
 
 /** The homepage headline, in its Telegram variant once the bot is configured. */

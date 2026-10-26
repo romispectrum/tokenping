@@ -100,7 +100,7 @@ describe("GET /md/[[...path]]", () => {
     // The homepage rules carry the Link header; the catch-all rule carries the security headers.
     const homeRules = (await nextConfig.headers!()).filter(({ headers }) => headers.some(({ key }) => key === "Link"));
 
-    expect(homeRules.map(({ source }) => source)).toEqual(["/", "/cz"]);
+    expect(homeRules.map(({ source }) => source)).toEqual(["/", "/cz", "/es"]);
     for (const { source, headers } of homeRules) {
       const [{ value }] = headers;
 

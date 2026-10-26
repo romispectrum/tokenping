@@ -88,6 +88,7 @@ Every migration in order:
 | `20261021000000` | `lock_down_server_only_tables`                    | Drops the "for local dev" policies of `notification_configs`, `telegram_chats` and `notification_test_sends`, revokes every privilege of `anon` and `authenticated` on them, and makes `claim_notification_test_send()` executable by the service role only. |
 | `20261022000000` | `create_auth_nonces`                              | Creates `auth_nonces`, service role only.                                                                                                                                                                                                                    |
 | `20261025000000` | `add_protocol_to_notification_configs`            | Adds `protocol` (`aave`, `morpho-blue` or `morpho-midnight`, default `aave`) and `market_params` (a Morpho market's fixed parameters, null for Aave), checks `market` per protocol, and creates `notification_maturity_reminders`, service role only.        |
+| `20261026000000` | `allow_spanish_alert_locale`                      | Lets `locale`, `email_locale`, `signal_locale` and `telegram_locale` be `es` (Spanish) as well as `en` and `cs`.                                                                                                                                             |
 
 Supabase runs each migration once. All but `20250225120000` and `20260527000000` are also safe to run again. Comments
 inside the older migrations describe the app as it was when they were written (for example, before wallet sign-in
@@ -118,6 +119,7 @@ first makes these fail.
 | `20261020000000` | Saving an alert and the cron run (the per-channel language columns).                       |
 | `20261022000000` | Signing in, so nobody can open their alert settings.                                       |
 | `20261025000000` | Every alert read, save and cron run, Aave included (the `protocol` column).                |
+| `20261026000000` | Saving an alert from the Spanish pages, or a channel set to Spanish (the language checks). |
 
 **Upgrading a live deployment.** One migration works the other way round. `20261021000000` closes the tables to the anon
 key. Older versions of the app fell back to the anon key when `SUPABASE_SERVICE_ROLE_KEY` was not set, so before

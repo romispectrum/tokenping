@@ -73,7 +73,7 @@ export const buildLlmsTxt = () => {
     `- Morpho coverage: every Morpho Blue (variable-rate) and Morpho Midnight (fixed-rate) market the Morpho app lists, on ${MORPHO_CHAINS.length} networks, with one alert per market. A Midnight loan also gets reminders 7 days and 1 day before it matures. One plan covers Aave and Morpho alerts.`,
     `- Access: looking at positions on the dashboard needs no payment. Alerts need paid access, paid in ${PAYMENT_TOKEN_SYMBOL}${paymentChain ? ` on ${paymentChain}` : ""} from the wallet. Nothing renews automatically; each payment adds one plan period after the current end date.`,
     "- Sign-in: the wallet signs a message. There is no account and no password.",
-    "- Languages: English, and Czech under /cz.",
+    "- Languages: English, Czech under /cz and Spanish under /es.",
     `- ${COMMON_MESSAGES.en.footer.independence}`,
   ];
 
@@ -97,13 +97,19 @@ export const buildLlmsTxt = () => {
     ...pageLinks("cs"),
     ...guideLinks("cs"),
     "",
+    "## Spanish",
+    "",
+    ...pageLinks("es"),
+    ...guideLinks("es"),
+    "",
     "## Optional",
     "",
-    link("Sitemap", "/sitemap.xml", "every page, with its English and Czech versions"),
+    link("Sitemap", "/sitemap.xml", "every page in English, Czech and Spanish"),
     link("Agent skill: Aave health factor alerts", aaveAlertsSkillPath(), AAVE_ALERTS_SKILL_DESCRIPTION),
     link("Agent skill: Morpho health factor alerts", morphoAlertsSkillPath(), MORPHO_ALERTS_SKILL_DESCRIPTION),
     link(SEO_MESSAGES.en.rssTitle, routePath("en", "blogFeed"), "new guides in English"),
     link(SEO_MESSAGES.cs.rssTitle, routePath("cs", "blogFeed"), "new guides in Czech"),
+    link(SEO_MESSAGES.es.rssTitle, routePath("es", "blogFeed"), "new guides in Spanish"),
     "",
   ].join("\n");
 };

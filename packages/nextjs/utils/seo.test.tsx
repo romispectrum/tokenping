@@ -237,7 +237,7 @@ describe("siteJsonLd", () => {
           "@id": "https://tokenping.xyz/#website",
           name: "Tokenping",
           url: "https://tokenping.xyz",
-          inLanguage: ["en", "cs"],
+          inLanguage: ["en", "cs", "es"],
           publisher: { "@id": ORGANIZATION_ID },
         },
       ],

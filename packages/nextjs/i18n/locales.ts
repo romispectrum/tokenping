@@ -1,6 +1,6 @@
-// The site's languages. English is served at the root, Czech under /cz (see i18n/routes.ts).
+// The site's languages. English is served at the root, Czech under /cz and Spanish under /es (see i18n/routes.ts).
 
-export const LOCALES = ["en", "cs"] as const;
+export const LOCALES = ["en", "cs", "es"] as const;
 
 export type Locale = (typeof LOCALES)[number];
 
@@ -22,6 +22,9 @@ type LocaleInfo = {
 export const LOCALE_INFO: Record<Locale, LocaleInfo> = {
   en: { htmlLang: "en", ogLocale: "en_US", intl: "en-US", name: "English", short: "EN" },
   cs: { htmlLang: "cs", ogLocale: "cs_CZ", intl: "cs-CZ", name: "Čeština", short: "CZ" },
+  // Neutral Spanish for Spain and Latin America: hreflang "es" covers every Spanish-speaking country. Intl formats as
+  // Latin American Spanish ("14 de octubre de 2026", decimal point), the way most of its readers write numbers.
+  es: { htmlLang: "es", ogLocale: "es_ES", intl: "es-419", name: "Español", short: "ES" },
 };
 
 export const isLocale = (value: unknown): value is Locale => LOCALES.includes(value as Locale);

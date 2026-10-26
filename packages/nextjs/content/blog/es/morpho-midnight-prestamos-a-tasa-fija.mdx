@@ -1,0 +1,194 @@
+export const meta = {
+  slug: "morpho-midnight-prestamos-a-tasa-fija",
+  title: "Préstamos a tasa fija en Morpho Midnight: cómo funcionan",
+  description:
+    "Préstamos a tasa fija en Morpho Midnight: la tasa, lo que debes al vencimiento, la salud con varios colaterales y por qué se liquida la deuda sin pagar.",
+  h1: "¿Cómo funcionan los préstamos a tasa fija en Morpho Midnight y qué pasa al vencimiento?",
+  publishedAt: "2026-10-26",
+  primaryQuestion:
+    "¿Cómo funciona un préstamo a tasa fija en Morpho Midnight y qué pasa si no lo he pagado al llegar el vencimiento?",
+  readingMinutes: 15,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Morpho Midnight es el sistema de préstamos de Morpho a tasa fija y plazo fijo. Pides prestado vendiendo unidades de
+  deuda por debajo de su valor nominal: cada unidad te da ahora un poco menos de un token del préstamo y es una promesa
+  de devolver exactamente uno al vencimiento del mercado, así que la tasa queda fija cuando pides prestado y tu deuda no
+  crece. Antes del vencimiento, tu posición solo puede ser liquidada si tu colateral, ponderado por el LLTV de cada
+  colateral, ya no cubre la deuda, es decir, si el factor de salud (health factor) baja de 1. Una vez pasado el
+  vencimiento, cualquier deuda que quede puede ser liquidada sea cual sea tu factor de salud, y la bonificación del
+  liquidador sube durante la primera hora. Paga la deuda antes del vencimiento y después retira tu colateral por tu
+  cuenta.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Las cifras y los bloques en los que se leyeron: content/blog/snapshots/morpho-midnight-fixed-rate-loans.md */}
+
+## ¿Qué es Morpho Midnight?
+
+Morpho Midnight es la parte de Morpho que ofrece préstamos a una tasa fija hasta una fecha fija, el vencimiento. La documentación de Morpho lo llama "Fixed Rate Markets (Midnight)", junto a Morpho Blue, sus mercados de tasa variable. Si el cálculo de salud de Morpho es nuevo para ti, empieza por [la guía del factor de salud de Morpho](/es/blog/factor-de-salud-morpho), en la que se basa esta guía.
+
+Midnight se abrió al público el 21 de julio de 2026, en Base, con un solo par (colateral cbBTC, préstamos en USDC) y unos pocos vencimientos. En esta guía, un mercado de Midnight se nombra por ese par: un "mercado cbBTC/USDC" acepta cbBTC como colateral y presta USDC. El mismo código de contrato funciona ahora en cinco redes:
+
+| Red             | El contrato de Midnight tiene código desde | Mercados listados en la API de Morpho (26 de octubre de 2026) |
+| --------------- | ------------------------------------------ | ------------------------------------------------------------- |
+| Base            | 6 de julio de 2026                         | Sí; 19 mercados listados tienen préstamos abiertos            |
+| Ethereum        | 20 de agosto de 2026                       | Sí; 12 mercados listados tienen préstamos abiertos            |
+| Arc             | 11 de septiembre de 2026                   | Ninguno (existen 13 mercados)                                 |
+| Robinhood Chain | Fecha no disponible                        | Ninguno (existen 34 mercados)                                 |
+| Tempo           | 3 de octubre de 2026                       | Ninguno (la API no muestra mercados)                          |
+
+Cualquiera puede crear un mercado de Midnight, así que el hecho de que un mercado exista en la blockchain dice poco. Los mercados que muestra la aplicación de Morpho son los que lista su API, y el 26 de octubre de 2026 todos estaban en Ethereum y Base.
+
+Una publicación anterior de Morpho presentaba Midnight, junto con Vaults V2, como "Morpho V2". La publicación de su lanzamiento dice que Midnight no es una segunda versión de Blue ni lo reemplaza: los dos funcionan en paralelo. Son contratos separados.
+
+## ¿Cómo se define un mercado de Midnight?
+
+Un mercado de Midnight queda fijado cuando se crea y nunca cambia. Lo definen:
+
+- **Un token del préstamo**, por ejemplo USDC.
+- **Uno o más colaterales** (hasta 128), cada uno con su propio LLTV (la parte del valor del colateral que puedes deber antes de la liquidación), su propio oráculo y su propio cursor de liquidación, que fija la bonificación del liquidador.
+- **Un vencimiento**, una fecha y hora en la que vencen todos los préstamos del mercado.
+- **Un umbral de recuperación** (rcfThreshold), que decide cuándo una cantidad pequeña de un colateral puede liquidarse por completo (ver más abajo).
+- **Puertas opcionales** (gates), que pueden limitar quién puede prestar, pedir prestado o liquidar. Una puerta nunca puede impedirte pagar la deuda ni salir. Ninguno de los mercados listados en Ethereum o Base tenía una puerta el 26 de octubre de 2026.
+
+Un mismo prestatario puede usar hasta 16 de los colaterales de un mercado a la vez. Para aceptar un colateral nuevo o cambiar el vencimiento, alguien tiene que crear un mercado nuevo. Los mercados listados que tienen préstamos, en ambas redes, vencen el último viernes de un mes a las 15:00 UTC: el 30 de octubre, el 27 de noviembre y el 25 de diciembre de 2026, y el 26 de marzo de 2027.
+
+## ¿Cómo se fija la tasa fija y cuánto debes al vencimiento?
+
+La tasa sale de un precio, no de un modelo de tasas de interés. Midnight cuenta la deuda en unidades, y una unidad de deuda es una promesa de devolver un token del préstamo al vencimiento. Para pedir prestado, vendes unidades a los prestamistas a un precio por debajo de 1: a un precio de 0.99 recibes ahora 0.99 USDC por cada unidad y debes 1 USDC por unidad al vencimiento. La tasa para todo el plazo es 1 dividido por el precio, menos 1, y la documentación de Morpho la convierte en una cifra anual dividiéndola por la fracción del año que queda.
+
+Los precios salen de las ofertas que publican prestamistas y prestatarios, así que dos prestatarios del mismo mercado pueden pagar tasas distintas. El 26 de octubre de 2026, la API de Morpho situaba las tasas de los 117 prestatarios del mercado cbBTC/USDC de Base con vencimiento el 25 de diciembre de 2026 entre el 1.93% y el 6.84% anual.
+
+Lo que debes es sencillo: el número de unidades que vendiste, en tokens del préstamo, pagadero al vencimiento. No se suma nada mientras dura el préstamo. El contrato de Midnight solo cambia la deuda de un prestatario cuando pides más prestado, pagas, recompras unidades o te liquidan; no se le acumulan intereses ni antes ni después del vencimiento.
+
+Midnight tiene dos comisiones, ambas fijadas por mercado y ambas en cero en los dos mercados de esta guía:
+
+- **Una comisión de ejecución** (settlement fee) en cada operación, que paga quien acepta una oferta. El contrato le pone un tope según el tiempo que falta para el vencimiento, desde el 0.0014% para un día hasta el 0.5% para 360 días.
+- **Una comisión continua**, que solo asumen los prestamistas, con un tope del 1% anual.
+
+## ¿Cómo se calcula el factor de salud con varios colaterales?
+
+El contrato de Midnight comprueba la salud con un sí o un no: una posición está sana mientras su deuda máxima sea al menos igual a su deuda. La deuda máxima es la suma, para cada colateral que usas, de su valor en el token del préstamo al precio de su oráculo multiplicado por su propio LLTV. La documentación de Morpho expresa la comprobación como maxDebt ≥ debt; el factor de salud es la misma comprobación escrita como un cociente, deuda máxima dividida por deuda, y por debajo de 1 la posición puede ser liquidada.
+
+Toma el mayor mercado listado en Ethereum, que presta USDC contra dos colaterales con LLTV distintos: el propio USDC al 98% y cbBTC al 86%. Con cbBTC a 80,011.48 USDC (el precio de su oráculo el 26 de octubre de 2026), la posición ilustrativa de [la guía del factor de salud de Morpho](/es/blog/factor-de-salud-morpho), 0.5 cbBTC y 10,000 USDC de colateral frente a 40,000 USDC de deuda, tiene:
+
+| Colateral   | Valor (USDC) | LLTV | Cuenta como (USDC) |
+| ----------- | ------------ | ---- | ------------------ |
+| 0.5 cbBTC   | 40,005.74    | 86%  | 34,404.94          |
+| 10,000 USDC | 10,000.00    | 98%  | 9,800.00           |
+| Total       | 50,005.74    |      | 44,204.94          |
+
+Su factor de salud es 44,204.94 ÷ 40,000 = 1.105, y baja de 1 si cbBTC cae por debajo de unos 70,233 USDC, un 12.2% menos, mientras el colateral en USDC mantiene su valor. La idea es la misma que con [un segundo colateral en Aave](/es/blog/factor-de-salud-aave#que-cambia-con-un-segundo-activo-de-colateral): cada activo cuenta según su propio porcentaje.
+
+Puedes añadir, retirar o cambiar colaterales en cualquier momento, siempre que un retiro te deje en una posición sana. Si el oráculo de cualquier colateral que usas deja de responder, las comprobaciones de salud, los nuevos préstamos, los retiros y las liquidaciones fallan para tu posición mientras tengas deuda. Pagar la deuda sigue funcionando, y una vez que tu deuda es cero puedes retirar sin ningún oráculo.
+
+## ¿Cuándo se puede liquidar un préstamo de Midnight?
+
+Un préstamo de Midnight puede liquidarse de dos maneras: cuando no está sano, en cualquier momento, o cuando queda deuda después del vencimiento, sea cual sea su salud. [Cómo funciona la liquidación en Morpho](/es/blog/como-funciona-la-liquidacion-en-morpho) explica la mecánica común; aquí está lo que es propio de Midnight.
+
+### Antes del vencimiento
+
+Antes del vencimiento solo cuenta la salud. Una vez que el factor de salud está por debajo de 1, un liquidador puede pagar parte de tu deuda y llevarse colateral por ese valor más una bonificación. La bonificación se fija por colateral: 1 ÷ (1 − cursor × (1 − LLTV)). Para cbBTC con un LLTV del 86% y un cursor de 0.3, eso da 1.0438, una bonificación del 4.38%; para USDC al 98%, alrededor del 0.6%. Un liquidador elige cuál de tus colaterales se lleva, y la documentación de Morpho advierte que elegirá el que más le convenga.
+
+Cuánto puede liquidarse de una vez depende del tamaño. Normalmente, un liquidador solo puede pagar lo necesario para que la posición vuelva a estar sana. La excepción: cuando el colateral que quedaría después de esa liquidación limitada alcanzaría para pagar menos que el rcfThreshold del mercado, ese colateral puede tomarse por completo. El umbral es de 3,000 USDC en el mercado cbBTC/USDC de Base del ejemplo práctico de más abajo y de 300,000 USDC en el mercado de Ethereum de arriba. En un préstamo con un solo colateral por debajo de ese tamaño, toda la posición puede liquidarse de una vez.
+
+### Después del vencimiento
+
+Una vez pasada la hora del vencimiento, cualquier deuda que quede puede liquidarse aunque tu factor de salud sea 2 o 10. En el contrato, la vía posterior al vencimiento solo mira el reloj. La razón de Morpho es que los prestamistas esperan retirar sus fondos al vencimiento, y un prestatario que no ha pagado, sano o no, se lo impide.
+
+La bonificación en esta vía empieza en cero al vencimiento y crece de forma lineal hasta la bonificación completa en 60 minutos. Si además tu posición no está sana después del vencimiento, un liquidador puede usar en su lugar la vía basada en la salud y llevarse la bonificación completa de una vez. En la vía posterior al vencimiento no hay límite a cuánto se puede pagar, así que toda la deuda puede liquidarse de una sola vez. Después del vencimiento ya no puedes añadir deuda, pero todavía puedes pagar, recomprar unidades y retirar colateral.
+
+<Callout tone="warning">
+  En el segundo exacto del vencimiento, una posición sana sigue a salvo; un segundo después, ya no. Pagar tarde una
+  posición sana puede costarte hasta la bonificación de liquidación completa, alrededor del 4.4% de la deuda en un
+  préstamo con colateral cbBTC y un LLTV del 86%.
+</Callout>
+
+Si una liquidación deja deuda que el colateral no puede cubrir, el déficit se da por perdido y lo asumen solo los prestamistas de ese mercado.
+
+## ¿Cómo pagar antes de tiempo, al vencimiento o renovar a un vencimiento posterior?
+
+Tienes tres formas de salir de un préstamo de Midnight, más una alternativa de respaldo que tienes que activar:
+
+- **Pagar directamente.** Pagar cuesta exactamente un token del préstamo por unidad, antes, en el momento o después del vencimiento. Siempre funciona, y marca lo máximo que deberías pagar para salir antes. Pagar antes de tiempo no te devuelve nada del interés: pagas el monto total que se debe al vencimiento, solo que antes.
+- **Recomprar unidades antes del vencimiento.** También puedes comprar unidades de las ofertas de venta de los prestamistas a un precio por debajo de 1, lo que cancela esa cantidad de deuda por menos de su valor nominal. Depende de que alguien ofrezca unidades en el momento en que quieras salir.
+- **Renovar a un vencimiento posterior.** La documentación de Morpho describe pagar o recomprar en un mercado y pedir prestado en un mercado con un vencimiento posterior en una sola transacción, mediante callbacks. La publicación de lanzamiento de Morpho de julio mencionaba la renovación automática como una función futura; el 26 de octubre de 2026, la documentación describe la renovación solo como algo que haces por tu cuenta, o mediante el respaldo en Blue de más abajo.
+- **Recurrir a Blue como respaldo.** Morpho desplegó un contrato, BlueFallbackRolling, en las cinco redes. Si lo activas y lo autorizas tanto en Midnight como en Blue, cualquiera puede mover tu deuda y tu colateral de Midnight a un mercado de Blue de tasa variable que elegiste, a partir de un momento que elegiste. La recompensa de quien lo ejecuta es una parte de la deuda que tú fijas; crece entre una hora de inicio y una hora de fin que tú fijas, puede llegar a toda la deuda y se suma a tu nueva deuda en Blue. Necesita exactamente un colateral que coincida con el del mercado de Blue.
+
+## ¿Qué pasa con tu colateral después de pagar?
+
+Tu colateral se queda donde está hasta que lo retires. Pagar no te lo devuelve. Una vez que tu deuda es cero, la comprobación de salud se supera sin consultar ningún oráculo, así que puedes retirarlo todo, y ninguna puerta puede impedírtelo. Solo tú, una cuenta que autorizaste o el liquidador de una posición liquidable pueden moverlo.
+
+Lo mismo ocurre después de una liquidación: el colateral que el liquidador no se llevó se queda en tu posición para que lo retires.
+
+## Ejemplo práctico: un préstamo cbBTC/USDC con vencimiento el 25 de diciembre de 2026
+
+Este mercado, del par con el que se lanzó Midnight, se creó el 14 de julio de 2026, una semana antes del lanzamiento público, y es el mayor mercado listado en Base. Datos leídos en la blockchain el 26 de octubre de 2026 a las 06:06 UTC:
+
+| Campo                       | Valor                                                  |
+| --------------------------- | ------------------------------------------------------ |
+| Token del préstamo          | USDC                                                   |
+| Colateral                   | cbBTC, el único                                        |
+| LLTV                        | 86%                                                    |
+| Bonificación de liquidación | 4.38% (cursor 0.3)                                     |
+| Vencimiento                 | 25 de diciembre de 2026, 15:00 UTC, dentro de 60.4 días |
+| rcfThreshold                | 3,000 USDC                                             |
+| Puertas y comisiones        | Ninguna                                                |
+| Adeudado al vencimiento     | 1,530,235.58 USDC entre 117 prestatarios               |
+| Precio de cbBTC             | 80,097.33 USDC (el oráculo del mercado)                |
+
+**Pedir prestado.** El mejor precio al que un prestatario podía vender unidades era 0.9901297. Tomar 10,000 USDC a ese precio significa deber unos 10,099.69 USDC el 25 de diciembre de 2026: un 0.997% por los 60.4 días, alrededor de un 6.0% anual. Ese precio cambia de un minuto a otro.
+
+**Una posición típica.** El prestatario mediano debe 37.08 USDC al vencimiento frente a 0.00060018 cbBTC, que valen 48.07 USDC. Su deuda máxima es 48.07 × 0.86 = 41.34 USDC, así que su factor de salud es 41.34 ÷ 37.08 = 1.11. Llega a 1 si cbBTC cae a unos 71,838 USDC, un 10.3% menos.
+
+**Si cbBTC cae justo por debajo de 71,838 USDC antes del vencimiento.** La posición está muy por debajo del umbral de 3,000 USDC, así que un liquidador puede pagar los 37.08 USDC completos y llevarse cbBTC por valor de 38.71 USDC. De los 43.12 USDC de cbBTC, al prestatario le quedan unos 4.41 USDC para retirar.
+
+**Si el prestatario olvida pagar y cbBTC se mantiene en 80,097 USDC.** Desde las 15:00:01 UTC del 25 de diciembre, cualquiera puede pagar los 37.08 USDC y llevarse cbBTC; un liquidador puede actuar en cualquier segundo después de las 15:00:00. La bonificación crece con el tiempo: alrededor del 2.2% a los treinta minutos, el 4.38% completo después de una hora. Una liquidación una hora o más después del vencimiento se lleva cbBTC por valor de 38.71 USDC y le deja al prestatario 9.37 USDC. Pagar los 37.08 USDC a tiempo le habría permitido conservar los 48.07 USDC de cbBTC, un neto de 10.99 USDC, así que esa liquidación le cuesta al prestatario 1.63 USDC, la bonificación completa. Una liquidación anterior cuesta menos, pero nada obliga a un liquidador a esperar.
+
+## ¿En qué se diferencia Midnight de un préstamo a tasa variable en Morpho Blue?
+
+| | Morpho Blue | Morpho Midnight |
+| --- | --- | --- |
+| Tasa | Cambia constantemente según el modelo de tasas de interés del mercado | Fija desde que pides prestado |
+| Deuda | Crece con los intereses | Un número fijo de unidades, no crece |
+| Fecha de fin | Ninguna | Vencimiento |
+| Colateral por mercado | Uno | Uno o más, cada uno con su propio LLTV |
+| Se puede liquidar cuando | La posición no está sana | La posición no está sana, o queda deuda después del vencimiento |
+| Bonificación | 1 ÷ (1 − 0.3 × (1 − LLTV)), como máximo 15% | 1 ÷ (1 − cursor × (1 − LLTV)), cursor fijado por colateral, sin tope del 15% |
+| Cuánto de una vez | Hasta toda la deuda en una sola llamada | Antes del vencimiento, lo que restablece la salud (un colateral completo si lo que queda alcanzaría para pagar menos que el rcfThreshold); después del vencimiento, toda la deuda |
+| Preliquidación | Morpho la está retirando, ver [la preliquidación en Morpho](/es/blog/preliquidacion-morpho) | No forma parte de Midnight |
+| Salir antes | Pagar en cualquier momento | Pagar al valor nominal, o recomprar unidades si hay vendedores |
+
+La diferencia práctica para tu factor de salud: en Blue puede bajar solo por los intereses, como en Aave ([cómo afectan los picos de tasas a tu factor de salud](/es/blog/tasas-de-interes-aave#como-afectan-los-picos-de-tasa-a-tu-factor-de-salud)). En Midnight solo baja cuando bajan los precios del colateral, o cuando retiras colateral o pides más prestado. A cambio, Midnight añade una fecha que no puedes dejar pasar.
+
+## ¿Cómo pueden ayudarte las alertas con un préstamo de Midnight?
+
+Una alerta puede avisarte de los dos riesgos de un préstamo de Midnight: un factor de salud que baja y un vencimiento que se acerca. Tokenping hace una comprobación cada 5 minutos. Su [panel de Morpho](/es/morpho) muestra las posiciones de préstamo de una billetera en los mercados listados en la aplicación de Morpho en 14 redes, de Blue y de Midnight, y ver tus posiciones no requiere pago. Las alertas de Midnight cubren los mercados que lista la API de Morpho. El 26 de octubre de 2026 estaban en Ethereum y Base; Tokenping también cubre Arc y Robinhood Chain en cuanto Morpho liste mercados de Midnight allí. Hasta entonces, no es posible recibir alertas de Midnight en esas dos redes.
+
+Para un préstamo de Midnight:
+
+- **Salud.** Tokenping calcula tu factor de salud a partir de la blockchain con las propias fórmulas de Morpho, nunca a partir de la API de Morpho. Mientras esté por debajo del umbral que fijaste (de 1.02 a 10), cada comprobación envía un mensaje por cada canal que elegiste: Signal, Telegram o correo electrónico.
+- **Vencimiento.** Recibes un recordatorio en los últimos 7 días antes del vencimiento y otro en las últimas 24 horas.
+- **Después del vencimiento.** Mientras quede deuda, cada comprobación envía una alerta, porque el préstamo puede liquidarse sea cual sea su factor de salud.
+
+Las alertas cuestan <AlertPrice />, el mismo plan que las alertas de Aave. Una alerta te da tiempo para actuar; no evita la liquidación, y un precio puede moverse entre dos comprobaciones.
+
+## Fuentes
+
+- [Documentación de Morpho: conceptos de Midnight](https://docs.morpho.org/learn/concepts/midnight): unidades, crédito y deuda, salidas anticipadas, colateral y salud (consultado el 26 de octubre de 2026)
+- [Documentación de Morpho: liquidaciones en Midnight](https://docs.morpho.org/learn/concepts/midnight/liquidations): las dos vías de liquidación, la rampa de la bonificación después del vencimiento y por qué la deuda sin pagar es liquidable después del vencimiento (consultado el 26 de octubre de 2026)
+- [Documentación de Morpho: ofertas](https://docs.morpho.org/learn/concepts/midnight/offers) y [puertas](https://docs.morpho.org/learn/concepts/midnight/gates): la renovación mediante callbacks, y qué pueden y qué no pueden bloquear las puertas (consultado el 26 de octubre de 2026)
+- [Documentación de Morpho: mecánica del mercado](https://docs.morpho.org/developers/midnight/concepts/market-mechanics), [colateral, salud y liquidaciones](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) y [comisiones](https://docs.morpho.org/developers/midnight/concepts/fees) (consultado el 26 de octubre de 2026)
+- [Documentación de Morpho: salir de un préstamo antes de tiempo](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-early) y [salir de un préstamo al vencimiento](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-by-repaying-in-full-at-maturity) (consultado el 26 de octubre de 2026)
+- [Documentación de Morpho: direcciones de los contratos](https://docs.morpho.org/developers/contracts/addresses): Midnight y BlueFallbackRolling en cada red (consultado el 26 de octubre de 2026)
+- [morpho-org/midnight](https://github.com/morpho-org/midnight): Midnight.sol (comprobación de salud, liquidación, pago de la deuda, retiros), ConstantsLib.sol (comisiones, bonificación, rampa de 60 minutos, límites de colaterales) y el README de periphery (consultado el 26 de octubre de 2026)
+- [morpho-org/morpho-blue](https://github.com/morpho-org/morpho-blue): las constantes de liquidación y de bonificación de Blue (consultado el 26 de octubre de 2026)
+- [Now live: Morpho Midnight and the new Markets App](https://morpho.org/blog/now-live-morpho-midnight) (21 de julio de 2026) y [Morpho Midnight: what to expect at launch](https://morpho.org/blog/morpho-midnight-what-to-expect-at-launch) (17 de julio de 2026) (consultado el 26 de octubre de 2026)
+- [Morpho Fixed Rate Markets](https://morpho.org/blog/morpho-v2-liberating-the-potential-of-onchain-loans): la publicación anterior de Morpho sobre Midnight y Vaults V2 (consultado el 26 de octubre de 2026)
+- [API de Morpho Midnight](https://api.morpho.org/v0/midnight/markets): mercados listados, libro de órdenes y posiciones de los prestatarios (consultado el 26 de octubre de 2026)
+- Contratos de Midnight en [Base](https://basescan.org/address/0xAdedD8ab6dE832766Fedf0FaC4992E5C4D3EA18A) en el bloque 53102734 y en [Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f) en el bloque 26274992: definiciones de los mercados, totales, comisiones y precios de los oráculos (consultado el 26 de octubre de 2026)
+
+*Contenido educativo, no asesoramiento financiero. Las alertas reducen el riesgo, pero no evitan la liquidación.*
