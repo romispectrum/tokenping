@@ -1,13 +1,183 @@
 export const meta = {
   slug: "jak-funguje-likvidace-morpho",
-  title: "Jak funguje likvidace na Morpho",
-  description: "Placeholder for a Morpho guide that is being written.",
-  h1: "Jak funguje likvidace na Morpho",
+  title: "Jak funguje likvidace na Morpho: pobídka a nedobytný dluh",
+  description:
+    "Kdy lze půjčku na Morpho zlikvidovat, kolik si likvidátor smí vzít, pobídka při každém LLTV, nedobytný dluh, orákula a čím se liší Midnight.",
+  h1: "Co se stane, když je vaše pozice na Morpho zlikvidována?",
   publishedAt: "2026-10-26",
-  primaryQuestion: "Placeholder",
-  readingMinutes: 1,
-  stub: true,
+  primaryQuestion: "Jak funguje likvidace na Morpho a kolik dlužníka stojí?",
+  readingMinutes: 12,
   protocol: "morpho",
 };
 
-This guide is being written.
+<ShortAnswer>
+  Pozici na Morpho Blue lze zlikvidovat, jakmile její poměr dluhu k hodnotě kolaterálu (LTV) překročí likvidační LTV
+  (LLTV) daného trhu, což je totéž jako health factor (faktor zdraví pozice) pod 1. Od té chvíle může kdokoli jednou
+  transakcí splatit část nebo celý váš dluh a vzít si kolaterál, jehož hodnota podle orákula trhu odpovídá
+  splacené částce vynásobené faktorem likvidační pobídky trhu. Pobídka vyplývá jen z LLTV: při LLTV 86 % činí 4,38 % a celá
+  připadne likvidátorovi. Vypůjčené prostředky vám zůstanou, takže pobídka je to, co vás likvidace stojí, ledaže váš
+  kolaterál už dluh nepokrývá; pak přijdete o celý kolaterál a zbytek jako nedobytný dluh ponesou věřitelé trhu. Půjčky s pevnou
+  sazbou na Morpho Midnight přidávají dvě odlišnosti: před splatností smí jedna likvidace vzít jen tolik, kolik obnoví
+  zdraví pozice, ledaže by zbylý kolaterál splatil méně, než je práh trhu, a po splatnosti lze jakýkoli zbývající dluh
+  zlikvidovat, i u zdravé pozice.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Čísla a bloky, ve kterých byla načtena: content/blog/snapshots/how-morpho-liquidation-works.md */}
+
+## Kdy může být pozice na Morpho zlikvidována?
+
+Pozici na Morpho Blue lze zlikvidovat, jakmile je váš dluh větší než hodnota vašeho kolaterálu vynásobená LLTV trhu. Vyjádřeno health factorem je to jakákoli hodnota pod 1,00 (vzorec a příklady najdete v článku [jak se počítá health factor na Morpho](/cz/blog/morpho-health-factor-vysvetleni)).
+
+Kontroluje to sám kontrakt. Funkce `liquidate` v Morpho Blue nejdřív připočte úrok dlužný do daného bloku, pak jednou přečte orákulum trhu a transakci zruší (revert), pokud pozice není nezdravá. Pozice přesně na svém LLTV je stále zdravá; musí být nad ním.
+
+Přes tuto hranici mohou pozici dostat jen dvě věci:
+
+- **Cena kolaterálu klesne** vůči půjčovanému tokenu, jak ji uvádí orákulum.
+- **Váš dluh roste**, jak na půjčce s proměnlivou sazbou na Blue nabíhá úrok.
+
+Každý trh Blue si LLTV a orákulum pevně určí při svém vytvoření a ani jedno se pak nedá změnit. Kontrakt Morpho Blue navíc nemá žádné pozastavení, zmrazení ani ochrannou lhůtu: Morpho nemůže v trhu zastavit likvidace ani vám zabránit splácet. Vydavatel samotného tokenu ale stále může převody tohoto tokenu pozastavit nebo zablokovat, což by zastavilo obojí.
+
+## Kdo pozici na Morpho likviduje a jak?
+
+Kdokoli. Funkce `liquidate` nijak neomezuje, kdo ji smí zavolat, a Morpho samo pozice nelikviduje. Likvidátory jsou jak týmy, které provozují boty sledující pozice a ceny z orákul, tak jednotlivci; dokumentace Morpho uvádí, že stačí uzel RPC a peněženka s dostatkem půjčovaného tokenu.
+
+Kdo dřív přijde, ten dřív mele. Neexistuje žádná aukce, takže likvidátoři soupeří rychlostí a patří k tomu závody o poplatky za gas i MEV (výnosné řazení transakcí). Kontrakt pošle zabavený kolaterál likvidátorovi dřív, než od něj vybere půjčované tokeny, takže bot může kolaterál prodat ve stejné transakci a dluh splatit z výtěžku.
+
+Likvidace nejsou zaručené; dějí se, protože se pobídka vyplatí. V praxi jsou běžné: API Morpho jen v trhu USDC | cbBTC (86%) na síti Base počítá 14 024 likvidací.
+
+## Jak velkou část dluhu lze zlikvidovat najednou?
+
+Celý dluh. Morpho Blue nemá close factor ani minimální velikost: likvidátor smí jedním voláním splatit jakoukoli část vašeho dluhu, od malého dílu až po celý. Jediné limity jsou, že nemůže splatit víc, než dlužíte, ani zabavit víc kolaterálu, než máte.
+
+V tom je největší rozdíl oproti Aave V3, které likvidaci omezuje na 50 % dluhu, dokud je health factor nad 0,95 a pozice není malá ([kolik dluhu na Aave lze zlikvidovat najednou](/cz/blog/jak-funguje-likvidace-aave#kolik-meho-dluhu-lze-zlikvidovat-najednou)). Na Blue může pozici, která jen o kousek přesáhne své LLTV, celou uzavřít první likvidátor, který dorazí.
+
+## Jak velká je likvidační pobídka při jednotlivých LLTV?
+
+Faktor likvidační pobídky (liquidation incentive factor, LIF) určuje vzorec v kontraktu, a to z LLTV trhu:
+
+**LIF = min(1,15; 1 ÷ (1 − 0,3 × (1 − LLTV)))**
+
+Likvidátor splatí část vašeho dluhu a dostane kolaterál v hodnotě této částky krát LIF, oceněný cenou z orákula. Část nad 1 je pobídka, která se platí z vašeho kolaterálu. Morpho si z ní nebere žádný podíl.
+
+Trh smí používat jen LLTV, které povolila governance Morpho. Dne 26. října 2026 to byly tyto hodnoty a každý trh Blue v API Morpho používá jednu z nich. Spočteno celočíselnou matematikou samotného kontraktu:
+
+| LLTV | Faktor likvidační pobídky | Kolaterál, o který přijdete na každých 1 000 splaceného dluhu | Z toho pobídka |
+|---|---|---|---|
+| 38,5 % | 1,1500 (strop) | 1 150,00 | 150,00 |
+| 62,5 % | 1,1268 | 1 126,76 | 126,76 |
+| 77 % | 1,0741 | 1 074,11 | 74,11 |
+| 86 % | 1,0438 | 1 043,84 | 43,84 |
+| 91,5 % | 1,0262 | 1 026,17 | 26,17 |
+| 94,5 % | 1,0168 | 1 016,78 | 16,78 |
+| 96,5 % | 1,0106 | 1 010,61 | 10,61 |
+| 98 % | 1,0060 | 1 006,04 | 6,04 |
+
+Povolené je i LLTV 0, ale v takovém trhu si nelze nic půjčit. Čím vyšší LLTV, tím menší pobídka; dokumentace Morpho to vysvětluje jako ochranu před kaskádovými likvidacemi v rizikovějších trzích. Hodnotu pro 86 % také zaokrouhluje na „zhruba 1,05“; přesně je to 1,0438.
+
+## Příklad s výpočtem: 1 cbBTC proti 50 000 USDC na síti Base
+
+Vezměme největší uvedený trh Blue na Ethereu a na síti Base podle objemu půjček: USDC | cbBTC (86%) na síti Base, kde bylo vypůjčeno zhruba 1,61 mld. USDC. Dne 26. října 2026 jeho orákulum oceňovalo 1 cbBTC na 80 000,15 USDC (blok 53102870 na síti Base). Pozice je vymyšlená: 1 cbBTC jako kolaterál a dluh 50 000 USDC.
+
+- **LTV:** 50 000 ÷ 80 000,15 = 62,5 %.
+- **Health factor:** 80 000,15 × 0,86 ÷ 50 000 = 1,376.
+- **Likvidační cena:** 50 000 ÷ 0,86 = 58 139,53 USDC za cbBTC, o 27,3 % níž než cena z orákula.
+
+Pomalým hybatelem je úrok. Výpůjční sazba trhu byla 26. října 2026 zhruba 5,2 % ročně, a kdyby se udržela, posunul by samotný úrok tuto pozici z LTV 62,5 % na 86 % až za více než šest let. Rychlým hybatelem je cena.
+
+Pro srovnání: mezi 11 000 největšími pozicemi s dluhem v tomto trhu, které drží 96 % jeho dluhu, byla polovina vypůjčených USDC v pozicích s LTV pod zhruba 54 %, tedy s health factorem nad zhruba 1,59. Jde o výpočet Tokenpingu z API Morpho a ceny na blockchainu, ne o údaj Morpho.
+
+### Úplná likvidace při 58 139,53
+
+Těsně pod likvidační cenou může likvidátor splatit všech 50 000 USDC a vzít si 50 000 × 1,0438 ÷ 58 139,53 = 0,8977 cbBTC v hodnotě 52 192,07 USDC. Zůstane vám 50 000 vypůjčených USDC a 0,1023 cbBTC (5 947,47 USDC) a nedlužíte nic. Oproti tomu, kdybyste splatili sami, vás likvidace stála 2 192,07 USDC: 4,38 % dluhu.
+
+### Částečná likvidace 10 000 USDC
+
+Likvidátor se také může zastavit na 10 000 USDC. Tím zabaví 0,1795 cbBTC (10 438,41 USDC) a vám zůstane 0,8205 cbBTC proti 40 000 USDC: LTV 83,9 % a health factor 1,026, tedy opět zdravá pozice. Částečná likvidace tu vždy pomůže, protože LIF × LLTV = 0,898 je pod 1. Nic ale likvidátora nenutí zvolit jen část místo celého dluhu.
+
+### Co když pozici nikdo nezlikviduje, dokud cbBTC neklesne na 50 000?
+
+Při 50 000 USDC má váš kolaterál přesně hodnotu vašeho dluhu, což je méně než dluh × LIF. Zabavení celého 1 cbBTC splatí jen 50 000 ÷ 1,0438 = 47 900 USDC. Přijdete o veškerý kolaterál a zbývajících 2 100 USDC se odepíše jako nedobytný dluh, který ponesou věřitelé trhu.
+
+## Co se děje s nedobytným dluhem na Morpho Blue?
+
+Když likvidace nechá dlužníkovi dluh, ale žádný kolaterál, kontrakt tento dluh odepíše ve stejné transakci. Zbývající dluh odečte od celkových výpůjček trhu a stejnou částku od jeho celkových vkladů, takže každý věřitel v tomto trhu ztratí úměrně svému podílu. Věřitelů v jiných trzích se to netýká, protože každý trh Blue je izolovaný.
+
+Nedobytný dluh (bad debt) může vzniknout, když má kolaterál nižší hodnotu než dluh krát LIF. V trhu s LLTV 86 % je to jakékoli LTV nad 95,8 %, kterého pozice může dosáhnout jen tehdy, když cena přejde přes LLTV dřív, než ji někdo zlikviduje. Stává se to, i když zřídka ve velkých částkách: API Morpho eviduje nedobytný dluh u 1 428 likvidací na Blue na Ethereu a na síti Base, většinou pod 1 americký dolar nebo v trzích, které aplikace Morpho neuvádí.
+
+Pro dlužníka je výsledek v obou případech stejný: veškerý kolaterál je pryč a žádný dluh nezůstává. Pro věřitele záleží na tom, jak půjčují: vault Morpho Vault V2 promítne ztrátu do ceny svého podílu, kdežto starší vaulty V1.1 ji do ceny svého podílu nepromítají. Aave to řeší jinak: od verze v3.3 zaznamenává zbylý dluh jako deficit, který mohou pokrýt stakeři jeho mechanismu Umbrella ([nedobytný dluh na Aave](/cz/blog/jak-funguje-likvidace-aave#muze-likvidace-zanechat-nedobytny-dluh)).
+
+## Jakou roli hraje při likvidaci orákulum?
+
+Orákulum určuje cenu pro každé rozhodnutí o likvidaci. Každý trh má určené jedno orákulum, které vrací cenu kolaterálu v půjčovaném tokenu. Podle této ceny, ne podle cen na burzách, se určuje jak okamžik, kdy lze pozici zlikvidovat, tak množství kolaterálu, které likvidátor dostane. Orákula nevybírá Morpho, ale ten, kdo trh vytvoří. Adresu orákula trhu nelze nikdy nahradit, ale cenové zdroje, ze kterých orákulum čte, může provozovat někdo jiný, kdo je smí aktualizovat. Například zdroj BTC/USD z příkladu na síti Base má vlastníka, který ho může přesměrovat na nový zdroj.
+
+Záleží na tom, co orákulum měří. Orákulum příkladového trhu na síti Base používá pro cbBTC cenový zdroj BTC/USD a USDC počítá přesně jako 1 americký dolar, takže ztráta vazby (depeg) kteréhokoli z obou tokenů by s ním nepohnula. Referenční orákulum Morpho pro zdroje kompatibilní s Chainlinkem nekontroluje stáří ceny ani to, zda je v mezích, a nepřidává žádnou kontrolu výpadků sekvenceru L2.
+
+Problém s orákulem může dlužníkům uškodit dvěma způsoby:
+
+- **Chybná nebo zmanipulovaná cena.** Stránka Morpho o rizicích varuje, že žádné orákulum není vůči manipulaci imunní, což může způsobit likvidace, nebo dokonce nedobytný dluh.
+- **Orákulum, které přestane odpovídat.** Půjčování, výběr kolaterálu i likvidace čtou orákulum a selhaly by. Splácení a přidání kolaterálu ho nečtou, takže svou pozici můžete dál zlepšovat, zatímco ji nikdo nemůže zlikvidovat.
+
+## Čím se liší likvidace na Morpho Midnight?
+
+Trhy Morpho Midnight půjčují jeden token s pevnou sazbou do pevně daného data splatnosti proti jednomu nebo více kolaterálům, z nichž každý má vlastní LLTV, orákulum a likvidační kurzor (cursor), tedy ono 0,3 ze vzorce pobídky výše, které Midnight nastavuje pro každý kolaterál zvlášť. Váš dluh je pevně daný v jednotkách, takže před splatností hýbou vaším health factorem jen ceny kolaterálu. Pozici na Midnight lze zlikvidovat dvěma způsoby:
+
+- **Podle zdraví, kdykoli**, dokud dluh převyšuje součet hodnot jednotlivých kolaterálů vynásobených jejich LLTV. Pobídkou je plný bonus daného kolaterálu a jedna likvidace smí splatit jen tolik, kolik je potřeba, aby byla pozice znovu zdravá. Výjimka: když by kolaterál, který po takto omezené likvidaci zbude, splatil méně, než je rcfThreshold trhu, lze tento kolaterál vzít celý.
+- **Po splatnosti**, pokud zbývá jakýkoli dluh, a to i u zdravé pozice. Žádné omezení neplatí a pobídka začíná na nule a během 60 minut vzroste na plný bonus.
+
+Kolaterál volí likvidátor a strop 1,15 tu neplatí; 26. října 2026 používal každý uvedený trh Midnight kurzor 0,3 a LLTV kolaterálů od 62,5 % do 98 %, což dává stejné pobídky jako tabulka výše. Nedobytný dluh nesou věřitelé daného trhu. Splatnost, prahy skutečných trhů a příklad s výpočtem popisuje článek [jak fungují půjčky s pevnou sazbou na Midnight](/cz/blog/morpho-midnight-pujcky-s-pevnou-sazbou).
+
+## Co je předběžná likvidace?
+
+Předběžná likvidace (pre-liquidation) je volitelný doplněk Morpho Blue. Dlužník, který pro trh povolil kontrakt předběžné likvidace, dovoluje likvidátorům, aby ho použili ke splácení dílů dluhu, volání za voláním, jakmile LTV překročí hranici nastavenou pod LLTV, s pobídkou nastavenou v tomto kontraktu, dokud LTV neklesne zpět pod tuto hranici. Nad LLTV dál platí běžná likvidace.
+
+Příkladový trh na síti Base takový kontrakt má: od LTV 83,26 % může jedním voláním splatit až 0,20 % dluhu (volání se mohou opakovat) a poblíž 86 % až 24,53 %, se stejnou pobídkou 1,0438. Působí jen tehdy, pokud jste ho povolili. Morpho tuto funkci ukončuje: aplikace nepřijímá nové pozice a centrum nápovědy žádá dlužníky, kteří ji mají, aby ji vypnuli. Jeho podmínky a to, jak ho ověřit a zrušit, vysvětluje článek [předběžná likvidace na Morpho](/cz/blog/predbezna-likvidace-morpho).
+
+## Čím se likvidace na Morpho liší od likvidace na Aave?
+
+Jádro je stejné: pod 1 likvidátor splatí dluh a vezme si kolaterál plus bonus. Pravidla kolem toho se liší ([jak funguje likvidace na Aave](/cz/blog/jak-funguje-likvidace-aave)):
+
+| | Aave V3 | Morpho Blue | Morpho Midnight |
+|---|---|---|---|
+| Kolik najednou | 50 % nebo 100 % dluhu, plus pravidlo pro drobné zbytky | Až celý dluh jedním voláním | Před splatností to, co obnoví zdraví (celý kolaterál, pokud by zbytek splatil méně než rcfThreshold); po splatnosti celý dluh |
+| Bonus | Nastavuje ho governance pro každé aktivum kolaterálu | Pevně daný LLTV trhu | Pro každý kolaterál, z jeho LLTV a kurzoru |
+| Kdo si bonus ponechá | Likvidátor, po odečtení poplatku protokolu | Likvidátor, celý | Likvidátor |
+| Mohou se pravidla změnit? | Governance a správci rizik (risk stewards) je mohou měnit | Ne, jsou pevně daná při vytvoření trhu | Pevně daná při vytvoření trhu |
+| Pozastavení | Aktiva lze pozastavit, s ochrannou lhůtou | Žádné pozastavení | Žádné pozastavení |
+| Nedobytný dluh | Deficit, který mohou pokrýt stakeři Umbrella | Odepsán na úkor věřitelů daného trhu | Rozložen mezi věřitele daného trhu |
+| Co pozice pokrývá | Mnoho aktiv v jedné pozici | Jeden kolaterál, jeden půjčovaný token | Jeden půjčovaný token, několik kolaterálů |
+
+## Jak se na Morpho vyhnout likvidaci?
+
+- **Držte si rezervu pod LLTV.** Pozice, která se zotaví dřív, než ji někdo zlikviduje, je opět v bezpečí, ale nic nebrání ceně klesat dál a první likvidátor, který dorazí, může splatit celý váš dluh najednou.
+- **Včas splaťte dluh nebo přidejte kolaterál.** Obojí hned sníží vaše LTV, nestojí žádnou pobídku a funguje, i když orákulum selže.
+- **Znejte své orákulum.** Než si půjčíte, zjistěte, které orákulum váš trh používá a co měří.
+- **Na Midnight splaťte dluh před splatností.** Po splatnosti lze jakýkoli zbývající dluh zlikvidovat, ať je pozice zdravá, nebo ne.
+- **Zkontrolujte starou předběžnou likvidaci.** Pokud jste kdysi zapnuli Auto-deleverage (předběžnou likvidaci), Morpho ji ukončuje a žádá dlužníky, aby ji vypnuli; jak na to, ukazuje článek [předběžná likvidace na Morpho](/cz/blog/predbezna-likvidace-morpho).
+
+## Jak mohou pomoct upozornění?
+
+Tokenping kontroluje každých 5 minut každou pozici s dluhem na Morpho, pro kterou si nastavíte upozornění, a to v trzích uvedených v aplikaci Morpho: Morpho Blue na 14 sítích a Morpho Midnight. Upozornění pro Midnight pokrývají trhy, které uvádí API Morpho. Dne 26. října 2026 byly na Ethereu a na síti Base; Tokenping pokryje i sítě Arc a Robinhood Chain, jakmile tam Morpho začne trhy Midnight uvádět. Každý health factor počítá z dat na blockchainu vlastní matematikou Morpho, ne z API Morpho. Dokud je health factor pod prahem, který si nastavíte (1,02 až 10), každá kontrola pošle zprávu na každý kanál, který jste zvolili: Signal, Telegram nebo e-mail. Pokud jste na trhu Blue povolili kontrakt předběžné likvidace, upozornění měří vůči nižší ze dvou hranic: LLTV, nebo hranici předběžné likvidace. Půjčka na Midnight navíc dostane jednu připomínku v posledních 7 dnech a jednu v posledních 24 hodinách před splatností, pak upozornění při každé kontrole po splatnosti, dokud na ní zbývá dluh.
+
+Můžete si [prohlédnout své pozice na Morpho](/cz/morpho); prohlížení nevyžaduje platbu. Upozornění stojí <AlertPrice />. Upozornění vám dá čas jednat, ale cena se může mezi dvěma kontrolami pohnout přes vaše LLTV a upozornění likvidaci nezabrání.
+
+## Zdroje
+
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) a [IMorpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/interfaces/IMorpho.sol), morpho-org/morpho-blue: kontrola zdraví, likvidace, vzorec pobídky, nedobytný dluh a předpoklady o orákulech (načteno 26. října 2026)
+- [Midnight.sol](https://github.com/morpho-org/midnight/blob/main/src/Midnight.sol) a [ConstantsLib.sol](https://github.com/morpho-org/midnight/blob/main/src/libraries/ConstantsLib.sol), morpho-org/midnight: režimy likvidace, RCF, náběh pobídky a snižování pohledávek věřitelů o nedobytný dluh (načteno 26. října 2026)
+- [README a PreLiquidation.sol k předběžné likvidaci](https://github.com/morpho-org/pre-liquidation), morpho-org/pre-liquidation (načteno 26. října 2026)
+- [ChainlinkDataFeedLib.sol](https://github.com/morpho-org/morpho-blue-oracles/blob/main/src/morpho-chainlink/libraries/ChainlinkDataFeedLib.sol), morpho-org/morpho-blue-oracles: žádná kontrola stáří ceny, mezí ani sekvenceru (načteno 26. října 2026)
+- [Dokumentace Morpho: likvidace](https://docs.morpho.org/learn/concepts/liquidation): likvidátoři, žádná aukce, až 100 % najednou, žádný poplatek protokolu, nedobytný dluh ve vaultech (načteno 26. října 2026)
+- [Vývojářská dokumentace Morpho: likvidace](https://docs.morpho.org/developers/borrow/concepts/liquidation): pobídka podle LLTV a nedobytný dluh (načteno 26. října 2026)
+- [Dokumentace Morpho: orákula](https://docs.morpho.org/learn/concepts/oracle): volba orákula a jeho neměnnost (načteno 26. října 2026)
+- [Dokumentace Morpho: Morpho Blue](https://docs.morpho.org/learn/concepts/blue): trvalé parametry trhu a povolená LLTV (načteno 26. října 2026)
+- [Dokumentace Morpho: likvidace na Midnight](https://docs.morpho.org/learn/concepts/midnight/liquidations), [kolaterál, zdraví a likvidace](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) a [co je Midnight](https://docs.morpho.org/learn/concepts/midnight) (načteno 26. října 2026)
+- [Dokumentace Morpho: rizika](https://docs.morpho.org/learn/resources/risks): riziko orákula, likvidace, nedobytného dluhu a protistrany (načteno 26. října 2026)
+- [API Morpho](https://api.morpho.org/graphql): počty likvidací a likvidací s nedobytným dluhem, seznam uvedených trhů, výpůjční sazba, pozice s dluhem a trhy Midnight (načteno 26. října 2026)
+- [Morpho Blue na síti Base](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), trh USDC | cbBTC (86%) v bloku 53102870 na síti Base (načteno 26. října 2026)
+- [Orákulum trhu](https://basescan.org/address/0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9#readContract) a [jeho zdroj BTC/USD](https://basescan.org/address/0x64c911996D3c6aC71f9b455B1E8E7266BcbD848F#readContract) na síti Base: cena v bloku 53102870 a vlastník zdroje (načteno 26. října 2026)
+- [Kontrakt předběžné likvidace trhu](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374#readContract) na síti Base: jeho parametry v bloku 53102870 (načteno 26. října 2026)
+- [Morpho Midnight na Ethereu](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract): povolená LLTV a likvidační kurzory v bloku 26274998 (načteno 26. října 2026)
+
+*Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání.*

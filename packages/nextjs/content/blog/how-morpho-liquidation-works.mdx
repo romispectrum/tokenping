@@ -1,13 +1,183 @@
 export const meta = {
   slug: "how-morpho-liquidation-works",
-  title: "How Morpho liquidation works",
-  description: "Placeholder for a Morpho guide that is being written.",
-  h1: "How Morpho liquidation works",
+  title: "How Morpho liquidation works: incentive and bad debt",
+  description:
+    "When a Morpho loan can be liquidated, how much a liquidator can take, the incentive at each LLTV, bad debt, oracles and how Midnight differs.",
+  h1: "What happens when your Morpho position is liquidated?",
   publishedAt: "2026-10-26",
-  primaryQuestion: "Placeholder",
-  readingMinutes: 1,
-  stub: true,
+  primaryQuestion: "How does liquidation work on Morpho, and what does it cost the borrower?",
+  readingMinutes: 12,
   protocol: "morpho",
 };
 
-This guide is being written.
+<ShortAnswer>
+  A Morpho Blue position can be liquidated once its loan-to-value (LTV) rises above the market's liquidation
+  loan-to-value (LLTV), which is the same as a health factor below 1. From then on anyone can repay part or all of
+  your debt in one transaction and take collateral worth the repaid amount times the market's liquidation incentive
+  factor, priced by the market's oracle. The incentive follows from the LLTV alone: 4.38% at an 86% LLTV, and all of
+  it goes to the liquidator. You keep what you borrowed, so the incentive is what the liquidation costs you, unless
+  your collateral no longer covers the debt; then you lose all of it and the market's lenders absorb the rest as bad
+  debt. Morpho Midnight's fixed-rate loans add two twists: before maturity, one liquidation can only take what restores
+  health, unless the collateral left would repay less than the market's threshold, and after maturity any debt left can
+  be liquidated, even on a healthy position.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Figures and the block numbers they were read at: content/blog/snapshots/how-morpho-liquidation-works.md */}
+
+## When can a Morpho position be liquidated?
+
+A Morpho Blue position can be liquidated as soon as your debt is larger than your collateral value times the market's LLTV. In health factor terms that is any value below 1.00 ([how the Morpho health factor is calculated](/blog/morpho-health-factor) has the formula and examples).
+
+The contract checks this itself. Morpho Blue's `liquidate` function first adds the interest owed up to that block, then reads the market's oracle once, then reverts unless the position is unhealthy. A position exactly at its LLTV is still healthy; it has to be above it.
+
+Only two things push a position over the line:
+
+- **The collateral price falls** relative to the loan token, as reported by the oracle.
+- **Your debt grows** as interest accrues on a variable-rate Blue loan.
+
+Every Blue market fixes its LLTV and its oracle when it is created, and neither can change afterwards. The Morpho Blue contract also has no pause, freeze or grace period: Morpho cannot stop liquidations in a market or stop you repaying. A token's own issuer can still pause or block transfers of that token, which would stop both.
+
+## Who liquidates a Morpho position, and how?
+
+Anyone can. `liquidate` has no caller restriction, and Morpho itself does not liquidate positions. Liquidators range from teams running bots that watch positions and oracle prices to individuals; Morpho's docs note that all it takes is an RPC node and a wallet holding enough of the loan token.
+
+It is first come, first served. There is no auction, so liquidators compete on speed, and gas races and MEV (transaction ordering for profit) are part of it. The contract sends the seized collateral to the liquidator before collecting the loan tokens, which lets a bot sell the collateral within the same transaction and repay from the proceeds.
+
+Liquidations are not guaranteed; they happen because the incentive pays. In practice they are routine: Morpho's API counts 14,024 liquidations in Base's USDC | cbBTC (86%) market alone.
+
+## How much of your debt can be liquidated at once?
+
+All of it. Morpho Blue has no close factor and no minimum size: a liquidator may repay any amount of your debt, from a small slice up to the whole of it, in a single call. The only limits are that they cannot repay more than you owe or seize more collateral than you have.
+
+This is the biggest difference from Aave V3, which caps a liquidation at 50% of the debt while the health factor is above 0.95 and the position is not small ([how much of an Aave debt can be liquidated at once](/blog/how-aave-liquidation-works#how-much-of-my-debt-can-be-liquidated-at-once)). On Blue, a position that slips just past its LLTV can be closed out completely by the first liquidator who arrives.
+
+## How large is the liquidation incentive at each LLTV?
+
+The liquidation incentive factor (LIF) is set by a formula in the contract, from the market's LLTV:
+
+**LIF = min(1.15, 1 ÷ (1 − 0.3 × (1 − LLTV)))**
+
+The liquidator repays some of your debt and receives collateral worth that amount times the LIF at the oracle price. The part above 1 is the incentive, paid out of your collateral. Morpho takes no share of it.
+
+A market can only use an LLTV that Morpho governance has enabled. On 26 Oct 2026 these were the enabled values, and every Blue market in Morpho's API uses one of them. With the contract's own integer math:
+
+| LLTV | Liquidation incentive factor | Collateral you lose per 1,000 of debt repaid | Of which the incentive |
+|---|---|---|---|
+| 38.5% | 1.1500 (capped) | 1,150.00 | 150.00 |
+| 62.5% | 1.1268 | 1,126.76 | 126.76 |
+| 77% | 1.0741 | 1,074.11 | 74.11 |
+| 86% | 1.0438 | 1,043.84 | 43.84 |
+| 91.5% | 1.0262 | 1,026.17 | 26.17 |
+| 94.5% | 1.0168 | 1,016.78 | 16.78 |
+| 96.5% | 1.0106 | 1,010.61 | 10.61 |
+| 98% | 1.0060 | 1,006.04 | 6.04 |
+
+An LLTV of 0 is also enabled, but nothing can be borrowed in such a market. The higher the LLTV, the smaller the incentive; Morpho's docs explain this as a guard against cascading liquidations in the riskier markets. They also round the 86% figure to "approximately 1.05"; the exact value is 1.0438.
+
+## Worked example: 1 cbBTC against 50,000 USDC on Base
+
+Take the largest listed Blue market by borrowing on Ethereum and Base: USDC | cbBTC (86%) on Base, with about 1.61 billion USDC borrowed. On 26 Oct 2026 its oracle priced 1 cbBTC at 80,000.15 USDC (Base block 53102870). The position is made up: 1 cbBTC as collateral and 50,000 USDC of debt.
+
+- **LTV:** 50,000 ÷ 80,000.15 = 62.5%.
+- **Health factor:** 80,000.15 × 0.86 ÷ 50,000 = 1.376.
+- **Liquidation price:** 50,000 ÷ 0.86 = 58,139.53 USDC per cbBTC, 27.3% below the oracle price.
+
+Interest is the slow driver. At the market's borrow rate of about 5.2% a year on 26 Oct 2026, and if that rate held, interest alone would take more than six years to carry this position from 62.5% to 86% LTV. Price is the fast one.
+
+For comparison, across the 11,000 largest borrow positions in this market, which hold 96% of its debt, half of the borrowed USDC was in positions below about 54% LTV, a health factor above about 1.59. That is Tokenping's computation from Morpho's API and the on-chain price, not a Morpho figure.
+
+### Full liquidation at 58,139.53
+
+Just past the liquidation price, a liquidator can repay all 50,000 USDC and take 50,000 × 1.0438 ÷ 58,139.53 = 0.8977 cbBTC, worth 52,192.07 USDC. You keep the 50,000 USDC you borrowed and 0.1023 cbBTC (5,947.47 USDC), and owe nothing. The liquidation cost you 2,192.07 USDC compared with repaying yourself: 4.38% of the debt.
+
+### Partial liquidation of 10,000 USDC
+
+A liquidator can also stop at 10,000 USDC. That seizes 0.1795 cbBTC (10,438.41 USDC) and leaves 0.8205 cbBTC against 40,000 USDC: an LTV of 83.9% and a health factor of 1.026, healthy again. A slice always helps here, because LIF × LLTV = 0.898 is below 1. But nothing makes a liquidator choose the slice over the whole debt.
+
+### What if nobody liquidates until cbBTC is at 50,000?
+
+At 50,000 USDC your collateral is worth exactly your debt, which is less than debt × LIF. Seizing the whole 1 cbBTC repays only 50,000 ÷ 1.0438 = 47,900 USDC. You lose all of your collateral, and the remaining 2,100 USDC is written off as bad debt, which the market's lenders absorb.
+
+## What happens to bad debt on Morpho Blue?
+
+When a liquidation leaves a borrower with no collateral but some debt, the contract writes that debt off in the same transaction. It removes the remaining debt from the market's total borrowings and the same amount from its total supply, so every lender in that market loses in proportion to their share. Lenders in other markets are not affected, because each Blue market is isolated.
+
+Bad debt becomes possible when the collateral is worth less than the debt times the LIF. In an 86% market that is any LTV above 95.8%, which a position can only reach if the price moves past the LLTV before anyone liquidates. It does happen, though rarely in large amounts: Morpho's API records bad debt in 1,428 Blue liquidations on Ethereum and Base, most of them under 1 US dollar or in markets the Morpho app does not list.
+
+For the borrower the outcome is the same either way: all of the collateral is gone and no debt remains. For lenders it depends on how they lend: a Morpho Vault V2 passes the loss on to its share price, while legacy V1.1 vaults do not pass it on to theirs. Aave handles it differently: since v3.3 it records leftover debt as a deficit that its Umbrella stakers can cover ([bad debt on Aave](/blog/how-aave-liquidation-works#can-a-liquidation-leave-bad-debt)).
+
+## What role does the oracle play in a liquidation?
+
+The oracle sets the price for every liquidation decision. Each market names one oracle that returns the price of the collateral in the loan token, and both the moment a position becomes liquidatable and the amount of collateral a liquidator receives use that price, not prices on exchanges. Morpho does not choose oracles: whoever creates a market does. The market's oracle address can never be replaced, but the price feeds an oracle reads may be run by others who can update them. The Base example's BTC/USD feed, for instance, has an owner who can point it to a new source.
+
+What an oracle measures matters to you. The Base example market's oracle uses a BTC/USD price feed for cbBTC and treats USDC as exactly 1 US dollar, so a depeg of either token would not move it. Morpho's reference oracle for Chainlink-compatible feeds does not check how old a price is or whether it is within bounds, and adds no check for L2 sequencer outages.
+
+An oracle problem can hurt borrowers in two ways:
+
+- **A wrong or manipulated price.** Morpho's risk page warns that no oracle is immune to manipulation, which can cause liquidations or even bad debt.
+- **An oracle that stops answering.** Borrowing, withdrawing collateral and liquidating all read the oracle and would fail. Repaying and adding collateral do not read it, so you can still improve your position while nobody can liquidate it.
+
+## How are Morpho Midnight liquidations different?
+
+Morpho Midnight markets lend one token at a fixed rate until a set maturity date against one or more collaterals, each with its own LLTV, oracle and liquidation cursor (the 0.3 in the incentive formula above, which Midnight sets per collateral). Your debt is fixed in units, so before maturity only collateral prices move your health factor. A Midnight position can be liquidated in two ways:
+
+- **Health-based, at any time** while the debt exceeds the sum of each collateral's value times its LLTV. The incentive is that collateral's full bonus, and one liquidation can repay only what it takes to make the position healthy again. The exception: when the collateral left after such a capped liquidation would repay less than the market's rcfThreshold, that collateral can be taken in full.
+- **After maturity**, if any debt is left, even on a healthy position. There is no cap, and the incentive starts at nothing and rises to the full bonus over 60 minutes.
+
+The liquidator picks which collateral to take, and there is no 1.15 cap; on 26 Oct 2026 every listed Midnight market used a cursor of 0.3 with collateral LLTVs from 62.5% to 98%, which give the same incentives as the table above. Bad debt is shared by that market's lenders. [How Midnight fixed-rate loans work](/blog/morpho-midnight-fixed-rate-loans) covers maturity, real markets' thresholds and a worked example.
+
+## What is pre-liquidation?
+
+Pre-liquidation is an opt-in addition on Morpho Blue. A borrower who authorised a pre-liquidation contract for a market lets liquidators use it, once the LTV passes a line set below the LLTV, to repay slices of the debt, call after call, at an incentive set in that contract, until the LTV is back below that line. Above the LLTV, normal liquidation still applies.
+
+The Base example market has one: from 83.26% LTV it can repay up to 0.20% of the debt per call (calls can repeat), rising to 24.53% near 86%, at the same 1.0438 incentive. It only acts if you authorised it. Morpho is retiring the feature: its app takes no new positions, and its help centre asks borrowers who have it to switch it off. [Morpho pre-liquidation](/blog/morpho-pre-liquidation) explains the terms and how to check and revoke it.
+
+## How does Morpho liquidation differ from Aave's?
+
+The core is the same: below 1, a liquidator repays debt and takes collateral plus a bonus. The rules around it differ ([how Aave liquidation works](/blog/how-aave-liquidation-works)):
+
+| | Aave V3 | Morpho Blue | Morpho Midnight |
+|---|---|---|---|
+| How much at once | 50% or 100% of the debt, plus a dust rule | Up to all of the debt in one call | Before maturity, what restores health (a whole collateral if what is left would repay less than the rcfThreshold); after maturity, all of the debt |
+| Bonus | Set per collateral asset by governance | Fixed by the market's LLTV | Per collateral, from its LLTV and cursor |
+| Who keeps the bonus | Liquidator, minus a protocol fee | Liquidator, all of it | Liquidator |
+| Can the rules change? | Governance and risk stewards can change them | No, fixed at market creation | Fixed at market creation |
+| Pause | Assets can be paused, with a grace period | No pause | No pause |
+| Bad debt | A deficit, which Umbrella stakers can cover | Written off against that market's lenders | Spread over that market's lenders |
+| What a position covers | Many assets in one position | One collateral, one loan token | One loan token, several collaterals |
+
+## How can you avoid being liquidated on Morpho?
+
+- **Keep a buffer below the LLTV.** A position that recovers before anyone liquidates is safe again, but nothing stops the price falling further, and the first liquidator to arrive can repay all of your debt at once.
+- **Repay or add collateral early.** Both lower your LTV right away, cost no incentive and work even if the oracle fails.
+- **Know your oracle.** Check which oracle your market uses and what it measures before you borrow.
+- **On Midnight, repay before maturity.** After maturity any remaining debt can be liquidated, healthy or not.
+- **Check any old pre-liquidation.** If you once turned on Auto-deleverage (pre-liquidation), Morpho is retiring it and asks borrowers to switch it off; [Morpho pre-liquidation](/blog/morpho-pre-liquidation) shows how.
+
+## How can alerts help?
+
+Tokenping checks each Morpho borrow position you set an alert on every 5 minutes, in markets listed in the Morpho app: Morpho Blue on 14 networks, and Morpho Midnight. Midnight alerts cover markets Morpho's API lists. On 26 Oct 2026 those were on Ethereum and Base; Tokenping also covers Arc and Robinhood Chain once Morpho lists Midnight markets there. It computes each health factor from the chain with Morpho's own math, not from Morpho's API. While a health factor is below the threshold you set (1.02 to 10), every check sends a message on each channel you chose: Signal, Telegram or email. If you authorised a pre-liquidation contract on a Blue market, the alert measures against the lower of the two lines: the LLTV or the pre-liquidation line. A Midnight loan also gets one reminder in its last 7 days and one in its last 24 hours before maturity, then an alert at every check after maturity while debt remains.
+
+You can [look at your Morpho positions](/morpho); that needs no payment. Alerts cost <AlertPrice />. An alert gives you time to act, but a price can move past your LLTV between two checks, and an alert does not prevent liquidation.
+
+## Sources
+
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) and [IMorpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/interfaces/IMorpho.sol), morpho-org/morpho-blue: health check, liquidation, incentive formula, bad debt and oracle assumptions (fetched 26 Oct 2026)
+- [Midnight.sol](https://github.com/morpho-org/midnight/blob/main/src/Midnight.sol) and [ConstantsLib.sol](https://github.com/morpho-org/midnight/blob/main/src/libraries/ConstantsLib.sol), morpho-org/midnight: liquidation modes, RCF, incentive ramp and slashing (fetched 26 Oct 2026)
+- [Pre-liquidation README and PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation), morpho-org/pre-liquidation (fetched 26 Oct 2026)
+- [ChainlinkDataFeedLib.sol](https://github.com/morpho-org/morpho-blue-oracles/blob/main/src/morpho-chainlink/libraries/ChainlinkDataFeedLib.sol), morpho-org/morpho-blue-oracles: no staleness, bounds or sequencer checks (fetched 26 Oct 2026)
+- [Liquidation on Morpho](https://docs.morpho.org/learn/concepts/liquidation): liquidators, no auction, up to 100% at once, no protocol fee, bad debt in vaults (fetched 26 Oct 2026)
+- [Morpho developer docs: liquidation](https://docs.morpho.org/developers/borrow/concepts/liquidation): incentive by LLTV and bad debt (fetched 26 Oct 2026)
+- [Morpho docs: oracles](https://docs.morpho.org/learn/concepts/oracle): oracle choice and immutability (fetched 26 Oct 2026)
+- [Morpho docs: Morpho Blue](https://docs.morpho.org/learn/concepts/blue): permanent market parameters and enabled LLTVs (fetched 26 Oct 2026)
+- [Morpho docs: Midnight liquidations](https://docs.morpho.org/learn/concepts/midnight/liquidations), [collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) and [what is Midnight](https://docs.morpho.org/learn/concepts/midnight) (fetched 26 Oct 2026)
+- [Morpho docs: risks](https://docs.morpho.org/learn/resources/risks): oracle, liquidation, bad debt and counterparty risk (fetched 26 Oct 2026)
+- [Morpho API](https://api.morpho.org/graphql): liquidation and bad debt counts, market listing, borrow rate, borrow positions and Midnight markets (fetched 26 Oct 2026)
+- [Morpho Blue on Base](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), the USDC | cbBTC (86%) market at Base block 53102870 (fetched 26 Oct 2026)
+- [The market's oracle](https://basescan.org/address/0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9#readContract) and [its BTC/USD feed](https://basescan.org/address/0x64c911996D3c6aC71f9b455B1E8E7266BcbD848F#readContract) on Base: the price at block 53102870 and the feed's owner (fetched 26 Oct 2026)
+- [The market's pre-liquidation contract](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374#readContract) on Base: its parameters at block 53102870 (fetched 26 Oct 2026)
+- [Morpho Midnight on Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract): enabled LLTVs and liquidation cursors at block 26274998 (fetched 26 Oct 2026)
+
+*Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation.*

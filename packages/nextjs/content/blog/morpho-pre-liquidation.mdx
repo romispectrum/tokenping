@@ -1,13 +1,168 @@
 export const meta = {
   slug: "morpho-pre-liquidation",
-  title: "Morpho pre-liquidation",
-  description: "Placeholder for a Morpho guide that is being written.",
-  h1: "Morpho pre-liquidation",
+  title: "Morpho pre-liquidation: what it is and how to turn it off",
+  description:
+    "How Morpho pre-liquidation (Auto-deleverage) sells part of a loan before the LLTV, why Morpho is retiring it, and how to check and revoke it.",
+  h1: "What is Morpho pre-liquidation, and how do you check or turn it off?",
   publishedAt: "2026-10-26",
-  primaryQuestion: "Placeholder",
-  readingMinutes: 1,
-  stub: true,
+  primaryQuestion: "What is Morpho pre-liquidation, and how do I check whether it is on and turn it off?",
+  readingMinutes: 10,
   protocol: "morpho",
 };
 
-This guide is being written.
+<ShortAnswer>
+  Pre-liquidation is an opt-in contract for one Morpho Blue (variable-rate) market that lets anyone sell some of your
+  collateral to repay debt before your position reaches the market's LLTV. Morpho's app had a feature called
+  Auto-deleverage that works this way. Morpho is now retiring it: the app takes no new positions, its help centre asks
+  people who have it to switch it off, and its SDK marked the pre-liquidation code deprecated on 22 Sep 2026. The
+  contracts still work, so if you once turned it on, check it with `isAuthorized` on the Morpho Blue contract and revoke
+  it with the app's manage button or with `setAuthorization(contract, false)`.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Figures, block numbers and sources: content/blog/snapshots/morpho-pre-liquidation.md */}
+
+## What is pre-liquidation on Morpho?
+
+Pre-liquidation is a second, earlier liquidation line that a borrower can add to one Morpho Blue market. On a normal Blue market, a position can be liquidated only once its health factor is below 1, measured against the market's liquidation loan-to-value (LLTV); [the Morpho health factor guide](/blog/morpho-health-factor) explains that number. A pre-liquidation contract sets a lower line, the preLLTV. Between the two lines, anyone may repay part of your debt, up to a limit the contract sets, and take collateral worth that debt plus a bonus, in steps.
+
+Three things set it apart:
+
+- **It is opt in.** It applies only after you authorise the contract on Morpho Blue. Without that, the contract can't touch your position.
+- **It is per market.** Each contract is tied to one Blue market and one fixed set of parameters, and it has no owner, admin or upgrade function.
+- **It exists only on Blue.** Morpho Midnight, the fixed-rate markets in [the Midnight guide](/blog/morpho-midnight-fixed-rate-loans), has no pre-liquidation.
+
+Morpho announced the pre-liquidation factory on 4 Mar 2025 and named auto-deleverage and auto-close as uses for it. In the contracts, the API and the SDK it is called pre-liquidation. Morpho's app had a feature called Auto-deleverage, which its help centre describes in the same terms: once your loan-to-value passes a set threshold, part of the position may be closed, with a fee only on the part closed.
+
+## Is pre-liquidation still available in the Morpho app?
+
+No new pre-liquidation can be set up in the Morpho app. Read on 26 Oct 2026:
+
+| Where | Status |
+| --- | --- |
+| Morpho app and help centre | Help article now titled "Sunsetting Auto-deleverage" (last updated 13 May 2026): the feature takes no new positions, and users who have it should disable it |
+| Morpho SDK | Every pre-liquidation export marked deprecated on 22 Sep 2026 (pull request 1132), to be removed in the next major version, with no successor |
+| Morpho docs | The pre-liquidation page is gone; its old address now leads to the general liquidation page |
+| Morpho API | Still lists 106 pre-liquidation contracts across listed markets on Ethereum (50), Base (37), Arbitrum (8), Polygon (6), Katana (3) and Unichain (2) |
+| The contracts | Unchanged and working: anyone can still call them on a borrower who authorised them |
+
+The last row is the one that matters if you turned the feature on before. Retiring a feature in an app does not undo an authorisation stored on chain.
+
+## How does a pre-liquidation contract work?
+
+A pre-liquidation contract is created by Morpho's PreLiquidationFactory, which anyone can use: anyone can deploy a contract for any Blue market, and each market and parameter set can exist only once. Its fixed parameters are:
+
+| Parameter | What it sets |
+| --- | --- |
+| preLLTV | The loan-to-value above which pre-liquidation is allowed. Must be below the market's LLTV |
+| preLCF1, preLCF2 | The close factor: the largest share of your debt one call may repay, at the preLLTV and at the LLTV |
+| preLIF1, preLIF2 | The incentive factor: the debt repaid is multiplied by it to get the collateral taken, at the same two points |
+| Oracle | The price feed that decides whether you can be pre-liquidated and at what price your collateral is taken. It can be the market's own oracle or another one |
+
+Before it acts, the contract checks, with its own oracle's price, that your loan-to-value is above the preLLTV and still at or below the LLTV. Above the LLTV, pre-liquidation stops and Blue's normal liquidation takes over. Afterwards, Morpho Blue checks that your position is healthy on the market's own oracle; if not, the whole call reverts.
+
+The constructor enforces limits on the parameters. The close factor can't fall as risk rises, and only its first value is capped at 100%: a contract whose second value is above 100% can let one call repay your whole debt before the LLTV is reached. Morpho's defaults stay far below that. The incentive factor must be at least 1 (no bonus) and at most 1 ÷ LLTV (a bonus of about 16% on an 86% market). Morpho's repository says that cap, together with the rule that pre-liquidation stops at the LLTV, keeps a pre-liquidation from leaving a position less healthy than before.
+
+### How do the close factor and bonus grow between preLLTV and the LLTV?
+
+Both grow in a straight line with your loan-to-value. The contract measures how far you are from the preLLTV towards the LLTV, as a share from 0 to 1, and moves each factor that share of the way from its first value to its second. Halfway between the two lines, the close factor is halfway between preLCF1 and preLCF2.
+
+Two limits follow from the code. The close factor caps one call, not the total: Morpho's own repository notes that a liquidator can close a small part, leave you still above the preLLTV, and call again, so the total closed can be more than the close factor. And the close factor is a share of your debt, not of your collateral; the [Aave guide on close factors](/blog/how-aave-liquidation-works#how-much-of-my-debt-can-be-liquidated-at-once) covers the same idea on Aave.
+
+## What are Morpho's default pre-liquidation settings?
+
+Morpho kept a default parameter set for each of eight common LLTVs in its SDK, and every one of the 106 contracts its API lists uses these defaults. The API only lists contracts with known default parameters, so contracts with other settings may exist without appearing there. The six LLTVs that have listed contracts:
+
+| Market LLTV | preLLTV | Close factor (preLLTV to LLTV) | Bonus | Pre-liquidation starts at a market health factor of | Listed contracts |
+| --- | --- | --- | --- | --- | --- |
+| 62.5% | 56.26% | 0.75% to 27.95% | 12.68% | 1.111 | 2 |
+| 77% | 72.74% | 0.37% to 25.66% | 7.41% | 1.059 | 12 |
+| 86% | 83.26% | 0.20% to 24.53% | 4.38% | 1.033 | 50 |
+| 91.5% | 89.79% | 0.11% to 23.92% | 2.62% | 1.019 | 21 |
+| 94.5% | 93.37% | 0.07% to 23.61% | 1.68% | 1.012 | 15 |
+| 96.5% | 95.78% | 0.04% to 23.41% | 1.06% | 1.008 | 6 |
+
+In every default set the bonus is the same at both ends, and it equals the bonus Blue's normal liquidation pays on that market. The defaults don't make the sale cheaper per dollar; they make each sale smaller. A normal Blue liquidation has no close factor at all, so the liquidator may repay the whole debt at once. [How Morpho liquidation works](/blog/how-morpho-liquidation-works) covers that side.
+
+## A real contract: USDC | cbBTC (86%) on Base
+
+The largest listed Blue market by borrowing on Base, USDC | cbBTC (86%) (cbBTC collateral, USDC debt, an 86% LLTV), has one pre-liquidation contract listed by Morpho's API, at `0xa7272aFc21f9C321024ED93892a1abfeb621C374`. Read from Base on 26 Oct 2026 and checked against Morpho's API:
+
+- Base's PreLiquidationFactory confirms it created the contract, and the contract points to this market.
+- preLLTV 83.26%, close factor 0.20% rising to 24.53%, bonus 4.38% at both ends: the 86% defaults.
+- Its oracle is the market's own oracle. It priced cbBTC at 80,000.15 USDC at Base blocks 53102870 and 53102952; [how Morpho liquidation works](/blog/how-morpho-liquidation-works) uses the same price.
+- The market had about 1.61 billion USDC borrowed against about 40,051 cbBTC, across about 43,000 borrowing positions.
+- No pre-liquidation by this contract appeared in the roughly 28 hours of Base blocks read before block 53102692.
+
+On Ethereum, the largest listed USDC | cbBTC (86%) market has a contract with the same parameters, at `0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A`, also using its market's oracle.
+
+## Worked example: how much can one pre-liquidation take?
+
+Take an illustrative position on that Base market: 1 cbBTC of collateral and 50,000 USDC of debt, at 80,000.15 USDC per cbBTC. Its health factor is 1.376 against the 86% LLTV, and 1.332 against the 83.26% pre-liquidation line. With the same oracle, the pre-liquidation figure is always the market figure times 0.968 (83.26 ÷ 86).
+
+Pre-liquidation can start once cbBTC falls below 60,052.58 USDC, 24.9% below that price. Normal liquidation starts below 58,139.53 USDC, 27.3% below. Between those prices, the largest single pre-liquidation looks like this:
+
+| Loan-to-value | cbBTC price | Close factor | Debt repaid | Collateral taken (USDC value) | Bonus | Loan-to-value after |
+| --- | --- | --- | --- | --- | --- | --- |
+| 84% | 59,523.81 | 6.77% | 3,384 | 3,533 | 148 | 83.26% |
+| 85% | 58,823.53 | 15.65% | 7,825 | 8,168 | 343 | 83.26% |
+| 86% | 58,139.53 | 24.53% | 12,266 | 12,803 | 538 | 83.23% |
+
+With the defaults, one full-size call brings the loan-to-value back to about the preLLTV, where the contract stops. Compare a normal Blue liquidation at 87%: a liquidator may repay all 50,000 USDC and take 52,192 USDC worth of cbBTC, leaving you about 5,279 USDC of collateral and no loan.
+
+## Why did borrowers opt in, and what did it cost them?
+
+The case for opting in was smaller, gradual sales. Morpho's help article describes Auto-deleverage as closing only part of a position to restore its health, with a fee charged only on the amount closed. In the example above, a borrower who opted in paid 148 to 538 USDC in bonus on each step, where a normal liquidation at 87% that repays the whole loan costs 2,192 USDC; several steps, or a normal liquidation after them, can add up to more.
+
+The costs:
+
+- **Selling starts earlier.** On an 86% market, part of your position can be sold from a market health factor of about 1.033, while the health factor Morpho's help centre describes, measured against the LLTV, is still above 1.
+- **The steps can repeat.** The close factor limits each call, not the total, so several calls can follow one another while you stay above the preLLTV.
+- **The price can differ.** A contract may use an oracle other than the market's. All 106 contracts Morpho's API lists use their market's own oracle; a contract it does not list may not.
+- **No one has to act.** If no liquidator calls the contract, nothing happens before the LLTV; once you cross it, you can be liquidated the normal way.
+
+With the feature now being retired, Morpho asks borrowers who still have it to turn it off, and new opt-ins are closed.
+
+## How do you check whether you have authorised one?
+
+You have authorised a pre-liquidation contract if Morpho Blue's `isAuthorized(your wallet, contract)` returns true. The authorisation is stored in Morpho Blue itself, not in the pre-liquidation contract.
+
+1. **Find the contract for your market.** Morpho's API lists it under the market's pre-liquidations; Morpho's help centre also points to the manage button on your position or market page in the app.
+2. **Call `isAuthorized` on that network's Morpho Blue contract.** On a block explorer, open the Blue contract's read functions and enter your wallet as the first address and the pre-liquidation contract as the second.
+3. **Read the answer.** True means the contract can pre-liquidate you; false means it can't.
+
+These steps need the contract's address, and Morpho's API lists only contracts with default settings. An authorisation can also be given by signature and sent by someone else, so it may not show in your wallet's own transaction list. To see every address you have authorised, look at the Morpho Blue contract's SetAuthorization events on a block explorer with your wallet as the authorizer. The latest event for each address shows whether it is still on, and the network's PreLiquidationFactory answers `isPreLiquidation(address)` with true for the contracts it created.
+
+One detail matters here. Blue's authorisation has no market in it: an address you authorise passes Blue's checks for your borrowing, withdrawals and collateral withdrawals across that Blue contract. A pre-liquidation contract's fixed code only ever repays and withdraws collateral on its own market, but other addresses you authorised are not limited that way.
+
+## How do you turn pre-liquidation off?
+
+You turn it off by setting the authorisation back to false:
+
+- **In the Morpho app:** Morpho's help centre says to click the manage button on the position in your dashboard or on the market page, which opens a removal window for Auto-deleverage.
+- **On the contract:** call `setAuthorization(pre-liquidation contract, false)` on Morpho Blue from your wallet. The call fails if the value is already false, so a failed call can also mean there was nothing to remove.
+
+Once revoked, the contract's attempts to withdraw your collateral fail, and only Blue's normal liquidation below a health factor of 1 applies. It costs one transaction's gas.
+
+## How does Tokenping measure a position with pre-liquidation?
+
+For a borrower who authorised a pre-liquidation contract on a Blue market, Tokenping alerts on the lower of the two lines: the LLTV line and the pre-liquidation line. That matters because Morpho's help centre describes the health factor shown in its app as reaching 1 when the loan-to-value passes the LLTV, which is also where Blue's own liquidation starts. On an 86% market with the default contract, an alert threshold of 1.10 on the pre-liquidation line fires at a market health factor of about 1.136, and the lowest threshold, 1.02, fires at about 1.054, about 2% above the line where pre-liquidation can start.
+
+When you save or edit an alert, Tokenping notes the pre-liquidation contracts Morpho's API lists for that market; every check then reads whether you authorised each one, and computes the health factor from the chain with Morpho's own math, never from Morpho's API. A pre-liquidation contract that Morpho's API does not list is not checked, so if you authorised one with custom settings, the alert measures against the LLTV line only.
+
+The rest works as for every Morpho alert. Tokenping checks every 5 minutes, on 14 networks, and while your health factor is below your threshold (anything from 1.02 to 10), every check sends a message on each channel you chose: Signal, Telegram or email. Alerts cost <AlertPrice />, the same plan as Aave alerts, and [looking at your Morpho positions](/morpho) needs no payment. [How to choose an alert threshold](/blog/safe-aave-health-factor#how-do-you-choose-an-alert-threshold-step-by-step) walks through the trade-off on Aave; the same thinking applies here. An alert gives you time to act, not a guarantee: a price can move between two checks. If you no longer want pre-liquidation, revoke it as shown above; your alert then measures against the LLTV line alone.
+
+## Sources
+
+- [morpho-org/pre-liquidation](https://github.com/morpho-org/pre-liquidation): README, [PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidation.sol), [PreLiquidationFactory.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidationFactory.sol) and [IPreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/interfaces/IPreLiquidation.sol), for the parameters, limits, interpolation and checks (fetched 26 Oct 2026)
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) and [EventsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/EventsLib.sol): `isAuthorized`, `setAuthorization`, the SetAuthorization event, the health check and the normal liquidation bonus (fetched 26 Oct 2026)
+- [Introducing pre-liquidations](https://morpho.org/blog/introducing-pre-liquidations-enhanced-loan-management-on-morpho) (Morpho, 4 Mar 2025): auto-deleverage and auto-close as uses, and normal liquidation when no pre-liquidation happens (fetched 26 Oct 2026)
+- [Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (Morpho help centre, updated 13 May 2026): no new positions, how to disable, what the feature did (fetched 26 Oct 2026)
+- [Morpho help centre: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): the app shows each position's health factor, and a position can be liquidated at 1 or below, once its loan-to-value passes the LLTV (fetched 26 Oct 2026)
+- [Morpho SDK pull request 1132](https://github.com/morpho-org/sdks/pull/1132) (merged 22 Sep 2026) and [preLiquidation.ts](https://github.com/morpho-org/sdks/blob/main/packages/blue-sdk/src/preLiquidation.ts): the deprecation and the default parameters (fetched 26 Oct 2026)
+- [Morpho docs: liquidation](https://docs.morpho.org/developers/borrow/concepts/liquidation): where the old pre-liquidation page now leads (fetched 26 Oct 2026)
+- [Morpho API](https://api.morpho.org/graphql): listed markets, their pre-liquidation contracts and oracles, and the USDC | cbBTC (86%) markets on Base and Ethereum (fetched 26 Oct 2026)
+- Pre-liquidation contracts read on chain: [Base](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374) at blocks 53102692 to 53102952 and [Ethereum](https://etherscan.io/address/0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A) at block 26274980, with their factories, markets and oracles (fetched 26 Oct 2026)
+
+*Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation.*

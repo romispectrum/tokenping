@@ -1,13 +1,168 @@
 export const meta = {
   slug: "predbezna-likvidace-morpho",
-  title: "Předběžná likvidace na Morpho",
-  description: "Placeholder for a Morpho guide that is being written.",
-  h1: "Předběžná likvidace na Morpho",
+  title: "Předběžná likvidace na Morpho: co to je a jak ji vypnout",
+  description:
+    "Jak předběžná likvidace na Morpho (Auto-deleverage) prodá část půjčky ještě před LLTV, proč ji Morpho ukončuje a jak ji ověřit a zrušit.",
+  h1: "Co je předběžná likvidace na Morpho a jak ji ověřit nebo vypnout?",
   publishedAt: "2026-10-26",
-  primaryQuestion: "Placeholder",
-  readingMinutes: 1,
-  stub: true,
+  primaryQuestion: "Co je předběžná likvidace na Morpho, jak zjistím, zda ji mám zapnutou, a jak ji vypnu?",
+  readingMinutes: 10,
   protocol: "morpho",
 };
 
-This guide is being written.
+<ShortAnswer>
+  Předběžná likvidace (pre-liquidation) je volitelný kontrakt pro jeden trh Morpho Blue (s proměnlivou sazbou), který
+  komukoli dovolí prodat část vašeho kolaterálu na splacení dluhu dřív, než vaše pozice dosáhne LLTV daného trhu.
+  Aplikace Morpho měla funkci Auto-deleverage, která funguje právě takto. Morpho ji teď ukončuje: aplikace nepřijímá
+  nové pozice, centrum nápovědy žádá ty, kdo ji mají, aby ji vypnuli, a SDK Morpho označilo kód předběžné likvidace
+  22. září 2026 za zastaralý. Kontrakty dál fungují, takže pokud jste ji kdysi zapnuli, ověřte to funkcí `isAuthorized`
+  na kontraktu Morpho Blue a zrušte ji tlačítkem pro správu v aplikaci nebo voláním `setAuthorization(contract, false)`.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Čísla, bloky a zdroje: content/blog/snapshots/morpho-pre-liquidation.md */}
+
+## Co je předběžná likvidace na Morpho?
+
+Předběžná likvidace je druhá, dřívější likvidační hranice, kterou si dlužník může přidat k jednomu trhu Morpho Blue. Na běžném trhu Blue lze pozici zlikvidovat, až když její health factor (faktor zdraví pozice) klesne pod 1, měřeno vůči likvidačnímu poměru půjčky k hodnotě kolaterálu daného trhu (liquidation loan-to-value, LLTV); co health factor znamená, vysvětluje [průvodce health factorem na Morpho](/cz/blog/morpho-health-factor-vysvetleni). Kontrakt předběžné likvidace stanoví nižší hranici, preLLTV. Mezi oběma hranicemi smí kdokoli splatit část vašeho dluhu, až do limitu, který kontrakt stanoví, a vzít si za to po krocích kolaterál v hodnotě tohoto dluhu plus bonus.
+
+Od běžné likvidace ji odlišují tři věci:
+
+- **Je volitelná.** Platí, až když kontrakt na Morpho Blue autorizujete. Bez toho kontrakt na vaši pozici nemůže sáhnout.
+- **Platí pro jeden trh.** Každý kontrakt patří k jednomu trhu Blue a k jedné pevné sadě parametrů a nemá vlastníka, správce ani funkci pro upgrade.
+- **Existuje jen na Blue.** Morpho Midnight, trhy s pevnou sazbou popsané v [průvodci Midnight](/cz/blog/morpho-midnight-pujcky-s-pevnou-sazbou), předběžnou likvidaci nemá.
+
+Morpho oznámilo tovární kontrakt (factory) pro předběžnou likvidaci 4. března 2025 a jako její využití uvedlo automatické snižování páky (auto-deleverage) a automatické uzavření (auto-close). V kontraktech, v API i v SDK se jmenuje pre-liquidation. Aplikace Morpho měla funkci Auto-deleverage, kterou centrum nápovědy popisuje stejně: jakmile váš poměr půjčky k hodnotě kolaterálu (LTV) překročí nastavenou hranici, část pozice se může uzavřít a poplatek se platí jen z uzavřené části.
+
+## Je předběžná likvidace v aplikaci Morpho ještě k dispozici?
+
+V aplikaci Morpho už novou předběžnou likvidaci nastavit nelze. Načteno 26. října 2026:
+
+| Kde | Stav |
+| --- | --- |
+| Aplikace a centrum nápovědy Morpho | Článek nápovědy se nyní jmenuje „Sunsetting Auto-deleverage“ (naposledy aktualizován 13. května 2026): funkce nepřijímá nové pozice a uživatelé, kteří ji mají, by ji měli vypnout |
+| SDK Morpho | Všechny exporty předběžné likvidace označeny 22. září 2026 za zastaralé (pull request 1132), mají být odstraněny v příští hlavní verzi a nemají náhradu |
+| Dokumentace Morpho | Stránka o předběžné likvidaci zmizela; její stará adresa teď vede na obecnou stránku o likvidaci |
+| API Morpho | Stále uvádí 106 kontraktů předběžné likvidace na uvedených trzích na sítích Ethereum (50), Base (37), Arbitrum (8), Polygon (6), Katana (3) a Unichain (2) |
+| Kontrakty | Beze změny a funkční: kdokoli je dál může použít vůči dlužníkovi, který je autorizoval |
+
+Pokud jste funkci dříve zapnuli, záleží na posledním řádku. Ukončení funkce v aplikaci nezruší autorizaci uloženou na blockchainu.
+
+## Jak kontrakt předběžné likvidace funguje?
+
+Kontrakt předběžné likvidace vytváří PreLiquidationFactory od Morpho, kterou může použít kdokoli: kdokoli může nasadit kontrakt pro libovolný trh Blue a každá kombinace trhu a sady parametrů může existovat jen jednou. Jeho pevné parametry jsou:
+
+| Parametr | Co určuje |
+| --- | --- |
+| preLLTV | LTV, nad kterým je předběžná likvidace povolena. Musí být pod LLTV trhu |
+| preLCF1, preLCF2 | Close factor: největší podíl vašeho dluhu, který může splatit jedno volání, při preLLTV a při LLTV |
+| preLIF1, preLIF2 | Incentive factor (motivační faktor): splacený dluh vynásobený tímto faktorem dává zabavený kolaterál, ve stejných dvou bodech |
+| Orákulum | Cenový zdroj, který rozhoduje, zda vás lze předběžně zlikvidovat a za jakou cenu se váš kolaterál odebírá. Může to být vlastní orákulum trhu, nebo jiné |
+
+Než kontrakt zasáhne, ověří podle ceny ze svého orákula, že vaše LTV je nad preLLTV a stále nejvýše na LLTV. Nad LLTV předběžná likvidace končí a nastupuje běžná likvidace Blue. Potom Morpho Blue ověří, že je vaše pozice zdravá podle vlastního orákula trhu; pokud není, celé volání se zruší (revert).
+
+Konstruktor stanoví parametrům limity. Close factor nesmí s rostoucím rizikem klesat a jen jeho první hodnota je omezena na 100 %: kontrakt, jehož druhá hodnota je nad 100 %, může dovolit splatit jedním voláním celý váš dluh dřív, než se dosáhne LLTV. Výchozí hodnoty Morpho jsou od toho daleko. Incentive factor musí být nejméně 1 (žádný bonus) a nejvýše 1 ÷ LLTV (bonus zhruba 16 % na trhu s LLTV 86 %). Repozitář Morpho uvádí, že tento strop spolu s pravidlem, že předběžná likvidace končí na LLTV, brání tomu, aby předběžná likvidace nechala pozici méně zdravou než předtím.
+
+### Jak rostou close factor a bonus mezi preLLTV a LLTV?
+
+Oba rostou lineárně s vaším LTV. Kontrakt změří, jak daleko jste od preLLTV směrem k LLTV, jako podíl od 0 do 1, a každý faktor posune o tento podíl cesty od jeho první hodnoty ke druhé. V polovině mezi oběma hranicemi leží close factor v polovině mezi preLCF1 a preLCF2.
+
+Z kódu plynou dvě omezení. Close factor omezuje jedno volání, ne celkovou částku: repozitář Morpho sám upozorňuje, že likvidátor může uzavřít malou část, nechat vás stále nad preLLTV a zavolat znovu, takže celkem se může uzavřít víc, než dovoluje close factor. A close factor je podíl z vašeho dluhu, ne z kolaterálu; [průvodce close factorem na Aave](/cz/blog/jak-funguje-likvidace-aave#kolik-meho-dluhu-lze-zlikvidovat-najednou) popisuje stejnou myšlenku na Aave.
+
+## Jaká jsou výchozí nastavení předběžné likvidace na Morpho?
+
+Morpho ve svém SDK udržovalo výchozí sadu parametrů pro každé z osmi běžných LLTV a všech 106 kontraktů, které uvádí jeho API, tyto výchozí hodnoty používá. API uvádí jen kontrakty se známými výchozími parametry, takže kontrakty s jiným nastavením mohou existovat, aniž by se tam objevily. Šest LLTV, pro která existují uvedené kontrakty:
+
+| LLTV trhu | preLLTV | Close factor (od preLLTV po LLTV) | Bonus | Předběžná likvidace začíná při health factoru trhu | Uvedené kontrakty |
+| --- | --- | --- | --- | --- | --- |
+| 62,5 % | 56,26 % | 0,75 % až 27,95 % | 12,68 % | 1,111 | 2 |
+| 77 % | 72,74 % | 0,37 % až 25,66 % | 7,41 % | 1,059 | 12 |
+| 86 % | 83,26 % | 0,20 % až 24,53 % | 4,38 % | 1,033 | 50 |
+| 91,5 % | 89,79 % | 0,11 % až 23,92 % | 2,62 % | 1,019 | 21 |
+| 94,5 % | 93,37 % | 0,07 % až 23,61 % | 1,68 % | 1,012 | 15 |
+| 96,5 % | 95,78 % | 0,04 % až 23,41 % | 1,06 % | 1,008 | 6 |
+
+Ve všech výchozích sadách je bonus na obou koncích stejný a rovná se bonusu, který na daném trhu platí běžná likvidace Blue. Výchozí hodnoty prodej v přepočtu na dolar nezlevňují; zmenšují každý jednotlivý prodej. Běžná likvidace Blue žádný close factor nemá, takže likvidátor může splatit celý dluh najednou. Tuto stranu popisuje článek [jak funguje likvidace na Morpho](/cz/blog/jak-funguje-likvidace-morpho).
+
+## Skutečný kontrakt: USDC | cbBTC (86%) na síti Base
+
+Největší uvedený trh Blue na síti Base podle objemu výpůjček, USDC | cbBTC (86%) (kolaterál cbBTC, dluh v USDC, LLTV 86 %), má jeden kontrakt předběžné likvidace uvedený v API Morpho, na adrese `0xa7272aFc21f9C321024ED93892a1abfeb621C374`. Načteno ze sítě Base 26. října 2026 a porovnáno s API Morpho:
+
+- PreLiquidationFactory na síti Base potvrzuje, že kontrakt vytvořila, a kontrakt odkazuje na tento trh.
+- preLLTV 83,26 %, close factor rostoucí z 0,20 % na 24,53 %, bonus 4,38 % na obou koncích: výchozí hodnoty pro 86 %.
+- Jeho orákulem je vlastní orákulum trhu. V blocích 53102870 a 53102952 sítě Base ocenilo cbBTC na 80 000,15 USDC; stejnou cenu používá článek [jak funguje likvidace na Morpho](/cz/blog/jak-funguje-likvidace-morpho).
+- Na trhu bylo vypůjčeno zhruba 1,61 miliardy USDC proti zhruba 40 051 cbBTC, ve zhruba 43 000 pozicích s výpůjčkou.
+- V načtených blocích sítě Base za zhruba 28 hodin před blokem 53102692 se neobjevila žádná předběžná likvidace tímto kontraktem.
+
+Na Ethereu má největší uvedený trh USDC | cbBTC (86%) kontrakt se stejnými parametry, na adrese `0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A`, rovněž s orákulem svého trhu.
+
+## Příklad s výpočtem: kolik může vzít jedna předběžná likvidace?
+
+Představte si ilustrativní pozici na tomto trhu na síti Base: 1 cbBTC kolaterálu a 50 000 USDC dluhu při ceně 80 000,15 USDC za cbBTC. Její health factor je 1,376 vůči LLTV 86 % a 1,332 vůči hranici předběžné likvidace 83,26 %. Při stejném orákulu je health factor vůči hranici předběžné likvidace vždy health factor trhu krát 0,968 (83,26 ÷ 86).
+
+Předběžná likvidace může začít, jakmile cbBTC klesne pod 60 052,58 USDC, o 24,9 % pod touto cenou. Běžná likvidace začíná pod 58 139,53 USDC, o 27,3 % níž. Mezi těmito cenami vypadá největší jednotlivá předběžná likvidace takto:
+
+| LTV | Cena cbBTC | Close factor | Splacený dluh | Zabavený kolaterál (hodnota v USDC) | Bonus | LTV potom |
+| --- | --- | --- | --- | --- | --- | --- |
+| 84 % | 59 523,81 | 6,77 % | 3 384 | 3 533 | 148 | 83,26 % |
+| 85 % | 58 823,53 | 15,65 % | 7 825 | 8 168 | 343 | 83,26 % |
+| 86 % | 58 139,53 | 24,53 % | 12 266 | 12 803 | 538 | 83,23 % |
+
+S výchozími hodnotami vrátí jedno volání v plném rozsahu LTV zhruba na preLLTV, kde kontrakt přestane působit. Pro srovnání běžná likvidace Blue při 87 %: likvidátor může splatit všech 50 000 USDC a vzít si cbBTC v hodnotě 52 192 USDC, takže vám zůstane zhruba 5 279 USDC kolaterálu a žádná půjčka.
+
+## Proč se dlužníci přihlašovali a co je to stálo?
+
+Důvodem pro přihlášení byly menší, postupné prodeje. Článek nápovědy Morpho popisuje Auto-deleverage jako uzavření jen části pozice, aby se obnovilo její zdraví, s poplatkem jen z uzavřené částky. V příkladu výše zaplatil dlužník, který se přihlásil, na bonusu 148 až 538 USDC za každý krok, zatímco běžná likvidace při 87 %, která splatí celou půjčku, stojí 2 192 USDC; několik kroků, nebo běžná likvidace po nich, může dohromady stát víc.
+
+Náklady:
+
+- **Prodej začíná dřív.** Na trhu s LLTV 86 % lze část vaší pozice prodat už od health factoru trhu zhruba 1,033, zatímco health factor, který popisuje centrum nápovědy Morpho, měřený vůči LLTV, je stále nad 1.
+- **Kroky se mohou opakovat.** Close factor omezuje každé volání, ne celek, takže může následovat několik volání po sobě, dokud zůstáváte nad preLLTV.
+- **Cena se může lišit.** Kontrakt může používat jiné orákulum než trh. Všech 106 kontraktů, které uvádí API Morpho, používá vlastní orákulum svého trhu; kontrakt, který API neuvádí, ho používat nemusí.
+- **Nikdo nemusí jednat.** Pokud kontrakt žádný likvidátor nezavolá, před LLTV se nic nestane; jakmile LLTV překročíte, můžete být zlikvidováni běžným způsobem.
+
+Protože se funkce teď ukončuje, Morpho žádá dlužníky, kteří ji stále mají, aby ji vypnuli, a nová přihlášení jsou uzavřena.
+
+## Jak zjistit, zda jste nějaký kontrakt autorizovali?
+
+Kontrakt předběžné likvidace jste autorizovali, pokud funkce `isAuthorized` na Morpho Blue pro vaši peněženku a tento kontrakt vrací true. Autorizace je uložená přímo v Morpho Blue, ne v kontraktu předběžné likvidace.
+
+1. **Najděte kontrakt pro svůj trh.** API Morpho ho uvádí mezi předběžnými likvidacemi trhu; centrum nápovědy Morpho také odkazuje na tlačítko pro správu na stránce vaší pozice nebo trhu v aplikaci.
+2. **Zavolejte `isAuthorized` na kontraktu Morpho Blue na dané síti.** V průzkumníku bloků (block explorer) otevřete funkce kontraktu Blue pro čtení a jako první adresu zadejte svou peněženku, jako druhou kontrakt předběžné likvidace.
+3. **Přečtěte odpověď.** True znamená, že vás kontrakt může předběžně zlikvidovat; false znamená, že nemůže.
+
+Tyto kroky vyžadují adresu kontraktu a API Morpho uvádí jen kontrakty s výchozím nastavením. Autorizaci lze udělit i podpisem a odeslat ji může někdo jiný, takže se nemusí objevit v seznamu transakcí vaší peněženky. Chcete-li vidět každou adresu, kterou jste autorizovali, prohlédněte si v průzkumníku bloků události SetAuthorization kontraktu Morpho Blue, kde je vaše peněženka autorizujícím (authorizer). Poslední událost pro každou adresu ukazuje, zda autorizace stále platí, a PreLiquidationFactory dané sítě odpovídá na `isPreLiquidation(address)` hodnotou true u kontraktů, které vytvořila.
+
+Jeden detail je tu důležitý. Autorizace na Blue se neváže k žádnému trhu: adresa, kterou autorizujete, projde kontrolami Blue pro vaše výpůjčky, výběry a výběry kolaterálu v celém tomto kontraktu Blue. Pevný kód kontraktu předběžné likvidace jen splácí a vybírá kolaterál na svém vlastním trhu, ale jiné adresy, které jste autorizovali, takto omezené nejsou.
+
+## Jak předběžnou likvidaci vypnout?
+
+Vypnete ji tak, že autorizaci nastavíte zpět na false:
+
+- **V aplikaci Morpho:** centrum nápovědy Morpho radí kliknout na tlačítko pro správu u pozice na vašem přehledu nebo na stránce trhu; otevře se okno pro odebrání Auto-deleverage.
+- **Na kontraktu:** zavolejte ze své peněženky na Morpho Blue `setAuthorization(pre-liquidation contract, false)`. Volání selže, pokud už je hodnota false, takže neúspěšné volání může znamenat i to, že nebylo co odebrat.
+
+Po zrušení pokusy kontraktu vybrat váš kolaterál selžou a platí jen běžná likvidace Blue pod health factorem 1. Stojí to poplatek za gas jedné transakce.
+
+## Jak Tokenping měří pozici s předběžnou likvidací?
+
+U dlužníka, který na trhu Blue autorizoval kontrakt předběžné likvidace, Tokenping upozorňuje podle nižší z obou hranic: hranice LLTV a hranice předběžné likvidace. Na tom záleží, protože centrum nápovědy Morpho popisuje health factor zobrazený v aplikaci tak, že dosáhne 1, když LTV překročí LLTV, a tam také začíná vlastní likvidace Blue. Na trhu s LLTV 86 % a výchozím kontraktem se upozornění s prahem 1,10 na hranici předběžné likvidace spustí při health factoru trhu zhruba 1,136 a nejnižší práh, 1,02, se spustí zhruba při 1,054, asi 2 % nad hranicí, kde může předběžná likvidace začít.
+
+Když upozornění uložíte nebo upravíte, Tokenping si poznamená kontrakty předběžné likvidace, které API Morpho pro daný trh uvádí; každá kontrola pak zjišťuje, zda jste každý z nich autorizovali, a health factor počítá z blockchainu vlastní matematikou Morpho, nikdy z API Morpho. Kontrakt předběžné likvidace, který API Morpho neuvádí, se nekontroluje, takže pokud jste autorizovali kontrakt s jiným než výchozím nastavením, upozornění měří jen vůči hranici LLTV.
+
+Ostatní funguje jako u každého upozornění pro Morpho. Tokenping kontroluje každých 5 minut na 14 sítích a dokud je váš health factor pod vaším prahem (cokoli od 1,02 do 10), každá kontrola pošle zprávu do každého kanálu, který jste si zvolili: Signal, Telegram nebo e-mail. Upozornění stojí <AlertPrice /> v rámci stejného plánu jako upozornění pro Aave, a [prohlížení vašich pozic na Morpho](/cz/morpho) nevyžaduje platbu. Článek [jak krok za krokem zvolit práh upozornění](/cz/blog/bezpecny-health-factor-aave#jak-krok-za-krokem-zvolit-prah-upozorneni) rozebírá tento kompromis na Aave; stejná úvaha platí i tady. Upozornění vám dává čas jednat, ne záruku: cena se může pohnout mezi dvěma kontrolami. Pokud předběžnou likvidaci už nechcete, zrušte ji, jak je popsáno výše; vaše upozornění pak měří jen vůči hranici LLTV.
+
+## Zdroje
+
+- [morpho-org/pre-liquidation](https://github.com/morpho-org/pre-liquidation): README, [PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidation.sol), [PreLiquidationFactory.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidationFactory.sol) a [IPreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/interfaces/IPreLiquidation.sol): parametry, limity, interpolace a kontroly (načteno 26. října 2026)
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) a [EventsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/EventsLib.sol): `isAuthorized`, `setAuthorization`, událost SetAuthorization, kontrola zdraví pozice a bonus běžné likvidace (načteno 26. října 2026)
+- [Introducing pre-liquidations](https://morpho.org/blog/introducing-pre-liquidations-enhanced-loan-management-on-morpho) (Morpho, 4. března 2025): auto-deleverage a auto-close jako využití a běžná likvidace, když k předběžné likvidaci nedojde (načteno 26. října 2026)
+- [Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (centrum nápovědy Morpho, aktualizováno 13. května 2026): žádné nové pozice, jak funkci vypnout a co dělala (načteno 26. října 2026)
+- [Centrum nápovědy Morpho: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): aplikace ukazuje health factor každé pozice a pozici lze zlikvidovat při 1 nebo méně, jakmile její LTV překročí LLTV (načteno 26. října 2026)
+- [Pull request 1132 v SDK Morpho](https://github.com/morpho-org/sdks/pull/1132) (sloučen 22. září 2026) a [preLiquidation.ts](https://github.com/morpho-org/sdks/blob/main/packages/blue-sdk/src/preLiquidation.ts): označení za zastaralé a výchozí parametry (načteno 26. října 2026)
+- [Dokumentace Morpho: liquidation](https://docs.morpho.org/developers/borrow/concepts/liquidation): kam teď vede stará stránka o předběžné likvidaci (načteno 26. října 2026)
+- [API Morpho](https://api.morpho.org/graphql): uvedené trhy, jejich kontrakty předběžné likvidace a orákula a trhy USDC | cbBTC (86%) na sítích Base a Ethereum (načteno 26. října 2026)
+- Kontrakty předběžné likvidace načtené z blockchainu: [Base](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374) v blocích 53102692 až 53102952 a [Ethereum](https://etherscan.io/address/0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A) v bloku 26274980, spolu s jejich factory, trhy a orákuly (načteno 26. října 2026)
+
+*Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání.*

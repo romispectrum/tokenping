@@ -1,13 +1,190 @@
 export const meta = {
   slug: "morpho-midnight-fixed-rate-loans",
-  title: "Morpho Midnight fixed-rate loans",
-  description: "Placeholder for a Morpho guide that is being written.",
-  h1: "Morpho Midnight fixed-rate loans",
+  title: "Morpho Midnight fixed-rate loans: how they work",
+  description:
+    "How Morpho Midnight fixed-rate loans work: the rate, what you owe at maturity, health with several collaterals, and why unpaid debt can be liquidated.",
+  h1: "How do Morpho Midnight fixed-rate loans work, and what happens at maturity?",
   publishedAt: "2026-10-26",
-  primaryQuestion: "Placeholder",
-  readingMinutes: 1,
-  stub: true,
+  primaryQuestion: "How does a fixed-rate Morpho Midnight loan work, and what happens if I have not repaid by maturity?",
+  readingMinutes: 11,
   protocol: "morpho",
 };
 
-This guide is being written.
+<ShortAnswer>
+  Morpho Midnight is Morpho's fixed-rate, fixed-term lending. You borrow by selling debt units below face value: each
+  unit gives you a little less than one loan token now and is a promise to repay exactly one at the market's maturity,
+  so the rate is fixed when you borrow and your debt does not grow. Before maturity your position can be liquidated only
+  if your collateral, weighted by each collateral's LLTV, no longer covers the debt (a health factor below 1). Once
+  maturity has passed, any debt left can be liquidated whatever your health factor, with the liquidator's bonus rising
+  over the first hour. Repay before maturity, then withdraw your collateral yourself.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Figures and the block numbers they were read at: content/blog/snapshots/morpho-midnight-fixed-rate-loans.md */}
+
+## What is Morpho Midnight?
+
+Morpho Midnight is the part of Morpho that offers loans at a fixed rate until a fixed date, the maturity. Morpho's docs call it "Fixed Rate Markets (Midnight)", next to Morpho Blue, its variable-rate markets. If you are new to Morpho's health math, start with [the Morpho health factor guide](/blog/morpho-health-factor), which this guide builds on.
+
+Midnight opened to the public on 21 Jul 2026, on Base, with one pair (cbBTC collateral, USDC loans) and a few maturities. In this guide a Midnight market is named by that pair: a "cbBTC/USDC market" takes cbBTC as collateral and lends USDC. The same contract code now runs on five networks:
+
+| Network         | Midnight contract has code since | Markets listed by Morpho's API (26 Oct 2026) |
+| --------------- | -------------------------------- | -------------------------------------------- |
+| Base            | 6 Jul 2026                       | Yes; 19 listed markets have open loans       |
+| Ethereum        | 20 Aug 2026                      | Yes; 12 listed markets have open loans       |
+| Arc             | 11 Sep 2026                      | None (13 markets exist)                      |
+| Robinhood Chain | Date not available               | None (34 markets exist)                      |
+| Tempo           | 3 Oct 2026                       | None (the API shows no markets)              |
+
+Anyone can create a Midnight market, so a market existing on-chain says little. The markets Morpho's app shows are the ones its API lists, and on 26 Oct 2026 those were all on Ethereum and Base.
+
+An earlier Morpho post presented Midnight, with Vaults V2, as "Morpho V2". Its launch post says Midnight is neither a second version of Blue nor a replacement for it: the two run side by side. They are separate contracts.
+
+## How is a Midnight market defined?
+
+A Midnight market is fixed when it is created and never changes. It is defined by:
+
+- **A loan token**, for example USDC.
+- **One or more collaterals** (up to 128), each with its own LLTV (the share of the collateral's value you can owe before liquidation), its own oracle and its own liquidation cursor, which sets the liquidator's bonus.
+- **A maturity**, a date and time when every loan in the market is due.
+- **A recovery threshold** (rcfThreshold), which decides when a small amount of a collateral can be liquidated in full (see below).
+- **Optional gates**, which can limit who may lend, borrow or liquidate. A gate can never stop you from repaying or leaving. None of the listed markets on Ethereum or Base had a gate on 26 Oct 2026.
+
+One borrower can use up to 16 of a market's collaterals at once. To accept a new collateral or move the maturity, someone has to create a new market. The listed markets with loans in them, on both networks, mature on the last Friday of a month at 15:00 UTC: 30 Oct, 27 Nov and 25 Dec 2026, and 26 Mar 2027.
+
+## How is the fixed rate set, and what do you owe at maturity?
+
+The rate comes from a price, not from an interest-rate model. Midnight counts debt in units, and one debt unit is a promise to repay one loan token at maturity. To borrow, you sell units to lenders at a price below 1: at a price of 0.99 you receive 0.99 USDC now for each unit and owe 1 USDC per unit at maturity. The rate for the whole term is 1 divided by the price, minus 1, and Morpho's docs turn that into a yearly figure by dividing it by the share of a year left.
+
+Prices come from offers that lenders and borrowers publish, so two borrowers in the same market can pay different rates. On 26 Oct 2026 Morpho's API put the rates of the 117 borrowers in the Base cbBTC/USDC market maturing on 25 Dec 2026 between 1.93% and 6.84% a year.
+
+What you owe is simple: the number of units you sold, in loan tokens, due at maturity. Nothing is added while the loan runs. Midnight's contract changes a borrower's debt only when you borrow more, repay, buy units back or are liquidated; no interest accrues on it before or after maturity.
+
+Midnight has two fees, both set per market and both zero on the two markets in this guide:
+
+- **A settlement fee** on each trade, paid by whoever takes an offer. The contract caps it by time to maturity, from 0.0014% for a day up to 0.5% for 360 days.
+- **A continuous fee**, borne by lenders only and capped at 1% a year.
+
+## How is the health factor worked out with several collaterals?
+
+Midnight's contract checks health with a yes or no: a position is healthy while its maximum debt is at least its debt. The maximum debt is the sum, over each collateral you use, of its value in the loan token at its oracle's price times its own LLTV. Morpho's docs state the check as maxDebt ≥ debt; the health factor is the same check written as a ratio, maximum debt divided by debt, and below 1 the position can be liquidated.
+
+Take the largest listed market on Ethereum, which lends USDC against two collaterals with different LLTVs: USDC itself at 98% and cbBTC at 86%. With cbBTC at 80,011.48 USDC (its oracle's price on 26 Oct 2026), the illustrative position from [the Morpho health factor guide](/blog/morpho-health-factor), 0.5 cbBTC and 10,000 USDC of collateral against 40,000 USDC of debt, has:
+
+| Collateral  | Value (USDC) | LLTV | Counts for (USDC) |
+| ----------- | ------------ | ---- | ----------------- |
+| 0.5 cbBTC   | 40,005.74    | 86%  | 34,404.94         |
+| 10,000 USDC | 10,000.00    | 98%  | 9,800.00          |
+| Total       | 50,005.74    |      | 44,204.94         |
+
+Its health factor is 44,204.94 ÷ 40,000 = 1.105, and it drops below 1 if cbBTC falls below about 70,233 USDC, 12.2% lower, with the USDC collateral holding its value. The idea is the same as with [a second collateral on Aave](/blog/aave-health-factor#what-changes-with-a-second-collateral-asset): each asset counts at its own rate.
+
+You can add, remove or swap collaterals at any time, as long as a withdrawal leaves you healthy. If the oracle of any collateral you use stops answering, health checks, borrowing, withdrawals and liquidations all fail for your position while you have debt. Repaying still works, and once your debt is zero you can withdraw without any oracle.
+
+## When can a Midnight loan be liquidated?
+
+A Midnight loan can be liquidated in two ways: when it is unhealthy, at any time, or when debt is left after maturity, whatever its health. [How Morpho liquidation works](/blog/how-morpho-liquidation-works) covers the shared mechanics; here is what is specific to Midnight.
+
+### Before maturity
+
+Before maturity only health counts. Once the health factor is below 1, a liquidator can repay part of your debt and take collateral worth that amount plus a bonus. The bonus is set per collateral: 1 ÷ (1 − cursor × (1 − LLTV)). For cbBTC at an 86% LLTV with a 0.3 cursor, that is 1.0438, a 4.38% bonus; for USDC at 98%, about 0.6%. A liquidator chooses which of your collaterals to take, and Morpho's docs warn that they will pick whichever pays best.
+
+How much can go at once depends on size. Normally a liquidator may repay only as much as it takes to make the position healthy again. The exception: when the collateral left after such a capped liquidation would repay less than the market's rcfThreshold, that collateral can be taken in full. The threshold is 3,000 USDC on the Base cbBTC/USDC market in the worked example below and 300,000 USDC on the Ethereum market above. On a one-collateral loan below that size, the whole position can go at once.
+
+### After maturity
+
+Once the maturity time has passed, any debt left can be liquidated even if your health factor is 2 or 10. The contract's post-maturity path checks only the clock. Morpho's reason is that lenders expect to withdraw at maturity, and an unpaid borrower, healthy or not, stops them.
+
+The bonus in this path starts at zero at maturity and grows evenly to the full bonus over 60 minutes. If your position is also unhealthy after maturity, a liquidator can use the health-based path instead and take the full bonus at once. In the post-maturity path there is no cap on how much can be repaid, so the whole debt can be liquidated in one go. After maturity you can no longer add debt, but you can still repay, buy units back and withdraw collateral.
+
+<Callout tone="warning">
+  At the exact maturity second a healthy position is still safe; one second later it is not. Repaying late on a healthy
+  position can cost you up to the full liquidation bonus, about 4.4% of the debt on a cbBTC loan at an 86% LLTV.
+</Callout>
+
+If a liquidation leaves debt the collateral cannot cover, the shortfall is written off and shared by that market's lenders only.
+
+## How do you repay early, at maturity or roll into a later maturity?
+
+You have three ways out of a Midnight loan, plus one opt-in fallback:
+
+- **Repay directly.** Repaying costs exactly one loan token per unit, before, at or after maturity. It always works, and it sets the most you should pay to exit early. Repaying early does not refund any of the interest: you pay the full amount due at maturity, just sooner.
+- **Buy units back before maturity.** You can instead buy units from lenders' sell offers at a price below 1, which cancels that much debt for less than face value. It depends on someone offering units at the moment you want to leave.
+- **Roll into a later maturity.** Morpho's docs describe repaying or buying back in one market and borrowing in a later-dated market in a single transaction, using callbacks. Morpho's launch post in July listed automatic rolling as a later feature; on 26 Oct 2026 the docs describe rolling only as something you do yourself, or through the Blue fallback below.
+- **Fall back to Blue.** Morpho deployed a contract, BlueFallbackRolling, on all five networks. If you opt in and authorise it on both Midnight and Blue, anyone can move your Midnight debt and collateral into a variable-rate Blue market you chose, from a time you chose. The caller's reward is a share of the debt that you set; it grows between a start and an end time you set, can reach all of the debt, and is added to your new Blue debt. It needs exactly one collateral that matches the Blue market's.
+
+## What happens to your collateral after you repay?
+
+Your collateral stays where it is until you withdraw it. Repaying does not send it back. Once your debt is zero, the health check passes without asking any oracle, so you can withdraw all of it, and no gate can stop you. Only you, an account you authorised, or a liquidator of a liquidatable position can move it.
+
+The same holds after a liquidation: whatever collateral the liquidator did not take stays in your position for you to withdraw.
+
+## Worked example: a cbBTC/USDC loan due on 25 Dec 2026
+
+This market, on the pair Midnight launched with, was created on 14 Jul 2026, a week before the public launch, and is the largest listed market on Base. Read on-chain on 26 Oct 2026 at 06:06 UTC:
+
+| Field             | Value                                             |
+| ----------------- | ------------------------------------------------- |
+| Loan token        | USDC                                              |
+| Collateral        | cbBTC, the only one                               |
+| LLTV              | 86%                                               |
+| Liquidation bonus | 4.38% (cursor 0.3)                                |
+| Maturity          | 25 Dec 2026, 15:00 UTC, 60.4 days away            |
+| rcfThreshold      | 3,000 USDC                                        |
+| Gates and fees    | None                                              |
+| Owed at maturity  | 1,530,235.58 USDC across 117 borrowers            |
+| cbBTC price       | 80,097.33 USDC (the market's oracle)              |
+
+**Borrowing.** The best price a borrower could sell units at was 0.9901297. Taking 10,000 USDC at that price means owing about 10,099.69 USDC on 25 Dec 2026: 0.997% for the 60.4 days, about 6.0% a year. That price moves by the minute.
+
+**A typical position.** The median borrower owes 37.08 USDC at maturity against 0.00060018 cbBTC, worth 48.07 USDC. Its maximum debt is 48.07 × 0.86 = 41.34 USDC, so its health factor is 41.34 ÷ 37.08 = 1.11. It reaches 1 if cbBTC falls to about 71,838 USDC, 10.3% lower.
+
+**If cbBTC falls just below 71,838 USDC before maturity.** The position is far below the 3,000 USDC threshold, so a liquidator can repay all 37.08 USDC and take cbBTC worth 38.71 USDC. Of the 43.12 USDC of cbBTC, the borrower keeps about 4.41 USDC to withdraw.
+
+**If the borrower forgets to repay and cbBTC stays at 80,097 USDC.** From 15:00:01 UTC on 25 Dec, anyone can repay the 37.08 USDC and take cbBTC; a liquidator may act at any second after 15:00:00. The bonus grows with time: about 2.2% after thirty minutes, the full 4.38% after an hour. A liquidation an hour or more after maturity takes cbBTC worth 38.71 USDC and leaves the borrower 9.37 USDC of it. Repaying 37.08 USDC on time would have kept all 48.07 USDC of cbBTC, a net 10.99 USDC, so that liquidation costs the borrower 1.63 USDC, the full bonus. An earlier one costs less, but nothing makes a liquidator wait.
+
+## How does Midnight compare with a variable-rate Morpho Blue loan?
+
+| | Morpho Blue | Morpho Midnight |
+| --- | --- | --- |
+| Rate | Changes all the time with the market's interest-rate model | Fixed when you borrow |
+| Debt | Grows with interest | A set number of units, does not grow |
+| End date | None | Maturity |
+| Collateral per market | One | One or more, each with its own LLTV |
+| Can be liquidated when | Unhealthy | Unhealthy, or any debt after maturity |
+| Bonus | 1 ÷ (1 − 0.3 × (1 − LLTV)), at most 15% | 1 ÷ (1 − cursor × (1 − LLTV)), cursor set per collateral, no 15% cap |
+| How much at once | Up to all of the debt in one call | Before maturity, what restores health (a whole collateral if what is left would repay less than the rcfThreshold); after maturity, all of the debt |
+| Pre-liquidation | Being retired by Morpho, see [Morpho pre-liquidation](/blog/morpho-pre-liquidation) | Not part of Midnight |
+| Leaving early | Repay any time | Repay at face value, or buy units back if sellers exist |
+
+The practical difference for your health factor: on Blue it can fall from interest alone, as on Aave ([how rate spikes affect your health factor](/blog/aave-interest-rates#how-do-rate-spikes-affect-your-health-factor)). On Midnight it falls only when collateral prices fall, or when you withdraw collateral or borrow more. In exchange, Midnight adds a date you must not miss.
+
+## How can alerts help with a Midnight loan?
+
+An alert can warn you about both risks of a Midnight loan: a falling health factor and an approaching maturity. Tokenping checks every 5 minutes. Its [Morpho dashboard](/morpho) lists a wallet's borrow positions in markets listed in Morpho's app on 14 networks, Blue and Midnight, and looking at your positions needs no payment. Midnight alerts cover markets Morpho's API lists. On 26 Oct 2026 those were on Ethereum and Base; Tokenping also covers Arc and Robinhood Chain once Morpho lists Midnight markets there. Until then, no Midnight alerts are possible on those two networks.
+
+For a Midnight loan:
+
+- **Health.** Tokenping computes your health factor from the chain with Morpho's own math, never from Morpho's API. While it is below the threshold you set (1.02 to 10), every check sends a message on each channel you chose: Signal, Telegram or email.
+- **Maturity.** You get one reminder in the last 7 days before maturity and one in the last 24 hours.
+- **After maturity.** While debt remains, every check sends an alert, because the loan can be liquidated whatever its health factor.
+
+Alerts cost <AlertPrice />, the same plan as Aave alerts. An alert gives you time to act; it does not prevent liquidation, and a price can move between two checks.
+
+## Sources
+
+- [Morpho docs: Midnight concepts](https://docs.morpho.org/learn/concepts/midnight): units, credit and debt, early exits, collateral and health (fetched 26 Oct 2026)
+- [Morpho docs: Midnight liquidations](https://docs.morpho.org/learn/concepts/midnight/liquidations): the two liquidation paths, the post-maturity bonus ramp and why unpaid debt is liquidatable after maturity (fetched 26 Oct 2026)
+- [Morpho docs: offers](https://docs.morpho.org/learn/concepts/midnight/offers) and [gates](https://docs.morpho.org/learn/concepts/midnight/gates): rolling with callbacks, and what gates can and cannot block (fetched 26 Oct 2026)
+- [Morpho docs: market mechanics](https://docs.morpho.org/developers/midnight/concepts/market-mechanics), [collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) and [fees](https://docs.morpho.org/developers/midnight/concepts/fees) (fetched 26 Oct 2026)
+- [Morpho docs: exit a borrow early](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-early) and [exit a borrow at maturity](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-by-repaying-in-full-at-maturity) (fetched 26 Oct 2026)
+- [Morpho docs: contract addresses](https://docs.morpho.org/developers/contracts/addresses): Midnight and BlueFallbackRolling on each network (fetched 26 Oct 2026)
+- [morpho-org/midnight](https://github.com/morpho-org/midnight): Midnight.sol (health check, liquidation, repay, withdrawals), ConstantsLib.sol (fees, bonus, 60-minute ramp, collateral limits) and the periphery README (fetched 26 Oct 2026)
+- [morpho-org/morpho-blue](https://github.com/morpho-org/morpho-blue): Blue's liquidation and bonus constants (fetched 26 Oct 2026)
+- [Now live: Morpho Midnight and the new Markets App](https://morpho.org/blog/now-live-morpho-midnight) (21 Jul 2026) and [Morpho Midnight: what to expect at launch](https://morpho.org/blog/morpho-midnight-what-to-expect-at-launch) (17 Jul 2026) (fetched 26 Oct 2026)
+- [Morpho Fixed Rate Markets](https://morpho.org/blog/morpho-v2-liberating-the-potential-of-onchain-loans): Morpho's earlier post on Midnight and Vaults V2 (fetched 26 Oct 2026)
+- [Morpho Midnight API](https://api.morpho.org/v0/midnight/markets): listed markets, order book and borrower positions (fetched 26 Oct 2026)
+- Midnight contracts on [Base](https://basescan.org/address/0xAdedD8ab6dE832766Fedf0FaC4992E5C4D3EA18A) at block 53102734 and [Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f) at block 26274992: market definitions, totals, fees and oracle prices (fetched 26 Oct 2026)
+
+*Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation.*

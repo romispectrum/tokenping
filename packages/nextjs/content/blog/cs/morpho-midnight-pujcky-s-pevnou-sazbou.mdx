@@ -1,13 +1,191 @@
 export const meta = {
   slug: "morpho-midnight-pujcky-s-pevnou-sazbou",
-  title: "Půjčky s pevnou sazbou na Morpho Midnight",
-  description: "Placeholder for a Morpho guide that is being written.",
-  h1: "Půjčky s pevnou sazbou na Morpho Midnight",
+  title: "Půjčky s pevnou sazbou na Morpho Midnight: jak fungují",
+  description:
+    "Jak fungují půjčky s pevnou sazbou na Morpho Midnight: sazba, co dlužíte při splatnosti, zdraví s více kolaterály a proč lze nesplacený dluh zlikvidovat.",
+  h1: "Jak fungují půjčky s pevnou sazbou na Morpho Midnight a co se stane při splatnosti?",
   publishedAt: "2026-10-26",
-  primaryQuestion: "Placeholder",
-  readingMinutes: 1,
-  stub: true,
+  primaryQuestion: "Jak funguje půjčka s pevnou sazbou na Morpho Midnight a co se stane, když ji do splatnosti nesplatím?",
+  readingMinutes: 11,
   protocol: "morpho",
 };
 
-This guide is being written.
+<ShortAnswer>
+  Morpho Midnight je půjčování na Morpho s pevnou sazbou a pevně danou dobou trvání. Půjčujete si tak, že prodáváte
+  dluhové jednotky pod nominální hodnotou: za každou jednotku dostanete hned o něco méně než jeden půjčovaný token a
+  zavazujete se ke dni splatnosti trhu vrátit přesně jeden, takže sazba je pevná od chvíle, kdy si půjčíte, a váš dluh
+  neroste. Před splatností lze vaši pozici zlikvidovat jen tehdy, když váš kolaterál, vážený vlastním LLTV každého
+  kolaterálu, přestane dluh krýt, tedy když health factor (faktor zdraví pozice) klesne pod 1. Jakmile splatnost
+  uplyne, lze jakýkoli zbývající dluh zlikvidovat bez ohledu na váš health factor a bonus likvidátora během první
+  hodiny roste. Dluh splaťte ještě před splatností a kolaterál si pak sami vyberte.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Čísla a bloky, ve kterých byla načtena: content/blog/snapshots/morpho-midnight-fixed-rate-loans.md */}
+
+## Co je Morpho Midnight?
+
+Morpho Midnight je část Morpho, která nabízí půjčky s pevnou sazbou do pevně daného data, tedy do splatnosti. Dokumentace Morpho ji nazývá „Fixed Rate Markets (Midnight)“ a uvádí ji vedle Morpho Blue, trhů Morpho s proměnlivou sazbou. Pokud výpočet zdraví pozic na Morpho zatím neznáte, začněte článkem [Health factor na Morpho](/cz/blog/morpho-health-factor-vysvetleni), na kterém tento průvodce staví.
+
+Midnight se veřejnosti otevřel 21. července 2026 na síti Base s jedním párem (kolaterál cbBTC, půjčky v USDC) a několika splatnostmi. V tomto průvodci pojmenováváme trh Midnight podle tohoto páru: „trh cbBTC/USDC“ přijímá jako kolaterál cbBTC a půjčuje USDC. Stejný kód kontraktu dnes běží na pěti sítích:
+
+| Síť             | Kontrakt Midnight má kód od | Trhy uvedené v API Morpho (26. října 2026)  |
+| --------------- | --------------------------- | ------------------------------------------- |
+| Base            | 6. července 2026            | Ano; otevřené půjčky má 19 uvedených trhů   |
+| Ethereum        | 20. srpna 2026              | Ano; otevřené půjčky má 12 uvedených trhů   |
+| Arc             | 11. září 2026               | Žádné (existuje 13 trhů)                    |
+| Robinhood Chain | Datum není k dispozici      | Žádné (existuje 34 trhů)                    |
+| Tempo           | 3. října 2026               | Žádné (API neukazuje žádné trhy)           |
+
+Trh Midnight může vytvořit kdokoli, takže samotná existence trhu na blockchainu mnoho neříká. Aplikace Morpho ukazuje trhy, které uvádí její API, a 26. října 2026 byly všechny tyto trhy na Ethereu a na síti Base.
+
+Dřívější příspěvek Morpho představil Midnight spolu s Vaults V2 jako „Morpho V2“. Příspěvek ke spuštění Midnight uvádí, že Midnight není druhou verzí Blue ani jeho náhradou: oba běží vedle sebe. Jde o samostatné kontrakty.
+
+## Čím je trh Midnight určen?
+
+Trh Midnight se stanoví při vytvoření a pak se už nikdy nemění. Určují ho:
+
+- **Půjčovaný token**, například USDC.
+- **Jeden nebo více kolaterálů** (až 128), každý s vlastním LLTV (podílem hodnoty kolaterálu, který můžete dlužit, než přijde likvidace), vlastním orákulem a vlastním likvidačním kurzorem (cursor), který určuje bonus likvidátora.
+- **Splatnost**, datum a čas, kdy je splatná každá půjčka na trhu.
+- **Práh obnovy** (rcfThreshold), který rozhoduje, kdy lze malé množství kolaterálu zlikvidovat celé (viz níže).
+- **Volitelné brány (gates)**, které mohou omezit, kdo smí půjčovat, půjčovat si nebo likvidovat. Brána vám nikdy nemůže zabránit ve splacení ani v odchodu z trhu. Žádný z uvedených trhů na Ethereu ani na síti Base neměl 26. října 2026 bránu.
+
+Jeden dlužník může najednou používat až 16 kolaterálů daného trhu. Má-li trh přijmout nový kolaterál nebo mít jinou splatnost, musí někdo vytvořit nový trh. Uvedené trhy, na kterých jsou otevřené půjčky, mají na obou sítích splatnost v poslední pátek měsíce v 15:00 UTC: 30. října, 27. listopadu a 25. prosince 2026 a 26. března 2027.
+
+## Jak se stanoví pevná sazba a co dlužíte při splatnosti?
+
+Sazba vychází z ceny, ne z modelu úrokové sazby. Midnight počítá dluh v jednotkách a jedna dluhová jednotka je závazek splatit při splatnosti jeden půjčovaný token. Když si půjčujete, prodáváte jednotky věřitelům za cenu pod 1: při ceně 0,99 dostanete za každou jednotku hned 0,99 USDC a při splatnosti dlužíte 1 USDC za jednotku. Sazba za celou dobu je 1 dělená cenou, minus 1, a dokumentace Morpho z ní dělá roční údaj tak, že ji vydělí zbývajícím podílem roku.
+
+Ceny vycházejí z nabídek, které zveřejňují věřitelé a dlužníci, takže dva dlužníci na stejném trhu mohou platit různé sazby. Podle API Morpho se 26. října 2026 sazby 117 dlužníků na trhu cbBTC/USDC na síti Base se splatností 25. prosince 2026 pohybovaly mezi 1,93 % a 6,84 % ročně.
+
+Co dlužíte, je jednoduché: tolik půjčovaných tokenů, kolik jste prodali jednotek, splatných při splatnosti. Během trvání půjčky se nic nepřičítá. Kontrakt Midnight mění dluh dlužníka, jen když si půjčíte víc, splatíte, odkoupíte jednotky nebo jste zlikvidováni; úrok na něm nenabíhá před splatností ani po ní.
+
+Midnight má dva poplatky, oba nastavené pro každý trh zvlášť a oba nulové na obou trzích v tomto průvodci:
+
+- **Vypořádací poplatek** z každého obchodu, který platí ten, kdo přijme nabídku. Kontrakt ho omezuje podle doby do splatnosti, od 0,0014 % za jeden den až po 0,5 % za 360 dní.
+- **Průběžný poplatek**, který nesou jen věřitelé a který je omezen na 1 % ročně.
+
+## Jak se počítá health factor s více kolaterály?
+
+Kontrakt Midnight kontroluje zdraví pozice odpovědí ano, nebo ne: pozice je zdravá, dokud je její maximální dluh alespoň tak velký jako její dluh. Maximální dluh je součet přes všechny kolaterály, které používáte: hodnota každého z nich v půjčovaném tokenu podle ceny jeho orákula krát jeho vlastní LLTV. Dokumentace Morpho zapisuje kontrolu jako maxDebt ≥ debt; health factor je stejná kontrola zapsaná jako poměr, maximální dluh dělený dluhem, a pod 1 lze pozici zlikvidovat.
+
+Vezměme největší uvedený trh na Ethereu, který půjčuje USDC proti dvěma kolaterálům s různým LLTV: samotnému USDC s 98 % a cbBTC s 86 %. Při ceně cbBTC 80 011,48 USDC (cena jeho orákula 26. října 2026) má ilustrativní pozice z [průvodce health factorem na Morpho](/cz/blog/morpho-health-factor-vysvetleni), tedy 0,5 cbBTC a 10 000 USDC kolaterálu proti dluhu 40 000 USDC, tyto hodnoty:
+
+| Kolaterál   | Hodnota (USDC) | LLTV | Započítá se (USDC) |
+| ----------- | -------------- | ---- | ------------------ |
+| 0,5 cbBTC   | 40 005,74      | 86 % | 34 404,94          |
+| 10 000 USDC | 10 000,00      | 98 % | 9 800,00           |
+| Celkem      | 50 005,74      |      | 44 204,94          |
+
+Její health factor je 44 204,94 ÷ 40 000 = 1,105 a pod 1 klesne, pokud cbBTC spadne zhruba pod 70 233 USDC, tedy o 12,2 % níž, zatímco kolaterál v USDC si drží hodnotu. Princip je stejný jako u [druhého kolaterálu na Aave](/cz/blog/aave-health-factor-vysvetleni#co-se-zmeni-s-druhym-aktivem-v-kolateralu): každé aktivum se započítává vlastním poměrem.
+
+Kolaterály můžete kdykoli přidávat, odebírat nebo vyměňovat, pokud po výběru zůstane pozice zdravá. Pokud přestane odpovídat orákulum kteréhokoli kolaterálu, který používáte, selžou pro vaši pozici kontroly zdraví, výpůjčky, výběry i likvidace, dokud máte dluh. Splácení dál funguje a jakmile je váš dluh nulový, můžete vybírat bez jakéhokoli orákula.
+
+## Kdy lze půjčku na Midnight zlikvidovat?
+
+Půjčku na Midnight lze zlikvidovat dvěma způsoby: kdykoli, když je nezdravá, nebo když po splatnosti zbývá dluh, bez ohledu na její zdraví. Společné mechanismy popisuje průvodce [Jak funguje likvidace na Morpho](/cz/blog/jak-funguje-likvidace-morpho); zde je to, co je specifické pro Midnight.
+
+### Před splatností
+
+Před splatností rozhoduje jen zdraví. Jakmile je health factor pod 1, může likvidátor splatit část vašeho dluhu a vzít si kolaterál v hodnotě této částky plus bonus. Bonus je nastavený pro každý kolaterál zvlášť: 1 ÷ (1 − cursor × (1 − LLTV)). U cbBTC s LLTV 86 % a kurzorem 0,3 to je 1,0438, tedy bonus 4,38 %; u USDC s 98 % zhruba 0,6 %. Likvidátor si vybírá, který z vašich kolaterálů vezme, a dokumentace Morpho upozorňuje, že zvolí ten, který se mu vyplatí nejvíc.
+
+Kolik lze zlikvidovat najednou, závisí na velikosti. Běžně smí likvidátor splatit jen tolik, kolik je potřeba, aby byla pozice opět zdravá. Výjimka: když by kolaterál, který po takto omezené likvidaci zbude, splatil méně, než je rcfThreshold trhu, lze tento kolaterál vzít celý. Práh činí 3 000 USDC na trhu cbBTC/USDC na síti Base z příkladu níže a 300 000 USDC na výše uvedeném trhu na Ethereu. U půjčky s jedním kolaterálem pod touto hranicí tak může najednou odejít celá pozice.
+
+### Po splatnosti
+
+Jakmile čas splatnosti uplyne, lze jakýkoli zbývající dluh zlikvidovat, i když je váš health factor 2 nebo 10. Likvidační cesta kontraktu po splatnosti kontroluje jen čas. Morpho to zdůvodňuje tím, že věřitelé počítají s výběrem při splatnosti a dlužník, který nesplatil, ať zdravý, nebo ne, jim v tom brání.
+
+Bonus na této cestě začíná při splatnosti na nule a během 60 minut rovnoměrně roste k plnému bonusu. Pokud je vaše pozice po splatnosti zároveň nezdravá, může likvidátor místo toho použít cestu podle zdraví a vzít si plný bonus hned. Na cestě po splatnosti není omezeno, kolik lze splatit, takže celý dluh lze zlikvidovat najednou. Po splatnosti už nemůžete dluh navyšovat, ale stále můžete splácet, odkupovat jednotky a vybírat kolaterál.
+
+<Callout tone="warning">
+  Přesně v sekundě splatnosti je zdravá pozice ještě v bezpečí; o sekundu později už ne. Pozdní splátka zdravé
+  pozice vás může stát až plný likvidační bonus, zhruba 4,4 % dluhu u půjčky proti cbBTC s LLTV 86 %.
+</Callout>
+
+Pokud likvidace zanechá dluh, který kolaterál nepokryje, schodek se odepíše a nesou ho jen věřitelé daného trhu.
+
+## Jak splatit předčasně, při splatnosti nebo převést půjčku na pozdější splatnost?
+
+Z půjčky na Midnight vedou tři cesty ven a k tomu jedna volitelná záložní možnost:
+
+- **Splaťte přímo.** Splátka stojí přesně jeden půjčovaný token za jednotku, před splatností, při ní i po ní. Funguje vždy a určuje, kolik nejvýš byste měli za předčasný odchod zaplatit. Předčasná splátka nevrací žádnou část úroku: zaplatíte celou částku splatnou při splatnosti, jen dřív.
+- **Odkupte jednotky před splatností.** Místo toho můžete koupit jednotky z prodejních nabídek věřitelů za cenu pod 1, čímž zrušíte stejné množství dluhu za méně než nominální hodnotu. Záleží na tom, zda ve chvíli, kdy chcete odejít, někdo jednotky nabízí.
+- **Převeďte půjčku na pozdější splatnost.** Dokumentace Morpho popisuje splacení nebo odkup na jednom trhu a výpůjčku na trhu s pozdější splatností v jediné transakci pomocí zpětných volání (callbacks). Příspěvek Morpho ke spuštění v červenci uváděl automatický převod jako funkci, která přijde později; 26. října 2026 dokumentace popisuje převod jen jako něco, co uděláte sami, nebo přes záložní přechod na Blue popsaný níže.
+- **Přejděte záložně na Blue.** Morpho nasadilo na všech pěti sítích kontrakt BlueFallbackRolling. Pokud tuto možnost zapnete a autorizujete kontrakt na Midnight i na Blue, může kdokoli převést váš dluh a kolaterál z Midnight na vámi zvolený trh Blue s proměnlivou sazbou, a to od vámi zvoleného času. Odměna toho, kdo převod provede, je podíl z dluhu, který nastavíte vy; roste mezi počátečním a koncovým časem, které také nastavíte, může dosáhnout celého dluhu a přičte se k vašemu novému dluhu na Blue. Funguje jen s právě jedním kolaterálem, který odpovídá kolaterálu trhu Blue.
+
+## Co se stane s vaším kolaterálem po splacení?
+
+Váš kolaterál zůstává na místě, dokud ho nevyberete. Splátka ho nevrací. Jakmile je váš dluh nulový, kontrola zdraví projde bez dotazu na jakékoli orákulum, takže můžete vybrat všechno a žádná brána vám v tom nezabrání. Přesunout ho můžete jen vy, účet, který jste autorizovali, nebo likvidátor, pokud lze pozici zlikvidovat.
+
+Totéž platí po likvidaci: kolaterál, který si likvidátor nevzal, zůstává ve vaší pozici a můžete si ho vybrat.
+
+## Příklad výpočtu: půjčka cbBTC/USDC se splatností 25. prosince 2026
+
+Tento trh na páru, se kterým Midnight startoval, vznikl 14. července 2026, týden před veřejným spuštěním, a je největším uvedeným trhem na síti Base. Načteno z blockchainu 26. října 2026 v 06:06 UTC:
+
+| Údaj                        | Hodnota                                    |
+| --------------------------- | ------------------------------------------ |
+| Půjčovaný token             | USDC                                       |
+| Kolaterál                   | cbBTC, jediný                              |
+| LLTV                        | 86 %                                       |
+| Likvidační bonus            | 4,38 % (kurzor 0,3)                        |
+| Splatnost                   | 25. prosince 2026, 15:00 UTC, za 60,4 dne  |
+| rcfThreshold                | 3 000 USDC                                 |
+| Brány a poplatky            | Žádné                                      |
+| Dluh splatný při splatnosti | 1 530 235,58 USDC u 117 dlužníků           |
+| Cena cbBTC                  | 80 097,33 USDC (orákulum trhu)             |
+
+**Výpůjčka.** Nejlepší cena, za kterou mohl dlužník jednotky prodat, byla 0,9901297. Půjčit si za tuto cenu 10 000 USDC znamená dlužit 25. prosince 2026 zhruba 10 099,69 USDC: 0,997 % za 60,4 dne, zhruba 6,0 % ročně. Tato cena se mění z minuty na minutu.
+
+**Typická pozice.** Mediánový dlužník dluží při splatnosti 37,08 USDC proti 0,00060018 cbBTC v hodnotě 48,07 USDC. Jeho maximální dluh je 48,07 × 0,86 = 41,34 USDC, takže jeho health factor je 41,34 ÷ 37,08 = 1,11. Na 1 klesne, pokud cbBTC spadne zhruba na 71 838 USDC, tedy o 10,3 %.
+
+**Pokud cbBTC před splatností klesne těsně pod 71 838 USDC.** Pozice je hluboko pod prahem 3 000 USDC, takže likvidátor může splatit všech 37,08 USDC a vzít si cbBTC v hodnotě 38,71 USDC. Z cbBTC v hodnotě 43,12 USDC si dlužník ponechá k výběru zhruba 4,41 USDC.
+
+**Pokud dlužník zapomene splatit a cbBTC zůstane na 80 097 USDC.** Od 25. prosince 15:00:01 UTC může kdokoli splatit 37,08 USDC a vzít si cbBTC; likvidátor smí jednat kdykoli po 15:00:00. Bonus s časem roste: po třiceti minutách je zhruba 2,2 %, po hodině plných 4,38 %. Likvidace hodinu nebo déle po splatnosti vezme cbBTC v hodnotě 38,71 USDC a dlužníkovi z něj nechá 9,37 USDC. Kdyby splatil 37,08 USDC včas, ponechal by si cbBTC v hodnotě celých 48,07 USDC, po odečtení splátky 10,99 USDC, takže taková likvidace ho stojí 1,63 USDC, celý bonus. Dřívější likvidace stojí méně, ale nic likvidátora nenutí čekat.
+
+## Jak se Midnight liší od půjčky s proměnlivou sazbou na Morpho Blue?
+
+| | Morpho Blue | Morpho Midnight |
+| --- | --- | --- |
+| Sazba | Neustále se mění podle modelu úrokové sazby trhu | Pevná od chvíle, kdy si půjčíte |
+| Dluh | Roste s úrokem | Daný počet jednotek, neroste |
+| Konečné datum | Žádné | Splatnost |
+| Kolaterál na trh | Jeden | Jeden nebo více, každý s vlastním LLTV |
+| Lze zlikvidovat, když | Je pozice nezdravá | Je pozice nezdravá, nebo po splatnosti zbývá jakýkoli dluh |
+| Bonus | 1 ÷ (1 − 0,3 × (1 − LLTV)), nejvýš 15 % | 1 ÷ (1 − cursor × (1 − LLTV)), kurzor nastavený pro každý kolaterál, bez stropu 15 % |
+| Kolik najednou | Až celý dluh jedním voláním | Před splatností to, co obnoví zdraví (celý kolaterál, pokud by zbytek splatil méně než rcfThreshold); po splatnosti celý dluh |
+| Předběžná likvidace (pre-liquidation) | Morpho ji ukončuje, viz [předběžná likvidace na Morpho](/cz/blog/predbezna-likvidace-morpho) | Není součástí Midnight |
+| Předčasný odchod | Splacení kdykoli | Splacení za nominální hodnotu, nebo odkup jednotek, pokud je někdo prodává |
+
+Pro váš health factor je praktický rozdíl tento: na Blue může klesnout i jen kvůli narůstajícímu úroku, stejně jako na Aave ([jak skoky sazeb ovlivní váš health factor](/cz/blog/urokove-sazby-aave#jak-skoky-sazeb-ovlivni-vas-health-factor)). Na Midnight klesá jen tehdy, když klesnou ceny kolaterálu, nebo když vyberete kolaterál či si půjčíte víc. Midnight za to přidává datum, které nesmíte zmeškat.
+
+## Jak mohou upozornění pomoct s půjčkou na Midnight?
+
+Upozornění vás může varovat před oběma riziky půjčky na Midnight: klesajícím health factorem a blížící se splatností. Tokenping kontroluje každých 5 minut. Jeho [přehled Morpho](/cz/morpho) ukazuje vypůjčené pozice peněženky na trzích uvedených v aplikaci Morpho na 14 sítích, Blue i Midnight, a prohlížení pozic nevyžaduje platbu. Upozornění pro Midnight pokrývají trhy, které uvádí API Morpho. Dne 26. října 2026 byly na Ethereu a na síti Base; Tokenping pokryje i sítě Arc a Robinhood Chain, jakmile tam Morpho začne trhy Midnight uvádět. Do té doby na těchto dvou sítích upozornění pro Midnight nejsou možná.
+
+U půjčky na Midnight:
+
+- **Zdraví.** Tokenping počítá váš health factor z blockchainu vlastní matematikou Morpho, nikdy ho nebere z API Morpho. Dokud je pod prahem, který si nastavíte (1,02 až 10), pošle každá kontrola zprávu do každého kanálu, který jste si zvolili: Signal, Telegram nebo e-mail.
+- **Splatnost.** Dostanete jedno připomenutí v posledních 7 dnech před splatností a jedno v posledních 24 hodinách.
+- **Po splatnosti.** Dokud zbývá dluh, pošle každá kontrola upozornění, protože půjčku lze zlikvidovat bez ohledu na její health factor.
+
+Upozornění stojí <AlertPrice />, v rámci stejného plánu jako upozornění pro Aave. Upozornění vám dá čas jednat; likvidaci nezabrání a cena se může mezi dvěma kontrolami pohnout.
+
+## Zdroje
+
+- [Dokumentace Morpho: koncepty Midnight](https://docs.morpho.org/learn/concepts/midnight): jednotky, pohledávka (credit) a dluh, předčasné odchody, kolaterál a zdraví (načteno 26. října 2026)
+- [Dokumentace Morpho: likvidace na Midnight](https://docs.morpho.org/learn/concepts/midnight/liquidations): dvě cesty likvidace, náběh bonusu po splatnosti a proč lze nesplacený dluh po splatnosti zlikvidovat (načteno 26. října 2026)
+- [Dokumentace Morpho: nabídky](https://docs.morpho.org/learn/concepts/midnight/offers) a [brány](https://docs.morpho.org/learn/concepts/midnight/gates): převod pomocí zpětných volání a co brány mohou a nemohou zablokovat (načteno 26. října 2026)
+- [Dokumentace Morpho: mechanika trhu](https://docs.morpho.org/developers/midnight/concepts/market-mechanics), [kolaterál, zdraví a likvidace](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) a [poplatky](https://docs.morpho.org/developers/midnight/concepts/fees) (načteno 26. října 2026)
+- [Dokumentace Morpho: předčasný odchod z výpůjčky](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-early) a [odchod z výpůjčky při splatnosti](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-by-repaying-in-full-at-maturity) (načteno 26. října 2026)
+- [Dokumentace Morpho: adresy kontraktů](https://docs.morpho.org/developers/contracts/addresses): Midnight a BlueFallbackRolling na každé síti (načteno 26. října 2026)
+- [morpho-org/midnight](https://github.com/morpho-org/midnight): Midnight.sol (kontrola zdraví, likvidace, splátka, výběry), ConstantsLib.sol (poplatky, bonus, 60minutový náběh, limity kolaterálů) a README periferních kontraktů (načteno 26. října 2026)
+- [morpho-org/morpho-blue](https://github.com/morpho-org/morpho-blue): likvidační a bonusové konstanty Blue (načteno 26. října 2026)
+- [Now live: Morpho Midnight and the new Markets App](https://morpho.org/blog/now-live-morpho-midnight) (21. července 2026) a [Morpho Midnight: what to expect at launch](https://morpho.org/blog/morpho-midnight-what-to-expect-at-launch) (17. července 2026) (načteno 26. října 2026)
+- [Morpho Fixed Rate Markets](https://morpho.org/blog/morpho-v2-liberating-the-potential-of-onchain-loans): dřívější příspěvek Morpho o Midnight a Vaults V2 (načteno 26. října 2026)
+- [API Morpho Midnight](https://api.morpho.org/v0/midnight/markets): uvedené trhy, kniha nabídek a pozice dlužníků (načteno 26. října 2026)
+- Kontrakty Midnight na síti [Base](https://basescan.org/address/0xAdedD8ab6dE832766Fedf0FaC4992E5C4D3EA18A) v bloku 53102734 a na [Ethereu](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f) v bloku 26274992: definice trhů, souhrny, poplatky a ceny orákul (načteno 26. října 2026)
+
+*Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání.*
