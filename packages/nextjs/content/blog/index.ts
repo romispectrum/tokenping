@@ -1,3 +1,4 @@
+import { isMorphoEnabled } from "~~/config/morpho";
 import AaveAlertsDoNotDisturb, { meta as aaveAlertsDoNotDisturb } from "~~/content/blog/aave-alerts-do-not-disturb.mdx";
 import AaveHealthFactorAlertSetup, {
   meta as aaveHealthFactorAlertSetup,
@@ -18,16 +19,28 @@ import CsSafeAaveHealthFactor, {
 import CsHowAaveLiquidationWorks, {
   meta as csHowAaveLiquidationWorks,
 } from "~~/content/blog/cs/jak-funguje-likvidace-aave.mdx";
+import CsHowMorphoLiquidationWorks, {
+  meta as csHowMorphoLiquidationWorks,
+} from "~~/content/blog/cs/jak-funguje-likvidace-morpho.mdx";
 import CsAvoidAaveLiquidation, {
   meta as csAvoidAaveLiquidation,
 } from "~~/content/blog/cs/jak-se-vyhnout-likvidaci-aave.mdx";
 import CsAaveLiquidationPrice, { meta as csAaveLiquidationPrice } from "~~/content/blog/cs/likvidacni-cena-aave.mdx";
+import CsMorphoHealthFactor, {
+  meta as csMorphoHealthFactor,
+} from "~~/content/blog/cs/morpho-health-factor-vysvetleni.mdx";
+import CsMorphoMidnightFixedRateLoans, {
+  meta as csMorphoMidnightFixedRateLoans,
+} from "~~/content/blog/cs/morpho-midnight-pujcky-s-pevnou-sazbou.mdx";
 import CsAaveHealthFactorAlertSetup, {
   meta as csAaveHealthFactorAlertSetup,
 } from "~~/content/blog/cs/nastaveni-upozorneni-health-factor-aave.mdx";
 import CsAaveLiquidationAlertTools, {
   meta as csAaveLiquidationAlertTools,
 } from "~~/content/blog/cs/nastroje-pro-upozorneni-na-likvidaci-aave.mdx";
+import CsMorphoPreLiquidation, {
+  meta as csMorphoPreLiquidation,
+} from "~~/content/blog/cs/predbezna-likvidace-morpho.mdx";
 import CsWhyAaveHealthFactorDropped, {
   meta as csWhyAaveHealthFactorDropped,
 } from "~~/content/blog/cs/proc-klesl-health-factor-aave.mdx";
@@ -44,6 +57,14 @@ import CsAaveInterestRates, { meta as csAaveInterestRates } from "~~/content/blo
 import HowAaveLiquidationWorks, {
   meta as howAaveLiquidationWorks,
 } from "~~/content/blog/how-aave-liquidation-works.mdx";
+import HowMorphoLiquidationWorks, {
+  meta as howMorphoLiquidationWorks,
+} from "~~/content/blog/how-morpho-liquidation-works.mdx";
+import MorphoHealthFactor, { meta as morphoHealthFactor } from "~~/content/blog/morpho-health-factor.mdx";
+import MorphoMidnightFixedRateLoans, {
+  meta as morphoMidnightFixedRateLoans,
+} from "~~/content/blog/morpho-midnight-fixed-rate-loans.mdx";
+import MorphoPreLiquidation, { meta as morphoPreLiquidation } from "~~/content/blog/morpho-pre-liquidation.mdx";
 import PrivateAaveLiquidationAlerts, {
   meta as privateAaveLiquidationAlerts,
 } from "~~/content/blog/private-aave-liquidation-alerts.mdx";
@@ -72,6 +93,11 @@ export const POSTS: readonly Post[] = [
   { meta: aaveInterestRates, Content: AaveInterestRates },
   { meta: aaveAlertsDoNotDisturb, Content: AaveAlertsDoNotDisturb },
   { meta: aaveMarketWindDown, Content: AaveMarketWindDown },
+  // The Morpho guides, their hub first: published only while Morpho is enabled (isAvailable).
+  { meta: morphoHealthFactor, Content: MorphoHealthFactor },
+  { meta: howMorphoLiquidationWorks, Content: HowMorphoLiquidationWorks },
+  { meta: morphoPreLiquidation, Content: MorphoPreLiquidation },
+  { meta: morphoMidnightFixedRateLoans, Content: MorphoMidnightFixedRateLoans },
 ];
 
 /** The Czech translations (content/blog/cs), in the same order. Slugs pair with English through i18n/postSlugs. */
@@ -90,6 +116,10 @@ const CS_POSTS: readonly Post[] = [
   { meta: csAaveInterestRates, Content: CsAaveInterestRates },
   { meta: csAaveAlertsDoNotDisturb, Content: CsAaveAlertsDoNotDisturb },
   { meta: csAaveMarketWindDown, Content: CsAaveMarketWindDown },
+  { meta: csMorphoHealthFactor, Content: CsMorphoHealthFactor },
+  { meta: csHowMorphoLiquidationWorks, Content: CsHowMorphoLiquidationWorks },
+  { meta: csMorphoPreLiquidation, Content: CsMorphoPreLiquidation },
+  { meta: csMorphoMidnightFixedRateLoans, Content: CsMorphoMidnightFixedRateLoans },
 ];
 
 const POSTS_BY_LOCALE: Localized<readonly Post[]> = { en: POSTS, cs: CS_POSTS };
@@ -97,12 +127,21 @@ const POSTS_BY_LOCALE: Localized<readonly Post[]> = { en: POSTS, cs: CS_POSTS };
 /** Every post of a language, hub first. */
 export const getPosts = (locale: Locale = DEFAULT_LOCALE) => POSTS_BY_LOCALE[locale];
 
+/** A guide about Morpho (`protocol: "morpho"`) rather than Aave. */
+export const isMorphoPost = ({ meta }: Post) => meta.protocol === "morpho";
+
 /**
- * False for a placeholder (`stub: true`). Placeholders still render at their URL, but with noindex, and stay out of
- * /blog, the sitemap, the RSS feed and related-post links, so deploying before an article is written does not publish
- * its placeholder.
+ * Whether a post exists on the site at all. A Morpho guide exists only while Morpho is enabled, so it goes live together
+ * with /morpho, which it links to; otherwise its URL is a 404, like /morpho itself.
  */
-export const isPublished = ({ meta }: Post) => !meta.stub;
+export const isAvailable = (post: Post) => !isMorphoPost(post) || isMorphoEnabled();
+
+/**
+ * False for a placeholder (`stub: true`) and for a post that is not available. Placeholders still render at their
+ * URL, but with noindex, and stay out of /blog, the sitemap, the RSS feed and related-post links, so deploying before an
+ * article is written does not publish its placeholder.
+ */
+export const isPublished = (post: Post) => !post.meta.stub && isAvailable(post);
 
 /** The posts of a language readers and crawlers can discover, hub first. */
 export const getPublishedPosts = (locale: Locale = DEFAULT_LOCALE): readonly Post[] =>
@@ -117,6 +156,9 @@ export const newestFirst = (posts: readonly Post[]): Post[] =>
 
 /** The hub's key: its English slug. */
 export const HUB_SLUG = "aave-health-factor";
+
+/** The Morpho guides' own hub, which every Morpho guide links back to. */
+export const MORPHO_HUB_SLUG = "morpho-health-factor";
 
 /** The hub post's slug in a language. */
 export const hubSlug = (locale: Locale = DEFAULT_LOCALE) => POST_SLUGS[HUB_SLUG][locale];
@@ -220,6 +262,30 @@ export const RELATED_SLUGS: Record<string, readonly string[]> = {
     "safe-aave-health-factor",
     "avoid-aave-liquidation",
     "private-aave-liquidation-alerts",
+  ],
+  // The Morpho guides link to each other, their own hub first, and to the Aave guides that explain the shared ideas.
+  // No Aave guide lists them: they are a 404 while Morpho is off.
+  "morpho-health-factor": [
+    "how-morpho-liquidation-works",
+    "morpho-pre-liquidation",
+    "morpho-midnight-fixed-rate-loans",
+    "aave-health-factor",
+  ],
+  "how-morpho-liquidation-works": [
+    "morpho-health-factor",
+    "morpho-pre-liquidation",
+    "morpho-midnight-fixed-rate-loans",
+    "how-aave-liquidation-works",
+  ],
+  "morpho-pre-liquidation": [
+    "morpho-health-factor",
+    "how-morpho-liquidation-works",
+    "morpho-midnight-fixed-rate-loans",
+  ],
+  "morpho-midnight-fixed-rate-loans": [
+    "morpho-health-factor",
+    "how-morpho-liquidation-works",
+    "morpho-pre-liquidation",
   ],
 };
 

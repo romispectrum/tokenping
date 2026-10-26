@@ -19,6 +19,11 @@ export type PostMeta = {
   readingMinutes: number;
   /** Marks a placeholder file; the content-lint test reports it as pending until a writer replaces it. */
   stub?: true;
+  /**
+   * "morpho" for a guide about Morpho: it is served only while Morpho is enabled (NEXT_PUBLIC_MORPHO_ENABLED), so it
+   * goes live together with /morpho, and it carries Morpho's scope line, label and end box. Absent for Aave.
+   */
+  protocol?: "morpho";
 };
 
 export type Post = {

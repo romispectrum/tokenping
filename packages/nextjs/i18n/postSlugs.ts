@@ -29,6 +29,13 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
   "aave-interest-rates": { en: "aave-interest-rates", cs: "urokove-sazby-aave" },
   "aave-alerts-do-not-disturb": { en: "aave-alerts-do-not-disturb", cs: "upozorneni-aave-rezim-nerusit" },
   "aave-market-wind-down": { en: "aave-market-wind-down", cs: "ukonceni-trhu-aave" },
+  "morpho-health-factor": { en: "morpho-health-factor", cs: "morpho-health-factor-vysvetleni" },
+  "how-morpho-liquidation-works": { en: "how-morpho-liquidation-works", cs: "jak-funguje-likvidace-morpho" },
+  "morpho-pre-liquidation": { en: "morpho-pre-liquidation", cs: "predbezna-likvidace-morpho" },
+  "morpho-midnight-fixed-rate-loans": {
+    en: "morpho-midnight-fixed-rate-loans",
+    cs: "morpho-midnight-pujcky-s-pevnou-sazbou",
+  },
 };
 
 /** The English slug (the post's key) for a slug in any language, or undefined. */

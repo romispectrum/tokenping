@@ -12,11 +12,14 @@ type SeoMessages = {
   rssTitle: string;
   /** The alt text of a post's social card. */
   postOgAlt: (title: string) => string;
+  /** The same for a Morpho guide. */
+  morphoPostOgAlt: (title: string) => string;
   /** The site card's headline, with the alert channels joined ("Signal and email"). */
   siteOgTitle: (channels: string) => string;
   /** The footer line of the site card and of a post's card. */
   siteOgFooter: string;
   postOgFooter: string;
+  morphoPostOgFooter: string;
 };
 
 const networks = AAVE_NETWORK_NAMES.length;
@@ -31,9 +34,11 @@ export const SEO_MESSAGES: Localized<SeoMessages> = {
     siteOgAlt: "Tokenping: Aave health factor alerts",
     rssTitle: "Tokenping blog",
     postOgAlt: title => `${title} (Tokenping Aave V3 guide)`,
+    morphoPostOgAlt: title => `${title} (Tokenping Morpho guide)`,
     siteOgTitle: channels => `Aave health factor alerts on ${channels}`,
     siteOgFooter: "Tokenping · Aave V3 and V4",
     postOgFooter: "Tokenping · Aave V3 guides",
+    morphoPostOgFooter: "Tokenping · Morpho guides",
   },
   cs: {
     defaultTitle: "Tokenping: upozornění na Aave health factor",
@@ -43,8 +48,10 @@ export const SEO_MESSAGES: Localized<SeoMessages> = {
     siteOgAlt: "Tokenping: upozornění na Aave health factor",
     rssTitle: "Tokenping blog (česky)",
     postOgAlt: title => `${title} (průvodce Aave V3 od Tokenpingu)`,
+    morphoPostOgAlt: title => `${title} (průvodce Morpho od Tokenpingu)`,
     siteOgTitle: channels => `Upozornění na Aave health factor přes ${channels}`,
     siteOgFooter: "Tokenping · Aave V3 a V4",
     postOgFooter: "Tokenping · průvodci Aave V3",
+    morphoPostOgFooter: "Tokenping · průvodci Morpho",
   },
 };

@@ -39,6 +39,7 @@ const META_KEYS = new Set<string>([
   "primaryQuestion",
   "readingMinutes",
   "stub",
+  "protocol",
 ]);
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const FETCHED_DATE = /\bfetched (?:on )?\d{1,2} (?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]* \d{4}\b/i;
@@ -63,7 +64,7 @@ const BANNED_PATTERNS: readonly BannedPattern[] = [
   { pattern: /\bnever miss(?:es|ed)?\b/i, reason: "guarantee: 'never miss'" },
   { pattern: /\breal[- ]time\b/i, reason: "'real-time' (alerts are checked every 5 minutes)" },
   { pattern: /\binstant(?:ly|aneous|aneously)?\b/i, reason: "'instant' (alerts are checked every 5 minutes)" },
-  { pattern: /\bmulti[- ]?protocol\b/i, reason: "'multi-protocol' (only Aave is supported)" },
+  { pattern: /\bmulti[- ]?protocol\b/i, reason: "'multi-protocol' (name the protocols: Aave and Morpho)" },
   { pattern: /\bopen[- ]source[- ]licen[cs]ed\b/i, reason: "'open-source licensed' (the repo has no LICENSE)" },
   { pattern: /\bsecure settings\b/i, reason: "'secure settings' (Tokenping's operators and hosts can read them)" },
   {
@@ -228,7 +229,7 @@ const CS_BANNED_PATTERNS: readonly BannedPattern[] = [
     pattern: /\bokamžit\S* (?:upozorněn|zpráv|notifikac|varován)/i,
     reason: "'okamžité upozornění' (alerts are checked every 5 minutes)",
   },
-  { pattern: /\bmulti[- ]?protokol/i, reason: "'multiprotokolový' (only Aave is supported)" },
+  { pattern: /\bmulti[- ]?protokol/i, reason: "'multiprotokolový' (name the protocols: Aave and Morpho)" },
   {
     pattern: /\bclose factor (?:je|činí) (?:vždy |pevně |fixně |napevno )?(?:50 ?%|0[.,]5\b|polovin)/i,
     reason: "stale: since v3.3 the close factor is 50% or 100% depending on HF and position size",
@@ -331,12 +332,15 @@ const headingIdsOf = (tree: MdNode) => headingsOf(tree).map(node => headingId(sq
 type PostIndex = {
   /** Every post's anchors by slug; null for a placeholder, whose headings do not exist yet. */
   headingIds: Map<string, Set<string> | null>;
+  /** The slugs of the Morpho guides, which exist only while Morpho is enabled. */
+  morpho: Set<string>;
 };
 
 const indexPosts = (posts: readonly LoadedPost[]): PostIndex => ({
   headingIds: new Map(
     posts.map(({ slug, tree, meta }) => [slug, meta?.stub ? null : new Set(tree ? headingIdsOf(tree) : [])]),
   ),
+  morpho: new Set(posts.filter(({ meta }) => meta?.protocol === "morpho").map(({ slug }) => slug)),
 });
 
 const POST_INDEX: Record<Locale, PostIndex> = {
@@ -410,6 +414,8 @@ const checkMeta = (post: LoadedPost): string[] => {
   if (!Number.isInteger(meta.readingMinutes) || meta.readingMinutes < 1)
     problems.push("meta.readingMinutes must be a whole number of minutes, at least 1");
   if (meta.stub !== undefined && meta.stub !== true) problems.push("meta.stub must be `true` or absent");
+  if (meta.protocol !== undefined && meta.protocol !== "morpho")
+    problems.push('meta.protocol must be "morpho" or absent (Aave)');
 
   for (const field of ["title", "description", "h1", "primaryQuestion"] as const) {
     if (typeof meta[field] === "string")
@@ -515,20 +521,24 @@ const checkHeadings = (tree: MdNode) => {
   return problems;
 };
 
-/** The pages a post may link to in its language (blog build spec, "MDX vocabulary"), besides its posts. */
-const internalPaths = (locale: Locale) => [
+/**
+ * The pages a post may link to in its language (blog build spec, "MDX vocabulary"), besides its posts. A Morpho guide
+ * may also link to /morpho: both exist only while Morpho is enabled.
+ */
+const internalPaths = (locale: Locale, isMorpho = false) => [
   routePath(locale, "home"),
   routePath(locale, "dashboard"),
+  ...(isMorpho ? [routePath(locale, "morpho")] : []),
   routePath(locale, "blog"),
   routePath(locale, "privacy"),
 ];
 
 const OTHER_LANGUAGE_PREFIX: Record<Locale, RegExp> = { en: /^\/cz(?:[/?#]|$)/, cs: /^\/(?!cz(?:[/?#]|$))/ };
 
-const checkLinks = (tree: MdNode, locale: Locale = "en", index: PostIndex = POST_INDEX[locale]) => {
+const checkLinks = (tree: MdNode, locale: Locale = "en", index: PostIndex = POST_INDEX[locale], isMorpho = false) => {
   const problems: string[] = [];
   const ownIds = new Set(headingIdsOf(tree));
-  const paths = internalPaths(locale);
+  const paths = internalPaths(locale, isMorpho);
   const blogPrefix = postPath(locale, "");
   const urls = collect(tree, node => node.type === "link" || node.type === "definition").map(node => node.url ?? "");
   for (const url of urls) {
@@ -551,6 +561,10 @@ const checkLinks = (tree: MdNode, locale: Locale = "en", index: PostIndex = POST
         if (anchors === undefined) {
           const hint = locale !== "en" && key ? `; the ${locale} slug is "${POST_SLUGS[key][locale]}"` : "";
           problems.push(`${url}: no post with the slug "${target}"${hint}`);
+        } else if (index.morpho.has(target) && !isMorpho) {
+          problems.push(
+            `${url}: a Morpho guide, which is a 404 while Morpho is off; only Morpho guides may link to it`,
+          );
         }
         // A placeholder's anchors do not exist yet; the link is checked again once the article replaces it.
         else if (hash !== undefined && anchors !== null && !anchors.has(hash))
@@ -671,7 +685,7 @@ for (const locale of LOCALES) {
         });
 
         it("links only to real posts, allowed pages and https sources, in its own language", () => {
-          expect(checkLinks(tree, locale)).toEqual([]);
+          expect(checkLinks(tree, locale, POST_INDEX[locale], meta.protocol === "morpho")).toEqual([]);
         });
 
         it(`ends with ## ${rules.sourcesHeading} (fetched dates) and the disclaimer line`, () => {

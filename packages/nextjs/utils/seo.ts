@@ -225,7 +225,7 @@ export const breadcrumbJsonLd = (crumbs: readonly Crumb[]) => ({
 export const postOgImage = (meta: PostMeta, locale: Locale = DEFAULT_LOCALE) => ({
   url: `/og/${locale}/${meta.slug}`,
   ...OG_SIZE,
-  alt: SEO_MESSAGES[locale].postOgAlt(meta.title),
+  alt: (meta.protocol === "morpho" ? SEO_MESSAGES[locale].morphoPostOgAlt : SEO_MESSAGES[locale].postOgAlt)(meta.title),
 });
 
 /** BlogPosting for one post, built from the same meta that renders the headline and byline. */

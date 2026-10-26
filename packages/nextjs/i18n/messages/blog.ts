@@ -39,6 +39,8 @@ type BlogMessages = {
   };
   post: {
     kicker: string;
+    /** The kicker of a Morpho guide. */
+    morphoKicker: string;
     byline: {
       author: string;
       published: string;
@@ -53,6 +55,8 @@ type BlogMessages = {
     title: string;
     body: (fields: EndBoxFields) => string;
     cta: string;
+    /** Under a Morpho guide: the Morpho alerts, and the Morpho dashboard as the action. */
+    morpho: { title: string; body: (fields: EndBoxFields) => string; cta: string };
   };
   alertPrice: {
     /** Shown when the plan cannot be read; reads correctly where "3 USDC per 30 days" would. No digits. */
@@ -64,6 +68,8 @@ type BlogMessages = {
   scopeNote: {
     /** The scope sentences, up to the figures date. */
     text: string;
+    /** The same for a Morpho guide. */
+    morphoText: string;
     figuresAsOf: string;
   };
   table: {
@@ -125,6 +131,7 @@ export const BLOG_MESSAGES: Localized<BlogMessages> = {
     },
     post: {
       kicker: "Aave V3 guide",
+      morphoKicker: "Morpho guide",
       byline: { author: "By the Tokenping team", published: "Published", updated: "Updated" },
       readingTime: minutes => `${minutes} min read`,
       readGuide: "Read the guide",
@@ -136,6 +143,12 @@ export const BLOG_MESSAGES: Localized<BlogMessages> = {
       body: ({ minutes, networks, channels, price, paymentChain }) =>
         `Tokenping checks your Aave V3 and V4 health factor every ${minutes} minutes on ${networks} networks and messages you on ${channels} when it is below your threshold. Alerts cost ${price}${paymentChain ? `, paid on ${paymentChain}` : ""}; looking at your positions needs no payment. Alerts give you time to act; they don't prevent liquidation.`,
       cta: "Open the dashboard",
+      morpho: {
+        title: "Morpho health factor alerts from Tokenping",
+        body: ({ minutes, networks, channels, price, paymentChain }) =>
+          `Tokenping checks your Morpho Blue and Midnight health factor every ${minutes} minutes on ${networks} networks and messages you on ${channels} when it is below your threshold, with reminders before a fixed-rate loan matures. Alerts cost ${price}${paymentChain ? `, paid on ${paymentChain}` : ""}, the same plan as Aave alerts; looking at your positions needs no payment. Alerts give you time to act; they don't prevent liquidation.`,
+        cta: "Open the Morpho dashboard",
+      },
     },
     alertPrice: {
       fallback: "a small USDC fee (see the dashboard for the current price)",
@@ -145,6 +158,8 @@ export const BLOG_MESSAGES: Localized<BlogMessages> = {
     shortAnswer: "Short answer",
     scopeNote: {
       text: "Applies to Aave V3.7, checked on the Ethereum Core, Arbitrum, Base, Optimism, Polygon, Avalanche and Gnosis markets. Other V3 markets and networks may run older versions. Aave V4 differences are noted where rules differ.",
+      morphoText:
+        "Applies to Morpho Blue and Morpho Midnight markets listed in the Morpho app. Each market sets its own collateral, oracle and LLTV, so check the figures of yours.",
       figuresAsOf: "Figures as of",
     },
     table: {
@@ -173,6 +188,7 @@ export const BLOG_MESSAGES: Localized<BlogMessages> = {
     },
     post: {
       kicker: "Průvodce Aave V3",
+      morphoKicker: "Průvodce Morpho",
       byline: { author: "Napsal tým Tokenpingu", published: "Publikováno", updated: "Aktualizováno" },
       readingTime: minutes => `${csMinutes(minutes)} čtení`,
       readGuide: "Číst průvodce",
@@ -184,6 +200,12 @@ export const BLOG_MESSAGES: Localized<BlogMessages> = {
       body: ({ minutes, networks, channels, price, paymentChain }) =>
         `Tokenping kontroluje health factor vaší pozice na Aave V3 a V4 ${csEveryMinutes(minutes)} ${csOnNetworks(networks)} a pošle vám zprávu přes ${channels}, když je pod vaším prahem. Upozornění stojí ${price}${paymentChain ? ` s platbou na síti ${paymentChain}` : ""}; prohlížení pozic nevyžaduje žádnou platbu. Upozornění vám dají čas jednat, likvidaci ale nezabrání.`,
       cta: "Otevřít přehled",
+      morpho: {
+        title: "Upozornění na health factor na Morpho od Tokenpingu",
+        body: ({ minutes, networks, channels, price, paymentChain }) =>
+          `Tokenping kontroluje health factor vašich půjček na Morpho Blue a Midnight ${csEveryMinutes(minutes)} ${csOnNetworks(networks)} a pošle vám zprávu přes ${channels}, když je pod vaším prahem; před splatností půjčky s pevnou sazbou vám to připomene. Upozornění stojí ${price}${paymentChain ? ` s platbou na síti ${paymentChain}` : ""}, stejně jako upozornění na Aave; prohlížení pozic nevyžaduje žádnou platbu. Upozornění vám dají čas jednat, likvidaci ale nezabrání.`,
+        cta: "Otevřít přehled Morpho",
+      },
     },
     alertPrice: {
       fallback: "malý poplatek v USDC (aktuální cenu najdete v přehledu)",
@@ -193,6 +215,8 @@ export const BLOG_MESSAGES: Localized<BlogMessages> = {
     shortAnswer: "Stručná odpověď",
     scopeNote: {
       text: "Platí pro Aave V3.7, ověřeno na trzích Ethereum Core, Arbitrum, Base, Optimism, Polygon, Avalanche a Gnosis. Jiné trhy a sítě V3 mohou používat starší verze. Rozdíly u Aave V4 uvádíme tam, kde se pravidla liší.",
+      morphoText:
+        "Platí pro trhy Morpho Blue a Morpho Midnight uvedené v aplikaci Morpho. Každý trh má vlastní kolaterál, orákulum a LLTV, proto si ověřte údaje toho svého.",
       figuresAsOf: "Údaje k",
     },
     table: {

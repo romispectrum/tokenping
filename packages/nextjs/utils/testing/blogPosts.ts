@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { vi } from "vitest";
@@ -17,6 +17,15 @@ export const POST_SLUGS = slugsIn(BLOG_DIR);
 
 /** Every Czech post file's slug, read from content/blog/cs. */
 export const CS_POST_SLUGS = slugsIn(path.join(BLOG_DIR, "cs"));
+
+const isMorphoGuide = (dir: string, slug: string) =>
+  /^\s*protocol: "morpho",?$/m.test(readFileSync(path.join(dir, `${slug}.mdx`), "utf8"));
+
+/** The Morpho guides' English slugs: published only while Morpho is enabled, so left out by default. */
+export const MORPHO_POST_SLUGS = POST_SLUGS.filter(slug => isMorphoGuide(BLOG_DIR, slug));
+
+/** The Morpho guides' Czech slugs. */
+export const CS_MORPHO_POST_SLUGS = CS_POST_SLUGS.filter(slug => isMorphoGuide(path.join(BLOG_DIR, "cs"), slug));
 
 const mockStubs = (modulePrefix: string, slugs: readonly string[], stubSlugs: readonly string[]) => {
   for (const slug of slugs) {

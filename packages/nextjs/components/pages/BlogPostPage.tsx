@@ -15,7 +15,7 @@ import { Breadcrumbs } from "~~/components/seo/Breadcrumbs";
 import { JsonLd } from "~~/components/seo/JsonLd";
 import { Kicker } from "~~/components/ui/Kicker";
 import { cx } from "~~/components/ui/classNames";
-import { getPost, getPostByKey, getPosts, getRelatedPosts, isPublished } from "~~/content/blog";
+import { getPost, getPostByKey, getPosts, getRelatedPosts, isAvailable, isPublished } from "~~/content/blog";
 import type { PostMeta } from "~~/content/blog/types";
 import { LOCALES, type Locale } from "~~/i18n/locales";
 import { BLOG_MESSAGES } from "~~/i18n/messages/blog";
@@ -37,8 +37,17 @@ type BlogPostPageProps = {
   slug: string;
 };
 
-/** Every post slug of a language, for its route's generateStaticParams. */
-export const blogPostParams = (locale: Locale) => getPosts(locale).map(({ meta }) => ({ slug: meta.slug }));
+/** Every post slug of a language, for its route's generateStaticParams. A post that is not available is a 404. */
+export const blogPostParams = (locale: Locale) =>
+  getPosts(locale)
+    .filter(isAvailable)
+    .map(({ meta }) => ({ slug: meta.slug }));
+
+/** A post of `locale` that exists on the site (see isAvailable). */
+const availablePost = (locale: Locale, slug: string) => {
+  const post = getPost(slug, locale);
+  return post && isAvailable(post) ? post : undefined;
+};
 
 const postCrumbs = (locale: Locale, meta: PostMeta): Crumb[] => {
   const { home, blog } = BLOG_MESSAGES[locale].crumbs;
@@ -62,7 +71,7 @@ const publishedAlternates = (locale: Locale, slug: string) => {
 };
 
 export const blogPostMetadata = (locale: Locale, slug: string) => {
-  const post = getPost(slug, locale);
+  const post = availablePost(locale, slug);
   if (!post) return {};
   const { meta } = post;
   return pageMetadata({
@@ -86,7 +95,7 @@ export const blogPostMetadata = (locale: Locale, slug: string) => {
  * wash.
  */
 export const BlogPostPage = async ({ locale, slug }: BlogPostPageProps) => {
-  const post = getPost(slug, locale);
+  const post = availablePost(locale, slug);
   if (!post) notFound();
   const { meta, Content } = post;
   const crumbs = postCrumbs(locale, meta);
@@ -94,7 +103,8 @@ export const BlogPostPage = async ({ locale, slug }: BlogPostPageProps) => {
   const plan = await getAlertPlan();
   const PostAlertPrice = () => <AlertPriceText plan={plan} locale={locale} />;
   // The article components in the post's language, with the plan already read.
-  const components = { ...blogMdxComponents(locale), AlertPrice: PostAlertPrice };
+  const components = { ...blogMdxComponents(locale, meta.protocol), AlertPrice: PostAlertPrice };
+  const { kicker, morphoKicker } = BLOG_MESSAGES[locale].post;
 
   return (
     <div className="flex-1">
@@ -109,7 +119,7 @@ export const BlogPostPage = async ({ locale, slug }: BlogPostPageProps) => {
         <article>
           <div className={cx(BLOG_CONTAINER_CLASS_NAME, "pb-4 md:pb-6")}>
             <header className={cx(READING_COLUMN_CLASS_NAME, "pt-6 md:pt-10")}>
-              <Kicker>{BLOG_MESSAGES[locale].post.kicker}</Kicker>
+              <Kicker>{meta.protocol === "morpho" ? morphoKicker : kicker}</Kicker>
               <h1 className="text-section mb-0 max-w-[20ch]">{meta.h1}</h1>
               <div className="mt-5">
                 <PostByline meta={meta} locale={locale} />
@@ -125,7 +135,7 @@ export const BlogPostPage = async ({ locale, slug }: BlogPostPageProps) => {
       </div>
       <div className={END_WASH_CLASS_NAME}>
         <div className={cx(BLOG_CONTAINER_CLASS_NAME, "pt-4 pb-12 md:pb-20")}>
-          <AlertEndBox plan={plan} locale={locale} />
+          <AlertEndBox plan={plan} locale={locale} protocol={meta.protocol} />
           <RelatedPosts posts={getRelatedPosts(meta.slug, locale)} locale={locale} />
         </div>
       </div>

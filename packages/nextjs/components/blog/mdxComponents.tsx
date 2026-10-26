@@ -22,14 +22,14 @@ export const MDX_VOCABULARY = {
 export const BLOG_MDX_COMPONENTS: MDXComponents = { ...MDX_ELEMENTS, ...MDX_VOCABULARY };
 
 /**
- * The article components in a language, for a post's `components` prop. The server components get the locale bound
- * as a prop (articles never write it); the client ones (the table regions, LiquidationCalculator) read it from the
- * LocaleProvider of the root layout.
+ * The article components in a language, for a post's `components` prop. The server components get the locale (and the
+ * post's protocol) bound as props (articles never write them); the client ones (the table regions,
+ * LiquidationCalculator) read the locale from the LocaleProvider of the root layout.
  */
-export const blogMdxComponents = (locale: Locale = DEFAULT_LOCALE): MDXComponents => ({
+export const blogMdxComponents = (locale: Locale = DEFAULT_LOCALE, protocol?: "morpho"): MDXComponents => ({
   ...BLOG_MDX_COMPONENTS,
   ShortAnswer: (props: ComponentProps<typeof ShortAnswer>) => <ShortAnswer {...props} locale={locale} />,
-  ScopeNote: () => <ScopeNote locale={locale} />,
+  ScopeNote: () => <ScopeNote locale={locale} protocol={protocol} />,
   Callout: (props: ComponentProps<typeof Callout>) => <Callout {...props} locale={locale} />,
   AlertPrice: () => <AlertPrice locale={locale} />,
 });

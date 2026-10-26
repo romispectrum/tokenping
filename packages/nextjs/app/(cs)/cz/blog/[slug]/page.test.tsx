@@ -51,9 +51,14 @@ beforeEach(() => {
 describe("route config", () => {
   it("prerenders every Czech post and 404s unknown slugs", async () => {
     const { generateStaticParams, dynamicParams } = await loadPage();
-    const { getPosts } = await import("~~/content/blog");
+    const { getPosts, isMorphoPost } = await import("~~/content/blog");
 
-    expect(generateStaticParams()).toEqual(getPosts("cs").map(({ meta }) => ({ slug: meta.slug })));
+    // The Morpho guides are left out while Morpho is off, so their URLs are a 404.
+    expect(generateStaticParams()).toEqual(
+      getPosts("cs")
+        .filter(post => !isMorphoPost(post))
+        .map(({ meta }) => ({ slug: meta.slug })),
+    );
     expect(dynamicParams).toBe(false);
   });
 });

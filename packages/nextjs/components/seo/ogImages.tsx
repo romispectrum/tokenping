@@ -20,7 +20,12 @@ export const postOgImageResponse = async (locale: Locale, slug: string) => {
   const post = getPost(slug, locale);
   const t = SEO_MESSAGES[locale];
   return new ImageResponse(
-    <OgCard title={post?.meta.title ?? t.rssTitle ?? `${SITE_NAME} blog`} footer={t.postOgFooter} />,
+    (
+      <OgCard
+        title={post?.meta.title ?? t.rssTitle ?? `${SITE_NAME} blog`}
+        footer={post?.meta.protocol === "morpho" ? t.morphoPostOgFooter : t.postOgFooter}
+      />
+    ),
     await ogImageOptions(),
   );
 };

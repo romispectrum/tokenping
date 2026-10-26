@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST_SLUGS as POST_SLUG_PAIRS } from "~~/i18n/postSlugs";
 import { parseSitemap } from "~~/scripts/indexNow";
-import { CS_POST_SLUGS, POST_SLUGS, mockPostStubs } from "~~/utils/testing/blogPosts";
+import { CS_POST_SLUGS, MORPHO_POST_SLUGS, POST_SLUGS, mockPostStubs } from "~~/utils/testing/blogPosts";
 
 const APP_DIR = new URL("../app/", import.meta.url);
 
@@ -102,7 +102,9 @@ describe("sitemapEntries", () => {
     // A placeholder is left out, and its published translation is listed alone, with no hreflang to it.
     expect(entry("/blog/safe-aave-health-factor")).toBeUndefined();
     expect(entry(`/cz/blog/${POST_SLUG_PAIRS["safe-aave-health-factor"].cs}`)).not.toHaveProperty("alternates");
-    expect(blog.PUBLISHED_POSTS).toHaveLength(POST_SLUGS.length - 1);
+    // The Morpho guides wait for Morpho to be enabled.
+    expect(blog.PUBLISHED_POSTS).toHaveLength(POST_SLUGS.length - MORPHO_POST_SLUGS.length - 1);
+    for (const slug of MORPHO_POST_SLUGS) expect(entry(`/blog/${slug}`), slug).toBeUndefined();
   });
 
   it("leaves out both blogs and every post while all of them are placeholders", async () => {
