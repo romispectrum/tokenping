@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { LOCALES } from "~~/i18n/locales";
 import { routePath } from "~~/i18n/routes";
 import { acceptsMarkdown } from "~~/utils/markdown";
+import { CONTENT_SIGNAL } from "~~/utils/robots";
 import { sitemapEntries } from "~~/utils/sitemap";
 
 const ACCEPTS_MARKDOWN = { type: "header", key: "accept", value: ".*text/markdown.*" };
@@ -144,6 +145,11 @@ describe("next.config", () => {
       const csp = valueOf((await securityRule())?.headers, "Content-Security-Policy");
 
       expect(csp).not.toMatch(/script-src|default-src|connect-src|style-src|frame-src/);
+    });
+
+    // The markdown route sends the same header; Next lets this rule override it, so the values must match.
+    it("sends robots.txt's Content Signal on every response", async () => {
+      expect(valueOf((await securityRule())?.headers, "Content-Signal")).toBe(CONTENT_SIGNAL);
     });
 
     it("does not share a header name with the homepage Link rules, which Next would let override each other", async () => {

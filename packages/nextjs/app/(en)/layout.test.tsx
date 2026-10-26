@@ -3,9 +3,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import RootLayout, { metadata, viewport } from "~~/app/(en)/layout";
 import { THEME_COLOR } from "~~/components/brand/themeColor";
-import { serializeJsonLd } from "~~/components/seo/JsonLd";
 import manifest from "~~/public/manifest.json";
-import { DEFAULT_DESCRIPTION, DEFAULT_TITLE, siteJsonLd } from "~~/utils/seo";
+import { DEFAULT_DESCRIPTION, DEFAULT_TITLE } from "~~/utils/seo";
 import { renderHtml } from "~~/utils/testing/render";
 
 // next/font is compiled by Next; under Vitest each loader records its options and returns the class names it
@@ -76,9 +75,10 @@ describe("root layout", () => {
     }
   });
 
-  it("renders the site JSON-LD and wraps the page in the theme provider and the app providers", () => {
+  // No JSON-LD here: the Organization and the WebSite belong on the home page only (components/pages/HomePage.tsx).
+  it("wraps the page in the theme provider and the app providers, with no site-wide JSON-LD", () => {
     expect(renderHtml(<RootLayout>page</RootLayout>)).toBe(
-      `<html lang="en" class="local--font-satoshi local--font-satoshi-italic google--font-geist-mono"><head></head><body><script type="application/ld+json">${serializeJsonLd(siteJsonLd())}</script><div data-stub="theme-provider" data-attribute="class,data-theme" data-default-theme="light" data-enable-system="true" data-disable-transition="true"><div data-stub="providers">page</div></div><div data-stub="analytics"></div></body></html>`,
+      `<html lang="en" class="local--font-satoshi local--font-satoshi-italic google--font-geist-mono"><head></head><body><div data-stub="theme-provider" data-attribute="class,data-theme" data-default-theme="light" data-enable-system="true" data-disable-transition="true"><div data-stub="providers">page</div></div><div data-stub="analytics"></div></body></html>`,
     );
   });
 
@@ -99,7 +99,7 @@ describe("root layout", () => {
   // and System stays available to the user.
   it("themes with both the class and data-theme attributes, light by default", () => {
     const html = RootLayout({ children: "page" });
-    const themeProvider = html.props.children.props.children[1];
+    const themeProvider = html.props.children.props.children[0];
 
     expect(themeProvider.props).toMatchObject({
       attribute: ["class", "data-theme"],
@@ -156,9 +156,11 @@ describe("root layout", () => {
     expect(`${DEFAULT_TITLE} ${DEFAULT_DESCRIPTION}`).not.toMatch(/protocols|never miss|real-time|instant/i);
   });
 
+  // Open Graph's title is the page's own: the brand is og:site_name, so "Tokenping: " is not repeated in it.
   it("brands social previews as Tokenping without the Scaffold-ETH thumbnail or favicon", () => {
-    expect(metadata.openGraph).toMatchObject({ siteName: "Tokenping", title: DEFAULT_TITLE });
-    expect(metadata.twitter).toMatchObject({ site: "@tokenping", title: DEFAULT_TITLE });
+    expect(DEFAULT_TITLE).toBe("Tokenping: Aave and Morpho health factor alerts");
+    expect(metadata.openGraph).toMatchObject({ siteName: "Tokenping", title: "Aave and Morpho health factor alerts" });
+    expect(metadata.twitter).toMatchObject({ site: "@tokenping", title: "Aave and Morpho health factor alerts" });
     expect(JSON.stringify(metadata)).not.toMatch(/thumbnail|favicon\.png|localhost/);
   });
 

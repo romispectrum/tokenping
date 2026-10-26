@@ -43,28 +43,23 @@ const SITE = "https://tokenping.xyz";
 /** A path's URL as the page's canonical writes it: the root without a trailing slash. */
 const url = (path: string) => (path === "/" ? SITE : `${SITE}${path}`);
 
-type Kind = { changeFrequency: string; priority: number };
-const HOME = { changeFrequency: "weekly", priority: 1 };
-const DASHBOARD = { changeFrequency: "weekly", priority: 0.9 };
-const PRIVACY = { changeFrequency: "yearly", priority: 0.3 };
-
 /**
- * A page published in English and Czech: one entry per language, each with its date and rank, and listing both with
- * English as x-default (hreflang), as the pages' own links do.
+ * A page published in English and Czech: one entry per language, each with its date, and listing both with English
+ * as x-default (hreflang), as the pages' own links do.
  */
-const bilingual = (en: string, cs: string, kind: Kind, lastModified: string) => {
+const bilingual = (en: string, cs: string, lastModified: string) => {
   const alternates = { languages: { en: url(en), cs: url(cs), "x-default": url(en) } };
   return [
-    { url: url(en), lastModified, ...kind, alternates },
-    { url: url(cs), lastModified, ...kind, alternates },
+    { url: url(en), lastModified, alternates },
+    { url: url(cs), lastModified, alternates },
   ];
 };
 
-const HOME_PAGES = bilingual("/", "/cz", HOME, "2026-10-20");
-const AAVE_PAGES = bilingual("/aave", "/cz/aave", DASHBOARD, "2026-10-19");
-const MORPHO_DASHBOARD_PAGES = bilingual("/morpho", "/cz/morpho", DASHBOARD, "2026-10-25");
+const HOME_PAGES = bilingual("/", "/cz", "2026-10-20");
+const AAVE_PAGES = bilingual("/aave", "/cz/aave", "2026-10-19");
+const MORPHO_DASHBOARD_PAGES = bilingual("/morpho", "/cz/morpho", "2026-10-25");
 // The privacy page carries the date its Morpho disclosures were added.
-const PRIVACY_PAGES = bilingual("/privacy", "/cz/ochrana-soukromi", PRIVACY, "2026-10-25");
+const PRIVACY_PAGES = bilingual("/privacy", "/cz/ochrana-soukromi", "2026-10-25");
 
 beforeEach(() => {
   vi.resetModules();
@@ -79,11 +74,7 @@ describe("sitemapEntries", () => {
     expect(entries.slice(0, 6)).toEqual([...HOME_PAGES, ...AAVE_PAGES, ...MORPHO_DASHBOARD_PAGES]);
     expect(entries.slice(-2)).toEqual(PRIVACY_PAGES);
     // Each language's blog index carries that language's newest content date.
-    expect(entry("/blog")).toMatchObject({
-      lastModified: blog.getLatestPostDate(),
-      changeFrequency: "weekly",
-      priority: 0.8,
-    });
+    expect(entry("/blog")).toMatchObject({ lastModified: blog.getLatestPostDate() });
     expect(entry("/cz/blog")).toMatchObject({
       lastModified: blog.getLatestPostDate(blog.getPublishedPosts("cs")),
     });
@@ -94,8 +85,6 @@ describe("sitemapEntries", () => {
       expect(entry(`/blog/${meta.slug}`)).toEqual({
         url: en,
         lastModified: meta.updatedAt ?? meta.publishedAt,
-        changeFrequency: "monthly",
-        priority: 0.7,
         alternates: { languages: { en, cs, "x-default": en } },
       });
     }
@@ -172,7 +161,7 @@ describe("renderSitemapXml", () => {
       [...block.matchAll(/<([a-z:]+)[\s>/]/g)].map(([, name]) => name),
     );
 
-  it("writes loc, lastmod, changefreq and priority in the schema's order, then the hreflang links", async () => {
+  it("writes loc and lastmod in the schema's order, then the hreflang links, and no changefreq or priority", async () => {
     const { sitemap, renderSitemapXml } = await loadSitemap();
     const xml = await renderSitemapXml(sitemap());
 
@@ -184,12 +173,13 @@ describe("renderSitemapXml", () => {
     const orders = elementOrder(xml);
     expect(orders).toHaveLength(sitemap().length);
     for (const order of orders) {
-      expect(order.slice(0, 4)).toEqual(["loc", "lastmod", "changefreq", "priority"]);
-      expect(order.slice(4).every(name => name === "xhtml:link")).toBe(true);
+      expect(order.slice(0, 2)).toEqual(["loc", "lastmod"]);
+      expect(order.slice(2).every(name => name === "xhtml:link")).toBe(true);
     }
+    expect(xml).not.toMatch(/<changefreq>|<priority>/);
     // The home page in the URL standard's normal form, dated by the day only, English as x-default.
     expect(xml).toContain(
-      "<url><loc>https://tokenping.xyz/</loc><lastmod>2026-10-20</lastmod><changefreq>weekly</changefreq><priority>1.0</priority>" +
+      "<url><loc>https://tokenping.xyz/</loc><lastmod>2026-10-20</lastmod>" +
         '<xhtml:link rel="alternate" hreflang="en" href="https://tokenping.xyz/"/>' +
         '<xhtml:link rel="alternate" hreflang="cs" href="https://tokenping.xyz/cz"/>' +
         '<xhtml:link rel="alternate" hreflang="x-default" href="https://tokenping.xyz/"/></url>',
@@ -198,13 +188,11 @@ describe("renderSitemapXml", () => {
 
   it("escapes what XML reserves, and leaves out the xhtml namespace without alternates", async () => {
     const { renderSitemapXml } = await loadSitemap();
-    const xml = await renderSitemapXml([
-      { url: `${SITE}/a?b=1&c=<2>`, lastModified: "2026-10-25", changeFrequency: "yearly", priority: 0.3 },
-    ]);
+    const xml = await renderSitemapXml([{ url: `${SITE}/a?b=1&c=<2>`, lastModified: "2026-10-25" }]);
 
     // The URL is first put in its normal form (the query's < and > percent-encoded), then escaped for XML.
     expect(xml).toContain("<loc>https://tokenping.xyz/a?b=1&amp;c=%3C2%3E</loc>");
-    expect(xml).toContain("<lastmod>2026-10-25</lastmod><changefreq>yearly</changefreq><priority>0.3</priority>");
+    expect(xml).toContain("<lastmod>2026-10-25</lastmod></url>");
     expect(xml).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
   });
 

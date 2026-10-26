@@ -21,12 +21,20 @@ const LOGO_SRC = svgDataUri(logoSvg({ variant: "primary", color: OG_COLORS.text 
  * Satoshi Medium (titles) and Regular (the footer line) as OTF: ImageResponse cannot read the woff2 web fonts.
  * The routes run in Node, from the package root.
  */
+/**
+ * next/og sends its cards as "public, immutable, max-age=31536000", which promises the bytes at that URL never change.
+ * The cards' URLs carry no hash, and a card does change (a new title, the site card's wording), so caches may keep one
+ * a day, then check again. The site card's URL also takes a version (utils/seo.ts) when it is redesigned.
+ */
+export const OG_CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=604800";
+
 export const ogImageOptions = async () => {
   const [medium, regular] = await Promise.all(
     ["Satoshi-Medium.otf", "Satoshi-Regular.otf"].map(file => readFile(join(process.cwd(), "app/fonts/og", file))),
   );
   return {
     ...OG_IMAGE_SIZE,
+    headers: { "Cache-Control": OG_CACHE_CONTROL },
     fonts: [
       { name: "Satoshi", data: medium, weight: 500 as const, style: "normal" as const },
       { name: "Satoshi", data: regular, weight: 400 as const, style: "normal" as const },

@@ -25,8 +25,9 @@ const TRAINING_BOTS = [
   "CCBot",
   "Bytespider",
 ];
-// Founder decision; the default allows training crawlers.
-const BLOCK_TRAINING_BOTS = false;
+// Founder decision (26 October 2026): no training on the site's pages. The training crawlers are shut out and the
+// Content Signal says ai-train=no; search and AI-answer crawlers are untouched.
+const BLOCK_TRAINING_BOTS = true;
 // A crawler obeys only the most specific group that names it, so every group repeats the shared lines.
 const DISALLOW = ["/api/"];
 

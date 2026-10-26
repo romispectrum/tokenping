@@ -9,12 +9,16 @@ import {
   absoluteUrl,
   blogPostingJsonLd,
   breadcrumbJsonLd,
+  faqPageJsonLd,
   needsAbsoluteTitle,
   pageMetadata,
   postOgImage,
   rootMetadata,
   siteJsonLd,
+  siteOgImage,
+  siteOgTitle,
   toIsoDateTime,
+  withoutBrand,
 } from "~~/utils/seo";
 
 // SITE_URL is read at module load, so these cases import a fresh copy.
@@ -22,6 +26,14 @@ const loadSeo = async (siteUrl: string | undefined) => {
   vi.resetModules();
   vi.stubEnv("NEXT_PUBLIC_SITE_URL", siteUrl);
   return import("~~/utils/seo");
+};
+
+const ORGANIZATION = {
+  "@type": "Organization",
+  "@id": "https://tokenping.xyz/#organization",
+  name: "Tokenping",
+  url: "https://tokenping.xyz",
+  logo: { "@type": "ImageObject", url: "https://tokenping.xyz/logo.png", width: 512, height: 512 },
 };
 
 const RSS = { "application/rss+xml": [{ url: "/blog/feed.xml", title: "Tokenping blog" }] };
@@ -89,6 +101,26 @@ describe("pageMetadata", () => {
     });
   });
 
+  // og:title is the page's own title: the brand is og:site_name, and the template adds it to <title> only.
+  it("keeps the brand out of og:title and twitter:title, and never doubles the suffix", () => {
+    const branded = pageMetadata({ title: "Privacy | Tokenping", description: "d", path: "/privacy" });
+
+    expect(branded.title).toBe("Privacy");
+    expect(branded.openGraph).toMatchObject({ title: "Privacy" });
+    expect(branded.twitter).toMatchObject({ title: "Privacy" });
+
+    const home = pageMetadata({
+      title: "Tokenping: Aave and Morpho health factor alerts",
+      socialTitle: "Aave and Morpho health factor alerts on Signal and email",
+      description: "d",
+      path: "/",
+      absoluteTitle: true,
+    });
+    expect(home.title).toEqual({ absolute: "Tokenping: Aave and Morpho health factor alerts" });
+    expect(home.openGraph).toMatchObject({ title: "Aave and Morpho health factor alerts on Signal and email" });
+    expect(home.twitter).toMatchObject({ title: "Aave and Morpho health factor alerts on Signal and email" });
+  });
+
   it("supports an absolute title and noindex", () => {
     const metadata = pageMetadata({ title: "Home", description: "d", path: "/", absoluteTitle: true, noIndex: true });
 
@@ -151,10 +183,14 @@ describe("rootMetadata", () => {
       type: "website",
       siteName: "Tokenping",
       locale: "en_US",
-      title: DEFAULT_TITLE,
+      title: "Aave and Morpho health factor alerts",
       description: DEFAULT_DESCRIPTION,
     });
-    expect(metadata.twitter).toMatchObject({ card: "summary_large_image", site: "@tokenping" });
+    expect(metadata.twitter).toMatchObject({
+      card: "summary_large_image",
+      site: "@tokenping",
+      title: "Aave and Morpho health factor alerts",
+    });
     expect(metadata).not.toHaveProperty("icons");
     expect(metadata).not.toHaveProperty("verification");
   });
@@ -255,8 +291,8 @@ describe("blogPostingJsonLd", () => {
       image: "https://tokenping.xyz/og/en/aave-health-factor",
       datePublished: "2026-10-14T00:00:00Z",
       dateModified: "2026-10-14T00:00:00Z",
-      author: { "@type": "Organization", "@id": ORGANIZATION_ID, name: "Tokenping", url: "https://tokenping.xyz" },
-      publisher: { "@id": ORGANIZATION_ID },
+      author: ORGANIZATION,
+      publisher: ORGANIZATION,
       mainEntityOfPage: { "@type": "WebPage", "@id": "https://tokenping.xyz/blog/aave-health-factor" },
       url: "https://tokenping.xyz/blog/aave-health-factor",
       isPartOf: { "@id": WEBSITE_ID },
@@ -266,5 +302,70 @@ describe("blogPostingJsonLd", () => {
 
   it("uses updatedAt as dateModified", () => {
     expect(blogPostingJsonLd({ ...META, updatedAt: "2026-11-02" }).dateModified).toBe(toIsoDateTime("2026-11-02"));
+  });
+});
+
+describe("withoutBrand", () => {
+  it.each([
+    ["Tokenping: Aave and Morpho health factor alerts", "Aave and Morpho health factor alerts"],
+    ["Tokenping: upozornění na health factor na Aave a Morpho", "Upozornění na health factor na Aave a Morpho"],
+    ["Aave and Morpho health factor alerts | Tokenping", "Aave and Morpho health factor alerts"],
+    // The brand inside a title is part of what the page is about, not a prefix or a suffix.
+    ["Aave alerts and your privacy: what Tokenping stores", "Aave alerts and your privacy: what Tokenping stores"],
+    ["Privacy", "Privacy"],
+  ])("%j becomes %j", (title, expected) => {
+    expect(withoutBrand(title)).toBe(expected);
+  });
+});
+
+describe("faqPageJsonLd", () => {
+  it("repeats each question and the text of its answer, links included, in the page's language", () => {
+    const questions = [
+      { question: "What does it cost?", answer: "3 USDC per 30 days." },
+      {
+        question: "What do you store?",
+        answer: (
+          <>
+            Contact details. The <a href="/privacy">privacy page</a> has the list.
+          </>
+        ),
+      },
+    ];
+
+    expect(faqPageJsonLd(questions, "cs")).toEqual({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      inLanguage: "cs",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: "What does it cost?",
+          acceptedAnswer: { "@type": "Answer", text: "3 USDC per 30 days." },
+        },
+        {
+          "@type": "Question",
+          name: "What do you store?",
+          acceptedAnswer: { "@type": "Answer", text: "Contact details. The privacy page has the list." },
+        },
+      ],
+    });
+  });
+});
+
+describe("siteOgImage", () => {
+  // Consumers cache a card by its URL, so a redesigned card needs a new one.
+  it("names the card with a version, so a changed card is fetched again", () => {
+    expect(SITE_OG_IMAGE.url).toBe("/og/en?v=2");
+  });
+
+  // The alt says what the card shows: its headline, channels included, and the brand.
+  it.each([
+    [false, "Aave and Morpho health factor alerts on Signal and email (Tokenping)"],
+    [true, "Aave and Morpho health factor alerts on Signal, Telegram and email (Tokenping)"],
+  ])("gives the card the alt text of its own headline (Telegram %s)", (telegram, alt) => {
+    vi.stubEnv("NEXT_PUBLIC_TELEGRAM_BOT_USERNAME", telegram ? "tokenping_bot" : "");
+
+    expect(siteOgImage("en").alt).toBe(alt);
+    expect(siteOgImage("en").alt.startsWith(siteOgTitle("en"))).toBe(true);
   });
 });

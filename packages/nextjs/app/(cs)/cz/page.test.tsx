@@ -109,8 +109,11 @@ describe("metadata", () => {
   it("has a Czech title and description, a /cz canonical and hreflang to the English home", async () => {
     const { metadata } = await loadHome();
 
-    // The headline with its channels passes 60 characters, so the title drops them and keeps the brand.
-    expect(metadata.title).toEqual({ absolute: "Upozornění na health factor na Aave a Morpho | Tokenping" });
+    // Brand first on the home page; og:title is the headline, without the brand.
+    expect(metadata.title).toEqual({ absolute: "Tokenping: upozornění na health factor na Aave a Morpho" });
+    expect(metadata.openGraph).toMatchObject({
+      title: "Upozornění na health factor na Aave a Morpho přes Signal a e-mail",
+    });
     expect(String(metadata.description)).toMatch(/^Upozornění přes Signal nebo e-mail, když health factor/);
     expect(String(metadata.description).length).toBeLessThanOrEqual(155);
     expect(metadata.alternates?.canonical).toBe("/cz");

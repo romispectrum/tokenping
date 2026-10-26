@@ -8,7 +8,8 @@ type SeoMessages = {
   defaultTitle: string;
   defaultDescription: string;
   organizationDescription: string;
-  siteOgAlt: string;
+  /** The site card's alt text: what the card shows, its headline and the brand. */
+  siteOgAlt: (title: string) => string;
   rssTitle: string;
   /** The alt text of a post's social card. */
   postOgAlt: (title: string) => string;
@@ -31,7 +32,7 @@ export const SEO_MESSAGES: Localized<SeoMessages> = {
     defaultDescription: `Alerts when your Aave or Morpho health factor drops below a threshold you choose, on ${networks} networks, checked every ${minutes} minutes.`,
     organizationDescription:
       "Tokenping sends a message when an Aave V3, Aave V4, Morpho Blue or Morpho Midnight health factor drops below the threshold its owner set.",
-    siteOgAlt: "Tokenping: Aave and Morpho health factor alerts",
+    siteOgAlt: title => `${title} (Tokenping)`,
     rssTitle: "Tokenping blog",
     postOgAlt: title => `${title} (Tokenping Aave V3 guide)`,
     morphoPostOgAlt: title => `${title} (Tokenping Morpho guide)`,
@@ -45,7 +46,7 @@ export const SEO_MESSAGES: Localized<SeoMessages> = {
     defaultDescription: `Upozornění, když health factor vaší pozice na Aave či Morpho klesne pod zvolený práh, na ${networks} sítích, s kontrolou každých ${minutes} minut.`,
     organizationDescription:
       "Tokenping pošle zprávu, když health factor pozice na Aave V3, Aave V4, Morpho Blue nebo Morpho Midnight klesne pod práh, který si její majitel nastavil.",
-    siteOgAlt: "Tokenping: upozornění na health factor na Aave a Morpho",
+    siteOgAlt: title => `${title} (Tokenping)`,
     rssTitle: "Tokenping blog (česky)",
     postOgAlt: title => `${title} (průvodce Aave V3 od Tokenpingu)`,
     morphoPostOgAlt: title => `${title} (průvodce Morpho od Tokenpingu)`,

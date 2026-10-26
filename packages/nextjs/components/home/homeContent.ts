@@ -5,10 +5,11 @@ import { PAYMENT_CHAIN_ID, PAYMENT_CONTRACT_ADDRESS } from "~~/constants/payment
 import { getPostByKey, isPublished } from "~~/content/blog";
 import { DEFAULT_LOCALE, LOCALE_INFO, type Locale } from "~~/i18n/locales";
 import { HOME_MESSAGES } from "~~/i18n/messages/home";
+import { SEO_MESSAGES } from "~~/i18n/messages/seo";
 import { routePath } from "~~/i18n/routes";
 import { formatAlertChannelsIn, getAlertChannelNames } from "~~/services/marketing/alertChannels";
 import type { AlertPlan } from "~~/services/marketing/alertPlan";
-import { ORGANIZATION_ID, SITE_NAME, absoluteUrl, needsAbsoluteTitle } from "~~/utils/seo";
+import { ORGANIZATION_ID, SITE_NAME, absoluteUrl } from "~~/utils/seo";
 
 // Copy and data for the homepage and the /aave shell, per language (the words are in
 // i18n/messages/home). Everything that depends on the deployment (channels, networks, price, payment contract) is
@@ -31,15 +32,10 @@ export const getHomeHeadline = (locale: Locale = DEFAULT_LOCALE) =>
   HOME_MESSAGES[locale].headline(formatAlertChannelsIn(locale, "conjunction"));
 
 /**
- * The headline as the page title, in sentence case like every title, within 60 characters: with the brand when it fits,
- * then without it, then the headline without the channels ("Aave and Morpho health factor alerts | Tokenping").
+ * The home page's title: brand first, as a home page names the site it opens ("Tokenping: Aave and Morpho health factor
+ * alerts"), within 60 characters. Every other page puts the brand last through the title template.
  */
-export const getHomeTitle = (locale: Locale = DEFAULT_LOCALE) => {
-  const title = getHomeHeadline(locale);
-  if (!needsAbsoluteTitle(title)) return `${title} | ${SITE_NAME}`;
-  if (title.length <= 60) return title;
-  return `${HOME_MESSAGES[locale].shortHeadline} | ${SITE_NAME}`;
-};
+export const getHomeTitle = (locale: Locale = DEFAULT_LOCALE) => SEO_MESSAGES[locale].defaultTitle;
 
 /**
  * The meta description and SoftwareApplication description, with every network Tokenping reads (Aave's and Morpho's).

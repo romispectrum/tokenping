@@ -19,6 +19,12 @@ const homeLinkHeader = ({ feed, privacy }: { feed: string; privacy: string }) =>
     `<${privacy}>; rel="privacy-policy"`,
   ].join(", ");
 
+// Content Signals (https://contentsignals.org) on every response too, not only in robots.txt: a fetcher that never reads
+// robots.txt still gets the preference, and a proxy that adds its own default (Cloudflare's markdown conversion stamps
+// ai-train=yes when the origin sends none) finds one already set. The same value as utils/robots.ts CONTENT_SIGNAL,
+// which this file can't import (next.config.test.ts checks they match).
+const CONTENT_SIGNAL = "search=yes, ai-input=yes, ai-train=no";
+
 // Security headers on every response (a static export has no server to send them). Deliberately small:
 // - nosniff: a response is only run or styled as the type it is served as.
 // - Referrer-Policy: what browsers already default to, written down.
@@ -99,7 +105,7 @@ const nextConfig: NextConfig = {
     // Not on a markdown request: Next keeps a config header over a route's header of the same name, so the markdown
     // route sends these links itself, after the page's canonical.
     headers: async () => [
-      { source: "/:path*", headers: SECURITY_HEADERS },
+      { source: "/:path*", headers: [...SECURITY_HEADERS, { key: "Content-Signal", value: CONTENT_SIGNAL }] },
       ...HOME_LINKS.map(({ source, ...paths }) => ({
         source,
         missing: [ACCEPTS_MARKDOWN],

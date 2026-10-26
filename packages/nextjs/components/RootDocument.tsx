@@ -7,11 +7,9 @@ import type { Viewport } from "next";
 import { ScaffoldEthAppWithProviders } from "~~/components/ScaffoldEthAppWithProviders";
 import { ThemeProvider } from "~~/components/ThemeProvider";
 import { THEME_COLOR } from "~~/components/brand/themeColor";
-import { JsonLd } from "~~/components/seo/JsonLd";
 import { LocaleProvider } from "~~/i18n/LocaleProvider";
 import { LOCALE_INFO, type Locale } from "~~/i18n/locales";
 import "~~/styles/globals.css";
-import { siteJsonLd } from "~~/utils/seo";
 
 // Satoshi, the only typeface for words. The variable font's real weight axis is 300 to 900. Each face is its own
 // localFont so that only the upright one is preloaded: the italic (MDX emphasis, the blog disclaimers) is on few pages,
@@ -77,7 +75,6 @@ export const rootDocument = ({ locale, children }: RootDocumentProps) => (
     className={`${satoshi.variable} ${satoshiItalic.variable} ${geistMono.variable}`}
   >
     <body>
-      <JsonLd data={siteJsonLd(locale)} />
       <ThemeProvider attribute={["class", "data-theme"]} defaultTheme="light" enableSystem disableTransitionOnChange>
         <LocaleProvider locale={locale}>
           <ScaffoldEthAppWithProviders>{children}</ScaffoldEthAppWithProviders>

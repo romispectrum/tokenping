@@ -1,5 +1,5 @@
 import { HomeHero } from "~~/components/home/HomeHero";
-import { HomeObjections } from "~~/components/home/HomeObjections";
+import { HomeObjections, getHomeQuestions } from "~~/components/home/HomeObjections";
 import {
   ClosingCtaSection,
   CoverageSection,
@@ -9,17 +9,24 @@ import {
   PricingSection,
   ProblemSection,
 } from "~~/components/home/HomeSections";
-import { getHomeDescription, getHomeTitle, softwareApplicationJsonLd } from "~~/components/home/homeContent";
+import {
+  getHomeDescription,
+  getHomeHeadline,
+  getHomeTitle,
+  softwareApplicationJsonLd,
+} from "~~/components/home/homeContent";
 import { SectionDivider } from "~~/components/home/marketingLayout";
 import { JsonLd } from "~~/components/seo/JsonLd";
 import type { Locale } from "~~/i18n/locales";
 import { routeAlternates } from "~~/i18n/routes";
 import { getAlertPlan } from "~~/services/marketing/alertPlan";
-import { pageMetadata } from "~~/utils/seo";
+import { faqPageJsonLd, pageMetadata, siteJsonLd } from "~~/utils/seo";
 
 export const homeMetadata = (locale: Locale) =>
   pageMetadata({
     title: getHomeTitle(locale),
+    // Open Graph's title leaves the brand to og:site_name: the headline, channels included.
+    socialTitle: getHomeHeadline(locale),
     description: getHomeDescription(locale),
     locale,
     alternates: routeAlternates("home"),
@@ -38,6 +45,7 @@ export const homeMetadata = (locale: Locale) =>
 export const HomePage = async ({ locale }: { locale: Locale }) => {
   // One read for the whole page: the steps, the pricing block, the objections and the JSON-LD show the same plan.
   const plan = await getAlertPlan();
+  const questions = getHomeQuestions(plan, locale);
 
   return (
     <>
@@ -49,11 +57,14 @@ export const HomePage = async ({ locale }: { locale: Locale }) => {
       <CoverageSection locale={locale} />
       <SectionDivider />
       <PricingSection plan={plan} locale={locale} />
-      <HomeObjections plan={plan} locale={locale} />
+      <HomeObjections questions={questions} locale={locale} />
       <LimitsSection locale={locale} />
       <FromTheBlogSection locale={locale} />
       <ClosingCtaSection plan={plan} locale={locale} />
       <JsonLd data={softwareApplicationJsonLd(plan, locale)} />
+      <JsonLd data={faqPageJsonLd(questions, locale)} />
+      {/* The Organization and the WebSite belong on the home page only. */}
+      <JsonLd data={siteJsonLd(locale)} />
     </>
   );
 };

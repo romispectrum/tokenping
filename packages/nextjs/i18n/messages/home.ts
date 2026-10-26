@@ -22,8 +22,6 @@ type HomeMessages = {
   // Metadata, headline and JSON-LD (homeContent)
   /** Headline A: "Aave and Morpho health factor alerts on Signal and email" (channels joined with "and"). */
   headline: (channels: string) => string;
-  /** The headline without the channels: the page title when the full headline would pass 60 characters. */
-  shortHeadline: string;
   /** The meta description; `short` is the fallback once the full one passes 155 characters. */
   description: (input: { channels: string; networks: number; minutes: number; short: boolean }) => string;
   /** A channel as a badge: "Email" / "E-mail". */
@@ -165,7 +163,6 @@ const csOnChain = (chainName: string | undefined) => (chainName ? `na síti ${ch
 export const HOME_MESSAGES: Localized<HomeMessages> = {
   en: {
     headline: channels => `Aave and Morpho health factor alerts on ${channels}`,
-    shortHeadline: "Aave and Morpho health factor alerts",
     description: ({ channels, networks, minutes, short }) =>
       short
         ? `${channels} alerts when your Aave or Morpho health factor is below your threshold, on ${networks} networks, every ${minutes} minutes.`
@@ -382,7 +379,6 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
   },
   cs: {
     headline: channels => `Upozornění na health factor na Aave a Morpho přes ${channels}`,
-    shortHeadline: "Upozornění na health factor na Aave a Morpho",
     description: ({ channels, networks, minutes, short }) =>
       short
         ? `Upozornění přes ${channels}, když je health factor na Aave či Morpho pod prahem (${csNetworks(networks)}), kontrola ${csEveryMinutes(minutes)}.`

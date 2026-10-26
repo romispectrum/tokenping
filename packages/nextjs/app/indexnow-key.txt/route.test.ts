@@ -56,13 +56,22 @@ describe("GET /indexnow-key.txt", () => {
     expect(existsSync(new URL(`..${INDEXNOW_KEY_PATH}/route.ts`, import.meta.url))).toBe(true);
   });
 
-  // The engines fetch the key file before they trust a submission; a robots.txt Disallow would hide it from them.
-  it("is not disallowed for crawlers", () => {
-    const disallowed = buildRobotsTxt()
-      .split("\n")
-      .filter(line => line.startsWith("Disallow: "))
-      .map(line => line.slice("Disallow: ".length));
+  // The engines fetch the key file before they trust a submission; a robots.txt Disallow would hide it from them. Bing
+  // reads bingbot's group, Yandex and Seznam the "*" one; the training crawlers' group shuts them out of everything.
+  it("is not disallowed for the IndexNow engines' crawlers", () => {
+    const groups = buildRobotsTxt()
+      .split("\n\n")
+      .map(block => block.split("\n"));
+    for (const agent of ["bingbot", "*"]) {
+      const group = groups.find(lines => lines.includes(`User-Agent: ${agent}`))!;
+      const disallowed = group
+        .filter(line => line.startsWith("Disallow: "))
+        .map(line => line.slice("Disallow: ".length));
 
-    expect(disallowed.filter(path => INDEXNOW_KEY_PATH.startsWith(path))).toEqual([]);
+      expect(
+        disallowed.filter(path => INDEXNOW_KEY_PATH.startsWith(path)),
+        agent,
+      ).toEqual([]);
+    }
   });
 });

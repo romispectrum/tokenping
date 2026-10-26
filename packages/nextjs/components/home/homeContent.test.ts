@@ -35,16 +35,16 @@ describe("joinList", () => {
 
 describe("home copy per channel set", () => {
   it.each([
-    // The brand goes first when the headline alone fits, then the channels.
+    // The headline names the channels; the title puts the brand first, whatever the channels.
     [
       false,
       "Aave and Morpho health factor alerts on Signal and email",
-      "Aave and Morpho health factor alerts on Signal and email",
+      "Tokenping: Aave and Morpho health factor alerts",
     ],
     [
       true,
       "Aave and Morpho health factor alerts on Signal, Telegram and email",
-      "Aave and Morpho health factor alerts | Tokenping",
+      "Tokenping: Aave and Morpho health factor alerts",
     ],
   ])("with Telegram %s: headline %j, title %j", (telegram, headline, title) => {
     withTelegram(telegram);
@@ -168,7 +168,7 @@ describe("Czech home copy", () => {
     withTelegram(true);
 
     expect(getHomeHeadline("cs")).toBe("Upozornění na health factor na Aave a Morpho přes Signal, Telegram a e-mail");
-    expect(getHomeTitle("cs")).toBe("Upozornění na health factor na Aave a Morpho | Tokenping");
+    expect(getHomeTitle("cs")).toBe("Tokenping: upozornění na health factor na Aave a Morpho");
   });
 
   it("labels the price with a decimal comma and Czech day forms", () => {

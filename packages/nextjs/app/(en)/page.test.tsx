@@ -130,8 +130,10 @@ describe("route config and metadata", () => {
   it("owns the product query with an absolute title, a self canonical and the plan's description", async () => {
     const { metadata } = await loadHome();
 
-    // The headline is too long for the " | Tokenping" suffix, so it is the whole title.
-    expect(metadata.title).toEqual({ absolute: HEADLINE });
+    // Brand first on the home page; og:title is the headline, without the brand (og:site_name carries it).
+    expect(metadata.title).toEqual({ absolute: "Tokenping: Aave and Morpho health factor alerts" });
+    expect(metadata.openGraph).toMatchObject({ title: HEADLINE, siteName: "Tokenping" });
+    expect(metadata.twitter).toMatchObject({ title: HEADLINE });
     expect(metadata.description).toBe(
       "Signal or email alerts when your Aave or Morpho health factor drops below your threshold, on 29 networks. Checked every 5 minutes.",
     );
@@ -143,8 +145,10 @@ describe("route config and metadata", () => {
     vi.stubEnv("NEXT_PUBLIC_TELEGRAM_BOT_USERNAME", "tokenping_bot");
     const { metadata } = await loadHome();
 
-    // Naming Telegram too passes 60 characters: the title drops the channels and keeps the brand.
-    expect(metadata.title).toEqual({ absolute: "Aave and Morpho health factor alerts | Tokenping" });
+    expect(metadata.title).toEqual({ absolute: "Tokenping: Aave and Morpho health factor alerts" });
+    expect(metadata.openGraph).toMatchObject({
+      title: "Aave and Morpho health factor alerts on Signal, Telegram and email",
+    });
     expect(String(metadata.description)).toContain("Signal, Telegram or email alerts");
     expect(String(metadata.description).length).toBeLessThanOrEqual(155);
   });
@@ -456,10 +460,43 @@ describe("JSON-LD", () => {
     expect(app).not.toHaveProperty("offers");
   });
 
-  it("carries no FAQPage or HowTo markup", async () => {
+  it("carries no HowTo, review or rating markup", async () => {
     const { container } = await renderHome();
 
-    expect(JSON.stringify(jsonLdBlocks(container))).not.toMatch(/FAQPage|HowTo|Review|aggregateRating/);
+    expect(JSON.stringify(jsonLdBlocks(container))).not.toMatch(/HowTo|Review|aggregateRating/);
+  });
+
+  // Built from the array the questions section renders, so the markup says what the page says, word for word.
+  it("describes the questions as an FAQPage with the visible questions and answers", async () => {
+    const { container } = await renderHome();
+    const faq = jsonLdBlocks(container).find(block => block["@type"] === "FAQPage");
+    const headings = within(section("Questions to ask before you connect a wallet")).getAllByRole("heading", {
+      level: 3,
+    });
+
+    expect(faq).toMatchObject({ "@context": "https://schema.org", inLanguage: "en" });
+    expect(faq.mainEntity).toEqual(
+      headings.map(heading => ({
+        "@type": "Question",
+        name: heading.textContent,
+        acceptedAnswer: { "@type": "Answer", text: heading.nextElementSibling!.textContent },
+      })),
+    );
+  });
+
+  // Google reads both from the home page only; no other page repeats them.
+  it("names the Organization and the WebSite, with only the profiles the repo links", async () => {
+    const { container } = await renderHome();
+    const site = jsonLdBlocks(container).find(block => block["@graph"]);
+
+    expect(site["@graph"].map((node: { "@type": string }) => node["@type"])).toEqual(["Organization", "WebSite"]);
+    expect(site["@graph"][0]).toMatchObject({
+      "@id": "https://tokenping.xyz/#organization",
+      name: "Tokenping",
+      sameAs: ["https://x.com/tokenping", "https://t.me/tokenping_xyz", "https://github.com/romispectrum/tokenping"],
+    });
+    expect(site["@graph"][0]).not.toHaveProperty("address");
+    expect(site["@graph"][0]).not.toHaveProperty("foundingDate");
   });
 });
 

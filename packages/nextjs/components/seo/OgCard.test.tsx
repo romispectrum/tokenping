@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { OG_IMAGE_SIZE, OgCard, ogImageOptions } from "~~/components/seo/OgCard";
+import { OG_CACHE_CONTROL, OG_IMAGE_SIZE, OgCard, ogImageOptions } from "~~/components/seo/OgCard";
 import { renderStaticMarkup } from "~~/utils/testing/render";
 
 describe("OgCard", () => {
@@ -45,5 +45,11 @@ describe("OgCard", () => {
     ]);
     // OTF files start with the "OTTO" tag.
     for (const font of options.fonts) expect(font.data.subarray(0, 4).toString("latin1")).toBe("OTTO");
+  });
+
+  // The card URLs have no hash, so nothing may call them immutable (next/og's default).
+  it("replaces next/og's immutable year-long cache with a day", async () => {
+    expect((await ogImageOptions()).headers).toEqual({ "Cache-Control": OG_CACHE_CONTROL });
+    expect(OG_CACHE_CONTROL).not.toMatch(/immutable/);
   });
 });

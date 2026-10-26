@@ -55,16 +55,23 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs, 
   [Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553).
 - **Blog.** MDX articles in `packages/nextjs/content/blog` (English, and Czech in `content/blog/cs`), rendered as Server
   Components with a sitemap (`/sitemap.xml`, written by the `sitemap` package in the schema's element order, with hreflang
-  links), RSS feed and JSON-LD. `yarn next:indexnow` tells Bing, Seznam and Yandex about new and changed pages through
+  links and each page's own last-changed date; no changefreq or priority, which Google ignores), RSS feed and JSON-LD. `yarn next:indexnow` tells Bing, Seznam and Yandex about new and changed pages through
   [IndexNow](#indexnow).
 - **Search and AI crawlers.** robots.txt (`utils/robots.ts`) names the search and AI-answer crawlers and the training
-  crawlers separately (both allowed, `/api/` closed) and carries a [Content Signal](https://contentsignals.org) of
-  `search=yes, ai-input=yes, ai-train=yes`, `/llms.txt` lists the pages and guides for AI tools, both homepages send
-  an RFC 8288 `Link` header to it, the RSS feed and the privacy page (`next.config.ts`), `/.well-known/agent-skills/`
-  lists one agent skill for assistants that help a borrower with health factor alerts (`utils/agentSkills.ts`, built
-  from the same constants as the pages, with its digest taken from the served text), `/.well-known/ard.json` (and the
-  older `ai-catalog.json`) lists that skill in an Agentic Resource Discovery manifest (`utils/ard.ts`), and the
-  site-wide JSON-LD names the X, Telegram and GitHub profiles. Every page is server-rendered, so crawlers that run no JavaScript
+  crawlers separately: search and answer crawlers may read every page but `/api/`, training crawlers (GPTBot, ClaudeBot,
+  Google-Extended, CCBot and others) none. Every group, and every response as a header (`next.config.ts`), carries the
+  [Content Signal](https://contentsignals.org) `search=yes, ai-input=yes, ai-train=no`. `/llms.txt` lists the pages and
+  guides for AI tools, both homepages send an RFC 8288 `Link` header to it, the RSS feed and the privacy page
+  (`next.config.ts`; no api-catalog or service-doc, as there is no public API), `/.well-known/agent-skills/` lists two
+  agent skills for assistants that help a borrower with Aave or Morpho health factor alerts (`utils/agentSkills.ts`,
+  built from the same constants as the pages, with each digest taken from the served text), `/.well-known/ard.json`
+  (and the older `ai-catalog.json`) lists them in an Agentic Resource Discovery manifest (`utils/ard.ts`). The
+  homepages carry the Organization (with the X, Telegram and GitHub profiles) and WebSite JSON-LD, a
+  SoftwareApplication and an FAQPage built from the questions the page shows (Google shows no FAQ rich result for a site
+  like this; the markup is for other readers of structured data); posts carry BlogPosting and BreadcrumbList. Titles
+  put the brand first on the homepages and last elsewhere; og:title never repeats it. The social cards are PNGs from
+  `next/og`, cached for a day (never `immutable`: their URLs have no hash), and the site card's URL takes a version
+  when the card changes (`utils/seo.ts`). Every page is server-rendered, so crawlers that run no JavaScript
   read the full text. A request for a sitemap page with `text/markdown` in its `Accept` header gets the page as
   markdown (`text/markdown; charset=utf-8`): front matter with its title, description, canonical URL and language,
   then its `<main>` with GFM tables and absolute links. `next.config.ts` rewrites only those requests, and only page
