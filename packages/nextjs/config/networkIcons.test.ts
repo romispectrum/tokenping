@@ -3,34 +3,38 @@ import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import { AAVE_CHAINS, AAVE_MARKETS, AAVE_V4_SPOKES } from "~~/config/aaveConfig";
 import { NETWORK_ICONS } from "~~/config/networkIcons.generated";
+import { SUPPORTED_NETWORKS } from "~~/config/networks";
 import { COINGECKO_PLATFORMS, renderNetworkIconsModule } from "~~/scripts/tokenIconSources";
 import { NETWORK_ICON_DIR, networkIconSrc } from "~~/utils/networkIcons";
 import { TOKEN_ICON_SIZE } from "~~/utils/tokenIcons";
 
 // The table and the files are written together by scripts/fetchNetworkIcons.ts; these checks keep them in step with
-// each other and with AAVE_CHAINS when any of them is edited by hand or a refresh is committed half way.
+// each other and with SUPPORTED_NETWORKS when any of them is edited by hand or a refresh is committed half way.
 const ICON_DIR = new URL(`../public/${NETWORK_ICON_DIR}/`, import.meta.url);
 // Dotfiles are not icons: Finder drops a .DS_Store into any folder it opens.
 const ICON_FILES = readdirSync(ICON_DIR).filter(file => !file.startsWith("."));
 const ICONS = Object.values(NETWORK_ICONS);
-const CHAIN_IDS = new Set(AAVE_CHAINS.map(({ chain }) => chain.id));
+// Every supported network CoinGecko has an asset platform for; the others (Tempo) show their initial.
+const WITH_LOGO = SUPPORTED_NETWORKS.filter(({ chain }) => COINGECKO_PLATFORMS[chain.id]);
 
 const readIcon = (icon: string) => sharp(readFileSync(new URL(`${icon}.webp`, ICON_DIR))).metadata();
 
 describe("NETWORK_ICONS", () => {
-  it("has a logo for every chain with an Aave market, and for no other", () => {
-    expect(new Set(Object.keys(NETWORK_ICONS).map(Number))).toEqual(CHAIN_IDS);
-    expect(CHAIN_IDS).toEqual(new Set([...AAVE_MARKETS, ...AAVE_V4_SPOKES].map(({ chain }) => chain.id)));
+  it("has a logo for every supported network CoinGecko knows, every Aave chain among them, and for no other", () => {
+    expect(new Set(Object.keys(NETWORK_ICONS).map(Number))).toEqual(new Set(WITH_LOGO.map(({ chain }) => chain.id)));
+    for (const { chain, name } of AAVE_CHAINS) expect(NETWORK_ICONS[chain.id], name).toBeDefined();
+    expect(new Set(AAVE_CHAINS.map(({ chain }) => chain.id))).toEqual(
+      new Set([...AAVE_MARKETS, ...AAVE_V4_SPOKES].map(({ chain }) => chain.id)),
+    );
   });
 
   it("names each chain's logo by its CoinGecko platform id", () => {
-    for (const { chain, name } of AAVE_CHAINS)
-      expect(NETWORK_ICONS[chain.id], name).toBe(COINGECKO_PLATFORMS[chain.id]);
+    for (const { chain, name } of WITH_LOGO) expect(NETWORK_ICONS[chain.id], name).toBe(COINGECKO_PLATFORMS[chain.id]);
     expect(new Set(ICONS).size).toBe(ICONS.length);
   });
 
-  it("is what the script writes for AAVE_CHAINS, so a refresh changes nothing", () => {
-    const entries = AAVE_CHAINS.map(({ chain, name }) => ({ chainId: chain.id, name, icon: NETWORK_ICONS[chain.id] }));
+  it("is what the script writes for SUPPORTED_NETWORKS, so a refresh changes nothing", () => {
+    const entries = WITH_LOGO.map(({ chain, name }) => ({ chainId: chain.id, name, icon: NETWORK_ICONS[chain.id] }));
 
     expect(readFileSync(new URL("./networkIcons.generated.ts", import.meta.url), "utf8")).toBe(
       renderNetworkIconsModule(entries),

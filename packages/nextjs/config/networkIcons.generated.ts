@@ -24,4 +24,10 @@ export const NETWORK_ICONS: Readonly<Record<number, string>> = {
   196: "x-layer", // X Layer
   143: "monad", // Monad
   5042: "arc", // Arc
+  130: "unichain", // Unichain
+  480: "world-chain", // World Chain
+  999: "hyperevm", // HyperEVM
+  747474: "katana", // Katana
+  4663: "robinhood", // Robinhood Chain
+  988: "stable", // Stable
 };
