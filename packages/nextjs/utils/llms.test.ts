@@ -82,7 +82,9 @@ describe("llms.txt", () => {
     const spanish = section("Spanish");
     expect(spanish[0]).toMatch(/^- \[Tokenping\]\(https:\/\/tokenping\.xyz\/es\): /);
     expect(spanish.every(line => line.includes("(https://tokenping.xyz/es"))).toBe(true);
-    expect(spanish.filter(line => line.includes("(https://tokenping.xyz/es/blog/"))).toHaveLength(18);
+    expect(spanish.filter(line => line.includes("(https://tokenping.xyz/es/blog/"))).toHaveLength(
+      getPublishedPosts("es").length,
+    );
   });
 
   it("uses no em or en dashes and never the banned words", () => {

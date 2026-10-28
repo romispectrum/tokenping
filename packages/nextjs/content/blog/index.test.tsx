@@ -20,6 +20,8 @@ const AAVE_SLUGS = [
   "aave-interest-rates",
   "aave-alerts-do-not-disturb",
   "aave-market-wind-down",
+  "stablecoin-depeg-aave",
+  "aave-e-mode",
 ];
 
 // The Morpho guides, their own hub first.

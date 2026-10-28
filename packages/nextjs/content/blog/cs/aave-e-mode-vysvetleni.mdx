@@ -1,0 +1,202 @@
+export const meta = {
+  slug: "aave-e-mode-vysvetleni",
+  title: "Aave E-Mode: vyšší limit půjčky, tenčí rezerva",
+  description:
+    "Co je E-Mode na Aave V3, které kategorie existují na sítích Ethereum, Arbitrum, Base a Optimism, jak mění health factor a jak tenká je rezerva smyčky.",
+  h1: "Co je Aave E-Mode a co dělá s vaším rizikem likvidace?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "Co je Aave E-Mode a jak blízko k likvidaci pozici dostane?",
+  readingMinutes: 16,
+};
+
+<ShortAnswer>
+  E-Mode (Efficiency Mode, režim efektivity) je nastavení Aave V3, které vám dovolí půjčit si víc proti kolaterálu,
+  jehož cena se pohybuje společně s aktivem, které si půjčujete, například wstETH proti WETH, tím, že nahradí běžné LTV
+  a likvidační práh vyššími hodnotami platnými pro celou kategorii. Na Ethereum Core používala kategorie „ETH
+  correlated“ 28. října 2026 LTV 93 % a likvidační práh 95 %, proti 79 % a 82 % u wstETH mimo ni. Vzorec health
+  factoru (faktoru zdraví pozice) se nemění, jen práh v něm, takže stejná pozice ukazuje vyšší číslo. Cenou je tenčí
+  rezerva: pozice vypůjčená až na limit E-Mode začíná na 95 ÷ 93 = 1,0215 a v březnu 2026 pohyb orákula o 2,85 %
+  zlikvidoval pozice v E-Mode pod zhruba 1,0288. Smyčka (loop) vypůjčená blízko tohoto limitu běží pod 1,1, nejnižším
+  prahem upozornění, který Tokenping přijímá.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Čísla a bloky, ve kterých byla načtena: content/blog/snapshots/aave-e-mode.md */}
+
+## Co je Aave E-Mode a proč existuje?
+
+Aave E-Mode je nastavení účtu na trhu Aave V3, které vás zařadí do jedné kategorie korelovaných aktiv a na kolaterál, který tato kategorie uvádí, uplatní její LTV, likvidační práh a likvidační bonus místo vlastních parametrů každého aktiva. Nápověda Aave ho popisuje jako způsob, jak „maximize their borrowing power by selecting optimized asset categories“ (maximalizovat svou kapacitu pro půjčky výběrem optimalizovaných kategorií aktiv). V kontraktu Pool vstupuje do kategorie `setUserEMode(categoryId)`, `getUserEMode(address)` ukazuje, ve které kategorii adresa je, a kategorie 0 znamená žádnou.
+
+Existuje proto, že běžné parametry jsou nastavené pro nejhorší případ: aktivum v kolaterálu a aktivum v dluhu, jejichž ceny se pohybují nezávisle. Když obě sledují totéž, jako wstETH a WETH sledují ETH, pokles dolarové ceny ETH sníží kolaterál i dluh zároveň a zdraví pozice se skoro nepohne. Poskytovatelé řízení rizik Aave proto mohou pro takovou dvojici povolit vyšší LTV a práh. Zbývá riziko, že se obě aktiva od sebe odchýlí, a to je riziko, kterému je pozice v E-Mode skutečně vystavená.
+
+Od Aave V3.2, která zavedla „liquid E-Modes“ (tekuté kategorie E-Mode), definují kategorii tři věci:
+
+- **Jedno LTV, jeden likvidační práh a jeden likvidační bonus** pro celou kategorii.
+- **Sada kolaterálu**: rezervy, které dostanou parametry kategorie, dokud v ní jste. Kolaterál mimo sadu si ponechává vlastní LTV a práh.
+- **Sada půjčitelných aktiv**: jediné rezervy, které si v kategorii můžete půjčit. Aktivum může být v jedné sadě, ve druhé nebo v obou a může se objevit ve více kategoriích.
+
+„ETH correlated“ na Ethereum Core tedy neznamená „půjčte si cokoli proti ETH“: její sada půjčitelných aktiv obsahuje jen WETH (načteno 28. října 2026, blok 26291736). Kategorie rozhoduje o tom, co si můžete půjčit, stejně jako o tom, kolik.
+
+## Které kategorie E-Mode dnes existují?
+
+Kategorie níže byly načteny z kontraktu Pool každého trhu 28. října 2026 pomocí `getEModeCategoryLabel`, `getEModeCategoryCollateralConfig`, `getEModeCategoryCollateralBitmap` a `getEModeCategoryBorrowableBitmap`, bitmapy dekódované proti `getReservesList()`. Všechny čtyři Pooly hlásily revizi 11 (V3.7). Governance a Risk Stewards tyto parametry mění, takže než se na nějaké číslo spolehnete, zkontrolujte kategorii v aplikaci Aave.
+
+### Ethereum Core (blok 26291736)
+
+Ethereum Core mělo 48 kategorií. Většina páruje jeden principal token Pendle (PT) nebo aktivum Ethena se stablecoiny nebo s USDe a mnohé uvádějí expirované PT, které tam jsou jen kvůli pozicím, jež se ještě uzavírají. Ty, na které dlužník narazí nejspíš:
+
+| Id | Název                       | LTV  | Likvidační práh | Bonus  | Sada kolaterálu                               | Sada půjčitelných aktiv |
+| -- | --------------------------- | ---- | --------------- | ------ | --------------------------------------------- | ----------------------- |
+| 1  | ETH correlated              | 93 % | 95 %            | 1 %    | WETH, wstETH, cbETH, rETH, weETH, osETH, ETHx | WETH                    |
+| 2  | sUSDe Stablecoins           | 90 % | 92 %            | 4 %    | USDe, sUSDe                                   | USDC, USDT              |
+| 11 | USDe Stablecoin             | 90 % | 93 %            | 2 %    | USDe                                          | USDC, USDT              |
+| 4  | LBTC_WBTC                   | 84 % | 86 %            | 3 %    | LBTC                                          | WBTC                    |
+| 7  | eBTC/WBTC                   | 83 % | 85 %            | 3 %    | eBTC                                          | WBTC                    |
+| 22 | ezETH/wstETH                | 93 % | 95 %            | 1 %    | ezETH                                         | wstETH                  |
+| 26 | weETH/wstETH ETH Correlated | 93 % | 95 %            | 1 %    | weETH                                         | WETH, wstETH            |
+| 3  | rsETH__ETH_wstETH_ETHx      | 93 % | 95 %            | 1 %    | rsETH                                         | WETH, wstETH, ETHx      |
+| 40 | LINK__USDC_USDT             | 66 % | 71 %            | 7 %    | LINK                                          | USDC, USDT              |
+| 43 | XAUt__USDC_USDT_GHO         | 70 % | 75 %            | 6 %    | XAUt                                          | USDC, USDT, GHO         |
+| 47 | PT-srUSDe Stablecoins       | 90 % | 92 %            | 4,03 % | sUSDe, PT-srUSDe-22OCT2026                    | USDC, USDT, USDe        |
+
+Dva detaily ze stejného čtení. V „ETH correlated“ je ETHx v sadě kolaterálu, ale označené LTV 0 (`ltvzeroBitmap` kategorie), takže se do health factoru započítává s 95 %, a přesto nedává žádnou kapacitu pro půjčky. A kategorie 47 a 48 (PT-srUSDe proti stablecoinům a proti USDe) byly jediné s nastaveným příznakem `isolated` z V3.7; co dělá, popisují pravidla pro vstup níže. Kategorie LINK a XAUt ukazují, že kategorie vůbec nemusí být „korelovaná“: jsou druhou sadou parametrů pro půjčování stablecoinů proti jednomu aktivu.
+
+### Arbitrum (bloky 519074353 až 519074731)
+
+| Id | Název                            | LTV  | Likvidační práh | Bonus | Sada kolaterálu        | Sada půjčitelných aktiv |
+| -- | -------------------------------- | ---- | --------------- | ----- | ---------------------- | ----------------------- |
+| 1  | Stablecoins                      | 93 % | 95 %            | 1 %   | DAI, USDC, USD₮0, EURS | žádná                   |
+| 2  | ETH correlated                   | 93 % | 95 %            | 1 %   | WETH, wstETH, weETH    | WETH                    |
+| 7  | wstETH/WETH ETH Correlated       | 94 % | 96 %            | 1 %   | wstETH                 | WETH                    |
+| 3  | ezETH/wstETH/WETH ETH Correlated | 93 % | 95 %            | 1 %   | ezETH                  | WETH, wstETH            |
+| 5  | rsETH/wstETH/WETH ETH Correlated | 93 % | 95 %            | 1 %   | rsETH                  | WETH, wstETH            |
+| 4  | ezETH Stablecoins                | 72 % | 75 %            | 7,5 % | ezETH                  | USD₮0, USDC             |
+| 6  | rsETH/Stablecoins                | 72 % | 75 %            | 7,5 % | rsETH                  | USDC, USD₮0             |
+| 8  | AAVE__USDCn_USDT                 | 66 % | 73 %            | 10 %  | AAVE                   | USD₮0, USDC             |
+| 9  | ARB__USDCn_USDT                  | 58 % | 63 %            | 10 %  | ARB                    | USD₮0, USDC             |
+| 10 | tBTC__USDCn_USDT                 | 72 % | 75 %            | 7,5 % | tBTC                   | USD₮0, USDC             |
+
+Kategorie „Stablecoins“ na síti Arbitrum má prázdnou sadu půjčitelných aktiv, takže v ní nelze otevřít žádný nový dluh. Její kategorie pro jediné aktivum „wstETH/WETH ETH Correlated“ je o stupeň štědřejší než ta na Ethereu: 94 % a 96 %, rezerva na limitu 96 ÷ 94 = 1,0213.
+
+### Base (blok 53204166)
+
+Base měla 15 kategorií. Ty pro ETH a dvě pro BTC, na které dlužníci narazí nejčastěji:
+
+| Id | Název             | LTV  | Likvidační práh | Bonus  | Sada kolaterálu            | Sada půjčitelných aktiv |
+| -- | ----------------- | ---- | --------------- | ------ | -------------------------- | ----------------------- |
+| 1  | ETH correlated    | 90 % | 93 %            | 2 %    | WETH, cbETH, wstETH, weETH | WETH                    |
+| 8  | wstETH/WETH       | 93 % | 95 %            | 1 %    | wstETH                     | WETH                    |
+| 9  | cbETH/WETH        | 93 % | 95 %            | 2 %    | cbETH                      | WETH                    |
+| 7  | weETH/WETH        | 93 % | 95 %            | 1,25 % | weETH                      | WETH                    |
+| 2  | ezETH wstETH      | 93 % | 95 %            | 1 %    | ezETH                      | wstETH                  |
+| 4  | LBTC_cbBTC        | 82 % | 84 %            | 3 %    | LBTC                       | cbBTC                   |
+| 10 | cbBTC Stablecoins | 82 % | 85 %            | 4 %    | cbBTC                      | USDC, GHO               |
+
+Zbytek páruje jedno aktivum (wrsETH, syrupUSDC, AAVE, EURC, LBTC, tBTC, ezETH) s USDC a GHO nebo s wstETH. Base ukazuje, jak se široká kategorie dělí na kategorie pro jediné aktivum: víceaktivová kategorie „ETH correlated“ běží na 90 % a 93 %, zatímco wstETH/WETH, cbETH/WETH a weETH/WETH běží na 93 % a 95 %.
+
+### Optimism (blok 158799548)
+
+| Id | Název          | LTV    | Likvidační práh | Bonus | Sada kolaterálu                              | Sada půjčitelných aktiv |
+| -- | -------------- | ------ | --------------- | ----- | -------------------------------------------- | ----------------------- |
+| 1  | Stablecoins    | 0,01 % | 87 %            | 1 %   | DAI, USDC (bridgované i nativní), USDT, sUSD | žádná                   |
+| 2  | ETH correlated | 93 %   | 95 %            | 1 %   | WETH, wstETH, rETH (rETH s LTV 0)            | WETH                    |
+
+Kategorie „Stablecoins“ na síti Optimism je pozůstatek, s LTV 0,01 % a bez čehokoli půjčitelného. Její kategorie „ETH correlated“ odpovídá číslům na Ethereu.
+
+## Jak se health factor počítá v E-Mode?
+
+V E-Mode používá health factor stejný vzorec jako vždy, Σ(hodnota kolaterálu × likvidační práh) ÷ hodnota dluhu, jen každé aktivum v kolaterálu ze sady vaší kategorie bere práh kategorie místo vlastního. To je jediná změna: `GenericLogic.calculateUserAccountData` vybírá práh pro každé aktivum zvlášť a `getUserAccountData` vrací výsledek, takže každý nástroj, který toto volání čte, už ukazuje číslo z E-Mode. Obecný vzorec je v části [jak se počítá health factor na Aave](/cz/blog/aave-health-factor-vysvetleni#jak-se-pocita-health-factor-na-aave) a část [jak E-Mode mění health factor](/cz/blog/aave-health-factor-vysvetleni#jak-e-mode-meni-health-factor) téhož průvodce dává zkrácenou verzi toho, co následuje.
+
+Vezměte kolaterál wstETH v hodnotě 10 000 $ a dluh WETH v hodnotě 9 000 $ na Ethereum Core s parametry „ETH correlated“ načtenými 28. října 2026 (blok 26291736) a s vlastními parametry wstETH načtenými téhož dne (blok 26291849: LTV 79 %, likvidační práh 82 %):
+
+1. **V E-Mode:** HF = 10 000 × 0,95 ÷ 9 000 = **1,056**. Limit půjčky je 10 000 × 0,93 = 9 300 $, takže by šlo půjčit si ještě 300 $.
+2. **Mimo E-Mode:** stejná pozice by měla HF = 10 000 × 0,82 ÷ 9 000 = 0,911 a vůbec by nešla otevřít: LTV wstETH 79 % omezuje půjčku na 7 900 $.
+3. **Na limitu E-Mode:** půjčte si celých 9 300 $ a HF = 9 500 ÷ 9 300 = **1,0215**. Pozice je v den otevření 2,1 % od likvidace.
+
+Běžná pozice vypůjčená až na svůj limit také začíná na práh ÷ LTV, 84 ÷ 81 = 1,037 pro WETH na Ethereum Core 28. října 2026 (blok 26291849). E-Mode zužuje mezeru mezi LTV a prahem na 2 procentní body a tato mezera je celá rezerva pozice vypůjčené na maximum. Stejnou aritmetiku mimo E-Mode rozebírá část [proč po vypůjčení maxima zůstane health factor jen zhruba 1,03](/cz/blog/aave-health-factor-vysvetleni#proc-po-vypujceni-maxima-zustane-health-factor-jen-zhruba-103).
+
+Liší se i to, co číslem hýbe. S kolaterálem wstETH a dluhem WETH jsou obě strany oceněné podle ETH, takže dolarová cena ETH se vyruší: pokud ETH klesne na polovinu, kolaterál i dluh klesnou na polovinu společně a HF zůstane 1,056. Zbývá kurz wstETH/ETH, který hlásí orákulum Aave. Pozice dosáhne 1,00, když tento kurz klesne o 1 − 90 ÷ 95 = 5,3 %, pozice na maximu, když klesne o 2,1 %. Část [jak E-Mode mění vaši likvidační cenu](/cz/blog/likvidacni-cena-aave#jak-e-mode-meni-vasi-likvidacni-cenu) z toho dělá kurz místo dolarové ceny.
+
+## Jak funguje smyčka s pákovým stakingem v E-Mode a na co je to sázka?
+
+Smyčka s pákovým stakingem (loop, tedy opakované půjčování) vloží wstETH, půjčí si proti němu WETH, promění WETH v další wstETH a vloží i to, a opakuje to, dokud pozice nedrží několikanásobek počátečního množství wstETH proti skoro stejně velkému dluhu ve WETH. Právě E-Mode ji dělá výhodnou: při LTV 93 % může smyčka dosáhnout 1 ÷ (1 − 0,93) = 14,3násobku počátečního vlastního kapitálu, proti 1 ÷ (1 − 0,79) = 4,8násobku při běžném LTV wstETH.
+
+Propočítejte to v ETH, v jednotce, ve které smyčka žije. Začněte s wstETH v hodnotě 10 ETH, smyčkou se dostaňte na kolaterál v hodnotě 100 ETH a dluh 90 WETH a máte pozici 1,056 z příkladu výše, s desetinásobnou pákou. Dne 28. října 2026 oceňovalo orákulum Aave na Ethereum Core wstETH na 2 912,79 $ a WETH na 2 335,08 $ (blok 26291849), kurz 1,2474 ETH za wstETH, který se shodoval s `stEthPerToken()` Lida ve stejném bloku, takže 100 ETH kolaterálu je zhruba 80,2 wstETH.
+
+O tom, jestli smyčka vydělává, nebo prodělává, rozhodují dvě čísla a ani jedno z nich není dolarová cena ETH:
+
+- **Směnný kurz wstETH/ETH.** Roste s tím, jak nabíhají odměny ze stakingu: Lido hlásilo 28. října 2026 APR stETH 2,25 % a 7denní průměr 2,33 %. Smyčka sbírá tento výnos ze 100 ETH a platí úrok z 90, takže 10 ETH vlastního kapitálu vydělává zhruba desetinásobek rozdílu mezi oběma sazbami. Pokles kurzu, který orákulum hlásí, ať z tržního diskontu wstETH, nebo z chyby konfigurace, sníží kolaterál, a ne dluh, a je to jediný cenový pohyb, který může smyčku zlikvidovat.
+- **Výpůjční sazba WETH.** Dluh roste variabilní sazbou Aave, 1,94 % APR pro WETH na Ethereum Core v bloku 26291849, zatímco wstETH, které smyčka vkládá, od samotného Aave nevydělává skoro nic (0,0002 % ve stejném bloku). Kdykoli je výpůjční sazba nad výnosem ze stakingu, smyčka prodělává a její health factor klesá.
+
+Spojte obojí na jeden rok u desetinásobné pozice, bez složeného úročení a bez pohybů cen. Kolaterál s výnosem ze stakingu vyroste na zhruba 102,3 ETH. Při výpůjční sazbě 1,94 % dosáhne dluh 91,75 WETH: vlastní kapitál je 10,55 ETH, o 5,5 % víc, proti 2,3 % za pouhé držení wstETH, a HF vzroste na 1,059. Při průměrné výpůjční sazbě 5 % dosáhne dluh 94,5 WETH, vlastní kapitál klesne na 7,8 ETH a HF sklouzne na 1,028. Při 8 % dosáhne dluh 97,2 WETH a HF je 1,000: smyčku by zlikvidoval samotný úrok. Výpůjční sazby WETH při vysokém využití skutečně skokově rostou; křivku vysvětluje část [proč výpůjční sazby na Aave prudce rostou](/cz/blog/urokove-sazby-aave#proc-vypujcni-sazby-na-aave-prudce-rostou).
+
+Dolarová cena ETH je pro majitele smyčky stále důležitá, protože 10 ETH vlastního kapitálu má takovou hodnotu, jakou má ETH, ale pro health factor důležitá není. Smyčka je sázka na to, že výnos ze stakingu zůstane nad výpůjční sazbou a že kurz wstETH/ETH z orákula neklesne o víc, než je rezerva. Druhá sázka je ta, která se v březnu 2026 prohrála.
+
+## Jaká jsou pravidla pro vstup do kategorie E-Mode a odchod z ní?
+
+Vstup do kategorie i odchod z ní je jedno volání, `setUserEMode(categoryId)` na Poolu, a Pool před jeho provedením spustí tři kontroly, ve `ValidationLogic.validateSetUserEMode` a `SupplyLogic.executeSetUserEMode` v aave-v3-origin (větev main, čteno 28. října 2026):
+
+1. **Každé aktivum, které si půjčujete, musí být v cílové kategorii půjčitelné.** U kategorie to znamená její bitmapu půjčitelných aktiv; při odchodu (kategorie 0) to, že rezerva má povolené půjčování. Chyba je `InvalidDebtInEmode`. Peněženka s dluhem v USDC nemůže na Ethereum Core, kde je WETH jediné půjčitelné aktivum, vstoupit do „ETH correlated“, dokud USDC nesplatí.
+2. **Každé aktivum, které máte zapnuté jako kolaterál, si musí v cílové kategorii zachovat nenulové LTV.** Chyba je `InvalidCollateralInEmode`. Kontrola jde přes `getUserReserveLtv`, která vrací LTV kategorie pro aktiva z její sady kolaterálu (nebo 0, pokud je kategorie označí LTV 0), vlastní LTV aktiva pro kolaterál mimo sadu a 0 pro vnější kolaterál, když je kategorie izolovaná.
+3. **Po přepnutí musí být váš health factor na 1 nebo výš.** `executeSetUserEMode` nejdřív změní kategorii a pak zavolá `validateHealthFactor`, takže přepnutí, po kterém byste byli likvidovatelní, se vrátí (revert).
+
+Peněženka bez vkladů a bez dluhu může přepnout vždy a peněženka, která už v požadované kategorii je, nedostane žádnou změnu ani kontrolu.
+
+Pro každého, kdo čte starší návody, jsou důležité dvě poznámky k verzím. Od V3.2 si kolaterál mimo sadu vaší kategorie ponechává vlastní LTV a práh, takže držet WBTC v „ETH correlated“ je dovolené a WBTC se počítá s vlastními parametry WBTC: poznámky k funkcím V3.2 říkají, že parametry E-Mode „will only apply for the ones listed as eModeCollateral“ (se uplatní jen na aktiva uvedená jako eModeCollateral). Od V3.7 může kategorie nést příznak `isolated` (`getIsEModeCategoryIsolated`). V izolované kategorii dostane kolaterál mimo sadu LTV 0, ale ponechá si vlastní práh: do health factoru se dál počítá, ale nekryje žádné nové půjčky, vstup je zablokovaný, dokud je takový kolaterál zapnutý, a jeho zapnutí jako kolaterálu zevnitř kategorie je odmítnuto. Pokud governance příznak zapne u živé kategorie, poznámky k V3.7 říkají, že vnější kolaterál „immediately becomes LTV-zero“ (okamžitě dostane LTV nula), zatímco „health factor is unaffected“ (health factor zůstává nedotčený). Dne 28. října 2026 měly příznak nastavený jen dvě kategorie PT-srUSDe na Ethereum Core.
+
+Odchod blokují tytéž tři kontroly spuštěné proti kategorii 0. Nemůžete odejít, dokud si půjčujete aktivum, jehož rezerva má půjčování vypnuté, a nemůžete odejít, dokud by vás odchod dostal s health factorem pod 1, což je běžný případ: pozice 1,056 z příkladu výše by mimo E-Mode ukazovala 0,911, takže volání se vrátí. Abyste se dostali ven, musíte nejdřív splatit dost WETH, na dluh zhruba 8 200 proti 10 000 kolaterálu při prahu wstETH 82 %. Do E-Mode se vstupuje snadno a odchází těžko, jakmile jste využili prostor, který dává.
+
+## Co se stalo se smyčkami v E-Mode v březnu 2026?
+
+V březnu 2026 snížil chybně nakonfigurovaný cenový adaptér směnný kurz wstETH, který Aave používalo na trzích Ethereum Core a Prime, zhruba o 2,85 % a každá pozice v E-Mode s health factorem pod zhruba 1,0288 se stala naráz likvidovatelnou. Zdrojem je post-mortem Chaos Labs na fóru governance Aave, zveřejněný 10. března 2026 a znovu přečtený 28. října 2026; nic zde nejde nad jeho rámec.
+
+Aave oceňuje wstETH přes adaptér CAPO (Correlated Assets Price Oracle), který shora omezuje, jak rychle smí kurz wstETH/stETH, který hlásí, růst, aby zablokoval útoky typu inflace. Strop se skládá z referenčního poměru (snapshot ratio), referenčního časového razítka a maximálního ročního růstu. Aktualizace nastavila referenční časové razítko na referenci starou sedm dní, zatímco on-chain limit (poměr smí vzrůst nejvýš o 3 % každé 3 dny) zabránil tomu, aby poměr dosáhl hodnoty, kterou toto časové razítko předpokládalo, takže strop se spočítal z reference, která byla příliš nízko. Post-mortem uvádí, že maximální povolený kurz vyšel zhruba 1,1939, pod živým kurzem, takže strop ho přepsal a efektivní kurz klesl „around 2.855%“ (zhruba o 2,855 %).
+
+Co uvádí jako následky:
+
+- Zhruba 10 938 wstETH likvidací v E-Mode napříč 34 účty, postihly pozice „with a health factor lower than 1.0288“ (s health factorem nižším než 1,0288).
+- Žádný nedobytný dluh pro protokol.
+- Zhruba 512 ETH, které likvidátoři získali na bonusech a z rozdílu kurzů, z toho 141 ETH příjmů z likvidačních bonusů a zhruba 13 ETH poplatků bylo získáno zpět na odškodnění dotčených uživatelů a zbytek měla pokrýt pokladna DAO.
+- Limit výpůjček wstETH na obou trzích byl dočasně snížen na 1, dokud se konfigurace neopravila.
+
+Poučením pro smyčku je velikost pohybu. Pozice vypůjčená až na limit „ETH correlated“ začíná na 1,0215, v pásmu, které bylo zlikvidováno; pozice na 1,056 se nic nedotklo. Nic v pozici samotné nevarovalo, protože pohyb přišel z konfigurace orákula, ne z žádného trhu. Adaptér byl 28. října 2026 stále v provozu (blok 26291849): zdroj orákula pro wstETH na Ethereum Core se popisoval jako „Capped wstETH / stETH(ETH) / USD“, s referenčním poměrem 1,2283 ze 3. března 2026, maximálním ročním růstem 8,8 % a hlášeným poměrem 1,2474, shodným s Lidem. Odškodnění, které následovalo, popisuje [příčina 6 v článku proč váš health factor klesá](/cz/blog/proc-klesl-health-factor-aave#pricina-6-ocenila-chyba-orakula-nebo-smenneho-kurzu-vas-kolateral-spatne).
+
+## Kdy E-Mode nepomůže?
+
+E-Mode nic nedělá pro pozici, jejíž dluh je mimo kategorii, a málo pro několik dalších běžných uspořádání:
+
+- **Dluh, který kategorie neuvádí.** Dokud si ho půjčujete, nemůžete vůbec vstoupit. Pozice 10 WETH proti 12 000 USDC z průvodce health factorem zůstává na Ethereum Core u vlastního prahu WETH 84 % (blok 26291849), protože „ETH correlated“ dovolí půjčit si jen WETH.
+- **Kolaterál mimo sadu.** Ponechává si vlastní parametry, takže přidání WBTC do pozice v „ETH correlated“ zvýší health factor s vlastním prahem WBTC, 85 % na Ethereum Core v bloku 26291889, ne s 95 %. V izolované kategorii nepřidá ke kapacitě pro půjčky nic.
+- **Stablecoinové kategorie.** Na sítích Arbitrum a Optimism neměla kategorie „Stablecoins“ 28. října 2026 žádné půjčitelné aktivum, takže se pro novou půjčku použít nedá. Na Ethereum Core párují stablecoinové kategorie jedno aktivum (USDe, sUSDe, PT) s USDC a USDT při LTV 90 % až 94 %. Rizikem je tam depeg kolaterálu, který korelovaná kategorie nesnižuje; tenčí rezerva jen způsobí, že udeří dřív.
+- **Malé pozice.** Likvidátor smí vyčistit až 100 % dluhu v jedné rezervě, když má dotčený kolaterál nebo dluh hodnotu nižší než 2 000 $ (`LiquidationLogic`, čteno 28. října 2026), takže malá smyčka, která překročí 1,00, se uzavře, a ne jen ořeže; pravidlo popisuje část [kolik mého dluhu lze zlikvidovat najednou](/cz/blog/jak-funguje-likvidace-aave#kolik-meho-dluhu-lze-zlikvidovat-najednou). Bonus 1 % v „ETH correlated“ je na poměry Aave malý, ale platí se z celé částky.
+- **Tenká rezerva, kterou jste nechtěli.** Pokud vstoupíte do kategorie a půjčíte si blízko jejího limitu, rezerva jsou 2 %, ať health factor před přepnutím vypadal jakkoli.
+
+Pokud je některá z těchto situací vaše, jsou běžné parametry a širší rezerva lepším nástrojem; část [jakou rezervu vám health factor dává](/cz/blog/bezpecny-health-factor-aave#proc-se-bezpecne-cislo-lisi-pro-dluh-ve-stablecoinu-volatilni-dluh-a-smycky-v-e-mode) porovnává, co stejný health factor znamená pro smyčku v E-Mode a pro jiné pozice.
+
+## Může upozornění pomoci s pozicí v E-Mode?
+
+Upozornění na health factor pomůže s pozicí v E-Mode, která se drží nad zhruba 1,1 až 1,15, a nehodí se pro smyčku, která záměrně běží pod tím. Tokenping čte stejný health factor, jaký hlásí kontrakt, z `getUserAccountData`, která už vaši kategorii E-Mode zohledňuje, takže pro E-Mode není co nastavovat: číslo v přehledu a ve zprávách je číslo, které vidí likvidátor.
+
+Omezením je práh. Práh upozornění Tokenpingu pro Aave jde od 1,1 do 10, výchozí je 1,5. Smyčka na 1,056, nebo jakákoli pozice záměrně držená pod 1,1, je pod každým prahem, který můžete nastavit. Upozornění nastavené na 1,1 by health factor našlo pod ním při každé pětiminutové kontrole a při každé by poslalo zprávu, do každého kanálu, který jste zvolili, dokud se pozice nevrátí nad 1,1. Neexistuje odložení ani souhrn; chování podrobně popisuje část [jak často budete upozornění dostávat](/cz/blog/nastaveni-upozorneni-health-factor-aave#jak-casto-budete-upozorneni-dostavat).
+
+Pro tenkou smyčku zní poctivá rada jednou ze dvou věcí. Držte rezervu: provozujte smyčku tak, aby její health factor byl nad úrovní, o které chcete slyšet, řekněme 1,12 až 1,15 pro smyčku wstETH/WETH, což stojí páku, ale pohyb orákula o 2,85 % nechá před likvidací, a nastavte tam upozornění, aby to první, o čem uslyšíte, byl úrok, který pozici stahuje dolů. Nebo přijměte nepřetržité zprávy: nastavte 1,1 a berte ten proud jako signál, že běžíte pod ním, což málokdo chce na Signalu nebo na Telegramu při každé kontrole. Co upozornění nedokáže ani v jednom případě, je reagovat rychleji než orákulum: pohyb z března 2026 udělal pozice likvidovatelnými v okamžiku, kdy se strop uplatnil, a kontrola každých 5 minut nedává čas na to zareagovat. Nastavení popisují části [jak krok za krokem zvolit práh upozornění](/cz/blog/bezpecny-health-factor-aave#jak-krok-za-krokem-zvolit-prah-upozorneni) a [jak nastavit upozornění na health factor](/cz/blog/nastaveni-upozorneni-health-factor-aave#krok-5-zvolte-prah); co dělat, když zpráva přijde, popisuje [jak zvýšit health factor na Aave](/cz/blog/jak-se-vyhnout-likvidaci-aave#krok-1-splatte-cast-dluhu), což u smyčky obvykle znamená splatit WETH.
+
+Nejdřív si můžete [zkontrolovat svůj health factor na Aave V3](/cz/aave); prohlížení pozic nevyžaduje platbu. Upozornění stojí <AlertPrice />, platí se na síti Arbitrum, jedno na každý trh Aave V3 nebo Spoke V4, a chodí na Signal, Telegram nebo e-mail. Tokenping je v betaverzi a nemá žádnou garanci dostupnosti. U pozice s rezervou 2 % není žádné upozornění náhradou za rezervu samotnou.
+
+## Zdroje
+
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): `POOL_REVISION`, `getReservesList` a název, konfigurace kolaterálu, bitmapy kolaterálu, půjčitelných aktiv a LTV 0 a příznak izolace kategorií 1 až 48, v bloku 26291736 (načteno 28. října 2026)
+- Aave V3 Pool na sítích [Arbitrum](https://arbiscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD), [Base](https://basescan.org/address/0xA238Dd80C259a72e81d7e4664a9801593F98d1c5) a [Optimism](https://optimistic.etherscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD): stejná volání pro každou kategorii, v blocích 519074353 až 519074731 na síti Arbitrum, bloku 53204166 na síti Base a bloku 158799548 na síti Optimism (načteno 28. října 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): LTV, práh, bonus a sazby WETH, wstETH a USDC v bloku 26291849; WBTC v bloku 26291889 (načteno 28. října 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) a jeho [adaptér CAPO pro wstETH](https://etherscan.io/address/0xe1D97bF61901B075E9626c8A2340a7De385861Ef): ceny WETH a wstETH, popis adaptéru, referenční poměr, referenční časové razítko, maximální roční růst a poměr v bloku 26291849 (načteno 28. října 2026)
+- [Token wstETH](https://etherscan.io/address/0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0): `stEthPerToken()` v bloku 26291849 (načteno 28. října 2026)
+- [API Lido pro APR stETH](https://eth-api.lido.fi/v1/protocol/steth/apr/sma): poslední APR a 7denní průměr (načteno 28. října 2026)
+- [IPool.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/interfaces/IPool.sol): gettery E-Mode, `setUserEMode` a `getUserEMode` (aave-v3-origin, větev main, načteno 28. října 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) a [LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): `validateSetUserEMode`, `getUserReserveLtv`, `executeSetUserEMode` a hranice close factoru 2 000 $ (aave-v3-origin, větev main, načteno 28. října 2026)
+- [Funkce Aave V3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): liquid E-Modes, kolaterál mimo kategorii si ponechává vlastní parametry, pravidla pro vstup a odchod (načteno 28. října 2026)
+- [Izolovaný E-Mode v Aave V3.7](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md): účinky příznaku izolace (načteno 28. října 2026)
+- [Nápověda Aave: Efficiency Mode (E-mode)](https://aave.com/help/borrowing/e-mode) (načteno 28. října 2026)
+- [Post-mortem Chaos Labs, nesoulad směnného kurzu wstETH na trzích Core a Prime](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): zveřejněno 10. března 2026 (načteno 28. října 2026)
+
+_Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání._

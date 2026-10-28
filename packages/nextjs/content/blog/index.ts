@@ -1,4 +1,5 @@
 import AaveAlertsDoNotDisturb, { meta as aaveAlertsDoNotDisturb } from "~~/content/blog/aave-alerts-do-not-disturb.mdx";
+import AaveEMode, { meta as aaveEMode } from "~~/content/blog/aave-e-mode.mdx";
 import AaveHealthFactorAlertSetup, {
   meta as aaveHealthFactorAlertSetup,
 } from "~~/content/blog/aave-health-factor-alert-setup.mdx";
@@ -11,10 +12,12 @@ import AaveLiquidationPrice, { meta as aaveLiquidationPrice } from "~~/content/b
 import AaveMarketWindDown, { meta as aaveMarketWindDown } from "~~/content/blog/aave-market-wind-down.mdx";
 import AvoidAaveLiquidation, { meta as avoidAaveLiquidation } from "~~/content/blog/avoid-aave-liquidation.mdx";
 import CryptoBackedLoans, { meta as cryptoBackedLoans } from "~~/content/blog/crypto-backed-loans.mdx";
+import CsAaveEMode, { meta as csAaveEMode } from "~~/content/blog/cs/aave-e-mode-vysvetleni.mdx";
 import CsAaveHealthFactor, { meta as csAaveHealthFactor } from "~~/content/blog/cs/aave-health-factor-vysvetleni.mdx";
 import CsSafeAaveHealthFactor, {
   meta as csSafeAaveHealthFactor,
 } from "~~/content/blog/cs/bezpecny-health-factor-aave.mdx";
+import CsStablecoinDepegAave, { meta as csStablecoinDepegAave } from "~~/content/blog/cs/depeg-stablecoinu-a-aave.mdx";
 import CsHowAaveLiquidationWorks, {
   meta as csHowAaveLiquidationWorks,
 } from "~~/content/blog/cs/jak-funguje-likvidace-aave.mdx";
@@ -72,6 +75,10 @@ import EsHowMorphoLiquidationWorks, {
 import EsAaveHealthFactorAlertSetup, {
   meta as esAaveHealthFactorAlertSetup,
 } from "~~/content/blog/es/configurar-alertas-factor-de-salud-aave.mdx";
+import EsStablecoinDepegAave, {
+  meta as esStablecoinDepegAave,
+} from "~~/content/blog/es/depeg-de-stablecoin-y-aave.mdx";
+import EsAaveEMode, { meta as esAaveEMode } from "~~/content/blog/es/e-mode-de-aave.mdx";
 import EsAaveHealthFactor, { meta as esAaveHealthFactor } from "~~/content/blog/es/factor-de-salud-aave.mdx";
 import EsMorphoHealthFactor, { meta as esMorphoHealthFactor } from "~~/content/blog/es/factor-de-salud-morpho.mdx";
 import EsSafeAaveHealthFactor, {
@@ -111,6 +118,7 @@ import PrivateAaveLiquidationAlerts, {
 } from "~~/content/blog/private-aave-liquidation-alerts.mdx";
 import SafeAaveHealthFactor, { meta as safeAaveHealthFactor } from "~~/content/blog/safe-aave-health-factor.mdx";
 import ShortFiatWithAave, { meta as shortFiatWithAave } from "~~/content/blog/short-fiat-with-aave.mdx";
+import StablecoinDepegAave, { meta as stablecoinDepegAave } from "~~/content/blog/stablecoin-depeg-aave.mdx";
 import type { Post } from "~~/content/blog/types";
 import WhyAaveHealthFactorDropped, {
   meta as whyAaveHealthFactorDropped,
@@ -134,6 +142,8 @@ export const POSTS: readonly Post[] = [
   { meta: aaveInterestRates, Content: AaveInterestRates },
   { meta: aaveAlertsDoNotDisturb, Content: AaveAlertsDoNotDisturb },
   { meta: aaveMarketWindDown, Content: AaveMarketWindDown },
+  { meta: stablecoinDepegAave, Content: StablecoinDepegAave },
+  { meta: aaveEMode, Content: AaveEMode },
   // The Morpho guides, their hub first.
   { meta: morphoHealthFactor, Content: MorphoHealthFactor },
   { meta: howMorphoLiquidationWorks, Content: HowMorphoLiquidationWorks },
@@ -157,6 +167,8 @@ const CS_POSTS: readonly Post[] = [
   { meta: csAaveInterestRates, Content: CsAaveInterestRates },
   { meta: csAaveAlertsDoNotDisturb, Content: CsAaveAlertsDoNotDisturb },
   { meta: csAaveMarketWindDown, Content: CsAaveMarketWindDown },
+  { meta: csStablecoinDepegAave, Content: CsStablecoinDepegAave },
+  { meta: csAaveEMode, Content: CsAaveEMode },
   { meta: csMorphoHealthFactor, Content: CsMorphoHealthFactor },
   { meta: csHowMorphoLiquidationWorks, Content: CsHowMorphoLiquidationWorks },
   { meta: csMorphoPreLiquidation, Content: CsMorphoPreLiquidation },
@@ -179,6 +191,8 @@ const ES_POSTS: readonly Post[] = [
   { meta: esAaveInterestRates, Content: EsAaveInterestRates },
   { meta: esAaveAlertsDoNotDisturb, Content: EsAaveAlertsDoNotDisturb },
   { meta: esAaveMarketWindDown, Content: EsAaveMarketWindDown },
+  { meta: esStablecoinDepegAave, Content: EsStablecoinDepegAave },
+  { meta: esAaveEMode, Content: EsAaveEMode },
   { meta: esMorphoHealthFactor, Content: EsMorphoHealthFactor },
   { meta: esHowMorphoLiquidationWorks, Content: EsHowMorphoLiquidationWorks },
   { meta: esMorphoPreLiquidation, Content: EsMorphoPreLiquidation },
@@ -307,6 +321,22 @@ export const RELATED_SLUGS: Record<string, readonly string[]> = {
     "why-aave-health-factor-dropped",
     "aave-interest-rates",
     "avoid-aave-liquidation",
+    "how-aave-liquidation-works",
+    "safe-aave-health-factor",
+  ],
+  "aave-e-mode": [
+    "aave-health-factor",
+    "aave-liquidation-price",
+    "safe-aave-health-factor",
+    "why-aave-health-factor-dropped",
+    "aave-interest-rates",
+    "how-aave-liquidation-works",
+  ],
+  "stablecoin-depeg-aave": [
+    "why-aave-health-factor-dropped",
+    "aave-health-factor",
+    "avoid-aave-liquidation",
+    "short-fiat-with-aave",
     "how-aave-liquidation-works",
     "safe-aave-health-factor",
   ],

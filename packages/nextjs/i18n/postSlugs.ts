@@ -83,6 +83,12 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     cs: "predbezna-likvidace-morpho",
     es: "preliquidacion-morpho",
   },
+  "aave-e-mode": { en: "aave-e-mode", cs: "aave-e-mode-vysvetleni", es: "e-mode-de-aave" },
+  "stablecoin-depeg-aave": {
+    en: "stablecoin-depeg-aave",
+    cs: "depeg-stablecoinu-a-aave",
+    es: "depeg-de-stablecoin-y-aave",
+  },
   "morpho-midnight-fixed-rate-loans": {
     en: "morpho-midnight-fixed-rate-loans",
     cs: "morpho-midnight-pujcky-s-pevnou-sazbou",

@@ -1,0 +1,201 @@
+export const meta = {
+  slug: "aave-e-mode",
+  title: "Aave E-Mode: more borrowing power, thinner margin",
+  description:
+    "What Aave V3 E-Mode is, which categories exist on Ethereum, Arbitrum, Base and Optimism, how it changes the health factor, and how thin a loop's margin is.",
+  h1: "What is Aave E-Mode, and what does it do to your liquidation risk?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "What is Aave E-Mode, and how close to liquidation does it put a position?",
+  readingMinutes: 17,
+};
+
+<ShortAnswer>
+  E-Mode (Efficiency Mode) is an Aave V3 setting that lets you borrow more against collateral whose price moves with
+  the asset you borrow, such as wstETH against WETH, by replacing the normal LTV and liquidation threshold with higher
+  category-wide ones. On Ethereum Core the "ETH correlated" category used LTV 93% and a 95% liquidation threshold on 28
+  Oct 2026, against 79% and 82% for wstETH outside it. The health factor formula does not change, only the threshold
+  in it, so the same position shows a higher number. The price is a thinner margin: a position borrowed to the E-Mode
+  limit starts at 95 ÷ 93 = 1.0215, and in March 2026 a 2.85% oracle move liquidated E-Mode positions below about
+  1.0288. A loop borrowed near that limit runs below 1.1, the lowest alert threshold Tokenping accepts.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Figures and the block numbers they were read at: content/blog/snapshots/aave-e-mode.md */}
+
+## What is Aave E-Mode, and why does it exist?
+
+Aave E-Mode is a per-account setting on an Aave V3 market that puts you into one category of correlated assets and applies that category's LTV, liquidation threshold and liquidation bonus to the collateral it lists, instead of each asset's own parameters. Aave's help page describes it as a way to "maximize their borrowing power by selecting optimized asset categories". In the Pool contract, `setUserEMode(categoryId)` enters a category, `getUserEMode(address)` shows which one an address is in, and category 0 means none.
+
+It exists because the normal parameters are set for the worst case, a collateral asset and a debt asset whose prices move independently. When both track the same thing, as wstETH and WETH both track ETH, a fall in ETH's dollar price lowers the collateral and the debt together and the position's health barely moves. Aave's risk providers can therefore allow a higher LTV and threshold for that pairing. What remains is the risk that the two assets drift apart, and that is the risk an E-Mode position is actually exposed to.
+
+Three things define a category since Aave V3.2, which introduced "liquid E-Modes":
+
+- **One LTV, one liquidation threshold and one liquidation bonus** for the whole category.
+- **A collateral set**: the reserves that get the category's parameters while you are in it. Collateral outside the set keeps its own LTV and threshold.
+- **A borrowable set**: the only reserves you may borrow while in the category. An asset can be in one set, the other or both, and can appear in several categories.
+
+So "ETH correlated" on Ethereum Core is not "borrow anything against ETH": its borrowable set is WETH alone (read on 28 Oct 2026, block 26291736). The category decides what you can borrow as much as how much.
+
+## Which E-Mode categories exist today?
+
+The categories below were read from each market's Pool contract on 28 Oct 2026 with `getEModeCategoryLabel`, `getEModeCategoryCollateralConfig`, `getEModeCategoryCollateralBitmap` and `getEModeCategoryBorrowableBitmap`, the bitmaps decoded against `getReservesList()`. All four Pools reported revision 11 (V3.7). Governance and the Risk Stewards change these parameters, so check the category in the Aave app before relying on a number.
+
+### Ethereum Core (block 26291736)
+
+Ethereum Core had 48 categories. Most pair one Pendle principal token (PT) or Ethena asset with stablecoins or with USDe, and many list expired PTs that are only there for positions still unwinding. The ones a borrower is most likely to meet:
+
+| Id | Label                       | LTV | Liquidation threshold | Bonus | Collateral set                                | Borrowable set     |
+| -- | --------------------------- | --- | --------------------- | ----- | --------------------------------------------- | ------------------ |
+| 1  | ETH correlated              | 93% | 95%                   | 1%    | WETH, wstETH, cbETH, rETH, weETH, osETH, ETHx | WETH               |
+| 2  | sUSDe Stablecoins           | 90% | 92%                   | 4%    | USDe, sUSDe                                   | USDC, USDT         |
+| 11 | USDe Stablecoin             | 90% | 93%                   | 2%    | USDe                                          | USDC, USDT         |
+| 4  | LBTC_WBTC                   | 84% | 86%                   | 3%    | LBTC                                          | WBTC               |
+| 7  | eBTC/WBTC                   | 83% | 85%                   | 3%    | eBTC                                          | WBTC               |
+| 22 | ezETH/wstETH                | 93% | 95%                   | 1%    | ezETH                                         | wstETH             |
+| 26 | weETH/wstETH ETH Correlated | 93% | 95%                   | 1%    | weETH                                         | WETH, wstETH       |
+| 3  | rsETH__ETH_wstETH_ETHx      | 93% | 95%                   | 1%    | rsETH                                         | WETH, wstETH, ETHx |
+| 40 | LINK__USDC_USDT             | 66% | 71%                   | 7%    | LINK                                          | USDC, USDT         |
+| 43 | XAUt__USDC_USDT_GHO         | 70% | 75%                   | 6%    | XAUt                                          | USDC, USDT, GHO    |
+| 47 | PT-srUSDe Stablecoins       | 90% | 92%                   | 4.03% | sUSDe, PT-srUSDe-22OCT2026                    | USDC, USDT, USDe   |
+
+Two details from the same read. In "ETH correlated", ETHx is in the collateral set but flagged LTV 0 (the category's `ltvzeroBitmap`), so it counts toward the health factor at 95% yet gives no borrowing power. And categories 47 and 48 (PT-srUSDe against stablecoins and against USDe) were the only ones with the V3.7 `isolated` flag set; what that does is under the entry rules below. The LINK and XAUt categories show that a category need not be "correlated" at all: they are a second parameter set for borrowing stablecoins against one asset.
+
+### Arbitrum (blocks 519074353 to 519074731)
+
+| Id | Label                            | LTV | Liquidation threshold | Bonus | Collateral set         | Borrowable set |
+| -- | -------------------------------- | --- | --------------------- | ----- | ---------------------- | -------------- |
+| 1  | Stablecoins                      | 93% | 95%                   | 1%    | DAI, USDC, USD₮0, EURS | none           |
+| 2  | ETH correlated                   | 93% | 95%                   | 1%    | WETH, wstETH, weETH    | WETH           |
+| 7  | wstETH/WETH ETH Correlated       | 94% | 96%                   | 1%    | wstETH                 | WETH           |
+| 3  | ezETH/wstETH/WETH ETH Correlated | 93% | 95%                   | 1%    | ezETH                  | WETH, wstETH   |
+| 5  | rsETH/wstETH/WETH ETH Correlated | 93% | 95%                   | 1%    | rsETH                  | WETH, wstETH   |
+| 4  | ezETH Stablecoins                | 72% | 75%                   | 7.5%  | ezETH                  | USD₮0, USDC    |
+| 6  | rsETH/Stablecoins                | 72% | 75%                   | 7.5%  | rsETH                  | USDC, USD₮0    |
+| 8  | AAVE__USDCn_USDT                 | 66% | 73%                   | 10%   | AAVE                   | USD₮0, USDC    |
+| 9  | ARB__USDCn_USDT                  | 58% | 63%                   | 10%   | ARB                    | USD₮0, USDC    |
+| 10 | tBTC__USDCn_USDT                 | 72% | 75%                   | 7.5%  | tBTC                   | USD₮0, USDC    |
+
+Arbitrum's "Stablecoins" category has an empty borrowable set, so no new debt can be opened in it. Its single-asset "wstETH/WETH ETH Correlated" category is one notch more generous than Ethereum's: 94% and 96%, a margin at the limit of 96 ÷ 94 = 1.0213.
+
+### Base (block 53204166)
+
+Base had 15 categories. The ETH ones, and the two BTC ones most borrowers meet:
+
+| Id | Label          | LTV | Liquidation threshold | Bonus | Collateral set             | Borrowable set |
+| -- | -------------- | --- | --------------------- | ----- | -------------------------- | -------------- |
+| 1  | ETH correlated | 90% | 93%                   | 2%    | WETH, cbETH, wstETH, weETH | WETH           |
+| 8  | wstETH/WETH    | 93% | 95%                   | 1%    | wstETH                     | WETH           |
+| 9  | cbETH/WETH     | 93% | 95%                   | 2%    | cbETH                      | WETH           |
+| 7  | weETH/WETH     | 93% | 95%                   | 1.25% | weETH                      | WETH           |
+| 2  | ezETH wstETH   | 93% | 95%                   | 1%    | ezETH                      | wstETH         |
+| 4  | LBTC_cbBTC     | 82% | 84%                   | 3%    | LBTC                       | cbBTC          |
+| 10 | cbBTC Stablecoins | 82% | 85%                | 4%    | cbBTC                      | USDC, GHO      |
+
+The rest pair one asset (wrsETH, syrupUSDC, AAVE, EURC, LBTC, tBTC, ezETH) with USDC and GHO or with wstETH. Base shows how a broad category gets split into single-asset ones: the multi-asset "ETH correlated" category runs at 90% and 93%, while wstETH/WETH, cbETH/WETH and weETH/WETH run at 93% and 95%.
+
+### Optimism (block 158799548)
+
+| Id | Label          | LTV   | Liquidation threshold | Bonus | Collateral set                             | Borrowable set |
+| -- | -------------- | ----- | --------------------- | ----- | ------------------------------------------ | -------------- |
+| 1  | Stablecoins    | 0.01% | 87%                   | 1%    | DAI, USDC (bridged and native), USDT, sUSD | none           |
+| 2  | ETH correlated | 93%   | 95%                   | 1%    | WETH, wstETH, rETH (rETH at LTV 0)         | WETH           |
+
+Optimism's "Stablecoins" category is a leftover, with an LTV of 0.01% and nothing borrowable. Its "ETH correlated" category matches Ethereum's numbers.
+
+## How is the health factor computed in E-Mode?
+
+In E-Mode the health factor uses the same formula as always, Σ(collateral value × liquidation threshold) ÷ debt value, except that every collateral asset in your category's set takes the category's threshold instead of its own. That is the only change: `GenericLogic.calculateUserAccountData` picks the threshold per asset and `getUserAccountData` returns the result, so any tool that reads that call already shows the E-Mode number. The general formula is in [how the Aave health factor is calculated](/blog/aave-health-factor#how-is-the-aave-health-factor-calculated), and [how E-Mode changes the health factor](/blog/aave-health-factor#how-does-e-mode-change-the-health-factor) in the same guide gives the short version of what follows.
+
+Take wstETH collateral worth $10,000 and WETH debt worth $9,000 on Ethereum Core, with the "ETH correlated" parameters read on 28 Oct 2026 (block 26291736) and wstETH's own parameters read the same day (block 26291849: LTV 79%, liquidation threshold 82%):
+
+1. **In E-Mode:** HF = 10,000 × 0.95 ÷ 9,000 = **1.056**. The borrow limit is 10,000 × 0.93 = $9,300, so $300 more could be borrowed.
+2. **Outside E-Mode:** the same position would have HF = 10,000 × 0.82 ÷ 9,000 = 0.911, and could not be opened at all: wstETH's 79% LTV caps the borrow at $7,900.
+3. **At the E-Mode limit:** borrow the full $9,300 and HF = 9,500 ÷ 9,300 = **1.0215**. The position is 2.1% from liquidation on the day it is opened.
+
+A normal position borrowed to its limit also starts at threshold ÷ LTV, 84 ÷ 81 = 1.037 for WETH on Ethereum Core on 28 Oct 2026 (block 26291849). E-Mode narrows the gap between LTV and threshold to 2 percentage points, and that gap is the whole margin of a maxed position. [Why borrowing the maximum leaves a health factor of only about 1.03](/blog/aave-health-factor#why-does-borrowing-the-maximum-leave-a-health-factor-of-only-about-103) covers the same arithmetic outside E-Mode.
+
+What moves the number is different too. With wstETH collateral and WETH debt, both sides are priced from ETH, so the dollar price of ETH cancels out: if ETH halves, collateral and debt halve together and HF stays at 1.056. What is left is the wstETH/ETH rate the Aave oracle reports. The position reaches 1.00 when that rate falls by 1 − 90 ÷ 95 = 5.3%, the maxed position when it falls by 2.1%. [How E-Mode changes your liquidation price](/blog/aave-liquidation-price#how-does-e-mode-change-your-liquidation-price) turns this into a rate rather than a dollar price.
+
+## How does a leveraged staking loop work in E-Mode, and what is it a bet on?
+
+A leveraged staking loop supplies wstETH, borrows WETH against it, turns the WETH into more wstETH and supplies that too, repeating until the position holds several times the starting amount of wstETH against almost as much WETH debt. E-Mode is what makes it worthwhile: at a 93% LTV the loop can reach 1 ÷ (1 − 0.93) = 14.3 times the starting equity, against 1 ÷ (1 − 0.79) = 4.8 times at wstETH's normal LTV.
+
+Work it through in ETH terms, the unit the loop lives in. Start with wstETH worth 10 ETH, loop to collateral worth 100 ETH and debt of 90 WETH, and you have the 1.056 position above, ten times levered. On 28 Oct 2026 the Aave oracle on Ethereum Core priced wstETH at $2,912.79 and WETH at $2,335.08 (block 26291849), a rate of 1.2474 ETH per wstETH that matched Lido's own `stEthPerToken()` at the same block, so 100 ETH of collateral is about 80.2 wstETH.
+
+Two numbers decide whether the loop earns or loses, and neither is ETH's dollar price:
+
+- **The wstETH/ETH exchange rate.** It rises as staking rewards accrue: Lido reported a stETH APR of 2.25% on 28 Oct 2026 and a 7-day average of 2.33%. The loop collects that yield on 100 ETH while paying interest on 90, so the 10 ETH of equity earns about ten times the spread between the two rates. A fall in the rate the oracle reports, from a market discount on wstETH or from a configuration error, lowers the collateral and not the debt, and is the only price move that can liquidate the loop.
+- **The WETH borrow rate.** The debt grows at Aave's variable rate, 1.94% APR for WETH on Ethereum Core at block 26291849, while the wstETH the loop supplies earns almost nothing from Aave itself (0.0002% at the same block). Whenever the borrow rate is above the staking yield, the loop loses money and its health factor drifts down.
+
+Put the two together for one year at the ten-times position, ignoring compounding and price moves. Collateral grows with the staking yield to about 102.3 ETH. At a 1.94% borrow rate the debt reaches 91.75 WETH: the equity is 10.55 ETH, up 5.5% against 2.3% for holding wstETH, and HF rises to 1.059. At an average borrow rate of 5%, the debt reaches 94.5 WETH, the equity falls to 7.8 ETH and HF slips to 1.028. At 8% the debt reaches 97.2 WETH and HF is 1.000: the loop would be liquidated by interest alone. WETH borrow rates do spike when utilization is high; [why Aave borrow rates spike](/blog/aave-interest-rates#why-do-aave-borrow-rates-spike) explains the curve.
+
+The dollar price of ETH still matters to the loop's owner, since 10 ETH of equity is worth whatever ETH is worth, but it does not matter to the health factor. A loop is a bet that the staking yield stays above the borrow rate and that the oracle's wstETH/ETH rate does not fall by more than the margin. The second bet is the one that was lost in March 2026.
+
+## What are the rules for entering and leaving an E-Mode category?
+
+Entering or leaving a category is one call, `setUserEMode(categoryId)` on the Pool, and the Pool runs three checks before it takes effect, in aave-v3-origin's `ValidationLogic.validateSetUserEMode` and `SupplyLogic.executeSetUserEMode` (main branch, read 28 Oct 2026):
+
+1. **Every asset you are borrowing must be borrowable in the target category.** For a category, that means its borrowable bitmap; for leaving (category 0), that the reserve has borrowing enabled. The error is `InvalidDebtInEmode`. A wallet with USDC debt cannot enter "ETH correlated" on Ethereum Core, where WETH is the only borrowable asset, until the USDC is repaid.
+2. **Every asset you have enabled as collateral must keep a non-zero LTV in the target category.** The error is `InvalidCollateralInEmode`. The check goes through `getUserReserveLtv`, which returns the category's LTV for assets in its collateral set (or 0 if the category flags them LTV 0), the asset's own LTV for collateral outside the set, and 0 for outside collateral when the category is isolated.
+3. **After the switch, your health factor must be at or above 1.** `executeSetUserEMode` changes the category first and then calls `validateHealthFactor`, so a switch that would leave you liquidatable reverts.
+
+A wallet with no supplies or debt can always switch, and a wallet already in the requested category gets no change and no checks.
+
+Two version notes matter for anyone reading older guides. Since V3.2, collateral outside your category's set keeps its own LTV and threshold, so holding WBTC while in "ETH correlated" is allowed and the WBTC counts at WBTC's own parameters: the V3.2 feature notes say the E-Mode parameters "will only apply for the ones listed as eModeCollateral". Since V3.7 a category can carry an `isolated` flag (`getIsEModeCategoryIsolated`). In an isolated category, collateral outside the set gets LTV 0 but keeps its own threshold: it still counts in the health factor but backs no new borrowing, entry is blocked while such collateral is enabled, and enabling it as collateral from inside the category is refused. If governance switches the flag on for a live category, the V3.7 notes say outside collateral "immediately becomes LTV-zero" while the "health factor is unaffected". On 28 Oct 2026 only Ethereum Core's two PT-srUSDe categories had the flag set.
+
+What blocks leaving is the same three checks run against category 0. You cannot leave while you borrow an asset whose reserve has borrowing disabled, and you cannot leave while leaving would push your health factor below 1, which is the common case: the 1.056 position above would show 0.911 outside E-Mode, so the call reverts. To get out you have to repay enough WETH first, down to a debt of about 8,200 against 10,000 of collateral at wstETH's 82% threshold. E-Mode is easy to enter and hard to leave once you have used the room it gives.
+
+## What happened to E-Mode loops in March 2026?
+
+In March 2026 a misconfigured price adapter cut the wstETH exchange rate Aave used on the Ethereum Core and Prime markets by about 2.85%, and every E-Mode position below a health factor of about 1.0288 became liquidatable at once. The account is Chaos Labs' post-mortem on the Aave governance forum, posted 10 Mar 2026 and re-read on 28 Oct 2026; nothing here goes beyond it.
+
+Aave prices wstETH through a CAPO adapter (Correlated Assets Price Oracle) that caps how fast the wstETH/stETH rate it reports may rise, to block inflation-style attacks. The cap is built from a snapshot ratio, a snapshot timestamp and a maximum yearly growth rate. An update set the snapshot timestamp to a reference seven days old, while an on-chain limit (the ratio may rise by at most 3% every 3 days) stopped the ratio from reaching the value that timestamp assumed, so the cap was computed from a reference that was too low. The post-mortem says the maximum allowed rate came out at about 1.1939, below the live rate, so the cap overrode it and the effective rate fell by "around 2.855%".
+
+What it reports as the consequences:
+
+- Roughly 10,938 wstETH of E-Mode liquidations across 34 accounts, affecting positions "with a health factor lower than 1.0288".
+- No bad debt to the protocol.
+- About 512 ETH captured by liquidators in bonuses and value from the rate gap, of which 141 ETH of liquidation bonus revenue and about 13 ETH of fees were recovered to compensate affected users, with the DAO treasury to cover the rest.
+- The wstETH borrow cap on both markets was temporarily cut to 1 while the configuration was fixed.
+
+The size of the move is the lesson for a loop. A position borrowed to the "ETH correlated" limit starts at 1.0215, inside the band that was liquidated; a position at 1.056 was not touched. Nothing in the position itself gave a warning, because the move came from the oracle's configuration rather than from any market. The adapter was still in use on 28 Oct 2026 (block 26291849): the oracle source for wstETH on Ethereum Core described itself as "Capped wstETH / stETH(ETH) / USD", with a snapshot ratio of 1.2283 dated 3 Mar 2026, a maximum yearly growth of 8.8% and a reported ratio of 1.2474, equal to Lido's. [Cause 6 of why your health factor drops](/blog/why-aave-health-factor-dropped#cause-6-did-an-oracle-or-exchange-rate-error-misprice-your-collateral) covers the compensation that followed.
+
+## When does E-Mode not help?
+
+E-Mode does nothing for a position whose debt is outside the category, and little for several other common setups:
+
+- **Debt that the category does not list.** You cannot enter at all while you borrow it. The 10 WETH against 12,000 USDC position from the health factor guide stays at WETH's own 84% threshold on Ethereum Core (block 26291849), because "ETH correlated" lets you borrow only WETH.
+- **Collateral outside the set.** It keeps its own parameters, so adding WBTC to an "ETH correlated" position raises the health factor at WBTC's own threshold, 85% on Ethereum Core at block 26291889, not 95%. In an isolated category it adds nothing to borrowing power.
+- **Stablecoin categories.** On Arbitrum and Optimism the "Stablecoins" category had no borrowable asset on 28 Oct 2026, so it cannot be used for a new loan. On Ethereum Core the stablecoin categories pair one asset (USDe, sUSDe, a PT) with USDC and USDT at 90% to 94% LTV. The risk there is a depeg of the collateral, which a correlated category does not reduce; the thinner margin makes it bite sooner.
+- **Small positions.** A liquidator may clear up to 100% of a debt reserve when the collateral or debt involved is worth less than $2,000 (`LiquidationLogic`, read 28 Oct 2026), so a small loop that crosses 1.00 is closed rather than trimmed; [how much of my debt can be liquidated at once](/blog/how-aave-liquidation-works#how-much-of-my-debt-can-be-liquidated-at-once) has the rule. The 1% bonus in "ETH correlated" is small by Aave standards, but it is paid on the whole amount.
+- **A thin margin you did not intend.** If you enter a category and borrow near its limit, the margin is 2%, whatever the health factor looked like before the switch.
+
+If any of those is your situation, the normal parameters and a wider buffer are the better tool; [how much buffer a health factor gives you](/blog/safe-aave-health-factor#why-is-the-safe-number-different-for-stablecoin-debt-volatile-debt-and-e-mode-loops) compares what the same health factor means for an E-Mode loop and for other positions.
+
+## Can an alert help with an E-Mode position?
+
+A health factor alert helps with an E-Mode position that is kept above about 1.1 to 1.15, and does not fit a loop that is deliberately run below that. Tokenping reads the same health factor the contract reports, from `getUserAccountData`, which already applies your E-Mode category, so there is nothing to configure for E-Mode: the number in the dashboard and in the messages is the number a liquidator sees.
+
+The limit is the threshold. Tokenping's Aave alert threshold goes from 1.1 to 10, with 1.5 as the default. A loop at 1.056, or any position deliberately run below 1.1, is below every threshold you can set. An alert set at 1.1 would find the health factor below it at every 5-minute check and send a message on each one, on every channel you chose, until the position comes back above 1.1. There is no snooze and no digest; [how often you will be alerted](/blog/aave-health-factor-alert-setup#how-often-will-you-be-alerted) spells the behaviour out.
+
+For a thin loop, the honest advice is one of two things. Keep the margin: run the loop so that its health factor sits above the level you want to hear about, say 1.12 to 1.15 for a wstETH/WETH loop, which costs leverage but leaves a 2.85% oracle move short of liquidation, and set the alert there so that interest drifting the position down is what you hear about first. Or accept the constant messages: set 1.1 and treat the stream as the signal that you are running below it, which few people want on Signal or Telegram at every check. What an alert cannot do in either case is react faster than the oracle: the March 2026 move made positions liquidatable the moment the cap applied, and a 5-minute check interval gives no time to act on that. [How you choose an alert threshold, step by step](/blog/safe-aave-health-factor#how-do-you-choose-an-alert-threshold-step-by-step) and [how to set up a health factor alert](/blog/aave-health-factor-alert-setup#step-5-choose-a-threshold) cover the setup; [how to raise your Aave health factor](/blog/avoid-aave-liquidation#step-1-repay-part-of-your-debt) covers what to do when a message arrives, which for a loop usually means repaying WETH.
+
+You can [check your Aave V3 health factor](/aave) first; looking at your positions needs no payment. Alerts cost <AlertPrice />, paid on Arbitrum, one per Aave V3 market or V4 Spoke, and go out on Signal, Telegram or email. Tokenping is in beta and has no uptime guarantee. For a position with a 2% margin, no alert is a substitute for the margin itself.
+
+## Sources
+
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): `POOL_REVISION`, `getReservesList`, and the label, collateral config, collateral, borrowable and LTV-0 bitmaps and isolated flag of categories 1 to 48, at block 26291736 (fetched 28 Oct 2026)
+- Aave V3 Pool on [Arbitrum](https://arbiscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD), [Base](https://basescan.org/address/0xA238Dd80C259a72e81d7e4664a9801593F98d1c5) and [Optimism](https://optimistic.etherscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD): the same calls for every category, at Arbitrum blocks 519074353 to 519074731, Base block 53204166 and Optimism block 158799548 (fetched 28 Oct 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): WETH, wstETH and USDC LTV, threshold, bonus and rates at block 26291849; WBTC at block 26291889 (fetched 28 Oct 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) and its [wstETH CAPO adapter](https://etherscan.io/address/0xe1D97bF61901B075E9626c8A2340a7De385861Ef): WETH and wstETH prices, the adapter's description, snapshot ratio, snapshot timestamp, maximum yearly growth and ratio at block 26291849 (fetched 28 Oct 2026)
+- [wstETH token](https://etherscan.io/address/0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0): `stEthPerToken()` at block 26291849 (fetched 28 Oct 2026)
+- [Lido stETH APR API](https://eth-api.lido.fi/v1/protocol/steth/apr/sma): last APR and 7-day average (fetched 28 Oct 2026)
+- [IPool.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/interfaces/IPool.sol): the E-Mode getters, `setUserEMode` and `getUserEMode` (aave-v3-origin main, fetched 28 Oct 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) and [LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): `validateSetUserEMode`, `getUserReserveLtv`, `executeSetUserEMode` and the $2,000 close factor threshold (aave-v3-origin main, fetched 28 Oct 2026)
+- [Aave V3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): liquid E-Modes, collateral outside a category keeps its own parameters, entry and exit rules (fetched 28 Oct 2026)
+- [Aave V3.7 isolated E-Mode](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md): the isolated flag's effects (fetched 28 Oct 2026)
+- [Aave help: Efficiency Mode (E-mode)](https://aave.com/help/borrowing/e-mode) (fetched 28 Oct 2026)
+- [Chaos Labs post-mortem, exchange rate misalignment on wstETH Core and Prime instances](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): posted 10 Mar 2026 (fetched 28 Oct 2026)
+
+_Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation._

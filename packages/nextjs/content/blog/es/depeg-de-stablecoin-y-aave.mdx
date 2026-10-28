@@ -1,0 +1,161 @@
+export const meta = {
+  slug: "depeg-de-stablecoin-y-aave",
+  title: "Depeg de stablecoin: qué le hace a tu préstamo en Aave",
+  description:
+    "Cómo una pérdida de paridad mueve tu factor de salud en Aave a cada lado del préstamo, cómo Aave valora USDC, USDT y USDe, y qué mostraron 2023 y 2025.",
+  h1: "¿Qué pasa con tu posición en Aave cuando una stablecoin pierde la paridad?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "¿Qué pasa con mi factor de salud en Aave cuando una stablecoin pierde la paridad?",
+  readingMinutes: 18,
+};
+
+<ShortAnswer>
+  Una pérdida de paridad (depeg) de una stablecoin mueve tu factor de salud (health factor) en Aave a través del
+  precio del oráculo, no del $1 que tienes en mente. Si la stablecoin es tu colateral, cada centavo que cae por debajo
+  de $1 pasa directamente al factor de salud, porque los adaptadores de precio de Aave para stablecoins limitan el
+  precio por arriba (con un tope de $1.04 para USDC, USDT, DAI, USDS y PYUSD en Ethereum Core, leído el 28 de octubre
+  de 2026) y no tienen suelo. Si la stablecoin es tu deuda, una caída sube tu factor de salud y una subida lo baja,
+  pero nunca más de lo que permite el tope. USDe es el caso especial: desde el 8 de marzo de 2025 Aave la valora con
+  el feed de USDT, así que su precio de mercado no llega a tu factor de salud en absoluto. Una pérdida de paridad
+  puede mover mucho una posición entre dos comprobaciones de una alerta, así que una alerta te da tiempo, no
+  protección.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Las cifras y los bloques en los que se leyeron: content/blog/snapshots/stablecoin-depeg-aave.md */}
+
+## ¿Qué es la pérdida de paridad de una stablecoin y a qué lado de tu préstamo afecta?
+
+Una stablecoin pierde la paridad cuando su precio de mercado se aleja del $1 que debería mantener. Para un prestatario de Aave eso importa en dos lados, y se comportan de forma distinta:
+
+- **Una stablecoin que depositaste como colateral.** Su precio del oráculo multiplica el valor de tu colateral, así que una caída por debajo de $1 encoge el lado del colateral en el factor de salud. Es [la causa 5 de por qué baja un factor de salud](/es/blog/por-que-bajo-el-factor-de-salud-aave#causa-5-una-stablecoin-que-depositaste-como-colateral-perdio-su-paridad-a-la-baja), y es el lado peligroso.
+- **Una stablecoin que pediste prestada.** Su precio del oráculo multiplica el valor de tu deuda. Una caída por debajo de $1 hace que la deuda valga menos y sube tu factor de salud; una subida por encima de $1 hace que la deuda valga más y lo baja.
+
+El factor de salud en sí es la misma fórmula en ambos casos, explicada en [qué es el factor de salud de Aave](/es/blog/factor-de-salud-aave):
+
+**HF = Σ(valor del colateral × umbral de liquidación) ÷ valor total de la deuda**
+
+Ambos valores vienen del oráculo de Aave. Nada en la fórmula sabe que un activo es una stablecoin: USDC a $0.87 es simplemente un activo que vale $0.87. Lo que hace distintas a las stablecoins es cómo las valora Aave, que es el tema de la tercera sección. Los ejemplos de abajo usan parámetros de Aave V3 Ethereum Core leídos el 28 de octubre de 2026 en el bloque 26291704 (14:03:35 UTC): un umbral de liquidación del 78% para USDC y USDT, y del 84% para WETH.
+
+## ¿Qué le hace al factor de salud una pérdida de paridad de tu colateral en stablecoin?
+
+Una caída del precio del oráculo de una stablecoin que depositaste baja tu factor de salud en proporción a la caída, sin nada que la frene. Toma 20,000 USDC depositados contra 10,000 USDT prestados, ambos a $1 para que las cuentas salgan redondas (el oráculo marcaba $0.99971803 para USDC y $0.99842395 para USDT en el bloque 26291704):
+
+- A $1: 20,000 × 0.78 ÷ 10,000 = **1.56**.
+- USDC a $0.95: 19,000 × 0.78 ÷ 10,000 = **1.48**.
+- USDC a $0.87, el mínimo de marzo de 2023: 17,400 × 0.78 ÷ 10,000 = **1.36**.
+- La liquidación en 1.00 necesitaría USDC a 10,000 ÷ (20,000 × 0.78) = **$0.64**, con USDT sin cambios.
+
+Esa posición tiene margen porque pidió prestado la mitad de lo que permite el LTV del 75%. El mismo colateral con un préstamo hasta el límite, 15,000 USDT, empieza en 15,600 ÷ 15,000 = **1.04**, y USDC a $0.95 lo lleva a 14,820 ÷ 15,000 = **0.99**, que se puede liquidar. Llega a 1.00 con un precio de USDC de unos **$0.96**, una caída de menos del 4%. A $0.87 está en 0.90. Un looping de stablecoins parece tranquilo hasta que el oráculo se mueve, y entonces el margen es la distancia que dejaste entre tu LTV y el umbral; [cuánto margen te da un factor de salud](/es/blog/factor-de-salud-seguro-aave) explica cómo elegirlo.
+
+Un detalle ayuda: solo cuenta la relación entre los dos precios del oráculo. Si USDC y USDT marcan los dos $0.95, la posición de 15,000 USDT vuelve a estar en 14,820 ÷ 14,250 = 1.04, sin cambios. Lo que hizo daño en marzo de 2023 fue que USDC cayó y USDT no.
+
+Cualquier stablecoin que depositaste está expuesta de esta forma, en proporción a su parte de tu colateral. Con WETH y USDC depositados por el mismo valor en dólares (umbrales del 84% y del 78%), USDC es cerca del 48% de tu colateral ponderado, así que una caída del 13% en USDC le quita cerca de un 6%.
+
+## ¿Qué pasa si pierde la paridad la stablecoin que pediste prestada?
+
+Si la stablecoin es tu deuda, el efecto se invierte y, en una dirección, está limitado. Toma 10 WETH depositados (umbral del 84%) contra 12,000 USDT prestados, con ETH a un precio ilustrativo de $2,300 (el oráculo marcaba $2,335.08 en el bloque 26291704):
+
+- USDT a $1: 23,000 × 0.84 ÷ 12,000 = **1.61**.
+- USDT cae a $0.95: la deuda vale 11,400, así que **1.69**. A $0.87 está en **1.85**. Una pérdida de paridad a la baja de tu activo de deuda te ayuda.
+- USDT sube a $1.02: la deuda vale 12,240, así que **1.58**.
+- USDT sube a $1.04 o más: la deuda vale como mucho 12,480, así que **1.55**. El tope mantiene el precio ahí, diga lo que diga el mercado.
+
+Así que una stablecoin prestada puede costarte como mucho cerca de un 4% de tu factor de salud por su propio precio, mientras que como colateral puede quitarte tanto como caiga. Esa asimetría viene del adaptador, no de los parámetros de riesgo de Aave.
+
+<Callout tone="info">
+  Por eso pedir prestada una stablecoin contra un activo volátil, la posición de [hacer short de moneda fiat con Aave](/es/blog/short-de-moneda-fiat-con-aave), apenas está expuesta a las pérdidas de paridad: la stablecoin es deuda, y que caiga es una buena noticia para el prestatario.
+</Callout>
+
+## ¿Cómo valora Aave las stablecoins?
+
+Aave no valora las stablecoins a $1. Cada reserva tiene una fuente de precio fijada por la gobernanza en el contrato AaveOracle, y para las stablecoins esa fuente es un feed de precios de Chainlink en USD envuelto en un adaptador con tope de precio del repositorio de feeds de precios de Aave (el repositorio que antes se llamaba aave-capo; su README dice que pasó a llamarse Aave Price Feeds). El adaptador para stablecoins es `PriceCapAdapterStable`, y su `latestAnswer` hace tres cosas: lee el feed de Chainlink, devuelve el tope fijado por la gobernanza si el feed está por encima de él y, si no, devuelve el precio del feed sin cambios (una respuesta del feed que no sea positiva se convierte en 0). No hay suelo.
+
+Leído del AaveOracle en Ethereum Core en el bloque 26291704 (28 de octubre de 2026, 14:03:35 UTC), mediante `getSourceOfAsset` y los getters de cada adaptador:
+
+| Activo | Umbral de liquidación | Precio del oráculo | Fuente de precio, según se describe el propio adaptador | Tope (`getPriceCap`) |
+| ------ | --------------------- | ------------------ | ------------------------------------------------------- | -------------------- |
+| USDC   | 78%                   | $0.99971803        | "Capped USDC / USD" sobre un feed "USDC / USD"          | $1.04                |
+| USDT   | 78%                   | $0.99842395        | "Capped USDT/USD" sobre un feed "USDT / USD"            | $1.04                |
+| USDe   | 75%                   | $0.99842395        | "Capped USDT/USD" sobre el mismo feed de USDT           | $1.04 (ver abajo)    |
+| DAI    | 77%                   | $0.99923138        | "Capped DAI/USD" sobre un feed "DAI / USD"              | $1.04                |
+| USDS   | 78%                   | $0.99972900        | "Capped USDS/USD" sobre un feed "USDS / USD"            | $1.04                |
+| PYUSD  | 78%                   | $0.99988808        | "Capped pyUSD/USD" sobre un feed "PYUSD / USD"          | $1.04                |
+| GHO    | 0% (no es colateral)  | $1.00000000        | Una fuente fija que no responde a ninguno de los getters del adaptador | ninguno, fijo en $1 |
+
+El `isCapped()` de todos los adaptadores devolvió false ese día: ningún feed estaba por encima de su tope. La fila de USDe necesita una nota: el adaptador al que apunta USDe es un despliegue más antiguo del mismo contrato (creado el 1 de marzo de 2024) que no tiene el getter `getPriceCap`, así que el tope se leyó de su almacenamiento, donde está el mismo 104000000. sUSDe se valora con un adaptador distinto, "Capped sUSDe / USDT / USD", que multiplica la tasa de cambio de sUSDe a USDe por el precio de USDT y marcaba $1.25333685.
+
+Qué significa esto para un prestatario:
+
+- **Por encima de $1 estás protegido como prestatario y limitado como depositante.** Si USDC cotiza a $1.10, Aave lo valora a $1.04, así que una deuda en USDC cuesta como mucho un 4% más y un colateral en USDC gana como mucho un 4% más.
+- **Por debajo de $1 nada se suaviza.** El adaptador deja pasar $0.95 o $0.87 tal cual. Tu colateral vale lo que dice el feed, y tu factor de salud lo sigue en cada lectura.
+- **El tope puede cambiar.** `setPriceCap` está abierto a los administradores de riesgo y de pool de Aave, no puede fijar un tope por debajo del precio actual del feed y no puede pasar de $2. Los topes de arriba son lo que había en la cadena el 28 de octubre de 2026, no una promesa.
+- **Lo que importa es el feed, no el precio de un exchange.** El feed de Chainlink agrega varios mercados, así que el precio de un solo exchange no es el precio del oráculo. Que eso sea un consuelo o un peligro depende del lado del préstamo en el que estés; las dos secciones siguientes muestran ambos casos.
+
+Los errores del oráculo son otro tema: un adaptador puede valorar mal un activo sin ningún movimiento del mercado, como hizo el incidente de wstETH de marzo de 2026, y [la causa 6 de por qué baja un factor de salud](/es/blog/por-que-bajo-el-factor-de-salud-aave#causa-6-un-error-del-oraculo-o-de-la-tasa-de-cambio-valoro-mal-tu-colateral) trata ese caso.
+
+## ¿Por qué USDe se valora con el feed de USDT y qué significó eso el 10 de octubre de 2025?
+
+Desde el 8 de marzo de 2025, Aave V3 Ethereum Core valora USDe con el feed de precios de USDT, así que el precio de mercado de USDe no llega a ningún factor de salud allí. La decisión salió de una propuesta de gobernanza, "sUSDe and USDe Price Feed Update", publicada en el foro de gobernanza de Aave por Chaos Labs junto con LlamaRisk el 2 de enero de 2025. Decía, en sus propias palabras, que "suggests hardcoding the USDe price to match the USDT price in Aave's pricing feeds" (sugiere fijar el precio de USDe para que coincida con el de USDT en los feeds de precios de Aave), con el argumento de que la mayoría de las coberturas de Ethena están denominadas en USDT y de que valorar sUSDe a partir del mercado secundario de USDe exponía las posiciones respaldadas por sUSDe a desviaciones de corto plazo y a liquidaciones innecesarias. El hilo recibió objeciones (una respuesta preguntó por qué no fijar $1.00 en su lugar; otra se preocupaba de que las posiciones en sUSDe quedaran ahora expuestas al precio de USDT), y Chaos Labs calificó la configuración de medida temporal el 16 de enero de 2025. La votación en Snapshot fue del 3 al 6 de febrero de 2025 y se aprobó. En la cadena, AIP 262 entró en vigor en el bloque 22002625 el 8 de marzo de 2025 (14:01:47 UTC): la fuente del AaveOracle para USDe pasó de un adaptador "Capped USDe / USD" al adaptador "Capped USDT/USD", y la de sUSDe a "Capped sUSDe / USDT / USD". El antiguo adaptador USDe/USD sigue existiendo y sigue respondiendo: en el bloque 26291704 marcaba $0.99969500, mientras Aave valoraba USDe a los $0.99842395 de USDT.
+
+El 10 de octubre de 2025, durante el desplome general del mercado, esto se puso a prueba. La publicación de LlamaRisk en el foro del 24 de octubre de 2025 describe "aggressive cryptocurrency market volatility events on centralized exchanges, most notably Binance" (episodios agresivos de volatilidad en los exchanges centralizados, sobre todo en Binance) que llevaron el precio de USDe en el mercado secundario "down to $0.65 at the lowest point" (hasta $0.65 en el punto más bajo), y dice que el feed USDe/USD de Chainlink, que toma datos de varios mercados, "did not deviate significantly during this localized de-peg" (no se desvió de forma significativa durante esta pérdida de paridad localizada). La respuesta de Chaos Labs del 2 de noviembre de 2025 da la cifra: el precio USDe/USD de Chainlink "reached as low as $0.977" (llegó a bajar hasta $0.977). Aave no vio ninguno de los dos precios. En palabras de LlamaRisk, "Aave avoided immediate issues from the de-peg on Binance by pricing USDe on par with USDT" (Aave evitó problemas inmediatos por la pérdida de paridad en Binance al valorar USDe a la par de USDT). La nota de investigación de LlamaRisk del 18 de octubre de 2025 añade que los depósitos de USDe en Aave, de $1,030 millones, "remained remarkably stable" (se mantuvieron notablemente estables) durante el episodio.
+
+Dos salvedades honestas. Primera: esto es lo que dicen las fuentes, y nada más. Ningún informe post mortem público encontrado para esta guía cuenta las liquidaciones relacionadas con USDe en Aave ese día, así que esta guía no afirma que no hubiera ninguna. Segunda: la misma publicación de LlamaRisk que atribuye al feed de USDT haber evitado problemas también dice que el enfoque "transfers the solvency risk to the Aave protocol" (traslada el riesgo de solvencia al protocolo Aave): si USDe perdiera alguna vez su respaldo, el oráculo de Aave seguiría valorándola como USDT hasta que la gobernanza interviniera. En esa publicación LlamaRisk propuso un oráculo de USDe con gestión de riesgo y una congelación automática; Chaos Labs recomendó no adoptarlo el 2 de noviembre de 2025, y el hilo se cerró el 7 de diciembre de 2025 sin que conste ninguna votación. El 28 de octubre de 2026, USDe en Ethereum Core seguía apuntando al adaptador de USDT, con un umbral de liquidación del 75% y un LTV de 0.
+
+Para un prestatario esto corta en ambos sentidos. Si tienes USDe como colateral en Ethereum Core, una venta masiva de USDe en un exchange no mueve tu factor de salud, pero una pérdida de paridad de USDT sí lo haría, y también una votación de gobernanza que devuelva el feed al anterior. Si pediste prestado USDe, un descuento en el mercado hace que sea más barato recomprarlo, pero Aave sigue valorando tu deuda al precio de USDT.
+
+## ¿Qué les pasó a los prestatarios de Aave cuando USDC cayó en marzo de 2023?
+
+El 11 de marzo de 2023, después de que Circle revelara que parte de las reservas de USDC estaba en Silicon Valley Bank, USDC cayó en el mercado hasta un mínimo de unos 88 centavos hacia las 08:00 UTC, según el informe post mortem de Gauntlet para Aave (17 de marzo de 2023). El precio de USDC en Aave siguió al feed de Chainlink hacia abajo (los adaptadores con tope llegaron después, y no habrían cambiado una caída), y cada posición con USDC como colateral perdió factor de salud al mismo ritmo, que es exactamente el primer ejemplo práctico de arriba.
+
+La gobernanza y los equipos de riesgo actuaron en cuestión de horas, todo en el hilo del foro que Gauntlet abrió a las 08:13 UTC:
+
+- **09:19 UTC:** Gauntlet recomendó pausar temporalmente todos los mercados de Aave V2 y V3, para evitar que las liquidaciones materializaran insolvencias.
+- **10:19 UTC:** BGD Labs señaló que el Aave Guardian solo podía actuar de inmediato en Aave V3 Avalanche, donde la infraestructura de gobernanza entre cadenas no aplicaba, y propuso congelar allí las stablecoins y poner su LTV en 0.
+- **Hacia las 13:00 UTC:** el Guardian congeló USDC, USDT, DAI, FRAX y MAI en Aave V3 Avalanche y puso su LTV en 0, confirmado por BGD Labs en el hilo, que añadió que la congelación no cambiaba ningún factor de salud existente. La cuenta de Aave lo anunció a las 16:44 UTC.
+- **Sin pausa.** El informe post mortem de Gauntlet dice que el Guardian no aplicó la pausa, sopesando el riesgo frente a las implicaciones estratégicas y filosóficas; una congelación bloquea los nuevos depósitos y préstamos, pero deja continuar las liquidaciones.
+
+El resultado, según el mismo informe: unos $280,000 de insolvencias en el E-Mode de Aave V3 Avalanche y unos $20,000 en V3 Arbitrum durante el fin de semana del 11 al 12 de marzo, unos $300,000 en total, y ninguna pérdida materializada en Aave V2. Gauntlet estimó que con USDC a 80 centavos solo las insolvencias de V2 podrían haber llegado a cerca de $1 millón. La lección para un prestatario es que la respuesta del protocolo a una pérdida de paridad está dirigida al protocolo: una congelación impide que entre riesgo nuevo, no hace tu posición más segura, y la pausa que habría detenido las liquidaciones no se usó.
+
+## ¿Puede una pérdida de paridad causar deuda incobrable y quién la paga?
+
+Sí. Cuando el colateral cae más rápido de lo que los liquidadores pueden absorberlo, una posición puede acabar con un colateral que vale menos que su deuda más la bonificación de liquidación, y la diferencia se convierte en deuda incobrable. Los $300,000 de marzo de 2023 fueron precisamente eso, sobre todo en un E-Mode de stablecoins donde las posiciones iban cerca del límite. Desde Aave v3.3, ese faltante se quema de la deuda del prestatario y se registra como déficit del activo, y Umbrella, el respaldo de staking de Aave, puede quemar aTokens en staking para cubrirlo (su activación empezó en Ethereum, según la documentación de Aave). Nada de eso ayuda al prestatario, cuyo colateral ya no está; [puede una liquidación dejar deuda incobrable](/es/blog/como-funciona-la-liquidacion-en-aave#puede-una-liquidacion-dejar-deuda-incobrable) tiene la mecánica y un ejemplo práctico.
+
+## ¿En qué se diferencia esto en Morpho?
+
+En Morpho no hay una valoración de stablecoins a nivel de protocolo ni ningún tope. Cada mercado de Morpho Blue tiene su propio oráculo, elegido por quien creó el mercado y fijo durante toda la vida del mercado, y la documentación de Morpho dice "Once a market is deployed, its oracle address cannot be modified" (una vez desplegado un mercado, la dirección de su oráculo no se puede modificar). Algunos oráculos solo valoran el colateral y tratan el token de préstamo como $1, así que una pérdida de paridad de la stablecoin prestada no cambia nada; otros incluyen un feed para ella. Que una pérdida de paridad de USDC toque tu posición en Morpho depende de ese único contrato, y [qué mueve el factor de salud en Morpho](/es/blog/factor-de-salud-morpho#que-mueve-el-factor-de-salud-en-morpho) muestra cómo leerlo.
+
+## ¿Qué puedes hacer frente al riesgo de pérdida de paridad en Aave?
+
+El riesgo de pérdida de paridad se decide sobre todo al elegir la posición, así que las acciones útiles son elecciones más que reacciones:
+
+1. **Pon la stablecoin del lado de la deuda cuando puedas.** Las stablecoins prestadas solo pueden hacerte daño subiendo, y el tope limita eso a cerca de un 4%. El colateral en stablecoins no tiene suelo. [Elegir una deuda que encaje con tu colateral](/es/blog/como-evitar-la-liquidacion-en-aave#paso-5-elige-una-deuda-que-encaje-con-tu-colateral) repasa los pares.
+2. **Si tienes colateral en stablecoins, deja un margen en centavos, no en porcentaje.** El ejemplo cerca del límite de arriba llega a 1.00 a unos $0.96. Un factor de salud de 1.56, el mismo colateral con un tercio menos de deuda, necesita $0.64. Decide a qué precio aceptarías que te liquiden y luego dimensiona el préstamo en función de él.
+3. **Vigila el oráculo, no el exchange.** El precio que te liquida es `AaveOracle.getAssetPrice(asset)`, que para las stablecoins en Ethereum Core es un feed de Chainlink bajo un tope, y para USDe es el feed de USDT. Una cotización en un exchange no es ni necesaria ni suficiente.
+4. **Ten claro qué puede hacer la gobernanza.** Los topes y las fuentes cambian por votación o por acción de los administradores de riesgo, y una congelación durante una crisis no pausará las liquidaciones. Los hilos de marzo de 2023 y de octubre de 2025 de arriba son el registro de lo que se hizo.
+5. **Ten la salida preparada.** Pagar la deuda con la stablecoin que perdió la paridad es barato si es tu deuda y caro si tienes que comprarla; [cómo subir tu factor de salud en Aave](/es/blog/como-evitar-la-liquidacion-en-aave) enumera los movimientos que funcionan durante una congelación, ya que una reserva congelada sigue permitiendo pagar la deuda.
+
+## ¿Puede una alerta avisarte de una pérdida de paridad?
+
+Una alerta puede decirte que tu factor de salud cruzó una línea; no puede frenar una pérdida de paridad. Tokenping comprueba tu factor de salud de Aave V3 y V4 cada 5 minutos en 22 redes y te envía un mensaje por Signal, Telegram o correo electrónico mientras esté por debajo del umbral que fijes (de 1.1 a 10). Lee el factor de salud del contrato Pool, así que el precio que hay detrás es el precio del oráculo de Aave, el mismo con el que se paga a los liquidadores: una cotización de $0.65 para USDe en Binance no llega a ningún factor de salud en Ethereum Core, mientras que una lectura de $0.88 para USDC en Chainlink llega a todas las posiciones con colateral en USDC, y la alerta sigue si eso lleva el factor de salud por debajo de tu umbral.
+
+Cinco minutos son mucho tiempo en una pérdida de paridad. El 11 de marzo de 2023 USDC estaba en unos 88 centavos hacia las 08:00 UTC, y la posición cerca del límite de arriba llega a 1.00 a unos $0.96, así que una comprobación cada 5 minutos puede encontrar esa posición ya por debajo de 1.00 en la primera comprobación que vea la caída. Lo que sí te da una alerta es la parte lenta: una stablecoin que se desliza a $0.98 y se queda ahí, un umbral que la gobernanza recorta, el interés que se acumula. Fija el umbral donde todavía te sentirías cómodo actuando, y recuerda que actuar durante una pérdida de paridad significa pagar deuda o añadir colateral en una red que todo el mundo está usando al mismo tiempo. [Cómo configurar una alerta del factor de salud](/es/blog/configurar-alertas-factor-de-salud-aave) explica los pasos, las alertas cuestan <AlertPrice />, y puedes [revisar tu factor de salud en Aave V3](/es/aave) primero; ver tus posiciones no requiere pago.
+
+## Fuentes
+
+- [PoolDataProvider de Aave V3 Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): LTV y umbrales de liquidación de USDC, USDT, USDe, DAI, USDS, PYUSD, GHO y WETH en el bloque 26291704 (consultado el 28 de octubre de 2026)
+- [AaveOracle de Aave V3 Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2#readContract): `getAssetPrice` y `getSourceOfAsset` de los mismos activos en el bloque 26291704, y el evento `AssetSourceUpdated` de USDe y sUSDe en el bloque 22002625 (consultado el 28 de octubre de 2026)
+- [Adaptador Capped USDC / USD](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract), [adaptador Capped USDT/USD](https://etherscan.io/address/0x260326c220E469358846b187eE53328303Efe19C#readContract) y [el adaptador al que apunta USDe](https://etherscan.io/address/0xC26D4a1c46d884cfF6dE9800B6aE7A8Cf48B4Ff8#code), "Aave: Ethena Correlated USDe Price Feed", creado el 1 de marzo de 2024: descripciones, topes, `isCapped` y feeds subyacentes en el bloque 26291704 (consultado el 28 de octubre de 2026)
+- [PriceCapAdapterStable.sol](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol) y el [README de Aave Price Feeds](https://github.com/aave-dao/aave-price-feeds): lógica del tope, control de acceso de `setPriceCap`, el cambio de nombre desde Aave Capo (consultado el 28 de octubre de 2026)
+- [Documentación del oráculo de Aave](https://aave.com/docs/ecosystem/oracle.md): fuentes fijadas por reserva por la gobernanza (consultado el 28 de octubre de 2026)
+- [ARFC: sUSDe and USDe Price Feed Update](https://governance.aave.com/t/arfc-susde-and-usde-price-feed-update/20495) (Chaos Labs y LlamaRisk, 2 de enero de 2025, Snapshot del 3 al 6 de febrero de 2025), [AIP 262](https://vote.onaave.com/proposal/?proposalId=262) y su [pull request del payload](https://github.com/aave-dao/aave-proposals-v3/pull/621), fusionado el 3 de marzo de 2025 (consultado el 28 de octubre de 2026)
+- [Ejecución de AIP 262 en Ethereum](https://etherscan.io/tx/0xbb810541258db350d632e9a22ed7d7547509c67b2585dbc7a64a76b6ac8e42e0): fuentes de USDe y sUSDe actualizadas en el bloque 22002625, 8 de marzo de 2025, 14:01:47 UTC (consultado el 28 de octubre de 2026)
+- [ARFC: Ethena USDe Risk Oracle and Automated Freeze Guardian](https://governance.aave.com/t/arfc-ethena-usde-risk-oracle-and-automated-freeze-guardian/23303) (LlamaRisk, 24 de octubre de 2025; respuesta de Chaos Labs del 2 de noviembre de 2025; cerrado el 7 de diciembre de 2025) (consultado el 28 de octubre de 2026)
+- [When Pricing Breaks: A USDe Case](https://llamarisk.com/research/when-pricing-breaks-usde) (LlamaRisk, 18 de octubre de 2025, consultado el 28 de octubre de 2026)
+- [ARC: Stablecoin Volatility Risk Parameter Recommendations](https://governance.aave.com/t/arc-stablecoin-volatility-risk-parameter-recomendations/12241) (Gauntlet, 11 de marzo de 2023, con la confirmación de la congelación por BGD Labs el mismo día) y [el anuncio de Aave](https://x.com/aave/status/1634596115483086848) (11 de marzo de 2023, 16:44 UTC) (consultado el 28 de octubre de 2026)
+- [Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (Gauntlet, 17 de marzo de 2023, consultado el 28 de octubre de 2026)
+- [Funciones de Aave v3.3](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md) y [documentación de Aave Umbrella](https://aave.com/docs/aave-v3/umbrella): déficit y slashing (consultado el 28 de octubre de 2026)
+- [Documentación de Morpho: oráculos](https://docs.morpho.org/learn/concepts/oracle): un oráculo por mercado, elegido por el curador, inmutable (consultado el 28 de octubre de 2026)
+
+*Contenido educativo, no asesoramiento financiero. Las alertas reducen el riesgo, pero no evitan la liquidación.*

@@ -1,0 +1,159 @@
+export const meta = {
+  slug: "stablecoin-depeg-aave",
+  title: "What a stablecoin depeg does to your Aave loan",
+  description:
+    "How a depeg moves an Aave health factor on each side of a loan, how Aave's capped feeds price USDC, USDT and USDe, and what 2023 and 2025 showed.",
+  h1: "What happens to your Aave position when a stablecoin depegs?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "What happens to my Aave health factor when a stablecoin depegs?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  A stablecoin depeg moves your Aave health factor through the oracle price, not the $1 you have in mind. If the
+  stablecoin is your collateral, every cent it falls below $1 passes straight into the health factor, because Aave's
+  stablecoin price adapters cap the price from above (at $1.04 for USDC, USDT, DAI, USDS and PYUSD on Ethereum Core,
+  read on 28 Oct 2026) and have no floor. If the stablecoin is your debt, a fall raises your health factor and a rise
+  lowers it, but never by more than the cap allows. USDe is the special case: since 8 Mar 2025 Aave has priced it with
+  USDT's feed, so its market price does not reach your health factor at all. A depeg can move a position a long way
+  between two alert checks, so an alert buys time, not protection.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Figures and the block numbers they were read at: content/blog/snapshots/stablecoin-depeg-aave.md */}
+
+## What is a stablecoin depeg, and which side of your loan does it hit?
+
+A stablecoin depegs when its market price leaves the $1 it is meant to hold. For an Aave borrower that matters on two sides, and they behave differently:
+
+- **A stablecoin you supplied as collateral.** Its oracle price multiplies your collateral value, so a fall below $1 shrinks the collateral side of the health factor. This is [Cause 5 of why a health factor drops](/blog/why-aave-health-factor-dropped#cause-5-did-a-stablecoin-you-supplied-as-collateral-depeg-downward), and it is the dangerous side.
+- **A stablecoin you borrowed.** Its oracle price multiplies your debt value. A fall below $1 makes the debt worth less and raises your health factor; a rise above $1 makes the debt worth more and lowers it.
+
+The health factor itself is the same formula in both cases, explained in [what the Aave health factor is](/blog/aave-health-factor):
+
+**HF = Σ(collateral value × liquidation threshold) ÷ total debt value**
+
+Both values come from Aave's oracle. Nothing in the formula knows that an asset is a stablecoin: USDC at $0.87 is simply an asset worth $0.87. What makes stablecoins different is how Aave prices them, which is the subject of the third section. The examples below use Aave V3 Ethereum Core parameters read on 28 Oct 2026 at block 26291704 (14:03:35 UTC): a liquidation threshold of 78% for USDC and USDT, 84% for WETH.
+
+## What does a depeg of your stablecoin collateral do to the health factor?
+
+A fall in the oracle price of a stablecoin you supplied lowers your health factor in proportion to the fall, with nothing to stop it. Take 20,000 USDC supplied against 10,000 USDT borrowed, both at $1 to keep the sums round (the oracle read $0.99971803 for USDC and $0.99842395 for USDT at block 26291704):
+
+- At $1: 20,000 × 0.78 ÷ 10,000 = **1.56**.
+- USDC at $0.95: 19,000 × 0.78 ÷ 10,000 = **1.48**.
+- USDC at $0.87, the March 2023 low: 17,400 × 0.78 ÷ 10,000 = **1.36**.
+- Liquidation at 1.00 would need USDC at 10,000 ÷ (20,000 × 0.78) = **$0.64**, with USDT unchanged.
+
+That position has room because it borrowed half of what the 75% LTV allows. The same collateral borrowed to the limit, 15,000 USDT, starts at 15,600 ÷ 15,000 = **1.04**, and USDC at $0.95 takes it to 14,820 ÷ 15,000 = **0.99**, which can be liquidated. It reaches 1.00 at a USDC price of about **$0.96**, a fall of under 4%. At $0.87 it is 0.90. A stablecoin loop looks calm until the oracle moves, and then the buffer is whatever gap you left between your LTV and the threshold; [how much buffer a health factor gives you](/blog/safe-aave-health-factor) covers how to pick it.
+
+One detail helps: only the ratio between the two oracle prices counts. If USDC and USDT both read $0.95, the 15,000 USDT position is 14,820 ÷ 14,250 = 1.04 again, unchanged. What hurt in March 2023 was that USDC fell while USDT did not.
+
+Any stablecoin you supplied is exposed this way, in proportion to its share of your collateral. With WETH and USDC supplied in equal dollar amounts (thresholds 84% and 78%), USDC is about 48% of your weighted collateral, so a USDC fall of 13% removes about 6% of it.
+
+## What does a depeg of the stablecoin you borrowed do?
+
+If the stablecoin is your debt, the effect is reversed and, in one direction, limited. Take 10 WETH supplied (threshold 84%) against 12,000 USDT borrowed, with ETH at an illustrative $2,300 (the oracle read $2,335.08 at block 26291704):
+
+- USDT at $1: 23,000 × 0.84 ÷ 12,000 = **1.61**.
+- USDT falls to $0.95: the debt is worth 11,400, so **1.69**. At $0.87 it is **1.85**. A downward depeg of your debt asset helps you.
+- USDT rises to $1.02: the debt is worth 12,240, so **1.58**.
+- USDT rises to $1.04 or beyond: the debt is worth at most 12,480, so **1.55**. The cap holds the price there whatever the market says.
+
+So a borrowed stablecoin can cost you at most about 4% of your health factor from its own price, while it can take away as much of it as it falls as collateral. That asymmetry comes from the adapter, not from Aave's risk parameters.
+
+<Callout tone="info">
+  This is also why borrowing a stablecoin against a volatile asset, the position in [shorting fiat with Aave](/blog/short-fiat-with-aave), is barely exposed to depegs: the stablecoin is debt, and a fall in it is good news for the borrower.
+</Callout>
+
+## How does Aave price stablecoins?
+
+Aave does not value stablecoins at $1. Each reserve has a price source set by governance in the AaveOracle contract, and for stablecoins that source is a Chainlink USD feed wrapped in a price cap adapter from Aave's price feeds repository (the repository that used to be called aave-capo; its README says it was renamed to Aave Price Feeds). The stablecoin adapter is `PriceCapAdapterStable`, and its `latestAnswer` does three things: it reads the Chainlink feed, returns the governance-set cap if the feed is above it, and otherwise returns the feed's price unchanged (a non-positive feed answer becomes 0). There is no floor.
+
+Read from the AaveOracle on Ethereum Core at block 26291704 (28 Oct 2026, 14:03:35 UTC), via `getSourceOfAsset` and each adapter's own getters:
+
+| Asset | Liquidation threshold | Oracle price | Price source, as the adapter describes itself | Cap (`getPriceCap`) |
+| ----- | --------------------- | ------------ | --------------------------------------------- | ------------------- |
+| USDC  | 78%                   | $0.99971803  | "Capped USDC / USD" over a "USDC / USD" feed  | $1.04               |
+| USDT  | 78%                   | $0.99842395  | "Capped USDT/USD" over a "USDT / USD" feed    | $1.04               |
+| USDe  | 75%                   | $0.99842395  | "Capped USDT/USD" over the same USDT feed     | $1.04 (see below)   |
+| DAI   | 77%                   | $0.99923138  | "Capped DAI/USD" over a "DAI / USD" feed      | $1.04               |
+| USDS  | 78%                   | $0.99972900  | "Capped USDS/USD" over a "USDS / USD" feed    | $1.04               |
+| PYUSD | 78%                   | $0.99988808  | "Capped pyUSD/USD" over a "PYUSD / USD" feed  | $1.04               |
+| GHO   | 0% (not collateral)   | $1.00000000  | A fixed source that answers none of the adapter's getters | none, fixed at $1 |
+
+Every adapter's `isCapped()` returned false that day: none of the feeds was above its cap. The USDe row needs a note: the adapter USDe points to is an older deployment of the same contract (created 1 Mar 2024) that has no `getPriceCap` getter, so the cap was read from its storage, where the same 104000000 sits. sUSDe is priced by a different adapter, "Capped sUSDe / USDT / USD", which multiplies the sUSDe to USDe exchange rate by USDT's price and read $1.25333685.
+
+What this means for a borrower:
+
+- **Above $1, you are protected as a borrower and capped as a supplier.** If USDC trades at $1.10, Aave values it at $1.04, so a USDC debt costs at most 4% more and USDC collateral earns at most 4% more.
+- **Below $1, nothing is softened.** The adapter passes $0.95 or $0.87 through exactly. Your collateral is worth what the feed says, and your health factor follows it on every read.
+- **The cap can change.** `setPriceCap` is open to Aave's risk admins and pool admins, can't set a cap below the feed's current price and can't go above $2. The caps above are what was on chain on 28 Oct 2026, not a promise.
+- **The feed is what matters, not the exchange print.** Chainlink's feed aggregates several venues, so one exchange's price is not the oracle price. Whether that is a comfort or a danger depends on which side of the loan you are on; the next two sections show both.
+
+Oracle errors are a separate subject: an adapter can misprice an asset with no market move at all, as the wstETH incident of March 2026 did, and [Cause 6 of why a health factor drops](/blog/why-aave-health-factor-dropped#cause-6-did-an-oracle-or-exchange-rate-error-misprice-your-collateral) covers that case.
+
+## Why is USDe priced with USDT's feed, and what did that mean on 10 October 2025?
+
+Since 8 Mar 2025 Aave V3 Ethereum Core has priced USDe with USDT's price feed, so USDe's own market price does not reach any health factor there. The decision came from a governance proposal, "sUSDe and USDe Price Feed Update", posted on the Aave governance forum by Chaos Labs with LlamaRisk on 2 Jan 2025. It said, in its own words, that it "suggests hardcoding the USDe price to match the USDT price in Aave's pricing feeds", with the argument that most of Ethena's hedges are USDT-denominated and that pricing sUSDe off USDe's secondary market exposed sUSDe-backed positions to short-term deviations and unnecessary liquidations. The thread drew pushback (one reply asked why not hardcode $1.00 instead; another worried that sUSDe positions were now exposed to USDT's price), and Chaos Labs called the setup a temporary measure on 16 Jan 2025. The Snapshot vote ran from 3 to 6 Feb 2025 and passed. On chain, AIP 262 took effect in block 22002625 on 8 Mar 2025 (14:01:47 UTC): the AaveOracle's source for USDe switched from a "Capped USDe / USD" adapter to the "Capped USDT/USD" adapter, and sUSDe's source to "Capped sUSDe / USDT / USD". The old USDe/USD adapter still exists and still answers: at block 26291704 it read $0.99969500, while Aave priced USDe at USDT's $0.99842395.
+
+On 10 Oct 2025, during the market-wide crash, this was tested. LlamaRisk's forum post of 24 Oct 2025 describes "aggressive cryptocurrency market volatility events on centralized exchanges, most notably Binance" that moved USDe's secondary-market price "down to $0.65 at the lowest point", and says the Chainlink USDe/USD feed, which sources from several venues, "did not deviate significantly during this localized de-peg". Chaos Labs' reply of 2 Nov 2025 gives the number: the Chainlink USDe/USD price "reached as low as $0.977". Aave itself saw neither price. In LlamaRisk's words, "Aave avoided immediate issues from the de-peg on Binance by pricing USDe on par with USDT". LlamaRisk's research note of 18 Oct 2025 adds that Aave's USDe deposits of $1.03 billion "remained remarkably stable" through the event.
+
+Two honest caveats. First, this is what the sources say, and no more: no public post-mortem found for this guide counts USDe-related liquidations on Aave that day, so this guide does not claim there were none. Second, the same LlamaRisk post that credits the USDT feed with avoiding trouble also says the approach "transfers the solvency risk to the Aave protocol": if USDe ever lost its backing, Aave's oracle would keep valuing it like USDT until governance intervened. LlamaRisk proposed a risk-managed USDe oracle with an automated freeze in that post; Chaos Labs recommended against it on 2 Nov 2025, and the thread closed on 7 Dec 2025 with no vote recorded. On 28 Oct 2026 USDe on Ethereum Core still pointed to the USDT adapter, with a 75% liquidation threshold and an LTV of 0.
+
+For a borrower this cuts both ways. If you hold USDe as collateral on Ethereum Core, a USDe sell-off on an exchange does not move your health factor, but a USDT depeg would, and so would a governance vote that switches the feed back. If you borrowed USDe, a discount on the market makes it cheaper to buy back, but Aave still values your debt at USDT's price.
+
+## What happened to Aave borrowers when USDC fell in March 2023?
+
+On 11 Mar 2023, after Circle disclosed that part of USDC's reserves was held at Silicon Valley Bank, USDC fell on the market to a low of around 88 cents at about 08:00 UTC, according to Gauntlet's post-mortem for Aave (17 Mar 2023). Aave's USDC price followed the Chainlink feed down (the capped adapters came later, and they would not have changed a fall), and every position with USDC as collateral lost health factor in step, which is exactly the first worked example above.
+
+Governance and the risk teams moved within hours, all on the forum thread Gauntlet opened at 08:13 UTC:
+
+- **09:19 UTC:** Gauntlet recommended pausing all Aave V2 and V3 markets temporarily, to stop liquidations from realising insolvencies.
+- **10:19 UTC:** BGD Labs pointed out that the Aave Guardian could act immediately only on Aave V3 Avalanche, where the cross-chain governance infrastructure did not apply, and proposed freezing stablecoins there and setting their LTV to 0.
+- **About 13:00 UTC:** the Guardian froze USDC, USDT, DAI, FRAX and MAI on Aave V3 Avalanche and set their LTV to 0, confirmed by BGD Labs on the thread, which added that the freeze did not change any existing health factor. Aave's account announced it at 16:44 UTC.
+- **No pause.** Gauntlet's post-mortem says the Guardian did not implement the pause, weighing the risk against the strategic and philosophical implications; a freeze blocks new supply and borrowing but lets liquidations continue.
+
+The result, from the same post-mortem: about $280,000 of insolvencies on Aave V3 Avalanche E-Mode and about $20,000 on V3 Arbitrum over the weekend of 11 to 12 March, about $300,000 in all, and no realised losses on Aave V2. Gauntlet estimated that at a USDC price of 80 cents the V2 insolvencies alone could have reached about $1 million. The lesson for a borrower is that the protocol's response to a depeg is aimed at the protocol: a freeze stops new risk coming in, it does not make your position safer, and the pause that would have stopped liquidations was not used.
+
+## Can a depeg cause bad debt, and who pays for it?
+
+Yes. When collateral falls faster than liquidators can clear it, a position can end up with collateral worth less than its debt plus the liquidation bonus, and the shortfall becomes bad debt. The $300,000 of March 2023 was precisely that, mostly in a stablecoin E-Mode where positions ran close to the limit. Since Aave v3.3 such a shortfall is burned from the borrower's debt and recorded as a deficit on the asset, and Umbrella, Aave's staking backstop, can burn staked aTokens to cover it (its activation started on Ethereum, per Aave's docs). None of that helps the borrower, whose collateral is already gone; [can a liquidation leave bad debt](/blog/how-aave-liquidation-works#can-a-liquidation-leave-bad-debt) has the mechanics and a worked example.
+
+## How is this different on Morpho?
+
+On Morpho there is no protocol-wide stablecoin pricing and no cap. Each Morpho Blue market has its own oracle, chosen by whoever created the market and fixed for the life of the market, and Morpho's docs say "Once a market is deployed, its oracle address cannot be modified." Some oracles only price the collateral and treat the loan token as $1, so a depeg of the loan stablecoin changes nothing; others include a feed for it. Whether a USDC depeg touches your Morpho position depends on that one contract, and [what moves a Morpho health factor](/blog/morpho-health-factor#what-moves-a-morpho-health-factor) shows how to read it.
+
+## What can you do about depeg risk on Aave?
+
+Depeg risk is mostly decided when you choose the position, so the useful actions are choices rather than reactions:
+
+1. **Put the stablecoin on the debt side when you can.** Borrowed stablecoins can only hurt you by rising, and the cap limits that to about 4%. Stablecoin collateral has no floor. [Choosing debt that matches your collateral](/blog/avoid-aave-liquidation#step-5-choose-debt-that-matches-your-collateral) goes through the pairs.
+2. **If you hold stablecoin collateral, keep a buffer in cents, not percent.** The near-limit example above reaches 1.00 at about $0.96. A 1.56 health factor, the same collateral with a third less debt, needs $0.64. Decide which price you are willing to be liquidated at, then size the loan to it.
+3. **Watch the oracle, not the exchange.** The price that liquidates you is `AaveOracle.getAssetPrice(asset)`, which for stablecoins on Ethereum Core is a Chainlink feed under a cap, and for USDe is USDT's feed. A print on one exchange is neither necessary nor sufficient.
+4. **Know what governance can do.** Caps and sources change by vote or risk-admin action, and a freeze during a crisis will not pause liquidations. The March 2023 and October 2025 threads above are the record of what was done.
+5. **Have the exit ready.** Repaying with the depegged stablecoin is cheap if it is your debt and expensive if you must buy it; [how to raise your Aave health factor](/blog/avoid-aave-liquidation) lists the moves that work during a freeze, since a frozen reserve still allows repayment.
+
+## Can an alert warn you about a depeg?
+
+An alert can tell you that your health factor has crossed a line; it cannot slow a depeg down. Tokenping checks your Aave V3 and V4 health factor every 5 minutes on 22 networks and messages you on Signal, Telegram or email while it is below the threshold you set (1.1 to 10). It reads the health factor from the Pool contract, so the price behind it is Aave's oracle price, the same one liquidators are paid on: a Binance print of $0.65 for USDe does not reach any health factor on Ethereum Core, while a Chainlink USDC reading of $0.88 reaches every position with USDC collateral, and an alert follows if that takes the health factor below your threshold.
+
+Five minutes is a long time in a depeg. On 11 Mar 2023 USDC was at around 88 cents by 08:00 UTC, and the near-limit position above reaches 1.00 at about $0.96, so a check every 5 minutes can find such a position already below 1.00 on the first check that sees the fall. What an alert does give you is the slow part: a stablecoin that drifts to $0.98 and stays there, a threshold that governance cuts, interest that accrues. Set the threshold where you would still be comfortable acting, and remember that acting during a depeg means repaying or adding collateral on a network that everyone else is using at the same time. [How to set up a health factor alert](/blog/aave-health-factor-alert-setup) covers the steps, alerts cost <AlertPrice />, and you can [check your Aave V3 health factor](/aave) first; looking at your positions needs no payment.
+
+## Sources
+
+- [Aave V3 Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): LTV and liquidation thresholds of USDC, USDT, USDe, DAI, USDS, PYUSD, GHO and WETH at block 26291704 (fetched 28 Oct 2026)
+- [Aave V3 Ethereum Core AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2#readContract): `getAssetPrice` and `getSourceOfAsset` for the same assets at block 26291704, and the `AssetSourceUpdated` event for USDe and sUSDe at block 22002625 (fetched 28 Oct 2026)
+- [Capped USDC / USD adapter](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract), [Capped USDT/USD adapter](https://etherscan.io/address/0x260326c220E469358846b187eE53328303Efe19C#readContract) and [the adapter USDe points to](https://etherscan.io/address/0xC26D4a1c46d884cfF6dE9800B6aE7A8Cf48B4Ff8#code), "Aave: Ethena Correlated USDe Price Feed", created 1 Mar 2024: descriptions, caps, `isCapped` and underlying feeds at block 26291704 (fetched 28 Oct 2026)
+- [PriceCapAdapterStable.sol](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol) and the [Aave Price Feeds README](https://github.com/aave-dao/aave-price-feeds): cap logic, `setPriceCap` access control, the rename from Aave Capo (fetched 28 Oct 2026)
+- [Aave oracle documentation](https://aave.com/docs/ecosystem/oracle.md): sources set per reserve by governance (fetched 28 Oct 2026)
+- [ARFC: sUSDe and USDe Price Feed Update](https://governance.aave.com/t/arfc-susde-and-usde-price-feed-update/20495) (Chaos Labs and LlamaRisk, 2 Jan 2025, Snapshot 3 to 6 Feb 2025), [AIP 262](https://vote.onaave.com/proposal/?proposalId=262) and its [payload pull request](https://github.com/aave-dao/aave-proposals-v3/pull/621), merged 3 Mar 2025 (fetched 28 Oct 2026)
+- [Execution of AIP 262 on Ethereum](https://etherscan.io/tx/0xbb810541258db350d632e9a22ed7d7547509c67b2585dbc7a64a76b6ac8e42e0): USDe and sUSDe sources updated at block 22002625, 8 Mar 2025 14:01:47 UTC (fetched 28 Oct 2026)
+- [ARFC: Ethena USDe Risk Oracle and Automated Freeze Guardian](https://governance.aave.com/t/arfc-ethena-usde-risk-oracle-and-automated-freeze-guardian/23303) (LlamaRisk, 24 Oct 2025; Chaos Labs reply 2 Nov 2025; closed 7 Dec 2025) (fetched 28 Oct 2026)
+- [When Pricing Breaks: A USDe Case](https://llamarisk.com/research/when-pricing-breaks-usde) (LlamaRisk, 18 Oct 2025, fetched 28 Oct 2026)
+- [ARC: Stablecoin Volatility Risk Parameter Recommendations](https://governance.aave.com/t/arc-stablecoin-volatility-risk-parameter-recomendations/12241) (Gauntlet, 11 Mar 2023, with BGD Labs' freeze confirmation the same day) and [Aave's announcement](https://x.com/aave/status/1634596115483086848) (11 Mar 2023, 16:44 UTC) (fetched 28 Oct 2026)
+- [Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (Gauntlet, 17 Mar 2023, fetched 28 Oct 2026)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md) and [Aave Umbrella documentation](https://aave.com/docs/aave-v3/umbrella): deficit and slashing (fetched 28 Oct 2026)
+- [Morpho docs: Oracles](https://docs.morpho.org/learn/concepts/oracle): oracle per market, chosen by the curator, immutable (fetched 28 Oct 2026)
+
+_Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation._
