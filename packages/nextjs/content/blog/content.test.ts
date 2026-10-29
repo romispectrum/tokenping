@@ -26,6 +26,7 @@ const CS_ARTICLE_DISCLAIMER =
   "Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání.";
 const ES_ARTICLE_DISCLAIMER =
   "Contenido educativo, no asesoramiento financiero. Las alertas reducen el riesgo, pero no evitan la liquidación.";
+const HI_ARTICLE_DISCLAIMER = "शैक्षिक सामग्री, वित्तीय सलाह नहीं। अलर्ट जोखिम कम करते हैं, लिक्विडेशन रोकते नहीं।";
 const MAX_TITLE_LENGTH = 60;
 const MAX_DESCRIPTION_LENGTH = 155;
 const MIN_DESCRIPTION_LENGTH = 50;
@@ -53,6 +54,10 @@ const ES_FETCHED_DATE = new RegExp(
   String.raw`(?:^|[\s(])consultad[oa] el \d{1,2} de (?:${ES_MONTHS}) de \d{4}(?!\d)`,
   "i",
 );
+const HI_MONTHS =
+  "जनवरी|फ़रवरी|फरवरी|मार्च|अप्रैल|मई|जून|जुलाई|अगस्त|सितंबर|सितम्बर|अक्टूबर|अक्तूबर|नवंबर|नवम्बर|दिसंबर|दिसम्बर";
+// "(29 अक्टूबर 2026 को देखा गया)": the day, the month, the year, then "seen on".
+const HI_FETCHED_DATE = new RegExp(String.raw`(?:^|[\s(])\d{1,2} (?:${HI_MONTHS}) \d{4} को देखा गया`, "u");
 const SITE_HOST = /^https?:\/\/(?:www\.)?tokenping\.xyz(?:[/?#]|$)/i;
 
 type BannedPattern = {
@@ -287,6 +292,30 @@ const ES_BANNED_PATTERNS: readonly BannedPattern[] = [
   { pattern: /\bgratuit/i, reason: "'gratuito' must not appear: write 'sin comisión' or 'no cuesta nada'" },
 ];
 
+// Hindi copy that must not appear, on top of the English list. The same claims as above, in Hindi word forms.
+const HI_BANNED_PATTERNS: readonly BannedPattern[] = [
+  { pattern: /कभी (?:भी )?लिक्विडेट नहीं (?:होंगे|होगा|होगी|होंगी)/u, reason: "guarantee: 'कभी लिक्विडेट नहीं होंगे'" },
+  { pattern: /कभी (?:भी )?(?:नहीं चूकेंगे|न चूकें|मिस नहीं)/u, reason: "guarantee: 'कभी नहीं चूकेंगे'" },
+  { pattern: /री?यल[- ]?टाइम|वास्तविक समय/u, reason: "'रियल-टाइम' (alerts are checked every 5 minutes)" },
+  {
+    pattern: /(?:तुरंत|तत्काल|इंस्टेंट) (?:अलर्ट|सूचना|संदेश|चेतावनी)/u,
+    reason: "'तुरंत अलर्ट' (alerts are checked every 5 minutes)",
+  },
+  { pattern: /मल्टी[- ]?प्रोटोकॉल/u, reason: "'मल्टी-प्रोटोकॉल' (name the protocols: Aave and Morpho)" },
+  {
+    pattern: /(?:close factor|क्लोज़? फ़?ैक्टर) (?:हमेशा |तय |फ़िक्स्ड )?(?:50 ?%|0\.5\b|आधा) (?:है|होता है)/iu,
+    reason: "stale: since v3.3 the close factor is 50% or 100% depending on HF and position size",
+    allowQuoted: true,
+  },
+  { pattern: /\bUSDC (?:प्रति|हर) 30 दिन/u, reason: "hard-coded alert plan: use <AlertPrice />" },
+  // The Hindi forms of "free"; "कोई शुल्क नहीं" and "भुगतान की ज़रूरत नहीं" are fine.
+  {
+    // "फ़्री" alone, not "फ़्रीज़" (freeze): \b knows no Devanagari, so a lookahead ends the word.
+    pattern: /मुफ़?्त|फ़?्री(?![\p{L}\p{M}])|निः?शुल्क|नि:शुल्क/u,
+    reason: "'मुफ़्त' must not appear: write 'भुगतान की ज़रूरत नहीं', 'कोई शुल्क नहीं' or 'बिना भुगतान के'",
+  },
+];
+
 const findBannedPhrases = (text: string, patterns: readonly BannedPattern[] = BANNED_PATTERNS) => {
   const normalized = normalizeQuotes(text);
   return patterns.flatMap(({ pattern, reason, allowQuoted }) => {
@@ -348,6 +377,7 @@ const POST_DIRS: Record<Locale, URL> = {
   en: BLOG_DIR,
   cs: new URL("./cs/", BLOG_DIR),
   es: new URL("./es/", BLOG_DIR),
+  hi: new URL("./hi/", BLOG_DIR),
 };
 
 const loadLanguage = async (locale: Locale) => {
@@ -384,6 +414,7 @@ const POST_INDEX: Record<Locale, PostIndex> = {
   en: indexPosts(LANGUAGES.en.posts),
   cs: indexPosts(LANGUAGES.cs.posts),
   es: indexPosts(LANGUAGES.es.posts),
+  hi: indexPosts(LANGUAGES.hi.posts),
 };
 
 type LanguageRules = {
@@ -416,6 +447,13 @@ const LANGUAGE_RULES: Record<Locale, LanguageRules> = {
     fetchedDate: ES_FETCHED_DATE,
     fetchedFormat: "consultado el <d de mes de yyyy>",
     bannedPatterns: [...BANNED_PATTERNS, ...ES_BANNED_PATTERNS],
+  },
+  hi: {
+    disclaimer: HI_ARTICLE_DISCLAIMER,
+    sourcesHeading: "स्रोत",
+    fetchedDate: HI_FETCHED_DATE,
+    fetchedFormat: "<d माह yyyy> को देखा गया",
+    bannedPatterns: [...BANNED_PATTERNS, ...HI_BANNED_PATTERNS],
   },
 };
 
@@ -657,7 +695,12 @@ const checkReadingTime = (tree: MdNode, meta: PostMeta) => {
     : [];
 };
 
-const LANGUAGE_DIRS: Record<Locale, string> = { en: "content/blog", cs: "content/blog/cs", es: "content/blog/es" };
+const LANGUAGE_DIRS: Record<Locale, string> = {
+  en: "content/blog",
+  cs: "content/blog/cs",
+  es: "content/blog/es",
+  hi: "content/blog/hi",
+};
 
 for (const locale of LOCALES) {
   const { files, sources, posts } = LANGUAGES[locale];

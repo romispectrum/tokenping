@@ -37,6 +37,8 @@ describe("telegramLocale", () => {
     ["es", "es"],
     ["es-MX", "es"],
     ["es-419", "es"],
+    ["hi", "hi"],
+    ["hi-IN", "hi"],
     ["en", "en"],
     ["en-US", "en"],
     ["de", "en"],

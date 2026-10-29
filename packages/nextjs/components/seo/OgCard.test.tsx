@@ -8,6 +8,8 @@ describe("OgCard", () => {
       <OgCard title="How to calculate your Aave liquidation price" footer="Tokenping · Aave V3 guides" />,
     );
 
+    expect(html).toContain("font-family:Satoshi, Noto Sans Devanagari");
+
     expect(OG_IMAGE_SIZE).toEqual({ width: 1200, height: 630 });
     expect(html).toMatch(/<img src="data:image\/svg\+xml;base64,[^"]+" width="243" height="64" alt="Tokenping"\/>/);
     expect(html).toContain(">How to calculate your Aave liquidation price<");
@@ -35,16 +37,19 @@ describe("OgCard", () => {
     for (const div of divs) expect(div).toContain("display:flex");
   });
 
-  it("loads Satoshi Medium and Regular as OTF for ImageResponse", async () => {
+  it("loads Satoshi Medium and Regular as OTF, then Noto Sans Devanagari as WOFF, for ImageResponse", async () => {
     const options = await ogImageOptions();
 
     expect(options).toMatchObject({ width: 1200, height: 630 });
     expect(options.fonts.map(({ name, weight, style }) => ({ name, weight, style }))).toEqual([
       { name: "Satoshi", weight: 500, style: "normal" },
       { name: "Satoshi", weight: 400, style: "normal" },
+      { name: "Noto Sans Devanagari", weight: 500, style: "normal" },
+      { name: "Noto Sans Devanagari", weight: 400, style: "normal" },
     ]);
-    // OTF files start with the "OTTO" tag.
-    for (const font of options.fonts) expect(font.data.subarray(0, 4).toString("latin1")).toBe("OTTO");
+    // OTF files start with the "OTTO" tag, WOFF files with "wOFF".
+    const tags = options.fonts.map(font => font.data.subarray(0, 4).toString("latin1"));
+    expect(tags).toEqual(["OTTO", "OTTO", "wOFF", "wOFF"]);
   });
 
   // The card URLs have no hash, so nothing may call them immutable (next/og's default).

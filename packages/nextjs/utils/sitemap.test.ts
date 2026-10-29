@@ -2,13 +2,13 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST_SLUGS as POST_SLUG_PAIRS } from "~~/i18n/postSlugs";
 import { parseSitemap } from "~~/scripts/indexNow";
-import { CS_POST_SLUGS, ES_POST_SLUGS, POST_SLUGS, mockPostStubs } from "~~/utils/testing/blogPosts";
+import { CS_POST_SLUGS, ES_POST_SLUGS, HI_POST_SLUGS, POST_SLUGS, mockPostStubs } from "~~/utils/testing/blogPosts";
 
 const APP_DIR = new URL("../app/", import.meta.url);
 
 // Not indexable: noindex (/admin) or a 404 outside local hardhat builds (/debug, /blockexplorer).
 const NON_INDEXED_PREFIXES = ["/admin", "/debug", "/blockexplorer"];
-const MORPHO_PAGES = ["/morpho", "/cz/morpho", "/es/morpho"];
+const MORPHO_PAGES = ["/morpho", "/cz/morpho", "/es/morpho", "/hi/morpho"];
 
 /** Every app/**\/page.tsx without a dynamic segment, by its URL path ("/", "/aave", "/cz/blog", …). */
 const staticPageFiles = (dir = APP_DIR, prefix = ""): [string, URL][] =>
@@ -34,8 +34,9 @@ const loadSitemap = async (
   stubSlugs: readonly string[] = [],
   csStubSlugs: readonly string[] = [],
   esStubSlugs: readonly string[] = [],
+  hiStubSlugs: readonly string[] = [],
 ) => {
-  mockPostStubs(stubSlugs, csStubSlugs, esStubSlugs);
+  mockPostStubs(stubSlugs, csStubSlugs, esStubSlugs, hiStubSlugs);
   const blog = await import("~~/content/blog");
   const { sitemapEntries: sitemap, renderSitemapXml } = await import("~~/utils/sitemap");
   const { blogPostMetadata } = await import("~~/components/pages/BlogPostPage");
@@ -48,15 +49,21 @@ const SITE = "https://tokenping.xyz";
 /** A path's URL as the page's canonical writes it: the root without a trailing slash. */
 const url = (path: string) => (path === "/" ? SITE : `${SITE}${path}`);
 
-/** A page published in English, Czech and Spanish: one entry per language, each with its date. */
-const everyLanguage = (en: string, cs: string, es: string, lastModified: string) =>
-  [en, cs, es].map(path => ({ url: url(path), lastModified }));
+/** A page published in English, Czech, Spanish and Hindi: one entry per language, each with its date. */
+const everyLanguage = (en: string, cs: string, es: string, hi: string, lastModified: string) =>
+  [en, cs, es, hi].map(path => ({ url: url(path), lastModified }));
 
-const HOME_PAGES = everyLanguage("/", "/cz", "/es", "2026-10-20");
-const AAVE_PAGES = everyLanguage("/aave", "/cz/aave", "/es/aave", "2026-10-19");
-const MORPHO_DASHBOARD_PAGES = everyLanguage("/morpho", "/cz/morpho", "/es/morpho", "2026-10-25");
+const HOME_PAGES = everyLanguage("/", "/cz", "/es", "/hi", "2026-10-20");
+const AAVE_PAGES = everyLanguage("/aave", "/cz/aave", "/es/aave", "/hi/aave", "2026-10-19");
+const MORPHO_DASHBOARD_PAGES = everyLanguage("/morpho", "/cz/morpho", "/es/morpho", "/hi/morpho", "2026-10-25");
 // The privacy page carries the date its Morpho disclosures were added.
-const PRIVACY_PAGES = everyLanguage("/privacy", "/cz/ochrana-soukromi", "/es/privacidad", "2026-10-25");
+const PRIVACY_PAGES = everyLanguage(
+  "/privacy",
+  "/cz/ochrana-soukromi",
+  "/es/privacidad",
+  "/hi/gopaniyata",
+  "2026-10-25",
+);
 
 beforeEach(() => {
   vi.resetModules();
@@ -68,8 +75,8 @@ describe("sitemapEntries", () => {
     const entries = sitemap();
     const entry = (path: string) => entries.find(({ url }) => url === `${SITE}${path}`);
 
-    expect(entries.slice(0, 9)).toEqual([...HOME_PAGES, ...AAVE_PAGES, ...MORPHO_DASHBOARD_PAGES]);
-    expect(entries.slice(-3)).toEqual(PRIVACY_PAGES);
+    expect(entries.slice(0, 12)).toEqual([...HOME_PAGES, ...AAVE_PAGES, ...MORPHO_DASHBOARD_PAGES]);
+    expect(entries.slice(-4)).toEqual(PRIVACY_PAGES);
     // Each language's blog index carries that language's newest content date.
     expect(entry("/blog")).toMatchObject({ lastModified: blog.getLatestPostDate() });
     expect(entry("/cz/blog")).toMatchObject({
@@ -77,6 +84,9 @@ describe("sitemapEntries", () => {
     });
     expect(entry("/es/blog")).toMatchObject({
       lastModified: blog.getLatestPostDate(blog.getPublishedPosts("es")),
+    });
+    expect(entry("/hi/blog")).toMatchObject({
+      lastModified: blog.getLatestPostDate(blog.getPublishedPosts("hi")),
     });
     // Each published post is listed with its own content date, in each language it is published in.
     for (const { meta } of blog.PUBLISHED_POSTS) {
@@ -104,25 +114,27 @@ describe("sitemapEntries", () => {
       en: `/blog/${post.meta.slug}`,
       cs: `/cz/blog/${cs}`,
       es: `/es/blog/${POST_SLUG_PAIRS[post.meta.slug].es}`,
+      hi: `/hi/blog/${POST_SLUG_PAIRS[post.meta.slug].hi}`,
       "x-default": `/blog/${post.meta.slug}`,
     });
-    // Its Czech translation names the Spanish one, but not the English placeholder (so no x-default either).
-    const { cs: csSlug, es: esSlug } = POST_SLUG_PAIRS["safe-aave-health-factor"];
+    // Its Czech translation names the Spanish and Hindi ones, but not the English placeholder (so no x-default either).
+    const { cs: csSlug, es: esSlug, hi: hiSlug } = POST_SLUG_PAIRS["safe-aave-health-factor"];
     expect(blogPostMetadata("cs", csSlug).alternates?.languages).toEqual({
       cs: `/cz/blog/${csSlug}`,
       es: `/es/blog/${esSlug}`,
+      hi: `/hi/blog/${hiSlug}`,
     });
   });
 
   it("leaves out every blog and every post while all of them are placeholders", async () => {
-    const { sitemap } = await loadSitemap(POST_SLUGS, CS_POST_SLUGS, ES_POST_SLUGS);
+    const { sitemap } = await loadSitemap(POST_SLUGS, CS_POST_SLUGS, ES_POST_SLUGS, HI_POST_SLUGS);
 
     expect(sitemap()).toEqual([...HOME_PAGES, ...AAVE_PAGES, ...MORPHO_DASHBOARD_PAGES, ...PRIVACY_PAGES]);
   });
 
   it("lists only pages that exist and render on the server", async () => {
     const { sitemap } = await loadSitemap();
-    const pages = pathsOf(sitemap()).filter(path => !/^(?:\/cz|\/es)?\/blog\//.test(path));
+    const pages = pathsOf(sitemap()).filter(path => !/^(?:\/cz|\/es|\/hi)?\/blog\//.test(path));
 
     for (const path of pages) {
       expect(pageFile(path) && existsSync(pageFile(path)!), `${path}: no page.tsx under app/ for it`).toBe(true);
@@ -139,7 +151,8 @@ describe("sitemapEntries", () => {
         !isClientPage(path) &&
         (path !== "/blog" || blog.PUBLISHED_POSTS.length > 0) &&
         (path !== "/cz/blog" || blog.getPublishedPosts("cs").length > 0) &&
-        (path !== "/es/blog" || blog.getPublishedPosts("es").length > 0),
+        (path !== "/es/blog" || blog.getPublishedPosts("es").length > 0) &&
+        (path !== "/hi/blog" || blog.getPublishedPosts("hi").length > 0),
     );
 
     // A new Server Component page (e.g. /privacy, or /aave once it stops being a client page) fails here until
@@ -150,7 +163,7 @@ describe("sitemapEntries", () => {
   it("lists the Morpho dashboard after Aave's, as a server-rendered page", async () => {
     const entries = (await loadSitemap()).sitemap();
 
-    expect(entries.slice(0, 9)).toEqual([...HOME_PAGES, ...AAVE_PAGES, ...MORPHO_DASHBOARD_PAGES]);
+    expect(entries.slice(0, 12)).toEqual([...HOME_PAGES, ...AAVE_PAGES, ...MORPHO_DASHBOARD_PAGES]);
     for (const path of MORPHO_PAGES) {
       expect(pageFile(path) && existsSync(pageFile(path)!), path).toBe(true);
       expect(isClientPage(path), path).toBe(false);

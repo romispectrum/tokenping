@@ -2,7 +2,7 @@ import { LOCALE_INFO, type Locale } from "~~/i18n/locales";
 
 type PluralForms = {
   one: string;
-  /** Czech 2 to 4 ("2 sítě"); English and Spanish never use it. */
+  /** Czech 2 to 4 ("2 sítě"); English, Spanish and Hindi never use it. */
   few?: string;
   /** Czech fractions ("1,5 sítě"); Spanish uses it for a million and up, and falls back to `other` there. */
   many?: string;
@@ -10,7 +10,8 @@ type PluralForms = {
 };
 
 /**
- * The plural form for a count, by the language's CLDR rules: English and Spanish one/other, Czech one/few/many/other.
+ * The plural form for a count, by the language's CLDR rules: English and Spanish one/other, Hindi one/other with 0 as
+ * one, Czech one/few/many/other.
  * A missing form falls back to `other`. Write the number into the form yourself: plural("cs", n, { one: `${n} síť`, ... }).
  */
 export const plural = (locale: Locale, count: number, forms: PluralForms) => {
@@ -19,8 +20,8 @@ export const plural = (locale: Locale, count: number, forms: PluralForms) => {
 };
 
 /**
- * A YYYY-MM-DD day as "October 14, 2026" / "14. října 2026" / "14 de octubre de 2026", in UTC so the server and the
- * browser agree.
+ * A YYYY-MM-DD day as "October 14, 2026" / "14. října 2026" / "14 de octubre de 2026" / "14 अक्टूबर 2026", in UTC so
+ * the server and the browser agree.
  */
 export const formatLongDate = (locale: Locale, isoDate: string) =>
   new Intl.DateTimeFormat(LOCALE_INFO[locale].intl, {
@@ -34,6 +35,7 @@ const LIST_WORDS: Record<Locale, Record<"conjunction" | "disjunction", string>> 
   en: { conjunction: "and", disjunction: "or" },
   cs: { conjunction: "a", disjunction: "nebo" },
   es: { conjunction: "y", disjunction: "o" },
+  hi: { conjunction: "और", disjunction: "या" },
 };
 
 /**
@@ -46,7 +48,7 @@ const spanishListWord = (word: string, next: string) => {
   return word;
 };
 
-/** A list the site's way, with no comma before the last word: "A, B and C" / "A, B a C" / "A, B y C" / "A, B nebo C". */
+/** A list the site's way, with no comma before the last word: "A, B and C" / "A, B a C" / "A, B y C" / "A, B और C". */
 export const joinList = (
   locale: Locale,
   items: readonly string[],
@@ -60,8 +62,8 @@ export const joinList = (
 
 /**
  * A number the user reads in running text: as written in English ("1.42"), with a decimal comma in Czech ("1,42").
- * Spanish keeps the decimal point, as Latin America writes it and the app shows it. Takes the already-formatted
- * string (a health factor such as "1.42" or "∞") or a number.
+ * Spanish and Hindi keep the decimal point, as Latin America and Indian apps write it and the app shows it. Takes the
+ * already-formatted string (a health factor such as "1.42" or "∞") or a number.
  */
 export const formatDecimal = (locale: Locale, value: string | number) =>
   locale === "cs" ? String(value).replace(".", ",") : String(value);
@@ -92,6 +94,13 @@ export const esMarketNoun = (name: string, kind?: MarketNameKind) =>
 
 /** Spanish "la red Ethereum" for a V3 market, "el mercado Ethereum (V4 Lido)" for a V4 Spoke. */
 export const esMarket = (name: string, kind?: MarketNameKind) => `${esMarketNoun(name, kind)} ${name}`;
+
+/** Hindi "नेटवर्क" for a V3 market (named by its network), "मार्केट" for a V4 Spoke or a Morpho market. */
+export const hiMarketNoun = (name: string, kind?: MarketNameKind) =>
+  marketNameKind(name, kind) === "market" ? "मार्केट" : "नेटवर्क";
+
+/** Hindi "Ethereum नेटवर्क" for a V3 market, "Ethereum (V4 Lido) मार्केट" for a V4 Spoke; the caller adds "पर". */
+export const hiMarket = (name: string, kind?: MarketNameKind) => `${name} ${hiMarketNoun(name, kind)}`;
 
 /** The text with its first letter upper case, for a phrase that starts a sentence. */
 export const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);

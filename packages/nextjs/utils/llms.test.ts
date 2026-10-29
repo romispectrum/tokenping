@@ -21,9 +21,17 @@ describe("llms.txt", () => {
       /^> Tokenping sends a message when an Aave V3, Aave V4, Morpho Blue or Morpho Midnight health factor drops/,
     );
     const headings = lines.filter(line => line.startsWith("#"));
-    expect(headings).toEqual(["# Tokenping", "## Pages", "## Guides", "## Czech", "## Spanish", "## Optional"]);
+    expect(headings).toEqual([
+      "# Tokenping",
+      "## Pages",
+      "## Guides",
+      "## Czech",
+      "## Spanish",
+      "## Hindi",
+      "## Optional",
+    ]);
     // Everything under an H2 is a link list item: "- [name](url)" with optional ": notes".
-    for (const heading of ["Pages", "Guides", "Czech", "Spanish", "Optional"]) {
+    for (const heading of ["Pages", "Guides", "Czech", "Spanish", "Hindi", "Optional"]) {
       for (const line of section(heading))
         expect(line).toMatch(/^- \[[^\]]+\]\(https:\/\/tokenping\.xyz\/[^)]*\)(: .+)?$/);
     }
@@ -84,6 +92,15 @@ describe("llms.txt", () => {
     expect(spanish.every(line => line.includes("(https://tokenping.xyz/es"))).toBe(true);
     expect(spanish.filter(line => line.includes("(https://tokenping.xyz/es/blog/"))).toHaveLength(
       getPublishedPosts("es").length,
+    );
+  });
+
+  it("links the Hindi pages and every Hindi guide under /hi in the Hindi section", () => {
+    const hindi = section("Hindi");
+    expect(hindi[0]).toMatch(/^- \[Tokenping\]\(https:\/\/tokenping\.xyz\/hi\): /);
+    expect(hindi.every(line => line.includes("(https://tokenping.xyz/hi"))).toBe(true);
+    expect(hindi.filter(line => line.includes("(https://tokenping.xyz/hi/blog/"))).toHaveLength(
+      getPublishedPosts("hi").length,
     );
   });
 

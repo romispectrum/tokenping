@@ -120,6 +120,12 @@ const esEveryMinutes = (minutes: number) =>
 const esOnNetworks = (networks: number) =>
   plural("es", networks, { one: `en ${networks} red`, other: `en ${networks} redes` });
 
+/** "हर 5 मिनट में", "हर मिनट". */
+const hiEveryMinutes = (minutes: number) => plural("hi", minutes, { one: "हर मिनट", other: `हर ${minutes} मिनट में` });
+
+/** "22 नेटवर्क पर", "1 नेटवर्क पर": the noun does not change with the count. */
+const hiOnNetworks = (networks: number) => `${networks} नेटवर्क पर`;
+
 export const BLOG_MESSAGES: Localized<BlogMessages> = {
   en: {
     crumbs: { home: "Home", blog: "Blog" },
@@ -292,6 +298,64 @@ export const BLOG_MESSAGES: Localized<BlogMessages> = {
       fallbackLabel: "Tabla, se desplaza en horizontal",
       label: (heading, index) => (index === undefined ? `Tabla: ${heading}` : `Tabla ${index}: ${heading}`),
       scrollHint: "Desplázate hacia los lados para ver todas las columnas.",
+    },
+  },
+  hi: {
+    crumbs: { home: "होम", blog: "ब्लॉग" },
+    index: {
+      title: "Aave और Morpho हेल्थ फ़ैक्टर और लिक्विडेशन गाइड",
+      description:
+        "Aave और Morpho के हेल्थ फ़ैक्टर, लिक्विडेशन, लिक्विडेशन कीमत और अलर्ट पर गाइड, हल किए गए उदाहरणों और तारीख़ व स्रोत वाले आंकड़ों के साथ।",
+      kicker: "Aave और Morpho गाइड",
+      lead: "Aave और Morpho पर हेल्थ फ़ैक्टर कैसे काम करता है, लिक्विडेशन में क्या होता है, अपनी लिक्विडेशन कीमत कैसे निकालें और कीमत उसके पास आने से पहले चेतावनी कैसे पाएं। इन गाइड का हर आंकड़ा अपना स्रोत और जांच की तारीख़ बताता है।",
+      dashboardCta: "Aave डैशबोर्ड खोलें",
+      morphoDashboardCta: "Morpho डैशबोर्ड खोलें",
+      rss: "RSS से सब्सक्राइब करें",
+      startHere: "यहां से शुरू करें",
+      allGuides: "सभी गाइड",
+      empty: {
+        title: "अभी कोई गाइड नहीं",
+        description: "हिंदी गाइड तैयार की जा रही हैं। RSS से सब्सक्राइब करें और प्रकाशित होते ही उन्हें पाएं।",
+        otherLanguage: "गाइड अंग्रेज़ी में पढ़ें",
+      },
+    },
+    post: {
+      kicker: "Aave V3 गाइड",
+      morphoKicker: "Morpho गाइड",
+      byline: { author: "Tokenping टीम द्वारा", published: "प्रकाशित", updated: "अपडेट किया गया" },
+      readingTime: minutes => `${minutes} मिनट में पढ़ें`,
+      readGuide: "गाइड पढ़ें",
+      related: "संबंधित गाइड",
+    },
+    endBox: {
+      label: "Tokenping के बारे में",
+      title: "Tokenping से हेल्थ फ़ैक्टर अलर्ट",
+      body: ({ minutes, networks, channels, price, paymentChain }) =>
+        `Tokenping ${hiOnNetworks(networks)} ${hiEveryMinutes(minutes)} आपका Aave V3 और V4 हेल्थ फ़ैक्टर जांचता है और जब वह आपकी सीमा से नीचे होता है तो आपको ${channels} पर संदेश भेजता है। अलर्ट की कीमत ${price} है${paymentChain ? `, भुगतान ${paymentChain} नेटवर्क पर` : ""}; अपनी पोज़िशन देखने के लिए भुगतान की ज़रूरत नहीं। अलर्ट आपको कार्रवाई करने का समय देते हैं; वे लिक्विडेशन नहीं रोकते।`,
+      cta: "डैशबोर्ड खोलें",
+      morpho: {
+        title: "Tokenping से Morpho हेल्थ फ़ैक्टर अलर्ट",
+        body: ({ minutes, networks, channels, price, paymentChain }) =>
+          `Tokenping ${hiOnNetworks(networks)} ${hiEveryMinutes(minutes)} आपका Morpho Blue और Midnight हेल्थ फ़ैक्टर जांचता है और जब वह आपकी सीमा से नीचे होता है तो आपको ${channels} पर संदेश भेजता है, साथ ही फ़िक्स्ड रेट लोन की मैच्योरिटी से पहले रिमाइंडर भेजता है। अलर्ट की कीमत ${price} है${paymentChain ? `, भुगतान ${paymentChain} नेटवर्क पर` : ""}, Aave अलर्ट वाला ही प्लान; अपनी पोज़िशन देखने के लिए भुगतान की ज़रूरत नहीं। अलर्ट आपको कार्रवाई करने का समय देते हैं; वे लिक्विडेशन नहीं रोकते।`,
+        cta: "Morpho डैशबोर्ड खोलें",
+      },
+    },
+    alertPrice: {
+      fallback: "USDC में एक छोटा शुल्क (मौजूदा कीमत डैशबोर्ड पर देखें)",
+      plan: ({ priceLabel, days }) => `${priceLabel} प्रति ${plural("hi", days, { one: "दिन", other: `${days} दिन` })}`,
+    },
+    callout: { info: "नोट", warning: "चेतावनी" },
+    shortAnswer: "संक्षिप्त जवाब",
+    scopeNote: {
+      text: "Aave V3.7 पर लागू, Ethereum Core, Arbitrum, Base, Optimism, Polygon, Avalanche और Gnosis मार्केट पर जांचा गया। दूसरे V3 मार्केट और नेटवर्क पुराने वर्ज़न चला सकते हैं। जहां नियम अलग हैं, वहां Aave V4 के अंतर बताए गए हैं।",
+      morphoText:
+        "Morpho ऐप में सूचीबद्ध Morpho Blue और Morpho Midnight मार्केट पर लागू। हर मार्केट अपना कोलैटरल, ओरेकल और LLTV खुद तय करता है, इसलिए अपने मार्केट के आंकड़े जांचें।",
+      figuresAsOf: "आंकड़ों की तारीख़:",
+    },
+    table: {
+      fallbackLabel: "तालिका, बगल में स्क्रॉल होती है",
+      label: (heading, index) => (index === undefined ? `तालिका: ${heading}` : `तालिका ${index}: ${heading}`),
+      scrollHint: "सभी कॉलम देखने के लिए बगल में स्क्रॉल करें।",
     },
   },
 };
@@ -720,6 +784,115 @@ export const CALCULATOR_MESSAGES: Localized<CalculatorMessages> = {
         "Se basa solo en los números que indicas. Los parámetros vigentes de Aave pueden cambiar: los umbrales de arriba se leyeron de la blockchain el",
       afterDate:
         ", y la gobernanza o los Risk Stewards pueden cambiarlos en cualquier momento. Los precios del oráculo se mueven, los intereses siguen sumándose a tu deuda y cada precio de liquidación supone que todos los demás precios se mantienen iguales. Revisa tu posición en la aplicación de Aave antes de actuar.",
+    },
+  },
+  hi: {
+    title: "Aave लिक्विडेशन कीमत कैलकुलेटर",
+    intro:
+      "हेल्थ फ़ैक्टर और वे कीमतें जानने के लिए जिन पर पोज़िशन लिक्विडेट हो सकती है, हर कोलैटरल एसेट और अपना कर्ज़ दर्ज करें। कैलकुलेटर Aave V3 का फ़ॉर्मूला इस्तेमाल करता है: Σ(कोलैटरल का मूल्य × लिक्विडेशन सीमा) ÷ कर्ज़ का मूल्य।",
+    examplesLabel: "हल किया गया उदाहरण लोड करें:",
+    examples: {
+      "one-collateral": "10 WETH, 12,000 USDC कर्ज़",
+      "two-collaterals": "10 WETH + 0.2 WBTC, 20,000 USDC कर्ज़",
+      "volatile-debt": "10,000 USDC, 2.5 WETH उधार लिया",
+    },
+    defaultCollateralName: index => `कोलैटरल ${index}`,
+    defaultDebtName: "कर्ज़ वाला एसेट",
+    collateralLegend: index => `कोलैटरल ${index}`,
+    presetLabel: "Aave V3 एसेट (सीमा अपने आप भरती है)",
+    eModeHint: (collateral, borrowable) =>
+      `यह सीमा ${joinList("hi", collateral)} के लिए गिनी जाती है; बाकी कोलैटरल अपनी सीमा रखता है। इस E-Mode में आप सिर्फ़ ${joinList("hi", borrowable)} उधार ले सकते हैं।`,
+    otherAsset: "दूसरा एसेट: सीमा खुद दर्ज करें",
+    presetGroup: (market, date) => `${market} (${date} को पढ़ा गया)`,
+    presetLabels: {
+      "ethereum-core-emode-eth": 'E-Mode "ETH correlated" (जैसे WETH, wstETH, weETH)',
+      "arbitrum-usdc": "USDC (नेटिव)",
+    },
+    nameLabel: "एसेट का नाम",
+    namePlaceholder: symbols => `जैसे ${joinList("hi", symbols, "disjunction")}`,
+    amountSupplied: "जमा की गई राशि",
+    price: "कीमत (USD)",
+    priceHint: "Aave के ओरेकल की कीमत, जो Aave ऐप में एसेट के पेज पर दिखती है।",
+    threshold: "लिक्विडेशन सीमा (%)",
+    thresholdHint: "E-Mode में, श्रेणी की सीमा। Aave V4 पर, कोलैटरल फ़ैक्टर (collateral factor)।",
+    removeCollateral: index => `कोलैटरल ${index} हटाएं`,
+    addCollateral: "दूसरा कोलैटरल जोड़ें",
+    debtLegend: "कर्ज़",
+    debtKindLegend: "आपने क्या उधार लिया?",
+    debtKinds: { stable: "एक स्टेबलकॉइन ($1.00 पर गिना जाता है)", volatile: "एक अस्थिर एसेट, जैसे WETH" },
+    debtAmount: { stable: "उधार ली गई राशि (USD)", volatile: "उधार ली गई राशि (टोकन)" },
+    debtAmountHint: "अब तक जुड़ा ब्याज शामिल करें।",
+    debtPrice: "उधार लिए गए एसेट की कीमत (USD)",
+    errors: {
+      number: "10 या 0.25 जैसी संख्या दर्ज करें, दशमलव के लिए बिंदु के साथ।",
+      price: "0 से ऊपर की कीमत दर्ज करें।",
+      threshold: "0 से ऊपर और ज़्यादा से ज़्यादा 100 का प्रतिशत दर्ज करें।",
+      samePrice: (name, price) =>
+        `${name} ऊपर पहले से ${price} पर दर्ज है। वही कीमत इस्तेमाल करें: एक एसेट की एक ही कीमत होती है।`,
+    },
+    eModeLead: "कोई नतीजा नहीं: Aave इस संयोजन की अनुमति नहीं देता।",
+    eModeConflict: ({ market, category, borrowable, loan, thresholdPercent, ownThresholds }) => {
+      const borrowableList = joinList("hi", borrowable);
+      const loanText = loan.kind === "stable" ? "स्टेबलकॉइन लोन" : `उधार लिए गए ${loan.name}`;
+      const own = ownThresholds.length ? ` (${ownThresholds.join(", ")})` : "";
+      return (
+        `${market} का "${category}" E-Mode सिर्फ़ ${borrowableList} उधार लेने देता है, इसलिए ${loanText} वाला अकाउंट ` +
+        `उसकी ${thresholdPercent}% सीमा इस्तेमाल नहीं कर सकता। इसके बजाय कोलैटरल की अपनी सीमा चुनें${own}, या ${borrowableList} उधार लें।`
+      );
+    },
+    results: {
+      heading: "नतीजा",
+      empty: "नतीजा देखने के लिए हर फ़ील्ड में संख्या दर्ज करें।",
+      summaryLine: (title, value) => `${title}: ${value}।`,
+      healthFactor: "हेल्थ फ़ैक्टर",
+      noDebt: "कोई कर्ज़ नहीं, इसलिए लिक्विडेट करने को कुछ नहीं है।",
+      liquidatableNow: "1.00 से नीचे: पोज़िशन अभी लिक्विडेट हो सकती है।",
+      liquidatableBelow: "पोज़िशन 1.00 से नीचे लिक्विडेट हो सकती है।",
+      none: "कोई नहीं",
+      priceTitle: name => `${name} लिक्विडेशन कीमत`,
+      priceTitleBorrowed: name => `${name} लिक्विडेशन कीमत (उधार लिया गया)`,
+      priceTitleShared: name => `${name} लिक्विडेशन कीमत (जमा और उधार दोनों)`,
+      recover: ({ name, change, now, rises, alike }) =>
+        `हेल्थ फ़ैक्टर 1.00 पर वापस आ जाता है अगर ${name}${alike ? " (जमा और उधार दोनों)" : ""} ${now} से ${change} ${
+          rises ? "बढ़ता" : "गिरता"
+        } है और बाकी कीमतें नहीं बदलतीं।`,
+      collateralFall: ({ change, now }) => `${now} से ${change} नीचे, अगर बाकी हर कीमत वैसी ही रहे।`,
+      collateralNone: name =>
+        `$0 पर भी अकेला ${name} हेल्थ फ़ैक्टर को 1.00 से नीचे नहीं ले जा सकता: बाकी कोलैटरल कर्ज़ को कवर करता है।`,
+      debtRise: ({ change, now }) =>
+        `${now} से ${change} ऊपर: उधार लिए गए एसेट की कीमत बढ़ने पर वे हेल्थ फ़ैक्टर को नीचे धकेलते हैं।`,
+      sharedRise: ({ name, change, now }) =>
+        `${now} से ${change} ऊपर: आपने उतने ${name} से ज़्यादा उधार लिया है जितना आपका ${name} कोलैटरल गिना जाता है, इसलिए कीमत बढ़ने पर हेल्थ फ़ैक्टर नीचे जाता है। बाकी कीमतें नहीं बदलतीं।`,
+      sharedFallBorrowed: ({ name, change, now }) =>
+        `${now} से ${change} नीचे, उधार लिए गए ${name} की वही कीमत रहने और बाकी हर कीमत न बदलने पर।`,
+      sharedFallRows: ({ name, change, now }) =>
+        `हर ${name} पंक्ति के लिए ${now} से ${change} नीचे, अगर बाकी हर कीमत वैसी ही रहे।`,
+      bothSidesNeutral: name =>
+        `${name} आपका कोलैटरल भी है और कर्ज़ भी, इसलिए दोनों साथ चलते हैं और इसकी कीमत हेल्थ फ़ैक्टर नहीं बदलती। ब्याज, सीमा में बदलाव या आपके अपने ट्रांज़ैक्शन उसे फिर भी बदलते हैं।`,
+      bothSidesRecover: name =>
+        `${name} दोनों तरफ़ है, इसलिए दोनों साथ चलते हैं: अकेली कोई ${name} कीमत हेल्थ फ़ैक्टर को 1.00 पर वापस नहीं लाती।`,
+      bothSidesSafe: name =>
+        `${name} दोनों तरफ़ है, इसलिए दोनों साथ चलते हैं: अकेली इसकी कीमत हेल्थ फ़ैक्टर को 1.00 से नीचे नहीं ले जा सकती।`,
+      uniformTitle: "सारा कोलैटरल एक साथ गिरता है",
+      uniformDescription: prices =>
+        `अगर हर कोलैटरल की कीमत इतनी गिरे और कर्ज़ की कीमत न हिले, तो हेल्थ फ़ैक्टर 1.00 पर पहुंचता है: ${joinList(
+          "hi",
+          prices.map(({ name, price }) => `${name} ${price} पर`),
+        )}।`,
+      ratioTitle: (numerator, denominator) => `लिक्विडेशन पर ${numerator} ÷ ${denominator} कीमत`,
+      ratioDescription: (now, change, falls) =>
+        `अभी ${now}। अगर दोनों कीमतें हिलें, तो इस अनुपात में ${change} की ${falls ? "गिरावट" : "बढ़त"} हेल्थ फ़ैक्टर को 1.00 पर ले जाती है।`,
+      breakdown: ({ collateral, weighted, debt, healthFactor }) =>
+        `कोलैटरल ${collateral}, अपनी लिक्विडेशन सीमाओं पर गिना गया: ${weighted}। हेल्थ फ़ैक्टर = ${weighted} ÷ ${debt} कर्ज़ = ${healthFactor}।`,
+    },
+    noscript:
+      "कैलकुलेटर को दोबारा गणना के लिए JavaScript चाहिए। ऊपर का नतीजा 12,000 USDC के मुकाबले $2,400 पर 10 WETH (लिक्विडेशन सीमा 83%) के लिए है; इस पेज के हल किए गए उदाहरण वही फ़ॉर्मूला इस्तेमाल करते हैं।",
+    disclaimer: {
+      lead: "शैक्षिक अनुमान, वित्तीय सलाह नहीं।",
+      beforeDate:
+        "यह सिर्फ़ आपके दर्ज किए गए नंबरों का इस्तेमाल करता है। Aave के लाइव पैरामीटर बदल सकते हैं: ऊपर की सीमाएं ऑन-चेन",
+      afterDate:
+        " को पढ़ी गई थीं, और गवर्नेंस या Risk Stewards उन्हें कभी भी बदल सकते हैं। ओरेकल कीमतें हिलती हैं, ब्याज आपके कर्ज़ में जुड़ता रहता है, और हर लिक्विडेशन कीमत मानती है कि बाकी हर कीमत वैसी ही रहे। कार्रवाई से पहले Aave ऐप में अपनी पोज़िशन जांचें।",
     },
   },
 };

@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { AAVE_MARKETS, AAVE_V4_SPOKES, marketLabel } from "~~/config/aaveConfig";
-import { capitalize, csForMarket, csOnMarket, formatDecimal, formatLongDate, joinList, plural } from "~~/i18n/format";
+import {
+  capitalize,
+  csForMarket,
+  csOnMarket,
+  formatDecimal,
+  formatLongDate,
+  hiMarket,
+  joinList,
+  plural,
+} from "~~/i18n/format";
 
 describe("csOnMarket and csForMarket", () => {
   it("call a V3 market a network", () => {
@@ -47,6 +56,21 @@ describe("Spanish formatting", () => {
   it("writes dates the Latin American way and keeps the decimal point", () => {
     expect(formatLongDate("es", "2026-10-14")).toBe("14 de octubre de 2026");
     expect(formatDecimal("es", "1.42")).toBe("1.42");
+  });
+});
+
+describe("Hindi formatting", () => {
+  it("joins with और and या, writes dates in Devanagari and keeps the decimal point", () => {
+    expect(joinList("hi", ["Signal", "Telegram", "ईमेल"])).toBe("Signal, Telegram और ईमेल");
+    expect(joinList("hi", ["Signal", "ईमेल"], "disjunction")).toBe("Signal या ईमेल");
+    expect(formatLongDate("hi", "2026-10-14")).toBe("14 अक्टूबर 2026");
+    expect(formatDecimal("hi", "1.42")).toBe("1.42");
+    expect(plural("hi", 1, { one: "1 नेटवर्क", other: "कई नेटवर्क" })).toBe("1 नेटवर्क");
+    expect(plural("hi", 0, { one: "0 नेटवर्क", other: "कई नेटवर्क" })).toBe("0 नेटवर्क");
+    expect(plural("hi", 7, { one: "1 नेटवर्क", other: "7 नेटवर्क" })).toBe("7 नेटवर्क");
+    expect(hiMarket("Ethereum")).toBe("Ethereum नेटवर्क");
+    expect(hiMarket("Ethereum (V4 Lido)")).toBe("Ethereum (V4 Lido) मार्केट");
+    expect(hiMarket("USDC | cbBTC (86%)", "market")).toBe("USDC | cbBTC (86%) मार्केट");
   });
 
   it("picks one or other", () => {

@@ -2,11 +2,11 @@ import { DEFAULT_LOCALE, type Locale } from "~~/i18n/locales";
 
 /**
  * Telegram language codes (IETF tags such as "cs", "es-mx" or "pt-br"), by their language, answered in a language the
- * site has: Czech for Czech, and for Slovak readers too; Spanish for every Spanish.
+ * site has: Czech for Czech, and for Slovak readers too; Spanish for every Spanish; Hindi for Hindi.
  */
-const REPLY_LANGUAGES: Record<string, Locale> = { cs: "cs", sk: "cs", es: "es" };
+const REPLY_LANGUAGES: Record<string, Locale> = { cs: "cs", sk: "cs", es: "es", hi: "hi" };
 
-/** The reply language for a Telegram user: Czech for Czech and Slovak apps, Spanish for Spanish ones, else English. */
+/** The reply language for a Telegram user: Czech for Czech and Slovak apps, Spanish or Hindi for those, else English. */
 export const telegramLocale = (languageCode: unknown): Locale => {
   const language = typeof languageCode === "string" ? languageCode.split("-")[0].toLowerCase() : "";
   return REPLY_LANGUAGES[language] ?? DEFAULT_LOCALE;

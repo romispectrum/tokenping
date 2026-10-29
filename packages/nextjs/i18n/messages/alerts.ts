@@ -1,4 +1,4 @@
-import { type MarketNameKind, capitalize, csForMarket, csOnMarket, esMarket, plural } from "~~/i18n/format";
+import { type MarketNameKind, capitalize, csForMarket, csOnMarket, esMarket, hiMarket, plural } from "~~/i18n/format";
 import type { Locale, Localized } from "~~/i18n/locales";
 import { SignInRequiredError } from "~~/services/api/apiClient";
 import type { NotificationService } from "~~/types/notifications";
@@ -131,6 +131,7 @@ const ATTRIBUTION_QUESTION: Localized<string> = {
   en: "How did you hear about Tokenping?",
   cs: "Jak jste se o Tokenpingu dozvěděli?",
   es: "¿Cómo te enteraste de Tokenping?",
+  hi: "आपको Tokenping के बारे में कैसे पता चला?",
 };
 
 /** The email badge's word ("Correo"), written out in running text. */
@@ -455,11 +456,111 @@ export const ALERTS_MESSAGES: Localized<AlertsMessages> = {
     skip: "Omitir",
     answerSent: "Respuesta enviada",
   },
+  hi: {
+    cardTitle: "अलर्ट सेटिंग",
+    active: "सक्रिय",
+    payToEdit: "संपादित करने के लिए एक्सेस का भुगतान करें",
+    editAlert: "अलर्ट संपादित करें",
+    signInTitle: "अपने अलर्ट प्रबंधित करने के लिए साइन इन करें",
+    signInDescription:
+      "आपका वॉलेट एक संदेश पर हस्ताक्षर करता है, जो साबित करता है कि यह पता आपका है। यह कोई ट्रांज़ैक्शन नहीं है और इसमें कोई गैस नहीं लगती।",
+    signIn: "वॉलेट से साइन इन करें",
+    signingIn: "आपके वॉलेट की प्रतीक्षा है",
+    signInStatement: "अपने हेल्थ फ़ैक्टर अलर्ट देखने और संपादित करने के लिए Tokenping में साइन इन करें।",
+    signInRejected: "आपने हस्ताक्षर का अनुरोध अस्वीकार कर दिया। अपने अलर्ट देखने और संपादित करने के लिए साइन इन करें।",
+    signInFailed: "साइन इन नहीं हो सका। फिर से कोशिश करें।",
+    signInExpired: "आपका साइन इन समाप्त हो गया। अपने वॉलेट से फिर से साइन इन करें।",
+    emptyTitle: (chainName, kind) => `${hiMarket(chainName, kind)} पर अभी कोई अलर्ट नहीं है`,
+    emptyDescription: "जब आपका हेल्थ फ़ैक्टर आपकी चुनी हुई सीमा से नीचे गिरे, तो संदेश पाएं।",
+    createAlert: "अलर्ट बनाएं",
+    loadErrorTitle: "अलर्ट सेटिंग लोड नहीं हुई",
+    loadErrorDescription: "अपना कनेक्शन जांचें और फिर से कोशिश करें।",
+    tryAgain: "फिर से कोशिश करें",
+    retrying: "फिर से कोशिश हो रही है",
+    servicesLegend: "अलर्ट चैनल",
+    servicesDescription: "चुनें कि अलर्ट कहां जाएं। आप एक से ज़्यादा चैनल चुन सकते हैं।",
+    serviceNames: { email: "ईमेल", signal: "Signal", telegram: "Telegram" },
+    emailLabel: "ईमेल पता",
+    emailDescription: "अलर्ट इस पते पर भेजे जाते हैं।",
+    emailPlaceholder: "naam@example.com",
+    signalLabel: "Signal यूज़रनेम",
+    signalDescription: "Signal में सेटिंग खोलें, फिर प्रोफ़ाइल। यह alice.42 जैसा दिखता है।",
+    telegramLabel: "Telegram यूज़रनेम",
+    telegramDescription:
+      "अलर्ट इस Telegram खाते पर जाते हैं। अपना यूज़रनेम Telegram में सेटिंग, फिर यूज़रनेम में देखें।",
+    telegramPlaceholder: "alice_eth",
+    telegramChecking: "जांच हो रही है",
+    telegramLinked: username => `@${username} लिंक है: अलर्ट आपकी Telegram चैट में आएंगे।`,
+    telegramPressStart: bot => `अभी लिंक नहीं है: ${bot ? `@${bot}` : "Tokenping बॉट"} में एक बार Start दबाएं।`,
+    openBot: bot => `@${bot} खोलें`,
+    telegramStatusUnknown: "यह जांच नहीं हो सकी कि यह यूज़रनेम लिंक है या नहीं। आप फिर भी सहेज सकते हैं।",
+    opensInNewTab: "(नए टैब में खुलता है)",
+    channelLanguageLabels: { email: "ईमेल की भाषा", signal: "Signal की भाषा", telegram: "Telegram की भाषा" },
+    thresholdLabel: "हेल्थ फ़ैक्टर सीमा (threshold)",
+    thresholdExactValue: "(सटीक मान)",
+    thresholdScale: { critical: "गंभीर", safe: "सुरक्षित", verySafe: "बहुत सुरक्षित" },
+    thresholdDescription: (threshold, chainName, kind) =>
+      `जब ${hiMarket(chainName, kind)} पर आपका हेल्थ फ़ैक्टर ${threshold} से नीचे गिरेगा, तो आपको सूचना मिलेगी।`,
+    saveAlert: "अलर्ट सहेजें",
+    saving: "सहेजा जा रहा है",
+    cancel: "रद्द करें",
+    deleteAlert: "अलर्ट हटाएं",
+    deleting: "हटाया जा रहा है",
+    keepAlert: "अलर्ट रखें",
+    deleteTitle: "यह अलर्ट हटाएं?",
+    deleteDescription: (chainName, kind) =>
+      `Tokenping ${hiMarket(chainName, kind)} के लिए हेल्थ फ़ैक्टर अलर्ट भेजना बंद कर देगा।`,
+    // Hindi counts "फ़ील्ड" the same for one and many.
+    errorSummaryTitle: count => `सहेजने के लिए ${count} फ़ील्ड ठीक करें`,
+    formErrors: {
+      noService: "कम से कम एक अलर्ट चैनल चुनें।",
+      noEmail: "अपना ईमेल पता लिखें।",
+      invalidEmail: "naam@example.com जैसा ईमेल पता लिखें।",
+      noSignal: "अपना Signal यूज़रनेम लिखें।",
+      invalidSignal: "alice.42 जैसा Signal यूज़रनेम लिखें। अपना यूज़रनेम Signal में सेटिंग, फिर प्रोफ़ाइल में देखें।",
+      noTelegram: "अपना Telegram यूज़रनेम लिखें।",
+      invalidTelegram:
+        "alice_eth जैसा Telegram यूज़रनेम लिखें: 4 से 32 अक्षर, अंक या अंडरस्कोर, जो अक्षर से शुरू हो और _ पर खत्म न हो।",
+    },
+    summaryServices: "चैनल",
+    summaryNoServices: "कोई नहीं चुना",
+    summaryEmail: "ईमेल",
+    summarySignal: "Signal",
+    summaryTelegram: "Telegram",
+    summaryLanguage: "भाषा",
+    summaryTelegramNotLinked: bot => `अभी लिंक नहीं है: @${bot} में एक बार Start दबाएं।`,
+    summaryThreshold: "सीमा",
+    sendTest: "टेस्ट भेजें",
+    sendingTest: "भेजा जा रहा है",
+    testAgainIn: minutes => `${minutes} मिनट में फिर से`,
+    testSent: channel => `${channel} से टेस्ट संदेश भेजा गया। जांच लें कि वह पहुंचा।`,
+    testFailed: "टेस्ट संदेश नहीं भेजा गया",
+    testLimitNote: minutes =>
+      `टेस्ट यह अलर्ट और आपकी पोज़िशन वैसे ही भेजता है, जैसी वे अभी हैं। हर चैनल पर ${plural("hi", minutes, { one: "हर मिनट", other: `हर ${minutes} मिनट` })} में एक।`,
+    belowThresholdTitle: "आपकी अलर्ट सीमा से नीचे",
+    belowThresholdDescription: (healthFactor, threshold) =>
+      `आपका मौजूदा हेल्थ फ़ैक्टर (${healthFactor}) आपकी ${threshold} की सीमा से नीचे है।`,
+    alertSaved: "अलर्ट सहेजा गया",
+    saveFailed: "आपका अलर्ट सहेजा नहीं जा सका",
+    alertDeleted: "अलर्ट हटाया गया",
+    deleteFailed: "आपका अलर्ट हटाया नहीं जा सका",
+    attributionQuestion: ATTRIBUTION_QUESTION.hi,
+    attributionFormLabel: `${ATTRIBUTION_QUESTION.hi} (वैकल्पिक)`,
+    attributionDescription: "इससे हमें पता चलता है कि कौन से चैनल काम करते हैं। आपके वॉलेट पते के साथ सहेजा जाता है।",
+    attributionEmpty: "जवाब लिखें, या छोड़ें चुनें।",
+    // The checks behind it (length, hidden control characters) only fail for pasted text.
+    attributionInvalid: () => "जवाब बहुत लंबा है या उसमें छिपे हुए अक्षर हैं। उसे फिर से लिखें और दोबारा कोशिश करें।",
+    attributionSendFailed: "आपका जवाब नहीं भेजा जा सका। फिर से कोशिश करें या छोड़ें।",
+    sendAnswer: "जवाब भेजें",
+    sending: "भेजा जा रहा है",
+    skip: "छोड़ें",
+    answerSent: "जवाब भेजा गया",
+  },
 };
 
 /**
- * A failed request's message for a toast. The API answers in English, so English shows the server's reason and Czech
- * and Spanish show their own fallback. An ended session says so in every language.
+ * A failed request's message for a toast. The API answers in English, so English shows the server's reason and Czech,
+ * Spanish and Hindi show their own fallback. An ended session says so in every language.
  */
 export const requestErrorMessage = (locale: Locale, error: unknown, fallback: string) => {
   if (error instanceof SignInRequiredError) return ALERTS_MESSAGES[locale].signInExpired;

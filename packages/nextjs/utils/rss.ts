@@ -8,6 +8,7 @@ const RSS_DESCRIPTIONS: Localized<string> = {
   en: "Guides to the Aave and Morpho health factor, liquidation risk and alerts.",
   cs: "Průvodci health factorem na Aave a Morpho, rizikem likvidace a upozorněními.",
   es: "Guías sobre el factor de salud en Aave y Morpho, el riesgo de liquidación y las alertas.",
+  hi: "Aave और Morpho के हेल्थ फ़ैक्टर, लिक्विडेशन के जोखिम और अलर्ट पर गाइड।",
 };
 
 const XML_ENTITIES: Record<string, string> = { "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" };

@@ -1,8 +1,8 @@
 import type { Localized } from "~~/i18n/locales";
 
 // The Telegram bot's replies, in the language of the sender's Telegram app (telegramLocale in app/api/telegram/bot.ts).
-// The Czech and Spanish replies name the alerts UI label („uživatelské jméno na Telegramu“, "nombre de usuario de
-// Telegram"): keep them in sync with alerts.ts.
+// The Czech, Spanish and Hindi replies name the alerts UI label („uživatelské jméno na Telegramu“, "nombre de usuario
+// de Telegram", "Telegram यूज़रनेम"): keep them in sync with alerts.ts.
 
 type TelegramReplies = {
   privateChatsOnly: string;
@@ -78,5 +78,25 @@ export const TELEGRAM_REPLIES: Localized<TelegramReplies> = {
       "/stop: detener aquí todas las alertas de Tokenping\n" +
       "/help: mostrar este mensaje",
     unknownCommand: "Solo respondo a /start, /stop y /help. Gestiona tus alertas en la aplicación de Tokenping.",
+  },
+  hi: {
+    privateChatsOnly: "Tokenping केवल निजी चैट में काम करता है। कृपया बॉट को सीधे संदेश भेजें।",
+    noUsername:
+      "आपके Telegram खाते में अभी कोई यूज़रनेम नहीं है। Telegram में एक सेट करें (सेटिंग, फिर यूज़रनेम), उसे " +
+      "Tokenping पर अपने अलर्ट में लिखें, फिर यहां दोबारा /start भेजें।",
+    linkSaveFailed: "इस चैट को लिंक करते समय कुछ गड़बड़ हुई। कृपया /start दोबारा भेजें।",
+    linked: username =>
+      `@${username} लिंक हो गया। Tokenping के वे अलर्ट, जिनमें @${username} लिखा है, इस चैट में आएंगे।\n\n` +
+      "उन्हें रोकने के लिए कभी भी /stop भेजें।",
+    unsubscribed: "रोक दिया गया। अब Tokenping के और अलर्ट यहां नहीं आएंगे। उन्हें फिर से पाने के लिए /start भेजें।",
+    unsubscribeFailed: "अलर्ट रोकते समय कुछ गड़बड़ हुई। कृपया /stop दोबारा भेजें।",
+    help:
+      "जब आपका Aave या Morpho हेल्थ फ़ैक्टर ऐप में आपकी तय की हुई सीमा से नीचे गिरता है, तो Tokenping आपको संदेश भेजता है।\n\n" +
+      "Tokenping पर अपने अलर्ट में अपना Telegram यूज़रनेम लिखें, फिर यहां एक बार /start भेजें।\n\n" +
+      "कमांड:\n" +
+      "/start: इस चैट को अपने यूज़रनेम से लिंक करें\n" +
+      "/stop: यहां Tokenping के सभी अलर्ट रोकें\n" +
+      "/help: यह संदेश दिखाएं",
+    unknownCommand: "मैं केवल /start, /stop और /help का जवाब देता हूं। अपने अलर्ट Tokenping ऐप में प्रबंधित करें।",
   },
 };

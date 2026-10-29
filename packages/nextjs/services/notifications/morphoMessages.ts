@@ -28,7 +28,7 @@ const render = (subject: string, lines: string[]): AlertMessage => {
 };
 
 const percent = (locale: Locale, wad: string) =>
-  new Intl.NumberFormat(LOCALE_INFO[locale].intl, { style: "percent", maximumFractionDigits: 2 }).format(
+  new Intl.NumberFormat(LOCALE_INFO[locale].numbers, { style: "percent", maximumFractionDigits: 2 }).format(
     Number(wad) / 1e18,
   );
 
@@ -55,7 +55,7 @@ export const morphoMarketName = (params: MorphoMarketParams, locale: Locale) =>
 export const formatLoanAmount = (amount: bigint, params: MorphoMarketParams, locale: Locale) => {
   const value = Number(formatUnits(amount, params.loanToken.decimals));
   const digits = Math.abs(value) < 1 ? 4 : 2;
-  const number = new Intl.NumberFormat(LOCALE_INFO[locale].intl, { maximumFractionDigits: digits }).format(value);
+  const number = new Intl.NumberFormat(LOCALE_INFO[locale].numbers, { maximumFractionDigits: digits }).format(value);
   return `${number} ${params.loanToken.symbol}`;
 };
 

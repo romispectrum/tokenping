@@ -19,8 +19,17 @@ const LOGO_SRC = svgDataUri(logoSvg({ variant: "primary", color: OG_COLORS.text 
 
 /**
  * Satoshi Medium (titles) and Regular (the footer line) as OTF: ImageResponse cannot read the woff2 web fonts.
- * The routes run in Node, from the package root.
+ * Satoshi has no Devanagari glyphs, so Noto Sans Devanagari (WOFF, SIL Open Font License, app/fonts/og) follows it
+ * in the font list and in the card's font-family: Satori draws each glyph with the first listed font that has it, so
+ * the Hindi cards get Devanagari titles and keep Satoshi for Latin letters and digits. The routes run in Node, from
+ * the package root.
  */
+const OG_FONT_FILES = [
+  "Satoshi-Medium.otf",
+  "Satoshi-Regular.otf",
+  "NotoSansDevanagari-Medium.woff",
+  "NotoSansDevanagari-Regular.woff",
+];
 /**
  * next/og sends its cards as "public, immutable, max-age=31536000", which promises the bytes at that URL never change.
  * The cards' URLs carry no hash, and a card does change (a new title, the site card's wording), so caches may keep one
@@ -29,8 +38,8 @@ const LOGO_SRC = svgDataUri(logoSvg({ variant: "primary", color: OG_COLORS.text 
 export const OG_CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=604800";
 
 export const ogImageOptions = async () => {
-  const [medium, regular] = await Promise.all(
-    ["Satoshi-Medium.otf", "Satoshi-Regular.otf"].map(file => readFile(join(process.cwd(), "app/fonts/og", file))),
+  const [medium, regular, devanagariMedium, devanagariRegular] = await Promise.all(
+    OG_FONT_FILES.map(file => readFile(join(process.cwd(), "app/fonts/og", file))),
   );
   return {
     ...OG_IMAGE_SIZE,
@@ -38,6 +47,8 @@ export const ogImageOptions = async () => {
     fonts: [
       { name: "Satoshi", data: medium, weight: 500 as const, style: "normal" as const },
       { name: "Satoshi", data: regular, weight: 400 as const, style: "normal" as const },
+      { name: "Noto Sans Devanagari", data: devanagariMedium, weight: 500 as const, style: "normal" as const },
+      { name: "Noto Sans Devanagari", data: devanagariRegular, weight: 400 as const, style: "normal" as const },
     ],
   };
 };
@@ -67,8 +78,8 @@ export const OgCard = ({ title, footer }: OgCardProps) => (
       padding: 80,
       background: OG_COLORS.background,
       color: OG_COLORS.text,
-      // lint-brand-ignore-next-line font-family: the name ImageResponse registers the Satoshi file under
-      fontFamily: "Satoshi",
+      // lint-brand-ignore-next-line font-family: the names ImageResponse registers the font files under
+      fontFamily: "Satoshi, Noto Sans Devanagari",
     }}
   >
     <img src={LOGO_SRC} width={LOGO_WIDTH} height={LOGO_HEIGHT} alt={SITE_NAME} />

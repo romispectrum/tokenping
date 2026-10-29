@@ -19,9 +19,9 @@ const EMAIL_ERROR = "Invalid email address for email notifications";
 const SIGNAL_ERROR = "Invalid Signal username for Signal notifications. Expected format: alice.42";
 const TELEGRAM_ERROR =
   "Invalid Telegram username for Telegram notifications. Expected 4 to 32 letters, digits or underscores, e.g. alice_eth";
-const LOCALE_ERROR = "Invalid locale: expected one of en, cs, es";
+const LOCALE_ERROR = "Invalid locale: expected one of en, cs, es, hi";
 const CHANNEL_LOCALES_ERROR =
-  "Invalid channelLocales: expected an object of email, signal, telegram to one of en, cs, es";
+  "Invalid channelLocales: expected an object of email, signal, telegram to one of en, cs, es, hi";
 
 describe("parseConfigInput", () => {
   it.each<[ConfigInput, Record<string, unknown>]>([
