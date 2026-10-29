@@ -1,0 +1,132 @@
+export const meta = {
+  slug: "why-aave-withdraw-or-borrow-fails",
+  title: "Why can't I withdraw or borrow on Aave? 9 causes",
+  description:
+    "Why an Aave V3 withdrawal, borrow or repayment fails: the health factor check, unborrowed liquidity, supply and borrow caps, frozen or paused reserves.",
+  h1: "Why does my Aave withdrawal, borrow or repayment fail?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "Why does an Aave withdraw, borrow or repay transaction fail?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  An Aave V3 transaction fails when one of the Pool contract's checks rejects it, and the reason is almost always one of
+  nine. The withdrawal would take your health factor below 1. The reserve holds less unborrowed liquidity than you ask
+  for. The asset's supply cap or borrow cap is full. The reserve is frozen (no new supply or borrows) or paused (nothing
+  at all, repayments included). The asset is not borrowable, or not borrowable in your E-Mode category. You hold
+  collateral with an LTV of 0, which has to leave first. Or a repayment names debt you do not have or tokens you have
+  not approved. On Ethereum Core on 29 Oct 2026, 35 of the 66 listed reserves were frozen, LBTC's supply cap was full to
+  the last 0.07 LBTC, and only 134.4M of the 2,347.5M USDC supplied was there to withdraw.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Figures and the block numbers they were read at: content/blog/snapshots/why-aave-withdraw-or-borrow-fails.md */}
+
+## What checks does an Aave transaction have to pass?
+
+Every supply, withdrawal, borrow and repayment on Aave V3 goes through the Pool contract, and the Pool runs a list of checks in a library called `ValidationLogic` before it moves a token. Each check that fails stops the whole transaction with a named error: `ReserveFrozen`, `SupplyCapExceeded`, `HealthFactorLowerThanLiquidationThreshold` and so on. Your wallet usually shows only "execution reverted" and a short hex code, because the names live in Aave's code, not in the wallet. The Aave app checks most of these before you sign, which is why it often refuses before you ever see a transaction.
+
+The checks differ by action. A withdrawal needs an active, unpaused reserve, a balance at least as large as the amount, and, if you have any debt and the asset counts as collateral, a health factor that stays at or above 1 afterwards. A borrow needs an active, unpaused, unfrozen reserve where borrowing is enabled, room under the borrow cap, and enough collateral at your LTV. A supply needs an unfrozen reserve with room under the supply cap. A repayment needs only an active, unpaused reserve and debt of that asset. The nine causes below follow that list, roughly in the order you are likely to meet them.
+
+This guide covers Aave V3. Aave V4 Spokes keep their own configuration, and Morpho has none of these mechanisms except the oracle and the health factor: a Morpho market has no caps, no freeze and no pause.
+
+## 1. The withdrawal would leave your health factor below 1
+
+This is the one borrowers hit most. When you withdraw an asset you use as collateral while you have debt, the Pool recalculates your account after the withdrawal and requires a health factor of at least 1 (`HealthFactorLowerThanLiquidationThreshold`). The same check runs when you switch an asset off as collateral or transfer aTokens to another address. It does not run when you have no debt, which is why the full balance is always withdrawable from a pure supply position.
+
+Take 10 WETH on Ethereum Core at the oracle price of $2,309.84 on 29 Oct 2026 ($23,098.41), a liquidation threshold of 84%, and 12,000 USDC of debt. The [health factor](/blog/aave-health-factor) is 23,098.41 × 0.84 ÷ 12,000 = 1.617. To keep it at exactly 1 you need 12,000 ÷ 0.84 = $14,285.71 of WETH, or 6.185 WETH, so the most you can withdraw is 3.815 WETH. Ask for 4 and the transaction reverts; ask for 3.815 and it goes through, leaving a position that the next downward price tick makes liquidatable. The Aave app's maximum is this number, and withdrawing all of it is the fastest way to turn a safe position into one that needs a [liquidation alert](/blog/aave-health-factor-alert-setup) within the hour.
+
+Borrowing has a stricter sibling. A new borrow must leave the health factor at or above 1 and must also fit under your weighted LTV: collateral × LTV must cover the debt (`CollateralCannotCoverNewBorrow`). With WETH at an 81% LTV, the 10 WETH above support at most $18,709.71 of debt, and the position that borrows all of it starts at a health factor of 84 ÷ 81 = 1.037. [What a safe health factor is](/blog/safe-aave-health-factor) explains why that is a thin place to start.
+
+## 2. The reserve holds less unborrowed liquidity than you want
+
+Aave lends out what suppliers deposit, so a reserve only holds the share nobody has borrowed. A withdrawal, or a borrow, larger than that share fails, and this case has no Aave error name: the aToken tries to transfer the underlying token out and the token contract itself reverts, for USDC with "ERC20: transfer amount exceeds balance". The borrow check only asks that the whole aToken supply is at least the amount, which catches absurd requests and nothing else.
+
+On Ethereum Core on 29 Oct 2026, 2,347,525,372.91 USDC was supplied, 2,213,199,103.54 USDC was borrowed and the aToken contract held 134,360,379.94 USDC: 94.28% utilization, 5.72% of the supply available to withdraw or borrow. A supplier wanting to leave with 200M USDC could not, and nobody could until someone repaid or deposited. The guide to [how Aave interest rates work](/blog/aave-interest-rates) shows what that looks like in practice: on 14 Oct 2026 a single 133,898,000 USDC withdrawal pushed the same reserve to 99.50% utilization, and the borrow rate from 4.50% to 13.67% in one block.
+
+Four things work when liquidity is the problem. Withdraw a smaller amount, up to what the contract holds. Wait: the rate curve is designed to pull liquidity back, and the 14 Oct spike was over in about 36 minutes, though nothing guarantees it. Withdraw a different collateral asset, if you have one and the health factor allows. And if you are trying to repay USDC debt but hold aUSDC, use `repayWithATokens`: it burns your aTokens against your debt without moving a single USDC, so it needs no liquidity at all.
+
+## 3. The supply cap is full
+
+Each reserve has a supply cap, set by Aave's risk stewards and governance, and a supply that would push the total past it fails with `SupplyCapExceeded`. A cap of 0 means no cap. The cap counts the aTokens in existence plus interest accrued to the treasury, so it fills up by itself as interest accrues, without anyone depositing.
+
+Caps bind more often than people expect. On 29 Oct 2026, Ethereum Core's LBTC cap was 2,690 LBTC against 2,689.93 supplied: the room left was 0.07 LBTC, and a borrower who wanted to add 1 LBTC to a position under pressure could not. sUSDe stood at 96.9% of its cap, tBTC at 98.9%, USDe at 91.7%, weETH at 91.2% and WBTC at 89.4%. The caps move both ways. On 10 Jul 2026 LlamaRisk cut the USDm supply cap on Aave's MegaETH instance from 1,000,000,000 to 300,000,000 because the ceiling sat "well above current demand"; the stewards raise caps when demand arrives, usually within days.
+
+For a borrower the cap matters as a closed door: adding collateral is one of the two ways to raise a health factor, and a full cap removes it for that asset. Repaying debt still works, which is the other way, and so does adding a different collateral asset whose cap has room.
+
+## 4. The borrow cap is full
+
+Borrow caps work the same way for debt: the reserve's total variable debt after your borrow must not exceed the cap (`BorrowCapExceeded`), and 0 means no cap. The check runs on every borrow, so a cap that is already over its limit stops every new borrow of that asset until someone repays. A full borrow cap stops nothing else: repayments, withdrawals and liquidations go through.
+
+tBTC on Ethereum Core is the extreme case: borrowing was enabled on 29 Oct 2026, but the cap was 1 tBTC and 2.57 tBTC was already borrowed, so the smallest borrow reverted. USDC had 2,213.2M borrowed against a 2,700M cap, 82.0% used, with 486.8M of room; USDT was at 80.8%. When the stablecoin caps fill, a borrow fails even though the reserve may still hold plenty of liquidity.
+
+## 5. The reserve is frozen
+
+A frozen reserve accepts no new supply and no new borrows (`ReserveFrozen` on both). Aave's Pool Configurator documentation lists what still works: repayments, liquidations and withdrawals. Freezing is how governance winds an asset down without trapping anyone; [what happens when Aave winds down a market](/blog/aave-market-wind-down) walks through the steps.
+
+Frozen reserves are not rare. On 29 Oct 2026, 35 of the 66 reserves on Ethereum Core were frozen: CRV, MKR, UNI, LUSD, FRAX, sDAI, crvUSD, FBTC and a long list of Pendle PT tokens past their maturity, nearly all with supply and borrow caps of 1 as well. If you still have collateral in one, you can withdraw it and you can be liquidated out of it, but you cannot top it up.
+
+## 6. The reserve is paused
+
+Pausing is the emergency switch. A paused reserve rejects everything: supply, borrow, repayment, withdrawal, liquidation and aToken transfers (`ReservePaused`). No Ethereum Core reserve was paused on 29 Oct 2026, and in normal weeks none is.
+
+The pause has been used. On 4 Nov 2023, after a critical bug bounty report, Aave's Guardian paused Aave V2 on Ethereum and a set of assets on V3 Arbitrum, Avalanche, Optimism and Polygon. For about a week nobody could repay or add collateral on those reserves, while prices kept moving. The V3 instances were unpaused on 12 Nov 2023, V2 Ethereum on 13 Nov after a liquidation grace period of about three hours for WETH borrowers, and CRV on V3 Polygon on 16 Nov. Today that grace period is part of the protocol: a liquidation during a reserve's grace period fails with `LiquidationGraceSentinelCheckFailed`, which gives borrowers who were locked out a short window to repay before liquidators move.
+
+If your transaction fails with a pause error, there is nothing to do on Aave until the pause lifts. Use the time to have the repayment funds ready on the right network, because the grace period after an unpause is set by governance or the Guardian and has been as short as three hours.
+
+## 7. Borrowing is off for that asset, or not allowed in your E-Mode category
+
+Many assets can be supplied as collateral but not borrowed. On Ethereum Core on 29 Oct 2026, borrowing was disabled on 15 unfrozen reserves, among them wstETH, cbETH, rETH, weETH, LBTC, eBTC, AAVE and XAUt, and a borrow of any of them fails with `BorrowingNotEnabled`. The flag is set by governance per reserve and is visible in the Aave app as a missing borrow button.
+
+If you are in an [E-Mode category](/blog/aave-e-mode), a different rule replaces that one: you can borrow only the assets in the category's borrowable set, and anything else fails with `NotBorrowableInEMode`, even an asset you could borrow outside the category. Ethereum Core's "ETH correlated" category, for example, lets you borrow WETH and nothing else. Leaving the category fixes the borrow, but leaving runs its own checks: every asset you owe must be borrowable outside the category and your health factor must still be at or above 1 with the normal, lower thresholds (`InvalidDebtInEmode`, `InvalidCollateralInEmode`, `HealthFactorLowerThanLiquidationThreshold`).
+
+## 8. You hold collateral with an LTV of 0
+
+Governance sets an asset's LTV to 0 when it wants the asset to stop supporting new debt while existing positions keep running. On 29 Oct 2026, 11 unfrozen reserves on Ethereum Core were enabled as collateral with an LTV of 0, among them DAI (liquidation threshold 77%), LINK, PYUSD, USDe, sUSDe, USDS, EURC and XAUt. Such an asset still counts in your health factor, through its liquidation threshold, but adds nothing to your borrowing power. Two checks follow from it.
+
+The first is on borrowing. If every collateral you have enabled has an LTV of 0, your weighted LTV is 0 and any borrow fails with `LtvValidationFailed`. With a mix, say DAI and WETH, the borrow goes through, limited by the WETH alone.
+
+The second is on withdrawing, and it surprises people. If you have debt and any enabled collateral with an LTV of 0, then the asset you withdraw, transfer or switch off as collateral must itself be an LTV 0 asset, or the transaction fails with the same `LtvValidationFailed`. The code's own comment states the intent: the rule "ensures that a multi-collateral position needs to withdraw/transfer the ltv0 asset first". So a borrower holding DAI and WETH who tries to pull some WETH is refused until the DAI is out; the health factor check still applies to the DAI withdrawal itself. The fix is the order of operations: withdraw the LTV 0 asset first, or repay enough that the health factor allows both.
+
+## 9. A repayment names debt you do not have, or tokens you have not approved
+
+Repayments are the simplest action and still fail, usually for one of five reasons.
+
+- **No debt of that type.** `NoDebtOfSelectedType` means the Pool you called holds no variable debt of that asset for that address. The usual cause is the wrong market: Ethereum has separate Core, Prime and Lido instances, each with its own Pool, and the same wallet can owe USDC on one and nothing on another. Every network's markets are separate too.
+- **A rate mode that no longer exists.** Only the variable mode (2) is accepted; stable-rate borrowing is gone from the code, and a call with mode 1 fails with `InvalidInterestRateModeSelected`.
+- **No allowance.** The Pool pulls the repayment with `transferFrom`, so the token needs an approval for at least the amount, or a signed permit. Without it the token contract reverts before Aave's checks run.
+- **Repaying for someone else without an amount.** Repaying on behalf of another address with the "whole debt" value (`type(uint256).max`) fails with `NoExplicitAmountToRepayOnBehalf`; name the amount.
+- **Dust.** Interest accrues every second, so a repayment of the exact balance you saw a minute ago leaves a few wei of debt. To clear a debt completely, repay with the maximum value, which the Pool caps at what you owe.
+
+## Causes you can stop looking for
+
+Two old explanations no longer apply. Isolation Mode and its debt ceilings were removed in Aave V3.7, and so was siloed borrowing, so no borrow fails today because an asset is isolated or a ceiling is reached. And stable-rate borrowing has been gone since V3.2, so nothing fails on a rate switch. If an older guide names one of these, it describes a version of Aave that is no longer deployed.
+
+## What to do when a transaction fails during a price drop
+
+A failed transaction is a nuisance in a quiet market and a problem in a falling one, because the hour you spend diagnosing it is the hour your health factor needs. A short order of operations:
+
+1. **Read the error.** Simulate the transaction in your wallet, or paste the hex selector into a block explorer's decoder; the names above tell you which case you are in.
+2. **Prefer repaying to adding collateral.** Repaying works through frozen reserves and full supply caps, and with `repayWithATokens` it works through empty liquidity too. Adding collateral depends on a cap with room and an unfrozen reserve.
+3. **Try smaller amounts.** Liquidity and caps are quantities; a withdrawal or borrow that fits goes through while the full one fails.
+4. **Use another asset.** A different collateral to withdraw, or a different asset to repay, is often available when the first is blocked.
+5. **Check the instance and the network.** A repayment sent to the right asset on the wrong Pool fails with `NoDebtOfSelectedType` and costs you gas and time.
+6. **Take the alert earlier next time.** Each of these cases takes minutes to work around. A health factor alert set with room to spare buys those minutes.
+
+Tokenping checks your Aave health factor every 5 minutes, in every Aave V3 market on 21 networks and every Aave V4 Spoke, and messages you on Signal, Telegram or email when it is below a threshold you choose (1.1 to 10), repeating on every check until it recovers. It reads the number from `getUserAccountData`, the same one the withdrawal check uses. An alert cannot act for you, and nothing in this guide prevents liquidation; it tells you which door is closed so that you try the open one first. You can [check your Aave V3 health factor](/aave) without paying; alerts cost <AlertPrice />, one per market or Spoke. [How to avoid liquidation on Aave](/blog/avoid-aave-liquidation) covers the repay-or-add decision in detail, and [why your health factor dropped](/blog/why-aave-health-factor-dropped) the causes you are reacting to.
+
+## Sources
+
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol), [BorrowLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/BorrowLogic.sol) and [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): every check named above, the order they run in, the LTV 0 comment, and the zero-LTV flag (aave-v3-origin main, fetched 29 Oct 2026)
+- [Errors.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/helpers/Errors.sol): the error names and their descriptions (aave-v3-origin main, fetched 29 Oct 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getAllReservesTokens`, and for each reserve `getReserveConfigurationData`, `getReserveCaps`, `getPaused` and `getReserveData`, at block 26296985 (fetched 29 Oct 2026)
+- [aEthUSDC](https://etherscan.io/address/0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c): the USDC held by the aToken contract at block 26296985 (fetched 29 Oct 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): WETH and USDC prices at block 26296985 (fetched 29 Oct 2026)
+- [Aave docs: Pool Configurator](https://aave.com/docs/aave-v3/smart-contracts/pool-configurator): what frozen and paused reserves allow, caps of 0 (fetched 29 Oct 2026)
+- [Aave v2/v3 security incident 04/11/2023](https://governance.aave.com/t/aave-v2-v3-security-incident-04-11-2023/15335): the pauses of 4 Nov 2023, the unpauses of 12, 13 and 16 Nov and the grace period (fetched 29 Oct 2026)
+- [Aave V3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): the removal of stable-rate borrowing (fetched 29 Oct 2026)
+- [Aave V3.7: isolation mode and siloed borrowing removal](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/mode-removal.md) (fetched 29 Oct 2026)
+- [Risk Stewards: Supply and Borrow Cap Reductions on Aave V3 / 2026.07.10](https://governance.aave.com/t/risk-stewards-supply-and-borrow-cap-reductions-on-aave-v3-2026-07-10/25296): LlamaRisk's MegaETH cap cuts, executed 14 Jul 2026 (fetched 29 Oct 2026)
+
+_Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation._

@@ -89,6 +89,16 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     cs: "depeg-stablecoinu-a-aave",
     es: "depeg-de-stablecoin-y-aave",
   },
+  "why-aave-withdraw-or-borrow-fails": {
+    en: "why-aave-withdraw-or-borrow-fails",
+    cs: "proc-nejde-vybrat-nebo-pujcit-na-aave",
+    es: "por-que-falla-retirar-o-pedir-prestado-en-aave",
+  },
+  "wrapped-bitcoin-aave-collateral": {
+    en: "wrapped-bitcoin-aave-collateral",
+    cs: "wrapped-bitcoin-jako-kolateral-na-aave",
+    es: "bitcoin-envuelto-como-colateral-en-aave",
+  },
   "morpho-midnight-fixed-rate-loans": {
     en: "morpho-midnight-fixed-rate-loans",
     cs: "morpho-midnight-pujcky-s-pevnou-sazbou",

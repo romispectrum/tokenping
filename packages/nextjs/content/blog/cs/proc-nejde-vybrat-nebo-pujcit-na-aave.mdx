@@ -1,0 +1,132 @@
+export const meta = {
+  slug: "proc-nejde-vybrat-nebo-pujcit-na-aave",
+  title: "Proč nejde vybrat nebo si půjčit na Aave? 9 příčin",
+  description:
+    "Proč na Aave V3 selže výběr, půjčka nebo splátka: kontrola health factoru, nevypůjčená likvidita, limity vkladů a půjček, zmrazené či pozastavené rezervy.",
+  h1: "Proč selže můj výběr, půjčka nebo splátka na Aave?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "Proč na Aave selže transakce výběru, půjčky nebo splátky?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Transakce na Aave V3 selže, když ji odmítne některá z kontrol kontraktu Pool, a důvod je skoro vždy jeden z devíti.
+  Výběr by dostal váš health factor (faktor zdraví pozice) pod 1. Rezerva drží méně nevypůjčené likvidity, než žádáte.
+  Limit vkladů nebo limit půjček daného aktiva je plný. Rezerva je zmrazená (žádné nové vklady ani půjčky) nebo
+  pozastavená (vůbec nic, včetně splátek). Aktivum není půjčitelné, nebo není půjčitelné ve vaší kategorii E-Mode.
+  Držíte kolaterál s LTV 0, který musí odejít první. Nebo splátka míří na dluh, který nemáte, nebo na tokeny, které jste
+  neschválili. Na Ethereum Core bylo 29. října 2026 zmrazených 35 z 66 uvedených rezerv, limit vkladů LBTC byl plný až
+  na posledních 0,07 LBTC a z 2 347,5 milionu vložených USDC bylo k výběru jen 134,4 milionu.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Čísla a bloky, ve kterých byla načtena: content/blog/snapshots/why-aave-withdraw-or-borrow-fails.md */}
+
+## Jakými kontrolami musí transakce na Aave projít?
+
+Každý vklad, výběr, půjčka a splátka na Aave V3 prochází kontraktem Pool a Pool před přesunem tokenu spustí seznam kontrol v knihovně `ValidationLogic`. Každá kontrola, která neprojde, zastaví celou transakci s pojmenovanou chybou: `ReserveFrozen`, `SupplyCapExceeded`, `HealthFactorLowerThanLiquidationThreshold` a tak dále. Vaše peněženka obvykle ukáže jen „execution reverted“ a krátký hexadecimální kód, protože názvy žijí v kódu Aave, ne v peněžence. Aplikace Aave většinu z nich kontroluje ještě před podpisem, proto často odmítne dřív, než vůbec nějakou transakci uvidíte.
+
+Kontroly se liší podle akce. Výběr potřebuje aktivní, nepozastavenou rezervu, zůstatek alespoň ve výši částky, a pokud máte jakýkoli dluh a aktivum se počítá jako kolaterál, health factor, který po výběru zůstane na 1 nebo výš. Půjčka potřebuje aktivní, nepozastavenou, nezmrazenou rezervu s povoleným půjčováním, prostor pod limitem půjček a dost kolaterálu při vašem LTV. Vklad potřebuje nezmrazenou rezervu s prostorem pod limitem vkladů. Splátka potřebuje jen aktivní, nepozastavenou rezervu a dluh v daném aktivu. Devět příčin níže sleduje tento seznam, zhruba v pořadí, v jakém na ně nejspíš narazíte.
+
+Tento průvodce se věnuje Aave V3. Trhy (Spoke) Aave V4 mají vlastní konfiguraci a Morpho nemá žádný z těchto mechanismů kromě orákula a health factoru: trh Morpho nemá limity, zmrazení ani pozastavení.
+
+## 1. Výběr by nechal váš health factor pod 1
+
+Na tuhle narážejí dlužníci nejčastěji. Když vyberete aktivum, které používáte jako kolaterál, zatímco máte dluh, Pool přepočítá váš účet po výběru a vyžaduje health factor alespoň 1 (`HealthFactorLowerThanLiquidationThreshold`). Stejná kontrola běží, když aktivum vypnete jako kolaterál nebo převedete aTokeny na jinou adresu. Neběží, když nemáte žádný dluh, a proto je z čistě vkladové pozice vždy možné vybrat celý zůstatek.
+
+Vezměte 10 WETH na Ethereum Core při ceně z orákula 2 309,84 $ dne 29. října 2026 (23 098,41 $), likvidační práh 84 % a dluh 12 000 USDC. [Health factor](/cz/blog/aave-health-factor-vysvetleni) je 23 098,41 × 0,84 ÷ 12 000 = 1,617. Abyste ho udrželi přesně na 1, potřebujete 12 000 ÷ 0,84 = 14 285,71 $ ve WETH, tedy 6,185 WETH, takže nejvíc můžete vybrat 3,815 WETH. Požádejte o 4 a transakce se vrátí (revert); požádejte o 3,815 a projde a zanechá pozici, kterou další pohyb ceny dolů udělá likvidovatelnou. Maximum v aplikaci Aave je právě toto číslo a vybrat ho celé je nejrychlejší způsob, jak z bezpečné pozice udělat pozici, která do hodiny potřebuje [upozornění na likvidaci](/cz/blog/nastaveni-upozorneni-health-factor-aave).
+
+Půjčka má přísnějšího sourozence. Nová půjčka musí nechat health factor na 1 nebo výš a musí se také vejít pod vaše vážené LTV: kolaterál × LTV musí pokrýt dluh (`CollateralCannotCoverNewBorrow`). S WETH při LTV 81 % unese 10 WETH výše nejvýš 18 709,71 $ dluhu a pozice, která si půjčí všechno, začíná na health factoru 84 ÷ 81 = 1,037. [Co je bezpečný health factor](/cz/blog/bezpecny-health-factor-aave) vysvětluje, proč je to tenké místo pro začátek.
+
+## 2. Rezerva drží méně nevypůjčené likvidity, než chcete
+
+Aave půjčuje to, co vkladatelé vloží, takže rezerva drží jen podíl, který si nikdo nepůjčil. Výběr nebo půjčka větší než tento podíl selže a tento případ nemá žádný název chyby Aave: aToken se pokusí převést podkladový token ven a samotný kontrakt tokenu se vrátí, u USDC s „ERC20: transfer amount exceeds balance“ (částka převodu překračuje zůstatek). Kontrola půjčky se ptá jen na to, jestli je celková nabídka aTokenu alespoň rovna částce, což zachytí absurdní požadavky a nic jiného.
+
+Na Ethereum Core bylo 29. října 2026 vloženo 2 347 525 372,91 USDC, vypůjčeno 2 213 199 103,54 USDC a kontrakt aTokenu držel 134 360 379,94 USDC: využití 94,28 %, 5,72 % vkladů k dispozici na výběr nebo půjčku. Vkladatel, který by chtěl odejít s 200 miliony USDC, nemohl, a nikdo nemohl, dokud někdo nesplatil nebo nevložil. Průvodce [jak fungují úrokové sazby na Aave](/cz/blog/urokove-sazby-aave) ukazuje, jak to vypadá v praxi: 14. října 2026 posunul jediný výběr 133 898 000 USDC tutéž rezervu na využití 99,50 % a výpůjční sazbu ze 4,50 % na 13,67 % v jednom bloku.
+
+Když je problémem likvidita, fungují čtyři věci. Vyberte menší částku, až do toho, co kontrakt drží. Počkejte: křivka sazeb je navržená tak, aby likviditu přitáhla zpět, a špička ze 14. října skončila zhruba za 36 minut, i když to nic nezaručuje. Vyberte jiné aktivum z kolaterálu, pokud nějaké máte a health factor to dovolí. A pokud se snažíte splatit dluh v USDC, ale držíte aUSDC, použijte `repayWithATokens`: spálí vaše aTokeny proti vašemu dluhu, aniž by se pohnul jediný USDC, takže nepotřebuje vůbec žádnou likviditu.
+
+## 3. Limit vkladů je plný
+
+Každá rezerva má limit vkladů (supply cap), který nastavují Risk Stewards a governance Aave, a vklad, který by celkový objem posunul přes něj, selže s `SupplyCapExceeded`. Limit 0 znamená žádný limit. Limit počítá existující aTokeny plus úrok nabíhající pokladně, takže se plní sám od sebe, jak nabíhá úrok, aniž by kdokoli vkládal.
+
+Limity brzdí častěji, než lidé čekají. Dne 29. října 2026 byl limit LBTC na Ethereum Core 2 690 LBTC proti 2 689,93 vloženým: zbývalo 0,07 LBTC a dlužník, který chtěl přidat 1 LBTC do pozice pod tlakem, nemohl. sUSDe bylo na 96,9 % svého limitu, tBTC na 98,9 %, USDe na 91,7 %, weETH na 91,2 % a WBTC na 89,4 %. Limity se pohybují oběma směry. Dne 10. července 2026 snížil LlamaRisk limit vkladů USDm na instanci Aave na síti MegaETH z 1 000 000 000 na 300 000 000, protože strop ležel „well above current demand“ (vysoko nad současnou poptávkou); Risk Stewards limity zvyšují, když poptávka přijde, obvykle během dní.
+
+Pro dlužníka je limit zavřenými dveřmi: přidání kolaterálu je jeden ze dvou způsobů, jak zvýšit health factor, a plný limit ho pro dané aktivum odebírá. Splácení dluhu dál funguje, to je ten druhý způsob, a stejně tak přidání jiného aktiva do kolaterálu, jehož limit má prostor.
+
+## 4. Limit půjček je plný
+
+Limity půjček (borrow cap) fungují stejně pro dluh: celkový variabilní dluh rezervy po vaší půjčce nesmí překročit limit (`BorrowCapExceeded`) a 0 znamená žádný limit. Kontrola běží při každé půjčce, takže limit, který už je přes svou hranici, zastaví každou novou půjčku daného aktiva, dokud někdo nesplatí. Plný limit půjček nezastaví nic jiného: splátky, výběry a likvidace procházejí.
+
+tBTC na Ethereum Core je krajní případ: půjčování bylo 29. října 2026 povolené, ale limit byl 1 tBTC a 2,57 tBTC už bylo vypůjčeno, takže i nejmenší půjčka se vrátila. USDC mělo vypůjčeno 2 213,2 milionu proti limitu 2 700 milionů, využito 82,0 %, s prostorem 486,8 milionu; USDT bylo na 80,8 %. Když se limity stablecoinů naplní, půjčka selže, i když rezerva může stále držet spoustu likvidity.
+
+## 5. Rezerva je zmrazená
+
+Zmrazená rezerva (frozen) nepřijímá žádné nové vklady ani nové půjčky (`ReserveFrozen` v obou případech). Dokumentace Pool Configuratoru Aave vyjmenovává, co dál funguje: splátky, likvidace a výběry. Zmrazení je způsob, jak governance aktivum postupně vyřazuje, aniž by někoho uvěznila; [co se stane, když Aave ukončuje trh](/cz/blog/ukonceni-trhu-aave) prochází jednotlivé kroky.
+
+Zmrazené rezervy nejsou vzácné. Dne 29. října 2026 bylo zmrazených 35 z 66 rezerv na Ethereum Core: CRV, MKR, UNI, LUSD, FRAX, sDAI, crvUSD, FBTC a dlouhý seznam tokenů PT z Pendle po splatnosti, téměř všechny navíc s limity vkladů a půjček 1. Pokud v některé ještě máte kolaterál, můžete ho vybrat a můžete z ní být zlikvidováni, ale nemůžete ho doplnit.
+
+## 6. Rezerva je pozastavená
+
+Pozastavení je nouzový vypínač. Pozastavená rezerva (paused) odmítá všechno: vklad, půjčku, splátku, výběr, likvidaci i převody aTokenů (`ReservePaused`). Dne 29. října 2026 nebyla na Ethereum Core pozastavená žádná rezerva a v běžných týdnech není žádná.
+
+Pozastavení se už použilo. Dne 4. listopadu 2023, po kritickém hlášení z programu bug bounty, pozastavil Guardian Aave celé Aave V2 na Ethereu a sadu aktiv na V3 na sítích Arbitrum, Avalanche, Optimism a Polygon. Zhruba týden nemohl nikdo na těchto rezervách splácet ani přidávat kolaterál, zatímco ceny se dál hýbaly. Instance V3 byly obnoveny 12. listopadu 2023, V2 na Ethereu 13. listopadu po ochranné lhůtě pro likvidace (grace period) zhruba tři hodiny pro dlužníky ve WETH a CRV na V3 na síti Polygon 16. listopadu. Dnes je tato ochranná lhůta součástí protokolu: likvidace během ochranné lhůty rezervy selže s `LiquidationGraceSentinelCheckFailed`, což dává dlužníkům, kteří byli odříznuti, krátké okno na splacení, než se likvidátoři pohnou.
+
+Pokud vaše transakce selže s chybou pozastavení, na Aave se nedá dělat nic, dokud pozastavení neskončí. Využijte ten čas k tomu, abyste měli prostředky na splátku připravené na správné síti, protože ochrannou lhůtu po obnovení nastavuje governance nebo Guardian a bývala tak krátká jako tři hodiny.
+
+## 7. Půjčování je pro dané aktivum vypnuté nebo ho vaše kategorie E-Mode nedovoluje
+
+Mnoho aktiv lze vložit jako kolaterál, ale ne si je půjčit. Na Ethereum Core bylo 29. října 2026 půjčování vypnuté u 15 nezmrazených rezerv, mezi nimi wstETH, cbETH, rETH, weETH, LBTC, eBTC, AAVE a XAUt, a půjčka kteréhokoli z nich selže s `BorrowingNotEnabled`. Příznak nastavuje governance pro každou rezervu a v aplikaci Aave je vidět jako chybějící tlačítko pro půjčku.
+
+Pokud jste v [kategorii E-Mode](/cz/blog/aave-e-mode-vysvetleni), nahrazuje toto pravidlo jiné: můžete si půjčit jen aktiva ze sady půjčitelných aktiv kategorie a cokoli jiného selže s `NotBorrowableInEMode`, i aktivum, které byste si mimo kategorii půjčit mohli. Kategorie „ETH correlated“ na Ethereum Core vám například dovolí půjčit si WETH a nic jiného. Odchod z kategorie půjčku opraví, ale odchod má vlastní kontroly: každé aktivum, které dlužíte, musí být půjčitelné mimo kategorii a váš health factor musí s běžnými, nižšími prahy stále být na 1 nebo výš (`InvalidDebtInEmode`, `InvalidCollateralInEmode`, `HealthFactorLowerThanLiquidationThreshold`).
+
+## 8. Držíte kolaterál s LTV 0
+
+Governance nastaví LTV aktiva na 0, když chce, aby aktivum přestalo krýt nový dluh, zatímco existující pozice běží dál. Dne 29. října 2026 bylo na Ethereum Core 11 nezmrazených rezerv povolených jako kolaterál s LTV 0, mezi nimi DAI (likvidační práh 77 %), LINK, PYUSD, USDe, sUSDe, USDS, EURC a XAUt. Takové aktivum se do vašeho health factoru stále počítá, přes svůj likvidační práh, ale k vaší kapacitě pro půjčky nepřidává nic. Plynou z toho dvě kontroly.
+
+První se týká půjčování. Pokud má každý kolaterál, který máte zapnutý, LTV 0, je vaše vážené LTV 0 a každá půjčka selže s `LtvValidationFailed`. Se směsí, řekněme DAI a WETH, půjčka projde, omezená jen samotným WETH.
+
+Druhá se týká výběru a lidi překvapuje. Pokud máte dluh a jakýkoli zapnutý kolaterál s LTV 0, pak aktivum, které vybíráte, převádíte nebo vypínáte jako kolaterál, musí samo být aktivem s LTV 0, jinak transakce selže s týmž `LtvValidationFailed`. Komentář v kódu uvádí záměr: pravidlo „ensures that a multi-collateral position needs to withdraw/transfer the ltv0 asset first“ (zajišťuje, že pozice s více druhy kolaterálu musí nejdřív vybrat nebo převést aktivum s LTV 0). Dlužník, který drží DAI a WETH a pokusí se vytáhnout část WETH, je tedy odmítnut, dokud DAI není venku; kontrola health factoru se na samotný výběr DAI dál vztahuje. Řešením je pořadí operací: vyberte nejdřív aktivum s LTV 0, nebo splaťte tolik, aby health factor dovolil obojí.
+
+## 9. Splátka míří na dluh, který nemáte, nebo na tokeny, které jste neschválili
+
+Splátky jsou nejjednodušší akce, a přesto selhávají, obvykle z jednoho z pěti důvodů.
+
+- **Žádný dluh daného typu.** `NoDebtOfSelectedType` znamená, že Pool, který jste zavolali, nedrží pro tuto adresu žádný variabilní dluh v daném aktivu. Obvyklou příčinou je špatný trh: Ethereum má oddělené instance Core, Prime a Lido, každou s vlastním Poolem, a tatáž peněženka může dlužit USDC na jedné a nic na druhé. Trhy každé sítě jsou také oddělené.
+- **Režim sazby, který už neexistuje.** Přijímá se jen variabilní režim (2); půjčování se stabilní sazbou z kódu zmizelo a volání s režimem 1 selže s `InvalidInterestRateModeSelected`.
+- **Žádné schválení.** Pool stahuje splátku přes `transferFrom`, takže token potřebuje schválení (allowance) alespoň na danou částku, nebo podepsaný permit. Bez něj se kontrakt tokenu vrátí dřív, než kontroly Aave vůbec proběhnou.
+- **Splácení za někoho jiného bez částky.** Splácení za jinou adresu s hodnotou „celý dluh“ (`type(uint256).max`) selže s `NoExplicitAmountToRepayOnBehalf`; uveďte částku.
+- **Zbytek (dust).** Úrok nabíhá každou sekundu, takže splátka přesného zůstatku, který jste viděli před minutou, nechá několik wei dluhu. Chcete-li dluh úplně vyčistit, splaťte s maximální hodnotou, kterou Pool omezí na to, co dlužíte.
+
+## Příčiny, které už hledat nemusíte
+
+Dvě stará vysvětlení už neplatí. Isolation Mode (režim izolace) a jeho dluhové stropy byly v Aave V3.7 odstraněny, stejně jako siloed borrowing (půjčování v silech), takže dnes žádná půjčka neselže proto, že je aktivum izolované nebo že bylo dosaženo stropu. A půjčování se stabilní sazbou je pryč od V3.2, takže nic neselže při přepnutí sazby. Pokud některý z nich jmenuje starší průvodce, popisuje verzi Aave, která už není nasazená.
+
+## Co dělat, když transakce selže během propadu ceny
+
+Selhaná transakce je v klidném trhu nepříjemnost a v padajícím trhu problém, protože hodina, kterou strávíte jejím rozborem, je hodina, kterou potřebuje váš health factor. Krátké pořadí kroků:
+
+1. **Přečtěte si chybu.** Simulujte transakci v peněžence, nebo vložte hexadecimální selektor do dekodéru v blokovém průzkumníku; názvy výše vám řeknou, ve kterém případě jste.
+2. **Dejte přednost splácení před přidáváním kolaterálu.** Splácení funguje přes zmrazené rezervy i plné limity vkladů a s `repayWithATokens` funguje i přes prázdnou likviditu. Přidání kolaterálu závisí na limitu s prostorem a na nezmrazené rezervě.
+3. **Zkuste menší částky.** Likvidita a limity jsou množství; výběr nebo půjčka, které se vejdou, projdou, zatímco celá částka selže.
+4. **Použijte jiné aktivum.** Jiný kolaterál k výběru nebo jiné aktivum ke splacení je často k dispozici, když je to první zablokované.
+5. **Zkontrolujte instanci a síť.** Splátka poslaná na správné aktivum, ale na špatný Pool selže s `NoDebtOfSelectedType` a stojí vás gas i čas.
+6. **Příště si vezměte upozornění dřív.** Obejít každý z těchto případů zabere minuty. Upozornění na health factor nastavené s rezervou vám ty minuty koupí.
+
+Tokenping kontroluje váš health factor na Aave každých 5 minut, na každém trhu Aave V3 na 21 sítích a v každém trhu (Spoke) Aave V4, a posílá vám zprávu na Signal, Telegram nebo e-mail, když je pod prahem, který si zvolíte (1,1 až 10), a opakuje ji při každé kontrole, dokud se nezotaví. Číslo čte z `getUserAccountData`, z téhož volání, které používá kontrola výběru. Upozornění za vás jednat nemůže a nic v tomto průvodci likvidaci nezabrání; řekne vám, které dveře jsou zavřené, abyste nejdřív zkusili ty otevřené. [Zkontrolovat svůj health factor na Aave V3](/cz/aave) můžete bez placení; upozornění stojí <AlertPrice />, jedno na každý trh nebo Spoke. [Jak se vyhnout likvidaci na Aave](/cz/blog/jak-se-vyhnout-likvidaci-aave) podrobně rozebírá rozhodnutí splatit, nebo přidat, a [proč váš health factor klesl](/cz/blog/proc-klesl-health-factor-aave) příčiny, na které reagujete.
+
+## Zdroje
+
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol), [BorrowLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/BorrowLogic.sol) a [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): každá kontrola jmenovaná výše, pořadí, v jakém běží, komentář k LTV 0 a příznak nulového LTV (aave-v3-origin, větev main, načteno 29. října 2026)
+- [Errors.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/helpers/Errors.sol): názvy chyb a jejich popisy (aave-v3-origin, větev main, načteno 29. října 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getAllReservesTokens` a pro každou rezervu `getReserveConfigurationData`, `getReserveCaps`, `getPaused` a `getReserveData`, v bloku 26296985 (načteno 29. října 2026)
+- [aEthUSDC](https://etherscan.io/address/0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c): USDC držené kontraktem aTokenu v bloku 26296985 (načteno 29. října 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): ceny WETH a USDC v bloku 26296985 (načteno 29. října 2026)
+- [Dokumentace Aave: Pool Configurator](https://aave.com/docs/aave-v3/smart-contracts/pool-configurator): co dovolují zmrazené a pozastavené rezervy, limity 0 (načteno 29. října 2026)
+- [Aave v2/v3 security incident 04/11/2023](https://governance.aave.com/t/aave-v2-v3-security-incident-04-11-2023/15335): pozastavení ze 4. listopadu 2023, obnovení 12., 13. a 16. listopadu a ochranná lhůta (načteno 29. října 2026)
+- [Funkce Aave V3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): odstranění půjčování se stabilní sazbou (načteno 29. října 2026)
+- [Aave V3.7: odstranění Isolation Mode a siloed borrowing](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/mode-removal.md) (načteno 29. října 2026)
+- [Risk Stewards: Supply and Borrow Cap Reductions on Aave V3 / 2026.07.10](https://governance.aave.com/t/risk-stewards-supply-and-borrow-cap-reductions-on-aave-v3-2026-07-10/25296): snížení limitů na síti MegaETH od LlamaRisk, provedené 14. července 2026 (načteno 29. října 2026)
+
+_Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání._

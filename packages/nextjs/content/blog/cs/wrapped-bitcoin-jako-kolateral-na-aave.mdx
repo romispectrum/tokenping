@@ -1,0 +1,152 @@
+export const meta = {
+  slug: "wrapped-bitcoin-jako-kolateral-na-aave",
+  title: "Wrapped bitcoin na Aave a Morpho: WBTC, cbBTC, tBTC, LBTC",
+  description:
+    "Jak se WBTC, cbBTC, tBTC, LBTC a eBTC liší jako kolaterál na Aave V3 a Morpho: prahy, limity, orákula a co depeg wrapperu udělá s vaší půjčkou.",
+  h1: "Proti kterému wrapped bitcoinu si půjčit a co se může pokazit?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "Jak se WBTC, cbBTC, tBTC a LBTC liší jako kolaterál na Aave a Morpho?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Bitcoin se na Aave a Morpho dostává jako wrapped bitcoin (zabalený bitcoin), tokeny, z nichž každý je krytý BTC
+  drženým někde jinde, a protokoly s nimi zacházejí různě. Na Aave V3 Ethereum Core měly 29. října 2026 WBTC a cbBTC LTV
+  81 % a likvidační práh 85 %, tBTC a BTC.b 73 % a 78 %, LBTC 70 % a 75 %, eBTC 67 % a 72 %. Různě se i oceňují: Aave
+  oceňuje WBTC feedem WBTC/BTC krát BTC/USD, takže diskont WBTC snižuje váš health factor (faktor zdraví pozice), a feed
+  ten den ukazoval 0,9985, zatímco cbBTC a tBTC se oceňují přesně jako 1 BTC a LBTC a eBTC svým směnným kurzem ze
+  stakingu pod stropem. Na Morpho si každý trh volí vlastní orákulum a LLTV: velké trhy cbBTC/USDC používají 86 % a
+  samotný feed BTC/USD. Volba wrapperu mění vaši likvidační cenu až o 18 % a rozhoduje o tom, jestli vás může
+  zlikvidovat depeg samotného wrapperu.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Čísla a bloky, ve kterých byla načtena: content/blog/snapshots/wrapped-bitcoin-aave-collateral.md */}
+
+## Proč záleží na tom, který wrapped bitcoin vložíte?
+
+Aave a Morpho běží na sítích EVM a bitcoin ne, takže každá pozice v BTC na nich je zabalený token (wrapper): ERC-20, který někdo slibuje vyměnit zpět za bitcoin. Kdo ten slib dává a jak, je první rozdíl mezi wrappery. WBTC razí správci úschovy (custodiani) proti bitcoinu v offline úložišti (cold storage), od října 2024 společný podnik BitGo a BiT Global s klíči rozloženými mezi Spojené státy, Singapur a Hongkong. cbBTC je wrapper od Coinbase, krytý bitcoinem, který Coinbase drží. tBTC je od Threshold Network, ražený sítí signatářů, ne jednou firmou. LBTC je od Lombardu: bitcoin stakovaný přes Babylon, s konsorciem operátorů, které ověřuje vklady a podepisuje výplaty, a od roku 2025 nese výnos, takže jeden LBTC má pomalu vyšší hodnotu než jeden BTC. eBTC je wrapper od ether.fi, krytý z velké části LBTC. BTC.b je bridgovaný bitcoin z Avalanche a FBTC je od Function.
+
+Půjčovací protokol v tomto seznamu vidí tři věci: jak pravděpodobné je, že se wrapper bude obchodovat mimo cenu BTC, jak hluboký je jeho trh, pokud by ho likvidátoři museli prodat, a jak ho ocenit. Tyto tři věci rozhodují o likvidačním prahu, limitech a orákulu a společně rozhodují o vašem health factoru, vaší likvidační ceně a o tom, které události vás mohou zlikvidovat. Týž 1 BTC kolaterálu je jiná půjčka podle toho, v jakém wrapperu přijde.
+
+## Které wrappery Aave přijímá a za jakých podmínek?
+
+Aave V3 Ethereum Core uvádělo 29. října 2026 sedm wrapperů BTC. Načteno z PoolDataProvideru v bloku 26296985:
+
+| Wrapper | LTV  | Likvidační práh | Bonus  | Půjčitelné | Limit vkladů (využito) | Vloženo   |
+| ------- | ---- | --------------- | ------ | ---------- | ---------------------- | --------- |
+| WBTC    | 81 % | 85 %            | 5,0 %  | ano        | 38 200 (89,4 %)        | 34 138,21 |
+| cbBTC   | 81 % | 85 %            | 7,5 %  | ano        | 20 000 (86,5 %)        | 17 303,85 |
+| tBTC    | 73 % | 78 %            | 7,5 %  | limit 1    | 1 800 (98,9 %)         | 1 779,39  |
+| LBTC    | 70 % | 75 %            | 8,5 %  | ne         | 2 690 (100,0 %)        | 2 689,93  |
+| eBTC    | 67 % | 72 %            | 10,0 % | ne         | 134 (56,0 %)           | 75,02     |
+| BTC.b   | 73 % | 78 %            | 7,5 %  | ne         | 225 (7,0 %)            | 15,84     |
+| FBTC    | 0 %  | 78 %            | 7,5 %  | ne         | zmrazeno               | 153,83    |
+
+WBTC a cbBTC jsou kolaterál, kterému trh věří nejvíc: nejvyšší práh, nejnižší bonus a nejhlubší vklady, 60,8 % a 30,8 % z 56 156 wrapped BTC na Core. Novější nebo tenčí wrappery dostávají nižší práh a vyšší bonus, což je protokol, který likvidátorům platí víc za prodej tokenu s menší hloubkou trhu. FBTC je zmrazené s LTV 0, takže se do health factoru dál počítá, ale nekryje žádný nový dluh a nepřijímá nové vklady.
+
+Tři ze sedmi limitů vkladů (supply cap) byly skoro nebo úplně využité. LBTC mělo prostor 0,07 LBTC: dlužník s půjčkou proti LBTC pod tlakem k ní ten den nemohl LBTC přidat a musel místo toho splácet. [Proč transakce na Aave selže](/cz/blog/proc-nejde-vybrat-nebo-pujcit-na-aave#3-limit-vkladu-je-plny) popisuje, co plný limit blokuje. tBTC mělo půjčování povolené s limitem půjček (borrow cap) 1, což při už vypůjčených 2,57 tBTC znamená, že žádná nová půjčka neprojde.
+
+Vlastní podmínky WBTC se posunuly. Dne 14. října 2026 mělo WBTC na Ethereum Core LTV 73 % a práh 78 %, čísla, která používá [průvodce health factorem](/cz/blog/aave-health-factor-vysvetleni); k 28. říjnu to bylo 81 % a 85 %. Historie za těmi nižšími čísly je v jedné z dalších částí.
+
+## Jak Aave oceňuje jednotlivé wrappery?
+
+Aave má jednu cenu na aktivum a trh, z Aave Oracle, a používá ji health factor i každá likvidace. Sedm wrapperů používá tři návrhy. Načteno v témže bloku:
+
+| Wrapper                  | Zdroj orákula             | Jak se skládá                                         | Cena 29. října 2026 |
+| ------------------------ | ------------------------- | ----------------------------------------------------- | ------------------- |
+| WBTC                     | „wBTC/BTC/USD“            | feed WBTC/BTC (0,9985) × BTC/USD                      | 79 699,16 $         |
+| cbBTC, tBTC, BTC.b, FBTC | „BTC / USD“               | samotný feed BTC/USD                                  | 79 818,89 $         |
+| LBTC                     | „Capped LBTC / BTC / USD“ | směnný kurz Lombardu (1,005244) × BTC/USD, se stropem | 80 237,45 $         |
+| eBTC                     | „Capped eBTC / BTC / USD“ | kurz ether.fi (1,004224) × BTC/USD, se stropem        | 80 156,03 $         |
+
+Rozdíl rozhoduje o tom, co vám udělá depeg wrapperu.
+
+**WBTC se oceňuje svým tržním poměrem k BTC.** Adaptér násobí feed WBTC/BTC cenou BTC/USD, takže pokud se WBTC obchoduje s diskontem, má váš kolaterál v health factoru nižší hodnotu a vaše likvidační cena roste. Dne 29. října 2026 byl poměr 0,9985, což ocenilo WBTC o 119,73 $ níž než cbBTC. Při skutečné ztrátě důvěry ve správce úschovy poměr klesá a pozice ve WBTC mohou být zlikvidovány, i když se samotný bitcoin nepohne.
+
+**cbBTC, tBTC, BTC.b a FBTC se oceňují přesně jako 1 BTC.** Orákulum používá feed BTC/USD a nic jiného. Diskont na trhu wrapperu se k vašemu health factoru nedostane; dostane se k protokolu, jehož likvidátoři by zabavili kolaterál s nižší hodnotou, než říká orákulum. Aave to vyrovnává přísnějšími limity a u tBTC a BTC.b nižším prahem. Pro dlužníka je tento návrh laskavější při panice kolem wrapperu a přísnější každý jiný den.
+
+**LBTC a eBTC se oceňují svým směnným kurzem, pod stropem CAPO.** LBTC vydělává výnos ze stakingu, takže orákulum Lombardu hlásí, kolik BTC jeden LBTC představuje, 29. října 2026 to bylo 1,005244, a Aave to násobí cenou BTC/USD. Adaptér CAPO omezuje, jak rychle smí poměr růst, 2,00 % ročně u LBTC a 1,90 % u eBTC z referenčního poměru (snapshot) 1,0, takže zmanipulovaný nebo rozbitý kurz nemůže kolaterál nafouknout; strop ten den stál pro LBTC na 1,0274, nad skutečným poměrem, takže se neuplatnil. Kurz může i klesnout: pokud by Babylon někdy stakovaný bitcoin potrestal slashingem, poměr Lombardu by klesl a s ním health factor každé pozice v LBTC. Návrh Chaos Labs z roku 2025, který LBTC přesunul z prostého feedu BTC/USD na tento návrh, volbu vysvětluje: pevná cena 1:1 „would underprice LBTC relative to its intrinsic value“ (by LBTC podhodnotila vůči jeho vnitřní hodnotě), jakmile by začal nabíhat výnos.
+
+[Průvodce depegem stablecoinů](/cz/blog/depeg-stablecoinu-a-aave) popisuje stejné rozdělení u dolarových tokenů: to, co měří orákulum, je to, co vás může zlikvidovat.
+
+## Příklad: 1 BTC kolaterálu proti 40 000 USDC
+
+Vložte jednu jednotku každého wrapperu na Ethereum Core a půjčte si 40 000 USDC. Health factor je hodnota kolaterálu × likvidační práh ÷ dluh a likvidační cena je 40 000 ÷ práh, v ceně, kterou používá orákulum:
+
+| Kolaterál | Cena z orákula | Práh | Health factor | Likvidační cena                      |
+| --------- | -------------- | ---- | ------------- | ------------------------------------ |
+| 1 WBTC    | 79 699,16 $    | 85 % | 1,694         | 47 058,82 $ za WBTC                  |
+| 1 cbBTC   | 79 818,89 $    | 85 % | 1,696         | 47 058,82 $ za BTC                   |
+| 1 tBTC    | 79 818,89 $    | 78 % | 1,557         | 51 282,05 $ za BTC                   |
+| 1 LBTC    | 80 237,45 $    | 75 % | 1,505         | 53 333,33 $ za LBTC, BTC na 53 055 $ |
+| 1 eBTC    | 80 156,03 $    | 72 % | 1,443         | 55 555,56 $ za eBTC                  |
+
+Mezi WBTC a eBTC dává stejný dluh a stejný bitcoin likvidační cenu o 18 % vyšší. Limit půjčky se posouvá stejně: při LTV unesou WBTC a cbBTC 81 % své hodnoty a pozice vypůjčená až na tento limit začíná na health factoru 85 ÷ 81 = 1,049; u LBTC je to 75 ÷ 70 = 1,071, u eBTC 72 ÷ 67 = 1,075. [Jak spočítat likvidační cenu](/cz/blog/likvidacni-cena-aave) má obecný vzorec a kalkulačku.
+
+Dva z těchto řádků se hýbou i jinak než s cenou bitcoinu. Řádek WBTC se hýbe také s feedem WBTC/BTC; diskont 2 % by pozici dostal z 1,694 na 1,660 s BTC beze změny. Řádek LBTC se hýbe se směnným kurzem Lombardu, každý den trochu nahoru a při slashingu dolů.
+
+## Proč se změnily podmínky WBTC a co to dlužníky naučilo?
+
+V srpnu 2024 BitGo oznámilo, že přesune úschovu WBTC do společného podniku s BiT Global, hongkongským správcem úschovy s vazbami na Justina Suna. Reakce na fóru Aave je nejjasnějším záznamem toho, jak se změna úschovy dostane k dlužníkovi. Dne 18. září 2024 navrhl LlamaRisk nastavit LTV WBTC na 0 na každé instanci Aave V3 a snížit limity na 5 až 10 % nad využití, přičemž zdůraznil, že plánem je „not to offboard WBTC, nor to reduce current exposure“ (WBTC nevyřadit ani nesnižovat současnou expozici). Chaos Labs označil doporučení ke snížení rizika za předčasné. Plán, na kterém se oba 24. září 2024 shodli, byl mírnější, ale skutečný: limity 15 % nad využití, likvidační práh všude dolů o jeden bod, LTV dolů na 70 % tam, kde bylo vyšší, reserve factor (rezervní faktor) z 20 % na 40 % a limit půjček WBTC na Ethereu z 28 000 na 3 250. Převod úschovy byl dokončen 8. října 2024.
+
+Nic v této epizodě nepohnulo cenou bitcoinu. Změnily se podmínky: nižší prahy a nižší limity pro každého dlužníka ve WBTC, rozhodnuté procesem governance, který mohli sledovat, ale ne ovládat. O dva roky později jsou parametry zase vyšší a posun ze 73 %/78 % na 81 %/85 % v říjnu 2026 snížil likvidační cenu pozice ve WBTC o 8 %. Poučení je, že práh je parametr, ne vlastnost bitcoinu: governance ho může snížit, což zvýší vaši likvidační cenu, zatímco spíte, a průvodce ukončením trhu popisuje, [co se stane, když Aave ukončuje trh](/cz/blog/ukonceni-trhu-aave).
+
+## V čem se liší kategorie E-Mode pro BTC?
+
+[E-Mode](/cz/blog/aave-e-mode-vysvetleni) na Aave existuje pro dvojice, které se pohybují společně, a wrapped bitcoiny proti sobě jsou nejjasnější případ. Na Ethereum Core dávaly 28. října 2026 kategorie LBTC_WBTC, LBTC_cbBTC a LBTC_tBTC kolaterálu v LBTC LTV 84 %, práh 86 % a bonus 3 % pro půjčku daného jednoho wrapperu; eBTC/WBTC dávala 83 %, 85 % a 3 %. Base měla LBTC_cbBTC na 82 %/84 % a kategorii „cbBTC Stablecoins“ na 82 %/85 % pro půjčku USDC nebo GHO proti cbBTC. Arbitrum a Base měly také kategorie tBTC pro dluh ve stablecoinech na 72 %/75 %.
+
+Kategorie BTC proti BTC jsou místem, kde žijí pákové smyčky (loop): vložte LBTC, půjčte si WBTC, kupte LBTC, opakujte, abyste výnos Lombardu vydělávali z násobku svého kapitálu. Smyčka vypůjčená až na limit 84 % začíná na 86 ÷ 84 = 1,024 a jejímu health factoru je cena bitcoinu úplně jedno, záleží mu jen na poměru LBTC k WBTC, jak ho vidí obě orákula: směnný kurz Lombardu na jedné straně a feed WBTC/BTC na druhé. Pohyb zhruba o 2,4 % mezi nimi ji zlikviduje. To je pod 1,1, nejnižším prahem, který Tokenping přijímá, takže takové smyčky běží pod jakýmkoli upozorněním; kompromis vysvětluje [průvodce E-Mode](/cz/blog/aave-e-mode-vysvetleni#muze-upozorneni-pomoci-s-pozici-v-e-mode).
+
+## Jak s wrapped bitcoinem zachází Morpho?
+
+Morpho nemá seznam aktiv ani práh na token nastavený governance. Kdokoli vytvoří trh s jedním kolaterálem, jedním aktivem půjčky, jedním orákulem a jedním LLTV z povolené sady a parametry se nikdy nemění. U wrapped bitcoinu to znamená, že volba wrapperu i volba orákula se dělají pro každý trh zvlášť a uvedené trhy se liší.
+
+API Morpho uvádělo 29. října 2026 tyto trhy s kolaterálem v BTC podle vypůjčené hodnoty, na Ethereu a na síti Base:
+
+| Trh                    | LLTV | Vypůjčeno    | Co měří orákulum                                             |
+| ---------------------- | ---- | ------------ | ------------------------------------------------------------ |
+| cbBTC / USDC, Base     | 86 % | 1,62 mld. $  | samotný BTC/USD: cbBTC je 1 BTC, USDC je 1 $                 |
+| cbBTC / USDC, Ethereum | 86 % | 309,8 mil. $ | samotný BTC/USD                                              |
+| WBTC / USDC, Ethereum  | 86 % | 115,8 mil. $ | WBTC/BTC × BTC/USD ÷ USDC/USD                                |
+| WBTC / USDT, Ethereum  | 86 % | 84,1 mil. $  | nenačteno                                                    |
+| LBTC / USDC, Ethereum  | 86 % | 1,9 mil. $   | fundamentální kurz LBTC/BTC od Redstone (1,005244) × BTC/USD |
+| tBTC / USDC, Ethereum  | 77 % | 0,6 mil. $   | nenačteno                                                    |
+
+Proti Aave vyčnívají dvě věci. LLTV je 86 % pro každý hlavní wrapper, jeden bod nad prahem Aave 85 % pro WBTC a cbBTC a jedenáct nad prahem Aave pro LBTC, protože na Morpho ho nastavuje tvůrce trhu, ne rizikový výbor, a věřitelé rozhodují, jestli ho budou financovat. A orákulum sleduje trh, ne token: trh WBTC/USDC výše oceňuje WBTC přes feed WBTC/BTC a USDC přes feed USDC/USD, zatímco trhy cbBTC, které nesou většinu objemu, berou oba tokeny přesně jako jejich vazbu. Dne 29. října 2026 dávalo orákulum cbBTC/USDC na Ethereu 79 752,37 USDC za cbBTC, takže 1 cbBTC proti 40 000 USDC mělo [health factor na Morpho](/cz/blog/morpho-health-factor-vysvetleni) 79 752,37 × 0,86 ÷ 40 000 = 1,715 a likvidační cenu 46 511,63, o něco níž než 47 058,82 na Aave pro stejnou půjčku.
+
+Liší se i likvidace. [Likvidační pobídka na Morpho](/cz/blog/jak-funguje-likvidace-morpho) je při LLTV 86 % 4,38 %, blízko bonusu Aave 5 % u WBTC a pod jeho 7,5 % u cbBTC, ale likvidátor na Morpho smí splatit celý dluh v jedné transakci, zatímco Aave většinu likvidací omezuje na polovinu. Půjčka proti WBTC na Morpho s orákulem, které zná poměr WBTC/BTC, nese stejnou expozici vůči úschově jako na Aave; půjčka proti cbBTC na kterémkoli z obou protokolů ji ve svém health factoru nenese vůbec a celou ji nese solventnost protokolu.
+
+## Co se může s půjčkou proti wrapped bitcoinu skutečně pokazit?
+
+- **Cena bitcoinu.** Běžné riziko, a to velké. Dne 10. října 2025 bylo na Aave za jediný den zlikvidováno přes 250 milionů $, podle Aave Labs, které také počítá 4,65 miliardy $ ve 310 000 likvidacích od roku 2020 do února 2026. Matematika health factoru je stejná pro každý wrapper; liší se práh.
+- **Diskont wrapperu, přes orákulum.** Dostane se k pozicím ve WBTC na Aave a na trzích Morpho s feedem WBTC/BTC. Nedostane se k pozicím v cbBTC nebo tBTC na Aave ani k trhům cbBTC na Morpho s orákulem BTC/USD, kde ho místo toho nese protokol.
+- **Pokles směnného kurzu.** LBTC a eBTC se oceňují kurzem ze stakingu; slashing na Babylonu by ho snížil a s ním každou pozici, na Aave i na trzích Morpho, které používají týž kurz.
+- **Změna parametru.** Governance Aave může snížit práh nebo LTV wrapperu, nastavit mu LTV 0 nebo ho zmrazit, jak to udělala u FBTC. LLTV trhu na Morpho se nikdy nemění, ale trh může být z aplikace odstraněn.
+- **Plný limit nebo zmrazená rezerva.** Na Aave obojí zavírá cestu „přidat kolaterál“ a nechává splácení jako jedinou cestu nahoru. Morpho limity nemá.
+- **Tenká likvidita wrapperu.** Důvod vyšších bonusů u tBTC, LBTC a eBTC: likvidátor, který zabavený token nemůže rychle prodat, chce za jeho převzetí dostat víc a ve vypjatém trhu nemusí přijít vůbec, dokud pozice není hlouběji pod vodou.
+
+## Jak mohou upozornění pomoci s pozicí ve wrapped bitcoinu?
+
+Upozornění neví a nezajímá ho, který wrapper držíte. Tokenping čte health factor na Aave z `getUserAccountData`, které už uplatňuje práh wrapperu a cenu z orákula, včetně poměru WBTC/BTC a kurzu LBTC, a health factor na Morpho počítá on-chain z orákula daného trhu. Wrapper mění to, jak se číslo hýbe. Pozice s health factorem 1,5 je zlikvidována po poklesu své ceny z orákula o 33 %, ať je wrapper jakýkoli; pozice ve WBTC se tam dostane i poklesem poměru WBTC/BTC o 33 % a pozice v LBTC svým směnným kurzem, takže upozornění by mělo sedět tam, kde by oba druhy pohybu ještě nechaly čas na splacení. Smyčka BTC proti BTC na 1,03 je úplně mimo rozsah.
+
+Tokenping kontroluje vaši pozici každých 5 minut, na každém trhu Aave V3 na 21 sítích, v každém trhu (Spoke) Aave V4 a na každém uvedeném trhu Morpho Blue a Midnight na 14 sítích, a posílá vám zprávu na Signal, Telegram nebo e-mail, když je health factor pod vaším prahem (1,1 až 10 na Aave, 1,02 až 10 na Morpho), a opakuje ji při každé kontrole, dokud se nezotaví. Splatit za vás nemůže a prudký pohyb může projít dvěma kontrolami, než zpráva dorazí. [Zkontrolovat svůj health factor na Aave V3](/cz/aave) nebo [své pozice na Morpho](/cz/morpho) můžete bez placení; upozornění stojí <AlertPrice />, jedno na každý trh nebo Spoke. Zbytek popisují [jak zvolit práh upozornění](/cz/blog/bezpecny-health-factor-aave#jak-krok-za-krokem-zvolit-prah-upozorneni) a [jak upozornění nastavit](/cz/blog/nastaveni-upozorneni-health-factor-aave).
+
+## Zdroje
+
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getAllReservesTokens`, `getReserveConfigurationData`, `getReserveCaps` a `getReserveData` pro WBTC, cbBTC, tBTC, LBTC, eBTC, BTC.b a FBTC v bloku 26296985 (načteno 29. října 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): `getSourceOfAsset` a `getAssetPrice` pro sedm wrapperů a `description()` každého zdroje, v bloku 26296985 (načteno 29. října 2026)
+- [Adaptér WBTC](https://etherscan.io/address/0xDaa4B74C6bAc4e25188e64ebc68DB5050b690cAc): `ASSET_TO_PEG` ([feed WBTC / BTC](https://etherscan.io/address/0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23), 0,9985) a `PEG_TO_BASE` v bloku 26296985 (načteno 29. října 2026)
+- [Adaptér CAPO pro LBTC](https://etherscan.io/address/0xf8c04B50499872A5B5137219DEc0F791f7f620D0) a [adaptér CAPO pro eBTC](https://etherscan.io/address/0x03bB418e89B75407585f8198178f253DA3216218): `getRatio`, `getSnapshotRatio`, `getSnapshotTimestamp`, `getMaxYearlyGrowthRatePercent`, `getMaxRatioGrowthPerSecond` a `isCapped` v bloku 26296985 (načteno 29. října 2026)
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2) a Pooly na sítích Base a Arbitrum: kategorie E-Mode pro BTC, načtené pro [průvodce E-Mode](/cz/blog/aave-e-mode-vysvetleni) v bloku 26291736 na Ethereu a bloku 53204166 na síti Base (načteno 28. října 2026)
+- [API Morpho](https://api.morpho.org/graphql): uvedené trhy s kolaterálem ve WBTC, cbBTC, tBTC, LBTC nebo eBTC na Ethereu a na síti Base, jejich LLTV, vypůjčená hodnota, orákulum a feedy (načteno 29. října 2026)
+- [Morpho Blue na Ethereu](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb): `price()` orákula trhu cbBTC / USDC (86 %) v bloku 26297045 a feedy a `price()` orákula trhu WBTC / USDC (86 %); `description()` feedů (načteno 29. října 2026)
+- [ARFC: Adjusting WBTC Parameters to Address BitGo Transition Risks](https://governance.aave.com/t/arfc-adjusting-wbtc-parameters-to-address-bitgo-transition-risks/19096): návrh LlamaRisk z 18. září 2024 a sloučený plán z 24. září 2024 (načteno 29. října 2026)
+- [ARFC: Onboard LBTC on Aave v3 Core Instance](https://governance.aave.com/t/arfc-onboard-lbtc-on-aave-v3-core-instance/20142): co je LBTC, jeho počáteční parametry a debata o orákulu (načteno 29. října 2026)
+- [Direct to AIP: LBTC Oracle and CAPO implementation Update](https://governance.aave.com/t/direct-to-aip-lbtc-oracle-and-capo-implementation-update/22614): Chaos Labs, 17. července 2025, orákulum se směnným kurzem a parametry CAPO (načteno 29. října 2026)
+- [ARFC: Core & Base - BTC Correlated Asset Update](https://governance.aave.com/t/arfc-core-base-btc-correlated-asset-update/20940): kategorie E-Mode pro LBTC a zalistování na síti Base, 4. února 2025 (načteno 29. října 2026)
+- [Unchained: WBTC completes shift to multi-jurisdiction custody model](https://unchainedcrypto.com/wbtc-completes-shift-to-multi-jurisdiction-custody-model/): 9. října 2024 (načteno 29. října 2026)
+- [Aave Labs: How Aave Liquidations Perform Under Volatile Conditions](https://aave.com/blog/historical-liquidations): 6. února 2026 (načteno 29. října 2026)
+
+_Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání._

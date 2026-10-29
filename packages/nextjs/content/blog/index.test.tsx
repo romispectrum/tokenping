@@ -22,6 +22,8 @@ const AAVE_SLUGS = [
   "aave-market-wind-down",
   "stablecoin-depeg-aave",
   "aave-e-mode",
+  "why-aave-withdraw-or-borrow-fails",
+  "wrapped-bitcoin-aave-collateral",
 ];
 
 // The Morpho guides, their own hub first.
