@@ -1,0 +1,162 @@
+export const meta = {
+  slug: "stablecoin-mat-neo-va-aave",
+  title: "Stablecoin mất neo tác động thế nào đến khoản vay Aave",
+  description:
+    "Mất neo làm hệ số sức khỏe Aave thay đổi thế nào ở mỗi phía khoản vay, feed có trần của Aave định giá USDC, USDT, USDe ra sao, và bài học 2023, 2025.",
+  h1: "Điều gì xảy ra với vị thế Aave của bạn khi một stablecoin mất neo?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "Điều gì xảy ra với hệ số sức khỏe Aave của tôi khi một stablecoin mất neo?",
+  readingMinutes: 19,
+};
+
+<ShortAnswer>
+  Một stablecoin mất neo (depeg) làm hệ số sức khỏe (health factor) Aave của bạn thay đổi thông qua giá của oracle
+  (nguồn giá), chứ không phải mức 1 $ mà bạn nghĩ đến. Nếu stablecoin là tài sản thế chấp của bạn, mỗi xu nó giảm dưới 1
+  $ đều đi thẳng vào hệ số sức khỏe, vì các adapter giá stablecoin của Aave chỉ chặn giá từ phía trên (ở 1,04 $ với
+  USDC, USDT, DAI, USDS và PYUSD trên Ethereum Core, đọc vào ngày 28 tháng 10 năm 2026) và không có mức sàn. Nếu
+  stablecoin là khoản nợ của bạn, giá giảm sẽ nâng hệ số sức khỏe và giá tăng sẽ hạ nó, nhưng không bao giờ nhiều hơn
+  mức trần cho phép. USDe là trường hợp đặc biệt: từ ngày 8 tháng 3 năm 2025, Aave định giá nó bằng feed của USDT, nên
+  giá thị trường của nó hoàn toàn không đến được hệ số sức khỏe của bạn. Một đợt mất neo có thể đẩy một vị thế đi rất xa
+  giữa hai lần kiểm tra cảnh báo, nên cảnh báo cho bạn thêm thời gian, không phải sự bảo vệ.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Các số liệu và số khối nơi chúng được đọc: content/blog/snapshots/stablecoin-depeg-aave.md */}
+
+## Stablecoin mất neo là gì, và nó tác động vào phía nào của khoản vay?
+
+Một stablecoin mất neo khi giá thị trường của nó rời khỏi mức 1 $ mà nó phải giữ. Với người vay trên Aave, điều đó quan trọng ở hai phía, và hai phía này phản ứng khác nhau:
+
+- **Stablecoin bạn đã gửi làm tài sản thế chấp.** Giá oracle của nó nhân với giá trị tài sản thế chấp của bạn, nên khi giá giảm dưới 1 $, phía tài sản thế chấp của hệ số sức khỏe bị thu hẹp. Đây là [Nguyên nhân 5 khiến hệ số sức khỏe giảm](/vi/blog/vi-sao-he-so-suc-khoe-aave-giam#nguyen-nhan-5-stablecoin-ban-gui-lam-tai-san-the-chap-co-mat-neo-xuong-duoi-khong), và đây là phía nguy hiểm.
+- **Stablecoin bạn đã vay.** Giá oracle của nó nhân với giá trị khoản nợ của bạn. Giá giảm dưới 1 $ làm khoản nợ có giá trị thấp hơn và nâng hệ số sức khỏe của bạn; giá tăng trên 1 $ làm khoản nợ có giá trị cao hơn và hạ nó.
+
+Bản thân hệ số sức khỏe là cùng một công thức trong cả hai trường hợp, được giải thích trong [hệ số sức khỏe Aave là gì](/vi/blog/he-so-suc-khoe-aave):
+
+**HF = Σ(giá trị tài sản thế chấp × ngưỡng thanh lý) ÷ tổng giá trị khoản nợ**
+
+Cả hai giá trị đều đến từ oracle của Aave. Không có gì trong công thức biết rằng một tài sản là stablecoin: USDC ở 0,87 $ đơn giản là một tài sản trị giá 0,87 $. Điều làm stablecoin khác biệt là cách Aave định giá chúng, chủ đề của phần thứ ba. Các ví dụ dưới đây dùng tham số của Aave V3 Ethereum Core đọc vào ngày 28 tháng 10 năm 2026 tại khối 26291704 (14:03:35 UTC): ngưỡng thanh lý (liquidation threshold) 78% với USDC và USDT, 84% với WETH.
+
+## Stablecoin thế chấp mất neo tác động thế nào đến hệ số sức khỏe?
+
+Khi giá oracle của một stablecoin bạn đã gửi giảm, hệ số sức khỏe của bạn giảm theo đúng tỷ lệ đó, không có gì chặn lại. Lấy ví dụ 20.000 USDC đã gửi so với 10.000 USDT đã vay, cả hai ở 1 $ cho số tròn (oracle đọc 0,99971803 $ với USDC và 0,99842395 $ với USDT tại khối 26291704):
+
+- Ở 1 $: 20.000 × 0,78 ÷ 10.000 = **1,56**.
+- USDC ở 0,95 $: 19.000 × 0,78 ÷ 10.000 = **1,48**.
+- USDC ở 0,87 $, mức đáy tháng 3 năm 2023: 17.400 × 0,78 ÷ 10.000 = **1,36**.
+- Để bị thanh lý ở 1,00, USDC cần xuống 10.000 ÷ (20.000 × 0,78) = **0,64 $**, với USDT không đổi.
+
+Vị thế đó có khoảng đệm vì nó chỉ vay một nửa mức mà tỷ lệ cho vay trên giá trị (LTV) 75% cho phép. Cùng tài sản thế chấp đó nhưng vay đến giới hạn, 15.000 USDT, bắt đầu ở 15.600 ÷ 15.000 = **1,04**, và USDC ở 0,95 $ đưa nó xuống 14.820 ÷ 15.000 = **0,99**, mức có thể bị thanh lý. Nó chạm 1,00 khi giá USDC khoảng **0,96 $**, tức giảm chưa đến 4%. Ở 0,87 $, nó là 0,90. Một vòng loop (vòng vay đòn bẩy) stablecoin trông bình yên cho đến khi oracle thay đổi, và lúc đó khoảng đệm chính là khoảng cách bạn đã chừa giữa LTV của mình và ngưỡng; [hệ số sức khỏe cho bạn bao nhiêu khoảng đệm](/vi/blog/he-so-suc-khoe-an-toan-tren-aave) nói về cách chọn nó.
+
+Có một chi tiết giúp ích: chỉ tỷ lệ giữa hai giá oracle là đáng kể. Nếu cả USDC và USDT đều đọc 0,95 $, vị thế 15.000 USDT lại là 14.820 ÷ 14.250 = 1,04, không đổi. Điều gây hại vào tháng 3 năm 2023 là USDC giảm trong khi USDT thì không.
+
+Bất kỳ stablecoin nào bạn đã gửi đều chịu rủi ro theo cách này, theo tỷ lệ phần của nó trong tài sản thế chấp của bạn. Với WETH và USDC được gửi bằng số đô la như nhau (ngưỡng 84% và 78%), USDC chiếm khoảng 48% tài sản thế chấp có trọng số của bạn, nên USDC giảm 13% sẽ lấy đi khoảng 6% trong số đó.
+
+## Stablecoin bạn đã vay mất neo thì sao?
+
+Nếu stablecoin là khoản nợ của bạn, tác động sẽ ngược lại và, theo một chiều, bị giới hạn. Lấy ví dụ 10 WETH đã gửi (ngưỡng 84%) so với 12.000 USDT đã vay, với giá ETH minh họa là 2.300 $ (oracle đọc 2.335,08 $ tại khối 26291704):
+
+- USDT ở 1 $: 23.000 × 0,84 ÷ 12.000 = **1,61**.
+- USDT giảm xuống 0,95 $: khoản nợ trị giá 11.400, nên **1,69**. Ở 0,87 $, nó là **1,85**. Tài sản nợ của bạn mất neo theo chiều giảm thì có lợi cho bạn.
+- USDT tăng lên 1,02 $: khoản nợ trị giá 12.240, nên **1,58**.
+- USDT tăng lên 1,04 $ hoặc hơn: khoản nợ trị giá tối đa 12.480, nên **1,55**. Mức trần giữ giá ở đó dù thị trường nói gì.
+
+Vì vậy, một stablecoin đã vay chỉ có thể lấy đi của bạn tối đa khoảng 4% hệ số sức khỏe từ giá của chính nó, trong khi với tư cách tài sản thế chấp, nó có thể lấy đi bao nhiêu tùy theo mức nó giảm. Sự bất đối xứng đó đến từ adapter, không phải từ các tham số rủi ro của Aave.
+
+<Callout tone="info">
+  Đây cũng là lý do việc vay stablecoin dựa trên một tài sản biến động, vị thế trong [short tiền pháp định bằng
+  Aave](/vi/blog/short-tien-phap-dinh-bang-khoan-vay-aave), hầu như không chịu rủi ro mất neo: stablecoin là khoản nợ,
+  và việc nó giảm giá là tin tốt cho người vay.
+</Callout>
+
+## Aave định giá stablecoin thế nào?
+
+Aave không định giá stablecoin ở mức 1 $. Mỗi reserve có một nguồn giá do quản trị đặt trong hợp đồng AaveOracle, và với stablecoin, nguồn đó là một feed USD của Chainlink được bọc trong một adapter giới hạn giá (price cap adapter) từ kho mã price feeds của Aave (kho mã trước đây tên là aave-capo; README của nó nói rằng nó đã được đổi tên thành Aave Price Feeds). Adapter cho stablecoin là `PriceCapAdapterStable`, và hàm `latestAnswer` của nó làm ba việc: đọc feed Chainlink, trả về mức trần do quản trị đặt nếu feed cao hơn mức đó, và nếu không thì trả về giá của feed không đổi (một câu trả lời không dương từ feed trở thành 0). Không có mức sàn.
+
+Đọc từ AaveOracle trên Ethereum Core tại khối 26291704 (ngày 28 tháng 10 năm 2026, 14:03:35 UTC), qua `getSourceOfAsset` và các getter của từng adapter:
+
+| Tài sản | Ngưỡng thanh lý                 | Giá oracle   | Nguồn giá, theo cách adapter tự mô tả                  | Mức trần (`getPriceCap`) |
+| ------- | ------------------------------- | ------------ | ------------------------------------------------------ | ------------------------ |
+| USDC    | 78%                             | 0,99971803 $ | "Capped USDC / USD" trên một feed "USDC / USD"         | 1,04 $                   |
+| USDT    | 78%                             | 0,99842395 $ | "Capped USDT/USD" trên một feed "USDT / USD"           | 1,04 $                   |
+| USDe    | 75%                             | 0,99842395 $ | "Capped USDT/USD" trên cùng feed USDT đó               | 1,04 $ (xem bên dưới)    |
+| DAI     | 77%                             | 0,99923138 $ | "Capped DAI/USD" trên một feed "DAI / USD"             | 1,04 $                   |
+| USDS    | 78%                             | 0,99972900 $ | "Capped USDS/USD" trên một feed "USDS / USD"           | 1,04 $                   |
+| PYUSD   | 78%                             | 0,99988808 $ | "Capped pyUSD/USD" trên một feed "PYUSD / USD"         | 1,04 $                   |
+| GHO     | 0% (không làm tài sản thế chấp) | 1,00000000 $ | Một nguồn cố định không trả lời getter nào của adapter | không có, cố định ở 1 $  |
+
+Hàm `isCapped()` của mọi adapter đều trả về false vào ngày hôm đó: không feed nào vượt mức trần của nó. Dòng USDe cần một ghi chú: adapter mà USDe trỏ đến là một bản triển khai cũ hơn của cùng hợp đồng (tạo ngày 1 tháng 3 năm 2024) không có getter `getPriceCap`, nên mức trần được đọc từ storage của nó, nơi có cùng giá trị 104000000. sUSDe được định giá bằng một adapter khác, "Capped sUSDe / USDT / USD", nhân tỷ giá quy đổi từ sUSDe sang USDe với giá của USDT và đọc 1,25333685 $.
+
+Điều này có ý nghĩa gì với người vay:
+
+- **Trên 1 $, bạn được bảo vệ với tư cách người vay và bị giới hạn với tư cách người gửi.** Nếu USDC giao dịch ở 1,10 $, Aave định giá nó ở 1,04 $, nên khoản nợ USDC đắt hơn tối đa 4% và tài sản thế chấp USDC được tính thêm tối đa 4%.
+- **Dưới 1 $, không có gì được làm dịu đi.** Adapter chuyển đúng y nguyên mức 0,95 $ hay 0,87 $. Tài sản thế chấp của bạn có giá trị bằng đúng những gì feed nói, và hệ số sức khỏe của bạn đi theo nó ở mỗi lần đọc.
+- **Mức trần có thể thay đổi.** `setPriceCap` mở cho các risk admin và pool admin của Aave, không thể đặt mức trần thấp hơn giá hiện tại của feed và không thể vượt quá 2 $. Các mức trần ở trên là những gì có trên chuỗi vào ngày 28 tháng 10 năm 2026, không phải một lời hứa.
+- **Điều quan trọng là feed, không phải giá khớp trên sàn.** Feed của Chainlink tổng hợp nhiều sàn giao dịch, nên giá trên một sàn không phải là giá oracle. Điều đó là sự yên tâm hay mối nguy hiểm tùy thuộc vào việc bạn ở phía nào của khoản vay; hai phần tiếp theo cho thấy cả hai.
+
+Lỗi oracle là một chủ đề riêng: một adapter có thể định giá sai một tài sản mà thị trường không hề thay đổi, như sự cố wstETH tháng 3 năm 2026, và [Nguyên nhân 6 khiến hệ số sức khỏe giảm](/vi/blog/vi-sao-he-so-suc-khoe-aave-giam#nguyen-nhan-6-loi-oracle-hoac-ty-gia-co-dinh-gia-sai-tai-san-the-chap-cua-ban-khong) nói về trường hợp đó.
+
+## Vì sao USDe được định giá bằng feed của USDT, và điều đó có ý nghĩa gì vào ngày 10 tháng 10 năm 2025?
+
+Từ ngày 8 tháng 3 năm 2025, Aave V3 Ethereum Core định giá USDe bằng feed giá của USDT, nên giá thị trường của chính USDe không đến được bất kỳ hệ số sức khỏe nào ở đó. Quyết định này đến từ một đề xuất quản trị, "sUSDe and USDe Price Feed Update", được Chaos Labs cùng LlamaRisk đăng trên diễn đàn quản trị Aave vào ngày 2 tháng 1 năm 2025. Theo đúng lời của nó, đề xuất "suggests hardcoding the USDe price to match the USDT price in Aave's pricing feeds" (đề nghị cố định giá USDe để khớp với giá USDT trong các feed giá của Aave), với lập luận rằng phần lớn các vị thế phòng hộ của Ethena được tính bằng USDT và việc định giá sUSDe theo thị trường thứ cấp của USDe khiến các vị thế dùng sUSDe phải chịu các biến động ngắn hạn và những đợt thanh lý không cần thiết. Chủ đề này gặp phản đối (một phản hồi hỏi vì sao không cố định ở 1,00 $; một phản hồi khác lo rằng các vị thế sUSDe giờ đây chịu rủi ro theo giá USDT), và Chaos Labs gọi cách thiết lập này là biện pháp tạm thời vào ngày 16 tháng 1 năm 2025. Cuộc bỏ phiếu Snapshot diễn ra từ ngày 3 đến ngày 6 tháng 2 năm 2025 và được thông qua. Trên chuỗi, AIP 262 có hiệu lực tại khối 22002625 vào ngày 8 tháng 3 năm 2025 (14:01:47 UTC): nguồn của AaveOracle cho USDe chuyển từ adapter "Capped USDe / USD" sang adapter "Capped USDT/USD", và nguồn của sUSDe sang "Capped sUSDe / USDT / USD". Adapter USDe/USD cũ vẫn tồn tại và vẫn trả lời: tại khối 26291704, nó đọc 0,99969500 $, trong khi Aave định giá USDe ở mức 0,99842395 $ của USDT.
+
+Vào ngày 10 tháng 10 năm 2025, trong đợt sụp đổ trên toàn thị trường, điều này đã được thử thách. Bài đăng trên diễn đàn của LlamaRisk ngày 24 tháng 10 năm 2025 mô tả "aggressive cryptocurrency market volatility events on centralized exchanges, most notably Binance" (những đợt biến động mạnh của thị trường tiền mã hóa trên các sàn tập trung, đáng chú ý nhất là Binance) đã đẩy giá thị trường thứ cấp của USDe "down to $0.65 at the lowest point" (xuống 0,65 $ ở điểm thấp nhất), và nói rằng feed USDe/USD của Chainlink, vốn lấy dữ liệu từ nhiều sàn, "did not deviate significantly during this localized de-peg" (không lệch đáng kể trong đợt mất neo cục bộ này). Phản hồi của Chaos Labs ngày 2 tháng 11 năm 2025 đưa ra con số: giá USDe/USD của Chainlink "reached as low as $0.977" (xuống thấp nhất là 0,977 $). Bản thân Aave không thấy giá nào trong hai giá đó. Theo lời của LlamaRisk, "Aave avoided immediate issues from the de-peg on Binance by pricing USDe on par with USDT" (Aave tránh được các vấn đề trước mắt từ đợt mất neo trên Binance nhờ định giá USDe ngang với USDT). Ghi chú nghiên cứu của LlamaRisk ngày 18 tháng 10 năm 2025 bổ sung rằng khoản tiền gửi USDe 1,03 tỷ $ trên Aave "remained remarkably stable" (vẫn ổn định đáng kể) trong suốt sự kiện.
+
+Hai lưu ý thẳng thắn. Thứ nhất, đây là những gì các nguồn nói, không hơn: không có bản phân tích sau sự cố (post-mortem) công khai nào được tìm thấy cho bài hướng dẫn này đếm các vụ thanh lý liên quan đến USDe trên Aave vào ngày hôm đó, nên bài hướng dẫn này không khẳng định rằng không có vụ nào. Thứ hai, chính bài đăng của LlamaRisk ghi nhận feed USDT đã giúp tránh rắc rối cũng nói rằng cách tiếp cận này "transfers the solvency risk to the Aave protocol" (chuyển rủi ro khả năng thanh toán sang giao thức Aave): nếu USDe từng mất tài sản bảo chứng, oracle của Aave sẽ tiếp tục định giá nó như USDT cho đến khi quản trị can thiệp. Trong bài đăng đó, LlamaRisk đề xuất một oracle USDe có quản lý rủi ro với cơ chế đóng băng tự động; Chaos Labs khuyến nghị không làm vậy vào ngày 2 tháng 11 năm 2025, và chủ đề đóng lại vào ngày 7 tháng 12 năm 2025 mà không có cuộc bỏ phiếu nào được ghi nhận. Vào ngày 28 tháng 10 năm 2026, USDe trên Ethereum Core vẫn trỏ đến adapter của USDT, với ngưỡng thanh lý 75% và LTV bằng 0.
+
+Với người vay, điều này có cả hai mặt. Nếu bạn giữ USDe làm tài sản thế chấp trên Ethereum Core, một đợt bán tháo USDe trên sàn không làm hệ số sức khỏe của bạn thay đổi, nhưng USDT mất neo thì có, và một cuộc bỏ phiếu quản trị chuyển feed trở lại cũng vậy. Nếu bạn đã vay USDe, mức chiết khấu trên thị trường giúp bạn mua lại rẻ hơn, nhưng Aave vẫn định giá khoản nợ của bạn theo giá USDT.
+
+## Điều gì đã xảy ra với người vay Aave khi USDC giảm giá vào tháng 3 năm 2023?
+
+Vào ngày 11 tháng 3 năm 2023, sau khi Circle công bố rằng một phần dự trữ của USDC được giữ tại Silicon Valley Bank, USDC giảm trên thị trường xuống mức thấp khoảng 88 xu vào khoảng 08:00 UTC, theo bản phân tích sau sự cố của Gauntlet cho Aave (ngày 17 tháng 3 năm 2023). Giá USDC của Aave đi xuống theo feed Chainlink (các adapter có mức trần ra đời sau đó, và chúng cũng không thay đổi được một đợt giảm giá), và mọi vị thế có USDC làm tài sản thế chấp đều mất hệ số sức khỏe tương ứng, đúng như ví dụ tính toán đầu tiên ở trên.
+
+Quản trị và các nhóm rủi ro hành động trong vòng vài giờ, tất cả trên chủ đề diễn đàn mà Gauntlet mở lúc 08:13 UTC:
+
+- **09:19 UTC:** Gauntlet khuyến nghị tạm dừng mọi thị trường Aave V2 và V3, để ngăn các đợt thanh lý biến các khoản mất khả năng thanh toán thành lỗ thực tế.
+- **10:19 UTC:** BGD Labs chỉ ra rằng Aave Guardian chỉ có thể hành động ngay trên Aave V3 Avalanche, nơi hạ tầng quản trị xuyên chuỗi không áp dụng, và đề xuất đóng băng các stablecoin ở đó và đặt LTV của chúng về 0.
+- **Khoảng 13:00 UTC:** Guardian đóng băng USDC, USDT, DAI, FRAX và MAI trên Aave V3 Avalanche và đặt LTV của chúng về 0, được BGD Labs xác nhận trên chủ đề, kèm theo rằng việc đóng băng không thay đổi bất kỳ hệ số sức khỏe hiện có nào. Tài khoản của Aave thông báo điều này lúc 16:44 UTC.
+- **Không tạm dừng.** Bản phân tích sau sự cố của Gauntlet nói rằng Guardian đã không thực hiện việc tạm dừng, sau khi cân nhắc rủi ro so với các hệ quả chiến lược và triết lý; việc đóng băng chặn gửi mới và vay mới nhưng vẫn để các đợt thanh lý tiếp diễn.
+
+Kết quả, theo cùng bản phân tích sau sự cố: khoảng 280.000 $ mất khả năng thanh toán trên E-Mode của Aave V3 Avalanche và khoảng 20.000 $ trên V3 Arbitrum trong cuối tuần ngày 11 đến ngày 12 tháng 3, tổng cộng khoảng 300.000 $, và không có khoản lỗ thực tế nào trên Aave V2. Gauntlet ước tính rằng ở giá USDC 80 xu, riêng các khoản mất khả năng thanh toán trên V2 có thể đã lên tới khoảng 1 triệu $. Bài học cho người vay là phản ứng của giao thức trước một đợt mất neo nhắm vào việc bảo vệ giao thức: đóng băng ngăn rủi ro mới đi vào, nó không làm vị thế của bạn an toàn hơn, và việc tạm dừng, thứ lẽ ra đã ngăn được các đợt thanh lý, đã không được dùng đến.
+
+## Mất neo có thể gây ra nợ xấu không, và ai phải trả?
+
+Có. Khi tài sản thế chấp giảm nhanh hơn tốc độ bên thanh lý có thể xử lý, một vị thế có thể kết thúc với tài sản thế chấp có giá trị thấp hơn khoản nợ cộng thưởng thanh lý (liquidation bonus), và phần thiếu hụt trở thành nợ xấu (bad debt). Khoản 300.000 $ của tháng 3 năm 2023 chính xác là như vậy, phần lớn trong một E-Mode stablecoin nơi các vị thế chạy sát giới hạn. Từ Aave v3.3, khoản thiếu hụt như vậy được xóa (burn) khỏi khoản nợ của người vay và được ghi nhận là khoản thâm hụt (deficit) của tài sản, và Umbrella, cơ chế dự phòng staking của Aave, có thể đốt các aToken đã stake để bù đắp (việc kích hoạt nó bắt đầu trên Ethereum, theo tài liệu của Aave). Không điều nào trong số đó giúp được người vay, vì tài sản thế chấp của họ đã mất; [thanh lý có thể để lại nợ xấu không](/vi/blog/co-che-thanh-ly-tren-aave#thanh-ly-co-the-de-lai-no-xau-khong) có cơ chế và một ví dụ tính toán.
+
+## Trên Morpho thì khác thế nào?
+
+Trên Morpho không có cách định giá stablecoin chung cho toàn giao thức và không có mức trần. Mỗi thị trường Morpho Blue có oracle riêng, do người tạo thị trường chọn và cố định trong suốt vòng đời của thị trường, và tài liệu của Morpho nói "Once a market is deployed, its oracle address cannot be modified." (Một khi thị trường đã được triển khai, địa chỉ oracle của nó không thể thay đổi.) Một số oracle chỉ định giá tài sản thế chấp và coi token vay là 1 $, nên stablecoin cho vay mất neo không thay đổi gì; số khác có thêm một feed cho nó. Việc USDC mất neo có chạm đến vị thế Morpho của bạn hay không phụ thuộc vào đúng một hợp đồng đó, và [điều gì làm hệ số sức khỏe Morpho thay đổi](/vi/blog/he-so-suc-khoe-morpho#dieu-gi-lam-he-so-suc-khoe-tren-morpho-thay-doi) chỉ cách đọc nó.
+
+## Bạn có thể làm gì với rủi ro mất neo trên Aave?
+
+Rủi ro mất neo phần lớn được quyết định khi bạn chọn vị thế, nên những hành động hữu ích là lựa chọn chứ không phải phản ứng:
+
+1. **Đặt stablecoin ở phía khoản nợ khi có thể.** Stablecoin đã vay chỉ có thể gây hại cho bạn khi tăng giá, và mức trần giới hạn điều đó ở khoảng 4%. Tài sản thế chấp stablecoin không có mức sàn. [Chọn khoản nợ khớp với tài sản thế chấp của bạn](/vi/blog/cach-tranh-bi-thanh-ly-tren-aave#buoc-5-chon-khoan-no-phu-hop-voi-tai-san-the-chap) đi qua từng cặp.
+2. **Nếu bạn giữ tài sản thế chấp stablecoin, hãy giữ khoảng đệm tính bằng xu, không phải phần trăm.** Ví dụ vay sát giới hạn ở trên chạm 1,00 ở khoảng 0,96 $. Hệ số sức khỏe 1,56, cùng tài sản thế chấp đó với khoản nợ ít hơn một phần ba, cần đến 0,64 $. Hãy quyết định bạn chấp nhận bị thanh lý ở mức giá nào, rồi định cỡ khoản vay theo đó.
+3. **Theo dõi oracle, không phải sàn giao dịch.** Mức giá khiến bạn bị thanh lý là `AaveOracle.getAssetPrice(asset)`, với stablecoin trên Ethereum Core là một feed Chainlink dưới một mức trần, và với USDe là feed của USDT. Một mức giá khớp trên một sàn vừa không cần thiết vừa không đủ.
+4. **Biết quản trị có thể làm gì.** Mức trần và nguồn giá thay đổi qua bỏ phiếu hoặc hành động của risk admin, và việc đóng băng trong khủng hoảng sẽ không tạm dừng các đợt thanh lý. Các chủ đề tháng 3 năm 2023 và tháng 10 năm 2025 ở trên là bản ghi chép về những gì đã được làm.
+5. **Chuẩn bị sẵn lối ra.** Trả nợ bằng stablecoin đã mất neo thì rẻ nếu đó là khoản nợ của bạn và đắt nếu bạn phải mua nó; [cách nâng hệ số sức khỏe trên Aave](/vi/blog/cach-tranh-bi-thanh-ly-tren-aave) liệt kê những cách vẫn hiệu quả trong lúc đóng băng, vì một reserve bị đóng băng vẫn cho phép trả nợ.
+
+## Cảnh báo có thể báo cho bạn về một đợt mất neo không?
+
+Cảnh báo có thể cho bạn biết hệ số sức khỏe của bạn đã vượt qua một ngưỡng; nó không thể làm chậm một đợt mất neo. Tokenping kiểm tra hệ số sức khỏe Aave V3 và V4 của bạn mỗi 5 phút trên 22 mạng và nhắn cho bạn qua Signal, Telegram hoặc email khi nó ở dưới ngưỡng bạn đặt (1,1 đến 10). Nó đọc hệ số sức khỏe từ hợp đồng Pool, nên giá đứng sau nó là giá oracle của Aave, cũng chính là giá dùng để trả cho bên thanh lý: mức giá 0,65 $ của USDe trên Binance không đến được hệ số sức khỏe nào trên Ethereum Core, trong khi mức đọc 0,88 $ của Chainlink cho USDC đến được mọi vị thế có tài sản thế chấp USDC, và cảnh báo sẽ đến nếu điều đó đưa hệ số sức khỏe xuống dưới ngưỡng của bạn.
+
+Năm phút là khoảng thời gian dài trong một đợt mất neo. Vào ngày 11 tháng 3 năm 2023, USDC ở khoảng 88 xu lúc 08:00 UTC, và vị thế vay sát giới hạn ở trên chạm 1,00 ở khoảng 0,96 $, nên một lần kiểm tra mỗi 5 phút có thể thấy vị thế như vậy đã ở dưới 1,00 ngay ở lần kiểm tra đầu tiên nhìn thấy đợt giảm giá. Điều cảnh báo thực sự cho bạn là phần diễn ra chậm: một stablecoin trôi xuống 0,98 $ và ở lại đó, một ngưỡng bị quản trị cắt giảm, tiền lãi tích lũy. Hãy đặt ngưỡng ở mức bạn vẫn thấy thoải mái để hành động, và nhớ rằng hành động trong một đợt mất neo nghĩa là trả nợ hoặc thêm tài sản thế chấp trên một mạng mà mọi người khác cũng đang dùng cùng lúc. [Cách cài đặt cảnh báo hệ số sức khỏe](/vi/blog/cai-dat-canh-bao-he-so-suc-khoe-aave) nói về các bước, cảnh báo có giá <AlertPrice />, và trước đó bạn có thể [kiểm tra hệ số sức khỏe Aave V3 của bạn](/vi/aave); xem vị thế của bạn không cần thanh toán.
+
+## Nguồn
+
+- [PoolDataProvider của Aave V3 Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): LTV và ngưỡng thanh lý của USDC, USDT, USDe, DAI, USDS, PYUSD, GHO và WETH tại khối 26291704 (truy cập ngày 28 tháng 10 năm 2026)
+- [AaveOracle của Aave V3 Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2#readContract): `getAssetPrice` và `getSourceOfAsset` cho cùng các tài sản đó tại khối 26291704, và sự kiện `AssetSourceUpdated` cho USDe và sUSDe tại khối 22002625 (truy cập ngày 28 tháng 10 năm 2026)
+- [Adapter Capped USDC / USD](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract), [adapter Capped USDT/USD](https://etherscan.io/address/0x260326c220E469358846b187eE53328303Efe19C#readContract) và [adapter mà USDe trỏ đến](https://etherscan.io/address/0xC26D4a1c46d884cfF6dE9800B6aE7A8Cf48B4Ff8#code), "Aave: Ethena Correlated USDe Price Feed", tạo ngày 1 tháng 3 năm 2024: mô tả, mức trần, `isCapped` và các feed gốc tại khối 26291704 (truy cập ngày 28 tháng 10 năm 2026)
+- [PriceCapAdapterStable.sol](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol) và [README của Aave Price Feeds](https://github.com/aave-dao/aave-price-feeds): logic mức trần, quyền truy cập `setPriceCap`, việc đổi tên từ Aave Capo (truy cập ngày 28 tháng 10 năm 2026)
+- [Tài liệu oracle của Aave](https://aave.com/docs/ecosystem/oracle.md): nguồn giá do quản trị đặt cho từng reserve (truy cập ngày 28 tháng 10 năm 2026)
+- [ARFC: sUSDe and USDe Price Feed Update](https://governance.aave.com/t/arfc-susde-and-usde-price-feed-update/20495) (Chaos Labs và LlamaRisk, ngày 2 tháng 1 năm 2025, Snapshot từ ngày 3 đến ngày 6 tháng 2 năm 2025), [AIP 262](https://vote.onaave.com/proposal/?proposalId=262) và [pull request payload](https://github.com/aave-dao/aave-proposals-v3/pull/621) của nó, được merge ngày 3 tháng 3 năm 2025 (truy cập ngày 28 tháng 10 năm 2026)
+- [Thực thi AIP 262 trên Ethereum](https://etherscan.io/tx/0xbb810541258db350d632e9a22ed7d7547509c67b2585dbc7a64a76b6ac8e42e0): nguồn của USDe và sUSDe được cập nhật tại khối 22002625, ngày 8 tháng 3 năm 2025 lúc 14:01:47 UTC (truy cập ngày 28 tháng 10 năm 2026)
+- [ARFC: Ethena USDe Risk Oracle and Automated Freeze Guardian](https://governance.aave.com/t/arfc-ethena-usde-risk-oracle-and-automated-freeze-guardian/23303) (LlamaRisk, ngày 24 tháng 10 năm 2025; phản hồi của Chaos Labs ngày 2 tháng 11 năm 2025; đóng ngày 7 tháng 12 năm 2025) (truy cập ngày 28 tháng 10 năm 2026)
+- [When Pricing Breaks: A USDe Case](https://llamarisk.com/research/when-pricing-breaks-usde) (LlamaRisk, ngày 18 tháng 10 năm 2025, truy cập ngày 28 tháng 10 năm 2026)
+- [ARC: Stablecoin Volatility Risk Parameter Recommendations](https://governance.aave.com/t/arc-stablecoin-volatility-risk-parameter-recomendations/12241) (Gauntlet, ngày 11 tháng 3 năm 2023, kèm xác nhận đóng băng của BGD Labs cùng ngày) và [thông báo của Aave](https://x.com/aave/status/1634596115483086848) (ngày 11 tháng 3 năm 2023, 16:44 UTC) (truy cập ngày 28 tháng 10 năm 2026)
+- [Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (Gauntlet, ngày 17 tháng 3 năm 2023, truy cập ngày 28 tháng 10 năm 2026)
+- [Các tính năng của Aave v3.3](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md) và [tài liệu Aave Umbrella](https://aave.com/docs/aave-v3/umbrella): khoản thâm hụt và slashing (truy cập ngày 28 tháng 10 năm 2026)
+- [Tài liệu Morpho: Oracles](https://docs.morpho.org/learn/concepts/oracle): oracle theo từng thị trường, do curator chọn, không thể thay đổi (truy cập ngày 28 tháng 10 năm 2026)
+
+_Nội dung mang tính giáo dục, không phải lời khuyên tài chính. Cảnh báo giúp giảm rủi ro, nhưng không ngăn được việc thanh lý._

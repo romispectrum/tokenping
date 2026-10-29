@@ -1,0 +1,183 @@
+export const meta = {
+  slug: "co-che-thanh-ly-tren-aave",
+  title: "Điều gì xảy ra khi vị thế Aave của bạn bị thanh lý",
+  description:
+    "Cách thanh lý trên Aave V3 hoạt động hiện nay: khi nào xảy ra, bao nhiêu nợ được trả (50% hoặc 100%), khoản thưởng bạn trả và một ví dụ cụ thể.",
+  h1: "Điều gì xảy ra khi vị thế Aave của bạn bị thanh lý?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Điều gì xảy ra khi bạn bị thanh lý trên Aave?",
+  readingMinutes: 19,
+};
+
+<ShortAnswer>
+  Khi hệ số sức khỏe (health factor) Aave V3 của bạn xuống dưới 1, bất kỳ địa chỉ nào khác cũng có thể trả một phần hoặc
+  toàn bộ khoản nợ của bạn và lấy lượng tài sản thế chấp tương ứng cộng thêm thưởng thanh lý (liquidation bonus), ví dụ
+  5% với WETH trên thị trường Ethereum Core. Một lần thanh lý có thể trả tối đa 50% khoản nợ của bạn khi hệ số sức khỏe
+  trên 0,95 và cả tài sản thế chấp của bạn ở tài sản bị lấy lẫn khoản nợ của bạn ở tài sản được trả đều trị giá ít nhất
+  2.000 $; nếu không, toàn bộ khoản nợ ở tài sản đó có thể bị xử lý một lần. Bạn giữ lại các token đã vay cùng phần tài
+  sản thế chấp và khoản nợ còn lại, nên khoản thưởng chính là cái giá mà việc thanh lý khiến bạn phải trả.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Khi nào một vị thế Aave có thể bị thanh lý?
+
+Một vị thế Aave V3 có thể bị thanh lý ngay khi hệ số sức khỏe của nó dưới 1,00. Hệ số sức khỏe chia giá trị tài sản thế chấp của bạn, đã nhân theo ngưỡng thanh lý (liquidation threshold) của từng tài sản, cho giá trị khoản nợ, nên dưới 1,00 thì tài sản thế chấp sau khi nhân theo ngưỡng không còn đủ bù khoản nợ (công thức và ví dụ: [hệ số sức khỏe Aave là gì](/vi/blog/he-so-suc-khoe-aave)).
+
+Các hợp đồng Aave V3.7 kiểm tra năm điều trước khi một lệnh thanh lý được thực hiện (`validateLiquidationCall` trong `ValidationLogic.sol`):
+
+1. Hệ số sức khỏe của người vay dưới 1,00.
+2. Tài sản thế chấp bị lấy và tài sản nợ được trả đều đang hoạt động và **không bị tạm dừng**.
+3. Mọi thời gian ân hạn thanh lý trên một trong hai tài sản đã kết thúc. Khi người giám hộ khẩn cấp (emergency guardian) của Aave hoặc quản trị (governance) bỏ tạm dừng một tài sản, họ có thể đặt thời gian ân hạn tối đa 4 giờ.
+4. Người vay đã bật tài sản thế chấp đó làm tài sản thế chấp và đang nợ tài sản nợ được chọn.
+5. Bên gọi lệnh không phải là người vay: bạn không thể tự thanh lý vị thế của mình.
+
+Một tài sản bị đóng băng vẫn có thể bị thanh lý, vì phép kiểm tra chỉ xem trạng thái "tạm dừng" (paused), không xem "đóng băng" (frozen). Bất kỳ địa chỉ nào khác cũng có thể gọi hàm `liquidationCall` của Pool.
+
+Giao thức không cảnh báo bạn trước khi thanh lý, và ứng dụng của chính Aave tại app.aave.com không gửi cảnh báo. Với một tài sản thế chấp biến động và khoản nợ stablecoin, bạn có thể [tính giá thanh lý Aave của bạn](/vi/blog/cach-tinh-gia-thanh-ly-aave): mức giá tài sản thế chấp mà tại đó hệ số sức khỏe chạm 1.
+
+## Bao nhiêu phần nợ của tôi có thể bị thanh lý cùng lúc?
+
+Trên Aave V3.7, close factor (hệ số đóng, tức phần nợ mà một lần thanh lý được phép trả) chỉ bằng 50% tổng nợ của bạn khi cả ba điều kiện cùng đúng: hệ số sức khỏe trên 0,95, tài sản thế chấp của bạn ở tài sản bị lấy trị giá ít nhất 2.000 $, và khoản nợ của bạn ở tài sản được trả trị giá ít nhất 2.000 $. Trong mọi trường hợp khác, bên thanh lý có thể trả tới 100% khoản nợ của bạn ở tài sản được chọn trong một giao dịch duy nhất.
+
+| Tình huống tại thời điểm thanh lý                                                                              | Mức tối đa một lần thanh lý có thể trả                                                                            |
+| -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Hệ số sức khỏe trên 0,95, và tài sản thế chấp được chọn cùng khoản nợ được chọn đều trị giá từ 2.000 $ trở lên | 50% tổng nợ của bạn trên mọi tài sản (tính bằng USD), không bao giờ vượt quá khoản nợ của bạn ở tài sản được chọn |
+| Hệ số sức khỏe bằng hoặc dưới 0,95                                                                             | 100% khoản nợ của bạn ở tài sản được chọn                                                                         |
+| Tài sản thế chấp được chọn hoặc khoản nợ được chọn trị giá dưới 2.000 $                                        | 100% khoản nợ của bạn ở tài sản được chọn                                                                         |
+
+Các giới hạn này là hằng số trong `LiquidationLogic.sol` của Aave (aave-v3-origin, đọc ngày 14 tháng 10 năm 2026). Từ v3.3, mức 50% áp dụng cho toàn bộ vị thế chứ không cho từng tài sản nợ. Ghi chú v3.3 của Aave đưa ra ví dụ khoản nợ 3.000 $ mỗi loại GHO, USDC và DAI, tổng cộng 9.000 $: toàn bộ 3.000 $ của bất kỳ loại nào cũng có thể được trả trong một lệnh gọi, vì 50% tổng nợ là 4.500 $.
+
+Một quy tắc thứ hai ngăn số dư quá nhỏ ("dust"). Một lần thanh lý một phần phải để lại ít nhất 1.000 $ nợ ở tài sản được trả và ít nhất 1.000 $ tài sản thế chấp ở tài sản bị lấy. Nếu không, bên thanh lý phải lấy toàn bộ khoản nợ đó hoặc toàn bộ tài sản thế chấp đó, hoặc giao dịch sẽ bị hoàn lại (revert).
+
+Một lần thanh lý chỉ lấy lượng tài sản thế chấp bằng khoản nợ được trả cộng với khoản thưởng, không lấy toàn bộ tài sản thế chấp của bạn. Bên thanh lý trả khoản nợ bằng tiền của chính họ, nên các token bạn đã vay vẫn là của bạn; chừng nào tài sản thế chấp còn đủ bù, khoản thưởng là thứ bạn mất.
+
+Các bài hướng dẫn cũ mô tả close factor cố định 50%, và trang tham khảo hợp đồng Pool trên aave.com vẫn ghi "close factor is 0.5" (tức "close factor là 0,5"; truy cập ngày 14 tháng 10 năm 2026). Cả hai đều đã lỗi thời: mức 50% cố định là quy tắc của Aave V2, còn mã V3.7 mà các thị trường này đang chạy dùng quy tắc 50% hoặc 100% như trong bảng.
+
+## Thưởng thanh lý là gì, và ai trả nó?
+
+Thưởng thanh lý, thường được gọi là phạt thanh lý (liquidation penalty), là phần tài sản thế chấp thêm mà bên thanh lý nhận được ngoài khoản nợ họ trả, và người vay là người trả khoản này. Với mức thưởng 5%, việc xóa 1.000 USDC nợ của bạn khiến bạn mất lượng tài sản thế chấp trị giá 1.050 USDC. Kho bạc của Aave giữ một phần khoản thưởng dưới dạng phí giao thức khi thanh lý, nên bên thanh lý nhận được ít hơn một chút so với phần bạn mất.
+
+Mức thưởng và phí áp dụng là của tài sản thế chấp bị lấy, không phải của khoản nợ. Giá trị Aave V3 đọc trên chuỗi ngày 14 tháng 10 năm 2026 (khối 26193284 của Ethereum, khối 514855406 của Arbitrum):
+
+| Thị trường    | Tài sản thế chấp bị lấy | Thưởng thanh lý | Phí giao thức (phần của khoản thưởng) | Tài sản thế chấp bạn mất trên mỗi 1.000 $ được trả | Bên thanh lý nhận |
+| ------------- | ----------------------- | --------------- | ------------------------------------- | -------------------------------------------------- | ----------------- |
+| Ethereum Core | WETH                    | 5%              | 10%                                   | 1.050 $                                            | 1.045 $           |
+| Ethereum Core | WBTC                    | 5%              | 10%                                   | 1.050 $                                            | 1.045 $           |
+| Ethereum Core | USDC                    | 4,5%            | 20%                                   | 1.045 $                                            | 1.036 $           |
+| Arbitrum      | WETH                    | 5%              | 10%                                   | 1.050 $                                            | 1.045 $           |
+| Arbitrum      | WBTC                    | 7%              | 10%                                   | 1.070 $                                            | 1.063 $           |
+| Arbitrum      | USDC (native)           | 5%              | 10%                                   | 1.050 $                                            | 1.045 $           |
+
+Trong E-Mode, nếu tài sản bị lấy nằm trong nhóm tài sản thế chấp của danh mục bạn dùng, mức thưởng của danh mục sẽ thay thế mức thưởng riêng của tài sản: 1% với "ETH correlated" trên Ethereum Core (đọc tại khối 26193288 của Ethereum, ngày 14 tháng 10 năm 2026), nên mỗi lần thanh lý tốn ít hơn. Quản trị có thể thay đổi bất kỳ tham số nào trong số này, và các Risk Stewards của Aave có thể điều chỉnh thưởng thanh lý trong giới hạn đã định, nên hãy kiểm tra giá trị hiện tại trong ứng dụng Aave.
+
+## Bên thanh lý lấy tài sản thế chấp nào?
+
+Bên thanh lý tự chọn. Mỗi lần thanh lý trên Aave V3 chỉ định một tài sản thế chấp để lấy và một tài sản nợ để trả, và bên thanh lý chọn cặp này, nên bạn không có quyền quyết định tài sản nào của mình bị lấy trước. Chỉ những tài sản bạn đã bật làm tài sản thế chấp mới có thể bị lấy; một tài sản đã gửi mà tắt "used as collateral" (dùng làm tài sản thế chấp) thì không bị lấy, nhưng nó cũng không đóng góp gì vào hệ số sức khỏe của bạn.
+
+Nếu tài sản thế chấp được chọn không đủ bù khoản trả nợ cộng khoản thưởng, bạn mất toàn bộ tài sản đó (bên thanh lý nhận nó sau khi trừ phí giao thức) và ít nợ được trả hơn. Vì mỗi lần thanh lý chỉ xử lý một cặp, một vị thế có nhiều tài sản có thể bị thanh lý qua nhiều giao dịch, và trong lúc hệ số sức khỏe còn dưới 1, các lần thanh lý tiếp theo có thể xảy ra.
+
+## Ví dụ cụ thể: ETH giảm xuống 1.420 $, rồi xuống 1.330 $
+
+Trong ví dụ này, một lần thanh lý ở giá ETH 1.420 $ trả 6.000 USDC và khiến người vay mất 300 $ WETH; nếu không ai thanh lý cho đến khi ETH ở mức 1.330 $, toàn bộ 12.000 USDC có thể được trả một lần và chi phí tăng gấp đôi lên 600 $.
+
+Vị thế: 10 WETH tài sản thế chấp và 12.000 USDC nợ trên Aave V3 Ethereum Core. WETH có ngưỡng thanh lý 83%, thưởng 5% và phí giao thức 10% (đọc trên chuỗi tại khối 26193284, ngày 14 tháng 10 năm 2026). Giá ETH chỉ mang tính minh họa, USDC được tính là 1,00 $ và bỏ qua lãi.
+
+Ở mức 2.400 $, hệ số sức khỏe là 24.000 × 0,83 ÷ 12.000 = 1,66. Nó chạm 1 ở giá ETH 12.000 ÷ (10 × 0,83) = 1.445,78 $, và chạm 0,95 ở mức 1.373,49 $.
+
+| Giá ETH                          | Hệ số sức khỏe       | Mức tối đa một lần thanh lý có thể trả                                                                         |
+| -------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Trên khoảng 1.445,78 $           | Từ 1,00 trở lên      | Không có gì; vị thế không thể bị thanh lý                                                                      |
+| Khoảng 1.373,50 $ đến 1.445,78 $ | Từ 0,95 đến 1,00     | 50%: 6.000 USDC                                                                                                |
+| Khoảng 1.260 $ đến 1.373,49 $    | Khoảng 0,87 đến 0,95 | 100%: 12.000 USDC                                                                                              |
+| Dưới khoảng 1.260 $              | Dưới khoảng 0,87     | Ít hơn 12.000 USDC: cả 10 WETH bị lấy và phần còn lại trở thành [nợ xấu](#thanh-ly-co-the-de-lai-no-xau-khong) |
+
+### Bước 1: ETH ở mức 1.420 $, hệ số sức khỏe 0,982
+
+Ở mức 1.420 $, 10 WETH trị giá 14.200 $, nên hệ số sức khỏe là 14.200 × 0,83 ÷ 12.000 = 0,982. Con số này trên 0,95, và tài sản thế chấp WETH lẫn khoản nợ USDC của bạn đều trị giá hơn 2.000 $, nên bên thanh lý chỉ có thể trả tối đa 6.000 USDC.
+
+- Bên thanh lý trả 6.000 USDC nợ của bạn.
+- Vị thế của bạn mất 6.000 × 1,05 = 6.300 $ WETH (4,4366 WETH).
+- Phí giao thức là 10% của khoản thưởng 300 $: 30 $ (0,0211 WETH) về kho bạc của Aave và bên thanh lý nhận 6.270 $ (4,4155 WETH).
+- Bạn còn lại 5,5634 WETH (7.900 $) và 6.000 USDC nợ: hệ số sức khỏe là 7.900 × 0,83 ÷ 6.000 = 1,093.
+
+Giá trị ròng của vị thế (tài sản thế chấp trừ nợ) giảm từ 2.200 $ xuống 1.900 $. Phần chênh lệch 300 $ là khoản thưởng.
+
+### Bước 2: ETH ở mức 1.330 $, hệ số sức khỏe 1,024
+
+5,5634 WETH còn lại trị giá 7.399 $ ở mức 1.330 $, hệ số sức khỏe là 7.399 × 0,83 ÷ 6.000 = 1,024, nên vị thế không thể bị thanh lý lần nữa ở mức giá này. Giá thanh lý mới của nó vào khoảng 1.299 $, tính từ 6.000 ÷ (5,5634 × 0,83). Việc giảm một nửa khoản nợ đã đẩy giá thanh lý xuống; khoản thưởng 300 $ là cái giá phải trả.
+
+### Nếu không ai thanh lý cho đến khi ETH ở mức 1.330 $ thì sao?
+
+Nếu lần thanh lý đầu tiên chỉ xảy ra khi ETH đã ở mức 1.330 $, vị thế ban đầu có hệ số sức khỏe 13.300 × 0,83 ÷ 12.000 = 0,920. Con số này bằng hoặc dưới 0,95, nên bên thanh lý có thể trả toàn bộ 12.000 USDC một lần. Vị thế của bạn mất 12.000 × 1,05 = 12.600 $ WETH (9,4737 WETH), trong đó 60 $ là phí giao thức và 12.540 $ về tay bên thanh lý. Bạn giữ lại 0,5263 WETH (700 $) và không còn nợ; quy tắc số dư quá nhỏ không áp dụng vì khoản nợ đã được xóa hoàn toàn.
+
+Giá trị ròng của vị thế giảm từ 1.300 $ xuống 700 $. Khoản lỗ 600 $ gấp đôi ở Bước 1, vì lượng nợ được trả gấp đôi với cùng mức thưởng 5%.
+
+## Thanh lý có thể để lại nợ xấu không?
+
+Có. Nợ xấu (bad debt) phát sinh khi tài sản thế chấp của một vị thế trị giá thấp hơn khoản nợ cộng với thưởng thanh lý, nên lấy hết mọi đơn vị tài sản thế chấp vẫn không trả được hết nợ. Từ Aave V3.3, khi một lần thanh lý dùng hết tài sản thế chấp của người vay mà vẫn còn nợ, hợp đồng sẽ hủy (burn) phần nợ còn lại và ghi nhận nó là "thâm hụt" (deficit) trên tài sản đó. Người vay kết thúc mà không còn tài sản thế chấp và không còn nợ, và khoản lỗ thuộc về giao thức.
+
+Ví dụ với tham số WETH của Ethereum Core: 10.000 $ WETH là tài sản thế chấp duy nhất so với 9.800 USDC nợ cho hệ số sức khỏe 0,847. Xóa toàn bộ 9.800 USDC với thưởng 5% sẽ cần 10.290 $ WETH, nên toàn bộ 10.000 $ WETH bị lấy (trong đó khoảng 47,62 $ là phí giao thức) và khoảng 9.524 USDC được trả (10.000 ÷ 1,05). Khoảng 276 USDC còn lại trở thành thâm hụt.
+
+Umbrella, cơ chế dự phòng dựa trên staking của Aave, có thể hủy aToken của những người staking ở tài sản bị ảnh hưởng để bù các khoản thâm hụt như vậy; việc kích hoạt nó bắt đầu trên Ethereum (tài liệu Aave, truy cập ngày 14 tháng 10 năm 2026). Nó bảo vệ giao thức, không bảo vệ người vay, vì tài sản thế chấp của người vay đã mất.
+
+Điều này đã từng xảy ra trên Aave V3. Sau khi USDC giao dịch quanh mức 0,88 $ ngày 11 tháng 3 năm 2023, báo cáo sau sự cố (post-mortem) của Gauntlet ghi nhận khoảng 280 nghìn $ nợ xấu trên E-Mode của V3 Avalanche và khoảng 20 nghìn $ trên V3 Arbitrum, và lưu ý rằng một khi tài sản thế chấp trị giá thấp hơn khoản nợ nhân với một cộng khoản thưởng, mỗi lần thanh lý một phần lại đẩy tài khoản lún sâu hơn vào trạng thái âm. Đó là trước khi v3.3 bổ sung cơ chế thâm hụt.
+
+## Thanh lý có dừng lại khi một thị trường bị đóng băng hoặc sequencer L2 ngừng hoạt động không?
+
+Cả hai đều không. Trên Aave V3.7, một tài sản bị đóng băng vẫn có thể bị thanh lý, và việc thanh lý trên Arbitrum, Optimism và Base không còn phụ thuộc vào việc sequencer L2 có đang chạy hay không. Thứ thực sự chặn thanh lý là trạng thái tạm dừng.
+
+- **Đóng băng:** việc đóng băng chặn vị thế mới ở một tài sản, nhưng phép kiểm tra thanh lý bỏ qua nó. Trong đợt USDC mất neo (depeg) tháng 3 năm 2023, các stablecoin trên Aave V3 Avalanche bị đóng băng và việc thanh lý vẫn tiếp tục. USDC.e (bản bridge) trên Arbitrum bị đóng băng với LTV bằng 0 vào ngày 14 tháng 10 năm 2026 (khối 514855406 của Arbitrum), nhưng nó vẫn được tính vào hệ số sức khỏe theo ngưỡng thanh lý 78% và vẫn có thể bị lấy.
+- **Sequencer L2:** trước v3.7, một hợp đồng sentinel trên các thị trường L2 có thể chặn thanh lý và việc vay trong lúc sequencer ngừng hoạt động và trong một khoảng ân hạn sau khi nó chạy lại. Aave V3.7, phiên bản mà các thị trường V3 trên Arbitrum, Optimism và Base đều chạy tính đến ngày 14 tháng 10 năm 2026, đã bỏ sentinel. Một sự cố ngừng hoạt động vẫn làm chậm giao dịch của tất cả mọi người, cả người vay lẫn bên thanh lý, nhưng một vị thế rơi xuống dưới 1 trong thời gian đó giờ có thể bị thanh lý ngay khi sequencer chạy lại.
+- **Tạm dừng:** một tài sản thế chấp hoặc tài sản nợ bị tạm dừng chặn mọi lần thanh lý liên quan đến nó. Khi bỏ tạm dừng, người giám hộ khẩn cấp của Aave hoặc quản trị có thể đặt thời gian ân hạn tối đa 4 giờ, trong đó việc thanh lý vẫn bị chặn để người vay có thể trả nợ hoặc thêm tài sản thế chấp; việc vay vẫn được phép trong khoảng thời gian này.
+
+## Thanh lý trên Aave V4 khác thế nào?
+
+Aave V4, hoạt động trên Ethereum từ ngày 30 tháng 3 năm 2026 và sau đó trên Avalanche, Arc và Base, thay close factor bằng một hệ số sức khỏe mục tiêu và trả một khoản thưởng tăng dần khi hệ số sức khỏe giảm. V3 vẫn chạy song song với các quy tắc riêng.
+
+- **Hệ số sức khỏe mục tiêu thay cho 50% hoặc 100%.** Bên thanh lý trên V4 chỉ có thể trả lượng nợ cần thiết để đưa vị thế trở lại hệ số sức khỏe mục tiêu của Spoke, là 1,24 trên Ethereum Main Spoke (đọc trên chuỗi tại khối 26193995 của Ethereum, ngày 14 tháng 10 năm 2026). Ngoại lệ là khi việc đó để lại một phần còn lại rất nhỏ; khi ấy toàn bộ khoản nợ ở reserve đó có thể được xóa.
+- **Khoản thưởng tăng dần.** Tài liệu của Aave gọi đây là đấu giá kiểu Hà Lan (Dutch auction). Trên Ethereum Main Spoke, khoản thưởng bắt đầu ở 90% mức tối đa của tài sản ngay dưới hệ số sức khỏe 1 và đạt mức tối đa đầy đủ khi hệ số sức khỏe từ 0,90 trở xuống. Với WETH, mức tối đa là 5,55% (API Aave V4, ngày 14 tháng 10 năm 2026), tức khoảng 5,0% ngay dưới 1 và 5,55% ở 0,90. Một khoản phí 10% được trích từ khoản thưởng, như ở V3.
+
+Tokenping cũng theo dõi các vị thế Aave V4: mọi Spoke trên Ethereum, Avalanche, Arc và Base (20 Spoke tính đến ngày 16 tháng 10 năm 2026), với một cảnh báo riêng cho mỗi Spoke, vì mỗi Spoke giữ vị thế và hệ số sức khỏe riêng.
+
+## Thanh lý trên Aave khác thanh lý trên Morpho thế nào?
+
+Trên Morpho Blue không có close factor: một khi hệ số sức khỏe của vị thế dưới 1, bên thanh lý có thể trả toàn bộ khoản nợ trong một lệnh gọi. Mức khuyến khích chỉ phụ thuộc vào LLTV (liquidation loan-to-value) của thị trường, khoảng 0,6% ở LLTV 98% và tối đa 15% với LLTV thấp, và nếu tài sản thế chấp cạn trước, phần nợ còn lại sẽ được xóa và tính lỗ cho những người cho vay của thị trường. [Cơ chế thanh lý trên Morpho](/vi/blog/co-che-thanh-ly-tren-morpho) có công thức, mức khuyến khích ở mọi LLTV và một ví dụ cụ thể.
+
+## Bạn có thể làm gì trước khi hệ số sức khỏe chạm 1?
+
+Trước khi hệ số sức khỏe chạm 1, bạn có thể trả nợ hoặc thêm tài sản thế chấp; cả hai đều làm nó tăng ngay và không tốn khoản thưởng nào. Một khi nó dưới 1, bên thanh lý có thể hành động trước bạn, và ngay cả một lần thanh lý một phần cũng khiến bạn mất khoản thưởng trên tài sản thế chấp bị lấy: 300 $ cho 6.000 USDC được trả với mức thưởng 5%.
+
+Chờ đến phút cuối là rủi ro vì giao dịch có thể thất bại hoặc bị treo. Tháng 5 năm 2021, một người dùng trên diễn đàn Polygon cố trả nợ khi hệ số sức khỏe là 1,01, liên tục gặp lỗi, và bị thanh lý trước khi khoản trả nợ được thực hiện. Tháng 12 năm 2024, một người dùng trên diễn đàn Aave mô tả hơn một giờ cố trả nợ nhưng giao dịch cứ treo, trước khi vị thế bị thanh lý.
+
+Các lựa chọn được trình bày trong bài [cách nâng hệ số sức khỏe Aave của bạn](/vi/blog/cach-tranh-bi-thanh-ly-tren-aave), còn lý do hệ số sức khỏe giảm khi bạn không làm gì có trong bài [vì sao hệ số sức khỏe Aave tự giảm](/vi/blog/vi-sao-he-so-suc-khoe-aave-giam).
+
+Tokenping kiểm tra hệ số sức khỏe Aave của bạn 5 phút một lần, ở mọi thị trường Aave V3 trên 21 mạng và ở mọi Spoke Aave V4, và nhắn tin cho bạn qua Signal, Telegram hoặc email khi nó thấp hơn một ngưỡng bạn chọn (1,1 đến 10), gửi lại ở mỗi lần kiểm tra cho đến khi nó phục hồi. Thanh lý khiến bạn mất ít nhất khoản thưởng trên tài sản thế chấp bị lấy. Một cảnh báo đặt trên 1,0 có thể cho bạn thời gian để trả nợ hoặc thêm tài sản thế chấp, nhưng một biến động giá nhanh vẫn có thể đưa hệ số sức khỏe xuống dưới 1 giữa hai lần kiểm tra, và cảnh báo không thể hành động thay bạn. Bạn có thể [kiểm tra hệ số sức khỏe Aave V3 của bạn](/vi/aave) hoặc đọc [cách cài đặt cảnh báo hệ số sức khỏe](/vi/blog/cai-dat-canh-bao-he-so-suc-khoe-aave).
+
+## Nguồn
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), aave-dao/aave-v3-origin, nhánh main: quy tắc close factor, số dư quá nhỏ và nợ xấu (truy cập ngày 14 tháng 10 năm 2026)
+- [Aave V3 ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): điều kiện thanh lý (truy cập ngày 14 tháng 10 năm 2026)
+- [Các tính năng của Aave v3.3](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): nợ xấu, close factor theo toàn bộ vị thế và ví dụ GHO/USDC/DAI, ngưỡng 2.000 $ (truy cập ngày 14 tháng 10 năm 2026)
+- [Các tính năng của Aave v3.1](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): thời gian ân hạn thanh lý tối đa 4 giờ (truy cập ngày 14 tháng 10 năm 2026)
+- [Aave V3 PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol): việc tạm dừng và bỏ tạm dừng kèm thời gian ân hạn chỉ dành cho emergency admin hoặc pool admin, `MAX_GRACE_PERIOD = 4 hours` (truy cập ngày 14 tháng 10 năm 2026)
+- [Tài liệu quản trị của Aave](https://aave.com/docs/ecosystem/governance): Protocol Emergency Guardian giữ vai trò emergency admin (truy cập ngày 14 tháng 10 năm 2026)
+- [README của Aave V3 Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): các tham số mà stewards được thay đổi, trong giới hạn đã định (truy cập ngày 14 tháng 10 năm 2026)
+- [Aave v3.7: bỏ PriceOracleSentinel](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/sentinel-removal.md) (truy cập ngày 14 tháng 10 năm 2026)
+- [Tài liệu tham khảo hợp đồng Pool Aave V3](https://aave.com/docs/aave-v3/smart-contracts/pool), vẫn ghi close factor của thời trước v3.3 (truy cập ngày 14 tháng 10 năm 2026)
+- [Tài liệu Aave Umbrella](https://aave.com/docs/aave-v3/umbrella) (truy cập ngày 14 tháng 10 năm 2026)
+- [Aave V3 PoolDataProvider trên Ethereum](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): cấu hình reserve và phí giao thức khi thanh lý cho WETH, WBTC và USDC tại khối 26193284, đọc lại không đổi tại khối 26193992 (truy cập ngày 14 tháng 10 năm 2026)
+- [Aave V3 PoolDataProvider trên Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): các lần đọc tương tự cho WETH, WBTC, USDC native và USDC.e tại khối 514855406 (truy cập ngày 14 tháng 10 năm 2026)
+- [Aave V3 Ethereum Core Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): danh mục E-Mode 1 "ETH correlated" tại khối 26193288 (truy cập ngày 14 tháng 10 năm 2026)
+- [Tài liệu thanh lý Aave V4](https://aave.com/docs/aave-v4/positions/liquidations) (truy cập ngày 14 tháng 10 năm 2026)
+- [Tổng quan Aave V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md) và [LiquidationLogic.sol của V4](https://github.com/aave/aave-v4/blob/main/src/spoke/libraries/LiquidationLogic.sol), aave/aave-v4 main (truy cập ngày 14 tháng 10 năm 2026)
+- [Aave V4 Ethereum Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485): hệ số sức khỏe mục tiêu và thiết lập khoản thưởng tại khối 26193995 (truy cập ngày 14 tháng 10 năm 2026)
+- [API GraphQL công khai của Aave V4](https://api.v4.aave.com/graphql), truy vấn `reserves`: thưởng thanh lý tối đa và phí thanh lý của WETH trên Ethereum Main Spoke (truy cập ngày 14 tháng 10 năm 2026)
+- [Nhật ký thay đổi tài liệu Aave](https://aave.com/docs/resources/changelog): ngày ra mắt V4 (truy cập ngày 14 tháng 10 năm 2026)
+- [Gauntlet, "Aave Resilient Through USDC Volatility"](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), đăng ngày 17 tháng 3 năm 2023 (truy cập ngày 14 tháng 10 năm 2026)
+- [Diễn đàn Polygon, "Liquidation on polygon AAVE -JSON ERROR"](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067), đăng ngày 18 tháng 5 năm 2021 (truy cập ngày 14 tháng 10 năm 2026)
+- [Diễn đàn Aave, "Repeatedly Failed Repayment Attempts Leading to Liquidation"](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379), đăng ngày 23 tháng 12 năm 2024 (truy cập ngày 14 tháng 10 năm 2026)
+- [Pull request #2084 của giao diện Aave](https://github.com/aave/interface/pull/2084), đã gỡ bỏ tích hợp cảnh báo duy nhất của ứng dụng vào tháng 5 năm 2024 (truy cập ngày 14 tháng 10 năm 2026)
+
+_Nội dung mang tính giáo dục, không phải lời khuyên tài chính. Cảnh báo giúp giảm rủi ro, nhưng không ngăn được việc thanh lý._

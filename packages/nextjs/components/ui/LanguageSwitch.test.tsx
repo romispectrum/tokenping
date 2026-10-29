@@ -29,8 +29,10 @@ describe("LanguageSwitch", () => {
       ["ČeštinaCZ", "/cz/blog/aave-health-factor-vysvetleni"],
       ["EspañolES", "/es/blog/factor-de-salud-aave"],
       ["हिन्दीHI", "/hi/blog/aave-health-factor-kya-hai"],
+      ["DeutschDE", "/de/blog/aave-health-factor-erklaert"],
+      ["Tiếng ViệtVI", "/vi/blog/he-so-suc-khoe-aave"],
     ]);
-    const [english, czech, spanish, hindi] = screen.getAllByRole("link");
+    const [english, czech, spanish, hindi, german, vietnamese] = screen.getAllByRole("link");
     expect(english.getAttribute("aria-current")).toBe("true");
     expect(czech.getAttribute("aria-current")).toBeNull();
     expect(czech.getAttribute("lang")).toBe("cs");
@@ -39,11 +41,15 @@ describe("LanguageSwitch", () => {
     expect(spanish.getAttribute("hreflang")).toBe("es");
     expect(hindi.getAttribute("lang")).toBe("hi");
     expect(hindi.getAttribute("hreflang")).toBe("hi");
+    expect(german.getAttribute("hreflang")).toBe("de");
+    expect(vietnamese.getAttribute("lang")).toBe("vi");
     // The short codes and the check are decoration: the options are named by the language alone.
     expect(screen.getByRole("link", { name: "English" })).toBe(english);
     expect(screen.getByRole("link", { name: "Čeština" })).toBe(czech);
     expect(screen.getByRole("link", { name: "Español" })).toBe(spanish);
     expect(screen.getByRole("link", { name: "हिन्दी" })).toBe(hindi);
+    expect(screen.getByRole("link", { name: "Deutsch" })).toBe(german);
+    expect(screen.getByRole("link", { name: "Tiếng Việt" })).toBe(vietnamese);
   });
 
   it("closes on Escape and puts focus back on the button", () => {

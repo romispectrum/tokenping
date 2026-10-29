@@ -1,0 +1,201 @@
+export const meta = {
+  slug: "he-so-suc-khoe-aave",
+  title: "Hệ số sức khỏe Aave là gì: công thức và ví dụ",
+  description:
+    "Hệ số sức khỏe Aave V3 là gì, cách tính qua một ví dụ cụ thể, vì sao nó tự thay đổi và điều gì xảy ra khi nó xuống dưới 1.",
+  h1: "Hệ số sức khỏe Aave là gì và được tính như thế nào?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Hệ số sức khỏe Aave là gì và được tính như thế nào?",
+  readingMinutes: 20,
+};
+
+<ShortAnswer>
+  Hệ số sức khỏe (health factor) của Aave là một con số cho biết một vị thế vay đang ở gần mức thanh lý đến đâu: giá trị
+  tài sản thế chấp của bạn, với mỗi tài sản được nhân theo ngưỡng thanh lý (liquidation threshold) của nó, chia cho giá
+  trị khoản nợ. Trên Aave V3, khi con số này xuống dưới 1,00, bên thanh lý có thể trả một phần hoặc toàn bộ khoản nợ của
+  bạn và lấy đi lượng tài sản thế chấp tương ứng cộng thêm một khoản thưởng. Ví dụ, 10 WETH giá 2.400 $ với ngưỡng thanh
+  lý 83%, so với khoản nợ 12.000 USDC, cho ra 24.000 × 0,83 ÷ 12.000 = 1,66.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Hệ số sức khỏe trên Aave là gì?
+
+Hệ số sức khỏe là một con số so sánh giá trị tài sản thế chấp của bạn trên Aave, sau khi đã trừ một khoản chiết khấu an toàn, với số tiền bạn nợ. Mỗi tài sản thế chấp chỉ được tính đến mức ngưỡng thanh lý của nó, nên 24.000 $ WETH trên Aave V3 Ethereum Core, nơi ngưỡng của WETH là 83% tại khối 26193284 (ngày 14 tháng 10 năm 2026), chỉ được tính là 19.920 $. Lấy số đó chia cho khoản nợ, bạn có hệ số sức khỏe.
+
+- **Từ 1,00 trở lên:** vị thế không thể bị thanh lý. Con số càng cao, giá càng có thể đi ngược với bạn xa hơn trước khi chạm mức đó.
+- **Dưới 1,00:** vị thế có thể bị thanh lý.
+- **Không có nợ:** không có gì để thanh lý. Hợp đồng trả về số lớn nhất mà nó lưu được, và các ứng dụng hiển thị ∞ hoặc để trống.
+
+Hệ số sức khỏe 1,66 nghĩa là tài sản thế chấp đã nhân theo ngưỡng của bạn bằng 1,66 lần khoản nợ, không phải bạn còn cách thanh lý 66%. Với một tài sản thế chấp biến động và khoản nợ bằng stablecoin, giá tài sản thế chấp phải giảm 1 − 1 ÷ HF thì mới về 1,00: khoảng 39,8% nếu đang ở 1,66.
+
+Trên Aave V3, mỗi thị trường trên mỗi mạng có hệ số sức khỏe riêng. Vay trên Arbitrum và trên Base thì bạn có hai hệ số, và vấn đề ở bên này không ảnh hưởng đến bên kia. Trên Ethereum, các thị trường Core, Prime, EtherFi và Horizon cũng tách biệt nhau.
+
+## Hệ số sức khỏe Aave được tính như thế nào?
+
+Aave V3 nhân giá trị USD của từng tài sản thế chấp với ngưỡng thanh lý của tài sản đó, cộng các kết quả lại, rồi chia cho tổng khoản nợ tính bằng USD:
+
+**HF = Σ (giá trị tài sản thế chấp bằng USD × ngưỡng thanh lý) ÷ tổng giá trị khoản nợ bằng USD**
+
+Đây là phép tính trong `GenericLogic.calculateUserAccountData`, hàm mà Pool của Aave V3 chạy khi vay, khi rút và khi thanh lý (aave-v3-origin, nhánh main, đọc ngày 14 tháng 10 năm 2026). Những chi tiết trong mã đáng chú ý nếu bạn tự tính:
+
+- **Giá lấy từ oracle (nguồn giá) của Aave**, không phải từ sàn giao dịch, tính bằng USD với 8 chữ số thập phân.
+- **Chỉ những tài sản được bật làm tài sản thế chấp mới được tính.** Một tài sản có LTV bằng 0 vẫn được tính theo ngưỡng thanh lý của nó, dù nó không cho thêm sức vay.
+- **Mọi khoản nợ đều được tính**, theo giá oracle, kể cả phần lãi đã cộng dồn đến thời điểm đó.
+- **E-Mode thay thế ngưỡng** cho các tài sản nằm trong nhóm tài sản thế chấp của danh mục E-Mode của bạn.
+- **Kết quả có 18 chữ số thập phân.** 1,66 được trả về dưới dạng 1660000000000000000, và việc thanh lý có thể xảy ra dưới 1e18.
+- **Khi không có nợ, hàm trả về uint256 lớn nhất**, khoảng 1,16 × 10^77. API của Aave thì trả về null.
+
+Cùng công thức đó có thể dùng ngưỡng thanh lý trung bình mà `getUserAccountData` báo cáo: HF = tổng tài sản thế chấp × ngưỡng thanh lý trung bình ÷ tổng nợ, trong đó mức trung bình là Σ(tài sản thế chấp × LT) ÷ Σ tài sản thế chấp.
+
+## Ví dụ cụ thể: 10 WETH so với 12.000 USDC có hệ số sức khỏe bao nhiêu?
+
+Hệ số sức khỏe của 10 WETH tài sản thế chấp so với khoản nợ 12.000 USDC trên Aave V3 Ethereum Core là 1,66, với ETH ở mức 2.400 $ và USDC ở mức 1,00 $. Giá ETH được làm tròn cho dễ tính; oracle của Aave đọc được 2.414,78 $ tại khối 26193376 của Ethereum ngày 14 tháng 10 năm 2026. Các tham số của WETH được đọc tại khối 26193284 cùng ngày: tỷ lệ cho vay trên giá trị (LTV) 80,5%, ngưỡng thanh lý 83%.
+
+1. Giá trị tài sản thế chấp: 10 × 2.400 $ = 24.000 $.
+2. Tài sản thế chấp sau khi nhân theo ngưỡng: 24.000 $ × 0,83 = 19.920 $.
+3. Hệ số sức khỏe: 19.920 $ ÷ 12.000 $ = **1,66**.
+4. Hạn mức vay: 24.000 $ × 0,805 = 19.320 $, nên còn có thể vay thêm 7.320 $.
+5. Giá thanh lý của ETH, nơi HF = 1: 12.000 $ ÷ (10 × 0,83) = **1.445,78 $**, giảm 39,8% so với 2.400 $.
+
+Để tính giá cho vị thế của chính bạn, xem [cách tính giá thanh lý Aave của bạn](/vi/blog/cach-tinh-gia-thanh-ly-aave).
+
+### Điều gì thay đổi khi có thêm một tài sản thế chấp thứ hai?
+
+Với hai tài sản thế chấp, mỗi tài sản được nhân theo ngưỡng thanh lý riêng trước khi cộng lại. Giữ nguyên 10 WETH (24.000 $, LT 83%), thêm 0,2 WBTC ở mức giá minh họa 81.500 $ (16.300 $, LT 78% và LTV 73% trên Ethereum Core tại khối 26193284), rồi vay 20.000 USDC:
+
+- Tài sản thế chấp sau khi nhân theo ngưỡng: 24.000 × 0,83 + 16.300 × 0,78 = 19.920 + 12.714 = 32.634.
+- Hệ số sức khỏe: 32.634 ÷ 20.000 = **1,632**.
+- Ngưỡng thanh lý trung bình: 32.634 ÷ 40.300 = 80,98%.
+- Hạn mức vay: 24.000 × 0,805 + 16.300 × 0,73 = 31.219 $.
+
+### Điều gì thay đổi khi bạn vay một tài sản biến động?
+
+Khi khoản nợ là một tài sản biến động, hệ số sức khỏe giảm khi giá tài sản đó tăng, vì khoản nợ có giá trị cao hơn. Gửi 10.000 USDC (LT 78% trên Ethereum Core tại khối 26193284) và vay lượng WETH trị giá 6.000 $: HF = 7.800 ÷ 6.000 = **1,30**. Nếu ETH tăng 30%, khoản nợ trị giá 7.800 $ và HF chạm 1,00. Tài sản thế chấp vẫn có vai trò: nếu USDC ở mức 0,88 $, HF = 8.800 × 0,78 ÷ 6.000 = 1,144.
+
+## Hệ số sức khỏe, LTV và ngưỡng thanh lý khác nhau thế nào?
+
+LTV (tỷ lệ cho vay trên giá trị) giới hạn số tiền bạn có thể vay, ngưỡng thanh lý quyết định khi nào bạn có thể bị thanh lý, còn hệ số sức khỏe kết hợp ngưỡng thanh lý với khoản nợ thực tế của bạn. Aave V3 chỉ kiểm tra LTV khi bạn vay. Việc rút tài sản thế chấp hoặc tắt chế độ thế chấp của nó chỉ cần giữ hệ số sức khỏe từ 1 trở lên, và bên thanh lý chỉ nhìn vào hệ số sức khỏe.
+
+| Thuật ngữ               | Nó là gì                                                             | Áp dụng ở đâu                                                            | Ví dụ: 10 WETH giá 2.400 $ (24.000 $), nợ 12.000 USDC |
+| ----------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------- |
+| LTV (loan-to-value)     | Mức vay tối đa trên một tài sản thế chấp, tính theo % giá trị của nó | Chỉ khi vay mới                                                          | 80,5% với WETH: hạn mức 19.320 $                      |
+| Ngưỡng thanh lý (LT)    | Phần % giá trị của tài sản thế chấp được tính vào hệ số sức khỏe     | Khi thanh lý, và khi rút (HF phải giữ từ 1 trở lên)                      | 83% với WETH: 19.920 $ được tính                      |
+| Hệ số sức khỏe (HF)     | Σ(tài sản thế chấp × LT) ÷ nợ                                        | Dưới 1,00, vị thế có thể bị thanh lý                                     | 1,66                                                  |
+| Mức hạn mức vay đã dùng | Nợ ÷ (tài sản thế chấp × LTV), thước đo mà nhiều ứng dụng hiển thị   | Không lưu trên chuỗi; một khoản vay khiến nó vượt quá 100% sẽ bị từ chối | 62,1%                                                 |
+
+"Mức hạn mức vay đã dùng" không phải là 1 ÷ HF (ở đây là 60,2%), vì nó dựa trên LTV chứ không dựa trên ngưỡng thanh lý. Nó cho biết bạn còn bao nhiêu dư địa để vay, chứ không cho biết bạn đang gần mức thanh lý đến đâu.
+
+Vì việc rút không bị giới hạn bởi LTV, một lệnh rút có thể đẩy vị thế đến gần mức thanh lý hơn so với một lệnh vay. Với 10 WETH giá 2.400 $ so với 12.000 USDC, hợp đồng chấp nhận rút tối đa khoảng 3,98 WETH (9.542 $), khiến hệ số sức khỏe còn 1,00. Một lệnh vay dừng ở giới hạn LTV, nơi hệ số sức khỏe vẫn là 1,031.
+
+Ngưỡng thanh lý luôn ít nhất bằng LTV. Giá trị thực tế ngày 14 tháng 10 năm 2026, đọc bằng một lệnh multicall cho mỗi mạng:
+
+| Thị trường    | Tài sản       | LTV   | Ngưỡng thanh lý |
+| ------------- | ------------- | ----- | --------------- |
+| Ethereum Core | WETH          | 80,5% | 83%             |
+| Ethereum Core | WBTC          | 73%   | 78%             |
+| Ethereum Core | USDC          | 75%   | 78%             |
+| Arbitrum      | WETH          | 80%   | 84%             |
+| Arbitrum      | WBTC          | 73%   | 78%             |
+| Arbitrum      | USDC (native) | 75%   | 78%             |
+
+Giá trị trên Ethereum lấy từ khối 26193284 (20:58:47 UTC), trên Arbitrum từ khối 514855406 (20:58:57 UTC). Quản trị (governance) và Risk Stewards có thể thay đổi chúng, nên hãy kiểm tra tài sản đó trong ứng dụng Aave trước khi dựa vào các con số này.
+
+## Vì sao vay tối đa chỉ để lại hệ số sức khỏe khoảng 1,03?
+
+Với một tài sản thế chấp, vay hết mức mà LTV cho phép sẽ để lại hệ số sức khỏe bằng LT ÷ LTV, chỉ nhỉnh hơn 1 một chút; với nhiều tài sản, đó là LT bình quân gia quyền ÷ LTV bình quân gia quyền. Với WETH trên Aave V3 Ethereum Core, con số này là 83 ÷ 80,5 = 1,031 (khối 26193284, ngày 14 tháng 10 năm 2026). Với 10 WETH giá 2.400 $ (24.000 $), vay hết hạn mức 19.320 $ cho HF = 19.920 ÷ 19.320 = 1,031 và đẩy giá thanh lý lên 2.327,71 $, chỉ thấp hơn 2.400 $ có 3,0%. Phép chia tương tự cho ra 1,068 với WBTC (78 ÷ 73) và 1,04 với USDC (78 ÷ 75) trên Ethereum Core. Nói cách khác, một vị thế vay đến hạn mức chỉ còn cách mức thanh lý vài phần trăm. Để xem bảng theo từng tài sản và cách chọn biên an toàn, đọc [một hệ số sức khỏe cho bạn bao nhiêu khoảng đệm](/vi/blog/he-so-suc-khoe-an-toan-tren-aave).
+
+## Điều gì xảy ra khi hệ số sức khỏe xuống dưới 1?
+
+Khi hệ số sức khỏe trên Aave V3 xuống dưới 1,00, bên thanh lý (liquidator) có thể trả một phần hoặc toàn bộ khoản nợ của bạn và lấy tài sản thế chấp của bạn với giá chiết khấu, gọi là thưởng thanh lý (liquidation bonus). Trên Ethereum Core, thưởng thanh lý của WETH là 5% tại khối 26193284 (ngày 14 tháng 10 năm 2026), nên việc xóa 6.000 $ nợ của bạn khiến bạn mất 6.300 $ WETH: 6.270 $ về tay bên thanh lý và 30 $, một khoản phí giao thức bằng 10% của khoản thưởng, về kho bạc của Aave.
+
+Một lần thanh lý có thể trả tối đa 50% tổng nợ của bạn, hoặc tối đa 100% khoản nợ trong một tài sản dự trữ (reserve) khi hệ số sức khỏe bằng hoặc dưới 0,95, hoặc khi tài sản thế chấp hay khoản nợ của bạn trong các reserve liên quan trị giá dưới 2.000 $. Reserve bị đóng băng vẫn có thể bị thanh lý; reserve bị tạm dừng thì không. Đầy đủ các quy tắc, một ví dụ cụ thể và chuyện gì xảy ra với nợ xấu (bad debt) có trong bài [điều gì xảy ra khi vị thế Aave bị thanh lý](/vi/blog/co-che-thanh-ly-tren-aave). Các cách hành động trước khi hệ số sức khỏe chạm 1 có trong bài [cách nâng hệ số sức khỏe Aave của bạn](/vi/blog/cach-tranh-bi-thanh-ly-tren-aave).
+
+## Vì sao hệ số sức khỏe thay đổi khi bạn không làm gì?
+
+Hệ số sức khỏe Aave của bạn tự thay đổi vì nó được tính lại từ giá oracle và lãi cộng dồn mỗi lần được đọc. Những nguyên nhân thường gặp:
+
+- **Giá tài sản thế chấp của bạn giảm.** Với tài sản thế chấp WETH và khoản nợ USDC, hệ số sức khỏe đi cùng nhịp với ETH.
+- **Tài sản bạn vay tăng giá.** Với khoản nợ biến động, một đợt tăng giá làm hệ số sức khỏe giảm.
+- **Lãi cộng dồn.** Khoản nợ thường tăng nhanh hơn phần lãi mà tài sản thế chấp kiếm được, và lãi suất vay thả nổi có thể tăng vọt.
+- **Quản trị hoặc Risk Stewards hạ ngưỡng thanh lý.** Ở V3, ngưỡng mới áp dụng ngay cho mọi vị thế đang mở.
+- **Một stablecoin bạn đã gửi bị mất neo (depeg) theo chiều giảm.** Bộ chuyển đổi giá (price adapter) của Aave cho USDC trên Ethereum giới hạn giá ở 1,04 $ nhưng để giá dưới 1 $ đi thẳng qua (khối 26193376, ngày 14 tháng 10 năm 2026).
+- **Một oracle bị cấu hình sai.** Tháng 3 năm 2026, một lỗi tỷ giá của wstETH đã dẫn đến các vụ thanh lý trong E-Mode trên các thị trường Ethereum Core và Prime.
+
+Việc cắt giảm LTV (kể cả về 0) hoặc đóng băng một reserve sẽ hạn chế khoản vay mới nhưng không làm giảm hệ số sức khỏe của bạn. Từng nguyên nhân được trình bày kèm ngày tháng và ví dụ trong bài [vì sao hệ số sức khỏe Aave tự giảm](/vi/blog/vi-sao-he-so-suc-khoe-aave-giam).
+
+## E-Mode thay đổi hệ số sức khỏe như thế nào?
+
+E-Mode (Efficiency Mode) nâng LTV và ngưỡng thanh lý cho các tài sản có giá đi cùng nhau, nên cùng một vị thế sẽ hiển thị hệ số sức khỏe cao hơn. Trên Aave V3 Ethereum Core, danh mục "ETH correlated" dùng LTV 93%, ngưỡng thanh lý 95% và thưởng thanh lý 1% (khối 26193288, ngày 14 tháng 10 năm 2026). Nhóm tài sản thế chấp của nó gồm WETH, wstETH, cbETH, rETH, weETH, osETH và ETHx, và WETH là tài sản duy nhất bạn có thể vay trong danh mục này.
+
+Những gì thay đổi với hệ số sức khỏe trong danh mục đó:
+
+- **Ngưỡng cao hơn được đưa vào công thức.** Gửi lượng wstETH trị giá 10.000 $ và vay lượng WETH trị giá 9.000 $: HF = 10.000 × 0,95 ÷ 9.000 = 1,056.
+- **Biên an toàn ở hạn mức vay mỏng hơn.** 95 ÷ 93 = 1,0215, nên một vị thế vay đến hạn mức chỉ cách mức thanh lý khoảng 2,1%.
+- **Tỷ lệ giá mới là điều quan trọng, không phải giá đô la.** Với tài sản thế chấp wstETH và khoản nợ WETH, khi ETH giảm thì cả hai phía cùng giảm. Một thay đổi trong tỷ giá wstETH/ETH mà oracle sử dụng, dù là thật hay do lỗi cấu hình, sẽ tác động thẳng vào HF. Lỗi tháng 3 năm 2026 làm tỷ giá đó lệch khoảng 2,85%, và báo cáo sau sự cố (post-mortem) của Chaos Labs ghi nhận các vị thế có hệ số sức khỏe dưới khoảng 1,0288 đã bị thanh lý.
+
+Để vào một danh mục, mọi tài sản bạn đang vay phải được phép vay trong danh mục đó, mọi tài sản bạn dùng làm tài sản thế chấp phải giữ LTV khác 0 trong danh mục đó, và hệ số sức khỏe phải giữ từ 1 trở lên theo các thiết lập của danh mục. Vì vậy vị thế 10 WETH / 12.000 USDC không thể dùng "ETH correlated" trên Ethereum Core: USDC không nằm trong nhóm tài sản được vay của danh mục này. Tài sản thế chấp nằm ngoài nhóm của danh mục vẫn giữ LTV và ngưỡng thông thường (từ V3.2). Nếu quản trị đánh dấu một danh mục là isolated (một cờ của V3.7), tài sản thế chấp bên ngoài đó nhận LTV bằng 0 nhưng vẫn giữ ngưỡng của nó: nó không cho thêm sức vay, nhưng vẫn được tính vào hệ số sức khỏe của bạn. "ETH correlated" trên Ethereum Core không ở trạng thái isolated tại khối 26193288.
+
+## Hệ số sức khỏe trên Aave V4 có khác không?
+
+Có. Aave V4 vẫn cho phép thanh lý khi hệ số sức khỏe dưới 1, nhưng tính con số này theo từng Spoke, dùng một hệ số tài sản thế chấp (collateral factor) cho mỗi tài sản thay vì tách riêng LTV và ngưỡng thanh lý. Spoke là một thị trường vay của V4 với các thiết lập rủi ro riêng, lấy thanh khoản từ một Hub dùng chung. Theo nhật ký thay đổi trong tài liệu của Aave, V4 hoạt động trên Ethereum từ ngày 30 tháng 3 năm 2026, Avalanche từ ngày 15 tháng 7 năm 2026, Arc từ ngày 16 tháng 9 năm 2026 và Base từ ngày 7 tháng 10 năm 2026. V3 vẫn tiếp tục chạy, và cả bảy thị trường V3 được nói đến ở đây đều chạy V3.7.
+
+- **Một hệ số sức khỏe cho mỗi Spoke.** Các vị thế ở những Spoke khác nhau không ảnh hưởng lẫn nhau. Ở V3, đơn vị là thị trường: một Pool trên một mạng.
+- **Một hệ số tài sản thế chấp (CF) cho mỗi tài sản.** HF = Σ(giá trị tài sản thế chấp × CF) ÷ giá trị khoản nợ. Ví dụ trong tài liệu của Aave: 10.000 $ ETH với CF 80% so với 6.000 $ GHO cho ra 1,333. Trên Ethereum Main Spoke, CF của WETH là 83% vào ngày 14 tháng 10 năm 2026 (API Aave V4), bằng ngưỡng thanh lý của nó ở V3, nên 10 WETH so với 12.000 USDC ở đó cũng sẽ hiển thị 1,66.
+- **Thay đổi tham số thường áp dụng cho vị thế mới.** Một vị thế V4 hiện có giữ CF cũ cho đến khi người vay vay thêm, rút hoặc thay đổi thiết lập tài sản thế chấp, trừ khi quản trị buộc cập nhật. Ở V3, việc hạ ngưỡng tác động ngay đến mọi vị thế đang mở.
+- **Tài sản thế chấp rủi ro hơn phải trả lãi cao hơn.** User Risk Premium của V4 cộng thêm một khoản phụ phí vào lãi suất vay dựa trên chất lượng tài sản thế chấp, nên khoản nợ có thể tăng nhanh hơn.
+- **Thanh lý hoạt động khác.** Không có close factor: bên thanh lý chỉ trả đủ để đưa HF lên mức mục tiêu của Spoke (1,24 trên Ethereum Main Spoke tại khối 26194078, ngày 14 tháng 10 năm 2026), và khoản thưởng tăng dần khi HF giảm.
+
+Ngày 14 tháng 10 năm 2026, DefiLlama cho thấy khoảng 17,09 tỷ $ TVL trong Aave V3 và khoảng 0,66 tỷ $ trong V4, không tính các khoản đã vay. Con số V4 của nó bao gồm Ethereum, Avalanche và Arc, chưa có thị trường Base (kiểm tra ngày 15 tháng 10 năm 2026). Các ví dụ trong bài hướng dẫn này chỉ nói về Aave V3. Tokenping hỗ trợ cả hai phiên bản, với một cảnh báo cho mỗi thị trường V3 và một cảnh báo cho mỗi Spoke V4.
+
+## Hệ số sức khỏe của Aave khác của Morpho thế nào?
+
+Morpho, một giao thức cho vay khác, dựa trên cùng ý tưởng: tài sản thế chấp nhân theo một ngưỡng rồi chia cho khoản nợ, nhưng với các quy tắc khác đi kèm. Mỗi thị trường Morpho Blue chứa một token thế chấp và một token cho vay, nên mỗi khoản vay ở đó có hệ số sức khỏe riêng. LLTV (liquidation loan-to-value) của nó được cố định khi thị trường được tạo, quản trị không thể thay đổi, và bạn có thể vay sát đến mức đó, tức là xuống tận hệ số sức khỏe 1,00. Trên Aave V3, toàn bộ tài sản thế chấp và khoản nợ của bạn trong một thị trường dùng chung một hệ số sức khỏe, quản trị có thể thay đổi ngưỡng, và một khoản vay tối đa dừng ở mức LTV thấp hơn. [Bài hướng dẫn về hệ số sức khỏe Morpho](/vi/blog/he-so-suc-khoe-morpho) trình bày công thức, một ví dụ cụ thể và các thị trường lãi suất cố định Midnight của Morpho, còn [bảng điều khiển Morpho](/vi/morpho) của Tokenping hiển thị các vị thế đó.
+
+## Làm sao để kiểm tra hệ số sức khỏe Aave của bạn?
+
+Bạn có thể kiểm tra hệ số sức khỏe Aave V3 trong ứng dụng Aave, trên một bảng điều khiển như của Tokenping, hoặc bằng cách gọi `getUserAccountData` trên hợp đồng Pool của thị trường. Cả ba đều xuất phát từ cùng giá, số dư và tham số trên chuỗi, nên kết quả gần như trùng khớp. Ứng dụng Aave tính con số này trong trình duyệt của bạn; Tokenping và lệnh gọi trực tiếp đọc nó từ `getUserAccountData`.
+
+- **Ứng dụng Aave (app.aave.com)** hiển thị hệ số sức khỏe của thị trường đang chọn, nên bạn cần chuyển thị trường để xem từng mạng. Ứng dụng cảnh báo khi hệ số sức khỏe thấp trong lúc bạn thực hiện giao dịch nhưng không gửi thông báo đẩy, và trang trợ giúp của Aave khuyên người vay theo dõi hệ số sức khỏe thường xuyên.
+- **Bảng điều khiển của Tokenping** cho phép bạn [kiểm tra hệ số sức khỏe Aave trên 22 mạng](/vi/aave): mọi thị trường Aave V3 trên 21 mạng (24 thị trường, trong đó có Core, Prime, EtherFi và Horizon của Ethereum) và mọi Spoke Aave V4 trên Ethereum, Avalanche, Arc và Base. Kết nối ví và bảng điều khiển sẽ hiển thị tài sản thế chấp, khoản nợ và hệ số sức khỏe cho từng thị trường mà ví có vị thế hoặc có cảnh báo đã lưu, các thị trường còn lại được gom vào mục "Thị trường khác", tất cả đọc bằng lệnh gọi chỉ đọc (view call), nên không có gì được phê duyệt hay ký trên Aave.
+- **Hợp đồng.** `getUserAccountData(address)` trên một Pool V3 dùng được với mọi địa chỉ. Hàm trả về tổng tài sản thế chấp và tổng nợ (USD, 8 chữ số thập phân), số tiền còn có thể vay, ngưỡng thanh lý và LTV trung bình (theo basis point: 8300 nghĩa là 83%), và hệ số sức khỏe với 18 chữ số thập phân.
+
+| Mạng                                   | Hợp đồng Pool Aave V3                        |
+| -------------------------------------- | -------------------------------------------- |
+| Ethereum (thị trường Core)             | `0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2` |
+| Polygon, Arbitrum, Optimism, Avalanche | `0x794a61358D6845594F94dc1DB02A252b5b4814aD` |
+| Base                                   | `0xA238Dd80C259a72e81d7e4664a9801593F98d1c5` |
+| Gnosis                                 | `0xb50201558B00496A145fE76f7424749556E326D8` |
+
+Cả bảy Pool đều báo cáo revision 11 (V3.7) vào ngày 14 tháng 10 năm 2026.
+
+Nếu bạn không muốn phải kiểm tra liên tục, Tokenping có thể nhắn tin cho bạn qua Signal, Telegram hoặc email trong lúc hệ số sức khỏe của bạn thấp hơn một mức bạn chọn. Cảnh báo có giá <AlertPrice />, thanh toán trên Arbitrum. Tokenping kiểm tra 5 phút một lần và gửi lại tin nhắn ở mỗi lần kiểm tra khi bạn vẫn còn dưới ngưỡng, nên một cú nhảy giá vượt qua 1,00 giữa hai lần kiểm tra vẫn có thể khiến bạn bị thanh lý trước. Một lựa chọn là đặt cảnh báo ở mức hệ số sức khỏe mà bạn vẫn còn muốn hành động: [một hệ số sức khỏe cho bạn bao nhiêu khoảng đệm](/vi/blog/he-so-suc-khoe-an-toan-tren-aave) giúp bạn chọn mức đó, và [cách cài đặt cảnh báo hệ số sức khỏe](/vi/blog/cai-dat-canh-bao-he-so-suc-khoe-aave) hướng dẫn từng bước. Với các lựa chọn cảnh báo và tự động hóa khác, kể cả những công cụ có thể trả nợ thay bạn, xem [so sánh các công cụ cảnh báo thanh lý Aave](/vi/blog/so-sanh-cong-cu-canh-bao-thanh-ly-aave).
+
+## Nguồn
+
+- [Aave V3 GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): công thức hệ số sức khỏe, 18 chữ số thập phân, uint256 lớn nhất khi không có nợ (nhánh main, truy cập ngày 14 tháng 10 năm 2026)
+- [Aave V3 ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [BorrowLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/BorrowLogic.sol) và [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol): LTV chỉ được kiểm tra khi vay, kiểm tra hệ số sức khỏe khi rút và khi tắt chế độ thế chấp, quy tắc vào E-Mode, điều kiện kích hoạt thanh lý (truy cập ngày 14 tháng 10 năm 2026, kiểm tra lại ngày 15 tháng 10 năm 2026)
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): quy tắc close factor 50% và 100%, phí giao thức trích từ khoản thưởng (truy cập ngày 14 tháng 10 năm 2026)
+- [Tài liệu tham khảo Pool Aave V3](https://aave.com/docs/aave-v3/smart-contracts/pool): getUserAccountData (truy cập ngày 14 tháng 10 năm 2026)
+- [Tài liệu Aave: vị thế](https://aave.com/docs/aave-v3/markets/positions): hệ số sức khỏe null khi không có khoản vay (truy cập ngày 14 tháng 10 năm 2026)
+- [Tài liệu Aave: tổng quan V3](https://aave.com/docs/aave-v3/overview): hệ số sức khỏe thay đổi theo giá oracle và lãi (truy cập ngày 14 tháng 10 năm 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): LTV, ngưỡng, thưởng và phí giao thức khi thanh lý tại khối 26193284 (truy cập ngày 14 tháng 10 năm 2026)
+- [PoolDataProvider, Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): tham số tại khối 514855406 (truy cập ngày 14 tháng 10 năm 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): giá WETH và mức trần của bộ chuyển đổi giá USDC tại khối 26193376 (truy cập ngày 14 tháng 10 năm 2026)
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): thiết lập E-Mode "ETH correlated" và cờ isolated tại khối 26193288, revision của Pool (truy cập ngày 14 tháng 10 năm 2026)
+- [Các tính năng của Aave V3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): tài sản thế chấp ngoài một danh mục E-Mode giữ LTV và ngưỡng riêng (truy cập ngày 15 tháng 10 năm 2026)
+- [E-Mode isolated của Aave V3.7](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md): LTV bằng 0 cho tài sản thế chấp bên ngoài, chặn việc vào danh mục, hệ số sức khỏe không đổi khi bật cờ (truy cập ngày 15 tháng 10 năm 2026)
+- [aave-price-feeds](https://github.com/aave-dao/aave-price-feeds): bộ chuyển đổi giá stablecoin có mức trần (truy cập ngày 14 tháng 10 năm 2026)
+- [Aave V3 Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): ai có thể điều chỉnh LTV và ngưỡng (truy cập ngày 14 tháng 10 năm 2026)
+- [Báo cáo sau sự cố của Chaos Labs, tỷ giá wstETH](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): đăng ngày 10 tháng 3 năm 2026 (truy cập ngày 14 tháng 10 năm 2026)
+- [Nhật ký thay đổi tài liệu Aave](https://aave.com/docs/resources/changelog): triển khai V3.7, ngày ra mắt V4 (truy cập ngày 14 tháng 10 năm 2026)
+- [Tài liệu Aave V4](https://aave.com/docs/aave-v4) và [vị thế trên V4](https://aave.com/docs/aave-v4/positions): hệ số sức khỏe theo từng Spoke, hệ số tài sản thế chấp, User Risk Premium (truy cập ngày 14 tháng 10 năm 2026)
+- [Tổng quan Aave V4 trên GitHub](https://github.com/aave/aave-v4/blob/main/docs/overview.md): cấu hình rủi ro động (truy cập ngày 14 tháng 10 năm 2026)
+- [API Aave V4](https://api.v4.aave.com/graphql): thiết lập reserve của Ethereum Main Spoke (truy cập ngày 14 tháng 10 năm 2026)
+- [Aave V4 Ethereum Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485): hệ số sức khỏe mục tiêu tại khối 26194078 (truy cập ngày 14 tháng 10 năm 2026)
+- [API protocols của DefiLlama](https://api.llama.fi/protocols): TVL của Aave V3 và V4 (truy cập ngày 14 tháng 10 năm 2026); các mạng được tính cho V4 (truy cập ngày 15 tháng 10 năm 2026)
+- [Mã nguồn ứng dụng Aave, useUserSummaryAndIncentives.ts](https://github.com/aave/interface/blob/main/src/hooks/pool/useUserSummaryAndIncentives.ts): ứng dụng tính hệ số sức khỏe trong trình duyệt (truy cập ngày 15 tháng 10 năm 2026)
+- [Trợ giúp Aave: thanh lý](https://aave.com/help/borrowing/liquidations) (truy cập ngày 14 tháng 10 năm 2026)
+
+_Nội dung mang tính giáo dục, không phải lời khuyên tài chính. Cảnh báo giúp giảm rủi ro, nhưng không ngăn được việc thanh lý._

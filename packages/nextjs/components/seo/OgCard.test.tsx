@@ -52,6 +52,18 @@ describe("OgCard", () => {
     expect(tags).toEqual(["OTTO", "OTTO", "wOFF", "wOFF"]);
   });
 
+  // Satoshi lacks most Vietnamese letters, so the Vietnamese cards are set in Plus Jakarta Sans alone.
+  it("draws the Vietnamese cards in Plus Jakarta Sans, every subset file of both weights", async () => {
+    const options = await ogImageOptions("vi");
+
+    expect(new Set(options.fonts.map(({ name }) => name))).toEqual(new Set(["Plus Jakarta Sans"]));
+    expect(options.fonts.map(({ weight }) => weight)).toEqual([500, 500, 500, 400, 400, 400]);
+    for (const font of options.fonts) expect(font.data.subarray(0, 4).toString("latin1")).toBe("wOFF");
+    expect(renderStaticMarkup(<OgCard title="Hệ số sức khỏe" footer="Tokenping" locale="vi" />)).toContain(
+      "font-family:Plus Jakarta Sans",
+    );
+  });
+
   // The card URLs have no hash, so nothing may call them immutable (next/og's default).
   it("replaces next/og's immutable year-long cache with a day", async () => {
     expect((await ogImageOptions()).headers).toEqual({ "Cache-Control": OG_CACHE_CONTROL });

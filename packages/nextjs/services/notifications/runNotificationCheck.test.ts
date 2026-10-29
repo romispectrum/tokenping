@@ -428,7 +428,7 @@ describe("runNotificationCheck: delivery", () => {
   it.each([
     ["no locale column (a row from before the migration)", {}],
     ["a null locale", { locale: null }],
-    ["an unexpected locale", { locale: "de" }],
+    ["an unexpected locale", { locale: "fr" }],
     ["an English locale", { locale: "en" }],
   ])("alerts in English for %s", async (_label, overrides) => {
     givenData([configRow(overrides)]);

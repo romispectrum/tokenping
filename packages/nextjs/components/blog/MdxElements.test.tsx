@@ -24,6 +24,10 @@ describe("headingId", () => {
     // Czech headings lose their diacritics, so Czech anchors are plain ASCII.
     ["Proč klesl můj health factor na Aave?", "proc-klesl-muj-health-factor-na-aave"],
     ["Jak se počítá likvidační cena?", "jak-se-pocita-likvidacni-cena"],
+    // German and Vietnamese too, "ß" and "đ" included; Hindi keeps its letters and vowel signs.
+    ["Wie groß muss der Puffer sein?", "wie-gross-muss-der-puffer-sein"],
+    ["Điều gì xảy ra khi đáo hạn?", "dieu-gi-xay-ra-khi-dao-han"],
+    ["हेल्थ फ़ैक्टर क्या है?", "हेल्थ-फ़ैक्टर-क्या-है".normalize("NFKD")],
   ])("%j -> %j", (text, id) => {
     expect(headingId(text)).toBe(id);
   });

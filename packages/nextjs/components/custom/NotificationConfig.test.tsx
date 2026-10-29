@@ -1955,6 +1955,8 @@ describe("NotificationConfig: language", () => {
       ["cs", "Čeština", "cs"],
       ["es", "Español", "es"],
       ["hi", "हिन्दी", "hi"],
+      ["de", "Deutsch", "de"],
+      ["vi", "Tiếng Việt", "vi"],
     ]);
 
     await type(screen.getByRole("textbox", { name: "E-mailová adresa" }), "me@example.com");

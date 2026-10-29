@@ -1,0 +1,183 @@
+export const meta = {
+  slug: "cach-tinh-gia-thanh-ly-aave",
+  title: "Cách tính giá thanh lý Aave của bạn",
+  description:
+    "Công thức giá thanh lý Aave V3, kèm ví dụ cụ thể cho một tài sản thế chấp, hai tài sản thế chấp và nợ biến động, cùng một công cụ tính.",
+  h1: "Cách tính giá thanh lý Aave của bạn",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-20",
+  primaryQuestion: "Vị thế Aave của tôi sẽ bị thanh lý ở mức giá nào?",
+  readingMinutes: 18,
+};
+
+<ShortAnswer>
+  Giá thanh lý Aave của bạn là giá oracle của một tài sản mà tại đó hệ số sức khỏe (health factor) của bạn sẽ giảm về
+  1,00, khi mọi giá khác giữ nguyên; vượt qua mức đó (thấp hơn với tài sản thế chấp, cao hơn với tài sản đã vay), vị thế
+  có thể bị thanh lý. Với một tài sản thế chấp biến động và khoản nợ stablecoin, nó bằng nợ ÷ (lượng tài sản thế chấp ×
+  ngưỡng thanh lý), hoặc giá hiện tại ÷ hệ số sức khỏe của bạn. Ví dụ, 10 WETH bảo đảm cho 12.000 USDC trên Aave V3
+  Ethereum Core (ngưỡng thanh lý của WETH là 83% vào ngày 14 tháng 10 năm 2026) có thể bị thanh lý khi ETH giảm xuống
+  dưới 1.445,78 $, với USDC được tính là 1,00 $.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Giá thanh lý trên Aave là gì?
+
+Giá thanh lý trên Aave là giá của một tài sản trong vị thế của bạn mà tại đó hệ số sức khỏe sẽ chạm đúng 1,00, khi mọi giá khác giữ nguyên. Aave V3 cho phép thanh lý khi hệ số sức khỏe dưới 1,00. Khi đó bên thanh lý có thể trả một phần hoặc toàn bộ khoản nợ của bạn và lấy lượng tài sản thế chấp tương ứng cộng thêm một khoản thưởng (5% với tài sản thế chấp WETH trên Ethereum Core, đọc trên chuỗi ngày 14 tháng 10 năm 2026). Toàn bộ quá trình có trong bài [điều gì xảy ra khi vị thế Aave bị thanh lý](/vi/blog/co-che-thanh-ly-tren-aave).
+
+Hãy nhớ ba điều khi dùng con số này:
+
+- **Nó được suy ra.** Hợp đồng Pool của Aave V3 báo cáo hệ số sức khỏe qua `getUserAccountData`, chứ không báo cáo giá thanh lý. Bạn có được mức giá bằng cách giải công thức hệ số sức khỏe theo một tài sản; bài [hệ số sức khỏe Aave là gì](/vi/blog/he-so-suc-khoe-aave) giải thích công thức đó.
+- **Nó là giá oracle.** Aave định giá vị thế bằng oracle (nguồn giá) riêng, xây dựng trên các nguồn giá Chainlink và bộ chuyển đổi CAPO, và ứng dụng Aave hiển thị giá đó là "Oracle price" (giá oracle) trên trang của mỗi tài sản. Giá khớp lệnh gần nhất trên một sàn có thể khác.
+- **Nó giữ mọi thứ khác đứng yên.** Với hai tài sản thế chấp hoặc khoản nợ biến động, có nhiều tổ hợp giá cùng đưa về 1,00, nên một giá thanh lý duy nhất chỉ cho bạn biết một tài sản có thể tự biến động bao xa.
+
+## Công thức tính giá thanh lý Aave là gì?
+
+Với một vị thế Aave V3 có một tài sản thế chấp biến động và khoản nợ stablecoin, giá thanh lý bằng nợ ÷ (lượng tài sản thế chấp × ngưỡng thanh lý), trong đó ngưỡng thanh lý (liquidation threshold, LT) là phần giá trị của tài sản thế chấp được tính vào hệ số sức khỏe.
+
+**Giá thanh lý = nợ ÷ (lượng tài sản thế chấp × ngưỡng thanh lý)**
+
+Đây chính là hệ số sức khỏe được giải theo giá. Aave V3 tính HF = Σ(giá trị tài sản thế chấp × ngưỡng thanh lý) ÷ tổng giá trị khoản nợ, bằng USD. Với một tài sản thế chấp, HF = lượng × giá × LT ÷ nợ. Đặt HF bằng 1 và giải theo giá.
+
+Vì hệ số sức khỏe đã chứa ngưỡng, có một cách tính nhanh: **giá thanh lý = giá hiện tại ÷ hệ số sức khỏe**. Mức giảm cần để chạm đến đó là 1 − 1 ÷ HF.
+
+Các dạng vị thế khác dùng một biến thể của cùng công thức:
+
+| Vị thế                                         | Giá thanh lý                                                             | Cách tính nhanh từ hệ số sức khỏe                               |
+| ---------------------------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| Một tài sản thế chấp biến động, nợ stablecoin  | nợ ÷ (lượng × LT)                                                        | giá hiện tại ÷ HF                                               |
+| Hai tài sản thế chấp biến động, nợ stablecoin  | (nợ − giá trị tài sản thế chấp kia × LT của nó) ÷ (lượng × LT)           | không có cho một mức giá; cả hai cùng giảm: mức giảm 1 − 1 ÷ HF |
+| Tài sản thế chấp stablecoin, nợ biến động      | Σ(giá trị tài sản thế chấp × LT) ÷ lượng đã vay, một mức giá ở phía tăng | giá hiện tại × HF                                               |
+| Tài sản thế chấp wstETH, nợ WETH, trong E-Mode | một tỷ lệ giá wstETH/ETH: nợ WETH ÷ (lượng wstETH × LT của E-Mode)       | tỷ lệ hiện tại ÷ HF                                             |
+
+### Ví dụ cụ thể: 10 WETH và 12.000 USDC trên Ethereum Core
+
+Gửi 10 WETH và vay 12.000 USDC trên Aave V3 Ethereum Core. Ngưỡng thanh lý của WETH ở đó là 83% và tỷ lệ cho vay trên giá trị (LTV) là 80,5% (đọc trên chuỗi tại khối 26193284 của Ethereum, ngày 14 tháng 10 năm 2026). Ví dụ này dùng giá ETH 2.400 $ cho số tròn; oracle của Aave đọc được 2.414,78 $ tại khối 26193376 cùng ngày. USDC được tính là 1,00 $.
+
+| Bước                     | Phép tính              | Kết quả    |
+| ------------------------ | ---------------------- | ---------- |
+| Giá trị tài sản thế chấp | 10 × 2.400 $           | 24.000 $   |
+| Hệ số sức khỏe           | 24.000 × 0,83 ÷ 12.000 | 1,66       |
+| Giá thanh lý             | 12.000 ÷ (10 × 0,83)   | 1.445,78 $ |
+| Kiểm tra bằng cách nhanh | 2.400 ÷ 1,66           | 1.445,78 $ |
+| Mức giảm cần thiết       | 1 − 1 ÷ 1,66           | 39,8%      |
+
+Hạn mức vay không phải là biên an toàn. Ở LTV 80,5%, cùng 10 WETH đó cho phép vay tối đa 19.320 $, cho hệ số sức khỏe 1,031 và giá thanh lý 2.327,71 $, chỉ thấp hơn 2.400 $ có 3,0%. Bài [một hệ số sức khỏe cho bạn bao nhiêu khoảng đệm](/vi/blog/he-so-suc-khoe-an-toan-tren-aave) trình bày khoảng chênh đó cho từng tài sản.
+
+### Nên dùng ngưỡng thanh lý nào?
+
+Hãy dùng ngưỡng thanh lý của thị trường Aave mà vị thế của bạn đang nằm trong đó. Ứng dụng Aave hiển thị nó là "Liquidation threshold" (ngưỡng thanh lý) trong mục "Collateral usage" (sử dụng làm tài sản thế chấp) trên trang của mỗi tài sản. Cùng một token có thể có ngưỡng khác nhau ở các thị trường khác nhau, và quản trị (governance) có thể thay đổi chúng. Trong E-Mode, ngưỡng của danh mục chỉ thay thế ngưỡng riêng của tài sản với những tài sản nằm trong nhóm tài sản thế chấp của danh mục; mọi tài sản thế chấp khác giữ ngưỡng riêng.
+
+| Thị trường Aave V3                     | Tài sản                                       | LTV           | Ngưỡng thanh lý |
+| -------------------------------------- | --------------------------------------------- | ------------- | --------------- |
+| Ethereum Core                          | WETH                                          | 80,5%         | 83%             |
+| Ethereum Core                          | WBTC                                          | 73%           | 78%             |
+| Ethereum Core                          | USDC                                          | 75%           | 78%             |
+| Ethereum Core, E-Mode "ETH correlated" | WETH, wstETH, cbETH, rETH, weETH, osETH, ETHx | 93% (ETHx 0%) | 95%             |
+| Arbitrum                               | WETH                                          | 80%           | 84%             |
+| Arbitrum                               | WBTC                                          | 73%           | 78%             |
+| Arbitrum                               | USDC (native)                                 | 75%           | 78%             |
+
+Đọc trên chuỗi ngày 14 tháng 10 năm 2026 tại khối 26193284 của Ethereum (E-Mode tại khối 26193288) và khối 514855406 của Arbitrum. Một lần đọc lại ngay sau nửa đêm UTC (khối 26194239 của Ethereum, khối 514896811 của Arbitrum) trả về cùng giá trị và cho thấy LTV E-Mode 0% của ETHx.
+
+### Công thức trên Aave V4 có khác không?
+
+Aave V4, đang hoạt động trên Ethereum, Avalanche, Arc và Base, dùng cùng dạng công thức với hai điểm khác: một hệ số tài sản thế chấp (collateral factor) duy nhất cho mỗi tài sản trong mỗi Spoke thay cho LTV và ngưỡng thanh lý tách riêng, và hệ số sức khỏe được tính theo từng Spoke. Một vị thế V4 trở nên có thể bị thanh lý khi hệ số sức khỏe dưới 1,0, nên giá thanh lý của nó là nợ ÷ (lượng tài sản thế chấp × hệ số tài sản thế chấp). Hệ số tài sản thế chấp của WETH trên Ethereum Main Spoke là 83% vào ngày 14 tháng 10 năm 2026 (API Aave V4), nên 10 WETH so với 12.000 USDC ở đó cũng sẽ bị thanh lý dưới 1.445,78 $. Tokenping theo dõi cả vị thế V3 lẫn V4, với một cảnh báo riêng cho mỗi Spoke V4.
+
+## Tính giá thanh lý Aave với hai tài sản thế chấp như thế nào?
+
+Với hai tài sản thế chấp, giá thanh lý của một tài sản giả định tài sản kia giữ nguyên giá hiện tại: lấy khoản nợ trừ đi giá trị đã nhân theo ngưỡng của tài sản kia, rồi chia cho lượng của tài sản thứ nhất nhân với ngưỡng thanh lý của nó.
+
+**Giá thanh lý của tài sản A = (nợ − giá trị của B × LT của B) ÷ (lượng A × LT của A)**
+
+Ví dụ trên Aave V3 Ethereum Core: 10 WETH giá 2.400 $ (LT 83%) cộng 0,2 WBTC ở mức giá minh họa 81.500 $ (LT 78%; oracle đọc được 81.528,44 $ ngày 14 tháng 10 năm 2026), so với 20.000 USDC nợ. Tài sản thế chấp sau khi nhân theo ngưỡng là 24.000 × 0,83 + 16.300 × 0,78 = 19.920 + 12.714 = 32.634, nên hệ số sức khỏe là 32.634 ÷ 20.000 = 1,632.
+
+| Kịch bản                             | Giá thanh lý                                         | Mức giảm cần thiết    |
+| ------------------------------------ | ---------------------------------------------------- | --------------------- |
+| ETH giảm, WBTC giữ ở 81.500 $        | (20.000 − 12.714) ÷ (10 × 0,83) = 877,83 $ mỗi ETH   | 63,4%                 |
+| WBTC giảm, ETH giữ ở 2.400 $         | (20.000 − 19.920) ÷ (0,2 × 0,78) = 512,82 $ mỗi WBTC | 99,4%                 |
+| Cả hai giảm cùng một tỷ lệ phần trăm | ETH ở 1.470,86 $ và WBTC ở 49.948 $, cùng lúc        | 38,7% (1 − 1 ÷ 1,632) |
+
+Hai dòng đầu trông có vẻ thoải mái vì mỗi dòng giả định tài sản kia giữ nguyên giá trị. Ở đây riêng WETH gần như đã đủ bù khoản nợ (19.920 giá trị đã nhân theo ngưỡng so với 20.000), nên WBTC sẽ phải tự giảm 99,4%. Với các tài sản thế chấp có xu hướng biến động cùng nhau, dòng thứ ba, cả hai cùng giảm 38,7%, mới là phép thử thực tế.
+
+## Nếu bạn vay một tài sản biến động thay vì stablecoin thì sao?
+
+Nếu bạn vay một tài sản biến động như WETH, vị thế Aave của bạn có giá thanh lý ở phía tăng: mức giá của tài sản đã vay mà tại đó hệ số sức khỏe chạm 1,00. Khi giá đó tăng, khoản nợ có giá trị cao hơn và hệ số sức khỏe giảm.
+
+**Giá thanh lý của tài sản đã vay = Σ(giá trị tài sản thế chấp × LT) ÷ lượng đã vay**, hoặc theo cách tính nhanh, giá hiện tại × hệ số sức khỏe.
+
+Ví dụ trên Aave V3 Ethereum Core: gửi 10.000 USDC (LT 78%) và vay 2,5 WETH, trị giá 6.000 $ khi ETH ở mức 2.400 $. Hệ số sức khỏe là 10.000 × 0,78 ÷ 6.000 = 1,30. Vị thế có thể bị thanh lý khi ETH tăng lên trên 7.800 ÷ 2,5 = 3.120 $ (cũng bằng 2.400 × 1,30), tức tăng 30%.
+
+Phía stablecoin cũng có thể biến động. Giá USDC của Aave trên Ethereum bị giới hạn ở 1,04 $, nhưng giá dưới 1 $ được giữ nguyên (mức trần đọc trên chuỗi tại khối 26194239 của Ethereum). USDC đã từng mất neo (depeg): ngày 11 tháng 3 năm 2023, nó giảm xuống mức thấp khoảng 88 cent, như báo cáo sau sự cố (post-mortem) của Gauntlet trên diễn đàn Aave ghi lại. Ở mức 0,88 $, cùng vị thế đó sẽ có hệ số sức khỏe 8.800 × 0,78 ÷ 6.000 = 1,144, và giá thanh lý của ETH sẽ giảm từ 3.120 $ xuống 2.745,60 $.
+
+Khi cả tài sản thế chấp và khoản nợ đều biến động, ví dụ tài sản thế chấp WBTC so với khoản nợ WETH, chỉ tỷ lệ giữa hai mức giá là quan trọng: hệ số sức khỏe chạm 1,00 khi tỷ lệ WBTC/ETH giảm xuống bằng lượng nợ ETH ÷ (lượng WBTC × LT của WBTC).
+
+## E-Mode thay đổi giá thanh lý của bạn như thế nào?
+
+E-Mode nâng ngưỡng thanh lý cho các tài sản tương quan. Khi tài sản thế chấp và khoản nợ cùng đi theo một mức giá gốc, như wstETH và WETH đều đi theo ETH, giá thanh lý trở thành một tỷ lệ giá (wstETH/ETH) chứ không phải một mức giá đô la. Trên Aave V3 Ethereum Core, danh mục E-Mode "ETH correlated" có LTV 93%, ngưỡng thanh lý 95% và thưởng thanh lý 1% vào ngày 14 tháng 10 năm 2026. Nhóm tài sản thế chấp của nó gồm WETH, wstETH, cbETH, rETH, weETH, osETH và ETHx, và WETH là tài sản duy nhất danh mục cho phép bạn vay. Tài sản thế chấp ngoài nhóm đó giữ ngưỡng thông thường.
+
+Với tài sản thế chấp wstETH và khoản nợ WETH, cả hai phía đều được định giá theo ETH, nên giá đô la của ETH phần lớn triệt tiêu nhau. Điều quyết định việc thanh lý là tỷ giá wstETH/ETH mà oracle của Aave sử dụng:
+
+- Gửi lượng wstETH trị giá 100 ETH theo tỷ giá của oracle và vay 90 WETH. Hệ số sức khỏe là 100 × 0,95 ÷ 90 = 1,056. Nếu giá đô la của ETH giảm một nửa, cả hai phía cùng giảm một nửa và hệ số sức khỏe giữ ở 1,056. Nếu tỷ giá wstETH/ETH của oracle giảm 5,3% (1 − 90 ÷ 95), vị thế chạm 1,00.
+- Ở mức vay tối đa của danh mục, 93 WETH với cùng tài sản thế chấp, hệ số sức khỏe bắt đầu ở 95 ÷ 93 = 1,0215, và chỉ cần tỷ giá giảm 2,1% là đủ.
+
+Một biến động cỡ đó đã từng xảy ra. Aave định giá wstETH qua bộ chuyển đổi CAPO (Correlated Assets Price Oracle), vốn giới hạn tỷ giá mà nó báo cáo. Tháng 3 năm 2026, một mức trần bị cấu hình sai trên các thị trường Ethereum Core và Prime đã làm tỷ giá Aave dùng giảm khoảng 2,85%. Báo cáo sau sự cố của Chaos Labs (ngày 10 tháng 3 năm 2026) đếm được khoảng 10.938 wstETH bị thanh lý trong E-Mode trên 34 tài khoản, ảnh hưởng đến các vị thế có hệ số sức khỏe dưới khoảng 1,0288. Biến động đó đến từ cấu hình của oracle, không phải từ thị trường.
+
+## Vì sao giá thanh lý của bạn thay đổi theo thời gian?
+
+Giá thanh lý Aave của bạn thay đổi ngay cả khi bạn không làm gì, vì các đầu vào của nó thay đổi: lãi cộng thêm vào khoản nợ, lãi gửi cộng thêm một chút vào tài sản thế chấp, và quản trị có thể thay đổi ngưỡng thanh lý. Các giao dịch của chính bạn cũng làm nó thay đổi: vay thêm làm nó tăng, còn trả nợ hoặc thêm tài sản thế chấp làm nó giảm.
+
+- **Lãi.** Lấy 10 WETH và 12.000 USDC nợ trên Aave V3 Ethereum Core với ETH ở mức 2.400 $. Ngày 14 tháng 10 năm 2026 (khối 26193378), lãi suất vay thả nổi của USDC là 4,496% APR và lãi suất gửi của WETH là 1,309% APR. Nếu giữ nguyên trong một năm, các mức lãi suất đó sẽ đẩy giá thanh lý từ 1.445,78 $ lên khoảng 1.490 $ khi ETH không đổi. Lãi suất là thả nổi: tối hôm đó, lãi suất vay USDC đã chạm 14,1% trong chưa đầy một giờ (khối 26194180), khi gần như toàn bộ USDC đã gửi được cho vay hết.
+- **Hạ ngưỡng.** Ở Aave V3, ngưỡng thanh lý thấp hơn áp dụng ngay cho mọi vị thế đang mở, và giá thanh lý thay đổi theo hệ số LT cũ ÷ LT mới. Một đợt hạ giả định ngưỡng của WETH từ 83% xuống 80% sẽ đẩy giá thanh lý của cùng vị thế từ 1.445,78 $ lên 1.500,00 $. Việc hạ ngưỡng đến qua các đề xuất quản trị hoặc qua Risk Stewards, những người có thể điều chỉnh ngưỡng trong giới hạn đã cấu hình.
+- **Thay đổi LTV không tính.** Hạ LTV của một tài sản, kể cả về 0, làm giảm hoặc xóa sức vay mà nó mang lại, nhưng không làm thay đổi hệ số sức khỏe và giá thanh lý.
+- **Aave V4 khác.** Thay đổi hệ số tài sản thế chấp thường áp dụng cho vị thế mới; vị thế hiện có giữ thiết lập cũ cho đến khi người dùng vay, rút hoặc thay đổi thiết lập tài sản thế chấp, hoặc cho đến khi Governor cập nhật chúng. V4 cũng cộng thêm User Risk Premium vào lãi suất vay với tài sản thế chấp rủi ro hơn, nên khoản nợ, và cùng với nó là giá thanh lý, có thể tăng nhanh hơn.
+
+## Gần giá thanh lý đến mức nào là quá gần?
+
+Không có khoảng cách nào đến giá thanh lý là an toàn cho mọi người. Với một tài sản thế chấp biến động và khoản nợ stablecoin, khoảng cách là 1 − 1 ÷ HF: hệ số sức khỏe 1,25 để lại dư địa cho mức giảm 20%, 1,5 để lại 33,3% và 2,0 để lại 50%. Bạn cần bao nhiêu dư địa phụ thuộc vào độ biến động của tài sản thế chấp, tốc độ bạn có thể trả nợ hoặc thêm tài sản thế chấp, và mức độ tắc nghẽn của mạng vào lúc đó. Bài [một hệ số sức khỏe cho bạn bao nhiêu khoảng đệm](/vi/blog/he-so-suc-khoe-an-toan-tren-aave) có bảng đầy đủ.
+
+### Làm sao để chuyển giá thanh lý thành ngưỡng cảnh báo hệ số sức khỏe?
+
+Chọn mức giá mà tại đó bạn muốn hành động và quy đổi nó thành hệ số sức khỏe. Với một tài sản thế chấp biến động và khoản nợ stablecoin, **HF ở một mức giá = mức giá đó ÷ giá thanh lý**. Với 10 WETH so với 12.000 USDC (giá thanh lý 1.445,78 $), hành động ở mức ETH 1.800 $ tương ứng với hệ số sức khỏe 1.800 ÷ 1.445,78 = 1,245, tức ngưỡng khoảng 1,25. Với khoản nợ biến động thì đảo lại: HF = giá thanh lý ÷ giá của tài sản đã vay.
+
+Ngưỡng theo hệ số sức khỏe có hai lợi thế so với một mức giá. Nó đi theo giá thanh lý của bạn khi lãi cộng dồn và khi bạn thay đổi vị thế, và nó bao quát mọi tài sản thế chấp và tài sản nợ cùng lúc. Một cảnh báo theo giá cố định sẽ lỗi thời ngay khi khoản nợ tăng lên.
+
+Tokenping hoạt động theo cách này: nó cảnh báo theo hệ số sức khỏe và không có cảnh báo theo giá. Bạn đặt một ngưỡng cho mỗi thị trường Aave V3 hoặc mỗi Spoke Aave V4, từ 1,1 đến 10. Tokenping kiểm tra 5 phút một lần và, ở mỗi lần kiểm tra mà hệ số sức khỏe của bạn còn dưới ngưỡng, gửi tin nhắn đến từng kênh bạn đã chọn (Signal, Telegram, email hoặc nhiều kênh cùng lúc). Một biến động nhanh có thể vượt qua 1,00 giữa hai lần kiểm tra, nên một ngưỡng cao hơn mức bạn sẽ hành động giúp bạn có thêm thời gian; nó không thể ngăn việc thanh lý. Các bước có trong bài [cách cài đặt cảnh báo hệ số sức khỏe](/vi/blog/cai-dat-canh-bao-he-so-suc-khoe-aave), hoặc bạn có thể [kiểm tra hệ số sức khỏe Aave V3 của bạn](/vi/aave) trước.
+
+## Làm sao để tính giá thanh lý cho vị thế của chính bạn?
+
+Để tính giá thanh lý Aave của chính bạn, bạn cần lượng của từng tài sản thế chấp, ngưỡng thanh lý của từng tài sản thế chấp, tổng nợ và giá oracle hiện tại. Ứng dụng Aave hiển thị cả bốn.
+
+1. Ghi lại lượng của từng tài sản thế chấp, tổng nợ và việc tài khoản của bạn có đang ở E-Mode hay không.
+2. Tìm ngưỡng thanh lý của từng tài sản thế chấp trên trang tài sản của nó trong ứng dụng Aave ("Liquidation threshold" trong mục "Collateral usage"). Trong E-Mode, chỉ dùng ngưỡng của danh mục cho tài sản thế chấp thuộc nhóm của danh mục; mọi tài sản thế chấp khác giữ ngưỡng riêng.
+3. Với một tài sản thế chấp biến động và khoản nợ stablecoin, chia giá oracle cho hệ số sức khỏe của bạn. Với hai tài sản thế chấp, giá của A là (nợ − giá trị của B × LT của B) ÷ (lượng A × LT của A). Với một tài sản biến động đã vay, giá của nó là Σ(giá trị tài sản thế chấp × LT) ÷ lượng đã vay. Công cụ tính bên dưới xử lý cả ba trường hợp.
+4. Tính lại sau khi bạn vay, trả nợ hoặc thêm tài sản thế chấp, và sau khi ngưỡng thay đổi.
+
+Ví dụ cụ thể trên Aave V3 Arbitrum, nơi ngưỡng thanh lý của WETH là 84% vào ngày 14 tháng 10 năm 2026: 5 WETH giá 2.400 $ so với 7.000 USDC cho hệ số sức khỏe 12.000 × 0,84 ÷ 7.000 = 1,44 và giá thanh lý 2.400 ÷ 1,44 = 1.666,67 $, tức giảm 30,6%. Với mức 83% của Ethereum Core, cùng vị thế đó sẽ bị thanh lý dưới 1.686,75 $.
+
+<LiquidationCalculator />
+
+Mọi công cụ tính đều cho ra giá thanh lý của hôm nay. Lãi, thay đổi ngưỡng và các giao dịch của chính bạn sẽ làm nó thay đổi sau đó, nên kết quả của tháng trước đáng được tính lại.
+
+## Nguồn
+
+- [Aave V3 GenericLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): công thức hệ số sức khỏe và việc ngưỡng E-Mode chỉ áp dụng cho nhóm tài sản thế chấp của danh mục (truy cập ngày 14 tháng 10 năm 2026)
+- [Aave V3 ValidationLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): thanh lý khi hệ số sức khỏe dưới 1,00, kiểm tra LTV khi vay (truy cập ngày 14 tháng 10 năm 2026)
+- [Aave V3 LiquidationLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): một lần thanh lý có thể trả bao nhiêu nợ (truy cập ngày 14 tháng 10 năm 2026)
+- [Aave V3 Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getReserveConfigurationData` tại các khối 26193284 và 26194239; `getReserveData` tại các khối 26193378 và 26194180 (truy cập ngày 14 tháng 10 năm 2026; đọc lại ngày 15 tháng 10 năm 2026)
+- [Aave V3 Arbitrum PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): `getReserveConfigurationData` tại các khối 514855406 và 514896811 của Arbitrum (truy cập ngày 14 tháng 10 năm 2026; đọc lại ngày 15 tháng 10 năm 2026)
+- [Aave V3 Ethereum Core Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): danh mục E-Mode 1 "ETH correlated": cấu hình tài sản thế chấp và các bitmap tài sản thế chấp, tài sản được vay và LTV bằng 0 (truy cập ngày 14 tháng 10 năm 2026; đọc lại ngày 15 tháng 10 năm 2026)
+- [AaveOracle trên Ethereum](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): `getAssetPrice` tại khối 26193376; `getSourceOfAsset(USDC)` tại khối 26194239 (truy cập ngày 14 tháng 10 năm 2026; đọc lại ngày 15 tháng 10 năm 2026)
+- [Bộ chuyển đổi giá USDC của Aave trên Ethereum, "Capped USDC / USD"](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B): `getPriceCap` = 104000000 (1,04 $) tại khối 26194239 (truy cập ngày 15 tháng 10 năm 2026)
+- [Tài liệu oracle của Aave](https://aave.com/docs/ecosystem/oracle.md): nguồn giá Chainlink và bộ chuyển đổi CAPO (truy cập ngày 14 tháng 10 năm 2026)
+- [Kho mã nguồn giá của Aave (PriceCapAdapterStable)](https://github.com/aave-dao/aave-price-feeds): cách mức trần giá USDC hoạt động (truy cập ngày 14 tháng 10 năm 2026)
+- [Gauntlet, "Aave Resilient Through USDC Volatility"](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330): mức thấp khoảng 88 cent của USDC ngày 11 tháng 3 năm 2023 (truy cập ngày 14 tháng 10 năm 2026)
+- [Chaos Labs, báo cáo sau sự cố tỷ giá wstETH](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): sự cố CAPO tháng 3 năm 2026 (truy cập ngày 14 tháng 10 năm 2026)
+- [Aave V3 Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): cách các tham số rủi ro có thể thay đổi giữa các lần bỏ phiếu quản trị (truy cập ngày 14 tháng 10 năm 2026)
+- [Tài liệu vị thế người dùng Aave V4](https://aave.com/docs/aave-v4/positions.md): hệ số tài sản thế chấp và thanh lý khi hệ số sức khỏe dưới 1,0 (truy cập ngày 14 tháng 10 năm 2026)
+- [Tổng quan Aave V4 (aave/aave-v4)](https://github.com/aave/aave-v4/blob/main/docs/overview.md): cấu hình rủi ro động và User Risk Premium (truy cập ngày 14 tháng 10 năm 2026)
+- [API Aave V4](https://api.v4.aave.com/graphql): truy vấn `reserves`, hệ số tài sản thế chấp của WETH theo từng Spoke trên Ethereum (truy cập ngày 14 tháng 10 năm 2026)
+- [Nhật ký thay đổi của Aave](https://aave.com/docs/resources/changelog.md): các mạng của V4 (truy cập ngày 14 tháng 10 năm 2026)
+- [Mã nguồn giao diện Aave, SupplyInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/SupplyInfo.tsx) và [ReserveTopDetails.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/ReserveTopDetails.tsx): các nhãn "Liquidation threshold" và "Oracle price" trong ứng dụng Aave (truy cập ngày 14 tháng 10 năm 2026)
+
+_Nội dung mang tính giáo dục, không phải lời khuyên tài chính. Cảnh báo giúp giảm rủi ro, nhưng không ngăn được việc thanh lý._

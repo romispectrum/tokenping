@@ -1,0 +1,177 @@
+export const meta = {
+  slug: "vay-the-chap-bang-tien-ma-hoa",
+  title: "Vay thế chấp bằng tiền mã hóa: cách hoạt động và công dụng",
+  description:
+    "Khoản vay thế chấp vượt mức trên Aave hoạt động thế nào, khác ngân hàng và bên cho vay tập trung ra sao, người ta dùng để làm gì và có rủi ro gì.",
+  h1: "Khoản vay thế chấp bằng tiền mã hóa hoạt động thế nào, và vì sao người ta vay?",
+  publishedAt: "2026-10-19",
+  primaryQuestion: "Khoản vay thế chấp bằng tiền mã hóa hoạt động thế nào, và vì sao người ta dùng nó?",
+  readingMinutes: 18,
+};
+
+<ShortAnswer>
+  Khoản vay thế chấp bằng tiền mã hóa cho phép bạn vay, thường là một stablecoin như USDC, dựa trên tiền mã hóa bạn gửi
+  làm tài sản thế chấp, mà không phải bán nó. Trên Aave, khoản vay được thế chấp vượt mức: ngày 19 tháng 10 năm 2026,
+  bạn có thể vay tối đa 73% giá trị WBTC hoặc 80,5% giá trị WETH trên thị trường Ethereum Core. Giao thức chỉ kiểm tra
+  tài sản thế chấp, không có ngày trả nợ và lãi suất là thả nổi. Nếu giá trị tài sản thế chấp giảm đủ sâu để hệ số sức
+  khỏe (health factor) của bạn xuống dưới 1, một phần tài sản sẽ bị bán để trả nợ, và bạn phải chịu một khoản phạt.
+  Người ta dùng các khoản vay này để có tiền mặt mà không cần bán, để bù một khoảng trống tạm thời, để tái cấp vốn, để
+  dùng đòn bẩy hoặc để phòng hộ, và cách dùng nào cũng mang rủi ro thanh lý, rủi ro lãi suất và rủi ro stablecoin.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Mọi số liệu on-chain, số khối và nguồn đằng sau bài viết này: content/blog/snapshots/crypto-backed-loans.md */}
+
+## Khoản vay thế chấp bằng tiền mã hóa là gì?
+
+Khoản vay thế chấp bằng tiền mã hóa là khoản vay được bảo đảm bằng tiền mã hóa bạn gửi làm tài sản thế chấp. Trên một giao thức cho vay như Aave, khoản vay được thế chấp vượt mức: tài sản thế chấp phải có giá trị lớn hơn khoản vay, và thay vì kiểm tra thu nhập của bạn, giao thức dựa vào việc có thể bán một phần tài sản thế chấp nếu giá trị của nó giảm quá sâu. Trong lúc khoản vay còn mở, tài sản thế chấp vẫn là của bạn, cùng mọi biến động giá của nó, và bạn có thể lấy lại khi đã trả hết nợ.
+
+Phần lớn mọi người vay stablecoin, tức các token bám theo một loại tiền tệ: USDC và USDT bám theo đô la Mỹ, EURC bám theo euro. Tài sản thế chấp thường là một tài sản biến động. Trên các thị trường Ethereum và Arbitrum của Aave, ether có mặt dưới dạng WETH và bitcoin dưới dạng một token đại diện cho nó, như WBTC hoặc cbBTC.
+
+Hai con số của mỗi tài sản thế chấp quyết định bạn có thể vay bao nhiêu và khi nào khoản vay gặp nguy hiểm:
+
+- **Tỷ lệ cho vay trên giá trị (LTV)** là mức tối đa bạn có thể vay dựa trên tài sản đó, tính theo tỷ lệ phần trăm giá trị của nó.
+- **Ngưỡng thanh lý (liquidation threshold)** là phần giá trị của tài sản được tính vào hệ số sức khỏe. Khi tài sản thế chấp, tính theo trọng số này, có giá trị thấp hơn khoản nợ, hệ số sức khỏe xuống dưới 1 và vị thế có thể bị thanh lý.
+
+| Thị trường    | Tài sản thế chấp | LTV (hạn mức vay) | Ngưỡng thanh lý | Thưởng thanh lý |
+| ------------- | ---------------- | ----------------- | --------------- | --------------- |
+| Ethereum Core | WETH             | 80,5%             | 83%             | 5%              |
+| Ethereum Core | WBTC             | 73%               | 78%             | 5%              |
+| Ethereum Core | cbBTC            | 73%               | 78%             | 7,5%            |
+| Arbitrum      | WETH             | 80%               | 84%             | 5%              |
+| Arbitrum      | WBTC             | 73%               | 78%             | 7%              |
+
+Các giá trị này được đọc on-chain ngày 19 tháng 10 năm 2026 từ PoolDataProvider của từng thị trường, tại khối Ethereum 26225342 và khối Arbitrum 516228495. cbBTC không được niêm yết trên thị trường Arbitrum của Aave. Quản trị Aave có thể thay đổi bất kỳ giá trị nào trong số đó. Sự khác nhau giữa LTV và ngưỡng thanh lý được giải thích kỹ hơn trong [hệ số sức khỏe Aave là gì](/vi/blog/he-so-suc-khoe-aave).
+
+## Một khoản vay trên Aave hoạt động thế nào, từng bước một?
+
+Aave V3 là một bộ hợp đồng thông minh trên mỗi mạng, và app.aave.com là một giao diện để dùng chúng. Trung tâm trợ giúp của Aave mô tả việc vay và trả nợ trong vài bước. Dưới đây là những gì mỗi bước bao gồm.
+
+### Bước 1: Gửi tài sản thế chấp
+
+Kết nối ví, chọn tài sản muốn gửi, ví dụ WBTC, rồi gửi nó. Kiểm tra xem nó đã được bật làm tài sản thế chấp chưa, vì chỉ tài sản thế chấp mới được tính vào số tiền bạn có thể vay. Các token nằm trong hợp đồng Pool của thị trường, nơi người dùng khác có thể vay chúng (đó là thứ mà lãi suất gửi nhỏ chi trả). Bạn có thể rút tài sản thế chấp sau khi trả nợ, hoặc rút một phần trong lúc vẫn còn nợ, miễn là sau đó hệ số sức khỏe vẫn từ 1 trở lên.
+
+### Bước 2: Vay một stablecoin
+
+Chọn stablecoin và một số tiền thấp hơn hạn mức vay, tức giá trị tài sản thế chấp nhân với LTV của nó. Các token về ví của bạn, và lãi bắt đầu cộng dồn ngay, theo lãi suất mà giao thức đặt dựa trên lượng tài sản đang được vay và các tham số mà quản trị có thể thay đổi (trung tâm trợ giúp Aave, Borrow Tokens). Aave V3 giờ chỉ còn lãi suất thả nổi: tài liệu tham chiếu Pool của nó nói các khoản vay luôn dùng chế độ lãi suất thả nổi và đánh dấu lãi suất ổn định cũ là đã ngừng dùng từ v3.2.
+
+Lãi suất vay thả nổi ngày 19 tháng 10 năm 2026, dưới dạng APY theo năm như ứng dụng Aave hiển thị (khối Ethereum 26225342, khối Arbitrum 516228495):
+
+| Thị trường    | USDC  | USDT (USD₮0 trên Arbitrum) | GHO   | EURC                            |
+| ------------- | ----- | -------------------------- | ----- | ------------------------------- |
+| Ethereum Core | 4,58% | 4,17%                      | 4,60% | 4,12%                           |
+| Arbitrum      | 3,45% | 4,21%                      | 4,59% | không có stablecoin euro nào mở |
+
+Các mức lãi suất này thay đổi liên tục và có thể tăng vọt. Ngày 14 tháng 10 năm 2026, lãi suất USDC trên Ethereum Core tăng lên 13,67% APR chỉ trong một khối và giảm trở lại khoảng 36 phút sau, như [vì sao hệ số sức khỏe Aave tự giảm](/vi/blog/vi-sao-he-so-suc-khoe-aave-giam#nguyen-nhan-3-lai-tren-khoan-no-co-tang-nhanh-hon-lai-tren-tai-san-the-chap-khong) cho thấy.
+
+### Bước 3: Theo dõi hệ số sức khỏe
+
+Hệ số sức khỏe (HF) là tài sản thế chấp của bạn, tính theo trọng số ngưỡng thanh lý của từng tài sản, chia cho khoản nợ. Lấy ví dụ alice, người gửi 1 WBTC trên Ethereum Core khi bitcoin ở giá minh họa 80.000 $ (oracle của Aave đọc 82.680,33 $ tại khối Ethereum 26225364 ngày 19 tháng 10 năm 2026) và vay 24.000 USDC:
+
+- Hạn mức vay: 80.000 × 0,73 = 58.400 $.
+- Hệ số sức khỏe: 80.000 × 0,78 ÷ 24.000 = 2,60.
+- Giá thanh lý: 24.000 ÷ 0,78 = 30.769,23 $, thấp hơn 80.000 $ 61,5%.
+
+Hệ số sức khỏe giảm khi bitcoin giảm, và giảm chậm khi lãi được cộng thêm: nếu lãi suất USDC giữ ở 4,58% một năm, khoản nợ sẽ vào khoảng 25.099 USDC sau một năm, và giá thanh lý sẽ tăng lên khoảng 32.179 $. Để tính điều này cho vị thế của riêng bạn, xem [cách tính giá thanh lý trên Aave](/vi/blog/cach-tinh-gia-thanh-ly-aave). Để biết nên chừa bao nhiêu dư địa, xem [hệ số sức khỏe an toàn trên Aave là bao nhiêu](/vi/blog/he-so-suc-khoe-an-toan-tren-aave).
+
+### Bước 4: Trả nợ khi bạn muốn
+
+Không có ngày trả nợ. Hàm vay của Aave không nhận kỳ hạn nào cả, và bạn có thể trả toàn bộ hoặc một phần khoản nợ bất cứ lúc nào, bằng chính tài sản bạn đã vay (tài liệu tham chiếu Pool của Aave V3; trung tâm trợ giúp Aave, Repay Tokens). Trả hết nợ sẽ giải phóng tài sản thế chấp. Bạn cũng có thể trả nợ bằng tài sản thế chấp: trên các thị trường Ethereum và Arbitrum, giao diện của Aave có thể bán một phần tài sản thế chấp lấy tài sản nợ và trả nợ trong một giao dịch (tài liệu Aave, tính năng hoán đổi).
+
+### Bước 5: Biết chuyện gì xảy ra khi hệ số sức khỏe dưới 1
+
+Dưới 1, bất kỳ ai cũng có thể thanh lý vị thế: họ trả một phần khoản nợ của bạn và lấy phần tài sản thế chấp có giá trị bằng số tiền đó cộng thêm một khoản thưởng thanh lý. Một lần thanh lý có thể trả tối đa 50% khoản nợ khi hệ số sức khỏe trên 0,95 và tài sản thế chấp lẫn khoản nợ mỗi bên trị giá ít nhất 2.000 $, và tối đa 100% khi hệ số sức khỏe bằng hoặc thấp hơn 0,95 hay một trong hai bên trị giá dưới 2.000 $ (trung tâm trợ giúp Aave).
+
+Nếu bitcoin giảm xuống 30.000 $ ngay sau khi alice vay, hệ số sức khỏe của cô sẽ là 30.000 × 0,78 ÷ 24.000 = 0,975. Một bên thanh lý có thể trả 12.000 USDC và lấy 12.000 × 1,05 ÷ 30.000 = 0,42 WBTC, để lại cho cô 0,58 WBTC với khoản nợ 12.000 USDC, tức hệ số sức khỏe 1,13. Cô sẽ mất 600 $ tài sản thế chấp ngoài phần nợ được trả, và 0,42 WBTC sẽ bị bán ở đáy. Quy tắc đầy đủ có trong [chuyện gì xảy ra khi vị thế Aave của bạn bị thanh lý](/vi/blog/co-che-thanh-ly-tren-aave).
+
+## Khoản vay thế chấp bằng tiền mã hóa khác khoản vay ngân hàng thế nào?
+
+Khác biệt chính nằm ở những gì bên cho vay xem xét, khi nào bạn trả nợ và chuyện gì xảy ra khi tài sản thế chấp mất giá:
+
+|                                           | Khoản vay trên Aave                                                                  | Khoản vay ngân hàng thông thường                                                 |
+| ----------------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| Điều gì quyết định bạn vay được bao nhiêu | Giá trị tài sản thế chấp và LTV của nó                                               | Thường là thu nhập và lịch sử tín dụng của bạn, cộng với tài sản thế chấp nếu có |
+| Kiểm tra về bạn                           | Giao thức không kiểm tra gì, chỉ xem tài sản thế chấp                                | Thường kiểm tra danh tính, thu nhập và tín dụng                                  |
+| Kỳ hạn                                    | Không có: trả nợ bất cứ khi nào bạn muốn                                             | Thường có kỳ hạn cố định và lịch trả nợ                                          |
+| Lãi                                       | Thả nổi, được tính lại khi nhu cầu vay trên thị trường thay đổi                      | Cố định hoặc thả nổi, theo hợp đồng                                              |
+| Nếu tài sản thế chấp mất giá              | Bên thứ ba tự động thanh lý khi hệ số sức khỏe dưới 1, không báo trước               | Tùy hợp đồng: yêu cầu thêm tài sản thế chấp, thương lượng, cưỡng chế             |
+| Ai giữ tài sản thế chấp                   | Hợp đồng thông minh của thị trường                                                   | Bên cho vay, hoặc một bên lưu ký do họ chọn                                      |
+| Nếu tài sản thế chấp không đủ trả nợ      | Phần thiếu hụt trở thành khoản lỗ của giao thức, không phải khoản đòi nợ đối với bạn | Tùy hợp đồng và pháp luật                                                        |
+
+Dòng cuối cùng xuất phát từ cách Aave V3.3 trở về sau xử lý một lần thanh lý dùng hết tài sản thế chấp: phần nợ còn lại được xóa sổ thành khoản thâm hụt trên tài sản đó, như [phần về nợ xấu](/vi/blog/co-che-thanh-ly-tren-aave#thanh-ly-co-the-de-lai-no-xau-khong) giải thích. Đến lúc đó bạn vẫn đã mất tài sản thế chấp.
+
+## Nó khác bên cho vay tiền mã hóa tập trung thế nào?
+
+Một bên cho vay tập trung nhận tài sản thế chấp của bạn vào nơi lưu ký của chính họ. Khoản vay có thể trông gần như giống hệt, nhưng bạn trở thành chủ nợ của công ty, và nếu công ty sụp đổ, tài sản thế chấp của bạn có thể bị kẹt ở đó. Năm 2022 đã cho thấy điều đó nghĩa là gì:
+
+- **Celsius** đóng băng việc rút tiền của khách hàng ngày 12 tháng 6 năm 2022 và nộp đơn phá sản ngày 13 tháng 7 năm 2022. Theo Ủy ban Giao dịch Hàng hóa Tương lai Hoa Kỳ (CFTC), khách hàng đã gửi khoảng 20 tỷ $ vào đó. Vào tháng 1 năm 2023, tòa án phá sản Hoa Kỳ tại New York phán quyết rằng tiền mã hóa trong các tài khoản Earn của Celsius đã trở thành tài sản của Celsius theo điều khoản sử dụng, khiến những khách hàng đó trở thành chủ nợ không có bảo đảm.
+- **Voyager Digital** tạm ngừng giao dịch, nạp và rút tiền ngày 1 tháng 7 năm 2022, sau khi Three Arrows Capital không thanh toán được một khoản vay 15.250 BTC và 350 triệu $ bằng USDC, rồi nộp đơn phá sản theo Chapter 11 ngày 5 tháng 7 năm 2022.
+- **Genesis** chặn các nhà đầu tư trong chương trình Gemini Earn rút tiền vào tháng 11 năm 2022, khi họ đang giữ khoảng 900 triệu $ tài sản của những người này, theo Ủy ban Chứng khoán và Giao dịch Hoa Kỳ (SEC), và nộp đơn theo Chapter 11 ngày 19 tháng 1 năm 2023.
+- **BlockFi** nộp đơn theo Chapter 11 ngày 28 tháng 11 năm 2022, vài ngày sau khi tạm ngừng rút tiền lúc FTX sụp đổ.
+
+Trên Aave, tài sản thế chấp nằm trong một hợp đồng thông minh công khai mà ai cũng đọc được quy tắc, không nằm trên bảng cân đối kế toán của một công ty. Điều đó đổi một nhóm rủi ro lấy một nhóm rủi ro khác, được trình bày trong [các rủi ro](#khoan-vay-the-chap-bang-tien-ma-hoa-co-nhung-rui-ro-gi) bên dưới: lỗi phần mềm, lỗi oracle (nguồn giá), quyết định quản trị và bên lưu ký đứng sau bitcoin dạng bọc (wrapped bitcoin). Một trong số đó quan trọng ở đây: emergency admin hoặc pool admin của Aave có thể tạm dừng một tài sản, và trong lúc tài sản bị tạm dừng, không ai có thể rút hay trả nợ bằng tài sản đó (các hợp đồng PoolConfigurator và ValidationLogic của Aave).
+
+## Người ta dùng khoản vay thế chấp bằng tiền mã hóa để làm gì?
+
+### Có tiền mặt mà không cần bán
+
+Một lý do là để có tiền trong khi vẫn giữ tiền mã hóa, thường vì người nắm giữ kỳ vọng nó tăng giá hoặc muốn giữ nó trong nhiều năm. Khoản vay giữ nguyên toàn bộ mức tăng lẫn mức giảm của tài sản thế chấp, cộng thêm lãi, và có thể buộc phải bán vào thời điểm tệ nhất nếu giá giảm đủ sâu.
+
+Việc vay không bán tài sản thế chấp của bạn: nó vẫn là của bạn. Việc gửi tài sản thế chấp, khoản vay, tiền lãi hay một lần thanh lý có hệ quả về thuế hay không tùy thuộc vào quốc gia của bạn, và đôi khi vào điều khoản của giao thức. Ví dụ, hướng dẫn của cơ quan thuế Vương quốc Anh nói rằng việc đưa tài sản thế chấp cho một nền tảng cho vay DeFi có được tính là chuyển nhượng hay không tùy thuộc vào điều khoản của nền tảng đó, và khi không được tính như vậy, việc bán tài sản thế chấp trong một lần thanh lý được coi là việc bán của chính người vay (HMRC Cryptoassets Manual, CRYPTO61640). Bài hướng dẫn này không đưa ra tư vấn thuế. Hãy kiểm tra quy định nơi bạn sống.
+
+### Chi tiêu hoặc bù khoảng trống tạm thời
+
+Một số người vay để trang trải một khoản chi trước khi khoản tiền họ đang chờ về tới, như một hóa đơn đến hạn trước một giao dịch bán hoặc trước kỳ lương. Cái giá phải trả là không có gì tự kết thúc khoản vay giúp bạn: không có ngày trả nợ, lãi suất có thể tăng trong lúc bạn chờ, và việc đổi stablecoin thành tiền trong tài khoản ngân hàng, rồi đổi ngược lại để trả nợ, đều có chi phí riêng.
+
+### Tái cấp vốn
+
+Một khoản vay ở nơi khác có thể được chuyển sang Aave nếu lãi suất của Aave thấp hơn, và trên Aave một khoản nợ có thể được chuyển từ stablecoin này sang stablecoin khác trong một giao dịch bằng tính năng hoán đổi nợ của giao diện (tài liệu Aave, tính năng hoán đổi). Cái giá phải trả: lãi suất là thả nổi, nên tài sản rẻ hơn hôm nay có thể đắt hơn vào tháng sau, và việc chuyển từ stablecoin đô la sang stablecoin euro sẽ thay đổi loại tiền tệ bạn nợ, đó là chủ đề của [short tiền pháp định bằng khoản vay Aave](/vi/blog/short-tien-phap-dinh-bang-khoan-vay-aave).
+
+### Đòn bẩy
+
+Để tăng mức tiếp xúc, một số người vay stablecoin, mua thêm tài sản thế chấp và gửi luôn phần đó. Nếu alice dùng 24.000 USDC của cô để mua 0,3 WBTC ở giá 80.000 $ và gửi vào, cô sẽ giữ 1,3 WBTC với khoản nợ 24.000 USDC: hệ số sức khỏe 3,38 và giá thanh lý 23.668,64 $. Giờ mỗi biến động của bitcoin tác động đến cô mạnh gấp 1,3 lần so với việc nắm giữ trực tiếp 1 bitcoin, và việc lặp lại loop (vòng vay đòn bẩy) đẩy hệ số sức khỏe dần về 1.
+
+### Phòng hộ và bán khống
+
+Vay một tài sản rồi bán nó là đặt cược rằng nó sẽ giảm giá: gửi stablecoin, vay WETH rồi bán, và vị thế có lãi nếu ETH giảm và tiến gần đến thanh lý nếu ETH tăng ([bài hướng dẫn về hệ số sức khỏe an toàn](/vi/blog/he-so-suc-khoe-an-toan-tren-aave) cho thấy nó có thể tăng bao xa). Vay một stablecoin đô la hoặc euro dựa trên bitcoin là trường hợp ngược lại, một vị thế bán khống (short) loại tiền tệ đó so với tài sản thế chấp, điều mà một số người theo bitcoin gọi là short tiền pháp định (shorting fiat). [Short tiền pháp định bằng khoản vay Aave](/vi/blog/short-tien-phap-dinh-bang-khoan-vay-aave) phân tích nó bằng các con số.
+
+## Khoản vay thế chấp bằng tiền mã hóa có những rủi ro gì?
+
+- **Thanh lý.** Dưới hệ số sức khỏe 1, một phần hoặc toàn bộ khoản nợ có thể được trả bằng tài sản thế chấp của bạn, và bạn mất thêm khoản thưởng: 5% đến 7,5% với các tài sản trong bảng đầu tiên. Việc thanh lý do các bot cạnh tranh nhau thực hiện, nên có thể diễn ra rất nhanh (trung tâm trợ giúp Aave).
+- **Biến động của tài sản thế chấp.** Bitcoin đạt đỉnh khoảng 69.000 $ vào tháng 11 năm 2021 và còn khoảng 17.000 $ vào giữa tháng 6 năm 2022, tức giảm khoảng 75%, rồi xuống dưới 16.000 $ sau khi FTX sụp đổ vào tháng 11 năm 2022 (blog của ECB). Với ngưỡng thanh lý 78% của WBTC, ngay cả một khoản vay bằng 20% giá trị tài sản thế chấp lấy ở đỉnh năm 2021 cũng đã bị thanh lý trước giữa tháng 6 năm 2022.
+- **Lãi suất thả nổi.** Lãi suất không cố định trong bất kỳ khoảng thời gian nào, và lãi làm giảm hệ số sức khỏe của bạn theo thời gian ngay cả khi giá đứng yên.
+- **Stablecoin mất neo (depeg).** USDC rơi xuống khoảng 0,88 $ ngày 11 tháng 3 năm 2023, sau khi Circle cho biết 3,3 tỷ $ dự trữ của họ nằm ở Silicon Valley Bank, và trở lại trên 0,99 $ vào ngày 13 tháng 3 (bài đăng của Gauntlet trên diễn đàn Aave; Circle). TerraUSD, một stablecoin thuật toán, mất neo vào tháng 5 năm 2022 và rơi gần về 0, theo SEC Hoa Kỳ đã xóa sổ 40 tỷ $ giá trị thị trường. Nếu stablecoin bạn nợ giảm giá, khoản nợ của bạn rẻ đi. Nếu stablecoin bạn dùng làm tài sản thế chấp giảm giá, hệ số sức khỏe của bạn giảm.
+- **Bitcoin dạng bọc.** Bitcoin trên Aave là một token được bảo chứng bằng bitcoin do người khác nắm giữ hoặc một cầu nối kiểm soát. Ví dụ, WBTC nói rằng mỗi token được bảo chứng bằng bitcoin được lưu ký. Nếu sự bảo chứng đó thất bại, token có thể mất giá bất kể bản thân bitcoin diễn biến thế nào.
+- **Hợp đồng thông minh, oracle và quản trị.** Một lỗi phần mềm, một mức giá sai hoặc một thay đổi tham số có thể tác động đến vị thế mà không cần thị trường biến động. Vào tháng 3 năm 2026, một oracle tỷ giá bị lệch trên các thị trường Ethereum Core và Prime của Aave đã làm tỷ giá wstETH thực tế giảm khoảng 2,85% và kích hoạt việc thanh lý khoảng 10.938 wstETH trên 34 tài khoản, theo báo cáo sau sự cố của Chaos Labs ([thêm về lỗi oracle](/vi/blog/vi-sao-he-so-suc-khoe-aave-giam#nguyen-nhan-6-loi-oracle-hoac-ty-gia-co-dinh-gia-sai-tai-san-the-chap-cua-ban-khong)). Quản trị cũng có thể hạ ngưỡng thanh lý cho mọi vị thế đang mở ([thêm về việc hạ ngưỡng](/vi/blog/vi-sao-he-so-suc-khoe-aave-giam#nguyen-nhan-4-quan-tri-hoac-risk-stewards-co-ha-nguong-thanh-ly-khong)).
+- **Tự mình làm mọi thứ.** Bạn giữ khóa, bạn gửi giao dịch, và khi thị trường biến động nhanh, một giao dịch trả nợ có thể mất nhiều thời gian để được xác nhận hơn bạn nghĩ.
+
+## Làm sao theo dõi một khoản vay?
+
+Các giao diện của chính Aave hiển thị hệ số sức khỏe khi bạn đang mở chúng nhưng không nhắn tin cho bạn khi nó giảm, như [bài hướng dẫn về cảnh báo hệ số sức khỏe](/vi/blog/cai-dat-canh-bao-he-so-suc-khoe-aave#aave-co-gui-canh-bao-he-so-suc-khoe-khong) giải thích. Một cách để theo dõi là chọn mức hệ số sức khỏe mà tại đó bạn sẽ hành động, bằng cách trả một phần khoản nợ hoặc thêm tài sản thế chấp, và dùng một công cụ riêng để báo cho bạn khi vị thế chạm mức đó. Tokenping kiểm tra 5 phút một lần và nhắn tin cho bạn khi hệ số sức khỏe thấp hơn ngưỡng bạn đặt. [Bài hướng dẫn cài đặt](/vi/blog/cai-dat-canh-bao-he-so-suc-khoe-aave) trình bày từng bước. Một cảnh báo cho bạn thời gian để hành động, không phải sự bảo vệ, và [cách tránh bị thanh lý trên Aave](/vi/blog/cach-tranh-bi-thanh-ly-tren-aave) trình bày việc cần làm với khoảng thời gian đó.
+
+## Nguồn
+
+- [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) của Aave V3 Ethereum Core và [PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b) trên Arbitrum: LTV, ngưỡng thanh lý, thưởng thanh lý và lãi suất vay thả nổi đọc on-chain tại khối Ethereum 26225342 và khối Arbitrum 516228495 (dữ liệu RPC truy cập ngày 19 tháng 10 năm 2026)
+- [AaveOracle của Aave V3 Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): giá WBTC 82.680,33 $ tại khối Ethereum 26225364 (dữ liệu RPC truy cập ngày 19 tháng 10 năm 2026)
+- [Aave Help: Borrow Tokens](https://aave.com/help/borrowing/borrow-tokens) (truy cập ngày 19 tháng 10 năm 2026)
+- [Aave Help: Repay Tokens](https://aave.com/help/borrowing/repay-tokens) (truy cập ngày 19 tháng 10 năm 2026)
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (truy cập ngày 19 tháng 10 năm 2026)
+- [Tài liệu tham chiếu hợp đồng thông minh Pool của Aave V3](https://aave.com/docs/aave-v3/smart-contracts/pool): tham số vay và trả nợ, chỉ có lãi suất thả nổi, lãi suất ổn định ngừng dùng từ v3.2 (truy cập ngày 19 tháng 10 năm 2026)
+- [Tài liệu Aave: tính năng hoán đổi](https://aave.com/docs/aave-v3/smart-contracts/swap-features): trả nợ bằng tài sản thế chấp và hoán đổi nợ (truy cập ngày 19 tháng 10 năm 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) và [PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol), aave-v3-origin: rút tiền khi đang vay, tạm dừng và ai có thể đặt tạm dừng (truy cập ngày 19 tháng 10 năm 2026)
+- [Thông cáo báo chí 8749-23 của CFTC về Celsius Network](https://www.cftc.gov/PressRoom/PressReleases/8749-23), ngày 13 tháng 7 năm 2023: khoảng 20 tỷ $ tiền gửi, đóng băng rút tiền ngày 12 tháng 6 năm 2022, nộp đơn phá sản ngày 13 tháng 7 năm 2022 (truy cập ngày 19 tháng 10 năm 2026)
+- [Tòa án Phá sản Hoa Kỳ, Quận Nam New York: phán quyết về quyền sở hữu tài sản trong tài khoản Earn của Celsius](https://www.nysb.uscourts.gov/sites/default/files/opinions/312902_1822_opinion.pdf), ngày 4 tháng 1 năm 2023 (truy cập ngày 19 tháng 10 năm 2026)
+- [Voyager Digital: cập nhật thị trường](https://www.newswire.ca/news-releases/voyager-digital-provides-market-update-851734302.html), ngày 1 tháng 7 năm 2022, và [Voyager Digital: thông báo Chapter 11](https://www.newswire.ca/news-releases/voyager-digital-commences-financial-restructuring-process-to-maximize-value-for-all-stakeholders-888320107.html), ngày 5 tháng 7 năm 2022 (cả hai truy cập ngày 19 tháng 10 năm 2026)
+- [Thông cáo báo chí 2023-7 của SEC về Genesis và chương trình Gemini Earn](https://www.sec.gov/news/press-release/2023-7), ngày 12 tháng 1 năm 2023 (truy cập ngày 19 tháng 10 năm 2026)
+- [Thông cáo báo chí 2024-37 của SEC về Genesis](https://www.sec.gov/newsroom/press-releases/2024-37), ngày 19 tháng 3 năm 2024: đơn Chapter 11 nộp ngày 19 tháng 1 năm 2023 (truy cập ngày 19 tháng 10 năm 2026)
+- [CoinDesk: BlockFi files for bankruptcy as FTX contagion spreads](https://www.coindesk.com/policy/2022/11/28/ftx-fallout-continues-as-crypto-lender-blockfi-declares-bankruptcy), ngày 28 tháng 11 năm 2022 (truy cập ngày 19 tháng 10 năm 2026)
+- [The ECB Blog: Bitcoin's last stand](https://www.ecb.europa.eu/press/blog/date/2022/html/ecb.blog221130~5301eecd19.en.html), ngày 30 tháng 11 năm 2022: mức giảm từ khoảng 69.000 $ xuống khoảng 17.000 $ và dưới 16.000 $ (truy cập ngày 19 tháng 10 năm 2026)
+- [Gauntlet: Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), diễn đàn quản trị Aave, ngày 17 tháng 3 năm 2023 (truy cập ngày 19 tháng 10 năm 2026)
+- [Circle: $3.3 Billion of USDC Reserve Risk Removed, Dollar De-peg Closes](https://www.circle.com/pressroom/3-3-billion-of-usdc-reserve-risk-removed-dollar-de-peg-closes), ngày 12 tháng 3 năm 2023 (truy cập ngày 19 tháng 10 năm 2026)
+- [Thông cáo báo chí 2024-73 của SEC về Terraform](https://www.sec.gov/newsroom/press-releases/2024-73), ngày 13 tháng 6 năm 2024: UST mất neo vào tháng 5 năm 2022 (truy cập ngày 19 tháng 10 năm 2026)
+- [WBTC](https://wbtc.network/): cách WBTC được bảo chứng (truy cập ngày 19 tháng 10 năm 2026)
+- [Chaos Labs: Post-Mortem, Exchange Rate Misalignment on wstETH Core and Prime Instances](https://governance.aave.com/t/24269), diễn đàn quản trị Aave, ngày 10 tháng 3 năm 2026 (truy cập ngày 19 tháng 10 năm 2026)
+- [HMRC Cryptoassets Manual, CRYPTO61640: DeFi lending and staking, collateral](https://www.gov.uk/hmrc-internal-manuals/cryptoassets-manual/crypto61640), cập nhật ngày 28 tháng 11 năm 2025 (truy cập ngày 19 tháng 10 năm 2026)
+
+_Nội dung mang tính giáo dục, không phải lời khuyên tài chính. Cảnh báo giúp giảm rủi ro, nhưng không ngăn được việc thanh lý._

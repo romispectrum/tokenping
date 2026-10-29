@@ -24,6 +24,12 @@ export const ES_POST_SLUGS = slugsIn(path.join(BLOG_DIR, "es"));
 /** Every Hindi post file's slug, read from content/blog/hi. */
 export const HI_POST_SLUGS = slugsIn(path.join(BLOG_DIR, "hi"));
 
+/** Every German post file's slug, read from content/blog/de. */
+export const DE_POST_SLUGS = slugsIn(path.join(BLOG_DIR, "de"));
+
+/** Every Vietnamese post file's slug, read from content/blog/vi. */
+export const VI_POST_SLUGS = slugsIn(path.join(BLOG_DIR, "vi"));
+
 const mockStubs = (modulePrefix: string, slugs: readonly string[], stubSlugs: readonly string[]) => {
   for (const slug of slugs) {
     vi.doMock(`${modulePrefix}${slug}.mdx`, async importOriginal => {
@@ -39,8 +45,8 @@ const mockStubs = (modulePrefix: string, slugs: readonly string[], stubSlugs: re
 /**
  * Sets each post's `stub` flag, so tests of what is published do not depend on which articles the writers and
  * translators have finished: the given slugs become placeholders and every other post is published. English posts
- * are always set; Czech, Spanish and Hindi posts only when `csStubSlugs`, `esStubSlugs` or `hiStubSlugs` is given
- * (slugs in that language;
+ * are always set; each translation only when its language's list is given (`csStubSlugs`, `esStubSlugs`, `hiStubSlugs`,
+ * `deStubSlugs`, `viStubSlugs`; slugs in that language;
  * [] publishes every translation, even a placeholder file, which then renders its placeholder text). Call it after
  * vi.resetModules() and before importing ~~/content/blog or a module that uses it. Import those one after another:
  * concurrent dynamic imports of the re-mocked posts can get the previous test's modules.
@@ -50,9 +56,13 @@ export const mockPostStubs = (
   csStubSlugs?: readonly string[],
   esStubSlugs?: readonly string[],
   hiStubSlugs?: readonly string[],
+  deStubSlugs?: readonly string[],
+  viStubSlugs?: readonly string[],
 ) => {
   mockStubs("~~/content/blog/", POST_SLUGS, stubSlugs);
   if (csStubSlugs) mockStubs("~~/content/blog/cs/", CS_POST_SLUGS, csStubSlugs);
   if (esStubSlugs) mockStubs("~~/content/blog/es/", ES_POST_SLUGS, esStubSlugs);
   if (hiStubSlugs) mockStubs("~~/content/blog/hi/", HI_POST_SLUGS, hiStubSlugs);
+  if (deStubSlugs) mockStubs("~~/content/blog/de/", DE_POST_SLUGS, deStubSlugs);
+  if (viStubSlugs) mockStubs("~~/content/blog/vi/", VI_POST_SLUGS, viStubSlugs);
 };

@@ -1,0 +1,157 @@
+export const meta = {
+  slug: "warum-ist-mein-aave-health-factor-gesunken",
+  title: "Warum ist mein Aave Health Factor gesunken? 6 Ursachen",
+  description:
+    "Dein Aave Health Factor kann fallen, ohne dass du etwas tust: Preise, Zinsen, gesenkte Schwellen, Depegs und Orakelfehler, erklärt.",
+  h1: "Warum ist mein Aave Health Factor gesunken, obwohl ich nichts getan habe?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-25",
+  primaryQuestion: "Warum sinkt mein Aave Health Factor von selbst?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Aave berechnet deinen Health Factor (Gesundheitsfaktor) bei jedem Abruf neu, aus den Orakelpreisen, deinen aktuellen
+  Guthaben und den aktuellen Liquidationsschwellen. Er bewegt sich also auch dann, wenn du keine Transaktion sendest.
+  Auf Aave V3 fällt er, wenn der Preis deiner Sicherheiten sinkt, das geliehene Asset steigt, die Zinsen auf deine
+  Schulden schneller wachsen als die Erträge deiner Sicherheiten, die Governance eine Liquidationsschwelle senkt, ein
+  als Sicherheit eingezahlter Stablecoin unter 1 $ rutscht oder ein Orakel falsch konfiguriert ist. Unter 1,00 kann die
+  Position liquidiert werden.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Die Zahlen und die Blöcke, an denen sie gelesen wurden: content/blog/snapshots/why-aave-health-factor-dropped.md */}
+
+## Warum ändert sich der Aave Health Factor von selbst?
+
+Der Aave Health Factor ändert sich von selbst, weil er nicht gespeichert wird: Das Protokoll berechnet ihn bei jedem Abruf neu, aus den aktuellen Orakelpreisen, den Guthaben (einschließlich aufgelaufener Zinsen) und den Risikoparametern:
+
+**HF = Σ(Wert der Sicherheiten × Liquidationsschwelle) ÷ Gesamtwert der Schulden**
+
+Beide Seiten werden in USD zum Preis des Aave-Orakels (oracle) bewertet, und unter 1,00 kann die Position liquidiert werden. Die Formel erklärt [was der Aave Health Factor ist](/de/blog/aave-health-factor-erklaert). Auf Aave V3 senken ihn sechs Dinge, ohne dass du etwas tust. Die Beispiele verwenden Parameter von Ethereum Core, gelesen am 14. Oktober 2026, und einen beispielhaften ETH-Preis von 2.400 $.
+
+| Ursache                           | Senkt deinen Health Factor, wenn                                              | Wie schnell              | Beispiel                                                    |
+| --------------------------------- | ----------------------------------------------------------------------------- | ------------------------ | ----------------------------------------------------------- |
+| 1. Preis der Sicherheiten fällt   | Ein Asset, das du als Sicherheit eingezahlt hast, im Preis fällt              | So schnell wie der Markt | 10 WETH gegen 12.000 USDC, ETH 10 % tiefer: 1,66 auf 1,49   |
+| 2. Geliehenes Asset steigt        | Du ein volatiles Asset geliehen hast und es steigt                            | So schnell wie der Markt | 10.000 USDC gegen 2,5 WETH, ETH 10 % höher: 1,30 auf 1,18   |
+| 3. Zinsen                         | Der Kreditzins deiner Schulden über dem Einlagezins deiner Sicherheiten liegt | Langsam und stetig       | 10 WETH gegen 12.000 USDC: etwa 1,66 auf 1,61 in einem Jahr |
+| 4. Gesenkte Liquidationsschwelle  | Governance oder Risk Stewards die Schwelle deiner Sicherheit senken           | Auf einen Schlag         | Hypothetisch WETH von 83 % auf 82 % gesenkt: 1,66 auf 1,64  |
+| 5. Stablecoin-Depeg               | Ein Stablecoin, den du als Sicherheit eingezahlt hast, unter 1 $ fällt        | So schnell wie der Markt | 10.000 USDC gegen 2,5 WETH, USDC bei 0,88 $: 1,30 auf 1,14  |
+| 6. Orakel- oder Wechselkursfehler | Das Orakel deine Sicherheiten zu niedrig oder deine Schulden zu hoch bewertet | Auf einen Schlag         | März 2026: wstETH etwa 2,85 % zu niedrig bewertet           |
+
+In einem Thread des Aave-Governance-Forums vom Februar 2025 stellte ein Kreditnehmer, dessen Position mit einem Health Factor von 1,71 begonnen hatte, eine Teilliquidation fest, legte Sicherheiten nach, als der Health Factor 1,01 erreichte, und fand am Morgen eine zweite Liquidation vor, überzeugt, dass ETH nicht weit genug gefallen war, um eine der beiden zu erklären. Niemand im Thread fand die Ursache; die sechs Ursachen unten sind der Ort, an dem du mit der Suche anfangen kannst.
+
+Aave V4, seit dem 30. März 2026 auf Ethereum live und seitdem auch auf Avalanche, Arc und Base, berechnet einen Health Factor pro Spoke, mit einem Collateral Factor pro Asset. Preise und Zinsen bewegen ihn genauso, aber Parameteränderungen erreichen bestehende Positionen auf andere Weise (siehe [wie V4 Parameteränderungen anwendet, unter Ursache 4](#ursache-4-haben-governance-oder-risk-stewards-eine-liquidationsschwelle-gesenkt)).
+
+## Ursache 1: Ist der Preis deiner Sicherheiten gefallen?
+
+Fällt der Preis eines Assets, das du als Sicherheit eingezahlt hast, sinkt dein Aave Health Factor, weil Sicherheiten zum Orakelpreis bewertet werden. Mit einem einzigen volatilen Asset als Sicherheit und Schulden in Stablecoins bewegt sich der Health Factor proportional zum Preis: Ein Rückgang um 10 % senkt ihn um 10 %.
+
+Nimm 10 WETH, eingezahlt gegen 12.000 geliehene USDC auf Aave V3 Ethereum Core, wo die Liquidationsschwelle (liquidation threshold) von WETH in Block 26193284 (14. Oktober 2026) bei 83 % lag. Bei beispielhaften 2.400 $ pro ETH (das Aave-Orakel zeigte an diesem Tag in Block 26193376 2.414,78 $) ist der Health Factor 24.000 × 0,83 ÷ 12.000 = 1,66. Bei 2.160 $ ist er 1,49, bei 1.920 $ 1,33, und bei 1.445,78 $, einem Rückgang um 39,8 %, erreicht er 1,00.
+
+Bei mehreren Sicherheiten bewegt sich nur der gewichtete Anteil des fallenden Assets. Maßgeblich ist der Preis des Aave-Orakels (auf Ethereum Core nutzt WETH einen Feed namens „ETH / USD“). Wie weit die Preise bei jedem Health Factor fallen können, steht in [wie viel Puffer dir ein Health Factor gibt](/de/blog/sicherer-health-factor-aave).
+
+## Ursache 2: Ist der Preis des geliehenen Assets gestiegen?
+
+Wenn du ein volatiles Asset geliehen hast, senkt ein Anstieg seines Preises deinen Aave Health Factor, weil auch Schulden zum Orakelpreis bewertet werden.
+
+Nimm 10.000 USDC, eingezahlt gegen 2,5 geliehene WETH auf Aave V3 Ethereum Core, wo die Liquidationsschwelle von USDC in Block 26193284 (14. Oktober 2026) bei 78 % lag. Bei beispielhaften 2.400 $ sind die Schulden 6.000 $ wert, und der Health Factor ist 10.000 × 0,78 ÷ 6.000 = 1,30. Steigt ETH um 10 % auf 2.640 $, fällt er auf 7.800 ÷ 6.600 = 1,18. Bei 3.120 $, also 30 % höher, erreicht er 1,00.
+
+Korrelierte Paare wie wstETH als Sicherheit mit WETH-Schulden verringern diesen Effekt, weil sich beide Seiten mit ETH bewegen. Der Health Factor hängt dann vor allem vom Kurs von wstETH zu ETH ab, den das Orakel meldet, und tauscht so Marktrisiko gegen Orakelrisiko (siehe [Orakel- und Wechselkursfehler, Ursache 6](#ursache-6-hat-ein-orakel-oder-wechselkursfehler-deine-sicherheiten-falsch-bewertet)).
+
+## Ursache 3: Sind die Zinsen auf deine Schulden schneller gewachsen als auf deine Sicherheiten?
+
+Zinsen senken deinen Aave Health Factor, wenn deine Schulden schneller wachsen als deine Sicherheiten. Variable Schulden wachsen jede Sekunde mit dem Kreditzins, während Sicherheiten den meist niedrigeren Einlagezins verdienen. Mit einem Asset als Sicherheit, einem Asset als Schulden und stabilen Preisen sinkt der Health Factor langsam, wenn der Kreditzins der Schulden über dem Einlagezins der Sicherheiten liegt, und steigt, wenn er darunter liegt.
+
+Auf Aave V3 Ethereum Core zahlte USDC in Block 26193378 (14. Oktober 2026) Einzahlern 3,800 % und kostete Kreditnehmer 4,496 % im Jahr; WETH zahlte 1,309 % und kostete 1,943 %. Das sind APRs; die Aave-App zeigt etwas höhere APYs (4,60 % für diesen USDC-Kreditzins). Nimm 10 WETH eingezahlt (Schwelle 83 %) gegen 12.000 geliehene USDC, mit ETH unverändert bei beispielhaften 2.400 $ und gleichbleibenden Zinssätzen über ein Jahr. Die Schulden wachsen auf etwa 12.550 USDC, die Sicherheiten auf etwa 10,13 WETH, und der Health Factor rutscht von 1,66 auf etwa 1,61. Die Zinssätze sind variabel, lies das also als Größenordnung, nicht als Prognose.
+
+Zinssätze können auch springen. Später am 14. Oktober 2026 sprang der USDC-Kreditzins auf Ethereum Core in einem einzigen Block (26194053, 23:32:59 UTC) auf 13,67 % APR, als etwa 134 Mio. $ eingezahlter USDC die Reserve verließen, erreichte innerhalb von sieben Minuten 14,18 % und fiel etwa 36 Minuten nach dem Sprung wieder auf 4,76 % (Block 26194231, 00:08 UTC am 15. Oktober), als das Geld zurückkam. Warum eine einzige Abhebung einen Zinssatz verdreifachen kann, steht in [wie die Zinssätze bei Aave funktionieren](/de/blog/aave-zinssaetze).
+
+Die umgekehrte Position gewinnt: 10.000 USDC eingezahlt gegen 2,5 geliehene WETH verdienen 3,800 % und zahlen 1,943 %, also steigt ihr Health Factor in einem Jahr langsam von 1,30 auf etwa 1,32. Auf Aave V4 kommt für riskantere Sicherheiten eine User Risk Premium zum Kreditzins hinzu, sodass diese Schulden schneller wachsen.
+
+## Ursache 4: Haben Governance oder Risk Stewards eine Liquidationsschwelle gesenkt?
+
+Auf Aave V3 senkt eine niedrigere Liquidationsschwelle eines Assets sofort den Health Factor jeder offenen Position, die dieses Asset mit seiner normalen Schwelle zählt. Positionen, deren E-Mode-Kategorie das Asset enthält, verwenden stattdessen die Schwelle der Kategorie, und Governance oder Risk Stewards können diese auf dieselbe Weise senken. Deine Guthaben bleiben gleich; nur der Anteil der Sicherheiten, der zählt, schrumpft.
+
+Die Governance ändert Schwellen per On-Chain-Abstimmung, meist nach einem Beitrag im Aave-Governance-Forum. Die Risk Stewards, Verträge, mit denen Aaves Risikodienstleister Parameter ohne vollständige Abstimmung anpassen können, dürfen eine Schwelle ebenfalls bewegen, innerhalb festgelegter Grenzen pro Update, aber nie auf 0. Senkungen dienen auch dazu, Assets auslaufen zu lassen: Ein Vorschlag von LlamaRisk vom 29. Juli 2026 sagt, dass Schwellen schrittweise gesenkt werden können, um verbleibende Sicherheiten zu entfernen, und die fünf Märkte, die Aave gerade abwickelt, behandelt [was passiert, wenn Aave einen Markt abwickelt](/de/blog/aave-markt-abwicklung).
+
+Ein hypothetisches Beispiel, keine anstehende Änderung: 10 WETH bei beispielhaften 2.400 $ gegen 12.000 USDC auf Ethereum Core (WETH-Schwelle 83 % am 14. Oktober 2026) haben einen Health Factor von 1,66. Bei 82 % wären es 1,64, bei 80 % 1,60. Zum Prüfen vergleichst du die „Liquidation threshold“ auf der Seite des Assets in der Aave-App mit den jüngsten Schwellenänderungen im Aave-Governance-Forum.
+
+Aave V4 funktioniert anders. Eine Änderung des Collateral Factor erzeugt eine neue Konfiguration, und bestehende Positionen behalten die alte, bis der Nutzer leiht, abhebt oder seine Sicherheiten-Einstellungen ändert, es sei denn, der Governor erzwingt eine Aktualisierung.
+
+## Ursache 5: Hat ein als Sicherheit eingezahlter Stablecoin seine Dollarbindung nach unten verloren?
+
+Ein Stablecoin, den du als Sicherheit eingezahlt hast, senkt deinen Aave Health Factor, wenn sein Preis unter 1 $ fällt, weil Aave den Orakelpreis verwendet und nicht pauschal 1 $. Auf Aave V3 Ethereum Core wird USDC über einen Adapter namens „Capped USDC / USD“ mit einer Obergrenze von 1,04 $ bepreist (`getPriceCap` lieferte 104000000, 8 Dezimalstellen, in den Blöcken 26193376 und 26193993 am 14. Oktober 2026). Liegt der Marktpreis über der Obergrenze, meldet der Adapter 1,04 $; jeder niedrigere Preis, auch alles unter 1 $, wird direkt durchgereicht.
+
+Nimm 10.000 USDC eingezahlt (Schwelle 78 %) gegen 2,5 geliehene WETH bei beispielhaften 2.400 $, also 6.000 $ Schulden: ein Health Factor von 1,30. Bei USDC zu 0,88 $ fällt er auf 8.800 × 0,78 ÷ 6.000 = 1,14, und bei etwa 0,77 $, mit unverändertem ETH, erreicht er 1,00.
+
+Der Wert von 0,88 $ ist historisch. Am 11. März 2023 fiel USDC nach den Nachrichten über die Silicon Valley Bank auf rund 88 Cent, ein Depeg (Verlust der Dollarbindung). Gauntlets Post-Mortem verzeichnet etwa 280.000 $ uneinbringliche Schulden (bad debt) im E-Mode von Aave V3 Avalanche und etwa 20.000 $ auf V3 Arbitrum; Stablecoins auf Avalanche wurden eingefroren, aber das Protokoll wurde nicht pausiert, also liefen die Liquidationen weiter.
+
+Die Kehrseite: Ist der Stablecoin deine Schuld, senkt ein Depeg nach unten, was du schuldest, und hebt deinen Health Factor. 10 WETH bei 2.400 $ (Schwelle 83 %) gegen 12.000 USDC gehen bei USDC zu 0,88 $ von 1,66 auf etwa 1,89. Ein Anstieg über 1 $ senkt ihn, aber nur auf etwa 1,60, solange die Obergrenze bei 1,04 $ bleibt, weil das Orakel diese Schulden nie höher als 12.480 $ bewertet.
+
+## Ursache 6: Hat ein Orakel- oder Wechselkursfehler deine Sicherheiten falsch bewertet?
+
+Eine Fehlkonfiguration eines Orakels oder eines Wechselkurses kann deinen Aave Health Factor auf einen Schlag senken, ohne jede Marktbewegung, indem sie deine Sicherheiten zu niedrig oder deine Schulden zu hoch bewertet. Eng gehebelte E-Mode-Positionen sind am stärksten betroffen.
+
+Der dokumentierte Fall stammt aus dem März 2026. Aave bepreist wstETH mit CAPO (Correlated Assets Price Oracle), das begrenzt, wie schnell der Kurs von wstETH zu stETH steigen darf. Das Post-Mortem von Chaos Labs vom 10. März 2026 sagt, dass Snapshot-Verhältnis und Zeitstempel der Obergrenze nicht mehr zusammenpassten, wodurch der effektive wstETH-Kurs auf Ethereum Core und Prime um etwa 2,85 % sank. Rund 10.938 wstETH wurden im E-Mode über 34 Konten liquidiert, mit Health Factors unter etwa 1,0288, ohne uneinbringliche Schulden für das Protokoll. Die DAO genehmigte eine am 11. März vorgeschlagene Erstattung, und am 26. März 2026 entnahm das Aave Finance Committee 513,19 WETH aus der Aave-Treasury, um sie zu bezahlen (Ethereum-Block 24741060); einzelne Auszahlungen wurden für diesen Ratgeber nicht geprüft.
+
+Zur Einordnung: Der ETH-korrelierte E-Mode von Ethereum Core hatte am 14. Oktober 2026 eine Beleihungsquote (LTV) von 93 % und eine Schwelle von 95 %. Eine bis zu dieser Grenze beliehene Position startet bei 95 ÷ 93 ≈ 1,02, mitten in dem Bereich, den dieser Fehler liquidiert hat. Nichts in deiner eigenen Position warnt dich vor einem Orakelfehler; der Abstand zu 1,00 ist der einzige Puffer, den du selbst steuerst.
+
+## Welche Änderungen senken deinen Health Factor nicht?
+
+Auf Aave V3 ändern eine gesenkte LTV (auch LTV 0), eine eingefrorene Reserve, eine pausierte Reserve und das Umstellen einer E-Mode-Kategorie auf isoliert deinen Health Factor nicht, weil keine davon Preise, Guthaben oder Liquidationsschwellen ändert. Sie blockieren stattdessen das Leihen oder andere Aktionen.
+
+| Änderung auf Aave V3                            | Was sie blockiert                                                      | Ändert sie deinen Health Factor?                                   | Kannst du trotzdem liquidiert werden?                                                                                                                                    |
+| ----------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Gesenkte LTV, auch LTV 0                        | Neue Kredite gegen dieses Asset                                        | Nein: Der Health Factor verwendet die Schwelle, nicht die LTV      | Ja, unter 1,00                                                                                                                                                           |
+| Reserve eingefroren                             | Neue Einzahlungen und neue Kredite in diesem Asset                     | Nein                                                               | Ja, eingefrorene Reserven bleiben liquidierbar                                                                                                                           |
+| E-Mode-Kategorie auf isoliert umgestellt (V3.7) | Kredite gegen Sicherheiten außerhalb der Kategorie                     | Nein: Diese Sicherheiten bekommen LTV 0 und behalten ihre Schwelle | Ja, unter 1,00                                                                                                                                                           |
+| Reserve pausiert                                | Einzahlen, Abheben, Leihen, Zurückzahlen und Liquidieren dieses Assets | Nein                                                               | Nicht mit diesem Asset, ob als Sicherheit oder Schulden, solange es pausiert ist; andere Assets schon. Nach dem Ende der Pause können bis zu 4 Stunden Schonfrist folgen |
+
+Ein echter Fall der ersten Zeile: Nach dem Exploit der Kelp/LayerZero-rsETH-Bridge am 18. April 2026 wurde die LTV von WETH auf mehreren Aave-V3-Instanzen auf 0 gesetzt, während die Schwelle auf Ethereum Core bei 83 % blieb, laut dem Vorschlag von LlamaRisk vom 9. Mai 2026, sie wiederherzustellen. Die Health Factors haben sich deswegen nicht bewegt.
+
+## Wie findest du heraus, was mit deiner Position passiert ist?
+
+Um herauszufinden, was mit einer Aave-Position passiert ist, prüfst du zuerst, ob sie liquidiert wurde, und dann, welche Eingangsgröße sich bewegt hat: Preise, Zinsen, Schwellen oder das Orakel. Diese Schritte nutzen das Interface von Aave Labs unter app.aave.com und öffentliche Governance-Unterlagen.
+
+1. **Nach Liquidationen suchen.** Öffne Transaction history (app.aave.com/history) mit verbundener Wallet und dem richtigen Markt und filtere nach Liquidation. Die Einträge dahinter enthalten Zeitpunkt, Transaktionshash, entnommene Sicherheiten und zurückgezahlte Schulden; Entwickler können sie mit `userTransactionHistory` in Aaves API abfragen.
+2. **Preise vergleichen** von Sicherheiten und geliehenen Assets mit deiner letzten Kontrolle (Ursachen 1, 2 und 5).
+3. **Deine Schulden in Token-Einheiten mit dem geliehenen Betrag vergleichen.** Wenn du nichts zurückgezahlt hast und nicht liquidiert wurdest, ist die Differenz aufgelaufener Zins (Ursache 3).
+4. **Die Liquidationsschwelle prüfen** auf der Seite jedes Assets in der Aave-App, und im Governance-Forum nach jedem Asset suchen, dessen Schwelle niedriger wirkt (Ursache 4).
+5. **Nach Post-Mortems suchen** im Governance-Forum, wie dem zu wstETH vom März 2026 (Ursache 6).
+
+Wenn du liquidiert wurdest, erklärt [was bei einer Aave-Liquidation passiert](/de/blog/so-funktioniert-die-liquidation-bei-aave), wie viel auf einmal genommen werden kann und was es kostet.
+
+## Kann dich ein Health-Factor-Alert vor der Liquidation warnen?
+
+Ein Alert kann dich früh genug vor einem langsamen Fall deines Aave Health Factor warnen, aber nicht vor einem Sprung, der zwischen zwei Prüfungen unter 1,00 geht. Zinsen, langsame Preisrückgänge und gestaffelte Schwellensenkungen spielen sich über Stunden bis Monate ab, also hat ein Alert, der deutlich über 1,00 eingestellt ist, viele Gelegenheiten auszulösen. Ein Crash, eine Schwellensenkung bei einer Position, die schon nahe an der Grenze ist, oder ein Orakelfehler wie der zu wstETH im März 2026 können 1,00 unterschreiten, bevor eine planmäßige Prüfung reagiert.
+
+Tokenping ist für die langsame Art gebaut. Es prüft deinen Health Factor auf Aave V3 und V4 alle 5 Minuten in 22 Netzwerken und schreibt dir über Signal, Telegram oder E-Mail, solange er unter dem Schwellenwert liegt, den du festlegst (1,1 bis 10). Die Nachricht wiederholt sich bei jeder Prüfung, bis sich der Health Factor erholt oder du den Schwellenwert unter ihn senkst oder den Alert löschst (beides braucht aktiven bezahlten Zugang), ohne Nachricht bei Erholung. Auf Aave V3 deckt es jeden Markt ab, die vier von Ethereum eingeschlossen; auf Aave V4 jeden Spoke; jeder Markt hat seinen eigenen Alert.
+
+Ein Alert braucht auch Zeit, um darauf zu reagieren. In einem Thread des Polygon-Forums von 2021 stieß ein Kreditnehmer, der bei einem Health Factor von 1,01 zurückzahlen wollte, immer wieder auf Fehler und wurde liquidiert, bevor die Rückzahlung durchging. Eine Möglichkeit ist ein Schwellenwert, bei dem du noch in Ruhe handeln könntest; [wie viel Puffer dir ein Health Factor gibt](/de/blog/sicherer-health-factor-aave) hilft dir bei der Wahl. Die Einrichtung steht in [so richtest du einen Health-Factor-Alert ein](/de/blog/aave-health-factor-alert-einrichten), und [wie du deinen Aave Health Factor anhebst](/de/blog/aave-liquidation-vermeiden) erklärt, was du tun kannst, wenn er fällt. Du kannst auch zuerst [deinen Health Factor auf Aave V3 prüfen](/de/aave).
+
+## Quellen
+
+- [Aave V3 overview](https://aave.com/docs/aave-v3/overview.md): Der Health Factor bewegt sich mit Orakelpreisen und aufgelaufenen Zinsen (abgerufen am 14. Oktober 2026)
+- [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) und [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): Berechnung des Health Factor, Prüfungen für Pause und Einfrieren (aave-v3-origin, abgerufen am 14. Oktober 2026)
+- [Aave V3 Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): LTV, Schwellen und Zinssätze in den Blöcken 26193284, 26193378 und 26193993 (abgerufen am 14. Oktober 2026); USDC-Zinssätze in den Blöcken 26194052, 26194053, 26194230 und 26194231 (abgerufen am 15. Oktober 2026)
+- [Aave V3 Ethereum Core oracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2#readContract): WETH 2.414,78 $ in Block 26193376 (abgerufen am 14. Oktober 2026)
+- [Capped USDC / USD adapter](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract) und sein [Quellcode, PriceCapAdapterStable.sol](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol): Obergrenze 104000000 in den Blöcken 26193376 und 26193993 (abgerufen am 14. Oktober 2026)
+- [Aave-Dokumentation zum Orakel](https://aave.com/docs/ecosystem/oracle.md) (abgerufen am 14. Oktober 2026)
+- [Aave-Dokumentation zur Governance](https://aave.com/docs/ecosystem/governance.md) und [README der Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards) (abgerufen am 14. Oktober 2026)
+- [ARFC: Low Adoption Asset Deprecation on Aave V3](https://governance.aave.com/t/arfc-low-adoption-asset-deprecation-on-aave-v3/25401) (LlamaRisk, 29. Juli 2026, abgerufen am 14. Oktober 2026)
+- [Changelog der Aave-Dokumentation](https://aave.com/docs/resources/changelog.md): V4 auf Ethereum ab dem 30. März 2026, dann Avalanche, Arc und Base (abgerufen am 14. Oktober 2026)
+- [Aave-V4-Dokumentation](https://aave.com/docs/aave-v4.md), [V4 positions](https://aave.com/docs/aave-v4/positions.md) und [technischer Überblick zu V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md): Health Factor pro Spoke, User Risk Premium, dynamische Risikokonfiguration (abgerufen am 14. Oktober 2026)
+- [Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (Gauntlet, 17. März 2023, abgerufen am 14. Oktober 2026)
+- [Post-mortem: wstETH exchange-rate misalignment on Core and Prime](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269) (Chaos Labs, 10. März 2026, abgerufen am 14. Oktober 2026)
+- [wstETH CAPO Oracle Incident User Reimbursement](https://governance.aave.com/t/direct-to-aip-wsteth-capo-oracle-incident-user-reimbursement/24275) (TokenLogic, 11. März 2026, abgerufen am 14. Oktober 2026)
+- [Ausführung des Governance-Payloads 413](https://etherscan.io/tx/0xca0bcaa2b20b465afb332677a8425d8a10e050c4a31731feadc3a684ecb9b81e) und [Entnahme durch das Aave Finance Committee](https://etherscan.io/tx/0x7860a20437b36af635e8be248a929c437412915b91de7c45e947475c6bb02f24): Freigabe über 513,19 WETH aus dem Aave Ethereum Collector, dann in Block 24741060 entnommen (abgerufen am 15. Oktober 2026)
+- [WETH Unfreeze and LTV Restoration Across Aave V3 Instances](https://governance.aave.com/t/direct-to-aip-weth-unfreeze-and-ltv-restoration-across-aave-v3-instances/24878) (LlamaRisk, 9. Mai 2026, abgerufen am 14. Oktober 2026)
+- [Aave v3.7 isolated E-Mode](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md) und [v3.1 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): Isolated-Flag, Schonfrist nach dem Ende einer Pause (abgerufen am 14. Oktober 2026)
+- [Aave V3 user transaction history](https://aave.com/docs/aave-v3/markets/advanced.md) und [Verlaufsfilter im Aave-Interface](https://github.com/aave/interface/blob/main/src/modules/history/HistoryFilterMenu.tsx) (abgerufen am 14. Oktober 2026)
+- Reserve-Seite des Aave-Interface, Zinssätze als APY angezeigt: [SupplyInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/SupplyInfo.tsx) (abgerufen am 14. Oktober 2026) und [BorrowInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/BorrowInfo.tsx), „APY, variable“ (abgerufen am 15. Oktober 2026)
+- [Unexpected or poorly executed settlement by the system](https://governance.aave.com/t/unexpected-or-poorly-executed-settlement-by-the-system/21120) (Aave-Governance-Forum, 17. Februar 2025, abgerufen am 14. Oktober 2026)
+- [Liquidation on polygon AAVE - JSON ERROR](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067) (Polygon-Forum, 18. Mai 2021, abgerufen am 14. Oktober 2026)
+
+_Bildungsinhalt, keine Finanzberatung. Alerts senken das Risiko, verhindern aber keine Liquidation._

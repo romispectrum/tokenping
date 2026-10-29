@@ -36,7 +36,7 @@ beforeEach(() => {
   vi.resetModules();
   vi.stubEnv("NEXT_PUBLIC_TELEGRAM_BOT_USERNAME", "");
   // Every post published in every language, so the blog links do not depend on who has finished.
-  mockPostStubs([], [], []);
+  mockPostStubs([], [], [], [], [], []);
   mocks.getAlertPlan.mockReset().mockResolvedValue(PLAN);
 });
 
@@ -53,7 +53,15 @@ describe("metadata", () => {
     expect(title.length).toBeLessThanOrEqual(60);
     expect(String(metadata.description).length).toBeLessThanOrEqual(155);
     expect(metadata.alternates?.canonical).toBe("/es");
-    expect(metadata.alternates?.languages).toEqual({ en: "/", cs: "/cz", es: "/es", hi: "/hi", "x-default": "/" });
+    expect(metadata.alternates?.languages).toEqual({
+      en: "/",
+      cs: "/cz",
+      es: "/es",
+      hi: "/hi",
+      de: "/de",
+      vi: "/vi",
+      "x-default": "/",
+    });
     expect(metadata.openGraph).toMatchObject({ url: "/es", locale: "es_ES" });
     expect(String(metadata.openGraph?.title)).not.toMatch(/Tokenping/);
   });
@@ -129,6 +137,6 @@ describe("JSON-LD", () => {
       offers: { url: "https://tokenping.xyz/es/aave" },
     });
     expect(faq).toMatchObject({ "@type": "FAQPage", inLanguage: "es" });
-    expect(site["@graph"][1]).toMatchObject({ "@type": "WebSite", inLanguage: ["en", "cs", "es", "hi"] });
+    expect(site["@graph"][1]).toMatchObject({ "@type": "WebSite", inLanguage: ["en", "cs", "es", "hi", "de", "vi"] });
   });
 });

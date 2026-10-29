@@ -1,0 +1,153 @@
+export const meta = {
+  slug: "wrapped-bitcoin-lam-tai-san-the-chap",
+  title: "Wrapped bitcoin trên Aave và Morpho: WBTC, cbBTC, tBTC, LBTC",
+  description:
+    "WBTC, cbBTC, tBTC, LBTC và eBTC khác nhau thế nào khi thế chấp trên Aave V3 và Morpho: ngưỡng, giới hạn, oracle và tác động của việc mất neo tới khoản vay.",
+  h1: "Bạn nên thế chấp wrapped bitcoin nào để vay, và điều gì có thể trục trặc?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "WBTC, cbBTC, tBTC và LBTC khác nhau thế nào khi làm tài sản thế chấp trên Aave và Morpho?",
+  readingMinutes: 17,
+};
+
+<ShortAnswer>
+  Bitcoin đến với Aave và Morpho dưới dạng token bọc (wrapped token), mỗi token được bảo chứng bằng BTC giữ ở nơi khác,
+  và hai giao thức đối xử với chúng khác nhau. Trên Aave V3 Ethereum Core ngày 29 tháng 10 năm 2026, WBTC và cbBTC có tỷ
+  lệ cho vay trên giá trị (LTV) 81% và ngưỡng thanh lý (liquidation threshold) 85%, tBTC và BTC.b là 73% và 78%, LBTC
+  70% và 75%, eBTC 67% và 72%. Cách định giá cũng khác: Aave định giá WBTC bằng feed WBTC/BTC nhân với BTC/USD, nên khi
+  WBTC bị chiết khấu thì hệ số sức khỏe (health factor) của bạn giảm (hôm đó feed báo 0,9985), còn cbBTC và tBTC được
+  định giá đúng bằng 1 BTC, LBTC và eBTC theo tỷ giá staking của chúng dưới một mức trần. Trên Morpho, mỗi thị trường tự
+  chọn oracle (nguồn giá) và LLTV: các thị trường cbBTC/USDC lớn dùng 86% và chỉ một feed BTC/USD. Lựa chọn wrapper làm
+  giá thanh lý của bạn chênh nhau tới 18% và quyết định liệu chính việc wrapper mất neo (depeg) có thể khiến bạn bị
+  thanh lý hay không.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Số liệu và các số block đã dùng để đọc chúng: content/blog/snapshots/wrapped-bitcoin-aave-collateral.md */}
+
+## Vì sao loại wrapped bitcoin bạn gửi lại quan trọng?
+
+Aave và Morpho chạy trên các chuỗi EVM, còn bitcoin thì không, nên mọi vị thế BTC trên đó đều là một token bọc: một token ERC-20 mà ai đó cam kết đổi lại thành bitcoin. Ai đưa ra cam kết đó, và bằng cách nào, là điểm khác biệt đầu tiên giữa các wrapper (token bọc). WBTC được các đơn vị lưu ký đúc ra dựa trên bitcoin trong kho lạnh, từ tháng 10 năm 2024 là một liên doanh giữa BitGo và BiT Global với các khóa phân tán ở Hoa Kỳ, Singapore và Hồng Kông. cbBTC là wrapper của Coinbase, được bảo chứng bằng bitcoin do Coinbase nắm giữ. tBTC là của Threshold Network, được đúc bởi một mạng lưới người ký thay vì một công ty. LBTC là của Lombard: bitcoin được stake qua Babylon, với một liên minh các nhà vận hành xác minh tiền gửi và ký các lệnh đổi lại, và từ năm 2025 có sinh lợi, nên một LBTC dần đáng giá hơn một BTC. eBTC là wrapper của ether.fi, phần lớn được bảo chứng bằng LBTC. BTC.b là bitcoin bắc cầu của Avalanche, còn FBTC là của Function.
+
+Một giao thức cho vay nhìn thấy ba điều trong danh sách đó: khả năng wrapper giao dịch lệch khỏi BTC, độ sâu thị trường của nó nếu bên thanh lý cần bán, và cách định giá nó. Ba điều đó quyết định ngưỡng thanh lý, các giới hạn và oracle, và cùng nhau quyết định hệ số sức khỏe, giá thanh lý của bạn và những sự kiện nào có thể khiến bạn bị thanh lý. Cùng 1 BTC tài sản thế chấp là một khoản vay khác nhau tùy theo wrapper mà nó được bọc trong đó.
+
+## Aave chấp nhận những wrapper nào, với điều kiện gì?
+
+Aave V3 Ethereum Core niêm yết bảy wrapper BTC vào ngày 29 tháng 10 năm 2026. Đọc từ PoolDataProvider tại khối 26296985:
+
+| Wrapper | LTV | Ngưỡng thanh lý | Thưởng | Cho vay    | Giới hạn gửi (đã dùng) | Đã gửi    |
+| ------- | --- | --------------- | ------ | ---------- | ---------------------- | --------- |
+| WBTC    | 81% | 85%             | 5,0%   | có         | 38.200 (89,4%)         | 34.138,21 |
+| cbBTC   | 81% | 85%             | 7,5%   | có         | 20.000 (86,5%)         | 17.303,85 |
+| tBTC    | 73% | 78%             | 7,5%   | giới hạn 1 | 1.800 (98,9%)          | 1.779,39  |
+| LBTC    | 70% | 75%             | 8,5%   | không      | 2.690 (100,0%)         | 2.689,93  |
+| eBTC    | 67% | 72%             | 10,0%  | không      | 134 (56,0%)            | 75,02     |
+| BTC.b   | 73% | 78%             | 7,5%   | không      | 225 (7,0%)             | 15,84     |
+| FBTC    | 0%  | 78%             | 7,5%   | không      | bị đóng băng           | 153,83    |
+
+WBTC và cbBTC là tài sản thế chấp được thị trường tin tưởng nhất: ngưỡng cao nhất, thưởng thanh lý (liquidation bonus) thấp nhất và lượng gửi sâu nhất, lần lượt 60,8% và 30,8% trong tổng 56.156 wrapped BTC trên Core. Các wrapper mới hơn hoặc mỏng hơn có ngưỡng thấp hơn và thưởng cao hơn, tức là giao thức trả cho bên thanh lý nhiều hơn để bán một token có thị trường kém sâu hơn. FBTC bị đóng băng với LTV bằng 0, nên nó vẫn được tính vào hệ số sức khỏe nhưng không hỗ trợ nợ mới và không nhận tiền gửi mới.
+
+Ba trong bảy giới hạn gửi (supply cap) đã gần đầy hoặc đầy hẳn. LBTC còn 0,07 LBTC chỗ trống: một người vay có khoản vay LBTC đang chịu áp lực không thể thêm LBTC vào hôm đó và phải trả nợ thay vào đó. Bài [vì sao một giao dịch Aave thất bại](/vi/blog/vi-sao-khong-rut-hoac-vay-duoc-tren-aave#3-gioi-han-gui-da-day) nói về những gì một giới hạn đã đầy chặn lại. tBTC được bật vay với giới hạn vay (borrow cap) là 1, mà với 2,57 tBTC đã được vay thì không khoản vay mới nào thành công.
+
+Bản thân điều kiện của WBTC đã thay đổi. Ngày 14 tháng 10 năm 2026, Ethereum Core đặt WBTC ở LTV 73% và ngưỡng 78%, những con số mà [bài hướng dẫn về hệ số sức khỏe](/vi/blog/he-so-suc-khoe-aave) sử dụng; đến ngày 28 tháng 10, chúng là 81% và 85%. Câu chuyện đằng sau những con số thấp hơn nằm ở một phần sau.
+
+## Aave định giá từng wrapper như thế nào?
+
+Aave có một mức giá cho mỗi tài sản trong mỗi thị trường, lấy từ Aave Oracle, và hệ số sức khỏe cũng như mọi lệnh thanh lý đều dùng giá đó. Bảy wrapper dùng ba thiết kế. Đọc tại cùng block:
+
+| Wrapper                  | Nguồn oracle              | Cách xây dựng                                            | Giá ngày 29 tháng 10 năm 2026 |
+| ------------------------ | ------------------------- | -------------------------------------------------------- | ----------------------------- |
+| WBTC                     | "wBTC/BTC/USD"            | feed WBTC/BTC (0,9985) × BTC/USD                         | 79.699,16 $                   |
+| cbBTC, tBTC, BTC.b, FBTC | "BTC / USD"               | chỉ riêng feed BTC/USD                                   | 79.818,89 $                   |
+| LBTC                     | "Capped LBTC / BTC / USD" | tỷ giá quy đổi của Lombard (1,005244) × BTC/USD, có trần | 80.237,45 $                   |
+| eBTC                     | "Capped eBTC / BTC / USD" | tỷ giá của ether.fi (1,004224) × BTC/USD, có trần        | 80.156,03 $                   |
+
+Sự khác biệt này quyết định việc wrapper mất neo tác động tới bạn ra sao.
+
+**WBTC được định giá theo tỷ lệ thị trường của nó so với BTC.** Adapter nhân feed WBTC/BTC với BTC/USD, nên nếu WBTC giao dịch ở mức chiết khấu, tài sản thế chấp của bạn có giá trị thấp hơn trong hệ số sức khỏe và giá thanh lý của bạn tăng lên. Ngày 29 tháng 10 năm 2026, tỷ lệ là 0,9985, định giá WBTC thấp hơn cbBTC 119,73 $. Nếu niềm tin vào đơn vị lưu ký thực sự sụp đổ, tỷ lệ sẽ giảm, và các vị thế WBTC có thể bị thanh lý dù giá bitcoin không đổi.
+
+**cbBTC, tBTC, BTC.b và FBTC được định giá đúng bằng 1 BTC.** Oracle dùng feed BTC/USD và không gì khác. Mức chiết khấu trên thị trường của wrapper không chạm tới hệ số sức khỏe của bạn; nó chạm tới giao thức, nơi bên thanh lý sẽ thu giữ tài sản thế chấp có giá trị thấp hơn mức oracle báo. Aave bù lại bằng giới hạn chặt hơn và, với tBTC và BTC.b, ngưỡng thấp hơn. Với người vay, thiết kế này dễ chịu hơn khi wrapper gặp biến cố và khắt khe hơn trong mọi ngày khác.
+
+**LBTC và eBTC được định giá theo tỷ giá quy đổi, dưới một mức trần CAPO.** LBTC sinh lợi từ staking, nên oracle của Lombard báo một LBTC tương ứng bao nhiêu BTC, 1,005244 vào ngày 29 tháng 10 năm 2026, và Aave nhân con số đó với BTC/USD. Adapter CAPO giới hạn tốc độ tăng của tỷ lệ này, 2,00% mỗi năm với LBTC và 1,90% với eBTC tính từ mốc chụp 1,0, để một tỷ giá bị thao túng hoặc bị lỗi không thể thổi phồng tài sản thế chấp; hôm đó mức trần của LBTC là 1,0274, cao hơn tỷ lệ thực tế, nên nó không ràng buộc. Tỷ giá cũng có thể giảm: nếu Babylon từng phạt cắt giảm (slashing) bitcoin đã stake, tỷ lệ của Lombard sẽ giảm và hệ số sức khỏe của mọi vị thế LBTC giảm theo. Đề xuất năm 2025 của Chaos Labs, chuyển LBTC từ một feed BTC/USD đơn thuần sang thiết kế này, giải thích lựa chọn đó: một mức giá cố định 1:1 "would underprice LBTC relative to its intrinsic value" (sẽ định giá LBTC thấp hơn giá trị nội tại của nó) một khi lợi suất bắt đầu.
+
+Bài [stablecoin mất neo](/vi/blog/stablecoin-mat-neo-va-aave) mô tả cùng sự phân chia đó với các token đô la: thứ oracle đo lường chính là thứ có thể khiến bạn bị thanh lý.
+
+## Ví dụ cụ thể: 1 BTC tài sản thế chấp cho khoản vay 40.000 USDC
+
+Gửi một đơn vị của mỗi wrapper trên Ethereum Core và vay 40.000 USDC. Hệ số sức khỏe là giá trị tài sản thế chấp × ngưỡng thanh lý ÷ khoản nợ, và giá thanh lý là 40.000 ÷ ngưỡng, tính theo mức giá mà oracle sử dụng:
+
+| Tài sản thế chấp | Giá oracle  | Ngưỡng | Hệ số sức khỏe | Giá thanh lý                         |
+| ---------------- | ----------- | ------ | -------------- | ------------------------------------ |
+| 1 WBTC           | 79.699,16 $ | 85%    | 1,694          | 47.058,82 $ mỗi WBTC                 |
+| 1 cbBTC          | 79.818,89 $ | 85%    | 1,696          | 47.058,82 $ mỗi BTC                  |
+| 1 tBTC           | 79.818,89 $ | 78%    | 1,557          | 51.282,05 $ mỗi BTC                  |
+| 1 LBTC           | 80.237,45 $ | 75%    | 1,505          | 53.333,33 $ mỗi LBTC, BTC ở 53.055 $ |
+| 1 eBTC           | 80.156,03 $ | 72%    | 1,443          | 55.555,56 $ mỗi eBTC                 |
+
+Giữa WBTC và eBTC, cùng khoản nợ và cùng lượng bitcoin cho ra giá thanh lý cao hơn 18%. Hạn mức vay cũng đi theo cùng hướng: ở mức LTV, WBTC và cbBTC hỗ trợ 81% giá trị của chúng, và một vị thế vay đến hạn mức đó bắt đầu với hệ số sức khỏe 85 ÷ 81 = 1,049; với LBTC là 75 ÷ 70 = 1,071, với eBTC là 72 ÷ 67 = 1,075. Bài [cách tính giá thanh lý](/vi/blog/cach-tinh-gia-thanh-ly-aave) có công thức chung và một công cụ tính.
+
+Hai trong số các dòng này thay đổi theo nhiều thứ hơn giá bitcoin. Dòng WBTC còn thay đổi theo feed WBTC/BTC; mức chiết khấu 2% sẽ đưa vị thế từ 1,694 xuống 1,660 dù BTC không đổi. Dòng LBTC thay đổi theo tỷ giá quy đổi của Lombard, tăng nhẹ mỗi ngày và giảm khi có sự kiện slashing.
+
+## Vì sao điều kiện của WBTC thay đổi, và người vay học được gì?
+
+Tháng 8 năm 2024, BitGo thông báo sẽ chuyển việc lưu ký WBTC sang một liên doanh với BiT Global, một đơn vị lưu ký ở Hồng Kông có liên hệ với Justin Sun. Phản ứng trên diễn đàn của Aave là ghi chép rõ ràng nhất về cách một thay đổi lưu ký tác động tới người vay. Ngày 18 tháng 9 năm 2024, LlamaRisk đề xuất đặt LTV của WBTC về 0 trên mọi phiên bản Aave V3 và cắt giới hạn xuống mức cao hơn lượng sử dụng 5 đến 10%, đồng thời nhấn mạnh kế hoạch này "not to offboard WBTC, nor to reduce current exposure" (không nhằm gỡ niêm yết WBTC, cũng không nhằm giảm mức rủi ro hiện tại). Chaos Labs cho rằng khuyến nghị giảm rủi ro là quá sớm. Kế hoạch mà hai bên hợp nhất ngày 24 tháng 9 năm 2024 nhẹ nhàng hơn nhưng có thực chất: giới hạn cao hơn lượng sử dụng 15%, ngưỡng thanh lý giảm một điểm ở mọi nơi, LTV giảm xuống 70% ở những nơi đang cao hơn, reserve factor từ 20% lên 40%, và giới hạn vay WBTC trên Ethereum từ 28.000 xuống 3.250. Việc chuyển giao lưu ký hoàn tất ngày 8 tháng 10 năm 2024.
+
+Không điều gì trong sự việc đó làm thay đổi giá bitcoin. Thứ thay đổi là điều kiện: ngưỡng thấp hơn và giới hạn thấp hơn cho mọi người vay WBTC, được quyết định bởi một quy trình quản trị mà họ có thể theo dõi nhưng không thể kiểm soát. Hai năm sau, các tham số lại cao hơn, và việc chuyển từ 73%/78% lên 81%/85% vào tháng 10 năm 2026 đã giảm 8% giá thanh lý của một vị thế WBTC. Bài học là ngưỡng là một tham số, không phải thuộc tính của bitcoin: bộ phận quản trị có thể hạ nó, làm giá thanh lý của bạn tăng lên trong lúc bạn ngủ, và bài hướng dẫn về việc đóng cửa thị trường nói về [điều gì xảy ra khi Aave đóng cửa một thị trường](/vi/blog/khi-aave-dong-cua-thi-truong).
+
+## Các danh mục E-Mode cho BTC khác nhau thế nào?
+
+[E-Mode](/vi/blog/e-mode-cua-aave) của Aave tồn tại cho những cặp tài sản biến động cùng nhau, và các wrapped bitcoin so với nhau là trường hợp rõ nhất. Trên Ethereum Core ngày 28 tháng 10 năm 2026, các danh mục LBTC_WBTC, LBTC_cbBTC và LBTC_tBTC cho tài sản thế chấp LBTC LTV 84%, ngưỡng 86% và thưởng 3% khi vay đúng wrapper đó; eBTC/WBTC cho 83%, 85% và 3%. Base có LBTC_cbBTC ở mức 82%/84% và một danh mục "cbBTC Stablecoins" ở mức 82%/85% để vay USDC hoặc GHO dựa trên cbBTC. Arbitrum và Base cũng có các danh mục tBTC cho nợ stablecoin ở mức 72%/75%.
+
+Các danh mục BTC so với BTC là nơi các loop (vòng vay đòn bẩy) hoạt động: gửi LBTC, vay WBTC, mua LBTC, lặp lại, để hưởng lợi suất của Lombard trên một bội số vốn của bạn. Một loop vay đến giới hạn 84% bắt đầu ở 86 ÷ 84 = 1,024, và hệ số sức khỏe của nó hoàn toàn không phụ thuộc vào giá bitcoin, chỉ phụ thuộc vào tỷ lệ giữa LBTC và WBTC theo cách hai oracle nhìn thấy: tỷ giá quy đổi của Lombard ở một bên và feed WBTC/BTC ở bên kia. Một biến động khoảng 2,4% giữa chúng là đủ để thanh lý nó. Mức đó thấp hơn 1,1, ngưỡng thấp nhất mà Tokenping chấp nhận, nên những loop như vậy chạy dưới mọi cảnh báo; [bài hướng dẫn về E-Mode](/vi/blog/e-mode-cua-aave#canh-bao-co-giup-duoc-gi-voi-mot-vi-the-e-mode-khong) giải thích sự đánh đổi.
+
+## Morpho xử lý wrapped bitcoin ra sao?
+
+Morpho không có danh sách tài sản và không có ngưỡng do bộ phận quản trị đặt cho từng token. Bất kỳ ai cũng có thể tạo một thị trường với một tài sản thế chấp, một tài sản cho vay, một oracle và một LLTV thuộc bộ giá trị được bật, và các tham số không bao giờ thay đổi. Với wrapped bitcoin, điều đó có nghĩa là cả lựa chọn wrapper lẫn lựa chọn oracle đều được quyết định theo từng thị trường, và các thị trường được niêm yết khác nhau.
+
+API của Morpho liệt kê các thị trường có tài sản thế chấp BTC sau đây theo giá trị đã vay vào ngày 29 tháng 10 năm 2026, trên Ethereum và Base:
+
+| Thị trường             | LLTV | Đã vay        | Oracle đo lường gì                                       |
+| ---------------------- | ---- | ------------- | -------------------------------------------------------- |
+| cbBTC / USDC, Base     | 86%  | 1,62 tỷ $     | chỉ BTC/USD: cbBTC là 1 BTC, USDC là 1 $                 |
+| cbBTC / USDC, Ethereum | 86%  | 309,8 triệu $ | chỉ BTC/USD                                              |
+| WBTC / USDC, Ethereum  | 86%  | 115,8 triệu $ | WBTC/BTC × BTC/USD ÷ USDC/USD                            |
+| WBTC / USDT, Ethereum  | 86%  | 84,1 triệu $  | chưa đọc                                                 |
+| LBTC / USDC, Ethereum  | 86%  | 1,9 triệu $   | tỷ giá cơ bản LBTC/BTC của Redstone (1,005244) × BTC/USD |
+| tBTC / USDC, Ethereum  | 77%  | 0,6 triệu $   | chưa đọc                                                 |
+
+Hai điểm nổi bật khi so với Aave. LLTV là 86% với mọi wrapper lớn, cao hơn một điểm so với ngưỡng 85% của Aave cho WBTC và cbBTC và cao hơn mười một điểm so với ngưỡng của Aave cho LBTC, vì trên Morpho người tạo thị trường, không phải một ủy ban rủi ro, đặt mức này, và người cho vay quyết định có cấp vốn cho nó hay không. Và oracle đi theo thị trường, không theo token: thị trường WBTC/USDC ở trên định giá WBTC qua feed WBTC/BTC và USDC qua feed USDC/USD, trong khi các thị trường cbBTC, nơi chiếm phần lớn khối lượng, coi cả hai token đúng bằng giá neo của chúng. Ngày 29 tháng 10 năm 2026, oracle của thị trường cbBTC/USDC trên Ethereum cho 79.752,37 USDC mỗi cbBTC, nên 1 cbBTC vay 40.000 USDC có [hệ số sức khỏe Morpho](/vi/blog/he-so-suc-khoe-morpho) là 79.752,37 × 0,86 ÷ 40.000 = 1,715 và giá thanh lý 46.511,63, thấp hơn một chút so với 47.058,82 của Aave cho cùng khoản vay.
+
+Cách thanh lý cũng khác. [Ưu đãi thanh lý của Morpho](/vi/blog/co-che-thanh-ly-tren-morpho) ở LLTV 86% là 4,38%, gần với mức thưởng 5% của Aave cho WBTC và thấp hơn mức 7,5% cho cbBTC, nhưng bên thanh lý trên Morpho có thể trả toàn bộ khoản nợ trong một giao dịch, trong khi Aave giới hạn phần lớn các lệnh thanh lý ở một nửa. Một khoản vay WBTC trên Morpho với oracle có tính đến WBTC/BTC chịu cùng rủi ro lưu ký như trên Aave; một khoản vay cbBTC trên cả hai giao thức không mang chút rủi ro nào trong hệ số sức khỏe và dồn toàn bộ vào khả năng thanh toán của giao thức.
+
+## Điều gì thực sự có thể trục trặc với khoản vay bằng wrapped bitcoin?
+
+- **Giá bitcoin.** Rủi ro thông thường, và là rủi ro lớn. Ngày 10 tháng 10 năm 2025, hơn 250 triệu $ đã bị thanh lý trên Aave chỉ trong một ngày, theo Aave Labs, đơn vị cũng thống kê 4,65 tỷ $ qua 310.000 lần thanh lý từ năm 2020 đến tháng 2 năm 2026. Phép tính hệ số sức khỏe giống nhau với mọi wrapper; chỉ ngưỡng là khác.
+- **Wrapper bị chiết khấu, qua oracle.** Tác động tới các vị thế WBTC trên Aave và trên các thị trường Morpho có feed WBTC/BTC. Không tác động tới các vị thế cbBTC hoặc tBTC trên Aave, hay các thị trường cbBTC trên Morpho dùng oracle BTC/USD, nơi giao thức gánh rủi ro đó thay bạn.
+- **Tỷ giá quy đổi giảm.** LBTC và eBTC được định giá theo tỷ giá staking; slashing trên Babylon sẽ làm tỷ giá này giảm và kéo theo mọi vị thế, trên Aave và trên các thị trường Morpho dùng cùng tỷ giá.
+- **Thay đổi tham số.** Bộ phận quản trị của Aave có thể hạ ngưỡng hoặc LTV của một wrapper, đặt LTV về 0, hoặc đóng băng nó, như đã làm với FBTC. LLTV của một thị trường Morpho không bao giờ thay đổi, nhưng một thị trường có thể bị gỡ khỏi ứng dụng.
+- **Giới hạn đã đầy hoặc reserve (quỹ tài sản) bị đóng băng.** Trên Aave, cả hai đều đóng con đường "thêm tài sản thế chấp" và chỉ còn trả nợ là cách để nâng hệ số sức khỏe. Morpho không có giới hạn.
+- **Thanh khoản mỏng cho wrapper.** Đây là lý do đằng sau mức thưởng cao hơn cho tBTC, LBTC và eBTC: một bên thanh lý không thể bán nhanh token thu giữ được sẽ muốn được trả nhiều hơn để nhận nó, và trong thị trường căng thẳng có thể hoàn toàn không xuất hiện cho đến khi vị thế đã lỗ sâu hơn.
+
+## Cảnh báo giúp gì cho vị thế wrapped bitcoin?
+
+Một cảnh báo không biết và không quan tâm bạn giữ wrapper nào. Tokenping đọc hệ số sức khỏe Aave từ `getUserAccountData`, vốn đã áp dụng ngưỡng của wrapper và giá của oracle, bao gồm cả tỷ lệ WBTC/BTC và tỷ giá LBTC, và tính hệ số sức khỏe Morpho on-chain từ chính oracle của thị trường. Điều wrapper thay đổi là cách con số đó biến động. Một vị thế có hệ số sức khỏe 1,5 sẽ bị thanh lý sau khi giá oracle giảm 33% dù là wrapper nào; một vị thế WBTC còn có thể đi tới đó qua việc tỷ lệ WBTC/BTC giảm 33%, và một vị thế LBTC qua tỷ giá quy đổi của nó, nên cảnh báo nên được đặt ở mức mà dù xảy ra loại biến động nào bạn vẫn còn thời gian để trả nợ. Một loop BTC so với BTC ở mức 1,03 thì hoàn toàn nằm ngoài phạm vi.
+
+Tokenping kiểm tra vị thế của bạn mỗi 5 phút, trên mọi thị trường Aave V3 ở 21 mạng, mọi Spoke của Aave V4 và mọi thị trường Morpho Blue và Midnight được niêm yết trên 14 chuỗi, và nhắn cho bạn qua Signal, Telegram hoặc email khi hệ số sức khỏe xuống dưới ngưỡng của bạn (1,1 đến 10 trên Aave, 1,02 đến 10 trên Morpho), lặp lại ở mỗi lần kiểm tra cho đến khi hồi phục. Nó không thể trả nợ thay bạn, và một biến động mạnh có thể kéo dài qua hai lần kiểm tra trước khi tin nhắn đến nơi. Bạn có thể [kiểm tra hệ số sức khỏe Aave V3](/vi/aave) hoặc [các vị thế Morpho](/vi/morpho) mà không cần thanh toán; cảnh báo có giá <AlertPrice />, mỗi thị trường hoặc Spoke một gói. Bài [cách chọn ngưỡng cảnh báo](/vi/blog/he-so-suc-khoe-an-toan-tren-aave#chon-nguong-canh-bao-nhu-the-nao-tung-buoc-mot) và bài [cách cài đặt cảnh báo](/vi/blog/cai-dat-canh-bao-he-so-suc-khoe-aave) nói về phần còn lại.
+
+## Nguồn
+
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getAllReservesTokens`, `getReserveConfigurationData`, `getReserveCaps` và `getReserveData` cho WBTC, cbBTC, tBTC, LBTC, eBTC, BTC.b và FBTC tại khối 26296985 (truy cập ngày 29 tháng 10 năm 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): `getSourceOfAsset` và `getAssetPrice` cho bảy wrapper, và `description()` của từng nguồn, tại khối 26296985 (truy cập ngày 29 tháng 10 năm 2026)
+- [Adapter WBTC](https://etherscan.io/address/0xDaa4B74C6bAc4e25188e64ebc68DB5050b690cAc): `ASSET_TO_PEG` ([feed WBTC / BTC](https://etherscan.io/address/0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23), 0,9985) và `PEG_TO_BASE` tại khối 26296985 (truy cập ngày 29 tháng 10 năm 2026)
+- [Adapter CAPO của LBTC](https://etherscan.io/address/0xf8c04B50499872A5B5137219DEc0F791f7f620D0) và [adapter CAPO của eBTC](https://etherscan.io/address/0x03bB418e89B75407585f8198178f253DA3216218): `getRatio`, `getSnapshotRatio`, `getSnapshotTimestamp`, `getMaxYearlyGrowthRatePercent`, `getMaxRatioGrowthPerSecond` và `isCapped` tại khối 26296985 (truy cập ngày 29 tháng 10 năm 2026)
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2) và các Pool trên Base và Arbitrum: các danh mục E-Mode cho BTC, được đọc cho [bài hướng dẫn về E-Mode](/vi/blog/e-mode-cua-aave) tại khối 26291736 của Ethereum và khối 53204166 của Base (truy cập ngày 28 tháng 10 năm 2026)
+- [Morpho API](https://api.morpho.org/graphql): các thị trường được niêm yết có tài sản thế chấp WBTC, cbBTC, tBTC, LBTC hoặc eBTC trên Ethereum và Base, cùng LLTV, giá trị đã vay, oracle và các feed của chúng (truy cập ngày 29 tháng 10 năm 2026)
+- [Morpho Blue trên Ethereum](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb): `price()` của oracle thị trường cbBTC / USDC (86%) tại khối 26297045, các feed và `price()` của oracle thị trường WBTC / USDC (86%); `description()` của các feed (truy cập ngày 29 tháng 10 năm 2026)
+- [ARFC: Adjusting WBTC Parameters to Address BitGo Transition Risks](https://governance.aave.com/t/arfc-adjusting-wbtc-parameters-to-address-bitgo-transition-risks/19096): đề xuất của LlamaRisk ngày 18 tháng 9 năm 2024 và kế hoạch hợp nhất ngày 24 tháng 9 năm 2024 (truy cập ngày 29 tháng 10 năm 2026)
+- [ARFC: Onboard LBTC on Aave v3 Core Instance](https://governance.aave.com/t/arfc-onboard-lbtc-on-aave-v3-core-instance/20142): LBTC là gì, các tham số ban đầu và cuộc tranh luận về oracle (truy cập ngày 29 tháng 10 năm 2026)
+- [Direct to AIP: LBTC Oracle and CAPO implementation Update](https://governance.aave.com/t/direct-to-aip-lbtc-oracle-and-capo-implementation-update/22614): Chaos Labs, ngày 17 tháng 7 năm 2025, oracle theo tỷ giá quy đổi và các tham số CAPO (truy cập ngày 29 tháng 10 năm 2026)
+- [ARFC: Core & Base - BTC Correlated Asset Update](https://governance.aave.com/t/arfc-core-base-btc-correlated-asset-update/20940): các E-Mode của LBTC và việc niêm yết trên Base, ngày 4 tháng 2 năm 2025 (truy cập ngày 29 tháng 10 năm 2026)
+- [Unchained: WBTC completes shift to multi-jurisdiction custody model](https://unchainedcrypto.com/wbtc-completes-shift-to-multi-jurisdiction-custody-model/): ngày 9 tháng 10 năm 2024 (truy cập ngày 29 tháng 10 năm 2026)
+- [Aave Labs: How Aave Liquidations Perform Under Volatile Conditions](https://aave.com/blog/historical-liquidations): ngày 6 tháng 2 năm 2026 (truy cập ngày 29 tháng 10 năm 2026)
+
+_Nội dung mang tính giáo dục, không phải lời khuyên tài chính. Cảnh báo giúp giảm rủi ro, nhưng không ngăn được việc thanh lý._

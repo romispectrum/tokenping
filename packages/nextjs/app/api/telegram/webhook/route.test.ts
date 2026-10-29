@@ -388,7 +388,7 @@ describe("POST /api/telegram/webhook: Czech replies", () => {
     expect(replyToTelegramChat).toHaveBeenCalledExactlyOnceWith("42", CS.help);
   });
 
-  it.each(["en", "en-US", "de", undefined])("answers in English for language_code %j", async language_code => {
+  it.each(["en", "en-US", "fr", undefined])("answers in English for language_code %j", async language_code => {
     await post(update({ from: { id: 7, username: "alice", language_code }, text: "/start" }));
     expect(replyToTelegramChat).toHaveBeenCalledExactlyOnceWith("42", linked("alice"));
   });

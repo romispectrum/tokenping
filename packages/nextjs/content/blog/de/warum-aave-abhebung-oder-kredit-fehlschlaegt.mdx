@@ -1,0 +1,134 @@
+export const meta = {
+  slug: "warum-aave-abhebung-oder-kredit-fehlschlaegt",
+  title: "Warum kann ich auf Aave nicht abheben oder leihen? 9 Gründe",
+  description:
+    "Warum Abhebung, Kredit oder Rückzahlung auf Aave V3 scheitert: Health Factor, freie Liquidität, Supply und Borrow Caps, eingefrorene, pausierte Reserves.",
+  h1: "Warum scheitert meine Abhebung, mein Kredit oder meine Rückzahlung auf Aave?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "Warum schlägt eine Transaktion zum Abheben, Leihen oder Zurückzahlen auf Aave fehl?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Eine Transaktion auf Aave V3 scheitert, wenn eine der Prüfungen des Pool-Contracts sie ablehnt, und der Grund ist fast
+  immer einer von neun. Die Abhebung würde deinen Health Factor (Gesundheitsfaktor) unter 1 drücken. Die Reserve hält
+  weniger nicht verliehene Liquidität, als du anforderst. Der Supply Cap oder der Borrow Cap des Assets ist voll. Die
+  Reserve ist eingefroren (keine neuen Einzahlungen oder Kredite) oder pausiert (gar nichts, auch keine Rückzahlungen).
+  Das Asset ist nicht leihbar, oder nicht in deiner E-Mode-Kategorie. Du hältst Sicherheiten mit einer LTV von 0, die
+  zuerst raus müssen. Oder eine Rückzahlung nennt Schulden, die du nicht hast, oder Tokens, die du nicht freigegeben
+  hast. Auf Ethereum Core waren am 29. Oktober 2026 35 der 66 gelisteten Reserves eingefroren, der Supply Cap von LBTC
+  war bis auf die letzten 0,07 LBTC voll, und von den 2.347,5 Mio. eingezahlten USDC standen nur 134,4 Mio. zum Abheben
+  bereit.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Die Zahlen und die Blocknummern, bei denen sie gelesen wurden: content/blog/snapshots/why-aave-withdraw-or-borrow-fails.md */}
+
+## Welche Prüfungen muss eine Aave-Transaktion bestehen?
+
+Jede Einzahlung, Abhebung, jeder Kredit und jede Rückzahlung auf Aave V3 läuft über den Pool-Contract, und der Pool arbeitet eine Liste von Prüfungen in einer Bibliothek namens `ValidationLogic` ab, bevor er einen Token bewegt. Jede Prüfung, die scheitert, stoppt die ganze Transaktion mit einem benannten Fehler: `ReserveFrozen`, `SupplyCapExceeded`, `HealthFactorLowerThanLiquidationThreshold` und so weiter. Deine Wallet zeigt meist nur „execution reverted“ und einen kurzen Hex-Code, weil die Namen im Code von Aave stehen, nicht in der Wallet. Die Aave-App prüft die meisten dieser Punkte, bevor du signierst, und lehnt deshalb oft ab, bevor du überhaupt eine Transaktion zu sehen bekommst.
+
+Die Prüfungen hängen von der Aktion ab. Eine Abhebung braucht eine aktive, nicht pausierte Reserve, ein Guthaben mindestens in Höhe des Betrags und, wenn du Schulden hast und das Asset als Sicherheit zählt, einen Health Factor, der danach bei 1 oder darüber bleibt. Ein Kredit braucht eine aktive, nicht pausierte, nicht eingefrorene Reserve, in der Leihen aktiviert ist, Platz unter dem Borrow Cap und genug Sicherheiten bei deiner Beleihungsquote (LTV). Eine Einzahlung braucht eine nicht eingefrorene Reserve mit Platz unter dem Supply Cap. Eine Rückzahlung braucht nur eine aktive, nicht pausierte Reserve und Schulden in diesem Asset. Die neun Gründe unten folgen dieser Liste, ungefähr in der Reihenfolge, in der du ihnen wahrscheinlich begegnest.
+
+Dieser Ratgeber behandelt Aave V3. Die Spokes von Aave V4 haben ihre eigene Konfiguration, und Morpho hat außer dem Orakel (oracle) und dem Health Factor keinen dieser Mechanismen: Ein Morpho-Markt hat keine Caps, kein Einfrieren und keine Pause.
+
+## 1. Die Abhebung würde deinen Health Factor unter 1 drücken
+
+Daran scheitern Kreditnehmer am häufigsten. Wenn du ein Asset abhebst, das du als Sicherheit nutzt, während du Schulden hast, rechnet der Pool dein Konto nach der Abhebung neu und verlangt einen Health Factor von mindestens 1 (`HealthFactorLowerThanLiquidationThreshold`). Dieselbe Prüfung läuft, wenn du ein Asset als Sicherheit abschaltest oder aTokens an eine andere Adresse überträgst. Sie läuft nicht, wenn du keine Schulden hast, und deshalb lässt sich aus einer reinen Einzahlungsposition immer das ganze Guthaben abheben.
+
+Nimm 10 WETH auf Ethereum Core zum Orakelpreis von 2.309,84 $ am 29. Oktober 2026 (23.098,41 $), eine Liquidationsschwelle (liquidation threshold) von 84 % und 12.000 USDC Schulden. Der [Health Factor](/de/blog/aave-health-factor-erklaert) ist 23.098,41 × 0,84 ÷ 12.000 = 1,617. Um ihn genau bei 1 zu halten, brauchst du 12.000 ÷ 0,84 = 14.285,71 $ in WETH, also 6,185 WETH, und kannst damit höchstens 3,815 WETH abheben. Verlangst du 4, wird die Transaktion zurückgesetzt; verlangst du 3,815, geht sie durch und hinterlässt eine Position, die der nächste kleine Preisrückgang liquidierbar macht. Das Maximum in der Aave-App ist genau diese Zahl, und alles davon abzuheben ist der schnellste Weg, aus einer sicheren Position eine zu machen, die innerhalb der nächsten Stunde einen [Liquidations-Alert](/de/blog/aave-health-factor-alert-einrichten) braucht.
+
+Beim Leihen gibt es eine strengere Schwester dieser Regel. Ein neuer Kredit muss den Health Factor bei 1 oder darüber lassen und zusätzlich unter deine gewichtete LTV passen: Sicherheiten × LTV müssen die Schulden decken (`CollateralCannotCoverNewBorrow`). Bei WETH mit einer LTV von 81 % tragen die 10 WETH oben höchstens 18.709,71 $ Schulden, und die Position, die das alles leiht, startet mit einem Health Factor von 84 ÷ 81 = 1,037. [Was ein sicherer Health Factor ist](/de/blog/sicherer-health-factor-aave) erklärt, warum das ein knapper Startpunkt ist.
+
+## 2. Die Reserve hält weniger nicht verliehene Liquidität, als du willst
+
+Aave verleiht, was Einzahler hinterlegen, also hält eine Reserve nur den Teil, den niemand geliehen hat. Eine Abhebung oder ein Kredit, der größer ist als dieser Teil, scheitert, und für diesen Fall gibt es keinen Fehlernamen von Aave: Der aToken versucht, den zugrunde liegenden Token zu überweisen, und der Token-Contract selbst bricht ab, bei USDC mit „ERC20: transfer amount exceeds balance“. Die Kreditprüfung fragt nur, ob das gesamte aToken-Angebot mindestens so groß ist wie der Betrag, und fängt damit absurde Anfragen ab und sonst nichts.
+
+Auf Ethereum Core waren am 29. Oktober 2026 2.347.525.372,91 USDC eingezahlt, 2.213.199.103,54 USDC geliehen, und der aToken-Contract hielt 134.360.379,94 USDC: 94,28 % Auslastung, 5,72 % der Einzahlungen standen zum Abheben oder Leihen bereit. Ein Einzahler, der mit 200 Mio. USDC aussteigen wollte, konnte das nicht, und niemand konnte es, bis jemand zurückzahlte oder einzahlte. Der Ratgeber dazu, [wie die Zinssätze bei Aave funktionieren](/de/blog/aave-zinssaetze), zeigt, wie das in der Praxis aussieht: Am 14. Oktober 2026 trieb eine einzige Abhebung von 133.898.000 USDC dieselbe Reserve auf 99,50 % Auslastung und den Kreditzins in einem Block von 4,50 % auf 13,67 %.
+
+Vier Dinge helfen, wenn die Liquidität das Problem ist. Hebe einen kleineren Betrag ab, bis zu dem, was der Contract hält. Warte: Die Zinskurve ist dafür gebaut, Liquidität zurückzuholen, und die Spitze vom 14. Oktober war nach etwa 36 Minuten vorbei, auch wenn nichts das garantiert. Hebe eine andere Sicherheit ab, wenn du eine hast und der Health Factor es zulässt. Und wenn du USDC-Schulden zurückzahlen willst, aber aUSDC hältst, nutze `repayWithATokens`: Es verbrennt deine aTokens gegen deine Schulden, ohne einen einzigen USDC zu bewegen, und braucht deshalb überhaupt keine Liquidität.
+
+## 3. Der Supply Cap ist voll
+
+Jede Reserve hat einen Supply Cap (Obergrenze für Einzahlungen), den die Risk Stewards und die Governance von Aave festlegen, und eine Einzahlung, die die Summe darüber hinaus treiben würde, scheitert mit `SupplyCapExceeded`. Ein Cap von 0 bedeutet: kein Cap. Der Cap zählt die existierenden aTokens plus die Zinsen, die der Treasury zufließen, und füllt sich deshalb von selbst, während Zinsen auflaufen, ohne dass jemand einzahlt.
+
+Caps greifen öfter, als man denkt. Am 29. Oktober 2026 lag der LBTC-Cap auf Ethereum Core bei 2.690 LBTC, eingezahlt waren 2.689,93: Der verbleibende Platz betrug 0,07 LBTC, und ein Kreditnehmer, der einer Position unter Druck 1 LBTC hinzufügen wollte, konnte das nicht. sUSDe stand bei 96,9 % seines Caps, tBTC bei 98,9 %, USDe bei 91,7 %, weETH bei 91,2 % und WBTC bei 89,4 %. Die Caps bewegen sich in beide Richtungen. Am 10. Juli 2026 senkte LlamaRisk den Supply Cap von USDm auf Aaves MegaETH-Instanz von 1.000.000.000 auf 300.000.000, weil die Obergrenze „well above current demand“ (weit über der aktuellen Nachfrage) lag; die Stewards heben Caps an, wenn Nachfrage kommt, meist innerhalb weniger Tage.
+
+Für einen Kreditnehmer zählt der Cap als verschlossene Tür: Sicherheiten nachzulegen ist einer der beiden Wege, einen Health Factor zu erhöhen, und ein voller Cap nimmt ihn dir für dieses Asset. Schulden zurückzahlen funktioniert weiterhin, das ist der andere Weg, und ebenso das Nachlegen einer anderen Sicherheit, deren Cap noch Platz hat.
+
+## 4. Der Borrow Cap ist voll
+
+Borrow Caps funktionieren für Schulden genauso: Die gesamten variablen Schulden der Reserve dürfen nach deinem Kredit den Cap nicht übersteigen (`BorrowCapExceeded`), und 0 bedeutet kein Cap. Die Prüfung läuft bei jedem Kredit, also stoppt ein Cap, der schon über seinem Limit liegt, jeden neuen Kredit in diesem Asset, bis jemand zurückzahlt. Ein voller Borrow Cap stoppt sonst nichts: Rückzahlungen, Abhebungen und Liquidationen gehen durch.
+
+tBTC auf Ethereum Core ist der Extremfall: Leihen war am 29. Oktober 2026 aktiviert, aber der Cap lag bei 1 tBTC, und 2,57 tBTC waren schon geliehen, also scheiterte schon der kleinste Kredit. Bei USDC waren 2.213,2 Mio. gegen einen Cap von 2.700 Mio. geliehen, 82,0 % genutzt, mit 486,8 Mio. Platz; USDT lag bei 80,8 %. Wenn sich die Stablecoin-Caps füllen, scheitert ein Kredit, auch wenn die Reserve vielleicht noch reichlich Liquidität hält.
+
+## 5. Die Reserve ist eingefroren
+
+Eine eingefrorene Reserve nimmt keine neuen Einzahlungen und keine neuen Kredite an (`ReserveFrozen` in beiden Fällen). Die Dokumentation des Pool Configurator von Aave listet, was weiter funktioniert: Rückzahlungen, Liquidationen und Abhebungen. Mit dem Einfrieren wickelt die Governance ein Asset ab, ohne jemanden festzusetzen; [was passiert, wenn Aave einen Markt abwickelt](/de/blog/aave-markt-abwicklung), geht die Schritte durch.
+
+Eingefrorene Reserves sind nicht selten. Am 29. Oktober 2026 waren 35 der 66 Reserves auf Ethereum Core eingefroren: CRV, MKR, UNI, LUSD, FRAX, sDAI, crvUSD, FBTC und eine lange Liste von Pendle-PT-Tokens nach ihrer Fälligkeit, fast alle zusätzlich mit Supply und Borrow Caps von 1. Wenn du dort noch Sicherheiten hast, kannst du sie abheben und daraus liquidiert werden, aber nicht nachlegen.
+
+## 6. Die Reserve ist pausiert
+
+Die Pause ist der Notschalter. Eine pausierte Reserve lehnt alles ab: Einzahlung, Kredit, Rückzahlung, Abhebung, Liquidation und aToken-Überweisungen (`ReservePaused`). Am 29. Oktober 2026 war keine Reserve auf Ethereum Core pausiert, und in normalen Wochen ist es keine.
+
+Die Pause wurde schon genutzt. Am 4. November 2023 pausierte der Guardian von Aave nach einem kritischen Bug-Bounty-Bericht Aave V2 auf Ethereum und eine Reihe von Assets auf V3 Arbitrum, Avalanche, Optimism und Polygon. Etwa eine Woche lang konnte niemand auf diesen Reserves zurückzahlen oder Sicherheiten nachlegen, während sich die Preise weiter bewegten. Die V3-Instanzen wurden am 12. November 2023 wieder freigegeben, V2 Ethereum am 13. November nach einer Liquidations-Schonfrist von etwa drei Stunden für WETH-Kreditnehmer, und CRV auf V3 Polygon am 16. November. Heute ist diese Schonfrist Teil des Protokolls: Eine Liquidation während der Schonfrist einer Reserve scheitert mit `LiquidationGraceSentinelCheckFailed`, was ausgesperrten Kreditnehmern ein kurzes Zeitfenster gibt, zurückzuzahlen, bevor Liquidatoren zugreifen.
+
+Wenn deine Transaktion mit einem Pause-Fehler scheitert, kannst du auf Aave nichts tun, bis die Pause aufgehoben ist. Nutze die Zeit, um die Mittel für die Rückzahlung im richtigen Netzwerk bereitzuhalten, denn die Schonfrist nach einer Freigabe legen die Governance oder der Guardian fest, und sie war auch schon nur drei Stunden lang.
+
+## 7. Leihen ist für dieses Asset abgeschaltet oder in deiner E-Mode-Kategorie nicht erlaubt
+
+Viele Assets lassen sich als Sicherheit einzahlen, aber nicht leihen. Auf Ethereum Core war Leihen am 29. Oktober 2026 bei 15 nicht eingefrorenen Reserves deaktiviert, darunter wstETH, cbETH, rETH, weETH, LBTC, eBTC, AAVE und XAUt, und ein Kredit in einem davon scheitert mit `BorrowingNotEnabled`. Das Flag setzt die Governance pro Reserve, und in der Aave-App siehst du es an einem fehlenden Borrow-Button.
+
+Wenn du in einer [E-Mode-Kategorie](/de/blog/aave-e-mode-erklaert) bist, ersetzt eine andere Regel diese: Du kannst nur die Assets aus der leihbaren Menge der Kategorie leihen, und alles andere scheitert mit `NotBorrowableInEMode`, selbst ein Asset, das du außerhalb der Kategorie leihen könntest. Die Kategorie „ETH correlated“ auf Ethereum Core zum Beispiel lässt dich WETH leihen und sonst nichts. Die Kategorie zu verlassen löst das Problem beim Leihen, aber das Verlassen hat eigene Prüfungen: Jedes Asset, das du schuldest, muss außerhalb der Kategorie leihbar sein, und dein Health Factor muss mit den normalen, niedrigeren Schwellen weiter bei 1 oder darüber liegen (`InvalidDebtInEmode`, `InvalidCollateralInEmode`, `HealthFactorLowerThanLiquidationThreshold`).
+
+## 8. Du hältst Sicherheiten mit einer LTV von 0
+
+Die Governance setzt die LTV eines Assets auf 0, wenn das Asset keine neuen Schulden mehr tragen soll, bestehende Positionen aber weiterlaufen. Am 29. Oktober 2026 waren auf Ethereum Core 11 nicht eingefrorene Reserves als Sicherheit aktiviert und hatten eine LTV von 0, darunter DAI (Liquidationsschwelle 77 %), LINK, PYUSD, USDe, sUSDe, USDS, EURC und XAUt. So ein Asset zählt über seine Liquidationsschwelle weiter in deinem Health Factor, trägt aber nichts zu deinem Kreditrahmen bei. Daraus folgen zwei Prüfungen.
+
+Die erste betrifft das Leihen. Wenn jede Sicherheit, die du aktiviert hast, eine LTV von 0 hat, ist deine gewichtete LTV 0, und jeder Kredit scheitert mit `LtvValidationFailed`. Bei einer Mischung, etwa DAI und WETH, geht der Kredit durch, begrenzt allein durch das WETH.
+
+Die zweite betrifft das Abheben, und sie überrascht viele. Wenn du Schulden hast und irgendeine aktivierte Sicherheit mit einer LTV von 0, dann muss das Asset, das du abhebst, überträgst oder als Sicherheit abschaltest, selbst ein LTV-0-Asset sein, sonst scheitert die Transaktion mit demselben `LtvValidationFailed`. Der Kommentar im Code nennt die Absicht: Die Regel „ensures that a multi-collateral position needs to withdraw/transfer the ltv0 asset first“ (stellt sicher, dass eine Position mit mehreren Sicherheiten zuerst das LTV-0-Asset abheben oder übertragen muss). Ein Kreditnehmer mit DAI und WETH, der etwas WETH abziehen will, wird also abgewiesen, bis das DAI draußen ist; für die DAI-Abhebung selbst gilt weiter die Health-Factor-Prüfung. Die Lösung ist die Reihenfolge: zuerst das LTV-0-Asset abheben, oder so viel zurückzahlen, dass der Health Factor beides zulässt.
+
+## 9. Eine Rückzahlung nennt Schulden, die du nicht hast, oder Tokens, die du nicht freigegeben hast
+
+Rückzahlungen sind die einfachste Aktion und scheitern trotzdem, meist aus einem von fünf Gründen.
+
+- **Keine Schulden dieser Art.** `NoDebtOfSelectedType` heißt, dass der Pool, den du aufgerufen hast, für diese Adresse keine variablen Schulden in diesem Asset hält. Die übliche Ursache ist der falsche Markt: Ethereum hat getrennte Instanzen Core, Prime und Lido, jede mit eigenem Pool, und dieselbe Wallet kann auf einer USDC schulden und auf einer anderen nichts. Auch die Märkte jedes Netzwerks sind getrennt.
+- **Ein Zinsmodus, den es nicht mehr gibt.** Nur der variable Modus (2) wird akzeptiert; Kredite mit stabilem Zinssatz sind aus dem Code verschwunden, und ein Aufruf mit Modus 1 scheitert mit `InvalidInterestRateModeSelected`.
+- **Keine Freigabe.** Der Pool zieht die Rückzahlung mit `transferFrom` ein, also braucht der Token eine Freigabe über mindestens den Betrag oder ein signiertes Permit. Ohne sie bricht der Token-Contract ab, bevor die Prüfungen von Aave laufen.
+- **Für jemand anderen zurückzahlen, ohne Betrag.** Für eine andere Adresse mit dem Wert „ganze Schuld“ (`type(uint256).max`) zurückzuzahlen scheitert mit `NoExplicitAmountToRepayOnBehalf`; nenne den Betrag.
+- **Staub.** Zinsen laufen jede Sekunde auf, also lässt eine Rückzahlung genau des Saldos, den du vor einer Minute gesehen hast, ein paar Wei Schulden übrig. Um Schulden ganz zu tilgen, zahle mit dem Maximalwert zurück, den der Pool auf das begrenzt, was du schuldest.
+
+## Gründe, nach denen du nicht mehr suchen musst
+
+Zwei alte Erklärungen gelten nicht mehr. Isolation Mode und seine Debt Ceilings (Schuldenobergrenzen) wurden in Aave V3.7 entfernt, ebenso Siloed Borrowing, also scheitert heute kein Kredit mehr daran, dass ein Asset isoliert ist oder eine Obergrenze erreicht ist. Und Kredite mit stabilem Zinssatz gibt es seit V3.2 nicht mehr, also scheitert nichts an einem Zinswechsel. Wenn ein älterer Ratgeber einen dieser Punkte nennt, beschreibt er eine Version von Aave, die nicht mehr im Einsatz ist.
+
+## Was tun, wenn eine Transaktion bei fallenden Preisen scheitert?
+
+Eine gescheiterte Transaktion ist in einem ruhigen Markt lästig und in einem fallenden ein Problem, denn die Stunde, die du mit der Diagnose verbringst, ist die Stunde, die dein Health Factor braucht. Eine kurze Reihenfolge:
+
+1. **Lies den Fehler.** Simuliere die Transaktion in deiner Wallet oder füge den Hex-Selector in den Decoder eines Block-Explorers ein; die Namen oben sagen dir, welcher Fall vorliegt.
+2. **Zahle lieber zurück, als Sicherheiten nachzulegen.** Zurückzahlen funktioniert trotz eingefrorener Reserves und voller Supply Caps, und mit `repayWithATokens` auch ohne Liquidität. Sicherheiten nachzulegen hängt von einem Cap mit Platz und einer nicht eingefrorenen Reserve ab.
+3. **Versuch kleinere Beträge.** Liquidität und Caps sind Mengen; eine Abhebung oder ein Kredit, der hineinpasst, geht durch, während der volle Betrag scheitert.
+4. **Nimm ein anderes Asset.** Eine andere Sicherheit zum Abheben oder ein anderes Asset zum Zurückzahlen ist oft verfügbar, wenn das erste blockiert ist.
+5. **Prüfe Instanz und Netzwerk.** Eine Rückzahlung im richtigen Asset an den falschen Pool scheitert mit `NoDebtOfSelectedType` und kostet dich Gas und Zeit.
+6. **Lass dich beim nächsten Mal früher alarmieren.** Jeder dieser Fälle braucht Minuten, um ihn zu umgehen. Ein Health-Factor-Alert mit genug Abstand verschafft dir diese Minuten.
+
+Tokenping prüft deinen Aave Health Factor alle 5 Minuten, in jedem Aave-V3-Markt in 21 Netzwerken und in jedem Spoke von Aave V4, und schickt dir eine Nachricht über Signal, Telegram oder E-Mail, wenn er unter einem Schwellenwert liegt, den du wählst (1,1 bis 10), und wiederholt sie bei jeder Prüfung, bis er sich erholt. Es liest die Zahl aus `getUserAccountData`, dieselbe, die auch die Abhebungsprüfung nutzt. Ein Alert kann nicht für dich handeln, und nichts in diesem Ratgeber verhindert eine Liquidation; er sagt dir, welche Tür verschlossen ist, damit du zuerst die offene probierst. Du kannst [deinen Aave V3 Health Factor prüfen](/de/aave), ohne zu bezahlen; Alerts kosten <AlertPrice />, einer pro Markt oder Spoke. [Wie du eine Liquidation auf Aave vermeidest](/de/blog/aave-liquidation-vermeiden) behandelt die Entscheidung zwischen Zurückzahlen und Nachlegen im Detail, und [warum dein Health Factor gesunken ist](/de/blog/warum-ist-mein-aave-health-factor-gesunken) die Ursachen, auf die du reagierst.
+
+## Quellen
+
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol), [BorrowLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/BorrowLogic.sol) und [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): jede oben genannte Prüfung, die Reihenfolge, in der sie laufen, der Kommentar zu LTV 0 und das Zero-LTV-Flag (aave-v3-origin main, abgerufen am 29. Oktober 2026)
+- [Errors.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/helpers/Errors.sol): die Fehlernamen und ihre Beschreibungen (aave-v3-origin main, abgerufen am 29. Oktober 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getAllReservesTokens` und für jede Reserve `getReserveConfigurationData`, `getReserveCaps`, `getPaused` und `getReserveData`, bei Block 26296985 (abgerufen am 29. Oktober 2026)
+- [aEthUSDC](https://etherscan.io/address/0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c): die USDC, die der aToken-Contract bei Block 26296985 hielt (abgerufen am 29. Oktober 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): Preise von WETH und USDC bei Block 26296985 (abgerufen am 29. Oktober 2026)
+- [Aave-Dokumentation: Pool Configurator](https://aave.com/docs/aave-v3/smart-contracts/pool-configurator): was eingefrorene und pausierte Reserves erlauben, Caps von 0 (abgerufen am 29. Oktober 2026)
+- [Aave v2/v3 security incident 04/11/2023](https://governance.aave.com/t/aave-v2-v3-security-incident-04-11-2023/15335): die Pausen vom 4. November 2023, die Freigaben vom 12., 13. und 16. November und die Schonfrist (abgerufen am 29. Oktober 2026)
+- [Aave V3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): das Ende der Kredite mit stabilem Zinssatz (abgerufen am 29. Oktober 2026)
+- [Aave V3.7: Entfernung von Isolation Mode und Siloed Borrowing](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/mode-removal.md) (abgerufen am 29. Oktober 2026)
+- [Risk Stewards: Supply and Borrow Cap Reductions on Aave V3 / 2026.07.10](https://governance.aave.com/t/risk-stewards-supply-and-borrow-cap-reductions-on-aave-v3-2026-07-10/25296): die Cap-Senkungen von LlamaRisk auf MegaETH, ausgeführt am 14. Juli 2026 (abgerufen am 29. Oktober 2026)
+
+_Bildungsinhalt, keine Finanzberatung. Alerts senken das Risiko, verhindern aber keine Liquidation._

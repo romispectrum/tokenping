@@ -4,11 +4,14 @@ import {
   capitalize,
   csForMarket,
   csOnMarket,
+  deForMarket,
+  deOnMarket,
   formatDecimal,
   formatLongDate,
   hiMarket,
   joinList,
   plural,
+  viMarket,
 } from "~~/i18n/format";
 
 describe("csOnMarket and csForMarket", () => {
@@ -71,6 +74,34 @@ describe("Hindi formatting", () => {
     expect(hiMarket("Ethereum")).toBe("Ethereum नेटवर्क");
     expect(hiMarket("Ethereum (V4 Lido)")).toBe("Ethereum (V4 Lido) मार्केट");
     expect(hiMarket("USDC | cbBTC (86%)", "market")).toBe("USDC | cbBTC (86%) मार्केट");
+  });
+});
+
+describe("German formatting", () => {
+  it("joins with und and oder, writes German dates, a decimal comma and the market wording", () => {
+    expect(joinList("de", ["Signal", "Telegram", "E-Mail"])).toBe("Signal, Telegram und E-Mail");
+    expect(joinList("de", ["Signal", "E-Mail"], "disjunction")).toBe("Signal oder E-Mail");
+    expect(formatLongDate("de", "2026-10-14")).toBe("14. Oktober 2026");
+    expect(formatDecimal("de", "1.42")).toBe("1,42");
+    expect(plural("de", 1, { one: "1 Netzwerk", other: "Netzwerke" })).toBe("1 Netzwerk");
+    expect(plural("de", 7, { one: "1 Netzwerk", other: "7 Netzwerke" })).toBe("7 Netzwerke");
+    expect(deOnMarket("Ethereum")).toBe("im Netzwerk Ethereum");
+    expect(deOnMarket("Ethereum (V4 Lido)")).toBe("im Markt Ethereum (V4 Lido)");
+    expect(deForMarket("Base")).toBe("für das Netzwerk Base");
+    expect(deForMarket("USDC | cbBTC (86%)", "market")).toBe("für den Markt USDC | cbBTC (86%)");
+  });
+});
+
+describe("Vietnamese formatting", () => {
+  it("joins with và and hoặc, writes Vietnamese dates, a decimal comma and the market wording", () => {
+    expect(joinList("vi", ["Signal", "Telegram", "email"])).toBe("Signal, Telegram và email");
+    expect(joinList("vi", ["Signal", "email"], "disjunction")).toBe("Signal hoặc email");
+    expect(formatLongDate("vi", "2026-10-14")).toBe("14 tháng 10, 2026");
+    expect(formatDecimal("vi", "1.42")).toBe("1,42");
+    // Vietnamese has no plural: every count takes the "other" form.
+    expect(plural("vi", 1, { one: "1 mạng", other: "1 mạng (other)" })).toBe("1 mạng (other)");
+    expect(viMarket("Ethereum")).toBe("mạng Ethereum");
+    expect(viMarket("Ethereum (V4 Lido)")).toBe("thị trường Ethereum (V4 Lido)");
   });
 
   it("picks one or other", () => {

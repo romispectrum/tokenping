@@ -27,6 +27,10 @@ const CS_ARTICLE_DISCLAIMER =
 const ES_ARTICLE_DISCLAIMER =
   "Contenido educativo, no asesoramiento financiero. Las alertas reducen el riesgo, pero no evitan la liquidación.";
 const HI_ARTICLE_DISCLAIMER = "शैक्षिक सामग्री, वित्तीय सलाह नहीं। अलर्ट जोखिम कम करते हैं, लिक्विडेशन रोकते नहीं।";
+const DE_ARTICLE_DISCLAIMER =
+  "Bildungsinhalt, keine Finanzberatung. Alerts senken das Risiko, verhindern aber keine Liquidation.";
+const VI_ARTICLE_DISCLAIMER =
+  "Nội dung mang tính giáo dục, không phải lời khuyên tài chính. Cảnh báo giúp giảm rủi ro, nhưng không ngăn được việc thanh lý.";
 const MAX_TITLE_LENGTH = 60;
 const MAX_DESCRIPTION_LENGTH = 155;
 const MIN_DESCRIPTION_LENGTH = 50;
@@ -58,6 +62,11 @@ const HI_MONTHS =
   "जनवरी|फ़रवरी|फरवरी|मार्च|अप्रैल|मई|जून|जुलाई|अगस्त|सितंबर|सितम्बर|अक्टूबर|अक्तूबर|नवंबर|नवम्बर|दिसंबर|दिसम्बर";
 // "(29 अक्टूबर 2026 को देखा गया)": the day, the month, the year, then "seen on".
 const HI_FETCHED_DATE = new RegExp(String.raw`(?:^|[\s(])\d{1,2} (?:${HI_MONTHS}) \d{4} को देखा गया`, "u");
+const DE_MONTHS = "Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember";
+// "(abgerufen am 29. Oktober 2026)"
+const DE_FETCHED_DATE = new RegExp(String.raw`(?:^|[\s(])abgerufen am \d{1,2}\. (?:${DE_MONTHS}) \d{4}(?!\d)`, "u");
+// "(truy cập ngày 29 tháng 10 năm 2026)"
+const VI_FETCHED_DATE = /(?:^|[\s(])truy cập ngày \d{1,2} tháng \d{1,2} năm \d{4}(?!\d)/u;
 const SITE_HOST = /^https?:\/\/(?:www\.)?tokenping\.xyz(?:[/?#]|$)/i;
 
 type BannedPattern = {
@@ -153,7 +162,8 @@ const BANNED_PATTERNS: readonly BannedPattern[] = [
     reason: "the plan's [Telegram variant] placeholder must not ship: write the channels out",
   },
   {
-    pattern: /(?<![\d.,])\$?3(?:\.0+)? ?USDC\b/i,
+    // "3.000 USDC" is three thousand in German and Vietnamese, so a dot followed by exactly three zeros is not a decimal.
+    pattern: /(?<![\d.,])\$?3(?:\.(?!000(?!0))0+)? ?USDC\b/i,
     reason: "hard-coded alert price: use <AlertPrice /> (the owner can change the plan on-chain)",
   },
   { pattern: /\bUSDC (?:per|for|every|\/) ?30 days\b/i, reason: "hard-coded alert plan: use <AlertPrice />" },
@@ -316,6 +326,50 @@ const HI_BANNED_PATTERNS: readonly BannedPattern[] = [
   },
 ];
 
+// German copy that must not appear, on top of the English list. The same claims as above, in German word forms.
+const DE_BANNED_PATTERNS: readonly BannedPattern[] = [
+  { pattern: /\bnie(?:mals)? (?:mehr |wieder )?liquidiert\b/iu, reason: "guarantee: 'nie liquidiert'" },
+  { pattern: /\bnie(?:mals)? (?:mehr |wieder )?(?:verpass|übersieh)/iu, reason: "guarantee: 'nie verpassen'" },
+  // "Echtzeit" and its compounds ("Echtzeitdaten"), not "rechtzeitig" (in time).
+  { pattern: /(?<!\p{L})echtzeit/iu, reason: "'Echtzeit' (alerts are checked every 5 minutes)" },
+  {
+    pattern: /\bsofortige[nrs]? (?:Alerts?|Benachrichtigung|Warnung|Nachricht)/iu,
+    reason: "'sofortige Benachrichtigung' (alerts are checked every 5 minutes)",
+  },
+  { pattern: /\bmulti[- ]?protokoll/iu, reason: "'Multi-Protokoll' (name the protocols: Aave and Morpho)" },
+  {
+    pattern: /\bclose factor (?:ist|beträgt) (?:immer |fest |pauschal )?(?:50 ?%|0,5\b|die Hälfte)/iu,
+    reason: "stale: since v3.3 the close factor is 50% or 100% depending on HF and position size",
+    allowQuoted: true,
+  },
+  { pattern: /\bUSDC (?:pro|für|alle|je) 30 Tage/iu, reason: "hard-coded alert plan: use <AlertPrice />" },
+  // The German forms of "free"; "kostet nichts", "ohne Gebühr" and "keine Zahlung nötig" are fine.
+  {
+    pattern: /kostenlos|kostenfrei|gebührenfrei|\bgratis\b|\bumsonst\b/iu,
+    reason: "'kostenlos' must not appear: write 'keine Zahlung nötig', 'kostet nichts' or 'ohne Gebühr'",
+  },
+];
+
+// Vietnamese copy that must not appear, on top of the English list. The same claims as above, in Vietnamese.
+const VI_BANNED_PATTERNS: readonly BannedPattern[] = [
+  { pattern: /không bao giờ (?:bị )?thanh lý/iu, reason: "guarantee: 'không bao giờ bị thanh lý'" },
+  { pattern: /không bao giờ (?:bỏ lỡ|bỏ sót)/iu, reason: "guarantee: 'không bao giờ bỏ lỡ'" },
+  { pattern: /thời gian thực/iu, reason: "'thời gian thực' (alerts are checked every 5 minutes)" },
+  {
+    pattern: /(?:cảnh báo|thông báo|tin nhắn) (?:tức thì|tức thời|ngay lập tức)/iu,
+    reason: "'cảnh báo tức thì' (alerts are checked every 5 minutes)",
+  },
+  { pattern: /đa giao thức/iu, reason: "'đa giao thức' (name the protocols: Aave and Morpho)" },
+  {
+    pattern: /close factor (?:luôn |cố định )?(?:là|bằng) (?:50 ?%|0,5\b|một nửa)/iu,
+    reason: "stale: since v3.3 the close factor is 50% or 100% depending on HF and position size",
+    allowQuoted: true,
+  },
+  { pattern: /USDC (?:cho|mỗi) 30 ngày/iu, reason: "hard-coded alert plan: use <AlertPrice />" },
+  // The Vietnamese "free"; "không mất phí" and "không cần thanh toán" are fine.
+  { pattern: /miễn phí/iu, reason: "'miễn phí' must not appear: write 'không mất phí' or 'không cần thanh toán'" },
+];
+
 const findBannedPhrases = (text: string, patterns: readonly BannedPattern[] = BANNED_PATTERNS) => {
   const normalized = normalizeQuotes(text);
   return patterns.flatMap(({ pattern, reason, allowQuoted }) => {
@@ -378,6 +432,8 @@ const POST_DIRS: Record<Locale, URL> = {
   cs: new URL("./cs/", BLOG_DIR),
   es: new URL("./es/", BLOG_DIR),
   hi: new URL("./hi/", BLOG_DIR),
+  de: new URL("./de/", BLOG_DIR),
+  vi: new URL("./vi/", BLOG_DIR),
 };
 
 const loadLanguage = async (locale: Locale) => {
@@ -415,6 +471,8 @@ const POST_INDEX: Record<Locale, PostIndex> = {
   cs: indexPosts(LANGUAGES.cs.posts),
   es: indexPosts(LANGUAGES.es.posts),
   hi: indexPosts(LANGUAGES.hi.posts),
+  de: indexPosts(LANGUAGES.de.posts),
+  vi: indexPosts(LANGUAGES.vi.posts),
 };
 
 type LanguageRules = {
@@ -454,6 +512,20 @@ const LANGUAGE_RULES: Record<Locale, LanguageRules> = {
     fetchedDate: HI_FETCHED_DATE,
     fetchedFormat: "<d माह yyyy> को देखा गया",
     bannedPatterns: [...BANNED_PATTERNS, ...HI_BANNED_PATTERNS],
+  },
+  de: {
+    disclaimer: DE_ARTICLE_DISCLAIMER,
+    sourcesHeading: "Quellen",
+    fetchedDate: DE_FETCHED_DATE,
+    fetchedFormat: "abgerufen am <d. Monat yyyy>",
+    bannedPatterns: [...BANNED_PATTERNS, ...DE_BANNED_PATTERNS],
+  },
+  vi: {
+    disclaimer: VI_ARTICLE_DISCLAIMER,
+    sourcesHeading: "Nguồn",
+    fetchedDate: VI_FETCHED_DATE,
+    fetchedFormat: "truy cập ngày <d> tháng <m> năm <yyyy>",
+    bannedPatterns: [...BANNED_PATTERNS, ...VI_BANNED_PATTERNS],
   },
 };
 
@@ -700,6 +772,8 @@ const LANGUAGE_DIRS: Record<Locale, string> = {
   cs: "content/blog/cs",
   es: "content/blog/es",
   hi: "content/blog/hi",
+  de: "content/blog/de",
+  vi: "content/blog/vi",
 };
 
 for (const locale of LOCALES) {
@@ -844,6 +918,8 @@ describe("findBannedPhrases", () => {
     'The aave.com Pool page still says "close factor is 0.5".',
     "Debt of 12,000 USDC against 10 WETH.",
     "A position with 13 USDC of debt, or 0.3 USDC, or 3,000 USDC.",
+    // German and Vietnamese write three thousand as "3.000".
+    "Eine Position mit 3.000 USDC Schulden.",
     "Alerts give you time to act; they don't prevent liquidation.",
     "The instance of a timestamp.",
     "Debt ceilings were removed in Aave V3.7.",

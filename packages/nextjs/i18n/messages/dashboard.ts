@@ -1,4 +1,14 @@
-import { capitalize, csForMarket, csOnMarket, esMarket, hiMarket, plural } from "~~/i18n/format";
+import {
+  capitalize,
+  csForMarket,
+  csOnMarket,
+  deForMarket,
+  deOnMarket,
+  esMarket,
+  hiMarket,
+  plural,
+  viMarket,
+} from "~~/i18n/format";
 import type { Localized } from "~~/i18n/locales";
 
 // The dashboard (/aave): the server-rendered page around the wallet island, the positions, the paywall and its payment
@@ -896,6 +906,362 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
       paySignBody: amount =>
         `2 में से चरण 2: ${amount} का भुगतान करें। जब तक आप कन्फ़र्म नहीं करते, कुछ भी नहीं भेजा जाता।`,
       payPendingBody: "2 में से चरण 2: भुगतान भेज दिया गया। नेटवर्क के कन्फ़र्म करते ही अलर्ट अनलॉक हो जाएँगे।",
+    },
+  },
+  de: {
+    page: {
+      metaTitle: "Aave V3 und V4: Positionen und Health Factor",
+      metaDescription: (networkCount, channels) =>
+        `Sieh Sicherheiten, Schulden und Health Factor auf Aave V3 und V4 in ${networkCount} Netzwerken. Alerts per ${channels}, je Markt ein Schwellenwert.`,
+      title: "Aave V3 und V4: Positionen und Health-Factor-Alerts",
+      networkMarkets: (name, markets) => `${name} (Märkte ${markets})`,
+      intro: (v3Networks, v4Networks) =>
+        `Verbinde die Wallet, mit der du leihst, um ihre Sicherheiten, Schulden und ihren Health Factor auf Aave V3 auf ${v3Networks} und in jedem Spoke von Aave V4 auf ${v4Networks} zu sehen. Zum Ansehen ist keine Transaktion nötig.`,
+      disclosureSummary: "Was Alerts kosten und wie oft wir prüfen",
+      alertsCost: (channels, paymentChain) =>
+        `Um eine Nachricht per ${channels} zu bekommen, wenn der Health Factor eines Markts unter einen Schwellenwert fällt, den du wählst, schalte die Alerts mit einer USDC-Zahlung${paymentChain ? ` auf ${paymentChain}` : ""} frei. Der aktuelle Preis wird vor dem Bezahlen angezeigt.`,
+      checks: minutes =>
+        `Tokenping prüft ${plural("de", minutes, { one: "jede Minute", other: `alle ${minutes} Minuten` })}. Solange der Health Factor unter deinem Schwellenwert bleibt, sendet jede Prüfung eine weitere Nachricht über jeden Kanal, den du gewählt hast.`,
+      guideThreshold: "So wählst du einen Schwellenwert",
+      guideAlerts: "So funktionieren Alerts",
+      morphoDashboard: "Du leihst auf Morpho? Öffne das Morpho-Dashboard",
+    },
+    gate: {
+      title: "Verbinde eine Wallet, um fortzufahren",
+      description:
+        "Tokenping braucht deine Wallet-Adresse, um deine Aave-Positionen anzuzeigen. Das Verbinden bewegt kein Guthaben und kostet keine Gebühr.",
+      connect: "Wallet verbinden",
+      connecting: "Wird verbunden",
+      approveInWallet: "Bestätige die Verbindung in deiner Wallet.",
+    },
+    positionsHeading: "Deine Aave-Positionen",
+    loadingDashboard: "Dein Dashboard wird geladen",
+    toolbar: {
+      wallet: "Wallet",
+      refresh: "Positionen aktualisieren",
+      refreshing: "Wird aktualisiert",
+      loadingPositions: "Positionen werden geladen",
+    },
+    errors: {
+      positionsDidNotLoad: "Positionen wurden nicht geladen",
+      refreshFailed: "Aktualisierung fehlgeschlagen",
+      showingLastPositions: "Angezeigt werden die Positionen vom letzten erfolgreichen Laden.",
+      tryAgain: "Erneut versuchen",
+      fetchPositionsFailed: "Aave-Positionen konnten nicht abgerufen werden",
+    },
+    totals: {
+      supplied: "Eingezahlt gesamt",
+      borrowed: "Geliehen gesamt",
+      netWorth: "Nettovermögen",
+      noData: "Keine Daten",
+    },
+    networks: {
+      heading: "Märkte",
+      active: count => `${count} aktiv`,
+      noPositions: "In den unterstützten Märkten wurden keine aktiven Aave-Positionen gefunden.",
+      selectedRegion: "Ausgewählter Markt",
+      noneSelectedTitle: "Kein Markt ausgewählt",
+      noneSelectedDescription: "Wähle einen Markt, um seine Aave-Position zu sehen.",
+      otherMarkets: count => `Weitere Märkte (${count})`,
+      otherMarketsHint:
+        "Märkte, die Tokenping geprüft hat und in denen diese Wallet weder eine Position noch einen Alert hat.",
+      alertSet: "Alert eingerichtet",
+      supplied: usd => `${usd} eingezahlt,`,
+      borrowed: usd => `${usd} geliehen`,
+      noPosition: "Keine Position",
+    },
+    healthFactor: {
+      srPrefix: "Health Factor ",
+      noDebt: "Keine Schulden",
+      critical: "Kritisch",
+      risky: "Riskant",
+      safe: "Sicher",
+    },
+    position: {
+      market: version => (version === 4 ? "Aave-V4-Spoke" : "Aave-V3-Markt"),
+      noPositionTitle: chainName => `Keine aktive Position ${deOnMarket(chainName)}`,
+      noPositionDetail: chainName =>
+        `Aave meldet für diese Wallet ${deOnMarket(chainName)} keine Sicherheiten und keine Schulden.`,
+      collateral: "Sicherheiten",
+      debt: "Schulden",
+      netWorth: "Nettovermögen",
+      suppliedTitle: "Eingezahlt",
+      borrowedTitle: "Geliehen",
+      noCollateral: "Keine Sicherheiten eingezahlt",
+      noDebt: "Keine offenen Schulden",
+      tokenIconsFrom: "Token- und Netzwerk-Icons von",
+      tokenDetailsFailedTitle: "Token-Details wurden nicht geladen",
+      tokenDetailsFailedBody:
+        "Die Summen oben stammen aus der Kontoübersicht von Aave. Aktualisiere die Positionen, um es erneut zu versuchen.",
+    },
+    tokens: {
+      asset: "Asset",
+      supplied: "Eingezahlt",
+      supplyApy: "Einzahlungs-APY",
+      collateral: "Als Sicherheit",
+      borrowed: "Geliehen",
+      rateType: "Zinsart",
+      enabled: "Aktiviert",
+      disabled: "Deaktiviert",
+      stable: amount => `Stabil ${amount}`,
+      variable: amount => `Variabel ${amount}`,
+      count: count => plural("de", count, { one: `${count} Asset`, other: `${count} Assets` }),
+    },
+    address: {
+      defaultLabel: "Adresse",
+      copy: (_label, address) => `Adresse ${address} kopieren`,
+      copied: "Adresse kopiert",
+      copyFailed: "Kopieren fehlgeschlagen. Markiere die Adresse und kopiere sie von Hand.",
+    },
+    opensInNewTab: "(öffnet in einem neuen Tab)",
+    paywall: {
+      unlockedUntil: date => `Alerts freigeschaltet bis zum ${date}`,
+      titleNew: "Health-Factor-Alerts freischalten",
+      titleExtend: "Zugang verlängern, um deine Alerts zu bearbeiten",
+      descriptionNew:
+        "Zahle einmal, um die Alert-Einstellungen freizuschalten und für jedes Netzwerk einen Health-Factor-Schwellenwert festzulegen. Nichts verlängert sich automatisch: Wenn du verlängern willst, zahlst du aus deiner Wallet.",
+      descriptionExtend:
+        "Deine bisherigen Alert-Einstellungen sind gespeichert. Zahle erneut, um den Zugang zu verlängern und sie zu bearbeiten.",
+      networkDescriptionNew: chainName =>
+        `Zahle einmal, um Health-Factor-Alerts ${deOnMarket(chainName)} und in anderen Märkten einzurichten. Nichts verlängert sich automatisch: Wenn du verlängern willst, zahlst du aus deiner Wallet.`,
+      networkDescriptionExtend: chainName =>
+        `Deine gespeicherten Alert-Einstellungen ${deForMarket(chainName)} sind noch in deinem Konto. Zahle erneut, um den Zugang zu verlängern und sie zu bearbeiten.`,
+      connectWallet: "Verbinde deine Wallet, um den Zugang zu bezahlen.",
+      unconfigured: "Für dieses Netzwerk ist kein Zahlungs-Contract eingerichtet.",
+      noPlan: "Derzeit ist kein bezahlter Plan verfügbar.",
+      paused: "Zahlungen sind gerade pausiert. Versuche es später erneut.",
+      statusUnavailable:
+        "Der Zahlungsstatus konnte nicht geladen werden. Lade die Seite neu, um es erneut zu versuchen.",
+      wrongNetworkTitle: "Falsches Netzwerk",
+      wrongNetworkBody: (walletChain, target) =>
+        `Deine Wallet ist ${walletChain ? `im Netzwerk ${walletChain}` : "in einem anderen Netzwerk"}. Wechsle ${target ? `zu ${target}` : "zum Zahlungsnetzwerk"}, um zu bezahlen.`,
+      switchTo: target => (target ? `Zu ${target} wechseln` : "Zum Zahlungsnetzwerk wechseln"),
+      switching: "Netzwerk wird gewechselt",
+      loadingDetails: "Zahlungsdetails werden geladen",
+      price: "Preis",
+      access: "Zugang",
+      network: "Netzwerk",
+      networkFee: "Netzwerkgebühr",
+      networkFeeValue: symbol => `Für jeden Schritt in ${symbol} bezahlt, in deiner Wallet angezeigt`,
+      period: (days, about) => {
+        const period = plural("de", days, { one: `${days} Tag`, other: `${days} Tage` });
+        return about ? `Etwa ${period}` : period;
+      },
+      pay: amount => `${amount} bezahlen`,
+      extend: (days, amount) =>
+        `${plural("de", days, { one: `${days} Tag`, other: `${days} Tage` })} für ${amount} hinzufügen`,
+      extendHint: days =>
+        `Jede Zahlung fügt nach deinem aktuellen Enddatum ${plural("de", days, { one: `${days} Tag`, other: `${days} Tage` })} hinzu. Zahle so oft du willst; nichts verlängert sich von selbst.`,
+      accessExtended: date => `Zugang verlängert bis zum ${date}.`,
+      accessActive: "Zugang aktiv. Du kannst jetzt die Alerts einrichten.",
+      paymentPending: "Zahlung bestätigt. Der Zugang erscheint in Kürze.",
+      loading: {
+        processing: "Wird verarbeitet",
+        waitingForWallet: "Warte auf deine Wallet",
+        approving: "Wird freigegeben",
+        paying: "Wird bezahlt",
+      },
+      unavailable: "Bezahlter Zugang ist gerade nicht verfügbar.",
+      checkFailed: "Der Zahlungsstatus konnte nicht geprüft werden. Versuche es gleich noch einmal.",
+      approvalNotVisible: "Die Freigabe ist bestätigt, aber noch nicht sichtbar. Versuche es gleich noch einmal.",
+    },
+    payment: {
+      stepsLabel: "Zahlungsschritte",
+      approveTitle: amount => `${amount} freigeben`,
+      approveHint:
+        "Erlaubt dem Zahlungs-Contract, genau diesen Betrag einzuziehen. Entfällt, wenn eine frühere Freigabe ihn schon abdeckt.",
+      payTitle: amount => `${amount} bezahlen`,
+      payHint: "Sendet die Zahlung und schaltet die Alerts frei.",
+      inProgress: "Läuft",
+      done: "Erledigt",
+      notNeeded: "Nicht nötig",
+      transaction: "Transaktion ",
+      viewOn: explorer => `Auf ${explorer} ansehen`,
+      preparingTitle: "Zahlung wird vorbereitet",
+      preparingBody: "Der aktuelle Preis und deine Freigabe werden geprüft.",
+      confirmTitle: "In deiner Wallet bestätigen",
+      approveSignBody: amount => `Schritt 1 von 2: ${amount} freigeben. Nichts wird gesendet, bis du bestätigst.`,
+      processingOn: network => (network ? `Wird im Netzwerk ${network} verarbeitet` : "Wird im Netzwerk verarbeitet"),
+      approvePendingBody:
+        "Schritt 1 von 2: Freigabe gesendet. Als Nächstes bittet dich deine Wallet, die Zahlung zu bestätigen.",
+      paySignBody: amount => `Schritt 2 von 2: ${amount} bezahlen. Nichts wird gesendet, bis du bestätigst.`,
+      payPendingBody:
+        "Schritt 2 von 2: Zahlung gesendet. Die Alerts werden freigeschaltet, sobald das Netzwerk sie bestätigt.",
+    },
+  },
+  vi: {
+    page: {
+      metaTitle: "Vị thế và hệ số sức khỏe trên Aave V3 và V4",
+      metaDescription: (networkCount, channels) =>
+        `Tài sản thế chấp, nợ và hệ số sức khỏe của bạn trên Aave V3 và V4, trên ${networkCount} mạng, kèm cảnh báo qua ${channels}, mỗi thị trường một ngưỡng.`,
+      title: "Vị thế trên Aave V3 và V4, cảnh báo hệ số sức khỏe",
+      networkMarkets: (name, markets) => `${name} (các thị trường ${markets})`,
+      intro: (v3Networks, v4Networks) =>
+        `Kết nối ví mà bạn dùng để vay, rồi xem tài sản thế chấp, khoản nợ và hệ số sức khỏe (health factor) của ví đó trên Aave V3 trên các mạng ${v3Networks}, và trong mọi Spoke của Aave V4 trên các mạng ${v4Networks}. Việc xem không cần giao dịch nào.`,
+      disclosureSummary: "Chi phí của cảnh báo và tần suất kiểm tra",
+      alertsCost: (channels, paymentChain) =>
+        `Để nhận tin nhắn qua ${channels} khi hệ số sức khỏe của một thị trường giảm xuống dưới ngưỡng bạn chọn, hãy mở khóa cảnh báo bằng một khoản thanh toán USDC${paymentChain ? ` trên mạng ${paymentChain}` : ""}. Giá hiện tại được hiển thị trước khi bạn thanh toán.`,
+      checks: minutes =>
+        `Tokenping kiểm tra ${minutes} phút một lần. Khi hệ số sức khỏe vẫn ở dưới ngưỡng của bạn, mỗi lần kiểm tra lại gửi thêm một tin nhắn qua từng kênh bạn đã chọn.`,
+      guideThreshold: "Cách chọn ngưỡng",
+      guideAlerts: "Cách cảnh báo hoạt động",
+      morphoDashboard: "Bạn vay trên Morpho? Mở bảng điều khiển Morpho",
+    },
+    gate: {
+      title: "Kết nối ví để tiếp tục",
+      description:
+        "Tokenping cần địa chỉ ví của bạn để hiển thị các vị thế Aave của bạn. Việc kết nối không chuyển tiền và không mất phí.",
+      connect: "Kết nối ví",
+      connecting: "Đang kết nối",
+      approveInWallet: "Hãy xác nhận kết nối trong ví của bạn.",
+    },
+    positionsHeading: "Vị thế Aave của bạn",
+    loadingDashboard: "Đang tải bảng điều khiển của bạn",
+    toolbar: {
+      wallet: "Ví",
+      refresh: "Làm mới vị thế",
+      refreshing: "Đang làm mới",
+      loadingPositions: "Đang tải vị thế",
+    },
+    errors: {
+      positionsDidNotLoad: "Không tải được vị thế",
+      refreshFailed: "Không làm mới được",
+      showingLastPositions: "Đang hiển thị các vị thế từ lần tải thành công gần nhất.",
+      tryAgain: "Thử lại",
+      fetchPositionsFailed: "Không lấy được các vị thế Aave",
+    },
+    totals: {
+      supplied: "Tổng đã gửi",
+      borrowed: "Tổng đã vay",
+      netWorth: "Giá trị ròng",
+      noData: "Không có dữ liệu",
+    },
+    networks: {
+      heading: "Thị trường",
+      active: count => `${count} đang hoạt động`,
+      noPositions: "Không tìm thấy vị thế Aave nào đang hoạt động trong các thị trường được hỗ trợ.",
+      selectedRegion: "Thị trường đã chọn",
+      noneSelectedTitle: "Chưa chọn thị trường",
+      noneSelectedDescription: "Chọn một thị trường để xem vị thế Aave trên thị trường đó.",
+      otherMarkets: count => `Thị trường khác (${count})`,
+      otherMarketsHint: "Các thị trường Tokenping đã kiểm tra mà ví này không có vị thế và không có cảnh báo.",
+      alertSet: "Đã đặt cảnh báo",
+      supplied: usd => `${usd} đã gửi,`,
+      borrowed: usd => `${usd} đã vay`,
+      noPosition: "Không có vị thế",
+    },
+    healthFactor: {
+      srPrefix: "Hệ số sức khỏe ",
+      noDebt: "Không có nợ",
+      critical: "Nguy cấp",
+      risky: "Rủi ro",
+      safe: "An toàn",
+    },
+    position: {
+      market: version => (version === 4 ? "Spoke của Aave V4" : "Thị trường Aave V3"),
+      noPositionTitle: chainName => `Không có vị thế đang hoạt động trên ${viMarket(chainName)}`,
+      noPositionDetail: chainName =>
+        `Theo Aave, ví này không có tài sản thế chấp và không có nợ trên ${viMarket(chainName)}.`,
+      collateral: "Tài sản thế chấp",
+      debt: "Nợ",
+      netWorth: "Giá trị ròng",
+      suppliedTitle: "Đã gửi",
+      borrowedTitle: "Đã vay",
+      noCollateral: "Chưa gửi tài sản thế chấp",
+      noDebt: "Không có khoản nợ nào",
+      tokenIconsFrom: "Biểu tượng token và mạng từ",
+      tokenDetailsFailedTitle: "Không tải được chi tiết token",
+      tokenDetailsFailedBody: "Các tổng số ở trên lấy từ bản tóm tắt tài khoản của Aave. Làm mới vị thế để thử lại.",
+    },
+    tokens: {
+      asset: "Tài sản",
+      supplied: "Đã gửi",
+      supplyApy: "APY khi gửi",
+      collateral: "Thế chấp",
+      borrowed: "Đã vay",
+      rateType: "Loại lãi suất",
+      enabled: "Bật",
+      disabled: "Tắt",
+      stable: amount => `Ổn định ${amount}`,
+      variable: amount => `Thả nổi ${amount}`,
+      count: count => plural("vi", count, { one: `${count} tài sản`, other: `${count} tài sản` }),
+    },
+    address: {
+      defaultLabel: "Địa chỉ",
+      copy: (_label, address) => `Sao chép địa chỉ ${address}`,
+      copied: "Đã sao chép địa chỉ",
+      copyFailed: "Không sao chép được. Hãy chọn địa chỉ và sao chép thủ công.",
+    },
+    opensInNewTab: "(mở trong thẻ mới)",
+    paywall: {
+      unlockedUntil: date => `Cảnh báo đã mở khóa đến ngày ${date}`,
+      titleNew: "Mở khóa cảnh báo hệ số sức khỏe",
+      titleExtend: "Gia hạn quyền truy cập để sửa cảnh báo",
+      descriptionNew:
+        "Thanh toán một lần để mở khóa cài đặt cảnh báo và đặt ngưỡng hệ số sức khỏe cho từng mạng. Không có gì tự động gia hạn: bạn thanh toán từ ví của mình khi muốn gia hạn.",
+      descriptionExtend:
+        "Cài đặt cảnh báo trước đây của bạn vẫn được lưu. Thanh toán lại để gia hạn quyền truy cập và chỉnh sửa chúng.",
+      networkDescriptionNew: chainName =>
+        `Thanh toán một lần để đặt cảnh báo hệ số sức khỏe trên ${viMarket(chainName)} và các thị trường khác. Không có gì tự động gia hạn: bạn thanh toán từ ví của mình khi muốn gia hạn.`,
+      networkDescriptionExtend: chainName =>
+        `Cài đặt cảnh báo bạn đã lưu cho ${viMarket(chainName)} vẫn còn trong tài khoản của bạn. Thanh toán lại để gia hạn quyền truy cập và chỉnh sửa chúng.`,
+      connectWallet: "Kết nối ví để thanh toán quyền truy cập.",
+      unconfigured: "Hợp đồng thanh toán chưa được cấu hình cho mạng này.",
+      noPlan: "Hiện chưa có gói trả phí nào.",
+      paused: "Thanh toán đang tạm dừng. Hãy thử lại sau.",
+      statusUnavailable: "Không tải được trạng thái thanh toán. Tải lại trang để thử lại.",
+      wrongNetworkTitle: "Sai mạng",
+      wrongNetworkBody: (walletChain, target) =>
+        `Ví của bạn đang ở ${walletChain ? `mạng ${walletChain}` : "một mạng khác"}. Chuyển sang ${target ? `mạng ${target}` : "mạng thanh toán"} để thanh toán.`,
+      switchTo: target => `Chuyển sang ${target ? `mạng ${target}` : "mạng thanh toán"}`,
+      switching: "Đang chuyển mạng",
+      loadingDetails: "Đang tải chi tiết thanh toán",
+      price: "Giá",
+      access: "Quyền truy cập",
+      network: "Mạng",
+      networkFee: "Phí mạng",
+      networkFeeValue: symbol => `Trả bằng ${symbol} cho mỗi bước, hiển thị trong ví của bạn`,
+      period: (days, about) => {
+        const period = `${days} ngày`;
+        return about ? `Khoảng ${period}` : period;
+      },
+      pay: amount => `Thanh toán ${amount}`,
+      extend: (days, amount) => `Thêm ${days} ngày với giá ${amount}`,
+      extendHint: days =>
+        `Mỗi lần thanh toán thêm ${days} ngày tính từ ngày kết thúc hiện tại của bạn. Bạn có thể thanh toán bao nhiêu lần tùy ý; không có gì tự gia hạn.`,
+      accessExtended: date => `Đã gia hạn quyền truy cập đến ngày ${date}.`,
+      accessActive: "Quyền truy cập đang hoạt động. Giờ bạn có thể cài đặt cảnh báo.",
+      paymentPending: "Đã xác nhận thanh toán. Quyền truy cập sẽ sớm xuất hiện.",
+      loading: {
+        processing: "Đang xử lý",
+        waitingForWallet: "Đang chờ ví của bạn",
+        approving: "Đang phê duyệt",
+        paying: "Đang thanh toán",
+      },
+      unavailable: "Quyền truy cập trả phí hiện không khả dụng.",
+      checkFailed: "Không kiểm tra được trạng thái thanh toán. Hãy thử lại sau giây lát.",
+      approvalNotVisible: "Phê duyệt đã được xác nhận nhưng chưa hiển thị. Hãy thử lại sau giây lát.",
+    },
+    payment: {
+      stepsLabel: "Các bước thanh toán",
+      approveTitle: amount => `Phê duyệt ${amount}`,
+      approveHint:
+        "Cho phép hợp đồng thanh toán lấy đúng số tiền này. Được bỏ qua nếu một lần phê duyệt trước đó đã đủ.",
+      payTitle: amount => `Thanh toán ${amount}`,
+      payHint: "Gửi khoản thanh toán và mở khóa cảnh báo.",
+      inProgress: "Đang thực hiện",
+      done: "Xong",
+      notNeeded: "Không cần",
+      transaction: "Giao dịch ",
+      viewOn: explorer => `Xem trên ${explorer}`,
+      preparingTitle: "Đang chuẩn bị thanh toán",
+      preparingBody: "Đang kiểm tra giá hiện tại và phê duyệt của bạn.",
+      confirmTitle: "Xác nhận trong ví của bạn",
+      approveSignBody: amount => `Bước 1/2: phê duyệt ${amount}. Không có gì được gửi cho đến khi bạn xác nhận.`,
+      processingOn: network => (network ? `Đang xử lý trên mạng ${network}` : "Đang xử lý trên mạng"),
+      approvePendingBody: "Bước 1/2: đã gửi phê duyệt. Tiếp theo, ví của bạn sẽ yêu cầu bạn xác nhận thanh toán.",
+      paySignBody: amount => `Bước 2/2: thanh toán ${amount}. Không có gì được gửi cho đến khi bạn xác nhận.`,
+      payPendingBody: "Bước 2/2: đã gửi thanh toán. Cảnh báo được mở khóa khi mạng xác nhận giao dịch.",
     },
   },
 };

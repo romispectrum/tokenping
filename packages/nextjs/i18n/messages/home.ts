@@ -196,6 +196,47 @@ const hiSpokes = (spokes: number) => `${spokes} Spoke`;
 /** "Arbitrum One नेटवर्क पर", or the payment network unnamed. */
 const hiOnChain = (chainName: string | undefined) => (chainName ? `${chainName} नेटवर्क पर` : "भुगतान नेटवर्क पर");
 
+/** "30 Tage", "1 Tag". */
+const deDays = (days: number) => plural("de", days, { one: `${days} Tag`, other: `${days} Tage` });
+
+/** "alle 5 Minuten", "jede Minute". */
+const deEveryMinutes = (minutes: number) =>
+  plural("de", minutes, { one: "jede Minute", other: `alle ${minutes} Minuten` });
+
+/** "29 Netzwerke", "1 Netzwerk". */
+const deNetworks = (networks: number) =>
+  plural("de", networks, { one: `${networks} Netzwerk`, other: `${networks} Netzwerke` });
+
+/** "auf 29 Netzwerken", "auf 1 Netzwerk" (dative). */
+const deOnNetworks = (networks: number) =>
+  plural("de", networks, { one: `auf ${networks} Netzwerk`, other: `auf ${networks} Netzwerken` });
+
+/** "24 V3-Märkte", "1 V3-Markt". */
+const deV3Markets = (markets: number) =>
+  plural("de", markets, { one: `${markets} V3-Markt`, other: `${markets} V3-Märkte` });
+
+/** "13 V4-Spokes", "1 V4-Spoke". */
+const deV4Spokes = (spokes: number) =>
+  plural("de", spokes, { one: `${spokes} V4-Spoke`, other: `${spokes} V4-Spokes` });
+
+/** "auf Arbitrum One", or the payment network unnamed. */
+const deOnChain = (chainName: string | undefined) => (chainName ? `auf ${chainName}` : "im Zahlungsnetzwerk");
+// Vietnamese nouns do not change after a number ("1 ngày", "30 ngày", "29 mạng").
+const viDays = (days: number) => `${days} ngày`;
+
+/** "mỗi 5 phút", "mỗi phút". */
+const viEveryMinutes = (minutes: number) => (minutes === 1 ? "mỗi phút" : `mỗi ${minutes} phút`);
+
+const viNetworks = (networks: number) => `${networks} mạng`;
+
+const viMarkets = (markets: number) => `${markets} thị trường`;
+
+/** "13 Spoke": the Aave term, uncounted in Vietnamese. */
+const viSpokes = (spokes: number) => `${spokes} Spoke`;
+
+/** "trên mạng Arbitrum One", or the payment network unnamed. */
+const viOnChain = (chainName: string | undefined) => (chainName ? `trên mạng ${chainName}` : "trên mạng thanh toán");
+
 export const HOME_MESSAGES: Localized<HomeMessages> = {
   en: {
     headline: channels => `Aave and Morpho health factor alerts on ${channels}`,
@@ -1055,5 +1096,442 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
 
     closingTitle: "अपना Aave या Morpho हेल्थ फ़ैक्टर अलर्ट सेट करें",
     closingLead: alertPrice => `${capitalize(alertPrice)}, भुगतान आपके वॉलेट से। अपने आप रिन्यू नहीं होता।`,
+  },
+  de: {
+    headline: channels => `Health-Factor-Alerts für Aave und Morpho über ${channels}`,
+    description: ({ channels, networks, minutes, short }) =>
+      short
+        ? `Alerts über ${channels}, wenn dein Health Factor auf Aave oder Morpho unter deinem Schwellenwert liegt, ${deOnNetworks(networks)}, ${deEveryMinutes(minutes)}.`
+        : `Alerts über ${channels}, wenn dein Health Factor auf Aave oder Morpho unter deinen Schwellenwert fällt, ${deOnNetworks(networks)}. Prüfung ${deEveryMinutes(minutes)}.`,
+    // The channel names arrive in English ("email"); German writes the badge "E-Mail".
+    channelBadge: name => (name.toLowerCase() === "email" ? "E-Mail" : capitalize(name)),
+    pricingCta: plan =>
+      plan
+        ? `Alerts einrichten: ${formatDecimal("de", plan.priceLabel)} für ${deDays(plan.days)}`
+        : "Alerts einrichten",
+    offerDescription: ({ days, currency }) =>
+      `Health-Factor-Alerts für ${deDays(days)}, bezahlt in ${currency} aus deiner Wallet. Keine automatische Verlängerung.`,
+
+    kicker: "Aave V3 und V4, Morpho Blue und Midnight",
+    heroLead: ({ minutes, channels }) =>
+      `Prüfung ${deEveryMinutes(minutes)}. Eine Nachricht über ${channels}, solange du unter deiner Grenze bist. Nur lesend, keine Freigaben.`,
+    networksLabel: "Netzwerke",
+    heroCoverage: networks => deNetworks(networks),
+    channelsLabel: "Alerts über:",
+    exampleAlertLabel: "Was in einem Alert steht",
+    exampleAlertCaption: subject => `Beispiel. E-Mails kommen mit dem Betreff „${subject}“.`,
+
+    dashboardCta: "Aave-Dashboard öffnen",
+    morphoDashboardCta: "Morpho-Dashboard öffnen",
+    dashboardCtaMicrocopy: alertPrice => `Verbinde eine Wallet und sieh alle Positionen. Alerts kosten ${alertPrice}.`,
+
+    problemTitle: "Der Health Factor fällt, während du schläfst",
+    problemLead:
+      "Aave zeigt deinen Health Factor, schickt aber keine Alerts (Oktober 2026). Drei Dinge bewegen ihn über Nacht:",
+    problemCauses: [
+      { title: "Preise fallen", body: "ETH fällt, und deine Sicherheiten sind weniger wert." },
+      { title: "Zinsen laufen auf", body: "Deine Schulden wachsen jede Sekunde." },
+      { title: "Schwellen ändern sich", body: "Auf Aave kann die Governance eine Liquidationsschwelle senken." },
+    ],
+    problemEvidence: ({ morning, failedRepays, polygon }) =>
+      rich(
+        "Kreditnehmer berichten von ",
+        morning("einer liquidierten Position am Morgen"),
+        ", ",
+        failedRepays("einer Stunde fehlgeschlagener Rückzahlungen"),
+        " und ",
+        polygon("einer Rückzahlung bei 1,01, die zu spät kam"),
+        ".",
+      ),
+    problemLiquidator: guide =>
+      rich(
+        "Der Liquidator behält obendrein einen Bonus: 5 % auf WETH im Core-Markt auf Ethereum (Oktober 2026).",
+        guide && rich(" Mehr dazu: ", guide("wie eine Liquidation abläuft"), "."),
+      ),
+    chart: {
+      threshold: "dein Schwellenwert",
+      liquidation: "Liquidation",
+      alertSent: "Alert gesendet",
+      youCheck: "Du schaust aufs Handy",
+      caption:
+        "Eine Beispielnacht. Der Alert geht um 03:05 raus, bei der ersten Prüfung unter 1,5, fünf Stunden bevor du nachsiehst.",
+    },
+
+    howItWorksTitle: "So funktioniert es",
+    steps: ({ plan, paymentChain, minutes, channels, threshold, morphoMin }) => {
+      const paidOn = paymentChain ? ` auf ${paymentChain}` : "";
+      return [
+        {
+          title: "Verbinde die Wallet, mit der du leihst",
+          body: "Nur lesend. Aave und Morpho, je eine Seite.",
+        },
+        {
+          title: plan
+            ? `Schalte Alerts für ${formatDecimal("de", plan.priceLabel)} frei`
+            : "Schalte Alerts mit einer kleinen USDC-Zahlung frei",
+          body: `${plan ? `${deDays(plan.days)} Zugang, bezahlt` : "Bezahlt"} in USDC${paidOn}. Keine automatische Verlängerung.`,
+        },
+        {
+          title: "Wähle eine Grenze für jeden Markt",
+          body: `Von ${formatDecimal("de", threshold.min)} (${formatDecimal("de", morphoMin)} auf Morpho) bis ${formatDecimal("de", threshold.max)}, Standard ${formatDecimal("de", threshold.default)}.`,
+        },
+        {
+          title: "Erhalte Nachrichten, solange du darunter bist",
+          body: `${capitalize(deEveryMinutes(minutes))}, über ${channels}, bis du wieder über deiner Grenze bist.`,
+        },
+      ];
+    },
+    scaleTitle: "Wo deine Grenze liegen sollte",
+    scale: {
+      liquidation: "Liquidation",
+      critical: "Kritisch",
+      risky: "Riskant",
+      safe: "Sicher",
+      defaultThreshold: value => `Standard: ${value}`,
+      below: value => `Unter ${value}`,
+      between: (from, to) => `${from} bis ${to}`,
+      andAbove: value => `${value} und mehr`,
+      range: (min, max) => `Jeder Wert von ${min} bis ${max}.`,
+    },
+    scaleGuide: "Wie du einen Schwellenwert wählst",
+
+    coverageTitle: "Jeder Aave-Markt und jeder gelistete Morpho-Markt",
+    coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks, morphoNetworks }) =>
+      `${deV3Markets(v3Markets)} von Aave ${deOnNetworks(v3Networks)} und ${deV4Spokes(spokes)} von Aave ${deOnNetworks(v4Networks)}, Stand 16. Oktober 2026, dazu jeder gelistete Morpho-Markt ${deOnNetworks(morphoNetworks)}.`,
+    coverage: {
+      v3Markets: count => deV3Markets(count),
+      v4Spokes: count => deV4Spokes(count),
+      morpho: "Morpho",
+    },
+    coverageNote:
+      "Scroll, ZKsync, Metis, Soneium und Sonic werden von der Aave-Governance abgewickelt und weiter überwacht. Nicht abgedeckt: Aave V3 auf Harmony, nicht gelistete Morpho-Märkte und andere Protokolle.",
+
+    pricingTitle: "Preise",
+    pricingRows: ({ alertPrice, paymentChain }) => [
+      { term: "Alerts", detail: capitalize(alertPrice) },
+      { term: "Verlängerung", detail: "Nicht automatisch: zahl erneut, wenn du mehr Zeit willst" },
+      {
+        term: "Zahlung",
+        detail: paymentChain
+          ? `USDC auf ${paymentChain}, aus deiner Wallet (freigeben, dann bezahlen)`
+          : "USDC, aus deiner Wallet",
+      },
+    ],
+    priceSource: "Der Preis wird aus dem Zahlungsvertrag gelesen und stündlich aktualisiert.",
+    pricingFootnote: "Positionen ansehen braucht keine Zahlung.",
+
+    questionsTitle: "Fragen, bevor du eine Wallet verbindest",
+    questions: ({ alertPrice, paymentChain, hasTelegram, minutes, morphoMin, links }) => {
+      const onChain = deOnChain(paymentChain);
+      return [
+        {
+          question: "Kann Tokenping auf mein Geld zugreifen?",
+          answer: rich(
+            `Nein. Tokenping liest nur deine Positionen und fragt auf Aave oder Morpho nie nach einer Freigabe oder Signatur. Die einzigen Transaktionen sind die Zahlung ${onChain}: eine Freigabe über genau den Preis, dann die Zahlung. `,
+            links.sourcify
+              ? rich(
+                  "Der Vertrag ist ",
+                  links.sourcify("auf Sourcify verifiziert"),
+                  " und sein ",
+                  links.sourceCode("Quellcode ist öffentlich"),
+                )
+              : links.sourceCode("Der Quellcode des Vertrags ist öffentlich"),
+            "; die Wallet des Teams kann seinen Preis ändern, ihn pausieren und upgraden.",
+          ),
+        },
+        {
+          question: "Was speichert ihr?",
+          answer: rich(
+            "Deine Wallet-Adresse, deine Alerts und die Kontaktdaten, die du angibst (E-Mail, Signal-Benutzername",
+            hasTelegram ? ", Telegram-Chat" : "",
+            `). Kein Verlauf und keine Tracking-Cookies; Seitenaufrufe werden anonym gezählt. Nur wer mit deiner Wallet signieren kann, kann diese Kontaktdaten lesen, aber Zahlungen sind ${onChain} öffentlich. Die `,
+            links.privacy("Datenschutzseite"),
+            " enthält die vollständige Liste.",
+          ),
+        },
+        {
+          question: "Was kostet es?",
+          answer: rich(
+            `Alerts kosten ${alertPrice}, in USDC ${onChain}, plus etwas ETH für Gas. Positionen ansehen braucht keine Zahlung. Keine automatische Verlängerung, keine Erstattungen.`,
+          ),
+        },
+        {
+          question: "Welche Morpho-Kredite sind abgedeckt?",
+          answer: rich(
+            `Kredite auf Morpho Blue (variabler Zinssatz) und Morpho Midnight (fester Zinssatz) in Märkten, die die Morpho-App listet, mit Schwellenwerten ab ${formatDecimal("de", morphoMin)}. Ein Festzinskredit bekommt außerdem Erinnerungen vor der Fälligkeit. Derselbe Plan deckt sie ab: öffne das `,
+            links.morphoDashboard("Morpho-Dashboard"),
+            ".",
+          ),
+        },
+        {
+          question: "Was, wenn ein Alert nicht ankommt?",
+          answer: rich(
+            `Die nächste Prüfung, ${plural("de", minutes, { one: "1 Minute", other: `${minutes} Minuten` })} später, versucht es erneut. Die Zustellung hängt von Resend, einem Signal-Relay,`,
+            hasTelegram ? " der Telegram Bot API," : "",
+            " öffentlichen RPC-Knoten und dem Scheduler von Vercel ab, ohne Verfügbarkeitsgarantie. Wähle zwei Kanäle und lass dir Zeit zum Handeln.",
+          ),
+        },
+        {
+          question: "Wie stoppe ich die Alerts?",
+          answer: rich(
+            "Sie stoppen, sobald dein Health Factor wieder über deiner Grenze liegt oder wenn du den Alert löschst (braucht aktiven Zugang). Zugang abgelaufen? Schreib uns auf ",
+            links.x("X"),
+            " oder in unserer Community auf ",
+            links.telegramCommunity("Telegram"),
+            " oder ",
+            links.signalCommunity("Signal"),
+            ".",
+            hasTelegram ? " In Telegram funktioniert auch /stop." : "",
+            " Noch kein Pausieren und kein Abmeldelink.",
+          ),
+        },
+        {
+          question: "Kann ich eine Wallet beobachten, die ich nicht verbinde?",
+          answer: rich("Derzeit nicht. Eine Wallet, die du verbindest; der Zugang gilt pro Wallet."),
+        },
+        {
+          question: "Andere Tools kosten nichts. Warum bezahlen?",
+          answer: rich(
+            "Wenn dir ein Telegram-Bot oder eine Mobile-App reicht, nutze sie",
+            links.comparison ? rich(": ", links.comparison("unser Vergleich"), " stellt sie vor") : null,
+            ". Tokenping ist für Alerts über Signal oder E-Mail, in jedem Aave-Markt und jedem gelisteten Morpho-Markt.",
+          ),
+        },
+      ];
+    },
+
+    limitsTitle: "Einschränkungen, klar gesagt",
+    limits: ({ minutes, paymentChain }) => [
+      `Prüfung ${deEveryMinutes(minutes)}, nicht laufend.`,
+      "Jede Prüfung unter deiner Grenze schickt eine weitere Nachricht: kein Pausieren, keine Zusammenfassung.",
+      "Eine Grenze pro Markt, nur für die verbundene Wallet.",
+      `Nur USDC${paymentChain ? ` auf ${paymentChain}` : ""}: keine Karten, keine Erstattungen.`,
+      "Noch kein Abmeldelink in E-Mails; einen Alert zu löschen braucht aktiven Zugang.",
+      "Beta: Zustellung über Dritte, keine Verfügbarkeitsgarantie.",
+    ],
+
+    blogTitle: "Aus dem Blog",
+    allGuides: "Alle Ratgeber zu Aave und Morpho",
+
+    closingTitle: "Richte deinen Health-Factor-Alert für Aave oder Morpho ein",
+    closingLead: alertPrice => `${capitalize(alertPrice)}, bezahlt aus deiner Wallet. Keine automatische Verlängerung.`,
+  },
+  vi: {
+    headline: channels => `Cảnh báo hệ số sức khỏe trên Aave và Morpho qua ${channels}`,
+    description: ({ channels, networks, minutes, short }) =>
+      short
+        ? `Cảnh báo qua ${channels} khi hệ số sức khỏe trên Aave hoặc Morpho dưới ngưỡng của bạn, trên ${viNetworks(networks)}, ${viEveryMinutes(minutes)}.`
+        : `Cảnh báo qua ${channels} khi hệ số sức khỏe trên Aave hoặc Morpho giảm xuống dưới ngưỡng của bạn, trên ${viNetworks(networks)}. Kiểm tra ${viEveryMinutes(minutes)}.`,
+    channelBadge: capitalize,
+    pricingCta: plan =>
+      plan
+        ? `Cài đặt cảnh báo: ${formatDecimal("vi", plan.priceLabel)} trong ${viDays(plan.days)}`
+        : "Cài đặt cảnh báo",
+    offerDescription: ({ days, currency }) =>
+      `Cảnh báo hệ số sức khỏe trong ${viDays(days)}, thanh toán bằng ${currency} từ ví của bạn. Không tự động gia hạn.`,
+
+    kicker: "Aave V3 và V4, Morpho Blue và Midnight",
+    heroLead: ({ minutes, channels }) =>
+      `Kiểm tra ${viEveryMinutes(minutes)}. Một tin nhắn qua ${channels} khi bạn còn ở dưới ngưỡng của mình. Chỉ đọc, không cần phê duyệt.`,
+    networksLabel: "Mạng",
+    heroCoverage: networks => viNetworks(networks),
+    channelsLabel: "Cảnh báo qua:",
+    exampleAlertLabel: "Nội dung một cảnh báo",
+    exampleAlertCaption: subject => `Ví dụ. Email được gửi đến với tiêu đề "${subject}".`,
+
+    dashboardCta: "Mở bảng điều khiển Aave",
+    morphoDashboardCta: "Mở bảng điều khiển Morpho",
+    dashboardCtaMicrocopy: alertPrice => `Kết nối ví và xem mọi vị thế của bạn. Cảnh báo có giá ${alertPrice}.`,
+
+    problemTitle: "Hệ số sức khỏe giảm trong khi bạn ngủ",
+    problemLead:
+      "Aave hiển thị hệ số sức khỏe của bạn nhưng không gửi cảnh báo (tháng 10 năm 2026). Ba điều làm nó thay đổi qua đêm:",
+    problemCauses: [
+      { title: "Giá giảm", body: "ETH giảm và tài sản thế chấp của bạn mất giá." },
+      { title: "Lãi cộng dồn", body: "Khoản nợ của bạn tăng lên từng giây." },
+      { title: "Ngưỡng thay đổi", body: "Trên Aave, cơ chế quản trị có thể hạ ngưỡng thanh lý." },
+    ],
+    problemEvidence: ({ morning, failedRepays, polygon }) =>
+      rich(
+        "Có người vay kể lại chuyện ",
+        morning("thức dậy thấy vị thế đã bị thanh lý"),
+        ", ",
+        failedRepays("một giờ liền giao dịch trả nợ thất bại"),
+        " và ",
+        polygon("một lần trả nợ ở mức 1,01 đã quá muộn"),
+        ".",
+      ),
+    problemLiquidator: guide =>
+      rich(
+        "Bên thanh lý còn giữ thêm một khoản thưởng: 5% với WETH trên thị trường Ethereum Core (tháng 10 năm 2026).",
+        guide && rich(" Xem ", guide("cách một vụ thanh lý diễn ra"), "."),
+      ),
+    chart: {
+      threshold: "ngưỡng của bạn",
+      liquidation: "thanh lý",
+      alertSent: "Đã gửi cảnh báo",
+      youCheck: "Bạn xem điện thoại",
+      caption:
+        "Một đêm ví dụ. Cảnh báo được gửi lúc 03:05, ở lần kiểm tra đầu tiên dưới 1,5, năm giờ trước khi bạn xem.",
+    },
+
+    howItWorksTitle: "Cách hoạt động",
+    steps: ({ plan, paymentChain, minutes, channels, threshold, morphoMin }) => {
+      const paidOn = paymentChain ? ` trên mạng ${paymentChain}` : "";
+      return [
+        {
+          title: "Kết nối ví mà bạn dùng để vay",
+          body: "Chỉ đọc. Aave và Morpho, mỗi bên một trang.",
+        },
+        {
+          title: plan
+            ? `Mở khóa cảnh báo với ${formatDecimal("vi", plan.priceLabel)}`
+            : "Mở khóa cảnh báo với một khoản thanh toán nhỏ bằng USDC",
+          body: `${plan ? `Quyền truy cập ${viDays(plan.days)}, thanh toán` : "Thanh toán"} bằng USDC${paidOn}. Không tự động gia hạn.`,
+        },
+        {
+          title: "Chọn ngưỡng cho từng thị trường",
+          body: `Từ ${formatDecimal("vi", threshold.min)} (${formatDecimal("vi", morphoMin)} trên Morpho) đến ${formatDecimal("vi", threshold.max)}, mặc định ${formatDecimal("vi", threshold.default)}.`,
+        },
+        {
+          title: "Nhận tin nhắn khi bạn ở dưới ngưỡng",
+          body: `${capitalize(viEveryMinutes(minutes))}, qua ${channels}, cho đến khi bạn trở lại trên ngưỡng của mình.`,
+        },
+      ];
+    },
+    scaleTitle: "Nên đặt ngưỡng ở đâu",
+    scale: {
+      liquidation: "thanh lý",
+      critical: "Nguy cấp",
+      risky: "Rủi ro",
+      safe: "An toàn",
+      defaultThreshold: value => `Mặc định: ${value}`,
+      below: value => `Dưới ${value}`,
+      between: (from, to) => `Từ ${from} đến ${to}`,
+      andAbove: value => `Từ ${value} trở lên`,
+      range: (min, max) => `Bất kỳ giá trị nào từ ${min} đến ${max}.`,
+    },
+    scaleGuide: "Cách chọn ngưỡng",
+
+    coverageTitle: "Mọi thị trường Aave và mọi thị trường Morpho được liệt kê",
+    coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks, morphoNetworks }) =>
+      `${viMarkets(v3Markets)} Aave V3 trên ${viNetworks(v3Networks)} và ${viSpokes(spokes)} Aave V4 trên ${viNetworks(v4Networks)}, tính đến ngày 16 tháng 10 năm 2026, cùng mọi thị trường Morpho được liệt kê trên ${viNetworks(morphoNetworks)}.`,
+    coverage: {
+      v3Markets: count => `${viMarkets(count)} V3`,
+      v4Spokes: count => `${viSpokes(count)} V4`,
+      morpho: "Morpho",
+    },
+    coverageNote:
+      "Cơ chế quản trị của Aave đang dần đóng các thị trường trên Scroll, ZKsync, Metis, Soneium và Sonic, và chúng tôi vẫn theo dõi chúng. Không hỗ trợ: Aave V3 trên Harmony, các thị trường Morpho không được liệt kê và các giao thức khác.",
+
+    pricingTitle: "Giá",
+    pricingRows: ({ alertPrice, paymentChain }) => [
+      { term: "Cảnh báo", detail: capitalize(alertPrice) },
+      { term: "Gia hạn", detail: "Không tự động: thanh toán lại khi bạn muốn thêm thời gian" },
+      {
+        term: "Thanh toán",
+        detail: paymentChain
+          ? `USDC trên mạng ${paymentChain}, từ ví của bạn (phê duyệt, rồi thanh toán)`
+          : "USDC, từ ví của bạn",
+      },
+    ],
+    priceSource: "Giá được đọc từ hợp đồng thanh toán và cập nhật mỗi giờ.",
+    pricingFootnote: "Xem vị thế của bạn không cần thanh toán.",
+
+    questionsTitle: "Những câu nên hỏi trước khi kết nối ví",
+    questions: ({ alertPrice, paymentChain, hasTelegram, minutes, morphoMin, links }) => {
+      const onChain = viOnChain(paymentChain);
+      return [
+        {
+          question: "Tokenping có thể động đến tiền của tôi không?",
+          answer: rich(
+            `Không. Tokenping chỉ đọc vị thế của bạn và không bao giờ yêu cầu phê duyệt hay chữ ký trên Aave hoặc Morpho. Giao dịch duy nhất là khoản thanh toán ${onChain}: một lần phê duyệt đúng bằng mức giá, rồi đến khoản thanh toán. `,
+            links.sourcify
+              ? rich(
+                  "Hợp đồng đã được ",
+                  links.sourcify("xác minh trên Sourcify"),
+                  " và ",
+                  links.sourceCode("mã nguồn được công khai"),
+                )
+              : links.sourceCode("Mã nguồn của hợp đồng được công khai"),
+            "; ví của đội ngũ có thể đổi giá, tạm dừng và nâng cấp hợp đồng.",
+          ),
+        },
+        {
+          question: "Tokenping lưu những gì?",
+          answer: rich(
+            "Địa chỉ ví, các cảnh báo và thông tin liên hệ mà bạn cung cấp (email, tên người dùng Signal",
+            hasTelegram ? ", cuộc trò chuyện Telegram" : "",
+            `). Không lưu lịch sử, không có cookie theo dõi; lượt xem trang được đếm ẩn danh. Chỉ người ký được bằng ví của bạn mới đọc được thông tin liên hệ đó, nhưng các khoản thanh toán thì công khai ${onChain}. `,
+            links.privacy("Trang quyền riêng tư"),
+            " có danh sách đầy đủ.",
+          ),
+        },
+        {
+          question: "Chi phí là bao nhiêu?",
+          answer: rich(
+            `Cảnh báo có giá ${alertPrice}, bằng USDC ${onChain}, cộng thêm một ít ETH cho phí gas. Xem vị thế của bạn không cần thanh toán. Không tự động gia hạn, không hoàn tiền.`,
+          ),
+        },
+        {
+          question: "Những khoản vay Morpho nào được hỗ trợ?",
+          answer: rich(
+            `Khoản vay Morpho Blue (lãi suất thả nổi) và Morpho Midnight (lãi suất cố định) trên các thị trường mà ứng dụng Morpho liệt kê, với ngưỡng từ ${formatDecimal("vi", morphoMin)}. Khoản vay lãi suất cố định còn nhận lời nhắc trước ngày đáo hạn. Cùng một gói áp dụng cho cả hai: hãy mở `,
+            links.morphoDashboard("bảng điều khiển Morpho"),
+            ".",
+          ),
+        },
+        {
+          question: "Nếu cảnh báo không đến thì sao?",
+          answer: rich(
+            `Lần kiểm tra tiếp theo, ${minutes} phút sau, sẽ thử lại. Việc gửi phụ thuộc vào Resend, một relay Signal,`,
+            hasTelegram ? " Telegram Bot API," : "",
+            " các node RPC công khai và trình lập lịch của Vercel, không có cam kết về thời gian hoạt động. Hãy chọn hai kênh và chừa thời gian để xử lý.",
+          ),
+        },
+        {
+          question: "Làm sao để dừng cảnh báo?",
+          answer: rich(
+            "Cảnh báo dừng khi hệ số sức khỏe của bạn trở lại trên ngưỡng, hoặc khi bạn xóa cảnh báo (cần quyền truy cập còn hiệu lực). Quyền truy cập đã hết hạn? Hãy nhắn cho chúng tôi trên ",
+            links.x("X"),
+            " hoặc trong cộng đồng của chúng tôi trên ",
+            links.telegramCommunity("Telegram"),
+            " hoặc ",
+            links.signalCommunity("Signal"),
+            ".",
+            hasTelegram ? " Trong Telegram, lệnh /stop cũng dùng được." : "",
+            " Hiện chưa có chức năng tạm hoãn và chưa có liên kết hủy đăng ký.",
+          ),
+        },
+        {
+          question: "Tôi có thể theo dõi một ví mà tôi không kết nối không?",
+          answer: rich("Hiện tại thì chưa. Một ví, là ví bạn kết nối; quyền truy cập tính theo từng ví."),
+        },
+        {
+          question: "Công cụ khác không tốn đồng nào. Vì sao phải trả tiền?",
+          answer: rich(
+            "Nếu một bot Telegram hay một ứng dụng di động phù hợp với bạn, hãy dùng nó",
+            links.comparison ? rich(": ", links.comparison("bài so sánh của chúng tôi"), " có điểm qua chúng") : null,
+            ". Tokenping dành cho cảnh báo qua Signal hoặc email, trên mọi thị trường Aave và mọi thị trường Morpho được liệt kê.",
+          ),
+        },
+      ];
+    },
+
+    limitsTitle: "Các giới hạn, nói thẳng",
+    limits: ({ minutes, paymentChain }) => [
+      `Kiểm tra ${viEveryMinutes(minutes)}, không liên tục.`,
+      "Mỗi lần kiểm tra dưới ngưỡng sẽ gửi thêm một tin nhắn: không có tạm hoãn hay bản tóm tắt.",
+      "Một ngưỡng cho mỗi thị trường, chỉ cho ví đã kết nối.",
+      `Chỉ USDC${paymentChain ? ` trên mạng ${paymentChain}` : ""}: không dùng thẻ, không hoàn tiền.`,
+      "Email chưa có liên kết hủy đăng ký; xóa cảnh báo cần quyền truy cập còn hiệu lực.",
+      "Beta: gửi qua bên thứ ba, không cam kết về thời gian hoạt động.",
+    ],
+
+    blogTitle: "Từ blog",
+    allGuides: "Mọi bài hướng dẫn về Aave và Morpho",
+
+    closingTitle: "Cài đặt cảnh báo hệ số sức khỏe trên Aave hoặc Morpho",
+    closingLead: alertPrice => `${capitalize(alertPrice)}, thanh toán từ ví của bạn. Không tự động gia hạn.`,
   },
 };

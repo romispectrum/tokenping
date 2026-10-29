@@ -28,10 +28,12 @@ describe("llms.txt", () => {
       "## Czech",
       "## Spanish",
       "## Hindi",
+      "## German",
+      "## Vietnamese",
       "## Optional",
     ]);
     // Everything under an H2 is a link list item: "- [name](url)" with optional ": notes".
-    for (const heading of ["Pages", "Guides", "Czech", "Spanish", "Hindi", "Optional"]) {
+    for (const heading of ["Pages", "Guides", "Czech", "Spanish", "Hindi", "German", "Vietnamese", "Optional"]) {
       for (const line of section(heading))
         expect(line).toMatch(/^- \[[^\]]+\]\(https:\/\/tokenping\.xyz\/[^)]*\)(: .+)?$/);
     }
@@ -101,6 +103,18 @@ describe("llms.txt", () => {
     expect(hindi.every(line => line.includes("(https://tokenping.xyz/hi"))).toBe(true);
     expect(hindi.filter(line => line.includes("(https://tokenping.xyz/hi/blog/"))).toHaveLength(
       getPublishedPosts("hi").length,
+    );
+  });
+
+  it.each([
+    ["German", "de"],
+    ["Vietnamese", "vi"],
+  ] as const)("links the %s pages and every %s guide under its prefix in its section", (heading, locale) => {
+    const lines = section(heading);
+    expect(lines[0]).toMatch(new RegExp(`^- \\[Tokenping\\]\\(https://tokenping\\.xyz/${locale}\\): `));
+    expect(lines.every(line => line.includes(`(https://tokenping.xyz/${locale}`))).toBe(true);
+    expect(lines.filter(line => line.includes(`(https://tokenping.xyz/${locale}/blog/`))).toHaveLength(
+      getPublishedPosts(locale).length,
     );
   });
 

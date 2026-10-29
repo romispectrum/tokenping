@@ -1,0 +1,157 @@
+export const meta = {
+  slug: "aave-zinssaetze",
+  title: "So funktionieren Aave-Zinssätze und warum sie springen",
+  description:
+    "Aave-Kreditzinsen folgen einer Auslastungskurve: flach bis zum optimalen Niveau, steil darüber. Formel, echte Parameter, Zinssprünge und was du tun kannst.",
+  h1: "Wie funktionieren die Zinssätze bei Aave, und warum steigen die Kreditzinsen sprunghaft?",
+  publishedAt: "2026-10-25",
+  primaryQuestion: "Wie legt Aave seine Kredit- und Einlagezinsen fest, und warum steigen sie sprunghaft?",
+  readingMinutes: 9,
+};
+
+<ShortAnswer>
+  Auf Aave V3 folgt der variable Kreditzinssatz jedes Assets einer Kurve, die die Governance festlegt: Er steigt sanft
+  mit der Auslastung, dem Anteil der eingezahlten Token, der verliehen ist, bis zu einem optimalen Niveau und darüber
+  steil an. Einzahler verdienen den Kreditzinssatz mal die Auslastung, abzüglich des Reservefaktors. Die Zinssätze
+  werden bei jeder Einzahlung, jedem Kredit, jeder Rückzahlung und jeder Abhebung neu berechnet, daher kann eine einzige
+  große Abhebung die Auslastung über das optimale Niveau treiben und den Zinssatz innerhalb eines Blocks vervielfachen:
+  USDC auf Ethereum Core stieg am 14. Oktober 2026 von 4,50 % auf 13,67 % APR und lag etwa 36 Minuten später wieder bei
+  4,76 %. Alle Schulden auf Aave V3 sind variabel verzinst.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Zahlen und die Blocknummern, bei denen sie gelesen wurden: content/blog/snapshots/aave-interest-rates.md */}
+
+## Was bestimmt den Kreditzinssatz bei Aave?
+
+Auf Aave V3 hängt der Kreditzinssatz eines Assets von zwei Dingen ab: seiner Auslastung und seinen Zinsparametern. Die Auslastung ist der Anteil des Pools eines Assets, der verliehen ist: die Schulden geteilt durch die Schulden plus die noch verfügbaren Token. Die Parameter sind vier Zahlen pro Asset, die die Aave-Governance festlegt, und die Risk Stewards von Aave dürfen sie in begrenzten Schritten und mit Mindestabständen anpassen:
+
+- **Optimale Auslastung (optimal usage ratio):** die Auslastung, bei der die Kurve abknickt.
+- **Basiszinssatz:** der Kreditzinssatz bei 0 % Auslastung.
+- **Slope 1:** wie stark der Zinssatz von 0 % bis zur optimalen Auslastung steigt.
+- **Slope 2:** wie stark er zusätzlich von der optimalen Auslastung bis 100 % steigt.
+
+Gelesen am 25. Oktober 2026 bei Ethereum-Block 26269328 und Arbitrum-Block 518125419, lauteten die Parameter und Zinssätze einiger gängiger Assets:
+
+| Markt und Asset    | Optimale Auslastung | Basis | Slope 1 | Slope 2 | Auslastung      | Kredit-APR | Einlage-APR |
+| ------------------ | ------------------- | ----- | ------- | ------- | --------------- | ---------- | ----------- |
+| Ethereum Core USDC | 94 %                | 0 %   | 4,5 %   | 10 %    | 93,72 %         | 4,49 %     | 3,78 %      |
+| Ethereum Core USDT | 92 %                | 0 %   | 4,5 %   | 10 %    | 87,81 %         | 4,30 %     | 3,39 %      |
+| Ethereum Core WETH | 92 %                | 0 %   | 2,2 %   | 6 %     | 81,31 %         | 1,94 %     | 1,31 %      |
+| Ethereum Core GHO  | 99 %                | 4,5 % | 0 %     | 0 %     | nicht verwendet | 4,50 %     | 0 %         |
+| Arbitrum USDC      | 90 %                | 0 %   | 4 %     | 10 %    | 77,32 %         | 3,44 %     | 2,39 %      |
+
+GHO ist die Ausnahme: Beide Slopes sind null, daher bleibt sein Zinssatz unabhängig von der Auslastung flach, und er wird von Hand geändert (siehe [GHO und Aave V4](#wie-werden-die-zinssatze-fur-gho-und-auf-aave-v4-festgelegt)).
+
+## Wie wird der Kreditzinssatz bei Aave berechnet?
+
+Der Kreditzinssatz von Aave V3 ist bis zur optimalen Auslastung eine gerade Linie und darüber eine viel steilere Linie. Mit U für die Auslastung:
+
+**Bis zur optimalen Auslastung: Kreditzinssatz = Basis + Slope 1 × U ÷ optimale Auslastung**
+
+**Darüber: Kreditzinssatz = Basis + Slope 1 + Slope 2 × (U − optimale Auslastung) ÷ (1 − optimale Auslastung)**
+
+Im Contract ist U die gesamte Schuld geteilt durch die gesamte Schuld plus die Token, die der Pool noch hält. Mit den Parametern von USDC auf Ethereum Core ergibt sich bei jeder Auslastung dieser Zinssatz:
+
+| Auslastung     | Kredit-APR |
+| -------------- | ---------- |
+| 50 %           | 2,39 %     |
+| 80 %           | 3,83 %     |
+| 90 %           | 4,31 %     |
+| 94 % (optimal) | 4,50 %     |
+| 95 %           | 6,17 %     |
+| 96 %           | 7,83 %     |
+| 98 %           | 11,17 %    |
+| 100 %          | 14,50 %    |
+
+Unter 94 % bewegen zehn Punkte Auslastung den Zinssatz um weniger als einen halben Punkt. Darüber bringt jeder Punkt etwa 1,67 Punkte, und die letzten sechs Punkte Auslastung mehr als verdreifachen den Zinssatz. Gelesen am 25. Oktober 2026 lag USDC bei 93,72 %, knapp unter dem Knick: 4,5 % × 0,9372 ÷ 0,94 ergibt die 4,49 %, die verlangt wurden.
+
+Die Kurve soll genau so wirken. Unter dem optimalen Niveau hält günstiges Leihen den Pool in Gebrauch; darüber macht der steile Zinssatz das Leihen so teuer, dass manche Kreditnehmer zurückzahlen und manche Halter einzahlen. Das senkt die Auslastung wieder und lässt Token für Einzahler übrig, die abheben wollen.
+
+## Warum steigen die Kreditzinsen bei Aave sprunghaft?
+
+Die Kreditzinsen bei Aave steigen sprunghaft, wenn die Auslastung die optimale Auslastung überschreitet, meist weil ein großer Einzahler abhebt oder ein großer Kreditnehmer leiht. Der Zinssatz wird in derselben Transaktion neu berechnet, und alle Kreditnehmer dieses Assets zahlen ab diesem Moment bis zur nächsten Änderung den neuen Zinssatz.
+
+Am 14. Oktober 2026 trieb eine einzige Abhebung von genau 133.898.000 USDC aus Ethereum Core die Auslastung in einem einzigen Block von 93,92 % auf 99,50 %:
+
+| Ethereum-Block (UTC)          | Was passierte                                       | Auslastung  | USDC-Kredit-APR |
+| ----------------------------- | --------------------------------------------------- | ----------- | --------------- |
+| 26194052 (14. Okt., 23:32:47) | Vorher                                              | 93,92 %     | 4,50 %          |
+| 26194053 (14. Okt., 23:32:59) | 133.898.000 USDC abgehoben                          | 99,50 %     | 13,67 %         |
+| 26194088 (14. Okt., 23:39:59) | Höchster Punkt im Zeitraum                          | etwa 99,8 % | 14,18 %         |
+| 26194231 (15. Okt., 00:08:35) | Dieselbe Adresse zahlte 133.898.000 USDC wieder ein | 94,16 %     | 4,76 %          |
+
+Kreditnehmer zahlten 36 Minuten lang etwa das Dreifache des üblichen Zinssatzes, und die Formel oben reproduziert jeden dieser Zinssätze aus der Auslastung. Ein Zinssprung dauert so lange, wie die Auslastung hoch bleibt: Hier kamen dieselben Token zurück, in anderen Fällen braucht es neue Einzahler oder Rückzahlungen, angelockt vom hohen Zinssatz, um sie zu senken.
+
+Zwei weitere Dinge ändern einen Kreditzinssatz. Die Governance oder die Risk Stewards können die vier Parameter ändern, was die ganze Kurve auf einmal verschiebt. Und zwischen Transaktionen ändert sich der Zinssatz nicht: Aave berechnet ihn bei jeder Einzahlung, jedem Kredit, jeder Rückzahlung, jeder Abhebung und jeder Liquidation dieses Assets neu, und die Zinsen laufen zu diesem Satz Sekunde für Sekunde auf, bis zur nächsten.
+
+## Warum verdienen Einzahler weniger, als Kreditnehmer zahlen?
+
+Einzahler verdienen weniger, als Kreditnehmer zahlen, weil nur der verliehene Teil des Pools Zinsen zahlt und das Protokoll einen Teil davon behält. Der Einlagezinssatz ist:
+
+**Einlagezinssatz = Kreditzinssatz × Auslastung × (1 − Reservefaktor)**
+
+Für USDC auf Ethereum Core am 25. Oktober 2026: 4,4866 % × 0,9372 × (1 − 0,10) = 3,78 %. Der Reservefaktor, 10 % für USDC und 15 % für WETH, geht an die Treasury von Aave. Wenn eine Reserve ein Defizit aus uneinbringlichen Schulden (bad debt) trägt, rechnet der Contract es ebenfalls auf der Einlageseite ein, was den Einlagezinssatz leicht senkt.
+
+## Was ist der Unterschied zwischen APR und APY bei Aave?
+
+Die Contracts speichern Zinssätze als APR, und die Aave-App zeigt APY an, das den Zinseszins einrechnet. Die Mathe-Bibliothek der App verzinst den APR jede Sekunde über ein Jahr von 31.536.000 Sekunden:
+
+**APY = (1 + APR ÷ 31.536.000)^31.536.000 − 1**
+
+Der APR von 4,4866 % auf USDC in Ethereum Core erscheint in der App als 4,59 % APY. Auf diesem Niveau beträgt der Unterschied etwa einen Zehntelpunkt; bei 14 % APR ist es etwa ein Punkt (15,0 % APY).
+
+## Wie wirken sich Zinssprünge auf deinen Health Factor aus?
+
+Ein kurzer Zinssprung bewegt deinen Health Factor (Gesundheitsfaktor) kaum; ein hoher Zinssatz, der Monate anhält, schon. Zinsen erhöhen deine Schulden, und mehr Schulden senken den Health Factor, wie [die Zinsursache im Ratgeber, warum dein Health Factor fällt](/de/blog/warum-ist-mein-aave-health-factor-gesunken#ursache-3-sind-die-zinsen-auf-deine-schulden-schneller-gewachsen-als-auf-deine-sicherheiten), erklärt.
+
+Nimm 10 WETH, eingezahlt gegen 12.000 geliehene USDC auf Ethereum Core, mit der Liquidationsschwelle (liquidation threshold) von WETH von 83 % (gelesen am 14. Oktober 2026) und einem beispielhaften ETH-Preis von 2.400 $: Der Health Factor ist 1,66. Rechnet man ein, was das WETH zu seinem Einlagezinssatz von 1,31 % verdient:
+
+| Wie lange der Zinssatz anhält | Bei 4,49 % (25. Oktober 2026) | Bei 14,50 % (Spitze der Kurve) |
+| ----------------------------- | ----------------------------- | ------------------------------ |
+| 36 Minuten                    | etwa 0,04 USDC Zinsen, 1,66   | etwa 0,12 USDC, 1,66           |
+| 30 Tage                       | etwa 1,66                     | etwa 1,64                      |
+| Ein Jahr                      | etwa 1,61                     | etwa 1,45                      |
+
+Der Zinssprung vom 14. Oktober kostete diese Position etwa 12 Cent. Ein Markt, der ein Jahr lang an der Spitze seiner Kurve bleibt, würde sie ganz ohne Preisbewegung von 1,66 auf etwa 1,45 bringen. Deshalb lohnt sich bei einem langsamen Abdriften ein Alert-Schwellenwert mit reichlich Abstand ([wie viel Puffer dir ein Health Factor gibt](/de/blog/sicherer-health-factor-aave#wie-schnell-zehren-zinsen-und-parameteranderungen-deinen-puffer-auf)).
+
+## Was kannst du tun, wenn dein Kreditzinssatz springt?
+
+Wenn dein Kreditzinssatz springt, prüfe zuerst die Auslastung des Assets auf seiner Seite in der Aave-App: Liegt sie knapp über der optimalen Auslastung, fällt der Zinssatz zurück, sobald die Auslastung sinkt. Dann hast du vier Möglichkeiten, jede mit ihren Kosten:
+
+- **Abwarten.** Ein Zinssprung durch eine einzelne große Abhebung kann enden, wenn diese Token zurückkommen, wie am 14. Oktober 2026. Nichts garantiert, dass sie zurückkommen, und bis dahin zahlst du den hohen Zinssatz.
+- **Einen Teil der Schulden zurückzahlen.** Das senkt sowohl deine Zinsen als auch dein Risiko; [wie du deinen Aave Health Factor erhöhst](/de/blog/aave-liquidation-vermeiden) beschreibt die Rückzahlung mit eigenen Token oder mit deinen Sicherheiten.
+- **Die Schulden in ein anderes Asset tauschen.** Die Oberfläche von Aave Labs hat einen Debt Swap, der ein geliehenes Asset in einer Transaktion durch ein anderes ersetzt, laut der Aave-Dokumentation auf den Märkten Ethereum Core, Prime und EtherFi sowie auf Arbitrum, Avalanche, Base, BNB Chain, Optimism, Polygon, Gnosis und Sonic. Für Metis, Scroll, ZKsync, Celo, Soneium, Linea, Plasma und Ink ist er nicht aufgeführt. Das neue Asset hat seine eigene Kurve und sein eigenes Risiko, falls sich sein Preis anders bewegt als deine alten Schulden.
+- **In einem anderen Markt leihen.** Jeder Markt hat seinen eigenen Pool und seine eigene Auslastung: Am 25. Oktober 2026 kostete USDC auf Ethereum Core 4,49 % und auf Arbitrum 3,44 %. Ein Wechsel bedeutet, in einem Markt zurückzuzahlen und in einem anderen zu leihen, mit Sicherheiten in diesem Netzwerk.
+
+## Wie werden die Zinssätze für GHO und auf Aave V4 festgelegt?
+
+GHO, der eigene Stablecoin von Aave, hat einen flachen Kreditzinssatz, den Menschen festlegen und nicht die Kurve. Auf Ethereum Core stehen beide Slopes in seinen Parametern auf null, daher ist der Zinssatz der Basiszinssatz, 4,50 % am 25. Oktober 2026. Geändert wird er über einen GHO-Steward-Contract von einem Risk Council mit 2 von 3 Signaturen: um höchstens 5 Prozentpunkte pro Änderung und höchstens einmal am Tag. Die letzte Änderung am 3. Oktober 2026 hob ihn von 4,25 % auf 4,50 %; seit November 2024 wurde er 44 Mal geändert, zwischen 3,00 % und 14,50 %. Der frühere Rabatt für stkAAVE-Halter wurde mit Aave v3.4 entfernt.
+
+Aave V4 behält eine Auslastungskurve, laut der Dokumentation wird sie aber pro Asset am Hub konfiguriert, dem Pool, der an alle Spokes verleiht. Zusätzlich zu diesem gemeinsamen Zinssatz zahlt jeder Kreditnehmer eine User Risk Premium (Risikoaufschlag des Nutzers), die von der Qualität seiner Sicherheiten abhängt: Das Beispiel von Aave ist ein Aufschlag von 50 % auf einen Basiszinssatz von 5 %, was 7,5 % ergibt. Zwei V4-Kreditnehmer desselben Assets können also unterschiedliche Zinssätze zahlen, und der [V4-Abschnitt des Health-Factor-Ratgebers](/de/blog/aave-health-factor-erklaert#ist-der-health-factor-bei-aave-v4-anders) beschreibt, was V4 sonst noch ändert.
+
+## Kann man bei Aave einen festen Zinssatz bekommen?
+
+Nein. Aave V3 hatte einmal eine Option mit stabilem Zinssatz, sie wurde aber 2024 nach einem Fehlerbericht vollständig eingestellt, und Aave v3.2 entfernte den Code. Jeder Kredit auf Aave V3 zahlt den variablen Zinssatz, und der flache Zinssatz von GHO kann weiterhin jederzeit innerhalb der Grenzen seines Stewards geändert werden.
+
+## Kann ein Alert dich vor steigenden Zinsen warnen?
+
+Ein Health-Factor-Alert beobachtet keine Zinssätze; er beobachtet, was Zinssätze mit deiner Position machen. Tokenping prüft deinen Health Factor auf Aave V3 und V4 alle 5 Minuten in 22 Netzwerken und schreibt dir über Signal, Telegram oder E-Mail, solange er unter dem Schwellenwert liegt, den du festgelegt hast (1,1 bis 10). Ein Zinssprung wie der vom 14. Oktober 2026 löst ihn nicht aus, weil er den Health Factor kaum bewegt; monatelang hohe Zinsen schon, sobald die Schulden so weit gewachsen sind, dass sie deinen Schwellenwert überschreiten.
+
+Wenn du eine Nachricht zum Zinssatz selbst willst: Einige andere Tools senden Zins-Alerts, und [unser Vergleich der Aave-Alert-Tools](/de/blog/aave-liquidations-alert-tools-im-vergleich) zeigt, was jedes davon beobachtet. Die Einrichtung eines Health-Factor-Alerts steht in [so richtest du einen Health-Factor-Alert ein](/de/blog/aave-health-factor-alert-einrichten), und vorher kannst du [deinen Health Factor auf Aave V3 prüfen](/de/aave); Positionen ansehen braucht keine Zahlung.
+
+## Quellen
+
+- [DefaultReserveInterestRateStrategyV2.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/misc/DefaultReserveInterestRateStrategyV2.sol) und [ReserveLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ReserveLogic.sol): die Zinskurve, die Auslastung, der Einlagezinssatz und wann Zinssätze neu berechnet werden (aave-v3-origin, abgerufen am 25. Oktober 2026)
+- [Zinsstrategie von Aave V3 Ethereum Core](https://etherscan.io/address/0x9ec6F08190DeA04A54f8Afc53Db96134e5E3FdFB#readContract) und [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): Parameter und Zinssätze bei Block 26269328; USDC bei den Blöcken 26194052, 26194053, 26194088, 26194230 und 26194231 (abgerufen am 25. Oktober 2026)
+- [Zinsstrategie von Aave V3 auf Arbitrum](https://arbiscan.io/address/0x429F16dBA3B9e1900087Cbaa7b50D38Bc60fB73F#readContract): USDC-Parameter und Zinssätze bei Block 518125419 (abgerufen am 25. Oktober 2026)
+- [Aave Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): Zinsparameter gehören zu den Werten, die die Stewards ändern dürfen, mit einer maximalen Änderung und einem Mindestabstand pro Änderung (abgerufen am 25. Oktober 2026)
+- [calculateCompoundedRate in aave-utilities](https://github.com/aave/aave-utilities/blob/master/packages/math-utils/src/formatters/compounded-interest/calculate-compounded-interest.ts): von APR zu APY über 31.536.000 Sekunden (abgerufen am 25. Oktober 2026)
+- [Swap-Funktionen von Aave](https://aave.com/docs/aave-v3/smart-contracts/swap-features.md): Debt Swap und Rückzahlung mit Sicherheiten sowie die Märkte, die sie unterstützen (abgerufen am 25. Oktober 2026)
+- [GHO Stewards: „October 2026 GHO borrow rate update“](https://governance.aave.com/t/gho-stewards-october-2026-gho-borrow-rate-update/25754) (TokenLogic, 2. Oktober 2026, abgerufen am 25. Oktober 2026) und der [GHO-Steward-Contract](https://etherscan.io/address/0x98217A06721Ebf727f2C8d9aD7718ec28b7aAe34#readContract): Grenzen pro Änderung und Zinsverlauf seit November 2024 (abgerufen am 25. Oktober 2026)
+- [Funktionen von Aave v3.4](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.4/Aave-v3.4-features.md): Entfernung des stkAAVE-Rabatts auf GHO (abgerufen am 25. Oktober 2026)
+- [BGD: „Full deprecation of stable rate“](https://governance.aave.com/t/bgd-full-deprecation-of-stable-rate/16473) (31. Januar 2024) und [Funktionen von Aave v3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): stabiler Zinssatz entfernt (abgerufen am 25. Oktober 2026)
+- [Dokumentation von Aave V4](https://aave.com/docs/aave-v4.md) und [Positionen in V4](https://aave.com/docs/aave-v4/positions.md): die Zinskurve pro Hub-Asset und die User Risk Premium (abgerufen am 25. Oktober 2026)
+
+_Bildungsinhalt, keine Finanzberatung. Alerts senken das Risiko, verhindern aber keine Liquidation._

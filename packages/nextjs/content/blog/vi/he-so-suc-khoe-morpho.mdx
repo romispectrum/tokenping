@@ -1,0 +1,208 @@
+export const meta = {
+  slug: "he-so-suc-khoe-morpho",
+  title: "Hệ số sức khỏe trên Morpho: công thức và ví dụ",
+  description:
+    "Hệ số sức khỏe của khoản vay Morpho là gì, Morpho Blue và Midnight tính nó ra sao, điều gì làm nó thay đổi và nó khác gì so với Aave.",
+  h1: "Hệ số sức khỏe trên Morpho là gì và được tính như thế nào?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Hệ số sức khỏe của một khoản vay Morpho là gì và được tính như thế nào?",
+  readingMinutes: 18,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Hệ số sức khỏe (health factor) của một khoản vay Morpho so sánh giá trị tài sản thế chấp của bạn, tính đến mức tỷ lệ
+  cho vay trên giá trị thanh lý (LLTV) của thị trường, với số tiền bạn đang nợ: lượng tài sản thế chấp × giá của oracle
+  (nguồn giá) × LLTV ÷ khoản nợ. Khi khoản nợ vượt quá giới hạn đó, hệ số sức khỏe xuống dưới 1 và vị thế có thể bị
+  thanh lý. Từ 1,00 trở lên thì không, trừ một phần của khoản vay Blue mà chủ sở hữu đã ủy quyền cho một hợp đồng thanh
+  lý trước (pre-liquidation), hoặc một khoản vay Midnight vẫn còn nợ sau ngày đáo hạn. Ví dụ, 1 cbBTC có giá 80.011,48
+  USDC trong thị trường USDC | cbBTC (86%) của Morpho trên Ethereum, với khoản nợ 40.000 USDC, cho ra 80.011,48 × 0,86 ÷
+  40.000 = 1,72. Mỗi thị trường Morpho có tài sản thế chấp, oracle và LLTV riêng, được cố định vĩnh viễn khi thị trường
+  được tạo, nên mỗi khoản vay có hệ số sức khỏe riêng.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Số liệu và số khối mà chúng được đọc tại đó: content/blog/snapshots/morpho-health-factor.md */}
+
+## Hệ số sức khỏe của một khoản vay Morpho là gì?
+
+Hệ số sức khỏe là con số cho bạn biết một vị thế vay trên Morpho còn cách việc bị thanh lý bao xa. Nó lấy mức nợ tối đa bạn được phép chia cho số nợ hiện tại:
+
+**Hệ số sức khỏe = giá trị tài sản thế chấp tính bằng token vay × LLTV ÷ khoản nợ**
+
+- **Trên 1,00:** vị thế không thể bị thanh lý, trừ khi bạn đã ủy quyền cho một hợp đồng thanh lý trước hoặc đó là khoản vay Midnight đã quá ngày đáo hạn (cả hai được nói ở phần dưới). Con số càng cao, giá càng có thể đi ngược bạn xa hơn trước khi chạm ranh giới.
+- **Dưới 1,00:** khoản nợ của bạn lớn hơn mức thị trường cho phép, và một phần hoặc toàn bộ khoản nợ có thể bị thanh lý.
+- **Không có nợ:** không có gì để thanh lý, nên cũng không có hệ số sức khỏe nào cần theo dõi.
+
+Hệ số sức khỏe 1,72 không có nghĩa là bạn còn cách thanh lý 72%. Nó có nghĩa là khoản nợ có thể tăng lên gấp 1,72 lần, hoặc giá tài sản thế chấp có thể giảm 1 − 1 ÷ 1,72 = 41,9%, trước khi chạm ranh giới.
+
+Hệ số sức khỏe không được lưu trên chuỗi. Hợp đồng của Morpho chỉ kiểm tra xem vị thế có khỏe hay không; các ứng dụng, API của Morpho và Tokenping lấy giới hạn vay chia cho khoản nợ để hiển thị nó thành một con số.
+
+## Một thị trường Morpho Blue được xây dựng thế nào?
+
+Morpho Blue, mà tài liệu của Morpho nay gọi là các thị trường lãi suất thả nổi, là một tập hợp các thị trường cho vay riêng biệt. Mỗi thị trường được xác định bởi năm tham số được chọn khi tạo thị trường:
+
+| Tham số                | Là gì                                                  | Trong thị trường ví dụ |
+| ---------------------- | ------------------------------------------------------ | ---------------------- |
+| Token vay              | Token duy nhất bạn có thể vay                          | USDC                   |
+| Token thế chấp         | Token duy nhất bạn có thể đưa vào làm tài sản thế chấp | cbBTC                  |
+| Oracle                 | Hợp đồng định giá tài sản thế chấp theo token vay      | Một nguồn giá BTC/USD  |
+| Mô hình lãi suất (IRM) | Hợp đồng đặt lãi suất vay                              | AdaptiveCurveIRM       |
+| LLTV                   | Tỷ lệ cho vay trên giá trị thanh lý                    | 86%                    |
+
+Ứng dụng của Morpho đặt tên thị trường theo các tham số này, token vay đứng trước: "USDC | cbBTC (86%)". Ai cũng có thể tạo thị trường, nhưng chỉ với LLTV và IRM mà quản trị (governance) của Morpho đã bật. Sau khi tạo, không tham số nào trong năm tham số có thể thay đổi: hợp đồng không có hàm nào để sửa chúng, và quản trị có thể bật LLTV mới nhưng không bao giờ tắt được một LLTV.
+
+Vì một thị trường chỉ có một tài sản thế chấp và một token vay, tài sản thế chấp của bạn ở thị trường này không bảo đảm cho khoản nợ ở thị trường khác. Tài liệu của Morpho nói rõ: tài sản thế chấp gắn riêng với từng thị trường và không dùng ký quỹ chéo (cross-margin). Hai khoản vay ở hai thị trường có hai hệ số sức khỏe.
+
+## Morpho tính hệ số sức khỏe như thế nào?
+
+Morpho Blue kiểm tra sức khỏe ở một chỗ duy nhất trong hợp đồng, `_isHealthy`, và cùng phép kiểm tra đó bảo vệ việc vay, việc rút tài sản thế chấp và việc thanh lý:
+
+1. **Khoản nợ:** số cổ phần vay (borrow shares) của bạn quy đổi ra token vay, làm tròn lên.
+2. **Giá trị tài sản thế chấp:** lượng tài sản thế chấp × giá oracle ÷ 10^36, làm tròn xuống.
+3. **Giới hạn vay:** giá trị tài sản thế chấp × LLTV, làm tròn xuống.
+4. **Khỏe** khi giới hạn vay ít nhất bằng khoản nợ.
+
+Hệ số sức khỏe là bước 3 chia cho bước 1. Việc làm tròn luôn có lợi cho giao thức, nên hợp đồng có thể cho bạn vay ít hơn giới hạn chính xác một đơn vị. Ở đúng 1,00, hợp đồng vẫn coi vị thế là khỏe; vị thế chỉ có thể bị thanh lý khi khoản nợ lớn hơn giới hạn, tức là khi hệ số sức khỏe xuống dưới 1.
+
+### Thang 10^36 của oracle có nghĩa là gì?
+
+Một oracle của Morpho trả về giá của một token thế chấp tính bằng token vay, nhân với 10^36 và điều chỉnh theo số chữ số thập phân (decimals) của hai token. Để đọc nó, nhân với 10^(decimals của token thế chấp − decimals của token vay) rồi chia cho 10^36. Trong thị trường ví dụ, cbBTC có 8 decimals và USDC có 6, nên giá trị thô 800114843487200000000000000000000000000 × 10^2 ÷ 10^36 = 80.011,48 USDC cho mỗi cbBTC.
+
+Oracle là bất kỳ hợp đồng nào mà người tạo thị trường chọn. Chú thích trong hợp đồng của Morpho nói rằng người dùng có trách nhiệm chọn những thị trường có oracle an toàn, và tài liệu của Morpho lưu ý rằng một oracle có thể kết hợp nhiều nguồn giá hoặc dựa vào dữ liệu khác trên chuỗi. Hệ số sức khỏe của bạn chỉ đáng tin cậy bằng oracle đó và các nguồn giá mà nó đọc.
+
+## Ví dụ cụ thể: 1 cbBTC với khoản nợ 40.000 USDC có hệ số sức khỏe bao nhiêu?
+
+Thị trường Morpho được niêm yết lớn nhất trên Ethereum theo giá trị đã vay vào ngày 26 tháng 10 năm 2026 là USDC | cbBTC (86%), với khoảng 309,13 triệu USDC đã vay trên 343,18 triệu USDC đã gửi (khối Ethereum 26274955). Oracle của nó định giá cbBTC ở mức 80.011,48 USDC, chỉ lấy từ một nguồn giá BTC/USD, nên thị trường coi 1 cbBTC là 1 BTC và 1 USDC là 1 đô la.
+
+Lấy 1 cbBTC làm tài sản thế chấp và khoản nợ 40.000 USDC:
+
+1. Giá trị tài sản thế chấp: 1 × 80.011,48 = 80.011,48 USDC.
+2. Giới hạn vay: 80.011,48 × 0,86 = 68.809,88 USDC.
+3. Hệ số sức khỏe: 68.809,88 ÷ 40.000 = **1,72**.
+4. Tỷ lệ cho vay trên giá trị (LTV): 40.000 ÷ 80.011,48 = 50,0%, so với LLTV 86%.
+5. Giá thanh lý: 40.000 ÷ (1 × 0,86) = **46.511,63 USDC cho mỗi cbBTC**, thấp hơn 80.011,48 là 41,9%.
+
+Lãi cũng làm nó thay đổi. Lãi suất vay của thị trường tại khối đó là 4,89% một năm, cộng dồn thành 5,01%. Nếu lãi suất và giá giữ nguyên trong một năm, khoản nợ sẽ tăng lên khoảng 42.003 USDC và hệ số sức khỏe sẽ giảm xuống 1,64.
+
+### Những người vay thực tế trong thị trường này đang ở mức nào?
+
+API của Morpho liệt kê 437 vị thế vay trong thị trường này vào ngày 26 tháng 10 năm 2026. Trong 435 vị thế có hệ số sức khỏe, trung vị là 1,96, một phần tư dưới 1,58, một phần mười dưới 1,35, và thấp nhất là 1,05. Khoảng 3% dưới 1,2. Tính trên toàn thị trường, 8.419,83 cbBTC bảo đảm cho 309,13 triệu USDC nợ, tức hệ số sức khỏe tổng thể khoảng 1,87.
+
+## LTV, LLTV và hệ số sức khỏe liên quan với nhau thế nào?
+
+LTV là khoản nợ của bạn chia cho giá trị tài sản thế chấp. LLTV là mức trần cố định của thị trường cho tỷ lệ đó. Với một tài sản thế chấp và khoản nợ ổn định, hệ số sức khỏe là tỷ số giữa hai con số này:
+
+**Hệ số sức khỏe = LLTV ÷ LTV**
+
+Trên Morpho Blue, LLTV là ranh giới duy nhất. Không có giới hạn riêng thấp hơn cho việc vay mới, nên hợp đồng cho phép bạn vay hoặc rút tài sản thế chấp cho đến khi hệ số sức khỏe là 1,00. Tài liệu dành cho nhà phát triển của Morpho đề nghị các ứng dụng giữ một khoảng an toàn, ví dụ không cho vay khiến hệ số sức khỏe xuống dưới 1,05, nhưng khoảng an toàn đó là một lựa chọn, không phải quy tắc của hợp đồng. Bạn đứng cách ranh giới bao xa sẽ quyết định vùng đệm của bạn, dù LLTV là bao nhiêu:
+
+| Đã vay, tính theo phần của giới hạn | Hệ số sức khỏe | Mức giảm giá tài sản thế chấp đến khi bị thanh lý |
+| ----------------------------------- | -------------- | ------------------------------------------------- |
+| 50%                                 | 2,00           | 50%                                               |
+| 70%                                 | 1,43           | 30%                                               |
+| 80%                                 | 1,25           | 20%                                               |
+| 90%                                 | 1,11           | 10%                                               |
+| 100%                                | 1,00           | 0%                                                |
+
+## Một thị trường Morpho có thể dùng những LLTV nào?
+
+Vào ngày 26 tháng 10 năm 2026, Morpho Blue trên Ethereum và trên Base chấp nhận chín LLTV trong danh sách đã được quản trị của Morpho phê duyệt: 0%, 38,5%, 62,5%, 77%, 86%, 91,5%, 94,5%, 96,5% và 98% (mỗi giá trị được đọc là đã bật tại khối Ethereum 26274950 và khối Base 53102888). LLTV bằng 0 không cho vay gì cả. LLTV của Blue phải dưới 100%.
+
+LLTV cũng quyết định khoản thưởng thanh lý (liquidation incentive), phần tài sản thế chấp tăng thêm mà bên thanh lý nhận được: 1 ÷ (1 − 0,3 × (1 − LLTV)), tối đa 1,15. Với LLTV 86%, con số này là 1,0438: một bên thanh lý trả 100 USDC nợ của bạn sẽ nhận 104,38 USDC tài sản thế chấp của bạn. LLTV càng cao thì khoản thưởng càng nhỏ. Tài liệu của Morpho làm tròn khoản thưởng ở mức 86% thành khoảng 5%; công thức của hợp đồng cho ra 4,38%. Khoản thưởng ở từng LLTV đã bật, một lần thanh lý lấy đi những gì và bao nhiêu phần khoản vay có thể bị thanh lý cùng lúc được trình bày trong [cơ chế thanh lý trên Morpho](/vi/blog/co-che-thanh-ly-tren-morpho). Khoản thưởng do bạn trả, bằng tài sản thế chấp của bạn; vùng đệm của riêng bạn là khoảng cách giữa hệ số sức khỏe và 1,00.
+
+## Điều gì làm hệ số sức khỏe trên Morpho thay đổi?
+
+Có ba thứ có thể làm nó thay đổi ngay cả khi bạn không làm gì:
+
+- **Giá tài sản thế chấp, theo cách oracle nhìn thấy.** Trong ví dụ cbBTC, hệ số sức khỏe đi theo nguồn giá BTC/USD và chỉ thay đổi khi nguồn giá đó cập nhật.
+- **Giá của token vay, nếu oracle dùng đến nó.** Một oracle có nguồn giá cho đồng định giá (quote feed) cũng phản ứng với token vay. Oracle của thị trường cbBTC không có nguồn đó, nên việc USDC mất neo (depeg) sẽ không làm hệ số sức khỏe đó thay đổi. Khoảng chênh giữa cbBTC và BTC cũng vậy.
+- **Lãi.** Trên Morpho Blue, khoản nợ tăng khi lãi được cộng dồn, và tài liệu của Morpho cảnh báo rằng một vị thế có thể trở nên rủi ro hơn theo thời gian chỉ vì lãi. AdaptiveCurveIRM nhắm đến mức sử dụng (utilization) 90%, tăng lãi suất khi thị trường bận hơn và giảm khi thị trường vắng hơn, giữ lãi suất ở mức sử dụng 90% trong khoảng 0,1% đến 200% một năm. Khi mức sử dụng đạt tối đa, lãi suất có thể gấp tới bốn lần lãi suất tại mục tiêu, tức tới 800% một năm. Việc lãi suất tăng tác động lên hệ số sức khỏe thế nào được minh họa cho Aave trong [cơ chế lãi suất của Aave](/vi/blog/lai-suat-aave#lai-suat-tang-vot-anh-huong-den-he-so-suc-khoe-cua-ban-the-nao); tác động lên một khoản vay Morpho cũng giống vậy.
+
+Điều mà quản trị của Morpho không thể thay đổi là chính thị trường: LLTV, địa chỉ oracle và IRM của một thị trường là cố định. Oracle vẫn đọc giá từ các nguồn giá phía sau nó, nên nó chỉ đáng tin cậy bằng các nguồn đó. Quản trị có thể đặt phí thị trường tối đa 25% tiền lãi, nhưng phí đó chỉ chia tiền lãi giữa người cho vay và bên nhận phí; nó không thay đổi số tiền người vay phải trả.
+
+Oracle quyết định giá nào được tính. Trong thị trường WETH | wstETH (96.5%) của Morpho trên Ethereum, oracle định giá wstETH theo tỷ giá quy đổi của chính Lido, 1,24717 WETH cho mỗi wstETH tại khối 26274979, và coi 1 stETH là 1 ETH. Giá ETH tính bằng đô la hoàn toàn không làm hệ số sức khỏe đó thay đổi. 10 wstETH với khoản nợ 11 WETH ở đó cho ra 12,4717 × 0,965 ÷ 11 = 1,094, và để bị thanh lý thì tỷ giá quy đổi phải giảm xuống 1,1399, thấp hơn 8,6%. Chỉ lãi và tỷ giá quy đổi đó làm hệ số sức khỏe này thay đổi.
+
+## Làm sao tính giá thanh lý của bạn trên Morpho?
+
+Với một vị thế Blue, giá thanh lý là giá oracle mà tại đó khoản nợ bằng giới hạn vay:
+
+**Giá thanh lý = khoản nợ ÷ (lượng tài sản thế chấp × LLTV)**
+
+Giá này được tính bằng số token vay cho mỗi token thế chấp, vì oracle định giá theo cách đó. Với hệ số sức khỏe h, giá tài sản thế chấp phải giảm 1 − 1 ÷ h để chạm đến nó (xem bảng ở trên). Khi khoản nợ tăng theo lãi, giá thanh lý nhích dần lên.
+
+Nếu bạn đã ủy quyền cho một hợp đồng thanh lý trước cho thị trường đó, một phần vị thế của bạn có thể bị đóng sớm hơn, ở mức LTV thấp hơn LLTV. Thị trường cbBTC có một hợp đồng như vậy, với LTV thanh lý trước là 83,26%: với 1 cbBTC và khoản nợ 40.000 USDC, hệ số sức khỏe đo theo ranh giới đó là 1,67 thay vì 1,72. Morpho đang ngừng tính năng này: ứng dụng của Morpho không còn cung cấp nó, và Morpho đề nghị những người vay đang dùng nó tắt đi. Xem [thanh lý trước trên Morpho](/vi/blog/thanh-ly-truoc-tren-morpho) để biết nó hoạt động thế nào và cách kiểm tra, thu hồi nó.
+
+## Hệ số sức khỏe hoạt động thế nào trên Morpho Midnight?
+
+Morpho Midnight, các thị trường lãi suất cố định của Morpho, tính sức khỏe theo cùng cách, với ba điểm khác: một thị trường có thể nhận nhiều tài sản thế chấp, khoản nợ không tăng theo thời gian, và ngày đáo hạn là một ranh giới cứng.
+
+- **Nhiều tài sản thế chấp, cộng lại.** Một thị trường Midnight có một token vay, một ngày đáo hạn và một hoặc nhiều tài sản thế chấp, mỗi loại có LLTV và oracle riêng. Hợp đồng cộng giá trị tài sản thế chấp × LLTV của từng loại bạn đã đưa vào và so tổng đó với khoản nợ. Hệ số sức khỏe là tổng đó ÷ khoản nợ.
+- **Khoản nợ cố định.** Bạn nợ một số tiền theo mệnh giá, mỗi đơn vị là một token vay, đến hạn vào ngày đáo hạn. Lãi đã được tính sẵn khi bạn vay: bạn nhận ít hơn một token vay cho mỗi đơn vị bạn nợ, nên giữa các giao dịch chỉ có giá tài sản thế chấp làm hệ số sức khỏe trên Midnight thay đổi.
+- **Ngày đáo hạn là ranh giới cứng.** Sau ngày đáo hạn, bất kỳ khoản nợ nào còn mở đều có thể bị thanh lý dù hệ số sức khỏe là bao nhiêu, và trong chế độ sau đáo hạn đó, khoản thưởng của bên thanh lý tăng từ 0 lên mức đầy đủ trong giờ đầu tiên.
+
+Một thị trường Midnight cũng có thể giới hạn ai được thanh lý, bằng một cổng (gate) được đặt khi tạo thị trường; thị trường ví dụ dưới đây không có cổng nào.
+
+Thị trường Midnight được niêm yết lớn nhất trên Ethereum vào ngày 26 tháng 10 năm 2026, với khoảng 23,9 triệu đơn vị nợ USDC đang lưu hành, cho vay USDC đến ngày 25 tháng 12 năm 2026, với tài sản thế chấp USDC ở LLTV 98% và cbBTC ở 86%, dùng cùng oracle cbBTC như thị trường Blue ở trên. Đưa vào 0,5 cbBTC và 10.000 USDC với 40.000 đơn vị nợ thì giới hạn là 34.404,94 + 9.800 = 44.204,94, tức hệ số sức khỏe 1,105. Ngày đáo hạn, việc chuyển sang kỳ hạn sau và thanh lý sau đáo hạn được trình bày trong [khoản vay lãi suất cố định Morpho Midnight](/vi/blog/khoan-vay-lai-suat-co-dinh-morpho-midnight).
+
+## Hệ số sức khỏe trên Morpho khác gì so với Aave?
+
+Công thức có cùng dạng ở cả hai: tài sản thế chấp nhân với một ngưỡng, chia cho khoản nợ. Các quy tắc xung quanh thì khác, như [bài hướng dẫn về hệ số sức khỏe Aave](/vi/blog/he-so-suc-khoe-aave#he-so-suc-khoe-ltv-va-nguong-thanh-ly-khac-nhau-the-nao) giải thích từ phía Aave:
+
+|                               | Morpho Blue                                           | Aave V3                                                                                                                                                             |
+| ----------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Đơn vị                        | Một thị trường: một tài sản thế chấp, một token vay   | Một thị trường (một pool trên một mạng): toàn bộ tài sản thế chấp và khoản nợ của bạn ở đó                                                                          |
+| Cách định giá                 | Oracle riêng của từng thị trường, tính bằng token vay | Oracle của Aave, tính bằng USD                                                                                                                                      |
+| Giới hạn vay                  | Đến LLTV, hệ số sức khỏe 1,00                         | Một LTV thấp hơn, nên vay tối đa để lại [khoảng 1,03](/vi/blog/he-so-suc-khoe-aave#vi-sao-vay-toi-da-chi-de-lai-he-so-suc-khoe-khoang-103) với WETH |
+| Tài sản tương quan            | Các thị trường riêng với LLTV cao                     | Các danh mục [E-Mode](/vi/blog/he-so-suc-khoe-aave#e-mode-thay-doi-he-so-suc-khoe-nhu-the-nao)                                                                        |
+| Ngưỡng có thể thay đổi không? | Không, cố định khi tạo thị trường                     | Có, quản trị và Risk Stewards có thể thay đổi                                                                                                                       |
+
+Aave V4 thay đổi một phần điều này, với một hệ số sức khỏe cho mỗi Spoke và một hệ số thế chấp (collateral factor) cho mỗi tài sản; xem [hệ số sức khỏe hoạt động thế nào trên Aave V4](/vi/blog/he-so-suc-khoe-aave#he-so-suc-khoe-tren-aave-v4-co-khac-khong).
+
+Khác biệt thực tế: trên Aave, vấn đề với một tài sản ảnh hưởng đến toàn bộ thị trường của bạn, còn trên Morpho nó chỉ nằm trong một thị trường. Và trên Morpho, không có gì trong hợp đồng ngăn bạn vay đến sát ranh giới, nên giữ khoảng an toàn là việc của bạn.
+
+## Bạn có thể xem hệ số sức khỏe Morpho của mình ở đâu?
+
+Trung tâm trợ giúp của Morpho cho biết ứng dụng hiển thị hệ số sức khỏe và giá thanh lý trên từng vị thế. API của Morpho trả về `healthFactor` và mức thay đổi giá đến khi bị thanh lý cho các vị thế Blue; với Midnight, nó trả về các vị thế và tham số thị trường, và tài liệu của nó hướng dẫn bên tích hợp đọc oracle của từng tài sản thế chấp trên chuỗi và tự tính giới hạn.
+
+[Bảng điều khiển Morpho](/vi/morpho) của Tokenping hiển thị các vị thế vay Blue và Midnight của một ví, với hệ số sức khỏe được tính từ dữ liệu trên chuỗi bằng chính công thức của Morpho, không bao giờ lấy từ API của Morpho.
+
+## Làm sao chọn vùng đệm và ngưỡng cảnh báo?
+
+Hãy bắt đầu từ việc giá có thể biến động bao xa trước khi bạn kịp hành động, rồi chừa thêm chỗ cho lãi:
+
+- **Chọn mức biến động bạn muốn chịu được.** Dùng bảng trong phần LTV ở trên: mức giảm giá bạn muốn che chắn sẽ quyết định hệ số sức khỏe.
+- **Xem oracle.** Một oracle BTC/USD biến động theo BTC. Một oracle tỷ giá quy đổi như ở thị trường wstETH biến động ít hơn nhiều, nhưng lãi suất vay và chính tỷ giá quy đổi vẫn làm hệ số sức khỏe của bạn thay đổi, và một LLTV cao chừa rất ít chỗ cho cả hai.
+- **Đo theo ranh giới gần nhất.** Nếu bạn đã ủy quyền thanh lý trước, một phần khoản vay có thể bị thanh lý trước khi hệ số sức khỏe chạm 1,00.
+- **Trên Midnight, để ý ngày.** Lãi sẽ không bào mòn vùng đệm, nhưng khoản nợ còn lại sau ngày đáo hạn có thể bị thanh lý ở bất kỳ hệ số sức khỏe nào.
+- **Biết cách nâng nó lên.** Trả bớt nợ hoặc thêm tài sản thế chấp trong cùng thị trường: tài sản thế chấp ở một thị trường Morpho khác không được tính. Trên Midnight, bạn có thể thêm bất kỳ tài sản thế chấp nào mà thị trường chấp nhận.
+
+Tài liệu dành cho nhà phát triển của Morpho đưa ra 1,1 làm ví dụ cho mức cảnh báo. Về lý do đằng sau vùng đệm, xem [cần bao nhiêu vùng đệm để kịp hành động](/vi/blog/he-so-suc-khoe-an-toan-tren-aave#ban-can-bao-nhieu-khoang-dem-de-co-thoi-gian-hanh-dong), viết cho Aave nhưng dùng cùng phép tính.
+
+## Cảnh báo hệ số sức khỏe giúp được gì trên Morpho?
+
+Tokenping kiểm tra các vị thế Morpho 5 phút một lần trên 14 mạng: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable và Tempo. Nó theo dõi các vị thế vay trong những thị trường được niêm yết trên ứng dụng Morpho, cả Morpho Blue lẫn Morpho Midnight. Cảnh báo Midnight áp dụng cho các thị trường mà API của Morpho liệt kê. Vào ngày 26 tháng 10 năm 2026, các thị trường đó nằm trên Ethereum và Base; Tokenping cũng sẽ theo dõi Arc và Robinhood Chain khi Morpho niêm yết thị trường Midnight ở đó.
+
+- **Ngưỡng:** bạn đặt từ 1,02 đến 10. Khi hệ số sức khỏe còn dưới ngưỡng, mỗi lần kiểm tra sẽ gửi một tin nhắn trên từng kênh bạn chọn: Signal, Telegram hoặc email.
+- **Thanh lý trước:** nếu bạn đã ủy quyền cho một hợp đồng thanh lý trước trên một thị trường Blue, cảnh báo dùng giá trị thấp hơn trong hai hệ số sức khỏe: hệ số đo theo LLTV và hệ số đo theo ranh giới thanh lý trước.
+- **Ngày đáo hạn:** một khoản vay Midnight còn nhận một lời nhắc trong 7 ngày cuối và một lời nhắc trong 24 giờ cuối, rồi một cảnh báo ở mỗi lần kiểm tra sau ngày đáo hạn khi vẫn còn nợ.
+
+Xem các vị thế của bạn trên [bảng điều khiển Morpho](/vi/morpho) không cần thanh toán; cảnh báo có giá <AlertPrice />, cùng gói với cảnh báo Aave. Một cảnh báo cho bạn thời gian để hành động; nó không ngăn được việc thanh lý, vì giá có thể biến động giữa hai lần kiểm tra.
+
+## Nguồn
+
+- [Tài liệu Morpho: Variable Rate Market (Morpho Blue)](https://docs.morpho.org/learn/concepts/blue): năm tham số, tên thị trường, các LLTV được quản trị phê duyệt và IRM (truy cập ngày 26 tháng 10 năm 2026)
+- [Tài liệu Morpho: Collateral, LTV and health (dành cho nhà phát triển)](https://docs.morpho.org/developers/borrow/concepts/ltv): công thức, thang của oracle, không ký quỹ chéo, cách làm khi tích hợp (truy cập ngày 26 tháng 10 năm 2026)
+- [Tài liệu Morpho: Liquidation](https://docs.morpho.org/learn/concepts/liquidation) và [trung tâm trợ giúp Morpho: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): khoản thưởng thanh lý, nơi ứng dụng hiển thị hệ số sức khỏe (truy cập ngày 26 tháng 10 năm 2026)
+- [Tài liệu Morpho: Interest rate model](https://docs.morpho.org/learn/concepts/irm) và [lãi suất cho bên tích hợp](https://docs.morpho.org/developers/borrow/concepts/interest-rates): AdaptiveCurveIRM, cách lãi được cộng dồn (truy cập ngày 26 tháng 10 năm 2026)
+- [Tài liệu Morpho: Get data (dành cho nhà phát triển)](https://docs.morpho.org/developers/borrow/tutorials/get-data): mã tính hệ số sức khỏe và giá thanh lý (truy cập ngày 26 tháng 10 năm 2026)
+- [Tài liệu Morpho: What is Midnight? (Fixed Rate Markets)](https://docs.morpho.org/learn/concepts/midnight) và [tài sản thế chấp, sức khỏe và thanh lý trên Midnight](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) (truy cập ngày 26 tháng 10 năm 2026)
+- [Tài liệu Morpho: Governance organization](https://docs.morpho.org/learn/governance/organization), [địa chỉ hợp đồng](https://docs.morpho.org/developers/contracts/addresses) và [chính sách niêm yết trên giao diện](https://docs.morpho.org/get-started/resources/interface-listing-policy) (truy cập ngày 26 tháng 10 năm 2026)
+- [morpho-blue](https://github.com/morpho-org/morpho-blue): `Morpho.sol`, `ConstantsLib.sol`, `IOracle.sol` (truy cập ngày 26 tháng 10 năm 2026)
+- [midnight](https://github.com/morpho-org/midnight): `Midnight.sol`, `ConstantsLib.sol` (truy cập ngày 26 tháng 10 năm 2026)
+- [pre-liquidation](https://github.com/morpho-org/pre-liquidation) và [morpho-blue-irm](https://github.com/morpho-org/morpho-blue-irm) (truy cập ngày 26 tháng 10 năm 2026)
+- [Tài liệu API của Morpho: Morpho Blue](https://docs.morpho.org/developers/api/morpho/) và [Morpho Midnight](https://docs.morpho.org/developers/api/morpho-midnight) (endpoint GraphQL api.morpho.org/graphql, các endpoint REST của Midnight dưới api.morpho.org/v0/midnight): xếp hạng thị trường, vị thế và hợp đồng thanh lý trước (truy cập ngày 26 tháng 10 năm 2026)
+- Dữ liệu đọc trên chuỗi từ [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), [oracle của USDC | cbBTC](https://etherscan.io/address/0xA6D6950c9F177F1De7f7757FB33539e3Ec60182a#readContract), [oracle của WETH | wstETH](https://etherscan.io/address/0xbD60A6770b27E084E8617335ddE769241B0e71D8#readContract) và [Morpho Midnight](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract) trên Ethereum tại các khối 26274950 đến 26274984, và [Morpho Blue trên Base](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) tại khối 53102888 (truy cập ngày 26 tháng 10 năm 2026)
+
+_Nội dung mang tính giáo dục, không phải lời khuyên tài chính. Cảnh báo giúp giảm rủi ro, nhưng không ngăn được việc thanh lý._

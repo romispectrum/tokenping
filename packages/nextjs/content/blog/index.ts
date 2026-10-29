@@ -62,6 +62,56 @@ import CsAaveInterestRates, { meta as csAaveInterestRates } from "~~/content/blo
 import CsWrappedBitcoinAaveCollateral, {
   meta as csWrappedBitcoinAaveCollateral,
 } from "~~/content/blog/cs/wrapped-bitcoin-jako-kolateral-na-aave.mdx";
+import DeAaveAlertsDoNotDisturb, {
+  meta as deAaveAlertsDoNotDisturb,
+} from "~~/content/blog/de/aave-alerts-trotz-nicht-stoeren.mdx";
+import DePrivateAaveLiquidationAlerts, {
+  meta as dePrivateAaveLiquidationAlerts,
+} from "~~/content/blog/de/aave-alerts-und-datenschutz.mdx";
+import DeAaveEMode, { meta as deAaveEMode } from "~~/content/blog/de/aave-e-mode-erklaert.mdx";
+import DeAaveHealthFactorAlertSetup, {
+  meta as deAaveHealthFactorAlertSetup,
+} from "~~/content/blog/de/aave-health-factor-alert-einrichten.mdx";
+import DeAaveHealthFactor, { meta as deAaveHealthFactor } from "~~/content/blog/de/aave-health-factor-erklaert.mdx";
+import DeAvoidAaveLiquidation, {
+  meta as deAvoidAaveLiquidation,
+} from "~~/content/blog/de/aave-liquidation-vermeiden.mdx";
+import DeAaveLiquidationAlertTools, {
+  meta as deAaveLiquidationAlertTools,
+} from "~~/content/blog/de/aave-liquidations-alert-tools-im-vergleich.mdx";
+import DeAaveLiquidationPrice, {
+  meta as deAaveLiquidationPrice,
+} from "~~/content/blog/de/aave-liquidationspreis-berechnen.mdx";
+import DeAaveMarketWindDown, { meta as deAaveMarketWindDown } from "~~/content/blog/de/aave-markt-abwicklung.mdx";
+import DeAaveInterestRates, { meta as deAaveInterestRates } from "~~/content/blog/de/aave-zinssaetze.mdx";
+import DeShortFiatWithAave, { meta as deShortFiatWithAave } from "~~/content/blog/de/fiat-short-mit-aave-kredit.mdx";
+import DeCryptoBackedLoans, { meta as deCryptoBackedLoans } from "~~/content/blog/de/krypto-besicherte-kredite.mdx";
+import DeMorphoHealthFactor, {
+  meta as deMorphoHealthFactor,
+} from "~~/content/blog/de/morpho-health-factor-erklaert.mdx";
+import DeMorphoMidnightFixedRateLoans, {
+  meta as deMorphoMidnightFixedRateLoans,
+} from "~~/content/blog/de/morpho-midnight-festzinskredite.mdx";
+import DeMorphoPreLiquidation, { meta as deMorphoPreLiquidation } from "~~/content/blog/de/morpho-vorliquidation.mdx";
+import DeSafeAaveHealthFactor, {
+  meta as deSafeAaveHealthFactor,
+} from "~~/content/blog/de/sicherer-health-factor-aave.mdx";
+import DeHowAaveLiquidationWorks, {
+  meta as deHowAaveLiquidationWorks,
+} from "~~/content/blog/de/so-funktioniert-die-liquidation-bei-aave.mdx";
+import DeHowMorphoLiquidationWorks, {
+  meta as deHowMorphoLiquidationWorks,
+} from "~~/content/blog/de/so-funktioniert-die-liquidation-bei-morpho.mdx";
+import DeStablecoinDepegAave, { meta as deStablecoinDepegAave } from "~~/content/blog/de/stablecoin-depeg-und-aave.mdx";
+import DeWhyAaveWithdrawOrBorrowFails, {
+  meta as deWhyAaveWithdrawOrBorrowFails,
+} from "~~/content/blog/de/warum-aave-abhebung-oder-kredit-fehlschlaegt.mdx";
+import DeWhyAaveHealthFactorDropped, {
+  meta as deWhyAaveHealthFactorDropped,
+} from "~~/content/blog/de/warum-ist-mein-aave-health-factor-gesunken.mdx";
+import DeWrappedBitcoinAaveCollateral, {
+  meta as deWrappedBitcoinAaveCollateral,
+} from "~~/content/blog/de/wrapped-bitcoin-als-sicherheit-auf-aave.mdx";
 import EsAaveAlertsDoNotDisturb, {
   meta as esAaveAlertsDoNotDisturb,
 } from "~~/content/blog/es/alertas-aave-modo-no-molestar.mdx";
@@ -188,6 +238,62 @@ import SafeAaveHealthFactor, { meta as safeAaveHealthFactor } from "~~/content/b
 import ShortFiatWithAave, { meta as shortFiatWithAave } from "~~/content/blog/short-fiat-with-aave.mdx";
 import StablecoinDepegAave, { meta as stablecoinDepegAave } from "~~/content/blog/stablecoin-depeg-aave.mdx";
 import type { Post } from "~~/content/blog/types";
+import ViAaveLiquidationPrice, {
+  meta as viAaveLiquidationPrice,
+} from "~~/content/blog/vi/cach-tinh-gia-thanh-ly-aave.mdx";
+import ViAvoidAaveLiquidation, {
+  meta as viAvoidAaveLiquidation,
+} from "~~/content/blog/vi/cach-tranh-bi-thanh-ly-tren-aave.mdx";
+import ViAaveHealthFactorAlertSetup, {
+  meta as viAaveHealthFactorAlertSetup,
+} from "~~/content/blog/vi/cai-dat-canh-bao-he-so-suc-khoe-aave.mdx";
+import ViAaveAlertsDoNotDisturb, {
+  meta as viAaveAlertsDoNotDisturb,
+} from "~~/content/blog/vi/canh-bao-aave-khi-bat-khong-lam-phien.mdx";
+import ViPrivateAaveLiquidationAlerts, {
+  meta as viPrivateAaveLiquidationAlerts,
+} from "~~/content/blog/vi/canh-bao-aave-va-quyen-rieng-tu.mdx";
+import ViHowAaveLiquidationWorks, {
+  meta as viHowAaveLiquidationWorks,
+} from "~~/content/blog/vi/co-che-thanh-ly-tren-aave.mdx";
+import ViHowMorphoLiquidationWorks, {
+  meta as viHowMorphoLiquidationWorks,
+} from "~~/content/blog/vi/co-che-thanh-ly-tren-morpho.mdx";
+import ViAaveEMode, { meta as viAaveEMode } from "~~/content/blog/vi/e-mode-cua-aave.mdx";
+import ViAaveHealthFactor, { meta as viAaveHealthFactor } from "~~/content/blog/vi/he-so-suc-khoe-aave.mdx";
+import ViSafeAaveHealthFactor, {
+  meta as viSafeAaveHealthFactor,
+} from "~~/content/blog/vi/he-so-suc-khoe-an-toan-tren-aave.mdx";
+import ViMorphoHealthFactor, { meta as viMorphoHealthFactor } from "~~/content/blog/vi/he-so-suc-khoe-morpho.mdx";
+import ViAaveMarketWindDown, {
+  meta as viAaveMarketWindDown,
+} from "~~/content/blog/vi/khi-aave-dong-cua-thi-truong.mdx";
+import ViMorphoMidnightFixedRateLoans, {
+  meta as viMorphoMidnightFixedRateLoans,
+} from "~~/content/blog/vi/khoan-vay-lai-suat-co-dinh-morpho-midnight.mdx";
+import ViAaveInterestRates, { meta as viAaveInterestRates } from "~~/content/blog/vi/lai-suat-aave.mdx";
+import ViShortFiatWithAave, {
+  meta as viShortFiatWithAave,
+} from "~~/content/blog/vi/short-tien-phap-dinh-bang-khoan-vay-aave.mdx";
+import ViAaveLiquidationAlertTools, {
+  meta as viAaveLiquidationAlertTools,
+} from "~~/content/blog/vi/so-sanh-cong-cu-canh-bao-thanh-ly-aave.mdx";
+import ViStablecoinDepegAave, {
+  meta as viStablecoinDepegAave,
+} from "~~/content/blog/vi/stablecoin-mat-neo-va-aave.mdx";
+import ViMorphoPreLiquidation, {
+  meta as viMorphoPreLiquidation,
+} from "~~/content/blog/vi/thanh-ly-truoc-tren-morpho.mdx";
+import ViCryptoBackedLoans, { meta as viCryptoBackedLoans } from "~~/content/blog/vi/vay-the-chap-bang-tien-ma-hoa.mdx";
+import ViWhyAaveHealthFactorDropped, {
+  meta as viWhyAaveHealthFactorDropped,
+} from "~~/content/blog/vi/vi-sao-he-so-suc-khoe-aave-giam.mdx";
+import ViWhyAaveWithdrawOrBorrowFails, {
+  meta as viWhyAaveWithdrawOrBorrowFails,
+} from "~~/content/blog/vi/vi-sao-khong-rut-hoac-vay-duoc-tren-aave.mdx";
+import ViWrappedBitcoinAaveCollateral, {
+  meta as viWrappedBitcoinAaveCollateral,
+} from "~~/content/blog/vi/wrapped-bitcoin-lam-tai-san-the-chap.mdx";
 import WhyAaveHealthFactorDropped, {
   meta as whyAaveHealthFactorDropped,
 } from "~~/content/blog/why-aave-health-factor-dropped.mdx";
@@ -305,7 +411,66 @@ const HI_POSTS: readonly Post[] = [
   { meta: hiMorphoMidnightFixedRateLoans, Content: HiMorphoMidnightFixedRateLoans },
 ];
 
-const POSTS_BY_LOCALE: Localized<readonly Post[]> = { en: POSTS, cs: CS_POSTS, es: ES_POSTS, hi: HI_POSTS };
+/** The German translations (content/blog/de), in the same order. Slugs pair with English through i18n/postSlugs. */
+const DE_POSTS: readonly Post[] = [
+  { meta: deAaveHealthFactor, Content: DeAaveHealthFactor },
+  { meta: deSafeAaveHealthFactor, Content: DeSafeAaveHealthFactor },
+  { meta: deHowAaveLiquidationWorks, Content: DeHowAaveLiquidationWorks },
+  { meta: deAaveLiquidationPrice, Content: DeAaveLiquidationPrice },
+  { meta: deWhyAaveHealthFactorDropped, Content: DeWhyAaveHealthFactorDropped },
+  { meta: deAaveHealthFactorAlertSetup, Content: DeAaveHealthFactorAlertSetup },
+  { meta: deAaveLiquidationAlertTools, Content: DeAaveLiquidationAlertTools },
+  { meta: deAvoidAaveLiquidation, Content: DeAvoidAaveLiquidation },
+  { meta: dePrivateAaveLiquidationAlerts, Content: DePrivateAaveLiquidationAlerts },
+  { meta: deCryptoBackedLoans, Content: DeCryptoBackedLoans },
+  { meta: deShortFiatWithAave, Content: DeShortFiatWithAave },
+  { meta: deAaveInterestRates, Content: DeAaveInterestRates },
+  { meta: deAaveAlertsDoNotDisturb, Content: DeAaveAlertsDoNotDisturb },
+  { meta: deAaveMarketWindDown, Content: DeAaveMarketWindDown },
+  { meta: deStablecoinDepegAave, Content: DeStablecoinDepegAave },
+  { meta: deAaveEMode, Content: DeAaveEMode },
+  { meta: deWhyAaveWithdrawOrBorrowFails, Content: DeWhyAaveWithdrawOrBorrowFails },
+  { meta: deWrappedBitcoinAaveCollateral, Content: DeWrappedBitcoinAaveCollateral },
+  { meta: deMorphoHealthFactor, Content: DeMorphoHealthFactor },
+  { meta: deHowMorphoLiquidationWorks, Content: DeHowMorphoLiquidationWorks },
+  { meta: deMorphoPreLiquidation, Content: DeMorphoPreLiquidation },
+  { meta: deMorphoMidnightFixedRateLoans, Content: DeMorphoMidnightFixedRateLoans },
+];
+
+/** The Vietnamese translations (content/blog/vi), in the same order. Slugs pair with English through i18n/postSlugs. */
+const VI_POSTS: readonly Post[] = [
+  { meta: viAaveHealthFactor, Content: ViAaveHealthFactor },
+  { meta: viSafeAaveHealthFactor, Content: ViSafeAaveHealthFactor },
+  { meta: viHowAaveLiquidationWorks, Content: ViHowAaveLiquidationWorks },
+  { meta: viAaveLiquidationPrice, Content: ViAaveLiquidationPrice },
+  { meta: viWhyAaveHealthFactorDropped, Content: ViWhyAaveHealthFactorDropped },
+  { meta: viAaveHealthFactorAlertSetup, Content: ViAaveHealthFactorAlertSetup },
+  { meta: viAaveLiquidationAlertTools, Content: ViAaveLiquidationAlertTools },
+  { meta: viAvoidAaveLiquidation, Content: ViAvoidAaveLiquidation },
+  { meta: viPrivateAaveLiquidationAlerts, Content: ViPrivateAaveLiquidationAlerts },
+  { meta: viCryptoBackedLoans, Content: ViCryptoBackedLoans },
+  { meta: viShortFiatWithAave, Content: ViShortFiatWithAave },
+  { meta: viAaveInterestRates, Content: ViAaveInterestRates },
+  { meta: viAaveAlertsDoNotDisturb, Content: ViAaveAlertsDoNotDisturb },
+  { meta: viAaveMarketWindDown, Content: ViAaveMarketWindDown },
+  { meta: viStablecoinDepegAave, Content: ViStablecoinDepegAave },
+  { meta: viAaveEMode, Content: ViAaveEMode },
+  { meta: viWhyAaveWithdrawOrBorrowFails, Content: ViWhyAaveWithdrawOrBorrowFails },
+  { meta: viWrappedBitcoinAaveCollateral, Content: ViWrappedBitcoinAaveCollateral },
+  { meta: viMorphoHealthFactor, Content: ViMorphoHealthFactor },
+  { meta: viHowMorphoLiquidationWorks, Content: ViHowMorphoLiquidationWorks },
+  { meta: viMorphoPreLiquidation, Content: ViMorphoPreLiquidation },
+  { meta: viMorphoMidnightFixedRateLoans, Content: ViMorphoMidnightFixedRateLoans },
+];
+
+const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
+  en: POSTS,
+  cs: CS_POSTS,
+  es: ES_POSTS,
+  hi: HI_POSTS,
+  de: DE_POSTS,
+  vi: VI_POSTS,
+};
 
 /** Every post of a language, hub first. */
 export const getPosts = (locale: Locale = DEFAULT_LOCALE) => POSTS_BY_LOCALE[locale];

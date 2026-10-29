@@ -1,0 +1,178 @@
+export const meta = {
+  slug: "krypto-besicherte-kredite",
+  title: "Kryptobesicherte Kredite: Funktionsweise und Zwecke",
+  description:
+    "Wie ein überbesicherter Kryptokredit auf Aave funktioniert, der Unterschied zu Bank und zentralem Verleiher, wozu man ihn nutzt und die Risiken.",
+  h1: "Wie funktionieren kryptobesicherte Kredite, und warum nehmen Leute sie auf?",
+  publishedAt: "2026-10-19",
+  primaryQuestion: "Wie funktioniert ein kryptobesicherter Kredit, und warum nutzen Leute ihn?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Mit einem kryptobesicherten Kredit leihst du dir, meist einen Stablecoin wie USDC, gegen Krypto, die du als Sicherheit
+  hinterlegst, ohne sie zu verkaufen. Auf Aave ist der Kredit überbesichert: Am 19. Oktober 2026 konntest du im Markt
+  Ethereum Core bis zu 73 % des Werts von WBTC oder 80,5 % des Werts von WETH leihen. Das Protokoll prüft nur die
+  Sicherheiten, es gibt kein Rückzahlungsdatum, und der Zinssatz ist variabel. Fällt der Wert der Sicherheiten so weit,
+  dass dein Health Factor (Gesundheitsfaktor) unter 1 sinkt, wird ein Teil davon verkauft, um die Schulden zu tilgen,
+  und du zahlst einen Aufschlag. Leute nutzen solche Kredite, um an Geld zu kommen, ohne zu verkaufen, um eine Lücke zu
+  überbrücken, zur Umschuldung, als Hebel oder zur Absicherung, und jede dieser Nutzungen trägt Liquidations-, Zins- und
+  Stablecoin-Risiko.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Jede On-Chain-Zahl, jede Blocknummer und jede Quelle hinter diesem Beitrag: content/blog/snapshots/crypto-backed-loans.md */}
+
+## Was ist ein kryptobesicherter Kredit?
+
+Ein kryptobesicherter Kredit ist ein Kredit, der durch Krypto gesichert ist, die du als Sicherheit hinterlegst. Auf einem Lending-Protokoll wie Aave ist er überbesichert: Die Sicherheiten müssen mehr wert sein als der Kredit, und statt dein Einkommen zu prüfen, verlässt sich das Protokoll darauf, einen Teil der Sicherheiten verkaufen zu können, wenn ihr Wert zu weit fällt. Solange der Kredit läuft, gehören die Sicherheiten weiter dir, mit allen ihren Preisbewegungen, und du kannst sie zurückholen, sobald die Schulden zurückgezahlt sind.
+
+Die meisten leihen sich Stablecoins, Token, die einer Währung folgen: USDC und USDT folgen dem US-Dollar, EURC folgt dem Euro. Die Sicherheit ist meist ein volatiles Asset. In Aaves Märkten auf Ethereum und Arbitrum kommt Ether als WETH und Bitcoin als Token, der ihn darstellt, etwa WBTC oder cbBTC.
+
+Zwei Zahlen pro Sicherheiten-Asset entscheiden, wie viel du leihen kannst und wann der Kredit in Gefahr ist:
+
+- Die **Beleihungsquote (LTV)** ist das Maximum, das du gegen das Asset leihen kannst, als Anteil an seinem Wert.
+- Die **Liquidationsschwelle (liquidation threshold)** ist der Anteil am Wert des Assets, der zu deinem Health Factor zählt. Sind deine so gewichteten Sicherheiten weniger wert als deine Schulden, liegt der Health Factor unter 1, und die Position kann liquidiert werden.
+
+| Markt         | Sicherheit | LTV (Kreditlimit) | Liquidationsschwelle | Liquidationsbonus |
+| ------------- | ---------- | ----------------- | -------------------- | ----------------- |
+| Ethereum Core | WETH       | 80,5 %            | 83 %                 | 5 %               |
+| Ethereum Core | WBTC       | 73 %              | 78 %                 | 5 %               |
+| Ethereum Core | cbBTC      | 73 %              | 78 %                 | 7,5 %             |
+| Arbitrum      | WETH       | 80 %              | 84 %                 | 5 %               |
+| Arbitrum      | WBTC       | 73 %              | 78 %                 | 7 %               |
+
+Diese Werte wurden am 19. Oktober 2026 on-chain aus dem PoolDataProvider jedes Markts gelesen, in Ethereum-Block 26225342 und Arbitrum-Block 516228495. cbBTC ist im Arbitrum-Markt von Aave nicht gelistet. Die Aave-Governance kann jeden dieser Werte ändern. Wie sich LTV und Liquidationsschwelle unterscheiden, erklärt [was der Aave Health Factor ist](/de/blog/aave-health-factor-erklaert) ausführlicher.
+
+## Wie funktioniert ein Kredit auf Aave, Schritt für Schritt?
+
+Aave V3 ist ein Satz von Smart Contracts in jedem Netzwerk, und app.aave.com ist ein Interface dafür. Aaves Hilfecenter beschreibt Leihen und Zurückzahlen in wenigen Schritten; das gehört zu jedem davon.
+
+### Schritt 1: Sicherheiten einzahlen
+
+Verbinde deine Wallet, wähle das Asset zum Einzahlen, zum Beispiel WBTC, und zahle es ein. Prüfe, dass es als Sicherheit eingeschaltet ist, denn nur Sicherheiten zählen zu dem, was du leihen kannst. Die Token liegen im Pool-Vertrag des Markts, wo andere Nutzer sie leihen können (dafür gibt es den kleinen Einlagezins). Du kannst deine Sicherheiten nach der Rückzahlung abheben, oder einen Teil davon, während du noch Schulden hast, solange dein Health Factor danach bei 1 oder darüber bleibt.
+
+### Schritt 2: Einen Stablecoin leihen
+
+Wähle den Stablecoin und einen Betrag unter deinem Kreditlimit, also dem Wert der Sicherheiten mal ihrer LTV. Die Token kommen in deiner Wallet an, und ab sofort laufen Zinsen auf, zu einem Satz, den das Protokoll daraus festlegt, wie viel von dem Asset geliehen ist, und aus Parametern, die die Governance ändern kann (Aave-Hilfecenter, Borrow Tokens). Aave V3 hat inzwischen nur noch einen variablen Zinssatz: Seine Pool-Referenz sagt, dass Kredite immer den variablen Zinsmodus verwenden, und kennzeichnet den alten stabilen Zinssatz seit v3.2 als veraltet.
+
+Variable Kreditzinsen am 19. Oktober 2026, als jährliche APY, wie die Aave-App sie zeigt (Ethereum-Block 26225342, Arbitrum-Block 516228495):
+
+| Markt         | USDC   | USDT (USD₮0 auf Arbitrum) | GHO    | EURC                       |
+| ------------- | ------ | ------------------------- | ------ | -------------------------- |
+| Ethereum Core | 4,58 % | 4,17 %                    | 4,60 % | 4,12 %                     |
+| Arbitrum      | 3,45 % | 4,21 %                    | 4,59 % | kein Euro-Stablecoin offen |
+
+Diese Zinssätze ändern sich ständig und können springen. Am 14. Oktober 2026 stieg der USDC-Zinssatz auf Ethereum Core in einem einzigen Block auf 13,67 % APR und fiel etwa 36 Minuten später zurück, wie [warum dein Aave Health Factor von selbst sinkt](/de/blog/warum-ist-mein-aave-health-factor-gesunken#ursache-3-sind-die-zinsen-auf-deine-schulden-schneller-gewachsen-als-auf-deine-sicherheiten) zeigt.
+
+### Schritt 3: Den Health Factor im Blick behalten
+
+Der Health Factor (HF) ist der Wert deiner Sicherheiten, gewichtet mit der Liquidationsschwelle jedes Assets, geteilt durch deine Schulden. Nimm alice, die 1 WBTC auf Ethereum Core einzahlt, als Bitcoin bei beispielhaften 80.000 $ steht (Aaves Orakel zeigte 82.680,33 $ in Ethereum-Block 26225364 am 19. Oktober 2026), und 24.000 USDC leiht:
+
+- Kreditlimit: 80.000 × 0,73 = 58.400 $.
+- Health Factor: 80.000 × 0,78 ÷ 24.000 = 2,60.
+- Liquidationspreis: 24.000 ÷ 0,78 = 30.769,23 $, also 61,5 % unter 80.000 $.
+
+Der Health Factor fällt, wenn Bitcoin fällt, und langsam, wenn Zinsen dazukommen: Bliebe der USDC-Zinssatz bei 4,58 % im Jahr, lägen die Schulden nach einem Jahr bei etwa 25.099 USDC, und der Liquidationspreis wäre auf etwa 32.179 $ gestiegen. Um das für deine eigene Position auszurechnen, siehe [wie du deinen Aave-Liquidationspreis berechnest](/de/blog/aave-liquidationspreis-berechnen); wie viel Spielraum du lassen solltest, steht in [was ein sicherer Health Factor auf Aave ist](/de/blog/sicherer-health-factor-aave).
+
+### Schritt 4: Zurückzahlen, wann du willst
+
+Es gibt kein Rückzahlungsdatum. Aaves Leihfunktion nimmt überhaupt keine Laufzeit entgegen, und du kannst die Schulden jederzeit ganz oder teilweise zurückzahlen, in dem Asset, das du geliehen hast (Aave V3 Pool-Referenz; Aave-Hilfecenter, Repay Tokens). Eine vollständige Rückzahlung gibt deine Sicherheiten frei. Du kannst auch mit Sicherheiten zurückzahlen: In den Märkten auf Ethereum und Arbitrum kann Aaves Interface einen Teil deiner Sicherheiten gegen das geliehene Asset verkaufen und in einer Transaktion zurückzahlen (Aave-Dokumentation, Swap-Funktionen).
+
+### Schritt 5: Wissen, was unter einem Health Factor von 1 passiert
+
+Unter 1 kann jeder die Position liquidieren: Er zahlt einen Teil deiner Schulden zurück und nimmt Sicherheiten im Wert dieses Betrags plus einen Liquidationsbonus. Eine Liquidation kann bis zu 50 % der Schulden zurückzahlen, solange der Health Factor über 0,95 liegt und die Sicherheiten und die Schulden jeweils mindestens 2.000 $ wert sind, und bis zu 100 %, wenn der Health Factor bei 0,95 oder darunter liegt oder eines von beiden weniger als 2.000 $ wert ist (Aave-Hilfecenter).
+
+Fiele Bitcoin kurz nachdem alice geliehen hat auf 30.000 $, läge ihr Health Factor bei 30.000 × 0,78 ÷ 24.000 = 0,975. Ein Liquidator könnte 12.000 USDC zurückzahlen und 12.000 × 1,05 ÷ 30.000 = 0,42 WBTC nehmen, womit ihr 0,58 WBTC gegen 12.000 USDC blieben, ein Health Factor von 1,13. Sie verlöre 600 $ Sicherheiten über die zurückgezahlten Schulden hinaus, und 0,42 WBTC würden am Tiefpunkt verkauft. Die vollständigen Regeln stehen in [was passiert, wenn deine Aave-Position liquidiert wird](/de/blog/so-funktioniert-die-liquidation-bei-aave).
+
+## Wie unterscheidet sich ein kryptobesicherter Kredit von einem Bankkredit?
+
+Die wichtigsten Unterschiede liegen darin, worauf der Kreditgeber schaut, wann du zurückzahlst und was passiert, wenn die Sicherheiten an Wert verlieren:
+
+|                                                 | Kredit auf Aave                                                                                | Typischer Bankkredit                                                                |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Was entscheidet, wie viel du leihen kannst      | Der Wert deiner Sicherheiten und ihre LTV                                                      | Meist dein Einkommen und deine Kredithistorie, plus etwaige Sicherheiten            |
+| Prüfungen deiner Person                         | Keine durch das Protokoll, das nur auf die Sicherheiten schaut                                 | Meist Identitäts-, Einkommens- und Bonitätsprüfung                                  |
+| Laufzeit                                        | Keine: Zahl zurück, wann du willst                                                             | Meist eine feste Laufzeit und ein Tilgungsplan                                      |
+| Zinsen                                          | Variabel, neu berechnet, wenn sich das Leihen im Markt ändert                                  | Fest oder variabel, wie der Vertrag es vorsieht                                     |
+| Wenn die Sicherheiten an Wert verlieren         | Automatische Liquidation durch Dritte, sobald der Health Factor unter 1 liegt, ohne Vorwarnung | Hängt vom Vertrag ab: Aufforderung zu mehr Sicherheiten, Verhandlung, Vollstreckung |
+| Wer die Sicherheiten hält                       | Der Smart Contract des Markts                                                                  | Der Kreditgeber oder ein von ihm gewählter Verwahrer                                |
+| Wenn die Sicherheiten die Schulden nicht decken | Der Fehlbetrag wird zum Verlust des Protokolls, nicht zu einer Forderung gegen dich            | Hängt vom Vertrag und vom Recht ab                                                  |
+
+Die letzte Zeile folgt daraus, wie Aave V3.3 und neuer mit einer Liquidation umgehen, die alle Sicherheiten aufbraucht: Die restlichen Schulden werden als Defizit auf dem Asset abgeschrieben, wie [der Abschnitt über uneinbringliche Schulden (bad debt)](/de/blog/so-funktioniert-die-liquidation-bei-aave#kann-eine-liquidation-uneinbringliche-schulden-hinterlassen) erklärt. Die Sicherheiten hast du bis dahin trotzdem verloren.
+
+## Wie unterscheidet er sich von einem zentralisierten Krypto-Verleiher?
+
+Ein zentralisierter Verleiher nimmt deine Sicherheiten in seine eigene Verwahrung. Der Kredit kann ganz ähnlich aussehen, aber du wirst Gläubiger des Unternehmens, und wenn es scheitert, können deine Sicherheiten dort feststecken. 2022 hat gezeigt, was das bedeutet:
+
+- **Celsius** fror am 12. Juni 2022 die Abhebungen seiner Kunden ein und meldete am 13. Juli 2022 Insolvenz an. Laut der US Commodity Futures Trading Commission hatten Kunden dort etwa 20 Mrd. $ eingezahlt. Im Januar 2023 entschied das US-Insolvenzgericht in New York, dass Krypto in den Earn-Konten von Celsius nach dessen Nutzungsbedingungen Eigentum von Celsius geworden war, womit diese Kunden zu ungesicherten Gläubigern wurden.
+- **Voyager Digital** setzte am 1. Juli 2022 Handel, Einzahlungen und Abhebungen aus, nachdem Three Arrows Capital Zahlungen auf einen Kredit über 15.250 BTC und 350 Mio. $ in USDC nicht geleistet hatte, und beantragte am 5. Juli 2022 ein Insolvenzverfahren nach Chapter 11.
+- **Genesis** hinderte Anleger im Programm Gemini Earn im November 2022 daran, abzuheben, als es laut der US Securities and Exchange Commission etwa 900 Mio. $ ihrer Assets hielt, und beantragte am 19. Januar 2023 Chapter 11.
+- **BlockFi** beantragte am 28. November 2022 Chapter 11, wenige Tage nachdem es beim Zusammenbruch von FTX die Abhebungen ausgesetzt hatte.
+
+Auf Aave liegen die Sicherheiten in einem öffentlichen Smart Contract, dessen Regeln jeder lesen kann, nicht in der Bilanz eines Unternehmens. Das tauscht eine Reihe von Risiken gegen eine andere, die unten unter [den Risiken](#welche-risiken-hat-ein-kryptobesicherter-kredit) behandelt werden: Bugs, Orakelfehler, Governance-Entscheidungen und die Verwahrung hinter Wrapped Bitcoin. Eines davon zählt hier: Aaves Emergency Admin oder Pool Admin kann ein Asset pausieren, und solange es pausiert ist, kann niemand es abheben oder zurückzahlen (Aaves Verträge PoolConfigurator und ValidationLogic).
+
+## Wofür nutzen Leute kryptobesicherte Kredite?
+
+### Geld, ohne zu verkaufen
+
+Ein Grund ist, an Geld zu kommen und die Krypto trotzdem zu behalten, oft weil der Besitzer einen Anstieg erwartet oder sie über Jahre halten will. Der Kredit behält das ganze Aufwärtspotenzial der Sicherheiten und ihr ganzes Abwärtsrisiko, fügt Zinsen hinzu und kann im schlimmsten Moment einen Verkauf erzwingen, wenn der Preis weit genug fällt.
+
+Den Kredit aufzunehmen verkauft deine Sicherheiten nicht: Sie bleiben deine. Ob das Hinterlegen von Sicherheiten, der Kredit, die Zinsen oder eine Liquidation steuerliche Folgen haben, hängt von deinem Land ab und manchmal von den Bedingungen des Protokolls. Die Leitlinien der britischen Steuerbehörde sagen zum Beispiel, dass es von den Bedingungen einer DeFi-Lending-Plattform abhängt, ob das Übergeben von Sicherheiten an sie als Veräußerung gilt, und behandeln, wo das nicht der Fall ist, den Verkauf von Sicherheiten bei einer Liquidation als Verkauf des Kreditnehmers selbst (HMRC Cryptoassets Manual, CRYPTO61640). Dieser Ratgeber gibt keine Steuerberatung; prüf die Regeln dort, wo du lebst.
+
+### Ausgaben oder eine Lücke überbrücken
+
+Manche leihen, um eine Ausgabe zu decken, bevor erwartetes Geld eintrifft, etwa eine Rechnung, die vor einem Verkauf oder einem Gehalt fällig ist. Der Haken: Nichts beendet den Kredit für dich. Es gibt kein Rückzahlungsdatum, der Zinssatz kann steigen, während du wartest, und Stablecoins in Geld auf einem Bankkonto umzutauschen, und zurück, um zu tilgen, kostet selbst etwas.
+
+### Umschuldung
+
+Ein Kredit anderswo lässt sich zu Aave verlegen, wenn Aaves Zinssatz niedriger ist, und auf Aave lassen sich Schulden mit dem Debt Swap des Interface in einer einzigen Transaktion von einem Stablecoin auf einen anderen umstellen (Aave-Dokumentation, Swap-Funktionen). Der Haken: Die Zinssätze sind variabel, also kann das heute günstigere Asset nächsten Monat teurer sein, und der Wechsel von einem Dollar-Stablecoin zu einem Euro-Stablecoin ändert, in welcher Währung du schuldest, worum es in [Fiat shorten mit einem Aave-Kredit](/de/blog/fiat-short-mit-aave-kredit) geht.
+
+### Hebel
+
+Um ihr Exposure zu erhöhen, leihen sich manche Stablecoins, kaufen mehr von der Sicherheit und zahlen diese ebenfalls ein. Würde alice mit ihren 24.000 USDC 0,3 WBTC zu 80.000 $ kaufen und einzahlen, hielte sie 1,3 WBTC gegen 24.000 USDC: einen Health Factor von 3,38 und einen Liquidationspreis von 23.668,64 $. Jede Bewegung von Bitcoin trifft sie jetzt 1,3-mal so stark, wie wenn sie 1 Bitcoin direkt hielte, und den Loop (gehebelte Kreditschleife) zu wiederholen drückt den Health Factor Richtung 1.
+
+### Absichern und Shorten
+
+Ein Asset zu leihen und zu verkaufen ist eine Wette darauf, dass es fällt: Zahl Stablecoins ein, leih WETH und verkauf es, und die Position gewinnt, wenn ETH fällt, und bewegt sich Richtung Liquidation, wenn ETH steigt (der [Ratgeber zum sicheren Health Factor](/de/blog/sicherer-health-factor-aave) zeigt, wie weit es steigen kann). Einen Dollar- oder Euro-Stablecoin gegen Bitcoin zu leihen ist das Spiegelbild, ein Short auf die Währung gegen die Sicherheit, was manche Bitcoiner „Fiat shorten“ nennen; [Fiat shorten mit einem Aave-Kredit](/de/blog/fiat-short-mit-aave-kredit) rechnet das mit Zahlen durch.
+
+## Welche Risiken hat ein kryptobesicherter Kredit?
+
+- **Liquidation.** Unter einem Health Factor von 1 kann ein Teil der Schulden oder alles mit deinen Sicherheiten zurückgezahlt werden, und du verlierst obendrein den Bonus: 5 % bis 7,5 % für die Assets in der ersten Tabelle. Liquidationen werden von konkurrierenden Bots ausgeführt, also können sie schnell folgen (Aave-Hilfecenter).
+- **Volatilität der Sicherheiten.** Bitcoin erreichte im November 2021 einen Höchststand von etwa 69.000 $ und stand Mitte Juni 2022 bei etwa 17.000 $, ein Rückgang um etwa 75 %, und fiel nach dem Scheitern von FTX im November 2022 unter 16.000 $ (EZB-Blog). Mit der Liquidationsschwelle von WBTC von 78 % wäre selbst ein Kredit über 20 % des Werts der Sicherheiten, aufgenommen am Höchststand 2021, bis Mitte Juni 2022 liquidiert worden.
+- **Variable Zinssätze.** Der Zinssatz ist für keinen Zeitraum fest, und Zinsen senken deinen Health Factor mit der Zeit, auch wenn die Preise stillstehen.
+- **Stablecoin-Depegs.** USDC fiel am 11. März 2023 auf rund 0,88 $, nachdem Circle mitgeteilt hatte, dass 3,3 Mrd. $ seiner Reserven bei der Silicon Valley Bank lagen, und lag am 13. März wieder über 0,99 $ (Gauntlets Beitrag im Aave-Forum; Circle). TerraUSD, ein algorithmischer Stablecoin, verlor im Mai 2022 seine Bindung (ein Depeg, also Verlust der Dollarbindung) und fiel fast auf null, was laut der US-SEC 40 Mrd. $ Marktwert vernichtete. Fällt der Stablecoin, den du schuldest, werden deine Schulden billiger; fällt ein Stablecoin, den du als Sicherheit nutzt, sinkt dein Health Factor.
+- **Wrapped Bitcoin.** Bitcoin auf Aave ist ein Token, der durch Bitcoin gedeckt ist, den jemand anderes hält oder eine Bridge kontrolliert. WBTC zum Beispiel sagt, dass jeder Token durch verwahrte Bitcoin gedeckt ist. Fiele diese Deckung weg, könnte der Token an Wert verlieren, egal was Bitcoin selbst tut.
+- **Smart Contracts, Orakel und Governance.** Ein Bug, ein falscher Preis oder eine Parameteränderung können eine Position ohne jede Marktbewegung treffen. Im März 2026 senkte ein falsch abgestimmtes Wechselkurs-Orakel (oracle) in Aaves Märkten Ethereum Core und Prime den effektiven wstETH-Kurs um etwa 2,85 % und löste laut dem Post-Mortem von Chaos Labs Liquidationen von etwa 10.938 wstETH über 34 Konten aus ([mehr zu Orakelfehlern](/de/blog/warum-ist-mein-aave-health-factor-gesunken#ursache-6-hat-ein-orakel-oder-wechselkursfehler-deine-sicherheiten-falsch-bewertet)). Die Governance kann außerdem eine Liquidationsschwelle für jede offene Position senken ([mehr zu Schwellensenkungen](/de/blog/warum-ist-mein-aave-health-factor-gesunken#ursache-4-haben-governance-oder-risk-stewards-eine-liquidationsschwelle-gesenkt)).
+- **Alles selbst machen.** Du hältst die Schlüssel, du sendest die Transaktionen, und in einem schnellen Markt kann eine Rückzahlung länger bis zur Bestätigung brauchen, als du erwartest.
+
+## Wie behältst du einen Kredit im Blick?
+
+Aaves eigene Interfaces zeigen deinen Health Factor, solange du sie offen hast, schreiben dir aber nicht, wenn er fällt, wie [der Ratgeber zu Health-Factor-Alerts](/de/blog/aave-health-factor-alert-einrichten#verschickt-aave-health-factor-alerts) erklärt. Eine Möglichkeit, den Kredit im Blick zu behalten, ist, den Health Factor zu wählen, bei dem du handeln würdest, indem du einen Teil der Schulden zurückzahlst oder Sicherheiten nachlegst, und dich von einem separaten Tool warnen zu lassen, wenn die Position dort ankommt. Tokenping prüft alle 5 Minuten und schreibt dir, solange dein Health Factor unter dem Schwellenwert liegt, den du festlegst; [der Ratgeber zur Einrichtung](/de/blog/aave-health-factor-alert-einrichten) führt dich durch. Ein Alert gibt dir Zeit zum Handeln, keinen Schutz, und [so vermeidest du eine Liquidation auf Aave](/de/blog/aave-liquidation-vermeiden) erklärt, was du mit dieser Zeit tun kannst.
+
+## Quellen
+
+- Aave V3 Ethereum Core [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) und Arbitrum [PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): LTV, Liquidationsschwellen, Boni und variable Kreditzinsen, on-chain gelesen in Ethereum-Block 26225342 und Arbitrum-Block 516228495 (RPC-Daten abgerufen am 19. Oktober 2026)
+- [Aave V3 Ethereum Core AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): WBTC-Preis 82.680,33 $ in Ethereum-Block 26225364 (RPC-Daten abgerufen am 19. Oktober 2026)
+- [Aave Help: Borrow Tokens](https://aave.com/help/borrowing/borrow-tokens) (abgerufen am 19. Oktober 2026)
+- [Aave Help: Repay Tokens](https://aave.com/help/borrowing/repay-tokens) (abgerufen am 19. Oktober 2026)
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (abgerufen am 19. Oktober 2026)
+- [Referenz zum Smart Contract Pool von Aave V3](https://aave.com/docs/aave-v3/smart-contracts/pool): Parameter für Leihen und Zurückzahlen, nur variabler Zinssatz, stabiler Zinssatz in v3.2 als veraltet markiert (abgerufen am 19. Oktober 2026)
+- [Aave-Dokumentation: Swap-Funktionen](https://aave.com/docs/aave-v3/smart-contracts/swap-features): Rückzahlung mit Sicherheiten und Debt Swap (abgerufen am 19. Oktober 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) und [PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol), aave-v3-origin: Abhebungen bei laufendem Kredit, Pausen und wer sie setzen darf (abgerufen am 19. Oktober 2026)
+- [Pressemitteilung 8749-23 der CFTC zu Celsius Network](https://www.cftc.gov/PressRoom/PressReleases/8749-23), 13. Juli 2023: etwa 20 Mrd. $ eingezahlt, Abhebungen am 12. Juni 2022 eingefroren, Insolvenz am 13. Juli 2022 angemeldet (abgerufen am 19. Oktober 2026)
+- [US-Insolvenzgericht, Southern District of New York: Entscheidung zum Eigentum an den Assets der Celsius-Earn-Konten](https://www.nysb.uscourts.gov/sites/default/files/opinions/312902_1822_opinion.pdf), 4. Januar 2023 (abgerufen am 19. Oktober 2026)
+- [Voyager Digital: Marktupdate](https://www.newswire.ca/news-releases/voyager-digital-provides-market-update-851734302.html), 1. Juli 2022, und [Voyager Digital: Ankündigung nach Chapter 11](https://www.newswire.ca/news-releases/voyager-digital-commences-financial-restructuring-process-to-maximize-value-for-all-stakeholders-888320107.html), 5. Juli 2022 (beide abgerufen am 19. Oktober 2026)
+- [Pressemitteilung 2023-7 der SEC zu Genesis und dem Programm Gemini Earn](https://www.sec.gov/news/press-release/2023-7), 12. Januar 2023 (abgerufen am 19. Oktober 2026)
+- [Pressemitteilung 2024-37 der SEC zu Genesis](https://www.sec.gov/newsroom/press-releases/2024-37), 19. März 2024: Anträge nach Chapter 11 am 19. Januar 2023 eingereicht (abgerufen am 19. Oktober 2026)
+- [CoinDesk: BlockFi files for bankruptcy as FTX contagion spreads](https://www.coindesk.com/policy/2022/11/28/ftx-fallout-continues-as-crypto-lender-blockfi-declares-bankruptcy), 28. November 2022 (abgerufen am 19. Oktober 2026)
+- [Der EZB-Blog: Bitcoin's last stand](https://www.ecb.europa.eu/press/blog/date/2022/html/ecb.blog221130~5301eecd19.en.html), 30. November 2022: der Rückgang von etwa 69.000 $ auf etwa 17.000 $ und unter 16.000 $ (abgerufen am 19. Oktober 2026)
+- [Gauntlet: Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), Aave-Governance-Forum, 17. März 2023 (abgerufen am 19. Oktober 2026)
+- [Circle: $3.3 Billion of USDC Reserve Risk Removed, Dollar De-peg Closes](https://www.circle.com/pressroom/3-3-billion-of-usdc-reserve-risk-removed-dollar-de-peg-closes), 12. März 2023 (abgerufen am 19. Oktober 2026)
+- [Pressemitteilung 2024-73 der SEC zu Terraform](https://www.sec.gov/newsroom/press-releases/2024-73), 13. Juni 2024: der Depeg von UST im Mai 2022 (abgerufen am 19. Oktober 2026)
+- [WBTC](https://wbtc.network/): wie WBTC gedeckt ist (abgerufen am 19. Oktober 2026)
+- [Chaos Labs: Post-Mortem, Exchange Rate Misalignment on wstETH Core and Prime Instances](https://governance.aave.com/t/24269), Aave-Governance-Forum, 10. März 2026 (abgerufen am 19. Oktober 2026)
+- [HMRC Cryptoassets Manual, CRYPTO61640: DeFi lending and staking, collateral](https://www.gov.uk/hmrc-internal-manuals/cryptoassets-manual/crypto61640), aktualisiert am 28. November 2025 (abgerufen am 19. Oktober 2026)
+
+_Bildungsinhalt, keine Finanzberatung. Alerts senken das Risiko, verhindern aber keine Liquidation._

@@ -1,0 +1,133 @@
+export const meta = {
+  slug: "vi-sao-khong-rut-hoac-vay-duoc-tren-aave",
+  title: "Vì sao không rút hoặc vay được trên Aave? 9 nguyên nhân",
+  description:
+    "Vì sao lệnh rút, vay hay trả nợ trên Aave V3 thất bại: hệ số sức khỏe, thanh khoản chưa cho vay, giới hạn gửi và vay, reserve bị đóng băng hoặc tạm dừng.",
+  h1: "Vì sao lệnh rút, lệnh vay hay lệnh trả nợ của tôi trên Aave thất bại?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "Vì sao một giao dịch rút, vay hoặc trả nợ trên Aave lại thất bại?",
+  readingMinutes: 17,
+};
+
+<ShortAnswer>
+  Một giao dịch Aave V3 thất bại khi một trong các bước kiểm tra của hợp đồng Pool từ chối nó, và lý do gần như luôn là
+  một trong chín nguyên nhân. Lệnh rút sẽ khiến hệ số sức khỏe (health factor) của bạn xuống dưới 1. Reserve (quỹ tài
+  sản) còn ít thanh khoản chưa cho vay hơn số bạn yêu cầu. Giới hạn gửi (supply cap) hoặc giới hạn vay (borrow cap) của
+  tài sản đã đầy. Reserve bị đóng băng (không nhận gửi hay vay mới) hoặc bị tạm dừng (không gì cả, kể cả trả nợ). Tài
+  sản đó không cho vay, hoặc không cho vay trong danh mục E-Mode của bạn. Bạn giữ tài sản thế chấp có tỷ lệ cho vay trên
+  giá trị (LTV) bằng 0, phải rút ra trước. Hoặc lệnh trả nợ chỉ định một khoản nợ bạn không có, hay token bạn chưa phê
+  duyệt. Trên Ethereum Core ngày 29 tháng 10 năm 2026, 35 trong 66 reserve được niêm yết bị đóng băng, giới hạn gửi của
+  LBTC đã đầy chỉ còn 0,07 LBTC, và chỉ 134,4 triệu trong 2.347,5 triệu USDC đã gửi là có thể rút.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Số liệu và các số block đã dùng để đọc chúng: content/blog/snapshots/why-aave-withdraw-or-borrow-fails.md */}
+
+## Một giao dịch trên Aave phải vượt qua những kiểm tra nào?
+
+Mọi lệnh gửi, rút, vay và trả nợ trên Aave V3 đều đi qua hợp đồng Pool, và Pool chạy một danh sách kiểm tra trong thư viện tên là `ValidationLogic` trước khi chuyển bất kỳ token nào. Mỗi kiểm tra không đạt sẽ dừng toàn bộ giao dịch với một lỗi có tên: `ReserveFrozen`, `SupplyCapExceeded`, `HealthFactorLowerThanLiquidationThreshold` và nhiều lỗi khác. Ví của bạn thường chỉ hiện "execution reverted" (giao dịch bị hoàn tác) và một mã hex ngắn, vì các tên lỗi nằm trong mã của Aave, không nằm trong ví. Ứng dụng Aave kiểm tra phần lớn các điều kiện này trước khi bạn ký, nên nó thường từ chối trước cả khi bạn thấy giao dịch.
+
+Các kiểm tra khác nhau theo từng thao tác. Lệnh rút cần một reserve đang hoạt động, không bị tạm dừng, số dư ít nhất bằng số tiền rút, và nếu bạn có nợ và tài sản đó được tính làm tài sản thế chấp, hệ số sức khỏe sau khi rút phải giữ ở mức 1 trở lên. Lệnh vay cần một reserve đang hoạt động, không bị tạm dừng, không bị đóng băng và cho phép vay, còn chỗ dưới giới hạn vay, và đủ tài sản thế chấp theo LTV của bạn. Lệnh gửi cần một reserve không bị đóng băng và còn chỗ dưới giới hạn gửi. Lệnh trả nợ chỉ cần một reserve đang hoạt động, không bị tạm dừng, và một khoản nợ bằng tài sản đó. Chín nguyên nhân dưới đây đi theo danh sách đó, đại khái theo thứ tự bạn dễ gặp.
+
+Bài hướng dẫn này nói về Aave V3. Các Spoke của Aave V4 có cấu hình riêng, còn Morpho không có cơ chế nào trong số này ngoài oracle (nguồn giá) và hệ số sức khỏe: một thị trường Morpho không có giới hạn, không đóng băng và không tạm dừng.
+
+## 1. Lệnh rút sẽ khiến hệ số sức khỏe của bạn xuống dưới 1
+
+Đây là trường hợp người vay gặp nhiều nhất. Khi bạn rút một tài sản đang dùng làm tài sản thế chấp trong lúc có nợ, Pool tính lại tài khoản của bạn sau lệnh rút và yêu cầu hệ số sức khỏe ít nhất là 1 (`HealthFactorLowerThanLiquidationThreshold`). Kiểm tra tương tự cũng chạy khi bạn tắt vai trò tài sản thế chấp của một tài sản hoặc chuyển aToken sang địa chỉ khác. Nó không chạy khi bạn không có nợ, vì vậy một vị thế chỉ gửi luôn rút được toàn bộ số dư.
+
+Lấy ví dụ 10 WETH trên Ethereum Core theo giá oracle 2.309,84 $ ngày 29 tháng 10 năm 2026 (23.098,41 $), ngưỡng thanh lý (liquidation threshold) 84% và khoản nợ 12.000 USDC. [Hệ số sức khỏe](/vi/blog/he-so-suc-khoe-aave) là 23.098,41 × 0,84 ÷ 12.000 = 1,617. Để giữ nó đúng ở mức 1, bạn cần 14.285,71 $ WETH (12.000 ÷ 0,84), tức 6,185 WETH, nên số tối đa bạn rút được là 3,815 WETH. Yêu cầu rút 4 thì giao dịch bị hoàn tác; yêu cầu 3,815 thì giao dịch thành công, để lại một vị thế mà chỉ một nhịp giảm giá tiếp theo cũng đủ khiến nó có thể bị thanh lý. Mức tối đa trong ứng dụng Aave chính là con số này, và rút hết nó là cách nhanh nhất để biến một vị thế an toàn thành một vị thế cần [cảnh báo thanh lý](/vi/blog/cai-dat-canh-bao-he-so-suc-khoe-aave) trong vòng một giờ.
+
+Việc vay có một kiểm tra chặt hơn. Một khoản vay mới phải giữ hệ số sức khỏe ở mức 1 trở lên và còn phải nằm trong LTV bình quân gia quyền của bạn: tài sản thế chấp × LTV phải đủ trang trải khoản nợ (`CollateralCannotCoverNewBorrow`). Với WETH có LTV 81%, 10 WETH ở trên chỉ hỗ trợ tối đa 18.709,71 $ nợ, và vị thế vay hết mức đó bắt đầu với hệ số sức khỏe 84 ÷ 81 = 1,037. Bài [hệ số sức khỏe an toàn là bao nhiêu](/vi/blog/he-so-suc-khoe-an-toan-tren-aave) giải thích vì sao đó là một điểm xuất phát mong manh.
+
+## 2. Reserve còn ít thanh khoản chưa cho vay hơn số bạn cần
+
+Aave cho vay số tiền người gửi nạp vào, nên một reserve chỉ giữ phần chưa ai vay. Lệnh rút, hoặc lệnh vay, lớn hơn phần đó sẽ thất bại, và trường hợp này không có tên lỗi của Aave: aToken cố chuyển token gốc ra và chính hợp đồng token hoàn tác giao dịch, với USDC là "ERC20: transfer amount exceeds balance" (số tiền chuyển vượt quá số dư). Kiểm tra khi vay chỉ yêu cầu tổng cung aToken ít nhất bằng số tiền vay, điều này chỉ chặn những yêu cầu vô lý và không gì khác.
+
+Trên Ethereum Core ngày 29 tháng 10 năm 2026, có 2.347.525.372,91 USDC đã gửi, 2.213.199.103,54 USDC đã vay và hợp đồng aToken giữ 134.360.379,94 USDC: tỷ lệ sử dụng 94,28%, chỉ 5,72% lượng gửi có thể rút hoặc vay. Một người gửi muốn rút 200 triệu USDC thì không thể, và không ai rút được cho đến khi có người trả nợ hoặc gửi thêm. Bài hướng dẫn về [cách lãi suất Aave hoạt động](/vi/blog/lai-suat-aave) cho thấy điều đó trông ra sao trong thực tế: ngày 14 tháng 10 năm 2026, một lệnh rút duy nhất 133.898.000 USDC đã đẩy cùng reserve này lên tỷ lệ sử dụng 99,50%, và lãi suất vay từ 4,50% lên 13,67% chỉ trong một block.
+
+Có bốn cách hiệu quả khi vấn đề là thanh khoản. Rút số tiền nhỏ hơn, tối đa bằng lượng hợp đồng đang giữ. Chờ: đường cong lãi suất được thiết kế để kéo thanh khoản quay lại, và đợt tăng vọt ngày 14 tháng 10 kết thúc sau khoảng 36 phút, dù không có gì bảo đảm điều đó. Rút một tài sản thế chấp khác, nếu bạn có và hệ số sức khỏe cho phép. Và nếu bạn muốn trả khoản nợ USDC nhưng đang giữ aUSDC, hãy dùng `repayWithATokens`: hàm này đốt aToken của bạn để trừ vào nợ mà không di chuyển một USDC nào, nên hoàn toàn không cần thanh khoản.
+
+## 3. Giới hạn gửi đã đầy
+
+Mỗi reserve có một giới hạn gửi do các risk steward và bộ phận quản trị của Aave đặt, và lệnh gửi nào đẩy tổng số vượt quá giới hạn sẽ thất bại với `SupplyCapExceeded`. Giới hạn bằng 0 nghĩa là không giới hạn. Giới hạn tính số aToken đang tồn tại cộng với lãi tích lũy cho kho bạc, nên nó tự đầy lên khi lãi tích lũy, dù không ai gửi thêm.
+
+Các giới hạn chạm trần thường xuyên hơn người ta nghĩ. Ngày 29 tháng 10 năm 2026, giới hạn LBTC của Ethereum Core là 2.690 LBTC so với 2.689,93 LBTC đã gửi: chỗ trống còn lại là 0,07 LBTC, và một người vay muốn thêm 1 LBTC vào một vị thế đang chịu áp lực đã không thể làm vậy. sUSDe đạt 96,9% giới hạn, tBTC 98,9%, USDe 91,7%, weETH 91,2% và WBTC 89,4%. Các giới hạn thay đổi theo cả hai chiều. Ngày 10 tháng 7 năm 2026, LlamaRisk giảm giới hạn gửi USDm trên phiên bản MegaETH của Aave từ 1.000.000.000 xuống 300.000.000 vì mức trần nằm "well above current demand" (cao hơn nhiều so với nhu cầu hiện tại); các steward nâng giới hạn khi nhu cầu xuất hiện, thường trong vòng vài ngày.
+
+Với người vay, giới hạn có ý nghĩa như một cánh cửa đóng: thêm tài sản thế chấp là một trong hai cách nâng hệ số sức khỏe, và một giới hạn đã đầy loại bỏ cách đó với tài sản này. Trả nợ vẫn hoạt động, đó là cách còn lại, và thêm một tài sản thế chấp khác có giới hạn còn chỗ cũng vậy.
+
+## 4. Giới hạn vay đã đầy
+
+Giới hạn vay hoạt động tương tự với khoản nợ: tổng nợ lãi suất thả nổi của reserve sau khoản vay của bạn không được vượt quá giới hạn (`BorrowCapExceeded`), và 0 nghĩa là không giới hạn. Kiểm tra chạy ở mọi lệnh vay, nên một giới hạn đã bị vượt sẽ chặn mọi khoản vay mới bằng tài sản đó cho đến khi có người trả nợ. Một giới hạn vay đã đầy không chặn gì khác: trả nợ, rút và thanh lý vẫn diễn ra.
+
+tBTC trên Ethereum Core là trường hợp cực đoan: ngày 29 tháng 10 năm 2026 việc vay được bật, nhưng giới hạn là 1 tBTC và đã có 2,57 tBTC được vay, nên khoản vay nhỏ nhất cũng bị hoàn tác. USDC có 2.213,2 triệu đã vay so với giới hạn 2.700 triệu, dùng 82,0%, còn 486,8 triệu chỗ trống; USDT ở mức 80,8%. Khi giới hạn của stablecoin đầy, lệnh vay thất bại dù reserve có thể vẫn còn nhiều thanh khoản.
+
+## 5. Reserve bị đóng băng
+
+Một reserve bị đóng băng không nhận gửi mới và không cho vay mới (cả hai đều báo `ReserveFrozen`). Tài liệu Pool Configurator của Aave liệt kê những gì vẫn hoạt động: trả nợ, thanh lý và rút. Đóng băng là cách bộ phận quản trị rút dần một tài sản mà không giữ chân ai; bài [điều gì xảy ra khi Aave đóng cửa một thị trường](/vi/blog/khi-aave-dong-cua-thi-truong) đi qua từng bước.
+
+Reserve bị đóng băng không hiếm. Ngày 29 tháng 10 năm 2026, 35 trong 66 reserve trên Ethereum Core bị đóng băng: CRV, MKR, UNI, LUSD, FRAX, sDAI, crvUSD, FBTC và một danh sách dài các token PT của Pendle đã qua ngày đáo hạn, gần như tất cả cũng có giới hạn gửi và giới hạn vay bằng 1. Nếu bạn vẫn còn tài sản thế chấp trong một reserve như vậy, bạn có thể rút nó ra và bạn có thể bị thanh lý khỏi nó, nhưng bạn không thể nạp thêm.
+
+## 6. Reserve bị tạm dừng
+
+Tạm dừng là công tắc khẩn cấp. Một reserve bị tạm dừng từ chối mọi thứ: gửi, vay, trả nợ, rút, thanh lý và chuyển aToken (`ReservePaused`). Không reserve nào trên Ethereum Core bị tạm dừng ngày 29 tháng 10 năm 2026, và trong những tuần bình thường thì không có reserve nào như vậy.
+
+Lệnh tạm dừng đã từng được dùng. Ngày 4 tháng 11 năm 2023, sau một báo cáo bug bounty nghiêm trọng, Guardian của Aave đã tạm dừng Aave V2 trên Ethereum và một nhóm tài sản trên V3 Arbitrum, Avalanche, Optimism và Polygon. Trong khoảng một tuần, không ai có thể trả nợ hay thêm tài sản thế chấp trên các reserve đó, trong khi giá vẫn biến động. Các phiên bản V3 được mở lại ngày 12 tháng 11 năm 2023, V2 Ethereum ngày 13 tháng 11 sau một thời gian ân hạn thanh lý khoảng ba giờ cho người vay WETH, và CRV trên V3 Polygon ngày 16 tháng 11. Ngày nay thời gian ân hạn đó là một phần của giao thức: lệnh thanh lý trong thời gian ân hạn của một reserve sẽ thất bại với `LiquidationGraceSentinelCheckFailed`, cho những người vay từng bị khóa một khoảng ngắn để trả nợ trước khi bên thanh lý ra tay.
+
+Nếu giao dịch của bạn thất bại vì lỗi tạm dừng, bạn không thể làm gì trên Aave cho đến khi lệnh tạm dừng được gỡ. Hãy dùng thời gian đó để chuẩn bị sẵn tiền trả nợ trên đúng mạng, vì thời gian ân hạn sau khi mở lại do bộ phận quản trị hoặc Guardian đặt và từng chỉ ngắn ba giờ.
+
+## 7. Tài sản đó không cho vay, hoặc không được vay trong danh mục E-Mode của bạn
+
+Nhiều tài sản có thể gửi làm tài sản thế chấp nhưng không thể vay. Trên Ethereum Core ngày 29 tháng 10 năm 2026, việc vay bị tắt ở 15 reserve không bị đóng băng, trong đó có wstETH, cbETH, rETH, weETH, LBTC, eBTC, AAVE và XAUt, và lệnh vay bất kỳ tài sản nào trong số đó sẽ thất bại với `BorrowingNotEnabled`. Cờ này do bộ phận quản trị đặt cho từng reserve và hiện trong ứng dụng Aave dưới dạng thiếu nút vay.
+
+Nếu bạn ở trong một [danh mục E-Mode](/vi/blog/e-mode-cua-aave), một quy tắc khác thay thế quy tắc đó: bạn chỉ có thể vay các tài sản trong nhóm được vay của danh mục, và mọi tài sản khác sẽ thất bại với `NotBorrowableInEMode`, kể cả tài sản bạn có thể vay khi ở ngoài danh mục. Ví dụ, danh mục "ETH correlated" của Ethereum Core chỉ cho bạn vay WETH, không gì khác. Rời khỏi danh mục sẽ giải quyết được lệnh vay, nhưng việc rời đi cũng có kiểm tra riêng: mọi tài sản bạn đang nợ phải vay được ở ngoài danh mục, và hệ số sức khỏe của bạn vẫn phải ở mức 1 trở lên với các ngưỡng thông thường, thấp hơn (`InvalidDebtInEmode`, `InvalidCollateralInEmode`, `HealthFactorLowerThanLiquidationThreshold`).
+
+## 8. Bạn giữ tài sản thế chấp có LTV bằng 0
+
+Bộ phận quản trị đặt LTV của một tài sản về 0 khi muốn tài sản đó ngừng hỗ trợ nợ mới trong khi các vị thế hiện có vẫn tiếp tục. Ngày 29 tháng 10 năm 2026, 11 reserve không bị đóng băng trên Ethereum Core được bật làm tài sản thế chấp với LTV bằng 0, trong đó có DAI (ngưỡng thanh lý 77%), LINK, PYUSD, USDe, sUSDe, USDS, EURC và XAUt. Một tài sản như vậy vẫn được tính vào hệ số sức khỏe của bạn, qua ngưỡng thanh lý của nó, nhưng không thêm gì vào sức vay của bạn. Từ đó có hai kiểm tra.
+
+Kiểm tra thứ nhất áp dụng cho việc vay. Nếu mọi tài sản thế chấp bạn đã bật đều có LTV bằng 0, LTV bình quân gia quyền của bạn là 0 và mọi lệnh vay đều thất bại với `LtvValidationFailed`. Nếu có sự kết hợp, chẳng hạn DAI và WETH, lệnh vay vẫn thành công, nhưng chỉ được giới hạn theo phần WETH.
+
+Kiểm tra thứ hai áp dụng cho việc rút, và nó khiến nhiều người bất ngờ. Nếu bạn có nợ và có bất kỳ tài sản thế chấp đã bật nào có LTV bằng 0, thì tài sản bạn rút, chuyển hoặc tắt vai trò tài sản thế chấp phải chính là một tài sản LTV 0, nếu không giao dịch sẽ thất bại với cùng lỗi `LtvValidationFailed`. Chính chú thích trong mã nêu rõ ý định: quy tắc này "ensures that a multi-collateral position needs to withdraw/transfer the ltv0 asset first" (bảo đảm rằng một vị thế nhiều tài sản thế chấp phải rút/chuyển tài sản ltv0 trước). Vì vậy một người vay giữ DAI và WETH muốn rút một ít WETH sẽ bị từ chối cho đến khi DAI được rút ra; kiểm tra hệ số sức khỏe vẫn áp dụng cho chính lệnh rút DAI. Cách khắc phục nằm ở thứ tự thao tác: rút tài sản LTV 0 trước, hoặc trả đủ nợ để hệ số sức khỏe cho phép rút cả hai.
+
+## 9. Lệnh trả nợ chỉ định khoản nợ bạn không có, hoặc token bạn chưa phê duyệt
+
+Trả nợ là thao tác đơn giản nhất nhưng vẫn có thể thất bại, thường vì một trong năm lý do.
+
+- **Không có khoản nợ loại đó.** `NoDebtOfSelectedType` nghĩa là Pool bạn gọi không có khoản nợ lãi suất thả nổi nào bằng tài sản đó cho địa chỉ đó. Nguyên nhân thường gặp là sai thị trường: Ethereum có các phiên bản Core, Prime và Lido riêng biệt, mỗi phiên bản có Pool riêng, và cùng một ví có thể nợ USDC ở phiên bản này mà không nợ gì ở phiên bản kia. Các thị trường trên mỗi mạng cũng tách biệt.
+- **Một chế độ lãi suất không còn tồn tại.** Chỉ chế độ thả nổi (2) được chấp nhận; việc vay lãi suất ổn định đã bị loại khỏi mã, và lệnh gọi với chế độ 1 sẽ thất bại với `InvalidInterestRateModeSelected`.
+- **Chưa phê duyệt.** Pool kéo khoản trả nợ bằng `transferFrom`, nên token cần được phê duyệt ít nhất bằng số tiền đó, hoặc có một permit đã ký. Nếu không, hợp đồng token sẽ hoàn tác trước khi các kiểm tra của Aave kịp chạy.
+- **Trả nợ hộ người khác mà không ghi số tiền.** Trả nợ thay cho một địa chỉ khác với giá trị "toàn bộ khoản nợ" (`type(uint256).max`) sẽ thất bại với `NoExplicitAmountToRepayOnBehalf`; hãy ghi rõ số tiền.
+- **Số dư lẻ (dust).** Lãi tích lũy từng giây, nên trả đúng số dư bạn thấy một phút trước sẽ để lại vài wei nợ. Để xóa hẳn một khoản nợ, hãy trả bằng giá trị tối đa, Pool sẽ giới hạn nó ở đúng số bạn đang nợ.
+
+## Những nguyên nhân bạn không cần tìm nữa
+
+Hai cách giải thích cũ không còn đúng. Isolation Mode cùng các trần nợ (debt ceiling) của nó đã bị loại bỏ trong Aave V3.7, Siloed Borrowing cũng vậy, nên ngày nay không lệnh vay nào thất bại vì một tài sản bị cô lập hay vì đã chạm mức trần. Và việc vay lãi suất ổn định đã biến mất từ V3.2, nên không có gì thất bại vì chuyển đổi lãi suất. Nếu một bài hướng dẫn cũ nhắc đến một trong những điều này, nó đang mô tả một phiên bản Aave không còn được triển khai.
+
+## Cần làm gì khi giao dịch thất bại lúc giá đang giảm
+
+Một giao dịch thất bại chỉ là phiền toái khi thị trường yên ả nhưng là vấn đề thật sự khi thị trường đang giảm, vì giờ bạn dành để chẩn đoán cũng là giờ hệ số sức khỏe của bạn cần đến. Một thứ tự thao tác ngắn gọn:
+
+1. **Đọc lỗi.** Mô phỏng giao dịch trong ví, hoặc dán selector hex vào bộ giải mã của một block explorer; các tên lỗi ở trên cho bạn biết mình đang ở trường hợp nào.
+2. **Ưu tiên trả nợ hơn thêm tài sản thế chấp.** Trả nợ vẫn hoạt động khi reserve bị đóng băng hay giới hạn gửi đã đầy, và với `repayWithATokens` nó hoạt động cả khi thanh khoản cạn. Thêm tài sản thế chấp phụ thuộc vào một giới hạn còn chỗ và một reserve không bị đóng băng.
+3. **Thử số tiền nhỏ hơn.** Thanh khoản và giới hạn là những đại lượng; lệnh rút hoặc vay vừa đủ sẽ thành công trong khi lệnh trọn vẹn thất bại.
+4. **Dùng tài sản khác.** Một tài sản thế chấp khác để rút, hoặc một tài sản khác để trả nợ, thường vẫn dùng được khi tài sản đầu tiên bị chặn.
+5. **Kiểm tra phiên bản và mạng.** Lệnh trả nợ gửi đúng tài sản nhưng sai Pool sẽ thất bại với `NoDebtOfSelectedType` và làm bạn tốn cả gas lẫn thời gian.
+6. **Lần sau hãy nhận cảnh báo sớm hơn.** Mỗi trường hợp trên cần vài phút để xoay xở. Một cảnh báo hệ số sức khỏe đặt với khoảng dư sẽ mua cho bạn những phút đó.
+
+Tokenping kiểm tra hệ số sức khỏe Aave của bạn mỗi 5 phút, trên mọi thị trường Aave V3 ở 21 mạng và mọi Spoke của Aave V4, và nhắn cho bạn qua Signal, Telegram hoặc email khi nó xuống dưới ngưỡng bạn chọn (1,1 đến 10), lặp lại ở mỗi lần kiểm tra cho đến khi hồi phục. Nó đọc con số từ `getUserAccountData`, cũng chính là con số mà kiểm tra lệnh rút sử dụng. Một cảnh báo không thể hành động thay bạn, và không điều gì trong bài hướng dẫn này ngăn được việc thanh lý; nó cho bạn biết cánh cửa nào đang đóng để bạn thử cánh cửa đang mở trước. Bạn có thể [kiểm tra hệ số sức khỏe Aave V3](/vi/aave) mà không cần thanh toán; cảnh báo có giá <AlertPrice />, mỗi thị trường hoặc Spoke một gói. Bài [cách tránh bị thanh lý trên Aave](/vi/blog/cach-tranh-bi-thanh-ly-tren-aave) đi sâu vào lựa chọn giữa trả nợ và thêm tài sản thế chấp, còn bài [vì sao hệ số sức khỏe của bạn giảm](/vi/blog/vi-sao-he-so-suc-khoe-aave-giam) nói về những nguyên nhân bạn đang phải phản ứng.
+
+## Nguồn
+
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol), [BorrowLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/BorrowLogic.sol) và [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): mọi kiểm tra được nêu ở trên, thứ tự chúng chạy, chú thích về LTV 0 và cờ LTV bằng 0 (aave-v3-origin main, truy cập ngày 29 tháng 10 năm 2026)
+- [Errors.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/helpers/Errors.sol): tên các lỗi và mô tả của chúng (aave-v3-origin main, truy cập ngày 29 tháng 10 năm 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getAllReservesTokens`, và với mỗi reserve là `getReserveConfigurationData`, `getReserveCaps`, `getPaused` và `getReserveData`, tại khối 26296985 (truy cập ngày 29 tháng 10 năm 2026)
+- [aEthUSDC](https://etherscan.io/address/0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c): lượng USDC hợp đồng aToken nắm giữ tại khối 26296985 (truy cập ngày 29 tháng 10 năm 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): giá WETH và USDC tại khối 26296985 (truy cập ngày 29 tháng 10 năm 2026)
+- [Tài liệu Aave: Pool Configurator](https://aave.com/docs/aave-v3/smart-contracts/pool-configurator): những gì reserve bị đóng băng và bị tạm dừng cho phép, giới hạn bằng 0 (truy cập ngày 29 tháng 10 năm 2026)
+- [Aave v2/v3 security incident 04/11/2023](https://governance.aave.com/t/aave-v2-v3-security-incident-04-11-2023/15335): các lệnh tạm dừng ngày 4 tháng 11 năm 2023, việc mở lại ngày 12, 13 và 16 tháng 11 và thời gian ân hạn (truy cập ngày 29 tháng 10 năm 2026)
+- [Aave V3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): việc loại bỏ vay lãi suất ổn định (truy cập ngày 29 tháng 10 năm 2026)
+- [Aave V3.7: isolation mode and siloed borrowing removal](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/mode-removal.md) (truy cập ngày 29 tháng 10 năm 2026)
+- [Risk Stewards: Supply and Borrow Cap Reductions on Aave V3 / 2026.07.10](https://governance.aave.com/t/risk-stewards-supply-and-borrow-cap-reductions-on-aave-v3-2026-07-10/25296): các đợt cắt giới hạn của LlamaRisk trên MegaETH, thực thi ngày 14 tháng 7 năm 2026 (truy cập ngày 29 tháng 10 năm 2026)
+
+_Nội dung mang tính giáo dục, không phải lời khuyên tài chính. Cảnh báo giúp giảm rủi ro, nhưng không ngăn được việc thanh lý._

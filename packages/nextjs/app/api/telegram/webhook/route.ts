@@ -8,7 +8,8 @@
  *   /help:  short help message
  *
  * Replies are in Czech when the sender's Telegram app is set to Czech or Slovak (message.from.language_code), in
- * Spanish when it is set to any Spanish, in Hindi when it is set to Hindi, in English otherwise.
+ * Spanish when it is set to any Spanish, in Hindi, German or Vietnamese when it is set to one of those, in English
+ * otherwise.
  *
  * Security:
  *   - Verify the secret_token via the X-Telegram-Bot-Api-Secret-Token header

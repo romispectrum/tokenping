@@ -1,7 +1,7 @@
-// The site's languages. English is served at the root, Czech under /cz, Spanish under /es and Hindi under /hi (see
-// i18n/routes.ts).
+// The site's languages. English is served at the root; the others under their prefix: Czech /cz, Spanish /es, Hindi
+// /hi, German /de and Vietnamese /vi (see i18n/routes.ts).
 
-export const LOCALES = ["en", "cs", "es", "hi"] as const;
+export const LOCALES = ["en", "cs", "es", "hi", "de", "vi"] as const;
 
 export type Locale = (typeof LOCALES)[number];
 
@@ -31,6 +31,10 @@ export const LOCALE_INFO: Record<Locale, LocaleInfo> = {
   // Hindi in Devanagari, hreflang "hi". Dates as hi-IN writes them ("14 अक्टूबर 2026"); numbers with the Western
   // thousands grouping the app shows ("12,000"), not hi-IN's lakh grouping ("12,00,000").
   hi: { htmlLang: "hi", ogLocale: "hi_IN", intl: "hi-IN", numbers: "en-US", name: "हिन्दी", short: "HI" },
+  // One German for Germany, Austria and Switzerland: hreflang "de". Decimal comma and dot thousands ("12.000,5").
+  de: { htmlLang: "de", ogLocale: "de_DE", intl: "de-DE", numbers: "de-DE", name: "Deutsch", short: "DE" },
+  // Decimal comma and dot thousands ("12.000,5"), dates "14 tháng 10, 2026".
+  vi: { htmlLang: "vi", ogLocale: "vi_VN", intl: "vi-VN", numbers: "vi-VN", name: "Tiếng Việt", short: "VI" },
 };
 
 export const isLocale = (value: unknown): value is Locale => LOCALES.includes(value as Locale);

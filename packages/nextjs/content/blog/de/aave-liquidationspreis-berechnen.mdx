@@ -1,0 +1,183 @@
+export const meta = {
+  slug: "aave-liquidationspreis-berechnen",
+  title: "So berechnest du deinen Aave-Liquidationspreis",
+  description:
+    "Die Formel für den Liquidationspreis bei Aave V3, mit Rechenbeispielen für eine Sicherheit, zwei Sicherheiten und volatile Schulden, plus Rechner.",
+  h1: "So berechnest du deinen Aave-Liquidationspreis",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-20",
+  primaryQuestion: "Bei welchem Preis wird meine Aave-Position liquidiert?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Dein Liquidationspreis bei Aave ist der Orakelpreis eines Assets, bei dem dein Health Factor (Gesundheitsfaktor) auf
+  1,00 fallen würde, wenn alle anderen Preise gleich bleiben; jenseits davon (darunter bei einer Sicherheit, darüber bei
+  einem geliehenen Asset) kann die Position liquidiert werden. Mit einer volatilen Sicherheit und Stablecoin-Schulden
+  entspricht er Schulden ÷ (Menge der Sicherheit × Liquidationsschwelle) oder dem aktuellen Preis ÷ deinem Health
+  Factor. Ein Beispiel: 10 WETH als Deckung für 12.000 USDC auf Aave V3 Ethereum Core (WETH-Liquidationsschwelle 83 % am
+  14. Oktober 2026) können liquidiert werden, sobald ETH unter 1.445,78 $ fällt, wenn USDC mit 1,00 $ zählt.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Was ist ein Liquidationspreis bei Aave?
+
+Ein Liquidationspreis bei Aave ist der Preis eines Assets in deiner Position, bei dem dein Health Factor genau 1,00 erreichen würde, wenn alle anderen Preise gleich bleiben. Aave V3 erlaubt eine Liquidation, sobald der Health Factor unter 1,00 liegt. Ein Liquidator kann dann einen Teil oder alle deiner Schulden zurückzahlen und Sicherheiten im Wert dieses Betrags plus einen Bonus übernehmen (5 % für WETH als Sicherheit auf Ethereum Core, on-chain gelesen am 14. Oktober 2026). Der ganze Ablauf steht unter [was bei einer Aave-Liquidation passiert](/de/blog/so-funktioniert-die-liquidation-bei-aave).
+
+Behalte drei Dinge im Kopf, wenn du die Zahl nutzt:
+
+- **Sie ist abgeleitet.** Der Pool-Contract von Aave V3 meldet über `getUserAccountData` einen Health Factor, keinen Liquidationspreis. Den Preis bekommst du, indem du die Formel des Health Factor nach einem Asset auflöst; [was der Aave Health Factor ist](/de/blog/aave-health-factor-erklaert) erklärt diese Formel.
+- **Sie ist ein Orakelpreis.** Aave bewertet Positionen mit seinem eigenen Orakel (oracle), aufgebaut auf Chainlink-Feeds und CAPO-Adaptern, und die Aave-App zeigt diesen Preis auf der Seite jedes Assets als „Oracle price“. Der letzte Handel an einer Börse kann davon abweichen.
+- **Sie hält alles andere fest.** Mit zwei Sicherheiten-Assets oder volatilen Schulden erreichen viele Preiskombinationen 1,00, ein einzelner Liquidationspreis sagt dir also nur, wie weit sich ein Asset allein bewegen kann.
+
+## Wie lautet die Formel für einen Aave-Liquidationspreis?
+
+Für eine Position bei Aave V3 mit einem volatilen Sicherheiten-Asset und Stablecoin-Schulden ist der Liquidationspreis Schulden ÷ (Menge der Sicherheit × Liquidationsschwelle), wobei die Liquidationsschwelle (liquidation threshold, LT) der Anteil am Wert der Sicherheit ist, der in den Health Factor einfließt.
+
+**Liquidationspreis = Schulden ÷ (Menge der Sicherheit × Liquidationsschwelle)**
+
+Das ist der Health Factor, nach dem Preis aufgelöst. Aave V3 berechnet HF = Σ(Wert der Sicherheiten × Liquidationsschwelle) ÷ Gesamtwert der Schulden, in USD. Mit einem Sicherheiten-Asset gilt HF = Menge × Preis × LT ÷ Schulden. Setze HF auf 1 und löse nach dem Preis auf.
+
+Weil der Health Factor die Schwelle schon enthält, gibt es eine Abkürzung: **Liquidationspreis = aktueller Preis ÷ Health Factor**. Der nötige Rückgang bis dorthin beträgt 1 − 1 ÷ HF.
+
+Andere Arten von Positionen nutzen eine Variante derselben Formel:
+
+| Position                                        | Liquidationspreis                                                          | Abkürzung über deinen Health Factor                                                  |
+| ----------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Eine volatile Sicherheit, Stablecoin-Schulden   | Schulden ÷ (Menge × LT)                                                    | aktueller Preis ÷ HF                                                                 |
+| Zwei volatile Sicherheiten, Stablecoin-Schulden | (Schulden − Wert der anderen Sicherheit × ihre LT) ÷ (Menge × LT)          | keine für einen einzelnen Preis; fallen beide gemeinsam: ein Rückgang von 1 − 1 ÷ HF |
+| Stablecoin-Sicherheit, volatile Schulden        | Σ(Wert der Sicherheiten × LT) ÷ geliehene Menge, ein Preis nach oben       | aktueller Preis × HF                                                                 |
+| wstETH als Sicherheit, WETH-Schulden, im E-Mode | ein Preisverhältnis wstETH/ETH: WETH-Schulden ÷ (wstETH-Menge × E-Mode-LT) | aktuelles Verhältnis ÷ HF                                                            |
+
+### Rechenbeispiel: 10 WETH und 12.000 USDC auf Ethereum Core
+
+Zahle 10 WETH ein und leihe 12.000 USDC auf Aave V3 Ethereum Core. Die Liquidationsschwelle von WETH lag dort bei 83 % und seine Beleihungsquote (LTV) bei 80,5 % (on-chain gelesen in Ethereum-Block 26193284, 14. Oktober 2026). Dieses Beispiel nutzt ETH bei 2.400 $ für runde Zahlen; das Orakel von Aave las am selben Tag in Block 26193376 2.414,78 $. USDC zählt mit 1,00 $.
+
+| Schritt               | Rechnung               | Ergebnis   |
+| --------------------- | ---------------------- | ---------- |
+| Wert der Sicherheiten | 10 × 2.400 $           | 24.000 $   |
+| Health Factor         | 24.000 × 0,83 ÷ 12.000 | 1,66       |
+| Liquidationspreis     | 12.000 ÷ (10 × 0,83)   | 1.445,78 $ |
+| Probe mit Abkürzung   | 2.400 ÷ 1,66           | 1.445,78 $ |
+| Nötiger Rückgang      | 1 − 1 ÷ 1,66           | 39,8 %     |
+
+Das Kreditlimit ist kein Sicherheitspuffer. Bei 80,5 % LTV tragen dieselben 10 WETH bis zu 19.320 $ Schulden, was einen Health Factor von 1,031 und einen Liquidationspreis von 2.327,71 $ ergibt, nur 3,0 % unter 2.400 $. [Wie viel Puffer dir ein Health Factor gibt](/de/blog/sicherer-health-factor-aave) behandelt diese Lücke für jedes Asset.
+
+### Welche Liquidationsschwelle solltest du verwenden?
+
+Verwende die Liquidationsschwelle des Aave-Markts, in dem deine Position liegt. Die Aave-App zeigt sie auf der Seite jedes Assets als „Liquidation threshold“ unter „Collateral usage“. Derselbe Token kann in verschiedenen Märkten verschiedene Schwellen haben, und die Governance kann sie ändern. Im E-Mode ersetzt die Schwelle der Kategorie die eigene Schwelle eines Assets nur für Assets im Sicherheiten-Set der Kategorie; jede andere Sicherheit behält ihre eigene Schwelle.
+
+| Aave-V3-Markt                          | Asset                                         | LTV             | Liquidationsschwelle |
+| -------------------------------------- | --------------------------------------------- | --------------- | -------------------- |
+| Ethereum Core                          | WETH                                          | 80,5 %          | 83 %                 |
+| Ethereum Core                          | WBTC                                          | 73 %            | 78 %                 |
+| Ethereum Core                          | USDC                                          | 75 %            | 78 %                 |
+| Ethereum Core, E-Mode „ETH correlated“ | WETH, wstETH, cbETH, rETH, weETH, osETH, ETHx | 93 % (ETHx 0 %) | 95 %                 |
+| Arbitrum                               | WETH                                          | 80 %            | 84 %                 |
+| Arbitrum                               | WBTC                                          | 73 %            | 78 %                 |
+| Arbitrum                               | USDC (nativ)                                  | 75 %            | 78 %                 |
+
+On-chain gelesen am 14. Oktober 2026 in Ethereum-Block 26193284 (E-Mode in Block 26193288) und Arbitrum-Block 514855406. Ein erneutes Lesen kurz nach Mitternacht UTC (Ethereum-Block 26194239, Arbitrum-Block 514896811) ergab dieselben Werte und lieferte die E-Mode-LTV von 0 % für ETHx.
+
+### Ist die Formel bei Aave V4 anders?
+
+Aave V4, live auf Ethereum, Avalanche, Arc und Base, nutzt dieselbe Form mit zwei Unterschieden: Ein einziger Collateral Factor pro Asset in jedem Spoke ersetzt die getrennten Werte für LTV und Liquidationsschwelle, und der Health Factor wird pro Spoke berechnet. Eine V4-Position kann unter einem Health Factor von 1,0 liquidiert werden, ihr Liquidationspreis ist also Schulden ÷ (Menge der Sicherheit × Collateral Factor). Der Collateral Factor von WETH auf dem Ethereum Main Spoke lag am 14. Oktober 2026 bei 83 % (Aave V4 API), 10 WETH gegen 12.000 USDC würden dort also ebenfalls unter 1.445,78 $ liquidiert. Tokenping überwacht Positionen bei V3 und V4, mit einem eigenen Alert für jeden V4-Spoke.
+
+## Wie berechnest du einen Aave-Liquidationspreis mit zwei Sicherheiten-Assets?
+
+Mit zwei Sicherheiten-Assets nimmt der Liquidationspreis eines Assets an, dass das andere seinen aktuellen Preis behält: Ziehe den gewichteten Wert des anderen Assets von deinen Schulden ab und teile dann durch die Menge des ersten Assets mal seine Liquidationsschwelle.
+
+**Liquidationspreis von Asset A = (Schulden − Wert von B × LT von B) ÷ (Menge von A × LT von A)**
+
+Beispiel auf Aave V3 Ethereum Core: 10 WETH zu 2.400 $ (LT 83 %) plus 0,2 WBTC zu illustrativen 81.500 $ (LT 78 %; das Orakel las am 14. Oktober 2026 81.528,44 $), gegen 20.000 USDC Schulden. Die gewichteten Sicherheiten betragen 24.000 × 0,83 + 16.300 × 0,78 = 19.920 + 12.714 = 32.634, der Health Factor also 32.634 ÷ 20.000 = 1,632.
+
+| Szenario                              | Liquidationspreis                                    | Nötiger Rückgang       |
+| ------------------------------------- | ---------------------------------------------------- | ---------------------- |
+| ETH fällt, WBTC bleibt bei 81.500 $   | (20.000 − 12.714) ÷ (10 × 0,83) = 877,83 $ pro ETH   | 63,4 %                 |
+| WBTC fällt, ETH bleibt bei 2.400 $    | (20.000 − 19.920) ÷ (0,2 × 0,78) = 512,82 $ pro WBTC | 99,4 %                 |
+| Beide fallen um denselben Prozentsatz | ETH bei 1.470,86 $ und WBTC bei 49.948 $, gemeinsam  | 38,7 % (1 − 1 ÷ 1,632) |
+
+Die ersten beiden Zeilen wirken bequem, weil jede annimmt, dass das andere Asset seinen Wert hält. Hier decken die WETH allein die Schulden fast (19.920 an gewichtetem Wert gegen 20.000), WBTC müsste für sich also um 99,4 % fallen. Bei Sicherheiten, die sich meist gemeinsam bewegen, ist die dritte Zeile, ein Rückgang beider um 38,7 %, der realistische Test.
+
+## Was, wenn du ein volatiles Asset statt eines Stablecoins geliehen hast?
+
+Hast du ein volatiles Asset wie WETH geliehen, hat deine Aave-Position einen Liquidationspreis nach oben: den Preis des geliehenen Assets, bei dem dein Health Factor 1,00 erreicht. Steigt dieser Preis, sind die Schulden mehr wert, und der Health Factor fällt.
+
+**Liquidationspreis des geliehenen Assets = Σ(Wert der Sicherheiten × LT) ÷ geliehene Menge**, oder als Abkürzung aktueller Preis × Health Factor.
+
+Beispiel auf Aave V3 Ethereum Core: Zahle 10.000 USDC ein (LT 78 %) und leihe 2,5 WETH, 6.000 $ wert bei ETH zu 2.400 $. Der Health Factor beträgt 10.000 × 0,78 ÷ 6.000 = 1,30. Die Position kann liquidiert werden, sobald ETH über 7.800 ÷ 2,5 = 3.120 $ steigt (auch 2.400 × 1,30), ein Anstieg um 30 %.
+
+Auch die Stablecoin-Seite kann sich bewegen. Der USDC-Preis von Aave auf Ethereum ist bei 1,04 $ gedeckelt, aber Preise unter 1 $ gehen direkt durch (Deckel on-chain gelesen in Ethereum-Block 26194239). USDC hat seine Bindung schon einmal verloren: Am 11. März 2023 fiel es auf ein Tief von etwa 88 Cent, wie das Post-Mortem von Gauntlet im Aave-Forum festhält. Bei 0,88 $ hätte dieselbe Position einen Health Factor von 8.800 × 0,78 ÷ 6.000 = 1,144, und der ETH-Liquidationspreis fiele von 3.120 $ auf 2.745,60 $.
+
+Sind Sicherheit und Schulden beide volatil, zum Beispiel WBTC als Sicherheit gegen WETH-Schulden, zählt nur das Verhältnis der beiden Preise: Der Health Factor erreicht 1,00, wenn das Verhältnis WBTC/ETH auf die ETH-Schulden ÷ (WBTC-Menge × LT von WBTC) fällt.
+
+## Wie verändert E-Mode deinen Liquidationspreis?
+
+E-Mode hebt die Liquidationsschwelle für korrelierte Assets an. Folgen Sicherheit und Schulden demselben zugrunde liegenden Preis, so wie wstETH und WETH beide ETH folgen, wird der Liquidationspreis zu einem Preisverhältnis (wstETH/ETH) statt zu einem Dollarpreis. Auf Aave V3 Ethereum Core hatte die E-Mode-Kategorie „ETH correlated“ am 14. Oktober 2026 eine LTV von 93 %, eine Liquidationsschwelle von 95 % und einen Liquidationsbonus von 1 %. Ihr Sicherheiten-Set besteht aus WETH, wstETH, cbETH, rETH, weETH, osETH und ETHx, und WETH ist das einzige Asset, das sie dich leihen lässt. Sicherheiten außerhalb dieses Sets behalten ihre normale Schwelle.
+
+Mit wstETH als Sicherheit und WETH-Schulden werden beide Seiten in ETH bewertet, der Dollarpreis von ETH hebt sich also weitgehend auf. Über die Liquidation entscheidet der wstETH/ETH-Kurs, den das Orakel von Aave verwendet:
+
+- Zahle wstETH im Wert von 100 ETH zum Kurs des Orakels ein und leihe 90 WETH. Der Health Factor beträgt 100 × 0,95 ÷ 90 = 1,056. Halbiert sich der Dollarpreis von ETH, halbieren sich beide Seiten, und der Health Factor bleibt bei 1,056. Fällt der wstETH/ETH-Kurs des Orakels um 5,3 % (1 − 90 ÷ 95), erreicht die Position 1,00.
+- Beim maximalen Kredit der Kategorie, 93 WETH gegen dieselbe Sicherheit, startet der Health Factor bei 95 ÷ 93 = 1,0215, und ein Rückgang des Kurses um 2,1 % reicht.
+
+Eine Bewegung dieser Größe hat es schon gegeben. Aave bepreist wstETH über einen CAPO-Adapter (Correlated Assets Price Oracle), der den gemeldeten Wechselkurs deckelt. Im März 2026 senkte ein falsch konfigurierter Deckel in den Märkten Ethereum Core und Prime den von Aave verwendeten Kurs um etwa 2,85 %. Das Post-Mortem von Chaos Labs (10. März 2026) zählt rund 10.938 wstETH an E-Mode-Liquidationen über 34 Konten, betroffen waren Positionen mit einem Health Factor unter etwa 1,0288. Die Bewegung kam aus der Konfiguration des Orakels, nicht vom Markt.
+
+## Warum verschiebt sich dein Liquidationspreis mit der Zeit?
+
+Dein Aave-Liquidationspreis verschiebt sich, auch wenn du nichts tust, weil sich seine Eingaben ändern: Zinsen erhöhen deine Schulden, Einzahlungszinsen erhöhen deine Sicherheiten ein wenig, und die Governance kann Liquidationsschwellen ändern. Auch deine eigenen Transaktionen verschieben ihn: Leihen hebt ihn an, Zurückzahlen oder Nachlegen von Sicherheiten senkt ihn.
+
+- **Zinsen.** Nimm 10 WETH und 12.000 USDC Schulden auf Aave V3 Ethereum Core mit ETH bei 2.400 $. Am 14. Oktober 2026 (Block 26193378) lag der variable Kreditzins für USDC bei 4,496 % APR und der Einzahlungszins für WETH bei 1,309 % APR. Ein Jahr lang konstant gehalten, würden diese Zinsen den Liquidationspreis bei unverändertem ETH von 1.445,78 $ auf etwa 1.490 $ anheben. Die Zinsen sind variabel: Später am selben Abend erreichte der Kreditzins für USDC für weniger als eine Stunde 14,1 % (Block 26194180), als fast alle eingezahlten USDC verliehen waren.
+- **Senkungen der Schwelle.** Bei Aave V3 gilt eine niedrigere Liquidationsschwelle auf einen Schlag für jede offene Position, und der Liquidationspreis skaliert mit alter LT ÷ neuer LT. Eine hypothetische Senkung für WETH von 83 % auf 80 % würde den Liquidationspreis derselben Position von 1.445,78 $ auf 1.500,00 $ verschieben. Senkungen kommen über Governance-Vorschläge oder über die Risk Stewards, die Schwellen innerhalb konfigurierter Grenzen anpassen können.
+- **Änderungen der LTV zählen nicht.** Eine niedrigere LTV eines Assets, selbst auf 0, verringert oder streicht die Kreditkapazität, die es bringt, lässt aber Health Factor und Liquidationspreis unverändert.
+- **Aave V4 ist anders.** Änderungen des Collateral Factor gelten normalerweise für neue Positionen; bestehende behalten ihre alten Einstellungen, bis der Nutzer leiht, abhebt oder die Sicherheiten-Einstellungen ändert, oder bis der Governor sie aktualisiert. V4 schlägt außerdem für riskantere Sicherheiten eine User Risk Premium auf den Kreditzins, sodass die Schulden und mit ihnen der Liquidationspreis schneller wachsen können.
+
+## Wie nah an deinem Liquidationspreis ist zu nah?
+
+Kein Abstand zum Liquidationspreis ist für alle sicher. Bei einer volatilen Sicherheit mit Stablecoin-Schulden beträgt der Abstand 1 − 1 ÷ HF: Ein Health Factor von 1,25 lässt Raum für einen Rückgang von 20 %, 1,5 lässt 33,3 % und 2,0 lässt 50 %. Wie viel Raum du brauchst, hängt von der Volatilität der Sicherheit ab, davon, wie schnell du zurückzahlen oder Sicherheiten nachlegen kannst, und davon, wie ausgelastet das Netzwerk in diesem Moment ist. [Wie viel Puffer dir ein Health Factor gibt](/de/blog/sicherer-health-factor-aave) enthält die vollständige Tabelle.
+
+### Wie machst du aus einem Liquidationspreis einen Schwellenwert für einen Health-Factor-Alert?
+
+Wähle den Preis, bei dem du handeln wollen würdest, und rechne ihn in einen Health Factor um. Bei einer volatilen Sicherheit mit Stablecoin-Schulden gilt: **HF bei einem bestimmten Preis = dieser Preis ÷ Liquidationspreis**. Für 10 WETH gegen 12.000 USDC (Liquidationspreis 1.445,78 $) bedeutet Handeln bei ETH 1.800 $ einen Health Factor von 1.800 ÷ 1.445,78 = 1,245, also einen Schwellenwert von etwa 1,25. Bei volatilen Schulden dreht es sich um: HF = Liquidationspreis ÷ Preis des geliehenen Assets.
+
+Ein Schwellenwert als Health Factor hat zwei Vorteile gegenüber einer Preismarke. Er folgt deinem Liquidationspreis, wenn Zinsen auflaufen und wenn du die Position änderst, und er deckt alle Sicherheiten- und Schulden-Assets auf einmal ab. Ein fester Preis-Alert ist veraltet, sobald die Schulden wachsen.
+
+So funktioniert Tokenping: Es alarmiert auf Basis des Health Factor und hat keine Preis-Alerts. Du legst einen Schwellenwert pro Aave-V3-Markt oder Aave-V4-Spoke fest, von 1,1 bis 10. Tokenping prüft alle 5 Minuten und schickt bei jeder Prüfung, solange dein Health Factor unter dem Schwellenwert liegt, eine Nachricht an jeden Kanal, den du gewählt hast (Signal, Telegram, E-Mail oder mehrere davon). Eine schnelle Bewegung kann 1,00 zwischen zwei Prüfungen durchbrechen, ein Schwellenwert über dem Wert, bei dem du handeln würdest, verschafft dir also Zeit; eine Liquidation verhindern kann er nicht. Die Schritte stehen unter [wie du einen Health-Factor-Alert einrichtest](/de/blog/aave-health-factor-alert-einrichten), oder du kannst zuerst [deinen Aave-V3-Health-Factor prüfen](/de/aave).
+
+## Wie rechnest du den Liquidationspreis deiner eigenen Position aus?
+
+Um deinen eigenen Aave-Liquidationspreis auszurechnen, brauchst du die Menge jeder Sicherheit, die Liquidationsschwelle jeder Sicherheit, deine gesamten Schulden und den aktuellen Orakelpreis. Die Aave-App zeigt alle vier.
+
+1. Notiere die Menge jeder Sicherheit, deine gesamten Schulden und ob dein Konto im E-Mode ist.
+2. Finde die Liquidationsschwelle jeder Sicherheit auf ihrer Asset-Seite in der Aave-App („Liquidation threshold“ unter „Collateral usage“). Im E-Mode verwendest du die Schwelle der Kategorie nur für Sicherheiten im Set der Kategorie; jede andere Sicherheit behält ihre eigene Schwelle.
+3. Mit einer volatilen Sicherheit und Stablecoin-Schulden teilst du den Orakelpreis durch deinen Health Factor. Mit zwei Sicherheiten ist der Preis von A (Schulden − Wert von B × LT von B) ÷ (Menge von A × LT von A). Bei einem geliehenen volatilen Asset ist sein Preis Σ(Wert der Sicherheiten × LT) ÷ geliehene Menge. Der Rechner unten kann alle drei Fälle.
+4. Rechne neu, nachdem du leihst, zurückzahlst oder Sicherheiten nachlegst, und nach einer Änderung der Schwelle.
+
+Rechenbeispiel auf Aave V3 Arbitrum, wo die Liquidationsschwelle von WETH am 14. Oktober 2026 bei 84 % lag: 5 WETH zu 2.400 $ gegen 7.000 USDC ergeben einen Health Factor von 12.000 × 0,84 ÷ 7.000 = 1,44 und einen Liquidationspreis von 2.400 ÷ 1,44 = 1.666,67 $, ein Rückgang von 30,6 %. Bei den 83 % von Ethereum Core würde dieselbe Position unter 1.686,75 $ liquidiert.
+
+<LiquidationCalculator />
+
+Jeder Rechner liefert den heutigen Liquidationspreis. Zinsen, Änderungen der Schwelle und deine eigenen Transaktionen verschieben ihn danach, ein Ergebnis vom letzten Monat solltest du also neu berechnen.
+
+## Quellen
+
+- [Aave V3 GenericLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): Formel des Health Factor und E-Mode-Schwelle nur für das Sicherheiten-Set der Kategorie (abgerufen am 14. Oktober 2026)
+- [Aave V3 ValidationLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): Liquidation unter einem Health Factor von 1,00, LTV-Prüfungen beim Leihen (abgerufen am 14. Oktober 2026)
+- [Aave V3 LiquidationLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): wie viele Schulden eine Liquidation zurückzahlen kann (abgerufen am 14. Oktober 2026)
+- [Aave V3 Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getReserveConfigurationData` in den Blöcken 26193284 und 26194239; `getReserveData` in den Blöcken 26193378 und 26194180 (abgerufen am 14. Oktober 2026; erneut gelesen am 15. Oktober 2026)
+- [Aave V3 Arbitrum PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): `getReserveConfigurationData` in den Arbitrum-Blöcken 514855406 und 514896811 (abgerufen am 14. Oktober 2026; erneut gelesen am 15. Oktober 2026)
+- [Aave V3 Ethereum Core Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): E-Mode-Kategorie 1 „ETH correlated“: Sicherheiten-Konfiguration und Bitmaps für Sicherheiten, leihbare Assets und LTV null (abgerufen am 14. Oktober 2026; erneut gelesen am 15. Oktober 2026)
+- [AaveOracle auf Ethereum](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): `getAssetPrice` in Block 26193376; `getSourceOfAsset(USDC)` in Block 26194239 (abgerufen am 14. Oktober 2026; erneut gelesen am 15. Oktober 2026)
+- [USDC-Preisadapter von Aave auf Ethereum, „Capped USDC / USD“](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B): `getPriceCap` = 104000000 (1,04 $) in Block 26194239 (abgerufen am 15. Oktober 2026)
+- [Orakel-Dokumentation von Aave](https://aave.com/docs/ecosystem/oracle.md): Chainlink-Feeds und CAPO-Adapter (abgerufen am 14. Oktober 2026)
+- [Repository der Aave-Preisfeeds (PriceCapAdapterStable)](https://github.com/aave-dao/aave-price-feeds): wie der USDC-Preisdeckel funktioniert (abgerufen am 14. Oktober 2026)
+- [Gauntlet, „Aave Resilient Through USDC Volatility“](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330): das USDC-Tief von etwa 88 Cent am 11. März 2023 (abgerufen am 14. Oktober 2026)
+- [Chaos Labs, Post-Mortem zum wstETH-Wechselkurs](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): der CAPO-Vorfall im März 2026 (abgerufen am 14. Oktober 2026)
+- [Aave V3 Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): wie sich Risikoparameter zwischen Governance-Abstimmungen ändern können (abgerufen am 14. Oktober 2026)
+- [Dokumentation zu Nutzerpositionen bei Aave V4](https://aave.com/docs/aave-v4/positions.md): Collateral Factor und Liquidation unter einem Health Factor von 1,0 (abgerufen am 14. Oktober 2026)
+- [Aave-V4-Überblick (aave/aave-v4)](https://github.com/aave/aave-v4/blob/main/docs/overview.md): dynamische Risikokonfiguration und User Risk Premium (abgerufen am 14. Oktober 2026)
+- [Aave V4 API](https://api.v4.aave.com/graphql): Abfrage `reserves`, Collateral Factor von WETH pro Spoke auf Ethereum (abgerufen am 14. Oktober 2026)
+- [Aave-Changelog](https://aave.com/docs/resources/changelog.md): Netzwerke von V4 (abgerufen am 14. Oktober 2026)
+- [Quellcode der Aave-Oberfläche, SupplyInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/SupplyInfo.tsx) und [ReserveTopDetails.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/ReserveTopDetails.tsx): die Labels „Liquidation threshold“ und „Oracle price“ in der Aave-App (abgerufen am 14. Oktober 2026)
+
+_Bildungsinhalt, keine Finanzberatung. Alerts senken das Risiko, verhindern aber keine Liquidation._

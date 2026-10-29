@@ -1,0 +1,194 @@
+export const meta = {
+  slug: "morpho-midnight-festzinskredite",
+  title: "Morpho Midnight Festzinskredite: so funktionieren sie",
+  description:
+    "Wie Festzinskredite auf Morpho Midnight funktionieren: der Zinssatz, was du bei Fälligkeit schuldest, mehrere Sicherheiten, Liquidation offener Schulden.",
+  h1: "Wie funktionieren Festzinskredite auf Morpho Midnight und was passiert bei Fälligkeit?",
+  publishedAt: "2026-10-26",
+  primaryQuestion:
+    "Wie funktioniert ein Festzinskredit auf Morpho Midnight und was passiert, wenn ich bis zur Fälligkeit nicht zurückgezahlt habe?",
+  readingMinutes: 13,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Morpho Midnight ist das Verleihen von Morpho mit festem Zinssatz und fester Laufzeit. Du leihst, indem du
+  Schuldeinheiten unter ihrem Nennwert verkaufst: Jede Einheit bringt dir jetzt etwas weniger als einen Kredit-Token und
+  ist ein Versprechen, bei der Fälligkeit des Markts genau einen zurückzuzahlen, daher ist der Zinssatz bei der
+  Kreditaufnahme fest und deine Schulden wachsen nicht. Vor der Fälligkeit kann deine Position nur liquidiert werden,
+  wenn deine Sicherheiten, gewichtet mit dem LLTV jeder Sicherheit, die Schulden nicht mehr decken (ein Health Factor
+  unter 1). Ist die Fälligkeit vorbei, können alle offenen Schulden liquidiert werden, egal wie hoch dein Health Factor
+  ist, wobei der Bonus des Liquidators in der ersten Stunde steigt. Zahle vor der Fälligkeit zurück und hebe dann deine
+  Sicherheiten selbst ab.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Zahlen und die Blocknummern, bei denen sie gelesen wurden: content/blog/snapshots/morpho-midnight-fixed-rate-loans.md */}
+
+## Was ist Morpho Midnight?
+
+Morpho Midnight ist der Teil von Morpho, der Kredite mit festem Zinssatz bis zu einem festen Datum anbietet, der Fälligkeit. Die Doku von Morpho nennt ihn „Fixed Rate Markets (Midnight)“ (Märkte mit festem Zinssatz), neben Morpho Blue, seinen Märkten mit variablem Zinssatz. Wenn die Gesundheitsrechnung von Morpho neu für dich ist, beginne mit [dem Ratgeber zum Morpho Health Factor](/de/blog/morpho-health-factor-erklaert) (Gesundheitsfaktor), auf dem dieser Ratgeber aufbaut.
+
+Midnight wurde am 21. Juli 2026 für die Öffentlichkeit geöffnet, auf Base, mit einem Paar (cbBTC als Sicherheit, USDC-Kredite) und einigen Fälligkeiten. In diesem Ratgeber wird ein Midnight-Markt nach diesem Paar benannt: Ein „cbBTC/USDC-Markt“ nimmt cbBTC als Sicherheit und verleiht USDC. Derselbe Vertragscode läuft inzwischen in fünf Netzwerken:
+
+| Netzwerk        | Midnight-Vertrag hat Code seit | Von der Morpho API gelistete Märkte (26. Oktober 2026) |
+| --------------- | ------------------------------ | ------------------------------------------------------ |
+| Base            | 6. Juli 2026                   | Ja; 19 gelistete Märkte haben offene Kredite           |
+| Ethereum        | 20. August 2026                | Ja; 12 gelistete Märkte haben offene Kredite           |
+| Arc             | 11. September 2026             | Keine (13 Märkte existieren)                           |
+| Robinhood Chain | Datum nicht verfügbar          | Keine (34 Märkte existieren)                           |
+| Tempo           | 3. Oktober 2026                | Keine (die API zeigt keine Märkte)                     |
+
+Jeder kann einen Midnight-Markt erstellen, daher sagt es wenig, dass ein Markt on-chain existiert. Die Märkte, die die App von Morpho zeigt, sind die, die ihre API listet, und am 26. Oktober 2026 lagen diese alle auf Ethereum und Base.
+
+Ein früherer Beitrag von Morpho stellte Midnight zusammen mit Vaults V2 als „Morpho V2“ vor. Der Launch-Beitrag sagt, dass Midnight weder eine zweite Version von Blue noch ein Ersatz dafür ist: Die beiden laufen nebeneinander. Es sind getrennte Verträge.
+
+## Wie ist ein Midnight-Markt definiert?
+
+Ein Midnight-Markt wird bei der Erstellung festgelegt und ändert sich nie. Er ist definiert durch:
+
+- **Einen Kredit-Token**, zum Beispiel USDC.
+- **Eine oder mehrere Sicherheiten** (bis zu 128), jede mit eigenem LLTV (dem Anteil am Wert der Sicherheit, den du vor der Liquidation schulden kannst), eigenem Orakel (oracle) und eigenem Liquidations-Cursor, der den Bonus des Liquidators festlegt.
+- **Eine Fälligkeit**, ein Datum und eine Uhrzeit, zu der jeder Kredit im Markt fällig ist.
+- **Eine Recovery-Schwelle** (rcfThreshold), die entscheidet, wann eine kleine Menge einer Sicherheit vollständig liquidiert werden kann (siehe unten).
+- **Optionale Gates**, die einschränken können, wer verleihen, leihen oder liquidieren darf. Ein Gate kann dich nie am Zurückzahlen oder Aussteigen hindern. Keiner der gelisteten Märkte auf Ethereum oder Base hatte am 26. Oktober 2026 ein Gate.
+
+Ein Kreditnehmer kann bis zu 16 der Sicherheiten eines Markts gleichzeitig nutzen. Um eine neue Sicherheit zu akzeptieren oder die Fälligkeit zu verschieben, muss jemand einen neuen Markt erstellen. Die gelisteten Märkte mit Krediten darin werden in beiden Netzwerken am letzten Freitag eines Monats um 15:00 UTC fällig: 30. Oktober, 27. November und 25. Dezember 2026 sowie 26. März 2027.
+
+## Wie wird der feste Zinssatz festgelegt und was schuldest du bei Fälligkeit?
+
+Der Zinssatz ergibt sich aus einem Preis, nicht aus einem Zinsmodell. Midnight zählt Schulden in Einheiten, und eine Schuldeinheit ist ein Versprechen, bei Fälligkeit einen Kredit-Token zurückzuzahlen. Um zu leihen, verkaufst du Einheiten an Kreditgeber zu einem Preis unter 1: Bei einem Preis von 0,99 erhältst du jetzt 0,99 USDC für jede Einheit und schuldest bei Fälligkeit 1 USDC pro Einheit. Der Zinssatz für die ganze Laufzeit ist 1 geteilt durch den Preis, minus 1, und die Doku von Morpho macht daraus einen Jahreswert, indem sie ihn durch den verbleibenden Anteil eines Jahres teilt.
+
+Die Preise kommen aus Angeboten, die Kreditgeber und Kreditnehmer veröffentlichen, daher können zwei Kreditnehmer im selben Markt unterschiedliche Zinssätze zahlen. Am 26. Oktober 2026 bezifferte die API von Morpho die Zinssätze der 117 Kreditnehmer im cbBTC/USDC-Markt auf Base mit Fälligkeit am 25. Dezember 2026 auf 1,93 % bis 6,84 % pro Jahr.
+
+Was du schuldest, ist einfach: die Zahl der Einheiten, die du verkauft hast, in Kredit-Token, fällig bei Fälligkeit. Während der Laufzeit kommt nichts hinzu. Der Vertrag von Midnight ändert die Schulden eines Kreditnehmers nur, wenn du mehr leihst, zurückzahlst, Einheiten zurückkaufst oder liquidiert wirst; vor und nach der Fälligkeit laufen darauf keine Zinsen auf.
+
+Midnight hat zwei Gebühren, beide pro Markt festgelegt und beide null auf den zwei Märkten in diesem Ratgeber:
+
+- **Eine Abwicklungsgebühr** auf jeden Trade, bezahlt von dem, der ein Angebot annimmt. Der Vertrag begrenzt sie nach der Zeit bis zur Fälligkeit, von 0,0014 % für einen Tag bis zu 0,5 % für 360 Tage.
+- **Eine laufende Gebühr**, die nur Kreditgeber tragen, begrenzt auf 1 % pro Jahr.
+
+## Wie wird der Health Factor bei mehreren Sicherheiten berechnet?
+
+Der Vertrag von Midnight prüft die Gesundheit mit Ja oder Nein: Eine Position ist gesund, solange ihre maximalen Schulden mindestens so groß sind wie ihre Schulden. Die maximalen Schulden sind die Summe, über jede Sicherheit, die du nutzt, aus ihrem Wert im Kredit-Token zum Preis ihres Orakels mal ihrem eigenen LLTV. Die Doku von Morpho formuliert die Prüfung als maxDebt ≥ debt; der Health Factor ist dieselbe Prüfung als Verhältnis geschrieben, maximale Schulden geteilt durch Schulden, und unter 1 kann die Position liquidiert werden.
+
+Nimm den größten gelisteten Markt auf Ethereum, der USDC gegen zwei Sicherheiten mit unterschiedlichen LLTVs verleiht: USDC selbst mit 98 % und cbBTC mit 86 %. Mit cbBTC bei 80.011,48 USDC (dem Preis seines Orakels am 26. Oktober 2026) hat die erfundene Position aus [dem Ratgeber zum Morpho Health Factor](/de/blog/morpho-health-factor-erklaert), 0,5 cbBTC und 10.000 USDC als Sicherheiten gegen 40.000 USDC Schulden:
+
+| Sicherheit  | Wert (USDC) | LLTV | Zählt für (USDC) |
+| ----------- | ----------- | ---- | ---------------- |
+| 0,5 cbBTC   | 40.005,74   | 86 % | 34.404,94        |
+| 10.000 USDC | 10.000,00   | 98 % | 9.800,00         |
+| Summe       | 50.005,74   |      | 44.204,94        |
+
+Ihr Health Factor ist 44.204,94 ÷ 40.000 = 1,105, und er fällt unter 1, wenn cbBTC unter etwa 70.233 USDC fällt, 12,2 % tiefer, sofern die USDC-Sicherheit ihren Wert hält. Die Idee ist dieselbe wie bei [einer zweiten Sicherheit auf Aave](/de/blog/aave-health-factor-erklaert#was-andert-sich-mit-einem-zweiten-sicherheiten-asset): Jedes Asset zählt mit seinem eigenen Satz.
+
+Du kannst Sicherheiten jederzeit hinzufügen, entfernen oder tauschen, solange eine Abhebung dich gesund lässt. Wenn das Orakel einer Sicherheit, die du nutzt, nicht mehr antwortet, scheitern für deine Position Gesundheitsprüfungen, Kreditaufnahme, Abhebungen und Liquidationen, solange du Schulden hast. Zurückzahlen funktioniert weiterhin, und sobald deine Schulden null sind, kannst du ohne jedes Orakel abheben.
+
+## Wann kann ein Midnight-Kredit liquidiert werden?
+
+Ein Midnight-Kredit kann auf zwei Arten liquidiert werden: wenn er ungesund ist, jederzeit, oder wenn nach der Fälligkeit Schulden übrig sind, unabhängig von seiner Gesundheit. [So funktioniert die Liquidation bei Morpho](/de/blog/so-funktioniert-die-liquidation-bei-morpho) erklärt die gemeinsamen Mechanismen; hier steht, was für Midnight eigen ist.
+
+### Vor der Fälligkeit
+
+Vor der Fälligkeit zählt nur die Gesundheit. Sobald der Health Factor unter 1 liegt, kann ein Liquidator einen Teil deiner Schulden zurückzahlen und Sicherheiten im Wert dieses Betrags plus einen Bonus nehmen. Der Bonus wird pro Sicherheit festgelegt: 1 ÷ (1 − Cursor × (1 − LLTV)). Für cbBTC mit einem LLTV von 86 % und einem Cursor von 0,3 sind das 1,0438, ein Bonus von 4,38 %; für USDC mit 98 % etwa 0,6 %. Ein Liquidator wählt, welche deiner Sicherheiten er nimmt, und die Doku von Morpho warnt, dass er die nehmen wird, die sich am meisten lohnt.
+
+Wie viel auf einmal gehen kann, hängt von der Größe ab. Normalerweise darf ein Liquidator nur so viel zurückzahlen, wie nötig ist, um die Position wieder gesund zu machen. Die Ausnahme: Wenn die Sicherheiten, die nach einer solchen begrenzten Liquidation übrig bleiben, weniger zurückzahlen würden als der rcfThreshold des Markts, können diese Sicherheiten ganz genommen werden. Die Schwelle liegt bei 3000 USDC auf dem cbBTC/USDC-Markt auf Base im Rechenbeispiel unten und bei 300.000 USDC auf dem Ethereum-Markt oben. Bei einem Kredit mit einer Sicherheit unter dieser Größe kann die ganze Position auf einmal gehen.
+
+### Nach der Fälligkeit
+
+Sobald der Fälligkeitszeitpunkt vorbei ist, können alle offenen Schulden liquidiert werden, auch wenn dein Health Factor 2 oder 10 ist. Der Weg des Vertrags nach der Fälligkeit prüft nur die Uhr. Die Begründung von Morpho: Kreditgeber erwarten, bei Fälligkeit abheben zu können, und ein Kreditnehmer, der nicht zurückgezahlt hat, hält sie davon ab, gesund oder nicht.
+
+Der Bonus auf diesem Weg beginnt bei Fälligkeit bei null und wächst über 60 Minuten gleichmäßig auf den vollen Bonus. Wenn deine Position nach der Fälligkeit auch ungesund ist, kann ein Liquidator stattdessen den gesundheitsbasierten Weg nutzen und sofort den vollen Bonus nehmen. Auf dem Weg nach der Fälligkeit gibt es keine Grenze dafür, wie viel zurückgezahlt werden kann, die ganzen Schulden können also in einem Zug liquidiert werden. Nach der Fälligkeit kannst du keine Schulden mehr hinzufügen, aber weiterhin zurückzahlen, Einheiten zurückkaufen und Sicherheiten abheben.
+
+<Callout tone="warning">
+  In der exakten Sekunde der Fälligkeit ist eine gesunde Position noch sicher; eine Sekunde später nicht mehr. Bei einer
+  gesunden Position kann dich verspätetes Zurückzahlen bis zum vollen Liquidationsbonus kosten, etwa 4,4 % der Schulden
+  bei einem cbBTC-Kredit mit einem LLTV von 86 %.
+</Callout>
+
+Wenn eine Liquidation Schulden übrig lässt, die die Sicherheiten nicht decken können, wird der Fehlbetrag abgeschrieben und nur von den Kreditgebern dieses Markts getragen.
+
+## Wie zahlst du vorzeitig oder bei Fälligkeit zurück oder rollst in eine spätere Fälligkeit?
+
+Du hast drei Wege aus einem Midnight-Kredit, plus eine optionale Ausweichlösung:
+
+- **Direkt zurückzahlen.** Zurückzahlen kostet genau einen Kredit-Token pro Einheit, vor, bei oder nach der Fälligkeit. Es funktioniert immer, und es legt fest, wie viel du höchstens zahlen solltest, um vorzeitig auszusteigen. Vorzeitiges Zurückzahlen erstattet keine Zinsen: Du zahlst den vollen Betrag, der bei Fälligkeit fällig ist, nur früher.
+- **Einheiten vor der Fälligkeit zurückkaufen.** Du kannst stattdessen Einheiten aus den Verkaufsangeboten von Kreditgebern zu einem Preis unter 1 kaufen, was so viele Schulden für weniger als den Nennwert tilgt. Das hängt davon ab, dass jemand Einheiten anbietet, wenn du aussteigen willst.
+- **In eine spätere Fälligkeit rollen.** Die Doku von Morpho beschreibt, in einem Markt zurückzuzahlen oder zurückzukaufen und in einem Markt mit späterem Datum zu leihen, in einer einzigen Transaktion mit Callbacks. Der Launch-Beitrag von Morpho im Juli nannte automatisches Rollen als spätere Funktion; am 26. Oktober 2026 beschreibt die Doku das Rollen nur als etwas, das du selbst machst, oder über die Blue-Ausweichlösung unten.
+- **Auf Blue ausweichen.** Morpho hat in allen fünf Netzwerken einen Vertrag deployt, BlueFallbackRolling. Wenn du teilnimmst und ihn sowohl auf Midnight als auch auf Blue autorisierst, kann jeder deine Midnight-Schulden und -Sicherheiten in einen von dir gewählten Blue-Markt mit variablem Zinssatz verschieben, ab einem von dir gewählten Zeitpunkt. Die Belohnung des Aufrufers ist ein Anteil an den Schulden, den du festlegst; er wächst zwischen einem Start- und einem Endzeitpunkt, die du festlegst, kann die ganzen Schulden erreichen und wird zu deinen neuen Blue-Schulden addiert. Es braucht genau eine Sicherheit, die zu der des Blue-Markts passt.
+
+## Was passiert mit deinen Sicherheiten, nachdem du zurückgezahlt hast?
+
+Deine Sicherheiten bleiben, wo sie sind, bis du sie abhebst. Zurückzahlen schickt sie nicht zurück. Sobald deine Schulden null sind, besteht die Gesundheitsprüfung, ohne ein Orakel zu fragen, du kannst also alles abheben, und kein Gate kann dich aufhalten. Nur du, ein Konto, das du autorisiert hast, oder ein Liquidator einer liquidierbaren Position kann sie bewegen.
+
+Dasselbe gilt nach einer Liquidation: Die Sicherheiten, die der Liquidator nicht genommen hat, bleiben in deiner Position, damit du sie abhebst.
+
+## Rechenbeispiel: ein cbBTC/USDC-Kredit, fällig am 25. Dezember 2026
+
+Dieser Markt, auf dem Paar, mit dem Midnight gestartet ist, wurde am 14. Juli 2026 erstellt, eine Woche vor dem öffentlichen Start, und ist der größte gelistete Markt auf Base. On-chain gelesen am 26. Oktober 2026 um 06:06 UTC:
+
+| Feld                  | Wert                                             |
+| --------------------- | ------------------------------------------------ |
+| Kredit-Token          | USDC                                             |
+| Sicherheit            | cbBTC, die einzige                               |
+| LLTV                  | 86 %                                             |
+| Liquidationsbonus     | 4,38 % (Cursor 0,3)                              |
+| Fälligkeit            | 25. Dezember 2026, 15:00 UTC, in 60,4 Tagen      |
+| rcfThreshold          | 3000 USDC                                        |
+| Gates und Gebühren    | Keine                                            |
+| Fällig bei Fälligkeit | 1.530.235,58 USDC, verteilt auf 117 Kreditnehmer |
+| cbBTC-Preis           | 80.097,33 USDC (das Orakel des Markts)           |
+
+**Leihen.** Der beste Preis, zu dem ein Kreditnehmer Einheiten verkaufen konnte, war 0,9901297. Nimmst du zu diesem Preis 10.000 USDC, schuldest du am 25. Dezember 2026 etwa 10.099,69 USDC: 0,997 % für die 60,4 Tage, etwa 6,0 % pro Jahr. Dieser Preis ändert sich minütlich.
+
+**Eine typische Position.** Der Median-Kreditnehmer schuldet bei Fälligkeit 37,08 USDC gegen 0,00060018 cbBTC im Wert von 48,07 USDC. Seine maximalen Schulden sind 48,07 × 0,86 = 41,34 USDC, sein Health Factor also 41,34 ÷ 37,08 = 1,11. Er erreicht 1, wenn cbBTC auf etwa 71.838 USDC fällt, 10,3 % tiefer.
+
+**Wenn cbBTC vor der Fälligkeit knapp unter 71.838 USDC fällt.** Die Position liegt weit unter der Schwelle von 3000 USDC, also kann ein Liquidator alle 37,08 USDC zurückzahlen und cbBTC im Wert von 38,71 USDC nehmen. Von den 43,12 USDC an cbBTC behält der Kreditnehmer etwa 4,41 USDC zum Abheben.
+
+**Wenn der Kreditnehmer das Zurückzahlen vergisst und cbBTC bei 80.097 USDC bleibt.** Ab 15:00:01 UTC am 25. Dezember kann jeder die 37,08 USDC zurückzahlen und cbBTC nehmen; ein Liquidator darf in jeder Sekunde nach 15:00:00 handeln. Der Bonus wächst mit der Zeit: etwa 2,2 % nach dreißig Minuten, die vollen 4,38 % nach einer Stunde. Eine Liquidation eine Stunde oder später nach der Fälligkeit nimmt cbBTC im Wert von 38,71 USDC und lässt dem Kreditnehmer 9,37 USDC davon. Pünktliches Zurückzahlen von 37,08 USDC hätte alle 48,07 USDC an cbBTC erhalten, netto 10,99 USDC, die Liquidation kostet den Kreditnehmer also 1,63 USDC, den vollen Bonus. Eine frühere kostet weniger, aber nichts bringt einen Liquidator dazu, zu warten.
+
+## Wie schneidet Midnight im Vergleich zu einem Kredit mit variablem Zinssatz auf Morpho Blue ab?
+
+|                              | Morpho Blue                                                                                | Morpho Midnight                                                                                                                                                                  |
+| ---------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Zinssatz                     | Ändert sich ständig mit dem Zinsmodell des Markts                                          | Bei der Kreditaufnahme fest                                                                                                                                                      |
+| Schulden                     | Wachsen mit den Zinsen                                                                     | Eine feste Zahl an Einheiten, wächst nicht                                                                                                                                       |
+| Enddatum                     | Keines                                                                                     | Fälligkeit                                                                                                                                                                       |
+| Sicherheiten pro Markt       | Eine                                                                                       | Eine oder mehrere, jede mit eigenem LLTV                                                                                                                                         |
+| Kann liquidiert werden, wenn | Ungesund                                                                                   | Ungesund, oder alle Schulden nach der Fälligkeit                                                                                                                                 |
+| Bonus                        | 1 ÷ (1 − 0,3 × (1 − LLTV)), höchstens 15 %                                                 | 1 ÷ (1 − Cursor × (1 − LLTV)), Cursor pro Sicherheit festgelegt, keine Obergrenze von 15 %                                                                                       |
+| Wie viel auf einmal          | Bis zu allen Schulden in einem Aufruf                                                      | Vor der Fälligkeit, was die Gesundheit wiederherstellt (eine ganze Sicherheit, wenn der Rest weniger als den rcfThreshold zurückzahlen würde); nach der Fälligkeit alle Schulden |
+| Vorliquidation               | Wird von Morpho eingestellt, siehe [Morpho Vorliquidation](/de/blog/morpho-vorliquidation) | Nicht Teil von Midnight                                                                                                                                                          |
+| Vorzeitig aussteigen         | Jederzeit zurückzahlen                                                                     | Zum Nennwert zurückzahlen oder Einheiten zurückkaufen, wenn es Verkäufer gibt                                                                                                    |
+
+Der praktische Unterschied für deinen Health Factor: Auf Blue kann er allein durch Zinsen fallen, wie auf Aave ([wie Zinsspitzen deinen Health Factor beeinflussen](/de/blog/aave-zinssaetze#wie-wirken-sich-zinssprunge-auf-deinen-health-factor-aus)). Auf Midnight fällt er nur, wenn die Preise der Sicherheiten fallen oder wenn du Sicherheiten abhebst oder mehr leihst. Im Gegenzug bringt Midnight ein Datum mit, das du nicht verpassen darfst.
+
+## Wie können Alerts bei einem Midnight-Kredit helfen?
+
+Ein Alert kann dich vor beiden Risiken eines Midnight-Kredits warnen: einem fallenden Health Factor und einer näher rückenden Fälligkeit. Tokenping prüft alle 5 Minuten. Sein [Morpho-Dashboard](/de/morpho) listet die Kreditpositionen einer Wallet in Märkten, die in der App von Morpho in 14 Netzwerken gelistet sind, Blue und Midnight, und deine Positionen anzusehen braucht keine Zahlung. Midnight-Alerts decken die Märkte ab, die die API von Morpho listet. Am 26. Oktober 2026 waren das Märkte auf Ethereum und Base; Tokenping deckt auch Arc und Robinhood Chain ab, sobald Morpho dort Midnight-Märkte listet. Bis dahin sind in diesen beiden Netzwerken keine Midnight-Alerts möglich.
+
+Für einen Midnight-Kredit:
+
+- **Gesundheit.** Tokenping berechnet deinen Health Factor aus der Chain mit der eigenen Mathematik von Morpho, nie aus der API von Morpho. Solange er unter dem Schwellenwert liegt, den du festlegst (1,02 bis 10), schickt jede Prüfung eine Nachricht über jeden Kanal, den du gewählt hast: Signal, Telegram oder E-Mail.
+- **Fälligkeit.** Du bekommst eine Erinnerung in den letzten 7 Tagen vor der Fälligkeit und eine in den letzten 24 Stunden.
+- **Nach der Fälligkeit.** Solange Schulden bleiben, schickt jede Prüfung einen Alert, weil der Kredit unabhängig von seinem Health Factor liquidiert werden kann.
+
+Alerts kosten <AlertPrice />, derselbe Plan wie bei den Aave-Alerts. Ein Alert verschafft dir Zeit zum Handeln; er verhindert keine Liquidation, und ein Preis kann sich zwischen zwei Prüfungen bewegen.
+
+## Quellen
+
+- [Morpho-Doku: Midnight concepts](https://docs.morpho.org/learn/concepts/midnight): Einheiten, Guthaben und Schulden, vorzeitiger Ausstieg, Sicherheiten und Gesundheit (abgerufen am 26. Oktober 2026)
+- [Morpho-Doku: Midnight liquidations](https://docs.morpho.org/learn/concepts/midnight/liquidations): die zwei Liquidationswege, der Anstieg des Bonus nach der Fälligkeit und warum offene Schulden nach der Fälligkeit liquidierbar sind (abgerufen am 26. Oktober 2026)
+- [Morpho-Doku: Angebote](https://docs.morpho.org/learn/concepts/midnight/offers) und [Gates](https://docs.morpho.org/learn/concepts/midnight/gates): Rollen mit Callbacks und was Gates blockieren können und was nicht (abgerufen am 26. Oktober 2026)
+- [Morpho-Doku: Marktmechanik](https://docs.morpho.org/developers/midnight/concepts/market-mechanics), [Sicherheiten, Gesundheit und Liquidationen](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) und [Gebühren](https://docs.morpho.org/developers/midnight/concepts/fees) (abgerufen am 26. Oktober 2026)
+- [Morpho-Doku: einen Kredit vorzeitig beenden](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-early) und [einen Kredit bei Fälligkeit beenden](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-by-repaying-in-full-at-maturity) (abgerufen am 26. Oktober 2026)
+- [Morpho-Doku: Vertragsadressen](https://docs.morpho.org/developers/contracts/addresses): Midnight und BlueFallbackRolling in jedem Netzwerk (abgerufen am 26. Oktober 2026)
+- [morpho-org/midnight](https://github.com/morpho-org/midnight): Midnight.sol (Gesundheitsprüfung, Liquidation, Zurückzahlen, Abhebungen), ConstantsLib.sol (Gebühren, Bonus, 60-Minuten-Anstieg, Grenzen für Sicherheiten) und das Periphery-README (abgerufen am 26. Oktober 2026)
+- [morpho-org/morpho-blue](https://github.com/morpho-org/morpho-blue): Konstanten für Liquidation und Bonus von Blue (abgerufen am 26. Oktober 2026)
+- [Now live: Morpho Midnight and the new Markets App](https://morpho.org/blog/now-live-morpho-midnight) (21. Juli 2026) und [Morpho Midnight: what to expect at launch](https://morpho.org/blog/morpho-midnight-what-to-expect-at-launch) (17. Juli 2026) (abgerufen am 26. Oktober 2026)
+- [Morpho Fixed Rate Markets](https://morpho.org/blog/morpho-v2-liberating-the-potential-of-onchain-loans): der frühere Beitrag von Morpho zu Midnight und Vaults V2 (abgerufen am 26. Oktober 2026)
+- [Morpho Midnight API](https://api.morpho.org/v0/midnight/markets): gelistete Märkte, Orderbuch und Positionen der Kreditnehmer (abgerufen am 26. Oktober 2026)
+- Midnight-Verträge auf [Base](https://basescan.org/address/0xAdedD8ab6dE832766Fedf0FaC4992E5C4D3EA18A) in Block 53102734 und [Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f) in Block 26274992: Marktdefinitionen, Summen, Gebühren und Orakelpreise (abgerufen am 26. Oktober 2026)
+
+_Bildungsinhalt, keine Finanzberatung. Alerts senken das Risiko, verhindern aber keine Liquidation._

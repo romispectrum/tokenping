@@ -1,0 +1,201 @@
+export const meta = {
+  slug: "aave-health-factor-erklaert",
+  title: "Aave Health Factor erklärt: Formel und Beispiele",
+  description:
+    "Was der Health Factor bei Aave V3 ist, wie du ihn mit einem Rechenbeispiel berechnest, warum er sich von selbst bewegt und was unter 1 passiert.",
+  h1: "Was ist der Aave Health Factor und wie wird er berechnet?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Was ist der Aave Health Factor und wie wird er berechnet?",
+  readingMinutes: 15,
+};
+
+<ShortAnswer>
+  Der Health Factor (Gesundheitsfaktor) bei Aave ist eine Zahl, die zeigt, wie nah eine Kreditposition an der
+  Liquidation ist: der Wert deiner Sicherheiten, jedes Asset gewichtet mit seiner Liquidationsschwelle, geteilt durch
+  den Wert deiner Schulden. Bei Aave V3 können Liquidatoren, sobald er unter 1,00 fällt, einen Teil oder alle deiner
+  Schulden zurückzahlen und Sicherheiten im Wert dieses Betrags plus einen Bonus übernehmen. Ein Beispiel: 10 WETH zu
+  2.400 $ mit einer Liquidationsschwelle von 83 % gegen 12.000 USDC Schulden ergeben 24.000 × 0,83 ÷ 12.000 = 1,66.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Was ist der Health Factor bei Aave?
+
+Der Health Factor ist eine Zahl, die vergleicht, was deine Sicherheiten bei Aave nach einem Sicherheitsabschlag wert sind, mit dem, was du schuldest. Jedes Sicherheiten-Asset zählt nur bis zu seiner Liquidationsschwelle (liquidation threshold). 24.000 $ in WETH auf Aave V3 Ethereum Core, wo die Schwelle für WETH in Block 26193284 (14. Oktober 2026) bei 83 % lag, zählen also als 19.920 $. Teile das durch deine Schulden, und du hast den Health Factor.
+
+- **1,00 oder höher:** Die Position kann nicht liquidiert werden. Je höher die Zahl, desto weiter können sich die Preise zuerst gegen dich bewegen.
+- **Unter 1,00:** Die Position kann liquidiert werden.
+- **Keine Schulden:** Es gibt nichts zu liquidieren. Der Contract gibt die größte Zahl zurück, die er speichern kann, und Apps zeigen ∞ oder ein leeres Feld.
+
+Ein Health Factor von 1,66 bedeutet, dass deine gewichteten Sicherheiten das 1,66-Fache deiner Schulden betragen, nicht, dass du 66 % von der Liquidation entfernt bist. Mit einem volatilen Sicherheiten-Asset und Stablecoin-Schulden muss der Preis der Sicherheit um 1 − 1 ÷ HF fallen, damit 1,00 erreicht wird: von 1,66 aus um etwa 39,8 %.
+
+Bei Aave V3 hat jeder Markt in jedem Netzwerk seinen eigenen Health Factor. Leihst du auf Arbitrum und auf Base, hast du zwei, und ein Problem im einen betrifft den anderen nicht. Auf Ethereum sind auch die Märkte Core, Prime, EtherFi und Horizon voneinander getrennt.
+
+## Wie wird der Aave Health Factor berechnet?
+
+Aave V3 multipliziert den USD-Wert jedes Sicherheiten-Assets mit dessen Liquidationsschwelle, addiert die Ergebnisse und teilt durch deine gesamten Schulden in USD:
+
+**HF = Σ (Wert der Sicherheiten in USD × Liquidationsschwelle) ÷ Gesamtwert der Schulden in USD**
+
+Das ist die Berechnung in `GenericLogic.calculateUserAccountData`, die der Aave V3 Pool bei Krediten, Abhebungen und Liquidationen ausführt (aave-v3-origin, Branch main, gelesen am 14. Oktober 2026). Details aus dem Code, die zählen, wenn du selbst rechnest:
+
+- **Die Preise kommen vom Aave-Orakel (oracle)**, nicht von einer Börse, in USD mit 8 Dezimalstellen.
+- **Nur als Sicherheit aktivierte Assets zählen.** Ein Asset mit einer Beleihungsquote (LTV) von 0 zählt trotzdem mit seiner Liquidationsschwelle, auch wenn es keine Kreditkapazität bringt.
+- **Alle Schulden zählen**, zu ihrem Orakelpreis, einschließlich der bisher aufgelaufenen Zinsen.
+- **E-Mode ersetzt die Schwelle** für Assets im Sicherheiten-Set deiner E-Mode-Kategorie.
+- **Das Ergebnis hat 18 Dezimalstellen.** 1,66 kommt als 1660000000000000000 zurück, und eine Liquidation ist unter 1e18 möglich.
+- **Ohne Schulden kommt das Maximum von uint256 zurück**, etwa 1,16 × 10^77. Die API von Aave gibt stattdessen null zurück.
+
+Dieselbe Formel kann die durchschnittliche Liquidationsschwelle verwenden, die `getUserAccountData` meldet: HF = gesamte Sicherheiten × durchschnittliche Liquidationsschwelle ÷ gesamte Schulden, wobei der Durchschnitt Σ(Sicherheit × LT) ÷ Σ Sicherheiten ist.
+
+## Rechenbeispiel: Welchen Health Factor haben 10 WETH gegen 12.000 USDC?
+
+Der Health Factor von 10 WETH als Sicherheit gegen 12.000 USDC Schulden auf Aave V3 Ethereum Core beträgt 1,66, mit ETH bei 2.400 $ und USDC bei 1,00 $. Der ETH-Preis ist für glatte Zahlen gerundet; das Aave-Orakel las in Ethereum-Block 26193376 am 14. Oktober 2026 2.414,78 $. Die Parameter von WETH wurden am selben Tag in Block 26193284 gelesen: LTV 80,5 %, Liquidationsschwelle 83 %.
+
+1. Wert der Sicherheiten: 10 × 2.400 $ = 24.000 $.
+2. Gewichtete Sicherheiten: 24.000 $ × 0,83 = 19.920 $.
+3. Health Factor: 19.920 $ ÷ 12.000 $ = **1,66**.
+4. Kreditlimit: 24.000 $ × 0,805 = 19.320 $, es könnten also weitere 7.320 $ geliehen werden.
+5. Liquidationspreis von ETH, bei dem HF = 1: 12.000 $ ÷ (10 × 0,83) = **1.445,78 $**, ein Rückgang von 39,8 % gegenüber 2.400 $.
+
+Wie du den Preis für deine eigene Position ausrechnest, steht unter [berechne deinen Aave-Liquidationspreis](/de/blog/aave-liquidationspreis-berechnen).
+
+### Was ändert sich mit einem zweiten Sicherheiten-Asset?
+
+Mit zwei Sicherheiten-Assets wird jedes mit seiner eigenen Liquidationsschwelle gewichtet, bevor sie addiert werden. Behalte die 10 WETH (24.000 $, LT 83 %), füge 0,2 WBTC zu illustrativen 81.500 $ hinzu (16.300 $, LT 78 % und LTV 73 % auf Ethereum Core in Block 26193284) und leihe 20.000 USDC:
+
+- Gewichtete Sicherheiten: 24.000 × 0,83 + 16.300 × 0,78 = 19.920 + 12.714 = 32.634.
+- Health Factor: 32.634 ÷ 20.000 = **1,632**.
+- Durchschnittliche Liquidationsschwelle: 32.634 ÷ 40.300 = 80,98 %.
+- Kreditlimit: 24.000 × 0,805 + 16.300 × 0,73 = 31.219 $.
+
+### Was ändert sich, wenn du ein volatiles Asset leihst?
+
+Wenn die Schulden aus einem volatilen Asset bestehen, fällt der Health Factor, wenn der Preis dieses Assets steigt, weil die Schulden dann mehr wert sind. Zahle 10.000 USDC ein (LT 78 % auf Ethereum Core in Block 26193284) und leihe WETH im Wert von 6.000 $: HF = 7.800 ÷ 6.000 = **1,30**. Steigt ETH um 30 %, sind die Schulden 7.800 $ wert und der HF erreicht 1,00. Die Sicherheit zählt trotzdem: Bei einem USDC-Preis von 0,88 $ ist HF = 8.800 × 0,78 ÷ 6.000 = 1,144.
+
+## Health Factor, LTV und Liquidationsschwelle: Was ist der Unterschied?
+
+Die LTV (loan-to-value, Beleihungsquote) begrenzt, wie viel du leihen kannst, die Liquidationsschwelle entscheidet, wann du liquidiert werden kannst, und der Health Factor verbindet die Liquidationsschwelle mit deinen tatsächlichen Schulden. Aave V3 prüft die LTV nur, wenn du leihst. Eine Abhebung von Sicherheiten oder ihr Deaktivieren muss den Health Factor nur bei 1 oder darüber lassen, und Liquidatoren schauen nur auf den Health Factor.
+
+| Begriff                   | Was es ist                                                                | Wo es gilt                                                                              | Beispiel: 10 WETH zu 2.400 $ (24.000 $), 12.000 USDC Schulden |
+| ------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| LTV (loan-to-value)       | Das Maximum, das du gegen eine Sicherheit leihen kannst, in % ihres Werts | Nur neue Kredite                                                                        | 80,5 % für WETH: ein Limit von 19.320 $                       |
+| Liquidationsschwelle (LT) | Der Anteil am Wert einer Sicherheit, der in den Health Factor einfließt   | Liquidation und Abhebungen (der HF muss bei 1 oder darüber bleiben)                     | 83 % für WETH: 19.920 $ zählen                                |
+| Health Factor (HF)        | Σ(Sicherheiten × LT) ÷ Schulden                                           | Unter 1,00 kann die Position liquidiert werden                                          | 1,66                                                          |
+| Genutztes Kreditlimit     | Schulden ÷ (Sicherheiten × LTV), eine Anzeige, die viele Apps zeigen      | Nicht on-chain gespeichert; ein Kredit, der es über 100 % bringen würde, wird abgelehnt | 62,1 %                                                        |
+
+Das „genutzte Kreditlimit“ (borrow limit used) ist nicht 1 ÷ HF (hier 60,2 %), weil es auf der LTV statt auf der Liquidationsschwelle beruht. Es sagt dir, wie viel Spielraum zum Leihen bleibt, nicht, wie nah die Liquidation ist.
+
+Weil Abhebungen nicht durch die LTV begrenzt sind, kann eine Abhebung eine Position näher an die Liquidation bringen als ein Kredit. Mit 10 WETH zu 2.400 $ gegen 12.000 USDC akzeptiert der Contract eine Abhebung von bis zu etwa 3,98 WETH (9.542 $), die den Health Factor bei 1,00 lässt. Ein Kredit stoppt am LTV-Limit, wo der Health Factor noch 1,031 beträgt.
+
+Die Liquidationsschwelle ist immer mindestens so hoch wie die LTV. Live-Werte vom 14. Oktober 2026, gelesen mit einem Multicall pro Netzwerk:
+
+| Markt         | Asset        | LTV    | Liquidationsschwelle |
+| ------------- | ------------ | ------ | -------------------- |
+| Ethereum Core | WETH         | 80,5 % | 83 %                 |
+| Ethereum Core | WBTC         | 73 %   | 78 %                 |
+| Ethereum Core | USDC         | 75 %   | 78 %                 |
+| Arbitrum      | WETH         | 80 %   | 84 %                 |
+| Arbitrum      | WBTC         | 73 %   | 78 %                 |
+| Arbitrum      | USDC (nativ) | 75 %   | 78 %                 |
+
+Die Ethereum-Werte stammen aus Block 26193284 (20:58:47 UTC), die Arbitrum-Werte aus Block 514855406 (20:58:57 UTC). Die Governance und die Risk Stewards können sie ändern, prüfe das Asset also in der Aave-App, bevor du dich darauf verlässt.
+
+## Warum bleibt beim maximalen Kredit nur ein Health Factor von etwa 1,03?
+
+Mit einem Sicherheiten-Asset hinterlässt ein Kredit über den vollen Betrag, den die LTV erlaubt, einen Health Factor von LT ÷ LTV, also nur knapp über 1; mit mehreren ist es die gewichtete LT ÷ die gewichtete LTV. Für WETH auf Aave V3 Ethereum Core sind das 83 ÷ 80,5 = 1,031 (Block 26193284, 14. Oktober 2026). Mit 10 WETH zu 2.400 $ (24.000 $) ergibt ein Kredit über das ganze Limit von 19.320 $ einen HF von 19.920 ÷ 19.320 = 1,031 und verschiebt den Liquidationspreis auf 2.327,71 $, nur 3,0 % unter 2.400 $. Dieselbe Division ergibt auf Ethereum Core 1,068 für WBTC (78 ÷ 73) und 1,04 für USDC (78 ÷ 75). Anders gesagt: Eine bis zum Limit beliehene Position ist nur wenige Prozent von der Liquidation entfernt. Die Tabelle pro Asset und wie du einen Puffer wählst, findest du unter [wie viel Puffer dir ein Health Factor gibt](/de/blog/sicherer-health-factor-aave).
+
+## Was passiert, wenn der Health Factor unter 1 fällt?
+
+Wenn ein Health Factor bei Aave V3 unter 1,00 fällt, kann ein Liquidator einen Teil oder alle deiner Schulden zurückzahlen und deine Sicherheiten mit einem Abschlag übernehmen, dem Liquidationsbonus. Auf Ethereum Core lag der WETH-Bonus in Block 26193284 (14. Oktober 2026) bei 5 %. 6.000 $ deiner Schulden zu tilgen kostet dich also 6.300 $ in WETH: 6.270 $ gehen an den Liquidator und 30 $, eine Protokollgebühr von 10 % des Bonus, an die Treasury von Aave.
+
+Eine Liquidation kann bis zu 50 % deiner gesamten Schulden zurückzahlen, oder bis zu 100 % der Schulden in einer Reserve, wenn der Health Factor bei 0,95 oder darunter liegt oder wenn deine Sicherheiten oder Schulden in den beteiligten Reserven weniger als 2.000 $ wert sind. Eingefrorene Reserven können weiterhin liquidiert werden, pausierte nicht. Die vollständigen Regeln, ein Rechenbeispiel und was mit uneinbringlichen Schulden (bad debt) passiert, stehen unter [was bei einer Aave-Liquidation passiert](/de/blog/so-funktioniert-die-liquidation-bei-aave). Wege, zu handeln, bevor der Health Factor 1 erreicht, findest du unter [wie du deinen Aave Health Factor erhöhst](/de/blog/aave-liquidation-vermeiden).
+
+## Warum ändert sich dein Health Factor, obwohl du nichts tust?
+
+Dein Aave Health Factor ändert sich von selbst, weil er bei jedem Abruf aus Orakelpreisen und aufgelaufenen Zinsen neu berechnet wird. Die üblichen Gründe:
+
+- **Der Preis deiner Sicherheit fällt.** Mit WETH als Sicherheit und USDC-Schulden bewegt sich der Health Factor im Gleichschritt mit ETH.
+- **Das geliehene Asset steigt im Preis.** Bei volatilen Schulden senkt eine Rally den Health Factor.
+- **Zinsen laufen auf.** Schulden wachsen meist schneller, als die Sicherheiten einbringen, und variable Kreditzinsen können sprunghaft steigen.
+- **Die Governance oder die Risk Stewards senken eine Liquidationsschwelle.** In V3 gilt die neue Schwelle auf einen Schlag für jede offene Position.
+- **Ein eingezahlter Stablecoin hat einen Depeg (Verlust der Dollarbindung) nach unten.** Der Preisadapter von Aave für USDC auf Ethereum deckelt den Preis bei 1,04 $, gibt Preise unter 1 $ aber direkt weiter (Block 26193376, 14. Oktober 2026).
+- **Ein Orakel ist falsch konfiguriert.** Im März 2026 führte ein Fehler beim wstETH-Wechselkurs zu E-Mode-Liquidationen in den Märkten Ethereum Core und Prime.
+
+Eine Senkung der LTV (auch auf LTV 0) oder das Einfrieren einer Reserve begrenzt neue Kredite, senkt aber deinen Health Factor nicht. Jede Ursache wird mit Daten und Beispielen unter [warum dein Aave Health Factor von selbst fällt](/de/blog/warum-ist-mein-aave-health-factor-gesunken) behandelt.
+
+## Wie verändert E-Mode den Health Factor?
+
+E-Mode (Efficiency Mode) hebt LTV und Liquidationsschwelle für Assets an, deren Preise sich gemeinsam bewegen, sodass dieselbe Position einen höheren Health Factor zeigt. Auf Aave V3 Ethereum Core verwendet die Kategorie „ETH correlated“ eine LTV von 93 %, eine Liquidationsschwelle von 95 % und einen Liquidationsbonus von 1 % (Block 26193288, 14. Oktober 2026). Ihr Sicherheiten-Set besteht aus WETH, wstETH, cbETH, rETH, weETH, osETH und ETHx, und WETH ist das einzige Asset, das du darin leihen kannst.
+
+Was sich in dieser Kategorie für den Health Factor ändert:
+
+- **Die höhere Schwelle geht in die Formel ein.** Zahle wstETH im Wert von 10.000 $ ein und leihe WETH im Wert von 9.000 $: HF = 10.000 × 0,95 ÷ 9.000 = 1,056.
+- **Der Puffer am Kreditlimit ist dünner.** 95 ÷ 93 = 1,0215, eine bis zum Limit beliehene Position ist also etwa 2,1 % von der Liquidation entfernt.
+- **Es zählt das Preisverhältnis, nicht der Dollarpreis.** Mit wstETH als Sicherheit und WETH-Schulden bewegt ein Rückgang von ETH beide Seiten gemeinsam. Eine Änderung des wstETH/ETH-Kurses, den das Orakel verwendet, ob echt oder durch einen Konfigurationsfehler verursacht, bewegt den HF direkt. Der Fehler im März 2026 verschob diesen Kurs um etwa 2,85 %, und das Post-Mortem von Chaos Labs meldet Liquidationen von Positionen unter einem Health Factor von etwa 1,0288.
+
+Um einer Kategorie beizutreten, muss jedes Asset, das du gerade leihst, darin leihbar sein, jedes Asset, das du als Sicherheit nutzt, muss darin eine LTV über null behalten, und der Health Factor muss unter den Einstellungen der Kategorie bei 1 oder darüber bleiben. Die Position aus 10 WETH und 12.000 USDC kann „ETH correlated“ auf Ethereum Core deshalb nicht nutzen: USDC gehört nicht zu den leihbaren Assets der Kategorie. Sicherheiten außerhalb des Sicherheiten-Sets der Kategorie behalten ihre normale LTV und Schwelle (seit V3.2). Markiert die Governance eine Kategorie als isoliert (ein Flag aus V3.7), bekommen diese äußeren Sicherheiten LTV 0, behalten aber ihre Schwelle: Sie bringen keine Kreditkapazität, zählen aber weiterhin für deinen Health Factor. „ETH correlated“ auf Ethereum Core war in Block 26193288 nicht isoliert.
+
+## Ist der Health Factor bei Aave V4 anders?
+
+Ja. Aave V4 erlaubt eine Liquidation weiterhin unter einem Health Factor von 1, berechnet die Zahl aber pro Spoke und mit einem einzigen Collateral Factor pro Asset statt getrennter Werte für LTV und Liquidationsschwelle. Ein Spoke ist ein Kreditmarkt von V4 mit eigenen Risikoeinstellungen, der Liquidität aus einem gemeinsamen Hub bezieht. Laut dem Changelog der Aave-Dokumentation ging V4 am 30. März 2026 auf Ethereum live, am 15. Juli 2026 auf Avalanche, am 16. September 2026 auf Arc und am 7. Oktober 2026 auf Base. V3 läuft weiter, und alle sieben hier behandelten V3-Märkte laufen mit V3.7.
+
+- **Ein Health Factor pro Spoke.** Positionen in verschiedenen Spokes beeinflussen sich nicht. In V3 ist die Einheit der Markt: ein Pool in einem Netzwerk.
+- **Ein Collateral Factor (CF) pro Asset.** HF = Σ(Wert der Sicherheiten × CF) ÷ Wert der Schulden. Das Beispiel aus der Aave-Dokumentation: 10.000 $ in ETH bei 80 % CF gegen 6.000 $ GHO ergeben 1,333. Auf dem Ethereum Main Spoke lag der CF von WETH am 14. Oktober 2026 bei 83 % (Aave V4 API), gleich seiner Liquidationsschwelle in V3, also würden 10 WETH gegen 12.000 USDC auch dort 1,66 zeigen.
+- **Parameteränderungen gelten meist für neue Positionen.** Eine bestehende V4-Position behält ihren alten CF, bis der Kreditnehmer leiht, abhebt oder die Sicherheiten-Einstellungen ändert, es sei denn, die Governance erzwingt eine Aktualisierung. In V3 trifft eine Senkung der Schwelle jede offene Position auf einen Schlag.
+- **Riskantere Sicherheiten zahlen mehr Zinsen.** Die User Risk Premium von V4 schlägt je nach Qualität der Sicherheiten einen Aufschlag auf den Kreditzins, sodass die Schulden schneller wachsen können.
+- **Liquidationen funktionieren anders.** Es gibt keinen Close Factor: Liquidatoren zahlen nur so viel zurück, dass der HF das Ziel des Spokes erreicht (1,24 auf dem Ethereum Main Spoke in Block 26194078, 14. Oktober 2026), und der Bonus wächst, je tiefer der HF fällt.
+
+Am 14. Oktober 2026 zeigte DefiLlama etwa 17,09 Mrd. $ TVL in Aave V3 und etwa 0,66 Mrd. $ in V4, ohne geliehene Beträge. Die V4-Zahl umfasste Ethereum, Avalanche und Arc, noch nicht den Markt auf Base (geprüft am 15. Oktober 2026). Die Beispiele in diesem Ratgeber behandeln nur Aave V3. Tokenping deckt beide Versionen ab, mit einem Alert pro V3-Markt und einem pro V4-Spoke.
+
+## Wie unterscheidet sich der Aave Health Factor von dem bei Morpho?
+
+Morpho, ein anderes Kreditprotokoll, baut auf derselben Idee auf, mit einer Schwelle gewichtete Sicherheiten geteilt durch Schulden, aber mit anderen Regeln drumherum. Jeder Markt bei Morpho Blue hält einen Sicherheiten-Token und einen Kredit-Token, also hat dort jeder Kredit seinen eigenen Health Factor. Seine Liquidations-LTV (LLTV) wird bei der Erstellung des Markts festgelegt, die Governance kann sie nicht ändern, und du kannst bis direkt an sie heran leihen, bis zu einem Health Factor von 1,00. Bei Aave V3 teilen sich alle deine Sicherheiten und Schulden in einem Markt einen Health Factor, die Governance kann Schwellen ändern, und ein maximaler Kredit stoppt an der niedrigeren LTV. [Der Ratgeber zum Morpho Health Factor](/de/blog/morpho-health-factor-erklaert) behandelt seine Formel, ein Rechenbeispiel und die Festzins-Märkte Midnight von Morpho, und Tokenpings [Morpho-Dashboard](/de/morpho) zeigt diese Positionen.
+
+## Wie prüfst du deinen Aave Health Factor?
+
+Du kannst deinen Health Factor bei Aave V3 in der Aave-App prüfen, auf einem Dashboard wie dem von Tokenping oder indem du `getUserAccountData` auf dem Pool-Contract des Markts aufrufst. Alle drei gehen von denselben On-Chain-Preisen, Salden und Parametern aus und sollten deshalb weitgehend übereinstimmen. Die Aave-App berechnet die Zahl in deinem Browser; Tokenping und ein direkter Aufruf lesen sie aus `getUserAccountData`.
+
+- **Die Aave-App (app.aave.com)** zeigt den Health Factor für den ausgewählten Markt, wechsle also die Märkte, um jedes Netzwerk zu sehen. Sie warnt in Transaktionsabläufen vor einem niedrigen Health Factor, schickt aber keine Push-Alerts, und die Hilfeseite von Aave bittet Kreditnehmer, ihren Health Factor regelmäßig zu überwachen.
+- **Das Dashboard von Tokenping** lässt dich [deinen Aave Health Factor in 22 Netzwerken prüfen](/de/aave): jeden Aave-V3-Markt in 21 Netzwerken (24 Märkte, darunter Core, Prime, EtherFi und Horizon auf Ethereum) und jeden Aave-V4-Spoke auf Ethereum, Avalanche, Arc und Base. Verbinde deine Wallet, und es zeigt Sicherheiten, Schulden und Health Factor für jeden Markt, in dem die Wallet eine Position oder einen gespeicherten Alert hat, den Rest eingeklappt unter „Weitere Märkte“, alles nur mit View-Aufrufen gelesen, sodass bei Aave nichts freigegeben oder signiert wird.
+- **Der Contract.** `getUserAccountData(address)` auf einem V3-Pool funktioniert für jede Adresse. Er gibt die gesamten Sicherheiten und Schulden zurück (USD, 8 Dezimalstellen), die verfügbaren Kredite, die durchschnittliche Liquidationsschwelle und LTV (Basispunkte: 8300 bedeutet 83 %) sowie den Health Factor mit 18 Dezimalstellen.
+
+| Netzwerk                               | Aave V3 Pool-Contract                        |
+| -------------------------------------- | -------------------------------------------- |
+| Ethereum (Core-Markt)                  | `0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2` |
+| Polygon, Arbitrum, Optimism, Avalanche | `0x794a61358D6845594F94dc1DB02A252b5b4814aD` |
+| Base                                   | `0xA238Dd80C259a72e81d7e4664a9801593F98d1c5` |
+| Gnosis                                 | `0xb50201558B00496A145fE76f7424749556E326D8` |
+
+Alle sieben Pools meldeten am 14. Oktober 2026 Revision 11 (V3.7).
+
+Wenn du nicht ständig nachsehen willst, kann Tokenping dir über Signal, Telegram oder E-Mail eine Nachricht schicken, solange dein Health Factor unter einem Wert liegt, den du wählst. Alerts kosten <AlertPrice />, bezahlt auf Arbitrum. Tokenping prüft alle 5 Minuten und wiederholt die Nachricht bei jeder Prüfung, solange du unter dem Schwellenwert bleibst. Ein Preissprung, der zwischen zwei Prüfungen 1,00 durchbricht, kann dich also trotzdem vorher liquidieren. Eine Möglichkeit ist, den Alert auf den Health Factor zu setzen, bei dem du noch handeln wollen würdest: [wie viel Puffer dir ein Health Factor gibt](/de/blog/sicherer-health-factor-aave) hilft dir bei der Wahl, und [wie du einen Health-Factor-Alert einrichtest](/de/blog/aave-health-factor-alert-einrichten) führt durch die Schritte. Andere Alert- und Automatisierungsoptionen, darunter Tools, die Schulden für dich zurückzahlen können, findest du unter [Aave-Liquidations-Alert-Tools im Vergleich](/de/blog/aave-liquidations-alert-tools-im-vergleich).
+
+## Quellen
+
+- [Aave V3 GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): Formel des Health Factor, 18 Dezimalstellen, maximales uint256 ohne Schulden (Branch main, abgerufen am 14. Oktober 2026)
+- [Aave V3 ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [BorrowLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/BorrowLogic.sol) und [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol): LTV nur bei Krediten geprüft, Prüfung des Health Factor bei Abhebungen und beim Deaktivieren von Sicherheiten, Eintrittsregeln für E-Mode, Auslöser der Liquidation (abgerufen am 14. Oktober 2026, erneut geprüft am 15. Oktober 2026)
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): Regel für den Close Factor von 50 % und 100 %, Protokollgebühr aus dem Bonus (abgerufen am 14. Oktober 2026)
+- [Aave V3 Pool-Referenz](https://aave.com/docs/aave-v3/smart-contracts/pool): getUserAccountData (abgerufen am 14. Oktober 2026)
+- [Aave-Dokumentation: Positionen](https://aave.com/docs/aave-v3/markets/positions): Health Factor null ohne Kredit (abgerufen am 14. Oktober 2026)
+- [Aave-Dokumentation: V3-Überblick](https://aave.com/docs/aave-v3/overview): Der Health Factor bewegt sich mit Orakelpreisen und Zinsen (abgerufen am 14. Oktober 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): LTV, Schwelle, Bonus und Liquidations-Protokollgebühr in Block 26193284 (abgerufen am 14. Oktober 2026)
+- [PoolDataProvider, Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): Parameter in Block 514855406 (abgerufen am 14. Oktober 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): WETH-Preis und Deckel des USDC-Adapters in Block 26193376 (abgerufen am 14. Oktober 2026)
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): Einstellungen der E-Mode-Kategorie „ETH correlated“ und Isolations-Flag in Block 26193288, Pool-Revision (abgerufen am 14. Oktober 2026)
+- [Aave V3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): Sicherheiten außerhalb einer E-Mode-Kategorie behalten ihre eigene LTV und Schwelle (abgerufen am 15. Oktober 2026)
+- [Aave V3.7 isolated E-Mode](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md): LTV 0 für äußere Sicherheiten, Eintritt gesperrt, Health Factor beim Einschalten unverändert (abgerufen am 15. Oktober 2026)
+- [aave-price-feeds](https://github.com/aave-dao/aave-price-feeds): gedeckelter Stablecoin-Adapter (abgerufen am 14. Oktober 2026)
+- [Aave V3 Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): wer LTV und Schwellen anpassen kann (abgerufen am 14. Oktober 2026)
+- [Post-Mortem von Chaos Labs zum wstETH-Wechselkurs](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): veröffentlicht am 10. März 2026 (abgerufen am 14. Oktober 2026)
+- [Changelog der Aave-Dokumentation](https://aave.com/docs/resources/changelog): Einführung von V3.7, Startdaten von V4 (abgerufen am 14. Oktober 2026)
+- [Aave-V4-Dokumentation](https://aave.com/docs/aave-v4) und [V4-Positionen](https://aave.com/docs/aave-v4/positions): Health Factor pro Spoke, Collateral Factor, User Risk Premium (abgerufen am 14. Oktober 2026)
+- [Aave-V4-Überblick auf GitHub](https://github.com/aave/aave-v4/blob/main/docs/overview.md): dynamische Risikokonfiguration (abgerufen am 14. Oktober 2026)
+- [Aave V4 API](https://api.v4.aave.com/graphql): Reserve-Einstellungen des Ethereum Main Spoke (abgerufen am 14. Oktober 2026)
+- [Aave V4 Ethereum Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485): Ziel-Health-Factor in Block 26194078 (abgerufen am 14. Oktober 2026)
+- [DefiLlama protocols API](https://api.llama.fi/protocols): TVL von Aave V3 und V4 (abgerufen am 14. Oktober 2026); für V4 gezählte Chains (abgerufen am 15. Oktober 2026)
+- [Quellcode der Aave-App, useUserSummaryAndIncentives.ts](https://github.com/aave/interface/blob/main/src/hooks/pool/useUserSummaryAndIncentives.ts): Die App berechnet den Health Factor im Browser (abgerufen am 15. Oktober 2026)
+- [Aave-Hilfe: Liquidationen](https://aave.com/help/borrowing/liquidations) (abgerufen am 14. Oktober 2026)
+
+_Bildungsinhalt, keine Finanzberatung. Alerts senken das Risiko, verhindern aber keine Liquidation._

@@ -8,31 +8,31 @@ DaisyUI 5, light and dark themes.
 
 Six brand colours. Never invent, tint or approximate another one.
 
-| Name | Hex | Variable | Role |
-|---|---|---|---|
-| Pink | `#FE5FA9` | `--brand-pink` | The one expressive accent per view |
-| Violet | `#9C27B0` | `--brand-violet` | Links, focus, kickers and info on light |
-| Cyan | `#20FAFF` | `--brand-cyan` | Links, focus and kickers on dark; never on a light surface |
-| Plum | `#4E2255` | `--brand-plum` | Text on the violet tint, lifted dark items |
-| Night | `#18001C` | `--brand-night` | The only dark surface (never `#000`) |
-| White | `#FFFFFF` | `--brand-white` | Light surfaces, text on dark |
+| Name   | Hex       | Variable         | Role                                                       |
+| ------ | --------- | ---------------- | ---------------------------------------------------------- |
+| Pink   | `#FE5FA9` | `--brand-pink`   | The one expressive accent per view                         |
+| Violet | `#9C27B0` | `--brand-violet` | Links, focus, kickers and info on light                    |
+| Cyan   | `#20FAFF` | `--brand-cyan`   | Links, focus and kickers on dark; never on a light surface |
+| Plum   | `#4E2255` | `--brand-plum`   | Text on the violet tint, lifted dark items                 |
+| Night  | `#18001C` | `--brand-night`  | The only dark surface (never `#000`)                       |
+| White  | `#FFFFFF` | `--brand-white`  | Light surfaces, text on dark                               |
 
 Components use the **semantic tokens**, which switch with the theme. Brand utilities (`bg-brand-pink`,
 `text-brand-violet`) are for brand moments on marketing pages only.
 
-| Need | Use |
-|---|---|
-| Page, card, popover | `bg-background`, `bg-card`, `bg-popover` |
-| Body and secondary text | `text-foreground`, `text-muted-foreground` |
-| The one primary action | `Button` (pink fill, night text, 7.03:1) |
-| Dark button or band on a light page | `bg-inverse text-inverse-foreground`, or a band with `className="dark bg-background"` |
-| Hover and selected | `bg-accent text-accent-foreground` |
-| Link | `text-link` plus an underline (plain `<a>` in prose is styled already) |
-| Hairline, control boundary | `border-border`, `border-input` (3:1, for every form control) |
-| Quiet fill | `bg-muted`, `bg-secondary` |
-| Status | `text-success bg-success-subtle`, `text-warning bg-warning-subtle`, `text-destructive bg-destructive-subtle`, `text-info bg-info-subtle` |
-| Charts | `--chart-1` to `--chart-4` in order, `--chart-5` for "Other" |
-| Data | `font-data` |
+| Need                                | Use                                                                                                                                      |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Page, card, popover                 | `bg-background`, `bg-card`, `bg-popover`                                                                                                 |
+| Body and secondary text             | `text-foreground`, `text-muted-foreground`                                                                                               |
+| The one primary action              | `Button` (pink fill, night text, 7.03:1)                                                                                                 |
+| Dark button or band on a light page | `bg-inverse text-inverse-foreground`, or a band with `className="dark bg-background"`                                                    |
+| Hover and selected                  | `bg-accent text-accent-foreground`                                                                                                       |
+| Link                                | `text-link` plus an underline (plain `<a>` in prose is styled already)                                                                   |
+| Hairline, control boundary          | `border-border`, `border-input` (3:1, for every form control)                                                                            |
+| Quiet fill                          | `bg-muted`, `bg-secondary`                                                                                                               |
+| Status                              | `text-success bg-success-subtle`, `text-warning bg-warning-subtle`, `text-destructive bg-destructive-subtle`, `text-info bg-info-subtle` |
+| Charts                              | `--chart-1` to `--chart-4` in order, `--chart-5` for "Other"                                                                             |
+| Data                                | `font-data`                                                                                                                              |
 
 Never write hex, `rgb()` or Tailwind palette colours (`gray-*`, `red-*`, `white`, `black`) in a component. The
 only hex outside `globals.css`: `components/brand/themeColor.ts` (browser UI colour), `next/og` images and the logo
@@ -69,13 +69,19 @@ user's theme is dark, for UI that reports the theme, such as the toggle's icon.
 
 - **Satoshi** for every word (`font-sans`, the default). **Geist Mono** through `font-data` for addresses, hashes,
   transaction ids and numbers compared digit by digit, nothing else.
+- **The one exception: Vietnamese.** Satoshi lacks most Vietnamese letters (ơ, ư and the stacked tone marks), and a
+  per-letter fallback would mix two typefaces inside one word, so the Vietnamese pages and their social cards set
+  every word in **Plus Jakarta Sans**, a geometric sans close to Satoshi (`components/fonts/vietnamese.ts`, loaded only
+  by `app/(vi)/layout.tsx`; `styles/globals.css` points `--font-satoshi` at it under `html:lang(vi)`). Hindi keeps
+  Satoshi for Latin letters and digits and falls back to a Devanagari font for the rest.
 - Both load through `next/font` in `components/RootDocument.tsx`, with `display: "swap"` and a metric-matched fallback.
   Only Satoshi's upright face is preloaded; its italic (same family) and Geist Mono load on the pages that use them.
-- **Font licenses.** Geist Mono (through `next/font/google`) and Noto Sans Devanagari (the Hindi social cards, in
-  `app/fonts/og` with its license text) are under the SIL Open Font License, which allows shipping the files.
+- **Font licenses.** Geist Mono and Plus Jakarta Sans (through `next/font/google`), and Noto Sans Devanagari and
+  Plus Jakarta Sans for the Hindi and Vietnamese social cards (in `app/fonts/og` with their license texts), are under
+  the SIL Open Font License, which allows shipping the files.
   Satoshi is Indian Type Foundry's and has a stricter license: using it on our own site and in images is allowed,
   passing the files on is not, and a public repository counts. So **the Satoshi files are never committed**: `yarn
-  next:fonts` downloads the official files from Fontshare and checks each against the SHA-256 pinned in
+next:fonts` downloads the official files from Fontshare and checks each against the SHA-256 pinned in
   `scripts/satoshiFonts.ts`, and `yarn build`, `yarn dev` and `yarn test` run it first. Never edit, subset or convert a
   Satoshi file (the license forbids it), never add one to `public/`, and a test fails if git tracks one.
 - Weights: 400 body; 500 headings, buttons, labels, nav (`h1` to `h6` are 500 already); 700 only for data emphasis
@@ -122,7 +128,8 @@ results) is the one static copy: after changing the artwork, rebuild it from `/l
 - Loading labels have no trailing dots: "Saving", "Processing", "Waiting for your wallet".
 - Plain words where money or keys are involved; no hype words; never invent facts, names, prices or metrics.
 - Never "free" (nor "zdarma" or "bezplatný" in Czech, "gratis" or "gratuito" in Spanish, "मुफ़्त", "फ़्री" or
-  "निःशुल्क" in Hindi), anywhere: copy,
+  "निःशुल्क" in Hindi, "kostenlos", "kostenfrei", "gebührenfrei", "gratis" or "umsonst" in German, "miễn phí" in
+  Vietnamese), anywhere: copy,
   articles, metadata, README. Say what alerts cost and leave it there; where the point is that looking needs no
   payment, say exactly that ("looking at your positions needs no payment", "prohlížení pozic nevyžaduje platbu", "ver
   tus posiciones no requiere pago"). For other tools: "costs nothing", "at no charge", "a no-cost tier" ("no cuesta
@@ -133,18 +140,18 @@ results) is the one static copy: after changing the artwork, rebuild it from `/l
 `components/ui` (import from `~~/components/ui`). They are built on DaisyUI classes plus the token utilities, and
 each has tests next to it.
 
-| Component | Notes |
-|---|---|
-| `Button`, `buttonClasses()` | Variants `default` (the pink primary), `inverse`, `secondary`, `outline`, `ghost`, `link`, `destructive`; sizes `sm`, `default`, `lg`, `icon`. Pending work is `loading` plus `loadingText`, never `disabled`; disabled is the variant at half opacity. A link that looks like a button is `<Link className={buttonClasses(...)}>`. |
-| `Card` and parts | Flat by default; `marketing` adds `shadow-card`. Never nest cards. |
-| `Badge`, `badgeClasses()` | `neutral`, `brand`, `success`, `warning`, `info`, `destructive`, `pink`. |
-| `Field` | Visible label, description, error and "(optional)", wired with `aria-describedby` and `aria-invalid`. Wraps `Input`, `Textarea`, `Select`, `Checkbox`, `Switch`. `orientation="horizontal"` (checkbox and switch rows) makes the whole row the label, 44px on touch. The error is an alert; `liveError={false}` keeps it linked but quiet, for fields checked on every keystroke or forms whose error summary already announces. |
-| `Alert`, `LiveRegion` | Status tint plus icon; a message that appears after an action goes in a `LiveRegion` that is already mounted. |
-| `Skeleton`, `Spinner`, `EmptyState` | Loading and empty states. |
-| `Kicker`, `SectionHeader` | The one heading formula. |
-| `GrainCard`, `Glow`, `GlowWash`, `BrandDivider` | Marketing pages only. |
-| `ThemeToggle`, `ThemeChoice` | `ThemeToggle` flips light and dark (top bar); `ThemeChoice` offers Light, Dark and System (footer, settings). |
-| `LanguageSwitch` | The language menu in the header: a disclosure with one plain link per language (each language has its own root layout, so switching is a full page load). Import it from `~~/components/ui/LanguageSwitch`; the index does not re-export it. See [i18n.md](i18n.md). |
+| Component                                       | Notes                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Button`, `buttonClasses()`                     | Variants `default` (the pink primary), `inverse`, `secondary`, `outline`, `ghost`, `link`, `destructive`; sizes `sm`, `default`, `lg`, `icon`. Pending work is `loading` plus `loadingText`, never `disabled`; disabled is the variant at half opacity. A link that looks like a button is `<Link className={buttonClasses(...)}>`.                                                                                              |
+| `Card` and parts                                | Flat by default; `marketing` adds `shadow-card`. Never nest cards.                                                                                                                                                                                                                                                                                                                                                               |
+| `Badge`, `badgeClasses()`                       | `neutral`, `brand`, `success`, `warning`, `info`, `destructive`, `pink`.                                                                                                                                                                                                                                                                                                                                                         |
+| `Field`                                         | Visible label, description, error and "(optional)", wired with `aria-describedby` and `aria-invalid`. Wraps `Input`, `Textarea`, `Select`, `Checkbox`, `Switch`. `orientation="horizontal"` (checkbox and switch rows) makes the whole row the label, 44px on touch. The error is an alert; `liveError={false}` keeps it linked but quiet, for fields checked on every keystroke or forms whose error summary already announces. |
+| `Alert`, `LiveRegion`                           | Status tint plus icon; a message that appears after an action goes in a `LiveRegion` that is already mounted.                                                                                                                                                                                                                                                                                                                    |
+| `Skeleton`, `Spinner`, `EmptyState`             | Loading and empty states.                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `Kicker`, `SectionHeader`                       | The one heading formula.                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `GrainCard`, `Glow`, `GlowWash`, `BrandDivider` | Marketing pages only.                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `ThemeToggle`, `ThemeChoice`                    | `ThemeToggle` flips light and dark (top bar); `ThemeChoice` offers Light, Dark and System (footer, settings).                                                                                                                                                                                                                                                                                                                    |
+| `LanguageSwitch`                                | The language menu in the header: a disclosure with one plain link per language (each language has its own root layout, so switching is a full page load). Import it from `~~/components/ui/LanguageSwitch`; the index does not re-export it. See [i18n.md](i18n.md).                                                                                                                                                             |
 
 DaisyUI components used directly (`btn`, `input`, `checkbox`, `toggle`, `badge`, `menu`, `card-title`, `table` ...)
 take their colours from the tokens and follow the same focus, boundary, checked and weight rules (500 for titles and

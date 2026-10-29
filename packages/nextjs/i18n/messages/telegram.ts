@@ -1,8 +1,8 @@
 import type { Localized } from "~~/i18n/locales";
 
 // The Telegram bot's replies, in the language of the sender's Telegram app (telegramLocale in app/api/telegram/bot.ts).
-// The Czech, Spanish and Hindi replies name the alerts UI label („uživatelské jméno na Telegramu“, "nombre de usuario
-// de Telegram", "Telegram यूज़रनेम"): keep them in sync with alerts.ts.
+// The translated replies name the alerts UI label („uživatelské jméno na Telegramu“, "nombre de usuario de Telegram",
+// "Telegram यूज़रनेम", „Telegram-Benutzername“, "Tên người dùng Telegram"): keep them in sync with alerts.ts.
 
 type TelegramReplies = {
   privateChatsOnly: string;
@@ -98,5 +98,45 @@ export const TELEGRAM_REPLIES: Localized<TelegramReplies> = {
       "/stop: यहां Tokenping के सभी अलर्ट रोकें\n" +
       "/help: यह संदेश दिखाएं",
     unknownCommand: "मैं केवल /start, /stop और /help का जवाब देता हूं। अपने अलर्ट Tokenping ऐप में प्रबंधित करें।",
+  },
+  de: {
+    privateChatsOnly: "Tokenping funktioniert nur in privaten Chats. Schreib dem Bot bitte direkt.",
+    noUsername:
+      "Dein Telegram-Konto hat noch keinen Benutzernamen. Leg in Telegram einen an (Einstellungen, dann " +
+      "Benutzername), trag ihn in deinen Alert bei Tokenping ein und sende dann hier noch einmal /start.",
+    linkSaveFailed: "Beim Verknüpfen dieses Chats ist etwas schiefgelaufen. Sende bitte noch einmal /start.",
+    linked: username =>
+      `Verknüpft: @${username}. Tokenping-Alerts, die @${username} nennen, kommen in diesem Chat an.\n\n` +
+      "Sende jederzeit /stop, um sie zu beenden.",
+    unsubscribed: "Gestoppt. Hier kommen keine Tokenping-Alerts mehr an. Sende /start, um sie wieder zu erhalten.",
+    unsubscribeFailed: "Beim Stoppen der Alerts ist etwas schiefgelaufen. Sende bitte noch einmal /stop.",
+    help:
+      "Tokenping schreibt dir, wenn dein Health Factor auf Aave oder Morpho unter einen Schwellenwert fällt, den du in der App festlegst.\n\n" +
+      "Trag deinen Telegram-Benutzernamen in deinen Alert bei Tokenping ein und sende dann hier einmal /start.\n\n" +
+      "Befehle:\n" +
+      "/start: diesen Chat mit deinem Benutzernamen verknüpfen\n" +
+      "/stop: alle Tokenping-Alerts hier stoppen\n" +
+      "/help: diese Nachricht anzeigen",
+    unknownCommand: "Ich reagiere nur auf /start, /stop und /help. Verwalte deine Alerts in der Tokenping-App.",
+  },
+  vi: {
+    privateChatsOnly: "Tokenping chỉ hoạt động trong cuộc trò chuyện riêng. Hãy nhắn tin trực tiếp cho bot.",
+    noUsername:
+      "Tài khoản Telegram của bạn chưa có tên người dùng. Hãy đặt một tên trong Telegram (Cài đặt, rồi Tên người " +
+      "dùng), nhập tên đó vào cảnh báo của bạn trên Tokenping, rồi gửi lại /start tại đây.",
+    linkSaveFailed: "Đã xảy ra lỗi khi liên kết cuộc trò chuyện này. Hãy gửi lại /start.",
+    linked: username =>
+      `Đã liên kết @${username}. Các cảnh báo Tokenping ghi @${username} sẽ đến cuộc trò chuyện này.\n\n` +
+      "Gửi /stop bất cứ lúc nào để dừng nhận.",
+    unsubscribed: "Đã dừng. Sẽ không còn cảnh báo Tokenping nào đến đây nữa. Gửi /start để nhận lại.",
+    unsubscribeFailed: "Đã xảy ra lỗi khi dừng cảnh báo. Hãy gửi lại /stop.",
+    help:
+      "Tokenping nhắn tin cho bạn khi hệ số sức khỏe Aave hoặc Morpho của bạn giảm xuống dưới ngưỡng bạn đặt trong ứng dụng.\n\n" +
+      "Nhập tên người dùng Telegram của bạn vào cảnh báo trên Tokenping, rồi gửi /start tại đây một lần.\n\n" +
+      "Lệnh:\n" +
+      "/start: liên kết cuộc trò chuyện này với tên người dùng của bạn\n" +
+      "/stop: dừng mọi cảnh báo Tokenping tại đây\n" +
+      "/help: hiện tin nhắn này",
+    unknownCommand: "Tôi chỉ phản hồi /start, /stop và /help. Hãy quản lý cảnh báo trong ứng dụng Tokenping.",
   },
 };

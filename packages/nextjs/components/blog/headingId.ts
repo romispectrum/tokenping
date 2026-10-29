@@ -2,7 +2,7 @@ import { type ReactNode, isValidElement } from "react";
 
 /**
  * The anchor id of a heading: "Step 1: Connect your wallet" -> "step-1-connect-your-wallet". Latin letters lose their
- * accents ("Proč" -> "proc"); other scripts keep their letters, vowel signs and digits ("हेल्थ फ़ैक्टर क्या है?" ->
+ * accents ("Proč" -> "proc", "Größe" -> "grosse", "Đáo hạn" -> "dao-han"); other scripts keep their letters, vowel signs and digits ("हेल्थ फ़ैक्टर क्या है?" ->
  * "हेल्थ-फ़ैक्टर-क्या-है"), so Hindi headings get ids too.
  */
 export const headingId = (text: string) =>
@@ -10,6 +10,9 @@ export const headingId = (text: string) =>
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
+    // Letters NFKD does not split into a base and a mark: German "ß" and Vietnamese "đ".
+    .replace(/ß/g, "ss")
+    .replace(/đ/g, "d")
     .replace(/[^\p{L}\p{M}\p{N}\s-]/gu, "")
     .trim()
     .replace(/[\s-]+/g, "-");

@@ -1,0 +1,184 @@
+export const meta = {
+  slug: "so-funktioniert-die-liquidation-bei-aave",
+  title: "Was passiert, wenn deine Aave-Position liquidiert wird",
+  description:
+    "So funktionieren Liquidationen bei Aave V3 heute: wann sie auslösen, wie viel Schulden getilgt werden (50 % oder 100 %), der Bonus und ein Beispiel.",
+  h1: "Was passiert, wenn deine Aave-Position liquidiert wird?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Was passiert, wenn du bei Aave liquidiert wirst?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  Wenn dein Health Factor (Gesundheitsfaktor) bei Aave V3 unter 1 fällt, kann jede andere Adresse einen Teil oder alle
+  deiner Schulden zurückzahlen und Sicherheiten im Wert dieses Betrags plus einen Liquidationsbonus übernehmen, zum
+  Beispiel 5 % auf WETH im Markt Ethereum Core. Eine Liquidation kann bis zu 50 % deiner Schulden zurückzahlen, solange
+  dein Health Factor über 0,95 liegt und sowohl deine Sicherheiten im übernommenen Asset als auch deine Schulden im
+  zurückgezahlten Asset mindestens 2.000 $ wert sind; andernfalls können die gesamten Schulden in diesem Asset auf
+  einmal getilgt werden. Die geliehenen Token und die restlichen Sicherheiten und Schulden bleiben dir, die Liquidation
+  kostet dich also den Bonus.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Wann kann eine Aave-Position liquidiert werden?
+
+Eine Position bei Aave V3 kann liquidiert werden, sobald ihr Health Factor unter 1,00 liegt. Der Health Factor teilt den Wert deiner Sicherheiten, gewichtet mit der Liquidationsschwelle (liquidation threshold) jedes Assets, durch den Wert deiner Schulden. Unter 1,00 decken die gewichteten Sicherheiten die Schulden also nicht mehr (Formel und Beispiel: [was der Aave Health Factor ist](/de/blog/aave-health-factor-erklaert)).
+
+Die Contracts von Aave V3.7 prüfen fünf Dinge, bevor eine Liquidation durchgeht (`validateLiquidationCall` in `ValidationLogic.sol`):
+
+1. Der Health Factor des Kreditnehmers liegt unter 1,00.
+2. Das übernommene Sicherheiten-Asset und das zurückgezahlte Schulden-Asset sind beide aktiv und **nicht pausiert**.
+3. Eine eventuelle Schonfrist für Liquidationen (grace period) ist bei beiden Assets abgelaufen. Wenn der Emergency Guardian von Aave oder die Governance ein Asset wieder freigibt, kann eine Schonfrist von bis zu 4 Stunden gesetzt werden.
+4. Der Kreditnehmer hat diese Sicherheit als Sicherheit aktiviert und schuldet das gewählte Schulden-Asset.
+5. Der Aufrufer ist nicht der Kreditnehmer: Du kannst deine eigene Position nicht liquidieren.
+
+Ein eingefrorenes Asset kann weiterhin liquidiert werden, weil die Prüfung auf „paused“ schaut, nicht auf „frozen“. Jede andere Adresse kann die Funktion `liquidationCall` des Pools aufrufen.
+
+Das Protokoll warnt dich vor einer Liquidation nicht, und die eigene App von Aave auf app.aave.com schickt keine Alerts. Mit einer volatilen Sicherheit und Stablecoin-Schulden kannst du [deinen Aave-Liquidationspreis berechnen](/de/blog/aave-liquidationspreis-berechnen): den Preis der Sicherheit, bei dem der Health Factor 1 erreicht.
+
+## Wie viel meiner Schulden kann auf einmal liquidiert werden?
+
+Bei Aave V3.7 beträgt der Close Factor (der Anteil deiner Schulden, den eine Liquidation zurückzahlen darf) nur dann 50 % deiner gesamten Schulden, wenn alle drei Bedingungen erfüllt sind: Dein Health Factor liegt über 0,95, deine Sicherheiten im übernommenen Asset sind mindestens 2.000 $ wert, und deine Schulden im zurückgezahlten Asset sind mindestens 2.000 $ wert. In allen anderen Fällen kann ein Liquidator in einer einzigen Transaktion bis zu 100 % deiner Schulden im gewählten Asset zurückzahlen.
+
+| Lage im Moment der Liquidation                                                                                      | Höchstbetrag, den eine Liquidation zurückzahlen kann                                                    |
+| ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Health Factor über 0,95, und die gewählte Sicherheit und die gewählten Schulden sind jeweils 2.000 $ oder mehr wert | 50 % deiner gesamten Schulden über alle Assets (in USD), nie mehr als deine Schulden im gewählten Asset |
+| Health Factor bei 0,95 oder darunter                                                                                | 100 % deiner Schulden im gewählten Asset                                                                |
+| Die gewählte Sicherheit oder die gewählten Schulden sind weniger als 2.000 $ wert                                   | 100 % deiner Schulden im gewählten Asset                                                                |
+
+Diese Grenzen sind Konstanten in `LiquidationLogic.sol` von Aave (aave-v3-origin, gelesen am 14. Oktober 2026). Seit v3.3 gelten die 50 % für die ganze Position statt für jedes Schulden-Asset einzeln. Die Notizen von Aave zu v3.3 nennen das Beispiel von je 3.000 $ Schulden in GHO, USDC und DAI, insgesamt 9.000 $: Die ganzen 3.000 $ eines davon können in einem Aufruf zurückgezahlt werden, weil 50 % der Gesamtsumme 4.500 $ sind.
+
+Eine zweite Regel verhindert Kleinstreste (dust). Eine Teilliquidation muss mindestens 1.000 $ Schulden im zurückgezahlten Asset und mindestens 1.000 $ Sicherheiten im übernommenen Asset übrig lassen. Andernfalls muss der Liquidator alle diese Schulden oder alle diese Sicherheiten nehmen, sonst wird die Transaktion rückgängig gemacht.
+
+Eine Liquidation nimmt nur Sicherheiten im Wert der zurückgezahlten Schulden plus den Bonus, nicht alle deine Sicherheiten. Der Liquidator zahlt die Schulden mit eigenen Mitteln zurück, die geliehenen Token bleiben also dir; solange die Sicherheiten dafür reichen, verlierst du den Bonus.
+
+Ältere Ratgeber beschreiben einen pauschalen Close Factor von 50 %, und die eigene Referenz zum Pool-Contract auf aave.com sagt noch „close factor is 0.5“ (abgerufen am 14. Oktober 2026). Beides ist veraltet: Pauschal 50 % war die Regel von Aave V2, und der Code von V3.7, mit dem diese Märkte laufen, nutzt die Regel 50 % oder 100 % aus der Tabelle.
+
+## Was ist der Liquidationsbonus, und wer zahlt ihn?
+
+Der Liquidationsbonus, oft auch Liquidationsstrafe (liquidation penalty) genannt, sind die zusätzlichen Sicherheiten, die ein Liquidator über die zurückgezahlten Schulden hinaus erhält, und der Kreditnehmer zahlt ihn. Bei einem Bonus von 5 % kostet dich die Tilgung von 1.000 USDC deiner Schulden Sicherheiten im Wert von 1.050 USDC. Die Treasury von Aave behält einen Teil des Bonus als Liquidations-Protokollgebühr ein, der Liquidator bekommt also etwas weniger, als du verlierst.
+
+Bonus und Gebühr richten sich nach der übernommenen Sicherheit, nicht nach den Schulden. Werte von Aave V3, on-chain gelesen am 14. Oktober 2026 (Ethereum-Block 26193284, Arbitrum-Block 514855406):
+
+| Markt         | Übernommene Sicherheit | Liquidationsbonus | Protokollgebühr (Anteil am Bonus) | Verlorene Sicherheiten pro 1.000 $ Rückzahlung | Liquidator erhält |
+| ------------- | ---------------------- | ----------------- | --------------------------------- | ---------------------------------------------- | ----------------- |
+| Ethereum Core | WETH                   | 5 %               | 10 %                              | 1.050 $                                        | 1.045 $           |
+| Ethereum Core | WBTC                   | 5 %               | 10 %                              | 1.050 $                                        | 1.045 $           |
+| Ethereum Core | USDC                   | 4,5 %             | 20 %                              | 1.045 $                                        | 1.036 $           |
+| Arbitrum      | WETH                   | 5 %               | 10 %                              | 1.050 $                                        | 1.045 $           |
+| Arbitrum      | WBTC                   | 7 %               | 10 %                              | 1.070 $                                        | 1.063 $           |
+| Arbitrum      | USDC (nativ)           | 5 %               | 10 %                              | 1.050 $                                        | 1.045 $           |
+
+Im E-Mode ersetzt der Bonus der Kategorie den des Assets, wenn das übernommene Asset zum Sicherheiten-Set deiner Kategorie gehört: 1 % für „ETH correlated“ auf Ethereum Core (gelesen in Ethereum-Block 26193288, 14. Oktober 2026), jede Liquidation kostet also weniger. Die Governance kann jeden dieser Parameter ändern, und die Risk Stewards von Aave können Liquidationsboni innerhalb festgelegter Grenzen anpassen, prüfe die aktuellen Werte also in der Aave-App.
+
+## Welche Sicherheit nimmt der Liquidator?
+
+Der Liquidator wählt. Jede Liquidation bei Aave V3 nennt ein Sicherheiten-Asset, das übernommen wird, und ein Schulden-Asset, das zurückgezahlt wird, und der Liquidator wählt das Paar, du hast also kein Mitspracherecht, welches deiner Assets zuerst geht. Nur Assets, die du als Sicherheit aktiviert hast, können übernommen werden; ein eingezahltes Asset mit ausgeschaltetem „used as collateral“ kann nicht genommen werden, trägt aber auch nichts zu deinem Health Factor bei.
+
+Kann die gewählte Sicherheit die Rückzahlung plus den Bonus nicht decken, verlierst du dieses Asset ganz (der Liquidator bekommt es abzüglich der Protokollgebühr), und es werden weniger Schulden zurückgezahlt. Weil jede Liquidation ein Paar behandelt, kann eine Position mit mehreren Assets in mehreren Transaktionen liquidiert werden, und solange der Health Factor unter 1 bleibt, können weitere Liquidationen folgen.
+
+## Rechenbeispiel: ETH fällt auf 1.420 $, dann auf 1.330 $
+
+In diesem Beispiel zahlt eine Liquidation bei einem ETH-Preis von 1.420 $ 6.000 USDC zurück und kostet den Kreditnehmer 300 $ in WETH; liquidiert niemand, bis ETH bei 1.330 $ steht, können alle 12.000 USDC auf einmal zurückgezahlt werden, und die Kosten verdoppeln sich auf 600 $.
+
+Die Position: 10 WETH als Sicherheit und 12.000 USDC Schulden auf Aave V3 Ethereum Core. WETH hat eine Liquidationsschwelle von 83 %, einen Bonus von 5 % und eine Protokollgebühr von 10 % (on-chain gelesen in Block 26193284, 14. Oktober 2026). Die ETH-Preise sind illustrativ, USDC wird mit 1,00 $ angesetzt, und Zinsen werden ignoriert.
+
+Bei 2.400 $ beträgt der Health Factor 24.000 × 0,83 ÷ 12.000 = 1,66. Er erreicht 1 bei einem ETH-Preis von 12.000 ÷ (10 × 0,83) = 1.445,78 $ und 0,95 bei 1.373,49 $.
+
+| ETH-Preis                      | Health Factor          | Höchstbetrag, den eine Liquidation zurückzahlen kann                                                                                                                    |
+| ------------------------------ | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Über etwa 1.445,78 $           | 1,00 oder höher        | Nichts; die Position kann nicht liquidiert werden                                                                                                                       |
+| Etwa 1.373,50 $ bis 1.445,78 $ | Zwischen 0,95 und 1,00 | 50 %: 6.000 USDC                                                                                                                                                        |
+| Etwa 1.260 $ bis 1.373,49 $    | Etwa 0,87 bis 0,95     | 100 %: 12.000 USDC                                                                                                                                                      |
+| Unter etwa 1.260 $             | Unter etwa 0,87        | Weniger als 12.000 USDC: Alle 10 WETH werden übernommen, und der Rest wird zu [uneinbringlichen Schulden](#kann-eine-liquidation-uneinbringliche-schulden-hinterlassen) |
+
+### Schritt 1: ETH bei 1.420 $, Health Factor 0,982
+
+Bei 1.420 $ sind die 10 WETH 14.200 $ wert, der Health Factor beträgt also 14.200 × 0,83 ÷ 12.000 = 0,982. Das liegt über 0,95, und deine WETH-Sicherheiten und deine USDC-Schulden sind jeweils mehr als 2.000 $ wert, ein Liquidator kann also höchstens 6.000 USDC zurückzahlen.
+
+- Der Liquidator zahlt 6.000 USDC deiner Schulden zurück.
+- Deine Position verliert 6.000 × 1,05 = 6.300 $ in WETH (4,4366 WETH).
+- Die Protokollgebühr beträgt 10 % des Bonus von 300 $: 30 $ (0,0211 WETH) gehen an die Treasury von Aave, und der Liquidator erhält 6.270 $ (4,4155 WETH).
+- Dir bleiben 5,5634 WETH (7.900 $) und 6.000 USDC Schulden: ein Health Factor von 7.900 × 0,83 ÷ 6.000 = 1,093.
+
+Dein Nettowert (Sicherheiten minus Schulden) fällt von 2.200 $ auf 1.900 $. Die Differenz von 300 $ ist der Bonus.
+
+### Schritt 2: ETH bei 1.330 $, Health Factor 1,024
+
+Die verbleibenden 5,5634 WETH sind bei 1.330 $ 7.399 $ wert, ein Health Factor von 7.399 × 0,83 ÷ 6.000 = 1,024, die Position kann bei diesem Preis also nicht erneut liquidiert werden. Ihr neuer Liquidationspreis liegt bei etwa 1.299 $, aus 6.000 ÷ (5,5634 × 0,83). Die Halbierung der Schulden hat den Liquidationspreis gesenkt; der Bonus von 300 $ war der Preis dafür.
+
+### Was, wenn niemand liquidiert, bis ETH bei 1.330 $ steht?
+
+Kommt die erste Liquidation erst, wenn ETH schon bei 1.330 $ steht, hat die ursprüngliche Position einen Health Factor von 13.300 × 0,83 ÷ 12.000 = 0,920. Das ist 0,95 oder darunter, ein Liquidator kann also alle 12.000 USDC auf einmal zurückzahlen. Deine Position verliert 12.000 × 1,05 = 12.600 $ in WETH (9,4737 WETH), davon 60 $ als Protokollgebühr und 12.540 $ an den Liquidator. Dir bleiben 0,5263 WETH (700 $), und du schuldest nichts mehr; die Regel gegen Kleinstreste greift nicht, weil die Schulden vollständig getilgt wurden.
+
+Der Nettowert fällt von 1.300 $ auf 700 $. Der Verlust von 600 $ ist doppelt so hoch wie in Schritt 1, weil beim selben Bonus von 5 % doppelt so viele Schulden zurückgezahlt wurden.
+
+## Kann eine Liquidation uneinbringliche Schulden hinterlassen?
+
+Ja. Uneinbringliche Schulden (bad debt) entstehen, wenn die Sicherheiten einer Position weniger wert sind als ihre Schulden plus der Liquidationsbonus, sodass selbst die Übernahme aller Sicherheiten nicht alles zurückzahlt. Seit Aave V3.3 verbrennt der Contract die restlichen Schulden und verbucht sie als „deficit“ auf diesem Asset, wenn eine Liquidation alle Sicherheiten eines Kreditnehmers aufbraucht und noch Schulden übrig sind. Der Kreditnehmer steht am Ende ohne Sicherheiten und ohne Schulden da, und der Verlust bleibt beim Protokoll.
+
+Beispiel mit den WETH-Parametern von Ethereum Core: 10.000 $ in WETH als einzige Sicherheit gegen 9.800 USDC Schulden ergeben einen Health Factor von 0,847. Alle 9.800 USDC bei 5 % Bonus zu tilgen, bräuchte 10.290 $ in WETH, also werden alle 10.000 $ in WETH übernommen (etwa 47,62 $ davon als Protokollgebühr) und etwa 9.524 USDC zurückgezahlt (10.000 ÷ 1,05). Die restlichen rund 276 USDC werden zum Defizit.
+
+Umbrella, das Staking-Sicherheitsnetz von Aave, kann aTokens der Staker im betroffenen Asset verbrennen, um solche Defizite zu decken; seine Aktivierung begann auf Ethereum (Aave-Dokumentation, abgerufen am 14. Oktober 2026). Es schützt das Protokoll, nicht den Kreditnehmer, dessen Sicherheiten schon weg sind.
+
+Das ist bei Aave V3 schon passiert. Nachdem USDC am 11. März 2023 bei etwa 0,88 $ gehandelt wurde, verzeichnete das Post-Mortem von Gauntlet etwa 280.000 $ uneinbringliche Schulden im E-Mode von V3 auf Avalanche und etwa 20.000 $ auf V3 Arbitrum. Es hielt fest, dass jede Teilliquidation ein Konto tiefer ins Minus drückt, sobald die Sicherheiten weniger wert sind als die Schulden mal eins plus den Bonus. Das war, bevor v3.3 den Defizit-Mechanismus einführte.
+
+## Stoppen Liquidationen, wenn ein Markt eingefroren ist oder ein L2-Sequencer ausfällt?
+
+Beides nein. Bei Aave V3.7 kann ein eingefrorenes Asset weiterhin liquidiert werden, und Liquidationen auf Arbitrum, Optimism und Base hängen nicht mehr davon ab, ob der L2-Sequencer läuft. Was Liquidationen tatsächlich blockiert, ist eine Pause.
+
+- **Eingefroren (frozen):** Das Einfrieren blockiert neue Positionen in einem Asset, aber die Liquidationsprüfung ignoriert es. Beim Depeg (Verlust der Dollarbindung) von USDC im März 2023 wurden Stablecoins auf Aave V3 Avalanche eingefroren, und die Liquidationen liefen weiter. Gebridgtes USDC.e auf Arbitrum war am 14. Oktober 2026 (Arbitrum-Block 514855406) mit einer LTV von 0 eingefroren, zählt aber weiterhin mit seiner Liquidationsschwelle von 78 % für den Health Factor und kann übernommen werden.
+- **L2-Sequencer:** Vor v3.7 konnte ein Sentinel-Contract in L2-Märkten Liquidationen und Kredite blockieren, solange der Sequencer ausgefallen war, und für eine Schonfrist danach. Aave V3.7, mit dem die V3-Märkte auf Arbitrum, Optimism und Base am 14. Oktober 2026 alle laufen, hat den Sentinel entfernt. Ein Ausfall hält weiterhin die Transaktionen aller auf, von Kreditnehmern wie von Liquidatoren, aber eine Position, die währenddessen unter 1 gefallen ist, kann jetzt liquidiert werden, sobald der Sequencer wieder läuft.
+- **Pausiert (paused):** Ein pausiertes Sicherheiten- oder Schulden-Asset blockiert jede Liquidation, an der es beteiligt ist. Beim Aufheben der Pause können der Emergency Guardian von Aave oder die Governance eine Schonfrist von bis zu 4 Stunden setzen, in der Liquidationen blockiert bleiben, damit Kreditnehmer zurückzahlen oder Sicherheiten nachlegen können; Kredite sind in diesem Zeitfenster erlaubt.
+
+## Wie unterscheiden sich Liquidationen bei Aave V4?
+
+Aave V4, seit dem 30. März 2026 auf Ethereum live und seitdem auch auf Avalanche, Arc und Base, ersetzt den Close Factor durch einen Ziel-Health-Factor und zahlt einen Bonus, der wächst, je tiefer der Health Factor fällt. V3 läuft daneben mit seinen eigenen Regeln weiter.
+
+- **Ziel-Health-Factor statt 50 % oder 100 %.** Ein Liquidator kann bei V4 nur so viele Schulden zurückzahlen, wie nötig sind, um die Position auf den Ziel-Health-Factor ihres Spokes zurückzubringen, 1,24 auf dem Ethereum Main Spoke (on-chain gelesen in Ethereum-Block 26193995, 14. Oktober 2026). Die Ausnahme: Würde dabei ein sehr kleiner Rest bleiben, können die gesamten Schulden in dieser Reserve getilgt werden.
+- **Ein steigender Bonus.** Die Dokumentation von Aave nennt das eine holländische Auktion (Dutch auction). Auf dem Ethereum Main Spoke beginnt der Bonus knapp unter einem Health Factor von 1 bei 90 % des Maximums des Assets und erreicht das volle Maximum bei 0,90 oder darunter. Für WETH mit einem Maximum von 5,55 % (Aave V4 API, 14. Oktober 2026) sind das etwa 5,0 % knapp unter 1 und 5,55 % bei 0,90. Eine Gebühr von 10 % geht vom Bonus ab, wie bei V3.
+
+Tokenping überwacht auch Positionen bei Aave V4: jeden Spoke auf Ethereum, Avalanche, Arc und Base (20 Stand 16. Oktober 2026), mit einem eigenen Alert für jeden Spoke, weil jeder seine eigene Position und seinen eigenen Health Factor führt.
+
+## Wie unterscheidet sich eine Aave-Liquidation von einer bei Morpho?
+
+Bei Morpho Blue gibt es keinen Close Factor: Sobald der Health Factor einer Position unter 1 liegt, kann ein Liquidator alle Schulden in einem Aufruf zurückzahlen. Der Anreiz hängt nur von der Liquidations-LTV (LLTV) des Markts ab, etwa 0,6 % bei einer LLTV von 98 % und gedeckelt bei 15 % für niedrige LLTVs, und gehen die Sicherheiten zuerst aus, werden die restlichen Schulden zulasten der Kreditgeber des Markts abgeschrieben. [So funktioniert die Liquidation bei Morpho](/de/blog/so-funktioniert-die-liquidation-bei-morpho) enthält die Formel, den Anreiz bei jeder LLTV und ein Rechenbeispiel.
+
+## Was kannst du tun, bevor dein Health Factor 1 erreicht?
+
+Bevor der Health Factor 1 erreicht, kannst du Schulden zurückzahlen oder Sicherheiten nachlegen; beides hebt ihn direkt an, und keines von beiden kostet einen Bonus. Liegt er erst unter 1, kann ein Liquidator vor dir handeln, und selbst eine Teilliquidation kostet dich den Bonus auf die übernommenen Sicherheiten: 300 $ für 6.000 zurückgezahlte USDC bei 5 % Bonus.
+
+Bis zum letzten Moment zu warten ist riskant, weil Transaktionen fehlschlagen oder hängen bleiben können. Im Mai 2021 versuchte ein Nutzer im Polygon-Forum, bei einem Health Factor von 1,01 zurückzuzahlen, bekam immer wieder Fehler und wurde liquidiert, bevor die Rückzahlung durchging. Im Dezember 2024 beschrieb ein Nutzer im Aave-Forum mehr als eine Stunde lang hängende Rückzahlungsversuche, bevor die Position liquidiert wurde.
+
+Die Möglichkeiten stehen in [wie du deinen Aave Health Factor erhöhst](/de/blog/aave-liquidation-vermeiden), und die Gründe, warum ein Health Factor fällt, während du nichts tust, in [warum dein Aave Health Factor von selbst fällt](/de/blog/warum-ist-mein-aave-health-factor-gesunken).
+
+Tokenping prüft deinen Aave Health Factor alle 5 Minuten, in jedem Aave-V3-Markt in 21 Netzwerken und in jedem Aave-V4-Spoke, und schickt dir über Signal, Telegram oder E-Mail eine Nachricht, wenn er unter einem Schwellenwert liegt, den du wählst (1,1 bis 10), wiederholt bei jeder Prüfung, bis er sich erholt. Eine Liquidation kostet mindestens den Bonus auf die übernommenen Sicherheiten. Ein Alert über 1,0 kann dir Zeit geben, zurückzuzahlen oder Sicherheiten nachzulegen, aber eine schnelle Preisbewegung kann den Health Factor zwischen zwei Prüfungen trotzdem unter 1 drücken, und ein Alert kann nicht für dich handeln. Du kannst [deinen Aave-V3-Health-Factor prüfen](/de/aave) oder lesen, [wie du einen Health-Factor-Alert einrichtest](/de/blog/aave-health-factor-alert-einrichten).
+
+## Quellen
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), aave-dao/aave-v3-origin, Branch main: Regeln zu Close Factor, Kleinstresten und uneinbringlichen Schulden (abgerufen am 14. Oktober 2026)
+- [Aave V3 ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): Bedingungen der Liquidation (abgerufen am 14. Oktober 2026)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): uneinbringliche Schulden, Close Factor für die ganze Position und sein Beispiel mit GHO/USDC/DAI, Schwelle von 2.000 $ (abgerufen am 14. Oktober 2026)
+- [Aave v3.1 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): Schonfrist für Liquidationen von bis zu 4 Stunden (abgerufen am 14. Oktober 2026)
+- [Aave V3 PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol): Pausieren und Aufheben der Pause mit Schonfrist nur durch Emergency Admin oder Pool Admin, `MAX_GRACE_PERIOD = 4 hours` (abgerufen am 14. Oktober 2026)
+- [Governance-Dokumentation von Aave](https://aave.com/docs/ecosystem/governance): Der Protocol Emergency Guardian hat die Rolle des Emergency Admin (abgerufen am 14. Oktober 2026)
+- [README der Aave V3 Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): Parameter, die die Stewards innerhalb festgelegter Grenzen ändern dürfen (abgerufen am 14. Oktober 2026)
+- [Aave v3.7: Entfernung des PriceOracleSentinel](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/sentinel-removal.md) (abgerufen am 14. Oktober 2026)
+- [Referenz zum Aave V3 Pool-Contract](https://aave.com/docs/aave-v3/smart-contracts/pool), die noch den Close Factor von vor v3.3 nennt (abgerufen am 14. Oktober 2026)
+- [Umbrella-Dokumentation von Aave](https://aave.com/docs/aave-v3/umbrella) (abgerufen am 14. Oktober 2026)
+- [Aave V3 PoolDataProvider auf Ethereum](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): Reserve-Konfiguration und Liquidations-Protokollgebühr für WETH, WBTC und USDC in Block 26193284, in Block 26193992 unverändert erneut gelesen (abgerufen am 14. Oktober 2026)
+- [Aave V3 PoolDataProvider auf Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): dieselben Abfragen für WETH, WBTC, natives USDC und USDC.e in Block 514855406 (abgerufen am 14. Oktober 2026)
+- [Aave V3 Ethereum Core Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): E-Mode-Kategorie 1 „ETH correlated“ in Block 26193288 (abgerufen am 14. Oktober 2026)
+- [Dokumentation zu Liquidationen bei Aave V4](https://aave.com/docs/aave-v4/positions/liquidations) (abgerufen am 14. Oktober 2026)
+- [Aave-V4-Überblick](https://github.com/aave/aave-v4/blob/main/docs/overview.md) und [V4 LiquidationLogic.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/libraries/LiquidationLogic.sol), aave/aave-v4 main (abgerufen am 14. Oktober 2026)
+- [Aave V4 Ethereum Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485): Ziel-Health-Factor und Bonus-Einstellungen in Block 26193995 (abgerufen am 14. Oktober 2026)
+- [Öffentliche GraphQL-API von Aave V4](https://api.v4.aave.com/graphql), Abfrage `reserves`: maximaler Liquidationsbonus und Liquidationsgebühr für WETH auf dem Ethereum Main Spoke (abgerufen am 14. Oktober 2026)
+- [Changelog der Aave-Dokumentation](https://aave.com/docs/resources/changelog): Startdaten von V4 (abgerufen am 14. Oktober 2026)
+- [Gauntlet, „Aave Resilient Through USDC Volatility“](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), veröffentlicht am 17. März 2023 (abgerufen am 14. Oktober 2026)
+- [Polygon-Forum, „Liquidation on polygon AAVE -JSON ERROR“](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067), veröffentlicht am 18. Mai 2021 (abgerufen am 14. Oktober 2026)
+- [Aave-Forum, „Repeatedly Failed Repayment Attempts Leading to Liquidation“](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379), veröffentlicht am 23. Dezember 2024 (abgerufen am 14. Oktober 2026)
+- [Pull Request #2084 der Aave-Oberfläche](https://github.com/aave/interface/pull/2084), der im Mai 2024 die einzige Alert-Integration der App entfernte (abgerufen am 14. Oktober 2026)
+
+_Bildungsinhalt, keine Finanzberatung. Alerts senken das Risiko, verhindern aber keine Liquidation._

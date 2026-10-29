@@ -1,4 +1,4 @@
-import { csForMarket, csOnMarket, hiMarket, plural } from "~~/i18n/format";
+import { csForMarket, csOnMarket, deForMarket, deOnMarket, hiMarket, plural, viMarket } from "~~/i18n/format";
 import type { Localized } from "~~/i18n/locales";
 import type { GateMessages } from "~~/i18n/messages/dashboard";
 
@@ -323,6 +323,137 @@ export const MORPHO_MESSAGES: Localized<MorphoMessages> = {
         `${hiMarket(marketName, "market")} पर और दूसरे मार्केट में हेल्थ फ़ैक्टर अलर्ट सेट करने के लिए एक बार भुगतान करें। कुछ भी अपने आप रिन्यू नहीं होता: जब आप एक्सेस बढ़ाना चाहें, तब अपने वॉलेट से भुगतान करते हैं।`,
       descriptionExtend: marketName =>
         `${hiMarket(marketName, "market")} के लिए आपकी सहेजी हुई अलर्ट सेटिंग अब भी आपके अकाउंट में है। एक्सेस बढ़ाने और उसे संपादित करने के लिए फिर से भुगतान करें।`,
+    },
+  },
+  de: {
+    page: {
+      metaTitle: "Morpho Health-Factor-Alerts für Blue- und Midnight-Kredite",
+      metaDescription: (networkCount, channels) =>
+        `Health-Factor-Alerts für Morpho Blue und Midnight (Festzins) per ${channels}, in ${networkCount} Netzwerken, mit Erinnerung vor der Fälligkeit.`,
+      title: "Morpho Blue und Midnight: Positionen und Health-Factor-Alerts",
+      intro: networks =>
+        `Deine Kreditpositionen in den Märkten, die die Morpho-App listet, auf ${networks}: Kredite mit variablem Zinssatz (Morpho Blue) und mit festem Zinssatz (Morpho Midnight). Die Health Factors werden direkt aus der Blockchain gelesen.`,
+      checks: minutes =>
+        `Alerts werden ${plural("de", minutes, { one: "jede Minute", other: `alle ${minutes} Minuten` })} geprüft. Ein Kredit mit festem Zinssatz bekommt außerdem 7 Tage und 1 Tag vor der Fälligkeit eine Erinnerung und nach der Fälligkeit bei jeder Prüfung einen Alert, solange Schulden offen sind.`,
+      access: "Eine Zahlung für den Zugang deckt deine Alerts für Aave und Morpho ab.",
+      notAffiliated: "Tokenping ist nicht mit Morpho verbunden.",
+      guideHealthFactor: "So funktioniert der Health Factor bei Morpho",
+      guideLiquidation: "So funktioniert die Liquidation bei Morpho",
+      guideMidnight: "Festzinskredite bei Morpho Midnight",
+      aaveDashboard: "Du leihst auf Aave? Öffne das Aave-Dashboard",
+    },
+    positionsHeading: "Deine Morpho-Positionen",
+    gate: {
+      title: "Verbinde eine Wallet, um fortzufahren",
+      description:
+        "Tokenping braucht deine Wallet-Adresse, um deine Morpho-Positionen zu finden. Das Verbinden bewegt kein Guthaben und kostet keine Gebühr.",
+      connect: "Wallet verbinden",
+      connecting: "Wird verbunden",
+      approveInWallet: "Bestätige die Verbindung in deiner Wallet.",
+    },
+    list: {
+      heading: "Märkte",
+      count: count => `${count} mit Schulden`,
+      none: "In den Märkten, die die Morpho-App listet, wurde kein Kredit gefunden.",
+      discoveryFailed:
+        "Die API von Morpho hat nicht geantwortet, daher sind nur die Märkte mit einem gespeicherten Alert aufgeführt.",
+      variableRate: "Variabler Zinssatz",
+      fixedRate: "Fester Zinssatz",
+      matures: date => `Fällig am ${date}`,
+      matured: "Fälligkeit überschritten",
+      unreadable: "Konnte nicht gelesen werden",
+      noneSelectedDescription: "Wähle einen Markt, um deine Morpho-Position zu sehen.",
+    },
+    details: {
+      collateralValue: "Wert der Sicherheiten",
+      debt: "Schulden",
+      ltv: "LTV",
+      lltv: "Liquidations-LTV",
+      maturity: "Fälligkeit",
+      timeLeft: (days, hours) =>
+        days > 0
+          ? plural("de", days, { one: "in 1 Tag", other: `in ${days} Tagen` })
+          : plural("de", hours, { one: "in 1 Stunde", other: `in ${hours} Stunden` }),
+      pastMaturity:
+        "Dieser Kredit hat seine Fälligkeit überschritten: Offene Schulden können jederzeit liquidiert werden, egal wie hoch der Health Factor ist. Zahle sie zurück, um eine Liquidation zu vermeiden.",
+      preLiquidation: "Vorliquidation",
+      preLiquidationNote:
+        "Du hast in diesem Markt die Vorliquidation (pre-liquidation) aktiviert, daher wird der Health Factor an ihrer früheren Grenze gemessen: Unter 1 kann ein Teil deiner Position verkauft werden.",
+      amountsIn: token => `Die Beträge sind in ${token} angegeben, bewertet mit dem Orakel des Markts.`,
+      noDebtTitle: "Keine Schulden in diesem Markt",
+      noDebtDetail: "Ein gespeicherter Alert bleibt gespeichert und sendet nichts, solange keine Schulden bestehen.",
+      unreadableTitle: "Diese Position konnte nicht gelesen werden",
+      unreadableDetail: "Das Netzwerk hat nicht geantwortet. Dein Alert wird weiter geprüft.",
+    },
+    paywall: {
+      descriptionNew: marketName =>
+        `Zahle einmal, um Health-Factor-Alerts ${deOnMarket(marketName, "market")} und in anderen Märkten einzurichten. Nichts verlängert sich automatisch: Wenn du verlängern willst, zahlst du aus deiner Wallet.`,
+      descriptionExtend: marketName =>
+        `Deine gespeicherten Alert-Einstellungen ${deForMarket(marketName, "market")} sind noch in deinem Konto. Zahle erneut, um den Zugang zu verlängern und sie zu bearbeiten.`,
+    },
+  },
+  vi: {
+    page: {
+      metaTitle: "Cảnh báo hệ số sức khỏe trên Morpho Blue và Midnight",
+      metaDescription: (networkCount, channels) =>
+        `Cảnh báo hệ số sức khỏe cho khoản vay Morpho Blue và Midnight qua ${channels}, trên ${networkCount} mạng, kèm lời nhắc trước ngày đáo hạn của khoản vay.`,
+      title: "Vị thế Morpho Blue, Midnight và cảnh báo hệ số sức khỏe",
+      intro: networks =>
+        `Các vị thế vay của bạn trong những thị trường mà ứng dụng Morpho liệt kê, trên các mạng ${networks}: khoản vay lãi suất thả nổi (Morpho Blue) và khoản vay lãi suất cố định (Morpho Midnight). Hệ số sức khỏe được đọc trực tiếp từ blockchain.`,
+      checks: minutes =>
+        `Cảnh báo được kiểm tra ${minutes} phút một lần. Khoản vay lãi suất cố định còn nhận lời nhắc 7 ngày và 1 ngày trước ngày đáo hạn, và một cảnh báo ở mỗi lần kiểm tra sau ngày đáo hạn khi vẫn còn nợ.`,
+      access: "Một lần thanh toán quyền truy cập áp dụng cho cả cảnh báo Aave và Morpho của bạn.",
+      notAffiliated: "Tokenping không liên kết với Morpho.",
+      guideHealthFactor: "Cách hệ số sức khỏe trên Morpho hoạt động",
+      guideLiquidation: "Cách thanh lý trên Morpho hoạt động",
+      guideMidnight: "Khoản vay lãi suất cố định trên Morpho Midnight",
+      aaveDashboard: "Bạn vay trên Aave? Mở bảng điều khiển Aave",
+    },
+    positionsHeading: "Vị thế Morpho của bạn",
+    gate: {
+      title: "Kết nối ví để tiếp tục",
+      description:
+        "Tokenping cần địa chỉ ví của bạn để tìm các vị thế Morpho của bạn. Việc kết nối không chuyển tiền và không mất phí.",
+      connect: "Kết nối ví",
+      connecting: "Đang kết nối",
+      approveInWallet: "Hãy xác nhận kết nối trong ví của bạn.",
+    },
+    list: {
+      heading: "Thị trường",
+      count: count => `${count} có nợ`,
+      none: "Không tìm thấy khoản vay nào trong các thị trường mà ứng dụng Morpho liệt kê.",
+      discoveryFailed: "API của Morpho không phản hồi, nên chỉ những thị trường có cảnh báo đã lưu được liệt kê.",
+      variableRate: "Lãi suất thả nổi",
+      fixedRate: "Lãi suất cố định",
+      matures: date => `Đáo hạn ngày ${date}`,
+      matured: "Đã qua ngày đáo hạn",
+      unreadable: "Không đọc được",
+      noneSelectedDescription: "Chọn một thị trường để xem vị thế Morpho của bạn.",
+    },
+    details: {
+      collateralValue: "Giá trị tài sản thế chấp",
+      debt: "Nợ",
+      ltv: "LTV",
+      lltv: "LTV thanh lý",
+      maturity: "Ngày đáo hạn",
+      // Vietnamese nouns do not change after a number, so the number is written into one form.
+      timeLeft: (days, hours) => (days > 0 ? `còn ${days} ngày` : `còn ${hours} giờ`),
+      pastMaturity:
+        "Khoản vay này đã qua ngày đáo hạn: phần nợ còn lại có thể bị thanh lý bất cứ lúc nào, bất kể hệ số sức khỏe. Hãy trả nợ để tránh bị thanh lý.",
+      preLiquidation: "Thanh lý trước",
+      preLiquidationNote:
+        "Bạn đã chọn tham gia thanh lý trước (pre-liquidation) trên thị trường này, nên hệ số sức khỏe được đo theo ngưỡng sớm hơn của cơ chế đó: dưới 1, một phần vị thế của bạn có thể bị bán.",
+      amountsIn: token => `Số tiền tính bằng ${token}, được định giá theo oracle của thị trường.`,
+      noDebtTitle: "Không có nợ trên thị trường này",
+      noDebtDetail: "Cảnh báo đã lưu vẫn được giữ, và không gửi gì khi không có nợ.",
+      unreadableTitle: "Không đọc được vị thế này",
+      unreadableDetail: "Mạng không phản hồi. Cảnh báo của bạn vẫn tiếp tục được kiểm tra.",
+    },
+    paywall: {
+      descriptionNew: marketName =>
+        `Thanh toán một lần để đặt cảnh báo hệ số sức khỏe trên ${viMarket(marketName, "market")} và các thị trường khác. Không có gì tự động gia hạn: bạn thanh toán từ ví của mình khi muốn gia hạn.`,
+      descriptionExtend: marketName =>
+        `Cài đặt cảnh báo bạn đã lưu cho ${viMarket(marketName, "market")} vẫn còn trong tài khoản của bạn. Thanh toán lại để gia hạn quyền truy cập và chỉnh sửa chúng.`,
     },
   },
 };

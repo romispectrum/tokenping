@@ -1,0 +1,189 @@
+export const meta = {
+  slug: "canh-bao-aave-va-quyen-rieng-tu",
+  title: "Cảnh báo Aave và quyền riêng tư: Tokenping lưu gì",
+  description:
+    "Tokenping lưu gì, điều gì vẫn công khai trên chuỗi, và cách bí danh email, tên người dùng Signal và Telegram giúp thông tin liên hệ không làm lộ bạn.",
+  h1: "Cách nhận cảnh báo hệ số sức khỏe Aave mà không cung cấp danh tính cho Tokenping",
+  publishedAt: "2026-10-19",
+  primaryQuestion:
+    "Tôi có thể nhận cảnh báo hệ số sức khỏe Aave mà không liên kết danh tính với địa chỉ ví của mình không?",
+  readingMinutes: 18,
+};
+
+<ShortAnswer>
+  Tokenping không có tài khoản với mật khẩu: bạn đăng nhập bằng cách ký một tin nhắn với ví của mình, và Tokenping lưu
+  địa chỉ ví của bạn cạnh thông tin liên hệ mà bạn cung cấp để nhận cảnh báo. Vì vậy, hãy đưa cho nó những thông tin
+  liên hệ không nói gì về bạn: một bí danh email thay cho địa chỉ thật, một tên người dùng Signal với số điện thoại được
+  ẩn, và một tên người dùng cùng tên hiển thị Telegram không cho biết bạn là ai. Cách đó giữ cho thông tin liên hệ không
+  làm lộ tên bạn. Nó không làm bạn trở nên ẩn danh, vì khoản thanh toán của bạn là công khai trên Arbitrum One, một ví
+  bạn đã liên kết ở nơi khác vẫn bị liên kết, và các dịch vụ gửi cảnh báo cho bạn vẫn giữ bản ghi riêng của họ.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Tokenping lưu gì, và không thu thập gì?
+
+Tính đến ngày 19 tháng 10 năm 2026, việc lưu một cảnh báo ghi một dòng cho mỗi ví, mỗi mạng và mỗi thị trường (một pool của Aave V3 hoặc một Spoke của Aave V4) vào cơ sở dữ liệu của Tokenping. Dòng đó gồm:
+
+- Địa chỉ ví của bạn.
+- Mạng, thị trường và ngưỡng của bạn.
+- Các kênh bạn đã chọn và ngôn ngữ của từng kênh.
+- Địa chỉ email, tên người dùng Signal và tên người dùng Telegram mà bạn đã nhập, cho những kênh bạn chọn.
+- Thời điểm cảnh báo được tạo và được thay đổi lần cuối, và thời điểm bạn gửi tin nhắn thử lần cuối trên mỗi kênh. Đó là cách giới hạn một lần gửi thử cho mỗi kênh trong mỗi 15 phút hoạt động.
+
+Nhấn Start trong bot Telegram của Tokenping còn lưu ID cuộc trò chuyện (chat ID) của bạn và thời điểm đó, trong một bảng riêng. Nếu bạn trả lời câu hỏi không bắt buộc "Bạn biết đến Tokenping qua đâu?", câu trả lời của bạn và thời điểm trả lời được lưu cùng địa chỉ ví của bạn.
+
+Tokenping không hỏi và không lưu tên, số điện thoại, mật khẩu hay bất kỳ bước xác minh danh tính nào. Nó không đặt pixel theo dõi hay cookie quảng cáo, không giữ lịch sử vị thế của bạn (vị thế được đọc trực tiếp từ blockchain mỗi lần) và không giữ nhật ký các cảnh báo đã gửi trong cơ sở dữ liệu của mình. [Trang quyền riêng tư](/vi/quyen-rieng-tu) là danh sách chính thức; bài hướng dẫn này giải thích ý nghĩa của nó đối với bạn và những gì bạn có thể làm.
+
+## Đăng nhập mà không cần tài khoản hoạt động như thế nào?
+
+Cài đặt cảnh báo thuộc về một địa chỉ ví, không thuộc về một tài khoản. Để mở hoặc thay đổi chúng, bạn ký một tin nhắn bằng ví đó. Đó là một tin nhắn Sign-in with Ethereum (EIP-4361) ghi tên trang web, địa chỉ của bạn và một mã ngẫu nhiên dùng một lần. Việc ký không phải giao dịch: nó không tốn gas và không phê duyệt token nào. Máy chủ kiểm tra chữ ký và chấp nhận mã dùng một lần đó một lần duy nhất, trong vòng 5 phút. Mã này được lưu mà không kèm địa chỉ của bạn và bị xóa khi được dùng.
+
+Sau đó trang web đặt một cookie phiên. Cookie này chứa địa chỉ ví của bạn và thời điểm hết hạn, cộng với một chữ ký tạo bằng khóa bí mật của máy chủ để không ai làm giả được (nó được ký, không được mã hóa), và các script trên trang không đọc được nó (HttpOnly). Cookie tồn tại 7 ngày, và trang web xóa nó khi bạn ngắt kết nối ví trên trang. Trong lúc bạn đăng nhập, một cookie thứ hai giữ mã dùng một lần trong vài phút đó. Sau đó, mọi route cảnh báo chỉ hành động cho ví ghi trong cookie, và một yêu cầu ghi tên một ví khác sẽ bị từ chối.
+
+Xem vị thế của bạn không cần đăng nhập và không cần thanh toán. Số liệu lượt xem trang của trang web đến từ Vercel Web Analytics, dịch vụ này cho biết họ nhận diện khách truy cập bằng một giá trị băm (hash) tạo từ yêu cầu thay vì cookie bên thứ ba, và bỏ phiên đó sau 24 giờ.
+
+## Ai có thể đọc thông tin liên hệ bạn lưu?
+
+Qua ứng dụng, chỉ người có thể ký bằng ví của bạn. Đọc, thay đổi hoặc xóa một cảnh báo, và gửi tin nhắn thử, đều cần cookie phiên của bạn, và một yêu cầu ghi tên một ví khác sẽ bị từ chối. Các bảng cơ sở dữ liệu đóng với khóa công khai (anon) của Supabase: bảo mật cấp dòng (row level security) được bật mà không có chính sách nào, và các vai trò công khai không có quyền gì. Chỉ máy chủ của Tokenping, với khóa service-role của nó, mới truy cập được các bảng đó.
+
+Bạn có thể tự kiểm tra điều này thay vì chỉ tin, vì mã của Tokenping là công khai. Các route đọc và ghi cảnh báo nằm trong [`packages/nextjs/app/api/notifications`](https://github.com/romispectrum/tokenping/tree/main/packages/nextjs/app/api/notifications), các route đăng nhập trong [`packages/nextjs/app/api/auth`](https://github.com/romispectrum/tokenping/tree/main/packages/nextjs/app/api/auth), và các migration đóng các bảng với khóa công khai trong [`packages/supabase/migrations`](https://github.com/romispectrum/tokenping/tree/main/packages/supabase/migrations).
+
+Điều đó không có nghĩa là không ai đọc được:
+
+- Những người vận hành Tokenping, và bên lưu trữ cơ sở dữ liệu của nó, có thể đọc các dòng này.
+- Bất kỳ ai cũng có thể hỏi xem một tên người dùng Telegram nào đó đã nhấn Start trong bot hay chưa. Câu trả lời là có hoặc không, không bao giờ là chat ID.
+- Khi một lần kiểm tra cảnh báo hoặc một tin nhắn bị lỗi, thông báo lỗi có thể chứa địa chỉ ví của bạn và người nhận, và nó được ghi vào nhật ký máy chủ.
+
+Lời khuyên của chính trang quyền riêng tư là: "Đừng nhập địa chỉ email hoặc tên người dùng Signal mà bạn không muốn bị liên kết với địa chỉ ví của mình." Phần còn lại của bài hướng dẫn này là cách làm theo lời khuyên đó.
+
+## Những dịch vụ nào khác xử lý dữ liệu của bạn?
+
+Tokenping chạy trên các nhà cung cấp khác, và mỗi bên thấy một phần những gì bạn đưa cho nó. Bảng này là danh sách của trang quyền riêng tư ở dạng rút gọn.
+
+| Dịch vụ                         | Làm gì                                                       | Thấy gì                                                                                                 |
+| ------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| Vercel                          | Lưu trữ trang web và chạy việc kiểm tra cảnh báo mỗi 5 phút  | Mọi yêu cầu, bao gồm địa chỉ IP của bạn, và nhật ký máy chủ                                             |
+| Vercel Web Analytics            | Đếm lượt xem trang                                           | Địa chỉ trang, trang giới thiệu (referrer), vị trí gần đúng, trình duyệt, hệ điều hành và loại thiết bị |
+| Supabase                        | Cơ sở dữ liệu                                                | Các dòng được mô tả ở trên                                                                              |
+| Resend                          | Gửi email cảnh báo                                           | Địa chỉ email của bạn và nội dung cảnh báo                                                              |
+| Máy chủ chuyển tiếp trên Fly.io | Chuyển cảnh báo cho Signal                                   | Tên người dùng Signal của bạn và nội dung cảnh báo (Signal cũng thấy những thông tin này)               |
+| Telegram                        | Gửi cảnh báo qua Bot API của mình                            | Chat ID của bạn và nội dung cảnh báo                                                                    |
+| Nhà cung cấp RPC                | Trả lời các yêu cầu đọc blockchain                           | Địa chỉ ví đang được đọc, và địa chỉ IP của bạn khi trình duyệt của bạn thực hiện việc đọc              |
+| WalletConnect                   | Chuyển tiếp kết nối đến ứng dụng ví của bạn, nếu bạn dùng nó | Những gì ứng dụng ví của bạn và trang web trao đổi để kết nối                                           |
+
+Nội dung cảnh báo ghi tên thị trường, hệ số sức khỏe (health factor) của bạn, ngưỡng của bạn và thời gian. Nó không chứa địa chỉ ví của bạn.
+
+Các nhà cung cấp có bản ghi riêng của họ. Phụ lục xử lý dữ liệu (data processing addendum) của Resend liệt kê siêu dữ liệu, địa chỉ email và nội dung tin nhắn là lượng dữ liệu cá nhân tối thiểu mà họ xử lý cho một khách hàng, và tài liệu của họ nói rằng họ giữ dữ liệu email trong 30 ngày ở mọi gói, với thời hạn lưu giữ linh hoạt cho gói Enterprise. Signal nói rằng họ không thể giải mã hay truy cập bằng cách nào khác vào nội dung tin nhắn. Chính sách quyền riêng tư của Telegram nói rằng các cuộc trò chuyện trên đám mây (cloud chat) được lưu trên máy chủ của họ, được mã hóa mạnh, còn mã hóa đầu cuối chỉ áp dụng cho Secret Chats.
+
+## Những gì vẫn công khai trên blockchain?
+
+Thanh toán cho cảnh báo là một giao dịch trên Arbitrum One. Hợp đồng thanh toán ghi lại mỗi khoản thanh toán trong một sự kiện (event) công khai: địa chỉ thanh toán, token, số tiền, thời điểm, khoảng thời gian bạn đã mua và ngày hết hạn mới. Ai cũng có thể đọc nó và không ai có thể xóa nó. Mã nguồn của hợp đồng đã được [xác minh trên Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553).
+
+Không có gì về cảnh báo của bạn được ghi lên blockchain: không ngưỡng, không bí danh email, không tên người dùng Signal và không tên người dùng Telegram. Các vị thế Aave của bạn cũng công khai. ethereum.org mô tả blockchain là "a public database" (một cơ sở dữ liệu công khai), và Tokenping đọc vị thế của bạn bằng các lệnh gọi view mà ai cũng có thể thực hiện. Mối liên kết giữa ví của bạn và các vị thế của nó chưa bao giờ phụ thuộc vào Tokenping.
+
+## Tokenping có thể liên kết những gì, và không thể liên kết những gì?
+
+Tokenping có thể liên kết địa chỉ ví của bạn với những thông tin liên hệ bạn lưu cho nó, với các thị trường bạn vay, với ngưỡng của bạn và với thời điểm bạn thanh toán. Dịch vụ không thể hoạt động nếu thiếu mối liên kết đó: một cảnh báo cần một ví để theo dõi và một nơi để gửi tin nhắn.
+
+Từ những gì được lưu trong cơ sở dữ liệu của mình, Tokenping không thể gắn bất kỳ điều nào trong số đó với tên, số điện thoại hay các tài khoản khác của bạn, trừ khi chính thông tin liên hệ bạn nhập làm việc đó thay nó. Một địa chỉ email có tên bạn trong đó, hoặc một tên người dùng bạn dùng trên các trang khác, làm đúng việc đó. Đây chính là mục đích của bí danh và tên người dùng ẩn danh: thông tin liên hệ không nói gì về việc bạn là ai. Địa chỉ IP của bạn là chuyện khác: nó đến Vercel với mọi yêu cầu, không đến cơ sở dữ liệu của Tokenping, và việc ẩn nó nằm ngoài phạm vi bài hướng dẫn này.
+
+Những gì người ngoài có thể làm là một danh sách khác, và không điều nào trong đó cần đến Tokenping:
+
+- Nếu ví của bạn có tên chính (primary name) ENS, bất kỳ ứng dụng nào cũng có thể tra ra nó từ địa chỉ.
+- Nếu bạn nạp tiền vào ví từ một sàn giao dịch nơi bạn đã xác minh danh tính, sàn thường giữ bản ghi của lần rút đó.
+- Bất kỳ nơi nào bạn từng hiển thị địa chỉ ví cạnh tên hoặc biệt danh của mình đều nối hai thứ đó với nhau.
+- Khoản thanh toán của bạn là công khai, nên ai cũng có thể thấy địa chỉ đó đã thanh toán và có quyền truy cập đến khi nào.
+
+## Làm sao dùng bí danh email thay cho địa chỉ thật?
+
+Bí danh email là một địa chỉ phụ chuyển tiếp thư đến hộp thư thật của bạn. Tokenping và nhà cung cấp email của nó chỉ thấy bí danh. SimpleLogin, dịch vụ mà bài hướng dẫn này dùng làm ví dụ, thấy cả hai, vì nó chuyển thư giữa hai địa chỉ. Dịch vụ này do Proton AG làm và là mã nguồn mở, và trang bảng giá của họ liệt kê một gói không mất phí, với số lượng bí danh giới hạn.
+
+1. Tạo một tài khoản SimpleLogin và chọn hộp thư sẽ nhận các cảnh báo được chuyển tiếp.
+2. Trong bảng điều khiển, nhấn **Random Alias** và chọn các từ ngẫu nhiên hoặc một UUID cho phần bên trái. Bí danh tự đặt cũng được, nhưng đừng đưa tên, biệt danh của bạn hay bất cứ thứ gì bạn dùng trên các trang khác vào đó. SimpleLogin cũng cho bạn gắn ghi chú vào bí danh, chẳng hạn "Tokenping", để bạn nhớ nó dùng vào việc gì.
+3. Trong biểu mẫu cảnh báo, nhập bí danh làm địa chỉ email (ví dụ `alice-aave@example.com`) và lưu cảnh báo.
+4. Nhấn **Gửi thử** cho email và kiểm tra rằng tin nhắn đến được hộp thư thật của bạn. Nếu không, hãy xem thư mục thư rác. [Bài hướng dẫn cài đặt](/vi/blog/cai-dat-canh-bao-he-so-suc-khoe-aave) có các bước kiểm tra còn lại.
+
+Cảnh báo của Tokenping chỉ đi một chiều, nên bạn không bao giờ trả lời chúng, và một bí danh chỉ nhận thư là đủ. Khi bạn ngừng dùng Tokenping, hãy xóa cảnh báo trước, rồi mới xóa bí danh, để không thông tin liên hệ nào được lưu lâu hơn mục đích của nó.
+
+Bí danh không che giấu được mọi thứ. SimpleLogin và nhà cung cấp hộp thư của bạn vẫn thấy các cảnh báo, nên nó ẩn địa chỉ của bạn khỏi Tokenping và Resend, chứ không ẩn khỏi dịch vụ chuyển tiếp. Một bí danh bạn cũng dùng cho dịch vụ khác sẽ liên kết hai dịch vụ đó. Và nó không thay đổi nội dung tin nhắn: thị trường, hệ số sức khỏe và ngưỡng của bạn.
+
+SimpleLogin không phải lựa chọn duy nhất. DuckDuckGo Email Protection, Firefox Relay (của Mozilla), addy.io và Hide My Email của Apple (đi kèm gói iCloud+) cũng cho bạn các địa chỉ chuyển tiếp về hộp thư của mình. Giới hạn của chúng khác nhau, nên hãy đọc trang của nhà cung cấp trước khi dựa vào một dịch vụ.
+
+## Làm sao dùng tên người dùng Signal thay cho số điện thoại?
+
+Tên người dùng Signal cho phép người khác bắt đầu trò chuyện với bạn mà không cần số điện thoại, và đó là thứ Tokenping yêu cầu: biểu mẫu của nó không bao giờ hỏi số điện thoại. Các bước sau làm theo các trang hỗ trợ của Signal.
+
+1. **Tạo tên người dùng.** Trong Signal, mở hồ sơ của bạn và chạm vào ký hiệu @. Tên người dùng dài từ 3 đến 32 ký tự (a-z, 0-9 và \_) và kết thúc bằng ít nhất hai chữ số. Biểu mẫu của Tokenping chờ dạng `alice.42`: biệt danh của bạn, một dấu chấm và các chữ số. Hãy chọn một biệt danh không phải tên bạn hay một biệt danh bạn dùng ở nơi khác.
+2. **Ẩn số điện thoại.** Mở Cài đặt, rồi Quyền riêng tư, rồi Số điện thoại, và đặt "Who can see my number" (ai có thể thấy số của tôi) thành Nobody (không ai). Những người đã lưu số của bạn trong danh bạ vẫn thấy nó. Nếu bạn cũng muốn chỉ có thể được liên hệ qua tên người dùng, hãy đặt "Who can find me by my number" (ai có thể tìm tôi bằng số điện thoại) thành Nobody.
+3. **Kiểm tra tên hồ sơ.** Hồ sơ Signal của bạn có một tên bắt buộc và một ảnh không bắt buộc, và trang của Signal nói bạn có thể dùng biệt danh, một ký tự hoặc một emoji. Chấp nhận một yêu cầu nhắn tin sẽ cho người gửi thấy hồ sơ của bạn.
+4. **Thêm tên người dùng vào cảnh báo và gửi thử.** Nhập tên vào ô Tên người dùng Signal, lưu, và nhấn **Gửi thử** cho Signal. Vì tài khoản Signal của Tokenping không có trong danh bạ của bạn, tin nhắn đầu tiên có thể đến dưới dạng yêu cầu nhắn tin. Hãy làm bước 2 và 3 trước khi chấp nhận nó.
+
+Signal nói rằng nếu bạn không chấp nhận một yêu cầu, người gửi chỉ thấy tên người dùng mà họ đã nhắn đến. Nếu bạn chấp nhận, người gửi thấy tên hồ sơ của bạn và có thể thấy số điện thoại của bạn, tùy vào cài đặt số điện thoại.
+
+Tên người dùng chỉ là một cách để bắt đầu trò chuyện. Bản thân Signal vẫn giữ số điện thoại bạn dùng để đăng ký, và không điều gì ở đây thay đổi điều đó. Nếu bạn đổi hoặc xóa tên người dùng, Signal nói rằng bất kỳ ai cũng có thể sớm nhận lại tên cũ, và Tokenping vẫn tiếp tục gửi đến tên người dùng mà nó đã lưu, nên hãy cập nhật cảnh báo ngay.
+
+## Làm sao để tài khoản Telegram không làm lộ danh tính của bạn?
+
+Telegram là lựa chọn kém phù hợp nhất trong ba kênh, nên hãy đọc phần này trước khi chọn nó. Tokenping chỉ có thể nhắn tin cho một tài khoản Telegram đã nhấn Start trong bot của nó, nên bạn nhập @tên người dùng vào cảnh báo và nhấn Start một lần. Vì vậy tài khoản cần có tên người dùng, và Telegram nói rằng tên người dùng là công khai: chúng giúp người khác tìm thấy bạn trong tìm kiếm toàn cầu, và những người tìm thấy bạn có thể nhắn tin cho bạn mà không cần số điện thoại. Chính FAQ của Telegram khuyên bạn đừng đặt tên người dùng nếu bạn không thấy thoải mái với điều đó.
+
+1. **Chọn một tên người dùng không chứa gì của bạn.** Dùng a-z, 0-9 và dấu gạch dưới; Tokenping chấp nhận từ 4 đến 32 ký tự. Đặt tên trong Cài đặt của Telegram.
+2. **Kiểm tra tên hiển thị và ảnh.** Chính sách quyền riêng tư của Telegram nói rằng tên hiển thị của bạn không cần là tên thật. Một bot có thể thấy tên công khai, tên người dùng và ảnh hồ sơ của bạn.
+3. **Kiểm tra cài đặt số điện thoại.** Mở Cài đặt, rồi Quyền riêng tư và bảo mật, rồi Số điện thoại. Theo mặc định, chỉ những người có bạn trong danh bạ mới thấy số của bạn, và Telegram nói rằng người tìm thấy bạn qua tên người dùng cũng không thấy số đó. Một bot không thấy số đó trừ khi bạn đưa cho nó.
+4. **Liên kết tài khoản.** Nhập tên người dùng vào cảnh báo, nhấn Start trong bot và chờ biểu mẫu hiển thị là đã liên kết.
+
+Mã của Tokenping chỉ giữ chat ID và tên người dùng của bạn, nhưng Bot API của Telegram gửi cho bot tên (first name) của bạn kèm mọi tin nhắn và, khi có, họ, tên người dùng và mã ngôn ngữ của bạn. Bất kỳ ai cũng có thể kiểm tra xem một tên người dùng đã nhấn Start hay chưa. Gửi /stop cho bot sẽ hủy liên kết cuộc trò chuyện của bạn.
+
+## Bạn có nên dùng một ví riêng?
+
+Chỉ khi bạn vay từ ví đó. Tokenping theo dõi ví bạn kết nối và không gì khác, và quyền truy cập thuộc về ví đã thanh toán, nên bạn không thể thanh toán từ một địa chỉ để theo dõi vị thế do một địa chỉ khác nắm giữ. Một ví chỉ dùng cho Aave giữ vị thế, khoản thanh toán và cảnh báo trong cùng một địa chỉ. Cách bạn nạp tiền vào ví vẫn để lại dấu vết công khai, khoản thanh toán Tokenping là công khai, và ví vẫn chỉ là ẩn danh một phần (pseudonymous), không phải ẩn danh hoàn toàn. Chuyển một khoản vay sang ví mới thường nghĩa là đóng rồi mở lại vị thế, kèm chi phí và rủi ro thanh lý đi cùng, nên bài hướng dẫn này không khuyên làm vậy.
+
+## Mỗi bước bảo vệ được gì, và không bảo vệ được gì?
+
+| Bước                                                             | Giấu khỏi Tokenping và các nhà cung cấp của nó | Không che giấu                                                                                |
+| ---------------------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Bí danh email                                                    | Địa chỉ email thật của bạn                     | Dịch vụ bí danh thấy cả hai địa chỉ và các cảnh báo, và cảnh báo vẫn vào hộp thư thật của bạn |
+| Tên người dùng Signal, ẩn số điện thoại                          | Số điện thoại của bạn                          | Signal vẫn giữ số của bạn, và chấp nhận một yêu cầu sẽ chia sẻ tên hồ sơ của bạn              |
+| Tên người dùng và tên hiển thị Telegram không cho biết bạn là ai | Tên thật và số điện thoại của bạn              | Tên người dùng là công khai, và Telegram lưu cuộc trò chuyện trên máy chủ của mình            |
+| Một ví chỉ dùng cho Aave                                         | Liên kết đến lịch sử khác của ví đó            | Các giao dịch nạp tiền và khoản thanh toán Tokenping là công khai                             |
+| Xóa cảnh báo                                                     | Dòng đã lưu, bao gồm thông tin liên hệ         | Khoản thanh toán trên chuỗi, và những gì mỗi nhà cung cấp giữ theo quy định riêng của họ      |
+
+## Làm sao xóa những gì Tokenping lưu?
+
+Xóa cảnh báo trong bảng điều khiển: nhấn **Sửa cảnh báo**, rồi **Xóa cảnh báo**, và xác nhận. Việc này gỡ bỏ cài đặt của thị trường đó, bao gồm địa chỉ email và tên người dùng Signal, và cần quyền truy cập còn hiệu lực. Cảnh báo của mỗi thị trường được xóa riêng.
+
+<Callout tone="warning">
+  Quyền truy cập hết hạn không xóa gì cả: cảnh báo và thông tin liên hệ trong đó vẫn được lưu cho đến khi bạn xóa cảnh
+  báo. Hãy xóa những cảnh báo bạn không còn muốn trong lúc quyền truy cập còn hiệu lực. Nếu quyền truy cập đã hết hạn,
+  trang quyền riêng tư cho biết nơi nhắn cho đội ngũ để họ xóa cài đặt của bạn.
+</Callout>
+
+Trên Telegram, gửi /stop cho bot sẽ hủy liên kết cuộc trò chuyện của bạn. Câu trả lời không bắt buộc cho câu hỏi "Bạn biết đến Tokenping qua đâu?" có thể được xóa theo yêu cầu, qua cùng các kênh liên hệ trên trang quyền riêng tư. Không ai có thể xóa khoản thanh toán trên chuỗi.
+
+Mã nguồn đứng sau tất cả những điều này nằm trong [kho mã Tokenping](https://github.com/romispectrum/tokenping). Nếu một khẳng định trong bài hướng dẫn này không khớp với mã, hãy báo cho đội ngũ qua các kênh liên hệ trên trang quyền riêng tư.
+
+## Nguồn
+
+- [Trang quyền riêng tư của Tokenping](/vi/quyen-rieng-tu) (truy cập ngày 19 tháng 10 năm 2026; cập nhật lần cuối ngày 19 tháng 10 năm 2026): những gì được lưu, ai xử lý, những gì công khai và cách xóa
+- [Mã nguồn Tokenping trên GitHub](https://github.com/romispectrum/tokenping) (truy cập ngày 19 tháng 10 năm 2026; kho mã là công khai): đăng nhập trong `packages/nextjs/app/api/auth`, kiểm tra phiên trong `packages/nextjs/services/api/server/session.ts`, lưu cảnh báo trong `packages/nextjs/services/notifications`, các route Telegram trong `packages/nextjs/app/api/telegram`, các migration trong `packages/supabase/migrations` và hợp đồng thanh toán trong `packages/hardhat/contracts`
+- [TokenpingPaywall trên Arbitrum One, mã nguồn đã xác minh trên Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553) (truy cập ngày 19 tháng 10 năm 2026): sự kiện PaymentReceived
+- [SimpleLogin](https://simplelogin.io/) (truy cập ngày 19 tháng 10 năm 2026): bí danh làm gì, ai làm ra, mã nguồn mở
+- [Bảng giá SimpleLogin](https://simplelogin.io/pricing/) (truy cập ngày 19 tháng 10 năm 2026): một gói không mất phí, với số lượng bí danh giới hạn
+- [Tài liệu SimpleLogin: tạo bí danh](https://simplelogin.io/docs/getting-started/create-alias/) (truy cập ngày 19 tháng 10 năm 2026)
+- [DuckDuckGo Email Protection](https://duckduckgo.com/duckduckgo-help-pages/email-protection/what-is-duckduckgo-email-protection) (truy cập ngày 19 tháng 10 năm 2026)
+- [Firefox Relay](https://relay.firefox.com/) (truy cập ngày 19 tháng 10 năm 2026)
+- [addy.io](https://addy.io/) (truy cập ngày 19 tháng 10 năm 2026)
+- [Hỗ trợ Apple: Hide My Email với iCloud+](https://support.apple.com/en-us/102548) (truy cập ngày 19 tháng 10 năm 2026)
+- [Hỗ trợ Signal: Phone Number Privacy and Usernames](https://support.signal.org/hc/en-us/articles/6712070553754-Phone-Number-Privacy-and-Usernames) (truy cập ngày 19 tháng 10 năm 2026)
+- [Hỗ trợ Signal: Signal Profiles and Message Requests](https://support.signal.org/hc/en-us/articles/360007459591-Signal-Profiles-and-Message-Requests) (truy cập ngày 19 tháng 10 năm 2026)
+- [Chính sách quyền riêng tư của Signal](https://signal.org/legal/) (truy cập ngày 19 tháng 10 năm 2026)
+- [FAQ của Telegram](https://telegram.org/faq) (truy cập ngày 19 tháng 10 năm 2026): tên người dùng, khả năng hiển thị số điện thoại, những gì bot thấy
+- [Chính sách quyền riêng tư của Telegram](https://telegram.org/privacy) (truy cập ngày 19 tháng 10 năm 2026)
+- [Telegram Bot API: các đối tượng User và Chat](https://core.telegram.org/bots/api) (truy cập ngày 19 tháng 10 năm 2026)
+- [Phụ lục xử lý dữ liệu của Resend](https://resend.com/legal/dpa) (truy cập ngày 19 tháng 10 năm 2026)
+- [Tài liệu Resend: lưu trữ dài hạn dữ liệu email](https://www.resend.com/docs/webhooks/how-to-store-webhooks-data) (truy cập ngày 19 tháng 10 năm 2026)
+- [Vercel Web Analytics: quyền riêng tư và tuân thủ](https://vercel.com/docs/analytics/privacy-policy) (truy cập ngày 19 tháng 10 năm 2026)
+- [Tài liệu ENS: tên chính (primary name)](https://docs.ens.domains/web/reverse) (truy cập ngày 19 tháng 10 năm 2026)
+- [ethereum.org: giới thiệu về Ethereum](https://ethereum.org/en/developers/docs/intro-to-ethereum/) (truy cập ngày 19 tháng 10 năm 2026)
+
+_Nội dung mang tính giáo dục, không phải lời khuyên tài chính. Cảnh báo giúp giảm rủi ro, nhưng không ngăn được việc thanh lý._

@@ -19,11 +19,12 @@ const CHANNEL_NAMES: Partial<Record<Locale, Record<string, string>>> = {
   cs: { email: "e-mail" },
   es: { email: "correo electrónico" },
   hi: { email: "ईमेल" },
+  de: { email: "E-Mail" },
 };
 
 /**
  * The alert channels named in a language, for running text: "Signal nebo e-mail", "Signal, Telegram a e-mail",
- * "Signal, Telegram y correo electrónico", "Signal, Telegram और ईमेल".
+ * "Signal, Telegram y correo electrónico", "Signal, Telegram और ईमेल", "Signal, Telegram und E-Mail", "Signal, Telegram và email".
  */
 export const formatAlertChannelsIn = (locale: Locale, type: "conjunction" | "disjunction" = "disjunction") =>
   joinList(

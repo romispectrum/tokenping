@@ -124,7 +124,7 @@ describe("rowLocale", () => {
     // Rows from before the locale migration have no column; anything unexpected is English.
     [undefined, "en"],
     [null, "en"],
-    ["de", "en"],
+    ["fr", "en"],
     ["CS", "en"],
   ])("reads the stored locale %j as %j", (locale, expected) => {
     expect(rowLocale({ locale })).toBe(expected);
@@ -140,7 +140,7 @@ describe("rowChannelLocale", () => {
     [null, "cs", "cs"],
     [undefined, "cs", "cs"],
     // Anything unexpected falls through to the row's, and to English after that.
-    ["de", "cs", "cs"],
+    ["fr", "cs", "cs"],
     [null, null, "en"],
   ])("reads Telegram's own %j over the row's %j as %j", (own, locale, expected) => {
     expect(rowChannelLocale({ locale, telegram_locale: own }, "telegram")).toBe(expected);

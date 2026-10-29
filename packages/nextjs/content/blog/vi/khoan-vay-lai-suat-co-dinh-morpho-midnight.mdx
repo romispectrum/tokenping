@@ -1,0 +1,192 @@
+export const meta = {
+  slug: "khoan-vay-lai-suat-co-dinh-morpho-midnight",
+  title: "Morpho Midnight: khoản vay lãi suất cố định hoạt động ra sao",
+  description:
+    "Cách khoản vay Morpho Midnight hoạt động: lãi suất, số nợ khi đáo hạn, sức khỏe với nhiều tài sản thế chấp, vì sao nợ chưa trả có thể bị thanh lý.",
+  h1: "Khoản vay lãi suất cố định Morpho Midnight hoạt động thế nào, và điều gì xảy ra vào ngày đáo hạn?",
+  publishedAt: "2026-10-26",
+  primaryQuestion:
+    "Khoản vay lãi suất cố định trên Morpho Midnight hoạt động thế nào, và điều gì xảy ra nếu chưa trả nợ trước ngày đáo hạn?",
+  readingMinutes: 18,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Morpho Midnight là hình thức cho vay lãi suất cố định, kỳ hạn cố định của Morpho. Bạn vay bằng cách bán các đơn vị nợ
+  dưới mệnh giá: mỗi đơn vị cho bạn ít hơn một token vay một chút ngay bây giờ và là lời hứa trả đúng một token vào ngày
+  đáo hạn của thị trường, nên lãi suất được cố định khi bạn vay và khoản nợ của bạn không tăng. Trước ngày đáo hạn, vị
+  thế của bạn chỉ có thể bị thanh lý nếu tài sản thế chấp, tính theo tỷ lệ cho vay trên giá trị thanh lý (LLTV) của từng
+  loại, không còn đủ bảo đảm khoản nợ (hệ số sức khỏe dưới 1). Khi đã quá ngày đáo hạn, mọi khoản nợ còn lại đều có thể
+  bị thanh lý dù hệ số sức khỏe (health factor) của bạn là bao nhiêu, với khoản thưởng của bên thanh lý tăng dần trong
+  giờ đầu tiên. Hãy trả nợ trước ngày đáo hạn, rồi tự rút tài sản thế chấp của bạn.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Số liệu và số khối mà chúng được đọc tại đó: content/blog/snapshots/morpho-midnight-fixed-rate-loans.md */}
+
+## Morpho Midnight là gì?
+
+Morpho Midnight là phần của Morpho cung cấp khoản vay với lãi suất cố định đến một ngày cố định, gọi là ngày đáo hạn. Tài liệu của Morpho gọi nó là "Fixed Rate Markets (Midnight)" (các thị trường lãi suất cố định), bên cạnh Morpho Blue, các thị trường lãi suất thả nổi. Nếu bạn mới làm quen với cách Morpho tính sức khỏe, hãy bắt đầu với [bài hướng dẫn về hệ số sức khỏe trên Morpho](/vi/blog/he-so-suc-khoe-morpho), mà bài này dựa vào.
+
+Midnight mở cho công chúng vào ngày 21 tháng 7 năm 2026, trên Base, với một cặp (tài sản thế chấp cbBTC, cho vay USDC) và một vài ngày đáo hạn. Trong bài này, một thị trường Midnight được gọi theo cặp đó: một "thị trường cbBTC/USDC" nhận cbBTC làm tài sản thế chấp và cho vay USDC. Cùng mã hợp đồng đó hiện chạy trên năm mạng:
+
+| Mạng            | Hợp đồng Midnight có mã từ | Thị trường được API của Morpho liệt kê (ngày 26 tháng 10 năm 2026) |
+| --------------- | -------------------------- | ------------------------------------------------------------------ |
+| Base            | Ngày 6 tháng 7 năm 2026    | Có; 19 thị trường được liệt kê có khoản vay đang mở                |
+| Ethereum        | Ngày 20 tháng 8 năm 2026   | Có; 12 thị trường được liệt kê có khoản vay đang mở                |
+| Arc             | Ngày 11 tháng 9 năm 2026   | Không có (13 thị trường tồn tại)                                   |
+| Robinhood Chain | Không có dữ liệu ngày      | Không có (34 thị trường tồn tại)                                   |
+| Tempo           | Ngày 3 tháng 10 năm 2026   | Không có (API không hiển thị thị trường nào)                       |
+
+Ai cũng có thể tạo một thị trường Midnight, nên việc một thị trường tồn tại trên chuỗi không nói lên nhiều điều. Các thị trường mà ứng dụng Morpho hiển thị là những thị trường API của nó liệt kê, và vào ngày 26 tháng 10 năm 2026, tất cả đều nằm trên Ethereum và Base.
+
+Một bài viết trước đây của Morpho giới thiệu Midnight, cùng với Vaults V2, như là "Morpho V2". Bài viết ra mắt của nó nói rằng Midnight không phải là phiên bản thứ hai của Blue cũng không thay thế Blue: hai bên chạy song song. Chúng là các hợp đồng riêng biệt.
+
+## Một thị trường Midnight được xác định thế nào?
+
+Một thị trường Midnight được cố định khi tạo và không bao giờ thay đổi. Nó được xác định bởi:
+
+- **Một token vay**, ví dụ USDC.
+- **Một hoặc nhiều tài sản thế chấp** (tối đa 128), mỗi loại có LLTV riêng (phần giá trị tài sản thế chấp mà bạn có thể nợ trước khi bị thanh lý), oracle (nguồn giá) riêng và con trỏ thanh lý (liquidation cursor) riêng, quyết định khoản thưởng của bên thanh lý.
+- **Một ngày đáo hạn**, một ngày và giờ mà mọi khoản vay trong thị trường đến hạn.
+- **Một ngưỡng thu hồi** (rcfThreshold), quyết định khi nào một lượng nhỏ của một tài sản thế chấp có thể bị thanh lý toàn bộ (xem bên dưới).
+- **Các cổng (gate) tùy chọn**, có thể giới hạn ai được cho vay, vay hoặc thanh lý. Một cổng không bao giờ có thể ngăn bạn trả nợ hoặc rời đi. Không thị trường nào được liệt kê trên Ethereum hoặc Base có cổng vào ngày 26 tháng 10 năm 2026.
+
+Một người vay có thể dùng cùng lúc tối đa 16 tài sản thế chấp của một thị trường. Để nhận một tài sản thế chấp mới hoặc dời ngày đáo hạn, ai đó phải tạo một thị trường mới. Các thị trường được liệt kê có khoản vay, trên cả hai mạng, đáo hạn vào thứ Sáu cuối cùng của tháng lúc 15:00 UTC: ngày 30 tháng 10, 27 tháng 11 và 25 tháng 12 năm 2026, và ngày 26 tháng 3 năm 2027.
+
+## Lãi suất cố định được đặt thế nào, và bạn nợ bao nhiêu vào ngày đáo hạn?
+
+Lãi suất đến từ một mức giá, không phải từ một mô hình lãi suất. Midnight tính khoản nợ theo đơn vị, và một đơn vị nợ là lời hứa trả một token vay vào ngày đáo hạn. Để vay, bạn bán các đơn vị cho người cho vay với giá dưới 1: ở mức giá 0,99, bạn nhận 0,99 USDC ngay bây giờ cho mỗi đơn vị và nợ 1 USDC cho mỗi đơn vị vào ngày đáo hạn. Lãi suất cho cả kỳ hạn là 1 chia cho giá, trừ 1, và tài liệu của Morpho quy nó ra con số theo năm bằng cách chia cho phần của năm còn lại.
+
+Giá đến từ các lệnh chào (offer) mà người cho vay và người vay công bố, nên hai người vay trong cùng một thị trường có thể trả lãi suất khác nhau. Vào ngày 26 tháng 10 năm 2026, API của Morpho cho thấy lãi suất của 117 người vay trong thị trường cbBTC/USDC trên Base đáo hạn ngày 25 tháng 12 năm 2026 nằm trong khoảng 1,93% đến 6,84% một năm.
+
+Số tiền bạn nợ rất đơn giản: số đơn vị bạn đã bán, tính bằng token vay, đến hạn vào ngày đáo hạn. Không có gì được cộng thêm trong suốt thời gian vay. Hợp đồng của Midnight chỉ thay đổi khoản nợ của người vay khi bạn vay thêm, trả nợ, mua lại đơn vị hoặc bị thanh lý; không có lãi nào cộng dồn vào đó trước hay sau ngày đáo hạn.
+
+Midnight có hai loại phí, cả hai đều đặt theo từng thị trường và đều bằng 0 trên hai thị trường trong bài này:
+
+- **Phí thanh toán (settlement fee)** trên mỗi giao dịch, do bên nhận lệnh chào trả. Hợp đồng giới hạn nó theo thời gian còn lại đến ngày đáo hạn, từ 0,0014% cho một ngày đến 0,5% cho 360 ngày.
+- **Phí liên tục (continuous fee)**, chỉ người cho vay chịu và tối đa 1% một năm.
+
+## Hệ số sức khỏe được tính thế nào khi có nhiều tài sản thế chấp?
+
+Hợp đồng của Midnight kiểm tra sức khỏe bằng câu trả lời có hoặc không: một vị thế khỏe khi khoản nợ tối đa của nó ít nhất bằng khoản nợ. Khoản nợ tối đa là tổng, trên từng tài sản thế chấp bạn dùng, của giá trị của nó tính bằng token vay theo giá oracle nhân với LLTV riêng của nó. Tài liệu của Morpho viết phép kiểm tra này là maxDebt ≥ debt; hệ số sức khỏe là cùng phép kiểm tra đó viết dưới dạng tỷ số, khoản nợ tối đa chia cho khoản nợ, và dưới 1 thì vị thế có thể bị thanh lý.
+
+Lấy thị trường được niêm yết lớn nhất trên Ethereum, cho vay USDC với hai tài sản thế chấp có LLTV khác nhau: chính USDC ở 98% và cbBTC ở 86%. Với cbBTC ở mức 80.011,48 USDC (giá của oracle vào ngày 26 tháng 10 năm 2026), vị thế minh họa từ [bài hướng dẫn về hệ số sức khỏe trên Morpho](/vi/blog/he-so-suc-khoe-morpho), 0,5 cbBTC và 10.000 USDC tài sản thế chấp với khoản nợ 40.000 USDC, có:
+
+| Tài sản thế chấp | Giá trị (USDC) | LLTV | Được tính (USDC) |
+| ---------------- | -------------- | ---- | ---------------- |
+| 0,5 cbBTC        | 40.005,74      | 86%  | 34.404,94        |
+| 10.000 USDC      | 10.000,00      | 98%  | 9.800,00         |
+| Tổng             | 50.005,74      |      | 44.204,94        |
+
+Hệ số sức khỏe của nó là 44.204,94 ÷ 40.000 = 1,105, và nó xuống dưới 1 nếu cbBTC giảm dưới khoảng 70.233 USDC, thấp hơn 12,2%, trong khi tài sản thế chấp USDC giữ nguyên giá trị. Ý tưởng giống như với [tài sản thế chấp thứ hai trên Aave](/vi/blog/he-so-suc-khoe-aave#dieu-gi-thay-doi-khi-co-them-mot-tai-san-the-chap-thu-hai): mỗi tài sản được tính theo tỷ lệ riêng của nó.
+
+Bạn có thể thêm, rút hoặc đổi tài sản thế chấp bất kỳ lúc nào, miễn là việc rút vẫn giữ bạn ở trạng thái khỏe. Nếu oracle của bất kỳ tài sản thế chấp nào bạn dùng ngừng trả lời, các bước kiểm tra sức khỏe, việc vay, việc rút và việc thanh lý đều thất bại với vị thế của bạn khi bạn còn nợ. Việc trả nợ vẫn hoạt động, và khi khoản nợ về 0, bạn có thể rút mà không cần oracle nào.
+
+## Khi nào một khoản vay Midnight có thể bị thanh lý?
+
+Một khoản vay Midnight có thể bị thanh lý theo hai cách: khi nó không khỏe, vào bất kỳ lúc nào, hoặc khi còn nợ sau ngày đáo hạn, dù sức khỏe ra sao. [Cơ chế thanh lý trên Morpho](/vi/blog/co-che-thanh-ly-tren-morpho) trình bày phần cơ chế chung; dưới đây là những gì riêng của Midnight.
+
+### Trước ngày đáo hạn
+
+Trước ngày đáo hạn, chỉ có sức khỏe được tính. Khi hệ số sức khỏe xuống dưới 1, bên thanh lý có thể trả một phần khoản nợ của bạn và lấy phần tài sản thế chấp có giá trị bằng số tiền đó cộng một khoản thưởng. Khoản thưởng được đặt theo từng tài sản thế chấp: 1 ÷ (1 − con trỏ × (1 − LLTV)). Với cbBTC ở LLTV 86% và con trỏ 0,3, con số đó là 1,0438, tức khoản thưởng 4,38%; với USDC ở 98%, khoảng 0,6%. Bên thanh lý chọn lấy tài sản thế chấp nào của bạn, và tài liệu của Morpho cảnh báo rằng họ sẽ chọn loại nào có lợi nhất.
+
+Lấy được bao nhiêu mỗi lần phụ thuộc vào quy mô. Thông thường, bên thanh lý chỉ được trả đủ để vị thế khỏe trở lại. Ngoại lệ: khi phần tài sản thế chấp còn lại sau một lần thanh lý có giới hạn như vậy sẽ trả được ít hơn rcfThreshold của thị trường, tài sản thế chấp đó có thể bị lấy toàn bộ. Ngưỡng này là 3.000 USDC trên thị trường cbBTC/USDC trên Base trong ví dụ cụ thể bên dưới và 300.000 USDC trên thị trường Ethereum ở trên. Với một khoản vay chỉ có một tài sản thế chấp dưới quy mô đó, toàn bộ vị thế có thể bị thanh lý cùng lúc.
+
+### Sau ngày đáo hạn
+
+Khi đã qua thời điểm đáo hạn, mọi khoản nợ còn lại đều có thể bị thanh lý kể cả khi hệ số sức khỏe của bạn là 2 hay 10. Nhánh xử lý sau đáo hạn của hợp đồng chỉ kiểm tra đồng hồ. Lý do của Morpho là người cho vay muốn rút tiền vào ngày đáo hạn, và một người vay chưa trả, dù khỏe hay không, sẽ cản trở họ.
+
+Khoản thưởng ở nhánh này bắt đầu từ 0 tại thời điểm đáo hạn và tăng đều đến mức đầy đủ trong 60 phút. Nếu vị thế của bạn cũng không khỏe sau ngày đáo hạn, bên thanh lý có thể dùng nhánh dựa trên sức khỏe và nhận ngay khoản thưởng đầy đủ. Ở nhánh sau đáo hạn không có giới hạn về số tiền được trả, nên toàn bộ khoản nợ có thể bị thanh lý trong một lần. Sau ngày đáo hạn, bạn không thể vay thêm, nhưng vẫn có thể trả nợ, mua lại đơn vị và rút tài sản thế chấp.
+
+<Callout tone="warning">
+  Đúng ở giây đáo hạn, một vị thế khỏe vẫn an toàn; một giây sau thì không. Trả nợ muộn trên một vị thế khỏe có thể
+  khiến bạn mất tới toàn bộ khoản thưởng thanh lý, khoảng 4,4% khoản nợ với một khoản vay cbBTC ở LLTV 86%.
+</Callout>
+
+Nếu một lần thanh lý để lại khoản nợ mà tài sản thế chấp không đủ bù, phần thiếu hụt bị xóa sổ và chỉ những người cho vay của thị trường đó chia nhau gánh.
+
+## Làm sao trả nợ sớm, trả đúng hạn hoặc chuyển sang kỳ đáo hạn sau?
+
+Bạn có ba cách thoát khỏi một khoản vay Midnight, cộng thêm một phương án dự phòng tự chọn:
+
+- **Trả nợ trực tiếp.** Trả nợ tốn đúng một token vay cho mỗi đơn vị, trước, đúng hay sau ngày đáo hạn. Cách này luôn hoạt động, và nó đặt ra mức tối đa bạn nên trả để thoát sớm. Trả nợ sớm không hoàn lại phần lãi nào: bạn trả toàn bộ số tiền đến hạn vào ngày đáo hạn, chỉ là sớm hơn.
+- **Mua lại đơn vị trước ngày đáo hạn.** Thay vào đó, bạn có thể mua đơn vị từ các lệnh chào bán của người cho vay với giá dưới 1, xóa đi chừng đó nợ với chi phí thấp hơn mệnh giá. Cách này phụ thuộc vào việc có người chào bán đơn vị đúng lúc bạn muốn thoát.
+- **Chuyển sang kỳ đáo hạn sau.** Tài liệu của Morpho mô tả việc trả nợ hoặc mua lại ở một thị trường và vay ở một thị trường có ngày đáo hạn muộn hơn trong cùng một giao dịch, bằng callback. Bài viết ra mắt của Morpho vào tháng 7 liệt kê việc tự động chuyển kỳ hạn là một tính năng sau này; vào ngày 26 tháng 10 năm 2026, tài liệu chỉ mô tả việc chuyển kỳ hạn là điều bạn tự làm, hoặc thông qua phương án dự phòng Blue bên dưới.
+- **Chuyển về Blue.** Morpho đã triển khai một hợp đồng, BlueFallbackRolling, trên cả năm mạng. Nếu bạn tham gia và ủy quyền cho nó trên cả Midnight và Blue, bất kỳ ai cũng có thể chuyển khoản nợ và tài sản thế chấp Midnight của bạn sang một thị trường Blue lãi suất thả nổi mà bạn đã chọn, từ một thời điểm bạn đã chọn. Phần thưởng của người gọi là một phần khoản nợ do bạn đặt; nó tăng dần giữa thời điểm bắt đầu và kết thúc do bạn đặt, có thể lên tới toàn bộ khoản nợ, và được cộng vào khoản nợ Blue mới của bạn. Cách này cần đúng một tài sản thế chấp khớp với tài sản thế chấp của thị trường Blue.
+
+## Điều gì xảy ra với tài sản thế chấp sau khi bạn trả nợ?
+
+Tài sản thế chấp của bạn nằm nguyên chỗ cho đến khi bạn rút nó. Trả nợ không tự gửi nó trở lại. Khi khoản nợ về 0, phép kiểm tra sức khỏe thông qua mà không cần hỏi oracle nào, nên bạn có thể rút toàn bộ, và không cổng nào có thể ngăn bạn. Chỉ bạn, một tài khoản bạn đã ủy quyền, hoặc bên thanh lý một vị thế có thể bị thanh lý mới có thể di chuyển nó.
+
+Điều tương tự cũng đúng sau một lần thanh lý: phần tài sản thế chấp nào bên thanh lý không lấy vẫn nằm trong vị thế của bạn để bạn rút.
+
+## Ví dụ cụ thể: khoản vay cbBTC/USDC đáo hạn ngày 25 tháng 12 năm 2026
+
+Thị trường này, trên cặp mà Midnight ra mắt cùng, được tạo vào ngày 14 tháng 7 năm 2026, một tuần trước khi ra mắt công chúng, và là thị trường được niêm yết lớn nhất trên Base. Đọc trên chuỗi vào ngày 26 tháng 10 năm 2026 lúc 06:06 UTC:
+
+| Mục                     | Giá trị                                             |
+| ----------------------- | --------------------------------------------------- |
+| Token vay               | USDC                                                |
+| Tài sản thế chấp        | cbBTC, là loại duy nhất                             |
+| LLTV                    | 86%                                                 |
+| Thưởng thanh lý         | 4,38% (con trỏ 0,3)                                 |
+| Ngày đáo hạn            | Ngày 25 tháng 12 năm 2026, 15:00 UTC, còn 60,4 ngày |
+| rcfThreshold            | 3.000 USDC                                          |
+| Cổng và phí             | Không có                                            |
+| Nợ phải trả khi đáo hạn | 1.530.235,58 USDC, của 117 người vay                |
+| Giá cbBTC               | 80.097,33 USDC (oracle của thị trường)              |
+
+**Vay.** Giá tốt nhất mà một người vay có thể bán đơn vị là 0,9901297. Nhận 10.000 USDC ở mức giá đó nghĩa là nợ khoảng 10.099,69 USDC vào ngày 25 tháng 12 năm 2026: 0,997% cho 60,4 ngày, khoảng 6,0% một năm. Mức giá đó thay đổi theo từng phút.
+
+**Một vị thế điển hình.** Người vay ở mức trung vị nợ 37,08 USDC khi đáo hạn với 0,00060018 cbBTC, trị giá 48,07 USDC. Khoản nợ tối đa của nó là 48,07 × 0,86 = 41,34 USDC, nên hệ số sức khỏe là 41,34 ÷ 37,08 = 1,11. Nó chạm 1 nếu cbBTC giảm xuống khoảng 71.838 USDC, thấp hơn 10,3%.
+
+**Nếu cbBTC giảm xuống ngay dưới 71.838 USDC trước ngày đáo hạn.** Vị thế nhỏ hơn rất nhiều so với ngưỡng 3.000 USDC, nên bên thanh lý có thể trả toàn bộ 37,08 USDC và lấy lượng cbBTC trị giá 38,71 USDC. Trong 43,12 USDC cbBTC, người vay còn khoảng 4,41 USDC để rút.
+
+**Nếu người vay quên trả nợ và cbBTC vẫn ở mức 80.097 USDC.** Từ 15:00:01 UTC ngày 25 tháng 12, bất kỳ ai cũng có thể trả 37,08 USDC và lấy cbBTC; bên thanh lý có thể hành động vào bất kỳ giây nào sau 15:00:00. Khoản thưởng tăng theo thời gian: khoảng 2,2% sau ba mươi phút, đủ 4,38% sau một giờ. Một lần thanh lý từ một giờ trở lên sau ngày đáo hạn lấy lượng cbBTC trị giá 38,71 USDC và để lại cho người vay 9,37 USDC trong số đó. Trả 37,08 USDC đúng hạn thì người vay giữ được toàn bộ 48,07 USDC cbBTC, ròng 10,99 USDC, nên lần thanh lý đó khiến người vay mất 1,63 USDC, tức toàn bộ khoản thưởng. Một lần thanh lý sớm hơn tốn ít hơn, nhưng không gì buộc bên thanh lý phải chờ.
+
+## Midnight so với khoản vay Morpho Blue lãi suất thả nổi thế nào?
+
+|                                 | Morpho Blue                                                                                   | Morpho Midnight                                                                                                                                   |
+| ------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lãi suất                        | Thay đổi liên tục theo mô hình lãi suất của thị trường                                        | Cố định khi bạn vay                                                                                                                               |
+| Khoản nợ                        | Tăng theo lãi                                                                                 | Một số đơn vị định sẵn, không tăng                                                                                                                |
+| Ngày kết thúc                   | Không có                                                                                      | Ngày đáo hạn                                                                                                                                      |
+| Tài sản thế chấp mỗi thị trường | Một                                                                                           | Một hoặc nhiều, mỗi loại có LLTV riêng                                                                                                            |
+| Có thể bị thanh lý khi          | Không khỏe                                                                                    | Không khỏe, hoặc còn bất kỳ khoản nợ nào sau ngày đáo hạn                                                                                         |
+| Khoản thưởng                    | 1 ÷ (1 − 0,3 × (1 − LLTV)), tối đa 15%                                                        | 1 ÷ (1 − con trỏ × (1 − LLTV)), con trỏ đặt theo từng tài sản thế chấp, không có mức trần 15%                                                     |
+| Bao nhiêu mỗi lần               | Tới toàn bộ khoản nợ trong một lần gọi                                                        | Trước ngày đáo hạn, đủ để khỏe lại (cả một tài sản thế chấp nếu phần còn lại sẽ trả được ít hơn rcfThreshold); sau ngày đáo hạn, toàn bộ khoản nợ |
+| Thanh lý trước                  | Đang được Morpho ngừng, xem [thanh lý trước trên Morpho](/vi/blog/thanh-ly-truoc-tren-morpho) | Không có trong Midnight                                                                                                                           |
+| Thoát sớm                       | Trả nợ bất kỳ lúc nào                                                                         | Trả theo mệnh giá, hoặc mua lại đơn vị nếu có người bán                                                                                           |
+
+Khác biệt thực tế với hệ số sức khỏe của bạn: trên Blue, nó có thể giảm chỉ vì lãi, như trên Aave ([lãi suất tăng vọt ảnh hưởng đến hệ số sức khỏe thế nào](/vi/blog/lai-suat-aave#lai-suat-tang-vot-anh-huong-den-he-so-suc-khoe-cua-ban-the-nao)). Trên Midnight, nó chỉ giảm khi giá tài sản thế chấp giảm, hoặc khi bạn rút tài sản thế chấp hay vay thêm. Đổi lại, Midnight thêm một ngày mà bạn không được bỏ lỡ.
+
+## Cảnh báo giúp được gì với một khoản vay Midnight?
+
+Một cảnh báo có thể báo cho bạn về cả hai rủi ro của một khoản vay Midnight: hệ số sức khỏe giảm và ngày đáo hạn đến gần. Tokenping kiểm tra 5 phút một lần. [Bảng điều khiển Morpho](/vi/morpho) của nó liệt kê các vị thế vay của một ví trong những thị trường được niêm yết trên ứng dụng Morpho trên 14 mạng, cả Blue lẫn Midnight, và xem các vị thế của bạn không cần thanh toán. Cảnh báo Midnight áp dụng cho các thị trường mà API của Morpho liệt kê. Vào ngày 26 tháng 10 năm 2026, các thị trường đó nằm trên Ethereum và Base; Tokenping cũng sẽ theo dõi Arc và Robinhood Chain khi Morpho niêm yết thị trường Midnight ở đó. Cho đến lúc đó, không thể đặt cảnh báo Midnight trên hai mạng này.
+
+Với một khoản vay Midnight:
+
+- **Sức khỏe.** Tokenping tính hệ số sức khỏe của bạn từ dữ liệu trên chuỗi bằng chính công thức của Morpho, không bao giờ lấy từ API của Morpho. Khi nó còn dưới ngưỡng bạn đặt (1,02 đến 10), mỗi lần kiểm tra sẽ gửi một tin nhắn trên từng kênh bạn chọn: Signal, Telegram hoặc email.
+- **Ngày đáo hạn.** Bạn nhận một lời nhắc trong 7 ngày cuối trước ngày đáo hạn và một lời nhắc trong 24 giờ cuối.
+- **Sau ngày đáo hạn.** Khi vẫn còn nợ, mỗi lần kiểm tra đều gửi một cảnh báo, vì khoản vay có thể bị thanh lý dù hệ số sức khỏe là bao nhiêu.
+
+Cảnh báo có giá <AlertPrice />, cùng gói với cảnh báo Aave. Một cảnh báo cho bạn thời gian để hành động; nó không ngăn được việc thanh lý, và giá có thể biến động giữa hai lần kiểm tra.
+
+## Nguồn
+
+- [Tài liệu Morpho: Midnight concepts](https://docs.morpho.org/learn/concepts/midnight): đơn vị, khoản cho vay và khoản nợ, thoát sớm, tài sản thế chấp và sức khỏe (truy cập ngày 26 tháng 10 năm 2026)
+- [Tài liệu Morpho: Midnight liquidations](https://docs.morpho.org/learn/concepts/midnight/liquidations): hai nhánh thanh lý, mức tăng dần của khoản thưởng sau ngày đáo hạn và vì sao nợ chưa trả có thể bị thanh lý sau ngày đáo hạn (truy cập ngày 26 tháng 10 năm 2026)
+- [Tài liệu Morpho: offers](https://docs.morpho.org/learn/concepts/midnight/offers) và [gates](https://docs.morpho.org/learn/concepts/midnight/gates): chuyển kỳ hạn bằng callback, và những gì cổng có thể và không thể chặn (truy cập ngày 26 tháng 10 năm 2026)
+- [Tài liệu Morpho: market mechanics](https://docs.morpho.org/developers/midnight/concepts/market-mechanics), [collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) và [fees](https://docs.morpho.org/developers/midnight/concepts/fees) (truy cập ngày 26 tháng 10 năm 2026)
+- [Tài liệu Morpho: exit a borrow early](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-early) và [exit a borrow at maturity](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-by-repaying-in-full-at-maturity) (truy cập ngày 26 tháng 10 năm 2026)
+- [Tài liệu Morpho: contract addresses](https://docs.morpho.org/developers/contracts/addresses): Midnight và BlueFallbackRolling trên từng mạng (truy cập ngày 26 tháng 10 năm 2026)
+- [morpho-org/midnight](https://github.com/morpho-org/midnight): Midnight.sol (kiểm tra sức khỏe, thanh lý, trả nợ, rút tiền), ConstantsLib.sol (phí, khoản thưởng, mức tăng dần trong 60 phút, giới hạn tài sản thế chấp) và README của periphery (truy cập ngày 26 tháng 10 năm 2026)
+- [morpho-org/morpho-blue](https://github.com/morpho-org/morpho-blue): các hằng số về thanh lý và khoản thưởng của Blue (truy cập ngày 26 tháng 10 năm 2026)
+- [Now live: Morpho Midnight and the new Markets App](https://morpho.org/blog/now-live-morpho-midnight) (ngày 21 tháng 7 năm 2026) và [Morpho Midnight: what to expect at launch](https://morpho.org/blog/morpho-midnight-what-to-expect-at-launch) (ngày 17 tháng 7 năm 2026) (truy cập ngày 26 tháng 10 năm 2026)
+- [Morpho Fixed Rate Markets](https://morpho.org/blog/morpho-v2-liberating-the-potential-of-onchain-loans): bài viết trước đây của Morpho về Midnight và Vaults V2 (truy cập ngày 26 tháng 10 năm 2026)
+- [API Morpho Midnight](https://api.morpho.org/v0/midnight/markets): các thị trường được niêm yết, sổ lệnh và vị thế của người vay (truy cập ngày 26 tháng 10 năm 2026)
+- Các hợp đồng Midnight trên [Base](https://basescan.org/address/0xAdedD8ab6dE832766Fedf0FaC4992E5C4D3EA18A) tại khối 53102734 và [Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f) tại khối 26274992: định nghĩa thị trường, tổng số, phí và giá oracle (truy cập ngày 26 tháng 10 năm 2026)
+
+_Nội dung mang tính giáo dục, không phải lời khuyên tài chính. Cảnh báo giúp giảm rủi ro, nhưng không ngăn được việc thanh lý._

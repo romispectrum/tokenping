@@ -15,9 +15,15 @@ describe("localeFromPath", () => {
     ["/hi", "hi"],
     ["/hi/gopaniyata", "hi"],
     ["/hi/blog/aave-health-factor-kya-hai", "hi"],
+    ["/de", "de"],
+    ["/de/datenschutz", "de"],
+    ["/vi", "vi"],
+    ["/vi/blog/he-so-suc-khoe-aave", "vi"],
     // A segment that only starts like a language prefix is English.
     ["/esx", "en"],
     ["/hindi", "en"],
+    ["/design", "en"],
+    ["/video", "en"],
     ["/czech", "en"],
   ])("reads %j as %s", (path, locale) => {
     expect(localeFromPath(path)).toBe(locale);
@@ -25,7 +31,10 @@ describe("localeFromPath", () => {
 });
 
 describe("translatePath", () => {
-  it("maps each static page between all four languages", () => {
+  it("maps each static page between all languages", () => {
+    expect(translatePath("/privacy", "de")).toBe("/de/datenschutz");
+    expect(translatePath("/de/datenschutz", "vi")).toBe("/vi/quyen-rieng-tu");
+    expect(translatePath("/vi/aave", "de")).toBe("/de/aave");
     expect(translatePath("/privacy", "es")).toBe("/es/privacidad");
     expect(translatePath("/privacy", "hi")).toBe("/hi/gopaniyata");
     expect(translatePath("/hi/gopaniyata", "cs")).toBe("/cz/ochrana-soukromi");
@@ -41,6 +50,7 @@ describe("translatePath", () => {
     expect(translatePath("/es/blog/factor-de-salud-aave", "en")).toBe("/blog/aave-health-factor");
     expect(translatePath("/blog/aave-health-factor", "hi")).toBe("/hi/blog/aave-health-factor-kya-hai");
     expect(translatePath("/hi/blog/aave-health-factor-kya-hai", "es")).toBe("/es/blog/factor-de-salud-aave");
+    expect(translatePath("/de/blog/aave-health-factor-erklaert", "vi")).toBe("/vi/blog/he-so-suc-khoe-aave");
   });
 
   it("falls back to the target language's home page for any other path", () => {
@@ -50,15 +60,19 @@ describe("translatePath", () => {
 });
 
 describe("routes", () => {
-  it("puts every Spanish page under /es and every Hindi page under /hi", () => {
-    for (const route of ["home", "dashboard", "morpho", "blog", "blogFeed", "privacy"] as const) {
-      expect(routePath("es", route)).toMatch(/^\/es(\/|$)/);
-      expect(routePath("hi", route)).toMatch(/^\/hi(\/|$)/);
-    }
+  it("puts every translated page under its language's prefix", () => {
+    for (const [locale, prefix] of [
+      ["es", "/es"],
+      ["hi", "/hi"],
+      ["de", "/de"],
+      ["vi", "/vi"],
+    ] as const)
+      for (const route of ["home", "dashboard", "morpho", "blog", "blogFeed", "privacy"] as const)
+        expect(routePath(locale, route)).toMatch(new RegExp(`^${prefix}(/|$)`));
   });
 
-  it("gives every post a distinct Spanish and Hindi slug and path, Hindi slugs in Latin letters", () => {
-    for (const locale of ["es", "hi"] as const) {
+  it("gives every post a distinct slug in every translation, all of them lower-case ASCII", () => {
+    for (const locale of ["cs", "es", "hi", "de", "vi"] as const) {
       const slugs = Object.values(POST_SLUGS).map(slug => slug[locale]);
 
       expect(new Set(slugs).size).toBe(slugs.length);
@@ -69,6 +83,8 @@ describe("routes", () => {
       cs: "/cz/blog/aave-health-factor-vysvetleni",
       es: "/es/blog/factor-de-salud-aave",
       hi: "/hi/blog/aave-health-factor-kya-hai",
+      de: "/de/blog/aave-health-factor-erklaert",
+      vi: "/vi/blog/he-so-suc-khoe-aave",
     });
   });
 });

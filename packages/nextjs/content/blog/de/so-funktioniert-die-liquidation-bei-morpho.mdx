@@ -1,0 +1,185 @@
+export const meta = {
+  slug: "so-funktioniert-die-liquidation-bei-morpho",
+  title: "Liquidation bei Morpho: Anreiz und uneinbringliche Schulden",
+  description:
+    "Wann ein Morpho-Kredit liquidiert werden kann, wie viel ein Liquidator nimmt, der Anreiz je LLTV, Bad Debt, Orakel und was bei Midnight anders ist.",
+  h1: "Was passiert, wenn deine Morpho-Position liquidiert wird?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Wie funktioniert die Liquidation bei Morpho und was kostet sie den Kreditnehmer?",
+  readingMinutes: 13,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Eine Position auf Morpho Blue kann liquidiert werden, sobald ihre Beleihungsquote (LTV) über den Liquidations-LTV
+  (LLTV) des Markts steigt, was einem Health Factor (Gesundheitsfaktor) unter 1 entspricht. Ab dann kann jeder einen
+  Teil deiner Schulden oder alle in einer Transaktion zurückzahlen und Sicherheiten im Wert des zurückgezahlten Betrags
+  mal dem Liquidationsanreizfaktor des Markts nehmen, bewertet vom Orakel des Markts. Der Anreiz ergibt sich allein aus
+  dem LLTV: 4,38 % bei einem LLTV von 86 %, und alles davon geht an den Liquidator. Du behältst, was du geliehen hast,
+  also ist der Anreiz das, was dich die Liquidation kostet, es sei denn, deine Sicherheiten decken die Schulden nicht
+  mehr; dann verlierst du sie ganz, und die Kreditgeber des Markts tragen den Rest als uneinbringliche Schulden (bad
+  debt). Die Festzinskredite von Morpho Midnight bringen zwei Besonderheiten: Vor der Fälligkeit darf eine Liquidation
+  nur so viel nehmen, wie die Gesundheit wiederherstellt, es sei denn, die verbleibenden Sicherheiten würden weniger
+  zurückzahlen als die Schwelle des Markts, und nach der Fälligkeit können alle offenen Schulden liquidiert werden, auch
+  bei einer gesunden Position.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Zahlen und die Blocknummern, bei denen sie gelesen wurden: content/blog/snapshots/how-morpho-liquidation-works.md */}
+
+## Wann kann eine Morpho-Position liquidiert werden?
+
+Eine Position auf Morpho Blue kann liquidiert werden, sobald deine Schulden größer sind als der Wert deiner Sicherheiten mal dem LLTV des Markts. Als Health Factor ausgedrückt ist das jeder Wert unter 1,00 ([wie der Morpho Health Factor berechnet wird](/de/blog/morpho-health-factor-erklaert) zeigt Formel und Beispiele).
+
+Der Vertrag prüft das selbst. Die Funktion `liquidate` von Morpho Blue rechnet zuerst die bis zu diesem Block geschuldeten Zinsen hinzu, liest dann einmal das Orakel des Markts und bricht ab, wenn die Position nicht ungesund ist. Eine Position genau auf ihrem LLTV ist noch gesund; sie muss darüber liegen.
+
+Nur zwei Dinge schieben eine Position über die Grenze:
+
+- **Der Preis der Sicherheit fällt** im Verhältnis zum Kredit-Token, so wie das Orakel ihn meldet.
+- **Deine Schulden wachsen**, während auf einem Blue-Kredit mit variablem Zinssatz Zinsen auflaufen.
+
+Jeder Blue-Markt legt seinen LLTV und sein Orakel bei der Erstellung fest, und beides kann sich danach nicht ändern. Der Vertrag von Morpho Blue hat auch keine Pause, kein Einfrieren und keine Schonfrist: Morpho kann Liquidationen in einem Markt nicht stoppen und dich nicht am Zurückzahlen hindern. Der Herausgeber eines Tokens kann Transfers dieses Tokens aber trotzdem pausieren oder sperren, was beides stoppen würde.
+
+## Wer liquidiert eine Morpho-Position und wie?
+
+Jeder. `liquidate` hat keine Einschränkung beim Aufrufer, und Morpho selbst liquidiert keine Positionen. Liquidatoren reichen von Teams, die Bots betreiben, die Positionen und Orakelpreise beobachten, bis zu Einzelpersonen; die Doku von Morpho weist darauf hin, dass nur ein RPC-Node und eine Wallet mit genug vom Kredit-Token nötig sind.
+
+Es gilt: Wer zuerst kommt, mahlt zuerst. Es gibt keine Auktion, Liquidatoren konkurrieren also über Geschwindigkeit, und Gas-Wettläufe und MEV (Reihenfolge von Transaktionen zum eigenen Gewinn) gehören dazu. Der Vertrag schickt die beschlagnahmten Sicherheiten an den Liquidator, bevor er die Kredit-Token einzieht, so kann ein Bot die Sicherheiten in derselben Transaktion verkaufen und aus dem Erlös zurückzahlen.
+
+Liquidationen sind nicht garantiert; sie finden statt, weil sich der Anreiz lohnt. In der Praxis sind sie Routine: Die API von Morpho zählt allein im Markt USDC | cbBTC (86%) auf Base 14.024 Liquidationen.
+
+## Wie viel deiner Schulden kann auf einmal liquidiert werden?
+
+Alles. Morpho Blue hat keinen Close Factor und keine Mindestgröße: Ein Liquidator darf jeden Betrag deiner Schulden zurückzahlen, von einem kleinen Teil bis zum Ganzen, in einem einzigen Aufruf. Die einzigen Grenzen sind, dass er nicht mehr zurückzahlen kann, als du schuldest, und nicht mehr Sicherheiten beschlagnahmen kann, als du hast.
+
+Das ist der größte Unterschied zu Aave V3, das eine Liquidation auf 50 % der Schulden begrenzt, solange der Health Factor über 0,95 liegt und die Position nicht klein ist ([wie viel einer Aave-Schuld auf einmal liquidiert werden kann](/de/blog/so-funktioniert-die-liquidation-bei-aave#wie-viel-meiner-schulden-kann-auf-einmal-liquidiert-werden)). Auf Blue kann eine Position, die knapp über ihren LLTV rutscht, vom ersten Liquidator, der kommt, vollständig geschlossen werden.
+
+## Wie groß ist der Liquidationsanreiz bei jedem LLTV?
+
+Der Liquidationsanreizfaktor (liquidation incentive factor, LIF) wird durch eine Formel im Vertrag aus dem LLTV des Markts bestimmt:
+
+**LIF = min(1,15, 1 ÷ (1 − 0,3 × (1 − LLTV)))**
+
+Der Liquidator zahlt einen Teil deiner Schulden zurück und erhält Sicherheiten im Wert dieses Betrags mal dem LIF zum Orakelpreis. Der Teil über 1 ist der Anreiz, bezahlt aus deinen Sicherheiten. Morpho nimmt davon keinen Anteil.
+
+Ein Markt kann nur einen LLTV verwenden, den die Governance von Morpho freigeschaltet hat. Am 26. Oktober 2026 waren das die freigeschalteten Werte, und jeder Blue-Markt in der API von Morpho verwendet einen davon. Mit der eigenen Ganzzahl-Mathematik des Vertrags:
+
+| LLTV   | Liquidationsanreizfaktor | Sicherheiten, die du pro 1.000 zurückgezahlter Schulden verlierst | Davon der Anreiz |
+| ------ | ------------------------ | ----------------------------------------------------------------- | ---------------- |
+| 38,5 % | 1,1500 (begrenzt)        | 1.150,00                                                          | 150,00           |
+| 62,5 % | 1,1268                   | 1.126,76                                                          | 126,76           |
+| 77 %   | 1,0741                   | 1.074,11                                                          | 74,11            |
+| 86 %   | 1,0438                   | 1.043,84                                                          | 43,84            |
+| 91,5 % | 1,0262                   | 1.026,17                                                          | 26,17            |
+| 94,5 % | 1,0168                   | 1.016,78                                                          | 16,78            |
+| 96,5 % | 1,0106                   | 1.010,61                                                          | 10,61            |
+| 98 %   | 1,0060                   | 1.006,04                                                          | 6,04             |
+
+Ein LLTV von 0 ist ebenfalls freigeschaltet, aber in einem solchen Markt kann nichts geliehen werden. Je höher der LLTV, desto kleiner der Anreiz; die Doku von Morpho erklärt das als Schutz vor Liquidationskaskaden in den riskanteren Märkten. Sie rundet den Wert bei 86 % außerdem auf „approximately 1.05“ (etwa 1,05); der exakte Wert ist 1,0438.
+
+## Rechenbeispiel: 1 cbBTC gegen 50.000 USDC auf Base
+
+Nimm den größten gelisteten Blue-Markt nach Kreditvolumen auf Ethereum und Base: USDC | cbBTC (86%) auf Base, mit rund 1,61 Mrd. USDC geliehen. Am 26. Oktober 2026 bewertete sein Orakel 1 cbBTC mit 80.000,15 USDC (Base-Block 53102870). Die Position ist erfunden: 1 cbBTC als Sicherheit und 50.000 USDC Schulden.
+
+- **LTV:** 50.000 ÷ 80.000,15 = 62,5 %.
+- **Health Factor:** 80.000,15 × 0,86 ÷ 50.000 = 1,376.
+- **Liquidationspreis:** 50.000 ÷ 0,86 = 58.139,53 USDC pro cbBTC, 27,3 % unter dem Orakelpreis.
+
+Zinsen sind der langsame Treiber. Beim Kreditzins des Markts von rund 5,2 % pro Jahr am 26. Oktober 2026, und wenn dieser Zinssatz so bliebe, bräuchten Zinsen allein mehr als sechs Jahre, um diese Position von 62,5 % auf 86 % LTV zu bringen. Der Preis ist der schnelle.
+
+Zum Vergleich: Über die 11.000 größten Kreditpositionen in diesem Markt, die 96 % seiner Schulden halten, lag die Hälfte der geliehenen USDC in Positionen unter etwa 54 % LTV, einem Health Factor über etwa 1,59. Das ist eine Berechnung von Tokenping aus der API von Morpho und dem On-chain-Preis, keine Zahl von Morpho.
+
+### Vollständige Liquidation bei 58.139,53
+
+Knapp hinter dem Liquidationspreis kann ein Liquidator alle 50.000 USDC zurückzahlen und 50.000 × 1,0438 ÷ 58.139,53 = 0,8977 cbBTC nehmen, im Wert von 52.192,07 USDC. Du behältst die 50.000 USDC, die du geliehen hast, und 0,1023 cbBTC (5.947,47 USDC) und schuldest nichts. Die Liquidation hat dich 2.192,07 USDC gekostet, verglichen damit, selbst zurückzuzahlen: 4,38 % der Schulden.
+
+### Teilliquidation von 10.000 USDC
+
+Ein Liquidator kann auch bei 10.000 USDC aufhören. Das beschlagnahmt 0,1795 cbBTC (10.438,41 USDC) und lässt 0,8205 cbBTC gegen 40.000 USDC übrig: eine LTV von 83,9 % und ein Health Factor von 1,026, wieder gesund. Ein Teil hilft hier immer, weil LIF × LLTV = 0,898 unter 1 liegt. Aber nichts bringt einen Liquidator dazu, den Teil statt der ganzen Schulden zu wählen.
+
+### Was, wenn niemand liquidiert, bis cbBTC bei 50.000 steht?
+
+Bei 50.000 USDC sind deine Sicherheiten genau so viel wert wie deine Schulden, was weniger ist als Schulden × LIF. Beschlagnahmt man den ganzen 1 cbBTC, werden nur 50.000 ÷ 1,0438 = 47.900 USDC zurückgezahlt. Du verlierst alle deine Sicherheiten, und die restlichen 2.100 USDC werden als uneinbringliche Schulden abgeschrieben, die die Kreditgeber des Markts tragen.
+
+## Was passiert mit uneinbringlichen Schulden auf Morpho Blue?
+
+Wenn eine Liquidation einen Kreditnehmer ohne Sicherheiten, aber mit Schulden zurücklässt, schreibt der Vertrag diese Schulden in derselben Transaktion ab. Er zieht die restlichen Schulden von den gesamten Krediten des Markts ab und denselben Betrag von seinen gesamten Einlagen, sodass jeder Kreditgeber in diesem Markt anteilig verliert. Kreditgeber in anderen Märkten sind nicht betroffen, weil jeder Blue-Markt isoliert ist.
+
+Uneinbringliche Schulden werden möglich, wenn die Sicherheiten weniger wert sind als die Schulden mal dem LIF. In einem 86-%-Markt ist das jede LTV über 95,8 %, die eine Position nur erreichen kann, wenn der Preis über den LLTV hinausläuft, bevor jemand liquidiert. Das kommt vor, wenn auch selten in großen Beträgen: Die API von Morpho verzeichnet uneinbringliche Schulden bei 1.428 Blue-Liquidationen auf Ethereum und Base, die meisten unter 1 US-Dollar oder in Märkten, die die Morpho-App nicht listet.
+
+Für den Kreditnehmer ist das Ergebnis in beiden Fällen dasselbe: Alle Sicherheiten sind weg und es bleiben keine Schulden. Für Kreditgeber hängt es davon ab, wie sie verleihen: Ein Morpho Vault V2 gibt den Verlust an seinen Anteilspreis weiter, während ältere V1.1-Vaults ihn nicht an ihren weitergeben. Aave geht anders damit um: Seit v3.3 verbucht es verbleibende Schulden als Defizit, das seine Umbrella-Staker decken können ([Bad Debt auf Aave](/de/blog/so-funktioniert-die-liquidation-bei-aave#kann-eine-liquidation-uneinbringliche-schulden-hinterlassen)).
+
+## Welche Rolle spielt das Orakel bei einer Liquidation?
+
+Das Orakel (oracle) setzt den Preis für jede Liquidationsentscheidung. Jeder Markt nennt ein Orakel, das den Preis der Sicherheit im Kredit-Token liefert, und sowohl der Moment, in dem eine Position liquidierbar wird, als auch die Menge an Sicherheiten, die ein Liquidator erhält, verwenden diesen Preis, nicht die Preise an Börsen. Morpho wählt keine Orakel aus: Das tut, wer einen Markt erstellt. Die Orakeladresse des Markts kann nie ersetzt werden, aber die Preisfeeds, die ein Orakel liest, können von anderen betrieben werden, die sie aktualisieren können. Der BTC/USD-Feed des Base-Beispiels zum Beispiel hat einen Eigentümer, der ihn auf eine neue Quelle umstellen kann.
+
+Was ein Orakel misst, ist für dich wichtig. Das Orakel des Base-Beispielmarkts verwendet für cbBTC einen BTC/USD-Preisfeed und behandelt USDC als genau 1 US-Dollar, ein Depeg (Verlust der Dollarbindung) eines der beiden Token würde es also nicht bewegen. Das Referenzorakel von Morpho für Chainlink-kompatible Feeds prüft nicht, wie alt ein Preis ist oder ob er innerhalb von Grenzen liegt, und fügt keine Prüfung auf Ausfälle des L2-Sequencers hinzu.
+
+Ein Problem mit dem Orakel kann Kreditnehmern auf zwei Arten schaden:
+
+- **Ein falscher oder manipulierter Preis.** Die Risikoseite von Morpho warnt, dass kein Orakel gegen Manipulation immun ist, was Liquidationen oder sogar uneinbringliche Schulden verursachen kann.
+- **Ein Orakel, das nicht mehr antwortet.** Kreditaufnahme, Abheben von Sicherheiten und Liquidation lesen alle das Orakel und würden scheitern. Zurückzahlen und Sicherheiten hinzufügen lesen es nicht, du kannst deine Position also weiter verbessern, während niemand sie liquidieren kann.
+
+## Wie unterscheiden sich Liquidationen auf Morpho Midnight?
+
+Märkte auf Morpho Midnight verleihen einen Token zu einem festen Zinssatz bis zu einem festgelegten Fälligkeitsdatum gegen eine oder mehrere Sicherheiten, jede mit eigenem LLTV, eigenem Orakel und eigenem Liquidations-Cursor (die 0,3 in der Anreizformel oben, die Midnight pro Sicherheit festlegt). Deine Schulden sind in Einheiten fest, daher bewegen vor der Fälligkeit nur die Preise der Sicherheiten deinen Health Factor. Eine Midnight-Position kann auf zwei Arten liquidiert werden:
+
+- **Nach Gesundheit, jederzeit**, solange die Schulden die Summe aus dem Wert jeder Sicherheit mal ihrem LLTV übersteigen. Der Anreiz ist der volle Bonus dieser Sicherheit, und eine Liquidation darf nur so viel zurückzahlen, wie nötig ist, um die Position wieder gesund zu machen. Die Ausnahme: Wenn die Sicherheiten, die nach einer solchen begrenzten Liquidation übrig bleiben, weniger zurückzahlen würden als der rcfThreshold des Markts, können diese Sicherheiten ganz genommen werden.
+- **Nach der Fälligkeit**, wenn noch Schulden offen sind, auch bei einer gesunden Position. Es gibt keine Begrenzung, und der Anreiz beginnt bei null und steigt über 60 Minuten auf den vollen Bonus.
+
+Der Liquidator wählt, welche Sicherheit er nimmt, und es gibt keine Obergrenze von 1,15; am 26. Oktober 2026 verwendete jeder gelistete Midnight-Markt einen Cursor von 0,3 mit LLTVs der Sicherheiten von 62,5 % bis 98 %, was dieselben Anreize wie in der Tabelle oben ergibt. Uneinbringliche Schulden tragen die Kreditgeber dieses Markts gemeinsam. [Wie Midnight-Festzinskredite funktionieren](/de/blog/morpho-midnight-festzinskredite) erklärt die Fälligkeit, die Schwellen echter Märkte und ein Rechenbeispiel.
+
+## Was ist Vorliquidation?
+
+Die Vorliquidation (pre-liquidation) ist eine optionale Ergänzung auf Morpho Blue. Ein Kreditnehmer, der für einen Markt einen Vorliquidationsvertrag autorisiert hat, erlaubt Liquidatoren, ihn zu nutzen, sobald die LTV eine Grenze unterhalb des LLTV überschreitet, um Teile der Schulden zurückzuzahlen, Aufruf für Aufruf, zu einem in diesem Vertrag festgelegten Anreiz, bis die LTV wieder unter dieser Grenze liegt. Über dem LLTV gilt weiterhin die normale Liquidation.
+
+Der Base-Beispielmarkt hat einen: Ab 83,26 % LTV kann er pro Aufruf bis zu 0,20 % der Schulden zurückzahlen (Aufrufe können sich wiederholen), steigend auf 24,53 % nahe 86 %, zum selben Anreiz von 1,0438. Er greift nur, wenn du ihn autorisiert hast. Morpho stellt die Funktion ein: Die App nimmt keine neuen Positionen an, und das Hilfecenter bittet Kreditnehmer, die sie haben, sie abzuschalten. [Morpho Vorliquidation](/de/blog/morpho-vorliquidation) erklärt die Bedingungen und wie du sie prüfst und widerrufst.
+
+## Wie unterscheidet sich die Liquidation bei Morpho von der bei Aave?
+
+Der Kern ist derselbe: Unter 1 zahlt ein Liquidator Schulden zurück und nimmt Sicherheiten plus einen Bonus. Die Regeln drumherum unterscheiden sich ([so funktioniert die Liquidation bei Aave](/de/blog/so-funktioniert-die-liquidation-bei-aave)):
+
+|                                | Aave V3                                                          | Morpho Blue                                       | Morpho Midnight                                                                                                                                                                  |
+| ------------------------------ | ---------------------------------------------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Wie viel auf einmal            | 50 % oder 100 % der Schulden, plus eine Regel für Kleinstbeträge | Bis zu allen Schulden in einem Aufruf             | Vor der Fälligkeit, was die Gesundheit wiederherstellt (eine ganze Sicherheit, wenn der Rest weniger als den rcfThreshold zurückzahlen würde); nach der Fälligkeit alle Schulden |
+| Bonus                          | Pro Sicherheiten-Asset von der Governance festgelegt             | Durch den LLTV des Markts festgelegt              | Pro Sicherheit, aus ihrem LLTV und Cursor                                                                                                                                        |
+| Wer den Bonus behält           | Liquidator, abzüglich einer Protokollgebühr                      | Liquidator, komplett                              | Liquidator                                                                                                                                                                       |
+| Können sich die Regeln ändern? | Governance und Risk Stewards können sie ändern                   | Nein, bei der Erstellung des Markts festgelegt    | Bei der Erstellung des Markts festgelegt                                                                                                                                         |
+| Pause                          | Assets können pausiert werden, mit Schonfrist                    | Keine Pause                                       | Keine Pause                                                                                                                                                                      |
+| Uneinbringliche Schulden       | Ein Defizit, das Umbrella-Staker decken können                   | Gegen die Kreditgeber dieses Markts abgeschrieben | Auf die Kreditgeber dieses Markts verteilt                                                                                                                                       |
+| Was eine Position umfasst      | Viele Assets in einer Position                                   | Eine Sicherheit, ein Kredit-Token                 | Ein Kredit-Token, mehrere Sicherheiten                                                                                                                                           |
+
+## Wie vermeidest du eine Liquidation auf Morpho?
+
+- **Halte einen Puffer unter dem LLTV.** Eine Position, die sich erholt, bevor jemand liquidiert, ist wieder sicher, aber nichts hält den Preis davon ab, weiter zu fallen, und der erste Liquidator, der kommt, kann alle deine Schulden auf einmal zurückzahlen.
+- **Zahle früh zurück oder füge Sicherheiten hinzu.** Beides senkt deine LTV sofort, kostet keinen Anreiz und funktioniert auch, wenn das Orakel ausfällt.
+- **Kenne dein Orakel.** Prüfe, bevor du leihst, welches Orakel dein Markt verwendet und was es misst.
+- **Auf Midnight: Zahle vor der Fälligkeit zurück.** Nach der Fälligkeit können alle verbleibenden Schulden liquidiert werden, gesund oder nicht.
+- **Prüfe eine alte Vorliquidation.** Wenn du einmal Auto-deleverage (Vorliquidation) eingeschaltet hast: Morpho stellt die Funktion ein und bittet Kreditnehmer, sie abzuschalten; [Morpho Vorliquidation](/de/blog/morpho-vorliquidation) zeigt, wie.
+
+## Wie können Alerts helfen?
+
+Tokenping prüft jede Morpho-Kreditposition, für die du einen Alert einrichtest, alle 5 Minuten, in Märkten, die in der Morpho-App gelistet sind: Morpho Blue in 14 Netzwerken und Morpho Midnight. Midnight-Alerts decken die Märkte ab, die die API von Morpho listet. Am 26. Oktober 2026 waren das Märkte auf Ethereum und Base; Tokenping deckt auch Arc und Robinhood Chain ab, sobald Morpho dort Midnight-Märkte listet. Es berechnet jeden Health Factor aus der Chain mit der eigenen Mathematik von Morpho, nicht aus der API von Morpho. Solange ein Health Factor unter dem Schwellenwert liegt, den du festlegst (1,02 bis 10), schickt jede Prüfung eine Nachricht über jeden Kanal, den du gewählt hast: Signal, Telegram oder E-Mail. Wenn du auf einem Blue-Markt einen Vorliquidationsvertrag autorisiert hast, misst der Alert an der niedrigeren der beiden Grenzen: dem LLTV oder der Vorliquidationsgrenze. Ein Midnight-Kredit bekommt außerdem eine Erinnerung in seinen letzten 7 Tagen und eine in seinen letzten 24 Stunden vor der Fälligkeit, danach einen Alert bei jeder Prüfung nach der Fälligkeit, solange Schulden bleiben.
+
+Du kannst [deine Morpho-Positionen ansehen](/de/morpho); das braucht keine Zahlung. Alerts kosten <AlertPrice />. Ein Alert verschafft dir Zeit zum Handeln, aber ein Preis kann zwischen zwei Prüfungen über deinen LLTV laufen, und ein Alert verhindert keine Liquidation.
+
+## Quellen
+
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) und [IMorpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/interfaces/IMorpho.sol), morpho-org/morpho-blue: Gesundheitsprüfung, Liquidation, Anreizformel, uneinbringliche Schulden und Annahmen zum Orakel (abgerufen am 26. Oktober 2026)
+- [Midnight.sol](https://github.com/morpho-org/midnight/blob/main/src/Midnight.sol) und [ConstantsLib.sol](https://github.com/morpho-org/midnight/blob/main/src/libraries/ConstantsLib.sol), morpho-org/midnight: Liquidationsmodi, RCF, Anstieg des Anreizes und Slashing (abgerufen am 26. Oktober 2026)
+- [Pre-liquidation README und PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation), morpho-org/pre-liquidation (abgerufen am 26. Oktober 2026)
+- [ChainlinkDataFeedLib.sol](https://github.com/morpho-org/morpho-blue-oracles/blob/main/src/morpho-chainlink/libraries/ChainlinkDataFeedLib.sol), morpho-org/morpho-blue-oracles: keine Prüfungen auf Alter, Grenzen oder Sequencer (abgerufen am 26. Oktober 2026)
+- [Liquidation on Morpho](https://docs.morpho.org/learn/concepts/liquidation): Liquidatoren, keine Auktion, bis zu 100 % auf einmal, keine Protokollgebühr, uneinbringliche Schulden in Vaults (abgerufen am 26. Oktober 2026)
+- [Entwickler-Doku von Morpho: Liquidation](https://docs.morpho.org/developers/borrow/concepts/liquidation): Anreiz nach LLTV und uneinbringliche Schulden (abgerufen am 26. Oktober 2026)
+- [Morpho-Doku: Orakel](https://docs.morpho.org/learn/concepts/oracle): Wahl des Orakels und Unveränderlichkeit (abgerufen am 26. Oktober 2026)
+- [Morpho-Doku: Morpho Blue](https://docs.morpho.org/learn/concepts/blue): dauerhafte Marktparameter und freigeschaltete LLTVs (abgerufen am 26. Oktober 2026)
+- [Morpho-Doku: Midnight liquidations](https://docs.morpho.org/learn/concepts/midnight/liquidations), [Sicherheiten, Gesundheit und Liquidationen](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) und [what is Midnight](https://docs.morpho.org/learn/concepts/midnight) (abgerufen am 26. Oktober 2026)
+- [Morpho-Doku: Risiken](https://docs.morpho.org/learn/resources/risks): Orakel-, Liquidations-, Bad-Debt- und Gegenparteirisiko (abgerufen am 26. Oktober 2026)
+- [Morpho API](https://api.morpho.org/graphql): Zahl der Liquidationen und der Fälle uneinbringlicher Schulden, Marktlisting, Kreditzins, Kreditpositionen und Midnight-Märkte (abgerufen am 26. Oktober 2026)
+- [Morpho Blue auf Base](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), der Markt USDC | cbBTC (86%) in Base-Block 53102870 (abgerufen am 26. Oktober 2026)
+- [Das Orakel des Markts](https://basescan.org/address/0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9#readContract) und [sein BTC/USD-Feed](https://basescan.org/address/0x64c911996D3c6aC71f9b455B1E8E7266BcbD848F#readContract) auf Base: der Preis in Block 53102870 und der Eigentümer des Feeds (abgerufen am 26. Oktober 2026)
+- [Der Vorliquidationsvertrag des Markts](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374#readContract) auf Base: seine Parameter in Block 53102870 (abgerufen am 26. Oktober 2026)
+- [Morpho Midnight auf Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract): freigeschaltete LLTVs und Liquidations-Cursor in Block 26274998 (abgerufen am 26. Oktober 2026)
+
+_Bildungsinhalt, keine Finanzberatung. Alerts senken das Risiko, verhindern aber keine Liquidation._

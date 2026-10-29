@@ -1,19 +1,33 @@
 import { DEFAULT_LOCALE, LOCALES, type Locale, type Localized } from "~~/i18n/locales";
 import { POST_SLUGS, postKeyForSlug } from "~~/i18n/postSlugs";
 
-// Every public page's path in each language. English keeps the original URLs at the root; Czech lives under /cz,
-// Spanish under /es and Hindi under /hi, with the language's words where a path has words (Hindi transliterated). The single source for links, canonicals,
+// Every public page's path in each language. English keeps the original URLs at the root; every other language lives
+// under its prefix (/cz, /es, /hi, /de, /vi), with the language's words where a path has words, in ASCII. The single source for links, canonicals,
 // hreflang, the sitemap and the switcher.
 
 export type StaticRoute = "home" | "dashboard" | "morpho" | "blog" | "blogFeed" | "privacy";
 
 const STATIC_PATHS: Record<StaticRoute, Localized<string>> = {
-  home: { en: "/", cs: "/cz", es: "/es", hi: "/hi" },
-  dashboard: { en: "/aave", cs: "/cz/aave", es: "/es/aave", hi: "/hi/aave" },
-  morpho: { en: "/morpho", cs: "/cz/morpho", es: "/es/morpho", hi: "/hi/morpho" },
-  blog: { en: "/blog", cs: "/cz/blog", es: "/es/blog", hi: "/hi/blog" },
-  blogFeed: { en: "/blog/feed.xml", cs: "/cz/blog/feed.xml", es: "/es/blog/feed.xml", hi: "/hi/blog/feed.xml" },
-  privacy: { en: "/privacy", cs: "/cz/ochrana-soukromi", es: "/es/privacidad", hi: "/hi/gopaniyata" },
+  home: { en: "/", cs: "/cz", es: "/es", hi: "/hi", de: "/de", vi: "/vi" },
+  dashboard: { en: "/aave", cs: "/cz/aave", es: "/es/aave", hi: "/hi/aave", de: "/de/aave", vi: "/vi/aave" },
+  morpho: { en: "/morpho", cs: "/cz/morpho", es: "/es/morpho", hi: "/hi/morpho", de: "/de/morpho", vi: "/vi/morpho" },
+  blog: { en: "/blog", cs: "/cz/blog", es: "/es/blog", hi: "/hi/blog", de: "/de/blog", vi: "/vi/blog" },
+  blogFeed: {
+    en: "/blog/feed.xml",
+    cs: "/cz/blog/feed.xml",
+    es: "/es/blog/feed.xml",
+    hi: "/hi/blog/feed.xml",
+    de: "/de/blog/feed.xml",
+    vi: "/vi/blog/feed.xml",
+  },
+  privacy: {
+    en: "/privacy",
+    cs: "/cz/ochrana-soukromi",
+    es: "/es/privacidad",
+    hi: "/hi/gopaniyata",
+    de: "/de/datenschutz",
+    vi: "/vi/quyen-rieng-tu",
+  },
 };
 
 export const routePath = (locale: Locale, route: StaticRoute) => STATIC_PATHS[route][locale];
@@ -31,7 +45,7 @@ export const postAlternates = (key: string): Localized<string> | undefined => {
   return Object.fromEntries(LOCALES.map(locale => [locale, postPath(locale, slugs[locale])])) as Localized<string>;
 };
 
-/** The language a path belongs to: the one whose home is the path or its first segment (/cz, /es, /hi), English otherwise. */
+/** The language a path belongs to: the one whose home is the path or its first segment (/cz, /es, ...), else English. */
 export const localeFromPath = (pathname: string): Locale =>
   LOCALES.find(locale => {
     const home = STATIC_PATHS.home[locale];

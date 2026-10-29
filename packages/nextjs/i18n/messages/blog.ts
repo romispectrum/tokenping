@@ -126,6 +126,17 @@ const hiEveryMinutes = (minutes: number) => plural("hi", minutes, { one: "हर
 /** "22 नेटवर्क पर", "1 नेटवर्क पर": the noun does not change with the count. */
 const hiOnNetworks = (networks: number) => `${networks} नेटवर्क पर`;
 
+/** "alle 5 Minuten", "jede Minute". */
+const deEveryMinutes = (minutes: number) =>
+  plural("de", minutes, { one: "jede Minute", other: `alle ${minutes} Minuten` });
+
+/** "in 22 Netzwerken", "in 1 Netzwerk". */
+const deOnNetworks = (networks: number) =>
+  plural("de", networks, { one: `in ${networks} Netzwerk`, other: `in ${networks} Netzwerken` });
+
+/** "mỗi 5 phút", "mỗi phút": the noun does not change with the count. */
+const viEveryMinutes = (minutes: number) => (minutes === 1 ? "mỗi phút" : `mỗi ${minutes} phút`);
+
 export const BLOG_MESSAGES: Localized<BlogMessages> = {
   en: {
     crumbs: { home: "Home", blog: "Blog" },
@@ -356,6 +367,125 @@ export const BLOG_MESSAGES: Localized<BlogMessages> = {
       fallbackLabel: "तालिका, बगल में स्क्रॉल होती है",
       label: (heading, index) => (index === undefined ? `तालिका: ${heading}` : `तालिका ${index}: ${heading}`),
       scrollHint: "सभी कॉलम देखने के लिए बगल में स्क्रॉल करें।",
+    },
+  },
+  de: {
+    crumbs: { home: "Startseite", blog: "Blog" },
+    index: {
+      title: "Ratgeber: Health Factor und Liquidation bei Aave und Morpho",
+      description:
+        "Ratgeber zum Health Factor bei Aave und Morpho, zu Liquidationen, Liquidationspreisen und Alerts, mit Rechenbeispielen und datierten Zahlen mit Quelle.",
+      kicker: "Ratgeber zu Aave und Morpho",
+      lead: "Wie der Health Factor bei Aave und bei Morpho funktioniert, was bei einer Liquidation passiert, wie du deinen Liquidationspreis berechnest und wie du gewarnt wirst, bevor der Preis ihm nahe kommt. Jede Zahl in diesen Ratgebern nennt ihre Quelle und das Datum, an dem sie geprüft wurde.",
+      dashboardCta: "Aave-Dashboard öffnen",
+      morphoDashboardCta: "Morpho-Dashboard öffnen",
+      rss: "Per RSS abonnieren",
+      startHere: "Für den Einstieg",
+      allGuides: "Alle Ratgeber",
+      empty: {
+        title: "Noch keine Ratgeber",
+        description:
+          "Wir bereiten die Ratgeber auf Deutsch vor. Abonniere sie per RSS, um sie zu erhalten, sobald sie erscheinen.",
+        otherLanguage: "Ratgeber auf Englisch lesen",
+      },
+    },
+    post: {
+      kicker: "Ratgeber zu Aave V3",
+      morphoKicker: "Ratgeber zu Morpho",
+      byline: { author: "Vom Tokenping-Team", published: "Veröffentlicht", updated: "Aktualisiert" },
+      readingTime: minutes => `${minutes} Min. Lesezeit`,
+      readGuide: "Ratgeber lesen",
+      related: "Verwandte Ratgeber",
+    },
+    endBox: {
+      label: "Über Tokenping",
+      title: "Health-Factor-Alerts von Tokenping",
+      body: ({ minutes, networks, channels, price, paymentChain }) =>
+        `Tokenping prüft den Health Factor deiner Positionen auf Aave V3 und V4 ${deEveryMinutes(minutes)} ${deOnNetworks(networks)} und schreibt dir über ${channels}, wenn er unter deinem Schwellenwert liegt. Alerts kosten ${price}${paymentChain ? `, bezahlt im Netzwerk ${paymentChain}` : ""}; deine Positionen anzusehen braucht keine Zahlung. Alerts geben dir Zeit zu handeln; eine Liquidation verhindern sie nicht.`,
+      cta: "Dashboard öffnen",
+      morpho: {
+        title: "Health-Factor-Alerts für Morpho von Tokenping",
+        body: ({ minutes, networks, channels, price, paymentChain }) =>
+          `Tokenping prüft den Health Factor deiner Kredite auf Morpho Blue und Midnight ${deEveryMinutes(minutes)} ${deOnNetworks(networks)} und schreibt dir über ${channels}, wenn er unter deinem Schwellenwert liegt, mit Erinnerungen vor der Fälligkeit eines Kredits mit festem Zinssatz. Alerts kosten ${price}${paymentChain ? `, bezahlt im Netzwerk ${paymentChain}` : ""}, derselbe Plan wie für Aave-Alerts; deine Positionen anzusehen braucht keine Zahlung. Alerts geben dir Zeit zu handeln; eine Liquidation verhindern sie nicht.`,
+        cta: "Morpho-Dashboard öffnen",
+      },
+    },
+    alertPrice: {
+      fallback: "eine kleine Gebühr in USDC (den aktuellen Preis siehst du im Dashboard)",
+      plan: ({ priceLabel, days }) =>
+        `${formatDecimal("de", priceLabel)} ${plural("de", days, { one: "pro Tag", other: `für ${days} Tage` })}`,
+    },
+    callout: { info: "Hinweis", warning: "Warnung" },
+    shortAnswer: "Kurze Antwort",
+    scopeNote: {
+      text: "Gilt für Aave V3.7, geprüft in den Märkten Ethereum Core, Arbitrum, Base, Optimism, Polygon, Avalanche und Gnosis. Andere V3-Märkte und Netzwerke laufen eventuell mit älteren Versionen. Unterschiede bei Aave V4 sind dort vermerkt, wo die Regeln abweichen.",
+      morphoText:
+        "Gilt für die Märkte von Morpho Blue und Morpho Midnight, die in der Morpho-App gelistet sind. Jeder Markt legt seine eigenen Sicherheiten, sein Orakel und seine LLTV fest, prüfe also die Zahlen deines Markts.",
+      figuresAsOf: "Stand der Zahlen:",
+    },
+    table: {
+      fallbackLabel: "Tabelle, horizontal scrollbar",
+      label: (heading, index) => (index === undefined ? `Tabelle: ${heading}` : `Tabelle ${index}: ${heading}`),
+      scrollHint: "Scrolle seitwärts, um alle Spalten zu sehen.",
+    },
+  },
+  vi: {
+    crumbs: { home: "Trang chủ", blog: "Blog" },
+    index: {
+      title: "Hướng dẫn về hệ số sức khỏe và thanh lý trên Aave và Morpho",
+      description:
+        "Bài hướng dẫn về hệ số sức khỏe, thanh lý, giá thanh lý và cảnh báo trên Aave và Morpho, có ví dụ tính toán và số liệu ghi rõ ngày, nguồn.",
+      kicker: "Bài hướng dẫn về Aave và Morpho",
+      lead: "Hệ số sức khỏe hoạt động thế nào trên Aave và trên Morpho, điều gì xảy ra khi bị thanh lý, cách tính giá thanh lý của bạn và cách nhận cảnh báo trước khi giá đến gần mức đó. Mọi số liệu trong các bài hướng dẫn này đều ghi nguồn và ngày được kiểm tra.",
+      dashboardCta: "Mở bảng điều khiển Aave",
+      morphoDashboardCta: "Mở bảng điều khiển Morpho",
+      rss: "Theo dõi qua RSS",
+      startHere: "Bắt đầu từ đây",
+      allGuides: "Tất cả bài hướng dẫn",
+      empty: {
+        title: "Chưa có bài hướng dẫn",
+        description:
+          "Chúng tôi đang chuẩn bị các bài hướng dẫn bằng tiếng Việt. Theo dõi qua RSS để nhận bài khi được đăng.",
+        otherLanguage: "Đọc các bài hướng dẫn bằng tiếng Anh",
+      },
+    },
+    post: {
+      kicker: "Hướng dẫn Aave V3",
+      morphoKicker: "Hướng dẫn Morpho",
+      byline: { author: "Đội ngũ Tokenping", published: "Đăng ngày", updated: "Cập nhật ngày" },
+      readingTime: minutes => `${minutes} phút đọc`,
+      readGuide: "Đọc bài hướng dẫn",
+      related: "Bài hướng dẫn liên quan",
+    },
+    endBox: {
+      label: "Về Tokenping",
+      title: "Cảnh báo hệ số sức khỏe từ Tokenping",
+      body: ({ minutes, networks, channels, price, paymentChain }) =>
+        `Tokenping kiểm tra hệ số sức khỏe Aave V3 và V4 của bạn ${viEveryMinutes(minutes)} trên ${networks} mạng và nhắn tin cho bạn qua ${channels} khi hệ số này dưới ngưỡng của bạn. Cảnh báo tốn ${price}${paymentChain ? `, thanh toán trên mạng ${paymentChain}` : ""}; xem vị thế không cần thanh toán. Cảnh báo cho bạn thời gian để hành động; chúng không ngăn được việc thanh lý.`,
+      cta: "Mở bảng điều khiển",
+      morpho: {
+        title: "Cảnh báo hệ số sức khỏe Morpho từ Tokenping",
+        body: ({ minutes, networks, channels, price, paymentChain }) =>
+          `Tokenping kiểm tra hệ số sức khỏe Morpho Blue và Midnight của bạn ${viEveryMinutes(minutes)} trên ${networks} mạng và nhắn tin cho bạn qua ${channels} khi hệ số này dưới ngưỡng của bạn, kèm lời nhắc trước ngày đáo hạn của khoản vay lãi suất cố định. Cảnh báo tốn ${price}${paymentChain ? `, thanh toán trên mạng ${paymentChain}` : ""}, cùng gói với cảnh báo Aave; xem vị thế không cần thanh toán. Cảnh báo cho bạn thời gian để hành động; chúng không ngăn được việc thanh lý.`,
+        cta: "Mở bảng điều khiển Morpho",
+      },
+    },
+    alertPrice: {
+      fallback: "một khoản phí nhỏ bằng USDC (xem giá hiện tại trên bảng điều khiển)",
+      plan: ({ priceLabel, days }) => `${priceLabel} cho ${days} ngày`,
+    },
+    callout: { info: "Ghi chú", warning: "Cảnh báo" },
+    shortAnswer: "Trả lời ngắn",
+    scopeNote: {
+      text: "Áp dụng cho Aave V3.7, đã kiểm tra trên các thị trường Ethereum Core, Arbitrum, Base, Optimism, Polygon, Avalanche và Gnosis. Các thị trường và mạng V3 khác có thể chạy phiên bản cũ hơn. Những điểm khác biệt của Aave V4 được ghi chú ở những chỗ quy tắc khác nhau.",
+      morphoText:
+        "Áp dụng cho các thị trường Morpho Blue và Morpho Midnight được liệt kê trong ứng dụng Morpho. Mỗi thị trường tự đặt tài sản thế chấp, oracle và LLTV của riêng mình, vì vậy hãy kiểm tra số liệu của thị trường bạn dùng.",
+      figuresAsOf: "Số liệu tính đến ngày",
+    },
+    table: {
+      fallbackLabel: "Bảng, cuộn theo chiều ngang",
+      label: (heading, index) => (index === undefined ? `Bảng: ${heading}` : `Bảng ${index}: ${heading}`),
+      scrollHint: "Cuộn ngang để xem tất cả các cột.",
     },
   },
 };
@@ -893,6 +1023,224 @@ export const CALCULATOR_MESSAGES: Localized<CalculatorMessages> = {
         "यह सिर्फ़ आपके दर्ज किए गए नंबरों का इस्तेमाल करता है। Aave के लाइव पैरामीटर बदल सकते हैं: ऊपर की सीमाएं ऑन-चेन",
       afterDate:
         " को पढ़ी गई थीं, और गवर्नेंस या Risk Stewards उन्हें कभी भी बदल सकते हैं। ओरेकल कीमतें हिलती हैं, ब्याज आपके कर्ज़ में जुड़ता रहता है, और हर लिक्विडेशन कीमत मानती है कि बाकी हर कीमत वैसी ही रहे। कार्रवाई से पहले Aave ऐप में अपनी पोज़िशन जांचें।",
+    },
+  },
+  de: {
+    title: "Liquidationspreis-Rechner für Aave",
+    intro:
+      "Gib jede Sicherheit und deine Schulden ein, um den Health Factor und die Preise zu sehen, bei denen die Position liquidiert werden kann. Der Rechner nutzt die Formel von Aave V3: Σ(Wert der Sicherheiten × Liquidationsschwelle) ÷ Wert der Schulden.",
+    examplesLabel: "Durchgerechnetes Beispiel laden:",
+    examples: {
+      "one-collateral": "10 WETH, 12 000 USDC Schulden",
+      "two-collaterals": "10 WETH + 0.2 WBTC, 20 000 USDC Schulden",
+      "volatile-debt": "10 000 USDC, 2.5 WETH geliehen",
+    },
+    defaultCollateralName: index => `Sicherheit ${index}`,
+    defaultDebtName: "Geliehenes Asset",
+    collateralLegend: index => `Sicherheit ${index}`,
+    presetLabel: "Asset auf Aave V3 (füllt die Schwelle aus)",
+    eModeHint: (collateral, borrowable) =>
+      `Diese Schwelle gilt für ${joinList("de", collateral)}; andere Sicherheiten behalten ihre eigene. In diesem E-Mode kannst du nur ${joinList("de", borrowable)} leihen.`,
+    otherAsset: "Anderes Asset: Schwelle selbst eingeben",
+    presetGroup: (market, date) => `${market} (Stand ${date})`,
+    presetLabels: {
+      "ethereum-core-emode-eth": "E-Mode „ETH correlated“ (z. B. WETH, wstETH, weETH)",
+      "arbitrum-usdc": "USDC (nativ)",
+    },
+    nameLabel: "Name des Assets",
+    namePlaceholder: symbols => `z. B. ${joinList("de", symbols, "disjunction")}`,
+    amountSupplied: "Eingezahlte Menge",
+    price: "Preis (USD)",
+    priceHint: "Der Orakelpreis von Aave, angezeigt auf der Seite des Assets in der Aave-App.",
+    threshold: "Liquidationsschwelle (%)",
+    thresholdHint: "Im E-Mode die Schwelle der Kategorie. Auf Aave V4 der Collateral Factor.",
+    removeCollateral: index => `Sicherheit ${index} entfernen`,
+    addCollateral: "Zweite Sicherheit hinzufügen",
+    debtLegend: "Schulden",
+    debtKindLegend: "Was hast du geliehen?",
+    debtKinds: { stable: "Einen Stablecoin (zählt als $1.00)", volatile: "Ein volatiles Asset wie WETH" },
+    debtAmount: { stable: "Geliehener Betrag (USD)", volatile: "Geliehene Menge (Token)" },
+    debtAmountHint: "Rechne die bisher aufgelaufenen Zinsen mit ein.",
+    debtPrice: "Preis des geliehenen Assets (USD)",
+    errors: {
+      number: "Gib eine Zahl wie 10 oder 0.25 ein, mit Punkt als Dezimaltrennzeichen.",
+      price: "Gib einen Preis über 0 ein.",
+      threshold: "Gib einen Prozentsatz über 0 und höchstens 100 ein.",
+      samePrice: (name, price) =>
+        `${name} ist oben schon mit ${price} eingetragen. Verwende denselben Preis: Ein Asset hat nur einen Preis.`,
+    },
+    eModeLead: "Kein Ergebnis: Aave erlaubt diese Kombination nicht.",
+    eModeConflict: ({ market, category, borrowable, loan, thresholdPercent, ownThresholds }) => {
+      const borrowableList = joinList("de", borrowable);
+      const loanText = loan.kind === "stable" ? "einem Stablecoin-Kredit" : `geliehenem ${loan.name}`;
+      const own = ownThresholds.length ? ` (${ownThresholds.join(", ")})` : "";
+      return (
+        `Der E-Mode „${category}“ von ${market} erlaubt nur, ${borrowableList} zu leihen, daher kann ein Konto mit ${loanText} ` +
+        `die Schwelle von ${thresholdPercent}% dieses E-Mode nicht nutzen. Wähle stattdessen die eigene Schwelle der Sicherheit${own} oder leihe ${borrowableList}.`
+      );
+    },
+    results: {
+      heading: "Ergebnis",
+      empty: "Gib in jedes Feld eine Zahl ein, um das Ergebnis zu sehen.",
+      summaryLine: (title, value) => `${title}: ${value}.`,
+      healthFactor: "Health Factor",
+      noDebt: "Keine Schulden, also gibt es nichts zu liquidieren.",
+      liquidatableNow: "Unter 1.00: Die Position kann jetzt liquidiert werden.",
+      liquidatableBelow: "Die Position kann unter 1.00 liquidiert werden.",
+      none: "Keiner",
+      priceTitle: name => `Liquidationspreis von ${name}`,
+      priceTitleBorrowed: name => `Liquidationspreis von ${name} (geliehen)`,
+      priceTitleShared: name => `Liquidationspreis von ${name} (eingezahlt und geliehen)`,
+      recover: ({ name, change, now, rises, alike }) =>
+        `Der Health Factor kommt auf 1.00 zurück, wenn ${name}${alike ? " (eingezahlt und geliehen)" : ""} von ${now} um ${change} ${
+          rises ? "steigt" : "fällt"
+        } und die anderen Preise gleich bleiben.`,
+      collateralFall: ({ change, now }) => `${change} unter ${now}, wenn alle anderen Preise gleich bleiben.`,
+      collateralNone: name =>
+        `Selbst bei $0 kann ${name} allein den Health Factor nicht unter 1.00 drücken: Die anderen Sicherheiten decken die Schulden.`,
+      debtRise: ({ change, now }) =>
+        `${change} über ${now}: Geliehene Assets drücken den Health Factor, wenn ihr Preis steigt.`,
+      sharedRise: ({ name, change, now }) =>
+        `${change} über ${now}: Du hast mehr ${name} geliehen, als deine Sicherheit in ${name} anrechnet, daher drückt ein Anstieg den Health Factor. Andere Preise unverändert.`,
+      sharedFallBorrowed: ({ name, change, now }) =>
+        `${change} unter ${now}, mit dem geliehenen ${name} zum gleichen Preis und allen anderen Preisen unverändert.`,
+      sharedFallRows: ({ name, change, now }) =>
+        `${change} unter ${now} für jede Zeile mit ${name}, wenn alle anderen Preise gleich bleiben.`,
+      bothSidesNeutral: name =>
+        `${name} ist zugleich deine Sicherheit und deine Schuld, daher bewegen sich beide gemeinsam und der Preis ändert den Health Factor nicht. Zinsen, eine geänderte Schwelle oder deine eigenen Transaktionen ändern ihn trotzdem.`,
+      bothSidesRecover: name =>
+        `${name} steht auf beiden Seiten, daher bewegen sich beide gemeinsam: Kein Preis von ${name} allein bringt den Health Factor auf 1.00 zurück.`,
+      bothSidesSafe: name =>
+        `${name} steht auf beiden Seiten, daher bewegen sich beide gemeinsam: Der Preis allein kann den Health Factor nicht unter 1.00 drücken.`,
+      uniformTitle: "Alle Sicherheiten fallen gemeinsam",
+      uniformDescription: prices =>
+        `Wenn der Preis jeder Sicherheit um so viel fällt und sich der Preis der Schulden nicht bewegt, erreicht der Health Factor 1.00: ${joinList(
+          "de",
+          prices.map(({ name, price }) => `${name} bei ${price}`),
+        )}.`,
+      ratioTitle: (numerator, denominator) => `Preisverhältnis ${numerator} ÷ ${denominator} bei Liquidation`,
+      ratioDescription: (now, change, falls) =>
+        `Jetzt ${now}. Wenn sich beide Preise bewegen, bringt ${falls ? "ein Rückgang" : "ein Anstieg"} dieses Verhältnisses um ${change} den Health Factor auf 1.00.`,
+      breakdown: ({ collateral, weighted, debt, healthFactor }) =>
+        `Sicherheiten ${collateral}, angerechnet mit ihren Liquidationsschwellen: ${weighted}. Health Factor = ${weighted} ÷ ${debt} Schulden = ${healthFactor}.`,
+    },
+    noscript:
+      "Der Rechner braucht JavaScript, um neu zu rechnen. Das Ergebnis oben gilt für 10 WETH zu $2 400 (Liquidationsschwelle 83%) gegenüber 12 000 USDC Schulden; die durchgerechneten Beispiele auf dieser Seite nutzen dieselbe Formel.",
+    disclaimer: {
+      lead: "Eine Schätzung zu Lernzwecken, keine Finanzberatung.",
+      beforeDate:
+        "Sie nutzt nur die Zahlen, die du eingibst. Live-Parameter von Aave können sich ändern: Die Schwellen oben wurden am",
+      afterDate:
+        " onchain gelesen, und die Governance oder die Risk Stewards können sie jederzeit ändern. Orakelpreise bewegen sich, Zinsen erhöhen deine Schulden laufend, und jeder Liquidationspreis setzt voraus, dass alle anderen Preise gleich bleiben. Prüfe deine Position in der Aave-App, bevor du handelst.",
+    },
+  },
+  vi: {
+    title: "Máy tính giá thanh lý Aave",
+    intro:
+      "Nhập từng tài sản thế chấp và khoản nợ của bạn để có hệ số sức khỏe và các mức giá mà tại đó vị thế có thể bị thanh lý. Công cụ dùng công thức của Aave V3: Σ(giá trị tài sản thế chấp × ngưỡng thanh lý) ÷ giá trị khoản nợ.",
+    examplesLabel: "Tải một ví dụ tính sẵn:",
+    examples: {
+      "one-collateral": "10 WETH, nợ 12,000 USDC",
+      "two-collaterals": "10 WETH + 0.2 WBTC, nợ 20,000 USDC",
+      "volatile-debt": "10,000 USDC, đã vay 2.5 WETH",
+    },
+    defaultCollateralName: index => `Tài sản thế chấp ${index}`,
+    defaultDebtName: "Tài sản đã vay",
+    collateralLegend: index => `Tài sản thế chấp ${index}`,
+    presetLabel: "Tài sản trên Aave V3 (tự điền ngưỡng)",
+    eModeHint: (collateral, borrowable) =>
+      `Ngưỡng này áp dụng cho ${joinList("vi", collateral)}; tài sản thế chấp khác giữ ngưỡng riêng của nó. Trong E-Mode này, bạn chỉ có thể vay ${joinList("vi", borrowable)}.`,
+    otherAsset: "Tài sản khác: tự nhập ngưỡng",
+    presetGroup: (market, date) => `${market} (đọc ngày ${date})`,
+    presetLabels: {
+      "ethereum-core-emode-eth": 'E-Mode "ETH correlated" (ví dụ WETH, wstETH, weETH)',
+      "arbitrum-usdc": "USDC (gốc)",
+    },
+    nameLabel: "Tên tài sản",
+    namePlaceholder: symbols => `ví dụ ${joinList("vi", symbols, "disjunction")}`,
+    amountSupplied: "Số lượng đã gửi",
+    price: "Giá (USD)",
+    priceHint: "Giá oracle của Aave, hiển thị trên trang của tài sản trong ứng dụng Aave.",
+    threshold: "Ngưỡng thanh lý (%)",
+    thresholdHint: "Trong E-Mode, là ngưỡng của danh mục. Trên Aave V4, là collateral factor (hệ số tài sản thế chấp).",
+    removeCollateral: index => `Xóa tài sản thế chấp ${index}`,
+    addCollateral: "Thêm tài sản thế chấp thứ hai",
+    debtLegend: "Khoản nợ",
+    debtKindLegend: "Bạn đã vay gì?",
+    debtKinds: { stable: "Một stablecoin (tính ở mức $1.00)", volatile: "Một tài sản biến động giá, như WETH" },
+    debtAmount: { stable: "Số tiền đã vay (USD)", volatile: "Số lượng đã vay (token)" },
+    debtAmountHint: "Tính cả tiền lãi đã cộng dồn đến nay.",
+    debtPrice: "Giá của tài sản đã vay (USD)",
+    errors: {
+      number: "Nhập một số như 10 hoặc 0.25, dùng dấu chấm cho phần thập phân.",
+      price: "Nhập giá lớn hơn 0.",
+      threshold: "Nhập phần trăm lớn hơn 0 và tối đa là 100.",
+      samePrice: (name, price) =>
+        `${name} đã được nhập ở trên với giá ${price}. Hãy dùng cùng một giá: một tài sản chỉ có một giá.`,
+    },
+    eModeLead: "Không có kết quả: Aave không cho phép kết hợp này.",
+    eModeConflict: ({ market, category, borrowable, loan, thresholdPercent, ownThresholds }) => {
+      const borrowableList = joinList("vi", borrowable);
+      const loanText = loan.kind === "stable" ? "khoản vay stablecoin" : `khoản vay ${loan.name}`;
+      const own = ownThresholds.length ? ` (${ownThresholds.join(", ")})` : "";
+      return (
+        `E-Mode "${category}" của ${market} chỉ cho phép vay ${borrowableList}, nên tài khoản có ${loanText} ` +
+        `không thể dùng ngưỡng ${thresholdPercent}% của E-Mode này. Thay vào đó, hãy chọn ngưỡng riêng của tài sản thế chấp${own}, hoặc vay ${borrowableList}.`
+      );
+    },
+    results: {
+      heading: "Kết quả",
+      empty: "Nhập một số vào mỗi ô để xem kết quả.",
+      summaryLine: (title, value) => `${title}: ${value}.`,
+      healthFactor: "Hệ số sức khỏe",
+      noDebt: "Không có nợ, nên không có gì để thanh lý.",
+      liquidatableNow: "Dưới 1.00: vị thế có thể bị thanh lý ngay bây giờ.",
+      liquidatableBelow: "Vị thế có thể bị thanh lý khi dưới 1.00.",
+      none: "Không có",
+      priceTitle: name => `Giá thanh lý của ${name}`,
+      priceTitleBorrowed: name => `Giá thanh lý của ${name} (đã vay)`,
+      priceTitleShared: name => `Giá thanh lý của ${name} (đã gửi và đã vay)`,
+      recover: ({ name, change, now, rises, alike }) =>
+        `Hệ số sức khỏe trở lại 1.00 nếu ${name}${alike ? " (cả phần đã gửi và phần đã vay)" : ""} ${
+          rises ? "tăng" : "giảm"
+        } ${change} so với ${now}, các giá khác không đổi.`,
+      collateralFall: ({ change, now }) => `Giảm ${change} so với ${now}, nếu mọi giá khác giữ nguyên.`,
+      collateralNone: name =>
+        `Ngay cả ở mức $0, riêng ${name} cũng không thể kéo hệ số sức khỏe xuống dưới 1.00: tài sản thế chấp còn lại đủ bảo đảm khoản nợ.`,
+      debtRise: ({ change, now }) =>
+        `Tăng ${change} so với ${now}: tài sản đã vay càng tăng giá thì hệ số sức khỏe càng giảm.`,
+      sharedRise: ({ name, change, now }) =>
+        `Tăng ${change} so với ${now}: bạn đã vay nhiều ${name} hơn phần ${name} thế chấp được tính, nên khi giá tăng thì hệ số sức khỏe giảm. Các giá khác không đổi.`,
+      sharedFallBorrowed: ({ name, change, now }) =>
+        `Giảm ${change} so với ${now}, với ${name} đã vay ở cùng mức giá và mọi giá khác không đổi.`,
+      sharedFallRows: ({ name, change, now }) =>
+        `Giảm ${change} so với ${now} cho mọi dòng ${name}, nếu mọi giá khác giữ nguyên.`,
+      bothSidesNeutral: name =>
+        `${name} vừa là tài sản thế chấp vừa là khoản nợ của bạn, nên hai bên biến động cùng nhau và giá của nó không làm thay đổi hệ số sức khỏe. Tuy vậy, tiền lãi, một thay đổi ngưỡng hoặc giao dịch của chính bạn vẫn làm thay đổi hệ số này.`,
+      bothSidesRecover: name =>
+        `${name} nằm ở cả hai phía, nên hai bên biến động cùng nhau: không mức giá ${name} nào tự nó đưa hệ số sức khỏe trở lại 1.00.`,
+      bothSidesSafe: name =>
+        `${name} nằm ở cả hai phía, nên hai bên biến động cùng nhau: riêng giá của nó không thể kéo hệ số sức khỏe xuống dưới 1.00.`,
+      uniformTitle: "Toàn bộ tài sản thế chấp cùng giảm",
+      uniformDescription: prices =>
+        `Nếu giá của mọi tài sản thế chấp giảm chừng này và giá của khoản nợ không đổi, hệ số sức khỏe chạm 1.00: ${joinList(
+          "vi",
+          prices.map(({ name, price }) => `${name} ở mức ${price}`),
+        )}.`,
+      ratioTitle: (numerator, denominator) => `Tỷ lệ giá ${numerator} ÷ ${denominator} khi bị thanh lý`,
+      ratioDescription: (now, change, falls) =>
+        `Hiện tại ${now}. Nếu cả hai giá cùng biến động, tỷ lệ này ${falls ? "giảm" : "tăng"} ${change} sẽ đưa hệ số sức khỏe về 1.00.`,
+      breakdown: ({ collateral, weighted, debt, healthFactor }) =>
+        `Tài sản thế chấp ${collateral}, tính theo ngưỡng thanh lý: ${weighted}. Hệ số sức khỏe = ${weighted} ÷ ${debt} nợ = ${healthFactor}.`,
+    },
+    noscript:
+      "Máy tính cần JavaScript để tính lại. Kết quả ở trên là cho 10 WETH ở mức $2,400 (ngưỡng thanh lý 83%) với khoản nợ 12,000 USDC; các ví dụ tính sẵn trên trang này dùng cùng công thức.",
+    disclaimer: {
+      lead: "Ước tính mang tính giáo dục, không phải lời khuyên tài chính.",
+      beforeDate:
+        "Công cụ chỉ dùng những con số bạn nhập. Các tham số Aave hiện hành có thể thay đổi: các ngưỡng ở trên được đọc trên chuỗi (on-chain) vào ngày",
+      afterDate:
+        ", và quản trị (governance) hoặc Risk Stewards có thể thay đổi chúng bất cứ lúc nào. Giá oracle biến động, tiền lãi liên tục cộng vào khoản nợ của bạn, và mỗi giá thanh lý giả định mọi giá khác giữ nguyên. Hãy kiểm tra vị thế của bạn trong ứng dụng Aave trước khi hành động.",
     },
   },
 };

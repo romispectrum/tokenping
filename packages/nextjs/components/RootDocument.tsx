@@ -60,19 +60,21 @@ export const ROOT_VIEWPORT: Viewport = {
 type RootDocumentProps = {
   locale: Locale;
   children: ReactNode;
+  /** next/font classes a language adds to <html>: Vietnamese sets its words in its own font (components/fonts). */
+  fontClassName?: string;
 };
 
 /**
- * The <html> document of one language. The site has a root layout per language (app/(en)/layout.tsx and
- * app/(cs)/layout.tsx), so <html lang> is right on the server for every page, without middleware (the IPFS build
- * is a static export). Moving between the two languages is a full page load, which is fine for a language switch.
+ * The <html> document of one language. The site has a root layout per language (app/(en)/layout.tsx,
+ * app/(cs)/layout.tsx and so on), so <html lang> is right on the server for every page, without middleware (the IPFS
+ * build is a static export). Moving between languages is a full page load, which is fine for a language switch.
  * A plain function, not a component, so a layout returns the <html> element itself.
  */
-export const rootDocument = ({ locale, children }: RootDocumentProps) => (
+export const rootDocument = ({ locale, children, fontClassName }: RootDocumentProps) => (
   <html
     lang={LOCALE_INFO[locale].htmlLang}
     suppressHydrationWarning
-    className={`${satoshi.variable} ${satoshiItalic.variable} ${geistMono.variable}`}
+    className={[satoshi.variable, satoshiItalic.variable, geistMono.variable, fontClassName].filter(Boolean).join(" ")}
   >
     <body>
       <ThemeProvider attribute={["class", "data-theme"]} defaultTheme="light" enableSystem disableTransitionOnChange>

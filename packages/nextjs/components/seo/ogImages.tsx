@@ -9,7 +9,10 @@ import { SITE_NAME, siteOgTitle } from "~~/utils/seo";
 
 export const siteOgImageResponse = async (locale: Locale) => {
   const t = SEO_MESSAGES[locale];
-  return new ImageResponse(<OgCard title={siteOgTitle(locale)} footer={t.siteOgFooter} />, await ogImageOptions());
+  return new ImageResponse(
+    <OgCard title={siteOgTitle(locale)} footer={t.siteOgFooter} locale={locale} />,
+    await ogImageOptions(locale),
+  );
 };
 
 export const postOgImageResponse = async (locale: Locale, slug: string) => {
@@ -20,8 +23,9 @@ export const postOgImageResponse = async (locale: Locale, slug: string) => {
       <OgCard
         title={post?.meta.title ?? t.rssTitle ?? `${SITE_NAME} blog`}
         footer={post?.meta.protocol === "morpho" ? t.morphoPostOgFooter : t.postOgFooter}
+        locale={locale}
       />
     ),
-    await ogImageOptions(),
+    await ogImageOptions(locale),
   );
 };

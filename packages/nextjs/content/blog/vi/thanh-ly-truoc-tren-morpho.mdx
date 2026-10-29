@@ -1,0 +1,169 @@
+export const meta = {
+  slug: "thanh-ly-truoc-tren-morpho",
+  title: "Thanh lý trước trên Morpho: là gì và cách tắt",
+  description:
+    "Thanh lý trước (Auto-deleverage) của Morpho bán một phần khoản vay trước LLTV ra sao, vì sao Morpho ngừng nó, và cách kiểm tra, thu hồi nó.",
+  h1: "Thanh lý trước trên Morpho là gì, và làm sao kiểm tra hoặc tắt nó?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Thanh lý trước trên Morpho là gì, và làm sao kiểm tra xem nó có đang bật không và tắt nó đi?",
+  readingMinutes: 16,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Thanh lý trước (pre-liquidation) là một hợp đồng tự chọn cho một thị trường Morpho Blue (lãi suất thả nổi), cho phép
+  bất kỳ ai bán một phần tài sản thế chấp của bạn để trả nợ trước khi vị thế của bạn chạm tỷ lệ cho vay trên giá trị
+  thanh lý (LLTV) của thị trường. Ứng dụng của Morpho từng có một tính năng tên là Auto-deleverage hoạt động theo cách
+  này. Morpho hiện đang ngừng nó: ứng dụng không nhận vị thế mới, trung tâm trợ giúp đề nghị những người đang dùng nó
+  tắt đi, và SDK của Morpho đã đánh dấu mã thanh lý trước là ngừng hỗ trợ (deprecated) vào ngày 22 tháng 9 năm 2026. Các
+  hợp đồng vẫn hoạt động, nên nếu bạn từng bật nó, hãy kiểm tra bằng `isAuthorized` trên hợp đồng Morpho Blue và thu hồi
+  nó bằng nút quản lý trong ứng dụng hoặc bằng `setAuthorization(contract, false)`.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Số liệu, số khối và nguồn: content/blog/snapshots/morpho-pre-liquidation.md */}
+
+## Thanh lý trước trên Morpho là gì?
+
+Thanh lý trước là một ranh giới thanh lý thứ hai, sớm hơn, mà người vay có thể thêm vào một thị trường Morpho Blue. Trên một thị trường Blue thông thường, một vị thế chỉ có thể bị thanh lý khi hệ số sức khỏe (health factor) của nó xuống dưới 1, đo theo LLTV của thị trường; [bài hướng dẫn về hệ số sức khỏe trên Morpho](/vi/blog/he-so-suc-khoe-morpho) giải thích con số đó. Một hợp đồng thanh lý trước đặt một ranh giới thấp hơn, gọi là preLLTV. Giữa hai ranh giới, bất kỳ ai cũng có thể trả một phần khoản nợ của bạn, tới một giới hạn do hợp đồng đặt, và lấy phần tài sản thế chấp có giá trị bằng khoản nợ đó cộng một khoản thưởng, theo từng bước.
+
+Có ba điểm làm nó khác biệt:
+
+- **Nó là tự chọn.** Nó chỉ áp dụng sau khi bạn ủy quyền cho hợp đồng trên Morpho Blue. Nếu không, hợp đồng không thể động đến vị thế của bạn.
+- **Nó theo từng thị trường.** Mỗi hợp đồng gắn với một thị trường Blue và một bộ tham số cố định, và không có chủ sở hữu, quản trị viên hay chức năng nâng cấp nào.
+- **Nó chỉ có trên Blue.** Morpho Midnight, các thị trường lãi suất cố định trong [bài hướng dẫn về Midnight](/vi/blog/khoan-vay-lai-suat-co-dinh-morpho-midnight), không có thanh lý trước.
+
+Morpho công bố factory thanh lý trước vào ngày 4 tháng 3 năm 2025 và nêu auto-deleverage và auto-close là các cách dùng nó. Trong hợp đồng, API và SDK, nó được gọi là pre-liquidation. Ứng dụng của Morpho từng có một tính năng tên là Auto-deleverage, được trung tâm trợ giúp mô tả theo cùng cách: khi tỷ lệ cho vay trên giá trị (LTV) của bạn vượt qua một ngưỡng định sẵn, một phần vị thế có thể bị đóng, với phí chỉ tính trên phần bị đóng.
+
+## Thanh lý trước có còn trong ứng dụng Morpho không?
+
+Không thể thiết lập thanh lý trước mới trong ứng dụng Morpho. Đọc vào ngày 26 tháng 10 năm 2026:
+
+| Ở đâu                                     | Tình trạng                                                                                                                                                                       |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ứng dụng và trung tâm trợ giúp của Morpho | Bài trợ giúp nay có tiêu đề "Sunsetting Auto-deleverage" (cập nhật lần cuối ngày 13 tháng 5 năm 2026): tính năng không nhận vị thế mới, và người dùng đang có nó nên tắt đi      |
+| SDK của Morpho                            | Mọi export liên quan đến thanh lý trước được đánh dấu ngừng hỗ trợ vào ngày 22 tháng 9 năm 2026 (pull request 1132), sẽ bị gỡ ở phiên bản lớn tiếp theo, và không có gì thay thế |
+| Tài liệu của Morpho                       | Trang về thanh lý trước không còn; địa chỉ cũ của nó nay dẫn đến trang thanh lý chung                                                                                            |
+| API của Morpho                            | Vẫn liệt kê 106 hợp đồng thanh lý trước trên các thị trường được niêm yết ở Ethereum (50), Base (37), Arbitrum (8), Polygon (6), Katana (3) và Unichain (2)                      |
+| Các hợp đồng                              | Không đổi và vẫn hoạt động: bất kỳ ai vẫn có thể gọi chúng lên một người vay đã ủy quyền                                                                                         |
+
+Hàng cuối là hàng quan trọng nếu trước đây bạn đã bật tính năng này. Việc ngừng một tính năng trong ứng dụng không xóa một lần ủy quyền đã lưu trên chuỗi.
+
+## Một hợp đồng thanh lý trước hoạt động thế nào?
+
+Một hợp đồng thanh lý trước được tạo bởi PreLiquidationFactory của Morpho, mà ai cũng dùng được: ai cũng có thể triển khai một hợp đồng cho bất kỳ thị trường Blue nào, và mỗi tổ hợp thị trường và bộ tham số chỉ có thể tồn tại một lần. Các tham số cố định của nó là:
+
+| Tham số          | Nó đặt gì                                                                                                                                                               |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| preLLTV          | Mức LTV mà từ đó trở lên được phép thanh lý trước. Phải thấp hơn LLTV của thị trường                                                                                    |
+| preLCF1, preLCF2 | Close factor (hệ số đóng): phần lớn nhất của khoản nợ mà một lần gọi có thể trả, tại preLLTV và tại LLTV                                                                |
+| preLIF1, preLIF2 | Hệ số thưởng: khoản nợ được trả nhân với hệ số này ra lượng tài sản thế chấp bị lấy, tại cùng hai điểm đó                                                               |
+| Oracle           | Nguồn giá quyết định bạn có thể bị thanh lý trước hay không và tài sản thế chấp của bạn bị lấy theo giá nào. Có thể là oracle của chính thị trường hoặc một oracle khác |
+
+Trước khi hành động, hợp đồng kiểm tra, bằng giá từ oracle của chính nó, rằng LTV của bạn cao hơn preLLTV và vẫn thấp hơn hoặc bằng LLTV. Trên LLTV, thanh lý trước dừng lại và thanh lý thông thường của Blue tiếp quản. Sau đó, Morpho Blue kiểm tra rằng vị thế của bạn khỏe theo oracle của chính thị trường; nếu không, toàn bộ lần gọi bị hoàn tác (revert).
+
+Hàm khởi tạo (constructor) áp đặt các giới hạn lên tham số. Close factor không thể giảm khi rủi ro tăng, và chỉ giá trị đầu tiên của nó bị giới hạn ở 100%: một hợp đồng có giá trị thứ hai trên 100% có thể cho phép một lần gọi trả toàn bộ khoản nợ của bạn trước khi chạm LLTV. Các giá trị mặc định của Morpho thấp hơn mức đó rất nhiều. Hệ số thưởng phải ít nhất là 1 (không có thưởng) và nhiều nhất là 1 ÷ LLTV (khoản thưởng khoảng 16% trên thị trường 86%). Kho mã của Morpho nói rằng mức trần đó, cùng với quy tắc thanh lý trước dừng ở LLTV, giữ cho một lần thanh lý trước không làm vị thế kém khỏe hơn trước.
+
+### Close factor và khoản thưởng tăng thế nào giữa preLLTV và LLTV?
+
+Cả hai tăng theo đường thẳng cùng với LTV của bạn. Hợp đồng đo xem bạn đã đi từ preLLTV về phía LLTV được bao xa, dưới dạng một tỷ lệ từ 0 đến 1, và đẩy mỗi hệ số đi đúng tỷ lệ đó từ giá trị đầu tiên đến giá trị thứ hai. Ở giữa hai ranh giới, close factor nằm giữa preLCF1 và preLCF2.
+
+Mã nguồn dẫn đến hai giới hạn. Close factor giới hạn một lần gọi, không phải tổng: chính kho mã của Morpho lưu ý rằng một bên thanh lý có thể đóng một phần nhỏ, để bạn vẫn ở trên preLLTV, rồi gọi lại, nên tổng phần bị đóng có thể nhiều hơn close factor. Và close factor là một phần của khoản nợ, không phải của tài sản thế chấp; [bài hướng dẫn về close factor của Aave](/vi/blog/co-che-thanh-ly-tren-aave#bao-nhieu-phan-no-cua-toi-co-the-bi-thanh-ly-cung-luc) trình bày cùng ý tưởng đó trên Aave.
+
+## Thiết lập thanh lý trước mặc định của Morpho là gì?
+
+Morpho giữ một bộ tham số mặc định cho mỗi LLTV trong tám LLTV phổ biến trong SDK của mình, và mọi hợp đồng trong 106 hợp đồng mà API liệt kê đều dùng các giá trị mặc định này. API chỉ liệt kê những hợp đồng có tham số mặc định đã biết, nên có thể tồn tại những hợp đồng với thiết lập khác mà không xuất hiện ở đó. Sáu LLTV có hợp đồng được liệt kê:
+
+| LLTV của thị trường | preLLTV | Close factor (từ preLLTV đến LLTV) | Khoản thưởng | Thanh lý trước bắt đầu ở hệ số sức khỏe thị trường | Số hợp đồng được liệt kê |
+| ------------------- | ------- | ---------------------------------- | ------------ | -------------------------------------------------- | ------------------------ |
+| 62,5%               | 56,26%  | 0,75% đến 27,95%                   | 12,68%       | 1,111                                              | 2                        |
+| 77%                 | 72,74%  | 0,37% đến 25,66%                   | 7,41%        | 1,059                                              | 12                       |
+| 86%                 | 83,26%  | 0,20% đến 24,53%                   | 4,38%        | 1,033                                              | 50                       |
+| 91,5%               | 89,79%  | 0,11% đến 23,92%                   | 2,62%        | 1,019                                              | 21                       |
+| 94,5%               | 93,37%  | 0,07% đến 23,61%                   | 1,68%        | 1,012                                              | 15                       |
+| 96,5%               | 95,78%  | 0,04% đến 23,41%                   | 1,06%        | 1,008                                              | 6                        |
+
+Trong mọi bộ mặc định, khoản thưởng như nhau ở cả hai đầu, và bằng khoản thưởng mà thanh lý thông thường của Blue trả trên thị trường đó. Các giá trị mặc định không làm việc bán rẻ hơn tính trên mỗi đô la; chúng làm mỗi lần bán nhỏ hơn. Thanh lý thông thường trên Blue hoàn toàn không có close factor, nên bên thanh lý có thể trả toàn bộ khoản nợ cùng lúc. [Cơ chế thanh lý trên Morpho](/vi/blog/co-che-thanh-ly-tren-morpho) trình bày phía đó.
+
+## Một hợp đồng thực tế: USDC | cbBTC (86%) trên Base
+
+Thị trường Blue được niêm yết lớn nhất theo số tiền đã vay trên Base, USDC | cbBTC (86%) (tài sản thế chấp cbBTC, nợ USDC, LLTV 86%), có một hợp đồng thanh lý trước được API của Morpho liệt kê, tại `0xa7272aFc21f9C321024ED93892a1abfeb621C374`. Đọc từ Base vào ngày 26 tháng 10 năm 2026 và đối chiếu với API của Morpho:
+
+- PreLiquidationFactory trên Base xác nhận nó đã tạo hợp đồng này, và hợp đồng trỏ đến thị trường này.
+- preLLTV 83,26%, close factor từ 0,20% tăng lên 24,53%, khoản thưởng 4,38% ở cả hai đầu: các giá trị mặc định cho 86%.
+- Oracle của nó là oracle của chính thị trường. Oracle này định giá cbBTC ở mức 80.000,15 USDC tại các khối Base 53102870 và 53102952; [cơ chế thanh lý trên Morpho](/vi/blog/co-che-thanh-ly-tren-morpho) dùng cùng mức giá này.
+- Thị trường có khoảng 1,61 tỷ USDC đã vay với khoảng 40.051 cbBTC, trên khoảng 43.000 vị thế vay.
+- Không có lần thanh lý trước nào của hợp đồng này xuất hiện trong khoảng 28 giờ khối Base được đọc trước khối 53102692.
+
+Trên Ethereum, thị trường USDC | cbBTC (86%) được niêm yết lớn nhất có một hợp đồng với cùng tham số, tại `0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A`, cũng dùng oracle của thị trường đó.
+
+## Ví dụ cụ thể: một lần thanh lý trước có thể lấy bao nhiêu?
+
+Lấy một vị thế minh họa trên thị trường Base đó: 1 cbBTC tài sản thế chấp và khoản nợ 50.000 USDC, ở mức 80.000,15 USDC cho mỗi cbBTC. Hệ số sức khỏe của nó là 1,376 theo LLTV 86%, và 1,332 theo ranh giới thanh lý trước 83,26%. Với cùng oracle, con số theo thanh lý trước luôn bằng con số của thị trường nhân với 0,968 (83,26 ÷ 86).
+
+Thanh lý trước có thể bắt đầu khi cbBTC giảm xuống dưới 60.052,58 USDC, thấp hơn mức giá đó 24,9%. Thanh lý thông thường bắt đầu dưới 58.139,53 USDC, thấp hơn 27,3%. Giữa hai mức giá đó, lần thanh lý trước lớn nhất trông như sau:
+
+| LTV | Giá cbBTC | Close factor | Nợ được trả | Tài sản thế chấp bị lấy (giá trị USDC) | Khoản thưởng | LTV sau đó |
+| --- | --------- | ------------ | ----------- | -------------------------------------- | ------------ | ---------- |
+| 84% | 59.523,81 | 6,77%        | 3.384       | 3.533                                  | 148          | 83,26%     |
+| 85% | 58.823,53 | 15,65%       | 7.825       | 8.168                                  | 343          | 83,26%     |
+| 86% | 58.139,53 | 24,53%       | 12.266      | 12.803                                 | 538          | 83,23%     |
+
+Với các giá trị mặc định, một lần gọi ở mức tối đa đưa LTV về khoảng preLLTV, nơi hợp đồng dừng lại. So sánh với một lần thanh lý Blue thông thường ở 87%: bên thanh lý có thể trả toàn bộ 50.000 USDC và lấy lượng cbBTC trị giá 52.192 USDC, để lại cho bạn khoảng 5.279 USDC tài sản thế chấp và không còn khoản vay.
+
+## Vì sao người vay chọn tham gia, và họ phải trả giá gì?
+
+Lý do để tham gia là những lần bán nhỏ hơn, từ từ hơn. Bài trợ giúp của Morpho mô tả Auto-deleverage là chỉ đóng một phần vị thế để khôi phục sức khỏe của nó, với phí chỉ tính trên phần bị đóng. Trong ví dụ trên, một người vay đã tham gia phải trả 148 đến 538 USDC tiền thưởng cho mỗi bước, trong khi một lần thanh lý thông thường ở 87% trả toàn bộ khoản vay tốn 2.192 USDC; nhiều bước, hoặc một lần thanh lý thông thường sau các bước đó, có thể cộng lại thành nhiều hơn.
+
+Các chi phí:
+
+- **Việc bán bắt đầu sớm hơn.** Trên một thị trường 86%, một phần vị thế của bạn có thể bị bán từ hệ số sức khỏe thị trường khoảng 1,033, trong khi hệ số sức khỏe mà trung tâm trợ giúp của Morpho mô tả, đo theo LLTV, vẫn trên 1.
+- **Các bước có thể lặp lại.** Close factor giới hạn mỗi lần gọi, không giới hạn tổng, nên nhiều lần gọi có thể nối tiếp nhau khi bạn vẫn ở trên preLLTV.
+- **Giá có thể khác.** Một hợp đồng có thể dùng oracle khác với oracle của thị trường. Cả 106 hợp đồng mà API của Morpho liệt kê đều dùng oracle của chính thị trường; một hợp đồng không được liệt kê thì có thể không.
+- **Không ai bắt buộc phải hành động.** Nếu không bên thanh lý nào gọi hợp đồng, sẽ không có gì xảy ra trước LLTV; khi bạn vượt qua nó, bạn có thể bị thanh lý theo cách thông thường.
+
+Vì tính năng này đang bị ngừng, Morpho đề nghị những người vay vẫn còn dùng nó tắt đi, và việc tham gia mới đã đóng.
+
+## Làm sao kiểm tra xem bạn đã ủy quyền cho một hợp đồng hay chưa?
+
+Bạn đã ủy quyền cho một hợp đồng thanh lý trước nếu `isAuthorized(ví của bạn, hợp đồng)` của Morpho Blue trả về true. Việc ủy quyền được lưu trong chính Morpho Blue, không phải trong hợp đồng thanh lý trước.
+
+1. **Tìm hợp đồng cho thị trường của bạn.** API của Morpho liệt kê nó trong mục pre-liquidations của thị trường; trung tâm trợ giúp của Morpho cũng chỉ đến nút quản lý trên trang vị thế hoặc trang thị trường của bạn trong ứng dụng.
+2. **Gọi `isAuthorized` trên hợp đồng Morpho Blue của mạng đó.** Trên một trình khám phá khối (block explorer), mở các hàm đọc của hợp đồng Blue và nhập ví của bạn làm địa chỉ thứ nhất và hợp đồng thanh lý trước làm địa chỉ thứ hai.
+3. **Đọc câu trả lời.** True nghĩa là hợp đồng có thể thanh lý trước bạn; false nghĩa là không thể.
+
+Các bước này cần địa chỉ hợp đồng, và API của Morpho chỉ liệt kê những hợp đồng có thiết lập mặc định. Một lần ủy quyền cũng có thể được đưa ra bằng chữ ký và do người khác gửi đi, nên nó có thể không hiện trong danh sách giao dịch của chính ví bạn. Để xem mọi địa chỉ bạn đã ủy quyền, hãy xem các sự kiện SetAuthorization của hợp đồng Morpho Blue trên một trình khám phá khối với ví của bạn là bên ủy quyền (authorizer). Sự kiện mới nhất cho mỗi địa chỉ cho biết nó còn bật hay không, và PreLiquidationFactory của mạng đó trả lời `isPreLiquidation(address)` bằng true cho những hợp đồng nó đã tạo.
+
+Có một chi tiết quan trọng ở đây. Việc ủy quyền của Blue không gắn với thị trường nào: một địa chỉ bạn ủy quyền sẽ vượt qua các bước kiểm tra của Blue cho việc vay, rút tiền và rút tài sản thế chấp của bạn trên toàn bộ hợp đồng Blue đó. Mã cố định của một hợp đồng thanh lý trước chỉ trả nợ và rút tài sản thế chấp trên thị trường của chính nó, nhưng những địa chỉ khác bạn đã ủy quyền thì không bị giới hạn như vậy.
+
+## Làm sao tắt thanh lý trước?
+
+Bạn tắt nó bằng cách đặt lại việc ủy quyền về false:
+
+- **Trong ứng dụng Morpho:** trung tâm trợ giúp của Morpho hướng dẫn nhấn nút quản lý trên vị thế trong bảng điều khiển của bạn hoặc trên trang thị trường, nút này mở một cửa sổ để gỡ Auto-deleverage.
+- **Trên hợp đồng:** gọi `setAuthorization(pre-liquidation contract, false)` trên Morpho Blue từ ví của bạn. Lệnh gọi sẽ thất bại nếu giá trị đã là false, nên một lệnh gọi thất bại cũng có thể có nghĩa là không có gì để gỡ.
+
+Sau khi thu hồi, các lần hợp đồng cố rút tài sản thế chấp của bạn đều thất bại, và chỉ còn thanh lý thông thường của Blue dưới hệ số sức khỏe 1 được áp dụng. Việc này tốn phí gas của một giao dịch.
+
+## Tokenping đo một vị thế có thanh lý trước như thế nào?
+
+Với người vay đã ủy quyền cho một hợp đồng thanh lý trước trên một thị trường Blue, Tokenping cảnh báo theo ranh giới thấp hơn trong hai ranh giới: ranh giới LLTV và ranh giới thanh lý trước. Điều này quan trọng vì trung tâm trợ giúp của Morpho mô tả hệ số sức khỏe hiển thị trong ứng dụng là chạm 1 khi LTV vượt qua LLTV, cũng là nơi thanh lý của chính Blue bắt đầu. Trên một thị trường 86% với hợp đồng mặc định, ngưỡng cảnh báo 1,10 trên ranh giới thanh lý trước sẽ kích hoạt ở hệ số sức khỏe thị trường khoảng 1,136, và ngưỡng thấp nhất, 1,02, kích hoạt ở khoảng 1,054, cao hơn khoảng 2% so với ranh giới nơi thanh lý trước có thể bắt đầu.
+
+Khi bạn lưu hoặc sửa một cảnh báo, Tokenping ghi lại các hợp đồng thanh lý trước mà API của Morpho liệt kê cho thị trường đó; sau đó mỗi lần kiểm tra sẽ đọc xem bạn đã ủy quyền cho từng hợp đồng chưa, và tính hệ số sức khỏe từ dữ liệu trên chuỗi bằng chính công thức của Morpho, không bao giờ lấy từ API của Morpho. Một hợp đồng thanh lý trước mà API của Morpho không liệt kê sẽ không được kiểm tra, nên nếu bạn đã ủy quyền cho một hợp đồng với thiết lập tùy chỉnh, cảnh báo chỉ đo theo ranh giới LLTV.
+
+Phần còn lại hoạt động như mọi cảnh báo Morpho. Tokenping kiểm tra 5 phút một lần, trên 14 mạng, và khi hệ số sức khỏe của bạn còn dưới ngưỡng (bất kỳ giá trị nào từ 1,02 đến 10), mỗi lần kiểm tra sẽ gửi một tin nhắn trên từng kênh bạn chọn: Signal, Telegram hoặc email. Cảnh báo có giá <AlertPrice />, cùng gói với cảnh báo Aave, và [xem các vị thế Morpho của bạn](/vi/morpho) không cần thanh toán. [Cách chọn ngưỡng cảnh báo](/vi/blog/he-so-suc-khoe-an-toan-tren-aave#chon-nguong-canh-bao-nhu-the-nao-tung-buoc-mot) trình bày sự đánh đổi trên Aave; cách suy nghĩ đó cũng áp dụng ở đây. Một cảnh báo cho bạn thời gian để hành động, không phải một sự bảo đảm: giá có thể biến động giữa hai lần kiểm tra. Nếu bạn không còn muốn dùng thanh lý trước, hãy thu hồi nó như hướng dẫn ở trên; khi đó cảnh báo của bạn chỉ đo theo ranh giới LLTV.
+
+## Nguồn
+
+- [morpho-org/pre-liquidation](https://github.com/morpho-org/pre-liquidation): README, [PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidation.sol), [PreLiquidationFactory.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidationFactory.sol) và [IPreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/interfaces/IPreLiquidation.sol), về các tham số, giới hạn, phép nội suy và các bước kiểm tra (truy cập ngày 26 tháng 10 năm 2026)
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) và [EventsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/EventsLib.sol): `isAuthorized`, `setAuthorization`, sự kiện SetAuthorization, phép kiểm tra sức khỏe và khoản thưởng thanh lý thông thường (truy cập ngày 26 tháng 10 năm 2026)
+- [Introducing pre-liquidations](https://morpho.org/blog/introducing-pre-liquidations-enhanced-loan-management-on-morpho) (Morpho, ngày 4 tháng 3 năm 2025): auto-deleverage và auto-close là các cách dùng, và thanh lý thông thường khi không có thanh lý trước nào xảy ra (truy cập ngày 26 tháng 10 năm 2026)
+- [Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (trung tâm trợ giúp Morpho, cập nhật ngày 13 tháng 5 năm 2026): không nhận vị thế mới, cách tắt, tính năng này đã làm gì (truy cập ngày 26 tháng 10 năm 2026)
+- [Trung tâm trợ giúp Morpho: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): ứng dụng hiển thị hệ số sức khỏe của từng vị thế, và một vị thế có thể bị thanh lý ở mức 1 hoặc thấp hơn, khi LTV của nó vượt qua LLTV (truy cập ngày 26 tháng 10 năm 2026)
+- [Pull request 1132 của SDK Morpho](https://github.com/morpho-org/sdks/pull/1132) (được merge ngày 22 tháng 9 năm 2026) và [preLiquidation.ts](https://github.com/morpho-org/sdks/blob/main/packages/blue-sdk/src/preLiquidation.ts): việc ngừng hỗ trợ và các tham số mặc định (truy cập ngày 26 tháng 10 năm 2026)
+- [Tài liệu Morpho: liquidation](https://docs.morpho.org/developers/borrow/concepts/liquidation): nơi trang thanh lý trước cũ nay dẫn đến (truy cập ngày 26 tháng 10 năm 2026)
+- [API của Morpho](https://api.morpho.org/graphql): các thị trường được niêm yết, hợp đồng thanh lý trước và oracle của chúng, và các thị trường USDC | cbBTC (86%) trên Base và Ethereum (truy cập ngày 26 tháng 10 năm 2026)
+- Các hợp đồng thanh lý trước được đọc trên chuỗi: [Base](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374) tại các khối 53102692 đến 53102952 và [Ethereum](https://etherscan.io/address/0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A) tại khối 26274980, cùng factory, thị trường và oracle của chúng (truy cập ngày 26 tháng 10 năm 2026)
+
+_Nội dung mang tính giáo dục, không phải lời khuyên tài chính. Cảnh báo giúp giảm rủi ro, nhưng không ngăn được việc thanh lý._

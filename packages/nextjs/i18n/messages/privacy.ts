@@ -55,6 +55,8 @@ const ATTRIBUTION_QUESTION_EN = '"How did you hear about Tokenping?"';
 const ATTRIBUTION_QUESTION_CS = "„Jak jste se o Tokenpingu dozvěděli?“";
 const ATTRIBUTION_QUESTION_ES = '"¿Cómo te enteraste de Tokenping?"';
 const ATTRIBUTION_QUESTION_HI = '"आपने Tokenping के बारे में कैसे सुना?"';
+const ATTRIBUTION_QUESTION_DE = "„Wie hast du von Tokenping erfahren?“";
+const ATTRIBUTION_QUESTION_VI = '"Bạn biết đến Tokenping qua đâu?"';
 
 export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = {
   en: {
@@ -562,6 +564,266 @@ export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = {
       before: "अलर्ट कैसे काम करते हैं, इसके जवाब ",
       link: "होमपेज",
       after: " पर हैं।",
+    },
+  },
+  de: {
+    metaTitle: "Datenschutz und Daten",
+    metaDescription:
+      "Was Tokenping speichert, wenn du einen Health-Factor-Alert für Aave einrichtest, was nicht, welche Dienste deine Daten verarbeiten und wie du sie löschst.",
+    crumbHome: "Startseite",
+    crumbPrivacy: "Datenschutz",
+    title: "Datenschutz: was Tokenping speichert und wer es verarbeitet",
+    lastUpdated: "Zuletzt aktualisiert am",
+    intro:
+      "Diese Seite beschreibt, was die App heute tut. Tokenping ist in der Beta, und wir aktualisieren diese Seite, wenn sich ändert, was wir erfassen.",
+    withoutUs: {
+      title: "Was du tun kannst, ohne uns etwas zu geben",
+      text: "Die Website und den Blog zu lesen und deine Positionen im Dashboard anzusehen, fügt unserer Datenbank nichts hinzu. Um deine Positionen anzuzeigen, fragt dein Browser RPC-Anbieter (unten aufgeführt) nach den Aave-Daten deiner Wallet, daher sehen sie deine Wallet-Adresse.",
+      morpho:
+        "Im Morpho-Dashboard sendet dein Browser deine Wallet-Adresse außerdem an die API von Morpho, die die Morpho-Märkte findet, in denen du leihst, und liest deine Morpho-Positionen über dieselben RPC-Anbieter.",
+    },
+    stored: {
+      title: "Was wir speichern, wenn du einen Alert speicherst",
+      items: [
+        "Deine Wallet-Adresse.",
+        "Das Netzwerk, für das der Alert gilt, und dein Schwellenwert.",
+        "Die Kanäle, die du gewählt hast, und die Sprache jedes Kanals.",
+        "Deine E-Mail-Adresse, wenn du E-Mail gewählt hast.",
+        "Dein Signal-Benutzername, wenn du Signal gewählt hast.",
+        "Wann der Alert erstellt und wann er zuletzt geändert wurde.",
+        "Wann du zuletzt über jeden Kanal eine Testnachricht gesendet hast, um einen Test pro Kanal alle 15 Minuten zu erlauben.",
+      ],
+      telegram:
+        "Wenn du Telegram wählst, speichern wir den Telegram-Benutzernamen, den du im Alert eingibst. Wenn dieses Konto im Tokenping-Bot auf Start drückt, speichern wir außerdem seine Chat-ID und den Zeitpunkt, zu dem es auf Start gedrückt hat, damit Alerts es erreichen können. Jeder kann prüfen, ob ein Telegram-Benutzername im Bot auf Start gedrückt hat.",
+      attribution: `Wenn du nach dem Speichern eines Alerts die freiwillige Frage ${ATTRIBUTION_QUESTION_DE} beantwortest, speichern wir deine Antwort und den Zeitpunkt zusammen mit deiner Wallet-Adresse.`,
+    },
+    notStored: {
+      title: "Was wir nicht speichern",
+      items: [
+        "Deine Positionen oder ein Verlauf deines Health Factors. Sie werden live gelesen und nicht gespeichert.",
+        "Ein Protokoll der Alerts, die wir gesendet haben.",
+        `Tracking-Pixel oder Werbe-Cookies: Die Website verwendet keine. Wenn du dich mit deiner Wallet anmeldest, setzt Tokenping ein Cookie, das nur angibt, welche Wallet sich angemeldet hat; es gilt 7 Tage oder bis du die Wallet auf dieser Website trennst. Während du dich anmeldest, hält ein zweites Cookie die Anmeldeanfrage fünf Minuten lang. Dein Browser speichert in seinem eigenen lokalen Speicher (local storage) dein gewähltes Farbschema, deine Wallet-Verbindung, welche Wallets sich in ihm angemeldet haben und ob er dir die Frage ${ATTRIBUTION_QUESTION_DE} schon gezeigt hat.`,
+        "IP-Adressen in unserer Datenbank. Vercel verarbeitet trotzdem jede Anfrage, wie unten aufgeführt. Wenn eine Alert-Prüfung oder eine Nachricht fehlschlägt, landet der Fehler, der deine Wallet-Adresse und den Empfänger enthalten kann, in unseren Server-Logs.",
+      ],
+    },
+    whoCanSee: {
+      title: "Wer deine Alert-Einstellungen sehen kann",
+      tiedToWallet:
+        "Alert-Einstellungen sind an eine Wallet-Adresse gebunden, nicht an ein Konto mit Passwort. Um sie zu sehen oder zu ändern, signierst du mit dieser Wallet eine Nachricht, die beweist, dass die Adresse dir gehört. Das ist keine Transaktion und kostet kein Gas, und eine Signatur gilt 7 Tage in diesem Browser.",
+      anyone: hasTelegram =>
+        `Nur wer mit deiner Wallet signieren kann, kann die für sie gespeicherte E-Mail-Adresse${hasTelegram ? ", den Signal-Benutzernamen und den Telegram-Benutzernamen" : " und den Signal-Benutzernamen"} sehen oder ihre Alerts ändern oder löschen. Die unten beschriebenen öffentlichen Zahlungsdaten zeigen trotzdem, welche Wallets bezahlt haben.`,
+      dontEnter:
+        "Gib keine E-Mail-Adresse und keinen Signal-Benutzernamen ein, die du nicht mit deiner Wallet-Adresse verknüpft sehen willst.",
+    },
+    processors: {
+      title: "Wer deine Daten verarbeitet",
+      list: ({ minutes, hasTelegram }) => [
+        {
+          name: "Vercel",
+          role: `Hostet diese Website und führt alle ${minutes} Minuten die Alert-Prüfung aus.`,
+          receives: "Jede Anfrage an die Website, einschließlich deiner IP-Adresse, und unsere Server-Logs.",
+        },
+        {
+          name: "Vercel Web Analytics",
+          role: "Zählt Seitenaufrufe, ohne Cookies.",
+          receives:
+            "Für jeden Seitenaufruf: die Adresse der Seite, die Website, von der du kommst, deinen ungefähren Standort sowie deinen Browser, dein Betriebssystem und deinen Gerätetyp. Ein Besucher ist ein Hash der Anfrage, der sich alle 24 Stunden ändert, sodass Besuche nicht über Tage oder Websites hinweg verknüpft werden können.",
+        },
+        { name: "Supabase", role: "Unsere Datenbank.", receives: "Die oben aufgeführten Alert-Einstellungen." },
+        { name: "Resend", role: "Versendet Alert-E-Mails.", receives: "Deine E-Mail-Adresse und den Text des Alerts." },
+        {
+          name: "Fly.io (unser Signal-Relay)",
+          role: "Hostet den von uns betriebenen signal-cli-rest-api-Server, der Signal-Alerts an Signal übergibt.",
+          receives: "Deinen Signal-Benutzernamen und den Text des Alerts (ebenso wie Signal).",
+        },
+        ...(hasTelegram
+          ? [
+              {
+                name: "Telegram",
+                role: "Stellt Telegram-Alerts über seine Bot API zu.",
+                receives: "Deine Telegram-Chat-ID und den Text des Alerts.",
+              },
+            ]
+          : []),
+        {
+          name: "RPC-Anbieter (PublicNode, Alchemy und die öffentlichen Endpunkte der Netzwerke)",
+          role: "Beantworten die Abfragen an die Blockchain: aus deinem Browser für das Dashboard und von unserem Server für Alert-Prüfungen und zur Prüfung von Anmeldesignaturen von Smart Wallets.",
+          receives:
+            "Die abgefragte Wallet-Adresse (und bei der Anmeldung deine Signatur) sowie deine IP-Adresse bei Abfragen aus deinem Browser.",
+        },
+        {
+          name: "API von Morpho",
+          role: "Findet für das Morpho-Dashboard die gelisteten Morpho-Märkte, in denen deine Wallet leiht, und teilt unserem Server mit, ob ein Markt gelistet ist, wenn du einen Morpho-Alert speicherst.",
+          receives: "Deine Wallet-Adresse sowie deine IP-Adresse bei den Abfragen, die dein Browser macht.",
+        },
+        {
+          name: "WalletConnect",
+          role: "Leitet die Verbindung zwischen dieser Website und deiner Wallet-App weiter, wenn du dich mit WalletConnect verbindest.",
+          receives:
+            "Was deine Wallet-App und diese Website austauschen, um sich zu verbinden, etwa deine Wallet-Adresse.",
+        },
+      ],
+      receives: receives => `Erhält: ${receives}`,
+      ownPolicy: "Jeder dieser Dienste verarbeitet diese Daten nach seiner eigenen Datenschutzerklärung.",
+    },
+    onChain: {
+      title: "Was auf der Blockchain öffentlich ist",
+      text: paymentChainName =>
+        `Die Zahlung für Alerts erfolgt ${paymentChainName ? `im Netzwerk ${paymentChainName}` : "im Zahlungsnetzwerk"}. Jede Zahlung hält die zahlende Adresse, den Token, den Betrag, den Zeitpunkt, den gekauften Zeitraum und das neue Ablaufdatum in einem öffentlichen Event fest, das jeder lesen und niemand löschen kann. Deine Alert-Einstellungen werden nie auf eine Blockchain geschrieben.`,
+    },
+    retention: {
+      title: "Wie lange wir sie aufbewahren und wie du sie löschst",
+      settings:
+        "Alert-Einstellungen bleiben gespeichert, bis du den Alert im Dashboard löschst. Das Löschen entfernt die Einstellungen für dieses Netzwerk, einschließlich E-Mail-Adresse und Signal-Benutzername, und setzt aktiven Zugang voraus.",
+      telegramStop:
+        "Wenn du /stop an den Tokenping-Bot in Telegram sendest, wird die Verknüpfung mit deinem Chat aufgehoben und Telegram-Alerts werden beendet.",
+      contact: {
+        before: `Wenn dein Zugang abgelaufen ist oder du deine Antwort auf die Frage ${ATTRIBUTION_QUESTION_DE} entfernen lassen willst, schreib uns auf`,
+        x: "X",
+        middle: "oder in unserer Community auf",
+        telegram: "Telegram",
+        or: "oder",
+        signal: "Signal",
+        after: "und wir löschen sie.",
+      },
+      payments: "Zahlungen auf der Blockchain kann niemand löschen.",
+    },
+    homepage: {
+      before: "Fragen dazu, wie Alerts funktionieren, beantwortet die ",
+      link: "Startseite",
+      after: ".",
+    },
+  },
+  vi: {
+    metaTitle: "Quyền riêng tư và dữ liệu",
+    metaDescription:
+      "Tokenping lưu gì khi bạn cài đặt cảnh báo hệ số sức khỏe Aave, không lưu gì, dịch vụ nào xử lý dữ liệu của bạn và cách xóa dữ liệu.",
+    crumbHome: "Trang chủ",
+    crumbPrivacy: "Quyền riêng tư",
+    title: "Quyền riêng tư: Tokenping lưu gì và ai xử lý dữ liệu",
+    lastUpdated: "Cập nhật lần cuối ngày",
+    intro:
+      "Trang này mô tả những gì ứng dụng làm hiện nay. Tokenping đang ở giai đoạn beta, và chúng tôi cập nhật trang này khi những gì chúng tôi thu thập thay đổi.",
+    withoutUs: {
+      title: "Những gì bạn có thể làm mà không cần cung cấp gì cho chúng tôi",
+      text: "Đọc trang web và blog, và xem vị thế của bạn trên bảng điều khiển, không thêm gì vào cơ sở dữ liệu của chúng tôi. Để hiển thị vị thế của bạn, trình duyệt của bạn hỏi các nhà cung cấp RPC (liệt kê bên dưới) về dữ liệu Aave của ví bạn, nên họ thấy địa chỉ ví của bạn.",
+      morpho:
+        "Trên bảng điều khiển Morpho, trình duyệt của bạn còn gửi địa chỉ ví của bạn đến API của Morpho (API này tìm các thị trường Morpho mà bạn đang vay), và đọc các vị thế Morpho của bạn từ cùng các nhà cung cấp RPC đó.",
+    },
+    stored: {
+      title: "Những gì chúng tôi lưu khi bạn lưu một cảnh báo",
+      items: [
+        "Địa chỉ ví của bạn.",
+        "Mạng mà cảnh báo áp dụng, và ngưỡng của bạn.",
+        "Các kênh bạn đã chọn, và ngôn ngữ của từng kênh.",
+        "Địa chỉ email của bạn, nếu bạn chọn email.",
+        "Tên người dùng Signal của bạn, nếu bạn chọn Signal.",
+        "Thời điểm cảnh báo được tạo và được thay đổi lần cuối.",
+        "Thời điểm bạn gửi tin nhắn thử lần cuối trên mỗi kênh, để cho phép một lần gửi thử trên mỗi kênh trong mỗi 15 phút.",
+      ],
+      telegram:
+        "Nếu bạn chọn Telegram, chúng tôi lưu tên người dùng Telegram mà bạn nhập vào cảnh báo. Khi tài khoản đó nhấn Start trong bot Tokenping, chúng tôi còn lưu ID cuộc trò chuyện (chat ID) của tài khoản đó và thời điểm nó nhấn Start, để cảnh báo có thể đến được tài khoản đó. Bất kỳ ai cũng có thể kiểm tra xem một tên người dùng Telegram đã nhấn Start trong bot hay chưa.",
+      attribution: `Nếu bạn trả lời câu hỏi không bắt buộc ${ATTRIBUTION_QUESTION_VI} sau khi lưu một cảnh báo, chúng tôi lưu câu trả lời của bạn và thời điểm trả lời cùng với địa chỉ ví của bạn.`,
+    },
+    notStored: {
+      title: "Những gì chúng tôi không lưu",
+      items: [
+        "Vị thế của bạn hay lịch sử hệ số sức khỏe của bạn. Chúng được đọc trực tiếp mỗi lần và không được lưu lại.",
+        "Nhật ký các cảnh báo chúng tôi đã gửi.",
+        `Pixel theo dõi hay cookie quảng cáo: trang web không dùng loại nào. Khi bạn đăng nhập bằng ví, Tokenping đặt một cookie chỉ cho biết ví nào đã đăng nhập; cookie này tồn tại 7 ngày hoặc cho đến khi bạn ngắt kết nối ví trên trang web này. Trong lúc bạn đăng nhập, một cookie thứ hai giữ yêu cầu đăng nhập trong năm phút. Trình duyệt của bạn giữ trong bộ nhớ cục bộ (local storage) của chính nó: giao diện (theme) bạn chọn, kết nối ví của bạn, những ví nào đã đăng nhập trên trình duyệt đó và việc trình duyệt đã hiển thị câu hỏi ${ATTRIBUTION_QUESTION_VI} cho bạn hay chưa.`,
+        "Địa chỉ IP trong cơ sở dữ liệu của chúng tôi. Dù vậy, Vercel vẫn xử lý mọi yêu cầu, như liệt kê bên dưới. Khi một lần kiểm tra cảnh báo hoặc một tin nhắn bị lỗi, thông báo lỗi, có thể bao gồm địa chỉ ví của bạn và người nhận, được ghi vào nhật ký máy chủ (server log) của chúng tôi.",
+      ],
+    },
+    whoCanSee: {
+      title: "Ai có thể xem cài đặt cảnh báo của bạn",
+      tiedToWallet:
+        "Cài đặt cảnh báo gắn với một địa chỉ ví, không gắn với một tài khoản có mật khẩu. Để xem hoặc thay đổi chúng, bạn ký một tin nhắn bằng ví đó, việc này chứng minh địa chỉ đó là của bạn. Đây không phải là giao dịch và không tốn phí gas, và một chữ ký có hiệu lực 7 ngày trên trình duyệt đó.",
+      anyone: hasTelegram =>
+        `Chỉ người có thể ký bằng ví của bạn mới xem được địa chỉ email${hasTelegram ? ", tên người dùng Signal và tên người dùng Telegram" : " và tên người dùng Signal"} đã lưu cho ví đó, hoặc thay đổi hay xóa các cảnh báo của ví đó. Dù vậy, các bản ghi thanh toán công khai được mô tả bên dưới vẫn cho thấy những ví nào đã thanh toán.`,
+      dontEnter:
+        "Đừng nhập địa chỉ email hoặc tên người dùng Signal mà bạn không muốn bị liên kết với địa chỉ ví của mình.",
+    },
+    processors: {
+      title: "Ai xử lý dữ liệu của bạn",
+      list: ({ minutes, hasTelegram }) => [
+        {
+          name: "Vercel",
+          role: `Lưu trữ (host) trang web này và chạy việc kiểm tra cảnh báo mỗi ${minutes} phút.`,
+          receives: "Mọi yêu cầu đến trang web, bao gồm địa chỉ IP của bạn, và nhật ký máy chủ của chúng tôi.",
+        },
+        {
+          name: "Vercel Web Analytics",
+          role: "Đếm lượt xem trang, không dùng cookie.",
+          receives:
+            "Với mỗi lượt xem trang: địa chỉ trang, trang web bạn đến từ đó, vị trí gần đúng của bạn, và trình duyệt, hệ điều hành và loại thiết bị của bạn. Một khách truy cập là một giá trị băm (hash) của yêu cầu, thay đổi sau mỗi 24 giờ, nên các lượt truy cập không thể được liên kết giữa các ngày hay giữa các trang web.",
+        },
+        {
+          name: "Supabase",
+          role: "Cơ sở dữ liệu của chúng tôi.",
+          receives: "Các cài đặt cảnh báo được liệt kê ở trên.",
+        },
+        { name: "Resend", role: "Gửi email cảnh báo.", receives: "Địa chỉ email của bạn và nội dung cảnh báo." },
+        {
+          name: "Fly.io (máy chủ chuyển tiếp Signal của chúng tôi)",
+          role: "Lưu trữ máy chủ signal-cli-rest-api do chúng tôi vận hành, máy chủ này chuyển cảnh báo Signal cho Signal.",
+          receives: "Tên người dùng Signal của bạn và nội dung cảnh báo (Signal cũng nhận được những thông tin này).",
+        },
+        ...(hasTelegram
+          ? [
+              {
+                name: "Telegram",
+                role: "Gửi cảnh báo Telegram qua Bot API của Telegram.",
+                receives: "ID cuộc trò chuyện Telegram của bạn và nội dung cảnh báo.",
+              },
+            ]
+          : []),
+        {
+          name: "Nhà cung cấp RPC (PublicNode, Alchemy và các endpoint công khai của các mạng)",
+          role: "Trả lời các yêu cầu đọc blockchain: từ trình duyệt của bạn cho bảng điều khiển, và từ máy chủ của chúng tôi cho việc kiểm tra cảnh báo và để kiểm tra chữ ký đăng nhập từ ví thông minh (smart wallet).",
+          receives:
+            "Địa chỉ ví đang được đọc (và, khi bạn đăng nhập, chữ ký của bạn), và địa chỉ IP của bạn với các yêu cầu đọc từ trình duyệt của bạn.",
+        },
+        {
+          name: "API của Morpho",
+          role: "Tìm các thị trường Morpho được liệt kê mà ví của bạn đang vay, cho bảng điều khiển Morpho, và cho máy chủ của chúng tôi biết một thị trường có được liệt kê hay không khi bạn lưu một cảnh báo Morpho.",
+          receives: "Địa chỉ ví của bạn, và địa chỉ IP của bạn với các lần tra cứu do trình duyệt của bạn thực hiện.",
+        },
+        {
+          name: "WalletConnect",
+          role: "Chuyển tiếp kết nối giữa trang web này và ứng dụng ví của bạn, nếu bạn kết nối bằng WalletConnect.",
+          receives:
+            "Những gì ứng dụng ví của bạn và trang web này trao đổi để kết nối, chẳng hạn như địa chỉ ví của bạn.",
+        },
+      ],
+      receives: receives => `Nhận: ${receives}`,
+      ownPolicy: "Mỗi dịch vụ này xử lý dữ liệu đó theo chính sách quyền riêng tư của riêng mình.",
+    },
+    onChain: {
+      title: "Những gì công khai trên blockchain",
+      text: paymentChainName =>
+        `Việc thanh toán cho cảnh báo diễn ra trên ${paymentChainName ? `mạng ${paymentChainName}` : "mạng thanh toán"}. Mỗi khoản thanh toán ghi lại địa chỉ thanh toán, token, số tiền, thời điểm, khoảng thời gian đã mua và ngày hết hạn mới trong một sự kiện (event) công khai mà ai cũng có thể đọc và không ai có thể xóa. Cài đặt cảnh báo của bạn không bao giờ được ghi lên blockchain.`,
+    },
+    retention: {
+      title: "Chúng tôi giữ dữ liệu bao lâu, và cách xóa",
+      settings:
+        "Cài đặt cảnh báo được giữ cho đến khi bạn xóa cảnh báo trong bảng điều khiển. Việc xóa sẽ gỡ bỏ cài đặt của mạng đó, bao gồm địa chỉ email và tên người dùng Signal, và cần quyền truy cập còn hiệu lực.",
+      telegramStop:
+        "Gửi /stop cho bot Tokenping trong Telegram sẽ hủy liên kết cuộc trò chuyện của bạn và dừng cảnh báo qua Telegram.",
+      contact: {
+        before: `Nếu quyền truy cập của bạn đã hết hạn, hoặc bạn muốn xóa câu trả lời của mình cho câu hỏi ${ATTRIBUTION_QUESTION_VI}, hãy nhắn cho chúng tôi trên`,
+        x: "X",
+        middle: "hoặc trong cộng đồng của chúng tôi trên",
+        telegram: "Telegram",
+        or: "hoặc",
+        signal: "Signal",
+        after: "và chúng tôi sẽ xóa.",
+      },
+      payments: "Không ai có thể xóa các khoản thanh toán trên blockchain.",
+    },
+    homepage: {
+      before: "Các câu hỏi về cách cảnh báo hoạt động được trả lời trên ",
+      link: "trang chủ",
+      after: ".",
     },
   },
 };

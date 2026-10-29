@@ -1,0 +1,156 @@
+export const meta = {
+  slug: "vi-sao-he-so-suc-khoe-aave-giam",
+  title: "Vì sao hệ số sức khỏe Aave của tôi giảm? 6 nguyên nhân",
+  description:
+    "Hệ số sức khỏe Aave có thể giảm dù bạn không làm gì: giá biến động, lãi, ngưỡng thanh lý bị hạ, stablecoin mất neo và lỗi oracle, được giải thích.",
+  h1: "Vì sao hệ số sức khỏe Aave của tôi giảm dù tôi không làm gì?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-25",
+  primaryQuestion: "Vì sao hệ số sức khỏe Aave của tôi tự giảm?",
+  readingMinutes: 18,
+};
+
+<ShortAnswer>
+  Aave tính lại hệ số sức khỏe (health factor) của bạn từ giá của oracle (nguồn giá), số dư hiện tại và ngưỡng thanh lý
+  (liquidation threshold) hiện hành mỗi lần nó được đọc, nên hệ số này thay đổi ngay cả khi bạn không gửi giao dịch nào.
+  Trên Aave V3, nó giảm khi giá tài sản thế chấp của bạn giảm, tài sản bạn đã vay tăng giá, lãi trên khoản nợ tăng nhanh
+  hơn phần lãi tài sản thế chấp kiếm được, quản trị hạ một ngưỡng thanh lý, một stablecoin bạn gửi làm tài sản thế chấp
+  tụt dưới 1 $, hoặc một oracle bị cấu hình sai. Dưới 1,00, vị thế có thể bị thanh lý.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Các số liệu và số khối nơi chúng được đọc: content/blog/snapshots/why-aave-health-factor-dropped.md */}
+
+## Vì sao hệ số sức khỏe trên Aave tự thay đổi?
+
+Hệ số sức khỏe trên Aave tự thay đổi vì nó không được lưu lại: giao thức tính lại nó từ giá oracle hiện tại, số dư (gồm cả lãi đã cộng dồn) và các tham số rủi ro mỗi lần nó được đọc:
+
+**HF = Σ(giá trị tài sản thế chấp × ngưỡng thanh lý) ÷ tổng giá trị khoản nợ**
+
+Cả hai vế đều tính bằng USD theo giá oracle của Aave, và dưới 1,00 vị thế có thể bị thanh lý. Công thức được giải thích trong [hệ số sức khỏe Aave là gì](/vi/blog/he-so-suc-khoe-aave). Trên Aave V3, có sáu yếu tố làm nó giảm mà bạn không cần làm gì. Các ví dụ dùng tham số của Ethereum Core đọc ngày 14 tháng 10 năm 2026 và giá ETH minh họa 2.400 $.
+
+| Nguyên nhân                   | Làm giảm hệ số sức khỏe khi                                         | Tốc độ               | Ví dụ                                                                    |
+| ----------------------------- | ------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------ |
+| 1. Giá tài sản thế chấp giảm  | Một tài sản bạn gửi làm tài sản thế chấp giảm giá                   | Nhanh như thị trường | Thế chấp 10 WETH, vay 12.000 USDC, ETH giảm 10%: từ 1,66 xuống 1,49      |
+| 2. Tài sản đã vay tăng giá    | Bạn vay một tài sản biến động và nó tăng giá                        | Nhanh như thị trường | Thế chấp 10.000 USDC, vay 2,5 WETH, ETH tăng 10%: từ 1,30 xuống 1,18     |
+| 3. Lãi                        | Lãi suất vay của khoản nợ cao hơn lãi suất gửi của tài sản thế chấp | Chậm và liên tục     | Thế chấp 10 WETH, vay 12.000 USDC: từ khoảng 1,66 xuống 1,61 sau một năm |
+| 4. Hạ ngưỡng thanh lý         | Quản trị hoặc Risk Stewards hạ ngưỡng của tài sản thế chấp          | Đột ngột, một lần    | Giả định WETH bị hạ từ 83% xuống 82%: từ 1,66 xuống 1,64                 |
+| 5. Stablecoin mất neo (depeg) | Một stablecoin bạn gửi làm tài sản thế chấp tụt dưới 1 $            | Nhanh như thị trường | Thế chấp 10.000 USDC, vay 2,5 WETH, USDC ở 0,88 $: từ 1,30 xuống 1,14    |
+| 6. Lỗi oracle hoặc tỷ giá     | Oracle định giá tài sản thế chấp quá thấp hoặc khoản nợ quá cao     | Đột ngột, một lần    | Tháng 3 năm 2026: wstETH bị định giá thấp khoảng 2,85%                   |
+
+Trong một chủ đề trên diễn đàn quản trị Aave vào tháng 2 năm 2025, một người vay có vị thế bắt đầu ở hệ số sức khỏe 1,71 phát hiện mình bị thanh lý một phần, đã thêm tài sản thế chấp khi hệ số sức khỏe chạm 1,01, rồi sáng hôm sau kiểm tra lại thì thấy bị thanh lý lần thứ hai, dù chắc chắn rằng ETH chưa giảm đủ sâu để giải thích lần nào. Không ai trong chủ đề đó tìm ra nguyên nhân. Sáu nguyên nhân dưới đây là nơi nên bắt đầu tìm.
+
+Aave V4, hoạt động trên Ethereum từ ngày 30 tháng 3 năm 2026 và sau đó trên Avalanche, Arc và Base, tính hệ số sức khỏe cho từng Spoke, với một hệ số thế chấp (collateral factor) cho mỗi tài sản. Giá và lãi tác động lên nó theo cùng một cách, nhưng thay đổi tham số đến với các vị thế hiện có theo cách khác (xem [cách V4 áp dụng thay đổi tham số, ở Nguyên nhân 4](#nguyen-nhan-4-quan-tri-hoac-risk-stewards-co-ha-nguong-thanh-ly-khong)).
+
+## Nguyên nhân 1: Giá tài sản thế chấp của bạn có giảm không?
+
+Khi giá của bất kỳ tài sản nào bạn gửi làm tài sản thế chấp giảm, hệ số sức khỏe Aave của bạn giảm theo, vì tài sản thế chấp được định giá theo giá oracle. Với một tài sản thế chấp biến động và khoản nợ bằng stablecoin, hệ số sức khỏe thay đổi tỷ lệ thuận với giá: giá giảm 10% thì hệ số giảm 10%.
+
+Lấy ví dụ thế chấp 10 WETH để vay 12.000 USDC trên Aave V3 Ethereum Core, nơi ngưỡng thanh lý của WETH là 83% tại khối 26193284 (ngày 14 tháng 10 năm 2026). Ở giá minh họa 2.400 $ mỗi ETH (oracle của Aave đọc 2.414,78 $ tại khối 26193376 hôm đó), hệ số sức khỏe là 24.000 × 0,83 ÷ 12.000 = 1,66. Ở 2.160 $ nó là 1,49, ở 1.920 $ là 1,33, và ở 1.445,78 $, tức giảm 39,8%, nó chạm 1,00.
+
+Với nhiều tài sản thế chấp, chỉ phần có trọng số của tài sản đang giảm giá thay đổi. Giá được tính là giá của oracle Aave (trên Ethereum Core, WETH dùng nguồn giá tên "ETH / USD"). Giá có thể giảm bao nhiêu ở mỗi mức hệ số sức khỏe được trình bày trong [hệ số sức khỏe cho bạn bao nhiêu khoảng đệm](/vi/blog/he-so-suc-khoe-an-toan-tren-aave).
+
+## Nguyên nhân 2: Giá tài sản bạn đã vay có tăng không?
+
+Nếu bạn vay một tài sản biến động, giá của nó tăng sẽ làm giảm hệ số sức khỏe Aave của bạn, vì khoản nợ cũng được định giá theo giá oracle.
+
+Lấy ví dụ gửi 10.000 USDC để vay 2,5 WETH trên Aave V3 Ethereum Core, nơi ngưỡng thanh lý của USDC là 78% tại khối 26193284 (ngày 14 tháng 10 năm 2026). Ở giá minh họa 2.400 $, khoản nợ trị giá 6.000 $ và hệ số sức khỏe là 10.000 × 0,78 ÷ 6.000 = 1,30. Nếu ETH tăng 10% lên 2.640 $, nó giảm còn 7.800 ÷ 6.600 = 1,18. Ở 3.120 $, tức cao hơn 30%, nó chạm 1,00.
+
+Các cặp tương quan như tài sản thế chấp wstETH với khoản nợ WETH làm giảm tác động này, vì cả hai vế cùng biến động theo ETH. Khi đó hệ số sức khỏe phụ thuộc chủ yếu vào tỷ giá wstETH sang ETH mà oracle báo, tức là đổi rủi ro thị trường lấy rủi ro oracle (xem [lỗi oracle và tỷ giá, Nguyên nhân 6](#nguyen-nhan-6-loi-oracle-hoac-ty-gia-co-dinh-gia-sai-tai-san-the-chap-cua-ban-khong)).
+
+## Nguyên nhân 3: Lãi trên khoản nợ có tăng nhanh hơn lãi trên tài sản thế chấp không?
+
+Lãi làm giảm hệ số sức khỏe Aave khi khoản nợ của bạn tăng nhanh hơn tài sản thế chấp. Khoản nợ theo lãi suất thả nổi tăng mỗi giây theo lãi suất vay, còn tài sản thế chấp chỉ kiếm lãi suất gửi, thường thấp hơn. Với một tài sản thế chấp, một tài sản nợ và giá ổn định, hệ số sức khỏe trôi dần xuống khi lãi suất vay của khoản nợ cao hơn lãi suất gửi của tài sản thế chấp, và trôi lên khi thấp hơn.
+
+Trên Aave V3 Ethereum Core tại khối 26193378 (ngày 14 tháng 10 năm 2026), USDC trả cho người gửi 3,800% và người vay phải trả 4,496% mỗi năm; WETH trả 1,309% và có chi phí vay 1,943%. Đây là APR; ứng dụng Aave hiển thị APY cao hơn một chút (4,60% cho lãi suất vay USDC đó). Lấy ví dụ gửi 10 WETH (ngưỡng 83%) để vay 12.000 USDC, với ETH đi ngang ở giá minh họa 2.400 $ và lãi suất không đổi trong một năm. Khoản nợ tăng lên khoảng 12.550 USDC, tài sản thế chấp lên khoảng 10,13 WETH, và hệ số sức khỏe trượt từ 1,66 xuống khoảng 1,61. Lãi suất là thả nổi, nên hãy xem đây là quy mô, không phải dự báo.
+
+Lãi suất cũng có thể tăng vọt. Cuối ngày 14 tháng 10 năm 2026, lãi suất vay USDC trên Ethereum Core nhảy lên 13,67% APR chỉ trong một khối (26194053, 23:32:59 UTC) khi khoảng 134 triệu $ USDC đã gửi rời khỏi kho dự trữ (reserve), đạt 14,18% trong vòng bảy phút, rồi giảm về 4,76% khoảng 36 phút sau cú nhảy (khối 26194231, 00:08 UTC ngày 15 tháng 10) khi số tiền đó quay lại. Vì sao một lần rút tiền có thể làm lãi suất tăng gấp ba được giải thích trong [lãi suất Aave hoạt động thế nào](/vi/blog/lai-suat-aave).
+
+Vị thế ngược lại thì có lợi: gửi 10.000 USDC để vay 2,5 WETH kiếm 3,800% và trả 1,943%, nên hệ số sức khỏe nhích từ 1,30 lên khoảng 1,32 sau một năm. Trên Aave V4, User Risk Premium cộng thêm vào lãi suất vay khi tài sản thế chấp rủi ro hơn, nên khoản nợ đó tăng nhanh hơn.
+
+## Nguyên nhân 4: Quản trị hoặc Risk Stewards có hạ ngưỡng thanh lý không?
+
+Trên Aave V3, việc hạ ngưỡng thanh lý của một tài sản lập tức làm giảm hệ số sức khỏe của mọi vị thế đang mở tính tài sản đó theo ngưỡng thông thường. Các vị thế có danh mục E-Mode bao gồm tài sản đó thì dùng ngưỡng của danh mục, và quản trị hoặc Risk Stewards cũng có thể hạ ngưỡng đó theo cách tương tự. Số dư của bạn giữ nguyên. Chỉ phần tài sản thế chấp được tính là co lại.
+
+Quản trị thay đổi ngưỡng bằng bỏ phiếu on-chain, thường sau một bài đăng trên diễn đàn quản trị Aave. Risk Stewards, các hợp đồng cho phép những nhà cung cấp dịch vụ rủi ro của Aave điều chỉnh tham số mà không cần một cuộc bỏ phiếu đầy đủ, cũng có thể dịch chuyển ngưỡng trong giới hạn đặt sẵn cho mỗi lần cập nhật, nhưng không bao giờ về 0. Việc hạ ngưỡng còn dùng để loại bỏ tài sản: một đề xuất của LlamaRisk ngày 29 tháng 7 năm 2026 nói rằng ngưỡng có thể được giảm dần để loại bỏ tài sản thế chấp còn sót lại, và năm thị trường mà Aave đang dần đóng cửa được trình bày trong [chuyện gì xảy ra khi Aave đóng cửa một thị trường](/vi/blog/khi-aave-dong-cua-thi-truong).
+
+Một ví dụ giả định, không phải thay đổi đang chờ: 10 WETH ở giá minh họa 2.400 $ thế chấp cho 12.000 USDC trên Ethereum Core (ngưỡng WETH 83% ngày 14 tháng 10 năm 2026) có hệ số sức khỏe 1,66. Ở 82% nó sẽ là 1,64, ở 80% là 1,60. Để kiểm tra, hãy so sánh "Liquidation threshold" trên trang của tài sản trong ứng dụng Aave với các thay đổi ngưỡng gần đây trên diễn đàn quản trị Aave.
+
+Aave V4 hoạt động khác. Thay đổi hệ số thế chấp tạo ra một cấu hình mới, và các vị thế hiện có giữ cấu hình cũ cho đến khi người dùng vay, rút hoặc thay đổi cài đặt tài sản thế chấp, trừ khi Governor buộc cập nhật chúng.
+
+## Nguyên nhân 5: Stablecoin bạn gửi làm tài sản thế chấp có mất neo xuống dưới không?
+
+Một stablecoin bạn gửi làm tài sản thế chấp sẽ làm giảm hệ số sức khỏe Aave khi giá của nó tụt dưới 1 $, vì Aave dùng giá oracle chứ không cố định ở 1 $. Trên Aave V3 Ethereum Core, USDC được định giá qua một adapter tên "Capped USDC / USD" với mức trần 1,04 $ (`getPriceCap` trả về 104000000, 8 chữ số thập phân, tại các khối 26193376 và 26193993 ngày 14 tháng 10 năm 2026). Khi giá thị trường cao hơn mức trần, adapter báo 1,04 $. Mọi mức giá thấp hơn, kể cả dưới 1 $, đều được chuyển thẳng qua.
+
+Lấy ví dụ gửi 10.000 USDC (ngưỡng 78%) để vay 2,5 WETH ở giá minh họa 2.400 $, tức 6.000 $ nợ: hệ số sức khỏe là 1,30. Với USDC ở 0,88 $ nó giảm còn 8.800 × 0,78 ÷ 6.000 = 1,14, và ở khoảng 0,77 $, khi ETH không đổi, nó chạm 1,00.
+
+Con số 0,88 $ là dữ liệu lịch sử. Ngày 11 tháng 3 năm 2023, sau tin về Silicon Valley Bank, USDC rơi xuống quanh 88 xu. Báo cáo sau sự cố (post-mortem) của Gauntlet ghi nhận khoảng 280.000 $ nợ xấu (bad debt) trên E-Mode của Aave V3 Avalanche và khoảng 20.000 $ trên V3 Arbitrum. Các stablecoin trên Avalanche bị đóng băng, nhưng giao thức không bị tạm dừng, nên việc thanh lý vẫn tiếp tục.
+
+Mặt ngược lại: nếu stablecoin là khoản nợ của bạn, việc mất neo xuống dưới làm giảm số bạn nợ và tăng hệ số sức khỏe. 10 WETH ở 2.400 $ (ngưỡng 83%) thế chấp cho 12.000 USDC đi từ 1,66 lên khoảng 1,89 khi USDC ở 0,88 $. Giá tăng trên 1 $ làm hệ số giảm, nhưng chỉ xuống khoảng 1,60 chừng nào mức trần còn ở 1,04 $, vì oracle không bao giờ định giá khoản nợ đó trên 12.480 $.
+
+## Nguyên nhân 6: Lỗi oracle hoặc tỷ giá có định giá sai tài sản thế chấp của bạn không?
+
+Một cấu hình sai của oracle hoặc tỷ giá có thể làm giảm hệ số sức khỏe Aave của bạn đột ngột, không cần thị trường biến động, bằng cách định giá tài sản thế chấp quá thấp hoặc khoản nợ quá cao. Các vị thế E-Mode dùng đòn bẩy sát giới hạn nhất chịu rủi ro lớn nhất.
+
+Trường hợp đã được ghi nhận xảy ra vào tháng 3 năm 2026. Aave định giá wstETH bằng CAPO (Correlated Assets Price Oracle), cơ chế giới hạn tốc độ tăng của tỷ giá wstETH sang stETH. Báo cáo sau sự cố của Chaos Labs ngày 10 tháng 3 năm 2026 cho biết tỷ lệ snapshot và dấu thời gian của mức trần bị lệch nhau, làm tỷ giá wstETH thực tế giảm khoảng 2,85% trên Ethereum Core và Prime. Khoảng 10.938 wstETH đã bị thanh lý trong E-Mode trên 34 tài khoản có hệ số sức khỏe dưới khoảng 1,0288, và giao thức không chịu nợ xấu. DAO đã chấp thuận khoản hoàn tiền được đề xuất ngày 11 tháng 3, và ngày 26 tháng 3 năm 2026 Aave Finance Committee đã rút 513,19 WETH từ kho bạc Aave để chi trả (khối Ethereum 24741060). Các khoản chi trả cho từng người chưa được kiểm tra cho bài hướng dẫn này.
+
+Để dễ hình dung, E-Mode tương quan ETH của Ethereum Core có tỷ lệ cho vay trên giá trị (LTV) 93% và ngưỡng 95% vào ngày 14 tháng 10 năm 2026. Một vị thế vay đến giới hạn đó bắt đầu ở 95 ÷ 93 ≈ 1,02, nằm trong khoảng mà lỗi đó đã thanh lý. Không có gì trong vị thế của bạn báo trước một lỗi oracle. Khoảng cách đến 1,00 là khoảng đệm duy nhất bạn kiểm soát được.
+
+## Những thay đổi nào không làm giảm hệ số sức khỏe?
+
+Trên Aave V3, việc hạ LTV (kể cả LTV 0), đóng băng một kho dự trữ, tạm dừng một kho dự trữ và chuyển một danh mục E-Mode sang chế độ cô lập không thay đổi hệ số sức khỏe của bạn, vì không thay đổi nào trong số đó tác động đến giá, số dư hay ngưỡng thanh lý. Thay vào đó, chúng chặn việc vay hoặc các thao tác khác.
+
+| Thay đổi trên Aave V3                     | Nó chặn gì                                   | Có thay đổi hệ số sức khỏe không?                          | Bạn vẫn có thể bị thanh lý không?                                                                                                                                 |
+| ----------------------------------------- | -------------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hạ LTV, kể cả LTV 0                       | Vay mới dựa trên tài sản đó                  | Không: hệ số sức khỏe dùng ngưỡng, không dùng LTV          | Có, khi dưới 1,00                                                                                                                                                 |
+| Kho dự trữ bị đóng băng                   | Gửi và vay mới tài sản đó                    | Không                                                      | Có, kho dự trữ bị đóng băng vẫn có thể bị thanh lý                                                                                                                |
+| Danh mục E-Mode chuyển sang cô lập (V3.7) | Vay dựa trên tài sản thế chấp ngoài danh mục | Không: tài sản thế chấp đó nhận LTV 0 và giữ nguyên ngưỡng | Có, khi dưới 1,00                                                                                                                                                 |
+| Kho dự trữ bị tạm dừng                    | Gửi, rút, vay, trả nợ và thanh lý tài sản đó | Không                                                      | Không với tài sản đó, dù là tài sản thế chấp hay nợ, trong lúc nó bị tạm dừng; các tài sản khác thì vẫn có thể. Sau khi bỏ tạm dừng có thể có tối đa 4 giờ ân hạn |
+
+Một trường hợp thực tế của dòng đầu tiên: sau vụ tấn công cầu nối rsETH Kelp/LayerZero ngày 18 tháng 4 năm 2026, LTV của WETH được đặt về 0 trên một số phiên bản Aave V3 trong khi ngưỡng của nó vẫn ở 83% trên Ethereum Core, theo đề xuất khôi phục LTV của LlamaRisk ngày 9 tháng 5 năm 2026. Hệ số sức khỏe không thay đổi vì việc đó.
+
+## Làm sao biết chuyện gì đã xảy ra với vị thế của bạn?
+
+Để biết chuyện gì đã xảy ra với một vị thế Aave, hãy kiểm tra xem nó có bị thanh lý không, rồi xem yếu tố đầu vào nào đã thay đổi: giá, lãi, ngưỡng hay oracle. Các bước dưới đây dùng giao diện của Aave Labs tại app.aave.com và hồ sơ quản trị công khai.
+
+1. **Kiểm tra các lần thanh lý.** Mở Transaction history (app.aave.com/history) khi đã kết nối ví và chọn đúng thị trường, rồi lọc theo Liquidation. Dữ liệu phía sau gồm thời gian, mã băm giao dịch, tài sản thế chấp bị lấy và khoản nợ được trả. Nhà phát triển có thể truy vấn chúng bằng `userTransactionHistory` trong API của Aave.
+2. **So sánh giá** của tài sản thế chấp và tài sản nợ với lần bạn kiểm tra gần nhất (Nguyên nhân 1, 2 và 5).
+3. **So sánh khoản nợ, tính theo số token, với số bạn đã vay.** Nếu bạn chưa trả nợ lần nào và không bị thanh lý, phần chênh lệch là lãi đã cộng dồn (Nguyên nhân 3).
+4. **Kiểm tra ngưỡng thanh lý** trên trang của từng tài sản trong ứng dụng Aave, và tìm trên diễn đàn quản trị về bất kỳ tài sản nào có ngưỡng trông thấp hơn (Nguyên nhân 4).
+5. **Tìm báo cáo sau sự cố** trên diễn đàn quản trị, như báo cáo về wstETH tháng 3 năm 2026 (Nguyên nhân 6).
+
+Nếu bạn đã bị thanh lý, [chuyện gì xảy ra trong một lần thanh lý trên Aave](/vi/blog/co-che-thanh-ly-tren-aave) giải thích có thể bị lấy bao nhiêu trong một lần và chi phí là bao nhiêu.
+
+## Cảnh báo hệ số sức khỏe có thể báo cho bạn trước khi bị thanh lý không?
+
+Một cảnh báo có thể báo kịp cho bạn khi hệ số sức khỏe Aave giảm từ từ, nhưng không báo trước được một cú nhảy vượt qua 1,00 giữa hai lần kiểm tra. Lãi, giá trượt dần và các đợt hạ ngưỡng theo từng giai đoạn diễn ra trong nhiều giờ đến nhiều tháng, nên một cảnh báo đặt cao hơn hẳn 1,00 có nhiều cơ hội để kích hoạt. Một cú sập giá, một lần hạ ngưỡng khi vị thế vốn đã sát ranh giới, hoặc một lỗi oracle như vụ wstETH tháng 3 năm 2026 có thể vượt qua 1,00 trước khi bất kỳ lần kiểm tra định kỳ nào kịp phản ứng.
+
+Tokenping được xây dựng cho kiểu giảm từ từ. Nó kiểm tra hệ số sức khỏe Aave V3 và V4 của bạn 5 phút một lần trên 22 mạng và nhắn tin cho bạn qua Signal, Telegram hoặc email khi hệ số thấp hơn ngưỡng bạn đặt (1,1 đến 10). Tin nhắn lặp lại ở mỗi lần kiểm tra cho đến khi hệ số sức khỏe phục hồi, hoặc bạn hạ ngưỡng xuống dưới mức đó hay xóa cảnh báo (cả hai đều cần quyền truy cập trả phí còn hiệu lực), và không có tin nhắn "đã phục hồi". Trên Aave V3, nó bao quát mọi thị trường, kể cả bốn thị trường của Ethereum. Trên Aave V4, nó bao quát mọi Spoke. Mỗi thị trường có cảnh báo riêng.
+
+Một cảnh báo cũng cần thời gian để bạn hành động. Trong một chủ đề trên diễn đàn Polygon năm 2021, một người vay cố trả nợ ở hệ số sức khỏe 1,01 liên tục gặp lỗi và bị thanh lý trước khi giao dịch trả nợ hoàn tất. Một lựa chọn là đặt ngưỡng ở mức bạn vẫn thấy thoải mái để hành động. [Hệ số sức khỏe cho bạn bao nhiêu khoảng đệm](/vi/blog/he-so-suc-khoe-an-toan-tren-aave) giúp bạn chọn mức đó. Cách cài đặt có trong [cách cài đặt cảnh báo hệ số sức khỏe](/vi/blog/cai-dat-canh-bao-he-so-suc-khoe-aave), và [cách tăng hệ số sức khỏe Aave](/vi/blog/cach-tranh-bi-thanh-ly-tren-aave) trình bày việc cần làm khi nó giảm. Bạn cũng có thể [kiểm tra hệ số sức khỏe Aave V3 của bạn](/vi/aave) trước.
+
+## Nguồn
+
+- [Tổng quan Aave V3](https://aave.com/docs/aave-v3/overview.md): hệ số sức khỏe thay đổi theo giá oracle và lãi đã cộng dồn (truy cập ngày 14 tháng 10 năm 2026)
+- [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) và [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): cách tính hệ số sức khỏe, kiểm tra tạm dừng và đóng băng (aave-v3-origin, truy cập ngày 14 tháng 10 năm 2026)
+- [PoolDataProvider của Aave V3 Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): LTV, ngưỡng và lãi suất tại các khối 26193284, 26193378 và 26193993 (truy cập ngày 14 tháng 10 năm 2026); lãi suất USDC tại các khối 26194052, 26194053, 26194230 và 26194231 (truy cập ngày 15 tháng 10 năm 2026)
+- [Oracle của Aave V3 Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2#readContract): WETH 2.414,78 $ tại khối 26193376 (truy cập ngày 14 tháng 10 năm 2026)
+- [Adapter Capped USDC / USD](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract) và [mã nguồn của nó, PriceCapAdapterStable.sol](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol): mức trần 104000000 tại các khối 26193376 và 26193993 (truy cập ngày 14 tháng 10 năm 2026)
+- [Tài liệu về oracle của Aave](https://aave.com/docs/ecosystem/oracle.md) (truy cập ngày 14 tháng 10 năm 2026)
+- [Tài liệu quản trị của Aave](https://aave.com/docs/ecosystem/governance.md) và [README của Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards) (truy cập ngày 14 tháng 10 năm 2026)
+- [ARFC: Low Adoption Asset Deprecation on Aave V3](https://governance.aave.com/t/arfc-low-adoption-asset-deprecation-on-aave-v3/25401) (LlamaRisk, ngày 29 tháng 7 năm 2026, truy cập ngày 14 tháng 10 năm 2026)
+- [Nhật ký thay đổi tài liệu Aave](https://aave.com/docs/resources/changelog.md): V4 trên Ethereum từ ngày 30 tháng 3 năm 2026, sau đó trên Avalanche, Arc và Base (truy cập ngày 14 tháng 10 năm 2026)
+- [Tài liệu Aave V4](https://aave.com/docs/aave-v4.md), [vị thế trên V4](https://aave.com/docs/aave-v4/positions.md) và [tổng quan kỹ thuật V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md): hệ số sức khỏe theo từng Spoke, User Risk Premium, cấu hình rủi ro động (truy cập ngày 14 tháng 10 năm 2026)
+- [Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (Gauntlet, ngày 17 tháng 3 năm 2023, truy cập ngày 14 tháng 10 năm 2026)
+- [Post-mortem: wstETH exchange-rate misalignment on Core and Prime](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269) (Chaos Labs, ngày 10 tháng 3 năm 2026, truy cập ngày 14 tháng 10 năm 2026)
+- [wstETH CAPO Oracle Incident User Reimbursement](https://governance.aave.com/t/direct-to-aip-wsteth-capo-oracle-incident-user-reimbursement/24275) (TokenLogic, ngày 11 tháng 3 năm 2026, truy cập ngày 14 tháng 10 năm 2026)
+- [Thực thi payload quản trị 413](https://etherscan.io/tx/0xca0bcaa2b20b465afb332677a8425d8a10e050c4a31731feadc3a684ecb9b81e) và [lệnh rút của Aave Finance Committee](https://etherscan.io/tx/0x7860a20437b36af635e8be248a929c437412915b91de7c45e947475c6bb02f24): hạn mức 513,19 WETH từ Aave Ethereum Collector, sau đó được rút tại khối 24741060 (truy cập ngày 15 tháng 10 năm 2026)
+- [WETH Unfreeze and LTV Restoration Across Aave V3 Instances](https://governance.aave.com/t/direct-to-aip-weth-unfreeze-and-ltv-restoration-across-aave-v3-instances/24878) (LlamaRisk, ngày 9 tháng 5 năm 2026, truy cập ngày 14 tháng 10 năm 2026)
+- [E-Mode cô lập của Aave v3.7](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md) và [các tính năng của v3.1](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): cờ cô lập, thời gian ân hạn sau khi bỏ tạm dừng (truy cập ngày 14 tháng 10 năm 2026)
+- [Lịch sử giao dịch người dùng trên Aave V3](https://aave.com/docs/aave-v3/markets/advanced.md) và [bộ lọc lịch sử trong giao diện Aave](https://github.com/aave/interface/blob/main/src/modules/history/HistoryFilterMenu.tsx) (truy cập ngày 14 tháng 10 năm 2026)
+- Trang kho dự trữ trong giao diện Aave, lãi suất hiển thị dạng APY: [SupplyInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/SupplyInfo.tsx) (truy cập ngày 14 tháng 10 năm 2026) và [BorrowInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/BorrowInfo.tsx), "APY, variable" (truy cập ngày 15 tháng 10 năm 2026)
+- [Unexpected or poorly executed settlement by the system](https://governance.aave.com/t/unexpected-or-poorly-executed-settlement-by-the-system/21120) (diễn đàn quản trị Aave, ngày 17 tháng 2 năm 2025, truy cập ngày 14 tháng 10 năm 2026)
+- [Liquidation on polygon AAVE - JSON ERROR](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067) (diễn đàn Polygon, ngày 18 tháng 5 năm 2021, truy cập ngày 14 tháng 10 năm 2026)
+
+_Nội dung mang tính giáo dục, không phải lời khuyên tài chính. Cảnh báo giúp giảm rủi ro, nhưng không ngăn được việc thanh lý._

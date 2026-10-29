@@ -1,0 +1,170 @@
+export const meta = {
+  slug: "morpho-vorliquidation",
+  title: "Morpho Vorliquidation: was sie ist, wie du sie abschaltest",
+  description:
+    "Wie die Vorliquidation (Auto-deleverage) bei Morpho einen Teil eines Kredits vor dem LLTV verkauft, warum Morpho sie einstellt und wie du sie widerrufst.",
+  h1: "Was ist die Vorliquidation bei Morpho und wie prüfst du sie oder schaltest sie ab?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Was ist die Vorliquidation bei Morpho und wie prüfe ich, ob sie aktiv ist, und schalte sie ab?",
+  readingMinutes: 12,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Die Vorliquidation (pre-liquidation) ist ein optionaler Vertrag für einen Markt auf Morpho Blue (variabler Zinssatz),
+  der es jedem erlaubt, einen Teil deiner Sicherheiten zu verkaufen, um Schulden zurückzuzahlen, bevor deine Position
+  den LLTV des Markts erreicht. Die App von Morpho hatte eine Funktion namens Auto-deleverage, die so arbeitet. Morpho
+  stellt sie jetzt ein: Die App nimmt keine neuen Positionen an, das Hilfecenter bittet alle, die sie haben, sie
+  abzuschalten, und das SDK hat den Vorliquidationscode am 22. September 2026 als veraltet (deprecated) markiert. Die
+  Verträge funktionieren weiter. Wenn du sie also einmal eingeschaltet hast, prüfe sie mit `isAuthorized` auf dem
+  Vertrag von Morpho Blue und widerrufe sie mit dem Verwalten-Button der App oder mit `setAuthorization(contract,
+  false)`.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Zahlen, Blocknummern und Quellen: content/blog/snapshots/morpho-pre-liquidation.md */}
+
+## Was ist die Vorliquidation auf Morpho?
+
+Die Vorliquidation ist eine zweite, frühere Liquidationsgrenze, die ein Kreditnehmer einem Markt auf Morpho Blue hinzufügen kann. Auf einem normalen Blue-Markt kann eine Position erst liquidiert werden, wenn ihr Health Factor (Gesundheitsfaktor) unter 1 liegt, gemessen am Liquidations-LTV (LLTV) des Markts; [der Ratgeber zum Morpho Health Factor](/de/blog/morpho-health-factor-erklaert) erklärt diese Zahl. Ein Vorliquidationsvertrag legt eine niedrigere Grenze fest, den preLLTV. Zwischen den beiden Grenzen darf jeder einen Teil deiner Schulden zurückzahlen, bis zu einem Limit, das der Vertrag festlegt, und Sicherheiten im Wert dieser Schulden plus einen Bonus nehmen, in Schritten.
+
+Drei Dinge unterscheiden sie:
+
+- **Sie ist optional.** Sie gilt erst, nachdem du den Vertrag auf Morpho Blue autorisiert hast. Ohne das kann der Vertrag deine Position nicht anrühren.
+- **Sie gilt pro Markt.** Jeder Vertrag ist an einen Blue-Markt und einen festen Satz Parameter gebunden, und er hat keinen Eigentümer, keinen Admin und keine Upgrade-Funktion.
+- **Sie gibt es nur auf Blue.** Morpho Midnight, die Märkte mit festem Zinssatz aus [dem Midnight-Ratgeber](/de/blog/morpho-midnight-festzinskredite), hat keine Vorliquidation.
+
+Morpho hat die Vorliquidations-Factory am 4. März 2025 angekündigt und Auto-deleverage und Auto-close als Einsatzzwecke genannt. In den Verträgen, der API und dem SDK heißt sie pre-liquidation. Die App von Morpho hatte eine Funktion namens Auto-deleverage, die das Hilfecenter genauso beschreibt: Sobald deine Beleihungsquote (LTV) eine festgelegte Schwelle überschreitet, kann ein Teil der Position geschlossen werden, mit einer Gebühr nur auf den geschlossenen Teil.
+
+## Ist die Vorliquidation in der Morpho-App noch verfügbar?
+
+In der Morpho-App lässt sich keine neue Vorliquidation einrichten. Stand 26. Oktober 2026:
+
+| Wo                         | Status                                                                                                                                                                                                                              |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Morpho-App und Hilfecenter | Der Hilfeartikel heißt jetzt „Sunsetting Auto-deleverage“ (Einstellung von Auto-deleverage, zuletzt aktualisiert am 13. Mai 2026): Die Funktion nimmt keine neuen Positionen an, und Nutzer, die sie haben, sollen sie deaktivieren |
+| Morpho SDK                 | Jeder Vorliquidations-Export am 22. September 2026 als veraltet markiert (Pull Request 1132), wird in der nächsten Major-Version entfernt, ohne Nachfolger                                                                          |
+| Morpho-Doku                | Die Seite zur Vorliquidation ist weg; ihre alte Adresse führt jetzt zur allgemeinen Liquidationsseite                                                                                                                               |
+| Morpho API                 | Listet weiterhin 106 Vorliquidationsverträge in gelisteten Märkten auf Ethereum (50), Base (37), Arbitrum (8), Polygon (6), Katana (3) und Unichain (2)                                                                             |
+| Die Verträge               | Unverändert und funktionsfähig: Jeder kann sie weiterhin bei einem Kreditnehmer aufrufen, der sie autorisiert hat                                                                                                                   |
+
+Die letzte Zeile ist die wichtige, wenn du die Funktion früher eingeschaltet hast. Wenn eine App eine Funktion einstellt, macht das eine on-chain gespeicherte Autorisierung nicht rückgängig.
+
+## Wie funktioniert ein Vorliquidationsvertrag?
+
+Ein Vorliquidationsvertrag wird von der PreLiquidationFactory von Morpho erstellt, die jeder nutzen kann: Jeder kann einen Vertrag für jeden Blue-Markt deployen, und jede Kombination aus Markt und Parametersatz kann nur einmal existieren. Seine festen Parameter sind:
+
+| Parameter        | Was er festlegt                                                                                                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| preLLTV          | Die Beleihungsquote, ab der die Vorliquidation erlaubt ist. Muss unter dem LLTV des Markts liegen                                                                                     |
+| preLCF1, preLCF2 | Der Close Factor: der größte Anteil deiner Schulden, den ein Aufruf zurückzahlen darf, beim preLLTV und beim LLTV                                                                     |
+| preLIF1, preLIF2 | Der Anreizfaktor: Die zurückgezahlten Schulden werden damit multipliziert, um die genommenen Sicherheiten zu ergeben, an denselben zwei Punkten                                       |
+| Orakel           | Der Preisfeed, der entscheidet, ob du vorliquidiert werden kannst und zu welchem Preis deine Sicherheiten genommen werden. Es kann das eigene Orakel des Markts sein oder ein anderes |
+
+Bevor er handelt, prüft der Vertrag mit dem Preis seines eigenen Orakels (oracle), dass deine Beleihungsquote über dem preLLTV und noch auf oder unter dem LLTV liegt. Über dem LLTV endet die Vorliquidation und die normale Liquidation von Blue übernimmt. Danach prüft Morpho Blue mit dem eigenen Orakel des Markts, dass deine Position gesund ist; falls nicht, wird der ganze Aufruf rückgängig gemacht.
+
+Der Konstruktor erzwingt Grenzen für die Parameter. Der Close Factor darf nicht sinken, wenn das Risiko steigt, und nur sein erster Wert ist auf 100 % begrenzt: Ein Vertrag, dessen zweiter Wert über 100 % liegt, kann einen Aufruf deine ganzen Schulden zurückzahlen lassen, bevor der LLTV erreicht ist. Die Standardwerte von Morpho bleiben weit darunter. Der Anreizfaktor muss mindestens 1 (kein Bonus) und höchstens 1 ÷ LLTV sein (ein Bonus von etwa 16 % auf einem 86-%-Markt). Laut dem Repository von Morpho sorgt diese Obergrenze zusammen mit der Regel, dass die Vorliquidation beim LLTV endet, dafür, dass eine Vorliquidation eine Position nicht weniger gesund zurücklässt als vorher.
+
+### Wie wachsen Close Factor und Bonus zwischen preLLTV und LLTV?
+
+Beide wachsen linear mit deiner Beleihungsquote. Der Vertrag misst, wie weit du vom preLLTV in Richtung LLTV bist, als Anteil von 0 bis 1, und bewegt jeden Faktor um diesen Anteil von seinem ersten zu seinem zweiten Wert. Auf halbem Weg zwischen den beiden Grenzen liegt der Close Factor auf halbem Weg zwischen preLCF1 und preLCF2.
+
+Aus dem Code folgen zwei Grenzen. Der Close Factor begrenzt einen Aufruf, nicht die Summe: Das Repository von Morpho selbst weist darauf hin, dass ein Liquidator einen kleinen Teil schließen, dich noch über dem preLLTV lassen und erneut aufrufen kann, sodass insgesamt mehr geschlossen werden kann als der Close Factor. Und der Close Factor ist ein Anteil deiner Schulden, nicht deiner Sicherheiten; der [Aave-Ratgeber zum Close Factor](/de/blog/so-funktioniert-die-liquidation-bei-aave#wie-viel-meiner-schulden-kann-auf-einmal-liquidiert-werden) behandelt dieselbe Idee bei Aave.
+
+## Was sind die Standardeinstellungen von Morpho für die Vorliquidation?
+
+Morpho hatte in seinem SDK für jeden von acht gängigen LLTVs einen Standard-Parametersatz, und jeder der 106 Verträge, die seine API listet, verwendet diese Standardwerte. Die API listet nur Verträge mit bekannten Standardparametern, Verträge mit anderen Einstellungen können also existieren, ohne dort aufzutauchen. Die sechs LLTVs mit gelisteten Verträgen:
+
+| LLTV des Markts | preLLTV | Close Factor (preLLTV bis LLTV) | Bonus   | Vorliquidation beginnt bei einem Markt-Health-Factor von | Gelistete Verträge |
+| --------------- | ------- | ------------------------------- | ------- | -------------------------------------------------------- | ------------------ |
+| 62,5 %          | 56,26 % | 0,75 % bis 27,95 %              | 12,68 % | 1,111                                                    | 2                  |
+| 77 %            | 72,74 % | 0,37 % bis 25,66 %              | 7,41 %  | 1,059                                                    | 12                 |
+| 86 %            | 83,26 % | 0,20 % bis 24,53 %              | 4,38 %  | 1,033                                                    | 50                 |
+| 91,5 %          | 89,79 % | 0,11 % bis 23,92 %              | 2,62 %  | 1,019                                                    | 21                 |
+| 94,5 %          | 93,37 % | 0,07 % bis 23,61 %              | 1,68 %  | 1,012                                                    | 15                 |
+| 96,5 %          | 95,78 % | 0,04 % bis 23,41 %              | 1,06 %  | 1,008                                                    | 6                  |
+
+In jedem Standardsatz ist der Bonus an beiden Enden gleich, und er entspricht dem Bonus, den die normale Liquidation von Blue auf diesem Markt zahlt. Die Standardwerte machen den Verkauf pro Dollar nicht günstiger; sie machen jeden Verkauf kleiner. Eine normale Blue-Liquidation hat überhaupt keinen Close Factor, der Liquidator darf also die ganzen Schulden auf einmal zurückzahlen. [So funktioniert die Liquidation bei Morpho](/de/blog/so-funktioniert-die-liquidation-bei-morpho) behandelt diese Seite.
+
+## Ein echter Vertrag: USDC | cbBTC (86%) auf Base
+
+Der größte gelistete Blue-Markt nach Kreditvolumen auf Base, USDC | cbBTC (86%) (cbBTC als Sicherheit, USDC als Schulden, ein LLTV von 86 %), hat einen von der API von Morpho gelisteten Vorliquidationsvertrag, unter `0xa7272aFc21f9C321024ED93892a1abfeb621C374`. Am 26. Oktober 2026 von Base gelesen und mit der API von Morpho abgeglichen:
+
+- Die PreLiquidationFactory auf Base bestätigt, dass sie den Vertrag erstellt hat, und der Vertrag verweist auf diesen Markt.
+- preLLTV 83,26 %, Close Factor von 0,20 % steigend auf 24,53 %, Bonus 4,38 % an beiden Enden: die Standardwerte für 86 %.
+- Sein Orakel ist das eigene Orakel des Markts. Es bewertete cbBTC in den Base-Blöcken 53102870 und 53102952 mit 80.000,15 USDC; [so funktioniert die Liquidation bei Morpho](/de/blog/so-funktioniert-die-liquidation-bei-morpho) verwendet denselben Preis.
+- Der Markt hatte rund 1,61 Mrd. USDC geliehen gegen rund 40.051 cbBTC, verteilt auf etwa 43.000 Kreditpositionen.
+- In den rund 28 Stunden an Base-Blöcken, die vor Block 53102692 gelesen wurden, erschien keine Vorliquidation durch diesen Vertrag.
+
+Auf Ethereum hat der größte gelistete Markt USDC | cbBTC (86%) einen Vertrag mit denselben Parametern, unter `0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A`, ebenfalls mit dem Orakel seines Markts.
+
+## Rechenbeispiel: Wie viel kann eine Vorliquidation nehmen?
+
+Nimm eine erfundene Position auf diesem Base-Markt: 1 cbBTC als Sicherheit und 50.000 USDC Schulden, bei 80.000,15 USDC pro cbBTC. Ihr Health Factor liegt bei 1,376 gegenüber dem LLTV von 86 % und bei 1,332 gegenüber der Vorliquidationsgrenze von 83,26 %. Mit demselben Orakel ist der Vorliquidationswert immer der Marktwert mal 0,968 (83,26 ÷ 86).
+
+Die Vorliquidation kann beginnen, sobald cbBTC unter 60.052,58 USDC fällt, 24,9 % unter diesem Preis. Die normale Liquidation beginnt unter 58.139,53 USDC, 27,3 % darunter. Zwischen diesen Preisen sieht die größte einzelne Vorliquidation so aus:
+
+| Beleihungsquote | cbBTC-Preis | Close Factor | Zurückgezahlte Schulden | Genommene Sicherheiten (Wert in USDC) | Bonus | Beleihungsquote danach |
+| --------------- | ----------- | ------------ | ----------------------- | ------------------------------------- | ----- | ---------------------- |
+| 84 %            | 59.523,81   | 6,77 %       | 3.384                   | 3.533                                 | 148   | 83,26 %                |
+| 85 %            | 58.823,53   | 15,65 %      | 7.825                   | 8.168                                 | 343   | 83,26 %                |
+| 86 %            | 58.139,53   | 24,53 %      | 12.266                  | 12.803                                | 538   | 83,23 %                |
+
+Mit den Standardwerten bringt ein Aufruf in voller Größe die Beleihungsquote ungefähr auf den preLLTV zurück, wo der Vertrag aufhört. Zum Vergleich eine normale Blue-Liquidation bei 87 %: Ein Liquidator darf alle 50.000 USDC zurückzahlen und cbBTC im Wert von 52.192 USDC nehmen, sodass dir rund 5.279 USDC an Sicherheiten und kein Kredit bleiben.
+
+## Warum haben sich Kreditnehmer dafür entschieden und was hat es sie gekostet?
+
+Das Argument für die Teilnahme waren kleinere, schrittweise Verkäufe. Der Hilfeartikel von Morpho beschreibt Auto-deleverage so, dass nur ein Teil einer Position geschlossen wird, um ihre Gesundheit wiederherzustellen, mit einer Gebühr nur auf den geschlossenen Betrag. Im Beispiel oben zahlte ein Kreditnehmer, der teilnahm, bei jedem Schritt 148 bis 538 USDC Bonus, während eine normale Liquidation bei 87 %, die den ganzen Kredit zurückzahlt, 2.192 USDC kostet; mehrere Schritte oder eine normale Liquidation danach können sich zu mehr summieren.
+
+Die Kosten:
+
+- **Der Verkauf beginnt früher.** Auf einem 86-%-Markt kann ein Teil deiner Position ab einem Markt-Health-Factor von etwa 1,033 verkauft werden, während der Health Factor, den das Hilfecenter von Morpho beschreibt, gemessen am LLTV, noch über 1 liegt.
+- **Die Schritte können sich wiederholen.** Der Close Factor begrenzt jeden Aufruf, nicht die Summe, daher können mehrere Aufrufe aufeinander folgen, solange du über dem preLLTV bleibst.
+- **Der Preis kann abweichen.** Ein Vertrag kann ein anderes Orakel als das des Markts verwenden. Alle 106 Verträge, die die API von Morpho listet, verwenden das eigene Orakel ihres Markts; ein Vertrag, den sie nicht listet, vielleicht nicht.
+- **Niemand muss handeln.** Wenn kein Liquidator den Vertrag aufruft, passiert vor dem LLTV nichts; sobald du ihn überschreitest, kannst du auf die normale Art liquidiert werden.
+
+Da die Funktion jetzt eingestellt wird, bittet Morpho Kreditnehmer, die sie noch haben, sie abzuschalten, und neue Teilnahmen sind geschlossen.
+
+## Wie prüfst du, ob du einen autorisiert hast?
+
+Du hast einen Vorliquidationsvertrag autorisiert, wenn `isAuthorized(your wallet, contract)` von Morpho Blue true zurückgibt. Die Autorisierung ist in Morpho Blue selbst gespeichert, nicht im Vorliquidationsvertrag.
+
+1. **Finde den Vertrag für deinen Markt.** Die API von Morpho listet ihn unter den Vorliquidationen des Markts; das Hilfecenter von Morpho verweist außerdem auf den Verwalten-Button auf deiner Positions- oder Marktseite in der App.
+2. **Rufe `isAuthorized` auf dem Morpho-Blue-Vertrag dieses Netzwerks auf.** Öffne in einem Block-Explorer die Lesefunktionen des Blue-Vertrags und gib deine Wallet als erste Adresse und den Vorliquidationsvertrag als zweite ein.
+3. **Lies die Antwort.** True heißt, der Vertrag kann dich vorliquidieren; false heißt, er kann es nicht.
+
+Für diese Schritte brauchst du die Adresse des Vertrags, und die API von Morpho listet nur Verträge mit Standardeinstellungen. Eine Autorisierung kann auch per Signatur erteilt und von jemand anderem gesendet werden, daher taucht sie vielleicht nicht in der Transaktionsliste deiner Wallet auf. Um jede Adresse zu sehen, die du autorisiert hast, sieh dir in einem Block-Explorer die SetAuthorization-Events des Morpho-Blue-Vertrags mit deiner Wallet als Autorisierendem an. Das letzte Event für jede Adresse zeigt, ob sie noch aktiv ist, und die PreLiquidationFactory des Netzwerks beantwortet `isPreLiquidation(address)` mit true für die Verträge, die sie erstellt hat.
+
+Ein Detail ist hier wichtig. Die Autorisierung von Blue enthält keinen Markt: Eine Adresse, die du autorisierst, besteht die Prüfungen von Blue für deine Kreditaufnahme, Abhebungen und Abhebungen von Sicherheiten über diesen ganzen Blue-Vertrag. Der feste Code eines Vorliquidationsvertrags zahlt immer nur auf seinem eigenen Markt zurück und hebt nur dort Sicherheiten ab, aber andere Adressen, die du autorisiert hast, sind nicht so begrenzt.
+
+## Wie schaltest du die Vorliquidation ab?
+
+Du schaltest sie ab, indem du die Autorisierung wieder auf false setzt:
+
+- **In der Morpho-App:** Laut dem Hilfecenter von Morpho klickst du auf den Verwalten-Button bei der Position in deinem Dashboard oder auf der Marktseite, wodurch sich ein Fenster zum Entfernen von Auto-deleverage öffnet.
+- **Auf dem Vertrag:** Rufe `setAuthorization(pre-liquidation contract, false)` auf Morpho Blue von deiner Wallet aus auf. Der Aufruf scheitert, wenn der Wert schon false ist, ein gescheiterter Aufruf kann also auch bedeuten, dass es nichts zu entfernen gab.
+
+Nach dem Widerruf scheitern die Versuche des Vertrags, deine Sicherheiten abzuheben, und es gilt nur noch die normale Liquidation von Blue unter einem Health Factor von 1. Es kostet das Gas einer Transaktion.
+
+## Wie misst Tokenping eine Position mit Vorliquidation?
+
+Für einen Kreditnehmer, der auf einem Blue-Markt einen Vorliquidationsvertrag autorisiert hat, löst Tokenping Alerts an der niedrigeren der beiden Grenzen aus: der LLTV-Grenze und der Vorliquidationsgrenze. Das ist wichtig, weil das Hilfecenter von Morpho den Health Factor in seiner App so beschreibt, dass er 1 erreicht, wenn die Beleihungsquote den LLTV überschreitet, wo auch die eigene Liquidation von Blue beginnt. Auf einem 86-%-Markt mit dem Standardvertrag löst ein Alert-Schwellenwert von 1,10 an der Vorliquidationsgrenze bei einem Markt-Health-Factor von etwa 1,136 aus, und der niedrigste Schwellenwert, 1,02, bei etwa 1,054, rund 2 % über der Grenze, an der die Vorliquidation beginnen kann.
+
+Wenn du einen Alert speicherst oder bearbeitest, merkt sich Tokenping die Vorliquidationsverträge, die die API von Morpho für diesen Markt listet; jede Prüfung liest dann, ob du jeden davon autorisiert hast, und berechnet den Health Factor aus der Chain mit der eigenen Mathematik von Morpho, nie aus der API von Morpho. Ein Vorliquidationsvertrag, den die API von Morpho nicht listet, wird nicht geprüft. Wenn du also einen mit eigenen Einstellungen autorisiert hast, misst der Alert nur an der LLTV-Grenze.
+
+Der Rest funktioniert wie bei jedem Morpho-Alert. Tokenping prüft alle 5 Minuten, in 14 Netzwerken, und solange dein Health Factor unter deinem Schwellenwert liegt (irgendwo zwischen 1,02 und 10), schickt jede Prüfung eine Nachricht über jeden Kanal, den du gewählt hast: Signal, Telegram oder E-Mail. Alerts kosten <AlertPrice />, derselbe Plan wie bei den Aave-Alerts, und [deine Morpho-Positionen ansehen](/de/morpho) braucht keine Zahlung. [Wie du einen Alert-Schwellenwert wählst](/de/blog/sicherer-health-factor-aave#wie-wahlst-du-schritt-fur-schritt-einen-schwellenwert-fur-den-alert) geht die Abwägung für Aave durch; hier gilt dieselbe Überlegung. Ein Alert verschafft dir Zeit zum Handeln, keine Garantie: Ein Preis kann sich zwischen zwei Prüfungen bewegen. Wenn du keine Vorliquidation mehr willst, widerrufe sie wie oben gezeigt; dein Alert misst dann nur noch an der LLTV-Grenze.
+
+## Quellen
+
+- [morpho-org/pre-liquidation](https://github.com/morpho-org/pre-liquidation): README, [PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidation.sol), [PreLiquidationFactory.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidationFactory.sol) und [IPreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/interfaces/IPreLiquidation.sol), für Parameter, Grenzen, Interpolation und Prüfungen (abgerufen am 26. Oktober 2026)
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) und [EventsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/EventsLib.sol): `isAuthorized`, `setAuthorization`, das SetAuthorization-Event, die Gesundheitsprüfung und der normale Liquidationsbonus (abgerufen am 26. Oktober 2026)
+- [Introducing pre-liquidations](https://morpho.org/blog/introducing-pre-liquidations-enhanced-loan-management-on-morpho) (Morpho, 4. März 2025): Auto-deleverage und Auto-close als Einsatzzwecke und normale Liquidation, wenn keine Vorliquidation stattfindet (abgerufen am 26. Oktober 2026)
+- [Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (Hilfecenter von Morpho, aktualisiert am 13. Mai 2026): keine neuen Positionen, wie man deaktiviert, was die Funktion tat (abgerufen am 26. Oktober 2026)
+- [Morpho-Hilfecenter: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): Die App zeigt den Health Factor jeder Position, und eine Position kann bei 1 oder darunter liquidiert werden, sobald ihre Beleihungsquote den LLTV überschreitet (abgerufen am 26. Oktober 2026)
+- [Morpho SDK Pull Request 1132](https://github.com/morpho-org/sdks/pull/1132) (gemergt am 22. September 2026) und [preLiquidation.ts](https://github.com/morpho-org/sdks/blob/main/packages/blue-sdk/src/preLiquidation.ts): die Einstellung und die Standardparameter (abgerufen am 26. Oktober 2026)
+- [Morpho-Doku: Liquidation](https://docs.morpho.org/developers/borrow/concepts/liquidation): wohin die alte Seite zur Vorliquidation jetzt führt (abgerufen am 26. Oktober 2026)
+- [Morpho API](https://api.morpho.org/graphql): gelistete Märkte, ihre Vorliquidationsverträge und Orakel sowie die Märkte USDC | cbBTC (86%) auf Base und Ethereum (abgerufen am 26. Oktober 2026)
+- On-chain gelesene Vorliquidationsverträge: [Base](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374) in den Blöcken 53102692 bis 53102952 und [Ethereum](https://etherscan.io/address/0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A) in Block 26274980, mit ihren Factories, Märkten und Orakeln (abgerufen am 26. Oktober 2026)
+
+_Bildungsinhalt, keine Finanzberatung. Alerts senken das Risiko, verhindern aber keine Liquidation._

@@ -1,4 +1,13 @@
-import { csOnMarket, esMarketNoun, hiMarket, hiMarketNoun, plural } from "~~/i18n/format";
+import {
+  csOnMarket,
+  deOnMarket,
+  esMarketNoun,
+  hiMarket,
+  hiMarketNoun,
+  plural,
+  viMarket,
+  viMarketNoun,
+} from "~~/i18n/format";
 import type { Localized } from "~~/i18n/locales";
 
 // The alert itself, sent by email, Signal and Telegram in the language the alert was saved in. The numbers arrive
@@ -373,5 +382,153 @@ export const NOTIFICATION_MESSAGES: Localized<NotificationMessages> = {
       stage === "matured"
         ? `Morpho लोन की मैच्योरिटी बीत गई - ${chainName}`
         : `Morpho लोन ${stage === "7d" ? "7 दिन" : "24 घंटे"} के भीतर मैच्योर होगा - ${chainName}`,
+  },
+  de: {
+    alertText: ({ chainName, healthFactor, threshold, timestamp }) =>
+      `Dein Health Factor auf Aave ${deOnMarket(chainName)} liegt bei ${healthFactor}, ` +
+      `unter deinem Schwellenwert von ${threshold}. ` +
+      `Erwäge, Sicherheiten nachzulegen oder Schulden zurückzuzahlen, um eine Liquidation zu vermeiden.\n\nGesendet: ${timestamp}`,
+    alertSubject: chainName => `Health-Factor-Alert für Aave - ${chainName}`,
+    alertHtml: ({ chainName, healthFactor, threshold, timestamp }) =>
+      `<p>Dein Health Factor auf Aave ${deOnMarket(chainName).replace(chainName, `<strong>${chainName}</strong>`)} liegt bei ` +
+      `<strong>${healthFactor}</strong>, unter deinem Schwellenwert von ` +
+      `<strong>${threshold}</strong>.</p>` +
+      `<p>Erwäge, Sicherheiten nachzulegen oder Schulden zurückzuzahlen, um eine Liquidation zu vermeiden.</p>` +
+      `<p><small>Erstellt: ${timestamp}</small></p>`,
+    testLines: ({ chainName, threshold, minutes, timestamp, position }) => {
+      const statusWord = { critical: "kritisch", risky: "riskant", safe: "sicher" };
+      const now =
+        position.kind === "debt"
+          ? `Aktuell: Health Factor ${position.healthFactor} (${statusWord[position.status]}), Sicherheiten ${position.collateral}, Schulden ${position.debt}.`
+          : position.kind === "noDebt"
+            ? `Aktuell: keine Schulden, also kann nichts liquidiert werden${position.collateral ? ` (Sicherheiten ${position.collateral})` : ""}.`
+            : position.kind === "none"
+              ? "Aktuell: keine offene Position in diesem Markt."
+              : "Aktuell: deine Position konnte nicht gelesen werden. Echte Alerts versuchen es bei jeder Prüfung erneut.";
+      const verdict =
+        position.kind === "debt"
+          ? position.belowThreshold
+            ? "Das liegt unter deinem Schwellenwert, also sendet die nächste Prüfung einen echten Alert."
+            : "Das liegt über deinem Schwellenwert, also würde jetzt kein Alert gesendet."
+          : null;
+      const every = plural("de", minutes, { one: "jede Minute", other: `alle ${minutes} Minuten` });
+      return [
+        "Testnachricht von Tokenping: Alerts über diesen Kanal funktionieren.",
+        `Dein Alert: ${chainName}, wenn der Health Factor unter ${threshold} fällt.`,
+        now,
+        ...(verdict ? [verdict] : []),
+        `Prüfung ${every}. Gesendet: ${timestamp}`,
+      ];
+    },
+    testSubject: chainName => `Tokenping-Testnachricht - ${chainName}`,
+    morphoMarketName: market =>
+      market.kind === "blue"
+        ? `${market.collateral}/${market.loan} (${market.lltv} LLTV)`
+        : `${market.loan} mit festem Zinssatz, fällig am ${market.maturity}`,
+    morphoAlertLines: ({ chainName, market, healthFactor, threshold, timestamp, preLiquidation }) => [
+      `Dein Health Factor auf Morpho ${deOnMarket(chainName, "network")} liegt bei ${healthFactor}, unter deinem Schwellenwert von ${threshold}.`,
+      `Markt: ${market}.`,
+      ...(preLiquidation
+        ? [
+            "Du hast in diesem Markt die Vorliquidation (pre-liquidation) aktiviert, daher wird der Health Factor an ihrer früheren Grenze gemessen: unter 1 kann ein Teil deiner Position verkauft werden.",
+          ]
+        : []),
+      "Erwäge, Sicherheiten nachzulegen oder Schulden zurückzuzahlen, um eine Liquidation zu vermeiden.",
+      `Gesendet: ${timestamp}`,
+    ],
+    morphoAlertSubject: chainName => `Health-Factor-Alert für Morpho - ${chainName}`,
+    maturityLines: ({ stage, chainName, market, when, debt, timestamp }) =>
+      stage === "matured"
+        ? [
+            `Dein Kredit mit festem Zinssatz auf Morpho ${deOnMarket(chainName, "network")} ist am ${when} fällig geworden und hat noch ${debt} Schulden.`,
+            `Markt: ${market}.`,
+            "Er kann jetzt jederzeit liquidiert werden, unabhängig von seinem Health Factor. Zahle ihn zurück, um eine Liquidation zu vermeiden.",
+            `Gesendet: ${timestamp}`,
+          ]
+        : [
+            `Dein Kredit mit festem Zinssatz auf Morpho ${deOnMarket(chainName, "network")} wird innerhalb von ${stage === "7d" ? "7 Tagen" : "24 Stunden"} fällig, am ${when}.`,
+            `Markt: ${market}.`,
+            `Schulden: ${debt}.`,
+            "Nach der Fälligkeit können alle nicht zurückgezahlten Schulden liquidiert werden, also zahle sie vorher zurück.",
+            `Gesendet: ${timestamp}`,
+          ],
+    maturitySubject: ({ stage, chainName }) =>
+      stage === "matured"
+        ? `Morpho-Kredit nach Fälligkeit - ${chainName}`
+        : `Morpho-Kredit wird innerhalb von ${stage === "7d" ? "7 Tagen" : "24 Stunden"} fällig - ${chainName}`,
+  },
+  vi: {
+    alertText: ({ chainName, healthFactor, threshold, timestamp }) =>
+      `Hệ số sức khỏe Aave của bạn trên ${viMarket(chainName)} là ${healthFactor}, ` +
+      `thấp hơn ngưỡng ${threshold} của bạn. ` +
+      `Hãy cân nhắc gửi thêm tài sản thế chấp hoặc trả bớt nợ để tránh bị thanh lý.\n\nGửi lúc: ${timestamp}`,
+    alertSubject: chainName => `Cảnh báo hệ số sức khỏe Aave - ${chainName}`,
+    alertHtml: ({ chainName, healthFactor, threshold, timestamp }) =>
+      `<p>Hệ số sức khỏe Aave của bạn trên ${viMarketNoun(chainName)} <strong>${chainName}</strong> là ` +
+      `<strong>${healthFactor}</strong>, thấp hơn ngưỡng ` +
+      `<strong>${threshold}</strong> của bạn.</p>` +
+      `<p>Hãy cân nhắc gửi thêm tài sản thế chấp hoặc trả bớt nợ để tránh bị thanh lý.</p>` +
+      `<p><small>Tạo lúc: ${timestamp}</small></p>`,
+    testLines: ({ chainName, threshold, minutes, timestamp, position }) => {
+      const statusWord = { critical: "nguy cấp", risky: "rủi ro", safe: "an toàn" };
+      const now =
+        position.kind === "debt"
+          ? `Hiện tại: hệ số sức khỏe ${position.healthFactor} (${statusWord[position.status]}), tài sản thế chấp ${position.collateral}, nợ ${position.debt}.`
+          : position.kind === "noDebt"
+            ? `Hiện tại: không có nợ, nên không có gì có thể bị thanh lý${position.collateral ? ` (tài sản thế chấp ${position.collateral})` : ""}.`
+            : position.kind === "none"
+              ? "Hiện tại: bạn không có vị thế nào đang mở trong thị trường này."
+              : "Hiện tại: không đọc được vị thế của bạn. Cảnh báo thật sẽ thử lại ở mỗi lần kiểm tra.";
+      const verdict =
+        position.kind === "debt"
+          ? position.belowThreshold
+            ? "Mức này thấp hơn ngưỡng của bạn, nên lần kiểm tra tiếp theo sẽ gửi cảnh báo thật."
+            : "Mức này cao hơn ngưỡng của bạn, nên lúc này sẽ không có cảnh báo nào được gửi."
+          : null;
+      // Vietnamese nouns do not change after a number.
+      return [
+        "Tin nhắn thử từ Tokenping: cảnh báo qua kênh này hoạt động.",
+        `Cảnh báo của bạn: ${chainName}, khi hệ số sức khỏe giảm xuống dưới ${threshold}.`,
+        now,
+        ...(verdict ? [verdict] : []),
+        `Kiểm tra mỗi ${minutes} phút. Gửi lúc: ${timestamp}`,
+      ];
+    },
+    testSubject: chainName => `Tin nhắn thử từ Tokenping - ${chainName}`,
+    morphoMarketName: market =>
+      market.kind === "blue"
+        ? `${market.collateral}/${market.loan} (LLTV ${market.lltv})`
+        : `${market.loan} lãi suất cố định, đáo hạn ngày ${market.maturity}`,
+    morphoAlertLines: ({ chainName, market, healthFactor, threshold, timestamp, preLiquidation }) => [
+      `Hệ số sức khỏe Morpho của bạn trên mạng ${chainName} là ${healthFactor}, thấp hơn ngưỡng ${threshold} của bạn.`,
+      `Thị trường: ${market}.`,
+      ...(preLiquidation
+        ? [
+            "Bạn đã bật thanh lý trước (pre-liquidation) trên thị trường này, nên hệ số sức khỏe được đo theo mốc của nó, đến sớm hơn: dưới 1, một phần vị thế của bạn có thể bị bán.",
+          ]
+        : []),
+      "Hãy cân nhắc gửi thêm tài sản thế chấp hoặc trả bớt nợ để tránh bị thanh lý.",
+      `Gửi lúc: ${timestamp}`,
+    ],
+    morphoAlertSubject: chainName => `Cảnh báo hệ số sức khỏe Morpho - ${chainName}`,
+    maturityLines: ({ stage, chainName, market, when, debt, timestamp }) =>
+      stage === "matured"
+        ? [
+            `Khoản vay lãi suất cố định Morpho của bạn trên mạng ${chainName} đã đáo hạn vào ${when} và vẫn còn ${debt} nợ.`,
+            `Thị trường: ${market}.`,
+            "Giờ đây khoản vay có thể bị thanh lý bất cứ lúc nào, dù hệ số sức khỏe là bao nhiêu. Hãy trả nợ để tránh bị thanh lý.",
+            `Gửi lúc: ${timestamp}`,
+          ]
+        : [
+            `Khoản vay lãi suất cố định Morpho của bạn trên mạng ${chainName} sẽ đáo hạn trong vòng ${stage === "7d" ? "7 ngày" : "24 giờ"}, vào ${when}.`,
+            `Thị trường: ${market}.`,
+            `Nợ: ${debt}.`,
+            "Sau ngày đáo hạn, mọi khoản nợ chưa trả đều có thể bị thanh lý, nên hãy trả nợ trước thời điểm đó.",
+            `Gửi lúc: ${timestamp}`,
+          ],
+    maturitySubject: ({ stage, chainName }) =>
+      stage === "matured"
+        ? `Khoản vay Morpho đã quá ngày đáo hạn - ${chainName}`
+        : `Khoản vay Morpho đáo hạn trong vòng ${stage === "7d" ? "7 ngày" : "24 giờ"} - ${chainName}`,
   },
 };

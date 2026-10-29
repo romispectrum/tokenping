@@ -22,7 +22,7 @@ export const joinList = (items: readonly string[], conjunction: "and" | "or" = "
   items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} ${conjunction} ${items[items.length - 1]}`;
 
 // A badge's short name for email where a language has its own: "E-mail", "Correo".
-const EMAIL_BADGE: Partial<Record<Locale, string>> = { cs: "e-mail", es: "correo", hi: "ईमेल" };
+const EMAIL_BADGE: Partial<Record<Locale, string>> = { cs: "e-mail", es: "correo", hi: "ईमेल", de: "E-Mail" };
 
 /** Channel names for badges: "Signal", "Email" ("E-mail", "Correo") and, once the bot is configured, "Telegram". */
 export const getChannelBadgeNames = (locale: Locale = DEFAULT_LOCALE) =>

@@ -1,0 +1,202 @@
+export const meta = {
+  slug: "e-mode-cua-aave",
+  title: "E-Mode của Aave: vay được nhiều hơn, khoảng đệm mỏng hơn",
+  description:
+    "E-Mode Aave V3 là gì, có những danh mục nào trên Ethereum, Arbitrum, Base và Optimism, nó đổi hệ số sức khỏe ra sao, và khoảng đệm của loop mỏng đến đâu.",
+  h1: "E-Mode của Aave là gì, và nó ảnh hưởng thế nào đến rủi ro thanh lý của bạn?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "E-Mode của Aave là gì, và nó đưa một vị thế đến gần mức thanh lý đến đâu?",
+  readingMinutes: 23,
+};
+
+<ShortAnswer>
+  E-Mode (Efficiency Mode) là một thiết lập của Aave V3 cho phép bạn vay nhiều hơn dựa trên tài sản thế chấp có giá biến
+  động cùng chiều với tài sản bạn vay, như wstETH so với WETH, bằng cách thay LTV và ngưỡng thanh lý thông thường bằng
+  các mức cao hơn áp dụng cho cả danh mục. Trên Ethereum Core, danh mục "ETH correlated" dùng LTV 93% và ngưỡng thanh lý
+  95% vào ngày 28 tháng 10 năm 2026, so với 79% và 82% cho wstETH bên ngoài danh mục. Công thức hệ số sức khỏe không
+  đổi, chỉ ngưỡng trong đó thay đổi, nên cùng một vị thế hiển thị con số cao hơn. Cái giá phải trả là khoảng đệm mỏng
+  hơn: một vị thế vay đến giới hạn E-Mode bắt đầu ở 95 ÷ 93 = 1,0215, và vào tháng 3 năm 2026, một biến động oracle
+  2,85% đã thanh lý các vị thế E-Mode dưới khoảng 1,0288. Một vòng loop vay gần giới hạn đó chạy dưới 1,1, ngưỡng cảnh
+  báo thấp nhất mà Tokenping chấp nhận.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Các số liệu và số khối nơi chúng được đọc: content/blog/snapshots/aave-e-mode.md */}
+
+## E-Mode của Aave là gì, và vì sao nó tồn tại?
+
+E-Mode của Aave là một thiết lập theo từng tài khoản trên một thị trường Aave V3, đưa bạn vào một danh mục các tài sản tương quan và áp dụng tỷ lệ cho vay trên giá trị (LTV), ngưỡng thanh lý (liquidation threshold) và thưởng thanh lý (liquidation bonus) của danh mục đó cho các tài sản thế chấp mà danh mục liệt kê, thay cho tham số riêng của từng tài sản. Trang trợ giúp của Aave mô tả nó là cách để "maximize their borrowing power by selecting optimized asset categories" (tối đa hóa sức vay bằng cách chọn các danh mục tài sản được tối ưu). Trong hợp đồng Pool, `setUserEMode(categoryId)` đưa bạn vào một danh mục, `getUserEMode(address)` cho biết một địa chỉ đang ở danh mục nào, và danh mục 0 nghĩa là không ở danh mục nào.
+
+Nó tồn tại vì các tham số thông thường được đặt cho trường hợp xấu nhất, một tài sản thế chấp và một tài sản nợ có giá biến động độc lập với nhau. Khi cả hai cùng bám theo một thứ, như wstETH và WETH đều bám theo ETH, giá ETH tính bằng đô la giảm sẽ làm giảm cả tài sản thế chấp lẫn khoản nợ cùng lúc và sức khỏe của vị thế hầu như không thay đổi. Vì vậy các nhà cung cấp dịch vụ rủi ro của Aave có thể cho phép LTV và ngưỡng cao hơn cho cặp đó. Điều còn lại là rủi ro hai tài sản lệch nhau, và đó mới là rủi ro mà một vị thế E-Mode thực sự phải chịu.
+
+Từ Aave V3.2, phiên bản giới thiệu "liquid E-Modes", ba thứ xác định một danh mục:
+
+- **Một LTV, một ngưỡng thanh lý và một mức thưởng thanh lý** cho cả danh mục.
+- **Một tập tài sản thế chấp**: các reserve nhận tham số của danh mục khi bạn ở trong đó. Tài sản thế chấp ngoài tập này giữ LTV và ngưỡng riêng của nó.
+- **Một tập tài sản được vay**: những reserve duy nhất bạn được vay khi ở trong danh mục. Một tài sản có thể nằm trong tập này, tập kia hoặc cả hai, và có thể xuất hiện trong nhiều danh mục.
+
+Vì vậy "ETH correlated" trên Ethereum Core không có nghĩa là "vay bất cứ thứ gì dựa trên ETH": tập tài sản được vay của nó chỉ có WETH (đọc vào ngày 28 tháng 10 năm 2026, khối 26291736). Danh mục quyết định bạn được vay cái gì, cũng như được vay bao nhiêu.
+
+## Hiện nay có những danh mục E-Mode nào?
+
+Các danh mục dưới đây được đọc từ hợp đồng Pool của từng thị trường vào ngày 28 tháng 10 năm 2026 bằng `getEModeCategoryLabel`, `getEModeCategoryCollateralConfig`, `getEModeCategoryCollateralBitmap` và `getEModeCategoryBorrowableBitmap`, với các bitmap được giải mã theo `getReservesList()`. Cả bốn Pool đều báo revision 11 (V3.7). Quản trị (governance) và các Risk Steward thay đổi các tham số này, nên hãy kiểm tra danh mục trong ứng dụng Aave trước khi dựa vào một con số.
+
+### Ethereum Core (khối 26291736)
+
+Ethereum Core có 48 danh mục. Phần lớn ghép một principal token (PT) của Pendle hoặc một tài sản của Ethena với stablecoin hoặc với USDe, và nhiều danh mục liệt kê các PT đã hết hạn chỉ còn đó cho những vị thế đang được tháo dỡ. Những danh mục mà người vay hay gặp nhất:
+
+| Id  | Nhãn                        | LTV | Ngưỡng thanh lý | Thưởng | Tập tài sản thế chấp                          | Tập tài sản được vay |
+| --- | --------------------------- | --- | --------------- | ------ | --------------------------------------------- | -------------------- |
+| 1   | ETH correlated              | 93% | 95%             | 1%     | WETH, wstETH, cbETH, rETH, weETH, osETH, ETHx | WETH                 |
+| 2   | sUSDe Stablecoins           | 90% | 92%             | 4%     | USDe, sUSDe                                   | USDC, USDT           |
+| 11  | USDe Stablecoin             | 90% | 93%             | 2%     | USDe                                          | USDC, USDT           |
+| 4   | LBTC_WBTC                   | 84% | 86%             | 3%     | LBTC                                          | WBTC                 |
+| 7   | eBTC/WBTC                   | 83% | 85%             | 3%     | eBTC                                          | WBTC                 |
+| 22  | ezETH/wstETH                | 93% | 95%             | 1%     | ezETH                                         | wstETH               |
+| 26  | weETH/wstETH ETH Correlated | 93% | 95%             | 1%     | weETH                                         | WETH, wstETH         |
+| 3   | rsETH\_\_ETH_wstETH_ETHx    | 93% | 95%             | 1%     | rsETH                                         | WETH, wstETH, ETHx   |
+| 40  | LINK\_\_USDC_USDT           | 66% | 71%             | 7%     | LINK                                          | USDC, USDT           |
+| 43  | XAUt\_\_USDC_USDT_GHO       | 70% | 75%             | 6%     | XAUt                                          | USDC, USDT, GHO      |
+| 47  | PT-srUSDe Stablecoins       | 90% | 92%             | 4,03%  | sUSDe, PT-srUSDe-22OCT2026                    | USDC, USDT, USDe     |
+
+Hai chi tiết từ cùng lần đọc đó. Trong "ETH correlated", ETHx nằm trong tập tài sản thế chấp nhưng bị gắn cờ LTV 0 (`ltvzeroBitmap` của danh mục), nên nó được tính vào hệ số sức khỏe (health factor) ở mức 95% nhưng không cho thêm sức vay nào. Và danh mục 47 và 48 (PT-srUSDe so với stablecoin và so với USDe) là những danh mục duy nhất có cờ `isolated` của V3.7; tác dụng của cờ này nằm trong phần quy tắc vào danh mục bên dưới. Các danh mục LINK và XAUt cho thấy một danh mục không nhất thiết phải "tương quan": chúng là một bộ tham số thứ hai để vay stablecoin dựa trên một tài sản.
+
+### Arbitrum (khối 519074353 đến 519074731)
+
+| Id  | Nhãn                             | LTV | Ngưỡng thanh lý | Thưởng | Tập tài sản thế chấp   | Tập tài sản được vay |
+| --- | -------------------------------- | --- | --------------- | ------ | ---------------------- | -------------------- |
+| 1   | Stablecoins                      | 93% | 95%             | 1%     | DAI, USDC, USD₮0, EURS | không có             |
+| 2   | ETH correlated                   | 93% | 95%             | 1%     | WETH, wstETH, weETH    | WETH                 |
+| 7   | wstETH/WETH ETH Correlated       | 94% | 96%             | 1%     | wstETH                 | WETH                 |
+| 3   | ezETH/wstETH/WETH ETH Correlated | 93% | 95%             | 1%     | ezETH                  | WETH, wstETH         |
+| 5   | rsETH/wstETH/WETH ETH Correlated | 93% | 95%             | 1%     | rsETH                  | WETH, wstETH         |
+| 4   | ezETH Stablecoins                | 72% | 75%             | 7,5%   | ezETH                  | USD₮0, USDC          |
+| 6   | rsETH/Stablecoins                | 72% | 75%             | 7,5%   | rsETH                  | USDC, USD₮0          |
+| 8   | AAVE\_\_USDCn_USDT               | 66% | 73%             | 10%    | AAVE                   | USD₮0, USDC          |
+| 9   | ARB\_\_USDCn_USDT                | 58% | 63%             | 10%    | ARB                    | USD₮0, USDC          |
+| 10  | tBTC\_\_USDCn_USDT               | 72% | 75%             | 7,5%   | tBTC                   | USD₮0, USDC          |
+
+Danh mục "Stablecoins" của Arbitrum có tập tài sản được vay trống, nên không thể mở khoản nợ mới trong đó. Danh mục một tài sản "wstETH/WETH ETH Correlated" của nó rộng rãi hơn một nấc so với Ethereum: 94% và 96%, khoảng đệm ở giới hạn là 96 ÷ 94 = 1,0213.
+
+### Base (khối 53204166)
+
+Base có 15 danh mục. Các danh mục ETH, và hai danh mục BTC mà người vay hay gặp nhất:
+
+| Id  | Nhãn              | LTV | Ngưỡng thanh lý | Thưởng | Tập tài sản thế chấp       | Tập tài sản được vay |
+| --- | ----------------- | --- | --------------- | ------ | -------------------------- | -------------------- |
+| 1   | ETH correlated    | 90% | 93%             | 2%     | WETH, cbETH, wstETH, weETH | WETH                 |
+| 8   | wstETH/WETH       | 93% | 95%             | 1%     | wstETH                     | WETH                 |
+| 9   | cbETH/WETH        | 93% | 95%             | 2%     | cbETH                      | WETH                 |
+| 7   | weETH/WETH        | 93% | 95%             | 1,25%  | weETH                      | WETH                 |
+| 2   | ezETH wstETH      | 93% | 95%             | 1%     | ezETH                      | wstETH               |
+| 4   | LBTC_cbBTC        | 82% | 84%             | 3%     | LBTC                       | cbBTC                |
+| 10  | cbBTC Stablecoins | 82% | 85%             | 4%     | cbBTC                      | USDC, GHO            |
+
+Các danh mục còn lại ghép một tài sản (wrsETH, syrupUSDC, AAVE, EURC, LBTC, tBTC, ezETH) với USDC và GHO hoặc với wstETH. Base cho thấy một danh mục rộng được tách thành các danh mục một tài sản như thế nào: danh mục nhiều tài sản "ETH correlated" chạy ở 90% và 93%, trong khi wstETH/WETH, cbETH/WETH và weETH/WETH chạy ở 93% và 95%.
+
+### Optimism (khối 158799548)
+
+| Id  | Nhãn           | LTV   | Ngưỡng thanh lý | Thưởng | Tập tài sản thế chấp                      | Tập tài sản được vay |
+| --- | -------------- | ----- | --------------- | ------ | ----------------------------------------- | -------------------- |
+| 1   | Stablecoins    | 0,01% | 87%             | 1%     | DAI, USDC (bridged và native), USDT, sUSD | không có             |
+| 2   | ETH correlated | 93%   | 95%             | 1%     | WETH, wstETH, rETH (rETH ở LTV 0)         | WETH                 |
+
+Danh mục "Stablecoins" của Optimism là phần còn sót lại, với LTV 0,01% và không có gì để vay. Danh mục "ETH correlated" của nó có cùng con số với Ethereum.
+
+## Hệ số sức khỏe được tính thế nào trong E-Mode?
+
+Trong E-Mode, hệ số sức khỏe dùng cùng công thức như mọi khi, Σ(giá trị tài sản thế chấp × ngưỡng thanh lý) ÷ giá trị khoản nợ, chỉ khác là mọi tài sản thế chấp trong tập của danh mục bạn dùng ngưỡng của danh mục thay cho ngưỡng riêng của nó. Đó là thay đổi duy nhất: `GenericLogic.calculateUserAccountData` chọn ngưỡng cho từng tài sản và `getUserAccountData` trả về kết quả, nên bất kỳ công cụ nào đọc lệnh gọi đó đều đã hiển thị con số E-Mode. Công thức chung có trong [cách tính hệ số sức khỏe Aave](/vi/blog/he-so-suc-khoe-aave#he-so-suc-khoe-aave-duoc-tinh-nhu-the-nao), và [E-Mode thay đổi hệ số sức khỏe thế nào](/vi/blog/he-so-suc-khoe-aave#e-mode-thay-doi-he-so-suc-khoe-nhu-the-nao) trong cùng bài hướng dẫn đó tóm tắt ngắn gọn những gì tiếp theo.
+
+Lấy ví dụ tài sản thế chấp wstETH trị giá 10.000 $ và khoản nợ WETH trị giá 9.000 $ trên Ethereum Core, với tham số "ETH correlated" đọc vào ngày 28 tháng 10 năm 2026 (khối 26291736) và tham số riêng của wstETH đọc cùng ngày (khối 26291849: LTV 79%, ngưỡng thanh lý 82%):
+
+1. **Trong E-Mode:** HF = 10.000 × 0,95 ÷ 9.000 = **1,056**. Giới hạn vay là 10.000 × 0,93 = 9.300 $, nên còn có thể vay thêm 300 $.
+2. **Ngoài E-Mode:** cùng vị thế đó sẽ có HF = 10.000 × 0,82 ÷ 9.000 = 0,911, và hoàn toàn không thể mở được: LTV 79% của wstETH giới hạn khoản vay ở 7.900 $.
+3. **Ở giới hạn E-Mode:** vay đủ 9.300 $ thì HF = 9.500 ÷ 9.300 = **1,0215**. Vị thế cách mức thanh lý 2,1% ngay vào ngày nó được mở.
+
+Một vị thế thông thường vay đến giới hạn cũng bắt đầu ở ngưỡng ÷ LTV, 84 ÷ 81 = 1,037 với WETH trên Ethereum Core vào ngày 28 tháng 10 năm 2026 (khối 26291849). E-Mode thu hẹp khoảng cách giữa LTV và ngưỡng còn 2 điểm phần trăm, và khoảng cách đó là toàn bộ khoảng đệm của một vị thế vay tối đa. [Vì sao vay tối đa chỉ để lại hệ số sức khỏe khoảng 1,03](/vi/blog/he-so-suc-khoe-aave#vi-sao-vay-toi-da-chi-de-lai-he-so-suc-khoe-khoang-103) đi qua cùng phép tính đó bên ngoài E-Mode.
+
+Thứ làm con số thay đổi cũng khác. Với tài sản thế chấp wstETH và khoản nợ WETH, cả hai phía đều được định giá từ ETH, nên giá ETH tính bằng đô la triệt tiêu nhau: nếu ETH giảm một nửa, tài sản thế chấp và khoản nợ cùng giảm một nửa và HF vẫn ở 1,056. Điều còn lại là tỷ giá wstETH/ETH mà oracle (nguồn giá) của Aave báo cáo. Vị thế chạm 1,00 khi tỷ giá đó giảm 1 − 90 ÷ 95 = 5,3%, còn vị thế vay tối đa thì khi nó giảm 2,1%. [E-Mode thay đổi giá thanh lý của bạn thế nào](/vi/blog/cach-tinh-gia-thanh-ly-aave#e-mode-thay-doi-gia-thanh-ly-cua-ban-nhu-the-nao) biến điều này thành một tỷ giá thay vì một mức giá đô la.
+
+## Một vòng loop staking đòn bẩy hoạt động thế nào trong E-Mode, và nó đặt cược vào điều gì?
+
+Một vòng loop (vòng vay đòn bẩy) staking gửi wstETH, vay WETH dựa trên nó, đổi WETH thành thêm wstETH và gửi tiếp số đó, lặp lại cho đến khi vị thế giữ lượng wstETH gấp nhiều lần ban đầu so với khoản nợ WETH gần bằng như vậy. E-Mode là thứ làm cho việc này đáng làm: ở LTV 93%, vòng loop có thể đạt 1 ÷ (1 − 0,93) = 14,3 lần vốn ban đầu, so với 1 ÷ (1 − 0,79) = 4,8 lần ở LTV thông thường của wstETH.
+
+Hãy tính theo đơn vị ETH, đơn vị mà vòng loop vận hành. Bắt đầu với wstETH trị giá 10 ETH, loop đến tài sản thế chấp trị giá 100 ETH và khoản nợ 90 WETH, và bạn có vị thế 1,056 ở trên, đòn bẩy mười lần. Vào ngày 28 tháng 10 năm 2026, oracle của Aave trên Ethereum Core định giá wstETH ở 2.912,79 $ và WETH ở 2.335,08 $ (khối 26291849), tỷ giá 1,2474 ETH cho mỗi wstETH, khớp với `stEthPerToken()` của chính Lido tại cùng khối, nên tài sản thế chấp 100 ETH là khoảng 80,2 wstETH.
+
+Hai con số quyết định vòng loop lời hay lỗ, và không con số nào là giá ETH tính bằng đô la:
+
+- **Tỷ giá quy đổi wstETH/ETH.** Nó tăng khi phần thưởng staking tích lũy: Lido báo APR của stETH là 2,25% vào ngày 28 tháng 10 năm 2026 và trung bình 7 ngày là 2,33%. Vòng loop thu lợi suất đó trên 100 ETH trong khi trả lãi trên 90, nên 10 ETH vốn chủ sở hữu kiếm được khoảng mười lần chênh lệch giữa hai mức lãi suất. Một đợt giảm của tỷ giá mà oracle báo cáo, do wstETH bị chiết khấu trên thị trường hoặc do lỗi cấu hình, làm giảm tài sản thế chấp chứ không giảm khoản nợ, và là biến động giá duy nhất có thể thanh lý vòng loop.
+- **Lãi suất vay WETH.** Khoản nợ tăng theo lãi suất thả nổi của Aave, 1,94% APR với WETH trên Ethereum Core tại khối 26291849, trong khi wstETH mà vòng loop gửi gần như không kiếm được gì từ chính Aave (0,0002% tại cùng khối). Bất cứ khi nào lãi suất vay cao hơn lợi suất staking, vòng loop mất tiền và hệ số sức khỏe của nó trôi xuống.
+
+Gộp hai điều đó lại cho một năm ở vị thế đòn bẩy mười lần, bỏ qua lãi kép và biến động giá. Tài sản thế chấp tăng theo lợi suất staking lên khoảng 102,3 ETH. Ở lãi suất vay 1,94%, khoản nợ lên đến 91,75 WETH: vốn chủ sở hữu là 10,55 ETH, tăng 5,5% so với 2,3% nếu chỉ giữ wstETH, và HF tăng lên 1,059. Ở lãi suất vay trung bình 5%, khoản nợ lên đến 94,5 WETH, vốn chủ sở hữu giảm còn 7,8 ETH và HF trượt xuống 1,028. Ở 8%, khoản nợ lên đến 97,2 WETH và HF là 1,000: vòng loop sẽ bị thanh lý chỉ vì tiền lãi. Lãi suất vay WETH thực sự có tăng vọt khi tỷ lệ sử dụng cao; [vì sao lãi suất vay trên Aave tăng vọt](/vi/blog/lai-suat-aave#vi-sao-lai-suat-vay-tren-aave-tang-vot) giải thích đường cong đó.
+
+Giá ETH tính bằng đô la vẫn quan trọng với chủ của vòng loop, vì 10 ETH vốn chủ sở hữu có giá trị bằng đúng giá ETH, nhưng nó không quan trọng với hệ số sức khỏe. Một vòng loop là một ván cược rằng lợi suất staking sẽ luôn cao hơn lãi suất vay và tỷ giá wstETH/ETH của oracle sẽ không giảm nhiều hơn khoảng đệm. Ván cược thứ hai là ván đã thua vào tháng 3 năm 2026.
+
+## Quy tắc để vào và rời một danh mục E-Mode là gì?
+
+Vào hoặc rời một danh mục là một lệnh gọi, `setUserEMode(categoryId)` trên Pool, và Pool chạy ba bước kiểm tra trước khi nó có hiệu lực, trong `ValidationLogic.validateSetUserEMode` và `SupplyLogic.executeSetUserEMode` của aave-v3-origin (nhánh main, đọc ngày 28 tháng 10 năm 2026):
+
+1. **Mọi tài sản bạn đang vay phải được phép vay trong danh mục đích.** Với một danh mục, điều đó nghĩa là bitmap tài sản được vay của nó; khi rời đi (danh mục 0), nghĩa là reserve đó đang bật tính năng cho vay. Lỗi là `InvalidDebtInEmode`. Một ví có khoản nợ USDC không thể vào "ETH correlated" trên Ethereum Core, nơi WETH là tài sản duy nhất được vay, cho đến khi khoản USDC được trả hết.
+2. **Mọi tài sản bạn đã bật làm tài sản thế chấp phải giữ LTV khác 0 trong danh mục đích.** Lỗi là `InvalidCollateralInEmode`. Bước kiểm tra đi qua `getUserReserveLtv`, hàm trả về LTV của danh mục với các tài sản trong tập tài sản thế chấp của nó (hoặc 0 nếu danh mục gắn cờ LTV 0 cho chúng), LTV riêng của tài sản với tài sản thế chấp ngoài tập, và 0 với tài sản thế chấp ngoài tập khi danh mục bị cô lập (isolated).
+3. **Sau khi chuyển, hệ số sức khỏe của bạn phải từ 1 trở lên.** `executeSetUserEMode` đổi danh mục trước rồi gọi `validateHealthFactor`, nên một lần chuyển khiến bạn có thể bị thanh lý sẽ bị revert.
+
+Một ví không có khoản gửi hay khoản nợ nào luôn có thể chuyển, và một ví đã ở trong danh mục được yêu cầu thì không có gì thay đổi và không bị kiểm tra.
+
+Hai ghi chú về phiên bản quan trọng với những ai đọc các bài hướng dẫn cũ. Từ V3.2, tài sản thế chấp ngoài tập của danh mục giữ LTV và ngưỡng riêng của nó, nên giữ WBTC khi đang ở "ETH correlated" là được phép và WBTC được tính theo tham số riêng của WBTC: ghi chú tính năng của V3.2 nói rằng tham số E-Mode "will only apply for the ones listed as eModeCollateral" (chỉ áp dụng cho những tài sản được liệt kê là eModeCollateral). Từ V3.7, một danh mục có thể mang cờ `isolated` (`getIsEModeCategoryIsolated`). Trong một danh mục bị cô lập, tài sản thế chấp ngoài tập nhận LTV 0 nhưng giữ ngưỡng riêng: nó vẫn được tính vào hệ số sức khỏe nhưng không hỗ trợ khoản vay mới nào, việc vào danh mục bị chặn khi tài sản thế chấp như vậy đang được bật, và việc bật nó làm tài sản thế chấp từ bên trong danh mục bị từ chối. Nếu quản trị bật cờ này cho một danh mục đang hoạt động, ghi chú của V3.7 nói rằng tài sản thế chấp ngoài tập "immediately becomes LTV-zero" (lập tức có LTV bằng 0) trong khi "health factor is unaffected" (hệ số sức khỏe không bị ảnh hưởng). Vào ngày 28 tháng 10 năm 2026, chỉ hai danh mục PT-srUSDe của Ethereum Core có cờ này.
+
+Điều chặn việc rời đi là cùng ba bước kiểm tra đó chạy với danh mục 0. Bạn không thể rời đi khi đang vay một tài sản mà reserve của nó đã tắt tính năng cho vay, và bạn không thể rời đi khi việc rời đi sẽ đẩy hệ số sức khỏe của bạn xuống dưới 1, đây là trường hợp phổ biến: vị thế 1,056 ở trên sẽ hiển thị 0,911 bên ngoài E-Mode, nên lệnh gọi bị revert. Để ra ngoài, trước hết bạn phải trả đủ WETH, xuống khoản nợ khoảng 8.200 so với 10.000 tài sản thế chấp ở ngưỡng 82% của wstETH. E-Mode dễ vào và khó ra một khi bạn đã dùng đến khoảng trống mà nó cho.
+
+## Điều gì đã xảy ra với các vòng loop E-Mode vào tháng 3 năm 2026?
+
+Vào tháng 3 năm 2026, một adapter giá bị cấu hình sai đã cắt tỷ giá quy đổi wstETH mà Aave dùng trên các thị trường Ethereum Core và Prime khoảng 2,85%, và mọi vị thế E-Mode có hệ số sức khỏe dưới khoảng 1,0288 cùng lúc trở nên có thể bị thanh lý. Tường thuật này lấy từ bản phân tích sau sự cố (post-mortem) của Chaos Labs trên diễn đàn quản trị Aave, đăng ngày 10 tháng 3 năm 2026 và được đọc lại vào ngày 28 tháng 10 năm 2026; không có gì ở đây vượt ra ngoài nó.
+
+Aave định giá wstETH qua một adapter CAPO (Correlated Assets Price Oracle) giới hạn tốc độ tăng của tỷ giá wstETH/stETH mà nó báo cáo, để chặn các cuộc tấn công kiểu thổi phồng giá. Mức trần được xây dựng từ một tỷ lệ snapshot, một mốc thời gian snapshot và một tốc độ tăng tối đa hằng năm. Một lần cập nhật đặt mốc thời gian snapshot về một tham chiếu cách đó bảy ngày, trong khi một giới hạn trên chuỗi (tỷ lệ chỉ có thể tăng tối đa 3% mỗi 3 ngày) ngăn tỷ lệ đạt đến giá trị mà mốc thời gian đó giả định, nên mức trần được tính từ một tham chiếu quá thấp. Bản phân tích sau sự cố nói rằng tỷ giá tối đa cho phép ra khoảng 1,1939, thấp hơn tỷ giá thực tế, nên mức trần đè lên nó và tỷ giá có hiệu lực giảm "around 2.855%" (khoảng 2,855%).
+
+Những hệ quả mà nó báo cáo:
+
+- Khoảng 10.938 wstETH bị thanh lý trong E-Mode trên 34 tài khoản, ảnh hưởng đến các vị thế "with a health factor lower than 1.0288" (có hệ số sức khỏe thấp hơn 1,0288).
+- Không có nợ xấu (bad debt) cho giao thức.
+- Khoảng 512 ETH bị các bên thanh lý thu được từ tiền thưởng và giá trị từ chênh lệch tỷ giá, trong đó 141 ETH doanh thu từ thưởng thanh lý và khoảng 13 ETH phí đã được thu hồi để bồi thường cho người dùng bị ảnh hưởng, với ngân quỹ DAO chi trả phần còn lại.
+- Giới hạn vay wstETH trên cả hai thị trường tạm thời bị cắt xuống 1 trong khi cấu hình được sửa.
+
+Độ lớn của biến động là bài học cho một vòng loop. Một vị thế vay đến giới hạn "ETH correlated" bắt đầu ở 1,0215, nằm trong vùng đã bị thanh lý; một vị thế ở 1,056 thì không bị đụng đến. Không có gì trong bản thân vị thế đưa ra cảnh báo, vì biến động đến từ cấu hình của oracle chứ không phải từ bất kỳ thị trường nào. Adapter này vẫn đang được dùng vào ngày 28 tháng 10 năm 2026 (khối 26291849): nguồn oracle cho wstETH trên Ethereum Core tự mô tả là "Capped wstETH / stETH(ETH) / USD", với tỷ lệ snapshot 1,2283 ghi ngày 3 tháng 3 năm 2026, tốc độ tăng tối đa hằng năm 8,8% và tỷ lệ báo cáo là 1,2474, bằng với của Lido. [Nguyên nhân 6 khiến hệ số sức khỏe của bạn giảm](/vi/blog/vi-sao-he-so-suc-khoe-aave-giam#nguyen-nhan-6-loi-oracle-hoac-ty-gia-co-dinh-gia-sai-tai-san-the-chap-cua-ban-khong) nói về khoản bồi thường sau đó.
+
+## Khi nào E-Mode không giúp được gì?
+
+E-Mode không làm gì cho một vị thế có khoản nợ nằm ngoài danh mục, và giúp được rất ít cho một số thiết lập phổ biến khác:
+
+- **Khoản nợ mà danh mục không liệt kê.** Bạn hoàn toàn không thể vào khi đang vay tài sản đó. Vị thế 10 WETH so với 12.000 USDC trong bài hướng dẫn về hệ số sức khỏe vẫn ở ngưỡng riêng 84% của WETH trên Ethereum Core (khối 26291849), vì "ETH correlated" chỉ cho bạn vay WETH.
+- **Tài sản thế chấp ngoài tập.** Nó giữ tham số riêng, nên thêm WBTC vào một vị thế "ETH correlated" sẽ nâng hệ số sức khỏe theo ngưỡng riêng của WBTC, 85% trên Ethereum Core tại khối 26291889, không phải 95%. Trong một danh mục bị cô lập, nó không thêm gì vào sức vay.
+- **Các danh mục stablecoin.** Trên Arbitrum và Optimism, danh mục "Stablecoins" không có tài sản nào được vay vào ngày 28 tháng 10 năm 2026, nên không thể dùng nó cho khoản vay mới. Trên Ethereum Core, các danh mục stablecoin ghép một tài sản (USDe, sUSDe, một PT) với USDC và USDT ở LTV 90% đến 94%. Rủi ro ở đó là tài sản thế chấp mất neo (depeg), điều mà một danh mục tương quan không làm giảm; khoảng đệm mỏng hơn khiến nó gây hại sớm hơn.
+- **Vị thế nhỏ.** Bên thanh lý có thể xử lý đến 100% một reserve nợ khi tài sản thế chấp hoặc khoản nợ liên quan có giá trị dưới 2.000 $ (`LiquidationLogic`, đọc ngày 28 tháng 10 năm 2026), nên một vòng loop nhỏ vượt qua 1,00 sẽ bị đóng hẳn thay vì bị cắt bớt; [có thể bị thanh lý bao nhiêu phần khoản nợ cùng lúc](/vi/blog/co-che-thanh-ly-tren-aave#bao-nhieu-phan-no-cua-toi-co-the-bi-thanh-ly-cung-luc) có quy tắc đó. Mức thưởng 1% trong "ETH correlated" là nhỏ theo tiêu chuẩn của Aave, nhưng nó được trả trên toàn bộ số tiền.
+- **Một khoảng đệm mỏng mà bạn không định có.** Nếu bạn vào một danh mục và vay gần giới hạn của nó, khoảng đệm là 2%, bất kể hệ số sức khỏe trông thế nào trước khi chuyển.
+
+Nếu bạn ở một trong những tình huống đó, tham số thông thường và một khoảng đệm rộng hơn là công cụ tốt hơn; [hệ số sức khỏe cho bạn bao nhiêu khoảng đệm](/vi/blog/he-so-suc-khoe-an-toan-tren-aave#vi-sao-con-so-an-toan-khac-nhau-voi-no-stablecoin-no-bien-dong-va-vong-loop-e-mode) so sánh cùng một hệ số sức khỏe có ý nghĩa gì với một vòng loop E-Mode và với các vị thế khác.
+
+## Cảnh báo có giúp được gì với một vị thế E-Mode không?
+
+Cảnh báo hệ số sức khỏe giúp được với một vị thế E-Mode được giữ trên khoảng 1,1 đến 1,15, và không phù hợp với một vòng loop được cố ý chạy dưới mức đó. Tokenping đọc cùng hệ số sức khỏe mà hợp đồng báo cáo, từ `getUserAccountData`, vốn đã áp dụng danh mục E-Mode của bạn, nên không có gì phải cấu hình cho E-Mode: con số trên bảng điều khiển và trong tin nhắn là con số mà bên thanh lý nhìn thấy.
+
+Giới hạn nằm ở ngưỡng. Ngưỡng cảnh báo Aave của Tokenping đi từ 1,1 đến 10, mặc định là 1,5. Một vòng loop ở 1,056, hoặc bất kỳ vị thế nào được cố ý chạy dưới 1,1, nằm dưới mọi ngưỡng bạn có thể đặt. Một cảnh báo đặt ở 1,1 sẽ thấy hệ số sức khỏe dưới mức đó ở mỗi lần kiểm tra 5 phút và gửi tin nhắn mỗi lần, trên mọi kênh bạn đã chọn, cho đến khi vị thế trở lại trên 1,1. Không có chế độ tạm hoãn và không có bản tổng hợp; [bạn sẽ được cảnh báo bao lâu một lần](/vi/blog/cai-dat-canh-bao-he-so-suc-khoe-aave#ban-se-nhan-canh-bao-thuong-xuyen-den-muc-nao) nói rõ cách hoạt động này.
+
+Với một vòng loop mỏng, lời khuyên thẳng thắn là một trong hai điều. Giữ khoảng đệm: chạy vòng loop sao cho hệ số sức khỏe của nó nằm trên mức bạn muốn được báo, chẳng hạn 1,12 đến 1,15 với một vòng loop wstETH/WETH, điều này tốn đòn bẩy nhưng giữ cho một biến động oracle 2,85% chưa đủ để thanh lý, và đặt cảnh báo ở đó để điều bạn nghe thấy đầu tiên là tiền lãi kéo vị thế trôi xuống. Hoặc chấp nhận tin nhắn liên tục: đặt 1,1 và coi chuỗi tin nhắn là tín hiệu rằng bạn đang chạy dưới mức đó, điều mà ít ai muốn nhận trên Signal hay Telegram ở mỗi lần kiểm tra. Điều mà cảnh báo không làm được trong cả hai trường hợp là phản ứng nhanh hơn oracle: biến động tháng 3 năm 2026 khiến các vị thế có thể bị thanh lý ngay khi mức trần được áp dụng, và khoảng thời gian kiểm tra 5 phút không cho bạn thời gian nào để hành động trước điều đó. [Cách chọn ngưỡng cảnh báo, từng bước một](/vi/blog/he-so-suc-khoe-an-toan-tren-aave#chon-nguong-canh-bao-nhu-the-nao-tung-buoc-mot) và [cách cài đặt cảnh báo hệ số sức khỏe](/vi/blog/cai-dat-canh-bao-he-so-suc-khoe-aave#buoc-5-chon-nguong) nói về cách cài đặt; [cách nâng hệ số sức khỏe trên Aave](/vi/blog/cach-tranh-bi-thanh-ly-tren-aave#buoc-1-tra-mot-phan-khoan-no) nói về việc cần làm khi tin nhắn đến, mà với một vòng loop thường nghĩa là trả nợ WETH.
+
+Trước đó bạn có thể [kiểm tra hệ số sức khỏe Aave V3 của bạn](/vi/aave); xem vị thế của bạn không cần thanh toán. Cảnh báo có giá <AlertPrice />, thanh toán trên Arbitrum, mỗi cảnh báo cho một thị trường Aave V3 hoặc một Spoke của V4, và được gửi qua Signal, Telegram hoặc email. Tokenping đang ở giai đoạn beta và không có cam kết về thời gian hoạt động. Với một vị thế có khoảng đệm 2%, không cảnh báo nào thay thế được chính khoảng đệm đó.
+
+## Nguồn
+
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): `POOL_REVISION`, `getReservesList`, cùng nhãn, cấu hình tài sản thế chấp, các bitmap tài sản thế chấp, tài sản được vay và LTV 0 và cờ isolated của các danh mục 1 đến 48, tại khối 26291736 (truy cập ngày 28 tháng 10 năm 2026)
+- Aave V3 Pool trên [Arbitrum](https://arbiscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD), [Base](https://basescan.org/address/0xA238Dd80C259a72e81d7e4664a9801593F98d1c5) và [Optimism](https://optimistic.etherscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD): cùng các lệnh gọi cho mọi danh mục, tại các khối 519074353 đến 519074731 của Arbitrum, khối 53204166 của Base và khối 158799548 của Optimism (truy cập ngày 28 tháng 10 năm 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): LTV, ngưỡng, thưởng và lãi suất của WETH, wstETH và USDC tại khối 26291849; WBTC tại khối 26291889 (truy cập ngày 28 tháng 10 năm 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) và [adapter CAPO cho wstETH](https://etherscan.io/address/0xe1D97bF61901B075E9626c8A2340a7De385861Ef) của nó: giá WETH và wstETH, mô tả của adapter, tỷ lệ snapshot, mốc thời gian snapshot, tốc độ tăng tối đa hằng năm và tỷ lệ tại khối 26291849 (truy cập ngày 28 tháng 10 năm 2026)
+- [Token wstETH](https://etherscan.io/address/0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0): `stEthPerToken()` tại khối 26291849 (truy cập ngày 28 tháng 10 năm 2026)
+- [API APR stETH của Lido](https://eth-api.lido.fi/v1/protocol/steth/apr/sma): APR gần nhất và trung bình 7 ngày (truy cập ngày 28 tháng 10 năm 2026)
+- [IPool.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/interfaces/IPool.sol): các getter E-Mode, `setUserEMode` và `getUserEMode` (aave-v3-origin main, truy cập ngày 28 tháng 10 năm 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) và [LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): `validateSetUserEMode`, `getUserReserveLtv`, `executeSetUserEMode` và ngưỡng 2.000 $ của close factor (aave-v3-origin main, truy cập ngày 28 tháng 10 năm 2026)
+- [Các tính năng của Aave V3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): liquid E-Modes, tài sản thế chấp ngoài danh mục giữ tham số riêng, quy tắc vào và ra (truy cập ngày 28 tháng 10 năm 2026)
+- [E-Mode bị cô lập của Aave V3.7](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md): tác dụng của cờ isolated (truy cập ngày 28 tháng 10 năm 2026)
+- [Trợ giúp Aave: Efficiency Mode (E-mode)](https://aave.com/help/borrowing/e-mode) (truy cập ngày 28 tháng 10 năm 2026)
+- [Phân tích sau sự cố của Chaos Labs về sai lệch tỷ giá trên các instance wstETH Core và Prime](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): đăng ngày 10 tháng 3 năm 2026 (truy cập ngày 28 tháng 10 năm 2026)
+
+_Nội dung mang tính giáo dục, không phải lời khuyên tài chính. Cảnh báo giúp giảm rủi ro, nhưng không ngăn được việc thanh lý._

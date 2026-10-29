@@ -1,0 +1,208 @@
+export const meta = {
+  slug: "morpho-health-factor-erklaert",
+  title: "Morpho Health Factor erklärt: Formel und Beispiele",
+  description:
+    "Was der Health Factor eines Morpho-Kredits ist, wie Morpho Blue und Midnight ihn berechnen, was ihn bewegt und wie er sich von Aave unterscheidet.",
+  h1: "Was ist der Morpho Health Factor und wie wird er berechnet?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Was ist der Health Factor eines Morpho-Kredits und wie wird er berechnet?",
+  readingMinutes: 14,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Der Health Factor (Gesundheitsfaktor) eines Morpho-Kredits vergleicht, was deine Sicherheiten wert sind, gezählt bis
+  zum Liquidations-LTV (LLTV) des Markts, mit dem, was du schuldest: Menge der Sicherheit × Orakelpreis × LLTV ÷
+  Schulden. Sobald die Schulden diese Grenze übersteigen, liegt der Health Factor unter 1 und die Position kann
+  liquidiert werden. Bei 1,00 oder darüber geht das nicht, außer bei einem Teil eines Blue-Kredits, dessen Inhaber einen
+  Vorliquidationsvertrag autorisiert hat, oder bei einem Midnight-Kredit mit offenen Schulden nach der Fälligkeit. Ein
+  Beispiel: 1 cbBTC zum Preis von 80.011,48 USDC im Markt USDC | cbBTC (86%) von Morpho auf Ethereum, gegen 40.000 USDC
+  Schulden, ergibt 80.011,48 × 0,86 ÷ 40.000 = 1,72. Jeder Morpho-Markt hat seine eigene Sicherheit, sein eigenes Orakel
+  und seinen eigenen LLTV, bei der Erstellung für immer festgelegt, daher hat jeder Kredit seinen eigenen Health Factor.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Zahlen und die Blocknummern, bei denen sie gelesen wurden: content/blog/snapshots/morpho-health-factor.md */}
+
+## Was ist der Health Factor eines Morpho-Kredits?
+
+Der Health Factor ist die Zahl, die dir sagt, wie weit eine Kreditposition auf Morpho von der Liquidation entfernt ist. Er teilt das, was du höchstens schulden darfst, durch das, was du jetzt schuldest:
+
+**Health Factor = Wert der Sicherheiten im Kredit-Token × LLTV ÷ Schulden**
+
+- **Über 1,00:** Die Position kann nicht liquidiert werden, es sei denn, du hast einen Vorliquidationsvertrag autorisiert oder es ist ein Midnight-Kredit nach der Fälligkeit (beides weiter unten). Je höher die Zahl, desto weiter können sich die Preise zuerst gegen dich bewegen.
+- **Unter 1,00:** Deine Schulden sind größer, als der Markt erlaubt, und ein Teil davon oder alles kann liquidiert werden.
+- **Keine Schulden:** Es gibt nichts zu liquidieren, also auch keinen Health Factor, den du beobachten musst.
+
+Ein Health Factor von 1,72 heißt nicht, dass du 72 % von der Liquidation entfernt bist. Er heißt, dass die Schulden auf das 1,72-Fache wachsen oder der Preis der Sicherheit um 1 − 1 ÷ 1,72 = 41,9 % fallen könnten, bevor die Grenze erreicht ist.
+
+Der Health Factor wird nicht on-chain gespeichert. Der Vertrag von Morpho prüft nur, ob eine Position gesund ist; Apps, die API von Morpho und Tokenping teilen das Kreditlimit durch die Schulden, um ihn als Zahl anzuzeigen.
+
+## Wie ist ein Markt auf Morpho Blue aufgebaut?
+
+Morpho Blue, das die Doku von Morpho inzwischen seine Märkte mit variablem Zinssatz nennt, ist eine Reihe getrennter Kreditmärkte. Jeder wird durch fünf Parameter bestimmt, die bei der Erstellung des Markts gewählt werden:
+
+| Parameter          | Was er ist                                               | Im Beispielmarkt      |
+| ------------------ | -------------------------------------------------------- | --------------------- |
+| Kredit-Token       | Der eine Token, den du leihen kannst                     | USDC                  |
+| Sicherheiten-Token | Der eine Token, den du hinterlegen kannst                | cbBTC                 |
+| Orakel             | Der Vertrag, der die Sicherheit im Kredit-Token bewertet | Ein BTC/USD-Preisfeed |
+| Zinsmodell (IRM)   | Der Vertrag, der den Kreditzins festlegt                 | AdaptiveCurveIRM      |
+| LLTV               | Der Liquidations-LTV                                     | 86 %                  |
+
+Die App von Morpho benennt Märkte danach, mit dem Kredit-Token zuerst: „USDC | cbBTC (86%)“. Jeder kann einen Markt erstellen, aber nur mit einem LLTV und einem IRM, die die Governance von Morpho freigeschaltet hat. Nach der Erstellung lässt sich keiner der fünf ändern: Der Vertrag hat keine Funktion, um sie zu bearbeiten, und die Governance kann neue LLTVs freischalten, aber nie einen abschalten.
+
+Da ein Markt eine Sicherheit und einen Kredit-Token hat, decken deine Sicherheiten in einem Markt keine Schulden in einem anderen. Die Doku von Morpho sagt es klar: Sicherheiten gelten für jeden Markt einzeln und werden nicht marktübergreifend verrechnet (not cross-margined). Zwei Kredite in zwei Märkten haben zwei Health Factors.
+
+## Wie berechnet Morpho den Health Factor?
+
+Morpho Blue prüft die Gesundheit an einer Stelle in seinem Vertrag, `_isHealthy`, und dieselbe Prüfung schützt Kreditaufnahme, Abheben von Sicherheiten und Liquidation:
+
+1. **Schulden:** deine Borrow-Shares, in Kredit-Token umgerechnet, aufgerundet.
+2. **Wert der Sicherheiten:** Menge der Sicherheit × Orakelpreis ÷ 10^36, abgerundet.
+3. **Kreditlimit:** Wert der Sicherheiten × LLTV, abgerundet.
+4. **Gesund**, solange das Kreditlimit mindestens so groß ist wie die Schulden.
+
+Der Health Factor ist Schritt 3 geteilt durch Schritt 1. Gerundet wird immer zugunsten des Protokolls, daher lässt dich der Vertrag unter Umständen eine Einheit weniger leihen als das exakte Limit. Bei genau 1,00 zählt der Vertrag die Position noch als gesund; liquidierbar wird sie, sobald die Schulden größer sind als das Limit, was dasselbe ist wie ein Health Factor unter 1.
+
+### Was bedeutet die Skala 10^36 des Orakels?
+
+Ein Morpho-Orakel (oracle) liefert den Preis eines Sicherheiten-Tokens in Kredit-Token, multipliziert mit 10^36 und angepasst an die Dezimalstellen der beiden Token. Um ihn zu lesen, multiplizierst du mit 10^(Dezimalstellen der Sicherheit − Dezimalstellen des Kredit-Tokens) und teilst durch 10^36. Im Beispielmarkt hat cbBTC 8 Dezimalstellen und USDC 6, also ergibt der Rohwert 800114843487200000000000000000000000000 × 10^2 ÷ 10^36 = 80.011,48 USDC pro cbBTC.
+
+Das Orakel ist der Vertrag, den der Ersteller des Markts gewählt hat. Die Kommentare im Vertrag von Morpho sagen, dass es in der Verantwortung des Nutzers liegt, Märkte mit sicheren Orakeln zu wählen, und die Doku weist darauf hin, dass ein Orakel mehrere Feeds kombinieren oder sich auf andere On-chain-Daten stützen kann. Dein Health Factor kann nur so zuverlässig sein wie dieses Orakel und die Feeds, die es liest.
+
+## Rechenbeispiel: Welchen Health Factor haben 1 cbBTC gegen 40.000 USDC?
+
+Der größte gelistete Morpho-Markt auf Ethereum nach geliehenem Wert war am 26. Oktober 2026 USDC | cbBTC (86%), mit rund 309,13 Mio. USDC geliehen bei 343,18 Mio. eingezahlt (Ethereum-Block 26274955). Sein Orakel bewertete cbBTC mit 80.011,48 USDC, allein aus einem BTC/USD-Preisfeed, der Markt zählt also 1 cbBTC als 1 BTC und 1 USDC als 1 Dollar.
+
+Nimm 1 cbBTC als Sicherheit und 40.000 USDC Schulden:
+
+1. Wert der Sicherheiten: 1 × 80.011,48 = 80.011,48 USDC.
+2. Kreditlimit: 80.011,48 × 0,86 = 68.809,88 USDC.
+3. Health Factor: 68.809,88 ÷ 40.000 = **1,72**.
+4. LTV: 40.000 ÷ 80.011,48 = 50,0 %, gegenüber dem LLTV von 86 %.
+5. Liquidationspreis: 40.000 ÷ (1 × 0,86) = **46.511,63 USDC pro cbBTC**, 41,9 % unter 80.011,48.
+
+Auch Zinsen bewegen ihn. Der Kreditzins des Markts lag in diesem Block bei 4,89 % pro Jahr, was mit Zinseszins 5,01 % ergibt. Blieben Zinssatz und Preis ein Jahr lang, wo sie waren, wüchsen die Schulden auf rund 42.003 USDC und der Health Factor rutschte auf 1,64.
+
+### Was halten echte Kreditnehmer in diesem Markt?
+
+Die API von Morpho listete am 26. Oktober 2026 in diesem Markt 437 Kreditpositionen. Von den 435 mit einem Health Factor lag der Median bei 1,96, ein Viertel lag unter 1,58, ein Zehntel unter 1,35, und der niedrigste Wert war 1,05. Rund 3 % lagen unter 1,2. Über den ganzen Markt deckten 8.419,83 cbBTC 309,13 Mio. USDC Schulden, ein Gesamt-Health-Factor von etwa 1,87.
+
+## Wie hängen LTV, LLTV und Health Factor zusammen?
+
+Die Beleihungsquote (LTV) sind deine Schulden geteilt durch den Wert deiner Sicherheiten. Der LLTV ist die feste Obergrenze des Markts dafür. Mit einer Sicherheit und gleichbleibenden Schulden ist der Health Factor ihr Verhältnis:
+
+**Health Factor = LLTV ÷ LTV**
+
+Auf Morpho Blue ist der LLTV die einzige Grenze. Es gibt kein eigenes, niedrigeres Limit für neue Kredite, daher lässt dich der Vertrag leihen oder Sicherheiten abheben, bis der Health Factor 1,00 ist. Die Entwickler-Doku von Morpho bittet Apps, einen Abstand zu halten, zum Beispiel keine Kredite unter einen Health Factor von 1,05 zuzulassen, aber der Abstand ist eine Entscheidung, keine Regel des Vertrags. Wie weit du unter der Grenze bleibst, entscheidet über deinen Puffer, unabhängig vom LLTV:
+
+| Geliehen, als Anteil am Limit | Health Factor | Preisrückgang der Sicherheit bis zur Liquidation |
+| ----------------------------- | ------------- | ------------------------------------------------ |
+| 50 %                          | 2,00          | 50 %                                             |
+| 70 %                          | 1,43          | 30 %                                             |
+| 80 %                          | 1,25          | 20 %                                             |
+| 90 %                          | 1,11          | 10 %                                             |
+| 100 %                         | 1,00          | 0 %                                              |
+
+## Welche LLTVs kann ein Morpho-Markt verwenden?
+
+Am 26. Oktober 2026 akzeptierte Morpho Blue auf Ethereum und auf Base die neun LLTVs auf der von der Governance genehmigten Liste von Morpho: 0 %, 38,5 %, 62,5 %, 77 %, 86 %, 91,5 %, 94,5 %, 96,5 % und 98 % (jeder als freigeschaltet gelesen in Ethereum-Block 26274950 und Base-Block 53102888). Ein LLTV von 0 erlaubt überhaupt keine Kredite. Ein LLTV auf Blue muss unter 100 % liegen.
+
+Der LLTV legt auch den Liquidationsanreiz fest, die zusätzlichen Sicherheiten, die ein Liquidator erhält: 1 ÷ (1 − 0,3 × (1 − LLTV)), begrenzt auf 1,15. Bei einem LLTV von 86 % sind das 1,0438: Ein Liquidator, der 100 USDC deiner Schulden zurückzahlt, erhält 104,38 USDC deiner Sicherheiten. Ein höherer LLTV bedeutet einen kleineren Anreiz. Die Doku von Morpho rundet den Anreiz bei 86 % auf etwa 5 %; die Formel im Vertrag ergibt 4,38 %. Den Anreiz bei jedem freigeschalteten LLTV, was eine Liquidation nimmt und wie viel eines Kredits auf einmal gehen kann, erklärt [so funktioniert die Liquidation bei Morpho](/de/blog/so-funktioniert-die-liquidation-bei-morpho). Den Anreiz zahlst du, aus deinen Sicherheiten; dein eigener Puffer ist der Abstand zwischen deinem Health Factor und 1,00.
+
+## Was bewegt einen Morpho Health Factor?
+
+Drei Dinge können ihn bewegen, während du nichts tust:
+
+- **Der Preis der Sicherheit, wie das Orakel ihn sieht.** Im cbBTC-Beispiel bewegt sich der Health Factor mit dem BTC/USD-Feed und ändert sich nur, wenn dieser Feed aktualisiert wird.
+- **Der Preis des Kredit-Tokens, wenn das Orakel ihn verwendet.** Ein Orakel mit einem Quote-Feed reagiert auch auf den Kredit-Token. Das Orakel des cbBTC-Markts hat keinen, ein Depeg (Verlust der Dollarbindung) von USDC würde diesen Health Factor also nicht bewegen. Ebenso wenig eine Abweichung zwischen cbBTC und BTC.
+- **Zinsen.** Auf Morpho Blue wachsen die Schulden, während Zinsen auflaufen, und die Doku von Morpho warnt, dass eine Position allein durch Zinsen mit der Zeit riskanter werden kann. Das AdaptiveCurveIRM zielt auf 90 % Auslastung und erhöht den Zinssatz, wenn ein Markt stärker gefragt ist, und senkt ihn, wenn es ruhiger ist, wobei der Zinssatz bei 90 % Auslastung zwischen 0,1 % und 200 % pro Jahr bleibt. Bei voller Auslastung kann der Zinssatz bis zum Vierfachen des Zinssatzes beim Ziel betragen, also bis zu 800 % pro Jahr. Wie ein Zinsanstieg auf einen Health Factor wirkt, zeigt für Aave der Ratgeber [wie die Zinssätze bei Aave funktionieren](/de/blog/aave-zinssaetze#wie-wirken-sich-zinssprunge-auf-deinen-health-factor-aus); bei einem Morpho-Kredit ist die Wirkung dieselbe.
+
+Was die Governance von Morpho nicht bewegen kann, ist der Markt selbst: Der LLTV, die Orakeladresse und das IRM eines Markts sind fest. Das Orakel liest seinen Preis trotzdem aus den Feeds dahinter, es ist also nur so zuverlässig wie sie. Die Governance kann eine Marktgebühr von bis zu 25 % der Zinsen festlegen, aber diese teilt die Zinsen zwischen Kreditgebern und dem Gebührenempfänger auf; sie ändert nicht, was Kreditnehmer schulden.
+
+Das Orakel entscheidet, welche Preise zählen. Im Markt WETH | wstETH (96.5%) von Morpho auf Ethereum bewertet das Orakel wstETH zum eigenen Wechselkurs von Lido, 1,24717 WETH pro wstETH in Block 26274979, und zählt 1 stETH als 1 ETH. Der Dollarpreis von ETH bewegt diesen Health Factor überhaupt nicht. 10 wstETH gegen 11 WETH ergeben dort 12,4717 × 0,965 ÷ 11 = 1,094, und für eine Liquidation müsste der Wechselkurs auf 1,1399 fallen, 8,6 % tiefer. Nur Zinsen und dieser Wechselkurs bewegen diesen Health Factor.
+
+## Wie berechnest du deinen Liquidationspreis auf Morpho?
+
+Für eine Blue-Position ist der Liquidationspreis der Orakelpreis, bei dem deine Schulden deinem Kreditlimit entsprechen:
+
+**Liquidationspreis = Schulden ÷ (Menge der Sicherheit × LLTV)**
+
+Er wird in Kredit-Token pro Sicherheiten-Token angegeben, weil das Orakel ihn so bewertet. Bei einem Health Factor h muss der Preis der Sicherheit um 1 − 1 ÷ h fallen, um ihn zu erreichen (siehe Tabelle oben). Während die Schulden mit den Zinsen wachsen, steigt der Liquidationspreis langsam.
+
+Wenn du für den Markt einen Vorliquidationsvertrag autorisiert hast, kann ein Teil deiner Position früher geschlossen werden, bei einem niedrigeren LTV als dem LLTV. Der cbBTC-Markt hat einen, mit einem Vorliquidations-LTV von 83,26 %: Bei 1 cbBTC gegen 40.000 USDC liegt der Health Factor gemessen an dieser Grenze bei 1,67 statt 1,72. Morpho stellt diese Funktion ein: Die App bietet sie nicht mehr an, und Morpho bittet Kreditnehmer, die sie haben, sie abzuschalten. Wie sie funktioniert und wie du sie prüfst und widerrufst, steht in [Morpho Vorliquidation](/de/blog/morpho-vorliquidation).
+
+## Wie funktioniert der Health Factor auf Morpho Midnight?
+
+Morpho Midnight, die Märkte von Morpho mit festem Zinssatz, berechnet die Gesundheit genauso, mit drei Unterschieden: Ein Markt kann mehrere Sicherheiten akzeptieren, die Schulden wachsen nicht mit der Zeit, und die Fälligkeit ist eine harte Grenze.
+
+- **Mehrere Sicherheiten, addiert.** Ein Midnight-Markt hat einen Kredit-Token, ein Fälligkeitsdatum und eine oder mehrere Sicherheiten, jede mit eigenem LLTV und eigenem Orakel. Der Vertrag addiert Wert der Sicherheit × LLTV für jede, die du hinterlegt hast, und vergleicht die Summe mit deinen Schulden. Der Health Factor ist diese Summe ÷ Schulden.
+- **Feste Schulden.** Du schuldest einen Nennbetrag, einen Kredit-Token pro Einheit, fällig zur Fälligkeit. Die Zinsen sind bei der Kreditaufnahme eingepreist: Du erhältst weniger als einen Kredit-Token für jede Einheit, die du schuldest, daher bewegen zwischen Trades nur die Preise der Sicherheiten einen Midnight Health Factor.
+- **Die Fälligkeit ist eine harte Grenze.** Nach der Fälligkeit können alle noch offenen Schulden liquidiert werden, unabhängig vom Health Factor, und in diesem Modus nach der Fälligkeit wächst der Anreiz des Liquidators in der ersten Stunde von null auf seine volle Höhe.
+
+Ein Midnight-Markt kann auch einschränken, wer liquidieren darf, mit einer Sperre, die bei der Erstellung des Markts gesetzt wird; der Beispielmarkt unten hat keine.
+
+Der größte gelistete Midnight-Markt auf Ethereum am 26. Oktober 2026, mit rund 23,9 Mio. ausstehenden USDC-Schuldeinheiten, verleiht USDC bis zum 25. Dezember 2026, gegen USDC mit einem LLTV von 98 % und cbBTC mit 86 %, mit demselben cbBTC-Orakel wie der Blue-Markt oben. Hinterlegst du 0,5 cbBTC und 10.000 USDC gegen 40.000 Schuldeinheiten, ist das Limit 34.404,94 + 9.800 = 44.204,94, ein Health Factor von 1,105. Fälligkeit, Verlängerung (rollover) und Liquidation nach der Fälligkeit erklärt [Morpho Midnight Festzinskredite](/de/blog/morpho-midnight-festzinskredite).
+
+## Wie unterscheidet sich der Morpho Health Factor von dem bei Aave?
+
+Die Formel hat auf beiden dieselbe Form: Sicherheiten, gewichtet mit einer Schwelle, geteilt durch Schulden. Die Regeln drumherum unterscheiden sich, wie der [Ratgeber zum Aave Health Factor](/de/blog/aave-health-factor-erklaert#health-factor-ltv-und-liquidationsschwelle-was-ist-der-unterschied) aus Sicht von Aave erklärt:
+
+|                                | Morpho Blue                                     | Aave V3                                                                                                                                                                                       |
+| ------------------------------ | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Einheit                        | Ein Markt: eine Sicherheit, ein Kredit-Token    | Ein Markt (ein Pool in einem Netzwerk): alle deine Sicherheiten und Schulden dort                                                                                                             |
+| Wie Preise gesetzt werden      | Das eigene Orakel jedes Markts, im Kredit-Token | Das Aave-Orakel, in USD                                                                                                                                                                       |
+| Kreditlimit                    | Bis zum LLTV, Health Factor 1,00                | Ein niedrigerer LTV, daher lässt ein maximaler Kredit bei WETH [etwa 1,03](/de/blog/aave-health-factor-erklaert#warum-bleibt-beim-maximalen-kredit-nur-ein-health-factor-von-etwa-103) übrig |
+| Korrelierte Assets             | Getrennte Märkte mit hohem LLTV                 | [E-Mode](/de/blog/aave-health-factor-erklaert#wie-verandert-e-mode-den-health-factor)-Kategorien                                                                                            |
+| Kann sich die Schwelle ändern? | Nein, bei der Erstellung des Markts festgelegt  | Ja, die Governance und die Risk Stewards können sie ändern                                                                                                                                    |
+
+Aave V4 ändert einiges davon, mit einem Health Factor pro Spoke und einem Sicherheitenfaktor pro Asset; siehe [wie der Health Factor auf Aave V4 funktioniert](/de/blog/aave-health-factor-erklaert#ist-der-health-factor-bei-aave-v4-anders).
+
+Der praktische Unterschied: Auf Aave betrifft ein Problem mit einem Asset deinen ganzen Markt, auf Morpho bleibt es innerhalb eines Markts. Und auf Morpho hindert dich nichts im Vertrag daran, bis an den Rand zu leihen, den Abstand musst du also selbst halten.
+
+## Wo siehst du deinen Morpho Health Factor?
+
+Laut dem Hilfecenter von Morpho zeigt die App bei jeder Position den Health Factor und den Liquidationspreis. Die API von Morpho liefert `healthFactor` und die Preisänderung bis zur Liquidation für Blue-Positionen; für Midnight liefert sie Positionen und Marktparameter, und ihre Doku sagt Integratoren, das Orakel jeder Sicherheit on-chain zu lesen und das Limit selbst zu berechnen.
+
+Das [Morpho-Dashboard](/de/morpho) von Tokenping zeigt die Blue- und Midnight-Kreditpositionen einer Wallet, mit Health Factors, die aus der Chain mit der eigenen Mathematik von Morpho berechnet und nie aus der API von Morpho übernommen werden.
+
+## Wie wählst du einen Puffer und einen Alert-Schwellenwert?
+
+Geh davon aus, wie weit sich der Preis bewegen könnte, bevor du handeln kannst, und plane dann Raum für Zinsen ein:
+
+- **Wähle die Bewegung, die du überstehen willst.** Nutze die Tabelle im Abschnitt zum LTV oben: Der Preisrückgang, den du abdecken willst, bestimmt den Health Factor.
+- **Schau dir das Orakel an.** Ein BTC/USD-Orakel bewegt sich mit BTC. Ein Wechselkurs-Orakel wie das des wstETH-Markts bewegt sich viel weniger, aber der Kreditzins und der Wechselkurs selbst bewegen deinen Health Factor trotzdem, und ein hoher LLTV lässt für beides wenig Raum.
+- **Miss an der nächstgelegenen Grenze.** Wenn du die Vorliquidation autorisiert hast, kann ein Teil deines Kredits gehen, bevor der Health Factor 1,00 erreicht.
+- **Auf Midnight: Achte auf das Datum.** Zinsen zehren den Puffer nicht auf, aber Schulden, die nach der Fälligkeit offen sind, können bei jedem Health Factor liquidiert werden.
+- **Wisse, wie du ihn erhöhst.** Zahle einen Teil der Schulden zurück oder füge Sicherheiten im selben Markt hinzu: Sicherheiten in einem anderen Morpho-Markt zählen nicht. Auf Midnight kannst du jede Sicherheit hinzufügen, die der Markt akzeptiert.
+
+Die Entwickler-Doku von Morpho nennt 1,1 als Beispielwert für eine Warnung. Die Überlegungen hinter Puffern findest du in [wie viel Puffer du brauchst, um Zeit zum Handeln zu haben](/de/blog/sicherer-health-factor-aave#wie-viel-puffer-brauchst-du-um-zeit-zum-handeln-zu-haben), geschrieben für Aave, aber mit derselben Rechnung.
+
+## Wie können Health-Factor-Alerts auf Morpho helfen?
+
+Tokenping prüft Morpho-Positionen alle 5 Minuten in 14 Netzwerken: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable und Tempo. Es deckt Kreditpositionen in Märkten ab, die in der Morpho-App gelistet sind, sowohl Morpho Blue als auch Morpho Midnight. Midnight-Alerts decken die Märkte ab, die die API von Morpho listet. Am 26. Oktober 2026 waren das Märkte auf Ethereum und Base; Tokenping deckt auch Arc und Robinhood Chain ab, sobald Morpho dort Midnight-Märkte listet.
+
+- **Schwellenwert:** Du legst ihn zwischen 1,02 und 10 fest. Solange der Health Factor darunter liegt, schickt jede Prüfung eine Nachricht über jeden Kanal, den du gewählt hast: Signal, Telegram oder E-Mail.
+- **Vorliquidation:** Wenn du auf einem Blue-Markt einen Vorliquidationsvertrag autorisiert hast, verwendet der Alert den niedrigeren von zwei Health Factors: den gegen den LLTV gemessenen und den gegen die Vorliquidationsgrenze gemessenen.
+- **Fälligkeit:** Ein Midnight-Kredit bekommt außerdem eine Erinnerung in seinen letzten 7 Tagen und eine in seinen letzten 24 Stunden, danach einen Alert bei jeder Prüfung nach der Fälligkeit, solange Schulden bleiben.
+
+Deine Positionen auf dem [Morpho-Dashboard](/de/morpho) anzusehen braucht keine Zahlung; Alerts kosten <AlertPrice />, derselbe Plan wie bei den Aave-Alerts. Ein Alert verschafft dir Zeit zum Handeln; er verhindert keine Liquidation, weil sich ein Preis zwischen zwei Prüfungen bewegen kann.
+
+## Quellen
+
+- [Morpho-Doku: Variable Rate Market (Morpho Blue)](https://docs.morpho.org/learn/concepts/blue): die fünf Parameter, Marktnamen, von der Governance genehmigte LLTVs und IRM (abgerufen am 26. Oktober 2026)
+- [Morpho-Doku: Collateral, LTV and health (Entwickler)](https://docs.morpho.org/developers/borrow/concepts/ltv): Formel, Skala des Orakels, keine marktübergreifende Verrechnung, Hinweise für Integrationen (abgerufen am 26. Oktober 2026)
+- [Morpho-Doku: Liquidation](https://docs.morpho.org/learn/concepts/liquidation) und [Morpho-Hilfecenter: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): Liquidationsanreiz, wo die App den Health Factor zeigt (abgerufen am 26. Oktober 2026)
+- [Morpho-Doku: Interest rate model](https://docs.morpho.org/learn/concepts/irm) und [Zinssätze für Integratoren](https://docs.morpho.org/developers/borrow/concepts/interest-rates): AdaptiveCurveIRM, Auflaufen der Zinsen (abgerufen am 26. Oktober 2026)
+- [Morpho-Doku: Get data (Entwickler)](https://docs.morpho.org/developers/borrow/tutorials/get-data): Code für Health Factor und Liquidationspreis (abgerufen am 26. Oktober 2026)
+- [Morpho-Doku: What is Midnight? (Fixed Rate Markets)](https://docs.morpho.org/learn/concepts/midnight) und [Sicherheiten, Gesundheit und Liquidationen auf Midnight](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) (abgerufen am 26. Oktober 2026)
+- [Morpho-Doku: Governance organization](https://docs.morpho.org/learn/governance/organization), [Vertragsadressen](https://docs.morpho.org/developers/contracts/addresses) und [Listing-Richtlinie der Oberfläche](https://docs.morpho.org/get-started/resources/interface-listing-policy) (abgerufen am 26. Oktober 2026)
+- [morpho-blue](https://github.com/morpho-org/morpho-blue): `Morpho.sol`, `ConstantsLib.sol`, `IOracle.sol` (abgerufen am 26. Oktober 2026)
+- [midnight](https://github.com/morpho-org/midnight): `Midnight.sol`, `ConstantsLib.sol` (abgerufen am 26. Oktober 2026)
+- [pre-liquidation](https://github.com/morpho-org/pre-liquidation) und [morpho-blue-irm](https://github.com/morpho-org/morpho-blue-irm) (abgerufen am 26. Oktober 2026)
+- [API-Doku von Morpho: Morpho Blue](https://docs.morpho.org/developers/api/morpho/) und [Morpho Midnight](https://docs.morpho.org/developers/api/morpho-midnight) (GraphQL-Endpoint api.morpho.org/graphql, Midnight-REST-Endpoints unter api.morpho.org/v0/midnight): Marktranglisten, Positionen und Vorliquidationsverträge (abgerufen am 26. Oktober 2026)
+- On-chain-Abfragen von [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), dem [USDC | cbBTC-Orakel](https://etherscan.io/address/0xA6D6950c9F177F1De7f7757FB33539e3Ec60182a#readContract), dem [WETH | wstETH-Orakel](https://etherscan.io/address/0xbD60A6770b27E084E8617335ddE769241B0e71D8#readContract) und [Morpho Midnight](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract) auf Ethereum in den Blöcken 26274950 bis 26274984 und von [Morpho Blue auf Base](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) in Block 53102888 (abgerufen am 26. Oktober 2026)
+
+_Bildungsinhalt, keine Finanzberatung. Alerts senken das Risiko, verhindern aber keine Liquidation._

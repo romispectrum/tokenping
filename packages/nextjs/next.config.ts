@@ -13,6 +13,8 @@ const HOME_LINKS = [
   { source: "/cz", feed: "/cz/blog/feed.xml", privacy: "/cz/ochrana-soukromi" },
   { source: "/es", feed: "/es/blog/feed.xml", privacy: "/es/privacidad" },
   { source: "/hi", feed: "/hi/blog/feed.xml", privacy: "/hi/gopaniyata" },
+  { source: "/de", feed: "/de/blog/feed.xml", privacy: "/de/datenschutz" },
+  { source: "/vi", feed: "/vi/blog/feed.xml", privacy: "/vi/quyen-rieng-tu" },
 ];
 const homeLinkHeader = ({ feed, privacy }: { feed: string; privacy: string }) =>
   [
@@ -74,6 +76,18 @@ const MARKDOWN_PAGES = [
   "/hi/blog",
   "/hi/blog/:slug([^./]+)",
   "/hi/gopaniyata",
+  "/de",
+  "/de/aave",
+  "/de/morpho",
+  "/de/blog",
+  "/de/blog/:slug([^./]+)",
+  "/de/datenschutz",
+  "/vi",
+  "/vi/aave",
+  "/vi/morpho",
+  "/vi/blog",
+  "/vi/blog/:slug([^./]+)",
+  "/vi/quyen-rieng-tu",
 ];
 const ACCEPTS_MARKDOWN = { type: "header", key: "accept", value: ".*text/markdown.*" } as const;
 const markdownRewrite = (source: string) => ({
