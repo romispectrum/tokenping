@@ -38,6 +38,7 @@ yarn next:build     # Build frontend
 yarn compile        # Compile Solidity contracts
 
 # Scripts
+yarn next:fonts             # Download Satoshi from Fontshare (not in the repo: its license forbids passing the files on)
 yarn next:token-icons       # Refresh Aave token icons from CoinGecko
 yarn next:network-icons     # Refresh network logos from CoinGecko
 yarn next:telegram-webhook  # Register the Telegram bot's webhook (info | set <url>)

@@ -71,6 +71,13 @@ user's theme is dark, for UI that reports the theme, such as the toggle's icon.
   transaction ids and numbers compared digit by digit, nothing else.
 - Both load through `next/font` in `components/RootDocument.tsx`, with `display: "swap"` and a metric-matched fallback.
   Only Satoshi's upright face is preloaded; its italic (same family) and Geist Mono load on the pages that use them.
+- **Font licenses.** Geist Mono (through `next/font/google`) and Noto Sans Devanagari (the Hindi social cards, in
+  `app/fonts/og` with its license text) are under the SIL Open Font License, which allows shipping the files.
+  Satoshi is Indian Type Foundry's and has a stricter license: using it on our own site and in images is allowed,
+  passing the files on is not, and a public repository counts. So **the Satoshi files are never committed**: `yarn
+  next:fonts` downloads the official files from Fontshare and checks each against the SHA-256 pinned in
+  `scripts/satoshiFonts.ts`, and `yarn build`, `yarn dev` and `yarn test` run it first. Never edit, subset or convert a
+  Satoshi file (the license forbids it), never add one to `public/`, and a test fails if git tracks one.
 - Weights: 400 body; 500 headings, buttons, labels, nav (`h1` to `h6` are 500 already); 700 only for data emphasis
   (table headers, totals, key numbers, kickers, the uppercase `brand` badge). Never 600.
 - Marketing: `text-display` (hero h1), `text-section` (section h2), `text-lead` (sublines), `Kicker`. Product UI:

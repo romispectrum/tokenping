@@ -160,6 +160,10 @@ Requirements: [Node](https://nodejs.org/en/download/) 22 (22.12 or later), 24 or
 ```bash
 yarn install
 
+# Satoshi, the typeface, is not in the repository (its license forbids passing the files on). Downloads the official
+# files from Fontshare; `yarn start`, `yarn next:build` and `yarn next:test` do this on their own when it is missing.
+yarn next:fonts
+
 # 1. Local chain (terminal 1)
 yarn chain
 
