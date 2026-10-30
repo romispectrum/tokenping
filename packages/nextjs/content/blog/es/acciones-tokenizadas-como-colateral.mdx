@@ -1,0 +1,140 @@
+export const meta = {
+  slug: "acciones-tokenizadas-como-colateral",
+  title: "Pedir prestado contra acciones tokenizadas en Aave y Morpho",
+  description:
+    "Acciones tokenizadas como colateral en Aave V4 y Morpho: cómo las valoran los oráculos, por qué se paran los precios en fin de semana y el salto del lunes.",
+  h1: "¿Cómo funciona pedir prestado contra acciones tokenizadas y qué pasa durante un fin de semana?",
+  publishedAt: "2026-10-30",
+  primaryQuestion: "¿Puedes pedir prestado contra acciones tokenizadas en Aave o Morpho, y cuáles son los riesgos?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Puedes pedir prestadas stablecoins contra acciones estadounidenses tokenizadas en dos lugares que cubre Tokenping: el
+  Coinbase Stocks Spoke de Aave V4 en Base (tokens de Apple, Amazon, Alphabet, Meta, Microsoft, Nvidia y Tesla, con
+  préstamos en USDC y factores de colateral del 65% al 79%) y los mercados de Morpho en Robinhood Chain (NVDA, SPY,
+  SpaceX y otros, con préstamos en USDG, en su mayoría con un LLTV del 62.5%). El factor de salud (health factor)
+  funciona como con cualquier colateral, con una diferencia: los feeds de Chainlink que valoran estos tokens se detienen
+  desde el viernes por la tarde hasta el domingo a las 20:00, hora de Nueva York. Durante un fin de semana tu factor de
+  salud solo puede moverse por los intereses, y el domingo por la noche el precio salta a donde cotice la acción. Desde
+  el lanzamiento, el mayor salto de fin de semana en los siete feeds de Aave fue del 1.24%, pero un salto del 25%
+  llevaría un préstamo abierto en 1.33 directamente a la liquidación, sin tiempo para actuar entre medias.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Las cifras y los bloques en los que se leyeron: content/blog/snapshots/tokenized-stocks-collateral.md */}
+
+## ¿Qué es una acción tokenizada?
+
+Una acción tokenizada es un token cuyo valor sigue a una acción cotizada, emitido por una empresa que tiene o cubre las acciones reales y promete una relación fija entre ambas. No es la acción. Los dos emisores cuyos tokens hoy puedes usar como colateral en Aave y Morpho describen los suyos de forma distinta:
+
+- **Coinbase Tokenized Stocks** (AAPLc, NVDAc, etc.) son certificados emitidos por Coinbase Onchain SPV Ltd. Las acciones subyacentes están en Alpaca Securities, un broker-dealer estadounidense, en cuentas segregadas a nombre del emisor, según el anuncio de lanzamiento de Aave.
+- **Robinhood Stock Tokens** (NVDA, SPY, etc., en Robinhood Chain) son "tokenised debt securities issued by Robinhood Assets (Jersey) Limited" (títulos de deuda tokenizados emitidos por Robinhood Assets (Jersey) Limited), y la documentación de Robinhood dice que no otorgan ningún derecho legal ni económico sobre la empresa subyacente.
+
+Ambos comparten tres cosas que importan para un préstamo. Ninguno se ofrece a personas estadounidenses; Robinhood también restringe Canadá, el Reino Unido y Suiza. Los dividendos no se pagan, sino que se reinvierten mediante un **multiplicador**, un número que empieza en 1.0 y sube, así que un token representa poco a poco algo más de una acción y su precio se va alejando por encima del de la acción. Y el precio del oráculo ya incluye ese multiplicador: la fórmula de Chainlink es "Token Price = Underlying Equity Market Price × Multiplier" (precio del token = precio de mercado de la acción subyacente × multiplicador).
+
+## ¿Dónde puedes pedir prestado contra acciones tokenizadas?
+
+| Plataforma                             | Colateral                                                         | Pides prestado | Línea de liquidación                                                                      | Tamaño el 30 de octubre de 2026                                                |
+| -------------------------------------- | ----------------------------------------------------------------- | -------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Aave V4, Coinbase Stocks Spoke en Base | AAPLc, AMZNc, GOOGLc, METAc, MSFTc, NVDAc, TSLAc                  | Solo USDC      | Factor de colateral del 65% (META, TSLA) al 79% (MSFT)                                    | 11.23 millones de USD de colateral en acciones, 5.02 millones de USDC de deuda |
+| Morpho en Robinhood Chain              | Tokens de Robinhood como NVDA, GOOGL, AAPL, META, TSLA, SPCX, SPY | USDG           | LLTV del 62.5% en la mayoría de los mercados listados, 77% para SPY y un mercado de GOOGL | 1.75 millones de USD de deuda en 261 mercados de acciones en todas las cadenas |
+| Aave V3                                | Ninguno                                                           |                |                                                                                           | Ningún mercado de V3 lista una acción tokenizada                               |
+
+El Spoke de Aave abrió el 25 de septiembre de 2026 y trata los tokens de acciones solo como colateral: no puedes pedirlos prestados, ni pedir prestada una acción contra otra. Cada token tiene su propio factor de colateral (collateral factor); en Aave V4 ese único número es a la vez el límite de préstamo y la línea de liquidación, como explica la [sección sobre Aave V4 de la guía de liquidación](/es/blog/como-funciona-la-liquidacion-en-aave#en-que-se-diferencian-las-liquidaciones-en-aave-v4). La configuración del Spoke el 30 de octubre de 2026:
+
+| Token  | Factor de colateral | Depositado                |
+| ------ | ------------------- | ------------------------- |
+| MSFTc  | 79%                 | 620.86 (325,687 USD)      |
+| AAPLc  | 78%                 | 2,086.63 (732,586 USD)    |
+| GOOGLc | 76%                 | 12,739.91 (3,584,144 USD) |
+| AMZNc  | 73%                 | 1,938.90 (440,347 USD)    |
+| NVDAc  | 70%                 | 14,491.46 (3,032,892 USD) |
+| METAc  | 65%                 | 3,374.37 (2,088,305 USD)  |
+| TSLAc  | 65%                 | 2,610.34 (1,030,491 USD)  |
+
+Los préstamos contra acciones de Morpho en Robinhood Chain se activaron el 22 de octubre de 2026. La mayor parte de su deuda respaldada por acciones está en mercados que la aplicación de Morpho no lista: de los 1.75 millones de USD prestados contra tokens de acciones en todas las cadenas, 1.63 millones están en mercados no listados, el mayor un mercado NVDA / USDG con 623,189 USD de deuda, frente a 118,750 USD en los listados. Eso importa para el oráculo, como muestran las secciones siguientes. En Ethereum, Morpho también lista algunos mercados contra los tokens de Ondo (SPYon, QQQon, TSLAon) y un token S&P 500 de xStocks.
+
+## ¿Cómo se valoran on-chain las acciones tokenizadas?
+
+Las dos plataformas usan los feeds de acciones tokenizadas de Chainlink: "Coinbase NVDA" y sus seis hermanos en Base para Aave, "RHNVDA / USD" y similares en Robinhood Chain para los mercados listados de Morpho. Estos feeds siguen las sesiones bursátiles de Estados Unidos cinco días a la semana: la sesión regular (de 09:30 a 16:00, hora de Nueva York), el pre-market desde las 04:00, el post-market hasta las 20:00 y una sesión nocturna de 20:00 a 04:00 construida a partir de menos mercados y suavizada con una media móvil.
+
+Lo que no hacen es publicar los fines de semana ni los días festivos bursátiles de Estados Unidos. La documentación de Chainlink es explícita: "These feeds do not publish updates, including heartbeat updates, while markets are closed." (Estos feeds no publican actualizaciones, ni siquiera las de heartbeat, mientras los mercados están cerrados). El feed sigue devolviendo el último valor que publicó, y su marca de tiempo simplemente envejece. El último fin de semana lo muestra en las dos cadenas:
+
+| Feed                           | Última actualización antes del fin de semana | Primera actualización después              | Cambio de precio |
+| ------------------------------ | -------------------------------------------- | ------------------------------------------ | ---------------- |
+| Coinbase NVDA (Base)           | viernes 23 de octubre, 19:54 UTC, 211.45 USD | lunes 26 de octubre, 00:00 UTC, 211.87 USD | +0.20%           |
+| RHNVDA / USD (Robinhood Chain) | viernes 23 de octubre, 19:55 UTC, 211.16 USD | lunes 26 de octubre, 00:00 UTC, 211.92 USD | +0.36%           |
+
+El lunes a las 00:00 UTC es el domingo a las 20:00 en Nueva York, cuando abre la sesión nocturna. Entre esas dos rondas pasaron 52 horas sin un solo precio nuevo. Lo mismo vale para un factor de salud de Aave con estos tokens y para un factor de salud de Morpho en un mercado de acciones listado: el precio de entrada está congelado.
+
+## ¿Qué le pasa a tu factor de salud durante un fin de semana?
+
+Mientras el feed está en pausa, la parte del precio de tu factor de salud no puede moverse. El propio anuncio de lanzamiento de Aave lo dice sin rodeos: "a position's health factor can fall only through interest accrual during that window." (el factor de salud de una posición solo puede bajar por la acumulación de intereses durante ese intervalo). Eso corta en los dos sentidos.
+
+Lo bueno: una noticia de un sábado no puede liquidarte un sábado. Lo malo: todo lo que pasó desde el viernes llega a tu posición de golpe, en la primera ronda del domingo por la noche. Si la acción reabre mucho más abajo, tu factor de salud pasa de su valor del viernes a su nuevo valor en un solo paso. No hay ningún precio intermedio en el que una [alerta del factor de salud](/es/blog/configurar-alertas-factor-de-salud-aave) pueda avisarte, y una liquidación puede llegar en el bloque siguiente.
+
+Hasta ahora los saltos han sido pequeños. En los siete feeds de Coinbase y los cinco fines de semana desde que abrió el Spoke, 35 cierres de 51 a 58 horas cada uno, ningún precio se movió más del 1.24% (TSLA, del 16 al 19 de octubre, de 353.30 a 357.68 USD); la mayor caída fue el 0.37% de AAPL el primer fin de semana. Cinco fines de semana de precios tranquilos dicen poco de un mal fin de semana: una acción puede abrir un 10% o un 20% más abajo tras una noticia que salió un sábado, y LlamaRisk, que recomendó los parámetros del Spoke, señala que los datos históricos "cannot describe a decline rarer than one it contains" (no pueden describir una caída más rara que las que contienen).
+
+## Ejemplo práctico: 100 NVDAc contra 11,000 USDC
+
+Toma 100 NVDAc en el Coinbase Stocks Spoke al precio del oráculo de 209.29 USD del 30 de octubre de 2026, es decir 20,928.83 USD de colateral, y 11,000 USDC de deuda. Con el factor de colateral del 70% de NVDAc:
+
+- **Factor de salud:** 20,928.83 × 0.70 ÷ 11,000 = **1.332**.
+- **Límite de préstamo:** 20,928.83 × 0.70 = 14,650.18 USDC, así que este préstamo usa el 75% de él.
+- **Precio de liquidación:** 11,000 ÷ (100 × 0.70) = **157.14 USD**, un 24.9% por debajo de 209.29.
+
+Lo que le hace una reapertura del domingo por la noche, con la deuda sin cambios:
+
+| NVDA el domingo a las 20:00 de Nueva York frente al viernes     | Factor de salud tras la primera ronda |
+| --------------------------------------------------------------- | ------------------------------------- |
+| -1.24% (el mayor salto hasta ahora, en cualquiera de los siete) | 1.315                                 |
+| -10%                                                            | 1.199                                 |
+| -20%                                                            | 1.065                                 |
+| -25%                                                            | 0.999: liquidable en la primera ronda |
+| -30%                                                            | 0.932                                 |
+
+Con -25% la posición es liquidable en cuanto se actualiza el feed. En este Spoke un liquidador puede entonces pagar deuda suficiente para devolverte a un factor de salud de 1.24 y llevarse colateral con una bonificación que empieza en el 4.95% justo por debajo de 1 y llega al 5.5% en 0.90 o menos. El mismo préstamo de 11,000 USDC contra 100 NVDA en el mercado listado NVDA / USDG de Morpho, con su LLTV del 62.5%, empieza con un factor de salud de solo 1.185 (precio de liquidación de 176.00 USD, un 15.6% por debajo), y un liquidador de Morpho gana un incentivo del 12.68% con ese LLTV y puede pagar toda la deuda; [cómo funciona la liquidación en Morpho](/es/blog/como-funciona-la-liquidacion-en-morpho#que-tamano-tiene-el-incentivo-de-liquidacion-en-cada-lltv) tiene la tabla.
+
+Un salto también puede ir más allá de tu colateral. Si la acción reabre tan abajo que el colateral vale menos que la deuda más la bonificación del liquidador, el faltante se convierte en deuda incobrable. En Aave recae sobre los depositantes de USDC de este único hub, que aceptaron el colateral en acciones; en Morpho recae sobre los prestamistas del mercado. En cualquiera de los dos casos, el prestatario ya ha perdido el colateral.
+
+## ¿Qué más puede bloquear un préstamo respaldado por acciones?
+
+- **Eventos corporativos.** Cuando una acción hace un split o se procesa un dividendo grande, el emisor pausa el multiplicador y el oráculo hasta que se confirma la nueva relación. Aave pausa la reserva afectada durante ese tiempo, así que ese token no se puede retirar ni liquidar hasta que termina la pausa, y la documentación de Robinhood indica a los integradores que traten un oráculo en pausa como "price temporarily unavailable" (precio no disponible temporalmente).
+- **Mercados poco profundos.** LlamaRisk midió, antes del lanzamiento, que vender entre 0.27 y 1.08 millones de USD de un solo token en Base movería su precio un 2%. Un liquidador que no puede vender rápido los tokens incautados quiere un gran descuento, y eso explica en parte por qué estos factores de colateral están muy por debajo del umbral de liquidación del 84% de WETH en Aave V3 Ethereum Core.
+- **Una congelación de todo el protocolo.** La noche del 29 de octubre de 2026, los guardianes de Aave congelaron como precaución todos los mercados de V3 y V4 operados por la DAO, tras informes de un incidente que afectaba a billeteras vinculadas a Binance, y el Coinbase Stocks Spoke quedó congelado con ellos: el 30 de octubre sus ocho reservas, USDC incluida, figuraban como `frozen` on-chain. Una reserva congelada no acepta depósitos ni préstamos nuevos; pagar deuda y retirar siguen funcionando. Hasta que se levante la congelación, pagar deuda es la única forma de subir tu factor de salud ahí, como explica la guía sobre [una reserva congelada](/es/blog/por-que-falla-retirar-o-pedir-prestado-en-aave#5-la-reserva-esta-congelada).
+- **Mercados de Morpho no listados.** Un mercado que la aplicación de Morpho no lista puede usar cualquier oráculo que haya elegido su creador. El mayor mercado de NVDA en Robinhood Chain, con 623,189 USD de deuda, usa un contrato de oráculo propio en lugar del oráculo estándar de Chainlink de Morpho, y el 30 de octubre valoraba NVDA en 208.71 USD mientras que el oráculo del mercado listado decía 208.55 USD. Revisa el oráculo de un mercado antes de pedir prestado en él.
+
+## ¿Cuánto margen necesita un préstamo respaldado por acciones?
+
+Más que un préstamo cripto del mismo tamaño, por una razón: tu última oportunidad de actuar es el viernes por la tarde, no el minuto antes de la liquidación. Un margen que aguanta los movimientos de un día normal de bolsa no basta; tiene que aguantar el salto entre el último precio del viernes y el primero del domingo por la noche, más lo que pase antes de que puedas reaccionar el lunes. En el ejemplo anterior, un factor de salud de 1.332 aguanta un salto del 24.9%. Empezar en 1.5 aguantaría un salto del 33.3%; en 2.0, del 50%.
+
+De ahí salen dos hábitos prácticos. Revisa las posiciones respaldadas por acciones el viernes antes de las 20:00, hora de Nueva York (el final del post-market), y paga deuda o añade colateral entonces si el margen es escaso, porque durante el fin de semana el precio no puede decirte nada nuevo. Y trata el domingo a las 20:00 de Nueva York, el lunes a las 00:00 o 01:00 UTC, como el momento de riesgo: es cuando llega el primer precio nuevo. [Cómo elegir un margen](/es/blog/factor-de-salud-seguro-aave#cuanto-margen-necesitas-para-tener-tiempo-de-actuar) recorre el razonamiento para cualquier colateral.
+
+## ¿Puede ayudar una alerta con un préstamo respaldado por acciones?
+
+En parte. Tokenping comprueba tu factor de salud cada 5 minutos en el Coinbase Stocks Spoke (en el panel aparece como "Base (V4 Coinbase Stocks)") y en cada mercado de Morpho que lista la aplicación de Morpho, incluidos los de Robinhood Chain, y te envía un mensaje por Signal, Telegram o correo electrónico cuando está por debajo de tu umbral. Entre semana funciona como con cualquier colateral: los feeds se actualizan durante las sesiones regular, pre-market, post-market y nocturna, así que una acción que cae mueve tu factor de salud y una alerta puede llegarte antes de la liquidación.
+
+En la reapertura del fin de semana no puede hacer mucho. El factor de salud no cruza tu umbral poco a poco; salta en la primera ronda, y una liquidación puede llegar en el mismo bloque. Una alerta entonces te dice lo que pasó, no lo que está a punto de pasar. Por eso la protección contra un salto del lunes es el margen, no la alerta: pon el umbral lo bastante alto como para que el mensaje llegue un día laborable, mientras todavía hay tiempo de pagar deuda. Tokenping no cubre los mercados de Morpho no listados, lo que incluye el mayor de NVDA.
+
+Puedes [consultar tus Spokes de Aave V4](/es/aave) o [tus posiciones en Morpho](/es/morpho) sin pagar; las alertas cuestan <AlertPrice />, una por Spoke o mercado. Tokenping está en beta y no tiene garantía de disponibilidad, y ninguna alerta evita una liquidación.
+
+## Fuentes
+
+- [API GraphQL pública de Aave V4](https://api.v4.aave.com/graphql), `reserves` y `spokes` en Base: las reservas del Coinbase Stocks Spoke, los factores de colateral, la bonificación de liquidación y la comisión, los límites, los importes depositados y prestados y la configuración de liquidación (consultado el 30 de octubre de 2026)
+- [Coinbase Stocks Spoke en Base](https://basescan.org/address/0x17905Db0e4A3514467539956c084180616AE7B8D): `getReserveCount`, `getReserveConfig` y `ORACLE` en el bloque 53278437 de Base, y el `getReserveSource` del oráculo para cada reserva (consultado el 30 de octubre de 2026)
+- [Feed Coinbase NVDA en Base](https://basescan.org/address/0x04689a41629776563E6822F76f2e57D148d28513) y los otros seis feeds de Coinbase: `latestRoundData` y `getRoundData` en cada fin de semana desde el 25 de septiembre de 2026 (consultado el 30 de octubre de 2026)
+- [API de Morpho](https://api.morpho.org/graphql): cada mercado de Morpho Blue con acciones tokenizadas como colateral, su LLTV, si está listado y su valor prestado (consultado el 30 de octubre de 2026)
+- [Morpho Blue en Robinhood Chain](https://robinhoodchain.blockscout.com/address/0x9D53d5E3bd5E8d4Cbfa6DB1ca238AEA02E651010): `idToMarketParams` del mercado NVDA / USDG listado y del mayor, los feeds y el `price()` de sus oráculos, y las rondas del [feed RHNVDA / USD](https://robinhoodchain.blockscout.com/address/0xCF169363636D73dbBf77733629CB38919d14232d) (consultado el 30 de octubre de 2026)
+- [API de Aave V3](https://api.v3.aave.com/graphql): las reservas de los 24 mercados de Aave V3 (consultado el 30 de octubre de 2026)
+- [PoolDataProvider, Aave V3 Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): WETH y USDC congelados en el bloque 26304159 (consultado el 30 de octubre de 2026)
+- [ISpoke.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/interfaces/ISpoke.sol): los indicadores de pausa y congelación de una reserva de V4 (aave-v4 main, consultado el 30 de octubre de 2026)
+- [Aave: Coinbase Tokenized Stocks ya están activas en Aave V4](https://aave.com/blog/coinbase-tokenized-stocks), 25 de septiembre de 2026 (consultado el 30 de octubre de 2026)
+- [Chainlink: Tokenized Equity Feeds](https://docs.chain.link/data-feeds/tokenized-equity-feeds) y [Base Tokenized Equities (Coinbase B20)](https://docs.chain.link/data-feeds/tokenized-equity-feeds/coinbase) (consultado el 30 de octubre de 2026)
+- [Robinhood: Stock Tokens](https://docs.robinhood.com/chain/stock-tokens/) y [Oracles & Price Feeds](https://docs.robinhood.com/chain/oracles-and-price-feeds/) (consultado el 30 de octubre de 2026)
+- [CryptoSlate: los préstamos con tokens de acciones de Aave exponen a los prestamistas de USDC a un salto de precio del fin de semana](https://cryptoslate.com/aave-stock-token-loans-expose-usdc-lenders-to-weekend-price-gap/), 27 de septiembre de 2026: los parámetros y las cifras de profundidad de LlamaRisk (consultado el 30 de octubre de 2026)
+- [Crypto Briefing: los tokens de acciones de Robinhood llegan a Morpho como colateral](https://cryptobriefing.com/robinhood-stock-tokens-morpho-collateral/), 22 de octubre de 2026 (consultado el 30 de octubre de 2026)
+- [Coingabbar: mercados de Aave V3 y V4 congelados como precaución](https://coingabbar.com/en/aave-news-binance-wallet-incident-v3-v4-market-freeze), 30 de octubre de 2026 (consultado el 30 de octubre de 2026)
+
+_Contenido educativo, no asesoramiento financiero. Las alertas reducen el riesgo, pero no evitan la liquidación._

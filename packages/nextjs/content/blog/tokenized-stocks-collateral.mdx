@@ -1,0 +1,139 @@
+export const meta = {
+  slug: "tokenized-stocks-collateral",
+  title: "Borrowing against tokenized stocks on Aave and Morpho",
+  description:
+    "How tokenized stocks work as collateral on Aave V4 and Morpho, how their oracles price them, why prices stop for the weekend and what a Monday gap does.",
+  h1: "How does borrowing against tokenized stocks work, and what happens over a weekend?",
+  publishedAt: "2026-10-30",
+  primaryQuestion: "Can you borrow against tokenized stocks on Aave or Morpho, and what are the risks?",
+  readingMinutes: 11,
+};
+
+<ShortAnswer>
+  You can borrow stablecoins against tokenized US stocks in two places Tokenping covers: Aave V4's Coinbase Stocks Spoke
+  on Base (Apple, Amazon, Alphabet, Meta, Microsoft, Nvidia and Tesla tokens, borrowing USDC, collateral factors from
+  65% to 79%) and Morpho markets on Robinhood Chain (NVDA, SPY, SpaceX and others, borrowing USDG, mostly at a 62.5%
+  LLTV). The health factor works as for any collateral, with one difference: the Chainlink feeds that price these tokens
+  stop from Friday afternoon to Sunday 20:00 New York time. Over a weekend your health factor can only drift with
+  interest, and on Sunday evening the price jumps to wherever the stock trades. Since launch the largest weekend jump on
+  Aave's seven feeds was 1.24%, but a gap of 25% would take a loan opened at 1.33 straight to liquidation, with no time
+  to act in between.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Figures and the block numbers they were read at: content/blog/snapshots/tokenized-stocks-collateral.md */}
+
+## What is a tokenized stock?
+
+A tokenized stock is a token whose value follows a listed share, issued by a company that holds or hedges the real shares and promises a fixed relationship between the two. It is not the share. The two issuers whose tokens you can borrow against on Aave and Morpho today describe theirs differently:
+
+- **Coinbase Tokenized Stocks** (AAPLc, NVDAc and so on) are certificates issued by Coinbase Onchain SPV Ltd. The underlying shares sit with Alpaca Securities, a US broker-dealer, in segregated accounts in the issuer's name, according to Aave's launch post.
+- **Robinhood Stock Tokens** (NVDA, SPY and so on, on Robinhood Chain) are "tokenised debt securities issued by Robinhood Assets (Jersey) Limited", and Robinhood's docs say they give no legal or beneficial rights in the underlying company.
+
+Both have three things in common that matter for a loan. Neither is offered to US persons; Robinhood also restricts Canada, the UK and Switzerland. Dividends are not paid out but reinvested through a **multiplier**, a number that starts at 1.0 and rises, so one token slowly represents a little more than one share and its price drifts above the share's. And the oracle price already includes that multiplier: Chainlink's formula is "Token Price = Underlying Equity Market Price × Multiplier".
+
+## Where can you borrow against tokenized stocks?
+
+| Venue                                  | Collateral                                                        | You borrow | Liquidation line                                                    | Size on 30 Oct 2026                                       |
+| -------------------------------------- | ----------------------------------------------------------------- | ---------- | ------------------------------------------------------------------- | --------------------------------------------------------- |
+| Aave V4, Coinbase Stocks Spoke on Base | AAPLc, AMZNc, GOOGLc, METAc, MSFTc, NVDAc, TSLAc                  | USDC only  | Collateral factor 65% (META, TSLA) to 79% (MSFT)                    | 11.23M USD of stock collateral, 5.02M USDC borrowed       |
+| Morpho on Robinhood Chain              | Robinhood tokens such as NVDA, GOOGL, AAPL, META, TSLA, SPCX, SPY | USDG       | LLTV 62.5% in most listed markets, 77% for SPY and one GOOGL market | 1.75M USD borrowed across 261 stock markets on all chains |
+| Aave V3                                | None                                                              |            |                                                                     | No V3 market lists a tokenized stock                      |
+
+The Aave Spoke opened on 25 September 2026 and treats the stock tokens as collateral only: you cannot borrow them, and you cannot borrow one stock against another. Each token has its own collateral factor; on Aave V4 that single number is both the borrowing limit and the liquidation line, as the [Aave V4 section of the liquidation guide](/blog/how-aave-liquidation-works#how-are-liquidations-different-on-aave-v4) explains. The Spoke's settings on 30 October 2026:
+
+| Token  | Collateral factor | Supplied                  |
+| ------ | ----------------- | ------------------------- |
+| MSFTc  | 79%               | 620.86 (325,687 USD)      |
+| AAPLc  | 78%               | 2,086.63 (732,586 USD)    |
+| GOOGLc | 76%               | 12,739.91 (3,584,144 USD) |
+| AMZNc  | 73%               | 1,938.90 (440,347 USD)    |
+| NVDAc  | 70%               | 14,491.46 (3,032,892 USD) |
+| METAc  | 65%               | 3,374.37 (2,088,305 USD)  |
+| TSLAc  | 65%               | 2,610.34 (1,030,491 USD)  |
+
+Morpho's stock lending on Robinhood Chain went live on 22 October 2026. Most of its stock borrowing is in markets the Morpho app does not list: of the 1.75M USD borrowed against stock tokens across all chains, 1.63M sits in unlisted markets, the largest an NVDA / USDG market with 623,189 USD borrowed, against 118,750 USD in listed ones. That matters for the oracle, as the next sections show. On Ethereum, Morpho also lists a few markets against Ondo's tokens (SPYon, QQQon, TSLAon) and an xStocks S&P 500 token.
+
+## How are tokenized stocks priced on-chain?
+
+Both venues use Chainlink's tokenized equity feeds: "Coinbase NVDA" and its six siblings on Base for Aave, "RHNVDA / USD" and the like on Robinhood Chain for the listed Morpho markets. These feeds follow US trading sessions five days a week: the regular session (09:30 to 16:00 New York time), pre-market from 04:00, post-market until 20:00, and an overnight session from 20:00 to 04:00 built from fewer venues and smoothed with a moving average.
+
+What they do not do is publish on weekends and US market holidays. Chainlink's documentation is explicit: "These feeds do not publish updates, including heartbeat updates, while markets are closed." The feed keeps returning the last value it published, and its timestamp simply gets older. Last weekend shows it on both chains:
+
+| Feed                           | Last update before the weekend    | First update after                | Price change |
+| ------------------------------ | --------------------------------- | --------------------------------- | ------------ |
+| Coinbase NVDA (Base)           | Fri 23 Oct, 19:54 UTC, 211.45 USD | Mon 26 Oct, 00:00 UTC, 211.87 USD | +0.20%       |
+| RHNVDA / USD (Robinhood Chain) | Fri 23 Oct, 19:55 UTC, 211.16 USD | Mon 26 Oct, 00:00 UTC, 211.92 USD | +0.36%       |
+
+Monday 00:00 UTC is Sunday 20:00 in New York, when the overnight session opens. Between those two rounds, 52 hours passed without a single new price. The same is true of an Aave health factor on these tokens, and of a Morpho health factor in a listed stock market: the price input is frozen.
+
+## What happens to your health factor over a weekend?
+
+While the feed is paused, the price part of your health factor cannot move. Aave's own launch post puts it plainly: "a position's health factor can fall only through interest accrual during that window." That cuts both ways.
+
+The good part: news on a Saturday cannot liquidate you on a Saturday. The bad part: everything that happened since Friday reaches your position at once, at the first round on Sunday evening. If the stock reopens far lower, your health factor goes from its Friday value to its new value in one step. There is no in-between price at which a [health factor alert](/blog/aave-health-factor-alert-setup) could warn you, and a liquidation can follow in the next block.
+
+So far the gaps have been small. Across all seven Coinbase feeds and the five weekends since the Spoke opened, 35 closures of 51 to 58 hours each, no price moved more than 1.24% (TSLA, 16 to 19 October, 353.30 to 357.68 USD); the largest fall was AAPL's 0.37% on the first weekend. Five weekends of calm prices say little about a bad weekend: a stock can open 10% or 20% lower after news that broke on a Saturday, and LlamaRisk, which recommended the Spoke's parameters, notes that historical data "cannot describe a decline rarer than one it contains".
+
+## Worked example: 100 NVDAc against 11,000 USDC
+
+Take 100 NVDAc on the Coinbase Stocks Spoke at the oracle price of 209.29 USD on 30 October 2026, which is 20,928.83 USD of collateral, and 11,000 USDC of debt. With NVDAc's 70% collateral factor:
+
+- **Health factor:** 20,928.83 × 0.70 ÷ 11,000 = **1.332**.
+- **Borrowing limit:** 20,928.83 × 0.70 = 14,650.18 USDC, so this loan uses 75% of it.
+- **Liquidation price:** 11,000 ÷ (100 × 0.70) = **157.14 USD**, 24.9% below 209.29.
+
+What a Sunday-evening reopening does to it, with the debt unchanged:
+
+| NVDA on Sunday 20:00 New York vs Friday           | Health factor after the first round    |
+| ------------------------------------------------- | -------------------------------------- |
+| -1.24% (the largest gap so far, any of the seven) | 1.315                                  |
+| -10%                                              | 1.199                                  |
+| -20%                                              | 1.065                                  |
+| -25%                                              | 0.999: liquidatable at the first round |
+| -30%                                              | 0.932                                  |
+
+At -25% the position is liquidatable the moment the feed updates. On this Spoke a liquidator can then repay enough debt to bring you back to a health factor of 1.24 and take collateral with a bonus that starts at 4.95% just below 1 and reaches 5.5% at 0.90 or lower. The same 11,000 USDC loan against 100 NVDA in Morpho's listed NVDA / USDG market, with its 62.5% LLTV, starts at a health factor of only 1.185 (liquidation price 176.00 USD, 15.6% below), and a Morpho liquidator earns a 12.68% incentive at that LLTV and may repay the whole debt; [how Morpho liquidation works](/blog/how-morpho-liquidation-works#how-large-is-the-liquidation-incentive-at-each-lltv) has the table.
+
+A gap can also go past your collateral altogether. If the stock reopens so low that the collateral is worth less than the debt plus the liquidator's bonus, the shortfall becomes bad debt. On Aave it falls on the USDC suppliers of this one hub, who opted into the stock collateral; on Morpho it falls on the market's lenders. Either way, the borrower has already lost the collateral.
+
+## What else can stop a stock-backed loan from moving?
+
+- **Corporate actions.** When a stock splits or a large dividend is processed, the issuer pauses the multiplier and the oracle until the new ratio is confirmed. Aave pauses the affected reserve for that time, so that token can be neither withdrawn nor liquidated until the pause ends, and Robinhood's docs tell integrators to treat a paused oracle as "price temporarily unavailable".
+- **Thin markets.** LlamaRisk measured, before launch, that selling 0.27M to 1.08M USD of a single token on Base would move its price by 2%. A liquidator who cannot sell the seized tokens quickly wants a deep discount, and that is part of why these collateral factors sit well below the 84% liquidation threshold of WETH on Aave V3 Ethereum Core.
+- **A protocol-wide freeze.** On the evening of 29 October 2026, Aave's guardians froze every DAO-operated V3 and V4 market as a precaution, after reports of an incident affecting Binance-affiliated wallets, and the Coinbase Stocks Spoke was frozen with them: on 30 October all eight of its reserves read `frozen` on-chain, USDC included. A frozen reserve takes no new deposits or borrows; repaying and withdrawing still work. Until the freeze is lifted, repaying is the only way to raise your health factor there, as the guide on [a frozen reserve](/blog/why-aave-withdraw-or-borrow-fails#5-the-reserve-is-frozen) explains.
+- **Unlisted Morpho markets.** A market that the Morpho app does not list can use any oracle its creator chose. The largest NVDA market on Robinhood Chain, with 623,189 USD borrowed, uses a custom oracle contract rather than Morpho's standard Chainlink oracle, and on 30 October it priced NVDA at 208.71 USD while the listed market's oracle said 208.55 USD. Read a market's oracle before you borrow in it.
+
+## How much buffer does a stock-backed loan need?
+
+More than a crypto loan of the same size, for one reason: your last chance to act is Friday afternoon, not the minute before liquidation. A buffer that survives the moves of a normal trading day is not enough; it has to survive the gap between Friday's last price and Sunday evening's first, plus whatever happens before you can react on Monday. In the example above, a health factor of 1.332 survives a 24.9% gap. Starting at 1.5 would survive a 33.3% gap; at 2.0, 50%.
+
+Two practical habits follow. Check stock-backed positions on Friday before 20:00 New York time (the end of post-market trading), and repay or add collateral then if the buffer is thin, because during the weekend the price cannot tell you anything new. And treat Sunday 20:00 New York time, Monday 00:00 or 01:00 UTC, as the moment of risk: that is when the first new price lands. [How to choose a buffer](/blog/safe-aave-health-factor#how-much-buffer-do-you-need-to-have-time-to-act) walks through the reasoning for any collateral.
+
+## Can an alert help with a stock-backed loan?
+
+Partly. Tokenping checks your health factor every 5 minutes on the Coinbase Stocks Spoke (it appears in the dashboard as "Base (V4 Coinbase Stocks)") and in every Morpho market the Morpho app lists, Robinhood Chain's included, and messages you on Signal, Telegram or email when it is below your threshold. On weekdays that works as for any collateral: the feeds update through regular, pre-market, post-market and overnight sessions, so a falling stock moves your health factor and an alert can reach you before liquidation.
+
+At the weekend reopening it cannot do much. The health factor does not cross your threshold gradually; it jumps at the first round, and a liquidation can land in the same block. An alert then tells you what happened rather than what is about to happen. That is why the buffer, not the alert, is the protection against a Monday gap: set the threshold high enough that the message comes on a weekday, while there is still time to repay. Tokenping does not cover unlisted Morpho markets, which includes the largest NVDA one.
+
+You can [check your Aave V4 Spokes](/aave) or [your Morpho positions](/morpho) without paying; alerts cost <AlertPrice />, one per Spoke or market. Tokenping is in beta and has no uptime guarantee, and no alert prevents a liquidation.
+
+## Sources
+
+- [Aave V4 public GraphQL API](https://api.v4.aave.com/graphql), `reserves` and `spokes` on Base: the Coinbase Stocks Spoke's reserves, collateral factors, liquidation bonus and fee, caps, supplied and borrowed amounts and liquidation config (fetched 30 Oct 2026)
+- [Coinbase Stocks Spoke on Base](https://basescan.org/address/0x17905Db0e4A3514467539956c084180616AE7B8D): `getReserveCount`, `getReserveConfig` and `ORACLE` at Base block 53278437, and the oracle's `getReserveSource` for each reserve (fetched 30 Oct 2026)
+- [Coinbase NVDA feed on Base](https://basescan.org/address/0x04689a41629776563E6822F76f2e57D148d28513) and the six other Coinbase feeds: `latestRoundData` and `getRoundData` across every weekend since 25 Sep 2026 (fetched 30 Oct 2026)
+- [Morpho API](https://api.morpho.org/graphql): every Morpho Blue market with tokenized-stock collateral, its LLTV, listing and borrowed value (fetched 30 Oct 2026)
+- [Morpho Blue on Robinhood Chain](https://robinhoodchain.blockscout.com/address/0x9D53d5E3bd5E8d4Cbfa6DB1ca238AEA02E651010): `idToMarketParams` of the listed and the largest NVDA / USDG markets, their oracles' feeds and `price()`, and the [RHNVDA / USD feed](https://robinhoodchain.blockscout.com/address/0xCF169363636D73dbBf77733629CB38919d14232d)'s rounds (fetched 30 Oct 2026)
+- [Aave V3 API](https://api.v3.aave.com/graphql): the reserves of all 24 Aave V3 markets (fetched 30 Oct 2026)
+- [PoolDataProvider, Aave V3 Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): WETH and USDC frozen at block 26304159 (fetched 30 Oct 2026)
+- [ISpoke.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/interfaces/ISpoke.sol): the paused and frozen flags of a V4 reserve (aave-v4 main, fetched 30 Oct 2026)
+- [Aave: Coinbase Tokenized Stocks Now Live on Aave V4](https://aave.com/blog/coinbase-tokenized-stocks), 25 Sep 2026 (fetched 30 Oct 2026)
+- [Chainlink: Tokenized Equity Feeds](https://docs.chain.link/data-feeds/tokenized-equity-feeds) and [Base Tokenized Equities (Coinbase B20)](https://docs.chain.link/data-feeds/tokenized-equity-feeds/coinbase) (fetched 30 Oct 2026)
+- [Robinhood: Stock Tokens](https://docs.robinhood.com/chain/stock-tokens/) and [Oracles & Price Feeds](https://docs.robinhood.com/chain/oracles-and-price-feeds/) (fetched 30 Oct 2026)
+- [CryptoSlate: Aave's stock-token loans expose USDC lenders to a weekend price gap](https://cryptoslate.com/aave-stock-token-loans-expose-usdc-lenders-to-weekend-price-gap/), 27 Sep 2026: LlamaRisk's parameters and depth figures (fetched 30 Oct 2026)
+- [Crypto Briefing: Robinhood stock tokens go live on Morpho as collateral](https://cryptobriefing.com/robinhood-stock-tokens-morpho-collateral/), 22 Oct 2026 (fetched 30 Oct 2026)
+- [Coingabbar: Aave V3 and V4 markets frozen as precaution](https://coingabbar.com/en/aave-news-binance-wallet-incident-v3-v4-market-freeze), 30 Oct 2026 (fetched 30 Oct 2026)
+
+_Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation._

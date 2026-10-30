@@ -118,6 +118,14 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     de: "aave-markt-abwicklung",
     vi: "khi-aave-dong-cua-thi-truong",
   },
+  "tokenized-stocks-collateral": {
+    en: "tokenized-stocks-collateral",
+    cs: "tokenizovane-akcie-jako-kolateral",
+    es: "acciones-tokenizadas-como-colateral",
+    hi: "tokenized-stocks-ke-badle-loan",
+    de: "tokenisierte-aktien-als-sicherheit",
+    vi: "co-phieu-token-hoa-lam-tai-san-the-chap",
+  },
   "morpho-health-factor": {
     en: "morpho-health-factor",
     cs: "morpho-health-factor-vysvetleni",
