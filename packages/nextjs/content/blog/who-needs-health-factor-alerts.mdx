@@ -1,0 +1,95 @@
+export const meta = {
+  slug: "who-needs-health-factor-alerts",
+  title: "Who needs health factor alerts, and who does not",
+  description:
+    "Which Aave and Morpho borrowers get the most from a health factor alert, who gets little, and what 7,500 Morpho liquidations in a month say about it.",
+  h1: "Who are health factor alerts for, and who can do without one?",
+  publishedAt: "2026-10-30",
+  primaryQuestion: "Who benefits from health factor alerts on Aave and Morpho, and who does not need them?",
+  readingMinutes: 7,
+};
+
+<ShortAnswer>
+  A health factor alert is for anyone who borrows on Aave or Morpho and does not watch the position all day: someone who
+  borrows stablecoins against ETH or BTC and holds for months, someone with loans on several networks, someone whose
+  collateral can move while they sleep or travel. It helps least where it cannot change the outcome: a supply position
+  with no debt, a loop run below the lowest threshold you can set, or a position an automation bot already manages. The
+  need is real: in the 30 days to 30 October 2026, Morpho alone recorded 7,521 liquidations of 5,703 borrowers, 932 of
+  them more than once, and more than a third happened between midnight and 06:00 UTC.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Figures and the time they were read: content/blog/snapshots/who-needs-health-factor-alerts.md */}
+
+## What does a health factor alert actually do?
+
+It watches one number for you and tells you when it crosses a line you chose. The number is your [health factor](/blog/aave-health-factor): your collateral, weighted by how much of it counts toward the loan, divided by your debt. Below 1, liquidators may repay part of your debt and take collateral at a discount. An alert does not repay anything, does not move funds and cannot sign a transaction. It buys time, and only if two things are true: the health factor falls slowly enough for a message to arrive before it reaches 1, and you can act once the message arrives.
+
+That is why the question is less "is my loan risky?" than "will I notice in time without one?". The answer depends on how you borrow.
+
+## How often do borrowers get liquidated?
+
+Often, and mostly in small amounts. Morpho's public API records every liquidation on every network it covers. In the 30 days from 30 September to 30 October 2026:
+
+| Figure                             | Value           |
+| ---------------------------------- | --------------- |
+| Liquidations                       | 7,521           |
+| Borrowers liquidated               | 5,703           |
+| Liquidated more than once          | 932             |
+| Median debt repaid per liquidation | 20 USD          |
+| Liquidations above 10,000 USD      | 301             |
+| Debt repaid by liquidators         | about 21.5M USD |
+| Share between 00:00 and 06:00 UTC  | 36.7%           |
+
+Three things in that table matter for alerts. Most liquidations are small: two in three repaid less than 100 USD, which says liquidations are not only a whale problem. Many come in bursts: 8 October, 29 October and the first hours of 30 October together account for more than half, which are the days markets fell hardest. And more than a third land in a six-hour window that is night in Europe and Africa and evening or night in the Americas. The 932 borrowers who were liquidated twice or more in a month are the clearest case: each liquidation is a fee, a bonus paid to the liquidator out of your collateral, and a second one means the first did not lead to a change.
+
+Aave is larger. Aave Labs counts 4.65 billion USD liquidated across more than 310,000 liquidations from 2020 to early 2026, and more than 250M USD on 10 October 2025 alone.
+
+## Who gets the most out of an alert?
+
+- **Borrowers who hold for months.** You borrowed stablecoins against ETH or BTC to spend or to avoid selling, and you look at the position once a week. Your health factor drifts down with interest and jumps with the market. A [crypto-backed loan](/blog/crypto-backed-loans) like this is the case alerts were built for: slow risk you would otherwise notice late.
+- **Borrowers who sleep, work or travel through volatility.** Crypto trades around the clock, and the bad hours in the table above were nights for a large share of borrowers. If your phone is the only thing awake, the alert has to get through it; [getting alerts through Do Not Disturb](/blog/aave-alerts-do-not-disturb) covers how.
+- **Borrowers with positions on several networks or markets.** Each Aave V3 market, each V4 Spoke and each Morpho market has its own health factor. Five positions on four networks mean five numbers to check, and the one that falls is the one you did not look at.
+- **Borrowers whose health factor moves on more than price.** Interest above your collateral's yield, a governance cut to a liquidation threshold, a [stablecoin depeg](/blog/stablecoin-depeg-aave) or a wrapper losing its peg can all lower a health factor on a quiet day. [Why your health factor dropped](/blog/why-aave-health-factor-dropped) lists six causes, and only one of them is the market falling.
+- **Borrowers in protocol-wide events.** When Aave froze every DAO market on 29 October 2026, a frozen reserve stopped accepting new collateral, and repaying became the only way to raise a health factor there. An alert does not stop a freeze, but it tells you which of your positions needs repaying first.
+- **Fixed-rate borrowers on Morpho Midnight.** A Midnight loan can be liquidated after maturity even at a healthy health factor. Tokenping sends a reminder 7 days and 1 day before, which is [the alert a Midnight loan needs most](/blog/morpho-midnight-fixed-rate-loans#how-can-alerts-help-with-a-midnight-loan).
+- **Borrowers against tokenized stocks.** Prices stop for the weekend and jump on Sunday evening, so the useful alert is a weekday one that leaves time to repay before Friday; [the tokenized stocks guide](/blog/tokenized-stocks-collateral#can-an-alert-help-with-a-stock-backed-loan) explains why.
+
+## Who gets little from an alert?
+
+- **Suppliers with no debt.** Without a loan there is no health factor to fall and nothing to liquidate. Interest rate spikes and frozen reserves can still matter to you, but not through a health factor.
+- **Loops run below the lowest threshold.** A wstETH and WETH loop borrowed near the E-Mode limit starts at about 1.02 on Aave, below Tokenping's lowest Aave threshold of 1.1. An alert set at 1.1 would message you at every check. [The E-Mode guide](/blog/aave-e-mode#can-an-alert-help-with-an-e-mode-position) explains the trade-off: keep more margin, or accept that alerts do not fit this position.
+- **Positions an automation bot already manages.** A bot that repays debt for you when the health factor falls acts faster than you can, and the alert becomes a second opinion rather than the protection. [Alerts or automation](/blog/aave-liquidation-alert-tools#alerts-or-automation-which-do-you-need) compares the two; many borrowers use both.
+- **Loans too small to rescue.** If you would not move funds to save a position this size, an alert only tells you about a loss you have already accepted. Many of Morpho's 7,521 liquidations repaid less than 100 USD, and for some of those borrowers this was the case.
+- **Very large buffers.** A loan at a health factor of 4 against ETH survives a 75% fall. An alert still costs little to keep, but it will rarely fire.
+
+## What an alert cannot do for anyone
+
+- **Catch a jump.** A crash between two checks, an oracle update that moves the price in one step, or a stock token reopening after a weekend can take a position from safe to liquidatable before any message is sent. Tokenping checks every 5 minutes; some moves are faster.
+- **Act for you.** A message helps only if you can repay or add collateral soon after it arrives: funds on the right network, a wallet you can reach, and a reserve that is not frozen.
+- **Replace a buffer.** The alert is the warning, the buffer is the time it buys. [How to choose a buffer and a threshold](/blog/safe-aave-health-factor#how-do-you-choose-an-alert-threshold-step-by-step) works through both together.
+
+## How do you decide whether you need one?
+
+Three questions settle it for most borrowers:
+
+1. **Would you notice a 20% fall in your collateral within an hour, at any time of day?** If not, an alert covers that gap.
+2. **Do you have more than one position?** Each one needs watching on its own.
+3. **Can you act on a message?** If you keep repayment funds on the network where you borrow, an alert gives you a chance. If you would need a day to move funds, raise your buffer first.
+
+If the answers are no, yes and yes, an alert is worth it. If your loan is a loop below 1.1, a position a bot manages, or a supply with no debt, it adds little.
+
+## How Tokenping fits in
+
+Tokenping checks the health factor of each position you set up every 5 minutes, in every Aave V3 market on 21 networks, every Aave V4 Spoke and every Morpho market the Morpho app lists, and messages you on Signal, Telegram or email when it is below your threshold (1.1 to 10 on Aave, 1.02 to 10 on Morpho). The message repeats at every check until the position recovers, and each channel can be in English, Czech, Spanish, Hindi, German or Vietnamese. [Setting up an alert](/blog/aave-health-factor-alert-setup) takes a few minutes, and [how often you will be alerted](/blog/aave-health-factor-alert-setup#how-often-will-you-be-alerted) describes what to expect.
+
+You can [check your Aave positions](/aave) or [your Morpho positions](/morpho) without paying. Alerts cost <AlertPrice />, one per Aave V3 market, V4 Spoke or Morpho market. Tokenping is in beta and has no uptime guarantee, and no alert prevents a liquidation.
+
+## Sources
+
+- [Morpho API](https://api.morpho.org/graphql): `marketTransactions` of type Liquidation on every network from 30 Sep 2026 08:36 UTC to 30 Oct 2026 08:36 UTC, with each market's loan asset, decimals and price (fetched 30 Oct 2026)
+- [Aave Labs: How Aave Liquidations Perform Under Volatile Conditions](https://aave.com/blog/historical-liquidations), 6 Feb 2026 (fetched 29 Oct 2026)
+- [Coingabbar: Aave V3 and V4 markets frozen as precaution](https://coingabbar.com/en/aave-news-binance-wallet-incident-v3-v4-market-freeze), 30 Oct 2026 (fetched 30 Oct 2026)
+
+_Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation._

@@ -1,0 +1,96 @@
+export const meta = {
+  slug: "quien-necesita-alertas-del-factor-de-salud",
+  title: "Quién necesita alertas del factor de salud y quién no",
+  description:
+    "Qué prestatarios de Aave y Morpho sacan más de una alerta del factor de salud, a quién le sirve poco y qué dicen 7,500 liquidaciones de Morpho en un mes.",
+  h1: "¿Para quién son las alertas del factor de salud y quién puede prescindir de ellas?",
+  publishedAt: "2026-10-30",
+  primaryQuestion: "¿A quién benefician las alertas del factor de salud en Aave y Morpho, y quién no las necesita?",
+  readingMinutes: 7,
+};
+
+<ShortAnswer>
+  Una alerta del factor de salud (health factor) es para quien pide prestado en Aave o Morpho y no vigila la posición
+  todo el día: quien pide stablecoins contra ETH o BTC y mantiene el préstamo durante meses, quien tiene préstamos en
+  varias redes, quien tiene un colateral que puede moverse mientras duerme o viaja. Ayuda menos donde no puede cambiar
+  el resultado: una posición depositada sin deuda, un loop por debajo del umbral más bajo que puedes configurar o una
+  posición que ya gestiona un bot de automatización. La necesidad es real: en los 30 días hasta el 30 de octubre de
+  2026, solo Morpho registró 7,521 liquidaciones de 5,703 prestatarios, 932 de ellos más de una vez, y más de un tercio
+  ocurrió entre la medianoche y las 06:00 UTC.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Las cifras y el momento en que se leyeron: content/blog/snapshots/who-needs-health-factor-alerts.md */}
+
+## ¿Qué hace realmente una alerta del factor de salud?
+
+Vigila un número por ti y te avisa cuando cruza un límite que tú elegiste. Ese número es tu [factor de salud](/es/blog/factor-de-salud-aave): tu colateral, ponderado por cuánto de él cuenta para el préstamo, dividido entre tu deuda. Por debajo de 1, los liquidadores pueden pagar parte de tu deuda y quedarse con colateral con descuento. Una alerta no paga nada, no mueve fondos y no puede firmar una transacción. Te da tiempo, y solo si se cumplen dos cosas: que el factor de salud baje lo bastante despacio como para que un mensaje llegue antes de que toque 1, y que puedas actuar cuando llegue el mensaje.
+
+Por eso la pregunta no es tanto "¿es arriesgado mi préstamo?" como "¿me daré cuenta a tiempo sin una alerta?". La respuesta depende de cómo pides prestado.
+
+## ¿Con qué frecuencia se liquida a los prestatarios?
+
+A menudo, y casi siempre por montos pequeños. La API pública de Morpho registra cada liquidación en cada red que cubre. En los 30 días del 30 de septiembre al 30 de octubre de 2026:
+
+| Dato                                   | Valor                     |
+| -------------------------------------- | ------------------------- |
+| Liquidaciones                          | 7,521                     |
+| Prestatarios liquidados                | 5,703                     |
+| Liquidados más de una vez              | 932                       |
+| Deuda pagada mediana por liquidación   | 20 USD                    |
+| Liquidaciones de más de 10,000 USD     | 301                       |
+| Deuda pagada por los liquidadores      | unos 21.5 millones de USD |
+| Proporción entre las 00:00 y 06:00 UTC | 36.7%                     |
+
+Tres cosas de esa tabla importan para las alertas. La mayoría de las liquidaciones son pequeñas: dos de cada tres pagaron menos de 100 USD, lo que indica que las liquidaciones no son solo un problema de ballenas. Muchas llegan en oleadas: el 8 de octubre, el 29 de octubre y las primeras horas del 30 de octubre suman más de la mitad, y fueron los días en que más cayeron los mercados. Y más de un tercio cae en una franja de seis horas que es de noche en Europa y África y de tarde o de noche en América. Los 932 prestatarios liquidados dos o más veces en un mes son el caso más claro: cada liquidación es una comisión, una bonificación que se paga al liquidador con tu colateral, y una segunda significa que la primera no llevó a ningún cambio.
+
+Aave es más grande. Aave Labs contabiliza 4,650 millones de USD liquidados en más de 310,000 liquidaciones desde 2020 hasta principios de 2026, y más de 250 millones de USD solo el 10 de octubre de 2025.
+
+## ¿Quién saca más provecho de una alerta?
+
+- **Prestatarios que mantienen el préstamo durante meses.** Pediste stablecoins contra ETH o BTC para gastarlas o para no vender, y miras la posición una vez por semana. Tu factor de salud baja poco a poco con el interés y salta con el mercado. Un [préstamo respaldado por cripto](/es/blog/prestamos-respaldados-por-cripto) como este es el caso para el que se crearon las alertas: un riesgo lento que, si no, notarías tarde.
+- **Prestatarios que duermen, trabajan o viajan durante la volatilidad.** Las criptomonedas se negocian a toda hora, y las malas horas de la tabla fueron de noche para una gran parte de los prestatarios. Si lo único despierto es tu teléfono, la alerta tiene que atravesarlo; [recibir alertas con el modo No molestar](/es/blog/alertas-aave-modo-no-molestar) explica cómo.
+- **Prestatarios con posiciones en varias redes o mercados.** Cada mercado de Aave V3, cada Spoke de V4 y cada mercado de Morpho tiene su propio factor de salud. Cinco posiciones en cuatro redes son cinco números que revisar, y el que baja es el que no miraste.
+- **Prestatarios cuyo factor de salud se mueve por algo más que el precio.** Un interés por encima del rendimiento de tu colateral, un recorte por gobernanza de un umbral de liquidación, una [pérdida de paridad de una stablecoin](/es/blog/depeg-de-stablecoin-y-aave) o un wrapper que pierde su paridad pueden bajar un factor de salud en un día tranquilo. [Por qué bajó tu factor de salud](/es/blog/por-que-bajo-el-factor-de-salud-aave) enumera seis causas, y solo una de ellas es que caiga el mercado.
+- **Prestatarios en eventos que afectan a todo el protocolo.** Cuando Aave congeló todos los mercados de la DAO el 29 de octubre de 2026, una reserva congelada dejó de aceptar colateral nuevo, y pagar deuda pasó a ser la única forma de subir allí el factor de salud. Una alerta no detiene un congelamiento, pero te dice cuál de tus posiciones necesita pagar deuda primero.
+- **Prestatarios a tasa fija en Morpho Midnight.** Un préstamo de Midnight puede liquidarse después del vencimiento incluso con un factor de salud sano. Tokenping envía un recordatorio 7 días y 1 día antes, que es [la alerta que más necesita un préstamo de Midnight](/es/blog/morpho-midnight-prestamos-a-tasa-fija#como-pueden-ayudarte-las-alertas-con-un-prestamo-de-midnight).
+- **Prestatarios contra acciones tokenizadas.** Los precios se detienen el fin de semana y saltan el domingo por la tarde, así que la alerta útil es la de un día laborable, que deja tiempo para pagar deuda antes del viernes; [la guía de acciones tokenizadas](/es/blog/acciones-tokenizadas-como-colateral#puede-ayudar-una-alerta-con-un-prestamo-respaldado-por-acciones) explica por qué.
+
+## ¿A quién le sirve poco una alerta?
+
+- **Depositantes sin deuda.** Sin préstamo no hay factor de salud que baje ni nada que liquidar. Los picos en las tasas de interés y las reservas congeladas pueden seguir importándote, pero no a través de un factor de salud.
+- **Loops por debajo del umbral más bajo.** Un loop (préstamo apalancado en bucle) de wstETH y WETH, pedido cerca del límite del E-Mode, empieza en alrededor de 1.02 en Aave, por debajo del umbral más bajo de Tokenping para Aave, que es 1.1. Una alerta configurada en 1.1 te enviaría un mensaje en cada revisión. [La guía del E-Mode](/es/blog/e-mode-de-aave#puede-ayudar-una-alerta-con-una-posicion-en-e-mode) explica la disyuntiva: mantener más margen, o aceptar que las alertas no encajan con esta posición.
+- **Posiciones que ya gestiona un bot de automatización.** Un bot que paga deuda por ti cuando el factor de salud baja actúa más rápido que tú, y la alerta pasa a ser una segunda opinión en lugar de la protección. [Alertas o automatización](/es/blog/herramientas-de-alertas-de-liquidacion-aave#alertas-o-automatizacion-cual-necesitas) compara las dos; muchos prestatarios usan ambas.
+- **Préstamos demasiado pequeños para rescatarlos.** Si no moverías fondos para salvar una posición de este tamaño, una alerta solo te avisa de una pérdida que ya aceptaste. Muchas de las 7,521 liquidaciones de Morpho pagaron menos de 100 USD, y para algunos de esos prestatarios era este el caso.
+- **Márgenes muy amplios.** Un préstamo con un factor de salud de 4 contra ETH aguanta una caída del 75%. Mantener una alerta sigue costando poco, pero rara vez se disparará.
+
+## Lo que una alerta no puede hacer por nadie
+
+- **Anticipar un salto.** Un desplome entre dos revisiones, una actualización del oráculo que mueve el precio de un solo paso o un token de acción que reabre tras un fin de semana pueden llevar una posición de segura a liquidable antes de que se envíe ningún mensaje. Tokenping revisa cada 5 minutos; algunos movimientos son más rápidos.
+- **Actuar por ti.** Un mensaje solo ayuda si puedes pagar deuda o añadir colateral poco después de que llegue: fondos en la red correcta, una billetera a tu alcance y una reserva que no esté congelada.
+- **Sustituir un margen.** La alerta es el aviso; el margen es el tiempo que te da. [Cómo elegir un margen y un umbral](/es/blog/factor-de-salud-seguro-aave#como-eliges-un-umbral-de-alerta-paso-a-paso) trabaja ambos a la vez.
+
+## ¿Cómo decides si necesitas una?
+
+Tres preguntas lo resuelven para la mayoría de los prestatarios:
+
+1. **¿Notarías una caída del 20% en tu colateral en menos de una hora, a cualquier hora del día?** Si no, una alerta cubre ese hueco.
+2. **¿Tienes más de una posición?** Cada una necesita vigilancia por separado.
+3. **¿Puedes actuar ante un mensaje?** Si tienes fondos para pagar la deuda en la red donde pides prestado, una alerta te da una oportunidad. Si necesitarías un día para mover fondos, aumenta primero tu margen.
+
+Si las respuestas son no, sí y sí, una alerta vale la pena. Si tu préstamo es un loop por debajo de 1.1, una posición que gestiona un bot o un depósito sin deuda, aporta poco.
+
+## Cómo encaja Tokenping
+
+Tokenping revisa el factor de salud de cada posición que configuras cada 5 minutos, en cada mercado de Aave V3 en 21 redes, cada Spoke de Aave V4 y cada mercado de Morpho que lista la aplicación de Morpho, y te envía un mensaje por Signal, Telegram o correo electrónico cuando está por debajo de tu umbral (de 1.1 a 10 en Aave, de 1.02 a 10 en Morpho). El mensaje se repite en cada revisión hasta que la posición se recupera, y cada canal puede estar en inglés, checo, español, hindi, alemán o vietnamita. [Configurar una alerta](/es/blog/configurar-alertas-factor-de-salud-aave) lleva unos minutos, y [con qué frecuencia recibirás alertas](/es/blog/configurar-alertas-factor-de-salud-aave#con-que-frecuencia-recibiras-alertas) describe qué esperar.
+
+Puedes [consultar tus posiciones en Aave](/es/aave) o [tus posiciones en Morpho](/es/morpho) sin pagar. Las alertas cuestan <AlertPrice />, una por mercado de Aave V3, Spoke de V4 o mercado de Morpho. Tokenping está en beta y no tiene garantía de disponibilidad, y ninguna alerta evita una liquidación.
+
+## Fuentes
+
+- [API de Morpho](https://api.morpho.org/graphql): `marketTransactions` de tipo Liquidation en todas las redes del 30 de septiembre de 2026, 08:36 UTC, al 30 de octubre de 2026, 08:36 UTC, con el activo prestado, los decimales y el precio de cada mercado (consultado el 30 de octubre de 2026)
+- [Aave Labs: cómo se comportan las liquidaciones de Aave en condiciones volátiles](https://aave.com/blog/historical-liquidations): 6 de febrero de 2026 (consultado el 29 de octubre de 2026)
+- [Coingabbar: los mercados V3 y V4 de Aave, congelados como precaución](https://coingabbar.com/en/aave-news-binance-wallet-incident-v3-v4-market-freeze): 30 de octubre de 2026 (consultado el 30 de octubre de 2026)
+
+_Contenido educativo, no asesoramiento financiero. Las alertas reducen el riesgo, pero no evitan la liquidación._

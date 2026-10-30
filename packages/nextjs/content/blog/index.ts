@@ -43,6 +43,9 @@ import CsAaveLiquidationAlertTools, {
 import CsMorphoPreLiquidation, {
   meta as csMorphoPreLiquidation,
 } from "~~/content/blog/cs/predbezna-likvidace-morpho.mdx";
+import CsWhoNeedsHealthFactorAlerts, {
+  meta as csWhoNeedsHealthFactorAlerts,
+} from "~~/content/blog/cs/pro-koho-jsou-upozorneni-na-health-factor.mdx";
 import CsWhyAaveHealthFactorDropped, {
   meta as csWhyAaveHealthFactorDropped,
 } from "~~/content/blog/cs/proc-klesl-health-factor-aave.mdx";
@@ -115,6 +118,9 @@ import DeWhyAaveWithdrawOrBorrowFails, {
 import DeWhyAaveHealthFactorDropped, {
   meta as deWhyAaveHealthFactorDropped,
 } from "~~/content/blog/de/warum-ist-mein-aave-health-factor-gesunken.mdx";
+import DeWhoNeedsHealthFactorAlerts, {
+  meta as deWhoNeedsHealthFactorAlerts,
+} from "~~/content/blog/de/wer-health-factor-alerts-braucht.mdx";
 import DeWrappedBitcoinAaveCollateral, {
   meta as deWrappedBitcoinAaveCollateral,
 } from "~~/content/blog/de/wrapped-bitcoin-als-sicherheit-auf-aave.mdx";
@@ -171,6 +177,9 @@ import EsMorphoPreLiquidation, { meta as esMorphoPreLiquidation } from "~~/conte
 import EsCryptoBackedLoans, {
   meta as esCryptoBackedLoans,
 } from "~~/content/blog/es/prestamos-respaldados-por-cripto.mdx";
+import EsWhoNeedsHealthFactorAlerts, {
+  meta as esWhoNeedsHealthFactorAlerts,
+} from "~~/content/blog/es/quien-necesita-alertas-del-factor-de-salud.mdx";
 import EsShortFiatWithAave, { meta as esShortFiatWithAave } from "~~/content/blog/es/short-de-moneda-fiat-con-aave.mdx";
 import EsAaveInterestRates, { meta as esAaveInterestRates } from "~~/content/blog/es/tasas-de-interes-aave.mdx";
 import HiPrivateAaveLiquidationAlerts, {
@@ -213,6 +222,9 @@ import HiSafeAaveHealthFactor, {
   meta as hiSafeAaveHealthFactor,
 } from "~~/content/blog/hi/aave-surakshit-health-factor.mdx";
 import HiCryptoBackedLoans, { meta as hiCryptoBackedLoans } from "~~/content/blog/hi/crypto-backed-loan-kya-hai.mdx";
+import HiWhoNeedsHealthFactorAlerts, {
+  meta as hiWhoNeedsHealthFactorAlerts,
+} from "~~/content/blog/hi/health-factor-alert-kiske-liye-hai.mdx";
 import HiMorphoHealthFactor, {
   meta as hiMorphoHealthFactor,
 } from "~~/content/blog/hi/morpho-health-factor-kya-hai.mdx";
@@ -253,6 +265,9 @@ import TokenizedStocksCollateral, {
   meta as tokenizedStocksCollateral,
 } from "~~/content/blog/tokenized-stocks-collateral.mdx";
 import type { Post } from "~~/content/blog/types";
+import ViWhoNeedsHealthFactorAlerts, {
+  meta as viWhoNeedsHealthFactorAlerts,
+} from "~~/content/blog/vi/ai-can-canh-bao-he-so-suc-khoe.mdx";
 import ViAaveLiquidationPrice, {
   meta as viAaveLiquidationPrice,
 } from "~~/content/blog/vi/cach-tinh-gia-thanh-ly-aave.mdx";
@@ -312,6 +327,9 @@ import ViWhyAaveWithdrawOrBorrowFails, {
 import ViWrappedBitcoinAaveCollateral, {
   meta as viWrappedBitcoinAaveCollateral,
 } from "~~/content/blog/vi/wrapped-bitcoin-lam-tai-san-the-chap.mdx";
+import WhoNeedsHealthFactorAlerts, {
+  meta as whoNeedsHealthFactorAlerts,
+} from "~~/content/blog/who-needs-health-factor-alerts.mdx";
 import WhyAaveHealthFactorDropped, {
   meta as whyAaveHealthFactorDropped,
 } from "~~/content/blog/why-aave-health-factor-dropped.mdx";
@@ -345,6 +363,7 @@ export const POSTS: readonly Post[] = [
   { meta: whyAaveWithdrawOrBorrowFails, Content: WhyAaveWithdrawOrBorrowFails },
   { meta: wrappedBitcoinAaveCollateral, Content: WrappedBitcoinAaveCollateral },
   { meta: tokenizedStocksCollateral, Content: TokenizedStocksCollateral },
+  { meta: whoNeedsHealthFactorAlerts, Content: WhoNeedsHealthFactorAlerts },
   // The Morpho guides, their hub first.
   { meta: morphoHealthFactor, Content: MorphoHealthFactor },
   { meta: howMorphoLiquidationWorks, Content: HowMorphoLiquidationWorks },
@@ -373,6 +392,7 @@ const CS_POSTS: readonly Post[] = [
   { meta: csWhyAaveWithdrawOrBorrowFails, Content: CsWhyAaveWithdrawOrBorrowFails },
   { meta: csWrappedBitcoinAaveCollateral, Content: CsWrappedBitcoinAaveCollateral },
   { meta: csTokenizedStocksCollateral, Content: CsTokenizedStocksCollateral },
+  { meta: csWhoNeedsHealthFactorAlerts, Content: CsWhoNeedsHealthFactorAlerts },
   { meta: csMorphoHealthFactor, Content: CsMorphoHealthFactor },
   { meta: csHowMorphoLiquidationWorks, Content: CsHowMorphoLiquidationWorks },
   { meta: csMorphoPreLiquidation, Content: CsMorphoPreLiquidation },
@@ -400,6 +420,7 @@ const ES_POSTS: readonly Post[] = [
   { meta: esWhyAaveWithdrawOrBorrowFails, Content: EsWhyAaveWithdrawOrBorrowFails },
   { meta: esWrappedBitcoinAaveCollateral, Content: EsWrappedBitcoinAaveCollateral },
   { meta: esTokenizedStocksCollateral, Content: EsTokenizedStocksCollateral },
+  { meta: esWhoNeedsHealthFactorAlerts, Content: EsWhoNeedsHealthFactorAlerts },
   { meta: esMorphoHealthFactor, Content: EsMorphoHealthFactor },
   { meta: esHowMorphoLiquidationWorks, Content: EsHowMorphoLiquidationWorks },
   { meta: esMorphoPreLiquidation, Content: EsMorphoPreLiquidation },
@@ -427,6 +448,7 @@ const HI_POSTS: readonly Post[] = [
   { meta: hiWhyAaveWithdrawOrBorrowFails, Content: HiWhyAaveWithdrawOrBorrowFails },
   { meta: hiWrappedBitcoinAaveCollateral, Content: HiWrappedBitcoinAaveCollateral },
   { meta: hiTokenizedStocksCollateral, Content: HiTokenizedStocksCollateral },
+  { meta: hiWhoNeedsHealthFactorAlerts, Content: HiWhoNeedsHealthFactorAlerts },
   { meta: hiMorphoHealthFactor, Content: HiMorphoHealthFactor },
   { meta: hiHowMorphoLiquidationWorks, Content: HiHowMorphoLiquidationWorks },
   { meta: hiMorphoPreLiquidation, Content: HiMorphoPreLiquidation },
@@ -454,6 +476,7 @@ const DE_POSTS: readonly Post[] = [
   { meta: deWhyAaveWithdrawOrBorrowFails, Content: DeWhyAaveWithdrawOrBorrowFails },
   { meta: deWrappedBitcoinAaveCollateral, Content: DeWrappedBitcoinAaveCollateral },
   { meta: deTokenizedStocksCollateral, Content: DeTokenizedStocksCollateral },
+  { meta: deWhoNeedsHealthFactorAlerts, Content: DeWhoNeedsHealthFactorAlerts },
   { meta: deMorphoHealthFactor, Content: DeMorphoHealthFactor },
   { meta: deHowMorphoLiquidationWorks, Content: DeHowMorphoLiquidationWorks },
   { meta: deMorphoPreLiquidation, Content: DeMorphoPreLiquidation },
@@ -481,6 +504,7 @@ const VI_POSTS: readonly Post[] = [
   { meta: viWhyAaveWithdrawOrBorrowFails, Content: ViWhyAaveWithdrawOrBorrowFails },
   { meta: viWrappedBitcoinAaveCollateral, Content: ViWrappedBitcoinAaveCollateral },
   { meta: viTokenizedStocksCollateral, Content: ViTokenizedStocksCollateral },
+  { meta: viWhoNeedsHealthFactorAlerts, Content: ViWhoNeedsHealthFactorAlerts },
   { meta: viMorphoHealthFactor, Content: ViMorphoHealthFactor },
   { meta: viHowMorphoLiquidationWorks, Content: ViHowMorphoLiquidationWorks },
   { meta: viMorphoPreLiquidation, Content: ViMorphoPreLiquidation },
@@ -665,6 +689,14 @@ export const RELATED_SLUGS: Record<string, readonly string[]> = {
     "wrapped-bitcoin-aave-collateral",
     "why-aave-withdraw-or-borrow-fails",
     "morpho-health-factor",
+  ],
+  "who-needs-health-factor-alerts": [
+    "aave-health-factor",
+    "aave-health-factor-alert-setup",
+    "safe-aave-health-factor",
+    "aave-liquidation-alert-tools",
+    "aave-alerts-do-not-disturb",
+    "why-aave-health-factor-dropped",
   ],
   // The Morpho guides link to each other, their own hub first, and to the Aave guides that explain the shared ideas.
   "morpho-health-factor": [

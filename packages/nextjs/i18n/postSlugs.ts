@@ -126,6 +126,14 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     de: "tokenisierte-aktien-als-sicherheit",
     vi: "co-phieu-token-hoa-lam-tai-san-the-chap",
   },
+  "who-needs-health-factor-alerts": {
+    en: "who-needs-health-factor-alerts",
+    cs: "pro-koho-jsou-upozorneni-na-health-factor",
+    es: "quien-necesita-alertas-del-factor-de-salud",
+    hi: "health-factor-alert-kiske-liye-hai",
+    de: "wer-health-factor-alerts-braucht",
+    vi: "ai-can-canh-bao-he-so-suc-khoe",
+  },
   "morpho-health-factor": {
     en: "morpho-health-factor",
     cs: "morpho-health-factor-vysvetleni",
