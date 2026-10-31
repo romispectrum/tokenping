@@ -2,7 +2,6 @@ import type { Ref } from "react";
 import type { NotificationFormField } from "~~/components/custom/notifications/notificationForm";
 import { Alert } from "~~/components/ui";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 
 export type ErrorSummaryItem = {
   field: NotificationFormField;
@@ -23,7 +22,7 @@ type NotificationErrorSummaryProps = {
  * link to its field. The form moves focus here (tabIndex -1), and role="alert" announces it.
  */
 export const NotificationErrorSummary = ({ items, onSelect, ref }: NotificationErrorSummaryProps) => {
-  const t = useMessages(ALERTS_MESSAGES);
+  const t = useMessages("alerts");
   return (
     <Alert ref={ref} role="alert" tabIndex={-1} variant="destructive" title={t.errorSummaryTitle(items.length)}>
       <ul className="m-0 flex list-none flex-col gap-1 p-0">

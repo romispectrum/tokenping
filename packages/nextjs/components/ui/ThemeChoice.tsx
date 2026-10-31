@@ -5,7 +5,6 @@ import { Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cx } from "~~/components/ui/classNames";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 
 // The value is also the option's key in COMMON_MESSAGES.theme.
 const THEME_OPTIONS = [
@@ -22,7 +21,7 @@ const THEME_OPTIONS = [
  */
 export const ThemeChoice = ({ className }: { className?: string }) => {
   const { theme, setTheme } = useTheme();
-  const t = useMessages(COMMON_MESSAGES).theme;
+  const t = useMessages("common").theme;
   const [mounted, setMounted] = useState(false);
   const name = useId();
 

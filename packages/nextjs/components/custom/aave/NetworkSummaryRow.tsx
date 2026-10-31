@@ -3,7 +3,6 @@ import { HealthFactorBadge } from "~~/components/custom/HealthFactorBadge";
 import { NetworkIcon } from "~~/components/custom/aave/NetworkIcon";
 import { Badge } from "~~/components/ui";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 import type { NetworkPosition } from "~~/services/aave/positions";
 import { formatUSD } from "~~/utils/format";
 
@@ -20,7 +19,7 @@ type NetworkSummaryRowProps = {
  * violet tint plus a 2px edge in the ring colour, so it never rests on the tint alone; hover is a lighter tint.
  */
 export const NetworkSummaryRow = ({ position, isSelected, onSelect, hasNotification }: NetworkSummaryRowProps) => {
-  const t = useMessages(DASHBOARD_MESSAGES).networks;
+  const t = useMessages("dashboard").networks;
   return (
     <button
       type="button"

@@ -2,7 +2,6 @@
 
 import { EXTERNAL_LINK_REL, SOCIAL_LINKS } from "~~/constants/links";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 
 // The X mark is a logo, not an icon: drawn in currentColor.
 const XIcon = ({ className }: { className?: string }) => (
@@ -16,7 +15,7 @@ const XIcon = ({ className }: { className?: string }) => (
  * page. Visible only while focused, pinned to the top-left corner over the header.
  */
 export const SkipLink = () => {
-  const t = useMessages(COMMON_MESSAGES);
+  const t = useMessages("common");
   return (
     <a
       href="#main"
@@ -36,7 +35,7 @@ export const SkipLink = () => {
  * touch width only from sm, where the gutter has room for it; from sm the type is 18px.
  */
 export const BetaBanner = () => {
-  const t = useMessages(COMMON_MESSAGES);
+  const t = useMessages("common");
 
   return (
     <section aria-label={t.beta.region} className="fixed top-1/2 right-0 z-30 -translate-y-1/2 print:hidden">

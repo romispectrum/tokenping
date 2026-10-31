@@ -1,7 +1,6 @@
 import { CircleAlert, RotateCw } from "lucide-react";
 import { Button } from "~~/components/ui";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 
 type InlineErrorProps = {
   /** What failed, in the user's terms ("Positions did not load"). */
@@ -13,7 +12,7 @@ type InlineErrorProps = {
 
 /** Shown in place of content that failed to load: icon and words, never colour alone, and a way to try again. */
 export const InlineError = ({ title, detail, onRetry }: InlineErrorProps) => {
-  const t = useMessages(DASHBOARD_MESSAGES);
+  const t = useMessages("dashboard");
   return (
     <div role="alert" className="flex flex-col items-center gap-3 px-4 py-10 text-center">
       <div className="flex size-12 items-center justify-center rounded-xl bg-destructive-subtle text-destructive">

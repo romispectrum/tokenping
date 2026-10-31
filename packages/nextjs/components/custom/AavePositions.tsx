@@ -21,12 +21,11 @@ import { Alert, Button, Card, EmptyState, LiveRegion } from "~~/components/ui";
 import { useAavePositions } from "~~/hooks/custom/useAavePositions";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 import type { NetworkPosition } from "~~/services/aave/positions";
 import { formatUSD } from "~~/utils/format";
 
 export const AavePositions = () => {
-  const t = useMessages(DASHBOARD_MESSAGES);
+  const t = useMessages("dashboard");
   const {
     account,
     positions: allPositions,

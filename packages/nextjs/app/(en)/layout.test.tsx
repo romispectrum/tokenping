@@ -98,15 +98,9 @@ describe("root layout", () => {
   // The .dark class drives the tokens and data-theme drives DaisyUI; light is the default whatever the OS says,
   // and System stays available to the user.
   it("themes with both the class and data-theme attributes, light by default", () => {
-    const html = RootLayout({ children: "page" });
-    const themeProvider = html.props.children.props.children[0];
-
-    expect(themeProvider.props).toMatchObject({
-      attribute: ["class", "data-theme"],
-      defaultTheme: "light",
-      enableSystem: true,
-      disableTransitionOnChange: true,
-    });
+    expect(renderHtml(<RootLayout>page</RootLayout>)).toContain(
+      'data-stub="theme-provider" data-attribute="class,data-theme" data-default-theme="light" data-enable-system="true" data-disable-transition="true"',
+    );
   });
 
   // Satoshi's upright and italic are one family (both @font-face rules name it), so italic text gets the real italic.

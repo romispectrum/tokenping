@@ -1,7 +1,6 @@
 import { Send } from "lucide-react";
 import { Button } from "~~/components/ui";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 
 type TestSendButtonProps = {
   /** The channel's name in the page's language ("Email", "E-mail", "Signal", "Telegram"). */
@@ -29,7 +28,7 @@ export const TestSendButton = ({
   isUnavailable = false,
   onSend,
 }: TestSendButtonProps) => {
-  const t = useMessages(ALERTS_MESSAGES);
+  const t = useMessages("alerts");
   const coolingDown = waitMs > 0;
   return (
     <Button

@@ -3,9 +3,9 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { cx } from "~~/components/ui/classNames";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { BLOG_MESSAGES } from "~~/i18n/messages/blog";
+import type { BlogMessages } from "~~/i18n/messages/blog";
 
-type TableMessages = (typeof BLOG_MESSAGES)["en"]["table"];
+type TableMessages = BlogMessages["table"];
 
 const HEADING_TAGS = new Set(["H2", "H3", "H4"]);
 // The search for a heading never leaves the post.
@@ -52,7 +52,7 @@ export const TableScrollRegion = ({ className, children }: TableScrollRegionProp
   const wrapperRef = useRef<HTMLDivElement>(null);
   const regionRef = useRef<HTMLDivElement>(null);
   const hintId = useId();
-  const messages = useMessages(BLOG_MESSAGES).table;
+  const messages = useMessages("blog").table;
   const [label, setLabel] = useState(messages.fallbackLabel);
   const [overflowing, setOverflowing] = useState<boolean | null>(null);
 

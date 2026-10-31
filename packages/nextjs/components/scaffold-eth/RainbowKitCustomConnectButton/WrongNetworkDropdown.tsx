@@ -2,11 +2,10 @@ import { NetworkOptions } from "./NetworkOptions";
 import { useDisconnect } from "wagmi";
 import { ArrowLeftOnRectangleIcon, ChevronDownIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 
 export const WrongNetworkDropdown = () => {
   const { disconnect } = useDisconnect();
-  const t = useMessages(COMMON_MESSAGES).wallet;
+  const t = useMessages("common").wallet;
 
   return (
     <div className="dropdown dropdown-end mr-2">

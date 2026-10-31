@@ -10,8 +10,8 @@ import { Field } from "~~/components/ui/Field";
 import { Input } from "~~/components/ui/Input";
 import { Select } from "~~/components/ui/Select";
 import { cx } from "~~/components/ui/classNames";
-import { useLocale } from "~~/i18n/LocaleProvider";
-import { CALCULATOR_MESSAGES } from "~~/i18n/messages/blog";
+import { useLocale, useMessages } from "~~/i18n/LocaleProvider";
+import type { CalculatorMessages } from "~~/i18n/messages/calculator";
 import {
   LIQUIDATION_THRESHOLDS_AS_OF,
   LIQUIDATION_THRESHOLD_PRESETS,
@@ -63,7 +63,7 @@ type CalculatorFields = {
 
 type CheckedNumber = { value: number | null; error: string | null };
 
-type Messages = (typeof CALCULATOR_MESSAGES)["en"];
+type Messages = CalculatorMessages;
 type ResultMessages = Messages["results"];
 
 type ResultCard = {
@@ -450,7 +450,7 @@ const buildResults = (
  */
 export const LiquidationCalculator = () => {
   const locale = useLocale();
-  const t = CALCULATOR_MESSAGES[locale];
+  const t = useMessages("calculator");
   const thresholdsDate = formatPostDate(LIQUIDATION_THRESHOLDS_AS_OF, locale);
   const baseId = useId();
   const id = (suffix: string) => `${baseId}-${suffix}`;

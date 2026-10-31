@@ -1,17 +1,32 @@
 "use client";
 
 import { type ReactNode, createContext, useContext } from "react";
-import { DEFAULT_LOCALE, type Locale, type Localized } from "~~/i18n/locales";
+import { fallbackMessages } from "~~/i18n/client/fallback";
+import type { ClientMessages } from "~~/i18n/client/messages";
+import { DEFAULT_LOCALE, type Locale } from "~~/i18n/locales";
 
-// The page's language for client components. Each root layout (app/(en), app/(cs)) provides it; without a provider
-// (unit tests) it is English. Server components get the locale as a prop instead.
-const LocaleContext = createContext<Locale>(DEFAULT_LOCALE);
+// The page's language and its strings for client components. Each root layout mounts its language's provider
+// (i18n/client/<locale>.tsx), so a page's JavaScript carries that one language only. Server components get the locale
+// as a prop and read the full message objects instead.
+type LocaleContextValue = { locale: Locale; messages?: ClientMessages };
 
-export const LocaleProvider = ({ locale, children }: { locale: Locale; children: ReactNode }) => (
-  <LocaleContext.Provider value={locale}>{children}</LocaleContext.Provider>
-);
+const LocaleContext = createContext<LocaleContextValue>({ locale: DEFAULT_LOCALE });
 
-export const useLocale = () => useContext(LocaleContext);
+export const LocaleProvider = ({
+  locale,
+  messages,
+  children,
+}: {
+  locale: Locale;
+  /** Left out only in tests, where i18n/client/fallback serves every language. */
+  messages?: ClientMessages;
+  children: ReactNode;
+}) => <LocaleContext.Provider value={{ locale, messages }}>{children}</LocaleContext.Provider>;
 
-/** One area's strings in the page's language: `const t = useMessages(DASHBOARD_MESSAGES)`. */
-export const useMessages = <T,>(messages: Localized<T>): T => messages[useLocale()];
+export const useLocale = () => useContext(LocaleContext).locale;
+
+/** One area's strings in the page's language: `const t = useMessages("dashboard")`. */
+export const useMessages = <Area extends keyof ClientMessages>(area: Area): ClientMessages[Area] => {
+  const { locale, messages } = useContext(LocaleContext);
+  return (messages ?? fallbackMessages(locale))[area];
+};

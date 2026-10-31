@@ -3,7 +3,6 @@ import { TelegramUsernameField } from "~~/components/custom/notifications/Telegr
 import { Field, Input, Select } from "~~/components/ui";
 import { useMessages } from "~~/i18n/LocaleProvider";
 import { LOCALES, LOCALE_INFO, type Locale, isLocale } from "~~/i18n/locales";
-import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 import type { NotificationService } from "~~/types/notifications";
 
 type RecipientFieldsProps = {
@@ -35,7 +34,7 @@ type ChannelLanguageSelectProps = {
 
 /** The language one channel's alerts are written in. Each language is named in itself ("Čeština"). */
 const ChannelLanguageSelect = ({ channel, value, onChange }: ChannelLanguageSelectProps) => {
-  const t = useMessages(ALERTS_MESSAGES);
+  const t = useMessages("alerts");
   return (
     <Field label={t.channelLanguageLabels[channel]} className="sm:w-44 sm:shrink-0">
       {control => (
@@ -85,7 +84,7 @@ export const RecipientFields = ({
   onTelegramUsernameChange,
   onChannelLocaleChange,
 }: RecipientFieldsProps) => {
-  const t = useMessages(ALERTS_MESSAGES);
+  const t = useMessages("alerts");
   const language = (channel: NotificationService) => (
     <ChannelLanguageSelect channel={channel} value={channelLocales[channel]} onChange={onChannelLocaleChange} />
   );

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   EMPTY_FORM_STATE,
-  NOTIFICATION_FORM_ERRORS,
   buildConfigUpdate,
   channelLocaleOf,
   configToFormState,
@@ -14,6 +13,8 @@ import {
 import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 import type { NotificationConfig, NotificationService } from "~~/types/notifications";
 import { MORPHO_THRESHOLD_RANGE } from "~~/utils/notifications/threshold";
+
+const EN_ERRORS = ALERTS_MESSAGES.en.formErrors;
 
 /*
  * Reference versions of the original NotificationConfig.tsx logic (handleStore and saveConfig), written out with
@@ -233,24 +234,24 @@ describe("validateNotificationForm", () => {
   const form = { services: [] as NotificationService[], email: "", signalRecipient: "", telegramUsername: "" };
 
   it.each([
-    [{}, NOTIFICATION_FORM_ERRORS.noService],
-    [{ services: ["email"], email: "  " }, NOTIFICATION_FORM_ERRORS.noEmail],
-    [{ services: ["email"], email: "me@example" }, NOTIFICATION_FORM_ERRORS.invalidEmail],
-    [{ services: ["signal"], signalRecipient: " @ " }, NOTIFICATION_FORM_ERRORS.noSignal],
-    [{ services: ["signal"], signalRecipient: "u:" }, NOTIFICATION_FORM_ERRORS.noSignal],
-    [{ services: ["signal"], signalRecipient: "u: alice.42" }, NOTIFICATION_FORM_ERRORS.invalidSignal],
-    [{ services: ["signal"], signalRecipient: "@@alice.42" }, NOTIFICATION_FORM_ERRORS.invalidSignal],
+    [{}, EN_ERRORS.noService],
+    [{ services: ["email"], email: "  " }, EN_ERRORS.noEmail],
+    [{ services: ["email"], email: "me@example" }, EN_ERRORS.invalidEmail],
+    [{ services: ["signal"], signalRecipient: " @ " }, EN_ERRORS.noSignal],
+    [{ services: ["signal"], signalRecipient: "u:" }, EN_ERRORS.noSignal],
+    [{ services: ["signal"], signalRecipient: "u: alice.42" }, EN_ERRORS.invalidSignal],
+    [{ services: ["signal"], signalRecipient: "@@alice.42" }, EN_ERRORS.invalidSignal],
     // The client accepts the same "u:" form as the server (B0.11) and keeps a leading "u" of the name (B3.1).
     [{ services: ["signal"], signalRecipient: "u:alice.42" }, null],
     [{ services: ["signal"], signalRecipient: " u:@alice.42 " }, null],
     [{ services: ["signal"], signalRecipient: "ursula.42" }, null],
-    [{ services: ["telegram"] }, NOTIFICATION_FORM_ERRORS.noTelegram],
-    [{ services: ["telegram"], telegramUsername: " @ " }, NOTIFICATION_FORM_ERRORS.noTelegram],
-    [{ services: ["telegram"], telegramUsername: "https://t.me/" }, NOTIFICATION_FORM_ERRORS.noTelegram],
-    [{ services: ["telegram"], telegramUsername: "rom" }, NOTIFICATION_FORM_ERRORS.invalidTelegram],
-    [{ services: ["telegram"], telegramUsername: "alice-eth" }, NOTIFICATION_FORM_ERRORS.invalidTelegram],
-    [{ services: ["telegram"], telegramUsername: "alice_" }, NOTIFICATION_FORM_ERRORS.invalidTelegram],
-    [{ services: ["telegram"], telegramUsername: "1alice" }, NOTIFICATION_FORM_ERRORS.invalidTelegram],
+    [{ services: ["telegram"] }, EN_ERRORS.noTelegram],
+    [{ services: ["telegram"], telegramUsername: " @ " }, EN_ERRORS.noTelegram],
+    [{ services: ["telegram"], telegramUsername: "https://t.me/" }, EN_ERRORS.noTelegram],
+    [{ services: ["telegram"], telegramUsername: "rom" }, EN_ERRORS.invalidTelegram],
+    [{ services: ["telegram"], telegramUsername: "alice-eth" }, EN_ERRORS.invalidTelegram],
+    [{ services: ["telegram"], telegramUsername: "alice_" }, EN_ERRORS.invalidTelegram],
+    [{ services: ["telegram"], telegramUsername: "1alice" }, EN_ERRORS.invalidTelegram],
     // Pasted the way Telegram shows it: with "@", in capitals or as a t.me link.
     [{ services: ["telegram"], telegramUsername: " @Alice_Eth " }, null],
     [{ services: ["telegram"], telegramUsername: "https://t.me/alice_eth" }, null],
@@ -266,18 +267,21 @@ describe("validateNotificationForm", () => {
       null,
     ],
   ])("%j -> %s", (overrides, expected) => {
-    expect(validateNotificationForm({ ...form, ...overrides } as typeof form)).toBe(expected);
+    expect(validateNotificationForm({ ...form, ...overrides } as typeof form, EN_ERRORS)).toBe(expected);
   });
 
   it("reports the first problem in field order", () => {
     expect(
-      validateNotificationForm({
-        services: ["telegram", "signal", "email"],
-        email: "",
-        signalRecipient: "",
-        telegramUsername: "",
-      }),
-    ).toBe(NOTIFICATION_FORM_ERRORS.noEmail);
+      validateNotificationForm(
+        {
+          services: ["telegram", "signal", "email"],
+          email: "",
+          signalRecipient: "",
+          telegramUsername: "",
+        },
+        EN_ERRORS,
+      ),
+    ).toBe(EN_ERRORS.noEmail);
   });
 
   it("matches the reference checks for every combination", () => {
@@ -285,7 +289,7 @@ describe("validateNotificationForm", () => {
       for (const email of EMAILS)
         for (const signalRecipient of SIGNALS)
           for (const telegramUsername of TELEGRAMS) {
-            expect(validateNotificationForm({ services, email, signalRecipient, telegramUsername })).toBe(
+            expect(validateNotificationForm({ services, email, signalRecipient, telegramUsername }, EN_ERRORS)).toBe(
               referenceValidate(services, email, signalRecipient, telegramUsername),
             );
           }
@@ -295,51 +299,60 @@ describe("validateNotificationForm", () => {
 describe("getNotificationFormErrors", () => {
   it("reports every problem at once, each under its own field", () => {
     expect(
-      getNotificationFormErrors({
-        services: ["telegram", "signal", "email"],
-        email: "me@example",
-        signalRecipient: "",
-        telegramUsername: "@",
-      }),
+      getNotificationFormErrors(
+        {
+          services: ["telegram", "signal", "email"],
+          email: "me@example",
+          signalRecipient: "",
+          telegramUsername: "@",
+        },
+        EN_ERRORS,
+      ),
     ).toStrictEqual({
-      email: NOTIFICATION_FORM_ERRORS.invalidEmail,
-      signalRecipient: NOTIFICATION_FORM_ERRORS.noSignal,
-      telegram: NOTIFICATION_FORM_ERRORS.noTelegram,
+      email: EN_ERRORS.invalidEmail,
+      signalRecipient: EN_ERRORS.noSignal,
+      telegram: EN_ERRORS.noTelegram,
     });
   });
 
   it("asks only for a service when none is selected, and is empty for a valid form", () => {
     expect(
-      getNotificationFormErrors({ services: [], email: "", signalRecipient: "", telegramUsername: "" }),
+      getNotificationFormErrors({ services: [], email: "", signalRecipient: "", telegramUsername: "" }, EN_ERRORS),
     ).toStrictEqual({
-      services: NOTIFICATION_FORM_ERRORS.noService,
+      services: EN_ERRORS.noService,
     });
     expect(
-      getNotificationFormErrors({
-        services: ["email", "telegram"],
-        email: "me@example.com",
-        signalRecipient: "",
-        telegramUsername: "alice_eth",
-      }),
+      getNotificationFormErrors(
+        {
+          services: ["email", "telegram"],
+          email: "me@example.com",
+          signalRecipient: "",
+          telegramUsername: "alice_eth",
+        },
+        EN_ERRORS,
+      ),
     ).toStrictEqual({});
   });
 
   it("does not ask for the Telegram account to have pressed Start: a valid username is enough to save", () => {
     // The form knows nothing about the link; the status line under the field says whether Start was pressed.
     expect(
-      getNotificationFormErrors({
-        services: ["telegram"],
-        email: "",
-        signalRecipient: "",
-        telegramUsername: "x_never",
-      }),
+      getNotificationFormErrors(
+        {
+          services: ["telegram"],
+          email: "",
+          signalRecipient: "",
+          telegramUsername: "x_never",
+        },
+        EN_ERRORS,
+      ),
     ).toStrictEqual({});
   });
 
   it("writes every message as a sentence that says what to do, without dashes", () => {
     // En and em dash, built from their code points so this file does not contain them, even as escapes.
     const dashes = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
-    for (const message of Object.values(NOTIFICATION_FORM_ERRORS)) {
+    for (const message of Object.values(EN_ERRORS)) {
       expect(message).toMatch(/^(?:Select|Enter) .+\.$/);
       expect(message).not.toMatch(dashes);
     }
@@ -492,22 +505,29 @@ describe("form errors in Czech", () => {
       signalRecipient: "",
       telegramUsername: "",
     };
-    expect(getNotificationFormErrors(form, "cs")).toStrictEqual({
+    expect(getNotificationFormErrors(form, ALERTS_MESSAGES.cs.formErrors)).toStrictEqual({
       email: "Zadejte e-mailovou adresu ve tvaru jmeno@example.com.",
       signalRecipient: "Zadejte své uživatelské jméno v Signalu.",
       telegram: "Zadejte své uživatelské jméno na Telegramu.",
     });
-    expect(validateNotificationForm({ ...form, services: [] }, "cs")).toBe("Vyberte alespoň jeden kanál upozornění.");
-    expect(validateNotificationForm({ ...form, services: ["telegram"], telegramUsername: "alice-eth" }, "cs")).toBe(
+    expect(validateNotificationForm({ ...form, services: [] }, ALERTS_MESSAGES.cs.formErrors)).toBe(
+      "Vyberte alespoň jeden kanál upozornění.",
+    );
+    expect(
+      validateNotificationForm(
+        { ...form, services: ["telegram"], telegramUsername: "alice-eth" },
+        ALERTS_MESSAGES.cs.formErrors,
+      ),
+    ).toBe(
       "Zadejte uživatelské jméno na Telegramu ve tvaru alice_eth: 4 až 32 písmen, číslic nebo podtržítek, na začátku písmeno a na konci ne _.",
     );
     // English stays the default for callers without a page (the API checks).
-    expect(validateNotificationForm({ ...form, services: [] })).toBe(NOTIFICATION_FORM_ERRORS.noService);
+    expect(validateNotificationForm({ ...form, services: [] }, EN_ERRORS)).toBe(EN_ERRORS.noService);
   });
 
   it("has a Czech message for every English one, each a sentence without dashes", () => {
     const dashes = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
-    expect(Object.keys(CS).sort()).toEqual(Object.keys(NOTIFICATION_FORM_ERRORS).sort());
+    expect(Object.keys(CS).sort()).toEqual(Object.keys(EN_ERRORS).sort());
     for (const message of Object.values(CS)) {
       expect(message).toMatch(/^\p{Lu}.+\.$/u);
       expect(message).not.toMatch(dashes);

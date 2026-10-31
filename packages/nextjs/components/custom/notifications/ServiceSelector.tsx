@@ -3,7 +3,6 @@ import { SERVICE_ICONS } from "~~/components/custom/notifications/serviceIcons";
 import { Checkbox, cx } from "~~/components/ui";
 import { getSelectableServices } from "~~/constants/notifications";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 import type { NotificationService } from "~~/types/notifications";
 
 type ServiceSelectorProps = {
@@ -20,7 +19,7 @@ type ServiceSelectorProps = {
  * tile is the touch target and selected is the violet accent, never pink.
  */
 export const ServiceSelector = ({ id: groupId, services, onToggle, error }: ServiceSelectorProps) => {
-  const t = useMessages(ALERTS_MESSAGES);
+  const t = useMessages("alerts");
   const id = useId();
   const descriptionId = `${id}-description`;
   const errorId = `${id}-error`;

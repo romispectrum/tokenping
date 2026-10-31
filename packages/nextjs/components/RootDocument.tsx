@@ -1,13 +1,9 @@
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import "@scaffold-ui/components/styles.css";
-import { Analytics } from "@vercel/analytics/next";
 import type { Viewport } from "next";
-import { ScaffoldEthAppWithProviders } from "~~/components/ScaffoldEthAppWithProviders";
-import { ThemeProvider } from "~~/components/ThemeProvider";
 import { THEME_COLOR } from "~~/components/brand/themeColor";
-import { LocaleProvider } from "~~/i18n/LocaleProvider";
 import { LOCALE_INFO, type Locale } from "~~/i18n/locales";
 import "~~/styles/globals.css";
 
@@ -59,6 +55,8 @@ export const ROOT_VIEWPORT: Viewport = {
 
 type RootDocumentProps = {
   locale: Locale;
+  /** The language's client root (i18n/client/<locale>.tsx): providers and the page's strings for client components. */
+  LocaleRoot: ComponentType<{ children: ReactNode }>;
   children: ReactNode;
   /** next/font classes a language adds to <html>: Vietnamese sets its words in its own font (components/fonts). */
   fontClassName?: string;
@@ -70,21 +68,14 @@ type RootDocumentProps = {
  * build is a static export). Moving between languages is a full page load, which is fine for a language switch.
  * A plain function, not a component, so a layout returns the <html> element itself.
  */
-export const rootDocument = ({ locale, children, fontClassName }: RootDocumentProps) => (
+export const rootDocument = ({ locale, LocaleRoot, children, fontClassName }: RootDocumentProps) => (
   <html
     lang={LOCALE_INFO[locale].htmlLang}
     suppressHydrationWarning
     className={[satoshi.variable, satoshiItalic.variable, geistMono.variable, fontClassName].filter(Boolean).join(" ")}
   >
     <body>
-      <ThemeProvider attribute={["class", "data-theme"]} defaultTheme="light" enableSystem disableTransitionOnChange>
-        <LocaleProvider locale={locale}>
-          <ScaffoldEthAppWithProviders>{children}</ScaffoldEthAppWithProviders>
-        </LocaleProvider>
-      </ThemeProvider>
-      {/* Vercel Web Analytics: cookieless page counts (see the privacy page). The IPFS build has no Vercel endpoint
-          to report to, so it is left out there; in development it only logs to the console. */}
-      {process.env.NEXT_PUBLIC_IPFS_BUILD !== "true" && <Analytics />}
+      <LocaleRoot>{children}</LocaleRoot>
     </body>
   </html>
 );

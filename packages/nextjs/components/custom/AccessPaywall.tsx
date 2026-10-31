@@ -10,16 +10,16 @@ import { type PaymentStep, getPaymentProgress, usePaymentWrites } from "~~/compo
 import { Alert, Button, Card, Spinner } from "~~/components/ui";
 import { PAYMENT_CHAIN_ID, PAYMENT_TOKEN_DECIMALS, PAYMENT_TOKEN_SYMBOL, SECONDS_PER_DAY } from "~~/constants/payments";
 import { useAccess } from "~~/hooks/custom/useAccess";
-import { useLocale } from "~~/i18n/LocaleProvider";
+import { useLocale, useMessages } from "~~/i18n/LocaleProvider";
 import { LOCALE_INFO } from "~~/i18n/locales";
-import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
+import type { DashboardMessages } from "~~/i18n/messages/dashboard";
 import scaffoldConfig from "~~/scaffold.config";
 import { formatDurationDays } from "~~/services/payments/paywallStatus";
 import { normalizeAddress } from "~~/utils/address";
 import { formatTokenAmount } from "~~/utils/format";
 import { notification } from "~~/utils/scaffold-eth";
 
-type PaywallMessages = (typeof DASHBOARD_MESSAGES)["en"]["paywall"];
+type PaywallMessages = DashboardMessages["paywall"];
 
 // The Pay button's label while the flow runs, per step: no trailing dots, and it never says "done" early.
 const LOADING_TEXT: Record<PaymentStep, keyof PaywallMessages["loading"]> = {
@@ -59,7 +59,7 @@ type AccessPaywallProps = {
 
 export const AccessPaywall = ({ children, description, hasExistingConfig = false }: AccessPaywallProps) => {
   const locale = useLocale();
-  const t = DASHBOARD_MESSAGES[locale].paywall;
+  const t = useMessages("dashboard").paywall;
   const { address, chain: walletChain } = useAccount();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
   const { isActive, expiryTimestamp, status, payForAccess } = useAccess();

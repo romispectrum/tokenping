@@ -15,7 +15,7 @@ import { useEthPrice } from "~~/hooks/custom/useEthPrice";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth/useTargetNetwork";
 import { useLocale, useMessages } from "~~/i18n/LocaleProvider";
 import type { Locale } from "~~/i18n/locales";
-import { COMMON_MESSAGES } from "~~/i18n/messages/common";
+import type { CommonMessages } from "~~/i18n/messages/common";
 import { routePath } from "~~/i18n/routes";
 import { formatAlertChannelsIn } from "~~/services/marketing/alertChannels";
 
@@ -35,8 +35,7 @@ type FooterGroup = {
   links: readonly FooterLink[];
 };
 
-const footerGroups = (locale: Locale): readonly FooterGroup[] => {
-  const t = COMMON_MESSAGES[locale].footer;
+const footerGroups = (locale: Locale, t: CommonMessages["footer"]): readonly FooterGroup[] => {
   return [
     {
       id: "resources",
@@ -98,7 +97,7 @@ const FooterLinkItem = ({ label, href, kind, ariaLabel }: FooterLink) => {
  */
 export const Footer = () => {
   const locale = useLocale();
-  const t = useMessages(COMMON_MESSAGES);
+  const t = useMessages("common");
   const { targetNetwork } = useTargetNetwork();
   const isLocalNetwork = targetNetwork.id === hardhat.id;
   // From this site's API, which reads the mainnet DAI/WETH pool server-side: no RPC call from the browser for it.
@@ -146,7 +145,7 @@ export const Footer = () => {
           </div>
 
           <nav aria-label={t.footer.navLabel} className="grid grid-cols-2 gap-10 sm:grid-cols-3 lg:gap-12">
-            {footerGroups(locale).map(({ id, title, links }) => (
+            {footerGroups(locale, t.footer).map(({ id, title, links }) => (
               <div key={id}>
                 <p id={`footer-${id}`} className={TITLE_CLASS_NAME}>
                   {title}

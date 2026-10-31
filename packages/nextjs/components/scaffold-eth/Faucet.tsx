@@ -9,7 +9,6 @@ import { BanknotesIcon } from "@heroicons/react/24/outline";
 import { buttonClasses } from "~~/components/ui/buttonClasses";
 import { useTargetNetwork, useTransactor } from "~~/hooks/scaffold-eth";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 import { notification } from "~~/utils/scaffold-eth";
 
 // Account index to use from generated hardhat accounts.
@@ -29,7 +28,7 @@ export const Faucet = () => {
   const [faucetAddress, setFaucetAddress] = useState<AddressType>();
   const [sendValue, setSendValue] = useState("");
   const { targetNetwork } = useTargetNetwork();
-  const t = useMessages(COMMON_MESSAGES).faucet;
+  const t = useMessages("common").faucet;
 
   const { chain: ConnectedChain } = useAccount();
 

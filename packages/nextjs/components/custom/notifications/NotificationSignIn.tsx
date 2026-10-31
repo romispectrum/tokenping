@@ -1,7 +1,6 @@
 import { KeyRound } from "lucide-react";
 import { Alert, Button, Card, CardContent, EmptyState, LiveRegion } from "~~/components/ui";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 
 type NotificationSignInProps = {
   /** The view's pink primary action: true once the wallet has paid, when the paywall is gone. */
@@ -18,7 +17,7 @@ type NotificationSignInProps = {
  * since the paywall's button is.
  */
 export const NotificationSignIn = ({ isPrimary, isSigningIn, errorMessage, onSignIn }: NotificationSignInProps) => {
-  const t = useMessages(ALERTS_MESSAGES);
+  const t = useMessages("alerts");
   return (
     <Card>
       <CardContent>

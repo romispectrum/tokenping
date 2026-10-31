@@ -17,7 +17,6 @@ import {
   useTransactor,
 } from "~~/hooks/scaffold-eth";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 import { getPaywallStatus } from "~~/services/payments/paywallStatus";
 import { findTokenPlan, selectPaymentPlan } from "~~/services/payments/plans";
 import type { ContractAbi } from "~~/utils/scaffold-eth/contract";
@@ -60,7 +59,7 @@ const IS_PAYWALL_CONFIGURED = PAYMENT_CHAIN_ID !== undefined && Boolean(PAYMENT_
 export const useAccess = () => {
   const { address, chain } = useAccount();
   // The error messages payForAccess returns, in the page's language.
-  const t = useMessages(DASHBOARD_MESSAGES).paywall;
+  const t = useMessages("dashboard").paywall;
 
   const { data: isActive, refetch: refetchActive } = useScaffoldReadContract({
     contractName: "TokenpingPaywall",

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildConfigUpdate, validateNotificationForm } from "~~/components/custom/notifications/notificationForm";
+import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 import { type ConfigInput, parseConfigInput } from "~~/services/notifications/configInput";
 
 const DEFAULTS = {
@@ -249,7 +250,7 @@ describe("parseConfigInput", () => {
     `u:@alice.${"4".repeat(59)}`,
   ])("accepts every Signal username the client form accepts, and only those: %j", signalRecipient => {
     const form = { services: ["signal" as const], email: "", signalRecipient, telegramUsername: "" };
-    const clientError = validateNotificationForm(form);
+    const clientError = validateNotificationForm(form, ALERTS_MESSAGES.en.formErrors);
     const payload = buildConfigUpdate({ ...form, services: ["signal"], threshold: 1.5 });
     const server = parseConfigInput(payload);
     expect("value" in server).toBe(clientError === null);
@@ -264,7 +265,7 @@ describe("parseConfigInput", () => {
     ["a".repeat(32), "a".repeat(32)],
   ])("stores every Telegram username the client form accepts as it normalized it: %j", (telegramUsername, stored) => {
     const form = { services: ["telegram" as const], email: "", signalRecipient: "", telegramUsername };
-    expect(validateNotificationForm(form)).toBeNull();
+    expect(validateNotificationForm(form, ALERTS_MESSAGES.en.formErrors)).toBeNull();
     const payload = buildConfigUpdate({ ...form, services: ["telegram"], threshold: 1.5 });
     expect(parseConfigInput(payload)).toStrictEqual({
       value: {
@@ -280,7 +281,7 @@ describe("parseConfigInput", () => {
     "rejects the Telegram usernames the client form rejects: %j",
     telegramUsername => {
       const form = { services: ["telegram" as const], email: "", signalRecipient: "", telegramUsername };
-      expect(validateNotificationForm(form)).not.toBeNull();
+      expect(validateNotificationForm(form, ALERTS_MESSAGES.en.formErrors)).not.toBeNull();
       const payload = buildConfigUpdate({ ...form, services: ["telegram"], threshold: 1.5 });
       expect(parseConfigInput(payload)).toStrictEqual({ error: TELEGRAM_ERROR });
     },

@@ -4,10 +4,9 @@ import { SERVICE_ICONS } from "~~/components/custom/notifications/serviceIcons";
 import { Alert, Badge } from "~~/components/ui";
 import { AVAILABLE_SERVICES, TEST_SEND_COOLDOWN_MINUTES, getTelegramBotUsername } from "~~/constants/notifications";
 import { useTelegramUsernameStatus } from "~~/hooks/custom/useTelegramUsernameStatus";
-import { useLocale } from "~~/i18n/LocaleProvider";
+import { useLocale, useMessages } from "~~/i18n/LocaleProvider";
 import { formatDecimal } from "~~/i18n/format";
 import { LOCALE_INFO, type Locale } from "~~/i18n/locales";
-import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 import type { NotificationService } from "~~/types/notifications";
 
 /** The "Send test" buttons, one per saved channel. Absent without paid access: the server would refuse the send. */
@@ -58,7 +57,7 @@ export const NotificationSummary = ({
   testSends,
 }: NotificationSummaryProps) => {
   const locale = useLocale();
-  const t = ALERTS_MESSAGES[locale];
+  const t = useMessages("alerts");
   const showsTelegram = services.includes("telegram") && Boolean(telegramUsername);
   const telegram = useTelegramUsernameStatus(showsTelegram ? telegramUsername : "");
   const bot = getTelegramBotUsername();

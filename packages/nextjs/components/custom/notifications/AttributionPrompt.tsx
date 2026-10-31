@@ -1,7 +1,6 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Button, Field, Input } from "~~/components/ui";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 import { submitAttributionAnswer } from "~~/services/notifications/attributionClient";
 import { ATTRIBUTION_MAX_LENGTH, parseAttributionAnswer } from "~~/services/notifications/attributionInput";
 import { notification } from "~~/utils/scaffold-eth";
@@ -21,7 +20,7 @@ type AttributionPromptProps = {
  * signed-in wallet.
  */
 export const AttributionPrompt = ({ autoFocus = false, onSent, onClose }: AttributionPromptProps) => {
-  const t = useMessages(ALERTS_MESSAGES);
+  const t = useMessages("alerts");
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [answer, setAnswer] = useState("");

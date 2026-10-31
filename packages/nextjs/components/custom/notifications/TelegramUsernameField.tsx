@@ -3,7 +3,6 @@ import { Field, Input, Spinner } from "~~/components/ui";
 import { getTelegramBotUsername } from "~~/constants/notifications";
 import { type TelegramUsernameLinkStatus, useTelegramUsernameStatus } from "~~/hooks/custom/useTelegramUsernameStatus";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 
 type TelegramUsernameFieldProps = {
   /** The field's id, for links to it (the error summary). */
@@ -24,7 +23,7 @@ type TelegramLinkStatusLineProps = {
  * A bot cannot message someone who never wrote to it, so that one Start is the only step besides typing the name.
  */
 export const TelegramLinkStatusLine = ({ status, username }: TelegramLinkStatusLineProps) => {
-  const t = useMessages(ALERTS_MESSAGES);
+  const t = useMessages("alerts");
   const bot = getTelegramBotUsername();
   if (status === "idle" || !username) return null;
 
@@ -81,7 +80,7 @@ export const TelegramLinkStatusLine = ({ status, username }: TelegramLinkStatusL
  * line is a live region, so "linked" is announced when the person comes back from pressing Start in the bot.
  */
 export const TelegramUsernameField = ({ id, value, error, onChange }: TelegramUsernameFieldProps) => {
-  const t = useMessages(ALERTS_MESSAGES);
+  const t = useMessages("alerts");
   const { status, username } = useTelegramUsernameStatus(value, { poll: true });
   return (
     <div id={id} data-field="telegram" className="flex flex-col gap-2">

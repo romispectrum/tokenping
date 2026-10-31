@@ -5,7 +5,6 @@ import { Check, CircleAlert, Copy } from "lucide-react";
 import { shortenHex, toDisplayAddress } from "~~/components/custom/aave/web3Format";
 import { cx } from "~~/components/ui";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 
 // A deterministic avatar from chart series 1, 4 and 5: never chart-3 (pink, the view's primary action) and never
 // chart-2 (cyan in dark, never a fill).
@@ -40,7 +39,7 @@ type AddressChipProps = {
  * in the accessible name; copy confirms with an icon swap and an announced "Address copied".
  */
 export const AddressChip = ({ address, label: labelProp, className }: AddressChipProps) => {
-  const t = useMessages(DASHBOARD_MESSAGES).address;
+  const t = useMessages("dashboard").address;
   const label = labelProp ?? t.defaultLabel;
   const copyAnnouncements: Record<CopyState, string> = { idle: "", copied: t.copied, failed: t.copyFailed };
   const [copyState, setCopyState] = useState<CopyState>("idle");

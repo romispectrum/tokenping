@@ -15,8 +15,7 @@ import {
 import { Alert, Card } from "~~/components/ui";
 import { getMorphoChain } from "~~/config/morpho";
 import type { MorphoPositionItem } from "~~/hooks/custom/useMorphoPositions";
-import { useLocale } from "~~/i18n/LocaleProvider";
-import { MORPHO_MESSAGES } from "~~/i18n/messages/morpho";
+import { useLocale, useMessages } from "~~/i18n/LocaleProvider";
 import { formatUtcTimestamp } from "~~/utils/format";
 
 type MorphoPositionDetailsProps = {
@@ -40,7 +39,7 @@ const Note = ({ title, detail }: { title: string; detail: string }) => (
 /** The selected Morpho position: its health factor, the four numbers that make it, a fixed-rate loan's maturity. */
 export const MorphoPositionDetails = ({ item, onRetry }: MorphoPositionDetailsProps) => {
   const locale = useLocale();
-  const t = MORPHO_MESSAGES[locale];
+  const t = useMessages("morpho");
   const { ref, position } = item;
   const chainName = getMorphoChain(ref.chainId)?.name ?? String(ref.chainId);
   const params = position?.params;

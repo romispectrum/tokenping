@@ -1,6 +1,6 @@
 import { DEFAULT_HEALTH_FACTOR_THRESHOLD } from "~~/constants/notifications";
 import { DEFAULT_LOCALE, type Locale, isLocale } from "~~/i18n/locales";
-import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
+import type { NotificationFormErrorMessages } from "~~/i18n/messages/alerts";
 import type { ChannelLocales, NotificationConfig, NotificationService } from "~~/types/notifications";
 import {
   type ThresholdRange,
@@ -109,15 +109,11 @@ export const countFormFields = (services: readonly NotificationService[]) => 2 +
 /** A failed Save lists the errors at the top of the form once it shows more than 3 fields. */
 export const needsErrorSummary = (services: readonly NotificationService[]) => countFormFields(services) > 3;
 
-/** The English messages; each says what to do to fix the field. The Czech ones are in i18n/messages/alerts. */
-export const NOTIFICATION_FORM_ERRORS = ALERTS_MESSAGES.en.formErrors;
-
-/** Every problem in the form, by field, in the page's language; empty when the form can be saved. */
+/** Every problem in the form, by field, in the language of `messages`; empty when the form can be saved. */
 export const getNotificationFormErrors = (
   { services, email, signalRecipient, telegramUsername }: SubmittableForm,
-  locale: Locale = DEFAULT_LOCALE,
+  messages: NotificationFormErrorMessages,
 ): NotificationFormErrors => {
-  const messages = ALERTS_MESSAGES[locale].formErrors;
   const errors: NotificationFormErrors = {};
   if (services.length === 0) errors.services = messages.noService;
   if (services.includes("email")) {
@@ -140,8 +136,8 @@ export const getNotificationFormErrors = (
 };
 
 /** The first problem in display order, or null when the form can be saved. */
-export const validateNotificationForm = (form: SubmittableForm, locale: Locale = DEFAULT_LOCALE) => {
-  const errors = getNotificationFormErrors(form, locale);
+export const validateNotificationForm = (form: SubmittableForm, messages: NotificationFormErrorMessages) => {
+  const errors = getNotificationFormErrors(form, messages);
   const first = NOTIFICATION_FORM_FIELDS.find(field => errors[field] !== undefined);
   return first ? (errors[first] ?? null) : null;
 };

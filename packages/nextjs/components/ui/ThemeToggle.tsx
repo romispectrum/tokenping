@@ -4,7 +4,6 @@ import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cx } from "~~/components/ui/classNames";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 
 /**
  * Flips between the light and dark theme. Hydration-safe without a mounted flag: both icons are rendered and CSS
@@ -15,7 +14,7 @@ import { COMMON_MESSAGES } from "~~/i18n/messages/common";
  */
 export const ThemeToggle = ({ className }: { className?: string }) => {
   const { resolvedTheme, setTheme } = useTheme();
-  const t = useMessages(COMMON_MESSAGES);
+  const t = useMessages("common");
 
   return (
     <button

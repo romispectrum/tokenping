@@ -4,7 +4,6 @@ import { useCallback, useMemo } from "react";
 import { skipToken, useQuery } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 import { type NetworkPosition, fetchAavePositions, sumUsd } from "~~/services/aave/positions";
 import { normalizeAddress } from "~~/utils/address";
 import { getErrorMessage } from "~~/utils/errors";
@@ -13,7 +12,7 @@ const NO_POSITIONS: NetworkPosition[] = [];
 
 export const useAavePositions = () => {
   const { address, isConnected } = useAccount();
-  const t = useMessages(DASHBOARD_MESSAGES).errors;
+  const t = useMessages("dashboard").errors;
   const user = isConnected ? address : undefined;
   const account = user ? normalizeAddress(user) : null;
 

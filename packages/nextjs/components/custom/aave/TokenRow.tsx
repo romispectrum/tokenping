@@ -1,7 +1,6 @@
 import { TokenIcon } from "~~/components/custom/aave/TokenIcon";
 import { formatDebtBreakdown } from "~~/components/custom/aave/positionsView";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 import type { TokenPosition } from "~~/services/aave/positions";
 import { formatTokenAmount } from "~~/utils/format";
 
@@ -34,7 +33,7 @@ const AssetCell = ({ token, chainId }: TokenRowProps) => (
  * out), whether it counts as collateral.
  */
 export const CollateralTokenRow = ({ token, chainId }: TokenRowProps) => {
-  const t = useMessages(DASHBOARD_MESSAGES).tokens;
+  const t = useMessages("dashboard").tokens;
   return (
     <tr className="border-t border-border">
       <AssetCell token={token} chainId={chainId} />
@@ -47,7 +46,7 @@ export const CollateralTokenRow = ({ token, chainId }: TokenRowProps) => {
 
 /** A token with stable and/or variable debt: asset, total borrowed, and the split by rate type. */
 export const DebtTokenRow = ({ token, chainId }: TokenRowProps) => {
-  const t = useMessages(DASHBOARD_MESSAGES).tokens;
+  const t = useMessages("dashboard").tokens;
   return (
     <tr className="border-t border-border">
       <AssetCell token={token} chainId={chainId} />

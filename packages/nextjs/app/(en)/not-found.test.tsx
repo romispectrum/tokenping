@@ -9,6 +9,7 @@ import GlobalNotFound, { metadata as globalMetadata } from "~~/app/global-not-fo
 vi.mock("~~/components/RootDocument", () => ({
   rootDocument: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
+vi.mock("~~/i18n/client/en", () => ({ LocaleRoot: ({ children }: { children: ReactNode }) => <>{children}</> }));
 
 describe("not-found", () => {
   it("has its own title instead of inheriting the home page's", () => {

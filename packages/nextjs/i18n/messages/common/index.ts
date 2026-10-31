@@ -1,0 +1,16 @@
+import { MESSAGES as cs } from "./cs";
+import { MESSAGES as de } from "./de";
+import { MESSAGES as en } from "./en";
+import { MESSAGES as es } from "./es";
+import { MESSAGES as hi } from "./hi";
+import type { CommonMessages } from "./shared";
+import { MESSAGES as vi } from "./vi";
+import type { Localized } from "~~/i18n/locales";
+
+// The site chrome in every language: the beta strip and skip link, the header, the footer, the shared UI primitives,
+// the wallet button, the developer faucet and the 404. Rich text is split into the words around the markup, so each
+// language keeps its own word order.
+
+export type { CommonMessages } from "./shared";
+
+export const COMMON_MESSAGES: Localized<CommonMessages> = { en, cs, es, hi, de, vi };

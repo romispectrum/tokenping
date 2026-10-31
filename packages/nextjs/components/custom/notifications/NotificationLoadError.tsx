@@ -2,7 +2,6 @@ import { RotateCw } from "lucide-react";
 import { NotificationCard } from "~~/components/custom/notifications/NotificationCard";
 import { Alert, Button } from "~~/components/ui";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 
 type NotificationLoadErrorProps = {
   isRetrying: boolean;
@@ -10,7 +9,7 @@ type NotificationLoadErrorProps = {
 };
 
 export const NotificationLoadError = ({ isRetrying, onRetry }: NotificationLoadErrorProps) => {
-  const t = useMessages(ALERTS_MESSAGES);
+  const t = useMessages("alerts");
   return (
     <NotificationCard isActive={false}>
       <Alert

@@ -1,6 +1,5 @@
 import { Skeleton, cx } from "~~/components/ui";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 
 type StatCardVariant = "cell" | "panel";
 
@@ -39,7 +38,7 @@ type StatCardProps = {
  * dt/dd pair. Flat, no tint: the numbers are not statuses.
  */
 export const StatCard = ({ label, value, variant = "cell" }: StatCardProps) => {
-  const t = useMessages(DASHBOARD_MESSAGES);
+  const t = useMessages("dashboard");
   return (
     <div className={cx("flex min-w-0", SURFACE[variant])}>
       <dt className="text-sm font-medium text-muted-foreground">{label}</dt>

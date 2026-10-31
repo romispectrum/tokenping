@@ -14,7 +14,7 @@ import { cx } from "~~/components/ui/classNames";
 import { useOutsideClick, useTargetNetwork } from "~~/hooks/scaffold-eth";
 import { useLocale, useMessages } from "~~/i18n/LocaleProvider";
 import type { Locale } from "~~/i18n/locales";
-import { COMMON_MESSAGES } from "~~/i18n/messages/common";
+import type { CommonMessages } from "~~/i18n/messages/common";
 import { routePath } from "~~/i18n/routes";
 
 type MenuLink = {
@@ -24,8 +24,7 @@ type MenuLink = {
   includesNested?: boolean;
 };
 
-const menuLinks = (locale: Locale): readonly MenuLink[] => {
-  const { nav } = COMMON_MESSAGES[locale].header;
+const menuLinks = (locale: Locale, nav: CommonMessages["header"]["nav"]): readonly MenuLink[] => {
   return [
     { label: nav.home, href: routePath(locale, "home") },
     { label: nav.dashboard, href: routePath(locale, "dashboard") },
@@ -54,10 +53,11 @@ const MENU_PANEL_CLASS_NAME =
 const HeaderMenuLinks = ({ linkClassName }: { linkClassName: string }) => {
   const pathname = usePathname();
   const locale = useLocale();
+  const { nav } = useMessages("common").header;
 
   return (
     <>
-      {menuLinks(locale).map(link => {
+      {menuLinks(locale, nav).map(link => {
         const { label, href } = link;
         const isActive = isMenuLinkActive(pathname, link);
         return (
@@ -88,7 +88,7 @@ const HeaderMenuLinks = ({ linkClassName }: { linkClassName: string }) => {
  */
 export const Header = () => {
   const locale = useLocale();
-  const t = useMessages(COMMON_MESSAGES);
+  const t = useMessages("common");
   const { targetNetwork } = useTargetNetwork();
   const isLocalNetwork = targetNetwork.id === hardhat.id;
   const pathname = usePathname();

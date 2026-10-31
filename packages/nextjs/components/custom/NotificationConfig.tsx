@@ -35,10 +35,10 @@ import { useAccess } from "~~/hooks/custom/useAccess";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
 import { useNotificationTests } from "~~/hooks/custom/useNotificationTests";
 import { hasSignedInHere, useWalletSession, useWalletSignIn } from "~~/hooks/custom/useWalletSession";
-import { useLocale } from "~~/i18n/LocaleProvider";
+import { useLocale, useMessages } from "~~/i18n/LocaleProvider";
 import type { MarketNameKind } from "~~/i18n/format";
 import type { Locale } from "~~/i18n/locales";
-import { ALERTS_MESSAGES, requestErrorMessage } from "~~/i18n/messages/alerts";
+import { requestErrorMessage } from "~~/i18n/requestErrorMessage";
 import { TestSendError } from "~~/services/notifications/notificationTestClient";
 import type { NotificationService } from "~~/types/notifications";
 import { normalizeAddress } from "~~/utils/address";
@@ -71,7 +71,7 @@ const NotificationSettings = ({
   currentHealthFactor,
 }: NotificationConfigProps & { address: string | undefined }) => {
   const locale = useLocale();
-  const t = ALERTS_MESSAGES[locale];
+  const t = useMessages("alerts");
   const { getConfig, updateConfig, deleteConfig, isLoaded, isError, isFetching, refetch, isSaving, isDeleting } =
     useNotificationConfig();
   const { isActive: hasAccess } = useAccess();
@@ -173,7 +173,7 @@ const NotificationSettings = ({
       const message =
         error instanceof TestSendError && error.retryAt
           ? t.testAgainIn(Math.max(1, Math.ceil((Date.parse(error.retryAt) - Date.now()) / 60_000)))
-          : requestErrorMessage(locale, error, t.testFailed);
+          : requestErrorMessage(locale, error, t.testFailed, t.signInExpired);
       notification.error(message);
       setAnnouncement(message);
     }
@@ -232,7 +232,7 @@ const NotificationSettings = ({
   };
 
   const updateDraft = (patch: Partial<NotificationFormState>) => setDraft(prev => ({ ...prev, ...patch }));
-  const currentErrors = getNotificationFormErrors(draft, locale);
+  const currentErrors = getNotificationFormErrors(draft, t.formErrors);
   const errorFor = (field: NotificationFormField) => (invalidFields.includes(field) ? currentErrors[field] : undefined);
   const errorSummaryItems = invalidFields.flatMap(field => {
     const message = currentErrors[field];
@@ -273,7 +273,7 @@ const NotificationSettings = ({
       setIsEditing(false);
     } catch (error) {
       console.error("Failed to save notification config:", error);
-      const message = requestErrorMessage(locale, error, t.saveFailed);
+      const message = requestErrorMessage(locale, error, t.saveFailed, t.signInExpired);
       notification.error(message);
       setAnnouncement(message);
     }
@@ -289,7 +289,7 @@ const NotificationSettings = ({
       focusField("services");
     } catch (error) {
       console.error("Failed to delete notification config:", error);
-      const message = requestErrorMessage(locale, error, t.deleteFailed);
+      const message = requestErrorMessage(locale, error, t.deleteFailed, t.signInExpired);
       notification.error(message);
       setAnnouncement(message);
     }

@@ -7,7 +7,6 @@ import { cx } from "~~/components/ui/classNames";
 import { useOutsideClick } from "~~/hooks/scaffold-eth";
 import { useLocale, useMessages } from "~~/i18n/LocaleProvider";
 import { LOCALES, LOCALE_INFO } from "~~/i18n/locales";
-import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 import { translatePath } from "~~/i18n/routes";
 
 const BUTTON_CLASS_NAME =
@@ -27,7 +26,7 @@ const OPTION_CLASS_NAME =
 export const LanguageSwitch = ({ className }: { className?: string }) => {
   const pathname = usePathname() ?? "/";
   const current = useLocale();
-  const t = useMessages(COMMON_MESSAGES).header;
+  const t = useMessages("common").header;
   const menuRef = useRef<HTMLDetailsElement>(null);
 
   const close = useCallback(() => {

@@ -18,9 +18,7 @@ import type { MarketRef } from "~~/config/aaveConfig";
 import { getMorphoChain } from "~~/config/morpho";
 import { type MorphoPositionItem, useMorphoPositions } from "~~/hooks/custom/useMorphoPositions";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
-import { useLocale } from "~~/i18n/LocaleProvider";
-import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
-import { MORPHO_MESSAGES } from "~~/i18n/messages/morpho";
+import { useMessages } from "~~/i18n/LocaleProvider";
 
 const refOf = ({ ref }: MorphoPositionItem): MarketRef => ({
   protocol: ref.protocol,
@@ -39,9 +37,8 @@ const itemName = (item: MorphoPositionItem) =>
  * settings and its position on the right.
  */
 export const MorphoPositions = () => {
-  const locale = useLocale();
-  const t = MORPHO_MESSAGES[locale];
-  const dashboard = DASHBOARD_MESSAGES[locale];
+  const t = useMessages("morpho");
+  const dashboard = useMessages("dashboard");
   const { account, items, isDiscovering, discoveryFailed, refetch } = useMorphoPositions();
   const { hasConfig, isLoaded: configsLoaded } = useNotificationConfig();
   const hasNotification = (item: MorphoPositionItem) => configsLoaded && hasConfig(refOf(item));

@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { BellRing, CircleCheck } from "lucide-react";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "~~/components/ui";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 
 type NotificationCardProps = {
   isActive: boolean;
@@ -13,7 +12,7 @@ type NotificationCardProps = {
 
 /** The flat product card every state of the notification settings sits in. Its h3 is part of the dashboard outline. */
 export const NotificationCard = ({ isActive, headerRight, children }: NotificationCardProps) => {
-  const t = useMessages(ALERTS_MESSAGES);
+  const t = useMessages("alerts");
   return (
     <Card>
       <CardHeader>

@@ -4,8 +4,7 @@ import { useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Address } from "viem";
 import { useAccount, useAccountEffect, useSignMessage } from "wagmi";
-import { useLocale } from "~~/i18n/LocaleProvider";
-import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
+import { useMessages } from "~~/i18n/LocaleProvider";
 import { SignInRequiredError } from "~~/services/api/apiClient";
 import { authClient } from "~~/services/auth/authClient";
 import { buildSignInMessage, signInChainId } from "~~/services/auth/signInMessage";
@@ -92,7 +91,7 @@ export const useWalletSession = () => {
  */
 export const useWalletSignIn = () => {
   const { address, chainId } = useAccount();
-  const locale = useLocale();
+  const { signInStatement } = useMessages("alerts");
   const queryClient = useQueryClient();
   const { signMessageAsync } = useSignMessage();
 
@@ -103,7 +102,7 @@ export const useWalletSignIn = () => {
         address: wallet,
         chainId: signInChainId(chainId),
         nonce,
-        statement: ALERTS_MESSAGES[locale].signInStatement,
+        statement: signInStatement,
         origin: window.location.origin,
         // The server's clock: it checks freshness against its own, whatever this computer's clock says.
         now: new Date(issuedAt),

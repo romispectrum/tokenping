@@ -4,9 +4,9 @@ import type { PaymentProgress, PaymentStep } from "~~/components/custom/aave/pay
 import { shortenHex } from "~~/components/custom/aave/web3Format";
 import { cx } from "~~/components/ui";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
+import type { DashboardMessages } from "~~/i18n/messages/dashboard";
 
-type PaymentMessages = (typeof DASHBOARD_MESSAGES)["en"]["payment"];
+type PaymentMessages = DashboardMessages["payment"];
 
 type StepState = "upcoming" | "current" | "done" | "skipped";
 
@@ -64,7 +64,7 @@ type PaymentStepsProps = {
 
 /** Both wallet requests, shown before the first one opens: a two-step flow never chains a second prompt silently. */
 export const PaymentSteps = ({ amount, progress }: PaymentStepsProps) => {
-  const t = useMessages(DASHBOARD_MESSAGES).payment;
+  const t = useMessages("dashboard").payment;
   const steps = [
     { title: t.approveTitle(amount), hint: t.approveHint, state: approveState(progress) },
     { title: t.payTitle(amount), hint: t.payHint, state: payState(progress) },
@@ -106,7 +106,7 @@ export const PaymentSteps = ({ amount, progress }: PaymentStepsProps) => {
 type Explorer = { name: string; url: string };
 
 const ExplorerLink = ({ hash, explorer }: { hash: string; explorer: Explorer | undefined }) => {
-  const t = useMessages(DASHBOARD_MESSAGES);
+  const t = useMessages("dashboard");
   return (
     <p className="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
       <span className="font-data text-sm text-muted-foreground" title={hash}>
@@ -213,7 +213,7 @@ export const PaymentStatus = ({
   network,
   explorer,
 }: PaymentStatusProps) => {
-  const t = useMessages(DASHBOARD_MESSAGES).payment;
+  const t = useMessages("dashboard").payment;
   const display: StatusDisplay | null = progress
     ? describeStep(t, progress.step, progress, amount, network)
     : pendingAccessMessage

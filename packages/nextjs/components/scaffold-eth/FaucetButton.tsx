@@ -8,7 +8,6 @@ import { useAccount } from "wagmi";
 import { BanknotesIcon } from "@heroicons/react/24/outline";
 import { useTransactor } from "~~/hooks/scaffold-eth";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 
 // Number of ETH faucet sends to an address
 const NUM_OF_ETH = "1";
@@ -28,7 +27,7 @@ export const FaucetButton = () => {
   const { data: balance } = useWatchBalance({ address, chain: hardhat });
 
   const [loading, setLoading] = useState(false);
-  const t = useMessages(COMMON_MESSAGES).faucet;
+  const t = useMessages("common").faucet;
 
   const faucetTxn = useTransactor(localWalletClient);
 

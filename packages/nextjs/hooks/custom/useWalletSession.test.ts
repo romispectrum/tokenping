@@ -36,7 +36,10 @@ vi.mock("wagmi", () => ({
     mocks.onDisconnect = onDisconnect;
   },
 }));
-vi.mock("~~/i18n/LocaleProvider", () => ({ useLocale: () => mocks.locale }));
+vi.mock("~~/i18n/LocaleProvider", async () => {
+  const { ALERTS_MESSAGES } = await import("~~/i18n/messages/alerts");
+  return { useMessages: (area: "alerts") => ({ alerts: ALERTS_MESSAGES[mocks.locale as Locale] })[area] };
+});
 vi.mock("~~/services/auth/authClient", () => ({
   authClient: { getSession: mocks.getSession, getNonce: mocks.getNonce, verify: mocks.verify, logout: mocks.logout },
 }));

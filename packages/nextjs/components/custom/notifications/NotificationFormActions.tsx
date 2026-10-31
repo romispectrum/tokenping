@@ -4,7 +4,6 @@ import { SUBTLE_DESTRUCTIVE_CLASS } from "~~/components/custom/notifications/sty
 import { Button } from "~~/components/ui";
 import { useMessages } from "~~/i18n/LocaleProvider";
 import type { MarketNameKind } from "~~/i18n/format";
-import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 
 type NotificationFormActionsProps = {
   chainName: string;
@@ -38,7 +37,7 @@ export const NotificationFormActions = ({
   onKeep,
   onConfirmDelete,
 }: NotificationFormActionsProps) => {
-  const t = useMessages(ALERTS_MESSAGES);
+  const t = useMessages("alerts");
   const id = useId();
   const titleId = `${id}-title`;
   const descriptionId = `${id}-description`;

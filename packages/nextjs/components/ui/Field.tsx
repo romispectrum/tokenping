@@ -1,7 +1,6 @@
 import { type ReactNode, useId } from "react";
 import { cx } from "~~/components/ui/classNames";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 
 /** The props a Field hands to its control: spread them on the Input, Select, Textarea, Checkbox or Switch. */
 export type FieldControlProps = {
@@ -59,7 +58,7 @@ export const Field = ({
   children,
 }: FieldProps) => {
   const generatedId = useId();
-  const optionalLabel = useMessages(COMMON_MESSAGES).field.optional;
+  const optionalLabel = useMessages("common").field.optional;
   const controlId = id ?? `field${generatedId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const descriptionId = `${controlId}-description`;
   const errorId = `${controlId}-error`;

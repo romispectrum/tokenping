@@ -5,10 +5,8 @@ import { healthFactorText, maturityCountdown, maturityDay, pairName } from "~~/c
 import { Badge, Skeleton } from "~~/components/ui";
 import { getMorphoChain } from "~~/config/morpho";
 import type { MorphoPositionItem } from "~~/hooks/custom/useMorphoPositions";
-import { useLocale } from "~~/i18n/LocaleProvider";
+import { useLocale, useMessages } from "~~/i18n/LocaleProvider";
 import { formatLongDate } from "~~/i18n/format";
-import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
-import { MORPHO_MESSAGES } from "~~/i18n/messages/morpho";
 
 type MorphoPositionRowProps = {
   item: MorphoPositionItem;
@@ -23,8 +21,8 @@ type MorphoPositionRowProps = {
  */
 export const MorphoPositionRow = ({ item, isSelected, onSelect, hasNotification }: MorphoPositionRowProps) => {
   const locale = useLocale();
-  const t = MORPHO_MESSAGES[locale].list;
-  const { alertSet } = DASHBOARD_MESSAGES[locale].networks;
+  const t = useMessages("morpho").list;
+  const { alertSet } = useMessages("dashboard").networks;
   const { ref, position, isLoading, isError } = item;
   const chainName = getMorphoChain(ref.chainId)?.name ?? String(ref.chainId);
   const params = position?.params;

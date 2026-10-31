@@ -22,6 +22,7 @@ import {
   partitionPositions,
   resolveSelectedMarketKey,
 } from "~~/components/custom/aave/positionsView";
+import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 import type { NetworkPosition, TokenPosition } from "~~/services/aave/positions";
 import { formatTokenAmount } from "~~/utils/format";
 
@@ -60,8 +61,8 @@ describe("formatDebtBreakdown", () => {
     [STABLE_DEBT_USDT, "Stable 10"],
     [SUPPLIED_USDC, "\u00A0"],
   ])("formats %s's debt like the original row", (token, expected) => {
-    expect(formatDebtBreakdown(token)).toBe(expected);
-    expect(formatDebtBreakdown(token)).toBe(legacyDebtSubtitle(token));
+    expect(formatDebtBreakdown(token, DASHBOARD_MESSAGES.en.tokens)).toBe(expected);
+    expect(formatDebtBreakdown(token, DASHBOARD_MESSAGES.en.tokens)).toBe(legacyDebtSubtitle(token));
   });
 });
 

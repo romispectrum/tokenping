@@ -1,5 +1,6 @@
 import { rootDocument } from "~~/components/RootDocument";
 import { MultilingualNotFoundPage, notFoundMetadata } from "~~/components/pages/NotFoundPage";
+import { LocaleRoot } from "~~/i18n/client/en";
 import { localeFromPath } from "~~/i18n/routes";
 import { rootMetadata } from "~~/utils/seo";
 
@@ -8,6 +9,6 @@ import { rootMetadata } from "~~/utils/seo";
 // language, with links to each language's pages.
 export const metadata = { ...rootMetadata(localeFromPath("/")), ...notFoundMetadata("en") };
 
-const GlobalNotFound = () => rootDocument({ locale: "en", children: <MultilingualNotFoundPage /> });
+const GlobalNotFound = () => rootDocument({ locale: "en", LocaleRoot, children: <MultilingualNotFoundPage /> });
 
 export default GlobalNotFound;

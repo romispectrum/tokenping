@@ -2,7 +2,6 @@ import { Infinity as InfinityIcon, type LucideIcon, ShieldAlert, ShieldCheck, Tr
 import { Badge, type BadgeVariant } from "~~/components/ui";
 import { HEALTH_FACTOR_CRITICAL, HEALTH_FACTOR_RISKY } from "~~/constants/notifications";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 import { INFINITE_HEALTH_FACTOR } from "~~/utils/healthFactor";
 
 type HealthFactorStatus = "no-debt" | "critical" | "risky" | "safe";
@@ -32,7 +31,7 @@ type HealthFactorBadgeProps = {
 
 /** "1.85 Safe" with a shield; "No debt" when Aave reports no borrowing (the health factor is then infinite). */
 export const HealthFactorBadge = ({ healthFactor }: HealthFactorBadgeProps) => {
-  const t = useMessages(DASHBOARD_MESSAGES).healthFactor;
+  const t = useMessages("dashboard").healthFactor;
   const status = getHealthFactorStatus(healthFactor);
   const { variant, label, Icon } = STATUS_DISPLAY[status];
 

@@ -11,7 +11,6 @@ import { Address } from "viem";
 import { buttonClasses } from "~~/components/ui/buttonClasses";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth/useTargetNetwork";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 import { getBlockExplorerAddressLink } from "~~/utils/scaffold-eth";
 
 /**
@@ -20,7 +19,7 @@ import { getBlockExplorerAddressLink } from "~~/utils/scaffold-eth";
  */
 export const RainbowKitCustomConnectButton = () => {
   const { targetNetwork } = useTargetNetwork();
-  const t = useMessages(COMMON_MESSAGES).wallet;
+  const t = useMessages("common").wallet;
 
   return (
     <ConnectButton.Custom>

@@ -13,7 +13,6 @@ import { TokenTable } from "~~/components/custom/aave/TokenTable";
 import { getCollateralTokens, getDebtTokens } from "~~/components/custom/aave/positionsView";
 import { Alert, Card } from "~~/components/ui";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 import type { NetworkPosition } from "~~/services/aave/positions";
 import { formatUSD } from "~~/utils/format";
 
@@ -22,7 +21,7 @@ type PositionDetailsProps = {
 };
 
 const PositionContent = ({ position }: PositionDetailsProps) => {
-  const t = useMessages(DASHBOARD_MESSAGES);
+  const t = useMessages("dashboard");
   if (!position.hasPosition) {
     return (
       <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
@@ -94,7 +93,7 @@ const PositionContent = ({ position }: PositionDetailsProps) => {
 
 /** The selected market's position: its health factor, the three totals and the token tables. */
 export const PositionDetails = ({ position }: PositionDetailsProps) => {
-  const t = useMessages(DASHBOARD_MESSAGES);
+  const t = useMessages("dashboard");
   return (
     <Card>
       <div className="flex items-start justify-between gap-4 px-[var(--card-spacing)]">

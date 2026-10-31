@@ -66,7 +66,7 @@ by the cron without an error.
 | Status route                 | `packages/nextjs/app/api/telegram/status/route.ts`                           |
 | Chat lookups                 | `packages/nextjs/services/telegram/telegramChats.ts`                         |
 | Sender                       | `packages/nextjs/services/telegram/sendTelegram.ts`                          |
-| Bot replies (English, Czech) | `packages/nextjs/i18n/messages/telegram.ts`                                  |
+| Bot replies (English, Czech) | `packages/nextjs/i18n/messages/telegram/`                                  |
 | Alert form field             | `packages/nextjs/components/custom/notifications/TelegramUsernameField.tsx`  |
 | Webhook registration script  | `packages/nextjs/scripts/telegram-webhook.sh` (`yarn next:telegram-webhook`) |
 | Tables                       | `telegram_chats`, `notification_configs.telegram_username`                   |

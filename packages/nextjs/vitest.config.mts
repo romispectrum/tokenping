@@ -33,6 +33,9 @@ export default defineConfig({
   plugins: [mdx()],
   resolve: {
     alias: [
+      // Client components read their language from the root layout's provider; tests render without one, so they
+      // get every language from the test fallback (see i18n/client/fallback.ts).
+      { find: /^~~\/i18n\/client\/fallback$/, replacement: path.join(PACKAGE_ROOT, "i18n/client/fallback.vitest.ts") },
       { find: "~~", replacement: PACKAGE_ROOT },
       { find: /^server-only$/, replacement: SERVER_ONLY_NOOP },
     ],

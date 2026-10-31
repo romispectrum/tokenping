@@ -3,7 +3,6 @@ import { BellRing } from "lucide-react";
 import { Button, Card, CardContent, EmptyState } from "~~/components/ui";
 import { useMessages } from "~~/i18n/LocaleProvider";
 import type { MarketNameKind } from "~~/i18n/format";
-import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 
 type NotificationEmptyStateProps = {
   chainName: string;
@@ -21,7 +20,7 @@ export const NotificationEmptyState = ({
   onCreate,
   createRef,
 }: NotificationEmptyStateProps) => {
-  const t = useMessages(ALERTS_MESSAGES);
+  const t = useMessages("alerts");
   return (
     <Card>
       <CardContent>

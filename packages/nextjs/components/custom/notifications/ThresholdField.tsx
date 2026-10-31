@@ -1,8 +1,7 @@
 import { type KeyboardEvent, useId, useRef } from "react";
 import { Input } from "~~/components/ui";
-import { useLocale } from "~~/i18n/LocaleProvider";
+import { useLocale, useMessages } from "~~/i18n/LocaleProvider";
 import { type MarketNameKind, formatDecimal } from "~~/i18n/format";
-import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 import {
   AAVE_THRESHOLD_RANGE,
   THRESHOLD_INPUT_PATTERN,
@@ -48,7 +47,7 @@ export const ThresholdField = ({
   range = AAVE_THRESHOLD_RANGE,
 }: ThresholdFieldProps) => {
   const locale = useLocale();
-  const t = ALERTS_MESSAGES[locale];
+  const t = useMessages("alerts");
   const inputRef = useRef<HTMLInputElement>(null);
   const id = useId();
   const labelId = `${id}-label`;

@@ -3,7 +3,6 @@ import { rainbowkitBurnerWallet } from "burner-connector";
 import { ShieldExclamationIcon } from "@heroicons/react/24/outline";
 import { useCopyToClipboard } from "~~/hooks/scaffold-eth";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 import { getParsedError, notification } from "~~/utils/scaffold-eth";
 
 const BURNER_WALLET_PK_KEY = "burnerWallet.pk";
@@ -11,7 +10,7 @@ const BURNER_WALLET_PK_KEY = "burnerWallet.pk";
 export const RevealBurnerPKModal = () => {
   const { copyToClipboard, isCopiedToClipboard } = useCopyToClipboard();
   const modalCheckboxRef = useRef<HTMLInputElement>(null);
-  const t = useMessages(COMMON_MESSAGES).wallet.burner;
+  const t = useMessages("common").wallet.burner;
 
   const handleCopyPK = async () => {
     try {

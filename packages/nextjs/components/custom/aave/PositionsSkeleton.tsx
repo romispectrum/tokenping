@@ -1,7 +1,6 @@
 import { STAT_STRIP_CLASS_NAME, StatCardSkeleton } from "~~/components/custom/aave/StatCard";
 import { Card, Skeleton } from "~~/components/ui";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 
 // Placeholders at the geometry of the real dashboard, so nothing jumps when the data arrives.
 
@@ -78,7 +77,7 @@ export const AlertSettingsSkeleton = () => (
 
 /** The whole dashboard before the wallet state is known: the toolbar, the totals and the two columns. */
 export const DashboardSkeleton = () => {
-  const t = useMessages(DASHBOARD_MESSAGES);
+  const t = useMessages("dashboard");
   return (
     <div aria-busy="true" className="flex flex-col gap-4 sm:gap-6">
       <span role="status" className="sr-only">

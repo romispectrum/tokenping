@@ -2,7 +2,6 @@ import type { ComponentType } from "react";
 import type { TokenColumn, TokenRowProps } from "~~/components/custom/aave/TokenRow";
 import { cx } from "~~/components/ui";
 import { useMessages } from "~~/i18n/LocaleProvider";
-import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
 import type { TokenPosition } from "~~/services/aave/positions";
 
 type Column = { column: TokenColumn; align: "left" | "right" };
@@ -24,7 +23,7 @@ type TokenTableProps = {
  * structures the block, so the wrapper is a plain div: only the scroll region is a landmark, named once.
  */
 export const TokenTable = ({ id, title, columns, tokens, chainId, Row, emptyText }: TokenTableProps) => {
-  const t = useMessages(DASHBOARD_MESSAGES).tokens;
+  const t = useMessages("dashboard").tokens;
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between gap-3">

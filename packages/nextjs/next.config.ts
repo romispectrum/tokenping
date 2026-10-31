@@ -96,6 +96,9 @@ const markdownRewrite = (source: string) => ({
   destination: source === "/" ? "/md" : `/md${source.replace(/\(.*\)/, "")}`,
 });
 
+/** One language's file of a message area: i18n/messages/dashboard/de.ts (not shared.ts or index.ts). */
+const LOCALE_MESSAGES_FILE = /[\\/]i18n[\\/]messages[\\/][a-z]+[\\/]([a-z]{2,3})\.ts$/;
+
 const nextConfig: NextConfig = {
   // "mdx" is listed so Next applies its vendored React aliases to .mdx modules too: without it the posts import
   // node_modules' react/jsx-dev-runtime and crash in Server Components under `next dev`. Posts live in content/blog,
@@ -123,9 +126,24 @@ const nextConfig: NextConfig = {
     // `next lint` / `next build` only lint app, pages, components, lib and src by default.
     dirs: ["app", "components", "content", "hooks", "services", "utils", "config", "constants", "types", "scripts"],
   },
-  webpack: config => {
+  webpack: (config, { isServer }) => {
     config.resolve.fallback = { fs: false, net: false, tls: false };
     config.externals.push("pino-pretty", "lokijs", "encoding");
+    // Each language's client messages (i18n/messages/<area>/<locale>.ts) in a chunk of their own. Without this,
+    // webpack can put them in a layout chunk that also holds code every layout shares, and then every page loads
+    // that language's strings.
+    if (!isServer && config.optimization?.splitChunks) {
+      config.optimization.splitChunks.cacheGroups = {
+        ...config.optimization.splitChunks.cacheGroups,
+        localeMessages: {
+          test: LOCALE_MESSAGES_FILE,
+          name: (module: { resource?: string }) => `messages-${module.resource?.match(LOCALE_MESSAGES_FILE)?.[1]}`,
+          chunks: "all",
+          enforce: true,
+          priority: 50,
+        },
+      };
+    }
     return config;
   },
   // A static export has no server to send headers or rewrite requests.

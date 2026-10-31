@@ -221,6 +221,27 @@ describe("next.config", () => {
     expect(config.externals).toEqual([existingExternal, "pino-pretty", "lokijs", "encoding"]);
   });
 
+  it("gives each language's client messages a chunk of their own, in the browser build only", async () => {
+    const { webpack } = await loadNextConfig({});
+    const browser = { ...webpackFixture().config, optimization: { splitChunks: { cacheGroups: { default: false } } } };
+    const server = { ...webpackFixture().config, optimization: { splitChunks: { cacheGroups: { default: false } } } };
+    const { options } = webpackFixture();
+
+    webpack?.(browser as unknown as WebpackConfig, { ...options, isServer: false } as WebpackOptions);
+    webpack?.(server as unknown as WebpackConfig, { ...options, isServer: true } as WebpackOptions);
+
+    const group = (browser.optimization.splitChunks.cacheGroups as Record<string, unknown>).localeMessages as {
+      test: RegExp;
+      name: (module: { resource?: string }) => string;
+    };
+    expect(group).toMatchObject({ chunks: "all", enforce: true });
+    expect(group.name({ resource: "/app/packages/nextjs/i18n/messages/dashboard/de.ts" })).toBe("messages-de");
+    expect(group.name({ resource: "/app/packages/nextjs/i18n/messages/alerts/fil.ts" })).toBe("messages-fil");
+    expect(group.test.test("/app/i18n/messages/dashboard/shared.ts")).toBe(false);
+    expect(group.test.test("/app/i18n/messages/dashboard/index.ts")).toBe(false);
+    expect(server.optimization.splitChunks.cacheGroups).toEqual({ default: false });
+  });
+
   it("compiles .mdx with remark-gfm and the root mdx-components.tsx as provider", async () => {
     const { webpack } = await loadNextConfig({});
     const { config, options } = webpackFixture();

@@ -148,9 +148,8 @@ the root document weighs on every page's HTML. Load a stylesheet that only some 
 ### Languages and copy
 
 The site is English, Czech (`/cz`), Spanish (`/es`), Hindi (`/hi`), German (`/de`) and Vietnamese (`/vi`). Every
-user-facing string lives in
-`i18n/messages/<area>.ts`
-with every language, and paths come from `i18n/routes.ts`; read [docs/i18n.md](docs/i18n.md) before adding a page or a
+user-facing string lives in `i18n/messages/<area>/<locale>.ts` (one file per language; client components read them with
+`useMessages("<area>")`), and paths come from `i18n/routes.ts`; read [docs/i18n.md](docs/i18n.md) before adding a page or a
 string. Voice rules, in every language: sentence case, no em dashes or en dashes, and one banned word that the Voice
 section of `docs/design-system.md` names (it says what to write instead).
 
