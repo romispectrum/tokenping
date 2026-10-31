@@ -26,6 +26,7 @@ const AAVE_SLUGS = [
   "wrapped-bitcoin-aave-collateral",
   "tokenized-stocks-collateral",
   "who-needs-health-factor-alerts",
+  "liquidated-on-aave-or-morpho-what-now",
 ];
 
 // The Morpho guides, their own hub first.

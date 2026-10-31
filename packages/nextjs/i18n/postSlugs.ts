@@ -134,6 +134,14 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     de: "wer-health-factor-alerts-braucht",
     vi: "ai-can-canh-bao-he-so-suc-khoe",
   },
+  "liquidated-on-aave-or-morpho-what-now": {
+    en: "liquidated-on-aave-or-morpho-what-now",
+    cs: "likvidace-na-aave-nebo-morpho-co-ted",
+    es: "me-liquidaron-en-aave-o-morpho-que-hago",
+    hi: "aave-ya-morpho-par-liquidate-ho-gaye-ab-kya",
+    de: "auf-aave-oder-morpho-liquidiert-was-jetzt",
+    vi: "bi-thanh-ly-tren-aave-hoac-morpho-phai-lam-gi",
+  },
   "morpho-health-factor": {
     en: "morpho-health-factor",
     cs: "morpho-health-factor-vysvetleni",

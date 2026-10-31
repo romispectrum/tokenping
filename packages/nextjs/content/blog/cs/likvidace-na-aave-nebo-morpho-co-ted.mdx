@@ -1,0 +1,134 @@
+export const meta = {
+  slug: "likvidace-na-aave-nebo-morpho-co-ted",
+  title: "Likvidace na Aave nebo Morpho: co dělat teď",
+  description:
+    "Jak najít likvidační transakci, zjistit, co vám bylo vzato a co vám zůstalo, proč k likvidaci došlo a jak se vyhnout druhé.",
+  h1: "Zlikvidovali mě na Aave nebo Morpho: co teď?",
+  publishedAt: "2026-10-31",
+  primaryQuestion: "Co dělat po likvidaci na Aave nebo Morpho?",
+  readingMinutes: 10,
+};
+
+<ShortAnswer>
+  Nejdřív najděte transakci: na Aave v historii transakcí aplikace nebo mezi převody tokenů vaší peněženky v průzkumníku
+  bloků, na Morpho přes aplikaci Morpho nebo veřejné API Morpho, protože transakce likvidátora se ve vašem vlastním
+  seznamu nikdy neobjeví. Pak si ji přečtěte: dluh, který byl za vás splacen, kolaterál, který byl vzat, a rozdíl, což
+  je bonus, který jste zaplatili. Tokeny, které jste si půjčili, zůstávají vaše, stejně jako kolaterál, který zabaven
+  nebyl. Na Aave likvidace obvykle splatí polovinu vašeho dluhu a nechá pozici, kterou lze zlikvidovat znovu; na Morpho
+  může vzít téměř všechno najednou. Za 30 dní do 30. října 2026 bylo 932 dlužníků na Morpho zlikvidováno víckrát než
+  jednou, takže nejužitečnější je poslední krok: rezerva a upozornění, než si znovu půjčíte.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Čísla a čas, kdy byla načtena: content/blog/snapshots/liquidated-on-aave-or-morpho-what-now.md */}
+
+## Jak poznáte, že šlo o likvidaci, a kde je transakce?
+
+Obvykle si první všimnete, že pozice vypadá jinak: dluh je menší, než si pamatujete, kolaterál je mnohem menší, health factor (faktor zdraví pozice) je najednou vyšší, nebo pozice zmizela. Splátka, kterou jste neprovedli, a výběr kolaterálu, který jste nepodepsali, v jedné transakci, to je likvidace.
+
+Transakce se hledá těžko, protože jste ji neposlali vy. Poslal ji bot likvidátora, takže není v seznamu „Transactions“ vaší adresy na Etherscanu, Basescanu ani Arbiscanu. Kde hledat místo toho:
+
+- **Aave, v aplikaci.** S připojenou peněženkou a vybraným správným trhem otevřete „Transaction history“ (historie transakcí, app.aave.com/history) a vyfiltrujte „Liquidation“. Každý záznam má čas, hash transakce, vzatý kolaterál a splacený dluh.
+- **Aave, v průzkumníku bloků.** Otevřete svou adresu a záložku „Token transfers (ERC-20)“. Likvidace se zobrazí jako převod vašeho aTokenu (například aEthWETH) a vašeho dluhového tokenu (variableDebtEthUSDT) na nulovou adresu, v transakci, kterou jste nepodepsali. Otevřete ji a přepněte na záložku „Logs“: událost s názvem `LiquidationCall` na kontraktu Pool je záznam, který potřebujete. Jedna transakce může obsahovat několik likvidací několika dlužníků, takže hledejte tu, jejíž `user` je vaše adresa.
+- **Morpho.** Vaše adresa v průzkumníku neukáže nic, protože váš kolaterál ležel v kontraktu Morpho a splátka likvidátora šla také do kontraktu. Aplikace Morpho ukáže pozici menší nebo zmizelou; veřejné API Morpho uvádí každou likvidaci vaší adresy (`marketTransactions` typu Liquidation); a log událostí kontraktu Morpho v průzkumníku má událost s názvem `Liquidate` s vaší adresou jako `borrower`.
+- **Tokenping.** [Přehled Aave](/cz/aave) a [přehled Morpho](/cz/morpho) ukazují pozici, jak vypadá teď. Health factor, který skočil z hodnoty blízko 1 vysoko nad ni, nebo pozice, která zmizela, ukazují na likvidaci. Přehledy minulé transakce neuvádějí.
+
+Hash transakce si uschovejte. Budete ho potřebovat k přečtení částek a v mnoha zemích se likvidace počítá jako prodej vzatého kolaterálu, takže ho potřebují i vaše daňové záznamy.
+
+## Jak číst likvidační transakci?
+
+Oba protokoly zapisují celou likvidaci do jedné události. Názvy se liší, obsah je stejný: jaký dluh byl za vás splacen, jaký kolaterál byl vzat a kolik z každého.
+
+**Aave V3** vydává událost `LiquidationCall(collateralAsset, debtAsset, user, debtToCover, liquidatedCollateralAmount, liquidator, receiveAToken)`. Skutečná událost z trhu Ethereum Core, blok 26305893, 30. října 2026 ve 13:33 UTC:
+
+| Pole                       | Hodnota           | Co to znamená                                                       |
+| -------------------------- | ----------------- | ------------------------------------------------------------------- |
+| collateralAsset            | WETH              | Vzaté aktivum                                                       |
+| debtAsset                  | USDT              | Splacené aktivum                                                    |
+| user                       | adresa dlužníka   | Čí pozice to byla                                                   |
+| debtToCover                | 1 320,785158 USDT | Dluh splacený za dlužníka, 1 319,32 USD při ceně orákula            |
+| liquidatedCollateralAmount | 0,619088749 WETH  | Kolaterál odeslaný likvidátorovi, 1 372,09 USD při 2 216,31 USD/ETH |
+| liquidator                 | adresa kontraktu  | Kdo splatil a přijal                                                |
+| receiveAToken              | false             | Vzal si samotné WETH, ne aEthWETH                                   |
+
+Jedna částka v události není. Ve stejné transakci se 0,005952776 aEthWETH (13,19 USD) přesunulo od dlužníka do kontraktu Collector Aave (pokladny): likvidační poplatek protokolu, 20 % z bonusu u WETH na trhu Ethereum Core v daném bloku. Sečteno: dlužník dal 1 385,28 USD ve WETH za 1 319,32 USD dluhu, bonus 5 %, z něhož si likvidátor nechal 52,77 USD a pokladna 13,19 USD. Záložka „Logs“ v průzkumníku ukazuje poplatek jako převod aTokenu do kontraktu Collector hned za spálením (burn) aTokenu.
+
+**Morpho Blue** vydává událost `Liquidate(id, caller, borrower, repaidAssets, repaidShares, seizedAssets, badDebtAssets, badDebtShares)`. Skutečná událost z trhu USDC | cbBTC (86%) na síti Base, blok 53265200, 30. října 2026 v 00:22 UTC:
+
+| Pole          | Hodnota           | Co to znamená                                                   |
+| ------------- | ----------------- | --------------------------------------------------------------- |
+| id            | 0x9103c3b4…       | Trh                                                             |
+| caller        | likvidátor        | Kdo splatil a přijal                                            |
+| borrower      | adresa dlužníka   | Čí pozice to byla                                               |
+| repaidAssets  | 2 174,732093 USDC | Dluh splacený za dlužníka                                       |
+| seizedAssets  | 0,02952084 cbBTC  | Kolaterál odeslaný likvidátorovi, 2 270,08 USD při ceně orákula |
+| badDebtAssets | 0                 | Nic nebylo odepsáno                                             |
+
+Orákulum v tomto bloku oceňovalo cbBTC na 76 897,38 USDC. Vzatý kolaterál měl hodnotu 2 270,08 USD za 2 174,73 USD dluhu, poměr 1,0438, což je přesně faktor likvidační pobídky, který trh s LLTV 86 % platí. Rozdíl 95,34 USD připadl celý likvidátorovi: Morpho si žádný poplatek nebere. Tato transakce obsahovala 30 událostí `Liquidate` od jednoho likvidátora, každou s jiným dlužníkem, a přesně tak vypadá nejrušnější minuta propadu v logu trhu.
+
+## Co bylo vzato a co vám zůstalo?
+
+Tři věci je potřeba oddělit:
+
+1. **Dluh splacený za vás je pryč a s ním i kolaterál, který ho zaplatil.** Splacenou část už nedlužíte. Likvidátor ji zaplatil vlastními tokeny a výměnou si vzal váš kolaterál plus bonus. Bonus je cena likvidace: v obou příkladech 65,96 USD z 1 319 USD dluhu na Aave a 95,34 USD z 2 175 USD na Morpho.
+2. **Tokeny, které jste si půjčili, jsou pořád vaše.** Pokud jste si půjčili USDT a utratili je, nic se nemění. Pokud jsou ještě ve vaší peněžence, pořád tam jsou. Likvidace se nikdy nedotkne vypůjčených tokenů ve vaší peněžence; mění jen pozici.
+3. **Kolaterál, který zabaven nebyl, zůstává v pozici.** Na Aave je zůstatek aTokenu menší; na Morpho je menší zůstatek kolaterálu v daném trhu. Pokud zbývá dluh, kolaterál ho dál kryje. Pokud žádný dluh nezbývá, můžete ho vybrat.
+
+Kolik zůstane, závisí na protokolu. Na Aave V3 splatí jedna likvidace nejvýše 50 % vašeho celkového dluhu, když je health factor nad 0,95 a vzatý kolaterál i splacený dluh mají každý hodnotu alespoň 2 000 USD; pod 0,95, nebo u menších částek, může splatit celý dluh v daném aktivu ([kolik lze zlikvidovat najednou](/cz/blog/jak-funguje-likvidace-aave#kolik-meho-dluhu-lze-zlikvidovat-najednou)). Příklad z Etherea dodržel pravidlo 50 % na cent: 2 638,63 USD dluhu před, 1 319,32 po. Dlužníkovi zůstalo 0,7906 WETH (1 752 USD) proti 1 319,32 USDT, health factor 1,12, a tuto pozici lze zlikvidovat znovu, pokud ETH klesne o dalších 10,4 %. Na Aave V4 likvidace místo toho splatí tolik, kolik je potřeba k návratu pozice na cílový health factor daného Spoke, 1,24 na Ethereum Main Spoke, takže se splatí víc, ale to, co zbude, je bezpečnější ([likvidace na Aave V4](/cz/blog/jak-funguje-likvidace-aave#jak-se-likvidace-lisi-na-aave-v4)).
+
+Morpho Blue nemá close factor: likvidátor smí jedním voláním splatit až celý dluh ([jak velkou část vašeho dluhu lze zlikvidovat najednou](/cz/blog/jak-funguje-likvidace-morpho#jak-velkou-cast-dluhu-lze-zlikvidovat-najednou)). Likvidátor na síti Base vzal 0,02952 z 0,03286 cbBTC, 90 % kolaterálu, a splatil celý dluh až na 0,0005 USDC, které zbyly zaokrouhlením podílů. Dlužníkovi zůstalo 0,003342 cbBTC, asi 257 USD, a může je vybrat.
+
+Ještě dvě věci ke kontrole. Na Aave bylo volbou likvidátora, který kolaterál vezme ([který kolaterál si likvidátor vezme](/cz/blog/jak-funguje-likvidace-aave#ktery-kolateral-si-likvidator-vezme)), takže pozice s několika aktivy kolaterálu mohla přijít o to, které jste čekali nejméně. Na Morpho může `repaidAssets` menší, než jste čekali, znamenat, že před skutečnou likvidací proběhla [předběžná likvidace](/cz/blog/predbezna-likvidace-morpho), při nižším LTV a s nižší pobídkou; aplikace i API ukazují oba druhy.
+
+## Co když likvidace vzala všechno?
+
+Pokud je na Morpho `badDebtAssets` větší než nula, nebo pokud vám událost na Aave nenechala žádný kolaterál, zatímco dluh zůstal, měl kolaterál ve chvíli, kdy někdo likvidoval, nižší hodnotu než dluh plus bonus. Oba protokoly pozici uzavřou, místo aby po vás zbytek vymáhaly:
+
+- **Aave** (od verze V3.3) zbývající dluh spálí a zaznamená ho jako deficit dané rezervy, který mohou později pokrýt stakeři Umbrella. Skončíte bez kolaterálu a bez dluhu ([může likvidace zanechat nedobytný dluh](/cz/blog/jak-funguje-likvidace-aave#muze-likvidace-zanechat-nedobytny-dluh)).
+- **Morpho Blue** zbývající dluh odepíše ve stejné transakci a ztrátu rozloží mezi věřitele daného trhu. Dlužník skončí bez kolaterálu a bez dluhu ([co se děje s nedobytným dluhem na Morpho Blue](/cz/blog/jak-funguje-likvidace-morpho#co-se-deje-s-nedobytnym-dluhem-na-morpho-blue)).
+
+Nikdo po vás nebude rozdíl vymáhat a na pozici nic nezůstane. Nezůstane ale ani nic jiného a ztráta na vaší straně je celý kolaterál, ne jen bonus. Nedobytný dluh byl v měsíci příkladů vzácný: nula v 393 likvidacích trhu cbBTC na síti Base ve třech dnech kolem propadu, asi 3,5 mil. USD napříč všemi 7 521 likvidacemi na Morpho za 30 dní do 30. října.
+
+## Proč k tomu došlo?
+
+Oba příklady mají jednu společnou příčinu: žádnou rezervu. Jeden blok před likvidací na Aave měl tento dlužník health factor 1,0049; další aktualizace Chainlinku posunula WETH z asi 2 229,77 na 2 216,31 USD, o 0,6 % níž, a health factor byl 0,9988. Jeden blok před likvidací na Morpho měl dlužník na síti Base health factor 1,0025; orákulum posunulo cbBTC z 77 140,46 na 76 897,38 USDC, o 0,3 % níž, a byl 0,9993. Ani jeden nepotřeboval propad. Stačila jediná běžná aktualizace ceny, a v případě Morpho v 00:22 UTC, v šestihodinovém okně, ve kterém se odehrává [víc než třetina likvidací na Morpho](/cz/blog/pro-koho-jsou-upozorneni-na-health-factor#jak-casto-jsou-dluznici-likvidovani).
+
+Pokud váš health factor tak blízko nebyl, pohnulo s ním něco jiného. [Proč klesl váš health factor](/cz/blog/proc-klesl-health-factor-aave) uvádí šest příčin a u každé způsob, jak ji ověřit: cena vašeho kolaterálu klesla, cena toho, co jste si půjčili, vzrostla, úrok z dluhu přerostl výnos kolaterálu, governance snížila likvidační práh, stablecoin, který jste vložili, ztratil vazbu na dolar (depeg), nebo orákulum špatně ocenilo wrapper. Verze pro Morpho je stejný seznam bez snížení prahu, protože LLTV trhu Morpho se nikdy nemění ([co hýbe health factorem na Morpho](/cz/blog/morpho-health-factor-vysvetleni#co-hybe-health-factorem-na-morpho)). Dva případy se snadno přehlédnou: půjčku na [Midnight](/cz/blog/morpho-midnight-pujcky-s-pevnou-sazbou) po splatnosti lze zlikvidovat při jakémkoli health factoru a půjčku proti [tokenizovaným akciím](/cz/blog/tokenizovane-akcie-jako-kolateral) lze zlikvidovat za nedělní večerní cenu, která se pohnula, zatímco byl cenový zdroj (feed) pozastaven.
+
+## Co dělat v první hodině?
+
+1. **Než na zbývající pozici sáhnete, přečtěte si ji.** Health factor, zbývající dluh, zbývající kolaterál, v [přehledu Aave](/cz/aave) nebo [přehledu Morpho](/cz/morpho), v aplikaci protokolu nebo v průzkumníku. Částečná likvidace na Aave nechá pozici blízko 1,1, kterou další pohyb o 10 % zlikviduje znovu.
+2. **Rozhodněte se, zda pozici uzavřít, nebo si ji nechat.** Pokud už půjčku nechcete, splaťte zbytek a vyberte kolaterál; na Aave můžete splatit samotným kolaterálem ([splacení kolaterálem](/cz/blog/jak-se-vyhnout-likvidaci-aave#krok-4-splatte-dluh-kolateralem-nebo-vymente-kolateral)). Pokud si ji necháte, splácejte nebo přidávejte kolaterál, dokud health factor není tam, kde ho chcete mít, ne tam, kde byl. [Splacení zvýší health factor na každý dolar víc než přidání kolaterálu](/cz/blog/jak-se-vyhnout-likvidaci-aave#proc-splaceni-zvysi-health-factor-vic-nez-pridani-kolateralu).
+3. **Nepůjčujte si znovu až k limitu.** Pozice, která byla právě zlikvidována při 1,005, bude při 1,005 zlikvidována znovu. Opětovná půjčka na stejné LTV spouští hodiny znovu.
+4. **Zkontrolujte své ostatní pozice.** Každý trh Aave, každý Spoke V4 a každý trh Morpho má vlastní health factor a stejný pohyb ceny, který zlikvidoval jednu pozici, snížil i ostatní.
+5. **Na Aave zkontrolujte, zda není rezerva zmrazená.** Když Aave 29. října 2026 zmrazilo všechny trhy DAO, přidat kolaterál do zmrazené rezervy nebylo možné a jedinou cestou nahoru bylo splácení ([proč výběr nebo půjčka selže](/cz/blog/proc-nejde-vybrat-nebo-pujcit-na-aave)).
+6. **Na Morpho zkontrolujte předběžnou likvidaci.** Pokud jste autorizovali kontrakt předběžné likvidace, je autorizovaný pořád; [ověřte ho a zrušte](/cz/blog/predbezna-likvidace-morpho#jak-zjistit-zda-jste-nejaky-kontrakt-autorizovali), pokud ho už nechcete.
+7. **Uložte si záznam.** Hash transakce, obě částky, datum, ceny z orákula, pokud je dokážete přečíst. Průzkumníky data uchovávají, ale v dubnu je hledat nebudete chtít.
+
+## Jak se vyhnout druhé likvidaci?
+
+Z 5 703 dlužníků na Morpho zlikvidovaných za 30 dní do 30. října 2026 jich bylo 932 zlikvidováno víckrát než jednou. Dlužník na síti Base výše byl jedním z nich: půjčka proti cbBTC zlikvidovaná 3. června, půjčka proti cbZEC 14. října a půjčka proti cbBTC znovu 30. října. Každá stála bonus a žádná nevedla ke změně. Změna jsou tři rozhodnutí:
+
+- **Rezerva.** Health factor 1,005 nepřežije nic. [Jak hluboko mohou ceny klesnout při jednotlivých hodnotách health factoru](/cz/blog/bezpecny-health-factor-aave#o-kolik-mohou-ceny-klesnout-pred-likvidaci-pri-jednotlivych-hodnotach-health-factoru) dává tabulku: 1,5 přežije pád o 33,3 %, 2 přežije 50 %. Číslo, které zvolíte, závisí na tom, co jste si půjčili proti čemu; [postup krok za krokem](/cz/blog/bezpecny-health-factor-aave#jak-krok-za-krokem-zvolit-prah-upozorneni) ho projde a [verze pro Morpho](/cz/blog/morpho-health-factor-vysvetleni#jak-zvolit-rezervu-a-prah-upozorneni) počítá s pevným LLTV.
+- **Upozornění nad rezervou.** Zpráva, když health factor překročí hranici, kterou jste si zvolili, dost brzy na to, abyste mohli jednat. Tokenping kontroluje každých 5 minut a píše vám na Signal, Telegram nebo e-mail; práh může být kdekoli od 1,1 do 10 na Aave a od 1,02 do 10 na Morpho. [Nastavení](/cz/blog/nastaveni-upozorneni-health-factor-aave) zabere pár minut. Upozornění nezachytí skok mezi dvěma kontrolami a nemůže za vás nic splatit, a proto přichází až po rezervě, ne místo ní.
+- **Prostředky, se kterými můžete jednat.** Prostředky na splacení na síti, kde jste si půjčili, v aktivu, které dlužíte, nebo v takovém, které v noci dokážete směnit, a telefon, který zprávu pustí ([upozornění přes režim Nerušit](/cz/blog/upozorneni-aave-rezim-nerusit)). Likvidace na Morpho výše proběhla v 00:22 UTC; upozornění při 1,1 by dorazilo o hodiny dřív a odpovědět na něj mohly jen prostředky na síti Base.
+
+Pokud byla půjčka tak malá, že byste kvůli její záchraně prostředky nepřesouvali, je poctivý závěr jiný: buď si proti ní půjčte méně, nebo přijměte, že bonus je cena za to, že nehlídáte.
+
+## Jak do toho zapadá Tokenping
+
+Tokenping kontroluje každou pozici, kterou nastavíte, každých 5 minut, na každém trhu Aave V3 na 21 sítích, v každém Spoke Aave V4 a na každém trhu Morpho, který uvádí aplikace Morpho, a pošle vám zprávu na Signal, Telegram nebo e-mail, když je health factor pod vaším prahem. Zpráva se opakuje při každé kontrole, dokud se pozice nezotaví, v angličtině, češtině, španělštině, hindštině, němčině nebo vietnamštině. Po likvidaci přehledy ukazují, co zbylo: [přehled Aave](/cz/aave) s health factorem každého trhu, [přehled Morpho](/cz/morpho) s LTV, LLTV a health factorem každého trhu, spočtenými z blockchainu.
+
+Své pozice si můžete prohlížet bez placení. Upozornění stojí <AlertPrice />, jedno na každý trh Aave V3, Spoke V4 nebo trh Morpho. Tokenping je v betě a nemá žádnou záruku dostupnosti a žádné upozornění likvidaci nezabrání.
+
+## Zdroje
+
+- [Transakce na Ethereu 0x5f88aa61…12fb6](https://etherscan.io/tx/0x5f88aa61ca6180e132a627c5e4d483c4098becc65359fa6af50551c405312fb6) (blok 26305893): `LiquidationCall`, spálení aEthWETH a variableDebtEthUSDT, převod poplatku do kontraktu Collector; ceny Aave Oracle a `getUserAccountData` v blocích 26305892 a 26305893; `getReserveConfigurationData` a `getLiquidationProtocolFee` pro WETH, přečteno přes veřejné RPC (načteno 31. října 2026)
+- [Transakce na síti Base 0xc2df272f…f0178](https://basescan.org/tx/0xc2df272f36d8b0b566c24988052c1508a4c90a97999b2da5a8c8ec7f8e3f0178) (blok 53265200): 30 událostí `Liquidate`; `position` a `market` Morpho Blue a `price()` orákula trhu v blocích 53265199 a 53265200, přečteno přes veřejné RPC (načteno 31. října 2026)
+- [API Morpho](https://api.morpho.org/graphql): `marketTransactions` typu Liquidation pro trh cbBTC na síti Base od 28. do 31. října 2026 a pro adresu příkladového dlužníka; `markets` pro LLTV a orákulum trhu (načteno 31. října 2026)
+- [API Morpho](https://api.morpho.org/graphql): všechny likvidace od 30. září 2026 08:36 UTC do 30. října 2026 08:36 UTC, jako v [průvodci upozorněními](/cz/blog/pro-koho-jsou-upozorneni-na-health-factor) (načteno 30. října 2026)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): nedobytný dluh spálený a zaznamenaný jako deficit rezervy, pravidla close factoru, odstranění deficitu přes Umbrella (načteno 31. října 2026)
+- [Likvidace na Morpho](https://docs.morpho.org/learn/concepts/liquidation): vzorec pobídky, až 100 % jedním voláním, žádný poplatek protokolu (načteno 31. října 2026)
+
+_Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání._

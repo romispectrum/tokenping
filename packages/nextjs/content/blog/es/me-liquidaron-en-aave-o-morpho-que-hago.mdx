@@ -1,0 +1,135 @@
+export const meta = {
+  slug: "me-liquidaron-en-aave-o-morpho-que-hago",
+  title: "Me liquidaron en Aave o Morpho: qué hacer ahora",
+  description:
+    "Cómo encontrar la transacción de liquidación, calcular qué te quitaron y qué conservas, por qué ocurrió y cómo evitar que te liquiden una segunda vez.",
+  h1: "Me liquidaron en Aave o Morpho: ¿y ahora qué?",
+  publishedAt: "2026-10-31",
+  primaryQuestion: "¿Qué deberías hacer después de una liquidación en Aave o Morpho?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Primero encuentra la transacción: en Aave, en el historial de transacciones de la aplicación o en las transferencias
+  de tokens de tu billetera en un explorador de bloques; en Morpho, a través de la aplicación de Morpho o de la API
+  pública de Morpho, porque la transacción del liquidador nunca aparece en tu propia lista. Después léela: la deuda que
+  pagaron por ti, el colateral que se llevaron y la diferencia, que es la bonificación que pagaste. Los tokens que
+  pediste prestados siguen siendo tuyos, igual que el colateral que no fue tomado. En Aave una liquidación suele pagar
+  la mitad de tu deuda y deja una posición que puede liquidarse de nuevo; en Morpho puede llevarse casi toda de una vez.
+  En los 30 días hasta el 30 de octubre de 2026, 932 prestatarios de Morpho fueron liquidados más de una vez, así que el
+  paso más útil es el último: un margen y una alerta antes de volver a pedir prestado.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Las cifras y el momento en que se leyeron: content/blog/snapshots/liquidated-on-aave-or-morpho-what-now.md */}
+
+## ¿Cómo sabes que fue una liquidación y dónde está la transacción?
+
+La primera señal suele ser que una posición se ve rara: la deuda es menor de lo que recuerdas, el colateral es mucho menor, el factor de salud (health factor) es de repente más alto o la posición ya no está. Un pago de deuda que no hiciste y un retiro de colateral que no firmaste, en la misma transacción, es una liquidación.
+
+La transacción es difícil de encontrar porque no la enviaste tú. La envió el bot de un liquidador, así que no está en la lista "Transactions" de tu dirección en Etherscan, Basescan o Arbiscan. Dónde buscar en su lugar:
+
+- **Aave, en la aplicación.** Abre el historial de transacciones (app.aave.com/history) con tu billetera conectada y el mercado correcto seleccionado, y filtra por Liquidation. Cada registro tiene la hora, el hash de la transacción, el colateral tomado y la deuda pagada.
+- **Aave, en un explorador de bloques.** Abre tu dirección y la pestaña "Token transfers (ERC-20)". Una liquidación aparece como una transferencia de tu aToken (por ejemplo aEthWETH) y de tu token de deuda (variableDebtEthUSDT) a la dirección cero, en una transacción que no firmaste. Ábrela y pasa a la pestaña "Logs": el evento llamado `LiquidationCall` en el contrato Pool es el registro que necesitas. Una transacción puede contener varias liquidaciones de varios prestatarios, así que busca aquella cuyo `user` sea tu dirección.
+- **Morpho.** Tu dirección no muestra nada en el explorador, porque tu colateral estaba en el contrato de Morpho y el pago del liquidador fue también al contrato. La aplicación de Morpho muestra la posición más pequeña o desaparecida; la API pública de Morpho lista cada liquidación de tu dirección (`marketTransactions` de tipo Liquidation); y el registro de eventos del contrato de Morpho en el explorador tiene un evento llamado `Liquidate` con tu dirección como `borrower`.
+- **Tokenping.** El [panel de Aave](/es/aave) y el [panel de Morpho](/es/morpho) muestran la posición tal como está ahora. Un factor de salud que saltó de cerca de 1 a bastante más, o una posición que desapareció, apunta a una liquidación. Los paneles no listan transacciones pasadas.
+
+Guarda el hash de la transacción. Lo necesitarás para leer los montos, y en muchos países una liquidación cuenta como una venta del colateral tomado, así que tus registros fiscales también lo necesitan.
+
+## ¿Cómo lees la transacción de liquidación?
+
+Los dos protocolos escriben toda la liquidación en un solo evento. Los nombres difieren, el contenido es el mismo: qué deuda pagaron por ti, qué colateral se llevaron y cuánto de cada uno.
+
+**Aave V3** emite `LiquidationCall(collateralAsset, debtAsset, user, debtToCover, liquidatedCollateralAmount, liquidator, receiveAToken)`. Una real de Ethereum Core, bloque 26305893, 30 de octubre de 2026 a las 13:33 UTC:
+
+| Campo                      | Valor                        | Qué significa                                                              |
+| -------------------------- | ---------------------------- | -------------------------------------------------------------------------- |
+| collateralAsset            | WETH                         | El activo tomado                                                           |
+| debtAsset                  | USDT                         | El activo pagado                                                           |
+| user                       | la dirección del prestatario | De quién era la posición                                                   |
+| debtToCover                | 1,320.785158 USDT            | Deuda pagada en nombre del prestatario, 1,319.32 USD al precio del oráculo |
+| liquidatedCollateralAmount | 0.619088749 WETH             | Colateral enviado al liquidador, 1,372.09 USD a 2,216.31 USD/ETH           |
+| liquidator                 | una dirección de contrato    | Quién pagó y recibió                                                       |
+| receiveAToken              | false                        | Se llevó WETH en sí, no aEthWETH                                           |
+
+Un monto no está en el evento. En la misma transacción, 0.005952776 aEthWETH (13.19 USD) pasaron del prestatario al contrato colector de Aave: la comisión de protocolo de liquidación, el 20% de la bonificación para WETH en Ethereum Core en ese bloque. Sumándolo todo, el prestatario entregó 1,385.28 USD en WETH por 1,319.32 USD de deuda, una bonificación del 5%, de la que el liquidador se quedó 52.77 USD y la tesorería 13.19 USD. La pestaña "Logs" del explorador muestra la comisión como una transferencia de aToken al colector justo después de la quema del aToken.
+
+**Morpho Blue** emite `Liquidate(id, caller, borrower, repaidAssets, repaidShares, seizedAssets, badDebtAssets, badDebtShares)`. Una real del mercado USDC | cbBTC (86%) en Base, bloque 53265200, 30 de octubre de 2026 a las 00:22 UTC:
+
+| Campo         | Valor                        | Qué significa                                                       |
+| ------------- | ---------------------------- | ------------------------------------------------------------------- |
+| id            | 0x9103c3b4…                  | El mercado                                                          |
+| caller        | el liquidador                | Quién pagó y recibió                                                |
+| borrower      | la dirección del prestatario | De quién era la posición                                            |
+| repaidAssets  | 2,174.732093 USDC            | Deuda pagada en nombre del prestatario                              |
+| seizedAssets  | 0.02952084 cbBTC             | Colateral enviado al liquidador, 2,270.08 USD al precio del oráculo |
+| badDebtAssets | 0                            | No se canceló nada                                                  |
+
+El oráculo valoró cbBTC en 76,897.38 USDC en ese bloque. El colateral tomado valía 2,270.08 USD por 2,174.73 USD de deuda, una proporción de 1.0438, que es exactamente el factor de incentivo de liquidación que paga un mercado al 86%. La diferencia de 95.34 USD fue íntegra al liquidador: Morpho no cobra comisión. Esa transacción contenía 30 eventos `Liquidate` de un solo liquidador, cada uno con un prestatario distinto, que es el aspecto que tiene el minuto más intenso de un desplome en el registro de un mercado.
+
+## ¿Qué te quitaron y qué conservas?
+
+Tres cosas que separar:
+
+1. **La deuda que pagaron por ti desapareció, y también el colateral que la pagó.** Ya no debes la parte pagada. El liquidador la pagó con sus propios tokens y se llevó tu colateral a cambio, más la bonificación. La bonificación es el costo de la liquidación: en los dos ejemplos, 65.96 USD sobre 1,319 USD de deuda en Aave y 95.34 USD sobre 2,175 USD en Morpho.
+2. **Los tokens que pediste prestados siguen siendo tuyos.** Si pediste USDT y lo gastaste, nada cambia. Si sigue en tu billetera, sigue ahí. Una liquidación nunca toca los tokens prestados que hay en tu billetera; solo cambia la posición.
+3. **El colateral que no fue tomado se queda en la posición.** En Aave el saldo de aTokens es menor; en Morpho el saldo de colateral en ese mercado es menor. Si queda deuda, el colateral sigue respaldándola. Si no queda deuda, puedes retirarlo.
+
+Cuánto queda depende del protocolo. En Aave V3 una liquidación paga como máximo el 50% de tu deuda total cuando el factor de salud está por encima de 0.95 y tanto el colateral tomado como la deuda pagada valen al menos 2,000 USD; por debajo de 0.95, o con montos menores, puede pagar toda la deuda en ese activo ([cuánto puede liquidarse de una vez](/es/blog/como-funciona-la-liquidacion-en-aave#que-parte-de-mi-deuda-se-puede-liquidar-de-una-vez)). El ejemplo de Ethereum siguió la regla del 50% al centavo: 2,638.63 USD de deuda antes, 1,319.32 después. El prestatario conservó 0.7906 WETH (1,752 USD) frente a 1,319.32 USDT, un factor de salud de 1.12, y esa posición puede liquidarse de nuevo si ETH cae otro 10.4%. En Aave V4, en cambio, una liquidación paga lo necesario para devolver la posición al factor de salud objetivo del Spoke, 1.24 en el Ethereum Main Spoke, así que se paga más pero lo que queda es más seguro ([las liquidaciones en Aave V4](/es/blog/como-funciona-la-liquidacion-en-aave#en-que-se-diferencian-las-liquidaciones-en-aave-v4)).
+
+Morpho Blue no tiene factor de cierre (close factor): un liquidador puede pagar hasta toda la deuda en una sola llamada ([cuánto de tu deuda puede liquidarse de una vez](/es/blog/como-funciona-la-liquidacion-en-morpho#que-parte-de-tu-deuda-se-puede-liquidar-de-una-vez)). El liquidador de Base se llevó 0.02952 de 0.03286 cbBTC, el 90% del colateral, y pagó toda la deuda salvo 0.0005 USDC que dejó el redondeo de las participaciones. El prestatario conservó 0.003342 cbBTC, unos 257 USD, y puede retirarlos.
+
+Dos cosas más que revisar. En Aave, qué colateral se tomó fue decisión del liquidador ([qué colateral toma el liquidador](/es/blog/como-funciona-la-liquidacion-en-aave#que-colateral-se-lleva-el-liquidador)), así que una posición con varios activos de colateral puede haber perdido el que menos esperabas. En Morpho, un `repaidAssets` menor de lo que esperabas puede significar que una [preliquidación](/es/blog/preliquidacion-morpho) se ejecutó antes de la real, con un LTV más bajo y un incentivo menor; la aplicación y la API muestran ambos tipos.
+
+## ¿Y si la liquidación se lo llevó todo?
+
+Si `badDebtAssets` es mayor que cero en Morpho, o si el evento de Aave te dejó sin colateral mientras quedaba deuda, el colateral valía menos que la deuda más la bonificación cuando alguien liquidó. Los dos protocolos cierran la posición en lugar de perseguirte:
+
+- **Aave** (desde V3.3) quema la deuda restante y la registra como un déficit en esa reserva, que los stakers de Umbrella pueden cubrir más tarde. Terminas sin colateral y sin deuda ([puede una liquidación dejar deuda incobrable](/es/blog/como-funciona-la-liquidacion-en-aave#puede-una-liquidacion-dejar-deuda-incobrable)).
+- **Morpho Blue** cancela la deuda restante en la misma transacción y reparte la pérdida entre los prestamistas de ese mercado. El prestatario termina sin colateral y sin deuda ([qué pasa con la deuda incobrable en Morpho Blue](/es/blog/como-funciona-la-liquidacion-en-morpho#que-pasa-con-la-deuda-incobrable-en-morpho-blue)).
+
+Nadie irá tras de ti por la diferencia, y nada queda pendiente en la posición. Pero tampoco queda nada, y la pérdida de tu lado es todo el colateral, no solo una bonificación. La deuda incobrable fue rara en el mes de los ejemplos: cero en las 393 liquidaciones del mercado de cbBTC en Base en los tres días alrededor del desplome, unos 3.5 millones de USD en las 7,521 liquidaciones de todo Morpho en los 30 días hasta el 30 de octubre.
+
+## ¿Por qué ocurrió?
+
+Los dos ejemplos comparten una causa: ningún margen. Un bloque antes de la liquidación de Aave, el factor de salud de ese prestatario era 1.0049; la siguiente actualización de Chainlink movió WETH de unos 2,229.77 a 2,216.31 USD, un 0.6% menos, y el factor de salud quedó en 0.9988. Un bloque antes de la liquidación de Morpho, el factor de salud del prestatario de Base era 1.0025; el oráculo movió cbBTC de 77,140.46 a 76,897.38 USDC, un 0.3% menos, y quedó en 0.9993. Ninguno necesitó un desplome. Bastó una sola actualización de precio ordinaria, y en el caso de Morpho a las 00:22 UTC, dentro de la franja de seis horas en la que ocurre [más de un tercio de las liquidaciones de Morpho](/es/blog/quien-necesita-alertas-del-factor-de-salud#con-que-frecuencia-se-liquida-a-los-prestatarios).
+
+Si tu factor de salud no estaba tan cerca, algo más lo movió. [Por qué bajó tu factor de salud](/es/blog/por-que-bajo-el-factor-de-salud-aave) enumera seis causas con una forma de comprobar cada una: cayó el precio de tu colateral, subió el precio de lo que pediste prestado, el interés de la deuda creció más que el rendimiento del colateral, la gobernanza recortó un umbral de liquidación, una stablecoin que depositaste perdió la paridad o un oráculo valoró mal un wrapper. La versión de Morpho es la misma lista sin el recorte del umbral, porque el LLTV de un mercado de Morpho nunca cambia ([qué mueve un factor de salud en Morpho](/es/blog/factor-de-salud-morpho#que-mueve-el-factor-de-salud-en-morpho)). Dos casos son fáciles de pasar por alto: un préstamo de [Midnight](/es/blog/morpho-midnight-prestamos-a-tasa-fija) que pasó su vencimiento puede liquidarse con cualquier factor de salud, y un préstamo contra [acciones tokenizadas](/es/blog/acciones-tokenizadas-como-colateral) puede liquidarse con un precio del domingo por la tarde que se movió mientras el feed estaba en pausa.
+
+## ¿Qué deberías hacer en la primera hora?
+
+1. **Lee la posición restante antes de tocarla.** Factor de salud, deuda restante, colateral restante, en el [panel de Aave](/es/aave) o en el [panel de Morpho](/es/morpho), en la aplicación del protocolo o en el explorador. Una liquidación parcial en Aave deja una posición cerca de 1.1, que el siguiente movimiento del 10% vuelve a liquidar.
+2. **Decide si cerrar o mantener.** Si ya no quieres el préstamo, paga el resto y retira el colateral; en Aave puedes pagar con el propio colateral ([pagar con colateral](/es/blog/como-evitar-la-liquidacion-en-aave#paso-4-paga-con-colateral-o-intercambia-el-colateral)). Si lo mantienes, paga deuda o añade colateral hasta que el factor de salud esté donde tú quieres, no donde estaba. [Pagar deuda sube el factor de salud más por cada dólar que añadir colateral](/es/blog/como-evitar-la-liquidacion-en-aave#por-que-pagar-deuda-sube-el-factor-de-salud-mas-que-anadir-colateral).
+3. **No vuelvas a pedir prestado hasta el límite.** La posición que acaba de ser liquidada en 1.005 será liquidada en 1.005 otra vez. Volver a pedir prestado hasta el mismo LTV reinicia el reloj.
+4. **Revisa tus otras posiciones.** Cada mercado de Aave, cada Spoke de V4 y cada mercado de Morpho tiene su propio factor de salud, y el mismo movimiento de precio que liquidó una ha bajado las demás.
+5. **En Aave, comprueba si hay una reserva congelada.** Cuando Aave congeló todos los mercados de la DAO el 29 de octubre de 2026, añadir colateral a una reserva congelada era imposible y pagar deuda era la única forma de subir ([por qué falla un retiro o un préstamo](/es/blog/por-que-falla-retirar-o-pedir-prestado-en-aave)).
+6. **En Morpho, comprueba la preliquidación.** Si habías autorizado un contrato de preliquidación, sigue autorizado; [compruébalo y revócalo](/es/blog/preliquidacion-morpho#como-compruebas-si-has-autorizado-un-contrato) si ya no lo quieres.
+7. **Guarda el registro.** El hash de la transacción, los dos montos, la fecha, los precios del oráculo si puedes leerlos. Los exploradores conservan los datos, pero no querrás buscarlos en abril.
+
+## ¿Cómo evitas una segunda?
+
+De los 5,703 prestatarios de Morpho liquidados en los 30 días hasta el 30 de octubre de 2026, 932 fueron liquidados más de una vez. El prestatario de Base de arriba era uno de ellos: un préstamo de cbBTC liquidado el 3 de junio, un préstamo de cbZEC el 14 de octubre y el préstamo de cbBTC otra vez el 30 de octubre. Cada una costó una bonificación, y ninguna llevó a un cambio. El cambio son tres decisiones:
+
+- **Un margen.** Un factor de salud de 1.005 no sobrevive a nada. [Cuánto pueden caer los precios con cada factor de salud](/es/blog/factor-de-salud-seguro-aave#cuanto-pueden-caer-los-precios-antes-de-la-liquidacion-con-cada-factor-de-salud) da la tabla: 1.5 sobrevive a una caída del 33.3%, 2 sobrevive al 50%. El número que elijas depende de qué pediste prestado contra qué; [el método paso a paso](/es/blog/factor-de-salud-seguro-aave#como-eliges-un-umbral-de-alerta-paso-a-paso) lo recorre, y la [versión de Morpho](/es/blog/factor-de-salud-morpho#como-eliges-un-margen-y-un-umbral-de-alerta) tiene en cuenta el LLTV fijo.
+- **Una alerta por encima del margen.** Un mensaje cuando el factor de salud cruza una línea que tú elegiste, con tiempo suficiente para actuar. Tokenping revisa cada 5 minutos y te envía un mensaje por Signal, Telegram o correo electrónico; el umbral puede estar en cualquier punto entre 1.1 y 10 en Aave y entre 1.02 y 10 en Morpho. [Configurar una](/es/blog/configurar-alertas-factor-de-salud-aave) lleva unos minutos. Una alerta no puede captar un salto entre dos revisiones, y no puede pagar nada por ti, y por eso viene después del margen, no en su lugar.
+- **Fondos con los que actuar.** Fondos para pagar la deuda en la red donde pediste prestado, en el activo que debes o en uno que puedas intercambiar de noche, y un teléfono que deje pasar el mensaje ([alertas con el modo No molestar](/es/blog/alertas-aave-modo-no-molestar)). La liquidación de Morpho de arriba ocurrió a las 00:22 UTC; una alerta en 1.1 habría llegado horas antes, y solo fondos en Base podrían haber respondido.
+
+Si el préstamo era tan pequeño que no habrías movido fondos para salvarlo, la conclusión honesta es otra: o pides menos prestado contra él, o aceptas que la bonificación es el precio de no vigilar.
+
+## Cómo encaja Tokenping
+
+Tokenping vigila cada posición que configuras cada 5 minutos, en cada mercado de Aave V3 en 21 redes, cada Spoke de Aave V4 y cada mercado de Morpho que lista la aplicación de Morpho, y te envía un mensaje por Signal, Telegram o correo electrónico cuando el factor de salud está por debajo de tu umbral. El mensaje se repite en cada revisión hasta que la posición se recupera, en inglés, checo, español, hindi, alemán o vietnamita. Después de una liquidación, los paneles muestran lo que queda: el [panel de Aave](/es/aave) con el factor de salud de cada mercado, el [panel de Morpho](/es/morpho) con el LTV, el LLTV y el factor de salud de cada mercado, calculados desde la cadena.
+
+Puedes consultar tus posiciones sin pagar. Las alertas cuestan <AlertPrice />, una por mercado de Aave V3, Spoke de V4 o mercado de Morpho. Tokenping está en beta y no tiene garantía de disponibilidad, y ninguna alerta evita una liquidación.
+
+## Fuentes
+
+- [Transacción de Ethereum 0x5f88aa61…12fb6](https://etherscan.io/tx/0x5f88aa61ca6180e132a627c5e4d483c4098becc65359fa6af50551c405312fb6) (bloque 26305893): `LiquidationCall`, las quemas de aEthWETH y variableDebtEthUSDT, la transferencia de la comisión al colector; precios del Aave Oracle y `getUserAccountData` en los bloques 26305892 y 26305893; `getReserveConfigurationData` y `getLiquidationProtocolFee` para WETH, leídos a través de un RPC público (consultado el 31 de octubre de 2026)
+- [Transacción de Base 0xc2df272f…f0178](https://basescan.org/tx/0xc2df272f36d8b0b566c24988052c1508a4c90a97999b2da5a8c8ec7f8e3f0178) (bloque 53265200): los 30 eventos `Liquidate`; `position` y `market` de Morpho Blue y `price()` del oráculo del mercado en los bloques 53265199 y 53265200, leídos a través de un RPC público (consultado el 31 de octubre de 2026)
+- [API de Morpho](https://api.morpho.org/graphql): `marketTransactions` de tipo Liquidation para el mercado de cbBTC en Base del 28 al 31 de octubre de 2026 y para la dirección del prestatario del ejemplo; `markets` para el LLTV y el oráculo del mercado (consultado el 31 de octubre de 2026)
+- [API de Morpho](https://api.morpho.org/graphql): todas las liquidaciones del 30 de septiembre de 2026, 08:36 UTC, al 30 de octubre de 2026, 08:36 UTC, como en la [guía de alertas](/es/blog/quien-necesita-alertas-del-factor-de-salud) (consultado el 30 de octubre de 2026)
+- [Funcionalidades de Aave v3.3](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): deuda incobrable quemada y registrada como déficit de la reserva, reglas del factor de cierre, eliminación del déficit por Umbrella (consultado el 31 de octubre de 2026)
+- [Liquidación en Morpho](https://docs.morpho.org/learn/concepts/liquidation): la fórmula del incentivo, hasta el 100% en una sola llamada, sin comisión del protocolo (consultado el 31 de octubre de 2026)
+
+_Contenido educativo, no asesoramiento financiero. Las alertas reducen el riesgo, pero no evitan la liquidación._

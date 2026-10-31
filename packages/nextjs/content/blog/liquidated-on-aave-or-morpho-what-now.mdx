@@ -1,0 +1,134 @@
+export const meta = {
+  slug: "liquidated-on-aave-or-morpho-what-now",
+  title: "Liquidated on Aave or Morpho: what to do now",
+  description:
+    "How to find the liquidation transaction, work out what was taken and what you kept, why it happened, and how not to be liquidated a second time.",
+  h1: "I got liquidated on Aave or Morpho: what now?",
+  publishedAt: "2026-10-31",
+  primaryQuestion: "What should you do after a liquidation on Aave or Morpho?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  First find the transaction: on Aave in the app's transaction history or in your wallet's token transfers on a block
+  explorer, on Morpho through the Morpho app or Morpho's public API, because the liquidator's transaction never appears
+  in your own list. Then read it: the debt repaid for you, the collateral taken, and the difference, which is the bonus
+  you paid. The tokens you borrowed stay yours, and so does any collateral that was not seized. On Aave a liquidation
+  usually repays half of your debt and leaves a position that can be liquidated again; on Morpho it can take almost all
+  of it at once. In the 30 days to 30 October 2026, 932 Morpho borrowers were liquidated more than once, so the most
+  useful step is the last one: a buffer and an alert before you borrow again.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Figures and the time they were read: content/blog/snapshots/liquidated-on-aave-or-morpho-what-now.md */}
+
+## How do you know it was a liquidation, and where is the transaction?
+
+The usual first sign is that a position looks wrong: the debt is smaller than you remember, the collateral is much smaller, the health factor is suddenly higher, or the position is gone. A repayment you did not make and a collateral withdrawal you did not sign, in the same transaction, is a liquidation.
+
+The transaction is hard to find because you did not send it. A liquidator's bot did, so it is not in the "Transactions" list of your address on Etherscan, Basescan or Arbiscan. Where to look instead:
+
+- **Aave, in the app.** Open Transaction history (app.aave.com/history) with your wallet connected and the right market selected, and filter by Liquidation. Each record has the time, the transaction hash, the collateral taken and the debt repaid.
+- **Aave, on a block explorer.** Open your address and the "Token transfers (ERC-20)" tab. A liquidation shows as a transfer of your aToken (for example aEthWETH) and of your debt token (variableDebtEthUSDT) to the zero address, in a transaction you did not sign. Open it and switch to the "Logs" tab: the event named `LiquidationCall` on the Pool contract is the record you need. One transaction can hold several liquidations of several borrowers, so look for the one whose `user` is your address.
+- **Morpho.** Your address shows nothing on the explorer, because your collateral sat in the Morpho contract and the liquidator's repayment went to the contract too. The Morpho app shows the position smaller or gone; Morpho's public API lists every liquidation of your address (`marketTransactions` of type Liquidation); and the Morpho contract's event log on the explorer has an event named `Liquidate` with your address as `borrower`.
+- **Tokenping.** The [Aave dashboard](/aave) and the [Morpho dashboard](/morpho) show the position as it is now. A health factor that jumped from near 1 to well above it, or a position that has disappeared, points at a liquidation. The dashboards do not list past transactions.
+
+Keep the transaction hash. You will need it to read the amounts, and in many countries a liquidation counts as a sale of the collateral that was taken, so your tax records need it too.
+
+## How do you read the liquidation transaction?
+
+Both protocols write the whole liquidation into one event. The names differ, the content is the same: which debt was repaid for you, which collateral was taken, and how much of each.
+
+**Aave V3** emits `LiquidationCall(collateralAsset, debtAsset, user, debtToCover, liquidatedCollateralAmount, liquidator, receiveAToken)`. A real one from Ethereum Core, block 26305893, 30 October 2026 at 13:33 UTC:
+
+| Field                      | Value                  | What it means                                                       |
+| -------------------------- | ---------------------- | ------------------------------------------------------------------- |
+| collateralAsset            | WETH                   | The asset taken                                                     |
+| debtAsset                  | USDT                   | The asset repaid                                                    |
+| user                       | the borrower's address | Whose position it was                                               |
+| debtToCover                | 1,320.785158 USDT      | Debt repaid for the borrower, 1,319.32 USD at the oracle price      |
+| liquidatedCollateralAmount | 0.619088749 WETH       | Collateral sent to the liquidator, 1,372.09 USD at 2,216.31 USD/ETH |
+| liquidator                 | a contract address     | Who repaid and received                                             |
+| receiveAToken              | false                  | They took WETH itself, not aEthWETH                                 |
+
+One amount is not in the event. In the same transaction 0.005952776 aEthWETH (13.19 USD) moved from the borrower to Aave's collector contract: the liquidation protocol fee, 20% of the bonus for WETH on Ethereum Core at that block. Adding it up, the borrower gave 1,385.28 USD of WETH for 1,319.32 USD of debt, a 5% bonus, of which the liquidator kept 52.77 USD and the treasury 13.19 USD. The explorer's "Logs" tab shows the fee as an aToken transfer to the collector right after the aToken burn.
+
+**Morpho Blue** emits `Liquidate(id, caller, borrower, repaidAssets, repaidShares, seizedAssets, badDebtAssets, badDebtShares)`. A real one from the USDC | cbBTC (86%) market on Base, block 53265200, 30 October 2026 at 00:22 UTC:
+
+| Field         | Value                  | What it means                                                       |
+| ------------- | ---------------------- | ------------------------------------------------------------------- |
+| id            | 0x9103c3b4…            | The market                                                          |
+| caller        | the liquidator         | Who repaid and received                                             |
+| borrower      | the borrower's address | Whose position it was                                               |
+| repaidAssets  | 2,174.732093 USDC      | Debt repaid for the borrower                                        |
+| seizedAssets  | 0.02952084 cbBTC       | Collateral sent to the liquidator, 2,270.08 USD at the oracle price |
+| badDebtAssets | 0                      | Nothing was written off                                             |
+
+The oracle priced cbBTC at 76,897.38 USDC in that block. The collateral taken was worth 2,270.08 USD for 2,174.73 USD of debt, a ratio of 1.0438, which is exactly the liquidation incentive factor an 86% market pays. The 95.34 USD difference went to the liquidator in full: Morpho takes no fee. That transaction held 30 `Liquidate` events from one liquidator, each with a different borrower, which is what the busiest minute of a crash looks like in a market's log.
+
+## What was taken, and what did you keep?
+
+Three things to separate:
+
+1. **The debt repaid for you is gone, and so is the collateral that paid for it.** You do not owe the repaid part any more. The liquidator paid it with their own tokens and took your collateral in return, plus the bonus. The bonus is the cost of the liquidation: in the two examples, 65.96 USD on 1,319 USD of debt on Aave and 95.34 USD on 2,175 USD on Morpho.
+2. **The tokens you borrowed are still yours.** If you borrowed USDT and spent it, nothing changes. If it is still in your wallet, it is still there. A liquidation never touches the loaned tokens in your wallet; it only changes the position.
+3. **The collateral that was not seized stays in the position.** On Aave the aToken balance is smaller; on Morpho the collateral balance in that market is smaller. If debt remains, the collateral keeps backing it. If no debt remains, you can withdraw it.
+
+How much remains depends on the protocol. On Aave V3 one liquidation repays at most 50% of your total debt when the health factor is above 0.95 and both the collateral taken and the debt repaid are worth at least 2,000 USD; below 0.95, or for smaller amounts, it can repay all of the debt in that asset ([how much can be liquidated at once](/blog/how-aave-liquidation-works#how-much-of-my-debt-can-be-liquidated-at-once)). The Ethereum example followed the 50% rule to the cent: 2,638.63 USD of debt before, 1,319.32 after. The borrower kept 0.7906 WETH (1,752 USD) against 1,319.32 USDT, a health factor of 1.12, and that position can be liquidated again if ETH falls another 10.4%. On Aave V4 a liquidation instead repays what it takes to bring the position back to the Spoke's target health factor, 1.24 on the Ethereum Main Spoke, so more is repaid but what remains is safer ([liquidations on Aave V4](/blog/how-aave-liquidation-works#how-are-liquidations-different-on-aave-v4)).
+
+Morpho Blue has no close factor: a liquidator may repay up to all of the debt in one call ([how much of your debt can be liquidated at once](/blog/how-morpho-liquidation-works#how-much-of-your-debt-can-be-liquidated-at-once)). The Base liquidator took 0.02952 of 0.03286 cbBTC, 90% of the collateral, and repaid the whole debt but 0.0005 USDC left by share rounding. The borrower kept 0.003342 cbBTC, about 257 USD, and can withdraw it.
+
+Two more things to check. On Aave, which collateral was taken was the liquidator's choice ([which collateral the liquidator takes](/blog/how-aave-liquidation-works#which-collateral-does-the-liquidator-take)), so a position with several collateral assets may have lost the one you least expected. On Morpho, a `repaidAssets` smaller than you expected can mean a [pre-liquidation](/blog/morpho-pre-liquidation) ran before the real one, at a lower LTV and a lower incentive; the app and the API show both kinds.
+
+## What if the liquidation took everything?
+
+If `badDebtAssets` is above zero on Morpho, or if the Aave event left you with no collateral while debt remained, the collateral was worth less than the debt plus the bonus by the time someone liquidated. Both protocols close the position rather than chase you:
+
+- **Aave** (since V3.3) burns the remaining debt and records it as a deficit on that reserve, which Umbrella stakers can cover later. You end with no collateral and no debt ([can a liquidation leave bad debt](/blog/how-aave-liquidation-works#can-a-liquidation-leave-bad-debt)).
+- **Morpho Blue** writes the remaining debt off in the same transaction and spreads the loss over the lenders in that market. The borrower ends with no collateral and no debt ([what happens to bad debt on Morpho Blue](/blog/how-morpho-liquidation-works#what-happens-to-bad-debt-on-morpho-blue)).
+
+Nobody will come after you for the difference, and nothing stays on the position. But nothing is left either, and the loss on your side is the whole collateral, not just a bonus. Bad debt was rare in the examples' month: zero in the 393 liquidations of the Base cbBTC market in the three days around the crash, about 3.5M USD across all of Morpho's 7,521 liquidations in the 30 days to 30 October.
+
+## Why did it happen?
+
+The two examples share one cause: no buffer. One block before the Aave liquidation, that borrower's health factor was 1.0049; the next Chainlink update moved WETH from about 2,229.77 to 2,216.31 USD, 0.6% lower, and the health factor was 0.9988. One block before the Morpho liquidation, the Base borrower's health factor was 1.0025; the oracle moved cbBTC from 77,140.46 to 76,897.38 USDC, 0.3% lower, and it was 0.9993. Neither needed a crash. A single ordinary price update did it, and in the Morpho case at 00:22 UTC, in the six-hour window in which [more than a third of Morpho's liquidations](/blog/who-needs-health-factor-alerts#how-often-do-borrowers-get-liquidated) happen.
+
+If your health factor was not that close, something else moved it. [Why your health factor dropped](/blog/why-aave-health-factor-dropped) lists six causes with a way to check each: your collateral's price fell, the price of what you borrowed rose, interest on the debt outgrew the yield on the collateral, governance cut a liquidation threshold, a stablecoin you supplied depegged, or an oracle mispriced a wrapper. The Morpho version is the same list without the threshold cut, because a Morpho market's LLTV never changes ([what moves a Morpho health factor](/blog/morpho-health-factor#what-moves-a-morpho-health-factor)). Two cases are easy to miss: a [Midnight](/blog/morpho-midnight-fixed-rate-loans) loan past its maturity can be liquidated at any health factor, and a loan against [tokenized stocks](/blog/tokenized-stocks-collateral) can be liquidated on a Sunday evening price that moved while the feed was paused.
+
+## What should you do in the first hour?
+
+1. **Read the remaining position before touching it.** Health factor, remaining debt, remaining collateral, on the [Aave dashboard](/aave) or [Morpho dashboard](/morpho), in the protocol's app or on the explorer. A partial liquidation on Aave leaves a position near 1.1, which the next 10% move liquidates again.
+2. **Decide whether to close or to keep.** If you no longer want the loan, repay the rest and withdraw the collateral; on Aave you can repay with the collateral itself ([repay with collateral](/blog/avoid-aave-liquidation#step-4-repay-with-collateral-or-swap-collateral)). If you keep it, repay or add collateral until the health factor is where you want it, not where it was. [Repaying raises the health factor more per dollar than adding collateral](/blog/avoid-aave-liquidation#why-does-repaying-raise-the-health-factor-more-than-adding-collateral).
+3. **Do not borrow back up to the limit.** The position that was just liquidated at 1.005 will be liquidated at 1.005 again. Re-borrowing to the same LTV restarts the clock.
+4. **Check your other positions.** Each Aave market, each V4 Spoke and each Morpho market has its own health factor, and the same price move that liquidated one has lowered the others.
+5. **On Aave, check for a frozen reserve.** When Aave froze every DAO market on 29 October 2026, adding collateral to a frozen reserve was impossible and repaying was the only way up ([why a withdraw or borrow fails](/blog/why-aave-withdraw-or-borrow-fails)).
+6. **On Morpho, check pre-liquidation.** If you had authorised a pre-liquidation contract, it is still authorised; [check and revoke it](/blog/morpho-pre-liquidation#how-do-you-check-whether-you-have-authorised-one) if you no longer want it.
+7. **Save the record.** Transaction hash, the two amounts, the date, the oracle prices if you can read them. Explorers keep the data, but you will not want to search for it in April.
+
+## How do you avoid a second one?
+
+Of the 5,703 Morpho borrowers liquidated in the 30 days to 30 October 2026, 932 were liquidated more than once. The Base borrower above was one of them: a cbBTC loan liquidated on 3 June, a cbZEC loan on 14 October, and the cbBTC loan again on 30 October. Each one cost a bonus, and none led to a change. The change is three decisions:
+
+- **A buffer.** A health factor of 1.005 survives nothing. [How far prices can fall at each health factor](/blog/safe-aave-health-factor#how-far-can-prices-fall-before-liquidation-at-each-health-factor) gives the table: 1.5 survives a 33.3% fall, 2 survives 50%. The number you choose depends on what you borrowed against what; [the step-by-step method](/blog/safe-aave-health-factor#how-do-you-choose-an-alert-threshold-step-by-step) works through it, and the [Morpho version](/blog/morpho-health-factor#how-do-you-choose-a-buffer-and-an-alert-threshold) accounts for the fixed LLTV.
+- **An alert above the buffer.** A message when the health factor crosses a line you chose, early enough to act. Tokenping checks every 5 minutes and messages you on Signal, Telegram or email; the threshold can be anywhere from 1.1 to 10 on Aave and from 1.02 to 10 on Morpho. [Setting one up](/blog/aave-health-factor-alert-setup) takes a few minutes. An alert cannot catch a jump between two checks, and it cannot repay anything for you, which is why it comes after the buffer, not instead of it.
+- **Funds you can act with.** Repayment funds on the network where you borrowed, in the asset you owe or one you can swap at night, and a phone that lets the message through ([alerts through Do Not Disturb](/blog/aave-alerts-do-not-disturb)). The Morpho liquidation above happened at 00:22 UTC; an alert at 1.1 would have arrived hours earlier, and only funds on Base could have answered it.
+
+If the loan was small enough that you would not have moved funds to save it, the honest conclusion is different: either borrow less against it, or accept that the bonus is the price of not watching.
+
+## How Tokenping fits in
+
+Tokenping watches each position you set up every 5 minutes, in every Aave V3 market on 21 networks, every Aave V4 Spoke and every Morpho market the Morpho app lists, and messages you on Signal, Telegram or email when the health factor is below your threshold. The message repeats at every check until the position recovers, in English, Czech, Spanish, Hindi, German or Vietnamese. After a liquidation, the dashboards show what is left: the [Aave dashboard](/aave) with each market's health factor, the [Morpho dashboard](/morpho) with each market's LTV, LLTV and health factor, computed from the chain.
+
+You can look at your positions without paying. Alerts cost <AlertPrice />, one per Aave V3 market, V4 Spoke or Morpho market. Tokenping is in beta and has no uptime guarantee, and no alert prevents a liquidation.
+
+## Sources
+
+- [Ethereum transaction 0x5f88aa61…12fb6](https://etherscan.io/tx/0x5f88aa61ca6180e132a627c5e4d483c4098becc65359fa6af50551c405312fb6) (block 26305893): `LiquidationCall`, aEthWETH and variableDebtEthUSDT burns, the fee transfer to the collector; Aave Oracle prices and `getUserAccountData` at blocks 26305892 and 26305893; `getReserveConfigurationData` and `getLiquidationProtocolFee` for WETH, read through a public RPC (fetched 31 Oct 2026)
+- [Base transaction 0xc2df272f…f0178](https://basescan.org/tx/0xc2df272f36d8b0b566c24988052c1508a4c90a97999b2da5a8c8ec7f8e3f0178) (block 53265200): the 30 `Liquidate` events; Morpho Blue `position`, `market` and the market oracle's `price()` at blocks 53265199 and 53265200, read through a public RPC (fetched 31 Oct 2026)
+- [Morpho API](https://api.morpho.org/graphql): `marketTransactions` of type Liquidation for the Base cbBTC market from 28 to 31 Oct 2026 and for the example borrower's address; `markets` for the market's LLTV and oracle (fetched 31 Oct 2026)
+- [Morpho API](https://api.morpho.org/graphql): all liquidations from 30 Sep 2026 08:36 UTC to 30 Oct 2026 08:36 UTC, as in the [alerts guide](/blog/who-needs-health-factor-alerts) (fetched 30 Oct 2026)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): bad debt burned and recorded as a reserve deficit, close factor rules, Umbrella's deficit elimination (fetched 31 Oct 2026)
+- [Liquidation on Morpho](https://docs.morpho.org/learn/concepts/liquidation): the incentive formula, up to 100% in one call, no protocol fee (fetched 31 Oct 2026)
+
+_Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation._

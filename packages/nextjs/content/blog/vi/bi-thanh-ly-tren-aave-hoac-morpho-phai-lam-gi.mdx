@@ -1,0 +1,135 @@
+export const meta = {
+  slug: "bi-thanh-ly-tren-aave-hoac-morpho-phai-lam-gi",
+  title: "Bị thanh lý trên Aave hoặc Morpho: phải làm gì bây giờ",
+  description:
+    "Cách tìm giao dịch thanh lý, tính xem bạn đã mất gì và còn giữ gì, vì sao nó xảy ra, và làm sao để không bị thanh lý lần thứ hai.",
+  h1: "Tôi bị thanh lý trên Aave hoặc Morpho: giờ phải làm gì?",
+  publishedAt: "2026-10-31",
+  primaryQuestion: "Bạn nên làm gì sau khi bị thanh lý trên Aave hoặc Morpho?",
+  readingMinutes: 15,
+};
+
+<ShortAnswer>
+  Trước hết hãy tìm giao dịch: trên Aave trong lịch sử giao dịch của ứng dụng hoặc trong mục chuyển token của ví bạn
+  trên trình khám phá khối (block explorer), trên Morpho qua ứng dụng Morpho hoặc API công khai của Morpho, vì giao dịch
+  của bên thanh lý không bao giờ xuất hiện trong danh sách giao dịch của chính bạn. Rồi đọc nó: khoản nợ được trả thay
+  bạn, tài sản thế chấp bị lấy, và phần chênh lệch, chính là khoản thưởng bạn đã trả. Số token bạn đã vay vẫn là của
+  bạn, và phần tài sản thế chấp không bị thu cũng vậy. Trên Aave, một lần thanh lý thường trả một nửa khoản nợ của bạn
+  và để lại một vị thế có thể bị thanh lý tiếp; trên Morpho, nó có thể lấy gần như toàn bộ trong một lần. Trong 30 ngày
+  tính đến ngày 30 tháng 10 năm 2026, 932 người vay Morpho bị thanh lý hơn một lần, nên bước hữu ích nhất là bước cuối
+  cùng: một biên an toàn và một cảnh báo trước khi bạn vay lại.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Số liệu và thời điểm đọc chúng: content/blog/snapshots/liquidated-on-aave-or-morpho-what-now.md */}
+
+## Làm sao biết đó là một lần thanh lý, và giao dịch nằm ở đâu?
+
+Dấu hiệu đầu tiên thường là vị thế trông không đúng: khoản nợ nhỏ hơn bạn nhớ, tài sản thế chấp nhỏ đi nhiều, hệ số sức khỏe (health factor) đột nhiên cao hơn, hoặc vị thế đã biến mất. Một lần trả nợ mà bạn không thực hiện và một lần rút tài sản thế chấp mà bạn không ký, trong cùng một giao dịch, chính là một lần thanh lý.
+
+Giao dịch này khó tìm vì không phải bạn gửi nó. Bot của một bên thanh lý đã gửi, nên nó không nằm trong danh sách "Transactions" của địa chỉ bạn trên Etherscan, Basescan hay Arbiscan. Thay vào đó, hãy tìm ở những chỗ này:
+
+- **Aave, trong ứng dụng.** Mở Transaction history (app.aave.com/history) với ví đã kết nối và đúng thị trường được chọn, rồi lọc theo Liquidation. Mỗi bản ghi có thời gian, mã băm giao dịch (transaction hash), tài sản thế chấp bị lấy và khoản nợ được trả.
+- **Aave, trên trình khám phá khối.** Mở địa chỉ của bạn và thẻ "Token transfers (ERC-20)". Một lần thanh lý hiện ra dưới dạng một lần chuyển aToken của bạn (ví dụ aEthWETH) và token nợ của bạn (variableDebtEthUSDT) tới địa chỉ zero, trong một giao dịch bạn không ký. Mở giao dịch đó và chuyển sang thẻ "Logs": sự kiện tên `LiquidationCall` trên hợp đồng Pool là bản ghi bạn cần. Một giao dịch có thể chứa nhiều lần thanh lý của nhiều người vay, nên hãy tìm sự kiện có `user` là địa chỉ của bạn.
+- **Morpho.** Địa chỉ của bạn không hiện gì trên trình khám phá, vì tài sản thế chấp của bạn nằm trong hợp đồng Morpho và khoản trả nợ của bên thanh lý cũng đi vào hợp đồng. Ứng dụng Morpho hiện vị thế nhỏ đi hoặc biến mất; API công khai của Morpho liệt kê mọi lần thanh lý của địa chỉ bạn (`marketTransactions` loại Liquidation); và nhật ký sự kiện của hợp đồng Morpho trên trình khám phá có một sự kiện tên `Liquidate` với địa chỉ của bạn ở trường `borrower`.
+- **Tokenping.** [Bảng điều khiển Aave](/vi/aave) và [bảng điều khiển Morpho](/vi/morpho) hiện vị thế như nó đang có lúc này. Một hệ số sức khỏe nhảy từ gần 1 lên cao hơn hẳn, hoặc một vị thế đã biến mất, là dấu hiệu của một lần thanh lý. Các bảng điều khiển không liệt kê các giao dịch trong quá khứ.
+
+Hãy giữ lại mã băm giao dịch. Bạn sẽ cần nó để đọc các con số, và ở nhiều nước một lần thanh lý được tính là một lần bán phần tài sản thế chấp bị lấy, nên hồ sơ thuế của bạn cũng cần đến nó.
+
+## Đọc giao dịch thanh lý như thế nào?
+
+Cả hai giao thức ghi toàn bộ lần thanh lý vào một sự kiện. Tên khác nhau, nội dung giống nhau: khoản nợ nào được trả thay bạn, tài sản thế chấp nào bị lấy, và mỗi thứ bao nhiêu.
+
+**Aave V3** phát ra `LiquidationCall(collateralAsset, debtAsset, user, debtToCover, liquidatedCollateralAmount, liquidator, receiveAToken)`. Một sự kiện thật từ Ethereum Core, khối 26305893, ngày 30 tháng 10 năm 2026 lúc 13:33 UTC:
+
+| Trường                     | Giá trị               | Ý nghĩa                                                                    |
+| -------------------------- | --------------------- | -------------------------------------------------------------------------- |
+| collateralAsset            | WETH                  | Tài sản bị lấy                                                             |
+| debtAsset                  | USDT                  | Tài sản được trả                                                           |
+| user                       | địa chỉ của người vay | Vị thế của ai                                                              |
+| debtToCover                | 1.320,785158 USDT     | Khoản nợ được trả thay người vay, 1.319,32 USD theo giá oracle (nguồn giá) |
+| liquidatedCollateralAmount | 0,619088749 WETH      | Tài sản thế chấp gửi cho bên thanh lý, 1.372,09 USD ở giá 2.216,31 USD/ETH |
+| liquidator                 | một địa chỉ hợp đồng  | Ai đã trả và đã nhận                                                       |
+| receiveAToken              | false                 | Họ lấy chính WETH, không phải aEthWETH                                     |
+
+Một con số không nằm trong sự kiện. Trong cùng giao dịch, 0,005952776 aEthWETH (13,19 USD) được chuyển từ người vay sang hợp đồng thu phí (collector) của Aave: phí giao thức khi thanh lý, bằng 20% khoản thưởng đối với WETH trên Ethereum Core tại khối đó. Cộng lại, người vay đã mất 1.385,28 USD WETH cho 1.319,32 USD nợ, một khoản thưởng 5%, trong đó bên thanh lý giữ 52,77 USD và kho bạc giữ 13,19 USD. Thẻ "Logs" của trình khám phá hiện khoản phí này dưới dạng một lần chuyển aToken tới hợp đồng thu phí ngay sau lần hủy (burn) aToken.
+
+**Morpho Blue** phát ra `Liquidate(id, caller, borrower, repaidAssets, repaidShares, seizedAssets, badDebtAssets, badDebtShares)`. Một sự kiện thật từ thị trường USDC | cbBTC (86%) trên Base, khối 53265200, ngày 30 tháng 10 năm 2026 lúc 00:22 UTC:
+
+| Trường        | Giá trị               | Ý nghĩa                                                             |
+| ------------- | --------------------- | ------------------------------------------------------------------- |
+| id            | 0x9103c3b4…           | Thị trường                                                          |
+| caller        | bên thanh lý          | Ai đã trả và đã nhận                                                |
+| borrower      | địa chỉ của người vay | Vị thế của ai                                                       |
+| repaidAssets  | 2.174,732093 USDC     | Khoản nợ được trả thay người vay                                    |
+| seizedAssets  | 0,02952084 cbBTC      | Tài sản thế chấp gửi cho bên thanh lý, 2.270,08 USD theo giá oracle |
+| badDebtAssets | 0                     | Không có gì bị xóa nợ                                               |
+
+Oracle định giá cbBTC ở 76.897,38 USDC trong khối đó. Tài sản thế chấp bị lấy trị giá 2.270,08 USD cho 2.174,73 USD nợ, tỷ lệ 1,0438, đúng bằng hệ số thưởng thanh lý mà một thị trường 86% trả. Phần chênh lệch 95,34 USD về tay bên thanh lý toàn bộ: Morpho không thu phí. Giao dịch đó chứa 30 sự kiện `Liquidate` từ một bên thanh lý, mỗi sự kiện một người vay khác nhau, và đó là hình ảnh của phút bận rộn nhất trong một cú sập giá khi nhìn vào nhật ký của một thị trường.
+
+## Những gì đã bị lấy, và bạn còn giữ gì?
+
+Ba điều cần tách bạch:
+
+1. **Khoản nợ được trả thay bạn đã hết, và phần tài sản thế chấp trả cho nó cũng vậy.** Bạn không còn nợ phần đã được trả. Bên thanh lý đã trả bằng token của chính họ và đổi lại lấy tài sản thế chấp của bạn, cộng thêm khoản thưởng. Khoản thưởng là chi phí của lần thanh lý: trong hai ví dụ, 65,96 USD trên 1.319 USD nợ ở Aave và 95,34 USD trên 2.175 USD ở Morpho.
+2. **Số token bạn đã vay vẫn là của bạn.** Nếu bạn vay USDT và đã tiêu, không có gì thay đổi. Nếu nó vẫn trong ví bạn, nó vẫn ở đó. Việc thanh lý không hề đụng tới số token đã vay trong ví bạn; nó chỉ thay đổi vị thế.
+3. **Phần tài sản thế chấp không bị thu vẫn nằm trong vị thế.** Trên Aave, số dư aToken nhỏ đi; trên Morpho, số dư tài sản thế chấp trong thị trường đó nhỏ đi. Nếu còn nợ, tài sản thế chấp tiếp tục bảo đảm cho nó. Nếu không còn nợ, bạn có thể rút ra.
+
+Còn lại bao nhiêu tùy vào giao thức. Trên Aave V3, một lần thanh lý trả tối đa 50% tổng nợ của bạn khi hệ số sức khỏe trên 0,95 và cả tài sản thế chấp bị lấy lẫn khoản nợ được trả đều trị giá ít nhất 2.000 USD; dưới 0,95, hoặc với số tiền nhỏ hơn, nó có thể trả toàn bộ khoản nợ bằng tài sản đó ([bao nhiêu có thể bị thanh lý cùng lúc](/vi/blog/co-che-thanh-ly-tren-aave#bao-nhieu-phan-no-cua-toi-co-the-bi-thanh-ly-cung-luc)). Ví dụ trên Ethereum theo đúng quy tắc 50% đến từng xu: 2.638,63 USD nợ trước đó, 1.319,32 sau đó. Người vay còn giữ 0,7906 WETH (1.752 USD) đối ứng với 1.319,32 USDT, hệ số sức khỏe 1,12, và vị thế đó có thể bị thanh lý tiếp nếu ETH giảm thêm 10,4%. Trên Aave V4, một lần thanh lý thay vào đó trả đủ số cần để đưa vị thế về hệ số sức khỏe mục tiêu của Spoke, 1,24 trên Ethereum Main Spoke, nên nhiều nợ được trả hơn nhưng phần còn lại an toàn hơn ([thanh lý trên Aave V4](/vi/blog/co-che-thanh-ly-tren-aave#thanh-ly-tren-aave-v4-khac-the-nao)).
+
+Morpho Blue không có close factor (hệ số đóng): bên thanh lý có thể trả tới toàn bộ khoản nợ trong một lần gọi ([bao nhiêu phần nợ của bạn có thể bị thanh lý cùng lúc](/vi/blog/co-che-thanh-ly-tren-morpho#bao-nhieu-phan-khoan-no-cua-ban-co-the-bi-thanh-ly-cung-luc)). Bên thanh lý trên Base lấy 0,02952 trong 0,03286 cbBTC, tức 90% tài sản thế chấp, và trả toàn bộ khoản nợ trừ 0,0005 USDC còn sót lại do làm tròn share. Người vay còn giữ 0,003342 cbBTC, khoảng 257 USD, và có thể rút ra.
+
+Hai điều nữa cần kiểm tra. Trên Aave, tài sản thế chấp nào bị lấy là lựa chọn của bên thanh lý ([bên thanh lý lấy tài sản thế chấp nào](/vi/blog/co-che-thanh-ly-tren-aave#ben-thanh-ly-lay-tai-san-the-chap-nao)), nên một vị thế có nhiều loại tài sản thế chấp có thể đã mất loại mà bạn ít ngờ tới nhất. Trên Morpho, một `repaidAssets` nhỏ hơn bạn nghĩ có thể có nghĩa là một lần [thanh lý trước (pre-liquidation)](/vi/blog/thanh-ly-truoc-tren-morpho) đã chạy trước lần thanh lý thật, ở tỷ lệ cho vay trên giá trị (LTV) thấp hơn và khoản thưởng thấp hơn; ứng dụng và API hiện cả hai loại.
+
+## Nếu lần thanh lý lấy hết mọi thứ thì sao?
+
+Nếu `badDebtAssets` lớn hơn 0 trên Morpho, hoặc nếu sự kiện trên Aave để bạn không còn tài sản thế chấp trong khi vẫn còn nợ, thì tài sản thế chấp đã trị giá ít hơn khoản nợ cộng khoản thưởng vào lúc có người thanh lý. Cả hai giao thức đóng vị thế thay vì đi đòi bạn:
+
+- **Aave** (từ V3.3) hủy phần nợ còn lại và ghi nhận nó là khoản thâm hụt (deficit) trên reserve (quỹ tài sản) đó, mà những người staking Umbrella có thể bù sau này. Bạn kết thúc với không tài sản thế chấp và không nợ ([một lần thanh lý có thể để lại nợ xấu (bad debt) không](/vi/blog/co-che-thanh-ly-tren-aave#thanh-ly-co-the-de-lai-no-xau-khong)).
+- **Morpho Blue** xóa phần nợ còn lại ngay trong cùng giao dịch và chia khoản lỗ cho những người cho vay trong thị trường đó. Người vay kết thúc với không tài sản thế chấp và không nợ ([điều gì xảy ra với nợ xấu trên Morpho Blue](/vi/blog/co-che-thanh-ly-tren-morpho#no-xau-tren-morpho-blue-duoc-xu-ly-the-nao)).
+
+Sẽ không ai đòi bạn phần chênh lệch, và không gì còn đọng lại trên vị thế. Nhưng cũng không còn lại gì cả, và khoản lỗ về phía bạn là toàn bộ tài sản thế chấp, không chỉ một khoản thưởng. Nợ xấu hiếm gặp trong tháng của các ví dụ: bằng 0 trong 393 lần thanh lý của thị trường cbBTC trên Base trong ba ngày quanh cú sập, khoảng 3,5 triệu USD trên tổng 7.521 lần thanh lý của toàn Morpho trong 30 ngày tính đến ngày 30 tháng 10.
+
+## Vì sao nó xảy ra?
+
+Hai ví dụ có chung một nguyên nhân: không có biên an toàn. Một khối trước lần thanh lý trên Aave, hệ số sức khỏe của người vay đó là 1,0049; lần cập nhật Chainlink tiếp theo đưa WETH từ khoảng 2.229,77 xuống 2.216,31 USD, thấp hơn 0,6%, và hệ số sức khỏe thành 0,9988. Một khối trước lần thanh lý trên Morpho, hệ số sức khỏe của người vay trên Base là 1,0025; oracle đưa cbBTC từ 77.140,46 xuống 76.897,38 USDC, thấp hơn 0,3%, và nó thành 0,9993. Không lần nào cần đến một cú sập. Một lần cập nhật giá bình thường là đủ, và trong trường hợp Morpho là lúc 00:22 UTC, trong khung sáu giờ mà [hơn một phần ba số lần thanh lý của Morpho](/vi/blog/ai-can-canh-bao-he-so-suc-khoe#nguoi-vay-bi-thanh-ly-thuong-xuyen-den-muc-nao) diễn ra.
+
+Nếu hệ số sức khỏe của bạn không sát đến thế, thì có thứ khác đã làm nó dịch chuyển. [Vì sao hệ số sức khỏe của bạn giảm](/vi/blog/vi-sao-he-so-suc-khoe-aave-giam) liệt kê sáu nguyên nhân cùng cách kiểm tra từng nguyên nhân: giá tài sản thế chấp của bạn giảm, giá thứ bạn vay tăng, lãi trên khoản nợ vượt lợi suất của tài sản thế chấp, quản trị cắt giảm một ngưỡng thanh lý (liquidation threshold), một stablecoin bạn gửi bị mất neo (depeg), hoặc một oracle định giá sai một token bọc (wrapper). Phiên bản Morpho là cùng danh sách đó bỏ đi việc cắt ngưỡng, vì LLTV của một thị trường Morpho không bao giờ thay đổi ([điều gì làm hệ số sức khỏe Morpho thay đổi](/vi/blog/he-so-suc-khoe-morpho#dieu-gi-lam-he-so-suc-khoe-tren-morpho-thay-doi)). Hai trường hợp dễ bị bỏ qua: một khoản vay [Midnight](/vi/blog/khoan-vay-lai-suat-co-dinh-morpho-midnight) đã quá ngày đáo hạn có thể bị thanh lý ở bất kỳ hệ số sức khỏe nào, và một khoản vay thế chấp bằng [cổ phiếu token hóa](/vi/blog/co-phieu-token-hoa-lam-tai-san-the-chap) có thể bị thanh lý theo một mức giá tối Chủ nhật đã dịch chuyển trong lúc nguồn cấp giá tạm dừng.
+
+## Bạn nên làm gì trong giờ đầu tiên?
+
+1. **Đọc vị thế còn lại trước khi đụng vào nó.** Hệ số sức khỏe, nợ còn lại, tài sản thế chấp còn lại, trên [bảng điều khiển Aave](/vi/aave) hoặc [bảng điều khiển Morpho](/vi/morpho), trong ứng dụng của giao thức hoặc trên trình khám phá. Một lần thanh lý một phần trên Aave để lại một vị thế gần 1,1, mà biến động 10% tiếp theo sẽ thanh lý lần nữa.
+2. **Quyết định đóng hay giữ.** Nếu bạn không còn muốn khoản vay, hãy trả phần còn lại và rút tài sản thế chấp; trên Aave bạn có thể trả bằng chính tài sản thế chấp ([trả nợ bằng tài sản thế chấp](/vi/blog/cach-tranh-bi-thanh-ly-tren-aave#buoc-4-tra-no-bang-tai-san-the-chap-hoac-hoan-doi-tai-san-the-chap)). Nếu bạn giữ, hãy trả nợ hoặc thêm tài sản thế chấp cho đến khi hệ số sức khỏe ở mức bạn muốn, không phải mức nó từng ở. [Trả nợ nâng hệ số sức khỏe trên mỗi đô la nhiều hơn thêm tài sản thế chấp](/vi/blog/cach-tranh-bi-thanh-ly-tren-aave#vi-sao-tra-no-lam-tang-he-so-suc-khoe-nhieu-hon-them-tai-san-the-chap).
+3. **Đừng vay lại đến sát giới hạn.** Vị thế vừa bị thanh lý ở 1,005 sẽ lại bị thanh lý ở 1,005. Vay lại đến cùng LTV là khởi động lại đồng hồ.
+4. **Kiểm tra các vị thế khác của bạn.** Mỗi thị trường Aave, mỗi Spoke V4 và mỗi thị trường Morpho có hệ số sức khỏe riêng, và cùng biến động giá đã thanh lý một vị thế cũng đã hạ các vị thế còn lại.
+5. **Trên Aave, kiểm tra xem reserve có bị đóng băng không.** Khi Aave đóng băng mọi thị trường DAO vào ngày 29 tháng 10 năm 2026, không thể thêm tài sản thế chấp vào một reserve bị đóng băng và trả nợ là cách duy nhất để đi lên ([vì sao rút hoặc vay bị lỗi](/vi/blog/vi-sao-khong-rut-hoac-vay-duoc-tren-aave)).
+6. **Trên Morpho, kiểm tra thanh lý trước.** Nếu bạn từng ủy quyền cho một hợp đồng thanh lý trước, nó vẫn còn được ủy quyền; hãy [kiểm tra và thu hồi](/vi/blog/thanh-ly-truoc-tren-morpho#lam-sao-kiem-tra-xem-ban-da-uy-quyen-cho-mot-hop-dong-hay-chua) nếu bạn không còn muốn nó.
+7. **Lưu lại hồ sơ.** Mã băm giao dịch, hai con số, ngày, giá oracle nếu bạn đọc được. Trình khám phá giữ dữ liệu, nhưng bạn sẽ không muốn đi tìm nó vào tháng 4.
+
+## Làm sao để tránh lần thứ hai?
+
+Trong 5.703 người vay Morpho bị thanh lý trong 30 ngày tính đến ngày 30 tháng 10 năm 2026, 932 người bị thanh lý hơn một lần. Người vay trên Base ở trên là một trong số đó: một khoản vay cbBTC bị thanh lý ngày 3 tháng 6, một khoản vay cbZEC ngày 14 tháng 10, và khoản vay cbBTC lần nữa ngày 30 tháng 10. Mỗi lần tốn một khoản thưởng, và không lần nào dẫn đến thay đổi. Thay đổi nằm ở ba quyết định:
+
+- **Một biên an toàn.** Hệ số sức khỏe 1,005 không chịu nổi bất cứ điều gì. [Giá có thể giảm bao xa ở mỗi hệ số sức khỏe](/vi/blog/he-so-suc-khoe-an-toan-tren-aave#o-moi-muc-he-so-suc-khoe-gia-co-the-giam-bao-xa-truoc-khi-bi-thanh-ly) có bảng: 1,5 chịu được mức giảm 33,3%, 2 chịu được 50%. Con số bạn chọn tùy vào bạn vay gì bằng gì; [phương pháp từng bước](/vi/blog/he-so-suc-khoe-an-toan-tren-aave#chon-nguong-canh-bao-nhu-the-nao-tung-buoc-mot) đi qua điều đó, và [phiên bản Morpho](/vi/blog/he-so-suc-khoe-morpho#lam-sao-chon-vung-dem-va-nguong-canh-bao) tính đến LLTV cố định.
+- **Một cảnh báo phía trên biên an toàn.** Một tin nhắn khi hệ số sức khỏe vượt qua mức bạn đã chọn, đủ sớm để hành động. Tokenping kiểm tra mỗi 5 phút và nhắn cho bạn qua Signal, Telegram hoặc email; ngưỡng có thể ở bất kỳ đâu từ 1,1 đến 10 trên Aave và từ 1,02 đến 10 trên Morpho. [Cài đặt một cảnh báo](/vi/blog/cai-dat-canh-bao-he-so-suc-khoe-aave) mất vài phút. Cảnh báo không thể bắt kịp một cú nhảy giữa hai lần kiểm tra, và không thể trả nợ thay bạn, vì vậy nó đứng sau biên an toàn, chứ không thay thế biên an toàn.
+- **Tiền để hành động.** Tiền trả nợ trên mạng nơi bạn vay, bằng tài sản bạn nợ hoặc một tài sản bạn có thể hoán đổi lúc đêm khuya, và một chiếc điện thoại cho tin nhắn đi qua ([cảnh báo khi bật Không làm phiền](/vi/blog/canh-bao-aave-khi-bat-khong-lam-phien)). Lần thanh lý Morpho ở trên xảy ra lúc 00:22 UTC; một cảnh báo ở 1,1 đã có thể đến sớm hơn nhiều giờ, và chỉ tiền nằm trên Base mới đáp lại được nó.
+
+Nếu khoản vay nhỏ đến mức bạn sẽ không chuyển tiền để cứu nó, kết luận thành thật sẽ khác: hoặc vay ít hơn bằng nó, hoặc chấp nhận rằng khoản thưởng là cái giá của việc không theo dõi.
+
+## Vai trò của Tokenping
+
+Tokenping theo dõi từng vị thế bạn cài đặt mỗi 5 phút, trên mọi thị trường Aave V3 ở 21 mạng, mọi Spoke của Aave V4 và mọi thị trường Morpho mà ứng dụng Morpho liệt kê, và nhắn cho bạn qua Signal, Telegram hoặc email khi hệ số sức khỏe xuống dưới ngưỡng của bạn. Tin nhắn lặp lại ở mỗi lần kiểm tra cho đến khi vị thế hồi phục, bằng tiếng Anh, tiếng Séc, tiếng Tây Ban Nha, tiếng Hindi, tiếng Đức hoặc tiếng Việt. Sau một lần thanh lý, các bảng điều khiển hiện những gì còn lại: [bảng điều khiển Aave](/vi/aave) với hệ số sức khỏe của từng thị trường, [bảng điều khiển Morpho](/vi/morpho) với LTV, LLTV và hệ số sức khỏe của từng thị trường, tính từ dữ liệu trên chuỗi.
+
+Bạn có thể xem các vị thế của mình mà không cần thanh toán. Cảnh báo có giá <AlertPrice />, mỗi thị trường Aave V3, Spoke V4 hoặc thị trường Morpho một gói. Tokenping đang ở giai đoạn beta và không có cam kết về thời gian hoạt động, và không cảnh báo nào ngăn được việc thanh lý.
+
+## Nguồn
+
+- [Giao dịch Ethereum 0x5f88aa61…12fb6](https://etherscan.io/tx/0x5f88aa61ca6180e132a627c5e4d483c4098becc65359fa6af50551c405312fb6) (khối 26305893): `LiquidationCall`, các lần hủy aEthWETH và variableDebtEthUSDT, lần chuyển phí tới hợp đồng thu phí; giá Aave Oracle và `getUserAccountData` tại các khối 26305892 và 26305893; `getReserveConfigurationData` và `getLiquidationProtocolFee` cho WETH, đọc qua một RPC công khai (truy cập ngày 31 tháng 10 năm 2026)
+- [Giao dịch Base 0xc2df272f…f0178](https://basescan.org/tx/0xc2df272f36d8b0b566c24988052c1508a4c90a97999b2da5a8c8ec7f8e3f0178) (khối 53265200): 30 sự kiện `Liquidate`; `position` và `market` của Morpho Blue cùng `price()` của oracle thị trường tại các khối 53265199 và 53265200, đọc qua một RPC công khai (truy cập ngày 31 tháng 10 năm 2026)
+- [Morpho API](https://api.morpho.org/graphql): `marketTransactions` loại Liquidation cho thị trường cbBTC trên Base từ ngày 28 đến ngày 31 tháng 10 năm 2026 và cho địa chỉ của người vay trong ví dụ; `markets` cho LLTV và oracle của thị trường (truy cập ngày 31 tháng 10 năm 2026)
+- [Morpho API](https://api.morpho.org/graphql): mọi lần thanh lý từ 08:36 UTC ngày 30 tháng 9 năm 2026 đến 08:36 UTC ngày 30 tháng 10 năm 2026, như trong [bài hướng dẫn về cảnh báo](/vi/blog/ai-can-canh-bao-he-so-suc-khoe) (truy cập ngày 30 tháng 10 năm 2026)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): nợ xấu bị hủy và ghi nhận là thâm hụt của reserve, các quy tắc close factor, cơ chế xóa thâm hụt của Umbrella (truy cập ngày 31 tháng 10 năm 2026)
+- [Liquidation on Morpho](https://docs.morpho.org/learn/concepts/liquidation): công thức thưởng, tới 100% trong một lần gọi, không có phí giao thức (truy cập ngày 31 tháng 10 năm 2026)
+
+_Nội dung mang tính giáo dục, không phải lời khuyên tài chính. Cảnh báo giúp giảm rủi ro, nhưng không ngăn được việc thanh lý._
