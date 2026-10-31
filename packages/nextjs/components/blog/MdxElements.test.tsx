@@ -28,6 +28,15 @@ describe("headingId", () => {
     ["Wie groß muss der Puffer sein?", "wie-gross-muss-der-puffer-sein"],
     ["Điều gì xảy ra khi đáo hạn?", "dieu-gi-xay-ra-khi-dao-han"],
     ["हेल्थ फ़ैक्टर क्या है?", "हेल्थ-फ़ैक्टर-क्या-है".normalize("NFKD")],
+    // Cyrillic and Greek keep their letters (Greek loses its accents); Thai, Chinese and Japanese, written without
+    // spaces, give one id per run of words; Korean keeps whole syllables.
+    ["Что такое фактор здоровья?", "что-такое-фактор-здоровья"],
+    ["Ще таке фактор здоров’я?", "ще-таке-фактор-здоровя"],
+    ["Τι είναι ο συντελεστής υγείας;", "τι-ειναι-ο-συντελεστης-υγειας"],
+    ["ค่า Health Factor คืออะไร?", "ค่า-health-factor-คืออะไร"],
+    ["什么是健康因子？", "什么是健康因子"],
+    ["ヘルスファクターとは？", "ヘルスファクターとは"],
+    ["헬스 팩터란 무엇인가요?", "헬스-팩터란-무엇인가요"],
   ])("%j -> %j", (text, id) => {
     expect(headingId(text)).toBe(id);
   });

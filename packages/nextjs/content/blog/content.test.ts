@@ -7,30 +7,20 @@ import { CALLOUT_TONES } from "~~/components/blog/Callout";
 import { headingId } from "~~/components/blog/headingId";
 import { CHILDLESS_COMPONENTS, MDX_VOCABULARY_NAMES, SINGLE_POST_COMPONENTS } from "~~/components/blog/vocabulary";
 import type { PostMeta } from "~~/content/blog/types";
-import { LOCALES, type Locale } from "~~/i18n/locales";
+import { LOCALES, LOCALE_INFO, type Locale } from "~~/i18n/locales";
 import { POST_SLUGS, postKeyForSlug } from "~~/i18n/postSlugs";
 import { localeFromPath, postPath, routePath } from "~~/i18n/routes";
+import { type BannedPattern, LANGUAGE_RULES } from "~~/utils/testing/languageRules";
 
-// Content lint for every post, content/blog/*.mdx (English), content/blog/cs/*.mdx (Czech) and content/blog/es/*.mdx
-// (Spanish): the article contract from the blog build spec, checked on the parsed MDX tree (after remark-gfm) rather
-// than on raw text, so code, URLs and JSX attributes cannot cause false positives. Every language gets the same checks;
-// what differs (the disclaimer, the Sources heading and date wording, the pages a post may link to, the banned
-// phrases) is in LANGUAGE_RULES.
+// Content lint for every post, content/blog/*.mdx (English) and content/blog/<locale>/*.mdx (each translation): the
+// article contract from the blog build spec, checked on the parsed MDX tree (after remark-gfm) rather than on raw
+// text, so code, URLs and JSX attributes cannot cause false positives. Every language gets the same checks; what
+// differs (the disclaimer, the Sources heading and date wording, the banned phrases) is in each language's file in
+// utils/testing/languageRules.
 // Placeholder posts (`stub: true` in meta) get the meta checks and are reported as pending for the rest.
 
 const BLOG_DIR = new URL("./", import.meta.url);
 
-const ARTICLE_DISCLAIMER =
-  "Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation.";
-const CS_ARTICLE_DISCLAIMER =
-  "Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání.";
-const ES_ARTICLE_DISCLAIMER =
-  "Contenido educativo, no asesoramiento financiero. Las alertas reducen el riesgo, pero no evitan la liquidación.";
-const HI_ARTICLE_DISCLAIMER = "शैक्षिक सामग्री, वित्तीय सलाह नहीं। अलर्ट जोखिम कम करते हैं, लिक्विडेशन रोकते नहीं।";
-const DE_ARTICLE_DISCLAIMER =
-  "Bildungsinhalt, keine Finanzberatung. Alerts senken das Risiko, verhindern aber keine Liquidation.";
-const VI_ARTICLE_DISCLAIMER =
-  "Nội dung mang tính giáo dục, không phải lời khuyên tài chính. Cảnh báo giúp giảm rủi ro, nhưng không ngăn được việc thanh lý.";
 const MAX_TITLE_LENGTH = 60;
 const MAX_DESCRIPTION_LENGTH = 155;
 const MIN_DESCRIPTION_LENGTH = 50;
@@ -50,31 +40,7 @@ const META_KEYS = new Set<string>([
   "protocol",
 ]);
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-const FETCHED_DATE = /\bfetched (?:on )?\d{1,2} (?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]* \d{4}\b/i;
-const CS_MONTHS = "ledna|února|března|dubna|května|června|července|srpna|září|října|listopadu|prosince";
-const CS_FETCHED_DATE = new RegExp(String.raw`(?:^|[\s(])načteno (?:dne )?\d{1,2}\. (?:${CS_MONTHS}) \d{4}(?!\d)`, "i");
-const ES_MONTHS = "enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre";
-const ES_FETCHED_DATE = new RegExp(
-  String.raw`(?:^|[\s(])consultad[oa] el \d{1,2} de (?:${ES_MONTHS}) de \d{4}(?!\d)`,
-  "i",
-);
-const HI_MONTHS =
-  "जनवरी|फ़रवरी|फरवरी|मार्च|अप्रैल|मई|जून|जुलाई|अगस्त|सितंबर|सितम्बर|अक्टूबर|अक्तूबर|नवंबर|नवम्बर|दिसंबर|दिसम्बर";
-// "(29 अक्टूबर 2026 को देखा गया)": the day, the month, the year, then "seen on".
-const HI_FETCHED_DATE = new RegExp(String.raw`(?:^|[\s(])\d{1,2} (?:${HI_MONTHS}) \d{4} को देखा गया`, "u");
-const DE_MONTHS = "Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember";
-// "(abgerufen am 29. Oktober 2026)"
-const DE_FETCHED_DATE = new RegExp(String.raw`(?:^|[\s(])abgerufen am \d{1,2}\. (?:${DE_MONTHS}) \d{4}(?!\d)`, "u");
-// "(truy cập ngày 29 tháng 10 năm 2026)"
-const VI_FETCHED_DATE = /(?:^|[\s(])truy cập ngày \d{1,2} tháng \d{1,2} năm \d{4}(?!\d)/u;
 const SITE_HOST = /^https?:\/\/(?:www\.)?tokenping\.xyz(?:[/?#]|$)/i;
-
-type BannedPattern = {
-  pattern: RegExp;
-  reason: string;
-  /** Stale claims may be quoted to correct them ('aave.com still says "close factor is 0.5"'); claims about us not. */
-  allowQuoted?: boolean;
-};
 
 // Copy that must not appear, and stale Aave claims.
 // Each pattern targets the claim, not the topic: "Isolation Mode was removed in V3.7" and "the close factor is no
@@ -242,132 +208,10 @@ const isCommentExpression = (node: MdNode) => isExpression(node) && node.data?.e
 const normalizeQuotes = (text: string) => text.replace(/[‘’‚]/g, "'").replace(/[“”„]/g, '"');
 const stripQuoted = (text: string) => text.replace(/"[^"\n]*"/g, '""');
 
-// Czech copy that must not appear, on top of the English list (Czech posts may quote English text, and product names,
-// prices and Aave terms stay English). The same claims as above, in Czech word forms.
-const CS_BANNED_PATTERNS: readonly BannedPattern[] = [
-  { pattern: /\bnikdy (?:nebudete|nebude|nebudou) zlikvidován/i, reason: "guarantee: 'nikdy nebudete zlikvidováni'" },
-  { pattern: /\bnikdy (?:ne)?zmešk/i, reason: "guarantee: 'nikdy nezmeškáte'" },
-  { pattern: /\bv reálném čase\b/i, reason: "'v reálném čase' (alerts are checked every 5 minutes)" },
-  {
-    pattern: /\bokamžit\S* (?:upozorněn|zpráv|notifikac|varován)/i,
-    reason: "'okamžité upozornění' (alerts are checked every 5 minutes)",
-  },
-  { pattern: /\bmulti[- ]?protokol/i, reason: "'multiprotokolový' (name the protocols: Aave and Morpho)" },
-  {
-    pattern: /\bclose factor (?:je|činí) (?:vždy |pevně |fixně |napevno )?(?:50 ?%|0[.,]5\b|polovin)/i,
-    reason: "stale: since v3.3 the close factor is 50% or 100% depending on HF and position size",
-    allowQuoted: true,
-  },
-  {
-    pattern: /(?<![\d.,])\$?3(?:,0+)? ?USDC\b/i,
-    reason: "hard-coded alert price: use <AlertPrice /> (the owner can change the plan on-chain)",
-  },
-  {
-    pattern: /\bUSDC (?:za|na|každých) ?30 (?:dní|dnů|dny)(?!\p{L})/iu,
-    reason: "hard-coded alert plan: use <AlertPrice />",
-  },
-  // The Czech forms of "free"; "bez poplatku" is fine.
-  {
-    pattern: /\bzdarma\b/i,
-    reason: "'zdarma' must not appear: write 'nic nestojí', 'bez poplatku' or 'nevyžaduje platbu'",
-  },
-  { pattern: /\bbezplatn/i, reason: "'bezplatný' must not appear: write 'bez poplatku' or 'nic nestojí'" },
-];
-
-// Spanish copy that must not appear, on top of the English list (Spanish posts may quote English text, and product
-// names, prices and Aave terms stay English). The same claims as above, in Spanish word forms.
-const ES_BANNED_PATTERNS: readonly BannedPattern[] = [
-  { pattern: /\bnunca (?:serás|será|serán|te) liquidad/i, reason: "guarantee: 'nunca serás liquidado'" },
-  { pattern: /\bnunca te (?:perderás|pierdas)\b/i, reason: "guarantee: 'nunca te perderás'" },
-  { pattern: /\ben tiempo real\b/i, reason: "'en tiempo real' (alerts are checked every 5 minutes)" },
-  {
-    pattern: /\b(?:instantáne\S*|al instante)\b|\b(?:alertas?|avisos?|notificaci\S*|mensajes?) inmediat/i,
-    reason: "'instantáneo' (alerts are checked every 5 minutes)",
-  },
-  { pattern: /\bmulti[- ]?protocolo/i, reason: "'multiprotocolo' (name the protocols: Aave and Morpho)" },
-  {
-    pattern: /\b(?:close factor|factor de cierre) (?:es|=) (?:siempre |fijo de |un |una )?(?:50 ?%|0\.5\b|la mitad)/i,
-    reason: "stale: since v3.3 the close factor is 50% or 100% depending on HF and position size",
-    allowQuoted: true,
-  },
-  {
-    pattern: /\bUSDC (?:por|cada|para) 30 días\b/i,
-    reason: "hard-coded alert plan: use <AlertPrice />",
-  },
-  // The Spanish forms of "free"; "sin comisión" and "no cuesta nada" are fine.
-  {
-    pattern: /\bgratis\b/i,
-    reason: "'gratis' must not appear: write 'no cuesta nada', 'sin comisión' or 'no requiere pago'",
-  },
-  { pattern: /\bgratuit/i, reason: "'gratuito' must not appear: write 'sin comisión' or 'no cuesta nada'" },
-];
-
-// Hindi copy that must not appear, on top of the English list. The same claims as above, in Hindi word forms.
-const HI_BANNED_PATTERNS: readonly BannedPattern[] = [
-  { pattern: /कभी (?:भी )?लिक्विडेट नहीं (?:होंगे|होगा|होगी|होंगी)/u, reason: "guarantee: 'कभी लिक्विडेट नहीं होंगे'" },
-  { pattern: /कभी (?:भी )?(?:नहीं चूकेंगे|न चूकें|मिस नहीं)/u, reason: "guarantee: 'कभी नहीं चूकेंगे'" },
-  { pattern: /री?यल[- ]?टाइम|वास्तविक समय/u, reason: "'रियल-टाइम' (alerts are checked every 5 minutes)" },
-  {
-    pattern: /(?:तुरंत|तत्काल|इंस्टेंट) (?:अलर्ट|सूचना|संदेश|चेतावनी)/u,
-    reason: "'तुरंत अलर्ट' (alerts are checked every 5 minutes)",
-  },
-  { pattern: /मल्टी[- ]?प्रोटोकॉल/u, reason: "'मल्टी-प्रोटोकॉल' (name the protocols: Aave and Morpho)" },
-  {
-    pattern: /(?:close factor|क्लोज़? फ़?ैक्टर) (?:हमेशा |तय |फ़िक्स्ड )?(?:50 ?%|0\.5\b|आधा) (?:है|होता है)/iu,
-    reason: "stale: since v3.3 the close factor is 50% or 100% depending on HF and position size",
-    allowQuoted: true,
-  },
-  { pattern: /\bUSDC (?:प्रति|हर) 30 दिन/u, reason: "hard-coded alert plan: use <AlertPrice />" },
-  // The Hindi forms of "free"; "कोई शुल्क नहीं" and "भुगतान की ज़रूरत नहीं" are fine.
-  {
-    // "फ़्री" alone, not "फ़्रीज़" (freeze): \b knows no Devanagari, so a lookahead ends the word.
-    pattern: /मुफ़?्त|फ़?्री(?![\p{L}\p{M}])|निः?शुल्क|नि:शुल्क/u,
-    reason: "'मुफ़्त' must not appear: write 'भुगतान की ज़रूरत नहीं', 'कोई शुल्क नहीं' or 'बिना भुगतान के'",
-  },
-];
-
-// German copy that must not appear, on top of the English list. The same claims as above, in German word forms.
-const DE_BANNED_PATTERNS: readonly BannedPattern[] = [
-  { pattern: /\bnie(?:mals)? (?:mehr |wieder )?liquidiert\b/iu, reason: "guarantee: 'nie liquidiert'" },
-  { pattern: /\bnie(?:mals)? (?:mehr |wieder )?(?:verpass|übersieh)/iu, reason: "guarantee: 'nie verpassen'" },
-  // "Echtzeit" and its compounds ("Echtzeitdaten"), not "rechtzeitig" (in time).
-  { pattern: /(?<!\p{L})echtzeit/iu, reason: "'Echtzeit' (alerts are checked every 5 minutes)" },
-  {
-    pattern: /\bsofortige[nrs]? (?:Alerts?|Benachrichtigung|Warnung|Nachricht)/iu,
-    reason: "'sofortige Benachrichtigung' (alerts are checked every 5 minutes)",
-  },
-  { pattern: /\bmulti[- ]?protokoll/iu, reason: "'Multi-Protokoll' (name the protocols: Aave and Morpho)" },
-  {
-    pattern: /\bclose factor (?:ist|beträgt) (?:immer |fest |pauschal )?(?:50 ?%|0,5\b|die Hälfte)/iu,
-    reason: "stale: since v3.3 the close factor is 50% or 100% depending on HF and position size",
-    allowQuoted: true,
-  },
-  { pattern: /\bUSDC (?:pro|für|alle|je) 30 Tage/iu, reason: "hard-coded alert plan: use <AlertPrice />" },
-  // The German forms of "free"; "kostet nichts", "ohne Gebühr" and "keine Zahlung nötig" are fine.
-  {
-    pattern: /kostenlos|kostenfrei|gebührenfrei|\bgratis\b|\bumsonst\b/iu,
-    reason: "'kostenlos' must not appear: write 'keine Zahlung nötig', 'kostet nichts' or 'ohne Gebühr'",
-  },
-];
-
-// Vietnamese copy that must not appear, on top of the English list. The same claims as above, in Vietnamese.
-const VI_BANNED_PATTERNS: readonly BannedPattern[] = [
-  { pattern: /không bao giờ (?:bị )?thanh lý/iu, reason: "guarantee: 'không bao giờ bị thanh lý'" },
-  { pattern: /không bao giờ (?:bỏ lỡ|bỏ sót)/iu, reason: "guarantee: 'không bao giờ bỏ lỡ'" },
-  { pattern: /thời gian thực/iu, reason: "'thời gian thực' (alerts are checked every 5 minutes)" },
-  {
-    pattern: /(?:cảnh báo|thông báo|tin nhắn) (?:tức thì|tức thời|ngay lập tức)/iu,
-    reason: "'cảnh báo tức thì' (alerts are checked every 5 minutes)",
-  },
-  { pattern: /đa giao thức/iu, reason: "'đa giao thức' (name the protocols: Aave and Morpho)" },
-  {
-    pattern: /close factor (?:luôn |cố định )?(?:là|bằng) (?:50 ?%|0,5\b|một nửa)/iu,
-    reason: "stale: since v3.3 the close factor is 50% or 100% depending on HF and position size",
-    allowQuoted: true,
-  },
-  { pattern: /USDC (?:cho|mỗi) 30 ngày/iu, reason: "hard-coded alert plan: use <AlertPrice />" },
-  // The Vietnamese "free"; "không mất phí" and "không cần thanh toán" are fine.
-  { pattern: /miễn phí/iu, reason: "'miễn phí' must not appear: write 'không mất phí' or 'không cần thanh toán'" },
+/** Every phrase a post in `locale` must not use: the English list, then the language's own. */
+const bannedPatternsOf = (locale: Locale): readonly BannedPattern[] => [
+  ...BANNED_PATTERNS,
+  ...LANGUAGE_RULES[locale].bannedPatterns,
 ];
 
 const findBannedPhrases = (text: string, patterns: readonly BannedPattern[] = BANNED_PATTERNS) => {
@@ -427,14 +271,9 @@ const parsePost = async (source: string, slug: string, locale: Locale = "en"): P
   }
 };
 
-const POST_DIRS: Record<Locale, URL> = {
-  en: BLOG_DIR,
-  cs: new URL("./cs/", BLOG_DIR),
-  es: new URL("./es/", BLOG_DIR),
-  hi: new URL("./hi/", BLOG_DIR),
-  de: new URL("./de/", BLOG_DIR),
-  vi: new URL("./vi/", BLOG_DIR),
-};
+const POST_DIRS = Object.fromEntries(
+  LOCALES.map(locale => [locale, locale === "en" ? BLOG_DIR : new URL(`./${locale}/`, BLOG_DIR)]),
+) as Record<Locale, URL>;
 
 const loadLanguage = async (locale: Locale) => {
   const dir = POST_DIRS[locale];
@@ -466,68 +305,10 @@ const indexPosts = (posts: readonly LoadedPost[]): PostIndex => ({
   ),
 });
 
-const POST_INDEX: Record<Locale, PostIndex> = {
-  en: indexPosts(LANGUAGES.en.posts),
-  cs: indexPosts(LANGUAGES.cs.posts),
-  es: indexPosts(LANGUAGES.es.posts),
-  hi: indexPosts(LANGUAGES.hi.posts),
-  de: indexPosts(LANGUAGES.de.posts),
-  vi: indexPosts(LANGUAGES.vi.posts),
-};
-
-type LanguageRules = {
-  disclaimer: string;
-  sourcesHeading: string;
-  fetchedDate: RegExp;
-  /** How the fetched date reads, for the report. */
-  fetchedFormat: string;
-  bannedPatterns: readonly BannedPattern[];
-};
-
-const LANGUAGE_RULES: Record<Locale, LanguageRules> = {
-  en: {
-    disclaimer: ARTICLE_DISCLAIMER,
-    sourcesHeading: "Sources",
-    fetchedDate: FETCHED_DATE,
-    fetchedFormat: "fetched <d Mon yyyy>",
-    bannedPatterns: BANNED_PATTERNS,
-  },
-  cs: {
-    disclaimer: CS_ARTICLE_DISCLAIMER,
-    sourcesHeading: "Zdroje",
-    fetchedDate: CS_FETCHED_DATE,
-    fetchedFormat: "načteno <d. měsíce yyyy>",
-    bannedPatterns: [...BANNED_PATTERNS, ...CS_BANNED_PATTERNS],
-  },
-  es: {
-    disclaimer: ES_ARTICLE_DISCLAIMER,
-    sourcesHeading: "Fuentes",
-    fetchedDate: ES_FETCHED_DATE,
-    fetchedFormat: "consultado el <d de mes de yyyy>",
-    bannedPatterns: [...BANNED_PATTERNS, ...ES_BANNED_PATTERNS],
-  },
-  hi: {
-    disclaimer: HI_ARTICLE_DISCLAIMER,
-    sourcesHeading: "स्रोत",
-    fetchedDate: HI_FETCHED_DATE,
-    fetchedFormat: "<d माह yyyy> को देखा गया",
-    bannedPatterns: [...BANNED_PATTERNS, ...HI_BANNED_PATTERNS],
-  },
-  de: {
-    disclaimer: DE_ARTICLE_DISCLAIMER,
-    sourcesHeading: "Quellen",
-    fetchedDate: DE_FETCHED_DATE,
-    fetchedFormat: "abgerufen am <d. Monat yyyy>",
-    bannedPatterns: [...BANNED_PATTERNS, ...DE_BANNED_PATTERNS],
-  },
-  vi: {
-    disclaimer: VI_ARTICLE_DISCLAIMER,
-    sourcesHeading: "Nguồn",
-    fetchedDate: VI_FETCHED_DATE,
-    fetchedFormat: "truy cập ngày <d> tháng <m> năm <yyyy>",
-    bannedPatterns: [...BANNED_PATTERNS, ...VI_BANNED_PATTERNS],
-  },
-};
+const POST_INDEX = Object.fromEntries(LOCALES.map(locale => [locale, indexPosts(LANGUAGES[locale].posts)])) as Record<
+  Locale,
+  PostIndex
+>;
 
 const checkMeta = (post: LoadedPost): string[] => {
   const { meta, slug, locale = "en" } = post;
@@ -575,9 +356,7 @@ const checkMeta = (post: LoadedPost): string[] => {
   for (const field of ["title", "description", "h1", "primaryQuestion"] as const) {
     if (typeof meta[field] === "string")
       problems.push(
-        ...findBannedPhrases(meta[field], LANGUAGE_RULES[locale].bannedPatterns).map(
-          found => `meta.${field}: ${found}`,
-        ),
+        ...findBannedPhrases(meta[field], bannedPatternsOf(locale)).map(found => `meta.${field}: ${found}`),
       );
   }
   return problems;
@@ -758,29 +537,30 @@ const checkEnding = (tree: MdNode, locale: Locale = "en") => {
   return problems;
 };
 
-const checkReadingTime = (tree: MdNode, meta: PostMeta) => {
-  const words = proseOf(tree).split(" ").filter(Boolean).length;
-  const expected = words / WORDS_PER_MINUTE;
+/** Words in `text`: split at spaces, or found by Intl.Segmenter where the language writes none (LanguageRules.reading). */
+const countWords = (text: string, locale: Locale) =>
+  LANGUAGE_RULES[locale].reading?.segmentWords
+    ? [...new Intl.Segmenter(LOCALE_INFO[locale].intl, { granularity: "word" }).segment(text)].filter(
+        ({ isWordLike }) => isWordLike,
+      ).length
+    : text.split(" ").filter(Boolean).length;
+
+const checkReadingTime = (tree: MdNode, meta: PostMeta, locale: Locale) => {
+  const words = countWords(proseOf(tree), locale);
+  const expected = words / (LANGUAGE_RULES[locale].reading?.wordsPerMinute ?? WORDS_PER_MINUTE);
   const tolerance = Math.max(2, expected * 0.35);
   return Math.abs(meta.readingMinutes - expected) > tolerance
     ? [`readingMinutes ${meta.readingMinutes} is not an honest estimate for ${words} words (≈ ${expected.toFixed(1)})`]
     : [];
 };
 
-const LANGUAGE_DIRS: Record<Locale, string> = {
-  en: "content/blog",
-  cs: "content/blog/cs",
-  es: "content/blog/es",
-  hi: "content/blog/hi",
-  de: "content/blog/de",
-  vi: "content/blog/vi",
-};
+const languageDir = (locale: Locale) => (locale === "en" ? "content/blog" : `content/blog/${locale}`);
 
 for (const locale of LOCALES) {
   const { files, sources, posts } = LANGUAGES[locale];
-  const rules = LANGUAGE_RULES[locale];
+  const rules = { ...LANGUAGE_RULES[locale], bannedPatterns: bannedPatternsOf(locale) };
 
-  describe(`${LANGUAGE_DIRS[locale]} posts`, () => {
+  describe(`${languageDir(locale)} posts`, () => {
     it("finds the post files", () => {
       expect(files.length).toBeGreaterThan(0);
     });
@@ -814,7 +594,7 @@ for (const locale of LOCALES) {
 
         if (meta.stub) {
           it("stays a short placeholder while marked as a stub", () => {
-            const words = proseOf(tree).split(" ").filter(Boolean).length;
+            const words = countWords(proseOf(tree), locale);
             expect(words, "the post has real content: remove `stub: true` from its meta").toBeLessThanOrEqual(
               MAX_STUB_WORDS,
             );
@@ -852,7 +632,7 @@ for (const locale of LOCALES) {
         });
 
         it("has an honest reading time", () => {
-          expect(checkReadingTime(tree, meta)).toEqual([]);
+          expect(checkReadingTime(tree, meta, locale)).toEqual([]);
         });
       });
     }
@@ -1033,7 +813,7 @@ A paused reserve blocks liquidations; a frozen one does not.
 
 - [Aave V3 docs](https://aave.com/docs) (fetched 14 Oct 2026)
 
-*${ARTICLE_DISCLAIMER}*
+*${LANGUAGE_RULES.en.disclaimer}*
 `;
 
 const BAD_ARTICLE = `${FIXTURE_META_EXPORT}
@@ -1083,7 +863,7 @@ const articleChecks = (tree: MdNode, meta: PostMeta, slug: string) => ({
   links: checkLinks(tree),
   ending: checkEnding(tree),
   banned: findBannedPhrases(proseOf(tree)),
-  readingTime: checkReadingTime(tree, meta),
+  readingTime: checkReadingTime(tree, meta, "en"),
 });
 
 describe("checkMeta", () => {
@@ -1150,7 +930,7 @@ describe("article checks", () => {
       "https://tokenping.xyz/aave: link to tokenping.xyz pages with a relative path",
     ]);
     expect(checks.ending).toEqual([
-      `the post must end with the line *${ARTICLE_DISCLAIMER}*`,
+      `the post must end with the line *${LANGUAGE_RULES.en.disclaimer}*`,
       'source without "fetched <d Mon yyyy>": "A source without a date"',
     ]);
     expect(checks.banned).toEqual([
@@ -1171,7 +951,7 @@ describe("article checks", () => {
 });
 
 describe("Czech findBannedPhrases", () => {
-  const czech = LANGUAGE_RULES.cs.bannedPatterns;
+  const czech = bannedPatternsOf("cs");
 
   it.each([
     "S upozorněním nikdy nebudete zlikvidováni.",
@@ -1241,7 +1021,7 @@ Pozastavená rezerva likvidace blokuje, zmrazená ne.
 
 - [Dokumentace Aave V3](https://aave.com/docs) (načteno 14. října 2026)
 
-*${CS_ARTICLE_DISCLAIMER}*
+*${LANGUAGE_RULES.cs.disclaimer}*
 `;
 
 const BAD_CS_ARTICLE = `export const meta = ${JSON.stringify(CS_FIXTURE_META, null, 2)};
@@ -1260,7 +1040,7 @@ Viz [anglický průvodce](/blog/safe-aave-health-factor), [anglický přehled](/
 
 - [Dokumentace Aave V3](https://aave.com/docs) (fetched 14 Oct 2026)
 
-*${ARTICLE_DISCLAIMER}*
+*${LANGUAGE_RULES.en.disclaimer}*
 `;
 
 describe("Czech article checks", () => {
@@ -1276,7 +1056,7 @@ describe("Czech article checks", () => {
       headings: checkHeadings(tree!),
       links: checkLinks(tree!, "cs"),
       ending: checkEnding(tree!, "cs"),
-      banned: findBannedPhrases(proseOf(tree!), LANGUAGE_RULES.cs.bannedPatterns),
+      banned: findBannedPhrases(proseOf(tree!), bannedPatternsOf("cs")),
     }).toEqual({ esm: [], opening: [], jsx: [], headings: [], links: [], ending: [], banned: [] });
   });
 
@@ -1312,7 +1092,7 @@ describe("Czech article checks", () => {
     const { tree } = await parsePost(source, CS_FIXTURE_META.slug, "cs");
 
     expect(checkEnding(tree!, "cs")).toEqual([
-      `the post must end with the line *${CS_ARTICLE_DISCLAIMER}*`,
+      `the post must end with the line *${LANGUAGE_RULES.cs.disclaimer}*`,
       'source without "načteno <d. měsíce yyyy>": "Dokumentace Aave V3 (fetched 14 Oct 2026)"',
     ]);
   });

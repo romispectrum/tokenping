@@ -2,13 +2,15 @@ import { type ReactNode, isValidElement } from "react";
 
 /**
  * The anchor id of a heading: "Step 1: Connect your wallet" -> "step-1-connect-your-wallet". Latin letters lose their
- * accents ("Proč" -> "proc", "Größe" -> "grosse", "Đáo hạn" -> "dao-han"); other scripts keep their letters, vowel signs and digits ("हेल्थ फ़ैक्टर क्या है?" ->
- * "हेल्थ-फ़ैक्टर-क्या-है"), so Hindi headings get ids too.
+ * accents ("Proč" -> "proc", "Größe" -> "grosse", "Đáo hạn" -> "dao-han"); other scripts keep their letters, vowel
+ * signs and digits ("हेल्थ फ़ैक्टर क्या है?" -> "हेल्थ-फ़ैक्टर-क्या-है", "什么是健康因子？" -> "什么是健康因子"), so every
+ * language's headings get ids. NFC after the accents go puts Korean syllables and Japanese voiced kana back together.
  */
 export const headingId = (text: string) =>
   text
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
+    .normalize("NFC")
     .toLowerCase()
     // Letters NFKD does not split into a base and a mark: German "ß" and Vietnamese "đ".
     .replace(/ß/g, "ss")

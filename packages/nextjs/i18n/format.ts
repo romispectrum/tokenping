@@ -1,10 +1,15 @@
 import { LOCALE_INFO, type Locale } from "~~/i18n/locales";
 
+/** The CLDR plural categories a language may use; Intl.PluralRules picks one. */
 type PluralForms = {
+  /** Only languages with a zero form (none of the site's yet). */
+  zero?: string;
   one: string;
-  /** Czech 2 to 4 ("2 sítě"); no other language uses it. */
+  /** Slovenian's dual ("2 omrežji"). */
+  two?: string;
+  /** Czech 2 to 4 ("2 sítě"), and the Slavic languages' few. */
   few?: string;
-  /** Czech fractions ("1,5 sítě"); Spanish uses it for a million and up, and falls back to `other` there. */
+  /** Czech fractions ("1,5 sítě"), the Slavic languages' many; Spanish uses it for a million and up. */
   many?: string;
   other: string;
 };
@@ -31,7 +36,15 @@ export const formatLongDate = (locale: Locale, isoDate: string) =>
     timeZone: "UTC",
   }).format(new Date(`${isoDate}T00:00:00Z`));
 
-const LIST_WORDS: Record<Locale, Record<"conjunction" | "disjunction", string>> = {
+type ListWords = Record<"conjunction" | "disjunction", string> & {
+  /** Between the items before the last: ", " unless the language uses another mark (Chinese and Japanese "、"). */
+  separator?: string;
+  /** False where the word joins the last item without spaces (Chinese "A、B和C"). */
+  spaced?: boolean;
+};
+
+// Written out, not Intl.ListFormat: the site never puts a comma before the last item, which Intl does in English.
+const LIST_WORDS: Record<Locale, ListWords> = {
   en: { conjunction: "and", disjunction: "or" },
   cs: { conjunction: "a", disjunction: "nebo" },
   es: { conjunction: "y", disjunction: "o" },
@@ -58,19 +71,32 @@ export const joinList = (
 ) => {
   if (items.length <= 1) return items[0] ?? "";
   const last = items.at(-1)!;
-  const word = locale === "es" ? spanishListWord(LIST_WORDS.es[type], last) : LIST_WORDS[locale][type];
-  return `${items.slice(0, -1).join(", ")} ${word} ${last}`;
+  const { separator = ", ", spaced = true, ...words } = LIST_WORDS[locale];
+  const word = locale === "es" ? spanishListWord(words[type], last) : words[type];
+  const join = spaced ? ` ${word} ` : word;
+  return `${items.slice(0, -1).join(separator)}${join}${last}`;
+};
+
+const DECIMAL_MARKS = new Map<Locale, string>();
+
+/** The decimal mark of the language's number format (LOCALE_INFO.numbers): "." or ",". */
+const decimalMark = (locale: Locale) => {
+  let mark = DECIMAL_MARKS.get(locale);
+  if (mark === undefined) {
+    const parts = new Intl.NumberFormat(LOCALE_INFO[locale].numbers).formatToParts(1.5);
+    mark = parts.find(({ type }) => type === "decimal")?.value ?? ".";
+    DECIMAL_MARKS.set(locale, mark);
+  }
+  return mark;
 };
 
 /**
- * A number the user reads in running text: as written in English ("1.42"), with a decimal comma in Czech, German and
- * Vietnamese ("1,42"). Spanish and Hindi keep the decimal point, as Latin America and Indian apps write it and the app
- * shows it. Takes the already-formatted string (a health factor such as "1.42" or "∞") or a number.
+ * A number the user reads in running text, with the language's decimal mark: "1.42" in English, Spanish and Hindi
+ * (as Latin America and Indian apps write it and the app shows it), "1,42" in Czech, German and Vietnamese. Takes the
+ * already-formatted string (a health factor such as "1.42" or "∞") or a number.
  */
-const DECIMAL_COMMA: ReadonlySet<Locale> = new Set(["cs", "de", "vi"]);
-
 export const formatDecimal = (locale: Locale, value: string | number) =>
-  DECIMAL_COMMA.has(locale) ? String(value).replace(".", ",") : String(value);
+  decimalMark(locale) === "," ? String(value).replace(".", ",") : String(value);
 
 // A V4 Spoke's market name ends "(V4 Spoke)" (config/aaveConfig marketLabel); a V3 market is named by its network.
 const isV4MarketName = (name: string) => / \(V4 [^)]+\)$/.test(name);
