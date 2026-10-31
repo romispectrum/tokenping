@@ -43,6 +43,7 @@ yarn next:token-icons       # Refresh Aave token icons from CoinGecko
 yarn next:network-icons     # Refresh network logos from CoinGecko
 yarn next:telegram-webhook  # Register the Telegram bot's webhook (info | set <url>)
 yarn next:indexnow          # Tell IndexNow engines about the live sitemap's pages after a deploy (--since, --dry-run)
+yarn next:locale-routes     # Write every language's route group and client root from the templates
 
 # Deployer account (Hardhat)
 yarn generate            # Generate new deployer account
@@ -181,8 +182,10 @@ import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 
 ### Creating pages
 
-Route files are thin. They render a shared component from `components/pages/` with a locale, once under `app/(en)` and
-once under `app/(cs)/cz`:
+Route files are thin. They render a shared component from `components/pages/` with a locale. English's are written by
+hand under `app/(en)`; every other language's route group (`app/(cs)/cz`, `app/(de)/de` and so on) and every client root
+(`i18n/client/<locale>.tsx`) are generated from the templates in `scripts/localeRoutes.ts` by `yarn next:locale-routes`,
+and `scripts/localeRoutes.test.ts` fails when one differs. A new page goes into `app/(en)` and the template:
 
 ```tsx
 import {
