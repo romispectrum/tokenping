@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Post, PostMeta } from "~~/content/blog/types";
 import { buildRssFeed } from "~~/utils/rss";
-import { CS_POST_SLUGS, POST_SLUGS, mockPostStubs } from "~~/utils/testing/blogPosts";
+import { POST_SLUGS, mockPostStubs, translatedPostSlugs } from "~~/utils/testing/blogPosts";
+
+const CS_POST_SLUGS = translatedPostSlugs("cs");
 
 const post = (meta: Partial<PostMeta>): Post => ({
   meta: {
@@ -110,7 +112,7 @@ describe("buildRssFeed in Czech", () => {
 describe("GET /cz/blog/feed.xml", () => {
   const loadRoute = async (csStubSlugs: readonly string[]) => {
     vi.resetModules();
-    mockPostStubs([], csStubSlugs);
+    mockPostStubs([], { cs: csStubSlugs });
     return import("~~/app/(cs)/cz/blog/feed.xml/route");
   };
 

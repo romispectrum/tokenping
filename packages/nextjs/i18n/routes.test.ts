@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { LOCALES } from "~~/i18n/locales";
 import { POST_SLUGS } from "~~/i18n/postSlugs";
 import { localeFromPath, postAlternates, routePath, translatePath } from "~~/i18n/routes";
 
@@ -78,7 +79,7 @@ describe("routes", () => {
       expect(new Set(slugs).size).toBe(slugs.length);
       for (const slug of slugs) expect(slug).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
     }
-    expect(postAlternates("aave-health-factor")).toEqual({
+    expect(postAlternates("aave-health-factor")).toMatchObject({
       en: "/blog/aave-health-factor",
       cs: "/cz/blog/aave-health-factor-vysvetleni",
       es: "/es/blog/factor-de-salud-aave",
@@ -86,5 +87,6 @@ describe("routes", () => {
       de: "/de/blog/aave-health-factor-erklaert",
       vi: "/vi/blog/he-so-suc-khoe-aave",
     });
+    expect(Object.keys(postAlternates("aave-health-factor")!)).toEqual([...LOCALES]);
   });
 });

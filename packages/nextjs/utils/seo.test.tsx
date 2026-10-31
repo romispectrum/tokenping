@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PostMeta } from "~~/content/blog/types";
+import { LOCALES, LOCALE_INFO } from "~~/i18n/locales";
 import {
   DEFAULT_DESCRIPTION,
   DEFAULT_TITLE,
@@ -237,7 +238,7 @@ describe("siteJsonLd", () => {
           "@id": "https://tokenping.xyz/#website",
           name: "Tokenping",
           url: "https://tokenping.xyz",
-          inLanguage: ["en", "cs", "es", "hi", "de", "vi"],
+          inLanguage: LOCALES.map(locale => LOCALE_INFO[locale].htmlLang),
           publisher: { "@id": ORGANIZATION_ID },
         },
       ],

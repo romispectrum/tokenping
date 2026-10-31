@@ -1,34 +1,21 @@
+import { localePagePaths } from "~~/i18n/localePaths";
 import { DEFAULT_LOCALE, LOCALES, type Locale, type Localized } from "~~/i18n/locales";
 import { POST_SLUGS, postKeyForSlug } from "~~/i18n/postSlugs";
 
 // Every public page's path in each language. English keeps the original URLs at the root; every other language lives
-// under its prefix (/cz, /es, /hi, /de, /vi), with the language's words where a path has words, in ASCII. The single source for links, canonicals,
-// hreflang, the sitemap and the switcher.
+// under its prefix (i18n/localePaths.ts), with the language's word for the privacy page. The single source for links,
+// canonicals, hreflang, the sitemap and the switcher.
 
-export type StaticRoute = "home" | "dashboard" | "morpho" | "blog" | "blogFeed" | "privacy";
+export type StaticRoute = keyof ReturnType<typeof localePagePaths>;
 
-const STATIC_PATHS: Record<StaticRoute, Localized<string>> = {
-  home: { en: "/", cs: "/cz", es: "/es", hi: "/hi", de: "/de", vi: "/vi" },
-  dashboard: { en: "/aave", cs: "/cz/aave", es: "/es/aave", hi: "/hi/aave", de: "/de/aave", vi: "/vi/aave" },
-  morpho: { en: "/morpho", cs: "/cz/morpho", es: "/es/morpho", hi: "/hi/morpho", de: "/de/morpho", vi: "/vi/morpho" },
-  blog: { en: "/blog", cs: "/cz/blog", es: "/es/blog", hi: "/hi/blog", de: "/de/blog", vi: "/vi/blog" },
-  blogFeed: {
-    en: "/blog/feed.xml",
-    cs: "/cz/blog/feed.xml",
-    es: "/es/blog/feed.xml",
-    hi: "/hi/blog/feed.xml",
-    de: "/de/blog/feed.xml",
-    vi: "/vi/blog/feed.xml",
-  },
-  privacy: {
-    en: "/privacy",
-    cs: "/cz/ochrana-soukromi",
-    es: "/es/privacidad",
-    hi: "/hi/gopaniyata",
-    de: "/de/datenschutz",
-    vi: "/vi/quyen-rieng-tu",
-  },
-};
+const STATIC_ROUTES = Object.keys(localePagePaths(DEFAULT_LOCALE)) as StaticRoute[];
+
+const STATIC_PATHS = Object.fromEntries(
+  STATIC_ROUTES.map(route => [
+    route,
+    Object.fromEntries(LOCALES.map(locale => [locale, localePagePaths(locale)[route]])),
+  ]),
+) as Record<StaticRoute, Localized<string>>;
 
 export const routePath = (locale: Locale, route: StaticRoute) => STATIC_PATHS[route][locale];
 

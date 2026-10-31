@@ -1,3 +1,5 @@
+import { localePagePaths } from "./i18n/localePaths";
+import { LOCALES } from "./i18n/locales";
 import createMDX from "@next/mdx";
 import type { NextConfig } from "next";
 
@@ -7,15 +9,11 @@ const IS_IPFS_BUILD = process.env.NEXT_PUBLIC_IPFS_BUILD === "true";
 
 // RFC 8288 Link headers on each homepage, for agents that look for a machine-readable description before parsing the
 // HTML: /llms.txt, the language's RSS feed and its privacy page. No api-catalog or service-doc: Tokenping has no public
-// API. The paths repeat i18n/routes (this file can't use the ~~ alias), and next.config.test.ts checks they match.
-const HOME_LINKS = [
-  { source: "/", feed: "/blog/feed.xml", privacy: "/privacy" },
-  { source: "/cz", feed: "/cz/blog/feed.xml", privacy: "/cz/ochrana-soukromi" },
-  { source: "/es", feed: "/es/blog/feed.xml", privacy: "/es/privacidad" },
-  { source: "/hi", feed: "/hi/blog/feed.xml", privacy: "/hi/gopaniyata" },
-  { source: "/de", feed: "/de/blog/feed.xml", privacy: "/de/datenschutz" },
-  { source: "/vi", feed: "/vi/blog/feed.xml", privacy: "/vi/quyen-rieng-tu" },
-];
+// API. The paths come from i18n/localePaths, which i18n/routes uses too.
+const HOME_LINKS = LOCALES.map(locale => {
+  const { home, blogFeed, privacy } = localePagePaths(locale);
+  return { source: home, feed: blogFeed, privacy };
+});
 const homeLinkHeader = ({ feed, privacy }: { feed: string; privacy: string }) =>
   [
     '</llms.txt>; rel="describedby"; type="text/plain"',
@@ -51,44 +49,10 @@ const SECURITY_HEADERS = [
 // Only the page patterns of i18n/routes (next.config.test.ts checks them against the sitemap), so feeds, images, the
 // API and the developer pages never match, and a request without text/markdown in Accept never sees the rewrite.
 // Before the filesystem, so the prerendered page is not served instead.
-const MARKDOWN_PAGES = [
-  "/",
-  "/aave",
-  "/morpho",
-  "/blog",
-  "/blog/:slug([^./]+)",
-  "/privacy",
-  "/cz",
-  "/cz/aave",
-  "/cz/morpho",
-  "/cz/blog",
-  "/cz/blog/:slug([^./]+)",
-  "/cz/ochrana-soukromi",
-  "/es",
-  "/es/aave",
-  "/es/morpho",
-  "/es/blog",
-  "/es/blog/:slug([^./]+)",
-  "/es/privacidad",
-  "/hi",
-  "/hi/aave",
-  "/hi/morpho",
-  "/hi/blog",
-  "/hi/blog/:slug([^./]+)",
-  "/hi/gopaniyata",
-  "/de",
-  "/de/aave",
-  "/de/morpho",
-  "/de/blog",
-  "/de/blog/:slug([^./]+)",
-  "/de/datenschutz",
-  "/vi",
-  "/vi/aave",
-  "/vi/morpho",
-  "/vi/blog",
-  "/vi/blog/:slug([^./]+)",
-  "/vi/quyen-rieng-tu",
-];
+const MARKDOWN_PAGES = LOCALES.flatMap(locale => {
+  const { home, dashboard, morpho, blog, privacy } = localePagePaths(locale);
+  return [home, dashboard, morpho, blog, `${blog}/:slug([^./]+)`, privacy];
+});
 const ACCEPTS_MARKDOWN = { type: "header", key: "accept", value: ".*text/markdown.*" } as const;
 const markdownRewrite = (source: string) => ({
   source,

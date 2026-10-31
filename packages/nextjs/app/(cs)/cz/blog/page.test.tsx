@@ -2,12 +2,14 @@
 import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { formatPostDate } from "~~/components/blog/formatPostDate";
-import { CS_POST_SLUGS, mockPostStubs } from "~~/utils/testing/blogPosts";
+import { mockPostStubs, translatedPostSlugs } from "~~/utils/testing/blogPosts";
 import { FREE_WORDS } from "~~/utils/testing/copyRules";
+
+const CS_POST_SLUGS = translatedPostSlugs("cs");
 
 // Each test sets which Czech posts are placeholders, so none depends on how many translations are finished yet.
 const loadIndex = async (csStubSlugs: readonly string[] = []) => {
-  mockPostStubs([], csStubSlugs);
+  mockPostStubs([], { cs: csStubSlugs });
   const blog = await import("~~/content/blog");
   const page = await import("~~/app/(cs)/cz/blog/page");
   return { blog, BlogIndex: page.default, metadata: page.metadata };

@@ -47,7 +47,7 @@ const CS_MDX_FILES = mdxFiles("./cs/");
 
 // Each test sets which posts are placeholders, so none depends on how many articles are written or translated yet.
 const loadBlog = (stubSlugs: readonly string[] = [], csStubSlugs: readonly string[] = []) => {
-  mockPostStubs(stubSlugs, csStubSlugs);
+  mockPostStubs(stubSlugs, { cs: csStubSlugs });
   return import("~~/content/blog");
 };
 

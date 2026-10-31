@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { vi } from "vitest";
 import type { PostMeta } from "~~/content/blog/types";
+import { DEFAULT_LOCALE, LOCALES, type Locale } from "~~/i18n/locales";
 
 // A path string, not a URL object: jsdom test files replace the global URL, which node:fs does not accept.
 const BLOG_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "../../content/blog");
@@ -15,20 +16,13 @@ const slugsIn = (dir: string) =>
 /** Every English post file's slug, read from content/blog. */
 export const POST_SLUGS = slugsIn(BLOG_DIR);
 
-/** Every Czech post file's slug, read from content/blog/cs. */
-export const CS_POST_SLUGS = slugsIn(path.join(BLOG_DIR, "cs"));
+/** Every post file's slug in one translation, read from content/blog/<locale>. */
+export const translatedPostSlugs = (locale: Locale) => slugsIn(path.join(BLOG_DIR, locale));
 
-/** Every Spanish post file's slug, read from content/blog/es. */
-export const ES_POST_SLUGS = slugsIn(path.join(BLOG_DIR, "es"));
-
-/** Every Hindi post file's slug, read from content/blog/hi. */
-export const HI_POST_SLUGS = slugsIn(path.join(BLOG_DIR, "hi"));
-
-/** Every German post file's slug, read from content/blog/de. */
-export const DE_POST_SLUGS = slugsIn(path.join(BLOG_DIR, "de"));
-
-/** Every Vietnamese post file's slug, read from content/blog/vi. */
-export const VI_POST_SLUGS = slugsIn(path.join(BLOG_DIR, "vi"));
+/** Every translation published, placeholders included: `mockPostStubs([], PUBLISH_EVERY_TRANSLATION)`. */
+export const PUBLISH_EVERY_TRANSLATION: Partial<Record<Locale, readonly string[]>> = Object.fromEntries(
+  LOCALES.filter(locale => locale !== DEFAULT_LOCALE).map(locale => [locale, []]),
+);
 
 const mockStubs = (modulePrefix: string, slugs: readonly string[], stubSlugs: readonly string[]) => {
   for (const slug of slugs) {
@@ -45,24 +39,18 @@ const mockStubs = (modulePrefix: string, slugs: readonly string[], stubSlugs: re
 /**
  * Sets each post's `stub` flag, so tests of what is published do not depend on which articles the writers and
  * translators have finished: the given slugs become placeholders and every other post is published. English posts
- * are always set; each translation only when its language's list is given (`csStubSlugs`, `esStubSlugs`, `hiStubSlugs`,
- * `deStubSlugs`, `viStubSlugs`; slugs in that language;
- * [] publishes every translation, even a placeholder file, which then renders its placeholder text). Call it after
- * vi.resetModules() and before importing ~~/content/blog or a module that uses it. Import those one after another:
- * concurrent dynamic imports of the re-mocked posts can get the previous test's modules.
+ * are always set; a translation only when `translations` has its language (slugs in that language; [] publishes every
+ * translation, even a placeholder file, which then renders its placeholder text). Call it after vi.resetModules() and
+ * before importing ~~/content/blog or a module that uses it. Import those one after another: concurrent dynamic
+ * imports of the re-mocked posts can get the previous test's modules.
  */
 export const mockPostStubs = (
   stubSlugs: readonly string[] = [],
-  csStubSlugs?: readonly string[],
-  esStubSlugs?: readonly string[],
-  hiStubSlugs?: readonly string[],
-  deStubSlugs?: readonly string[],
-  viStubSlugs?: readonly string[],
+  translations: Partial<Record<Locale, readonly string[]>> = {},
 ) => {
   mockStubs("~~/content/blog/", POST_SLUGS, stubSlugs);
-  if (csStubSlugs) mockStubs("~~/content/blog/cs/", CS_POST_SLUGS, csStubSlugs);
-  if (esStubSlugs) mockStubs("~~/content/blog/es/", ES_POST_SLUGS, esStubSlugs);
-  if (hiStubSlugs) mockStubs("~~/content/blog/hi/", HI_POST_SLUGS, hiStubSlugs);
-  if (deStubSlugs) mockStubs("~~/content/blog/de/", DE_POST_SLUGS, deStubSlugs);
-  if (viStubSlugs) mockStubs("~~/content/blog/vi/", VI_POST_SLUGS, viStubSlugs);
+  for (const locale of LOCALES) {
+    const slugs = translations[locale];
+    if (locale !== DEFAULT_LOCALE && slugs) mockStubs(`~~/content/blog/${locale}/`, translatedPostSlugs(locale), slugs);
+  }
 };

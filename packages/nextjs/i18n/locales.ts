@@ -18,23 +18,73 @@ type LocaleInfo = {
   numbers: string;
   /** The language's own name, for the switcher's accessible label. */
   name: string;
+  /** Its name in English, for llms.txt and other English text about the languages. */
+  englishName: string;
   /** The short label the switcher shows. */
   short: string;
 };
 
 export const LOCALE_INFO: Record<Locale, LocaleInfo> = {
-  en: { htmlLang: "en", ogLocale: "en_US", intl: "en-US", numbers: "en-US", name: "English", short: "EN" },
-  cs: { htmlLang: "cs", ogLocale: "cs_CZ", intl: "cs-CZ", numbers: "cs-CZ", name: "Čeština", short: "CZ" },
+  en: {
+    htmlLang: "en",
+    ogLocale: "en_US",
+    intl: "en-US",
+    numbers: "en-US",
+    name: "English",
+    englishName: "English",
+    short: "EN",
+  },
+  cs: {
+    htmlLang: "cs",
+    ogLocale: "cs_CZ",
+    intl: "cs-CZ",
+    numbers: "cs-CZ",
+    name: "Čeština",
+    englishName: "Czech",
+    short: "CZ",
+  },
   // Neutral Spanish for Spain and Latin America: hreflang "es" covers every Spanish-speaking country. Intl formats as
   // Latin American Spanish ("14 de octubre de 2026", decimal point), the way most of its readers write numbers.
-  es: { htmlLang: "es", ogLocale: "es_ES", intl: "es-419", numbers: "es-419", name: "Español", short: "ES" },
+  es: {
+    htmlLang: "es",
+    ogLocale: "es_ES",
+    intl: "es-419",
+    numbers: "es-419",
+    name: "Español",
+    englishName: "Spanish",
+    short: "ES",
+  },
   // Hindi in Devanagari, hreflang "hi". Dates as hi-IN writes them ("14 अक्टूबर 2026"); numbers with the Western
   // thousands grouping the app shows ("12,000"), not hi-IN's lakh grouping ("12,00,000").
-  hi: { htmlLang: "hi", ogLocale: "hi_IN", intl: "hi-IN", numbers: "en-US", name: "हिन्दी", short: "HI" },
+  hi: {
+    htmlLang: "hi",
+    ogLocale: "hi_IN",
+    intl: "hi-IN",
+    numbers: "en-US",
+    name: "हिन्दी",
+    englishName: "Hindi",
+    short: "HI",
+  },
   // One German for Germany, Austria and Switzerland: hreflang "de". Decimal comma and dot thousands ("12.000,5").
-  de: { htmlLang: "de", ogLocale: "de_DE", intl: "de-DE", numbers: "de-DE", name: "Deutsch", short: "DE" },
+  de: {
+    htmlLang: "de",
+    ogLocale: "de_DE",
+    intl: "de-DE",
+    numbers: "de-DE",
+    name: "Deutsch",
+    englishName: "German",
+    short: "DE",
+  },
   // Decimal comma and dot thousands ("12.000,5"), dates "14 tháng 10, 2026".
-  vi: { htmlLang: "vi", ogLocale: "vi_VN", intl: "vi-VN", numbers: "vi-VN", name: "Tiếng Việt", short: "VI" },
+  vi: {
+    htmlLang: "vi",
+    ogLocale: "vi_VN",
+    intl: "vi-VN",
+    numbers: "vi-VN",
+    name: "Tiếng Việt",
+    englishName: "Vietnamese",
+    short: "VI",
+  },
 };
 
 export const isLocale = (value: unknown): value is Locale => LOCALES.includes(value as Locale);

@@ -9,7 +9,7 @@ import { LOCALES, LOCALE_INFO, type Locale } from "~~/i18n/locales";
 import { POST_SLUGS } from "~~/i18n/postSlugs";
 import { routePath } from "~~/i18n/routes";
 import type { AlertPlan } from "~~/services/marketing/alertPlan";
-import { mockPostStubs } from "~~/utils/testing/blogPosts";
+import { PUBLISH_EVERY_TRANSLATION, mockPostStubs } from "~~/utils/testing/blogPosts";
 import { FREE_WORDS } from "~~/utils/testing/copyRules";
 
 // Every translated home page (app/(<locale>)/<prefix>/page.tsx), checked the same way. A new language adds a row
@@ -99,7 +99,7 @@ beforeEach(() => {
   vi.resetModules();
   vi.stubEnv("NEXT_PUBLIC_TELEGRAM_BOT_USERNAME", "");
   // Every post published in every language, so the blog links do not depend on who has finished.
-  mockPostStubs([], [], [], [], [], []);
+  mockPostStubs([], PUBLISH_EVERY_TRANSLATION);
   mocks.getAlertPlan.mockReset().mockResolvedValue(PLAN);
 });
 

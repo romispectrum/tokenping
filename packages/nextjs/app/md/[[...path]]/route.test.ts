@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "~~/app/md/[[...path]]/route";
+import { LOCALES } from "~~/i18n/locales";
+import { routePath } from "~~/i18n/routes";
 import { estimateTokens } from "~~/utils/markdown";
 import { CONTENT_SIGNAL } from "~~/utils/robots";
 import { sitemapEntries } from "~~/utils/sitemap";
@@ -100,7 +102,7 @@ describe("GET /md/[[...path]]", () => {
     // The homepage rules carry the Link header; the catch-all rule carries the security headers.
     const homeRules = (await nextConfig.headers!()).filter(({ headers }) => headers.some(({ key }) => key === "Link"));
 
-    expect(homeRules.map(({ source }) => source)).toEqual(["/", "/cz", "/es", "/hi", "/de", "/vi"]);
+    expect(homeRules.map(({ source }) => source)).toEqual(LOCALES.map(locale => routePath(locale, "home")));
     for (const { source, headers } of homeRules) {
       const [{ value }] = headers;
 

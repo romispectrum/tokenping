@@ -13,7 +13,8 @@ import {
 import { PAYMENT_TOKEN_SYMBOL } from "~~/constants/payments";
 import { getPublishedPosts, hubSlug, newestFirst } from "~~/content/blog";
 import type { Post } from "~~/content/blog/types";
-import type { Locale } from "~~/i18n/locales";
+import { joinList } from "~~/i18n/format";
+import { DEFAULT_LOCALE, LOCALES, LOCALE_INFO, type Locale } from "~~/i18n/locales";
 import { BLOG_MESSAGES } from "~~/i18n/messages/blog";
 import { COMMON_MESSAGES } from "~~/i18n/messages/common";
 import { DASHBOARD_MESSAGES } from "~~/i18n/messages/dashboard";
@@ -64,6 +65,8 @@ const pageLinks = (locale: Locale) => {
 const guideLinks = (locale: Locale) =>
   guides(locale).map(({ meta }) => link(meta.title, postPath(locale, meta.slug), meta.description));
 
+const TRANSLATED = LOCALES.filter(locale => locale !== DEFAULT_LOCALE);
+
 export const buildLlmsTxt = () => {
   const channels = formatAlertChannelsIn("en", "disjunction");
   const paymentChain = getPaymentChainName();
@@ -73,7 +76,7 @@ export const buildLlmsTxt = () => {
     `- Morpho coverage: every Morpho Blue (variable-rate) and Morpho Midnight (fixed-rate) market the Morpho app lists, on ${MORPHO_CHAINS.length} networks, with one alert per market. A Midnight loan also gets reminders 7 days and 1 day before it matures. One plan covers Aave and Morpho alerts.`,
     `- Access: looking at positions on the dashboard needs no payment. Alerts need paid access, paid in ${PAYMENT_TOKEN_SYMBOL}${paymentChain ? ` on ${paymentChain}` : ""} from the wallet. Nothing renews automatically; each payment adds one plan period after the current end date.`,
     "- Sign-in: the wallet signs a message. There is no account and no password.",
-    "- Languages: English, Czech under /cz, Spanish under /es, Hindi under /hi, German under /de and Vietnamese under /vi.",
+    `- Languages: ${joinList("en", [LOCALE_INFO.en.englishName, ...TRANSLATED.map(locale => `${LOCALE_INFO[locale].englishName} under ${routePath(locale, "home")}`)])}.`,
     `- ${COMMON_MESSAGES.en.footer.independence}`,
   ];
 
@@ -92,42 +95,25 @@ export const buildLlmsTxt = () => {
     "",
     ...guideLinks("en"),
     "",
-    "## Czech",
-    "",
-    ...pageLinks("cs"),
-    ...guideLinks("cs"),
-    "",
-    "## Spanish",
-    "",
-    ...pageLinks("es"),
-    ...guideLinks("es"),
-    "",
-    "## Hindi",
-    "",
-    ...pageLinks("hi"),
-    ...guideLinks("hi"),
-    "",
-    "## German",
-    "",
-    ...pageLinks("de"),
-    ...guideLinks("de"),
-    "",
-    "## Vietnamese",
-    "",
-    ...pageLinks("vi"),
-    ...guideLinks("vi"),
-    "",
+    ...TRANSLATED.flatMap(locale => [
+      `## ${LOCALE_INFO[locale].englishName}`,
+      "",
+      ...pageLinks(locale),
+      ...guideLinks(locale),
+      "",
+    ]),
     "## Optional",
     "",
-    link("Sitemap", "/sitemap.xml", "every page in all six languages"),
+    link("Sitemap", "/sitemap.xml", "every page in every language"),
     link("Agent skill: Aave health factor alerts", aaveAlertsSkillPath(), AAVE_ALERTS_SKILL_DESCRIPTION),
     link("Agent skill: Morpho health factor alerts", morphoAlertsSkillPath(), MORPHO_ALERTS_SKILL_DESCRIPTION),
-    link(SEO_MESSAGES.en.rssTitle, routePath("en", "blogFeed"), "new guides in English"),
-    link(SEO_MESSAGES.cs.rssTitle, routePath("cs", "blogFeed"), "new guides in Czech"),
-    link(SEO_MESSAGES.es.rssTitle, routePath("es", "blogFeed"), "new guides in Spanish"),
-    link(SEO_MESSAGES.hi.rssTitle, routePath("hi", "blogFeed"), "new guides in Hindi"),
-    link(SEO_MESSAGES.de.rssTitle, routePath("de", "blogFeed"), "new guides in German"),
-    link(SEO_MESSAGES.vi.rssTitle, routePath("vi", "blogFeed"), "new guides in Vietnamese"),
+    ...LOCALES.map(locale =>
+      link(
+        SEO_MESSAGES[locale].rssTitle,
+        routePath(locale, "blogFeed"),
+        `new guides in ${LOCALE_INFO[locale].englishName}`,
+      ),
+    ),
     "",
   ].join("\n");
 };

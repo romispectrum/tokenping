@@ -44,7 +44,7 @@ beforeEach(() => {
   vi.resetModules();
   vi.doUnmock("~~/content/blog");
   // Every post published in both languages, so related links and hreflang do not depend on who has finished.
-  mockPostStubs([], []);
+  mockPostStubs([], { cs: [] });
   mocks.getAlertPlan.mockReset().mockResolvedValue(PLAN);
 });
 
@@ -80,7 +80,7 @@ describe("generateMetadata", () => {
 
   it("keeps a Czech placeholder out of search results", async () => {
     vi.resetModules();
-    mockPostStubs([], ["likvidacni-cena-aave"]);
+    mockPostStubs([], { cs: ["likvidacni-cena-aave"] });
     const { generateMetadata } = await loadPage();
     const stub = await generateMetadata({ params: Promise.resolve({ slug: "likvidacni-cena-aave" }) });
 
@@ -157,7 +157,7 @@ describe("Czech blog post page", () => {
 
   it("does not link Czech placeholders as related guides", async () => {
     vi.resetModules();
-    mockPostStubs([], ["aave-health-factor-vysvetleni"]);
+    mockPostStubs([], { cs: ["aave-health-factor-vysvetleni"] });
     await renderPost("bezpecny-health-factor-aave");
 
     const related = screen.getByRole("navigation", { name: "Související průvodci" });

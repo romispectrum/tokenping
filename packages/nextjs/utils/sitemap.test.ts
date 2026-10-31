@@ -1,22 +1,17 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_LOCALE, LOCALES, LOCALE_INFO, type Locale } from "~~/i18n/locales";
 import { POST_SLUGS as POST_SLUG_PAIRS } from "~~/i18n/postSlugs";
+import { postPath, routePath } from "~~/i18n/routes";
 import { parseSitemap } from "~~/scripts/indexNow";
-import {
-  CS_POST_SLUGS,
-  DE_POST_SLUGS,
-  ES_POST_SLUGS,
-  HI_POST_SLUGS,
-  POST_SLUGS,
-  VI_POST_SLUGS,
-  mockPostStubs,
-} from "~~/utils/testing/blogPosts";
+import { POST_SLUGS, mockPostStubs, translatedPostSlugs } from "~~/utils/testing/blogPosts";
 
 const APP_DIR = new URL("../app/", import.meta.url);
 
 // Not indexable: noindex (/admin) or a 404 outside local hardhat builds (/debug, /blockexplorer).
 const NON_INDEXED_PREFIXES = ["/admin", "/debug", "/blockexplorer"];
-const MORPHO_PAGES = ["/morpho", "/cz/morpho", "/es/morpho", "/hi/morpho", "/de/morpho", "/vi/morpho"];
+const TRANSLATED = LOCALES.filter(locale => locale !== DEFAULT_LOCALE);
+const MORPHO_PAGES = LOCALES.map(locale => routePath(locale, "morpho"));
 
 /** Every app/**\/page.tsx without a dynamic segment, by its URL path ("/", "/aave", "/cz/blog", …). */
 const staticPageFiles = (dir = APP_DIR, prefix = ""): [string, URL][] =>
@@ -38,15 +33,12 @@ const pageFile = (path: string) => PAGE_FILES.get(path);
 const isClientPage = (path: string) =>
   /^(?:\s|\/\/[^\n]*\n|\/\*[\s\S]*?\*\/)*["']use client["']/.test(readFileSync(pageFile(path)!, "utf8"));
 
+/** Translation placeholders by language; a language left out has every translation published. */
 const loadSitemap = async (
   stubSlugs: readonly string[] = [],
-  csStubSlugs: readonly string[] = [],
-  esStubSlugs: readonly string[] = [],
-  hiStubSlugs: readonly string[] = [],
-  deStubSlugs: readonly string[] = [],
-  viStubSlugs: readonly string[] = [],
+  translationStubs: Partial<Record<Locale, readonly string[]>> = {},
 ) => {
-  mockPostStubs(stubSlugs, csStubSlugs, esStubSlugs, hiStubSlugs, deStubSlugs, viStubSlugs);
+  mockPostStubs(stubSlugs, Object.fromEntries(TRANSLATED.map(locale => [locale, translationStubs[locale] ?? []])));
   const blog = await import("~~/content/blog");
   const { sitemapEntries: sitemap, renderSitemapXml } = await import("~~/utils/sitemap");
   const { blogPostMetadata } = await import("~~/components/pages/BlogPostPage");
@@ -63,12 +55,18 @@ const url = (path: string) => (path === "/" ? SITE : `${SITE}${path}`);
 const everyLanguage = (paths: readonly string[], lastModified: string) =>
   paths.map(path => ({ url: url(path), lastModified }));
 
-const HOME_PAGES = everyLanguage(["/", "/cz", "/es", "/hi", "/de", "/vi"], "2026-10-20");
-const AAVE_PAGES = everyLanguage(["/aave", "/cz/aave", "/es/aave", "/hi/aave", "/de/aave", "/vi/aave"], "2026-10-19");
+const HOME_PAGES = everyLanguage(
+  LOCALES.map(locale => routePath(locale, "home")),
+  "2026-10-20",
+);
+const AAVE_PAGES = everyLanguage(
+  LOCALES.map(locale => routePath(locale, "dashboard")),
+  "2026-10-19",
+);
 const MORPHO_DASHBOARD_PAGES = everyLanguage(MORPHO_PAGES, "2026-10-25");
 // The privacy page carries the date its Morpho disclosures were added.
 const PRIVACY_PAGES = everyLanguage(
-  ["/privacy", "/cz/ochrana-soukromi", "/es/privacidad", "/hi/gopaniyata", "/de/datenschutz", "/vi/quyen-rieng-tu"],
+  LOCALES.map(locale => routePath(locale, "privacy")),
   "2026-10-25",
 );
 
@@ -86,23 +84,18 @@ describe("sitemapEntries", () => {
     expect(entries.slice(-PRIVACY_PAGES.length)).toEqual(PRIVACY_PAGES);
     // Each language's blog index carries that language's newest content date.
     expect(entry("/blog")).toMatchObject({ lastModified: blog.getLatestPostDate() });
-    expect(entry("/cz/blog")).toMatchObject({
-      lastModified: blog.getLatestPostDate(blog.getPublishedPosts("cs")),
-    });
-    expect(entry("/es/blog")).toMatchObject({
-      lastModified: blog.getLatestPostDate(blog.getPublishedPosts("es")),
-    });
-    expect(entry("/hi/blog")).toMatchObject({
-      lastModified: blog.getLatestPostDate(blog.getPublishedPosts("hi")),
-    });
+    for (const locale of TRANSLATED)
+      expect(entry(routePath(locale, "blog"))).toMatchObject({
+        lastModified: blog.getLatestPostDate(blog.getPublishedPosts(locale)),
+      });
     // Each published post is listed with its own content date, in each language it is published in.
     for (const { meta } of blog.PUBLISHED_POSTS) {
       expect(entry(`/blog/${meta.slug}`)).toEqual({
         url: `${SITE}/blog/${meta.slug}`,
         lastModified: meta.updatedAt ?? meta.publishedAt,
       });
-      expect(entry(`/cz/blog/${POST_SLUG_PAIRS[meta.slug].cs}`)).toBeDefined();
-      expect(entry(`/es/blog/${POST_SLUG_PAIRS[meta.slug].es}`)).toBeDefined();
+      for (const locale of TRANSLATED)
+        expect(entry(postPath(locale, POST_SLUG_PAIRS[meta.slug][locale]))).toBeDefined();
     }
     // A placeholder is left out, and its published translation is listed alone.
     expect(entry("/blog/safe-aave-health-factor")).toBeUndefined();
@@ -115,36 +108,26 @@ describe("sitemapEntries", () => {
   it("leaves hreflang to the pages, which name only published translations", async () => {
     const { blog, blogPostMetadata } = await loadSitemap(["safe-aave-health-factor"]);
     const [post] = blog.PUBLISHED_POSTS;
-    const cs = POST_SLUG_PAIRS[post.meta.slug].cs;
+
+    const alternates = (key: string, locales: readonly Locale[]) =>
+      Object.fromEntries(
+        locales.map(locale => [LOCALE_INFO[locale].htmlLang, postPath(locale, POST_SLUG_PAIRS[key][locale])]),
+      );
 
     expect(blogPostMetadata("en", post.meta.slug).alternates?.languages).toEqual({
-      en: `/blog/${post.meta.slug}`,
-      cs: `/cz/blog/${cs}`,
-      es: `/es/blog/${POST_SLUG_PAIRS[post.meta.slug].es}`,
-      hi: `/hi/blog/${POST_SLUG_PAIRS[post.meta.slug].hi}`,
-      de: `/de/blog/${POST_SLUG_PAIRS[post.meta.slug].de}`,
-      vi: `/vi/blog/${POST_SLUG_PAIRS[post.meta.slug].vi}`,
+      ...alternates(post.meta.slug, LOCALES),
       "x-default": `/blog/${post.meta.slug}`,
     });
     // Its Czech translation names the other translations, but not the English placeholder (so no x-default either).
-    const { cs: csSlug, es: esSlug, hi: hiSlug, de: deSlug, vi: viSlug } = POST_SLUG_PAIRS["safe-aave-health-factor"];
-    expect(blogPostMetadata("cs", csSlug).alternates?.languages).toEqual({
-      cs: `/cz/blog/${csSlug}`,
-      es: `/es/blog/${esSlug}`,
-      hi: `/hi/blog/${hiSlug}`,
-      de: `/de/blog/${deSlug}`,
-      vi: `/vi/blog/${viSlug}`,
-    });
+    expect(blogPostMetadata("cs", POST_SLUG_PAIRS["safe-aave-health-factor"].cs).alternates?.languages).toEqual(
+      alternates("safe-aave-health-factor", TRANSLATED),
+    );
   });
 
   it("leaves out every blog and every post while all of them are placeholders", async () => {
     const { sitemap } = await loadSitemap(
       POST_SLUGS,
-      CS_POST_SLUGS,
-      ES_POST_SLUGS,
-      HI_POST_SLUGS,
-      DE_POST_SLUGS,
-      VI_POST_SLUGS,
+      Object.fromEntries(TRANSLATED.map(locale => [locale, translatedPostSlugs(locale)])),
     );
 
     expect(sitemap()).toEqual([...HOME_PAGES, ...AAVE_PAGES, ...MORPHO_DASHBOARD_PAGES, ...PRIVACY_PAGES]);
@@ -152,7 +135,8 @@ describe("sitemapEntries", () => {
 
   it("lists only pages that exist and render on the server", async () => {
     const { sitemap } = await loadSitemap();
-    const pages = pathsOf(sitemap()).filter(path => !/^(?:\/cz|\/es|\/hi|\/de|\/vi)?\/blog\//.test(path));
+    const blogs = LOCALES.map(locale => `${routePath(locale, "blog")}/`);
+    const pages = pathsOf(sitemap()).filter(path => !blogs.some(blog => path.startsWith(blog)));
 
     for (const path of pages) {
       expect(pageFile(path) && existsSync(pageFile(path)!), `${path}: no page.tsx under app/ for it`).toBe(true);
@@ -167,12 +151,7 @@ describe("sitemapEntries", () => {
       path =>
         !NON_INDEXED_PREFIXES.some(prefix => path === prefix || path.startsWith(`${prefix}/`)) &&
         !isClientPage(path) &&
-        (path !== "/blog" || blog.PUBLISHED_POSTS.length > 0) &&
-        (path !== "/cz/blog" || blog.getPublishedPosts("cs").length > 0) &&
-        (path !== "/es/blog" || blog.getPublishedPosts("es").length > 0) &&
-        (path !== "/hi/blog" || blog.getPublishedPosts("hi").length > 0) &&
-        (path !== "/de/blog" || blog.getPublishedPosts("de").length > 0) &&
-        (path !== "/vi/blog" || blog.getPublishedPosts("vi").length > 0),
+        LOCALES.every(locale => path !== routePath(locale, "blog") || blog.getPublishedPosts(locale).length > 0),
     );
 
     // A new Server Component page (e.g. /privacy, or /aave once it stops being a client page) fails here until
