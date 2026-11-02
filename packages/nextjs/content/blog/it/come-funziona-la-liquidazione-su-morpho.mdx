@@ -1,0 +1,185 @@
+export const meta = {
+  slug: "come-funziona-la-liquidazione-su-morpho",
+  title: "Liquidazione su Morpho: incentivo e crediti inesigibili",
+  description:
+    "Quando un prestito Morpho può essere liquidato, quanto può prendere un liquidatore, l'incentivo per ogni LLTV, crediti inesigibili, oracoli e Midnight.",
+  h1: "Cosa succede quando la tua posizione Morpho viene liquidata?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Come funziona la liquidazione su Morpho, e quanto costa a chi prende in prestito?",
+  readingMinutes: 14,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Una posizione Morpho Blue può essere liquidata quando il suo rapporto prestito/valore (LTV) supera il LTV di
+  liquidazione (LLTV) del mercato, il che equivale a un fattore di salute (health factor) sotto 1. Da quel momento
+  chiunque può rimborsare una parte o tutto il tuo debito in una sola transazione e prendere collaterale pari
+  all'importo rimborsato moltiplicato per il fattore di incentivo alla liquidazione del mercato, al prezzo dell'oracolo
+  del mercato. L'incentivo dipende solo dal LLTV: 4,38% con un LLTV dell'86%, e va tutto al liquidatore. Ciò che hai
+  preso in prestito resta a te, quindi l'incentivo è quanto ti costa la liquidazione, a meno che il tuo collaterale non
+  copra più il debito; in quel caso lo perdi tutto e i prestatori del mercato assorbono il resto come crediti
+  inesigibili (bad debt). I prestiti a tasso fisso di Morpho Midnight aggiungono due varianti: prima della scadenza, una
+  liquidazione può prendere solo ciò che rende di nuovo sana la posizione, a meno che il collaterale rimasto non
+  rimborsi meno della soglia del mercato, e dopo la scadenza qualsiasi debito rimasto può essere liquidato, anche su una
+  posizione sana.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Cifre e numeri di blocco a cui sono state lette: content/blog/snapshots/how-morpho-liquidation-works.md */}
+
+## Quando può essere liquidata una posizione Morpho?
+
+Una posizione Morpho Blue può essere liquidata non appena il tuo debito supera il valore del tuo collaterale moltiplicato per il LLTV del mercato. In termini di fattore di salute, è qualsiasi valore sotto 1,00 ([come si calcola il fattore di salute Morpho](/it/blog/fattore-di-salute-morpho) riporta la formula e alcuni esempi).
+
+È il contratto stesso a verificarlo. La funzione `liquidate` di Morpho Blue prima aggiunge gli interessi dovuti fino a quel blocco, poi legge una volta l'oracolo del mercato, poi annulla la transazione se la posizione è ancora sana. Una posizione esattamente al suo LLTV è ancora sana; deve superarlo.
+
+Solo due cose spingono una posizione oltre la linea:
+
+- **Il prezzo del collaterale scende** rispetto al token del prestito, secondo l'oracolo.
+- **Il tuo debito cresce** man mano che maturano gli interessi su un prestito Blue a tasso variabile.
+
+Ogni mercato Blue fissa il suo LLTV e il suo oracolo quando viene creato, e nessuno dei due può cambiare in seguito. Il contratto Morpho Blue inoltre non ha pausa, congelamento o periodo di tolleranza: Morpho non può fermare le liquidazioni in un mercato né impedirti di rimborsare. L'emittente di un token può però mettere in pausa o bloccare i trasferimenti di quel token, il che fermerebbe entrambe le cose.
+
+## Chi liquida una posizione Morpho, e come?
+
+Chiunque. `liquidate` non ha restrizioni su chi la chiama, e Morpho stessa non liquida posizioni. I liquidatori vanno da team che gestiscono bot che sorvegliano posizioni e prezzi degli oracoli fino a singole persone; la documentazione di Morpho nota che bastano un nodo RPC e un wallet con abbastanza token del prestito.
+
+Chi arriva prima vince. Non c'è un'asta, quindi i liquidatori competono sulla velocità, e le gare sul gas e il MEV (l'ordinamento delle transazioni a scopo di profitto) ne fanno parte. Il contratto invia il collaterale sequestrato al liquidatore prima di incassare i token del prestito, il che permette a un bot di vendere il collaterale nella stessa transazione e di rimborsare con il ricavato.
+
+Le liquidazioni non sono garantite; avvengono perché l'incentivo conviene. In pratica sono di routine: l'API di Morpho conta 14.024 liquidazioni solo nel mercato USDC | cbBTC (86%) di Base.
+
+## Quanta parte del tuo debito può essere liquidata in una volta?
+
+Tutto. Morpho Blue non ha close factor (quota del debito rimborsabile in una volta) né una dimensione minima: un liquidatore può rimborsare qualsiasi importo del tuo debito, da una piccola fetta fino all'intero, in una sola chiamata. Gli unici limiti sono che non può rimborsare più di quanto devi né sequestrare più collaterale di quanto ne hai.
+
+È la differenza più grande rispetto ad Aave V3, che limita una liquidazione al 50% del debito finché il fattore di salute è sopra 0,95 e la posizione non è piccola ([quanta parte di un debito Aave può essere liquidata in una volta](/it/blog/come-funziona-la-liquidazione-su-aave#quanta-parte-del-mio-debito-puo-essere-liquidata-in-una-volta)). Su Blue, una posizione che supera di poco il suo LLTV può essere chiusa del tutto dal primo liquidatore che arriva.
+
+## Quanto è grande l'incentivo di liquidazione per ogni LLTV?
+
+Il fattore di incentivo alla liquidazione (LIF, liquidation incentive factor) è fissato da una formula nel contratto, a partire dal LLTV del mercato:
+
+**LIF = min(1,15; 1 ÷ (1 − 0,3 × (1 − LLTV)))**
+
+Il liquidatore rimborsa parte del tuo debito e riceve collaterale pari a quell'importo moltiplicato per il LIF, al prezzo dell'oracolo. La parte sopra 1 è l'incentivo, pagato con il tuo collaterale. Morpho non ne prende alcuna quota.
+
+Un mercato può usare solo un LLTV che la governance di Morpho ha abilitato. Il 26 ottobre 2026 questi erano i valori abilitati, e ogni mercato Blue nell'API di Morpho ne usa uno. Con la matematica intera del contratto:
+
+| LLTV  | Fattore di incentivo alla liquidazione | Collaterale che perdi per 1.000 di debito rimborsato | Di cui incentivo |
+| ----- | -------------------------------------- | ---------------------------------------------------- | ---------------- |
+| 38,5% | 1,1500 (al tetto)                      | 1.150,00                                             | 150,00           |
+| 62,5% | 1,1268                                 | 1.126,76                                             | 126,76           |
+| 77%   | 1,0741                                 | 1.074,11                                             | 74,11            |
+| 86%   | 1,0438                                 | 1.043,84                                             | 43,84            |
+| 91,5% | 1,0262                                 | 1.026,17                                             | 26,17            |
+| 94,5% | 1,0168                                 | 1.016,78                                             | 16,78            |
+| 96,5% | 1,0106                                 | 1.010,61                                             | 10,61            |
+| 98%   | 1,0060                                 | 1.006,04                                             | 6,04             |
+
+Anche un LLTV di 0 è abilitato, ma in un mercato del genere non si può prendere in prestito nulla. Più alto è il LLTV, più piccolo è l'incentivo; la documentazione di Morpho lo spiega come una protezione contro le liquidazioni a cascata nei mercati più rischiosi. La stessa documentazione arrotonda il valore per l'86% ad "approximately 1.05" (circa 1,05); il valore esatto è 1,0438.
+
+## Esempio pratico: 1 cbBTC a fronte di 50.000 USDC su Base
+
+Prendi il più grande mercato Blue elencato per volume di prestiti su Ethereum e Base: USDC | cbBTC (86%) su Base, con circa 1,61 miliardi di USDC presi in prestito. Il 26 ottobre 2026 il suo oracolo prezzava 1 cbBTC a 80.000,15 USDC (blocco Base 53102870). La posizione è inventata: 1 cbBTC come collaterale e 50.000 USDC di debito.
+
+- **LTV:** 50.000 ÷ 80.000,15 = 62,5%.
+- **Fattore di salute:** 80.000,15 × 0,86 ÷ 50.000 = 1,376.
+- **Prezzo di liquidazione:** 50.000 ÷ 0,86 = 58.139,53 USDC per cbBTC, il 27,3% sotto il prezzo dell'oracolo.
+
+Gli interessi sono il fattore lento. Con il tasso di prestito del mercato di circa il 5,2% annuo al 26 ottobre 2026, e se quel tasso restasse invariato, i soli interessi impiegherebbero più di sei anni a portare questa posizione dal 62,5% all'86% di LTV. Il prezzo è il fattore veloce.
+
+Per confronto, tra le 11.000 posizioni di prestito più grandi di questo mercato, che detengono il 96% del suo debito, metà degli USDC presi in prestito era in posizioni sotto circa il 54% di LTV, cioè con un fattore di salute sopra circa 1,59. È un calcolo di Tokenping a partire dall'API di Morpho e dal prezzo on-chain, non un dato di Morpho.
+
+### Liquidazione totale a 58.139,53
+
+Appena oltre il prezzo di liquidazione, un liquidatore può rimborsare tutti i 50.000 USDC e prendere 50.000 × 1,0438 ÷ 58.139,53 = 0,8977 cbBTC, che valgono 52.192,07 USDC. Ti restano i 50.000 USDC presi in prestito e 0,1023 cbBTC (5.947,47 USDC), e non devi più nulla. La liquidazione ti è costata 2.192,07 USDC rispetto a rimborsare da solo: il 4,38% del debito.
+
+### Liquidazione parziale di 10.000 USDC
+
+Un liquidatore può anche fermarsi a 10.000 USDC. Così sequestra 0,1795 cbBTC (10.438,41 USDC) e lascia 0,8205 cbBTC a fronte di 40.000 USDC: un LTV dell'83,9% e un fattore di salute di 1,026, quindi di nuovo sana. Qui una fetta aiuta sempre, perché LIF × LLTV = 0,898 è sotto 1. Ma nulla obbliga un liquidatore a scegliere la fetta invece dell'intero debito.
+
+### E se nessuno liquida finché cbBTC non arriva a 50.000?
+
+A 50.000 USDC il tuo collaterale vale esattamente il tuo debito, cioè meno di debito × LIF. Sequestrare l'intero 1 cbBTC rimborsa solo 50.000 ÷ 1,0438 = 47.900 USDC. Perdi tutto il collaterale, e i 2.100 USDC rimanenti vengono cancellati come crediti inesigibili, che i prestatori del mercato assorbono.
+
+## Cosa succede ai crediti inesigibili su Morpho Blue?
+
+Quando una liquidazione lascia un debitore senza collaterale ma con un po' di debito, il contratto cancella quel debito nella stessa transazione. Toglie il debito rimanente dal totale dei prestiti del mercato e lo stesso importo dal totale dei depositi, quindi ogni prestatore di quel mercato perde in proporzione alla sua quota. I prestatori di altri mercati non sono toccati, perché ogni mercato Blue è isolato.
+
+I crediti inesigibili diventano possibili quando il collaterale vale meno del debito moltiplicato per il LIF. In un mercato all'86% questo vale per qualsiasi LTV sopra il 95,8%, che una posizione può raggiungere solo se il prezzo supera il LLTV prima che qualcuno la liquidi. Succede, anche se raramente per importi grandi: l'API di Morpho registra crediti inesigibili in 1.428 liquidazioni Blue su Ethereum e Base, la maggior parte sotto 1 dollaro o in mercati che l'app Morpho non elenca.
+
+Per il debitore il risultato è lo stesso in entrambi i casi: tutto il collaterale è perso e non resta alcun debito. Per i prestatori dipende da come prestano: un Morpho Vault V2 trasferisce la perdita sul prezzo delle sue quote, mentre i vecchi vault V1.1 non la trasferiscono sulle loro. Aave la gestisce diversamente: dalla v3.3 registra il debito residuo come un deficit che i suoi staker di Umbrella possono coprire ([i crediti inesigibili su Aave](/it/blog/come-funziona-la-liquidazione-su-aave#una-liquidazione-puo-lasciare-crediti-inesigibili)).
+
+## Che ruolo ha l'oracolo in una liquidazione?
+
+L'oracolo fissa il prezzo per ogni decisione di liquidazione. Ogni mercato indica un oracolo che restituisce il prezzo del collaterale nel token del prestito, e sia il momento in cui una posizione diventa liquidabile sia la quantità di collaterale che un liquidatore riceve usano quel prezzo, non i prezzi sugli exchange. Morpho non sceglie gli oracoli: li sceglie chi crea il mercato. L'indirizzo dell'oracolo di un mercato non può mai essere sostituito, ma i feed di prezzo che un oracolo legge possono essere gestiti da altri, che possono aggiornarli. Il feed BTC/USD dell'esempio su Base, per esempio, ha un proprietario che può puntarlo verso una nuova fonte.
+
+Ciò che un oracolo misura conta per te. L'oracolo del mercato dell'esempio su Base usa un feed di prezzo BTC/USD per cbBTC e tratta USDC come se valesse esattamente 1 dollaro, quindi un depeg (perdita dell'ancoraggio al dollaro) di uno dei due token non lo muoverebbe. L'oracolo di riferimento di Morpho per i feed compatibili con Chainlink non controlla quanto sia vecchio un prezzo né se rientri in certi limiti, e non aggiunge alcun controllo per le interruzioni del sequencer L2.
+
+Un problema dell'oracolo può danneggiare chi prende in prestito in due modi:
+
+- **Un prezzo sbagliato o manipolato.** La pagina sui rischi di Morpho avverte che nessun oracolo è immune dalla manipolazione, che può causare liquidazioni o addirittura crediti inesigibili.
+- **Un oracolo che smette di rispondere.** Prendere in prestito, prelevare collaterale e liquidare leggono tutti l'oracolo e fallirebbero. Rimborsare e aggiungere collaterale non lo leggono, quindi puoi comunque migliorare la tua posizione mentre nessuno può liquidarla.
+
+## In cosa sono diverse le liquidazioni su Morpho Midnight?
+
+I mercati Morpho Midnight prestano un token a tasso fisso fino a una data di scadenza stabilita, a fronte di uno o più collaterali, ognuno con il proprio LLTV, il proprio oracolo e il proprio cursore di liquidazione (lo 0,3 nella formula dell'incentivo qui sopra, che Midnight fissa per ogni collaterale). Il tuo debito è fisso in unità, quindi prima della scadenza solo i prezzi dei collaterali muovono il tuo fattore di salute. Una posizione Midnight può essere liquidata in due modi:
+
+- **In base alla salute, in qualsiasi momento**, finché il debito supera la somma del valore di ogni collaterale moltiplicato per il suo LLTV. L'incentivo è il bonus pieno di quel collaterale, e una liquidazione può rimborsare solo quanto serve a rendere di nuovo sana la posizione. L'eccezione: quando il collaterale rimasto dopo una liquidazione così limitata rimborserebbe meno del rcfThreshold del mercato, quel collaterale può essere preso per intero.
+- **Dopo la scadenza**, se resta del debito, anche su una posizione sana. Non c'è alcun limite, e l'incentivo parte da zero e sale fino al bonus pieno nell'arco di 60 minuti.
+
+Il liquidatore sceglie quale collaterale prendere, e non c'è il tetto di 1,15; il 26 ottobre 2026 ogni mercato Midnight elencato usava un cursore di 0,3 con LLTV dei collaterali dal 62,5% al 98%, che danno gli stessi incentivi della tabella qui sopra. I crediti inesigibili sono ripartiti tra i prestatori di quel mercato. [Come funzionano i prestiti a tasso fisso di Midnight](/it/blog/morpho-midnight-prestiti-a-tasso-fisso) tratta la scadenza, le soglie di mercati reali e un esempio pratico.
+
+## Cos'è la pre-liquidazione?
+
+La pre-liquidazione (pre-liquidation) è un'aggiunta opzionale su Morpho Blue. Un debitore che ha autorizzato un contratto di pre-liquidazione per un mercato permette ai liquidatori di usarlo, una volta che il LTV supera una linea fissata sotto il LLTV, per rimborsare fette del debito, una chiamata dopo l'altra, con un incentivo fissato in quel contratto, finché il LTV non torna sotto quella linea. Sopra il LLTV vale comunque la liquidazione normale.
+
+Il mercato dell'esempio su Base ne ha uno: dall'83,26% di LTV può rimborsare fino allo 0,20% del debito per chiamata (le chiamate possono ripetersi), quota che sale al 24,53% vicino all'86%, con lo stesso incentivo di 1,0438. Agisce solo se lo hai autorizzato. Morpho sta ritirando la funzione: la sua app non accetta nuove posizioni, e il suo centro assistenza chiede ai debitori che la usano di disattivarla. [La pre-liquidazione di Morpho](/it/blog/pre-liquidazione-morpho) spiega le condizioni e come verificarla e revocarla.
+
+## In cosa la liquidazione su Morpho differisce da quella di Aave?
+
+Il nucleo è lo stesso: sotto 1, un liquidatore rimborsa debito e prende collaterale più un bonus. Le regole intorno cambiano ([come funziona la liquidazione su Aave](/it/blog/come-funziona-la-liquidazione-su-aave)):
+
+|                             | Aave V3                                                               | Morpho Blue                                        | Morpho Midnight                                                                                                                                                               |
+| --------------------------- | --------------------------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Quanto in una volta         | 50% o 100% del debito, più una regola sui residui (dust)              | Fino a tutto il debito in una chiamata             | Prima della scadenza, quanto rende di nuovo sana la posizione (un collaterale intero se ciò che resta rimborserebbe meno del rcfThreshold); dopo la scadenza, tutto il debito |
+| Bonus                       | Fissato dalla governance per ogni asset collaterale                   | Fissato dal LLTV del mercato                       | Per collaterale, dal suo LLTV e dal suo cursore                                                                                                                               |
+| Chi tiene il bonus          | Il liquidatore, meno una commissione del protocollo                   | Il liquidatore, tutto                              | Il liquidatore                                                                                                                                                                |
+| Le regole possono cambiare? | La governance e i risk steward possono cambiarle                      | No, fissate alla creazione del mercato             | Fissate alla creazione del mercato                                                                                                                                            |
+| Pausa                       | Gli asset possono essere messi in pausa, con un periodo di tolleranza | Nessuna pausa                                      | Nessuna pausa                                                                                                                                                                 |
+| Crediti inesigibili         | Un deficit, che gli staker di Umbrella possono coprire                | Cancellati a carico dei prestatori di quel mercato | Ripartiti tra i prestatori di quel mercato                                                                                                                                    |
+| Cosa copre una posizione    | Molti asset in una sola posizione                                     | Un collaterale, un token del prestito              | Un token del prestito, più collaterali                                                                                                                                        |
+
+## Come puoi evitare la liquidazione su Morpho?
+
+- **Tieni un margine sotto il LLTV.** Una posizione che si riprende prima che qualcuno la liquidi torna al sicuro, ma nulla impedisce al prezzo di scendere ancora, e il primo liquidatore che arriva può rimborsare tutto il tuo debito in una volta.
+- **Rimborsa o aggiungi collaterale per tempo.** Entrambe le cose abbassano subito il tuo LTV, non costano alcun incentivo e funzionano anche se l'oracolo smette di rispondere.
+- **Conosci il tuo oracolo.** Prima di prendere in prestito, controlla quale oracolo usa il tuo mercato e cosa misura.
+- **Su Midnight, rimborsa prima della scadenza.** Dopo la scadenza qualsiasi debito rimasto può essere liquidato, che la posizione sia sana o no.
+- **Controlla eventuali vecchie pre-liquidazioni.** Se in passato hai attivato "Auto-deleverage" (la pre-liquidazione), Morpho la sta ritirando e chiede ai debitori di disattivarla; [la pre-liquidazione di Morpho](/it/blog/pre-liquidazione-morpho) mostra come.
+
+## Come possono aiutarti gli avvisi?
+
+Tokenping controlla ogni 5 minuti ogni posizione di prestito Morpho su cui imposti un avviso, nei mercati elencati nell'app Morpho: Morpho Blue su 14 reti, e Morpho Midnight. Gli avvisi Midnight coprono i mercati che l'API di Morpho elenca. Il 26 ottobre 2026 erano su Ethereum e Base; Tokenping copre anche Arc e Robinhood Chain non appena Morpho vi elencherà mercati Midnight. Calcola ogni fattore di salute dalla chain con la matematica di Morpho stessa, non dall'API di Morpho. Finché un fattore di salute è sotto la soglia che hai impostato (da 1,02 a 10), ogni controllo invia un messaggio su ogni canale che hai scelto: Signal, Telegram o email. Se hai autorizzato un contratto di pre-liquidazione su un mercato Blue, l'avviso misura rispetto alla più bassa delle due linee: il LLTV o la linea di pre-liquidazione. Un prestito Midnight riceve anche un promemoria negli ultimi 7 giorni e uno nelle ultime 24 ore prima della scadenza, poi un avviso a ogni controllo dopo la scadenza finché resta del debito.
+
+Puoi [vedere le tue posizioni Morpho](/it/morpho); non richiede pagamenti. Gli avvisi costano <AlertPrice />. Un avviso ti dà tempo per agire, ma un prezzo può superare il tuo LLTV tra due controlli, e un avviso non impedisce la liquidazione.
+
+## Fonti
+
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) e [IMorpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/interfaces/IMorpho.sol), morpho-org/morpho-blue: controllo della salute, liquidazione, formula dell'incentivo, crediti inesigibili e ipotesi sull'oracolo (consultato il 26 ottobre 2026)
+- [Midnight.sol](https://github.com/morpho-org/midnight/blob/main/src/Midnight.sol) e [ConstantsLib.sol](https://github.com/morpho-org/midnight/blob/main/src/libraries/ConstantsLib.sol), morpho-org/midnight: modalità di liquidazione, RCF, crescita graduale dell'incentivo e slashing (consultato il 26 ottobre 2026)
+- [README della pre-liquidazione e PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation), morpho-org/pre-liquidation (consultato il 26 ottobre 2026)
+- [ChainlinkDataFeedLib.sol](https://github.com/morpho-org/morpho-blue-oracles/blob/main/src/morpho-chainlink/libraries/ChainlinkDataFeedLib.sol), morpho-org/morpho-blue-oracles: nessun controllo su età del prezzo, limiti o sequencer (consultato il 26 ottobre 2026)
+- [La liquidazione su Morpho](https://docs.morpho.org/learn/concepts/liquidation): liquidatori, nessuna asta, fino al 100% in una volta, nessuna commissione del protocollo, crediti inesigibili nei vault (consultato il 26 ottobre 2026)
+- [Documentazione per sviluppatori di Morpho: liquidazione](https://docs.morpho.org/developers/borrow/concepts/liquidation): incentivo per LLTV e crediti inesigibili (consultato il 26 ottobre 2026)
+- [Documentazione di Morpho: oracoli](https://docs.morpho.org/learn/concepts/oracle): scelta dell'oracolo e immutabilità (consultato il 26 ottobre 2026)
+- [Documentazione di Morpho: Morpho Blue](https://docs.morpho.org/learn/concepts/blue): parametri di mercato permanenti e LLTV abilitati (consultato il 26 ottobre 2026)
+- [Documentazione di Morpho: liquidazioni Midnight](https://docs.morpho.org/learn/concepts/midnight/liquidations), [collaterale, salute e liquidazioni](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) e [cos'è Midnight](https://docs.morpho.org/learn/concepts/midnight) (consultato il 26 ottobre 2026)
+- [Documentazione di Morpho: rischi](https://docs.morpho.org/learn/resources/risks): rischio di oracolo, di liquidazione, di crediti inesigibili e di controparte (consultato il 26 ottobre 2026)
+- [API di Morpho](https://api.morpho.org/graphql): numero di liquidazioni e di crediti inesigibili, elenco dei mercati, tasso di prestito, posizioni di prestito e mercati Midnight (consultato il 26 ottobre 2026)
+- [Morpho Blue su Base](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), il mercato USDC | cbBTC (86%) al blocco Base 53102870 (consultato il 26 ottobre 2026)
+- [L'oracolo del mercato](https://basescan.org/address/0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9#readContract) e [il suo feed BTC/USD](https://basescan.org/address/0x64c911996D3c6aC71f9b455B1E8E7266BcbD848F#readContract) su Base: il prezzo al blocco 53102870 e il proprietario del feed (consultato il 26 ottobre 2026)
+- [Il contratto di pre-liquidazione del mercato](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374#readContract) su Base: i suoi parametri al blocco 53102870 (consultato il 26 ottobre 2026)
+- [Morpho Midnight su Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract): LLTV e cursori di liquidazione abilitati al blocco 26274998 (consultato il 26 ottobre 2026)
+
+_Contenuto informativo, non è una consulenza finanziaria. Gli avvisi riducono il rischio, ma non impediscono la liquidazione._

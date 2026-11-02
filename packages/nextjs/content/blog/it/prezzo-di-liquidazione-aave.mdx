@@ -1,0 +1,183 @@
+export const meta = {
+  slug: "prezzo-di-liquidazione-aave",
+  title: "Come calcolare il prezzo di liquidazione su Aave",
+  description:
+    "La formula del prezzo di liquidazione su Aave V3, con esempi per un collaterale, due collaterali e un debito volatile, più un calcolatore.",
+  h1: "Come calcolare il prezzo di liquidazione su Aave",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-20",
+  primaryQuestion: "A quale prezzo verrà liquidata la mia posizione su Aave?",
+  readingMinutes: 15,
+};
+
+<ShortAnswer>
+  Il tuo prezzo di liquidazione su Aave è il prezzo di oracolo di un asset a cui il tuo fattore di salute (health
+  factor) scenderebbe a 1,00, con tutti gli altri prezzi invariati; oltre quel prezzo (sotto per il collaterale, sopra
+  per un asset preso in prestito), la posizione può essere liquidata. Con un solo collaterale volatile e un debito in
+  stablecoin è uguale a debito ÷ (quantità di collaterale × soglia di liquidazione), oppure al prezzo attuale ÷ il tuo
+  fattore di salute. Per esempio, 10 WETH a garanzia di 12.000 USDC su Aave V3 Ethereum Core (soglia di liquidazione di
+  WETH 83% il 14 ottobre 2026) possono essere liquidati appena ETH scende sotto 1.445,78 $, contando USDC a 1,00 $.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Cos'è un prezzo di liquidazione su Aave?
+
+Un prezzo di liquidazione su Aave è il prezzo di uno degli asset della tua posizione a cui il tuo fattore di salute arriverebbe esattamente a 1,00, con tutti gli altri prezzi invariati. Aave V3 permette la liquidazione appena il fattore di salute è sotto 1,00. A quel punto un liquidatore può rimborsare una parte o tutto il tuo debito e prendere collaterale per quel valore più un bonus (5% per il collaterale WETH su Ethereum Core, letto on-chain il 14 ottobre 2026). Il processo completo è in [cosa succede in una liquidazione su Aave](/it/blog/come-funziona-la-liquidazione-su-aave).
+
+Quando usi questo numero, tieni a mente tre cose:
+
+- **È un valore derivato.** Il contratto Pool di Aave V3 riporta un fattore di salute tramite `getUserAccountData`, non un prezzo di liquidazione. Il prezzo lo ottieni risolvendo la formula del fattore di salute per un asset; [cos'è il fattore di salute di Aave](/it/blog/fattore-di-salute-aave) spiega quella formula.
+- **È un prezzo di oracolo.** Aave valuta le posizioni con il proprio oracolo, basato sui feed di Chainlink e sugli adapter CAPO, e l'app di Aave mostra quel prezzo come "Oracle price" (prezzo dell'oracolo) nella pagina di ogni asset. L'ultimo scambio su un exchange può essere diverso.
+- **Tiene fermo tutto il resto.** Con due asset in collaterale o un debito volatile, molte combinazioni di prezzi portano a 1,00, quindi un singolo prezzo di liquidazione ti dice solo quanto può muoversi un asset da solo.
+
+## Qual è la formula del prezzo di liquidazione su Aave?
+
+Per una posizione su Aave V3 con un solo asset volatile in collaterale e un debito in stablecoin, il prezzo di liquidazione è debito ÷ (quantità di collaterale × soglia di liquidazione), dove la soglia di liquidazione (liquidation threshold, LT) è la quota del valore del collaterale che conta per il fattore di salute.
+
+**Prezzo di liquidazione = debito ÷ (quantità di collaterale × soglia di liquidazione)**
+
+È il fattore di salute risolto per il prezzo. Aave V3 calcola HF = Σ(valore del collaterale × soglia di liquidazione) ÷ valore totale del debito, in USD. Con un solo asset in collaterale, HF = quantità × prezzo × LT ÷ debito. Poni HF uguale a 1 e risolvi per il prezzo.
+
+Visto che il fattore di salute contiene già la soglia, c'è una scorciatoia: **prezzo di liquidazione = prezzo attuale ÷ fattore di salute**. Il calo necessario per arrivarci è 1 − 1 ÷ HF.
+
+Altre forme di posizione usano una variante della stessa formula:
+
+| Posizione                                      | Prezzo di liquidazione                                                                | Scorciatoia dal tuo fattore di salute                                     |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Un collaterale volatile, debito in stablecoin  | debito ÷ (quantità × LT)                                                              | prezzo attuale ÷ HF                                                       |
+| Due collaterali volatili, debito in stablecoin | (debito − valore dell'altro collaterale × la sua LT) ÷ (quantità × LT)                | nessuna per un singolo prezzo; se scendono insieme: un calo di 1 − 1 ÷ HF |
+| Collaterale in stablecoin, debito volatile     | Σ(valore del collaterale × LT) ÷ quantità presa in prestito, un prezzo al rialzo      | prezzo attuale × HF                                                       |
+| Collaterale wstETH, debito WETH, in E-Mode     | un rapporto di prezzo wstETH/ETH: debito WETH ÷ (quantità di wstETH × LT dell'E-Mode) | rapporto attuale ÷ HF                                                     |
+
+### Esempio pratico: 10 WETH e 12.000 USDC su Ethereum Core
+
+Deposita 10 WETH e prendi in prestito 12.000 USDC su Aave V3 Ethereum Core. Lì la soglia di liquidazione di WETH era 83% e il suo rapporto prestito/valore (LTV) 80,5% (lettura on-chain al blocco Ethereum 26193284, 14 ottobre 2026). Questo esempio usa ETH a 2.400 $ per avere numeri tondi; l'oracolo di Aave segnava 2.414,78 $ al blocco 26193376 lo stesso giorno. USDC conta come 1,00 $.
+
+| Passaggio                | Calcolo                | Risultato  |
+| ------------------------ | ---------------------- | ---------- |
+| Valore del collaterale   | 10 × 2.400 $           | 24.000 $   |
+| Fattore di salute        | 24.000 × 0,83 ÷ 12.000 | 1,66       |
+| Prezzo di liquidazione   | 12.000 ÷ (10 × 0,83)   | 1.445,78 $ |
+| Verifica con scorciatoia | 2.400 ÷ 1,66           | 1.445,78 $ |
+| Calo necessario          | 1 − 1 ÷ 1,66           | 39,8%      |
+
+Il limite di prestito non è un margine di sicurezza. Con un LTV dell'80,5% gli stessi 10 WETH sostengono fino a 19.320 $ di debito, il che dà un fattore di salute di 1,031 e un prezzo di liquidazione di 2.327,71 $, appena il 3,0% sotto 2.400 $. [Quanto margine ti dà un fattore di salute](/it/blog/fattore-di-salute-aave-sicuro) tratta questa distanza per ogni asset.
+
+### Quale soglia di liquidazione devi usare?
+
+Usa la soglia di liquidazione del mercato Aave in cui si trova la tua posizione. L'app di Aave la mostra come "Liquidation threshold" (soglia di liquidazione) sotto "Collateral usage" (uso come collaterale) nella pagina di ogni asset. Lo stesso token può avere soglie diverse in mercati diversi, e la governance può cambiarle. In E-Mode, la soglia della categoria sostituisce quella dell'asset solo per gli asset del set di collaterali della categoria; qualsiasi altro collaterale mantiene la propria soglia.
+
+| Mercato Aave V3                        | Asset                                         | LTV           | Soglia di liquidazione |
+| -------------------------------------- | --------------------------------------------- | ------------- | ---------------------- |
+| Ethereum Core                          | WETH                                          | 80,5%         | 83%                    |
+| Ethereum Core                          | WBTC                                          | 73%           | 78%                    |
+| Ethereum Core                          | USDC                                          | 75%           | 78%                    |
+| Ethereum Core, E-Mode "ETH correlated" | WETH, wstETH, cbETH, rETH, weETH, osETH, ETHx | 93% (ETHx 0%) | 95%                    |
+| Arbitrum                               | WETH                                          | 80%           | 84%                    |
+| Arbitrum                               | WBTC                                          | 73%           | 78%                    |
+| Arbitrum                               | USDC (nativo)                                 | 75%           | 78%                    |
+
+Letti on-chain il 14 ottobre 2026 al blocco Ethereum 26193284 (E-Mode al blocco 26193288) e al blocco Arbitrum 514855406. Una nuova lettura subito dopo la mezzanotte UTC (blocco Ethereum 26194239, blocco Arbitrum 514896811) ha restituito gli stessi valori e ha dato il LTV E-Mode di ETHx allo 0%.
+
+### La formula è diversa su Aave V4?
+
+Aave V4, attivo su Ethereum, Avalanche, Arc e Base, usa la stessa forma con due differenze: un unico fattore di collaterale per ogni asset in ciascuno Spoke sostituisce LTV e soglia di liquidazione separati, e il fattore di salute si calcola per Spoke. Una posizione V4 diventa liquidabile sotto un fattore di salute di 1,0, quindi il suo prezzo di liquidazione è debito ÷ (quantità di collaterale × fattore di collaterale). Il fattore di collaterale di WETH sullo Spoke Main di Ethereum era 83% il 14 ottobre 2026 (API di Aave V4), quindi anche lì 10 WETH contro 12.000 USDC verrebbero liquidati sotto 1.445,78 $. Tokenping controlla sia le posizioni V3 sia quelle V4, con un avviso separato per ogni Spoke V4.
+
+## Come si calcola il prezzo di liquidazione su Aave con due asset in collaterale?
+
+Con due asset in collaterale, il prezzo di liquidazione di un asset presuppone che l'altro mantenga il suo prezzo attuale: sottrai dal debito il valore ponderato dell'altro asset, poi dividi per la quantità del primo asset moltiplicata per la sua soglia di liquidazione.
+
+**Prezzo di liquidazione dell'asset A = (debito − valore di B × LT di B) ÷ (quantità di A × LT di A)**
+
+Esempio su Aave V3 Ethereum Core: 10 WETH a 2.400 $ (LT 83%) più 0,2 WBTC a un prezzo indicativo di 81.500 $ (LT 78%; l'oracolo segnava 81.528,44 $ il 14 ottobre 2026), contro 20.000 USDC di debito. Il collaterale ponderato è 24.000 × 0,83 + 16.300 × 0,78 = 19.920 + 12.714 = 32.634, quindi il fattore di salute è 32.634 ÷ 20.000 = 1,632.
+
+| Scenario                                   | Prezzo di liquidazione                               | Calo necessario       |
+| ------------------------------------------ | ---------------------------------------------------- | --------------------- |
+| ETH scende, WBTC resta a 81.500 $          | (20.000 − 12.714) ÷ (10 × 0,83) = 877,83 $ per ETH   | 63,4%                 |
+| WBTC scende, ETH resta a 2.400 $           | (20.000 − 19.920) ÷ (0,2 × 0,78) = 512,82 $ per WBTC | 99,4%                 |
+| Entrambi scendono della stessa percentuale | ETH a 1.470,86 $ e WBTC a 49.948 $, insieme          | 38,7% (1 − 1 ÷ 1,632) |
+
+Le prime due righe sembrano tranquille perché ognuna presuppone che l'altro asset mantenga il suo valore. Qui il WETH da solo copre quasi tutto il debito (19.920 di valore ponderato contro 20.000), quindi WBTC dovrebbe scendere del 99,4% da solo. Per collaterali che tendono a muoversi insieme, la terza riga, un calo del 38,7% di entrambi, è la prova realistica.
+
+## E se hai preso in prestito un asset volatile invece di una stablecoin?
+
+Se hai preso in prestito un asset volatile come WETH, la tua posizione su Aave ha un prezzo di liquidazione al rialzo: il prezzo dell'asset preso in prestito a cui il tuo fattore di salute arriva a 1,00. Quando quel prezzo sale, il debito vale di più e il fattore di salute scende.
+
+**Prezzo di liquidazione dell'asset preso in prestito = Σ(valore del collaterale × LT) ÷ quantità presa in prestito**, oppure, come scorciatoia, prezzo attuale × fattore di salute.
+
+Esempio su Aave V3 Ethereum Core: deposita 10.000 USDC (LT 78%) e prendi in prestito 2,5 WETH, che valgono 6.000 $ con ETH a 2.400 $. Il fattore di salute è 10.000 × 0,78 ÷ 6.000 = 1,30. La posizione può essere liquidata appena ETH sale sopra 7.800 ÷ 2,5 = 3.120 $ (cioè anche 2.400 × 1,30), un rialzo del 30%.
+
+Anche il lato stablecoin può muoversi. Il prezzo di USDC usato da Aave su Ethereum ha un tetto a 1,04 $, ma i prezzi sotto 1 $ passano per intero (tetto letto on-chain al blocco Ethereum 26194239). USDC ha già perso l'ancoraggio in passato: l'11 marzo 2023 è sceso a un minimo di circa 88 centesimi, come riporta il post-mortem di Gauntlet sul forum di Aave. A 0,88 $ la stessa posizione avrebbe un fattore di salute di 8.800 × 0,78 ÷ 6.000 = 1,144, e il prezzo di liquidazione di ETH scenderebbe da 3.120 $ a 2.745,60 $.
+
+Quando collaterale e debito sono entrambi volatili, per esempio collaterale WBTC contro debito WETH, conta solo il rapporto tra i due prezzi: il fattore di salute arriva a 1,00 quando il rapporto WBTC/ETH scende a debito in ETH ÷ (quantità di WBTC × LT di WBTC).
+
+## Come cambia il tuo prezzo di liquidazione con l'E-Mode?
+
+L'E-Mode alza la soglia di liquidazione per gli asset correlati. Quando collaterale e debito seguono lo stesso prezzo sottostante, come wstETH e WETH che seguono entrambi ETH, il prezzo di liquidazione diventa un rapporto di prezzo (wstETH/ETH) invece di un prezzo in dollari. Su Aave V3 Ethereum Core, la categoria E-Mode "ETH correlated" aveva LTV 93%, una soglia di liquidazione del 95% e un bonus di liquidazione dell'1% il 14 ottobre 2026. Il suo set di collaterali è WETH, wstETH, cbETH, rETH, weETH, osETH ed ETHx, e WETH è l'unico asset che permette di prendere in prestito. I collaterali fuori da quel set mantengono la loro soglia normale.
+
+Con collaterale wstETH e debito WETH, entrambi i lati sono prezzati in base a ETH, quindi il prezzo in dollari di ETH in gran parte si annulla. A decidere la liquidazione è il tasso wstETH/ETH che usa l'oracolo di Aave:
+
+- Deposita wstETH per un valore di 100 ETH al tasso dell'oracolo e prendi in prestito 90 WETH. Il fattore di salute è 100 × 0,95 ÷ 90 = 1,056. Se il prezzo in dollari di ETH si dimezza, entrambi i lati si dimezzano e il fattore di salute resta a 1,056. Se il tasso wstETH/ETH dell'oracolo scende del 5,3% (1 − 90 ÷ 95), la posizione arriva a 1,00.
+- Al prestito massimo della categoria, 93 WETH contro lo stesso collaterale, il fattore di salute parte da 95 ÷ 93 = 1,0215, e basta un calo del tasso del 2,1%.
+
+Un movimento di questa entità è già successo. Aave prezza wstETH tramite un adapter CAPO (Correlated Assets Price Oracle), che mette un tetto al tasso di cambio che riporta. A marzo 2026 un tetto configurato male sui mercati Core e Prime di Ethereum ha ridotto di circa il 2,85% il tasso usato da Aave. Il post-mortem di Chaos Labs (10 marzo 2026) conta circa 10.938 wstETH di liquidazioni in E-Mode su 34 account, con colpite le posizioni che avevano un fattore di salute sotto circa 1,0288. Il movimento è venuto dalla configurazione dell'oracolo, non dal mercato.
+
+## Perché il tuo prezzo di liquidazione si sposta nel tempo?
+
+Il tuo prezzo di liquidazione su Aave si sposta anche quando non fai nulla, perché cambiano i suoi input: gli interessi si aggiungono al debito, gli interessi sui depositi aggiungono un po' al collaterale, e la governance può cambiare le soglie di liquidazione. Lo spostano anche le tue transazioni: prendere in prestito lo alza, mentre rimborsare o aggiungere collaterale lo abbassa.
+
+- **Interessi.** Prendi 10 WETH e 12.000 USDC di debito su Aave V3 Ethereum Core con ETH a 2.400 $. Il 14 ottobre 2026 (blocco 26193378) il tasso di interesse variabile sui prestiti di USDC era 4,496% APR e il tasso sui depositi di WETH 1,309% APR. Mantenuti costanti per un anno, quei tassi alzerebbero il prezzo di liquidazione da 1.445,78 $ a circa 1.490 $ con ETH invariato. I tassi sono variabili: più tardi quella sera il tasso sui prestiti di USDC ha toccato il 14,1% per meno di un'ora (blocco 26194180), perché quasi tutti gli USDC depositati erano stati prestati.
+- **Tagli delle soglie.** In Aave V3 una soglia di liquidazione più bassa si applica subito a tutte le posizioni aperte, e il prezzo di liquidazione si scala di vecchia LT ÷ nuova LT. Un ipotetico taglio di WETH dall'83% all'80% sposterebbe il prezzo di liquidazione della stessa posizione da 1.445,78 $ a 1.500,00 $. I tagli arrivano tramite proposte di governance o tramite i Risk Stewards, che possono modificare le soglie entro limiti configurati.
+- **Le modifiche del LTV non contano.** Abbassare il LTV di un asset, anche a 0, riduce o elimina la capacità di prestito che dà, ma lascia invariati il fattore di salute e il prezzo di liquidazione.
+- **Aave V4 è diverso.** Le modifiche del fattore di collaterale di norma si applicano alle nuove posizioni; quelle esistenti mantengono le vecchie impostazioni finché l'utente non prende in prestito, preleva o modifica le impostazioni del collaterale, o finché il Governor non le aggiorna. V4 aggiunge anche uno User Risk Premium al tasso sui prestiti per i collaterali più rischiosi, quindi il debito, e con lui il prezzo di liquidazione, può crescere più in fretta.
+
+## Quanto vicino al prezzo di liquidazione è troppo vicino?
+
+Nessuna distanza dal prezzo di liquidazione è sicura per tutti. Per un collaterale volatile con debito in stablecoin, la distanza è 1 − 1 ÷ HF: un fattore di salute di 1,25 lascia spazio per un calo del 20%, 1,5 lascia il 33,3% e 2,0 il 50%. Quanto spazio ti serve dipende dalla volatilità del collaterale, da quanto in fretta puoi rimborsare o aggiungere collaterale e da quanto è congestionata la rete in quel momento. [Quanto margine ti dà un fattore di salute](/it/blog/fattore-di-salute-aave-sicuro) ha la tabella completa.
+
+### Come trasformi un prezzo di liquidazione in una soglia di avviso sul fattore di salute?
+
+Scegli il prezzo a cui vorresti agire e convertilo in un fattore di salute. Per un collaterale volatile con debito in stablecoin, **HF a un dato prezzo = quel prezzo ÷ prezzo di liquidazione**. Per 10 WETH contro 12.000 USDC (prezzo di liquidazione 1.445,78 $), agire con ETH a 1.800 $ significa un fattore di salute di 1.800 ÷ 1.445,78 = 1,245, quindi una soglia di circa 1,25. Con un debito volatile si inverte: HF = prezzo di liquidazione ÷ prezzo dell'asset preso in prestito.
+
+Una soglia sul fattore di salute ha due vantaggi rispetto a un livello di prezzo. Segue il tuo prezzo di liquidazione mentre maturano gli interessi e mentre modifichi la posizione, e copre in una volta ogni asset in collaterale e ogni debito. Un avviso su un prezzo fisso diventa obsoleto non appena il debito cresce.
+
+Tokenping funziona così: invia avvisi sul fattore di salute e non ha avvisi sul prezzo. Imposti una soglia per ogni mercato Aave V3 o Spoke di Aave V4, da 1,1 a 10. Tokenping controlla ogni 5 minuti e, a ogni controllo in cui il tuo fattore di salute è sotto la soglia, invia un messaggio a ogni canale che hai scelto (Signal, Telegram, email o più di uno). Un movimento rapido può superare 1,00 tra due controlli, quindi una soglia sopra il livello a cui agiresti ti fa guadagnare tempo; non può fermare una liquidazione. I passaggi sono in [come configurare un avviso sul fattore di salute](/it/blog/configurare-avvisi-fattore-di-salute-aave), oppure puoi prima [controllare il tuo fattore di salute su Aave V3](/it/aave).
+
+## Come calcoli il prezzo di liquidazione della tua posizione?
+
+Per calcolare il tuo prezzo di liquidazione su Aave ti servono la quantità di ogni collaterale, la soglia di liquidazione di ogni collaterale, il tuo debito totale e il prezzo attuale dell'oracolo. L'app di Aave li mostra tutti e quattro.
+
+1. Annota la quantità di ogni collaterale, il tuo debito totale e se il tuo account è in E-Mode.
+2. Trova la soglia di liquidazione di ogni collaterale nella sua pagina dell'app di Aave ("Liquidation threshold" sotto "Collateral usage"). In E-Mode, usa la soglia della categoria solo per i collaterali del set della categoria; qualsiasi altro collaterale mantiene la propria soglia.
+3. Con un collaterale volatile e debito in stablecoin, dividi il prezzo dell'oracolo per il tuo fattore di salute. Con due collaterali, il prezzo di A è (debito − valore di B × LT di B) ÷ (quantità di A × LT di A). Con un asset volatile preso in prestito, il suo prezzo è Σ(valore del collaterale × LT) ÷ quantità presa in prestito. Il calcolatore qui sotto gestisce tutti e tre i casi.
+4. Ricalcola dopo aver preso in prestito, rimborsato o aggiunto collaterale, e dopo una modifica della soglia.
+
+Esempio pratico su Aave V3 Arbitrum, dove la soglia di liquidazione di WETH era 84% il 14 ottobre 2026: 5 WETH a 2.400 $ contro 7.000 USDC danno un fattore di salute di 12.000 × 0,84 ÷ 7.000 = 1,44 e un prezzo di liquidazione di 2.400 ÷ 1,44 = 1.666,67 $, un calo del 30,6%. Con l'83% di Ethereum Core la stessa posizione verrebbe liquidata sotto 1.686,75 $.
+
+<LiquidationCalculator />
+
+Qualsiasi calcolatore ti dà il prezzo di liquidazione di oggi. Interessi, modifiche delle soglie e le tue transazioni lo spostano in seguito, quindi vale la pena ricalcolare il risultato del mese scorso.
+
+## Fonti
+
+- [Aave V3 GenericLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): formula del fattore di salute e soglia E-Mode applicata solo al set di collaterali della categoria (consultato il 14 ottobre 2026)
+- [Aave V3 ValidationLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): liquidazione sotto un fattore di salute di 1,00, controlli del LTV sui prestiti (consultato il 14 ottobre 2026)
+- [Aave V3 LiquidationLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): quanto debito può rimborsare una singola liquidazione (consultato il 14 ottobre 2026)
+- [PoolDataProvider di Aave V3 Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getReserveConfigurationData` ai blocchi 26193284 e 26194239; `getReserveData` ai blocchi 26193378 e 26194180 (consultato il 14 ottobre 2026; riletto il 15 ottobre 2026)
+- [PoolDataProvider di Aave V3 Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): `getReserveConfigurationData` ai blocchi Arbitrum 514855406 e 514896811 (consultato il 14 ottobre 2026; riletto il 15 ottobre 2026)
+- [Pool di Aave V3 Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): categoria E-Mode 1 "ETH correlated": configurazione del collaterale e bitmap dei collaterali, degli asset prendibili in prestito e degli LTV a zero (consultato il 14 ottobre 2026; riletto il 15 ottobre 2026)
+- [AaveOracle su Ethereum](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): `getAssetPrice` al blocco 26193376; `getSourceOfAsset(USDC)` al blocco 26194239 (consultato il 14 ottobre 2026; riletto il 15 ottobre 2026)
+- [Adapter di prezzo USDC di Aave su Ethereum, "Capped USDC / USD"](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B): `getPriceCap` = 104000000 (1,04 $) al blocco 26194239 (consultato il 15 ottobre 2026)
+- [Documentazione dell'oracolo di Aave](https://aave.com/docs/ecosystem/oracle.md): feed di Chainlink e adapter CAPO (consultato il 14 ottobre 2026)
+- [Repository dei price feed di Aave (PriceCapAdapterStable)](https://github.com/aave-dao/aave-price-feeds): come funziona il tetto al prezzo di USDC (consultato il 14 ottobre 2026)
+- [Gauntlet, "Aave Resilient Through USDC Volatility" (Aave resiste alla volatilità di USDC)](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330): il minimo di USDC di circa 88 centesimi l'11 marzo 2023 (consultato il 14 ottobre 2026)
+- [Chaos Labs, post-mortem sul tasso di cambio di wstETH](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): l'incidente CAPO di marzo 2026 (consultato il 14 ottobre 2026)
+- [Aave V3 Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): come possono cambiare i parametri di rischio tra un voto di governance e l'altro (consultato il 14 ottobre 2026)
+- [Documentazione di Aave V4 sulle posizioni degli utenti](https://aave.com/docs/aave-v4/positions.md): fattore di collaterale e liquidazione sotto un fattore di salute di 1,0 (consultato il 14 ottobre 2026)
+- [Panoramica di Aave V4 (aave/aave-v4)](https://github.com/aave/aave-v4/blob/main/docs/overview.md): configurazione dinamica del rischio e User Risk Premium (consultato il 14 ottobre 2026)
+- [API di Aave V4](https://api.v4.aave.com/graphql): query `reserves`, fattore di collaterale di WETH per Spoke su Ethereum (consultato il 14 ottobre 2026)
+- [Changelog di Aave](https://aave.com/docs/resources/changelog.md): reti di V4 (consultato il 14 ottobre 2026)
+- [Codice sorgente dell'interfaccia di Aave, SupplyInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/SupplyInfo.tsx) e [ReserveTopDetails.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/ReserveTopDetails.tsx): le etichette "Liquidation threshold" e "Oracle price" nell'app di Aave (consultato il 14 ottobre 2026)
+
+_Contenuto informativo, non è una consulenza finanziaria. Gli avvisi riducono il rischio, ma non impediscono la liquidazione._

@@ -1,0 +1,157 @@
+export const meta = {
+  slug: "tassi-di-interesse-aave",
+  title: "Tassi di interesse Aave: come funzionano e perché schizzano",
+  description:
+    "I tassi sui prestiti di Aave seguono una curva di utilizzo: dolce fino a un livello ottimale, ripida oltre. Formula, parametri reali, perché schizzano.",
+  h1: "Come funzionano i tassi di interesse di Aave, e perché i tassi sui prestiti schizzano in alto?",
+  publishedAt: "2026-10-25",
+  primaryQuestion: "Come fissa Aave i tassi sui prestiti e sui depositi, e perché schizzano in alto?",
+  readingMinutes: 10,
+};
+
+<ShortAnswer>
+  Su Aave V3, il tasso variabile sui prestiti di ogni asset segue una curva fissata dalla governance: sale piano con
+  l'utilizzo, la quota dei token depositati che è stata presa in prestito, fino a un livello ottimale, poi ripido oltre
+  quel livello. Chi deposita guadagna il tasso sui prestiti moltiplicato per l'utilizzo, meno il fattore di riserva. I
+  tassi vengono ricalcolati a ogni deposito, prestito, rimborso e prelievo, quindi un solo grosso prelievo può spingere
+  l'utilizzo oltre il livello ottimale e moltiplicare il tasso nel giro di un blocco: USDC su Ethereum Core è passato
+  dal 4,50% al 13,67% APR il 14 ottobre 2026 ed era di nuovo al 4,76% circa 36 minuti dopo. Tutto il debito su Aave V3 è
+  a tasso variabile.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Le cifre e i numeri di blocco a cui sono state lette: content/blog/snapshots/aave-interest-rates.md */}
+
+## Cosa determina il tasso sui prestiti su Aave?
+
+Su Aave V3, il tasso sui prestiti di un asset dipende da due cose: il suo utilizzo e i suoi parametri di tasso di interesse. L'utilizzo è la quota del pool dell'asset che è stata prestata: il debito diviso per il debito più i token ancora disponibili. I parametri sono quattro numeri per asset, fissati dalla governance di Aave, e i Risk Stewards di Aave possono modificarli con passi limitati e tempi minimi di attesa:
+
+- **Rapporto di utilizzo ottimale (optimal usage ratio):** l'utilizzo a cui la curva piega.
+- **Tasso base (base rate):** il tasso sui prestiti allo 0% di utilizzo.
+- **Pendenza 1 (slope 1):** di quanto sale il tasso dallo 0% al rapporto di utilizzo ottimale.
+- **Pendenza 2 (slope 2):** di quanto sale ancora dal rapporto di utilizzo ottimale al 100%.
+
+Letti il 25 ottobre 2026 al blocco Ethereum 26269328 e al blocco Arbitrum 518125419, i parametri e i tassi di alcuni asset comuni erano:
+
+| Mercato e asset    | Utilizzo ottimale | Base | Pendenza 1 | Pendenza 2 | Utilizzo       | APR prestiti | APR depositi |
+| ------------------ | ----------------- | ---- | ---------- | ---------- | -------------- | ------------ | ------------ |
+| Ethereum Core USDC | 94%               | 0%   | 4,5%       | 10%        | 93,72%         | 4,49%        | 3,78%        |
+| Ethereum Core USDT | 92%               | 0%   | 4,5%       | 10%        | 87,81%         | 4,30%        | 3,39%        |
+| Ethereum Core WETH | 92%               | 0%   | 2,2%       | 6%         | 81,31%         | 1,94%        | 1,31%        |
+| Ethereum Core GHO  | 99%               | 4,5% | 0%         | 0%         | non utilizzato | 4,50%        | 0%           |
+| Arbitrum USDC      | 90%               | 0%   | 4%         | 10%        | 77,32%         | 3,44%        | 2,39%        |
+
+GHO è l'eccezione: entrambe le sue pendenze sono a zero, quindi il suo tasso resta piatto qualunque sia l'utilizzo, e viene modificato a mano (vedi [GHO e Aave V4](#come-vengono-fissati-i-tassi-per-gho-e-su-aave-v4)).
+
+## Come si calcola il tasso sui prestiti di Aave?
+
+Il tasso sui prestiti di Aave V3 è una retta fino al rapporto di utilizzo ottimale e una retta molto più ripida oltre. Con U per l'utilizzo:
+
+**Fino al rapporto di utilizzo ottimale: tasso sui prestiti = base + pendenza 1 × U ÷ rapporto di utilizzo ottimale**
+
+**Oltre: tasso sui prestiti = base + pendenza 1 + pendenza 2 × (U − rapporto di utilizzo ottimale) ÷ (1 − rapporto di utilizzo ottimale)**
+
+Nel contratto, U è il debito totale diviso per il debito totale più i token che il pool ha ancora. Con i parametri di USDC su Ethereum Core, il tasso a ogni livello di utilizzo è:
+
+| Utilizzo       | APR prestiti |
+| -------------- | ------------ |
+| 50%            | 2,39%        |
+| 80%            | 3,83%        |
+| 90%            | 4,31%        |
+| 94% (ottimale) | 4,50%        |
+| 95%            | 6,17%        |
+| 96%            | 7,83%        |
+| 98%            | 11,17%       |
+| 100%           | 14,50%       |
+
+Sotto il 94%, dieci punti di utilizzo spostano il tasso di meno di mezzo punto. Sopra, ogni punto aggiunge circa 1,67 punti, e gli ultimi sei punti di utilizzo più che triplicano il tasso. Letto il 25 ottobre 2026, USDC era al 93,72%, appena sotto la piega: 4,5% × 0,9372 ÷ 0,94 dà il 4,49% che stava applicando.
+
+La curva è pensata per funzionare così. Sotto il livello ottimale, prendere in prestito costa poco e il pool resta utilizzato; sopra, il tasso ripido rende il prestito abbastanza caro da spingere alcuni debitori a rimborsare e alcuni detentori a depositare, il che riporta giù l'utilizzo e lascia token disponibili per chi ha depositato e vuole prelevare.
+
+## Perché i tassi sui prestiti di Aave schizzano in alto?
+
+I tassi sui prestiti di Aave schizzano in alto quando l'utilizzo supera il rapporto di utilizzo ottimale, di solito perché un grande depositante preleva o un grande debitore prende in prestito. Il tasso viene ricalcolato nella stessa transazione, e ogni debitore di quell'asset paga il nuovo tasso da quel momento fino alla modifica successiva.
+
+Il 14 ottobre 2026, un solo prelievo di esattamente 133.898.000 USDC da Ethereum Core ha portato l'utilizzo dal 93,92% al 99,50% in un unico blocco:
+
+| Blocco Ethereum (UTC)           | Cosa è successo                                      | Utilizzo    | APR prestiti USDC |
+| ------------------------------- | ---------------------------------------------------- | ----------- | ----------------- |
+| 26194052 (14 ottobre, 23:32:47) | Prima                                                | 93,92%      | 4,50%             |
+| 26194053 (14 ottobre, 23:32:59) | 133.898.000 USDC prelevati                           | 99,50%      | 13,67%            |
+| 26194088 (14 ottobre, 23:39:59) | Punto più alto nell'intervallo                       | circa 99,8% | 14,18%            |
+| 26194231 (15 ottobre, 00:08:35) | Lo stesso indirizzo ha ridepositato 133.898.000 USDC | 94,16%      | 4,76%             |
+
+I debitori hanno pagato circa tre volte il tasso abituale per 36 minuti, e la formula qui sopra riproduce ciascuno di quei tassi a partire dall'utilizzo. Un picco dura finché l'utilizzo resta alto: qui sono tornati gli stessi token, ma in altri casi servono nuovi depositanti o rimborsi, attirati dal tasso alto, per farlo scendere.
+
+Altre due cose cambiano un tasso sui prestiti. La governance o i Risk Stewards possono cambiare i quattro parametri, il che sposta tutta la curva in una volta. E tra una transazione e l'altra il tasso non cambia: Aave lo ricalcola a ogni deposito, prestito, rimborso, prelievo e liquidazione di quell'asset, e gli interessi maturano a quel tasso, secondo dopo secondo, fino alla successiva.
+
+## Perché chi deposita guadagna meno di quanto pagano i debitori?
+
+Chi deposita guadagna meno di quanto pagano i debitori perché solo la parte prestata del pool paga interessi, e il protocollo ne trattiene una quota. Il tasso sui depositi è:
+
+**Tasso sui depositi = tasso sui prestiti × utilizzo × (1 − fattore di riserva)**
+
+Per USDC su Ethereum Core il 25 ottobre 2026: 4,4866% × 0,9372 × (1 − 0,10) = 3,78%. Il fattore di riserva (reserve factor), 10% per USDC e 15% per WETH, va alla tesoreria di Aave. Quando una riserva ha un deficit dovuto a crediti inesigibili (bad debt), il contratto lo conteggia anche dal lato dei depositi, il che abbassa leggermente il tasso sui depositi.
+
+## Qual è la differenza tra APR e APY su Aave?
+
+I contratti salvano i tassi come APR, e l'app di Aave mostra l'APY, che aggiunge la capitalizzazione. La libreria matematica dell'app capitalizza l'APR ogni secondo su un anno di 31.536.000 secondi:
+
+**APY = (1 + APR ÷ 31.536.000)^31.536.000 − 1**
+
+Il 4,4866% APR di USDC su Ethereum Core appare nell'app come APY del 4,59%. A questi livelli la differenza è di circa un decimo di punto; con un APR del 14% è di circa un punto (APY del 15,0%).
+
+## Come incidono i picchi dei tassi sul tuo fattore di salute?
+
+Un picco breve sposta appena il tuo fattore di salute (health factor); un tasso alto che dura mesi lo sposta eccome. Gli interessi si aggiungono al debito, e più debito abbassa il fattore di salute, come spiega [la causa legata agli interessi in perché il tuo fattore di salute scende](/it/blog/perche-il-fattore-di-salute-aave-e-sceso#causa-3-gli-interessi-sul-tuo-debito-sono-cresciuti-piu-in-fretta-di-quelli-sul-tuo-collaterale).
+
+Prendi 10 WETH depositati contro 12.000 USDC presi in prestito su Ethereum Core, con la soglia di liquidazione (liquidation threshold) di WETH all'83% (letta il 14 ottobre 2026) e un prezzo indicativo di ETH di 2.400 $: il fattore di salute è 1,66. Contando quanto rende il WETH al suo tasso sui depositi dell'1,31%:
+
+| Quanto dura il tasso | Al 4,49% (25 ottobre 2026)         | Al 14,50% (il punto più alto della curva) |
+| -------------------- | ---------------------------------- | ----------------------------------------- |
+| 36 minuti            | circa 0,04 USDC di interessi, 1,66 | circa 0,12 USDC, 1,66                     |
+| 30 giorni            | circa 1,66                         | circa 1,64                                |
+| Un anno              | circa 1,61                         | circa 1,45                                |
+
+Il picco del 14 ottobre è costato a questa posizione circa 12 centesimi. Un mercato che resta in cima alla sua curva per un anno la porterebbe da 1,66 a circa 1,45 senza alcun movimento di prezzo, ed è per questo che una deriva lenta merita una soglia di avviso con margine in abbondanza ([quanto margine ti dà un fattore di salute](/it/blog/fattore-di-salute-aave-sicuro#quanto-in-fretta-interessi-e-modifiche-ai-parametri-erodono-il-tuo-margine)).
+
+## Cosa puoi fare quando il tuo tasso sul prestito sale di colpo?
+
+Quando il tuo tasso sul prestito sale di colpo, controlla prima l'utilizzo dell'asset nella sua pagina dell'app di Aave: appena sopra il rapporto di utilizzo ottimale, il tasso torna giù non appena scende l'utilizzo. Poi hai quattro opzioni, ognuna con un costo:
+
+- **Aspettare.** Un picco causato da un solo grosso prelievo può finire quando quei token tornano, come il 14 ottobre 2026. Niente garantisce che tornino, e nel frattempo paghi il tasso alto.
+- **Rimborsare parte del debito.** Riduce sia gli interessi sia il rischio; [come alzare il tuo fattore di salute su Aave](/it/blog/evitare-la-liquidazione-su-aave) spiega come rimborsare con i tuoi token o con il tuo collaterale.
+- **Spostare il debito su un altro asset.** L'interfaccia di Aave Labs ha uno swap di debito che sostituisce un asset preso in prestito con un altro in una sola transazione, sui mercati Core, Prime ed EtherFi di Ethereum e su Arbitrum, Avalanche, Base, BNB Chain, Optimism, Polygon, Gnosis e Sonic, secondo la documentazione di Aave. Non è indicato per Metis, Scroll, ZKsync, Celo, Soneium, Linea, Plasma o Ink. Il nuovo asset ha la sua curva e il suo rischio, se il suo prezzo si muove in modo diverso dal tuo vecchio debito.
+- **Prendere in prestito in un altro mercato.** Ogni mercato ha il suo pool e il suo utilizzo: il 25 ottobre 2026, USDC costava il 4,49% su Ethereum Core e il 3,44% su Arbitrum. Spostarsi significa rimborsare in un mercato e prendere in prestito in un altro, con collaterale su quella rete.
+
+## Come vengono fissati i tassi per GHO e su Aave V4?
+
+GHO, la stablecoin di Aave, ha un tasso sui prestiti piatto scelto da persone e non dalla curva. Su Ethereum Core i suoi parametri hanno entrambe le pendenze a zero, quindi il tasso è il tasso base, il 4,50% al 25 ottobre 2026. Viene modificato tramite un contratto steward di GHO da un Risk Council 2 su 3: al massimo di 5 punti percentuali per aggiornamento e al massimo una volta al giorno. L'ultima modifica, il 3 ottobre 2026, l'ha portato dal 4,25% al 4,50%; da novembre 2024 è stato modificato 44 volte, tra il 3,00% e il 14,50%. Il vecchio sconto per chi detiene stkAAVE è stato eliminato con Aave v3.4.
+
+Aave V4 mantiene una curva di utilizzo, ma la sua documentazione la descrive come configurata per asset nell'Hub, il pool che presta a tutti gli Spoke. Oltre a questo tasso condiviso, ogni debitore paga uno User Risk Premium che dipende dalla qualità del suo collaterale: l'esempio di Aave è un premio del 50% su un tasso base del 5%, che dà il 7,5%. Due debitori V4 dello stesso asset possono quindi pagare tassi diversi, e la [sezione su V4 della guida al fattore di salute](/it/blog/fattore-di-salute-aave#il-fattore-di-salute-e-diverso-su-aave-v4) spiega cos'altro cambia con V4.
+
+## Puoi ottenere un tasso fisso su Aave?
+
+No. Aave V3 aveva un tempo un'opzione a tasso stabile, ma è stata completamente deprecata nel 2024 dopo una segnalazione di bug, e Aave v3.2 ne ha rimosso il codice. Ogni prestito su Aave V3 paga il tasso variabile, e il tasso piatto di GHO può comunque cambiare in qualsiasi momento entro i limiti del suo steward.
+
+## Un avviso può segnalarti l'aumento dei tassi?
+
+Un avviso sul fattore di salute non controlla i tassi; controlla l'effetto dei tassi sulla tua posizione. Tokenping controlla il tuo fattore di salute su Aave V3 e V4 ogni 5 minuti su 22 reti e ti scrive su Signal, Telegram o email finché è sotto la soglia che hai impostato (da 1,1 a 10). Un picco come quello del 14 ottobre 2026 non lo fa scattare, perché sposta appena il fattore di salute; mesi di interessi alti sì, una volta che il debito è cresciuto abbastanza da superare la tua soglia.
+
+Se vuoi un messaggio sul tasso in sé, alcuni altri strumenti inviano avvisi sui tassi, e [il nostro confronto tra gli strumenti di avviso per Aave](/it/blog/strumenti-avvisi-liquidazione-aave) elenca cosa controlla ciascuno. La configurazione di un avviso sul fattore di salute è in [come configurare un avviso sul fattore di salute](/it/blog/configurare-avvisi-fattore-di-salute-aave), e puoi prima [controllare il tuo fattore di salute su Aave V3](/it/aave); vedere le tue posizioni non richiede pagamenti.
+
+## Fonti
+
+- [DefaultReserveInterestRateStrategyV2.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/misc/DefaultReserveInterestRateStrategyV2.sol) e [ReserveLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ReserveLogic.sol): la curva dei tassi, il rapporto di utilizzo, il tasso sui depositi e quando i tassi vengono ricalcolati (aave-v3-origin, consultato il 25 ottobre 2026)
+- [Strategia dei tassi di interesse di Aave V3 Ethereum Core](https://etherscan.io/address/0x9ec6F08190DeA04A54f8Afc53Db96134e5E3FdFB#readContract) e [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): parametri e tassi al blocco 26269328; USDC ai blocchi 26194052, 26194053, 26194088, 26194230 e 26194231 (consultato il 25 ottobre 2026)
+- [Strategia dei tassi di interesse di Aave V3 Arbitrum](https://arbiscan.io/address/0x429F16dBA3B9e1900087Cbaa7b50D38Bc60fB73F#readContract): parametri e tassi di USDC al blocco 518125419 (consultato il 25 ottobre 2026)
+- [Aave Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): i parametri dei tassi di interesse tra i valori che gli steward possono modificare, con una variazione massima e un tempo minimo di attesa per aggiornamento (consultato il 25 ottobre 2026)
+- [calculateCompoundedRate in aave-utilities](https://github.com/aave/aave-utilities/blob/master/packages/math-utils/src/formatters/compounded-interest/calculate-compounded-interest.ts): da APR ad APY su 31.536.000 secondi (consultato il 25 ottobre 2026)
+- [Funzioni di swap di Aave](https://aave.com/docs/aave-v3/smart-contracts/swap-features.md): swap di debito e rimborso con il collaterale, e i mercati che li supportano (consultato il 25 ottobre 2026)
+- [GHO Stewards: aggiornamento del tasso sui prestiti di GHO di ottobre 2026](https://governance.aave.com/t/gho-stewards-october-2026-gho-borrow-rate-update/25754) (TokenLogic, 2 ottobre 2026, consultato il 25 ottobre 2026) e il [contratto steward di GHO](https://etherscan.io/address/0x98217A06721Ebf727f2C8d9aD7718ec28b7aAe34#readContract): limiti per aggiornamento e storico dei tassi da novembre 2024 (consultato il 25 ottobre 2026)
+- [Funzioni di Aave v3.4](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.4/Aave-v3.4-features.md): eliminazione dello sconto stkAAVE su GHO (consultato il 25 ottobre 2026)
+- [BGD: Full deprecation of stable rate](https://governance.aave.com/t/bgd-full-deprecation-of-stable-rate/16473) (deprecazione completa del tasso stabile, 31 gennaio 2024) e [funzioni di Aave v3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): tasso stabile rimosso (consultato il 25 ottobre 2026)
+- [Documentazione di Aave V4](https://aave.com/docs/aave-v4.md) e [posizioni su V4](https://aave.com/docs/aave-v4/positions.md): la curva dei tassi per asset dell'Hub e lo User Risk Premium (consultato il 25 ottobre 2026)
+
+_Contenuto informativo, non è una consulenza finanziaria. Gli avvisi riducono il rischio, ma non impediscono la liquidazione._

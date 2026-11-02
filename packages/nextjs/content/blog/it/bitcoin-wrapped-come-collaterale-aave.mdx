@@ -1,0 +1,153 @@
+export const meta = {
+  slug: "bitcoin-wrapped-come-collaterale-aave",
+  title: "Bitcoin wrapped su Aave e Morpho: WBTC, cbBTC, tBTC, LBTC",
+  description:
+    "Come WBTC, cbBTC, tBTC, LBTC ed eBTC differiscono come collaterale su Aave V3 e Morpho: soglie, tetti, oracoli ed effetto di un depeg sul tuo prestito.",
+  h1: "Contro quale bitcoin wrapped prendere in prestito, e cosa può andare storto?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "In cosa differiscono WBTC, cbBTC, tBTC e LBTC come collaterale su Aave e Morpho?",
+  readingMinutes: 15,
+};
+
+<ShortAnswer>
+  Il bitcoin arriva su Aave e Morpho sotto forma di token wrapped, ciascuno garantito da BTC custoditi altrove, e i
+  protocolli li trattano in modo diverso. Su Aave V3 Ethereum Core, il 29 ottobre 2026, WBTC e cbBTC avevano un rapporto
+  prestito/valore (LTV) dell'81% e una soglia di liquidazione (liquidation threshold) dell'85%, tBTC e BTC.b 73% e 78%,
+  LBTC 70% e 75%, eBTC 67% e 72%. Anche il prezzo è calcolato in modo diverso: Aave valuta WBTC con un feed WBTC/BTC
+  moltiplicato per BTC/USD, quindi uno sconto di WBTC abbassa il tuo fattore di salute (health factor), e quel giorno il
+  feed segnava 0,9985. cbBTC e tBTC invece valgono esattamente 1 BTC, LBTC ed eBTC il loro tasso di cambio di staking
+  entro un tetto. Su Morpho ogni mercato sceglie il proprio oracolo e il proprio LTV di liquidazione (LLTV): i grandi
+  mercati cbBTC/USDC usano l'86% e il solo feed BTC/USD. La scelta del wrapper sposta il tuo prezzo di liquidazione fino
+  al 18% e decide se un depeg (perdita dell'ancoraggio al BTC) del wrapper stesso può farti liquidare.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* I dati e i numeri di blocco a cui sono stati letti: content/blog/snapshots/wrapped-bitcoin-aave-collateral.md */}
+
+## Perché conta quale bitcoin wrapped depositi?
+
+Aave e Morpho girano su chain EVM, il bitcoin no, quindi ogni posizione in BTC su di essi è un token wrapped: un ERC-20 che qualcuno promette di riscattare in bitcoin. Chi fa questa promessa, e come, è la prima differenza tra i wrapper. WBTC è emesso da custodi a fronte di bitcoin conservati offline (cold storage), dall'ottobre 2024 da una joint venture di BitGo e BiT Global con le chiavi distribuite tra Stati Uniti, Singapore e Hong Kong. cbBTC è il wrapper di Coinbase, garantito dai bitcoin che Coinbase detiene. tBTC è quello di Threshold Network, emesso da una rete di firmatari anziché da una sola società. LBTC è quello di Lombard: bitcoin in staking tramite Babylon, con un consorzio di operatori che verifica i depositi e firma i riscatti, e dal 2025 produce rendimento, quindi un LBTC vale lentamente più di un BTC. eBTC è il wrapper di ether.fi, garantito in gran parte da LBTC. BTC.b è il bitcoin trasferito via bridge di Avalanche, e FBTC quello di Function.
+
+Un protocollo di prestito vede tre cose in questo elenco: quanto è probabile che il wrapper si allontani dal prezzo del BTC, quanto è profondo il suo mercato se i liquidatori devono venderlo e come dargli un prezzo. Queste tre cose decidono la soglia di liquidazione, i tetti e l'oracolo, e insieme decidono il tuo fattore di salute, il tuo prezzo di liquidazione e quali eventi possono farti liquidare. Lo stesso 1 BTC di collaterale è un prestito diverso a seconda del wrapper con cui arriva.
+
+## Quali wrapper accetta Aave, e a quali condizioni?
+
+Aave V3 Ethereum Core elencava sette wrapper di BTC il 29 ottobre 2026. Letti dal PoolDataProvider al blocco 26296985:
+
+| Wrapper | LTV | Soglia di liquidazione | Bonus | Prestabile | Tetto di deposito (usato) | Depositato |
+| ------- | --- | ---------------------- | ----- | ---------- | ------------------------- | ---------- |
+| WBTC    | 81% | 85%                    | 5,0%  | sì         | 38.200 (89,4%)            | 34.138,21  |
+| cbBTC   | 81% | 85%                    | 7,5%  | sì         | 20.000 (86,5%)            | 17.303,85  |
+| tBTC    | 73% | 78%                    | 7,5%  | tetto 1    | 1.800 (98,9%)             | 1.779,39   |
+| LBTC    | 70% | 75%                    | 8,5%  | no         | 2.690 (100,0%)            | 2.689,93   |
+| eBTC    | 67% | 72%                    | 10,0% | no         | 134 (56,0%)               | 75,02      |
+| BTC.b   | 73% | 78%                    | 7,5%  | no         | 225 (7,0%)                | 15,84      |
+| FBTC    | 0%  | 78%                    | 7,5%  | no         | congelato                 | 153,83     |
+
+WBTC e cbBTC sono il collaterale di cui il mercato si fida di più: la soglia più alta, il bonus più basso e i depositi più ampi, il 60,8% e il 30,8% dei 56.156 BTC wrapped su Core. I wrapper più recenti o meno liquidi ricevono una soglia più bassa e un bonus più alto: è il protocollo che paga di più i liquidatori per vendere un token con un mercato meno profondo. FBTC è congelato con un LTV pari a 0, quindi conta ancora nel fattore di salute ma non sostiene nuovo debito e non accetta nuovi depositi.
+
+Tre dei sette tetti erano quasi o del tutto esauriti. LBTC aveva 0,07 LBTC di margine: chi aveva un prestito garantito da LBTC sotto pressione quel giorno non poteva aggiungere LBTC e doveva invece rimborsare. [Perché una transazione su Aave fallisce](/it/blog/perche-prelievo-o-prestito-aave-fallisce#3-il-limite-di-deposito-e-pieno) spiega cosa blocca un tetto esaurito. tBTC aveva il prestito abilitato con un tetto di 1, il che, con 2,57 tBTC già presi in prestito, significa che nessun nuovo prestito va a buon fine.
+
+Anche le condizioni di WBTC sono cambiate. Il 14 ottobre 2026 Ethereum Core dava a WBTC un LTV del 73% e una soglia del 78%, i numeri usati dalla [guida sul fattore di salute](/it/blog/fattore-di-salute-aave); il 28 ottobre erano 81% e 85%. La storia dietro i numeri più bassi è in una sezione più avanti.
+
+## Come assegna Aave un prezzo a ciascun wrapper?
+
+Aave ha un prezzo per asset e per mercato, fornito dall'Aave Oracle, e il fattore di salute e ogni liquidazione usano quello. I sette wrapper seguono tre schemi. Letti allo stesso blocco:
+
+| Wrapper                  | Fonte dell'oracolo        | Come è costruito                                           | Prezzo il 29 ottobre 2026 |
+| ------------------------ | ------------------------- | ---------------------------------------------------------- | ------------------------- |
+| WBTC                     | "wBTC/BTC/USD"            | feed WBTC/BTC (0,9985) × BTC/USD                           | 79.699,16 $               |
+| cbBTC, tBTC, BTC.b, FBTC | "BTC / USD"               | il solo feed BTC/USD                                       | 79.818,89 $               |
+| LBTC                     | "Capped LBTC / BTC / USD" | tasso di cambio di Lombard (1,005244) × BTC/USD, con tetto | 80.237,45 $               |
+| eBTC                     | "Capped eBTC / BTC / USD" | tasso di ether.fi (1,004224) × BTC/USD, con tetto          | 80.156,03 $               |
+
+Questa differenza decide cosa ti succede con un depeg del wrapper.
+
+**WBTC è valutato al suo rapporto di mercato con il BTC.** L'adattatore moltiplica un feed WBTC/BTC per BTC/USD, quindi se WBTC scambia a sconto il tuo collaterale vale meno nel fattore di salute e il tuo prezzo di liquidazione sale. Il 29 ottobre 2026 il rapporto era 0,9985, il che valutava WBTC 119,73 $ meno di cbBTC. In una vera perdita di fiducia nel custode il rapporto scende, e le posizioni in WBTC possono essere liquidate con il bitcoin stesso fermo.
+
+**cbBTC, tBTC, BTC.b e FBTC sono valutati esattamente 1 BTC.** L'oracolo usa il feed BTC/USD e nient'altro. Uno sconto nel mercato del wrapper non arriva al tuo fattore di salute; arriva al protocollo, i cui liquidatori sequestrerebbero collaterale che vale meno di quanto dice l'oracolo. Aave compensa con tetti più stretti e, per tBTC e BTC.b, con una soglia più bassa. Per chi prende in prestito questo schema è più clemente durante una crisi del wrapper e più severo tutti gli altri giorni.
+
+**LBTC ed eBTC sono valutati in base al loro tasso di cambio, sotto un tetto CAPO.** LBTC matura rendimento da staking, quindi l'oracolo di Lombard indica quanti BTC rappresenta un LBTC, 1,005244 il 29 ottobre 2026, e Aave moltiplica questo valore per BTC/USD. L'adattatore CAPO limita la velocità con cui il rapporto può salire, 2,00% all'anno per LBTC e 1,90% per eBTC a partire da uno snapshot di 1,0, così un tasso manipolato o guasto non può gonfiare il collaterale; quel giorno il tetto per LBTC era 1,0274, sopra il rapporto effettivo, quindi non era vincolante. Il tasso può anche scendere: se Babylon applicasse uno slashing ai bitcoin in staking, il rapporto di Lombard calerebbe e con esso il fattore di salute di ogni posizione in LBTC. La proposta di Chaos Labs del 2025 che ha spostato LBTC da un semplice feed BTC/USD a questo schema spiega la scelta: un prezzo fisso 1:1 "would underprice LBTC relative to its intrinsic value" (sottovaluterebbe LBTC rispetto al suo valore intrinseco) una volta avviato il rendimento.
+
+La [guida sul depeg delle stablecoin](/it/blog/depeg-stablecoin-aave) descrive la stessa distinzione per i token in dollari: ciò che l'oracolo misura è ciò che può liquidarti.
+
+## Esempio pratico: 1 BTC di collaterale contro 40.000 USDC
+
+Deposita un'unità di ciascun wrapper su Ethereum Core e prendi in prestito 40.000 USDC. Il fattore di salute è valore del collaterale × soglia di liquidazione ÷ debito, e il prezzo di liquidazione è 40.000 ÷ soglia, nel prezzo usato dall'oracolo:
+
+| Collaterale | Prezzo dell'oracolo | Soglia | Fattore di salute | Prezzo di liquidazione               |
+| ----------- | ------------------- | ------ | ----------------- | ------------------------------------ |
+| 1 WBTC      | 79.699,16 $         | 85%    | 1,694             | 47.058,82 $ per WBTC                 |
+| 1 cbBTC     | 79.818,89 $         | 85%    | 1,696             | 47.058,82 $ per BTC                  |
+| 1 tBTC      | 79.818,89 $         | 78%    | 1,557             | 51.282,05 $ per BTC                  |
+| 1 LBTC      | 80.237,45 $         | 75%    | 1,505             | 53.333,33 $ per LBTC, BTC a 53.055 $ |
+| 1 eBTC      | 80.156,03 $         | 72%    | 1,443             | 55.555,56 $ per eBTC                 |
+
+Tra WBTC ed eBTC, lo stesso debito e lo stesso bitcoin danno un prezzo di liquidazione più alto del 18%. Il limite di prestito si muove nello stesso modo: al livello del LTV, WBTC e cbBTC sostengono l'81% del loro valore, e una posizione portata fino a quel limite parte da un fattore di salute di 85 ÷ 81 = 1,049; per LBTC è 75 ÷ 70 = 1,071, per eBTC 72 ÷ 67 = 1,075. [Come calcolare il tuo prezzo di liquidazione](/it/blog/prezzo-di-liquidazione-aave) riporta la formula generale e un calcolatore.
+
+Due di queste righe si muovono anche per qualcosa di diverso dal prezzo del bitcoin. La riga di WBTC si muove anche con il feed WBTC/BTC; uno sconto del 2% porterebbe la posizione da 1,694 a 1,660 con il BTC invariato. La riga di LBTC si muove con il tasso di cambio di Lombard, un po' in su ogni giorno e in giù in caso di slashing.
+
+## Perché sono cambiate le condizioni di WBTC, e cosa hanno imparato i debitori?
+
+Nell'agosto 2024 BitGo ha annunciato che avrebbe trasferito la custodia di WBTC a una joint venture con BiT Global, un custode di Hong Kong legato a Justin Sun. La reazione sul forum di Aave è la testimonianza più chiara di come un cambio di custodia arriva a chi prende in prestito. Il 18 settembre 2024 LlamaRisk ha proposto di portare a 0 il LTV di WBTC su tutte le istanze di Aave V3 e di ridurre i tetti al 5-10% sopra l'utilizzo, sottolineando però che il piano era "not to offboard WBTC, nor to reduce current exposure" (non rimuovere WBTC, né ridurre l'esposizione attuale). Chaos Labs ha giudicato prematura una raccomandazione di riduzione del rischio. Il piano che i due hanno unificato il 24 settembre 2024 era più moderato ma concreto: tetti al 15% sopra l'utilizzo, la soglia di liquidazione abbassata di un punto ovunque, il LTV ridotto al 70% dove era più alto, il reserve factor dal 20% al 40% e il tetto di prestito di WBTC su Ethereum da 28.000 a 3.250. Il trasferimento della custodia si è concluso l'8 ottobre 2024.
+
+Niente in quell'episodio ha mosso il prezzo del bitcoin. A cambiare sono state le condizioni: soglie e tetti più bassi per ogni debitore in WBTC, decisi da un processo di governance che potevano osservare ma non controllare. Due anni dopo i parametri sono di nuovo più alti, e il passaggio da 73%/78% a 81%/85% nell'ottobre 2026 ha ridotto dell'8% il prezzo di liquidazione di una posizione in WBTC. La lezione è che la soglia è un parametro, non una proprietà del bitcoin: la governance può abbassarla, il che alza il tuo prezzo di liquidazione mentre dormi, e la guida sulla chiusura dei mercati spiega [cosa succede quando Aave chiude un mercato](/it/blog/chiusura-mercato-aave).
+
+## In cosa sono diverse le categorie E-Mode per BTC?
+
+L'[E-Mode](/it/blog/e-mode-aave) di Aave esiste per le coppie di asset che si muovono insieme, e i bitcoin wrapped tra loro sono il caso più chiaro. Su Ethereum Core, il 28 ottobre 2026, le categorie LBTC_WBTC, LBTC_cbBTC e LBTC_tBTC davano al collaterale LBTC un LTV dell'84%, una soglia dell'86% e un bonus del 3% per prendere in prestito quel singolo wrapper; eBTC/WBTC dava 83%, 85% e 3%. Base aveva LBTC_cbBTC a 82%/84% e una categoria "cbBTC Stablecoins" a 82%/85% per prendere in prestito USDC o GHO contro cbBTC. Arbitrum e Base avevano anche categorie tBTC per debito in stablecoin al 72%/75%.
+
+Le categorie BTC contro BTC sono il terreno dei loop (prestito a leva in ciclo): depositi LBTC, prendi in prestito WBTC, compri LBTC, ripeti, per guadagnare il rendimento di Lombard su un multiplo del tuo capitale. Un loop portato al limite dell'84% parte da 86 ÷ 84 = 1,024, e il suo fattore di salute non dipende affatto dal prezzo del bitcoin, solo dal rapporto tra LBTC e WBTC come lo vedono i due oracoli: il tasso di cambio di Lombard da un lato e il feed WBTC/BTC dall'altro. Uno scostamento di circa il 2,4% tra i due lo liquida. È sotto 1,1, la soglia più bassa che Tokenping accetta, quindi questi loop girano sotto qualsiasi avviso; [la guida sull'E-Mode](/it/blog/e-mode-aave#un-avviso-puo-aiutare-con-una-posizione-in-e-mode) spiega il compromesso.
+
+## Come gestisce Morpho il bitcoin wrapped?
+
+Morpho non ha un elenco di asset né una soglia fissata dalla governance per ogni token. Chiunque crea un mercato con un collaterale, un asset in prestito, un oracolo e un LLTV scelto tra quelli abilitati, e i parametri non cambiano mai. Per il bitcoin wrapped significa che la scelta del wrapper e quella dell'oracolo si fanno entrambe mercato per mercato, e i mercati elencati differiscono.
+
+L'API di Morpho elencava questi mercati con collaterale BTC per valore preso in prestito il 29 ottobre 2026, su Ethereum e Base:
+
+| Mercato                | LLTV | In prestito     | Cosa misura l'oracolo                                        |
+| ---------------------- | ---- | --------------- | ------------------------------------------------------------ |
+| cbBTC / USDC, Base     | 86%  | 1,62 miliardi $ | solo BTC/USD: cbBTC vale 1 BTC, USDC vale 1 $                |
+| cbBTC / USDC, Ethereum | 86%  | 309,8 milioni $ | solo BTC/USD                                                 |
+| WBTC / USDC, Ethereum  | 86%  | 115,8 milioni $ | WBTC/BTC × BTC/USD ÷ USDC/USD                                |
+| WBTC / USDT, Ethereum  | 86%  | 84,1 milioni $  | non letto                                                    |
+| LBTC / USDC, Ethereum  | 86%  | 1,9 milioni $   | tasso fondamentale LBTC/BTC di Redstone (1,005244) × BTC/USD |
+| tBTC / USDC, Ethereum  | 77%  | 0,6 milioni $   | non letto                                                    |
+
+Rispetto ad Aave spiccano due cose. Il LLTV è 86% per ogni wrapper principale, un punto sopra la soglia dell'85% di Aave per WBTC e cbBTC e undici sopra quella di Aave per LBTC, perché su Morpho lo fissa chi crea il mercato, non un comitato di rischio, e i prestatori decidono se finanziarlo. E l'oracolo segue il mercato, non il token: il mercato WBTC/USDC qui sopra valuta WBTC tramite un feed WBTC/BTC e USDC tramite un feed USDC/USD, mentre i mercati cbBTC, che portano la maggior parte del volume, trattano entrambi i token come se valessero esattamente il loro ancoraggio. Il 29 ottobre 2026 l'oracolo cbBTC/USDC di Ethereum dava 79.752,37 USDC per cbBTC, quindi 1 cbBTC contro 40.000 USDC aveva un [fattore di salute Morpho](/it/blog/fattore-di-salute-morpho) di 79.752,37 × 0,86 ÷ 40.000 = 1,715 e un prezzo di liquidazione di 46.511,63, poco sotto i 47.058,82 di Aave per lo stesso prestito.
+
+Anche la liquidazione è diversa. [L'incentivo di liquidazione di Morpho](/it/blog/come-funziona-la-liquidazione-su-morpho) con un LLTV dell'86% è del 4,38%, vicino al bonus del 5% di Aave su WBTC e sotto il suo 7,5% su cbBTC, ma un liquidatore su Morpho può rimborsare l'intero debito in una sola transazione, mentre Aave limita la maggior parte delle liquidazioni alla metà. Un prestito in WBTC su Morpho con un oracolo che tiene conto di WBTC/BTC porta la stessa esposizione alla custodia che su Aave; un prestito in cbBTC, su entrambi i protocolli, non ne porta nessuna nel fattore di salute e la scarica tutta sulla solvibilità del protocollo.
+
+## Cosa può andare davvero storto con un prestito in bitcoin wrapped?
+
+- **Il prezzo del bitcoin.** Il rischio ordinario, e quello grande. Il 10 ottobre 2025 sono stati liquidati su Aave più di 250 milioni $ in un giorno, secondo Aave Labs, che conta anche 4,65 miliardi $ in 310.000 liquidazioni dal 2020 a febbraio 2026. Il calcolo del fattore di salute è lo stesso per ogni wrapper; cambia la soglia.
+- **Uno sconto del wrapper, attraverso l'oracolo.** Colpisce le posizioni in WBTC su Aave e sui mercati Morpho con un feed WBTC/BTC. Non colpisce le posizioni in cbBTC o tBTC su Aave, né i mercati cbBTC su Morpho con un oracolo BTC/USD, dove a sostenerlo è il protocollo.
+- **Un calo del tasso di cambio.** LBTC ed eBTC sono valutati con un tasso di staking; uno slashing su Babylon lo abbasserebbe e con esso ogni posizione, su Aave e sui mercati Morpho che usano lo stesso tasso.
+- **Un cambio di parametri.** La governance di Aave può abbassare la soglia o il LTV di un wrapper, portare il suo LTV a 0 o congelarlo, come ha fatto con FBTC. Il LLTV di un mercato Morpho non cambia mai, ma un mercato può essere rimosso dall'app.
+- **Un tetto esaurito o una riserva congelata.** Su Aave entrambi chiudono la strada "aggiungi collaterale" e lasciano il rimborso come unico modo per risalire. Morpho non ha tetti.
+- **Poca liquidità per il wrapper.** È il motivo dei bonus più alti su tBTC, LBTC ed eBTC: un liquidatore che non può vendere in fretta il token sequestrato vuole essere pagato di più per prenderlo, e in un mercato sotto stress potrebbe non arrivare affatto finché la posizione non è ancora più in perdita.
+
+## Come possono aiutare gli avvisi con una posizione in bitcoin wrapped?
+
+Un avviso non sa quale wrapper detieni, né gli interessa. Tokenping legge il fattore di salute di Aave da `getUserAccountData`, che applica già la soglia del wrapper e il prezzo dell'oracolo, rapporto WBTC/BTC e tasso di LBTC compresi, e calcola on-chain il fattore di salute di Morpho dall'oracolo del mercato stesso. Ciò che il wrapper cambia è il modo in cui il numero si muove. Una posizione con un fattore di salute di 1,5 viene liquidata dopo un calo del 33% del prezzo del suo oracolo, qualunque sia il wrapper; una posizione in WBTC ci arriva anche con un calo del 33% del rapporto WBTC/BTC, e una in LBTC attraverso il suo tasso di cambio, quindi l'avviso va messo dove l'uno o l'altro movimento lascerebbe ancora il tempo di rimborsare. Un loop BTC contro BTC a 1,03 è del tutto fuori portata.
+
+Tokenping controlla la tua posizione ogni 5 minuti, in ogni mercato Aave V3 su 21 reti, in ogni Spoke di Aave V4 e in ogni mercato Morpho Blue e Midnight elencato su 14 chain, e ti scrive su Signal, Telegram o via email quando il fattore di salute è sotto la tua soglia (da 1,1 a 10 su Aave, da 1,02 a 10 su Morpho), ripetendo il messaggio a ogni controllo finché non risale. Non può rimborsare al posto tuo, e un movimento brusco può superare due controlli prima che arrivi un messaggio. Puoi [controllare il tuo fattore di salute su Aave V3](/it/aave) o [le tue posizioni Morpho](/it/morpho) senza pagare; gli avvisi costano <AlertPrice />, uno per mercato o Spoke. [Come scegliere una soglia di avviso](/it/blog/fattore-di-salute-aave-sicuro#come-scegli-una-soglia-di-avviso-passo-dopo-passo) e [come configurarne una](/it/blog/configurare-avvisi-fattore-di-salute-aave) coprono il resto.
+
+## Fonti
+
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getAllReservesTokens`, `getReserveConfigurationData`, `getReserveCaps` e `getReserveData` per WBTC, cbBTC, tBTC, LBTC, eBTC, BTC.b e FBTC al blocco 26296985 (consultato il 29 ottobre 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): `getSourceOfAsset` e `getAssetPrice` per i sette wrapper, e `description()` di ogni fonte, al blocco 26296985 (consultato il 29 ottobre 2026)
+- [Adattatore WBTC](https://etherscan.io/address/0xDaa4B74C6bAc4e25188e64ebc68DB5050b690cAc): `ASSET_TO_PEG` (il [feed WBTC / BTC](https://etherscan.io/address/0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23), 0,9985) e `PEG_TO_BASE` al blocco 26296985 (consultato il 29 ottobre 2026)
+- [Adattatore CAPO di LBTC](https://etherscan.io/address/0xf8c04B50499872A5B5137219DEc0F791f7f620D0) e [adattatore CAPO di eBTC](https://etherscan.io/address/0x03bB418e89B75407585f8198178f253DA3216218): `getRatio`, `getSnapshotRatio`, `getSnapshotTimestamp`, `getMaxYearlyGrowthRatePercent`, `getMaxRatioGrowthPerSecond` e `isCapped` al blocco 26296985 (consultato il 29 ottobre 2026)
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2) e i Pool su Base e Arbitrum: le categorie E-Mode per BTC, lette per [la guida sull'E-Mode](/it/blog/e-mode-aave) al blocco Ethereum 26291736 e al blocco Base 53204166 (consultato il 28 ottobre 2026)
+- [API di Morpho](https://api.morpho.org/graphql): mercati elencati con collaterale WBTC, cbBTC, tBTC, LBTC o eBTC su Ethereum e Base, con LLTV, valore preso in prestito, oracolo e feed (consultato il 29 ottobre 2026)
+- [Morpho Blue su Ethereum](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb): `price()` dell'oracolo cbBTC / USDC (86%) al blocco 26297045, e feed e `price()` dell'oracolo WBTC / USDC (86%); `description()` dei feed (consultato il 29 ottobre 2026)
+- [ARFC: Adjusting WBTC Parameters to Address BitGo Transition Risks](https://governance.aave.com/t/arfc-adjusting-wbtc-parameters-to-address-bitgo-transition-risks/19096): la proposta di LlamaRisk del 18 settembre 2024 e il piano unificato del 24 settembre 2024 (consultato il 29 ottobre 2026)
+- [ARFC: Onboard LBTC on Aave v3 Core Instance](https://governance.aave.com/t/arfc-onboard-lbtc-on-aave-v3-core-instance/20142): cos'è LBTC, i suoi parametri iniziali e il dibattito sull'oracolo (consultato il 29 ottobre 2026)
+- [Direct to AIP: LBTC Oracle and CAPO implementation Update](https://governance.aave.com/t/direct-to-aip-lbtc-oracle-and-capo-implementation-update/22614): Chaos Labs, 17 luglio 2025, l'oracolo basato sul tasso di cambio e i parametri CAPO (consultato il 29 ottobre 2026)
+- [ARFC: Core & Base - BTC Correlated Asset Update](https://governance.aave.com/t/arfc-core-base-btc-correlated-asset-update/20940): gli E-Mode di LBTC e il listing su Base, 4 febbraio 2025 (consultato il 29 ottobre 2026)
+- [Unchained: WBTC completes shift to multi-jurisdiction custody model](https://unchainedcrypto.com/wbtc-completes-shift-to-multi-jurisdiction-custody-model/): 9 ottobre 2024 (consultato il 29 ottobre 2026)
+- [Aave Labs: How Aave Liquidations Perform Under Volatile Conditions](https://aave.com/blog/historical-liquidations): 6 febbraio 2026 (consultato il 29 ottobre 2026)
+
+_Contenuto informativo, non è una consulenza finanziaria. Gli avvisi riducono il rischio, ma non impediscono la liquidazione._

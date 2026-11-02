@@ -1,0 +1,204 @@
+export const meta = {
+  slug: "e-mode-aave",
+  title: "Aave E-Mode: più capacità di prestito, margine più sottile",
+  description:
+    "Cos'è l'E-Mode di Aave V3, le categorie su Ethereum, Arbitrum, Base e Optimism, come cambia il fattore di salute e quanto è sottile il margine di un loop.",
+  h1: "Cos'è l'E-Mode di Aave e cosa cambia nel tuo rischio di liquidazione?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "Cos'è l'E-Mode di Aave e quanto avvicina una posizione alla liquidazione?",
+  readingMinutes: 19,
+};
+
+<ShortAnswer>
+  L'E-Mode (Efficiency Mode) è un'impostazione di Aave V3 che ti permette di prendere in prestito di più contro un
+  collaterale il cui prezzo si muove insieme all'asset che prendi in prestito, come wstETH contro WETH, sostituendo il
+  rapporto prestito/valore (LTV) e la soglia di liquidazione (liquidation threshold) normali con valori più alti, comuni
+  a tutta la categoria. Su Ethereum Core la categoria "ETH correlated" usava il 28 ottobre 2026 un LTV del 93% e una
+  soglia di liquidazione del 95%, contro il 79% e l'82% di wstETH fuori dalla categoria. La formula del fattore di
+  salute (health factor) non cambia, cambia solo la soglia al suo interno, quindi la stessa posizione mostra un numero
+  più alto. Il prezzo da pagare è un margine più sottile: una posizione presa in prestito fino al limite dell'E-Mode
+  parte da 95 ÷ 93 = 1,0215, e a marzo 2026 un movimento dell'oracolo del 2,85% ha liquidato le posizioni in E-Mode
+  sotto circa 1,0288. Un loop (prestito a leva in ciclo) preso in prestito vicino a quel limite resta sotto 1,1, la
+  soglia di avviso più bassa che Tokenping accetta.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Dati e numeri di blocco a cui sono stati letti: content/blog/snapshots/aave-e-mode.md */}
+
+## Cos'è l'E-Mode di Aave e perché esiste?
+
+L'E-Mode di Aave è un'impostazione per singolo account su un mercato Aave V3 che ti inserisce in una categoria di asset correlati e applica il LTV, la soglia di liquidazione e il bonus di liquidazione di quella categoria al collaterale che elenca, al posto dei parametri propri di ciascun asset. La pagina di aiuto di Aave la descrive come un modo per "maximize their borrowing power by selecting optimized asset categories" (massimizzare la propria capacità di prestito scegliendo categorie di asset ottimizzate). Nel contratto Pool, `setUserEMode(categoryId)` entra in una categoria, `getUserEMode(address)` mostra in quale si trova un indirizzo, e la categoria 0 significa nessuna.
+
+Esiste perché i parametri normali sono fissati per il caso peggiore: un asset di collaterale e un asset di debito i cui prezzi si muovono in modo indipendente. Quando entrambi seguono la stessa cosa, come wstETH e WETH seguono entrambi ETH, un calo del prezzo in dollari di ETH abbassa insieme collaterale e debito e la salute della posizione si muove appena. I fornitori di analisi del rischio di Aave possono quindi concedere un LTV e una soglia più alti per quella coppia. Resta il rischio che i due asset si allontanino l'uno dall'altro, ed è a questo rischio che una posizione in E-Mode è davvero esposta.
+
+Da Aave V3.2, che ha introdotto le "liquid E-Modes", tre elementi definiscono una categoria:
+
+- **Un solo LTV, una sola soglia di liquidazione e un solo bonus di liquidazione** per tutta la categoria.
+- **Un insieme di collaterale**: le riserve che ricevono i parametri della categoria finché ne fai parte. Il collaterale fuori dall'insieme mantiene il proprio LTV e la propria soglia.
+- **Un insieme di asset prendibili in prestito**: le sole riserve che puoi prendere in prestito mentre sei nella categoria. Un asset può stare in un insieme, nell'altro o in entrambi, e può comparire in più categorie.
+
+Quindi "ETH correlated" su Ethereum Core non significa "prendi in prestito qualsiasi cosa contro ETH": il suo insieme di asset prendibili in prestito contiene solo WETH (letto il 28 ottobre 2026, blocco 26291736). La categoria decide cosa puoi prendere in prestito tanto quanto decide quanto.
+
+## Quali categorie E-Mode esistono oggi?
+
+Le categorie qui sotto sono state lette dal contratto Pool di ciascun mercato il 28 ottobre 2026 con `getEModeCategoryLabel`, `getEModeCategoryCollateralConfig`, `getEModeCategoryCollateralBitmap` e `getEModeCategoryBorrowableBitmap`, con le bitmap decodificate tramite `getReservesList()`. Tutti e quattro i Pool riportavano la revisione 11 (V3.7). La governance e i Risk Stewards modificano questi parametri, quindi controlla la categoria nell'app di Aave prima di fare affidamento su un numero.
+
+### Ethereum Core (blocco 26291736)
+
+Ethereum Core aveva 48 categorie. La maggior parte abbina un principal token (PT) di Pendle o un asset di Ethena a stablecoin o a USDe, e molte elencano PT scaduti che restano solo per le posizioni ancora in fase di chiusura. Quelle che un debitore incontra più probabilmente:
+
+| Id  | Etichetta                   | LTV | Soglia di liquidazione | Bonus | Insieme di collaterale                        | Prendibili in prestito |
+| --- | --------------------------- | --- | ---------------------- | ----- | --------------------------------------------- | ---------------------- |
+| 1   | ETH correlated              | 93% | 95%                    | 1%    | WETH, wstETH, cbETH, rETH, weETH, osETH, ETHx | WETH                   |
+| 2   | sUSDe Stablecoins           | 90% | 92%                    | 4%    | USDe, sUSDe                                   | USDC, USDT             |
+| 11  | USDe Stablecoin             | 90% | 93%                    | 2%    | USDe                                          | USDC, USDT             |
+| 4   | LBTC_WBTC                   | 84% | 86%                    | 3%    | LBTC                                          | WBTC                   |
+| 7   | eBTC/WBTC                   | 83% | 85%                    | 3%    | eBTC                                          | WBTC                   |
+| 22  | ezETH/wstETH                | 93% | 95%                    | 1%    | ezETH                                         | wstETH                 |
+| 26  | weETH/wstETH ETH Correlated | 93% | 95%                    | 1%    | weETH                                         | WETH, wstETH           |
+| 3   | rsETH\_\_ETH_wstETH_ETHx    | 93% | 95%                    | 1%    | rsETH                                         | WETH, wstETH, ETHx     |
+| 40  | LINK\_\_USDC_USDT           | 66% | 71%                    | 7%    | LINK                                          | USDC, USDT             |
+| 43  | XAUt\_\_USDC_USDT_GHO       | 70% | 75%                    | 6%    | XAUt                                          | USDC, USDT, GHO        |
+| 47  | PT-srUSDe Stablecoins       | 90% | 92%                    | 4,03% | sUSDe, PT-srUSDe-22OCT2026                    | USDC, USDT, USDe       |
+
+Due dettagli dalla stessa lettura. In "ETH correlated", ETHx è nell'insieme di collaterale ma segnato con LTV 0 (la `ltvzeroBitmap` della categoria): conta nel fattore di salute al 95% ma non dà alcuna capacità di prestito. E le categorie 47 e 48 (PT-srUSDe contro stablecoin e contro USDe) erano le sole con il flag `isolated` di V3.7 attivo; cosa comporta è spiegato più sotto, nelle regole di ingresso. Le categorie LINK e XAUt mostrano che una categoria non deve per forza essere "correlata": sono un secondo set di parametri per prendere in prestito stablecoin contro un solo asset.
+
+### Arbitrum (blocchi da 519074353 a 519074731)
+
+| Id  | Etichetta                        | LTV | Soglia di liquidazione | Bonus | Insieme di collaterale | Prendibili in prestito |
+| --- | -------------------------------- | --- | ---------------------- | ----- | ---------------------- | ---------------------- |
+| 1   | Stablecoins                      | 93% | 95%                    | 1%    | DAI, USDC, USD₮0, EURS | nessuno                |
+| 2   | ETH correlated                   | 93% | 95%                    | 1%    | WETH, wstETH, weETH    | WETH                   |
+| 7   | wstETH/WETH ETH Correlated       | 94% | 96%                    | 1%    | wstETH                 | WETH                   |
+| 3   | ezETH/wstETH/WETH ETH Correlated | 93% | 95%                    | 1%    | ezETH                  | WETH, wstETH           |
+| 5   | rsETH/wstETH/WETH ETH Correlated | 93% | 95%                    | 1%    | rsETH                  | WETH, wstETH           |
+| 4   | ezETH Stablecoins                | 72% | 75%                    | 7,5%  | ezETH                  | USD₮0, USDC            |
+| 6   | rsETH/Stablecoins                | 72% | 75%                    | 7,5%  | rsETH                  | USDC, USD₮0            |
+| 8   | AAVE\_\_USDCn_USDT               | 66% | 73%                    | 10%   | AAVE                   | USD₮0, USDC            |
+| 9   | ARB\_\_USDCn_USDT                | 58% | 63%                    | 10%   | ARB                    | USD₮0, USDC            |
+| 10  | tBTC\_\_USDCn_USDT               | 72% | 75%                    | 7,5%  | tBTC                   | USD₮0, USDC            |
+
+La categoria "Stablecoins" di Arbitrum ha un insieme di asset prendibili in prestito vuoto, quindi non vi si può aprire nuovo debito. La sua categoria a singolo asset "wstETH/WETH ETH Correlated" è un gradino più generosa di quella di Ethereum: 94% e 96%, un margine al limite di 96 ÷ 94 = 1,0213.
+
+### Base (blocco 53204166)
+
+Base aveva 15 categorie. Quelle su ETH, e le due su BTC che la maggior parte dei debitori incontra:
+
+| Id  | Etichetta         | LTV | Soglia di liquidazione | Bonus | Insieme di collaterale     | Prendibili in prestito |
+| --- | ----------------- | --- | ---------------------- | ----- | -------------------------- | ---------------------- |
+| 1   | ETH correlated    | 90% | 93%                    | 2%    | WETH, cbETH, wstETH, weETH | WETH                   |
+| 8   | wstETH/WETH       | 93% | 95%                    | 1%    | wstETH                     | WETH                   |
+| 9   | cbETH/WETH        | 93% | 95%                    | 2%    | cbETH                      | WETH                   |
+| 7   | weETH/WETH        | 93% | 95%                    | 1,25% | weETH                      | WETH                   |
+| 2   | ezETH wstETH      | 93% | 95%                    | 1%    | ezETH                      | wstETH                 |
+| 4   | LBTC_cbBTC        | 82% | 84%                    | 3%    | LBTC                       | cbBTC                  |
+| 10  | cbBTC Stablecoins | 82% | 85%                    | 4%    | cbBTC                      | USDC, GHO              |
+
+Le altre abbinano un asset (wrsETH, syrupUSDC, AAVE, EURC, LBTC, tBTC, ezETH) a USDC e GHO oppure a wstETH. Base mostra come una categoria ampia venga divisa in categorie a singolo asset: la categoria multi-asset "ETH correlated" funziona al 90% e al 93%, mentre wstETH/WETH, cbETH/WETH e weETH/WETH funzionano al 93% e al 95%.
+
+### Optimism (blocco 158799548)
+
+| Id  | Etichetta      | LTV   | Soglia di liquidazione | Bonus | Insieme di collaterale                   | Prendibili in prestito |
+| --- | -------------- | ----- | ---------------------- | ----- | ---------------------------------------- | ---------------------- |
+| 1   | Stablecoins    | 0,01% | 87%                    | 1%    | DAI, USDC (bridged e nativo), USDT, sUSD | nessuno                |
+| 2   | ETH correlated | 93%   | 95%                    | 1%    | WETH, wstETH, rETH (rETH con LTV 0)      | WETH                   |
+
+La categoria "Stablecoins" di Optimism è un residuo, con un LTV dello 0,01% e nulla da prendere in prestito. La sua categoria "ETH correlated" ha gli stessi numeri di quella di Ethereum.
+
+## Come si calcola il fattore di salute in E-Mode?
+
+In E-Mode il fattore di salute usa la stessa formula di sempre, Σ(valore del collaterale × soglia di liquidazione) ÷ valore del debito, salvo che ogni asset di collaterale nell'insieme della tua categoria prende la soglia della categoria al posto della propria. È l'unico cambiamento: `GenericLogic.calculateUserAccountData` sceglie la soglia per ciascun asset e `getUserAccountData` restituisce il risultato, quindi qualsiasi strumento che legge quella chiamata mostra già il numero in E-Mode. La formula generale è in [come si calcola il fattore di salute di Aave](/it/blog/fattore-di-salute-aave#come-si-calcola-il-fattore-di-salute-di-aave), e [come l'E-Mode cambia il fattore di salute](/it/blog/fattore-di-salute-aave#come-cambia-il-fattore-di-salute-con-le-mode), nella stessa guida, dà la versione breve di quanto segue.
+
+Prendi un collaterale in wstETH del valore di 10.000 $ e un debito in WETH del valore di 9.000 $ su Ethereum Core, con i parametri di "ETH correlated" letti il 28 ottobre 2026 (blocco 26291736) e i parametri propri di wstETH letti lo stesso giorno (blocco 26291849: LTV 79%, soglia di liquidazione 82%):
+
+1. **In E-Mode:** HF = 10.000 × 0,95 ÷ 9.000 = **1,056**. Il limite di prestito è 10.000 × 0,93 = 9.300 $, quindi si potrebbero prendere in prestito altri 300 $.
+2. **Fuori dall'E-Mode:** la stessa posizione avrebbe HF = 10.000 × 0,82 ÷ 9.000 = 0,911, e non potrebbe nemmeno essere aperta: il LTV del 79% di wstETH limita il prestito a 7.900 $.
+3. **Al limite dell'E-Mode:** prendi in prestito tutti i 9.300 $ e HF = 9.500 ÷ 9.300 = **1,0215**. La posizione è al 2,1% dalla liquidazione il giorno stesso in cui viene aperta.
+
+Anche una posizione normale presa in prestito fino al limite parte da soglia ÷ LTV, 84 ÷ 81 = 1,037 per WETH su Ethereum Core il 28 ottobre 2026 (blocco 26291849). L'E-Mode riduce a 2 punti percentuali la distanza tra LTV e soglia, e quella distanza è tutto il margine di una posizione al massimo. [Perché prendere in prestito il massimo lascia un fattore di salute di circa 1,03](/it/blog/fattore-di-salute-aave#perche-prendere-in-prestito-il-massimo-lascia-un-fattore-di-salute-di-appena-103-circa) tratta lo stesso calcolo fuori dall'E-Mode.
+
+Anche ciò che muove il numero è diverso. Con collaterale in wstETH e debito in WETH, entrambi i lati sono prezzati in ETH, quindi il prezzo in dollari di ETH si annulla: se ETH dimezza, collaterale e debito dimezzano insieme e HF resta a 1,056. Resta il tasso wstETH/ETH riportato dall'oracolo di Aave. La posizione arriva a 1,00 quando quel tasso scende di 1 − 90 ÷ 95 = 5,3%, la posizione al massimo quando scende del 2,1%. [Come l'E-Mode cambia il tuo prezzo di liquidazione](/it/blog/prezzo-di-liquidazione-aave#come-cambia-il-tuo-prezzo-di-liquidazione-con-le-mode) lo traduce in un tasso invece che in un prezzo in dollari.
+
+## Come funziona un loop di staking a leva in E-Mode, e su cosa scommette?
+
+Un loop di staking a leva deposita wstETH, prende in prestito WETH contro di esso, converte il WETH in altro wstETH e deposita anche quello, ripetendo finché la posizione detiene diverse volte la quantità iniziale di wstETH contro un debito in WETH quasi altrettanto grande. È l'E-Mode a renderlo conveniente: con un LTV del 93% il loop può arrivare a 1 ÷ (1 − 0,93) = 14,3 volte il capitale iniziale, contro 1 ÷ (1 − 0,79) = 4,8 volte con il LTV normale di wstETH.
+
+Fai il calcolo in ETH, l'unità in cui vive il loop. Parti da wstETH del valore di 10 ETH, porta il loop a un collaterale del valore di 100 ETH e a un debito di 90 WETH, e hai la posizione a 1,056 vista sopra, con leva dieci. Il 28 ottobre 2026 l'oracolo di Aave su Ethereum Core prezzava wstETH a 2.912,79 $ e WETH a 2.335,08 $ (blocco 26291849), un tasso di 1,2474 ETH per wstETH che coincideva con lo `stEthPerToken()` di Lido allo stesso blocco, quindi 100 ETH di collaterale sono circa 80,2 wstETH.
+
+Due numeri decidono se il loop guadagna o perde, e nessuno dei due è il prezzo in dollari di ETH:
+
+- **Il tasso di cambio wstETH/ETH.** Sale man mano che maturano le ricompense di staking: Lido riportava un APR di stETH del 2,25% il 28 ottobre 2026 e una media a 7 giorni del 2,33%. Il loop incassa quel rendimento su 100 ETH mentre paga interessi su 90, quindi i 10 ETH di capitale guadagnano circa dieci volte lo spread tra i due tassi. Un calo del tasso riportato dall'oracolo, per uno sconto di mercato su wstETH o per un errore di configurazione, abbassa il collaterale e non il debito, ed è l'unico movimento di prezzo che può liquidare il loop.
+- **Il tasso di interesse sul prestito di WETH.** Il debito cresce al tasso variabile di Aave, 1,94% di APR per WETH su Ethereum Core al blocco 26291849, mentre il wstETH depositato dal loop non guadagna quasi nulla da Aave stessa (0,0002% allo stesso blocco). Ogni volta che il tasso sul prestito supera il rendimento dello staking, il loop perde denaro e il suo fattore di salute scende poco a poco.
+
+Metti insieme le due cose per un anno sulla posizione con leva dieci, ignorando la capitalizzazione e i movimenti di prezzo. Il collaterale cresce con il rendimento dello staking fino a circa 102,3 ETH. Con un tasso sul prestito dell'1,94% il debito arriva a 91,75 WETH: il capitale è di 10,55 ETH, +5,5% contro il 2,3% di chi tiene semplicemente wstETH, e HF sale a 1,059. Con un tasso medio del 5% il debito arriva a 94,5 WETH, il capitale scende a 7,8 ETH e HF scivola a 1,028. All'8% il debito arriva a 97,2 WETH e HF è 1,000: il loop verrebbe liquidato dai soli interessi. I tassi sul prestito di WETH salgono di colpo quando l'utilizzo è alto; [perché i tassi di prestito di Aave salgono di colpo](/it/blog/tassi-di-interesse-aave#perche-i-tassi-sui-prestiti-di-aave-schizzano-in-alto) spiega la curva.
+
+Il prezzo in dollari di ETH conta comunque per il proprietario del loop, perché 10 ETH di capitale valgono quanto vale ETH, ma non conta per il fattore di salute. Un loop è una scommessa che il rendimento dello staking resti sopra il tasso sul prestito e che il tasso wstETH/ETH dell'oracolo non scenda più del margine. La seconda scommessa è quella che è stata persa a marzo 2026.
+
+## Quali sono le regole per entrare e uscire da una categoria E-Mode?
+
+Entrare in una categoria o uscirne è una sola chiamata, `setUserEMode(categoryId)` sul Pool, e il Pool esegue tre controlli prima che abbia effetto, in `ValidationLogic.validateSetUserEMode` e `SupplyLogic.executeSetUserEMode` di aave-v3-origin (branch main, letto il 28 ottobre 2026):
+
+1. **Ogni asset che hai preso in prestito deve essere prendibile in prestito nella categoria di destinazione.** Per una categoria significa la sua bitmap degli asset prendibili in prestito; per l'uscita (categoria 0), che la riserva abbia il prestito abilitato. L'errore è `InvalidDebtInEmode`. Un wallet con un debito in USDC non può entrare in "ETH correlated" su Ethereum Core, dove WETH è l'unico asset prendibile in prestito, finché l'USDC non è rimborsato.
+2. **Ogni asset che hai abilitato come collaterale deve mantenere un LTV diverso da zero nella categoria di destinazione.** L'errore è `InvalidCollateralInEmode`. Il controllo passa per `getUserReserveLtv`, che restituisce il LTV della categoria per gli asset nel suo insieme di collaterale (o 0 se la categoria li segna con LTV 0), il LTV proprio dell'asset per il collaterale fuori dall'insieme, e 0 per il collaterale esterno quando la categoria è isolata.
+3. **Dopo il cambio, il tuo fattore di salute deve essere pari o superiore a 1.** `executeSetUserEMode` cambia prima la categoria e poi chiama `validateHealthFactor`, quindi un cambio che ti lascerebbe liquidabile viene annullato (revert).
+
+Un wallet senza depositi né debito può sempre cambiare, e un wallet già nella categoria richiesta non subisce alcun cambiamento né controllo.
+
+Due note di versione contano per chi legge guide più vecchie. Dalla V3.2, il collaterale fuori dall'insieme della tua categoria mantiene il proprio LTV e la propria soglia, quindi detenere WBTC mentre sei in "ETH correlated" è consentito e il WBTC conta con i parametri propri di WBTC: le note sulle funzionalità della V3.2 dicono che i parametri E-Mode "will only apply for the ones listed as eModeCollateral" (si applicheranno solo a quelli elencati come eModeCollateral). Dalla V3.7 una categoria può avere un flag `isolated` (`getIsEModeCategoryIsolated`). In una categoria isolata, il collaterale fuori dall'insieme riceve LTV 0 ma mantiene la propria soglia: conta ancora nel fattore di salute ma non sostiene nuovi prestiti, l'ingresso è bloccato finché quel collaterale è abilitato, e abilitarlo come collaterale dall'interno della categoria viene rifiutato. Se la governance attiva il flag su una categoria in uso, le note della V3.7 dicono che il collaterale esterno "immediately becomes LTV-zero" (passa subito a LTV zero) mentre il "health factor is unaffected" (il fattore di salute resta invariato). Il 28 ottobre 2026 solo le due categorie PT-srUSDe di Ethereum Core avevano il flag attivo.
+
+Ciò che blocca l'uscita sono gli stessi tre controlli eseguiti verso la categoria 0. Non puoi uscire mentre prendi in prestito un asset la cui riserva ha il prestito disabilitato, e non puoi uscire se l'uscita porterebbe il tuo fattore di salute sotto 1, che è il caso comune: la posizione a 1,056 vista sopra mostrerebbe 0,911 fuori dall'E-Mode, quindi la chiamata viene annullata. Per uscire devi prima rimborsare abbastanza WETH, fino a un debito di circa 8.200 contro 10.000 di collaterale alla soglia dell'82% di wstETH. Nell'E-Mode è facile entrare e difficile uscire, una volta che hai usato lo spazio che concede.
+
+## Cosa è successo ai loop in E-Mode a marzo 2026?
+
+A marzo 2026 un adattatore di prezzo configurato male ha ridotto di circa il 2,85% il tasso di cambio di wstETH usato da Aave sui mercati Core e Prime di Ethereum, e tutte le posizioni in E-Mode con un fattore di salute sotto circa 1,0288 sono diventate liquidabili nello stesso momento. Il resoconto è il post-mortem di Chaos Labs sul forum di governance di Aave, pubblicato il 10 marzo 2026 e riletto il 28 ottobre 2026; nulla di quanto scritto qui va oltre quel testo.
+
+Aave prezza wstETH tramite un adattatore CAPO (Correlated Assets Price Oracle) che limita la velocità con cui può salire il tasso wstETH/stETH che riporta, per bloccare attacchi di tipo inflazionistico. Il limite si basa su un rapporto di snapshot, un timestamp di snapshot e un tasso massimo di crescita annuale. Un aggiornamento ha impostato il timestamp di snapshot su un riferimento vecchio di sette giorni, mentre un limite on-chain (il rapporto può salire al massimo del 3% ogni 3 giorni) ha impedito al rapporto di raggiungere il valore che quel timestamp presupponeva, così il limite è stato calcolato da un riferimento troppo basso. Il post-mortem dice che il tasso massimo consentito risultava di circa 1,1939, sotto il tasso effettivo di mercato, quindi il limite ha preso il suo posto e il tasso applicato è sceso di "around 2.855%" (circa il 2,855%).
+
+Le conseguenze che riporta:
+
+- Circa 10.938 wstETH di liquidazioni in E-Mode su 34 account, che hanno colpito posizioni "with a health factor lower than 1.0288" (con un fattore di salute inferiore a 1,0288).
+- Nessun credito inesigibile (bad debt) per il protocollo.
+- Circa 512 ETH incassati dai liquidatori tra bonus e valore dovuto allo scarto di tasso, di cui 141 ETH di ricavi da bonus di liquidazione e circa 13 ETH di commissioni recuperati per risarcire gli utenti colpiti, con la tesoreria della DAO a coprire il resto.
+- Il limite di prestito (borrow cap) di wstETH su entrambi i mercati è stato ridotto temporaneamente a 1 mentre la configurazione veniva corretta.
+
+L'entità del movimento è la lezione per un loop. Una posizione presa in prestito fino al limite di "ETH correlated" parte da 1,0215, dentro la fascia che è stata liquidata; una posizione a 1,056 non è stata toccata. Nulla nella posizione stessa dava un segnale d'allarme, perché il movimento veniva dalla configurazione dell'oracolo e non da un mercato. L'adattatore era ancora in uso il 28 ottobre 2026 (blocco 26291849): la fonte dell'oracolo per wstETH su Ethereum Core si descriveva come "Capped wstETH / stETH(ETH) / USD", con un rapporto di snapshot di 1,2283 datato 3 marzo 2026, una crescita annuale massima dell'8,8% e un rapporto riportato di 1,2474, uguale a quello di Lido. [La causa 6 del calo del fattore di salute](/it/blog/perche-il-fattore-di-salute-aave-e-sceso#causa-6-un-errore-delloracolo-o-del-tasso-di-cambio-ha-prezzato-male-il-tuo-collaterale) tratta il risarcimento che ne è seguito.
+
+## Quando l'E-Mode non aiuta?
+
+L'E-Mode non fa nulla per una posizione il cui debito è fuori dalla categoria, e poco per diverse altre configurazioni comuni:
+
+- **Debito che la categoria non elenca.** Non puoi proprio entrare finché lo hai in prestito. La posizione con 10 WETH contro 12.000 USDC della guida sul fattore di salute resta alla soglia propria di WETH, l'84%, su Ethereum Core (blocco 26291849), perché "ETH correlated" ti permette di prendere in prestito solo WETH.
+- **Collaterale fuori dall'insieme.** Mantiene i propri parametri, quindi aggiungere WBTC a una posizione "ETH correlated" alza il fattore di salute alla soglia propria di WBTC, l'85% su Ethereum Core al blocco 26291889, non al 95%. In una categoria isolata non aggiunge nulla alla capacità di prestito.
+- **Categorie di stablecoin.** Su Arbitrum e Optimism la categoria "Stablecoins" non aveva alcun asset prendibile in prestito il 28 ottobre 2026, quindi non può servire per un nuovo prestito. Su Ethereum Core le categorie di stablecoin abbinano un asset (USDe, sUSDe, un PT) a USDC e USDT con un LTV dal 90% al 94%. Il rischio lì è un depeg (perdita dell'ancoraggio al dollaro) del collaterale, che una categoria correlata non riduce; il margine più sottile lo fa pesare prima.
+- **Posizioni piccole.** Un liquidatore può estinguere fino al 100% di una riserva di debito quando il collaterale o il debito coinvolti valgono meno di 2.000 $ (`LiquidationLogic`, letto il 28 ottobre 2026), quindi un loop piccolo che scende sotto 1,00 viene chiuso invece che ridotto; [quanto del mio debito può essere liquidato in una volta](/it/blog/come-funziona-la-liquidazione-su-aave#quanta-parte-del-mio-debito-puo-essere-liquidata-in-una-volta) spiega la regola. Il bonus dell'1% di "ETH correlated" è piccolo per gli standard di Aave, ma si paga sull'intero importo.
+- **Un margine sottile che non avevi previsto.** Se entri in una categoria e prendi in prestito vicino al suo limite, il margine è del 2%, qualunque fosse il fattore di salute prima del cambio.
+
+Se una di queste è la tua situazione, i parametri normali e un margine più ampio sono lo strumento migliore; [quanto margine ti dà un fattore di salute](/it/blog/fattore-di-salute-aave-sicuro#perche-il-numero-sicuro-e-diverso-per-debito-in-stablecoin-debito-volatile-e-loop-in-e-mode) confronta cosa significa lo stesso fattore di salute per un loop in E-Mode e per altre posizioni.
+
+## Un avviso può aiutare con una posizione in E-Mode?
+
+Un avviso sul fattore di salute aiuta con una posizione in E-Mode mantenuta sopra circa 1,1-1,15, e non si adatta a un loop tenuto di proposito sotto quel livello. Tokenping legge lo stesso fattore di salute riportato dal contratto, da `getUserAccountData`, che applica già la tua categoria E-Mode, quindi non c'è nulla da configurare per l'E-Mode: il numero nella dashboard e nei messaggi è il numero che vede un liquidatore.
+
+Il limite è la soglia. La soglia di avviso di Tokenping per Aave va da 1,1 a 10, con 1,5 come valore predefinito. Un loop a 1,056, o qualsiasi posizione tenuta di proposito sotto 1,1, è sotto ogni soglia che puoi impostare. Un avviso impostato a 1,1 troverebbe il fattore di salute sotto la soglia a ogni controllo ogni 5 minuti e invierebbe un messaggio a ogni controllo, su ogni canale che hai scelto, finché la posizione non torna sopra 1,1. Non c'è una funzione di posticipo né un riepilogo; [quanto spesso riceverai avvisi](/it/blog/configurare-avvisi-fattore-di-salute-aave#quanto-spesso-riceverai-avvisi) descrive il comportamento nel dettaglio.
+
+Per un loop sottile, il consiglio onesto è una di due strade. Mantieni il margine: gestisci il loop in modo che il suo fattore di salute stia sopra il livello di cui vuoi essere avvisato, per esempio da 1,12 a 1,15 per un loop wstETH/WETH, il che costa leva ma lascia un movimento dell'oracolo del 2,85% al di qua della liquidazione, e imposta l'avviso lì, così che la prima cosa di cui vieni a sapere sia la discesa della posizione dovuta agli interessi. Oppure accetta i messaggi continui: imposta 1,1 e considera il flusso di messaggi come il segnale che stai operando sotto quel livello, cosa che pochi vogliono ricevere su Signal o Telegram a ogni controllo. Ciò che un avviso non può fare in nessuno dei due casi è reagire più in fretta dell'oracolo: il movimento di marzo 2026 ha reso le posizioni liquidabili nel momento stesso in cui il limite è entrato in funzione, e un intervallo di controllo di 5 minuti non lascia tempo per agire. [Come scegliere una soglia di avviso, passo per passo](/it/blog/fattore-di-salute-aave-sicuro#come-scegli-una-soglia-di-avviso-passo-dopo-passo) e [come configurare un avviso sul fattore di salute](/it/blog/configurare-avvisi-fattore-di-salute-aave#passo-5-scegli-una-soglia) spiegano la configurazione; [come alzare il tuo fattore di salute su Aave](/it/blog/evitare-la-liquidazione-su-aave#passo-1-rimborsa-parte-del-debito) spiega cosa fare quando arriva un messaggio, che per un loop di solito significa rimborsare WETH.
+
+Puoi prima [controllare il tuo fattore di salute su Aave V3](/it/aave); vedere le posizioni non richiede pagamenti. Gli avvisi costano <AlertPrice />, si pagano su Arbitrum, uno per ogni mercato Aave V3 o Spoke V4, e arrivano su Signal, Telegram o email. Tokenping è in beta e non offre garanzie di disponibilità (uptime). Per una posizione con un margine del 2%, nessun avviso sostituisce il margine stesso.
+
+## Fonti
+
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): `POOL_REVISION`, `getReservesList`, e per le categorie da 1 a 48 l'etichetta, la configurazione del collaterale, le bitmap del collaterale, degli asset prendibili in prestito e del LTV 0 e il flag isolated, al blocco 26291736 (consultato il 28 ottobre 2026)
+- Aave V3 Pool su [Arbitrum](https://arbiscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD), [Base](https://basescan.org/address/0xA238Dd80C259a72e81d7e4664a9801593F98d1c5) e [Optimism](https://optimistic.etherscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD): le stesse chiamate per ogni categoria, ai blocchi di Arbitrum da 519074353 a 519074731, al blocco di Base 53204166 e al blocco di Optimism 158799548 (consultato il 28 ottobre 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): LTV, soglia, bonus e tassi di WETH, wstETH e USDC al blocco 26291849; WBTC al blocco 26291889 (consultato il 28 ottobre 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) e il suo [adattatore CAPO per wstETH](https://etherscan.io/address/0xe1D97bF61901B075E9626c8A2340a7De385861Ef): prezzi di WETH e wstETH, descrizione dell'adattatore, rapporto di snapshot, timestamp di snapshot, crescita annuale massima e rapporto al blocco 26291849 (consultato il 28 ottobre 2026)
+- [Token wstETH](https://etherscan.io/address/0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0): `stEthPerToken()` al blocco 26291849 (consultato il 28 ottobre 2026)
+- [API dell'APR di stETH di Lido](https://eth-api.lido.fi/v1/protocol/steth/apr/sma): ultimo APR e media a 7 giorni (consultato il 28 ottobre 2026)
+- [IPool.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/interfaces/IPool.sol): i getter dell'E-Mode, `setUserEMode` e `getUserEMode` (aave-v3-origin main, consultato il 28 ottobre 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) e [LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): `validateSetUserEMode`, `getUserReserveLtv`, `executeSetUserEMode` e la soglia di 2.000 $ del close factor (aave-v3-origin main, consultato il 28 ottobre 2026)
+- [Funzionalità di Aave V3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): liquid E-Modes, il collaterale fuori da una categoria che mantiene i propri parametri, regole di ingresso e di uscita (consultato il 28 ottobre 2026)
+- [E-Mode isolato di Aave V3.7](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md): gli effetti del flag isolated (consultato il 28 ottobre 2026)
+- [Aiuto di Aave: Efficiency Mode (E-mode)](https://aave.com/help/borrowing/e-mode) (consultato il 28 ottobre 2026)
+- [Post-mortem di Chaos Labs, exchange rate misalignment on wstETH Core and Prime instances](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): pubblicato il 10 marzo 2026 (consultato il 28 ottobre 2026)
+
+_Contenuto informativo, non è una consulenza finanziaria. Gli avvisi riducono il rischio, ma non impediscono la liquidazione._

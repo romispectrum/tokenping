@@ -13,6 +13,7 @@ const RSS_DESCRIPTIONS: Localized<string> = {
   vi: "Hướng dẫn về hệ số sức khỏe trên Aave và Morpho, rủi ro thanh lý và cảnh báo.",
   fr: "Guides sur le facteur de santé d'Aave et de Morpho, le risque de liquidation et les alertes.",
   pt: "Guias sobre o fator de saúde no Aave e no Morpho, o risco de liquidação e os alertas.",
+  it: "Guide sul fattore di salute di Aave e Morpho, sul rischio di liquidazione e sugli avvisi.",
 };
 
 const XML_ENTITIES: Record<string, string> = { "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" };

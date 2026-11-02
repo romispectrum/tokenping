@@ -53,6 +53,7 @@ const LIST_WORDS: Record<Locale, ListWords> = {
   vi: { conjunction: "và", disjunction: "hoặc" },
   fr: { conjunction: "et", disjunction: "ou" },
   pt: { conjunction: "e", disjunction: "ou" },
+  it: { conjunction: "e", disjunction: "o" },
 };
 
 /**
@@ -157,6 +158,17 @@ export const ptOnMarket = (name: string, kind?: MarketNameKind) =>
 /** Portuguese "para a rede Arbitrum" for a V3 market, "para o mercado Ethereum (V4 Lido)" for a V4 Spoke or a Morpho market. */
 export const ptForMarket = (name: string, kind?: MarketNameKind) =>
   marketNameKind(name, kind) === "market" ? `para o mercado ${name}` : `para a rede ${name}`;
+
+/** Italian "su Arbitrum" for a V3 market, "sul mercato Ethereum (V4 Lido)" for a V4 Spoke or a Morpho market. */
+/** Italian "a" before a name, "ad" before one that starts with an a ("Passa a Base", "Passa ad Arbitrum One"). */
+export const itTo = (name: string) => `${/^[aàAÀ]/.test(name) ? "ad" : "a"} ${name}`;
+
+export const itOnMarket = (name: string, kind?: MarketNameKind) =>
+  marketNameKind(name, kind) === "market" ? `sul mercato ${name}` : `su ${name}`;
+
+/** Italian "per Arbitrum" for a V3 market, "per il mercato Ethereum (V4 Lido)" for a V4 Spoke or a Morpho market. */
+export const itForMarket = (name: string, kind?: MarketNameKind) =>
+  marketNameKind(name, kind) === "market" ? `per il mercato ${name}` : `per ${name}`;
 
 /** Vietnamese "mạng" before a V3 market's name (its network's), "thị trường" before a V4 Spoke's or a Morpho market's. */
 export const viMarketNoun = (name: string, kind?: MarketNameKind) =>

@@ -1,6 +1,6 @@
 // The site's languages. English is served at the root; the others under their prefix (i18n/localePaths.ts).
 
-export const LOCALES = ["en", "cs", "es", "hi", "de", "vi", "fr", "pt"] as const;
+export const LOCALES = ["en", "cs", "es", "hi", "de", "vi", "fr", "pt", "it"] as const;
 
 export type Locale = (typeof LOCALES)[number];
 
@@ -120,6 +120,16 @@ export const LOCALE_INFO: Record<Locale, LocaleInfo> = {
     name: "Português",
     englishName: "Portuguese",
     short: "PT",
+  },
+  // Italian for Italy and Switzerland: hreflang "it". Decimal comma, dot thousands ("12.000,5"), dates "14 ottobre 2026".
+  it: {
+    htmlLang: "it",
+    ogLocale: "it_IT",
+    intl: "it-IT",
+    numbers: "it-IT",
+    name: "Italiano",
+    englishName: "Italian",
+    short: "IT",
   },
 };
 

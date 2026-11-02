@@ -11,6 +11,9 @@ import {
   frForMarket,
   frOnMarket,
   hiMarket,
+  itForMarket,
+  itOnMarket,
+  itTo,
   joinList,
   plural,
   ptForMarket,
@@ -127,6 +130,29 @@ describe("Portuguese formatting", () => {
     expect(ptOnMarket("Base", "network")).toBe("na rede Base");
     expect(ptForMarket("Base")).toBe("para a rede Base");
     expect(ptForMarket("USDC | cbBTC (86%)", "market")).toBe("para o mercado USDC | cbBTC (86%)");
+  });
+});
+
+describe("Italian formatting", () => {
+  it("writes ad before a name that starts with an a", () => {
+    expect(itTo("Arbitrum One")).toBe("ad Arbitrum One");
+    expect(itTo("Base")).toBe("a Base");
+  });
+
+  it("joins with e and o, writes Italian dates, a decimal comma and the market wording", () => {
+    expect(joinList("it", ["Signal", "Telegram", "email"])).toBe("Signal, Telegram e email");
+    expect(joinList("it", ["Signal", "email"], "disjunction")).toBe("Signal o email");
+    expect(formatLongDate("it", "2026-10-14")).toBe("14 ottobre 2026");
+    expect(formatDecimal("it", "1.42")).toBe("1,42");
+    // Italian uses many for a million and up, one only for 1.
+    expect(plural("it", 1, { one: "1 rete", other: "1 reti" })).toBe("1 rete");
+    expect(plural("it", 0, { one: "0 rete", other: "0 reti" })).toBe("0 reti");
+    expect(plural("it", 1_000_000, { one: "x", many: "1.000.000 di reti", other: "x" })).toBe("1.000.000 di reti");
+    expect(itOnMarket("Arbitrum")).toBe("su Arbitrum");
+    expect(itOnMarket("Ethereum (V4 Lido)")).toBe("sul mercato Ethereum (V4 Lido)");
+    expect(itOnMarket("Base", "network")).toBe("su Base");
+    expect(itForMarket("Base")).toBe("per Base");
+    expect(itForMarket("USDC | cbBTC (86%)", "market")).toBe("per il mercato USDC | cbBTC (86%)");
   });
 });
 

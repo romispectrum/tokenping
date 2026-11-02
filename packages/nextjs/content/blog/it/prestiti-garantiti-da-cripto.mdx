@@ -1,0 +1,178 @@
+export const meta = {
+  slug: "prestiti-garantiti-da-cripto",
+  title: "Prestiti garantiti da cripto: come funzionano, perché usarli",
+  description:
+    "Un prestito cripto sovracollateralizzato su Aave passo per passo: le differenze da una banca o da un prestatore centralizzato, a cosa serve e i rischi.",
+  h1: "Come funzionano i prestiti garantiti da cripto, e perché le persone li chiedono?",
+  publishedAt: "2026-10-19",
+  primaryQuestion: "Come funziona un prestito garantito da cripto, e perché le persone lo usano?",
+  readingMinutes: 15,
+};
+
+<ShortAnswer>
+  Un prestito garantito da cripto ti permette di prendere in prestito, di solito una stablecoin come USDC, a fronte di
+  cripto che depositi come collaterale, senza venderle. Su Aave il prestito è sovracollateralizzato: il 19 ottobre 2026
+  potevi prendere in prestito fino al 73% del valore di WBTC o all'80,5% del valore di WETH nel mercato Ethereum Core.
+  Il protocollo controlla solo il collaterale, non c'è una data di rimborso e il tasso di interesse è variabile. Se il
+  valore del collaterale scende abbastanza da portare il tuo fattore di salute (health factor) sotto 1, una parte viene
+  venduta per rimborsare il debito, e paghi una penale. Le persone usano questi prestiti per avere liquidità senza
+  vendere, per coprire un periodo scoperto, per rifinanziarsi, per la leva o per coprirsi, e ognuno di questi usi porta
+  con sé il rischio di liquidazione, quello sui tassi e quello sulle stablecoin.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Ogni dato on-chain, numero di blocco e fonte dietro questa guida: content/blog/snapshots/crypto-backed-loans.md */}
+
+## Cos'è un prestito garantito da cripto?
+
+Un prestito garantito da cripto è un prestito assicurato da cripto che depositi come collaterale. Su un protocollo di prestito come Aave è sovracollateralizzato: il collaterale deve valere più del prestito, e invece di verificare il tuo reddito il protocollo si affida alla possibilità di vendere una parte del collaterale se il suo valore scende troppo. Finché il prestito è aperto il collaterale resta tuo, con tutti i suoi movimenti di prezzo, e puoi riprenderlo una volta rimborsato il debito.
+
+La maggior parte delle persone prende in prestito stablecoin, token che seguono una valuta: USDC e USDT seguono il dollaro statunitense, EURC segue l'euro. Il collaterale è di solito un asset volatile. Nei mercati Aave su Ethereum e Arbitrum, l'ether arriva come WETH e il bitcoin come un token che lo rappresenta, per esempio WBTC o cbBTC.
+
+Due numeri per ogni asset di collaterale decidono quanto puoi prendere in prestito e quando il prestito è in pericolo:
+
+- Il **rapporto prestito/valore (LTV)** è il massimo che puoi prendere in prestito a fronte dell'asset, come quota del suo valore.
+- La **soglia di liquidazione (liquidation threshold)** è la quota del valore dell'asset che conta per il tuo fattore di salute. Quando il tuo collaterale, ponderato in questo modo, vale meno del tuo debito, il fattore di salute è sotto 1 e la posizione può essere liquidata.
+
+| Mercato       | Collaterale | LTV (limite di prestito) | Soglia di liquidazione | Bonus di liquidazione |
+| ------------- | ----------- | ------------------------ | ---------------------- | --------------------- |
+| Ethereum Core | WETH        | 80,5%                    | 83%                    | 5%                    |
+| Ethereum Core | WBTC        | 73%                      | 78%                    | 5%                    |
+| Ethereum Core | cbBTC       | 73%                      | 78%                    | 7,5%                  |
+| Arbitrum      | WETH        | 80%                      | 84%                    | 5%                    |
+| Arbitrum      | WBTC        | 73%                      | 78%                    | 7%                    |
+
+Questi valori sono stati letti on-chain il 19 ottobre 2026 dal PoolDataProvider di ogni mercato, al blocco Ethereum 26225342 e al blocco Arbitrum 516228495. cbBTC non è quotato nel mercato Aave su Arbitrum. La governance di Aave può cambiarli tutti. La differenza tra LTV e soglia di liquidazione è spiegata più a fondo in [cos'è il fattore di salute di Aave](/it/blog/fattore-di-salute-aave).
+
+## Come funziona un prestito su Aave, passo dopo passo?
+
+Aave V3 è un insieme di smart contract su ogni rete, e app.aave.com è una delle interfacce per usarli. Il centro assistenza di Aave descrive il prestito e il rimborso in pochi passaggi; ecco cosa comporta ciascuno.
+
+### Passo 1: deposita il collaterale
+
+Collega il wallet, scegli l'asset da depositare, per esempio WBTC, e depositalo. Controlla che sia attivato come collaterale, perché solo il collaterale conta per quanto puoi prendere in prestito. I token restano nel contratto Pool del mercato, dove altri utenti possono prenderli in prestito (è questo che paga il piccolo tasso di deposito). Puoi prelevare il collaterale dopo aver rimborsato, o una parte mentre hai ancora un debito, purché il tuo fattore di salute resti a 1 o più dopo il prelievo.
+
+### Passo 2: prendi in prestito una stablecoin
+
+Scegli la stablecoin e un importo sotto il tuo limite di prestito, cioè il valore del collaterale moltiplicato per il suo LTV. I token arrivano nel tuo wallet e gli interessi iniziano subito a maturare, a un tasso che il protocollo fissa in base a quanta parte dell'asset è presa in prestito e a parametri che la governance può cambiare (centro assistenza di Aave, Borrow Tokens). Aave V3 ora ha solo un tasso variabile: il riferimento del suo Pool dice che i prestiti usano sempre la modalità a tasso variabile e indica il vecchio tasso stabile come deprecato dalla v3.2.
+
+Tassi di prestito variabili al 19 ottobre 2026, come APY annuo, nel modo in cui li mostra l'app di Aave (blocco Ethereum 26225342, blocco Arbitrum 516228495):
+
+| Mercato       | USDC  | USDT (USD₮0 su Arbitrum) | GHO   | EURC                              |
+| ------------- | ----- | ------------------------ | ----- | --------------------------------- |
+| Ethereum Core | 4,58% | 4,17%                    | 4,60% | 4,12%                             |
+| Arbitrum      | 3,45% | 4,21%                    | 4,59% | nessuna stablecoin in euro aperta |
+
+Questi tassi cambiano di continuo e possono impennarsi. Il 14 ottobre 2026 il tasso di USDC su Ethereum Core è salito al 13,67% APR in un solo blocco ed è tornato giù circa 36 minuti dopo, come mostra [perché il tuo fattore di salute su Aave scende da solo](/it/blog/perche-il-fattore-di-salute-aave-e-sceso#causa-3-gli-interessi-sul-tuo-debito-sono-cresciuti-piu-in-fretta-di-quelli-sul-tuo-collaterale).
+
+### Passo 3: tieni d'occhio il fattore di salute
+
+Il fattore di salute (HF) è il tuo collaterale, ponderato per la soglia di liquidazione di ogni asset, diviso per il tuo debito. Prendi alice, che deposita 1 WBTC su Ethereum Core quando il bitcoin è a un indicativo 80.000 $ (l'oracolo di Aave segnava 82.680,33 $ al blocco Ethereum 26225364 il 19 ottobre 2026) e prende in prestito 24.000 USDC:
+
+- Limite di prestito: 80.000 × 0,73 = 58.400 $.
+- Fattore di salute: 80.000 × 0,78 ÷ 24.000 = 2,60.
+- Prezzo di liquidazione: 24.000 ÷ 0,78 = 30.769,23 $, cioè il 61,5% sotto 80.000 $.
+
+Il fattore di salute scende quando scende il bitcoin, e lentamente man mano che si aggiungono gli interessi: se il tasso di USDC restasse al 4,58% l'anno, dopo un anno il debito sarebbe di circa 25.099 USDC, e il prezzo di liquidazione sarebbe salito a circa 32.179 $. Per calcolarlo sulla tua posizione, vedi [come calcolare il tuo prezzo di liquidazione su Aave](/it/blog/prezzo-di-liquidazione-aave); per quanto margine lasciare, vedi [qual è un fattore di salute sicuro su Aave](/it/blog/fattore-di-salute-aave-sicuro).
+
+### Passo 4: rimborsa quando vuoi
+
+Non c'è una data di rimborso. La funzione di prestito di Aave non prevede alcuna scadenza, e puoi rimborsare tutto o parte del debito in qualsiasi momento, nell'asset che hai preso in prestito (riferimento del Pool di Aave V3; centro assistenza di Aave, Repay Tokens). Rimborsare per intero libera il tuo collaterale. Puoi anche rimborsare con il collaterale: nei mercati su Ethereum e Arbitrum, l'interfaccia di Aave può vendere una parte del tuo collaterale per ottenere l'asset del debito e rimborsare in una sola transazione (documentazione di Aave, funzioni di swap).
+
+### Passo 5: sappi cosa succede sotto un fattore di salute di 1
+
+Sotto 1, chiunque può liquidare la posizione: rimborsa una parte del tuo debito e prende collaterale di pari valore più un bonus di liquidazione. Una singola liquidazione può rimborsare fino al 50% del debito finché il fattore di salute è sopra 0,95 e il collaterale e il debito valgono ciascuno almeno 2.000 $, e fino al 100% quando il fattore di salute è pari o inferiore a 0,95 o uno dei due vale meno di 2.000 $ (centro assistenza di Aave).
+
+Se il bitcoin scendesse a 30.000 $ poco dopo il prestito di alice, il suo fattore di salute sarebbe 30.000 × 0,78 ÷ 24.000 = 0,975. Un liquidatore potrebbe rimborsare 12.000 USDC e prendere 12.000 × 1,05 ÷ 30.000 = 0,42 WBTC, lasciandole 0,58 WBTC a fronte di 12.000 USDC, un fattore di salute di 1,13. Perderebbe 600 $ di collaterale oltre al debito rimborsato, e 0,42 WBTC verrebbero venduti al minimo. Le regole complete sono in [cosa succede quando la tua posizione su Aave viene liquidata](/it/blog/come-funziona-la-liquidazione-su-aave).
+
+## In cosa un prestito garantito da cripto è diverso da un prestito bancario?
+
+Le differenze principali sono cosa guarda chi presta, quando rimborsi e cosa succede quando il collaterale perde valore:
+
+|                                              | Prestito su Aave                                                                                 | Prestito bancario tipico                                                             |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| Cosa decide quanto puoi prendere in prestito | Il valore del tuo collaterale e il suo LTV                                                       | Di solito il tuo reddito e la tua storia creditizia, più l'eventuale garanzia        |
+| Controlli su di te                           | Nessuno da parte del protocollo, che guarda solo il collaterale                                  | Di solito verifiche di identità, reddito e merito creditizio                         |
+| Durata                                       | Nessuna: rimborsi quando vuoi                                                                    | Di solito una durata fissa e un piano di rimborso                                    |
+| Interessi                                    | Variabili, ricalcolati man mano che cambia l'uso del mercato                                     | Fissi o variabili, come dice il contratto                                            |
+| Se il collaterale perde valore               | Liquidazione automatica da parte di terzi appena il fattore di salute è sotto 1, senza preavviso | Dipende dal contratto: una richiesta di altre garanzie, una trattativa, l'escussione |
+| Chi custodisce il collaterale                | Lo smart contract del mercato                                                                    | Chi presta, o un custode che sceglie                                                 |
+| Se il collaterale non copre il debito        | L'ammanco diventa una perdita per il protocollo, non un credito nei tuoi confronti               | Dipende dal contratto e dalla legge                                                  |
+
+L'ultima riga deriva da come Aave V3.3 e successive gestiscono una liquidazione che consuma tutto il collaterale: il debito rimanente viene cancellato come deficit sull'asset, come spiega [la sezione sui crediti inesigibili (bad debt)](/it/blog/come-funziona-la-liquidazione-su-aave#una-liquidazione-puo-lasciare-crediti-inesigibili). A quel punto però hai comunque perso il collaterale.
+
+## In cosa è diverso da un prestatore cripto centralizzato?
+
+Un prestatore centralizzato prende il tuo collaterale in custodia. Il prestito può sembrare molto simile, ma diventi un creditore dell'azienda, e se questa fallisce il tuo collaterale può restare bloccato con lei. Il 2022 ha mostrato cosa significa:
+
+- **Celsius** ha bloccato i prelievi dei clienti il 12 giugno 2022 e ha chiesto il fallimento il 13 luglio 2022. Secondo la Commodity Futures Trading Commission statunitense, i clienti vi avevano depositato circa 20 miliardi di dollari. A gennaio 2023 il tribunale fallimentare statunitense di New York ha stabilito che le cripto nei conti Earn di Celsius erano diventate proprietà di Celsius in base alle sue condizioni d'uso, il che ha lasciato quei clienti come creditori non garantiti.
+- **Voyager Digital** ha sospeso trading, depositi e prelievi il 1º luglio 2022, dopo che Three Arrows Capital non aveva effettuato i pagamenti su un prestito di 15.250 BTC e 350 milioni di dollari in USDC, e ha chiesto il Chapter 11 il 5 luglio 2022.
+- **Genesis** ha impedito agli investitori del programma Gemini Earn di prelevare a novembre 2022, quando deteneva circa 900 milioni di dollari dei loro asset, secondo la Securities and Exchange Commission statunitense, e ha chiesto il Chapter 11 il 19 gennaio 2023.
+- **BlockFi** ha chiesto il Chapter 11 il 28 novembre 2022, pochi giorni dopo aver sospeso i prelievi durante il crollo di FTX.
+
+Su Aave il collaterale sta in uno smart contract pubblico, con regole che chiunque può leggere, e non nel bilancio di un'azienda. Questo scambia un insieme di rischi con un altro, trattati più avanti in [i rischi](#quali-sono-i-rischi-di-un-prestito-garantito-da-cripto): bug, errori degli oracoli, decisioni della governance e la custodia dietro il bitcoin wrapped. Uno conta qui: l'emergency admin o il pool admin di Aave possono mettere in pausa un asset, e mentre è in pausa nessuno può prelevarlo o rimborsarlo (contratti PoolConfigurator e ValidationLogic di Aave).
+
+## Per cosa si usano i prestiti garantiti da cripto?
+
+### Liquidità senza vendere
+
+Un motivo è ottenere denaro tenendo le cripto, spesso perché chi le detiene si aspetta che salgano o vuole tenerle per anni. Il prestito conserva tutto il potenziale rialzo del collaterale e tutto il suo ribasso, aggiunge gli interessi, e può costringere a una vendita nel momento peggiore se il prezzo scende abbastanza.
+
+Prendere il prestito non vende il tuo collaterale: resta tuo. Se depositare il collaterale, il prestito, gli interessi o una liquidazione abbiano conseguenze fiscali dipende dal tuo paese, e a volte dalle condizioni del protocollo. Le linee guida dell'autorità fiscale britannica, per esempio, dicono che dipende dalle condizioni di una piattaforma di prestito DeFi se darle il collaterale conti come una cessione, e quando non lo è, trattano la vendita del collaterale in una liquidazione come una vendita del debitore stesso (HMRC Cryptoassets Manual, CRYPTO61640). Questa guida non dà consulenza fiscale; verifica le regole del paese in cui vivi.
+
+### Spendere o coprire un periodo scoperto
+
+Alcuni prendono in prestito per coprire una spesa prima che arrivi del denaro atteso, come una bolletta in scadenza prima di una vendita o di uno stipendio. Il compromesso è che niente chiude il prestito al posto tuo: non c'è una data di rimborso, il tasso può salire mentre aspetti, e trasformare le stablecoin in denaro su un conto bancario, e poi di nuovo in stablecoin per rimborsare, ha costi propri.
+
+### Rifinanziare
+
+Un prestito altrove può essere spostato su Aave se il tasso di Aave è più basso, e su Aave un debito può passare da una stablecoin a un'altra in una sola transazione con la funzione di debt swap dell'interfaccia (documentazione di Aave, funzioni di swap). Il compromesso: i tassi sono variabili, quindi l'asset più economico di oggi può diventare più caro il mese prossimo, e passare da una stablecoin in dollari a una in euro cambia la valuta in cui hai il debito, che è il tema di [andare short su valute fiat con un prestito su Aave](/it/blog/andare-short-su-valute-fiat-con-aave).
+
+### Leva
+
+Per aumentare l'esposizione, alcuni prendono in prestito stablecoin, comprano altro collaterale e depositano anche quello. Se alice usasse i suoi 24.000 USDC per comprare 0,3 WBTC a 80.000 $ e li depositasse, avrebbe 1,3 WBTC a fronte di 24.000 USDC: un fattore di salute di 3,38 e un prezzo di liquidazione di 23.668,64 $. Ogni movimento del bitcoin ora la colpisce 1,3 volte più forte che detenere 1 bitcoin e basta, e ripetere il loop (prestito a leva in ciclo) spinge il fattore di salute verso 1.
+
+### Copertura e posizioni short
+
+Prendere in prestito un asset e venderlo è una scommessa sul suo calo: depositi stablecoin, prendi in prestito WETH e lo vendi, e la posizione guadagna se ETH scende e si avvicina alla liquidazione se ETH sale (la [guida al fattore di salute sicuro](/it/blog/fattore-di-salute-aave-sicuro) mostra fino a dove può salire). Prendere in prestito una stablecoin in dollari o in euro a fronte di bitcoin è l'immagine speculare, una posizione short sulla valuta rispetto al collaterale, che alcuni bitcoiner chiamano «shorting fiat»; [andare short su valute fiat con un prestito su Aave](/it/blog/andare-short-su-valute-fiat-con-aave) lo spiega con i numeri.
+
+## Quali sono i rischi di un prestito garantito da cripto?
+
+- **Liquidazione.** Sotto un fattore di salute di 1, una parte o tutto il debito può essere rimborsato con il tuo collaterale, e in più perdi il bonus: dal 5% al 7,5% per gli asset della prima tabella. Le liquidazioni sono eseguite da bot in concorrenza tra loro, quindi possono arrivare in fretta (centro assistenza di Aave).
+- **Volatilità del collaterale.** Il bitcoin ha toccato il massimo di circa 69.000 $ a novembre 2021 ed era a circa 17.000 $ a metà giugno 2022, un calo di circa il 75%, ed è sceso sotto i 16.000 $ dopo il fallimento di FTX a novembre 2022 (blog della BCE). Con la soglia di liquidazione del 78% di WBTC, anche un prestito pari al 20% del valore del collaterale preso al picco del 2021 sarebbe stato liquidato entro metà giugno 2022.
+- **Tassi di interesse variabili.** Il tasso non è fisso per nessun periodo, e gli interessi abbassano il tuo fattore di salute nel tempo anche quando i prezzi restano fermi.
+- **Depeg delle stablecoin.** USDC è sceso a circa 0,88 $ l'11 marzo 2023, dopo che Circle aveva comunicato che 3,3 miliardi di dollari delle sue riserve erano presso la Silicon Valley Bank, ed era tornato sopra 0,99 $ entro il 13 marzo (post di Gauntlet sul forum di Aave; Circle). TerraUSD, una stablecoin algoritmica, ha subito un depeg (perdita dell'ancoraggio al dollaro) a maggio 2022 ed è scesa quasi a zero, il che secondo la SEC statunitense ha cancellato 40 miliardi di dollari di valore di mercato. Se la stablecoin che devi scende, il tuo debito costa meno; se scende una stablecoin che usi come collaterale, il tuo fattore di salute cala.
+- **Bitcoin wrapped.** Il bitcoin su Aave è un token garantito da bitcoin custoditi da qualcun altro o controllati da un bridge. WBTC, per esempio, dichiara che ogni token è garantito da bitcoin tenuti in custodia. Se quella garanzia venisse meno, il token potrebbe perdere valore indipendentemente da cosa fa il bitcoin.
+- **Smart contract, oracoli e governance.** Un bug, un prezzo sbagliato o una modifica di parametro possono colpire una posizione senza alcun movimento di mercato. A marzo 2026 un oracolo del tasso di cambio disallineato sui mercati Ethereum Core e Prime di Aave ha ridotto il tasso effettivo di wstETH di circa il 2,85% e ha causato liquidazioni per circa 10.938 wstETH su 34 account, secondo il post-mortem di Chaos Labs ([di più sugli errori degli oracoli](/it/blog/perche-il-fattore-di-salute-aave-e-sceso#causa-6-un-errore-delloracolo-o-del-tasso-di-cambio-ha-prezzato-male-il-tuo-collaterale)). La governance può anche abbassare una soglia di liquidazione per ogni posizione aperta ([di più sui tagli delle soglie](/it/blog/perche-il-fattore-di-salute-aave-e-sceso#causa-4-la-governance-o-i-risk-stewards-hanno-abbassato-una-soglia-di-liquidazione)).
+- **Fare tutto da solo.** Hai tu le chiavi, invii tu le transazioni, e in un mercato veloce un rimborso può richiedere più tempo del previsto per essere confermato.
+
+## Come tieni d'occhio un prestito?
+
+Le interfacce di Aave mostrano il tuo fattore di salute mentre le tieni aperte, ma non ti scrivono quando scende, come spiega [la guida agli avvisi sul fattore di salute](/it/blog/configurare-avvisi-fattore-di-salute-aave#aave-invia-avvisi-sul-fattore-di-salute). Un modo per tenerlo d'occhio è scegliere il fattore di salute al quale agiresti, rimborsando parte del debito o aggiungendo collaterale, e farti avvisare da uno strumento separato quando la posizione ci arriva. Tokenping controlla ogni 5 minuti e ti scrive finché il tuo fattore di salute è sotto la soglia che hai impostato; [la guida alla configurazione](/it/blog/configurare-avvisi-fattore-di-salute-aave) ti accompagna passo per passo. Un avviso ti dà tempo per agire, non protezione, e [come evitare la liquidazione su Aave](/it/blog/evitare-la-liquidazione-su-aave) spiega cosa fare con quel tempo.
+
+## Fonti
+
+- [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) di Aave V3 Ethereum Core e [PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b) di Arbitrum: LTV, soglie di liquidazione, bonus e tassi di prestito variabili letti on-chain al blocco Ethereum 26225342 e al blocco Arbitrum 516228495 (dati RPC consultati il 19 ottobre 2026)
+- [AaveOracle di Aave V3 Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): prezzo di WBTC di 82.680,33 $ al blocco Ethereum 26225364 (dati RPC consultati il 19 ottobre 2026)
+- [Aave Help: Borrow Tokens](https://aave.com/help/borrowing/borrow-tokens) (consultato il 19 ottobre 2026)
+- [Aave Help: Repay Tokens](https://aave.com/help/borrowing/repay-tokens) (consultato il 19 ottobre 2026)
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (consultato il 19 ottobre 2026)
+- [Riferimento dello smart contract Pool di Aave V3](https://aave.com/docs/aave-v3/smart-contracts/pool): parametri di prestito e rimborso, solo tasso variabile, tasso stabile deprecato nella v3.2 (consultato il 19 ottobre 2026)
+- [Documentazione di Aave: funzioni di swap](https://aave.com/docs/aave-v3/smart-contracts/swap-features): repay with collateral e debt swap (consultato il 19 ottobre 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) e [PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol), aave-v3-origin: prelievi con un prestito aperto, pause e chi può impostarle (consultato il 19 ottobre 2026)
+- [Comunicato stampa CFTC 8749-23 su Celsius Network](https://www.cftc.gov/PressRoom/PressReleases/8749-23), 13 luglio 2023: circa 20 miliardi di dollari depositati, prelievi bloccati il 12 giugno 2022, istanza di fallimento il 13 luglio 2022 (consultato il 19 ottobre 2026)
+- [Tribunale fallimentare degli Stati Uniti, distretto meridionale di New York: decisione sulla proprietà degli asset nei conti Earn di Celsius](https://www.nysb.uscourts.gov/sites/default/files/opinions/312902_1822_opinion.pdf), 4 gennaio 2023 (consultato il 19 ottobre 2026)
+- [Voyager Digital: aggiornamento di mercato](https://www.newswire.ca/news-releases/voyager-digital-provides-market-update-851734302.html), 1º luglio 2022, e [Voyager Digital: annuncio del Chapter 11](https://www.newswire.ca/news-releases/voyager-digital-commences-financial-restructuring-process-to-maximize-value-for-all-stakeholders-888320107.html), 5 luglio 2022 (entrambi consultati il 19 ottobre 2026)
+- [Comunicato stampa SEC 2023-7 su Genesis e il programma Gemini Earn](https://www.sec.gov/news/press-release/2023-7), 12 gennaio 2023 (consultato il 19 ottobre 2026)
+- [Comunicato stampa SEC 2024-37 su Genesis](https://www.sec.gov/newsroom/press-releases/2024-37), 19 marzo 2024: istanze di Chapter 11 depositate il 19 gennaio 2023 (consultato il 19 ottobre 2026)
+- [CoinDesk: BlockFi files for bankruptcy as FTX contagion spreads](https://www.coindesk.com/policy/2022/11/28/ftx-fallout-continues-as-crypto-lender-blockfi-declares-bankruptcy), 28 novembre 2022 (consultato il 19 ottobre 2026)
+- [The ECB Blog: Bitcoin's last stand](https://www.ecb.europa.eu/press/blog/date/2022/html/ecb.blog221130~5301eecd19.en.html), 30 novembre 2022: il calo da circa 69.000 $ a circa 17.000 $ e sotto i 16.000 $ (consultato il 19 ottobre 2026)
+- [Gauntlet: Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), forum di governance di Aave, 17 marzo 2023 (consultato il 19 ottobre 2026)
+- [Circle: $3.3 Billion of USDC Reserve Risk Removed, Dollar De-peg Closes](https://www.circle.com/pressroom/3-3-billion-of-usdc-reserve-risk-removed-dollar-de-peg-closes), 12 marzo 2023 (consultato il 19 ottobre 2026)
+- [Comunicato stampa SEC 2024-73 su Terraform](https://www.sec.gov/newsroom/press-releases/2024-73), 13 giugno 2024: il depeg di UST di maggio 2022 (consultato il 19 ottobre 2026)
+- [WBTC](https://wbtc.network/): come è garantito WBTC (consultato il 19 ottobre 2026)
+- [Chaos Labs: Post-Mortem, Exchange Rate Misalignment on wstETH Core and Prime Instances](https://governance.aave.com/t/24269), forum di governance di Aave, 10 marzo 2026 (consultato il 19 ottobre 2026)
+- [HMRC Cryptoassets Manual, CRYPTO61640: DeFi lending and staking, collateral](https://www.gov.uk/hmrc-internal-manuals/cryptoassets-manual/crypto61640), aggiornato il 28 novembre 2025 (consultato il 19 ottobre 2026)
+
+_Contenuto informativo, non è una consulenza finanziaria. Gli avvisi riducono il rischio, ma non impediscono la liquidazione._
