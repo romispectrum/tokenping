@@ -91,6 +91,7 @@ Every migration in order:
 | `20261026000000` | `allow_spanish_alert_locale`                      | Lets `locale`, `email_locale`, `signal_locale` and `telegram_locale` be `es` (Spanish) as well as `en` and `cs`.                                                                                                                                             |
 | `20261029000000` | `allow_hindi_alert_locale`                        | Lets `locale`, `email_locale`, `signal_locale` and `telegram_locale` be `hi` (Hindi) as well as `en`, `cs` and `es`.                                                                                                                                         |
 | `20261029120000` | `allow_german_vietnamese_alert_locale`            | Lets `locale`, `email_locale`, `signal_locale` and `telegram_locale` be `de` (German) and `vi` (Vietnamese) too.                                                                                                                                             |
+| `20261102000000` | `allow_all_planned_alert_locales`                 | Lets the four language columns hold any of the 31 planned site languages (`fr`, `pt`, `it` ... `ko`, `zh`), so no later language needs its own migration.                                                                                                    |
 
 Supabase runs each migration once. All but `20250225120000` and `20260527000000` are also safe to run again. Comments
 inside the older migrations describe the app as it was when they were written (for example, before wallet sign-in
@@ -111,19 +112,20 @@ The order for a deployment is: **migrations first, then environment variables, t
 Why the code waits for the migration: the new columns and tables are read and written by the new code, so deploying it
 first makes these fail.
 
-| Migration        | What fails if the code is deployed without it                                              |
-| ---------------- | ------------------------------------------------------------------------------------------ |
-| `20261015000000` | Saving the attribution answer.                                                             |
-| `20261016000000` | Saving an alert and the cron run (the `locale` column).                                    |
-| `20261017000000` | Every alert read, save and cron run (the `market` column).                                 |
-| `20261018000000` | Saving an alert, the cron run and the bot's Start (`telegram_username`, `telegram_chats`). |
-| `20261019000000` | The "Send test" buttons.                                                                   |
-| `20261020000000` | Saving an alert and the cron run (the per-channel language columns).                       |
-| `20261022000000` | Signing in, so nobody can open their alert settings.                                       |
-| `20261025000000` | Every alert read, save and cron run, Aave included (the `protocol` column).                |
-| `20261026000000` | Saving an alert from the Spanish pages, or a channel set to Spanish (the language checks). |
-| `20261029000000` | Saving an alert from the Hindi pages, or a channel set to Hindi (the language checks).     |
-| `20261029120000` | Saving an alert from the German or Vietnamese pages, or a channel set to either.           |
+| Migration        | What fails if the code is deployed without it                                                |
+| ---------------- | -------------------------------------------------------------------------------------------- |
+| `20261015000000` | Saving the attribution answer.                                                               |
+| `20261016000000` | Saving an alert and the cron run (the `locale` column).                                      |
+| `20261017000000` | Every alert read, save and cron run (the `market` column).                                   |
+| `20261018000000` | Saving an alert, the cron run and the bot's Start (`telegram_username`, `telegram_chats`).   |
+| `20261019000000` | The "Send test" buttons.                                                                     |
+| `20261020000000` | Saving an alert and the cron run (the per-channel language columns).                         |
+| `20261022000000` | Signing in, so nobody can open their alert settings.                                         |
+| `20261025000000` | Every alert read, save and cron run, Aave included (the `protocol` column).                  |
+| `20261026000000` | Saving an alert from the Spanish pages, or a channel set to Spanish (the language checks).   |
+| `20261029000000` | Saving an alert from the Hindi pages, or a channel set to Hindi (the language checks).       |
+| `20261029120000` | Saving an alert from the German or Vietnamese pages, or a channel set to either.             |
+| `20261102000000` | Saving an alert from any page of a language added after Vietnamese, or a channel set to one. |
 
 **Upgrading a live deployment.** One migration works the other way round. `20261021000000` closes the tables to the anon
 key. Older versions of the app fell back to the anon key when `SUPABASE_SERVICE_ROLE_KEY` was not set, so before
