@@ -77,7 +77,7 @@ export const LanguageSwitch = ({ className }: { className?: string }) => {
         />
       </summary>
       {/* Scrolls inside itself: the list is longer than a phone screen. */}
-      <ul className="absolute top-full right-0 z-50 m-0 mt-2 max-h-[min(28rem,calc(100dvh-6rem))] min-w-56 list-none overflow-y-auto overscroll-contain rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-frame">
+      <ul className="absolute top-full right-0 z-50 m-0 mt-2 max-h-[min(28rem,calc(100dvh-6rem))] min-w-64 list-none overflow-y-auto overscroll-contain rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-frame">
         {MENU_ENTRIES.map(({ locale, name, short, hreflang }) => {
           const isCurrent = locale === current;
           return (
