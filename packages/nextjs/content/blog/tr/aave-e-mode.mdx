@@ -1,0 +1,203 @@
+export const meta = {
+  slug: "aave-e-mode",
+  title: "Aave E-Mode: daha fazla borç alma gücü, daha ince marj",
+  description:
+    "Aave V3 E-Mode nedir, Ethereum, Arbitrum, Base ve Optimism'de hangi kategoriler var, sağlık faktörünü nasıl değiştirir, bir loop'un marjı ne kadar incedir.",
+  h1: "Aave E-Mode nedir ve likidasyon riskinizi nasıl etkiler?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "Aave E-Mode nedir ve bir pozisyonu likidasyona ne kadar yaklaştırır?",
+  readingMinutes: 15,
+};
+
+<ShortAnswer>
+  E-Mode (Efficiency Mode), fiyatı borç aldığınız varlıkla birlikte hareket eden bir teminata karşı, örneğin WETH'e
+  karşı wstETH ile, daha fazla borç almanızı sağlayan bir Aave V3 ayarıdır: normal kredi/değer oranını (LTV) ve
+  likidasyon eşiğini (liquidation threshold) kategori genelinde geçerli daha yüksek değerlerle değiştirir. Ethereum Core
+  piyasasında "ETH correlated" kategorisi 28 Ekim 2026'da %93 LTV ve %95 likidasyon eşiği kullanıyordu; kategori
+  dışındaki wstETH için bu değerler %79 ve %82 idi. Sağlık faktörü (health factor) formülü değişmez, yalnızca içindeki
+  eşik değişir, bu yüzden aynı pozisyon daha yüksek bir sayı gösterir. Bedeli daha ince bir marjdır: E-Mode limitine
+  kadar borç alınmış bir pozisyon 95 ÷ 93 = 1,0215 ile başlar ve Mart 2026'da %2,85'lik bir oracle (fiyat kaynağı)
+  hareketi yaklaşık 1,0288'in altındaki E-Mode pozisyonlarını likide etti. Bu limite yakın borç alınmış bir loop
+  (kaldıraçlı borç döngüsü), Tokenping'in kabul ettiği en düşük uyarı eşiği olan 1,1'in altında çalışır.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Rakamlar ve okundukları blok numaraları: content/blog/snapshots/aave-e-mode.md */}
+
+## Aave E-Mode nedir ve neden var?
+
+Aave E-Mode, bir Aave V3 piyasasında hesap başına yapılan bir ayardır: sizi birbiriyle ilişkili varlıklardan oluşan tek bir kategoriye alır ve listelediği teminata her varlığın kendi parametreleri yerine o kategorinin LTV'sini, likidasyon eşiğini ve likidasyon bonusunu uygular. Aave'nin yardım sayfası bunu "maximize their borrowing power by selecting optimized asset categories" (optimize edilmiş varlık kategorileri seçerek borç alma güçlerini en üst düzeye çıkarma) yolu olarak tanımlar. Pool sözleşmesinde `setUserEMode(categoryId)` bir kategoriye girer, `getUserEMode(address)` bir adresin hangi kategoride olduğunu gösterir ve kategori 0 hiçbiri anlamına gelir.
+
+Var olma nedeni, normal parametrelerin en kötü duruma göre, yani fiyatları birbirinden bağımsız hareket eden bir teminat varlığı ve bir borç varlığına göre belirlenmesidir. İkisi de aynı şeyi takip ettiğinde, wstETH ve WETH'in ikisinin de ETH'yi takip etmesi gibi, ETH'nin dolar fiyatındaki bir düşüş teminatı ve borcu birlikte düşürür ve pozisyonun sağlığı neredeyse hiç değişmez. Bu yüzden Aave'nin risk sağlayıcıları bu eşleşme için daha yüksek bir LTV ve eşik tanıyabilir. Geriye kalan, iki varlığın birbirinden uzaklaşma riskidir ve bir E-Mode pozisyonunun gerçekte maruz kaldığı risk budur.
+
+"Liquid E-Modes" yapısını getiren Aave V3.2'den bu yana bir kategoriyi üç şey tanımlar:
+
+- Kategorinin tamamı için **tek bir LTV, tek bir likidasyon eşiği ve tek bir likidasyon bonusu**.
+- **Bir teminat kümesi**: siz kategorideyken kategorinin parametrelerini alan rezervler. Kümenin dışındaki teminat kendi LTV'sini ve eşiğini korur.
+- **Bir borç alınabilir küme**: kategorideyken borç alabileceğiniz tek rezervler. Bir varlık kümelerden birinde, diğerinde ya da ikisinde birden olabilir ve birden fazla kategoride yer alabilir.
+
+Yani Ethereum Core piyasasındaki "ETH correlated", "ETH'ye karşı her şeyi borç al" demek değildir: borç alınabilir kümesinde yalnızca WETH vardır (28 Ekim 2026'da, 26291736 numaralı blokta okundu). Kategori, ne kadar borç alabileceğiniz kadar neyi borç alabileceğinizi de belirler.
+
+## Bugün hangi E-Mode kategorileri var?
+
+Aşağıdaki kategoriler 28 Ekim 2026'da her piyasanın Pool sözleşmesinden `getEModeCategoryLabel`, `getEModeCategoryCollateralConfig`, `getEModeCategoryCollateralBitmap` ve `getEModeCategoryBorrowableBitmap` ile okundu, bitmap'ler `getReservesList()` ile çözüldü. Dört Pool'un dördü de revizyon 11 (V3.7) bildirdi. Bu parametreleri yönetişim (governance) ve Risk Stewards değiştirir, bu yüzden bir sayıya güvenmeden önce kategoriyi Aave uygulamasında kontrol edin.
+
+### Ethereum Core (blok 26291736)
+
+Ethereum Core piyasasında 48 kategori vardı. Çoğu tek bir Pendle principal token (PT) ya da Ethena varlığını stablecoin'lerle veya USDe ile eşleştirir ve birçoğu yalnızca hâlâ kapatılmakta olan pozisyonlar için duran vadesi dolmuş PT'leri listeler. Bir borç alanın en çok karşılaşacağı kategoriler:
+
+| Id  | Etiket                      | LTV | Likidasyon eşiği | Bonus | Teminat kümesi                                | Borç alınabilir küme |
+| --- | --------------------------- | --- | ---------------- | ----- | --------------------------------------------- | -------------------- |
+| 1   | ETH correlated              | %93 | %95              | %1    | WETH, wstETH, cbETH, rETH, weETH, osETH, ETHx | WETH                 |
+| 2   | sUSDe Stablecoins           | %90 | %92              | %4    | USDe, sUSDe                                   | USDC, USDT           |
+| 11  | USDe Stablecoin             | %90 | %93              | %2    | USDe                                          | USDC, USDT           |
+| 4   | LBTC_WBTC                   | %84 | %86              | %3    | LBTC                                          | WBTC                 |
+| 7   | eBTC/WBTC                   | %83 | %85              | %3    | eBTC                                          | WBTC                 |
+| 22  | ezETH/wstETH                | %93 | %95              | %1    | ezETH                                         | wstETH               |
+| 26  | weETH/wstETH ETH Correlated | %93 | %95              | %1    | weETH                                         | WETH, wstETH         |
+| 3   | rsETH\_\_ETH_wstETH_ETHx    | %93 | %95              | %1    | rsETH                                         | WETH, wstETH, ETHx   |
+| 40  | LINK\_\_USDC_USDT           | %66 | %71              | %7    | LINK                                          | USDC, USDT           |
+| 43  | XAUt\_\_USDC_USDT_GHO       | %70 | %75              | %6    | XAUt                                          | USDC, USDT, GHO      |
+| 47  | PT-srUSDe Stablecoins       | %90 | %92              | %4,03 | sUSDe, PT-srUSDe-22OCT2026                    | USDC, USDT, USDe     |
+
+Aynı okumadan iki ayrıntı. "ETH correlated" kategorisinde ETHx teminat kümesindedir ama LTV 0 olarak işaretlenmiştir (kategorinin `ltvzeroBitmap` alanı), yani sağlık faktörüne %95 ile sayılır ama hiç borç alma gücü vermez. Ve 47 ile 48 numaralı kategoriler (stablecoin'lere ve USDe'ye karşı PT-srUSDe) V3.7 `isolated` işareti açık olan tek kategorilerdi; bunun ne yaptığı aşağıdaki giriş kurallarında anlatılıyor. LINK ve XAUt kategorileri, bir kategorinin hiç "correlated" olması gerekmediğini gösterir: bunlar, tek bir varlığa karşı stablecoin borç almak için ikinci bir parametre setidir.
+
+### Arbitrum (bloklar 519074353-519074731)
+
+| Id  | Etiket                           | LTV | Likidasyon eşiği | Bonus | Teminat kümesi         | Borç alınabilir küme |
+| --- | -------------------------------- | --- | ---------------- | ----- | ---------------------- | -------------------- |
+| 1   | Stablecoins                      | %93 | %95              | %1    | DAI, USDC, USD₮0, EURS | yok                  |
+| 2   | ETH correlated                   | %93 | %95              | %1    | WETH, wstETH, weETH    | WETH                 |
+| 7   | wstETH/WETH ETH Correlated       | %94 | %96              | %1    | wstETH                 | WETH                 |
+| 3   | ezETH/wstETH/WETH ETH Correlated | %93 | %95              | %1    | ezETH                  | WETH, wstETH         |
+| 5   | rsETH/wstETH/WETH ETH Correlated | %93 | %95              | %1    | rsETH                  | WETH, wstETH         |
+| 4   | ezETH Stablecoins                | %72 | %75              | %7,5  | ezETH                  | USD₮0, USDC          |
+| 6   | rsETH/Stablecoins                | %72 | %75              | %7,5  | rsETH                  | USDC, USD₮0          |
+| 8   | AAVE\_\_USDCn_USDT               | %66 | %73              | %10   | AAVE                   | USD₮0, USDC          |
+| 9   | ARB\_\_USDCn_USDT                | %58 | %63              | %10   | ARB                    | USD₮0, USDC          |
+| 10  | tBTC\_\_USDCn_USDT               | %72 | %75              | %7,5  | tBTC                   | USD₮0, USDC          |
+
+Arbitrum'daki "Stablecoins" kategorisinin borç alınabilir kümesi boştur, yani bu kategoride yeni borç açılamaz. Tek varlıklı "wstETH/WETH ETH Correlated" kategorisi Ethereum'dakinden bir kademe daha cömerttir: %94 ve %96, limitte 96 ÷ 94 = 1,0213'lük bir marj.
+
+### Base (blok 53204166)
+
+Base ağında 15 kategori vardı. ETH kategorileri ve borç alanların en çok karşılaştığı iki BTC kategorisi:
+
+| Id  | Etiket            | LTV | Likidasyon eşiği | Bonus | Teminat kümesi             | Borç alınabilir küme |
+| --- | ----------------- | --- | ---------------- | ----- | -------------------------- | -------------------- |
+| 1   | ETH correlated    | %90 | %93              | %2    | WETH, cbETH, wstETH, weETH | WETH                 |
+| 8   | wstETH/WETH       | %93 | %95              | %1    | wstETH                     | WETH                 |
+| 9   | cbETH/WETH        | %93 | %95              | %2    | cbETH                      | WETH                 |
+| 7   | weETH/WETH        | %93 | %95              | %1,25 | weETH                      | WETH                 |
+| 2   | ezETH wstETH      | %93 | %95              | %1    | ezETH                      | wstETH               |
+| 4   | LBTC_cbBTC        | %82 | %84              | %3    | LBTC                       | cbBTC                |
+| 10  | cbBTC Stablecoins | %82 | %85              | %4    | cbBTC                      | USDC, GHO            |
+
+Geri kalanlar tek bir varlığı (wrsETH, syrupUSDC, AAVE, EURC, LBTC, tBTC, ezETH) USDC ve GHO ile ya da wstETH ile eşleştirir. Base, geniş bir kategorinin tek varlıklı kategorilere nasıl bölündüğünü gösterir: çok varlıklı "ETH correlated" kategorisi %90 ve %93 ile çalışırken wstETH/WETH, cbETH/WETH ve weETH/WETH %93 ve %95 ile çalışır.
+
+### Optimism (blok 158799548)
+
+| Id  | Etiket         | LTV   | Likidasyon eşiği | Bonus | Teminat kümesi                               | Borç alınabilir küme |
+| --- | -------------- | ----- | ---------------- | ----- | -------------------------------------------- | -------------------- |
+| 1   | Stablecoins    | %0,01 | %87              | %1    | DAI, USDC (köprülenmiş ve yerel), USDT, sUSD | yok                  |
+| 2   | ETH correlated | %93   | %95              | %1    | WETH, wstETH, rETH (rETH, LTV 0 ile)         | WETH                 |
+
+Optimism'deki "Stablecoins" kategorisi geçmişten kalmadır: LTV'si %0,01'dir ve borç alınabilir hiçbir şey yoktur. "ETH correlated" kategorisi Ethereum'daki sayılarla aynıdır.
+
+## E-Mode'da sağlık faktörü nasıl hesaplanır?
+
+E-Mode'da sağlık faktörü her zamanki formülü kullanır, Σ(teminat değeri × likidasyon eşiği) ÷ borç değeri; tek fark, kategorinizin kümesindeki her teminat varlığının kendi eşiği yerine kategorinin eşiğini almasıdır. Değişen yalnızca budur: `GenericLogic.calculateUserAccountData` eşiği varlık başına seçer ve `getUserAccountData` sonucu döndürür, bu yüzden bu çağrıyı okuyan her araç E-Mode sayısını zaten gösterir. Genel formül [Aave sağlık faktörü nasıl hesaplanır](/tr/blog/aave-saglik-faktoru#aave-saglık-faktoru-nasıl-hesaplanır) bölümündedir ve aynı rehberdeki [E-Mode sağlık faktörünü nasıl değiştirir](/tr/blog/aave-saglik-faktoru#e-mode-saglık-faktorunu-nasıl-degistirir) bölümü aşağıdakilerin kısa halini verir.
+
+Ethereum Core piyasasında 10.000 $ değerinde wstETH teminatı ve 9.000 $ değerinde WETH borcu alın; "ETH correlated" parametreleri 28 Ekim 2026'da (blok 26291736), wstETH'in kendi parametreleri aynı gün okundu (blok 26291849: LTV %79, likidasyon eşiği %82):
+
+1. **E-Mode'da:** HF = 10.000 × 0,95 ÷ 9.000 = **1,056**. Borç limiti 10.000 × 0,93 = 9.300 $'dır, yani 300 $ daha borç alınabilir.
+2. **E-Mode dışında:** aynı pozisyonun HF'si 10.000 × 0,82 ÷ 9.000 = 0,911 olurdu ve pozisyon hiç açılamazdı: wstETH'in %79'luk LTV'si borcu 7.900 $ ile sınırlar.
+3. **E-Mode limitinde:** 9.300 $'ın tamamını borç alın, HF = 9.500 ÷ 9.300 = **1,0215** olur. Pozisyon açıldığı gün likidasyona %2,1 uzaktadır.
+
+Limitine kadar borç alınmış normal bir pozisyon da eşik ÷ LTV ile başlar: 28 Ekim 2026'da Ethereum Core piyasasında WETH için 84 ÷ 81 = 1,037 (blok 26291849). E-Mode, LTV ile eşik arasındaki farkı 2 yüzde puanına indirir ve bu fark, limite kadar borç alınmış bir pozisyonun bütün marjıdır. [Maksimum borç almak neden yalnızca yaklaşık 1,03'lük bir sağlık faktörü bırakır](/tr/blog/aave-saglik-faktoru#maksimum-borc-almak-neden-saglık-faktorunu-yalnızca-yaklasık-103te-bırakır) aynı hesabı E-Mode dışında anlatır.
+
+Sayıyı hareket ettiren şey de farklıdır. wstETH teminatı ve WETH borcuyla iki taraf da ETH üzerinden fiyatlanır, bu yüzden ETH'nin dolar fiyatı birbirini götürür: ETH yarıya inerse teminat ve borç birlikte yarıya iner ve HF 1,056'da kalır. Geriye Aave oracle'ının bildirdiği wstETH/ETH kuru kalır. Pozisyon, bu kur 1 − 90 ÷ 95 = %5,3 düştüğünde 1,00'e ulaşır; limite kadar borç alınmış pozisyon ise %2,1 düştüğünde. [E-Mode likidasyon fiyatınızı nasıl değiştirir](/tr/blog/aave-likidasyon-fiyati#e-mode-likidasyon-fiyatınızı-nasıl-degistirir) bunu dolar fiyatı yerine bir kura çevirir.
+
+## E-Mode'da kaldıraçlı staking loop'u nasıl işler ve neye yönelik bir bahistir?
+
+Kaldıraçlı bir staking loop'u wstETH yatırır, buna karşı WETH borç alır, WETH'i daha fazla wstETH'e çevirir ve onu da yatırır; bu, pozisyon başlangıçtaki wstETH miktarının birkaç katını neredeyse aynı büyüklükte bir WETH borcuna karşı tutana kadar tekrarlanır. Bunu değerli kılan E-Mode'dur: %93 LTV ile loop başlangıç özsermayesinin 1 ÷ (1 − 0,93) = 14,3 katına ulaşabilir; wstETH'in normal LTV'siyle bu 1 ÷ (1 − 0,79) = 4,8 kattır.
+
+Hesabı, loop'un yaşadığı birim olan ETH cinsinden yapın. 10 ETH değerinde wstETH ile başlayın, 100 ETH değerinde teminata ve 90 WETH borca kadar döngü yapın; elinizde yukarıdaki 1,056'lık, on kat kaldıraçlı pozisyon olur. 28 Ekim 2026'da Ethereum Core piyasasındaki Aave oracle'ı wstETH'i 2.912,79 $, WETH'i 2.335,08 $ olarak fiyatladı (blok 26291849); bu, wstETH başına 1,2474 ETH'lik bir kurdur ve aynı bloktaki Lido'nun kendi `stEthPerToken()` değeriyle eşleşiyordu, yani 100 ETH'lik teminat yaklaşık 80,2 wstETH'tir.
+
+Loop'un kazanıp kazanmayacağına iki sayı karar verir ve hiçbiri ETH'nin dolar fiyatı değildir:
+
+- **wstETH/ETH döviz kuru.** Staking ödülleri biriktikçe yükselir: Lido, 28 Ekim 2026'da %2,25'lik bir stETH APR'si ve %2,33'lük 7 günlük ortalama bildirdi. Loop bu getiriyi 100 ETH üzerinden toplarken 90 ETH üzerinden faiz öder, bu yüzden 10 ETH'lik özsermaye iki oran arasındaki farkın yaklaşık on katını kazanır. Oracle'ın bildirdiği kurdaki bir düşüş, ister wstETH'teki bir piyasa iskontosundan ister bir yapılandırma hatasından gelsin, borcu değil teminatı düşürür ve loop'u likide edebilecek tek fiyat hareketidir.
+- **WETH borç faizi.** Borç Aave'nin değişken faiziyle büyür: 26291849 numaralı blokta Ethereum Core piyasasında WETH için yıllık %1,94; loop'un yatırdığı wstETH ise Aave'nin kendisinden neredeyse hiçbir şey kazanmaz (aynı blokta %0,0002). Borç faizi staking getirisinin üzerinde olduğu sürece loop para kaybeder ve sağlık faktörü yavaşça düşer.
+
+İkisini on kat kaldıraçlı pozisyonda bir yıl için birleştirin, bileşik getiriyi ve fiyat hareketlerini yok sayarak. Teminat staking getirisiyle yaklaşık 102,3 ETH'ye büyür. %1,94 borç faiziyle borç 91,75 WETH'e ulaşır: özsermaye 10,55 ETH olur, wstETH tutmanın %2,3'üne karşı %5,5 artış, ve HF 1,059'a yükselir. Ortalama %5 borç faiziyle borç 94,5 WETH'e ulaşır, özsermaye 7,8 ETH'ye düşer ve HF 1,028'e geriler. %8'de borç 97,2 WETH'e ulaşır ve HF 1,000 olur: loop yalnızca faiz yüzünden likide edilirdi. Kullanım oranı yüksek olduğunda WETH borç faizleri gerçekten sıçrar; [Aave borç faizleri neden sıçrar](/tr/blog/aave-faiz-oranlari#aave-borc-faizleri-neden-sıcrar) eğriyi açıklar.
+
+ETH'nin dolar fiyatı loop'un sahibi için yine de önemlidir, çünkü 10 ETH'lik özsermaye ETH ne kadar ederse o kadar eder; ama sağlık faktörü için önemli değildir. Bir loop, staking getirisinin borç faizinin üzerinde kalacağına ve oracle'ın wstETH/ETH kurunun marjdan fazla düşmeyeceğine yönelik bir bahistir. Mart 2026'da kaybedilen bahis ikincisiydi.
+
+## Bir E-Mode kategorisine girme ve çıkma kuralları nelerdir?
+
+Bir kategoriye girmek ya da çıkmak tek bir çağrıdır, Pool üzerinde `setUserEMode(categoryId)`, ve Pool bu çağrı geçerli olmadan önce aave-v3-origin içindeki `ValidationLogic.validateSetUserEMode` ve `SupplyLogic.executeSetUserEMode` fonksiyonlarında üç kontrol yapar (main dalı, 28 Ekim 2026'da okundu):
+
+1. **Borç aldığınız her varlık hedef kategoride borç alınabilir olmalıdır.** Bir kategori için bu, onun borç alınabilir bitmap'i demektir; çıkış (kategori 0) için ise rezervde borç almanın açık olması. Hata `InvalidDebtInEmode`'dur. USDC borcu olan bir cüzdan, Ethereum Core piyasasında borç alınabilir tek varlığın WETH olduğu "ETH correlated" kategorisine USDC geri ödenene kadar giremez.
+2. **Teminat olarak etkinleştirdiğiniz her varlık hedef kategoride sıfırdan farklı bir LTV'yi korumalıdır.** Hata `InvalidCollateralInEmode`'dur. Kontrol `getUserReserveLtv` üzerinden yapılır: bu fonksiyon, kategorinin teminat kümesindeki varlıklar için kategorinin LTV'sini (ya da kategori onları LTV 0 olarak işaretliyorsa 0), küme dışındaki teminat için varlığın kendi LTV'sini ve kategori izole ise küme dışındaki teminat için 0 döndürür.
+3. **Geçişten sonra sağlık faktörünüz 1 veya üzerinde olmalıdır.** `executeSetUserEMode` önce kategoriyi değiştirir, sonra `validateHealthFactor` çağırır; bu yüzden sizi likide edilebilir bırakacak bir geçiş geri alınır (revert).
+
+Hiç yatırılan varlığı ya da borcu olmayan bir cüzdan her zaman geçiş yapabilir ve zaten istenen kategoride olan bir cüzdan için hiçbir şey değişmez, kontrol de yapılmaz.
+
+Eski rehberleri okuyan herkes için iki sürüm notu önemlidir. V3.2'den bu yana kategorinizin kümesi dışındaki teminat kendi LTV'sini ve eşiğini korur, bu yüzden "ETH correlated" içindeyken WBTC tutmak serbesttir ve WBTC kendi parametreleriyle sayılır: V3.2 özellik notları E-Mode parametrelerinin "will only apply for the ones listed as eModeCollateral" (yalnızca eModeCollateral olarak listelenenlere uygulanacağını) söyler. V3.7'den bu yana bir kategori `isolated` işareti taşıyabilir (`getIsEModeCategoryIsolated`). İzole bir kategoride küme dışındaki teminat LTV 0 alır ama kendi eşiğini korur: sağlık faktöründe hâlâ sayılır ama yeni borca dayanak olmaz, böyle bir teminat etkinken kategoriye giriş engellenir ve kategorinin içinden onu teminat olarak etkinleştirme isteği reddedilir. Yönetişim bu işareti canlı bir kategori için açarsa, V3.7 notlarına göre küme dışındaki teminat "immediately becomes LTV-zero" (hemen LTV sıfır olur), "health factor is unaffected" (sağlık faktörü etkilenmez). 28 Ekim 2026'da bu işaret yalnızca Ethereum Core piyasasındaki iki PT-srUSDe kategorisinde açıktı.
+
+Çıkışı engelleyen şey, kategori 0'a karşı çalıştırılan aynı üç kontroldür. Rezervinde borç almanın kapalı olduğu bir varlığı borç alırken çıkamazsınız ve çıkmak sağlık faktörünüzü 1'in altına itecekse çıkamazsınız; yaygın durum budur: yukarıdaki 1,056'lık pozisyon E-Mode dışında 0,911 gösterirdi, bu yüzden çağrı geri alınır. Çıkmak için önce yeterince WETH geri ödemeniz gerekir, wstETH'in %82'lik eşiğinde 10.000'lik teminata karşı yaklaşık 8.200'lük bir borca kadar. E-Mode'a girmek kolaydır, verdiği alanı kullandıktan sonra çıkmak ise zordur.
+
+## Mart 2026'da E-Mode loop'larına ne oldu?
+
+Mart 2026'da yanlış yapılandırılmış bir fiyat adaptörü, Aave'nin Ethereum Core ve Prime piyasalarında kullandığı wstETH döviz kurunu yaklaşık %2,85 düşürdü ve yaklaşık 1,0288 sağlık faktörünün altındaki her E-Mode pozisyonu aynı anda likide edilebilir hale geldi. Kaynak, Chaos Labs'in Aave yönetişim forumundaki post-mortem raporudur: 10 Mart 2026'da yayımlandı ve 28 Ekim 2026'da yeniden okundu; burada onun ötesine geçen hiçbir şey yok.
+
+Aave wstETH'i, enflasyon tarzı saldırıları engellemek için bildirdiği wstETH/stETH kurunun ne kadar hızlı yükselebileceğini sınırlayan bir CAPO adaptörü (Correlated Assets Price Oracle) üzerinden fiyatlar. Sınır bir anlık görüntü oranından, bir anlık görüntü zaman damgasından ve azami yıllık büyüme oranından hesaplanır. Bir güncelleme anlık görüntü zaman damgasını yedi günlük bir referansa ayarladı; zincir üstündeki bir sınır ise (oran her 3 günde en fazla %3 yükselebilir) oranın o zaman damgasının varsaydığı değere ulaşmasını engelledi, bu yüzden sınır fazla düşük bir referanstan hesaplandı. Post-mortem'e göre izin verilen azami kur yaklaşık 1,1939 çıktı, canlı kurun altında kaldı, bu yüzden sınır canlı kurun yerine geçti ve etkin kur "around 2.855%" (yaklaşık %2,855) düştü.
+
+Raporun bildirdiği sonuçlar:
+
+- 34 hesapta yaklaşık 10.938 wstETH'lik E-Mode likidasyonu; etkilenenler "with a health factor lower than 1.0288" (sağlık faktörü 1,0288'den düşük olan) pozisyonlar.
+- Protokol için batık borç (bad debt) yok.
+- Likidatörlerin bonuslar ve kur farkından elde ettiği yaklaşık 512 ETH; bunun 141 ETH'lik likidasyon bonusu geliri ve yaklaşık 13 ETH'lik ücret, etkilenen kullanıcıları tazmin etmek için geri alındı, kalanını DAO hazinesi karşılayacaktı.
+- Yapılandırma düzeltilirken iki piyasada wstETH borç limiti geçici olarak 1'e indirildi.
+
+Bir loop için ders hareketin büyüklüğündedir. "ETH correlated" limitine kadar borç alınmış bir pozisyon 1,0215 ile başlar, yani likide edilen aralığın içindedir; 1,056'daki bir pozisyona dokunulmadı. Pozisyonun kendisinde hiçbir şey uyarı vermedi, çünkü hareket herhangi bir piyasadan değil oracle'ın yapılandırmasından geldi. Adaptör 28 Ekim 2026'da hâlâ kullanımdaydı (blok 26291849): Ethereum Core piyasasında wstETH için oracle kaynağı kendini "Capped wstETH / stETH(ETH) / USD" olarak tanımlıyordu; 3 Mart 2026 tarihli 1,2283'lük bir anlık görüntü oranı, %8,8'lik azami yıllık büyüme ve Lido'nunkine eşit 1,2474'lük bir bildirilen oran vardı. [Sağlık faktörünüzün düşmesinin 6. nedeni](/tr/blog/aave-saglik-faktoru-neden-dustu#neden-6-bir-oracle-veya-kur-hatası-teminatınızı-yanlıs-mı-fiyatladı) ardından gelen tazminatı anlatır.
+
+## E-Mode ne zaman işe yaramaz?
+
+E-Mode, borcu kategorinin dışında olan bir pozisyon için hiçbir şey yapmaz ve diğer birkaç yaygın kurulum için de pek az şey yapar:
+
+- **Kategorinin listelemediği borç.** Onu borç alırken kategoriye hiç giremezsiniz. Sağlık faktörü rehberindeki 12.000 USDC'ye karşı 10 WETH pozisyonu, Ethereum Core piyasasında WETH'in kendi %84'lük eşiğinde kalır (blok 26291849), çünkü "ETH correlated" yalnızca WETH borç almanıza izin verir.
+- **Küme dışındaki teminat.** Kendi parametrelerini korur, bu yüzden bir "ETH correlated" pozisyonuna WBTC eklemek sağlık faktörünü %95 ile değil, WBTC'nin kendi eşiğiyle, 26291889 numaralı blokta Ethereum Core piyasasında %85 ile yükseltir. İzole bir kategoride borç alma gücüne hiçbir şey eklemez.
+- **Stablecoin kategorileri.** Arbitrum ve Optimism'de "Stablecoins" kategorisinin 28 Ekim 2026'da borç alınabilir hiçbir varlığı yoktu, bu yüzden yeni bir kredi için kullanılamaz. Ethereum Core piyasasında stablecoin kategorileri tek bir varlığı (USDe, sUSDe, bir PT) %90 ile %94 arası LTV ile USDC ve USDT ile eşleştirir. Oradaki risk teminatın depeg'idir (dolar sabitinin kaybı); ilişkili bir kategori bunu azaltmaz, daha ince marj ise etkisini daha erken gösterir.
+- **Küçük pozisyonlar.** İlgili teminat veya borç 2.000 $'dan az değerdeyse bir likidatör bir borç rezervinin %100'üne kadarını kapatabilir (`LiquidationLogic`, 28 Ekim 2026'da okundu); bu yüzden 1,00'ı geçen küçük bir loop kırpılmak yerine kapatılır; kural [borcumun ne kadarı tek seferde likide edilebilir](/tr/blog/aave-likidasyonu-nasil-isler#borcumun-ne-kadarı-tek-seferde-likide-edilebilir) bölümündedir. "ETH correlated" kategorisindeki %1'lik bonus Aave ölçülerine göre küçüktür ama tutarın tamamı üzerinden ödenir.
+- **İstemediğiniz ince bir marj.** Bir kategoriye girip limitine yakın borç alırsanız, geçişten önce sağlık faktörü nasıl görünürse görünsün marj %2'dir.
+
+Durumunuz bunlardan biriyse normal parametreler ve daha geniş bir tampon daha iyi bir araçtır; [bir sağlık faktörünün size ne kadar tampon verdiği](/tr/blog/guvenli-aave-saglik-faktoru#stablecoin-borc-oynak-borc-ve-e-mode-loopları-icin-guvenli-sayı-neden-farklıdır) aynı sağlık faktörünün bir E-Mode loop'u ve diğer pozisyonlar için ne anlama geldiğini karşılaştırır.
+
+## Bir uyarı, E-Mode pozisyonunda yardımcı olabilir mi?
+
+Bir sağlık faktörü uyarısı, yaklaşık 1,1 ile 1,15'in üzerinde tutulan bir E-Mode pozisyonuna yardımcı olur; bilerek bunun altında çalıştırılan bir loop'a ise uymaz. Tokenping, sözleşmenin bildirdiği sağlık faktörünün aynısını, E-Mode kategorinizi zaten uygulayan `getUserAccountData` çağrısından okur; bu yüzden E-Mode için ayarlanacak bir şey yoktur: paneldeki ve mesajlardaki sayı, bir likidatörün gördüğü sayıdır.
+
+Sınır eşiktir. Tokenping'in Aave uyarı eşiği 1,1 ile 10 arasındadır, varsayılan 1,5'tir. 1,056'daki bir loop ya da bilerek 1,1'in altında çalıştırılan herhangi bir pozisyon, kurabileceğiniz her eşiğin altındadır. 1,1'e kurulan bir uyarı, her 5 dakikalık kontrolde sağlık faktörünü eşiğin altında bulur ve pozisyon 1,1'in üzerine dönene kadar her kontrolde, seçtiğiniz her kanaldan bir mesaj gönderir. Erteleme ya da özet yoktur; [ne sıklıkla uyarı alırsınız](/tr/blog/aave-saglik-faktoru-uyarisi-kurulumu#ne-sıklıkla-uyarı-alırsınız) bu davranışı ayrıntısıyla anlatır.
+
+İnce bir loop için dürüst tavsiye iki şeyden biridir. Marjı koruyun: loop'u, sağlık faktörü haber almak istediğiniz seviyenin üzerinde, örneğin bir wstETH/WETH loop'u için 1,12 ile 1,15 arasında kalacak şekilde çalıştırın; bu kaldıraçtan götürür ama %2,85'lik bir oracle hareketini likidasyona varmadan bırakır; uyarıyı da oraya kurun ki pozisyonu aşağı çeken faizi ilk siz duyun. Ya da sürekli mesajları kabul edin: 1,1'i kurun ve mesaj akışını onun altında çalıştığınızın işareti sayın; bunu her kontrolde Signal ya da Telegram'da isteyen pek azdır. Her iki durumda da bir uyarının yapamayacağı şey, oracle'dan daha hızlı tepki vermektir: Mart 2026 hareketi pozisyonları sınırın uygulandığı anda likide edilebilir hale getirdi ve 5 dakikalık bir kontrol aralığı buna göre davranmak için zaman bırakmaz. [Uyarı eşiğini adım adım nasıl seçersiniz](/tr/blog/guvenli-aave-saglik-faktoru#bir-uyarı-esigini-adım-adım-nasıl-secersiniz) ve [sağlık faktörü uyarısı nasıl kurulur](/tr/blog/aave-saglik-faktoru-uyarisi-kurulumu#adım-5-bir-esik-secin) kurulumu anlatır; [Aave sağlık faktörünüzü nasıl yükseltirsiniz](/tr/blog/aave-likidasyonundan-kacinma#adım-1-borcunuzun-bir-kısmını-geri-odeyin) bir mesaj geldiğinde ne yapacağınızı anlatır, bu da bir loop için genellikle WETH geri ödemek demektir.
+
+Önce [Aave V3 sağlık faktörünüzü kontrol edebilirsiniz](/tr/aave); pozisyonlarınıza bakmak ödeme gerektirmez. Uyarılar <AlertPrice /> tutarındadır, Arbitrum'da ödenir, her Aave V3 piyasası ya da V4 Spoke'u için ayrıdır ve Signal, Telegram ya da e-posta ile gönderilir. Tokenping beta aşamasındadır ve çalışma süresi garantisi yoktur. %2 marjlı bir pozisyon için hiçbir uyarı marjın kendisinin yerini tutmaz.
+
+## Kaynaklar
+
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): `POOL_REVISION`, `getReservesList` ve 1-48 numaralı kategorilerin etiketi, teminat yapılandırması, teminat, borç alınabilir ve LTV-0 bitmap'leri ile isolated işareti, 26291736 numaralı blokta (erişim tarihi: 28 Ekim 2026)
+- [Arbitrum](https://arbiscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD), [Base](https://basescan.org/address/0xA238Dd80C259a72e81d7e4664a9801593F98d1c5) ve [Optimism](https://optimistic.etherscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD) üzerindeki Aave V3 Pool: her kategori için aynı çağrılar, Arbitrum'da 519074353-519074731 numaralı bloklarda, Base'de 53204166 ve Optimism'de 158799548 numaralı blokta (erişim tarihi: 28 Ekim 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): 26291849 numaralı blokta WETH, wstETH ve USDC için LTV, eşik, bonus ve faiz oranları; 26291889 numaralı blokta WBTC (erişim tarihi: 28 Ekim 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) ve onun [wstETH CAPO adaptörü](https://etherscan.io/address/0xe1D97bF61901B075E9626c8A2340a7De385861Ef): WETH ve wstETH fiyatları, adaptörün açıklaması, anlık görüntü oranı, anlık görüntü zaman damgası, azami yıllık büyüme ve oran, 26291849 numaralı blokta (erişim tarihi: 28 Ekim 2026)
+- [wstETH token](https://etherscan.io/address/0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0): 26291849 numaralı blokta `stEthPerToken()` (erişim tarihi: 28 Ekim 2026)
+- [Lido stETH APR API](https://eth-api.lido.fi/v1/protocol/steth/apr/sma): son APR ve 7 günlük ortalama (erişim tarihi: 28 Ekim 2026)
+- [IPool.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/interfaces/IPool.sol): E-Mode getter fonksiyonları, `setUserEMode` ve `getUserEMode` (aave-v3-origin main, erişim tarihi: 28 Ekim 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) ve [LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): `validateSetUserEMode`, `getUserReserveLtv`, `executeSetUserEMode` ve 2.000 $'lık close factor (tek seferde ödenebilecek borç payı) eşiği (aave-v3-origin main, erişim tarihi: 28 Ekim 2026)
+- [Aave V3.2 özellikleri](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): liquid E-Modes, kategori dışındaki teminatın kendi parametrelerini koruması, giriş ve çıkış kuralları (erişim tarihi: 28 Ekim 2026)
+- [Aave V3.7 izole E-Mode](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md): isolated işaretinin etkileri (erişim tarihi: 28 Ekim 2026)
+- [Aave yardım: Efficiency Mode (E-mode)](https://aave.com/help/borrowing/e-mode) (erişim tarihi: 28 Ekim 2026)
+- [Chaos Labs post-mortem, wstETH Core ve Prime örneklerinde döviz kuru uyumsuzluğu](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): 10 Mart 2026'da yayımlandı (erişim tarihi: 28 Ekim 2026)
+
+_Eğitim amaçlı içeriktir, finansal tavsiye değildir. Uyarılar riski azaltır ama likidasyonu önlemez._

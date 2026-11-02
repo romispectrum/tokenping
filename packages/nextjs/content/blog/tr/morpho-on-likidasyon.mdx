@@ -1,0 +1,170 @@
+export const meta = {
+  slug: "morpho-on-likidasyon",
+  title: "Morpho ön likidasyonu: nedir ve nasıl kapatılır?",
+  description:
+    "Morpho ön likidasyonu (Auto-deleverage) bir krediyi LLTV'den önce nasıl kısmen satar, Morpho onu neden kaldırıyor, nasıl kontrol edilir ve iptal edilir.",
+  h1: "Morpho ön likidasyonu nedir ve onu nasıl kontrol eder ya da kapatırsınız?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Morpho ön likidasyonu nedir ve açık olup olmadığını nasıl kontrol edip kapatabilirsiniz?",
+  readingMinutes: 10,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Ön likidasyon (pre-liquidation), tek bir Morpho Blue (değişken faizli) piyasası için isteğe bağlı olarak
+  etkinleştirilen bir sözleşmedir: pozisyonunuz piyasanın likidasyon LTV'sine (LLTV) ulaşmadan önce herkesin
+  teminatınızın bir kısmını satıp borcunuzu geri ödemesine izin verir. Morpho'nun uygulamasında bu şekilde çalışan
+  Auto-deleverage adlı bir özellik vardı. Morpho artık onu kaldırıyor: uygulama yeni pozisyon kabul etmiyor, yardım
+  merkezi bu özelliği kullananlardan onu kapatmalarını istiyor ve SDK'sı ön likidasyon kodunu 22 Eylül 2026'da
+  kullanımdan kaldırılmış (deprecated) olarak işaretledi. Sözleşmeler hâlâ çalışır; bu yüzden özelliği bir zamanlar
+  açtıysanız Morpho Blue sözleşmesinde `isAuthorized` ile kontrol edin ve uygulamanın "manage" (yönet) düğmesiyle ya da
+  `setAuthorization(contract, false)` ile iptal edin.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Rakamlar, blok numaraları ve kaynaklar: content/blog/snapshots/morpho-pre-liquidation.md */}
+
+## Morpho'da ön likidasyon nedir?
+
+Ön likidasyon, bir borç alanın tek bir Morpho Blue piyasasına ekleyebileceği ikinci, daha erken bir likidasyon çizgisidir. Normal bir Blue piyasasında bir pozisyon, ancak sağlık faktörü (health factor) piyasanın likidasyon kredi/değer oranına, yani likidasyon LTV'sine (LLTV) göre ölçüldüğünde 1'in altına düştüğünde likide edilebilir; [Morpho sağlık faktörü rehberi](/tr/blog/morpho-saglik-faktoru) bu sayıyı açıklar. Bir ön likidasyon sözleşmesi daha alçak bir çizgi koyar: preLLTV. İki çizgi arasında herkes, sözleşmenin belirlediği bir sınıra kadar borcunuzun bir kısmını geri ödeyip bu borç artı bir bonus değerindeki teminatı adım adım alabilir.
+
+Onu üç şey ayırır:
+
+- **İsteğe bağlıdır.** Yalnızca sözleşmeyi Morpho Blue üzerinde yetkilendirdikten sonra geçerli olur. Bu olmadan sözleşme pozisyonunuza dokunamaz.
+- **Piyasa başınadır.** Her sözleşme tek bir Blue piyasasına ve sabit bir parametre setine bağlıdır; sahibi, yöneticisi ya da yükseltme fonksiyonu yoktur.
+- **Yalnızca Blue'da vardır.** [Midnight rehberindeki](/tr/blog/morpho-midnight-sabit-faizli-krediler) sabit faizli piyasalar olan Morpho Midnight'ta ön likidasyon yoktur.
+
+Morpho ön likidasyon fabrikasını 4 Mart 2025'te duyurdu ve kullanım alanları olarak auto-deleverage ile auto-close'u saydı. Sözleşmelerde, API'de ve SDK'da adı pre-liquidation'dır. Morpho'nun uygulamasında Auto-deleverage adlı bir özellik vardı ve yardım merkezi onu aynı şekilde tanımlar: kredi/değer oranınız belirli bir eşiği geçtiğinde pozisyonun bir kısmı kapatılabilir ve ücret yalnızca kapatılan kısımdan alınır.
+
+## Ön likidasyon Morpho uygulamasında hâlâ kullanılabilir mi?
+
+Morpho uygulamasında yeni bir ön likidasyon kurulamaz. 26 Ekim 2026'da okunan durum:
+
+| Nerede                              | Durum                                                                                                                                                                                                                |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Morpho uygulaması ve yardım merkezi | Yardım makalesinin başlığı artık "Sunsetting Auto-deleverage" (Auto-deleverage'ın kullanımdan kaldırılması; son güncelleme 13 Mayıs 2026): özellik yeni pozisyon kabul etmiyor ve onu kullananlar özelliği kapatmalı |
+| Morpho SDK                          | Her ön likidasyon dışa aktarımı 22 Eylül 2026'da kullanımdan kaldırılmış olarak işaretlendi (pull request 1132), bir sonraki ana sürümde kaldırılacak, yerine bir şey gelmiyor                                       |
+| Morpho dokümanları                  | Ön likidasyon sayfası kaldırıldı; eski adresi artık genel likidasyon sayfasına gidiyor                                                                                                                               |
+| Morpho API                          | Listelenen piyasalarda hâlâ 106 ön likidasyon sözleşmesi listeliyor: Ethereum (50), Base (37), Arbitrum (8), Polygon (6), Katana (3) ve Unichain (2)                                                                 |
+| Sözleşmeler                         | Değişmedi ve çalışıyor: onları yetkilendiren bir borç alan üzerinde herkes onları hâlâ çağırabilir                                                                                                                   |
+
+Özelliği daha önce açtıysanız önemli olan son satırdır. Bir uygulamada bir özelliği kaldırmak, zincir üstünde saklanan bir yetkilendirmeyi geri almaz.
+
+## Bir ön likidasyon sözleşmesi nasıl çalışır?
+
+Bir ön likidasyon sözleşmesi, herkesin kullanabildiği Morpho'nun PreLiquidationFactory'si tarafından oluşturulur: herkes herhangi bir Blue piyasası için bir sözleşme kurabilir ve her piyasa ile parametre seti yalnızca bir kez var olabilir. Sabit parametreleri şunlardır:
+
+| Parametre        | Neyi belirler                                                                                                                                                           |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| preLLTV          | Ön likidasyona izin verilen kredi/değer oranı eşiği. Piyasanın LLTV'sinin altında olmalıdır                                                                             |
+| preLCF1, preLCF2 | Close factor (tek seferde ödenebilecek borç payı): tek bir çağrının geri ödeyebileceği en büyük borç payı, preLLTV'de ve LLTV'de                                        |
+| preLIF1, preLIF2 | Teşvik faktörü: alınan teminatı bulmak için geri ödenen borç bununla çarpılır, aynı iki noktada                                                                         |
+| Oracle           | Ön likidasyona uğrayıp uğramayacağınıza ve teminatınızın hangi fiyattan alınacağına karar veren fiyat kaynağı. Piyasanın kendi oracle'ı ya da başka bir oracle olabilir |
+
+Sözleşme harekete geçmeden önce kendi oracle'ının fiyatıyla kredi/değer oranınızın preLLTV'nin üzerinde ve hâlâ LLTV'de ya da altında olduğunu kontrol eder. LLTV'nin üzerinde ön likidasyon durur ve Blue'nun normal likidasyonu devreye girer. Ardından Morpho Blue, piyasanın kendi oracle'ına göre pozisyonunuzun sağlıklı olduğunu kontrol eder; değilse çağrının tamamı geri alınır (revert).
+
+Kurucu fonksiyon (constructor) parametrelere sınırlar koyar. Close factor risk arttıkça düşemez ve yalnızca ilk değeri %100 ile sınırlıdır: ikinci değeri %100'ün üzerinde olan bir sözleşme, LLTV'ye ulaşılmadan tek bir çağrının borcunuzun tamamını geri ödemesine izin verebilir. Morpho'nun varsayılanları bunun çok altında kalır. Teşvik faktörü en az 1 (bonus yok) ve en fazla 1 ÷ LLTV (%86'lık bir piyasada yaklaşık %16'lık bir bonus) olmalıdır. Morpho'nun deposuna göre bu sınır, ön likidasyonun LLTV'de durması kuralıyla birlikte, bir ön likidasyonun pozisyonu öncekinden daha sağlıksız bırakmasını engeller.
+
+### Close factor ve bonus, preLLTV ile LLTV arasında nasıl artar?
+
+İkisi de kredi/değer oranınızla doğrusal olarak artar. Sözleşme, preLLTV'den LLTV'ye doğru ne kadar ilerlediğinizi 0 ile 1 arasında bir pay olarak ölçer ve her faktörü ilk değerinden ikinci değerine doğru bu pay kadar ilerletir. İki çizginin tam ortasında close factor, preLCF1 ile preLCF2'nin tam ortasındadır.
+
+Koddan iki sınır çıkar. Close factor toplamı değil tek bir çağrıyı sınırlar: Morpho'nun kendi deposu, bir likidatörün küçük bir kısmı kapatıp sizi hâlâ preLLTV'nin üzerinde bırakabileceğini ve yeniden çağırabileceğini not eder, bu yüzden kapatılan toplam close factor'dan fazla olabilir. Ve close factor teminatınızın değil borcunuzun bir payıdır; [Aave'deki close factor rehberi](/tr/blog/aave-likidasyonu-nasil-isler#borcumun-ne-kadarı-tek-seferde-likide-edilebilir) aynı fikri Aave üzerinde anlatır.
+
+## Morpho'nun varsayılan ön likidasyon ayarları nelerdir?
+
+Morpho, SDK'sında sık kullanılan sekiz LLTV'nin her biri için varsayılan bir parametre seti tuttu ve API'sinin listelediği 106 sözleşmenin her biri bu varsayılanları kullanır. API yalnızca bilinen varsayılan parametrelere sahip sözleşmeleri listeler, bu yüzden başka ayarlara sahip sözleşmeler orada görünmeden var olabilir. Listelenmiş sözleşmesi olan altı LLTV:
+
+| Piyasa LLTV'si | preLLTV | Close factor (preLLTV'den LLTV'ye) | Bonus  | Ön likidasyonun başladığı piyasa sağlık faktörü | Listelenen sözleşmeler |
+| -------------- | ------- | ---------------------------------- | ------ | ----------------------------------------------- | ---------------------- |
+| %62,5          | %56,26  | %0,75 ile %27,95 arası             | %12,68 | 1,111                                           | 2                      |
+| %77            | %72,74  | %0,37 ile %25,66 arası             | %7,41  | 1,059                                           | 12                     |
+| %86            | %83,26  | %0,20 ile %24,53 arası             | %4,38  | 1,033                                           | 50                     |
+| %91,5          | %89,79  | %0,11 ile %23,92 arası             | %2,62  | 1,019                                           | 21                     |
+| %94,5          | %93,37  | %0,07 ile %23,61 arası             | %1,68  | 1,012                                           | 15                     |
+| %96,5          | %95,78  | %0,04 ile %23,41 arası             | %1,06  | 1,008                                           | 6                      |
+
+Her varsayılan sette bonus iki uçta da aynıdır ve Blue'nun normal likidasyonunun o piyasada ödediği bonusa eşittir. Varsayılanlar satışı dolar başına daha ucuz yapmaz; her satışı daha küçük yapar. Normal bir Blue likidasyonunda hiç close factor yoktur, bu yüzden likidatör borcun tamamını tek seferde geri ödeyebilir. [Morpho'da likidasyon nasıl işler](/tr/blog/morpho-likidasyonu-nasil-isler) o tarafı anlatır.
+
+## Gerçek bir sözleşme: Base'de USDC | cbBTC (86%)
+
+Base ağında borç almaya göre listelenen en büyük Blue piyasası olan USDC | cbBTC (86%) (cbBTC teminatı, USDC borcu, %86 LLTV), Morpho'nun API'sinde listelenen bir ön likidasyon sözleşmesine sahiptir: `0xa7272aFc21f9C321024ED93892a1abfeb621C374`. 26 Ekim 2026'da Base'den okunan ve Morpho'nun API'siyle karşılaştırılan bilgiler:
+
+- Base'deki PreLiquidationFactory sözleşmeyi kendisinin oluşturduğunu doğrular ve sözleşme bu piyasayı gösterir.
+- preLLTV %83,26, close factor %0,20'den %24,53'e yükselir, bonus iki uçta da %4,38: %86'nın varsayılanları.
+- Oracle'ı piyasanın kendi oracle'ıdır. Base'deki 53102870 ve 53102952 numaralı bloklarda cbBTC'yi 80.000,15 USDC olarak fiyatladı; [Morpho'da likidasyon nasıl işler](/tr/blog/morpho-likidasyonu-nasil-isler) aynı fiyatı kullanır.
+- Piyasada yaklaşık 43.000 borç pozisyonunda, yaklaşık 40.051 cbBTC'ye karşı yaklaşık 1,61 milyar USDC borç alınmıştı.
+- 53102692 numaralı bloktan önceki yaklaşık 28 saatlik Base bloklarında bu sözleşmeye ait hiçbir ön likidasyon görünmedi.
+
+Ethereum'da listelenen en büyük USDC | cbBTC (86%) piyasasının aynı parametrelere sahip bir sözleşmesi vardır, `0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A` adresinde; o da kendi piyasasının oracle'ını kullanır.
+
+## Örnek hesap: tek bir ön likidasyon ne kadar alabilir?
+
+O Base piyasasında örnek bir pozisyon alın: cbBTC başına 80.000,15 USDC fiyatla 1 cbBTC teminat ve 50.000 USDC borç. Sağlık faktörü %86 LLTV'ye göre 1,376, %83,26'lık ön likidasyon çizgisine göre 1,332'dir. Aynı oracle ile ön likidasyon rakamı her zaman piyasa rakamının 0,968 (83,26 ÷ 86) katıdır.
+
+Ön likidasyon, cbBTC 60.052,58 USDC'nin altına, yani o fiyatın %24,9 altına düştüğünde başlayabilir. Normal likidasyon 58.139,53 USDC'nin altında, %27,3 aşağıda başlar. Bu fiyatlar arasında tek bir en büyük ön likidasyon şöyle görünür:
+
+| Kredi/değer oranı | cbBTC fiyatı | Close factor | Geri ödenen borç | Alınan teminat (USDC değeri) | Bonus | Sonraki kredi/değer oranı |
+| ----------------- | ------------ | ------------ | ---------------- | ---------------------------- | ----- | ------------------------- |
+| %84               | 59.523,81    | %6,77        | 3.384            | 3.533                        | 148   | %83,26                    |
+| %85               | 58.823,53    | %15,65       | 7.825            | 8.168                        | 343   | %83,26                    |
+| %86               | 58.139,53    | %24,53       | 12.266           | 12.803                       | 538   | %83,23                    |
+
+Varsayılanlarla, tam boyutlu tek bir çağrı kredi/değer oranını yaklaşık preLLTV'ye, sözleşmenin durduğu yere geri getirir. %87'deki normal bir Blue likidasyonuyla karşılaştırın: bir likidatör 50.000 USDC'nin tamamını geri ödeyip 52.192 USDC değerinde cbBTC alabilir ve size yaklaşık 5.279 USDC teminat bırakır, kredi de kalmaz.
+
+## Borç alanlar neden bunu seçti ve onlara neye mal oldu?
+
+Seçmenin gerekçesi daha küçük, kademeli satışlardı. Morpho'nun yardım makalesi Auto-deleverage'ı, sağlığını geri kazandırmak için pozisyonun yalnızca bir kısmını kapatan ve ücreti yalnızca kapatılan tutardan alan bir özellik olarak tanımlar. Yukarıdaki örnekte, bu özelliği seçen bir borç alan her adımda 148 ile 538 USDC arası bonus ödedi; krediyi tamamen geri ödeyen %87'deki normal bir likidasyon ise 2.192 USDC'ye mal olur; birkaç adım ya da ardından gelen normal bir likidasyon toplamda daha fazlasını tutabilir.
+
+Maliyetler:
+
+- **Satış daha erken başlar.** %86'lık bir piyasada, Morpho'nun yardım merkezinin tanımladığı ve LLTV'ye göre ölçülen sağlık faktörü hâlâ 1'in üzerindeyken, pozisyonunuzun bir kısmı yaklaşık 1,033'lük bir piyasa sağlık faktöründen itibaren satılabilir.
+- **Adımlar tekrarlanabilir.** Close factor toplamı değil her çağrıyı sınırlar, bu yüzden siz preLLTV'nin üzerinde kaldıkça birkaç çağrı art arda gelebilir.
+- **Fiyat farklı olabilir.** Bir sözleşme piyasanınkinden başka bir oracle kullanabilir. Morpho'nun API'sinin listelediği 106 sözleşmenin tamamı kendi piyasasının oracle'ını kullanır; listelemediği bir sözleşme kullanmayabilir.
+- **Kimsenin harekete geçmesi gerekmez.** Hiçbir likidatör sözleşmeyi çağırmazsa LLTV'den önce hiçbir şey olmaz; onu geçtiğinizde normal yoldan likide edilebilirsiniz.
+
+Özellik artık kaldırılırken Morpho, onu hâlâ kullanan borç alanlardan kapatmalarını istiyor ve yeni katılımlar kapalı.
+
+## Bir tanesini yetkilendirip yetkilendirmediğinizi nasıl kontrol edersiniz?
+
+Morpho Blue'nun `isAuthorized(your wallet, contract)` çağrısı true döndürüyorsa bir ön likidasyon sözleşmesini yetkilendirmişsinizdir. Yetkilendirme ön likidasyon sözleşmesinde değil, Morpho Blue'nun kendisinde saklanır.
+
+1. **Piyasanız için sözleşmeyi bulun.** Morpho'nun API'si onu piyasanın ön likidasyonları altında listeler; Morpho'nun yardım merkezi de uygulamada pozisyon ya da piyasa sayfanızdaki "manage" (yönet) düğmesini gösterir.
+2. **O ağın Morpho Blue sözleşmesinde `isAuthorized` çağırın.** Bir blok gezgininde Blue sözleşmesinin okuma fonksiyonlarını açın; ilk adres olarak cüzdanınızı, ikinci adres olarak ön likidasyon sözleşmesini girin.
+3. **Yanıtı okuyun.** True, sözleşmenin size ön likidasyon uygulayabileceği; false ise uygulayamayacağı anlamına gelir.
+
+Bu adımlar sözleşmenin adresini gerektirir ve Morpho'nun API'si yalnızca varsayılan ayarlara sahip sözleşmeleri listeler. Bir yetkilendirme imzayla da verilebilir ve başka biri tarafından gönderilebilir, bu yüzden cüzdanınızın kendi işlem listesinde görünmeyebilir. Yetkilendirdiğiniz her adresi görmek için bir blok gezgininde Morpho Blue sözleşmesinin SetAuthorization olaylarına, yetkilendiren (authorizer) olarak cüzdanınızla bakın. Her adres için en son olay, yetkinin hâlâ açık olup olmadığını gösterir ve ağın PreLiquidationFactory'si, kendi oluşturduğu sözleşmeler için `isPreLiquidation(address)` sorgusuna true yanıtı verir.
+
+Burada bir ayrıntı önemlidir. Blue'nun yetkilendirmesinde piyasa bilgisi yoktur: yetkilendirdiğiniz bir adres, o Blue sözleşmesinin tamamında borç alma, çekme ve teminat çekme işlemleriniz için Blue'nun kontrollerinden geçer. Bir ön likidasyon sözleşmesinin sabit kodu yalnızca kendi piyasasında borç geri öder ve teminat çeker, ama yetkilendirdiğiniz diğer adresler bu şekilde sınırlı değildir.
+
+## Ön likidasyonu nasıl kapatırsınız?
+
+Yetkilendirmeyi yeniden false yaparak kapatırsınız:
+
+- **Morpho uygulamasında:** Morpho'nun yardım merkezi, panelinizdeki pozisyonda ya da piyasa sayfasında "manage" (yönet) düğmesine tıklamanızı söyler; bu, Auto-deleverage için bir kaldırma penceresi açar.
+- **Sözleşmede:** cüzdanınızdan Morpho Blue üzerinde `setAuthorization(pre-liquidation contract, false)` çağırın. Değer zaten false ise çağrı başarısız olur, yani başarısız bir çağrı kaldırılacak bir şey olmadığı anlamına da gelebilir.
+
+İptal edildikten sonra sözleşmenin teminatınızı çekme girişimleri başarısız olur ve yalnızca 1'in altındaki sağlık faktöründe Blue'nun normal likidasyonu geçerli olur. Maliyeti tek bir işlemin gas ücretidir.
+
+## Tokenping ön likidasyonlu bir pozisyonu nasıl ölçer?
+
+Bir Blue piyasasında ön likidasyon sözleşmesini yetkilendirmiş bir borç alan için Tokenping, iki çizgiden daha alçak olana göre uyarır: LLTV çizgisi ve ön likidasyon çizgisi. Bu önemlidir, çünkü Morpho'nun yardım merkezi, uygulamasında gösterilen sağlık faktörünün kredi/değer oranı LLTV'yi geçtiğinde 1'e ulaştığını söyler; Blue'nun kendi likidasyonu da orada başlar. Varsayılan sözleşmeli %86'lık bir piyasada, ön likidasyon çizgisine göre 1,10'luk bir uyarı eşiği yaklaşık 1,136'lık bir piyasa sağlık faktöründe tetiklenir ve en düşük eşik olan 1,02, ön likidasyonun başlayabileceği çizginin yaklaşık %2 üzerinde, yaklaşık 1,054'te tetiklenir.
+
+Bir uyarıyı kaydettiğinizde ya da düzenlediğinizde Tokenping, Morpho'nun API'sinin o piyasa için listelediği ön likidasyon sözleşmelerini not eder; ardından her kontrol, her birini yetkilendirip yetkilendirmediğinizi okur ve sağlık faktörünü Morpho'nun API'sinden değil, her zaman zincirden Morpho'nun kendi matematiğiyle hesaplar. Morpho'nun API'sinin listelemediği bir ön likidasyon sözleşmesi kontrol edilmez; bu yüzden özel ayarlara sahip bir sözleşmeyi yetkilendirdiyseniz uyarı yalnızca LLTV çizgisine göre ölçer.
+
+Gerisi her Morpho uyarısında olduğu gibi işler. Tokenping 14 ağda her 5 dakikada bir kontrol eder ve sağlık faktörünüz eşiğinizin altındayken (1,02 ile 10 arasında herhangi bir değer) her kontrol, seçtiğiniz her kanaldan bir mesaj gönderir: Signal, Telegram ya da e-posta. Uyarılar, Aave uyarılarıyla aynı plan olan <AlertPrice /> tutarındadır ve [Morpho pozisyonlarınıza bakmak](/tr/morpho) ödeme gerektirmez. [Uyarı eşiği nasıl seçilir](/tr/blog/guvenli-aave-saglik-faktoru#bir-uyarı-esigini-adım-adım-nasıl-secersiniz) Aave üzerindeki dengeyi adım adım anlatır; aynı düşünce burada da geçerlidir. Bir uyarı size harekete geçmek için zaman verir, garanti vermez: iki kontrol arasında fiyat değişebilir. Ön likidasyonu artık istemiyorsanız yukarıda gösterildiği gibi iptal edin; uyarınız o zaman yalnızca LLTV çizgisine göre ölçer.
+
+## Kaynaklar
+
+- [morpho-org/pre-liquidation](https://github.com/morpho-org/pre-liquidation): parametreler, sınırlar, doğrusal ara değerleme ve kontroller için README, [PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidation.sol), [PreLiquidationFactory.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidationFactory.sol) ve [IPreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/interfaces/IPreLiquidation.sol) (erişim tarihi: 26 Ekim 2026)
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) ve [EventsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/EventsLib.sol): `isAuthorized`, `setAuthorization`, SetAuthorization olayı, sağlık kontrolü ve normal likidasyon bonusu (erişim tarihi: 26 Ekim 2026)
+- [Introducing pre-liquidations](https://morpho.org/blog/introducing-pre-liquidations-enhanced-loan-management-on-morpho) (Morpho, 4 Mart 2025): kullanım alanları olarak auto-deleverage ve auto-close, ön likidasyon olmadığında normal likidasyon (erişim tarihi: 26 Ekim 2026)
+- [Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (Morpho yardım merkezi, 13 Mayıs 2026'da güncellendi): yeni pozisyon yok, nasıl kapatılır, özelliğin ne yaptığı (erişim tarihi: 26 Ekim 2026)
+- [Morpho yardım merkezi: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): uygulama her pozisyonun sağlık faktörünü gösterir ve bir pozisyon, kredi/değer oranı LLTV'yi geçtiğinde, 1'de ya da altında likide edilebilir (erişim tarihi: 26 Ekim 2026)
+- [Morpho SDK pull request 1132](https://github.com/morpho-org/sdks/pull/1132) (22 Eylül 2026'da birleştirildi) ve [preLiquidation.ts](https://github.com/morpho-org/sdks/blob/main/packages/blue-sdk/src/preLiquidation.ts): kullanımdan kaldırma ve varsayılan parametreler (erişim tarihi: 26 Ekim 2026)
+- [Morpho dokümanları: liquidation](https://docs.morpho.org/developers/borrow/concepts/liquidation): eski ön likidasyon sayfasının artık yönlendirdiği yer (erişim tarihi: 26 Ekim 2026)
+- [Morpho API](https://api.morpho.org/graphql): listelenen piyasalar, ön likidasyon sözleşmeleri ve oracle'ları, Base ve Ethereum'daki USDC | cbBTC (86%) piyasaları (erişim tarihi: 26 Ekim 2026)
+- Zincir üstünde okunan ön likidasyon sözleşmeleri: [Base](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374) üzerinde 53102692-53102952 numaralı bloklarda ve [Ethereum](https://etherscan.io/address/0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A) üzerinde 26274980 numaralı blokta, fabrikaları, piyasaları ve oracle'larıyla birlikte (erişim tarihi: 26 Ekim 2026)
+
+_Eğitim amaçlı içeriktir, finansal tavsiye değildir. Uyarılar riski azaltır ama likidasyonu önlemez._

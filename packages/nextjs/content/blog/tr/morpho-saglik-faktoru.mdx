@@ -1,0 +1,208 @@
+export const meta = {
+  slug: "morpho-saglik-faktoru",
+  title: "Morpho sağlık faktörü: formül ve örneklerle açıklama",
+  description:
+    "Bir Morpho kredisinin sağlık faktörü nedir, Morpho Blue ve Midnight onu nasıl hesaplar, onu ne değiştirir ve Aave'ninkinden farkı nedir?",
+  h1: "Morpho sağlık faktörü nedir ve nasıl hesaplanır?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Bir Morpho kredisinin sağlık faktörü nedir ve nasıl hesaplanır?",
+  readingMinutes: 11,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Bir Morpho kredisinin sağlık faktörü (health factor), teminatınızın piyasanın likidasyon LTV'sine (LLTV) kadar sayılan
+  değerini borcunuzla karşılaştırır: teminat miktarı × oracle fiyatı × LLTV ÷ borç. Borç bu sınırı aştığında sağlık
+  faktörü 1'in altına düşer ve pozisyon likide edilebilir. 1,00 veya üzerinde edilemez; istisnalar, sahibinin bir ön
+  likidasyon sözleşmesine yetki verdiği bir Blue kredisinin bir kısmı ve vadeden sonra borcu kalan bir Midnight
+  kredisidir. Örneğin Morpho'nun Ethereum'daki USDC | cbBTC (86%) piyasasında 80.011,48 USDC olarak fiyatlanan 1 cbBTC,
+  40.000 USDC borca karşı 80.011,48 × 0,86 ÷ 40.000 = 1,72 verir. Her Morpho piyasasının kendi teminatı, oracle'ı ve
+  LLTV'si vardır ve bunlar piyasa oluşturulurken kalıcı olarak sabitlenir; bu yüzden her kredinin kendi sağlık faktörü
+  vardır.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Rakamlar ve okundukları blok numaraları: content/blog/snapshots/morpho-health-factor.md */}
+
+## Bir Morpho kredisinin sağlık faktörü nedir?
+
+Sağlık faktörü, bir Morpho borç pozisyonunun likidasyona ne kadar uzak olduğunu gösteren sayıdır. Borçlanmanıza izin verilen en yüksek tutarı şu anki borcunuza böler:
+
+**Sağlık faktörü = teminatın kredi tokenı cinsinden değeri × LLTV ÷ borç**
+
+- **1,00'ın üzerinde:** pozisyon likide edilemez; bir ön likidasyon (pre-liquidation) sözleşmesine yetki vermediyseniz ve vadesi geçmiş bir Midnight kredisi söz konusu değilse (ikisi de aşağıda anlatılıyor). Sayı ne kadar yüksekse, fiyatlar o kadar çok aleyhinize hareket edebilir.
+- **1,00'ın altında:** borcunuz piyasanın izin verdiğinden büyüktür ve borcun bir kısmı veya tamamı likide edilebilir.
+- **Borç yoksa:** likide edilecek bir şey yoktur, dolayısıyla izlenecek bir sağlık faktörü de yoktur.
+
+1,72'lik bir sağlık faktörü, likidasyona %72 uzakta olduğunuz anlamına gelmez. Sınıra ulaşılmadan önce borcun 1,72 katına çıkabileceği ya da teminat fiyatının 1 − 1 ÷ 1,72 = %41,9 düşebileceği anlamına gelir.
+
+Sağlık faktörü zincir üzerinde saklanmaz. Morpho'nun sözleşmesi yalnızca bir pozisyonun sağlıklı olup olmadığını kontrol eder; uygulamalar, Morpho'nun API'si ve Tokenping, bunu bir sayı olarak göstermek için borçlanma limitini borca böler.
+
+## Bir Morpho Blue piyasası nasıl kurulur?
+
+Morpho'nun belgelerinin artık değişken faizli piyasalar diye adlandırdığı Morpho Blue, birbirinden ayrı borç verme piyasalarından oluşur. Her biri, piyasa oluşturulurken seçilen beş parametreyle tanımlanır:
+
+| Parametre               | Nedir                                               | Örnek piyasada          |
+| ----------------------- | --------------------------------------------------- | ----------------------- |
+| Kredi tokenı            | Borç alabileceğiniz tek token                       | USDC                    |
+| Teminat tokenı          | Yatırabileceğiniz tek token                         | cbBTC                   |
+| Oracle                  | Teminatı kredi tokenı cinsinden fiyatlayan sözleşme | Bir BTC/USD fiyat akışı |
+| Faiz oranı modeli (IRM) | Borç faizini belirleyen sözleşme                    | AdaptiveCurveIRM        |
+| LLTV                    | Likidasyon kredi/değer oranı                        | %86                     |
+
+Morpho'nun uygulaması piyasaları bunlara göre, kredi tokenı önde olacak şekilde adlandırır: "USDC | cbBTC (86%)". Herkes piyasa oluşturabilir, ancak yalnızca Morpho yönetişiminin (governance) etkinleştirdiği bir LLTV ve bir IRM ile. Oluşturulduktan sonra beşinden hiçbiri değiştirilemez: sözleşmede bunları düzenleyen bir fonksiyon yoktur ve yönetişim yeni LLTV'leri etkinleştirebilir ama hiçbirini devre dışı bırakamaz.
+
+Bir piyasa tek bir teminat ve tek bir kredi tokenı tuttuğu için, bir piyasadaki teminatınız başka bir piyasadaki borcu karşılamaz. Morpho'nun belgeleri bunu açıkça söyler: teminat her piyasaya özgüdür ve piyasalar arasında ortak kullanılmaz (not cross-margined). İki piyasadaki iki kredinin iki ayrı sağlık faktörü vardır.
+
+## Morpho sağlık faktörünü nasıl hesaplar?
+
+Morpho Blue sağlığı sözleşmesinde tek bir yerde, `_isHealthy` içinde kontrol eder ve aynı kontrol borç almayı, teminat çekmeyi ve likidasyonu korur:
+
+1. **Borç:** borç paylarınızın kredi tokenına çevrilmiş hâli, yukarı yuvarlanır.
+2. **Teminat değeri:** teminat miktarı × oracle fiyatı ÷ 10^36, aşağı yuvarlanır.
+3. **Borçlanma limiti:** teminat değeri × LLTV, aşağı yuvarlanır.
+4. **Sağlıklı:** borçlanma limiti en az borç kadar olduğu sürece.
+
+Sağlık faktörü 3. adımın 1. adıma bölümüdür. Yuvarlama her zaman protokolün lehinedir, bu yüzden sözleşme tam limitten bir birim daha az borç almanıza izin verebilir. Tam 1,00'da sözleşme pozisyonu hâlâ sağlıklı sayar; borç limitten büyük olduğunda likide edilebilir hâle gelir, bu da sağlık faktörünün 1'in altına düşmesiyle aynı şeydir.
+
+### Oracle'ın 10^36 ölçeği ne anlama gelir?
+
+Bir Morpho oracle'ı (fiyat kaynağı), bir teminat tokenının kredi tokenı cinsinden fiyatını 10^36 ile çarpılmış ve iki tokenın ondalık basamak sayılarına göre ayarlanmış olarak döndürür. Okumak için 10^(teminat ondalık basamağı − kredi ondalık basamağı) ile çarpıp 10^36'ya bölün. Örnek piyasada cbBTC'nin 8, USDC'nin 6 ondalık basamağı vardır; dolayısıyla ham değer 800114843487200000000000000000000000000 × 10^2 ÷ 10^36 = cbBTC başına 80.011,48 USDC eder.
+
+Oracle, piyasayı oluşturan kişi hangi sözleşmeyi seçtiyse odur. Morpho'nun sözleşme yorumları, güvenli oracle'ları olan piyasaları seçmenin kullanıcının sorumluluğunda olduğunu söyler; belgeleri de bir oracle'ın birkaç fiyat akışını birleştirebileceğini veya başka zincir üstü verilere dayanabileceğini belirtir. Sağlık faktörünüz ancak o oracle ve okuduğu fiyat akışları kadar güvenilir olabilir.
+
+## Hesaplamalı örnek: 40.000 USDC'ye karşı 1 cbBTC'nin sağlık faktörü nedir?
+
+26 Ekim 2026'da Ethereum'da borç alınan değere göre listelenen en büyük Morpho piyasası USDC | cbBTC (86%) idi: yatırılan yaklaşık 343,18 milyon USDC'ye karşı 309,13 milyon USDC borç alınmıştı (Ethereum bloğu 26274955). Oracle'ı cbBTC'yi yalnızca bir BTC/USD fiyat akışından alarak 80.011,48 USDC olarak fiyatlıyordu; yani piyasa 1 cbBTC'yi 1 BTC, 1 USDC'yi de 1 dolar sayar.
+
+1 cbBTC teminat ve 40.000 USDC borç olsun:
+
+1. Teminat değeri: 1 × 80.011,48 = 80.011,48 USDC.
+2. Borçlanma limiti: 80.011,48 × 0,86 = 68.809,88 USDC.
+3. Sağlık faktörü: 68.809,88 ÷ 40.000 = **1,72**.
+4. LTV: 40.000 ÷ 80.011,48 = %50,0; LLTV ise %86.
+5. Likidasyon fiyatı: 40.000 ÷ (1 × 0,86) = **cbBTC başına 46.511,63 USDC**, yani 80.011,48'in %41,9 altında.
+
+Faiz de onu hareket ettirir. Piyasanın o bloktaki borç faizi yıllık %4,89'du; bileşik olarak bu %5,01 eder. Faiz ve fiyat bir yıl boyunca aynı kalsaydı, borç yaklaşık 42.003 USDC'ye çıkar ve sağlık faktörü 1,64'e gerilerdi.
+
+### Bu piyasadaki gerçek borç alanlar hangi seviyede?
+
+Morpho'nun API'si 26 Ekim 2026'da bu piyasada 437 borç pozisyonu listeliyordu. Sağlık faktörü olan 435 pozisyonun medyanı 1,96 idi; dörtte biri 1,58'in, onda biri 1,35'in altındaydı ve en düşüğü 1,05'ti. Yaklaşık %3'ü 1,2'nin altındaydı. Piyasanın tamamında 8.419,83 cbBTC, 309,13 milyon USDC borcu karşılıyordu; bu da yaklaşık 1,87'lik bir genel sağlık faktörü demektir.
+
+## LTV, LLTV ve sağlık faktörü birbiriyle nasıl ilişkilidir?
+
+LTV, borcunuzun teminat değerinize bölümüdür. LLTV ise piyasanın bunun için koyduğu sabit tavandır. Tek bir teminat ve değişmeyen bir borçla sağlık faktörü bu ikisinin oranıdır:
+
+**Sağlık faktörü = LLTV ÷ LTV**
+
+Morpho Blue'da tek sınır LLTV'dir. Yeni borçlanma için ayrı ve daha düşük bir limit yoktur; bu yüzden sözleşme, sağlık faktörü 1,00 olana kadar borç almanıza veya teminat çekmenize izin verir. Morpho'nun geliştirici belgeleri uygulamalardan bir pay bırakmalarını ister, örneğin borçlanmanın sağlık faktörünü 1,05'in altına indirmesine izin vermemelerini; ama bu pay sözleşmenin bir kuralı değil, bir tercihtir. LLTV ne olursa olsun, sınırın ne kadar altında kaldığınız tamponunuzu belirler:
+
+| Borç, limitin payı olarak | Sağlık faktörü | Likidasyona kadar teminat fiyatı düşüşü |
+| ------------------------- | -------------- | --------------------------------------- |
+| %50                       | 2,00           | %50                                     |
+| %70                       | 1,43           | %30                                     |
+| %80                       | 1,25           | %20                                     |
+| %90                       | 1,11           | %10                                     |
+| %100                      | 1,00           | %0                                      |
+
+## Bir Morpho piyasası hangi LLTV'leri kullanabilir?
+
+26 Ekim 2026'da Ethereum ve Base üzerindeki Morpho Blue, Morpho yönetişiminin onayladığı listedeki dokuz LLTV'yi kabul ediyordu: %0, %38,5, %62,5, %77, %86, %91,5, %94,5, %96,5 ve %98 (her biri Ethereum bloğu 26274950 ve Base bloğu 53102888'de etkin olarak okundu). 0 değerinde bir LLTV hiç borçlanmaya izin vermez. Bir Blue LLTV'si %100'ün altında olmalıdır.
+
+LLTV aynı zamanda likidasyon teşvikini, yani bir likidatörün aldığı ek teminatı belirler: 1 ÷ (1 − 0,3 × (1 − LLTV)), en fazla 1,15. %86 LLTV'de bu 1,0438'dir: borcunuzun 100 USDC'sini geri ödeyen bir likidatör teminatınızdan 104,38 USDC alır. LLTV yükseldikçe teşvik küçülür. Morpho'nun belgeleri %86'daki teşviki yaklaşık %5'e yuvarlar; sözleşmenin formülü %4,38 verir. Etkin her LLTV'deki teşvik, bir likidasyonun ne aldığı ve bir kredinin ne kadarının tek seferde gidebileceği [Morpho likidasyonu nasıl işler](/tr/blog/morpho-likidasyonu-nasil-isler) rehberinde anlatılıyor. Teşviki teminatınızdan siz ödersiniz; sizin tamponunuz, sağlık faktörünüz ile 1,00 arasındaki mesafedir.
+
+## Morpho sağlık faktörünü ne hareket ettirir?
+
+Siz hiçbir şey yapmazken üç şey onu hareket ettirebilir:
+
+- **Oracle'ın gördüğü teminat fiyatı.** cbBTC örneğinde sağlık faktörü BTC/USD fiyat akışıyla birlikte hareket eder ve yalnızca bu akış güncellendiğinde değişir.
+- **Oracle kullanıyorsa kredi tokenının fiyatı.** Kote (quote) fiyat akışı olan bir oracle kredi tokenına da tepki verir. cbBTC piyasasının oracle'ında böyle bir akış yoktur, bu yüzden bir USDC depeg'i (dolar sabitinin kaybı) bu sağlık faktörünü hareket ettirmez. cbBTC ile BTC arasındaki bir fark da ettirmez.
+- **Faiz.** Morpho Blue'da borç, faiz biriktikçe büyür ve Morpho'nun belgeleri bir pozisyonun yalnızca faiz yüzünden zamanla daha riskli hâle gelebileceği konusunda uyarır. AdaptiveCurveIRM %90 kullanım oranını hedefler; piyasa daha yoğunken faizi yükseltir, daha sakinken düşürür ve %90 kullanımdaki faizi yıllık %0,1 ile %200 arasında tutar. Tam kullanımda faiz, hedefteki faizin dört katına, yani yıllık %800'e kadar çıkabilir. Faiz artışının sağlık faktörüne nasıl yansıdığı Aave için [Aave faiz oranları nasıl işler](/tr/blog/aave-faiz-oranlari#faiz-sıcramaları-saglık-faktorunuzu-nasıl-etkiler) rehberinde gösteriliyor; bir Morpho kredisi üzerindeki etkisi aynıdır.
+
+Morpho yönetişiminin hareket ettiremeyeceği şey piyasanın kendisidir: bir piyasanın LLTV'si, oracle adresi ve IRM'i sabittir. Oracle yine de fiyatını arkasındaki akışlardan okur, dolayısıyla ancak onlar kadar güvenilirdir. Yönetişim faizin %25'ine kadar bir piyasa ücreti belirleyebilir, ama bu faizi borç verenler ile ücret alıcısı arasında böler; borç alanların borcunu değiştirmez.
+
+Hangi fiyatların önemli olduğuna oracle karar verir. Morpho'nun Ethereum'daki WETH | wstETH (96.5%) piyasasında oracle, wstETH'yi Lido'nun kendi dönüşüm oranıyla, 26274979 numaralı blokta wstETH başına 1,24717 WETH olarak değerler ve 1 stETH'yi 1 ETH sayar. ETH'nin dolar fiyatı bu sağlık faktörünü hiç etkilemez. Orada 11 WETH'ye karşı 10 wstETH, 12,4717 × 0,965 ÷ 11 = 1,094 verir ve likidasyon için dönüşüm oranının %8,6 düşerek 1,1399'a inmesi gerekir. Bu sağlık faktörünü yalnızca faiz ve o dönüşüm oranı hareket ettirir.
+
+## Morpho'da likidasyon fiyatınızı nasıl hesaplarsınız?
+
+Bir Blue pozisyonu için likidasyon fiyatı, borcunuzun borçlanma limitinize eşit olduğu oracle fiyatıdır:
+
+**Likidasyon fiyatı = borç ÷ (teminat miktarı × LLTV)**
+
+Teminat tokenı başına kredi tokenı cinsinden ifade edilir, çünkü oracle onu böyle fiyatlar. Sağlık faktörü h iken teminat fiyatının oraya ulaşması için 1 − 1 ÷ h kadar düşmesi gerekir (yukarıdaki tabloya bakın). Borç faizle büyüdükçe likidasyon fiyatı yavaş yavaş yükselir.
+
+Piyasa için bir ön likidasyon sözleşmesine yetki verdiyseniz, pozisyonunuzun bir kısmı daha erken, LLTV'den daha düşük bir LTV'de kapatılabilir. cbBTC piyasasında böyle bir sözleşme vardır ve ön likidasyon LTV'si %83,26'dır: 40.000 USDC'ye karşı 1 cbBTC için bu sınıra göre ölçülen sağlık faktörü 1,72 yerine 1,67'dir. Morpho bu özelliği kaldırıyor: uygulaması artık sunmuyor ve Morpho, bu özelliği açık olan borç alanlardan onu kapatmalarını istiyor. Nasıl çalıştığı ve nasıl kontrol edilip iptal edileceği için [Morpho ön likidasyon](/tr/blog/morpho-on-likidasyon) rehberine bakın.
+
+## Morpho Midnight'ta sağlık faktörü nasıl işler?
+
+Morpho'nun sabit faizli piyasaları olan Morpho Midnight, sağlığı aynı şekilde hesaplar, üç farkla: bir piyasa birkaç teminat kabul edebilir, borç zamanla büyümez ve vade kesin bir sınırdır.
+
+- **Birkaç teminat, toplanarak.** Bir Midnight piyasasının bir kredi tokenı, bir vade tarihi ve her birinin kendi LLTV'si ve oracle'ı olan bir veya daha fazla teminatı vardır. Sözleşme, yatırdığınız her teminat için teminat değeri × LLTV'yi toplar ve toplamı borcunuzla karşılaştırır. Sağlık faktörü bu toplam ÷ borçtur.
+- **Sabit borç.** Vadede ödenecek nominal bir tutar borçlanırsınız: birim başına bir kredi tokenı. Faiz, borç aldığınız anda içine yerleştirilir: borçlandığınız her birim için bir kredi tokenından biraz az alırsınız; bu yüzden işlemler arasında bir Midnight sağlık faktörünü yalnızca teminat fiyatları hareket ettirir.
+- **Vade kesin bir sınırdır.** Vadeden sonra hâlâ açık olan her borç, sağlık faktörü ne olursa olsun likide edilebilir ve vade sonrası bu modda likidatörün teşviki ilk bir saat içinde sıfırdan tam büyüklüğüne çıkar.
+
+Bir Midnight piyasası, piyasa oluşturulurken belirlenen bir kapı (gate) ile kimin likide edebileceğini de sınırlayabilir; aşağıdaki örnek piyasada böyle bir kapı yoktur.
+
+26 Ekim 2026'da Ethereum'da listelenen en büyük Midnight piyasası, yaklaşık 23,9 milyon USDC'lik ödenmemiş borç birimiyle, 25 Aralık 2026'ya kadar USDC borç veriyor; teminat olarak %98 LLTV ile USDC'yi ve %86 ile cbBTC'yi kabul ediyor ve cbBTC için yukarıdaki Blue piyasasıyla aynı oracle'ı kullanıyor. 40.000 birim borca karşı 0,5 cbBTC ve 10.000 USDC yatırırsanız limit 34.404,94 + 9.800 = 44.204,94 olur, yani sağlık faktörü 1,105. Vade, devretme (rollover) ve vade sonrası likidasyon [Morpho Midnight sabit faizli krediler](/tr/blog/morpho-midnight-sabit-faizli-krediler) rehberinde anlatılıyor.
+
+## Morpho sağlık faktörünün Aave'ninkinden farkı nedir?
+
+Formül ikisinde de aynı biçimdedir: bir eşikle ağırlıklandırılmış teminat, borca bölünür. Etrafındaki kurallar ise farklıdır; [Aave sağlık faktörü rehberi](/tr/blog/aave-saglik-faktoru#saglık-faktoru-ltv-ve-likidasyon-esigi-farkları-nedir) bunu Aave tarafından anlatıyor:
+
+|                         | Morpho Blue                                          | Aave V3                                                                                                                                                                                  |
+| ----------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Birim                   | Tek piyasa: tek teminat, tek kredi tokenı            | Tek piyasa (tek ağdaki bir havuz): oradaki tüm teminatınız ve borcunuz                                                                                                                   |
+| Fiyatların belirlenmesi | Her piyasanın kendi oracle'ı, kredi tokenı cinsinden | Aave oracle'ı, USD cinsinden                                                                                                                                                             |
+| Borçlanma limiti        | LLTV'ye kadar, sağlık faktörü 1,00                   | Daha düşük bir LTV; bu yüzden azami borçlanma WETH için [yaklaşık 1,03](/tr/blog/aave-saglik-faktoru#maksimum-borc-almak-neden-saglık-faktorunu-yalnızca-yaklasık-103te-bırakır) bırakır |
+| Korelasyonlu varlıklar  | Yüksek LLTV'li ayrı piyasalar                        | [E-Mode](/tr/blog/aave-saglik-faktoru#e-mode-saglık-faktorunu-nasıl-degistirir) kategorileri                                                                                             |
+| Eşik değişebilir mi?    | Hayır, piyasa oluşturulurken sabitlenir              | Evet, yönetişim ve Risk Stewards değiştirebilir                                                                                                                                          |
+
+Aave V4 bunun bir kısmını değiştiriyor: Spoke başına bir sağlık faktörü ve varlık başına bir teminat faktörü; bkz. [Aave V4'te sağlık faktörü nasıl işler](/tr/blog/aave-saglik-faktoru#aave-v4te-saglık-faktoru-farklı-mı).
+
+Pratikteki fark şu: Aave'de bir varlıktaki sorun piyasanızın tamamını etkiler, Morpho'da ise tek bir piyasanın içinde kalır. Ayrıca Morpho'da sözleşmedeki hiçbir şey sizi sınıra kadar borç almaktan alıkoymaz, dolayısıyla payı korumak size kalır.
+
+## Morpho sağlık faktörünüzü nerede görebilirsiniz?
+
+Morpho'nun yardım merkezi, uygulamanın her pozisyonda sağlık faktörünü ve likidasyon fiyatını gösterdiğini söyler. Morpho'nun API'si Blue pozisyonları için `healthFactor` değerini ve likidasyona kadarki fiyat değişimini döndürür; Midnight için pozisyonları ve piyasa parametrelerini döndürür ve belgeleri, entegrasyon yapanlara her teminatın oracle'ını zincir üzerinden okuyup limiti kendilerinin hesaplamasını söyler.
+
+Tokenping'in [Morpho paneli](/tr/morpho), bir cüzdanın Blue ve Midnight borç pozisyonlarını gösterir; sağlık faktörleri Morpho'nun kendi matematiğiyle zincirden hesaplanır, asla Morpho'nun API'sinden alınmaz.
+
+## Tamponu ve uyarı eşiğini nasıl seçersiniz?
+
+Harekete geçebilmenizden önce fiyatın ne kadar oynayabileceğinden başlayın, sonra faiz için pay ekleyin:
+
+- **Atlatmak istediğiniz hareketi seçin.** Yukarıdaki LTV bölümündeki tabloyu kullanın: karşılamak istediğiniz fiyat düşüşü sağlık faktörünü belirler.
+- **Oracle'a bakın.** BTC/USD oracle'ı BTC ile birlikte hareket eder. wstETH piyasasındaki gibi bir dönüşüm oranı oracle'ı çok daha az hareket eder, ama borç faizi ve dönüşüm oranının kendisi yine de sağlık faktörünüzü hareket ettirir ve yüksek bir LLTV ikisi için de az yer bırakır.
+- **En yakın sınıra göre ölçün.** Ön likidasyona yetki verdiyseniz, sağlık faktörü 1,00'a ulaşmadan kredinizin bir kısmı gidebilir.
+- **Midnight'ta tarihe dikkat edin.** Faiz tamponu aşındırmaz, ama vadeden sonra kalan borç herhangi bir sağlık faktöründe likide edilebilir.
+- **Onu nasıl yükselteceğinizi bilin.** Aynı piyasada borcun bir kısmını geri ödeyin veya teminat ekleyin: başka bir Morpho piyasasındaki teminat sayılmaz. Midnight'ta piyasanın kabul ettiği herhangi bir teminatı ekleyebilirsiniz.
+
+Morpho'nun geliştirici belgeleri uyarı için örnek seviye olarak 1,1'i verir. Tamponların arkasındaki mantık için Aave için yazılmış ama aynı aritmetiği kullanan [harekete geçmek için ne kadar tampona ihtiyacınız var](/tr/blog/guvenli-aave-saglik-faktoru#harekete-gecmeye-zamanınız-olması-icin-ne-kadar-tampona-ihtiyacınız-var) bölümüne bakın.
+
+## Sağlık faktörü uyarıları Morpho'da nasıl yardımcı olabilir?
+
+Tokenping, Morpho pozisyonlarını 14 ağda her 5 dakikada bir kontrol eder: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable ve Tempo. Morpho uygulamasında listelenen piyasalardaki borç pozisyonlarını, hem Morpho Blue hem de Morpho Midnight'ta kapsar. Midnight uyarıları, Morpho'nun API'sinin listelediği piyasaları kapsar. 26 Ekim 2026'da bunlar Ethereum ve Base'deydi; Morpho, Arc ve Robinhood Chain ağlarında Midnight piyasaları listelediğinde Tokenping bunları da kapsar.
+
+- **Eşik:** 1,02 ile 10 arasında siz belirlersiniz. Sağlık faktörü eşiğin altındayken her kontrol, seçtiğiniz her kanala bir mesaj gönderir: Signal, Telegram veya e-posta.
+- **Ön likidasyon:** bir Blue piyasasında bir ön likidasyon sözleşmesine yetki verdiyseniz, uyarı iki sağlık faktöründen düşük olanı kullanır: LLTV'ye göre ölçüleni ve ön likidasyon sınırına göre ölçüleni.
+- **Vade:** bir Midnight kredisi ayrıca son 7 gününde bir, son 24 saatinde bir hatırlatma alır; ardından vadeden sonra borç kaldığı sürece her kontrolde bir uyarı gelir.
+
+Pozisyonlarınıza [Morpho panelinde](/tr/morpho) bakmak ödeme gerektirmez; uyarıların fiyatı: <AlertPrice />, Aave uyarılarıyla aynı plan. Bir uyarı size harekete geçmek için zaman kazandırır; likidasyonu önlemez, çünkü fiyat iki kontrol arasında hareket edebilir.
+
+## Kaynaklar
+
+- [Morpho belgeleri: Variable Rate Market (Morpho Blue)](https://docs.morpho.org/learn/concepts/blue): beş parametre, piyasa adları, yönetişimin onayladığı LLTV'ler ve IRM (erişim tarihi: 26 Ekim 2026)
+- [Morpho belgeleri: Collateral, LTV and health (geliştiriciler)](https://docs.morpho.org/developers/borrow/concepts/ltv): formül, oracle ölçeği, çapraz teminat olmaması, entegrasyon uygulamaları (erişim tarihi: 26 Ekim 2026)
+- [Morpho belgeleri: Liquidation](https://docs.morpho.org/learn/concepts/liquidation) ve [Morpho yardım merkezi: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): likidasyon teşviki, uygulamanın sağlık faktörünü gösterdiği yer (erişim tarihi: 26 Ekim 2026)
+- [Morpho belgeleri: Interest rate model](https://docs.morpho.org/learn/concepts/irm) ve [entegrasyon yapanlar için faiz oranları](https://docs.morpho.org/developers/borrow/concepts/interest-rates): AdaptiveCurveIRM, faiz birikimi (erişim tarihi: 26 Ekim 2026)
+- [Morpho belgeleri: Get data (geliştiriciler)](https://docs.morpho.org/developers/borrow/tutorials/get-data): sağlık faktörü ve likidasyon fiyatı kodu (erişim tarihi: 26 Ekim 2026)
+- [Morpho belgeleri: What is Midnight? (Fixed Rate Markets)](https://docs.morpho.org/learn/concepts/midnight) ve [Midnight collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) (erişim tarihi: 26 Ekim 2026)
+- [Morpho belgeleri: Governance organization](https://docs.morpho.org/learn/governance/organization), [sözleşme adresleri](https://docs.morpho.org/developers/contracts/addresses) ve [arayüz listeleme politikası](https://docs.morpho.org/get-started/resources/interface-listing-policy) (erişim tarihi: 26 Ekim 2026)
+- [morpho-blue](https://github.com/morpho-org/morpho-blue): `Morpho.sol`, `ConstantsLib.sol`, `IOracle.sol` (erişim tarihi: 26 Ekim 2026)
+- [midnight](https://github.com/morpho-org/midnight): `Midnight.sol`, `ConstantsLib.sol` (erişim tarihi: 26 Ekim 2026)
+- [pre-liquidation](https://github.com/morpho-org/pre-liquidation) ve [morpho-blue-irm](https://github.com/morpho-org/morpho-blue-irm) (erişim tarihi: 26 Ekim 2026)
+- [Morpho API belgeleri: Morpho Blue](https://docs.morpho.org/developers/api/morpho/) ve [Morpho Midnight](https://docs.morpho.org/developers/api/morpho-midnight) (GraphQL uç noktası api.morpho.org/graphql, api.morpho.org/v0/midnight altındaki Midnight REST uç noktaları): piyasa sıralamaları, pozisyonlar ve ön likidasyon sözleşmeleri (erişim tarihi: 26 Ekim 2026)
+- Ethereum'da 26274950 ile 26274984 arasındaki bloklarda [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), [USDC | cbBTC oracle'ı](https://etherscan.io/address/0xA6D6950c9F177F1De7f7757FB33539e3Ec60182a#readContract), [WETH | wstETH oracle'ı](https://etherscan.io/address/0xbD60A6770b27E084E8617335ddE769241B0e71D8#readContract) ve [Morpho Midnight](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract) üzerinden, 53102888 numaralı blokta da [Base'deki Morpho Blue](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) üzerinden yapılan zincir üstü okumalar (erişim tarihi: 26 Ekim 2026)
+
+_Eğitim amaçlı içeriktir, finansal tavsiye değildir. Uyarılar riski azaltır ama likidasyonu önlemez._

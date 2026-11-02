@@ -1,0 +1,183 @@
+export const meta = {
+  slug: "aave-likidasyon-fiyati",
+  title: "Aave likidasyon fiyatınızı nasıl hesaplarsınız",
+  description:
+    "Aave V3 likidasyon fiyatı formülü; tek teminat, iki teminat ve volatil borç için hesaplama örnekleri ve bir hesaplayıcı.",
+  h1: "Aave likidasyon fiyatınızı nasıl hesaplarsınız",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-20",
+  primaryQuestion: "Aave pozisyonum hangi fiyatta likide edilir?",
+  readingMinutes: 11,
+};
+
+<ShortAnswer>
+  Aave likidasyon fiyatınız, diğer tüm fiyatlar aynı kalırken sağlık faktörünüzü (health factor) 1,00'a düşürecek olan,
+  tek bir varlığın oracle (fiyat kaynağı) fiyatıdır; bu fiyat aşıldığında (teminat için altına, borç alınan varlık için
+  üstüne çıkıldığında) pozisyon likide edilebilir. Tek bir volatil teminat ve stablecoin borcuyla bu fiyat borç ÷
+  (teminat miktarı × likidasyon eşiği), ya da güncel fiyat ÷ sağlık faktörünüzdür. Örneğin Aave V3 Ethereum Core'da
+  12.000 USDC borcu karşılayan 10 WETH (14 Ekim 2026'da WETH likidasyon eşiği %83), USDC 1,00 $ sayıldığında, ETH
+  1.445,78 $'ın altına düştüğü anda likide edilebilir.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Aave'de likidasyon fiyatı nedir?
+
+Aave'de likidasyon fiyatı, diğer tüm fiyatlar aynı kalırken sağlık faktörünüzün tam olarak 1,00'a ulaşacağı, pozisyonunuzdaki tek bir varlığın fiyatıdır. Aave V3, sağlık faktörü 1,00'ın altına indiğinde likidasyona izin verir. Bir likidatör bu durumda borcunuzun bir kısmını veya tamamını geri ödeyip bu tutar artı bir bonus (Ethereum Core'da WETH teminatı için %5, 14 Ekim 2026'da zincir üstünden okundu) değerinde teminat alabilir. Sürecin tamamı [Aave likidasyonunda ne olur](/tr/blog/aave-likidasyonu-nasil-isler) rehberinde.
+
+Bu rakamı kullanırken üç şeyi aklınızda tutun:
+
+- **Türetilmiş bir değerdir.** Aave V3 Pool sözleşmesi `getUserAccountData` ile bir likidasyon fiyatı değil, bir sağlık faktörü bildirir. Fiyatı, sağlık faktörü formülünü tek bir varlık için çözerek bulursunuz; bu formülü [Aave sağlık faktörü nedir](/tr/blog/aave-saglik-faktoru) rehberi açıklıyor.
+- **Bir oracle fiyatıdır.** Aave pozisyonları Chainlink beslemeleri ve CAPO adaptörleri üzerine kurulu kendi oracle'ıyla değerler ve Aave uygulaması bu fiyatı her varlığın sayfasında "Oracle price" (oracle fiyatı) olarak gösterir. Bir borsadaki son işlem fiyatı farklı olabilir.
+- **Diğer her şeyi sabit tutar.** İki teminat varlığı veya volatil borç olduğunda birçok fiyat kombinasyonu 1,00'a ulaşır; bu yüzden tek bir likidasyon fiyatı size yalnızca tek bir varlığın kendi başına ne kadar hareket edebileceğini söyler.
+
+## Aave likidasyon fiyatının formülü nedir?
+
+Tek bir volatil teminat varlığı ve stablecoin borcu olan bir Aave V3 pozisyonu için likidasyon fiyatı borç ÷ (teminat miktarı × likidasyon eşiği) değeridir; burada likidasyon eşiği (liquidation threshold, LT), teminat değerinin sağlık faktörüne sayılan payıdır.
+
+**Likidasyon fiyatı = borç ÷ (teminat miktarı × likidasyon eşiği)**
+
+Bu, fiyat için çözülmüş sağlık faktörüdür. Aave V3, USD cinsinden HF = Σ(teminat değeri × likidasyon eşiği) ÷ toplam borç değeri hesaplar. Tek bir teminat varlığıyla HF = miktar × fiyat × LT ÷ borç olur. HF'yi 1'e eşitleyin ve fiyat için çözün.
+
+Sağlık faktörü eşiği zaten içerdiği için bir kısayol var: **likidasyon fiyatı = güncel fiyat ÷ sağlık faktörü**. Oraya ulaşmak için gereken düşüş 1 − 1 ÷ HF'dir.
+
+Diğer pozisyon türleri aynı formülün bir varyantını kullanır:
+
+| Pozisyon                               | Likidasyon fiyatı                                                        | Sağlık faktörünüzden kısayol                                           |
+| -------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| Tek volatil teminat, stablecoin borcu  | borç ÷ (miktar × LT)                                                     | güncel fiyat ÷ HF                                                      |
+| İki volatil teminat, stablecoin borcu  | (borç − diğer teminatın değeri × onun LT'si) ÷ (miktar × LT)             | tek fiyat için yok; ikisi birlikte düşerse: 1 − 1 ÷ HF kadar bir düşüş |
+| Stablecoin teminatı, volatil borç      | Σ(teminat değeri × LT) ÷ borç alınan miktar, yukarı yönde bir fiyat      | güncel fiyat × HF                                                      |
+| wstETH teminatı, WETH borcu, E-Mode'da | bir wstETH/ETH fiyat oranı: WETH borcu ÷ (wstETH miktarı × E-Mode LT'si) | güncel oran ÷ HF                                                       |
+
+### Hesaplama örneği: Ethereum Core'da 10 WETH ve 12.000 USDC
+
+Aave V3 Ethereum Core'da 10 WETH yatırın ve 12.000 USDC borç alın. WETH'in oradaki likidasyon eşiği %83, LTV'si %80,5'ti (26193284 numaralı Ethereum blokunda zincir üstü okuma, 14 Ekim 2026). Bu örnek, yuvarlak rakamlar için 2.400 $'lık ETH fiyatını kullanıyor; Aave'nin oracle'ı aynı gün 26193376 numaralı blokta 2.414,78 $ okudu. USDC 1,00 $ sayılıyor.
+
+| Adım              | Hesap                  | Sonuç      |
+| ----------------- | ---------------------- | ---------- |
+| Teminat değeri    | 10 × 2.400 $           | 24.000 $   |
+| Sağlık faktörü    | 24.000 × 0,83 ÷ 12.000 | 1,66       |
+| Likidasyon fiyatı | 12.000 ÷ (10 × 0,83)   | 1.445,78 $ |
+| Kısayol kontrolü  | 2.400 ÷ 1,66           | 1.445,78 $ |
+| Gereken düşüş     | 1 − 1 ÷ 1,66           | %39,8      |
+
+Borç limiti bir güvenlik payı değildir. %80,5 LTV ile aynı 10 WETH 19.320 $'a kadar borcu destekler; bu da 1,031'lik bir sağlık faktörü ve 2.400 $'ın yalnızca %3,0 altında, 2.327,71 $'lık bir likidasyon fiyatı verir. [Bir sağlık faktörü size ne kadar tampon sağlar](/tr/blog/guvenli-aave-saglik-faktoru) rehberi bu farkı her varlık için ele alıyor.
+
+### Hangi likidasyon eşiğini kullanmalısınız?
+
+Pozisyonunuzun bulunduğu Aave piyasasının likidasyon eşiğini kullanın. Aave uygulaması bunu her varlığın sayfasında "Collateral usage" (teminat kullanımı) altında "Liquidation threshold" (likidasyon eşiği) olarak gösterir. Aynı token'ın farklı piyasalarda farklı eşikleri olabilir ve yönetişim bunları değiştirebilir. E-Mode'da kategorinin eşiği, varlığın kendi eşiğinin yerini yalnızca kategorinin teminat kümesindeki varlıklar için alır; diğer teminatlar kendi eşiklerini korur.
+
+| Aave V3 piyasası                       | Varlık                                        | LTV           | Likidasyon eşiği |
+| -------------------------------------- | --------------------------------------------- | ------------- | ---------------- |
+| Ethereum Core                          | WETH                                          | %80,5         | %83              |
+| Ethereum Core                          | WBTC                                          | %73           | %78              |
+| Ethereum Core                          | USDC                                          | %75           | %78              |
+| Ethereum Core, E-Mode "ETH correlated" | WETH, wstETH, cbETH, rETH, weETH, osETH, ETHx | %93 (ETHx %0) | %95              |
+| Arbitrum                               | WETH                                          | %80           | %84              |
+| Arbitrum                               | WBTC                                          | %73           | %78              |
+| Arbitrum                               | USDC (yerel)                                  | %75           | %78              |
+
+14 Ekim 2026'da 26193284 numaralı Ethereum blokunda (E-Mode için blok 26193288) ve 514855406 numaralı Arbitrum blokunda zincir üstünden okundu. UTC gece yarısından hemen sonra yapılan yeni bir okuma (Ethereum bloku 26194239, Arbitrum bloku 514896811) aynı değerleri döndürdü ve ETHx'in %0'lık E-Mode LTV'sini verdi.
+
+### Formül Aave V4'te farklı mı?
+
+Ethereum, Avalanche, Arc ve Base'te çalışan Aave V4 aynı yapıyı iki farkla kullanır: ayrı LTV ve likidasyon eşiğinin yerini her Spoke'ta her varlık için tek bir teminat faktörü (collateral factor) alır ve sağlık faktörü Spoke başına hesaplanır. Bir V4 pozisyonu sağlık faktörü 1,0'ın altına indiğinde likidasyona uygun hale gelir; dolayısıyla likidasyon fiyatı borç ÷ (teminat miktarı × teminat faktörü) olur. WETH'in Ethereum Main Spoke'taki teminat faktörü 14 Ekim 2026'da %83'tü (Aave V4 API); bu yüzden orada 12.000 USDC karşısındaki 10 WETH de 1.445,78 $'ın altında likide olurdu. Tokenping hem V3 hem V4 pozisyonlarını izler ve her V4 Spoke'u için ayrı bir uyarı kullanır.
+
+## İki teminat varlığıyla Aave likidasyon fiyatı nasıl hesaplanır?
+
+İki teminat varlığı olduğunda bir varlığın likidasyon fiyatı, diğerinin güncel fiyatını koruduğunu varsayar: diğer varlığın ağırlıklı değerini borcunuzdan çıkarın, sonra ilk varlığın miktarı çarpı likidasyon eşiğine bölün.
+
+**A varlığının likidasyon fiyatı = (borç − B'nin değeri × B'nin LT'si) ÷ (A'nın miktarı × A'nın LT'si)**
+
+Aave V3 Ethereum Core'da örnek: 2.400 $'dan 10 WETH (LT %83) artı örnek olarak 81.500 $'dan 0,2 WBTC (LT %78; oracle 14 Ekim 2026'da 81.528,44 $ okudu), 20.000 USDC borca karşı. Ağırlıklı teminat 24.000 × 0,83 + 16.300 × 0,78 = 19.920 + 12.714 = 32.634; yani sağlık faktörü 32.634 ÷ 20.000 = 1,632.
+
+| Senaryo                           | Likidasyon fiyatı                                       | Gereken düşüş         |
+| --------------------------------- | ------------------------------------------------------- | --------------------- |
+| ETH düşer, WBTC 81.500 $'da kalır | (20.000 − 12.714) ÷ (10 × 0,83) = ETH başına 877,83 $   | %63,4                 |
+| WBTC düşer, ETH 2.400 $'da kalır  | (20.000 − 19.920) ÷ (0,2 × 0,78) = WBTC başına 512,82 $ | %99,4                 |
+| İkisi aynı oranda düşer           | ETH 1.470,86 $ ve WBTC 49.948 $, birlikte               | %38,7 (1 − 1 ÷ 1,632) |
+
+İlk iki satır rahat görünür, çünkü her biri diğer varlığın değerini koruduğunu varsayar. Burada WETH tek başına borcu neredeyse karşılıyor (20.000'e karşı 19.920 ağırlıklı değer); bu yüzden WBTC'nin kendi başına %99,4 düşmesi gerekir. Birlikte hareket etme eğilimindeki teminatlar için gerçekçi test üçüncü satırdır: ikisinde birden %38,7'lik bir düşüş.
+
+## Stablecoin yerine volatil bir varlık borç aldıysanız ne olur?
+
+WETH gibi volatil bir varlık borç aldıysanız Aave pozisyonunuzun yukarı yönde bir likidasyon fiyatı vardır: borç alınan varlığın, sağlık faktörünüzün 1,00'a ulaştığı fiyatı. Bu fiyat yükseldikçe borç daha değerli hale gelir ve sağlık faktörü düşer.
+
+**Borç alınan varlığın likidasyon fiyatı = Σ(teminat değeri × LT) ÷ borç alınan miktar**, ya da kısayol olarak güncel fiyat × sağlık faktörü.
+
+Aave V3 Ethereum Core'da örnek: 10.000 USDC (LT %78) yatırın ve ETH 2.400 $ iken 6.000 $ değerinde 2,5 WETH borç alın. Sağlık faktörü 10.000 × 0,78 ÷ 6.000 = 1,30'dur. ETH 7.800 ÷ 2,5 = 3.120 $'ın (yine 2.400 × 1,30) üzerine, yani %30 yükseldiğinde pozisyon likide edilebilir.
+
+Stablecoin tarafı da hareket edebilir. Aave'nin Ethereum'daki USDC fiyatı 1,04 $ ile sınırlıdır, ama 1 $'ın altındaki fiyatlar olduğu gibi geçer (tavan, 26194239 numaralı Ethereum blokunda zincir üstünden okundu). USDC daha önce sabitini kaybetti: Gauntlet'in Aave forumundaki olay sonrası raporunun kaydettiği gibi 11 Mart 2023'te yaklaşık 88 sente kadar düştü. 0,88 $'da aynı pozisyonun sağlık faktörü 8.800 × 0,78 ÷ 6.000 = 1,144 olur ve ETH likidasyon fiyatı 3.120 $'dan 2.745,60 $'a iner.
+
+Teminat ve borcun ikisi de volatil olduğunda, örneğin WETH borcuna karşı WBTC teminatında, yalnızca iki fiyat arasındaki oran önemlidir: WBTC/ETH oranı ETH borcu ÷ (WBTC miktarı × WBTC'nin LT'si) değerine düştüğünde sağlık faktörü 1,00'a ulaşır.
+
+## E-Mode likidasyon fiyatınızı nasıl değiştirir?
+
+E-Mode, korelasyonlu varlıklar için likidasyon eşiğini yükseltir. Teminat ve borcun ikisi de aynı temel fiyatı izlediğinde, wstETH ve WETH'in ikisinin de ETH'yi izlemesi gibi, likidasyon fiyatı bir dolar fiyatı yerine bir fiyat oranı (wstETH/ETH) olur. Aave V3 Ethereum Core'da "ETH correlated" E-Mode kategorisinin 14 Ekim 2026'da LTV'si %93, likidasyon eşiği %95 ve likidasyon bonusu %1'di. Teminat kümesi WETH, wstETH, cbETH, rETH, weETH, osETH ve ETHx'tir ve borç almanıza izin verdiği tek varlık WETH'tir. Bu kümenin dışındaki teminatlar normal eşiklerini korur.
+
+wstETH teminatı ve WETH borcuyla iki taraf da ETH üzerinden fiyatlanır; bu yüzden ETH'nin dolar fiyatı büyük ölçüde birbirini götürür. Likidasyonu belirleyen, Aave'nin oracle'ının kullandığı wstETH/ETH kurudur:
+
+- Oracle kuruyla 100 ETH değerinde wstETH yatırın ve 90 WETH borç alın. Sağlık faktörü 100 × 0,95 ÷ 90 = 1,056'dır. ETH'nin dolar fiyatı yarıya inerse iki taraf da yarıya iner ve sağlık faktörü 1,056'da kalır. Oracle'ın wstETH/ETH kuru %5,3 (1 − 90 ÷ 95) düşerse pozisyon 1,00'a ulaşır.
+- Kategorinin azami borcunda, yani aynı teminata karşı 93 WETH ile, sağlık faktörü 95 ÷ 93 = 1,0215'ten başlar ve kurdaki %2,1'lik bir düşüş yeterlidir.
+
+Bu büyüklükte bir hareket yaşandı. Aave wstETH'i, bildirdiği kuru bir tavanla sınırlayan bir CAPO (Correlated Assets Price Oracle) adaptörüyle fiyatlar. Mart 2026'da Ethereum Core ve Prime piyasalarında yanlış yapılandırılmış bir tavan, Aave'nin kullandığı kuru yaklaşık %2,85 düşürdü. Chaos Labs'in olay sonrası raporu (10 Mart 2026), 34 hesapta yaklaşık 10.938 wstETH'lik E-Mode likidasyonu sayıyor; etkilenen pozisyonların sağlık faktörü yaklaşık 1,0288'in altındaydı. Hareket piyasadan değil, oracle'ın yapılandırmasından geldi.
+
+## Likidasyon fiyatınız zamanla neden değişir?
+
+Aave likidasyon fiyatınız siz hiçbir şey yapmasanız da değişir, çünkü girdileri değişir: faiz borcunuza eklenir, yatırma faizi teminatınıza biraz ekler ve yönetişim likidasyon eşiklerini değiştirebilir. Kendi işlemleriniz de onu hareket ettirir: borç almak yükseltir, geri ödemek veya teminat eklemek düşürür.
+
+- **Faiz.** ETH 2.400 $ iken Aave V3 Ethereum Core'da 10 WETH ve 12.000 USDC borç alın. 14 Ekim 2026'da (blok 26193378) USDC'nin değişken borç faizi yıllık %4,496 (APR), WETH'in yatırma faizi ise yıllık %1,309'du. Bu oranlar bir yıl boyunca sabit kalsaydı, ETH değişmeden likidasyon fiyatı 1.445,78 $'dan yaklaşık 1.490 $'a çıkardı. Oranlar değişkendir: aynı akşam, yatırılan USDC'nin neredeyse tamamı borç verilmişken USDC'nin borç faizi bir saatten kısa bir süre için %14,1'e çıktı (blok 26194180).
+- **Eşik indirimleri.** Aave V3'te daha düşük bir likidasyon eşiği tüm açık pozisyonlara aynı anda uygulanır ve likidasyon fiyatı eski LT ÷ yeni LT oranında ölçeklenir. WETH için %83'ten %80'e varsayımsal bir indirim, aynı pozisyonun likidasyon fiyatını 1.445,78 $'dan 1.500,00 $'a taşırdı. İndirimler yönetişim teklifleriyle ya da eşikleri yapılandırılmış sınırlar içinde ayarlayabilen Risk Stewards aracılığıyla gelir.
+- **LTV değişiklikleri sayılmaz.** Bir varlığın LTV'sini düşürmek, 0'a kadar bile, sağladığı borç alma gücünü azaltır veya kaldırır, ama sağlık faktörünü ve likidasyon fiyatını değiştirmez.
+- **Aave V4 farklıdır.** Teminat faktörü değişiklikleri normalde yeni pozisyonlara uygulanır; mevcut pozisyonlar, kullanıcı borç alana, çekim yapana veya teminat ayarlarını değiştirene ya da Governor onları güncelleyene kadar eski ayarlarını korur. V4 ayrıca daha riskli teminat için borç faizine bir User Risk Premium ekler; bu yüzden borç ve onunla birlikte likidasyon fiyatı daha hızlı büyüyebilir.
+
+## Likidasyon fiyatınıza ne kadar yakın olmak fazla yakındır?
+
+Likidasyon fiyatına hiçbir mesafe herkes için güvenli değildir. Tek volatil teminat ve stablecoin borcu için mesafe 1 − 1 ÷ HF'dir: 1,25'lik bir sağlık faktörü %20'lik bir düşüşe, 1,5 %33,3'e ve 2,0 %50'ye yer bırakır. Ne kadar alana ihtiyacınız olduğu teminatın oynaklığına, ne kadar hızlı geri ödeme yapabileceğinize veya teminat ekleyebileceğinize ve o anda ağın ne kadar yoğun olduğuna bağlıdır. Tablonun tamamı [bir sağlık faktörü size ne kadar tampon sağlar](/tr/blog/guvenli-aave-saglik-faktoru) rehberinde.
+
+### Bir likidasyon fiyatını sağlık faktörü uyarı eşiğine nasıl çevirirsiniz?
+
+Harekete geçmek isteyeceğiniz fiyatı seçin ve onu bir sağlık faktörüne çevirin. Tek volatil teminat ve stablecoin borcu için **belirli bir fiyattaki HF = o fiyat ÷ likidasyon fiyatı**. 12.000 USDC karşısında 10 WETH için (likidasyon fiyatı 1.445,78 $), ETH 1.800 $'dayken harekete geçmek 1.800 ÷ 1.445,78 = 1,245'lik bir sağlık faktörü demektir; yani yaklaşık 1,25'lik bir eşik. Volatil borçta durum tersine döner: HF = likidasyon fiyatı ÷ borç alınan varlığın fiyatı.
+
+Sağlık faktörü eşiğinin bir fiyat seviyesine göre iki avantajı vardır. Faiz biriktikçe ve siz pozisyonu değiştirdikçe likidasyon fiyatınızı takip eder ve tüm teminat ve borç varlıklarını aynı anda kapsar. Sabit bir fiyat uyarısı, borç büyüdüğü anda güncelliğini yitirmeye başlar.
+
+Tokenping bu şekilde çalışır: sağlık faktörüne göre uyarır ve fiyat uyarısı yoktur. Her Aave V3 piyasası veya Aave V4 Spoke'u için 1,1 ile 10 arasında bir eşik belirlersiniz. Tokenping her 5 dakikada bir kontrol eder ve sağlık faktörünüz eşiğin altındayken her kontrolde seçtiğiniz her kanala (Signal, Telegram, e-posta ya da birkaçı) bir mesaj gönderir. Hızlı bir hareket iki kontrol arasında 1,00'ın altına inebilir; bu yüzden harekete geçeceğiniz seviyenin üzerindeki bir eşik size zaman kazandırır, ama likidasyonu durduramaz. Adımlar [sağlık faktörü uyarısı nasıl kurulur](/tr/blog/aave-saglik-faktoru-uyarisi-kurulumu) rehberinde; isterseniz önce [Aave V3 sağlık faktörünüzü kontrol edebilirsiniz](/tr/aave).
+
+## Kendi pozisyonunuzun likidasyon fiyatını nasıl hesaplarsınız?
+
+Kendi Aave likidasyon fiyatınızı hesaplamak için her teminatın miktarına, her teminatın likidasyon eşiğine, toplam borcunuza ve güncel oracle fiyatına ihtiyacınız var. Aave uygulaması dördünü de gösterir.
+
+1. Her teminatın miktarını, toplam borcunuzu ve hesabınızın E-Mode'da olup olmadığını not edin.
+2. Her teminatın likidasyon eşiğini Aave uygulamasındaki varlık sayfasında bulun ("Collateral usage" altında "Liquidation threshold"). E-Mode'da kategorinin eşiğini yalnızca kategorinin kümesindeki teminatlar için kullanın; diğer teminatlar kendi eşiklerini korur.
+3. Tek volatil teminat ve stablecoin borcuyla oracle fiyatını sağlık faktörünüze bölün. İki teminatla A'nın fiyatı (borç − B'nin değeri × B'nin LT'si) ÷ (A'nın miktarı × A'nın LT'si) olur. Borç alınmış volatil bir varlıkta onun fiyatı Σ(teminat değeri × LT) ÷ borç alınan miktardır. Aşağıdaki hesaplayıcı üçünü de hesaplar.
+4. Borç aldıktan, geri ödedikten veya teminat ekledikten sonra ve bir eşik değişikliğinden sonra yeniden hesaplayın.
+
+WETH'in likidasyon eşiğinin 14 Ekim 2026'da %84 olduğu Aave V3 Arbitrum'da hesaplama örneği: 7.000 USDC karşısında 2.400 $'dan 5 WETH, 12.000 × 0,84 ÷ 7.000 = 1,44'lük bir sağlık faktörü ve 2.400 ÷ 1,44 = 1.666,67 $'lık, yani %30,6'lık bir düşüşe denk gelen bir likidasyon fiyatı verir. Ethereum Core'un %83'lük eşiğiyle aynı pozisyon 1.686,75 $'ın altında likide olurdu.
+
+<LiquidationCalculator />
+
+Her hesaplayıcı bugünkü likidasyon fiyatını verir. Faiz, eşik değişiklikleri ve kendi işlemleriniz onu sonradan hareket ettirir; bu yüzden geçen ayın sonucunu yeniden hesaplamaya değer.
+
+## Kaynaklar
+
+- [Aave V3 GenericLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): sağlık faktörü formülü ve E-Mode eşiğinin yalnızca kategorinin teminat kümesine uygulanması (erişim tarihi: 14 Ekim 2026)
+- [Aave V3 ValidationLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): sağlık faktörü 1,00'ın altındayken likidasyon, borç almada LTV kontrolleri (erişim tarihi: 14 Ekim 2026)
+- [Aave V3 LiquidationLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): tek bir likidasyonun ne kadar borç ödeyebileceği (erişim tarihi: 14 Ekim 2026)
+- [Aave V3 Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): 26193284 ve 26194239 numaralı bloklarda `getReserveConfigurationData`; 26193378 ve 26194180 numaralı bloklarda `getReserveData` (erişim tarihi: 14 Ekim 2026; yeniden okuma: 15 Ekim 2026)
+- [Aave V3 Arbitrum PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): 514855406 ve 514896811 numaralı Arbitrum bloklarında `getReserveConfigurationData` (erişim tarihi: 14 Ekim 2026; yeniden okuma: 15 Ekim 2026)
+- [Aave V3 Ethereum Core Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): E-Mode kategorisi 1 "ETH correlated": teminat yapılandırması ile teminat, borç alınabilir ve sıfır LTV bitmap'leri (erişim tarihi: 14 Ekim 2026; yeniden okuma: 15 Ekim 2026)
+- [Ethereum'daki AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): 26193376 numaralı blokta `getAssetPrice`; 26194239 numaralı blokta `getSourceOfAsset(USDC)` (erişim tarihi: 14 Ekim 2026; yeniden okuma: 15 Ekim 2026)
+- [Ethereum'daki Aave USDC fiyat adaptörü, "Capped USDC / USD"](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B): 26194239 numaralı blokta `getPriceCap` = 104000000 (1,04 $) (erişim tarihi: 15 Ekim 2026)
+- [Aave oracle dokümantasyonu](https://aave.com/docs/ecosystem/oracle.md): Chainlink beslemeleri ve CAPO adaptörleri (erişim tarihi: 14 Ekim 2026)
+- [Aave fiyat beslemeleri deposu (PriceCapAdapterStable)](https://github.com/aave-dao/aave-price-feeds): USDC fiyat tavanının nasıl çalıştığı (erişim tarihi: 14 Ekim 2026)
+- [Gauntlet, "Aave Resilient Through USDC Volatility" (Aave, USDC oynaklığına dayanıklı)](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330): USDC'nin 11 Mart 2023'te yaklaşık 88 sente kadar düşmesi (erişim tarihi: 14 Ekim 2026)
+- [Chaos Labs, wstETH kuru olay sonrası raporu](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): Mart 2026 CAPO olayı (erişim tarihi: 14 Ekim 2026)
+- [Aave V3 Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): risk parametrelerinin yönetişim oylamaları arasında nasıl değişebileceği (erişim tarihi: 14 Ekim 2026)
+- [Aave V4 kullanıcı pozisyonları dokümantasyonu](https://aave.com/docs/aave-v4/positions.md): teminat faktörü ve sağlık faktörü 1,0'ın altındayken likidasyon (erişim tarihi: 14 Ekim 2026)
+- [Aave V4 genel bakış (aave/aave-v4)](https://github.com/aave/aave-v4/blob/main/docs/overview.md): dinamik risk yapılandırması ve User Risk Premium (erişim tarihi: 14 Ekim 2026)
+- [Aave V4 API](https://api.v4.aave.com/graphql): `reserves` sorgusu, Ethereum'da Spoke başına WETH teminat faktörü (erişim tarihi: 14 Ekim 2026)
+- [Aave değişiklik günlüğü](https://aave.com/docs/resources/changelog.md): V4 ağları (erişim tarihi: 14 Ekim 2026)
+- [Aave arayüzü kaynak kodu, SupplyInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/SupplyInfo.tsx) ve [ReserveTopDetails.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/ReserveTopDetails.tsx): Aave uygulamasındaki "Liquidation threshold" ve "Oracle price" etiketleri (erişim tarihi: 14 Ekim 2026)
+
+_Eğitim amaçlı içeriktir, finansal tavsiye değildir. Uyarılar riski azaltır ama likidasyonu önlemez._

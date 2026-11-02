@@ -1,0 +1,140 @@
+export const meta = {
+  slug: "teminat-olarak-tokenize-hisseler",
+  title: "Aave ve Morpho'da tokenize hisselere karşı borç almak",
+  description:
+    "Tokenize hisseler Aave V4 ve Morpho'da nasıl teminat olur, oracle'lar onları nasıl fiyatlar, hafta sonu fiyat neden durur, pazartesi boşluğu ne yapar.",
+  h1: "Tokenize hisselere karşı borç almak nasıl işler ve hafta sonunda ne olur?",
+  publishedAt: "2026-10-30",
+  primaryQuestion: "Aave veya Morpho'da tokenize hisselere karşı borç alabilir misiniz ve riskleri nelerdir?",
+  readingMinutes: 9,
+};
+
+<ShortAnswer>
+  Tokenping'in kapsadığı iki yerde tokenize ABD hisselerine karşı stablecoin borç alabilirsiniz: Aave V4'ün Base
+  üzerindeki Coinbase Stocks Spoke'u (Apple, Amazon, Alphabet, Meta, Microsoft, Nvidia ve Tesla tokenları, USDC borç
+  alınır, teminat faktörleri %65 ile %79 arası) ve Robinhood Chain üzerindeki Morpho piyasaları (NVDA, SPY, SpaceX ve
+  diğerleri, USDG borç alınır, çoğunlukla %62,5 LLTV ile). Sağlık faktörü (health factor) her teminatta olduğu gibi
+  işler, tek bir farkla: bu tokenları fiyatlayan Chainlink fiyat akışları cuma öğleden sonradan pazar günü New York
+  saatiyle 20:00'ye kadar durur. Hafta sonu boyunca sağlık faktörünüz yalnızca faizle kayabilir ve pazar akşamı fiyat,
+  hissenin işlem gördüğü seviyeye sıçrar. Lansmandan bu yana Aave'nin yedi fiyat akışındaki en büyük hafta sonu
+  sıçraması %1,24 oldu, ama %25'lik bir boşluk 1,33'te açılmış bir krediyi arada harekete geçecek zaman bırakmadan
+  doğrudan likidasyona götürür.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Rakamlar ve okundukları blok numaraları: content/blog/snapshots/tokenized-stocks-collateral.md */}
+
+## Tokenize hisse nedir?
+
+Tokenize hisse, değeri borsada işlem gören bir hisseyi izleyen bir tokendır; gerçek hisseleri tutan veya bunlara karşı riskten korunan ve ikisi arasında sabit bir ilişki vaat eden bir şirket tarafından ihraç edilir. Hissenin kendisi değildir. Bugün Aave ve Morpho'da tokenlarına karşı borç alabileceğiniz iki ihraççı, kendi tokenlarını farklı tanımlıyor:
+
+- **Coinbase Tokenized Stocks** (AAPLc, NVDAc ve benzerleri), Coinbase Onchain SPV Ltd. tarafından ihraç edilen sertifikalardır. Aave'nin lansman yazısına göre dayanak hisseler, ABD'li bir aracı kurum olan Alpaca Securities'te, ihraççının adına açılmış ayrı hesaplarda tutulur.
+- **Robinhood Stock Tokens** (Robinhood Chain üzerinde NVDA, SPY ve benzerleri) "tokenised debt securities issued by Robinhood Assets (Jersey) Limited" (Robinhood Assets (Jersey) Limited tarafından ihraç edilen tokenize borç senetleri) olarak tanımlanır ve Robinhood'un belgeleri bunların dayanak şirkette hiçbir yasal veya intifa hakkı vermediğini söyler.
+
+İkisinin bir kredi için önemli olan üç ortak noktası var. Hiçbiri ABD'li kişilere sunulmaz; Robinhood ayrıca Kanada, Birleşik Krallık ve İsviçre'yi de kısıtlar. Temettüler ödenmez, bir **çarpan** (multiplier) aracılığıyla yeniden yatırılır: 1,0'dan başlayıp artan bir sayı; böylece bir token zamanla bir hisseden biraz fazlasını temsil eder ve fiyatı hissenin fiyatının üzerine kayar. Oracle (fiyat kaynağı) fiyatı da bu çarpanı zaten içerir: Chainlink'in formülü "Token Price = Underlying Equity Market Price × Multiplier" (token fiyatı = dayanak hissenin piyasa fiyatı × çarpan) şeklindedir.
+
+## Tokenize hisselere karşı nerede borç alabilirsiniz?
+
+| Platform                                       | Teminat                                                           | Borç aldığınız | Likidasyon sınırı                                                             | 30 Ekim 2026'daki büyüklük                             |
+| ---------------------------------------------- | ----------------------------------------------------------------- | -------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Aave V4, Base üzerindeki Coinbase Stocks Spoke | AAPLc, AMZNc, GOOGLc, METAc, MSFTc, NVDAc, TSLAc                  | Yalnızca USDC  | Teminat faktörü %65 (META, TSLA) ile %79 (MSFT) arası                         | 11,23 milyon USD hisse teminatı, 5,02 milyon USDC borç |
+| Robinhood Chain üzerinde Morpho                | NVDA, GOOGL, AAPL, META, TSLA, SPCX, SPY gibi Robinhood tokenları | USDG           | Listelenen piyasaların çoğunda LLTV %62,5, SPY ve bir GOOGL piyasası için %77 | Tüm ağlarda 261 hisse piyasasında 1,75 milyon USD borç |
+| Aave V3                                        | Yok                                                               |                |                                                                               | Hiçbir V3 piyasası tokenize hisse listelemiyor         |
+
+Aave Spoke'u 25 Eylül 2026'da açıldı ve hisse tokenlarını yalnızca teminat olarak kabul eder: onları borç alamazsınız ve bir hisseye karşı başka bir hisse borç alamazsınız. Her tokenın kendi teminat faktörü (collateral factor) vardır; Aave V4'te bu tek sayı, [likidasyon rehberinin Aave V4 bölümünün](/tr/blog/aave-likidasyonu-nasil-isler#aave-v4te-likidasyonlar-nasıl-farklıdır) açıkladığı gibi hem borçlanma limiti hem de likidasyon sınırıdır. Spoke'un 30 Ekim 2026'daki ayarları:
+
+| Token  | Teminat faktörü | Yatırılan                 |
+| ------ | --------------- | ------------------------- |
+| MSFTc  | %79             | 620,86 (325.687 USD)      |
+| AAPLc  | %78             | 2.086,63 (732.586 USD)    |
+| GOOGLc | %76             | 12.739,91 (3.584.144 USD) |
+| AMZNc  | %73             | 1.938,90 (440.347 USD)    |
+| NVDAc  | %70             | 14.491,46 (3.032.892 USD) |
+| METAc  | %65             | 3.374,37 (2.088.305 USD)  |
+| TSLAc  | %65             | 2.610,34 (1.030.491 USD)  |
+
+Morpho'nun Robinhood Chain üzerindeki hisse kredileri 22 Ekim 2026'da başladı. Hisse borçlanmasının çoğu, Morpho uygulamasının listelemediği piyasalarda: tüm ağlarda hisse tokenlarına karşı borç alınan 1,75 milyon USD'nin 1,63 milyonu listelenmemiş piyasalarda duruyor; en büyüğü 623.189 USD borçlu bir NVDA / USDG piyasası; listelenmiş piyasalardaki borç ise 118.750 USD. Sonraki bölümlerin gösterdiği gibi, bu durum oracle açısından önemlidir. Ethereum'da Morpho ayrıca Ondo tokenlarına (SPYon, QQQon, TSLAon) ve bir xStocks S&P 500 tokenına karşı birkaç piyasa listeliyor.
+
+## Tokenize hisseler zincir üzerinde nasıl fiyatlanır?
+
+İki platform da Chainlink'in tokenize hisse fiyat akışlarını kullanır: Aave için Base'de "Coinbase NVDA" ve altı benzeri, listelenmiş Morpho piyasaları için Robinhood Chain'de "RHNVDA / USD" ve benzerleri. Bu akışlar haftada beş gün ABD işlem seanslarını izler: normal seans (New York saatiyle 09:30 ile 16:00 arası), 04:00'ten itibaren piyasa öncesi seans, 20:00'ye kadar piyasa sonrası seans ve daha az işlem yerinden derlenip hareketli ortalamayla yumuşatılan, 20:00 ile 04:00 arasındaki gece seansı.
+
+Yapmadıkları şey ise hafta sonları ve ABD piyasa tatillerinde fiyat yayımlamaktır. Chainlink'in belgeleri bunu açıkça söyler: "These feeds do not publish updates, including heartbeat updates, while markets are closed." (Bu akışlar, piyasalar kapalıyken heartbeat güncellemeleri dahil hiçbir güncelleme yayımlamaz.) Akış yayımladığı son değeri döndürmeye devam eder ve zaman damgası yalnızca eskir. Geçen hafta sonu bunu iki ağda da gösteriyor:
+
+| Fiyat akışı                    | Hafta sonundan önceki son güncelleme | Sonraki ilk güncelleme                   | Fiyat değişimi |
+| ------------------------------ | ------------------------------------ | ---------------------------------------- | -------------- |
+| Coinbase NVDA (Base)           | Cuma 23 Ekim, 19:54 UTC, 211,45 USD  | Pazartesi 26 Ekim, 00:00 UTC, 211,87 USD | +%0,20         |
+| RHNVDA / USD (Robinhood Chain) | Cuma 23 Ekim, 19:55 UTC, 211,16 USD  | Pazartesi 26 Ekim, 00:00 UTC, 211,92 USD | +%0,36         |
+
+Pazartesi 00:00 UTC, New York'ta gece seansının açıldığı pazar 20:00'dir. Bu iki tur arasında tek bir yeni fiyat olmadan 52 saat geçti. Aynısı bu tokenlar üzerindeki bir Aave sağlık faktörü ve listelenmiş bir hisse piyasasındaki bir Morpho sağlık faktörü için de geçerlidir: fiyat girdisi donmuştur.
+
+## Hafta sonunda sağlık faktörünüze ne olur?
+
+Fiyat akışı durmuşken sağlık faktörünüzün fiyat kısmı hareket edemez. Aave'nin kendi lansman yazısı bunu açıkça söyler: "a position's health factor can fall only through interest accrual during that window." (bu süre içinde bir pozisyonun sağlık faktörü yalnızca faiz birikimiyle düşebilir.) Bunun iki yüzü var.
+
+İyi yanı: cumartesi gelen bir haber sizi cumartesi günü likide ettiremez. Kötü yanı: cumadan beri olan her şey pozisyonunuza pazar akşamki ilk turda tek seferde ulaşır. Hisse çok daha düşükten yeniden açılırsa sağlık faktörünüz cuma günkü değerinden yeni değerine tek adımda geçer. Bir [sağlık faktörü uyarısının](/tr/blog/aave-saglik-faktoru-uyarisi-kurulumu) sizi uyarabileceği ara bir fiyat yoktur ve bir sonraki blokta likidasyon gelebilir.
+
+Şimdiye kadar boşluklar küçük kaldı. Spoke açıldığından beri yedi Coinbase akışının tamamında ve beş hafta sonunda, her biri 51 ile 58 saat süren 35 kapanışta hiçbir fiyat %1,24'ten fazla hareket etmedi (TSLA, 16-19 Ekim, 353,30'dan 357,68 USD'ye); en büyük düşüş ilk hafta sonunda AAPL'nin %0,37'lik düşüşüydü. Sakin fiyatlı beş hafta sonu kötü bir hafta sonu hakkında pek bir şey söylemez: bir hisse, cumartesi patlayan bir haberden sonra %10 veya %20 daha düşükten açılabilir ve Spoke'un parametrelerini öneren LlamaRisk, geçmiş verilerin "cannot describe a decline rarer than one it contains" (içerdiğinden daha nadir bir düşüşü tarif edemeyeceğini) belirtir.
+
+## Hesaplamalı örnek: 11.000 USDC'ye karşı 100 NVDAc
+
+Coinbase Stocks Spoke'ta 30 Ekim 2026'daki 209,29 USD oracle fiyatıyla 100 NVDAc, yani 20.928,83 USD teminat ve 11.000 USDC borç olsun. NVDAc'nin %70 teminat faktörüyle:
+
+- **Sağlık faktörü:** 20.928,83 × 0,70 ÷ 11.000 = **1,332**.
+- **Borçlanma limiti:** 20.928,83 × 0,70 = 14.650,18 USDC; bu kredi bunun %75'ini kullanıyor.
+- **Likidasyon fiyatı:** 11.000 ÷ (100 × 0,70) = **157,14 USD**, 209,29'un %24,9 altında.
+
+Borç değişmeden, pazar akşamki yeniden açılışın ona etkisi:
+
+| Pazar New York 20:00'de NVDA, cumaya göre                            | İlk turdan sonra sağlık faktörü    |
+| -------------------------------------------------------------------- | ---------------------------------- |
+| -%1,24 (şimdiye kadarki en büyük boşluk, yedisinin herhangi birinde) | 1,315                              |
+| -%10                                                                 | 1,199                              |
+| -%20                                                                 | 1,065                              |
+| -%25                                                                 | 0,999: ilk turda likide edilebilir |
+| -%30                                                                 | 0,932                              |
+
+-%25'te pozisyon, fiyat akışı güncellendiği anda likide edilebilir hâle gelir. Bu Spoke'ta bir likidatör o zaman sizi 1,24 sağlık faktörüne geri getirecek kadar borcu geri ödeyebilir ve 1'in hemen altında %4,95'ten başlayıp 0,90 veya altında %5,5'e ulaşan bir bonusla teminat alabilir. Aynı 11.000 USDC'lik kredi, Morpho'nun listelenmiş NVDA / USDG piyasasında 100 NVDA'ya karşı, %62,5 LLTV ile yalnızca 1,185 sağlık faktöründen başlar (likidasyon fiyatı 176,00 USD, %15,6 aşağıda) ve bir Morpho likidatörü bu LLTV'de %12,68 teşvik kazanır ve borcun tamamını geri ödeyebilir; tablo [Morpho likidasyonu nasıl işler](/tr/blog/morpho-likidasyonu-nasil-isler#her-lltvde-likidasyon-tesviki-ne-kadar-buyuk) rehberinde.
+
+Bir boşluk teminatınızı tamamen de aşabilir. Hisse o kadar düşükten yeniden açılırsa ki teminat borç artı likidatörün bonusundan daha az eder, açık batık borca (bad debt) dönüşür. Aave'de bu, hisse teminatını kabul etmeyi seçmiş olan bu tek hub'ın USDC yatıranlarına düşer; Morpho'da piyasanın borç verenlerine düşer. Her iki durumda da borç alan teminatını zaten kaybetmiştir.
+
+## Hisse teminatlı bir krediyi başka ne durdurabilir?
+
+- **Şirket işlemleri.** Bir hisse bölündüğünde veya büyük bir temettü işlendiğinde ihraççı, yeni oran onaylanana kadar çarpanı ve oracle'ı durdurur. Aave bu süre boyunca etkilenen rezervi durdurur; böylece o token, durdurma bitene kadar ne çekilebilir ne de likide edilebilir. Robinhood'un belgeleri de entegrasyon yapanlara durdurulmuş bir oracle'ı "price temporarily unavailable" (fiyat geçici olarak kullanılamıyor) olarak ele almalarını söyler.
+- **Sığ piyasalar.** LlamaRisk lansmandan önce, Base üzerinde tek bir tokendan 0,27 ile 1,08 milyon USD arası satışın fiyatını %2 hareket ettireceğini ölçtü. El koyduğu tokenları hızla satamayan bir likidatör yüksek bir iskonto ister ve bu teminat faktörlerinin Aave V3 Ethereum Core piyasasında WETH'nin %84'lük likidasyon eşiğinin çok altında olmasının bir nedeni de budur.
+- **Protokol genelinde dondurma.** 29 Ekim 2026 akşamı Aave'nin guardian'ları, Binance bağlantılı cüzdanları etkileyen bir olay haberlerinin ardından önlem olarak DAO tarafından işletilen tüm V3 ve V4 piyasalarını dondurdu ve Coinbase Stocks Spoke da onlarla birlikte donduruldu: 30 Ekim'de USDC dahil sekiz rezervinin tamamı zincir üzerinde `frozen` okunuyordu. Dondurulmuş bir rezerv yeni yatırma veya borç alma kabul etmez; geri ödeme ve çekim yine çalışır. Dondurma kaldırılana kadar orada sağlık faktörünüzü yükseltmenin tek yolu, [dondurulmuş bir rezerv](/tr/blog/aave-cekim-veya-borclanma-neden-basarisiz#5-rezerv-dondurulmus) rehberinin açıkladığı gibi geri ödemektir.
+- **Listelenmemiş Morpho piyasaları.** Morpho uygulamasının listelemediği bir piyasa, oluşturucusunun seçtiği herhangi bir oracle'ı kullanabilir. Robinhood Chain'deki 623.189 USD borçlu en büyük NVDA piyasası, Morpho'nun standart Chainlink oracle'ı yerine özel bir oracle sözleşmesi kullanıyor ve 30 Ekim'de NVDA'yı 208,71 USD olarak fiyatlıyordu; listelenmiş piyasanın oracle'ı ise 208,55 USD diyordu. Bir piyasada borç almadan önce oracle'ını okuyun.
+
+## Hisse teminatlı bir kredinin ne kadar tampona ihtiyacı var?
+
+Aynı büyüklükteki bir kripto kredisinden daha fazla, tek bir nedenle: harekete geçmek için son şansınız likidasyondan önceki dakika değil, cuma öğleden sonradır. Normal bir işlem gününün hareketlerini atlatan bir tampon yetmez; cumanın son fiyatı ile pazar akşamının ilk fiyatı arasındaki boşluğu ve pazartesi tepki verebilmenizden önce olabilecek her şeyi atlatması gerekir. Yukarıdaki örnekte 1,332'lik bir sağlık faktörü %24,9'luk bir boşluğu atlatır. 1,5'ten başlamak %33,3'lük bir boşluğu atlatır; 2,0'dan başlamak %50'yi.
+
+Bundan iki pratik alışkanlık çıkar. Hisse teminatlı pozisyonları cuma günü New York saatiyle 20:00'den (piyasa sonrası işlemlerin bitişi) önce kontrol edin ve tampon inceyse o zaman geri ödeyin veya teminat ekleyin, çünkü hafta sonu boyunca fiyat size yeni hiçbir şey söyleyemez. Ve New York saatiyle pazar 20:00'yi, yani pazartesi 00:00 veya 01:00 UTC'yi risk anı olarak görün: ilk yeni fiyat o zaman gelir. [Tampon nasıl seçilir](/tr/blog/guvenli-aave-saglik-faktoru#harekete-gecmeye-zamanınız-olması-icin-ne-kadar-tampona-ihtiyacınız-var) bölümü, mantığı her teminat için adım adım anlatıyor.
+
+## Hisse teminatlı bir kredide uyarı yardımcı olabilir mi?
+
+Kısmen. Tokenping, sağlık faktörünüzü Coinbase Stocks Spoke'ta (panelde "Base (V4 Coinbase Stocks)" olarak görünür) ve Robinhood Chain'dekiler dahil Morpho uygulamasının listelediği her Morpho piyasasında her 5 dakikada bir kontrol eder ve eşiğinizin altındayken size Signal, Telegram veya e-posta ile mesaj gönderir. Hafta içi bu, her teminatta olduğu gibi çalışır: fiyat akışları normal, piyasa öncesi, piyasa sonrası ve gece seansları boyunca güncellenir, böylece düşen bir hisse sağlık faktörünüzü hareket ettirir ve bir uyarı likidasyondan önce size ulaşabilir.
+
+Hafta sonu sonrası yeniden açılışta pek bir şey yapamaz. Sağlık faktörü eşiğinizi kademeli olarak geçmez; ilk turda sıçrar ve aynı blokta bir likidasyon gerçekleşebilir. Bu durumda uyarı size olmak üzere olanı değil, olmuş olanı söyler. Bu yüzden pazartesi boşluğuna karşı koruma uyarı değil, tampondur: eşiği, mesaj hâlâ geri ödeme için zaman varken hafta içinde gelecek kadar yüksek ayarlayın. Tokenping listelenmemiş Morpho piyasalarını kapsamaz; en büyük NVDA piyasası da bunlara dahildir.
+
+[Aave V4 Spoke'larınıza](/tr/aave) veya [Morpho pozisyonlarınıza](/tr/morpho) ödeme yapmadan bakabilirsiniz; uyarıların fiyatı: <AlertPrice />, Spoke veya piyasa başına bir uyarı. Tokenping beta aşamasındadır ve çalışma süresi garantisi yoktur; hiçbir uyarı likidasyonu önlemez.
+
+## Kaynaklar
+
+- [Aave V4 herkese açık GraphQL API'si](https://api.v4.aave.com/graphql), Base'de `reserves` ve `spokes`: Coinbase Stocks Spoke'un rezervleri, teminat faktörleri, likidasyon bonusu ve ücreti, limitleri, yatırılan ve borç alınan tutarlar ve likidasyon yapılandırması (erişim tarihi: 30 Ekim 2026)
+- [Base üzerindeki Coinbase Stocks Spoke](https://basescan.org/address/0x17905Db0e4A3514467539956c084180616AE7B8D): Base bloğu 53278437'de `getReserveCount`, `getReserveConfig` ve `ORACLE`, ayrıca her rezerv için oracle'ın `getReserveSource` değeri (erişim tarihi: 30 Ekim 2026)
+- [Base üzerindeki Coinbase NVDA fiyat akışı](https://basescan.org/address/0x04689a41629776563E6822F76f2e57D148d28513) ve diğer altı Coinbase akışı: 25 Eylül 2026'dan bu yana her hafta sonu boyunca `latestRoundData` ve `getRoundData` (erişim tarihi: 30 Ekim 2026)
+- [Morpho API](https://api.morpho.org/graphql): tokenize hisse teminatlı her Morpho Blue piyasası, LLTV'si, listelenme durumu ve borç alınan değeri (erişim tarihi: 30 Ekim 2026)
+- [Robinhood Chain üzerindeki Morpho Blue](https://robinhoodchain.blockscout.com/address/0x9D53d5E3bd5E8d4Cbfa6DB1ca238AEA02E651010): listelenmiş ve en büyük NVDA / USDG piyasalarının `idToMarketParams` değerleri, oracle'larının fiyat akışları ve `price()`, ayrıca [RHNVDA / USD fiyat akışının](https://robinhoodchain.blockscout.com/address/0xCF169363636D73dbBf77733629CB38919d14232d) turları (erişim tarihi: 30 Ekim 2026)
+- [Aave V3 API](https://api.v3.aave.com/graphql): 24 Aave V3 piyasasının tamamının rezervleri (erişim tarihi: 30 Ekim 2026)
+- [PoolDataProvider, Aave V3 Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): 26304159 numaralı blokta dondurulmuş WETH ve USDC (erişim tarihi: 30 Ekim 2026)
+- [ISpoke.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/interfaces/ISpoke.sol): bir V4 rezervinin paused ve frozen bayrakları (aave-v4 main, erişim tarihi: 30 Ekim 2026)
+- [Aave: Coinbase Tokenized Stocks Now Live on Aave V4](https://aave.com/blog/coinbase-tokenized-stocks), 25 Eylül 2026 (erişim tarihi: 30 Ekim 2026)
+- [Chainlink: Tokenized Equity Feeds](https://docs.chain.link/data-feeds/tokenized-equity-feeds) ve [Base Tokenized Equities (Coinbase B20)](https://docs.chain.link/data-feeds/tokenized-equity-feeds/coinbase) (erişim tarihi: 30 Ekim 2026)
+- [Robinhood: Stock Tokens](https://docs.robinhood.com/chain/stock-tokens/) ve [Oracles & Price Feeds](https://docs.robinhood.com/chain/oracles-and-price-feeds/) (erişim tarihi: 30 Ekim 2026)
+- [CryptoSlate: Aave's stock-token loans expose USDC lenders to a weekend price gap](https://cryptoslate.com/aave-stock-token-loans-expose-usdc-lenders-to-weekend-price-gap/), 27 Eylül 2026: LlamaRisk'in parametreleri ve derinlik rakamları (erişim tarihi: 30 Ekim 2026)
+- [Crypto Briefing: Robinhood stock tokens go live on Morpho as collateral](https://cryptobriefing.com/robinhood-stock-tokens-morpho-collateral/), 22 Ekim 2026 (erişim tarihi: 30 Ekim 2026)
+- [Coingabbar: Aave V3 and V4 markets frozen as precaution](https://coingabbar.com/en/aave-news-binance-wallet-incident-v3-v4-market-freeze), 30 Ekim 2026 (erişim tarihi: 30 Ekim 2026)
+
+_Eğitim amaçlı içeriktir, finansal tavsiye değildir. Uyarılar riski azaltır ama likidasyonu önlemez._

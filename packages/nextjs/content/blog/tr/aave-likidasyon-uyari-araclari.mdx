@@ -1,0 +1,401 @@
+export const meta = {
+  slug: "aave-likidasyon-uyari-araclari",
+  title: "Aave likidasyon uyarı araçları karşılaştırması (2026)",
+  description:
+    "Aave sağlık faktörü uyarı ve koruma araçlarının dürüst karşılaştırması: Otomato, HF Guard, DeFi Saver, Ava, DeFi Monitor, eklentiler ve Tokenping.",
+  h1: "Aave likidasyon uyarı ve koruma araçları karşılaştırması",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Hangi araçlar bir Aave likidasyonundan önce beni uyarabilir ya da koruyabilir?",
+  readingMinutes: 24,
+};
+
+<ShortAnswer>
+  Aave'nin kendi arayüzleri (app.aave.com ve Aave Pro) sağlık faktörünüzü (health factor) gösterir ama uyarı göndermez;
+  bu yüzden uyarılar üçüncü taraf araçlardan gelir. Otomato ve HF Guard bugün Telegram'da ücret almadan uyarı gönderir,
+  DeFi Saver Automation ise pozisyonunuz koşullarını karşılıyorsa borcu sizin yerinize geri öder. Bu rehberi yazan
+  Tokenping, uyarıyı tek bir araçtan Signal'de, e-postayla veya Telegram'da almak istiyorsanız ve uyarılarının ücretli
+  olduğunu kabul ediyorsanız size uygundur.
+</ShortAnswer>
+
+<ScopeNote />
+
+**Son kontrol: 19 Ekim 2026.** Karşılaştırma ve kapanış tablolarındaki her satır o tarihte bağlantısı verilen kaynağıyla
+yeniden kontrol edildi ve kendi kontrol tarihini gösterir; kontrol aralığı tablosu da aynı kontrollerden gelir. Tokenping
+karşılaştırılan araçlardan biridir; bu yüzden [bu karşılaştırmayı nasıl hazırladığımız](#bu-karsılastırmayı-nasıl-hazırladık)
+yöntemi ve sınırlarını açıklar, [neyin değiştiği](#15-ekim-2026-surumunden-bu-yana-ne-degisti) ise önceki sürümden
+farkları listeler.
+
+{/* Sayfa kopyaları, çekilme zamanları ve zincir üstü okumalar: snapshots/aave-liquidation-alert-tools.md (İngilizce makale; bu onun Türkçe çevirisidir). Her yeniden yayımlamadan sonraki 7 gün içinde her satırı yeniden kontrol edin ve kontrol tarihlerini yalnızca o zaman değiştirin. */}
+
+## Size hangi Aave uyarı aracı uygun?
+
+Aave likidasyon izleyicileri ve pozisyon takipçileri, uyarıyı nereye gönderdikleri ve bir yazılımın pozisyonunuz
+üzerinde sizin yerinize işlem yapıp yapmadığı konusunda farklılaşır. Sağlayıcıların 19 Ekim 2026'daki kendi sayfalarına
+göre her araç kimin için en uygun:
+
+- **Otomato:** Telegram'da veya bir mobil uygulamada ücret ödemeden uyarı istiyorsunuz ve cüzdan bağlamak yerine bir
+  cüzdan adresi yapıştırmayı tercih ediyorsunuz. Ethereum, Arbitrum, Base, Polygon, Avalanche ve Monad üzerinde Aave V3'ü
+  kapsar ve üç cüzdana kadar hiçbir ücret gerektirmez.
+- **HF Guard:** yapıştırılan bir adresten 23 ağda Aave V3'ü, Ethereum, Avalanche ve Arc üzerinde Aave V4'ü okuyan, web
+  paneli olan bir Telegram botu istiyorsunuz ve kendi ifadesiyle uyarıları "may be delayed" (gecikebilir) olan bir
+  betayı kabul ediyorsunuz.
+- **DeFi Saver Automation:** borcun otomatik olarak geri ödenmesini istiyorsunuz ve pozisyonunuzda Ethereum'da en az
+  30.000 $, Arbitrum, Optimism veya Base'de en az 500 $ borç var. Otomasyonlarının çoğu ayrıca tek bir teminat ve tek
+  bir borç varlığı gerektirir.
+- **DeFi Saver Notify:** pozisyonunuzu zaten DeFi Saver'da yönetiyorsunuz ve oran uyarılarını uygulamasında, e-postayla,
+  Blockscan sohbetinde veya Telegram'da almak istiyorsunuz.
+- **DeFi Monitor:** Ethereum veya Arbitrum üzerindeki Aave V3 için, başka borç verme protokollerinin uyarılarıyla
+  birlikte Telegram'da veya Discord'da uyarı istiyorsunuz.
+- **Ava:** Ethereum'da veya Base'de borç alıyorsunuz ve geri ödeme ya da teminat ekleme işlemini hazırlayan, isteğe
+  bağlı otomatik yürütmesi olan, Telegram öncelikli bir asistan istiyorsunuz.
+- **Bir tarayıcı eklentisi** (Aave Monitor veya Aave DeFi Watcher): bilgisayarınızın başındayken bir araç çubuğu rozeti
+  veya bir masaüstü bildirimi sizin için yeterli.
+- **Tokenping:** uyarıyı, burada kontrol edilen başka hiçbir aracın listelemediği Signal'de istiyorsunuz ya da Signal,
+  Telegram ve e-postayı yan yana, her biri için bir Test gönder düğmesiyle istiyorsunuz. Ayrıca HF Guard'ın sayfasında
+  listelenmeyen Base'deki Spoke dahil her Aave V4 Spoke'unu okur.
+
+Bu araçların hepsi sağlık faktörünü izler; bu, Aave'nin bir kredinin ne kadar güvenli olduğunu gösteren ölçüsüdür: her
+varlığın likidasyon eşiğiyle (liquidation threshold) ağırlıklandırılmış teminatın borca bölünmesi. 1,00 değerinin
+altında pozisyon likide edilebilir ([Aave sağlık faktörü nedir](/tr/blog/aave-saglik-faktoru) formülü anlatır). Hiçbir
+araç bu riski ortadan kaldırmaz: bir uyarı size harekete geçmek için zaman kazandırır, ama hızlı bir fiyat düşüşü yine de
+iki kontrol arasına denk gelebilir.
+
+## Aave uyarı ve koruma araçları nasıl karşılaştırılır?
+
+Aave sağlık faktörü uyarı araçlarının çoğu hiçbir ücret gerektirmez ya da ücretli planların yanında ücret alınmayan bir
+katman sunar, salt okunurdur ve yapıştırılan bir cüzdan adresiyle çalışır: Otomato, HF Guard, DeFi Monitor ile Aave
+Monitor ve Aave DeFi Watcher eklentileri. Borcu geri ödeyen araçlar (DeFi Saver Automation, Ava'nın Auto modu,
+Instadapp) bir akıllı cüzdan veya bir izin gerektirir; DeFi Saver ve Instadapp ayrıca asgari büyüklükler belirler ve
+işlem başına ücret alır. Tokenping, burada Signal'de uyarı gönderen tek araçtır ve uyarıları ücretlidir. Her satır 19
+Ekim 2026'da son sütundaki kaynakla karşılaştırılarak kontrol edildi; "belirtilmemiş", sağlayıcının sayfasının bunu
+söylemediği anlamına gelir.
+
+| Araç                                                                                   | Durum                                                         | Sağlık faktörünüz için ne yapar                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Kanallar                                                                                                                                                                                     | Uyarı veya otomasyon                    | Cüzdan bağlantısı ve izinler                                                                                                                                                                                                                                                                                                                              | Fiyat                                                                                                                                                                                                   | Ağlar ve Aave sürümleri                                                                                                                                                                                                                                                                                   | Kaynak, kontrol tarihi                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Tokenping** (bu rehberin yayıncısı)                                                  | Yayında, beta aşamasında                                      | Giriş yapılan cüzdanın tek bir Aave V3 piyasasındaki, tek bir Aave V4 Spoke'undaki veya tek bir Morpho piyasasındaki sağlık faktörü eşiğinizin altına düştüğünde uyarır (Aave'de 1,1 ile 10 arası, Morpho'da 1,02 ile 10 arası, varsayılan 1,5). Her 5 dakikada bir kontrol eder ve sağlık faktörü eşiğin altında kaldığı sürece her kontrolde uyarıyı tekrarlar; "düzeldi" mesajı göndermez. Her kanalda bir Test gönder düğmesi vardır (cüzdan ve kanal başına 15 dakikada bir test) | Signal, Telegram, e-posta; her kanal sitenin dillerinden herhangi birinde olabilir. Telegram için kullanıcı adınızı yazar ve Tokenping botunda bir kez "Start" (Başlat) düğmesine basarsınız | Uyarı                                   | Bir cüzdan bağlar ve imzayla giriş yaparsınız (bir mesaj, işlem değil, yani gas ödenmez); oturum 7 gün sürer ve tek çerezler giriş çerezleridir. Aave'de hiçbir şey onaylanmaz; tek işlemler, Arbitrum'da tam tutar için bir USDC onayı ve ödemedir. Yalnızca giriş yapılan cüzdanı izler                                                                 | Uyarıların fiyatı: <AlertPrice />, ödeme Arbitrum'da yapılır; panel ödeme gerektirmez                                                                                                                   | Aave V3: 21 ağdaki 24 piyasanın tamamı, Ethereum'un Core, Prime, EtherFi ve Horizon piyasaları dahil; dondurulmuş Harmony ve Fantom piyasaları hariç. Aave V4: Ethereum, Avalanche, Arc ve Base üzerindeki her Spoke (20 Spoke, Aave'nin V4 API'sinin listelediği 20 Spoke). Her piyasa ayrı bir uyarıdır | [Kaynak kodu](https://github.com/romispectrum/tokenping), [ödeme kontratı](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553) ve [Aave V4 API](https://api.v4.aave.com/graphql), 19 Ekim 2026                                                                                                                                                                                                                                                                        |
+| **Aave uygulamasını kontrol etmek** (app.aave.com, Aave Pro)                           | Yayında                                                       | Uygulamayı açtığınızda sağlık faktörünüzü gösterir; Aave Pro her V4 piyasası için ayrı bir değer gösterir. Aave'nin yardım sayfası bunu düzenli olarak izlemenizi söyler                                                                                                                                                                                                                                                                                                               | Yok: uygulamayı açmanız gerekir                                                                                                                                                              | Hiçbiri                                 | Geçerli değil                                                                                                                                                                                                                                                                                                                                             | Ücret alınmaz                                                                                                                                                                                           | Tüm Aave V3 ve V4 piyasaları                                                                                                                                                                                                                                                                              | [Aave yardım](https://aave.com/help/borrowing/liquidations), [Aave Pro](https://aave.com/pro), 19 Ekim 2026                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Otomato**                                                                            | Yayında; iOS uygulaması sürüm 1.0.24, 25 Eylül 2026 tarihli   | Yapıştırılan bir cüzdandaki her Aave V3 pozisyonunu bulur ve sağlık faktörüne (varsayılanları arasında 1,2'de bir uyarı var, pozisyon başına ayarlanabilir) ve dolar cinsinden likidasyona uzaklığa göre uyarır. Ayrıca faiz sıçramaları, depeg (dolar sabitinin kaybı) olayları, yönetişim işlemleri ve tavan (cap) değişiklikleri                                                                                                                                                    | iOS ve Android uygulaması, Telegram. E-posta listelenmemiş                                                                                                                                   | Uyarı                                   | Yok: bir adres yapıştırırsınız. Salt okunur, imza yok                                                                                                                                                                                                                                                                                                     | Temel Aave izleme üç cüzdana kadar ücret alınmadan; daha fazla cüzdan ve gece telefon aramasıyla uyarı yükseltme için premium planlanıyor                                                               | Ethereum, Arbitrum, Base, Polygon, Avalanche, Monad üzerinde Aave V3. Aave sayfasında V4'ten söz edilmiyor                                                                                                                                                                                                | [otomato.xyz Aave sayfası](https://otomato.xyz/protocols/aave), [ana sayfa](https://otomato.xyz), [App Store](https://apps.apple.com/us/app/otomato-wallet-tracker/id6759802179), 19 Ekim 2026                                                                                                                                                                                                                                                                                                |
+| **HF Guard**                                                                           | Yayında, beta                                                 | Yatırılan pozisyonlar için sağlık faktörünü, likidasyona uzaklığı ve risk seviyesini izler. Bir pozisyon farklı bir risk seviyesine geçtiğinde uyarır; sağlık faktörü 2,0, 1,9, 1,8, 1,7 ve 1,6 gibi seviyeleri geçtiğinde de uyarabilir. Sayfaları, uyarıların en iyi çaba esasıyla gönderildiğini ve gecikebileceğini söyler. Ayrıca Compound V3, Morpho Blue, Fluid Multiply, Euler V2, Jupiter Lend ve Kamino Lend                                                                 | Telegram botu ve bir web paneli. E-posta veya başka bir kanal belirtilmemiş                                                                                                                  | Uyarı                                   | Herkese açık bir cüzdan adresi yapıştırırsınız. Salt okunur, anahtar veya işlem izni yok. Panele e-posta ve parolayla ya da bağlı bir cüzdanla giriş yapılır                                                                                                                                                                                              | SSS'si beta süresince hiçbir ücret alınmadığını söylüyor; sonraki fiyat belirtilmemiş                                                                                                                   | 23 ağda Aave V3, Gnosis dahil. Ethereum, Avalanche ve Arc üzerinde Aave V4                                                                                                                                                                                                                                | [hfguard.app](https://hfguard.app), [koşullar](https://hfguard.app/terms), 19 Ekim 2026                                                                                                                                                                                                                                                                                                                                                                                                       |
+| **DeFi Saver Notify**                                                                  | Yayında                                                       | Pozisyon belirlediğiniz bir seviyenin altına veya üstüne çıktığında uyaran oran izleyicisi; Aave V3 yatırma tavanı (supply cap) izleyicisi; otomatik işlem bildirimleri. Bir Telegram botu pozisyonlarınızı gösterir ve uyarı kurar                                                                                                                                                                                                                                                    | Varsayılan olarak uygulama içi; e-posta, Blockscan sohbeti ve Telegram isteğe bağlı                                                                                                          | Uyarı                                   | DeFi Saver'da bir cüzdan bağlar ve kimliğinizi doğrularsınız. Smart Wallet ve normal cüzdan pozisyonları için çalışır                                                                                                                                                                                                                                     | Belirtilmemiş                                                                                                                                                                                           | Ethereum, Arbitrum, Base, Optimism. Protokoller: Aave, Liquity, Maker, Compound. Aave V4 uyarıları belirtilmemiş                                                                                                                                                                                          | [DeFi Saver yardım](https://help.defisaver.com/features/notify), [Telegram botu](https://help.defisaver.com/features/notify/telegram-bot-for-monitoring-your-position), 19 Ekim 2026                                                                                                                                                                                                                                                                                                          |
+| **DeFi Saver Automation**                                                              | Yayında                                                       | Liquidation Protection, DeFi Saver'ın Safety Ratio değeri sabit bir alt sınırın altına düştüğünde (Aave V3'te %105, V4'te %110) borcun bir kısmını geri öder ve oranı 5 puan yükseltir; Automated Leverage Management seçtiğiniz bir oranda geri öder. Ayrıca stop-loss, take-profit, teminat değişimi (collateral switch). Birden fazla teminat veya borç varlığıyla yalnızca Automated Leverage Management çalışır                                                                   | Notify üzerinden bildirimler                                                                                                                                                                 | Otomasyon                               | Tek bir kurulum işlemi. Gereksinimler sayfası normal cüzdanlara (EOA) yalnızca Aave V3 ve Compound V3'te izin verir; Aave V4 için DeFi Saver'ın yardım sayfası otomasyonların Smart Wallet pozisyonları için olduğunu ve EOA desteğinin bir hedef olduğunu söyler. Collateral Switch otomasyonu her zaman Smart Wallet gerektirir. Gas pozisyondan ödenir | Açık tutmak için hiçbir şey ödenmez. Yürütülen işlem başına: %0,05 otomasyon ücreti artı %0,25 takas ücreti (ETH ve wstETH gibi ilişkili varlıklar için %0,1, stablecoin çiftleri için %0,01), artı gas | Aave V3 Core ve Aave V4; V3 Prime veya EtherFi değil, Linea ya da Plasma üzerindeki Aave için de yok. Asgari borç Ethereum'da 30.000 $ (V3 ve V4), Arbitrum, Optimism ve Base'de 500 $ (V3)                                                                                                               | [Ücretler](https://help.defisaver.com/automations/fees), [gereksinimler](https://help.defisaver.com/automations/requirements-for-using-automation), [uyumluluk](https://help.defisaver.com/automations/compatibility), [Aave V4](https://help.defisaver.com/protocols/aave-v4/what-defi-saver-features-are-not-yet-available-on-aave-v4), [normal cüzdanlar](https://help.defisaver.com/general/compatibility/wallet-compatibility/what-features-do-eoa-wallets-have-access-to), 19 Ekim 2026 |
+| **Ava**                                                                                | Yayında                                                       | Aave sağlık faktörünü izler ve imzalamanız için bir teminat ekleme veya geri ödeme işlemi hazırlar. İsteğe bağlı Auto modu saatte bir kontrol eder ve kendi başına işlem yapar                                                                                                                                                                                                                                                                                                         | Önce Telegram; web uygulaması; e-posta, Discord ve Slack web ayarlarından açılabilir                                                                                                         | Uyarı, isteğe bağlı otomasyon           | Uyarılar: Telegram'da bir cüzdan adresi, imza yok. Manuel: her işlemi siz imzalarsınız. Auto: bir Ava akıllı cüzdanına fon yatırır ve bir izin imzalarsınız (varsayılan olarak harcama limiti yok ve 365 günlük süre; web'de daha dar bir seçenek var)                                                                                                    | Bugün hiçbir ücret alınmıyor; Ava yalnızca değer yaratan işlemlerde kullanıma dayalı bir ücreti değerlendirdiğini söylüyor                                                                              | Ethereum ve Base üzerinde Aave V3                                                                                                                                                                                                                                                                         | [avaprotocol.org](https://avaprotocol.org/docs/using-ava/risk-alerts), [fiyatlandırma](https://avaprotocol.org/docs/start-here/pricing), 19 Ekim 2026                                                                                                                                                                                                                                                                                                                                         |
+| **DeFi Monitor**                                                                       | Yayında, beta; son değişiklik günlüğü kaydı 22 Mart 2026      | Belirlediğiniz eşiklerle sağlık faktörü ve likidasyon riski uyarıları. Ayrıca Spark, Morpho Blue, Compound V3 ve Uniswap V3                                                                                                                                                                                                                                                                                                                                                            | Telegram, Discord                                                                                                                                                                            | Uyarı                                   | E-postayla giriş yapar ve herhangi bir cüzdan adresi eklersiniz. Salt okunur, anahtar veya imza yetkisi yok                                                                                                                                                                                                                                               | "For early users" (erken kullanıcılar için) ücret alınmayan bir katman; ücretli planlar: Pro ayda 4,99 $ (10 adres, 20 abonelik) ve Ultra ayda 9,99 $ (30 adres, 60 abonelik)                           | Ethereum ve Arbitrum üzerinde Aave V3 sağlık faktörü. Aave V4 belirtilmemiş                                                                                                                                                                                                                               | [defi-monitor.com](https://defi-monitor.com), [fiyatlandırma](https://defi-monitor.com/pricing), [değişiklik günlüğü](https://defi-monitor.com/changelog), 19 Ekim 2026                                                                                                                                                                                                                                                                                                                       |
+| **Aave Monitor** (tarayıcı eklentisi)                                                  | Yayında, eklenti sürümü 2.11.1 (24 Şubat 2026'da güncellendi) | Yıldızlı bir adresin sağlık faktörünü, ayarlayabileceğiniz eşiklerde rengi değişen bir araç çubuğu rozeti olarak gösterir; birden fazla adres                                                                                                                                                                                                                                                                                                                                          | Tarayıcı rozeti, push mesajı yok                                                                                                                                                             | Uyarı (pasif)                           | Cüzdan bağlantısı yok; Aave'den `getUserAccountData` okur                                                                                                                                                                                                                                                                                                 | Ücret alınmaz                                                                                                                                                                                           | Adres başına seçilen Aave piyasaları; geliştiricinin son eklemeleri (Şubat 2026) Mantle ve MegaETH. Aave protokol sürümü belirtilmemiş                                                                                                                                                                    | [Chrome Web Store](https://chromewebstore.google.com/detail/aave-monitor/ccifbkellmfcbdngdnjimmfkclagbdii), [forum](https://governance.aave.com/t/aave-monitor-browser-extension/21223), 19 Ekim 2026                                                                                                                                                                                                                                                                                         |
+| **Aave DeFi Watcher** (tarayıcı eklentisi)                                             | Yayında, eklenti sürümü 1.0.0 (27 Temmuz 2026'da güncellendi) | Rozete ek olarak sağlık faktörü riski kötüleştiğinde masaüstü bildirimleri (düzelmede değil); birden fazla adres. Varsayılan olarak her 5 dakikada bir sorgular                                                                                                                                                                                                                                                                                                                        | Masaüstü bildirimleri, tarayıcı rozeti                                                                                                                                                       | Uyarı                                   | Cüzdan bağlantısı yok; salt okunur                                                                                                                                                                                                                                                                                                                        | Ücret alınmadan kurulur (mağaza sayfasında fiyat yok); sitesi abonelik, hesap veya premium katman olmadığını söylüyor                                                                                   | Ethereum, Arbitrum, Optimism, Base, Polygon, Avalanche üzerinde Aave V2, V3 ve V4; V4 için yalnızca Ethereum'daki Main Spoke                                                                                                                                                                              | [Chrome Web Store](https://chromewebstore.google.com/detail/aave-defi-watcher/cpglkdkkmocpbbndolclhdmghjdcngdj), [aavewatcher.com](https://aavewatcher.com), [forum](https://governance.aave.com/t/aave-defi-watcher-browser-extension-for-monitoring-aave-positions/25282), 19 Ekim 2026                                                                                                                                                                                                     |
+| **Instadapp Protection Automation**                                                    | Belirsiz: rehber en son yaklaşık 3 yıl önce güncellenmiş      | Sağlık faktörü bir tetikleyicinin altına düştüğünde borcu hedef bir sağlık faktörüne doğru geri öder                                                                                                                                                                                                                                                                                                                                                                                   | Belirtilmemiş                                                                                                                                                                                | Otomasyon                               | Bir Instadapp akıllı hesabında (DSA) otomasyon yetkisi                                                                                                                                                                                                                                                                                                    | Otomasyon olayı başına %0,3 ile %0,4 arası                                                                                                                                                              | Polygon ve Avalanche üzerinde Aave V3; etkinleştirme için asgari teminat 1.000 $ (Polygon) veya 5.000 $ (Avalanche). Rehber ayrıca bir Mainnet asgari tutarından ve gas'tan söz ediyor; bu, o listeyle çelişiyor                                                                                          | [Instadapp rehberi](https://guides.instadapp.io/features/protection-automation), 19 Ekim 2026                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **Tenderly Alerts**                                                                    | Yayında (geliştirici aracı)                                   | Özel bir kurulumla bir sağlık faktörü uyarısına yaklaşabilen genel tetikleyiciler (olaylar, durum değişiklikleri, bir view fonksiyonunun dönüş değeri)                                                                                                                                                                                                                                                                                                                                 | E-posta, Slack, Telegram, Discord, webhook, PagerDuty, Sentry                                                                                                                                | Uyarı (Web3 Actions kod çalıştırabilir) | Kontratları ve adresleri kendiniz yapılandırırsınız                                                                                                                                                                                                                                                                                                       | Yalnızca ücretli plan (satış ekibiyle iletişim)                                                                                                                                                         | Tenderly izlemesi olan ağlar, Gnosis Chain dahil                                                                                                                                                                                                                                                          | [Tenderly uyarıları](https://docs.tenderly.co/monitoring/alerts/introduction), [ağlar](https://docs.tenderly.co/platform/supported-networks), 19 Ekim 2026                                                                                                                                                                                                                                                                                                                                    |
+| **Betikler ve ajan şablonları** (KeeperHub, OpenClaw, Chainlink CRE, Reactive Network) | Yayında; Reactive'inki hariç, o bir testnet demosu            | KeeperHub örneği: sağlık faktörü her 5 dakikada bir, 1,5'in altında Discord mesajı. OpenClaw skill'i: Aave V3, varsayılan olarak her 6 saatte bir. Chainlink CRE şablonu: bir LLM'nin savunma amaçlı işlemleri seçip yürüttüğü genel bir borç verme şablonu (özel beta). Reactive Network yazısı: teminat ekleyen veya Aave V3 borcunu geri ödeyen kontratlar, Sepolia testnet'i için dağıtım adımlarıyla                                                                              | Değişir (bu örneklerde Discord, Telegram, Slack)                                                                                                                                             | Uyarı veya otomasyon                    | Kendi sunucunuzda çalışır; KeeperHub'ın yazma işlemleri bağlı bir cüzdan gerektirir                                                                                                                                                                                                                                                                       | Değişir                                                                                                                                                                                                 | KeeperHub: Ethereum'daki Aave V4 Lido Spoke. OpenClaw: Ethereum; sayfası Polygon, Arbitrum, Optimism, Base, Avalanche ve Gnosis'te de çalıştığını söylüyor. Chainlink: protokol veya ağ belirtilmemiş                                                                                                     | [KeeperHub](https://docs.keeperhub.com/plugins/aave-v4), [OpenClaw](https://clawhub.ai/jgramajo4/skills/aave-liquidation-monitor), [Chainlink](https://docs.chain.link/cre-templates/automated-liquidation-protection), [Reactive](https://blog.reactive.network/aave-unified-protection-multi-strategy-automated-liquidation-defense-with-reactive-smart-contracts/), 19 Ekim 2026                                                                                                           |
+
+### Her araç sağlık faktörünüzü ne sıklıkla kontrol eder?
+
+Aave sağlık faktörü araçlarının belirttiği kontrol aralıkları her 5 dakikadan her 6 saate kadar uzanır ve uyarı
+hizmetlerinin çoğu bir aralık yayımlamaz. Aralık, eşiğinizin altına bir düşüşün o araç tarafından fark edilmeden
+kalabileceği en uzun süredir; teslimat gecikmesi buna dahil değildir. Her sağlayıcının 19 Ekim 2026'da belirttiği
+aralıklar:
+
+| Araç                                                  | Sağlayıcının belirttiği kontrol aralığı                                                                                                                                  | Günlük kontrol sayısı |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
+| Tokenping                                             | Her 5 dakikada bir                                                                                                                                                       | 288                   |
+| KeeperHub örnek iş akışı (Aave V4)                    | Her 5 dakikada bir                                                                                                                                                       | 288                   |
+| Aave DeFi Watcher                                     | Varsayılan olarak her 5 dakikada bir, ayarlardan değiştirilebilir                                                                                                        | Varsayılan olarak 288 |
+| Ava, Auto modu                                        | Saatte bir                                                                                                                                                               | 24                    |
+| Aave Monitor iOS widget'ları (geliştiricinin rehberi) | Varsayılan olarak her 60 dakikada bir, risk arttıkça daha sık                                                                                                            | 24 veya daha fazla    |
+| OpenClaw "aave-liquidation-monitor" skill'i           | Varsayılan olarak her 6 saatte bir, yapılandırılabilir                                                                                                                   | 4                     |
+| DeFi Monitor                                          | Sayı verilmemiş ("checks run continuously", yani kontroller sürekli çalışır); 20 Şubat 2026 tarihli değişiklik günlüğü Aave V3 olaylarıyla tetiklenen kontroller ekliyor | Belirtilmemiş         |
+| HF Guard                                              | "Checked periodically" (periyodik olarak kontrol edilir), sayı yok                                                                                                       | Belirtilmemiş         |
+| Otomato, DeFi Saver Notify                            | Belirtilmemiş                                                                                                                                                            | Belirtilmemiş         |
+
+Günlük kontrol sayısı, 1.440 dakikanın aralığa bölünmesiyle bulunur: 1.440 ÷ 5 = 288, 1.440 ÷ 60 = 24 ve 1.440 ÷ 360 = 4. Tokenping her çalışmada kayıtlı uyarıları sırayla işler, bu yüzden bir mesaj 5 dakikalık sınırdan biraz sonra
+gelebilir.
+
+## Uyarı mı otomasyon mu: hangisine ihtiyacınız var?
+
+Önemli anda ulaşılabilir olacağınıza güvenemiyorsanız ve pozisyonunuz aracın koşullarını karşılıyorsa otomasyon daha
+güçlü bir seçimdir. Uyarılar ise otomasyonun asgari tutarlarının altındaki pozisyonlara, otomasyonun kapsamadığı ağlara
+veya piyasalara ve pozisyonlarında fon hareket ettirebilecek bir yazılım istemeyen borç alanlara uyar.
+
+Bir uyarı aracı, Aave sağlık faktörünüzün düştüğünü size bildirir ve çözümü size bırakır. Bir otomasyon aracı ise ona
+işlem yapma yetkisi verdiğinizde borcu sizin yerinize geri öder; DeFi Saver ve Instadapp ayrıca asgari büyüklükler
+belirler ve işlem başına ücret alır, Ava'nın Auto modu ise bugün hiçbir ücret almaz ve fon yatırdığınız ayrı bir Ava
+akıllı cüzdanından işlem yapar. İkisi de likidasyonu her durumda önlemez: uyarılar sizin zamanında harekete geçmenize,
+otomasyon ise tetikleyicisine, kontrol aralığına ve işlemin gerçekleşmesine bağlıdır.
+
+**Uyarıların size maliyeti** dikkat ve geç harekete geçme riskidir. Mayıs 2021'de bir Polygon forumu kullanıcısı 1,01
+sağlık faktöründe geri ödeme yapmaya çalıştı, tekrar tekrar hata aldı ve geri ödeme gerçekleşmeden likide edildi. Aralık
+2024'te bir Aave forumu kullanıcısı, bir saatten uzun süren ve takılıp kalan geri ödeme denemelerinin ardından likide
+edildiğini anlattı. 1,0'ın epey üzerindeki bir uyarı eşiği bu tür bir gecikmeye pay bırakır.
+
+**Aave V3 Ethereum Core piyasasında örnek bir hesaplama** WETH teminatı ve USDC borcu kullanır. Parametreler 14 Ekim
+2026'da zincir üstünden okundu (Ethereum bloğu 26.194.044) ve 19 Ekim 2026'da yeniden okundu (blok 26.225.316); değerler
+aynıydı: WETH likidasyon eşiği %83, likidasyon bonusu %5. ETH fiyatları örnek amaçlıdır ve USDC 1,00 $ kabul edilmiştir.
+
+- 10 WETH yatırıp 12.000 USDC borç alıyorsunuz. ETH 1.420 $'a düşerse teminat 14.200 $ eder ve sağlık faktörü 14.200 ×
+  0,83 ÷ 12.000 = 0,982 olur.
+- Bu durumda bir likidatör borcun yarısına kadarını, yani 6.000 USDC'yi geri ödeyebilir, çünkü sağlık faktörü 0,95'in
+  üzerindedir ve ilgili iki rezerv de en az 2.000 $ değerindedir (Aave V3'ün kuralı; Aave V4 bunun yerine hedef bir
+  sağlık faktörüne doğru likide eder). Karşılığında WETH'inizden 6.000 × 1,05 = 6.300 $ değerinde alır. Likidasyon size
+  300 $'a mal olur.
+- DeFi Saver Automation bu pozisyon için Ethereum'da açılamazdı: 12.000 USDC borç, oradaki 30.000 $ asgari tutarın
+  altındadır. Aynı pozisyon Arbitrum, Optimism veya Base'de 500 $ asgari tutarı aşar.
+- DeFi Saver Automation'ın çalışabildiği yerlerde işlem başına ücret alınır. Aave V3'te Liquidation Protection yalnızca
+  Safety Ratio'yu %105'ten %110'a çıkaracak kadar borç öder ve USDC karşılığında sattığı her 1.000 $ WETH için 3 $
+  ücret alınır (%0,25 takas ücreti artı %0,05 otomasyon ücreti, 19 Ekim 2026'da yayımlandığı şekliyle). Buna gas
+  eklenir; sıfır ücretli bir flash loan kaynağında yeterli likidite yoksa Aave'nin %0,09 flash loan ücreti de eklenir.
+
+Uyarıyı aldıktan sonra [Aave sağlık faktörünüzü nasıl yükseltirsiniz](/tr/blog/aave-likidasyonundan-kacinma) seçenekleri
+anlatır.
+
+## Hangi Aave sağlık faktörü uyarıları hiçbir ücret gerektirmez?
+
+Hiçbir ücret gerektirmeyen Aave sağlık faktörü uyarıları Otomato'dan, beta süresince HF Guard'dan, DeFi Monitor'ün ücret
+alınmayan katmanından, Ava'dan (bugün hiçbir şey faturalandırılmıyor) ve Aave Monitor ile Aave DeFi Watcher tarayıcı
+eklentilerinden gelir. 19 Ekim 2026 itibarıyla koşulları:
+
+- **Otomato:** temel Aave V3 izleme (sağlık faktörü, likidasyon riski, faiz oranları) üç cüzdana kadar, Telegram'da veya
+  telefon uygulamasında hiçbir ücret gerektirmez. Daha fazla cüzdan ve gece telefon aramasıyla uyarı yükseltme için
+  premium planlanıyor.
+- **HF Guard:** SSS'si beta süresince hiçbir ücret alınmadığını söylüyor ve sonrası için bir fiyat vermiyor. Uyarılar
+  Telegram botuna gider.
+- **DeFi Monitor:** "for early users" (erken kullanıcılar için) ücret alınmayan bir katman; fiyatlandırma sayfası
+  yalnızca ücretli planları listeliyor: ayda 4,99 $ (yılda 49,99 $) Pro ve ayda 9,99 $ (yılda 99,99 $) Ultra. Uyarılar
+  Telegram'a veya Discord'a gider.
+- **Ava:** bugün hiçbir şey faturalandırılmıyor. Fiyatlandırma sayfası, Ava'nın izleme veya uyarılar için değil, yalnızca
+  bir likidasyonu durduran koruma gibi değer yaratan işlemler için kullanıma dayalı bir ücreti değerlendirdiğini
+  söylüyor.
+- **Aave Monitor ve Aave DeFi Watcher:** hiçbir ücret gerektirmeyen ve sizi yalnızca tarayıcı açıkken uyaran tarayıcı
+  eklentileri.
+- **DeFi Notifications uygulaması** (Hexa Foundation): bir Aave pozisyonunun sağlığı düşük olduğunda size bildirim
+  gönderebilen, ücret alınmayan bir iPhone uygulaması. Son güncellemesi, sürüm 1.1.20, 21 Ekim 2024 tarihli.
+- **DeFi Saver Notify:** yardım sayfaları bir fiyat belirtmiyor.
+
+Tokenping uyarılarının fiyatı: <AlertPrice />, ödeme Arbitrum'da yapılır; pozisyonlarınıza bakmak ödeme gerektirmez.
+
+## Bir Aave kredisini izlemek için tarayıcı eklentileri yeterli mi?
+
+Tarayıcı eklentileri ancak genellikle bilgisayarınızın başındaysanız yeterlidir: telefonunuza mesaj göndermezler,
+tarayıcı açıkken bir araç çubuğu rozeti veya bir masaüstü bildirimi gösterirler. İki Aave eklentisi, Aave Monitor ve
+Aave DeFi Watcher, verileri Aave'nin kontratlarından okur ve cüzdan bağlantısı gerektirmez.
+
+- **Aave Monitor** (Chrome Web Store; sürüm 2.11.1, 24 Şubat 2026'da güncellendi) yıldızlı bir adresin sağlık faktörünü
+  bir araç çubuğu rozeti olarak gösterir: varsayılan olarak 2'nin üstünde yeşil, 1 ile 2 arasında turuncu, 1'in altında
+  kırmızı; eşikleri değiştirebilirsiniz. Push mesajı göndermez. Telefonlar için geliştiricisi, Scriptable uygulamasıyla
+  yapılmış iOS ana ekran widget'ları önerdi (Temmuz 2025); bunlar varsayılan olarak saatte bir yenilenir ama size
+  bildirim göndermez.
+- **Aave DeFi Watcher** (Chrome Web Store; sürüm 1.0.0, 27 Temmuz 2026'da güncellendi) rozete masaüstü bildirimleri
+  ekler. Mağaza sayfası yalnızca risk seviyesi kötüleştiğinde uyardığını söylüyor; bu da tekrarlanan bildirimleri
+  azaltır. Kendi sitesi ayrıca varsayılan olarak her 5 dakikada bir sorguladığını belirtiyor ve Ethereum, Arbitrum,
+  Optimism, Base, Polygon ve Avalanche üzerinde Aave V2, V3 ve V4'ü listeliyor; Aave V4, Ethereum'daki Main Spoke ile
+  sınırlı.
+
+Bir tarayıcı eklentisi siz uyurken veya o bilgisayardan uzaktayken size ulaşmaz. Mesaj tabanlı araçlar bu boşluğu
+kapatır: Otomato, HF Guard, DeFi Monitor, DeFi Saver Notify, Ava ve Tokenping.
+
+## Hangi otomasyon araçları Aave borcunu sizin yerinize geri ödeyebilir?
+
+Burada kontrol edilen hazır hizmetlerden üçü, her işlemi sizin imzalamanıza gerek kalmadan Aave borcunu geri ödeyebilir:
+DeFi Saver Automation, Ava'nın Auto modu ve Instadapp Protection Automation. Otomatik Aave geri ödemesi için DeFi Saver
+Automation'ın alternatifleri Ava'nın Auto modu (Ethereum ve Base üzerinde Aave V3, belirtilmiş bir asgari tutar yok) ve
+Instadapp'tir (Polygon ve Avalanche, durumu belirsiz). 19 Ekim 2026 itibarıyla:
+
+- **DeFi Saver Automation** iki şekilde geri öder. Liquidation Protection, pozisyonun Safety Ratio değeri, yani DeFi
+  Saver'ın risk yüzdesi, sabit bir alt sınırın altına düştüğünde (Aave V3'te %105, V4'te %110) borcun bir kısmını geri
+  öder ve oranı 5 puan yükseltir. Automated Leverage Management seçtiğiniz bir oranda geri öder ve birden fazla teminat
+  veya borç varlığı olan pozisyonlar için tek DeFi Saver otomasyonudur. İkisi de Aave V3 Core ve V4'ü kapsar (V3 Prime
+  veya EtherFi'yi değil, Linea ya da Plasma üzerindeki Aave'yi de değil) ve Ethereum'da 30.000 $, Arbitrum, Optimism ve
+  Base'de 500 $ borç gerektirir. Aave V3'te normal bir cüzdandan (EOA) çalışırlar; Aave V4'te DeFi Saver'ın yardım
+  sayfası otomasyonların Smart Wallet pozisyonları için olduğunu ve EOA desteğinin bir hedef olduğunu söyler. Her işlem
+  %0,05 otomasyon ücreti artı bir takas ücreti (%0,25, ilişkili varlıklar arasında daha az) ve gas'a mal olur.
+- **Ava'nın Auto modu** saatte bir kontrol eder, ardından fon yatırdığınız bir Ava akıllı cüzdanından teminat ekler veya
+  geri öder; bunu varsayılan olarak harcama limiti olmayan ve 365 gün geçerli bir izinle yapar (web uygulaması daha dar
+  bir izin sunar). Ethereum ve Base üzerinde Aave V3'ü kapsar ve bugün hiçbir ücret almaz.
+- **Instadapp Protection Automation**, bir Instadapp akıllı hesabı (DSA) üzerinden borcu hedef bir sağlık faktörüne
+  doğru geri öder. Rehberi Polygon ve Avalanche üzerinde Aave V3'ü, etkinleştirmede 1.000 $ (Polygon) veya 5.000 $
+  (Avalanche) asgari teminatı ve olay başına %0,3 ile %0,4 arası bir ücreti listeliyor, ama bir Mainnet asgari
+  tutarından ve Mainnet gas'ından da söz ediyor. Rehber en son yaklaşık 3 yıl önce güncellendiği için bugünkü durumu
+  belirsiz.
+
+Otomasyonun da kendine özgü başarısızlık biçimleri vardır. Ava'nın dokümantasyonu, Auto modunun saatte bir kontrol
+ettiğini, bu yüzden hızlı bir piyasanın iki kontrol arasında hareket edebileceğini belirtir. DeFi Saver'ın otomasyonu,
+borç Ethereum'da 5.000 $ veya altına, Arbitrum, Base ya da Optimism'de 500 $ veya altına düşerse açık kalır ama işlem
+yürütmeyi durdurur. Instadapp'in rehberi kayıpların mümkün olduğu konusunda uyarır ve kullanıcılara pozisyonlarını
+izlemeye devam etmelerini söyler.
+
+## Geliştiriciler kendi Aave sağlık faktörü uyarılarını nasıl kurabilir?
+
+Bir geliştirici, piyasanın Pool kontratında `getUserAccountData(address)` fonksiyonunu düzenli aralıklarla çağırarak ve
+dönen sağlık faktörü bir eşiğin altına düştüğünde mesaj göndererek bir Aave V3 sağlık faktörü uyarısı kurabilir. Değer
+18 ondalık basamaklıdır ve adresin borcu yoksa kontrat en büyük uint256 değerini döndürür; bu da uyarılacak bir şey
+olmadığı anlamına gelir. İşi kısaltan araçlar, 19 Ekim 2026'da kontrol edildi:
+
+- **Tenderly Alerts** olaylarla, durum değişiklikleriyle veya bir view fonksiyonunun dönüş değeriyle tetiklenebilir ve
+  e-postaya, Slack'e, Telegram'a, Discord'a, webhook'lara, PagerDuty'ye veya Sentry'ye iletebilir. Uyarılar yalnızca
+  ücretli planında, satış ekibi aracılığıyla sunulur.
+- **KeeperHub**, sağlık faktörünü her 5 dakikada bir okuyan ve 1,5'in altında Discord'a mesaj gönderen bir Aave V4
+  örneğini (Ethereum'daki Lido Spoke) belgeler. Salt okunur işlemleri kimlik bilgisi olmadan çalışır; yazma işlemleri
+  bağlı bir cüzdan gerektirir.
+- **OpenClaw skill'i "aave-liquidation-monitor"** (sürüm 1.0.1, 11 Şubat 2026'da yayımlandı) Aave V3 pozisyonlarını
+  varsayılan olarak her 6 saatte bir kontrol eder ve Telegram'a, Discord'a veya Slack'e uyarı gönderir. Sayfası ana ağ
+  olarak Ethereum'u belirtiyor ve Polygon, Arbitrum, Optimism, Base, Avalanche ve Gnosis'te de çalıştığını söylüyor.
+  Ajan skill'leri kendi bilgisayarınızda çalışır, bu yüzden birini kurmadan önce kodunu okumakta fayda var.
+- **Chainlink'in CRE "automated liquidation protection" şablonu** daha ileri gider: Aave'ye özgü olmayan, bir LLM'nin
+  savunma amaçlı işlemleri seçip yürüttüğü genel bir borç verme şablonu. Özel betada olan Confidential Workflows'a
+  dayanır.
+- **Reactive Network'ün "Aave Unified Protection"** yazısı (14 Ekim 2025 tarihli blog yazısı), abone olunan Aave V3
+  pozisyonları için teminat ekleyen veya borç geri ödeyen kontratları anlatır. Dağıtım adımları ve varlık listesi Sepolia
+  testnet'i içindir ve bir mainnet dağıtımı bulamadık, bu yüzden bunu bir geliştirici örneği olarak değerlendirin.
+
+Bu tür izleme için barındırılan bir seçenek olan OpenZeppelin Defender, 30 Haziran 2025'te yeni kayıtları kapattı ve 1
+Temmuz 2026'da kullanımdan kaldırılması planlanıyordu. Daha sonraki bir duyuru bulamadık ve uygulama sayfası içeriksiz
+yükleniyor, bu yüzden kaldırılıp kaldırılmadığını söyleyemeyiz; OpenZeppelin'in duyurusu kullanıcıları açık kaynak
+Monitor aracına yönlendiriyor.
+
+## HAL, Aave Alarm ve Summer.fi'nin alternatifleri nelerdir?
+
+Resmi bir HAL alternatifi yok: Aave, hizmet kapandığı için Mayıs 2024'te HAL bildirim bağlantısını arayüzünden kaldırdı
+ve Aave'nin yardım sayfası artık sağlık faktörü aracı olarak yalnızca DeFi Simulator ve DeFi Saver'ı anıyor; ikisi de
+"use at your own risk" (riski size ait olmak üzere kullanın) notuyla. HAL, Aave Alarm ve Summer.fi'nin eski kullanıcıları
+artık aynı iş için üçüncü taraf bir araç seçiyor:
+
+- **HAL ve Aave Alarm'ın gönderdiği gibi push uyarıları:** Otomato (Telegram, telefon uygulaması), HF Guard (Telegram),
+  DeFi Monitor (Telegram, Discord), DeFi Saver Notify (e-posta, Telegram, uygulama içi) veya Tokenping (Signal,
+  Telegram, e-posta).
+- **Summer.fi'nin sunduğu gibi stop-loss:** DeFi Saver Automation, Aave V3 Core ve V4 için stop-loss ve likidasyon
+  koruması sunar; borç asgari tutarlarına ve bu iki otomasyon için tek bir teminat ve tek bir borç varlığı koşuluna
+  bağlıdır.
+
+| Araç                          | Aave kullanıcıları için ne yapıyordu                                                                   | Ne oldu                                                                                                                                                                                                                              | Kaynak, kontrol tarihi                                                                                                                                                                                              |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HAL bildirimleri              | Aave uygulamasından bağlantı verilen sağlık faktörü bildirimleri                                       | Aave'nin arayüzü onu 30 Mayıs 2024'te "since the service is shut down" (hizmet kapandığı için) gerekçesiyle kaldırdı; hal.xyz'nin DNS'te adres kaydı yok                                                                             | [Aave arayüzü PR #2084](https://github.com/aave/interface/pull/2084), 19 Ekim 2026                                                                                                                                  |
+| Aave Alarm                    | Düşük sağlık faktörü ve likidasyon uyarıları için mobil uygulama                                       | Artık indirilemiyor; README'si Aave Grants'in sona ermesini ve geliştiricinin uygulama mağazası sorunlarını gerekçe gösteriyor, son kod değişikliği 28 Kasım 2024 tarihli                                                            | [README](https://github.com/thegodfatherbeeearth/aavealarm), 19 Ekim 2026                                                                                                                                           |
+| Summer.fi otomasyonu          | Aave pozisyonları için stop-loss ve takip eden stop-loss (Mart 2024'te tüm Aave ağları için duyuruldu) | Summer.fi faaliyetlerini sonlandırdığını ve uygulamasının devre dışı bırakıldığını söylüyor; ForkLog 16 Temmuz 2026'da, ekibin Lazy Summer Protocol'ün istismar edilmesinin ardından kapanışı 15 Temmuz 2026'da duyurduğunu bildirdi | [summer.fi](https://summer.fi), [bülten](https://summerfi.beehiiv.com/p/whats-better-summer-month-c62a), [ForkLog](https://forklog.com/en/summer-fi-to-shut-down-interface-following-6-million-hack/), 19 Ekim 2026 |
+| DeFi Notifications uygulaması | Düşük Aave pozisyon sağlığı dahil, ücret alınmayan iPhone bildirimleri                                 | Hâlâ listede, son güncelleme 21 Ekim 2024                                                                                                                                                                                            | [App Store](https://apps.apple.com/us/app/defi-notifications/id1588243632), 19 Ekim 2026                                                                                                                            |
+| OpenZeppelin Defender         | Geliştiriciler için izleme ve otomasyon                                                                | Yeni kayıtlar 30 Haziran 2025'te kapandı; 1 Temmuz 2026 için planlanan kullanımdan kaldırma tarihi geçti; daha sonraki bir duyuru bulamadık                                                                                          | [OpenZeppelin](https://www.openzeppelin.com/news/doubling-down-on-open-source-and-phasing-out-defender), 19 Ekim 2026                                                                                               |
+
+Bir portföy paneli olan Zapper, 8 Temmuz 2026'da 3 Ağustos 2026'da kapanacağını duyurdu (The Block ve Crypto Briefing).
+Burada karşılaştırılmadı: okumaya çalıştığımızda kendi sitesi bir bot kontrolünün arkasındaydı ve başka bir yerde
+anlatılan bir Aave sağlık faktörü uyarısı bulamadık.
+
+## Tokenping dışında bir araç ne zaman daha iyi bir seçimdir?
+
+Uyarılar için ödeme yapmak istemiyorsanız ya da bir mobil uygulama, pozisyonunuzla ilgili soruları yanıtlayan bir
+sohbet, otomatik geri ödeme, Tokenping'in okumadığı bir piyasa veya ağ, sağlık faktörü dışındaki olaylar için uyarılar ya
+da tekrarlar yerine tek bir mesaj istiyorsanız başka bir araç daha iyi bir seçimdir. Aşağıdaki her durumda ya Tokenping
+işi yapamaz ya da başka bir araç işi daha az zahmetle yapar.
+
+- **Ödeme yapmak istemiyorsunuz.** Tokenping uyarılarının fiyatı: <AlertPrice />. Otomato'nun temel uyarıları ücret
+  alınmadan gelir, HF Guard beta süresince hiçbir ücret gerektirmez, DeFi Monitor'ün ücret alınmayan bir katmanı vardır,
+  Aave Monitor ve Aave DeFi Watcher eklentileri de hiçbir ücret gerektirmez.
+- **Bağlamadığınız bir adresi ya da birkaç cüzdanı izlemek istiyorsunuz.** Tokenping yalnızca giriş yapılan cüzdanı
+  izler. Otomato, HF Guard, DeFi Monitor, Aave Monitor ve Aave DeFi Watcher yapıştırılan herhangi bir adresi kabul eder.
+- **Bir mobil uygulama istiyorsunuz.** Tokenping'in uygulaması yok; uyarıları Signal'e, Telegram'a veya e-posta
+  uygulamanıza gelir. Otomato'nun iOS ve Android uygulamaları var.
+- **Borcun otomatik olarak geri ödenmesini istiyorsunuz.** Tokenping yalnızca uyarır. DeFi Saver Automation ve Ava'nın
+  Auto modu sizin yerinize geri ödeyebilir.
+- **Harmony veya Fantom üzerindeki Aave V3'te ya da Aave ve Morpho dışında bir protokolde borç alıyorsunuz.** Tokenping,
+  Aave'nin 2022'de dondurduğu Harmony ve Fantom piyasaları dışında bir mainnet üzerindeki her Aave V3 piyasasını, her
+  Aave V4 Spoke'unu ve Morpho uygulamasının listelediği Morpho piyasalarını okur, başka hiçbir şeyi okumaz. HF Guard,
+  DeFi Monitor ve DeFi Saver Notify başka borç verme protokollerini de kapsar.
+- **Soruları yanıtlayan ya da pozisyonlarınızı gösteren bir sohbet istiyorsunuz.** Tokenping'in Telegram botu yalnızca
+  uyarı gönderir ve /start, /stop ve /help komutlarını anlar. Ava, Telegram'da pozisyonunuzla ilgili soruları yanıtlar;
+  HF Guard ve DeFi Saver botları pozisyonlarınızı listeler.
+- **Yönetişim, yatırma tavanı (supply cap), faiz sıçraması veya depeg uyarıları istiyorsunuz.** Tokenping yalnızca
+  sağlık faktörü için uyarır. Otomato bu olayları kapsar.
+- **Sağlık faktörü eşiği yerine bir varlık fiyatında veya likidasyon fiyatında uyarı istiyorsunuz.** Tokenping'in fiyat
+  uyarıları yoktur. Otomato dolar cinsinden likidasyona uzaklığınız için de uyarır, DeFi Saver'ın otomasyonu ise hedef
+  bir fiyatta yalnızca uyarmakla kalmaz, işlem de yapabilir (hedef fiyatta geri ödeme, stop-loss).
+- **Tekrarlar yerine tek bir mesaj istiyorsunuz.** Tokenping, sağlık faktörü eşiğinizin altında kaldığı sürece uyarısını
+  her kanalda her 5 dakikada bir tekrarlar, "düzeldi" mesajı göndermez ve her piyasa için ayrı bir uyarı gerektirir.
+  Buna karşılık Aave DeFi Watcher yalnızca risk kötüleştiğinde bildirim gönderir, HF Guard ise bir pozisyonun risk
+  seviyesi değiştiğinde uyarır.
+- **Uzun bir geçmiş performans veya yayımlanmış çalışma süresi verileri istiyorsunuz.** Tokenping beta aşamasındadır ve
+  çalışma süresi verisi yayımlamaz.
+
+Bunların hiçbiri Tokenping'i elemiyorsa, [sağlık faktörü uyarısı nasıl kurulur](/tr/blog/aave-saglik-faktoru-uyarisi-kurulumu)
+adımları anlatır ve herhangi bir ödeme yapmadan önce [Aave V3 sağlık faktörünüzü kontrol edebilirsiniz](/tr/aave). Ana
+sayfada [Signal, Telegram ve e-postada Aave sağlık faktörü uyarılarına](/tr) genel bir bakış var.
+
+## Bu karşılaştırmayı nasıl hazırladık?
+
+Karşılaştırmayı her aracın kendi sayfalarından hazırladık, 19 Ekim 2026'da yeniden kontrol ettik ve uyarı teslimatını
+test etmedik. Bu karşılaştırmayı Tokenping yazdı ve Tokenping de içindeki araçlardan biri; bunu göz önünde bulundurarak
+okuyun. Karşılaştırmayı olabildiğince adil tutmak için şunları yaptık:
+
+1. Yayındaki bir araçla ilgili her iddia, o aracın kendi web sitesinden, dokümantasyonundan, uygulama mağazası
+   sayfasından veya geliştirici forumu yazısından gelir ve satırında bağlantısı verilmiştir. Kapanışla ilgili üç madde
+   başka kaynaklara dayanır: HAL'inki Aave'nin kendi arayüz kodu değişikliğine, Zapper'ınki haberlere, Summer.fi'nin
+   kapanış nedeni ise bir habere. Üçüncü taraf incelemeleri kullanmadık.
+2. Karşılaştırma ve kapanış tablolarındaki her satır ile kontrol aralığı tablosu, 19 Ekim 2026'daki kontrollerden gelir.
+   Bir sağlayıcının sayfası bir şeyi belirtmiyorsa tablo tahmin yürütmek yerine "belirtilmemiş" der. Bazı sağlayıcı
+   sayfaları (Otomato, DeFi Monitor'ün fiyatlandırma ve değişiklik günlüğü sayfaları) yalnızca bir tarayıcıda yüklendiği
+   için onları orada okuduk.
+3. Başka hiçbir araçta hesap açmadık ve uyarı teslimatını ölçmedik. Bu karşılaştırma test edilmiş hızı veya
+   güvenilirliği değil, belirtilen özellikleri karşılaştırır.
+4. Tokenping'in satırı, ne yaptığını kontrol edebilmeniz için herkese açık olan
+   [kaynak kodundan](https://github.com/romispectrum/tokenping) (19 Ekim 2026'da yeniden okundu), Arbitrum'daki ödeme
+   kontratının zincir üstü okumasından (blok 516.226.427, 19 Ekim 2026) ve Spoke listesi için Aave'nin V4 API'sine
+   yapılan bir sorgudan gelir. Bu sayfada gösterilen fiyat o kontrattan okunur ve en fazla saatte bir yenilenir. Telegram
+   botunun davranışını kodunu okumanın ötesinde test etmedik.
+5. Tokenping'in zayıf yönleri, satırında ve başka bir aracın ne zaman seçilmesi gerektiğini anlatan bölümde yer alır.
+6. Bir arama bir aracı gözden kaçırabilir. DeBank, Zerion, Push Protocol ve Notifi'de de Aave sağlık faktörü uyarıları
+   aradık ve bugün belgelenmiş bir tane bulamadık, bu yüzden listede yoklar. Bir aracı kaçırdıysak bize bildirin.
+
+Her satırı üç ayda bir yeniden kontrol etmeyi ve "Son kontrol" tarihini yalnızca bunu yaptığımızda değiştirmeyi
+planlıyoruz. Bir satır yanlış veya güncel değilse bize [X](https://x.com/tokenping) veya
+[Telegram](https://t.me/tokenping_xyz) üzerinden yazın, düzeltelim.
+
+## 15 Ekim 2026 sürümünden bu yana ne değişti?
+
+- **Eklendi:** HF Guard ve geliştirici araçları arasında Reactive Network'ün testnet örneği.
+- **Tokenping:** satır artık Signal ve e-postanın yanında Telegram'ı, kanal başına bir Test gönder düğmesini, kanal
+  başına bir dili ve cüzdan imzasıyla girişi listeliyor. Kapsamını da düzelttik: Fantom'un dondurulmuş Aave V3 piyasası
+  da okunmuyor; önceki sürüm yalnızca Harmony'yi andığı için bunu atlamıştı.
+- **Aave DeFi Watcher:** kendi sitesi varsayılan sorgulama aralığını 5 dakika olarak veriyor ve Aave V4'ü Ethereum'daki
+  Main Spoke ile sınırlıyor; bu yüzden satırı ve kontrol aralığı tablosu değişti.
+- **Gnosis:** önceki sürüm, hazır hiçbir uyarı hizmetinin Gnosis'i listelemediğini söylüyordu. HF Guard'ın ağ listesi
+  Gnosis'i içeriyor, bu yüzden o iddia kaldırıldı.
+- **Otomato:** ana sayfasına göre üç cüzdana kadar hiçbir ücret alınmıyor ve iOS uygulaması Otomato: Wallet Tracker
+  adıyla listeleniyor.
+- **DeFi Monitor:** fiyatlandırma sayfası artık ücretli planların adres ve abonelik sınırlarını veriyor; değişiklik
+  günlüğünde 22 Mart 2026'dan sonra kayıt yok.
+- **DeFi Saver:** Linea veya Plasma üzerindeki Aave için otomasyon yok ve Aave V4 otomasyonları Smart Wallet
+  pozisyonları için.
+- **Aave Monitor:** mağaza sayfası ve geliştiricisinin forum yazısı son güncellemeyi 25 Şubat değil, 24 Şubat 2026
+  olarak tarihliyor.
+- **Kapanışlar:** Summer.fi'nin kapanışı ve Zapper'ın kapanış tarihi kaynaklı; Defender'ın kullanımdan kaldırılma
+  tarihi, bulabildiğimiz bir duyuru olmadan geçti.
+- **Tokenping ve Morpho:** 26 Ekim 2026'dan beri Tokenping, Morpho uygulamasının listelediği piyasalarda Morpho Blue ve
+  Morpho Midnight kredilerini de 1,02'den başlayan bir eşikle okuyor; [Morpho'nun sağlık
+  faktörü](/tr/blog/morpho-saglik-faktoru) Aave'ninkinden nasıl farklı olduğunu anlatır.
+
+## Kaynaklar
+
+- Tokenping: [GitHub'daki kaynak kodu](https://github.com/romispectrum/tokenping) ve [Sourcify'da TokenpingPaywall](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553); plan, Arbitrum bloğu 516.226.427'de zincir üstünden okundu (erişim tarihi: 19 Ekim 2026)
+- [Aave V4 GraphQL API](https://api.v4.aave.com/graphql), Ethereum, Avalanche, Arc, Base ve OP Mainnet için `spokes` sorgusu (erişim tarihi: 19 Ekim 2026)
+- Aave V3 dağıtımları: [Aave address book](https://github.com/aave-dao/aave-address-book) (erişim tarihi: 19 Ekim 2026); dondurulmuş piyasalar: [Aave V3 Harmony dondurma başlığı](https://governance.aave.com/t/aave-v3-harmony-freeze-reserves/8863) ve [Aave V3 Fantom dondurma başlığı](https://governance.aave.com/t/arc-aave-v3-fantom-freeze-reserves/9166) (erişim tarihi: 19 Ekim 2026)
+- Aave: [Health Factor & Liquidations yardım sayfası](https://aave.com/help/borrowing/liquidations) ve [Aave Pro](https://aave.com/pro) (erişim tarihi: 19 Ekim 2026)
+- Aave V3 Ethereum Core parametreleri: [AaveProtocolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD), WETH için `getReserveConfigurationData`, 14 Ekim 2026'da 26.194.044 numaralı blokta ve 19 Ekim 2026'da 26.225.316 numaralı blokta yeniden zincir üstünden okundu; close factor (tek seferde ödenebilecek borç payı) kuralı [LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol) içinde (erişim tarihi: 19 Ekim 2026)
+- [aave/interface pull request #2084, "chore: remove hal"](https://github.com/aave/interface/pull/2084) (erişim tarihi: 19 Ekim 2026)
+- Otomato: [Otomato for Aave](https://otomato.xyz/protocols/aave), [ana sayfa](https://otomato.xyz) ve [iOS uygulama sayfası](https://apps.apple.com/us/app/otomato-wallet-tracker/id6759802179) (erişim tarihi: 19 Ekim 2026)
+- HF Guard: [ana sayfa ve SSS](https://hfguard.app), [koşullar](https://hfguard.app/terms) ve [gizlilik politikası](https://hfguard.app/privacy) (erişim tarihi: 19 Ekim 2026)
+- DeFi Saver Notify: [Notify](https://help.defisaver.com/features/notify), [Notify use-case](https://help.defisaver.com/features/notify/use-case), [How do I set up Notify?](https://help.defisaver.com/features/notify/how-do-i-set-up-notify), [Telegram bot](https://help.defisaver.com/features/notify/telegram-bot-for-monitoring-your-position) (erişim tarihi: 19 Ekim 2026)
+- DeFi Saver Automation: [Fees](https://help.defisaver.com/automations/fees), [DeFi Saver fees](https://help.defisaver.com/general/what-is-defi-saver/defi-saver-fees), [Requirements for using Automation](https://help.defisaver.com/automations/requirements-for-using-automation), [Compatibility](https://help.defisaver.com/automations/compatibility), [Liquidation Protection](https://help.defisaver.com/automations/liquidation-protection), [Automated Leverage Management](https://help.defisaver.com/automations/automated-leverage-management), [What features do EOA wallets have access to?](https://help.defisaver.com/general/compatibility/wallet-compatibility/what-features-do-eoa-wallets-have-access-to), [Health, Safety and Collateral Ratio](https://help.defisaver.com/features/defi-saver-dashboard/health-safety-and-collateral-ratio), [Aave V4 features](https://help.defisaver.com/protocols/aave-v4/what-defi-saver-features-are-not-yet-available-on-aave-v4), [Aave compatibility and automations](https://help.defisaver.com/protocols/aave-v3/compatibility-and-automations), [Supported chains and protocols](https://help.defisaver.com/general/compatibility/supported-chains-and-protocols) (erişim tarihi: 19 Ekim 2026)
+- Ava: [Protect your Aave position](https://avaprotocol.org/protect/aave-position), [Risk alerts](https://avaprotocol.org/docs/using-ava/risk-alerts), [Pricing](https://avaprotocol.org/docs/start-here/pricing), [Supported chains](https://avaprotocol.org/docs/start-here/supported-chains), [Watch Aave positions](https://avaprotocol.org/docs/use-cases/watch-aave-positions) (erişim tarihi: 19 Ekim 2026)
+- DeFi Monitor: [ana sayfa ve SSS](https://defi-monitor.com), [fiyatlandırma](https://defi-monitor.com/pricing) ve [değişiklik günlüğü](https://defi-monitor.com/changelog) (erişim tarihi: 19 Ekim 2026)
+- Aave Monitor: [Chrome Web Store sayfası](https://chromewebstore.google.com/detail/aave-monitor/ccifbkellmfcbdngdnjimmfkclagbdii), [Aave forum başlığı](https://governance.aave.com/t/aave-monitor-browser-extension/21223), [iOS widget yazısı](https://blog.notrustverify.ch/monitor-aave-onchain-data-with-ios-widgets) (erişim tarihi: 19 Ekim 2026)
+- Aave DeFi Watcher: [Chrome Web Store sayfası](https://chromewebstore.google.com/detail/aave-defi-watcher/cpglkdkkmocpbbndolclhdmghjdcngdj), [aavewatcher.com](https://aavewatcher.com), [Aave forum başlığı](https://governance.aave.com/t/aave-defi-watcher-browser-extension-for-monitoring-aave-positions/25282) (erişim tarihi: 19 Ekim 2026)
+- [Instadapp Protection Automation rehberi](https://guides.instadapp.io/features/protection-automation) (erişim tarihi: 19 Ekim 2026)
+- Tenderly: [Alerts introduction](https://docs.tenderly.co/monitoring/alerts/introduction) ve [Supported networks](https://docs.tenderly.co/platform/supported-networks) (erişim tarihi: 19 Ekim 2026)
+- [KeeperHub: Aave V4 eklentisi](https://docs.keeperhub.com/plugins/aave-v4) (erişim tarihi: 19 Ekim 2026)
+- [ClawHub'da OpenClaw skill'i "aave-liquidation-monitor"](https://clawhub.ai/jgramajo4/skills/aave-liquidation-monitor) (erişim tarihi: 19 Ekim 2026)
+- [Chainlink CRE şablonu: automated liquidation protection](https://docs.chain.link/cre-templates/automated-liquidation-protection) (erişim tarihi: 19 Ekim 2026)
+- [Reactive Network: Aave Unified Protection](https://blog.reactive.network/aave-unified-protection-multi-strategy-automated-liquidation-defense-with-reactive-smart-contracts/) (erişim tarihi: 19 Ekim 2026)
+- [OpenZeppelin: Defender'ın aşamalı olarak kaldırılması](https://www.openzeppelin.com/news/doubling-down-on-open-source-and-phasing-out-defender) (erişim tarihi: 19 Ekim 2026)
+- [Aave Alarm README](https://github.com/thegodfatherbeeearth/aavealarm) (erişim tarihi: 19 Ekim 2026)
+- Summer.fi: [ana sayfa](https://summer.fi), [7 Mart 2024 tarihli bülten](https://summerfi.beehiiv.com/p/whats-better-summer-month-c62a) ve [16 Temmuz 2026 tarihli ForkLog haberi](https://forklog.com/en/summer-fi-to-shut-down-interface-following-6-million-hack/) (erişim tarihi: 19 Ekim 2026)
+- [App Store'da DeFi Notifications](https://apps.apple.com/us/app/defi-notifications/id1588243632) (erişim tarihi: 19 Ekim 2026)
+- Zapper: [Crypto Briefing](https://cryptobriefing.com/zapper-shuts-down-defi-dashboard-2026/) ve [The Block](https://www.theblock.co/post/407634/defi-dashboard-zapper-shut-down-after-7-years), ikisi de 8 Temmuz 2026 tarihli (erişim tarihi: 19 Ekim 2026)
+- [Polygon forumu: "Liquidation on polygon AAVE - JSON ERROR" (2021)](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067) (erişim tarihi: 19 Ekim 2026)
+- [Aave forumu: "Repeatedly Failed Repayment Attempts Leading to Liquidation" (2024)](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379) (erişim tarihi: 19 Ekim 2026)
+
+_Eğitim amaçlı içeriktir, finansal tavsiye değildir. Uyarılar riski azaltır ama likidasyonu önlemez._

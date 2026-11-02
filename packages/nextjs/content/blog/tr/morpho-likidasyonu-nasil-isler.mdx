@@ -1,0 +1,184 @@
+export const meta = {
+  slug: "morpho-likidasyonu-nasil-isler",
+  title: "Morpho likidasyonu nasıl işler: teşvik ve batık borç",
+  description:
+    "Morpho kredisi ne zaman likide edilir, likidatör ne kadar alabilir, her LLTV'deki teşvik, batık borç, oracle'lar ve Midnight'ın farkı.",
+  h1: "Morpho pozisyonunuz likide edildiğinde ne olur?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Morpho'da likidasyon nasıl işler ve borç alana neye mal olur?",
+  readingMinutes: 11,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Bir Morpho Blue pozisyonu, kredi/değer oranı (LTV) piyasanın likidasyon LTV'sinin (LLTV) üzerine çıktığı anda likide
+  edilebilir; bu, 1'in altındaki bir sağlık faktörüyle (health factor) aynı şeydir. O andan itibaren herkes tek bir
+  işlemde borcunuzun bir kısmını ya da tamamını geri ödeyebilir ve piyasanın oracle'ının (fiyat kaynağı) fiyatıyla, geri
+  ödenen tutar çarpı piyasanın likidasyon teşvik çarpanı değerinde teminat alabilir. Teşvik yalnızca LLTV'den çıkar: %86
+  LLTV'de %4,38'dir ve tamamı likidatöre gider. Borç aldığınız tutar sizde kalır, bu yüzden teşvik likidasyonun size
+  maliyetidir; teminatınız borcu artık karşılamıyorsa durum farklıdır: o zaman teminatın tamamını kaybedersiniz ve
+  kalanı piyasanın borç verenleri batık borç (bad debt) olarak üstlenir. Morpho Midnight'ın sabit faizli kredileri iki
+  farklılık ekler: vadeden önce bir likidasyon yalnızca pozisyonu sağlıklı hale getirecek kadarını alabilir, ancak kalan
+  teminat piyasanın eşiğinden daha azını geri ödeyecekse durum değişir; vadeden sonra ise kalan her borç, sağlıklı bir
+  pozisyonda bile, likide edilebilir.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Rakamlar ve okundukları blok numaraları: content/blog/snapshots/how-morpho-liquidation-works.md */}
+
+## Bir Morpho pozisyonu ne zaman likide edilebilir?
+
+Bir Morpho Blue pozisyonu, borcunuz teminat değeriniz çarpı piyasanın LLTV'sinden büyük olduğu anda likide edilebilir. Sağlık faktörü cinsinden bu, 1,00'ın altındaki her değerdir (formül ve örnekler için [Morpho sağlık faktörünün nasıl hesaplandığı](/tr/blog/morpho-saglik-faktoru) rehberine bakın).
+
+Bunu sözleşmenin kendisi kontrol eder. Morpho Blue'nun `liquidate` fonksiyonu önce o bloka kadar birikmiş faizi ekler, sonra piyasanın oracle'ını bir kez okur, ardından pozisyon sağlıksız değilse işlemi geri çevirir (revert). Tam LLTV'sinde olan bir pozisyon hâlâ sağlıklıdır; onun üzerine çıkması gerekir.
+
+Bir pozisyonu çizginin ötesine yalnızca iki şey iter:
+
+- **Teminat fiyatının**, oracle'ın bildirdiği şekliyle, kredi token'ına göre düşmesi.
+- **Borcunuzun**, değişken faizli bir Blue kredisinde faiz biriktikçe büyümesi.
+
+Her Blue piyasası LLTV'sini ve oracle'ını oluşturulurken sabitler ve ikisi de sonradan değişemez. Morpho Blue sözleşmesinde duraklatma, dondurma ya da ek süre de yoktur: Morpho bir piyasadaki likidasyonları durduramaz, sizin geri ödemenizi de durduramaz. Bir token'ın kendi ihraççısı yine de o token'ın transferlerini duraklatabilir ya da engelleyebilir; bu ikisini birden durdurur.
+
+## Bir Morpho pozisyonunu kim, nasıl likide eder?
+
+Herkes. `liquidate` fonksiyonunda çağıran kısıtlaması yoktur ve Morpho'nun kendisi pozisyonları likide etmez. Likidatörler, pozisyonları ve oracle fiyatlarını izleyen botlar çalıştıran ekiplerden bireylere kadar uzanır; Morpho'nun belgeleri, gereken tek şeyin bir RPC düğümü ve yeterli miktarda kredi token'ı tutan bir cüzdan olduğunu belirtir.
+
+İlk gelen alır. Açık artırma yoktur, bu yüzden likidatörler hızda yarışır; gas yarışları ve MEV (kâr için işlem sıralama) bunun bir parçasıdır. Sözleşme, el konulan teminatı kredi token'larını tahsil etmeden önce likidatöre gönderir; bu da bir botun teminatı aynı işlem içinde satıp gelirle geri ödeme yapmasına olanak tanır.
+
+Likidasyonlar garanti değildir; teşvik kazandırdığı için gerçekleşirler. Pratikte sıradandırlar: Morpho'nun API'si yalnızca Base ağındaki USDC | cbBTC (86%) piyasasında 14.024 likidasyon sayar.
+
+## Borcunuzun ne kadarı tek seferde likide edilebilir?
+
+Tamamı. Morpho Blue'da close factor (tek seferde ödenebilecek borç payı) ve asgari tutar yoktur: bir likidatör, tek bir çağrıda borcunuzun küçük bir diliminden tamamına kadar istediği tutarı geri ödeyebilir. Tek sınırlar, borçlu olduğunuzdan fazlasını geri ödeyememeleri ve sahip olduğunuzdan fazla teminata el koyamamalarıdır.
+
+Bu, sağlık faktörü 0,95'in üzerindeyken ve pozisyon küçük değilken bir likidasyonu borcun %50'si ile sınırlayan Aave V3'ten en büyük farktır ([bir Aave borcunun ne kadarının tek seferde likide edilebileceği](/tr/blog/aave-likidasyonu-nasil-isler#borcumun-ne-kadarı-tek-seferde-likide-edilebilir)). Blue'da LLTV'sini az farkla geçen bir pozisyon, gelen ilk likidatör tarafından tamamen kapatılabilir.
+
+## Her LLTV'de likidasyon teşviki ne kadar büyük?
+
+Likidasyon teşvik çarpanı (liquidation incentive factor, LIF), sözleşmedeki bir formülle piyasanın LLTV'sinden belirlenir:
+
+**LIF = min(1,15; 1 ÷ (1 − 0,3 × (1 − LLTV)))**
+
+Likidatör borcunuzun bir kısmını geri öder ve oracle fiyatıyla o tutar çarpı LIF değerinde teminat alır. 1'in üzerindeki kısım teşviktir ve teminatınızdan ödenir. Morpho bundan pay almaz.
+
+Bir piyasa yalnızca Morpho yönetişiminin etkinleştirdiği bir LLTV'yi kullanabilir. 26 Ekim 2026'da etkin değerler bunlardı ve Morpho'nun API'sindeki her Blue piyasası bunlardan birini kullanıyor. Sözleşmenin kendi tam sayı aritmetiğiyle:
+
+| LLTV  | Likidasyon teşvik çarpanı | Geri ödenen 1.000 borç başına kaybettiğiniz teminat | Bunun teşvik kısmı |
+| ----- | ------------------------- | --------------------------------------------------- | ------------------ |
+| %38,5 | 1,1500 (sınırlı)          | 1.150,00                                            | 150,00             |
+| %62,5 | 1,1268                    | 1.126,76                                            | 126,76             |
+| %77   | 1,0741                    | 1.074,11                                            | 74,11              |
+| %86   | 1,0438                    | 1.043,84                                            | 43,84              |
+| %91,5 | 1,0262                    | 1.026,17                                            | 26,17              |
+| %94,5 | 1,0168                    | 1.016,78                                            | 16,78              |
+| %96,5 | 1,0106                    | 1.010,61                                            | 10,61              |
+| %98   | 1,0060                    | 1.006,04                                            | 6,04               |
+
+0 LLTV de etkindir, ama böyle bir piyasada hiçbir şey borç alınamaz. LLTV ne kadar yüksekse teşvik o kadar küçüktür; Morpho'nun belgeleri bunu riskli piyasalarda zincirleme likidasyonlara karşı bir önlem olarak açıklar. Belgeler ayrıca %86 değerini "approximately 1.05" (yaklaşık 1,05) olarak yuvarlar; tam değer 1,0438'dir.
+
+## Hesaplı örnek: Base ağında 50.000 USDC'ye karşı 1 cbBTC
+
+Ethereum ve Base'deki borç tutarına göre listelenen en büyük Blue piyasasını ele alalım: yaklaşık 1,61 milyar USDC borç alınmış olan Base ağındaki USDC | cbBTC (86%). 26 Ekim 2026'da oracle'ı 1 cbBTC'yi 80.000,15 USDC olarak fiyatladı (Base blok 53102870). Pozisyon kurgusaldır: teminat olarak 1 cbBTC ve 50.000 USDC borç.
+
+- **LTV:** 50.000 ÷ 80.000,15 = %62,5.
+- **Sağlık faktörü:** 80.000,15 × 0,86 ÷ 50.000 = 1,376.
+- **Likidasyon fiyatı:** 50.000 ÷ 0,86 = cbBTC başına 58.139,53 USDC, oracle fiyatının %27,3 altında.
+
+Faiz yavaş etkendir. 26 Ekim 2026'da piyasanın yıllık yaklaşık %5,2'lik borç faiziyle ve bu faiz sabit kalırsa, faizin tek başına bu pozisyonu %62,5'ten %86 LTV'ye taşıması altı yıldan uzun sürerdi. Hızlı olan fiyattır.
+
+Karşılaştırma için: bu piyasada borcun %96'sını tutan en büyük 11.000 borç pozisyonunda, borç alınan USDC'nin yarısı yaklaşık %54 LTV'nin altındaki, yani sağlık faktörü yaklaşık 1,59'un üzerindeki pozisyonlardaydı. Bu, Morpho'nun API'sinden ve zincirdeki fiyattan Tokenping'in yaptığı bir hesaplamadır, bir Morpho rakamı değildir.
+
+### 58.139,53'te tam likidasyon
+
+Likidasyon fiyatı az farkla geçildiğinde, bir likidatör 50.000 USDC'nin tamamını geri ödeyip 50.000 × 1,0438 ÷ 58.139,53 = 0,8977 cbBTC alabilir; bunun değeri 52.192,07 USDC'dir. Borç aldığınız 50.000 USDC ve 0,1023 cbBTC (5.947,47 USDC) sizde kalır ve hiçbir borcunuz kalmaz. Likidasyon, borcu kendiniz geri ödemenize kıyasla size 2.192,07 USDC'ye mal oldu: borcun %4,38'i.
+
+### 10.000 USDC'lik kısmi likidasyon
+
+Bir likidatör 10.000 USDC'de de durabilir. Bu, 0,1795 cbBTC'ye (10.438,41 USDC) el koyar ve 40.000 USDC'ye karşı 0,8205 cbBTC bırakır: %83,9 LTV ve 1,026 sağlık faktörü, yani yeniden sağlıklı. Burada bir dilim her zaman işe yarar, çünkü LIF × LLTV = 0,898, 1'in altındadır. Ama hiçbir şey bir likidatörü borcun tamamı yerine dilimi seçmeye zorlamaz.
+
+### cbBTC 50.000 olana kadar kimse likide etmezse ne olur?
+
+50.000 USDC'de teminatınız tam olarak borcunuz kadar eder; bu da borç × LIF'ten azdır. 1 cbBTC'nin tamamına el koymak yalnızca 50.000 ÷ 1,0438 = 47.900 USDC geri öder. Teminatınızın tamamını kaybedersiniz ve kalan 2.100 USDC, piyasanın borç verenlerinin üstlendiği batık borç olarak silinir.
+
+## Morpho Blue'da batık borca ne olur?
+
+Bir likidasyon borç alanı hiç teminatsız ama biraz borçla bıraktığında, sözleşme o borcu aynı işlemde siler. Kalan borcu piyasanın toplam borçlarından, aynı tutarı da toplam arzından düşer; böylece o piyasadaki her borç veren payı oranında kaybeder. Diğer piyasalardaki borç verenler etkilenmez, çünkü her Blue piyasası izoledir.
+
+Teminatın değeri borç çarpı LIF'ten az olduğunda batık borç mümkün hale gelir. %86'lık bir piyasada bu, %95,8'in üzerindeki her LTV'dir ve bir pozisyon buna ancak fiyat, kimse likide etmeden LLTV'nin ötesine geçerse ulaşabilir. Bu olur, ama büyük tutarlarda nadiren: Morpho'nun API'si Ethereum ve Base'de 1.428 Blue likidasyonunda batık borç kaydeder; çoğu 1 ABD dolarının altında ya da Morpho uygulamasının listelemediği piyasalarda.
+
+Borç alan için sonuç her iki durumda da aynıdır: teminatın tamamı gider ve borç kalmaz. Borç verenler için ise nasıl borç verdiklerine bağlıdır: bir Morpho Vault V2 zararı pay fiyatına yansıtır, eski V1.1 kasaları ise kendi paylarına yansıtmaz. Aave bunu farklı ele alır: v3.3'ten beri kalan borcu Umbrella staker'larının karşılayabileceği bir açık (deficit) olarak kaydeder ([Aave'de batık borç](/tr/blog/aave-likidasyonu-nasil-isler#bir-likidasyon-batık-borc-bırakabilir-mi)).
+
+## Oracle bir likidasyonda nasıl bir rol oynar?
+
+Oracle, her likidasyon kararı için fiyatı belirler. Her piyasa, teminatın fiyatını kredi token'ı cinsinden döndüren bir oracle belirtir; hem bir pozisyonun likide edilebilir hale geldiği an hem de bir likidatörün aldığı teminat miktarı borsalardaki fiyatları değil, bu fiyatı kullanır. Oracle'ları Morpho seçmez: piyasayı kim oluşturursa o seçer. Piyasanın oracle adresi asla değiştirilemez, ama bir oracle'ın okuduğu fiyat akışları, onları güncelleyebilen başkaları tarafından işletiliyor olabilir. Örneğin Base örneğindeki BTC/USD fiyat akışının, onu yeni bir kaynağa yönlendirebilen bir sahibi vardır.
+
+Bir oracle'ın neyi ölçtüğü sizin için önemlidir. Base örnek piyasasının oracle'ı cbBTC için bir BTC/USD fiyat akışı kullanır ve USDC'yi tam olarak 1 ABD doları kabul eder; bu yüzden iki token'dan birinin depeg'i (dolar sabitinin kaybı) onu oynatmaz. Morpho'nun Chainlink uyumlu fiyat akışları için referans oracle'ı, bir fiyatın ne kadar eski olduğunu ya da sınırlar içinde olup olmadığını kontrol etmez ve L2 sequencer kesintileri için bir kontrol eklemez.
+
+Bir oracle sorunu borç alanlara iki şekilde zarar verebilir:
+
+- **Yanlış ya da manipüle edilmiş bir fiyat.** Morpho'nun risk sayfası, hiçbir oracle'ın manipülasyona karşı bağışık olmadığı ve bunun likidasyonlara, hatta batık borca yol açabileceği konusunda uyarır.
+- **Yanıt vermeyi bırakan bir oracle.** Borç almak, teminat çekmek ve likide etmek oracle'ı okur ve başarısız olur. Geri ödemek ve teminat eklemek onu okumaz, bu yüzden kimse pozisyonunuzu likide edemezken siz pozisyonunuzu yine de iyileştirebilirsiniz.
+
+## Morpho Midnight likidasyonları nasıl farklıdır?
+
+Morpho Midnight piyasaları, bir token'ı belirli bir vade tarihine kadar sabit faizle, her biri kendi LLTV'si, oracle'ı ve likidasyon imleci (liquidation cursor; yukarıdaki teşvik formülündeki 0,3, Midnight bunu teminat başına belirler) olan bir ya da daha fazla teminata karşı borç verir. Borcunuz birim olarak sabittir, bu yüzden vadeden önce sağlık faktörünüzü yalnızca teminat fiyatları oynatır. Bir Midnight pozisyonu iki şekilde likide edilebilir:
+
+- **Sağlığa dayalı, her zaman**, borç her teminatın değeri çarpı LLTV'sinin toplamını aştığı sürece. Teşvik o teminatın tam bonusudur ve bir likidasyon yalnızca pozisyonu yeniden sağlıklı hale getirmek için gereken kadarını geri ödeyebilir. İstisna: böyle sınırlı bir likidasyondan sonra kalan teminat piyasanın rcfThreshold değerinden daha azını geri ödeyecekse, o teminat tamamen alınabilir.
+- **Vadeden sonra**, borç kaldıysa, sağlıklı bir pozisyonda bile. Sınır yoktur ve teşvik sıfırdan başlayıp 60 dakika içinde tam bonusa yükselir.
+
+Hangi teminatı alacağını likidatör seçer ve 1,15 sınırı yoktur; 26 Ekim 2026'da listelenen her Midnight piyasası 0,3 imleci ve %62,5 ile %98 arasında teminat LLTV'leri kullanıyordu; bunlar yukarıdaki tabloyla aynı teşvikleri verir. Batık borcu o piyasanın borç verenleri paylaşır. [Midnight sabit faizli kredilerinin nasıl işlediği](/tr/blog/morpho-midnight-sabit-faizli-krediler) vadeyi, gerçek piyasaların eşiklerini ve hesaplı bir örneği ele alır.
+
+## Ön likidasyon nedir?
+
+Ön likidasyon (pre-liquidation), Morpho Blue'da isteğe bağlı bir eklentidir. Bir piyasa için bir ön likidasyon sözleşmesine yetki veren borç alan, LTV, LLTV'nin altına konmuş bir çizgiyi geçtiğinde likidatörlerin bu sözleşmeyi kullanarak, LTV o çizginin altına dönene kadar, çağrı üstüne çağrıyla, o sözleşmede belirlenmiş bir teşvikle borcun dilimlerini geri ödemesine izin verir. LLTV'nin üzerinde normal likidasyon yine geçerlidir.
+
+Base örnek piyasasında bir tane vardır: %83,26 LTV'den itibaren çağrı başına borcun %0,20'sine kadarını geri ödeyebilir (çağrılar tekrarlanabilir), bu oran %86'ya yakın %24,53'e çıkar; teşvik aynı 1,0438'dir. Yalnızca yetki verdiyseniz devreye girer. Morpho bu özelliği kaldırıyor: uygulaması yeni pozisyon kabul etmiyor ve yardım merkezi, bu özelliği kullanan borç alanlardan onu kapatmalarını istiyor. [Morpho ön likidasyonu](/tr/blog/morpho-on-likidasyon) koşulları ve onu nasıl kontrol edip iptal edeceğinizi açıklar.
+
+## Morpho likidasyonu Aave'ninkinden nasıl farklıdır?
+
+Özü aynıdır: 1'in altında bir likidatör borcu geri öder ve teminatı artı bir bonusu alır. Çevresindeki kurallar farklıdır ([Aave likidasyonu nasıl işler](/tr/blog/aave-likidasyonu-nasil-isler)):
+
+|                          | Aave V3                                                                 | Morpho Blue                                | Morpho Midnight                                                                                                                                 |
+| ------------------------ | ----------------------------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tek seferde ne kadar     | Borcun %50'si ya da %100'ü, artı küçük kalıntılar (dust) için bir kural | Tek çağrıda borcun tamamına kadar          | Vadeden önce sağlığı geri getiren kadarı (kalan, rcfThreshold'dan daha azını geri ödeyecekse bir teminatın tamamı); vadeden sonra borcun tamamı |
+| Bonus                    | Her teminat varlığı için yönetişim belirler                             | Piyasanın LLTV'si ile sabittir             | Teminat başına, LLTV'sinden ve imlecinden                                                                                                       |
+| Bonusu kim alır          | Likidatör, eksi bir protokol ücreti                                     | Likidatör, tamamını                        | Likidatör                                                                                                                                       |
+| Kurallar değişebilir mi? | Yönetişim ve risk stewards onları değiştirebilir                        | Hayır, piyasa oluşturulurken sabitlenir    | Piyasa oluşturulurken sabitlenir                                                                                                                |
+| Duraklatma               | Varlıklar bir ek süreyle duraklatılabilir                               | Duraklatma yok                             | Duraklatma yok                                                                                                                                  |
+| Batık borç               | Umbrella staker'larının karşılayabileceği bir açık (deficit)            | O piyasanın borç verenlerine karşı silinir | O piyasanın borç verenlerine dağıtılır                                                                                                          |
+| Bir pozisyonun kapsadığı | Tek pozisyonda birçok varlık                                            | Bir teminat, bir kredi token'ı             | Bir kredi token'ı, birkaç teminat                                                                                                               |
+
+## Morpho'da likide olmaktan nasıl kaçınabilirsiniz?
+
+- **LLTV'nin altında bir tampon tutun.** Biri likide etmeden önce toparlanan bir pozisyon yeniden güvendedir, ama fiyatın daha da düşmesini hiçbir şey engellemez ve gelen ilk likidatör borcunuzun tamamını bir kerede geri ödeyebilir.
+- **Erken geri ödeyin ya da teminat ekleyin.** İkisi de LTV'nizi hemen düşürür, hiçbir teşvik maliyeti yoktur ve oracle başarısız olsa bile çalışır.
+- **Oracle'ınızı tanıyın.** Borç almadan önce piyasanızın hangi oracle'ı kullandığını ve neyi ölçtüğünü kontrol edin.
+- **Midnight'ta vadeden önce geri ödeyin.** Vadeden sonra kalan her borç, sağlıklı olsun olmasın, likide edilebilir.
+- **Eski bir ön likidasyon var mı kontrol edin.** Bir zamanlar "Auto-deleverage" (ön likidasyon) özelliğini açtıysanız, Morpho bunu kaldırıyor ve borç alanlardan kapatmalarını istiyor; [Morpho ön likidasyonu](/tr/blog/morpho-on-likidasyon) nasıl yapılacağını gösterir.
+
+## Uyarılar nasıl yardımcı olabilir?
+
+Tokenping, uyarı kurduğunuz her Morpho borç pozisyonunu, Morpho uygulamasında listelenen piyasalarda 5 dakikada bir kontrol eder: 14 ağda Morpho Blue ve Morpho Midnight. Midnight uyarıları Morpho'nun API'sinin listelediği piyasaları kapsar. 26 Ekim 2026'da bunlar Ethereum ve Base üzerindeydi; Tokenping, Morpho orada Midnight piyasaları listelediğinde Arc ve Robinhood Chain'i de kapsar. Her sağlık faktörünü Morpho'nun API'sinden değil, Morpho'nun kendi matematiğiyle zincirden hesaplar. Bir sağlık faktörü belirlediğiniz eşiğin (1,02 ile 10 arası) altında kaldığı sürece her kontrol, seçtiğiniz her kanala bir mesaj gönderir: Signal, Telegram ya da e-posta. Bir Blue piyasasında bir ön likidasyon sözleşmesine yetki verdiyseniz, uyarı iki çizgiden daha düşük olanına göre ölçer: LLTV ya da ön likidasyon çizgisi. Bir Midnight kredisi ayrıca vadeden önceki son 7 gününde bir ve son 24 saatinde bir hatırlatma alır, ardından vadeden sonra borç kaldığı sürece her kontrolde bir uyarı alır.
+
+[Morpho pozisyonlarınıza bakabilirsiniz](/tr/morpho); bu ödeme gerektirmez. Uyarıların ücreti <AlertPrice />. Bir uyarı size harekete geçmek için zaman verir, ama bir fiyat iki kontrol arasında LLTV'nizin ötesine geçebilir ve bir uyarı likidasyonu önlemez.
+
+## Kaynaklar
+
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) ve [IMorpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/interfaces/IMorpho.sol), morpho-org/morpho-blue: sağlık kontrolü, likidasyon, teşvik formülü, batık borç ve oracle varsayımları (erişim tarihi: 26 Ekim 2026)
+- [Midnight.sol](https://github.com/morpho-org/midnight/blob/main/src/Midnight.sol) ve [ConstantsLib.sol](https://github.com/morpho-org/midnight/blob/main/src/libraries/ConstantsLib.sol), morpho-org/midnight: likidasyon modları, RCF, teşvik rampası ve slashing (erişim tarihi: 26 Ekim 2026)
+- [Pre-liquidation README ve PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation), morpho-org/pre-liquidation (erişim tarihi: 26 Ekim 2026)
+- [ChainlinkDataFeedLib.sol](https://github.com/morpho-org/morpho-blue-oracles/blob/main/src/morpho-chainlink/libraries/ChainlinkDataFeedLib.sol), morpho-org/morpho-blue-oracles: eskilik, sınır ya da sequencer kontrolü yok (erişim tarihi: 26 Ekim 2026)
+- [Liquidation on Morpho](https://docs.morpho.org/learn/concepts/liquidation): likidatörler, açık artırma yok, tek seferde %100'e kadar, protokol ücreti yok, kasalarda batık borç (erişim tarihi: 26 Ekim 2026)
+- [Morpho geliştirici belgeleri: likidasyon](https://docs.morpho.org/developers/borrow/concepts/liquidation): LLTV'ye göre teşvik ve batık borç (erişim tarihi: 26 Ekim 2026)
+- [Morpho belgeleri: oracle'lar](https://docs.morpho.org/learn/concepts/oracle): oracle seçimi ve değiştirilemezlik (erişim tarihi: 26 Ekim 2026)
+- [Morpho belgeleri: Morpho Blue](https://docs.morpho.org/learn/concepts/blue): kalıcı piyasa parametreleri ve etkin LLTV'ler (erişim tarihi: 26 Ekim 2026)
+- [Morpho belgeleri: Midnight likidasyonları](https://docs.morpho.org/learn/concepts/midnight/liquidations), [teminat, sağlık ve likidasyonlar](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) ve [Midnight nedir](https://docs.morpho.org/learn/concepts/midnight) (erişim tarihi: 26 Ekim 2026)
+- [Morpho belgeleri: riskler](https://docs.morpho.org/learn/resources/risks): oracle, likidasyon, batık borç ve karşı taraf riski (erişim tarihi: 26 Ekim 2026)
+- [Morpho API](https://api.morpho.org/graphql): likidasyon ve batık borç sayıları, piyasa listesi, borç faizi, borç pozisyonları ve Midnight piyasaları (erişim tarihi: 26 Ekim 2026)
+- [Base ağında Morpho Blue](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), Base blok 53102870'te USDC | cbBTC (86%) piyasası (erişim tarihi: 26 Ekim 2026)
+- [Piyasanın oracle'ı](https://basescan.org/address/0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9#readContract) ve Base ağındaki [BTC/USD fiyat akışı](https://basescan.org/address/0x64c911996D3c6aC71f9b455B1E8E7266BcbD848F#readContract): 53102870 numaralı bloktaki fiyat ve fiyat akışının sahibi (erişim tarihi: 26 Ekim 2026)
+- Base ağındaki [piyasanın ön likidasyon sözleşmesi](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374#readContract): 53102870 numaralı bloktaki parametreleri (erişim tarihi: 26 Ekim 2026)
+- [Ethereum'da Morpho Midnight](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract): 26274998 numaralı blokta etkin LLTV'ler ve likidasyon imleçleri (erişim tarihi: 26 Ekim 2026)
+
+_Eğitim amaçlı içeriktir, finansal tavsiye değildir. Uyarılar riski azaltır ama likidasyonu önlemez._

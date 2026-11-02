@@ -20,6 +20,8 @@ import {
   plural,
   ptForMarket,
   ptOnMarket,
+  trForMarket,
+  trOnMarket,
   viMarket,
 } from "~~/i18n/format";
 
@@ -177,6 +179,23 @@ describe("Polish formatting", () => {
     expect(plOnMarket("Base", "network")).toBe("w sieci Base");
     expect(plForMarket("Base")).toBe("dla sieci Base");
     expect(plForMarket("USDC | cbBTC (86%)", "market")).toBe("dla rynku USDC | cbBTC (86%)");
+  });
+});
+
+describe("Turkish formatting", () => {
+  it("joins with ve and veya, writes Turkish dates, a decimal comma and the market wording", () => {
+    expect(joinList("tr", ["Signal", "Telegram", "e-posta"])).toBe("Signal, Telegram ve e-posta");
+    expect(joinList("tr", ["Signal", "e-posta"], "disjunction")).toBe("Signal veya e-posta");
+    expect(formatLongDate("tr", "2026-10-14")).toBe("14 Ekim 2026");
+    expect(formatDecimal("tr", "1.42")).toBe("1,42");
+    // Turkish uses one for 1 and other for everything else; the noun stays singular after a number either way.
+    expect(plural("tr", 1, { one: "1 ağ", other: "1 ağ (other)" })).toBe("1 ağ");
+    expect(plural("tr", 3, { one: "x", other: "3 ağ" })).toBe("3 ağ");
+    expect(trOnMarket("Arbitrum")).toBe("Arbitrum ağında");
+    expect(trOnMarket("Ethereum (V4 Lido)")).toBe("Ethereum (V4 Lido) piyasasında");
+    expect(trOnMarket("Base", "network")).toBe("Base ağında");
+    expect(trForMarket("Base")).toBe("Base ağı için");
+    expect(trForMarket("USDC | cbBTC (86%)", "market")).toBe("USDC | cbBTC (86%) piyasası için");
   });
 });
 

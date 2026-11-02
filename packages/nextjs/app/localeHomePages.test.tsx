@@ -87,6 +87,13 @@ const COPY: Partial<Record<Locale, CopyRules>> = {
     wrongAddress: /(?<!\p{L})(?:Pan|Pani|Panu|Panią|Państw\p{L}*)(?!\p{L})/u,
     claims: /w czasie rzeczywistym|natychmiastow|wieloprotokołow/iu,
   },
+  tr: {
+    h1Channels: /Signal ve e-posta/,
+    badges: ["Signal", "E-posta"],
+    // siz throughout: never the familiar sen, seni, sana, senin.
+    wrongAddress: /(?<!\p{L})(?:sen|seni|sana|senin|sende|senden)(?!\p{L})/iu,
+    claims: /gerçek zamanlı|(?<!\p{L})anında(?!\p{L})|çoklu[- ]?protokol/iu,
+  },
 };
 
 const TRANSLATED = LOCALES.filter(locale => locale !== "en");

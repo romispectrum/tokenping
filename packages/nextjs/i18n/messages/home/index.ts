@@ -8,6 +8,7 @@ import { MESSAGES as it } from "./it";
 import { MESSAGES as pl } from "./pl";
 import { MESSAGES as pt } from "./pt";
 import type { HomeMessages } from "./shared";
+import { MESSAGES as tr } from "./tr";
 import { MESSAGES as vi } from "./vi";
 import type { Localized } from "~~/i18n/locales";
 
@@ -19,4 +20,4 @@ import type { Localized } from "~~/i18n/locales";
 
 export type { HomeMessages } from "./shared";
 
-export const HOME_MESSAGES: Localized<HomeMessages> = { en, cs, es, hi, de, vi, fr, pt, it, pl };
+export const HOME_MESSAGES: Localized<HomeMessages> = { en, cs, es, hi, de, vi, fr, pt, it, pl, tr };

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { LOCALES, type Locale } from "~~/i18n/locales";
 
 // Every page's <title> and meta description, in every language, within what a search result shows: 60 and 155
@@ -30,13 +30,20 @@ const loadBuilders = async (): Promise<Record<string, MetadataBuilder>> => {
 const shownTitle = ({ title }: Metadata) =>
   typeof title === "string" ? `${title} | Tokenping` : (title as { absolute: string }).absolute;
 
-afterEach(() => {
+// Loaded once for every language: each import pulls in every post of every language, which takes seconds.
+let builders: Record<string, MetadataBuilder>;
+
+beforeAll(async () => {
+  builders = await loadBuilders();
+}, 60_000);
+
+afterAll(() => {
   vi.unstubAllEnvs();
 });
 
 describe("page metadata", () => {
-  it.each(LOCALES)("keeps every %s page's title within 60 and description within 155 characters", async locale => {
-    for (const [page, build] of Object.entries(await loadBuilders())) {
+  it.each(LOCALES)("keeps every %s page's title within 60 and description within 155 characters", locale => {
+    for (const [page, build] of Object.entries(builders)) {
       const metadata = build(locale);
       const title = shownTitle(metadata);
       const description = String(metadata.description);

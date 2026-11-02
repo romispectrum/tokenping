@@ -1,0 +1,191 @@
+export const meta = {
+  slug: "morpho-midnight-sabit-faizli-krediler",
+  title: "Morpho Midnight sabit faizli krediler: nasıl işler?",
+  description:
+    "Morpho Midnight sabit faizli krediler nasıl işler: faiz, vadede ne ödersiniz, birkaç teminatla sağlık ve ödenmeyen borç neden likide edilebilir.",
+  h1: "Morpho Midnight sabit faizli krediler nasıl işler ve vadede ne olur?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Sabit faizli bir Morpho Midnight kredisi nasıl işler ve vadeye kadar geri ödemezsem ne olur?",
+  readingMinutes: 11,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Morpho Midnight, Morpho'nun sabit faizli ve sabit vadeli borç verme hizmetidir. Borç birimlerini nominal değerin
+  altında satarak borç alırsınız: her birim size şimdi bir kredi tokenından biraz azını verir ve piyasanın vadesinde tam
+  olarak bir tane geri ödeme sözüdür; bu yüzden faiz borç aldığınızda sabitlenir ve borcunuz büyümez. Vadeden önce
+  pozisyonunuz yalnızca her teminatın LLTV'siyle ağırlıklandırılmış teminatınız borcu artık karşılamıyorsa (1'in altında
+  bir sağlık faktörü) likide edilebilir. Vade geçtikten sonra kalan her borç, sağlık faktörünüz ne olursa olsun likide
+  edilebilir ve likidatörün bonusu ilk bir saat içinde artar. Vadeden önce geri ödeyin, ardından teminatınızı kendiniz
+  çekin.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Rakamlar ve okundukları blok numaraları: content/blog/snapshots/morpho-midnight-fixed-rate-loans.md */}
+
+## Morpho Midnight nedir?
+
+Morpho Midnight, Morpho'nun sabit bir tarihe, yani vadeye kadar sabit faizli kredi sunan bölümüdür. Morpho'nun belgeleri ona, değişken faizli piyasaları olan Morpho Blue'nun yanında "Fixed Rate Markets (Midnight)" (sabit faizli piyasalar) der. Morpho'nun sağlık hesabında yeniyseniz, bu rehberin üzerine kurulduğu [Morpho sağlık faktörü rehberi](/tr/blog/morpho-saglik-faktoru) ile başlayın.
+
+Midnight 21 Temmuz 2026'da Base'de, tek bir çiftle (cbBTC teminat, USDC kredi) ve birkaç vadeyle herkese açıldı. Bu rehberde bir Midnight piyasası bu çifte göre adlandırılır: "cbBTC/USDC piyasası" teminat olarak cbBTC alır ve USDC borç verir. Aynı sözleşme kodu artık beş ağda çalışıyor:
+
+| Ağ              | Midnight sözleşmesinde kod olduğu tarih | Morpho'nun API'sinin listelediği piyasalar (26 Ekim 2026) |
+| --------------- | --------------------------------------- | --------------------------------------------------------- |
+| Base            | 6 Temmuz 2026                           | Evet; listelenen 19 piyasada açık kredi var               |
+| Ethereum        | 20 Ağustos 2026                         | Evet; listelenen 12 piyasada açık kredi var               |
+| Arc             | 11 Eylül 2026                           | Yok (13 piyasa mevcut)                                    |
+| Robinhood Chain | Tarih mevcut değil                      | Yok (34 piyasa mevcut)                                    |
+| Tempo           | 3 Ekim 2026                             | Yok (API hiç piyasa göstermiyor)                          |
+
+Herkes bir Midnight piyasası oluşturabilir, bu yüzden bir piyasanın zincir üzerinde var olması pek bir şey söylemez. Morpho'nun uygulamasının gösterdiği piyasalar API'sinin listeledikleridir ve 26 Ekim 2026'da bunların hepsi Ethereum ve Base'deydi.
+
+Morpho'nun daha önceki bir yazısı Midnight'ı Vaults V2 ile birlikte "Morpho V2" olarak sunmuştu. Lansman yazısı ise Midnight'ın ne Blue'nun ikinci sürümü ne de onun yerine geçen bir şey olduğunu söylüyor: ikisi yan yana çalışıyor. Ayrı sözleşmelerdir.
+
+## Bir Midnight piyasası nasıl tanımlanır?
+
+Bir Midnight piyasası oluşturulurken sabitlenir ve hiç değişmez. Şunlarla tanımlanır:
+
+- **Bir kredi tokenı**, örneğin USDC.
+- **Bir veya daha fazla teminat** (en fazla 128); her birinin kendi LLTV'si (likidasyondan önce borçlanabileceğiniz teminat değeri payı), kendi oracle'ı (fiyat kaynağı) ve likidatörün bonusunu belirleyen kendi likidasyon imleci (liquidation cursor) vardır.
+- **Bir vade**: piyasadaki her kredinin ödenmesi gereken tarih ve saat.
+- **Bir kurtarma eşiği** (rcfThreshold): bir teminatın küçük bir miktarının ne zaman tamamen likide edilebileceğini belirler (aşağıya bakın).
+- **İsteğe bağlı kapılar** (gates): kimin borç verebileceğini, borç alabileceğini veya likide edebileceğini sınırlayabilir. Bir kapı, geri ödemenizi veya çıkmanızı asla engelleyemez. 26 Ekim 2026'da Ethereum veya Base'de listelenen piyasaların hiçbirinde kapı yoktu.
+
+Bir borç alan, bir piyasanın teminatlarından en fazla 16'sını aynı anda kullanabilir. Yeni bir teminat kabul etmek veya vadeyi değiştirmek için birinin yeni bir piyasa oluşturması gerekir. İki ağda da içinde kredi olan listelenmiş piyasaların vadesi, ayın son cuma günü saat 15:00 UTC'dir: 30 Ekim, 27 Kasım ve 25 Aralık 2026 ile 26 Mart 2027.
+
+## Sabit faiz nasıl belirlenir ve vadede ne borçlu olursunuz?
+
+Faiz bir faiz oranı modelinden değil, bir fiyattan gelir. Midnight borcu birim olarak sayar ve bir borç birimi, vadede bir kredi tokenı geri ödeme sözüdür. Borç almak için birimleri borç verenlere 1'in altında bir fiyattan satarsınız: 0,99 fiyatında her birim için şimdi 0,99 USDC alırsınız ve vadede birim başına 1 USDC borçlu olursunuz. Tüm süre için faiz, 1 bölü fiyat eksi 1'dir ve Morpho'nun belgeleri bunu kalan yıl payına bölerek yıllık bir rakama çevirir.
+
+Fiyatlar, borç verenlerin ve borç alanların yayımladığı tekliflerden gelir; bu yüzden aynı piyasadaki iki borç alan farklı faiz ödeyebilir. 26 Ekim 2026'da Morpho'nun API'si, Base'deki 25 Aralık 2026 vadeli cbBTC/USDC piyasasındaki 117 borç alanın faizlerini yıllık %1,93 ile %6,84 arasında gösteriyordu.
+
+Ne borçlu olduğunuz basittir: sattığınız birim sayısı kadar kredi tokenı, vadede ödenecek. Kredi sürerken üzerine hiçbir şey eklenmez. Midnight'ın sözleşmesi bir borç alanın borcunu yalnızca daha fazla borç aldığınızda, geri ödediğinizde, birimleri geri satın aldığınızda veya likide edildiğinizde değiştirir; vadeden önce ya da sonra borca faiz işlemez.
+
+Midnight'ın iki ücreti vardır; ikisi de piyasa başına belirlenir ve bu rehberdeki iki piyasada ikisi de sıfırdır:
+
+- **Bir takas ücreti** (settlement fee): her işlemde, bir teklifi kabul eden tarafından ödenir. Sözleşme bunu vadeye kalan süreye göre sınırlar: bir gün için %0,0014'ten 360 gün için %0,5'e kadar.
+- **Sürekli bir ücret** (continuous fee): yalnızca borç verenler tarafından üstlenilir ve yıllık %1 ile sınırlıdır.
+
+## Birkaç teminatla sağlık faktörü nasıl hesaplanır?
+
+Midnight'ın sözleşmesi sağlığı evet ya da hayır olarak kontrol eder: bir pozisyon, azami borcu en az borcu kadar olduğu sürece sağlıklıdır. Azami borç, kullandığınız her teminat için, o teminatın oracle fiyatıyla kredi tokenı cinsinden değeri çarpı kendi LLTV'sinin toplamıdır. Morpho'nun belgeleri kontrolü maxDebt ≥ debt olarak ifade eder; sağlık faktörü aynı kontrolün oran olarak yazılmış hâlidir, azami borç bölü borç, ve 1'in altında pozisyon likide edilebilir.
+
+Ethereum'da listelenen en büyük piyasayı ele alalım: farklı LLTV'lere sahip iki teminata karşı USDC borç verir: %98 ile USDC'nin kendisi ve %86 ile cbBTC. cbBTC 80.011,48 USDC iken (26 Ekim 2026'da oracle'ının fiyatı), [Morpho sağlık faktörü rehberindeki](/tr/blog/morpho-saglik-faktoru) örnek pozisyon, yani 40.000 USDC borca karşı 0,5 cbBTC ve 10.000 USDC teminat, şöyle görünür:
+
+| Teminat     | Değer (USDC) | LLTV | Sayılan tutar (USDC) |
+| ----------- | ------------ | ---- | -------------------- |
+| 0,5 cbBTC   | 40.005,74    | %86  | 34.404,94            |
+| 10.000 USDC | 10.000,00    | %98  | 9.800,00             |
+| Toplam      | 50.005,74    |      | 44.204,94            |
+
+Sağlık faktörü 44.204,94 ÷ 40.000 = 1,105'tir ve USDC teminatı değerini korurken cbBTC yaklaşık 70.233 USDC'nin, yani %12,2 daha düşük bir seviyenin altına inerse 1'in altına düşer. Fikir, [Aave'deki ikinci bir teminatla](/tr/blog/aave-saglik-faktoru#ikinci-bir-teminat-varlıgı-ne-degistirir) aynıdır: her varlık kendi oranıyla sayılır.
+
+Bir çekim sizi sağlıklı bıraktığı sürece istediğiniz zaman teminat ekleyebilir, çıkarabilir veya değiştirebilirsiniz. Kullandığınız teminatlardan herhangi birinin oracle'ı yanıt vermeyi bırakırsa, borcunuz olduğu sürece pozisyonunuz için sağlık kontrolleri, borçlanma, çekimler ve likidasyonlar başarısız olur. Geri ödeme yine çalışır ve borcunuz sıfır olunca hiçbir oracle olmadan çekim yapabilirsiniz.
+
+## Bir Midnight kredisi ne zaman likide edilebilir?
+
+Bir Midnight kredisi iki şekilde likide edilebilir: sağlıksız olduğunda, herhangi bir zamanda; ya da vadeden sonra borç kaldığında, sağlığı ne olursa olsun. [Morpho likidasyonu nasıl işler](/tr/blog/morpho-likidasyonu-nasil-isler) ortak mekanizmayı anlatıyor; burada Midnight'a özgü olanlar var.
+
+### Vadeden önce
+
+Vadeden önce yalnızca sağlık önemlidir. Sağlık faktörü 1'in altına düştüğünde bir likidatör borcunuzun bir kısmını geri ödeyip o tutar artı bir bonus değerinde teminat alabilir. Bonus teminat başına belirlenir: 1 ÷ (1 − imleç × (1 − LLTV)). %86 LLTV ve 0,3 imleçle cbBTC için bu 1,0438, yani %4,38 bonustur; %98'deki USDC için yaklaşık %0,6. Likidatör teminatlarınızdan hangisini alacağını seçer ve Morpho'nun belgeleri hangisi en çok kazandırıyorsa onu seçeceği konusunda uyarır.
+
+Tek seferde ne kadarının gidebileceği büyüklüğe bağlıdır. Normalde bir likidatör yalnızca pozisyonu yeniden sağlıklı hâle getirecek kadar geri ödeyebilir. İstisna: böyle sınırlı bir likidasyondan sonra kalan teminat piyasanın rcfThreshold değerinden daha az geri ödeyecekse, o teminat tamamen alınabilir. Eşik, aşağıdaki hesaplamalı örnekteki Base cbBTC/USDC piyasasında 3.000 USDC, yukarıdaki Ethereum piyasasında 300.000 USDC'dir. Bu büyüklüğün altındaki tek teminatlı bir kredide pozisyonun tamamı tek seferde gidebilir.
+
+### Vadeden sonra
+
+Vade saati geçtikten sonra kalan her borç, sağlık faktörünüz 2 ya da 10 olsa bile likide edilebilir. Sözleşmenin vade sonrası yolu yalnızca saati kontrol eder. Morpho'nun gerekçesi, borç verenlerin vadede çekim yapmayı beklemesi ve ödeme yapmamış bir borç alanın, sağlıklı olsun ya da olmasın, onları engellemesidir.
+
+Bu yoldaki bonus vadede sıfırdan başlar ve 60 dakika boyunca eşit olarak tam bonusa yükselir. Pozisyonunuz vadeden sonra aynı zamanda sağlıksızsa, likidatör bunun yerine sağlığa dayalı yolu kullanıp tam bonusu hemen alabilir. Vade sonrası yolda ne kadar geri ödenebileceğine bir sınır yoktur, bu yüzden borcun tamamı tek seferde likide edilebilir. Vadeden sonra artık borç ekleyemezsiniz, ama geri ödemeye, birimleri geri satın almaya ve teminat çekmeye devam edebilirsiniz.
+
+<Callout tone="warning">
+  Vadenin tam saniyesinde sağlıklı bir pozisyon hâlâ güvendedir; bir saniye sonra değildir. Sağlıklı bir pozisyonda geç
+  geri ödeme size tam likidasyon bonusuna kadar mal olabilir: %86 LLTV'li bir cbBTC kredisinde borcun yaklaşık %4,4'ü.
+</Callout>
+
+Bir likidasyon teminatın karşılayamadığı bir borç bırakırsa, açık silinir ve yalnızca o piyasanın borç verenleri arasında paylaştırılır.
+
+## Erken, vadede nasıl geri ödersiniz ya da daha sonraki bir vadeye nasıl devredersiniz?
+
+Bir Midnight kredisinden çıkmanın üç yolu ve isteğe bağlı olarak katılabileceğiniz bir yedek yol vardır:
+
+- **Doğrudan geri ödeyin.** Geri ödeme, vadeden önce, vadede veya vadeden sonra, birim başına tam olarak bir kredi tokenına mal olur. Her zaman çalışır ve erken çıkmak için ödemeniz gereken en yüksek tutarı belirler. Erken geri ödemek faizin hiçbir kısmını iade etmez: vadede ödenecek tutarın tamamını ödersiniz, sadece daha erken.
+- **Vadeden önce birimleri geri satın alın.** Bunun yerine borç verenlerin satış tekliflerinden 1'in altında bir fiyatla birim satın alabilirsiniz; bu, o kadar borcu nominal değerin altında bir maliyetle kapatır. Çıkmak istediğiniz anda birinin birim satışa sunmasına bağlıdır.
+- **Daha sonraki bir vadeye devredin.** Morpho'nun belgeleri, geri çağırmalar (callbacks) kullanarak tek bir işlemde bir piyasada geri ödeme veya geri alım yapıp daha geç vadeli bir piyasada borç almayı anlatır. Morpho'nun temmuzdaki lansman yazısı otomatik devretmeyi sonraki bir özellik olarak listelemişti; 26 Ekim 2026'da belgeler devretmeyi yalnızca kendiniz yaptığınız ya da aşağıdaki Blue yedeği üzerinden yapılan bir şey olarak anlatıyor.
+- **Blue'ya geri dönün.** Morpho, beş ağın hepsine BlueFallbackRolling adlı bir sözleşme dağıttı. Buna katılır ve hem Midnight'ta hem de Blue'da ona yetki verirseniz, herkes Midnight borcunuzu ve teminatınızı, sizin seçtiğiniz bir zamandan itibaren, sizin seçtiğiniz değişken faizli bir Blue piyasasına taşıyabilir. Çağıranın ödülü, borcun sizin belirlediğiniz bir payıdır; sizin belirlediğiniz bir başlangıç ve bitiş zamanı arasında büyür, borcun tamamına ulaşabilir ve yeni Blue borcunuza eklenir. Blue piyasasınınkiyle eşleşen tam olarak bir teminat gerektirir.
+
+## Geri ödedikten sonra teminatınıza ne olur?
+
+Teminatınız siz çekene kadar olduğu yerde kalır. Geri ödeme onu geri göndermez. Borcunuz sıfır olunca sağlık kontrolü hiçbir oracle'a sormadan geçer, böylece tamamını çekebilirsiniz ve hiçbir kapı sizi durduramaz. Onu yalnızca siz, yetki verdiğiniz bir hesap veya likide edilebilir bir pozisyonun likidatörü taşıyabilir.
+
+Aynısı bir likidasyondan sonra da geçerlidir: likidatörün almadığı teminat, çekmeniz için pozisyonunuzda kalır.
+
+## Hesaplamalı örnek: 25 Aralık 2026 vadeli bir cbBTC/USDC kredisi
+
+Midnight'ın açılışta sunduğu çift üzerindeki bu piyasa, herkese açık lansmandan bir hafta önce, 14 Temmuz 2026'da oluşturuldu ve Base'de listelenen en büyük piyasadır. 26 Ekim 2026'da saat 06:06 UTC'de zincir üzerinden okunan değerler:
+
+| Alan                | Değer                                     |
+| ------------------- | ----------------------------------------- |
+| Kredi tokenı        | USDC                                      |
+| Teminat             | cbBTC, tek teminat                        |
+| LLTV                | %86                                       |
+| Likidasyon bonusu   | %4,38 (imleç 0,3)                         |
+| Vade                | 25 Aralık 2026, 15:00 UTC, 60,4 gün sonra |
+| rcfThreshold        | 3.000 USDC                                |
+| Kapılar ve ücretler | Yok                                       |
+| Vadede ödenecek     | 117 borç alan genelinde 1.530.235,58 USDC |
+| cbBTC fiyatı        | 80.097,33 USDC (piyasanın oracle'ı)       |
+
+**Borç alma.** Bir borç alanın birim satabileceği en iyi fiyat 0,9901297 idi. Bu fiyattan 10.000 USDC almak, 25 Aralık 2026'da yaklaşık 10.099,69 USDC borçlu olmak demektir: 60,4 gün için %0,997, yıllık yaklaşık %6,0. Bu fiyat dakikadan dakikaya değişir.
+
+**Tipik bir pozisyon.** Medyan borç alan, değeri 48,07 USDC olan 0,00060018 cbBTC'ye karşı vadede 37,08 USDC borçludur. Azami borcu 48,07 × 0,86 = 41,34 USDC'dir, dolayısıyla sağlık faktörü 41,34 ÷ 37,08 = 1,11'dir. cbBTC yaklaşık 71.838 USDC'ye, yani %10,3 aşağıya düşerse 1'e ulaşır.
+
+**cbBTC vadeden önce 71.838 USDC'nin hemen altına düşerse.** Pozisyon 3.000 USDC eşiğinin çok altındadır, bu yüzden bir likidatör 37,08 USDC'nin tamamını geri ödeyip 38,71 USDC değerinde cbBTC alabilir. 43,12 USDC'lik cbBTC'nin yaklaşık 4,41 USDC'si, çekmesi için borç alanda kalır.
+
+**Borç alan geri ödemeyi unutursa ve cbBTC 80.097 USDC'de kalırsa.** 25 Aralık saat 15:00:01 UTC'den itibaren herkes 37,08 USDC'yi geri ödeyip cbBTC alabilir; bir likidatör 15:00:00'dan sonraki herhangi bir saniyede harekete geçebilir. Bonus zamanla büyür: otuz dakika sonra yaklaşık %2,2, bir saat sonra tam %4,38. Vadeden bir saat veya daha uzun süre sonra yapılan bir likidasyon 38,71 USDC değerinde cbBTC alır ve borç alana bunun 9,37 USDC'sini bırakır. 37,08 USDC'yi zamanında geri ödemek, 48,07 USDC'lik cbBTC'nin tamamını, yani net 10,99 USDC'yi korurdu; dolayısıyla bu likidasyon borç alana 1,63 USDC'ye, yani tam bonusa mal olur. Daha erken bir likidasyon daha az maliyetlidir, ama hiçbir şey likidatörü beklemeye zorlamaz.
+
+## Midnight, değişken faizli bir Morpho Blue kredisiyle nasıl karşılaştırılır?
+
+|                            | Morpho Blue                                                                                | Morpho Midnight                                                                                                                            |
+| -------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Faiz                       | Piyasanın faiz oranı modeline göre sürekli değişir                                         | Borç aldığınızda sabitlenir                                                                                                                |
+| Borç                       | Faizle büyür                                                                               | Belirli sayıda birim, büyümez                                                                                                              |
+| Bitiş tarihi               | Yok                                                                                        | Vade                                                                                                                                       |
+| Piyasa başına teminat      | Bir                                                                                        | Bir veya daha fazla, her biri kendi LLTV'siyle                                                                                             |
+| Ne zaman likide edilebilir | Sağlıksız olduğunda                                                                        | Sağlıksız olduğunda veya vadeden sonra kalan her borç                                                                                      |
+| Bonus                      | 1 ÷ (1 − 0,3 × (1 − LLTV)), en fazla %15                                                   | 1 ÷ (1 − imleç × (1 − LLTV)), imleç teminat başına belirlenir, %15 sınırı yok                                                              |
+| Tek seferde ne kadar       | Tek çağrıda borcun tamamına kadar                                                          | Vadeden önce sağlığı geri getiren kadar (kalan rcfThreshold'dan daha az geri ödeyecekse bir teminatın tamamı); vadeden sonra borcun tamamı |
+| Ön likidasyon              | Morpho tarafından kaldırılıyor, bkz. [Morpho ön likidasyon](/tr/blog/morpho-on-likidasyon) | Midnight'ın parçası değil                                                                                                                  |
+| Erken çıkış                | İstediğiniz zaman geri ödeyin                                                              | Nominal değerden geri ödeyin veya satıcı varsa birimleri geri satın alın                                                                   |
+
+Sağlık faktörünüz açısından pratikteki fark şu: Blue'da, Aave'de olduğu gibi yalnızca faiz yüzünden düşebilir ([faiz sıçramaları sağlık faktörünüzü nasıl etkiler](/tr/blog/aave-faiz-oranlari#faiz-sıcramaları-saglık-faktorunuzu-nasıl-etkiler)). Midnight'ta yalnızca teminat fiyatları düştüğünde veya teminat çektiğinizde ya da daha fazla borç aldığınızda düşer. Buna karşılık Midnight, kaçırmamanız gereken bir tarih ekler.
+
+## Uyarılar bir Midnight kredisinde nasıl yardımcı olabilir?
+
+Bir uyarı, Midnight kredisinin iki riski konusunda da sizi uyarabilir: düşen bir sağlık faktörü ve yaklaşan bir vade. Tokenping her 5 dakikada bir kontrol eder. [Morpho paneli](/tr/morpho), bir cüzdanın Morpho uygulamasında listelenen piyasalardaki borç pozisyonlarını 14 ağda, Blue ve Midnight olarak listeler ve pozisyonlarınıza bakmak ödeme gerektirmez. Midnight uyarıları, Morpho'nun API'sinin listelediği piyasaları kapsar. 26 Ekim 2026'da bunlar Ethereum ve Base'deydi; Morpho, Arc ve Robinhood Chain ağlarında Midnight piyasaları listelediğinde Tokenping bunları da kapsar. O zamana kadar bu iki ağda Midnight uyarısı mümkün değildir.
+
+Bir Midnight kredisi için:
+
+- **Sağlık.** Tokenping sağlık faktörünüzü Morpho'nun kendi matematiğiyle zincirden hesaplar, asla Morpho'nun API'sinden almaz. Sağlık faktörü belirlediğiniz eşiğin (1,02 ile 10 arası) altındayken her kontrol, seçtiğiniz her kanala bir mesaj gönderir: Signal, Telegram veya e-posta.
+- **Vade.** Vadeden önceki son 7 gün içinde bir, son 24 saat içinde bir hatırlatma alırsınız.
+- **Vadeden sonra.** Borç kaldığı sürece her kontrol bir uyarı gönderir, çünkü kredi sağlık faktörü ne olursa olsun likide edilebilir.
+
+Uyarıların fiyatı: <AlertPrice />, Aave uyarılarıyla aynı plan. Bir uyarı size harekete geçmek için zaman kazandırır; likidasyonu önlemez ve fiyat iki kontrol arasında hareket edebilir.
+
+## Kaynaklar
+
+- [Morpho belgeleri: Midnight concepts](https://docs.morpho.org/learn/concepts/midnight): birimler, alacak ve borç, erken çıkışlar, teminat ve sağlık (erişim tarihi: 26 Ekim 2026)
+- [Morpho belgeleri: Midnight liquidations](https://docs.morpho.org/learn/concepts/midnight/liquidations): iki likidasyon yolu, vade sonrası bonus artışı ve ödenmemiş borcun vadeden sonra neden likide edilebildiği (erişim tarihi: 26 Ekim 2026)
+- [Morpho belgeleri: offers](https://docs.morpho.org/learn/concepts/midnight/offers) ve [gates](https://docs.morpho.org/learn/concepts/midnight/gates): geri çağırmalarla devretme ve kapıların neyi engelleyip neyi engelleyemeyeceği (erişim tarihi: 26 Ekim 2026)
+- [Morpho belgeleri: market mechanics](https://docs.morpho.org/developers/midnight/concepts/market-mechanics), [collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) ve [fees](https://docs.morpho.org/developers/midnight/concepts/fees) (erişim tarihi: 26 Ekim 2026)
+- [Morpho belgeleri: exit a borrow early](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-early) ve [exit a borrow at maturity](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-by-repaying-in-full-at-maturity) (erişim tarihi: 26 Ekim 2026)
+- [Morpho belgeleri: contract addresses](https://docs.morpho.org/developers/contracts/addresses): her ağdaki Midnight ve BlueFallbackRolling (erişim tarihi: 26 Ekim 2026)
+- [morpho-org/midnight](https://github.com/morpho-org/midnight): Midnight.sol (sağlık kontrolü, likidasyon, geri ödeme, çekimler), ConstantsLib.sol (ücretler, bonus, 60 dakikalık artış, teminat sınırları) ve periphery README (erişim tarihi: 26 Ekim 2026)
+- [morpho-org/morpho-blue](https://github.com/morpho-org/morpho-blue): Blue'nun likidasyon ve bonus sabitleri (erişim tarihi: 26 Ekim 2026)
+- [Now live: Morpho Midnight and the new Markets App](https://morpho.org/blog/now-live-morpho-midnight) (21 Temmuz 2026) ve [Morpho Midnight: what to expect at launch](https://morpho.org/blog/morpho-midnight-what-to-expect-at-launch) (17 Temmuz 2026) (erişim tarihi: 26 Ekim 2026)
+- [Morpho Fixed Rate Markets](https://morpho.org/blog/morpho-v2-liberating-the-potential-of-onchain-loans): Morpho'nun Midnight ve Vaults V2 hakkındaki önceki yazısı (erişim tarihi: 26 Ekim 2026)
+- [Morpho Midnight API](https://api.morpho.org/v0/midnight/markets): listelenen piyasalar, emir defteri ve borç alan pozisyonları (erişim tarihi: 26 Ekim 2026)
+- 53102734 numaralı blokta [Base](https://basescan.org/address/0xAdedD8ab6dE832766Fedf0FaC4992E5C4D3EA18A) ve 26274992 numaralı blokta [Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f) üzerindeki Midnight sözleşmeleri: piyasa tanımları, toplamlar, ücretler ve oracle fiyatları (erişim tarihi: 26 Ekim 2026)
+
+_Eğitim amaçlı içeriktir, finansal tavsiye değildir. Uyarılar riski azaltır ama likidasyonu önlemez._

@@ -1,6 +1,6 @@
 // The site's languages. English is served at the root; the others under their prefix (i18n/localePaths.ts).
 
-export const LOCALES = ["en", "cs", "es", "hi", "de", "vi", "fr", "pt", "it", "pl"] as const;
+export const LOCALES = ["en", "cs", "es", "hi", "de", "vi", "fr", "pt", "it", "pl", "tr"] as const;
 
 export type Locale = (typeof LOCALES)[number];
 
@@ -140,6 +140,16 @@ export const LOCALE_INFO: Record<Locale, LocaleInfo> = {
     name: "Polski",
     englishName: "Polish",
     short: "PL",
+  },
+  // Decimal comma, dot thousands ("12.000,5"), the percent sign first ("%83"), dates "14 Ekim 2026".
+  tr: {
+    htmlLang: "tr",
+    ogLocale: "tr_TR",
+    intl: "tr-TR",
+    numbers: "tr-TR",
+    name: "Türkçe",
+    englishName: "Turkish",
+    short: "TR",
   },
 };
 

@@ -13,6 +13,7 @@ export const LOCALE_PATHS: Record<Locale, { prefix: string; privacy: string }> =
   pt: { prefix: "/pt", privacy: "privacidade" },
   it: { prefix: "/it", privacy: "privacy" },
   pl: { prefix: "/pl", privacy: "prywatnosc" },
+  tr: { prefix: "/tr", privacy: "gizlilik" },
 };
 
 /** The page paths of one language, by route: what i18n/routes serves and next.config.ts rewrites and links. */

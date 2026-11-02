@@ -1,0 +1,188 @@
+export const meta = {
+  slug: "gizli-aave-likidasyon-uyarilari",
+  title: "Aave uyarıları ve gizliliğiniz: Tokenping neleri saklar",
+  description:
+    "Tokenping neleri saklar, zincirde neler açık kalır; e-posta takma adı, Signal ve Telegram kullanıcı adı, iletişim bilginin sizi ele vermesini nasıl önler.",
+  h1: "Kimliğinizi Tokenping'e vermeden Aave sağlık faktörü uyarıları nasıl alınır",
+  publishedAt: "2026-10-19",
+  primaryQuestion: "Kimliğimi cüzdan adresime bağlamadan Aave sağlık faktörü uyarıları alabilir miyim?",
+  readingMinutes: 11,
+};
+
+<ShortAnswer>
+  Tokenping'de şifreyle girilen bir hesap yoktur: cüzdanınızla bir mesaj imzalayarak giriş yaparsınız ve Tokenping
+  cüzdan adresinizi, uyarılar için verdiğiniz iletişim bilgisinin yanında saklar. Bu yüzden ona sizin hakkınızda hiçbir
+  şey söylemeyen iletişim bilgileri verin: kendi adresiniz yerine bir e-posta takma adı (alias), telefon numaranızı
+  gizlediğiniz bir Signal kullanıcı adı ve sizi tanıtmayan bir Telegram kullanıcı adı ile ad. Böylece iletişim bilgisi
+  sizi ele vermez. Bu sizi anonim yapmaz, çünkü ödemeniz Arbitrum One üzerinde herkese açıktır, başka bir yerde
+  kimliğinizle ilişkilendirdiğiniz bir cüzdan ilişkili kalır ve uyarılarınızı ileten hizmetler kendi kayıtlarını tutar.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Tokenping neleri saklar, neleri toplamaz?
+
+19 Ekim 2026 itibarıyla bir uyarıyı kaydetmek, Tokenping'in veritabanına cüzdan, ağ ve piyasa (bir Aave V3 havuzu veya bir Aave V4 Spoke'u) başına bir satır yazar. Satırda şunlar bulunur:
+
+- Cüzdan adresiniz.
+- Ağ, piyasa ve eşiğiniz.
+- Seçtiğiniz kanallar ve her birinin dili.
+- Seçtiğiniz kanallar için yazdığınız e-posta adresi, Signal kullanıcı adı ve Telegram kullanıcı adı.
+- Uyarının ne zaman oluşturulduğu ve en son ne zaman değiştirildiği, ayrıca her kanalda en son ne zaman test mesajı gönderdiğiniz. Kanal başına 15 dakikada bir test sınırı bu şekilde işler.
+
+Tokenping'in Telegram botunda Start'a basmak, sohbet kimliğinizi (chat ID) ve zamanı da ayrı bir tabloda saklar. İsteğe bağlı "Tokenping'i nereden duydunuz?" sorusunu yanıtlarsanız, yanıtınız ve zamanı cüzdan adresinizle birlikte saklanır.
+
+Tokenping sizden ad, telefon numarası, şifre veya kimlik doğrulaması istemez ve bunları saklamaz. İzleme pikseli veya reklam çerezi yerleştirmez, pozisyonlarınızın geçmişini tutmaz (pozisyonlar blokzincirden canlı okunur) ve gönderdiği uyarıların kaydını veritabanında tutmaz. Bağlayıcı liste [gizlilik sayfasıdır](/tr/gizlilik); bu rehber bunun sizin için ne anlama geldiğini ve bu konuda neler yapabileceğinizi açıklar.
+
+## Hesap olmadan giriş nasıl çalışır?
+
+Uyarı ayarları bir hesaba değil, bir cüzdan adresine aittir. Onları açmak veya değiştirmek için o cüzdanla bir mesaj imzalarsınız. Bu, siteyi, adresinizi ve rastgele tek kullanımlık bir kodu belirten bir Sign-in with Ethereum mesajıdır (EIP-4361). İmzalamak bir işlem değildir: gas gerektirmez ve hiçbir tokeni onaylamaz. Sunucu imzayı kontrol eder ve tek kullanımlık kodu 5 dakika içinde yalnızca bir kez kabul eder. Kod adresiniz olmadan saklanır ve kullanıldığında silinir.
+
+Ardından site tek bir oturum çerezi ayarlar. Çerez, cüzdan adresinizi ve bir son kullanma zamanını, ayrıca taklit edilemesin diye bir sunucu sırrıyla yapılmış bir imzayı taşır (imzalıdır, şifreli değildir) ve sayfa betikleri onu okuyamaz (HttpOnly). 7 gün geçerlidir ve sitede cüzdanınızın bağlantısını kestiğinizde site onu temizler. Giriş yaparken ikinci bir çerez, o birkaç dakika boyunca tek kullanımlık kodu tutar. Ardından her uyarı rotası yalnızca çerezdeki cüzdan adına işlem yapar ve başka bir cüzdanı belirten bir istek reddedilir.
+
+Pozisyonlarınıza bakmak giriş veya ödeme gerektirmez. Sitenin sayfa sayıları Vercel Web Analytics'ten gelir; Vercel, ziyaretçileri üçüncü taraf çerezler yerine istekten oluşturulan bir hash ile tanımladığını ve bu oturumu 24 saat sonra sildiğini söyler.
+
+## Kaydettiğiniz iletişim bilgilerini kimler okuyabilir?
+
+Uygulama üzerinden, yalnızca cüzdanınızla imza atabilen biri. Bir uyarıyı okumak, değiştirmek veya silmek ve test mesajı göndermek oturum çerezinizi gerektirir; başka bir cüzdanı belirten bir istek reddedilir. Veritabanı tabloları Supabase'in herkese açık (anon) anahtarına kapalıdır: satır düzeyinde güvenlik (row level security) hiç politika olmadan açıktır ve herkese açık rollerin hiçbir yetkisi yoktur. Onlara yalnızca Tokenping'in sunucusu, service-role anahtarıyla erişir.
+
+Bunu güvenle kabul etmek yerine kontrol edebilirsiniz, çünkü Tokenping'in kodu herkese açıktır. Uyarıları okuyan ve yazan rotalar [`packages/nextjs/app/api/notifications`](https://github.com/romispectrum/tokenping/tree/main/packages/nextjs/app/api/notifications) içinde, giriş rotaları [`packages/nextjs/app/api/auth`](https://github.com/romispectrum/tokenping/tree/main/packages/nextjs/app/api/auth) içinde, tabloları herkese açık anahtara kapatan migration'lar ise [`packages/supabase/migrations`](https://github.com/romispectrum/tokenping/tree/main/packages/supabase/migrations) içindedir.
+
+Bu, kimsenin okuyamadığı anlamına gelmez:
+
+- Tokenping'i işletenler ve veritabanı sağlayıcısı satırları okuyabilir.
+- Herkes, belirli bir Telegram kullanıcı adının botta Start'a basıp basmadığını sorabilir. Yanıt evet ya da hayırdır, asla bir sohbet kimliği değildir.
+- Bir uyarı kontrolü veya bir mesaj başarısız olduğunda hata, cüzdan adresinizi ve alıcıyı içerebilir ve sunucu kayıtlarına gider.
+
+Gizlilik sayfasının kendi tavsiyesi, cüzdan adresinizle ilişkilendirilmesini istemeyeceğiniz bir e-posta adresi veya Signal kullanıcı adı girmemenizdir. Bu rehberin geri kalanı, bu tavsiyeye nasıl uyacağınızı anlatır.
+
+## Verilerinizi başka hangi hizmetler işler?
+
+Tokenping başka sağlayıcılar üzerinde çalışır ve her biri verdiğiniz bilgilerin bir kısmını görür. Bu tablo, gizlilik sayfasındaki listenin kısa halidir.
+
+| Hizmet               | Ne yapar                                                            | Ne görür                                                                                 |
+| -------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Vercel               | Siteyi barındırır ve uyarı kontrolünü her 5 dakikada bir çalıştırır | IP adresiniz dahil her isteği ve sunucu kayıtlarını                                      |
+| Vercel Web Analytics | Sayfa görüntülemelerini sayar                                       | Sayfa adresi, yönlendiren sayfa, yaklaşık konum, tarayıcı, işletim sistemi ve cihaz türü |
+| Supabase             | Veritabanı                                                          | Yukarıda anlatılan satırları                                                             |
+| Resend               | Uyarı e-postalarını gönderir                                        | E-posta adresinizi ve uyarı metnini                                                      |
+| Fly.io relay         | Uyarıları Signal'e iletir                                           | Signal kullanıcı adınızı ve uyarı metnini (Signal de görür)                              |
+| Telegram             | Uyarıları Bot API'si üzerinden ulaştırır                            | Sohbet kimliğinizi ve uyarı metnini                                                      |
+| RPC sağlayıcıları    | Blokzincir okumalarını yanıtlar                                     | Okunan cüzdan adresini ve okumayı tarayıcınız yaptığında IP adresinizi                   |
+| WalletConnect        | Kullanıyorsanız cüzdan uygulamanızla bağlantıyı aktarır             | Bağlanmak için cüzdan uygulamanızın ve sitenin alışveriş ettiği bilgileri                |
+
+Uyarı metni piyasayı, sağlık faktörünüzü (health factor), eşiğinizi ve zamanı belirtir. Cüzdan adresinizi içermez.
+
+Sağlayıcıların kendi kayıtları vardır. Resend'in veri işleme eki (data processing addendum), bir müşteri için işlediği asgari kişisel veriler olarak meta verileri, e-posta adresini ve mesaj içeriğini listeler; belgeleri de e-posta verilerini tüm planlarda 30 gün sakladığını, Enterprise için esnek saklama sunduğunu söyler. Signal, mesajların içeriğini çözemediğini veya başka bir şekilde erişemediğini söyler. Telegram'ın gizlilik politikası, bulut sohbetlerinin sunucularında yoğun şekilde şifrelenmiş olarak saklandığını, uçtan uca şifrelemenin ise Gizli Sohbetler (Secret Chats) için geçerli olduğunu söyler.
+
+## Blokzincirde neler herkese açık kalır?
+
+Uyarılar için ödeme yapmak, Arbitrum One üzerinde bir işlemdir. Ödeme sözleşmesi her ödemeyi herkese açık bir olayda kaydeder: ödeyen adres, token, tutar, zaman, satın aldığınız süre ve yeni bitiş tarihi. Bunu herkes okuyabilir ve kimse silemez. Sözleşmenin kaynak kodu [Sourcify'da doğrulanmıştır](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553).
+
+Uyarınızla ilgili hiçbir şey bir blokzincire yazılmaz: ne eşik, ne e-posta takma adınız, ne Signal kullanıcı adınız, ne de Telegram kullanıcı adınız. Aave pozisyonlarınız da herkese açıktır. ethereum.org bir blokzinciri "a public database" (herkese açık bir veritabanı) olarak tanımlar ve Tokenping pozisyonunuzu herkesin yapabileceği view çağrılarıyla okur. Cüzdanınız ile pozisyonları arasındaki bağ hiçbir zaman Tokenping'e bağlı olmadı.
+
+## Tokenping neleri ilişkilendirebilir, neleri ilişkilendiremez?
+
+Tokenping cüzdan adresinizi, onun için kaydettiğiniz iletişim bilgileriyle, borç aldığınız piyasalarla, eşiklerinizle ve ne zaman ödeme yaptığınızla ilişkilendirebilir. Hizmet bu bağ olmadan çalışamaz: bir uyarının izleyeceği bir cüzdana ve mesajı göndereceği bir yere ihtiyacı vardır.
+
+Tokenping, veritabanında sakladıklarından yola çıkarak bunların hiçbirini adınıza, telefon numaranıza veya diğer hesaplarınıza bağlayamaz; girdiğiniz bir iletişim bilgisi bunu sizin yerinize yapmadıkça. İçinde adınız geçen bir e-posta adresi veya başka sitelerde kullandığınız bir kullanıcı adı tam olarak bunu yapar. Takma adın ve anonim bir kullanıcı adının amacı budur: iletişim bilgisi kim olduğunuz hakkında hiçbir şey söylemez. IP adresiniz ayrı bir konudur: Tokenping'in veritabanına değil, her istekle birlikte Vercel'e ulaşır ve onu gizlemek bu rehberin kapsamı dışındadır.
+
+Dışarıdan birinin yapabilecekleri ayrı bir listedir ve hiçbiri Tokenping'e ihtiyaç duymaz:
+
+- Cüzdanınızın bir ENS birincil adı (primary name) varsa, herhangi bir uygulama onu adresten bulabilir.
+- Cüzdanı kimliğinizi doğruladığınız bir borsadan fonladıysanız, borsa genellikle o çekimin kaydını tutar.
+- Adresi adınızın veya kullanıcı adınızın yanında gösterdiğiniz her yer ikisini birbirine bağlar.
+- Ödemeniz herkese açıktır, bu yüzden herkes adresin ödeme yaptığını ve hangi tarihe kadar olduğunu görebilir.
+
+## Gerçek adresiniz yerine e-posta takma adı nasıl kullanılır?
+
+E-posta takma adı, gerçek posta kutunuza yönlendiren ek bir adrestir. Tokenping ve e-posta sağlayıcısı yalnızca takma adı görür. Bu rehberin örnek olarak kullandığı hizmet olan SimpleLogin ikisini de görür, çünkü postaları aralarında yönlendirir. Proton AG tarafından geliştirilir ve açık kaynaktır; fiyat sayfasında, sınırlı sayıda takma adla hiçbir şey ödemediğiniz bir plan listelenir.
+
+1. Bir SimpleLogin hesabı oluşturun ve yönlendirilen uyarıları alması gereken posta kutusunu seçin.
+2. Panelde "Random Alias" (rastgele takma ad) düğmesine basın ve sol kısım için rastgele kelimeler veya bir UUID seçin. Özel bir takma ad da işe yarar, ancak adınızı, kullanıcı adlarınızı ve başka sitelerde kullandığınız her şeyi onun dışında tutun. SimpleLogin, ne için olduğunu hatırlamanız için bir takma ada "Tokenping" gibi bir not eklemenize de izin verir.
+3. Uyarı formunda takma adı e-posta adresi olarak girin (örneğin `alice-aave@example.com`) ve uyarıyı kaydedin.
+4. E-posta için **Test gönder** düğmesine basın ve mesajın gerçek posta kutunuza ulaştığını kontrol edin. Ulaşmazsa spam klasörünüze bakın. Diğer kontroller [kurulum rehberinde](/tr/blog/aave-saglik-faktoru-uyarisi-kurulumu) yer alır.
+
+Tokenping'in uyarıları tek yönlüdür, onları hiç yanıtlamazsınız; bu yüzden yalnızca posta alan bir takma ad yeterlidir. Tokenping'i kullanmayı bıraktığınızda önce uyarıyı, sonra takma adı silin; böylece saklanan hiçbir iletişim bilgisi amacından uzun yaşamaz.
+
+Takma ad her şeyi gizlemez. SimpleLogin ve posta kutusu sağlayıcınız uyarıları yine görür; yani takma ad adresinizi Tokenping'den ve Resend'den gizler, yönlendiren hizmetten değil. Başka bir hizmet için de kullandığınız bir takma ad ikisini birbirine bağlar. Ayrıca mesajın söylediklerini değiştirmez: piyasa, sağlık faktörünüz ve eşiğiniz.
+
+SimpleLogin tek seçenek değildir. DuckDuckGo Email Protection, Firefox Relay (Mozilla'dan), addy.io ve Apple'ın Hide My Email özelliği (iCloud+ aboneliğine dahil) de size kendi adresinize yönlendiren adresler verir. Sınırları farklıdır, bu yüzden birine güvenmeden önce sağlayıcının sayfasını okuyun.
+
+## Telefon numaranız yerine Signal kullanıcı adı nasıl kullanılır?
+
+Signal kullanıcı adı, birinin telefon numaranız olmadan sohbet başlatmasını sağlar ve Tokenping'in istediği de budur: formu hiçbir zaman numara istemez. Bu adımlar Signal'in destek sayfalarını izler.
+
+1. **Bir kullanıcı adı oluşturun.** Signal'de profilinizi açın ve @ simgesine dokunun. Kullanıcı adları 3 ile 32 karakter arasıdır (a-z, 0-9 ve \_) ve en az iki rakamla biter. Tokenping'in formu `alice.42` biçimini bekler: takma adınız, bir nokta ve rakamlar. Adınız veya başka yerde kullandığınız bir kullanıcı adı olmayan bir takma ad seçin.
+2. **Numaranızı gizleyin.** "Settings" (Ayarlar), ardından "Privacy" (Gizlilik), ardından "Phone Number" (Telefon Numarası) bölümünü açın ve "Who can see my number" (numaramı kimler görebilir) ayarını "Nobody" (hiç kimse) yapın. Numaranızı zaten rehberlerinde kayıtlı tutan kişiler onu yine görür. Yalnızca kullanıcı adınız üzerinden ulaşılabilir olmak istiyorsanız "Who can find me by my number" (numaramla beni kimler bulabilir) ayarını da "Nobody" yapın.
+3. **Profil adınızı kontrol edin.** Signal profilinizde zorunlu bir ad ve isteğe bağlı bir fotoğraf vardır; Signal'in sayfası bir takma ad, tek bir karakter veya bir emoji kullanabileceğinizi söyler. Bir mesaj isteğini kabul etmek, gönderenin profilinizi görmesini sağlar.
+4. **Kullanıcı adını uyarıya ekleyin ve test gönderin.** Onu **Signal kullanıcı adı** alanına girin, kaydedin ve Signal için **Test gönder** düğmesine basın. Tokenping'in Signal hesabı rehberinizde olmadığı için ilk mesaj bir mesaj isteği olarak gelebilir. Onu kabul etmeden önce 2. ve 3. adımları yapın.
+
+Signal'e göre bir isteği kabul etmezseniz gönderen yalnızca yazdığı kullanıcı adını görür. Kabul ederseniz gönderen profil adınızı görür ve numara ayarlarınıza bağlı olarak telefon numaranızı da görebilir.
+
+Kullanıcı adı yalnızca sohbet başlatmanın bir yoludur. Signal, kayıt olduğunuz telefon numarasını yine de tutar ve buradaki hiçbir şey bunu değiştirmez. Kullanıcı adını değiştirir veya silerseniz Signal, eski adı kısa süre içinde herkesin alabileceğini söyler; Tokenping ise kayıtlı kullanıcı adına göndermeye devam eder, bu yüzden uyarıyı hemen güncelleyin.
+
+## Telegram hesabınızın sizi tanıtmasını nasıl önlersiniz?
+
+Üçü arasında en az uygun olan Telegram'dır, bu yüzden onu seçmeden önce bunu okuyun. Tokenping yalnızca botunda Start'a basmış bir Telegram hesabına mesaj gönderebilir; bu yüzden @kullanıcı adınızı uyarıya yazar ve bir kez Start'a basarsınız. Dolayısıyla hesabın bir kullanıcı adı olması gerekir ve Telegram kullanıcı adlarının herkese açık olduğunu söyler: sizi genel aramada bulunabilir yaparlar ve sizi bulan kişiler numaranız olmadan size mesaj gönderebilir. Telegram'ın kendi SSS sayfası, bundan rahatsızsanız kullanıcı adı belirlememenizi tavsiye eder.
+
+1. **İçinde size ait hiçbir şey olmayan bir kullanıcı adı seçin.** a-z, 0-9 ve alt çizgi kullanın; Tokenping 4 ile 32 karakter arasını kabul eder. Bunu Telegram'ın "Settings" (Ayarlar) bölümünde ayarlayın.
+2. **Görünen adınızı ve fotoğrafınızı kontrol edin.** Telegram'ın gizlilik politikası, ekran adınızın gerçek adınız olmak zorunda olmadığını söyler. Bir bot herkese açık adınızı, kullanıcı adınızı ve profil fotoğraflarınızı görebilir.
+3. **Numara ayarınızı kontrol edin.** "Settings" (Ayarlar), ardından "Privacy and Security" (Gizlilik ve Güvenlik), ardından "Phone Number" (Telefon Numarası) bölümünü açın. Varsayılan olarak numaranızı yalnızca sizi rehberinde tutan kişiler görür ve Telegram, sizi kullanıcı adıyla bulan birinin de onu görmediğini söyler. Bir bot, siz vermedikçe onu görmez.
+4. **Hesabı bağlayın.** Kullanıcı adını uyarıya yazın, botta Start'a basın ve formun onu bağlı olarak göstermesini bekleyin.
+
+Tokenping'in kodu yalnızca sohbet kimliğinizi ve kullanıcı adınızı tutar, ancak Telegram'ın Bot API'si bir bota her mesajla birlikte adınızı ve varsa soyadınızı, kullanıcı adınızı ve dil kodunuzu verir. Herkes bir kullanıcı adının Start'a basıp basmadığını kontrol edebilir. Bota /stop göndermek sohbetinizin bağlantısını kaldırır.
+
+## Ayrı bir cüzdan kullanmalı mısınız?
+
+Yalnızca ondan borç alıyorsanız. Tokenping bağladığınız cüzdanı izler, başka hiçbir şeyi izlemez ve erişim ödeme yapan cüzdana aittir; yani bir adresten ödeme yapıp başka bir adresteki pozisyonu izleyemezsiniz. Yalnızca Aave için kullandığınız bir cüzdan pozisyonu, ödemeyi ve uyarıları tek bir adreste tutar. Onu nasıl fonladığınız yine herkese açık bir iz bırakır, Tokenping ödemesi herkese açıktır ve cüzdan anonim değil, takma adlı (pseudonymous) kalır. Bir krediyi yeni bir cüzdana taşımak genellikle pozisyonu kapatıp yeniden açmak anlamına gelir; bunun maliyetleri ve likidasyon riski vardır, bu yüzden bu rehber bunu önermez.
+
+## Her adım neyi korur, neyi korumaz?
+
+| Adım                                         | Tokenping'den ve sağlayıcılarından gizler | Gizlemez                                                                                |
+| -------------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------- |
+| E-posta takma adı                            | Gerçek e-posta adresinizi                 | Takma ad hizmeti iki adresi de ve uyarıları görür; uyarılar gerçek posta kutunuza düşer |
+| Signal kullanıcı adı, numara gizli           | Telefon numaranızı                        | Signal numaranızı yine tutar ve bir isteği kabul etmek profil adınızı paylaşır          |
+| Sizi tanıtmayan Telegram kullanıcı adı ve ad | Gerçek adınızı ve telefon numaranızı      | Kullanıcı adı herkese açıktır ve Telegram sohbeti sunucularında saklar                  |
+| Yalnızca Aave için kullanılan bir cüzdan     | O cüzdanın diğer geçmişiyle bağlantıları  | Fonlama işlemleri ve Tokenping ödemesi herkese açıktır                                  |
+| Uyarıyı silmek                               | İletişim bilgisi dahil saklanan satırı    | Zincir üzerindeki ödemeyi ve her sağlayıcının kendi kurallarına göre tuttuklarını       |
+
+## Tokenping'in sakladıklarını nasıl silersiniz?
+
+Uyarıyı panelde silin: **Uyarıyı düzenle** düğmesine, ardından **Uyarıyı sil** düğmesine basın ve onaylayın. Bu, e-posta adresi ve Signal kullanıcı adı dahil o piyasanın ayarlarını kaldırır ve etkin erişim gerektirir. Her piyasanın uyarısı ayrı ayrı silinir.
+
+<Callout tone="warning">
+  Erişiminizin sona ermesi hiçbir şeyi silmez: uyarı ve içindeki iletişim bilgisi, siz uyarıyı silene kadar saklı kalır.
+  Artık istemediğiniz uyarıları erişiminiz etkinken silin. Erişiminizin süresi dolduysa, gizlilik sayfası ayarlarınızı
+  sildirmek için ekibe nereden mesaj gönderebileceğinizi belirtir.
+</Callout>
+
+Telegram'da bota /stop göndermek sohbetinizin bağlantısını kaldırır. İsteğe bağlı "nereden duydunuz" yanıtı, gizlilik sayfasındaki aynı iletişim kanalları üzerinden talep edilerek kaldırılabilir. Zincir üzerindeki ödemeyi kimse silemez.
+
+Bunların hepsinin arkasındaki kod [Tokenping deposunda](https://github.com/romispectrum/tokenping) yer alır. Bu rehberdeki bir iddia kodla uyuşmuyorsa, gizlilik sayfasındaki iletişim kanalları üzerinden ekibe bildirin.
+
+## Kaynaklar
+
+- [Tokenping gizlilik sayfası](/tr/gizlilik) (erişim tarihi: 19 Ekim 2026; son güncelleme 19 Ekim 2026): neler saklanır, kimler işler, neler herkese açıktır ve nasıl silinir
+- [GitHub'da Tokenping kaynak kodu](https://github.com/romispectrum/tokenping) (erişim tarihi: 19 Ekim 2026; depo herkese açıktır): `packages/nextjs/app/api/auth` içinde giriş, `packages/nextjs/services/api/server/session.ts` içinde oturum kontrolleri, `packages/nextjs/services/notifications` içinde uyarı depolama, `packages/nextjs/app/api/telegram` içinde Telegram rotaları, `packages/supabase/migrations` içinde migration'lar ve `packages/hardhat/contracts` içinde ödeme sözleşmesi
+- [Arbitrum One'da TokenpingPaywall, kaynak kodu Sourcify'da doğrulanmış](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553) (erişim tarihi: 19 Ekim 2026): PaymentReceived olayı
+- [SimpleLogin](https://simplelogin.io/) (erişim tarihi: 19 Ekim 2026): takma adın ne yaptığı, kimin geliştirdiği, açık kaynak
+- [SimpleLogin fiyatlandırma](https://simplelogin.io/pricing/) (erişim tarihi: 19 Ekim 2026): sınırlı sayıda takma adla hiçbir şey ödemediğiniz bir plan
+- [SimpleLogin belgeleri: takma ad oluşturma](https://simplelogin.io/docs/getting-started/create-alias/) (erişim tarihi: 19 Ekim 2026)
+- [DuckDuckGo Email Protection](https://duckduckgo.com/duckduckgo-help-pages/email-protection/what-is-duckduckgo-email-protection) (erişim tarihi: 19 Ekim 2026)
+- [Firefox Relay](https://relay.firefox.com/) (erişim tarihi: 19 Ekim 2026)
+- [addy.io](https://addy.io/) (erişim tarihi: 19 Ekim 2026)
+- [Apple Destek: iCloud+ ile Hide My Email](https://support.apple.com/en-us/102548) (erişim tarihi: 19 Ekim 2026)
+- [Signal Support: Phone Number Privacy and Usernames](https://support.signal.org/hc/en-us/articles/6712070553754-Phone-Number-Privacy-and-Usernames) (erişim tarihi: 19 Ekim 2026)
+- [Signal Support: Signal Profiles and Message Requests](https://support.signal.org/hc/en-us/articles/360007459591-Signal-Profiles-and-Message-Requests) (erişim tarihi: 19 Ekim 2026)
+- [Signal gizlilik politikası](https://signal.org/legal/) (erişim tarihi: 19 Ekim 2026)
+- [Telegram SSS](https://telegram.org/faq) (erişim tarihi: 19 Ekim 2026): kullanıcı adları, telefon numarası görünürlüğü, botların gördükleri
+- [Telegram gizlilik politikası](https://telegram.org/privacy) (erişim tarihi: 19 Ekim 2026)
+- [Telegram Bot API: User ve Chat nesneleri](https://core.telegram.org/bots/api) (erişim tarihi: 19 Ekim 2026)
+- [Resend veri işleme eki](https://resend.com/legal/dpa) (erişim tarihi: 19 Ekim 2026)
+- [Resend belgeleri: e-posta verilerinin uzun süreli saklanması](https://www.resend.com/docs/webhooks/how-to-store-webhooks-data) (erişim tarihi: 19 Ekim 2026)
+- [Vercel Web Analytics: gizlilik ve uyumluluk](https://vercel.com/docs/analytics/privacy-policy) (erişim tarihi: 19 Ekim 2026)
+- [ENS belgeleri: birincil adlar](https://docs.ens.domains/web/reverse) (erişim tarihi: 19 Ekim 2026)
+- [ethereum.org: Ethereum'a giriş](https://ethereum.org/en/developers/docs/intro-to-ethereum/) (erişim tarihi: 19 Ekim 2026)
+
+_Eğitim amaçlı içeriktir, finansal tavsiye değildir. Uyarılar riski azaltır ama likidasyonu önlemez._

@@ -1,0 +1,153 @@
+export const meta = {
+  slug: "aave-teminati-olarak-wrapped-bitcoin",
+  title: "Aave ve Morpho'da wrapped bitcoin: WBTC, cbBTC, tBTC, LBTC",
+  description:
+    "WBTC, cbBTC, tBTC, LBTC ve eBTC, Aave V3 ve Morpho'da teminat olarak nasıl ayrışır: eşikler, tavanlar, oracle'lar ve depeg'in kredinize etkisi.",
+  h1: "Hangi wrapped bitcoin'e karşı borç almalısınız ve neler ters gidebilir?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "WBTC, cbBTC, tBTC ve LBTC, Aave ve Morpho'da teminat olarak nasıl farklılaşır?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Bitcoin, Aave ve Morpho'ya wrapped (sarılmış) tokenler olarak gelir; her biri başka bir yerde tutulan BTC ile
+  desteklenir ve protokoller bunlara farklı davranır. 29 Ekim 2026'da Aave V3 Ethereum Core'da WBTC ve cbBTC için
+  kredi/değer oranı (LTV) %81, likidasyon eşiği (liquidation threshold) %85 idi; tBTC ve BTC.b için %73 ve %78, LBTC
+  için %70 ve %75, eBTC için %67 ve %72. Fiyatlandırmaları da farklıdır: Aave WBTC'yi bir WBTC/BTC beslemesi çarpı
+  BTC/USD ile fiyatlar, bu yüzden WBTC'deki bir iskonto sağlık faktörünüzü (health factor) düşürür (besleme o gün 0,9985
+  gösteriyordu); cbBTC ve tBTC ise tam 1 BTC olarak, LBTC ve eBTC de bir tavan altında staking dönüşüm oranlarıyla
+  fiyatlanır. Morpho'da her piyasa kendi oracle'ını (fiyat kaynağı) ve likidasyon LTV'sini (LLTV) seçer: büyük
+  cbBTC/USDC piyasaları %86 ve yalnızca bir BTC/USD beslemesi kullanır. Wrapper seçimi likidasyon fiyatınızı %18'e kadar
+  değiştirir ve wrapper'ın kendi depeg'inin (BTC'ye olan sabitin kaybı) sizi likide edip edemeyeceğini belirler.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Rakamlar ve okundukları blok numaraları: content/blog/snapshots/wrapped-bitcoin-aave-collateral.md */}
+
+## Hangi wrapped bitcoin'i yatırdığınız neden önemli?
+
+Aave ve Morpho EVM zincirlerinde çalışır, bitcoin ise çalışmaz; bu yüzden bunlardaki her BTC pozisyonu bir wrapped tokendir: birinin bitcoin karşılığında geri almayı vaat ettiği bir ERC-20. Bu vaadi kimin ve nasıl verdiği, wrapper'lar (sarmalayıcı tokenler) arasındaki ilk farktır. WBTC, soğuk depolamada (cold storage) tutulan bitcoin karşılığında saklayıcılar tarafından basılır; Ekim 2024'ten beri bu saklayıcı, anahtarları Amerika Birleşik Devletleri, Singapur ve Hong Kong arasında dağıtılmış olan BitGo ve BiT Global ortak girişimidir. cbBTC, Coinbase'in wrapper'ıdır ve Coinbase'in tuttuğu bitcoin ile desteklenir. tBTC, Threshold Network'ündür ve tek bir şirket yerine bir imzacılar ağı tarafından basılır. LBTC, Lombard'ındır: Babylon üzerinden stake edilmiş bitcoin; yatırmaları doğrulayan ve geri almaları imzalayan bir operatör konsorsiyumu vardır ve 2025'ten beri getiri sağlar, bu yüzden bir LBTC yavaş yavaş bir BTC'den daha değerli hale gelir. eBTC, ether.fi'nin wrapper'ıdır ve büyük ölçüde LBTC ile desteklenir. BTC.b, Avalanche'ın köprülenmiş bitcoin'idir, FBTC ise Function'ınkidir.
+
+Bir borç verme protokolü bu listede üç şey görür: wrapper'ın BTC'den uzaklaşarak işlem görme olasılığı, likidatörlerin onu satması gerekirse piyasasının ne kadar derin olduğu ve nasıl fiyatlanacağı. Bu üçü likidasyon eşiğini, tavanları ve oracle'ı belirler; birlikte de sağlık faktörünüzü, likidasyon fiyatınızı ve hangi olayların sizi likide edebileceğini belirler. Aynı 1 BTC teminat, hangi wrapper ile geldiğine göre farklı bir kredi olur.
+
+## Aave hangi wrapper'ları kabul ediyor ve hangi koşullarla?
+
+Aave V3 Ethereum Core, 29 Ekim 2026'da yedi BTC wrapper'ı listeliyordu. PoolDataProvider'dan 26296985 numaralı blokta okunan değerler:
+
+| Wrapper | LTV | Likidasyon eşiği | Bonus | Borç alınabilir | Yatırma tavanı (kullanılan) | Yatırılan |
+| ------- | --- | ---------------- | ----- | --------------- | --------------------------- | --------- |
+| WBTC    | %81 | %85              | %5,0  | evet            | 38.200 (%89,4)              | 34.138,21 |
+| cbBTC   | %81 | %85              | %7,5  | evet            | 20.000 (%86,5)              | 17.303,85 |
+| tBTC    | %73 | %78              | %7,5  | tavan 1         | 1.800 (%98,9)               | 1.779,39  |
+| LBTC    | %70 | %75              | %8,5  | hayır           | 2.690 (%100,0)              | 2.689,93  |
+| eBTC    | %67 | %72              | %10,0 | hayır           | 134 (%56,0)                 | 75,02     |
+| BTC.b   | %73 | %78              | %7,5  | hayır           | 225 (%7,0)                  | 15,84     |
+| FBTC    | %0  | %78              | %7,5  | hayır           | dondurulmuş                 | 153,83    |
+
+WBTC ve cbBTC, piyasanın en çok güvendiği teminattır: en yüksek eşik, en düşük bonus ve en derin yatırma; Core'daki 56.156 wrapped BTC'nin %60,8'i ve %30,8'i. Daha yeni veya daha sığ wrapper'lar daha düşük bir eşik ve daha yüksek bir bonus alır; bu, protokolün piyasa derinliği daha az olan bir tokeni satmaları için likidatörlere daha fazla ödemesidir. FBTC, LTV'si 0 olarak dondurulmuştur: sağlık faktöründe hâlâ sayılır ama yeni borcu desteklemez ve yeni yatırma kabul etmez.
+
+Yedi tavandan üçü neredeyse veya tamamen dolmuştu. LBTC'de 0,07 LBTC'lik yer vardı: baskı altındaki bir LBTC kredisi olan borç alan, o gün krediye LBTC ekleyemezdi ve bunun yerine geri ödemek zorundaydı. [Bir Aave işlemi neden başarısız olur](/tr/blog/aave-cekim-veya-borclanma-neden-basarisiz#3-yatırma-limiti-dolu), dolu bir tavanın neyi engellediğini anlatır. tBTC'de borç alma 1 tavanla açıktı; zaten 2,57 tBTC borç alınmış olduğundan bu, hiçbir yeni borç alma işleminin gerçekleşmeyeceği anlamına gelir.
+
+WBTC'nin kendi koşulları da değişti. 14 Ekim 2026'da Ethereum Core'da WBTC'nin LTV'si %73, eşiği %78 idi; [sağlık faktörü rehberi](/tr/blog/aave-saglik-faktoru) bu rakamları kullanır. 28 Ekim'de bunlar %81 ve %85 olmuştu. Düşük rakamların arkasındaki hikaye ilerideki bir bölümde.
+
+## Aave her wrapper'ı nasıl fiyatlar?
+
+Aave'de her piyasada varlık başına tek bir fiyat vardır; bu fiyat Aave Oracle'dan gelir ve sağlık faktörü de her likidasyon da onu kullanır. Yedi wrapper üç tasarım kullanır. Aynı blokta okunan değerler:
+
+| Wrapper                  | Oracle kaynağı            | Nasıl oluşturulur                                      | 29 Ekim 2026 fiyatı |
+| ------------------------ | ------------------------- | ------------------------------------------------------ | ------------------- |
+| WBTC                     | "wBTC/BTC/USD"            | WBTC/BTC beslemesi (0,9985) × BTC/USD                  | 79.699,16 $         |
+| cbBTC, tBTC, BTC.b, FBTC | "BTC / USD"               | yalnızca BTC/USD beslemesi                             | 79.818,89 $         |
+| LBTC                     | "Capped LBTC / BTC / USD" | Lombard'ın dönüşüm oranı (1,005244) × BTC/USD, tavanlı | 80.237,45 $         |
+| eBTC                     | "Capped eBTC / BTC / USD" | ether.fi'nin oranı (1,004224) × BTC/USD, tavanlı       | 80.156,03 $         |
+
+Aradaki fark, bir wrapper depeg'inin size ne yapacağını belirler.
+
+**WBTC, BTC'ye karşı piyasa oranıyla fiyatlanır.** Adaptör bir WBTC/BTC beslemesini BTC/USD ile çarpar; bu yüzden WBTC iskontolu işlem görürse teminatınız sağlık faktöründe daha az değerli olur ve likidasyon fiyatınız yükselir. 29 Ekim 2026'da oran 0,9985 idi ve bu, WBTC'yi cbBTC'nin 119,73 $ altında fiyatlıyordu. Saklayıcıya yönelik gerçek bir güven kaybında oran düşer ve WBTC pozisyonları, bitcoin'in kendisi hiç değişmeden likide edilebilir.
+
+**cbBTC, tBTC, BTC.b ve FBTC tam olarak 1 BTC olarak fiyatlanır.** Oracle BTC/USD beslemesini kullanır, başka hiçbir şeyi kullanmaz. Wrapper'ın piyasasındaki bir iskonto sağlık faktörünüze ulaşmaz; protokole ulaşır, çünkü likidatörleri oracle'ın söylediğinden daha az değerli teminata el koyar. Aave bunu daha sıkı tavanlarla ve tBTC ile BTC.b için daha düşük bir eşikle telafi eder. Borç alan için bu tasarım bir wrapper paniğinde daha yumuşak, diğer her gün daha katıdır.
+
+**LBTC ve eBTC, bir CAPO tavanı altında dönüşüm oranlarıyla fiyatlanır.** LBTC staking getirisi kazanır, bu yüzden Lombard'ın oracle'ı bir LBTC'nin ne kadar BTC'yi temsil ettiğini bildirir (29 Ekim 2026'da 1,005244) ve Aave bunu BTC/USD ile çarpar. CAPO adaptörü oranın ne kadar hızlı yükselebileceğini sınırlar: 1,0 olan bir anlık görüntüden (snapshot) itibaren LBTC için yılda %2,00, eBTC için %1,90; böylece manipüle edilmiş veya bozuk bir oran teminatı şişiremez. O gün LBTC için tavan, gerçek oranın üzerinde, 1,0274 seviyesindeydi, yani bağlayıcı değildi. Oran düşebilir de: Babylon bir gün stake edilmiş bitcoin'i cezalandırırsa (slashing), Lombard'ın oranı düşer ve onunla birlikte her LBTC pozisyonunun sağlık faktörü de düşer. LBTC'yi düz bir BTC/USD beslemesinden bu tasarıma taşıyan Chaos Labs'in 2025 önerisi bu seçimi açıklar: getiri başladığında sabit 1:1 bir fiyat "would underprice LBTC relative to its intrinsic value" (LBTC'yi içsel değerinin altında fiyatlardı).
+
+[Stablecoin depeg rehberi](/tr/blog/stablecoin-depeg-aave) dolar tokenleri için aynı ayrımı anlatır: oracle'ın ölçtüğü şey, sizi likide edebilecek olandır.
+
+## Örnek hesap: 40.000 USDC borca karşı 1 BTC teminat
+
+Ethereum Core'da her wrapper'dan bir birim yatırın ve 40.000 USDC borç alın. Sağlık faktörü teminat değeri × likidasyon eşiği ÷ borçtur; likidasyon fiyatı ise oracle'ın kullandığı fiyat cinsinden 40.000 ÷ eşiktir:
+
+| Teminat | Oracle fiyatı | Eşik | Sağlık faktörü | Likidasyon fiyatı                          |
+| ------- | ------------- | ---- | -------------- | ------------------------------------------ |
+| 1 WBTC  | 79.699,16 $   | %85  | 1,694          | WBTC başına 47.058,82 $                    |
+| 1 cbBTC | 79.818,89 $   | %85  | 1,696          | BTC başına 47.058,82 $                     |
+| 1 tBTC  | 79.818,89 $   | %78  | 1,557          | BTC başına 51.282,05 $                     |
+| 1 LBTC  | 80.237,45 $   | %75  | 1,505          | LBTC başına 53.333,33 $, BTC 53.055 $ iken |
+| 1 eBTC  | 80.156,03 $   | %72  | 1,443          | eBTC başına 55.555,56 $                    |
+
+WBTC ile eBTC arasında aynı borç ve aynı bitcoin, %18 daha yüksek bir likidasyon fiyatı verir. Borç alma limiti de aynı yönde hareket eder: LTV'de WBTC ve cbBTC değerlerinin %81'ini destekler ve bu limite kadar borç alınmış bir pozisyon 85 ÷ 81 = 1,049 sağlık faktörüyle başlar; LBTC için bu değer 75 ÷ 70 = 1,071, eBTC için 72 ÷ 67 = 1,075'tir. [Likidasyon fiyatınızı nasıl hesaplarsınız](/tr/blog/aave-likidasyon-fiyati) genel formülü ve bir hesaplayıcıyı içerir.
+
+Bu satırlardan ikisi yalnızca bitcoin fiyatıyla hareket etmez. WBTC satırı WBTC/BTC beslemesiyle de hareket eder; %2'lik bir iskonto, BTC değişmeden pozisyonu 1,694'ten 1,660'a indirir. LBTC satırı Lombard'ın dönüşüm oranıyla hareket eder: her gün biraz yukarı, bir slashing olayında aşağı.
+
+## WBTC'nin koşulları neden değişti ve borç alanlara ne öğretti?
+
+Ağustos 2024'te BitGo, WBTC'nin saklamasını Justin Sun ile bağlantıları olan Hong Kong merkezli bir saklayıcı olan BiT Global ile kurduğu bir ortak girişime taşıyacağını duyurdu. Aave forumundaki tepki, bir saklama değişikliğinin bir borç alana nasıl ulaştığının en net kaydıdır. 18 Eylül 2024'te LlamaRisk, her Aave V3 örneğinde WBTC'nin LTV'sini 0'a ayarlamayı ve tavanları kullanımın %5 ila %10 üzerine indirmeyi önerdi; planın "not to offboard WBTC, nor to reduce current exposure" (WBTC'yi listeden çıkarmak ya da mevcut riski azaltmak değil) olduğunu da vurguladı. Chaos Labs, riskten kaçınma önerisini erken buldu. İkisinin 24 Eylül 2024'te birleştirdiği plan daha ılımlıydı ama gerçekti: tavanlar kullanımın %15 üzerine, likidasyon eşiği her yerde bir puan aşağı, daha yüksek olduğu yerlerde LTV %70'e, rezerv faktörü %20'den %40'a ve Ethereum'daki WBTC borç tavanı 28.000'den 3.250'ye indi. Saklama devri 8 Ekim 2024'te tamamlandı.
+
+Bu olayda bitcoin fiyatını hiçbir şey değiştirmedi. Değişen koşullardı: her WBTC borç alanı için daha düşük eşikler ve daha düşük tavanlar, izleyebildikleri ama kontrol edemedikleri bir yönetişim (governance) süreciyle karara bağlandı. İki yıl sonra parametreler yeniden daha yüksek ve Ekim 2026'daki %73/%78'den %81/%85'e geçiş, bir WBTC pozisyonunun likidasyon fiyatını %8 düşürdü. Ders şudur: eşik bitcoin'in bir özelliği değil, bir parametredir. Yönetişim onu düşürebilir, bu da siz uyurken likidasyon fiyatınızı yükseltir; piyasa kapanışı rehberi [Aave bir piyasayı kapattığında ne olduğunu](/tr/blog/aave-piyasa-kapanisi) anlatır.
+
+## BTC E-Mode kategorileri nasıl farklı?
+
+Aave'nin [E-Mode](/tr/blog/aave-e-mode) özelliği birlikte hareket eden çiftler için vardır ve wrapped bitcoin'lerin birbirine karşı durumu bunun en açık örneğidir. 28 Ekim 2026'da Ethereum Core'da LBTC_WBTC, LBTC_cbBTC ve LBTC_tBTC kategorileri, o tek wrapper'ı borç almak için LBTC teminatına %84 LTV, %86 eşik ve %3 bonus veriyordu; eBTC/WBTC ise %83, %85 ve %3 veriyordu. Base'de LBTC_cbBTC %82/%84 idi ve cbBTC'ye karşı USDC veya GHO borç almak için %82/%85 ile bir "cbBTC Stablecoins" kategorisi vardı. Arbitrum ve Base'de stablecoin borcu için %72/%75 ile tBTC kategorileri de vardı.
+
+BTC'ye karşı BTC kategorileri, loop'ların (kaldıraçlı borç döngüleri) yaşadığı yerdir: LBTC yatırın, WBTC borç alın, LBTC satın alın, tekrarlayın; böylece sermayenizin bir katı üzerinden Lombard'ın getirisini kazanırsınız. %84 limitine kadar borç alınmış bir loop 86 ÷ 84 = 1,024 ile başlar ve sağlık faktörü bitcoin fiyatıyla hiç ilgilenmez; yalnızca iki oracle'ın gördüğü şekliyle LBTC'nin WBTC'ye oranıyla ilgilenir: bir tarafta Lombard'ın dönüşüm oranı, diğer tarafta WBTC/BTC beslemesi. Aralarında yaklaşık %2,4'lük bir hareket onu likide eder. Bu, Tokenping'in kabul ettiği en düşük eşik olan 1,1'in altındadır, bu yüzden bu tür loop'lar her uyarının altında çalışır; [E-Mode rehberi](/tr/blog/aave-e-mode#bir-uyarı-e-mode-pozisyonunda-yardımcı-olabilir-mi) bu ödünleşimi açıklar.
+
+## Morpho wrapped bitcoin'i nasıl ele alır?
+
+Morpho'da varlık listesi ve token başına yönetişimin belirlediği bir eşik yoktur. Herkes tek bir teminat, tek bir kredi varlığı, tek bir oracle ve etkin kümeden bir LLTV ile piyasa oluşturabilir ve parametreler hiç değişmez. Wrapped bitcoin için bu, hem wrapper seçiminin hem de oracle seçiminin piyasa bazında yapıldığı anlamına gelir ve listelenen piyasalar birbirinden farklıdır.
+
+Morpho API'si 29 Ekim 2026'da Ethereum ve Base'de borç alınan değere göre şu BTC teminatlı piyasaları listeliyordu:
+
+| Piyasa                 | LLTV | Borç alınan    | Oracle'ın ölçtüğü                                     |
+| ---------------------- | ---- | -------------- | ----------------------------------------------------- |
+| cbBTC / USDC, Base     | %86  | 1,62 milyar $  | yalnızca BTC/USD: cbBTC 1 BTC, USDC 1 $               |
+| cbBTC / USDC, Ethereum | %86  | 309,8 milyon $ | yalnızca BTC/USD                                      |
+| WBTC / USDC, Ethereum  | %86  | 115,8 milyon $ | WBTC/BTC × BTC/USD ÷ USDC/USD                         |
+| WBTC / USDT, Ethereum  | %86  | 84,1 milyon $  | okunmadı                                              |
+| LBTC / USDC, Ethereum  | %86  | 1,9 milyon $   | Redstone'un LBTC/BTC temel oranı (1,005244) × BTC/USD |
+| tBTC / USDC, Ethereum  | %77  | 0,6 milyon $   | okunmadı                                              |
+
+Aave ile karşılaştırınca iki şey öne çıkar. LLTV her büyük wrapper için %86'dır: WBTC ve cbBTC için Aave'nin %85 eşiğinin bir puan, LBTC için Aave'ninkinin on bir puan üzerinde; çünkü Morpho'da bunu bir risk komitesi değil piyasayı oluşturan belirler ve borç verenler onu fonlayıp fonlamamaya karar verir. Ayrıca oracle tokeni değil piyasayı izler: yukarıdaki WBTC/USDC piyasası WBTC'yi bir WBTC/BTC beslemesiyle, USDC'yi bir USDC/USD beslemesiyle fiyatlarken, hacmin çoğunu taşıyan cbBTC piyasaları iki tokeni de tam olarak sabit değerlerinde kabul eder. 29 Ekim 2026'da Ethereum cbBTC/USDC oracle'ı cbBTC başına 79.752,37 USDC veriyordu; dolayısıyla 40.000 USDC'ye karşı 1 cbBTC'nin [Morpho sağlık faktörü](/tr/blog/morpho-saglik-faktoru) 79.752,37 × 0,86 ÷ 40.000 = 1,715, likidasyon fiyatı da 46.511,63 idi; aynı kredi için Aave'deki 47.058,82'nin biraz altında.
+
+Likidasyon da farklıdır. %86 LLTV'de [Morpho'nun likidasyon teşviki](/tr/blog/morpho-likidasyonu-nasil-isler) %4,38'dir: Aave'nin WBTC'deki %5 bonusuna yakın, cbBTC'deki %7,5'in altında; ancak Morpho'da bir likidatör tüm borcu tek bir işlemde geri ödeyebilir, Aave ise çoğu likidasyonu borcun yarısıyla sınırlar. WBTC/BTC'yi hesaba katan bir oracle'a sahip Morpho'daki bir WBTC kredisi, Aave'dekiyle aynı saklama riskini taşır; bir cbBTC kredisi ise iki protokolde de bu riskin hiçbirini sağlık faktöründe, tamamını protokolün ödeme gücünde taşır.
+
+## Wrapped bitcoin kredisinde gerçekte neler ters gidebilir?
+
+- **Bitcoin fiyatı.** Olağan risk ve büyük olanı. Aave Labs'e göre 10 Ekim 2025'te Aave'de bir günde 250 milyon $ üzerinde likidasyon yaşandı; Aave Labs 2020'den Şubat 2026'ya kadar 310.000 likidasyonda toplam 4,65 milyar $ da sayıyor. Sağlık faktörü hesabı her wrapper için aynıdır; farklı olan eşiktir.
+- **Oracle üzerinden bir wrapper iskontosu.** Aave'deki WBTC pozisyonlarına ve WBTC/BTC beslemesi olan Morpho piyasalarına ulaşır. Aave'deki cbBTC veya tBTC pozisyonlarına ya da BTC/USD oracle'ı olan Morpho cbBTC piyasalarına ulaşmaz; orada riski protokol taşır.
+- **Dönüşüm oranında bir düşüş.** LBTC ve eBTC bir staking oranıyla fiyatlanır; Babylon'da slashing bu oranı ve onunla birlikte her pozisyonu düşürür, hem Aave'de hem de aynı oranı kullanan Morpho piyasalarında.
+- **Bir parametre değişikliği.** Aave yönetişimi bir wrapper'ın eşiğini veya LTV'sini düşürebilir, LTV'sini 0'a ayarlayabilir ya da FBTC'de yaptığı gibi onu dondurabilir. Bir Morpho piyasasının LLTV'si hiç değişmez, ancak bir piyasa uygulamadaki listeden kaldırılabilir.
+- **Dolu bir tavan veya dondurulmuş bir rezerv.** Aave'de ikisi de "teminat ekleme" yolunu kapatır ve yükselmenin tek yolu olarak geri ödemeyi bırakır. Morpho'da tavan yoktur.
+- **Wrapper için sığ likidite.** tBTC, LBTC ve eBTC'deki yüksek bonusların nedeni budur: el koyduğu tokeni hızla satamayan bir likidatör onu almak için daha fazla ödeme ister ve stresli bir piyasada pozisyon daha derin zarara girene kadar hiç gelmeyebilir.
+
+## Uyarılar wrapped bitcoin pozisyonunda nasıl yardımcı olabilir?
+
+Bir uyarı hangi wrapper'ı tuttuğunuzu bilmez ve umursamaz. Tokenping Aave sağlık faktörünü `getUserAccountData` üzerinden okur; bu fonksiyon wrapper'ın eşiğini ve oracle'ın fiyatını, WBTC/BTC oranı ve LBTC oranı dahil, zaten uygular. Morpho sağlık faktörünü ise piyasanın kendi oracle'ından zincir üzerinde hesaplar. Wrapper'ın değiştirdiği şey sayının nasıl hareket ettiğidir. 1,5 sağlık faktöründeki bir pozisyon, wrapper ne olursa olsun oracle fiyatında %33'lük bir düşüşten sonra likide edilir; bir WBTC pozisyonu oraya WBTC/BTC oranındaki %33'lük bir düşüşle de, bir LBTC pozisyonu da dönüşüm oranıyla ulaşabilir; bu yüzden uyarı, iki tür hareketin de geri ödemeye zaman bırakacağı bir yerde durmalıdır. 1,03'teki BTC'ye karşı BTC loop'u ise tamamen aralığın dışındadır.
+
+Tokenping pozisyonunuzu her 5 dakikada bir kontrol eder: 21 ağdaki her Aave V3 piyasasında, her Aave V4 Spoke'unda ve 14 zincirdeki listelenmiş her Morpho Blue ve Midnight piyasasında. Sağlık faktörü eşiğinizin altında olduğunda (Aave'de 1,1 ile 10 arası, Morpho'da 1,02 ile 10 arası) size Signal, Telegram veya e-posta ile mesaj gönderir ve pozisyon toparlanana kadar her kontrolde tekrarlar. Sizin yerinize geri ödeme yapamaz ve sert bir hareket, bir mesaj ulaşmadan önce iki kontrolü geçebilir. [Aave V3 sağlık faktörünüzü](/tr/aave) veya [Morpho pozisyonlarınızı](/tr/morpho) ödeme yapmadan kontrol edebilirsiniz; uyarıların fiyatı <AlertPrice />, piyasa veya Spoke başına bir uyarı. [Uyarı eşiği nasıl seçilir](/tr/blog/guvenli-aave-saglik-faktoru#bir-uyarı-esigini-adım-adım-nasıl-secersiniz) ve [uyarı nasıl kurulur](/tr/blog/aave-saglik-faktoru-uyarisi-kurulumu) gerisini anlatır.
+
+## Kaynaklar
+
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): WBTC, cbBTC, tBTC, LBTC, eBTC, BTC.b ve FBTC için 26296985 numaralı blokta `getAllReservesTokens`, `getReserveConfigurationData`, `getReserveCaps` ve `getReserveData` (erişim tarihi: 29 Ekim 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): yedi wrapper için `getSourceOfAsset` ve `getAssetPrice`, ayrıca her kaynağın `description()` değeri, 26296985 numaralı blokta (erişim tarihi: 29 Ekim 2026)
+- [WBTC adaptörü](https://etherscan.io/address/0xDaa4B74C6bAc4e25188e64ebc68DB5050b690cAc): 26296985 numaralı blokta `ASSET_TO_PEG` ([WBTC / BTC beslemesi](https://etherscan.io/address/0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23), 0,9985) ve `PEG_TO_BASE` (erişim tarihi: 29 Ekim 2026)
+- [LBTC CAPO adaptörü](https://etherscan.io/address/0xf8c04B50499872A5B5137219DEc0F791f7f620D0) ve [eBTC CAPO adaptörü](https://etherscan.io/address/0x03bB418e89B75407585f8198178f253DA3216218): 26296985 numaralı blokta `getRatio`, `getSnapshotRatio`, `getSnapshotTimestamp`, `getMaxYearlyGrowthRatePercent`, `getMaxRatioGrowthPerSecond` ve `isCapped` (erişim tarihi: 29 Ekim 2026)
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2) ile Base ve Arbitrum'daki Pool'lar: BTC E-Mode kategorileri, [E-Mode rehberi](/tr/blog/aave-e-mode) için Ethereum'da 26291736, Base'de 53204166 numaralı blokta okundu (erişim tarihi: 28 Ekim 2026)
+- [Morpho API](https://api.morpho.org/graphql): Ethereum ve Base'de WBTC, cbBTC, tBTC, LBTC veya eBTC teminatlı listelenmiş piyasalar, LLTV'leri, borç alınan değerleri, oracle'ları ve beslemeleri (erişim tarihi: 29 Ekim 2026)
+- [Ethereum'da Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb): 26297045 numaralı blokta cbBTC / USDC (86%) oracle'ının `price()` değeri ve WBTC / USDC (86%) oracle'ının beslemeleri ile `price()` değeri; beslemelerin `description()` değeri (erişim tarihi: 29 Ekim 2026)
+- [ARFC: Adjusting WBTC Parameters to Address BitGo Transition Risks](https://governance.aave.com/t/arfc-adjusting-wbtc-parameters-to-address-bitgo-transition-risks/19096): LlamaRisk'in 18 Eylül 2024 tarihli önerisi ve 24 Eylül 2024 tarihli birleştirilmiş plan (erişim tarihi: 29 Ekim 2026)
+- [ARFC: Onboard LBTC on Aave v3 Core Instance](https://governance.aave.com/t/arfc-onboard-lbtc-on-aave-v3-core-instance/20142): LBTC'nin ne olduğu, ilk parametreleri ve oracle tartışması (erişim tarihi: 29 Ekim 2026)
+- [Direct to AIP: LBTC Oracle and CAPO implementation Update](https://governance.aave.com/t/direct-to-aip-lbtc-oracle-and-capo-implementation-update/22614): Chaos Labs, 17 Temmuz 2025, dönüşüm oranlı oracle ve CAPO parametreleri (erişim tarihi: 29 Ekim 2026)
+- [ARFC: Core & Base - BTC Correlated Asset Update](https://governance.aave.com/t/arfc-core-base-btc-correlated-asset-update/20940): LBTC E-Mode'ları ve Base listelemesi, 4 Şubat 2025 (erişim tarihi: 29 Ekim 2026)
+- [Unchained: WBTC completes shift to multi-jurisdiction custody model](https://unchainedcrypto.com/wbtc-completes-shift-to-multi-jurisdiction-custody-model/): 9 Ekim 2024 (erişim tarihi: 29 Ekim 2026)
+- [Aave Labs: How Aave Liquidations Perform Under Volatile Conditions](https://aave.com/blog/historical-liquidations): 6 Şubat 2026 (erişim tarihi: 29 Ekim 2026)
+
+_Eğitim amaçlı içeriktir, finansal tavsiye değildir. Uyarılar riski azaltır ama likidasyonu önlemez._

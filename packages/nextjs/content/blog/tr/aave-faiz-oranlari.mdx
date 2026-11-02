@@ -1,0 +1,156 @@
+export const meta = {
+  slug: "aave-faiz-oranlari",
+  title: "Aave faiz oranları nasıl işler ve neden sıçrar",
+  description:
+    "Aave borç faizleri bir kullanım oranı eğrisini izler: optimal seviyeye kadar yavaş, üstünde dik. Formül, gerçek parametreler, sıçramalar ve yapılacaklar.",
+  h1: "Aave faiz oranları nasıl işler ve borç faizleri neden sıçrar?",
+  publishedAt: "2026-10-25",
+  primaryQuestion: "Aave borç ve yatırma faizlerini nasıl belirler ve bu faizler neden sıçrar?",
+  readingMinutes: 8,
+};
+
+<ShortAnswer>
+  Aave V3'te her varlığın değişken borç faizi, yönetişimin belirlediği bir eğriyi izler: kullanım oranıyla
+  (utilization), yani yatırılan token'ların borç verilen payıyla, optimal bir seviyeye kadar yavaşça, onun üzerinde ise
+  dik biçimde yükselir. Yatıranlar, borç faizi çarpı kullanım oranı kadar, eksi rezerv faktörü kazanır. Faizler her
+  yatırma, borç alma, geri ödeme ve çekimde yeniden hesaplanır; bu yüzden tek bir büyük çekim kullanım oranını optimal
+  seviyenin üzerine itip faizi tek bir blok içinde katlayabilir: Ethereum Core'da USDC, 14 Ekim 2026'da yıllık %4,50'den
+  %13,67'ye (APR) çıktı ve yaklaşık 36 dakika sonra %4,76'ya döndü. Aave V3'teki tüm borçlar değişken faizlidir.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Rakamlar ve okundukları blok numaraları: content/blog/snapshots/aave-interest-rates.md */}
+
+## Aave'de borç faizini ne belirler?
+
+Aave V3'te bir varlığın borç faizini iki şey belirler: kullanım oranı ve faiz oranı parametreleri. Kullanım oranı, varlığın havuzunun borç verilmiş payıdır: borç bölü borç artı hâlâ kullanılabilir token'lar. Parametreler varlık başına dört sayıdır; Aave yönetişimi tarafından belirlenir ve Aave'nin Risk Stewards'ı bunları sınırlı adımlar ve asgari bekleme süreleri içinde ayarlayabilir:
+
+- **Optimal kullanım oranı (optimal usage ratio):** eğrinin büküldüğü kullanım oranı.
+- **Taban faiz (base rate):** %0 kullanım oranındaki borç faizi.
+- **Eğim 1 (slope 1):** faizin %0'dan optimal kullanım oranına kadar ne kadar yükseldiği.
+- **Eğim 2 (slope 2):** optimal kullanım oranından %100'e kadar ne kadar daha yükseldiği.
+
+25 Ekim 2026'da 26269328 numaralı Ethereum blokunda ve 518125419 numaralı Arbitrum blokunda okunan, birkaç yaygın varlığın parametreleri ve faizleri şöyleydi:
+
+| Piyasa ve varlık   | Optimal kullanım | Taban | Eğim 1 | Eğim 2 | Kullanım oranı | Borç APR | Yatırma APR |
+| ------------------ | ---------------- | ----- | ------ | ------ | -------------- | -------- | ----------- |
+| Ethereum Core USDC | %94              | %0    | %4,5   | %10    | %93,72         | %4,49    | %3,78       |
+| Ethereum Core USDT | %92              | %0    | %4,5   | %10    | %87,81         | %4,30    | %3,39       |
+| Ethereum Core WETH | %92              | %0    | %2,2   | %6     | %81,31         | %1,94    | %1,31       |
+| Ethereum Core GHO  | %99              | %4,5  | %0     | %0     | kullanılmıyor  | %4,50    | %0          |
+| Arbitrum USDC      | %90              | %0    | %4     | %10    | %77,32         | %3,44    | %2,39       |
+
+GHO bir istisnadır: iki eğimi de sıfırdır, bu yüzden faizi kullanım oranı ne olursa olsun sabit kalır ve elle değiştirilir (bkz. [GHO ve Aave V4](#gho-icin-ve-aave-v4te-faizler-nasıl-belirlenir)).
+
+## Aave borç faizi nasıl hesaplanır?
+
+Aave V3 borç faizi, optimal kullanım oranına kadar düz bir çizgi, onun üzerinde ise çok daha dik bir çizgidir. Kullanım oranı U ile:
+
+**Optimal kullanım oranına kadar: borç faizi = taban + eğim 1 × U ÷ optimal kullanım oranı**
+
+**Onun üzerinde: borç faizi = taban + eğim 1 + eğim 2 × (U − optimal kullanım oranı) ÷ (1 − optimal kullanım oranı)**
+
+Sözleşmede U, toplam borcun toplam borç artı havuzun hâlâ tuttuğu token'lara bölünmesidir. USDC'nin Ethereum Core parametreleriyle her kullanım oranındaki faiz şöyledir:
+
+| Kullanım oranı | Borç APR |
+| -------------- | -------- |
+| %50            | %2,39    |
+| %80            | %3,83    |
+| %90            | %4,31    |
+| %94 (optimal)  | %4,50    |
+| %95            | %6,17    |
+| %96            | %7,83    |
+| %98            | %11,17   |
+| %100           | %14,50   |
+
+%94'ün altında kullanım oranındaki on puanlık bir değişim faizi yarım puandan az hareket ettirir. Üstünde her puan yaklaşık 1,67 puan ekler ve kullanım oranının son altı puanı faizi üç katından fazla artırır. 25 Ekim 2026'daki okumada USDC %93,72'deydi, bükülme noktasının hemen altında: %4,5 × 0,9372 ÷ 0,94, uyguladığı %4,49'u verir.
+
+Eğri bilerek böyle tasarlanmıştır. Optimal seviyenin altında ucuz borçlanma havuzu kullanımda tutar; üstünde ise dik faiz, borç almayı bazı borç alanların geri ödeyeceği ve bazı sahiplerin yatırma yapacağı kadar pahalı hale getirir; bu da kullanım oranını yeniden düşürür ve çekim yapmak isteyen yatıranlar için token bırakır.
+
+## Aave borç faizleri neden sıçrar?
+
+Aave borç faizleri, kullanım oranı optimal kullanım oranını aştığında sıçrar; bunun nedeni genellikle büyük bir yatıranın çekim yapması veya büyük bir borç alanın borç almasıdır. Faiz aynı işlemde yeniden hesaplanır ve o varlığın her borç alanı, o andan bir sonraki değişikliğe kadar yeni faizi öder.
+
+14 Ekim 2026'da Ethereum Core'dan tam 133.898.000 USDC'lik tek bir çekim, kullanım oranını tek bir blokta %93,92'den %99,50'ye itti:
+
+| Ethereum bloku (UTC)         | Ne oldu                                     | Kullanım oranı | USDC borç APR |
+| ---------------------------- | ------------------------------------------- | -------------- | ------------- |
+| 26194052 (14 Ekim, 23:32:47) | Öncesi                                      | %93,92         | %4,50         |
+| 26194053 (14 Ekim, 23:32:59) | 133.898.000 USDC çekildi                    | %99,50         | %13,67        |
+| 26194088 (14 Ekim, 23:39:59) | Bu aralıktaki en yüksek nokta               | yaklaşık %99,8 | %14,18        |
+| 26194231 (15 Ekim, 00:08:35) | Aynı adres 133.898.000 USDC'yi geri yatırdı | %94,16         | %4,76         |
+
+Borç alanlar 36 dakika boyunca olağan faizin yaklaşık üç katını ödedi ve yukarıdaki formül bu faizlerin her birini kullanım oranından yeniden üretir. Bir sıçrama, kullanım oranı yüksek kaldığı sürece devam eder: burada aynı token'lar geri geldi, ama başka durumlarda onu düşürmek için yüksek faizin çektiği yeni yatıranlar veya geri ödemeler gerekir.
+
+Borç faizini iki şey daha değiştirir. Yönetişim veya Risk Stewards dört parametreyi değiştirebilir; bu da tüm eğriyi bir kerede kaydırır. İşlemler arasında ise faiz değişmez: Aave onu o varlığın her yatırma, borç alma, geri ödeme, çekim ve likidasyon işleminde yeniden hesaplar ve faiz, bir sonrakine kadar bu oranda saniye saniye birikir.
+
+## Yatıranlar neden borç alanların ödediğinden az kazanır?
+
+Yatıranlar borç alanların ödediğinden az kazanır, çünkü havuzun yalnızca borç verilmiş kısmı faiz öder ve protokol bunun bir payını alır. Yatırma faizi şöyledir:
+
+**Yatırma faizi = borç faizi × kullanım oranı × (1 − rezerv faktörü)**
+
+25 Ekim 2026'da Ethereum Core USDC için: %4,4866 × 0,9372 × (1 − 0,10) = %3,78. Rezerv faktörü (reserve factor), USDC için %10 ve WETH için %15, Aave'nin hazinesine gider. Bir rezerv batık borçtan (bad debt) kaynaklanan bir açık taşıyorsa sözleşme bunu da yatırma tarafında hesaba katar; bu da yatırma faizini biraz düşürür.
+
+## Aave'de APR ile APY arasındaki fark nedir?
+
+Sözleşmeler faizleri APR olarak saklar; Aave uygulaması ise bileşik getiriyi ekleyen APY'yi gösterir. Uygulamanın matematik kütüphanesi APR'yi 31.536.000 saniyelik bir yıl boyunca her saniye bileşik hale getirir:
+
+**APY = (1 + APR ÷ 31.536.000)^31.536.000 − 1**
+
+Ethereum Core USDC'deki %4,4866 APR, uygulamada %4,59 APY olarak görünür. Bu seviyelerde fark yaklaşık onda bir puandır; %14 APR'de ise yaklaşık bir puandır (%15,0 APY).
+
+## Faiz sıçramaları sağlık faktörünüzü nasıl etkiler?
+
+Kısa bir sıçrama sağlık faktörünüzü (health factor) neredeyse hiç kıpırdatmaz; aylarca süren yüksek bir faiz ise kıpırdatır. Faiz borcunuza eklenir ve daha fazla borç sağlık faktörünü düşürür; bunu [sağlık faktörünüzün neden düştüğünü anlatan rehberdeki faiz nedeni](/tr/blog/aave-saglik-faktoru-neden-dustu#neden-3-borcunuzdaki-faiz-teminatınızdakinden-daha-hızlı-mı-isledi) açıklıyor.
+
+Ethereum Core'da 12.000 USDC borca karşı yatırılmış 10 WETH'i, WETH'in %83'lük likidasyon eşiğiyle (14 Ekim 2026'da okundu) ve örnek olarak 2.400 $'lık bir ETH fiyatıyla ele alın: sağlık faktörü 1,66'dır. WETH'in %1,31'lik yatırma faiziyle kazandığı da hesaba katılınca:
+
+| Faiz ne kadar sürer | %4,49'da (25 Ekim 2026)       | %14,50'de (eğrinin tepesi) |
+| ------------------- | ----------------------------- | -------------------------- |
+| 36 dakika           | yaklaşık 0,04 USDC faiz, 1,66 | yaklaşık 0,12 USDC, 1,66   |
+| 30 gün              | yaklaşık 1,66                 | yaklaşık 1,64              |
+| Bir yıl             | yaklaşık 1,61                 | yaklaşık 1,45              |
+
+14 Ekim sıçraması bu pozisyona yaklaşık 12 sente mal oldu. Bir yıl boyunca eğrisinin tepesinde kalan bir piyasa, hiçbir fiyat hareketi olmadan onu 1,66'dan yaklaşık 1,45'e indirirdi; yavaş bir kaymanın, payı bol bir uyarı eşiğini hak etmesinin nedeni budur ([bir sağlık faktörü size ne kadar tampon sağlar](/tr/blog/guvenli-aave-saglik-faktoru#faiz-ve-parametre-degisiklikleri-tamponunuzu-ne-kadar-hızlı-eritir)).
+
+## Borç faiziniz sıçradığında ne yapabilirsiniz?
+
+Borç faiziniz sıçradığında önce Aave uygulamasında varlığın sayfasından kullanım oranını kontrol edin: optimal kullanım oranının hemen üzerindeyse, kullanım oranı düşer düşmez faiz de geri iner. Sonra her birinin bir maliyeti olan dört seçeneğiniz var:
+
+- **Bekleyin.** Tek bir büyük çekimin yol açtığı bir sıçrama, 14 Ekim 2026'da olduğu gibi, o token'lar geri geldiğinde bitebilir. Geri gelecekleri garanti değildir ve bu arada yüksek faizi ödersiniz.
+- **Borcun bir kısmını geri ödeyin.** Hem faizinizi hem riskinizi azaltır; [Aave sağlık faktörünüzü nasıl yükseltirsiniz](/tr/blog/aave-likidasyonundan-kacinma) rehberi kendi token'larınızla veya teminatınızla geri ödemeyi anlatıyor.
+- **Borcu başka bir varlığa takas edin.** Aave'nin dokümanlarına göre Aave Labs arayüzünde, Ethereum Core, Prime ve EtherFi piyasalarında ve Arbitrum, Avalanche, Base, BNB Chain, Optimism, Polygon, Gnosis ve Sonic'te, borç alınan bir varlığı tek işlemde başka biriyle değiştiren bir borç takası özelliği var. Metis, Scroll, ZKsync, Celo, Soneium, Linea, Plasma veya Ink için listelenmiyor. Yeni varlığın kendi eğrisi vardır ve fiyatı eski borcunuzdan farklı hareket ederse kendi riski de vardır.
+- **Başka bir piyasada borç alın.** Her piyasanın kendi havuzu ve kendi kullanım oranı vardır: 25 Ekim 2026'da USDC'nin maliyeti Ethereum Core'da %4,49, Arbitrum'da %3,44'tü. Taşınmak, bir piyasada geri ödeyip diğerinde, o ağda teminatla borç almak demektir.
+
+## GHO için ve Aave V4'te faizler nasıl belirlenir?
+
+Aave'nin kendi stablecoin'i GHO'nun borç faizi sabittir ve eğri yerine insanlar tarafından seçilir. Ethereum Core'da parametrelerinin iki eğimi de sıfırdır; yani faiz, 25 Ekim 2026'da %4,50 olan taban faizdir. Faiz, 3 üyeli bir Risk Council'den 2'sinin onayıyla bir GHO steward sözleşmesi üzerinden değiştirilir: güncelleme başına en fazla 5 yüzde puan ve günde en fazla bir kez. Son değişiklik, 3 Ekim 2026'da, faizi %4,25'ten %4,50'ye çıkardı; Kasım 2024'ten beri %3,00 ile %14,50 arasında 44 kez değiştirildi. stkAAVE sahiplerine yönelik eski indirim Aave v3.4 ile kaldırıldı.
+
+Aave V4 bir kullanım oranı eğrisini korur, ama dokümanları bunu, her Spoke'a borç veren havuz olan Hub'da varlık başına yapılandırılmış olarak tanımlar. Bu ortak faizin üzerine her borç alan, teminatının kalitesine bağlı bir User Risk Premium öder: Aave'nin örneği, %5'lik bir taban faiz üzerine %50'lik bir prim ve sonuçta %7,5'tir. Bu yüzden aynı varlığı borç alan iki V4 kullanıcısı farklı faizler ödeyebilir; V4'ün başka neleri değiştirdiğini [sağlık faktörü rehberinin V4 bölümü](/tr/blog/aave-saglik-faktoru#aave-v4te-saglık-faktoru-farklı-mı) anlatıyor.
+
+## Aave'de sabit faiz alabilir misiniz?
+
+Hayır. Aave V3'te bir zamanlar stable rate (sabit faiz) seçeneği vardı, ama bir hata bildiriminden sonra 2024'te tamamen kullanımdan kaldırıldı ve Aave v3.2 kodu sildi. Her Aave V3 kredisi değişken faiz öder ve GHO'nun sabit faizi de steward'ının sınırları içinde her an değiştirilebilir.
+
+## Bir uyarı sizi yükselen faizler konusunda uyarabilir mi?
+
+Bir sağlık faktörü uyarısı faizleri izlemez; faizlerin pozisyonunuza yaptığını izler. Tokenping, Aave V3 ve V4 sağlık faktörünüzü 22 ağda her 5 dakikada bir kontrol eder ve sağlık faktörü belirlediğiniz eşiğin (1,1 ile 10 arası) altındayken size Signal, Telegram veya e-posta ile mesaj gönderir. 14 Ekim 2026'daki gibi bir sıçrama onu tetiklemez, çünkü sağlık faktörünü neredeyse hiç kıpırdatmaz; aylarca süren yüksek faiz ise, borç eşiğinizi aşacak kadar büyüdüğünde, tetikler.
+
+Faizin kendisi hakkında bir mesaj istiyorsanız bazı başka araçlar faiz uyarıları gönderir; [Aave uyarı araçları karşılaştırmamız](/tr/blog/aave-likidasyon-uyari-araclari) her birinin neyi izlediğini listeliyor. Sağlık faktörü uyarısının kurulumu [sağlık faktörü uyarısı nasıl kurulur](/tr/blog/aave-saglik-faktoru-uyarisi-kurulumu) rehberinde; isterseniz önce [Aave V3 sağlık faktörünüzü kontrol edebilirsiniz](/tr/aave). Pozisyonlarınızı görmek ödeme gerektirmez.
+
+## Kaynaklar
+
+- [DefaultReserveInterestRateStrategyV2.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/misc/DefaultReserveInterestRateStrategyV2.sol) ve [ReserveLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ReserveLogic.sol): faiz eğrisi, kullanım oranı, yatırma faizi ve faizlerin ne zaman yeniden hesaplandığı (aave-v3-origin, erişim tarihi: 25 Ekim 2026)
+- [Aave V3 Ethereum Core faiz oranı stratejisi](https://etherscan.io/address/0x9ec6F08190DeA04A54f8Afc53Db96134e5E3FdFB#readContract) ve [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): 26269328 numaralı blokta parametreler ve faizler; 26194052, 26194053, 26194088, 26194230 ve 26194231 numaralı bloklarda USDC (erişim tarihi: 25 Ekim 2026)
+- [Aave V3 Arbitrum faiz oranı stratejisi](https://arbiscan.io/address/0x429F16dBA3B9e1900087Cbaa7b50D38Bc60fB73F#readContract): 518125419 numaralı blokta USDC parametreleri ve faizleri (erişim tarihi: 25 Ekim 2026)
+- [Aave Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): steward'ların değiştirebileceği değerler arasında faiz oranı parametreleri, güncelleme başına azami değişiklik ve asgari bekleme süresiyle (erişim tarihi: 25 Ekim 2026)
+- [aave-utilities içindeki calculateCompoundedRate](https://github.com/aave/aave-utilities/blob/master/packages/math-utils/src/formatters/compounded-interest/calculate-compounded-interest.ts): 31.536.000 saniye üzerinden APR'den APY'ye (erişim tarihi: 25 Ekim 2026)
+- [Aave takas özellikleri](https://aave.com/docs/aave-v3/smart-contracts/swap-features.md): borç takası ve teminatla geri ödeme ile bunları destekleyen piyasalar (erişim tarihi: 25 Ekim 2026)
+- [GHO Stewards: October 2026 GHO borrow rate update (Ekim 2026 GHO borç faizi güncellemesi)](https://governance.aave.com/t/gho-stewards-october-2026-gho-borrow-rate-update/25754) (TokenLogic, 2 Ekim 2026, erişim tarihi: 25 Ekim 2026) ve [GHO steward sözleşmesi](https://etherscan.io/address/0x98217A06721Ebf727f2C8d9aD7718ec28b7aAe34#readContract): güncelleme başına sınırlar ve Kasım 2024'ten beri faiz geçmişi (erişim tarihi: 25 Ekim 2026)
+- [Aave v3.4 özellikleri](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.4/Aave-v3.4-features.md): GHO'daki stkAAVE indiriminin kaldırılması (erişim tarihi: 25 Ekim 2026)
+- [BGD: Full deprecation of stable rate (stable rate'in tamamen kullanımdan kaldırılması)](https://governance.aave.com/t/bgd-full-deprecation-of-stable-rate/16473) (31 Ocak 2024) ve [Aave v3.2 özellikleri](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): stable rate kaldırıldı (erişim tarihi: 25 Ekim 2026)
+- [Aave V4 dokümantasyonu](https://aave.com/docs/aave-v4.md) ve [V4 pozisyonları](https://aave.com/docs/aave-v4/positions.md): Hub varlığı başına faiz eğrisi ve User Risk Premium (erişim tarihi: 25 Ekim 2026)
+
+_Eğitim amaçlı içeriktir, finansal tavsiye değildir. Uyarılar riski azaltır ama likidasyonu önlemez._

@@ -1,0 +1,133 @@
+export const meta = {
+  slug: "aave-cekim-veya-borclanma-neden-basarisiz",
+  title: "Aave'de neden çekim veya borçlanma yapamıyorum? 9 neden",
+  description:
+    "Aave V3'te çekim, borçlanma ya da geri ödeme neden reddedilir: sağlık faktörü, likidite, yatırma ve borç limitleri, dondurulmuş veya duraklatılmış rezerv.",
+  h1: "Aave'deki çekim, borçlanma veya geri ödeme işlemim neden başarısız oluyor?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "Aave'de bir çekim, borçlanma veya geri ödeme işlemi neden başarısız olur?",
+  readingMinutes: 11,
+};
+
+<ShortAnswer>
+  Bir Aave V3 işlemi, Pool sözleşmesinin kontrollerinden biri onu reddettiğinde başarısız olur ve neden neredeyse her
+  zaman şu dokuzdan biridir. Çekim, sağlık faktörünüzü (health factor) 1'in altına indirecektir. Rezervde,
+  istediğinizden daha az borç verilmemiş likidite vardır. Varlığın yatırma limiti (supply cap) ya da borçlanma limiti
+  (borrow cap) doludur. Rezerv dondurulmuştur (yeni yatırma ve borçlanma yok) ya da duraklatılmıştır (geri ödemeler
+  dahil hiçbir şey yok). Varlık borç alınamaz ya da E-Mode kategorinizde borç alınamaz. LTV'si 0 olan bir teminatınız
+  vardır ve önce onun çıkması gerekir. Ya da bir geri ödeme, sahip olmadığınız bir borcu veya onaylamadığınız token'ları
+  gösterir. 29 Ekim 2026'da Ethereum Core'da listelenen 66 rezervin 35'i dondurulmuştu, LBTC'nin yatırma limiti son 0,07
+  LBTC'ye kadar doluydu ve yatırılan 2.347,5 milyon USDC'nin yalnızca 134,4 milyonu çekilebilir durumdaydı.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Rakamlar ve okundukları blok numaraları: content/blog/snapshots/why-aave-withdraw-or-borrow-fails.md */}
+
+## Bir Aave işleminin hangi kontrollerden geçmesi gerekir?
+
+Aave V3'teki her yatırma, çekim, borçlanma ve geri ödeme Pool sözleşmesinden geçer ve Pool, bir token'ı hareket ettirmeden önce `ValidationLogic` adlı bir kütüphanede bir dizi kontrol çalıştırır. Başarısız olan her kontrol, işlemin tamamını adı belli bir hatayla durdurur: `ReserveFrozen`, `SupplyCapExceeded`, `HealthFactorLowerThanLiquidationThreshold` ve benzerleri. Cüzdanınız genellikle yalnızca "execution reverted" (işlem geri alındı) ve kısa bir hex kod gösterir, çünkü bu adlar cüzdanda değil, Aave'nin kodunda yer alır. Aave uygulaması bunların çoğunu siz imzalamadan önce kontrol eder; bu yüzden çoğu zaman bir işlem görmenize fırsat kalmadan reddeder.
+
+Kontroller işleme göre değişir. Bir çekim için etkin ve duraklatılmamış bir rezerv, en az çekilen tutar kadar bakiye ve, borcunuz varsa ve varlık teminat sayılıyorsa, işlemden sonra 1'e eşit ya da üstünde kalan bir sağlık faktörü gerekir. Borçlanma için borçlanmanın açık olduğu, etkin, duraklatılmamış ve dondurulmamış bir rezerv, borçlanma limitinin altında yer ve LTV'nize göre yeterli teminat gerekir. Yatırma için yatırma limitinin altında yeri olan, dondurulmamış bir rezerv gerekir. Geri ödeme yalnızca etkin, duraklatılmamış bir rezerv ve o varlıkta bir borç ister. Aşağıdaki dokuz neden bu listeyi, kabaca karşılaşma olasılığınız sırasıyla izler.
+
+Bu rehber Aave V3'ü ele alır. Aave V4 Spoke'larının kendi yapılandırmaları vardır ve Morpho'da oracle (fiyat kaynağı) ile sağlık faktörü dışında bu mekanizmaların hiçbiri yoktur: bir Morpho piyasasında limit, dondurma ya da duraklatma yoktur.
+
+## 1. Çekim, sağlık faktörünüzü 1'in altında bırakacaktır
+
+Borç alanların en sık karşılaştığı durum budur. Borcunuz varken teminat olarak kullandığınız bir varlığı çektiğinizde Pool, hesabınızı çekimden sonraki haliyle yeniden hesaplar ve en az 1'lik bir sağlık faktörü ister (`HealthFactorLowerThanLiquidationThreshold`). Aynı kontrol, bir varlığı teminat olarak kapattığınızda ya da aToken'ları başka bir adrese aktardığınızda da çalışır. Borcunuz yokken çalışmaz; bu yüzden yalnızca yatırma içeren bir pozisyonda bakiyenin tamamı her zaman çekilebilir.
+
+Ethereum Core'da 29 Ekim 2026'daki oracle fiyatı olan 2.309,84 $'dan 10 WETH (23.098,41 $), %84'lük bir likidasyon eşiği (liquidation threshold) ve 12.000 USDC borç düşünün. [Sağlık faktörü](/tr/blog/aave-saglik-faktoru) 23.098,41 × 0,84 ÷ 12.000 = 1,617'dir. Onu tam 1'de tutmak için 12.000 ÷ 0,84 = 14.285,71 $ değerinde, yani 6,185 WETH gerekir; bu yüzden çekebileceğiniz en fazla miktar 3,815 WETH'tir. 4 isterseniz işlem geri alınır; 3,815 isterseniz geçer ve fiyattaki bir sonraki küçük düşüşün likide edilebilir hale getireceği bir pozisyon bırakır. Aave uygulamasındaki azami tutar bu sayıdır ve hepsini çekmek, güvenli bir pozisyonu bir saat içinde [likidasyon uyarısına](/tr/blog/aave-saglik-faktoru-uyarisi-kurulumu) ihtiyaç duyan bir pozisyona çevirmenin en hızlı yoludur.
+
+Borçlanmanın daha katı bir kardeşi vardır. Yeni bir borç, sağlık faktörünü 1'e eşit ya da üstünde bırakmalı ve ayrıca ağırlıklı LTV'nize sığmalıdır: teminat × LTV borcu karşılamalıdır (`CollateralCannotCoverNewBorrow`). WETH için LTV %81 iken yukarıdaki 10 WETH en fazla 18.709,71 $ borcu taşır ve bunun tamamını borç alan pozisyon 84 ÷ 81 = 1,037 sağlık faktörüyle başlar. [Güvenli bir sağlık faktörünün ne olduğu](/tr/blog/guvenli-aave-saglik-faktoru) rehberi, bunun neden başlamak için ince bir yer olduğunu açıklar.
+
+## 2. Rezervde istediğinizden daha az borç verilmemiş likidite var
+
+Aave, yatıranların yatırdığını borç olarak verir; bu yüzden bir rezervde yalnızca kimsenin borç almadığı kısım durur. Bu kısımdan büyük bir çekim ya da borçlanma başarısız olur ve bu durumun bir Aave hata adı yoktur: aToken alttaki token'ı dışarı aktarmaya çalışır ve token sözleşmesinin kendisi işlemi geri alır; USDC için hata "ERC20: transfer amount exceeds balance" (aktarım tutarı bakiyeyi aşıyor) olur. Borçlanma kontrolü yalnızca toplam aToken arzının en az istenen tutar kadar olmasını ister; bu, saçma talepleri yakalar ve başka hiçbir şeyi yakalamaz.
+
+29 Ekim 2026'da Ethereum Core'da 2.347.525.372,91 USDC yatırılmış, 2.213.199.103,54 USDC borç alınmıştı ve aToken sözleşmesi 134.360.379,94 USDC tutuyordu: %94,28 kullanım oranı, yani yatırılanın %5,72'si çekilebilir ya da borç alınabilir durumdaydı. 200 milyon USDC ile çıkmak isteyen bir yatıran bunu yapamazdı; biri geri ödeme ya da yatırma yapana kadar kimse yapamazdı. [Aave faiz oranlarının nasıl işlediği](/tr/blog/aave-faiz-oranlari) rehberi bunun pratikte neye benzediğini gösterir: 14 Ekim 2026'da tek bir 133.898.000 USDC'lik çekim aynı rezervi %99,50 kullanım oranına, borçlanma faizini de tek bir blokta %4,50'den %13,67'ye çıkardı.
+
+Sorun likidite olduğunda dört şey işe yarar. Sözleşmenin tuttuğu miktara kadar daha küçük bir tutar çekin. Bekleyin: faiz eğrisi likiditeyi geri çekmek için tasarlanmıştır ve 14 Ekim'deki sıçrama yaklaşık 36 dakikada geçti, ama bunu hiçbir şey garanti etmez. Başka bir teminatınız varsa ve sağlık faktörü izin veriyorsa farklı bir teminat varlığını çekin. USDC borcunu geri ödemeye çalışıyor ama aUSDC tutuyorsanız `repayWithATokens` kullanın: tek bir USDC hareket ettirmeden aToken'larınızı borcunuza karşılık yakar, bu yüzden hiç likidite gerektirmez.
+
+## 3. Yatırma limiti dolu
+
+Her rezervin, Aave'nin risk yöneticileri (risk stewards) ve yönetişimi (governance) tarafından belirlenen bir yatırma limiti vardır ve toplamı limitin üstüne çıkaracak bir yatırma `SupplyCapExceeded` ile başarısız olur. 0 limit, limit yok demektir. Limit, var olan aToken'ları ve hazineye tahakkuk eden faizi sayar; bu yüzden kimse yatırma yapmadan, faiz tahakkuk ettikçe kendiliğinden dolar.
+
+Limitler beklenenden daha sık bağlayıcı olur. 29 Ekim 2026'da Ethereum Core'un LBTC limiti 2.690 LBTC idi ve 2.689,93 LBTC yatırılmıştı: kalan yer 0,07 LBTC'ydi ve baskı altındaki bir pozisyona 1 LBTC eklemek isteyen bir borç alan bunu yapamazdı. sUSDe limitinin %96,9'unda, tBTC %98,9'unda, USDe %91,7'sinde, weETH %91,2'sinde ve WBTC %89,4'ündeydi. Limitler iki yönde de hareket eder. 10 Temmuz 2026'da LlamaRisk, Aave'nin MegaETH örneğindeki USDm yatırma limitini, tavan "well above current demand" (mevcut talebin çok üstünde) olduğu için 1.000.000.000'dan 300.000.000'a indirdi; risk yöneticileri talep geldiğinde limitleri, genellikle birkaç gün içinde yükseltir.
+
+Bir borç alan için limit kapalı bir kapı anlamına gelir: teminat eklemek, sağlık faktörünü yükseltmenin iki yolundan biridir ve dolu bir limit bu yolu o varlık için kapatır. Diğer yol olan borç geri ödemek çalışmaya devam eder; limitinde yer olan farklı bir teminat varlığı eklemek de çalışır.
+
+## 4. Borçlanma limiti dolu
+
+Borçlanma limitleri borç için aynı şekilde işler: borçlanmanızdan sonra rezervin toplam değişken borcu limiti aşmamalıdır (`BorrowCapExceeded`) ve 0 limit yok demektir. Kontrol her borçlanmada çalışır; bu yüzden zaten limitini aşmış bir rezerv, biri geri ödeme yapana kadar o varlıkta her yeni borçlanmayı durdurur. Dolu bir borçlanma limiti başka hiçbir şeyi durdurmaz: geri ödemeler, çekimler ve likidasyonlar geçer.
+
+Ethereum Core'daki tBTC uç örnektir: 29 Ekim 2026'da borçlanma açıktı, ama limit 1 tBTC idi ve zaten 2,57 tBTC borç alınmıştı; bu yüzden en küçük borçlanma bile geri alındı. USDC'de 2.700 milyonluk limite karşı 2.213,2 milyon borç alınmıştı; %82,0 kullanılmıştı ve 486,8 milyon yer vardı; USDT %80,8'deydi. Stablecoin limitleri dolduğunda, rezervde hâlâ bol likidite olsa bile borçlanma başarısız olur.
+
+## 5. Rezerv dondurulmuş
+
+Dondurulmuş bir rezerv yeni yatırma ve yeni borçlanma kabul etmez (ikisinde de `ReserveFrozen`). Aave'nin Pool Configurator dokümantasyonu hâlâ neyin çalıştığını listeler: geri ödemeler, likidasyonlar ve çekimler. Dondurma, yönetişimin kimseyi kapana kıstırmadan bir varlığı tasfiye etme yoludur; [Aave bir piyasayı kapattığında ne olur](/tr/blog/aave-piyasa-kapanisi) rehberi adımları tek tek anlatır.
+
+Dondurulmuş rezervler nadir değildir. 29 Ekim 2026'da Ethereum Core'daki 66 rezervin 35'i dondurulmuştu: CRV, MKR, UNI, LUSD, FRAX, sDAI, crvUSD, FBTC ve vadesi geçmiş uzun bir Pendle PT token listesi; neredeyse hepsinin yatırma ve borçlanma limiti de 1'di. Bunlardan birinde hâlâ teminatınız varsa onu çekebilirsiniz ve ondan likide edilebilirsiniz, ama üzerine ekleme yapamazsınız.
+
+## 6. Rezerv duraklatılmış
+
+Duraklatma, acil durum anahtarıdır. Duraklatılmış bir rezerv her şeyi reddeder: yatırma, borçlanma, geri ödeme, çekim, likidasyon ve aToken aktarımları (`ReservePaused`). 29 Ekim 2026'da Ethereum Core'da duraklatılmış rezerv yoktu ve olağan haftalarda hiçbiri duraklatılmış olmaz.
+
+Duraklatma kullanılmıştır. 4 Kasım 2023'te, kritik bir hata ödülü (bug bounty) raporunun ardından Aave'nin Guardian'ı Ethereum'daki Aave V2'yi ve V3 Arbitrum, Avalanche, Optimism ve Polygon'daki bir grup varlığı duraklattı. Yaklaşık bir hafta boyunca, fiyatlar hareket etmeye devam ederken, bu rezervlerde kimse geri ödeme yapamadı ya da teminat ekleyemedi. V3 örneklerinin duraklatması 12 Kasım 2023'te, V2 Ethereum'unki WETH borçluları için yaklaşık üç saatlik bir likidasyon ek süresinin (grace period) ardından 13 Kasım'da ve V3 Polygon'daki CRV'ninki 16 Kasım'da kaldırıldı. Bugün bu ek süre protokolün bir parçasıdır: bir rezervin ek süresi içindeki likidasyon `LiquidationGraceSentinelCheckFailed` ile başarısız olur; bu da dışarıda kalmış borç alanlara, likidatörler harekete geçmeden önce geri ödeme yapmaları için kısa bir pencere verir.
+
+İşleminiz bir duraklatma hatasıyla başarısız olursa, duraklatma kalkana kadar Aave'de yapabileceğiniz bir şey yoktur. Bu süreyi geri ödeme fonlarını doğru ağda hazır tutmak için kullanın, çünkü duraklatma kalktıktan sonraki ek süreyi yönetişim ya da Guardian belirler ve bu süre üç saat kadar kısa olmuştur.
+
+## 7. O varlıkta borçlanma kapalı ya da E-Mode kategorinizde izin verilmiyor
+
+Birçok varlık teminat olarak yatırılabilir ama borç alınamaz. 29 Ekim 2026'da Ethereum Core'da dondurulmamış 15 rezervde borçlanma kapalıydı; aralarında wstETH, cbETH, rETH, weETH, LBTC, eBTC, AAVE ve XAUt vardı ve bunlardan herhangi birini borç almak `BorrowingNotEnabled` ile başarısız olur. Bu işareti yönetişim rezerv bazında belirler ve Aave uygulamasında eksik bir borç alma düğmesi olarak görünür.
+
+Bir [E-Mode kategorisindeyseniz](/tr/blog/aave-e-mode) onun yerine farklı bir kural geçerlidir: yalnızca kategorinin borç alınabilir kümesindeki varlıkları borç alabilirsiniz ve başka her şey, kategori dışında borç alabileceğiniz bir varlık bile, `NotBorrowableInEMode` ile başarısız olur. Örneğin Ethereum Core'un "ETH correlated" kategorisi yalnızca WETH borç almanıza izin verir. Kategoriden çıkmak borçlanmayı düzeltir, ama çıkmanın da kendi kontrolleri vardır: borçlu olduğunuz her varlık kategori dışında borç alınabilir olmalı ve sağlık faktörünüz normal, daha düşük eşiklerle de 1'e eşit ya da üstünde kalmalıdır (`InvalidDebtInEmode`, `InvalidCollateralInEmode`, `HealthFactorLowerThanLiquidationThreshold`).
+
+## 8. LTV'si 0 olan bir teminatınız var
+
+Yönetişim, bir varlığın mevcut pozisyonlar sürerken yeni borcu desteklemeyi bırakmasını istediğinde o varlığın LTV'sini 0'a ayarlar. 29 Ekim 2026'da Ethereum Core'da dondurulmamış 11 rezerv, LTV'si 0 olarak teminat için etkindi; aralarında DAI (likidasyon eşiği %77), LINK, PYUSD, USDe, sUSDe, USDS, EURC ve XAUt vardı. Böyle bir varlık likidasyon eşiği üzerinden sağlık faktörünüzde hâlâ sayılır, ama borçlanma gücünüze hiçbir şey katmaz. Bundan iki kontrol doğar.
+
+Birincisi borçlanmayla ilgilidir. Etkinleştirdiğiniz her teminatın LTV'si 0 ise ağırlıklı LTV'niz 0'dır ve her borçlanma `LtvValidationFailed` ile başarısız olur. Karışık bir durumda, örneğin DAI ve WETH ile, borçlanma geçer ama yalnızca WETH ile sınırlanır.
+
+İkincisi çekimle ilgilidir ve insanları şaşırtır. Borcunuz varsa ve LTV'si 0 olan etkin bir teminatınız varsa, çektiğiniz, aktardığınız ya da teminat olarak kapattığınız varlığın kendisi de LTV'si 0 olan bir varlık olmalıdır; yoksa işlem aynı `LtvValidationFailed` ile başarısız olur. Kodun kendi yorumu amacı açıkça söyler: kural "ensures that a multi-collateral position needs to withdraw/transfer the ltv0 asset first" (çok teminatlı bir pozisyonun önce ltv0 varlığını çekmesini/aktarmasını sağlar). Yani DAI ve WETH tutan ve bir miktar WETH çekmeye çalışan bir borç alan, DAI çıkana kadar reddedilir; DAI çekiminin kendisine sağlık faktörü kontrolü yine uygulanır. Çözüm işlemlerin sırasıdır: önce LTV'si 0 olan varlığı çekin ya da sağlık faktörünün ikisine de izin vereceği kadar geri ödeme yapın.
+
+## 9. Geri ödeme, sahip olmadığınız bir borcu ya da onaylamadığınız token'ları gösteriyor
+
+Geri ödemeler en basit işlemdir ve yine de başarısız olur; genellikle beş nedenden biriyle.
+
+- **O türde borç yok.** `NoDebtOfSelectedType`, çağırdığınız Pool'un o adres için o varlıkta değişken borç tutmadığı anlamına gelir. Olağan neden yanlış piyasadır: Ethereum'un her biri kendi Pool'una sahip ayrı Core, Prime ve Lido örnekleri vardır ve aynı cüzdan birinde USDC borçlu olup diğerinde hiç borçlu olmayabilir. Her ağın piyasaları da birbirinden ayrıdır.
+- **Artık var olmayan bir faiz modu.** Yalnızca değişken mod (2) kabul edilir; sabit faizli borçlanma koddan kaldırılmıştır ve mod 1 ile yapılan bir çağrı `InvalidInterestRateModeSelected` ile başarısız olur.
+- **Harcama izni yok.** Pool geri ödemeyi `transferFrom` ile çeker; bu yüzden token için en az tutar kadar bir onay ya da imzalı bir permit gerekir. Bu olmadan, Aave'nin kontrolleri çalışmadan token sözleşmesi işlemi geri alır.
+- **Başkası adına tutar belirtmeden geri ödeme.** Başka bir adres adına "borcun tamamı" değeriyle (`type(uint256).max`) geri ödeme `NoExplicitAmountToRepayOnBehalf` ile başarısız olur; tutarı belirtin.
+- **Kırıntı (dust).** Faiz her saniye tahakkuk eder; bu yüzden bir dakika önce gördüğünüz bakiyenin tam tutarıyla yapılan geri ödeme birkaç wei borç bırakır. Bir borcu tamamen kapatmak için Pool'un borcunuz kadarla sınırladığı azami değerle geri ödeme yapın.
+
+## Artık aramanıza gerek olmayan nedenler
+
+İki eski açıklama artık geçerli değil. Isolation Mode ve onun borç tavanları (debt ceilings) Aave V3.7'de kaldırıldı, siloed borrowing de öyle; bu yüzden bugün hiçbir borçlanma, bir varlığın izole olması ya da bir tavana ulaşılması nedeniyle başarısız olmaz. Sabit faizli borçlanma da V3.2'den beri yok; bu yüzden faiz modu değiştirme nedeniyle hiçbir şey başarısız olmaz. Eski bir rehber bunlardan birini anıyorsa artık dağıtımda olmayan bir Aave sürümünü anlatıyordur.
+
+## Fiyat düşerken bir işlem başarısız olursa ne yapmalı?
+
+Başarısız bir işlem sakin bir piyasada can sıkıcıdır, düşen bir piyasada ise sorundur, çünkü teşhis için harcadığınız saat, sağlık faktörünüzün ihtiyaç duyduğu saattir. Kısa bir işlem sırası:
+
+1. **Hatayı okuyun.** İşlemi cüzdanınızda simüle edin ya da hex seçiciyi (selector) bir blok gezgininin çözücüsüne yapıştırın; yukarıdaki adlar hangi durumda olduğunuzu söyler.
+2. **Teminat eklemek yerine geri ödemeyi tercih edin.** Geri ödeme dondurulmuş rezervlerde ve dolu yatırma limitlerinde çalışır, `repayWithATokens` ile boş likiditede de çalışır. Teminat eklemek, yerinde boşluk olan bir limite ve dondurulmamış bir rezerve bağlıdır.
+3. **Daha küçük tutarları deneyin.** Likidite ve limitler miktardır; sığan bir çekim ya da borçlanma geçerken tam tutar başarısız olur.
+4. **Başka bir varlık kullanın.** İlki engellendiğinde çekmek için farklı bir teminat ya da geri ödemek için farklı bir varlık çoğu zaman kullanılabilir.
+5. **Örneği ve ağı kontrol edin.** Doğru varlıkla yanlış Pool'a gönderilen bir geri ödeme `NoDebtOfSelectedType` ile başarısız olur ve size gas ile zaman kaybettirir.
+6. **Bir dahaki sefere uyarıyı daha erken alın.** Bu durumların her birini aşmak dakikalar alır. Pay bırakılarak kurulmuş bir sağlık faktörü uyarısı size o dakikaları kazandırır.
+
+Tokenping, 21 ağdaki her Aave V3 piyasasında ve her Aave V4 Spoke'unda Aave sağlık faktörünüzü her 5 dakikada bir kontrol eder ve seçtiğiniz bir eşiğin (1,1 ile 10 arası) altında olduğunda size Signal, Telegram veya e-posta ile mesaj gönderir; düzelene kadar her kontrolde tekrarlar. Sayıyı, çekim kontrolünün kullandığı `getUserAccountData` fonksiyonundan okur. Bir uyarı sizin yerinize hareket edemez ve bu rehberdeki hiçbir şey likidasyonu önlemez; size hangi kapının kapalı olduğunu söyler, böylece önce açık olanı denersiniz. [Aave V3 sağlık faktörünüzü](/tr/aave) hiçbir şey ödemeden kontrol edebilirsiniz; uyarıların fiyatı <AlertPrice />, piyasa ya da Spoke başına bir uyarı. [Aave'de likidasyondan nasıl kaçınılır](/tr/blog/aave-likidasyonundan-kacinma) geri ödeme mi teminat ekleme mi kararını ayrıntılı ele alır, [sağlık faktörünüz neden düştü](/tr/blog/aave-saglik-faktoru-neden-dustu) ise tepki verdiğiniz nedenleri.
+
+## Kaynaklar
+
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol), [BorrowLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/BorrowLogic.sol) ve [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): yukarıda adı geçen her kontrol, çalışma sıraları, LTV 0 yorumu ve sıfır LTV işareti (aave-v3-origin main, erişim tarihi: 29 Ekim 2026)
+- [Errors.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/helpers/Errors.sol): hata adları ve açıklamaları (aave-v3-origin main, erişim tarihi: 29 Ekim 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getAllReservesTokens` ve her rezerv için `getReserveConfigurationData`, `getReserveCaps`, `getPaused` ve `getReserveData`, 26296985 numaralı blokta (erişim tarihi: 29 Ekim 2026)
+- [aEthUSDC](https://etherscan.io/address/0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c): 26296985 numaralı blokta aToken sözleşmesinin tuttuğu USDC (erişim tarihi: 29 Ekim 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): 26296985 numaralı blokta WETH ve USDC fiyatları (erişim tarihi: 29 Ekim 2026)
+- [Aave dokümantasyonu: Pool Configurator](https://aave.com/docs/aave-v3/smart-contracts/pool-configurator): dondurulmuş ve duraklatılmış rezervlerin neye izin verdiği, 0 limitler (erişim tarihi: 29 Ekim 2026)
+- [Aave v2/v3 security incident 04/11/2023](https://governance.aave.com/t/aave-v2-v3-security-incident-04-11-2023/15335): 4 Kasım 2023 duraklatmaları, 12, 13 ve 16 Kasım'daki kaldırmalar ve ek süre (erişim tarihi: 29 Ekim 2026)
+- [Aave V3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): sabit faizli borçlanmanın kaldırılması (erişim tarihi: 29 Ekim 2026)
+- [Aave V3.7: Isolation Mode ve siloed borrowing'in kaldırılması](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/mode-removal.md) (erişim tarihi: 29 Ekim 2026)
+- [Risk Stewards: Supply and Borrow Cap Reductions on Aave V3 / 2026.07.10](https://governance.aave.com/t/risk-stewards-supply-and-borrow-cap-reductions-on-aave-v3-2026-07-10/25296): LlamaRisk'in MegaETH limit indirimleri, 14 Temmuz 2026'da uygulandı (erişim tarihi: 29 Ekim 2026)
+
+_Eğitim amaçlı içeriktir, finansal tavsiye değildir. Uyarılar riski azaltır ama likidasyonu önlemez._

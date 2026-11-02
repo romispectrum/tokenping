@@ -1,0 +1,157 @@
+export const meta = {
+  slug: "aave-saglik-faktoru-neden-dustu",
+  title: "Aave sağlık faktörüm neden düştü? 6 neden",
+  description:
+    "Aave sağlık faktörünüz siz hiçbir şey yapmadan düşebilir: fiyat hareketleri, faiz, eşik indirimleri, stablecoin depeg'leri ve oracle hataları.",
+  h1: "Hiçbir şey yapmadığım halde Aave sağlık faktörüm neden düştü?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-25",
+  primaryQuestion: "Aave sağlık faktörüm neden kendiliğinden düşüyor?",
+  readingMinutes: 11,
+};
+
+<ShortAnswer>
+  Aave, sağlık faktörünüzü (health factor) her okunduğunda oracle (fiyat kaynağı) fiyatlarından, güncel bakiyelerinizden
+  ve güncel likidasyon eşiklerinden (liquidation threshold) yeniden hesaplar; bu yüzden siz hiçbir işlem göndermeseniz
+  de değişir. Aave V3'te teminatınızın fiyatı düştüğünde, borç aldığınız varlık yükseldiğinde, borcunuzun faizi
+  teminatınızın kazandırdığını aştığında, yönetişim bir likidasyon eşiğini düşürdüğünde, teminat olarak yatırdığınız bir
+  stablecoin 1 $ altına kaydığında ya da bir oracle yanlış yapılandırıldığında düşer. 1,00'ın altında pozisyon likide
+  edilebilir.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Rakamlar ve okundukları blok numaraları: content/blog/snapshots/why-aave-health-factor-dropped.md */}
+
+## Aave sağlık faktörü neden kendiliğinden değişir?
+
+Aave sağlık faktörü kendiliğinden değişir, çünkü bir yerde saklanmaz: protokol onu her okunduğunda güncel oracle fiyatlarından, bakiyelerden (biriken faiz dahil) ve risk parametrelerinden yeniden hesaplar:
+
+**HF = Σ(teminat değeri × likidasyon eşiği) ÷ toplam borç değeri**
+
+İki taraf da Aave oracle fiyatıyla USD cinsindendir ve 1,00'ın altında pozisyon likide edilebilir. Formül [Aave sağlık faktörü nedir](/tr/blog/aave-saglik-faktoru) rehberinde açıklanıyor. Aave V3'te altı şey, sizin hiçbir işleminiz olmadan onu düşürür. Örnekler 14 Ekim 2026'da okunan Ethereum Core parametrelerini ve örnek olarak 2.400 $ ETH fiyatını kullanır.
+
+| Neden                                         | Sağlık faktörünüzü şu durumda düşürür                                      | Ne kadar hızlı     | Örnek                                                                |
+| --------------------------------------------- | -------------------------------------------------------------------------- | ------------------ | -------------------------------------------------------------------- |
+| 1. Teminat fiyatı düşer                       | Teminat olarak yatırdığınız bir varlığın fiyatı düşer                      | Piyasa kadar hızlı | 12.000 USDC karşılığında 10 WETH, ETH %10 düşer: 1,66'dan 1,49'a     |
+| 2. Borç alınan varlık yükselir                | Oynak bir varlık borç aldınız ve fiyatı yükselir                           | Piyasa kadar hızlı | 2,5 WETH karşılığında 10.000 USDC, ETH %10 yükselir: 1,30'dan 1,18'e |
+| 3. Faiz                                       | Borcunuzun borç faizi teminatınızın yatırma faizinden yüksektir            | Yavaş ve sürekli   | 12.000 USDC karşılığında 10 WETH: bir yılda yaklaşık 1,66'dan 1,61'e |
+| 4. Likidasyon eşiği indirimi                  | Yönetişim veya Risk Stewards teminatınızın eşiğini düşürür                 | Tek seferde        | Varsayımsal olarak WETH %83'ten %82'ye: 1,66'dan 1,64'e              |
+| 5. Stablecoin depeg'i (dolar sabitinin kaybı) | Teminat olarak yatırdığınız bir stablecoin 1 $ altına düşer                | Piyasa kadar hızlı | 2,5 WETH karşılığında 10.000 USDC, USDC 0,88 $: 1,30'dan 1,14'e      |
+| 6. Oracle veya kur hatası                     | Oracle teminatınızı fazla düşük ya da borcunuzu fazla yüksek değerlendirir | Tek seferde        | Mart 2026: wstETH yaklaşık %2,85 düşük değerlendirildi               |
+
+Şubat 2025'teki bir Aave yönetişim forumu başlığında, pozisyonu 1,71 sağlık faktörüyle başlayan bir borç alan önce kısmi bir likidasyon fark etti, sağlık faktörü 1,01'e indiğinde teminat ekledi ve sabah kontrol ettiğinde ikinci bir likidasyon buldu; ETH'nin ikisini de açıklayacak kadar düşmediğinden emindi. Başlıkta kimse nedeni bulamadı; aşağıdaki altı neden, aramaya başlanacak yerlerdir.
+
+30 Mart 2026'dan beri Ethereum'da, o zamandan bu yana da Avalanche, Arc ve Base üzerinde çalışan Aave V4, sağlık faktörünü her Spoke için ayrı hesaplar ve her varlık için tek bir teminat faktörü kullanır. Fiyatlar ve faiz onu aynı şekilde etkiler, ama parametre değişiklikleri mevcut pozisyonlara farklı yoldan ulaşır ([V4'ün parametre değişikliklerini nasıl uyguladığı, Neden 4 altında](#neden-4-yonetisim-veya-risk-stewards-bir-likidasyon-esigini-mi-dusurdu) bölümüne bakın).
+
+## Neden 1: Teminatınızın fiyatı mı düştü?
+
+Teminat olarak yatırdığınız herhangi bir varlığın fiyatındaki düşüş Aave sağlık faktörünüzü düşürür, çünkü teminat oracle fiyatıyla değerlendirilir. Tek bir oynak teminat varlığı ve stablecoin borçla sağlık faktörü fiyatla orantılı hareket eder: %10'luk bir düşüş onu %10 azaltır.
+
+Aave V3 Ethereum Core'da, WETH'nin likidasyon eşiğinin 26193284 numaralı blokta (14 Ekim 2026) %83 olduğu bir durumda, 12.000 USDC borç karşılığında yatırılmış 10 WETH alalım. Örnek olarak ETH başına 2.400 $ fiyatta (Aave oracle'ı o gün 26193376 numaralı blokta 2.414,78 $ okudu) sağlık faktörü 24.000 × 0,83 ÷ 12.000 = 1,66 olur. 2.160 $ fiyatta 1,49, 1.920 $ fiyatta 1,33 olur; %39,8'lik bir düşüşle 1.445,78 $ fiyatta 1,00'a ulaşır.
+
+Birden fazla teminat varlığında yalnızca düşen varlığın ağırlıklı payı hareket eder. Önemli olan fiyat Aave oracle'ının fiyatıdır (Ethereum Core'da WETH, "ETH / USD" adlı bir veri akışı kullanır). Her sağlık faktöründe fiyatların ne kadar düşebileceği [bir sağlık faktörü size ne kadar tampon verir](/tr/blog/guvenli-aave-saglik-faktoru) rehberinde.
+
+## Neden 2: Borç aldığınız varlığın fiyatı mı yükseldi?
+
+Oynak bir varlık borç aldıysanız, fiyatının yükselmesi Aave sağlık faktörünüzü düşürür, çünkü borç da oracle fiyatıyla değerlendirilir.
+
+Aave V3 Ethereum Core'da, USDC'nin likidasyon eşiğinin 26193284 numaralı blokta (14 Ekim 2026) %78 olduğu bir durumda, 2,5 WETH borç karşılığında yatırılmış 10.000 USDC alalım. Örnek olarak 2.400 $ fiyatta borç 6.000 $ eder ve sağlık faktörü 10.000 × 0,78 ÷ 6.000 = 1,30 olur. ETH %10 yükselip 2.640 $ olursa 7.800 ÷ 6.600 = 1,18'e düşer. %30 daha yüksek olan 3.120 $ fiyatta 1,00'a ulaşır.
+
+wstETH teminat ile WETH borç gibi korelasyonlu çiftler bu etkiyi azaltır, çünkü iki taraf da ETH ile birlikte hareket eder. Sağlık faktörü bu durumda büyük ölçüde oracle'ın bildirdiği wstETH/ETH kuruna bağlıdır; bu da piyasa riskini oracle riskiyle değiştirir ([oracle ve kur hataları, Neden 6](#neden-6-bir-oracle-veya-kur-hatası-teminatınızı-yanlıs-mı-fiyatladı) bölümüne bakın).
+
+## Neden 3: Borcunuzdaki faiz teminatınızdakinden daha hızlı mı işledi?
+
+Faiz, borcunuz teminatınızdan daha hızlı büyüdüğünde Aave sağlık faktörünüzü düşürür. Değişken borç her saniye borç faiziyle büyürken teminat genellikle daha düşük olan yatırma faizini kazanır. Tek teminat varlığı, tek borç varlığı ve sabit fiyatlarla sağlık faktörü, borcun borç faizi teminatın yatırma faizinden yüksekse aşağı, düşükse yukarı kayar.
+
+Aave V3 Ethereum Core'da 26193378 numaralı blokta (14 Ekim 2026) USDC yatıranlara yıllık %3,800 ödüyor, borç alanlara %4,496'ya mal oluyordu; WETH %1,309 ödüyor, %1,943'e mal oluyordu. Bunlar APR değerleridir; Aave uygulaması biraz daha yüksek APY'ler gösterir (o USDC borç faizi için %4,60). 12.000 USDC borç karşılığında yatırılmış 10 WETH (eşik %83) alalım; ETH örnek olarak 2.400 $ seviyesinde sabit kalsın ve faizler bir yıl boyunca değişmesin. Borç yaklaşık 12.550 USDC'ye, teminat yaklaşık 10,13 WETH'ye çıkar ve sağlık faktörü 1,66'dan yaklaşık 1,61'e iner. Faizler değişkendir; bunu bir tahmin olarak değil, büyüklük sırası olarak okuyun.
+
+Faizler sıçrayabilir de. 14 Ekim 2026'nın ilerleyen saatlerinde, yaklaşık 134 milyon $ tutarında yatırılmış USDC rezervden çıkarken Ethereum Core USDC borç faizi tek bir blokta (26194053, 23:32:59 UTC) %13,67 APR'ye sıçradı, yedi dakika içinde %14,18'e ulaştı ve USDC geri döndüğünde, sıçramadan yaklaşık 36 dakika sonra (26194231 numaralı blok, 15 Ekim 00:08 UTC) %4,76'ya geri düştü. Tek bir çekimin bir faizi neden üçe katlayabildiği [Aave faiz oranları nasıl işler](/tr/blog/aave-faiz-oranlari) rehberinde.
+
+Ters pozisyon kazanır: 2,5 WETH borç karşılığında yatırılmış 10.000 USDC %3,800 kazanır ve %1,943 öder; bu yüzden sağlık faktörü bir yılda 1,30'dan yaklaşık 1,32'ye tırmanır. Aave V4'te, User Risk Premium (kullanıcı risk primi) daha riskli teminat için borç faizine eklenir; bu yüzden o borç daha hızlı büyür.
+
+## Neden 4: Yönetişim veya Risk Stewards bir likidasyon eşiğini mi düşürdü?
+
+Aave V3'te bir varlığın likidasyon eşiğini düşürmek, o varlığı normal eşiğiyle sayan her açık pozisyonun sağlık faktörünü hemen düşürür. E-Mode kategorisi varlığı içeren pozisyonlar bunun yerine kategorinin eşiğini kullanır ve yönetişim veya Risk Stewards o eşiği de aynı şekilde düşürebilir. Bakiyeleriniz aynı kalır; yalnızca teminatın sayılan payı küçülür.
+
+Yönetişim eşikleri, genellikle Aave yönetişim forumundaki bir gönderinin ardından zincir üstü oylamayla değiştirir. Aave'nin risk hizmeti sağlayıcılarının tam bir oylama olmadan parametreleri ayarlamasına izin veren sözleşmeler olan Risk Stewards da bir eşiği güncelleme başına belirli sınırlar içinde değiştirebilir, ama asla 0'a indiremez. İndirimler varlıkları da emekliye ayırır: LlamaRisk'in 29 Temmuz 2026 tarihli bir önerisi, kalan teminatı kaldırmak için eşiklerin kademeli olarak düşürülebileceğini söylüyor; Aave'nin kapatmakta olduğu beş piyasa [Aave bir piyasayı kapattığında ne olur](/tr/blog/aave-piyasa-kapanisi) rehberinde ele alınıyor.
+
+Bekleyen bir değişiklik değil, varsayımsal bir örnek: Ethereum Core'da örnek olarak 2.400 $ fiyattan 10 WETH karşılığında 12.000 USDC (14 Ekim 2026'da WETH eşiği %83) 1,66 sağlık faktörüne sahiptir. Eşik %82 olsaydı 1,64, %80 olsaydı 1,60 olurdu. Kontrol etmek için Aave uygulamasında varlığın sayfasındaki "Liquidation threshold" (likidasyon eşiği) değerini, Aave yönetişim forumundaki son eşik değişiklikleriyle karşılaştırın.
+
+Aave V4 farklı çalışır. Bir teminat faktörü değişikliği yeni bir yapılandırma oluşturur ve mevcut pozisyonlar, kullanıcı borç alana, çekim yapana veya teminat ayarlarını değiştirene kadar eskisini korur; Governor onları zorla güncellemedikçe.
+
+## Neden 5: Teminat olarak yatırdığınız bir stablecoin aşağı yönde depeg mi oldu?
+
+Teminat olarak yatırdığınız bir stablecoin, fiyatı 1 $ altına düştüğünde Aave sağlık faktörünüzü düşürür, çünkü Aave sabit 1 $ değil, oracle fiyatını kullanır. Aave V3 Ethereum Core'da USDC, 1,04 $ tavanlı "Capped USDC / USD" adlı bir adaptör üzerinden fiyatlanır (`getPriceCap`, 14 Ekim 2026'da 26193376 ve 26193993 numaralı bloklarda 8 ondalıkla 104000000 döndürdü). Piyasa fiyatı tavanın üstündeyken adaptör 1,04 $ bildirir; 1 $ altındaki her şey dahil, daha düşük her fiyat olduğu gibi geçer.
+
+2,5 WETH borç karşılığında yatırılmış 10.000 USDC (eşik %78) alalım; örnek olarak 2.400 $ fiyatla bu 6.000 $ borç ve 1,30 sağlık faktörü demektir. USDC 0,88 $ olduğunda 8.800 × 0,78 ÷ 6.000 = 1,14'e düşer ve ETH değişmezken yaklaşık 0,77 $ seviyesinde 1,00'a ulaşır.
+
+0,88 $ rakamı tarihseldir. 11 Mart 2023'te, Silicon Valley Bank haberlerinin ardından USDC 88 sent civarına düştü. Gauntlet'in olay sonrası raporu, Aave V3 Avalanche E-Mode'da yaklaşık 280.000 $ ve V3 Arbitrum'da yaklaşık 20.000 $ batık borç (bad debt) kaydediyor; Avalanche'taki stablecoin'ler donduruldu ama protokol duraklatılmadı, bu yüzden likidasyonlar sürdü.
+
+Madalyonun öbür yüzü: stablecoin borcunuzsa, aşağı yönlü bir depeg borcunuzu azaltır ve sağlık faktörünüzü yükseltir. 2.400 $ fiyattan 10 WETH (eşik %83) karşılığında 12.000 USDC, USDC 0,88 $ olduğunda 1,66'dan yaklaşık 1,89'a çıkar. 1 $ üstüne çıkış onu düşürür, ama tavan 1,04 $ kaldığı sürece yalnızca yaklaşık 1,60'a, çünkü oracle o borcu hiçbir zaman 12.480 $ üzerinde değerlendirmez.
+
+## Neden 6: Bir oracle veya kur hatası teminatınızı yanlış mı fiyatladı?
+
+Bir oracle veya kur yanlış yapılandırması, teminatınızı fazla düşük ya da borcunuzu fazla yüksek değerlendirerek, hiçbir piyasa hareketi olmadan Aave sağlık faktörünüzü tek seferde düşürebilir. Sıkı kaldıraçlı E-Mode pozisyonları en açık olanlardır.
+
+Belgelenmiş vaka Mart 2026'dan. Aave, wstETH'yi wstETH/stETH kurunun ne kadar hızlı yükselebileceğini sınırlayan CAPO (Correlated Assets Price Oracle) ile fiyatlar. Chaos Labs'in 10 Mart 2026 tarihli olay sonrası raporu, tavanın anlık görüntü oranı ile zaman damgasının senkronize olmaktan çıktığını ve Ethereum Core ile Prime'da etkin wstETH kurunu yaklaşık %2,85 düşürdüğünü söylüyor. Sağlık faktörü yaklaşık 1,0288'in altında olan 34 hesapta E-Mode'da kabaca 10.938 wstETH likide edildi; protokolde batık borç oluşmadı. DAO, 11 Mart'ta önerilen bir geri ödemeyi onayladı ve 26 Mart 2026'da Aave Finance Committee bunu ödemek için Aave hazinesinden 513,19 WETH çekti (Ethereum bloğu 24741060); bireysel ödemeler bu rehber için kontrol edilmedi.
+
+Ölçek vermek gerekirse, Ethereum Core'un ETH korelasyonlu E-Mode'u 14 Ekim 2026'da %93 LTV ve %95 eşiğe sahipti. Bu limite kadar borç alınmış bir pozisyon 95 ÷ 93 ≈ 1,02 ile başlar; bu, o hatanın likide ettiği aralığın içindedir. Kendi pozisyonunuzdaki hiçbir şey sizi bir oracle hatasına karşı uyarmaz; kontrol edebildiğiniz tek tampon 1,00'a olan mesafedir.
+
+## Hangi değişiklikler sağlık faktörünüzü düşürmez?
+
+Aave V3'te bir LTV indirimi (LTV 0 dahil), bir rezerv dondurma, bir rezerv duraklatma ve bir E-Mode kategorisinin izole hale getirilmesi sağlık faktörünüzü değiştirmez, çünkü hiçbiri fiyatları, bakiyeleri veya likidasyon eşiklerini değiştirmez. Bunlar onun yerine borçlanmayı veya diğer işlemleri engeller.
+
+| Aave V3'teki değişiklik                | Neyi engeller                                                                            | Sağlık faktörünüzü değiştirir mi?                  | Yine de likide edilebilir misiniz?                                                                                                                      |
+| -------------------------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| LTV indirimi, LTV 0 dahil              | O varlık karşılığında yeni borçlanmayı                                                   | Hayır: sağlık faktörü LTV'yi değil, eşiği kullanır | Evet, 1,00'ın altında                                                                                                                                   |
+| Rezerv donduruldu                      | O varlığın yeni yatırılmasını ve borç alınmasını                                         | Hayır                                              | Evet, dondurulmuş rezervler likide edilebilir kalır                                                                                                     |
+| E-Mode kategorisi izole yapıldı (V3.7) | Kategori dışındaki teminat karşılığında borçlanmayı                                      | Hayır: o teminat LTV 0 alır ve eşiğini korur       | Evet, 1,00'ın altında                                                                                                                                   |
+| Rezerv duraklatıldı                    | O varlığın yatırılmasını, çekilmesini, borç alınmasını, geri ödenmesini ve likidasyonunu | Hayır                                              | Duraklatıldığı sürece o varlıkla, teminat ya da borç olarak, hayır; diğer varlıklarla evet. Duraklatma kalktıktan sonra 4 saate kadar ek süre gelebilir |
+
+İlk satırın gerçek bir örneği: 18 Nisan 2026'daki Kelp/LayerZero rsETH köprü istismarından sonra, LlamaRisk'in 9 Mayıs 2026 tarihli eski haline getirme önerisine göre WETH'nin LTV'si birkaç Aave V3 instance'ında 0'a ayarlandı, eşiği ise Ethereum Core'da %83'te kaldı. Sağlık faktörleri bu yüzden hareket etmedi.
+
+## Pozisyonunuza ne olduğunu nasıl öğrenebilirsiniz?
+
+Bir Aave pozisyonuna ne olduğunu öğrenmek için önce likide edilip edilmediğini, sonra hangi girdinin hareket ettiğini kontrol edin: fiyatlar, faiz, eşikler veya oracle. Bu adımlar app.aave.com adresindeki Aave Labs arayüzünü ve herkese açık yönetişim kayıtlarını kullanır.
+
+1. **Likidasyonları kontrol edin.** Cüzdanınız bağlıyken ve doğru piyasa seçiliyken "Transaction history" (işlem geçmişi) sayfasını (app.aave.com/history) açın, ardından Liquidation ile filtreleyin. Arkasındaki kayıtlar zamanı, işlem hash'ini, alınan teminatı ve geri ödenen borcu içerir; geliştiriciler bunları Aave API'sinde `userTransactionHistory` ile sorgulayabilir.
+2. **Teminat ve borç varlıklarınızın fiyatlarını** en son kontrol ettiğiniz zamanla karşılaştırın (Neden 1, 2 ve 5).
+3. **Token birimi cinsinden borcunuzu, borç aldığınız miktarla karşılaştırın.** Hiç geri ödeme yapmadıysanız ve likide edilmediyseniz, fark biriken faizdir (Neden 3).
+4. **Likidasyon eşiğini** Aave uygulamasında her varlığın sayfasında kontrol edin ve eşiği daha düşük görünen herhangi bir varlık için yönetişim forumunda arama yapın (Neden 4).
+5. **Olay sonrası raporlarına** yönetişim forumunda bakın, Mart 2026'daki wstETH raporu gibi (Neden 6).
+
+Likide edildiyseniz, tek seferde ne kadarının alınabileceğini ve bunun neye mal olduğunu [Aave likidasyonunda ne olur](/tr/blog/aave-likidasyonu-nasil-isler) açıklıyor.
+
+## Sağlık faktörü uyarısı sizi likidasyondan önce uyarabilir mi?
+
+Bir uyarı, Aave sağlık faktörünüzdeki yavaş bir düşüş konusunda sizi zamanında uyarabilir, ama iki kontrol arasında 1,00'ı geçen bir sıçrama konusunda uyaramaz. Faiz, kademeli fiyat kaymaları ve aşamalı eşik indirimleri saatlerden aylara uzanan sürelerde gerçekleşir; bu yüzden 1,00'ın epey üstünde kurulmuş bir uyarının tetiklenmek için birçok şansı olur. Bir çöküş, zaten çizgiye yakın bir pozisyonda bir eşik indirimi ya da Mart 2026'daki wstETH vakası gibi bir oracle hatası, planlı herhangi bir kontrol tepki vermeden 1,00'ı geçebilir.
+
+Tokenping yavaş türü için yapıldı. Aave V3 ve V4 sağlık faktörünüzü 22 ağda her 5 dakikada bir kontrol eder ve belirlediğiniz eşiğin (1,1 ile 10 arası) altındayken size Signal, Telegram veya e-posta ile mesaj gönderir. Mesaj, sağlık faktörü toparlanana ya da siz eşiği onun altına indirene veya uyarıyı silene kadar (ikisi de aktif ücretli erişim gerektirir) her kontrolde tekrarlanır; "toparlandı" mesajı gönderilmez. Aave V3'te Ethereum'un dört piyasası dahil her piyasayı, Aave V4'te her Spoke'u kapsar; her piyasanın kendi uyarısı vardır.
+
+Bir uyarı ayrıca harekete geçmek için zaman gerektirir. 2021'deki bir Polygon forumu başlığında, 1,01 sağlık faktöründe geri ödeme yapmaya çalışan bir borç alan sürekli hatalarla karşılaştı ve geri ödeme gerçekleşmeden likide edildi. Bir seçenek, harekete geçmekte hâlâ rahat olacağınız bir eşiktir; [bir sağlık faktörü size ne kadar tampon verir](/tr/blog/guvenli-aave-saglik-faktoru) onu seçmenize yardımcı olur. Kurulum [sağlık faktörü uyarısı nasıl kurulur](/tr/blog/aave-saglik-faktoru-uyarisi-kurulumu) rehberinde, düştüğünde ne yapılacağı ise [Aave sağlık faktörünüzü nasıl yükseltirsiniz](/tr/blog/aave-likidasyonundan-kacinma) rehberinde. Önce [Aave V3 sağlık faktörünüzü kontrol edebilirsiniz](/tr/aave).
+
+## Kaynaklar
+
+- [Aave V3 overview](https://aave.com/docs/aave-v3/overview.md): sağlık faktörü oracle fiyatları ve biriken faizle hareket eder (erişim tarihi: 14 Ekim 2026)
+- [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) ve [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): sağlık faktörü hesabı, duraklatma ve dondurma kontrolleri (aave-v3-origin, erişim tarihi: 14 Ekim 2026)
+- [Aave V3 Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): 26193284, 26193378 ve 26193993 numaralı bloklarda LTV, eşikler ve faizler (erişim tarihi: 14 Ekim 2026); 26194052, 26194053, 26194230 ve 26194231 numaralı bloklarda USDC faizleri (erişim tarihi: 15 Ekim 2026)
+- [Aave V3 Ethereum Core oracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2#readContract): 26193376 numaralı blokta WETH 2.414,78 $ (erişim tarihi: 14 Ekim 2026)
+- [Capped USDC / USD adaptörü](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract) ve [kaynak kodu, PriceCapAdapterStable.sol](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol): 26193376 ve 26193993 numaralı bloklarda tavan 104000000 (erişim tarihi: 14 Ekim 2026)
+- [Aave oracle documentation](https://aave.com/docs/ecosystem/oracle.md) (erişim tarihi: 14 Ekim 2026)
+- [Aave governance documentation](https://aave.com/docs/ecosystem/governance.md) ve [Risk Stewards README](https://github.com/aave-dao/aave-v3-risk-stewards) (erişim tarihi: 14 Ekim 2026)
+- [ARFC: Low Adoption Asset Deprecation on Aave V3](https://governance.aave.com/t/arfc-low-adoption-asset-deprecation-on-aave-v3/25401) (LlamaRisk, 29 Temmuz 2026, erişim tarihi: 14 Ekim 2026)
+- [Aave docs changelog](https://aave.com/docs/resources/changelog.md): 30 Mart 2026'dan itibaren Ethereum'da, ardından Avalanche, Arc ve Base'de V4 (erişim tarihi: 14 Ekim 2026)
+- [Aave V4 documentation](https://aave.com/docs/aave-v4.md), [V4 positions](https://aave.com/docs/aave-v4/positions.md) ve [V4 technical overview](https://github.com/aave/aave-v4/blob/main/docs/overview.md): Spoke başına sağlık faktörü, User Risk Premium, dinamik risk yapılandırması (erişim tarihi: 14 Ekim 2026)
+- [Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (Gauntlet, 17 Mart 2023, erişim tarihi: 14 Ekim 2026)
+- [Post-mortem: wstETH exchange-rate misalignment on Core and Prime](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269) (Chaos Labs, 10 Mart 2026, erişim tarihi: 14 Ekim 2026)
+- [wstETH CAPO Oracle Incident User Reimbursement](https://governance.aave.com/t/direct-to-aip-wsteth-capo-oracle-incident-user-reimbursement/24275) (TokenLogic, 11 Mart 2026, erişim tarihi: 14 Ekim 2026)
+- [Yönetişim payload'u 413'ün yürütülmesi](https://etherscan.io/tx/0xca0bcaa2b20b465afb332677a8425d8a10e050c4a31731feadc3a684ecb9b81e) ve [Aave Finance Committee çekimi](https://etherscan.io/tx/0x7860a20437b36af635e8be248a929c437412915b91de7c45e947475c6bb02f24): Aave Ethereum Collector'dan 513,19 WETH'lik izin, ardından 24741060 numaralı blokta çekildi (erişim tarihi: 15 Ekim 2026)
+- [WETH Unfreeze and LTV Restoration Across Aave V3 Instances](https://governance.aave.com/t/direct-to-aip-weth-unfreeze-and-ltv-restoration-across-aave-v3-instances/24878) (LlamaRisk, 9 Mayıs 2026, erişim tarihi: 14 Ekim 2026)
+- [Aave v3.7 isolated E-Mode](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md) ve [v3.1 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): izole bayrağı, duraklatma kalktıktan sonraki ek süre (erişim tarihi: 14 Ekim 2026)
+- [Aave V3 user transaction history](https://aave.com/docs/aave-v3/markets/advanced.md) ve [Aave arayüzü geçmiş filtreleri](https://github.com/aave/interface/blob/main/src/modules/history/HistoryFilterMenu.tsx) (erişim tarihi: 14 Ekim 2026)
+- Aave arayüzü rezerv sayfası, APY olarak gösterilen faizler: [SupplyInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/SupplyInfo.tsx) (erişim tarihi: 14 Ekim 2026) ve [BorrowInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/BorrowInfo.tsx), "APY, variable" (erişim tarihi: 15 Ekim 2026)
+- [Unexpected or poorly executed settlement by the system](https://governance.aave.com/t/unexpected-or-poorly-executed-settlement-by-the-system/21120) (Aave yönetişim forumu, 17 Şubat 2025, erişim tarihi: 14 Ekim 2026)
+- [Liquidation on polygon AAVE - JSON ERROR](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067) (Polygon forumu, 18 Mayıs 2021, erişim tarihi: 14 Ekim 2026)
+
+_Eğitim amaçlı içeriktir, finansal tavsiye değildir. Uyarılar riski azaltır ama likidasyonu önlemez._

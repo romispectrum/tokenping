@@ -55,6 +55,7 @@ const LIST_WORDS: Record<Locale, ListWords> = {
   pt: { conjunction: "e", disjunction: "ou" },
   it: { conjunction: "e", disjunction: "o" },
   pl: { conjunction: "i", disjunction: "lub" },
+  tr: { conjunction: "ve", disjunction: "veya" },
 };
 
 /**
@@ -178,6 +179,17 @@ export const plOnMarket = (name: string, kind?: MarketNameKind) =>
 /** Polish "dla sieci Arbitrum" for a V3 market, "dla rynku Ethereum (V4 Lido)" for a V4 Spoke or a Morpho market. */
 export const plForMarket = (name: string, kind?: MarketNameKind) =>
   marketNameKind(name, kind) === "market" ? `dla rynku ${name}` : `dla sieci ${name}`;
+
+/**
+ * Turkish "Arbitrum ağında" for a V3 market, "Ethereum (V4 Lido) piyasasında" for a V4 Spoke or a Morpho market: the
+ * name stands before a noun, so no suffix (and no vowel harmony) touches it.
+ */
+export const trOnMarket = (name: string, kind?: MarketNameKind) =>
+  marketNameKind(name, kind) === "market" ? `${name} piyasasında` : `${name} ağında`;
+
+/** Turkish "Arbitrum ağı için" for a V3 market, "Ethereum (V4 Lido) piyasası için" for a V4 Spoke or a Morpho market. */
+export const trForMarket = (name: string, kind?: MarketNameKind) =>
+  marketNameKind(name, kind) === "market" ? `${name} piyasası için` : `${name} ağı için`;
 
 /** Vietnamese "mạng" before a V3 market's name (its network's), "thị trường" before a V4 Spoke's or a Morpho market's. */
 export const viMarketNoun = (name: string, kind?: MarketNameKind) =>

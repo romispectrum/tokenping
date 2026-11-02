@@ -514,6 +514,61 @@ import StablecoinDepegAave, { meta as stablecoinDepegAave } from "~~/content/blo
 import TokenizedStocksCollateral, {
   meta as tokenizedStocksCollateral,
 } from "~~/content/blog/tokenized-stocks-collateral.mdx";
+import TrWhyAaveWithdrawOrBorrowFails, {
+  meta as trWhyAaveWithdrawOrBorrowFails,
+} from "~~/content/blog/tr/aave-cekim-veya-borclanma-neden-basarisiz.mdx";
+import TrAaveEMode, { meta as trAaveEMode } from "~~/content/blog/tr/aave-e-mode.mdx";
+import TrAaveInterestRates, { meta as trAaveInterestRates } from "~~/content/blog/tr/aave-faiz-oranlari.mdx";
+import TrShortFiatWithAave, { meta as trShortFiatWithAave } from "~~/content/blog/tr/aave-ile-itibari-paraya-short.mdx";
+import TrAaveLiquidationPrice, { meta as trAaveLiquidationPrice } from "~~/content/blog/tr/aave-likidasyon-fiyati.mdx";
+import TrAaveLiquidationAlertTools, {
+  meta as trAaveLiquidationAlertTools,
+} from "~~/content/blog/tr/aave-likidasyon-uyari-araclari.mdx";
+import TrHowAaveLiquidationWorks, {
+  meta as trHowAaveLiquidationWorks,
+} from "~~/content/blog/tr/aave-likidasyonu-nasil-isler.mdx";
+import TrAvoidAaveLiquidation, {
+  meta as trAvoidAaveLiquidation,
+} from "~~/content/blog/tr/aave-likidasyonundan-kacinma.mdx";
+import TrAaveMarketWindDown, { meta as trAaveMarketWindDown } from "~~/content/blog/tr/aave-piyasa-kapanisi.mdx";
+import TrWhyAaveHealthFactorDropped, {
+  meta as trWhyAaveHealthFactorDropped,
+} from "~~/content/blog/tr/aave-saglik-faktoru-neden-dustu.mdx";
+import TrAaveHealthFactorAlertSetup, {
+  meta as trAaveHealthFactorAlertSetup,
+} from "~~/content/blog/tr/aave-saglik-faktoru-uyarisi-kurulumu.mdx";
+import TrAaveHealthFactor, { meta as trAaveHealthFactor } from "~~/content/blog/tr/aave-saglik-faktoru.mdx";
+import TrWrappedBitcoinAaveCollateral, {
+  meta as trWrappedBitcoinAaveCollateral,
+} from "~~/content/blog/tr/aave-teminati-olarak-wrapped-bitcoin.mdx";
+import TrLiquidatedOnAaveOrMorphoWhatNow, {
+  meta as trLiquidatedOnAaveOrMorphoWhatNow,
+} from "~~/content/blog/tr/aave-veya-morphoda-likide-oldum-simdi-ne-olacak.mdx";
+import TrPrivateAaveLiquidationAlerts, {
+  meta as trPrivateAaveLiquidationAlerts,
+} from "~~/content/blog/tr/gizli-aave-likidasyon-uyarilari.mdx";
+import TrSafeAaveHealthFactor, {
+  meta as trSafeAaveHealthFactor,
+} from "~~/content/blog/tr/guvenli-aave-saglik-faktoru.mdx";
+import TrCryptoBackedLoans, { meta as trCryptoBackedLoans } from "~~/content/blog/tr/kripto-teminatli-krediler.mdx";
+import TrHowMorphoLiquidationWorks, {
+  meta as trHowMorphoLiquidationWorks,
+} from "~~/content/blog/tr/morpho-likidasyonu-nasil-isler.mdx";
+import TrMorphoMidnightFixedRateLoans, {
+  meta as trMorphoMidnightFixedRateLoans,
+} from "~~/content/blog/tr/morpho-midnight-sabit-faizli-krediler.mdx";
+import TrMorphoPreLiquidation, { meta as trMorphoPreLiquidation } from "~~/content/blog/tr/morpho-on-likidasyon.mdx";
+import TrMorphoHealthFactor, { meta as trMorphoHealthFactor } from "~~/content/blog/tr/morpho-saglik-faktoru.mdx";
+import TrAaveAlertsDoNotDisturb, {
+  meta as trAaveAlertsDoNotDisturb,
+} from "~~/content/blog/tr/rahatsiz-etmeyin-modunda-aave-uyarilari.mdx";
+import TrWhoNeedsHealthFactorAlerts, {
+  meta as trWhoNeedsHealthFactorAlerts,
+} from "~~/content/blog/tr/saglik-faktoru-uyarilari-kimin-icin.mdx";
+import TrStablecoinDepegAave, { meta as trStablecoinDepegAave } from "~~/content/blog/tr/stablecoin-depeg-aave.mdx";
+import TrTokenizedStocksCollateral, {
+  meta as trTokenizedStocksCollateral,
+} from "~~/content/blog/tr/teminat-olarak-tokenize-hisseler.mdx";
 import type { Post } from "~~/content/blog/types";
 import ViWhoNeedsHealthFactorAlerts, {
   meta as viWhoNeedsHealthFactorAlerts,
@@ -865,5 +920,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
     { meta: plHowMorphoLiquidationWorks, Content: PlHowMorphoLiquidationWorks },
     { meta: plMorphoPreLiquidation, Content: PlMorphoPreLiquidation },
     { meta: plMorphoMidnightFixedRateLoans, Content: PlMorphoMidnightFixedRateLoans },
+  ],
+  tr: [
+    { meta: trAaveHealthFactor, Content: TrAaveHealthFactor },
+    { meta: trSafeAaveHealthFactor, Content: TrSafeAaveHealthFactor },
+    { meta: trHowAaveLiquidationWorks, Content: TrHowAaveLiquidationWorks },
+    { meta: trAaveLiquidationPrice, Content: TrAaveLiquidationPrice },
+    { meta: trWhyAaveHealthFactorDropped, Content: TrWhyAaveHealthFactorDropped },
+    { meta: trAaveHealthFactorAlertSetup, Content: TrAaveHealthFactorAlertSetup },
+    { meta: trAaveLiquidationAlertTools, Content: TrAaveLiquidationAlertTools },
+    { meta: trAvoidAaveLiquidation, Content: TrAvoidAaveLiquidation },
+    { meta: trPrivateAaveLiquidationAlerts, Content: TrPrivateAaveLiquidationAlerts },
+    { meta: trCryptoBackedLoans, Content: TrCryptoBackedLoans },
+    { meta: trShortFiatWithAave, Content: TrShortFiatWithAave },
+    { meta: trAaveInterestRates, Content: TrAaveInterestRates },
+    { meta: trAaveAlertsDoNotDisturb, Content: TrAaveAlertsDoNotDisturb },
+    { meta: trAaveMarketWindDown, Content: TrAaveMarketWindDown },
+    { meta: trStablecoinDepegAave, Content: TrStablecoinDepegAave },
+    { meta: trAaveEMode, Content: TrAaveEMode },
+    { meta: trWhyAaveWithdrawOrBorrowFails, Content: TrWhyAaveWithdrawOrBorrowFails },
+    { meta: trWrappedBitcoinAaveCollateral, Content: TrWrappedBitcoinAaveCollateral },
+    { meta: trTokenizedStocksCollateral, Content: TrTokenizedStocksCollateral },
+    { meta: trWhoNeedsHealthFactorAlerts, Content: TrWhoNeedsHealthFactorAlerts },
+    { meta: trLiquidatedOnAaveOrMorphoWhatNow, Content: TrLiquidatedOnAaveOrMorphoWhatNow },
+    { meta: trMorphoHealthFactor, Content: TrMorphoHealthFactor },
+    { meta: trHowMorphoLiquidationWorks, Content: TrHowMorphoLiquidationWorks },
+    { meta: trMorphoPreLiquidation, Content: TrMorphoPreLiquidation },
+    { meta: trMorphoMidnightFixedRateLoans, Content: TrMorphoMidnightFixedRateLoans },
   ],
 };

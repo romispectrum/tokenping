@@ -1,0 +1,201 @@
+export const meta = {
+  slug: "aave-saglik-faktoru-uyarisi-kurulumu",
+  title: "Aave sağlık faktörünüz düştüğünde nasıl haber alırsınız",
+  description:
+    "Adım adım: Aave V3 veya V4 sağlık faktörünüz eşiğinizin altına düştüğünde Signal, Telegram veya e-posta mesajı. Fiyatı ve uyarılar nasıl durdurulur.",
+  h1: "Aave sağlık faktörünüz düştüğünde nasıl uyarı alırsınız",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Aave sağlık faktörüm düştüğünde bildirim almak için nasıl bir uyarı kurarım?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Aave'nin kendi arayüzleri, açık tuttuğunuz sürece sağlık faktörünüzü (health factor) gösterir ama düştüğünde size
+  mesaj göndermez; bu yüzden uyarının ayrı bir araçtan gelmesi gerekir. Tokenping ile borç aldığınız cüzdanı
+  bağlarsınız, uyarı erişimi için Arbitrum ağında ödeme yaparsınız, o cüzdanla bir mesaj imzalayarak giriş yaparsınız,
+  borç aldığınız her piyasa için bir eşik belirlersiniz (21 ağdaki her Aave V3 piyasası veya Ethereum, Avalanche, Arc ve
+  Base ağlarındaki her Aave V4 Spoke'u) ve bir e-posta adresi, bir Signal kullanıcı adı ya da bir Telegram kullanıcı adı
+  eklersiniz. Tokenping ardından her 5 dakikada bir kontrol eder ve sağlık faktörünüz bu eşiğin altında kaldığı sürece
+  her kontrolde size mesaj gönderir.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Aave sağlık faktörü uyarısı gönderir mi?
+
+Hayır. 14 Ekim 2026 itibarıyla Aave'nin kendi arayüzleri sağlık faktörünüzü ekranda gösterir, ama düştüğünde e-posta, sohbet mesajı veya push bildirimi göndermez. Sağlık faktörü (HF), her varlığın likidasyon eşiğiyle (liquidation threshold) ağırlıklandırılmış teminatınızın değerinin borcunuzun değerine bölünmesidir; 1,00'ın altında pozisyon likide edilebilir. Formülün tamamı [Aave sağlık faktörü nedir](/tr/blog/aave-saglik-faktoru) rehberinde.
+
+Aave'nin web uygulaması (app.aave.com) bir zamanlar HAL bildirimlerine bağlantı veriyordu; HAL hizmeti kapandığı için Aave bu entegrasyonu 30 Mayıs 2024'te kaldırdı. Aave V4 uygulaması Aave Pro, uygulama içinde sağlık faktörü takibini anlatır ve ürün sayfası hiçbir bildirimden söz etmez. Aave'nin yardım merkezi düzenli takibin şart olduğunu söyler; "Use at your own risk" (riski size ait olmak üzere kullanın) etiketli kısa araç listesinde bir simülatör ve otomatik geri ödeme hizmeti vardır, ama uyarı hizmeti yoktur.
+
+Yani haberdar kalmak için uygulamayı kendiniz kontrol etmeniz ya da üçüncü taraf bir araç kullanmanız gerekir. Bu rehber, Tokenping ile [Signal, Telegram ve e-posta üzerinden Aave sağlık faktörü uyarıları](/tr) kurar; diğer araçlar [Aave likidasyon uyarı araçlarının karşılaştırması](/tr/blog/aave-likidasyon-uyari-araclari) rehberinde ele alınır.
+
+## Başlamadan önce neye ihtiyacınız var?
+
+Bir Tokenping sağlık faktörü uyarısı için dört şey gerekir:
+
+- **Borcu olan bir Aave V3 veya V4 pozisyonu.** Aave V3'te: 21 ağdaki 24 piyasadan herhangi biri; Ethereum'un Core, Prime, EtherFi ve Horizon piyasalarından Polygon, Arbitrum, Optimism, Base, Avalanche, Gnosis, Metis, BNB Chain, Scroll, ZKsync, Linea, Sonic, Celo, Soneium, Plasma, Ink, MegaETH, Mantle, X Layer ve Monad'a kadar (Aave Address Book, 16 Ekim 2026). Aave V4'te: Ethereum, Avalanche, Arc veya Base ağlarındaki herhangi bir Spoke (16 Ekim 2026 itibarıyla 20 adet). Borç yoksa Aave mümkün olan en büyük değeri döndürür (∞ olarak gösterilir) ve hiçbir uyarı tetiklenemez. Kapsam dışı: 2022'den beri dondurulmuş olan Harmony üzerindeki Aave V3.
+- **Borç aldığınız cüzdan.** Tokenping yalnızca bağladığınız cüzdanı izler; başka bir adres ekleyemezsiniz. Giriş de aynı cüzdanla yapılır, bu yüzden hesap ve şifre yoktur.
+- **Aynı cüzdanda, Arbitrum One ağında yerel (native) USDC ve biraz ETH.** Uyarıların fiyatı <AlertPrice />; krediniz başka bir ağda olsa bile ödeme Arbitrum One ağında Circle'ın yerel USDC'siyle yapılır. ETH, en fazla iki işlemin gas ücretini karşılar; giriş yapmak gas gerektirmez.
+- **Bir e-posta adresi, bir Signal kullanıcı adı veya bir Telegram kullanıcı adı**, ya da bunlardan birden fazlası.
+
+Kurulum ardından yedi adım sürer:
+
+1. Cüzdanı bağlayın ve pozisyonlarınızı kontrol edin.
+2. Arbitrum One ağında uyarı erişimi için ödeme yapın.
+3. Cüzdanla giriş yapın.
+4. Bir uyarı oluşturun ve e-posta, Signal, Telegram ya da birkaçını seçin.
+5. Bir eşik seçin.
+6. Uyarıyı kaydedin.
+7. Her kanalda bir test mesajı gönderin.
+
+## Adım 1: Cüzdanınızı bağlayın ve pozisyonlarınızı kontrol edin
+
+[Aave V3 sağlık faktörünüzü kontrol etmek](/tr/aave) için paneli açın ve borç aldığınız cüzdanı bağlayın. Pozisyonları görmek ödeme de giriş de gerektirmez: Tokenping pozisyonlarınızı yalnızca zincir üzerinden okur ve Aave pozisyonunuz için hiçbir zaman onay ya da işlem istemez.
+
+**Piyasalar** listesi, cüzdanın pozisyonu ya da kayıtlı uyarısı olan Aave V3 piyasalarını ve Aave V4 Spoke'larını gösterir; pozisyonunuz olan yerlerde bir sağlık faktörü rozeti de bulunur. Diğer tüm piyasalar **Diğer piyasalar** altında katlanmış durur. Teminatını, borcunu ve sağlık faktörünü görmek için kredinizin olduğu piyasayı seçin ve o sağlık faktörünü not edin: eşik seçerken işinize yarar. Panel "Desteklenen piyasalarda etkin Aave pozisyonu bulunamadı." diyorsa büyük olasılıkla başka bir cüzdan bağlamışsınızdır ya da kredi, Tokenping'in okumadığı bir piyasadadır. Pozisyonlar sayfa açıldığında ve **Pozisyonları yenile** düğmesine bastığınızda yüklenir.
+
+## Adım 2: Uyarıları açın
+
+Bir Tokenping uyarısını kaydetmek için ücretli erişim gerekir; fiyatı <AlertPrice />. Fiyat, Tokenping'in Arbitrum One ağındaki ödeme sözleşmesinde belirlenir ve panel onu siz ödemeden önce gösterir.
+
+1. [Tokenping panelinde](/tr/aave) **Piyasalar** listesinin altındaki **Sağlık faktörü uyarılarını açın** bölümü fiyatı, erişimin ne kadar sürdüğünü, ağı ve ağ ücretini listeler. Etiketi USDC cinsinden fiyatla başlayıp "öde" ile biten ödeme düğmesine basın. Cüzdanınız başka bir ağdaysa önce **Arbitrum One ağına geç** düğmesine basın.
+2. USDC'yi onaylayın. Onay tam olarak fiyat kadardır, hiçbir zaman sınırsız bir tutar değildir; yeterli tutar zaten onaylıysa bu adım atlanır.
+3. Ödemeyi onaylayın. İşlem bir bloğa girdiğinde panel, bitiş tarihini içeren **Uyarılar … tarihine kadar açık** satırını gösterir.
+
+Tek bir ödeme, ödeme yapan cüzdan için her Aave V3 piyasasında ve her Aave V4 Spoke'unda uyarı ayarlarını açar. Hiçbir şey otomatik yenilenmez, ama önceden ödeyebilirsiniz: erişim etkin olduğu sürece panel, bir plan dönemi daha ekleyen bir düğme gösterir (etiketi gün sayısını ve fiyatı belirtir). Her ödeme bu dönemi mevcut bitiş tarihinizin sonrasına ekler, istediğiniz kadar tekrarlayabilirsiniz ve yeni bitiş tarihi hemen görünür. Erişim sona erdikten sonra yeniden ödemek, o günden başlayan yeni bir plan dönemi başlatır. Ödeme sözleşmesi Sourcify üzerinde doğrulanmıştır ve iade fonksiyonu yoktur. Sözleşmenin sahibi Tokenping ekibinin kontrol ettiği tek bir cüzdandır; bu cüzdan fiyatı değiştirebilir, ödemeleri duraklatabilir veya sözleşmenin kodunu yükseltebilir.
+
+## Adım 3: Cüzdanınızla giriş yapın
+
+Uyarı ayarları bir hesaba değil, bir cüzdan adresine aittir. Erişim açıldıktan sonra seçili piyasanın uyarı bölümü sizden **Cüzdanla giriş yap** düğmesine basmanızı ister. Cüzdanınız ardından siteyi ve adresinizi belirten ve "Sağlık faktörü uyarılarınızı görmek ve düzenlemek için Tokenping'e giriş yapın." diyen bir giriş mesajı (Sign-in with Ethereum) gösterir. Bunu imzalamak bir işlem değildir: gas gerektirmez ve hiçbir token'ı onaylamaz. Oluşturulacak bir şifre ya da e-postayla kayıt yoktur.
+
+Giriş o tarayıcıda 7 gün geçerlidir ve cüzdanın bağlantısını kestiğinizde sona erer; sonrasında bölüm sizden tekrar giriş yapmanızı ister. İsteği reddederseniz bölüm bunu belirtir ve düğmeye yeniden basabilirsiniz. Girişin neyi sakladığı ve neyi kontrol ettiği [hesap olmadan girişin nasıl çalıştığı](/tr/blog/gizli-aave-likidasyon-uyarilari#hesap-olmadan-giris-nasıl-calısır) bölümünde anlatılır.
+
+## Adım 4: Bir uyarı oluşturun ve kanallarınızı seçin
+
+Her Tokenping uyarısı bir piyasayı ve bir eşiği kapsar. Piyasa, bir Aave V3 Pool'u (Ethereum'da dört tane, diğer her ağda bir tane vardır) ya da bir Aave V4 Spoke'udur, çünkü her biri kendi sağlık faktörüne sahip ayrı bir pozisyon tutar. Piyasa seçiliyken bölümündeki **Uyarı oluştur** düğmesine basın. Form en üstte **Uyarı kanalları** ile açılır: E-posta, Signal, Telegram ya da herhangi bir kombinasyonu işaretleyin. Tokenping en az bir kanal ister ve her uyarı seçtiğiniz her kanala gider.
+
+- **E-posta:** adresinizi yazın. İlk uyarı gelmezse spam klasörünüze bakın.
+- **Signal:** Signal kullanıcı adınızı @ ile ya da @ olmadan yazın, örneğin `alice.42`. Signal onu profilinizde gösterir: Ayarlar'ı açın, profilinize dokunun ve @ simgesinin yanına bakın. Hiç Signal kullanıcı adı oluşturmadıysanız önce Signal'de bir tane oluşturun. Tokenping telefon numaranızı hiçbir zaman sormaz.
+- **Telegram:** Telegram kullanıcı adınızı @ ile ya da @ olmadan yazın, örneğin `alice_eth`. Telegram onu Ayarlar, ardından Kullanıcı adı altında gösterir; yoksa önce orada bir tane belirleyin. Telegram botları sohbet başlatamaz, bu yüzden form "Henüz bağlı değil" der ve Tokenping'in botuna bağlantı verir: botu açın ve bir kez **Start** düğmesine basın. Siz bunu yaparken form birkaç saniyede bir yeniden kontrol eder ve ardından kullanıcı adınızın bağlandığını söyler. Start'a basmadan da kaydedebilirsiniz, ama siz basana kadar hiçbir uyarı Telegram'a ulaşmaz.
+
+Her adresin veya kullanıcı adının yanında, sitenin dillerinden herhangi birini seçebileceğiniz bir dil menüsü (**E-posta dili**, **Signal mesaj dili**, **Telegram mesaj dili**) bulunur. Her kanalın uyarıları ve test mesajları, o kanal için seçtiğiniz dilde yazılır. Yeni bir kanal, okuduğunuz sayfanın diliyle başlar; Türkçe sitede bu Türkçedir.
+
+Tokenping'in Signal hesabı kişileriniz arasında olmadığı için Signal ilk uyarıyı bir mesaj isteği olarak gösterebilir. Kabul edin; göndereni engellerseniz uyarılar size ulaşmaz. Birden fazla kanal seçmek bir güvencedir, çünkü her biri dış hizmetlere bağlıdır (bir e-posta sağlayıcısı, kendi sunucusunda çalışan bir Signal aktarıcısı (relay) ve Telegram'ın Bot API'si).
+
+Tokenping cüzdan adresinizi, piyasayı, eşiği ve kanalları her birinin diliyle birlikte, yazdığınız e-posta adresini ve kullanıcı adlarını, uyarının ne zaman oluşturulduğunu ve en son ne zaman değiştirildiğini ve her kanalda en son ne zaman test gönderdiğinizi saklar. Botta Start'a basmak, Telegram sohbet kimliğinizi kullanıcı adınızla birlikte kaydeder; isteğe bağlı "Tokenping'i nereden duydunuz?" sorusuna yanıt verirseniz yanıtınız saklanır. Sağlık faktörü geçmişi ve gönderilen uyarıların kaydı tutulmaz. Girdiğiniz adresin veya kullanıcı adlarının kimliğinizi ele vermemesi için [Tokenping'e kimliğinizi vermeden Aave uyarıları nasıl alınır](/tr/blog/gizli-aave-likidasyon-uyarilari) rehberine bakın.
+
+## Adım 5: Bir eşik seçin
+
+Eşik, altına düştüğünde mesaj aldığınız sağlık faktörüdür. Kaydırıcı 0,1'lik adımlarla 1,1'den 3,0'a kadar gider; yanındaki kutu ise 1,1 ile 10 arasında, en fazla iki ondalıklı herhangi bir değeri kabul eder. Varsayılan değer 1,5'tir.
+
+Herkes için güvenli bir sayı yoktur. Bir yaklaşım: harekete geçeceğiniz teminat fiyatını seçin, o fiyattaki sağlık faktörünü hesaplayın ve uyarıyı biraz üstüne kurun, çünkü kontroller 5 dakika arayla yapılır ve yoğun bir ağda geri ödemenin onaylanması zaman alabilir. [Bir sağlık faktörünün size ne kadar pay bıraktığı](/tr/blog/guvenli-aave-saglik-faktoru) rehberinde yaygın seviyelerin bir tablosu var.
+
+Tek bir oynak teminat varlığı ve stablecoin borcuyla hesaplanmış bir örnek: WETH'in Ethereum Core piyasasındaki likidasyon eşiği %83'tü (26194005 numaralı blokta, 14 Ekim 2026'da zincir üzerinden okundu). 10 WETH yatırılmış, 12.000 USDC borç alınmış, ETH örnek olarak 2.400 $ (Aave'nin oracle'ı, yani fiyat kaynağı, o blokta 2.415,56 $ gösteriyordu) ve USDC 1,00 $ iken sağlık faktörü 10 × 2.400 × 0,83 ÷ 12.000 = 1,66'dır. Herhangi bir sağlık faktöründeki ETH fiyatı, o sağlık faktörü × 12.000 ÷ (10 × 0,83) olur:
+
+| Sağlık faktörü                  | O sağlık faktöründeki ETH fiyatı | 2.400 $'dan düşüş |
+| ------------------------------- | -------------------------------- | ----------------- |
+| 1,66 (başlangıç noktası)        | 2.400,00 $                       | %0                |
+| 1,5 (olası uyarı eşiği)         | 2.168,67 $                       | %9,6              |
+| 1,3 (olası uyarı eşiği)         | 1.879,52 $                       | %21,7             |
+| 1,0 (altında likidasyon mümkün) | 1.445,78 $                       | %39,8             |
+
+1,5 eşiğiyle ilk mesaj, sağlık faktörü 1,5'in altına düştükten sonraki ilk kontrolde gelir; burada ETH 2.168,67 $'ın altına indiğinde. Bu pozisyonun likide edilebilmesi için ETH'in ardından yaklaşık %33 daha düşmesi gerekir; 1,3 eşiğiyle kalan bu pay yaklaşık %23'tür. İki rakam da faizi hesaba katmaz. Faiz ve likidasyon eşiği indirimleri de fiyat hareketi olmadan sağlık faktörünü düşürebilir: [Aave sağlık faktörünüz neden kendiliğinden düşer](/tr/blog/aave-saglik-faktoru-neden-dustu) rehberine bakın.
+
+## Adım 6: Kaydedin ve uyarının neye benzediğini öğrenin
+
+**Uyarıyı kaydet** düğmesine basın. Bölüm, "Etkin" rozetiyle **Uyarı ayarları** başlığını ve her kanalı adresi ya da kullanıcı adı ve diliyle listeleyen bir özeti gösterir. Piyasa, Piyasalar listesinde bir zil simgesi alır. İlk seferde isteğe bağlı "Tokenping'i nereden duydunuz?" sorusu çıkabilir; **Atla** düğmesine basabilirsiniz. Türkçede Signal ve Telegram şu metni alır (örnek değerler):
+
+> Arbitrum ağında Aave sağlık faktörünüz 1,42. Bu, 1,5 olan eşiğinizin altında. Likidasyondan kaçınmak için teminat eklemeyi veya borcunuzu geri ödemeyi düşünün.
+>
+> Gönderilme zamanı: 14 Eki 2026 21:05:07 Eş Güdümlü Evrensel Zaman
+
+Sağlık faktörü iki ondalığa aşağı yuvarlanır, böylece bir mesaj hiçbir zaman aştığı eşiğe eşit ya da onun üstünde bir değer göstermez; saat UTC'dir. E-posta aynı mesajı "Aave sağlık faktörü uyarısı - Arbitrum" konusuyla taşır, tek farkı son satırında "Gönderilme zamanı" yerine "Oluşturulma zamanı" yazmasıdır. Sitenin başka bir diline ayarlanmış bir kanal aynı uyarıyı o dilde alır.
+
+Telegram'ı seçtiyseniz ve henüz Start'a basmadıysanız özet, bota bir bağlantıyla birlikte "Henüz bağlı değil" der.
+
+## Adım 7: Test mesajı gönderin
+
+Uyarı kaydedildikten sonra özetteki her kanalın bir **Test gönder** düğmesi olur. Test, o kanalda, kanalın dilinde gönderilen gerçek bir mesajdır; uyarıyı kaydedildiği haliyle, pozisyonunuzu da şu anki haliyle içerir: piyasa ve eşik, "güvenli", "riskli" veya "kritik" etiketiyle güncel sağlık faktörü, teminat ve borç ve bunun eşiğinizin altında olup olmadığı. "Tokenping test mesajı: bu kanaldaki uyarılar çalışıyor." diye başlar. E-postada konusu "Tokenping test mesajı - Arbitrum"dur (piyasanızın adıyla).
+
+- Kanal başına 15 dakikada bir test gönderebilirsiniz; bu sınır cüzdanınızın tüm piyasaları için birlikte sayılır. O zamana kadar düğme kaç dakika kaldığını gösterir. Gönderilemeyen bir test sayılmaz.
+- Telegram düğmesi, siz botta Start'a basana kadar kapalı kalır.
+- Testler, uyarı kaydetmek gibi etkin erişim gerektirir.
+
+Bir test birkaç dakika içinde gelmezse [bir uyarının neden çalışmayabileceğine](#uyarım-neden-calısmıyor) göz atın. Gerçek bir uyarının gelişini de görmek için **Uyarıyı düzenle** düğmesine basın, eşiği güncel sağlık faktörünüzün hemen üstüne ayarlayın ve **Uyarıyı kaydet** düğmesine basın. 5 dakika içindeki bir sonraki kontrol her kanala bir mesaj gönderir; ardından gerçek eşiğinizi aynı şekilde geri ayarlayın, mesajlar bir sonraki kontrolden itibaren durur.
+
+## Ne sıklıkla uyarı alırsınız?
+
+Sağlık faktörünüz eşiğinizin altında olduğu sürece Tokenping, 5 dakikada bir yapılan her kontrolde seçili her kanala bir mesaj gönderir. Bu, her kanalda saatte en fazla 12 mesaj demektir. Erteleme, toplu özet ya da "normale döndü" mesajı yoktur: sağlık faktörü yeniden eşiğe eşit ya da üstünde olduğunda uyarılar durur.
+
+Kontrol, tam sağlık faktörünüzü eşikle karşılaştırır ve yalnızca kesin olarak altında olduğunda tetiklenir. 1,5 eşiğiyle 1,4996'lık bir sağlık faktörü, mesajında 1,49 gösteren bir uyarıyı tetikler; 1,50 ise tetiklemez. Bir okuma ya da mesaj başarısız olursa Tokenping bunu kaydeder ve sağlık faktörü hâlâ eşiğin altındaysa bir sonraki kontrol yeniden dener.
+
+Kontroller sürekli değil, 5 dakika arayla yapılır; bu yüzden sert bir düşüş, herhangi bir mesaj gitmeden bir pozisyonu eşiğinizin üstünden 1,0'ın altına indirebilir. Tokenping beta aşamasındadır, pozisyonları okumak ve mesajları iletmek için üçüncü taraflara dayanır ve çalışma süresi garantisi yoktur. Bir uyarıyı tek korumanız olarak değil, harekete geçmek için kazanılmış zaman olarak görün.
+
+## Uyarıları nasıl değiştirir ya da durdurursunuz?
+
+Tokenping uyarıları, sağlık faktörünüz eşiğinize ya da üstüne geri çıktığında (örneğin geri ödeme yaptıktan ya da teminat ekledikten sonra) veya uyarıyı sildiğinizde durur. Bir uyarıyı değiştirmek ya da silmek etkin erişim ve cüzdanla giriş gerektirir.
+
+- **Eşiği, kanalları ya da bir dili değiştirmek:** piyasanın bölümünde **Uyarıyı düzenle** düğmesine basın, değişikliği yapın ve **Uyarıyı kaydet** düğmesine basın.
+- **Bir piyasadaki uyarıları durdurmak:** **Uyarıyı düzenle**, ardından **Uyarıyı sil** düğmesine basın ve **Uyarıyı sil** ile onaylayın. Duraklatma düğmesi yoktur ve her piyasanın uyarısı ayrı ayrı silinir.
+- **Telegram uyarılarını durdurmak:** Tokenping'in botuna /stop gönderin. Bot sohbetinizi unutur, böylece siz yeniden /start gönderene kadar hiçbir piyasadan uyarı oraya ulaşmaz; diğer kanallarınız uyarı almaya devam eder. Botu engellemek de Tokenping'in göndermeye çalıştığı bir sonraki mesajdan itibaren aynı etkiyi yapar.
+
+<Callout tone="warning">
+  İstemediğiniz uyarıları erişiminiz hâlâ etkinken silin. Erişim sona erdikten sonra, daha önce giriş yaptığınız bir
+  tarayıcıda ayarlarınız görünür kalır ama salt okunur olur ("Düzenlemek için erişim satın alın"), bir uyarıyı silmek
+  yeni bir ödeme gerektirir ve uyarı e-postalarında henüz abonelikten çıkma bağlantısı yoktur. Telegram'da /stop,
+  erişiminiz olsa da olmasa da çalışır.
+</Callout>
+
+## Uyarım neden çalışmıyor?
+
+Bir Tokenping uyarısı çalışmadığında yedi şeyi kontrol edin: bağlı cüzdan ve piyasa, kullanıcı adının biçimi, Telegram'ın bağlı olup olmadığı, Arbitrum One ağında yerel USDC, pozisyonun borcu olup olmadığı, borç aldığınız her piyasanın bir uyarısı olup olmadığı ve spam klasörünüz ile Signal mesaj istekleri.
+
+### Panel hiç pozisyon göstermiyor
+
+Tokenping paneli hiç pozisyon göstermiyorsa bağlı cüzdan borç aldığınız cüzdan değildir ya da kredi, Tokenping'in okumadığı bir piyasadadır: Harmony üzerindeki Aave V3 veya kapsadığı 22 ağın (21 V3 ağı ile yalnızca Aave V4'ün bulunduğu Arc) dışındaki bir ağ. Cüzdanın pozisyonu olmayan bir piyasa kaybolmuş değildir: **Diğer piyasalar** altında katlanmış durur.
+
+### Tokenping Signal veya Telegram kullanıcı adınızı kabul etmiyor
+
+Kullanıcı adı bir takma ad, bir nokta ve en az iki rakamdan oluşmadığında Tokenping "Bir Signal kullanıcı adı girin, örneğin alice.42" der. Başında @ olması sorun değildir. Signal'de kullanıcı adınızı değiştirirseniz uyarıyı hemen güncelleyin: Signal, bıraktığınız eski bir kullanıcı adını kısa süre sonra başkasının almasına izin verir.
+
+Telegram için "Bir Telegram kullanıcı adı girin, örneğin alice_eth" der: 4 ile 32 arası harf, rakam veya alt çizgi; bir harfle başlamalı ve alt çizgiyle bitmemelidir. Görünen adınızı ya da telefon numaranızı değil, kullanıcı adınızı yazın; başında @ ya da bir t.me bağlantısı olması sorun değildir ve büyük harfler fark etmez.
+
+### Telegram henüz bağlı değil
+
+Bot, uyarılarınızı nereye göndereceğini ancak kullanıcı adı uyarıda yazan hesaptan Start'a bastığınızda (ya da /start gönderdiğinizde) öğrenir. Botu formdaki bağlantıdan açın, Start'a basın ve kullanıcı adının Telegram'da Ayarlar, ardından Kullanıcı adı altında yazanla aynı olduğunu kontrol edin. /stop gönderdiyseniz, botu engellediyseniz ya da Telegram kullanıcı adınızı değiştirdiyseniz güncel kullanıcı adını uyarıya yazın ve yeniden /start gönderin.
+
+### Arbitrum One ağında USDC'niz yok
+
+Tokenping ödemesi, köprülenmiş USDC.e değil, Arbitrum One ağında Circle'ın yerel USDC'siyle (sözleşme `0xaf88...5831`) ve gas için biraz ETH ile, kurduğunuz cüzdandan yapılır. İkisini de oraya taşıyın; örneğin bir borsadan Arbitrum One ağına çekerek ya da köprüleyerek. Elinizdeki USDC.e'nin yerel USDC ile takas edilmesi gerekir.
+
+### Pozisyonunuzun borcu yok
+
+Borç yoksa Aave mümkün olan en büyük sağlık faktörünü döndürür (∞ olarak gösterilir), bu yüzden hiçbir eşik aşılmaz ve hiçbir uyarı gönderilmez.
+
+### Birden fazla piyasada borç alıyorsunuz
+
+Her Aave V3 piyasasının ve her Aave V4 Spoke'unun kendi uyarısı, eşiği, kanalları ve dilleri vardır. Tek bir ödeme hepsini kapsar; bu yüzden borç aldığınız her piyasada bir uyarı oluşturun.
+
+### Mesajlar gelmiyor
+
+Tokenping mesajları gelmiyorsa spam klasörünüze ve Signal'in mesaj isteklerine bakın, Tokenping göndericisini engellemediğinizden ya da Telegram botuna /stop göndermediğinizden emin olun. Ardından [7. adımdaki](#adım-7-test-mesajı-gonderin) gibi o kanal için **Test gönder** düğmesine basın: test gelirse kanal çalışıyordur ve sağlık faktörü eşiğinizin altında olduğu sürece uyarılar her kontrolde gelir. Test geliyor ama ses çıkarmıyorsa onu bir Odak modu, Rahatsız Etmeyin, sessize alınmış bir sohbet ya da pil tasarrufu tutuyordur: [Rahatsız Etmeyin modunda uyarılar nasıl alınır](/tr/blog/rahatsiz-etmeyin-modunda-aave-uyarilari) her birini tek tek ele alır.
+
+## Uyarı almanın başka hangi yolları var?
+
+Bazı araçlar herhangi bir cüzdan adresini yapıştırıp Telegram'da ya da kendi mobil uygulamalarında hiçbir şey ödemeden uyarı almanıza izin verir. Tarayıcı eklentileri sağlık faktörünü araç çubuğunda gösterir ve bazıları, tarayıcı açık olduğu sürece masaüstü bildirimleri verir. Otomasyon hizmetleri borcu sizin yerinize geri ödeyebilir; bunun için akıllı cüzdan (smart wallet) ya da pozisyonunuz üzerinde bir yetki gerekir ve bazıları asgari pozisyon büyüklüğü koyar ya da işlem başına ücret alır. Geliştiriciler kendi takip sistemlerini kurabilir. [Aave likidasyon uyarı araçlarının karşılaştırması](/tr/blog/aave-likidasyon-uyari-araclari) bunları, Tokenping'in uygun olmadığı durumlar da dahil, yan yana koyar.
+
+## Kaynaklar
+
+- [Aave arayüzü pull request #2084, "chore: remove hal", 30 Mayıs 2024'te birleştirildi](https://github.com/aave/interface/pull/2084) (erişim tarihi: 14 Ekim 2026)
+- [Aave Yardım: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (erişim tarihi: 14 Ekim 2026)
+- [Aave Pro ürün sayfası](https://aave.com/pro) (erişim tarihi: 14 Ekim 2026)
+- [Aave dokümantasyonu değişiklik günlüğü: V3.7 geçişi ve V4 lansmanları](https://aave.com/docs/resources/changelog) (erişim tarihi: 15 Ekim 2026)
+- [Aave V3 GenericLogic.sol: sağlık faktörü formülü ve borçsuz durumdaki değer](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) (erişim tarihi: 14 Ekim 2026)
+- Aave V3 Ethereum Core [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) ve [AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) (Etherscan'deki sözleşme sayfaları): WETH likidasyon eşiği %83 ve oracle fiyatı 2.415,56 $, 26194005 numaralı blokta zincir üzerinden okundu (RPC verisi, erişim tarihi: 14 Ekim 2026)
+- [Arbitrum One ağında TokenpingPaywall, kaynak kodu Sourcify üzerinde doğrulanmış](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553) (erişim tarihi: 14 Ekim 2026); plan, duraklatma durumu ve sahip, 514885994 ve 514896937 numaralı bloklarda zincir üzerinden okundu
+- [Signal Destek: Phone Number Privacy and Usernames](https://support.signal.org/hc/en-us/articles/6712070553754-Phone-Number-Privacy-and-Usernames) (erişim tarihi: 14 Ekim 2026)
+- [Signal Destek: Signal Profiles and Message Requests](https://support.signal.org/hc/en-us/articles/360007459591-Signal-Profiles-and-Message-Requests) (erişim tarihi: 14 Ekim 2026)
+- [Telegram: Bots, an introduction for developers](https://core.telegram.org/bots) (erişim tarihi: 20 Ekim 2026): botlar kullanıcılarla sohbet başlatamaz
+
+_Eğitim amaçlı içeriktir, finansal tavsiye değildir. Uyarılar riski azaltır ama likidasyonu önlemez._

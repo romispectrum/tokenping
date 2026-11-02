@@ -1,0 +1,134 @@
+export const meta = {
+  slug: "aave-veya-morphoda-likide-oldum-simdi-ne-olacak",
+  title: "Aave veya Morpho'da likide oldum: şimdi ne yapmalı",
+  description:
+    "Likidasyon işlemini bulmak, neyin alındığını ve size neyin kaldığını hesaplamak, nedenini anlamak ve ikinci kez likide olmamak için yapılacaklar.",
+  h1: "Aave veya Morpho'da likide oldum: şimdi ne olacak?",
+  publishedAt: "2026-10-31",
+  primaryQuestion: "Aave veya Morpho'da bir likidasyondan sonra ne yapmalısınız?",
+  readingMinutes: 10,
+};
+
+<ShortAnswer>
+  Önce işlemi bulun: Aave'de uygulamanın işlem geçmişinde veya bir blok gezgininde cüzdanınızın token transferlerinde,
+  Morpho'da ise Morpho uygulaması ya da Morpho'nun herkese açık API'si üzerinden; çünkü likidatörün işlemi hiçbir zaman
+  sizin kendi listenizde görünmez. Sonra işlemi okuyun: sizin adınıza geri ödenen borç, alınan teminat ve aradaki fark,
+  yani ödediğiniz bonus. Borç aldığınız tokenlar sizde kalır, el konulmayan teminat da öyle. Aave'de bir likidasyon
+  genellikle borcunuzun yarısını geri öder ve yeniden likide edilebilecek bir pozisyon bırakır; Morpho'da ise neredeyse
+  tamamını tek seferde alabilir. 30 Ekim 2026'ya kadarki 30 günde Morpho'da borç alan 932 kişi birden fazla kez likide
+  edildi; bu yüzden en faydalı adım sonuncusudur: yeniden borç almadan önce bir güvenlik payı ve bir uyarı.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Rakamlar ve okundukları zaman: content/blog/snapshots/liquidated-on-aave-or-morpho-what-now.md (İngilizce makale; bu onun Türkçe çevirisidir) */}
+
+## Bunun bir likidasyon olduğunu nasıl anlarsınız ve işlem nerede?
+
+Genellikle ilk işaret, bir pozisyonun tuhaf görünmesidir: borç hatırladığınızdan küçüktür, teminat çok daha küçüktür, sağlık faktörü (health factor) birden yükselmiştir ya da pozisyon yok olmuştur. Aynı işlemde sizin yapmadığınız bir geri ödeme ve sizin imzalamadığınız bir teminat çekimi varsa, bu bir likidasyondur.
+
+İşlemi bulmak zordur, çünkü onu siz göndermediniz. Bir likidatörün botu gönderdi; bu yüzden işlem, Etherscan, Basescan veya Arbiscan'da adresinizin "Transactions" (işlemler) listesinde yer almaz. Bunun yerine bakılacak yerler:
+
+- **Aave, uygulamada.** Cüzdanınız bağlıyken ve doğru piyasa seçiliyken "Transaction history" (işlem geçmişi, app.aave.com/history) sayfasını açın ve Liquidation filtresini seçin. Her kayıtta zaman, işlem hash'i, alınan teminat ve geri ödenen borç yer alır.
+- **Aave, bir blok gezgininde.** Adresinizi ve "Token transfers (ERC-20)" sekmesini açın. Bir likidasyon, sizin imzalamadığınız bir işlemde aToken'ınızın (örneğin aEthWETH) ve borç token'ınızın (variableDebtEthUSDT) sıfır adresine transferi olarak görünür. İşlemi açın ve "Logs" sekmesine geçin: Pool kontratındaki `LiquidationCall` adlı olay, ihtiyacınız olan kayıttır. Tek bir işlem birkaç borç alanın birkaç likidasyonunu içerebilir, bu yüzden `user` alanı sizin adresiniz olanı arayın.
+- **Morpho.** Adresiniz gezginde hiçbir şey göstermez, çünkü teminatınız Morpho kontratında duruyordu ve likidatörün geri ödemesi de kontrata gitti. Morpho uygulaması pozisyonu küçülmüş ya da yok olmuş gösterir; Morpho'nun herkese açık API'si adresinizin her likidasyonunu listeler (Liquidation türündeki `marketTransactions`); gezginde Morpho kontratının olay kaydında ise `borrower` olarak sizin adresinizin geçtiği `Liquidate` adlı bir olay bulunur.
+- **Tokenping.** [Aave paneli](/tr/aave) ve [Morpho paneli](/tr/morpho) pozisyonu şu anki haliyle gösterir. 1'e yakın bir değerden çok daha yükseğe sıçramış bir sağlık faktörü ya da kaybolmuş bir pozisyon bir likidasyona işaret eder. Paneller geçmiş işlemleri listelemez.
+
+İşlem hash'ini saklayın. Tutarları okumak için ona ihtiyacınız olacak; birçok ülkede bir likidasyon, alınan teminatın satışı sayıldığı için vergi kayıtlarınızda da gerekir.
+
+## Likidasyon işlemini nasıl okursunuz?
+
+İki protokol de likidasyonun tamamını tek bir olaya yazar. Adlar farklıdır, içerik aynıdır: sizin adınıza hangi borcun geri ödendiği, hangi teminatın alındığı ve her birinden ne kadar.
+
+**Aave V3** `LiquidationCall(collateralAsset, debtAsset, user, debtToCover, liquidatedCollateralAmount, liquidator, receiveAToken)` olayını yayar. Ethereum Core'dan gerçek bir örnek, blok 26305893, 30 Ekim 2026 saat 13:33 UTC:
+
+| Alan                       | Değer              | Anlamı                                                                          |
+| -------------------------- | ------------------ | ------------------------------------------------------------------------------- |
+| collateralAsset            | WETH               | Alınan varlık                                                                   |
+| debtAsset                  | USDT               | Geri ödenen varlık                                                              |
+| user                       | borç alanın adresi | Pozisyonun kime ait olduğu                                                      |
+| debtToCover                | 1.320,785158 USDT  | Borç alan adına geri ödenen borç, oracle (fiyat kaynağı) fiyatıyla 1.319,32 USD |
+| liquidatedCollateralAmount | 0,619088749 WETH   | Likidatöre gönderilen teminat, 2.216,31 USD/ETH fiyatıyla 1.372,09 USD          |
+| liquidator                 | bir kontrat adresi | Kimin geri ödediği ve teslim aldığı                                             |
+| receiveAToken              | false              | aEthWETH değil, WETH'in kendisini aldı                                          |
+
+Bir tutar olayda yer almaz. Aynı işlemde 0,005952776 aEthWETH (13,19 USD) borç alandan Aave'nin collector kontratına geçti: likidasyon protokol ücreti, yani o blokta Ethereum Core'daki WETH için bonusun %20'si. Toplarsak, borç alan 1.319,32 USD borç için 1.385,28 USD değerinde WETH verdi, yani %5 bonus; bunun 52,77 USD'sini likidatör, 13,19 USD'sini hazine aldı. Gezginin "Logs" sekmesi ücreti, aToken yakımının hemen ardından collector'a yapılan bir aToken transferi olarak gösterir.
+
+**Morpho Blue** `Liquidate(id, caller, borrower, repaidAssets, repaidShares, seizedAssets, badDebtAssets, badDebtShares)` olayını yayar. Base'deki USDC | cbBTC (86%) piyasasından gerçek bir örnek, blok 53265200, 30 Ekim 2026 saat 00:22 UTC:
+
+| Alan          | Değer              | Anlamı                                                       |
+| ------------- | ------------------ | ------------------------------------------------------------ |
+| id            | 0x9103c3b4…        | Piyasa                                                       |
+| caller        | likidatör          | Kimin geri ödediği ve teslim aldığı                          |
+| borrower      | borç alanın adresi | Pozisyonun kime ait olduğu                                   |
+| repaidAssets  | 2.174,732093 USDC  | Borç alan adına geri ödenen borç                             |
+| seizedAssets  | 0,02952084 cbBTC   | Likidatöre gönderilen teminat, oracle fiyatıyla 2.270,08 USD |
+| badDebtAssets | 0                  | Hiçbir borç silinmedi                                        |
+
+Oracle o blokta cbBTC'yi 76.897,38 USDC olarak fiyatladı. Alınan teminat 2.174,73 USD borç için 2.270,08 USD değerindeydi; oran 1,0438, bu da tam olarak %86'lık bir piyasanın ödediği likidasyon teşvik çarpanıdır (liquidation incentive factor). 95,34 USD'lik farkın tamamı likidatöre gitti: Morpho ücret almaz. O işlem, tek bir likidatörden gelen ve her biri farklı bir borç alana ait 30 `Liquidate` olayı içeriyordu; bir çöküşün en yoğun dakikası bir piyasanın kaydında böyle görünür.
+
+## Ne alındı, size ne kaldı?
+
+Ayırt edilmesi gereken üç şey:
+
+1. **Sizin adınıza geri ödenen borç gitti, onu karşılayan teminat da.** Geri ödenen kısmı artık borçlu değilsiniz. Likidatör onu kendi tokenlarıyla ödedi ve karşılığında teminatınızı, artı bonusu aldı. Bonus likidasyonun maliyetidir: iki örnekte Aave'de 1.319 USD borç için 65,96 USD, Morpho'da 2.175 USD için 95,34 USD.
+2. **Borç aldığınız tokenlar hâlâ sizindir.** USDT borç alıp harcadıysanız hiçbir şey değişmez. Hâlâ cüzdanınızdaysa orada durur. Bir likidasyon cüzdanınızdaki borç alınmış tokenlara asla dokunmaz; yalnızca pozisyonu değiştirir.
+3. **El konulmayan teminat pozisyonda kalır.** Aave'de aToken bakiyesi küçülür; Morpho'da o piyasadaki teminat bakiyesi küçülür. Borç kalmışsa teminat onu karşılamaya devam eder. Borç kalmamışsa teminatı çekebilirsiniz.
+
+Ne kadarının kaldığı protokole bağlıdır. Aave V3'te, sağlık faktörü 0,95'in üzerindeyken ve hem alınan teminat hem de geri ödenen borç en az 2.000 USD değerindeyken tek bir likidasyon toplam borcunuzun en fazla %50'sini geri öder; 0,95'in altında veya daha küçük tutarlarda o varlıktaki borcun tamamını geri ödeyebilir ([tek seferde ne kadarı likide edilebilir](/tr/blog/aave-likidasyonu-nasil-isler#borcumun-ne-kadarı-tek-seferde-likide-edilebilir)). Ethereum örneği %50 kuralına kuruşu kuruşuna uydu: öncesinde 2.638,63 USD borç, sonrasında 1.319,32. Borç alanın elinde 1.319,32 USDT'ye karşılık 0,7906 WETH (1.752 USD) kaldı, sağlık faktörü 1,12; ETH %10,4 daha düşerse bu pozisyon yeniden likide edilebilir. Aave V4'te ise bir likidasyon, pozisyonu Spoke'un hedef sağlık faktörüne geri getirmek için gereken tutarı geri öder (Ethereum Main Spoke'ta 1,24); böylece daha fazlası geri ödenir ama kalan pozisyon daha güvenlidir ([Aave V4'te likidasyonlar](/tr/blog/aave-likidasyonu-nasil-isler#aave-v4te-likidasyonlar-nasıl-farklıdır)).
+
+Morpho Blue'da close factor (tek seferde ödenebilecek borç payı) yoktur: bir likidatör tek bir çağrıda borcun tamamına kadarını geri ödeyebilir ([borcunuzun ne kadarı tek seferde likide edilebilir](/tr/blog/morpho-likidasyonu-nasil-isler#borcunuzun-ne-kadarı-tek-seferde-likide-edilebilir)). Base'deki likidatör 0,03286 cbBTC'nin 0,02952'sini, yani teminatın %90'ını aldı ve pay yuvarlamasından kalan 0,0005 USDC dışında borcun tamamını geri ödedi. Borç alanın elinde yaklaşık 257 USD değerinde 0,003342 cbBTC kaldı ve bunu çekebilir.
+
+Kontrol edilecek iki şey daha var. Aave'de hangi teminatın alınacağı likidatörün tercihiydi ([likidatör hangi teminatı alır](/tr/blog/aave-likidasyonu-nasil-isler#likidator-hangi-teminatı-alır)), bu yüzden birkaç teminat varlığı olan bir pozisyon en az beklediğiniz varlığı kaybetmiş olabilir. Morpho'da `repaidAssets` beklediğinizden küçükse, gerçek likidasyondan önce daha düşük bir kredi/değer oranında (LTV) ve daha düşük bir teşvikle bir [ön likidasyon (pre-liquidation)](/tr/blog/morpho-on-likidasyon) çalışmış olabilir; uygulama ve API iki türü de gösterir.
+
+## Likidasyon her şeyi aldıysa ne olur?
+
+Morpho'da `badDebtAssets` sıfırın üzerindeyse ya da Aave olayı borç kalırken size hiç teminat bırakmadıysa, biri likidasyonu yaptığında teminatın değeri borç artı bonustan azdı. İki protokol de sizin peşinize düşmek yerine pozisyonu kapatır:
+
+- **Aave** (V3.3'ten beri) kalan borcu yakar ve o rezervde bir açık (deficit) olarak kaydeder; bu açığı daha sonra Umbrella staker'ları karşılayabilir. Elinizde ne teminat ne borç kalır ([bir likidasyon batık borç bırakabilir mi](/tr/blog/aave-likidasyonu-nasil-isler#bir-likidasyon-batık-borc-bırakabilir-mi)).
+- **Morpho Blue** kalan borcu aynı işlemde siler ve zararı o piyasadaki borç verenlere dağıtır. Borç alanın elinde ne teminat ne borç kalır ([Morpho Blue'da batık borca ne olur](/tr/blog/morpho-likidasyonu-nasil-isler#morpho-blueda-batık-borca-ne-olur)).
+
+Aradaki fark için kimse peşinize düşmez ve pozisyonda hiçbir şey açık kalmaz. Ama geriye bir şey de kalmaz; sizin tarafınızdaki zarar yalnızca bir bonus değil, teminatın tamamıdır. Örneklerin ayında batık borç (bad debt) nadirdi: çöküş etrafındaki üç günde Base cbBTC piyasasındaki 393 likidasyonda sıfır, 30 Ekim'e kadarki 30 günde Morpho'nun 7.521 likidasyonunun tamamında yaklaşık 3,5 milyon USD.
+
+## Neden oldu?
+
+İki örneğin ortak bir nedeni var: güvenlik payı yok. Aave likidasyonundan bir blok önce o borç alanın sağlık faktörü 1,0049'du; bir sonraki Chainlink güncellemesi WETH'i yaklaşık 2.229,77'den 2.216,31 USD'ye, yani %0,6 aşağı taşıdı ve sağlık faktörü 0,9988 oldu. Morpho likidasyonundan bir blok önce Base'deki borç alanın sağlık faktörü 1,0025'ti; oracle cbBTC'yi 77.140,46'dan 76.897,38 USDC'ye, yani %0,3 aşağı taşıdı ve sağlık faktörü 0,9993 oldu. İkisinde de bir çöküş gerekmedi. Tek bir sıradan fiyat güncellemesi yetti; Morpho örneğinde de saat 00:22 UTC'de, yani [Morpho likidasyonlarının üçte birinden fazlasının](/tr/blog/saglik-faktoru-uyarilari-kimin-icin#borc-alanlar-ne-sıklıkla-likide-edilir) gerçekleştiği altı saatlik zaman diliminde.
+
+Sağlık faktörünüz bu kadar yakın değilse onu başka bir şey hareket ettirdi. [Sağlık faktörünüz neden düştü](/tr/blog/aave-saglik-faktoru-neden-dustu) altı nedeni, her birini kontrol etmenin bir yoluyla listeler: teminatınızın fiyatı düştü, borç aldığınız varlığın fiyatı yükseldi, borcun faizi teminatın getirisini aştı, yönetişim bir likidasyon eşiğini düşürdü, yatırdığınız bir stablecoin depeg (dolar sabitinin kaybı) yaşadı ya da bir oracle bir wrapper token'ı yanlış fiyatladı. Morpho sürümü, eşik düşürme hariç aynı listedir, çünkü bir Morpho piyasasının likidasyon LTV'si (LLTV) hiç değişmez ([Morpho sağlık faktörünü ne hareket ettirir](/tr/blog/morpho-saglik-faktoru#morpho-saglık-faktorunu-ne-hareket-ettirir)). Gözden kaçması kolay iki durum var: vadesi geçmiş bir [Midnight](/tr/blog/morpho-midnight-sabit-faizli-krediler) kredisi herhangi bir sağlık faktöründe likide edilebilir ve [tokenize hisseler](/tr/blog/teminat-olarak-tokenize-hisseler) karşılığındaki bir kredi, fiyat akışı dururken hareket etmiş bir pazar akşamı fiyatıyla likide edilebilir.
+
+## İlk saatte ne yapmalısınız?
+
+1. **Dokunmadan önce kalan pozisyonu okuyun.** Sağlık faktörü, kalan borç, kalan teminat: [Aave panelinde](/tr/aave) veya [Morpho panelinde](/tr/morpho), protokolün uygulamasında ya da gezginde. Aave'deki kısmi bir likidasyon pozisyonu 1,1 civarında bırakır; bir sonraki %10'luk hareket onu yeniden likide eder.
+2. **Kapatmaya mı devam etmeye mi karar verin.** Krediyi artık istemiyorsanız kalanını geri ödeyin ve teminatı çekin; Aave'de teminatın kendisiyle geri ödeyebilirsiniz ([teminatla geri ödeme](/tr/blog/aave-likidasyonundan-kacinma#adım-4-teminatla-geri-odeyin-veya-teminat-takası-yapın)). Devam edecekseniz, sağlık faktörü eskiden olduğu yere değil, olmasını istediğiniz yere gelene kadar geri ödeyin veya teminat ekleyin. [Geri ödeme, sağlık faktörünü dolar başına teminat eklemekten daha fazla yükseltir](/tr/blog/aave-likidasyonundan-kacinma#geri-odeme-saglık-faktorunu-neden-teminat-eklemekten-daha-cok-yukseltir).
+3. **Yeniden sınıra kadar borç almayın.** 1,005'te likide edilen pozisyon 1,005'te yeniden likide edilir. Aynı LTV'ye kadar yeniden borç almak saati sıfırlar.
+4. **Diğer pozisyonlarınızı kontrol edin.** Her Aave piyasasının, her V4 Spoke'unun ve her Morpho piyasasının kendi sağlık faktörü vardır ve birini likide eden fiyat hareketi diğerlerini de düşürmüştür.
+5. **Aave'de dondurulmuş bir rezerv olup olmadığını kontrol edin.** Aave 29 Ekim 2026'da tüm DAO piyasalarını dondurduğunda, dondurulmuş bir rezerve teminat eklemek imkânsızdı ve sağlık faktörünü yükseltmenin tek yolu geri ödemeydi ([çekim veya borç alma neden başarısız olur](/tr/blog/aave-cekim-veya-borclanma-neden-basarisiz)).
+6. **Morpho'da ön likidasyonu kontrol edin.** Bir ön likidasyon kontratına yetki verdiyseniz yetki hâlâ geçerlidir; artık istemiyorsanız [kontrol edip iptal edin](/tr/blog/morpho-on-likidasyon#bir-tanesini-yetkilendirip-yetkilendirmediginizi-nasıl-kontrol-edersiniz).
+7. **Kaydı saklayın.** İşlem hash'i, iki tutar, tarih ve okuyabiliyorsanız oracle fiyatları. Gezginler verileri saklar ama Nisan ayında bunları aramak istemeyeceksiniz.
+
+## İkincisinden nasıl kaçınırsınız?
+
+30 Ekim 2026'ya kadarki 30 günde likide edilen 5.703 Morpho borç alanından 932'si birden fazla kez likide edildi. Yukarıdaki Base borç alanı onlardan biriydi: 3 Haziran'da bir cbBTC kredisi, 14 Ekim'de bir cbZEC kredisi ve 30 Ekim'de yine cbBTC kredisi likide edildi. Her biri bir bonusa mal oldu ve hiçbiri bir değişikliğe yol açmadı. Değişiklik üç karardan oluşur:
+
+- **Bir güvenlik payı.** 1,005'lik bir sağlık faktörü hiçbir şeye dayanmaz. [Her sağlık faktöründe fiyatlar ne kadar düşebilir](/tr/blog/guvenli-aave-saglik-faktoru#her-saglık-faktorunde-likidasyondan-once-fiyatlar-ne-kadar-dusebilir) tabloyu verir: 1,5 %33,3'lük bir düşüşe, 2 ise %50'lik bir düşüşe dayanır. Seçeceğiniz sayı neyi neye karşı borç aldığınıza bağlıdır; [adım adım yöntem](/tr/blog/guvenli-aave-saglik-faktoru#bir-uyarı-esigini-adım-adım-nasıl-secersiniz) bunu hesaplar, [Morpho sürümü](/tr/blog/morpho-saglik-faktoru#tamponu-ve-uyarı-esigini-nasıl-secersiniz) ise sabit LLTV'yi hesaba katar.
+- **Güvenlik payının üstünde bir uyarı.** Sağlık faktörü seçtiğiniz bir çizgiyi geçtiğinde, harekete geçecek kadar erken gelen bir mesaj. Tokenping her 5 dakikada bir kontrol eder ve size Signal, Telegram veya e-posta ile mesaj gönderir; eşik Aave'de 1,1 ile 10, Morpho'da 1,02 ile 10 arasında herhangi bir değer olabilir. [Bir uyarı kurmak](/tr/blog/aave-saglik-faktoru-uyarisi-kurulumu) birkaç dakika sürer. Bir uyarı iki kontrol arasındaki bir sıçramayı yakalayamaz ve sizin yerinize hiçbir şeyi geri ödeyemez; bu yüzden güvenlik payının yerine değil, ondan sonra gelir.
+- **Kullanabileceğiniz fonlar.** Borç aldığınız ağda, borçlu olduğunuz varlıkta ya da gece takas edebileceğiniz bir varlıkta geri ödeme fonları ve mesajın geçmesine izin veren bir telefon ([Rahatsız Etmeyin modunda uyarılar](/tr/blog/rahatsiz-etmeyin-modunda-aave-uyarilari)). Yukarıdaki Morpho likidasyonu 00:22 UTC'de oldu; 1,1'de kurulmuş bir uyarı saatler önce gelirdi ve ona yalnızca Base'deki fonlar yanıt verebilirdi.
+
+Kredi, kurtarmak için fon taşımayacağınız kadar küçükse dürüst sonuç farklıdır: ya o teminata karşı daha az borç alın ya da bonusun, izlememenin bedeli olduğunu kabul edin.
+
+## Tokenping'in buradaki yeri
+
+Tokenping, kurduğunuz her pozisyonu her 5 dakikada bir izler: 21 ağdaki her Aave V3 piyasasında, her Aave V4 Spoke'unda ve Morpho uygulamasının listelediği her Morpho piyasasında; sağlık faktörü eşiğinizin altına düştüğünde size Signal, Telegram veya e-posta ile mesaj gönderir. Mesaj, pozisyon düzelene kadar her kontrolde tekrarlanır ve sitenin dillerinden herhangi birinde gelebilir. Bir likidasyondan sonra paneller geriye kalanı gösterir: [Aave paneli](/tr/aave) her piyasanın sağlık faktörünü, [Morpho paneli](/tr/morpho) her piyasanın LTV, LLTV ve sağlık faktörünü gösterir; hepsi zincirden hesaplanır.
+
+Pozisyonlarınıza ödeme yapmadan bakabilirsiniz. Uyarıların fiyatı: <AlertPrice />; her uyarı bir Aave V3 piyasası, V4 Spoke'u veya Morpho piyasası içindir. Tokenping beta aşamasındadır, çalışma süresi garantisi yoktur ve hiçbir uyarı bir likidasyonu engellemez.
+
+## Kaynaklar
+
+- [Ethereum işlemi 0x5f88aa61…12fb6](https://etherscan.io/tx/0x5f88aa61ca6180e132a627c5e4d483c4098becc65359fa6af50551c405312fb6) (blok 26305893): `LiquidationCall`, aEthWETH ve variableDebtEthUSDT yakımları, collector'a ücret transferi; 26305892 ve 26305893 numaralı bloklarda Aave Oracle fiyatları ve `getUserAccountData`; WETH için `getReserveConfigurationData` ve `getLiquidationProtocolFee`, herkese açık bir RPC üzerinden okundu (erişim tarihi: 31 Ekim 2026)
+- [Base işlemi 0xc2df272f…f0178](https://basescan.org/tx/0xc2df272f36d8b0b566c24988052c1508a4c90a97999b2da5a8c8ec7f8e3f0178) (blok 53265200): 30 `Liquidate` olayı; 53265199 ve 53265200 numaralı bloklarda Morpho Blue `position`, `market` ve piyasa oracle'ının `price()` değeri, herkese açık bir RPC üzerinden okundu (erişim tarihi: 31 Ekim 2026)
+- [Morpho API](https://api.morpho.org/graphql): Base cbBTC piyasası için 28-31 Ekim 2026 arası ve örnekteki borç alanın adresi için Liquidation türündeki `marketTransactions`; piyasanın LLTV'si ve oracle'ı için `markets` (erişim tarihi: 31 Ekim 2026)
+- [Morpho API](https://api.morpho.org/graphql): 30 Eylül 2026 08:36 UTC ile 30 Ekim 2026 08:36 UTC arasındaki tüm likidasyonlar, [uyarılar rehberindeki](/tr/blog/saglik-faktoru-uyarilari-kimin-icin) gibi (erişim tarihi: 30 Ekim 2026)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): yakılıp rezerv açığı olarak kaydedilen batık borç, close factor kuralları, Umbrella'nın açığı kapatması (erişim tarihi: 31 Ekim 2026)
+- [Liquidation on Morpho](https://docs.morpho.org/learn/concepts/liquidation): teşvik formülü, tek çağrıda %100'e kadar, protokol ücreti yok (erişim tarihi: 31 Ekim 2026)
+
+_Eğitim amaçlı içeriktir, finansal tavsiye değildir. Uyarılar riski azaltır ama likidasyonu önlemez._

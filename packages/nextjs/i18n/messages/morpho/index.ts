@@ -8,6 +8,7 @@ import { MESSAGES as it } from "./it";
 import { MESSAGES as pl } from "./pl";
 import { MESSAGES as pt } from "./pt";
 import type { MorphoMessages } from "./shared";
+import { MESSAGES as tr } from "./tr";
 import { MESSAGES as vi } from "./vi";
 import type { Localized } from "~~/i18n/locales";
 
@@ -16,4 +17,4 @@ import type { Localized } from "~~/i18n/locales";
 
 export type { MorphoMessages } from "./shared";
 
-export const MORPHO_MESSAGES: Localized<MorphoMessages> = { en, cs, es, hi, de, vi, fr, pt, it, pl };
+export const MORPHO_MESSAGES: Localized<MorphoMessages> = { en, cs, es, hi, de, vi, fr, pt, it, pl, tr };

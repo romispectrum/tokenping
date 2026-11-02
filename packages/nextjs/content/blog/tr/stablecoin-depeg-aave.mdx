@@ -1,0 +1,162 @@
+export const meta = {
+  slug: "stablecoin-depeg-aave",
+  title: "Stablecoin depeg'inin Aave kredinize etkisi",
+  description:
+    "Depeg, Aave sağlık faktörünü kredinin iki tarafında nasıl etkiler, Aave USDC, USDT ve USDe'yi nasıl fiyatlar, 2023 ve 2025 neler gösterdi.",
+  h1: "Bir stablecoin depeg olduğunda Aave pozisyonunuza ne olur?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "Bir stablecoin depeg olduğunda Aave sağlık faktörüme ne olur?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Bir stablecoin depeg'i (dolar sabitinin kaybı), Aave sağlık faktörünüzü (health factor) aklınızdaki 1 $ üzerinden
+  değil, oracle (fiyat kaynağı) fiyatı üzerinden etkiler. Stablecoin teminatınızsa, 1 $'ın altına düştüğü her sent
+  doğrudan sağlık faktörüne yansır, çünkü Aave'nin stablecoin fiyat adaptörleri fiyatı yalnızca yukarıdan sınırlar
+  (Ethereum Core'da USDC, USDT, DAI, USDS ve PYUSD için 1,04 $, 28 Ekim 2026'da okundu) ve hiçbir taban uygulamaz.
+  Stablecoin borcunuzsa, düşüş sağlık faktörünüzü yükseltir, yükseliş ise düşürür, ama asla tavanın izin verdiğinden
+  fazla değil. USDe özel bir durumdur: Aave 8 Mart 2025'ten beri onu USDT'nin fiyat akışıyla (price feed) fiyatlar, bu
+  yüzden USDe'nin piyasa fiyatı sağlık faktörünüze hiç ulaşmaz. Bir depeg, iki uyarı kontrolü arasında bir pozisyonu çok
+  uzağa taşıyabilir; bu yüzden bir uyarı size koruma değil, zaman kazandırır.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Rakamlar ve okundukları blok numaraları: content/blog/snapshots/stablecoin-depeg-aave.md */}
+
+## Stablecoin depeg'i nedir ve kredinizin hangi tarafını vurur?
+
+Bir stablecoin, piyasa fiyatı korumakla yükümlü olduğu 1 $'dan ayrıldığında depeg olur. Aave'de borç alan biri için bu iki tarafta önemlidir ve iki taraf farklı davranır:
+
+- **Teminat olarak yatırdığınız bir stablecoin.** Oracle fiyatı teminat değerinizi çarpar, bu yüzden 1 $'ın altına bir düşüş sağlık faktörünün teminat tarafını küçültür. Bu, [sağlık faktörünün neden düştüğüne dair 5. neden](/tr/blog/aave-saglik-faktoru-neden-dustu#neden-5-teminat-olarak-yatırdıgınız-bir-stablecoin-asagı-yonde-depeg-mi-oldu) ve tehlikeli taraf budur.
+- **Borç aldığınız bir stablecoin.** Oracle fiyatı borç değerinizi çarpar. 1 $'ın altına bir düşüş borcun değerini azaltır ve sağlık faktörünüzü yükseltir; 1 $'ın üzerine bir yükseliş borcun değerini artırır ve sağlık faktörünüzü düşürür.
+
+Sağlık faktörünün kendisi iki durumda da aynı formüldür; [Aave sağlık faktörünün ne olduğu](/tr/blog/aave-saglik-faktoru) rehberinde açıklanır:
+
+**HF = Σ(teminat değeri × likidasyon eşiği) ÷ toplam borç değeri**
+
+İki değer de Aave'nin oracle'ından gelir. Formüldeki hiçbir şey bir varlığın stablecoin olduğunu bilmez: 0,87 $'daki USDC, değeri 0,87 $ olan bir varlıktan ibarettir. Stablecoin'leri farklı kılan, Aave'nin onları nasıl fiyatladığıdır; bu, üçüncü bölümün konusudur. Aşağıdaki örnekler, 28 Ekim 2026'da 26291704 numaralı blokta (14:03:35 UTC) okunan Aave V3 Ethereum Core parametrelerini kullanır: USDC ve USDT için %78, WETH için %84 likidasyon eşiği (liquidation threshold).
+
+## Teminatınız olan stablecoin depeg olursa sağlık faktörüne ne olur?
+
+Yatırdığınız bir stablecoin'in oracle fiyatındaki düşüş, sağlık faktörünüzü düşüşle orantılı olarak azaltır ve bunu durduracak hiçbir şey yoktur. 10.000 USDT borca karşı 20.000 USDC yatırılmış bir pozisyonu ele alalım; hesaplar yuvarlak olsun diye ikisi de 1 $ kabul edildi (oracle, 26291704 numaralı blokta USDC için 0,99971803 $, USDT için 0,99842395 $ okudu):
+
+- 1 $'da: 20.000 × 0,78 ÷ 10.000 = **1,56**.
+- USDC 0,95 $ olduğunda: 19.000 × 0,78 ÷ 10.000 = **1,48**.
+- USDC, Mart 2023'teki dip olan 0,87 $ olduğunda: 17.400 × 0,78 ÷ 10.000 = **1,36**.
+- USDT değişmezken 1,00'da likidasyon için USDC'nin 10.000 ÷ (20.000 × 0,78) = **0,64 $** olması gerekir.
+
+Bu pozisyonun payı var, çünkü %75'lik LTV'nin izin verdiğinin yarısı kadar borç aldı. Aynı teminatla sınıra kadar, yani 15.000 USDT borç alınırsa, başlangıç 15.600 ÷ 15.000 = **1,04** olur ve USDC 0,95 $ olduğunda pozisyon 14.820 ÷ 15.000 = **0,99** seviyesine iner, yani likide edilebilir. USDC fiyatı yaklaşık **0,96 $** olduğunda, yani %4'ten az bir düşüşle, 1,00'a ulaşır. 0,87 $'da 0,90'dır. Bir stablecoin loop'u (kaldıraçlı borç döngüsü) oracle hareket edene kadar sakin görünür; sonra tamponunuz, LTV'niz ile eşik arasında bıraktığınız boşluktan ibarettir. [Bir sağlık faktörünün size ne kadar tampon verdiği](/tr/blog/guvenli-aave-saglik-faktoru) bunu nasıl seçeceğinizi anlatır.
+
+Bir ayrıntı işe yarar: yalnızca iki oracle fiyatı arasındaki oran sayılır. USDC ve USDT'nin ikisi de 0,95 $ okunursa, 15.000 USDT'lik pozisyon yine 14.820 ÷ 14.250 = 1,04 olur, yani değişmez. Mart 2023'te zarar veren, USDT düşmezken USDC'nin düşmesiydi.
+
+Yatırdığınız her stablecoin, teminatınızdaki payı oranında bu şekilde risk altındadır. Eşit dolar tutarlarında WETH ve USDC yatırılmışsa (eşikler %84 ve %78), USDC ağırlıklı teminatınızın yaklaşık %48'idir; bu yüzden USDC'de %13'lük bir düşüş teminatın yaklaşık %6'sını siler.
+
+## Borç aldığınız stablecoin depeg olursa ne olur?
+
+Stablecoin borcunuzsa etki tersine döner ve bir yönde sınırlıdır. 12.000 USDT borca karşı 10 WETH yatırılmış (eşik %84) bir pozisyonu ele alalım; ETH örnek olarak 2.300 $ olsun (oracle, 26291704 numaralı blokta 2.335,08 $ okudu):
+
+- USDT 1 $'da: 23.000 × 0,84 ÷ 12.000 = **1,61**.
+- USDT 0,95 $'a düşer: borcun değeri 11.400 olur, yani **1,69**. 0,87 $'da **1,85**'tir. Borç varlığınızın aşağı yönlü depeg'i işinize yarar.
+- USDT 1,02 $'a yükselir: borcun değeri 12.240 olur, yani **1,58**.
+- USDT 1,04 $'a ya da üzerine yükselir: borcun değeri en fazla 12.480 olur, yani **1,55**. Piyasa ne derse desin tavan fiyatı orada tutar.
+
+Yani borç aldığınız bir stablecoin kendi fiyatı yüzünden sağlık faktörünüzün en fazla yaklaşık %4'üne mal olabilir; teminat olarak ise ne kadar düşerse sağlık faktörünüzden o kadarını götürebilir. Bu asimetri Aave'nin risk parametrelerinden değil, adaptörden gelir.
+
+<Callout tone="info">
+  Bu aynı zamanda, oynak bir varlığa karşı stablecoin borç almanın, yani [Aave ile itibari paraya
+  short](/tr/blog/aave-ile-itibari-paraya-short) rehberindeki pozisyonun, depeg'lere neden neredeyse hiç açık olmadığını
+  da açıklar: stablecoin borçtur ve onun düşüşü borç alan için iyi haberdir.
+</Callout>
+
+## Aave stablecoin'leri nasıl fiyatlar?
+
+Aave stablecoin'leri 1 $ olarak değerlemez. Her rezervin, AaveOracle sözleşmesinde yönetişim tarafından belirlenen bir fiyat kaynağı vardır; stablecoin'ler için bu kaynak, Aave'nin fiyat akışları deposundan bir fiyat tavanı adaptörüne (price cap adapter) sarılmış bir Chainlink USD fiyat akışıdır (eskiden aave-capo adını taşıyan depo; README dosyası adının Aave Price Feeds olarak değiştirildiğini söyler). Stablecoin adaptörü `PriceCapAdapterStable`'dır ve `latestAnswer` fonksiyonu üç şey yapar: Chainlink fiyat akışını okur, akış tavanın üzerindeyse yönetişimin belirlediği tavanı döndürür, değilse akışın fiyatını değiştirmeden döndürür (pozitif olmayan bir akış yanıtı 0 olur). Taban yoktur.
+
+Ethereum Core'daki AaveOracle'dan 26291704 numaralı blokta (28 Ekim 2026, 14:03:35 UTC), `getSourceOfAsset` ve her adaptörün kendi getter'ları ile okunmuştur:
+
+| Varlık | Likidasyon eşiği   | Oracle fiyatı | Adaptörün kendini tanımladığı şekliyle fiyat kaynağı               | Tavan (`getPriceCap`)  |
+| ------ | ------------------ | ------------- | ------------------------------------------------------------------ | ---------------------- |
+| USDC   | %78                | 0,99971803 $  | "USDC / USD" akışı üzerinde "Capped USDC / USD"                    | 1,04 $                 |
+| USDT   | %78                | 0,99842395 $  | "USDT / USD" akışı üzerinde "Capped USDT/USD"                      | 1,04 $                 |
+| USDe   | %75                | 0,99842395 $  | Aynı USDT akışı üzerinde "Capped USDT/USD"                         | 1,04 $ (aşağıya bakın) |
+| DAI    | %77                | 0,99923138 $  | "DAI / USD" akışı üzerinde "Capped DAI/USD"                        | 1,04 $                 |
+| USDS   | %78                | 0,99972900 $  | "USDS / USD" akışı üzerinde "Capped USDS/USD"                      | 1,04 $                 |
+| PYUSD  | %78                | 0,99988808 $  | "PYUSD / USD" akışı üzerinde "Capped pyUSD/USD"                    | 1,04 $                 |
+| GHO    | %0 (teminat değil) | 1,00000000 $  | Adaptörün getter'larının hiçbirine yanıt vermeyen sabit bir kaynak | yok, 1 $'da sabit      |
+
+O gün her adaptörün `isCapped()` fonksiyonu false döndürdü: akışların hiçbiri tavanının üzerinde değildi. USDe satırı bir not gerektirir: USDe'nin işaret ettiği adaptör, aynı sözleşmenin daha eski bir dağıtımıdır (1 Mart 2024'te oluşturuldu) ve `getPriceCap` getter'ı yoktur; bu yüzden tavan, aynı 104000000 değerinin durduğu depolama alanından okundu. sUSDe farklı bir adaptörle fiyatlanır: "Capped sUSDe / USDT / USD", sUSDe'nin USDe'ye dönüşüm oranını USDT'nin fiyatıyla çarpar ve 1,25333685 $ okudu.
+
+Bunun borç alan biri için anlamı:
+
+- **1 $'ın üzerinde, borç alan olarak korunursunuz, yatıran olarak sınırlanırsınız.** USDC 1,10 $'dan işlem görürse, Aave onu 1,04 $ olarak değerler; bu yüzden bir USDC borcu en fazla %4 daha pahalı olur, USDC teminatı da en fazla %4 daha değerli olur.
+- **1 $'ın altında hiçbir şey yumuşatılmaz.** Adaptör 0,95 $'ı ya da 0,87 $'ı olduğu gibi geçirir. Teminatınız akışın söylediği kadar eder ve sağlık faktörünüz her okumada onu izler.
+- **Tavan değişebilir.** `setPriceCap`, Aave'nin risk yöneticilerine ve havuz yöneticilerine açıktır; akışın mevcut fiyatının altında bir tavan belirleyemez ve 2 $'ın üzerine çıkamaz. Yukarıdaki tavanlar 28 Ekim 2026'da zincirde olanlardır, bir taahhüt değildir.
+- **Önemli olan borsa fiyatı değil, akıştır.** Chainlink'in fiyat akışı birkaç işlem yerini birleştirir, bu yüzden tek bir borsanın fiyatı oracle fiyatı değildir. Bunun bir teselli mi yoksa bir tehlike mi olduğu, kredinin hangi tarafında olduğunuza bağlıdır; sonraki iki bölüm ikisini de gösterir.
+
+Oracle hataları ayrı bir konudur: bir adaptör, piyasada hiçbir hareket olmadan bir varlığı yanlış fiyatlayabilir; Mart 2026'daki wstETH olayında olduğu gibi. [Sağlık faktörünün neden düştüğüne dair 6. neden](/tr/blog/aave-saglik-faktoru-neden-dustu#neden-6-bir-oracle-veya-kur-hatası-teminatınızı-yanlıs-mı-fiyatladı) bu durumu ele alır.
+
+## USDe neden USDT'nin fiyat akışıyla fiyatlanıyor ve bu 10 Ekim 2025'te ne anlama geldi?
+
+Aave V3 Ethereum Core, 8 Mart 2025'ten beri USDe'yi USDT'nin fiyat akışıyla fiyatlar; bu yüzden USDe'nin kendi piyasa fiyatı orada hiçbir sağlık faktörüne ulaşmaz. Karar, Chaos Labs'in LlamaRisk ile birlikte 2 Ocak 2025'te Aave yönetişim forumunda yayımladığı "sUSDe and USDe Price Feed Update" adlı yönetişim önerisinden geldi. Öneri kendi sözleriyle "suggests hardcoding the USDe price to match the USDT price in Aave's pricing feeds" (Aave'nin fiyat akışlarında USDe fiyatının USDT fiyatına eşit olarak sabitlenmesini öneriyor) diyordu; gerekçesi, Ethena'nın hedge pozisyonlarının çoğunun USDT cinsinden olması ve sUSDe'yi USDe'nin ikincil piyasasından fiyatlamanın sUSDe destekli pozisyonları kısa vadeli sapmalara ve gereksiz likidasyonlara maruz bırakmasıydı. Konu itirazlar aldı (bir yanıt neden onun yerine 1,00 $'ın sabitlenmediğini sordu; bir diğeri sUSDe pozisyonlarının artık USDT'nin fiyatına açık olmasından endişe etti) ve Chaos Labs 16 Ocak 2025'te bu düzeni geçici bir önlem olarak nitelendirdi. Snapshot oylaması 3-6 Şubat 2025 arasında yapıldı ve kabul edildi. Zincirde AIP 262, 8 Mart 2025'te 22002625 numaralı blokta (14:01:47 UTC) yürürlüğe girdi: AaveOracle'ın USDe kaynağı bir "Capped USDe / USD" adaptöründen "Capped USDT/USD" adaptörüne, sUSDe'nin kaynağı da "Capped sUSDe / USDT / USD" adaptörüne geçti. Eski USDe/USD adaptörü hâlâ duruyor ve hâlâ yanıt veriyor: 26291704 numaralı blokta 0,99969500 $ okudu, Aave ise USDe'yi USDT'nin 0,99842395 $'ı ile fiyatladı.
+
+10 Ekim 2025'te, piyasa genelindeki çöküş sırasında, bu sınandı. LlamaRisk'in 24 Ekim 2025 tarihli forum gönderisi, USDe'nin ikincil piyasa fiyatını "down to $0.65 at the lowest point" (en düşük noktada 0,65 $'a kadar) indiren "aggressive cryptocurrency market volatility events on centralized exchanges, most notably Binance" (merkezi borsalarda, en başta Binance'te, sert kripto para piyasası oynaklığı olayları) anlatır ve birkaç işlem yerinden veri alan Chainlink USDe/USD fiyat akışının "did not deviate significantly during this localized de-peg" (bu yerel depeg sırasında belirgin şekilde sapmadığını) söyler. Chaos Labs'in 2 Kasım 2025 tarihli yanıtı rakamı verir: Chainlink USDe/USD fiyatı "reached as low as $0.977" (0,977 $'a kadar indi). Aave bu fiyatların ikisini de görmedi. LlamaRisk'in sözleriyle, "Aave avoided immediate issues from the de-peg on Binance by pricing USDe on par with USDT" (Aave, USDe'yi USDT ile eşit fiyatlayarak Binance'teki depeg'in doğrudan sorunlarından kaçındı). LlamaRisk'in 18 Ekim 2025 tarihli araştırma notu, Aave'deki 1,03 milyar $'lık USDe mevduatının olay boyunca "remained remarkably stable" (dikkat çekici şekilde istikrarlı kaldığını) ekler.
+
+İki dürüst çekince. Birincisi, bu kaynakların söylediğidir, fazlası değil: bu rehber için bulunan hiçbir kamuya açık olay sonrası analiz (post-mortem) o gün Aave'deki USDe ile ilgili likidasyonları saymaz, bu yüzden bu rehber hiç olmadığını iddia etmez. İkincisi, USDT fiyat akışına sorunlardan kaçınmayı mal eden aynı LlamaRisk gönderisi, bu yaklaşımın "transfers the solvency risk to the Aave protocol" (ödeme gücü riskini Aave protokolüne aktardığını) da söyler: USDe bir gün karşılığını yitirirse, Aave'nin oracle'ı yönetişim müdahale edene kadar onu USDT gibi değerlemeye devam eder. LlamaRisk aynı gönderide otomatik dondurma özellikli, risk yönetimli bir USDe oracle'ı önerdi; Chaos Labs 2 Kasım 2025'te buna karşı tavsiyede bulundu ve konu 7 Aralık 2025'te kaydedilmiş bir oylama olmadan kapandı. 28 Ekim 2026'da Ethereum Core'daki USDe hâlâ USDT adaptörüne işaret ediyordu; likidasyon eşiği %75, LTV'si 0'dı.
+
+Borç alan biri için bu iki yönlü keser. Ethereum Core'da teminat olarak USDe tutuyorsanız, bir borsadaki USDe satışı sağlık faktörünüzü oynatmaz, ama bir USDT depeg'i oynatır; fiyat akışını eskisine döndüren bir yönetişim oylaması da öyle. USDe borç aldıysanız, piyasadaki bir iskonto onu geri satın almayı ucuzlatır, ama Aave borcunuzu yine USDT'nin fiyatıyla değerler.
+
+## Mart 2023'te USDC düştüğünde Aave'de borç alanlara ne oldu?
+
+11 Mart 2023'te, Circle USDC rezervlerinin bir kısmının Silicon Valley Bank'ta tutulduğunu açıkladıktan sonra, Gauntlet'in Aave için hazırladığı olay sonrası analize (17 Mart 2023) göre USDC piyasada 08:00 UTC civarında yaklaşık 88 sentlik bir dibe düştü. Aave'nin USDC fiyatı aşağı doğru Chainlink fiyat akışını izledi (tavanlı adaptörler daha sonra geldi ve bir düşüşü değiştirmezlerdi) ve teminatında USDC olan her pozisyon aynı ölçüde sağlık faktörü kaybetti; bu, tam olarak yukarıdaki ilk hesaplı örnektir.
+
+Yönetişim ve risk ekipleri saatler içinde harekete geçti, hepsi Gauntlet'in 08:13 UTC'de açtığı forum başlığında:
+
+- **09:19 UTC:** Gauntlet, likidasyonların ödeme gücü açıklarını gerçekleştirmesini durdurmak için tüm Aave V2 ve V3 piyasalarının geçici olarak duraklatılmasını önerdi.
+- **10:19 UTC:** BGD Labs, Aave Guardian'ın yalnızca zincirler arası yönetişim altyapısının uygulanmadığı Aave V3 Avalanche'ta hemen harekete geçebileceğine dikkat çekti ve oradaki stablecoin'lerin dondurulmasını ve LTV'lerinin 0'a çekilmesini önerdi.
+- **13:00 UTC civarı:** Guardian, Aave V3 Avalanche'ta USDC, USDT, DAI, FRAX ve MAI'yi dondurdu ve LTV'lerini 0'a çekti; bunu başlıkta BGD Labs doğruladı ve dondurmanın mevcut hiçbir sağlık faktörünü değiştirmediğini ekledi. Aave'nin hesabı bunu 16:44 UTC'de duyurdu.
+- **Duraklatma yok.** Gauntlet'in olay sonrası analizi, Guardian'ın riski stratejik ve felsefi sonuçlarına karşı tartarak duraklatmayı uygulamadığını söyler; dondurma yeni yatırma ve borç almayı engeller ama likidasyonların sürmesine izin verir.
+
+Aynı olay sonrası analize göre sonuç: 11-12 Mart hafta sonu boyunca Aave V3 Avalanche E-Mode'da yaklaşık 280.000 $, V3 Arbitrum'da yaklaşık 20.000 $ ödeme gücü açığı, toplamda yaklaşık 300.000 $; Aave V2'de ise gerçekleşmiş zarar yok. Gauntlet, 80 sentlik bir USDC fiyatında yalnızca V2'deki açıkların yaklaşık 1 milyon $'a ulaşabileceğini tahmin etti. Borç alan biri için ders şu: protokolün bir depeg'e tepkisi protokolü hedefler. Dondurma yeni riskin girmesini durdurur, pozisyonunuzu daha güvenli yapmaz; likidasyonları durduracak olan duraklatma da kullanılmadı.
+
+## Bir depeg batık borca yol açabilir mi, bedelini kim öder?
+
+Evet. Teminat, likidatörlerin temizleyebileceğinden daha hızlı düştüğünde, bir pozisyonun teminatı borcu artı likidasyon bonusundan daha az değerli hale gelebilir ve açık batık borca (bad debt) dönüşür. Mart 2023'teki 300.000 $ tam olarak buydu; çoğu, pozisyonların sınıra yakın çalıştığı bir stablecoin E-Mode'undaydı. Aave v3.3'ten beri böyle bir açık borç alanın borcundan yakılır ve varlık üzerinde bir açık (deficit) olarak kaydedilir; Aave'nin staking güvencesi olan Umbrella da bunu karşılamak için stake edilmiş aToken'ları yakabilir (Aave'nin belgelerine göre etkinleştirilmesi Ethereum'da başladı). Bunların hiçbiri, teminatı zaten gitmiş olan borç alana yardımcı olmaz; [bir likidasyonun batık borç bırakıp bırakamayacağı](/tr/blog/aave-likidasyonu-nasil-isler#bir-likidasyon-batık-borc-bırakabilir-mi) mekanizmayı ve hesaplı bir örneği içerir.
+
+## Morpho'da bu nasıl farklı?
+
+Morpho'da protokol genelinde bir stablecoin fiyatlaması ve tavan yoktur. Her Morpho Blue piyasasının, piyasayı oluşturan kişi tarafından seçilen ve piyasanın ömrü boyunca sabit kalan kendi oracle'ı vardır; Morpho'nun belgeleri "Once a market is deployed, its oracle address cannot be modified." (Bir piyasa dağıtıldıktan sonra oracle adresi değiştirilemez.) der. Bazı oracle'lar yalnızca teminatı fiyatlar ve kredi token'ını 1 $ kabul eder, bu yüzden kredi stablecoin'inin depeg'i hiçbir şeyi değiştirmez; diğerleri onun için de bir fiyat akışı içerir. Bir USDC depeg'inin Morpho pozisyonunuza dokunup dokunmayacağı o tek sözleşmeye bağlıdır; [bir Morpho sağlık faktörünü neyin oynattığı](/tr/blog/morpho-saglik-faktoru#morpho-saglık-faktorunu-ne-hareket-ettirir) onu nasıl okuyacağınızı gösterir.
+
+## Aave'de depeg riskine karşı ne yapabilirsiniz?
+
+Depeg riski çoğunlukla pozisyonu seçtiğinizde belirlenir; bu yüzden işe yarayan adımlar tepkiler değil, tercihlerdir:
+
+1. **Mümkünse stablecoin'i borç tarafına koyun.** Borç alınan stablecoin'ler size yalnızca yükselerek zarar verebilir ve tavan bunu yaklaşık %4 ile sınırlar. Stablecoin teminatının tabanı yoktur. [Teminatınıza uyan borcu seçmek](/tr/blog/aave-likidasyonundan-kacinma#adım-5-teminatınıza-uygun-borcu-secin) eşleşmeleri tek tek ele alır.
+2. **Stablecoin teminatı tutuyorsanız tamponu yüzde olarak değil, sent olarak tutun.** Yukarıdaki sınıra yakın örnek yaklaşık 0,96 $'da 1,00'a ulaşır. 1,56'lık bir sağlık faktörü, yani üçte bir daha az borçlu aynı teminat, 0,64 $ gerektirir. Hangi fiyatta likide edilmeyi göze aldığınıza karar verin, sonra krediyi buna göre boyutlandırın.
+3. **Borsayı değil, oracle'ı izleyin.** Sizi likide eden fiyat `AaveOracle.getAssetPrice(asset)`'tir; Ethereum Core'daki stablecoin'ler için bu, bir tavan altındaki bir Chainlink fiyat akışıdır, USDe için ise USDT'nin fiyat akışıdır. Tek bir borsadaki bir fiyat ne gereklidir ne de yeterlidir.
+4. **Yönetişimin neler yapabileceğini bilin.** Tavanlar ve kaynaklar oylamayla ya da risk yöneticisi işlemiyle değişir ve bir kriz sırasındaki dondurma likidasyonları duraklatmaz. Yukarıdaki Mart 2023 ve Ekim 2025 başlıkları, yapılanların kaydıdır.
+5. **Çıkışınızı hazır tutun.** Depeg olmuş stablecoin ile geri ödeme, o sizin borcunuzsa ucuzdur, onu satın almanız gerekiyorsa pahalıdır; [Aave sağlık faktörünüzü nasıl yükseltirsiniz](/tr/blog/aave-likidasyonundan-kacinma) rehberi, dondurulmuş bir rezerv geri ödemeye hâlâ izin verdiği için bir dondurma sırasında da işe yarayan adımları listeler.
+
+## Bir uyarı sizi depeg konusunda uyarabilir mi?
+
+Bir uyarı, sağlık faktörünüzün bir çizgiyi geçtiğini size söyleyebilir; bir depeg'i yavaşlatamaz. Tokenping, Aave V3 ve V4 sağlık faktörünüzü 22 ağda 5 dakikada bir kontrol eder ve belirlediğiniz eşiğin (1,1 ile 10 arası) altında kaldığı sürece size Signal, Telegram ya da e-posta ile mesaj gönderir. Sağlık faktörünü Pool sözleşmesinden okur, bu yüzden arkasındaki fiyat Aave'nin oracle fiyatıdır, likidatörlere ödeme yapılırken kullanılan fiyatın ta kendisi: USDe için Binance'teki 0,65 $'lık bir fiyat Ethereum Core'daki hiçbir sağlık faktörüne ulaşmaz, Chainlink'in 0,88 $'lık bir USDC okuması ise USDC teminatlı her pozisyona ulaşır ve bu, sağlık faktörünü eşiğinizin altına indirirse bir uyarı gelir.
+
+Bir depeg'de beş dakika uzun bir süredir. 11 Mart 2023'te USDC 08:00 UTC'de yaklaşık 88 sentteydi ve yukarıdaki sınıra yakın pozisyon yaklaşık 0,96 $'da 1,00'a ulaşır; bu yüzden 5 dakikada bir yapılan bir kontrol, böyle bir pozisyonu düşüşü gören ilk kontrolde zaten 1,00'ın altında bulabilir. Bir uyarının size gerçekten verdiği, yavaş kısımdır: 0,98 $'a kayıp orada kalan bir stablecoin, yönetişimin düşürdüğü bir eşik, biriken faiz. Eşiği hâlâ rahatça harekete geçebileceğiniz yere koyun ve bir depeg sırasında harekete geçmenin, herkesin aynı anda kullandığı bir ağda borç geri ödemek ya da teminat eklemek anlamına geldiğini unutmayın. [Sağlık faktörü uyarısı nasıl kurulur](/tr/blog/aave-saglik-faktoru-uyarisi-kurulumu) adımları anlatır, uyarıların ücreti <AlertPrice /> ve önce [Aave V3 sağlık faktörünüzü kontrol edebilirsiniz](/tr/aave); pozisyonlarınıza bakmak ödeme gerektirmez.
+
+## Kaynaklar
+
+- [Aave V3 Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): 26291704 numaralı blokta USDC, USDT, USDe, DAI, USDS, PYUSD, GHO ve WETH'in LTV ve likidasyon eşikleri (erişim tarihi: 28 Ekim 2026)
+- [Aave V3 Ethereum Core AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2#readContract): aynı varlıklar için 26291704 numaralı blokta `getAssetPrice` ve `getSourceOfAsset`, ve 22002625 numaralı blokta USDe ile sUSDe için `AssetSourceUpdated` olayı (erişim tarihi: 28 Ekim 2026)
+- [Capped USDC / USD adaptörü](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract), [Capped USDT/USD adaptörü](https://etherscan.io/address/0x260326c220E469358846b187eE53328303Efe19C#readContract) ve [USDe'nin işaret ettiği adaptör](https://etherscan.io/address/0xC26D4a1c46d884cfF6dE9800B6aE7A8Cf48B4Ff8#code), "Aave: Ethena Correlated USDe Price Feed", 1 Mart 2024'te oluşturuldu: 26291704 numaralı blokta açıklamalar, tavanlar, `isCapped` ve alttaki fiyat akışları (erişim tarihi: 28 Ekim 2026)
+- [PriceCapAdapterStable.sol](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol) ve [Aave Price Feeds README](https://github.com/aave-dao/aave-price-feeds): tavan mantığı, `setPriceCap` erişim denetimi, Aave Capo adından yeniden adlandırma (erişim tarihi: 28 Ekim 2026)
+- [Aave oracle belgeleri](https://aave.com/docs/ecosystem/oracle.md): kaynaklar her rezerv için yönetişim tarafından belirlenir (erişim tarihi: 28 Ekim 2026)
+- [ARFC: sUSDe and USDe Price Feed Update](https://governance.aave.com/t/arfc-susde-and-usde-price-feed-update/20495) (Chaos Labs ve LlamaRisk, 2 Ocak 2025, Snapshot 3-6 Şubat 2025), [AIP 262](https://vote.onaave.com/proposal/?proposalId=262) ve onun [payload pull request'i](https://github.com/aave-dao/aave-proposals-v3/pull/621), 3 Mart 2025'te birleştirildi (erişim tarihi: 28 Ekim 2026)
+- [AIP 262'nin Ethereum'da yürütülmesi](https://etherscan.io/tx/0xbb810541258db350d632e9a22ed7d7547509c67b2585dbc7a64a76b6ac8e42e0): USDe ve sUSDe kaynakları 22002625 numaralı blokta güncellendi, 8 Mart 2025 14:01:47 UTC (erişim tarihi: 28 Ekim 2026)
+- [ARFC: Ethena USDe Risk Oracle and Automated Freeze Guardian](https://governance.aave.com/t/arfc-ethena-usde-risk-oracle-and-automated-freeze-guardian/23303) (LlamaRisk, 24 Ekim 2025; Chaos Labs yanıtı 2 Kasım 2025; 7 Aralık 2025'te kapandı) (erişim tarihi: 28 Ekim 2026)
+- [When Pricing Breaks: A USDe Case](https://llamarisk.com/research/when-pricing-breaks-usde) (LlamaRisk, 18 Ekim 2025, erişim tarihi: 28 Ekim 2026)
+- [ARC: Stablecoin Volatility Risk Parameter Recommendations](https://governance.aave.com/t/arc-stablecoin-volatility-risk-parameter-recomendations/12241) (Gauntlet, 11 Mart 2023, aynı gün BGD Labs'in dondurma doğrulamasıyla) ve [Aave'nin duyurusu](https://x.com/aave/status/1634596115483086848) (11 Mart 2023, 16:44 UTC) (erişim tarihi: 28 Ekim 2026)
+- [Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (Gauntlet, 17 Mart 2023, erişim tarihi: 28 Ekim 2026)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md) ve [Aave Umbrella belgeleri](https://aave.com/docs/aave-v3/umbrella): açık (deficit) ve slashing (erişim tarihi: 28 Ekim 2026)
+- [Morpho belgeleri: Oracles](https://docs.morpho.org/learn/concepts/oracle): piyasa başına bir oracle, küratör tarafından seçilir, değiştirilemez (erişim tarihi: 28 Ekim 2026)
+
+_Eğitim amaçlı içeriktir, finansal tavsiye değildir. Uyarılar riski azaltır ama likidasyonu önlemez._

@@ -1,0 +1,183 @@
+export const meta = {
+  slug: "aave-likidasyonu-nasil-isler",
+  title: "Aave pozisyonunuz likide edildiğinde ne olur",
+  description:
+    "Aave V3 likidasyonları bugün nasıl işler: ne zaman tetiklenir, borcun ne kadarı ödenebilir (%50 veya %100), ödediğiniz bonus ve çözümlü bir örnek.",
+  h1: "Aave pozisyonunuz likide edildiğinde ne olur?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Aave'de likide olduğunuzda ne olur?",
+  readingMinutes: 11,
+};
+
+<ShortAnswer>
+  Aave V3 sağlık faktörünüz (health factor) 1'in altına düştüğünde başka herhangi bir adres borcunuzun bir kısmını veya
+  tamamını ödeyebilir ve o tutar artı bir likidasyon bonusu değerinde teminat alabilir; örneğin Ethereum Core
+  piyasasında WETH için %5. Sağlık faktörünüz 0,95'in üzerindeyken ve hem el konulan varlıktaki teminatınız hem de
+  ödenen varlıktaki borcunuz en az 2.000 $ değerindeyken tek bir likidasyon borcunuzun en fazla %50'sini ödeyebilir;
+  aksi hâlde o varlıktaki borcun tamamı tek seferde gidebilir. Borç aldığınız token'lar ve kalan teminat ile borç sizde
+  kalır, yani likidasyonun size maliyeti bonustur.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Bir Aave pozisyonu ne zaman likide edilebilir?
+
+Bir Aave V3 pozisyonu, sağlık faktörü 1,00'in altına iner inmez likide edilebilir. Sağlık faktörü, her varlığın likidasyon eşiğiyle (liquidation threshold) ağırlıklandırılmış teminat değerinizi borç değerinize böler; bu yüzden 1,00'in altında ağırlıklandırılmış teminat artık borcu karşılamaz (formül ve örnek: [Aave sağlık faktörü nedir](/tr/blog/aave-saglik-faktoru)).
+
+Aave V3.7 kontratları bir likidasyonun gerçekleşmesinden önce beş şeyi kontrol eder (`ValidationLogic.sol` içindeki `validateLiquidationCall`):
+
+1. Borç alanın sağlık faktörü 1,00'in altındadır.
+2. El konulan teminat varlığı ve ödenen borç varlığı ikisi de aktiftir ve **duraklatılmış (paused) değildir**.
+3. İki varlıktan herhangi birindeki likidasyon ek süresi (grace period) sona ermiştir. Aave'nin acil durum koruyucusu (emergency guardian) veya yönetişim bir varlığın duraklatmasını kaldırdığında 4 saate kadar bir ek süre belirleyebilir.
+4. Borç alan o teminatı teminat olarak etkinleştirmiştir ve seçilen borç varlığında borcu vardır.
+5. Çağıran kişi borç alanın kendisi değildir: kendi pozisyonunuzu likide edemezsiniz.
+
+Dondurulmuş (frozen) bir varlık yine de likide edilebilir, çünkü kontrol "frozen" durumuna değil, "paused" durumuna bakar. Başka herhangi bir adres Pool'un `liquidationCall` fonksiyonunu çağırabilir.
+
+Protokol bir likidasyondan önce sizi uyarmaz ve Aave'nin app.aave.com adresindeki kendi uygulaması uyarı göndermez. Tek bir oynak teminat ve stablecoin borçla [Aave likidasyon fiyatınızı hesaplayabilirsiniz](/tr/blog/aave-likidasyon-fiyati): sağlık faktörünün 1'e ulaştığı teminat fiyatı.
+
+## Borcumun ne kadarı tek seferde likide edilebilir?
+
+Aave V3.7'de close factor (tek seferde ödenebilecek borç payı), yalnızca üç koşul birlikte sağlandığında toplam borcunuzun %50'sidir: sağlık faktörünüz 0,95'in üzerindedir, el konulan varlıktaki teminatınız en az 2.000 $ değerindedir ve ödenen varlıktaki borcunuz en az 2.000 $ değerindedir. Diğer tüm durumlarda bir likidatör, seçilen varlıktaki borcunuzun %100'üne kadarını tek işlemde ödeyebilir.
+
+| Likidasyon sırasındaki durum                                                                                | Tek bir likidasyonun ödeyebileceği en yüksek tutar                                                               |
+| ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Sağlık faktörü 0,95'in üzerinde, seçilen teminat ve seçilen borcun her biri 2.000 $ veya daha fazla değerde | Tüm varlıklardaki toplam borcunuzun %50'si (USD olarak), hiçbir zaman seçilen varlıktaki borcunuzdan fazla değil |
+| Sağlık faktörü 0,95 veya altında                                                                            | Seçilen varlıktaki borcunuzun %100'ü                                                                             |
+| Seçilen teminat veya seçilen borç 2.000 $ altında bir değerde                                               | Seçilen varlıktaki borcunuzun %100'ü                                                                             |
+
+Bu limitler Aave'nin `LiquidationLogic.sol` dosyasındaki sabitlerdir (aave-v3-origin, 14 Ekim 2026'da okundu). v3.3'ten beri %50 her borç varlığına ayrı ayrı değil, pozisyonun tamamına uygulanır. Aave'nin v3.3 notları şu örneği verir: GHO, USDC ve DAI'de her biri 3.000 $, toplam 9.000 $ borç; bunlardan herhangi birinin 3.000 $ tutarının tamamı tek çağrıda ödenebilir, çünkü toplamın %50'si 4.500 $ eder.
+
+İkinci bir kural kırıntı (dust) bakiyeleri önler. Kısmi bir likidasyon, ödenen varlıkta en az 1.000 $ borç ve el konulan varlıkta en az 1.000 $ teminat bırakmalıdır. Aksi hâlde likidatör o borcun tamamını veya o teminatın tamamını almak zorundadır, yoksa işlem geri döner (revert).
+
+Bir likidasyon tüm teminatınızı değil, yalnızca ödenen borç artı bonus değerinde teminatı alır. Likidatör borcu kendi fonlarıyla öder, bu yüzden borç aldığınız token'lar sizde kalır; teminat bunu karşıladığı sürece kaybettiğiniz şey bonustur.
+
+Eski rehberler sabit %50'lik bir close factor anlatır ve aave.com'un kendi Pool kontratı referansı hâlâ "close factor is 0.5" der (erişim tarihi 14 Ekim 2026). İkisi de güncel değil: sabit %50 Aave V2'nin kuralıydı ve bu piyasaların çalıştırdığı V3.7 kodu tablodaki %50 veya %100 kuralını kullanır.
+
+## Likidasyon bonusu nedir ve kim öder?
+
+Çoğu zaman likidasyon cezası da denen likidasyon bonusu, bir likidatörün ödediği borcun üstüne aldığı ek teminattır ve bunu borç alan öder. %5 bonusla borcunuzun 1.000 USDC'sini kapatmak size 1.050 USDC değerinde teminata mal olur. Aave'nin hazinesi bonusun bir kısmını likidasyon protokol ücreti olarak tutar, bu yüzden likidatör sizin kaybettiğinizden biraz daha azını alır.
+
+Uygulanan bonus ve ücret borca değil, el konulan teminata aittir. 14 Ekim 2026'da zincir üstünde okunan Aave V3 değerleri (Ethereum bloğu 26193284, Arbitrum bloğu 514855406):
+
+| Piyasa        | El konulan teminat | Likidasyon bonusu | Protokol ücreti (bonustan pay) | Ödenen her 1.000 $ için kaybettiğiniz teminat | Likidatörün aldığı |
+| ------------- | ------------------ | ----------------- | ------------------------------ | --------------------------------------------- | ------------------ |
+| Ethereum Core | WETH               | %5                | %10                            | 1.050 $                                       | 1.045 $            |
+| Ethereum Core | WBTC               | %5                | %10                            | 1.050 $                                       | 1.045 $            |
+| Ethereum Core | USDC               | %4,5              | %20                            | 1.045 $                                       | 1.036 $            |
+| Arbitrum      | WETH               | %5                | %10                            | 1.050 $                                       | 1.045 $            |
+| Arbitrum      | WBTC               | %7                | %10                            | 1.070 $                                       | 1.063 $            |
+| Arbitrum      | USDC (native)      | %5                | %10                            | 1.050 $                                       | 1.045 $            |
+
+E-Mode'da, el konulan varlık kategorinizin teminat kümesindeyse varlığın kendi bonusu yerine kategorinin bonusu geçerlidir: Ethereum Core'da "ETH correlated" için %1 (14 Ekim 2026'da 26193288 numaralı Ethereum bloğunda okundu), bu yüzden her likidasyon daha az maliyetlidir. Yönetişim bu parametrelerin herhangi birini değiştirebilir ve Aave'nin risk yöneticileri (risk stewards) likidasyon bonuslarını belirli sınırlar içinde ayarlayabilir; güncel değerleri Aave uygulamasında kontrol edin.
+
+## Likidatör hangi teminatı alır?
+
+Likidatör seçer. Her Aave V3 likidasyonu el konulacak bir teminat varlığı ve ödenecek bir borç varlığı belirtir ve bu çifti likidatör seçer; yani varlıklarınızdan hangisinin önce gideceği konusunda söz hakkınız yoktur. Yalnızca teminat olarak etkinleştirdiğiniz varlıklara el konulabilir; "used as collateral" ayarı kapalı olan yatırılmış bir varlık alınamaz, ama sağlık faktörünüze de hiçbir katkı yapmaz.
+
+Seçilen teminat geri ödemeyi ve bonusu karşılayamıyorsa o varlığın tamamını kaybedersiniz (likidatör, protokol ücreti düşülmüş hâlini alır) ve daha az borç ödenir. Her likidasyon tek bir çifti ele aldığından, birkaç varlıklı bir pozisyon birkaç işlemde likide edilebilir ve sağlık faktörü 1'in altında kaldıkça yeni likidasyonlar gelebilir.
+
+## Çözümlü örnek: ETH 1.420 $ seviyesine, sonra 1.330 $ seviyesine düşüyor
+
+Bu örnekte 1.420 $ ETH fiyatındaki bir likidasyon 6.000 USDC öder ve borç alana 300 $ değerinde WETH'e mal olur; ETH 1.330 $ olana kadar kimse likide etmezse 12.000 USDC'nin tamamı tek seferde ödenebilir ve maliyet iki katına, 600 $ seviyesine çıkar.
+
+Pozisyon: Aave V3 Ethereum Core'da 10 WETH teminat ve 12.000 USDC borç. WETH'in likidasyon eşiği %83, bonusu %5 ve protokol ücreti %10'dur (14 Ekim 2026'da 26193284 numaralı blokta zincir üstünde okundu). ETH fiyatları temsilidir, USDC 1,00 $ kabul edilir ve faiz yok sayılır.
+
+2.400 $ fiyatta sağlık faktörü 24.000 × 0,83 ÷ 12.000 = 1,66'dır. 12.000 ÷ (10 × 0,83) = 1.445,78 $ ETH fiyatında 1'e, 1.373,49 $ fiyatta 0,95'e ulaşır.
+
+| ETH fiyatı                               | Sağlık faktörü               | Tek bir likidasyonun ödeyebileceği en yüksek tutar                                                                                   |
+| ---------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Yaklaşık 1.445,78 $ üzerinde             | 1,00 veya daha yüksek        | Hiçbir şey; pozisyon likide edilemez                                                                                                 |
+| Yaklaşık 1.373,50 $ ile 1.445,78 $ arası | 0,95 ile 1,00 arası          | %50: 6.000 USDC                                                                                                                      |
+| Yaklaşık 1.260 $ ile 1.373,49 $ arası    | Yaklaşık 0,87 ile 0,95 arası | %100: 12.000 USDC                                                                                                                    |
+| Yaklaşık 1.260 $ altında                 | Yaklaşık 0,87 altında        | 12.000 USDC'den az: 10 WETH'in tamamına el konulur ve kalanı [batık borç (bad debt)](#bir-likidasyon-batık-borc-bırakabilir-mi) olur |
+
+### Adım 1: ETH 1.420 $, sağlık faktörü 0,982
+
+1.420 $ fiyatta 10 WETH 14.200 $ eder, bu yüzden sağlık faktörü 14.200 × 0,83 ÷ 12.000 = 0,982'dir. Bu 0,95'in üzerindedir, WETH teminatınızın ve USDC borcunuzun her biri 2.000 $ üzerinde değerdedir; dolayısıyla bir likidatör en fazla 6.000 USDC ödeyebilir.
+
+- Likidatör borcunuzun 6.000 USDC'sini öder.
+- Pozisyonunuz 6.000 × 1,05 = 6.300 $ değerinde WETH (4,4366 WETH) kaybeder.
+- Protokol ücreti 300 $ bonusun %10'udur: 30 $ (0,0211 WETH) Aave hazinesine gider ve likidatör 6.270 $ (4,4155 WETH) alır.
+- Elinizde 5,5634 WETH (7.900 $) ve 6.000 USDC borç kalır: sağlık faktörü 7.900 × 0,83 ÷ 6.000 = 1,093.
+
+Net pozisyonunuz (teminat eksi borç) 2.200 $ seviyesinden 1.900 $ seviyesine düşer. Aradaki 300 $ bonustur.
+
+### Adım 2: ETH 1.330 $, sağlık faktörü 1,024
+
+Kalan 5,5634 WETH, 1.330 $ fiyatta 7.399 $ eder; sağlık faktörü 7.399 × 0,83 ÷ 6.000 = 1,024 olur, yani pozisyon bu fiyatta yeniden likide edilemez. Yeni likidasyon fiyatı, 6.000 ÷ (5,5634 × 0,83) hesabıyla yaklaşık 1.299 $ olur. Borcun yarıya inmesi likidasyon fiyatını aşağı çekti; bedeli 300 $ bonus oldu.
+
+### ETH 1.330 $ olana kadar kimse likide etmezse ne olur?
+
+İlk likidasyon ancak ETH zaten 1.330 $ iken gerçekleşirse, ilk pozisyonun sağlık faktörü 13.300 × 0,83 ÷ 12.000 = 0,920'dir. Bu 0,95 veya altındadır, bu yüzden bir likidatör 12.000 USDC'nin tamamını tek seferde ödeyebilir. Pozisyonunuz 12.000 × 1,05 = 12.600 $ değerinde WETH (9,4737 WETH) kaybeder; bunun 60 $ tutarı protokol ücretidir ve 12.540 $ likidatöre gider. Elinizde 0,5263 WETH (700 $) kalır ve hiç borcunuz kalmaz; borç tamamen kapandığı için kırıntı kuralı uygulanmaz.
+
+Net pozisyon 1.300 $ seviyesinden 700 $ seviyesine düşer. 600 $ kayıp Adım 1'dekinin iki katıdır, çünkü aynı %5 bonusla iki kat borç ödendi.
+
+## Bir likidasyon batık borç bırakabilir mi?
+
+Evet. Batık borç (bad debt), bir pozisyonun teminatı borcu artı likidasyon bonusundan daha az değerli olduğunda ortaya çıkar; teminatın her birimini almak bile her şeyi ödemeye yetmez. Aave V3.3'ten beri bir likidasyon borç alanın tüm teminatını tükettiğinde borç kalırsa, kontrat kalan borcu yakar (burn) ve o varlık üzerinde bir "deficit" (açık) olarak kaydeder. Borç alanın ne teminatı ne de borcu kalır ve zarar protokolde kalır.
+
+Ethereum Core WETH parametreleriyle örnek: 9.800 USDC borca karşı tek teminat olarak 10.000 $ değerinde WETH, 0,847 sağlık faktörü demektir. 9.800 USDC'nin tamamını %5 bonusla kapatmak 10.290 $ değerinde WETH gerektirir; bu yüzden 10.000 $ değerindeki WETH'in tamamına el konulur (yaklaşık 47,62 $ tutarı protokol ücretidir) ve yaklaşık 9.524 USDC ödenir (10.000 ÷ 1,05). Kalan 276 USDC civarı bir açık (deficit) olur.
+
+Aave'nin staking tabanlı güvence mekanizması Umbrella, bu açıkları kapatmak için etkilenen varlıktaki staker'ların aToken'larını yakabilir; etkinleştirilmesi Ethereum'da başladı (Aave belgeleri, erişim tarihi 14 Ekim 2026). Umbrella borç alanı değil protokolü korur; borç alanın teminatı zaten gitmiştir.
+
+Bu, Aave V3'te yaşandı. USDC 11 Mart 2023'te yaklaşık 0,88 $ seviyesinde işlem gördükten sonra Gauntlet'in olay sonrası raporu (post-mortem), V3 Avalanche E-Mode'da yaklaşık 280 bin $ ve V3 Arbitrum'da yaklaşık 20 bin $ batık borç kaydetti ve teminat, borç çarpı bir artı bonus değerinin altına düştüğünde her kısmi likidasyonun hesabı daha da derine ittiğini belirtti. Bu, v3.3 açık (deficit) mekanizmasını eklemeden önceydi.
+
+## Bir piyasa dondurulduğunda veya L2 sequencer çöktüğünde likidasyonlar durur mu?
+
+İkisinde de hayır. Aave V3.7'de dondurulmuş bir varlık yine de likide edilebilir ve Arbitrum, Optimism ve Base'deki likidasyonlar artık L2 sequencer'ın çalışıp çalışmadığına bağlı değil. Likidasyonları gerçekten engelleyen şey duraklatmadır.
+
+- **Dondurulmuş:** dondurma bir varlıkta yeni pozisyonları engeller, ama likidasyon kontrolü bunu dikkate almaz. Mart 2023 USDC depeg'inde (dolar sabitinin kaybı) Aave V3 Avalanche'taki stablecoin'ler donduruldu ve likidasyonlar devam etti. Arbitrum'daki köprülenmiş USDC.e, 14 Ekim 2026'da (Arbitrum bloğu 514855406) LTV'si 0 olarak dondurulmuştu, ama yine de %78 likidasyon eşiğiyle sağlık faktörüne sayılıyor ve ona el konulabiliyor.
+- **L2 sequencer:** v3.7'den önce L2 piyasalarındaki bir sentinel kontratı, sequencer çalışmazken ve yeniden çalıştıktan sonraki bir ek süre boyunca likidasyonları ve borç almayı engelleyebiliyordu. 14 Ekim 2026 itibarıyla Arbitrum, Optimism ve Base V3 piyasalarının hepsinin çalıştırdığı Aave V3.7 bu sentinel'i kaldırdı. Bir kesinti yine de herkesin işlemlerini, borç alanlarınkini de likidatörlerinkini de bekletir, ama kesinti sırasında 1'in altına düşen bir pozisyon artık sequencer geri gelir gelmez likide edilebilir.
+- **Duraklatılmış:** duraklatılmış bir teminat veya borç varlığı, onu içeren her likidasyonu engeller. Duraklatma kaldırılırken Aave'nin acil durum koruyucusu veya yönetişim, borç alanların geri ödeme yapabilmesi ya da teminat ekleyebilmesi için likidasyonların engelli kaldığı 4 saate kadar bir ek süre belirleyebilir; bu süre içinde borç almaya izin verilir.
+
+## Aave V4'te likidasyonlar nasıl farklıdır?
+
+30 Mart 2026'dan beri Ethereum'da, o zamandan beri de Avalanche, Arc ve Base'de çalışan Aave V4, close factor yerine bir hedef sağlık faktörü kullanır ve sağlık faktörü düştükçe büyüyen bir bonus öder. V3 kendi kurallarıyla onun yanında çalışmaya devam ediyor.
+
+- **%50 veya %100 yerine hedef sağlık faktörü.** Bir V4 likidatörü, yalnızca pozisyonu kendi Spoke'unun hedef sağlık faktörüne geri getirmeye yetecek kadar borç ödeyebilir; bu Ethereum Main Spoke'ta 1,24'tür (14 Ekim 2026'da 26193995 numaralı Ethereum bloğunda zincir üstünde okundu). İstisna, bunun çok küçük bir kalıntı bırakacağı durumdur; o zaman o rezervdeki borcun tamamı kapatılabilir.
+- **Yükselen bir bonus.** Aave'nin belgeleri buna Hollanda usulü açık artırma (Dutch auction) diyor. Ethereum Main Spoke'ta bonus, sağlık faktörü 1'in hemen altındayken varlığın en yüksek bonusunun %90'ından başlar ve 0,90 veya altında en yüksek değere ulaşır. En yüksek bonusu %5,55 olan WETH için (Aave V4 API, 14 Ekim 2026) bu, 1'in hemen altında yaklaşık %5,0 ve 0,90'da %5,55 demektir. V3'te olduğu gibi %10'luk bir ücret bonustan düşülür.
+
+Tokenping, Aave V4 pozisyonlarını da izler: Ethereum, Avalanche, Arc ve Base'deki her Spoke (16 Ekim 2026 itibarıyla 20 tane), her Spoke için ayrı bir uyarıyla, çünkü her biri kendi pozisyonunu ve sağlık faktörünü tutar.
+
+## Bir Aave likidasyonu Morpho likidasyonundan nasıl farklıdır?
+
+Morpho Blue'da close factor yoktur: bir pozisyonun sağlık faktörü 1'in altına indiğinde bir likidatör borcun tamamını tek çağrıda ödeyebilir. Teşvik yalnızca piyasanın likidasyon LTV'sine (LLTV) bağlıdır; %98 LLTV'de yaklaşık %0,6'dır ve düşük LLTV'lerde %15 ile sınırlanır. Teminat önce biterse kalan borç piyasanın borç verenlerinin zararına silinir. [Morpho likidasyonu nasıl işler](/tr/blog/morpho-likidasyonu-nasil-isler) rehberinde formül, her LLTV'deki teşvik ve çözümlü bir örnek var.
+
+## Sağlık faktörünüz 1'e ulaşmadan önce ne yapabilirsiniz?
+
+Sağlık faktörü 1'e ulaşmadan önce borç geri ödeyebilir veya teminat ekleyebilirsiniz; ikisi de onu hemen yükseltir ve hiçbiri bonusa mal olmaz. 1'in altına indiğinde bir likidatör sizden önce davranabilir ve kısmi bir likidasyon bile size el konulan teminat üzerindeki bonusa mal olur: %5 bonusla ödenen 6.000 USDC için 300 $.
+
+Son ana bırakmak risklidir, çünkü işlemler başarısız olabilir veya takılabilir. Mayıs 2021'de bir Polygon forum kullanıcısı 1,01 sağlık faktöründe geri ödeme yapmaya çalıştı, sürekli hata aldı ve geri ödeme gerçekleşmeden likide edildi. Aralık 2024'te bir Aave forum kullanıcısı, pozisyonu likide edilmeden önce bir saatten uzun süre takılıp kalan geri ödeme denemelerini anlattı.
+
+Seçenekler [Aave sağlık faktörünüzü nasıl yükseltirsiniz](/tr/blog/aave-likidasyonundan-kacinma) rehberinde, siz hiçbir şey yapmazken sağlık faktörünün düşme nedenleri ise [Aave sağlık faktörünüz neden kendiliğinden düşer](/tr/blog/aave-saglik-faktoru-neden-dustu) rehberinde ele alınıyor.
+
+Tokenping, 21 ağdaki her Aave V3 piyasasında ve her Aave V4 Spoke'unda Aave sağlık faktörünüzü her 5 dakikada bir kontrol eder ve seçtiğiniz bir eşiğin (1,1 ile 10 arası) altına indiğinde size Signal, Telegram veya e-posta ile mesaj gönderir; düzelene kadar her kontrolde tekrarlar. Likidasyon en az el konulan teminat üzerindeki bonusa mal olur. 1,0'ın üzerinde kurulan bir uyarı size geri ödeme yapmak veya teminat eklemek için zaman kazandırabilir, ama hızlı bir fiyat hareketi sağlık faktörünü iki kontrol arasında yine de 1'in altına indirebilir ve bir uyarı sizin yerinize işlem yapamaz. [Aave V3 sağlık faktörünüzü kontrol edebilir](/tr/aave) ya da [sağlık faktörü uyarısı nasıl kurulur](/tr/blog/aave-saglik-faktoru-uyarisi-kurulumu) rehberini okuyabilirsiniz.
+
+## Kaynaklar
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), aave-dao/aave-v3-origin, main dalı: close factor, kırıntı ve batık borç kuralları (erişim tarihi: 14 Ekim 2026)
+- [Aave V3 ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): likidasyon koşulları (erişim tarihi: 14 Ekim 2026)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): batık borç, pozisyonun tamamına uygulanan close factor ve GHO/USDC/DAI örneği, 2.000 $ eşiği (erişim tarihi: 14 Ekim 2026)
+- [Aave v3.1 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): 4 saate kadar likidasyon ek süresi (erişim tarihi: 14 Ekim 2026)
+- [Aave V3 PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol): ek süreyle duraklatma ve duraklatmayı kaldırma yalnızca emergency admin veya pool admin tarafından yapılabilir, `MAX_GRACE_PERIOD = 4 hours` (erişim tarihi: 14 Ekim 2026)
+- [Aave yönetişim belgeleri](https://aave.com/docs/ecosystem/governance): emergency admin rolünü Protocol Emergency Guardian tutar (erişim tarihi: 14 Ekim 2026)
+- [Aave V3 Risk Stewards README](https://github.com/aave-dao/aave-v3-risk-stewards): risk yöneticilerinin belirli sınırlar içinde değiştirebileceği parametreler (erişim tarihi: 14 Ekim 2026)
+- [Aave v3.7 PriceOracleSentinel removal](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/sentinel-removal.md) (erişim tarihi: 14 Ekim 2026)
+- [Aave V3 Pool kontrat referansı](https://aave.com/docs/aave-v3/smart-contracts/pool), hâlâ v3.3 öncesi close factor değerini yazıyor (erişim tarihi: 14 Ekim 2026)
+- [Aave Umbrella belgeleri](https://aave.com/docs/aave-v3/umbrella) (erişim tarihi: 14 Ekim 2026)
+- [Ethereum'daki Aave V3 PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): WETH, WBTC ve USDC için rezerv yapılandırması ve likidasyon protokol ücreti, 26193284 numaralı blokta okundu, 26193992 numaralı blokta yeniden okundu ve değişmemişti (erişim tarihi: 14 Ekim 2026)
+- [Arbitrum'daki Aave V3 PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): WETH, WBTC, native USDC ve USDC.e için aynı okumalar, 514855406 numaralı blokta (erişim tarihi: 14 Ekim 2026)
+- [Aave V3 Ethereum Core Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): 26193288 numaralı blokta E-Mode kategorisi 1 "ETH correlated" (erişim tarihi: 14 Ekim 2026)
+- [Aave V4 likidasyon belgeleri](https://aave.com/docs/aave-v4/positions/liquidations) (erişim tarihi: 14 Ekim 2026)
+- [Aave V4 overview](https://github.com/aave/aave-v4/blob/main/docs/overview.md) ve [V4 LiquidationLogic.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/libraries/LiquidationLogic.sol), aave/aave-v4 main (erişim tarihi: 14 Ekim 2026)
+- [Aave V4 Ethereum Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485): 26193995 numaralı blokta hedef sağlık faktörü ve bonus ayarları (erişim tarihi: 14 Ekim 2026)
+- [Aave V4 herkese açık GraphQL API](https://api.v4.aave.com/graphql), `reserves` sorgusu: Ethereum Main Spoke'ta WETH için en yüksek likidasyon bonusu ve likidasyon ücreti (erişim tarihi: 14 Ekim 2026)
+- [Aave belgeleri değişiklik günlüğü](https://aave.com/docs/resources/changelog): V4 başlangıç tarihleri (erişim tarihi: 14 Ekim 2026)
+- [Gauntlet, "Aave Resilient Through USDC Volatility"](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), 17 Mart 2023'te yayımlandı (erişim tarihi: 14 Ekim 2026)
+- [Polygon forumu, "Liquidation on polygon AAVE -JSON ERROR"](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067), 18 Mayıs 2021'de yayımlandı (erişim tarihi: 14 Ekim 2026)
+- [Aave forumu, "Repeatedly Failed Repayment Attempts Leading to Liquidation"](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379), 23 Aralık 2024'te yayımlandı (erişim tarihi: 14 Ekim 2026)
+- [Aave arayüzü pull request #2084](https://github.com/aave/interface/pull/2084), uygulamanın tek uyarı entegrasyonunu Mayıs 2024'te kaldırdı (erişim tarihi: 14 Ekim 2026)
+
+_Eğitim amaçlı içeriktir, finansal tavsiye değildir. Uyarılar riski azaltır ama likidasyonu önlemez._

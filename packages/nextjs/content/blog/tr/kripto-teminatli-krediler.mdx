@@ -1,0 +1,177 @@
+export const meta = {
+  slug: "kripto-teminatli-krediler",
+  title: "Kripto teminatlı krediler: nasıl işler, neden kullanılır",
+  description:
+    "Aave'de aşırı teminatlı bir kripto kredisi adım adım nasıl işler, bankadan ve merkezi borç verenden farkı ne, ne için kullanılır ve riskleri neler.",
+  h1: "Kripto teminatlı krediler nasıl işler ve insanlar neden bu kredileri alır?",
+  publishedAt: "2026-10-19",
+  primaryQuestion: "Kripto teminatlı bir kredi nasıl işler ve neden kullanılır?",
+  readingMinutes: 11,
+};
+
+<ShortAnswer>
+  Kripto teminatlı bir kredi, teminat olarak yatırdığınız kriptoyu satmadan, karşılığında genellikle USDC gibi bir
+  stablecoin borç almanızı sağlar. Aave'de kredi aşırı teminatlıdır: 19 Ekim 2026'da Ethereum Core piyasasında WBTC
+  değerinin %73'üne veya WETH değerinin %80,5'ine kadar borç alabiliyordunuz. Protokol yalnızca teminata bakar, geri
+  ödeme tarihi yoktur ve faiz oranı değişkendir. Teminatın değeri, sağlık faktörünüz (health factor) 1'in altına inecek
+  kadar düşerse borcu ödemek için teminatın bir kısmı satılır ve bir ceza ödersiniz. İnsanlar bu kredileri satmadan
+  nakit elde etmek, bir açığı kapatmak, yeniden finansman, kaldıraç veya korunma için kullanır ve bu kullanımların her
+  biri likidasyon, faiz ve stablecoin riski taşır.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Bu rehberin arkasındaki her zincir üstü rakam, blok numarası ve kaynak: content/blog/snapshots/crypto-backed-loans.md */}
+
+## Kripto teminatlı kredi nedir?
+
+Kripto teminatlı kredi, teminat olarak yatırdığınız kriptoyla güvence altına alınan bir kredidir. Aave gibi bir borç verme protokolünde kredi aşırı teminatlıdır: teminat krediden daha değerli olmalıdır ve protokol gelirinizi kontrol etmek yerine, teminatın değeri çok düşerse bir kısmını satabilmeye güvenir. Kredi açık kaldığı sürece teminat, tüm fiyat hareketleriyle birlikte sizin kalır ve borç geri ödendiğinde onu geri alabilirsiniz.
+
+Çoğu kişi stablecoin, yani bir para birimini izleyen token'lar borç alır: USDC ve USDT ABD dolarını, EURC ise euroyu izler. Teminat genellikle oynak bir varlıktır. Aave'nin Ethereum ve Arbitrum piyasalarında ether WETH olarak, bitcoin ise onu temsil eden WBTC veya cbBTC gibi bir token olarak gelir.
+
+Her teminat varlığı için iki sayı, ne kadar borç alabileceğinizi ve kredinin ne zaman tehlikeye girdiğini belirler:
+
+- **Kredi/değer oranı (LTV)**, bir varlığın karşılığında alabileceğiniz en yüksek borçtur ve varlığın değerinin bir payı olarak ifade edilir.
+- **Likidasyon eşiği (liquidation threshold)**, varlığın değerinin sağlık faktörünüze sayılan payıdır. Bu şekilde ağırlıklandırılmış teminatınız borcunuzdan daha az değerliyse sağlık faktörü 1'in altındadır ve pozisyon likide edilebilir.
+
+| Piyasa        | Teminat | LTV (borç limiti) | Likidasyon eşiği | Likidasyon bonusu |
+| ------------- | ------- | ----------------- | ---------------- | ----------------- |
+| Ethereum Core | WETH    | %80,5             | %83              | %5                |
+| Ethereum Core | WBTC    | %73               | %78              | %5                |
+| Ethereum Core | cbBTC   | %73               | %78              | %7,5              |
+| Arbitrum      | WETH    | %80               | %84              | %5                |
+| Arbitrum      | WBTC    | %73               | %78              | %7                |
+
+Bu değerler 19 Ekim 2026'da her piyasanın PoolDataProvider kontratından, 26225342 numaralı Ethereum bloğunda ve 516228495 numaralı Arbitrum bloğunda zincir üstünde okundu. cbBTC, Aave'nin Arbitrum piyasasında listelenmiyor. Aave yönetişimi (governance) bunların herhangi birini değiştirebilir. LTV ile likidasyon eşiğinin farkı [Aave sağlık faktörü nedir](/tr/blog/aave-saglik-faktoru) rehberinde daha ayrıntılı anlatılıyor.
+
+## Aave'de bir kredi adım adım nasıl işler?
+
+Aave V3, her ağda çalışan bir dizi akıllı kontrattır ve app.aave.com bunlara açılan arayüzlerden biridir. Aave'nin yardım merkezi borç almayı ve geri ödemeyi birkaç adımda anlatır; her adımın içeriği şöyle.
+
+### Adım 1: Teminat yatırın
+
+Cüzdanınızı bağlayın, yatıracağınız varlığı seçin, örneğin WBTC, ve yatırın. Teminat olarak açık olduğunu kontrol edin, çünkü yalnızca teminat borç alabileceğiniz tutara sayılır. Token'lar piyasanın Pool kontratında durur ve diğer kullanıcılar onları borç alabilir (küçük yatırma faizi bunun karşılığıdır). Teminatınızı geri ödemeden sonra çekebilirsiniz; borcunuz devam ederken de, işlemden sonra sağlık faktörünüz 1 veya üzerinde kaldığı sürece bir kısmını çekebilirsiniz.
+
+### Adım 2: Bir stablecoin borç alın
+
+Stablecoin'i ve borç limitinizin altında bir tutar seçin; borç limiti, teminatın değeri çarpı LTV'sidir. Token'lar cüzdanınıza gelir ve faiz hemen işlemeye başlar. Faiz oranını protokol, varlığın ne kadarının borç alındığına ve yönetişimin değiştirebileceği parametrelere göre belirler (Aave yardım merkezi, Borrow Tokens). Aave V3'te artık yalnızca değişken faiz var: Pool referansı, borçların her zaman değişken faiz modunu kullandığını söylüyor ve eski sabit faizi v3.2'den beri kullanımdan kaldırılmış olarak işaretliyor.
+
+19 Ekim 2026'daki değişken borç faizleri, Aave uygulamasının gösterdiği gibi yıllık APY olarak (Ethereum bloğu 26225342, Arbitrum bloğu 516228495):
+
+| Piyasa        | USDC  | USDT (Arbitrum'da USD₮0) | GHO   | EURC                     |
+| ------------- | ----- | ------------------------ | ----- | ------------------------ |
+| Ethereum Core | %4,58 | %4,17                    | %4,60 | %4,12                    |
+| Arbitrum      | %3,45 | %4,21                    | %4,59 | açık euro stablecoin yok |
+
+Bu oranlar sürekli değişir ve sıçrayabilir. 14 Ekim 2026'da Ethereum Core'daki USDC faizi tek bir blokta %13,67 APR seviyesine çıktı ve yaklaşık 36 dakika sonra geri indi; bunu [Aave sağlık faktörünüz neden kendiliğinden düşer](/tr/blog/aave-saglik-faktoru-neden-dustu#neden-3-borcunuzdaki-faiz-teminatınızdakinden-daha-hızlı-mı-isledi) rehberi gösteriyor.
+
+### Adım 3: Sağlık faktörünü izleyin
+
+Sağlık faktörü (HF), her varlığın likidasyon eşiğiyle ağırlıklandırılmış teminatınızın borcunuza bölünmesidir. Bitcoin temsili olarak 80.000 $ iken Ethereum Core'a 1 WBTC yatırıp 24.000 USDC borç alan alice'i ele alalım (Aave'nin fiyat kaynağı olan oracle, 19 Ekim 2026'da 26225364 numaralı Ethereum bloğunda 82.680,33 $ okudu):
+
+- Borç limiti: 80.000 × 0,73 = 58.400 $.
+- Sağlık faktörü: 80.000 × 0,78 ÷ 24.000 = 2,60.
+- Likidasyon fiyatı: 24.000 ÷ 0,78 = 30.769,23 $, yani 80.000 $ seviyesinin %61,5 altında.
+
+Sağlık faktörü bitcoin düştüğünde düşer, faiz eklendikçe de yavaşça azalır: USDC faizi yılda %4,58'de kalsaydı, borç bir yıl sonra yaklaşık 25.099 USDC olurdu ve likidasyon fiyatı yaklaşık 32.179 $ seviyesine çıkmış olurdu. Bunu kendi pozisyonunuz için hesaplamak isterseniz [Aave likidasyon fiyatınızı nasıl hesaplarsınız](/tr/blog/aave-likidasyon-fiyati) rehberine, ne kadar pay bırakmanız gerektiği için [Aave'de güvenli sağlık faktörü nedir](/tr/blog/guvenli-aave-saglik-faktoru) rehberine bakın.
+
+### Adım 4: İstediğiniz zaman geri ödeyin
+
+Geri ödeme tarihi yoktur. Aave'nin borrow fonksiyonu hiçbir süre parametresi almaz; borcun tamamını veya bir kısmını, borç aldığınız varlıkla, istediğiniz zaman geri ödeyebilirsiniz (Aave V3 Pool referansı; Aave yardım merkezi, Repay Tokens). Tamamını geri ödemek teminatınızı serbest bırakır. Teminatla da geri ödeyebilirsiniz: Ethereum ve Arbitrum piyasalarında Aave'nin arayüzü teminatınızın bir kısmını borç varlığına çevirip tek işlemde geri ödeyebilir (Aave belgeleri, swap özellikleri).
+
+### Adım 5: Sağlık faktörü 1'in altına inince ne olacağını bilin
+
+Sağlık faktörü 1'in altındayken pozisyonu herkes likide edebilir: borcunuzun bir kısmını öder ve o tutar artı bir likidasyon bonusu değerinde teminat alır. Tek bir likidasyon, sağlık faktörü 0,95'in üzerindeyken ve teminat ile borcun her biri en az 2.000 $ değerindeyken borcun en fazla %50'sini öder; sağlık faktörü 0,95 veya altındaysa ya da ikisinden biri 2.000 $ altında bir değerdeyse borcun %100'üne kadarını ödeyebilir (Aave yardım merkezi).
+
+Bitcoin, alice borç aldıktan kısa süre sonra 30.000 $ seviyesine düşseydi, sağlık faktörü 30.000 × 0,78 ÷ 24.000 = 0,975 olurdu. Bir likidatör 12.000 USDC öder ve 12.000 × 1,05 ÷ 30.000 = 0,42 WBTC alabilirdi; alice'e 12.000 USDC borca karşı 0,58 WBTC kalırdı, yani 1,13 sağlık faktörü. Ödenen borcun ötesinde 600 $ değerinde teminat kaybederdi ve 0,42 WBTC dipten satılmış olurdu. Kuralların tamamı [Aave pozisyonunuz likide edildiğinde ne olur](/tr/blog/aave-likidasyonu-nasil-isler) rehberinde.
+
+## Kripto teminatlı kredi banka kredisinden nasıl farklıdır?
+
+Temel farklar, borç verenin neye baktığı, ne zaman geri ödediğiniz ve teminat değer kaybettiğinde ne olduğudur:
+
+|                                           | Aave'de kredi                                                                                 | Tipik banka kredisi                                                |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Ne kadar borç alabileceğinizi ne belirler | Teminatınızın değeri ve LTV'si                                                                | Genellikle geliriniz ve kredi geçmişiniz, varsa teminatla birlikte |
+| Sizinle ilgili kontroller                 | Protokol yapmaz, yalnızca teminata bakar                                                      | Genellikle kimlik, gelir ve kredi kontrolleri                      |
+| Vade                                      | Yok: istediğiniz zaman geri ödeyin                                                            | Genellikle sabit bir vade ve bir geri ödeme planı                  |
+| Faiz                                      | Değişken, piyasadaki borçlanma değiştikçe yeniden hesaplanır                                  | Sözleşmeye göre sabit veya değişken                                |
+| Teminat değer kaybederse                  | Sağlık faktörü 1'in altına inince üçüncü taraflarca otomatik likidasyon, önceden bildirim yok | Sözleşmeye bağlı: ek teminat talebi, müzakere, icra                |
+| Teminatı kim tutar                        | Piyasanın akıllı kontratı                                                                     | Borç veren veya onun seçtiği bir saklayıcı                         |
+| Teminat borcu karşılamazsa                | Açık, size karşı bir alacak değil, protokolün zararı olur                                     | Sözleşmeye ve hukuka bağlı                                         |
+
+Son satır, Aave V3.3 ve sonrasının tüm teminatı tüketen bir likidasyonu nasıl ele aldığından kaynaklanır: kalan borç, o varlık üzerinde bir açık (deficit) olarak silinir; bunu [batık borç bölümü](/tr/blog/aave-likidasyonu-nasil-isler#bir-likidasyon-batık-borc-bırakabilir-mi) açıklıyor. O noktada teminatı yine de kaybetmiş olursunuz.
+
+## Merkezi bir kripto borç verenden nasıl farklıdır?
+
+Merkezi bir borç veren teminatınızı kendi saklamasına alır. Kredi hemen hemen aynı görünebilir, ama siz şirketin alacaklısı olursunuz ve şirket batarsa teminatınız onunla birlikte sıkışıp kalabilir. 2022 bunun ne anlama geldiğini gösterdi:
+
+- **Celsius** 12 Haziran 2022'de müşteri çekimlerini dondurdu ve 13 Temmuz 2022'de iflas başvurusunda bulundu. ABD Emtia Vadeli İşlem Komisyonu'na göre müşteriler ona yaklaşık 20 milyar $ yatırmıştı. Ocak 2023'te New York'taki ABD iflas mahkemesi, Celsius'un Earn hesaplarındaki kriptonun kullanım koşulları gereği Celsius'un malı hâline geldiğine karar verdi; bu da o müşterileri teminatsız alacaklı konumunda bıraktı.
+- **Voyager Digital**, Three Arrows Capital 15.250 BTC ve 350 milyon $ USDC tutarındaki bir kredinin ödemelerini yapamayınca 1 Temmuz 2022'de alım satımı, yatırmaları ve çekimleri askıya aldı ve 5 Temmuz 2022'de Chapter 11 iflas başvurusunda bulundu.
+- **Genesis**, ABD Menkul Kıymetler ve Borsa Komisyonu'na (SEC) göre Gemini Earn programındaki yatırımcıların yaklaşık 900 milyon $ değerindeki varlığını tutarken Kasım 2022'de onların çekim yapmasını durdurdu ve 19 Ocak 2023'te Chapter 11 başvurusunda bulundu.
+- **BlockFi**, FTX çökerken çekimleri askıya almasından birkaç gün sonra, 28 Kasım 2022'de Chapter 11 başvurusunda bulundu.
+
+Aave'de teminat bir şirketin bilançosunda değil, kurallarını herkesin okuyabildiği herkese açık bir akıllı kontratta durur. Bu, bir risk kümesini başka biriyle değiştirir; bunlar aşağıda [riskler](#kripto-teminatlı-bir-kredinin-riskleri-nelerdir) başlığında ele alınıyor: yazılım hataları, oracle hataları, yönetişim kararları ve wrapped bitcoin'in arkasındaki saklama. Bunlardan biri burada önemli: Aave'nin emergency admin'i veya pool admin'i bir varlığı duraklatabilir (pause) ve varlık duraklatılmışken kimse onu çekemez ya da geri ödeyemez (Aave'nin PoolConfigurator ve ValidationLogic kontratları).
+
+## İnsanlar kripto teminatlı kredileri ne için kullanır?
+
+### Satmadan nakit
+
+Bir neden, kriptoyu elde tutarak para elde etmektir; çoğu zaman sahibi değerinin artmasını beklediği ya da onu yıllarca tutmak istediği için. Kredi, teminatın tüm yükseliş potansiyelini ve tüm düşüş riskini korur, üstüne faiz ekler ve fiyat yeterince düşerse en kötü anda satışa zorlayabilir.
+
+Krediyi almak teminatınızı satmaz: teminat sizin kalır. Teminat yatırmanın, kredinin, faizin veya bir likidasyonun vergi sonuçları olup olmadığı ülkenize, bazen de protokolün koşullarına bağlıdır. Örneğin Birleşik Krallık vergi idaresinin rehberi, bir DeFi borç verme platformuna teminat vermenin elden çıkarma (disposal) sayılıp sayılmadığının platformun koşullarına bağlı olduğunu söyler ve sayılmadığı durumda likidasyondaki teminat satışını borç alanın kendi satışı olarak ele alır (HMRC Cryptoassets Manual, CRYPTO61640). Bu rehber vergi tavsiyesi vermez; yaşadığınız yerdeki kuralları kontrol edin.
+
+### Harcama veya bir açığı kapatma
+
+Bazıları, beklenen bir para gelmeden önceki bir gideri karşılamak için borç alır; örneğin bir satıştan veya maaştan önce ödenmesi gereken bir fatura. Bunun bedeli şu: krediyi sizin yerinize hiçbir şey sonlandırmaz, geri ödeme tarihi yoktur, beklerken faiz yükselebilir, ayrıca stablecoin'leri banka hesabındaki paraya çevirmenin ve geri ödemek için yeniden stablecoin'e çevirmenin kendi maliyetleri vardır.
+
+### Yeniden finansman
+
+Başka yerdeki bir kredi, Aave'nin faizi daha düşükse Aave'ye taşınabilir; Aave'de bir borç da arayüzün debt swap özelliğiyle tek işlemde bir stablecoin'den diğerine geçirilebilir (Aave belgeleri, swap özellikleri). Bunun bedeli: faizler değişkendir, bugün daha ucuz olan varlık gelecek ay daha pahalı olabilir; dolar stablecoin'inden euro stablecoin'ine geçmek de borçlu olduğunuz para birimini değiştirir, bu da [Aave kredisiyle itibari paraya short](/tr/blog/aave-ile-itibari-paraya-short) rehberinin konusudur.
+
+### Kaldıraç
+
+Maruziyetini artırmak için bazıları stablecoin borç alır, daha fazla teminat varlığı satın alır ve onu da yatırır. alice 24.000 USDC ile 80.000 $ fiyattan 0,3 WBTC alıp yatırsaydı, 24.000 USDC borca karşı 1,3 WBTC tutardı: 3,38 sağlık faktörü ve 23.668,64 $ likidasyon fiyatı. Artık bitcoin'deki her hareket onu, doğrudan 1 bitcoin tutmaya göre 1,3 kat sert etkiler ve bu loop (kaldıraçlı borç döngüsü) tekrarlandıkça sağlık faktörü 1'e doğru itilir.
+
+### Korunma ve short
+
+Bir varlığı borç alıp satmak, o varlığın düşeceğine dair bir bahistir: stablecoin yatırın, WETH borç alıp satın; ETH düşerse pozisyon kazanır, ETH yükselirse likidasyona yaklaşır (ne kadar yükselebileceğini [güvenli sağlık faktörü rehberi](/tr/blog/guvenli-aave-saglik-faktoru) gösteriyor). Bitcoin karşılığında dolar veya euro stablecoin'i borç almak bunun ayna görüntüsüdür: teminata karşı para birimine açılan bir short; bazı bitcoin yatırımcıları buna itibari paraya short (shorting fiat) der. [Aave kredisiyle itibari paraya short](/tr/blog/aave-ile-itibari-paraya-short) bunu rakamlarla anlatıyor.
+
+## Kripto teminatlı bir kredinin riskleri nelerdir?
+
+- **Likidasyon.** Sağlık faktörü 1'in altına inince borcun bir kısmı veya tamamı teminatınızla ödenebilir ve üstüne bonusu kaybedersiniz: ilk tablodaki varlıklar için %5 ile %7,5 arası. Likidasyonları birbiriyle yarışan botlar yürütür, bu yüzden hızla gelebilirler (Aave yardım merkezi).
+- **Teminat oynaklığı.** Bitcoin Kasım 2021'de yaklaşık 69.000 $ ile zirve yaptı ve Haziran 2022 ortasında yaklaşık 17.000 $ seviyesine indi, yani yaklaşık %75 düştü; Kasım 2022'de FTX battıktan sonra da 16.000 $ altına indi (ECB blogu). WBTC'nin %78 likidasyon eşiğiyle, 2021 zirvesinde teminat değerinin yalnızca %20'si kadar alınan bir kredi bile Haziran 2022 ortasına kadar likide edilmiş olurdu.
+- **Değişken faiz oranları.** Faiz hiçbir dönem için sabit değildir ve fiyatlar yerinde dursa bile faiz zamanla sağlık faktörünüzü düşürür.
+- **Stablecoin depeg'leri (dolar sabitinin kaybı).** Circle rezervlerinden 3,3 milyar $ tutarın Silicon Valley Bank'ta olduğunu açıkladıktan sonra USDC 11 Mart 2023'te 0,88 $ civarına düştü ve 13 Mart'ta yeniden 0,99 $ üzerine çıktı (Gauntlet'in Aave forumundaki yazısı; Circle). Algoritmik bir stablecoin olan TerraUSD, Mayıs 2022'de sabitini kaybetti ve sıfıra yakın bir değere düştü; ABD SEC'e göre bu, 40 milyar $ piyasa değerini sildi. Borçlu olduğunuz stablecoin düşerse borcunuz ucuzlar; teminat olarak kullandığınız bir stablecoin düşerse sağlık faktörünüz düşer.
+- **Wrapped bitcoin.** Aave'deki bitcoin, başkasının tuttuğu ya da bir köprünün kontrol ettiği bitcoin ile desteklenen bir token'dır. Örneğin WBTC, her token'ın saklamada tutulan bitcoin ile desteklendiğini söyler. Bu destek çökerse token, bitcoin'in kendisi ne yaparsa yapsın değer kaybedebilir.
+- **Akıllı kontratlar, oracle'lar ve yönetişim.** Bir yazılım hatası, yanlış bir fiyat veya bir parametre değişikliği, piyasa hiç hareket etmeden bir pozisyonu vurabilir. Chaos Labs'in olay sonrası raporuna (post-mortem) göre Mart 2026'da Aave'nin Ethereum Core ve Prime piyasalarında uyumsuz bir döviz kuru oracle'ı etkili wstETH kurunu yaklaşık %2,85 düşürdü ve 34 hesapta yaklaşık 10.938 wstETH tutarında likidasyonu tetikledi ([oracle hataları hakkında daha fazlası](/tr/blog/aave-saglik-faktoru-neden-dustu#neden-6-bir-oracle-veya-kur-hatası-teminatınızı-yanlıs-mı-fiyatladı)). Yönetişim, açık olan her pozisyon için bir likidasyon eşiğini de düşürebilir ([eşik indirimleri hakkında daha fazlası](/tr/blog/aave-saglik-faktoru-neden-dustu#neden-4-yonetisim-veya-risk-stewards-bir-likidasyon-esigini-mi-dusurdu)).
+- **Her şeyi kendiniz yapmak.** Anahtarları siz tutarsınız, işlemleri siz gönderirsiniz ve hızlı bir piyasada bir geri ödemenin onaylanması beklediğinizden uzun sürebilir.
+
+## Bir krediyi nasıl takip edersiniz?
+
+Aave'nin kendi arayüzleri, açık oldukları sürece sağlık faktörünüzü gösterir ama düştüğünde size mesaj göndermez; bunu [sağlık faktörü uyarıları rehberi](/tr/blog/aave-saglik-faktoru-uyarisi-kurulumu#aave-saglık-faktoru-uyarısı-gonderir-mi) açıklıyor. Takip etmenin bir yolu, borcun bir kısmını geri ödeyerek veya teminat ekleyerek harekete geçeceğiniz sağlık faktörünü seçmek ve pozisyon oraya geldiğinde ayrı bir aracın sizi uyarmasını sağlamaktır. Tokenping her 5 dakikada bir kontrol eder ve sağlık faktörünüz belirlediğiniz eşiğin altında kaldığı sürece size mesaj gönderir; [kurulum rehberi](/tr/blog/aave-saglik-faktoru-uyarisi-kurulumu) adımları anlatıyor. Bir uyarı size koruma değil, harekete geçmek için zaman verir; bu zamanda ne yapabileceğinizi [Aave'de likidasyondan nasıl kaçınılır](/tr/blog/aave-likidasyonundan-kacinma) anlatıyor.
+
+## Kaynaklar
+
+- Aave V3 Ethereum Core [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) ve Arbitrum [PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): LTV, likidasyon eşikleri, bonuslar ve değişken borç faizleri, 26225342 numaralı Ethereum bloğunda ve 516228495 numaralı Arbitrum bloğunda zincir üstünde okundu (RPC verisi, erişim tarihi: 19 Ekim 2026)
+- [Aave V3 Ethereum Core AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): 26225364 numaralı Ethereum bloğunda WBTC fiyatı 82.680,33 $ (RPC verisi, erişim tarihi: 19 Ekim 2026)
+- [Aave Help: Borrow Tokens](https://aave.com/help/borrowing/borrow-tokens) (erişim tarihi: 19 Ekim 2026)
+- [Aave Help: Repay Tokens](https://aave.com/help/borrowing/repay-tokens) (erişim tarihi: 19 Ekim 2026)
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (erişim tarihi: 19 Ekim 2026)
+- [Aave V3 Pool akıllı kontrat referansı](https://aave.com/docs/aave-v3/smart-contracts/pool): borrow ve repay parametreleri, yalnızca değişken faiz, v3.2'de kullanımdan kaldırılan sabit faiz (erişim tarihi: 19 Ekim 2026)
+- [Aave belgeleri: swap özellikleri](https://aave.com/docs/aave-v3/smart-contracts/swap-features): teminatla geri ödeme ve debt swap (erişim tarihi: 19 Ekim 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) ve [PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol), aave-v3-origin: borç devam ederken çekimler, duraklatmalar ve bunları kimin yapabileceği (erişim tarihi: 19 Ekim 2026)
+- [Celsius Network hakkında CFTC basın bülteni 8749-23](https://www.cftc.gov/PressRoom/PressReleases/8749-23), 13 Temmuz 2023: yaklaşık 20 milyar $ yatırılmış, çekimler 12 Haziran 2022'de dondurulmuş, iflas başvurusu 13 Temmuz 2022'de yapılmış (erişim tarihi: 19 Ekim 2026)
+- [ABD İflas Mahkemesi, Southern District of New York: Celsius Earn hesaplarındaki varlıkların mülkiyetine ilişkin karar](https://www.nysb.uscourts.gov/sites/default/files/opinions/312902_1822_opinion.pdf), 4 Ocak 2023 (erişim tarihi: 19 Ekim 2026)
+- [Voyager Digital: piyasa güncellemesi](https://www.newswire.ca/news-releases/voyager-digital-provides-market-update-851734302.html), 1 Temmuz 2022, ve [Voyager Digital: Chapter 11 duyurusu](https://www.newswire.ca/news-releases/voyager-digital-commences-financial-restructuring-process-to-maximize-value-for-all-stakeholders-888320107.html), 5 Temmuz 2022 (ikisi için de erişim tarihi: 19 Ekim 2026)
+- [Genesis ve Gemini Earn programı hakkında SEC basın bülteni 2023-7](https://www.sec.gov/news/press-release/2023-7), 12 Ocak 2023 (erişim tarihi: 19 Ekim 2026)
+- [Genesis hakkında SEC basın bülteni 2024-37](https://www.sec.gov/newsroom/press-releases/2024-37), 19 Mart 2024: Chapter 11 başvuruları 19 Ocak 2023'te yapılmış (erişim tarihi: 19 Ekim 2026)
+- [CoinDesk: BlockFi files for bankruptcy as FTX contagion spreads](https://www.coindesk.com/policy/2022/11/28/ftx-fallout-continues-as-crypto-lender-blockfi-declares-bankruptcy), 28 Kasım 2022 (erişim tarihi: 19 Ekim 2026)
+- [ECB blogu: Bitcoin's last stand](https://www.ecb.europa.eu/press/blog/date/2022/html/ecb.blog221130~5301eecd19.en.html), 30 Kasım 2022: yaklaşık 69.000 $ seviyesinden yaklaşık 17.000 $ seviyesine ve 16.000 $ altına düşüş (erişim tarihi: 19 Ekim 2026)
+- [Gauntlet: Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), Aave yönetişim forumu, 17 Mart 2023 (erişim tarihi: 19 Ekim 2026)
+- [Circle: $3.3 Billion of USDC Reserve Risk Removed, Dollar De-peg Closes](https://www.circle.com/pressroom/3-3-billion-of-usdc-reserve-risk-removed-dollar-de-peg-closes), 12 Mart 2023 (erişim tarihi: 19 Ekim 2026)
+- [Terraform hakkında SEC basın bülteni 2024-73](https://www.sec.gov/newsroom/press-releases/2024-73), 13 Haziran 2024: Mayıs 2022'deki UST depeg'i (erişim tarihi: 19 Ekim 2026)
+- [WBTC](https://wbtc.network/): WBTC'nin nasıl desteklendiği (erişim tarihi: 19 Ekim 2026)
+- [Chaos Labs: Post-Mortem, Exchange Rate Misalignment on wstETH Core and Prime Instances](https://governance.aave.com/t/24269), Aave yönetişim forumu, 10 Mart 2026 (erişim tarihi: 19 Ekim 2026)
+- [HMRC Cryptoassets Manual, CRYPTO61640: DeFi lending and staking, collateral](https://www.gov.uk/hmrc-internal-manuals/cryptoassets-manual/crypto61640), 28 Kasım 2025'te güncellendi (erişim tarihi: 19 Ekim 2026)
+
+_Eğitim amaçlı içeriktir, finansal tavsiye değildir. Uyarılar riski azaltır ama likidasyonu önlemez._
