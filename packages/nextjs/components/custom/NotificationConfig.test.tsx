@@ -7,6 +7,7 @@ import { NotificationConfig } from "~~/components/custom/NotificationConfig";
 import { markAttributionPrompted } from "~~/components/custom/notifications/attributionPromptState";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
 import { LocaleProvider } from "~~/i18n/LocaleProvider";
+import { LOCALES } from "~~/i18n/locales";
 import type { Locale } from "~~/i18n/locales";
 import { notificationConfigClient } from "~~/services/notifications/notificationConfigClient";
 import type { NotificationConfig as NotificationConfigType } from "~~/types/notifications";
@@ -1949,15 +1950,14 @@ describe("NotificationConfig: language", () => {
     const emailLanguage = () => screen.getByRole<HTMLSelectElement>("combobox", { name: "Jazyk e-mailů" });
     const signalLanguage = () => screen.getByRole<HTMLSelectElement>("combobox", { name: "Jazyk zpráv na Signalu" });
     expect([emailLanguage().value, signalLanguage().value]).toEqual(["cs", "cs"]);
-    // Each language is named in itself.
-    expect([...signalLanguage().options].map(option => [option.value, option.text, option.lang])).toEqual([
-      ["en", "English", "en"],
+    // Each language is named in itself, the list sorted by those names.
+    const options = [...signalLanguage().options].map(option => [option.value, option.text, option.lang]);
+    expect(options.slice(0, 3)).toEqual([
       ["cs", "Čeština", "cs"],
-      ["es", "Español", "es"],
-      ["hi", "हिन्दी", "hi"],
       ["de", "Deutsch", "de"],
-      ["vi", "Tiếng Việt", "vi"],
+      ["en", "English", "en"],
     ]);
+    expect(options.map(([value]) => value).sort()).toEqual([...LOCALES].sort());
 
     await type(screen.getByRole("textbox", { name: "E-mailová adresa" }), "me@example.com");
     await type(screen.getByRole("textbox", { name: "Uživatelské jméno v Signalu" }), "alice.42");

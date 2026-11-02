@@ -25,23 +25,18 @@ type NotFoundMessageProps = {
   locale: Locale;
   /** The id of the heading, which names the section. */
   headingId?: string;
-  /** The page's h1, or the h2 of a translation under it on the multilingual 404. */
-  headingLevel?: 1 | 2;
-  /** Only the first message's home link is the view's pink action. */
-  primary?: boolean;
 };
 
 /** The kicker with the code, the heading that says what happened, one sentence and the links, in one language. */
-const NotFoundMessage = ({ locale, headingId, headingLevel = 1, primary = true }: NotFoundMessageProps) => {
+const NotFoundMessage = ({ locale, headingId }: NotFoundMessageProps) => {
   const t = COMMON_MESSAGES[locale].notFound;
-  const Heading = headingLevel === 1 ? "h1" : "h2";
 
   return (
     <>
       <Kicker>{t.kicker}</Kicker>
-      <Heading id={headingId} className="text-section my-0 text-balance">
+      <h1 id={headingId} className="text-section my-0 text-balance">
         {t.title}
-      </Heading>
+      </h1>
       <p className="text-lead mx-auto mt-4 mb-0 max-w-[48ch] text-pretty text-foreground">{t.text}</p>
       <nav aria-label={t.navLabel} className="mt-8">
         <ul className="m-0 flex list-none flex-col items-center gap-3 p-0 sm:flex-row sm:flex-wrap sm:justify-center">
@@ -50,7 +45,7 @@ const NotFoundMessage = ({ locale, headingId, headingLevel = 1, primary = true }
               <Link
                 href={href}
                 className={buttonClasses({
-                  variant: primary && index === 0 ? "default" : "outline",
+                  variant: index === 0 ? "default" : "outline",
                   size: "lg",
                   className: "w-full sm:w-auto sm:min-w-32",
                 })}
@@ -89,16 +84,24 @@ export const NotFoundPage = ({ locale }: { locale: Locale }) => (
 
 /**
  * The 404 for a URL that matches no route (app/global-not-found.tsx), which cannot tell the language: English with
- * its h1 and the pink home link, then the same message in each other language (its lang, an h2, outline links to its
- * pages), each under a hairline.
+ * its h1 and the pink home link, then under a hairline every other language's home page, named in that language.
  */
 export const MultilingualNotFoundPage = () => (
   <NotFoundShell>
     <NotFoundMessage locale={DEFAULT_LOCALE} headingId="not-found-title" />
-    {LOCALES.filter(locale => locale !== DEFAULT_LOCALE).map(locale => (
-      <div key={locale} lang={LOCALE_INFO[locale].htmlLang} className="mt-10 border-t border-border pt-10">
-        <NotFoundMessage locale={locale} headingLevel={2} primary={false} />
-      </div>
-    ))}
+    <nav aria-label={COMMON_MESSAGES[DEFAULT_LOCALE].header.language} className="mt-10 border-t border-border pt-8">
+      <ul className="m-0 flex list-none flex-wrap justify-center gap-x-5 gap-y-2 p-0">
+        {LOCALES.filter(locale => locale !== DEFAULT_LOCALE).map(locale => {
+          const { htmlLang, name } = LOCALE_INFO[locale];
+          return (
+            <li key={locale} className="m-0 p-0">
+              <Link href={routePath(locale, "home")} hrefLang={htmlLang} lang={htmlLang} className="text-link">
+                {name}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   </NotFoundShell>
 );

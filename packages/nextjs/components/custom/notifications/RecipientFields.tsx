@@ -5,6 +5,9 @@ import { useMessages } from "~~/i18n/LocaleProvider";
 import { LOCALES, LOCALE_INFO, type Locale, isLocale } from "~~/i18n/locales";
 import type { NotificationService } from "~~/types/notifications";
 
+/** The languages a channel can be sent in, by their own names (the list grows with the site). */
+const LOCALES_BY_NAME = [...LOCALES].sort((a, b) => LOCALE_INFO[a].name.localeCompare(LOCALE_INFO[b].name, "en"));
+
 type RecipientFieldsProps = {
   /** The fields' ids, for links to them (the error summary). */
   emailFieldId?: string;
@@ -45,7 +48,7 @@ const ChannelLanguageSelect = ({ channel, value, onChange }: ChannelLanguageSele
             if (isLocale(e.target.value)) onChange(channel, e.target.value);
           }}
         >
-          {LOCALES.map(locale => (
+          {LOCALES_BY_NAME.map(locale => (
             <option key={locale} value={locale} lang={LOCALE_INFO[locale].htmlLang}>
               {LOCALE_INFO[locale].name}
             </option>

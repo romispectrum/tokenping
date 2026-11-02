@@ -56,14 +56,20 @@ const rssAlternate = (locale: Locale) => ({
 });
 
 /**
- * hreflang for the languages a page is published in; x-default is the English page when there is one. Undefined
- * for a page in one language only: hreflang only makes sense between translations.
+ * hreflang for the languages a page is published in, each language's regions pointing at the same page ("en-GB" and
+ * "en-US" at the English one); x-default is the English page when there is one. Undefined for a page in one language
+ * only: hreflang only makes sense between translations.
  */
 const languageAlternates = (paths: Partial<Localized<string>>) => {
   const published = LOCALES.filter(locale => paths[locale] !== undefined);
   if (published.length < 2) return undefined;
   return {
-    ...Object.fromEntries(published.map(locale => [LOCALE_INFO[locale].htmlLang, paths[locale]])),
+    ...Object.fromEntries(
+      published.flatMap(locale => {
+        const { htmlLang, regions = [] } = LOCALE_INFO[locale];
+        return [htmlLang, ...regions.map(({ hreflang }) => hreflang)].map(lang => [lang, paths[locale]]);
+      }),
+    ),
     ...(paths[DEFAULT_LOCALE] && { "x-default": paths[DEFAULT_LOCALE] }),
   };
 };

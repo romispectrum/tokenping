@@ -109,9 +109,14 @@ describe("sitemapEntries", () => {
     const { blog, blogPostMetadata } = await loadSitemap(["safe-aave-health-factor"]);
     const [post] = blog.PUBLISHED_POSTS;
 
+    // Each language's regions ("en-GB", "de-AT") point at its page too.
     const alternates = (key: string, locales: readonly Locale[]) =>
       Object.fromEntries(
-        locales.map(locale => [LOCALE_INFO[locale].htmlLang, postPath(locale, POST_SLUG_PAIRS[key][locale])]),
+        locales.flatMap(locale => {
+          const { htmlLang, regions = [] } = LOCALE_INFO[locale];
+          const path = postPath(locale, POST_SLUG_PAIRS[key][locale]);
+          return [htmlLang, ...regions.map(({ hreflang }) => hreflang)].map(lang => [lang, path]);
+        }),
       );
 
     expect(blogPostMetadata("en", post.meta.slug).alternates?.languages).toEqual({

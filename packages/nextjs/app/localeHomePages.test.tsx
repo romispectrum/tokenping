@@ -124,7 +124,12 @@ describe.each(TRANSLATED)("the %s home page", locale => {
     expect(String(metadata.description).length).toBeLessThanOrEqual(155);
     expect(metadata.alternates?.canonical).toBe(home);
     expect(metadata.alternates?.languages).toEqual({
-      ...Object.fromEntries(LOCALES.map(other => [LOCALE_INFO[other].htmlLang, routePath(other, "home")])),
+      ...Object.fromEntries(
+        LOCALES.flatMap(other => {
+          const { htmlLang, regions = [] } = LOCALE_INFO[other];
+          return [htmlLang, ...regions.map(({ hreflang }) => hreflang)].map(lang => [lang, routePath(other, "home")]);
+        }),
+      ),
       "x-default": "/",
     });
     expect(metadata.openGraph).toMatchObject({ url: home, locale: LOCALE_INFO[locale].ogLocale });

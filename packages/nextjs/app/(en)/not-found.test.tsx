@@ -4,6 +4,8 @@ import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import NotFound, { metadata } from "~~/app/(en)/not-found";
 import GlobalNotFound, { metadata as globalMetadata } from "~~/app/global-not-found";
+import { LOCALES, LOCALE_INFO } from "~~/i18n/locales";
+import { routePath } from "~~/i18n/routes";
 
 // The global 404 brings its own <html> document (fonts, providers); only the page inside it is under test here.
 vi.mock("~~/components/RootDocument", () => ({
@@ -38,90 +40,42 @@ describe("not-found", () => {
   });
 });
 
-// A URL that matches no route cannot tell its language: the message comes in English, then in every other language.
+// A URL that matches no route cannot tell its language: the message comes in English, then a link to every other
+// language's home page.
 describe("global-not-found", () => {
   it("keeps the English title on the English document", () => {
     expect(globalMetadata.title).toBe("Page not found");
   });
 
-  it("says it in English with the one h1 and the one pink link, then in every other language under its lang", () => {
-    const { container } = render(<GlobalNotFound />);
-    const czech = container.querySelector('[lang="cs"]') as HTMLElement;
-    const spanish = container.querySelector('[lang="es"]') as HTMLElement;
-    const hindi = container.querySelector('[lang="hi"]') as HTMLElement;
-    const german = container.querySelector('[lang="de"]') as HTMLElement;
-    const vietnamese = container.querySelector('[lang="vi"]') as HTMLElement;
+  it("says it in English with the one h1 and the one pink link, then links every other language's home page", () => {
+    render(<GlobalNotFound />);
 
     expect(screen.getAllByRole("heading", { level: 1 }).map(heading => heading.textContent)).toEqual([
       "Page not found",
     ]);
-    expect(within(czech).getByRole("heading", { level: 2 }).textContent).toBe("Stránka nenalezena");
-    expect(within(czech).getByText("Chyba 404")).toBeTruthy();
-    expect(within(czech).getByText("Stránka, kterou hledáte, neexistuje.")).toBeTruthy();
-    expect(czech.contains(screen.getByRole("heading", { level: 1 }))).toBe(false);
-    expect(within(spanish).getByRole("heading", { level: 2 }).textContent).toBe("Página no encontrada");
-    expect(within(spanish).getByText("La página que buscas no existe.")).toBeTruthy();
-    expect(within(hindi).getByRole("heading", { level: 2 }).textContent).toBe("पेज नहीं मिला");
-    expect(within(hindi).getByText("आप जो पेज ढूँढ रहे हैं, वह मौजूद नहीं है।")).toBeTruthy();
-    expect(within(german).getByRole("heading", { level: 2 }).textContent).toBe("Seite nicht gefunden");
-    expect(within(german).getByText("Die Seite, die du suchst, gibt es nicht.")).toBeTruthy();
-    expect(within(vietnamese).getByRole("heading", { level: 2 }).textContent).toBe("Không tìm thấy trang");
-    expect(within(vietnamese).getByText("Trang bạn đang tìm không tồn tại.")).toBeTruthy();
-
+    const languages = screen.getByRole("navigation", { name: "Language" });
+    expect(
+      within(languages)
+        .getAllByRole("link")
+        .map(link => [link.textContent, link.getAttribute("href"), link.getAttribute("lang")]),
+    ).toEqual(
+      LOCALES.filter(locale => locale !== "en").map(locale => [
+        LOCALE_INFO[locale].name,
+        routePath(locale, "home"),
+        LOCALE_INFO[locale].htmlLang,
+      ]),
+    );
     const links = screen.getAllByRole("link");
-    expect(links.map(link => [link.textContent, link.getAttribute("href")])).toEqual([
-      ["Go to the home page", "/"],
-      ["Open the dashboard", "/aave"],
-      ["Read the blog", "/blog"],
-      ["Přejít na úvodní stránku", "/cz"],
-      ["Otevřít přehled", "/cz/aave"],
-      ["Číst blog", "/cz/blog"],
-      ["Ir a la página de inicio", "/es"],
-      ["Abrir el panel", "/es/aave"],
-      ["Leer el blog", "/es/blog"],
-      ["होम पेज पर जाएँ", "/hi"],
-      ["डैशबोर्ड खोलें", "/hi/aave"],
-      ["ब्लॉग पढ़ें", "/hi/blog"],
-      ["Zur Startseite", "/de"],
-      ["Dashboard öffnen", "/de/aave"],
-      ["Blog lesen", "/de/blog"],
-      ["Về trang chủ", "/vi"],
-      ["Mở bảng điều khiển", "/vi/aave"],
-      ["Đọc blog", "/vi/blog"],
+    expect(links.filter(link => link.className.includes("btn-primary")).map(link => link.textContent)).toEqual([
+      "Go to the home page",
     ]);
-    expect(links.map(link => link.className.includes("btn-primary"))).toEqual([
-      true,
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-    ]);
-    expect(within(czech).getAllByRole("link")).toHaveLength(3);
-    expect(within(spanish).getAllByRole("link")).toHaveLength(3);
-    expect(within(hindi).getAllByRole("link")).toHaveLength(3);
-    expect(within(german).getAllByRole("link")).toHaveLength(3);
-    expect(within(vietnamese).getAllByRole("link")).toHaveLength(3);
   });
 
-  it("names the three link lists apart and uses no em or en dash", () => {
+  it("names the two link lists apart and uses no em or en dash", () => {
     const { container } = render(<GlobalNotFound />);
 
     expect(screen.getByRole("navigation", { name: "Pages" })).toBeTruthy();
-    expect(screen.getByRole("navigation", { name: "Stránky" })).toBeTruthy();
-    expect(screen.getByRole("navigation", { name: "Páginas" })).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: "Language" })).toBeTruthy();
     expect(container.innerHTML).not.toMatch(new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`));
   });
 });

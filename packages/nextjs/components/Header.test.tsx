@@ -345,7 +345,7 @@ describe("Header in Czech", () => {
     expect(screen.getByText("Motiv")).toBeTruthy();
     expect(screen.getByText("Jazyk")).toBeTruthy();
     // The switch on a Czech page leads to the English one.
-    expect(screen.getAllByRole("link", { name: "English" })[0].getAttribute("href")).toBe("/");
+    expect(screen.getAllByRole("link", { name: "English (US)" })[0].getAttribute("href")).toBe("/");
   });
 
   it("has no English menu labels and no em or en dash", () => {

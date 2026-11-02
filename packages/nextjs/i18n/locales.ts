@@ -22,6 +22,11 @@ type LocaleInfo = {
   englishName: string;
   /** The short label the switcher shows. */
   short: string;
+  /**
+   * Countries that read the same pages, each with its own hreflang and its own entry in the language menu ("English
+   * (UK)", "Deutsch (Österreich)"). They replace the language's single menu entry; the pages and URLs stay one set.
+   */
+  regions?: readonly { hreflang: string; name: string; short: string }[];
 };
 
 export const LOCALE_INFO: Record<Locale, LocaleInfo> = {
@@ -33,6 +38,10 @@ export const LOCALE_INFO: Record<Locale, LocaleInfo> = {
     name: "English",
     englishName: "English",
     short: "EN",
+    regions: [
+      { hreflang: "en-GB", name: "English (UK)", short: "UK" },
+      { hreflang: "en-US", name: "English (US)", short: "US" },
+    ],
   },
   cs: {
     htmlLang: "cs",
@@ -65,7 +74,8 @@ export const LOCALE_INFO: Record<Locale, LocaleInfo> = {
     englishName: "Hindi",
     short: "HI",
   },
-  // One German for Germany, Austria and Switzerland: hreflang "de". Decimal comma and dot thousands ("12.000,5").
+  // One German for Germany, Austria and Switzerland: hreflang "de", plus each country's own (regions). Decimal comma
+  // and dot thousands ("12.000,5").
   de: {
     htmlLang: "de",
     ogLocale: "de_DE",
@@ -74,6 +84,11 @@ export const LOCALE_INFO: Record<Locale, LocaleInfo> = {
     name: "Deutsch",
     englishName: "German",
     short: "DE",
+    regions: [
+      { hreflang: "de-DE", name: "Deutsch (Deutschland)", short: "DE" },
+      { hreflang: "de-AT", name: "Deutsch (Österreich)", short: "AT" },
+      { hreflang: "de-CH", name: "Deutsch (Schweiz)", short: "CH" },
+    ],
   },
   // Decimal comma and dot thousands ("12.000,5"), dates "14 tháng 10, 2026".
   vi: {

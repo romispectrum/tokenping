@@ -20,36 +20,37 @@ describe("LanguageSwitch", () => {
     expect(summary?.textContent).toBe("EN");
   });
 
-  it("lists every language as a link to this page in that language, the current one marked", () => {
+  it("lists every language as a link to this page in that language, by label, every English entry marked", () => {
     state.pathname = "/blog/aave-health-factor";
     render(<LanguageSwitch />);
+    const links = screen.getAllByRole("link");
+    const entry = (name: string) => screen.getByRole("link", { name });
 
     expect(languageLinks()).toEqual([
-      ["EnglishEN", "/blog/aave-health-factor"],
+      ["Deutsch (Österreich)AT", "/de/blog/aave-health-factor-erklaert"],
+      ["Deutsch (Schweiz)CH", "/de/blog/aave-health-factor-erklaert"],
       ["ČeštinaCZ", "/cz/blog/aave-health-factor-vysvetleni"],
+      ["Deutsch (Deutschland)DE", "/de/blog/aave-health-factor-erklaert"],
       ["EspañolES", "/es/blog/factor-de-salud-aave"],
       ["हिन्दीHI", "/hi/blog/aave-health-factor-kya-hai"],
-      ["DeutschDE", "/de/blog/aave-health-factor-erklaert"],
+      ["English (UK)UK", "/blog/aave-health-factor"],
+      ["English (US)US", "/blog/aave-health-factor"],
       ["Tiếng ViệtVI", "/vi/blog/he-so-suc-khoe-aave"],
     ]);
-    const [english, czech, spanish, hindi, german, vietnamese] = screen.getAllByRole("link");
-    expect(english.getAttribute("aria-current")).toBe("true");
-    expect(czech.getAttribute("aria-current")).toBeNull();
-    expect(czech.getAttribute("lang")).toBe("cs");
-    expect(czech.getAttribute("hreflang")).toBe("cs");
-    expect(spanish.getAttribute("lang")).toBe("es");
-    expect(spanish.getAttribute("hreflang")).toBe("es");
-    expect(hindi.getAttribute("lang")).toBe("hi");
-    expect(hindi.getAttribute("hreflang")).toBe("hi");
-    expect(german.getAttribute("hreflang")).toBe("de");
-    expect(vietnamese.getAttribute("lang")).toBe("vi");
+    // Both English entries are this page; nothing else is.
+    expect(links.filter(link => link.getAttribute("aria-current") === "true")).toEqual([
+      entry("English (UK)"),
+      entry("English (US)"),
+    ]);
+    // Each entry is spoken in its language and names the page's language for that region.
+    expect(entry("English (UK)").getAttribute("hreflang")).toBe("en-GB");
+    expect(entry("Deutsch (Österreich)").getAttribute("lang")).toBe("de-AT");
+    expect(entry("Čeština").getAttribute("lang")).toBe("cs");
+    expect(entry("Čeština").getAttribute("hreflang")).toBe("cs");
+    expect(entry("हिन्दी").getAttribute("hreflang")).toBe("hi");
+    expect(entry("Tiếng Việt").getAttribute("lang")).toBe("vi");
     // The short codes and the check are decoration: the options are named by the language alone.
-    expect(screen.getByRole("link", { name: "English" })).toBe(english);
-    expect(screen.getByRole("link", { name: "Čeština" })).toBe(czech);
-    expect(screen.getByRole("link", { name: "Español" })).toBe(spanish);
-    expect(screen.getByRole("link", { name: "हिन्दी" })).toBe(hindi);
-    expect(screen.getByRole("link", { name: "Deutsch" })).toBe(german);
-    expect(screen.getByRole("link", { name: "Tiếng Việt" })).toBe(vietnamese);
+    expect(entry("Español")).toBe(links[4]);
   });
 
   it("closes on Escape and puts focus back on the button", () => {
@@ -89,7 +90,7 @@ describe("LanguageSwitch", () => {
 
     expect(container.querySelector("summary")?.getAttribute("aria-label")).toBe("Jazyk: Čeština");
     expect(container.querySelector("summary")?.textContent).toBe("CZ");
-    expect(screen.getByRole("link", { name: "English" }).getAttribute("href")).toBe("/blog/aave-health-factor");
+    expect(screen.getByRole("link", { name: "English (US)" }).getAttribute("href")).toBe("/blog/aave-health-factor");
     expect(screen.getByRole("link", { name: "Čeština" }).getAttribute("aria-current")).toBe("true");
     expect(container.innerHTML).not.toMatch(new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`));
   });
