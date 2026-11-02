@@ -1,0 +1,169 @@
+export const meta = {
+  slug: "prelikwidacja-morpho",
+  title: "Prelikwidacja na Morpho: czym jest i jak ją wyłączyć",
+  description:
+    "Jak prelikwidacja na Morpho (Auto-deleverage) sprzedaje część pożyczki przed LLTV, dlaczego Morpho ją wycofuje i jak ją sprawdzić i odwołać.",
+  h1: "Czym jest prelikwidacja na Morpho i jak ją sprawdzić lub wyłączyć?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Czym jest prelikwidacja na Morpho i jak sprawdzić, czy jest włączona, i ją wyłączyć?",
+  readingMinutes: 11,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Prelikwidacja (pre-liquidation) to kontrakt dla jednego rynku Morpho Blue (o zmiennym oprocentowaniu), na który trzeba
+  się świadomie zgodzić i który pozwala każdemu sprzedać część twojego zabezpieczenia na spłatę długu, zanim pozycja
+  dojdzie do LTV likwidacji (LLTV) danego rynku. Aplikacja Morpho miała funkcję Auto-deleverage, która działa w ten
+  sposób. Morpho ją teraz wycofuje: aplikacja nie przyjmuje nowych pozycji, centrum pomocy prosi osoby, które ją mają, o
+  jej wyłączenie, a SDK oznaczyło kod prelikwidacji jako przestarzały (deprecated) 22 września 2026. Kontrakty nadal
+  działają, więc jeśli funkcja była kiedyś u ciebie włączona, sprawdź ją przez `isAuthorized` na kontrakcie Morpho Blue
+  i odwołaj przyciskiem zarządzania w aplikacji albo przez `setAuthorization(contract, false)`.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Liczby, numery bloków i źródła: content/blog/snapshots/morpho-pre-liquidation.md */}
+
+## Czym jest prelikwidacja na Morpho?
+
+Prelikwidacja to druga, wcześniejsza linia likwidacji, którą pożyczkobiorca może dodać do jednego rynku Morpho Blue. Na zwykłym rynku Blue pozycję można zlikwidować dopiero wtedy, gdy jej współczynnik zdrowia (health factor), liczony względem LTV likwidacji rynku (LLTV), spadnie poniżej 1; [poradnik o współczynniku zdrowia na Morpho](/pl/blog/wspolczynnik-zdrowia-morpho) wyjaśnia tę liczbę. Kontrakt prelikwidacji ustawia niższą linię, preLLTV. Między tymi dwiema liniami każdy może spłacić część twojego długu, do limitu ustalonego przez kontrakt, i krokami zabierać zabezpieczenie warte tyle co ten dług plus bonus.
+
+Wyróżniają ją trzy rzeczy:
+
+- **Trzeba się na nią zgodzić.** Działa dopiero po tym, jak autoryzujesz kontrakt w Morpho Blue. Bez tego kontrakt nie może dotknąć twojej pozycji.
+- **Działa dla jednego rynku.** Każdy kontrakt jest związany z jednym rynkiem Blue i jednym stałym zestawem parametrów i nie ma właściciela, administratora ani funkcji aktualizacji.
+- **Istnieje tylko w Blue.** Morpho Midnight, czyli rynki o stałym oprocentowaniu z [poradnika o Midnight](/pl/blog/morpho-midnight-pozyczki-o-stalym-oprocentowaniu), nie ma prelikwidacji.
+
+Morpho ogłosiło fabrykę prelikwidacji 4 marca 2025 i wskazało auto-deleverage i auto-close jako jej zastosowania. W kontraktach, w API i w SDK nazywa się to pre-liquidation. Aplikacja Morpho miała funkcję Auto-deleverage, którą centrum pomocy opisuje tak samo: gdy twój wskaźnik LTV (loan-to-value) przekroczy ustalony próg, część pozycji może zostać zamknięta, z opłatą tylko od zamkniętej części.
+
+## Czy prelikwidacja jest nadal dostępna w aplikacji Morpho?
+
+W aplikacji Morpho nie da się już ustawić nowej prelikwidacji. Stan na 26 października 2026:
+
+| Gdzie                             | Stan                                                                                                                                                                                                                      |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Aplikacja i centrum pomocy Morpho | Artykuł pomocy nosi teraz tytuł „Sunsetting Auto-deleverage” (wycofywanie Auto-deleverage), ostatnio aktualizowany 13 maja 2026: funkcja nie przyjmuje nowych pozycji, a użytkownicy, którzy ją mają, powinni ją wyłączyć |
+| SDK Morpho                        | Każdy eksport związany z prelikwidacją oznaczony jako przestarzały 22 września 2026 (pull request 1132), do usunięcia w następnej wersji głównej, bez następcy                                                            |
+| Dokumentacja Morpho               | Strony o prelikwidacji już nie ma; jej stary adres prowadzi teraz do ogólnej strony o likwidacji                                                                                                                          |
+| API Morpho                        | Nadal wymienia 106 kontraktów prelikwidacji na wymienionych rynkach w sieciach Ethereum (50), Base (37), Arbitrum (8), Polygon (6), Katana (3) i Unichain (2)                                                             |
+| Kontrakty                         | Bez zmian i działają: każdy nadal może je wywołać wobec pożyczkobiorcy, który je autoryzował                                                                                                                              |
+
+Ostatni wiersz jest tym, który się liczy, jeśli funkcja była u ciebie kiedyś włączona. Wycofanie funkcji z aplikacji nie cofa autoryzacji zapisanej on-chain.
+
+## Jak działa kontrakt prelikwidacji?
+
+Kontrakt prelikwidacji tworzy PreLiquidationFactory Morpho, z której może korzystać każdy: każdy może wdrożyć kontrakt dla dowolnego rynku Blue, a każde połączenie rynku i zestawu parametrów może istnieć tylko raz. Jego stałe parametry to:
+
+| Parametr           | Co ustala                                                                                                                                                                  |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| preLLTV            | Wskaźnik LTV, powyżej którego prelikwidacja jest dozwolona. Musi być niższy niż LLTV rynku                                                                                 |
+| preLCF1, preLCF2   | Close factor (część długu spłacana za jednym razem): największa część twojego długu, jaką może spłacić jedno wywołanie, przy preLLTV i przy LLTV                           |
+| preLIF1, preLIF2   | Współczynnik zachęty (incentive factor): spłacony dług mnoży się przez niego, by otrzymać zabrane zabezpieczenie, w tych samych dwóch punktach                             |
+| Wyrocznia (oracle) | Źródło ceny, które decyduje, czy twoja pozycja może zostać prelikwidowana i po jakiej cenie zabiera się twoje zabezpieczenie. Może to być wyrocznia samego rynku albo inna |
+
+Zanim zadziała, kontrakt sprawdza, według ceny z własnej wyroczni, że twój wskaźnik LTV jest powyżej preLLTV i wciąż na poziomie LLTV lub niżej. Powyżej LLTV prelikwidacja się zatrzymuje, a pałeczkę przejmuje zwykła likwidacja Blue. Na koniec Morpho Blue sprawdza, czy twoja pozycja jest zdrowa według wyroczni samego rynku; jeśli nie, całe wywołanie jest cofane.
+
+Konstruktor narzuca limity parametrów. Close factor nie może maleć, gdy rośnie ryzyko, a tylko jego pierwsza wartość jest ograniczona do 100%: kontrakt, którego druga wartość przekracza 100%, może pozwolić jednemu wywołaniu spłacić cały twój dług, zanim pozycja dojdzie do LLTV. Domyślne wartości Morpho są daleko poniżej tego. Współczynnik zachęty musi wynosić co najmniej 1 (bez bonusu) i najwyżej 1 ÷ LLTV (bonus około 16% na rynku 86%). Repozytorium Morpho podaje, że ten limit, razem z zasadą, że prelikwidacja zatrzymuje się na LLTV, sprawia, że prelikwidacja nie zostawia pozycji w gorszej kondycji niż przedtem.
+
+### Jak rosną close factor i bonus między preLLTV a LLTV?
+
+Oba rosną liniowo wraz z twoim wskaźnikiem LTV. Kontrakt mierzy, jak daleko jesteś od preLLTV w stronę LLTV, jako udział od 0 do 1, i przesuwa każdy współczynnik o ten udział drogi od pierwszej wartości do drugiej. W połowie drogi między dwiema liniami close factor jest w połowie między preLCF1 a preLCF2.
+
+Z kodu wynikają dwa ograniczenia. Close factor ogranicza jedno wywołanie, a nie sumę: samo repozytorium Morpho zauważa, że likwidator może zamknąć małą część, zostawić cię wciąż powyżej preLLTV i wywołać kontrakt ponownie, więc łącznie zamknięta część może być większa niż close factor. Do tego close factor to udział w twoim długu, nie w zabezpieczeniu; [poradnik o close factor na Aave](/pl/blog/jak-dziala-likwidacja-na-aave#jaka-czesc-mojego-długu-moze-zostac-zlikwidowana-naraz) omawia ten sam mechanizm na Aave.
+
+## Jakie są domyślne ustawienia prelikwidacji na Morpho?
+
+Morpho trzymało w swoim SDK domyślny zestaw parametrów dla każdego z ośmiu popularnych LLTV, a każdy ze 106 kontraktów wymienionych przez jego API używa tych wartości domyślnych. API wymienia tylko kontrakty ze znanymi parametrami domyślnymi, więc kontrakty z innymi ustawieniami mogą istnieć, nie pojawiając się tam. Sześć LLTV, dla których istnieją wymienione kontrakty:
+
+| LLTV rynku | preLLTV | Close factor (od preLLTV do LLTV) | Bonus  | Prelikwidacja zaczyna się przy współczynniku zdrowia rynku | Wymienione kontrakty |
+| ---------- | ------- | --------------------------------- | ------ | ---------------------------------------------------------- | -------------------- |
+| 62,5%      | 56,26%  | od 0,75% do 27,95%                | 12,68% | 1,111                                                      | 2                    |
+| 77%        | 72,74%  | od 0,37% do 25,66%                | 7,41%  | 1,059                                                      | 12                   |
+| 86%        | 83,26%  | od 0,20% do 24,53%                | 4,38%  | 1,033                                                      | 50                   |
+| 91,5%      | 89,79%  | od 0,11% do 23,92%                | 2,62%  | 1,019                                                      | 21                   |
+| 94,5%      | 93,37%  | od 0,07% do 23,61%                | 1,68%  | 1,012                                                      | 15                   |
+| 96,5%      | 95,78%  | od 0,04% do 23,41%                | 1,06%  | 1,008                                                      | 6                    |
+
+W każdym domyślnym zestawie bonus jest taki sam na obu końcach i równa się bonusowi, który płaci zwykła likwidacja Blue na tym rynku. Wartości domyślne nie sprawiają, że sprzedaż jest tańsza w przeliczeniu na dolar; sprawiają, że każda sprzedaż jest mniejsza. Zwykła likwidacja w Blue w ogóle nie ma close factor, więc likwidator może spłacić cały dług naraz. [Jak działa likwidacja na Morpho](/pl/blog/jak-dziala-likwidacja-na-morpho) omawia tę stronę.
+
+## Prawdziwy kontrakt: USDC | cbBTC (86%) w sieci Base
+
+Największy wymieniony rynek Blue w sieci Base pod względem pożyczek, USDC | cbBTC (86%) (zabezpieczenie cbBTC, dług w USDC, LLTV 86%), ma jeden kontrakt prelikwidacji wymieniony przez API Morpho, pod adresem `0xa7272aFc21f9C321024ED93892a1abfeb621C374`. Odczyt z sieci Base z 26 października 2026, sprawdzony z API Morpho:
+
+- PreLiquidationFactory w sieci Base potwierdza, że utworzyła ten kontrakt, a kontrakt wskazuje na ten rynek.
+- preLLTV 83,26%, close factor rosnący od 0,20% do 24,53%, bonus 4,38% na obu końcach: wartości domyślne dla 86%.
+- Jego wyrocznia to wyrocznia samego rynku. Wyceniała cbBTC na 80 000,15 USDC w blokach Base 53102870 i 53102952; [jak działa likwidacja na Morpho](/pl/blog/jak-dziala-likwidacja-na-morpho) używa tej samej ceny.
+- Na rynku było pożyczone około 1,61 mld USDC pod około 40 051 cbBTC, w około 43 000 pozycji z pożyczką.
+- W mniej więcej 28 godzinach bloków Base odczytanych przed blokiem 53102692 nie pojawiła się żadna prelikwidacja przez ten kontrakt.
+
+W sieci Ethereum największy wymieniony rynek USDC | cbBTC (86%) ma kontrakt z tymi samymi parametrami, pod adresem `0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A`, który też używa wyroczni swojego rynku.
+
+## Przykład z obliczeniami: ile może zabrać jedna prelikwidacja?
+
+Weź przykładową pozycję na tym rynku w sieci Base: 1 cbBTC zabezpieczenia i 50 000 USDC długu, przy cenie 80 000,15 USDC za cbBTC. Jej współczynnik zdrowia wynosi 1,376 względem LLTV 86% i 1,332 względem linii prelikwidacji 83,26%. Przy tej samej wyroczni wartość dla prelikwidacji to zawsze wartość rynkowa razy 0,968 (83,26 ÷ 86).
+
+Prelikwidacja może się zacząć, gdy cbBTC spadnie poniżej 60 052,58 USDC, 24,9% poniżej tej ceny. Zwykła likwidacja zaczyna się poniżej 58 139,53 USDC, 27,3% niżej. Między tymi cenami największa pojedyncza prelikwidacja wygląda tak:
+
+| Wskaźnik LTV | Cena cbBTC | Close factor | Spłacony dług | Zabrane zabezpieczenie (wartość w USDC) | Bonus | Wskaźnik LTV po |
+| ------------ | ---------- | ------------ | ------------- | --------------------------------------- | ----- | --------------- |
+| 84%          | 59 523,81  | 6,77%        | 3384          | 3533                                    | 148   | 83,26%          |
+| 85%          | 58 823,53  | 15,65%       | 7825          | 8168                                    | 343   | 83,26%          |
+| 86%          | 58 139,53  | 24,53%       | 12 266        | 12 803                                  | 538   | 83,23%          |
+
+Przy wartościach domyślnych jedno wywołanie pełnej wielkości sprowadza wskaźnik LTV z powrotem mniej więcej do preLLTV, gdzie kontrakt się zatrzymuje. Dla porównania zwykła likwidacja Blue przy 87%: likwidator może spłacić całe 50 000 USDC i zabrać cbBTC warte 52 192 USDC, zostawiając ci około 5279 USDC zabezpieczenia i żadnej pożyczki.
+
+## Dlaczego pożyczkobiorcy się na nią zgadzali i ile ich to kosztowało?
+
+Argumentem za zgodą były mniejsze, stopniowe sprzedaże. Artykuł pomocy Morpho opisuje Auto-deleverage jako zamykanie tylko części pozycji, by przywrócić jej kondycję, z opłatą naliczaną tylko od zamkniętej kwoty. W przykładzie wyżej pożyczkobiorca, który się zgodził, płacił od 148 do 538 USDC bonusu przy każdym kroku, podczas gdy zwykła likwidacja przy 87%, która spłaca całą pożyczkę, kosztuje 2192 USDC; kilka kroków albo zwykła likwidacja po nich mogą w sumie kosztować więcej.
+
+Koszty:
+
+- **Sprzedaż zaczyna się wcześniej.** Na rynku 86% część twojej pozycji może zostać sprzedana od współczynnika zdrowia rynku około 1,033, gdy współczynnik zdrowia opisywany przez centrum pomocy Morpho, liczony względem LLTV, jest wciąż powyżej 1.
+- **Kroki mogą się powtarzać.** Close factor ogranicza każde wywołanie, a nie sumę, więc kilka wywołań może nastąpić jedno po drugim, dopóki zostajesz powyżej preLLTV.
+- **Cena może być inna.** Kontrakt może używać innej wyroczni niż rynek. Wszystkie 106 kontraktów wymienionych przez API Morpho używa wyroczni swojego rynku; kontrakt, którego API nie wymienia, może tego nie robić.
+- **Nikt nie musi działać.** Jeśli żaden likwidator nie wywoła kontraktu, przed LLTV nic się nie dzieje; gdy pozycja przekroczy LLTV, może zostać zlikwidowana zwykłą drogą.
+
+Ponieważ funkcja jest teraz wycofywana, Morpho prosi pożyczkobiorców, którzy wciąż ją mają, o jej wyłączenie, a nowe zgody nie są już przyjmowane.
+
+## Jak sprawdzić, czy masz autoryzowany taki kontrakt?
+
+Masz autoryzowany kontrakt prelikwidacji, jeśli `isAuthorized(your wallet, contract)` w Morpho Blue zwraca true. Autoryzacja jest zapisana w samym Morpho Blue, nie w kontrakcie prelikwidacji.
+
+1. **Znajdź kontrakt dla swojego rynku.** API Morpho wymienia go wśród prelikwidacji rynku; centrum pomocy Morpho wskazuje też przycisk zarządzania na stronie twojej pozycji lub rynku w aplikacji.
+2. **Wywołaj `isAuthorized` na kontrakcie Morpho Blue w danej sieci.** W eksploratorze bloków otwórz funkcje odczytu kontraktu Blue i wpisz swój portfel jako pierwszy adres, a kontrakt prelikwidacji jako drugi.
+3. **Odczytaj odpowiedź.** True oznacza, że kontrakt może przeprowadzić prelikwidację twojej pozycji; false, że nie może.
+
+Te kroki wymagają adresu kontraktu, a API Morpho wymienia tylko kontrakty z ustawieniami domyślnymi. Autoryzację można też dać podpisem, a wysłać ją może ktoś inny, więc może się nie pokazać na liście transakcji twojego portfela. Żeby zobaczyć każdy adres, który ma twoją autoryzację, przejrzyj w eksploratorze bloków zdarzenia SetAuthorization kontraktu Morpho Blue z twoim portfelem jako autoryzującym (authorizer). Ostatnie zdarzenie dla każdego adresu pokazuje, czy autoryzacja nadal obowiązuje, a PreLiquidationFactory danej sieci odpowiada true na `isPreLiquidation(address)` dla kontraktów, które utworzyła.
+
+Jeden szczegół ma tu znaczenie. Autoryzacja w Blue nie wskazuje rynku: adres, który autoryzujesz, przechodzi kontrole Blue dla twoich pożyczek, wypłat i wypłat zabezpieczenia w całym tym kontrakcie Blue. Stały kod kontraktu prelikwidacji zawsze tylko spłaca dług i wypłaca zabezpieczenie na swoim własnym rynku, ale inne adresy z twoją autoryzacją nie są tak ograniczone.
+
+## Jak wyłączyć prelikwidację?
+
+Wyłączasz ją, ustawiając autoryzację z powrotem na false:
+
+- **W aplikacji Morpho:** centrum pomocy Morpho każe kliknąć przycisk zarządzania przy pozycji w twoim panelu albo na stronie rynku, co otwiera okno usuwania Auto-deleverage.
+- **Na kontrakcie:** wywołaj ze swojego portfela `setAuthorization(pre-liquidation contract, false)` w Morpho Blue. Wywołanie się nie powiedzie, jeśli wartość już jest false, więc nieudane wywołanie może też oznaczać, że nie było czego usuwać.
+
+Po odwołaniu próby wypłaty twojego zabezpieczenia przez kontrakt kończą się niepowodzeniem i obowiązuje już tylko zwykła likwidacja Blue poniżej współczynnika zdrowia 1. Kosztuje to gaz jednej transakcji.
+
+## Jak Tokenping mierzy pozycję z prelikwidacją?
+
+Dla pożyczkobiorcy, który autoryzował kontrakt prelikwidacji na rynku Blue, Tokenping wysyła alerty według niższej z dwóch linii: linii LLTV i linii prelikwidacji. Ma to znaczenie, bo centrum pomocy Morpho opisuje współczynnik zdrowia pokazywany w aplikacji jako dochodzący do 1, gdy wskaźnik LTV przekracza LLTV, czyli tam, gdzie zaczyna się też własna likwidacja Blue. Na rynku 86% z domyślnym kontraktem próg alertu 1,10 na linii prelikwidacji uruchamia się przy współczynniku zdrowia rynku około 1,136, a najniższy próg, 1,02, przy około 1,054, czyli około 2% powyżej linii, od której może się zacząć prelikwidacja.
+
+Gdy zapisujesz lub edytujesz alert, Tokenping zapamiętuje kontrakty prelikwidacji, które API Morpho wymienia dla tego rynku; każda kontrola sprawdza potem, czy każdy z nich ma twoją autoryzację, i liczy współczynnik zdrowia z danych on-chain według matematyki samego Morpho, nigdy z API Morpho. Kontrakt prelikwidacji, którego API Morpho nie wymienia, nie jest sprawdzany, więc jeśli twoja autoryzacja dotyczy takiego kontraktu z niestandardowymi ustawieniami, alert mierzy tylko względem linii LLTV.
+
+Reszta działa jak w każdym alercie Morpho. Tokenping sprawdza co 5 minut, w 14 sieciach, a dopóki twój współczynnik zdrowia jest poniżej twojego progu (dowolna wartość od 1,02 do 10), każda kontrola wysyła wiadomość na każdym wybranym kanale: Signal, Telegram lub e-mail. Alerty kosztują <AlertPrice />, w tym samym planie co alerty Aave, a [przeglądanie pozycji na Morpho](/pl/morpho) nie wymaga płatności. [Jak wybrać próg alertu](/pl/blog/bezpieczny-wspolczynnik-zdrowia-aave#jak-krok-po-kroku-wybrac-prog-alertu) omawia ten kompromis na przykładzie Aave; tutaj obowiązuje to samo rozumowanie. Alert daje ci czas na działanie, a nie gwarancję: cena może się zmienić między dwiema kontrolami. Jeśli nie chcesz już prelikwidacji, odwołaj ją, jak opisano wyżej; wtedy alert mierzy już tylko względem linii LLTV.
+
+## Źródła
+
+- [morpho-org/pre-liquidation](https://github.com/morpho-org/pre-liquidation): README, [PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidation.sol), [PreLiquidationFactory.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidationFactory.sol) i [IPreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/interfaces/IPreLiquidation.sol): parametry, limity, interpolacja i kontrole (sprawdzono 26 października 2026)
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) i [EventsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/EventsLib.sol): `isAuthorized`, `setAuthorization`, zdarzenie SetAuthorization, kontrola kondycji pozycji i bonus zwykłej likwidacji (sprawdzono 26 października 2026)
+- [Introducing pre-liquidations](https://morpho.org/blog/introducing-pre-liquidations-enhanced-loan-management-on-morpho) (Morpho, 4 marca 2025): auto-deleverage i auto-close jako zastosowania oraz zwykła likwidacja, gdy prelikwidacja nie nastąpi (sprawdzono 26 października 2026)
+- [Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (centrum pomocy Morpho, aktualizacja 13 maja 2026): brak nowych pozycji, jak wyłączyć funkcję, co robiła (sprawdzono 26 października 2026)
+- [Centrum pomocy Morpho: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): aplikacja pokazuje współczynnik zdrowia każdej pozycji, a pozycję można zlikwidować przy 1 lub niżej, gdy jej wskaźnik LTV przekroczy LLTV (sprawdzono 26 października 2026)
+- [Pull request 1132 w SDK Morpho](https://github.com/morpho-org/sdks/pull/1132) (scalony 22 września 2026) i [preLiquidation.ts](https://github.com/morpho-org/sdks/blob/main/packages/blue-sdk/src/preLiquidation.ts): wycofanie i parametry domyślne (sprawdzono 26 października 2026)
+- [Dokumentacja Morpho: liquidation](https://docs.morpho.org/developers/borrow/concepts/liquidation): dokąd prowadzi teraz stara strona o prelikwidacji (sprawdzono 26 października 2026)
+- [API Morpho](https://api.morpho.org/graphql): wymienione rynki, ich kontrakty prelikwidacji i wyrocznie oraz rynki USDC | cbBTC (86%) w sieciach Base i Ethereum (sprawdzono 26 października 2026)
+- Kontrakty prelikwidacji odczytane on-chain: [Base](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374) w blokach od 53102692 do 53102952 i [Ethereum](https://etherscan.io/address/0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A) w bloku 26274980, z ich fabrykami, rynkami i wyroczniami (sprawdzono 26 października 2026)
+
+_Treści edukacyjne, nie porada finansowa. Alerty zmniejszają ryzyko, ale nie zapobiegają likwidacji._

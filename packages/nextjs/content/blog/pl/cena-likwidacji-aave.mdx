@@ -1,0 +1,183 @@
+export const meta = {
+  slug: "cena-likwidacji-aave",
+  title: "Jak obliczyć cenę likwidacji na Aave",
+  description:
+    "Wzór na cenę likwidacji w Aave V3, z przykładami dla jednego zabezpieczenia, dwóch zabezpieczeń i zmiennego długu, plus kalkulator.",
+  h1: "Jak obliczyć cenę likwidacji na Aave",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-20",
+  primaryQuestion: "Przy jakiej cenie moja pozycja na Aave może zostać zlikwidowana?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Twoja cena likwidacji na Aave to cena jednego aktywa według wyroczni (oracle), przy której twój współczynnik zdrowia
+  (health factor) spadłby do 1,00, gdy wszystkie inne ceny się nie zmieniają; po jej przekroczeniu (w dół dla
+  zabezpieczenia, w górę dla pożyczonego aktywa) pozycję można zlikwidować. Przy jednym zmiennym zabezpieczeniu i długu
+  w stablecoinie równa się dług ÷ (ilość zabezpieczenia × próg likwidacji), czyli aktualna cena ÷ twój współczynnik
+  zdrowia. Na przykład 10 WETH zabezpieczające 12 000 USDC na Aave V3 Ethereum Core (próg likwidacji WETH 83% 14
+  października 2026) można zlikwidować, gdy ETH spadnie poniżej 1445,78 $, licząc USDC po 1,00 $.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Czym jest cena likwidacji na Aave?
+
+Cena likwidacji na Aave to cena jednego aktywa w twojej pozycji, przy której twój współczynnik zdrowia osiągnąłby dokładnie 1,00, gdy wszystkie inne ceny się nie zmieniają. Aave V3 dopuszcza likwidację, gdy współczynnik zdrowia jest poniżej 1,00. Likwidator może wtedy spłacić część lub całość twojego długu i zabrać zabezpieczenie warte tyle samo plus bonus likwidacyjny (5% dla zabezpieczenia WETH na Ethereum Core, odczyt on-chain z 14 października 2026). Cały proces opisuje poradnik [co dzieje się podczas likwidacji na Aave](/pl/blog/jak-dziala-likwidacja-na-aave).
+
+Korzystając z tej liczby, pamiętaj o trzech rzeczach:
+
+- **Jest wyliczona.** Kontrakt Pool w Aave V3 podaje przez `getUserAccountData` współczynnik zdrowia, a nie cenę likwidacji. Cenę dostajesz, rozwiązując wzór na współczynnik zdrowia względem jednego aktywa; ten wzór wyjaśnia poradnik [czym jest współczynnik zdrowia na Aave](/pl/blog/wspolczynnik-zdrowia-aave).
+- **To cena wyroczni.** Aave wycenia pozycje własną wyrocznią, zbudowaną na feedach Chainlink i adapterach CAPO, a aplikacja Aave pokazuje tę cenę jako „Oracle price” (cena wyroczni) na stronie każdego aktywa. Ostatnia transakcja na giełdzie może się od niej różnić.
+- **Zakłada, że reszta stoi w miejscu.** Przy dwóch aktywach zabezpieczenia albo zmiennym długu wiele kombinacji cen prowadzi do 1,00, więc jedna cena likwidacji mówi tylko, jak daleko może się przesunąć jedno aktywo samo w sobie.
+
+## Jaki jest wzór na cenę likwidacji na Aave?
+
+Dla pozycji na Aave V3 z jednym zmiennym aktywem zabezpieczenia i długiem w stablecoinie cena likwidacji to dług ÷ (ilość zabezpieczenia × próg likwidacji), gdzie próg likwidacji (liquidation threshold, LT) to część wartości zabezpieczenia, która liczy się do współczynnika zdrowia.
+
+**Cena likwidacji = dług ÷ (ilość zabezpieczenia × próg likwidacji)**
+
+To współczynnik zdrowia rozwiązany względem ceny. Aave V3 liczy HF = Σ(wartość zabezpieczenia × próg likwidacji) ÷ łączna wartość długu, w USD. Przy jednym aktywie zabezpieczenia HF = ilość × cena × LT ÷ dług. Ustaw HF na 1 i rozwiąż względem ceny.
+
+Ponieważ współczynnik zdrowia zawiera już próg, istnieje skrót: **cena likwidacji = aktualna cena ÷ współczynnik zdrowia**. Spadek potrzebny, żeby do niej dojść, to 1 − 1 ÷ HF.
+
+Inne rodzaje pozycji używają odmiany tego samego wzoru:
+
+| Pozycja                                           | Cena likwidacji                                                        | Skrót z twojego współczynnika zdrowia                        |
+| ------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Jedno zmienne zabezpieczenie, dług w stablecoinie | dług ÷ (ilość × LT)                                                    | aktualna cena ÷ HF                                           |
+| Dwa zmienne zabezpieczenia, dług w stablecoinie   | (dług − wartość drugiego zabezpieczenia × jego LT) ÷ (ilość × LT)      | brak dla jednej ceny; oba spadają razem: spadek o 1 − 1 ÷ HF |
+| Zabezpieczenie w stablecoinie, zmienny dług       | Σ(wartość zabezpieczenia × LT) ÷ pożyczona ilość, cena powyżej obecnej | aktualna cena × HF                                           |
+| Zabezpieczenie wstETH, dług WETH, w E-Mode        | stosunek cen wstETH/ETH: dług WETH ÷ (ilość wstETH × LT w E-Mode)      | aktualny stosunek ÷ HF                                       |
+
+### Przykład z obliczeniami: 10 WETH i 12 000 USDC na Ethereum Core
+
+Wpłać 10 WETH i pożycz 12 000 USDC na Aave V3 Ethereum Core. Próg likwidacji WETH wynosił tam 83%, a jego wskaźnik LTV (loan-to-value) 80,5% (odczyt on-chain w bloku Ethereum 26193284, 14 października 2026). Ten przykład przyjmuje ETH po 2400 $ dla okrągłych liczb; wyrocznia Aave podawała 2414,78 $ w bloku 26193376 tego samego dnia. USDC liczy się po 1,00 $.
+
+| Krok                   | Obliczenie             | Wynik     |
+| ---------------------- | ---------------------- | --------- |
+| Wartość zabezpieczenia | 10 × 2400 $            | 24 000 $  |
+| Współczynnik zdrowia   | 24 000 × 0,83 ÷ 12 000 | 1,66      |
+| Cena likwidacji        | 12 000 ÷ (10 × 0,83)   | 1445,78 $ |
+| Sprawdzenie skrótem    | 2400 ÷ 1,66            | 1445,78 $ |
+| Potrzebny spadek       | 1 − 1 ÷ 1,66           | 39,8%     |
+
+Limit pożyczki nie jest marginesem bezpieczeństwa. Przy LTV 80,5% te same 10 WETH pozwala pożyczyć do 19 320 $, co daje współczynnik zdrowia 1,031 i cenę likwidacji 2327,71 $, tylko 3,0% poniżej 2400 $. Poradnik [jaki bufor daje współczynnik zdrowia](/pl/blog/bezpieczny-wspolczynnik-zdrowia-aave) omawia tę różnicę dla każdego aktywa.
+
+### Którego progu likwidacji użyć?
+
+Użyj progu likwidacji rynku Aave, na którym jest twoja pozycja. Aplikacja Aave pokazuje go jako „Liquidation threshold” (próg likwidacji) w sekcji „Collateral usage” (użycie jako zabezpieczenia) na stronie każdego aktywa. Ten sam token może mieć różne progi na różnych rynkach, a governance może je zmieniać. W E-Mode próg kategorii zastępuje własny próg aktywa tylko dla aktywów z jej zbioru zabezpieczeń; każde inne zabezpieczenie zachowuje własny próg.
+
+| Rynek Aave V3                          | Aktywo                                        | LTV           | Próg likwidacji |
+| -------------------------------------- | --------------------------------------------- | ------------- | --------------- |
+| Ethereum Core                          | WETH                                          | 80,5%         | 83%             |
+| Ethereum Core                          | WBTC                                          | 73%           | 78%             |
+| Ethereum Core                          | USDC                                          | 75%           | 78%             |
+| Ethereum Core, E-Mode „ETH correlated” | WETH, wstETH, cbETH, rETH, weETH, osETH, ETHx | 93% (ETHx 0%) | 95%             |
+| Arbitrum                               | WETH                                          | 80%           | 84%             |
+| Arbitrum                               | WBTC                                          | 73%           | 78%             |
+| Arbitrum                               | USDC (natywny)                                | 75%           | 78%             |
+
+Odczyt on-chain z 14 października 2026 w bloku Ethereum 26193284 (E-Mode w bloku 26193288) i bloku Arbitrum 514855406. Ponowny odczyt tuż po północy UTC (blok Ethereum 26194239, blok Arbitrum 514896811) zwrócił te same wartości i podał LTV 0% dla ETHx w E-Mode.
+
+### Czy na Aave V4 wzór jest inny?
+
+Aave V4, działające na Ethereum, Avalanche, Arc i Base, używa tego samego kształtu wzoru z dwiema różnicami: jeden współczynnik zabezpieczenia (collateral factor) dla każdego aktywa w każdym Spoke'u zastępuje osobne LTV i próg likwidacji, a współczynnik zdrowia liczy się osobno dla każdego Spoke'a. Pozycję w V4 można zlikwidować poniżej współczynnika zdrowia 1,0, więc jej cena likwidacji to dług ÷ (ilość zabezpieczenia × współczynnik zabezpieczenia). Współczynnik zabezpieczenia WETH w Ethereum Main Spoke wynosił 83% 14 października 2026 (API Aave V4), więc 10 WETH przy długu 12 000 USDC też zostałoby tam zlikwidowane poniżej 1445,78 $. Tokenping monitoruje pozycje zarówno w V3, jak i w V4, z osobnym alertem dla każdego Spoke'a V4.
+
+## Jak obliczyć cenę likwidacji na Aave przy dwóch aktywach zabezpieczenia?
+
+Przy dwóch aktywach zabezpieczenia cena likwidacji jednego aktywa zakłada, że drugie zachowuje obecną cenę: odejmij od długu ważoną wartość drugiego aktywa, a potem podziel przez ilość pierwszego aktywa pomnożoną przez jego próg likwidacji.
+
+**Cena likwidacji aktywa A = (dług − wartość B × LT aktywa B) ÷ (ilość A × LT aktywa A)**
+
+Przykład na Aave V3 Ethereum Core: 10 WETH po 2400 $ (LT 83%) plus 0,2 WBTC po przykładowej cenie 81 500 $ (LT 78%; wyrocznia podawała 81 528,44 $ 14 października 2026), przy długu 20 000 USDC. Ważone zabezpieczenie to 24 000 × 0,83 + 16 300 × 0,78 = 19 920 + 12 714 = 32 634, więc współczynnik zdrowia wynosi 32 634 ÷ 20 000 = 1,632.
+
+| Scenariusz                          | Cena likwidacji                                     | Potrzebny spadek      |
+| ----------------------------------- | --------------------------------------------------- | --------------------- |
+| ETH spada, WBTC zostaje po 81 500 $ | (20 000 − 12 714) ÷ (10 × 0,83) = 877,83 $ za ETH   | 63,4%                 |
+| WBTC spada, ETH zostaje po 2400 $   | (20 000 − 19 920) ÷ (0,2 × 0,78) = 512,82 $ za WBTC | 99,4%                 |
+| Oba spadają o ten sam procent       | ETH po 1470,86 $ i WBTC po 49 948 $, jednocześnie   | 38,7% (1 − 1 ÷ 1,632) |
+
+Pierwsze dwa wiersze wyglądają spokojnie, bo każdy zakłada, że drugie aktywo utrzymuje wartość. Tutaj samo WETH prawie pokrywa dług (19 920 ważonej wartości wobec 20 000), więc WBTC musiałoby samo spaść o 99,4%. Dla zabezpieczeń, które zwykle poruszają się razem, realistycznym testem jest trzeci wiersz: spadek obu o 38,7%.
+
+## Co, jeśli pożyczasz zmienne aktywo zamiast stablecoina?
+
+Jeśli pożyczasz zmienne aktywo, takie jak WETH, twoja pozycja na Aave ma cenę likwidacji powyżej obecnej ceny: cenę pożyczonego aktywa, przy której twój współczynnik zdrowia osiąga 1,00. Gdy ta cena rośnie, dług jest wart więcej, a współczynnik zdrowia spada.
+
+**Cena likwidacji pożyczonego aktywa = Σ(wartość zabezpieczenia × LT) ÷ pożyczona ilość**, a skrótem: aktualna cena × współczynnik zdrowia.
+
+Przykład na Aave V3 Ethereum Core: wpłać 10 000 USDC (LT 78%) i pożycz 2,5 WETH, warte 6000 $ przy ETH po 2400 $. Współczynnik zdrowia wynosi 10 000 × 0,78 ÷ 6000 = 1,30. Pozycję można zlikwidować, gdy ETH wzrośnie powyżej 7800 ÷ 2,5 = 3120 $ (to także 2400 × 1,30), czyli o 30%.
+
+Strona stablecoina też może się ruszyć. Cena USDC w Aave na Ethereum jest ograniczona do 1,04 $, ale ceny poniżej 1 $ przechodzą bez zmian (limit odczytany on-chain w bloku Ethereum 26194239). USDC już tracił powiązanie z dolarem: 11 marca 2023 spadł do około 88 centów, jak odnotowuje post-mortem Gauntlet na forum Aave. Przy 0,88 $ ta sama pozycja miałaby współczynnik zdrowia 8800 × 0,78 ÷ 6000 = 1,144, a cena likwidacji ETH spadłaby z 3120 $ do 2745,60 $.
+
+Gdy zarówno zabezpieczenie, jak i dług są zmienne, na przykład zabezpieczenie WBTC przy długu WETH, liczy się tylko stosunek tych dwóch cen: współczynnik zdrowia osiąga 1,00, gdy stosunek WBTC/ETH spadnie do dług w ETH ÷ (ilość WBTC × LT aktywa WBTC).
+
+## Jak E-Mode zmienia twoją cenę likwidacji?
+
+E-Mode podnosi próg likwidacji dla skorelowanych aktywów. Gdy zabezpieczenie i dług podążają za tą samą ceną bazową, tak jak wstETH i WETH podążają za ETH, cena likwidacji staje się stosunkiem cen (wstETH/ETH), a nie ceną w dolarach. Na Aave V3 Ethereum Core kategoria E-Mode „ETH correlated” miała 14 października 2026 LTV 93%, próg likwidacji 95% i bonus likwidacyjny 1%. Jej zbiór zabezpieczeń to WETH, wstETH, cbETH, rETH, weETH, osETH i ETHx, a pożyczać pozwala tylko WETH. Zabezpieczenie spoza tego zbioru zachowuje swój zwykły próg.
+
+Przy zabezpieczeniu wstETH i długu WETH obie strony są wyceniane w ETH, więc cena ETH w dolarach w dużej mierze się znosi. O likwidacji decyduje kurs wstETH/ETH, którego używa wyrocznia Aave:
+
+- Wpłać wstETH warte 100 ETH według kursu wyroczni i pożycz 90 WETH. Współczynnik zdrowia wynosi 100 × 0,95 ÷ 90 = 1,056. Jeśli cena ETH w dolarach spadnie o połowę, obie strony spadną o połowę, a współczynnik zdrowia zostanie na 1,056. Jeśli kurs wstETH/ETH w wyroczni spadnie o 5,3% (1 − 90 ÷ 95), pozycja osiągnie 1,00.
+- Przy maksymalnej pożyczce w tej kategorii, 93 WETH przy tym samym zabezpieczeniu, współczynnik zdrowia startuje od 95 ÷ 93 = 1,0215 i wystarczy spadek kursu o 2,1%.
+
+Ruch tej wielkości już się zdarzył. Aave wycenia wstETH przez adapter CAPO (Correlated Assets Price Oracle), który ogranicza podawany kurs wymiany. W marcu 2026 źle skonfigurowany limit na rynkach Ethereum Core i Prime obniżył kurs używany przez Aave o około 2,85%. Post-mortem Chaos Labs (10 marca 2026) wylicza około 10 938 wstETH zlikwidowanych w E-Mode na 34 kontach; dotknęło to pozycji ze współczynnikiem zdrowia poniżej około 1,0288. Ruch wynikał z konfiguracji wyroczni, nie z rynku.
+
+## Dlaczego twoja cena likwidacji zmienia się z czasem?
+
+Twoja cena likwidacji na Aave przesuwa się, nawet gdy nic nie robisz, bo zmieniają się jej składniki: odsetki powiększają dług, odsetki od wpłat nieco powiększają zabezpieczenie, a governance może zmieniać progi likwidacji. Przesuwają ją też twoje własne transakcje: pożyczka ją podnosi, a spłata lub dodanie zabezpieczenia ją obniża.
+
+- **Odsetki.** Weźmy 10 WETH i 12 000 USDC długu na Aave V3 Ethereum Core przy ETH po 2400 $. 14 października 2026 (blok 26193378) zmienne oprocentowanie pożyczek USDC wynosiło 4,496% APR, a oprocentowanie wpłat WETH 1,309% APR. Gdyby te stawki utrzymały się przez rok, cena likwidacji wzrosłaby z 1445,78 $ do około 1490 $ przy niezmienionym ETH. Oprocentowanie jest zmienne: później tego samego wieczoru oprocentowanie pożyczek USDC na niecałą godzinę skoczyło do 14,1% (blok 26194180), bo prawie całe wpłacone USDC zostało pożyczone.
+- **Obniżki progów.** W Aave V3 niższy próg likwidacji działa od razu na każdą otwartą pozycję, a cena likwidacji zmienia się w proporcji stary LT ÷ nowy LT. Hipotetyczna obniżka progu WETH z 83% do 80% przesunęłaby cenę likwidacji tej samej pozycji z 1445,78 $ do 1500,00 $. Obniżki przychodzą przez propozycje governance albo przez Risk Stewards, którzy mogą zmieniać progi w skonfigurowanych granicach.
+- **Zmiany LTV się nie liczą.** Obniżenie LTV aktywa, nawet do 0, zmniejsza lub usuwa zdolność pożyczkową, którą ono daje, ale nie zmienia współczynnika zdrowia ani ceny likwidacji.
+- **Aave V4 działa inaczej.** Zmiany współczynnika zabezpieczenia zwykle dotyczą nowych pozycji; istniejące zachowują stare ustawienia, dopóki użytkownik nie pożyczy, nie wypłaci lub nie zmieni ustawień zabezpieczenia albo dopóki nie zaktualizuje ich Governor. V4 dodaje też do oprocentowania pożyczki User Risk Premium (premię za ryzyko użytkownika) przy bardziej ryzykownym zabezpieczeniu, więc dług, a razem z nim cena likwidacji, może rosnąć szybciej.
+
+## Jak blisko ceny likwidacji to za blisko?
+
+Żadna odległość od ceny likwidacji nie jest bezpieczna dla wszystkich. Przy jednym zmiennym zabezpieczeniu i długu w stablecoinie ta odległość to 1 − 1 ÷ HF: współczynnik zdrowia 1,25 zostawia miejsce na spadek o 20%, 1,5 na 33,3%, a 2,0 na 50%. Ile miejsca potrzebujesz, zależy od zmienności zabezpieczenia, od tego, jak szybko możesz spłacić dług lub dodać zabezpieczenie, i od tego, jak zatłoczona jest w danej chwili sieć. Pełną tabelę podaje poradnik [jaki bufor daje współczynnik zdrowia](/pl/blog/bezpieczny-wspolczynnik-zdrowia-aave).
+
+### Jak zamienić cenę likwidacji na próg alertu o współczynniku zdrowia?
+
+Wybierz cenę, przy której chcesz zareagować, i przelicz ją na współczynnik zdrowia. Przy jednym zmiennym zabezpieczeniu i długu w stablecoinie **HF przy danej cenie = ta cena ÷ cena likwidacji**. Dla 10 WETH przy długu 12 000 USDC (cena likwidacji 1445,78 $) reakcja przy ETH po 1800 $ oznacza współczynnik zdrowia 1800 ÷ 1445,78 = 1,245, czyli próg około 1,25. Przy zmiennym długu jest odwrotnie: HF = cena likwidacji ÷ cena pożyczonego aktywa.
+
+Próg współczynnika zdrowia ma dwie przewagi nad poziomem ceny. Podąża za twoją ceną likwidacji, gdy narastają odsetki i gdy zmieniasz pozycję, i obejmuje naraz każde aktywo zabezpieczenia i długu. Stały alert cenowy przestaje być aktualny, gdy tylko dług urośnie.
+
+Tak działa Tokenping: wysyła alerty o współczynniku zdrowia i nie ma alertów cenowych. Ustawiasz jeden próg dla każdego rynku Aave V3 lub Spoke'a Aave V4, od 1,1 do 10. Tokenping sprawdza pozycję co 5 minut i przy każdym sprawdzeniu, gdy twój współczynnik zdrowia jest poniżej progu, wysyła wiadomość na każdy wybrany kanał (Signal, Telegram, e-mail albo kilka z nich). Szybki ruch może przekroczyć 1,00 między dwoma sprawdzeniami, więc próg powyżej poziomu, przy którym zareagujesz, daje czas; nie może powstrzymać likwidacji. Kroki opisuje poradnik [jak ustawić alert o współczynniku zdrowia](/pl/blog/alerty-wspolczynnika-zdrowia-aave-konfiguracja), a najpierw możesz [sprawdzić swój współczynnik zdrowia na Aave V3](/pl/aave).
+
+## Jak obliczyć cenę likwidacji własnej pozycji?
+
+Żeby obliczyć własną cenę likwidacji na Aave, potrzebujesz ilości każdego zabezpieczenia, progu likwidacji każdego zabezpieczenia, łącznego długu i aktualnej ceny wyroczni. Aplikacja Aave pokazuje wszystkie cztery.
+
+1. Zapisz ilość każdego zabezpieczenia, łączny dług i to, czy twoje konto jest w E-Mode.
+2. Znajdź próg likwidacji każdego zabezpieczenia na stronie aktywa w aplikacji Aave („Liquidation threshold” w sekcji „Collateral usage”). W E-Mode użyj progu kategorii tylko dla zabezpieczeń z jej zbioru; każde inne zabezpieczenie zachowuje własny próg.
+3. Przy jednym zmiennym zabezpieczeniu i długu w stablecoinie podziel cenę wyroczni przez swój współczynnik zdrowia. Przy dwóch zabezpieczeniach cena A to (dług − wartość B × LT aktywa B) ÷ (ilość A × LT aktywa A). Przy pożyczonym zmiennym aktywie jego cena to Σ(wartość zabezpieczenia × LT) ÷ pożyczona ilość. Kalkulator poniżej obsługuje wszystkie trzy przypadki.
+4. Przelicz ponownie po pożyczce, spłacie lub dodaniu zabezpieczenia i po zmianie progu.
+
+Przykład z obliczeniami na Aave V3 Arbitrum, gdzie próg likwidacji WETH wynosił 84% 14 października 2026: 5 WETH po 2400 $ przy długu 7000 USDC daje współczynnik zdrowia 12 000 × 0,84 ÷ 7000 = 1,44 i cenę likwidacji 2400 ÷ 1,44 = 1666,67 $, czyli spadek o 30,6%. Przy 83% z Ethereum Core ta sama pozycja zostałaby zlikwidowana poniżej 1686,75 $.
+
+<LiquidationCalculator />
+
+Każdy kalkulator podaje dzisiejszą cenę likwidacji. Odsetki, zmiany progów i twoje własne transakcje przesuwają ją później, więc wynik sprzed miesiąca warto przeliczyć.
+
+## Źródła
+
+- [Aave V3 GenericLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): wzór na współczynnik zdrowia i próg E-Mode stosowany tylko do zbioru zabezpieczeń kategorii (sprawdzono 14 października 2026)
+- [Aave V3 ValidationLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): likwidacja poniżej współczynnika zdrowia 1,00, sprawdzenia LTV przy pożyczaniu (sprawdzono 14 października 2026)
+- [Aave V3 LiquidationLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): ile długu może spłacić jedna likwidacja (sprawdzono 14 października 2026)
+- [Aave V3 Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getReserveConfigurationData` w blokach 26193284 i 26194239; `getReserveData` w blokach 26193378 i 26194180 (sprawdzono 14 października 2026; ponownie odczytano 15 października 2026)
+- [Aave V3 Arbitrum PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): `getReserveConfigurationData` w blokach Arbitrum 514855406 i 514896811 (sprawdzono 14 października 2026; ponownie odczytano 15 października 2026)
+- [Aave V3 Ethereum Core Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): kategoria E-Mode 1 „ETH correlated”: konfiguracja zabezpieczeń oraz bitmapy zabezpieczeń, aktywów do pożyczania i LTV zero (sprawdzono 14 października 2026; ponownie odczytano 15 października 2026)
+- [AaveOracle na Ethereum](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): `getAssetPrice` w bloku 26193376; `getSourceOfAsset(USDC)` w bloku 26194239 (sprawdzono 14 października 2026; ponownie odczytano 15 października 2026)
+- [Adapter ceny USDC w Aave na Ethereum, „Capped USDC / USD”](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B): `getPriceCap` = 104000000 (1,04 $) w bloku 26194239 (sprawdzono 15 października 2026)
+- [Dokumentacja wyroczni Aave](https://aave.com/docs/ecosystem/oracle.md): feedy Chainlink i adaptery CAPO (sprawdzono 14 października 2026)
+- [Repozytorium feedów cenowych Aave (PriceCapAdapterStable)](https://github.com/aave-dao/aave-price-feeds): jak działa limit ceny USDC (sprawdzono 14 października 2026)
+- [Gauntlet, „Aave Resilient Through USDC Volatility”](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330): minimum USDC około 88 centów 11 marca 2023 (sprawdzono 14 października 2026)
+- [Chaos Labs, post-mortem kursu wymiany wstETH](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): incydent CAPO z marca 2026 (sprawdzono 14 października 2026)
+- [Aave V3 Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): jak parametry ryzyka mogą się zmieniać między głosowaniami governance (sprawdzono 14 października 2026)
+- [Dokumentacja pozycji użytkownika w Aave V4](https://aave.com/docs/aave-v4/positions.md): współczynnik zabezpieczenia i likwidacja poniżej współczynnika zdrowia 1,0 (sprawdzono 14 października 2026)
+- [Przegląd Aave V4 (aave/aave-v4)](https://github.com/aave/aave-v4/blob/main/docs/overview.md): dynamiczna konfiguracja ryzyka i User Risk Premium (sprawdzono 14 października 2026)
+- [API Aave V4](https://api.v4.aave.com/graphql): zapytanie `reserves`, współczynnik zabezpieczenia WETH dla każdego Spoke'a na Ethereum (sprawdzono 14 października 2026)
+- [Changelog Aave](https://aave.com/docs/resources/changelog.md): sieci V4 (sprawdzono 14 października 2026)
+- [Kod interfejsu Aave, SupplyInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/SupplyInfo.tsx) i [ReserveTopDetails.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/ReserveTopDetails.tsx): etykiety „Liquidation threshold” i „Oracle price” w aplikacji Aave (sprawdzono 14 października 2026)
+
+_Treści edukacyjne, nie porada finansowa. Alerty zmniejszają ryzyko, ale nie zapobiegają likwidacji._

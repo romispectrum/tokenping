@@ -15,6 +15,8 @@ import {
   itOnMarket,
   itTo,
   joinList,
+  plForMarket,
+  plOnMarket,
   plural,
   ptForMarket,
   ptOnMarket,
@@ -153,6 +155,28 @@ describe("Italian formatting", () => {
     expect(itOnMarket("Base", "network")).toBe("su Base");
     expect(itForMarket("Base")).toBe("per Base");
     expect(itForMarket("USDC | cbBTC (86%)", "market")).toBe("per il mercato USDC | cbBTC (86%)");
+  });
+});
+
+describe("Polish formatting", () => {
+  it("joins with i and lub, writes Polish dates, a decimal comma and the market wording", () => {
+    expect(joinList("pl", ["Signal", "Telegram", "e-mail"])).toBe("Signal, Telegram i e-mail");
+    expect(joinList("pl", ["Signal", "e-mail"], "disjunction")).toBe("Signal lub e-mail");
+    expect(formatLongDate("pl", "2026-10-14")).toBe("14 października 2026");
+    expect(formatDecimal("pl", "1.42")).toBe("1,42");
+    // Polish uses one for 1, few for 2-4 (22-24, ...), many for 0, 5-21 and 25-31, other for fractions.
+    const networks = (count: number) =>
+      plural("pl", count, { one: `${count} sieć`, few: `${count} sieci (few)`, many: `${count} sieci`, other: "x" });
+    expect(networks(1)).toBe("1 sieć");
+    expect(networks(3)).toBe("3 sieci (few)");
+    expect(networks(22)).toBe("22 sieci (few)");
+    expect(networks(12)).toBe("12 sieci");
+    expect(networks(0)).toBe("0 sieci");
+    expect(plOnMarket("Arbitrum")).toBe("w sieci Arbitrum");
+    expect(plOnMarket("Ethereum (V4 Lido)")).toBe("na rynku Ethereum (V4 Lido)");
+    expect(plOnMarket("Base", "network")).toBe("w sieci Base");
+    expect(plForMarket("Base")).toBe("dla sieci Base");
+    expect(plForMarket("USDC | cbBTC (86%)", "market")).toBe("dla rynku USDC | cbBTC (86%)");
   });
 });
 

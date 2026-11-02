@@ -1,0 +1,134 @@
+export const meta = {
+  slug: "likwidacja-na-aave-lub-morpho-co-teraz",
+  title: "Likwidacja na Aave lub Morpho: co zrobić teraz",
+  description:
+    "Jak znaleźć transakcję likwidacji, ustalić, co zabrano, a co zostało, dlaczego do niej doszło i jak nie dać się zlikwidować drugi raz.",
+  h1: "Moja pozycja na Aave lub Morpho została zlikwidowana: co teraz?",
+  publishedAt: "2026-10-31",
+  primaryQuestion: "Co zrobić po likwidacji na Aave lub Morpho?",
+  readingMinutes: 10,
+};
+
+<ShortAnswer>
+  Najpierw znajdź transakcję: na Aave w historii transakcji w aplikacji albo w transferach tokenów twojego portfela w
+  eksploratorze bloków, na Morpho przez aplikację Morpho lub publiczne API Morpho, bo transakcja likwidatora nigdy nie
+  pojawia się na twojej własnej liście. Potem ją odczytaj: dług spłacony za ciebie, zabrane zabezpieczenie i różnicę,
+  czyli zapłacony przez ciebie bonus. Pożyczone tokeny pozostają twoje, podobnie jak każde zabezpieczenie, którego nie
+  zajęto. Na Aave likwidacja zwykle spłaca połowę twojego długu i zostawia pozycję, którą można zlikwidować ponownie; na
+  Morpho może zabrać prawie wszystko naraz. W ciągu 30 dni do 30 października 2026 932 pożyczkobiorców na Morpho zostało
+  zlikwidowanych więcej niż raz, więc najbardziej przydatny jest ostatni krok: bufor i alert, zanim znowu pożyczysz.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Liczby i czas ich odczytu: content/blog/snapshots/liquidated-on-aave-or-morpho-what-now.md (artykuł angielski; to jest jego polskie tłumaczenie) */}
+
+## Skąd wiesz, że to była likwidacja, i gdzie jest transakcja?
+
+Zwykle pierwszym sygnałem jest to, że pozycja wygląda nie tak: dług jest mniejszy, niż pamiętasz, zabezpieczenie jest dużo mniejsze, współczynnik zdrowia (health factor) nagle jest wyższy albo pozycja zniknęła. Spłata bez twojego zlecenia i wypłata zabezpieczenia bez twojego podpisu, w tej samej transakcji, to likwidacja.
+
+Transakcję trudno znaleźć, bo nie wyszła z twojego adresu. Wysłał ją bot likwidatora, więc nie ma jej na liście „Transactions” twojego adresu w Etherscan, Basescan czy Arbiscan. Gdzie szukać zamiast tego:
+
+- **Aave, w aplikacji.** Otwórz „Transaction history” (historia transakcji, app.aave.com/history) z połączonym portfelem i wybranym właściwym rynkiem, a potem odfiltruj „Liquidation”. Każdy wpis zawiera czas, hash transakcji, zabrane zabezpieczenie i spłacony dług.
+- **Aave, w eksploratorze bloków.** Otwórz swój adres i zakładkę „Token transfers (ERC-20)”. Likwidacja wygląda tam jak transfer twojego aTokena (na przykład aEthWETH) i twojego tokena długu (variableDebtEthUSDT) na adres zerowy, w transakcji bez twojego podpisu. Otwórz ją i przełącz na zakładkę „Logs”: zdarzenie o nazwie `LiquidationCall` na kontrakcie Pool to zapis, którego potrzebujesz. Jedna transakcja może zawierać kilka likwidacji kilku pożyczkobiorców, więc szukaj tej, w której `user` to twój adres.
+- **Morpho.** Twój adres nie pokazuje w eksploratorze niczego, bo twoje zabezpieczenie leżało w kontrakcie Morpho, a spłata likwidatora też trafiła do kontraktu. Aplikacja Morpho pokazuje pozycję mniejszą albo jej brak; publiczne API Morpho wymienia każdą likwidację twojego adresu (`marketTransactions` typu Liquidation); a dziennik zdarzeń kontraktu Morpho w eksploratorze zawiera zdarzenie o nazwie `Liquidate` z twoim adresem jako `borrower`.
+- **Tokenping.** [Panel Aave](/pl/aave) i [panel Morpho](/pl/morpho) pokazują pozycję w obecnym stanie. Współczynnik zdrowia, który skoczył z okolic 1 do wartości wyraźnie wyższej, albo pozycja, która zniknęła, wskazują na likwidację. Panele nie wyświetlają wcześniejszych transakcji.
+
+Zachowaj hash transakcji. Będzie ci potrzebny do odczytania kwot, a w wielu krajach likwidacja liczy się jako sprzedaż zabranego zabezpieczenia, więc potrzebujesz go też do rozliczeń podatkowych.
+
+## Jak odczytać transakcję likwidacji?
+
+Oba protokoły zapisują całą likwidację w jednym zdarzeniu. Nazwy się różnią, treść jest ta sama: który dług spłacono za ciebie, które zabezpieczenie zabrano i ile każdego z nich.
+
+**Aave V3** emituje `LiquidationCall(collateralAsset, debtAsset, user, debtToCover, liquidatedCollateralAmount, liquidator, receiveAToken)`. Prawdziwy przykład z Ethereum Core, blok 26305893, 30 października 2026 o 13:33 UTC:
+
+| Pole                       | Wartość              | Co oznacza                                                              |
+| -------------------------- | -------------------- | ----------------------------------------------------------------------- |
+| collateralAsset            | WETH                 | Zabrane aktywo                                                          |
+| debtAsset                  | USDT                 | Spłacone aktywo                                                         |
+| user                       | adres pożyczkobiorcy | Czyja to była pozycja                                                   |
+| debtToCover                | 1320,785158 USDT     | Dług spłacony za pożyczkobiorcę, 1319,32 USD po cenie wyroczni (oracle) |
+| liquidatedCollateralAmount | 0,619088749 WETH     | Zabezpieczenie wysłane do likwidatora, 1372,09 USD przy 2216,31 USD/ETH |
+| liquidator                 | adres kontraktu      | Kto spłacił i otrzymał                                                  |
+| receiveAToken              | false                | Likwidator wziął samo WETH, nie aEthWETH                                |
+
+Jednej kwoty nie ma w zdarzeniu. W tej samej transakcji 0,005952776 aEthWETH (13,19 USD) przeszło od pożyczkobiorcy do kontraktu collector Aave: to opłata protokołu za likwidację (liquidation protocol fee), 20% bonusu dla WETH na Ethereum Core w tym bloku. Po zsumowaniu pożyczkobiorca oddał WETH o wartości 1385,28 USD za 1319,32 USD długu, czyli bonus 5%, z czego likwidator zatrzymał 52,77 USD, a skarbiec 13,19 USD. Zakładka „Logs” w eksploratorze pokazuje opłatę jako transfer aTokena do kontraktu collector zaraz po spaleniu aTokena.
+
+**Morpho Blue** emituje `Liquidate(id, caller, borrower, repaidAssets, repaidShares, seizedAssets, badDebtAssets, badDebtShares)`. Prawdziwy przykład z rynku USDC | cbBTC (86%) w sieci Base, blok 53265200, 30 października 2026 o 00:22 UTC:
+
+| Pole          | Wartość              | Co oznacza                                                           |
+| ------------- | -------------------- | -------------------------------------------------------------------- |
+| id            | 0x9103c3b4…          | Rynek                                                                |
+| caller        | likwidator           | Kto spłacił i otrzymał                                               |
+| borrower      | adres pożyczkobiorcy | Czyja to była pozycja                                                |
+| repaidAssets  | 2174,732093 USDC     | Dług spłacony za pożyczkobiorcę                                      |
+| seizedAssets  | 0,02952084 cbBTC     | Zabezpieczenie wysłane do likwidatora, 2270,08 USD po cenie wyroczni |
+| badDebtAssets | 0                    | Nic nie zostało odpisane                                             |
+
+Wyrocznia wyceniła cbBTC w tym bloku na 76 897,38 USDC. Zabrane zabezpieczenie było warte 2270,08 USD za 2174,73 USD długu, co daje stosunek 1,0438, czyli dokładnie współczynnik zachęty likwidacyjnej (liquidation incentive factor), jaki płaci rynek 86%. Różnica 95,34 USD trafiła w całości do likwidatora: Morpho nie pobiera opłaty. Ta transakcja zawierała 30 zdarzeń `Liquidate` od jednego likwidatora, każde z innym pożyczkobiorcą: tak wygląda w dzienniku rynku najgorętsza minuta krachu.
+
+## Co zabrano, a co ci zostało?
+
+Trzy rzeczy, które trzeba rozdzielić:
+
+1. **Dług spłacony za ciebie zniknął, a wraz z nim zabezpieczenie, które za niego zapłaciło.** Spłaconej części już nie jesteś winien. Likwidator zapłacił ją własnymi tokenami i w zamian wziął twoje zabezpieczenie plus bonus. Bonus to koszt likwidacji: w obu przykładach 65,96 USD przy 1319 USD długu na Aave i 95,34 USD przy 2175 USD na Morpho.
+2. **Pożyczone tokeny wciąż są twoje.** Jeśli pożyczone USDT zostały już wydane, nic się nie zmienia. Jeśli leżą w twoim portfelu, nadal tam są. Likwidacja nigdy nie rusza pożyczonych tokenów w twoim portfelu; zmienia tylko pozycję.
+3. **Zabezpieczenie, którego nie zajęto, zostaje w pozycji.** Na Aave saldo aTokena jest mniejsze; na Morpho mniejsze jest saldo zabezpieczenia na tym rynku. Jeśli zostaje dług, zabezpieczenie dalej go pokrywa. Jeśli długu nie ma, możesz je wypłacić.
+
+Ile zostaje, zależy od protokołu. Na Aave V3 jedna likwidacja spłaca najwyżej 50% twojego całkowitego długu, gdy współczynnik zdrowia jest powyżej 0,95, a zarówno zabrane zabezpieczenie, jak i spłacony dług są warte co najmniej 2000 USD; poniżej 0,95 albo przy mniejszych kwotach może spłacić cały dług w danym aktywie ([ile można zlikwidować naraz](/pl/blog/jak-dziala-likwidacja-na-aave#jaka-czesc-mojego-długu-moze-zostac-zlikwidowana-naraz)). Przykład z Ethereum trzymał się reguły 50% co do centa: 2638,63 USD długu przed, 1319,32 po. Pożyczkobiorcy zostało 0,7906 WETH (1752 USD) wobec 1319,32 USDT, czyli współczynnik zdrowia 1,12, a tę pozycję można zlikwidować ponownie, jeśli ETH spadnie o kolejne 10,4%. Na Aave V4 likwidacja spłaca natomiast tyle, ile trzeba, by przywrócić pozycję do docelowego współczynnika zdrowia Spoke'a, 1,24 na Ethereum Main Spoke, więc spłacane jest więcej, ale to, co zostaje, jest bezpieczniejsze ([likwidacje na Aave V4](/pl/blog/jak-dziala-likwidacja-na-aave#czym-roznia-sie-likwidacje-na-aave-v4)).
+
+Morpho Blue nie ma close factor (część długu spłacana za jednym razem): likwidator może spłacić nawet cały dług w jednym wywołaniu ([ile długu można zlikwidować naraz](/pl/blog/jak-dziala-likwidacja-na-morpho#jaka-czesc-twojego-długu-mozna-zlikwidowac-naraz)). Likwidator w sieci Base zabrał 0,02952 z 0,03286 cbBTC, czyli 90% zabezpieczenia, i spłacił cały dług poza 0,0005 USDC, które zostało przez zaokrąglenie udziałów (shares). Pożyczkobiorcy zostało 0,003342 cbBTC, około 257 USD, i może je wypłacić.
+
+Dwie kolejne rzeczy do sprawdzenia. Na Aave to likwidator wybierał, które zabezpieczenie zabrać ([które zabezpieczenie bierze likwidator](/pl/blog/jak-dziala-likwidacja-na-aave#ktore-zabezpieczenie-zabiera-likwidator)), więc pozycja z kilkoma aktywami zabezpieczenia mogła stracić akurat to, którego utraty można się było najmniej spodziewać. Na Morpho `repaidAssets` mniejsze, niż się spodziewasz, może oznaczać, że przed właściwą likwidacją zadziałała [prelikwidacja (pre-liquidation)](/pl/blog/prelikwidacja-morpho), przy niższym wskaźniku LTV i niższej zachęcie; aplikacja i API pokazują oba rodzaje.
+
+## Co, jeśli likwidacja zabrała wszystko?
+
+Jeśli na Morpho `badDebtAssets` jest większe od zera albo jeśli zdarzenie na Aave zostawiło cię bez zabezpieczenia, a dług pozostał, to w chwili likwidacji zabezpieczenie było warte mniej niż dług plus bonus. Oba protokoły zamykają wtedy pozycję, zamiast cię ścigać:
+
+- **Aave** (od V3.3) spala pozostały dług i zapisuje go jako deficyt tej rezerwy, który stakerzy Umbrella mogą później pokryć. Zostajesz bez zabezpieczenia i bez długu ([czy likwidacja może zostawić złe długi (bad debt)](/pl/blog/jak-dziala-likwidacja-na-aave#czy-likwidacja-moze-zostawic-złe-długi)).
+- **Morpho Blue** odpisuje pozostały dług w tej samej transakcji i rozkłada stratę na pożyczkodawców na tym rynku. Pożyczkobiorca zostaje bez zabezpieczenia i bez długu ([co dzieje się ze złymi długami na Morpho Blue](/pl/blog/jak-dziala-likwidacja-na-morpho#co-dzieje-sie-ze-złymi-długami-na-morpho-blue)).
+
+Nikt nie będzie cię ścigał o różnicę i na pozycji nic nie zostaje zapisane. Ale też nic ci nie zostaje, a twoja strata to całe zabezpieczenie, nie tylko bonus. W miesiącu z przykładów złe długi były rzadkie: zero w 393 likwidacjach na rynku cbBTC w sieci Base w ciągu trzech dni wokół krachu, około 3,5 mln USD we wszystkich 7521 likwidacjach na Morpho w ciągu 30 dni do 30 października.
+
+## Dlaczego do tego doszło?
+
+Oba przykłady mają jedną przyczynę: brak bufora. Blok przed likwidacją na Aave współczynnik zdrowia tego pożyczkobiorcy wynosił 1,0049; następna aktualizacja Chainlink przesunęła WETH z około 2229,77 do 2216,31 USD, czyli o 0,6% w dół, i współczynnik zdrowia wyniósł 0,9988. Blok przed likwidacją na Morpho współczynnik zdrowia pożyczkobiorcy z Base wynosił 1,0025; wyrocznia przesunęła cbBTC z 77 140,46 do 76 897,38 USDC, czyli o 0,3% w dół, i współczynnik wyniósł 0,9993. Żadna z tych likwidacji nie potrzebowała krachu. Wystarczyła jedna zwykła aktualizacja ceny, a w przypadku Morpho o 00:22 UTC, w sześciogodzinnym oknie, w którym zdarza się [ponad jedna trzecia likwidacji na Morpho](/pl/blog/komu-przydadza-sie-alerty-wspolczynnika-zdrowia#jak-czesto-pozyczkobiorcy-sa-likwidowani).
+
+Jeśli twój współczynnik zdrowia nie był tak blisko, przesunęło go coś innego. [Dlaczego spadł twój współczynnik zdrowia](/pl/blog/dlaczego-spadl-wspolczynnik-zdrowia-aave) wymienia sześć przyczyn wraz ze sposobem sprawdzenia każdej: spadła cena twojego zabezpieczenia, wzrosła cena pożyczonego aktywa, odsetki od długu przerosły zysk z zabezpieczenia, governance obniżyło próg likwidacji (liquidation threshold), wpłacony przez ciebie stablecoin zaliczył depeg (utrata powiązania z dolarem) albo wyrocznia źle wyceniła wrapper. Wersja dla Morpho to ta sama lista bez obniżki progu, bo LTV likwidacji (LLTV) rynku Morpho nigdy się nie zmienia ([co porusza współczynnikiem zdrowia na Morpho](/pl/blog/wspolczynnik-zdrowia-morpho#co-zmienia-wspołczynnik-zdrowia-na-morpho)). Dwa przypadki łatwo przeoczyć: pożyczkę [Midnight](/pl/blog/morpho-midnight-pozyczki-o-stalym-oprocentowaniu) po terminie zapadalności można zlikwidować przy dowolnym współczynniku zdrowia, a pożyczkę pod zastaw [tokenizowanych akcji](/pl/blog/tokenizowane-akcje-jako-zabezpieczenie) można zlikwidować po niedzielnej wieczornej cenie, która zmieniła się, gdy feed był wstrzymany.
+
+## Co zrobić w pierwszej godzinie?
+
+1. **Odczytaj pozostałą pozycję, zanim cokolwiek ruszysz.** Współczynnik zdrowia, pozostały dług, pozostałe zabezpieczenie: w [panelu Aave](/pl/aave) lub [panelu Morpho](/pl/morpho), w aplikacji protokołu albo w eksploratorze. Częściowa likwidacja na Aave zostawia pozycję w okolicach 1,1, którą kolejny ruch ceny o 10% zlikwiduje ponownie.
+2. **Zdecyduj, czy zamknąć pozycję, czy ją zatrzymać.** Jeśli nie chcesz już pożyczki, spłać resztę i wypłać zabezpieczenie; na Aave możesz spłacić samym zabezpieczeniem ([spłata zabezpieczeniem](/pl/blog/jak-uniknac-likwidacji-na-aave#krok-4-spłac-zabezpieczeniem-lub-zamien-zabezpieczenie)). Jeśli ją zatrzymujesz, spłacaj dług lub dodawaj zabezpieczenie, aż współczynnik zdrowia będzie tam, gdzie chcesz, a nie tam, gdzie był. [Spłata podnosi współczynnik zdrowia bardziej na każdego dolara niż dodanie zabezpieczenia](/pl/blog/jak-uniknac-likwidacji-na-aave#dlaczego-spłata-podnosi-wspołczynnik-zdrowia-bardziej-niz-dodanie-zabezpieczenia).
+3. **Nie pożyczaj z powrotem do limitu.** Pozycja, którą właśnie zlikwidowano przy 1,005, przy 1,005 zostanie zlikwidowana znowu. Ponowne pożyczenie do tego samego LTV uruchamia zegar od nowa.
+4. **Sprawdź swoje pozostałe pozycje.** Każdy rynek Aave, każdy Spoke V4 i każdy rynek Morpho ma własny współczynnik zdrowia, a ten sam ruch ceny, który zlikwidował jedną pozycję, obniżył pozostałe.
+5. **Na Aave sprawdź, czy rezerwa nie jest zamrożona.** Gdy Aave zamroziło 29 października 2026 każdy rynek DAO, dodanie zabezpieczenia do zamrożonej rezerwy było niemożliwe i jedyną drogą w górę była spłata ([dlaczego wypłata lub pożyczka się nie udaje](/pl/blog/dlaczego-wyplata-lub-pozyczka-na-aave-nie-dziala)).
+6. **Na Morpho sprawdź prelikwidację.** Jeśli kontrakt prelikwidacji ma twoją autoryzację, nadal ją ma; [sprawdź go i cofnij autoryzację](/pl/blog/prelikwidacja-morpho#jak-sprawdzic-czy-masz-autoryzowany-taki-kontrakt), jeśli już go nie chcesz.
+7. **Zachowaj zapis.** Hash transakcji, obie kwoty, datę, ceny wyroczni, jeśli możesz je odczytać. Eksploratory przechowują dane, ale w kwietniu szukanie ich będzie ostatnią rzeczą, na jaką będziesz mieć ochotę.
+
+## Jak uniknąć kolejnej likwidacji?
+
+Spośród 5703 pożyczkobiorców na Morpho zlikwidowanych w ciągu 30 dni do 30 października 2026 932 zostało zlikwidowanych więcej niż raz. Pożyczkobiorca z Base z przykładu powyżej był jednym z nich: pożyczka pod cbBTC zlikwidowana 3 czerwca, pożyczka pod cbZEC 14 października i znowu pożyczka pod cbBTC 30 października. Każda likwidacja kosztowała bonus i żadna nie doprowadziła do zmiany. Ta zmiana to trzy decyzje:
+
+- **Bufor.** Współczynnik zdrowia 1,005 nie przetrwa niczego. [Jak bardzo ceny mogą spaść przy każdym współczynniku zdrowia](/pl/blog/bezpieczny-wspolczynnik-zdrowia-aave#o-ile-moga-spasc-ceny-przed-likwidacja-przy-kazdym-wspołczynniku-zdrowia) podaje tabelę: 1,5 przetrwa spadek o 33,3%, 2 przetrwa spadek o 50%. Liczba, którą wybierzesz, zależy od tego, jakie aktywo pożyczasz pod jakie zabezpieczenie; [metoda krok po kroku](/pl/blog/bezpieczny-wspolczynnik-zdrowia-aave#jak-krok-po-kroku-wybrac-prog-alertu) przeprowadza cię przez to, a [wersja dla Morpho](/pl/blog/wspolczynnik-zdrowia-morpho#jak-wybrac-bufor-i-prog-alertu) uwzględnia stałe LLTV.
+- **Alert powyżej bufora.** Wiadomość, gdy współczynnik zdrowia przekroczy wybraną przez ciebie linię, wystarczająco wcześnie, by zareagować. Tokenping sprawdza co 5 minut i wysyła ci wiadomość na Signalu, Telegramie lub e-mailem; próg może wynosić od 1,1 do 10 na Aave i od 1,02 do 10 na Morpho. [Ustawienie alertu](/pl/blog/alerty-wspolczynnika-zdrowia-aave-konfiguracja) zajmuje kilka minut. Alert nie wyłapie skoku między dwoma sprawdzeniami i niczego za ciebie nie spłaci, dlatego przychodzi po buforze, a nie zamiast niego.
+- **Środki, którymi możesz zadziałać.** Środki na spłatę w sieci, w której pożyczasz, w aktywie, które jesteś winien, albo w takim, które możesz wymienić w nocy, oraz telefon, który przepuści wiadomość ([alerty w trybie Nie przeszkadzać](/pl/blog/alerty-aave-w-trybie-nie-przeszkadzac)). Opisana wyżej likwidacja na Morpho nastąpiła o 00:22 UTC; alert przy 1,1 przyszedłby wiele godzin wcześniej, a odpowiedzieć na niego mogły tylko środki w sieci Base.
+
+Jeśli pożyczka była na tyle mała, że nie opłacało się przenosić środków, by ją ratować, uczciwy wniosek jest inny: albo pożyczaj mniej pod to zabezpieczenie, albo zaakceptuj, że bonus to cena niepilnowania pozycji.
+
+## Jak Tokenping się tu wpisuje
+
+Tokenping co 5 minut obserwuje każdą skonfigurowaną przez ciebie pozycję, na każdym rynku Aave V3 w 21 sieciach, w każdym Spoke'u Aave V4 i na każdym rynku Morpho wymienionym w aplikacji Morpho, i wysyła ci wiadomość na Signalu, Telegramie lub e-mailem, gdy współczynnik zdrowia jest poniżej twojego progu. Wiadomość powtarza się przy każdym sprawdzeniu, dopóki pozycja nie wróci do normy, w dowolnym z języków strony. Po likwidacji panele pokazują, co zostało: [panel Aave](/pl/aave) ze współczynnikiem zdrowia każdego rynku, [panel Morpho](/pl/morpho) z LTV, LLTV i współczynnikiem zdrowia każdego rynku, obliczonymi z danych on-chain.
+
+Przeglądanie pozycji nie wymaga płatności. Alerty kosztują <AlertPrice />, jeden na rynek Aave V3, Spoke V4 lub rynek Morpho. Tokenping jest w wersji beta i nie gwarantuje dostępności, a żaden alert nie zapobiega likwidacji.
+
+## Źródła
+
+- [Transakcja Ethereum 0x5f88aa61…12fb6](https://etherscan.io/tx/0x5f88aa61ca6180e132a627c5e4d483c4098becc65359fa6af50551c405312fb6) (blok 26305893): `LiquidationCall`, spalenie aEthWETH i variableDebtEthUSDT, transfer opłaty do kontraktu collector; ceny Aave Oracle i `getUserAccountData` w blokach 26305892 i 26305893; `getReserveConfigurationData` i `getLiquidationProtocolFee` dla WETH, odczytane przez publiczny RPC (sprawdzono 31 października 2026)
+- [Transakcja Base 0xc2df272f…f0178](https://basescan.org/tx/0xc2df272f36d8b0b566c24988052c1508a4c90a97999b2da5a8c8ec7f8e3f0178) (blok 53265200): 30 zdarzeń `Liquidate`; `position` i `market` w Morpho Blue oraz `price()` wyroczni rynku w blokach 53265199 i 53265200, odczytane przez publiczny RPC (sprawdzono 31 października 2026)
+- [Morpho API](https://api.morpho.org/graphql): `marketTransactions` typu Liquidation dla rynku cbBTC w sieci Base od 28 do 31 października 2026 i dla adresu pożyczkobiorcy z przykładu; `markets` dla LLTV i wyroczni rynku (sprawdzono 31 października 2026)
+- [Morpho API](https://api.morpho.org/graphql): wszystkie likwidacje od 30 września 2026, 08:36 UTC, do 30 października 2026, 08:36 UTC, jak w [poradniku o alertach](/pl/blog/komu-przydadza-sie-alerty-wspolczynnika-zdrowia) (sprawdzono 30 października 2026)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): złe długi spalane i zapisywane jako deficyt rezerwy, reguły close factor, eliminacja deficytu przez Umbrella (sprawdzono 31 października 2026)
+- [Liquidation on Morpho](https://docs.morpho.org/learn/concepts/liquidation): wzór na zachętę, do 100% w jednym wywołaniu, brak opłaty protokołu (sprawdzono 31 października 2026)
+
+_Treści edukacyjne, nie porada finansowa. Alerty zmniejszają ryzyko, ale nie zapobiegają likwidacji._

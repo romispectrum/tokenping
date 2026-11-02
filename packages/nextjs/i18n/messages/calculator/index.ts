@@ -5,6 +5,7 @@ import { MESSAGES as es } from "./es";
 import { MESSAGES as fr } from "./fr";
 import { MESSAGES as hi } from "./hi";
 import { MESSAGES as it } from "./it";
+import { MESSAGES as pl } from "./pl";
 import { MESSAGES as pt } from "./pt";
 import type { CalculatorMessages } from "./shared";
 import { MESSAGES as vi } from "./vi";
@@ -15,4 +16,4 @@ import type { Localized } from "~~/i18n/locales";
 
 export type { CalculatorMessages } from "./shared";
 
-export const CALCULATOR_MESSAGES: Localized<CalculatorMessages> = { en, cs, es, hi, de, vi, fr, pt, it };
+export const CALCULATOR_MESSAGES: Localized<CalculatorMessages> = { en, cs, es, hi, de, vi, fr, pt, it, pl };

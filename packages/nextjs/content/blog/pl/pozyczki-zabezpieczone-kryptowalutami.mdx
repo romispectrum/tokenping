@@ -1,0 +1,178 @@
+export const meta = {
+  slug: "pozyczki-zabezpieczone-kryptowalutami",
+  title: "Pożyczki pod zastaw kryptowalut: jak działają i po co są",
+  description:
+    "Jak krok po kroku działa nadmiernie zabezpieczona pożyczka krypto na Aave, czym różni się od banku i firmy pożyczkowej, do czego służy i jakie ma ryzyka.",
+  h1: "Jak działają pożyczki zabezpieczone kryptowalutami i dlaczego ludzie je biorą?",
+  publishedAt: "2026-10-19",
+  primaryQuestion: "Jak działa pożyczka zabezpieczona kryptowalutami i po co się ją bierze?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Pożyczka zabezpieczona kryptowalutami pozwala pożyczyć, zwykle stablecoin taki jak USDC, pod kryptowaluty wpłacone
+  jako zabezpieczenie, bez ich sprzedawania. Na Aave pożyczka jest nadmiernie zabezpieczona: 19 października 2026 na
+  rynku Ethereum Core można było pożyczyć do 73% wartości WBTC albo do 80,5% wartości WETH. Protokół sprawdza tylko
+  zabezpieczenie, nie ma terminu spłaty, a oprocentowanie jest zmienne. Jeśli wartość zabezpieczenia spadnie na tyle, że
+  twój współczynnik zdrowia (health factor) zejdzie poniżej 1, część zabezpieczenia zostaje sprzedana na spłatę długu, a
+  ty płacisz karę. Ludzie biorą takie pożyczki, żeby mieć gotówkę bez sprzedaży, przetrwać przejściową lukę,
+  zrefinansować dług, zwiększyć dźwignię albo zabezpieczyć się przed ruchem cen, a każde z tych zastosowań niesie ryzyko
+  likwidacji, zmiany oprocentowania i utraty kursu przez stablecoin.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Każda liczba z łańcucha, numer bloku i źródło tego artykułu: content/blog/snapshots/crypto-backed-loans.md */}
+
+## Czym jest pożyczka zabezpieczona kryptowalutami?
+
+Pożyczka zabezpieczona kryptowalutami to pożyczka, której zabezpieczeniem są kryptowaluty wpłacone przez ciebie. W protokole pożyczkowym takim jak Aave jest ona nadmiernie zabezpieczona: zabezpieczenie musi być warte więcej niż pożyczka, a zamiast sprawdzać twoje dochody, protokół polega na tym, że w razie zbyt dużego spadku wartości może sprzedać część zabezpieczenia. Dopóki pożyczka jest otwarta, zabezpieczenie pozostaje twoje, ze wszystkimi wahaniami jego ceny, i możesz je odebrać po spłacie długu.
+
+Większość osób pożycza stablecoiny, czyli tokeny, które podążają za kursem jakiejś waluty: USDC i USDT za dolarem amerykańskim, EURC za euro. Zabezpieczeniem jest zwykle aktywo o zmiennej cenie. Na rynkach Aave w sieciach Ethereum i Arbitrum ether występuje jako WETH, a bitcoin jako reprezentujący go token, na przykład WBTC albo cbBTC.
+
+Dwie liczby dla każdego aktywa zabezpieczenia decydują o tym, ile możesz pożyczyć i kiedy pożyczka jest zagrożona:
+
+- **Wskaźnik LTV (loan-to-value)** to maksymalna kwota, jaką możesz pożyczyć pod dane aktywo, jako odsetek jego wartości.
+- **Próg likwidacji (liquidation threshold)** to część wartości aktywa, która liczy się do twojego współczynnika zdrowia. Gdy tak ważone zabezpieczenie jest warte mniej niż twój dług, współczynnik zdrowia jest poniżej 1 i pozycja może zostać zlikwidowana.
+
+| Rynek         | Zabezpieczenie | LTV (limit pożyczki) | Próg likwidacji | Bonus likwidacyjny |
+| ------------- | -------------- | -------------------- | --------------- | ------------------ |
+| Ethereum Core | WETH           | 80,5%                | 83%             | 5%                 |
+| Ethereum Core | WBTC           | 73%                  | 78%             | 5%                 |
+| Ethereum Core | cbBTC          | 73%                  | 78%             | 7,5%               |
+| Arbitrum      | WETH           | 80%                  | 84%             | 5%                 |
+| Arbitrum      | WBTC           | 73%                  | 78%             | 7%                 |
+
+Te wartości odczytano z łańcucha 19 października 2026 z PoolDataProvider każdego rynku, w bloku Ethereum 26225342 i bloku Arbitrum 516228495. cbBTC nie jest notowany na rynku Aave w sieci Arbitrum. Zarządzanie Aave (governance) może zmienić każdą z nich. Czym LTV różni się od progu likwidacji, wyjaśnia dokładniej poradnik [czym jest współczynnik zdrowia na Aave](/pl/blog/wspolczynnik-zdrowia-aave).
+
+## Jak krok po kroku działa pożyczka na Aave?
+
+Aave V3 to zestaw smart kontraktów w każdej sieci, a app.aave.com jest jednym z interfejsów do nich. Centrum pomocy Aave opisuje pożyczanie i spłatę w kilku krokach; oto, co oznacza każdy z nich.
+
+### Krok 1: wpłać zabezpieczenie
+
+Połącz portfel, wybierz aktywo do wpłaty, na przykład WBTC, i wpłać je. Sprawdź, czy jest włączone jako zabezpieczenie, bo tylko zabezpieczenie liczy się do tego, ile możesz pożyczyć. Tokeny trafiają do kontraktu Pool danego rynku, gdzie inni użytkownicy mogą je pożyczać (za to właśnie płaci niewielkie oprocentowanie wpłat). Zabezpieczenie możesz wypłacić po spłacie, a jego część także wtedy, gdy nadal masz dług, o ile twój współczynnik zdrowia pozostanie potem na poziomie 1 lub wyższym.
+
+### Krok 2: pożycz stablecoin
+
+Wybierz stablecoin i kwotę poniżej limitu pożyczki, czyli wartości zabezpieczenia pomnożonej przez jego LTV. Tokeny trafiają do twojego portfela, a odsetki zaczynają naliczać się od razu, według oprocentowania, które protokół ustala na podstawie tego, jaka część aktywa jest pożyczona, oraz parametrów, które może zmienić zarządzanie (centrum pomocy Aave, Borrow Tokens). Aave V3 ma teraz tylko zmienne oprocentowanie: jego dokumentacja kontraktu Pool mówi, że pożyczki zawsze używają trybu zmiennego oprocentowania, a dawne stałe oprocentowanie (stable rate) oznacza jako wycofane od wersji v3.2.
+
+Zmienne oprocentowanie pożyczek 19 października 2026, jako roczne APY, tak jak pokazuje je aplikacja Aave (blok Ethereum 26225342, blok Arbitrum 516228495):
+
+| Rynek         | USDC  | USDT (USD₮0 w Arbitrum) | GHO   | EURC                              |
+| ------------- | ----- | ----------------------- | ----- | --------------------------------- |
+| Ethereum Core | 4,58% | 4,17%                   | 4,60% | 4,12%                             |
+| Arbitrum      | 3,45% | 4,21%                   | 4,59% | brak otwartego stablecoina w euro |
+
+To oprocentowanie ciągle się zmienia i może gwałtownie skoczyć. 14 października 2026 oprocentowanie USDC na Ethereum Core wzrosło w jednym bloku do 13,67% APR i wróciło do poprzedniego poziomu po około 36 minutach, co pokazuje poradnik [dlaczego twój współczynnik zdrowia na Aave spada sam](/pl/blog/dlaczego-spadl-wspolczynnik-zdrowia-aave#przyczyna-3-czy-odsetki-od-długu-narastały-szybciej-niz-od-zabezpieczenia).
+
+### Krok 3: obserwuj współczynnik zdrowia
+
+Współczynnik zdrowia (HF) to twoje zabezpieczenie, ważone progiem likwidacji każdego aktywa, podzielone przez twój dług. Weźmy alice, która wpłaca 1 WBTC na Ethereum Core, gdy bitcoin kosztuje przykładowo 80 000 $ (wyrocznia Aave pokazywała 82 680,33 $ w bloku Ethereum 26225364 19 października 2026), i pożycza 24 000 USDC:
+
+- Limit pożyczki: 80 000 × 0,73 = 58 400 $.
+- Współczynnik zdrowia: 80 000 × 0,78 ÷ 24 000 = 2,60.
+- Cena likwidacji: 24 000 ÷ 0,78 = 30 769,23 $, czyli 61,5% poniżej 80 000 $.
+
+Współczynnik zdrowia spada, gdy spada bitcoin, i powoli w miarę dopisywania odsetek: gdyby oprocentowanie USDC utrzymało się na poziomie 4,58% rocznie, po roku dług wynosiłby około 25 099 USDC, a cena likwidacji wzrosłaby do około 32 179 $. Jak obliczyć to dla własnej pozycji, pokazuje poradnik [jak obliczyć cenę likwidacji na Aave](/pl/blog/cena-likwidacji-aave); ile zapasu zostawić, opisuje poradnik [jaki współczynnik zdrowia na Aave jest bezpieczny](/pl/blog/bezpieczny-wspolczynnik-zdrowia-aave).
+
+### Krok 4: spłać, kiedy zechcesz
+
+Nie ma terminu spłaty. Funkcja pożyczki w Aave w ogóle nie przyjmuje okresu, a dług możesz spłacić w całości lub części w dowolnym momencie, w aktywie, które pożyczyłeś (dokumentacja kontraktu Pool Aave V3; centrum pomocy Aave, Repay Tokens). Pełna spłata uwalnia twoje zabezpieczenie. Możesz też spłacić dług zabezpieczeniem: na rynkach Ethereum i Arbitrum interfejs Aave potrafi sprzedać część zabezpieczenia za aktywo długu i spłacić je w jednej transakcji (dokumentacja Aave, swap features).
+
+### Krok 5: wiedz, co się dzieje poniżej współczynnika zdrowia 1
+
+Poniżej 1 każdy może zlikwidować pozycję: spłaca część twojego długu i zabiera zabezpieczenie warte tę kwotę plus bonus likwidacyjny. Jedna likwidacja może spłacić do 50% długu, dopóki współczynnik zdrowia jest powyżej 0,95, a zabezpieczenie i dług są każde warte co najmniej 2000 $, oraz do 100%, gdy współczynnik zdrowia wynosi 0,95 lub mniej albo któreś z nich jest warte mniej niż 2000 $ (centrum pomocy Aave).
+
+Gdyby bitcoin spadł do 30 000 $ wkrótce po tym, jak alice pożyczyła, jej współczynnik zdrowia wyniósłby 30 000 × 0,78 ÷ 24 000 = 0,975. Likwidator mógłby spłacić 12 000 USDC i zabrać 12 000 × 1,05 ÷ 30 000 = 0,42 WBTC, zostawiając jej 0,58 WBTC wobec 12 000 USDC długu, czyli współczynnik zdrowia 1,13. Straciłaby 600 $ zabezpieczenia ponad spłacony dług, a 0,42 WBTC zostałoby sprzedane w dołku. Pełne zasady opisuje poradnik [co się dzieje, gdy twoja pozycja na Aave zostaje zlikwidowana](/pl/blog/jak-dziala-likwidacja-na-aave).
+
+## Czym pożyczka zabezpieczona kryptowalutami różni się od kredytu bankowego?
+
+Główne różnice dotyczą tego, na co patrzy pożyczkodawca, kiedy spłacasz i co się dzieje, gdy zabezpieczenie traci na wartości:
+
+|                                        | Pożyczka na Aave                                                                                         | Typowy kredyt bankowy                                                      |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Co decyduje o tym, ile możesz pożyczyć | Wartość zabezpieczenia i jego LTV                                                                        | Zwykle dochody i historia kredytowa, plus ewentualne zabezpieczenie        |
+| Weryfikacja ciebie                     | Brak ze strony protokołu, który patrzy tylko na zabezpieczenie                                           | Zwykle weryfikacja tożsamości, dochodów i zdolności kredytowej             |
+| Okres                                  | Brak: spłacasz, kiedy chcesz                                                                             | Zwykle stały okres i harmonogram spłat                                     |
+| Oprocentowanie                         | Zmienne, przeliczane wraz ze zmianami pożyczania na rynku                                                | Stałe lub zmienne, zgodnie z umową                                         |
+| Gdy zabezpieczenie traci na wartości   | Automatyczna likwidacja przez osoby trzecie, gdy współczynnik zdrowia spadnie poniżej 1, bez uprzedzenia | Zależy od umowy: żądanie dodatkowego zabezpieczenia, negocjacje, egzekucja |
+| Kto przechowuje zabezpieczenie         | Smart kontrakt rynku                                                                                     | Pożyczkodawca albo wybrany przez niego depozytariusz                       |
+| Gdy zabezpieczenie nie pokrywa długu   | Niedobór staje się stratą protokołu, a nie roszczeniem wobec ciebie                                      | Zależy od umowy i prawa                                                    |
+
+Ostatni wiersz wynika z tego, jak Aave V3.3 i nowsze wersje obsługują likwidację, która zużywa całe zabezpieczenie: pozostały dług zostaje odpisany jako deficyt na danym aktywie, co wyjaśnia [sekcja o złych długach](/pl/blog/jak-dziala-likwidacja-na-aave#czy-likwidacja-moze-zostawic-złe-długi). Zabezpieczenie i tak jest już wtedy stracone.
+
+## Czym różni się od scentralizowanego pożyczkodawcy kryptowalut?
+
+Scentralizowany pożyczkodawca przejmuje twoje zabezpieczenie na własne przechowanie. Pożyczka może wyglądać bardzo podobnie, ale stajesz się wierzycielem firmy, a jeśli ona upadnie, twoje zabezpieczenie może w niej utknąć. Rok 2022 pokazał, co to oznacza:
+
+- **Celsius** zamroził wypłaty klientów 12 czerwca 2022 i ogłosił upadłość 13 lipca 2022. Według amerykańskiej Komisji ds. Obrotu Kontraktami Terminowymi (CFTC) klienci wpłacili do niego około 20 mld $. W styczniu 2023 amerykański sąd upadłościowy w Nowym Jorku orzekł, że kryptowaluty na kontach Earn w Celsiusie stały się na mocy regulaminu własnością Celsiusa, przez co ci klienci zostali niezabezpieczonymi wierzycielami.
+- **Voyager Digital** wstrzymał handel, wpłaty i wypłaty 1 lipca 2022, po tym jak Three Arrows Capital nie spłacił rat pożyczki w wysokości 15 250 BTC i 350 mln $ w USDC, a 5 lipca 2022 złożył wniosek o upadłość w trybie Chapter 11.
+- **Genesis** w listopadzie 2022 uniemożliwił wypłaty inwestorom programu Gemini Earn, gdy przechowywał około 900 mln $ ich aktywów, według amerykańskiej Komisji Papierów Wartościowych i Giełd (SEC), a 19 stycznia 2023 złożył wniosek w trybie Chapter 11.
+- **BlockFi** złożył wniosek w trybie Chapter 11 28 listopada 2022, kilka dni po wstrzymaniu wypłat w czasie upadku FTX.
+
+Na Aave zabezpieczenie leży w publicznym smart kontrakcie, którego zasady każdy może przeczytać, a nie w bilansie firmy. To zamienia jeden zestaw ryzyk na inny, opisany niżej w części o [ryzykach](#jakie-sa-ryzyka-pozyczki-zabezpieczonej-kryptowalutami): błędy w kodzie, błędy wyroczni (oracle), decyzje zarządzania i przechowywanie bitcoinów stojących za wrapped bitcoinem. Jedno z nich jest tu istotne: emergency admin albo pool admin Aave może wstrzymać (pause) aktywo, a dopóki jest wstrzymane, nikt nie może go wypłacić ani spłacić (kontrakty PoolConfigurator i ValidationLogic Aave).
+
+## Do czego ludzie używają pożyczek zabezpieczonych kryptowalutami?
+
+### Gotówka bez sprzedaży
+
+Jednym z powodów jest zdobycie pieniędzy przy zachowaniu kryptowalut, często dlatego, że ich posiadacz spodziewa się wzrostu albo chce je trzymać latami. Pożyczka zachowuje cały potencjalny zysk i całe ryzyko spadku zabezpieczenia, dodaje odsetki i może wymusić sprzedaż w najgorszym momencie, jeśli cena spadnie wystarczająco nisko.
+
+Zaciągnięcie pożyczki nie sprzedaje twojego zabezpieczenia: pozostaje ono twoje. To, czy wpłata zabezpieczenia, pożyczka, odsetki albo likwidacja mają skutki podatkowe, zależy od twojego kraju, a czasem od warunków protokołu. Wytyczne brytyjskiego urzędu skarbowego mówią na przykład, że od warunków platformy pożyczkowej DeFi zależy, czy przekazanie jej zabezpieczenia jest zbyciem, a tam, gdzie nie jest, traktują sprzedaż zabezpieczenia przy likwidacji jako sprzedaż dokonaną przez samego pożyczkobiorcę (HMRC Cryptoassets Manual, CRYPTO61640). Ten poradnik nie jest poradą podatkową; sprawdź przepisy obowiązujące tam, gdzie mieszkasz.
+
+### Wydatki lub przejściowa luka
+
+Niektórzy pożyczają, żeby pokryć wydatek, zanim dotrą spodziewane pieniądze, na przykład rachunek płatny przed sprzedażą czy wypłatą. Haczyk polega na tym, że nic nie zamyka pożyczki za ciebie: nie ma terminu spłaty, oprocentowanie może wzrosnąć, kiedy czekasz, a zamiana stablecoinów na pieniądze na rachunku bankowym i z powrotem, żeby spłacić dług, ma własne koszty.
+
+### Refinansowanie
+
+Pożyczkę zaciągniętą gdzie indziej można przenieść na Aave, jeśli oprocentowanie Aave jest niższe, a na Aave dług można przełączyć z jednego stablecoina na inny w jednej transakcji dzięki funkcji debt swap w interfejsie (dokumentacja Aave, swap features). Haczyk: oprocentowanie jest zmienne, więc dzisiaj tańsze aktywo za miesiąc może być droższe, a przejście ze stablecoina dolarowego na euro zmienia walutę, w której jesteś winien, o czym jest poradnik [short na walucie fiat z pożyczką na Aave](/pl/blog/short-na-walucie-fiat-z-aave).
+
+### Dźwignia
+
+Żeby zwiększyć ekspozycję, niektórzy pożyczają stablecoiny, kupują za nie więcej aktywa zabezpieczenia i również je wpłacają. Gdyby alice za swoje 24 000 USDC kupiła 0,3 WBTC po 80 000 $ i wpłaciła je, miałaby 1,3 WBTC wobec 24 000 USDC: współczynnik zdrowia 3,38 i cenę likwidacji 23 668,64 $. Każdy ruch bitcoina uderza ją teraz 1,3 razy mocniej niż posiadanie 1 bitcoina bezpośrednio, a powtarzanie tego loopu (pętli pożyczek z dźwignią) zbliża współczynnik zdrowia do 1.
+
+### Hedging i short
+
+Pożyczenie aktywa i jego sprzedaż to zakład, że stanieje: wpłacasz stablecoiny, pożyczasz WETH i je sprzedajesz, a pozycja zyskuje, gdy ETH spada, i zbliża się do likwidacji, gdy ETH rośnie (poradnik o [bezpiecznym współczynniku zdrowia](/pl/blog/bezpieczny-wspolczynnik-zdrowia-aave) pokazuje, jak bardzo może wzrosnąć). Pożyczenie stablecoina dolarowego lub euro pod bitcoina to odbicie lustrzane, short na walucie względem zabezpieczenia, który niektórzy bitcoinowcy nazywają shortowaniem fiata; poradnik [short na walucie fiat z pożyczką na Aave](/pl/blog/short-na-walucie-fiat-z-aave) przechodzi przez to na liczbach.
+
+## Jakie są ryzyka pożyczki zabezpieczonej kryptowalutami?
+
+- **Likwidacja.** Poniżej współczynnika zdrowia 1 część długu albo cały dług może zostać spłacony twoim zabezpieczeniem, a ponadto tracisz bonus: od 5% do 7,5% dla aktywów z pierwszej tabeli. Likwidacje przeprowadzają konkurujące ze sobą boty, więc mogą nastąpić szybko (centrum pomocy Aave).
+- **Zmienność zabezpieczenia.** Bitcoin osiągnął szczyt około 69 000 $ w listopadzie 2021, w połowie czerwca 2022 kosztował około 17 000 $, czyli spadł o około 75%, a po upadku FTX w listopadzie 2022 zszedł poniżej 16 000 $ (blog EBC). Przy progu likwidacji WBTC wynoszącym 78% nawet pożyczka w wysokości 20% wartości zabezpieczenia zaciągnięta na szczycie w 2021 zostałaby zlikwidowana do połowy czerwca 2022.
+- **Zmienne oprocentowanie.** Oprocentowanie nie jest ustalone na żaden okres, a odsetki z czasem obniżają twój współczynnik zdrowia, nawet gdy ceny stoją w miejscu.
+- **Depeg stablecoinów.** USDC spadł do około 0,88 $ 11 marca 2023, po tym jak Circle poinformował, że 3,3 mld $ jego rezerw leży w Silicon Valley Bank, a 13 marca był już z powrotem powyżej 0,99 $ (wpis Gauntlet na forum Aave; Circle). TerraUSD, algorytmiczny stablecoin, w maju 2022 przeszedł depeg (utratę powiązania z dolarem) i spadł prawie do zera, co według amerykańskiej SEC zniszczyło 40 mld $ wartości rynkowej. Jeśli stablecoin, który jesteś winien, tanieje, twój dług też tanieje; jeśli tanieje stablecoin, którego używasz jako zabezpieczenia, twój współczynnik zdrowia spada.
+- **Wrapped bitcoin.** Bitcoin na Aave to token zabezpieczony bitcoinami, które przechowuje ktoś inny albo kontroluje most (bridge). WBTC na przykład deklaruje, że każdy token jest pokryty bitcoinem przechowywanym przez depozytariusza. Gdyby to pokrycie zawiodło, token mógłby stracić na wartości niezależnie od tego, co robi sam bitcoin.
+- **Smart kontrakty, wyrocznie i zarządzanie.** Błąd w kodzie, zła cena albo zmiana parametru mogą uderzyć w pozycję bez żadnego ruchu rynku. W marcu 2026 źle dopasowana wyrocznia kursu wymiany na rynkach Ethereum Core i Prime Aave obniżyła efektywny kurs wstETH o około 2,85% i wywołała likwidacje około 10 938 wstETH na 34 kontach, według raportu poawaryjnego Chaos Labs ([więcej o błędach wyroczni](/pl/blog/dlaczego-spadl-wspolczynnik-zdrowia-aave#przyczyna-6-czy-bład-wyroczni-lub-kursu-wymiany-zanizył-wycene-twojego-zabezpieczenia)). Zarządzanie może też obniżyć próg likwidacji dla każdej otwartej pozycji ([więcej o obniżkach progu](/pl/blog/dlaczego-spadl-wspolczynnik-zdrowia-aave#przyczyna-4-czy-governance-albo-risk-stewards-obnizyli-prog-likwidacji)).
+- **Robisz to sam.** Masz klucze, wysyłasz transakcje, a na szybkim rynku potwierdzenie spłaty może potrwać dłużej, niż się spodziewasz.
+
+## Jak pilnować pożyczki?
+
+Własne interfejsy Aave pokazują twój współczynnik zdrowia, kiedy masz je otwarte, ale nie wysyłają wiadomości, gdy spada, co wyjaśnia [poradnik o alertach współczynnika zdrowia](/pl/blog/alerty-wspolczynnika-zdrowia-aave-konfiguracja#czy-aave-wysyła-alerty-o-wspołczynniku-zdrowia). Jednym ze sposobów pilnowania pożyczki jest wybranie współczynnika zdrowia, przy którym zareagujesz, spłacając część długu albo dokładając zabezpieczenie, i ustawienie osobnego narzędzia, które ostrzeże cię, gdy pozycja tam dotrze. Tokenping sprawdza co 5 minut i wysyła ci wiadomości, dopóki twój współczynnik zdrowia jest poniżej ustawionego progu; [poradnik konfiguracji](/pl/blog/alerty-wspolczynnika-zdrowia-aave-konfiguracja) przeprowadza przez to krok po kroku. Alert daje ci czas na działanie, a nie ochronę, a poradnik [jak uniknąć likwidacji na Aave](/pl/blog/jak-uniknac-likwidacji-na-aave) opisuje, co z tym czasem zrobić.
+
+## Źródła
+
+- Aave V3 Ethereum Core [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) i Arbitrum [PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): LTV, progi likwidacji, bonusy i zmienne oprocentowanie pożyczek odczytane z łańcucha w bloku Ethereum 26225342 i bloku Arbitrum 516228495 (dane RPC, sprawdzono 19 października 2026)
+- [Aave V3 Ethereum Core AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): cena WBTC 82 680,33 $ w bloku Ethereum 26225364 (dane RPC, sprawdzono 19 października 2026)
+- [Aave Help: Borrow Tokens](https://aave.com/help/borrowing/borrow-tokens) (sprawdzono 19 października 2026)
+- [Aave Help: Repay Tokens](https://aave.com/help/borrowing/repay-tokens) (sprawdzono 19 października 2026)
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (sprawdzono 19 października 2026)
+- [Dokumentacja smart kontraktu Pool Aave V3](https://aave.com/docs/aave-v3/smart-contracts/pool): parametry pożyczki i spłaty, tylko zmienne oprocentowanie, stałe oprocentowanie wycofane w v3.2 (sprawdzono 19 października 2026)
+- [Dokumentacja Aave: swap features](https://aave.com/docs/aave-v3/smart-contracts/swap-features): spłata zabezpieczeniem i debt swap (sprawdzono 19 października 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) i [PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol), aave-v3-origin: wypłaty przy otwartej pożyczce, wstrzymania i kto może je ustawić (sprawdzono 19 października 2026)
+- [Komunikat prasowy CFTC 8749-23 o Celsius Network](https://www.cftc.gov/PressRoom/PressReleases/8749-23), 13 lipca 2023: około 20 mld $ wpłat, wypłaty zamrożone 12 czerwca 2022, wniosek o upadłość złożony 13 lipca 2022 (sprawdzono 19 października 2026)
+- [Sąd upadłościowy USA, Southern District of New York: opinia w sprawie własności aktywów z kont Celsius Earn](https://www.nysb.uscourts.gov/sites/default/files/opinions/312902_1822_opinion.pdf), 4 stycznia 2023 (sprawdzono 19 października 2026)
+- [Voyager Digital: market update](https://www.newswire.ca/news-releases/voyager-digital-provides-market-update-851734302.html), 1 lipca 2022, i [Voyager Digital: ogłoszenie Chapter 11](https://www.newswire.ca/news-releases/voyager-digital-commences-financial-restructuring-process-to-maximize-value-for-all-stakeholders-888320107.html), 5 lipca 2022 (oba sprawdzono 19 października 2026)
+- [Komunikat prasowy SEC 2023-7 o Genesis i programie Gemini Earn](https://www.sec.gov/news/press-release/2023-7), 12 stycznia 2023 (sprawdzono 19 października 2026)
+- [Komunikat prasowy SEC 2024-37 o Genesis](https://www.sec.gov/newsroom/press-releases/2024-37), 19 marca 2024: wnioski w trybie Chapter 11 złożone 19 stycznia 2023 (sprawdzono 19 października 2026)
+- [CoinDesk: BlockFi files for bankruptcy as FTX contagion spreads](https://www.coindesk.com/policy/2022/11/28/ftx-fallout-continues-as-crypto-lender-blockfi-declares-bankruptcy), 28 listopada 2022 (sprawdzono 19 października 2026)
+- [The ECB Blog: Bitcoin's last stand](https://www.ecb.europa.eu/press/blog/date/2022/html/ecb.blog221130~5301eecd19.en.html), 30 listopada 2022: spadek z około 69 000 $ do około 17 000 $ i poniżej 16 000 $ (sprawdzono 19 października 2026)
+- [Gauntlet: Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), forum zarządzania Aave, 17 marca 2023 (sprawdzono 19 października 2026)
+- [Circle: $3.3 Billion of USDC Reserve Risk Removed, Dollar De-peg Closes](https://www.circle.com/pressroom/3-3-billion-of-usdc-reserve-risk-removed-dollar-de-peg-closes), 12 marca 2023 (sprawdzono 19 października 2026)
+- [Komunikat prasowy SEC 2024-73 o Terraform](https://www.sec.gov/newsroom/press-releases/2024-73), 13 czerwca 2024: depeg UST z maja 2022 (sprawdzono 19 października 2026)
+- [WBTC](https://wbtc.network/): jak WBTC jest pokryty (sprawdzono 19 października 2026)
+- [Chaos Labs: Post-Mortem, Exchange Rate Misalignment on wstETH Core and Prime Instances](https://governance.aave.com/t/24269), forum zarządzania Aave, 10 marca 2026 (sprawdzono 19 października 2026)
+- [HMRC Cryptoassets Manual, CRYPTO61640: DeFi lending and staking, collateral](https://www.gov.uk/hmrc-internal-manuals/cryptoassets-manual/crypto61640), zaktualizowano 28 listopada 2025 (sprawdzono 19 października 2026)
+
+_Treści edukacyjne, nie porada finansowa. Alerty zmniejszają ryzyko, ale nie zapobiegają likwidacji._

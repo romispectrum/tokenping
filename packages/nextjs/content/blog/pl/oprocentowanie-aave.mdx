@@ -1,0 +1,157 @@
+export const meta = {
+  slug: "oprocentowanie-aave",
+  title: "Jak działa oprocentowanie na Aave i dlaczego skacze",
+  description:
+    "Oprocentowanie pożyczek na Aave idzie za krzywą wykorzystania: łagodną do poziomu optymalnego, stromą powyżej. Wzór, parametry, skoki i co robić.",
+  h1: "Jak działa oprocentowanie na Aave i dlaczego oprocentowanie pożyczek gwałtownie skacze?",
+  publishedAt: "2026-10-25",
+  primaryQuestion: "Jak Aave ustala oprocentowanie pożyczek i wpłat i dlaczego gwałtownie skacze?",
+  readingMinutes: 8,
+};
+
+<ShortAnswer>
+  Na Aave V3 zmienne oprocentowanie pożyczek każdego aktywa idzie za krzywą ustaloną przez governance: rośnie łagodnie
+  wraz z wykorzystaniem, czyli częścią wpłaconych tokenów, która jest pożyczona, do poziomu optymalnego, a powyżej niego
+  stromo. Wpłacający zarabiają oprocentowanie pożyczek pomnożone przez wykorzystanie, minus współczynnik rezerwy.
+  Oprocentowanie jest przeliczane przy każdej wpłacie, pożyczce, spłacie i wypłacie, więc jedna duża wypłata może
+  wypchnąć wykorzystanie ponad poziom optymalny i zwielokrotnić oprocentowanie w jednym bloku: USDC na Ethereum Core
+  wzrosło 14 października 2026 z 4,50% do 13,67% APR i po około 36 minutach wróciło do 4,76%. Cały dług w Aave V3 ma
+  zmienne oprocentowanie.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Liczby i numery bloków, w których je odczytano: content/blog/snapshots/aave-interest-rates.md */}
+
+## Co ustala oprocentowanie pożyczek na Aave?
+
+Na Aave V3 oprocentowanie pożyczek aktywa zależy od dwóch rzeczy: jego wykorzystania i parametrów stopy procentowej. Wykorzystanie (utilization) to część puli aktywa, która jest pożyczona: dług podzielony przez dług plus tokeny wciąż dostępne. Parametry to cztery liczby dla każdego aktywa, ustalane przez governance Aave, a Risk Stewards Aave mogą je zmieniać ograniczonymi krokami i z minimalnymi odstępami czasu:
+
+- **Optymalne wykorzystanie (optimal usage ratio):** wykorzystanie, przy którym krzywa się załamuje.
+- **Stopa bazowa (base rate):** oprocentowanie pożyczek przy wykorzystaniu 0%.
+- **Slope 1:** o ile rośnie oprocentowanie od 0% do optymalnego wykorzystania.
+- **Slope 2:** o ile jeszcze rośnie od optymalnego wykorzystania do 100%.
+
+W odczycie z 25 października 2026, w bloku Ethereum 26269328 i bloku Arbitrum 518125419, parametry i oprocentowanie kilku popularnych aktywów wyglądały tak:
+
+| Rynek i aktywo     | Optymalne wykorzystanie | Baza | Slope 1 | Slope 2 | Wykorzystanie | APR pożyczki | APR wpłaty |
+| ------------------ | ----------------------- | ---- | ------- | ------- | ------------- | ------------ | ---------- |
+| Ethereum Core USDC | 94%                     | 0%   | 4,5%    | 10%     | 93,72%        | 4,49%        | 3,78%      |
+| Ethereum Core USDT | 92%                     | 0%   | 4,5%    | 10%     | 87,81%        | 4,30%        | 3,39%      |
+| Ethereum Core WETH | 92%                     | 0%   | 2,2%    | 6%      | 81,31%        | 1,94%        | 1,31%      |
+| Ethereum Core GHO  | 99%                     | 4,5% | 0%      | 0%      | nieużywane    | 4,50%        | 0%         |
+| Arbitrum USDC      | 90%                     | 0%   | 4%      | 10%     | 77,32%        | 3,44%        | 2,39%      |
+
+Wyjątkiem jest GHO: oba jego nachylenia wynoszą zero, więc oprocentowanie pozostaje stałe bez względu na wykorzystanie i jest zmieniane ręcznie (zobacz [GHO i Aave V4](#jak-ustala-sie-oprocentowanie-gho-i-na-aave-v4)).
+
+## Jak oblicza się oprocentowanie pożyczek na Aave?
+
+Oprocentowanie pożyczek w Aave V3 to linia prosta do optymalnego wykorzystania i znacznie bardziej stroma linia powyżej. Gdy U oznacza wykorzystanie:
+
+**Do optymalnego wykorzystania: oprocentowanie pożyczek = baza + slope 1 × U ÷ optymalne wykorzystanie**
+
+**Powyżej: oprocentowanie pożyczek = baza + slope 1 + slope 2 × (U − optymalne wykorzystanie) ÷ (1 − optymalne wykorzystanie)**
+
+W kontrakcie U to łączny dług podzielony przez łączny dług plus tokeny, które pula wciąż ma. Przy parametrach USDC na Ethereum Core oprocentowanie dla poszczególnych poziomów wykorzystania wynosi:
+
+| Wykorzystanie   | APR pożyczki |
+| --------------- | ------------ |
+| 50%             | 2,39%        |
+| 80%             | 3,83%        |
+| 90%             | 4,31%        |
+| 94% (optymalne) | 4,50%        |
+| 95%             | 6,17%        |
+| 96%             | 7,83%        |
+| 98%             | 11,17%       |
+| 100%            | 14,50%       |
+
+Poniżej 94% dziesięć punktów wykorzystania zmienia oprocentowanie o mniej niż pół punktu. Powyżej każdy punkt dodaje około 1,67 punktu, a ostatnie sześć punktów wykorzystania ponad trzykrotnie zwiększa oprocentowanie. W odczycie z 25 października 2026 USDC miało wykorzystanie 93,72%, tuż poniżej załamania: 4,5% × 0,9372 ÷ 0,94 daje pobierane wtedy 4,49%.
+
+Krzywa ma tak działać. Poniżej poziomu optymalnego tanie pożyczki utrzymują pulę w użyciu; powyżej strome oprocentowanie sprawia, że pożyczanie jest na tyle drogie, że część pożyczkobiorców spłaca dług, a część posiadaczy wpłaca tokeny, co obniża wykorzystanie i zostawia tokeny dostępne dla wpłacających, którzy chcą je wypłacić.
+
+## Dlaczego oprocentowanie pożyczek na Aave gwałtownie skacze?
+
+Oprocentowanie pożyczek na Aave skacze, gdy wykorzystanie przekracza optymalny poziom, zwykle dlatego, że duży wpłacający wypłaca środki albo duży pożyczkobiorca pożycza. Oprocentowanie jest przeliczane w tej samej transakcji i każdy pożyczkobiorca tego aktywa płaci nową stawkę od tej chwili do następnej zmiany.
+
+14 października 2026 jedna wypłata dokładnie 133 898 000 USDC z Ethereum Core wypchnęła wykorzystanie z 93,92% do 99,50% w jednym bloku:
+
+| Blok Ethereum (UTC)                  | Co się stało                                      | Wykorzystanie | APR pożyczki USDC |
+| ------------------------------------ | ------------------------------------------------- | ------------- | ----------------- |
+| 26194052 (14 października, 23:32:47) | Przed                                             | 93,92%        | 4,50%             |
+| 26194053 (14 października, 23:32:59) | Wypłacono 133 898 000 USDC                        | 99,50%        | 13,67%            |
+| 26194088 (14 października, 23:39:59) | Najwyższy punkt w tym okresie                     | około 99,8%   | 14,18%            |
+| 26194231 (15 października, 00:08:35) | Ten sam adres wpłacił z powrotem 133 898 000 USDC | 94,16%        | 4,76%             |
+
+Pożyczkobiorcy przez 36 minut płacili około trzy razy więcej niż zwykle, a powyższy wzór odtwarza każdą z tych stawek z wykorzystania. Skok trwa tak długo, jak długo wykorzystanie pozostaje wysokie: tutaj wróciły te same tokeny, ale w innych przypadkach do jego obniżenia potrzeba nowych wpłacających albo spłat, przyciągniętych wysokim oprocentowaniem.
+
+Oprocentowanie pożyczek zmieniają jeszcze dwie rzeczy. Governance albo Risk Stewards mogą zmienić cztery parametry, co przesuwa naraz całą krzywą. A między transakcjami oprocentowanie się nie zmienia: Aave przelicza je przy każdej wpłacie, pożyczce, spłacie, wypłacie i likwidacji danego aktywa, a odsetki narastają według tej stawki, sekunda po sekundzie, aż do następnej.
+
+## Dlaczego wpłacający zarabiają mniej, niż płacą pożyczkobiorcy?
+
+Wpłacający zarabiają mniej, niż płacą pożyczkobiorcy, bo odsetki płaci tylko pożyczona część puli, a protokół zatrzymuje ich część. Oprocentowanie wpłat to:
+
+**Oprocentowanie wpłat = oprocentowanie pożyczek × wykorzystanie × (1 − współczynnik rezerwy)**
+
+Dla USDC na Ethereum Core 25 października 2026: 4,4866% × 0,9372 × (1 − 0,10) = 3,78%. Współczynnik rezerwy (reserve factor), 10% dla USDC i 15% dla WETH, trafia do skarbca Aave. Gdy rezerwa ma deficyt ze złych długów (bad debt), kontrakt uwzględnia go też po stronie wpłat, co nieco obniża oprocentowanie wpłat.
+
+## Czym różni się APR od APY na Aave?
+
+Kontrakty przechowują oprocentowanie jako APR, a aplikacja Aave pokazuje APY, które uwzględnia kapitalizację. Biblioteka matematyczna aplikacji kapitalizuje APR co sekundę przez rok liczący 31 536 000 sekund:
+
+**APY = (1 + APR ÷ 31 536 000)^(31 536 000) − 1**
+
+APR 4,4866% dla USDC na Ethereum Core aplikacja pokazuje jako APY 4,59%. Na tych poziomach różnica wynosi około jednej dziesiątej punktu; przy APR 14% to około jednego punktu (APY 15,0%).
+
+## Jak skoki oprocentowania wpływają na twój współczynnik zdrowia?
+
+Krótki skok prawie nie rusza twojego współczynnika zdrowia (health factor); wysokie oprocentowanie utrzymujące się miesiącami już tak. Odsetki powiększają twój dług, a większy dług obniża współczynnik zdrowia, jak wyjaśnia [przyczyna związana z odsetkami w poradniku o tym, dlaczego spada twój współczynnik zdrowia](/pl/blog/dlaczego-spadl-wspolczynnik-zdrowia-aave#przyczyna-3-czy-odsetki-od-długu-narastały-szybciej-niz-od-zabezpieczenia).
+
+Weźmy 10 WETH wpłaconych przy 12 000 USDC pożyczonych na Ethereum Core, z progiem likwidacji (liquidation threshold) WETH 83% (odczyt z 14 października 2026) i przykładową ceną ETH 2400 $: współczynnik zdrowia wynosi 1,66. Licząc to, co WETH zarabia przy oprocentowaniu wpłat 1,31%:
+
+| Jak długo trwa ta stawka | Przy 4,49% (25 października 2026) | Przy 14,50% (szczyt krzywej) |
+| ------------------------ | --------------------------------- | ---------------------------- |
+| 36 minut                 | około 0,04 USDC odsetek, 1,66     | około 0,12 USDC, 1,66        |
+| 30 dni                   | około 1,66                        | około 1,64                   |
+| Rok                      | około 1,61                        | około 1,45                   |
+
+Skok z 14 października kosztował tę pozycję około 12 centów. Rynek, który przez rok trzyma się szczytu swojej krzywej, obniżyłby ją z 1,66 do około 1,45 bez żadnego ruchu ceny, dlatego przy powolnym spadku warto mieć próg alertu z zapasem ([jaki bufor daje współczynnik zdrowia](/pl/blog/bezpieczny-wspolczynnik-zdrowia-aave#jak-szybko-odsetki-i-zmiany-parametrow-zjadaja-twoj-zapas)).
+
+## Co możesz zrobić, gdy twoje oprocentowanie pożyczki skacze?
+
+Gdy twoje oprocentowanie pożyczki skacze, najpierw sprawdź wykorzystanie aktywa na jego stronie w aplikacji Aave: tuż powyżej optymalnego wykorzystania oprocentowanie spada, gdy tylko spadnie wykorzystanie. Potem masz cztery opcje, każdą z jakimś kosztem:
+
+- **Poczekaj.** Skok wywołany jedną dużą wypłatą może się skończyć, gdy te tokeny wrócą, jak 14 października 2026. Nic nie gwarantuje, że wrócą, a w międzyczasie płacisz wysokie oprocentowanie.
+- **Spłać część długu.** To obniża zarówno twoje odsetki, jak i ryzyko; poradnik [jak podnieść współczynnik zdrowia na Aave](/pl/blog/jak-uniknac-likwidacji-na-aave) omawia spłatę własnymi tokenami albo zabezpieczeniem.
+- **Zamień dług na inne aktywo.** Interfejs Aave Labs ma zamianę długu (debt swap), która w jednej transakcji zastępuje jedno pożyczone aktywo innym, na rynkach Ethereum Core, Prime i EtherFi oraz w sieciach Arbitrum, Avalanche, Base, BNB Chain, Optimism, Polygon, Gnosis i Sonic, według dokumentacji Aave. Nie jest wymieniona dla Metis, Scroll, ZKsync, Celo, Soneium, Linea, Plasma ani Ink. Nowe aktywo ma własną krzywą i własne ryzyko, jeśli jego cena porusza się inaczej niż twój stary dług.
+- **Pożycz na innym rynku.** Każdy rynek ma własną pulę i własne wykorzystanie: 25 października 2026 USDC kosztowało 4,49% na Ethereum Core i 3,44% na Arbitrum. Przeniesienie oznacza spłatę na jednym rynku i pożyczkę na innym, z zabezpieczeniem w tamtej sieci.
+
+## Jak ustala się oprocentowanie GHO i na Aave V4?
+
+GHO, własny stablecoin Aave, ma stałe oprocentowanie pożyczek wybierane przez ludzi, a nie przez krzywą. Na Ethereum Core oba nachylenia w jego parametrach wynoszą zero, więc oprocentowanie równa się stopie bazowej, 4,50% 25 października 2026. Zmienia je Risk Council z progiem 2 z 3 przez kontrakt GHO steward: najwyżej o 5 punktów procentowych na aktualizację i najwyżej raz dziennie. Ostatnia zmiana, 3 października 2026, podniosła je z 4,25% do 4,50%; od listopada 2024 zmieniano je 44 razy, w przedziale od 3,00% do 14,50%. Dawną zniżkę dla posiadaczy stkAAVE usunięto w Aave v3.4.
+
+Aave V4 zachowuje krzywą wykorzystania, ale dokumentacja opisuje ją jako konfigurowaną dla każdego aktywa w Hubie, czyli puli, która pożycza każdemu Spoke'owi. Ponad to wspólne oprocentowanie każdy pożyczkobiorca płaci User Risk Premium (premię za ryzyko użytkownika), zależną od jakości jego zabezpieczenia: przykład Aave to premia 50% przy stopie bazowej 5%, co daje 7,5%. Dwóch pożyczkobiorców tego samego aktywa w V4 może więc płacić różne oprocentowanie, a [sekcja o V4 w poradniku o współczynniku zdrowia](/pl/blog/wspolczynnik-zdrowia-aave#czy-wspołczynnik-zdrowia-w-aave-v4-jest-inny) omawia, co jeszcze zmienia V4.
+
+## Czy na Aave można dostać stałe oprocentowanie?
+
+Nie. Aave V3 miało kiedyś opcję stabilnego oprocentowania (stable rate), ale w 2024 roku, po zgłoszeniu błędu, całkowicie ją wycofano, a Aave v3.2 usunęło jej kod. Każda pożyczka w Aave V3 ma zmienne oprocentowanie, a stałe oprocentowanie GHO wciąż może zostać zmienione w dowolnej chwili w granicach limitów jego stewarda.
+
+## Czy alert może ostrzec cię przed rosnącym oprocentowaniem?
+
+Alert o współczynniku zdrowia nie obserwuje oprocentowania; obserwuje, co oprocentowanie robi z twoją pozycją. Tokenping sprawdza twój współczynnik zdrowia na Aave V3 i V4 co 5 minut w 22 sieciach i wysyła ci wiadomość przez Signal, Telegram lub e-mail, dopóki jest on poniżej ustawionego przez ciebie progu (od 1,1 do 10). Skok taki jak 14 października 2026 go nie uruchomi, bo prawie nie rusza współczynnika zdrowia; miesiące wysokich odsetek już tak, gdy dług urośnie na tyle, że przekroczysz próg.
+
+Jeśli chcesz dostawać wiadomość o samym oprocentowaniu, niektóre inne narzędzia wysyłają alerty o oprocentowaniu, a [nasze porównanie narzędzi do alertów Aave](/pl/blog/narzedzia-alertow-o-likwidacji-aave) podaje, co obserwuje każde z nich. Konfigurację alertu o współczynniku zdrowia opisuje poradnik [jak ustawić alert o współczynniku zdrowia](/pl/blog/alerty-wspolczynnika-zdrowia-aave-konfiguracja), a najpierw możesz [sprawdzić swój współczynnik zdrowia na Aave V3](/pl/aave); przeglądanie pozycji nie wymaga płatności.
+
+## Źródła
+
+- [DefaultReserveInterestRateStrategyV2.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/misc/DefaultReserveInterestRateStrategyV2.sol) i [ReserveLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ReserveLogic.sol): krzywa oprocentowania, wykorzystanie, oprocentowanie wpłat i moment przeliczania oprocentowania (aave-v3-origin, sprawdzono 25 października 2026)
+- [Strategia stóp procentowych Aave V3 Ethereum Core](https://etherscan.io/address/0x9ec6F08190DeA04A54f8Afc53Db96134e5E3FdFB#readContract) i [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): parametry i oprocentowanie w bloku 26269328; USDC w blokach 26194052, 26194053, 26194088, 26194230 i 26194231 (sprawdzono 25 października 2026)
+- [Strategia stóp procentowych Aave V3 Arbitrum](https://arbiscan.io/address/0x429F16dBA3B9e1900087Cbaa7b50D38Bc60fB73F#readContract): parametry i oprocentowanie USDC w bloku 518125419 (sprawdzono 25 października 2026)
+- [Aave Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): parametry stóp procentowych wśród wartości, które mogą zmieniać stewardzi, z maksymalną zmianą i minimalnym odstępem na aktualizację (sprawdzono 25 października 2026)
+- [calculateCompoundedRate w aave-utilities](https://github.com/aave/aave-utilities/blob/master/packages/math-utils/src/formatters/compounded-interest/calculate-compounded-interest.ts): przeliczenie APR na APY przez 31 536 000 sekund (sprawdzono 25 października 2026)
+- [Funkcje zamiany w Aave](https://aave.com/docs/aave-v3/smart-contracts/swap-features.md): zamiana długu i spłata zabezpieczeniem oraz rynki, które je obsługują (sprawdzono 25 października 2026)
+- [GHO Stewards: October 2026 GHO borrow rate update](https://governance.aave.com/t/gho-stewards-october-2026-gho-borrow-rate-update/25754) (TokenLogic, 2 października 2026, sprawdzono 25 października 2026) i [kontrakt GHO steward](https://etherscan.io/address/0x98217A06721Ebf727f2C8d9aD7718ec28b7aAe34#readContract): limity na aktualizację i historia oprocentowania od listopada 2024 (sprawdzono 25 października 2026)
+- [Funkcje Aave v3.4](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.4/Aave-v3.4-features.md): usunięcie zniżki stkAAVE na GHO (sprawdzono 25 października 2026)
+- [BGD: Full deprecation of stable rate](https://governance.aave.com/t/bgd-full-deprecation-of-stable-rate/16473) (31 stycznia 2024) i [funkcje Aave v3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): usunięcie stabilnego oprocentowania (sprawdzono 25 października 2026)
+- [Dokumentacja Aave V4](https://aave.com/docs/aave-v4.md) i [pozycje w V4](https://aave.com/docs/aave-v4/positions.md): krzywa oprocentowania dla każdego aktywa w Hubie i User Risk Premium (sprawdzono 25 października 2026)
+
+_Treści edukacyjne, nie porada finansowa. Alerty zmniejszają ryzyko, ale nie zapobiegają likwidacji._

@@ -1,0 +1,150 @@
+export const meta = {
+  slug: "jak-uniknac-likwidacji-na-aave",
+  title: "Jak uniknąć likwidacji na Aave: 6 praktycznych kroków",
+  description:
+    "Jak zmniejszyć ryzyko likwidacji na Aave: spłata, więcej zabezpieczenia, bufor, zamiana zabezpieczenia lub długu i wczesne ostrzeżenie. Bez gwarancji.",
+  h1: "Jak uniknąć likwidacji na Aave",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-20",
+  primaryQuestion:
+    "Jak podnieść współczynnik zdrowia na Aave i zmniejszyć ryzyko likwidacji, od razu i zanim zacznie spadać?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Ryzyko likwidacji na Aave zmniejszasz, podnosząc współczynnik zdrowia (health factor) i trzymając go wyraźnie powyżej
+  1: spłać część długu, dodaj zabezpieczenie, pożyczaj sporo poniżej limitu albo zamień zabezpieczenie lub dług, żeby
+  pożyczka mniej zależała od jednej zmiennej ceny. Spłata dolara długu podnosi współczynnik zdrowia bardziej niż wpłata
+  dolara zabezpieczenia. Nic z tego nie usuwa ryzyka, a spłaty mogą się nie udać na rynku pod presją, więc wczesne
+  działanie zostawia więcej miejsca.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Co możesz zrobić od razu, gdy twój współczynnik zdrowia na Aave spada?
+
+Możesz spłacić część długu albo dodać zabezpieczenie, w tej samej sieci i na tym samym rynku Aave, na którym jest pożyczka. Oba kroki podnoszą współczynnik zdrowia, gdy tylko transakcja zostanie potwierdzona, a dolar spłaty podnosi go bardziej niż dolar nowego zabezpieczenia. Jeśli w portfelu nie ma wolnych środków, interfejs Aave Labs (app.aave.com) może [spłacić dług twoim zabezpieczeniem](#krok-4-spłac-zabezpieczeniem-lub-zamien-zabezpieczenie).
+
+Współczynnik zdrowia (HF) to wartość każdego aktywa zabezpieczenia w USD pomnożona przez jego próg likwidacji (liquidation threshold), zsumowana i podzielona przez wartość twojego długu w USD. Poniżej 1,00 pozycję można zlikwidować. Wzór omawia poradnik [czym jest współczynnik zdrowia na Aave](/pl/blog/wspolczynnik-zdrowia-aave). Gdy czasu jest mało, liczą się cztery rzeczy:
+
+- **Właściwa pozycja.** Na Aave V3 pula każdej sieci ma własny współczynnik zdrowia, podobnie jak każdy rynek na Ethereum (Core, Prime, EtherFi, Horizon). Zabezpieczenie na Ethereum nic nie daje pożyczce na Arbitrum.
+- **Czas.** Spłaty wysłane blisko HF 1 mogą się nie udać albo utknąć na zatłoczonym rynku. Dwóch użytkowników forów, w 2021 i 2024 roku, zostało zlikwidowanych jeszcze w trakcie prób spłaty (szczegóły podaje [Krok 6](#krok-6-dostan-ostrzezenie-wczesnie-i-działaj-wczesnie)), więc działanie, gdy HF jest wyraźnie powyżej 1, zostawia więcej miejsca.
+- **Co dzieje się poniżej 1.** Na Aave V3 likwidator może spłacić naraz do 50% twojego długu albo 100% długu w jednym aktywie, gdy HF wynosi 0,95 lub mniej albo gdy zabezpieczenie lub dług, o które chodzi, jest wart mniej niż 2000 $, i zabiera zabezpieczenie warte tyle co ten dług plus bonus likwidacyjny (5% dla WETH na Ethereum Core w bloku 26193284, 14 października 2026). Aave V4 nie ma close factor (części długu spłacanej za jednym razem): likwidator spłaca tylko tyle, żeby HF wrócił do docelowego poziomu Spoke'a. Zobacz [co dzieje się podczas likwidacji na Aave](/pl/blog/jak-dziala-likwidacja-na-aave).
+- **Co nie pomaga.** Zamrożenie rynku ani zmiana LTV nie odsuwają likwidacji, a awaria sekwencera L2 nie daje już okresu karencji. Zobacz [co nie chroni cię przed likwidacją](#co-nie-chroni-cie-przed-likwidacja).
+
+## Krok 1: spłać część długu
+
+Spłata długu od razu podnosi twój współczynnik zdrowia na Aave, bo HF dzieli ważone zabezpieczenie przez dług, a spłata zmniejsza dług. Weźmy pozycję na Aave V3 Ethereum Core z 10 WETH wpłaconymi przy przykładowej cenie 2400 $ i 12 000 USDC pożyczonymi. Próg likwidacji WETH wynosił 83% w bloku Ethereum 26193284 (14 października 2026), więc HF = 24 000 × 0,83 ÷ 12 000 = 1,66. Spłata 1000 USDC podnosi go do 19 920 ÷ 11 000 = 1,811.
+
+### Dlaczego spłata podnosi współczynnik zdrowia bardziej niż dodanie zabezpieczenia?
+
+Nowe zabezpieczenie liczy się tylko według swojego progu likwidacji, a spłacony dług liczy się w całości. Na Aave V3 Ethereum Core 1000 $ w WETH dodaje 830 $ ważonego zabezpieczenia, a spłata 1000 USDC usuwa całe 1000 $ długu. Dla pozycji z 10 WETH i 12 000 USDC długu, przy ETH po 2400 $ i USDC po 1 $:
+
+| Co robisz z 1000 $                                                 | Ważone zabezpieczenie | Dług     | Współczynnik zdrowia | Cena ETH przy HF 1 | Spadek ETH potrzebny do niej |
+| ------------------------------------------------------------------ | --------------------- | -------- | -------------------- | ------------------ | ---------------------------- |
+| Nic (punkt wyjścia)                                                | 19 920 $              | 12 000 $ | 1,660                | 1445,78 $          | 39,8%                        |
+| Wpłacasz 0,4167 WETH więcej                                        | 20 750 $              | 12 000 $ | 1,729                | 1387,95 $          | 42,2%                        |
+| Spłacasz 1000 USDC z portfela                                      | 19 920 $              | 11 000 $ | 1,811                | 1325,30 $          | 44,8%                        |
+| Spłacasz 1000 USDC, sprzedając zabezpieczenie WETH, przed opłatami | 19 090 $              | 11 000 $ | 1,735                | 1382,92 $          | 42,4%                        |
+
+Ogólnie spłata X $ wygrywa z wpłatą X $ aktywa o progu LT zawsze, gdy HF > LT × (1 − X ÷ dług). Aave V3 wymaga, żeby każdy próg pomnożony przez bonus likwidacyjny wynosił najwyżej 100%, przy bonusie powyżej 100%, więc każdy próg jest niższy niż 100%. Każda pozycja, której nie da się zlikwidować (HF co najmniej 1), zyskuje więc więcej na spłacie. Wpłata jest prostszą drogą, gdy masz aktywo zabezpieczenia i wolisz go nie sprzedawać; sprzedaż tego aktywa na spłatę pożyczki podniosłaby HF bardziej, przed kosztami zamiany.
+
+## Krok 2: dodaj zabezpieczenie lub włącz już wpłacone aktywo
+
+Wpłata zabezpieczenia podnosi twój współczynnik zdrowia na Aave o dodaną wartość pomnożoną przez próg likwidacji tego aktywa. Na Aave V3 Ethereum Core 1000 $ w WETH dodaje 830 $ (próg 83%), a 1000 $ w WBTC lub USDC dodaje 780 $ (78%), według odczytów on-chain w bloku 26193284 z 14 października 2026. Aktywo wpłacone, ale nigdy niewłączone jako zabezpieczenie, liczy się dopiero wtedy, gdy włączysz dla niego „use as collateral” (użyj jako zabezpieczenia). Cztery zasady Aave V3 mogą zablokować te drogi:
+
+- **Aktywów z LTV 0 nie da się włączyć.** Wskaźnik LTV (loan-to-value) to część wartości aktywa, pod którą możesz pożyczać. Aave V3 nie pozwala włączyć jako zabezpieczenia aktywa z LTV 0. Aktywo, które było już włączone, nadal liczy się do HF według swojego progu, ale nie daje zdolności pożyczkowej. Przykładem jest mostkowany USDC.e na Arbitrum: LTV 0, próg 78% i zamrożenie, podczas gdy governance Aave stopniowo go wycofuje (blok Arbitrum 514855406, 14 października 2026).
+- **Zamrożonych aktywów nie da się wpłacić.** Zamrożona rezerwa odrzuca nowe wpłaty. Spłata długu w zamrożonym aktywie nadal działa, bo spłata wymaga tylko, żeby rezerwa była aktywna i niewstrzymana.
+- **Pełne limity podaży.** Rezerwa, która osiągnęła swój limit podaży (supply cap), odrzuca nowe wpłaty, dopóki nie zwolni się miejsce.
+- **Wstrzymane aktywa.** Wstrzymana (paused) rezerwa odrzuca nowe wpłaty i każdą zmianę ustawienia „use as collateral”.
+
+## Krok 3: zostaw bufor poniżej limitu pożyczki
+
+Pożyczanie wyraźnie poniżej maksimum zostawia najwięcej miejsca, bo pozycja na limicie pożyczki startuje ze współczynnikiem zdrowia równym tylko próg likwidacji ÷ LTV. Na Aave V3 Ethereum Core to 83% ÷ 80,5% ≈ 1,031 dla WETH, 78% ÷ 73% ≈ 1,068 dla WBTC i 78% ÷ 75% = 1,04 dla USDC (blok 26193284, 14 października 2026). Przy pełnych 19 320 $ pożyczonych pod 10 WETH po 2400 $ spadek ETH o 3,0%, do 2327,71 $, wystarczy, żeby pozycję można było zlikwidować.
+
+Wskaźnik „borrow limit used” (wykorzystany limit pożyczki) w aplikacjach pożyczkowych to dług ÷ (zabezpieczenie × LTV), a nie współczynnik zdrowia. Przy zabezpieczeniu WETH na Ethereum Core wykorzystanie 80% limitu oznacza HF około 1,29.
+
+Bufor musi też pochłonąć to, co obniża HF, gdy nic nie robisz: odsetki, obniżki progów przez governance, depegi (utrata powiązania z dolarem) i błędy wyroczni (oracle), omówione w poradniku [dlaczego twój współczynnik zdrowia na Aave spada sam](/pl/blog/dlaczego-spadl-wspolczynnik-zdrowia-aave). Liczby dla poszczególnych aktywów podaje poradnik [jaki bufor daje współczynnik zdrowia](/pl/blog/bezpieczny-wspolczynnik-zdrowia-aave). Aave V4 zastępuje parę LTV i próg jednym współczynnikiem zabezpieczenia (collateral factor) dla każdego aktywa zabezpieczenia w każdym Spoke'u, więc podane tu wartości LT ÷ LTV dotyczą tylko V3.
+
+## Krok 4: spłać zabezpieczeniem lub zamień zabezpieczenie
+
+Jeśli w portfelu nie ma wolnych środków, interfejs Aave Labs (app.aave.com) może spłacić dług, sprzedając część twojego zabezpieczenia, albo zamienić jedno aktywo zabezpieczenia na inne, w jednej transakcji przez kontrakty swap adapterów, które mogą użyć flash loana Aave. Dokumentacja Aave wymienia obie funkcje między innymi dla wszystkich siedmiu sieci, które obejmuje ten poradnik (14 października 2026).
+
+Dla zamian kierowanych przez CoW Protocol dokumentacja podaje opłaty (stan na 14 października 2026): 0 punktów bazowych (pb) przy zamianie długu, 15 pb przy innych zamianach między skorelowanymi aktywami (takimi jak ETH i wstETH) i 25 pb przy wszystkich pozostałych zamianach. Niektóre sieci kierują zamiany przez ParaSwap. Do tego dochodzą wpływ na cenę, poślizg i gaz, plus premia za flash loan Aave w wysokości 0,05%, gdy adapter bierze flash loan (wszystkie siedem sieci, odczyt z 15 października 2026). Adapter potrzebuje też zgody (allowance) lub podpisanego permitu, żeby przenieść twoje aTokeny, czyli tokeny reprezentujące wpłacone zabezpieczenie.
+
+### Czy spłata zabezpieczeniem podnosi twój współczynnik zdrowia na Aave?
+
+Tak, zawsze gdy twój współczynnik zdrowia jest wyższy niż próg likwidacji sprzedawanego zabezpieczenia, przed opłatami i poślizgiem. Sprzedaż X $ zabezpieczenia na spłatę X $ długu daje nowy HF równy (HF × dług − X × LT) ÷ (dług − X), który przewyższa stary dokładnie wtedy, gdy HF > LT. Każdy próg w Aave V3 jest niższy niż 100%, więc każda pozycja, której nie da się zlikwidować, zyskuje. Zyskuje mniej niż przy spłacie z portfela: przy 10 WETH i 12 000 USDC długu na Aave V3 Ethereum Core (HF 1,66 przy ETH po 2400 $) sprzedaż 1000 $ w WETH na spłatę 1000 USDC daje 1,735, wobec 1,811 przy spłacie z portfela. Opłata 25 pb i premia 0,05% za flash loan, razem około 3 $, nadal zostawiają 1,735.
+
+### Czy zamiana zabezpieczenia na Aave może obniżyć współczynnik zdrowia, a mimo to zmniejszyć ryzyko?
+
+Tak. Zamiana zmiennego zabezpieczenia na stablecoin o niższym progu może nieco obniżyć HF, a zarazem znacznie zmniejszyć zależność pozycji od zmiennej ceny. Weźmy 10 WETH i 12 000 USDC długu na Aave V3 Ethereum Core przy ETH po 2400 $ i zamieńmy 5 WETH (12 000 $) na USDC. Ważone zabezpieczenie wynosi wtedy 5 × 2400 × 0,83 + 12 000 × 0,78 = 19 320 $, więc HF spada z 1,66 do 1,61, bo próg USDC (78%) jest niższy niż próg WETH (83%). Ale HF osiąga teraz 1 dopiero wtedy, gdy ETH spadnie do około 636 $, czyli o 73,5%, a nie do 1445,78 $, czyli o 39,8%. Opłata 25 pb (30 $) i premia za flash loan (0,0025 WETH, 6 $) dają HF około 1,608 i przesuwają tę cenę do około 642 $. Sam współczynnik zdrowia nie pokazuje, która cena może ci zaszkodzić; pokazuje to skład zabezpieczenia i długu.
+
+## Krok 5: dobierz dług do swojego zabezpieczenia
+
+Rodzaj twojego długu decyduje, który ruch ceny może cię zlikwidować. Przy długu w stablecoinie współczynnik zdrowia (HF) spada, gdy spada cena zabezpieczenia. Przy zmiennym długu spada, gdy pożyczone aktywo drożeje. Przy skorelowanych aktywach w E-Mode zależy od kursu wymiany między nimi, tak jak podaje go wyrocznia. Przykłady używają parametrów Aave V3 Ethereum Core odczytanych 14 października 2026 (blok 26193284; E-Mode w bloku 26193288), przy ETH po 2400 $:
+
+| Zabezpieczenie i dług                     | Co obniża twój HF                                                            | Przykład                                                                                                                                              |
+| ----------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| WETH wpłacone, USDC pożyczone             | Spadek ETH; odsetki. Spadek USDC poniżej 1 $ zmniejsza ten dług i podnosi HF | 10 WETH przy długu 12 000 USDC: HF 1,66, który osiąga 1, jeśli ETH spadnie o 39,8%, do 1445,78 $                                                      |
+| USDC wpłacone, WETH pożyczone             | Wzrost ETH; spadek USDC poniżej 1 $                                          | 10 000 USDC (próg 78%) przy długu 6000 $ w WETH: HF 1,30, który osiąga 1, jeśli ETH wzrośnie o 30%, do 3120 $. Przy cenie USDC 0,88 $ HF wynosi 1,144 |
+| wstETH wpłacone, WETH pożyczone, w E-Mode | Kurs wstETH do ETH podawany przez wyrocznię; odsetki                         | E-Mode „ETH correlated”: LTV 93%, próg 95%. Na limicie pożyczki HF wynosi 95 ÷ 93 ≈ 1,0215, więc ruch kursu o 2,1% doprowadza go do 1                 |
+
+- **Stablecoiny tracą powiązanie z dolarem.** Na Ethereum feed cenowy USDC w Aave ogranicza cenę do 1,04 $ (blok 26193376, 14 października 2026), ale każdy spadek poniżej 1 $ przekazuje bez zmian. 11 marca 2023 USDC spadł do około 88 centów, według post-mortem Gauntlet dla Aave.
+- **E-Mode pasuje tylko do pasującego długu.** Do kategorii E-Mode możesz wejść tylko wtedy, gdy każda twoja obecna pożyczka należy do jej zbioru aktywów, które można pożyczać. Na Ethereum Core „ETH correlated” pozwala pożyczać tylko WETH, więc pożyczka w USDC pod zabezpieczenie WETH nie może z niej korzystać.
+- **Skorelowane nie znaczy bez ryzyka.** W marcu 2026 błąd konfiguracji adaptera CAPO (Correlated Assets Price Oracle) na Ethereum Core i Prime obniżył kurs wstETH używany przez Aave o około 2,85%. Post-mortem Chaos Labs (10 marca 2026) wylicza około 10 938 wstETH zlikwidowanych w E-Mode na 34 kontach; dotknęło to pozycji z HF poniżej około 1,0288.
+- **Możesz zmienić aktywo długu.** Zamiana długu (debt swap) w interfejsie Aave Labs przenosi pożyczkę na inne pożyczone aktywo w jednej transakcji, za 0 pb przy kierowaniu przez CoW Protocol (dokumentacja Aave, 14 października 2026).
+
+## Krok 6: dostań ostrzeżenie wcześnie i działaj wcześnie
+
+Alert ustawiony na współczynniku zdrowia, przy którym nadal zdążysz zareagować, daje ci czas na spłatę lub dodanie zabezpieczenia, zanim HF osiągnie 1, ale nie może działać za ciebie. Spłaty zaczęte blisko 1 mogą się nie udać albo utknąć. Użytkownik forum Polygon (Aave V2, maj 2021), który próbował spłacić przy HF 1,01, ciągle trafiał na błędy i został zlikwidowany, zanim spłata przeszła. W grudniu 2024 użytkownik forum Aave opisał ponad godzinę oczekujących prób spłaty, które skończyły się likwidacją. Interfejs Aave pokazuje twój współczynnik zdrowia, ale nie wysyła powiadomień push; 30 maja 2024 usunięto z niego link do powiadomień HAL, bo HAL zakończył działalność.
+
+Jeden ze sposobów wyboru poziomu: wybierz cenę, przy której zareagujesz, oblicz HF przy tej cenie i tam ustaw alert. Przy zabezpieczeniu WETH i długu w USDC alert przy 1,3 zostawia miejsce na dalszy spadek ETH o 23,1%, zanim HF osiągnie 1 (1 − 1 ÷ 1,3). Pełną tabelę podaje poradnik [jaki bufor daje współczynnik zdrowia](/pl/blog/bezpieczny-wspolczynnik-zdrowia-aave).
+
+Tokenping to jedna z opcji. Sprawdza twój współczynnik zdrowia na Aave co 5 minut w 22 sieciach: każdy rynek Aave V3 w 21 z nich (24 rynki, w tym Core, Prime, EtherFi i Horizon na Ethereum) i każdy Spoke Aave V4 na Ethereum, Avalanche, Arc i Base, i wysyła ci wiadomość przez Signal, Telegram lub e-mail, dopóki HF jest poniżej progu ustawionego dla danego rynku V3 lub Spoke'a V4, od 1,1 do 10 (domyślnie 1,5). Możesz [sprawdzić swój współczynnik zdrowia na Aave V3](/pl/aave) w jego panelu; alerty kosztują <AlertPrice />, z płatnością w sieci Arbitrum. Jego ograniczenia:
+
+- Tylko odczytuje twoją pozycję, bez żadnej zgody na Aave, więc nie może spłacić długu za ciebie.
+- Ruch, który przekroczy 1,0 między dwoma sprawdzeniami, nie zostanie wychwycony na czas.
+- Obserwuje tylko portfel, który połączysz.
+- Dopóki jesteś poniżej progu, powtarza wiadomość co 5 minut i nie wysyła wiadomości o powrocie do normy.
+
+Konfigurację opisuje poradnik [jak ustawić alert o współczynniku zdrowia](/pl/blog/alerty-wspolczynnika-zdrowia-aave-konfiguracja); narzędzia, które nic nie kosztują, i automatyzację, która może spłacić dług za ciebie, znajdziesz w [porównaniu narzędzi do alertów o likwidacji na Aave](/pl/blog/narzedzia-alertow-o-likwidacji-aave).
+
+## Co nie chroni cię przed likwidacją?
+
+Na Aave V3 zamrożony rynek, obniżka LTV (nawet do 0) ani zabezpieczenie trzymane w innym portfelu, na innym rynku lub w innej sieci nie powstrzymują likwidacji, a od V3.7 awaria sekwencera L2 nie daje już dodatkowego czasu po powrocie sekwencera. Wstrzymanie (pause) blokuje likwidacje, ale blokuje też twoje własne spłaty. Powód: likwidacja na Aave V3 wymaga tylko współczynnika zdrowia (HF) poniżej 1,00, aktywnych i niewstrzymanych rezerw zabezpieczenia i długu oraz zakończenia ewentualnego okresu karencji likwidacji.
+
+- **Zamrożony rynek.** Zamrożenie zatrzymuje nowe wpłaty i pożyczki, ale sprawdzenie likwidacji ignoruje flagę zamrożenia.
+- **Obniżka LTV, nawet do 0.** LTV ogranicza tylko nowe pożyczki, a HF używa progu likwidacji. Zmiana LTV ani nie obniża twojego HF, ani go nie chroni.
+- **Awaria sekwencera L2.** Przed V3.7 kontrakt sentinel na rynkach L2 Aave blokował większość likwidacji, gdy sekwencer nie działał, i przez okres karencji po jego powrocie. Aave V3.7 usunęło to sprawdzenie, a wszystkie siedem sieci sprawdzonych w tym poradniku, w tym Arbitrum, Optimism i Base, działa na V3.7. Gdy sekwencer wraca, likwidacje ruszają bez okresu karencji, w którym można by doładować pozycję.
+- **Wstrzymanie.** Gdy wstrzymana rezerwa zostaje wznowiona, Protocol Emergency Guardian (multisig z rolą emergency admin w Aave) lub governance może dodać okres karencji likwidacji do 4 godzin. Wstrzymanie to działanie awaryjne, na które pożyczkobiorcy nie mają wpływu, a dopóki trwa, nie możesz też spłacać ani wpłacać tego aktywa.
+- **Zabezpieczenie gdzie indziej.** Tokeny w twoim portfelu, na innym rynku Aave lub w innej sieci nie liczą się do HF tej pozycji.
+
+## Źródła
+
+- [Aave V3 GenericLogic.sol: obliczanie współczynnika zdrowia](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol), aave-v3-origin main (sprawdzono 14 października 2026)
+- [Aave V3 ValidationLogic.sol: sprawdzenia wpłaty (zamrożenie, wstrzymanie, limit podaży), pożyczki, spłaty, zabezpieczenia i likwidacji](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol) (sprawdzono 14 października 2026)
+- [Aave V3 SupplyLogic.sol: włączenie aktywa jako zabezpieczenia wymaga niezerowego LTV](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) (sprawdzono 14 października 2026)
+- [Aave V3 LiquidationLogic.sol: close factor i zasady dla pyłu (dust)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol) (sprawdzono 14 października 2026)
+- [Aave V3 PoolConfigurator.sol: limity progu i bonusu, kto może wstrzymać, maksymalny okres karencji 4 godziny](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol) (sprawdzono 14 października 2026)
+- [Funkcje Aave V3.6: zasady dla LTV 0](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.6/Aave-v3.6-features.md) (sprawdzono 14 października 2026)
+- [Usunięcie sentinela w Aave V3.7](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/sentinel-removal.md): co blokował sentinel L2 i okres karencji po powrocie sekwencera (sprawdzono 14 października 2026)
+- [Changelog dokumentacji Aave](https://aave.com/docs/resources/changelog): Aave V2 na Polygon (14 kwietnia 2021), start Aave V3 (16 marca 2022) i wdrożenie V3.7 we wszystkich siedmiu sieciach (sprawdzono 14 października 2026)
+- [Dokumentacja Aave: governance](https://aave.com/docs/ecosystem/governance): Protocol Emergency Guardian ma rolę `EMERGENCY_ADMIN` (sprawdzono 14 października 2026)
+- [Dokumentacja Aave: funkcje zamiany (spłata zabezpieczeniem, zamiany zabezpieczenia i długu, flash loany, opłaty, rynki)](https://aave.com/docs/aave-v3/smart-contracts/swap-features) (sprawdzono 14 października 2026)
+- [Przegląd Aave V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md) i [Spoke.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/Spoke.sol), aave/aave-v4 main: jeden współczynnik zabezpieczenia na aktywo zabezpieczenia, wymagany poniżej 100%, i docelowy współczynnik zdrowia zamiast close factor (sprawdzono 14 października 2026)
+- [Dokumentacja Aave: pozycje w Aave V4](https://aave.com/docs/aave-v4/positions): współczynnik zdrowia dla każdego Spoke'a (sprawdzono 14 października 2026)
+- [Aave V3 PoolDataProvider na Ethereum](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): `getReserveConfigurationData` dla WETH, WBTC i USDC w bloku 26193284, bez zmian w bloku 26194005 (sprawdzono 14 października 2026)
+- [Aave V3 Pool na Ethereum (Core)](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract): `getEModeCategoryCollateralConfig(1)` i `getEModeCategoryBorrowableBitmap(1)` dla „ETH correlated” w bloku 26193288, bez zmian w bloku 26194006 (sprawdzono 14 października 2026)
+- [Aave V3 PoolDataProvider na Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b#readContract): konfiguracja USDC.e w bloku Arbitrum 514855406, bez zmian w bloku 514886152 (sprawdzono 14 października 2026)
+- [Aave Address Book](https://github.com/aave-dao/aave-address-book): adresy puli i swap adapterów. `FLASHLOAN_PREMIUM_TOTAL` = 5 (0,05%) i `POOL_REVISION` = 11 we wszystkich siedmiu pulach, które obejmuje ten poradnik, odczyt o 00:23 UTC (blok Ethereum 26194302), bez adaptera zarejestrowanego jako flash borrower zwolniony z opłaty na Ethereum ani na Arbitrum (sprawdzono 15 października 2026)
+- [Adapter ceny USDC dla Aave V3 na Ethereum, „Capped USDC / USD”](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract): `getPriceCap` = 1,04 $ w bloku 26193376 (sprawdzono 14 października 2026)
+- [aave-price-feeds PriceCapAdapterStable.sol: ceny powyżej limitu są obcinane, spadki poniżej 1 $ przechodzą bez zmian](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol) (sprawdzono 14 października 2026)
+- [Forum Polygon: „Liquidation on polygon AAVE -JSON ERROR”, 18 maja 2021](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067) (sprawdzono 14 października 2026)
+- [Forum governance Aave: „Repeatedly Failed Repayment Attempts Leading to Liquidation” (wielokrotnie nieudane próby spłaty zakończone likwidacją), 23 grudnia 2024](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379) (sprawdzono 14 października 2026)
+- [Gauntlet: „Aave Resilient Through USDC Volatility”, 17 marca 2023](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (sprawdzono 14 października 2026)
+- [Chaos Labs: post-mortem kursu wymiany wstETH na instancjach Core i Prime, 10 marca 2026](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269) (sprawdzono 14 października 2026)
+- [Pomoc Aave: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations), gdzie Aave prosi pożyczkobiorców o regularne sprawdzanie współczynnika zdrowia, oraz [kod źródłowy aave/interface](https://github.com/aave/interface), który ma ostrzeżenia o niskim współczynniku zdrowia w aplikacji i nie ma funkcji powiadomień (drzewo kodu sprawdzono 14 października 2026, stronę pomocy sprawdzono 15 października 2026)
+- [Pull request #2084 w aave/interface: „chore: remove hal”, scalony 30 maja 2024](https://github.com/aave/interface/pull/2084) (sprawdzono 14 października 2026)
+
+_Treści edukacyjne, nie porada finansowa. Alerty zmniejszają ryzyko, ale nie zapobiegają likwidacji._

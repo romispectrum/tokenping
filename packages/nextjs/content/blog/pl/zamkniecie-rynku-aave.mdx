@@ -1,0 +1,143 @@
+export const meta = {
+  slug: "zamkniecie-rynku-aave",
+  title: "Co się dzieje, gdy Aave zamyka rynek",
+  description:
+    "Aave zamyka rynki Scroll, ZKsync, Metis, Soneium i Sonic. Co nadal działa, ile płacą tam pożyczkobiorcy, co może nastąpić i jak wyjść.",
+  h1: "Co się dzieje z twoją pożyczką na Aave, gdy rynek w danej sieci jest zamykany?",
+  publishedAt: "2026-10-25",
+  primaryQuestion: "Co się dzieje z moją pożyczką na Aave, gdy Aave zamyka rynek, na którym ona jest?",
+  readingMinutes: 9,
+};
+
+<ShortAnswer>
+  Zarządzanie Aave (governance) zamroziło rynki V3 w sieciach Scroll, ZKsync, Metis, Soneium i Sonic i stopniowo je
+  zamyka. Zamrożony rynek blokuje nowe wpłaty i nowe pożyczki, ale nadal możesz spłacać dług, wypłacać środki, dopóki
+  pula ma tokeny, i nadal możesz zostać zlikwidowany. Od 20 września 2026 każde pożyczone aktywo na tych pięciu rynkach
+  ma reserve factor 99% i oprocentowanie bazowe co najmniej 5%, więc dług kosztuje tam więcej, a zabezpieczenie nie
+  zarabia prawie nic. Żaden próg likwidacji (liquidation threshold) nie został jeszcze obniżony, ale plan Aave dopuszcza
+  stopniowe obniżki i stałe ceny w źródłach cen, a jedno i drugie może jednym krokiem zmienić współczynnik zdrowia
+  (health factor). Wyjściem jest spłata długu i wypłata zabezpieczenia.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Liczby i numery bloków, w których je odczytano: content/blog/snapshots/aave-market-wind-down.md */}
+
+## Które rynki Aave są zamykane?
+
+Zamykanych jest pięć rynków Aave V3: Scroll, ZKsync, Metis, Soneium i Sonic. Przy odczycie 25 października 2026 każda rezerwa na wszystkich pięciu była zamrożona, żadna nie była wstrzymana (paused), a każda miała LTV równe 0 oraz limity wpłat i pożyczek (caps) równe 1:
+
+| Sieć    | Decyzja                                | Zamrożony od     | Wersja Aave | Wpłacone / pożyczone (25 października 2026) |
+| ------- | -------------------------------------- | ---------------- | ----------- | ------------------------------------------- |
+| ZKsync  | AIP 451 (luty 2026), potem AIP 521     | 28 lutego 2026   | v3.6        | około 837 tys. $ / 135 tys. $               |
+| Soneium | AIP 451 (luty 2026), potem AIP 521     | 27 lutego 2026   | v3.6        | około 115 tys. $ / 24 tys. $                |
+| Metis   | AIP 451 (luty 2026), potem AIP 521     | 3 marca 2026     | v3.6        | około 292 tys. $ / 24 tys. $                |
+| Scroll  | AIP 470 (kwiecień 2026), potem AIP 521 | 20 kwietnia 2026 | v3.7        | około 1,90 mln $ / 260 tys. $               |
+| Sonic   | AIP 521 (wrzesień 2026)                | 20 września 2026 | v3.7        | około 7,30 mln $ / 1,63 mln $               |
+
+Jako powody podano małe wykorzystanie i niskie przychody. Propozycja, od której wszystko się zaczęło, stwierdzała, że rynki ZKsync, Metis i Soneium nie znalazły dopasowania produktu do rynku (product market fit), a ich roczne przychody wynosiły mniej więcej od 3000 $ do 50 000 $. W przypadku Scroll propozycje wskazywały na niestabilność zarządzania w ekosystemie Scroll, a potem, w kwietniu 2026, na spadek jego całkowitej zablokowanej wartości (TVL) z około 227 mln $ do 23,3 mln $ w ciągu tygodnia po tym, jak ether.fi przeniósł się na OP Mainnet. Sonic dołączył w lipcu 2026, gdy LlamaRisk podał, że jego depozyty spadły z 28,9 mln $ do 7,6 mln $, a rynek zarabiał mniej niż 5000 $ na kwartał. Ta sama lipcowa propozycja obejmuje też Aave w sieci Aptos, której Tokenping nie odczytuje.
+
+Trzy z tych rynków działają na Aave v3.6, a nie v3.7, czyli wersji, z którą porównują się poradniki na tej stronie. Opisane niżej zasady dla zamrożonej rezerwy są w obu wersjach takie same.
+
+## Co dotąd zrobiło zarządzanie Aave i w jakiej kolejności?
+
+Zarządzanie Aave działało etapami: najpierw dyskusja i limity, potem zamrożenie, potem droższy dług, a każdy krok wymagał osobnego głosowania albo działania risk stewarda:
+
+1. **11 września 2025:** propozycja podnosi reserve factor na Scroll do 50% i obniża jego limity, powołując się na niestabilność zarządzania w ekosystemie Scroll.
+2. **19 listopada 2025:** TEMP CHECK proponuje zamknięcie ZKsync, Metis i Soneium; głosowanie na Snapshot przechodzi 5 grudnia 2025, a kolejny ARFC 8 lutego 2026.
+3. **10 lutego 2026:** Chaos Labs jako risk steward obniża limity wpłat i pożyczek na mało używanych rynkach, w tym ZKsync, Metis, Soneium i Sonic.
+4. **Od 27 lutego do 3 marca 2026:** AIP 451 zamraża każdą rezerwę na Soneium, ZKsync i Metis. Jego payload dla ZKsync ustawiał tylko LTV na 0, więc rezerwy ZKsync zamrożono osobno, a pierwszy odczyt pokazał je jako zamrożone 28 lutego 2026.
+5. **10 kwietnia 2026:** limity na Scroll obniżone do 1 po odejściu ether.fi, gdy użytkownicy loopów (pętli pożyczek z dźwignią) mieli współczynniki zdrowia od około 1,00 do 1,05.
+6. **20 kwietnia 2026:** AIP 470 zamraża Scroll i podnosi jego reserve factor do 85% (50% dla WETH); tego samego dnia AIP 473 przenosi Scroll i Sonic na Aave v3.7.
+7. **29 lipca 2026:** ARFC LlamaRisk „Low Adoption Asset Deprecation” obejmuje wszystkie pięć rynków wycofaniem całego rynku.
+8. **20 września 2026:** AIP 521 zamraża każdą rezerwę na wszystkich pięciu rynkach z limitami równymi 1 i daje każdej pożyczanej rezerwie reserve factor 99% oraz oprocentowanie bazowe 5%.
+9. **12 października 2026:** AIP 526 ustala stałą cenę SCR na Scroll na 0,0335 $ i daje mu oprocentowanie bazowe 20%.
+
+## Co nadal możesz zrobić na zamrożonym rynku Aave?
+
+Na zamrożonym rynku Aave możesz spłacać dług, wypłacać środki, dopóki pula ma tokeny, oraz włączać i wyłączać zabezpieczenie, a każdy nadal może cię zlikwidować; nie możesz wpłacać ani pożyczać. Wstrzymana rezerwa, a 25 października 2026 żadna z pięciu taka nie była, blokuje wszystko, łącznie ze spłatami i likwidacjami. Według kodu walidacji kontraktu:
+
+| Działanie                               | Zamrożona rezerwa                                                                              | Wstrzymana rezerwa |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------ |
+| Wpłata                                  | Zablokowana                                                                                    | Zablokowana        |
+| Pożyczka                                | Zablokowana                                                                                    | Zablokowana        |
+| Spłata                                  | Dozwolona, także aTokenami                                                                     | Zablokowana        |
+| Wypłata                                 | Dozwolona, jeśli pula ma tokeny, a twój współczynnik zdrowia zostaje na poziomie 1 lub wyższym | Zablokowana        |
+| Włączenie lub wyłączenie zabezpieczenia | Dozwolone, jeśli twój współczynnik zdrowia zostaje na poziomie 1 lub wyższym                   | Zablokowane        |
+| Likwidacja                              | Dozwolona                                                                                      | Zablokowana        |
+
+Zamrożenie ustawia też każde LTV na 0, co blokuje tylko nowe pożyczki; poradnik o [zamrożonych rynkach i likwidacjach](/pl/blog/jak-dziala-likwidacja-na-aave#czy-likwidacje-ustaja-gdy-rynek-zostanie-zamrozony-albo-sekwencer-l2-przestanie-działac) wyjaśnia, dlaczego likwidacje mimo to trwają.
+
+## Czy zamrożony rynek obniża twój współczynnik zdrowia?
+
+Nie. Zamrożenie i LTV równe 0 nie zmieniają twojego współczynnika zdrowia, bo współczynnik zdrowia liczy się z progów likwidacji, a nie z LTV. Na wszystkich pięciu rynkach każdy próg likwidacji odczytany 25 października 2026 był taki sam jak 15 stycznia 2026, przed pierwszym zamrożeniem: na przykład 83% dla WETH na Scroll, Metis, Soneium i Sonic, 78% na ZKsync oraz 78% dla USDC na Scroll, ZKsync i Sonic.
+
+Na tych rynkach obniżają go natomiast odsetki, które naliczają się dalej, oraz ewentualne późniejsze obniżki progu albo zmiany źródła cen (zobacz, [co może nastąpić dalej](#co-moze-nastapic-dalej-na-zamykanym-rynku)).
+
+## Ile płacą pożyczkobiorcy na zamykanym rynku?
+
+Pożyczkobiorcy na tych rynkach płacą co najmniej 5% rocznie od każdego pożyczonego aktywa, a znacznie więcej tam, gdzie aktywo jest prawie w całości pożyczone. Oprocentowanie bazowe 5% oznacza, że oprocentowanie nigdy nie spada poniżej 5%, niezależnie od wykorzystania. Reserve factor 99% wysyła 99% odsetek do skarbca Aave, więc wpłacający, w tym twoje zabezpieczenie, nie zarabiają prawie nic.
+
+Odczyt z 25 października 2026:
+
+- **ZKsync USDC:** 50,00% APR. Każdy wpłacony USDC był pożyczony, więc oprocentowanie stało na szczycie swojej krzywej (5% bazowo, 5% slope 1, 40% slope 2), a wpłacający nie mieli czego wypłacić.
+- **Sonic USDC:** 18,31% APR przy wykorzystaniu 96,8%, z około 41 000 $ dostępnymi wobec 1,39 mln $ wpłaconych.
+- **Scroll SCR:** 20,05% APR, z oprocentowania bazowego 20% ustalonego przez AIP 526.
+- **Większość pozostałych pożyczanych aktywów:** około 5% do 10%, na przykład Scroll USDC 8,26%, Soneium USDC.e 10,11% i WETH od 5,05% do 5,15%.
+
+Przy takim oprocentowaniu odsetki stają się realnym zagrożeniem dla współczynnika zdrowia. Weźmy pozycję na ZKsync z zabezpieczeniem w WETH przy progu 78% i długiem w USDC przy 50% APR, zaczynającą od współczynnika zdrowia 1,56 przy stałej cenie ETH: spada on do około 1,50 w miesiąc i do 1,22 w sześć miesięcy, a poniżej 1,00 schodzi po około 325 dniach. Jak oprocentowanie dochodzi do takich poziomów, wyjaśnia poradnik [jak działa oprocentowanie na Aave](/pl/blog/oprocentowanie-aave#dlaczego-oprocentowanie-pozyczek-na-aave-gwałtownie-skacze).
+
+## Co może nastąpić dalej na zamykanym rynku?
+
+Lipcowa propozycja LlamaRisk z 2026 opisuje, co nastąpi, jeśli pożyczkobiorcy zostaną: wyższe krzywe oprocentowania, potem stopniowe obniżki progu likwidacji dla poszczególnych aktywów tam, gdzie utrzymanie ekspozycji zostanie uznane za ryzykowne, a potem stałe ceny w źródłach cen, żeby rynek można było wycofać. Do 25 października 2026 żaden z pięciu rynków nie miał obniżonego progu, a stałą cenę ma na razie tylko SCR na Scroll.
+
+Każdy z tych kroków działa na twoją pozycję inaczej:
+
+- **Wyższa krzywa oprocentowania** sprawia, że dług rośnie szybciej: to ta sama powolna presja co wyżej.
+- **Obniżka progu likwidacji** od razu obniża współczynnik zdrowia każdej pozycji używającej tego aktywa, bez żadnego ruchu ceny; [przyczyna 4 w poradniku o tym, dlaczego spada twój współczynnik zdrowia](/pl/blog/dlaczego-spadl-wspolczynnik-zdrowia-aave#przyczyna-4-czy-governance-albo-risk-stewards-obnizyli-prog-likwidacji), pokazuje, o ile.
+- **Stała cena w źródle cen** sprawia, że współczynnik zdrowia przestaje podążać za rynkową ceną tego aktywa; od tej chwili liczy się cena ustalona przez zarządzanie.
+
+## Co działo się przy wcześniejszych zamknięciach rynków Aave?
+
+Wcześniejsze zamknięcia rynków Aave przebiegały tą samą drogą, a ostatnie kroki rzeczywiście zlikwidowały pozycje, które zostały:
+
+- **Aave V3 w sieci Fantom (2022):** zamrożony we wrześniu 2022, po propozycji, która wskazywała na około 30 $ dziennych opłat dla skarbca Aave; użytkownicy mogli potem tylko wypłacać, spłacać i być likwidowani.
+- **Aave V3 w sieci Harmony (2022):** zamrożony po ataku na most Horizon; użytkownicy mogli wypłacać w miarę dostępnej płynności.
+- **Aave V2 na Ethereum i Polygon (2023):** po zamrożeniach i wyższym oprocentowaniu progi likwidacji obniżano etapami. Przed obniżką z grudnia 2023 Chaos Labs naliczył 111 kont z około 110 000 $ na Ethereum i 64 konta z około 10 800 $ na Polygon zagrożonych likwidacją w wyniku tej zmiany.
+- **Aave V2 na Polygon i Avalanche (od 2025 do 2026):** zamrożone w lipcu 2025, potem od sierpnia 2025 reserve factor 85% i oprocentowanie bazowe 5%, żeby skłonić pożyczkobiorców do przeniesienia się. W marcu 2026 Chaos Labs zaproponował jednolitą obniżkę o 4% każdego progu zabezpieczenia na V2 Ethereum, odpowiadającą obniżkom na Polygon i Avalanche, oraz wyższe bonusy likwidacyjne tam, gdzie ceny w źródłach cen były stałe.
+
+Nic nie gwarantuje, że pięć obecnych rynków pójdzie tą samą drogą, ale każdy dotychczasowy krok następował w tej kolejności.
+
+## Jak wyjść z zamykanego rynku?
+
+Wychodzisz, najpierw spłacając dług, a potem wypłacając zabezpieczenie, bo wpłaty są zablokowane, a spłata to jedyny pozostały sposób na podniesienie współczynnika zdrowia:
+
+1. **Spłać dług.** Potrzebujesz pożyczonego tokena w tej sieci. Dokumentacja Aave wymienia funkcje interfejsu repay with collateral (spłata zabezpieczeniem) i debt swap dla Sonic, ale nie dla Metis, Scroll, ZKsync ani Soneium.
+2. **Wypłać zabezpieczenie.** Każda wypłata musi zostawić twój współczynnik zdrowia na poziomie 1 lub wyższym, więc wypłacaj po spłacie albo etapami.
+3. **Sprawdź płynność puli.** Możesz wypłacić tylko tokeny, które pula nadal ma. 25 października 2026 wpłacający USDC na ZKsync nie mogli wypłacić nic, dopóki pożyczkobiorcy nie spłacili długu, a pula USDC na Sonic miała około 41 000 $.
+
+Jeśli nie możesz spłacić wszystkiego naraz, poradnik [jak podnieść współczynnik zdrowia na Aave](/pl/blog/jak-uniknac-likwidacji-na-aave) opisuje częściowe spłaty i to, co daje każda z nich.
+
+## Czy alert może pomóc, gdy rynek jest zamykany?
+
+Alert może ostrzec cię przed powolną częścią zamykania rynku, czyli odsetkami narastającymi w tempie od 5% do 50%, ale obniżka progu albo stała cena w źródle cen może jednym krokiem zmienić twój współczynnik zdrowia między dwoma sprawdzeniami. Tokenping nadal odczytuje wszystkie pięć rynków: sprawdza twój współczynnik zdrowia na Aave V3 i V4 co 5 minut w 22 sieciach i wysyła ci wiadomości przez Signal, Telegram lub e-mail, dopóki jest poniżej ustawionego progu (od 1,1 do 10).
+
+Na zamykanym rynku zostaw większy zapas niż zwykle: poradnik o tym, [jaki zapas daje współczynnik zdrowia](/pl/blog/bezpieczny-wspolczynnik-zdrowia-aave), pomoże ci wybrać, a poradnik [jak ustawić alert o współczynniku zdrowia](/pl/blog/alerty-wspolczynnika-zdrowia-aave-konfiguracja) opisuje kolejne kroki. Najpierw możesz [sprawdzić swój współczynnik zdrowia na Aave V3](/pl/aave); przeglądanie pozycji nie wymaga płatności. Alert daje ci czas na działanie; na rynku, który jest zamykany, najbezpieczniej jest z niego wyjść.
+
+## Źródła
+
+- [TEMP CHECK: Focussing the Aave V3 Multichain Strategy](https://governance.aave.com/t/temp-check-focussing-the-aave-v3-multichain-strategy/23434) (ACI, 19 listopada 2025, sprawdzono 25 października 2026)
+- [ARFC: Focussing the Aave V3 Multichain Strategy, Phase 1](https://governance.aave.com/t/arfc-focussing-the-aave-v3-multichain-strategy-phase-1/23954) (ACI, 29 stycznia 2026, sprawdzono 25 października 2026)
+- [Chaos Labs Risk Stewards: obniżka limitów dla aktywów o niskim popycie](https://governance.aave.com/t/chaos-labs-risk-stewards-supply-and-borrow-caps-reduction-across-low-demand-assets-on-aave-v3-10-02-26/24037) (10 lutego 2026, sprawdzono 25 października 2026)
+- [AIP 451](https://vote.onaave.com/proposal/?proposalId=451): zamrożenie rezerw ZKsync, Metis i Soneium (sprawdzono 25 października 2026)
+- [Direct-to-AIP: risk parameter adjustments for Aave V3 Scroll](https://governance.aave.com/t/direct-to-aip-risk-parameter-adjustments-for-aave-v3-scroll-instance/23113) (ACI, 11 września 2025), [Risk Stewards: limity na Scroll](https://governance.aave.com/t/risk-stewards-change-of-supply-borrow-caps-on-aave-v3-scroll-2026-04-10/24430) (LlamaRisk, 10 kwietnia 2026) i [Aave V3 Scroll instance deprecation](https://governance.aave.com/t/direct-to-aip-aave-v3-scroll-instance-deprecation/24432) (sprawdzono 25 października 2026)
+- [AIP 470](https://vote.onaave.com/proposal/?proposalId=470), [AIP 473](https://vote.onaave.com/proposal/?proposalId=473), [AIP 521](https://vote.onaave.com/proposal/?proposalId=521) i [AIP 526](https://vote.onaave.com/proposal/?proposalId=526) (sprawdzono 25 października 2026)
+- [ARFC: Low Adoption Asset Deprecation on Aave V3](https://governance.aave.com/t/arfc-low-adoption-asset-deprecation-on-aave-v3/25401) (LlamaRisk, 29 lipca 2026, sprawdzono 25 października 2026)
+- Aave V3 PoolDataProvider w sieciach [Scroll](https://scrollscan.com/address/0xBEa2B648f05887eCbF1d115da8b7E4A317975A51#readContract), [ZKsync](https://era.zksync.network/address/0x9057ac7b2D35606F8AD5aE2FCBafcD94E58D9927#readContract), [Metis](https://explorer.metis.io/address/0x602BeF1d4c381e5a29f0C562A310416A73D8Be19), [Soneium](https://soneium.blockscout.com/address/0x4a24b44b252db149B5B9BCec4dc3c2752807d626) i [Sonic](https://sonicscan.org/address/0xc0a344397cfa89dF1e1d3e4fb330834D789cF2CD#readContract), wraz z każdym kontraktem Pool i strategiami oprocentowania USDC na ZKsync i Sonic: flagi każdej rezerwy, LTV, próg, limity, reserve factor, oprocentowanie, płynność, deficyt i rewizja kontraktu Pool, w bloku Scroll 35492432, ZKsync 72632724, Metis 23321705, Soneium 29897280 i Sonic 81600241 (sprawdzono 25 października 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol) i [IPoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/interfaces/IPoolConfigurator.sol): na co pozwalają zamrożone i wstrzymane rezerwy oraz LTV równe 0 (aave-v3-origin, sprawdzono 25 października 2026)
+- [ARC: Aave V3 Fantom freeze reserves](https://governance.aave.com/t/arc-aave-v3-fantom-freeze-reserves/9166) (2 sierpnia 2022) i [Aave V3 Harmony freeze reserves](https://governance.aave.com/t/aave-v3-harmony-freeze-reserves/8863) (13 lipca 2022) (sprawdzono 25 października 2026)
+- [ARFC: Aave V2 markets deprecation plan](https://governance.aave.com/t/arfc-aave-v2-markets-deprecation-plan/14870) (18 września 2023) i [ARFC: V2 Ethereum and Polygon LT reductions](https://governance.aave.com/t/arfc-v2-ethereum-and-polygon-lt-reductions-12-04-2023/15747) (grudzień 2023) (sprawdzono 25 października 2026)
+- [Direct-to-AIP: Aave V2 non-Ethereum pools next deprecation steps](https://governance.aave.com/t/direct-to-aip-aave-v2-non-ethereum-pools-next-deprecation-steps/22445), [ARFC: Aave V2 deprecation update](https://governance.aave.com/t/arfc-aave-v2-deprecation-update/23008) (sierpień 2025) i [ARFC: Continued deprecation steps of Aave V2 markets](https://governance.aave.com/t/arfc-continued-deprecation-steps-of-aave-v2-markets/24351) (Chaos Labs, marzec 2026) (sprawdzono 25 października 2026)
+- [Aave swap features](https://aave.com/docs/aave-v3/smart-contracts/swap-features.md): rynki z debt swap i repay with collateral (sprawdzono 25 października 2026)
+
+_Treści edukacyjne, nie porada finansowa. Alerty zmniejszają ryzyko, ale nie zapobiegają likwidacji._

@@ -1,0 +1,184 @@
+export const meta = {
+  slug: "jak-dziala-likwidacja-na-morpho",
+  title: "Jak działa likwidacja na Morpho: zachęta i złe długi",
+  description:
+    "Kiedy pożyczkę na Morpho można zlikwidować, ile może zabrać likwidator, zachęta przy każdym LLTV, złe długi, wyrocznie i czym różni się Midnight.",
+  h1: "Co się dzieje, gdy twoja pozycja na Morpho zostaje zlikwidowana?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Jak działa likwidacja na Morpho i ile kosztuje pożyczkobiorcę?",
+  readingMinutes: 11,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Pozycję na Morpho Blue można zlikwidować, gdy jej wskaźnik LTV (loan-to-value) przekroczy LTV likwidacji (LLTV) rynku,
+  co oznacza to samo co współczynnik zdrowia (health factor) poniżej 1. Od tej chwili każdy może w jednej transakcji
+  spłacić część albo całość twojego długu i zabrać zabezpieczenie warte spłaconą kwotę razy współczynnik zachęty
+  likwidacyjnej rynku, wycenione przez wyrocznię (oracle) rynku. Zachęta wynika wyłącznie z LLTV: 4,38% przy LLTV 86%, i
+  w całości trafia do likwidatora. Zachowujesz to, co pożyczyłeś, więc zachęta jest tym, ile kosztuje cię likwidacja,
+  chyba że twoje zabezpieczenie nie pokrywa już długu; wtedy tracisz je całe, a resztę jako złe długi (bad debt)
+  pokrywają pożyczkodawcy rynku. Pożyczki o stałym oprocentowaniu w Morpho Midnight dodają dwa wyjątki: przed terminem
+  zapadalności jedna likwidacja może zabrać tylko tyle, ile przywraca pozycji zdrowie, chyba że pozostałe zabezpieczenie
+  spłaciłoby mniej niż próg rynku, a po terminie zapadalności każdy pozostały dług można zlikwidować, nawet w zdrowej
+  pozycji.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Liczby i numery bloków, przy których je odczytano: content/blog/snapshots/how-morpho-liquidation-works.md */}
+
+## Kiedy pozycję na Morpho można zlikwidować?
+
+Pozycję na Morpho Blue można zlikwidować, gdy tylko twój dług przekroczy wartość zabezpieczenia pomnożoną przez LLTV rynku. W kategoriach współczynnika zdrowia to każda wartość poniżej 1,00 ([jak liczy się współczynnik zdrowia na Morpho](/pl/blog/wspolczynnik-zdrowia-morpho) podaje wzór i przykłady).
+
+Kontrakt sprawdza to sam. Funkcja `liquidate` w Morpho Blue najpierw dolicza odsetki należne do tego bloku, potem raz odczytuje wyrocznię rynku, a następnie się wycofuje (revert), jeśli pozycja nie jest niezdrowa. Pozycja dokładnie na swoim LLTV jest wciąż zdrowa; musi go przekroczyć.
+
+Za granicę mogą przepchnąć pozycję tylko dwie rzeczy:
+
+- **Spada cena zabezpieczenia** względem tokena pożyczki, według wyroczni.
+- **Rośnie twój dług**, gdy narastają odsetki od pożyczki Blue o zmiennym oprocentowaniu.
+
+Każdy rynek Blue ustala swoje LLTV i swoją wyrocznię przy utworzeniu i żadnego z nich nie można potem zmienić. Kontrakt Morpho Blue nie ma też wstrzymania, zamrożenia ani okresu karencji: Morpho nie może zatrzymać likwidacji na rynku ani powstrzymać cię przed spłatą. Emitent danego tokena może jednak wstrzymać lub zablokować transfery tego tokena, co zatrzymałoby jedno i drugie.
+
+## Kto likwiduje pozycję na Morpho i jak?
+
+Każdy może. `liquidate` nie ogranicza, kto ją wywołuje, a samo Morpho nie likwiduje pozycji. Likwidatorami są zarówno zespoły z botami śledzącymi pozycje i ceny z wyroczni, jak i osoby prywatne; dokumentacja Morpho zauważa, że wystarczy węzeł RPC i portfel z odpowiednią ilością tokena pożyczki.
+
+Kto pierwszy, ten lepszy. Nie ma aukcji, więc likwidatorzy konkurują szybkością, a wyścigi o gas i MEV (ustawianie kolejności transakcji dla zysku) są częścią gry. Kontrakt wysyła zajęte zabezpieczenie do likwidatora, zanim pobierze tokeny pożyczki, co pozwala botowi sprzedać zabezpieczenie w tej samej transakcji i spłacić dług z uzyskanych środków.
+
+Likwidacje nie są gwarantowane; dzieją się, bo zachęta się opłaca. W praktyce to codzienność: API Morpho liczy 14 024 likwidacje na samym rynku USDC | cbBTC (86%) w sieci Base.
+
+## Jaką część twojego długu można zlikwidować naraz?
+
+Całość. Morpho Blue nie ma close factor (części długu spłacanej za jednym razem) ani minimalnej wielkości: likwidator może spłacić dowolną kwotę twojego długu, od małego wycinka po całość, w jednym wywołaniu. Jedyne ograniczenia są takie, że nie może spłacić więcej, niż jesteś winien, ani zająć więcej zabezpieczenia, niż masz.
+
+To największa różnica względem Aave V3, które ogranicza likwidację do 50% długu, dopóki współczynnik zdrowia jest powyżej 0,95, a pozycja nie jest mała ([jaką część długu na Aave można zlikwidować naraz](/pl/blog/jak-dziala-likwidacja-na-aave#jaka-czesc-mojego-długu-moze-zostac-zlikwidowana-naraz)). Na Blue pozycję, która ledwo przekroczy swoje LLTV, pierwszy likwidator, który się pojawi, może zamknąć w całości.
+
+## Jak duża jest zachęta likwidacyjna przy każdym LLTV?
+
+Współczynnik zachęty likwidacyjnej (liquidation incentive factor, LIF) wyznacza wzór w kontrakcie, na podstawie LLTV rynku:
+
+**LIF = min(1,15; 1 ÷ (1 − 0,3 × (1 − LLTV)))**
+
+Likwidator spłaca część twojego długu i otrzymuje zabezpieczenie warte tę kwotę razy LIF po cenie z wyroczni. Nadwyżka ponad 1 to zachęta, płacona z twojego zabezpieczenia. Morpho nie bierze z niej żadnej części.
+
+Rynek może używać tylko LLTV, które włączyło governance Morpho (głosowania posiadaczy tokenów Morpho). 26 października 2026 włączone były poniższe wartości i każdy rynek Blue w API Morpho używa jednej z nich. Z całkowitoliczbową arytmetyką samego kontraktu:
+
+| LLTV  | Współczynnik zachęty likwidacyjnej | Zabezpieczenie, które tracisz na 1000 spłaconego długu | W tym zachęta |
+| ----- | ---------------------------------- | ------------------------------------------------------ | ------------- |
+| 38,5% | 1,1500 (górny limit)               | 1150,00                                                | 150,00        |
+| 62,5% | 1,1268                             | 1126,76                                                | 126,76        |
+| 77%   | 1,0741                             | 1074,11                                                | 74,11         |
+| 86%   | 1,0438                             | 1043,84                                                | 43,84         |
+| 91,5% | 1,0262                             | 1026,17                                                | 26,17         |
+| 94,5% | 1,0168                             | 1016,78                                                | 16,78         |
+| 96,5% | 1,0106                             | 1010,61                                                | 10,61         |
+| 98%   | 1,0060                             | 1006,04                                                | 6,04          |
+
+Włączone jest też LLTV równe 0, ale na takim rynku nie da się nic pożyczyć. Im wyższe LLTV, tym mniejsza zachęta; dokumentacja Morpho tłumaczy to jako ochronę przed kaskadowymi likwidacjami na bardziej ryzykownych rynkach. Zaokrągla też wartość dla 86% do „approximately 1.05” (około 1,05); dokładna wartość to 1,0438.
+
+## Przykład z obliczeniami: 1 cbBTC przy 50 000 USDC w sieci Base
+
+Weźmy największy notowany rynek Blue pod względem pożyczek na Ethereum i Base: USDC | cbBTC (86%) w sieci Base, z około 1,61 mld USDC pożyczonych. 26 października 2026 jego wyrocznia wyceniała 1 cbBTC na 80 000,15 USDC (blok Base 53102870). Pozycja jest zmyślona: 1 cbBTC jako zabezpieczenie i 50 000 USDC długu.
+
+- **LTV:** 50 000 ÷ 80 000,15 = 62,5%.
+- **Współczynnik zdrowia:** 80 000,15 × 0,86 ÷ 50 000 = 1,376.
+- **Cena likwidacji:** 50 000 ÷ 0,86 = 58 139,53 USDC za cbBTC, 27,3% poniżej ceny z wyroczni.
+
+Odsetki to wolny czynnik. Przy oprocentowaniu pożyczek na tym rynku około 5,2% rocznie 26 października 2026, i gdyby się ono utrzymało, same odsetki potrzebowałyby ponad sześciu lat, żeby przesunąć tę pozycję z 62,5% do 86% LTV. Cena to czynnik szybki.
+
+Dla porównania: wśród 11 000 największych pozycji pożyczkowych na tym rynku, które mają 96% jego długu, połowa pożyczonych USDC była w pozycjach poniżej około 54% LTV, czyli ze współczynnikiem zdrowia powyżej około 1,59. To obliczenie Tokenpingu na podstawie API Morpho i ceny z łańcucha, a nie liczba podawana przez Morpho.
+
+### Pełna likwidacja przy 58 139,53
+
+Tuż po przekroczeniu ceny likwidacji likwidator może spłacić całe 50 000 USDC i zabrać 50 000 × 1,0438 ÷ 58 139,53 = 0,8977 cbBTC, wartych 52 192,07 USDC. Zachowujesz 50 000 USDC, które pożyczyłeś, i 0,1023 cbBTC (5947,47 USDC) i nic nie jesteś winien. Likwidacja kosztowała cię 2192,07 USDC w porównaniu z samodzielną spłatą: 4,38% długu.
+
+### Częściowa likwidacja 10 000 USDC
+
+Likwidator może też zatrzymać się na 10 000 USDC. Zajmuje wtedy 0,1795 cbBTC (10 438,41 USDC) i zostawia 0,8205 cbBTC przy 40 000 USDC długu: LTV 83,9% i współczynnik zdrowia 1,026, znowu zdrowa pozycja. Tutaj wycinek zawsze pomaga, bo LIF × LLTV = 0,898 jest poniżej 1. Ale nic nie zmusza likwidatora, żeby wybrał wycinek zamiast całego długu.
+
+### Co, jeśli nikt nie zlikwiduje pozycji, zanim cbBTC spadnie do 50 000?
+
+Przy 50 000 USDC twoje zabezpieczenie jest warte dokładnie tyle, co twój dług, czyli mniej niż dług × LIF. Zajęcie całego 1 cbBTC spłaca tylko 50 000 ÷ 1,0438 = 47 900 USDC. Tracisz całe zabezpieczenie, a pozostałe 2100 USDC zostaje odpisane jako zły dług, który pokrywają pożyczkodawcy rynku.
+
+## Co dzieje się ze złymi długami na Morpho Blue?
+
+Gdy likwidacja zostawia pożyczkobiorcę bez zabezpieczenia, ale z jakimś długiem, kontrakt odpisuje ten dług w tej samej transakcji. Usuwa pozostały dług z łącznych pożyczek rynku i tę samą kwotę z jego łącznych wpłat, więc każdy pożyczkodawca na tym rynku traci proporcjonalnie do swojego udziału. Pożyczkodawcy na innych rynkach nie są dotknięci, bo każdy rynek Blue jest odizolowany.
+
+Złe długi stają się możliwe, gdy zabezpieczenie jest warte mniej niż dług razy LIF. Na rynku 86% to każde LTV powyżej 95,8%, które pozycja może osiągnąć tylko wtedy, gdy cena przeskoczy LLTV, zanim ktokolwiek ją zlikwiduje. To się zdarza, choć rzadko w dużych kwotach: API Morpho odnotowuje złe długi w 1428 likwidacjach Blue na Ethereum i Base, w większości poniżej 1 dolara amerykańskiego albo na rynkach, których aplikacja Morpho nie wyświetla.
+
+Dla pożyczkobiorcy wynik jest w obu przypadkach taki sam: całe zabezpieczenie przepadło i nie zostaje żaden dług. Dla pożyczkodawców zależy to od tego, jak pożyczają: Morpho Vault V2 przenosi stratę na cenę swojego udziału, a starsze vaulty V1.1 nie przenoszą jej na swoją. Aave robi to inaczej: od v3.3 zapisuje pozostały dług jako deficyt, który mogą pokryć stakerzy Umbrella ([złe długi na Aave](/pl/blog/jak-dziala-likwidacja-na-aave#czy-likwidacja-moze-zostawic-złe-długi)).
+
+## Jaką rolę w likwidacji odgrywa wyrocznia?
+
+Wyrocznia ustala cenę przy każdej decyzji o likwidacji. Każdy rynek wskazuje jedną wyrocznię, która zwraca cenę zabezpieczenia w tokenie pożyczki, i zarówno moment, w którym pozycję można zlikwidować, jak i ilość zabezpieczenia, którą dostaje likwidator, opierają się na tej cenie, a nie na cenach z giełd. Morpho nie wybiera wyroczni: robi to ten, kto tworzy rynek. Adresu wyroczni rynku nigdy nie można zastąpić, ale feedami cenowymi, które wyrocznia odczytuje, mogą zarządzać inni, którzy mogą je aktualizować. Feed BTC/USD z przykładu w sieci Base ma na przykład właściciela, który może przełączyć go na nowe źródło.
+
+To, co mierzy wyrocznia, ma dla ciebie znaczenie. Wyrocznia rynku z przykładu w sieci Base używa dla cbBTC feedu cenowego BTC/USD i traktuje USDC jako równe dokładnie 1 dolarowi amerykańskiemu, więc depeg żadnego z tych tokenów by jej nie poruszył. Referencyjna wyrocznia Morpho dla feedów zgodnych z Chainlink nie sprawdza, jak stara jest cena ani czy mieści się w granicach, i nie dodaje żadnej kontroli awarii sekwencera L2.
+
+Problem z wyrocznią może zaszkodzić pożyczkobiorcom na dwa sposoby:
+
+- **Błędna lub zmanipulowana cena.** Strona o ryzykach Morpho ostrzega, że żadna wyrocznia nie jest odporna na manipulację, która może wywołać likwidacje, a nawet złe długi.
+- **Wyrocznia, która przestaje odpowiadać.** Pożyczanie, wypłata zabezpieczenia i likwidacja odczytują wyrocznię i by się nie powiodły. Spłata i dopłata zabezpieczenia jej nie odczytują, więc nadal możesz poprawić swoją pozycję, a nikt nie może jej zlikwidować.
+
+## Czym różnią się likwidacje na Morpho Midnight?
+
+Rynki Morpho Midnight pożyczają jeden token o stałym oprocentowaniu do ustalonego terminu zapadalności pod jedno lub więcej zabezpieczeń, każde z własnym LLTV, wyrocznią i kursorem likwidacji (liquidation cursor: to 0,3 we wzorze na zachętę powyżej, które Midnight ustala dla każdego zabezpieczenia osobno). Twój dług jest stały w jednostkach, więc przed terminem zapadalności twój współczynnik zdrowia zmieniają tylko ceny zabezpieczeń. Pozycję na Midnight można zlikwidować na dwa sposoby:
+
+- **Na podstawie zdrowia, w dowolnym momencie**, gdy dług przekracza sumę wartości każdego zabezpieczenia razy jego LLTV. Zachętą jest pełny bonus tego zabezpieczenia, a jedna likwidacja może spłacić tylko tyle, ile potrzeba, żeby pozycja znów była zdrowa. Wyjątek: gdy zabezpieczenie, które zostałoby po takiej ograniczonej likwidacji, spłaciłoby mniej niż rcfThreshold rynku, to zabezpieczenie można zabrać w całości.
+- **Po terminie zapadalności**, jeśli zostaje jakikolwiek dług, nawet w zdrowej pozycji. Nie ma ograniczenia, a zachęta zaczyna się od zera i rośnie do pełnego bonusu w ciągu 60 minut.
+
+Likwidator wybiera, które zabezpieczenie zabrać, i nie ma górnego limitu 1,15; 26 października 2026 każdy notowany rynek Midnight używał kursora 0,3 przy LLTV zabezpieczeń od 62,5% do 98%, co daje te same zachęty co w tabeli powyżej. Złe długi dzielą pożyczkodawcy danego rynku. [Jak działają pożyczki o stałym oprocentowaniu w Midnight](/pl/blog/morpho-midnight-pozyczki-o-stalym-oprocentowaniu) opisuje termin zapadalności, progi prawdziwych rynków i przykład z obliczeniami.
+
+## Czym jest prelikwidacja?
+
+Prelikwidacja (pre-liquidation) to opcjonalny dodatek do Morpho Blue, który trzeba samemu włączyć. Pożyczkobiorca, który autoryzował kontrakt prelikwidacji dla rynku, pozwala likwidatorom użyć go, gdy LTV przekroczy linię ustawioną poniżej LLTV, do spłacania wycinków długu, wywołanie po wywołaniu, z zachętą ustaloną w tym kontrakcie, aż LTV wróci poniżej tej linii. Powyżej LLTV nadal obowiązuje zwykła likwidacja.
+
+Rynek z przykładu w sieci Base ma taki kontrakt: od 83,26% LTV może spłacić do 0,20% długu na wywołanie (wywołania mogą się powtarzać), a blisko 86% do 24,53%, przy tej samej zachęcie 1,0438. Działa tylko, jeśli go autoryzowałeś. Morpho wycofuje tę funkcję: jego aplikacja nie przyjmuje nowych pozycji, a centrum pomocy prosi pożyczkobiorców, którzy ją mają, o jej wyłączenie. [Prelikwidacja na Morpho](/pl/blog/prelikwidacja-morpho) wyjaśnia warunki oraz jak ją sprawdzić i cofnąć.
+
+## Czym likwidacja na Morpho różni się od likwidacji na Aave?
+
+Rdzeń jest ten sam: poniżej 1 likwidator spłaca dług i zabiera zabezpieczenie plus bonus. Różnią się zasady wokół tego ([jak działa likwidacja na Aave](/pl/blog/jak-dziala-likwidacja-na-aave)):
+
+|                              | Aave V3                                                     | Morpho Blue                                   | Morpho Midnight                                                                                                                                                             |
+| ---------------------------- | ----------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ile naraz                    | 50% lub 100% długu, plus zasada dla resztek (dust)          | Do całego długu w jednym wywołaniu            | Przed terminem zapadalności tyle, ile przywraca zdrowie (całe zabezpieczenie, jeśli to, co zostanie, spłaciłoby mniej niż rcfThreshold); po terminie zapadalności cały dług |
+| Bonus                        | Ustalany przez governance dla każdego aktywa zabezpieczenia | Wynika z LLTV rynku                           | Dla każdego zabezpieczenia, z jego LLTV i kursora                                                                                                                           |
+| Kto zatrzymuje bonus         | Likwidator, minus opłata protokołu                          | Likwidator, w całości                         | Likwidator                                                                                                                                                                  |
+| Czy zasady mogą się zmienić? | Mogą je zmieniać governance i risk stewardzi                | Nie, ustalone przy utworzeniu rynku           | Ustalone przy utworzeniu rynku                                                                                                                                              |
+| Wstrzymanie                  | Aktywa można wstrzymać, z okresem karencji                  | Brak wstrzymania                              | Brak wstrzymania                                                                                                                                                            |
+| Złe długi                    | Deficyt, który mogą pokryć stakerzy Umbrella                | Odpisywane na koszt pożyczkodawców tego rynku | Rozkładane na pożyczkodawców tego rynku                                                                                                                                     |
+| Co obejmuje pozycja          | Wiele aktywów w jednej pozycji                              | Jedno zabezpieczenie, jeden token pożyczki    | Jeden token pożyczki, kilka zabezpieczeń                                                                                                                                    |
+
+## Jak uniknąć likwidacji na Morpho?
+
+- **Trzymaj bufor poniżej LLTV.** Pozycja, która odbije, zanim ktokolwiek ją zlikwiduje, znów jest bezpieczna, ale nic nie powstrzyma ceny przed dalszym spadkiem, a pierwszy likwidator, który się pojawi, może spłacić cały twój dług naraz.
+- **Spłacaj albo dopłacaj zabezpieczenie wcześnie.** Jedno i drugie od razu obniża twoje LTV, nie kosztuje żadnej zachęty i działa nawet wtedy, gdy wyrocznia zawiedzie.
+- **Znaj swoją wyrocznię.** Zanim pożyczysz, sprawdź, której wyroczni używa twój rynek i co ona mierzy.
+- **Na Midnight spłać przed terminem zapadalności.** Po nim każdy pozostały dług można zlikwidować, zdrowa pozycja czy nie.
+- **Sprawdź starą prelikwidację.** Jeśli kiedyś włączyłeś „Auto-deleverage” (prelikwidację), Morpho ją wycofuje i prosi pożyczkobiorców o jej wyłączenie; [prelikwidacja na Morpho](/pl/blog/prelikwidacja-morpho) pokazuje, jak to zrobić.
+
+## Jak mogą pomóc alerty?
+
+Tokenping sprawdza co 5 minut każdą pozycję pożyczkową na Morpho, dla której ustawiłeś alert, na rynkach wyświetlanych w aplikacji Morpho: Morpho Blue w 14 sieciach i Morpho Midnight. Alerty Midnight obejmują rynki, które wymienia API Morpho. 26 października 2026 były one na Ethereum i Base; Tokenping obejmuje też Arc i Robinhood Chain, gdy tylko Morpho wystawi tam rynki Midnight. Liczy każdy współczynnik zdrowia z danych z łańcucha według matematyki samego Morpho, a nie z API Morpho. Dopóki współczynnik zdrowia jest poniżej ustawionego przez ciebie progu (od 1,02 do 10), każde sprawdzenie wysyła wiadomość na każdy wybrany kanał: Signal, Telegram lub e-mail. Jeśli autoryzowałeś kontrakt prelikwidacji na rynku Blue, alert mierzy względem niższej z dwóch linii: LLTV albo linii prelikwidacji. Pożyczka Midnight dostaje też jedno przypomnienie w ostatnich 7 dniach i jedno w ostatnich 24 godzinach przed terminem zapadalności, a potem alert przy każdym sprawdzeniu po terminie zapadalności, dopóki zostaje dług.
+
+Możesz [przejrzeć swoje pozycje na Morpho](/pl/morpho); to nie wymaga płatności. Alerty kosztują <AlertPrice />. Alert daje ci czas na działanie, ale cena może przekroczyć twoje LLTV między dwoma sprawdzeniami, a alert nie zapobiega likwidacji.
+
+## Źródła
+
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) i [IMorpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/interfaces/IMorpho.sol), morpho-org/morpho-blue: sprawdzanie zdrowia, likwidacja, wzór na zachętę, złe długi i założenia dotyczące wyroczni (sprawdzono 26 października 2026)
+- [Midnight.sol](https://github.com/morpho-org/midnight/blob/main/src/Midnight.sol) i [ConstantsLib.sol](https://github.com/morpho-org/midnight/blob/main/src/libraries/ConstantsLib.sol), morpho-org/midnight: tryby likwidacji, RCF, narastanie zachęty i slashing (sprawdzono 26 października 2026)
+- [README prelikwidacji i PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation), morpho-org/pre-liquidation (sprawdzono 26 października 2026)
+- [ChainlinkDataFeedLib.sol](https://github.com/morpho-org/morpho-blue-oracles/blob/main/src/morpho-chainlink/libraries/ChainlinkDataFeedLib.sol), morpho-org/morpho-blue-oracles: brak kontroli aktualności, granic i sekwencera (sprawdzono 26 października 2026)
+- [Liquidation on Morpho](https://docs.morpho.org/learn/concepts/liquidation): likwidatorzy, brak aukcji, do 100% naraz, brak opłaty protokołu, złe długi w vaultach (sprawdzono 26 października 2026)
+- [Dokumentacja deweloperska Morpho: likwidacja](https://docs.morpho.org/developers/borrow/concepts/liquidation): zachęta według LLTV i złe długi (sprawdzono 26 października 2026)
+- [Dokumentacja Morpho: wyrocznie](https://docs.morpho.org/learn/concepts/oracle): wybór wyroczni i jej niezmienność (sprawdzono 26 października 2026)
+- [Dokumentacja Morpho: Morpho Blue](https://docs.morpho.org/learn/concepts/blue): stałe parametry rynku i włączone LLTV (sprawdzono 26 października 2026)
+- [Dokumentacja Morpho: likwidacje w Midnight](https://docs.morpho.org/learn/concepts/midnight/liquidations), [zabezpieczenie, zdrowie i likwidacje](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) i [czym jest Midnight](https://docs.morpho.org/learn/concepts/midnight) (sprawdzono 26 października 2026)
+- [Dokumentacja Morpho: ryzyka](https://docs.morpho.org/learn/resources/risks): ryzyko wyroczni, likwidacji, złych długów i kontrahenta (sprawdzono 26 października 2026)
+- [Morpho API](https://api.morpho.org/graphql): liczba likwidacji i złych długów, lista rynków, oprocentowanie pożyczek, pozycje pożyczkowe i rynki Midnight (sprawdzono 26 października 2026)
+- [Morpho Blue w sieci Base](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), rynek USDC | cbBTC (86%) w bloku Base 53102870 (sprawdzono 26 października 2026)
+- [Wyrocznia rynku](https://basescan.org/address/0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9#readContract) i [jej feed BTC/USD](https://basescan.org/address/0x64c911996D3c6aC71f9b455B1E8E7266BcbD848F#readContract) w sieci Base: cena w bloku 53102870 i właściciel feedu (sprawdzono 26 października 2026)
+- [Kontrakt prelikwidacji rynku](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374#readContract) w sieci Base: jego parametry w bloku 53102870 (sprawdzono 26 października 2026)
+- [Morpho Midnight na Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract): włączone LLTV i kursory likwidacji w bloku 26274998 (sprawdzono 26 października 2026)
+
+_Treści edukacyjne, nie porada finansowa. Alerty zmniejszają ryzyko, ale nie zapobiegają likwidacji._

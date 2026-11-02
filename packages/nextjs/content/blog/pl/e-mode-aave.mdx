@@ -1,0 +1,202 @@
+export const meta = {
+  slug: "e-mode-aave",
+  title: "Aave E-Mode: większa siła pożyczkowa, cieńszy margines",
+  description:
+    "Czym jest E-Mode w Aave V3, jakie ma kategorie na Ethereum, Arbitrum, Base i Optimism, jak zmienia współczynnik zdrowia i jak cienki jest margines loopa.",
+  h1: "Czym jest Aave E-Mode i co robi z twoim ryzykiem likwidacji?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "Czym jest Aave E-Mode i jak blisko likwidacji stawia pozycję?",
+  readingMinutes: 16,
+};
+
+<ShortAnswer>
+  E-Mode (Efficiency Mode) to ustawienie Aave V3, które pozwala pożyczyć więcej pod zabezpieczenie, którego cena porusza
+  się razem z pożyczanym aktywem, na przykład wstETH pod WETH: zastępuje zwykły wskaźnik LTV (loan-to-value) i próg
+  likwidacji (liquidation threshold) wyższymi wartościami, wspólnymi dla całej kategorii. Na rynku Ethereum Core
+  kategoria „ETH correlated” miała 28 października 2026 LTV 93% i próg likwidacji 95%, wobec 79% i 82% dla wstETH poza
+  nią. Wzór na współczynnik zdrowia (health factor) się nie zmienia, zmienia się tylko próg w nim, więc ta sama pozycja
+  pokazuje wyższą liczbę. Ceną jest cieńszy margines: pozycja zadłużona do limitu E-Mode startuje od 95 ÷ 93 = 1,0215, a
+  w marcu 2026 ruch wyroczni (oracle) o 2,85% zlikwidował pozycje w E-Mode poniżej około 1,0288. Loop (pętla pożyczek z
+  dźwignią) zadłużony blisko tego limitu działa poniżej 1,1, najniższego progu alertu, jaki przyjmuje Tokenping.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Liczby i numery bloków, przy których je odczytano: content/blog/snapshots/aave-e-mode.md */}
+
+## Czym jest Aave E-Mode i po co istnieje?
+
+Aave E-Mode to ustawienie konta na rynku Aave V3, które przypisuje cię do jednej kategorii skorelowanych aktywów i stosuje LTV, próg likwidacji i bonus likwidacyjny tej kategorii do wymienionego w niej zabezpieczenia, zamiast własnych parametrów każdego aktywa. Strona pomocy Aave opisuje je jako sposób, by „maximize their borrowing power by selecting optimized asset categories” (zmaksymalizować siłę pożyczkową dzięki wyborowi zoptymalizowanych kategorii aktywów). W kontrakcie Pool `setUserEMode(categoryId)` wchodzi do kategorii, `getUserEMode(address)` pokazuje, w której jest dany adres, a kategoria 0 oznacza brak kategorii.
+
+E-Mode istnieje, bo zwykłe parametry ustawia się pod najgorszy przypadek: aktywo zabezpieczenia i aktywo długu, których ceny poruszają się niezależnie. Gdy oba śledzą to samo, tak jak wstETH i WETH śledzą ETH, spadek dolarowej ceny ETH obniża zabezpieczenie i dług jednocześnie, a kondycja pozycji prawie się nie zmienia. Dostawcy usług zarządzania ryzykiem dla Aave mogą więc dopuścić dla takiej pary wyższe LTV i próg. Zostaje ryzyko, że oba aktywa się rozjadą, i właśnie na to ryzyko pozycja w E-Mode jest naprawdę wystawiona.
+
+Od Aave V3.2, która wprowadziła „liquid E-Modes”, kategorię definiują trzy rzeczy:
+
+- **Jedno LTV, jeden próg likwidacji i jeden bonus likwidacyjny** dla całej kategorii.
+- **Zbiór zabezpieczeń**: rezerwy, które dostają parametry kategorii, dopóki w niej jesteś. Zabezpieczenie spoza zbioru zachowuje własne LTV i próg.
+- **Zbiór aktywów do pożyczenia**: jedyne rezerwy, które możesz pożyczać w tej kategorii. Aktywo może być w jednym zbiorze, w drugim lub w obu i może występować w kilku kategoriach.
+
+Zatem „ETH correlated” na Ethereum Core to nie „pożycz cokolwiek pod ETH”: jej zbiór aktywów do pożyczenia to sam WETH (odczyt z 28 października 2026, blok 26291736). Kategoria decyduje o tym, co możesz pożyczyć, tak samo jak o tym, ile.
+
+## Jakie kategorie E-Mode istnieją dziś?
+
+Poniższe kategorie odczytano 28 października 2026 z kontraktu Pool każdego rynku za pomocą `getEModeCategoryLabel`, `getEModeCategoryCollateralConfig`, `getEModeCategoryCollateralBitmap` i `getEModeCategoryBorrowableBitmap`, a bitmapy zdekodowano według `getReservesList()`. Wszystkie cztery kontrakty Pool zgłosiły rewizję 11 (V3.7). Governance i Risk Stewards zmieniają te parametry, więc sprawdź kategorię w aplikacji Aave, zanim oprzesz się na jakiejkolwiek liczbie.
+
+### Ethereum Core (blok 26291736)
+
+Ethereum Core miało 48 kategorii. Większość łączy jeden principal token (PT) Pendle albo aktywo Ethena ze stablecoinami lub z USDe, a wiele zawiera wygasłe PT, które zostały tylko dla pozycji wciąż zamykanych. Te, na które pożyczkobiorca trafi najpewniej:
+
+| Id  | Etykieta                    | LTV | Próg likwidacji | Bonus | Zbiór zabezpieczeń                            | Do pożyczenia      |
+| --- | --------------------------- | --- | --------------- | ----- | --------------------------------------------- | ------------------ |
+| 1   | ETH correlated              | 93% | 95%             | 1%    | WETH, wstETH, cbETH, rETH, weETH, osETH, ETHx | WETH               |
+| 2   | sUSDe Stablecoins           | 90% | 92%             | 4%    | USDe, sUSDe                                   | USDC, USDT         |
+| 11  | USDe Stablecoin             | 90% | 93%             | 2%    | USDe                                          | USDC, USDT         |
+| 4   | LBTC_WBTC                   | 84% | 86%             | 3%    | LBTC                                          | WBTC               |
+| 7   | eBTC/WBTC                   | 83% | 85%             | 3%    | eBTC                                          | WBTC               |
+| 22  | ezETH/wstETH                | 93% | 95%             | 1%    | ezETH                                         | wstETH             |
+| 26  | weETH/wstETH ETH Correlated | 93% | 95%             | 1%    | weETH                                         | WETH, wstETH       |
+| 3   | rsETH\_\_ETH_wstETH_ETHx    | 93% | 95%             | 1%    | rsETH                                         | WETH, wstETH, ETHx |
+| 40  | LINK\_\_USDC_USDT           | 66% | 71%             | 7%    | LINK                                          | USDC, USDT         |
+| 43  | XAUt\_\_USDC_USDT_GHO       | 70% | 75%             | 6%    | XAUt                                          | USDC, USDT, GHO    |
+| 47  | PT-srUSDe Stablecoins       | 90% | 92%             | 4,03% | sUSDe, PT-srUSDe-22OCT2026                    | USDC, USDT, USDe   |
+
+Dwa szczegóły z tego samego odczytu. W „ETH correlated” ETHx jest w zbiorze zabezpieczeń, ale ma oznaczenie LTV 0 (`ltvzeroBitmap` kategorii), więc liczy się do współczynnika zdrowia z progiem 95%, a nie daje żadnej siły pożyczkowej. Kategorie 47 i 48 (PT-srUSDe pod stablecoiny i pod USDe) były jedynymi z ustawioną flagą `isolated` z V3.7; co ona robi, opisują zasady wejścia poniżej. Kategorie LINK i XAUt pokazują, że kategoria wcale nie musi być „skorelowana”: to drugi zestaw parametrów do pożyczania stablecoinów pod jedno aktywo.
+
+### Arbitrum (bloki od 519074353 do 519074731)
+
+| Id  | Etykieta                         | LTV | Próg likwidacji | Bonus | Zbiór zabezpieczeń     | Do pożyczenia |
+| --- | -------------------------------- | --- | --------------- | ----- | ---------------------- | ------------- |
+| 1   | Stablecoins                      | 93% | 95%             | 1%    | DAI, USDC, USD₮0, EURS | brak          |
+| 2   | ETH correlated                   | 93% | 95%             | 1%    | WETH, wstETH, weETH    | WETH          |
+| 7   | wstETH/WETH ETH Correlated       | 94% | 96%             | 1%    | wstETH                 | WETH          |
+| 3   | ezETH/wstETH/WETH ETH Correlated | 93% | 95%             | 1%    | ezETH                  | WETH, wstETH  |
+| 5   | rsETH/wstETH/WETH ETH Correlated | 93% | 95%             | 1%    | rsETH                  | WETH, wstETH  |
+| 4   | ezETH Stablecoins                | 72% | 75%             | 7,5%  | ezETH                  | USD₮0, USDC   |
+| 6   | rsETH/Stablecoins                | 72% | 75%             | 7,5%  | rsETH                  | USDC, USD₮0   |
+| 8   | AAVE\_\_USDCn_USDT               | 66% | 73%             | 10%   | AAVE                   | USD₮0, USDC   |
+| 9   | ARB\_\_USDCn_USDT                | 58% | 63%             | 10%   | ARB                    | USD₮0, USDC   |
+| 10  | tBTC\_\_USDCn_USDT               | 72% | 75%             | 7,5%  | tBTC                   | USD₮0, USDC   |
+
+Kategoria „Stablecoins” na Arbitrum ma pusty zbiór aktywów do pożyczenia, więc nie da się w niej otworzyć nowego długu. Kategoria „wstETH/WETH ETH Correlated” na Arbitrum, z jednym aktywem zabezpieczenia, jest o stopień hojniejsza niż na Ethereum: 94% i 96%, co na limicie daje margines 96 ÷ 94 = 1,0213.
+
+### Base (blok 53204166)
+
+Base miało 15 kategorii. Te dla ETH i dwie dla BTC, na które pożyczkobiorcy trafiają najczęściej:
+
+| Id  | Etykieta          | LTV | Próg likwidacji | Bonus | Zbiór zabezpieczeń         | Do pożyczenia |
+| --- | ----------------- | --- | --------------- | ----- | -------------------------- | ------------- |
+| 1   | ETH correlated    | 90% | 93%             | 2%    | WETH, cbETH, wstETH, weETH | WETH          |
+| 8   | wstETH/WETH       | 93% | 95%             | 1%    | wstETH                     | WETH          |
+| 9   | cbETH/WETH        | 93% | 95%             | 2%    | cbETH                      | WETH          |
+| 7   | weETH/WETH        | 93% | 95%             | 1,25% | weETH                      | WETH          |
+| 2   | ezETH wstETH      | 93% | 95%             | 1%    | ezETH                      | wstETH        |
+| 4   | LBTC_cbBTC        | 82% | 84%             | 3%    | LBTC                       | cbBTC         |
+| 10  | cbBTC Stablecoins | 82% | 85%             | 4%    | cbBTC                      | USDC, GHO     |
+
+Pozostałe łączą jedno aktywo (wrsETH, syrupUSDC, AAVE, EURC, LBTC, tBTC, ezETH) z USDC i GHO albo z wstETH. Base pokazuje, jak szeroką kategorię dzieli się na kategorie z jednym aktywem: wieloaktywowa kategoria „ETH correlated” działa przy 90% i 93%, a wstETH/WETH, cbETH/WETH i weETH/WETH przy 93% i 95%.
+
+### Optimism (blok 158799548)
+
+| Id  | Etykieta       | LTV   | Próg likwidacji | Bonus | Zbiór zabezpieczeń                        | Do pożyczenia |
+| --- | -------------- | ----- | --------------- | ----- | ----------------------------------------- | ------------- |
+| 1   | Stablecoins    | 0,01% | 87%             | 1%    | DAI, USDC (bridged i natywny), USDT, sUSD | brak          |
+| 2   | ETH correlated | 93%   | 95%             | 1%    | WETH, wstETH, rETH (rETH z LTV 0)         | WETH          |
+
+Kategoria „Stablecoins” na Optimism to pozostałość, z LTV 0,01% i niczym do pożyczenia. Kategoria „ETH correlated” na Optimism ma te same liczby co na Ethereum.
+
+## Jak liczy się współczynnik zdrowia w E-Mode?
+
+W E-Mode współczynnik zdrowia liczy się tym samym wzorem co zawsze, Σ(wartość zabezpieczenia × próg likwidacji) ÷ wartość długu, z tą różnicą, że każde aktywo zabezpieczenia ze zbioru twojej kategorii przyjmuje próg kategorii zamiast własnego. To jedyna zmiana: `GenericLogic.calculateUserAccountData` wybiera próg dla każdego aktywa, a `getUserAccountData` zwraca wynik, więc każde narzędzie, które czyta to wywołanie, już pokazuje liczbę z E-Mode. Ogólny wzór znajdziesz w części [jak liczy się współczynnik zdrowia Aave](/pl/blog/wspolczynnik-zdrowia-aave#jak-oblicza-sie-wspołczynnik-zdrowia-aave), a część [jak E-Mode zmienia współczynnik zdrowia](/pl/blog/wspolczynnik-zdrowia-aave#jak-e-mode-zmienia-wspołczynnik-zdrowia) tego samego poradnika podaje krótką wersję tego, co poniżej.
+
+Weźmy zabezpieczenie wstETH warte 10 000 $ i dług WETH warty 9000 $ na Ethereum Core, z parametrami „ETH correlated” odczytanymi 28 października 2026 (blok 26291736) i własnymi parametrami wstETH odczytanymi tego samego dnia (blok 26291849: LTV 79%, próg likwidacji 82%):
+
+1. **W E-Mode:** HF = 10 000 × 0,95 ÷ 9000 = **1,056**. Limit pożyczki to 10 000 × 0,93 = 9300 $, więc można by pożyczyć jeszcze 300 $.
+2. **Poza E-Mode:** ta sama pozycja miałaby HF = 10 000 × 0,82 ÷ 9000 = 0,911 i w ogóle nie dałoby się jej otworzyć: LTV wstETH 79% ogranicza pożyczkę do 7900 $.
+3. **Na limicie E-Mode:** pożycz pełne 9300 $, a HF = 9500 ÷ 9300 = **1,0215**. Pozycja jest 2,1% od likwidacji już w dniu otwarcia.
+
+Zwykła pozycja zadłużona do limitu też startuje od progu ÷ LTV: 84 ÷ 81 = 1,037 dla WETH na Ethereum Core 28 października 2026 (blok 26291849). E-Mode zawęża różnicę między LTV a progiem do 2 punktów procentowych, a ta różnica to cały margines pozycji wykorzystanej do maksimum. [Dlaczego pożyczenie maksimum zostawia współczynnik zdrowia tylko około 1,03](/pl/blog/wspolczynnik-zdrowia-aave#dlaczego-pozyczenie-maksimum-zostawia-wspołczynnik-zdrowia-tylko-około-103) omawia ten sam rachunek poza E-Mode.
+
+Inaczej wygląda też to, co porusza liczbę. Przy zabezpieczeniu wstETH i długu WETH obie strony są wyceniane w ETH, więc dolarowa cena ETH się znosi: jeśli ETH stanieje o połowę, zabezpieczenie i dług spadną o połowę razem, a HF zostanie na 1,056. Zostaje kurs wstETH/ETH, który podaje wyrocznia Aave. Pozycja dochodzi do 1,00, gdy ten kurs spadnie o 1 − 90 ÷ 95 = 5,3%, a pozycja wykorzystana do maksimum, gdy spadnie o 2,1%. [Jak E-Mode zmienia twoją cenę likwidacji](/pl/blog/cena-likwidacji-aave#jak-e-mode-zmienia-twoja-cene-likwidacji) przekłada to na kurs zamiast ceny w dolarach.
+
+## Jak działa loop stakingowy z dźwignią w E-Mode i na co jest to zakład?
+
+Loop stakingowy z dźwignią wpłaca wstETH, pożycza pod nie WETH, zamienia WETH na kolejne wstETH i też je wpłaca, i powtarza to, aż pozycja trzyma kilka razy więcej wstETH niż na starcie przy prawie tak samo dużym długu w WETH. To E-Mode sprawia, że to się opłaca: przy LTV 93% loop może osiągnąć 1 ÷ (1 − 0,93) = 14,3 raza kapitał początkowy, wobec 1 ÷ (1 − 0,79) = 4,8 raza przy zwykłym LTV wstETH.
+
+Przelicz to w ETH, jednostce, w której żyje loop. Zacznij od wstETH wartego 10 ETH, zapętl do zabezpieczenia wartego 100 ETH i długu 90 WETH, a masz pozycję 1,056 z przykładu wyżej, z dziesięciokrotną dźwignią. 28 października 2026 wyrocznia Aave na Ethereum Core wyceniała wstETH na 2912,79 $, a WETH na 2335,08 $ (blok 26291849), co daje kurs 1,2474 ETH za wstETH, zgodny z `stEthPerToken()` samego Lido w tym samym bloku, więc 100 ETH zabezpieczenia to około 80,2 wstETH.
+
+O tym, czy loop zarabia, czy traci, decydują dwie liczby i żadna z nich nie jest dolarową ceną ETH:
+
+- **Kurs wymiany wstETH/ETH.** Rośnie w miarę narastania nagród za staking: Lido podało 28 października 2026 APR stETH 2,25% i 7-dniową średnią 2,33%. Loop zbiera ten zysk od 100 ETH, płacąc odsetki od 90, więc 10 ETH kapitału zarabia mniej więcej dziesięciokrotność różnicy między tymi dwiema stopami. Spadek kursu podawanego przez wyrocznię, z powodu rynkowego dyskonta wstETH albo błędu konfiguracji, obniża zabezpieczenie, a nie dług, i jest jedynym ruchem ceny, który może zlikwidować loop.
+- **Oprocentowanie pożyczki WETH.** Dług rośnie według zmiennego oprocentowania Aave, 1,94% APR dla WETH na Ethereum Core w bloku 26291849, a wstETH wpłacone przez loop prawie nic nie zarabia w samym Aave (0,0002% w tym samym bloku). Kiedy oprocentowanie pożyczki jest wyższe niż zysk ze stakingu, loop traci pieniądze, a jego współczynnik zdrowia powoli spada.
+
+Złóż to razem dla jednego roku przy dziesięciokrotnej pozycji, pomijając kapitalizację odsetek i ruchy cen. Zabezpieczenie rośnie z zyskiem ze stakingu do około 102,3 ETH. Przy oprocentowaniu pożyczki 1,94% dług dochodzi do 91,75 WETH: kapitał wynosi 10,55 ETH, o 5,5% więcej, wobec 2,3% przy samym trzymaniu wstETH, a HF rośnie do 1,059. Przy średnim oprocentowaniu 5% dług dochodzi do 94,5 WETH, kapitał spada do 7,8 ETH, a HF do 1,028. Przy 8% dług dochodzi do 97,2 WETH, a HF wynosi 1,000: loop zostałby zlikwidowany przez same odsetki. Oprocentowanie pożyczek WETH rzeczywiście skacze, gdy wykorzystanie puli jest wysokie; [dlaczego oprocentowanie pożyczek w Aave skacze](/pl/blog/oprocentowanie-aave#dlaczego-oprocentowanie-pozyczek-na-aave-gwałtownie-skacze) wyjaśnia krzywą.
+
+Dolarowa cena ETH wciąż ma znaczenie dla właściciela loopa, bo 10 ETH kapitału jest warte tyle, ile warte jest ETH, ale nie ma znaczenia dla współczynnika zdrowia. Loop to zakład, że zysk ze stakingu zostanie powyżej oprocentowania pożyczki i że kurs wstETH/ETH z wyroczni nie spadnie bardziej niż margines. Drugi zakład został przegrany w marcu 2026.
+
+## Jakie są zasady wejścia do kategorii E-Mode i wyjścia z niej?
+
+Wejście do kategorii lub wyjście z niej to jedno wywołanie, `setUserEMode(categoryId)` na kontrakcie Pool, a Pool wykonuje trzy kontrole, zanim zmiana zacznie działać, w `ValidationLogic.validateSetUserEMode` i `SupplyLogic.executeSetUserEMode` z aave-v3-origin (gałąź main, odczyt z 28 października 2026):
+
+1. **Każde aktywo, które pożyczasz, musi dać się pożyczyć w docelowej kategorii.** Dla kategorii oznacza to jej bitmapę aktywów do pożyczenia; przy wyjściu (kategoria 0) to, że rezerwa ma włączone pożyczanie. Błąd to `InvalidDebtInEmode`. Portfel z długiem w USDC nie może wejść do „ETH correlated” na Ethereum Core, gdzie jedynym aktywem do pożyczenia jest WETH, dopóki USDC nie zostanie spłacone.
+2. **Każde aktywo, które masz włączone jako zabezpieczenie, musi zachować niezerowe LTV w docelowej kategorii.** Błąd to `InvalidCollateralInEmode`. Kontrola idzie przez `getUserReserveLtv`, który zwraca LTV kategorii dla aktywów z jej zbioru zabezpieczeń (albo 0, jeśli kategoria oznacza je jako LTV 0), własne LTV aktywa dla zabezpieczenia spoza zbioru i 0 dla zabezpieczenia spoza zbioru, gdy kategoria jest izolowana.
+3. **Po zmianie twój współczynnik zdrowia musi wynosić co najmniej 1.** `executeSetUserEMode` najpierw zmienia kategorię, a potem wywołuje `validateHealthFactor`, więc zmiana, po której twoja pozycja nadawałaby się do likwidacji, jest cofana (revert).
+
+Portfel bez wpłat i bez długu może zmienić kategorię zawsze, a portfel, który już jest w żądanej kategorii, nie dostaje żadnej zmiany ani kontroli.
+
+Dwie uwagi o wersjach mają znaczenie dla każdego, kto czyta starsze poradniki. Od V3.2 zabezpieczenie spoza zbioru twojej kategorii zachowuje własne LTV i próg, więc trzymanie WBTC w „ETH correlated” jest dozwolone, a WBTC liczy się według własnych parametrów WBTC: notatki o funkcjach V3.2 mówią, że parametry E-Mode „will only apply for the ones listed as eModeCollateral” (będą stosowane tylko do aktywów wymienionych jako eModeCollateral). Od V3.7 kategoria może mieć flagę `isolated` (`getIsEModeCategoryIsolated`). W kategorii izolowanej zabezpieczenie spoza zbioru dostaje LTV 0, ale zachowuje własny próg: nadal liczy się do współczynnika zdrowia, ale nie zabezpiecza nowych pożyczek, wejście jest zablokowane, dopóki takie zabezpieczenie jest włączone, a próba włączenia go jako zabezpieczenia z wnętrza kategorii jest odrzucana. Jeśli governance włączy flagę dla działającej kategorii, notatki V3.7 mówią, że zabezpieczenie spoza zbioru „immediately becomes LTV-zero” (od razu dostaje LTV zero), a „health factor is unaffected” (współczynnik zdrowia się nie zmienia). 28 października 2026 flagę miały tylko dwie kategorie PT-srUSDe na Ethereum Core.
+
+Wyjście blokują te same trzy kontrole, uruchomione względem kategorii 0. Nie wyjdziesz, dopóki pożyczasz aktywo, którego rezerwa ma wyłączone pożyczanie, ani dopóki wyjście zepchnęłoby twój współczynnik zdrowia poniżej 1, a to częsty przypadek: pozycja 1,056 z przykładu pokazałaby poza E-Mode 0,911, więc wywołanie zostanie cofnięte. Żeby wyjść, musisz najpierw spłacić wystarczająco dużo WETH, do długu około 8200 przy 10 000 zabezpieczenia i progu wstETH 82%. Do E-Mode łatwo wejść, a trudno z niego wyjść, gdy już wykorzystasz miejsce, które daje.
+
+## Co stało się z loopami w E-Mode w marcu 2026?
+
+W marcu 2026 źle skonfigurowany adapter cen obniżył kurs wymiany wstETH używany przez Aave na rynkach Ethereum Core i Prime o około 2,85%, a każda pozycja w E-Mode ze współczynnikiem zdrowia poniżej około 1,0288 od razu stała się możliwa do likwidacji. Opis pochodzi z post-mortem Chaos Labs na forum governance Aave, opublikowanego 10 marca 2026 i ponownie przeczytanego 28 października 2026; nic tutaj nie wykracza poza ten opis.
+
+Aave wycenia wstETH przez adapter CAPO (Correlated Assets Price Oracle), który ogranicza tempo, w jakim może rosnąć podawany przez niego kurs wstETH/stETH, żeby blokować ataki polegające na sztucznym zawyżaniu kursu. Limit wylicza się ze snapshotu kursu, znacznika czasu snapshotu i maksymalnego rocznego wzrostu. Aktualizacja ustawiła znacznik czasu na punkt odniesienia sprzed siedmiu dni, a limit on-chain (kurs może wzrosnąć najwyżej o 3% co 3 dni) nie pozwolił kursowi dojść do wartości, którą ten znacznik zakładał, więc limit policzono od zbyt niskiego punktu odniesienia. Post-mortem podaje, że maksymalny dozwolony kurs wyszedł około 1,1939, poniżej bieżącego, więc limit go nadpisał, a efektywny kurs spadł o „around 2.855%” (około 2,855%).
+
+Jako skutki post-mortem podaje:
+
+- Około 10 938 wstETH likwidacji w E-Mode na 34 kontach, dotyczących pozycji „with a health factor lower than 1.0288” (ze współczynnikiem zdrowia poniżej 1,0288).
+- Brak złych długów (bad debt) dla protokołu.
+- Około 512 ETH przejętych przez likwidatorów w bonusach i w wartości z różnicy kursów, z czego 141 ETH przychodu z bonusów likwidacyjnych i około 13 ETH opłat odzyskano na rekompensaty dla poszkodowanych użytkowników, a resztę ma pokryć skarbiec DAO.
+- Limit pożyczek wstETH (borrow cap) na obu rynkach tymczasowo obniżono do 1 na czas naprawy konfiguracji.
+
+Wielkość ruchu to lekcja dla loopa. Pozycja zadłużona do limitu „ETH correlated” startuje od 1,0215, wewnątrz przedziału, który został zlikwidowany; pozycji na 1,056 to nie dotknęło. Nic w samej pozycji nie dało ostrzeżenia, bo ruch wyszedł z konfiguracji wyroczni, a nie z żadnego rynku. Adapter był wciąż w użyciu 28 października 2026 (blok 26291849): źródło wyroczni dla wstETH na Ethereum Core opisywało się jako „Capped wstETH / stETH(ETH) / USD”, ze snapshotem kursu 1,2283 z 3 marca 2026, maksymalnym rocznym wzrostem 8,8% i podawanym kursem 1,2474, równym kursowi Lido. [Przyczyna 6 w poradniku o tym, dlaczego spada współczynnik zdrowia](/pl/blog/dlaczego-spadl-wspolczynnik-zdrowia-aave#przyczyna-6-czy-bład-wyroczni-lub-kursu-wymiany-zanizył-wycene-twojego-zabezpieczenia) omawia rekompensatę, która potem nastąpiła.
+
+## Kiedy E-Mode nie pomaga?
+
+E-Mode nic nie daje pozycji, której dług jest poza kategorią, i niewiele w kilku innych częstych układach:
+
+- **Dług, którego kategoria nie wymienia.** Dopóki go pożyczasz, w ogóle nie wejdziesz do kategorii. Pozycja 10 WETH pod 12 000 USDC z poradnika o współczynniku zdrowia zostaje przy własnym progu WETH 84% na Ethereum Core (blok 26291849), bo „ETH correlated” pozwala pożyczać tylko WETH.
+- **Zabezpieczenie spoza zbioru.** Zachowuje własne parametry, więc dodanie WBTC do pozycji w „ETH correlated” podnosi współczynnik zdrowia według własnego progu WBTC, 85% na Ethereum Core w bloku 26291889, a nie 95%. W kategorii izolowanej nie dodaje nic do siły pożyczkowej.
+- **Kategorie stablecoinów.** Na Arbitrum i Optimism kategoria „Stablecoins” nie miała 28 października 2026 żadnego aktywa do pożyczenia, więc nie da się jej użyć do nowej pożyczki. Na Ethereum Core kategorie stablecoinów łączą jedno aktywo (USDe, sUSDe, PT) z USDC i USDT przy LTV od 90% do 94%. Ryzykiem jest tam depeg (utrata powiązania z dolarem) zabezpieczenia, którego kategoria skorelowana nie zmniejsza; cieńszy margines sprawia, że uderza on szybciej.
+- **Małe pozycje.** Likwidator może spłacić do 100% długu w danej rezerwie, gdy zabezpieczenie lub dług, o które chodzi, są warte mniej niż 2000 $ (`LiquidationLogic`, odczyt z 28 października 2026), więc mały loop, który spadnie poniżej 1,00, zostaje zamknięty, a nie przycięty; zasadę podaje część [ile mojego długu można zlikwidować naraz](/pl/blog/jak-dziala-likwidacja-na-aave#jaka-czesc-mojego-długu-moze-zostac-zlikwidowana-naraz). Bonus 1% w „ETH correlated” jest mały jak na Aave, ale płaci się go od całej kwoty.
+- **Cienki margines, który nie był w planie.** Jeśli wejdziesz do kategorii i pożyczysz blisko jej limitu, margines wynosi 2%, niezależnie od tego, jak wyglądał współczynnik zdrowia przed zmianą.
+
+Jeśli któraś z tych sytuacji dotyczy ciebie, lepszym narzędziem są zwykłe parametry i szerszy bufor; [jaki bufor daje współczynnik zdrowia](/pl/blog/bezpieczny-wspolczynnik-zdrowia-aave#dlaczego-bezpieczna-liczba-jest-inna-dla-długu-w-stablecoinie-długu-w-zmiennym-aktywie-i-loopow-w-e-mode) porównuje, co ten sam współczynnik zdrowia oznacza dla loopa w E-Mode i dla innych pozycji.
+
+## Czy alert pomoże przy pozycji w E-Mode?
+
+Alert o współczynniku zdrowia pomaga przy pozycji w E-Mode utrzymywanej powyżej około 1,1-1,15 i nie pasuje do loopa celowo prowadzonego poniżej tego poziomu. Tokenping czyta ten sam współczynnik zdrowia, który podaje kontrakt, z `getUserAccountData`, które już uwzględnia twoją kategorię E-Mode, więc dla E-Mode nie trzeba nic konfigurować: liczba w panelu i w wiadomościach to liczba, którą widzi likwidator.
+
+Ograniczeniem jest próg. Próg alertu Aave w Tokenping wynosi od 1,1 do 10, domyślnie 1,5. Loop na 1,056 albo każda pozycja celowo prowadzona poniżej 1,1 jest poniżej każdego progu, jaki możesz ustawić. Alert ustawiony na 1,1 przy każdej kontroli co 5 minut zastawałby współczynnik zdrowia poniżej progu i za każdym razem wysyłał wiadomość, na każdym wybranym kanale, dopóki pozycja nie wróci powyżej 1,1. Nie ma drzemki ani zbiorczego podsumowania; [jak często dostaniesz alert](/pl/blog/alerty-wspolczynnika-zdrowia-aave-konfiguracja#jak-czesto-dostaniesz-alerty) dokładnie opisuje to zachowanie.
+
+Przy cienkim loopie uczciwa rada sprowadza się do jednej z dwóch dróg. Zachowaj margines: prowadź loop tak, żeby jego współczynnik zdrowia był powyżej poziomu, o którym chcesz się dowiedzieć, na przykład 1,12-1,15 dla loopa wstETH/WETH, co kosztuje dźwignię, ale sprawia, że ruch wyroczni o 2,85% nie wystarczy do likwidacji, i ustaw alert na tym poziomie, żeby najpierw dowiedzieć się o odsetkach powoli spychających pozycję w dół. Albo zaakceptuj ciągłe wiadomości: ustaw 1,1 i traktuj ich strumień jako sygnał, że działasz poniżej tego poziomu, czego mało kto chce na Signalu czy Telegramie przy każdej kontroli. W żadnym z tych przypadków alert nie zareaguje szybciej niż wyrocznia: ruch z marca 2026 sprawił, że pozycje nadawały się do likwidacji w chwili, gdy zadziałał limit, a kontrola co 5 minut nie daje czasu, by na to zareagować. [Jak krok po kroku wybrać próg alertu](/pl/blog/bezpieczny-wspolczynnik-zdrowia-aave#jak-krok-po-kroku-wybrac-prog-alertu) i [jak ustawić alert o współczynniku zdrowia](/pl/blog/alerty-wspolczynnika-zdrowia-aave-konfiguracja#krok-5-wybierz-prog) opisują konfigurację; [jak podnieść współczynnik zdrowia w Aave](/pl/blog/jak-uniknac-likwidacji-na-aave#krok-1-spłac-czesc-długu) opisuje, co zrobić, gdy przyjdzie wiadomość, a przy loopie zwykle oznacza to spłatę WETH.
+
+Najpierw możesz [sprawdzić swój współczynnik zdrowia w Aave V3](/pl/aave); przeglądanie pozycji nie wymaga płatności. Alerty kosztują <AlertPrice />, płatne w sieci Arbitrum, jeden na rynek Aave V3 lub Spoke V4, i przychodzą przez Signal, Telegram lub e-mail. Tokenping jest w wersji beta i nie gwarantuje dostępności. Przy pozycji z marginesem 2% żaden alert nie zastąpi samego marginesu.
+
+## Źródła
+
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): `POOL_REVISION`, `getReservesList` oraz etykieta, konfiguracja zabezpieczeń, bitmapy zabezpieczeń, aktywów do pożyczenia i LTV 0 oraz flaga isolated kategorii od 1 do 48, w bloku 26291736 (sprawdzono 28 października 2026)
+- Aave V3 Pool w sieciach [Arbitrum](https://arbiscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD), [Base](https://basescan.org/address/0xA238Dd80C259a72e81d7e4664a9801593F98d1c5) i [Optimism](https://optimistic.etherscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD): te same wywołania dla każdej kategorii, w blokach Arbitrum od 519074353 do 519074731, w bloku Base 53204166 i w bloku Optimism 158799548 (sprawdzono 28 października 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): LTV, próg, bonus i oprocentowanie WETH, wstETH i USDC w bloku 26291849; WBTC w bloku 26291889 (sprawdzono 28 października 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) i jego [adapter CAPO dla wstETH](https://etherscan.io/address/0xe1D97bF61901B075E9626c8A2340a7De385861Ef): ceny WETH i wstETH, opis adaptera, snapshot kursu, znacznik czasu snapshotu, maksymalny roczny wzrost i kurs w bloku 26291849 (sprawdzono 28 października 2026)
+- [Token wstETH](https://etherscan.io/address/0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0): `stEthPerToken()` w bloku 26291849 (sprawdzono 28 października 2026)
+- [API Lido z APR stETH](https://eth-api.lido.fi/v1/protocol/steth/apr/sma): ostatnie APR i średnia 7-dniowa (sprawdzono 28 października 2026)
+- [IPool.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/interfaces/IPool.sol): gettery E-Mode, `setUserEMode` i `getUserEMode` (aave-v3-origin main, sprawdzono 28 października 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) i [LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): `validateSetUserEMode`, `getUserReserveLtv`, `executeSetUserEMode` i próg 2000 $ dla close factor (część długu spłacana za jednym razem) (aave-v3-origin main, sprawdzono 28 października 2026)
+- [Funkcje Aave V3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): liquid E-Modes, zabezpieczenie spoza kategorii zachowuje własne parametry, zasady wejścia i wyjścia (sprawdzono 28 października 2026)
+- [Izolowany E-Mode w Aave V3.7](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md): skutki flagi isolated (sprawdzono 28 października 2026)
+- [Pomoc Aave: Efficiency Mode (E-mode)](https://aave.com/help/borrowing/e-mode) (sprawdzono 28 października 2026)
+- [Post-mortem Chaos Labs o rozjechaniu się kursu wymiany wstETH na instancjach Core i Prime](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): opublikowano 10 marca 2026 (sprawdzono 28 października 2026)
+
+_Treści edukacyjne, nie porada finansowa. Alerty zmniejszają ryzyko, ale nie zapobiegają likwidacji._

@@ -1,0 +1,194 @@
+export const meta = {
+  slug: "morpho-midnight-pozyczki-o-stalym-oprocentowaniu",
+  title: "Pożyczki o stałym oprocentowaniu w Morpho Midnight",
+  description:
+    "Jak działają pożyczki w Morpho Midnight: oprocentowanie, dług w terminie zapadalności, zdrowie przy kilku zabezpieczeniach, likwidacja niespłaconego długu.",
+  h1: "Jak działają pożyczki o stałym oprocentowaniu w Morpho Midnight i co się dzieje w terminie zapadalności?",
+  publishedAt: "2026-10-26",
+  primaryQuestion:
+    "Jak działa pożyczka o stałym oprocentowaniu w Morpho Midnight i co się stanie, jeśli nie spłacę jej przed terminem zapadalności?",
+  readingMinutes: 12,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Morpho Midnight to pożyczki Morpho o stałym oprocentowaniu i stałym terminie. Pożyczasz, sprzedając jednostki długu
+  poniżej wartości nominalnej: każda jednostka daje ci teraz trochę mniej niż jeden token pożyczki i jest obietnicą
+  spłaty dokładnie jednego w terminie zapadalności rynku, więc oprocentowanie jest ustalone w chwili pożyczenia, a twój
+  dług nie rośnie. Przed terminem zapadalności twoją pozycję można zlikwidować tylko wtedy, gdy zabezpieczenie, ważone
+  LTV likwidacji (LLTV) każdego zabezpieczenia, przestaje pokrywać dług, czyli gdy współczynnik zdrowia (health factor)
+  spada poniżej 1. Po terminie zapadalności każdy pozostały dług można zlikwidować niezależnie od współczynnika zdrowia,
+  a bonus likwidatora rośnie przez pierwszą godzinę. Spłać przed terminem zapadalności, a potem sam wypłać
+  zabezpieczenie.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Liczby i numery bloków, przy których je odczytano: content/blog/snapshots/morpho-midnight-fixed-rate-loans.md */}
+
+## Czym jest Morpho Midnight?
+
+Morpho Midnight to część Morpho, która oferuje pożyczki o stałym oprocentowaniu do ustalonej daty, czyli terminu zapadalności. Dokumentacja Morpho nazywa ją „Fixed Rate Markets (Midnight)” (rynki o stałym oprocentowaniu), obok Morpho Blue, rynków o zmiennym oprocentowaniu. Jeśli matematyka zdrowia pozycji na Morpho jest dla ciebie nowa, zacznij od [poradnika o współczynniku zdrowia na Morpho](/pl/blog/wspolczynnik-zdrowia-morpho), na którym opiera się ten poradnik.
+
+Midnight otworzył się publicznie 21 lipca 2026 w sieci Base, z jedną parą (zabezpieczenie w cbBTC, pożyczki w USDC) i kilkoma terminami zapadalności. W tym poradniku rynek Midnight nazywamy od tej pary: „rynek cbBTC/USDC” przyjmuje cbBTC jako zabezpieczenie i pożycza USDC. Ten sam kod kontraktu działa teraz w pięciu sieciach:
+
+| Sieć            | Kontrakt Midnight ma kod od | Rynki wymienione w API Morpho (26 października 2026) |
+| --------------- | --------------------------- | ---------------------------------------------------- |
+| Base            | 6 lipca 2026                | Tak; 19 wymienionych rynków ma otwarte pożyczki      |
+| Ethereum        | 20 sierpnia 2026            | Tak; 12 wymienionych rynków ma otwarte pożyczki      |
+| Arc             | 11 września 2026            | Brak (istnieje 13 rynków)                            |
+| Robinhood Chain | Data niedostępna            | Brak (istnieją 34 rynki)                             |
+| Tempo           | 3 października 2026         | Brak (API nie pokazuje rynków)                       |
+
+Rynek Midnight może utworzyć każdy, więc samo istnienie rynku on-chain niewiele mówi. Aplikacja Morpho pokazuje te rynki, które wymienia jej API, a 26 października 2026 wszystkie były w sieciach Ethereum i Base.
+
+Wcześniejszy wpis Morpho przedstawiał Midnight, razem z Vaults V2, jako „Morpho V2”. Wpis o uruchomieniu mówi, że Midnight nie jest ani drugą wersją Blue, ani jego następcą: oba działają obok siebie. To oddzielne kontrakty.
+
+## Jak zdefiniowany jest rynek Midnight?
+
+Rynek Midnight jest ustalony w chwili utworzenia i nigdy się nie zmienia. Definiują go:
+
+- **Token pożyczki**, na przykład USDC.
+- **Jedno lub więcej zabezpieczeń** (do 128), każde z własnym LLTV (częścią wartości zabezpieczenia, jaką możesz być winien przed likwidacją), własną wyrocznią (oracle) i własnym kursorem likwidacji (liquidation cursor), który ustala bonus likwidatora.
+- **Termin zapadalności**, data i godzina, w której wymagalne są wszystkie pożyczki na rynku.
+- **Próg odzysku** (rcfThreshold), który decyduje, kiedy niewielką ilość zabezpieczenia można zlikwidować w całości (patrz niżej).
+- **Opcjonalne bramki** (gates), które mogą ograniczyć, kto może udzielać pożyczek, pożyczać lub likwidować. Bramka nigdy nie może powstrzymać cię przed spłatą ani wyjściem z rynku. Żaden z wymienionych rynków w sieciach Ethereum i Base nie miał bramki 26 października 2026.
+
+Jeden pożyczkobiorca może jednocześnie używać do 16 zabezpieczeń rynku. Żeby przyjąć nowe zabezpieczenie albo przesunąć termin zapadalności, ktoś musi utworzyć nowy rynek. Wymienione rynki z pożyczkami, w obu sieciach, mają termin zapadalności w ostatni piątek miesiąca o 15:00 UTC: 30 października, 27 listopada i 25 grudnia 2026 oraz 26 marca 2027.
+
+## Jak ustalane jest stałe oprocentowanie i ile jesteś winien w terminie zapadalności?
+
+Oprocentowanie wynika z ceny, a nie z modelu oprocentowania. Midnight liczy dług w jednostkach, a jedna jednostka długu to obietnica spłaty jednego tokena pożyczki w terminie zapadalności. Żeby pożyczyć, sprzedajesz jednostki pożyczkodawcom po cenie poniżej 1: przy cenie 0,99 dostajesz teraz 0,99 USDC za każdą jednostkę i jesteś winien 1 USDC za jednostkę w terminie zapadalności. Oprocentowanie za cały okres to 1 podzielone przez cenę, minus 1, a dokumentacja Morpho przelicza je na wartość roczną, dzieląc przez część roku, która pozostała.
+
+Ceny pochodzą z ofert, które publikują pożyczkodawcy i pożyczkobiorcy, więc dwóch pożyczkobiorców na tym samym rynku może płacić różne oprocentowanie. 26 października 2026 API Morpho pokazywało oprocentowanie 117 pożyczkobiorców na rynku cbBTC/USDC w sieci Base z terminem zapadalności 25 grudnia 2026 w przedziale od 1,93% do 6,84% rocznie.
+
+To, ile jesteś winien, jest proste: liczba sprzedanych jednostek, w tokenach pożyczki, płatna w terminie zapadalności. Nic nie dochodzi w trakcie trwania pożyczki. Kontrakt Midnight zmienia dług pożyczkobiorcy tylko wtedy, gdy pożyczasz więcej, spłacasz, odkupujesz jednostki albo zostajesz zlikwidowany; żadne odsetki nie są naliczane ani przed terminem zapadalności, ani po nim.
+
+Midnight ma dwie opłaty, obie ustalane dla każdego rynku i obie zerowe na dwóch rynkach z tego poradnika:
+
+- **Opłata rozliczeniowa** (settlement fee) od każdej transakcji, płacona przez tego, kto przyjmuje ofertę. Kontrakt ogranicza ją zależnie od czasu do terminu zapadalności, od 0,0014% za dzień do 0,5% za 360 dni.
+- **Opłata ciągła** (continuous fee), ponoszona tylko przez pożyczkodawców i ograniczona do 1% rocznie.
+
+## Jak liczy się współczynnik zdrowia przy kilku zabezpieczeniach?
+
+Kontrakt Midnight sprawdza zdrowie odpowiedzią tak lub nie: pozycja jest zdrowa, dopóki jej maksymalny dług jest co najmniej równy długowi. Maksymalny dług to suma, po każdym używanym zabezpieczeniu, jego wartości w tokenie pożyczki według ceny z jego wyroczni, pomnożonej przez jego własne LLTV. Dokumentacja Morpho zapisuje ten warunek jako maxDebt ≥ debt; współczynnik zdrowia to ten sam warunek zapisany jako iloraz, maksymalny dług podzielony przez dług, a poniżej 1 pozycję można zlikwidować.
+
+Weźmy największy wymieniony rynek w sieci Ethereum, który pożycza USDC pod dwa zabezpieczenia z różnymi LLTV: samo USDC przy 98% i cbBTC przy 86%. Przy cbBTC po 80 011,48 USDC (cena z jego wyroczni 26 października 2026) przykładowa pozycja z [poradnika o współczynniku zdrowia na Morpho](/pl/blog/wspolczynnik-zdrowia-morpho), 0,5 cbBTC i 10 000 USDC zabezpieczenia przy 40 000 USDC długu, wygląda tak:
+
+| Zabezpieczenie | Wartość (USDC) | LLTV | Liczy się jako (USDC) |
+| -------------- | -------------- | ---- | --------------------- |
+| 0,5 cbBTC      | 40 005,74      | 86%  | 34 404,94             |
+| 10 000 USDC    | 10 000,00      | 98%  | 9800,00               |
+| Razem          | 50 005,74      |      | 44 204,94             |
+
+Jej współczynnik zdrowia wynosi 44 204,94 ÷ 40 000 = 1,105 i spada poniżej 1, jeśli cbBTC spadnie poniżej około 70 233 USDC, o 12,2%, przy niezmienionej wartości zabezpieczenia w USDC. Zasada jest taka sama jak przy [drugim zabezpieczeniu na Aave](/pl/blog/wspolczynnik-zdrowia-aave#co-sie-zmienia-przy-drugim-aktywie-w-zabezpieczeniu): każde aktywo liczy się według własnej stawki.
+
+Zabezpieczenia możesz dodawać, wypłacać lub zamieniać w dowolnym momencie, o ile po wypłacie pozycja pozostaje zdrowa. Jeśli wyrocznia któregokolwiek z używanych zabezpieczeń przestanie odpowiadać, kontrole zdrowia, pożyczanie, wypłaty i likwidacje przestają działać dla twojej pozycji, dopóki masz dług. Spłata nadal działa, a gdy dług spadnie do zera, możesz wypłacić zabezpieczenie bez żadnej wyroczni.
+
+## Kiedy pożyczkę w Midnight można zlikwidować?
+
+Pożyczkę w Midnight można zlikwidować na dwa sposoby: gdy jest niezdrowa, w dowolnym momencie, albo gdy po terminie zapadalności zostaje dług, niezależnie od zdrowia pozycji. Wspólny mechanizm opisuje poradnik [jak działa likwidacja na Morpho](/pl/blog/jak-dziala-likwidacja-na-morpho); tutaj jest to, co dotyczy tylko Midnight.
+
+### Przed terminem zapadalności
+
+Przed terminem zapadalności liczy się tylko zdrowie. Gdy współczynnik zdrowia spadnie poniżej 1, likwidator może spłacić część twojego długu i wziąć zabezpieczenie o wartości tej kwoty plus bonus. Bonus jest ustalany dla każdego zabezpieczenia: 1 ÷ (1 − kursor × (1 − LLTV)). Dla cbBTC przy LLTV 86% i kursorze 0,3 to 1,0438, czyli bonus 4,38%; dla USDC przy 98% około 0,6%. Likwidator wybiera, które z twoich zabezpieczeń weźmie, a dokumentacja Morpho ostrzega, że wybierze to, które najwięcej się opłaca.
+
+To, ile może zniknąć naraz, zależy od wielkości. Zwykle likwidator może spłacić tylko tyle, ile trzeba, żeby pozycja znów była zdrowa. Wyjątek: gdy zabezpieczenie, które zostałoby po takiej ograniczonej likwidacji, spłaciłoby mniej niż rcfThreshold rynku, można je wziąć w całości. Ten próg wynosi 3000 USDC na rynku cbBTC/USDC w sieci Base z przykładu poniżej i 300 000 USDC na rynku w sieci Ethereum opisanym wyżej. Przy pożyczce z jednym zabezpieczeniem poniżej tej wielkości cała pozycja może zniknąć naraz.
+
+### Po terminie zapadalności
+
+Gdy minie moment terminu zapadalności, każdy pozostały dług można zlikwidować, nawet jeśli twój współczynnik zdrowia wynosi 2 albo 10. Ścieżka kontraktu po terminie zapadalności sprawdza tylko zegar. Morpho uzasadnia to tym, że pożyczkodawcy oczekują wypłaty w terminie zapadalności, a pożyczkobiorca, który nie spłacił, zdrowy czy nie, im to blokuje.
+
+Bonus w tej ścieżce zaczyna się od zera w terminie zapadalności i rośnie równomiernie do pełnego bonusu przez 60 minut. Jeśli po terminie zapadalności twoja pozycja jest też niezdrowa, likwidator może zamiast tego użyć ścieżki opartej na zdrowiu i od razu wziąć pełny bonus. W ścieżce po terminie zapadalności nie ma limitu tego, ile można spłacić, więc cały dług może zostać zlikwidowany za jednym razem. Po terminie zapadalności nie możesz już zwiększać długu, ale nadal możesz spłacać, odkupywać jednostki i wypłacać zabezpieczenie.
+
+<Callout tone="warning">
+  W dokładnej sekundzie terminu zapadalności zdrowa pozycja jest jeszcze bezpieczna; sekundę później już nie. Spóźniona
+  spłata zdrowej pozycji może cię kosztować do pełnego bonusu likwidacyjnego, około 4,4% długu przy pożyczce pod cbBTC
+  przy LLTV 86%.
+</Callout>
+
+Jeśli likwidacja zostawi dług, którego zabezpieczenie nie może pokryć, brakująca kwota jest odpisywana i rozkładana tylko na pożyczkodawców tego rynku.
+
+## Jak spłacić wcześniej, w terminie zapadalności albo przejść na późniejszy termin?
+
+Masz trzy sposoby wyjścia z pożyczki w Midnight i jedno rozwiązanie awaryjne, które trzeba włączyć:
+
+- **Spłać bezpośrednio.** Spłata kosztuje dokładnie jeden token pożyczki za jednostkę, przed terminem zapadalności, w nim lub po nim. Zawsze działa i wyznacza najwyższą kwotę, jaką warto zapłacić za wcześniejsze wyjście. Wcześniejsza spłata nie zwraca żadnej części odsetek: płacisz pełną kwotę należną w terminie zapadalności, tylko wcześniej.
+- **Odkup jednostki przed terminem zapadalności.** Zamiast tego możesz kupić jednostki z ofert sprzedaży pożyczkodawców po cenie poniżej 1, co anuluje tyle długu za mniej niż wartość nominalną. Zależy to od tego, czy ktoś oferuje jednostki w chwili, gdy chcesz wyjść.
+- **Przejdź na późniejszy termin zapadalności.** Dokumentacja Morpho opisuje spłatę lub odkup na jednym rynku i pożyczkę na rynku z późniejszym terminem w jednej transakcji, za pomocą wywołań zwrotnych (callbacks). Wpis Morpho o uruchomieniu w lipcu wymieniał automatyczne przechodzenie na kolejny termin jako przyszłą funkcję; 26 października 2026 dokumentacja opisuje przejście tylko jako coś, co robisz sam, albo przez rozwiązanie awaryjne Blue opisane niżej.
+- **Przejdź awaryjnie do Blue.** Morpho wdrożyło kontrakt BlueFallbackRolling we wszystkich pięciu sieciach. Jeśli go włączysz i autoryzujesz zarówno w Midnight, jak i w Blue, każdy może przenieść twój dług i zabezpieczenie z Midnight na wybrany przez ciebie rynek Blue o zmiennym oprocentowaniu, od wybranego przez ciebie momentu. Nagrodą wywołującego jest ustalona przez ciebie część długu; rośnie między ustalonym przez ciebie czasem początkowym i końcowym, może dojść do całego długu i jest doliczana do twojego nowego długu w Blue. Wymaga dokładnie jednego zabezpieczenia, zgodnego z zabezpieczeniem rynku Blue.
+
+## Co dzieje się z twoim zabezpieczeniem po spłacie?
+
+Twoje zabezpieczenie zostaje tam, gdzie jest, dopóki go nie wypłacisz. Spłata go nie odsyła. Gdy twój dług wynosi zero, kontrola zdrowia przechodzi bez pytania jakiejkolwiek wyroczni, więc możesz wypłacić całość i żadna bramka cię nie zatrzyma. Przenieść je możesz tylko ty, autoryzowane przez ciebie konto albo likwidator pozycji, którą można zlikwidować.
+
+To samo dotyczy sytuacji po likwidacji: zabezpieczenie, którego likwidator nie wziął, zostaje w twojej pozycji do wypłaty.
+
+## Przykład: pożyczka cbBTC/USDC z terminem 25 grudnia 2026
+
+Ten rynek, na parze, z którą wystartował Midnight, został utworzony 14 lipca 2026, tydzień przed publicznym uruchomieniem, i jest największym wymienionym rynkiem w sieci Base. Odczyt on-chain 26 października 2026 o 06:06 UTC:
+
+| Pole                 | Wartość                                  |
+| -------------------- | ---------------------------------------- |
+| Token pożyczki       | USDC                                     |
+| Zabezpieczenie       | cbBTC, jedyne                            |
+| LLTV                 | 86%                                      |
+| Bonus likwidacyjny   | 4,38% (kursor 0,3)                       |
+| Termin zapadalności  | 25 grudnia 2026, 15:00 UTC, za 60,4 dnia |
+| rcfThreshold         | 3000 USDC                                |
+| Bramki i opłaty      | Brak                                     |
+| Do spłaty w terminie | 1 530 235,58 USDC od 117 pożyczkobiorców |
+| Cena cbBTC           | 80 097,33 USDC (wyrocznia rynku)         |
+
+**Pożyczanie.** Najlepsza cena, po jakiej pożyczkobiorca mógł sprzedać jednostki, wynosiła 0,9901297. Pożyczenie 10 000 USDC po tej cenie oznacza dług około 10 099,69 USDC 25 grudnia 2026: 0,997% za 60,4 dnia, około 6,0% rocznie. Ta cena zmienia się z minuty na minutę.
+
+**Typowa pozycja.** Mediana pożyczkobiorców jest winna 37,08 USDC w terminie zapadalności przy 0,00060018 cbBTC wartym 48,07 USDC. Jej maksymalny dług to 48,07 × 0,86 = 41,34 USDC, więc jej współczynnik zdrowia wynosi 41,34 ÷ 37,08 = 1,11. Dochodzi do 1, jeśli cbBTC spadnie do około 71 838 USDC, o 10,3%.
+
+**Jeśli cbBTC spadnie tuż poniżej 71 838 USDC przed terminem zapadalności.** Pozycja jest daleko poniżej progu 3000 USDC, więc likwidator może spłacić całe 37,08 USDC i wziąć cbBTC warte 38,71 USDC. Z 43,12 USDC w cbBTC pożyczkobiorcy zostaje do wypłaty około 4,41 USDC.
+
+**Jeśli pożyczkobiorca zapomni spłacić, a cbBTC zostanie na 80 097 USDC.** Od 15:00:01 UTC 25 grudnia każdy może spłacić 37,08 USDC i wziąć cbBTC; likwidator może działać w dowolnej sekundzie po 15:00:00. Bonus rośnie z czasem: około 2,2% po trzydziestu minutach, pełne 4,38% po godzinie. Likwidacja godzinę lub więcej po terminie zapadalności zabiera cbBTC warte 38,71 USDC i zostawia pożyczkobiorcy 9,37 USDC. Spłata 37,08 USDC na czas pozwoliłaby zachować całe 48,07 USDC w cbBTC, czyli netto 10,99 USDC, więc ta likwidacja kosztuje pożyczkobiorcę 1,63 USDC, pełny bonus. Wcześniejsza kosztuje mniej, ale nic nie zmusza likwidatora do czekania.
+
+## Jak Midnight wypada w porównaniu z pożyczką o zmiennym oprocentowaniu w Morpho Blue?
+
+|                         | Morpho Blue                                                                             | Morpho Midnight                                                                                                                                                             |
+| ----------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Oprocentowanie          | Zmienia się cały czas według modelu oprocentowania rynku                                | Ustalone w chwili pożyczenia                                                                                                                                                |
+| Dług                    | Rośnie z odsetkami                                                                      | Ustalona liczba jednostek, nie rośnie                                                                                                                                       |
+| Data końcowa            | Brak                                                                                    | Termin zapadalności                                                                                                                                                         |
+| Zabezpieczenia na rynek | Jedno                                                                                   | Jedno lub więcej, każde z własnym LLTV                                                                                                                                      |
+| Można zlikwidować, gdy  | Pozycja jest niezdrowa                                                                  | Pozycja jest niezdrowa albo po terminie zapadalności zostaje jakikolwiek dług                                                                                               |
+| Bonus                   | 1 ÷ (1 − 0,3 × (1 − LLTV)), najwyżej 15%                                                | 1 ÷ (1 − kursor × (1 − LLTV)), kursor ustalany dla każdego zabezpieczenia, bez limitu 15%                                                                                   |
+| Ile naraz               | Do całego długu w jednym wywołaniu                                                      | Przed terminem zapadalności tyle, ile przywraca zdrowie (całe zabezpieczenie, jeśli to, co zostanie, spłaciłoby mniej niż rcfThreshold); po terminie zapadalności cały dług |
+| Prelikwidacja           | Wycofywana przez Morpho, patrz [prelikwidacja na Morpho](/pl/blog/prelikwidacja-morpho) | Nie jest częścią Midnight                                                                                                                                                   |
+| Wcześniejsze wyjście    | Spłata w dowolnym momencie                                                              | Spłata po wartości nominalnej albo odkup jednostek, jeśli są sprzedający                                                                                                    |
+
+Różnica w praktyce dla twojego współczynnika zdrowia: w Blue może on spadać od samych odsetek, jak na Aave ([jak skoki oprocentowania wpływają na współczynnik zdrowia](/pl/blog/oprocentowanie-aave#jak-skoki-oprocentowania-wpływaja-na-twoj-wspołczynnik-zdrowia)). W Midnight spada tylko wtedy, gdy spadają ceny zabezpieczeń, albo gdy wypłacasz zabezpieczenie lub pożyczasz więcej. W zamian Midnight dodaje datę, której nie możesz przegapić.
+
+## Jak alerty mogą pomóc przy pożyczce w Midnight?
+
+Alert może ostrzec cię przed oboma rodzajami ryzyka pożyczki w Midnight: spadającym współczynnikiem zdrowia i zbliżającym się terminem zapadalności. Tokenping sprawdza co 5 minut. Jego [panel Morpho](/pl/morpho) pokazuje pozycje pożyczkowe portfela na rynkach wymienionych w aplikacji Morpho w 14 sieciach, w Blue i Midnight, a przeglądanie pozycji nie wymaga płatności. Alerty dla Midnight obejmują rynki, które wymienia API Morpho. 26 października 2026 były one w sieciach Ethereum i Base; Tokenping obejmie też Arc i Robinhood Chain, gdy Morpho wymieni tam rynki Midnight. Do tego czasu w tych dwóch sieciach alerty dla Midnight nie są możliwe.
+
+Dla pożyczki w Midnight:
+
+- **Zdrowie.** Tokenping oblicza twój współczynnik zdrowia z danych z blockchaina według matematyki samego Morpho, nigdy z API Morpho. Dopóki jest poniżej ustawionego przez ciebie progu (od 1,02 do 10), każde sprawdzenie wysyła wiadomość każdym wybranym kanałem: Signal, Telegram lub e-mail.
+- **Termin zapadalności.** Dostajesz jedno przypomnienie w ostatnich 7 dniach przed terminem zapadalności i jedno w ostatnich 24 godzinach.
+- **Po terminie zapadalności.** Dopóki pozostaje dług, każde sprawdzenie wysyła alert, bo pożyczkę można zlikwidować niezależnie od jej współczynnika zdrowia.
+
+Alerty kosztują <AlertPrice />, ten sam plan co alerty dla Aave. Alert daje ci czas na reakcję; nie zapobiega likwidacji, a cena może się zmienić między dwoma sprawdzeniami.
+
+## Źródła
+
+- [Morpho docs: Midnight concepts](https://docs.morpho.org/learn/concepts/midnight): jednostki, wierzytelność i dług, wcześniejsze wyjście, zabezpieczenie i zdrowie (sprawdzono 26 października 2026)
+- [Morpho docs: Midnight liquidations](https://docs.morpho.org/learn/concepts/midnight/liquidations): dwie ścieżki likwidacji, narastanie bonusu po terminie zapadalności i dlaczego niespłacony dług można zlikwidować po terminie zapadalności (sprawdzono 26 października 2026)
+- [Morpho docs: offers](https://docs.morpho.org/learn/concepts/midnight/offers) i [gates](https://docs.morpho.org/learn/concepts/midnight/gates): przechodzenie na kolejny termin za pomocą wywołań zwrotnych oraz to, co bramki mogą, a czego nie mogą blokować (sprawdzono 26 października 2026)
+- [Morpho docs: market mechanics](https://docs.morpho.org/developers/midnight/concepts/market-mechanics), [collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) i [fees](https://docs.morpho.org/developers/midnight/concepts/fees) (sprawdzono 26 października 2026)
+- [Morpho docs: exit a borrow early](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-early) i [exit a borrow at maturity](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-by-repaying-in-full-at-maturity) (sprawdzono 26 października 2026)
+- [Morpho docs: contract addresses](https://docs.morpho.org/developers/contracts/addresses): Midnight i BlueFallbackRolling w każdej sieci (sprawdzono 26 października 2026)
+- [morpho-org/midnight](https://github.com/morpho-org/midnight): Midnight.sol (kontrola zdrowia, likwidacja, spłata, wypłaty), ConstantsLib.sol (opłaty, bonus, 60-minutowe narastanie, limity zabezpieczeń) i README peryferiów (sprawdzono 26 października 2026)
+- [morpho-org/morpho-blue](https://github.com/morpho-org/morpho-blue): stałe likwidacji i bonusu w Blue (sprawdzono 26 października 2026)
+- [Now live: Morpho Midnight and the new Markets App](https://morpho.org/blog/now-live-morpho-midnight) (21 lipca 2026) i [Morpho Midnight: what to expect at launch](https://morpho.org/blog/morpho-midnight-what-to-expect-at-launch) (17 lipca 2026) (sprawdzono 26 października 2026)
+- [Morpho Fixed Rate Markets](https://morpho.org/blog/morpho-v2-liberating-the-potential-of-onchain-loans): wcześniejszy wpis Morpho o Midnight i Vaults V2 (sprawdzono 26 października 2026)
+- [Morpho Midnight API](https://api.morpho.org/v0/midnight/markets): wymienione rynki, arkusz zleceń i pozycje pożyczkobiorców (sprawdzono 26 października 2026)
+- Kontrakty Midnight w sieci [Base](https://basescan.org/address/0xAdedD8ab6dE832766Fedf0FaC4992E5C4D3EA18A) w bloku 53102734 i [Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f) w bloku 26274992: definicje rynków, sumy, opłaty i ceny z wyroczni (sprawdzono 26 października 2026)
+
+_Treści edukacyjne, nie porada finansowa. Alerty zmniejszają ryzyko, ale nie zapobiegają likwidacji._

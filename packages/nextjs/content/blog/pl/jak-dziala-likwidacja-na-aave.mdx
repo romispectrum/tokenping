@@ -1,0 +1,183 @@
+export const meta = {
+  slug: "jak-dziala-likwidacja-na-aave",
+  title: "Co się dzieje, gdy pozycja na Aave zostaje zlikwidowana",
+  description:
+    "Jak dziś działają likwidacje na Aave V3: kiedy się zaczynają, ile długu można spłacić (50% lub 100%), jaki bonus płacisz i przykład liczbowy.",
+  h1: "Co się dzieje, gdy twoja pozycja na Aave zostaje zlikwidowana?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Co się dzieje, gdy twoja pozycja na Aave zostaje zlikwidowana?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Gdy twój współczynnik zdrowia (health factor) na Aave V3 spadnie poniżej 1, każdy inny adres może spłacić część albo
+  całość twojego długu i zabrać zabezpieczenie warte tę kwotę plus bonus likwidacyjny, na przykład 5% dla WETH na rynku
+  Ethereum Core. Jedna likwidacja może spłacić do 50% twojego długu, dopóki współczynnik zdrowia jest powyżej 0,95, a
+  zarówno twoje zabezpieczenie w zajmowanym aktywie, jak i twój dług w spłacanym aktywie są warte co najmniej 2000 $; w
+  przeciwnym razie cały dług w tym aktywie może zniknąć za jednym razem. Pożyczone tokeny zostają u ciebie, podobnie jak
+  pozostałe zabezpieczenie i dług, więc kosztem likwidacji jest dla ciebie bonus.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Kiedy pozycja na Aave może zostać zlikwidowana?
+
+Pozycja na Aave V3 może zostać zlikwidowana, gdy tylko jej współczynnik zdrowia spadnie poniżej 1,00. Współczynnik zdrowia dzieli wartość twojego zabezpieczenia, ważoną progiem likwidacji (liquidation threshold) każdego aktywa, przez wartość twojego długu, więc poniżej 1,00 ważone zabezpieczenie nie pokrywa już długu (wzór i przykład: [czym jest współczynnik zdrowia na Aave](/pl/blog/wspolczynnik-zdrowia-aave)).
+
+Kontrakty Aave V3.7 sprawdzają pięć warunków, zanim likwidacja dojdzie do skutku (`validateLiquidationCall` w `ValidationLogic.sol`):
+
+1. Współczynnik zdrowia pożyczkobiorcy jest poniżej 1,00.
+2. Zajmowane aktywo zabezpieczenia i spłacane aktywo długu są oba aktywne i **nie są wstrzymane** (paused).
+3. Okres karencji likwidacji (grace period) na żadnym z tych aktywów już nie trwa. Gdy emergency guardian Aave albo zarządzanie (governance) wznawia aktywo, może ustawić okres karencji do 4 godzin.
+4. Pożyczkobiorca ma to zabezpieczenie włączone jako zabezpieczenie i jest winien wybrane aktywo długu.
+5. Wywołujący nie jest pożyczkobiorcą: nie możesz zlikwidować własnej pozycji.
+
+Zamrożone aktywo (frozen) nadal może zostać zlikwidowane, bo warunek sprawdza „paused”, a nie „frozen”. Funkcję `liquidationCall` kontraktu Pool może wywołać każdy inny adres.
+
+Protokół nie ostrzega cię przed likwidacją, a własna aplikacja Aave pod adresem app.aave.com nie wysyła alertów. Przy jednym zabezpieczeniu o zmiennej cenie i długu w stablecoinie możesz [obliczyć swoją cenę likwidacji na Aave](/pl/blog/cena-likwidacji-aave): cenę zabezpieczenia, przy której współczynnik zdrowia osiąga 1.
+
+## Jaka część mojego długu może zostać zlikwidowana naraz?
+
+Na Aave V3.7 close factor (część długu spłacana za jednym razem) ogranicza się do 50% twojego całego długu tylko wtedy, gdy spełnione są jednocześnie trzy warunki: twój współczynnik zdrowia jest powyżej 0,95, twoje zabezpieczenie w zajmowanym aktywie jest warte co najmniej 2000 $, a twój dług w spłacanym aktywie jest wart co najmniej 2000 $. W każdym innym przypadku likwidator może w jednej transakcji spłacić do 100% twojego długu w wybranym aktywie.
+
+| Sytuacja w chwili likwidacji                                                                                | Najwięcej, ile może spłacić jedna likwidacja                                                           |
+| ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Współczynnik zdrowia powyżej 0,95, a wybrane zabezpieczenie i wybrany dług są każde warte 2000 $ lub więcej | 50% twojego całego długu we wszystkich aktywach (w USD), nigdy więcej niż twój dług w wybranym aktywie |
+| Współczynnik zdrowia 0,95 lub niższy                                                                        | 100% twojego długu w wybranym aktywie                                                                  |
+| Wybrane zabezpieczenie lub wybrany dług jest wart mniej niż 2000 $                                          | 100% twojego długu w wybranym aktywie                                                                  |
+
+Te limity to stałe w `LiquidationLogic.sol` Aave (aave-v3-origin, odczytane 14 października 2026). Od v3.3 te 50% dotyczy całej pozycji, a nie każdego aktywa długu osobno. Notatki do v3.3 podają przykład długu po 3000 $ w GHO, USDC i DAI, łącznie 9000 $: całe 3000 $ dowolnego z nich można spłacić jednym wywołaniem, bo 50% całości to 4500 $.
+
+Druga zasada zapobiega pyłowi (dust). Częściowa likwidacja musi zostawić co najmniej 1000 $ długu w spłacanym aktywie i co najmniej 1000 $ zabezpieczenia w zajmowanym aktywie. W przeciwnym razie likwidator musi przejąć cały ten dług albo całe to zabezpieczenie, inaczej transakcja zostaje cofnięta.
+
+Likwidacja zabiera tylko zabezpieczenie warte spłacony dług plus bonus, a nie całe twoje zabezpieczenie. Likwidator spłaca dług własnymi środkami, więc pożyczone tokeny zostają u ciebie; dopóki zabezpieczenie to pokrywa, tracisz bonus.
+
+Starsze poradniki opisują stały close factor 50%, a dokumentacja kontraktu Pool na aave.com nadal podaje „close factor is 0.5” („close factor wynosi 0,5”, sprawdzono 14 października 2026). Oba opisy są nieaktualne: stałe 50% było zasadą Aave V2, a kod V3.7, na którym działają te rynki, stosuje zasadę 50% albo 100% z tabeli.
+
+## Czym jest bonus likwidacyjny i kto go płaci?
+
+Bonus likwidacyjny, często nazywany karą likwidacyjną, to dodatkowe zabezpieczenie, które likwidator dostaje ponad spłacany dług, a płaci go pożyczkobiorca. Przy bonusie 5% spłata 1000 USDC twojego długu kosztuje cię zabezpieczenie warte 1050 USDC. Skarbiec Aave zatrzymuje część bonusu jako opłatę protokołu za likwidację (liquidation protocol fee), więc likwidator dostaje trochę mniej, niż ty tracisz.
+
+Obowiązujący bonus i opłata należą do zajmowanego zabezpieczenia, a nie do długu. Wartości Aave V3 odczytane z łańcucha 14 października 2026 (blok Ethereum 26193284, blok Arbitrum 514855406):
+
+| Rynek         | Zajmowane zabezpieczenie | Bonus likwidacyjny | Opłata protokołu (część bonusu) | Zabezpieczenie, które tracisz na każde spłacone 1000 $ | Likwidator dostaje |
+| ------------- | ------------------------ | ------------------ | ------------------------------- | ------------------------------------------------------ | ------------------ |
+| Ethereum Core | WETH                     | 5%                 | 10%                             | 1050 $                                                 | 1045 $             |
+| Ethereum Core | WBTC                     | 5%                 | 10%                             | 1050 $                                                 | 1045 $             |
+| Ethereum Core | USDC                     | 4,5%               | 20%                             | 1045 $                                                 | 1036 $             |
+| Arbitrum      | WETH                     | 5%                 | 10%                             | 1050 $                                                 | 1045 $             |
+| Arbitrum      | WBTC                     | 7%                 | 10%                             | 1070 $                                                 | 1063 $             |
+| Arbitrum      | USDC (natywny)           | 5%                 | 10%                             | 1050 $                                                 | 1045 $             |
+
+W E-Mode, jeśli zajmowane aktywo należy do zbioru zabezpieczeń twojej kategorii, bonus kategorii zastępuje bonus samego aktywa: 1% dla „ETH correlated” na Ethereum Core (odczytane w bloku Ethereum 26193288, 14 października 2026), więc każda likwidacja kosztuje mniej. Zarządzanie może zmienić każdy z tych parametrów, a risk stewards Aave mogą dostosowywać bonusy likwidacyjne w ustalonych granicach, więc sprawdzaj aktualne wartości w aplikacji Aave.
+
+## Które zabezpieczenie zabiera likwidator?
+
+Wybiera likwidator. Każda likwidacja na Aave V3 wskazuje jedno aktywo zabezpieczenia do zajęcia i jedno aktywo długu do spłaty, a parę wybiera likwidator, więc nie masz wpływu na to, które z twoich aktywów pójdzie pierwsze. Zajęte mogą zostać tylko aktywa włączone przez ciebie jako zabezpieczenie; wpłaconego aktywa z wyłączonym „used as collateral” (użyte jako zabezpieczenie) nie można zabrać, ale nie dodaje ono też nic do twojego współczynnika zdrowia.
+
+Jeśli wybrane zabezpieczenie nie wystarcza na spłatę plus bonus, tracisz całe to aktywo (likwidator dostaje je pomniejszone o opłatę protokołu), a spłacona zostaje mniejsza część długu. Ponieważ każda likwidacja obsługuje jedną parę, pozycja z kilkoma aktywami może zostać zlikwidowana w kilku transakcjach, a dopóki współczynnik zdrowia jest poniżej 1, mogą nastąpić kolejne likwidacje.
+
+## Przykład liczbowy: ETH spada do 1420 $, potem do 1330 $
+
+W tym przykładzie likwidacja przy cenie ETH 1420 $ spłaca 6000 USDC i kosztuje pożyczkobiorcę 300 $ w WETH; jeśli nikt nie zlikwiduje pozycji, zanim ETH spadnie do 1330 $, całe 12 000 USDC może zostać spłacone naraz, a koszt podwaja się do 600 $.
+
+Pozycja: 10 WETH zabezpieczenia i 12 000 USDC długu na Aave V3 Ethereum Core. WETH ma próg likwidacji 83%, bonus 5% i opłatę protokołu 10% (odczytane z łańcucha w bloku 26193284, 14 października 2026). Ceny ETH są przykładowe, USDC liczymy jako 1,00 $, a odsetki pomijamy.
+
+Przy 2400 $ współczynnik zdrowia wynosi 24 000 × 0,83 ÷ 12 000 = 1,66. Osiąga 1 przy cenie ETH 12 000 ÷ (10 × 0,83) = 1445,78 $, a 0,95 przy 1373,49 $.
+
+| Cena ETH                        | Współczynnik zdrowia  | Najwięcej, ile może spłacić jedna likwidacja                                                                                    |
+| ------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Powyżej około 1445,78 $         | 1,00 lub więcej       | Nic; pozycji nie można zlikwidować                                                                                              |
+| Od około 1373,50 $ do 1445,78 $ | Między 0,95 a 1,00    | 50%: 6000 USDC                                                                                                                  |
+| Od około 1260 $ do 1373,49 $    | Od około 0,87 do 0,95 | 100%: 12 000 USDC                                                                                                               |
+| Poniżej około 1260 $            | Poniżej około 0,87    | Mniej niż 12 000 USDC: zajęte zostaje całe 10 WETH, a reszta staje się [złymi długami](#czy-likwidacja-moze-zostawic-złe-długi) |
+
+### Krok 1: ETH po 1420 $, współczynnik zdrowia 0,982
+
+Przy 1420 $ 10 WETH jest wartych 14 200 $, więc współczynnik zdrowia wynosi 14 200 × 0,83 ÷ 12 000 = 0,982. To powyżej 0,95, a twoje zabezpieczenie w WETH i twój dług w USDC są każde warte ponad 2000 $, więc likwidator może spłacić najwyżej 6000 USDC.
+
+- Likwidator spłaca 6000 USDC twojego długu.
+- Twoja pozycja traci 6000 × 1,05 = 6300 $ w WETH (4,4366 WETH).
+- Opłata protokołu to 10% bonusu wynoszącego 300 $: 30 $ (0,0211 WETH) trafia do skarbca Aave, a likwidator dostaje 6270 $ (4,4155 WETH).
+- Zostaje ci 5,5634 WETH (7900 $) i 6000 USDC długu: współczynnik zdrowia 7900 × 0,83 ÷ 6000 = 1,093.
+
+Twoja wartość netto pozycji (zabezpieczenie minus dług) spada z 2200 $ do 1900 $. Różnica 300 $ to bonus.
+
+### Krok 2: ETH po 1330 $, współczynnik zdrowia 1,024
+
+Pozostałe 5,5634 WETH jest wartych 7399 $ przy 1330 $, co daje współczynnik zdrowia 7399 × 0,83 ÷ 6000 = 1,024, więc przy tej cenie pozycji nie można ponownie zlikwidować. Jej nowa cena likwidacji to około 1299 $, z 6000 ÷ (5,5634 × 0,83). Zmniejszenie długu o połowę obniżyło cenę likwidacji; kosztem był bonus 300 $.
+
+### Co, jeśli nikt nie zlikwiduje pozycji, zanim ETH spadnie do 1330 $?
+
+Jeśli pierwsza likwidacja nastąpi dopiero przy ETH po 1330 $, pierwotna pozycja ma współczynnik zdrowia 13 300 × 0,83 ÷ 12 000 = 0,920. To 0,95 lub mniej, więc likwidator może spłacić całe 12 000 USDC naraz. Twoja pozycja traci 12 000 × 1,05 = 12 600 $ w WETH (9,4737 WETH), z czego 60 $ to opłata protokołu, a 12 540 $ trafia do likwidatora. Zostaje ci 0,5263 WETH (700 $) i nie masz długu; zasada pyłu nie ma zastosowania, bo dług został spłacony w całości.
+
+Wartość netto pozycji spada z 1300 $ do 700 $. Strata 600 $ jest dwa razy większa niż w kroku 1, bo przy tym samym bonusie 5% spłacono dwa razy więcej długu.
+
+## Czy likwidacja może zostawić złe długi?
+
+Tak. Złe długi (bad debt) powstają, gdy zabezpieczenie pozycji jest warte mniej niż jej dług plus bonus likwidacyjny, więc zabranie całego zabezpieczenia wciąż nie spłaca wszystkiego. Od Aave V3.3, gdy likwidacja zużywa całe zabezpieczenie pożyczkobiorcy, a dług nadal pozostaje, kontrakt spala resztę długu i zapisuje ją jako „deficyt” (deficit) na tym aktywie. Pożyczkobiorca zostaje bez zabezpieczenia i bez długu, a stratę ponosi protokół.
+
+Przykład z parametrami WETH na Ethereum Core: 10 000 $ w WETH jako jedyne zabezpieczenie wobec 9800 USDC długu to współczynnik zdrowia 0,847. Spłata całych 9800 USDC przy bonusie 5% wymagałaby 10 290 $ w WETH, więc zajęte zostaje całe 10 000 $ w WETH (około 47,62 $ z tego jako opłata protokołu), a spłacone zostaje około 9524 USDC (10 000 ÷ 1,05). Pozostałe około 276 USDC staje się deficytem.
+
+Umbrella, mechanizm zabezpieczający Aave oparty na stakingu, może spalać aTokeny stakerów w danym aktywie, żeby pokryć takie deficyty; jego aktywacja zaczęła się na Ethereum (dokumentacja Aave, sprawdzono 14 października 2026). Chroni on protokół, a nie pożyczkobiorcę, którego zabezpieczenie już przepadło.
+
+Zdarzyło się to już na Aave V3. Po tym, jak 11 marca 2023 USDC był notowany po około 0,88 $, raport poawaryjny Gauntlet odnotował około 280 tys. $ złych długów w E-Mode na Aave V3 Avalanche i około 20 tys. $ na Aave V3 Arbitrum oraz zauważył, że gdy zabezpieczenie jest warte mniej niż dług razy jeden plus bonus, każda częściowa likwidacja pogrąża konto jeszcze głębiej pod wodą. Było to przed dodaniem mechanizmu deficytu w v3.3.
+
+## Czy likwidacje ustają, gdy rynek zostanie zamrożony albo sekwencer L2 przestanie działać?
+
+W obu przypadkach nie. Na Aave V3.7 zamrożone aktywo nadal może zostać zlikwidowane, a likwidacje w sieciach Arbitrum, Optimism i Base nie zależą już od tego, czy sekwencer L2 działa. Likwidacje blokuje natomiast wstrzymanie (pause).
+
+- **Zamrożone (frozen):** zamrożenie blokuje nowe pozycje w aktywie, ale warunek likwidacji je pomija. Podczas depegu USDC w marcu 2023 stablecoiny na Aave V3 Avalanche zostały zamrożone, a likwidacje trwały dalej. Mostkowany USDC.e w sieci Arbitrum był 14 października 2026 zamrożony z LTV równym 0 (blok Arbitrum 514855406), a mimo to nadal liczy się do współczynnika zdrowia z progiem likwidacji 78% i może zostać zajęty.
+- **Sekwencer L2:** przed v3.7 kontrakt sentinel na rynkach L2 mógł blokować likwidacje i pożyczanie, gdy sekwencer nie działał, oraz przez okres karencji po jego powrocie. Aave V3.7, na którym według stanu na 14 października 2026 działają rynki V3 w sieciach Arbitrum, Optimism i Base, usunął sentinel. Awaria nadal wstrzymuje transakcje wszystkich, zarówno pożyczkobiorców, jak i likwidatorów, ale pozycja, która w jej trakcie spadła poniżej 1, może teraz zostać zlikwidowana, gdy tylko sekwencer wróci.
+- **Wstrzymane (paused):** wstrzymane aktywo zabezpieczenia lub długu blokuje każdą likwidację, która go dotyczy. Przy wznowieniu emergency guardian Aave albo zarządzanie może ustawić okres karencji do 4 godzin, w którym likwidacje pozostają zablokowane, żeby pożyczkobiorcy mogli spłacić dług albo dołożyć zabezpieczenie; pożyczanie jest w tym czasie dozwolone.
+
+## Czym różnią się likwidacje na Aave V4?
+
+Aave V4, działający na Ethereum od 30 marca 2026, a od tamtej pory także w sieciach Avalanche, Arc i Base, zastępuje close factor docelowym współczynnikiem zdrowia i wypłaca bonus, który rośnie, gdy współczynnik zdrowia spada. V3 działa obok niego dalej, według własnych zasad.
+
+- **Docelowy współczynnik zdrowia zamiast 50% albo 100%.** Likwidator na V4 może spłacić tylko tyle długu, ile trzeba, żeby przywrócić pozycji docelowy współczynnik zdrowia jej Spoke'a, 1,24 na Ethereum Main Spoke (odczytane z łańcucha w bloku Ethereum 26193995, 14 października 2026). Wyjątek stanowi sytuacja, w której zostałaby bardzo mała reszta; wtedy cały dług w tej rezerwie może zostać spłacony.
+- **Rosnący bonus.** Dokumentacja Aave nazywa to aukcją holenderską. Na Ethereum Main Spoke bonus zaczyna się od 90% maksimum dla danego aktywa tuż poniżej współczynnika zdrowia 1 i osiąga pełne maksimum przy 0,90 lub mniej. Dla WETH, z maksimum 5,55% (API Aave V4, 14 października 2026), to około 5,0% tuż poniżej 1 i 5,55% przy 0,90. Z bonusu, tak jak w V3, potrącana jest opłata 10%.
+
+Tokenping monitoruje też pozycje na Aave V4: każdy Spoke w sieciach Ethereum, Avalanche, Arc i Base (20 według stanu na 16 października 2026), z osobnym alertem dla każdego Spoke'a, bo każdy z nich ma własną pozycję i własny współczynnik zdrowia.
+
+## Czym likwidacja na Aave różni się od likwidacji na Morpho?
+
+Na Morpho Blue nie ma close factor: gdy współczynnik zdrowia pozycji spadnie poniżej 1, likwidator może spłacić cały dług jednym wywołaniem. Zachęta zależy tylko od LTV likwidacji (LLTV) rynku, około 0,6% przy LLTV 98% i najwyżej 15% przy niskich LLTV, a jeśli zabezpieczenie skończy się wcześniej, pozostały dług zostaje odpisany kosztem pożyczkodawców rynku. Poradnik [jak działa likwidacja na Morpho](/pl/blog/jak-dziala-likwidacja-na-morpho) podaje wzór, zachętę przy każdym LLTV i przykład liczbowy.
+
+## Co możesz zrobić, zanim współczynnik zdrowia spadnie do 1?
+
+Zanim współczynnik zdrowia spadnie do 1, możesz spłacić dług albo dołożyć zabezpieczenie; oba kroki od razu go podnoszą i żaden nie kosztuje bonusu. Gdy jest już poniżej 1, likwidator może zadziałać przed tobą, a nawet częściowa likwidacja kosztuje cię bonus od zajętego zabezpieczenia: 300 $ za 6000 USDC spłacone przy bonusie 5%.
+
+Zostawianie tego na ostatnią chwilę jest ryzykowne, bo transakcje mogą się nie udać albo utknąć. W maju 2021 użytkownik forum Polygon próbował spłacić dług przy współczynniku zdrowia 1,01, ciągle dostawał błędy i został zlikwidowany, zanim spłata przeszła. W grudniu 2024 użytkownik forum Aave opisał ponad godzinę prób spłaty, które ciągle się zawieszały, zanim pozycja została zlikwidowana.
+
+Możliwości opisuje poradnik [jak podnieść współczynnik zdrowia na Aave](/pl/blog/jak-uniknac-likwidacji-na-aave), a powody, dla których współczynnik zdrowia spada, gdy nic nie robisz, poradnik [dlaczego twój współczynnik zdrowia na Aave spada sam](/pl/blog/dlaczego-spadl-wspolczynnik-zdrowia-aave).
+
+Tokenping sprawdza twój współczynnik zdrowia na Aave co 5 minut, na każdym rynku Aave V3 w 21 sieciach i w każdym Spoke'u Aave V4, i wysyła ci wiadomość przez Signal, Telegram lub e-mail, gdy jest poniżej wybranego przez ciebie progu (od 1,1 do 10), powtarzając ją przy każdym sprawdzeniu, aż wróci powyżej. Likwidacja kosztuje co najmniej bonus od zajętego zabezpieczenia. Alert ustawiony powyżej 1,0 może dać ci czas na spłatę albo dołożenie zabezpieczenia, ale szybki ruch ceny nadal może zepchnąć współczynnik zdrowia poniżej 1 między dwoma sprawdzeniami, a alert nie może działać za ciebie. Możesz [sprawdzić swój współczynnik zdrowia na Aave V3](/pl/aave) albo przeczytać, [jak ustawić alert o współczynniku zdrowia](/pl/blog/alerty-wspolczynnika-zdrowia-aave-konfiguracja).
+
+## Źródła
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), aave-dao/aave-v3-origin, gałąź main: zasady close factor, pyłu i złych długów (sprawdzono 14 października 2026)
+- [Aave V3 ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): warunki likwidacji (sprawdzono 14 października 2026)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): złe długi, close factor dla całej pozycji i jego przykład z GHO/USDC/DAI, próg 2000 $ (sprawdzono 14 października 2026)
+- [Aave v3.1 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): okres karencji likwidacji do 4 godzin (sprawdzono 14 października 2026)
+- [Aave V3 PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol): wstrzymywanie i wznawianie z okresem karencji jest zastrzeżone dla emergency admin albo pool admin, `MAX_GRACE_PERIOD = 4 hours` (sprawdzono 14 października 2026)
+- [Dokumentacja zarządzania Aave](https://aave.com/docs/ecosystem/governance): rolę emergency admin pełni Protocol Emergency Guardian (sprawdzono 14 października 2026)
+- [Aave V3 Risk Stewards README](https://github.com/aave-dao/aave-v3-risk-stewards): parametry, które stewards mogą zmieniać, w ustalonych granicach (sprawdzono 14 października 2026)
+- [Aave v3.7 PriceOracleSentinel removal](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/sentinel-removal.md) (sprawdzono 14 października 2026)
+- [Dokumentacja kontraktu Pool Aave V3](https://aave.com/docs/aave-v3/smart-contracts/pool), która nadal podaje close factor sprzed v3.3 (sprawdzono 14 października 2026)
+- [Dokumentacja Aave Umbrella](https://aave.com/docs/aave-v3/umbrella) (sprawdzono 14 października 2026)
+- [Aave V3 PoolDataProvider na Ethereum](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): konfiguracja rezerw i opłata protokołu za likwidację dla WETH, WBTC i USDC w bloku 26193284, ponownie odczytane bez zmian w bloku 26193992 (sprawdzono 14 października 2026)
+- [Aave V3 PoolDataProvider na Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): te same odczyty dla WETH, WBTC, natywnego USDC i USDC.e w bloku 514855406 (sprawdzono 14 października 2026)
+- [Aave V3 Ethereum Core Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): kategoria E-Mode 1 „ETH correlated” w bloku 26193288 (sprawdzono 14 października 2026)
+- [Dokumentacja likwidacji Aave V4](https://aave.com/docs/aave-v4/positions/liquidations) (sprawdzono 14 października 2026)
+- [Aave V4 overview](https://github.com/aave/aave-v4/blob/main/docs/overview.md) i [V4 LiquidationLogic.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/libraries/LiquidationLogic.sol), aave/aave-v4 main (sprawdzono 14 października 2026)
+- [Aave V4 Ethereum Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485): docelowy współczynnik zdrowia i ustawienia bonusu w bloku 26193995 (sprawdzono 14 października 2026)
+- [Publiczne API GraphQL Aave V4](https://api.v4.aave.com/graphql), zapytanie `reserves`: maksymalny bonus likwidacyjny i opłata za likwidację dla WETH na Ethereum Main Spoke (sprawdzono 14 października 2026)
+- [Changelog dokumentacji Aave](https://aave.com/docs/resources/changelog): daty uruchomienia V4 (sprawdzono 14 października 2026)
+- [Gauntlet, „Aave Resilient Through USDC Volatility”](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), opublikowano 17 marca 2023 (sprawdzono 14 października 2026)
+- [Forum Polygon, „Liquidation on polygon AAVE -JSON ERROR”](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067), opublikowano 18 maja 2021 (sprawdzono 14 października 2026)
+- [Forum Aave, „Repeatedly Failed Repayment Attempts Leading to Liquidation”](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379), opublikowano 23 grudnia 2024 (sprawdzono 14 października 2026)
+- [Pull request #2084 interfejsu Aave](https://github.com/aave/interface/pull/2084), który w maju 2024 usunął jedyną integrację alertów w aplikacji (sprawdzono 14 października 2026)
+
+_Treści edukacyjne, nie porada finansowa. Alerty zmniejszają ryzyko, ale nie zapobiegają likwidacji._

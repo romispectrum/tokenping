@@ -1,0 +1,156 @@
+export const meta = {
+  slug: "dlaczego-spadl-wspolczynnik-zdrowia-aave",
+  title: "Dlaczego spadł mój współczynnik zdrowia Aave? 6 przyczyn",
+  description:
+    "Współczynnik zdrowia Aave może spaść, choć nic nie robisz: ceny, odsetki, cięcia progu likwidacji, depegi stablecoinów i błędy wyroczni.",
+  h1: "Dlaczego mój współczynnik zdrowia Aave spadł, choć nic nie zrobiłem?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-25",
+  primaryQuestion: "Dlaczego mój współczynnik zdrowia Aave spada sam?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Aave przelicza twój współczynnik zdrowia (health factor) z cen wyroczni, twoich bieżących sald i bieżących progów
+  likwidacji przy każdym odczycie, więc zmienia się, nawet gdy nie wysyłasz żadnych transakcji. Na Aave V3 spada, gdy
+  tanieje twoje zabezpieczenie, drożeje pożyczone aktywo, odsetki od długu rosną szybciej niż to, co zarabia
+  zabezpieczenie, governance obniża próg likwidacji, stablecoin wpłacony jako zabezpieczenie spada poniżej 1 $ albo
+  wyrocznia jest źle skonfigurowana. Poniżej 1,00 pozycja może zostać zlikwidowana.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Liczby i numery bloków, w których je odczytano: content/blog/snapshots/why-aave-health-factor-dropped.md */}
+
+## Dlaczego współczynnik zdrowia Aave zmienia się sam?
+
+Współczynnik zdrowia Aave zmienia się sam, bo nie jest nigdzie zapisany: protokół przelicza go z bieżących cen wyroczni (oracle), sald (z naliczonymi odsetkami) i parametrów ryzyka przy każdym odczycie:
+
+**HF = Σ(wartość zabezpieczenia × próg likwidacji) ÷ łączna wartość długu**
+
+Obie strony są w USD według ceny wyroczni Aave, a poniżej 1,00 pozycja może zostać zlikwidowana. Wzór wyjaśnia poradnik [czym jest współczynnik zdrowia Aave](/pl/blog/wspolczynnik-zdrowia-aave). Na Aave V3 obniża go sześć rzeczy, bez żadnego działania z twojej strony. Przykłady używają parametrów Ethereum Core odczytanych 14 października 2026 i przykładowej ceny ETH 2400 $.
+
+| Przyczyna                          | Obniża twój współczynnik zdrowia, gdy                                            | Jak szybko           | Przykład                                                   |
+| ---------------------------------- | -------------------------------------------------------------------------------- | -------------------- | ---------------------------------------------------------- |
+| 1. Spadek ceny zabezpieczenia      | Aktywo wpłacone jako zabezpieczenie tanieje                                      | Tak szybko jak rynek | 10 WETH pod 12 000 USDC, ETH spada o 10%: z 1,66 do 1,49   |
+| 2. Wzrost ceny pożyczonego aktywa  | Pożyczyłeś zmienne aktywo i ono drożeje                                          | Tak szybko jak rynek | 10 000 USDC pod 2,5 WETH, ETH rośnie o 10%: z 1,30 do 1,18 |
+| 3. Odsetki                         | Oprocentowanie twojego długu jest wyższe niż oprocentowanie wpłat zabezpieczenia | Powoli i bez przerwy | 10 WETH pod 12 000 USDC: około z 1,66 do 1,61 w ciągu roku |
+| 4. Obniżenie progu likwidacji      | Governance albo Risk Stewards obniżają próg twojego zabezpieczenia               | Od razu              | Hipotetyczne cięcie WETH z 83% do 82%: z 1,66 do 1,64      |
+| 5. Depeg stablecoina               | Stablecoin wpłacony jako zabezpieczenie spada poniżej 1 $                        | Tak szybko jak rynek | 10 000 USDC pod 2,5 WETH, USDC po 0,88 $: z 1,30 do 1,14   |
+| 6. Błąd wyroczni lub kursu wymiany | Wyrocznia wycenia twoje zabezpieczenie za nisko albo dług za wysoko              | Od razu              | Marzec 2026: wstETH wyceniony o około 2,85% za nisko       |
+
+W wątku na forum governance Aave z lutego 2025 pożyczkobiorca, którego pozycja zaczynała od współczynnika zdrowia 1,71, zastał częściową likwidację, dołożył zabezpieczenie, gdy współczynnik zdrowia doszedł do 1,01, a rano przy sprawdzaniu zastał drugą likwidację, przekonany, że ETH nie spadł na tyle, by wyjaśnić którąkolwiek z nich. Nikt w wątku nie znalazł przyczyny; sześć przyczyn poniżej to miejsca, od których warto zacząć szukać.
+
+Aave V4, działające na Ethereum od 30 marca 2026, a od tego czasu także na Avalanche, Arc i Base, liczy współczynnik zdrowia osobno dla każdego Spoke'a, z jednym współczynnikiem zabezpieczenia (collateral factor) na aktywo. Ceny i odsetki wpływają na niego tak samo, ale zmiany parametrów docierają do istniejących pozycji inaczej (zobacz [jak V4 stosuje zmiany parametrów, w przyczynie 4](#przyczyna-4-czy-governance-albo-risk-stewards-obnizyli-prog-likwidacji)).
+
+## Przyczyna 1: czy spadła cena twojego zabezpieczenia?
+
+Spadek ceny dowolnego aktywa wpłaconego jako zabezpieczenie obniża twój współczynnik zdrowia Aave, bo zabezpieczenie jest wyceniane według ceny wyroczni. Przy jednym zmiennym aktywie jako zabezpieczeniu i długu w stablecoinie współczynnik zdrowia zmienia się proporcjonalnie do ceny: spadek o 10% obniża go o 10%.
+
+Weźmy 10 WETH wpłaconych pod 12 000 USDC pożyczonych na Aave V3 Ethereum Core, gdzie próg likwidacji (liquidation threshold) WETH wynosił 83% w bloku 26193284 (14 października 2026). Przy przykładowych 2400 $ za ETH (wyrocznia Aave pokazywała tego dnia 2414,78 $ w bloku 26193376) współczynnik zdrowia to 24 000 × 0,83 ÷ 12 000 = 1,66. Przy 2160 $ wynosi 1,49, przy 1920 $ 1,33, a przy 1445,78 $, czyli po spadku o 39,8%, dochodzi do 1,00.
+
+Przy kilku aktywach w zabezpieczeniu zmienia się tylko ważony udział tego, które tanieje. Liczy się cena wyroczni Aave (na Ethereum Core WETH używa feedu o nazwie „ETH / USD”). O ile ceny mogą spaść przy każdym współczynniku zdrowia, opisuje poradnik [ile zapasu daje współczynnik zdrowia](/pl/blog/bezpieczny-wspolczynnik-zdrowia-aave).
+
+## Przyczyna 2: czy wzrosła cena pożyczonego aktywa?
+
+Jeśli pożyczyłeś zmienne aktywo, wzrost jego ceny obniża twój współczynnik zdrowia Aave, bo dług też jest wyceniany według ceny wyroczni.
+
+Weźmy 10 000 USDC wpłaconych pod 2,5 WETH pożyczonych na Aave V3 Ethereum Core, gdzie próg likwidacji USDC wynosił 78% w bloku 26193284 (14 października 2026). Przy przykładowych 2400 $ dług jest wart 6000 $, a współczynnik zdrowia to 10 000 × 0,78 ÷ 6000 = 1,30. Jeśli ETH wzrośnie o 10% do 2640 $, spadnie on do 7800 ÷ 6600 = 1,18. Przy 3120 $, czyli o 30% wyżej, dochodzi do 1,00.
+
+Skorelowane pary, takie jak wstETH jako zabezpieczenie i dług w WETH, zmniejszają ten efekt, bo obie strony poruszają się razem z ETH. Współczynnik zdrowia zależy wtedy głównie od kursu wstETH do ETH podawanego przez wyrocznię, co zamienia ryzyko rynkowe na ryzyko wyroczni (zobacz [błędy wyroczni i kursu wymiany, przyczyna 6](#przyczyna-6-czy-bład-wyroczni-lub-kursu-wymiany-zanizył-wycene-twojego-zabezpieczenia)).
+
+## Przyczyna 3: czy odsetki od długu narastały szybciej niż od zabezpieczenia?
+
+Odsetki obniżają twój współczynnik zdrowia Aave, gdy dług rośnie szybciej niż zabezpieczenie. Zmienny dług rośnie co sekundę według oprocentowania pożyczek, a zabezpieczenie zarabia zwykle niższe oprocentowanie wpłat. Przy jednym aktywie w zabezpieczeniu, jednym w długu i stałych cenach współczynnik zdrowia powoli spada, gdy oprocentowanie pożyczki jest wyższe niż oprocentowanie wpłat zabezpieczenia, i rośnie, gdy jest niższe.
+
+Na Aave V3 Ethereum Core w bloku 26193378 (14 października 2026) USDC płacił wpłacającym 3,800%, a pożyczających kosztował 4,496% rocznie; WETH płacił 1,309% i kosztował 1,943%. To wartości APR; aplikacja Aave pokazuje nieco wyższe APY (4,60% dla tego oprocentowania pożyczki USDC). Weźmy 10 WETH wpłaconych (próg 83%) pod 12 000 USDC pożyczonych, przy ETH stojącym na przykładowych 2400 $ i oprocentowaniu bez zmian przez rok. Dług rośnie do około 12 550 USDC, zabezpieczenie do około 10,13 WETH, a współczynnik zdrowia zsuwa się z 1,66 do około 1,61. Oprocentowanie jest zmienne, więc traktuj to jako skalę, nie prognozę.
+
+Oprocentowanie potrafi też skoczyć. Później 14 października 2026 oprocentowanie pożyczek USDC na Ethereum Core skoczyło do 13,67% APR w jednym bloku (26194053, 23:32:59 UTC), gdy z rezerwy wypłynęło około 134 mln $ wpłaconych USDC, w ciągu siedmiu minut doszło do 14,18%, a około 36 minut po skoku wróciło do 4,76% (blok 26194231, 00:08 UTC 15 października), gdy te środki wróciły. Dlaczego jedna wypłata może potroić oprocentowanie, wyjaśnia poradnik [jak działa oprocentowanie na Aave](/pl/blog/oprocentowanie-aave).
+
+Odwrotna pozycja zyskuje: 10 000 USDC wpłaconych pod 2,5 WETH pożyczonych zarabia 3,800% i płaci 1,943%, więc jej współczynnik zdrowia w ciągu roku powoli rośnie z 1,30 do około 1,32. Na Aave V4 User Risk Premium (premia za ryzyko użytkownika) podnosi oprocentowanie pożyczki przy bardziej ryzykownym zabezpieczeniu, więc taki dług rośnie szybciej.
+
+## Przyczyna 4: czy governance albo Risk Stewards obniżyli próg likwidacji?
+
+Na Aave V3 obniżenie progu likwidacji aktywa od razu obniża współczynnik zdrowia każdej otwartej pozycji, która liczy to aktywo według jego zwykłego progu. Pozycje, których kategoria E-Mode obejmuje to aktywo, używają zamiast tego progu kategorii, a governance albo Risk Stewards mogą obniżyć go w ten sam sposób. Twoje salda zostają takie same; kurczy się tylko część zabezpieczenia, która się liczy.
+
+Governance zmienia progi głosowaniem on-chain, zwykle po wpisie na forum governance Aave. Risk Stewards, kontrakty, które pozwalają dostawcom usług ryzyka Aave zmieniać parametry bez pełnego głosowania, też mogą przesunąć próg w ustalonych granicach na jedną aktualizację, ale nigdy do 0. Cięcia służą też do wycofywania aktywów: propozycja LlamaRisk z 29 lipca 2026 mówi, że progi można stopniowo obniżać, by usunąć zalegające zabezpieczenie, a pięć rynków, które Aave wygasza, opisuje poradnik [co się dzieje, gdy Aave zamyka rynek](/pl/blog/zamkniecie-rynku-aave).
+
+Hipotetyczny przykład, nie oczekująca zmiana: 10 WETH po przykładowych 2400 $ pod 12 000 USDC na Ethereum Core (próg WETH 83% 14 października 2026) ma współczynnik zdrowia 1,66. Przy 82% wynosiłby 1,64; przy 80% 1,60. Żeby to sprawdzić, porównaj „Liquidation threshold” (próg likwidacji) na stronie aktywa w aplikacji Aave z ostatnimi zmianami progów na forum governance Aave.
+
+Aave V4 działa inaczej. Zmiana współczynnika zabezpieczenia tworzy nową konfigurację, a istniejące pozycje zachowują starą, dopóki użytkownik nie pożyczy, nie wypłaci albo nie zmieni ustawień zabezpieczenia, chyba że Governor wymusi ich aktualizację.
+
+## Przyczyna 5: czy stablecoin wpłacony jako zabezpieczenie stracił powiązanie z dolarem?
+
+Stablecoin wpłacony jako zabezpieczenie obniża twój współczynnik zdrowia Aave, gdy jego cena spada poniżej 1 $, bo Aave używa ceny wyroczni, a nie stałego 1 $. Na Aave V3 Ethereum Core USDC jest wyceniany przez adapter o nazwie „Capped USDC / USD” z limitem 1,04 $ (`getPriceCap` zwracał 104000000, 8 miejsc po przecinku, w blokach 26193376 i 26193993 14 października 2026). Gdy cena rynkowa jest powyżej limitu, adapter podaje 1,04 $; każda niższa cena, także każda poniżej 1 $, przechodzi bez zmian.
+
+Weźmy 10 000 USDC wpłaconych (próg 78%) pod 2,5 WETH pożyczonych przy przykładowych 2400 $, czyli 6000 $ długu: współczynnik zdrowia 1,30. Przy USDC po 0,88 $ spada do 8800 × 0,78 ÷ 6000 = 1,14, a przy około 0,77 $, przy niezmienionym ETH, dochodzi do 1,00.
+
+Wartość 0,88 $ jest historyczna. 11 marca 2023, po wiadomościach o Silicon Valley Bank, USDC spadł do około 88 centów. Raport po incydencie (post-mortem) Gauntlet odnotowuje około 280 000 $ złych długów (bad debt) w E-Mode na Aave V3 Avalanche i około 20 000 $ na V3 Arbitrum; stablecoiny na Avalanche zamrożono, ale protokołu nie wstrzymano, więc likwidacje trwały dalej.
+
+Druga strona medalu: jeśli stablecoin jest twoim długiem, depeg (utrata powiązania z dolarem) w dół zmniejsza to, co jesteś winien, i podnosi twój współczynnik zdrowia. 10 WETH po 2400 $ (próg 83%) pod 12 000 USDC przechodzi z 1,66 do około 1,89 przy USDC po 0,88 $. Wzrost powyżej 1 $ go obniża, ale tylko do około 1,60, dopóki limit zostaje na 1,04 $, bo wyrocznia nigdy nie wycenia tego długu powyżej 12 480 $.
+
+## Przyczyna 6: czy błąd wyroczni lub kursu wymiany zaniżył wycenę twojego zabezpieczenia?
+
+Błędna konfiguracja wyroczni lub kursu wymiany może obniżyć twój współczynnik zdrowia Aave od razu, bez żadnego ruchu rynku, wyceniając twoje zabezpieczenie za nisko albo dług za wysoko. Najbardziej narażone są pozycje E-Mode z wysoką dźwignią.
+
+Udokumentowany przypadek pochodzi z marca 2026. Aave wycenia wstETH przez CAPO (Correlated Assets Price Oracle), który ogranicza, jak szybko może rosnąć kurs wstETH do stETH. Raport po incydencie Chaos Labs z 10 marca 2026 mówi, że zapisany w limicie kurs i znacznik czasu się rozjechały, co obniżyło efektywny kurs wstETH o około 2,85% na Ethereum Core i Prime. Około 10 938 wstETH zlikwidowano w E-Mode na 34 kontach ze współczynnikiem zdrowia poniżej około 1,0288, bez złych długów dla protokołu. DAO zatwierdziło zwrot zaproponowany 11 marca, a 26 marca 2026 Aave Finance Committee pobrał 513,19 WETH ze skarbca Aave na jego wypłatę (blok Ethereum 24741060); poszczególnych wypłat nie sprawdzaliśmy na potrzeby tego poradnika.
+
+Dla skali: E-Mode dla aktywów skorelowanych z ETH na Ethereum Core miał 14 października 2026 wskaźnik LTV (loan-to-value) 93% i próg 95%. Pozycja pożyczona do tego limitu zaczyna od 95 ÷ 93 ≈ 1,02, w zakresie, który ten błąd zlikwidował. Nic w twojej własnej pozycji nie ostrzeże cię przed błędem wyroczni; odległość od 1,00 to jedyny zapas, nad którym masz kontrolę.
+
+## Które zmiany nie obniżają współczynnika zdrowia?
+
+Na Aave V3 obniżenie LTV (także do LTV 0), zamrożenie rezerwy, wstrzymanie rezerwy i przełączenie kategorii E-Mode na izolowaną nie zmieniają twojego współczynnika zdrowia, bo żadna z tych zmian nie rusza cen, sald ani progów likwidacji. Zamiast tego blokują pożyczanie albo inne działania.
+
+| Zmiana na Aave V3                 | Co blokuje                                                 | Zmienia twój współczynnik zdrowia?                         | Czy nadal możesz zostać zlikwidowany?                                                                                                                             |
+| --------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Obniżenie LTV, także do LTV 0     | Nowe pożyczki pod zastaw tego aktywa                       | Nie: współczynnik zdrowia używa progu, nie LTV             | Tak, poniżej 1,00                                                                                                                                                 |
+| Zamrożona rezerwa                 | Nowe wpłaty i pożyczki tego aktywa                         | Nie                                                        | Tak, zamrożone rezerwy nadal można likwidować                                                                                                                     |
+| Kategoria E-Mode izolowana (V3.7) | Pożyczanie pod zastaw zabezpieczenia spoza kategorii       | Nie: to zabezpieczenie dostaje LTV 0 i zachowuje swój próg | Tak, poniżej 1,00                                                                                                                                                 |
+| Wstrzymana rezerwa                | Wpłaty, wypłaty, pożyczki, spłaty i likwidacje tego aktywa | Nie                                                        | Nie przy tym aktywie, jako zabezpieczeniu ani długu, dopóki jest wstrzymane; przy innych aktywach nadal tak. Po wznowieniu może być do 4 godzin okresu ochronnego |
+
+Prawdziwy przypadek z pierwszego wiersza: po exploicie mostu rsETH Kelp/LayerZero 18 kwietnia 2026 LTV WETH ustawiono na 0 w kilku instancjach Aave V3, a jego próg pozostał na 83% na Ethereum Core, według propozycji LlamaRisk z 9 maja 2026 o jego przywróceniu. Współczynniki zdrowia nie zmieniły się z tego powodu.
+
+## Jak sprawdzić, co stało się z twoją pozycją?
+
+Żeby sprawdzić, co stało się z pozycją na Aave, ustal, czy została zlikwidowana, a potem, która dana wejściowa się zmieniła: ceny, odsetki, progi czy wyrocznia. Te kroki korzystają z interfejsu Aave Labs pod adresem app.aave.com i publicznych zapisów governance.
+
+1. **Sprawdź likwidacje.** Otwórz „Transaction history” (historia transakcji, app.aave.com/history) z połączonym portfelem i wybranym właściwym rynkiem, a potem przefiltruj według „Liquidation”. Zapisy, na których to się opiera, zawierają czas, hash transakcji, zabrane zabezpieczenie i spłacony dług; programiści mogą je pobrać przez `userTransactionHistory` w API Aave.
+2. **Porównaj ceny** swojego zabezpieczenia i długu z tymi z chwili, gdy ostatnio sprawdzałeś (przyczyny 1, 2 i 5).
+3. **Porównaj swój dług, w jednostkach tokena, z tym, ile pożyczyłeś.** Jeśli niczego nie spłacałeś i nie było likwidacji, różnica to naliczone odsetki (przyczyna 3).
+4. **Sprawdź próg likwidacji** na stronie każdego aktywa w aplikacji Aave i przeszukaj forum governance pod kątem każdego aktywa, którego próg wygląda na niższy (przyczyna 4).
+5. **Poszukaj raportów po incydentach** na forum governance, takich jak ten o wstETH z marca 2026 (przyczyna 6).
+
+Jeśli twoja pozycja została zlikwidowana, poradnik [co się dzieje przy likwidacji na Aave](/pl/blog/jak-dziala-likwidacja-na-aave) wyjaśnia, ile można zabrać za jednym razem i ile to kosztuje.
+
+## Czy alert o współczynniku zdrowia może ostrzec przed likwidacją?
+
+Alert może w porę ostrzec cię przed powolnym spadkiem współczynnika zdrowia Aave, ale nie przed skokiem, który przekracza 1,00 między dwoma sprawdzeniami. Odsetki, stopniowe spadki cen i rozłożone na etapy cięcia progów rozgrywają się w ciągu godzin do miesięcy, więc alert ustawiony wyraźnie powyżej 1,00 ma wiele okazji, by zadziałać. Krach, cięcie progu przy pozycji już blisko granicy albo błąd wyroczni taki jak ten z wstETH w marcu 2026 mogą przekroczyć 1,00, zanim zareaguje jakiekolwiek zaplanowane sprawdzenie.
+
+Tokenping jest zbudowany na ten powolny rodzaj. Sprawdza twój współczynnik zdrowia na Aave V3 i V4 co 5 minut w 22 sieciach i wysyła ci wiadomości przez Signal, Telegram albo e-mail, dopóki jest poniżej ustawionego progu (od 1,1 do 10). Wiadomość powtarza się przy każdym sprawdzeniu, dopóki współczynnik zdrowia nie wróci powyżej progu albo nie obniżysz progu poniżej niego lub nie usuniesz alertu (jedno i drugie wymaga aktywnego płatnego dostępu), bez wiadomości o powrocie. Na Aave V3 obejmuje każdy rynek, łącznie z czterema na Ethereum; na Aave V4 każdy Spoke; każdy rynek ma własny alert.
+
+Alert potrzebuje też czasu na reakcję. W wątku na forum Polygon z 2021 pożyczkobiorca, który próbował spłacić przy współczynniku zdrowia 1,01, ciągle trafiał na błędy i został zlikwidowany, zanim spłata przeszła. Jedną z opcji jest próg, przy którym nadal spokojnie byś zareagował; [ile zapasu daje współczynnik zdrowia](/pl/blog/bezpieczny-wspolczynnik-zdrowia-aave) pomaga go wybrać. Konfigurację opisuje [jak ustawić alert o współczynniku zdrowia](/pl/blog/alerty-wspolczynnika-zdrowia-aave-konfiguracja), a [jak podnieść współczynnik zdrowia na Aave](/pl/blog/jak-uniknac-likwidacji-na-aave) mówi, co robić, gdy spada. Możesz też najpierw [sprawdzić swój współczynnik zdrowia na Aave V3](/pl/aave).
+
+## Źródła
+
+- [Przegląd Aave V3](https://aave.com/docs/aave-v3/overview.md): współczynnik zdrowia zmienia się z cenami wyroczni i naliczonymi odsetkami (sprawdzono 14 października 2026)
+- [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) i [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): obliczanie współczynnika zdrowia, sprawdzanie wstrzymania i zamrożenia (aave-v3-origin, sprawdzono 14 października 2026)
+- [PoolDataProvider Aave V3 Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): LTV, progi i oprocentowanie w blokach 26193284, 26193378 i 26193993 (sprawdzono 14 października 2026); oprocentowanie USDC w blokach 26194052, 26194053, 26194230 i 26194231 (sprawdzono 15 października 2026)
+- [Wyrocznia Aave V3 Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2#readContract): WETH 2414,78 $ w bloku 26193376 (sprawdzono 14 października 2026)
+- [Adapter Capped USDC / USD](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract) i jego [kod źródłowy, PriceCapAdapterStable.sol](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol): limit 104000000 w blokach 26193376 i 26193993 (sprawdzono 14 października 2026)
+- [Dokumentacja wyroczni Aave](https://aave.com/docs/ecosystem/oracle.md) (sprawdzono 14 października 2026)
+- [Dokumentacja governance Aave](https://aave.com/docs/ecosystem/governance.md) i [README Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards) (sprawdzono 14 października 2026)
+- [ARFC: Low Adoption Asset Deprecation on Aave V3](https://governance.aave.com/t/arfc-low-adoption-asset-deprecation-on-aave-v3/25401) (LlamaRisk, 29 lipca 2026, sprawdzono 14 października 2026)
+- [Changelog dokumentacji Aave](https://aave.com/docs/resources/changelog.md): V4 na Ethereum od 30 marca 2026, potem Avalanche, Arc i Base (sprawdzono 14 października 2026)
+- [Dokumentacja Aave V4](https://aave.com/docs/aave-v4.md), [pozycje w V4](https://aave.com/docs/aave-v4/positions.md) i [przegląd techniczny V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md): współczynnik zdrowia na Spoke, User Risk Premium, dynamiczna konfiguracja ryzyka (sprawdzono 14 października 2026)
+- [Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (Gauntlet, 17 marca 2023, sprawdzono 14 października 2026)
+- [Post-mortem: wstETH exchange-rate misalignment on Core and Prime](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269) (Chaos Labs, 10 marca 2026, sprawdzono 14 października 2026)
+- [wstETH CAPO Oracle Incident User Reimbursement](https://governance.aave.com/t/direct-to-aip-wsteth-capo-oracle-incident-user-reimbursement/24275) (TokenLogic, 11 marca 2026, sprawdzono 14 października 2026)
+- [Wykonanie payloadu governance 413](https://etherscan.io/tx/0xca0bcaa2b20b465afb332677a8425d8a10e050c4a31731feadc3a684ecb9b81e) i [wypłata Aave Finance Committee](https://etherscan.io/tx/0x7860a20437b36af635e8be248a929c437412915b91de7c45e947475c6bb02f24): zgoda na 513,19 WETH z Aave Ethereum Collector, pobrane potem w bloku 24741060 (sprawdzono 15 października 2026)
+- [WETH Unfreeze and LTV Restoration Across Aave V3 Instances](https://governance.aave.com/t/direct-to-aip-weth-unfreeze-and-ltv-restoration-across-aave-v3-instances/24878) (LlamaRisk, 9 maja 2026, sprawdzono 14 października 2026)
+- [Izolowany E-Mode w Aave v3.7](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md) i [funkcje v3.1](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): flaga isolated, okres ochronny po wznowieniu (sprawdzono 14 października 2026)
+- [Historia transakcji użytkownika w Aave V3](https://aave.com/docs/aave-v3/markets/advanced.md) i [filtry historii w interfejsie Aave](https://github.com/aave/interface/blob/main/src/modules/history/HistoryFilterMenu.tsx) (sprawdzono 14 października 2026)
+- Strona rezerwy w interfejsie Aave, oprocentowanie pokazywane jako APY: [SupplyInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/SupplyInfo.tsx) (sprawdzono 14 października 2026) i [BorrowInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/BorrowInfo.tsx), „APY, variable” (sprawdzono 15 października 2026)
+- [Unexpected or poorly executed settlement by the system](https://governance.aave.com/t/unexpected-or-poorly-executed-settlement-by-the-system/21120) (forum governance Aave, 17 lutego 2025, sprawdzono 14 października 2026)
+- [Liquidation on polygon AAVE - JSON ERROR](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067) (forum Polygon, 18 maja 2021, sprawdzono 14 października 2026)
+
+_Treści edukacyjne, nie porada finansowa. Alerty zmniejszają ryzyko, ale nie zapobiegają likwidacji._

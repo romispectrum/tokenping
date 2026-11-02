@@ -80,6 +80,13 @@ const COPY: Partial<Record<Locale, CopyRules>> = {
     wrongAddress: /[^.!?:\s]\s+(?:Lei|Suo|Sua|Suoi|Sue)\b/u,
     claims: /in tempo reale|istantane|multi[- ]?protocoll/iu,
   },
+  pl: {
+    h1Channels: /Signal i e-mail/,
+    badges: ["Signal", "E-mail"],
+    // ty throughout: never the formal Pan, Pani or Państwo.
+    wrongAddress: /(?<!\p{L})(?:Pan|Pani|Panu|Panią|Państw\p{L}*)(?!\p{L})/u,
+    claims: /w czasie rzeczywistym|natychmiastow|wieloprotokołow/iu,
+  },
 };
 
 const TRANSLATED = LOCALES.filter(locale => locale !== "en");

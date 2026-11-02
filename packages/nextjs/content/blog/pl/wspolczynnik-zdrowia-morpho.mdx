@@ -1,0 +1,208 @@
+export const meta = {
+  slug: "wspolczynnik-zdrowia-morpho",
+  title: "Współczynnik zdrowia na Morpho: wzór i przykłady",
+  description:
+    "Czym jest współczynnik zdrowia pożyczki na Morpho, jak liczą go Morpho Blue i Midnight, co go zmienia i czym różni się od tego na Aave.",
+  h1: "Czym jest współczynnik zdrowia na Morpho i jak się go oblicza?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Czym jest współczynnik zdrowia pożyczki na Morpho i jak się go oblicza?",
+  readingMinutes: 13,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Współczynnik zdrowia (health factor) pożyczki na Morpho porównuje wartość twojego zabezpieczenia, liczoną do poziomu
+  LTV likwidacji (LLTV) danego rynku, z tym, ile jesteś winien: ilość zabezpieczenia × cena z wyroczni × LLTV ÷ dług.
+  Gdy dług przekroczy ten limit, współczynnik zdrowia spada poniżej 1 i pozycję można zlikwidować. Przy 1,00 lub więcej
+  nie można, z wyjątkiem części pożyczki w Blue, której właściciel autoryzował kontrakt prelikwidacji, albo pożyczki w
+  Midnight, na której po terminie zapadalności został dług. Przykład: 1 cbBTC wyceniony na 80 011,48 USDC na rynku
+  Morpho USDC | cbBTC (86%) w sieci Ethereum, przy długu 40 000 USDC, daje 80 011,48 × 0,86 ÷ 40 000 = 1,72. Każdy rynek
+  Morpho ma własne zabezpieczenie, wyrocznię i LLTV, ustalone na stałe przy jego tworzeniu, więc każda pożyczka ma
+  własny współczynnik zdrowia.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Liczby i numery bloków, przy których je odczytano: content/blog/snapshots/morpho-health-factor.md */}
+
+## Czym jest współczynnik zdrowia pożyczki na Morpho?
+
+Współczynnik zdrowia to liczba, która mówi, jak daleko pozycja pożyczkowa na Morpho jest od likwidacji. Dzieli najwyższy dług, jaki możesz mieć, przez dług, który masz teraz:
+
+**Współczynnik zdrowia = wartość zabezpieczenia w tokenie pożyczki × LLTV ÷ dług**
+
+- **Powyżej 1,00:** pozycji nie można zlikwidować, chyba że autoryzowałeś kontrakt prelikwidacji albo jest to pożyczka w Midnight po terminie zapadalności (oba przypadki opisujemy niżej). Im wyższa liczba, tym dalej ceny mogą pójść przeciwko tobie, zanim do tego dojdzie.
+- **Poniżej 1,00:** twój dług jest większy, niż pozwala rynek, i część lub całość można zlikwidować.
+- **Brak długu:** nie ma czego likwidować, więc nie ma współczynnika zdrowia do pilnowania.
+
+Współczynnik zdrowia 1,72 nie oznacza, że jesteś 72% od likwidacji. Oznacza, że dług mógłby urosnąć do 1,72 raza obecnej wielkości albo cena zabezpieczenia mogłaby spaść o 1 − 1 ÷ 1,72 = 41,9%, zanim pozycja dojdzie do granicy.
+
+Współczynnik zdrowia nie jest zapisany on-chain. Kontrakt Morpho sprawdza tylko, czy pozycja jest zdrowa; aplikacje, API Morpho i Tokenping dzielą limit pożyczki przez dług, żeby pokazać go jako liczbę.
+
+## Jak zbudowany jest rynek Morpho Blue?
+
+Morpho Blue, które dokumentacja Morpho nazywa teraz rynkami o zmiennym oprocentowaniu, to zbiór oddzielnych rynków pożyczkowych. Każdy z nich określa pięć parametrów wybranych przy tworzeniu rynku:
+
+| Parametr                   | Co to jest                                                | Na przykładowym rynku |
+| -------------------------- | --------------------------------------------------------- | --------------------- |
+| Token pożyczki             | Jedyny token, który możesz pożyczyć                       | USDC                  |
+| Token zabezpieczenia       | Jedyny token, który możesz wpłacić jako zabezpieczenie    | cbBTC                 |
+| Wyrocznia                  | Kontrakt, który wycenia zabezpieczenie w tokenie pożyczki | Kanał cenowy BTC/USD  |
+| Model oprocentowania (IRM) | Kontrakt, który ustala oprocentowanie pożyczki            | AdaptiveCurveIRM      |
+| LLTV                       | LTV likwidacji                                            | 86%                   |
+
+Aplikacja Morpho nazywa rynki od tych parametrów, zaczynając od tokena pożyczki: „USDC | cbBTC (86%)”. Rynek może utworzyć każdy, ale tylko z LLTV i IRM, które zatwierdził zarząd (governance) Morpho. Po utworzeniu żadnego z pięciu parametrów nie da się zmienić: kontrakt nie ma funkcji do ich edycji, a governance może zatwierdzać nowe LLTV, ale nigdy nie może wyłączyć istniejącego.
+
+Ponieważ rynek ma jedno zabezpieczenie i jeden token pożyczki, twoje zabezpieczenie na jednym rynku nie pokrywa długu na innym. Dokumentacja Morpho mówi to wprost: zabezpieczenie jest przypisane do konkretnego rynku i nie działa jako wspólny depozyt (cross-margin). Dwie pożyczki na dwóch rynkach mają dwa współczynniki zdrowia.
+
+## Jak Morpho oblicza współczynnik zdrowia?
+
+Morpho Blue sprawdza zdrowie pozycji w jednym miejscu swojego kontraktu, `_isHealthy`, i ta sama kontrola chroni pożyczanie, wypłatę zabezpieczenia i likwidację:
+
+1. **Dług:** twoje udziały w długu (borrow shares) przeliczone na tokeny pożyczki, zaokrąglone w górę.
+2. **Wartość zabezpieczenia:** ilość zabezpieczenia × cena z wyroczni ÷ 10^36, zaokrąglone w dół.
+3. **Limit pożyczki:** wartość zabezpieczenia × LLTV, zaokrąglone w dół.
+4. **Pozycja jest zdrowa**, dopóki limit pożyczki jest co najmniej równy długowi.
+
+Współczynnik zdrowia to krok 3 podzielony przez krok 1. Zaokrąglenia zawsze działają na korzyść protokołu, więc kontrakt może pozwolić ci pożyczyć o jedną jednostkę mniej niż dokładny limit. Przy dokładnie 1,00 kontrakt nadal uznaje pozycję za zdrową; można ją zlikwidować, gdy dług przekroczy limit, czyli gdy współczynnik zdrowia spadnie poniżej 1.
+
+### Co oznacza skala 10^36 w wyroczni?
+
+Wyrocznia Morpho zwraca cenę jednego tokena zabezpieczenia w tokenach pożyczki, pomnożoną przez 10^36 i skorygowaną o liczbę miejsc dziesiętnych obu tokenów. Żeby ją odczytać, pomnóż przez 10^(miejsca dziesiętne zabezpieczenia − miejsca dziesiętne pożyczki) i podziel przez 10^36. Na przykładowym rynku cbBTC ma 8 miejsc dziesiętnych, a USDC 6, więc surowa wartość 800114843487200000000000000000000000000 × 10^2 ÷ 10^36 = 80 011,48 USDC za cbBTC.
+
+Wyrocznią jest ten kontrakt, który wybrał twórca rynku. Komentarze w kontrakcie Morpho mówią, że to użytkownik odpowiada za wybór rynków z bezpiecznymi wyroczniami, a dokumentacja zaznacza, że wyrocznia może łączyć kilka feedów cenowych albo opierać się na innych danych on-chain. Twój współczynnik zdrowia jest tylko tak wiarygodny jak ta wyrocznia i kanały, z których czyta.
+
+## Przykład: jaki współczynnik zdrowia ma 1 cbBTC przy długu 40 000 USDC?
+
+Największym wymienionym rynkiem Morpho w sieci Ethereum pod względem wartości pożyczek 26 października 2026 był USDC | cbBTC (86%), z około 309,13 mln USDC pożyczonych przy 343,18 mln wpłaconych (blok Ethereum 26274955). Jego wyrocznia wyceniała cbBTC na 80 011,48 USDC na podstawie samego feedu BTC/USD, więc rynek liczy 1 cbBTC jako 1 BTC, a 1 USDC jako 1 dolara.
+
+Weźmy 1 cbBTC zabezpieczenia i 40 000 USDC długu:
+
+1. Wartość zabezpieczenia: 1 × 80 011,48 = 80 011,48 USDC.
+2. Limit pożyczki: 80 011,48 × 0,86 = 68 809,88 USDC.
+3. Współczynnik zdrowia: 68 809,88 ÷ 40 000 = **1,72**.
+4. LTV: 40 000 ÷ 80 011,48 = 50,0%, przy LLTV 86%.
+5. Cena likwidacji: 40 000 ÷ (1 × 0,86) = **46 511,63 USDC za cbBTC**, 41,9% poniżej 80 011,48.
+
+Zmieniają go też odsetki. Oprocentowanie pożyczek na tym rynku w tym bloku wynosiło 4,89% rocznie, co po kapitalizacji daje 5,01%. Gdyby oprocentowanie i cena pozostały bez zmian przez rok, dług urósłby do około 42 003 USDC, a współczynnik zdrowia spadłby do 1,64.
+
+### Jakie pozycje mają prawdziwi pożyczkobiorcy na tym rynku?
+
+API Morpho pokazywało 26 października 2026 na tym rynku 437 pozycji pożyczkowych. Spośród 435 ze współczynnikiem zdrowia mediana wynosiła 1,96, jedna czwarta była poniżej 1,58, jedna dziesiąta poniżej 1,35, a najniższy wynosił 1,05. Około 3% było poniżej 1,2. Na całym rynku 8419,83 cbBTC zabezpieczało 309,13 mln USDC długu, co daje łączny współczynnik zdrowia około 1,87.
+
+## Jak powiązane są LTV, LLTV i współczynnik zdrowia?
+
+Wskaźnik LTV (loan-to-value) to twój dług podzielony przez wartość zabezpieczenia. LLTV to stały pułap tego wskaźnika na danym rynku. Przy jednym zabezpieczeniu i niezmiennym długu współczynnik zdrowia jest ich ilorazem:
+
+**Współczynnik zdrowia = LLTV ÷ LTV**
+
+Na Morpho Blue LLTV jest jedyną granicą. Nie ma osobnego, niższego limitu dla nowych pożyczek, więc kontrakt pozwala pożyczać lub wypłacać zabezpieczenie, aż współczynnik zdrowia dojdzie do 1,00. Dokumentacja Morpho dla deweloperów prosi aplikacje o zachowanie marginesu, na przykład przez nieprzepuszczanie pożyczek poniżej współczynnika zdrowia 1,05, ale ten margines jest wyborem, a nie regułą kontraktu. To, jak daleko poniżej granicy się trzymasz, decyduje o twoim buforze, niezależnie od LLTV:
+
+| Pożyczone, jako część limitu | Współczynnik zdrowia | Spadek ceny zabezpieczenia do likwidacji |
+| ---------------------------- | -------------------- | ---------------------------------------- |
+| 50%                          | 2,00                 | 50%                                      |
+| 70%                          | 1,43                 | 30%                                      |
+| 80%                          | 1,25                 | 20%                                      |
+| 90%                          | 1,11                 | 10%                                      |
+| 100%                         | 1,00                 | 0%                                       |
+
+## Jakich LLTV może używać rynek Morpho?
+
+26 października 2026 Morpho Blue w sieciach Ethereum i Base akceptowało dziewięć LLTV z listy zatwierdzonej przez governance Morpho: 0%, 38,5%, 62,5%, 77%, 86%, 91,5%, 94,5%, 96,5% i 98% (każde odczytane jako włączone w bloku Ethereum 26274950 i bloku Base 53102888). LLTV równe 0 w ogóle nie pozwala pożyczać. LLTV w Blue musi być niższe niż 100%.
+
+LLTV ustala też zachętę likwidacyjną (liquidation incentive), czyli dodatkowe zabezpieczenie, które dostaje likwidator: 1 ÷ (1 − 0,3 × (1 − LLTV)), z limitem 1,15. Przy LLTV 86% to 1,0438: likwidator, który spłaci 100 USDC twojego długu, dostaje 104,38 USDC twojego zabezpieczenia. Wyższe LLTV oznacza mniejszą zachętę. Dokumentacja Morpho zaokrągla zachętę przy 86% do około 5%; wzór z kontraktu daje 4,38%. Zachętę przy każdym włączonym LLTV, to, co zabiera likwidacja, i to, jaka część pożyczki może zniknąć naraz, opisuje poradnik [jak działa likwidacja na Morpho](/pl/blog/jak-dziala-likwidacja-na-morpho). Zachętę płacisz ty, ze swojego zabezpieczenia; twój własny bufor to odległość między twoim współczynnikiem zdrowia a 1,00.
+
+## Co zmienia współczynnik zdrowia na Morpho?
+
+Trzy rzeczy mogą go zmienić, kiedy ty nic nie robisz:
+
+- **Cena zabezpieczenia, tak jak widzi ją wyrocznia.** W przykładzie z cbBTC współczynnik zdrowia zmienia się razem z feedem BTC/USD i tylko wtedy, gdy ten feed się aktualizuje.
+- **Cena tokena pożyczki, jeśli wyrocznia jej używa.** Wyrocznia z kanałem dla waluty kwotowania (quote feed) reaguje też na token pożyczki. Wyrocznia rynku cbBTC takiego kanału nie ma, więc depeg (utrata powiązania z dolarem) USDC nie zmieniłby tego współczynnika zdrowia. Nie zmieniłaby go też różnica między cbBTC a BTC.
+- **Odsetki.** Na Morpho Blue dług rośnie wraz z naliczanymi odsetkami, a dokumentacja Morpho ostrzega, że pozycja może z czasem stać się bardziej ryzykowna od samych odsetek. AdaptiveCurveIRM celuje w 90% wykorzystania i podnosi oprocentowanie, gdy na rynku jest większy ruch, a obniża, gdy jest spokojniej, utrzymując oprocentowanie przy 90% wykorzystania między 0,1% a 200% rocznie. Przy pełnym wykorzystaniu oprocentowanie może być do czterech razy wyższe niż przy docelowym, czyli do 800% rocznie. Jak wzrost oprocentowania przekłada się na współczynnik zdrowia, pokazuje dla Aave poradnik [jak działa oprocentowanie na Aave](/pl/blog/oprocentowanie-aave#jak-skoki-oprocentowania-wpływaja-na-twoj-wspołczynnik-zdrowia); na pożyczkę na Morpho działa to tak samo.
+
+Governance Morpho nie może zmienić samego rynku: LLTV, adres wyroczni i IRM rynku są stałe. Wyrocznia nadal czyta cenę z kanałów, które za nią stoją, więc jest tylko tak wiarygodna jak one. Governance może ustawić opłatę rynkową do 25% odsetek, ale to dzieli odsetki między pożyczkodawców i odbiorcę opłaty; nie zmienia tego, ile są winni pożyczkobiorcy.
+
+To wyrocznia decyduje, które ceny mają znaczenie. Na rynku Morpho WETH | wstETH (96.5%) w sieci Ethereum wyrocznia wycenia wstETH według kursu wymiany samego Lido, 1,24717 WETH za wstETH w bloku 26274979, i liczy 1 stETH jako 1 ETH. Cena ETH w dolarach w ogóle nie zmienia tego współczynnika zdrowia. 10 wstETH przy długu 11 WETH daje tam 12,4717 × 0,965 ÷ 11 = 1,094, a do likwidacji kurs wymiany musiałby spaść do 1,1399, o 8,6%. Ten współczynnik zdrowia zmieniają tylko odsetki i ten kurs wymiany.
+
+## Jak obliczyć cenę likwidacji na Morpho?
+
+Dla pozycji w Blue cena likwidacji to cena z wyroczni, przy której twój dług równa się limitowi pożyczki:
+
+**Cena likwidacji = dług ÷ (ilość zabezpieczenia × LLTV)**
+
+Podaje się ją w tokenach pożyczki za token zabezpieczenia, bo tak wycenia ją wyrocznia. Przy współczynniku zdrowia h cena zabezpieczenia musi spaść o 1 − 1 ÷ h, żeby do niej dojść (patrz tabela wyżej). Gdy dług rośnie z odsetkami, cena likwidacji powoli idzie w górę.
+
+Jeśli autoryzowałeś kontrakt prelikwidacji (pre-liquidation) dla danego rynku, część twojej pozycji może zostać zamknięta wcześniej, przy LTV niższym niż LLTV. Rynek cbBTC ma taki kontrakt, z LTV prelikwidacji 83,26%: dla 1 cbBTC przy 40 000 USDC długu współczynnik zdrowia liczony względem tej granicy wynosi 1,67 zamiast 1,72. Morpho wycofuje tę funkcję: jego aplikacja już jej nie oferuje, a Morpho prosi pożyczkobiorców, którzy ją mają, o jej wyłączenie. Jak działa, jak ją sprawdzić i odwołać, opisuje poradnik [prelikwidacja na Morpho](/pl/blog/prelikwidacja-morpho).
+
+## Jak działa współczynnik zdrowia na Morpho Midnight?
+
+Morpho Midnight, rynki Morpho o stałym oprocentowaniu, liczy zdrowie pozycji tak samo, z trzema różnicami: rynek może przyjmować kilka zabezpieczeń, dług nie rośnie z czasem, a termin zapadalności jest twardą granicą.
+
+- **Kilka zabezpieczeń, zsumowanych.** Rynek Midnight ma jeden token pożyczki, termin zapadalności i jedno lub więcej zabezpieczeń, każde z własnym LLTV i wyrocznią. Kontrakt sumuje wartość zabezpieczenia × LLTV dla każdego, które wpłaciłeś, i porównuje sumę z twoim długiem. Współczynnik zdrowia to ta suma ÷ dług.
+- **Stały dług.** Jesteś winien kwotę nominalną, jeden token pożyczki za jednostkę, płatną w terminie zapadalności. Odsetki są wliczone w chwili pożyczenia: za każdą jednostkę, którą jesteś winien, dostajesz mniej niż jeden token pożyczki, więc między transakcjami współczynnik zdrowia w Midnight zmieniają tylko ceny zabezpieczeń.
+- **Termin zapadalności jest twardą granicą.** Po terminie zapadalności każdy dług, który pozostał, można zlikwidować niezależnie od współczynnika zdrowia, a w tym trybie po terminie zachęta likwidatora rośnie od zera do pełnej wielkości w ciągu pierwszej godziny.
+
+Rynek Midnight może też ograniczyć, kto może likwidować, za pomocą bramki (gate) ustawionej przy tworzeniu rynku; przykładowy rynek poniżej jej nie ma.
+
+Największy wymieniony rynek Midnight w sieci Ethereum 26 października 2026, z około 23,9 mln jednostek długu w USDC, pożycza USDC do 25 grudnia 2026 pod zabezpieczenie w USDC przy LLTV 98% i w cbBTC przy 86%, z tą samą wyrocznią cbBTC co rynek Blue powyżej. Wpłać 0,5 cbBTC i 10 000 USDC przy 40 000 jednostek długu, a limit wyniesie 34 404,94 + 9800 = 44 204,94, czyli współczynnik zdrowia 1,105. Termin zapadalności, przejście na kolejny termin (rollover) i likwidację po terminie opisuje poradnik [pożyczki o stałym oprocentowaniu w Morpho Midnight](/pl/blog/morpho-midnight-pozyczki-o-stalym-oprocentowaniu).
+
+## Czym współczynnik zdrowia na Morpho różni się od tego na Aave?
+
+Wzór ma na obu ten sam kształt: zabezpieczenie ważone progiem, podzielone przez dług. Różnią się zasady wokół niego, co [poradnik o współczynniku zdrowia na Aave](/pl/blog/wspolczynnik-zdrowia-aave#wspołczynnik-zdrowia-ltv-i-prog-likwidacji-czym-sie-roznia) wyjaśnia od strony Aave:
+
+|                            | Morpho Blue                                             | Aave V3                                                                                                                                                                                     |
+| -------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Jednostka                  | Jeden rynek: jedno zabezpieczenie, jeden token pożyczki | Jeden rynek (pula w jednej sieci): całe twoje zabezpieczenie i dług w nim                                                                                                                   |
+| Jak ustalane są ceny       | Własna wyrocznia każdego rynku, w tokenie pożyczki      | Wyrocznia Aave, w USD                                                                                                                                                                       |
+| Limit pożyczki             | Do LLTV, współczynnik zdrowia 1,00                      | Niższy wskaźnik LTV, więc maksymalna pożyczka zostawia [około 1,03](/pl/blog/wspolczynnik-zdrowia-aave#dlaczego-pozyczenie-maksimum-zostawia-wspołczynnik-zdrowia-tylko-około-103) dla WETH |
+| Aktywa skorelowane         | Oddzielne rynki z wysokim LLTV                          | Kategorie [E-Mode](/pl/blog/wspolczynnik-zdrowia-aave#jak-e-mode-zmienia-wspołczynnik-zdrowia)                                                                                              |
+| Czy próg może się zmienić? | Nie, ustalony przy tworzeniu rynku                      | Tak, mogą go zmienić governance i Risk Stewards                                                                                                                                             |
+
+Aave V4 zmienia część tego, z jednym współczynnikiem zdrowia na Spoke i jednym współczynnikiem zabezpieczenia (collateral factor) na aktywo; patrz [jak działa współczynnik zdrowia na Aave V4](/pl/blog/wspolczynnik-zdrowia-aave#czy-wspołczynnik-zdrowia-w-aave-v4-jest-inny).
+
+Różnica w praktyce: na Aave problem z jednym aktywem dotyka całego twojego rynku, a na Morpho zostaje wewnątrz jednego rynku. A na Morpho nic w kontrakcie nie powstrzyma cię przed pożyczeniem do samej granicy, więc o margines musisz zadbać sam.
+
+## Gdzie zobaczysz swój współczynnik zdrowia na Morpho?
+
+Centrum pomocy Morpho podaje, że aplikacja pokazuje współczynnik zdrowia i cenę likwidacji przy każdej pozycji. API Morpho zwraca `healthFactor` i zmianę ceny do likwidacji dla pozycji w Blue; dla Midnight zwraca pozycje i parametry rynku, a jego dokumentacja każe integratorom odczytać wyrocznię każdego zabezpieczenia on-chain i samodzielnie obliczyć limit.
+
+[Panel Morpho](/pl/morpho) w Tokenping pokazuje pozycje pożyczkowe portfela w Blue i Midnight, ze współczynnikami zdrowia obliczonymi z danych z blockchaina według matematyki samego Morpho, nigdy nie pobranymi z API Morpho.
+
+## Jak wybrać bufor i próg alertu?
+
+Zacznij od tego, jak bardzo cena może się zmienić, zanim zdążysz zareagować, a potem dodaj zapas na odsetki:
+
+- **Wybierz ruch, który chcesz przetrwać.** Skorzystaj z tabeli w sekcji o LTV powyżej: spadek ceny, który chcesz pokryć, wyznacza współczynnik zdrowia.
+- **Sprawdź wyrocznię.** Wyrocznia BTC/USD zmienia się razem z BTC. Wyrocznia oparta na kursie wymiany, jak ta na rynku wstETH, zmienia się znacznie mniej, ale oprocentowanie pożyczki i sam kurs wymiany nadal zmieniają twój współczynnik zdrowia, a wysokie LLTV zostawia mało miejsca na jedno i drugie.
+- **Mierz względem najbliższej granicy.** Jeśli autoryzowałeś prelikwidację, część twojej pożyczki może zniknąć, zanim współczynnik zdrowia dojdzie do 1,00.
+- **W Midnight pilnuj daty.** Odsetki nie zjedzą bufora, ale dług, który został po terminie zapadalności, można zlikwidować przy dowolnym współczynniku zdrowia.
+- **Wiedz, jak go podnieść.** Spłać część długu albo dodaj zabezpieczenie na tym samym rynku: zabezpieczenie na innym rynku Morpho się nie liczy. W Midnight możesz dodać dowolne zabezpieczenie, które rynek przyjmuje.
+
+Dokumentacja Morpho dla deweloperów podaje 1,1 jako przykładowy poziom ostrzeżenia. Uzasadnienie buforów znajdziesz w poradniku [jak duży bufor jest potrzebny, żeby mieć czas na reakcję](/pl/blog/bezpieczny-wspolczynnik-zdrowia-aave#jak-duzy-zapas-potrzebujesz-zeby-miec-czas-na-reakcje), napisanym dla Aave, ale z tą samą arytmetyką.
+
+## Jak alerty o współczynniku zdrowia mogą pomóc na Morpho?
+
+Tokenping sprawdza pozycje na Morpho co 5 minut w 14 sieciach: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable i Tempo. Obejmuje pozycje pożyczkowe na rynkach wymienionych w aplikacji Morpho, zarówno w Morpho Blue, jak i w Morpho Midnight. Alerty dla Midnight obejmują rynki, które wymienia API Morpho. 26 października 2026 były one w sieciach Ethereum i Base; Tokenping obejmie też Arc i Robinhood Chain, gdy Morpho wymieni tam rynki Midnight.
+
+- **Próg:** ustawiasz go od 1,02 do 10. Dopóki współczynnik zdrowia jest poniżej, każde sprawdzenie wysyła wiadomość każdym wybranym kanałem: Signal, Telegram lub e-mail.
+- **Prelikwidacja:** jeśli autoryzowałeś kontrakt prelikwidacji na rynku Blue, alert używa niższego z dwóch współczynników zdrowia: liczonego względem LLTV i liczonego względem granicy prelikwidacji.
+- **Termin zapadalności:** pożyczka w Midnight dostaje też jedno przypomnienie w ostatnich 7 dniach i jedno w ostatnich 24 godzinach, a po terminie zapadalności alert przy każdym sprawdzeniu, dopóki pozostaje dług.
+
+Przeglądanie pozycji w [panelu Morpho](/pl/morpho) nie wymaga płatności; alerty kosztują <AlertPrice />, ten sam plan co alerty dla Aave. Alert daje ci czas na reakcję; nie zapobiega likwidacji, bo cena może się zmienić między dwoma sprawdzeniami.
+
+## Źródła
+
+- [Morpho docs: Variable Rate Market (Morpho Blue)](https://docs.morpho.org/learn/concepts/blue): pięć parametrów, nazwy rynków, LLTV zatwierdzone przez governance i IRM (sprawdzono 26 października 2026)
+- [Morpho docs: Collateral, LTV and health (developers)](https://docs.morpho.org/developers/borrow/concepts/ltv): wzór, skala wyroczni, brak wspólnego depozytu, praktyki integracji (sprawdzono 26 października 2026)
+- [Morpho docs: Liquidation](https://docs.morpho.org/learn/concepts/liquidation) i [centrum pomocy Morpho: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): zachęta likwidacyjna, gdzie aplikacja pokazuje współczynnik zdrowia (sprawdzono 26 października 2026)
+- [Morpho docs: Interest rate model](https://docs.morpho.org/learn/concepts/irm) i [oprocentowanie dla integratorów](https://docs.morpho.org/developers/borrow/concepts/interest-rates): AdaptiveCurveIRM, naliczanie odsetek (sprawdzono 26 października 2026)
+- [Morpho docs: Get data (developers)](https://docs.morpho.org/developers/borrow/tutorials/get-data): kod współczynnika zdrowia i ceny likwidacji (sprawdzono 26 października 2026)
+- [Morpho docs: What is Midnight? (Fixed Rate Markets)](https://docs.morpho.org/learn/concepts/midnight) i [Midnight collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) (sprawdzono 26 października 2026)
+- [Morpho docs: Governance organization](https://docs.morpho.org/learn/governance/organization), [adresy kontraktów](https://docs.morpho.org/developers/contracts/addresses) i [zasady wymieniania rynków w interfejsie](https://docs.morpho.org/get-started/resources/interface-listing-policy) (sprawdzono 26 października 2026)
+- [morpho-blue](https://github.com/morpho-org/morpho-blue): `Morpho.sol`, `ConstantsLib.sol`, `IOracle.sol` (sprawdzono 26 października 2026)
+- [midnight](https://github.com/morpho-org/midnight): `Midnight.sol`, `ConstantsLib.sol` (sprawdzono 26 października 2026)
+- [pre-liquidation](https://github.com/morpho-org/pre-liquidation) i [morpho-blue-irm](https://github.com/morpho-org/morpho-blue-irm) (sprawdzono 26 października 2026)
+- [Dokumentacja API Morpho: Morpho Blue](https://docs.morpho.org/developers/api/morpho/) i [Morpho Midnight](https://docs.morpho.org/developers/api/morpho-midnight) (endpoint GraphQL api.morpho.org/graphql, endpointy REST Midnight pod api.morpho.org/v0/midnight): rankingi rynków, pozycje i kontrakty prelikwidacji (sprawdzono 26 października 2026)
+- Odczyty on-chain z [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), [wyroczni USDC | cbBTC](https://etherscan.io/address/0xA6D6950c9F177F1De7f7757FB33539e3Ec60182a#readContract), [wyroczni WETH | wstETH](https://etherscan.io/address/0xbD60A6770b27E084E8617335ddE769241B0e71D8#readContract) i [Morpho Midnight](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract) w sieci Ethereum w blokach od 26274950 do 26274984 oraz z [Morpho Blue w sieci Base](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) w bloku 53102888 (sprawdzono 26 października 2026)
+
+_Treści edukacyjne, nie porada finansowa. Alerty zmniejszają ryzyko, ale nie zapobiegają likwidacji._

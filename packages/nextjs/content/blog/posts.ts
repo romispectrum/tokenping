@@ -387,6 +387,63 @@ import MorphoMidnightFixedRateLoans, {
   meta as morphoMidnightFixedRateLoans,
 } from "~~/content/blog/morpho-midnight-fixed-rate-loans.mdx";
 import MorphoPreLiquidation, { meta as morphoPreLiquidation } from "~~/content/blog/morpho-pre-liquidation.mdx";
+import PlAaveAlertsDoNotDisturb, {
+  meta as plAaveAlertsDoNotDisturb,
+} from "~~/content/blog/pl/alerty-aave-w-trybie-nie-przeszkadzac.mdx";
+import PlAaveHealthFactorAlertSetup, {
+  meta as plAaveHealthFactorAlertSetup,
+} from "~~/content/blog/pl/alerty-wspolczynnika-zdrowia-aave-konfiguracja.mdx";
+import PlSafeAaveHealthFactor, {
+  meta as plSafeAaveHealthFactor,
+} from "~~/content/blog/pl/bezpieczny-wspolczynnik-zdrowia-aave.mdx";
+import PlAaveLiquidationPrice, { meta as plAaveLiquidationPrice } from "~~/content/blog/pl/cena-likwidacji-aave.mdx";
+import PlStablecoinDepegAave, { meta as plStablecoinDepegAave } from "~~/content/blog/pl/depeg-stablecoina-na-aave.mdx";
+import PlWhyAaveHealthFactorDropped, {
+  meta as plWhyAaveHealthFactorDropped,
+} from "~~/content/blog/pl/dlaczego-spadl-wspolczynnik-zdrowia-aave.mdx";
+import PlWhyAaveWithdrawOrBorrowFails, {
+  meta as plWhyAaveWithdrawOrBorrowFails,
+} from "~~/content/blog/pl/dlaczego-wyplata-lub-pozyczka-na-aave-nie-dziala.mdx";
+import PlAaveEMode, { meta as plAaveEMode } from "~~/content/blog/pl/e-mode-aave.mdx";
+import PlHowAaveLiquidationWorks, {
+  meta as plHowAaveLiquidationWorks,
+} from "~~/content/blog/pl/jak-dziala-likwidacja-na-aave.mdx";
+import PlHowMorphoLiquidationWorks, {
+  meta as plHowMorphoLiquidationWorks,
+} from "~~/content/blog/pl/jak-dziala-likwidacja-na-morpho.mdx";
+import PlAvoidAaveLiquidation, {
+  meta as plAvoidAaveLiquidation,
+} from "~~/content/blog/pl/jak-uniknac-likwidacji-na-aave.mdx";
+import PlWhoNeedsHealthFactorAlerts, {
+  meta as plWhoNeedsHealthFactorAlerts,
+} from "~~/content/blog/pl/komu-przydadza-sie-alerty-wspolczynnika-zdrowia.mdx";
+import PlLiquidatedOnAaveOrMorphoWhatNow, {
+  meta as plLiquidatedOnAaveOrMorphoWhatNow,
+} from "~~/content/blog/pl/likwidacja-na-aave-lub-morpho-co-teraz.mdx";
+import PlMorphoMidnightFixedRateLoans, {
+  meta as plMorphoMidnightFixedRateLoans,
+} from "~~/content/blog/pl/morpho-midnight-pozyczki-o-stalym-oprocentowaniu.mdx";
+import PlAaveLiquidationAlertTools, {
+  meta as plAaveLiquidationAlertTools,
+} from "~~/content/blog/pl/narzedzia-alertow-o-likwidacji-aave.mdx";
+import PlAaveInterestRates, { meta as plAaveInterestRates } from "~~/content/blog/pl/oprocentowanie-aave.mdx";
+import PlCryptoBackedLoans, {
+  meta as plCryptoBackedLoans,
+} from "~~/content/blog/pl/pozyczki-zabezpieczone-kryptowalutami.mdx";
+import PlMorphoPreLiquidation, { meta as plMorphoPreLiquidation } from "~~/content/blog/pl/prelikwidacja-morpho.mdx";
+import PlPrivateAaveLiquidationAlerts, {
+  meta as plPrivateAaveLiquidationAlerts,
+} from "~~/content/blog/pl/prywatne-alerty-o-likwidacji-aave.mdx";
+import PlShortFiatWithAave, { meta as plShortFiatWithAave } from "~~/content/blog/pl/short-na-walucie-fiat-z-aave.mdx";
+import PlTokenizedStocksCollateral, {
+  meta as plTokenizedStocksCollateral,
+} from "~~/content/blog/pl/tokenizowane-akcje-jako-zabezpieczenie.mdx";
+import PlWrappedBitcoinAaveCollateral, {
+  meta as plWrappedBitcoinAaveCollateral,
+} from "~~/content/blog/pl/wrapped-bitcoin-jako-zabezpieczenie-na-aave.mdx";
+import PlAaveHealthFactor, { meta as plAaveHealthFactor } from "~~/content/blog/pl/wspolczynnik-zdrowia-aave.mdx";
+import PlMorphoHealthFactor, { meta as plMorphoHealthFactor } from "~~/content/blog/pl/wspolczynnik-zdrowia-morpho.mdx";
+import PlAaveMarketWindDown, { meta as plAaveMarketWindDown } from "~~/content/blog/pl/zamkniecie-rynku-aave.mdx";
 import PrivateAaveLiquidationAlerts, {
   meta as privateAaveLiquidationAlerts,
 } from "~~/content/blog/private-aave-liquidation-alerts.mdx";
@@ -781,5 +838,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
     { meta: itHowMorphoLiquidationWorks, Content: ItHowMorphoLiquidationWorks },
     { meta: itMorphoPreLiquidation, Content: ItMorphoPreLiquidation },
     { meta: itMorphoMidnightFixedRateLoans, Content: ItMorphoMidnightFixedRateLoans },
+  ],
+  pl: [
+    { meta: plAaveHealthFactor, Content: PlAaveHealthFactor },
+    { meta: plSafeAaveHealthFactor, Content: PlSafeAaveHealthFactor },
+    { meta: plHowAaveLiquidationWorks, Content: PlHowAaveLiquidationWorks },
+    { meta: plAaveLiquidationPrice, Content: PlAaveLiquidationPrice },
+    { meta: plWhyAaveHealthFactorDropped, Content: PlWhyAaveHealthFactorDropped },
+    { meta: plAaveHealthFactorAlertSetup, Content: PlAaveHealthFactorAlertSetup },
+    { meta: plAaveLiquidationAlertTools, Content: PlAaveLiquidationAlertTools },
+    { meta: plAvoidAaveLiquidation, Content: PlAvoidAaveLiquidation },
+    { meta: plPrivateAaveLiquidationAlerts, Content: PlPrivateAaveLiquidationAlerts },
+    { meta: plCryptoBackedLoans, Content: PlCryptoBackedLoans },
+    { meta: plShortFiatWithAave, Content: PlShortFiatWithAave },
+    { meta: plAaveInterestRates, Content: PlAaveInterestRates },
+    { meta: plAaveAlertsDoNotDisturb, Content: PlAaveAlertsDoNotDisturb },
+    { meta: plAaveMarketWindDown, Content: PlAaveMarketWindDown },
+    { meta: plStablecoinDepegAave, Content: PlStablecoinDepegAave },
+    { meta: plAaveEMode, Content: PlAaveEMode },
+    { meta: plWhyAaveWithdrawOrBorrowFails, Content: PlWhyAaveWithdrawOrBorrowFails },
+    { meta: plWrappedBitcoinAaveCollateral, Content: PlWrappedBitcoinAaveCollateral },
+    { meta: plTokenizedStocksCollateral, Content: PlTokenizedStocksCollateral },
+    { meta: plWhoNeedsHealthFactorAlerts, Content: PlWhoNeedsHealthFactorAlerts },
+    { meta: plLiquidatedOnAaveOrMorphoWhatNow, Content: PlLiquidatedOnAaveOrMorphoWhatNow },
+    { meta: plMorphoHealthFactor, Content: PlMorphoHealthFactor },
+    { meta: plHowMorphoLiquidationWorks, Content: PlHowMorphoLiquidationWorks },
+    { meta: plMorphoPreLiquidation, Content: PlMorphoPreLiquidation },
+    { meta: plMorphoMidnightFixedRateLoans, Content: PlMorphoMidnightFixedRateLoans },
   ],
 };

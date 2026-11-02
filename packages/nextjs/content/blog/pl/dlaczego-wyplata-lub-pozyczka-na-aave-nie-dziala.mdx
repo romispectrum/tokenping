@@ -1,0 +1,133 @@
+export const meta = {
+  slug: "dlaczego-wyplata-lub-pozyczka-na-aave-nie-dziala",
+  title: "Dlaczego nie mogę wypłacić ani pożyczyć w Aave? 9 przyczyn",
+  description:
+    "Dlaczego wypłata, pożyczka lub spłata w Aave V3 nie przechodzi: współczynnik zdrowia, płynność, limity wpłat i pożyczek, zamrożone lub wstrzymane rezerwy.",
+  h1: "Dlaczego moja wypłata, pożyczka lub spłata w Aave nie przechodzi?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "Dlaczego transakcja wypłaty, pożyczki lub spłaty w Aave się nie udaje?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Transakcja w Aave V3 nie przechodzi, gdy odrzuca ją jedno ze sprawdzeń kontraktu Pool, a przyczyną jest prawie zawsze
+  jedna z dziewięciu. Wypłata obniżyłaby twój współczynnik zdrowia (health factor) poniżej 1. Rezerwa ma mniej
+  niepożyczonej płynności, niż chcesz wziąć. Limit wpłat (supply cap) lub limit pożyczek (borrow cap) aktywa jest
+  wyczerpany. Rezerwa jest zamrożona (bez nowych wpłat i pożyczek) albo wstrzymana (nic nie działa, łącznie ze
+  spłatami). Aktywa nie można pożyczyć albo nie można go pożyczyć w twojej kategorii E-Mode. Masz zabezpieczenie z LTV
+  równym 0, które musi wyjść jako pierwsze. Albo spłata wskazuje dług, którego nie masz, lub tokeny bez zatwierdzonej
+  zgody. Na rynku Ethereum Core 29 października 2026 zamrożonych było 35 z 66 notowanych rezerw, limit wpłat LBTC był
+  wyczerpany co do ostatnich 0,07 LBTC, a z 2347,5 mln wpłaconych USDC do wypłaty było tylko 134,4 mln.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Liczby i numery bloków, w których je odczytano: content/blog/snapshots/why-aave-withdraw-or-borrow-fails.md */}
+
+## Jakie sprawdzenia musi przejść transakcja w Aave?
+
+Każda wpłata, wypłata, pożyczka i spłata w Aave V3 przechodzi przez kontrakt Pool, a Pool, zanim przeniesie jakikolwiek token, wykonuje listę sprawdzeń z biblioteki o nazwie `ValidationLogic`. Każde nieudane sprawdzenie zatrzymuje całą transakcję z nazwanym błędem: `ReserveFrozen`, `SupplyCapExceeded`, `HealthFactorLowerThanLiquidationThreshold` i tak dalej. Twój portfel zwykle pokazuje tylko „execution reverted” i krótki kod szesnastkowy, bo nazwy są w kodzie Aave, a nie w portfelu. Aplikacja Aave sprawdza większość z tych warunków, zanim podpiszesz, dlatego często odmawia, zanim w ogóle zobaczysz transakcję.
+
+Sprawdzenia zależą od operacji. Wypłata wymaga aktywnej, niewstrzymanej rezerwy, salda co najmniej równego kwocie, a jeśli masz jakikolwiek dług i aktywo liczy się jako zabezpieczenie, także współczynnika zdrowia, który po wypłacie pozostaje na poziomie 1 lub wyżej. Pożyczka wymaga aktywnej, niewstrzymanej, niezamrożonej rezerwy z włączonym pożyczaniem, miejsca poniżej limitu pożyczek i wystarczającego zabezpieczenia przy twoim LTV. Wpłata wymaga niezamrożonej rezerwy z miejscem poniżej limitu wpłat. Spłata wymaga tylko aktywnej, niewstrzymanej rezerwy i długu w tym aktywie. Dziewięć przyczyn poniżej idzie za tą listą, mniej więcej w kolejności, w jakiej najpewniej na nie trafisz.
+
+Ten poradnik dotyczy Aave V3. Spoke'i Aave V4 mają własną konfigurację, a Morpho nie ma żadnego z tych mechanizmów poza wyrocznią (oracle) i współczynnikiem zdrowia: rynek Morpho nie ma limitów, zamrożenia ani pauzy.
+
+## 1. Wypłata zostawiłaby twój współczynnik zdrowia poniżej 1
+
+Na to pożyczkobiorcy trafiają najczęściej. Gdy wypłacasz aktywo, którego używasz jako zabezpieczenia, a masz dług, Pool przelicza twoje konto po wypłacie i wymaga współczynnika zdrowia co najmniej 1 (`HealthFactorLowerThanLiquidationThreshold`). To samo sprawdzenie działa, gdy wyłączasz aktywo jako zabezpieczenie albo przelewasz aTokeny na inny adres. Nie działa, gdy nie masz długu, dlatego z pozycji złożonej z samych wpłat zawsze można wypłacić całe saldo.
+
+Weźmy 10 WETH na rynku Ethereum Core po cenie z wyroczni 2309,84 $ z 29 października 2026 (23 098,41 $), próg likwidacji (liquidation threshold) 84% i 12 000 USDC długu. [Współczynnik zdrowia](/pl/blog/wspolczynnik-zdrowia-aave) wynosi 23 098,41 × 0,84 ÷ 12 000 = 1,617. Aby utrzymać go dokładnie na poziomie 1, potrzebujesz WETH za 12 000 ÷ 0,84 = 14 285,71 $, czyli 6,185 WETH, więc najwięcej możesz wypłacić 3,815 WETH. Poproś o 4, a transakcja zostanie cofnięta (revert); poproś o 3,815, a przejdzie, zostawiając pozycję, którą najbliższy ruch ceny w dół pozwoli zlikwidować. Maksimum w aplikacji Aave to właśnie ta liczba, a wypłacenie go w całości to najszybszy sposób, by zamienić bezpieczną pozycję w taką, która w ciągu godziny potrzebuje [alertu o likwidacji](/pl/blog/alerty-wspolczynnika-zdrowia-aave-konfiguracja).
+
+Pożyczanie ma surowszą odmianę tego sprawdzenia. Nowa pożyczka musi zostawić współczynnik zdrowia na poziomie co najmniej 1 i musi też zmieścić się w twoim ważonym wskaźniku LTV (loan-to-value): zabezpieczenie × LTV musi pokryć dług (`CollateralCannotCoverNewBorrow`). Przy LTV WETH równym 81% powyższe 10 WETH pozwala na najwyżej 18 709,71 $ długu, a pozycja, która pożycza całą tę kwotę, startuje ze współczynnikiem zdrowia 84 ÷ 81 = 1,037. [Jaki współczynnik zdrowia jest bezpieczny](/pl/blog/bezpieczny-wspolczynnik-zdrowia-aave) wyjaśnia, dlaczego to cienki zapas na start.
+
+## 2. Rezerwa ma mniej niepożyczonej płynności, niż chcesz wziąć
+
+Aave pożycza dalej to, co wpłacają wpłacający, więc rezerwa trzyma tylko tę część, której nikt nie pożyczył. Wypłata albo pożyczka większa niż ta część nie przechodzi, a ten przypadek nie ma nazwy błędu w Aave: aToken próbuje przelać token bazowy, a transakcję cofa sam kontrakt tokena, w przypadku USDC z komunikatem „ERC20: transfer amount exceeds balance”. Sprawdzenie przy pożyczce wymaga tylko, by cała podaż aTokena była co najmniej równa kwocie, co wyłapuje absurdalne żądania i nic więcej.
+
+Na rynku Ethereum Core 29 października 2026 wpłaconych było 2 347 525 372,91 USDC, pożyczonych 2 213 199 103,54 USDC, a kontrakt aTokena trzymał 134 360 379,94 USDC: wykorzystanie 94,28%, czyli 5,72% wpłat dostępnych do wypłaty lub pożyczenia. Wpłacający, który chciałby wyjść z 200 mln USDC, nie mógłby tego zrobić, i nikt by nie mógł, dopóki ktoś nie spłaciłby długu albo nie wpłacił środków. Poradnik o tym, [jak działa oprocentowanie w Aave](/pl/blog/oprocentowanie-aave), pokazuje, jak to wygląda w praktyce: 14 października 2026 jedna wypłata 133 898 000 USDC podniosła wykorzystanie tej samej rezerwy do 99,50%, a oprocentowanie pożyczek z 4,50% do 13,67% w jednym bloku.
+
+Gdy problemem jest płynność, działają cztery rzeczy. Wypłać mniejszą kwotę, do tego, co trzyma kontrakt. Poczekaj: krzywa oprocentowania ma przyciągać płynność z powrotem, a skok z 14 października minął po około 36 minutach, choć nic tego nie gwarantuje. Wypłać inne aktywo zabezpieczenia, jeśli je masz i pozwala na to współczynnik zdrowia. A jeśli próbujesz spłacić dług w USDC, ale masz aUSDC, użyj `repayWithATokens`: spala twoje aTokeny w zamian za dług bez przenoszenia ani jednego USDC, więc nie potrzebuje żadnej płynności.
+
+## 3. Limit wpłat jest wyczerpany
+
+Każda rezerwa ma limit wpłat ustalany przez risk stewardów i governance Aave, a wpłata, która podniosłaby sumę ponad niego, kończy się błędem `SupplyCapExceeded`. Limit 0 oznacza brak limitu. Limit liczy istniejące aTokeny plus odsetki naliczone dla skarbca, więc zapełnia się sam wraz z naliczaniem odsetek, bez niczyich wpłat.
+
+Limity blokują częściej, niż się wydaje. 29 października 2026 limit LBTC na Ethereum Core wynosił 2690 LBTC przy 2689,93 wpłaconych: wolne miejsce to 0,07 LBTC, a pożyczkobiorca, który chciał dodać 1 LBTC do pozycji pod presją, nie mógł tego zrobić. sUSDe był na poziomie 96,9% swojego limitu, tBTC 98,9%, USDe 91,7%, weETH 91,2%, a WBTC 89,4%. Limity zmieniają się w obie strony. 10 lipca 2026 LlamaRisk obniżył limit wpłat USDm w instancji Aave na MegaETH z 1 000 000 000 do 300 000 000, bo pułap był „well above current demand” (znacznie powyżej obecnego popytu); stewardzi podnoszą limity, gdy pojawia się popyt, zwykle w ciągu kilku dni.
+
+Dla pożyczkobiorcy limit ma znaczenie jako zamknięte drzwi: dodanie zabezpieczenia to jeden z dwóch sposobów na podniesienie współczynnika zdrowia, a pełny limit odbiera go dla tego aktywa. Spłata długu, czyli drugi sposób, nadal działa, podobnie jak dodanie innego aktywa zabezpieczenia, którego limit ma wolne miejsce.
+
+## 4. Limit pożyczek jest wyczerpany
+
+Limity pożyczek działają tak samo dla długu: całkowity zmienny dług rezerwy po twojej pożyczce nie może przekroczyć limitu (`BorrowCapExceeded`), a 0 oznacza brak limitu. Sprawdzenie działa przy każdej pożyczce, więc limit, który już jest przekroczony, blokuje każdą nową pożyczkę tego aktywa, dopóki ktoś nie spłaci długu. Pełny limit pożyczek nie blokuje niczego innego: spłaty, wypłaty i likwidacje przechodzą.
+
+tBTC na Ethereum Core to skrajny przypadek: 29 października 2026 pożyczanie było włączone, ale limit wynosił 1 tBTC, a pożyczonych było już 2,57 tBTC, więc cofana była nawet najmniejsza pożyczka. W USDC pożyczone było 2213,2 mln przy limicie 2700 mln, czyli 82,0% wykorzystania, z 486,8 mln wolnego miejsca; USDT było na poziomie 80,8%. Gdy limity stablecoinów się zapełniają, pożyczka nie przechodzi, nawet jeśli rezerwa nadal ma dużo płynności.
+
+## 5. Rezerwa jest zamrożona
+
+Zamrożona rezerwa nie przyjmuje nowych wpłat ani nowych pożyczek (`ReserveFrozen` w obu przypadkach). Dokumentacja Pool Configurator w Aave wymienia, co nadal działa: spłaty, likwidacje i wypłaty. Zamrożenie to sposób, w jaki governance wygasza aktywo, nikogo w nim nie zatrzaskując; [co się dzieje, gdy Aave zamyka rynek](/pl/blog/zamkniecie-rynku-aave) opisuje kolejne kroki.
+
+Zamrożone rezerwy nie są rzadkością. 29 października 2026 zamrożonych było 35 z 66 rezerw na Ethereum Core: CRV, MKR, UNI, LUSD, FRAX, sDAI, crvUSD, FBTC i długa lista tokenów Pendle PT po terminie zapadalności, prawie wszystkie także z limitami wpłat i pożyczek równymi 1. Jeśli wciąż masz w takiej rezerwie zabezpieczenie, możesz je wypłacić i może ono zostać zlikwidowane, ale nie możesz go uzupełnić.
+
+## 6. Rezerwa jest wstrzymana
+
+Wstrzymanie (pause) to wyłącznik awaryjny. Wstrzymana rezerwa odrzuca wszystko: wpłaty, pożyczki, spłaty, wypłaty, likwidacje i przelewy aTokenów (`ReservePaused`). 29 października 2026 żadna rezerwa na Ethereum Core nie była wstrzymana i w zwykłych tygodniach żadna nie jest.
+
+Z pauzy już korzystano. 4 listopada 2023, po zgłoszeniu krytycznego błędu w programie bug bounty, Guardian Aave wstrzymał Aave V2 na Ethereum i zestaw aktywów w Aave V3 na Arbitrum, Avalanche, Optimism i Polygon. Przez mniej więcej tydzień nikt nie mógł spłacić długu ani dodać zabezpieczenia w tych rezerwach, a ceny dalej się zmieniały. Instancje V3 wznowiono 12 listopada 2023, V2 na Ethereum 13 listopada, po okresie karencji (grace period) dla likwidacji trwającym około trzech godzin dla pożyczkobiorców WETH, a CRV w V3 na Polygon 16 listopada. Dziś taki okres karencji jest częścią protokołu: likwidacja w okresie karencji rezerwy kończy się błędem `LiquidationGraceSentinelCheckFailed`, co daje zablokowanym pożyczkobiorcom krótkie okno na spłatę, zanim ruszą likwidatorzy.
+
+Jeśli twoja transakcja kończy się błędem pauzy, w Aave nie da się nic zrobić, dopóki pauza nie zostanie zdjęta. Wykorzystaj ten czas, by mieć środki na spłatę gotowe we właściwej sieci, bo okres karencji po wznowieniu ustala governance lub Guardian i bywał tak krótki jak trzy godziny.
+
+## 7. Pożyczanie tego aktywa jest wyłączone albo niedozwolone w twojej kategorii E-Mode
+
+Wiele aktywów można wpłacić jako zabezpieczenie, ale nie można ich pożyczyć. Na Ethereum Core 29 października 2026 pożyczanie było wyłączone w 15 niezamrożonych rezerwach, między innymi wstETH, cbETH, rETH, weETH, LBTC, eBTC, AAVE i XAUt, a pożyczka któregokolwiek z nich kończy się błędem `BorrowingNotEnabled`. Tę flagę ustawia governance dla każdej rezerwy osobno, a w aplikacji Aave widać ją jako brak przycisku pożyczki.
+
+Jeśli jesteś w [kategorii E-Mode](/pl/blog/e-mode-aave), tę zasadę zastępuje inna: możesz pożyczać tylko aktywa z zestawu dostępnego do pożyczania w tej kategorii, a wszystko inne kończy się błędem `NotBorrowableInEMode`, nawet aktywo, które poza kategorią dałoby się pożyczyć. Na przykład kategoria „ETH correlated” na Ethereum Core pozwala pożyczać WETH i nic więcej. Wyjście z kategorii rozwiązuje problem z pożyczką, ale samo wyjście ma własne sprawdzenia: każde aktywo twojego długu musi być dostępne do pożyczania poza kategorią, a twój współczynnik zdrowia musi nadal wynosić co najmniej 1 przy zwykłych, niższych progach (`InvalidDebtInEmode`, `InvalidCollateralInEmode`, `HealthFactorLowerThanLiquidationThreshold`).
+
+## 8. Masz zabezpieczenie z LTV równym 0
+
+Governance ustawia LTV aktywa na 0, gdy chce, by aktywo przestało wspierać nowy dług, a istniejące pozycje działały dalej. 29 października 2026 na Ethereum Core 11 niezamrożonych rezerw było włączonych jako zabezpieczenie z LTV równym 0, między innymi DAI (próg likwidacji 77%), LINK, PYUSD, USDe, sUSDe, USDS, EURC i XAUt. Takie aktywo nadal liczy się do twojego współczynnika zdrowia, przez swój próg likwidacji, ale nie dodaje nic do twojej zdolności pożyczania. Wynikają z tego dwa sprawdzenia.
+
+Pierwsze dotyczy pożyczania. Jeśli każde włączone przez ciebie zabezpieczenie ma LTV równe 0, twój ważony LTV wynosi 0 i każda pożyczka kończy się błędem `LtvValidationFailed`. Przy mieszance, na przykład DAI i WETH, pożyczka przechodzi, ograniczona przez samo WETH.
+
+Drugie dotyczy wypłat i zaskakuje ludzi. Jeśli masz dług i jakiekolwiek włączone zabezpieczenie z LTV równym 0, to aktywo, które wypłacasz, przelewasz lub wyłączasz jako zabezpieczenie, samo musi być aktywem z LTV 0, inaczej transakcja kończy się tym samym błędem `LtvValidationFailed`. Komentarz w samym kodzie mówi, o co chodzi: zasada „ensures that a multi-collateral position needs to withdraw/transfer the ltv0 asset first” (zapewnia, że pozycja z kilkoma zabezpieczeniami musi najpierw wypłacić lub przelać aktywo z LTV 0). Pożyczkobiorca z DAI i WETH, który próbuje wyciągnąć trochę WETH, zostaje więc odrzucony, dopóki DAI nie wyjdzie; sprawdzenie współczynnika zdrowia nadal dotyczy samej wypłaty DAI. Rozwiązaniem jest kolejność działań: najpierw wypłać aktywo z LTV 0 albo spłać tyle, by współczynnik zdrowia pozwolił na obie wypłaty.
+
+## 9. Spłata wskazuje dług, którego nie masz, albo tokeny bez zatwierdzonej zgody
+
+Spłaty to najprostsza operacja, a mimo to też się nie udają, zwykle z jednego z pięciu powodów.
+
+- **Brak długu tego typu.** `NoDebtOfSelectedType` oznacza, że Pool, który wywołujesz, nie ma dla tego adresu zmiennego długu w tym aktywie. Najczęstsza przyczyna to zły rynek: Ethereum ma osobne instancje Core, Prime i Lido, każdą z własnym Poolem, a ten sam portfel może mieć dług w USDC na jednej i żadnego na innej. Rynki każdej sieci też są osobne.
+- **Tryb oprocentowania, który już nie istnieje.** Akceptowany jest tylko tryb zmienny (2); pożyczanie ze stałym oprocentowaniem (stable rate) zniknęło z kodu, a wywołanie z trybem 1 kończy się błędem `InvalidInterestRateModeSelected`.
+- **Brak zgody (allowance).** Pool pobiera spłatę przez `transferFrom`, więc token potrzebuje zatwierdzenia na co najmniej tę kwotę albo podpisanego permitu. Bez tego kontrakt tokena cofa transakcję, zanim ruszą sprawdzenia Aave.
+- **Spłata za kogoś innego bez kwoty.** Spłata w imieniu innego adresu z wartością „cały dług” (`type(uint256).max`) kończy się błędem `NoExplicitAmountToRepayOnBehalf`; podaj kwotę.
+- **Resztki (dust).** Odsetki naliczają się co sekundę, więc spłata dokładnie tego salda, które było widać minutę temu, zostawia kilka wei długu. Aby spłacić dług w całości, spłać z wartością maksymalną, którą Pool ogranicza do kwoty twojego długu.
+
+## Przyczyny, których możesz już nie szukać
+
+Dwa stare wyjaśnienia już nie obowiązują. Isolation Mode i jego pułapy długu (debt ceilings) zostały usunięte w Aave V3.7, podobnie jak siloed borrowing, więc dziś żadna pożyczka nie jest odrzucana dlatego, że aktywo jest izolowane albo pułap został osiągnięty. A pożyczania ze stałym oprocentowaniem nie ma od V3.2, więc nic nie kończy się błędem przy zmianie trybu oprocentowania. Jeśli starszy poradnik wymienia którąś z tych przyczyn, opisuje wersję Aave, która nie jest już wdrożona.
+
+## Co zrobić, gdy transakcja nie przechodzi podczas spadku cen
+
+Nieudana transakcja to na spokojnym rynku drobna niedogodność, a na spadającym problem, bo godzina spędzona na diagnozie to godzina, której potrzebuje twój współczynnik zdrowia. Krótka kolejność działań:
+
+1. **Przeczytaj błąd.** Zasymuluj transakcję w portfelu albo wklej szesnastkowy selektor do dekodera w eksploratorze bloków; nazwy powyżej powiedzą ci, z którym przypadkiem masz do czynienia.
+2. **Wybieraj spłatę zamiast dodawania zabezpieczenia.** Spłata działa mimo zamrożonych rezerw i pełnych limitów wpłat, a z `repayWithATokens` działa także przy braku płynności. Dodanie zabezpieczenia zależy od limitu z wolnym miejscem i niezamrożonej rezerwy.
+3. **Spróbuj mniejszych kwot.** Płynność i limity to ilości; wypłata lub pożyczka, która się mieści, przechodzi, gdy pełna kwota nie przechodzi.
+4. **Użyj innego aktywa.** Inne zabezpieczenie do wypłaty albo inne aktywo do spłaty jest często dostępne, gdy pierwsze jest zablokowane.
+5. **Sprawdź instancję i sieć.** Spłata wysłana we właściwym aktywie do złego Poola kończy się błędem `NoDebtOfSelectedType` i kosztuje cię gas i czas.
+6. **Następnym razem odbierz alert wcześniej.** Obejście każdego z tych przypadków zajmuje minuty. Alert o współczynniku zdrowia ustawiony z zapasem daje ci te minuty.
+
+Tokenping sprawdza twój współczynnik zdrowia w Aave co 5 minut, na każdym rynku Aave V3 w 21 sieciach i w każdym Spoke'u Aave V4, i wysyła ci wiadomość przez Signal, Telegram lub e-mail, gdy jest poniżej wybranego przez ciebie progu (od 1,1 do 10), powtarzając ją przy każdym sprawdzeniu, dopóki współczynnik nie wróci powyżej. Odczytuje tę liczbę z `getUserAccountData`, czyli tę samą, której używa sprawdzenie przy wypłacie. Alert nie może działać za ciebie i nic w tym poradniku nie zapobiega likwidacji; poradnik mówi ci, które drzwi są zamknięte, żeby najpierw próbować tych otwartych. Możesz [sprawdzić swój współczynnik zdrowia w Aave V3](/pl/aave) bez płacenia; alerty kosztują <AlertPrice />, jeden alert na rynek lub Spoke. [Jak uniknąć likwidacji w Aave](/pl/blog/jak-uniknac-likwidacji-na-aave) szczegółowo omawia wybór między spłatą a dodaniem zabezpieczenia, a [dlaczego twój współczynnik zdrowia spadł](/pl/blog/dlaczego-spadl-wspolczynnik-zdrowia-aave) przyczyny, na które reagujesz.
+
+## Źródła
+
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol), [BorrowLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/BorrowLogic.sol) i [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): każde wymienione wyżej sprawdzenie, kolejność ich wykonywania, komentarz o LTV 0 i flaga zerowego LTV (aave-v3-origin main, sprawdzono 29 października 2026)
+- [Errors.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/helpers/Errors.sol): nazwy błędów i ich opisy (aave-v3-origin main, sprawdzono 29 października 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getAllReservesTokens`, a dla każdej rezerwy `getReserveConfigurationData`, `getReserveCaps`, `getPaused` i `getReserveData`, w bloku 26296985 (sprawdzono 29 października 2026)
+- [aEthUSDC](https://etherscan.io/address/0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c): USDC trzymane przez kontrakt aTokena w bloku 26296985 (sprawdzono 29 października 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): ceny WETH i USDC w bloku 26296985 (sprawdzono 29 października 2026)
+- [Dokumentacja Aave: Pool Configurator](https://aave.com/docs/aave-v3/smart-contracts/pool-configurator): co jest dozwolone w zamrożonych i wstrzymanych rezerwach, limity równe 0 (sprawdzono 29 października 2026)
+- [Aave v2/v3 security incident 04/11/2023](https://governance.aave.com/t/aave-v2-v3-security-incident-04-11-2023/15335): pauzy z 4 listopada 2023, wznowienia z 12, 13 i 16 listopada oraz okres karencji (sprawdzono 29 października 2026)
+- [Aave V3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): usunięcie pożyczania ze stałym oprocentowaniem (sprawdzono 29 października 2026)
+- [Aave V3.7: usunięcie isolation mode i siloed borrowing](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/mode-removal.md) (sprawdzono 29 października 2026)
+- [Risk Stewards: Supply and Borrow Cap Reductions on Aave V3 / 2026.07.10](https://governance.aave.com/t/risk-stewards-supply-and-borrow-cap-reductions-on-aave-v3-2026-07-10/25296): obniżki limitów przez LlamaRisk na MegaETH, wykonane 14 lipca 2026 (sprawdzono 29 października 2026)
+
+_Treści edukacyjne, nie porada finansowa. Alerty zmniejszają ryzyko, ale nie zapobiegają likwidacji._
