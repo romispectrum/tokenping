@@ -9,6 +9,7 @@ export const LOCALE_PATHS: Record<Locale, { prefix: string; privacy: string }> =
   hi: { prefix: "/hi", privacy: "gopaniyata" },
   de: { prefix: "/de", privacy: "datenschutz" },
   vi: { prefix: "/vi", privacy: "quyen-rieng-tu" },
+  fr: { prefix: "/fr", privacy: "confidentialite" },
 };
 
 /** The page paths of one language, by route: what i18n/routes serves and next.config.ts rewrites and links. */

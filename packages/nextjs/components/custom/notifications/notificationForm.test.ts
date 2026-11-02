@@ -177,7 +177,7 @@ describe("configToFormState", () => {
     const channelLocales = {
       email: "cs",
       signal: "en",
-      telegram: "fr",
+      telegram: "la",
       sms: "cs",
     } as unknown as NotificationConfig["channelLocales"];
     expect(configToFormState({ ...CONFIG, channelLocales }).channelLocales).toStrictEqual({

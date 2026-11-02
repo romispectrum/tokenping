@@ -46,7 +46,7 @@ describe("telegramLocale", () => {
     ["vi-VN", "vi"],
     ["en", "en"],
     ["en-US", "en"],
-    ["fr", "en"],
+    ["la", "en"],
     ["", "en"],
     ["csx", "en"],
     [undefined, "en"],

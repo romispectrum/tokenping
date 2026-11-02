@@ -1,0 +1,184 @@
+export const meta = {
+  slug: "fonctionnement-liquidation-aave",
+  title: "Ce qui se passe quand votre position Aave est liquidée",
+  description:
+    "Les liquidations Aave V3 aujourd'hui : quand elles se déclenchent, la part de dette remboursable (50 % ou 100 %), le bonus payé et un exemple chiffré.",
+  h1: "Que se passe-t-il quand votre position Aave est liquidée ?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Que se passe-t-il quand vous êtes liquidé sur Aave ?",
+  readingMinutes: 15,
+};
+
+<ShortAnswer>
+  Quand votre facteur de santé (health factor) Aave V3 passe sous 1, n'importe quelle autre adresse peut rembourser tout
+  ou partie de votre dette et prendre du collatéral d'une valeur égale à ce montant plus un bonus de liquidation, par
+  exemple 5 % sur le WETH dans le marché Core d'Ethereum. Une liquidation peut rembourser jusqu'à 50 % de votre dette
+  tant que votre facteur de santé est au-dessus de 0,95 et que votre collatéral dans l'actif saisi comme votre dette
+  dans l'actif remboursé valent au moins 2 000 $ ; sinon, toute la dette dans cet actif peut partir d'un coup. Vous
+  gardez les tokens empruntés ainsi que le collatéral et la dette qui restent : le bonus est donc ce que la liquidation
+  vous coûte.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Quand une position Aave peut-elle être liquidée ?
+
+Une position Aave V3 peut être liquidée dès que son facteur de santé est sous 1,00. Le facteur de santé divise la valeur de votre collatéral, pondérée par le seuil de liquidation (liquidation threshold) de chaque actif, par la valeur de votre dette : sous 1,00, le collatéral pondéré ne couvre plus la dette (formule et exemple : [ce qu'est le facteur de santé Aave](/fr/blog/facteur-de-sante-aave)).
+
+Les contrats d'Aave V3.7 vérifient cinq points avant qu'une liquidation passe (`validateLiquidationCall` dans `ValidationLogic.sol`) :
+
+1. Le facteur de santé de l'emprunteur est sous 1,00.
+2. L'actif de collatéral saisi et l'actif de dette remboursé sont tous deux actifs et **pas en pause**.
+3. Toute période de grâce de liquidation sur l'un ou l'autre actif est terminée. Quand l'emergency guardian d'Aave ou la gouvernance lève la pause d'un actif, ils peuvent fixer une période de grâce allant jusqu'à 4 heures.
+4. L'emprunteur a activé ce collatéral comme collatéral et doit l'actif de dette choisi.
+5. L'appelant n'est pas l'emprunteur : vous ne pouvez pas liquider votre propre position.
+
+Un actif gelé peut quand même être liquidé, car la vérification porte sur « en pause », pas sur « gelé ». N'importe quelle autre adresse peut appeler la fonction `liquidationCall` du Pool.
+
+Le protocole ne vous prévient pas avant une liquidation, et l'app d'Aave sur app.aave.com n'envoie pas d'alertes. Avec un seul collatéral volatil et une dette en stablecoin, vous pouvez [calculer votre prix de liquidation Aave](/fr/blog/prix-de-liquidation-aave) : le prix du collatéral auquel le facteur de santé atteint 1.
+
+## Quelle part de ma dette peut être liquidée d'un coup ?
+
+Sur Aave V3.7, le close factor (part de la dette remboursable en une fois) ne vaut 50 % de votre dette totale que lorsque trois conditions sont toutes réunies : votre facteur de santé est au-dessus de 0,95, votre collatéral dans l'actif saisi vaut au moins 2 000 $, et votre dette dans l'actif remboursé vaut au moins 2 000 $. Dans tous les autres cas, un liquidateur peut rembourser jusqu'à 100 % de votre dette dans l'actif choisi en une seule transaction.
+
+| Situation au moment de la liquidation                                                                            | Maximum qu'une liquidation peut rembourser                                                               |
+| ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Facteur de santé au-dessus de 0,95, et le collatéral choisi comme la dette choisie valent chacun 2 000 $ ou plus | 50 % de votre dette totale sur tous les actifs (en USD), jamais plus que votre dette dans l'actif choisi |
+| Facteur de santé à 0,95 ou moins                                                                                 | 100 % de votre dette dans l'actif choisi                                                                 |
+| Le collatéral choisi ou la dette choisie vaut moins de 2 000 $                                                   | 100 % de votre dette dans l'actif choisi                                                                 |
+
+Ces limites sont des constantes dans `LiquidationLogic.sol` d'Aave (aave-v3-origin, lu le 14 octobre 2026). Depuis la v3.3, les 50 % s'appliquent à l'ensemble de la position plutôt qu'à chaque actif de dette. Les notes de la v3.3 d'Aave donnent l'exemple d'une dette de 3 000 $ chacune en GHO, USDC et DAI, 9 000 $ au total : les 3 000 $ de n'importe laquelle peuvent être remboursés en un seul appel, car 50 % du total font 4 500 $.
+
+Une seconde règle évite les poussières. Une liquidation partielle doit laisser au moins 1 000 $ de dette dans l'actif remboursé et au moins 1 000 $ de collatéral dans l'actif saisi. Sinon, le liquidateur doit prendre toute cette dette ou tout ce collatéral, ou la transaction échoue.
+
+Une liquidation ne prend que du collatéral d'une valeur égale à la dette remboursée plus le bonus, pas tout votre collatéral. Le liquidateur rembourse la dette avec ses propres fonds, donc les tokens que vous avez empruntés restent à vous ; tant que le collatéral la couvre, le bonus est ce que vous perdez.
+
+Les guides plus anciens décrivent un close factor fixe de 50 %, et la référence du contrat Pool sur aave.com indique encore "close factor is 0.5" (consulté le 14 octobre 2026). Les deux sont dépassés : un taux fixe de 50 % était la règle d'Aave V2, et le code V3.7 de ces marchés applique la règle des 50 % ou 100 % du tableau.
+
+## Qu'est-ce que le bonus de liquidation, et qui le paie ?
+
+Le bonus de liquidation, souvent appelé pénalité de liquidation, est le collatéral supplémentaire qu'un liquidateur reçoit en plus de la dette qu'il rembourse, et c'est l'emprunteur qui le paie. Avec un bonus de 5 %, solder 1 000 USDC de votre dette vous coûte 1 050 USDC de collatéral. La trésorerie d'Aave garde une partie du bonus au titre de la liquidation protocol fee (frais de protocole), si bien que le liquidateur reçoit un peu moins que ce que vous perdez.
+
+Le bonus et les frais applicables sont ceux du collatéral saisi, pas ceux de la dette. Valeurs d'Aave V3 lues on-chain le 14 octobre 2026 (bloc Ethereum 26193284, bloc Arbitrum 514855406) :
+
+| Marché        | Collatéral saisi | Bonus de liquidation | Frais de protocole (part du bonus) | Collatéral perdu par tranche de 1 000 $ remboursés | Le liquidateur reçoit |
+| ------------- | ---------------- | -------------------- | ---------------------------------- | -------------------------------------------------- | --------------------- |
+| Ethereum Core | WETH             | 5 %                  | 10 %                               | 1 050 $                                            | 1 045 $               |
+| Ethereum Core | WBTC             | 5 %                  | 10 %                               | 1 050 $                                            | 1 045 $               |
+| Ethereum Core | USDC             | 4,5 %                | 20 %                               | 1 045 $                                            | 1 036 $               |
+| Arbitrum      | WETH             | 5 %                  | 10 %                               | 1 050 $                                            | 1 045 $               |
+| Arbitrum      | WBTC             | 7 %                  | 10 %                               | 1 070 $                                            | 1 063 $               |
+| Arbitrum      | USDC (natif)     | 5 %                  | 10 %                               | 1 050 $                                            | 1 045 $               |
+
+En E-Mode, si l'actif saisi fait partie des collatéraux de votre catégorie, le bonus de la catégorie remplace celui de l'actif : 1 % pour « ETH correlated » sur Ethereum Core (lu au bloc Ethereum 26193288, le 14 octobre 2026), chaque liquidation coûte donc moins. La gouvernance peut modifier tous ces paramètres, et les risk stewards d'Aave peuvent ajuster les bonus de liquidation dans des limites fixées : vérifiez les valeurs actuelles dans l'app Aave.
+
+## Quel collatéral le liquidateur prend-il ?
+
+C'est le liquidateur qui choisit. Chaque liquidation Aave V3 désigne un actif de collatéral à saisir et un actif de dette à rembourser, et c'est le liquidateur qui choisit la paire : vous n'avez pas votre mot à dire sur celui de vos actifs qui part en premier. Seuls les actifs que vous avez activés comme collatéral peuvent être saisis ; un actif déposé dont l'option « used as collateral » est désactivée ne peut pas être pris, mais il n'ajoute rien non plus à votre facteur de santé.
+
+Si le collatéral choisi ne suffit pas à couvrir le remboursement plus le bonus, vous perdez tout cet actif (le liquidateur le reçoit, moins les frais de protocole) et moins de dette est remboursée. Comme chaque liquidation traite une seule paire, une position composée de plusieurs actifs peut être liquidée en plusieurs transactions, et tant que le facteur de santé reste sous 1, d'autres liquidations peuvent suivre.
+
+## Exemple chiffré : l'ETH tombe à 1 420 $, puis à 1 330 $
+
+Dans cet exemple, une liquidation à un prix de l'ETH de 1 420 $ rembourse 6 000 USDC et coûte 300 $ de WETH à l'emprunteur ; si personne ne liquide avant que l'ETH soit à 1 330 $, les 12 000 USDC peuvent être remboursés d'un coup et le coût double, à 600 $.
+
+La position : 10 WETH de collatéral et 12 000 USDC de dette sur Aave V3 Ethereum Core. Le WETH a un seuil de liquidation de 83 %, un bonus de 5 % et des frais de protocole de 10 % (lus on-chain au bloc 26193284, le 14 octobre 2026). Les prix de l'ETH sont illustratifs, l'USDC est compté à 1,00 $ et les intérêts sont ignorés.
+
+À 2 400 $, le facteur de santé vaut 24 000 × 0,83 ÷ 12 000 = 1,66. Il atteint 1 à un prix de l'ETH de 12 000 ÷ (10 × 0,83) = 1 445,78 $, et 0,95 à 1 373,49 $.
+
+| Prix de l'ETH                     | Facteur de santé      | Maximum qu'une liquidation peut rembourser                                                                                                                   |
+| --------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Au-dessus d'environ 1 445,78 $    | 1,00 ou plus          | Rien ; la position ne peut pas être liquidée                                                                                                                 |
+| D'environ 1 373,50 $ à 1 445,78 $ | Entre 0,95 et 1,00    | 50 % : 6 000 USDC                                                                                                                                            |
+| D'environ 1 260 $ à 1 373,49 $    | D'environ 0,87 à 0,95 | 100 % : 12 000 USDC                                                                                                                                          |
+| Sous environ 1 260 $              | Sous environ 0,87     | Moins de 12 000 USDC : les 10 WETH sont saisis et le reste devient une [créance irrécouvrable](#une-liquidation-peut-elle-laisser-une-creance-irrecouvrable) |
+
+### Étape 1 : ETH à 1 420 $, facteur de santé 0,982
+
+À 1 420 $, les 10 WETH valent 14 200 $, le facteur de santé est donc de 14 200 × 0,83 ÷ 12 000 = 0,982. C'est au-dessus de 0,95, et votre collatéral en WETH comme votre dette en USDC valent chacun plus de 2 000 $ : un liquidateur peut donc rembourser au plus 6 000 USDC.
+
+- Le liquidateur rembourse 6 000 USDC de votre dette.
+- Votre position perd 6 000 × 1,05 = 6 300 $ de WETH (4,4366 WETH).
+- Les frais de protocole représentent 10 % du bonus de 300 $ : 30 $ (0,0211 WETH) vont à la trésorerie d'Aave et le liquidateur reçoit 6 270 $ (4,4155 WETH).
+- Il vous reste 5,5634 WETH (7 900 $) et 6 000 USDC de dette : un facteur de santé de 7 900 × 0,83 ÷ 6 000 = 1,093.
+
+Votre position nette (collatéral moins dette) passe de 2 200 $ à 1 900 $. La différence de 300 $ est le bonus.
+
+### Étape 2 : ETH à 1 330 $, facteur de santé 1,024
+
+Les 5,5634 WETH restants valent 7 399 $ à 1 330 $, soit un facteur de santé de 7 399 × 0,83 ÷ 6 000 = 1,024 : la position ne peut pas être liquidée à nouveau à ce prix. Son nouveau prix de liquidation est d'environ 1 299 $, d'après 6 000 ÷ (5,5634 × 0,83). Diviser la dette par deux a fait baisser le prix de liquidation ; le bonus de 300 $ en a été le coût.
+
+### Et si personne ne liquide avant que l'ETH soit à 1 330 $ ?
+
+Si la première liquidation n'a lieu qu'avec l'ETH déjà à 1 330 $, la position d'origine a un facteur de santé de 13 300 × 0,83 ÷ 12 000 = 0,920. C'est 0,95 ou moins, un liquidateur peut donc rembourser les 12 000 USDC d'un coup. Votre position perd 12 000 × 1,05 = 12 600 $ de WETH (9,4737 WETH), dont 60 $ de frais de protocole et 12 540 $ pour le liquidateur. Vous gardez 0,5263 WETH (700 $) et ne devez plus rien ; la règle des poussières ne s'applique pas, car la dette a été entièrement soldée.
+
+La position nette passe de 1 300 $ à 700 $. La perte de 600 $ est le double de celle de l'étape 1, parce que deux fois plus de dette a été remboursée au même bonus de 5 %.
+
+## Une liquidation peut-elle laisser une créance irrécouvrable ?
+
+Oui. Une créance irrécouvrable (bad debt) apparaît quand le collatéral d'une position vaut moins que sa dette plus le bonus de liquidation : même en prenant jusqu'à la dernière unité de collatéral, on ne rembourse pas tout. Depuis Aave V3.3, quand une liquidation épuise tout le collatéral d'un emprunteur et qu'il reste de la dette, le contrat brûle la dette restante et l'enregistre comme un « deficit » (déficit) sur cet actif. L'emprunteur se retrouve sans collatéral et sans dette, et la perte reste au protocole.
+
+Exemple avec les paramètres du WETH sur Ethereum Core : 10 000 $ de WETH comme seul collatéral contre 9 800 USDC de dette, c'est un facteur de santé de 0,847. Solder les 9 800 USDC avec un bonus de 5 % demanderait 10 290 $ de WETH : les 10 000 $ de WETH sont donc tous saisis (dont environ 47,62 $ de frais de protocole) et environ 9 524 USDC sont remboursés (10 000 ÷ 1,05). Les quelque 276 USDC restants deviennent un déficit.
+
+Umbrella, le filet de sécurité d'Aave fondé sur le staking, peut brûler les aTokens des stakers dans l'actif concerné pour couvrir ces déficits ; son activation a commencé sur Ethereum (documentation Aave, consultée le 14 octobre 2026). Il protège le protocole, pas l'emprunteur, dont le collatéral est déjà parti.
+
+C'est déjà arrivé sur Aave V3. Après que l'USDC s'est échangé à environ 0,88 $ le 11 mars 2023, le post-mortem de Gauntlet a relevé environ 280 000 $ de créances irrécouvrables sur l'E-Mode de V3 Avalanche et environ 20 000 $ sur V3 Arbitrum, et a noté qu'une fois le collatéral valant moins que la dette multipliée par un plus le bonus, chaque liquidation partielle enfonce un compte un peu plus sous l'eau. C'était avant que la v3.3 ajoute le mécanisme de déficit.
+
+## Les liquidations s'arrêtent-elles quand un marché est gelé ou qu'un séquenceur L2 tombe en panne ?
+
+Non, dans les deux cas. Sur Aave V3.7, un actif gelé peut toujours être liquidé, et les liquidations sur Arbitrum, Optimism et Base ne dépendent plus de l'état du séquenceur L2. Ce qui bloque les liquidations, c'est une pause.
+
+- **Gelé :** le gel bloque les nouvelles positions dans un actif, mais la vérification de liquidation l'ignore. Lors du depeg (perte de la parité avec le dollar) de l'USDC en mars 2023, les stablecoins d'Aave V3 Avalanche ont été gelés et les liquidations ont continué. L'USDC.e bridgé sur Arbitrum était gelé avec un ratio prêt/valeur (LTV) de 0 le 14 octobre 2026 (bloc Arbitrum 514855406), et pourtant il compte encore dans le facteur de santé à son seuil de liquidation de 78 % et peut être saisi.
+- **Séquenceur L2 :** avant la v3.7, un contrat sentinelle sur les marchés L2 pouvait bloquer les liquidations et les emprunts tant que le séquenceur était hors service, et pendant une période de grâce après son retour. Aave V3.7, que font tourner les marchés V3 d'Arbitrum, d'Optimism et de Base en date du 14 octobre 2026, a supprimé la sentinelle. Une panne retarde toujours les transactions de tout le monde, emprunteurs comme liquidateurs, mais une position passée sous 1 pendant la panne peut désormais être liquidée dès le retour du séquenceur.
+- **En pause :** un actif de collatéral ou de dette en pause bloque toute liquidation qui le concerne. À la levée de la pause, l'emergency guardian d'Aave ou la gouvernance peut fixer une période de grâce allant jusqu'à 4 heures pendant laquelle les liquidations restent bloquées pour que les emprunteurs puissent rembourser ou ajouter du collatéral ; l'emprunt est autorisé pendant cette fenêtre.
+
+## En quoi les liquidations diffèrent-elles sur Aave V4 ?
+
+Aave V4, en service sur Ethereum depuis le 30 mars 2026 et depuis sur Avalanche, Arc et Base, remplace le close factor par un facteur de santé cible et verse un bonus qui augmente à mesure que le facteur de santé baisse. V3 continue de tourner à côté avec ses propres règles.
+
+- **Un facteur de santé cible au lieu de 50 % ou 100 %.** Un liquidateur V4 ne peut rembourser que la dette nécessaire pour ramener la position au facteur de santé cible de son Spoke, 1,24 sur le Main Spoke d'Ethereum (lu on-chain au bloc Ethereum 26193995, le 14 octobre 2026). L'exception : quand cela laisserait un reliquat très faible, toute la dette de cette réserve peut être soldée.
+- **Un bonus croissant.** La documentation d'Aave parle d'enchère hollandaise (Dutch auction). Sur le Main Spoke d'Ethereum, le bonus commence à 90 % du maximum de l'actif juste sous un facteur de santé de 1 et atteint le maximum complet à 0,90 ou moins. Pour le WETH, avec un maximum de 5,55 % (API d'Aave V4, 14 octobre 2026), cela donne environ 5,0 % juste sous 1 et 5,55 % à 0,90. Des frais de 10 % sont prélevés sur le bonus, comme en V3.
+
+Tokenping surveille aussi les positions Aave V4 : chaque Spoke sur Ethereum, Avalanche, Arc et Base (20 au 16 octobre 2026), avec une alerte distincte par Spoke, car chacun a sa propre position et son propre facteur de santé.
+
+## En quoi une liquidation Aave diffère-t-elle d'une liquidation Morpho ?
+
+Sur Morpho Blue, il n'y a pas de close factor : dès que le facteur de santé d'une position est sous 1, un liquidateur peut rembourser toute la dette en un seul appel. L'incitation dépend uniquement du LTV de liquidation (LLTV) du marché, environ 0,6 % pour un LLTV de 98 % et plafonnée à 15 % pour les LLTV bas, et si le collatéral s'épuise en premier, la dette restante est passée en perte pour les prêteurs du marché. [Comment fonctionne la liquidation sur Morpho](/fr/blog/fonctionnement-liquidation-morpho) donne la formule, l'incitation pour chaque LLTV et un exemple chiffré.
+
+## Que pouvez-vous faire avant que votre facteur de santé atteigne 1 ?
+
+Avant que le facteur de santé atteigne 1, vous pouvez rembourser de la dette ou ajouter du collatéral ; les deux le font monter aussitôt et aucun ne coûte de bonus. Une fois sous 1, un liquidateur peut agir avant vous, et même une liquidation partielle vous coûte le bonus sur le collatéral saisi : 300 $ pour 6 000 USDC remboursés avec un bonus de 5 %.
+
+Attendre le dernier moment est risqué, car les transactions peuvent échouer ou rester bloquées. En mai 2021, un utilisateur du forum de Polygon a tenté de rembourser à un facteur de santé de 1,01, a reçu des erreurs à répétition et a été liquidé avant que le remboursement passe. En décembre 2024, un utilisateur du forum d'Aave a décrit plus d'une heure de tentatives de remboursement qui restaient bloquées avant que la position soit liquidée.
+
+Les options sont détaillées dans [comment remonter votre facteur de santé Aave](/fr/blog/eviter-liquidation-aave), et les raisons pour lesquelles un facteur de santé baisse sans que vous fassiez quoi que ce soit dans [pourquoi votre facteur de santé Aave baisse tout seul](/fr/blog/pourquoi-facteur-de-sante-aave-a-baisse).
+
+Tokenping vérifie votre facteur de santé Aave toutes les 5 minutes, dans chaque marché Aave V3 sur 21 réseaux et dans chaque Spoke d'Aave V4, et vous envoie un message sur Signal, Telegram ou par e-mail quand il est sous un seuil que vous choisissez (de 1,1 à 10), en le répétant à chaque vérification jusqu'à ce qu'il remonte. Une liquidation coûte au moins le bonus sur le collatéral saisi. Une alerte réglée au-dessus de 1,0 peut vous laisser le temps de rembourser ou d'ajouter du collatéral, mais un mouvement de prix rapide peut quand même faire passer le facteur de santé sous 1 entre deux vérifications, et une alerte ne peut pas agir à votre place. Vous pouvez [vérifier votre facteur de santé Aave V3](/fr/aave) ou lire [comment configurer une alerte de facteur de santé](/fr/blog/configurer-alertes-facteur-de-sante-aave).
+
+## Sources
+
+- [LiquidationLogic.sol d'Aave V3](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), aave-dao/aave-v3-origin, branche main : règles du close factor, des poussières et des créances irrécouvrables (consulté le 14 octobre 2026)
+- [ValidationLogic.sol d'Aave V3](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol) : conditions de liquidation (consulté le 14 octobre 2026)
+- [Fonctionnalités d'Aave v3.3](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md) : créances irrécouvrables, close factor sur l'ensemble de la position et son exemple GHO/USDC/DAI, seuil de 2 000 $ (consulté le 14 octobre 2026)
+- [Fonctionnalités d'Aave v3.1](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md) : période de grâce de liquidation allant jusqu'à 4 heures (consulté le 14 octobre 2026)
+- [PoolConfigurator.sol d'Aave V3](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol) : la mise en pause et la levée de pause avec période de grâce sont réservées à l'emergency admin ou au pool admin, `MAX_GRACE_PERIOD = 4 hours` (consulté le 14 octobre 2026)
+- [Documentation de gouvernance d'Aave](https://aave.com/docs/ecosystem/governance) : le Protocol Emergency Guardian détient le rôle d'emergency admin (consulté le 14 octobre 2026)
+- [README des Risk Stewards d'Aave V3](https://github.com/aave-dao/aave-v3-risk-stewards) : paramètres que les stewards peuvent modifier, dans des limites fixées (consulté le 14 octobre 2026)
+- [Suppression du PriceOracleSentinel dans Aave v3.7](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/sentinel-removal.md) (consulté le 14 octobre 2026)
+- [Référence du contrat Pool d'Aave V3](https://aave.com/docs/aave-v3/smart-contracts/pool), qui indique encore le close factor d'avant la v3.3 (consulté le 14 octobre 2026)
+- [Documentation d'Aave Umbrella](https://aave.com/docs/aave-v3/umbrella) (consulté le 14 octobre 2026)
+- [PoolDataProvider d'Aave V3 sur Ethereum](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) : configuration des réserves et liquidation protocol fee pour le WETH, le WBTC et l'USDC au bloc 26193284, relues inchangées au bloc 26193992 (consulté le 14 octobre 2026)
+- [PoolDataProvider d'Aave V3 sur Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b) : les mêmes lectures pour le WETH, le WBTC, l'USDC natif et l'USDC.e au bloc 514855406 (consulté le 14 octobre 2026)
+- [Pool d'Aave V3 Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2) : catégorie E-Mode 1 « ETH correlated » au bloc 26193288 (consulté le 14 octobre 2026)
+- [Documentation des liquidations d'Aave V4](https://aave.com/docs/aave-v4/positions/liquidations) (consulté le 14 octobre 2026)
+- [Présentation d'Aave V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md) et [LiquidationLogic.sol de V4](https://github.com/aave/aave-v4/blob/main/src/spoke/libraries/LiquidationLogic.sol), aave/aave-v4 main (consulté le 14 octobre 2026)
+- [Main Spoke d'Aave V4 sur Ethereum](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485) : facteur de santé cible et paramètres du bonus au bloc 26193995 (consulté le 14 octobre 2026)
+- [API GraphQL publique d'Aave V4](https://api.v4.aave.com/graphql), requête `reserves` : bonus de liquidation maximum et frais de liquidation du WETH sur le Main Spoke d'Ethereum (consulté le 14 octobre 2026)
+- [Journal des modifications de la documentation Aave](https://aave.com/docs/resources/changelog) : dates de lancement de V4 (consulté le 14 octobre 2026)
+- [Gauntlet, "Aave Resilient Through USDC Volatility"](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), publié le 17 mars 2023 (consulté le 14 octobre 2026)
+- [Forum de Polygon, "Liquidation on polygon AAVE -JSON ERROR"](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067), publié le 18 mai 2021 (consulté le 14 octobre 2026)
+- [Forum d'Aave, "Repeatedly Failed Repayment Attempts Leading to Liquidation"](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379), publié le 23 décembre 2024 (consulté le 14 octobre 2026)
+- [Pull request #2084 de l'interface Aave](https://github.com/aave/interface/pull/2084), qui a retiré en mai 2024 la seule intégration d'alertes de l'app (consulté le 14 octobre 2026)
+
+_Contenu éducatif, pas un conseil financier. Les alertes réduisent le risque, elles n'empêchent pas la liquidation._

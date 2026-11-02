@@ -8,6 +8,8 @@ import {
   deOnMarket,
   formatDecimal,
   formatLongDate,
+  frForMarket,
+  frOnMarket,
   hiMarket,
   joinList,
   plural,
@@ -89,6 +91,23 @@ describe("German formatting", () => {
     expect(deOnMarket("Ethereum (V4 Lido)")).toBe("im Markt Ethereum (V4 Lido)");
     expect(deForMarket("Base")).toBe("für das Netzwerk Base");
     expect(deForMarket("USDC | cbBTC (86%)", "market")).toBe("für den Markt USDC | cbBTC (86%)");
+  });
+});
+
+describe("French formatting", () => {
+  it("joins with et and ou, writes French dates, a decimal comma and the market wording", () => {
+    expect(joinList("fr", ["Signal", "Telegram", "e-mail"])).toBe("Signal, Telegram et e-mail");
+    expect(joinList("fr", ["Signal", "e-mail"], "disjunction")).toBe("Signal ou e-mail");
+    expect(formatLongDate("fr", "2026-10-14")).toBe("14 octobre 2026");
+    expect(formatDecimal("fr", "1.42")).toBe("1,42");
+    // French counts 0 and 1 as one.
+    expect(plural("fr", 0, { one: "0 réseau", other: "0 réseaux" })).toBe("0 réseau");
+    expect(plural("fr", 7, { one: "1 réseau", other: "7 réseaux" })).toBe("7 réseaux");
+    expect(frOnMarket("Arbitrum")).toBe("sur Arbitrum");
+    expect(frOnMarket("Ethereum (V4 Lido)")).toBe("sur le marché Ethereum (V4 Lido)");
+    expect(frOnMarket("Base", "network")).toBe("sur Base");
+    expect(frForMarket("Base")).toBe("pour Base");
+    expect(frForMarket("USDC | cbBTC (86%)", "market")).toBe("pour le marché USDC | cbBTC (86%)");
   });
 });
 

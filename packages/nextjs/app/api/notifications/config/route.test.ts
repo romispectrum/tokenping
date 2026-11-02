@@ -2,6 +2,7 @@ import { getAddress } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DELETE, GET, PUT } from "~~/app/api/notifications/config/route";
 import { getMorphoChain } from "~~/config/morpho";
+import { LOCALES } from "~~/i18n/locales";
 import { fakeSupabase } from "~~/services/api/server/testing/fakeSupabase";
 import { siteRequest } from "~~/services/api/server/testing/siteRequest";
 import { MorphoApiError } from "~~/services/morpho/api";
@@ -35,8 +36,7 @@ const PRIME_POOL = "0x4e033931ad43597d96d6bcc25c280717730b58b1";
 const INVALID_MARKET = "Invalid market: expected v3 or the lowercased address of an Aave V3 Pool or V4 Spoke";
 const TELEGRAM_ERROR =
   "Invalid Telegram username for Telegram notifications. Expected 4 to 32 letters, digits or underscores, e.g. alice_eth";
-const CHANNEL_LOCALES_ERROR =
-  "Invalid channelLocales: expected an object of email, signal, telegram to one of en, cs, es, hi, de, vi";
+const CHANNEL_LOCALES_ERROR = `Invalid channelLocales: expected an object of email, signal, telegram to one of ${LOCALES.join(", ")}`;
 const LOAD_FAILED = "Could not load your alerts. Please try again.";
 const SAVE_FAILED = "Could not save the alert. Please try again.";
 const DELETE_FAILED = "Could not delete the alert. Please try again.";
@@ -865,10 +865,10 @@ describe("PUT /api/notifications/config", () => {
       { services: ["telegram"], telegramUsername: `${" ".repeat(60)}alice_eth` },
       TELEGRAM_ERROR,
     ],
-    ["an unsupported locale", { locale: "fr" }, "Invalid locale: expected one of en, cs, es, hi, de, vi"],
-    ["a region-tagged locale", { locale: "cs-CZ" }, "Invalid locale: expected one of en, cs, es, hi, de, vi"],
-    ["a non-string locale", { locale: 1 }, "Invalid locale: expected one of en, cs, es, hi, de, vi"],
-    ["an unsupported channel language", { channelLocales: { signal: "fr" } }, CHANNEL_LOCALES_ERROR],
+    ["an unsupported locale", { locale: "la" }, `Invalid locale: expected one of ${LOCALES.join(", ")}`],
+    ["a region-tagged locale", { locale: "cs-CZ" }, `Invalid locale: expected one of ${LOCALES.join(", ")}`],
+    ["a non-string locale", { locale: 1 }, `Invalid locale: expected one of ${LOCALES.join(", ")}`],
+    ["an unsupported channel language", { channelLocales: { signal: "la" } }, CHANNEL_LOCALES_ERROR],
     ["a language for an unknown channel", { channelLocales: { sms: "cs" } }, CHANNEL_LOCALES_ERROR],
   ])("returns 400 for %s before the access check or any DB call", async (_label, extra, error) => {
     expect(await read(await put({ chainId: 8453, ...extra }))).toEqual(json(400, { error }));

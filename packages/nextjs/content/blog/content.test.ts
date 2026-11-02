@@ -204,8 +204,9 @@ const isExpression = (node: MdNode) => node.type === "mdxFlowExpression" || node
 /** `{/* … *\/}`: an expression whose parsed program has comments and no statements. */
 const isCommentExpression = (node: MdNode) => isExpression(node) && node.data?.estree?.body?.length === 0;
 
-// Czech quotes („…“, ‚…‘) count as quotes too, so a stale English claim quoted in a Czech post is skipped alike.
-const normalizeQuotes = (text: string) => text.replace(/[‘’‚]/g, "'").replace(/[“”„]/g, '"');
+// Czech and German („…“, ‚…‘) and French and other guillemets («…», ‹…›) count as quotes too, so a stale English
+// claim quoted in a translation is skipped alike.
+const normalizeQuotes = (text: string) => text.replace(/[‘’‚‹›]/g, "'").replace(/[“”„«»]/g, '"');
 const stripQuoted = (text: string) => text.replace(/"[^"\n]*"/g, '""');
 
 /** Every phrase a post in `locale` must not use: the English list, then the language's own. */
@@ -537,13 +538,16 @@ const checkEnding = (tree: MdNode, locale: Locale = "en") => {
   return problems;
 };
 
-/** Words in `text`: split at spaces, or found by Intl.Segmenter where the language writes none (LanguageRules.reading). */
+/**
+ * Words in `text`: split at spaces, counting only pieces with a letter or digit (French spaces its ":" and "%"), or
+ * found by Intl.Segmenter where the language writes none (LanguageRules.reading).
+ */
 const countWords = (text: string, locale: Locale) =>
   LANGUAGE_RULES[locale].reading?.segmentWords
     ? [...new Intl.Segmenter(LOCALE_INFO[locale].intl, { granularity: "word" }).segment(text)].filter(
         ({ isWordLike }) => isWordLike,
       ).length
-    : text.split(" ").filter(Boolean).length;
+    : text.split(" ").filter(word => /[\p{L}\p{N}]/u.test(word)).length;
 
 const checkReadingTime = (tree: MdNode, meta: PostMeta, locale: Locale) => {
   const words = countWords(proseOf(tree), locale);

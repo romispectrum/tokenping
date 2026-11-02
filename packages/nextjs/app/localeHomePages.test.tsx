@@ -59,6 +59,13 @@ const COPY: Partial<Record<Locale, CopyRules>> = {
     wrongAddress: /quý khách|\bmày\b/iu,
     claims: /thời gian thực|tức thì|đa giao thức/iu,
   },
+  fr: {
+    h1Channels: /Signal et e-mail/,
+    badges: ["Signal", "E-mail"],
+    // vous throughout: never the familiar tu, te, toi, ton, ta, tes.
+    wrongAddress: /(?<!\p{L})(?:tu|toi|ton|tes|t')(?!\p{L})/iu,
+    claims: /en temps réel|instantané|multi[- ]?protocole/iu,
+  },
 };
 
 const TRANSLATED = LOCALES.filter(locale => locale !== "en");

@@ -1,7 +1,6 @@
-// The site's languages. English is served at the root; the others under their prefix: Czech /cz, Spanish /es, Hindi
-// /hi, German /de and Vietnamese /vi (see i18n/routes.ts).
+// The site's languages. English is served at the root; the others under their prefix (i18n/localePaths.ts).
 
-export const LOCALES = ["en", "cs", "es", "hi", "de", "vi"] as const;
+export const LOCALES = ["en", "cs", "es", "hi", "de", "vi", "fr"] as const;
 
 export type Locale = (typeof LOCALES)[number];
 
@@ -99,6 +98,17 @@ export const LOCALE_INFO: Record<Locale, LocaleInfo> = {
     name: "Tiếng Việt",
     englishName: "Vietnamese",
     short: "VI",
+  },
+  // One French for France, Belgium, Switzerland, Canada and Africa: hreflang "fr". Decimal comma, a space for
+  // thousands ("12 000,5"), dates "14 octobre 2026".
+  fr: {
+    htmlLang: "fr",
+    ogLocale: "fr_FR",
+    intl: "fr-FR",
+    numbers: "fr-FR",
+    name: "Français",
+    englishName: "French",
+    short: "FR",
   },
 };
 

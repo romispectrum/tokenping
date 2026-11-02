@@ -1,0 +1,151 @@
+export const meta = {
+  slug: "eviter-liquidation-aave",
+  title: "Comment éviter la liquidation sur Aave : 6 étapes concrètes",
+  description:
+    "Réduire le risque de liquidation sur Aave : rembourser, ajouter du collatéral, garder une marge, échanger collatéral ou dette, être prévenu tôt.",
+  h1: "Comment éviter la liquidation sur Aave",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-20",
+  primaryQuestion:
+    "Comment faire monter mon facteur de santé Aave et réduire mon risque de liquidation, maintenant et avant qu'il ne baisse ?",
+  readingMinutes: 16,
+};
+
+<ShortAnswer>
+  Vous réduisez votre risque de liquidation sur Aave en faisant monter votre facteur de santé (health factor) et en le
+  gardant bien au-dessus de 1 : remboursez une partie de la dette, ajoutez du collatéral, empruntez bien en dessous de
+  votre limite, ou échangez votre collatéral ou votre dette pour que le prêt dépende moins d'un seul prix volatil.
+  Rembourser un dollar de dette fait monter le facteur de santé davantage que déposer un dollar de collatéral. Rien de
+  tout cela ne supprime le risque, et les remboursements peuvent échouer quand le marché est sous tension : agir tôt
+  vous laisse plus de marge.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Que pouvez-vous faire tout de suite si votre facteur de santé Aave baisse ?
+
+Vous pouvez rembourser une partie de la dette ou ajouter du collatéral, sur le même réseau et le même marché Aave que le prêt. Les deux font monter le facteur de santé dès que la transaction est confirmée, et un dollar remboursé le fait monter davantage qu'un dollar de nouveau collatéral. Si le wallet n'a pas de fonds disponibles, l'interface d'Aave Labs (app.aave.com) permet de [rembourser la dette avec votre collatéral](#etape-4-remboursez-avec-votre-collateral-ou-echangez-votre-collateral).
+
+Le facteur de santé (HF) est la valeur en USD de chaque actif en collatéral multipliée par son seuil de liquidation (liquidation threshold), le tout additionné puis divisé par la valeur en USD de votre dette. Sous 1,00, la position peut être liquidée. La formule est expliquée dans [ce qu'est le facteur de santé Aave](/fr/blog/facteur-de-sante-aave). Quand le temps presse, quatre choses comptent :
+
+- **La bonne position.** Sur Aave V3, le pool de chaque réseau a son propre facteur de santé, tout comme chaque marché d'Ethereum (Core, Prime, EtherFi, Horizon). Du collatéral sur Ethereum ne fait rien pour un prêt sur Arbitrum.
+- **Le temps.** Un remboursement envoyé près d'un HF de 1 peut échouer ou rester bloqué quand le marché est chargé. Deux utilisateurs de forums, en 2021 et en 2024, ont été liquidés alors qu'ils essayaient encore de rembourser ([l'étape 6](#etape-6-soyez-prevenu-tot-et-agissez-tot) donne les détails) : agir tant que le HF est nettement au-dessus de 1 vous laisse plus de marge.
+- **Ce qui se passe sous 1.** Sur Aave V3, un liquidateur peut rembourser jusqu'à 50 % de votre dette en une fois, ou 100 % de la dette dans un actif dès que le HF est égal ou inférieur à 0,95 ou que le collatéral ou la dette concernés valent moins de 2 000 $, et il prend du collatéral d'une valeur égale à cette dette plus un bonus (5 % pour WETH sur Ethereum Core au bloc 26193284, le 14 octobre 2026). Aave V4 n'a pas de close factor (part de la dette remboursable en une fois) : un liquidateur rembourse seulement ce qu'il faut pour ramener le HF à la cible du Spoke. Voir [ce qui se passe lors d'une liquidation Aave](/fr/blog/fonctionnement-liquidation-aave).
+- **Ce qui n'aide pas.** Un gel du marché ou un changement de LTV ne retarde pas une liquidation, et une panne du séquenceur d'un L2 ne vous donne plus de délai de grâce. Voir [ce qui ne vous protège pas de la liquidation](#quest-ce-qui-ne-vous-protege-pas-de-la-liquidation).
+
+## Étape 1 : remboursez une partie de votre dette
+
+Rembourser de la dette fait monter votre facteur de santé Aave aussitôt, car le HF divise le collatéral pondéré par la dette et un remboursement réduit la dette. Prenons une position Aave V3 sur Ethereum Core avec 10 WETH déposés à un prix illustratif de 2 400 $ et 12 000 USDC empruntés. Le seuil de liquidation de WETH était de 83 % au bloc Ethereum 26193284 (14 octobre 2026), donc HF = 24 000 × 0,83 ÷ 12 000 = 1,66. Rembourser 1 000 USDC le fait passer à 19 920 ÷ 11 000 = 1,811.
+
+### Pourquoi rembourser fait-il monter le facteur de santé davantage qu'ajouter du collatéral ?
+
+Le nouveau collatéral ne compte qu'à hauteur de son seuil de liquidation, alors que la dette remboursée compte en entier. Sur Aave V3 Ethereum Core, 1 000 $ de WETH ajoutent 830 $ de collatéral pondéré, mais rembourser 1 000 USDC retire la totalité des 1 000 $ de dette. Pour la position de 10 WETH avec 12 000 USDC de dette, l'ETH à 2 400 $ et l'USDC à 1 $ :
+
+| Ce que vous faites avec 1 000 $                                     | Collatéral pondéré | Dette    | Facteur de santé | Prix de l'ETH à HF 1 | Baisse de l'ETH pour l'atteindre |
+| ------------------------------------------------------------------- | ------------------ | -------- | ---------------- | -------------------- | -------------------------------- |
+| Rien (point de départ)                                              | 19 920 $           | 12 000 $ | 1,660            | 1 445,78 $           | 39,8 %                           |
+| Déposer 0,4167 WETH de plus                                         | 20 750 $           | 12 000 $ | 1,729            | 1 387,95 $           | 42,2 %                           |
+| Rembourser 1 000 USDC depuis le wallet                              | 19 920 $           | 11 000 $ | 1,811            | 1 325,30 $           | 44,8 %                           |
+| Rembourser 1 000 USDC en vendant du WETH en collatéral, avant frais | 19 090 $           | 11 000 $ | 1,735            | 1 382,92 $           | 42,4 %                           |
+
+En général, rembourser X $ vaut mieux que déposer X $ d'un actif de seuil LT dès que HF > LT × (1 − X ÷ dette). Aave V3 exige que chaque seuil multiplié par son bonus de liquidation ne dépasse pas 100 %, avec un bonus supérieur à 100 %, donc chaque seuil est inférieur à 100 %. Toute position qui n'est pas liquidable (HF d'au moins 1) gagne donc davantage à rembourser. Déposer est la voie directe quand vous détenez l'actif en collatéral et préférez ne pas le vendre ; le vendre pour rembourser le prêt ferait monter le HF davantage, avant les coûts d'échange.
+
+## Étape 2 : ajoutez du collatéral, ou activez un actif déjà déposé
+
+Déposer du collatéral fait monter votre facteur de santé Aave de la valeur ajoutée multipliée par le seuil de liquidation de cet actif. Sur Aave V3 Ethereum Core, 1 000 $ de WETH ajoutent 830 $ (seuil de 83 %) et 1 000 $ de WBTC ou d'USDC ajoutent 780 $ (78 %), d'après des lectures on-chain au bloc 26193284 le 14 octobre 2026. Un actif que vous avez déposé sans jamais l'activer comme collatéral ne compte qu'une fois que vous activez « use as collateral » (utiliser comme collatéral) pour lui. Quatre règles d'Aave V3 peuvent bloquer ces voies :
+
+- **Les actifs à LTV 0 ne peuvent pas être activés.** Le ratio prêt/valeur (LTV) est la part de la valeur d'un actif contre laquelle vous pouvez emprunter. Aave V3 n'active pas comme collatéral un actif dont le LTV est 0. Un actif que vous aviez déjà activé continue de compter dans le HF à hauteur de son seuil, mais n'ajoute aucune capacité d'emprunt. L'USDC.e bridgé sur Arbitrum en est un exemple : LTV 0, seuil de 78 % et gelé pendant que la gouvernance le retire progressivement (bloc Arbitrum 514855406, 14 octobre 2026).
+- **Les actifs gelés ne peuvent pas être déposés.** Une réserve gelée refuse les nouveaux dépôts. Rembourser une dette dans un actif gelé fonctionne toujours, car un remboursement exige seulement que la réserve soit active et pas en pause.
+- **Les plafonds de dépôt atteints.** Une réserve qui a atteint son plafond de dépôt (supply cap) refuse les nouveaux dépôts jusqu'à ce que de la place se libère.
+- **Les actifs en pause.** Une réserve en pause refuse les nouveaux dépôts et toute modification de son réglage « use as collateral ».
+
+## Étape 3 : gardez une marge sous votre limite d'emprunt
+
+Emprunter bien en dessous du maximum vous laisse le plus de marge, car une position à sa limite d'emprunt démarre avec un facteur de santé de seulement seuil de liquidation ÷ LTV. Sur Aave V3 Ethereum Core, cela fait 83 % ÷ 80,5 % ≈ 1,031 pour WETH, 78 % ÷ 73 % ≈ 1,068 pour WBTC et 78 % ÷ 75 % = 1,04 pour USDC (bloc 26193284, 14 octobre 2026). Avec la totalité des 19 320 $ empruntés contre 10 WETH à 2 400 $, une baisse de l'ETH de 3,0 %, à 2 327,71 $, rend la position liquidable.
+
+Le chiffre « limite d'emprunt utilisée » (borrow limit used) des applications de prêt est dette ÷ (collatéral × LTV), pas le facteur de santé. Avec du WETH en collatéral sur Ethereum Core, 80 % de la limite utilisée correspond à un HF d'environ 1,29.
+
+La marge doit aussi absorber ce qui fait baisser le HF pendant que vous ne faites rien : les intérêts, les baisses de seuil votées par la gouvernance, les depegs (perte de la parité avec le dollar) et les erreurs d'oracle, traités dans [pourquoi votre facteur de santé Aave baisse tout seul](/fr/blog/pourquoi-facteur-de-sante-aave-a-baisse). Les chiffres par actif sont dans [quelle marge vous donne un facteur de santé](/fr/blog/facteur-de-sante-aave-sur). Aave V4 remplace la paire LTV et seuil par un seul facteur de collatéral (collateral factor) par actif en collatéral dans chaque Spoke, donc les chiffres LT ÷ LTV ci-dessus ne valent que pour la V3.
+
+## Étape 4 : remboursez avec votre collatéral ou échangez votre collatéral
+
+Si le wallet n'a pas de fonds disponibles, l'interface d'Aave Labs (app.aave.com) permet de rembourser la dette en vendant une partie de votre collatéral, ou d'échanger un actif en collatéral contre un autre, en une seule transaction, grâce à des contrats d'adaptateur d'échange (swap adapters) qui peuvent utiliser un flash loan Aave. La documentation d'Aave liste ces deux fonctions sur les sept réseaux que couvre ce guide, entre autres (14 octobre 2026).
+
+Pour les échanges routés via CoW Protocol, la documentation indique des frais (au 14 octobre 2026) de 0 point de base sur les échanges de dette, 15 points de base sur les autres échanges entre actifs corrélés (comme ETH et wstETH) et 25 points de base sur tous les autres échanges. Certains réseaux passent plutôt par ParaSwap. L'impact sur le prix, le slippage et le gas s'y ajoutent, ainsi qu'une prime de flash loan Aave de 0,05 % quand l'adaptateur prend un flash loan (sur les sept réseaux, lu le 15 octobre 2026). L'adaptateur a aussi besoin d'une autorisation ou d'un permit signé pour déplacer vos aTokens, les jetons qui représentent votre collatéral déposé.
+
+### Rembourser avec du collatéral fait-il monter votre facteur de santé Aave ?
+
+Oui, chaque fois que votre facteur de santé est supérieur au seuil de liquidation du collatéral que vous vendez, avant frais et slippage. Vendre X $ de collatéral pour rembourser X $ de dette donne un nouveau HF de (HF × dette − X × LT) ÷ (dette − X), qui dépasse l'ancien exactement quand HF > LT. Tous les seuils d'Aave V3 sont inférieurs à 100 %, donc toute position qui n'est pas liquidable y gagne. Elle y gagne moins qu'avec un remboursement depuis le wallet : avec 10 WETH et 12 000 USDC de dette sur Aave V3 Ethereum Core (HF 1,66 avec l'ETH à 2 400 $), vendre 1 000 $ de WETH pour rembourser 1 000 USDC donne 1,735, contre 1,811 depuis le wallet. Des frais de 25 points de base et la prime de flash loan de 0,05 %, environ 3 $ au total, laissent toujours 1,735.
+
+### Un échange de collatéral sur Aave peut-il baisser votre facteur de santé tout en réduisant votre risque ?
+
+Oui. Échanger un collatéral volatil contre un stablecoin au seuil plus bas peut réduire un peu le HF tout en rendant la position bien moins exposée au prix volatil. Prenons 10 WETH et 12 000 USDC de dette sur Aave V3 Ethereum Core avec l'ETH à 2 400 $, et échangeons 5 WETH (12 000 $) contre de l'USDC. Le collatéral pondéré devient 5 × 2 400 × 0,83 + 12 000 × 0,78 = 19 320 $, donc le HF passe de 1,66 à 1,61, parce que le seuil de l'USDC (78 %) est inférieur à celui de WETH (83 %). Mais le HF n'atteint plus 1 que si l'ETH tombe à environ 636 $, une baisse de 73,5 %, au lieu de 1 445,78 $, une baisse de 39,8 %. Des frais de 25 points de base (30 $) et la prime de flash loan (0,0025 WETH, 6 $) donnent un HF d'environ 1,608 et déplacent ce prix à environ 642 $. Le facteur de santé seul ne montre pas quel prix peut vous nuire ; c'est la composition du collatéral et de la dette qui le montre.
+
+## Étape 5 : choisissez une dette adaptée à votre collatéral
+
+Le type de dette que vous détenez décide quel mouvement de prix peut vous faire liquider. Face à une dette en stablecoin, le facteur de santé (HF) baisse quand le prix du collatéral baisse. Face à une dette volatile, il baisse quand l'actif emprunté monte. Avec des actifs corrélés en E-Mode, il dépend du taux de change entre eux tel que l'oracle le rapporte. Les exemples utilisent les paramètres d'Aave V3 Ethereum Core lus le 14 octobre 2026 (bloc 26193284 ; E-Mode au bloc 26193288), avec l'ETH à 2 400 $ :
+
+| Collatéral et dette                     | Ce qui fait baisser votre HF                                                                           | Exemple                                                                                                                                                             |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| WETH déposé, USDC emprunté              | La baisse de l'ETH ; les intérêts. Un USDC qui glisse sous 1 $ réduit cette dette et fait monter le HF | 10 WETH contre 12 000 USDC : HF 1,66, qui atteint 1 si l'ETH baisse de 39,8 %, à 1 445,78 $                                                                         |
+| USDC déposé, WETH emprunté              | La hausse de l'ETH ; un USDC qui glisse sous 1 $                                                       | 10 000 USDC (seuil de 78 %) contre 6 000 $ de WETH : HF 1,30, qui atteint 1 si l'ETH monte de 30 %, à 3 120 $. Avec un USDC à 0,88 $, le HF est de 1,144            |
+| wstETH déposé, WETH emprunté, en E-Mode | Le taux wstETH contre ETH que rapporte l'oracle ; les intérêts                                         | E-Mode « ETH correlated » : LTV 93 %, seuil de 95 %. À la limite d'emprunt, le HF vaut 95 ÷ 93 ≈ 1,0215, donc un mouvement de 2,1 % du taux suffit pour atteindre 1 |
+
+- **Les stablecoins perdent parfois leur parité.** Sur Ethereum, le flux de prix USDC d'Aave plafonne le prix à 1,04 $ (bloc 26193376, 14 octobre 2026), mais répercute directement toute baisse sous 1 $. Le 11 mars 2023, l'USDC est descendu jusqu'à environ 88 cents, selon le post-mortem de Gauntlet pour Aave.
+- **L'E-Mode ne convient qu'à une dette correspondante.** Vous ne pouvez entrer dans une catégorie E-Mode que si chaque emprunt en cours fait partie de ses actifs empruntables. Sur Ethereum Core, « ETH correlated » ne permet d'emprunter que du WETH, donc un prêt en USDC contre du WETH ne peut pas l'utiliser.
+- **Corrélé ne veut pas dire sans risque.** En mars 2026, une erreur de configuration de l'adaptateur CAPO (Correlated Assets Price Oracle) sur Ethereum Core et Prime a réduit d'environ 2,85 % le taux wstETH utilisé par Aave. Le post-mortem de Chaos Labs (10 mars 2026) compte environ 10 938 wstETH liquidés en E-Mode sur 34 comptes, touchant les positions dont le HF était inférieur à environ 1,0288.
+- **Vous pouvez changer l'actif de la dette.** L'échange de dette (debt swap) de l'interface d'Aave Labs transfère un prêt vers un autre actif emprunté en une seule transaction, à 0 point de base quand il passe par CoW Protocol (documentation d'Aave, 14 octobre 2026).
+
+## Étape 6 : soyez prévenu tôt et agissez tôt
+
+Une alerte réglée sur un facteur de santé où vous agiriez encore vous laisse le temps de rembourser ou d'ajouter du collatéral avant que le HF n'atteigne 1, mais elle ne peut pas agir à votre place. Les remboursements lancés près de 1 peuvent échouer ou rester bloqués. Un utilisateur du forum de Polygon (Aave V2, mai 2021) qui tentait de rembourser à un HF de 1,01 a enchaîné les erreurs et a été liquidé avant que le remboursement ne passe. En décembre 2024, un utilisateur du forum d'Aave a décrit plus d'une heure de tentatives de remboursement en attente qui se sont terminées par une liquidation. L'interface d'Aave affiche votre facteur de santé mais n'envoie aucune alerte push ; elle a retiré son lien vers les notifications HAL le 30 mai 2024, parce que HAL avait fermé.
+
+Une façon de choisir le niveau : choisissez le prix auquel vous agiriez, calculez votre HF à ce prix et réglez l'alerte à ce niveau. Avec du WETH en collatéral et une dette en USDC, une alerte à 1,3 laisse de la place pour une baisse supplémentaire de l'ETH de 23,1 % avant que le HF n'atteigne 1 (1 − 1 ÷ 1,3). Le tableau complet est dans [quelle marge vous donne un facteur de santé](/fr/blog/facteur-de-sante-aave-sur).
+
+Tokenping est une option. Il vérifie votre facteur de santé Aave toutes les 5 minutes sur 22 réseaux, chaque marché Aave V3 sur 21 d'entre eux (24 marchés, dont Core, Prime, EtherFi et Horizon sur Ethereum) et chaque Spoke d'Aave V4 sur Ethereum, Avalanche, Arc et Base, et vous envoie un message sur Signal, Telegram ou par e-mail tant que le HF est sous le seuil que vous avez fixé pour ce marché V3 ou ce Spoke V4, de 1,1 à 10 (1,5 par défaut). Vous pouvez [consulter votre facteur de santé Aave V3](/fr/aave) sur son tableau de bord ; les alertes coûtent <AlertPrice />, à payer sur Arbitrum. Ses limites :
+
+- Il ne fait que lire votre position, sans autorisation sur Aave, donc il ne peut pas rembourser à votre place.
+- Un mouvement qui franchit 1,0 entre deux vérifications ne sera pas détecté à temps.
+- Il ne surveille que le wallet que vous connectez.
+- Tant que vous restez sous le seuil, il répète le message toutes les 5 minutes, et il n'envoie aucun message de rétablissement.
+
+La configuration est décrite dans [comment configurer une alerte de facteur de santé](/fr/blog/configurer-alertes-facteur-de-sante-aave) ; les outils qui ne coûtent rien et l'automatisation qui peut rembourser pour vous sont dans [les outils d'alerte de liquidation Aave comparés](/fr/blog/outils-alertes-liquidation-aave).
+
+## Qu'est-ce qui ne vous protège pas de la liquidation ?
+
+Sur Aave V3, un marché gelé, une baisse du LTV (même à 0) et du collatéral détenu dans un autre wallet, un autre marché ou sur un autre réseau n'empêchent pas une liquidation, et depuis la V3.7 une panne du séquenceur d'un L2 ne vous fait plus gagner de temps une fois le séquenceur rétabli. Une pause bloque bien les liquidations, mais elle bloque aussi vos propres remboursements. La raison : une liquidation sur Aave V3 exige seulement un facteur de santé (HF) inférieur à 1,00, des réserves de collatéral et de dette toutes deux actives et pas en pause, et la fin de tout délai de grâce de liquidation.
+
+- **Un marché gelé.** Le gel arrête les nouveaux dépôts et emprunts, mais la vérification de liquidation ignore l'indicateur de gel.
+- **Une baisse du LTV, même à 0.** Le LTV ne fait que plafonner les nouveaux emprunts, alors que le HF utilise le seuil de liquidation. Un changement de LTV ne fait ni baisser votre HF ni ne le protège.
+- **Une panne du séquenceur d'un L2.** Avant la V3.7, un contrat sentinelle sur les marchés L2 d'Aave bloquait la plupart des liquidations pendant que le séquenceur était arrêté et pendant un délai de grâce après son retour. Aave V3.7 a supprimé cette vérification, et les sept réseaux vérifiés pour ce guide, dont Arbitrum, Optimism et Base, tournent en V3.7. Une fois le séquenceur rétabli, les liquidations reprennent sans délai de grâce pour renflouer la position.
+- **Une pause.** Quand une réserve en pause est réactivée, le Protocol Emergency Guardian (le multisig qui détient le rôle d'administrateur d'urgence d'Aave) ou la gouvernance peut ajouter un délai de grâce de liquidation allant jusqu'à 4 heures. Une pause est une mesure d'urgence que les emprunteurs ne contrôlent pas, et tant qu'elle dure, vous ne pouvez pas non plus rembourser ni déposer cet actif.
+- **Du collatéral ailleurs.** Les jetons dans votre wallet, dans un autre marché Aave ou sur un autre réseau ne comptent pas dans le HF de cette position.
+
+## Sources
+
+- [Aave V3 GenericLogic.sol : calcul du facteur de santé](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol), aave-v3-origin main (consulté le 14 octobre 2026)
+- [Aave V3 ValidationLogic.sol : vérifications de dépôt (gel, pause, plafond de dépôt), d'emprunt, de remboursement, de collatéral et de liquidation](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol) (consulté le 14 octobre 2026)
+- [Aave V3 SupplyLogic.sol : activer un actif comme collatéral exige un LTV non nul](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) (consulté le 14 octobre 2026)
+- [Aave V3 LiquidationLogic.sol : close factor et règles sur les petits montants (dust)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol) (consulté le 14 octobre 2026)
+- [Aave V3 PoolConfigurator.sol : limites des seuils et des bonus, qui peut mettre en pause, plafond de 4 heures du délai de grâce](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol) (consulté le 14 octobre 2026)
+- [Fonctions d'Aave V3.6 : règles du LTV 0](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.6/Aave-v3.6-features.md) (consulté le 14 octobre 2026)
+- [Suppression de la sentinelle dans Aave V3.7](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/sentinel-removal.md) : ce que bloquait la sentinelle L2 et le délai de grâce après le rétablissement (consulté le 14 octobre 2026)
+- [Journal des modifications de la documentation d'Aave](https://aave.com/docs/resources/changelog) : Aave V2 sur Polygon (14 avril 2021), lancement d'Aave V3 (16 mars 2022) et déploiement de la V3.7 sur les sept réseaux (consulté le 14 octobre 2026)
+- [Documentation d'Aave : gouvernance](https://aave.com/docs/ecosystem/governance) : le Protocol Emergency Guardian détient le rôle `EMERGENCY_ADMIN` (consulté le 14 octobre 2026)
+- [Documentation d'Aave : fonctions d'échange (remboursement avec le collatéral, échanges de collatéral et de dette, flash loans, frais, marchés)](https://aave.com/docs/aave-v3/smart-contracts/swap-features) (consulté le 14 octobre 2026)
+- [Présentation d'Aave V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md) et [Spoke.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/Spoke.sol), aave/aave-v4 main : un facteur de collatéral par collatéral, obligatoirement inférieur à 100 %, et un facteur de santé cible à la place d'un close factor (consulté le 14 octobre 2026)
+- [Documentation d'Aave : positions Aave V4](https://aave.com/docs/aave-v4/positions) : facteur de santé par Spoke (consulté le 14 octobre 2026)
+- [PoolDataProvider d'Aave V3 sur Ethereum](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) : `getReserveConfigurationData` pour WETH, WBTC et USDC au bloc 26193284, inchangé au bloc 26194005 (consulté le 14 octobre 2026)
+- [Pool d'Aave V3 sur Ethereum (Core)](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract) : `getEModeCategoryCollateralConfig(1)` et `getEModeCategoryBorrowableBitmap(1)` pour « ETH correlated » au bloc 26193288, inchangés au bloc 26194006 (consulté le 14 octobre 2026)
+- [PoolDataProvider d'Aave V3 sur Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b#readContract) : configuration de l'USDC.e au bloc Arbitrum 514855406, inchangée au bloc 514886152 (consulté le 14 octobre 2026)
+- [Aave Address Book](https://github.com/aave-dao/aave-address-book) : adresses des pools et des adaptateurs d'échange. `FLASHLOAN_PREMIUM_TOTAL` = 5 (0,05 %) et `POOL_REVISION` = 11 sur les sept pools que couvre ce guide, lus à 00:23 UTC (bloc Ethereum 26194302), sans adaptateur enregistré comme emprunteur de flash loan exempté de frais sur Ethereum ou Arbitrum (consulté le 15 octobre 2026)
+- [Adaptateur de prix USDC d'Aave V3 sur Ethereum, « Capped USDC / USD »](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract) : `getPriceCap` = 1,04 $ au bloc 26193376 (consulté le 14 octobre 2026)
+- [aave-price-feeds PriceCapAdapterStable.sol : les prix au-dessus du plafond sont plafonnés, les baisses sous 1 $ sont répercutées](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol) (consulté le 14 octobre 2026)
+- [Forum de Polygon : « Liquidation on polygon AAVE -JSON ERROR », 18 mai 2021](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067) (consulté le 14 octobre 2026)
+- [Forum de gouvernance d'Aave : « Repeatedly Failed Repayment Attempts Leading to Liquidation » (tentatives de remboursement échouées à répétition menant à une liquidation), 23 décembre 2024](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379) (consulté le 14 octobre 2026)
+- [Gauntlet : « Aave Resilient Through USDC Volatility » (Aave résiste à la volatilité de l'USDC), 17 mars 2023](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (consulté le 14 octobre 2026)
+- [Chaos Labs : post-mortem sur le taux de change de wstETH pour les instances Core et Prime, 10 mars 2026](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269) (consulté le 14 octobre 2026)
+- [Aide d'Aave : Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations), qui demande aux emprunteurs de surveiller régulièrement leur facteur de santé, et le [code source d'aave/interface](https://github.com/aave/interface), qui contient des avertissements de facteur de santé bas dans l'application et aucune fonction de notification (code source vérifié le 14 octobre 2026, contenu de la page d'aide consulté le 15 octobre 2026)
+- [Pull request #2084 d'aave/interface : « chore: remove hal », fusionnée le 30 mai 2024](https://github.com/aave/interface/pull/2084) (consulté le 14 octobre 2026)
+
+_Contenu éducatif, pas un conseil financier. Les alertes réduisent le risque, elles n'empêchent pas la liquidation._

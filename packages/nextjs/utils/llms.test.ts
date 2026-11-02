@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GET } from "~~/app/llms.txt/route";
 import { getPublishedPosts, hubSlug } from "~~/content/blog";
-import { LOCALES } from "~~/i18n/locales";
+import { LOCALES, LOCALE_INFO } from "~~/i18n/locales";
 import { postPath } from "~~/i18n/routes";
 import { AAVE_ALERTS_SKILL_DESCRIPTION, aaveAlertsSkillPath } from "~~/utils/agentSkills";
 import { buildLlmsTxt } from "~~/utils/llms";
@@ -21,19 +21,16 @@ describe("llms.txt", () => {
       /^> Tokenping sends a message when an Aave V3, Aave V4, Morpho Blue or Morpho Midnight health factor drops/,
     );
     const headings = lines.filter(line => line.startsWith("#"));
+    const languages = LOCALES.filter(locale => locale !== "en").map(locale => LOCALE_INFO[locale].englishName);
     expect(headings).toEqual([
       "# Tokenping",
       "## Pages",
       "## Guides",
-      "## Czech",
-      "## Spanish",
-      "## Hindi",
-      "## German",
-      "## Vietnamese",
+      ...languages.map(language => `## ${language}`),
       "## Optional",
     ]);
     // Everything under an H2 is a link list item: "- [name](url)" with optional ": notes".
-    for (const heading of ["Pages", "Guides", "Czech", "Spanish", "Hindi", "German", "Vietnamese", "Optional"]) {
+    for (const heading of ["Pages", "Guides", ...languages, "Optional"]) {
       for (const line of section(heading))
         expect(line).toMatch(/^- \[[^\]]+\]\(https:\/\/tokenping\.xyz\/[^)]*\)(: .+)?$/);
     }

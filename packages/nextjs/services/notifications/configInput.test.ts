@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildConfigUpdate, validateNotificationForm } from "~~/components/custom/notifications/notificationForm";
+import { LOCALES } from "~~/i18n/locales";
 import { ALERTS_MESSAGES } from "~~/i18n/messages/alerts";
 import { type ConfigInput, parseConfigInput } from "~~/services/notifications/configInput";
 
@@ -20,9 +21,8 @@ const EMAIL_ERROR = "Invalid email address for email notifications";
 const SIGNAL_ERROR = "Invalid Signal username for Signal notifications. Expected format: alice.42";
 const TELEGRAM_ERROR =
   "Invalid Telegram username for Telegram notifications. Expected 4 to 32 letters, digits or underscores, e.g. alice_eth";
-const LOCALE_ERROR = "Invalid locale: expected one of en, cs, es, hi, de, vi";
-const CHANNEL_LOCALES_ERROR =
-  "Invalid channelLocales: expected an object of email, signal, telegram to one of en, cs, es, hi, de, vi";
+const LOCALE_ERROR = `Invalid locale: expected one of ${LOCALES.join(", ")}`;
+const CHANNEL_LOCALES_ERROR = `Invalid channelLocales: expected an object of email, signal, telegram to one of ${LOCALES.join(", ")}`;
 
 describe("parseConfigInput", () => {
   it.each<[ConfigInput, Record<string, unknown>]>([
@@ -209,13 +209,13 @@ describe("parseConfigInput", () => {
       { services: ["telegram"], signalRecipient: "alice_eth" },
       TELEGRAM_ERROR,
     ],
-    ["an unsupported locale", { locale: "fr" }, LOCALE_ERROR],
+    ["an unsupported locale", { locale: "la" }, LOCALE_ERROR],
     ["an upper-case locale", { locale: "CS" }, LOCALE_ERROR],
     ["a region-tagged locale", { locale: "cs-CZ" }, LOCALE_ERROR],
     ["an empty locale", { locale: "" }, LOCALE_ERROR],
     ["a non-string locale", { locale: 1 }, LOCALE_ERROR],
     ["a locale array", { locale: ["cs"] }, LOCALE_ERROR],
-    ["an unsupported channel language", { channelLocales: { email: "fr" } }, CHANNEL_LOCALES_ERROR],
+    ["an unsupported channel language", { channelLocales: { email: "la" } }, CHANNEL_LOCALES_ERROR],
     ["an upper-case channel language", { channelLocales: { telegram: "CS" } }, CHANNEL_LOCALES_ERROR],
     ["a language for an unknown channel", { channelLocales: { sms: "en" } }, CHANNEL_LOCALES_ERROR],
     ["channel languages as an array", { channelLocales: ["en"] }, CHANNEL_LOCALES_ERROR],
@@ -294,8 +294,8 @@ describe("parseConfigInput", () => {
       email: "bad",
       signalRecipient: "bad",
       telegramUsername: "bad",
-      locale: "fr",
-      channelLocales: { email: "fr" },
+      locale: "la",
+      channelLocales: { email: "la" },
     };
     expect(parseConfigInput({ ...allBad, services: ["sms"] })).toStrictEqual({ error: SERVICES_ERROR });
     expect(parseConfigInput(allBad)).toStrictEqual({ error: THRESHOLD_ERROR });

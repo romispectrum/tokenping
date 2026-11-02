@@ -1,0 +1,190 @@
+export const meta = {
+  slug: "alertes-liquidation-aave-privees",
+  title: "Alertes Aave et vie privée : ce que Tokenping stocke",
+  description:
+    "Ce que Tokenping stocke, ce qui reste public on-chain, et comment un alias e-mail et des noms d'utilisateur Signal et Telegram évitent de vous nommer.",
+  h1: "Comment recevoir des alertes de facteur de santé Aave sans donner votre identité à Tokenping",
+  publishedAt: "2026-10-19",
+  primaryQuestion:
+    "Puis-je recevoir des alertes de facteur de santé Aave sans lier mon identité à l'adresse de mon wallet ?",
+  readingMinutes: 15,
+};
+
+<ShortAnswer>
+  Tokenping n'a pas de compte avec mot de passe : vous vous connectez en signant un message avec votre wallet, et il
+  stocke l'adresse de votre wallet à côté du contact que vous lui donnez pour les alertes. Donnez-lui donc des contacts
+  qui ne disent rien de vous : un alias e-mail au lieu de votre propre adresse, un nom d'utilisateur Signal avec votre
+  numéro de téléphone masqué, et un nom d'utilisateur et un nom Telegram qui ne vous identifient pas. Ainsi, le contact
+  ne vous nomme pas. Cela ne vous rend pas anonyme pour autant, car votre paiement est public sur Arbitrum One, un
+  wallet que vous avez déjà lié à vous ailleurs le reste, et les services qui acheminent vos alertes tiennent leurs
+  propres registres.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Que stocke Tokenping, et que ne collecte-t-il pas ?
+
+À la date du 19 octobre 2026, enregistrer une alerte écrit une ligne par wallet, réseau et marché (un pool Aave V3 ou un Spoke d'Aave V4) dans la base de données de Tokenping. Cette ligne contient :
+
+- L'adresse de votre wallet.
+- Le réseau, le marché et votre seuil.
+- Les canaux que vous avez choisis et la langue de chacun.
+- L'adresse e-mail, le nom d'utilisateur Signal et le nom d'utilisateur Telegram que vous avez saisis, pour les canaux choisis.
+- La date de création et de dernière modification de l'alerte, et la date de votre dernier message de test sur chaque canal. C'est ce qui permet la limite d'un test par canal toutes les 15 minutes.
+
+Appuyer sur Start dans le bot Telegram de Tokenping stocke aussi votre chat ID et l'heure, dans une table séparée. Si vous répondez à la question facultative « Comment avez-vous connu Tokenping ? », votre réponse et l'heure sont stockées avec l'adresse de votre wallet.
+
+Tokenping ne demande ni ne stocke de nom, de numéro de téléphone, de mot de passe ou de vérification d'identité. Il ne place ni pixel de suivi ni cookie publicitaire, ne conserve aucun historique de vos positions (elles sont lues directement sur la blockchain) et ne garde dans sa base de données aucun journal des alertes envoyées. La [page de confidentialité](/fr/confidentialite) fait foi pour la liste complète ; ce guide explique ce qu'elle signifie pour vous et ce que vous pouvez y faire.
+
+## Comment fonctionne la connexion sans compte ?
+
+Les paramètres d'alerte appartiennent à une adresse de wallet, pas à un compte. Pour les ouvrir ou les modifier, vous signez un message avec ce wallet. C'est un message Sign-in with Ethereum (EIP-4361) qui mentionne le site, votre adresse et un code aléatoire à usage unique. Signer n'est pas une transaction : cela ne coûte aucun gas et n'autorise aucun token. Le serveur vérifie la signature et accepte le code à usage unique une seule fois, dans un délai de 5 minutes. Le code est stocké sans votre adresse et supprimé dès qu'il est utilisé.
+
+Le site pose ensuite un cookie de session. Il contient l'adresse de votre wallet et une heure d'expiration, ainsi qu'une signature faite avec un secret du serveur pour qu'il ne puisse pas être falsifié (il est signé, pas chiffré), et les scripts de la page ne peuvent pas le lire (HttpOnly). Il dure 7 jours, et le site l'efface quand vous déconnectez votre wallet sur le site. Pendant la connexion, un second cookie conserve le code à usage unique pendant ces quelques minutes. Chaque route d'alerte n'agit ensuite que pour le wallet du cookie, et une requête qui nomme un autre wallet est refusée.
+
+Consulter vos positions ne demande ni connexion ni paiement. Les statistiques de pages du site viennent de Vercel Web Analytics, qui indique identifier les visiteurs par un hash créé à partir de la requête plutôt que par des cookies tiers, et supprimer cette session au bout de 24 heures.
+
+## Qui peut lire les coordonnées que vous enregistrez ?
+
+Via l'app, seule une personne capable de signer avec votre wallet. Lire, modifier ou supprimer une alerte, et envoyer un message de test, demandent tous votre cookie de session, et une requête qui nomme un autre wallet est refusée. Les tables de la base de données sont fermées à la clé publique (anon) de Supabase : la sécurité au niveau des lignes (row level security) est activée sans aucune politique, et les rôles publics n'ont aucun privilège. Seul le serveur de Tokenping, avec sa clé service-role, y accède.
+
+Vous pouvez le vérifier au lieu de le croire sur parole, car le code de Tokenping est public. Les routes qui lisent et écrivent les alertes sont dans [`packages/nextjs/app/api/notifications`](https://github.com/romispectrum/tokenping/tree/main/packages/nextjs/app/api/notifications), les routes de connexion dans [`packages/nextjs/app/api/auth`](https://github.com/romispectrum/tokenping/tree/main/packages/nextjs/app/api/auth), et les migrations qui ferment les tables à la clé publique dans [`packages/supabase/migrations`](https://github.com/romispectrum/tokenping/tree/main/packages/supabase/migrations).
+
+Cela ne veut pas dire personne :
+
+- Les personnes qui gèrent Tokenping, et l'hébergeur de sa base de données, peuvent lire les lignes.
+- N'importe qui peut demander si un nom d'utilisateur Telegram donné a appuyé sur Start dans le bot. La réponse est oui ou non, jamais un chat ID.
+- Quand une vérification d'alerte ou un message échoue, l'erreur peut contenir l'adresse de votre wallet et le destinataire, et elle part dans les journaux du serveur.
+
+La page de confidentialité conseille elle-même de ne pas saisir une adresse e-mail ou un nom d'utilisateur Signal que vous ne voudriez pas voir associé à l'adresse de votre wallet. La suite de ce guide explique comment suivre ce conseil.
+
+## Quels autres services traitent vos données ?
+
+Tokenping s'appuie sur d'autres prestataires, et chacun voit une partie de ce que vous lui donnez. Ce tableau résume la liste de la page de confidentialité.
+
+| Service              | Ce qu'il fait                                                             | Ce qu'il voit                                                                                                         |
+| -------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Vercel               | Héberge le site et lance la vérification des alertes toutes les 5 minutes | Chaque requête, y compris votre adresse IP, et les journaux du serveur                                                |
+| Vercel Web Analytics | Compte les pages vues                                                     | Adresse de la page, site d'origine, localisation approximative, navigateur, système d'exploitation et type d'appareil |
+| Supabase             | La base de données                                                        | Les lignes décrites plus haut                                                                                         |
+| Resend               | Envoie les alertes par e-mail                                             | Votre adresse e-mail et le texte de l'alerte                                                                          |
+| Relais Fly.io        | Transmet les alertes à Signal                                             | Votre nom d'utilisateur Signal et le texte de l'alerte (Signal les voit aussi)                                        |
+| Telegram             | Achemine les alertes via sa Bot API                                       | Votre chat ID et le texte de l'alerte                                                                                 |
+| Fournisseurs RPC     | Répondent aux lectures de la blockchain                                   | L'adresse du wallet lu, et votre adresse IP quand c'est votre navigateur qui fait la lecture                          |
+| WalletConnect        | Relaie la connexion à l'app de votre wallet, si vous l'utilisez           | Ce que l'app de votre wallet et le site échangent pour se connecter                                                   |
+
+Le texte de l'alerte mentionne le marché, votre facteur de santé (health factor), votre seuil et l'heure. Il ne contient pas l'adresse de votre wallet.
+
+Les prestataires tiennent leurs propres registres. L'avenant sur le traitement des données de Resend cite les métadonnées, l'adresse e-mail et le contenu des messages comme données personnelles minimales qu'il traite pour un client, et sa documentation indique qu'il conserve les données des e-mails 30 jours sur toutes les offres, avec une conservation modulable pour Enterprise. Signal affirme ne pas pouvoir déchiffrer ni consulter d'une autre façon le contenu des messages. La politique de confidentialité de Telegram indique que les cloud chats sont stockés sur ses serveurs, fortement chiffrés, tandis que le chiffrement de bout en bout s'applique aux Secret Chats.
+
+## Qu'est-ce qui reste public sur la blockchain ?
+
+Payer les alertes est une transaction sur Arbitrum One. Le contrat de paiement enregistre chaque paiement dans un événement public : l'adresse qui paie, le token, le montant, l'heure, la période achetée et la nouvelle date d'expiration. Tout le monde peut le lire et personne ne peut le supprimer. Le code source du contrat est [vérifié sur Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553).
+
+Rien de votre alerte n'est écrit sur une blockchain : ni le seuil, ni votre alias e-mail, ni votre nom d'utilisateur Signal, ni votre nom d'utilisateur Telegram. Vos positions Aave sont publiques elles aussi. ethereum.org décrit une blockchain comme « a public database » (une base de données publique), et Tokenping lit votre position avec des appels en lecture (view calls) que n'importe qui peut faire. Le lien entre votre wallet et ses positions n'a jamais dépendu de Tokenping.
+
+## Que peut relier Tokenping, et que ne peut-il pas relier ?
+
+Tokenping peut relier l'adresse de votre wallet aux contacts que vous enregistrez, aux marchés où vous empruntez, à vos seuils et à la date de votre paiement. Le service ne peut pas fonctionner sans ce lien : une alerte a besoin d'un wallet à surveiller et d'un endroit où envoyer le message.
+
+À partir de ce qu'il stocke dans sa base de données, Tokenping ne peut relier rien de tout cela à votre nom, à votre numéro de téléphone ou à vos autres comptes, sauf si un contact que vous saisissez le fait pour lui. Une adresse e-mail qui contient votre nom, ou un nom d'utilisateur que vous utilisez sur d'autres sites, fait exactement cela. C'est tout l'intérêt d'un alias et d'un nom d'utilisateur anonyme : le contact ne dit rien de qui vous êtes. Votre adresse IP est une autre question : elle parvient à Vercel avec chaque requête, pas à la base de données de Tokenping, et la masquer sort du cadre de ce guide.
+
+Ce qu'une personne extérieure peut faire relève d'une autre liste, et rien de tout cela n'a besoin de Tokenping :
+
+- Si votre wallet a un nom principal ENS (primary name), n'importe quelle app peut le retrouver à partir de l'adresse.
+- Si vous avez alimenté le wallet depuis une plateforme d'échange où vous avez vérifié votre identité, la plateforme garde en général une trace de ce retrait.
+- Partout où vous avez montré l'adresse à côté de votre nom ou de votre pseudo, les deux sont reliés.
+- Votre paiement est public : n'importe qui peut voir que l'adresse a payé, et jusqu'à quand.
+
+## Comment utiliser un alias e-mail au lieu de votre vraie adresse ?
+
+Un alias e-mail est une adresse supplémentaire qui fait suivre les messages vers votre vraie boîte de réception. Tokenping et son prestataire e-mail ne voient que l'alias. SimpleLogin, le service que ce guide prend en exemple, voit les deux, puisqu'il fait suivre le courrier de l'un à l'autre. Il est développé par Proton AG et open source, et sa page de tarifs propose une offre qui ne coûte rien, avec un nombre limité d'alias.
+
+1. Créez un compte SimpleLogin et choisissez la boîte de réception qui doit recevoir les alertes transférées.
+2. Dans le tableau de bord, appuyez sur **Random Alias** et choisissez des mots aléatoires ou un UUID pour la partie gauche. Un alias personnalisé fonctionne aussi, mais n'y mettez ni votre nom, ni vos pseudos, ni rien de ce que vous utilisez sur d'autres sites. SimpleLogin permet aussi d'ajouter une note à un alias, par exemple « Tokenping », pour vous rappeler à quoi il sert.
+3. Dans le formulaire d'alerte, saisissez l'alias comme adresse e-mail (par exemple `alice-aave@example.com`) et enregistrez l'alerte.
+4. Appuyez sur **Envoyer un test** pour l'e-mail et vérifiez que le message arrive dans votre vraie boîte de réception. Sinon, regardez dans vos courriers indésirables. Le [guide de configuration](/fr/blog/configurer-alertes-facteur-de-sante-aave) détaille les autres vérifications.
+
+Les alertes de Tokenping vont dans un seul sens, vous n'y répondez donc jamais, et un alias qui se contente de recevoir suffit. Quand vous arrêtez d'utiliser Tokenping, supprimez d'abord l'alerte, puis l'alias, afin qu'aucun contact stocké ne survive à son usage.
+
+Un alias ne cache pas tout. SimpleLogin et le fournisseur de votre boîte de réception voient toujours les alertes : l'alias cache votre adresse à Tokenping et à Resend, pas au service qui fait suivre. Un alias que vous utilisez aussi pour un autre service relie les deux. Et il ne change pas le contenu du message : le marché, votre facteur de santé et votre seuil.
+
+SimpleLogin n'est pas le seul choix. DuckDuckGo Email Protection, Firefox Relay (de Mozilla), addy.io et Hide My Email d'Apple (inclus dans un abonnement iCloud+) vous donnent aussi des adresses qui font suivre vers la vôtre. Leurs limites diffèrent, lisez donc la page du fournisseur avant de compter sur l'un d'eux.
+
+## Comment utiliser un nom d'utilisateur Signal au lieu de votre numéro de téléphone ?
+
+Un nom d'utilisateur Signal permet à quelqu'un d'ouvrir une conversation sans votre numéro de téléphone, et c'est ce que demande Tokenping : son formulaire ne demande jamais de numéro. Ces étapes suivent les pages d'assistance de Signal.
+
+1. **Créez un nom d'utilisateur.** Dans Signal, ouvrez votre profil et touchez le symbole @. Les noms d'utilisateur font de 3 à 32 caractères (a-z, 0-9 et \_) et se terminent par au moins deux chiffres. Le formulaire de Tokenping attend la forme `alice.42` : votre pseudo, un point et les chiffres. Choisissez un pseudo qui n'est ni votre nom ni un pseudo que vous utilisez ailleurs.
+2. **Masquez votre numéro.** Ouvrez les paramètres, puis Confidentialité, puis Numéro de téléphone, et réglez l'option de visibilité de votre numéro sur personne (« Who can see my number » : Nobody). Les personnes qui ont déjà votre numéro dans leurs contacts le voient toujours. Si vous voulez en plus n'être joignable que par votre nom d'utilisateur, réglez aussi sur personne l'option qui permet de vous trouver par votre numéro (« Who can find me by my number » : Nobody).
+3. **Vérifiez votre nom de profil.** Votre profil Signal a un prénom obligatoire et une photo facultative, et la page de Signal indique que vous pouvez utiliser un pseudo, un seul caractère ou un emoji. Accepter une demande de message permet à l'expéditeur de voir votre profil.
+4. **Ajoutez le nom d'utilisateur à l'alerte et envoyez un test.** Saisissez-le dans le champ Nom d'utilisateur Signal, enregistrez, et appuyez sur **Envoyer un test** pour Signal. Comme le compte Signal de Tokenping n'est pas dans vos contacts, le premier message peut arriver sous forme de demande de message. Faites les étapes 2 et 3 avant de l'accepter.
+
+Selon Signal, si vous n'acceptez pas une demande, l'expéditeur ne voit que le nom d'utilisateur auquel il a écrit. Si vous l'acceptez, l'expéditeur voit votre nom de profil et peut voir votre numéro de téléphone, selon vos réglages de numéro.
+
+Un nom d'utilisateur n'est qu'un moyen d'ouvrir une conversation. Signal conserve toujours le numéro de téléphone avec lequel vous vous êtes inscrit, et rien ici n'y change quoi que ce soit. Si vous modifiez ou supprimez le nom d'utilisateur, Signal indique que n'importe qui pourra bientôt reprendre l'ancien, et Tokenping continue d'envoyer au nom d'utilisateur qu'il a stocké : mettez donc l'alerte à jour tout de suite.
+
+## Comment éviter qu'un compte Telegram vous identifie ?
+
+Telegram est le moins adapté des trois, lisez donc ceci avant de le choisir. Tokenping ne peut écrire qu'à un compte Telegram qui a appuyé sur Start dans son bot : vous saisissez donc votre @nom d'utilisateur dans l'alerte et appuyez une fois sur Start. Le compte a donc besoin d'un nom d'utilisateur, et Telegram indique que les noms d'utilisateur sont publics : ils vous rendent trouvable dans la recherche globale, et les personnes qui vous trouvent peuvent vous écrire sans votre numéro. La FAQ de Telegram elle-même déconseille d'en définir un si cela vous dérange.
+
+1. **Choisissez un nom d'utilisateur qui ne contient rien de vous.** Utilisez a-z, 0-9 et des tirets bas ; Tokenping accepte de 4 à 32 caractères. Définissez-le dans les paramètres de Telegram.
+2. **Vérifiez votre nom affiché et votre photo.** La politique de confidentialité de Telegram indique que votre nom affiché n'a pas besoin d'être votre vrai nom. Un bot peut voir votre nom public, votre nom d'utilisateur et vos photos de profil.
+3. **Vérifiez le réglage de votre numéro.** Ouvrez les paramètres, puis Confidentialité et sécurité, puis Numéro de téléphone. Par défaut, seules les personnes qui vous ont dans leurs contacts voient votre numéro, et Telegram indique qu'une personne qui vous trouve par votre nom d'utilisateur ne le voit pas non plus. Un bot ne le voit pas, sauf si vous le lui donnez.
+4. **Liez le compte.** Saisissez le nom d'utilisateur dans l'alerte, appuyez sur Start dans le bot et attendez que le formulaire l'affiche comme lié.
+
+Le code de Tokenping ne conserve que votre chat ID et votre nom d'utilisateur, mais la Bot API de Telegram transmet à un bot votre prénom avec chaque message et, s'ils existent, votre nom de famille, votre nom d'utilisateur et votre code de langue. N'importe qui peut vérifier si un nom d'utilisateur a appuyé sur Start. Envoyer /stop au bot délie votre chat.
+
+## Faut-il utiliser un wallet séparé ?
+
+Seulement si vous empruntez depuis ce wallet. Tokenping surveille le wallet que vous connectez et rien d'autre, et l'accès appartient au wallet qui a payé : vous ne pouvez donc pas payer depuis une adresse pour surveiller une position détenue par une autre. Un wallet que vous n'utilisez que pour Aave réunit la position, le paiement et les alertes dans une seule adresse. La façon dont vous l'alimentez laisse quand même une trace publique, le paiement à Tokenping est public, et le wallet reste pseudonyme, pas anonyme. Transférer un prêt vers un nouveau wallet signifie en général fermer puis rouvrir la position, avec les coûts et le risque de liquidation que cela comporte : ce guide ne le recommande donc pas.
+
+## Que protège chaque étape, et que ne protège-t-elle pas ?
+
+| Étape                                                         | Ce qu'elle cache à Tokenping et à ses prestataires   | Ce qu'elle ne cache pas                                                                                             |
+| ------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Alias e-mail                                                  | Votre vraie adresse e-mail                           | Le service d'alias voit les deux adresses et les alertes, et celles-ci arrivent dans votre vraie boîte de réception |
+| Nom d'utilisateur Signal, numéro masqué                       | Votre numéro de téléphone                            | Signal conserve votre numéro, et accepter une demande partage votre nom de profil                                   |
+| Nom d'utilisateur et nom Telegram qui ne vous identifient pas | Votre vrai nom et votre numéro de téléphone          | Le nom d'utilisateur est public, et Telegram stocke le chat sur ses serveurs                                        |
+| Un wallet utilisé seulement pour Aave                         | Les liens avec le reste de l'historique de ce wallet | Les transactions qui l'alimentent et le paiement à Tokenping sont publics                                           |
+| Supprimer l'alerte                                            | La ligne stockée, contact compris                    | Le paiement on-chain, et ce que chaque prestataire conserve selon ses propres règles                                |
+
+## Comment supprimer ce que Tokenping stocke ?
+
+Supprimez l'alerte dans le tableau de bord : appuyez sur **Modifier l'alerte**, puis sur **Supprimer l'alerte**, et confirmez. Cela efface les paramètres de ce marché, y compris l'adresse e-mail et le nom d'utilisateur Signal, et nécessite un accès actif. L'alerte de chaque marché se supprime séparément.
+
+<Callout tone="warning">
+  La fin de votre accès ne supprime rien : l'alerte et le contact qu'elle contient restent stockés jusqu'à ce que vous
+  supprimiez l'alerte. Supprimez les alertes dont vous ne voulez plus tant que votre accès est actif. S'il a expiré, la
+  page de confidentialité indique où écrire à l'équipe pour faire supprimer vos paramètres.
+</Callout>
+
+Sur Telegram, envoyer /stop au bot délie votre chat. La réponse facultative à « Comment avez-vous connu Tokenping ? » peut être supprimée sur demande, via les mêmes contacts que sur la page de confidentialité. Le paiement on-chain ne peut être supprimé par personne.
+
+Le code derrière tout cela se trouve dans le [dépôt de Tokenping](https://github.com/romispectrum/tokenping). Si une affirmation de ce guide ne lui correspond pas, prévenez l'équipe via les contacts de la page de confidentialité.
+
+## Sources
+
+- [Page de confidentialité de Tokenping](/fr/confidentialite) (consulté le 19 octobre 2026 ; dernière mise à jour le 19 octobre 2026) : ce qui est stocké, qui le traite, ce qui est public et comment le supprimer
+- [Code source de Tokenping sur GitHub](https://github.com/romispectrum/tokenping) (consulté le 19 octobre 2026 ; le dépôt est public) : la connexion dans `packages/nextjs/app/api/auth`, les vérifications de session dans `packages/nextjs/services/api/server/session.ts`, le stockage des alertes dans `packages/nextjs/services/notifications`, les routes Telegram dans `packages/nextjs/app/api/telegram`, les migrations dans `packages/supabase/migrations` et le contrat de paiement dans `packages/hardhat/contracts`
+- [TokenpingPaywall sur Arbitrum One, code source vérifié sur Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553) (consulté le 19 octobre 2026) : l'événement PaymentReceived
+- [SimpleLogin](https://simplelogin.io/) (consulté le 19 octobre 2026) : ce que fait un alias, qui le développe, open source
+- [Tarifs de SimpleLogin](https://simplelogin.io/pricing/) (consulté le 19 octobre 2026) : une offre qui ne coûte rien, avec un nombre limité d'alias
+- [Documentation de SimpleLogin : créer un alias](https://simplelogin.io/docs/getting-started/create-alias/) (consulté le 19 octobre 2026)
+- [DuckDuckGo Email Protection](https://duckduckgo.com/duckduckgo-help-pages/email-protection/what-is-duckduckgo-email-protection) (consulté le 19 octobre 2026)
+- [Firefox Relay](https://relay.firefox.com/) (consulté le 19 octobre 2026)
+- [addy.io](https://addy.io/) (consulté le 19 octobre 2026)
+- [Assistance Apple : Hide My Email avec iCloud+](https://support.apple.com/en-us/102548) (consulté le 19 octobre 2026)
+- [Assistance Signal : Phone Number Privacy and Usernames](https://support.signal.org/hc/en-us/articles/6712070553754-Phone-Number-Privacy-and-Usernames) (consulté le 19 octobre 2026)
+- [Assistance Signal : Signal Profiles and Message Requests](https://support.signal.org/hc/en-us/articles/360007459591-Signal-Profiles-and-Message-Requests) (consulté le 19 octobre 2026)
+- [Politique de confidentialité de Signal](https://signal.org/legal/) (consulté le 19 octobre 2026)
+- [FAQ de Telegram](https://telegram.org/faq) (consulté le 19 octobre 2026) : noms d'utilisateur, visibilité du numéro de téléphone, ce que voient les bots
+- [Politique de confidentialité de Telegram](https://telegram.org/privacy) (consulté le 19 octobre 2026)
+- [Telegram Bot API : objets User et Chat](https://core.telegram.org/bots/api) (consulté le 19 octobre 2026)
+- [Avenant sur le traitement des données de Resend](https://resend.com/legal/dpa) (consulté le 19 octobre 2026)
+- [Documentation de Resend : conservation à long terme des données des e-mails](https://www.resend.com/docs/webhooks/how-to-store-webhooks-data) (consulté le 19 octobre 2026)
+- [Vercel Web Analytics : confidentialité et conformité](https://vercel.com/docs/analytics/privacy-policy) (consulté le 19 octobre 2026)
+- [Documentation ENS : noms principaux](https://docs.ens.domains/web/reverse) (consulté le 19 octobre 2026)
+- [ethereum.org : introduction à Ethereum](https://ethereum.org/en/developers/docs/intro-to-ethereum/) (consulté le 19 octobre 2026)
+
+_Contenu éducatif, pas un conseil financier. Les alertes réduisent le risque, elles n'empêchent pas la liquidation._

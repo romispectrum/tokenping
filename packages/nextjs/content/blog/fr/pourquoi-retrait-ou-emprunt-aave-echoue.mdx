@@ -1,0 +1,134 @@
+export const meta = {
+  slug: "pourquoi-retrait-ou-emprunt-aave-echoue",
+  title: "Retrait ou emprunt impossible sur Aave : 9 causes",
+  description:
+    "Pourquoi un retrait, emprunt ou remboursement Aave V3 échoue : facteur de santé, liquidité, plafonds de dépôt et d'emprunt, réserves gelées ou en pause.",
+  h1: "Pourquoi mon retrait, mon emprunt ou mon remboursement sur Aave échoue-t-il ?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "Pourquoi une transaction de retrait, d'emprunt ou de remboursement échoue-t-elle sur Aave ?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  Une transaction Aave V3 échoue quand l'une des vérifications du contrat Pool la rejette, et la raison est presque
+  toujours l'une de ces neuf. Le retrait ferait passer votre facteur de santé (health factor) sous 1. La réserve détient
+  moins de liquidité non empruntée que vous n'en demandez. Le plafond de dépôt ou le plafond d'emprunt de l'actif est
+  atteint. La réserve est gelée (ni nouveaux dépôts ni nouveaux emprunts) ou en pause (plus rien du tout, remboursements
+  compris). L'actif n'est pas empruntable, ou pas dans votre catégorie E-Mode. Vous détenez un collatéral avec un LTV de
+  0, qui doit sortir en premier. Ou bien un remboursement vise une dette que vous n'avez pas ou des tokens que vous
+  n'avez pas autorisés. Sur Ethereum Core, le 29 octobre 2026, 35 des 66 réserves listées étaient gelées, le plafond de
+  dépôt de LBTC était atteint à 0,07 LBTC près, et seuls 134,4 millions des 2 347,5 millions d'USDC déposés pouvaient
+  être retirés.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Les chiffres et les numéros de bloc auxquels ils ont été lus : content/blog/snapshots/why-aave-withdraw-or-borrow-fails.md */}
+
+## Quelles vérifications une transaction Aave doit-elle passer ?
+
+Chaque dépôt, retrait, emprunt et remboursement sur Aave V3 passe par le contrat Pool, et le Pool exécute une liste de vérifications dans une bibliothèque appelée `ValidationLogic` avant de déplacer le moindre token. Chaque vérification qui échoue arrête toute la transaction avec une erreur nommée : `ReserveFrozen`, `SupplyCapExceeded`, `HealthFactorLowerThanLiquidationThreshold` et ainsi de suite. Votre wallet n'affiche en général que « execution reverted » et un court code hexadécimal, car les noms se trouvent dans le code d'Aave, pas dans le wallet. L'application Aave vérifie la plupart de ces points avant que vous signiez, ce qui explique qu'elle refuse souvent avant même que vous voyiez une transaction.
+
+Les vérifications diffèrent selon l'action. Un retrait demande une réserve active et non suspendue, un solde au moins égal au montant et, si vous avez une dette et que l'actif compte comme collatéral, un facteur de santé qui reste égal ou supérieur à 1 après l'opération. Un emprunt demande une réserve active, non suspendue et non gelée où l'emprunt est activé, de la place sous le plafond d'emprunt et assez de collatéral à votre ratio prêt/valeur (LTV). Un dépôt demande une réserve non gelée avec de la place sous le plafond de dépôt. Un remboursement demande seulement une réserve active et non suspendue, et une dette dans cet actif. Les neuf causes ci-dessous suivent cette liste, à peu près dans l'ordre où vous risquez de les rencontrer.
+
+Ce guide traite d'Aave V3. Les Spokes d'Aave V4 ont leur propre configuration, et Morpho n'a aucun de ces mécanismes à part l'oracle et le facteur de santé : un marché Morpho n'a ni plafonds, ni gel, ni pause.
+
+## 1. Le retrait laisserait votre facteur de santé sous 1
+
+C'est la cause que les emprunteurs rencontrent le plus. Quand vous retirez un actif utilisé comme collatéral alors que vous avez une dette, le Pool recalcule votre compte après le retrait et exige un facteur de santé d'au moins 1 (`HealthFactorLowerThanLiquidationThreshold`). La même vérification s'applique quand vous désactivez un actif comme collatéral ou transférez des aTokens à une autre adresse. Elle ne s'applique pas quand vous n'avez aucune dette, et c'est pourquoi la totalité du solde peut toujours être retirée d'une position de dépôt pure.
+
+Prenons 10 WETH sur Ethereum Core au prix de l'oracle de 2 309,84 $ le 29 octobre 2026 (23 098,41 $), un seuil de liquidation (liquidation threshold) de 84 % et 12 000 USDC de dette. Le [facteur de santé](/fr/blog/facteur-de-sante-aave) vaut 23 098,41 × 0,84 ÷ 12 000 = 1,617. Pour le maintenir à exactement 1, il faut 12 000 ÷ 0,84 = 14 285,71 $ de WETH, soit 6,185 WETH : le maximum que vous pouvez retirer est donc 3,815 WETH. Demandez-en 4 et la transaction est annulée ; demandez 3,815 et elle passe, en laissant une position que la prochaine petite baisse de prix rend liquidable. Le maximum affiché par l'application Aave correspond à ce chiffre, et le retirer en entier est le moyen le plus rapide de transformer une position sûre en une position qui aura besoin d'une [alerte de liquidation](/fr/blog/configurer-alertes-facteur-de-sante-aave) dans l'heure.
+
+L'emprunt a une règle cousine plus stricte. Un nouvel emprunt doit laisser le facteur de santé égal ou supérieur à 1 et doit aussi tenir sous votre LTV pondéré : collatéral × LTV doit couvrir la dette (`CollateralCannotCoverNewBorrow`). Avec WETH à un LTV de 81 %, les 10 WETH ci-dessus permettent au plus 18 709,71 $ de dette, et la position qui emprunte tout ce montant démarre avec un facteur de santé de 84 ÷ 81 = 1,037. [Ce qu'est un facteur de santé sûr](/fr/blog/facteur-de-sante-aave-sur) explique pourquoi c'est un point de départ bien mince.
+
+## 2. La réserve détient moins de liquidité non empruntée que vous n'en voulez
+
+Aave prête ce que les déposants apportent : une réserve ne détient donc que la part que personne n'a empruntée. Un retrait, ou un emprunt, plus grand que cette part échoue, et ce cas n'a pas de nom d'erreur Aave : l'aToken tente de transférer le token sous-jacent et c'est le contrat du token lui-même qui annule la transaction, pour l'USDC avec « ERC20: transfer amount exceeds balance ». La vérification de l'emprunt demande seulement que l'offre totale d'aTokens soit au moins égale au montant, ce qui n'arrête que les demandes absurdes.
+
+Sur Ethereum Core, le 29 octobre 2026, 2 347 525 372,91 USDC étaient déposés, 2 213 199 103,54 USDC empruntés, et le contrat de l'aToken détenait 134 360 379,94 USDC : un taux d'utilisation de 94,28 %, et 5,72 % des dépôts disponibles pour un retrait ou un emprunt. Un déposant qui voulait partir avec 200 millions d'USDC ne le pouvait pas, et personne ne l'aurait pu avant qu'un emprunteur rembourse ou qu'un déposant ajoute des fonds. Le guide sur le [fonctionnement des taux d'intérêt Aave](/fr/blog/taux-interet-aave) montre ce que cela donne en pratique : le 14 octobre 2026, un seul retrait de 133 898 000 USDC a poussé la même réserve à 99,50 % d'utilisation, et le taux d'emprunt de 4,50 % à 13,67 % en un seul bloc.
+
+Quatre solutions fonctionnent quand la liquidité est le problème. Retirez un montant plus petit, jusqu'à ce que le contrat détient. Attendez : la courbe des taux est conçue pour faire revenir la liquidité, et le pic du 14 octobre a duré environ 36 minutes, même si rien ne le garantit. Retirez un autre actif de collatéral, si vous en avez un et que le facteur de santé le permet. Et si vous cherchez à rembourser une dette en USDC alors que vous détenez des aUSDC, utilisez `repayWithATokens` : la fonction brûle vos aTokens contre votre dette sans déplacer un seul USDC, et n'a donc besoin d'aucune liquidité.
+
+## 3. Le plafond de dépôt est atteint
+
+Chaque réserve a un plafond de dépôt (supply cap), fixé par les risk stewards d'Aave et la gouvernance, et un dépôt qui ferait dépasser ce plafond au total échoue avec `SupplyCapExceeded`. Un plafond de 0 signifie qu'il n'y a pas de plafond. Le plafond compte les aTokens en circulation plus les intérêts accumulés pour la trésorerie : il se remplit donc tout seul à mesure que les intérêts courent, sans que personne ne dépose.
+
+Les plafonds bloquent plus souvent qu'on ne le pense. Le 29 octobre 2026, le plafond de LBTC sur Ethereum Core était de 2 690 LBTC pour 2 689,93 déposés : il restait 0,07 LBTC de place, et un emprunteur qui voulait ajouter 1 LBTC à une position sous pression ne le pouvait pas. sUSDe était à 96,9 % de son plafond, tBTC à 98,9 %, USDe à 91,7 %, weETH à 91,2 % et WBTC à 89,4 %. Les plafonds bougent dans les deux sens. Le 10 juillet 2026, LlamaRisk a abaissé le plafond de dépôt d'USDm sur l'instance MegaETH d'Aave de 1 000 000 000 à 300 000 000, parce que ce plafond se situait « well above current demand » (bien au-dessus de la demande actuelle) ; les stewards relèvent les plafonds quand la demande arrive, en général en quelques jours.
+
+Pour un emprunteur, le plafond compte comme une porte fermée : ajouter du collatéral est l'une des deux façons de relever un facteur de santé, et un plafond atteint la supprime pour cet actif. Rembourser la dette fonctionne toujours, et c'est l'autre façon, tout comme ajouter un autre actif de collatéral dont le plafond a encore de la place.
+
+## 4. Le plafond d'emprunt est atteint
+
+Les plafonds d'emprunt (borrow caps) fonctionnent de la même façon pour la dette : la dette variable totale de la réserve après votre emprunt ne doit pas dépasser le plafond (`BorrowCapExceeded`), et 0 signifie pas de plafond. La vérification s'applique à chaque emprunt : un plafond déjà dépassé bloque donc tout nouvel emprunt de cet actif jusqu'à ce que quelqu'un rembourse. Un plafond d'emprunt atteint ne bloque rien d'autre : remboursements, retraits et liquidations passent.
+
+tBTC sur Ethereum Core est le cas extrême : l'emprunt était activé le 29 octobre 2026, mais le plafond était de 1 tBTC et 2,57 tBTC étaient déjà empruntés, si bien que le plus petit emprunt était annulé. L'USDC avait 2 213,2 millions empruntés pour un plafond de 2 700 millions, utilisé à 82,0 %, avec 486,8 millions de place ; l'USDT était à 80,8 %. Quand les plafonds des stablecoins sont atteints, un emprunt échoue même si la réserve détient peut-être encore beaucoup de liquidité.
+
+## 5. La réserve est gelée
+
+Une réserve gelée n'accepte ni nouveau dépôt ni nouvel emprunt (`ReserveFrozen` dans les deux cas). La documentation du Pool Configurator d'Aave liste ce qui fonctionne encore : les remboursements, les liquidations et les retraits. Le gel est la façon dont la gouvernance retire progressivement un actif sans piéger personne ; [ce qui se passe quand Aave ferme un marché](/fr/blog/fermeture-marche-aave) détaille les étapes.
+
+Les réserves gelées ne sont pas rares. Le 29 octobre 2026, 35 des 66 réserves d'Ethereum Core étaient gelées : CRV, MKR, UNI, LUSD, FRAX, sDAI, crvUSD, FBTC et une longue liste de tokens PT de Pendle arrivés à échéance, presque tous avec en plus des plafonds de dépôt et d'emprunt de 1. Si vous avez encore du collatéral dans l'une d'elles, vous pouvez le retirer et vous pouvez être liquidé sur cet actif, mais vous ne pouvez pas en ajouter.
+
+## 6. La réserve est en pause
+
+La pause est l'interrupteur d'urgence. Une réserve en pause refuse tout : dépôt, emprunt, remboursement, retrait, liquidation et transferts d'aTokens (`ReservePaused`). Aucune réserve d'Ethereum Core n'était en pause le 29 octobre 2026, et en temps normal aucune ne l'est.
+
+La pause a déjà servi. Le 4 novembre 2023, après un signalement critique dans le cadre du bug bounty, le Guardian d'Aave a mis en pause Aave V2 sur Ethereum et un ensemble d'actifs sur V3 Arbitrum, Avalanche, Optimism et Polygon. Pendant environ une semaine, personne ne pouvait rembourser ni ajouter de collatéral sur ces réserves, alors que les prix continuaient de bouger. Les instances V3 ont été réactivées le 12 novembre 2023, V2 Ethereum le 13 novembre après une période de grâce sur les liquidations d'environ trois heures pour les emprunteurs de WETH, et CRV sur V3 Polygon le 16 novembre. Aujourd'hui, cette période de grâce fait partie du protocole : une liquidation pendant la période de grâce d'une réserve échoue avec `LiquidationGraceSentinelCheckFailed`, ce qui donne aux emprunteurs bloqués une courte fenêtre pour rembourser avant que les liquidateurs n'interviennent.
+
+Si votre transaction échoue avec une erreur de pause, il n'y a rien à faire sur Aave tant que la pause n'est pas levée. Profitez-en pour avoir les fonds du remboursement prêts sur le bon réseau, car la période de grâce après la levée d'une pause est fixée par la gouvernance ou le Guardian et a déjà été aussi courte que trois heures.
+
+## 7. L'emprunt est désactivé pour cet actif, ou interdit dans votre catégorie E-Mode
+
+Beaucoup d'actifs peuvent être déposés comme collatéral mais pas empruntés. Sur Ethereum Core, le 29 octobre 2026, l'emprunt était désactivé sur 15 réserves non gelées, dont wstETH, cbETH, rETH, weETH, LBTC, eBTC, AAVE et XAUt, et un emprunt de l'une d'elles échoue avec `BorrowingNotEnabled`. Ce paramètre est fixé par la gouvernance pour chaque réserve et se voit dans l'application Aave à l'absence du bouton d'emprunt.
+
+Si vous êtes dans une [catégorie E-Mode](/fr/blog/e-mode-aave), une autre règle remplace celle-ci : vous ne pouvez emprunter que les actifs de l'ensemble empruntable de la catégorie, et tout le reste échoue avec `NotBorrowableInEMode`, même un actif que vous pourriez emprunter hors de la catégorie. La catégorie « ETH correlated » d'Ethereum Core, par exemple, permet d'emprunter WETH et rien d'autre. Quitter la catégorie règle l'emprunt, mais la sortie a ses propres vérifications : chaque actif que vous devez doit être empruntable hors de la catégorie, et votre facteur de santé doit rester égal ou supérieur à 1 avec les seuils normaux, plus bas (`InvalidDebtInEmode`, `InvalidCollateralInEmode`, `HealthFactorLowerThanLiquidationThreshold`).
+
+## 8. Vous détenez un collatéral avec un LTV de 0
+
+La gouvernance fixe le LTV d'un actif à 0 quand elle veut que cet actif cesse de soutenir de nouvelles dettes tout en laissant tourner les positions existantes. Le 29 octobre 2026, 11 réserves non gelées d'Ethereum Core étaient activées comme collatéral avec un LTV de 0, dont DAI (seuil de liquidation de 77 %), LINK, PYUSD, USDe, sUSDe, USDS, EURC et XAUt. Un tel actif compte toujours dans votre facteur de santé, par son seuil de liquidation, mais n'ajoute rien à votre capacité d'emprunt. Il en découle deux vérifications.
+
+La première porte sur l'emprunt. Si tous les collatéraux que vous avez activés ont un LTV de 0, votre LTV pondéré vaut 0 et tout emprunt échoue avec `LtvValidationFailed`. Avec un mélange, par exemple DAI et WETH, l'emprunt passe, limité par le seul WETH.
+
+La seconde porte sur le retrait, et elle surprend. Si vous avez une dette et un collatéral activé avec un LTV de 0, l'actif que vous retirez, transférez ou désactivez comme collatéral doit lui-même être un actif à LTV 0, sinon la transaction échoue avec la même erreur `LtvValidationFailed`. Le commentaire du code lui-même en donne l'intention : la règle « ensures that a multi-collateral position needs to withdraw/transfer the ltv0 asset first » (garantit qu'une position à plusieurs collatéraux doit d'abord retirer ou transférer l'actif à LTV 0). Un emprunteur qui détient du DAI et du WETH et tente de retirer un peu de WETH est donc refusé tant que le DAI n'est pas sorti ; la vérification du facteur de santé s'applique toujours au retrait du DAI lui-même. La solution tient à l'ordre des opérations : retirez d'abord l'actif à LTV 0, ou remboursez assez pour que le facteur de santé permette les deux.
+
+## 9. Un remboursement vise une dette que vous n'avez pas, ou des tokens que vous n'avez pas autorisés
+
+Les remboursements sont l'action la plus simple et échouent pourtant, en général pour l'une de cinq raisons.
+
+- **Aucune dette de ce type.** `NoDebtOfSelectedType` signifie que le Pool que vous avez appelé ne détient aucune dette variable de cet actif pour cette adresse. La cause habituelle est le mauvais marché : Ethereum a des instances Core, Prime et Lido séparées, chacune avec son propre Pool, et le même wallet peut devoir de l'USDC sur l'une et rien sur une autre. Les marchés de chaque réseau sont séparés eux aussi.
+- **Un mode de taux qui n'existe plus.** Seul le mode variable (2) est accepté ; l'emprunt à taux stable a disparu du code, et un appel avec le mode 1 échoue avec `InvalidInterestRateModeSelected`.
+- **Aucune autorisation.** Le Pool prélève le remboursement avec `transferFrom` : le token a donc besoin d'une autorisation d'au moins le montant, ou d'un permit signé. Sans elle, le contrat du token annule la transaction avant même que les vérifications d'Aave ne s'exécutent.
+- **Rembourser pour quelqu'un d'autre sans montant.** Rembourser pour le compte d'une autre adresse avec la valeur « toute la dette » (`type(uint256).max`) échoue avec `NoExplicitAmountToRepayOnBehalf` ; indiquez le montant.
+- **Les poussières.** Les intérêts courent chaque seconde : un remboursement du solde exact que vous avez vu il y a une minute laisse donc quelques wei de dette. Pour solder une dette entièrement, remboursez avec la valeur maximale, que le Pool plafonne à ce que vous devez.
+
+## Les causes que vous pouvez écarter
+
+Deux anciennes explications ne s'appliquent plus. L'Isolation Mode et ses plafonds de dette ont été supprimés dans Aave V3.7, de même que le siloed borrowing (emprunt cloisonné) : aujourd'hui, aucun emprunt n'échoue parce qu'un actif est isolé ou qu'un plafond de dette est atteint. Et l'emprunt à taux stable a disparu depuis V3.2 : rien n'échoue donc sur un changement de taux. Si un guide plus ancien cite l'une de ces causes, il décrit une version d'Aave qui n'est plus déployée.
+
+## Que faire quand une transaction échoue pendant une baisse des prix ?
+
+Une transaction qui échoue est un désagrément sur un marché calme et un problème sur un marché qui baisse, car l'heure passée à en chercher la cause est l'heure dont votre facteur de santé a besoin. Un ordre d'opérations court :
+
+1. **Lisez l'erreur.** Simulez la transaction dans votre wallet, ou collez le sélecteur hexadécimal dans le décodeur d'un explorateur de blocs ; les noms ci-dessus vous disent dans quel cas vous êtes.
+2. **Préférez rembourser plutôt qu'ajouter du collatéral.** Le remboursement fonctionne malgré les réserves gelées et les plafonds de dépôt atteints, et avec `repayWithATokens` il fonctionne même sans liquidité. Ajouter du collatéral dépend d'un plafond qui a de la place et d'une réserve non gelée.
+3. **Essayez des montants plus petits.** La liquidité et les plafonds sont des quantités : un retrait ou un emprunt qui tient dedans passe alors que le montant complet échoue.
+4. **Utilisez un autre actif.** Un autre collatéral à retirer, ou un autre actif à rembourser, est souvent disponible quand le premier est bloqué.
+5. **Vérifiez l'instance et le réseau.** Un remboursement envoyé sur le bon actif mais au mauvais Pool échoue avec `NoDebtOfSelectedType` et vous coûte du gas et du temps.
+6. **Recevez l'alerte plus tôt la prochaine fois.** Chacun de ces cas demande quelques minutes pour être contourné. Une alerte de facteur de santé réglée avec de la marge vous donne ces minutes.
+
+Tokenping vérifie votre facteur de santé Aave toutes les 5 minutes, sur chaque marché Aave V3 de 21 réseaux et chaque Spoke Aave V4, et vous écrit sur Signal, Telegram ou par e-mail quand il passe sous un seuil que vous choisissez (de 1,1 à 10), en répétant le message à chaque vérification jusqu'à ce qu'il remonte. Il lit ce chiffre avec `getUserAccountData`, le même que celui qu'utilise la vérification du retrait. Une alerte ne peut pas agir à votre place, et rien dans ce guide n'empêche la liquidation ; il vous indique quelle porte est fermée pour que vous essayiez d'abord celle qui est ouverte. Vous pouvez [vérifier votre facteur de santé Aave V3](/fr/aave) sans rien payer ; les alertes coûtent <AlertPrice />, une par marché ou par Spoke. [Comment éviter la liquidation sur Aave](/fr/blog/eviter-liquidation-aave) détaille le choix entre rembourser et ajouter du collatéral, et [pourquoi votre facteur de santé a baissé](/fr/blog/pourquoi-facteur-de-sante-aave-a-baisse) les causes auxquelles vous réagissez.
+
+## Sources
+
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol), [BorrowLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/BorrowLogic.sol) et [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) : chaque vérification citée ci-dessus, leur ordre d'exécution, le commentaire sur le LTV 0 et l'indicateur de LTV nul (aave-v3-origin main, consulté le 29 octobre 2026)
+- [Errors.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/helpers/Errors.sol) : les noms des erreurs et leurs descriptions (aave-v3-origin main, consulté le 29 octobre 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) : `getAllReservesTokens` et, pour chaque réserve, `getReserveConfigurationData`, `getReserveCaps`, `getPaused` et `getReserveData`, au bloc 26296985 (consulté le 29 octobre 2026)
+- [aEthUSDC](https://etherscan.io/address/0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c) : l'USDC détenu par le contrat de l'aToken au bloc 26296985 (consulté le 29 octobre 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) : prix de WETH et de l'USDC au bloc 26296985 (consulté le 29 octobre 2026)
+- [Documentation Aave : Pool Configurator](https://aave.com/docs/aave-v3/smart-contracts/pool-configurator) : ce que permettent les réserves gelées et en pause, les plafonds de 0 (consulté le 29 octobre 2026)
+- [Aave v2/v3 security incident 04/11/2023](https://governance.aave.com/t/aave-v2-v3-security-incident-04-11-2023/15335) : les pauses du 4 novembre 2023, les levées des 12, 13 et 16 novembre et la période de grâce (consulté le 29 octobre 2026)
+- [Aave V3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md) : la suppression de l'emprunt à taux stable (consulté le 29 octobre 2026)
+- [Aave V3.7 : suppression de l'isolation mode et du siloed borrowing](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/mode-removal.md) (consulté le 29 octobre 2026)
+- [Risk Stewards: Supply and Borrow Cap Reductions on Aave V3 / 2026.07.10](https://governance.aave.com/t/risk-stewards-supply-and-borrow-cap-reductions-on-aave-v3-2026-07-10/25296) : les baisses de plafonds de LlamaRisk sur MegaETH, exécutées le 14 juillet 2026 (consulté le 29 octobre 2026)
+
+_Contenu éducatif, pas un conseil financier. Les alertes réduisent le risque, elles n'empêchent pas la liquidation._

@@ -1,0 +1,194 @@
+export const meta = {
+  slug: "morpho-midnight-prets-taux-fixe",
+  title: "Prêts à taux fixe Morpho Midnight : comment ça marche",
+  description:
+    "Prêts à taux fixe Morpho Midnight : le taux, ce que vous devez à l'échéance, la santé avec plusieurs collatéraux et la liquidation d'une dette impayée.",
+  h1: "Comment fonctionnent les prêts à taux fixe Morpho Midnight, et que se passe-t-il à l'échéance ?",
+  publishedAt: "2026-10-26",
+  primaryQuestion:
+    "Comment fonctionne un prêt à taux fixe Morpho Midnight, et que se passe-t-il si je n'ai pas remboursé à l'échéance ?",
+  readingMinutes: 14,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Morpho Midnight est l'offre de prêt à taux fixe et à durée fixe de Morpho. Vous empruntez en vendant des unités de
+  dette sous leur valeur nominale : chaque unité vous rapporte un peu moins d'un token emprunté aujourd'hui et vous
+  engage à en rembourser exactement un à l'échéance du marché. Le taux est donc fixé au moment de l'emprunt et votre
+  dette n'augmente pas. Avant l'échéance, votre position ne peut être liquidée que si votre collatéral, pondéré par le
+  LTV de liquidation (LLTV) de chaque collatéral, ne couvre plus la dette (un facteur de santé, ou health factor, sous
+  1). Une fois l'échéance passée, toute dette restante peut être liquidée quel que soit votre facteur de santé, avec un
+  bonus du liquidateur qui augmente pendant la première heure. Remboursez avant l'échéance, puis retirez vous-même votre
+  collatéral.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Les chiffres et les numéros de bloc auxquels ils ont été lus : content/blog/snapshots/morpho-midnight-fixed-rate-loans.md */}
+
+## Qu'est-ce que Morpho Midnight ?
+
+Morpho Midnight est la partie de Morpho qui propose des prêts à un taux fixe jusqu'à une date fixe, l'échéance. La documentation de Morpho l'appelle « Fixed Rate Markets (Midnight) » (marchés à taux fixe), à côté de Morpho Blue, ses marchés à taux variable. Si vous découvrez les calculs de santé de Morpho, commencez par [le guide du facteur de santé Morpho](/fr/blog/facteur-de-sante-morpho), sur lequel ce guide s'appuie.
+
+Midnight a ouvert au public le 21 juillet 2026, sur Base, avec une seule paire (collatéral cbBTC, prêts en USDC) et quelques échéances. Dans ce guide, un marché Midnight est désigné par cette paire : un « marché cbBTC/USDC » prend du cbBTC en collatéral et prête de l'USDC. Le même code de contrat tourne désormais sur cinq réseaux :
+
+| Réseau          | Le contrat Midnight a du code depuis | Marchés listés par l'API de Morpho (26 octobre 2026) |
+| --------------- | ------------------------------------ | ---------------------------------------------------- |
+| Base            | 6 juillet 2026                       | Oui ; 19 marchés listés ont des prêts ouverts        |
+| Ethereum        | 20 août 2026                         | Oui ; 12 marchés listés ont des prêts ouverts        |
+| Arc             | 11 septembre 2026                    | Aucun (13 marchés existent)                          |
+| Robinhood Chain | Date non disponible                  | Aucun (34 marchés existent)                          |
+| Tempo           | 3 octobre 2026                       | Aucun (l'API n'affiche aucun marché)                 |
+
+N'importe qui peut créer un marché Midnight : qu'un marché existe sur la blockchain ne dit donc pas grand-chose. Les marchés que montre l'app Morpho sont ceux que liste son API, et le 26 octobre 2026, ils se trouvaient tous sur Ethereum et Base.
+
+Un ancien article de Morpho présentait Midnight, avec Vaults V2, comme « Morpho V2 ». Son article de lancement précise que Midnight n'est ni une deuxième version de Blue ni un remplaçant : les deux fonctionnent côte à côte. Ce sont des contrats distincts.
+
+## Comment un marché Midnight est-il défini ?
+
+Un marché Midnight est fixé à sa création et ne change jamais. Il est défini par :
+
+- **Un token emprunté**, par exemple l'USDC.
+- **Un ou plusieurs collatéraux** (jusqu'à 128), chacun avec son propre LLTV (la part de la valeur du collatéral que vous pouvez devoir avant la liquidation), son propre oracle et son propre curseur de liquidation (liquidation cursor), qui fixe le bonus du liquidateur.
+- **Une échéance**, une date et une heure auxquelles tous les prêts du marché sont dus.
+- **Un seuil de récupération** (rcfThreshold), qui décide quand une petite quantité d'un collatéral peut être liquidée en totalité (voir plus bas).
+- **Des filtres facultatifs** (gates), qui peuvent limiter qui a le droit de prêter, d'emprunter ou de liquider. Un filtre ne peut jamais vous empêcher de rembourser ou de sortir. Aucun des marchés listés sur Ethereum ou Base n'avait de filtre le 26 octobre 2026.
+
+Un emprunteur peut utiliser jusqu'à 16 des collatéraux d'un marché à la fois. Pour accepter un nouveau collatéral ou déplacer l'échéance, il faut créer un nouveau marché. Les marchés listés qui contiennent des prêts, sur les deux réseaux, arrivent à échéance le dernier vendredi d'un mois à 15:00 UTC : le 30 octobre, le 27 novembre et le 25 décembre 2026, et le 26 mars 2027.
+
+## Comment le taux fixe est-il fixé, et que devez-vous à l'échéance ?
+
+Le taux vient d'un prix, pas d'un modèle de taux d'intérêt. Midnight compte la dette en unités, et une unité de dette est une promesse de rembourser un token emprunté à l'échéance. Pour emprunter, vous vendez des unités aux prêteurs à un prix inférieur à 1 : à un prix de 0,99, vous recevez 0,99 USDC aujourd'hui pour chaque unité et devez 1 USDC par unité à l'échéance. Le taux sur toute la durée est égal à 1 divisé par le prix, moins 1, et la documentation de Morpho le convertit en taux annuel en le divisant par la part d'année restante.
+
+Les prix viennent d'offres que publient prêteurs et emprunteurs : deux emprunteurs du même marché peuvent donc payer des taux différents. Le 26 octobre 2026, l'API de Morpho situait les taux des 117 emprunteurs du marché cbBTC/USDC de Base à échéance du 25 décembre 2026 entre 1,93 % et 6,84 % par an.
+
+Ce que vous devez est simple : le nombre d'unités que vous avez vendues, en tokens empruntés, payable à l'échéance. Rien ne s'ajoute pendant la durée du prêt. Le contrat de Midnight ne modifie la dette d'un emprunteur que lorsque vous empruntez davantage, remboursez, rachetez des unités ou êtes liquidé ; aucun intérêt ne court dessus, ni avant ni après l'échéance.
+
+Midnight a deux types de frais, tous deux fixés par marché et tous deux nuls sur les deux marchés de ce guide :
+
+- **Des frais de règlement** (settlement fee) sur chaque transaction, payés par celui qui accepte une offre. Le contrat les plafonne selon le temps restant jusqu'à l'échéance, de 0,0014 % pour un jour à 0,5 % pour 360 jours.
+- **Des frais continus** (continuous fee), supportés par les seuls prêteurs et plafonnés à 1 % par an.
+
+## Comment le facteur de santé se calcule-t-il avec plusieurs collatéraux ?
+
+Le contrat de Midnight vérifie la santé par oui ou par non : une position est saine tant que sa dette maximale est au moins égale à sa dette. La dette maximale est la somme, pour chaque collatéral que vous utilisez, de sa valeur en token emprunté au prix de son oracle multipliée par son propre LLTV. La documentation de Morpho formule la vérification ainsi : maxDebt ≥ debt ; le facteur de santé est la même vérification écrite sous forme de ratio, dette maximale divisée par dette, et en dessous de 1, la position peut être liquidée.
+
+Prenons le plus grand marché listé sur Ethereum, qui prête de l'USDC contre deux collatéraux aux LLTV différents : l'USDC lui-même à 98 % et le cbBTC à 86 %. Avec le cbBTC à 80 011,48 USDC (le prix de son oracle le 26 octobre 2026), la position d'illustration du [guide du facteur de santé Morpho](/fr/blog/facteur-de-sante-morpho), 0,5 cbBTC et 10 000 USDC de collatéral face à 40 000 USDC de dette, donne :
+
+| Collatéral  | Valeur (USDC) | LLTV | Compte pour (USDC) |
+| ----------- | ------------- | ---- | ------------------ |
+| 0,5 cbBTC   | 40 005,74     | 86 % | 34 404,94          |
+| 10 000 USDC | 10 000,00     | 98 % | 9 800,00           |
+| Total       | 50 005,74     |      | 44 204,94          |
+
+Son facteur de santé est de 44 204,94 ÷ 40 000 = 1,105, et il passe sous 1 si le cbBTC tombe sous environ 70 233 USDC, soit 12,2 % plus bas, le collatéral en USDC gardant sa valeur. L'idée est la même qu'avec [un deuxième collatéral sur Aave](/fr/blog/facteur-de-sante-aave#quest-ce-qui-change-avec-un-deuxieme-actif-de-collateral) : chaque actif compte à son propre taux.
+
+Vous pouvez ajouter, retirer ou échanger des collatéraux à tout moment, tant qu'un retrait vous laisse en bonne santé. Si l'oracle de l'un des collatéraux que vous utilisez cesse de répondre, les vérifications de santé, les emprunts, les retraits et les liquidations échouent tous pour votre position tant que vous avez une dette. Le remboursement fonctionne toujours, et une fois votre dette à zéro, vous pouvez retirer sans aucun oracle.
+
+## Quand un prêt Midnight peut-il être liquidé ?
+
+Un prêt Midnight peut être liquidé de deux façons : quand il n'est pas sain, à tout moment, ou quand il reste une dette après l'échéance, quelle que soit sa santé. [Comment fonctionne la liquidation sur Morpho](/fr/blog/fonctionnement-liquidation-morpho) couvre les mécanismes communs ; voici ce qui est propre à Midnight.
+
+### Avant l'échéance
+
+Avant l'échéance, seule la santé compte. Dès que le facteur de santé est sous 1, un liquidateur peut rembourser une partie de votre dette et prendre du collatéral d'une valeur égale à ce montant plus un bonus. Le bonus est fixé par collatéral : 1 ÷ (1 − curseur × (1 − LLTV)). Pour le cbBTC avec un LLTV de 86 % et un curseur de 0,3, cela donne 1,0438, soit un bonus de 4,38 % ; pour l'USDC à 98 %, environ 0,6 %. Un liquidateur choisit lequel de vos collatéraux il prend, et la documentation de Morpho prévient qu'il prendra celui qui rapporte le plus.
+
+La part qui peut partir en une fois dépend de la taille. En temps normal, un liquidateur ne peut rembourser que ce qu'il faut pour rendre la position saine. L'exception : quand le collatéral restant après une telle liquidation plafonnée rembourserait moins que le rcfThreshold du marché, ce collatéral peut être pris en totalité. Le seuil est de 3 000 USDC sur le marché cbBTC/USDC de Base de l'exemple chiffré ci-dessous et de 300 000 USDC sur le marché Ethereum ci-dessus. Sur un prêt à un seul collatéral sous cette taille, toute la position peut partir d'un coup.
+
+### Après l'échéance
+
+Une fois l'heure d'échéance passée, toute dette restante peut être liquidée même si votre facteur de santé est de 2 ou de 10. Le chemin post-échéance du contrat ne vérifie que l'horloge. La raison avancée par Morpho : les prêteurs comptent retirer leurs fonds à l'échéance, et un emprunteur qui n'a pas remboursé, sain ou non, les en empêche.
+
+Sur ce chemin, le bonus part de zéro à l'échéance et augmente régulièrement jusqu'au bonus complet en 60 minutes. Si votre position n'est en plus pas saine après l'échéance, un liquidateur peut utiliser à la place le chemin fondé sur la santé et prendre tout de suite le bonus complet. Sur le chemin post-échéance, aucun plafond ne limite le montant remboursable : toute la dette peut donc être liquidée d'un coup. Après l'échéance, vous ne pouvez plus ajouter de dette, mais vous pouvez toujours rembourser, racheter des unités et retirer du collatéral.
+
+<Callout tone="warning">
+  À la seconde exacte de l'échéance, une position saine est encore à l'abri ; une seconde plus tard, elle ne l'est plus.
+  Rembourser en retard une position saine peut vous coûter jusqu'au bonus de liquidation complet, environ 4,4 % de la
+  dette sur un prêt cbBTC avec un LLTV de 86 %.
+</Callout>
+
+Si une liquidation laisse une dette que le collatéral ne peut pas couvrir, le manque est passé en perte et réparti entre les seuls prêteurs de ce marché.
+
+## Comment rembourser en avance, à l'échéance ou reporter sur une échéance plus lointaine ?
+
+Vous avez trois façons de sortir d'un prêt Midnight, plus une solution de repli sur option :
+
+- **Rembourser directement.** Rembourser coûte exactement un token emprunté par unité, avant, à ou après l'échéance. Cela fonctionne toujours, et cela fixe le maximum que vous devriez payer pour sortir plus tôt. Rembourser en avance ne vous rend aucune part des intérêts : vous payez le montant complet dû à l'échéance, simplement plus tôt.
+- **Racheter des unités avant l'échéance.** Vous pouvez aussi acheter des unités dans les offres de vente des prêteurs à un prix inférieur à 1, ce qui annule autant de dette pour moins que sa valeur nominale. Cela suppose que quelqu'un propose des unités au moment où vous voulez sortir.
+- **Reporter sur une échéance plus lointaine.** La documentation de Morpho décrit comment rembourser ou racheter dans un marché et emprunter dans un marché à échéance plus lointaine en une seule transaction, à l'aide de callbacks. L'article de lancement de Morpho en juillet annonçait le report automatique comme une fonction à venir ; le 26 octobre 2026, la documentation ne décrit le report que comme une opération que vous faites vous-même, ou via le repli sur Blue ci-dessous.
+- **Se replier sur Blue.** Morpho a déployé un contrat, BlueFallbackRolling, sur les cinq réseaux. Si vous l'activez et l'autorisez à la fois sur Midnight et sur Blue, n'importe qui peut transférer votre dette et votre collatéral Midnight vers un marché Blue à taux variable que vous avez choisi, à partir d'un moment que vous avez choisi. La récompense de l'appelant est une part de la dette que vous fixez ; elle augmente entre une heure de début et une heure de fin que vous fixez, peut atteindre toute la dette, et s'ajoute à votre nouvelle dette Blue. Il faut exactement un collatéral qui corresponde à celui du marché Blue.
+
+## Que devient votre collatéral après le remboursement ?
+
+Votre collatéral reste où il est jusqu'à ce que vous le retiriez. Le remboursement ne vous le renvoie pas. Une fois votre dette à zéro, la vérification de santé passe sans interroger aucun oracle : vous pouvez donc tout retirer, et aucun filtre ne peut vous en empêcher. Seuls vous, un compte que vous avez autorisé ou le liquidateur d'une position liquidable peuvent le déplacer.
+
+Il en va de même après une liquidation : le collatéral que le liquidateur n'a pas pris reste dans votre position, à retirer par vous.
+
+## Exemple chiffré : un prêt cbBTC/USDC dû le 25 décembre 2026
+
+Ce marché, sur la paire avec laquelle Midnight a été lancé, a été créé le 14 juillet 2026, une semaine avant le lancement public, et c'est le plus grand marché listé sur Base. Lu sur la blockchain le 26 octobre 2026 à 06:06 UTC :
+
+| Champ                | Valeur                                           |
+| -------------------- | ------------------------------------------------ |
+| Token emprunté       | USDC                                             |
+| Collatéral           | cbBTC, le seul                                   |
+| LLTV                 | 86 %                                             |
+| Bonus de liquidation | 4,38 % (curseur 0,3)                             |
+| Échéance             | 25 décembre 2026, 15:00 UTC, dans 60,4 jours     |
+| rcfThreshold         | 3 000 USDC                                       |
+| Filtres et frais     | Aucun                                            |
+| Dû à l'échéance      | 1 530 235,58 USDC répartis entre 117 emprunteurs |
+| Prix du cbBTC        | 80 097,33 USDC (l'oracle du marché)              |
+
+**L'emprunt.** Le meilleur prix auquel un emprunteur pouvait vendre des unités était de 0,9901297. Emprunter 10 000 USDC à ce prix signifie devoir environ 10 099,69 USDC le 25 décembre 2026 : 0,997 % pour les 60,4 jours, environ 6,0 % par an. Ce prix change d'une minute à l'autre.
+
+**Une position typique.** L'emprunteur médian doit 37,08 USDC à l'échéance face à 0,00060018 cbBTC, d'une valeur de 48,07 USDC. Sa dette maximale est de 48,07 × 0,86 = 41,34 USDC, donc son facteur de santé est de 41,34 ÷ 37,08 = 1,11. Il atteint 1 si le cbBTC tombe à environ 71 838 USDC, soit 10,3 % plus bas.
+
+**Si le cbBTC tombe juste sous 71 838 USDC avant l'échéance.** La position est bien en dessous du seuil de 3 000 USDC : un liquidateur peut donc rembourser la totalité des 37,08 USDC et prendre du cbBTC d'une valeur de 38,71 USDC. Sur les 43,12 USDC de cbBTC, l'emprunteur garde environ 4,41 USDC à retirer.
+
+**Si l'emprunteur oublie de rembourser et que le cbBTC reste à 80 097 USDC.** À partir de 15:00:01 UTC le 25 décembre, n'importe qui peut rembourser les 37,08 USDC et prendre du cbBTC ; un liquidateur peut agir à n'importe quelle seconde après 15:00:00. Le bonus augmente avec le temps : environ 2,2 % au bout de trente minutes, les 4,38 % complets au bout d'une heure. Une liquidation une heure ou plus après l'échéance prend du cbBTC d'une valeur de 38,71 USDC et en laisse 9,37 USDC à l'emprunteur. Rembourser 37,08 USDC à temps lui aurait permis de garder les 48,07 USDC de cbBTC, soit 10,99 USDC nets : cette liquidation lui coûte donc 1,63 USDC, le bonus complet. Une liquidation plus précoce coûte moins, mais rien n'oblige un liquidateur à attendre.
+
+## Comment Midnight se compare-t-il à un prêt Morpho Blue à taux variable ?
+
+|                                  | Morpho Blue                                                                                     | Morpho Midnight                                                                                                                                              |
+| -------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Taux                             | Change en permanence selon le modèle de taux d'intérêt du marché                                | Fixé au moment de l'emprunt                                                                                                                                  |
+| Dette                            | Augmente avec les intérêts                                                                      | Un nombre fixe d'unités, qui n'augmente pas                                                                                                                  |
+| Date de fin                      | Aucune                                                                                          | L'échéance                                                                                                                                                   |
+| Collatéral par marché            | Un seul                                                                                         | Un ou plusieurs, chacun avec son propre LLTV                                                                                                                 |
+| Liquidable quand                 | La position n'est pas saine                                                                     | La position n'est pas saine, ou pour toute dette après l'échéance                                                                                            |
+| Bonus                            | 1 ÷ (1 − 0,3 × (1 − LLTV)), 15 % au plus                                                        | 1 ÷ (1 − curseur × (1 − LLTV)), curseur fixé par collatéral, sans plafond de 15 %                                                                            |
+| Combien en une fois              | Jusqu'à la totalité de la dette en un seul appel                                                | Avant l'échéance, ce qui rétablit la santé (un collatéral entier si ce qui reste rembourserait moins que le rcfThreshold) ; après l'échéance, toute la dette |
+| Préliquidation (pre-liquidation) | En cours de retrait par Morpho, voir [la préliquidation Morpho](/fr/blog/preliquidation-morpho) | Ne fait pas partie de Midnight                                                                                                                               |
+| Sortir plus tôt                  | Rembourser à tout moment                                                                        | Rembourser à la valeur nominale, ou racheter des unités s'il existe des vendeurs                                                                             |
+
+La différence en pratique pour votre facteur de santé : sur Blue, il peut baisser sous le seul effet des intérêts, comme sur Aave ([comment les hausses de taux affectent votre facteur de santé](/fr/blog/taux-interet-aave#comment-les-pics-de-taux-affectent-ils-votre-facteur-de-sante)). Sur Midnight, il ne baisse que si les prix des collatéraux baissent, ou si vous retirez du collatéral ou empruntez davantage. En contrepartie, Midnight ajoute une date à ne pas laisser passer.
+
+## Comment les alertes peuvent-elles aider avec un prêt Midnight ?
+
+Une alerte peut vous prévenir des deux risques d'un prêt Midnight : un facteur de santé qui baisse et une échéance qui approche. Tokenping vérifie toutes les 5 minutes. Son [tableau de bord Morpho](/fr/morpho) liste les positions d'emprunt d'un wallet dans les marchés listés dans l'app Morpho sur 14 réseaux, Blue et Midnight, et consulter vos positions ne demande aucun paiement. Les alertes Midnight couvrent les marchés que liste l'API de Morpho. Le 26 octobre 2026, ils se trouvaient sur Ethereum et Base ; Tokenping couvre aussi Arc et Robinhood Chain dès que Morpho y liste des marchés Midnight. D'ici là, aucune alerte Midnight n'est possible sur ces deux réseaux.
+
+Pour un prêt Midnight :
+
+- **Santé.** Tokenping calcule votre facteur de santé à partir de la blockchain selon les propres formules de Morpho, jamais à partir de l'API de Morpho. Tant qu'il est sous le seuil que vous avez fixé (de 1,02 à 10), chaque vérification envoie un message sur chaque canal que vous avez choisi : Signal, Telegram ou e-mail.
+- **Échéance.** Vous recevez un rappel dans les 7 derniers jours avant l'échéance et un autre dans les 24 dernières heures.
+- **Après l'échéance.** Tant qu'il reste une dette, chaque vérification envoie une alerte, car le prêt peut être liquidé quel que soit son facteur de santé.
+
+Les alertes coûtent <AlertPrice />, le même abonnement que les alertes Aave. Une alerte vous donne le temps d'agir ; elle n'empêche pas la liquidation, et un prix peut bouger entre deux vérifications.
+
+## Sources
+
+- [Documentation Morpho : Midnight concepts](https://docs.morpho.org/learn/concepts/midnight) : unités, créance et dette, sorties anticipées, collatéral et santé (consulté le 26 octobre 2026)
+- [Documentation Morpho : Midnight liquidations](https://docs.morpho.org/learn/concepts/midnight/liquidations) : les deux chemins de liquidation, la montée progressive du bonus après l'échéance et pourquoi une dette impayée est liquidable après l'échéance (consulté le 26 octobre 2026)
+- [Documentation Morpho : offers](https://docs.morpho.org/learn/concepts/midnight/offers) et [gates](https://docs.morpho.org/learn/concepts/midnight/gates) : le report avec des callbacks, et ce que les filtres peuvent et ne peuvent pas bloquer (consulté le 26 octobre 2026)
+- [Documentation Morpho : market mechanics](https://docs.morpho.org/developers/midnight/concepts/market-mechanics), [collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) et [fees](https://docs.morpho.org/developers/midnight/concepts/fees) (consulté le 26 octobre 2026)
+- [Documentation Morpho : exit a borrow early](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-early) et [exit a borrow at maturity](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-by-repaying-in-full-at-maturity) (consulté le 26 octobre 2026)
+- [Documentation Morpho : contract addresses](https://docs.morpho.org/developers/contracts/addresses) : Midnight et BlueFallbackRolling sur chaque réseau (consulté le 26 octobre 2026)
+- [morpho-org/midnight](https://github.com/morpho-org/midnight) : Midnight.sol (vérification de santé, liquidation, remboursement, retraits), ConstantsLib.sol (frais, bonus, montée sur 60 minutes, limites de collatéral) et le README du périphérique (consulté le 26 octobre 2026)
+- [morpho-org/morpho-blue](https://github.com/morpho-org/morpho-blue) : les constantes de liquidation et de bonus de Blue (consulté le 26 octobre 2026)
+- [Now live: Morpho Midnight and the new Markets App](https://morpho.org/blog/now-live-morpho-midnight) (21 juillet 2026) et [Morpho Midnight: what to expect at launch](https://morpho.org/blog/morpho-midnight-what-to-expect-at-launch) (17 juillet 2026) (consulté le 26 octobre 2026)
+- [Morpho Fixed Rate Markets](https://morpho.org/blog/morpho-v2-liberating-the-potential-of-onchain-loans) : l'ancien article de Morpho sur Midnight et Vaults V2 (consulté le 26 octobre 2026)
+- [API Morpho Midnight](https://api.morpho.org/v0/midnight/markets) : marchés listés, carnet d'ordres et positions des emprunteurs (consulté le 26 octobre 2026)
+- Contrats Midnight sur [Base](https://basescan.org/address/0xAdedD8ab6dE832766Fedf0FaC4992E5C4D3EA18A) au bloc 53102734 et sur [Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f) au bloc 26274992 : définitions des marchés, totaux, frais et prix des oracles (consulté le 26 octobre 2026)
+
+_Contenu éducatif, pas un conseil financier. Les alertes réduisent le risque, elles n'empêchent pas la liquidation._

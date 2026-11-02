@@ -1,0 +1,158 @@
+export const meta = {
+  slug: "facteur-de-sante-aave-sur",
+  title: "Quel facteur de santé est sûr sur Aave ? Tableau des marges",
+  description:
+    "Il n'existe pas de facteur de santé sûr universel sur Aave. Voyez jusqu'où les prix peuvent baisser à 1,2, 1,5 ou 2,0 et comment choisir votre marge.",
+  h1: "Qu'est-ce qu'un facteur de santé sûr sur Aave ?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-20",
+  primaryQuestion: "Quel facteur de santé est sûr sur Aave ?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  Il n'existe pas de facteur de santé (health factor) unique qui soit sûr ou « bon » sur Aave. Le centre d'aide d'Aave
+  lui-même indique que le bon niveau dépend de la volatilité de vos actifs et de leur corrélation. Ce que le nombre vous
+  dit, en revanche, c'est jusqu'où les prix peuvent évoluer avant la liquidation : avec un seul collatéral volatil et
+  une dette en stablecoin, un facteur de santé de 1,2 atteint 1,00 après une baisse de prix de 16,7 %, 1,5 après une
+  baisse de 33,3 % et 2,0 après une baisse de 50 %.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Existe-t-il un facteur de santé sûr sur Aave ?
+
+Non. Le centre d'aide d'Aave indique qu'il n'y a « no universally 'safe' health factor » (aucun facteur de santé « sûr » universel), parce que le bon niveau dépend de la volatilité et de la corrélation des actifs d'une position ([Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations), consulté le 14 octobre 2026). Il ajoute que des facteurs de santé plus bas peuvent être acceptables pour des actifs corrélés, comme les stablecoins ou les actifs étroitement liés à l'ETH.
+
+Le facteur de santé (HF) est un nombre qui compare votre collatéral à votre dette sur un marché Aave : HF = Σ(valeur du collatéral × seuil de liquidation) ÷ valeur totale de la dette, en USD aux prix de l'oracle d'Aave. Le seuil de liquidation (liquidation threshold) est la part de la valeur d'un collatéral qui compte dans le facteur de santé, par exemple 83 % pour le WETH sur le marché Core d'Ethereum (lu on-chain au bloc Ethereum 26193284 le 14 octobre 2026). Sous 1,00, un liquidateur peut rembourser une partie ou la totalité de votre dette, et vous perdez du collatéral d'une valeur égale au montant remboursé plus un bonus de liquidation. La formule et d'autres exemples se trouvent dans le guide [qu'est-ce que le facteur de santé d'Aave](/fr/blog/facteur-de-sante-aave).
+
+Un facteur de santé « sûr » se résume donc à deux choix que vous seul pouvez faire : quelle variation de prix votre position doit pouvoir absorber, et de combien de temps vous avez besoin pour agir une fois que les prix commencent à bouger. Les tableaux de bord, celui de Tokenping compris, qualifient les facteurs de santé avec des mots comme « Sûr » ou « Risqué ». Ces étiquettes sont des tranches d'affichage ; aucun niveau ne garantit qu'une position ne puisse pas être liquidée.
+
+## Jusqu'où les prix peuvent-ils baisser avant la liquidation, pour chaque facteur de santé ?
+
+Avec un seul collatéral volatil et une dette en stablecoin, une position Aave atteint un facteur de santé de 1,00 après une baisse du prix du collatéral de 1 − 1/HF. À HF 1,2, c'est une baisse de 16,7 %, à HF 1,5, de 33,3 %, et à HF 2,0, de 50 %.
+
+La démonstration est courte. Avec un seul collatéral, HF = (quantité de collatéral × prix × seuil de liquidation) ÷ dette. Si la dette est un stablecoin qui vaut 1 $ et que rien d'autre ne change, le facteur de santé évolue exactement en proportion du prix du collatéral. Il atteint 1,00 quand le prix est tombé à 1/HF du prix actuel, la baisse est donc de 1 − 1/HF.
+
+| Facteur de santé actuel                                               | Baisse de prix qui amène le HF à 1,00 | Prix de l'ETH à HF 1,00, si l'ETH vaut 2 400 $ aujourd'hui |
+| --------------------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------------- |
+| 83 ÷ 80,5 ≈ 1,031 (WETH emprunté jusqu'à la limite sur Ethereum Core) | 3,0 %                                 | 2 327,71 $                                                 |
+| 1,1                                                                   | 9,1 %                                 | 2 181,82 $                                                 |
+| 1,2                                                                   | 16,7 %                                | 2 000,00 $                                                 |
+| 1,3                                                                   | 23,1 %                                | 1 846,15 $                                                 |
+| 1,5                                                                   | 33,3 %                                | 1 600,00 $                                                 |
+| 1,66 (l'exemple chiffré ci-dessous)                                   | 39,8 %                                | 1 445,78 $                                                 |
+| 2,0                                                                   | 50,0 %                                | 1 200,00 $                                                 |
+| 3,0                                                                   | 66,7 %                                | 800,00 $                                                   |
+
+Une vérification chiffrée sur le marché Core d'Ethereum, avec le seuil de liquidation du WETH de 83 % lu on-chain le 14 octobre 2026 (bloc Ethereum 26193284) : prenez 10 WETH déposés à un prix indicatif de 2 400 $ (24 000 $) et 12 000 USDC empruntés. HF = 24 000 × 0,83 ÷ 12 000 = 1,66. L'ETH atteint la ligne de liquidation à 12 000 ÷ (10 × 0,83) = 1 445,78 $, soit 39,8 % sous 2 400 $, comme 1 − 1/1,66. L'ETH est arrondi ici à 2 400 $ ; l'oracle d'Aave indiquait 2 414,78 $ au bloc 26193376 le même jour.
+
+Le tableau suppose que le stablecoin reste à 1 $, qu'aucun intérêt ne s'accumule et que le seuil de liquidation ne change pas. Avec deux actifs de collatéral, ou avec une dette en actif volatil, le calcul change ; le guide pour [calculer votre prix de liquidation sur Aave](/fr/blog/prix-de-liquidation-aave) traite les deux cas.
+
+## Pourquoi le nombre « sûr » diffère-t-il entre dette en stablecoin, dette volatile et loops en E-Mode ?
+
+Le même facteur de santé ne signifie pas la même chose pour toutes les positions Aave, parce qu'il mesure la distance à la liquidation dans le prix qui pilote la position, et ce prix dépend de ce que vous avez déposé et de ce que vous avez emprunté. Voici ce qu'un facteur de santé de 1,5 absorbe dans quatre configurations courantes :
+
+| Type de position                         | Exemple                                                       | Prix qui pilote le facteur de santé     | Variation qui amène le HF de 1,5 à 1,00 |
+| ---------------------------------------- | ------------------------------------------------------------- | --------------------------------------- | --------------------------------------- |
+| Collatéral volatil, dette en stablecoin  | WETH déposé, USDC emprunté                                    | Prix de l'ETH en USD                    | L'ETH baisse de 33,3 %                  |
+| Collatéral en stablecoin, dette volatile | USDC déposé, WETH emprunté                                    | Prix de l'ETH en USD                    | L'ETH monte de 50 %                     |
+| Deux actifs volatils                     | WBTC déposé, WETH emprunté                                    | Prix du BTC divisé par le prix de l'ETH | Le ratio BTC/ETH baisse de 33,3 %       |
+| Loop corrélé en E-Mode                   | wstETH déposé, WETH emprunté dans l'E-Mode « ETH correlated » | Taux wstETH/ETH fourni par l'oracle     | Le taux baisse de 33,3 %                |
+
+**Dette en stablecoin.** Avec une dette en stablecoin face à de l'ETH ou du BTC, le facteur de santé suit presque à l'identique le prix du collatéral. Le côté dette bouge peu : l'adaptateur de prix de l'USDC d'Aave sur Ethereum plafonne le prix de l'USDC à 1,04 $ (lu on-chain au bloc Ethereum 26193376 le 14 octobre 2026), donc une dette en USDC n'est jamais valorisée à plus de 4 % au-dessus de 1 $, et un prix de l'USDC sous 1 $ réduit la valeur de la dette, ce qui fait monter le facteur de santé.
+
+**Dette volatile.** Quand vous empruntez un actif volatil contre des stablecoins, le facteur de santé baisse quand l'actif emprunté monte, et l'actif emprunté peut monter de HF − 1 avant la liquidation (50 % à HF 1,5). Prenez 10 000 USDC déposés (seuil de liquidation de 78 % sur Ethereum Core au bloc 26193284, 14 octobre 2026) face à l'équivalent de 6 000 $ de WETH emprunté : HF = 10 000 × 0,78 ÷ 6 000 = 1,30. Si l'ETH valait 2 400 $ au départ, la position atteint HF 1,00 quand l'ETH monte de 30 %, à 3 120 $. Le collatéral en stablecoin peut bouger lui aussi : le 11 mars 2023, l'USDC est tombé autour de 0,88 $, selon le post-mortem de Gauntlet, et à ce prix la même position se trouverait à 8 800 × 0,78 ÷ 6 000 = 1,144.
+
+**Loops en E-Mode.** Dans la catégorie E-Mode « ETH correlated » du marché Core d'Ethereum (LTV de 93 %, seuil de liquidation de 95 % au bloc Ethereum 26193288, 14 octobre 2026 ; les mêmes valeurs sur Arbitrum), le facteur de santé d'un loop (boucle d'emprunt à effet de levier) wstETH contre WETH suit le taux wstETH/ETH que fournit l'oracle, pas le prix de l'ETH en dollars. Cela réduit sa sensibilité au prix de marché de l'ETH, mais un loop emprunté jusqu'à sa limite démarre à 95 ÷ 93 = 1,0215 et atteint 1,00 après une baisse de 2,1 % de ce taux. En mars 2026, un oracle CAPO mal configuré a réduit d'environ 2,85 % le taux effectif du wstETH sur les marchés Core et Prime d'Ethereum, assez pour liquider des loops en E-Mode à fort levier, selon le post-mortem de Chaos Labs. Pour un loop, une erreur d'oracle ou de taux de change peut donc compter plus qu'un krach du marché, et si le taux d'emprunt du WETH dépasse ce que rapporte le collatéral, les intérêts rongent aussi la petite marge. Le guide [pourquoi votre facteur de santé Aave baisse tout seul](/fr/blog/pourquoi-facteur-de-sante-aave-a-baisse) traite cet incident.
+
+## À quelle vitesse les intérêts et les changements de paramètres réduisent-ils votre marge ?
+
+Aux taux du 14 octobre 2026 sur le marché Core d'Ethereum d'Aave (bloc 26193378), les intérêts retireraient environ 3 % par an au facteur de santé d'une position avec du collatéral en WETH et une dette en USDC, si les taux et les prix restaient stables ; une baisse d'un seuil de liquidation prend sa part en une seule fois. Les intérêts font baisser un facteur de santé quand le taux d'emprunt de la dette dépasse le taux de dépôt du collatéral, si bien qu'une position dont le collatéral rapporte plus que ne coûte sa dette, comme de l'USDC déposé face à du WETH emprunté, dérive au contraire vers le haut. Sur Aave V3, un seuil de liquidation abaissé s'applique d'un coup à toutes les positions ouvertes qui utilisent ce collatéral, et avec un seul collatéral, le facteur de santé baisse dans la même proportion. Le guide [pourquoi votre facteur de santé Aave baisse tout seul](/fr/blog/pourquoi-facteur-de-sante-aave-a-baisse) détaille les deux cas avec des chiffres.
+
+## De quelle marge avez-vous besoin pour avoir le temps d'agir ?
+
+Une position Aave a besoin d'une marge suffisante pour que les prix puissent continuer à bouger pendant qu'un avertissement vous parvient et que votre transaction de remboursement ou de dépôt est confirmée. Il n'y a pas de nombre fixe : cela dépend de la vitesse à laquelle votre collatéral évolue, du délai avant que vous voyiez un avertissement et de la fiabilité avec laquelle vous pouvez faire passer une transaction.
+
+Trois délais s'additionnent :
+
+1. **Détection.** Vous ouvrez l'application Aave, ou un service vérifie selon un calendrier. Tokenping vérifie toutes les 5 minutes, donc une variation rapide peut franchir 1,00 entre deux vérifications.
+2. **Réaction.** Vous voyez le message et accédez à votre wallet. La nuit ou en voyage, cela peut prendre des heures.
+3. **Exécution.** La transaction doit être signée, envoyée et incluse dans un bloc, et sur un marché sous tension, les frais de gas augmentent et les interfaces ou les endpoints RPC peuvent tomber en panne. Sur le forum Polygon, en mai 2021, un emprunteur a tenté de rembourser à HF 1,01, a rencontré des erreurs à répétition et a été liquidé avant que le remboursement ne passe. Sur le forum Aave, en décembre 2024, un autre a signalé plus d'une heure de tentatives de remboursement bloquées en attente, puis une liquidation. Aucun des deux fils n'établit la cause.
+
+Sous 1,00, la liquidation peut suivre rapidement : le centre d'aide d'Aave décrit les liquidations comme très concurrentielles, souvent menées par des bots sur mesure qui réagissent aux changements de prix de l'oracle et soumettent leurs transactions avec une priorité élevée.
+
+La marge dont vous avez besoin couvre donc la variation de prix qui pourrait se produire pendant la détection, la réaction et l'exécution. Une alerte utile se place donc au-dessus du dernier facteur de santé auquel vous pourriez encore agir, pas à ce niveau.
+
+## Comment choisir un seuil d'alerte, étape par étape ?
+
+Une façon de choisir un seuil est de partir d'un prix plutôt que d'un facteur de santé : choisissez le prix du collatéral auquel vous voudriez commencer à agir, convertissez-le en facteur de santé et placez l'alerte à ce niveau ou un peu au-dessus, parce que les vérifications ont lieu à intervalles réguliers et qu'un remboursement peut mettre du temps à être confirmé. L'exemple utilise une position sur Ethereum Core avec 10 WETH déposés et 12 000 USDC empruntés, un seuil de liquidation du WETH de 83 % (bloc Ethereum 26193284, 14 octobre 2026) et l'ETH à un prix indicatif de 2 400 $. Cela donne un HF de 1,66 et un prix de liquidation de 1 445,78 $.
+
+1. **Choisissez le prix auquel vous voudriez commencer à agir.** Disons que vous voudriez rembourser ou ajouter du collatéral si l'ETH atteignait 2 000 $, soit une baisse de 16,7 % depuis 2 400 $.
+2. **Convertissez ce prix en facteur de santé.** Avec un seul collatéral et une dette en stablecoin, HF à un nouveau prix = HF actuel × nouveau prix ÷ prix actuel. Ici, cela donne 1,66 × 2 000 ÷ 2 400 = 1,38. Avec plusieurs actifs de collatéral ou une dette volatile, le guide pour [calculer votre prix de liquidation sur Aave](/fr/blog/prix-de-liquidation-aave) montre comment calculer le facteur de santé à n'importe quel prix.
+3. **Vérifiez la marge restante.** Avec l'ETH à 2 000 $, la position peut encore absorber une baisse supplémentaire de 27,7 %, jusqu'à 1 445,78 $. Si ce n'est pas assez pour le temps dont vous avez besoin pour agir, choisissez un prix plus élevé et recommencez. Le seuil qui laisse une baisse supplémentaire donnée est 1 ÷ (1 − baisse) :
+
+   | Baisse de prix supplémentaire que vous voulez garder quand l'alerte se déclenche | Seuil d'alerte |
+   | -------------------------------------------------------------------------------- | -------------- |
+   | 10 %                                                                             | 1,11           |
+   | 15 %                                                                             | 1,18           |
+   | 20 %                                                                             | 1,25           |
+   | 25 %                                                                             | 1,33           |
+   | 33,3 %                                                                           | 1,50           |
+
+   Ces lignes supposent un seul collatéral volatil et une dette en stablecoin.
+
+4. **Gardez le seuil sous forme de facteur de santé, pas de prix.** Pour un seul collatéral avec une dette en stablecoin, un seuil garde son sens après que vous avez remboursé, ajouté du collatéral ou emprunté davantage : 1,25 laisse toujours une baisse de 20 %, alors que le prix de l'ETH auquel il se déclenche se déplace avec la position.
+5. **Recommencez pour chaque marché.** Sur Aave V3, le marché de chaque réseau a son propre facteur de santé, donc les positions sur Arbitrum et sur Base demandent des seuils distincts.
+
+Dans Tokenping, vous réglez ce nombre par marché Aave V3 ou par Spoke Aave V4, de 1,1 à 10 (1,5 par défaut), et vous recevez un message sur Signal, Telegram ou par e-mail toutes les 5 minutes tant que votre facteur de santé est en dessous. Une position qui tourne normalement sous 1,1, comme un loop en E-Mode proche de sa limite, déclencherait un message à chaque vérification : Tokenping ne lui convient donc pas. Vous pouvez d'abord [vérifier votre facteur de santé Aave V3](/fr/aave) ; le guide [comment configurer une alerte de facteur de santé](/fr/blog/configurer-alertes-facteur-de-sante-aave) couvre la suite.
+
+## Qu'est-ce qu'emprunter le maximum fait à votre marge ?
+
+Emprunter le maximum ne laisse presque aucune marge. Sur Aave V3, une position à sa limite d'emprunt démarre à un facteur de santé de LT ÷ LTV, soit seulement environ 1,02 à 1,07 pour les principaux actifs sur Ethereum Core et Arbitrum. Pour le WETH sur Ethereum Core, cela donne 83 ÷ 80,5 = 1,031 : une baisse de 3,0 % de l'ETH atteint la ligne de liquidation.
+
+L'écart existe parce qu'Aave V3 utilise deux pourcentages par collatéral. Le ratio prêt/valeur (LTV) plafonne ce que vous pouvez emprunter contre lui ; le seuil de liquidation (LT), toujours au moins aussi élevé, décide du moment où vous pouvez être liquidé. Un nouvel emprunt n'est accepté que tant que votre dette reste dans la limite collatéral × LTV. À la limite, dette = collatéral × LTV, donc HF = collatéral × LT ÷ (collatéral × LTV) = LT ÷ LTV.
+
+| Marché                                   | Collatéral                             | LTV    | Seuil de liquidation | HF à la limite d'emprunt (LT ÷ LTV) | Variation qui amène le HF à 1,00                          |
+| ---------------------------------------- | -------------------------------------- | ------ | -------------------- | ----------------------------------- | --------------------------------------------------------- |
+| Ethereum Core                            | WETH                                   | 80,5 % | 83 %                 | 1,031                               | L'ETH baisse de 3,0 % (dette en stablecoin)               |
+| Ethereum Core                            | WBTC                                   | 73 %   | 78 %                 | 1,068                               | Le BTC baisse de 6,4 % (dette en stablecoin)              |
+| Ethereum Core                            | USDC                                   | 75 %   | 78 %                 | 1,040                               | L'actif emprunté monte de 4,0 %                           |
+| Arbitrum                                 | WETH                                   | 80 %   | 84 %                 | 1,050                               | L'ETH baisse de 4,8 % (dette en stablecoin)               |
+| Arbitrum                                 | WBTC                                   | 73 %   | 78 %                 | 1,068                               | Le BTC baisse de 6,4 % (dette en stablecoin)              |
+| Arbitrum                                 | USDC                                   | 75 %   | 78 %                 | 1,040                               | L'actif emprunté monte de 4,0 %                           |
+| Ethereum Core, E-Mode « ETH correlated » | wstETH ou cbETH, en empruntant du WETH | 93 %   | 95 %                 | 1,0215                              | Le taux du collatéral par rapport à l'ETH baisse de 2,1 % |
+
+Les lignes par actif ont été lues on-chain le 14 octobre 2026 depuis le PoolDataProvider de chaque marché, au bloc Ethereum 26193284 et au bloc Arbitrum 514855406, et étaient inchangées lors d'une nouvelle lecture au bloc Ethereum 26193988 et au bloc Arbitrum 514885451. La ligne E-Mode vient du Pool d'Ethereum Core aux blocs 26193288 et 26193990 ; la catégorie « ETH correlated » d'Arbitrum, lue depuis son Pool aux blocs Arbitrum 514855561 et 514885562, avait les mêmes valeurs. La gouvernance peut modifier chacune d'elles à tout moment.
+
+En dollars : 10 WETH à un prix indicatif de 2 400 $ sur Ethereum Core permettent au plus 24 000 × 0,805 = 19 320 $ de dette en USDC. Tout emprunter donne HF = 19 920 ÷ 19 320 = 1,031 et un prix de liquidation de 19 320 ÷ (10 × 0,83) = 2 327,71 $, seulement 3,0 % sous le prix de départ, et aux taux du 14 octobre 2026, les intérêts font ensuite baisser le facteur de santé même si l'ETH se maintient. Avec plusieurs actifs de collatéral, le HF à la limite est le seuil de liquidation pondéré divisé par le LTV pondéré, en général à peine quelques pour cent au-dessus de 1.
+
+Les jauges « limite d'emprunt utilisée » des applications affichent dette ÷ (collatéral × LTV), ce qui n'est pas le facteur de santé. Une position en WETH sur Ethereum Core à 100 % de sa limite d'emprunt a encore un HF d'environ 1,031, pas 1,00.
+
+<Callout tone="info">
+  Aave V4 attribue à chaque collatéral un seul facteur de collatéral (collateral factor) au lieu d'un LTV et d'un seuil
+  de liquidation distincts : l'écart LT ÷ LTV de ce tableau est donc une règle de la V3. Sur Aave V3, Tokenping
+  surveille chaque marché sur 21 réseaux, y compris les marchés Core, Prime, EtherFi et Horizon d'Ethereum. Sur Aave V4,
+  il surveille chaque Spoke sur Ethereum, Avalanche, Arc et Base, chacun comme un marché à part entière.
+</Callout>
+
+## Sources
+
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) : aucun facteur de santé sûr universel ; liquidations concurrentielles (consulté le 14 octobre 2026)
+- [GenericLogic.sol, aave-v3-origin](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) : formule du facteur de santé (consulté le 14 octobre 2026)
+- [ValidationLogic.sol, aave-v3-origin](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol) : emprunts plafonnés par le LTV ; liquidation sous HF 1,00 (consulté le 14 octobre 2026)
+- [LiquidationLogic.sol, aave-v3-origin](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol) : remboursement partiel ou total de la dette ; collatéral saisi avec un bonus de liquidation (consulté le 14 octobre 2026)
+- [PoolDataProvider d'Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) : LTV et seuil de liquidation aux blocs 26193284 et 26193988 ; taux au bloc 26193378 (consulté le 14 octobre 2026)
+- [Pool d'Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2) : catégorie E-Mode « ETH correlated » aux blocs 26193288 et 26193990 (consulté le 14 octobre 2026)
+- [AaveOracle d'Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) : prix de l'ETH de 2 414,78 $ au bloc 26193376, et son [adaptateur de prix USDC](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B) : plafond de prix de 1,04 $ au bloc 26193376 (consulté le 14 octobre 2026)
+- [PriceCapAdapterStable, aave-dao/aave-price-feeds](https://github.com/aave-dao/aave-price-feeds) : fonctionnement du plafond de l'USDC, les prix au-dessus du plafond sont ignorés, les prix sous 1 $ passent tels quels (consulté le 14 octobre 2026)
+- [PoolDataProvider d'Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b) : LTV et seuil de liquidation aux blocs Arbitrum 514855406 et 514885451 (consulté le 14 octobre 2026)
+- [Pool d'Arbitrum](https://arbiscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD) : catégorie E-Mode « ETH correlated », id 2, aux blocs Arbitrum 514855561 et 514885562 (consulté le 14 octobre 2026)
+- [Présentation d'Aave V4, aave/aave-v4](https://github.com/aave/aave-v4/blob/main/docs/overview.md) : Dynamic Risk Configuration, le facteur de collatéral comme paramètre de collatéral en V4 ; en V3, une baisse du seuil de liquidation touche toutes les positions ouvertes (consulté le 14 octobre 2026)
+- [Spoke.sol, aave/aave-v4](https://github.com/aave/aave-v4/blob/main/src/spoke/Spoke.sol) : facteur de santé de la V4 pondéré par les facteurs de collatéral (consulté le 14 octobre 2026)
+- [Gauntlet: Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) : plus bas de l'USDC autour de 0,88 $, le 11 mars 2023 (consulté le 14 octobre 2026)
+- [Chaos Labs: Post-Mortem, Exchange Rate Misalignment on wstETH Core and Prime Instances](https://governance.aave.com/t/24269) : incident CAPO de mars 2026 (consulté le 14 octobre 2026)
+- [Forum Polygon : Liquidation on polygon AAVE, JSON ERROR](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067) : mai 2021 (consulté le 14 octobre 2026)
+- [Forum Aave : Repeatedly Failed Repayment Attempts Leading to Liquidation](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379) : décembre 2024 (consulté le 14 octobre 2026)
+
+_Contenu éducatif, pas un conseil financier. Les alertes réduisent le risque, elles n'empêchent pas la liquidation._

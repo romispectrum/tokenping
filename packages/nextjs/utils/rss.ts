@@ -11,6 +11,7 @@ const RSS_DESCRIPTIONS: Localized<string> = {
   hi: "Aave और Morpho के हेल्थ फ़ैक्टर, लिक्विडेशन के जोखिम और अलर्ट पर गाइड।",
   de: "Ratgeber zum Health Factor auf Aave und Morpho, zum Liquidationsrisiko und zu Alerts.",
   vi: "Hướng dẫn về hệ số sức khỏe trên Aave và Morpho, rủi ro thanh lý và cảnh báo.",
+  fr: "Guides sur le facteur de santé d'Aave et de Morpho, le risque de liquidation et les alertes.",
 };
 
 const XML_ENTITIES: Record<string, string> = { "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" };

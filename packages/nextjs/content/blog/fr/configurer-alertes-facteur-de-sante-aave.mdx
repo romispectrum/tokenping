@@ -1,0 +1,201 @@
+export const meta = {
+  slug: "configurer-alertes-facteur-de-sante-aave",
+  title: "Être alerté quand votre facteur de santé Aave baisse",
+  description:
+    "Étape par étape : un message Signal, Telegram ou e-mail quand votre facteur de santé Aave V3 ou V4 passe sous votre seuil. Le prix, et comment arrêter.",
+  h1: "Comment recevoir une alerte quand votre facteur de santé Aave baisse",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Comment configurer une notification quand mon facteur de santé Aave baisse ?",
+  readingMinutes: 17,
+};
+
+<ShortAnswer>
+  Les interfaces d'Aave affichent votre facteur de santé (health factor) tant que vous les gardez ouvertes, mais elles
+  ne vous envoient aucun message quand il baisse : l'avertissement doit donc venir d'un outil séparé. Avec Tokenping,
+  vous connectez le wallet avec lequel vous empruntez, vous payez l'accès aux alertes sur Arbitrum, vous vous connectez
+  en signant un message avec ce wallet, vous fixez un seuil pour chaque marché sur lequel vous empruntez (chaque marché
+  Aave V3 sur 21 réseaux, ou chaque Spoke Aave V4 sur Ethereum, Avalanche, Arc et Base) et vous ajoutez une adresse
+  e-mail, un nom d'utilisateur Signal ou un nom d'utilisateur Telegram. Tokenping vérifie ensuite toutes les 5 minutes
+  et vous écrit à chaque vérification tant que votre facteur de santé reste sous ce seuil.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Aave envoie-t-il des alertes de facteur de santé ?
+
+Non. Au 14 octobre 2026, les interfaces d'Aave affichent votre facteur de santé à l'écran, mais n'envoient ni e-mail, ni message de chat, ni notification push quand il baisse. Le facteur de santé (HF) est la valeur de votre collatéral, pondérée par le seuil de liquidation (liquidation threshold) de chaque actif, divisée par la valeur de votre dette ; sous 1,00, la position peut être liquidée. La formule complète se trouve dans [ce qu'est le facteur de santé Aave](/fr/blog/facteur-de-sante-aave).
+
+L'application web d'Aave (app.aave.com) renvoyait autrefois vers les notifications de HAL ; Aave a retiré cette intégration le 30 mai 2024, parce que le service HAL avait fermé. Aave Pro, l'application d'Aave V4, décrit un suivi du facteur de santé dans l'application, et sa page produit ne mentionne aucune notification. Le centre d'aide d'Aave dit qu'un suivi régulier est essentiel ; sa courte liste d'outils, marquée « Use at your own risk » (à utiliser à vos risques), contient un simulateur et un service de remboursement automatique, mais aucun service d'alerte.
+
+Pour rester prévenu, il faut donc consulter l'application vous-même ou utiliser un outil tiers. Ce guide configure des [alertes de facteur de santé Aave sur Signal, Telegram et par e-mail](/fr) avec Tokenping ; les autres outils sont présentés dans [comparatif des outils d'alerte de liquidation Aave](/fr/blog/outils-alertes-liquidation-aave).
+
+## De quoi avez-vous besoin avant de commencer ?
+
+Une alerte de facteur de santé Tokenping demande quatre choses :
+
+- **Une position Aave V3 ou V4 avec une dette.** Sur Aave V3 : n'importe lequel des 24 marchés sur 21 réseaux, des marchés Core, Prime, EtherFi et Horizon d'Ethereum jusqu'à Polygon, Arbitrum, Optimism, Base, Avalanche, Gnosis, Metis, BNB Chain, Scroll, ZKsync, Linea, Sonic, Celo, Soneium, Plasma, Ink, MegaETH, Mantle, X Layer et Monad (Aave Address Book, 16 octobre 2026). Sur Aave V4 : n'importe quel Spoke sur Ethereum, Avalanche, Arc ou Base (20 au 16 octobre 2026). Sans dette, Aave renvoie la plus grande valeur possible (affichée ∞) et aucune alerte ne peut se déclencher. Non couvert : Aave V3 sur Harmony, gelé depuis 2022.
+- **Le wallet avec lequel vous empruntez.** Tokenping surveille uniquement le wallet que vous connectez ; vous ne pouvez pas ajouter une autre adresse. Ce même wallet sert à vous connecter : il n'y a ni compte ni mot de passe.
+- **De l'USDC natif et un peu d'ETH sur Arbitrum One, dans ce même wallet.** Les alertes coûtent <AlertPrice />, payés en USDC natif de Circle sur Arbitrum One, même quand votre prêt est sur un autre réseau. L'ETH couvre le gas de deux transactions au maximum ; la connexion ne coûte aucun gas.
+- **Une adresse e-mail, un nom d'utilisateur Signal ou un nom d'utilisateur Telegram**, ou plusieurs d'entre eux.
+
+La configuration se fait ensuite en sept étapes :
+
+1. Connecter le wallet et vérifier vos positions.
+2. Payer l'accès aux alertes sur Arbitrum One.
+3. Vous connecter avec le wallet.
+4. Créer une alerte et choisir l'e-mail, Signal, Telegram ou plusieurs canaux.
+5. Choisir un seuil.
+6. Enregistrer l'alerte.
+7. Envoyer un message de test sur chaque canal.
+
+## Étape 1 : connectez votre wallet et vérifiez vos positions
+
+Ouvrez le tableau de bord pour [vérifier votre facteur de santé Aave V3](/fr/aave) et connectez le wallet avec lequel vous empruntez. Consulter vos positions ne demande aucun paiement ni aucune connexion : Tokenping lit seulement vos positions on-chain et ne demande jamais d'autorisation ni de transaction sur votre position Aave.
+
+La liste **Marchés** affiche les marchés Aave V3 et les Spokes Aave V4 où le wallet a une position ou une alerte enregistrée, avec un badge de facteur de santé là où vous avez une position ; tous les autres marchés sont repliés sous **Autres marchés**. Sélectionnez celui qui porte votre prêt pour voir son collatéral, sa dette et son facteur de santé, et notez ce facteur de santé : il vous aidera à choisir un seuil. Si le tableau de bord affiche « Aucune position Aave active détectée dans les marchés pris en charge. », vous avez probablement connecté un autre wallet, ou le prêt se trouve sur un marché que Tokenping ne lit pas. Les positions se chargent à l'ouverture de la page et quand vous appuyez sur **Actualiser les positions**.
+
+## Étape 2 : débloquez les alertes
+
+Enregistrer une alerte Tokenping demande un accès payant, qui coûte <AlertPrice />. Le prix est fixé dans le contrat de paiement de Tokenping sur Arbitrum One, et le panneau l'affiche avant que vous payiez.
+
+1. Sous la liste **Marchés** du [tableau de bord Tokenping](/fr/aave), le panneau **Débloquer les alertes de facteur de santé** indique le prix, la durée de l'accès, le réseau et les frais de réseau. Appuyez sur **Payer** (le libellé du bouton inclut le prix en USDC). Si votre wallet est sur un autre réseau, appuyez d'abord sur **Passer à Arbitrum One**.
+2. Autorisez l'USDC. L'autorisation porte exactement sur le prix, jamais sur un montant illimité, et elle est sautée si un montant suffisant est déjà autorisé.
+3. Confirmez le paiement. Une fois la transaction incluse dans un bloc, le panneau affiche **Alertes débloquées jusqu'au** suivi d'une date.
+
+Un seul paiement débloque les paramètres d'alerte sur chaque marché Aave V3 et chaque Spoke Aave V4 pour le wallet qui a payé. Rien ne se renouvelle automatiquement, mais vous pouvez payer à l'avance : tant que l'accès est actif, le panneau affiche un bouton qui ajoute une période supplémentaire (son libellé indique le nombre de jours et le prix). Chaque paiement ajoute cette période après votre date de fin actuelle, autant de fois que vous le voulez, et la nouvelle date de fin s'affiche aussitôt. Une fois l'accès terminé, un nouveau paiement démarre une nouvelle période à partir de ce jour. Le contrat de paiement est vérifié sur Sourcify et n'a aucune fonction de remboursement. Un wallet contrôlé par l'équipe Tokenping en est propriétaire et peut modifier le prix, suspendre les paiements ou mettre à jour le code du contrat.
+
+## Étape 3 : connectez-vous avec votre wallet
+
+Les paramètres d'alerte appartiennent à une adresse de wallet, pas à un compte. Une fois l'accès débloqué, le panneau d'alerte du marché sélectionné vous propose **Se connecter avec le wallet**. Votre wallet affiche alors un message de connexion (Sign-in with Ethereum) qui nomme le site et votre adresse et dit « Connectez-vous à Tokenping pour voir et modifier vos alertes de facteur de santé. » Le signer n'est pas une transaction : cela ne coûte aucun gas et n'autorise aucun token. Il n'y a aucun mot de passe à créer et aucune inscription par e-mail.
+
+La connexion dure 7 jours sur ce navigateur et prend fin quand vous déconnectez le wallet ; ensuite, le panneau vous demande de vous reconnecter. Si vous refusez la demande, le panneau l'indique et vous pouvez appuyer de nouveau sur le bouton. Ce que la connexion enregistre et vérifie est expliqué dans [comment fonctionne la connexion sans compte](/fr/blog/alertes-liquidation-aave-privees#comment-fonctionne-la-connexion-sans-compte).
+
+## Étape 4 : créez une alerte et choisissez vos canaux
+
+Chaque alerte Tokenping couvre un marché et un seuil. Un marché est un Pool Aave V3 (Ethereum en a quatre, chaque autre réseau un seul) ou un Spoke Aave V4, car chacun tient une position séparée avec son propre facteur de santé. Le marché sélectionné, appuyez sur **Créer une alerte** dans son panneau. Le formulaire s'ouvre avec **Canaux d'alerte** en haut : cochez E-mail, Signal, Telegram ou n'importe quelle combinaison. Tokenping demande au moins un canal, et chaque alerte part sur chacun des canaux sélectionnés.
+
+- **E-mail :** saisissez votre adresse. Si la première alerte n'arrive pas, regardez dans vos spams.
+- **Signal :** saisissez votre nom d'utilisateur Signal, avec ou sans @, par exemple `alice.42`. Signal l'affiche sur votre profil : ouvrez Paramètres, touchez votre profil et regardez à côté du symbole @. Si vous n'avez jamais créé de nom d'utilisateur Signal, créez-en un d'abord dans Signal. Tokenping ne demande jamais votre numéro de téléphone.
+- **Telegram :** saisissez votre nom d'utilisateur Telegram, avec ou sans @, par exemple `alice_eth`. Telegram l'affiche sous Paramètres, puis Nom d'utilisateur ; si vous n'en avez pas, définissez-en un là d'abord. Les bots Telegram ne peuvent pas lancer une conversation : le formulaire affiche donc « Pas encore lié » avec un lien vers le bot de Tokenping. Ouvrez-le et appuyez une fois sur **Start**. Pendant ce temps, le formulaire vérifie de nouveau toutes les quelques secondes, puis indique que votre nom d'utilisateur est lié. Vous pouvez enregistrer avant d'appuyer sur Start, mais aucune alerte n'arrive sur Telegram tant que vous ne l'avez pas fait.
+
+À côté de chaque adresse ou nom d'utilisateur se trouve un menu de langue (**Langue des e-mails**, **Langue sur Signal**, **Langue sur Telegram**) avec sept langues : English, Čeština, Español, हिन्दी (hindi), Deutsch (allemand), Tiếng Việt (vietnamien) et Français. Les alertes et les messages de test de chaque canal sont rédigés dans la langue que vous choisissez pour lui. Un nouveau canal démarre dans la langue de la page que vous lisez : sur le site français, c'est donc le français.
+
+Comme le compte Signal de Tokenping n'est pas dans vos contacts, Signal peut présenter la première alerte comme une demande de message. Acceptez-la ; si vous bloquez l'expéditeur, les alertes ne vous parviendront pas. Choisir plus d'un canal est une précaution, car chacun dépend de services extérieurs (un fournisseur d'e-mail, un relais Signal auto-hébergé et la Bot API de Telegram).
+
+Tokenping enregistre l'adresse de votre wallet, le marché, le seuil et les canaux avec la langue de chacun, l'adresse e-mail et les noms d'utilisateur que vous avez saisis, la date de création et de dernière modification de l'alerte, et la date de votre dernier test sur chaque canal. Appuyer sur Start dans le bot enregistre l'identifiant de votre chat Telegram avec votre nom d'utilisateur, et votre réponse à la question facultative « Comment avez-vous connu Tokenping ? » est conservée si vous en donnez une. Tokenping ne garde aucun historique du facteur de santé ni aucun journal des alertes envoyées. Pour que l'adresse ou les noms d'utilisateur que vous saisissez ne révèlent pas votre identité, voyez [comment recevoir des alertes Aave sans donner votre identité à Tokenping](/fr/blog/alertes-liquidation-aave-privees).
+
+## Étape 5 : choisissez un seuil
+
+Le seuil est le facteur de santé sous lequel vous recevez des messages. Le curseur va de 1,1 à 3,0 par pas de 0,1, et le champ à côté accepte toute valeur de 1,1 à 10 avec deux décimales au plus. La valeur par défaut est 1,5.
+
+Il n'existe pas de chiffre sûr pour tout le monde. Une méthode : choisissez le prix du collatéral auquel vous agiriez, calculez le facteur de santé à ce prix et placez l'alerte un peu au-dessus, car les vérifications ont lieu toutes les 5 minutes et un remboursement peut mettre du temps à être confirmé sur un réseau chargé. [La marge que vous donne un facteur de santé](/fr/blog/facteur-de-sante-aave-sur) présente un tableau des niveaux courants.
+
+Un exemple chiffré avec un seul actif de collatéral volatil et une dette en stablecoin : le seuil de liquidation de WETH sur le marché Core d'Ethereum était de 83 % (lu on-chain au bloc 26194005, le 14 octobre 2026). Avec 10 WETH déposés, 12 000 USDC empruntés, l'ETH à 2 400 $ à titre d'exemple (l'oracle d'Aave indiquait 2 415,56 $ à ce bloc) et l'USDC à 1,00 $, le facteur de santé vaut 10 × 2 400 × 0,83 ÷ 12 000 = 1,66. Le prix de l'ETH pour un facteur de santé donné est ce facteur de santé × 12 000 ÷ (10 × 0,83) :
+
+| Facteur de santé                      | Prix de l'ETH à ce facteur de santé | Baisse depuis 2 400 $ |
+| ------------------------------------- | ----------------------------------- | --------------------- |
+| 1,66 (point de départ)                | 2 400,00 $                          | 0 %                   |
+| 1,5 (seuil d'alerte possible)         | 2 168,67 $                          | 9,6 %                 |
+| 1,3 (seuil d'alerte possible)         | 1 879,52 $                          | 21,7 %                |
+| 1,0 (liquidation possible en dessous) | 1 445,78 $                          | 39,8 %                |
+
+Avec un seuil de 1,5, le premier message arrive à la première vérification après que le facteur de santé est passé sous 1,5, ici dès que l'ETH est sous 2 168,67 $. L'ETH devrait alors baisser encore d'environ 33 % avant que cette position puisse être liquidée ; avec 1,3, cette marge restante est d'environ 23 %. Ces deux chiffres ne tiennent pas compte des intérêts. Les intérêts et les baisses du seuil de liquidation peuvent aussi faire baisser un facteur de santé sans aucun mouvement de prix : voyez [pourquoi votre facteur de santé Aave baisse tout seul](/fr/blog/pourquoi-facteur-de-sante-aave-a-baisse).
+
+## Étape 6 : enregistrez, et voyez à quoi ressemble l'alerte
+
+Appuyez sur **Enregistrer l'alerte**. Le panneau affiche **Paramètres d'alerte** avec un badge « Active » et un résumé qui liste chaque canal avec son adresse ou son nom d'utilisateur et sa langue. Le marché reçoit une icône de cloche dans la liste Marchés. La première fois, une question facultative « Comment avez-vous connu Tokenping ? » peut apparaître ; vous pouvez appuyer sur **Passer**. En français, Signal et Telegram reçoivent ce texte (valeurs d'exemple) :
+
+> Votre facteur de santé Aave sur Arbitrum est de 1,42, sous votre seuil de 1,5. Envisagez d'ajouter du collatéral ou de rembourser de la dette pour éviter la liquidation.
+>
+> Envoyé : 14 oct. 2026, 21:05:07 temps universel coordonné
+
+Le facteur de santé est arrondi à deux décimales vers le bas, si bien qu'un message n'affiche jamais une valeur égale ou supérieure au seuil franchi, et l'heure est en UTC. L'e-mail contient le même message avec l'objet « Alerte de facteur de santé Aave - Arbitrum », sauf que sa dernière ligne dit « Créé » au lieu de « Envoyé ». Un canal réglé sur une autre langue (English, Čeština, Español, हिन्दी, Deutsch ou Tiếng Việt) reçoit la même alerte dans cette langue.
+
+Si vous avez choisi Telegram et n'avez pas encore appuyé sur Start, le résumé indique « Pas encore lié » avec un lien vers le bot.
+
+## Étape 7 : envoyez un message de test
+
+Une fois l'alerte enregistrée, chaque canal du résumé a un bouton **Envoyer un test**. Un test est un vrai message sur ce canal, dans sa langue, avec l'alerte telle qu'elle est enregistrée et votre position telle qu'elle est à ce moment : le marché et le seuil, le facteur de santé actuel avec son libellé (sûr, risqué ou critique), le collatéral et la dette, et si cela se situe sous votre seuil. Il commence par « Message de test de Tokenping : les alertes sur ce canal fonctionnent. » Par e-mail, son objet est « Message de test Tokenping - Arbitrum » (avec le nom de votre marché).
+
+- Vous pouvez envoyer un test par canal toutes les 15 minutes, compté pour votre wallet sur l'ensemble de ses marchés. En attendant, le bouton indique le nombre de minutes restantes. Un test dont l'envoi échoue ne compte pas.
+- Le bouton Telegram reste désactivé tant que vous n'avez pas appuyé sur Start dans le bot.
+- Les tests demandent un accès actif, comme l'enregistrement d'une alerte.
+
+Si un test n'arrive pas en quelques minutes, parcourez [les raisons pour lesquelles une alerte peut ne pas fonctionner](#pourquoi-mon-alerte-ne-fonctionne-t-elle-pas). Pour voir aussi arriver une vraie alerte, appuyez sur **Modifier l'alerte**, placez le seuil juste au-dessus de votre facteur de santé actuel et appuyez sur **Enregistrer l'alerte**. La vérification suivante, dans les 5 minutes, envoie un message sur chaque canal ; remettez ensuite votre vrai seuil de la même façon, et les messages s'arrêtent dès la vérification suivante.
+
+## À quelle fréquence serez-vous alerté ?
+
+Tant que votre facteur de santé est sous votre seuil, Tokenping envoie un message par canal sélectionné à chaque vérification, toutes les 5 minutes. Cela fait jusqu'à 12 messages par heure sur chaque canal. Il n'y a ni mise en veille, ni récapitulatif, ni message de « retour à la normale » : les alertes s'arrêtent dès que le facteur de santé est de nouveau égal ou supérieur au seuil.
+
+La vérification compare votre facteur de santé exact au seuil et ne se déclenche que s'il est strictement inférieur. Avec un seuil de 1,5, un facteur de santé de 1,4996 déclenche une alerte, dont le message affiche 1,49, et 1,50 n'en déclenche pas. Si une lecture ou un message échoue, Tokenping l'enregistre dans ses journaux, et la vérification suivante réessaie si le facteur de santé est toujours sous le seuil.
+
+Les vérifications ont lieu toutes les 5 minutes, pas en continu : une chute brutale peut donc faire passer une position d'au-dessus de votre seuil à moins de 1,0 avant qu'aucun message ne parte. Tokenping est en bêta, dépend de tiers pour lire les positions et livrer les messages, et n'offre aucune garantie de disponibilité. Voyez une alerte comme du temps pour agir, pas comme votre seule protection.
+
+## Comment modifier ou arrêter les alertes ?
+
+Les alertes Tokenping s'arrêtent quand votre facteur de santé remonte au niveau de votre seuil ou au-dessus, par exemple après un remboursement ou un ajout de collatéral, ou quand vous supprimez l'alerte. Modifier ou supprimer une alerte demande un accès actif et une connexion avec le wallet.
+
+- **Changer le seuil, les canaux ou une langue :** appuyez sur **Modifier l'alerte** dans le panneau du marché, faites la modification et appuyez sur **Enregistrer l'alerte**.
+- **Arrêter les alertes sur un marché :** appuyez sur **Modifier l'alerte**, puis sur **Supprimer l'alerte**, et confirmez avec **Supprimer l'alerte**. Il n'y a pas de bouton de pause, et l'alerte de chaque marché se supprime séparément.
+- **Arrêter les alertes Telegram :** envoyez /stop au bot de Tokenping. Il oublie votre chat : plus aucune alerte d'aucun marché ne vous y parvient jusqu'à ce que vous renvoyiez /start ; vos autres canaux continuent de recevoir les alertes. Bloquer le bot a le même effet à partir du prochain message que Tokenping tente d'envoyer.
+
+<Callout tone="warning">
+  Supprimez les alertes dont vous ne voulez plus tant que votre accès est encore actif. Une fois l'accès expiré, vos
+  paramètres restent visibles mais en lecture seule (« Payer l'accès pour modifier ») sur un navigateur où vous vous
+  êtes déjà connecté, supprimer une alerte demande un nouveau paiement, et les e-mails d'alerte n'ont pas encore de lien
+  de désinscription. Sur Telegram, /stop fonctionne avec ou sans accès.
+</Callout>
+
+## Pourquoi mon alerte ne fonctionne-t-elle pas ?
+
+Quand une alerte Tokenping ne fonctionne pas, vérifiez sept choses : le wallet connecté et le marché, le format du nom d'utilisateur, si Telegram est lié, l'USDC natif sur Arbitrum One, que la position a bien une dette, que chaque marché sur lequel vous empruntez a une alerte, et enfin vos spams et les demandes de message de Signal.
+
+### Le tableau de bord n'affiche aucune position
+
+Si le tableau de bord Tokenping n'affiche aucune position, le wallet connecté n'est pas celui avec lequel vous empruntez, ou le prêt se trouve sur un marché que Tokenping ne lit pas : Aave V3 sur Harmony, ou un réseau hors des 22 qu'il couvre (les 21 réseaux V3 plus Arc, qui n'a qu'Aave V4). Un marché où le wallet n'a pas de position ne manque pas : il est replié sous **Autres marchés**.
+
+### Tokenping refuse votre nom d'utilisateur Signal ou Telegram
+
+Tokenping vous demande « Saisissez un nom d'utilisateur Signal comme alice.42 » quand le nom d'utilisateur n'est pas un pseudo, un point et au moins deux chiffres. Un @ devant est accepté. Si vous changez de nom d'utilisateur dans Signal, mettez l'alerte à jour sans attendre : Signal permet à quelqu'un d'autre de reprendre un ancien nom d'utilisateur peu après que vous l'avez abandonné.
+
+Pour Telegram, il demande « un nom d'utilisateur Telegram comme alice_eth » : de 4 à 32 lettres, chiffres ou tirets bas, commençant par une lettre et ne finissant pas par un tiret bas. Saisissez votre nom d'utilisateur, pas votre nom affiché ni votre numéro de téléphone ; un @ ou un lien t.me devant est accepté, et les majuscules n'ont pas d'importance.
+
+### Telegram n'est pas encore lié
+
+Le bot n'apprend où envoyer vos alertes que lorsque vous appuyez sur Start (ou envoyez /start) depuis le compte dont le nom d'utilisateur figure dans l'alerte. Ouvrez le bot depuis le lien du formulaire, appuyez sur Start et vérifiez que le nom d'utilisateur correspond à celui indiqué dans Telegram sous Paramètres, puis Nom d'utilisateur. Si vous avez envoyé /stop, bloqué le bot ou changé de nom d'utilisateur Telegram, saisissez le nom d'utilisateur actuel dans l'alerte et renvoyez /start.
+
+### Vous n'avez pas d'USDC sur Arbitrum One
+
+Le paiement Tokenping se fait en USDC natif de Circle sur Arbitrum One (contrat `0xaf88...5831`), pas en USDC.e bridgé, avec un peu d'ETH pour le gas, dans le wallet que vous configurez. Transférez les deux sur ce wallet, par exemple par un retrait depuis une plateforme d'échange vers Arbitrum One ou par un bridge. L'USDC.e que vous détenez déjà doit être échangé contre de l'USDC natif.
+
+### Votre position n'a pas de dette
+
+Sans dette, Aave renvoie le plus grand facteur de santé possible (affiché ∞) : aucun seuil n'est donc jamais franchi et aucune alerte n'est envoyée.
+
+### Vous empruntez sur plus d'un marché
+
+Chaque marché Aave V3 et chaque Spoke Aave V4 a sa propre alerte, son propre seuil, ses propres canaux et ses propres langues. Un seul paiement les couvre tous : créez donc une alerte sur chaque marché où vous empruntez.
+
+### Les messages n'arrivent pas
+
+Si les messages de Tokenping n'arrivent pas, regardez dans vos spams et dans les demandes de message de Signal, et vérifiez que vous n'avez pas bloqué l'expéditeur Tokenping ni envoyé /stop au bot Telegram. Appuyez ensuite sur **Envoyer un test** pour ce canal, comme à l'[étape 7](#etape-7-envoyez-un-message-de-test) : si le test arrive, le canal fonctionne, et les alertes arrivent à chaque vérification tant que le facteur de santé est sous votre seuil. Si un test arrive mais sans aucun son, un mode Concentration, Ne pas déranger, un chat en sourdine ou un économiseur de batterie le retient : [comment recevoir les alertes malgré Ne pas déranger](/fr/blog/alertes-aave-ne-pas-deranger) passe chacun en revue.
+
+## Quelles autres façons existe-t-il de recevoir des alertes ?
+
+Certains outils vous laissent coller n'importe quelle adresse de wallet et recevoir des alertes sur Telegram ou dans leur propre application mobile, sans frais. Des extensions de navigateur affichent le facteur de santé dans la barre d'outils, et certaines déclenchent des notifications de bureau tant que le navigateur est ouvert. Des services d'automatisation peuvent rembourser la dette à votre place ; ils demandent un smart wallet ou une permission sur votre position, et certains imposent une taille minimale de position ou prennent des frais par action. Les développeurs peuvent construire leur propre surveillance. Le [comparatif des outils d'alerte de liquidation Aave](/fr/blog/outils-alertes-liquidation-aave) les compare côte à côte, y compris là où Tokenping n'est pas le bon choix.
+
+## Sources
+
+- [Pull request #2084 de l'interface Aave, « chore: remove hal », fusionnée le 30 mai 2024](https://github.com/aave/interface/pull/2084) (consulté le 14 octobre 2026)
+- [Aide Aave : Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (consulté le 14 octobre 2026)
+- [Page produit d'Aave Pro](https://aave.com/pro) (consulté le 14 octobre 2026)
+- [Journal des modifications de la documentation Aave : déploiement de V3.7 et lancements de V4](https://aave.com/docs/resources/changelog) (consulté le 15 octobre 2026)
+- [Aave V3 GenericLogic.sol : formule du facteur de santé et valeur sans dette](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) (consulté le 14 octobre 2026)
+- Aave V3 Ethereum Core [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) et [AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) (pages des contrats sur Etherscan) : seuil de liquidation de WETH de 83 % et prix de l'oracle de 2 415,56 $, lus on-chain au bloc 26194005 (données RPC, consulté le 14 octobre 2026)
+- [TokenpingPaywall sur Arbitrum One, code source vérifié sur Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553) (consulté le 14 octobre 2026) ; formule, état de pause et propriétaire lus on-chain aux blocs 514885994 et 514896937
+- [Support Signal : Phone Number Privacy and Usernames](https://support.signal.org/hc/en-us/articles/6712070553754-Phone-Number-Privacy-and-Usernames) (consulté le 14 octobre 2026)
+- [Support Signal : Signal Profiles and Message Requests](https://support.signal.org/hc/en-us/articles/360007459591-Signal-Profiles-and-Message-Requests) (consulté le 14 octobre 2026)
+- [Telegram : Bots, an introduction for developers](https://core.telegram.org/bots) (consulté le 20 octobre 2026) : les bots ne peuvent pas lancer de conversation avec les utilisateurs
+
+_Contenu éducatif, pas un conseil financier. Les alertes réduisent le risque, elles n'empêchent pas la liquidation._

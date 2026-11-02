@@ -1,0 +1,157 @@
+export const meta = {
+  slug: "taux-interet-aave",
+  title: "Taux d'intérêt Aave : fonctionnement et flambées",
+  description:
+    "Les taux d'emprunt Aave suivent une courbe d'utilisation, douce jusqu'à un niveau optimal, raide au-delà. La formule, des paramètres réels, les pics.",
+  h1: "Comment fonctionnent les taux d'intérêt Aave, et pourquoi les taux d'emprunt flambent-ils ?",
+  publishedAt: "2026-10-25",
+  primaryQuestion: "Comment Aave fixe-t-il ses taux d'emprunt et de dépôt, et pourquoi flambent-ils ?",
+  readingMinutes: 10,
+};
+
+<ShortAnswer>
+  Sur Aave V3, le taux d'emprunt variable de chaque actif suit une courbe fixée par la gouvernance : il monte doucement
+  avec l'utilisation, la part des jetons déposés qui est empruntée, jusqu'à un niveau optimal, puis fortement au-delà.
+  Les déposants gagnent le taux d'emprunt multiplié par l'utilisation, moins le facteur de réserve. Les taux sont
+  recalculés à chaque dépôt, emprunt, remboursement et retrait, donc un seul gros retrait peut pousser l'utilisation
+  au-delà du niveau optimal et multiplier le taux en un bloc : l'USDC sur Ethereum Core est passé de 4,50 % à 13,67 %
+  APR le 14 octobre 2026 et était revenu à 4,76 % environ 36 minutes plus tard. Toute la dette Aave V3 est à taux
+  variable.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Les chiffres et les numéros de bloc auxquels ils ont été lus : content/blog/snapshots/aave-interest-rates.md */}
+
+## Qu'est-ce qui fixe le taux d'emprunt sur Aave ?
+
+Sur Aave V3, le taux d'emprunt d'un actif dépend de deux choses : son utilisation et ses paramètres de taux d'intérêt. L'utilisation est la part du pool de l'actif qui est prêtée : la dette divisée par la dette plus les jetons encore disponibles. Les paramètres sont quatre nombres par actif, fixés par la gouvernance d'Aave, et les Risk Stewards d'Aave peuvent les ajuster par pas plafonnés et avec des délais minimaux :
+
+- **Taux d'utilisation optimal (optimal usage ratio) :** l'utilisation à laquelle la courbe s'infléchit.
+- **Taux de base (base rate) :** le taux d'emprunt à 0 % d'utilisation.
+- **Pente 1 (slope 1) :** de combien le taux monte entre 0 % et le taux d'utilisation optimal.
+- **Pente 2 (slope 2) :** de combien il monte encore entre le taux d'utilisation optimal et 100 %.
+
+Lus le 25 octobre 2026 au bloc Ethereum 26269328 et au bloc Arbitrum 518125419, les paramètres et les taux de quelques actifs courants étaient :
+
+| Marché et actif    | Utilisation optimale | Base  | Pente 1 | Pente 2 | Utilisation  | APR d'emprunt | APR de dépôt |
+| ------------------ | -------------------- | ----- | ------- | ------- | ------------ | ------------- | ------------ |
+| Ethereum Core USDC | 94 %                 | 0 %   | 4,5 %   | 10 %    | 93,72 %      | 4,49 %        | 3,78 %       |
+| Ethereum Core USDT | 92 %                 | 0 %   | 4,5 %   | 10 %    | 87,81 %      | 4,30 %        | 3,39 %       |
+| Ethereum Core WETH | 92 %                 | 0 %   | 2,2 %   | 6 %     | 81,31 %      | 1,94 %        | 1,31 %       |
+| Ethereum Core GHO  | 99 %                 | 4,5 % | 0 %     | 0 %     | non utilisée | 4,50 %        | 0 %          |
+| Arbitrum USDC      | 90 %                 | 0 %   | 4 %     | 10 %    | 77,32 %      | 3,44 %        | 2,39 %       |
+
+GHO est l'exception : ses deux pentes sont nulles, donc son taux reste fixe quelle que soit l'utilisation, et il est modifié à la main (voir [GHO et Aave V4](#comment-les-taux-sont-ils-fixes-pour-gho-et-sur-aave-v4)).
+
+## Comment le taux d'emprunt Aave est-il calculé ?
+
+Le taux d'emprunt d'Aave V3 est une droite jusqu'au taux d'utilisation optimal, puis une droite bien plus raide au-delà. Avec U pour l'utilisation :
+
+**Jusqu'au taux d'utilisation optimal : taux d'emprunt = base + pente 1 × U ÷ taux d'utilisation optimal**
+
+**Au-delà : taux d'emprunt = base + pente 1 + pente 2 × (U − taux d'utilisation optimal) ÷ (1 − taux d'utilisation optimal)**
+
+Dans le contrat, U est la dette totale divisée par la dette totale plus les jetons que le pool détient encore. Avec les paramètres de l'USDC sur Ethereum Core, le taux à chaque niveau d'utilisation est :
+
+| Utilisation    | APR d'emprunt |
+| -------------- | ------------- |
+| 50 %           | 2,39 %        |
+| 80 %           | 3,83 %        |
+| 90 %           | 4,31 %        |
+| 94 % (optimal) | 4,50 %        |
+| 95 %           | 6,17 %        |
+| 96 %           | 7,83 %        |
+| 98 %           | 11,17 %       |
+| 100 %          | 14,50 %       |
+
+Sous 94 %, dix points d'utilisation déplacent le taux de moins d'un demi-point. Au-delà, chaque point en ajoute environ 1,67, et les six derniers points d'utilisation font plus que tripler le taux. Lu le 25 octobre 2026, l'USDC était à 93,72 %, juste sous le coude : 4,5 % × 0,9372 ÷ 0,94 donne les 4,49 % qu'il facturait.
+
+La courbe est conçue pour fonctionner ainsi. Sous le niveau optimal, un emprunt bon marché fait travailler le pool ; au-delà, le taux élevé rend l'emprunt assez cher pour que certains emprunteurs remboursent et que certains détenteurs déposent, ce qui fait redescendre l'utilisation et laisse des jetons disponibles pour les déposants qui veulent retirer.
+
+## Pourquoi les taux d'emprunt Aave flambent-ils ?
+
+Les taux d'emprunt Aave flambent quand l'utilisation dépasse le taux d'utilisation optimal, en général parce qu'un gros déposant retire ou qu'un gros emprunteur emprunte. Le taux est recalculé dans la même transaction, et chaque emprunteur de cet actif paie le nouveau taux à partir de ce moment jusqu'au changement suivant.
+
+Le 14 octobre 2026, un seul retrait d'exactement 133 898 000 USDC sur Ethereum Core a poussé l'utilisation de 93,92 % à 99,50 % en un seul bloc :
+
+| Bloc Ethereum (UTC)             | Ce qui s'est passé                          | Utilisation    | APR d'emprunt USDC |
+| ------------------------------- | ------------------------------------------- | -------------- | ------------------ |
+| 26194052 (14 octobre, 23:32:47) | Avant                                       | 93,92 %        | 4,50 %             |
+| 26194053 (14 octobre, 23:32:59) | 133 898 000 USDC retirés                    | 99,50 %        | 13,67 %            |
+| 26194088 (14 octobre, 23:39:59) | Point le plus haut de la période            | environ 99,8 % | 14,18 %            |
+| 26194231 (15 octobre, 00:08:35) | La même adresse a redéposé 133 898 000 USDC | 94,16 %        | 4,76 %             |
+
+Les emprunteurs ont payé environ trois fois le taux habituel pendant 36 minutes, et la formule ci-dessus retrouve chacun de ces taux à partir de l'utilisation. Un pic dure tant que l'utilisation reste élevée : ici, les mêmes jetons sont revenus, mais dans d'autres cas il faut de nouveaux déposants ou des remboursements, attirés par le taux élevé, pour la faire redescendre.
+
+Deux autres choses changent un taux d'emprunt. La gouvernance ou les Risk Stewards peuvent modifier les quatre paramètres, ce qui déplace toute la courbe d'un coup. Et entre deux transactions, le taux ne change pas : Aave le recalcule à chaque dépôt, emprunt, remboursement, retrait et liquidation de cet actif, et les intérêts s'accumulent à ce taux, seconde après seconde, jusqu'à la transaction suivante.
+
+## Pourquoi les déposants gagnent-ils moins que ce que paient les emprunteurs ?
+
+Les déposants gagnent moins que ce que paient les emprunteurs parce que seule la partie empruntée du pool rapporte des intérêts, et que le protocole en garde une part. Le taux de dépôt est :
+
+**Taux de dépôt = taux d'emprunt × utilisation × (1 − facteur de réserve)**
+
+Pour l'USDC sur Ethereum Core le 25 octobre 2026 : 4,4866 % × 0,9372 × (1 − 0,10) = 3,78 %. Le facteur de réserve (reserve factor), 10 % pour l'USDC et 15 % pour WETH, va à la trésorerie d'Aave. Quand une réserve porte un déficit dû à une créance irrécouvrable (bad debt), le contrat le compte aussi du côté des dépôts, ce qui abaisse légèrement le taux de dépôt.
+
+## Quelle est la différence entre APR et APY sur Aave ?
+
+Les contrats stockent les taux en APR, et l'application Aave affiche l'APY, qui ajoute la capitalisation. La bibliothèque de calcul de l'application capitalise l'APR chaque seconde sur une année de 31 536 000 secondes :
+
+**APY = (1 + APR ÷ 31 536 000)^(31 536 000) − 1**
+
+L'APR de 4,4866 % de l'USDC sur Ethereum Core apparaît dans l'application comme un APY de 4,59 %. À ces niveaux, l'écart est d'environ un dixième de point ; à un APR de 14 %, il est d'environ un point (APY de 15,0 %).
+
+## Comment les pics de taux affectent-ils votre facteur de santé ?
+
+Un pic bref fait à peine bouger votre facteur de santé (health factor) ; un taux élevé qui dure des mois, si. Les intérêts s'ajoutent à votre dette, et plus de dette fait baisser le facteur de santé, comme l'explique [la cause liée aux intérêts dans pourquoi votre facteur de santé baisse](/fr/blog/pourquoi-facteur-de-sante-aave-a-baisse#cause-3-les-interets-ont-ils-fait-grossir-votre-dette-plus-vite-que-votre-collateral).
+
+Prenons 10 WETH déposés contre 12 000 USDC empruntés sur Ethereum Core, avec le seuil de liquidation de WETH de 83 % (lu le 14 octobre 2026) et un prix illustratif de l'ETH de 2 400 $ : le facteur de santé est de 1,66. En comptant ce que rapporte le WETH à son taux de dépôt de 1,31 % :
+
+| Durée du taux | À 4,49 % (25 octobre 2026)         | À 14,50 % (le haut de la courbe) |
+| ------------- | ---------------------------------- | -------------------------------- |
+| 36 minutes    | environ 0,04 USDC d'intérêts, 1,66 | environ 0,12 USDC, 1,66          |
+| 30 jours      | environ 1,66                       | environ 1,64                     |
+| Un an         | environ 1,61                       | environ 1,45                     |
+
+Le pic du 14 octobre a coûté environ 12 cents à cette position. Un marché qui resterait en haut de sa courbe pendant un an la ferait passer de 1,66 à environ 1,45 sans aucun mouvement de prix, et c'est pourquoi une lente dérive justifie un seuil d'alerte avec de la marge ([quelle marge vous donne un facteur de santé](/fr/blog/facteur-de-sante-aave-sur#a-quelle-vitesse-les-interets-et-les-changements-de-parametres-reduisent-ils-votre-marge)).
+
+## Que faire quand votre taux d'emprunt bondit ?
+
+Quand votre taux d'emprunt bondit, vérifiez d'abord l'utilisation de l'actif sur sa page dans l'application Aave : juste au-dessus du taux d'utilisation optimal, le taux redescend dès que l'utilisation baisse. Vous avez ensuite quatre options, chacune avec un coût :
+
+- **Attendre.** Un pic causé par un seul gros retrait peut prendre fin quand ces jetons reviennent, comme le 14 octobre 2026. Rien ne garantit qu'ils reviendront, et vous payez le taux élevé en attendant.
+- **Rembourser une partie de la dette.** Cela réduit à la fois vos intérêts et votre risque ; [comment faire monter votre facteur de santé Aave](/fr/blog/eviter-liquidation-aave) explique comment rembourser avec vos propres jetons ou avec votre collatéral.
+- **Échanger la dette contre un autre actif.** L'interface d'Aave Labs propose un échange de dette (debt swap) qui remplace un actif emprunté par un autre en une seule transaction, sur les marchés Core, Prime et EtherFi d'Ethereum et sur Arbitrum, Avalanche, Base, BNB Chain, Optimism, Polygon, Gnosis et Sonic, selon la documentation d'Aave. Il n'est pas listé pour Metis, Scroll, ZKsync, Celo, Soneium, Linea, Plasma ni Ink. Le nouvel actif a sa propre courbe et son propre risque si son prix évolue autrement que votre ancienne dette.
+- **Emprunter dans un autre marché.** Chaque marché a son propre pool et sa propre utilisation : le 25 octobre 2026, l'USDC coûtait 4,49 % sur Ethereum Core et 3,44 % sur Arbitrum. Changer de marché veut dire rembourser dans l'un et emprunter dans l'autre, avec du collatéral sur ce réseau.
+
+## Comment les taux sont-ils fixés pour GHO et sur Aave V4 ?
+
+GHO, le stablecoin d'Aave, a un taux d'emprunt fixe choisi par des personnes plutôt que par la courbe. Sur Ethereum Core, ses paramètres ont deux pentes nulles, donc le taux est le taux de base, 4,50 % le 25 octobre 2026. Il est modifié via un contrat steward de GHO par un Risk Council à 2 signatures sur 3 : d'au plus 5 points de pourcentage par mise à jour et au plus une fois par jour. Le dernier changement, le 3 octobre 2026, l'a fait passer de 4,25 % à 4,50 % ; depuis novembre 2024, il a été modifié 44 fois, entre 3,00 % et 14,50 %. L'ancienne réduction pour les détenteurs de stkAAVE a été supprimée avec Aave v3.4.
+
+Aave V4 garde une courbe d'utilisation, mais sa documentation la décrit comme configurée par actif au niveau du Hub, le pool qui prête à chaque Spoke. En plus de ce taux commun, chaque emprunteur paie une prime de risque utilisateur (User Risk Premium) qui dépend de la qualité de son collatéral : l'exemple d'Aave est une prime de 50 % sur un taux de base de 5 %, ce qui donne 7,5 %. Deux emprunteurs V4 du même actif peuvent donc payer des taux différents, et la [section V4 du guide sur le facteur de santé](/fr/blog/facteur-de-sante-aave#le-facteur-de-sante-est-il-different-sur-aave-v4) décrit ce que la V4 change d'autre.
+
+## Pouvez-vous obtenir un taux fixe sur Aave ?
+
+Non. Aave V3 a eu une option de taux stable, mais elle a été entièrement abandonnée en 2024 après un signalement de bug, et Aave v3.2 en a supprimé le code. Chaque prêt Aave V3 paie le taux variable, et le taux fixe de GHO peut toujours être modifié à tout moment dans les limites de son steward.
+
+## Une alerte peut-elle vous prévenir d'une hausse des taux ?
+
+Une alerte de facteur de santé ne surveille pas les taux ; elle surveille ce que les taux font à votre position. Tokenping vérifie votre facteur de santé Aave V3 et V4 toutes les 5 minutes sur 22 réseaux et vous envoie un message sur Signal, Telegram ou par e-mail tant qu'il est sous le seuil que vous avez fixé (de 1,1 à 10). Un pic comme celui du 14 octobre 2026 ne la déclenchera pas, parce qu'il fait à peine bouger le facteur de santé ; des mois d'intérêts élevés la déclencheront, une fois que la dette aura assez augmenté pour franchir votre seuil.
+
+Si vous voulez un message sur le taux lui-même, certains autres outils envoient des alertes de taux, et [notre comparatif des outils d'alerte Aave](/fr/blog/outils-alertes-liquidation-aave) indique ce que chacun surveille. La configuration d'une alerte de facteur de santé est décrite dans [comment configurer une alerte de facteur de santé](/fr/blog/configurer-alertes-facteur-de-sante-aave), et vous pouvez d'abord [consulter votre facteur de santé Aave V3](/fr/aave) ; consulter vos positions ne demande aucun paiement.
+
+## Sources
+
+- [DefaultReserveInterestRateStrategyV2.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/misc/DefaultReserveInterestRateStrategyV2.sol) et [ReserveLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ReserveLogic.sol) : la courbe de taux, le taux d'utilisation, le taux de dépôt et le moment où les taux sont recalculés (aave-v3-origin, consulté le 25 octobre 2026)
+- [Stratégie de taux d'intérêt d'Aave V3 Ethereum Core](https://etherscan.io/address/0x9ec6F08190DeA04A54f8Afc53Db96134e5E3FdFB#readContract) et [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) : paramètres et taux au bloc 26269328 ; USDC aux blocs 26194052, 26194053, 26194088, 26194230 et 26194231 (consulté le 25 octobre 2026)
+- [Stratégie de taux d'intérêt d'Aave V3 Arbitrum](https://arbiscan.io/address/0x429F16dBA3B9e1900087Cbaa7b50D38Bc60fB73F#readContract) : paramètres et taux de l'USDC au bloc 518125419 (consulté le 25 octobre 2026)
+- [Risk Stewards d'Aave](https://github.com/aave-dao/aave-v3-risk-stewards) : les paramètres de taux d'intérêt font partie des valeurs que les stewards peuvent modifier, avec un changement maximal et un délai minimal par mise à jour (consulté le 25 octobre 2026)
+- [calculateCompoundedRate dans aave-utilities](https://github.com/aave/aave-utilities/blob/master/packages/math-utils/src/formatters/compounded-interest/calculate-compounded-interest.ts) : passage de l'APR à l'APY sur 31 536 000 secondes (consulté le 25 octobre 2026)
+- [Fonctions d'échange d'Aave](https://aave.com/docs/aave-v3/smart-contracts/swap-features.md) : échange de dette et remboursement avec le collatéral, et les marchés qui les proposent (consulté le 25 octobre 2026)
+- [GHO Stewards : October 2026 GHO borrow rate update](https://governance.aave.com/t/gho-stewards-october-2026-gho-borrow-rate-update/25754) (mise à jour du taux d'emprunt de GHO d'octobre 2026 ; TokenLogic, 2 octobre 2026, consulté le 25 octobre 2026) et le [contrat steward de GHO](https://etherscan.io/address/0x98217A06721Ebf727f2C8d9aD7718ec28b7aAe34#readContract) : limites par mise à jour et historique des taux depuis novembre 2024 (consulté le 25 octobre 2026)
+- [Fonctions d'Aave v3.4](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.4/Aave-v3.4-features.md) : suppression de la réduction stkAAVE sur GHO (consulté le 25 octobre 2026)
+- [BGD : Full deprecation of stable rate](https://governance.aave.com/t/bgd-full-deprecation-of-stable-rate/16473) (abandon complet du taux stable, 31 janvier 2024) et [fonctions d'Aave v3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md) : suppression du taux stable (consulté le 25 octobre 2026)
+- [Documentation d'Aave V4](https://aave.com/docs/aave-v4.md) et [positions V4](https://aave.com/docs/aave-v4/positions.md) : la courbe de taux par actif du Hub et la User Risk Premium (consulté le 25 octobre 2026)
+
+_Contenu éducatif, pas un conseil financier. Les alertes réduisent le risque, elles n'empêchent pas la liquidation._

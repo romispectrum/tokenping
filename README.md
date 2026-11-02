@@ -81,8 +81,8 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs, 
   `Vary: Accept`, a canonical `Link`, the Content Signal and an `x-markdown-tokens` estimate. Every other request,
   browsers and search crawlers included, gets the HTML as before. On a preview behind Vercel Authentication the route
   cannot fetch the page, so markdown requests there answer 502.
-- **Six languages.** The whole site, the guides included, is published in English, Czech (`/cz`), neutral Spanish
-  (`/es`), Hindi (`/hi`), German (`/de`) and Vietnamese (`/vi`); see [docs/i18n.md](docs/i18n.md).
+- **Seven languages.** The whole site, the guides included, is published in English, Czech (`/cz`), neutral Spanish
+  (`/es`), Hindi (`/hi`), German (`/de`), Vietnamese (`/vi`) and French (`/fr`); see [docs/i18n.md](docs/i18n.md).
 - **Analytics.** [Vercel Web Analytics](https://vercel.com/docs/analytics) counts page views without cookies. It is
   left out of the IPFS build (`yarn ipfs`). The privacy page lists it.
 
@@ -147,7 +147,7 @@ not in this repository.
 - [docs/telegram-bot-setup.md](docs/telegram-bot-setup.md) and
   [docs/telegram-integration-strategy.md](docs/telegram-integration-strategy.md): setting up the bot, and why it links a
   username to a chat.
-- [docs/i18n.md](docs/i18n.md): how the six languages are wired, and each translation's voice and glossary.
+- [docs/i18n.md](docs/i18n.md): how the languages are wired, how to add one, and each translation's voice and glossary.
 - [docs/design-system.md](docs/design-system.md): tokens, components and the voice for the UI.
 - [AGENTS.md](AGENTS.md) and [CONTRIBUTING.md](CONTRIBUTING.md): code conventions and how to contribute.
 

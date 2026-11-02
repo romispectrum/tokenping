@@ -25,13 +25,13 @@ USDT 99,888,865 (0.99888865 USD).
 
 `getUserAccountData(borrower)`, values in USD with 8 decimals:
 
-| | Block 26305892 (one block before) | Block 26305893 (after the liquidation) |
-| --- | --- | --- |
-| totalCollateralBase | 3,156.47462544 | 1,752.12707686 |
-| totalDebtBase | 2,638.63450695 | 1,319.31730342 |
-| currentLiquidationThreshold | 8400 (84%) | 8400 |
-| ltv | 0 (no new borrowing allowed) | 0 |
-| healthFactor | 1.004852577492591181 | 1.115566922943526264 |
+|                             | Block 26305892 (one block before) | Block 26305893 (after the liquidation) |
+| --------------------------- | --------------------------------- | -------------------------------------- |
+| totalCollateralBase         | 3,156.47462544                    | 1,752.12707686                         |
+| totalDebtBase               | 2,638.63450695                    | 1,319.31730342                         |
+| currentLiquidationThreshold | 8400 (84%)                        | 8400                                   |
+| ltv                         | 0 (no new borrowing allowed)      | 0                                      |
+| healthFactor                | 1.004852577492591181              | 1.115566922943526264                   |
 
 Derived: repaid 1,319.32 USD; collateral to the liquidator 1,372.09 USD; fee 13.19 USD; total taken 1,385.28 USD;
 1,385.28 ÷ 1,319.32 = 1.05000 (5% bonus, 65.96 USD); fee ÷ bonus = 0.2000 (20%). WETH after = 1,752.13 ÷ 2,216.31 =
@@ -65,13 +65,13 @@ USDC), repaidShares 1,930,751,849,307,601, seizedAssets 2,952,084 (0.02952084 cb
 
 On-chain state:
 
-| | Block 53265199 | Block 53265200 |
-| --- | --- | --- |
-| oracle `price()` | 771,404,600,000,000,000,000,000,000,000,000,000,000 (77,140.46 USDC per cbBTC) | 768,973,800,000,000,000,000,000,000,000,000,000,000 (76,897.38) |
-| position.borrowShares | 1,930,752,272,875,647 | 423,568,046 |
-| position.collateral | 3,286,284 (0.03286284 cbBTC) | 334,200 (0.003342 cbBTC) |
-| market.totalBorrowAssets | 1,620,007,334,851,024 | 1,619,682,854,002,015 |
-| market.totalBorrowShares | 1,438,260,917,575,559,326,571 | 1,437,972,832,221,537,291,702 |
+|                          | Block 53265199                                                                 | Block 53265200                                                  |
+| ------------------------ | ------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| oracle `price()`         | 771,404,600,000,000,000,000,000,000,000,000,000,000 (77,140.46 USDC per cbBTC) | 768,973,800,000,000,000,000,000,000,000,000,000,000 (76,897.38) |
+| position.borrowShares    | 1,930,752,272,875,647                                                          | 423,568,046                                                     |
+| position.collateral      | 3,286,284 (0.03286284 cbBTC)                                                   | 334,200 (0.003342 cbBTC)                                        |
+| market.totalBorrowAssets | 1,620,007,334,851,024                                                          | 1,619,682,854,002,015                                           |
+| market.totalBorrowShares | 1,438,260,917,575,559,326,571                                                  | 1,437,972,832,221,537,291,702                                   |
 
 Derived: debt before = 1,930,752,272,875,647 × totalBorrowAssets ÷ totalBorrowShares = 2,174.73 USDC; collateral
 before = 2,527.07 USD at 76,897.38 (2,535.05 at 77,140.46); LTV 86.06%, health factor 0.99933 (1.00249 at the earlier
@@ -100,7 +100,7 @@ none with badDebtAssets above 0 (saved in the scratchpad as `morpho_cbbtc_liqs.j
 ## 4. Tokenping product facts used
 
 Checks every 5 minutes; Aave threshold 1.1 to 10, Morpho 1.02 to 10; a message on every check while below the
-threshold; Signal, Telegram and email in English, Czech, Spanish, Hindi, German or Vietnamese; one alert per Aave V3
+threshold; Signal, Telegram and email, each in any of the site's languages (i18n/locales.ts LOCALES); one alert per Aave V3
 market, V4 Spoke or Morpho market; the dashboards show current positions only, no transaction history; looking at
 positions needs no payment; beta, no uptime guarantee.
 

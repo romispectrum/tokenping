@@ -51,6 +51,7 @@ const LIST_WORDS: Record<Locale, ListWords> = {
   hi: { conjunction: "और", disjunction: "या" },
   de: { conjunction: "und", disjunction: "oder" },
   vi: { conjunction: "và", disjunction: "hoặc" },
+  fr: { conjunction: "et", disjunction: "ou" },
 };
 
 /**
@@ -139,6 +140,14 @@ export const deOnMarket = (name: string, kind?: MarketNameKind) =>
 /** German "für das Netzwerk Ethereum" for a V3 market, "für den Markt Ethereum (V4 Lido)" for a V4 Spoke. */
 export const deForMarket = (name: string, kind?: MarketNameKind) =>
   marketNameKind(name, kind) === "market" ? `für den Markt ${name}` : `für das Netzwerk ${name}`;
+
+/** French "sur Arbitrum" for a V3 market, "sur le marché Ethereum (V4 Lido)" for a V4 Spoke or a Morpho market. */
+export const frOnMarket = (name: string, kind?: MarketNameKind) =>
+  marketNameKind(name, kind) === "market" ? `sur le marché ${name}` : `sur ${name}`;
+
+/** French "pour Arbitrum" for a V3 market, "pour le marché Ethereum (V4 Lido)" for a V4 Spoke or a Morpho market. */
+export const frForMarket = (name: string, kind?: MarketNameKind) =>
+  marketNameKind(name, kind) === "market" ? `pour le marché ${name}` : `pour ${name}`;
 
 /** Vietnamese "mạng" before a V3 market's name (its network's), "thị trường" before a V4 Spoke's or a Morpho market's. */
 export const viMarketNoun = (name: string, kind?: MarketNameKind) =>

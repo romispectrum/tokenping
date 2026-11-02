@@ -9,21 +9,21 @@ Query: `marketTransactions(where: { type_in: [Liquidation], timestamp_gte: 17907
 paginated 1,000 at a time, every chain Morpho's API covers. `pageInfo.countTotal` = 7,521; 7,460 items came back over
 the pages (the rest were added or reordered while paging), and every figure below is over those 7,460.
 
-| Figure | Value |
-| --- | --- |
-| Liquidations (countTotal) | 7,521 |
-| Distinct borrowers liquidated | 5,703 |
-| Borrowers liquidated more than once | 932 |
-| Debt repaid by liquidators | 21,484,557 USD |
-| Bad debt recorded | 3,523,866 USD |
-| Median repaid per liquidation | 20.21 USD |
-| 75th percentile | 244.04 USD |
-| 90th percentile | 2,272 USD |
-| Largest | 3,003,921 USD |
-| Under 100 USD | 5,001 |
-| Under 1,000 USD | 6,363 |
-| Over 10,000 USD | 301 |
-| Between 00:00 and 06:00 UTC | 36.7% |
+| Figure                              | Value          |
+| ----------------------------------- | -------------- |
+| Liquidations (countTotal)           | 7,521          |
+| Distinct borrowers liquidated       | 5,703          |
+| Borrowers liquidated more than once | 932            |
+| Debt repaid by liquidators          | 21,484,557 USD |
+| Bad debt recorded                   | 3,523,866 USD  |
+| Median repaid per liquidation       | 20.21 USD      |
+| 75th percentile                     | 244.04 USD     |
+| 90th percentile                     | 2,272 USD      |
+| Largest                             | 3,003,921 USD  |
+| Under 100 USD                       | 5,001          |
+| Under 1,000 USD                     | 6,363          |
+| Over 10,000 USD                     | 301            |
+| Between 00:00 and 06:00 UTC         | 36.7%          |
 
 USD value: `repaidAssets` and `badDebtAssets` ÷ 10^decimals × the loan asset's `price.usd` at the time of reading (not
 at the time of each liquidation), so the dollar totals are approximate for volatile loan assets; most loans are in
@@ -50,7 +50,7 @@ cbBTC/USDC 707; JitoSOL/USDC 344.
 ## 3. Tokenping product facts used
 
 Checks every 5 minutes; Aave threshold 1.1 to 10 (default 1.5), Morpho 1.02 to 10; a message on every check while below
-the threshold, no snooze; Signal, Telegram and email, each in English, Czech, Spanish, Hindi, German or Vietnamese; one
+the threshold, no snooze; Signal, Telegram and email, each in any of the site's languages (i18n/locales.ts LOCALES); one
 alert per Aave V3 market, V4 Spoke or Morpho market; Midnight reminders 7 days and 1 day before maturity, then at every
 check after maturity while debt remains; looking at positions needs no payment; beta, no uptime guarantee.
 
