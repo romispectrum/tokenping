@@ -1,0 +1,135 @@
+export const meta = {
+  slug: "terlikuidasi-di-aave-atau-morpho-lalu-apa",
+  title: "Terlikuidasi di Aave atau Morpho: apa yang harus dilakukan",
+  description:
+    "Cara menemukan transaksi likuidasi, menghitung apa yang diambil dan apa yang tersisa, penyebabnya, dan cara agar tidak terlikuidasi lagi.",
+  h1: "Saya terlikuidasi di Aave atau Morpho: lalu apa?",
+  publishedAt: "2026-10-31",
+  primaryQuestion: "Apa yang harus Anda lakukan setelah likuidasi di Aave atau Morpho?",
+  readingMinutes: 11,
+};
+
+<ShortAnswer>
+  Pertama, temukan transaksinya: di Aave lewat riwayat transaksi di aplikasi atau lewat transfer token dompet Anda di
+  block explorer, di Morpho lewat aplikasi Morpho atau API publik Morpho, karena transaksi likuidator tidak pernah
+  muncul di daftar transaksi Anda sendiri. Lalu baca isinya: utang yang dilunasi untuk Anda, jaminan yang diambil, dan
+  selisihnya, yaitu bonus yang Anda bayar. Token yang Anda pinjam tetap milik Anda, begitu pula jaminan yang tidak
+  disita. Di Aave, satu likuidasi biasanya melunasi separuh utang Anda dan menyisakan posisi yang bisa dilikuidasi lagi;
+  di Morpho, likuidasi bisa mengambil hampir semuanya sekaligus. Dalam 30 hari hingga 30 Oktober 2026, 932 peminjam
+  Morpho terlikuidasi lebih dari sekali, jadi langkah yang paling berguna adalah langkah terakhir: penyangga (buffer)
+  dan peringatan sebelum Anda meminjam lagi.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Angka-angka dan waktu pembacaannya: content/blog/snapshots/liquidated-on-aave-or-morpho-what-now.md (artikel bahasa Inggris; ini terjemahan bahasa Indonesianya) */}
+
+## Bagaimana Anda tahu itu likuidasi, dan di mana transaksinya?
+
+Tanda pertama yang biasa muncul adalah posisi yang tampak tidak beres: utangnya lebih kecil daripada yang Anda ingat, jaminannya jauh lebih kecil, faktor kesehatan (health factor) tiba-tiba lebih tinggi, atau posisinya hilang. Pelunasan yang tidak Anda lakukan dan penarikan jaminan yang tidak Anda tanda tangani, dalam transaksi yang sama, adalah likuidasi.
+
+Transaksinya sulit ditemukan karena bukan Anda yang mengirimnya. Bot likuidator yang mengirimnya, sehingga transaksi itu tidak ada di daftar "Transactions" alamat Anda di Etherscan, Basescan atau Arbiscan. Tempat mencarinya:
+
+- **Aave, di aplikasi.** Buka "Transaction history" (riwayat transaksi, app.aave.com/history) dengan dompet Anda terhubung dan pasar yang benar dipilih, lalu filter dengan "Liquidation". Setiap catatan memuat waktu, hash transaksi, jaminan yang diambil dan utang yang dilunasi.
+- **Aave, di block explorer.** Buka alamat Anda dan tab "Token transfers (ERC-20)". Likuidasi tampil sebagai transfer aToken Anda (misalnya aEthWETH) dan token utang Anda (variableDebtEthUSDT) ke alamat nol (zero address), dalam transaksi yang tidak Anda tanda tangani. Buka transaksinya dan pindah ke tab "Logs": event bernama `LiquidationCall` pada kontrak Pool adalah catatan yang Anda perlukan. Satu transaksi bisa memuat beberapa likuidasi atas beberapa peminjam, jadi cari yang `user`-nya adalah alamat Anda.
+- **Morpho.** Alamat Anda tidak menampilkan apa pun di explorer, karena jaminan Anda berada di kontrak Morpho dan pelunasan oleh likuidator juga masuk ke kontrak itu. Aplikasi Morpho menampilkan posisi yang lebih kecil atau sudah hilang; API publik Morpho mencantumkan setiap likuidasi alamat Anda (`marketTransactions` bertipe Liquidation); dan log event kontrak Morpho di explorer memuat event bernama `Liquidate` dengan alamat Anda sebagai `borrower`.
+- **Tokenping.** [Dasbor Aave](/id/aave) dan [dasbor Morpho](/id/morpho) menampilkan posisi seperti saat ini. Faktor kesehatan yang melonjak dari dekat 1 ke jauh di atasnya, atau posisi yang menghilang, menunjukkan adanya likuidasi. Dasbor tidak mencantumkan transaksi lama.
+
+Simpan hash transaksinya. Anda memerlukannya untuk membaca jumlah-jumlahnya, dan di banyak negara likuidasi dihitung sebagai penjualan jaminan yang diambil, sehingga catatan pajak Anda juga memerlukannya.
+
+## Bagaimana cara membaca transaksi likuidasi?
+
+Kedua protokol menuliskan seluruh likuidasi ke dalam satu event. Namanya berbeda, isinya sama: utang mana yang dilunasi untuk Anda, jaminan mana yang diambil, dan berapa banyak masing-masing.
+
+**Aave V3** memancarkan `LiquidationCall(collateralAsset, debtAsset, user, debtToCover, liquidatedCollateralAmount, liquidator, receiveAToken)`. Contoh nyata dari Ethereum Core, blok 26305893, 30 Oktober 2026 pukul 13.33 UTC:
+
+| Kolom                      | Nilai                 | Artinya                                                                           |
+| -------------------------- | --------------------- | --------------------------------------------------------------------------------- |
+| collateralAsset            | WETH                  | Aset yang diambil                                                                 |
+| debtAsset                  | USDT                  | Aset yang dilunasi                                                                |
+| user                       | alamat peminjam       | Milik siapa posisi itu                                                            |
+| debtToCover                | 1.320,785158 USDT     | Utang yang dilunasi untuk peminjam, 1.319,32 USD pada harga oracle (sumber harga) |
+| liquidatedCollateralAmount | 0,619088749 WETH      | Jaminan yang dikirim ke likuidator, 1.372,09 USD pada 2.216,31 USD/ETH            |
+| liquidator                 | alamat sebuah kontrak | Siapa yang melunasi dan menerima                                                  |
+| receiveAToken              | false                 | Likuidator mengambil WETH itu sendiri, bukan aEthWETH                             |
+
+Ada satu jumlah yang tidak tercantum di event. Dalam transaksi yang sama, 0,005952776 aEthWETH (13,19 USD) berpindah dari peminjam ke kontrak collector Aave: biaya protokol likuidasi, 20% dari bonus untuk WETH di Ethereum Core pada blok itu. Jika dijumlahkan, peminjam menyerahkan WETH senilai 1.385,28 USD untuk utang 1.319,32 USD, bonus 5%, yang 52,77 USD di antaranya disimpan likuidator dan 13,19 USD masuk ke treasury. Tab "Logs" di explorer menampilkan biaya ini sebagai transfer aToken ke collector tepat setelah aToken dibakar (burn).
+
+**Morpho Blue** memancarkan `Liquidate(id, caller, borrower, repaidAssets, repaidShares, seizedAssets, badDebtAssets, badDebtShares)`. Contoh nyata dari pasar USDC | cbBTC (86%) di Base, blok 53265200, 30 Oktober 2026 pukul 00.22 UTC:
+
+| Kolom         | Nilai             | Artinya                                                            |
+| ------------- | ----------------- | ------------------------------------------------------------------ |
+| id            | 0x9103c3b4…       | Pasarnya                                                           |
+| caller        | likuidator        | Siapa yang melunasi dan menerima                                   |
+| borrower      | alamat peminjam   | Milik siapa posisi itu                                             |
+| repaidAssets  | 2.174,732093 USDC | Utang yang dilunasi untuk peminjam                                 |
+| seizedAssets  | 0,02952084 cbBTC  | Jaminan yang dikirim ke likuidator, 2.270,08 USD pada harga oracle |
+| badDebtAssets | 0                 | Tidak ada yang dihapusbukukan                                      |
+
+Oracle menghargai cbBTC 76.897,38 USDC di blok itu. Jaminan yang diambil bernilai 2.270,08 USD untuk utang 2.174,73 USD, rasio 1,0438, persis faktor insentif likuidasi yang dibayar pasar 86%. Selisih 95,34 USD seluruhnya masuk ke likuidator: Morpho tidak memungut biaya. Transaksi itu memuat 30 event `Liquidate` dari satu likuidator, masing-masing dengan peminjam yang berbeda, dan seperti itulah menit tersibuk saat harga anjlok terlihat di log sebuah pasar.
+
+## Apa yang diambil, dan apa yang tetap milik Anda?
+
+Tiga hal yang perlu dipisahkan:
+
+1. **Utang yang dilunasi untuk Anda sudah hilang, begitu pula jaminan yang membayarnya.** Anda tidak lagi berutang atas bagian yang dilunasi. Likuidator membayarnya dengan token mereka sendiri dan mengambil jaminan Anda sebagai gantinya, ditambah bonus. Bonus itulah biaya likuidasi: dalam dua contoh tadi, 65,96 USD atas utang 1.319 USD di Aave dan 95,34 USD atas 2.175 USD di Morpho.
+2. **Token yang Anda pinjam tetap milik Anda.** Jika Anda meminjam USDT dan sudah membelanjakannya, tidak ada yang berubah. Jika masih ada di dompet Anda, token itu tetap di sana. Likuidasi tidak pernah menyentuh token pinjaman di dompet Anda; likuidasi hanya mengubah posisi.
+3. **Jaminan yang tidak disita tetap berada di posisi.** Di Aave saldo aToken menjadi lebih kecil; di Morpho saldo jaminan di pasar itu menjadi lebih kecil. Jika masih ada utang, jaminan itu tetap menopangnya. Jika tidak ada utang lagi, Anda dapat menariknya.
+
+Berapa yang tersisa bergantung pada protokolnya. Di Aave V3, satu likuidasi melunasi paling banyak 50% dari total utang Anda saat faktor kesehatan di atas 0,95 dan jaminan yang diambil maupun utang yang dilunasi masing-masing bernilai minimal 2.000 USD; di bawah 0,95, atau untuk jumlah yang lebih kecil, likuidasi dapat melunasi seluruh utang dalam aset itu ([berapa yang bisa dilikuidasi sekaligus](/id/blog/cara-kerja-likuidasi-aave#berapa-bagian-utang-anda-yang-dapat-dilikuidasi-sekaligus)). Contoh Ethereum mengikuti aturan 50% hingga ke sen: utang 2.638,63 USD sebelumnya, 1.319,32 sesudahnya. Peminjam menyisakan 0,7906 WETH (1.752 USD) terhadap 1.319,32 USDT, faktor kesehatan 1,12, dan posisi itu bisa dilikuidasi lagi jika ETH turun 10,4% lagi. Di Aave V4, likuidasi justru melunasi sebanyak yang diperlukan untuk mengembalikan posisi ke faktor kesehatan target Spoke tersebut, 1,24 di Ethereum Main Spoke, sehingga yang dilunasi lebih banyak tetapi sisanya lebih aman ([likuidasi di Aave V4](/id/blog/cara-kerja-likuidasi-aave#apa-bedanya-likuidasi-di-aave-v4)).
+
+Morpho Blue tidak memiliki close factor (bagian utang yang dapat dilunasi sekaligus): likuidator boleh melunasi hingga seluruh utang dalam satu panggilan ([berapa banyak utang Anda yang bisa dilikuidasi sekaligus](/id/blog/cara-kerja-likuidasi-morpho#berapa-bagian-utang-anda-yang-dapat-dilikuidasi-sekaligus)). Likuidator di Base mengambil 0,02952 dari 0,03286 cbBTC, 90% dari jaminan, dan melunasi seluruh utang kecuali 0,0005 USDC yang tersisa akibat pembulatan share. Peminjam menyisakan 0,003342 cbBTC, sekitar 257 USD, dan dapat menariknya.
+
+Dua hal lagi yang perlu diperiksa. Di Aave, jaminan mana yang diambil adalah pilihan likuidator ([jaminan mana yang diambil likuidator](/id/blog/cara-kerja-likuidasi-aave#jaminan-mana-yang-diambil-likuidator)), sehingga posisi dengan beberapa aset jaminan mungkin kehilangan aset yang paling tidak Anda duga. Di Morpho, `repaidAssets` yang lebih kecil dari perkiraan bisa berarti sebuah [pra-likuidasi (pre-liquidation)](/id/blog/pra-likuidasi-morpho) berjalan sebelum likuidasi yang sebenarnya, pada rasio pinjaman terhadap nilai (LTV) yang lebih rendah dan insentif yang lebih rendah; aplikasi dan API menampilkan keduanya.
+
+## Bagaimana jika likuidasi mengambil semuanya?
+
+Jika `badDebtAssets` di atas nol di Morpho, atau jika event Aave menyisakan Anda tanpa jaminan sementara utang masih ada, nilai jaminan sudah lebih kecil daripada utang ditambah bonus saat seseorang melikuidasinya. Kedua protokol menutup posisi alih-alih mengejar Anda:
+
+- **Aave** (sejak V3.3) membakar sisa utang dan mencatatnya sebagai defisit pada reserve tersebut, yang nantinya dapat ditutup oleh staker Umbrella. Anda berakhir tanpa jaminan dan tanpa utang ([dapatkah likuidasi meninggalkan utang macet (bad debt)](/id/blog/cara-kerja-likuidasi-aave#apakah-likuidasi-dapat-meninggalkan-utang-macet)).
+- **Morpho Blue** menghapusbukukan sisa utang dalam transaksi yang sama dan membagi kerugiannya kepada pemberi pinjaman di pasar itu. Peminjam berakhir tanpa jaminan dan tanpa utang ([apa yang terjadi pada utang macet di Morpho Blue](/id/blog/cara-kerja-likuidasi-morpho#apa-yang-terjadi-pada-utang-macet-di-morpho-blue)).
+
+Tidak ada yang akan menagih selisihnya kepada Anda, dan tidak ada yang tertinggal di posisi. Tetapi tidak ada yang tersisa juga, dan kerugian di pihak Anda adalah seluruh jaminan, bukan hanya bonus. Utang macet jarang terjadi pada bulan contoh-contoh ini: nol dalam 393 likuidasi di pasar cbBTC Base selama tiga hari di sekitar anjloknya harga, sekitar 3,5 juta USD di seluruh 7.521 likuidasi Morpho dalam 30 hari hingga 30 Oktober.
+
+## Mengapa itu terjadi?
+
+Kedua contoh punya satu penyebab yang sama: tidak ada penyangga. Satu blok sebelum likuidasi Aave, faktor kesehatan peminjam itu 1,0049; pembaruan Chainlink berikutnya menggeser WETH dari sekitar 2.229,77 menjadi 2.216,31 USD, 0,6% lebih rendah, dan faktor kesehatannya menjadi 0,9988. Satu blok sebelum likuidasi Morpho, faktor kesehatan peminjam di Base 1,0025; oracle menggeser cbBTC dari 77.140,46 menjadi 76.897,38 USDC, 0,3% lebih rendah, dan faktor kesehatannya menjadi 0,9993. Keduanya tidak memerlukan anjloknya harga. Satu pembaruan harga biasa sudah cukup, dan pada kasus Morpho itu terjadi pukul 00.22 UTC, dalam rentang enam jam tempat [lebih dari sepertiga likuidasi Morpho](/id/blog/siapa-yang-butuh-peringatan-faktor-kesehatan#seberapa-sering-peminjam-terlikuidasi) terjadi.
+
+Jika faktor kesehatan Anda tidak sedekat itu, ada hal lain yang menggesernya. [Mengapa faktor kesehatan Anda turun](/id/blog/mengapa-faktor-kesehatan-aave-turun) mencantumkan enam penyebab beserta cara memeriksa masing-masing: harga jaminan Anda turun, harga aset yang Anda pinjam naik, bunga utang melampaui imbal hasil jaminan, tata kelola (governance) memangkas ambang likuidasi (liquidation threshold), stablecoin yang Anda setor mengalami depeg (lepasnya patokan terhadap dolar), atau oracle salah menghargai sebuah wrapper. Versi Morpho adalah daftar yang sama tanpa pemangkasan ambang, karena LTV likuidasi (LLTV) sebuah pasar Morpho tidak pernah berubah ([apa yang menggeser faktor kesehatan Morpho](/id/blog/faktor-kesehatan-morpho#apa-yang-menggerakkan-faktor-kesehatan-morpho)). Dua kasus mudah terlewat: pinjaman [Midnight](/id/blog/pinjaman-bunga-tetap-morpho-midnight) yang melewati jatuh temponya dapat dilikuidasi pada faktor kesehatan berapa pun, dan pinjaman dengan jaminan [saham tokenisasi](/id/blog/saham-tokenisasi-sebagai-jaminan) dapat dilikuidasi pada harga Minggu malam yang bergerak selama feed dihentikan sementara.
+
+## Apa yang harus Anda lakukan dalam satu jam pertama?
+
+1. **Baca sisa posisi sebelum menyentuhnya.** Faktor kesehatan, sisa utang, sisa jaminan, di [dasbor Aave](/id/aave) atau [dasbor Morpho](/id/morpho), di aplikasi protokol atau di explorer. Likuidasi sebagian di Aave menyisakan posisi di sekitar 1,1, yang akan dilikuidasi lagi oleh pergerakan 10% berikutnya.
+2. **Putuskan apakah akan menutup atau mempertahankan.** Jika Anda tidak lagi menginginkan pinjaman itu, lunasi sisanya dan tarik jaminannya; di Aave Anda dapat melunasi dengan jaminan itu sendiri ([melunasi dengan jaminan](/id/blog/cara-menghindari-likuidasi-aave#langkah-4-lunasi-dengan-jaminan-atau-tukar-jaminan)). Jika Anda mempertahankannya, lunasi atau tambah jaminan hingga faktor kesehatan berada di tingkat yang Anda inginkan, bukan di tingkat sebelumnya. [Melunasi menaikkan faktor kesehatan lebih banyak per dolar daripada menambah jaminan](/id/blog/cara-menghindari-likuidasi-aave#mengapa-melunasi-utang-menaikkan-faktor-kesehatan-lebih-banyak-daripada-menambah-jaminan).
+3. **Jangan meminjam kembali hingga batas.** Posisi yang baru saja dilikuidasi pada 1,005 akan dilikuidasi lagi pada 1,005. Meminjam kembali hingga LTV yang sama memulai ulang hitungan mundurnya.
+4. **Periksa posisi Anda yang lain.** Setiap pasar Aave, setiap Spoke V4 dan setiap pasar Morpho memiliki faktor kesehatannya sendiri, dan pergerakan harga yang sama yang melikuidasi satu posisi telah menurunkan yang lain.
+5. **Di Aave, periksa apakah ada reserve yang dibekukan.** Saat Aave membekukan semua pasar DAO pada 29 Oktober 2026, menambah jaminan ke reserve yang dibekukan tidak mungkin dan melunasi adalah satu-satunya cara untuk menaikkannya ([mengapa penarikan atau pinjaman gagal](/id/blog/mengapa-penarikan-atau-pinjaman-aave-gagal)).
+6. **Di Morpho, periksa pra-likuidasi.** Jika Anda pernah mengotorisasi kontrak pra-likuidasi, kontrak itu masih terotorisasi; [periksa dan cabut](/id/blog/pra-likuidasi-morpho#bagaimana-cara-memeriksa-apakah-anda-pernah-memberi-otorisasi) jika Anda tidak lagi menginginkannya.
+7. **Simpan catatannya.** Hash transaksi, kedua jumlah, tanggal, harga oracle jika Anda bisa membacanya. Explorer menyimpan datanya, tetapi Anda tidak akan mau mencarinya di bulan April.
+
+## Bagaimana cara menghindari likuidasi kedua?
+
+Dari 5.703 peminjam Morpho yang terlikuidasi dalam 30 hari hingga 30 Oktober 2026, 932 terlikuidasi lebih dari sekali. Peminjam di Base di atas adalah salah satunya: pinjaman cbBTC dilikuidasi pada 3 Juni, pinjaman cbZEC pada 14 Oktober, dan pinjaman cbBTC lagi pada 30 Oktober. Masing-masing memakan biaya bonus, dan tidak satu pun berujung pada perubahan. Perubahannya terdiri dari tiga keputusan:
+
+- **Penyangga.** Faktor kesehatan 1,005 tidak tahan terhadap apa pun. [Seberapa jauh harga bisa turun pada setiap faktor kesehatan](/id/blog/faktor-kesehatan-aave-yang-aman#seberapa-jauh-harga-bisa-turun-sebelum-likuidasi-pada-setiap-faktor-kesehatan) memberikan tabelnya: 1,5 bertahan dari penurunan 33,3%, 2 bertahan dari 50%. Angka yang Anda pilih bergantung pada apa yang Anda pinjam dengan jaminan apa; [metode langkah demi langkah](/id/blog/faktor-kesehatan-aave-yang-aman#bagaimana-memilih-ambang-peringatan-langkah-demi-langkah) menguraikannya, dan [versi Morpho](/id/blog/faktor-kesehatan-morpho#bagaimana-memilih-penyangga-dan-ambang-batas-peringatan) memperhitungkan LLTV yang tetap.
+- **Peringatan di atas penyangga.** Pesan saat faktor kesehatan melewati garis yang Anda pilih, cukup awal untuk bertindak. Tokenping memeriksa setiap 5 menit dan mengirimi Anda pesan lewat Signal, Telegram atau email; ambang batasnya bisa di mana saja dari 1,1 hingga 10 di Aave dan dari 1,02 hingga 10 di Morpho. [Mengaturnya](/id/blog/cara-mengatur-peringatan-faktor-kesehatan-aave) hanya butuh beberapa menit. Peringatan tidak dapat menangkap lonjakan di antara dua pemeriksaan, dan tidak dapat melunasi apa pun untuk Anda, karena itulah peringatan datang setelah penyangga, bukan menggantikannya.
+- **Dana untuk bertindak.** Dana pelunasan di jaringan tempat Anda meminjam, dalam aset yang Anda utangi atau aset yang bisa Anda tukar di malam hari, dan ponsel yang meloloskan pesannya ([peringatan yang menembus mode Jangan Ganggu](/id/blog/peringatan-aave-saat-jangan-ganggu)). Likuidasi Morpho di atas terjadi pukul 00.22 UTC; peringatan pada 1,1 akan tiba berjam-jam sebelumnya, dan hanya dana di Base yang bisa menanggapinya.
+
+Jika pinjamannya cukup kecil sehingga Anda tidak akan memindahkan dana untuk menyelamatkannya, kesimpulan yang jujur berbeda: pinjam lebih sedikit dengan jaminan itu, atau terima bahwa bonus adalah harga dari tidak mengawasi.
+
+## Peran Tokenping di sini
+
+Tokenping mengawasi setiap posisi yang Anda atur setiap 5 menit, di setiap pasar Aave V3 di 21 jaringan, setiap Spoke Aave V4 dan setiap pasar Morpho yang tercantum di aplikasi Morpho, dan mengirimi Anda pesan lewat Signal, Telegram atau email saat faktor kesehatan berada di bawah ambang batas Anda. Pesan diulang pada setiap pemeriksaan hingga posisi pulih, dalam bahasa mana pun yang tersedia di situs. Setelah likuidasi, dasbor menampilkan apa yang tersisa: [dasbor Aave](/id/aave) dengan faktor kesehatan setiap pasar, [dasbor Morpho](/id/morpho) dengan LTV, LLTV dan faktor kesehatan setiap pasar, dihitung dari data on-chain.
+
+Anda dapat melihat posisi Anda tanpa membayar. Peringatan dikenai biaya <AlertPrice />, satu per pasar Aave V3, Spoke V4 atau pasar Morpho. Tokenping masih dalam tahap beta dan tidak memiliki jaminan uptime, dan tidak ada peringatan yang mencegah likuidasi.
+
+## Sumber
+
+- [Transaksi Ethereum 0x5f88aa61…12fb6](https://etherscan.io/tx/0x5f88aa61ca6180e132a627c5e4d483c4098becc65359fa6af50551c405312fb6) (blok 26305893): `LiquidationCall`, pembakaran aEthWETH dan variableDebtEthUSDT, transfer biaya ke collector; harga Aave Oracle dan `getUserAccountData` pada blok 26305892 dan 26305893; `getReserveConfigurationData` dan `getLiquidationProtocolFee` untuk WETH, dibaca lewat RPC publik (diakses 31 Oktober 2026)
+- [Transaksi Base 0xc2df272f…f0178](https://basescan.org/tx/0xc2df272f36d8b0b566c24988052c1508a4c90a97999b2da5a8c8ec7f8e3f0178) (blok 53265200): 30 event `Liquidate`; `position` dan `market` Morpho Blue serta `price()` dari oracle pasar pada blok 53265199 dan 53265200, dibaca lewat RPC publik (diakses 31 Oktober 2026)
+- [Morpho API](https://api.morpho.org/graphql): `marketTransactions` bertipe Liquidation untuk pasar cbBTC di Base dari 28 hingga 31 Oktober 2026 dan untuk alamat peminjam contoh; `markets` untuk LLTV dan oracle pasar tersebut (diakses 31 Oktober 2026)
+- [Morpho API](https://api.morpho.org/graphql): semua likuidasi dari 30 September 2026 pukul 08.36 UTC hingga 30 Oktober 2026 pukul 08.36 UTC, seperti dalam [panduan peringatan](/id/blog/siapa-yang-butuh-peringatan-faktor-kesehatan) (diakses 30 Oktober 2026)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): utang macet dibakar dan dicatat sebagai defisit reserve, aturan close factor, penghapusan defisit oleh Umbrella (diakses 31 Oktober 2026)
+- [Liquidation on Morpho](https://docs.morpho.org/learn/concepts/liquidation): rumus insentif, hingga 100% dalam satu panggilan, tanpa biaya protokol (diakses 31 Oktober 2026)
+
+_Konten edukasi, bukan nasihat keuangan. Peringatan mengurangi risiko, tetapi tidak mencegah likuidasi._

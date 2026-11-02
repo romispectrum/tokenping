@@ -94,6 +94,13 @@ const COPY: Partial<Record<Locale, CopyRules>> = {
     wrongAddress: /(?<!\p{L})(?:sen|seni|sana|senin|sende|senden)(?!\p{L})/iu,
     claims: /gerçek zamanlı|(?<!\p{L})anında(?!\p{L})|çoklu[- ]?protokol/iu,
   },
+  id: {
+    h1Channels: /Signal dan email/,
+    badges: ["Signal", "Email"],
+    // Anda throughout: never the familiar kamu, kau or engkau.
+    wrongAddress: /(?<!\p{L})(?:kamu|kau|engkau|kalian)(?!\p{L})/iu,
+    claims: /waktu nyata|(?<!\p{L})(?:seketika|instan)(?!\p{L})|multi[- ]?protokol/iu,
+  },
 };
 
 const TRANSLATED = LOCALES.filter(locale => locale !== "en");

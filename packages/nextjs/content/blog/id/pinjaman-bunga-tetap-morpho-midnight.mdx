@@ -1,0 +1,194 @@
+export const meta = {
+  slug: "pinjaman-bunga-tetap-morpho-midnight",
+  title: "Pinjaman bunga tetap Morpho Midnight: cara kerjanya",
+  description:
+    "Cara kerja pinjaman bunga tetap Morpho Midnight: suku bunga, utang saat jatuh tempo, kesehatan dengan beberapa jaminan dan likuidasi utang tak lunas.",
+  h1: "Bagaimana cara kerja pinjaman bunga tetap Morpho Midnight, dan apa yang terjadi saat jatuh tempo?",
+  publishedAt: "2026-10-26",
+  primaryQuestion:
+    "Bagaimana cara kerja pinjaman bunga tetap Morpho Midnight, dan apa yang terjadi jika saya belum melunasinya saat jatuh tempo?",
+  readingMinutes: 12,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Morpho Midnight adalah layanan pinjaman Morpho dengan bunga tetap dan jangka waktu tetap. Anda meminjam dengan menjual
+  unit utang di bawah nilai nominalnya: setiap unit memberi Anda sedikit kurang dari satu token pinjaman sekarang dan
+  merupakan janji untuk membayar kembali tepat satu token pada jatuh tempo pasar, sehingga suku bunga ditetapkan saat
+  Anda meminjam dan utang Anda tidak bertambah. Sebelum jatuh tempo, posisi Anda hanya dapat dilikuidasi jika jaminan
+  Anda, yang dibobot dengan LTV likuidasi (LLTV) masing-masing jaminan, tidak lagi menutupi utang (faktor kesehatan atau
+  health factor di bawah 1). Setelah jatuh tempo lewat, utang apa pun yang tersisa dapat dilikuidasi berapa pun faktor
+  kesehatan Anda, dengan bonus likuidator yang naik selama jam pertama. Lunasi sebelum jatuh tempo, lalu tarik sendiri
+  jaminan Anda.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Angka dan nomor blok saat angka tersebut dibaca: content/blog/snapshots/morpho-midnight-fixed-rate-loans.md */}
+
+## Apa itu Morpho Midnight?
+
+Morpho Midnight adalah bagian dari Morpho yang menawarkan pinjaman dengan bunga tetap hingga tanggal tertentu, yaitu jatuh tempo. Dokumentasi Morpho menyebutnya "Fixed Rate Markets (Midnight)" (pasar bunga tetap), di samping Morpho Blue, pasar bunga mengambangnya. Jika Anda baru mengenal perhitungan kesehatan Morpho, mulailah dari [panduan faktor kesehatan Morpho](/id/blog/faktor-kesehatan-morpho), yang menjadi dasar panduan ini.
+
+Midnight dibuka untuk publik pada 21 Juli 2026, di Base, dengan satu pasangan (jaminan cbBTC, pinjaman USDC) dan beberapa jatuh tempo. Dalam panduan ini, pasar Midnight dinamai menurut pasangan tersebut: "pasar cbBTC/USDC" menerima cbBTC sebagai jaminan dan meminjamkan USDC. Kode kontrak yang sama kini berjalan di lima jaringan:
+
+| Jaringan        | Kontrak Midnight memiliki kode sejak | Pasar yang dicantumkan API Morpho (26 Oktober 2026) |
+| --------------- | ------------------------------------ | --------------------------------------------------- |
+| Base            | 6 Juli 2026                          | Ya; 19 pasar tercantum memiliki pinjaman terbuka    |
+| Ethereum        | 20 Agustus 2026                      | Ya; 12 pasar tercantum memiliki pinjaman terbuka    |
+| Arc             | 11 September 2026                    | Tidak ada (ada 13 pasar)                            |
+| Robinhood Chain | Tanggal tidak tersedia               | Tidak ada (ada 34 pasar)                            |
+| Tempo           | 3 Oktober 2026                       | Tidak ada (API tidak menampilkan pasar apa pun)     |
+
+Siapa pun dapat membuat pasar Midnight, jadi keberadaan sebuah pasar on-chain tidak banyak berarti. Pasar yang ditampilkan aplikasi Morpho adalah pasar yang dicantumkan API-nya, dan pada 26 Oktober 2026 semuanya berada di Ethereum dan Base.
+
+Sebuah tulisan Morpho sebelumnya memperkenalkan Midnight, bersama Vaults V2, sebagai "Morpho V2". Tulisan peluncurannya menyatakan bahwa Midnight bukan versi kedua Blue dan bukan penggantinya: keduanya berjalan berdampingan. Keduanya adalah kontrak yang terpisah.
+
+## Bagaimana pasar Midnight ditentukan?
+
+Pasar Midnight ditetapkan saat dibuat dan tidak pernah berubah. Pasar ini ditentukan oleh:
+
+- **Satu token pinjaman**, misalnya USDC.
+- **Satu atau lebih jaminan** (hingga 128), masing-masing dengan LLTV sendiri (bagian dari nilai jaminan yang boleh Anda utang sebelum likuidasi), oracle (sumber harga) sendiri dan liquidation cursor (kursor likuidasi) sendiri, yang menentukan bonus likuidator.
+- **Jatuh tempo**, tanggal dan waktu saat setiap pinjaman di pasar itu harus dilunasi.
+- **Ambang pemulihan** (rcfThreshold), yang menentukan kapan jaminan dalam jumlah kecil dapat dilikuidasi seluruhnya (lihat di bawah).
+- **Gate (gerbang) opsional**, yang dapat membatasi siapa yang boleh memberi pinjaman, meminjam atau melikuidasi. Gate tidak pernah dapat menghalangi Anda melunasi atau keluar. Tidak satu pun pasar tercantum di Ethereum atau Base yang memiliki gate pada 26 Oktober 2026.
+
+Seorang peminjam dapat menggunakan hingga 16 jaminan sebuah pasar sekaligus. Untuk menerima jaminan baru atau menggeser jatuh tempo, seseorang harus membuat pasar baru. Pasar tercantum yang berisi pinjaman, di kedua jaringan, jatuh tempo pada Jumat terakhir sebuah bulan pukul 15:00 UTC: 30 Oktober, 27 November dan 25 Desember 2026, serta 26 Maret 2027.
+
+## Bagaimana suku bunga tetap ditentukan, dan berapa utang Anda saat jatuh tempo?
+
+Suku bunga berasal dari harga, bukan dari model suku bunga. Midnight menghitung utang dalam unit, dan satu unit utang adalah janji untuk membayar kembali satu token pinjaman saat jatuh tempo. Untuk meminjam, Anda menjual unit kepada pemberi pinjaman dengan harga di bawah 1: pada harga 0,99, Anda menerima 0,99 USDC sekarang untuk setiap unit dan berutang 1 USDC per unit saat jatuh tempo. Suku bunga untuk seluruh jangka waktu adalah 1 dibagi harga, dikurangi 1, dan dokumentasi Morpho mengubahnya menjadi angka tahunan dengan membaginya dengan bagian tahun yang tersisa.
+
+Harga berasal dari penawaran yang diterbitkan pemberi pinjaman dan peminjam, sehingga dua peminjam di pasar yang sama dapat membayar suku bunga yang berbeda. Pada 26 Oktober 2026, API Morpho menunjukkan suku bunga 117 peminjam di pasar cbBTC/USDC Base yang jatuh tempo pada 25 Desember 2026 berkisar antara 1,93% dan 6,84% per tahun.
+
+Utang Anda sederhana: jumlah unit yang Anda jual, dalam token pinjaman, yang harus dibayar saat jatuh tempo. Tidak ada yang ditambahkan selama pinjaman berjalan. Kontrak Midnight hanya mengubah utang peminjam saat Anda meminjam lagi, melunasi, membeli kembali unit atau dilikuidasi; tidak ada bunga yang bertambah, baik sebelum maupun sesudah jatuh tempo.
+
+Midnight memiliki dua biaya, keduanya ditetapkan per pasar dan keduanya nol di dua pasar dalam panduan ini:
+
+- **Biaya penyelesaian** (settlement fee) pada setiap transaksi, dibayar oleh pihak yang mengambil sebuah penawaran. Kontrak membatasinya menurut waktu hingga jatuh tempo, dari 0,0014% untuk satu hari hingga 0,5% untuk 360 hari.
+- **Biaya berkelanjutan** (continuous fee), yang hanya ditanggung pemberi pinjaman dan dibatasi paling tinggi 1% per tahun.
+
+## Bagaimana faktor kesehatan dihitung dengan beberapa jaminan?
+
+Kontrak Midnight memeriksa kesehatan dengan jawaban ya atau tidak: sebuah posisi sehat selama utang maksimumnya setidaknya sama dengan utangnya. Utang maksimum adalah jumlah, untuk setiap jaminan yang Anda gunakan, dari nilainya dalam token pinjaman pada harga oracle-nya dikalikan LLTV-nya sendiri. Dokumentasi Morpho menyatakan pemeriksaan itu sebagai maxDebt ≥ debt; faktor kesehatan adalah pemeriksaan yang sama yang ditulis sebagai rasio, utang maksimum dibagi utang, dan di bawah 1 posisi dapat dilikuidasi.
+
+Ambil pasar tercantum terbesar di Ethereum, yang meminjamkan USDC terhadap dua jaminan dengan LLTV berbeda: USDC itu sendiri pada 98% dan cbBTC pada 86%. Dengan cbBTC pada 80.011,48 USDC (harga oracle-nya pada 26 Oktober 2026), posisi ilustrasi dari [panduan faktor kesehatan Morpho](/id/blog/faktor-kesehatan-morpho), dengan jaminan 0,5 cbBTC dan 10.000 USDC terhadap utang 40.000 USDC, memiliki:
+
+| Jaminan     | Nilai (USDC) | LLTV | Dihitung sebesar (USDC) |
+| ----------- | ------------ | ---- | ----------------------- |
+| 0,5 cbBTC   | 40.005,74    | 86%  | 34.404,94               |
+| 10.000 USDC | 10.000,00    | 98%  | 9.800,00                |
+| Total       | 50.005,74    |      | 44.204,94               |
+
+Faktor kesehatannya 44.204,94 ÷ 40.000 = 1,105, dan turun di bawah 1 jika cbBTC jatuh di bawah sekitar 70.233 USDC, 12,2% lebih rendah, dengan jaminan USDC tetap bernilai sama. Prinsipnya sama dengan [jaminan kedua di Aave](/id/blog/faktor-kesehatan-aave#apa-yang-berubah-dengan-aset-jaminan-kedua): setiap aset dihitung dengan tingkatnya sendiri.
+
+Anda dapat menambah, menghapus atau menukar jaminan kapan saja, selama penarikan tetap membuat posisi Anda sehat. Jika oracle salah satu jaminan yang Anda gunakan berhenti merespons, pemeriksaan kesehatan, peminjaman, penarikan dan likuidasi semuanya gagal untuk posisi Anda selama Anda masih memiliki utang. Pelunasan tetap berfungsi, dan begitu utang Anda nol, Anda dapat menarik jaminan tanpa oracle apa pun.
+
+## Kapan pinjaman Midnight dapat dilikuidasi?
+
+Pinjaman Midnight dapat dilikuidasi dengan dua cara: saat tidak sehat, kapan saja, atau saat masih ada utang setelah jatuh tempo, berapa pun kesehatannya. [Cara kerja likuidasi Morpho](/id/blog/cara-kerja-likuidasi-morpho) membahas mekanisme yang sama untuk keduanya; berikut hal-hal yang khusus untuk Midnight.
+
+### Sebelum jatuh tempo
+
+Sebelum jatuh tempo, hanya kesehatan yang dihitung. Begitu faktor kesehatan di bawah 1, likuidator dapat melunasi sebagian utang Anda dan mengambil jaminan senilai jumlah itu ditambah bonus. Bonus ditetapkan per jaminan: 1 ÷ (1 − cursor × (1 − LLTV)). Untuk cbBTC pada LLTV 86% dengan cursor 0,3, nilainya 1,0438, bonus 4,38%; untuk USDC pada 98%, sekitar 0,6%. Likuidator memilih jaminan Anda yang mana yang akan diambil, dan dokumentasi Morpho memperingatkan bahwa mereka akan memilih yang paling menguntungkan.
+
+Berapa banyak yang dapat dilikuidasi sekaligus bergantung pada ukuran. Biasanya, likuidator hanya boleh melunasi sebanyak yang diperlukan untuk membuat posisi sehat kembali. Pengecualiannya: jika jaminan yang tersisa setelah likuidasi terbatas seperti itu akan melunasi kurang dari rcfThreshold pasar, jaminan itu dapat diambil seluruhnya. Ambang ini 3.000 USDC di pasar cbBTC/USDC Base dalam contoh perhitungan di bawah dan 300.000 USDC di pasar Ethereum di atas. Pada pinjaman dengan satu jaminan di bawah ukuran itu, seluruh posisi dapat dilikuidasi sekaligus.
+
+### Setelah jatuh tempo
+
+Begitu waktu jatuh tempo lewat, utang apa pun yang tersisa dapat dilikuidasi meskipun faktor kesehatan Anda 2 atau 10. Jalur pasca-jatuh tempo dalam kontrak hanya memeriksa waktu. Alasan Morpho: pemberi pinjaman mengharapkan dapat menarik dana saat jatuh tempo, dan peminjam yang belum melunasi, sehat atau tidak, menghalangi mereka.
+
+Bonus di jalur ini dimulai dari nol saat jatuh tempo dan tumbuh merata hingga bonus penuh selama 60 menit. Jika posisi Anda juga tidak sehat setelah jatuh tempo, likuidator dapat menggunakan jalur berbasis kesehatan dan langsung mengambil bonus penuh. Di jalur pasca-jatuh tempo tidak ada batas jumlah yang dapat dilunasi, sehingga seluruh utang dapat dilikuidasi sekaligus. Setelah jatuh tempo, Anda tidak dapat lagi menambah utang, tetapi masih dapat melunasi, membeli kembali unit dan menarik jaminan.
+
+<Callout tone="warning">
+  Tepat pada detik jatuh tempo, posisi yang sehat masih aman; satu detik kemudian tidak lagi. Melunasi terlambat pada
+  posisi yang sehat dapat merugikan Anda hingga sebesar bonus likuidasi penuh, sekitar 4,4% dari utang pada pinjaman
+  cbBTC dengan LLTV 86%.
+</Callout>
+
+Jika likuidasi menyisakan utang yang tidak dapat ditutupi jaminan, kekurangannya dihapuskan dan ditanggung bersama hanya oleh pemberi pinjaman di pasar tersebut.
+
+## Bagaimana cara melunasi lebih awal, saat jatuh tempo, atau pindah ke jatuh tempo berikutnya?
+
+Ada tiga cara keluar dari pinjaman Midnight, ditambah satu cadangan yang harus Anda aktifkan sendiri:
+
+- **Melunasi langsung.** Melunasi berbiaya tepat satu token pinjaman per unit, sebelum, saat atau sesudah jatuh tempo. Cara ini selalu berfungsi, dan menentukan batas tertinggi yang sebaiknya Anda bayar untuk keluar lebih awal. Melunasi lebih awal tidak mengembalikan bunga sedikit pun: Anda membayar jumlah penuh yang jatuh tempo, hanya lebih cepat.
+- **Membeli kembali unit sebelum jatuh tempo.** Sebagai gantinya, Anda dapat membeli unit dari penawaran jual pemberi pinjaman dengan harga di bawah 1, yang membatalkan utang sebesar itu dengan biaya di bawah nilai nominal. Cara ini bergantung pada ada tidaknya pihak yang menawarkan unit pada saat Anda ingin keluar.
+- **Pindah ke jatuh tempo berikutnya.** Dokumentasi Morpho menjelaskan cara melunasi atau membeli kembali di satu pasar dan meminjam di pasar dengan jatuh tempo lebih lambat dalam satu transaksi, menggunakan callback. Tulisan peluncuran Morpho pada bulan Juli mencantumkan perpindahan otomatis (rolling) sebagai fitur di kemudian hari; pada 26 Oktober 2026, dokumentasi hanya menjelaskan perpindahan sebagai sesuatu yang Anda lakukan sendiri, atau melalui cadangan Blue di bawah.
+- **Cadangan ke Blue.** Morpho menerapkan kontrak BlueFallbackRolling di kelima jaringan. Jika Anda memilih ikut dan memberinya otorisasi di Midnight dan Blue, siapa pun dapat memindahkan utang dan jaminan Midnight Anda ke pasar Blue bunga mengambang yang Anda pilih, mulai dari waktu yang Anda pilih. Imbalan bagi pemanggil adalah bagian dari utang yang Anda tetapkan; imbalan ini bertambah antara waktu mulai dan waktu akhir yang Anda tetapkan, dapat mencapai seluruh utang, dan ditambahkan ke utang Blue Anda yang baru. Cadangan ini memerlukan tepat satu jaminan yang sama dengan jaminan pasar Blue tersebut.
+
+## Apa yang terjadi pada jaminan Anda setelah Anda melunasi?
+
+Jaminan Anda tetap di tempatnya sampai Anda menariknya. Melunasi tidak mengirimkannya kembali. Begitu utang Anda nol, pemeriksaan kesehatan lolos tanpa menanyakan oracle mana pun, sehingga Anda dapat menarik seluruhnya, dan tidak ada gate yang dapat menghalangi Anda. Hanya Anda, akun yang Anda beri otorisasi, atau likuidator dari posisi yang dapat dilikuidasi yang dapat memindahkannya.
+
+Hal yang sama berlaku setelah likuidasi: jaminan apa pun yang tidak diambil likuidator tetap berada di posisi Anda untuk Anda tarik.
+
+## Contoh perhitungan: pinjaman cbBTC/USDC yang jatuh tempo pada 25 Desember 2026
+
+Pasar ini, pada pasangan yang menjadi peluncuran Midnight, dibuat pada 14 Juli 2026, seminggu sebelum peluncuran publik, dan merupakan pasar tercantum terbesar di Base. Dibaca on-chain pada 26 Oktober 2026 pukul 06:06 UTC:
+
+| Kolom                  | Nilai                                       |
+| ---------------------- | ------------------------------------------- |
+| Token pinjaman         | USDC                                        |
+| Jaminan                | cbBTC, satu-satunya                         |
+| LLTV                   | 86%                                         |
+| Bonus likuidasi        | 4,38% (cursor 0,3)                          |
+| Jatuh tempo            | 25 Desember 2026, 15:00 UTC, 60,4 hari lagi |
+| rcfThreshold           | 3.000 USDC                                  |
+| Gate dan biaya         | Tidak ada                                   |
+| Utang saat jatuh tempo | 1.530.235,58 USDC dari 117 peminjam         |
+| Harga cbBTC            | 80.097,33 USDC (oracle pasar)               |
+
+**Meminjam.** Harga terbaik yang bisa didapat peminjam untuk menjual unit adalah 0,9901297. Mengambil 10.000 USDC pada harga itu berarti berutang sekitar 10.099,69 USDC pada 25 Desember 2026: 0,997% untuk 60,4 hari, sekitar 6,0% per tahun. Harga itu berubah dari menit ke menit.
+
+**Posisi yang khas.** Peminjam median berutang 37,08 USDC saat jatuh tempo terhadap 0,00060018 cbBTC, senilai 48,07 USDC. Utang maksimumnya 48,07 × 0,86 = 41,34 USDC, sehingga faktor kesehatannya 41,34 ÷ 37,08 = 1,11. Faktor kesehatan mencapai 1 jika cbBTC turun ke sekitar 71.838 USDC, 10,3% lebih rendah.
+
+**Jika cbBTC turun sedikit di bawah 71.838 USDC sebelum jatuh tempo.** Posisi ini jauh di bawah ambang 3.000 USDC, sehingga likuidator dapat melunasi seluruh 37,08 USDC dan mengambil cbBTC senilai 38,71 USDC. Dari cbBTC senilai 43,12 USDC, peminjam masih memiliki sekitar 4,41 USDC untuk ditarik.
+
+**Jika peminjam lupa melunasi dan cbBTC tetap di 80.097 USDC.** Mulai pukul 15:00:01 UTC pada 25 Desember, siapa pun dapat melunasi 37,08 USDC itu dan mengambil cbBTC; likuidator dapat bertindak pada detik mana pun setelah 15:00:00. Bonus bertambah seiring waktu: sekitar 2,2% setelah tiga puluh menit, 4,38% penuh setelah satu jam. Likuidasi satu jam atau lebih setelah jatuh tempo mengambil cbBTC senilai 38,71 USDC dan menyisakan 9,37 USDC untuk peminjam. Melunasi 37,08 USDC tepat waktu akan mempertahankan seluruh cbBTC senilai 48,07 USDC, bersih 10,99 USDC, jadi likuidasi itu merugikan peminjam 1,63 USDC, yaitu bonus penuh. Likuidasi yang lebih awal merugikan lebih sedikit, tetapi tidak ada yang mengharuskan likuidator menunggu.
+
+## Bagaimana Midnight dibandingkan dengan pinjaman Morpho Blue bunga mengambang?
+
+|                         | Morpho Blue                                                                           | Morpho Midnight                                                                                                                                          |
+| ----------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Suku bunga              | Terus berubah mengikuti model suku bunga pasar                                        | Tetap sejak Anda meminjam                                                                                                                                |
+| Utang                   | Bertambah karena bunga                                                                | Sejumlah unit tertentu, tidak bertambah                                                                                                                  |
+| Tanggal akhir           | Tidak ada                                                                             | Jatuh tempo                                                                                                                                              |
+| Jaminan per pasar       | Satu                                                                                  | Satu atau lebih, masing-masing dengan LLTV sendiri                                                                                                       |
+| Dapat dilikuidasi saat  | Tidak sehat                                                                           | Tidak sehat, atau ada utang apa pun setelah jatuh tempo                                                                                                  |
+| Bonus                   | 1 ÷ (1 − 0,3 × (1 − LLTV)), paling tinggi 15%                                         | 1 ÷ (1 − cursor × (1 − LLTV)), cursor ditetapkan per jaminan, tanpa batas 15%                                                                            |
+| Berapa banyak sekaligus | Hingga seluruh utang dalam satu panggilan                                             | Sebelum jatuh tempo, yang memulihkan kesehatan (seluruh jaminan jika sisanya akan melunasi kurang dari rcfThreshold); setelah jatuh tempo, seluruh utang |
+| Pra-likuidasi           | Sedang dihentikan Morpho, lihat [pra-likuidasi Morpho](/id/blog/pra-likuidasi-morpho) | Bukan bagian dari Midnight                                                                                                                               |
+| Keluar lebih awal       | Lunasi kapan saja                                                                     | Lunasi sebesar nilai nominal, atau beli kembali unit jika ada penjual                                                                                    |
+
+Perbedaan praktis bagi faktor kesehatan Anda: di Blue, faktor kesehatan dapat turun hanya karena bunga, seperti di Aave ([bagaimana lonjakan suku bunga memengaruhi faktor kesehatan Anda](/id/blog/suku-bunga-aave#bagaimana-lonjakan-suku-bunga-memengaruhi-faktor-kesehatan-anda)). Di Midnight, faktor kesehatan hanya turun saat harga jaminan turun, atau saat Anda menarik jaminan atau meminjam lagi. Sebagai gantinya, Midnight menambahkan satu tanggal yang tidak boleh Anda lewatkan.
+
+## Bagaimana peringatan dapat membantu dengan pinjaman Midnight?
+
+Peringatan dapat mengingatkan Anda tentang kedua risiko pinjaman Midnight: faktor kesehatan yang turun dan jatuh tempo yang mendekat. Tokenping memeriksa setiap 5 menit. [Dasbor Morpho](/id/morpho)-nya menampilkan posisi pinjaman sebuah dompet di pasar yang tercantum di aplikasi Morpho di 14 jaringan, Blue dan Midnight, dan melihat posisi Anda tidak perlu membayar. Peringatan Midnight mencakup pasar yang dicantumkan API Morpho. Pada 26 Oktober 2026, pasar tersebut ada di Ethereum dan Base; Tokenping juga mencakup Arc dan Robinhood Chain begitu Morpho mencantumkan pasar Midnight di sana. Sampai saat itu, peringatan Midnight tidak dapat dibuat di kedua jaringan tersebut.
+
+Untuk pinjaman Midnight:
+
+- **Kesehatan.** Tokenping menghitung faktor kesehatan Anda dari blockchain dengan matematika Morpho sendiri, tidak pernah dari API Morpho. Selama nilainya di bawah ambang batas yang Anda tetapkan (1,02 hingga 10), setiap pemeriksaan mengirim pesan di setiap saluran yang Anda pilih: Signal, Telegram atau email.
+- **Jatuh tempo.** Anda mendapat satu pengingat dalam 7 hari terakhir sebelum jatuh tempo dan satu dalam 24 jam terakhir.
+- **Setelah jatuh tempo.** Selama masih ada utang, setiap pemeriksaan mengirim peringatan, karena pinjaman dapat dilikuidasi berapa pun faktor kesehatannya.
+
+Peringatan dikenai biaya <AlertPrice />, paket yang sama dengan peringatan Aave. Peringatan memberi Anda waktu untuk bertindak; peringatan tidak mencegah likuidasi, dan harga dapat bergerak di antara dua pemeriksaan.
+
+## Sumber
+
+- [Morpho docs: Midnight concepts](https://docs.morpho.org/learn/concepts/midnight): unit, kredit dan utang, keluar lebih awal, jaminan dan kesehatan (diakses 26 Oktober 2026)
+- [Morpho docs: Midnight liquidations](https://docs.morpho.org/learn/concepts/midnight/liquidations): dua jalur likuidasi, kenaikan bonus pasca-jatuh tempo dan alasan utang yang belum lunas dapat dilikuidasi setelah jatuh tempo (diakses 26 Oktober 2026)
+- [Morpho docs: offers](https://docs.morpho.org/learn/concepts/midnight/offers) dan [gates](https://docs.morpho.org/learn/concepts/midnight/gates): perpindahan dengan callback, serta apa yang dapat dan tidak dapat diblokir gate (diakses 26 Oktober 2026)
+- [Morpho docs: market mechanics](https://docs.morpho.org/developers/midnight/concepts/market-mechanics), [collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) dan [fees](https://docs.morpho.org/developers/midnight/concepts/fees) (diakses 26 Oktober 2026)
+- [Morpho docs: exit a borrow early](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-early) dan [exit a borrow at maturity](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-by-repaying-in-full-at-maturity) (diakses 26 Oktober 2026)
+- [Morpho docs: contract addresses](https://docs.morpho.org/developers/contracts/addresses): Midnight dan BlueFallbackRolling di setiap jaringan (diakses 26 Oktober 2026)
+- [morpho-org/midnight](https://github.com/morpho-org/midnight): Midnight.sol (pemeriksaan kesehatan, likuidasi, pelunasan, penarikan), ConstantsLib.sol (biaya, bonus, kenaikan 60 menit, batas jaminan) dan README periphery (diakses 26 Oktober 2026)
+- [morpho-org/morpho-blue](https://github.com/morpho-org/morpho-blue): konstanta likuidasi dan bonus Blue (diakses 26 Oktober 2026)
+- [Now live: Morpho Midnight and the new Markets App](https://morpho.org/blog/now-live-morpho-midnight) (21 Juli 2026) dan [Morpho Midnight: what to expect at launch](https://morpho.org/blog/morpho-midnight-what-to-expect-at-launch) (17 Juli 2026) (diakses 26 Oktober 2026)
+- [Morpho Fixed Rate Markets](https://morpho.org/blog/morpho-v2-liberating-the-potential-of-onchain-loans): tulisan Morpho sebelumnya tentang Midnight dan Vaults V2 (diakses 26 Oktober 2026)
+- [Morpho Midnight API](https://api.morpho.org/v0/midnight/markets): pasar tercantum, buku pesanan dan posisi peminjam (diakses 26 Oktober 2026)
+- Kontrak Midnight di [Base](https://basescan.org/address/0xAdedD8ab6dE832766Fedf0FaC4992E5C4D3EA18A) pada blok 53102734 dan [Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f) pada blok 26274992: definisi pasar, total, biaya dan harga oracle (diakses 26 Oktober 2026)
+
+_Konten edukasi, bukan nasihat keuangan. Peringatan mengurangi risiko, tetapi tidak mencegah likuidasi._

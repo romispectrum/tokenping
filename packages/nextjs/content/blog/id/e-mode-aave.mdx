@@ -1,0 +1,204 @@
+export const meta = {
+  slug: "e-mode-aave",
+  title: "Aave E-Mode: daya pinjam lebih besar, margin lebih tipis",
+  description:
+    "Apa itu E-Mode Aave V3, kategorinya di Ethereum, Arbitrum, Base, dan Optimism, pengaruhnya pada faktor kesehatan, dan setipis apa margin sebuah loop.",
+  h1: "Apa itu E-Mode Aave, dan apa pengaruhnya terhadap risiko likuidasi Anda?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "Apa itu E-Mode Aave, dan seberapa dekat E-Mode membawa sebuah posisi ke likuidasi?",
+  readingMinutes: 16,
+};
+
+<ShortAnswer>
+  E-Mode (Efficiency Mode) adalah pengaturan Aave V3 yang memungkinkan Anda meminjam lebih banyak dengan jaminan yang
+  harganya bergerak bersama aset yang Anda pinjam, misalnya wstETH sebagai jaminan untuk WETH, dengan mengganti rasio
+  pinjaman terhadap nilai (LTV) dan ambang likuidasi (liquidation threshold) biasa dengan angka yang lebih tinggi yang
+  berlaku untuk seluruh kategori. Di Ethereum Core, kategori "ETH correlated" memakai LTV 93% dan ambang likuidasi 95%
+  pada 28 Oktober 2026, dibandingkan 79% dan 82% untuk wstETH di luar kategori itu. Rumus faktor kesehatan (health
+  factor) tidak berubah, hanya ambang di dalamnya, sehingga posisi yang sama menunjukkan angka yang lebih tinggi.
+  Harganya adalah margin yang lebih tipis: posisi yang dipinjam hingga batas E-Mode dimulai pada 95 ÷ 93 = 1,0215, dan
+  pada Maret 2026 pergerakan oracle (sumber harga) sebesar 2,85% melikuidasi posisi E-Mode di bawah sekitar 1,0288.
+  Sebuah loop (siklus pinjaman dengan leverage) yang dipinjam mendekati batas itu berjalan di bawah 1,1, ambang
+  peringatan terendah yang diterima Tokenping.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Angka dan nomor blok saat angka tersebut dibaca: content/blog/snapshots/aave-e-mode.md */}
+
+## Apa itu E-Mode Aave, dan mengapa E-Mode ada?
+
+E-Mode Aave adalah pengaturan per akun di pasar Aave V3 yang menempatkan Anda dalam satu kategori aset yang berkorelasi dan menerapkan LTV, ambang likuidasi, dan bonus likuidasi kategori tersebut pada jaminan yang tercantum di dalamnya, sebagai ganti parameter masing-masing aset. Halaman bantuan Aave menggambarkannya sebagai cara untuk "maximize their borrowing power by selecting optimized asset categories" (memaksimalkan daya pinjam mereka dengan memilih kategori aset yang dioptimalkan). Di kontrak Pool, `setUserEMode(categoryId)` memasukkan Anda ke sebuah kategori, `getUserEMode(address)` menunjukkan kategori tempat sebuah alamat berada, dan kategori 0 berarti tidak ada kategori.
+
+E-Mode ada karena parameter biasa ditetapkan untuk kasus terburuk, yaitu aset jaminan dan aset utang yang harganya bergerak sendiri-sendiri. Jika keduanya mengikuti hal yang sama, seperti wstETH dan WETH yang sama-sama mengikuti ETH, penurunan harga ETH dalam dolar menurunkan jaminan dan utang secara bersamaan, dan kesehatan posisi hampir tidak bergerak. Karena itu, penyedia risiko Aave dapat mengizinkan LTV dan ambang yang lebih tinggi untuk pasangan tersebut. Yang tersisa adalah risiko bahwa kedua aset itu bergerak menjauh satu sama lain, dan risiko itulah yang sebenarnya dihadapi posisi E-Mode.
+
+Sejak Aave V3.2, yang memperkenalkan "liquid E-Modes", tiga hal menentukan sebuah kategori:
+
+- **Satu LTV, satu ambang likuidasi, dan satu bonus likuidasi** untuk seluruh kategori.
+- **Set jaminan**: reserve yang mendapat parameter kategori selama Anda berada di dalamnya. Jaminan di luar set ini tetap memakai LTV dan ambangnya sendiri.
+- **Set yang dapat dipinjam**: satu-satunya reserve yang boleh Anda pinjam selama berada di kategori itu. Sebuah aset dapat berada di salah satu set, di set lainnya, atau di keduanya, dan dapat muncul di beberapa kategori.
+
+Jadi "ETH correlated" di Ethereum Core tidak berarti "pinjam apa saja dengan jaminan ETH": set yang dapat dipinjamnya hanya WETH (dibaca pada 28 Oktober 2026, blok 26291736). Kategori menentukan apa yang dapat Anda pinjam, sama pentingnya dengan berapa banyak.
+
+## Kategori E-Mode apa saja yang ada saat ini?
+
+Kategori di bawah ini dibaca dari kontrak Pool setiap pasar pada 28 Oktober 2026 dengan `getEModeCategoryLabel`, `getEModeCategoryCollateralConfig`, `getEModeCategoryCollateralBitmap`, dan `getEModeCategoryBorrowableBitmap`, dengan bitmap yang diurai berdasarkan `getReservesList()`. Keempat Pool melaporkan revisi 11 (V3.7). Tata kelola (governance) dan Risk Stewards mengubah parameter ini, jadi periksa kategorinya di aplikasi Aave sebelum mengandalkan sebuah angka.
+
+### Ethereum Core (blok 26291736)
+
+Ethereum Core memiliki 48 kategori. Sebagian besar memasangkan satu principal token (PT) Pendle atau aset Ethena dengan stablecoin atau dengan USDe, dan banyak yang mencantumkan PT yang sudah kedaluwarsa dan hanya ada untuk posisi yang masih dalam proses ditutup. Kategori yang paling mungkin ditemui peminjam:
+
+| Id  | Label                       | LTV | Ambang likuidasi | Bonus | Set jaminan                                   | Set yang dapat dipinjam |
+| --- | --------------------------- | --- | ---------------- | ----- | --------------------------------------------- | ----------------------- |
+| 1   | ETH correlated              | 93% | 95%              | 1%    | WETH, wstETH, cbETH, rETH, weETH, osETH, ETHx | WETH                    |
+| 2   | sUSDe Stablecoins           | 90% | 92%              | 4%    | USDe, sUSDe                                   | USDC, USDT              |
+| 11  | USDe Stablecoin             | 90% | 93%              | 2%    | USDe                                          | USDC, USDT              |
+| 4   | LBTC_WBTC                   | 84% | 86%              | 3%    | LBTC                                          | WBTC                    |
+| 7   | eBTC/WBTC                   | 83% | 85%              | 3%    | eBTC                                          | WBTC                    |
+| 22  | ezETH/wstETH                | 93% | 95%              | 1%    | ezETH                                         | wstETH                  |
+| 26  | weETH/wstETH ETH Correlated | 93% | 95%              | 1%    | weETH                                         | WETH, wstETH            |
+| 3   | rsETH\_\_ETH_wstETH_ETHx    | 93% | 95%              | 1%    | rsETH                                         | WETH, wstETH, ETHx      |
+| 40  | LINK\_\_USDC_USDT           | 66% | 71%              | 7%    | LINK                                          | USDC, USDT              |
+| 43  | XAUt\_\_USDC_USDT_GHO       | 70% | 75%              | 6%    | XAUt                                          | USDC, USDT, GHO         |
+| 47  | PT-srUSDe Stablecoins       | 90% | 92%              | 4,03% | sUSDe, PT-srUSDe-22OCT2026                    | USDC, USDT, USDe        |
+
+Dua detail dari pembacaan yang sama. Di "ETH correlated", ETHx ada di set jaminan tetapi ditandai LTV 0 (`ltvzeroBitmap` kategori itu), sehingga ETHx dihitung dalam faktor kesehatan pada 95% tetapi tidak memberi daya pinjam. Lalu kategori 47 dan 48 (PT-srUSDe terhadap stablecoin dan terhadap USDe) adalah satu-satunya kategori dengan flag `isolated` V3.7 yang aktif; efeknya dijelaskan pada aturan masuk di bawah. Kategori LINK dan XAUt menunjukkan bahwa sebuah kategori sama sekali tidak harus "berkorelasi": keduanya adalah set parameter kedua untuk meminjam stablecoin dengan jaminan satu aset.
+
+### Arbitrum (blok 519074353 hingga 519074731)
+
+| Id  | Label                            | LTV | Ambang likuidasi | Bonus | Set jaminan            | Set yang dapat dipinjam |
+| --- | -------------------------------- | --- | ---------------- | ----- | ---------------------- | ----------------------- |
+| 1   | Stablecoins                      | 93% | 95%              | 1%    | DAI, USDC, USD₮0, EURS | tidak ada               |
+| 2   | ETH correlated                   | 93% | 95%              | 1%    | WETH, wstETH, weETH    | WETH                    |
+| 7   | wstETH/WETH ETH Correlated       | 94% | 96%              | 1%    | wstETH                 | WETH                    |
+| 3   | ezETH/wstETH/WETH ETH Correlated | 93% | 95%              | 1%    | ezETH                  | WETH, wstETH            |
+| 5   | rsETH/wstETH/WETH ETH Correlated | 93% | 95%              | 1%    | rsETH                  | WETH, wstETH            |
+| 4   | ezETH Stablecoins                | 72% | 75%              | 7,5%  | ezETH                  | USD₮0, USDC             |
+| 6   | rsETH/Stablecoins                | 72% | 75%              | 7,5%  | rsETH                  | USDC, USD₮0             |
+| 8   | AAVE\_\_USDCn_USDT               | 66% | 73%              | 10%   | AAVE                   | USD₮0, USDC             |
+| 9   | ARB\_\_USDCn_USDT                | 58% | 63%              | 10%   | ARB                    | USD₮0, USDC             |
+| 10  | tBTC\_\_USDCn_USDT               | 72% | 75%              | 7,5%  | tBTC                   | USD₮0, USDC             |
+
+Kategori "Stablecoins" di Arbitrum memiliki set yang dapat dipinjam yang kosong, sehingga tidak ada utang baru yang dapat dibuka di dalamnya. Kategori satu aset "wstETH/WETH ETH Correlated" di sana satu tingkat lebih longgar daripada di Ethereum: 94% dan 96%, dengan margin di batas sebesar 96 ÷ 94 = 1,0213.
+
+### Base (blok 53204166)
+
+Base memiliki 15 kategori. Kategori ETH, dan dua kategori BTC yang paling sering ditemui peminjam:
+
+| Id  | Label             | LTV | Ambang likuidasi | Bonus | Set jaminan                | Set yang dapat dipinjam |
+| --- | ----------------- | --- | ---------------- | ----- | -------------------------- | ----------------------- |
+| 1   | ETH correlated    | 90% | 93%              | 2%    | WETH, cbETH, wstETH, weETH | WETH                    |
+| 8   | wstETH/WETH       | 93% | 95%              | 1%    | wstETH                     | WETH                    |
+| 9   | cbETH/WETH        | 93% | 95%              | 2%    | cbETH                      | WETH                    |
+| 7   | weETH/WETH        | 93% | 95%              | 1,25% | weETH                      | WETH                    |
+| 2   | ezETH wstETH      | 93% | 95%              | 1%    | ezETH                      | wstETH                  |
+| 4   | LBTC_cbBTC        | 82% | 84%              | 3%    | LBTC                       | cbBTC                   |
+| 10  | cbBTC Stablecoins | 82% | 85%              | 4%    | cbBTC                      | USDC, GHO               |
+
+Sisanya memasangkan satu aset (wrsETH, syrupUSDC, AAVE, EURC, LBTC, tBTC, ezETH) dengan USDC dan GHO atau dengan wstETH. Base menunjukkan bagaimana kategori yang luas dipecah menjadi kategori satu aset: kategori "ETH correlated" yang berisi banyak aset berjalan pada 90% dan 93%, sedangkan wstETH/WETH, cbETH/WETH, dan weETH/WETH berjalan pada 93% dan 95%.
+
+### Optimism (blok 158799548)
+
+| Id  | Label          | LTV   | Ambang likuidasi | Bonus | Set jaminan                                | Set yang dapat dipinjam |
+| --- | -------------- | ----- | ---------------- | ----- | ------------------------------------------ | ----------------------- |
+| 1   | Stablecoins    | 0,01% | 87%              | 1%    | DAI, USDC (bridged dan native), USDT, sUSD | tidak ada               |
+| 2   | ETH correlated | 93%   | 95%              | 1%    | WETH, wstETH, rETH (rETH dengan LTV 0)     | WETH                    |
+
+Kategori "Stablecoins" di Optimism adalah sisa lama, dengan LTV 0,01% dan tanpa aset yang dapat dipinjam. Kategori "ETH correlated" di sana memiliki angka yang sama dengan Ethereum.
+
+## Bagaimana faktor kesehatan dihitung dalam E-Mode?
+
+Dalam E-Mode, faktor kesehatan memakai rumus yang sama seperti biasa, Σ(nilai jaminan × ambang likuidasi) ÷ nilai utang, kecuali bahwa setiap aset jaminan dalam set kategori Anda memakai ambang kategori, bukan ambangnya sendiri. Hanya itu perubahannya: `GenericLogic.calculateUserAccountData` memilih ambang per aset dan `getUserAccountData` mengembalikan hasilnya, sehingga setiap alat yang membaca panggilan itu sudah menampilkan angka E-Mode. Rumus umumnya ada di [cara menghitung faktor kesehatan Aave](/id/blog/faktor-kesehatan-aave#bagaimana-faktor-kesehatan-aave-dihitung), dan [bagaimana E-Mode mengubah faktor kesehatan](/id/blog/faktor-kesehatan-aave#bagaimana-e-mode-mengubah-faktor-kesehatan) di panduan yang sama memberikan versi singkat dari penjelasan berikut.
+
+Ambil jaminan wstETH senilai US$10.000 dan utang WETH senilai US$9.000 di Ethereum Core, dengan parameter "ETH correlated" yang dibaca pada 28 Oktober 2026 (blok 26291736) dan parameter wstETH sendiri yang dibaca pada hari yang sama (blok 26291849: LTV 79%, ambang likuidasi 82%):
+
+1. **Dalam E-Mode:** HF = 10.000 × 0,95 ÷ 9.000 = **1,056**. Batas pinjamannya adalah 10.000 × 0,93 = US$9.300, jadi masih dapat dipinjam US$300 lagi.
+2. **Di luar E-Mode:** posisi yang sama akan memiliki HF = 10.000 × 0,82 ÷ 9.000 = 0,911, dan sama sekali tidak dapat dibuka: LTV 79% milik wstETH membatasi pinjaman pada US$7.900.
+3. **Di batas E-Mode:** pinjam penuh US$9.300 dan HF = 9.500 ÷ 9.300 = **1,0215**. Posisi itu berjarak 2,1% dari likuidasi pada hari dibuka.
+
+Posisi biasa yang dipinjam hingga batasnya juga dimulai pada ambang ÷ LTV, yaitu 84 ÷ 81 = 1,037 untuk WETH di Ethereum Core pada 28 Oktober 2026 (blok 26291849). E-Mode mempersempit selisih antara LTV dan ambang menjadi 2 poin persentase, dan selisih itulah seluruh margin posisi yang dipinjam maksimal. [Mengapa meminjam maksimal hanya menyisakan faktor kesehatan sekitar 1,03](/id/blog/faktor-kesehatan-aave#mengapa-meminjam-maksimum-hanya-menyisakan-faktor-kesehatan-sekitar-103) membahas perhitungan yang sama di luar E-Mode.
+
+Yang menggerakkan angkanya pun berbeda. Dengan jaminan wstETH dan utang WETH, kedua sisi dihargai dari ETH, sehingga harga ETH dalam dolar saling meniadakan: jika harga ETH turun separuh, jaminan dan utang turun separuh bersama-sama dan HF tetap 1,056. Yang tersisa adalah kurs wstETH/ETH yang dilaporkan oracle Aave. Posisi itu mencapai 1,00 jika kurs tersebut turun 1 − 90 ÷ 95 = 5,3%, dan posisi yang dipinjam maksimal jika kurs turun 2,1%. [Bagaimana E-Mode mengubah harga likuidasi Anda](/id/blog/harga-likuidasi-aave#bagaimana-e-mode-mengubah-harga-likuidasi-anda) mengubah hal ini menjadi sebuah kurs, bukan harga dalam dolar.
+
+## Bagaimana loop staking dengan leverage bekerja dalam E-Mode, dan apa yang dipertaruhkannya?
+
+Loop staking dengan leverage menyetor wstETH, meminjam WETH dengan jaminan itu, mengubah WETH menjadi wstETH tambahan lalu menyetornya juga, dan mengulanginya sampai posisi memegang wstETH beberapa kali lipat jumlah awal dengan utang WETH yang hampir sama besarnya. E-Mode yang membuatnya layak: pada LTV 93%, loop dapat mencapai 1 ÷ (1 − 0,93) = 14,3 kali ekuitas awal, dibandingkan 1 ÷ (1 − 0,79) = 4,8 kali pada LTV normal wstETH.
+
+Hitung dalam satuan ETH, satuan tempat loop ini hidup. Mulailah dengan wstETH senilai 10 ETH, lakukan loop hingga jaminan senilai 100 ETH dan utang 90 WETH, dan Anda memiliki posisi 1,056 di atas, dengan leverage sepuluh kali. Pada 28 Oktober 2026, oracle Aave di Ethereum Core menghargai wstETH pada US$2.912,79 dan WETH pada US$2.335,08 (blok 26291849), kurs 1,2474 ETH per wstETH yang sama dengan `stEthPerToken()` milik Lido sendiri pada blok yang sama, sehingga jaminan 100 ETH setara sekitar 80,2 wstETH.
+
+Dua angka menentukan apakah loop menghasilkan untung atau rugi, dan tidak satu pun adalah harga ETH dalam dolar:
+
+- **Kurs wstETH/ETH.** Kurs ini naik seiring imbalan staking yang terkumpul: Lido melaporkan APR stETH 2,25% pada 28 Oktober 2026 dan rata-rata 7 hari 2,33%. Loop menerima imbal hasil itu atas 100 ETH sambil membayar bunga atas 90, sehingga ekuitas 10 ETH menghasilkan sekitar sepuluh kali selisih kedua tingkat tersebut. Penurunan kurs yang dilaporkan oracle, baik karena diskon pasar pada wstETH maupun karena kesalahan konfigurasi, menurunkan jaminan tetapi tidak utang, dan merupakan satu-satunya pergerakan harga yang dapat melikuidasi loop.
+- **Suku bunga pinjaman WETH.** Utang bertambah dengan bunga mengambang Aave, 1,94% APR untuk WETH di Ethereum Core pada blok 26291849, sementara wstETH yang disetor loop hampir tidak menghasilkan apa pun dari Aave sendiri (0,0002% pada blok yang sama). Setiap kali suku bunga pinjaman lebih tinggi dari imbal hasil staking, loop merugi dan faktor kesehatannya perlahan turun.
+
+Gabungkan keduanya selama satu tahun untuk posisi sepuluh kali itu, tanpa memperhitungkan bunga majemuk dan pergerakan harga. Jaminan tumbuh mengikuti imbal hasil staking menjadi sekitar 102,3 ETH. Pada suku bunga pinjaman 1,94%, utang mencapai 91,75 WETH: ekuitas menjadi 10,55 ETH, naik 5,5% dibandingkan 2,3% jika hanya memegang wstETH, dan HF naik ke 1,059. Pada suku bunga pinjaman rata-rata 5%, utang mencapai 94,5 WETH, ekuitas turun ke 7,8 ETH, dan HF turun ke 1,028. Pada 8%, utang mencapai 97,2 WETH dan HF menjadi 1,000: loop akan dilikuidasi oleh bunga saja. Suku bunga pinjaman WETH memang melonjak ketika utilisasi tinggi; [mengapa suku bunga pinjaman Aave melonjak](/id/blog/suku-bunga-aave#mengapa-suku-bunga-pinjaman-aave-melonjak) menjelaskan kurvanya.
+
+Harga ETH dalam dolar tetap penting bagi pemilik loop, karena ekuitas 10 ETH bernilai sebesar nilai ETH, tetapi tidak penting bagi faktor kesehatan. Loop adalah taruhan bahwa imbal hasil staking tetap di atas suku bunga pinjaman dan bahwa kurs wstETH/ETH di oracle tidak turun lebih dari marginnya. Taruhan kedua itulah yang kalah pada Maret 2026.
+
+## Apa aturan untuk masuk dan keluar dari kategori E-Mode?
+
+Masuk atau keluar dari sebuah kategori adalah satu panggilan, `setUserEMode(categoryId)` di Pool, dan Pool menjalankan tiga pemeriksaan sebelum perubahan berlaku, di `ValidationLogic.validateSetUserEMode` dan `SupplyLogic.executeSetUserEMode` aave-v3-origin (branch main, dibaca 28 Oktober 2026):
+
+1. **Setiap aset yang Anda pinjam harus dapat dipinjam di kategori tujuan.** Untuk sebuah kategori, artinya ada di bitmap yang dapat dipinjamnya; untuk keluar (kategori 0), artinya reserve tersebut mengaktifkan peminjaman. Errornya adalah `InvalidDebtInEmode`. Dompet dengan utang USDC tidak dapat masuk ke "ETH correlated" di Ethereum Core, tempat WETH adalah satu-satunya aset yang dapat dipinjam, sampai USDC tersebut dilunasi.
+2. **Setiap aset yang Anda aktifkan sebagai jaminan harus tetap memiliki LTV bukan nol di kategori tujuan.** Errornya adalah `InvalidCollateralInEmode`. Pemeriksaan ini berjalan melalui `getUserReserveLtv`, yang mengembalikan LTV kategori untuk aset dalam set jaminannya (atau 0 jika kategori menandainya LTV 0), LTV aset itu sendiri untuk jaminan di luar set, dan 0 untuk jaminan di luar set jika kategorinya terisolasi.
+3. **Setelah perpindahan, faktor kesehatan Anda harus sama dengan atau di atas 1.** `executeSetUserEMode` mengubah kategori terlebih dahulu lalu memanggil `validateHealthFactor`, sehingga perpindahan yang akan membuat Anda dapat dilikuidasi dibatalkan (revert).
+
+Dompet tanpa setoran atau utang selalu dapat berpindah, dan dompet yang sudah berada di kategori yang diminta tidak mengalami perubahan dan tidak diperiksa.
+
+Dua catatan versi penting bagi siapa pun yang membaca panduan lama. Sejak V3.2, jaminan di luar set kategori Anda tetap memakai LTV dan ambangnya sendiri, sehingga memegang WBTC saat berada di "ETH correlated" diperbolehkan dan WBTC dihitung dengan parameter WBTC sendiri: catatan fitur V3.2 menyebut parameter E-Mode "will only apply for the ones listed as eModeCollateral" (hanya berlaku untuk aset yang tercantum sebagai eModeCollateral). Sejak V3.7, sebuah kategori dapat membawa flag `isolated` (`getIsEModeCategoryIsolated`). Di kategori terisolasi, jaminan di luar set mendapat LTV 0 tetapi tetap memakai ambangnya sendiri: jaminan itu tetap dihitung dalam faktor kesehatan tetapi tidak mendukung pinjaman baru, masuk ke kategori diblokir selama jaminan semacam itu aktif, dan mengaktifkannya sebagai jaminan dari dalam kategori ditolak. Jika tata kelola menyalakan flag itu untuk kategori yang sedang dipakai, catatan V3.7 menyebut jaminan di luar set "immediately becomes LTV-zero" (langsung menjadi LTV nol) sementara "health factor is unaffected" (faktor kesehatan tidak terpengaruh). Pada 28 Oktober 2026, hanya dua kategori PT-srUSDe di Ethereum Core yang flag-nya aktif.
+
+Yang menghalangi keluar adalah tiga pemeriksaan yang sama, dijalankan terhadap kategori 0. Anda tidak dapat keluar selama meminjam aset yang reserve-nya menonaktifkan peminjaman, dan Anda tidak dapat keluar jika keluar akan mendorong faktor kesehatan Anda di bawah 1, yang merupakan kasus umum: posisi 1,056 di atas akan menunjukkan 0,911 di luar E-Mode, sehingga panggilannya dibatalkan. Untuk keluar, Anda harus melunasi cukup banyak WETH terlebih dahulu, hingga utang sekitar 8.200 untuk jaminan 10.000 pada ambang 82% milik wstETH. E-Mode mudah dimasuki dan sulit ditinggalkan setelah Anda memakai ruang yang diberikannya.
+
+## Apa yang terjadi pada loop E-Mode pada Maret 2026?
+
+Pada Maret 2026, adaptor harga yang salah konfigurasi memotong kurs wstETH yang dipakai Aave di pasar Ethereum Core dan Prime sekitar 2,85%, dan setiap posisi E-Mode di bawah faktor kesehatan sekitar 1,0288 menjadi dapat dilikuidasi pada saat yang sama. Sumbernya adalah post-mortem Chaos Labs di forum tata kelola Aave, yang diterbitkan 10 Maret 2026 dan dibaca ulang pada 28 Oktober 2026; tidak ada di sini yang melampaui isinya.
+
+Aave menghargai wstETH melalui adaptor CAPO (Correlated Assets Price Oracle) yang membatasi seberapa cepat kurs wstETH/stETH yang dilaporkannya boleh naik, untuk mencegah serangan jenis inflasi. Batas itu dibangun dari rasio snapshot, timestamp snapshot, dan tingkat pertumbuhan tahunan maksimum. Sebuah pembaruan menetapkan timestamp snapshot ke acuan yang berumur tujuh hari, sementara batas on-chain (rasio hanya boleh naik paling banyak 3% setiap 3 hari) mencegah rasio mencapai nilai yang diasumsikan timestamp itu, sehingga batasnya dihitung dari acuan yang terlalu rendah. Post-mortem itu menyebut kurs maksimum yang diizinkan menjadi sekitar 1,1939, di bawah kurs yang berlaku, sehingga batas itu menggantikannya dan kurs efektif turun "around 2.855%" (sekitar 2,855%).
+
+Akibat yang dilaporkannya:
+
+- Likuidasi E-Mode sekitar 10.938 wstETH di 34 akun, yang mengenai posisi "with a health factor lower than 1.0288" (dengan faktor kesehatan di bawah 1,0288).
+- Tidak ada utang macet (bad debt) bagi protokol.
+- Sekitar 512 ETH diambil likuidator dalam bentuk bonus dan nilai dari selisih kurs, dengan 141 ETH pendapatan bonus likuidasi dan sekitar 13 ETH biaya dikembalikan untuk mengganti kerugian pengguna yang terdampak, dan treasury DAO menanggung sisanya.
+- Batas pinjaman (borrow cap) wstETH di kedua pasar sementara diturunkan menjadi 1 selama konfigurasi diperbaiki.
+
+Besarnya pergerakan itulah pelajaran bagi sebuah loop. Posisi yang dipinjam hingga batas "ETH correlated" dimulai pada 1,0215, di dalam rentang yang dilikuidasi; posisi pada 1,056 tidak tersentuh. Tidak ada apa pun dalam posisi itu sendiri yang memberi tanda, karena pergerakannya berasal dari konfigurasi oracle, bukan dari pasar mana pun. Adaptor itu masih dipakai pada 28 Oktober 2026 (blok 26291849): sumber oracle untuk wstETH di Ethereum Core menggambarkan dirinya sebagai "Capped wstETH / stETH(ETH) / USD", dengan rasio snapshot 1,2283 bertanggal 3 Maret 2026, pertumbuhan tahunan maksimum 8,8%, dan rasio yang dilaporkan 1,2474, sama dengan milik Lido. [Penyebab 6 turunnya faktor kesehatan Anda](/id/blog/mengapa-faktor-kesehatan-aave-turun#penyebab-6-apakah-kesalahan-oracle-atau-nilai-tukar-membuat-harga-jaminan-anda-keliru) membahas kompensasi yang menyusul.
+
+## Kapan E-Mode tidak membantu?
+
+E-Mode tidak berguna untuk posisi yang utangnya berada di luar kategori, dan hanya sedikit membantu untuk beberapa susunan umum lainnya:
+
+- **Utang yang tidak tercantum di kategori.** Anda sama sekali tidak dapat masuk selama meminjamnya. Posisi 10 WETH dengan utang 12.000 USDC dari panduan faktor kesehatan tetap pada ambang 84% milik WETH sendiri di Ethereum Core (blok 26291849), karena "ETH correlated" hanya mengizinkan Anda meminjam WETH.
+- **Jaminan di luar set.** Jaminan ini tetap memakai parameternya sendiri, sehingga menambahkan WBTC ke posisi "ETH correlated" menaikkan faktor kesehatan pada ambang WBTC sendiri, 85% di Ethereum Core pada blok 26291889, bukan 95%. Di kategori terisolasi, jaminan ini tidak menambah daya pinjam sama sekali.
+- **Kategori stablecoin.** Di Arbitrum dan Optimism, kategori "Stablecoins" tidak memiliki aset yang dapat dipinjam pada 28 Oktober 2026, sehingga tidak dapat dipakai untuk pinjaman baru. Di Ethereum Core, kategori stablecoin memasangkan satu aset (USDe, sUSDe, sebuah PT) dengan USDC dan USDT pada LTV 90% hingga 94%. Risikonya di sana adalah depeg (lepasnya patokan terhadap dolar) pada jaminan, yang tidak dikurangi oleh kategori yang berkorelasi; margin yang lebih tipis membuatnya terasa lebih cepat.
+- **Posisi kecil.** Likuidator dapat melunasi hingga 100% dari satu reserve utang jika jaminan atau utang yang terlibat bernilai kurang dari US$2.000 (`LiquidationLogic`, dibaca 28 Oktober 2026), sehingga loop kecil yang melewati 1,00 ditutup, bukan dikurangi; [berapa banyak utang saya yang dapat dilikuidasi sekaligus](/id/blog/cara-kerja-likuidasi-aave#berapa-bagian-utang-anda-yang-dapat-dilikuidasi-sekaligus) memuat aturannya. Bonus 1% di "ETH correlated" kecil menurut standar Aave, tetapi dibayarkan atas seluruh jumlahnya.
+- **Margin tipis yang tidak Anda sengaja.** Jika Anda masuk ke sebuah kategori dan meminjam mendekati batasnya, marginnya 2%, berapa pun faktor kesehatan Anda sebelum berpindah.
+
+Jika salah satu dari itu adalah situasi Anda, parameter normal dan penyangga yang lebih lebar adalah alat yang lebih baik; [seberapa besar penyangga yang diberikan faktor kesehatan](/id/blog/faktor-kesehatan-aave-yang-aman#mengapa-angka-aman-berbeda-untuk-utang-stablecoin-utang-volatil-dan-loop-e-mode) membandingkan arti faktor kesehatan yang sama bagi loop E-Mode dan bagi posisi lain.
+
+## Dapatkah peringatan membantu posisi E-Mode?
+
+Peringatan faktor kesehatan membantu posisi E-Mode yang dijaga di atas sekitar 1,1 hingga 1,15, dan tidak cocok untuk loop yang sengaja dijalankan di bawahnya. Tokenping membaca faktor kesehatan yang sama dengan yang dilaporkan kontrak, dari `getUserAccountData`, yang sudah menerapkan kategori E-Mode Anda, sehingga tidak ada yang perlu dikonfigurasi untuk E-Mode: angka di dasbor dan di pesan adalah angka yang dilihat likuidator.
+
+Batasnya ada pada ambang. Ambang peringatan Aave di Tokenping berkisar dari 1,1 hingga 10, dengan 1,5 sebagai bawaan. Loop pada 1,056, atau posisi apa pun yang sengaja dijalankan di bawah 1,1, berada di bawah setiap ambang yang dapat Anda atur. Peringatan yang diatur pada 1,1 akan mendapati faktor kesehatan di bawahnya pada setiap pemeriksaan 5 menit dan mengirim pesan setiap kali, di setiap saluran yang Anda pilih, sampai posisi kembali di atas 1,1. Tidak ada fitur tunda (snooze) dan tidak ada ringkasan; [seberapa sering Anda akan diperingatkan](/id/blog/cara-mengatur-peringatan-faktor-kesehatan-aave#seberapa-sering-anda-akan-diperingatkan) menjelaskan perilakunya.
+
+Untuk loop yang tipis, saran yang jujur adalah salah satu dari dua hal. Pertahankan margin: jalankan loop sehingga faktor kesehatannya berada di atas tingkat yang ingin Anda ketahui, misalnya 1,12 hingga 1,15 untuk loop wstETH/WETH, yang mengurangi leverage tetapi membuat pergerakan oracle 2,85% belum sampai ke likuidasi, dan atur peringatan di sana sehingga bunga yang perlahan menurunkan posisi adalah hal pertama yang Anda dengar. Atau terima pesan yang terus-menerus: atur 1,1 dan anggap aliran pesan itu sebagai tanda bahwa Anda berjalan di bawahnya, yang jarang diinginkan orang di Signal atau Telegram pada setiap pemeriksaan. Yang tidak dapat dilakukan peringatan dalam kedua kasus adalah bereaksi lebih cepat dari oracle: pergerakan Maret 2026 membuat posisi dapat dilikuidasi begitu batas itu berlaku, dan interval pemeriksaan 5 menit tidak memberi waktu untuk bertindak atas hal itu. [Cara memilih ambang peringatan, langkah demi langkah](/id/blog/faktor-kesehatan-aave-yang-aman#bagaimana-memilih-ambang-peringatan-langkah-demi-langkah) dan [cara mengatur peringatan faktor kesehatan](/id/blog/cara-mengatur-peringatan-faktor-kesehatan-aave#langkah-5-pilih-ambang-batas) membahas pengaturannya; [cara menaikkan faktor kesehatan Aave Anda](/id/blog/cara-menghindari-likuidasi-aave#langkah-1-lunasi-sebagian-utang-anda) membahas apa yang harus dilakukan saat pesan tiba, yang untuk loop biasanya berarti melunasi WETH.
+
+Anda dapat [memeriksa faktor kesehatan Aave V3 Anda](/id/aave) terlebih dahulu; melihat posisi Anda tidak perlu membayar. Peringatan berbiaya <AlertPrice />, dibayar di Arbitrum, satu per pasar Aave V3 atau Spoke V4, dan dikirim lewat Signal, Telegram, atau email. Tokenping masih beta dan tidak memiliki jaminan uptime. Untuk posisi dengan margin 2%, tidak ada peringatan yang dapat menggantikan margin itu sendiri.
+
+## Sumber
+
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): `POOL_REVISION`, `getReservesList`, serta label, konfigurasi jaminan, bitmap jaminan, bitmap yang dapat dipinjam, bitmap LTV 0, dan flag isolated untuk kategori 1 hingga 48, pada blok 26291736 (diakses 28 Oktober 2026)
+- Aave V3 Pool di [Arbitrum](https://arbiscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD), [Base](https://basescan.org/address/0xA238Dd80C259a72e81d7e4664a9801593F98d1c5), dan [Optimism](https://optimistic.etherscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD): panggilan yang sama untuk setiap kategori, pada blok Arbitrum 519074353 hingga 519074731, blok Base 53204166, dan blok Optimism 158799548 (diakses 28 Oktober 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): LTV, ambang, bonus, dan suku bunga WETH, wstETH, dan USDC pada blok 26291849; WBTC pada blok 26291889 (diakses 28 Oktober 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) dan [adaptor CAPO wstETH](https://etherscan.io/address/0xe1D97bF61901B075E9626c8A2340a7De385861Ef) miliknya: harga WETH dan wstETH, deskripsi adaptor, rasio snapshot, timestamp snapshot, pertumbuhan tahunan maksimum, dan rasio pada blok 26291849 (diakses 28 Oktober 2026)
+- [Token wstETH](https://etherscan.io/address/0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0): `stEthPerToken()` pada blok 26291849 (diakses 28 Oktober 2026)
+- [API APR stETH Lido](https://eth-api.lido.fi/v1/protocol/steth/apr/sma): APR terakhir dan rata-rata 7 hari (diakses 28 Oktober 2026)
+- [IPool.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/interfaces/IPool.sol): getter E-Mode, `setUserEMode`, dan `getUserEMode` (aave-v3-origin main, diakses 28 Oktober 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol), dan [LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): `validateSetUserEMode`, `getUserReserveLtv`, `executeSetUserEMode`, dan ambang US$2.000 untuk close factor (bagian utang yang dapat dilunasi sekaligus) (aave-v3-origin main, diakses 28 Oktober 2026)
+- [Fitur Aave V3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): liquid E-Modes, jaminan di luar kategori tetap memakai parameternya sendiri, aturan masuk dan keluar (diakses 28 Oktober 2026)
+- [E-Mode terisolasi Aave V3.7](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md): efek flag isolated (diakses 28 Oktober 2026)
+- [Bantuan Aave: Efficiency Mode (E-mode)](https://aave.com/help/borrowing/e-mode) (diakses 28 Oktober 2026)
+- [Post-mortem Chaos Labs tentang ketidaksesuaian kurs pada instance wstETH Core dan Prime](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): diterbitkan 10 Maret 2026 (diakses 28 Oktober 2026)
+
+_Konten edukasi, bukan nasihat keuangan. Peringatan mengurangi risiko, tetapi tidak mencegah likuidasi._

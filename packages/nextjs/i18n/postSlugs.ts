@@ -18,6 +18,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "fattore-di-salute-aave",
     pl: "wspolczynnik-zdrowia-aave",
     tr: "aave-saglik-faktoru",
+    id: "faktor-kesehatan-aave",
   },
   "safe-aave-health-factor": {
     en: "safe-aave-health-factor",
@@ -31,6 +32,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "fattore-di-salute-aave-sicuro",
     pl: "bezpieczny-wspolczynnik-zdrowia-aave",
     tr: "guvenli-aave-saglik-faktoru",
+    id: "faktor-kesehatan-aave-yang-aman",
   },
   "how-aave-liquidation-works": {
     en: "how-aave-liquidation-works",
@@ -44,6 +46,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "come-funziona-la-liquidazione-su-aave",
     pl: "jak-dziala-likwidacja-na-aave",
     tr: "aave-likidasyonu-nasil-isler",
+    id: "cara-kerja-likuidasi-aave",
   },
   "aave-liquidation-price": {
     en: "aave-liquidation-price",
@@ -57,6 +60,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "prezzo-di-liquidazione-aave",
     pl: "cena-likwidacji-aave",
     tr: "aave-likidasyon-fiyati",
+    id: "harga-likuidasi-aave",
   },
   "why-aave-health-factor-dropped": {
     en: "why-aave-health-factor-dropped",
@@ -70,6 +74,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "perche-il-fattore-di-salute-aave-e-sceso",
     pl: "dlaczego-spadl-wspolczynnik-zdrowia-aave",
     tr: "aave-saglik-faktoru-neden-dustu",
+    id: "mengapa-faktor-kesehatan-aave-turun",
   },
   "aave-health-factor-alert-setup": {
     en: "aave-health-factor-alert-setup",
@@ -83,6 +88,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "configurare-avvisi-fattore-di-salute-aave",
     pl: "alerty-wspolczynnika-zdrowia-aave-konfiguracja",
     tr: "aave-saglik-faktoru-uyarisi-kurulumu",
+    id: "cara-mengatur-peringatan-faktor-kesehatan-aave",
   },
   "aave-liquidation-alert-tools": {
     en: "aave-liquidation-alert-tools",
@@ -96,6 +102,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "strumenti-avvisi-liquidazione-aave",
     pl: "narzedzia-alertow-o-likwidacji-aave",
     tr: "aave-likidasyon-uyari-araclari",
+    id: "alat-peringatan-likuidasi-aave",
   },
   "avoid-aave-liquidation": {
     en: "avoid-aave-liquidation",
@@ -109,6 +116,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "evitare-la-liquidazione-su-aave",
     pl: "jak-uniknac-likwidacji-na-aave",
     tr: "aave-likidasyonundan-kacinma",
+    id: "cara-menghindari-likuidasi-aave",
   },
   "private-aave-liquidation-alerts": {
     en: "private-aave-liquidation-alerts",
@@ -122,6 +130,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "avvisi-liquidazione-aave-e-privacy",
     pl: "prywatne-alerty-o-likwidacji-aave",
     tr: "gizli-aave-likidasyon-uyarilari",
+    id: "peringatan-likuidasi-aave-yang-privat",
   },
   "crypto-backed-loans": {
     en: "crypto-backed-loans",
@@ -135,6 +144,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "prestiti-garantiti-da-cripto",
     pl: "pozyczki-zabezpieczone-kryptowalutami",
     tr: "kripto-teminatli-krediler",
+    id: "pinjaman-berjaminan-kripto",
   },
   "short-fiat-with-aave": {
     en: "short-fiat-with-aave",
@@ -148,6 +158,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "andare-short-su-valute-fiat-con-aave",
     pl: "short-na-walucie-fiat-z-aave",
     tr: "aave-ile-itibari-paraya-short",
+    id: "short-mata-uang-fiat-dengan-aave",
   },
   "aave-interest-rates": {
     en: "aave-interest-rates",
@@ -161,6 +172,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "tassi-di-interesse-aave",
     pl: "oprocentowanie-aave",
     tr: "aave-faiz-oranlari",
+    id: "suku-bunga-aave",
   },
   "aave-alerts-do-not-disturb": {
     en: "aave-alerts-do-not-disturb",
@@ -174,6 +186,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "avvisi-aave-non-disturbare",
     pl: "alerty-aave-w-trybie-nie-przeszkadzac",
     tr: "rahatsiz-etmeyin-modunda-aave-uyarilari",
+    id: "peringatan-aave-saat-jangan-ganggu",
   },
   "aave-market-wind-down": {
     en: "aave-market-wind-down",
@@ -187,6 +200,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "chiusura-mercato-aave",
     pl: "zamkniecie-rynku-aave",
     tr: "aave-piyasa-kapanisi",
+    id: "penutupan-pasar-aave",
   },
   "stablecoin-depeg-aave": {
     en: "stablecoin-depeg-aave",
@@ -200,6 +214,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "depeg-stablecoin-aave",
     pl: "depeg-stablecoina-na-aave",
     tr: "stablecoin-depeg-aave",
+    id: "depeg-stablecoin-aave",
   },
   "aave-e-mode": {
     en: "aave-e-mode",
@@ -213,6 +228,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "e-mode-aave",
     pl: "e-mode-aave",
     tr: "aave-e-mode",
+    id: "e-mode-aave",
   },
   "why-aave-withdraw-or-borrow-fails": {
     en: "why-aave-withdraw-or-borrow-fails",
@@ -226,6 +242,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "perche-prelievo-o-prestito-aave-fallisce",
     pl: "dlaczego-wyplata-lub-pozyczka-na-aave-nie-dziala",
     tr: "aave-cekim-veya-borclanma-neden-basarisiz",
+    id: "mengapa-penarikan-atau-pinjaman-aave-gagal",
   },
   "wrapped-bitcoin-aave-collateral": {
     en: "wrapped-bitcoin-aave-collateral",
@@ -239,6 +256,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "bitcoin-wrapped-come-collaterale-aave",
     pl: "wrapped-bitcoin-jako-zabezpieczenie-na-aave",
     tr: "aave-teminati-olarak-wrapped-bitcoin",
+    id: "wrapped-bitcoin-sebagai-jaminan-aave",
   },
   "tokenized-stocks-collateral": {
     en: "tokenized-stocks-collateral",
@@ -252,6 +270,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "azioni-tokenizzate-come-collaterale",
     pl: "tokenizowane-akcje-jako-zabezpieczenie",
     tr: "teminat-olarak-tokenize-hisseler",
+    id: "saham-tokenisasi-sebagai-jaminan",
   },
   "who-needs-health-factor-alerts": {
     en: "who-needs-health-factor-alerts",
@@ -265,6 +284,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "a-chi-servono-gli-avvisi-sul-fattore-di-salute",
     pl: "komu-przydadza-sie-alerty-wspolczynnika-zdrowia",
     tr: "saglik-faktoru-uyarilari-kimin-icin",
+    id: "siapa-yang-butuh-peringatan-faktor-kesehatan",
   },
   "liquidated-on-aave-or-morpho-what-now": {
     en: "liquidated-on-aave-or-morpho-what-now",
@@ -278,6 +298,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "liquidato-su-aave-o-morpho-e-ora",
     pl: "likwidacja-na-aave-lub-morpho-co-teraz",
     tr: "aave-veya-morphoda-likide-oldum-simdi-ne-olacak",
+    id: "terlikuidasi-di-aave-atau-morpho-lalu-apa",
   },
   "morpho-health-factor": {
     en: "morpho-health-factor",
@@ -291,6 +312,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "fattore-di-salute-morpho",
     pl: "wspolczynnik-zdrowia-morpho",
     tr: "morpho-saglik-faktoru",
+    id: "faktor-kesehatan-morpho",
   },
   "how-morpho-liquidation-works": {
     en: "how-morpho-liquidation-works",
@@ -304,6 +326,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "come-funziona-la-liquidazione-su-morpho",
     pl: "jak-dziala-likwidacja-na-morpho",
     tr: "morpho-likidasyonu-nasil-isler",
+    id: "cara-kerja-likuidasi-morpho",
   },
   "morpho-pre-liquidation": {
     en: "morpho-pre-liquidation",
@@ -317,6 +340,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "pre-liquidazione-morpho",
     pl: "prelikwidacja-morpho",
     tr: "morpho-on-likidasyon",
+    id: "pra-likuidasi-morpho",
   },
   "morpho-midnight-fixed-rate-loans": {
     en: "morpho-midnight-fixed-rate-loans",
@@ -330,6 +354,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     it: "morpho-midnight-prestiti-a-tasso-fisso",
     pl: "morpho-midnight-pozyczki-o-stalym-oprocentowaniu",
     tr: "morpho-midnight-sabit-faizli-krediler",
+    id: "pinjaman-bunga-tetap-morpho-midnight",
   },
 };
 

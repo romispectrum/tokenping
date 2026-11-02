@@ -1,0 +1,134 @@
+export const meta = {
+  slug: "mengapa-penarikan-atau-pinjaman-aave-gagal",
+  title: "Mengapa tidak bisa menarik atau meminjam di Aave? 9 penyebab",
+  description:
+    "Mengapa penarikan, pinjaman atau pelunasan Aave V3 gagal: cek faktor kesehatan, likuiditas, supply cap dan borrow cap, reserve dibekukan atau dijeda.",
+  h1: "Mengapa penarikan, pinjaman atau pelunasan Aave saya gagal?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "Mengapa transaksi penarikan, pinjaman atau pelunasan di Aave gagal?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Transaksi Aave V3 gagal ketika salah satu pemeriksaan kontrak Pool menolaknya, dan alasannya hampir selalu salah satu
+  dari sembilan. Penarikan akan menurunkan faktor kesehatan (health factor) Anda di bawah 1. Reserve (kumpulan dana satu
+  aset di Aave) menyimpan likuiditas yang belum dipinjam lebih sedikit dari yang Anda minta. Batas setoran (supply cap)
+  atau batas pinjaman (borrow cap) aset itu sudah penuh. Reserve dibekukan (tidak ada setoran atau pinjaman baru) atau
+  dijeda (tidak ada apa pun, termasuk pelunasan). Aset itu tidak bisa dipinjam, atau tidak bisa dipinjam dalam kategori
+  E-Mode Anda. Anda memegang jaminan dengan rasio pinjaman terhadap nilai (LTV) 0, yang harus keluar lebih dulu. Atau
+  pelunasan menyebut utang yang tidak Anda miliki atau token yang belum Anda setujui. Di Ethereum Core pada 29 Oktober
+  2026, 35 dari 66 reserve yang terdaftar dibekukan, supply cap LBTC penuh hingga sisa 0,07 LBTC terakhir, dan hanya
+  134,4 juta dari 2.347,5 juta USDC yang disetor tersedia untuk ditarik.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Angka dan nomor blok tempat angka itu dibaca: content/blog/snapshots/why-aave-withdraw-or-borrow-fails.md */}
+
+## Pemeriksaan apa yang harus dilalui transaksi Aave?
+
+Setiap setoran, penarikan, pinjaman dan pelunasan di Aave V3 melewati kontrak Pool, dan Pool menjalankan daftar pemeriksaan dalam library bernama `ValidationLogic` sebelum memindahkan token. Setiap pemeriksaan yang gagal menghentikan seluruh transaksi dengan error bernama: `ReserveFrozen`, `SupplyCapExceeded`, `HealthFactorLowerThanLiquidationThreshold` dan seterusnya. Dompet Anda biasanya hanya menampilkan "execution reverted" dan kode hex pendek, karena nama-nama itu ada di kode Aave, bukan di dompet. Aplikasi Aave memeriksa sebagian besar hal ini sebelum Anda menandatangani, itulah sebabnya aplikasi sering menolak sebelum Anda sempat melihat transaksi.
+
+Pemeriksaannya berbeda untuk setiap tindakan. Penarikan memerlukan reserve yang aktif dan tidak dijeda, saldo minimal sebesar jumlah yang ditarik, dan, jika Anda punya utang dan aset itu dihitung sebagai jaminan, faktor kesehatan yang tetap sama dengan atau di atas 1 setelahnya. Pinjaman memerlukan reserve yang aktif, tidak dijeda dan tidak dibekukan dengan peminjaman diaktifkan, ruang di bawah borrow cap, dan jaminan yang cukup pada LTV Anda. Setoran memerlukan reserve yang tidak dibekukan dengan ruang di bawah supply cap. Pelunasan hanya memerlukan reserve yang aktif dan tidak dijeda serta utang atas aset itu. Sembilan penyebab di bawah mengikuti daftar itu, kira-kira sesuai urutan kemungkinan Anda menemuinya.
+
+Panduan ini membahas Aave V3. Spoke Aave V4 menyimpan konfigurasinya sendiri, dan Morpho tidak punya satu pun mekanisme ini kecuali oracle (sumber harga) dan faktor kesehatan: pasar Morpho tidak punya cap, tidak bisa dibekukan dan tidak bisa dijeda.
+
+## 1. Penarikan akan membuat faktor kesehatan Anda di bawah 1
+
+Inilah yang paling sering dialami peminjam. Saat Anda menarik aset yang Anda gunakan sebagai jaminan ketika Anda punya utang, Pool menghitung ulang akun Anda setelah penarikan dan mensyaratkan faktor kesehatan minimal 1 (`HealthFactorLowerThanLiquidationThreshold`). Pemeriksaan yang sama berjalan saat Anda menonaktifkan aset sebagai jaminan atau mentransfer aToken ke alamat lain. Pemeriksaan ini tidak berjalan saat Anda tidak punya utang, itulah sebabnya seluruh saldo selalu bisa ditarik dari posisi yang hanya berisi setoran.
+
+Ambil contoh 10 WETH di Ethereum Core pada harga oracle US$2.309,84 pada 29 Oktober 2026 (US$23.098,41), ambang likuidasi (liquidation threshold) 84%, dan utang 12.000 USDC. [Faktor kesehatan](/id/blog/faktor-kesehatan-aave) posisi ini adalah 23.098,41 × 0,84 ÷ 12.000 = 1,617. Untuk menjaganya tepat di 1, Anda memerlukan WETH senilai 12.000 ÷ 0,84 = US$14.285,71, atau 6,185 WETH, jadi jumlah maksimum yang bisa Anda tarik adalah 3,815 WETH. Minta 4 dan transaksinya di-revert; minta 3,815 dan transaksinya berhasil, menyisakan posisi yang bisa dilikuidasi pada penurunan harga berikutnya, sekecil apa pun. Nilai maksimum di aplikasi Aave adalah angka ini, dan menarik seluruhnya adalah cara tercepat mengubah posisi yang aman menjadi posisi yang memerlukan [peringatan likuidasi](/id/blog/cara-mengatur-peringatan-faktor-kesehatan-aave) dalam satu jam.
+
+Peminjaman punya aturan saudara yang lebih ketat. Pinjaman baru harus menjaga faktor kesehatan sama dengan atau di atas 1 dan juga harus muat di bawah LTV tertimbang Anda: jaminan × LTV harus menutup utang (`CollateralCannotCoverNewBorrow`). Dengan LTV WETH 81%, 10 WETH di atas menopang utang paling banyak US$18.709,71, dan posisi yang meminjam seluruhnya dimulai pada faktor kesehatan 84 ÷ 81 = 1,037. [Berapa faktor kesehatan yang aman](/id/blog/faktor-kesehatan-aave-yang-aman) menjelaskan mengapa itu titik awal yang tipis.
+
+## 2. Reserve menyimpan likuiditas yang belum dipinjam lebih sedikit dari yang Anda inginkan
+
+Aave meminjamkan apa yang disetor para penyetor, jadi reserve hanya menyimpan bagian yang belum dipinjam siapa pun. Penarikan, atau pinjaman, yang lebih besar dari bagian itu gagal, dan kasus ini tidak punya nama error Aave: aToken mencoba mentransfer token dasarnya keluar dan kontrak token itu sendiri yang melakukan revert, untuk USDC dengan "ERC20: transfer amount exceeds balance". Pemeriksaan pinjaman hanya memastikan total pasokan aToken minimal sebesar jumlah yang diminta, yang hanya menangkap permintaan yang tidak masuk akal dan tidak lebih.
+
+Di Ethereum Core pada 29 Oktober 2026, 2.347.525.372,91 USDC disetor, 2.213.199.103,54 USDC dipinjam dan kontrak aToken menyimpan 134.360.379,94 USDC: utilisasi 94,28%, jadi 5,72% dari setoran tersedia untuk ditarik atau dipinjam. Penyetor yang ingin keluar dengan 200 juta USDC tidak bisa, dan tidak ada yang bisa sampai seseorang melunasi atau menyetor. Panduan tentang [cara kerja suku bunga Aave](/id/blog/suku-bunga-aave) menunjukkan seperti apa hal itu dalam praktik: pada 14 Oktober 2026 satu penarikan 133.898.000 USDC mendorong reserve yang sama ke utilisasi 99,50%, dan suku bunga pinjaman dari 4,50% ke 13,67% dalam satu blok.
+
+Empat hal berhasil saat likuiditas menjadi masalahnya. Tarik jumlah yang lebih kecil, hingga sebesar yang disimpan kontrak. Tunggu: kurva suku bunga dirancang untuk menarik likuiditas kembali, dan lonjakan 14 Oktober berakhir dalam sekitar 36 menit, meski tidak ada yang menjaminnya. Tarik aset jaminan lain, jika Anda punya dan faktor kesehatan memungkinkan. Dan jika Anda mencoba melunasi utang USDC tetapi memegang aUSDC, gunakan `repayWithATokens`: fungsi ini membakar aToken Anda untuk melunasi utang tanpa memindahkan satu USDC pun, jadi tidak memerlukan likuiditas sama sekali.
+
+## 3. Supply cap sudah penuh
+
+Setiap reserve punya supply cap, yang ditetapkan oleh risk steward (pengelola parameter risiko) dan governance Aave, dan setoran yang akan mendorong total melewatinya gagal dengan `SupplyCapExceeded`. Cap 0 berarti tidak ada batas. Cap ini menghitung aToken yang beredar ditambah bunga yang terakumulasi untuk treasury, jadi cap terisi dengan sendirinya seiring bunga bertambah, tanpa ada yang menyetor.
+
+Cap lebih sering membatasi daripada yang orang kira. Pada 29 Oktober 2026, cap LBTC di Ethereum Core adalah 2.690 LBTC berbanding 2.689,93 yang disetor: ruang yang tersisa 0,07 LBTC, dan peminjam yang ingin menambah 1 LBTC ke posisi yang sedang tertekan tidak bisa melakukannya. sUSDe berada di 96,9% dari cap-nya, tBTC di 98,9%, USDe di 91,7%, weETH di 91,2% dan WBTC di 89,4%. Cap bergerak ke dua arah. Pada 10 Juli 2026 LlamaRisk memangkas supply cap USDm di instance MegaETH milik Aave dari 1.000.000.000 menjadi 300.000.000 karena plafonnya berada "well above current demand" (jauh di atas permintaan saat ini); para steward menaikkan cap saat permintaan datang, biasanya dalam beberapa hari.
+
+Bagi peminjam, cap penting sebagai pintu yang tertutup: menambah jaminan adalah salah satu dari dua cara menaikkan faktor kesehatan, dan cap yang penuh menutup cara itu untuk aset tersebut. Melunasi utang, cara yang satunya lagi, tetap berhasil, begitu pula menambah aset jaminan lain yang cap-nya masih punya ruang.
+
+## 4. Borrow cap sudah penuh
+
+Borrow cap bekerja dengan cara yang sama untuk utang: total utang bunga mengambang reserve setelah pinjaman Anda tidak boleh melebihi cap (`BorrowCapExceeded`), dan 0 berarti tidak ada batas. Pemeriksaan ini berjalan pada setiap pinjaman, jadi cap yang sudah melewati batasnya menghentikan setiap pinjaman baru atas aset itu sampai seseorang melunasi. Borrow cap yang penuh tidak menghentikan hal lain: pelunasan, penarikan dan likuidasi tetap berjalan.
+
+tBTC di Ethereum Core adalah kasus ekstremnya: peminjaman diaktifkan pada 29 Oktober 2026, tetapi cap-nya 1 tBTC dan 2,57 tBTC sudah dipinjam, jadi pinjaman terkecil pun di-revert. USDC punya 2.213,2 juta yang dipinjam berbanding cap 2.700 juta, terpakai 82,0%, dengan ruang 486,8 juta; USDT berada di 80,8%. Saat cap stablecoin penuh, pinjaman gagal meskipun reserve mungkin masih menyimpan banyak likuiditas.
+
+## 5. Reserve dibekukan
+
+Reserve yang dibekukan (frozen) tidak menerima setoran baru dan pinjaman baru (`ReserveFrozen` untuk keduanya). Dokumentasi Pool Configurator Aave mencantumkan apa yang masih berfungsi: pelunasan, likuidasi dan penarikan. Pembekuan adalah cara governance menghentikan sebuah aset secara bertahap tanpa menjebak siapa pun; [apa yang terjadi saat Aave menutup pasar](/id/blog/penutupan-pasar-aave) menjelaskan langkah-langkahnya.
+
+Reserve yang dibekukan tidak langka. Pada 29 Oktober 2026, 35 dari 66 reserve di Ethereum Core dibekukan: CRV, MKR, UNI, LUSD, FRAX, sDAI, crvUSD, FBTC dan daftar panjang token PT Pendle yang sudah lewat jatuh temponya, hampir semuanya juga dengan supply cap dan borrow cap sebesar 1. Jika Anda masih punya jaminan di salah satunya, Anda bisa menariknya dan Anda bisa dilikuidasi dari situ, tetapi Anda tidak bisa menambahnya.
+
+## 6. Reserve dijeda
+
+Penjedaan (pause) adalah tombol darurat. Reserve yang dijeda menolak semuanya: setoran, pinjaman, pelunasan, penarikan, likuidasi dan transfer aToken (`ReservePaused`). Tidak ada reserve Ethereum Core yang dijeda pada 29 Oktober 2026, dan pada minggu-minggu normal memang tidak ada.
+
+Penjedaan pernah digunakan. Pada 4 November 2023, setelah laporan bug bounty yang kritis, Guardian Aave menjeda Aave V2 di Ethereum dan sejumlah aset di V3 Arbitrum, Avalanche, Optimism dan Polygon. Selama sekitar seminggu tidak ada yang bisa melunasi atau menambah jaminan di reserve tersebut, sementara harga terus bergerak. Instance V3 dibuka kembali pada 12 November 2023, V2 Ethereum pada 13 November setelah masa tenggang likuidasi (grace period) sekitar tiga jam bagi peminjam WETH, dan CRV di V3 Polygon pada 16 November. Kini masa tenggang itu menjadi bagian dari protokol: likuidasi selama masa tenggang suatu reserve gagal dengan `LiquidationGraceSentinelCheckFailed`, yang memberi peminjam yang sempat terkunci jendela waktu singkat untuk melunasi sebelum likuidator bergerak.
+
+Jika transaksi Anda gagal dengan error jeda, tidak ada yang bisa dilakukan di Aave sampai jedanya dicabut. Gunakan waktu itu untuk menyiapkan dana pelunasan di jaringan yang tepat, karena masa tenggang setelah jeda dicabut ditetapkan oleh governance atau Guardian dan pernah sesingkat tiga jam.
+
+## 7. Peminjaman nonaktif untuk aset itu, atau tidak diizinkan dalam kategori E-Mode Anda
+
+Banyak aset bisa disetor sebagai jaminan tetapi tidak bisa dipinjam. Di Ethereum Core pada 29 Oktober 2026, peminjaman dinonaktifkan pada 15 reserve yang tidak dibekukan, di antaranya wstETH, cbETH, rETH, weETH, LBTC, eBTC, AAVE dan XAUt, dan pinjaman atas salah satunya gagal dengan `BorrowingNotEnabled`. Penanda ini ditetapkan governance per reserve dan terlihat di aplikasi Aave sebagai tombol pinjam yang tidak ada.
+
+Jika Anda berada dalam [kategori E-Mode](/id/blog/e-mode-aave), aturan lain menggantikannya: Anda hanya bisa meminjam aset yang termasuk daftar aset yang bisa dipinjam dalam kategori itu, dan aset lain gagal dengan `NotBorrowableInEMode`, bahkan aset yang bisa Anda pinjam di luar kategori. Kategori "ETH correlated" di Ethereum Core, misalnya, hanya mengizinkan Anda meminjam WETH. Keluar dari kategori memperbaiki pinjamannya, tetapi keluar menjalankan pemeriksaannya sendiri: setiap aset yang Anda utang harus bisa dipinjam di luar kategori dan faktor kesehatan Anda harus tetap sama dengan atau di atas 1 dengan ambang normal yang lebih rendah (`InvalidDebtInEmode`, `InvalidCollateralInEmode`, `HealthFactorLowerThanLiquidationThreshold`).
+
+## 8. Anda memegang jaminan dengan LTV 0
+
+Governance menetapkan LTV suatu aset ke 0 saat ingin aset itu berhenti menopang utang baru sementara posisi yang ada tetap berjalan. Pada 29 Oktober 2026, 11 reserve yang tidak dibekukan di Ethereum Core diaktifkan sebagai jaminan dengan LTV 0, di antaranya DAI (ambang likuidasi 77%), LINK, PYUSD, USDe, sUSDe, USDS, EURC dan XAUt. Aset seperti itu tetap dihitung dalam faktor kesehatan Anda, melalui ambang likuidasinya, tetapi tidak menambah daya pinjam Anda. Dua pemeriksaan mengikutinya.
+
+Yang pertama untuk peminjaman. Jika setiap jaminan yang Anda aktifkan punya LTV 0, LTV tertimbang Anda adalah 0 dan setiap pinjaman gagal dengan `LtvValidationFailed`. Dengan campuran, misalnya DAI dan WETH, pinjaman berhasil, dibatasi oleh WETH saja.
+
+Yang kedua untuk penarikan, dan ini mengejutkan banyak orang. Jika Anda punya utang dan ada jaminan aktif dengan LTV 0, maka aset yang Anda tarik, transfer atau nonaktifkan sebagai jaminan harus berupa aset LTV 0 juga, atau transaksi gagal dengan `LtvValidationFailed` yang sama. Komentar di kodenya sendiri menyatakan maksudnya: aturan ini "ensures that a multi-collateral position needs to withdraw/transfer the ltv0 asset first" (memastikan posisi dengan banyak jaminan harus menarik/mentransfer aset ltv0 lebih dulu). Jadi peminjam yang memegang DAI dan WETH dan mencoba menarik sebagian WETH ditolak sampai DAI-nya keluar; pemeriksaan faktor kesehatan tetap berlaku untuk penarikan DAI itu sendiri. Solusinya adalah urutan langkah: tarik aset LTV 0 lebih dulu, atau lunasi cukup banyak agar faktor kesehatan memungkinkan keduanya.
+
+## 9. Pelunasan menyebut utang yang tidak Anda miliki, atau token yang belum Anda setujui
+
+Pelunasan adalah tindakan paling sederhana dan tetap bisa gagal, biasanya karena salah satu dari lima alasan.
+
+- **Tidak ada utang jenis itu.** `NoDebtOfSelectedType` berarti Pool yang Anda panggil tidak mencatat utang bunga mengambang atas aset itu untuk alamat tersebut. Penyebab umumnya adalah pasar yang salah: Ethereum punya instance Core, Prime dan Lido yang terpisah, masing-masing dengan Pool-nya sendiri, dan dompet yang sama bisa berutang USDC di satu instance dan tidak berutang apa pun di instance lain. Pasar di setiap jaringan juga terpisah.
+- **Mode bunga yang sudah tidak ada.** Hanya mode mengambang (2) yang diterima; pinjaman bunga stabil (stable rate) sudah dihapus dari kode, dan panggilan dengan mode 1 gagal dengan `InvalidInterestRateModeSelected`.
+- **Tidak ada allowance.** Pool menarik dana pelunasan dengan `transferFrom`, jadi token memerlukan persetujuan minimal sebesar jumlahnya, atau permit yang ditandatangani. Tanpa itu, kontrak token melakukan revert sebelum pemeriksaan Aave berjalan.
+- **Melunasi untuk orang lain tanpa jumlah.** Melunasi atas nama alamat lain dengan nilai "seluruh utang" (`type(uint256).max`) gagal dengan `NoExplicitAmountToRepayOnBehalf`; sebutkan jumlahnya.
+- **Sisa kecil (dust).** Bunga bertambah setiap detik, jadi pelunasan sebesar saldo persis yang Anda lihat semenit lalu menyisakan beberapa wei utang. Untuk melunasi utang sepenuhnya, lunasi dengan nilai maksimum, yang dibatasi Pool sebesar utang Anda.
+
+## Penyebab yang tidak perlu Anda cari lagi
+
+Dua penjelasan lama sudah tidak berlaku. Isolation Mode beserta debt ceiling-nya dihapus di Aave V3.7, begitu pula siloed borrowing, jadi saat ini tidak ada pinjaman yang gagal karena suatu aset terisolasi atau suatu plafon tercapai. Dan pinjaman bunga stabil sudah tidak ada sejak V3.2, jadi tidak ada yang gagal karena peralihan jenis bunga. Jika panduan lama menyebut salah satunya, panduan itu menggambarkan versi Aave yang sudah tidak di-deploy.
+
+## Apa yang harus dilakukan saat transaksi gagal ketika harga turun
+
+Transaksi yang gagal hanyalah gangguan kecil di pasar yang tenang dan menjadi masalah di pasar yang sedang turun, karena satu jam yang Anda habiskan untuk mendiagnosisnya adalah satu jam yang dibutuhkan faktor kesehatan Anda. Urutan langkah singkat:
+
+1. **Baca error-nya.** Simulasikan transaksi di dompet Anda, atau tempel selector hex ke decoder di block explorer; nama-nama di atas memberi tahu kasus mana yang Anda alami.
+2. **Utamakan melunasi daripada menambah jaminan.** Pelunasan tetap berjalan pada reserve yang dibekukan dan supply cap yang penuh, dan dengan `repayWithATokens` juga berjalan saat likuiditas kosong. Menambah jaminan bergantung pada cap yang masih punya ruang dan reserve yang tidak dibekukan.
+3. **Coba jumlah yang lebih kecil.** Likuiditas dan cap adalah kuantitas; penarikan atau pinjaman yang muat akan berhasil sementara yang penuh gagal.
+4. **Gunakan aset lain.** Jaminan lain untuk ditarik, atau aset lain untuk dilunasi, sering tersedia saat yang pertama terblokir.
+5. **Periksa instance dan jaringannya.** Pelunasan untuk aset yang tepat yang dikirim ke Pool yang salah gagal dengan `NoDebtOfSelectedType` dan menghabiskan gas serta waktu Anda.
+6. **Terima peringatan lebih awal lain kali.** Setiap kasus ini butuh beberapa menit untuk diatasi. Peringatan faktor kesehatan yang diatur dengan ruang yang cukup memberi Anda menit-menit itu.
+
+Tokenping memeriksa faktor kesehatan Aave Anda setiap 5 menit, di setiap pasar Aave V3 di 21 jaringan dan setiap Spoke Aave V4, dan mengirim pesan kepada Anda lewat Signal, Telegram atau email saat faktor kesehatan berada di bawah ambang batas pilihan Anda (1,1 hingga 10), berulang di setiap pemeriksaan sampai pulih. Tokenping membaca angkanya dari `getUserAccountData`, angka yang sama yang dipakai pemeriksaan penarikan. Peringatan tidak dapat bertindak untuk Anda, dan tidak ada dalam panduan ini yang mencegah likuidasi; panduan ini memberi tahu pintu mana yang tertutup agar Anda mencoba pintu yang terbuka lebih dulu. Anda dapat [memeriksa faktor kesehatan Aave V3 Anda](/id/aave) tanpa membayar; peringatan berbiaya <AlertPrice />, satu per pasar atau Spoke. [Cara menghindari likuidasi di Aave](/id/blog/cara-menghindari-likuidasi-aave) membahas keputusan antara melunasi atau menambah jaminan secara rinci, dan [mengapa faktor kesehatan Anda turun](/id/blog/mengapa-faktor-kesehatan-aave-turun) membahas penyebab yang sedang Anda tanggapi.
+
+## Sumber
+
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol), [BorrowLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/BorrowLogic.sol) dan [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): setiap pemeriksaan yang disebut di atas, urutan berjalannya, komentar tentang LTV 0, dan penanda LTV nol (aave-v3-origin main, diakses 29 Oktober 2026)
+- [Errors.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/helpers/Errors.sol): nama-nama error dan deskripsinya (aave-v3-origin main, diakses 29 Oktober 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getAllReservesTokens`, dan untuk setiap reserve `getReserveConfigurationData`, `getReserveCaps`, `getPaused` dan `getReserveData`, di blok 26296985 (diakses 29 Oktober 2026)
+- [aEthUSDC](https://etherscan.io/address/0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c): USDC yang disimpan kontrak aToken di blok 26296985 (diakses 29 Oktober 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): harga WETH dan USDC di blok 26296985 (diakses 29 Oktober 2026)
+- [Dokumentasi Aave: Pool Configurator](https://aave.com/docs/aave-v3/smart-contracts/pool-configurator): apa yang diizinkan pada reserve yang dibekukan dan dijeda, cap sebesar 0 (diakses 29 Oktober 2026)
+- [Aave v2/v3 security incident 04/11/2023](https://governance.aave.com/t/aave-v2-v3-security-incident-04-11-2023/15335): penjedaan 4 November 2023, pembukaan kembali pada 12, 13 dan 16 November, serta masa tenggang (diakses 29 Oktober 2026)
+- [Fitur Aave V3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): penghapusan pinjaman bunga stabil (diakses 29 Oktober 2026)
+- [Aave V3.7: penghapusan isolation mode dan siloed borrowing](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/mode-removal.md) (diakses 29 Oktober 2026)
+- [Risk Stewards: Supply and Borrow Cap Reductions on Aave V3 / 2026.07.10](https://governance.aave.com/t/risk-stewards-supply-and-borrow-cap-reductions-on-aave-v3-2026-07-10/25296): pemangkasan cap MegaETH oleh LlamaRisk, dieksekusi 14 Juli 2026 (diakses 29 Oktober 2026)
+
+_Konten edukasi, bukan nasihat keuangan. Peringatan mengurangi risiko, tetapi tidak mencegah likuidasi._

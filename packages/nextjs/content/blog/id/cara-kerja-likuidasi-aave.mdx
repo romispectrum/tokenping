@@ -1,0 +1,183 @@
+export const meta = {
+  slug: "cara-kerja-likuidasi-aave",
+  title: "Apa yang terjadi saat posisi Aave Anda dilikuidasi",
+  description:
+    "Cara kerja likuidasi Aave V3 saat ini: kapan terpicu, berapa utang yang dapat dilunasi (50% atau 100%), bonus yang Anda bayar, dan contoh hitungan.",
+  h1: "Apa yang terjadi saat posisi Aave Anda dilikuidasi?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Apa yang terjadi jika Anda terlikuidasi di Aave?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Ketika faktor kesehatan (health factor) Aave V3 Anda turun di bawah 1, alamat lain mana pun dapat melunasi sebagian
+  atau seluruh utang Anda dan mengambil jaminan senilai jumlah itu ditambah bonus likuidasi, misalnya 5% untuk WETH di
+  pasar Ethereum Core. Satu likuidasi dapat melunasi hingga 50% utang Anda selama faktor kesehatan Anda di atas 0,95 dan
+  jaminan Anda pada aset yang disita serta utang Anda pada aset yang dilunasi masing-masing bernilai setidaknya
+  US$2.000; jika tidak, seluruh utang pada aset itu dapat dilunasi sekaligus. Token yang Anda pinjam tetap milik Anda,
+  begitu pula sisa jaminan dan sisa utang, sehingga bonus itulah biaya likuidasi bagi Anda.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Kapan posisi Aave dapat dilikuidasi?
+
+Posisi Aave V3 dapat dilikuidasi begitu faktor kesehatannya berada di bawah 1,00. Faktor kesehatan membagi nilai jaminan Anda, yang ditimbang dengan ambang likuidasi (liquidation threshold) setiap aset, dengan nilai utang Anda, sehingga di bawah 1,00 jaminan yang ditimbang tidak lagi menutup utang (rumus dan contohnya: [apa itu faktor kesehatan Aave](/id/blog/faktor-kesehatan-aave)).
+
+Kontrak Aave V3.7 memeriksa lima hal sebelum likuidasi dapat berjalan (`validateLiquidationCall` di `ValidationLogic.sol`):
+
+1. Faktor kesehatan peminjam di bawah 1,00.
+2. Aset jaminan yang disita dan aset utang yang dilunasi sama-sama aktif dan **tidak dijeda (paused)**.
+3. Masa tenggang likuidasi (grace period) pada kedua aset, jika ada, sudah berakhir. Ketika emergency guardian atau governance Aave mencabut jeda suatu aset, mereka dapat menetapkan masa tenggang hingga 4 jam.
+4. Peminjam mengaktifkan jaminan itu sebagai jaminan dan berutang pada aset utang yang dipilih.
+5. Pemanggilnya bukan peminjam: Anda tidak dapat melikuidasi posisi Anda sendiri.
+
+Aset yang dibekukan (frozen) tetap dapat dilikuidasi, karena pemeriksaannya melihat status "paused", bukan "frozen". Alamat lain mana pun dapat memanggil fungsi `liquidationCall` milik Pool.
+
+Protokol tidak memperingatkan Anda sebelum likuidasi, dan aplikasi Aave sendiri di app.aave.com tidak mengirim peringatan. Dengan satu jaminan volatil dan utang stablecoin, Anda dapat [menghitung harga likuidasi Aave Anda](/id/blog/harga-likuidasi-aave): harga jaminan saat faktor kesehatan mencapai 1.
+
+## Berapa bagian utang Anda yang dapat dilikuidasi sekaligus?
+
+Di Aave V3.7, close factor (bagian utang yang dapat dilunasi sekaligus oleh satu likuidasi) bernilai 50% dari total utang Anda hanya ketika tiga syarat terpenuhi semuanya: faktor kesehatan Anda di atas 0,95, jaminan Anda pada aset yang disita bernilai setidaknya US$2.000, dan utang Anda pada aset yang dilunasi bernilai setidaknya US$2.000. Dalam semua kasus lain, likuidator dapat melunasi hingga 100% utang Anda pada aset yang dipilih dalam satu transaksi.
+
+| Situasi saat likuidasi                                                                                                      | Maksimum yang dapat dilunasi satu likuidasi                                                                    |
+| --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Faktor kesehatan di atas 0,95, dan jaminan yang dipilih serta utang yang dipilih masing-masing bernilai US$2.000 atau lebih | 50% dari total utang Anda di semua aset (dalam USD), tidak pernah lebih dari utang Anda pada aset yang dipilih |
+| Faktor kesehatan sama dengan atau di bawah 0,95                                                                             | 100% dari utang Anda pada aset yang dipilih                                                                    |
+| Jaminan yang dipilih atau utang yang dipilih bernilai kurang dari US$2.000                                                  | 100% dari utang Anda pada aset yang dipilih                                                                    |
+
+Batas-batas ini adalah konstanta di `LiquidationLogic.sol` Aave (aave-v3-origin, dibaca 14 Oktober 2026). Sejak v3.3, angka 50% berlaku untuk seluruh posisi, bukan untuk setiap aset utang. Catatan v3.3 Aave memberi contoh utang GHO, USDC dan DAI masing-masing US$3.000, total US$9.000: seluruh US$3.000 dari salah satunya dapat dilunasi dalam satu panggilan, karena 50% dari total adalah US$4.500.
+
+Aturan kedua mencegah sisa yang terlalu kecil (dust). Likuidasi sebagian harus menyisakan setidaknya US$1.000 utang pada aset yang dilunasi dan setidaknya US$1.000 jaminan pada aset yang disita. Jika tidak, likuidator harus mengambil seluruh utang itu atau seluruh jaminan itu, atau transaksinya dibatalkan (revert).
+
+Likuidasi hanya mengambil jaminan senilai utang yang dilunasi ditambah bonus, bukan seluruh jaminan Anda. Likuidator melunasi utang dengan dananya sendiri, sehingga token yang Anda pinjam tetap milik Anda; selama jaminan menutupnya, bonus itulah yang hilang dari Anda.
+
+Panduan lama menyebut close factor yang selalu 50%, dan referensi kontrak Pool di aave.com sendiri masih menyatakan "close factor is 0.5" (diakses 14 Oktober 2026). Keduanya sudah usang: angka 50% yang tetap adalah aturan Aave V2, dan kode V3.7 yang dijalankan pasar-pasar ini memakai aturan 50% atau 100% seperti di tabel.
+
+## Apa itu bonus likuidasi, dan siapa yang membayarnya?
+
+Bonus likuidasi, yang sering disebut penalti likuidasi, adalah jaminan tambahan yang diterima likuidator di atas utang yang dilunasinya, dan peminjamlah yang membayarnya. Dengan bonus 5%, pelunasan 1.000 USDC utang Anda menghabiskan jaminan senilai 1.050 USDC. Treasury Aave menyimpan sebagian bonus sebagai liquidation protocol fee (biaya protokol likuidasi), sehingga likuidator menerima sedikit lebih kecil daripada yang Anda kehilangan.
+
+Bonus dan biaya yang berlaku ditentukan oleh jaminan yang disita, bukan oleh utangnya. Nilai Aave V3 dibaca on-chain pada 14 Oktober 2026 (blok Ethereum 26193284, blok Arbitrum 514855406):
+
+| Pasar         | Jaminan yang disita | Bonus likuidasi | Biaya protokol (bagian dari bonus) | Jaminan yang hilang per US$1.000 dilunasi | Diterima likuidator |
+| ------------- | ------------------- | --------------- | ---------------------------------- | ----------------------------------------- | ------------------- |
+| Ethereum Core | WETH                | 5%              | 10%                                | US$1.050                                  | US$1.045            |
+| Ethereum Core | WBTC                | 5%              | 10%                                | US$1.050                                  | US$1.045            |
+| Ethereum Core | USDC                | 4,5%            | 20%                                | US$1.045                                  | US$1.036            |
+| Arbitrum      | WETH                | 5%              | 10%                                | US$1.050                                  | US$1.045            |
+| Arbitrum      | WBTC                | 7%              | 10%                                | US$1.070                                  | US$1.063            |
+| Arbitrum      | USDC (native)       | 5%              | 10%                                | US$1.050                                  | US$1.045            |
+
+Di E-Mode, jika aset yang disita termasuk dalam kumpulan jaminan kategori Anda, bonus kategori menggantikan bonus aset itu sendiri: 1% untuk "ETH correlated" di Ethereum Core (dibaca di blok Ethereum 26193288, 14 Oktober 2026), sehingga setiap likuidasi lebih murah. Governance dapat mengubah parameter mana pun, dan risk steward Aave dapat menyesuaikan bonus likuidasi dalam batas yang ditetapkan, jadi periksa nilai terkini di aplikasi Aave.
+
+## Jaminan mana yang diambil likuidator?
+
+Likuidator yang memilih. Setiap likuidasi Aave V3 menyebut satu aset jaminan untuk disita dan satu aset utang untuk dilunasi, dan likuidator memilih pasangannya, sehingga Anda tidak dapat menentukan aset mana yang diambil lebih dulu. Hanya aset yang Anda aktifkan sebagai jaminan yang dapat disita; aset yang disetor dengan "used as collateral" (dipakai sebagai jaminan) dimatikan tidak dapat diambil, tetapi juga tidak menambah apa pun pada faktor kesehatan Anda.
+
+Jika jaminan yang dipilih tidak cukup untuk menutup pelunasan ditambah bonus, Anda kehilangan seluruh aset itu (likuidator mendapatkannya dikurangi biaya protokol) dan utang yang dilunasi lebih sedikit. Karena setiap likuidasi menangani satu pasangan, posisi dengan beberapa aset dapat dilikuidasi dalam beberapa transaksi, dan selama faktor kesehatan tetap di bawah 1, likuidasi berikutnya dapat menyusul.
+
+## Contoh hitungan: ETH turun ke US$1.420, lalu ke US$1.330
+
+Dalam contoh ini, likuidasi pada harga ETH US$1.420 melunasi 6.000 USDC dan membuat peminjam kehilangan WETH senilai US$300; jika tidak ada yang melikuidasi sampai ETH berada di US$1.330, seluruh 12.000 USDC dapat dilunasi sekaligus dan biayanya berlipat dua menjadi US$600.
+
+Posisinya: jaminan 10 WETH dan utang 12.000 USDC di Aave V3 Ethereum Core. WETH memiliki ambang likuidasi 83%, bonus 5% dan biaya protokol 10% (dibaca on-chain di blok 26193284, 14 Oktober 2026). Harga ETH bersifat ilustratif, USDC dianggap US$1,00 dan bunga diabaikan.
+
+Pada US$2.400 faktor kesehatannya 24.000 × 0,83 ÷ 12.000 = 1,66. Angka ini mencapai 1 pada harga ETH 12.000 ÷ (10 × 0,83) = US$1.445,78, dan 0,95 pada US$1.373,49.
+
+| Harga ETH                              | Faktor kesehatan         | Maksimum yang dapat dilunasi satu likuidasi                                                                                         |
+| -------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Di atas sekitar US$1.445,78            | 1,00 atau lebih          | Tidak ada; posisi tidak dapat dilikuidasi                                                                                           |
+| Sekitar US$1.373,50 hingga US$1.445,78 | Antara 0,95 dan 1,00     | 50%: 6.000 USDC                                                                                                                     |
+| Sekitar US$1.260 hingga US$1.373,49    | Sekitar 0,87 hingga 0,95 | 100%: 12.000 USDC                                                                                                                   |
+| Di bawah sekitar US$1.260              | Di bawah sekitar 0,87    | Kurang dari 12.000 USDC: seluruh 10 WETH disita dan sisanya menjadi [utang macet](#apakah-likuidasi-dapat-meninggalkan-utang-macet) |
+
+### Langkah 1: ETH di US$1.420, faktor kesehatan 0,982
+
+Pada US$1.420, 10 WETH bernilai US$14.200, sehingga faktor kesehatannya 14.200 × 0,83 ÷ 12.000 = 0,982. Angka itu di atas 0,95, dan jaminan WETH serta utang USDC Anda masing-masing bernilai lebih dari US$2.000, sehingga likuidator dapat melunasi paling banyak 6.000 USDC.
+
+- Likuidator melunasi 6.000 USDC dari utang Anda.
+- Posisi Anda kehilangan WETH senilai 6.000 × 1,05 = US$6.300 (4,4366 WETH).
+- Biaya protokol adalah 10% dari bonus US$300: US$30 (0,0211 WETH) masuk ke treasury Aave dan likuidator menerima US$6.270 (4,4155 WETH).
+- Anda tersisa 5,5634 WETH (US$7.900) dan utang 6.000 USDC: faktor kesehatan 7.900 × 0,83 ÷ 6.000 = 1,093.
+
+Posisi bersih Anda (jaminan dikurangi utang) turun dari US$2.200 menjadi US$1.900. Selisih US$300 itu adalah bonusnya.
+
+### Langkah 2: ETH di US$1.330, faktor kesehatan 1,024
+
+Sisa 5,5634 WETH bernilai US$7.399 pada US$1.330, faktor kesehatan 7.399 × 0,83 ÷ 6.000 = 1,024, sehingga posisi tidak dapat dilikuidasi lagi pada harga ini. Harga likuidasinya yang baru sekitar US$1.299, dari 6.000 ÷ (5,5634 × 0,83). Memotong utang menjadi separuh menurunkan harga likuidasi; bonus US$300 adalah biayanya.
+
+### Bagaimana jika tidak ada yang melikuidasi sampai ETH di US$1.330?
+
+Jika likuidasi pertama baru terjadi saat ETH sudah di US$1.330, posisi awal memiliki faktor kesehatan 13.300 × 0,83 ÷ 12.000 = 0,920. Angka itu sama dengan atau di bawah 0,95, sehingga likuidator dapat melunasi seluruh 12.000 USDC sekaligus. Posisi Anda kehilangan WETH senilai 12.000 × 1,05 = US$12.600 (9,4737 WETH), dengan US$60 di antaranya sebagai biaya protokol dan US$12.540 untuk likuidator. Anda menyimpan 0,5263 WETH (US$700) dan tidak berutang apa pun; aturan dust tidak berlaku karena utangnya lunas sepenuhnya.
+
+Posisi bersih turun dari US$1.300 menjadi US$700. Kerugian US$600 itu dua kali lipat dari Langkah 1, karena utang yang dilunasi dua kali lebih banyak dengan bonus 5% yang sama.
+
+## Apakah likuidasi dapat meninggalkan utang macet?
+
+Ya. Utang macet (bad debt) muncul ketika jaminan suatu posisi bernilai lebih kecil daripada utangnya ditambah bonus likuidasi, sehingga mengambil setiap unit jaminan pun tetap tidak melunasi semuanya. Sejak Aave V3.3, ketika likuidasi menghabiskan seluruh jaminan peminjam dan masih ada utang tersisa, kontrak membakar sisa utang itu dan mencatatnya sebagai "deficit" (defisit) pada aset tersebut. Peminjam berakhir tanpa jaminan dan tanpa utang, dan kerugiannya ditanggung protokol.
+
+Contoh dengan parameter WETH Ethereum Core: WETH senilai US$10.000 sebagai satu-satunya jaminan dengan utang 9.800 USDC berarti faktor kesehatan 0,847. Melunasi seluruh 9.800 USDC dengan bonus 5% memerlukan WETH senilai US$10.290, sehingga seluruh WETH senilai US$10.000 disita (sekitar US$47,62 di antaranya sebagai biaya protokol) dan sekitar 9.524 USDC dilunasi (10.000 ÷ 1,05). Sisa sekitar 276 USDC menjadi defisit.
+
+Umbrella, penyangga staking Aave, dapat membakar aToken milik staker pada aset yang terdampak untuk menutup defisit seperti itu; aktivasinya dimulai di Ethereum (dokumentasi Aave, diakses 14 Oktober 2026). Umbrella melindungi protokol, bukan peminjam, yang jaminannya sudah hilang.
+
+Hal ini pernah terjadi di Aave V3. Setelah USDC diperdagangkan di sekitar US$0,88 pada 11 Maret 2023, post-mortem Gauntlet mencatat utang macet sekitar US$280 ribu di E-Mode V3 Avalanche dan sekitar US$20 ribu di V3 Arbitrum, dan mencatat bahwa begitu jaminan bernilai lebih kecil daripada utang dikali satu ditambah bonus, setiap likuidasi sebagian membuat akun makin tenggelam. Itu terjadi sebelum v3.3 menambahkan mekanisme defisit.
+
+## Apakah likuidasi berhenti saat pasar dibekukan atau sequencer L2 mati?
+
+Tidak untuk keduanya. Di Aave V3.7, aset yang dibekukan tetap dapat dilikuidasi, dan likuidasi di Arbitrum, Optimism dan Base tidak lagi bergantung pada apakah sequencer L2 sedang berjalan. Yang benar-benar menghalangi likuidasi adalah jeda (pause).
+
+- **Dibekukan (frozen):** pembekuan menghalangi posisi baru pada suatu aset, tetapi pemeriksaan likuidasi mengabaikannya. Saat depeg USDC pada Maret 2023, stablecoin di Aave V3 Avalanche dibekukan dan likuidasi tetap berjalan. USDC.e hasil bridge di Arbitrum dibekukan dengan LTV 0 pada 14 Oktober 2026 (blok Arbitrum 514855406), tetapi tetap diperhitungkan dalam faktor kesehatan dengan ambang likuidasi 78% dan dapat disita.
+- **Sequencer L2:** sebelum v3.7, sebuah kontrak sentinel di pasar L2 dapat menghalangi likuidasi dan peminjaman selama sequencer mati dan selama masa tenggang setelah sequencer kembali. Aave V3.7, yang dijalankan oleh pasar V3 Arbitrum, Optimism dan Base per 14 Oktober 2026, menghapus sentinel itu. Gangguan tetap menahan transaksi semua orang, baik peminjam maupun likuidator, tetapi posisi yang turun di bawah 1 selama gangguan kini dapat dilikuidasi begitu sequencer kembali.
+- **Dijeda (paused):** aset jaminan atau aset utang yang dijeda menghalangi setiap likuidasi yang melibatkannya. Saat jeda dicabut, emergency guardian atau governance Aave dapat menetapkan masa tenggang hingga 4 jam yang selama itu likuidasi tetap terhalang agar peminjam dapat melunasi atau menambah jaminan; peminjaman diizinkan selama jendela waktu itu.
+
+## Apa bedanya likuidasi di Aave V4?
+
+Aave V4, yang berjalan di Ethereum sejak 30 Maret 2026 dan sejak itu juga di Avalanche, Arc dan Base, mengganti close factor dengan faktor kesehatan target dan membayar bonus yang membesar seiring turunnya faktor kesehatan. V3 tetap berjalan di sampingnya dengan aturannya sendiri.
+
+- **Faktor kesehatan target, bukan 50% atau 100%.** Likuidator V4 hanya dapat melunasi utang sebanyak yang diperlukan untuk mengembalikan posisi ke faktor kesehatan target Spoke-nya, 1,24 di Ethereum Main Spoke (dibaca on-chain di blok Ethereum 26193995, 14 Oktober 2026). Pengecualiannya adalah ketika hal itu akan menyisakan sisa yang sangat kecil; dalam kasus itu seluruh utang pada reserve tersebut dapat dilunasi.
+- **Bonus yang naik.** Dokumentasi Aave menyebutnya lelang Belanda (Dutch auction). Di Ethereum Main Spoke, bonus dimulai dari 90% nilai maksimum aset tepat di bawah faktor kesehatan 1 dan mencapai maksimum penuh pada 0,90 atau lebih rendah. Untuk WETH, dengan maksimum 5,55% (API Aave V4, 14 Oktober 2026), artinya sekitar 5,0% tepat di bawah 1 dan 5,55% pada 0,90. Biaya 10% diambil dari bonus, seperti di V3.
+
+Tokenping juga memantau posisi Aave V4: setiap Spoke di Ethereum, Avalanche, Arc dan Base (20 per 16 Oktober 2026), dengan peringatan terpisah untuk setiap Spoke, karena masing-masing menyimpan posisi dan faktor kesehatannya sendiri.
+
+## Apa bedanya likuidasi Aave dengan likuidasi Morpho?
+
+Di Morpho Blue tidak ada close factor: begitu faktor kesehatan suatu posisi di bawah 1, likuidator dapat melunasi seluruh utang dalam satu panggilan. Insentifnya hanya bergantung pada LTV likuidasi (LLTV) pasar, sekitar 0,6% pada LLTV 98% dan dibatasi 15% untuk LLTV rendah, dan jika jaminan habis lebih dulu, sisa utang dihapus dan ditanggung pemberi pinjaman di pasar itu. [Cara kerja likuidasi Morpho](/id/blog/cara-kerja-likuidasi-morpho) memuat rumusnya, insentif pada setiap LLTV dan contoh hitungan.
+
+## Apa yang dapat Anda lakukan sebelum faktor kesehatan mencapai 1?
+
+Sebelum faktor kesehatan mencapai 1, Anda dapat melunasi utang atau menambah jaminan; keduanya langsung menaikkannya dan tidak ada yang dikenai bonus. Begitu di bawah 1, likuidator dapat bertindak sebelum Anda, dan bahkan likuidasi sebagian membuat Anda membayar bonus atas jaminan yang disita: US$300 untuk 6.000 USDC yang dilunasi dengan bonus 5%.
+
+Menunggu sampai saat terakhir berisiko karena transaksi dapat gagal atau macet. Pada Mei 2021, seorang pengguna forum Polygon mencoba melunasi pada faktor kesehatan 1,01, terus mendapat error, dan terlikuidasi sebelum pelunasannya berhasil. Pada Desember 2024, seorang pengguna forum Aave menceritakan lebih dari satu jam upaya pelunasan yang terus tertahan sebelum posisinya dilikuidasi.
+
+Pilihan-pilihannya dibahas di [cara menaikkan faktor kesehatan Aave Anda](/id/blog/cara-menghindari-likuidasi-aave), dan alasan faktor kesehatan turun saat Anda tidak melakukan apa pun di [mengapa faktor kesehatan Aave Anda turun dengan sendirinya](/id/blog/mengapa-faktor-kesehatan-aave-turun).
+
+Tokenping memeriksa faktor kesehatan Aave Anda setiap 5 menit, di setiap pasar Aave V3 di 21 jaringan dan di setiap Spoke Aave V4, dan mengirimi Anda pesan lewat Signal, Telegram atau email saat faktor kesehatan berada di bawah ambang batas yang Anda pilih (1,1 hingga 10), berulang pada setiap pemeriksaan sampai pulih. Likuidasi setidaknya membuat Anda kehilangan bonus atas jaminan yang disita. Peringatan yang diatur di atas 1,0 dapat memberi Anda waktu untuk melunasi atau menambah jaminan, tetapi pergerakan harga yang cepat tetap dapat membawa faktor kesehatan di bawah 1 di antara dua pemeriksaan, dan peringatan tidak dapat bertindak untuk Anda. Anda dapat [memeriksa faktor kesehatan Aave V3 Anda](/id/aave) atau membaca [cara mengatur peringatan faktor kesehatan](/id/blog/cara-mengatur-peringatan-faktor-kesehatan-aave).
+
+## Sumber
+
+- [LiquidationLogic.sol Aave V3](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), aave-dao/aave-v3-origin, branch main: aturan close factor, dust dan utang macet (diakses 14 Oktober 2026)
+- [ValidationLogic.sol Aave V3](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): syarat likuidasi (diakses 14 Oktober 2026)
+- [Fitur Aave v3.3](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): utang macet, close factor untuk seluruh posisi beserta contoh GHO/USDC/DAI-nya, ambang US$2.000 (diakses 14 Oktober 2026)
+- [Fitur Aave v3.1](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): masa tenggang likuidasi hingga 4 jam (diakses 14 Oktober 2026)
+- [PoolConfigurator.sol Aave V3](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol): menjeda dan mencabut jeda dengan masa tenggang hanya dapat dilakukan emergency admin atau pool admin, `MAX_GRACE_PERIOD = 4 hours` (diakses 14 Oktober 2026)
+- [Dokumentasi governance Aave](https://aave.com/docs/ecosystem/governance): Protocol Emergency Guardian memegang peran emergency admin (diakses 14 Oktober 2026)
+- [README Risk Stewards Aave V3](https://github.com/aave-dao/aave-v3-risk-stewards): parameter yang boleh diubah para steward, dalam batas yang ditetapkan (diakses 14 Oktober 2026)
+- [Penghapusan PriceOracleSentinel di Aave v3.7](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/sentinel-removal.md) (diakses 14 Oktober 2026)
+- [Referensi kontrak Pool Aave V3](https://aave.com/docs/aave-v3/smart-contracts/pool), yang masih menyebut close factor sebelum v3.3 (diakses 14 Oktober 2026)
+- [Dokumentasi Aave Umbrella](https://aave.com/docs/aave-v3/umbrella) (diakses 14 Oktober 2026)
+- [PoolDataProvider Aave V3 di Ethereum](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): konfigurasi reserve dan liquidation protocol fee untuk WETH, WBTC dan USDC di blok 26193284, dibaca ulang tanpa perubahan di blok 26193992 (diakses 14 Oktober 2026)
+- [PoolDataProvider Aave V3 di Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): pembacaan yang sama untuk WETH, WBTC, USDC native dan USDC.e di blok 514855406 (diakses 14 Oktober 2026)
+- [Pool Aave V3 Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): kategori E-Mode 1 "ETH correlated" di blok 26193288 (diakses 14 Oktober 2026)
+- [Dokumentasi likuidasi Aave V4](https://aave.com/docs/aave-v4/positions/liquidations) (diakses 14 Oktober 2026)
+- [Ikhtisar Aave V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md) dan [LiquidationLogic.sol V4](https://github.com/aave/aave-v4/blob/main/src/spoke/libraries/LiquidationLogic.sol), aave/aave-v4 main (diakses 14 Oktober 2026)
+- [Ethereum Main Spoke Aave V4](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485): faktor kesehatan target dan pengaturan bonus di blok 26193995 (diakses 14 Oktober 2026)
+- [API GraphQL publik Aave V4](https://api.v4.aave.com/graphql), query `reserves`: bonus likuidasi maksimum dan biaya likuidasi WETH di Ethereum Main Spoke (diakses 14 Oktober 2026)
+- [Changelog dokumentasi Aave](https://aave.com/docs/resources/changelog): tanggal peluncuran V4 (diakses 14 Oktober 2026)
+- [Gauntlet, "Aave Resilient Through USDC Volatility"](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), diunggah 17 Maret 2023 (diakses 14 Oktober 2026)
+- [Forum Polygon, "Liquidation on polygon AAVE -JSON ERROR"](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067), diunggah 18 Mei 2021 (diakses 14 Oktober 2026)
+- [Forum Aave, "Repeatedly Failed Repayment Attempts Leading to Liquidation"](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379), diunggah 23 Desember 2024 (diakses 14 Oktober 2026)
+- [Pull request #2084 antarmuka Aave](https://github.com/aave/interface/pull/2084), yang menghapus satu-satunya integrasi peringatan di aplikasi pada Mei 2024 (diakses 14 Oktober 2026)
+
+_Konten edukasi, bukan nasihat keuangan. Peringatan mengurangi risiko, tetapi tidak mencegah likuidasi._

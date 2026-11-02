@@ -1,0 +1,208 @@
+export const meta = {
+  slug: "faktor-kesehatan-morpho",
+  title: "Faktor kesehatan Morpho dijelaskan: rumus dan contoh",
+  description:
+    "Apa itu faktor kesehatan pinjaman Morpho, cara Morpho Blue dan Midnight menghitungnya, apa yang menggerakkannya dan bedanya dengan Aave.",
+  h1: "Apa itu faktor kesehatan Morpho, dan bagaimana cara menghitungnya?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Apa itu faktor kesehatan pinjaman Morpho dan bagaimana cara menghitungnya?",
+  readingMinutes: 13,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Faktor kesehatan (health factor) pinjaman Morpho membandingkan nilai jaminan Anda, yang dihitung hingga LTV likuidasi
+  (LLTV) pasar, dengan utang Anda: jumlah jaminan × harga dari oracle (sumber harga) × LLTV ÷ utang. Begitu utang
+  melampaui batas itu, faktor kesehatan berada di bawah 1 dan posisi dapat dilikuidasi. Pada 1,00 atau lebih, posisi
+  tidak dapat dilikuidasi, kecuali sebagian pinjaman Blue yang pemiliknya mengizinkan kontrak pra-likuidasi
+  (pre-liquidation), atau pinjaman Midnight yang masih menyisakan utang setelah jatuh tempo. Contohnya, 1 cbBTC dengan
+  harga 80.011,48 USDC di pasar USDC | cbBTC (86%) milik Morpho di Ethereum, terhadap utang 40.000 USDC, menghasilkan
+  80.011,48 × 0,86 ÷ 40.000 = 1,72. Setiap pasar Morpho memiliki jaminan, oracle dan LLTV sendiri, yang ditetapkan untuk
+  selamanya saat pasar dibuat, sehingga setiap pinjaman memiliki faktor kesehatannya sendiri.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Angka dan nomor blok saat angka tersebut dibaca: content/blog/snapshots/morpho-health-factor.md */}
+
+## Apa itu faktor kesehatan pinjaman Morpho?
+
+Faktor kesehatan adalah angka yang menunjukkan seberapa jauh posisi pinjaman Morpho dari likuidasi. Angka ini membagi jumlah terbesar yang boleh Anda utang dengan utang Anda saat ini:
+
+**Faktor kesehatan = nilai jaminan dalam token pinjaman × LLTV ÷ utang**
+
+- **Di atas 1,00:** posisi tidak dapat dilikuidasi, kecuali Anda mengizinkan kontrak pra-likuidasi atau posisinya adalah pinjaman Midnight yang sudah lewat jatuh tempo (keduanya dibahas di bawah). Semakin tinggi angkanya, semakin jauh harga dapat bergerak melawan Anda lebih dulu.
+- **Di bawah 1,00:** utang Anda lebih besar daripada yang diizinkan pasar, dan sebagian atau seluruhnya dapat dilikuidasi.
+- **Tanpa utang:** tidak ada yang dapat dilikuidasi, jadi tidak ada faktor kesehatan yang perlu dipantau.
+
+Faktor kesehatan 1,72 tidak berarti Anda berjarak 72% dari likuidasi. Artinya, utang dapat tumbuh hingga 1,72 kali besarnya, atau harga jaminan dapat turun sebesar 1 − 1 ÷ 1,72 = 41,9%, sebelum batas itu tercapai.
+
+Faktor kesehatan tidak disimpan on-chain. Kontrak Morpho hanya memeriksa apakah sebuah posisi sehat; aplikasi, API Morpho dan Tokenping membagi batas pinjaman dengan utang untuk menampilkannya sebagai angka.
+
+## Bagaimana pasar Morpho Blue dibangun?
+
+Morpho Blue, yang kini disebut dokumentasi Morpho sebagai pasar bunga mengambangnya, adalah sekumpulan pasar pinjaman yang terpisah. Masing-masing ditentukan oleh lima parameter yang dipilih saat pasar dibuat:
+
+| Parameter              | Apa itu                                           | Di pasar contoh    |
+| ---------------------- | ------------------------------------------------- | ------------------ |
+| Token pinjaman         | Satu-satunya token yang dapat Anda pinjam         | USDC               |
+| Token jaminan          | Satu-satunya token yang dapat Anda setor          | cbBTC              |
+| Oracle                 | Kontrak yang menilai jaminan dalam token pinjaman | Feed harga BTC/USD |
+| Model suku bunga (IRM) | Kontrak yang menetapkan suku bunga pinjaman       | AdaptiveCurveIRM   |
+| LLTV                   | LTV likuidasi                                     | 86%                |
+
+Aplikasi Morpho menamai pasar berdasarkan parameter ini, dengan token pinjaman lebih dulu: "USDC | cbBTC (86%)". Siapa pun dapat membuat pasar, tetapi hanya dengan LLTV dan IRM yang telah diaktifkan oleh tata kelola (governance) Morpho. Setelah dibuat, tidak satu pun dari kelima parameter itu dapat diubah: kontrak tidak memiliki fungsi untuk mengeditnya, dan tata kelola dapat mengaktifkan LLTV baru tetapi tidak pernah dapat menonaktifkannya.
+
+Karena satu pasar hanya memegang satu jaminan dan satu token pinjaman, jaminan Anda di satu pasar tidak menjamin utang di pasar lain. Dokumentasi Morpho menyatakannya dengan jelas: jaminan bersifat khusus untuk setiap pasar dan tidak cross-margined (tidak digabung lintas pasar). Dua pinjaman di dua pasar memiliki dua faktor kesehatan.
+
+## Bagaimana Morpho menghitung faktor kesehatan?
+
+Morpho Blue memeriksa kesehatan di satu tempat dalam kontraknya, `_isHealthy`, dan pemeriksaan yang sama menjaga peminjaman, penarikan jaminan dan likuidasi:
+
+1. **Utang:** borrow shares (bagian pinjaman) Anda dikonversi ke token pinjaman, dibulatkan ke atas.
+2. **Nilai jaminan:** jumlah jaminan × harga oracle ÷ 10^36, dibulatkan ke bawah.
+3. **Batas pinjaman:** nilai jaminan × LLTV, dibulatkan ke bawah.
+4. **Sehat** selama batas pinjaman setidaknya sama dengan utang.
+
+Faktor kesehatan adalah langkah 3 dibagi langkah 1. Pembulatan selalu menguntungkan protokol, sehingga kontrak mungkin mengizinkan Anda meminjam satu unit kurang dari batas yang persis. Pada tepat 1,00, kontrak masih menganggap posisi sehat; posisi dapat dilikuidasi begitu utang lebih besar daripada batas, yang sama artinya dengan faktor kesehatan turun di bawah 1.
+
+### Apa arti skala 10^36 pada oracle?
+
+Oracle Morpho mengembalikan harga satu token jaminan dalam token pinjaman, dikalikan 10^36 dan disesuaikan dengan desimal kedua token. Untuk membacanya, kalikan dengan 10^(desimal jaminan − desimal pinjaman) lalu bagi dengan 10^36. Di pasar contoh, cbBTC memiliki 8 desimal dan USDC 6, sehingga nilai mentah 800114843487200000000000000000000000000 × 10^2 ÷ 10^36 = 80.011,48 USDC per cbBTC.
+
+Oracle adalah kontrak apa pun yang dipilih pembuat pasar. Komentar dalam kontrak Morpho menyebutkan bahwa memilih pasar dengan oracle yang aman adalah tanggung jawab pengguna, dan dokumentasinya mencatat bahwa oracle dapat menggabungkan beberapa feed atau bergantung pada data on-chain lain. Faktor kesehatan Anda hanya dapat seandal oracle tersebut dan feed yang dibacanya.
+
+## Contoh perhitungan: berapa faktor kesehatan 1 cbBTC terhadap 40.000 USDC?
+
+Pasar Morpho terbesar yang tercantum di Ethereum menurut nilai pinjaman pada 26 Oktober 2026 adalah USDC | cbBTC (86%), dengan sekitar 309,13 juta USDC dipinjam terhadap 343,18 juta yang disetor (blok Ethereum 26274955). Oracle-nya menilai cbBTC pada 80.011,48 USDC, diambil hanya dari feed harga BTC/USD, sehingga pasar menghitung 1 cbBTC sebagai 1 BTC dan 1 USDC sebagai 1 dolar.
+
+Ambil jaminan 1 cbBTC dan utang 40.000 USDC:
+
+1. Nilai jaminan: 1 × 80.011,48 = 80.011,48 USDC.
+2. Batas pinjaman: 80.011,48 × 0,86 = 68.809,88 USDC.
+3. Faktor kesehatan: 68.809,88 ÷ 40.000 = **1,72**.
+4. Rasio pinjaman terhadap nilai (LTV): 40.000 ÷ 80.011,48 = 50,0%, dibandingkan LLTV 86%.
+5. Harga likuidasi: 40.000 ÷ (1 × 0,86) = **46.511,63 USDC per cbBTC**, 41,9% di bawah 80.011,48.
+
+Bunga juga menggerakkannya. Suku bunga pinjaman pasar pada blok itu adalah 4,89% per tahun, yang jika dimajemukkan menjadi 5,01%. Jika suku bunga dan harga tetap di posisinya selama setahun, utang akan tumbuh menjadi sekitar 42.003 USDC dan faktor kesehatan akan turun ke 1,64.
+
+### Apa yang dipegang peminjam sungguhan di pasar ini?
+
+API Morpho mencantumkan 437 posisi pinjaman di pasar ini pada 26 Oktober 2026. Dari 435 posisi yang memiliki faktor kesehatan, mediannya 1,96, seperempat di bawah 1,58, sepersepuluh di bawah 1,35, dan yang terendah 1,05. Sekitar 3% berada di bawah 1,2. Di seluruh pasar, 8.419,83 cbBTC menjamin utang 309,13 juta USDC, faktor kesehatan keseluruhan sekitar 1,87.
+
+## Bagaimana hubungan LTV, LLTV dan faktor kesehatan?
+
+LTV adalah utang Anda dibagi nilai jaminan Anda. LLTV adalah plafon tetap pasar untuk rasio itu. Dengan satu jaminan dan utang yang stabil, faktor kesehatan adalah perbandingan keduanya:
+
+**Faktor kesehatan = LLTV ÷ LTV**
+
+Di Morpho Blue, LLTV adalah satu-satunya batas. Tidak ada batas terpisah yang lebih rendah untuk pinjaman baru, sehingga kontrak mengizinkan Anda meminjam atau menarik jaminan hingga faktor kesehatan mencapai 1,00. Dokumentasi pengembang Morpho meminta aplikasi menjaga margin, misalnya dengan tidak membiarkan pinjaman menurunkan faktor kesehatan di bawah 1,05, tetapi margin itu adalah pilihan, bukan aturan kontrak. Seberapa jauh Anda tetap di bawah batas menentukan penyangga (buffer) Anda, berapa pun LLTV-nya:
+
+| Dipinjam, sebagai bagian dari batas | Faktor kesehatan | Penurunan harga jaminan hingga likuidasi |
+| ----------------------------------- | ---------------- | ---------------------------------------- |
+| 50%                                 | 2,00             | 50%                                      |
+| 70%                                 | 1,43             | 30%                                      |
+| 80%                                 | 1,25             | 20%                                      |
+| 90%                                 | 1,11             | 10%                                      |
+| 100%                                | 1,00             | 0%                                       |
+
+## LLTV apa saja yang dapat digunakan pasar Morpho?
+
+Pada 26 Oktober 2026, Morpho Blue di Ethereum dan di Base menerima sembilan LLTV dalam daftar yang disetujui tata kelola Morpho: 0%, 38,5%, 62,5%, 77%, 86%, 91,5%, 94,5%, 96,5% dan 98% (masing-masing terbaca aktif pada blok Ethereum 26274950 dan blok Base 53102888). LLTV 0 sama sekali tidak mengizinkan pinjaman. LLTV Blue harus di bawah 100%.
+
+LLTV juga menentukan insentif likuidasi, yaitu jaminan tambahan yang diterima likuidator: 1 ÷ (1 − 0,3 × (1 − LLTV)), dibatasi paling tinggi 1,15. Pada LLTV 86%, nilainya 1,0438: likuidator yang melunasi 100 USDC utang Anda menerima jaminan Anda senilai 104,38 USDC. LLTV yang lebih tinggi berarti insentif yang lebih kecil. Dokumentasi Morpho membulatkan insentif untuk 86% menjadi sekitar 5%; rumus kontrak menghasilkan 4,38%. Insentif untuk setiap LLTV yang aktif, apa yang diambil oleh likuidasi dan berapa bagian pinjaman yang dapat dilikuidasi sekaligus dibahas dalam [cara kerja likuidasi Morpho](/id/blog/cara-kerja-likuidasi-morpho). Insentif itu Anda yang membayar, dari jaminan Anda; penyangga Anda sendiri adalah jarak antara faktor kesehatan Anda dan 1,00.
+
+## Apa yang menggerakkan faktor kesehatan Morpho?
+
+Ada tiga hal yang dapat menggerakkannya meskipun Anda tidak melakukan apa pun:
+
+- **Harga jaminan, sebagaimana dilihat oracle.** Dalam contoh cbBTC, faktor kesehatan bergerak mengikuti feed BTC/USD dan hanya berubah saat feed itu diperbarui.
+- **Harga token pinjaman, jika oracle menggunakannya.** Oracle dengan quote feed (feed harga untuk token pinjaman) juga bereaksi terhadap token pinjaman. Oracle pasar cbBTC tidak memilikinya, sehingga depeg (lepasnya patokan terhadap dolar) USDC tidak akan menggerakkan faktor kesehatan itu. Begitu pula selisih antara cbBTC dan BTC.
+- **Bunga.** Di Morpho Blue, utang tumbuh seiring bunga bertambah, dan dokumentasi Morpho memperingatkan bahwa sebuah posisi dapat menjadi lebih berisiko seiring waktu hanya karena bunga. AdaptiveCurveIRM menargetkan utilisasi 90% dan menaikkan suku bunga saat pasar lebih ramai serta menurunkannya saat lebih sepi, dengan menjaga suku bunga pada utilisasi 90% antara 0,1% dan 200% per tahun. Pada utilisasi penuh, suku bunga dapat mencapai empat kali suku bunga pada target, jadi hingga 800% per tahun. Bagaimana kenaikan suku bunga memengaruhi faktor kesehatan ditunjukkan untuk Aave dalam [cara kerja suku bunga Aave](/id/blog/suku-bunga-aave#bagaimana-lonjakan-suku-bunga-memengaruhi-faktor-kesehatan-anda); efeknya pada pinjaman Morpho sama.
+
+Yang tidak dapat diubah oleh tata kelola Morpho adalah pasar itu sendiri: LLTV, alamat oracle dan IRM sebuah pasar bersifat tetap. Oracle tetap membaca harganya dari feed di belakangnya, jadi oracle hanya seandal feed tersebut. Tata kelola dapat menetapkan biaya pasar hingga 25% dari bunga, tetapi biaya itu membagi bunga antara pemberi pinjaman dan penerima biaya; biaya itu tidak mengubah jumlah utang peminjam.
+
+Oracle menentukan harga mana yang berpengaruh. Di pasar WETH | wstETH (96.5%) milik Morpho di Ethereum, oracle menilai wstETH berdasarkan nilai tukar Lido sendiri, 1,24717 WETH per wstETH pada blok 26274979, dan menghitung 1 stETH sebagai 1 ETH. Harga ETH dalam dolar sama sekali tidak menggerakkan faktor kesehatan itu. 10 wstETH terhadap 11 WETH di sana menghasilkan 12,4717 × 0,965 ÷ 11 = 1,094, dan likuidasi memerlukan nilai tukar turun ke 1,1399, 8,6% lebih rendah. Hanya bunga dan nilai tukar itu yang menggerakkan faktor kesehatan ini.
+
+## Bagaimana cara menghitung harga likuidasi Anda di Morpho?
+
+Untuk posisi Blue, harga likuidasi adalah harga oracle saat utang Anda sama dengan batas pinjaman Anda:
+
+**Harga likuidasi = utang ÷ (jumlah jaminan × LLTV)**
+
+Harga ini dinyatakan dalam token pinjaman per token jaminan, karena begitulah oracle menilainya. Dengan faktor kesehatan h, harga jaminan harus turun sebesar 1 − 1 ÷ h untuk mencapainya (lihat tabel di atas). Saat utang tumbuh karena bunga, harga likuidasi perlahan naik.
+
+Jika Anda telah mengizinkan kontrak pra-likuidasi untuk pasar tersebut, sebagian posisi Anda dapat ditutup lebih awal, pada LTV yang lebih rendah dari LLTV. Pasar cbBTC memilikinya, dengan LTV pra-likuidasi 83,26%: untuk 1 cbBTC terhadap 40.000 USDC, faktor kesehatan yang diukur terhadap batas itu adalah 1,67, bukan 1,72. Morpho sedang menghentikan fitur ini: aplikasinya tidak lagi menawarkannya, dan Morpho meminta peminjam yang memilikinya untuk mematikannya. Lihat [pra-likuidasi Morpho](/id/blog/pra-likuidasi-morpho) untuk cara kerjanya serta cara memeriksa dan mencabutnya.
+
+## Bagaimana faktor kesehatan bekerja di Morpho Midnight?
+
+Morpho Midnight, pasar bunga tetap Morpho, menghitung kesehatan dengan cara yang sama, dengan tiga perbedaan: satu pasar dapat menerima beberapa jaminan, utang tidak tumbuh seiring waktu, dan jatuh tempo adalah batas mutlak.
+
+- **Beberapa jaminan, dijumlahkan.** Pasar Midnight memiliki satu token pinjaman, satu tanggal jatuh tempo dan satu atau lebih jaminan, masing-masing dengan LLTV dan oracle sendiri. Kontrak menjumlahkan nilai jaminan × LLTV untuk setiap jaminan yang Anda setor dan membandingkan totalnya dengan utang Anda. Faktor kesehatan adalah total itu ÷ utang.
+- **Utang tetap.** Anda berutang jumlah nominal, satu token pinjaman per unit, yang harus dibayar saat jatuh tempo. Bunga sudah diperhitungkan saat Anda meminjam: Anda menerima kurang dari satu token pinjaman untuk setiap unit yang Anda utang, sehingga di antara transaksi hanya harga jaminan yang menggerakkan faktor kesehatan Midnight.
+- **Jatuh tempo adalah batas mutlak.** Setelah jatuh tempo, utang apa pun yang masih terbuka dapat dilikuidasi berapa pun faktor kesehatannya, dan dalam mode pasca-jatuh tempo itu insentif likuidator tumbuh dari nol hingga ukuran penuhnya selama jam pertama.
+
+Pasar Midnight juga dapat membatasi siapa yang boleh melikuidasi, dengan gate (gerbang) yang ditetapkan saat pasar dibuat; pasar contoh di bawah tidak memilikinya.
+
+Pasar Midnight terbesar yang tercantum di Ethereum pada 26 Oktober 2026, dengan sekitar 23,9 juta unit utang USDC yang beredar, meminjamkan USDC hingga 25 Desember 2026, dengan jaminan USDC pada LLTV 98% dan cbBTC pada 86%, memakai oracle cbBTC yang sama dengan pasar Blue di atas. Setor 0,5 cbBTC dan 10.000 USDC terhadap utang 40.000 unit, maka batasnya 34.404,94 + 9.800 = 44.204,94, faktor kesehatan 1,105. Jatuh tempo, rollover (perpindahan ke jatuh tempo berikutnya) dan likuidasi pasca-jatuh tempo dibahas dalam [pinjaman bunga tetap Morpho Midnight](/id/blog/pinjaman-bunga-tetap-morpho-midnight).
+
+## Apa bedanya faktor kesehatan Morpho dengan Aave?
+
+Rumusnya memiliki bentuk yang sama di keduanya: jaminan yang dibobot dengan suatu ambang, dibagi utang. Aturan di sekitarnya berbeda, seperti dijelaskan [panduan faktor kesehatan Aave](/id/blog/faktor-kesehatan-aave#faktor-kesehatan-vs-ltv-vs-ambang-likuidasi-apa-bedanya) dari sisi Aave:
+
+|                             | Morpho Blue                                      | Aave V3                                                                                                                                                                                        |
+| --------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Satuan                      | Satu pasar: satu jaminan, satu token pinjaman    | Satu pasar (pool di satu jaringan): semua jaminan dan utang Anda di sana                                                                                                                       |
+| Cara harga ditetapkan       | Oracle masing-masing pasar, dalam token pinjaman | Oracle Aave, dalam USD                                                                                                                                                                         |
+| Batas pinjaman              | Hingga LLTV, faktor kesehatan 1,00               | LTV yang lebih rendah, sehingga pinjaman maksimum menyisakan [sekitar 1,03](/id/blog/faktor-kesehatan-aave#mengapa-meminjam-maksimum-hanya-menyisakan-faktor-kesehatan-sekitar-103) untuk WETH |
+| Aset berkorelasi            | Pasar terpisah dengan LLTV tinggi                | Kategori [E-Mode](/id/blog/faktor-kesehatan-aave#bagaimana-e-mode-mengubah-faktor-kesehatan)                                                                                                   |
+| Dapatkah ambangnya berubah? | Tidak, ditetapkan saat pasar dibuat              | Ya, tata kelola dan Risk Stewards dapat mengubahnya                                                                                                                                            |
+
+Aave V4 mengubah sebagian dari hal ini, dengan satu faktor kesehatan per Spoke dan satu faktor jaminan (collateral factor) per aset; lihat [cara kerja faktor kesehatan di Aave V4](/id/blog/faktor-kesehatan-aave#apakah-faktor-kesehatan-berbeda-di-aave-v4).
+
+Perbedaan praktisnya: di Aave, masalah pada satu aset memengaruhi seluruh pasar Anda, sedangkan di Morpho masalah itu tetap berada di dalam satu pasar. Dan di Morpho tidak ada apa pun dalam kontrak yang mencegah Anda meminjam hingga batas, jadi menjaga margin adalah tanggung jawab Anda.
+
+## Di mana Anda dapat melihat faktor kesehatan Morpho Anda?
+
+Pusat bantuan Morpho menyebutkan bahwa aplikasinya menampilkan faktor kesehatan dan harga likuidasi pada setiap posisi. API Morpho mengembalikan `healthFactor` dan perubahan harga hingga likuidasi untuk posisi Blue; untuk Midnight, API mengembalikan posisi dan parameter pasar, dan dokumentasinya meminta integrator membaca oracle setiap jaminan on-chain dan menghitung batasnya sendiri.
+
+[Dasbor Morpho](/id/morpho) Tokenping menampilkan posisi pinjaman Blue dan Midnight sebuah dompet, dengan faktor kesehatan yang dihitung dari blockchain menggunakan matematika Morpho sendiri, tidak pernah diambil dari API Morpho.
+
+## Bagaimana memilih penyangga dan ambang batas peringatan?
+
+Mulailah dari seberapa jauh harga dapat bergerak sebelum Anda sempat bertindak, lalu tambahkan ruang untuk bunga:
+
+- **Pilih pergerakan yang ingin Anda tahan.** Gunakan tabel di bagian LTV di atas: penurunan harga yang ingin Anda tutupi menentukan faktor kesehatannya.
+- **Perhatikan oracle-nya.** Oracle BTC/USD bergerak mengikuti BTC. Oracle nilai tukar seperti milik pasar wstETH bergerak jauh lebih sedikit, tetapi suku bunga pinjaman dan nilai tukar itu sendiri tetap menggerakkan faktor kesehatan Anda, dan LLTV yang tinggi menyisakan sedikit ruang untuk keduanya.
+- **Ukur terhadap batas terdekat.** Jika Anda mengizinkan pra-likuidasi, sebagian pinjaman Anda dapat dilikuidasi sebelum faktor kesehatan mencapai 1,00.
+- **Di Midnight, perhatikan tanggalnya.** Bunga tidak akan menggerus penyangga, tetapi utang yang tersisa setelah jatuh tempo dapat dilikuidasi pada faktor kesehatan berapa pun.
+- **Ketahui cara menaikkannya.** Lunasi sebagian utang atau tambahkan jaminan di pasar yang sama: jaminan di pasar Morpho lain tidak dihitung. Di Midnight, Anda dapat menambahkan jaminan apa pun yang diterima pasar.
+
+Dokumentasi pengembang Morpho memberikan 1,1 sebagai contoh tingkat untuk peringatan. Untuk alasan di balik penyangga, lihat [berapa penyangga yang Anda perlukan agar sempat bertindak](/id/blog/faktor-kesehatan-aave-yang-aman#berapa-besar-penyangga-yang-anda-butuhkan-agar-sempat-bertindak), yang ditulis untuk Aave tetapi memakai aritmetika yang sama.
+
+## Bagaimana peringatan faktor kesehatan dapat membantu di Morpho?
+
+Tokenping memeriksa posisi Morpho setiap 5 menit di 14 jaringan: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable dan Tempo. Tokenping mencakup posisi pinjaman di pasar yang tercantum di aplikasi Morpho, baik Morpho Blue maupun Morpho Midnight. Peringatan Midnight mencakup pasar yang dicantumkan API Morpho. Pada 26 Oktober 2026, pasar tersebut ada di Ethereum dan Base; Tokenping juga mencakup Arc dan Robinhood Chain begitu Morpho mencantumkan pasar Midnight di sana.
+
+- **Ambang batas:** Anda menetapkannya dari 1,02 hingga 10. Selama faktor kesehatan berada di bawahnya, setiap pemeriksaan mengirim pesan di setiap saluran yang Anda pilih: Signal, Telegram atau email.
+- **Pra-likuidasi:** jika Anda mengizinkan kontrak pra-likuidasi di pasar Blue, peringatan menggunakan yang lebih rendah dari dua faktor kesehatan: yang diukur terhadap LLTV dan yang diukur terhadap batas pra-likuidasi.
+- **Jatuh tempo:** pinjaman Midnight juga mendapat satu pengingat dalam 7 hari terakhirnya dan satu dalam 24 jam terakhirnya, lalu peringatan di setiap pemeriksaan setelah jatuh tempo selama masih ada utang.
+
+Melihat posisi Anda di [dasbor Morpho](/id/morpho) tidak perlu membayar; peringatan dikenai biaya <AlertPrice />, paket yang sama dengan peringatan Aave. Peringatan memberi Anda waktu untuk bertindak; peringatan tidak mencegah likuidasi, karena harga dapat bergerak di antara dua pemeriksaan.
+
+## Sumber
+
+- [Morpho docs: Variable Rate Market (Morpho Blue)](https://docs.morpho.org/learn/concepts/blue): lima parameter, nama pasar, LLTV yang disetujui tata kelola dan IRM (diakses 26 Oktober 2026)
+- [Morpho docs: Collateral, LTV and health (developers)](https://docs.morpho.org/developers/borrow/concepts/ltv): rumus, skala oracle, tidak ada cross-margining, praktik integrasi (diakses 26 Oktober 2026)
+- [Morpho docs: Liquidation](https://docs.morpho.org/learn/concepts/liquidation) dan [pusat bantuan Morpho: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): insentif likuidasi, tempat aplikasi menampilkan faktor kesehatan (diakses 26 Oktober 2026)
+- [Morpho docs: Interest rate model](https://docs.morpho.org/learn/concepts/irm) dan [suku bunga untuk integrator](https://docs.morpho.org/developers/borrow/concepts/interest-rates): AdaptiveCurveIRM, akumulasi bunga (diakses 26 Oktober 2026)
+- [Morpho docs: Get data (developers)](https://docs.morpho.org/developers/borrow/tutorials/get-data): kode faktor kesehatan dan harga likuidasi (diakses 26 Oktober 2026)
+- [Morpho docs: What is Midnight? (Fixed Rate Markets)](https://docs.morpho.org/learn/concepts/midnight) dan [Midnight collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) (diakses 26 Oktober 2026)
+- [Morpho docs: Governance organization](https://docs.morpho.org/learn/governance/organization), [alamat kontrak](https://docs.morpho.org/developers/contracts/addresses) dan [kebijakan pencantuman di antarmuka](https://docs.morpho.org/get-started/resources/interface-listing-policy) (diakses 26 Oktober 2026)
+- [morpho-blue](https://github.com/morpho-org/morpho-blue): `Morpho.sol`, `ConstantsLib.sol`, `IOracle.sol` (diakses 26 Oktober 2026)
+- [midnight](https://github.com/morpho-org/midnight): `Midnight.sol`, `ConstantsLib.sol` (diakses 26 Oktober 2026)
+- [pre-liquidation](https://github.com/morpho-org/pre-liquidation) dan [morpho-blue-irm](https://github.com/morpho-org/morpho-blue-irm) (diakses 26 Oktober 2026)
+- [Morpho API docs: Morpho Blue](https://docs.morpho.org/developers/api/morpho/) dan [Morpho Midnight](https://docs.morpho.org/developers/api/morpho-midnight) (endpoint GraphQL api.morpho.org/graphql, endpoint REST Midnight di bawah api.morpho.org/v0/midnight): peringkat pasar, posisi dan kontrak pra-likuidasi (diakses 26 Oktober 2026)
+- Pembacaan on-chain atas [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), [oracle USDC | cbBTC](https://etherscan.io/address/0xA6D6950c9F177F1De7f7757FB33539e3Ec60182a#readContract), [oracle WETH | wstETH](https://etherscan.io/address/0xbD60A6770b27E084E8617335ddE769241B0e71D8#readContract) dan [Morpho Midnight](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract) di Ethereum pada blok 26274950 hingga 26274984, serta [Morpho Blue di Base](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) pada blok 53102888 (diakses 26 Oktober 2026)
+
+_Konten edukasi, bukan nasihat keuangan. Peringatan mengurangi risiko, tetapi tidak mencegah likuidasi._

@@ -1,0 +1,170 @@
+export const meta = {
+  slug: "pra-likuidasi-morpho",
+  title: "Pra-likuidasi Morpho: apa itu dan cara menonaktifkannya",
+  description:
+    "Cara pra-likuidasi Morpho (Auto-deleverage) menjual sebagian pinjaman sebelum LLTV, alasan Morpho menghentikannya, dan cara memeriksa serta mencabutnya.",
+  h1: "Apa itu pra-likuidasi Morpho, dan bagaimana cara memeriksa atau menonaktifkannya?",
+  publishedAt: "2026-10-26",
+  primaryQuestion:
+    "Apa itu pra-likuidasi Morpho, dan bagaimana saya memeriksa apakah fitur ini aktif lalu menonaktifkannya?",
+  readingMinutes: 10,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Pra-likuidasi (pre-liquidation) adalah kontrak opsional untuk satu pasar Morpho Blue (bunga mengambang) yang
+  memungkinkan siapa pun menjual sebagian jaminan Anda untuk melunasi utang sebelum posisi Anda mencapai LTV likuidasi
+  (LLTV) pasar tersebut. Aplikasi Morpho memiliki fitur bernama Auto-deleverage yang bekerja dengan cara ini. Morpho
+  kini menghentikannya: aplikasi tidak menerima posisi baru, pusat bantuannya meminta pengguna yang memakainya untuk
+  menonaktifkannya, dan SDK-nya menandai kode pra-likuidasi sebagai deprecated (usang) pada 22 September 2026.
+  Kontraknya masih berfungsi, jadi jika Anda pernah mengaktifkannya, periksa dengan `isAuthorized` di kontrak Morpho
+  Blue dan cabut dengan tombol manage (kelola) di aplikasi atau dengan `setAuthorization(contract, false)`.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Angka, nomor blok, dan sumber: content/blog/snapshots/morpho-pre-liquidation.md */}
+
+## Apa itu pra-likuidasi di Morpho?
+
+Pra-likuidasi adalah garis likuidasi kedua yang lebih awal, yang dapat ditambahkan peminjam pada satu pasar Morpho Blue. Di pasar Blue biasa, posisi baru dapat dilikuidasi setelah faktor kesehatannya (health factor) di bawah 1, diukur terhadap LTV likuidasi (LLTV) pasar; [panduan faktor kesehatan Morpho](/id/blog/faktor-kesehatan-morpho) menjelaskan angka itu. Kontrak pra-likuidasi menetapkan garis yang lebih rendah, yaitu preLLTV. Di antara kedua garis itu, siapa pun boleh melunasi sebagian utang Anda, hingga batas yang ditetapkan kontrak, dan mengambil jaminan senilai utang itu ditambah bonus, secara bertahap.
+
+Tiga hal yang membedakannya:
+
+- **Sifatnya opsional (opt in).** Kontrak ini hanya berlaku setelah Anda memberinya otorisasi di Morpho Blue. Tanpa itu, kontrak tidak dapat menyentuh posisi Anda.
+- **Berlaku per pasar.** Setiap kontrak terikat pada satu pasar Blue dan satu set parameter tetap, dan tidak memiliki pemilik, admin, atau fungsi upgrade.
+- **Hanya ada di Blue.** Morpho Midnight, pasar pinjaman bunga tetap dalam [panduan Midnight](/id/blog/pinjaman-bunga-tetap-morpho-midnight), tidak memiliki pra-likuidasi.
+
+Morpho mengumumkan factory pra-likuidasi pada 4 Maret 2025 dan menyebut auto-deleverage dan auto-close sebagai kegunaannya. Di kontrak, API, dan SDK, fitur ini disebut pre-liquidation. Aplikasi Morpho memiliki fitur bernama Auto-deleverage, yang digambarkan pusat bantuannya dengan istilah yang sama: begitu rasio pinjaman terhadap nilai (LTV) Anda melewati ambang yang ditetapkan, sebagian posisi dapat ditutup, dengan biaya hanya atas bagian yang ditutup.
+
+## Apakah pra-likuidasi masih tersedia di aplikasi Morpho?
+
+Tidak ada pra-likuidasi baru yang dapat diatur di aplikasi Morpho. Dibaca pada 26 Oktober 2026:
+
+| Tempat                            | Status                                                                                                                                                                                                                   |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Aplikasi dan pusat bantuan Morpho | Artikel bantuan kini berjudul "Sunsetting Auto-deleverage" (penghentian Auto-deleverage), terakhir diperbarui 13 Mei 2026: fitur ini tidak menerima posisi baru, dan pengguna yang memakainya sebaiknya menonaktifkannya |
+| SDK Morpho                        | Setiap ekspor pra-likuidasi ditandai deprecated pada 22 September 2026 (pull request 1132), akan dihapus pada versi mayor berikutnya, tanpa pengganti                                                                    |
+| Dokumentasi Morpho                | Halaman pra-likuidasi sudah tidak ada; alamat lamanya kini mengarah ke halaman likuidasi umum                                                                                                                            |
+| API Morpho                        | Masih mencantumkan 106 kontrak pra-likuidasi di pasar yang terdaftar di Ethereum (50), Base (37), Arbitrum (8), Polygon (6), Katana (3), dan Unichain (2)                                                                |
+| Kontraknya                        | Tidak berubah dan masih berfungsi: siapa pun masih dapat memanggilnya terhadap peminjam yang memberinya otorisasi                                                                                                        |
+
+Baris terakhir itulah yang penting jika Anda pernah mengaktifkan fitur ini. Menghentikan sebuah fitur di aplikasi tidak membatalkan otorisasi yang tersimpan on-chain.
+
+## Bagaimana kontrak pra-likuidasi bekerja?
+
+Kontrak pra-likuidasi dibuat oleh PreLiquidationFactory milik Morpho, yang dapat dipakai siapa saja: siapa pun dapat men-deploy kontrak untuk pasar Blue mana pun, dan setiap kombinasi pasar dan set parameter hanya dapat ada satu kali. Parameter tetapnya adalah:
+
+| Parameter        | Apa yang ditetapkannya                                                                                                                                            |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| preLLTV          | LTV di atas tingkat ini pra-likuidasi diizinkan. Harus di bawah LLTV pasar                                                                                        |
+| preLCF1, preLCF2 | Close factor (bagian utang yang dapat dilunasi sekaligus): porsi terbesar utang Anda yang dapat dilunasi oleh satu panggilan, pada preLLTV dan pada LLTV          |
+| preLIF1, preLIF2 | Faktor insentif: utang yang dilunasi dikalikan dengan faktor ini untuk mendapatkan jaminan yang diambil, pada dua titik yang sama                                 |
+| Oracle           | Sumber harga yang menentukan apakah Anda dapat dipra-likuidasi dan pada harga berapa jaminan Anda diambil. Dapat berupa oracle pasar itu sendiri atau oracle lain |
+
+Sebelum bertindak, kontrak memeriksa dengan harga dari oracle-nya sendiri bahwa LTV Anda berada di atas preLLTV dan masih sama dengan atau di bawah LLTV. Di atas LLTV, pra-likuidasi berhenti dan likuidasi normal Blue mengambil alih. Setelahnya, Morpho Blue memeriksa bahwa posisi Anda sehat menurut oracle pasar itu sendiri; jika tidak, seluruh panggilan dibatalkan (revert).
+
+Konstruktor memberlakukan batas pada parameternya. Close factor tidak boleh turun saat risiko naik, dan hanya nilai pertamanya yang dibatasi pada 100%: kontrak yang nilai keduanya di atas 100% dapat membuat satu panggilan melunasi seluruh utang Anda sebelum LLTV tercapai. Nilai bawaan Morpho jauh di bawah itu. Faktor insentif harus setidaknya 1 (tanpa bonus) dan paling banyak 1 ÷ LLTV (bonus sekitar 16% di pasar 86%). Repositori Morpho menyebut bahwa batas itu, bersama aturan bahwa pra-likuidasi berhenti di LLTV, mencegah pra-likuidasi membuat posisi menjadi kurang sehat dibandingkan sebelumnya.
+
+### Bagaimana close factor dan bonus bertambah antara preLLTV dan LLTV?
+
+Keduanya bertambah secara linear seiring LTV Anda. Kontrak mengukur seberapa jauh Anda dari preLLTV menuju LLTV, sebagai porsi dari 0 hingga 1, dan menggeser setiap faktor sebesar porsi itu dari nilai pertamanya ke nilai keduanya. Tepat di tengah antara kedua garis, close factor berada di tengah antara preLCF1 dan preLCF2.
+
+Dua batasan muncul dari kodenya. Close factor membatasi satu panggilan, bukan totalnya: repositori Morpho sendiri mencatat bahwa likuidator dapat menutup sebagian kecil, membiarkan Anda tetap di atas preLLTV, lalu memanggil lagi, sehingga total yang ditutup dapat melebihi close factor. Selain itu, close factor adalah porsi dari utang Anda, bukan dari jaminan Anda; [panduan Aave tentang close factor](/id/blog/cara-kerja-likuidasi-aave#berapa-bagian-utang-anda-yang-dapat-dilikuidasi-sekaligus) membahas gagasan yang sama di Aave.
+
+## Apa pengaturan pra-likuidasi bawaan Morpho?
+
+Morpho menyimpan satu set parameter bawaan untuk masing-masing dari delapan LLTV yang umum di SDK-nya, dan setiap kontrak dari 106 kontrak yang dicantumkan API-nya memakai nilai bawaan ini. API hanya mencantumkan kontrak dengan parameter bawaan yang dikenal, jadi kontrak dengan pengaturan lain mungkin ada tanpa muncul di sana. Enam LLTV yang memiliki kontrak terdaftar:
+
+| LLTV pasar | preLLTV | Close factor (preLLTV hingga LLTV) | Bonus  | Pra-likuidasi dimulai pada faktor kesehatan pasar | Kontrak terdaftar |
+| ---------- | ------- | ---------------------------------- | ------ | ------------------------------------------------- | ----------------- |
+| 62,5%      | 56,26%  | 0,75% hingga 27,95%                | 12,68% | 1,111                                             | 2                 |
+| 77%        | 72,74%  | 0,37% hingga 25,66%                | 7,41%  | 1,059                                             | 12                |
+| 86%        | 83,26%  | 0,20% hingga 24,53%                | 4,38%  | 1,033                                             | 50                |
+| 91,5%      | 89,79%  | 0,11% hingga 23,92%                | 2,62%  | 1,019                                             | 21                |
+| 94,5%      | 93,37%  | 0,07% hingga 23,61%                | 1,68%  | 1,012                                             | 15                |
+| 96,5%      | 95,78%  | 0,04% hingga 23,41%                | 1,06%  | 1,008                                             | 6                 |
+
+Di setiap set bawaan, bonusnya sama di kedua ujung, dan sama dengan bonus yang dibayarkan likuidasi normal Blue di pasar itu. Nilai bawaan tidak membuat penjualan lebih murah per dolar; nilai bawaan membuat setiap penjualan lebih kecil. Likuidasi normal Blue sama sekali tidak memiliki close factor, sehingga likuidator boleh melunasi seluruh utang sekaligus. [Cara kerja likuidasi Morpho](/id/blog/cara-kerja-likuidasi-morpho) membahas sisi tersebut.
+
+## Kontrak nyata: USDC | cbBTC (86%) di Base
+
+Pasar Blue terdaftar terbesar menurut jumlah pinjaman di Base, USDC | cbBTC (86%) (jaminan cbBTC, utang USDC, LLTV 86%), memiliki satu kontrak pra-likuidasi yang dicantumkan API Morpho, di `0xa7272aFc21f9C321024ED93892a1abfeb621C374`. Dibaca dari Base pada 26 Oktober 2026 dan dicocokkan dengan API Morpho:
+
+- PreLiquidationFactory di Base mengonfirmasi bahwa factory itu membuat kontrak tersebut, dan kontrak itu menunjuk ke pasar ini.
+- preLLTV 83,26%, close factor 0,20% naik hingga 24,53%, bonus 4,38% di kedua ujung: nilai bawaan untuk 86%.
+- Oracle-nya adalah oracle pasar itu sendiri. Oracle itu menghargai cbBTC pada 80.000,15 USDC pada blok Base 53102870 dan 53102952; [cara kerja likuidasi Morpho](/id/blog/cara-kerja-likuidasi-morpho) memakai harga yang sama.
+- Pasar itu memiliki sekitar 1,61 miliar USDC yang dipinjam dengan jaminan sekitar 40.051 cbBTC, di sekitar 43.000 posisi pinjaman.
+- Tidak ada pra-likuidasi oleh kontrak ini yang muncul dalam sekitar 28 jam blok Base yang dibaca sebelum blok 53102692.
+
+Di Ethereum, pasar USDC | cbBTC (86%) terdaftar terbesar memiliki kontrak dengan parameter yang sama, di `0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A`, yang juga memakai oracle pasarnya.
+
+## Contoh perhitungan: berapa banyak yang dapat diambil satu pra-likuidasi?
+
+Ambil posisi ilustratif di pasar Base tersebut: jaminan 1 cbBTC dan utang 50.000 USDC, pada 80.000,15 USDC per cbBTC. Faktor kesehatannya 1,376 terhadap LLTV 86%, dan 1,332 terhadap garis pra-likuidasi 83,26%. Dengan oracle yang sama, angka pra-likuidasi selalu sama dengan angka pasar dikali 0,968 (83,26 ÷ 86).
+
+Pra-likuidasi dapat dimulai begitu cbBTC turun di bawah 60.052,58 USDC, 24,9% di bawah harga itu. Likuidasi normal dimulai di bawah 58.139,53 USDC, 27,3% di bawahnya. Di antara kedua harga itu, pra-likuidasi tunggal terbesar terlihat seperti ini:
+
+| LTV | Harga cbBTC | Close factor | Utang yang dilunasi | Jaminan yang diambil (nilai USDC) | Bonus | LTV setelahnya |
+| --- | ----------- | ------------ | ------------------- | --------------------------------- | ----- | -------------- |
+| 84% | 59.523,81   | 6,77%        | 3.384               | 3.533                             | 148   | 83,26%         |
+| 85% | 58.823,53   | 15,65%       | 7.825               | 8.168                             | 343   | 83,26%         |
+| 86% | 58.139,53   | 24,53%       | 12.266              | 12.803                            | 538   | 83,23%         |
+
+Dengan nilai bawaan, satu panggilan berukuran penuh mengembalikan LTV ke sekitar preLLTV, tempat kontrak berhenti. Bandingkan dengan likuidasi normal Blue pada 87%: likuidator boleh melunasi seluruh 50.000 USDC dan mengambil cbBTC senilai 52.192 USDC, sehingga Anda tersisa dengan jaminan sekitar 5.279 USDC dan tanpa pinjaman.
+
+## Mengapa peminjam memilih ikut, dan berapa biayanya bagi mereka?
+
+Alasan untuk ikut adalah penjualan yang lebih kecil dan bertahap. Artikel bantuan Morpho menggambarkan Auto-deleverage sebagai menutup hanya sebagian posisi untuk memulihkan kesehatannya, dengan biaya yang dikenakan hanya atas jumlah yang ditutup. Dalam contoh di atas, peminjam yang ikut membayar bonus 148 hingga 538 USDC pada setiap tahap, sedangkan likuidasi normal pada 87% yang melunasi seluruh pinjaman berbiaya 2.192 USDC; beberapa tahap, atau likuidasi normal setelahnya, dapat berjumlah lebih besar.
+
+Biayanya:
+
+- **Penjualan dimulai lebih awal.** Di pasar 86%, sebagian posisi Anda dapat dijual mulai dari faktor kesehatan pasar sekitar 1,033, sementara faktor kesehatan yang digambarkan pusat bantuan Morpho, yang diukur terhadap LLTV, masih di atas 1.
+- **Tahapannya dapat berulang.** Close factor membatasi setiap panggilan, bukan totalnya, sehingga beberapa panggilan dapat menyusul satu sama lain selama Anda tetap di atas preLLTV.
+- **Harganya dapat berbeda.** Kontrak dapat memakai oracle selain oracle pasar. Semua 106 kontrak yang dicantumkan API Morpho memakai oracle pasarnya sendiri; kontrak yang tidak dicantumkannya mungkin tidak.
+- **Tidak ada yang wajib bertindak.** Jika tidak ada likuidator yang memanggil kontrak, tidak terjadi apa pun sebelum LLTV; begitu Anda melewatinya, Anda dapat dilikuidasi dengan cara normal.
+
+Dengan fitur ini sedang dihentikan, Morpho meminta peminjam yang masih memakainya untuk menonaktifkannya, dan pendaftaran baru sudah ditutup.
+
+## Bagaimana cara memeriksa apakah Anda pernah memberi otorisasi?
+
+Anda telah memberi otorisasi kepada kontrak pra-likuidasi jika `isAuthorized(dompet Anda, kontrak)` di Morpho Blue mengembalikan true. Otorisasi disimpan di Morpho Blue sendiri, bukan di kontrak pra-likuidasi.
+
+1. **Temukan kontrak untuk pasar Anda.** API Morpho mencantumkannya di bawah pra-likuidasi pasar tersebut; pusat bantuan Morpho juga mengarahkan ke tombol manage (kelola) di halaman posisi atau halaman pasar Anda di aplikasi.
+2. **Panggil `isAuthorized` di kontrak Morpho Blue jaringan tersebut.** Di block explorer, buka fungsi baca (read) kontrak Blue dan masukkan dompet Anda sebagai alamat pertama dan kontrak pra-likuidasi sebagai alamat kedua.
+3. **Baca jawabannya.** True berarti kontrak tersebut dapat mempra-likuidasi Anda; false berarti tidak dapat.
+
+Langkah-langkah ini memerlukan alamat kontrak, dan API Morpho hanya mencantumkan kontrak dengan pengaturan bawaan. Otorisasi juga dapat diberikan lewat tanda tangan dan dikirim oleh orang lain, sehingga mungkin tidak muncul di daftar transaksi dompet Anda sendiri. Untuk melihat setiap alamat yang pernah Anda beri otorisasi, lihat event SetAuthorization kontrak Morpho Blue di block explorer dengan dompet Anda sebagai pemberi otorisasi (authorizer). Event terbaru untuk setiap alamat menunjukkan apakah otorisasinya masih aktif, dan PreLiquidationFactory di jaringan tersebut menjawab `isPreLiquidation(address)` dengan true untuk kontrak yang dibuatnya.
+
+Satu detail penting di sini. Otorisasi Blue tidak terikat pada pasar: alamat yang Anda beri otorisasi lolos pemeriksaan Blue untuk peminjaman, penarikan, dan penarikan jaminan Anda di seluruh kontrak Blue tersebut. Kode tetap kontrak pra-likuidasi hanya pernah melunasi dan menarik jaminan di pasarnya sendiri, tetapi alamat lain yang Anda beri otorisasi tidak dibatasi dengan cara itu.
+
+## Bagaimana cara menonaktifkan pra-likuidasi?
+
+Anda menonaktifkannya dengan mengembalikan otorisasi ke false:
+
+- **Di aplikasi Morpho:** pusat bantuan Morpho mengatakan untuk mengklik tombol manage (kelola) pada posisi di dasbor Anda atau di halaman pasar, yang membuka jendela penghapusan untuk Auto-deleverage.
+- **Di kontrak:** panggil `setAuthorization(pre-liquidation contract, false)` di Morpho Blue dari dompet Anda. Panggilan ini gagal jika nilainya sudah false, jadi panggilan yang gagal juga dapat berarti tidak ada yang perlu dicabut.
+
+Setelah dicabut, upaya kontrak untuk menarik jaminan Anda akan gagal, dan hanya likuidasi normal Blue di bawah faktor kesehatan 1 yang berlaku. Biayanya adalah gas untuk satu transaksi.
+
+## Bagaimana Tokenping mengukur posisi dengan pra-likuidasi?
+
+Untuk peminjam yang memberi otorisasi kepada kontrak pra-likuidasi di pasar Blue, Tokenping memperingatkan berdasarkan garis yang lebih rendah dari keduanya: garis LLTV dan garis pra-likuidasi. Hal itu penting karena pusat bantuan Morpho menggambarkan faktor kesehatan yang ditampilkan di aplikasinya mencapai 1 ketika LTV melewati LLTV, yang juga merupakan titik dimulainya likuidasi Blue sendiri. Di pasar 86% dengan kontrak bawaan, ambang peringatan 1,10 pada garis pra-likuidasi terpicu pada faktor kesehatan pasar sekitar 1,136, dan ambang terendah, 1,02, terpicu pada sekitar 1,054, sekitar 2% di atas garis tempat pra-likuidasi dapat dimulai.
+
+Saat Anda menyimpan atau mengubah peringatan, Tokenping mencatat kontrak pra-likuidasi yang dicantumkan API Morpho untuk pasar itu; setiap pemeriksaan kemudian membaca apakah Anda memberi otorisasi kepada masing-masing kontrak, dan menghitung faktor kesehatan dari chain dengan rumus Morpho sendiri, tidak pernah dari API Morpho. Kontrak pra-likuidasi yang tidak dicantumkan API Morpho tidak diperiksa, jadi jika Anda memberi otorisasi kepada kontrak dengan pengaturan khusus, peringatan hanya mengukur terhadap garis LLTV.
+
+Selebihnya berjalan seperti setiap peringatan Morpho. Tokenping memeriksa setiap 5 menit, di 14 jaringan, dan selama faktor kesehatan Anda di bawah ambang Anda (berapa pun dari 1,02 hingga 10), setiap pemeriksaan mengirim pesan di setiap saluran yang Anda pilih: Signal, Telegram, atau email. Peringatan berbiaya <AlertPrice />, paket yang sama dengan peringatan Aave, dan [melihat posisi Morpho Anda](/id/morpho) tidak perlu membayar. [Cara memilih ambang peringatan](/id/blog/faktor-kesehatan-aave-yang-aman#bagaimana-memilih-ambang-peringatan-langkah-demi-langkah) menguraikan pertimbangannya di Aave; cara berpikir yang sama berlaku di sini. Peringatan memberi Anda waktu untuk bertindak, bukan jaminan: harga dapat bergerak di antara dua pemeriksaan. Jika Anda tidak lagi menginginkan pra-likuidasi, cabut seperti dijelaskan di atas; peringatan Anda lalu hanya mengukur terhadap garis LLTV.
+
+## Sumber
+
+- [morpho-org/pre-liquidation](https://github.com/morpho-org/pre-liquidation): README, [PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidation.sol), [PreLiquidationFactory.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidationFactory.sol), dan [IPreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/interfaces/IPreLiquidation.sol), untuk parameter, batasan, interpolasi, dan pemeriksaan (diakses 26 Oktober 2026)
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol), dan [EventsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/EventsLib.sol): `isAuthorized`, `setAuthorization`, event SetAuthorization, pemeriksaan kesehatan, dan bonus likuidasi normal (diakses 26 Oktober 2026)
+- [Introducing pre-liquidations](https://morpho.org/blog/introducing-pre-liquidations-enhanced-loan-management-on-morpho) (Morpho, 4 Maret 2025): auto-deleverage dan auto-close sebagai kegunaan, dan likuidasi normal jika tidak terjadi pra-likuidasi (diakses 26 Oktober 2026)
+- [Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (pusat bantuan Morpho, diperbarui 13 Mei 2026): tidak ada posisi baru, cara menonaktifkan, apa yang dilakukan fitur ini (diakses 26 Oktober 2026)
+- [Pusat bantuan Morpho: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): aplikasi menampilkan faktor kesehatan setiap posisi, dan posisi dapat dilikuidasi pada 1 atau di bawahnya, begitu LTV-nya melewati LLTV (diakses 26 Oktober 2026)
+- [Pull request 1132 SDK Morpho](https://github.com/morpho-org/sdks/pull/1132) (digabungkan 22 September 2026) dan [preLiquidation.ts](https://github.com/morpho-org/sdks/blob/main/packages/blue-sdk/src/preLiquidation.ts): status deprecated dan parameter bawaan (diakses 26 Oktober 2026)
+- [Dokumentasi Morpho: liquidation](https://docs.morpho.org/developers/borrow/concepts/liquidation): tujuan halaman pra-likuidasi lama sekarang (diakses 26 Oktober 2026)
+- [API Morpho](https://api.morpho.org/graphql): pasar terdaftar, kontrak pra-likuidasi dan oracle-nya, serta pasar USDC | cbBTC (86%) di Base dan Ethereum (diakses 26 Oktober 2026)
+- Kontrak pra-likuidasi yang dibaca on-chain: [Base](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374) pada blok 53102692 hingga 53102952 dan [Ethereum](https://etherscan.io/address/0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A) pada blok 26274980, beserta factory, pasar, dan oracle-nya (diakses 26 Oktober 2026)
+
+_Konten edukasi, bukan nasihat keuangan. Peringatan mengurangi risiko, tetapi tidak mencegah likuidasi._

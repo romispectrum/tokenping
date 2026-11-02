@@ -11,6 +11,8 @@ import {
   frForMarket,
   frOnMarket,
   hiMarket,
+  idForMarket,
+  idOnMarket,
   itForMarket,
   itOnMarket,
   itTo,
@@ -196,6 +198,22 @@ describe("Turkish formatting", () => {
     expect(trOnMarket("Base", "network")).toBe("Base ağında");
     expect(trForMarket("Base")).toBe("Base ağı için");
     expect(trForMarket("USDC | cbBTC (86%)", "market")).toBe("USDC | cbBTC (86%) piyasası için");
+  });
+});
+
+describe("Indonesian formatting", () => {
+  it("joins with dan and atau, writes Indonesian dates, a decimal comma and the market wording", () => {
+    expect(joinList("id", ["Signal", "Telegram", "email"])).toBe("Signal, Telegram dan email");
+    expect(joinList("id", ["Signal", "email"], "disjunction")).toBe("Signal atau email");
+    expect(formatLongDate("id", "2026-10-14")).toBe("14 Oktober 2026");
+    expect(formatDecimal("id", "1.42")).toBe("1,42");
+    // Indonesian has no plural: every count takes the "other" form.
+    expect(plural("id", 1, { one: "1 jaringan (one)", other: "1 jaringan" })).toBe("1 jaringan");
+    expect(idOnMarket("Arbitrum")).toBe("di jaringan Arbitrum");
+    expect(idOnMarket("Ethereum (V4 Lido)")).toBe("di pasar Ethereum (V4 Lido)");
+    expect(idOnMarket("Base", "network")).toBe("di jaringan Base");
+    expect(idForMarket("Base")).toBe("untuk jaringan Base");
+    expect(idForMarket("USDC | cbBTC (86%)", "market")).toBe("untuk pasar USDC | cbBTC (86%)");
   });
 });
 

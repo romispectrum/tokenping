@@ -1,0 +1,158 @@
+export const meta = {
+  slug: "suku-bunga-aave",
+  title: "Cara kerja suku bunga Aave, dan mengapa bisa melonjak",
+  description:
+    "Suku bunga pinjaman Aave mengikuti kurva utilisasi: landai hingga level optimal, curam di atasnya. Rumus, parameter nyata, penyebab lonjakan, dan solusi.",
+  h1: "Bagaimana suku bunga Aave bekerja, dan mengapa suku bunga pinjaman bisa melonjak?",
+  publishedAt: "2026-10-25",
+  primaryQuestion:
+    "Bagaimana Aave menetapkan suku bunga pinjaman dan setoran, dan mengapa suku bunga itu bisa melonjak?",
+  readingMinutes: 9,
+};
+
+<ShortAnswer>
+  Di Aave V3, suku bunga pinjaman variabel setiap aset mengikuti kurva yang ditetapkan tata kelola: naik perlahan
+  seiring utilisasi, yaitu bagian token yang disetor yang sedang dipinjam, hingga level optimal, lalu naik tajam di
+  atasnya. Penyetor mendapat suku bunga pinjaman dikalikan utilisasi, dikurangi faktor cadangan (reserve factor). Suku
+  bunga dihitung ulang pada setiap setoran, pinjaman, pelunasan, dan penarikan, sehingga satu penarikan besar dapat
+  mendorong utilisasi melewati level optimal dan melipatgandakan suku bunga dalam satu blok: USDC di Ethereum Core naik
+  dari 4,50% ke 13,67% APR pada 14 Oktober 2026 dan kembali ke 4,76% sekitar 36 menit kemudian. Semua utang Aave V3
+  memakai bunga mengambang.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Angka-angka dan nomor blok tempat angka itu dibaca: content/blog/snapshots/aave-interest-rates.md */}
+
+## Apa yang menentukan suku bunga pinjaman di Aave?
+
+Di Aave V3, suku bunga pinjaman suatu aset ditentukan oleh dua hal: utilisasinya dan parameter suku bunganya. Utilisasi adalah bagian pool aset itu yang sedang dipinjamkan: utang dibagi utang ditambah token yang masih tersedia. Parameternya berupa empat angka per aset yang ditetapkan oleh tata kelola Aave, dan Risk Stewards Aave dapat menyesuaikannya dalam langkah yang dibatasi dan dengan jeda waktu minimum:
+
+- **Rasio pemakaian optimal (optimal usage ratio):** utilisasi tempat kurva menikung.
+- **Suku bunga dasar (base rate):** suku bunga pinjaman pada utilisasi 0%.
+- **Slope 1:** seberapa besar kenaikan suku bunga dari utilisasi 0% hingga rasio pemakaian optimal.
+- **Slope 2:** seberapa besar kenaikan tambahannya dari rasio pemakaian optimal hingga 100%.
+
+Dibaca pada 25 Oktober 2026 di blok Ethereum 26269328 dan blok Arbitrum 518125419, parameter dan suku bunga beberapa aset yang umum adalah:
+
+| Pasar dan aset     | Pemakaian optimal | Dasar | Slope 1 | Slope 2 | Utilisasi     | APR pinjaman | APR setoran |
+| ------------------ | ----------------- | ----- | ------- | ------- | ------------- | ------------ | ----------- |
+| Ethereum Core USDC | 94%               | 0%    | 4,5%    | 10%     | 93,72%        | 4,49%        | 3,78%       |
+| Ethereum Core USDT | 92%               | 0%    | 4,5%    | 10%     | 87,81%        | 4,30%        | 3,39%       |
+| Ethereum Core WETH | 92%               | 0%    | 2,2%    | 6%      | 81,31%        | 1,94%        | 1,31%       |
+| Ethereum Core GHO  | 99%               | 4,5%  | 0%      | 0%      | tidak dipakai | 4,50%        | 0%          |
+| Arbitrum USDC      | 90%               | 0%    | 4%      | 10%     | 77,32%        | 3,44%        | 2,39%       |
+
+GHO adalah pengecualian: kedua slope-nya nol, sehingga suku bunganya tetap datar berapa pun utilisasinya, dan diubah secara manual (lihat [GHO dan Aave V4](#bagaimana-suku-bunga-ditetapkan-untuk-gho-dan-di-aave-v4)).
+
+## Bagaimana suku bunga pinjaman Aave dihitung?
+
+Suku bunga pinjaman Aave V3 berupa garis lurus hingga rasio pemakaian optimal dan garis yang jauh lebih curam di atasnya. Dengan U sebagai utilisasi:
+
+**Hingga rasio pemakaian optimal: suku bunga pinjaman = dasar + slope 1 × U ÷ rasio pemakaian optimal**
+
+**Di atasnya: suku bunga pinjaman = dasar + slope 1 + slope 2 × (U − rasio pemakaian optimal) ÷ (1 − rasio pemakaian optimal)**
+
+Di dalam kontrak, U adalah total utang dibagi total utang ditambah token yang masih dipegang pool. Dengan parameter USDC di Ethereum Core, suku bunga pada setiap utilisasi adalah:
+
+| Utilisasi     | APR pinjaman |
+| ------------- | ------------ |
+| 50%           | 2,39%        |
+| 80%           | 3,83%        |
+| 90%           | 4,31%        |
+| 94% (optimal) | 4,50%        |
+| 95%           | 6,17%        |
+| 96%           | 7,83%        |
+| 98%           | 11,17%       |
+| 100%          | 14,50%       |
+
+Di bawah 94%, sepuluh poin utilisasi menggeser suku bunga kurang dari setengah poin. Di atasnya, setiap poin menambah sekitar 1,67 poin, dan enam poin utilisasi terakhir membuat suku bunga lebih dari tiga kali lipat. Dibaca pada 25 Oktober 2026, USDC berada di 93,72%, tepat di bawah tikungan: 4,5% × 0,9372 ÷ 0,94 menghasilkan 4,49% yang dikenakan saat itu.
+
+Kurva ini memang dirancang begitu. Di bawah level optimal, pinjaman yang murah membuat pool tetap terpakai; di atasnya, suku bunga yang curam membuat pinjaman cukup mahal sehingga sebagian peminjam melunasi dan sebagian pemegang token menyetor, yang menurunkan utilisasi kembali dan menyisakan token bagi penyetor yang ingin menarik dananya.
+
+## Mengapa suku bunga pinjaman Aave melonjak?
+
+Suku bunga pinjaman Aave melonjak ketika utilisasi melewati rasio pemakaian optimal, biasanya karena penyetor besar menarik dana atau peminjam besar meminjam. Suku bunga dihitung ulang dalam transaksi yang sama, dan setiap peminjam aset itu membayar suku bunga baru sejak saat itu hingga perubahan berikutnya.
+
+Pada 14 Oktober 2026, satu penarikan sebesar tepat 133.898.000 USDC dari Ethereum Core mendorong utilisasi dari 93,92% ke 99,50% dalam satu blok:
+
+| Blok Ethereum (UTC)         | Apa yang terjadi                                   | Utilisasi     | APR pinjaman USDC |
+| --------------------------- | -------------------------------------------------- | ------------- | ----------------- |
+| 26194052 (14 Okt, 23.32.47) | Sebelum                                            | 93,92%        | 4,50%             |
+| 26194053 (14 Okt, 23.32.59) | 133.898.000 USDC ditarik                           | 99,50%        | 13,67%            |
+| 26194088 (14 Okt, 23.39.59) | Titik tertinggi dalam rentang waktu itu            | sekitar 99,8% | 14,18%            |
+| 26194231 (15 Okt, 00.08.35) | Alamat yang sama menyetor kembali 133.898.000 USDC | 94,16%        | 4,76%             |
+
+Peminjam membayar sekitar tiga kali suku bunga biasa selama 36 menit, dan rumus di atas menghasilkan kembali setiap suku bunga itu dari utilisasinya. Lonjakan berlangsung selama utilisasi tetap tinggi: di sini token yang sama kembali, tetapi dalam kasus lain diperlukan penyetor baru atau pelunasan, yang tertarik oleh suku bunga tinggi, untuk menurunkannya.
+
+Dua hal lain juga mengubah suku bunga pinjaman. Tata kelola atau Risk Stewards dapat mengubah keempat parameter, yang menggeser seluruh kurva sekaligus. Dan di antara transaksi, suku bunga tidak berubah: Aave menghitungnya ulang pada setiap setoran, pinjaman, pelunasan, penarikan, dan likuidasi aset itu, dan bunga terus bertambah pada suku bunga itu, detik demi detik, hingga transaksi berikutnya.
+
+## Mengapa penyetor mendapat lebih sedikit daripada yang dibayar peminjam?
+
+Penyetor mendapat lebih sedikit daripada yang dibayar peminjam karena hanya bagian pool yang dipinjam yang membayar bunga, dan protokol menyimpan sebagian darinya. Suku bunga setoran adalah:
+
+**Suku bunga setoran = suku bunga pinjaman × utilisasi × (1 − faktor cadangan)**
+
+Untuk USDC di Ethereum Core pada 25 Oktober 2026: 4,4866% × 0,9372 × (1 − 0,10) = 3,78%. Faktor cadangan, 10% untuk USDC dan 15% untuk WETH, masuk ke kas (treasury) Aave. Jika suatu cadangan menanggung defisit dari utang macet (bad debt), kontrak juga memperhitungkannya di sisi setoran, yang sedikit menurunkan suku bunga setoran.
+
+## Apa perbedaan APR dan APY di Aave?
+
+Kontrak menyimpan suku bunga sebagai APR, sedangkan aplikasi Aave menampilkan APY, yang memperhitungkan bunga majemuk. Pustaka matematika aplikasi itu memajemukkan APR setiap detik selama setahun yang terdiri dari 31.536.000 detik:
+
+**APY = (1 + APR ÷ 31.536.000)^31.536.000 − 1**
+
+APR 4,4866% pada USDC di Ethereum Core tampil di aplikasi sebagai APY 4,59%. Pada level ini selisihnya sekitar sepersepuluh poin; pada APR 14% selisihnya sekitar satu poin (APY 15,0%).
+
+## Bagaimana lonjakan suku bunga memengaruhi faktor kesehatan Anda?
+
+Lonjakan singkat hampir tidak menggeser faktor kesehatan (health factor) Anda; suku bunga tinggi yang berlangsung berbulan-bulan menggesernya. Bunga menambah utang Anda, dan utang yang lebih besar menurunkan faktor kesehatan, seperti dijelaskan [penyebab bunga dalam panduan mengapa faktor kesehatan Anda turun](/id/blog/mengapa-faktor-kesehatan-aave-turun#penyebab-3-apakah-bunga-pada-utang-anda-bertambah-lebih-cepat-daripada-pada-jaminan-anda).
+
+Ambil 10 WETH yang disetor terhadap 12.000 USDC yang dipinjam di Ethereum Core, dengan ambang likuidasi (liquidation threshold) WETH 83% (dibaca pada 14 Oktober 2026) dan harga ETH ilustratif US$2.400: faktor kesehatannya 1,66. Dengan memperhitungkan hasil WETH pada suku bunga setorannya 1,31%:
+
+| Berapa lama suku bunga bertahan | Pada 4,49% (25 Oktober 2026)  | Pada 14,50% (puncak kurva) |
+| ------------------------------- | ----------------------------- | -------------------------- |
+| 36 menit                        | bunga sekitar 0,04 USDC, 1,66 | sekitar 0,12 USDC, 1,66    |
+| 30 hari                         | sekitar 1,66                  | sekitar 1,64               |
+| Satu tahun                      | sekitar 1,61                  | sekitar 1,45               |
+
+Lonjakan 14 Oktober membebani posisi ini sekitar 12 sen. Pasar yang bertahan di puncak kurvanya selama setahun akan membawanya dari 1,66 ke sekitar 1,45 tanpa pergerakan harga sama sekali, itulah sebabnya penurunan perlahan layak diantisipasi dengan ambang batas peringatan yang menyisakan ruang ([seberapa besar ruang yang diberikan faktor kesehatan](/id/blog/faktor-kesehatan-aave-yang-aman#seberapa-cepat-bunga-dan-perubahan-parameter-menggerus-penyangga-anda)).
+
+## Apa yang dapat Anda lakukan saat suku bunga pinjaman Anda melonjak?
+
+Saat suku bunga pinjaman Anda melonjak, periksa dulu utilisasi aset itu di halamannya di aplikasi Aave: jika hanya sedikit di atas rasio pemakaian optimal, suku bunga akan turun kembali begitu utilisasi turun. Setelah itu Anda punya empat pilihan, masing-masing dengan biayanya:
+
+- **Menunggu.** Lonjakan yang disebabkan oleh satu penarikan besar dapat berakhir ketika token itu kembali, seperti pada 14 Oktober 2026. Tidak ada yang menjamin token itu kembali, dan selama itu Anda membayar suku bunga tinggi.
+- **Melunasi sebagian utang.** Ini menurunkan bunga sekaligus risiko Anda; [cara menaikkan faktor kesehatan Aave Anda](/id/blog/cara-menghindari-likuidasi-aave) membahas pelunasan dengan token Anda sendiri atau dengan jaminan Anda.
+- **Menukar utang ke aset lain.** Antarmuka Aave Labs memiliki debt swap (penukaran utang) yang mengganti satu aset pinjaman dengan aset lain dalam satu transaksi, di pasar Ethereum Core, Prime, dan EtherFi serta di Arbitrum, Avalanche, Base, BNB Chain, Optimism, Polygon, Gnosis, dan Sonic, menurut dokumentasi Aave. Fitur ini tidak tercantum untuk Metis, Scroll, ZKsync, Celo, Soneium, Linea, Plasma, atau Ink. Aset baru memiliki kurvanya sendiri dan risikonya sendiri jika harganya bergerak berbeda dari utang lama Anda.
+- **Meminjam di pasar lain.** Setiap pasar memiliki pool dan utilisasinya sendiri: pada 25 Oktober 2026, USDC berbunga 4,49% di Ethereum Core dan 3,44% di Arbitrum. Pindah berarti melunasi di satu pasar dan meminjam di pasar lain, dengan jaminan di jaringan tersebut.
+
+## Bagaimana suku bunga ditetapkan untuk GHO dan di Aave V4?
+
+GHO, stablecoin milik Aave sendiri, memiliki suku bunga pinjaman datar yang dipilih oleh manusia, bukan oleh kurva. Di Ethereum Core, kedua slope pada parameternya nol, sehingga suku bunganya sama dengan suku bunga dasar, 4,50% pada 25 Oktober 2026. Suku bunga itu diubah melalui kontrak GHO steward oleh Risk Council 2-dari-3: paling banyak 5 poin persentase per pembaruan dan paling sering sekali sehari. Perubahan terakhir, pada 3 Oktober 2026, menaikkannya dari 4,25% ke 4,50%; sejak November 2024 suku bunga itu telah diubah 44 kali, antara 3,00% dan 14,50%. Diskon lama bagi pemegang stkAAVE dihapus bersama Aave v3.4.
+
+Aave V4 tetap memakai kurva utilisasi, tetapi dokumentasinya menyebut kurva itu dikonfigurasi per aset di Hub, yaitu pool yang meminjamkan ke setiap Spoke. Di atas suku bunga bersama itu, setiap peminjam membayar User Risk Premium yang bergantung pada kualitas jaminannya: contoh dari Aave adalah premi 50% atas suku bunga dasar 5%, sehingga menjadi 7,5%. Karena itu, dua peminjam V4 untuk aset yang sama dapat membayar suku bunga yang berbeda, dan [bagian V4 dalam panduan faktor kesehatan](/id/blog/faktor-kesehatan-aave#apakah-faktor-kesehatan-berbeda-di-aave-v4) membahas apa lagi yang diubah V4.
+
+## Bisakah Anda mendapat bunga tetap di Aave?
+
+Tidak. Aave V3 dulu memiliki opsi stable rate, tetapi opsi itu sepenuhnya dihentikan pada 2024 setelah adanya laporan bug, dan Aave v3.2 menghapus kodenya. Setiap pinjaman Aave V3 membayar bunga mengambang, dan suku bunga datar GHO pun tetap dapat diubah kapan saja dalam batas steward-nya.
+
+## Bisakah peringatan memberi tahu Anda tentang kenaikan suku bunga?
+
+Peringatan faktor kesehatan tidak memantau suku bunga; peringatan itu memantau dampak suku bunga pada posisi Anda. Tokenping memeriksa faktor kesehatan Aave V3 dan V4 Anda setiap 5 menit di 22 jaringan dan mengirim pesan kepada Anda lewat Signal, Telegram, atau email selama faktor kesehatan berada di bawah ambang batas yang Anda atur (1,1 hingga 10). Lonjakan seperti pada 14 Oktober 2026 tidak akan memicunya, karena hampir tidak menggeser faktor kesehatan; bunga tinggi selama berbulan-bulan akan memicunya, begitu utang tumbuh cukup besar untuk melewati ambang batas Anda.
+
+Jika Anda menginginkan pesan tentang suku bunganya sendiri, beberapa alat lain mengirim peringatan suku bunga, dan [perbandingan alat peringatan Aave kami](/id/blog/alat-peringatan-likuidasi-aave) mencantumkan apa yang dipantau masing-masing. Cara mengatur peringatan faktor kesehatan ada di [cara mengatur peringatan faktor kesehatan](/id/blog/cara-mengatur-peringatan-faktor-kesehatan-aave), dan Anda dapat [memeriksa faktor kesehatan Aave V3 Anda](/id/aave) terlebih dahulu; melihat posisi Anda tidak perlu membayar.
+
+## Sumber
+
+- [DefaultReserveInterestRateStrategyV2.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/misc/DefaultReserveInterestRateStrategyV2.sol) dan [ReserveLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ReserveLogic.sol): kurva suku bunga, rasio pemakaian, suku bunga setoran, dan kapan suku bunga dihitung ulang (aave-v3-origin, diakses 25 Oktober 2026)
+- [Strategi suku bunga Aave V3 Ethereum Core](https://etherscan.io/address/0x9ec6F08190DeA04A54f8Afc53Db96134e5E3FdFB#readContract) dan [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): parameter dan suku bunga pada blok 26269328; USDC pada blok 26194052, 26194053, 26194088, 26194230, dan 26194231 (diakses 25 Oktober 2026)
+- [Strategi suku bunga Aave V3 Arbitrum](https://arbiscan.io/address/0x429F16dBA3B9e1900087Cbaa7b50D38Bc60fB73F#readContract): parameter dan suku bunga USDC pada blok 518125419 (diakses 25 Oktober 2026)
+- [Aave Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): parameter suku bunga termasuk nilai yang boleh diubah steward, dengan perubahan maksimum dan jeda minimum per pembaruan (diakses 25 Oktober 2026)
+- [calculateCompoundedRate di aave-utilities](https://github.com/aave/aave-utilities/blob/master/packages/math-utils/src/formatters/compounded-interest/calculate-compounded-interest.ts): APR ke APY selama 31.536.000 detik (diakses 25 Oktober 2026)
+- [Fitur swap Aave](https://aave.com/docs/aave-v3/smart-contracts/swap-features.md): debt swap dan pelunasan dengan jaminan, serta pasar yang mendukungnya (diakses 25 Oktober 2026)
+- [GHO Stewards: October 2026 GHO borrow rate update](https://governance.aave.com/t/gho-stewards-october-2026-gho-borrow-rate-update/25754) (TokenLogic, 2 Oktober 2026, diakses 25 Oktober 2026) dan [kontrak GHO steward](https://etherscan.io/address/0x98217A06721Ebf727f2C8d9aD7718ec28b7aAe34#readContract): batas per pembaruan dan riwayat suku bunga sejak November 2024 (diakses 25 Oktober 2026)
+- [Fitur Aave v3.4](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.4/Aave-v3.4-features.md): penghapusan diskon stkAAVE pada GHO (diakses 25 Oktober 2026)
+- [BGD: Full deprecation of stable rate](https://governance.aave.com/t/bgd-full-deprecation-of-stable-rate/16473) (31 Januari 2024) dan [fitur Aave v3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): stable rate dihapus (diakses 25 Oktober 2026)
+- [Dokumentasi Aave V4](https://aave.com/docs/aave-v4.md) dan [posisi V4](https://aave.com/docs/aave-v4/positions.md): kurva suku bunga per aset Hub dan User Risk Premium (diakses 25 Oktober 2026)
+
+_Konten edukasi, bukan nasihat keuangan. Peringatan mengurangi risiko, tetapi tidak mencegah likuidasi._

@@ -1952,11 +1952,9 @@ describe("NotificationConfig: language", () => {
     expect([emailLanguage().value, signalLanguage().value]).toEqual(["cs", "cs"]);
     // Each language is named in itself, the list sorted by those names.
     const options = [...signalLanguage().options].map(option => [option.value, option.text, option.lang]);
-    expect(options.slice(0, 3)).toEqual([
-      ["cs", "Čeština", "cs"],
-      ["de", "Deutsch", "de"],
-      ["en", "English", "en"],
-    ]);
+    const names = options.map(([, name]) => name);
+    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, "en")));
+    expect(options).toContainEqual(["cs", "Čeština", "cs"]);
     expect(options.map(([value]) => value).sort()).toEqual([...LOCALES].sort());
 
     await type(screen.getByRole("textbox", { name: "E-mailová adresa" }), "me@example.com");

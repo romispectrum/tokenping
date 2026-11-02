@@ -1,0 +1,184 @@
+export const meta = {
+  slug: "cara-kerja-likuidasi-morpho",
+  title: "Cara kerja likuidasi Morpho: insentif dan utang macet",
+  description:
+    "Kapan pinjaman Morpho dapat dilikuidasi, berapa yang dapat diambil likuidator, insentif di tiap LLTV, utang macet, oracle, dan bedanya di Midnight.",
+  h1: "Apa yang terjadi saat posisi Morpho Anda dilikuidasi?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Bagaimana likuidasi bekerja di Morpho, dan berapa biayanya bagi peminjam?",
+  readingMinutes: 11,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Posisi Morpho Blue dapat dilikuidasi begitu rasio pinjaman terhadap nilai (LTV) naik di atas LTV likuidasi (LLTV)
+  pasar, yang sama dengan faktor kesehatan (health factor) di bawah 1. Sejak saat itu siapa pun dapat melunasi sebagian
+  atau seluruh utang Anda dalam satu transaksi dan mengambil jaminan senilai jumlah yang dilunasi dikali faktor insentif
+  likuidasi pasar itu, dengan harga dari oracle (sumber harga) pasar. Insentifnya hanya ditentukan oleh LLTV: 4,38% pada
+  LLTV 86%, dan seluruhnya menjadi milik likuidator. Anda tetap memegang apa yang Anda pinjam, jadi insentif itulah
+  biaya likuidasi bagi Anda, kecuali jaminan Anda tidak lagi menutup utang; dalam hal itu Anda kehilangan seluruh
+  jaminan dan pemberi pinjaman di pasar itu menanggung sisanya sebagai utang macet (bad debt). Pinjaman bunga tetap
+  Morpho Midnight menambahkan dua kekhususan: sebelum jatuh tempo, satu likuidasi hanya dapat mengambil yang diperlukan
+  untuk memulihkan kesehatan posisi, kecuali jaminan yang tersisa akan melunasi kurang dari ambang pasar, dan setelah
+  jatuh tempo setiap utang yang tersisa dapat dilikuidasi, bahkan pada posisi yang sehat.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Angka dan nomor blok tempat angka itu dibaca: content/blog/snapshots/how-morpho-liquidation-works.md */}
+
+## Kapan posisi Morpho dapat dilikuidasi?
+
+Posisi Morpho Blue dapat dilikuidasi segera setelah utang Anda lebih besar dari nilai jaminan Anda dikali LLTV pasar. Dalam istilah faktor kesehatan, itu adalah nilai apa pun di bawah 1,00 ([cara menghitung faktor kesehatan Morpho](/id/blog/faktor-kesehatan-morpho) memuat rumus dan contohnya).
+
+Kontrak memeriksanya sendiri. Fungsi `liquidate` Morpho Blue pertama-tama menambahkan bunga yang terutang hingga blok itu, lalu membaca oracle pasar satu kali, lalu membatalkan transaksi (revert) kecuali posisinya tidak sehat. Posisi yang tepat berada di LLTV-nya masih sehat; posisi harus berada di atasnya.
+
+Hanya dua hal yang mendorong posisi melewati garis itu:
+
+- **Harga jaminan turun** relatif terhadap token pinjaman, seperti yang dilaporkan oracle.
+- **Utang Anda bertambah** seiring bunga yang berjalan pada pinjaman Blue berbunga mengambang.
+
+Setiap pasar Blue menetapkan LLTV dan oracle-nya saat dibuat, dan keduanya tidak dapat diubah sesudahnya. Kontrak Morpho Blue juga tidak punya pause, pembekuan (freeze) atau masa tenggang: Morpho tidak dapat menghentikan likuidasi di sebuah pasar ataupun menghentikan Anda melunasi. Penerbit sebuah token tetap dapat menghentikan sementara atau memblokir transfer token itu, yang akan menghentikan keduanya.
+
+## Siapa yang melikuidasi posisi Morpho, dan bagaimana caranya?
+
+Siapa saja. `liquidate` tidak membatasi pemanggilnya, dan Morpho sendiri tidak melikuidasi posisi. Likuidator berkisar dari tim yang menjalankan bot pemantau posisi dan harga oracle hingga perorangan; dokumentasi Morpho mencatat bahwa yang dibutuhkan hanyalah node RPC dan dompet yang memegang cukup token pinjaman.
+
+Siapa cepat, dia dapat. Tidak ada lelang, sehingga likuidator bersaing dalam kecepatan, dan perlombaan gas serta MEV (pengurutan transaksi demi keuntungan) menjadi bagiannya. Kontrak mengirim jaminan yang disita ke likuidator sebelum menagih token pinjaman, sehingga bot dapat menjual jaminan itu dalam transaksi yang sama dan melunasi dari hasilnya.
+
+Likuidasi tidak dijamin terjadi; likuidasi terjadi karena insentifnya menguntungkan. Dalam praktiknya likuidasi adalah hal rutin: API Morpho mencatat 14.024 likuidasi di pasar USDC | cbBTC (86%) di Base saja.
+
+## Berapa bagian utang Anda yang dapat dilikuidasi sekaligus?
+
+Seluruhnya. Morpho Blue tidak punya close factor (bagian utang yang dapat dilunasi sekaligus) dan tidak punya ukuran minimum: likuidator boleh melunasi berapa pun jumlah utang Anda, dari potongan kecil hingga seluruhnya, dalam satu panggilan. Batasnya hanya bahwa likuidator tidak dapat melunasi lebih dari yang Anda utang atau menyita lebih banyak jaminan dari yang Anda miliki.
+
+Inilah perbedaan terbesar dengan Aave V3, yang membatasi likuidasi pada 50% utang selama faktor kesehatan di atas 0,95 dan posisinya tidak kecil ([berapa bagian utang Aave yang dapat dilikuidasi sekaligus](/id/blog/cara-kerja-likuidasi-aave#berapa-bagian-utang-anda-yang-dapat-dilikuidasi-sekaligus)). Di Blue, posisi yang baru sedikit melewati LLTV-nya dapat ditutup seluruhnya oleh likuidator pertama yang datang.
+
+## Seberapa besar insentif likuidasi di tiap LLTV?
+
+Faktor insentif likuidasi (liquidation incentive factor, LIF) ditetapkan oleh rumus di dalam kontrak, dari LLTV pasar:
+
+**LIF = min(1,15; 1 ÷ (1 − 0,3 × (1 − LLTV)))**
+
+Likuidator melunasi sebagian utang Anda dan menerima jaminan senilai jumlah itu dikali LIF pada harga oracle. Bagian di atas 1 adalah insentifnya, dibayar dari jaminan Anda. Morpho tidak mengambil bagian darinya.
+
+Sebuah pasar hanya dapat memakai LLTV yang telah diaktifkan oleh tata kelola Morpho. Pada 26 Oktober 2026 inilah nilai yang aktif, dan setiap pasar Blue di API Morpho memakai salah satunya. Dengan matematika bilangan bulat kontrak itu sendiri:
+
+| LLTV  | Faktor insentif likuidasi | Jaminan yang hilang per 1.000 utang yang dilunasi | Di antaranya insentif |
+| ----- | ------------------------- | ------------------------------------------------- | --------------------- |
+| 38,5% | 1,1500 (dibatasi)         | 1.150,00                                          | 150,00                |
+| 62,5% | 1,1268                    | 1.126,76                                          | 126,76                |
+| 77%   | 1,0741                    | 1.074,11                                          | 74,11                 |
+| 86%   | 1,0438                    | 1.043,84                                          | 43,84                 |
+| 91,5% | 1,0262                    | 1.026,17                                          | 26,17                 |
+| 94,5% | 1,0168                    | 1.016,78                                          | 16,78                 |
+| 96,5% | 1,0106                    | 1.010,61                                          | 10,61                 |
+| 98%   | 1,0060                    | 1.006,04                                          | 6,04                  |
+
+LLTV 0 juga aktif, tetapi tidak ada yang dapat dipinjam di pasar seperti itu. Makin tinggi LLTV, makin kecil insentifnya; dokumentasi Morpho menjelaskan hal ini sebagai pengaman terhadap likuidasi beruntun di pasar yang lebih berisiko. Dokumentasi itu juga membulatkan angka untuk 86% menjadi "approximately 1.05" (sekitar 1,05); nilai persisnya 1,0438.
+
+## Contoh hitungan: 1 cbBTC dengan utang 50.000 USDC di Base
+
+Ambil pasar Blue terdaftar terbesar menurut jumlah pinjaman di Ethereum dan Base: USDC | cbBTC (86%) di Base, dengan sekitar 1,61 miliar USDC dipinjam. Pada 26 Oktober 2026 oracle-nya menilai 1 cbBTC di 80.000,15 USDC (blok Base 53102870). Posisinya rekaan: 1 cbBTC sebagai jaminan dan utang 50.000 USDC.
+
+- **LTV:** 50.000 ÷ 80.000,15 = 62,5%.
+- **Faktor kesehatan:** 80.000,15 × 0,86 ÷ 50.000 = 1,376.
+- **Harga likuidasi:** 50.000 ÷ 0,86 = 58.139,53 USDC per cbBTC, 27,3% di bawah harga oracle.
+
+Bunga adalah penggerak yang lambat. Dengan suku bunga pinjaman pasar sekitar 5,2% per tahun pada 26 Oktober 2026, dan jika suku bunga itu bertahan, bunga saja akan memerlukan lebih dari enam tahun untuk membawa posisi ini dari LTV 62,5% ke 86%. Harga adalah penggerak yang cepat.
+
+Sebagai perbandingan, di antara 11.000 posisi pinjaman terbesar di pasar ini, yang memegang 96% utangnya, separuh USDC yang dipinjam berada di posisi dengan LTV di bawah sekitar 54%, yaitu faktor kesehatan di atas sekitar 1,59. Itu hasil perhitungan Tokenping dari API Morpho dan harga on-chain, bukan angka dari Morpho.
+
+### Likuidasi penuh di 58.139,53
+
+Tepat setelah harga likuidasi terlewati, likuidator dapat melunasi seluruh 50.000 USDC dan mengambil 50.000 × 1,0438 ÷ 58.139,53 = 0,8977 cbBTC, senilai 52.192,07 USDC. Anda tetap memegang 50.000 USDC yang Anda pinjam dan 0,1023 cbBTC (5.947,47 USDC), dan tidak berutang apa pun. Likuidasi itu merugikan Anda 2.192,07 USDC dibandingkan jika Anda melunasi sendiri: 4,38% dari utang.
+
+### Likuidasi sebagian sebesar 10.000 USDC
+
+Likuidator juga dapat berhenti di 10.000 USDC. Itu menyita 0,1795 cbBTC (10.438,41 USDC) dan menyisakan 0,8205 cbBTC terhadap 40.000 USDC: LTV 83,9% dan faktor kesehatan 1,026, kembali sehat. Satu potongan selalu membantu di sini, karena LIF × LLTV = 0,898 berada di bawah 1. Namun tidak ada yang mengharuskan likuidator memilih potongan alih-alih seluruh utang.
+
+### Bagaimana jika tidak ada yang melikuidasi sampai cbBTC di 50.000?
+
+Di 50.000 USDC jaminan Anda bernilai persis sebesar utang Anda, yang lebih kecil dari utang × LIF. Menyita seluruh 1 cbBTC hanya melunasi 50.000 ÷ 1,0438 = 47.900 USDC. Anda kehilangan seluruh jaminan, dan sisa 2.100 USDC dihapusbukukan sebagai utang macet, yang ditanggung pemberi pinjaman di pasar itu.
+
+## Apa yang terjadi pada utang macet di Morpho Blue?
+
+Saat likuidasi meninggalkan peminjam tanpa jaminan tetapi masih dengan utang, kontrak menghapusbukukan utang itu dalam transaksi yang sama. Kontrak mengurangkan sisa utang dari total pinjaman pasar dan jumlah yang sama dari total setorannya, sehingga setiap pemberi pinjaman di pasar itu menanggung kerugian sebanding dengan porsinya. Pemberi pinjaman di pasar lain tidak terdampak, karena setiap pasar Blue terisolasi.
+
+Utang macet menjadi mungkin saat jaminan bernilai lebih kecil dari utang dikali LIF. Di pasar 86% itu berarti LTV apa pun di atas 95,8%, yang hanya dapat dicapai posisi jika harga bergerak melewati LLTV sebelum ada yang melikuidasi. Hal ini memang terjadi, meski jarang dalam jumlah besar: API Morpho mencatat utang macet pada 1.428 likuidasi Blue di Ethereum dan Base, sebagian besar di bawah 1 dolar AS atau di pasar yang tidak ditampilkan aplikasi Morpho.
+
+Bagi peminjam hasilnya sama saja: seluruh jaminan hilang dan tidak ada utang yang tersisa. Bagi pemberi pinjaman, hal ini bergantung pada cara mereka meminjamkan: Morpho Vault V2 meneruskan kerugian ke harga sahamnya, sedangkan vault lama V1.1 tidak meneruskannya ke harga saham mereka. Aave menanganinya secara berbeda: sejak v3.3 Aave mencatat sisa utang sebagai defisit yang dapat ditutup oleh staker Umbrella ([utang macet di Aave](/id/blog/cara-kerja-likuidasi-aave#apakah-likuidasi-dapat-meninggalkan-utang-macet)).
+
+## Apa peran oracle dalam likuidasi?
+
+Oracle menetapkan harga untuk setiap keputusan likuidasi. Setiap pasar menunjuk satu oracle yang mengembalikan harga jaminan dalam token pinjaman, dan baik saat posisi menjadi dapat dilikuidasi maupun jumlah jaminan yang diterima likuidator memakai harga itu, bukan harga di bursa. Morpho tidak memilih oracle: pembuat pasarlah yang memilihnya. Alamat oracle pasar tidak pernah dapat diganti, tetapi price feed yang dibaca oracle dapat dijalankan pihak lain yang dapat memperbaruinya. Feed BTC/USD dalam contoh Base, misalnya, punya pemilik yang dapat mengarahkannya ke sumber baru.
+
+Apa yang diukur oracle penting bagi Anda. Oracle pasar contoh di Base memakai price feed BTC/USD untuk cbBTC dan menganggap USDC bernilai tepat 1 dolar AS, sehingga depeg (lepasnya patokan terhadap dolar) salah satu token tidak akan menggerakkannya. Oracle referensi Morpho untuk feed yang kompatibel dengan Chainlink tidak memeriksa seberapa lama sebuah harga atau apakah harga berada dalam batas wajar, dan tidak menambahkan pemeriksaan gangguan sequencer L2.
+
+Masalah oracle dapat merugikan peminjam dalam dua cara:
+
+- **Harga yang salah atau dimanipulasi.** Halaman risiko Morpho memperingatkan bahwa tidak ada oracle yang kebal manipulasi, yang dapat menyebabkan likuidasi bahkan utang macet.
+- **Oracle yang berhenti menjawab.** Meminjam, menarik jaminan dan melikuidasi semuanya membaca oracle dan akan gagal. Melunasi dan menambah jaminan tidak membacanya, sehingga Anda tetap dapat memperbaiki posisi selagi tidak ada yang dapat melikuidasinya.
+
+## Apa bedanya likuidasi Morpho Midnight?
+
+Pasar Morpho Midnight meminjamkan satu token dengan bunga tetap hingga tanggal jatuh tempo yang ditentukan, dengan satu atau beberapa jaminan, masing-masing dengan LLTV, oracle dan kursor likuidasi (liquidation cursor) sendiri (angka 0,3 dalam rumus insentif di atas, yang di Midnight ditetapkan per jaminan). Utang Anda tetap dalam satuan token, jadi sebelum jatuh tempo hanya harga jaminan yang menggerakkan faktor kesehatan Anda. Posisi Midnight dapat dilikuidasi dengan dua cara:
+
+- **Berdasarkan kesehatan, kapan saja** selama utang melebihi jumlah nilai setiap jaminan dikali LLTV-nya. Insentifnya adalah bonus penuh jaminan itu, dan satu likuidasi hanya dapat melunasi sebanyak yang diperlukan agar posisi kembali sehat. Pengecualiannya: jika jaminan yang tersisa setelah likuidasi terbatas seperti itu akan melunasi kurang dari rcfThreshold pasar, jaminan itu dapat diambil seluruhnya.
+- **Setelah jatuh tempo**, jika masih ada utang, bahkan pada posisi yang sehat. Tidak ada batas, dan insentifnya mulai dari nol lalu naik ke bonus penuh dalam 60 menit.
+
+Likuidator memilih jaminan mana yang diambil, dan tidak ada batas 1,15; pada 26 Oktober 2026 setiap pasar Midnight yang terdaftar memakai kursor 0,3 dengan LLTV jaminan dari 62,5% hingga 98%, yang memberi insentif yang sama dengan tabel di atas. Utang macet ditanggung bersama oleh pemberi pinjaman di pasar itu. [Cara kerja pinjaman bunga tetap Midnight](/id/blog/pinjaman-bunga-tetap-morpho-midnight) membahas jatuh tempo, ambang pasar sungguhan dan sebuah contoh hitungan.
+
+## Apa itu pra-likuidasi?
+
+Pra-likuidasi (pre-liquidation) adalah tambahan opsional di Morpho Blue. Peminjam yang mengizinkan kontrak pra-likuidasi untuk sebuah pasar membiarkan likuidator memakainya, begitu LTV melewati garis yang ditetapkan di bawah LLTV, untuk melunasi potongan-potongan utang, panggilan demi panggilan, dengan insentif yang ditetapkan dalam kontrak itu, hingga LTV kembali di bawah garis tersebut. Di atas LLTV, likuidasi normal tetap berlaku.
+
+Pasar contoh di Base punya satu: mulai LTV 83,26% kontrak itu dapat melunasi hingga 0,20% utang per panggilan (panggilan dapat diulang), naik hingga 24,53% di dekat 86%, dengan insentif yang sama, 1,0438. Kontrak itu hanya bertindak jika Anda mengizinkannya. Morpho sedang menghentikan fitur ini: aplikasinya tidak menerima posisi baru, dan pusat bantuannya meminta peminjam yang memakainya untuk mematikannya. [Pra-likuidasi Morpho](/id/blog/pra-likuidasi-morpho) menjelaskan ketentuannya serta cara memeriksa dan mencabutnya.
+
+## Apa bedanya likuidasi Morpho dengan Aave?
+
+Intinya sama: di bawah 1, likuidator melunasi utang dan mengambil jaminan plus bonus. Aturan di sekitarnya berbeda ([cara kerja likuidasi Aave](/id/blog/cara-kerja-likuidasi-aave)):
+
+|                            | Aave V3                                                | Morpho Blue                                        | Morpho Midnight                                                                                                                                               |
+| -------------------------- | ------------------------------------------------------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Berapa banyak sekaligus    | 50% atau 100% utang, ditambah aturan sisa kecil (dust) | Hingga seluruh utang dalam satu panggilan          | Sebelum jatuh tempo, yang memulihkan kesehatan (seluruh satu jaminan jika sisanya akan melunasi kurang dari rcfThreshold); setelah jatuh tempo, seluruh utang |
+| Bonus                      | Ditetapkan per aset jaminan oleh tata kelola           | Ditetapkan oleh LLTV pasar                         | Per jaminan, dari LLTV dan kursornya                                                                                                                          |
+| Siapa yang memegang bonus  | Likuidator, dikurangi biaya protokol                   | Likuidator, seluruhnya                             | Likuidator                                                                                                                                                    |
+| Bisakah aturannya berubah? | Tata kelola dan risk steward dapat mengubahnya         | Tidak, tetap sejak pasar dibuat                    | Tetap sejak pasar dibuat                                                                                                                                      |
+| Pause                      | Aset dapat di-pause, dengan masa tenggang              | Tidak ada pause                                    | Tidak ada pause                                                                                                                                               |
+| Utang macet                | Defisit, yang dapat ditutup staker Umbrella            | Dihapusbukukan terhadap pemberi pinjaman pasar itu | Dibagi ke pemberi pinjaman pasar itu                                                                                                                          |
+| Cakupan satu posisi        | Banyak aset dalam satu posisi                          | Satu jaminan, satu token pinjaman                  | Satu token pinjaman, beberapa jaminan                                                                                                                         |
+
+## Bagaimana cara menghindari likuidasi di Morpho?
+
+- **Jaga penyangga di bawah LLTV.** Posisi yang pulih sebelum ada yang melikuidasi kembali aman, tetapi tidak ada yang mencegah harga turun lebih jauh, dan likuidator pertama yang datang dapat melunasi seluruh utang Anda sekaligus.
+- **Lunasi atau tambah jaminan lebih awal.** Keduanya langsung menurunkan LTV Anda, tidak memakan biaya insentif dan tetap berfungsi meski oracle gagal.
+- **Kenali oracle Anda.** Periksa oracle mana yang dipakai pasar Anda dan apa yang diukurnya sebelum meminjam.
+- **Di Midnight, lunasi sebelum jatuh tempo.** Setelah jatuh tempo, sisa utang apa pun dapat dilikuidasi, sehat atau tidak.
+- **Periksa pra-likuidasi lama.** Jika Anda pernah menyalakan "Auto-deleverage" (pra-likuidasi), Morpho sedang menghentikannya dan meminta peminjam untuk mematikannya; [pra-likuidasi Morpho](/id/blog/pra-likuidasi-morpho) menunjukkan caranya.
+
+## Bagaimana peringatan dapat membantu?
+
+Tokenping memeriksa setiap posisi pinjaman Morpho yang Anda beri peringatan setiap 5 menit, di pasar yang ditampilkan aplikasi Morpho: Morpho Blue di 14 jaringan, dan Morpho Midnight. Peringatan Midnight mencakup pasar yang tercantum di API Morpho. Pada 26 Oktober 2026 pasar itu ada di Ethereum dan Base; Tokenping juga mencakup Arc dan Robinhood Chain begitu Morpho mencantumkan pasar Midnight di sana. Tokenping menghitung setiap faktor kesehatan dari data on-chain dengan matematika Morpho sendiri, bukan dari API Morpho. Selama faktor kesehatan berada di bawah ambang batas yang Anda tetapkan (1,02 hingga 10), setiap pemeriksaan mengirim pesan di setiap saluran yang Anda pilih: Signal, Telegram atau email. Jika Anda mengizinkan kontrak pra-likuidasi di pasar Blue, peringatan diukur terhadap yang lebih rendah dari dua garis: LLTV atau garis pra-likuidasi. Pinjaman Midnight juga mendapat satu pengingat dalam 7 hari terakhirnya dan satu dalam 24 jam terakhir sebelum jatuh tempo, lalu peringatan di setiap pemeriksaan setelah jatuh tempo selama utang masih ada.
+
+Anda dapat [melihat posisi Morpho Anda](/id/morpho); untuk itu Anda tidak perlu membayar. Peringatan berbiaya <AlertPrice />. Peringatan memberi Anda waktu untuk bertindak, tetapi harga dapat bergerak melewati LLTV Anda di antara dua pemeriksaan, dan peringatan tidak mencegah likuidasi.
+
+## Sumber
+
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) dan [IMorpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/interfaces/IMorpho.sol), morpho-org/morpho-blue: pemeriksaan kesehatan, likuidasi, rumus insentif, utang macet dan asumsi oracle (diakses 26 Oktober 2026)
+- [Midnight.sol](https://github.com/morpho-org/midnight/blob/main/src/Midnight.sol) dan [ConstantsLib.sol](https://github.com/morpho-org/midnight/blob/main/src/libraries/ConstantsLib.sol), morpho-org/midnight: mode likuidasi, RCF, kenaikan bertahap insentif dan slashing (diakses 26 Oktober 2026)
+- [README pra-likuidasi dan PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation), morpho-org/pre-liquidation (diakses 26 Oktober 2026)
+- [ChainlinkDataFeedLib.sol](https://github.com/morpho-org/morpho-blue-oracles/blob/main/src/morpho-chainlink/libraries/ChainlinkDataFeedLib.sol), morpho-org/morpho-blue-oracles: tanpa pemeriksaan usia harga, batas atau sequencer (diakses 26 Oktober 2026)
+- [Liquidation on Morpho](https://docs.morpho.org/learn/concepts/liquidation): likuidator, tanpa lelang, hingga 100% sekaligus, tanpa biaya protokol, utang macet di vault (diakses 26 Oktober 2026)
+- [Dokumentasi pengembang Morpho: liquidation](https://docs.morpho.org/developers/borrow/concepts/liquidation): insentif menurut LLTV dan utang macet (diakses 26 Oktober 2026)
+- [Dokumentasi Morpho: oracles](https://docs.morpho.org/learn/concepts/oracle): pemilihan oracle dan sifatnya yang tidak dapat diubah (diakses 26 Oktober 2026)
+- [Dokumentasi Morpho: Morpho Blue](https://docs.morpho.org/learn/concepts/blue): parameter pasar yang permanen dan LLTV yang aktif (diakses 26 Oktober 2026)
+- [Dokumentasi Morpho: likuidasi Midnight](https://docs.morpho.org/learn/concepts/midnight/liquidations), [collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) dan [what is Midnight](https://docs.morpho.org/learn/concepts/midnight) (diakses 26 Oktober 2026)
+- [Dokumentasi Morpho: risks](https://docs.morpho.org/learn/resources/risks): risiko oracle, likuidasi, utang macet dan pihak lawan (diakses 26 Oktober 2026)
+- [Morpho API](https://api.morpho.org/graphql): jumlah likuidasi dan utang macet, daftar pasar, suku bunga pinjaman, posisi pinjaman dan pasar Midnight (diakses 26 Oktober 2026)
+- [Morpho Blue di Base](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), pasar USDC | cbBTC (86%) di blok Base 53102870 (diakses 26 Oktober 2026)
+- [Oracle pasar itu](https://basescan.org/address/0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9#readContract) dan [feed BTC/USD-nya](https://basescan.org/address/0x64c911996D3c6aC71f9b455B1E8E7266BcbD848F#readContract) di Base: harga di blok 53102870 dan pemilik feed (diakses 26 Oktober 2026)
+- [Kontrak pra-likuidasi pasar itu](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374#readContract) di Base: parameternya di blok 53102870 (diakses 26 Oktober 2026)
+- [Morpho Midnight di Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract): LLTV dan kursor likuidasi yang aktif di blok 26274998 (diakses 26 Oktober 2026)
+
+_Konten edukasi, bukan nasihat keuangan. Peringatan mengurangi risiko, tetapi tidak mencegah likuidasi._

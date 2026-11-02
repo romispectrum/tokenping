@@ -1,0 +1,156 @@
+export const meta = {
+  slug: "mengapa-faktor-kesehatan-aave-turun",
+  title: "Mengapa faktor kesehatan Aave saya turun? 6 penyebab",
+  description:
+    "Faktor kesehatan Aave bisa turun tanpa Anda berbuat apa pun: pergerakan harga, bunga, pemangkasan ambang likuidasi, depeg stablecoin, dan kesalahan oracle.",
+  h1: "Mengapa faktor kesehatan Aave saya turun padahal saya tidak melakukan apa-apa?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-25",
+  primaryQuestion: "Mengapa faktor kesehatan Aave saya turun dengan sendirinya?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Aave menghitung ulang faktor kesehatan (health factor) Anda dari harga oracle, saldo Anda saat ini, dan ambang
+  likuidasi yang berlaku setiap kali nilainya dibaca, jadi angka itu bergerak meski Anda tidak mengirim transaksi apa
+  pun. Di Aave V3, faktor kesehatan turun ketika harga jaminan Anda jatuh, aset yang Anda pinjam naik, bunga utang Anda
+  melampaui hasil jaminan Anda, tata kelola memangkas ambang likuidasi, stablecoin yang Anda setor sebagai jaminan turun
+  di bawah US$1, atau oracle salah dikonfigurasi. Di bawah 1,00, posisi bisa dilikuidasi.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Angka-angka dan nomor blok tempat angka itu dibaca: content/blog/snapshots/why-aave-health-factor-dropped.md (artikel bahasa Inggris; panduan ini adalah terjemahan bahasa Indonesianya) */}
+
+## Mengapa faktor kesehatan Aave berubah dengan sendirinya?
+
+Faktor kesehatan Aave berubah dengan sendirinya karena nilainya tidak disimpan: protokol menghitungnya ulang dari harga oracle, saldo (termasuk bunga yang terakumulasi), dan parameter risiko yang berlaku setiap kali nilainya dibaca:
+
+**HF = Σ(nilai jaminan × ambang likuidasi) ÷ total nilai utang**
+
+Kedua sisi dinyatakan dalam USD pada harga oracle (sumber harga) Aave, dan di bawah 1,00 posisi bisa dilikuidasi. Rumusnya dijelaskan di [apa itu faktor kesehatan Aave](/id/blog/faktor-kesehatan-aave). Di Aave V3, ada enam hal yang menurunkannya tanpa tindakan apa pun dari Anda. Contoh-contohnya memakai parameter Ethereum Core yang dibaca pada 14 Oktober 2026 dan harga ETH ilustratif US$2.400.
+
+| Penyebab                             | Menurunkan faktor kesehatan Anda saat                                     | Seberapa cepat           | Contoh                                                           |
+| ------------------------------------ | ------------------------------------------------------------------------- | ------------------------ | ---------------------------------------------------------------- |
+| 1. Harga jaminan turun               | Aset yang Anda setor sebagai jaminan turun harganya                       | Secepat pasar            | 10 WETH terhadap 12.000 USDC, ETH turun 10%: 1,66 ke 1,49        |
+| 2. Aset yang dipinjam naik           | Anda meminjam aset yang volatil dan harganya naik                         | Secepat pasar            | 10.000 USDC terhadap 2,5 WETH, ETH naik 10%: 1,30 ke 1,18        |
+| 3. Bunga                             | Suku bunga pinjaman utang Anda di atas suku bunga setoran jaminan Anda    | Lambat dan terus-menerus | 10 WETH terhadap 12.000 USDC: sekitar 1,66 ke 1,61 dalam setahun |
+| 4. Pemangkasan ambang likuidasi      | Tata kelola atau Risk Stewards menurunkan ambang jaminan Anda             | Sekaligus                | WETH hipotetis dipangkas dari 83% ke 82%: 1,66 ke 1,64           |
+| 5. Depeg stablecoin                  | Stablecoin yang Anda setor sebagai jaminan turun di bawah US$1            | Secepat pasar            | 10.000 USDC terhadap 2,5 WETH, USDC di US$0,88: 1,30 ke 1,14     |
+| 6. Kesalahan oracle atau nilai tukar | Oracle menilai jaminan Anda terlalu rendah atau utang Anda terlalu tinggi | Sekaligus                | Maret 2026: wstETH dinilai sekitar 2,85% terlalu rendah          |
+
+Dalam sebuah utas forum tata kelola Aave pada Februari 2025, seorang peminjam yang posisinya bermula dengan faktor kesehatan 1,71 mendapati likuidasi sebagian, menambah jaminan ketika faktor kesehatan mencapai 1,01, lalu mendapati likuidasi kedua saat memeriksa di pagi hari, dengan keyakinan bahwa ETH belum turun cukup jauh untuk menjelaskan keduanya. Tidak ada seorang pun di utas itu yang menemukan penyebabnya; enam penyebab di bawah adalah tempat untuk mulai mencari.
+
+Aave V4, yang aktif di Ethereum sejak 30 Maret 2026 dan sejak itu di Avalanche, Arc, dan Base, menghitung faktor kesehatan per Spoke, dengan satu collateral factor per aset. Harga dan bunga menggerakkannya dengan cara yang sama, tetapi perubahan parameter sampai ke posisi yang sudah ada dengan cara berbeda (lihat [cara V4 menerapkan perubahan parameter, di bawah Penyebab 4](#penyebab-4-apakah-tata-kelola-atau-risk-stewards-memangkas-ambang-likuidasi)).
+
+## Penyebab 1: Apakah harga jaminan Anda turun?
+
+Penurunan harga aset apa pun yang Anda setor sebagai jaminan menurunkan faktor kesehatan Aave Anda, karena jaminan dinilai pada harga oracle. Dengan satu aset jaminan yang volatil dan utang stablecoin, faktor kesehatan bergerak sebanding dengan harga: penurunan 10% memotongnya sebesar 10%.
+
+Ambil contoh 10 WETH yang disetor terhadap 12.000 USDC yang dipinjam di Aave V3 Ethereum Core, tempat ambang likuidasi (liquidation threshold) WETH adalah 83% di blok 26193284 (14 Oktober 2026). Pada harga ilustratif US$2.400 per ETH (oracle Aave membaca US$2.414,78 di blok 26193376 hari itu), faktor kesehatannya adalah 24.000 × 0,83 ÷ 12.000 = 1,66. Pada US$2.160 nilainya 1,49, pada US$1.920 nilainya 1,33, dan pada US$1.445,78, penurunan 39,8%, nilainya mencapai 1,00.
+
+Dengan beberapa aset jaminan, hanya porsi berbobot dari aset yang turun yang bergerak. Harga yang dihitung adalah harga oracle Aave (di Ethereum Core, WETH memakai feed bernama "ETH / USD"). Seberapa jauh harga bisa turun pada setiap faktor kesehatan ada di [berapa besar penyangga yang diberikan faktor kesehatan](/id/blog/faktor-kesehatan-aave-yang-aman).
+
+## Penyebab 2: Apakah harga aset yang Anda pinjam naik?
+
+Jika Anda meminjam aset yang volatil, kenaikan harganya menurunkan faktor kesehatan Aave Anda, karena utang juga dinilai pada harga oracle.
+
+Ambil contoh 10.000 USDC yang disetor terhadap 2,5 WETH yang dipinjam di Aave V3 Ethereum Core, tempat ambang likuidasi USDC adalah 78% di blok 26193284 (14 Oktober 2026). Pada harga ilustratif US$2.400, utangnya bernilai US$6.000 dan faktor kesehatannya 10.000 × 0,78 ÷ 6.000 = 1,30. Jika ETH naik 10% ke US$2.640, nilainya turun ke 7.800 ÷ 6.600 = 1,18. Pada US$3.120, 30% lebih tinggi, nilainya mencapai 1,00.
+
+Pasangan yang berkorelasi, seperti jaminan wstETH dengan utang WETH, mengurangi efek ini, karena kedua sisi bergerak bersama ETH. Faktor kesehatan kemudian terutama bergantung pada kurs wstETH terhadap ETH yang dilaporkan oracle, yang menukar risiko pasar dengan risiko oracle (lihat [kesalahan oracle dan nilai tukar, Penyebab 6](#penyebab-6-apakah-kesalahan-oracle-atau-nilai-tukar-membuat-harga-jaminan-anda-keliru)).
+
+## Penyebab 3: Apakah bunga pada utang Anda bertambah lebih cepat daripada pada jaminan Anda?
+
+Bunga menurunkan faktor kesehatan Aave Anda ketika utang Anda tumbuh lebih cepat daripada jaminan Anda. Utang dengan bunga mengambang bertambah setiap detik pada suku bunga pinjaman, sementara jaminan memperoleh suku bunga setoran yang biasanya lebih rendah. Dengan satu aset jaminan, satu aset utang, dan harga yang stabil, faktor kesehatan perlahan turun ketika suku bunga pinjaman utang di atas suku bunga setoran jaminan, dan naik ketika di bawahnya.
+
+Di Aave V3 Ethereum Core pada blok 26193378 (14 Oktober 2026), USDC memberi penyetor 3,800% dan membebani peminjam 4,496% per tahun; WETH memberi 1,309% dan membebani 1,943%. Ini adalah APR; aplikasi Aave menampilkan APY yang sedikit lebih tinggi (4,60% untuk suku bunga pinjaman USDC itu). Ambil contoh 10 WETH yang disetor (ambang 83%) terhadap 12.000 USDC yang dipinjam, dengan ETH datar di harga ilustratif US$2.400 dan suku bunga tidak berubah selama setahun. Utang tumbuh menjadi sekitar 12.550 USDC, jaminan menjadi sekitar 10,13 WETH, dan faktor kesehatan merosot dari 1,66 ke sekitar 1,61. Suku bunga bersifat mengambang, jadi baca angka ini sebagai gambaran skala, bukan perkiraan.
+
+Suku bunga juga bisa melonjak. Kemudian pada 14 Oktober 2026, suku bunga pinjaman USDC di Ethereum Core melonjak ke 13,67% APR dalam satu blok (26194053, 23:32:59 UTC) ketika sekitar US$134 juta USDC yang disetor keluar dari reserve, mencapai 14,18% dalam tujuh menit, dan turun kembali ke 4,76% sekitar 36 menit setelah lonjakan (blok 26194231, 00:08 UTC pada 15 Oktober) ketika dana itu kembali. Mengapa satu penarikan bisa melipattigakan suku bunga ada di [cara kerja suku bunga Aave](/id/blog/suku-bunga-aave).
+
+Posisi sebaliknya justru diuntungkan: 10.000 USDC yang disetor terhadap 2,5 WETH yang dipinjam memperoleh 3,800% dan membayar 1,943%, sehingga faktor kesehatannya perlahan naik dari 1,30 ke sekitar 1,32 dalam setahun. Di Aave V4, User Risk Premium menambah suku bunga pinjaman untuk jaminan yang lebih berisiko, sehingga utang itu tumbuh lebih cepat.
+
+## Penyebab 4: Apakah tata kelola atau Risk Stewards memangkas ambang likuidasi?
+
+Di Aave V3, memangkas ambang likuidasi suatu aset langsung menurunkan faktor kesehatan setiap posisi terbuka yang menghitung aset itu pada ambang normalnya. Posisi yang kategori E-Mode-nya mencakup aset tersebut memakai ambang kategori itu, dan tata kelola atau Risk Stewards dapat memangkasnya dengan cara yang sama. Saldo Anda tetap; hanya porsi jaminan yang dihitung yang menyusut.
+
+Tata kelola mengubah ambang lewat pemungutan suara on-chain, biasanya setelah ada unggahan di forum tata kelola Aave. Risk Stewards, kontrak yang memungkinkan penyedia layanan risiko Aave menyesuaikan parameter tanpa pemungutan suara penuh, juga dapat menggeser ambang dalam batas tertentu per pembaruan, tetapi tidak pernah sampai 0. Pemangkasan juga dipakai untuk mempensiunkan aset: proposal LlamaRisk tertanggal 29 Juli 2026 menyebut ambang dapat diturunkan bertahap untuk menghapus jaminan yang tersisa, dan lima pasar yang sedang ditutup Aave dibahas di [apa yang terjadi saat Aave menutup sebuah pasar](/id/blog/penutupan-pasar-aave).
+
+Contoh hipotetis, bukan perubahan yang sedang menunggu: 10 WETH pada harga ilustratif US$2.400 terhadap 12.000 USDC di Ethereum Core (ambang WETH 83% pada 14 Oktober 2026) memiliki faktor kesehatan 1,66. Pada 82% nilainya akan menjadi 1,64; pada 80%, 1,60. Untuk memeriksanya, bandingkan "Liquidation threshold" (ambang likuidasi) di halaman aset tersebut di aplikasi Aave dengan perubahan ambang terbaru di forum tata kelola Aave.
+
+Aave V4 bekerja secara berbeda. Perubahan collateral factor membuat konfigurasi baru, dan posisi yang sudah ada tetap memakai konfigurasi lama sampai pengguna meminjam, menarik, atau mengubah pengaturan jaminan, kecuali Governor memperbaruinya secara paksa.
+
+## Penyebab 5: Apakah stablecoin yang Anda setor sebagai jaminan mengalami depeg ke bawah?
+
+Stablecoin yang Anda setor sebagai jaminan menurunkan faktor kesehatan Aave Anda ketika harganya jatuh di bawah US$1, karena Aave memakai harga oracle, bukan US$1 yang tetap. Di Aave V3 Ethereum Core, USDC diberi harga melalui adapter bernama "Capped USDC / USD" dengan batas atas US$1,04 (`getPriceCap` mengembalikan 104000000, 8 desimal, di blok 26193376 dan 26193993 pada 14 Oktober 2026). Ketika harga pasar di atas batas itu, adapter melaporkan US$1,04; harga yang lebih rendah, termasuk apa pun di bawah US$1, diteruskan apa adanya.
+
+Ambil contoh 10.000 USDC yang disetor (ambang 78%) terhadap 2,5 WETH yang dipinjam pada harga ilustratif US$2.400, jadi utangnya US$6.000: faktor kesehatan 1,30. Dengan USDC di US$0,88, nilainya turun ke 8.800 × 0,78 ÷ 6.000 = 1,14, dan pada sekitar US$0,77, dengan ETH tidak berubah, nilainya mencapai 1,00.
+
+Angka US$0,88 itu bersifat historis. Pada 11 Maret 2023, setelah berita Silicon Valley Bank, USDC jatuh ke sekitar 88 sen. Post-mortem Gauntlet mencatat sekitar US$280.000 utang macet (bad debt) di E-Mode Aave V3 Avalanche dan sekitar US$20.000 di V3 Arbitrum; stablecoin di Avalanche dibekukan, tetapi protokol tidak dijeda, jadi likuidasi tetap berjalan.
+
+Sisi sebaliknya: jika stablecoin itu adalah utang Anda, depeg ke bawah mengurangi jumlah yang Anda utangi dan menaikkan faktor kesehatan Anda. 10 WETH pada US$2.400 (ambang 83%) terhadap 12.000 USDC naik dari 1,66 ke sekitar 1,89 dengan USDC di US$0,88. Kenaikan di atas US$1 menurunkannya, tetapi hanya sampai sekitar 1,60 selama batas atasnya tetap US$1,04, karena oracle tidak pernah menilai utang itu di atas US$12.480.
+
+## Penyebab 6: Apakah kesalahan oracle atau nilai tukar membuat harga jaminan Anda keliru?
+
+Kesalahan konfigurasi oracle atau nilai tukar dapat menurunkan faktor kesehatan Aave Anda sekaligus, tanpa pergerakan pasar, dengan menilai jaminan Anda terlalu rendah atau utang Anda terlalu tinggi. Posisi E-Mode dengan leverage ketat adalah yang paling rentan.
+
+Kasus yang terdokumentasi terjadi pada Maret 2026. Aave memberi harga wstETH dengan CAPO (Correlated Assets Price Oracle), yang membatasi seberapa cepat kurs wstETH terhadap stETH boleh naik. Post-mortem Chaos Labs tertanggal 10 Maret 2026 menyebut rasio snapshot dan stempel waktu batas itu menjadi tidak sinkron, sehingga kurs efektif wstETH terpotong sekitar 2,85% di Ethereum Core dan Prime. Sekitar 10.938 wstETH dilikuidasi di E-Mode pada 34 akun dengan faktor kesehatan di bawah sekitar 1,0288, tanpa utang macet bagi protokol. DAO menyetujui pengembalian dana yang diusulkan pada 11 Maret, dan pada 26 Maret 2026 Aave Finance Committee menarik 513,19 WETH dari kas Aave untuk membayarnya (blok Ethereum 24741060); pembayaran per individu tidak diperiksa untuk panduan ini.
+
+Sebagai gambaran skala, E-Mode berkorelasi ETH di Ethereum Core memiliki LTV 93% dan ambang 95% pada 14 Oktober 2026. Posisi yang meminjam sampai batas itu bermula di 95 ÷ 93 ≈ 1,02, di dalam rentang yang dilikuidasi oleh kesalahan tersebut. Tidak ada apa pun di posisi Anda sendiri yang memperingatkan Anda tentang kesalahan oracle; jarak dari 1,00 adalah satu-satunya penyangga yang Anda kendalikan.
+
+## Perubahan apa yang tidak menurunkan faktor kesehatan Anda?
+
+Di Aave V3, pemangkasan LTV (termasuk LTV 0), pembekuan reserve, penjedaan reserve, dan pengalihan kategori E-Mode menjadi terisolasi tidak mengubah faktor kesehatan Anda, karena tidak satu pun dari itu mengubah harga, saldo, atau ambang likuidasi. Perubahan itu justru memblokir pinjaman atau tindakan lain.
+
+| Perubahan di Aave V3                     | Apa yang diblokir                                               | Mengubah faktor kesehatan Anda?                                | Apakah Anda masih bisa dilikuidasi?                                                                                                                               |
+| ---------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pemangkasan LTV, termasuk LTV 0          | Pinjaman baru dengan jaminan aset itu                           | Tidak: faktor kesehatan memakai ambang, bukan LTV              | Ya, di bawah 1,00                                                                                                                                                 |
+| Reserve dibekukan                        | Setoran dan pinjaman baru untuk aset itu                        | Tidak                                                          | Ya, reserve yang dibekukan tetap bisa dilikuidasi                                                                                                                 |
+| Kategori E-Mode dibuat terisolasi (V3.7) | Pinjaman dengan jaminan di luar kategori                        | Tidak: jaminan itu mendapat LTV 0 dan mempertahankan ambangnya | Ya, di bawah 1,00                                                                                                                                                 |
+| Reserve dijeda                           | Menyetor, menarik, meminjam, melunasi, dan melikuidasi aset itu | Tidak                                                          | Tidak dengan aset itu, sebagai jaminan maupun utang, selama aset itu dijeda; aset lain tetap bisa. Masa tenggang hingga 4 jam dapat menyusul setelah jeda dicabut |
+
+Kasus nyata untuk baris pertama: setelah eksploitasi bridge rsETH Kelp/LayerZero pada 18 April 2026, LTV WETH ditetapkan ke 0 di beberapa instans Aave V3 sementara ambangnya tetap 83% di Ethereum Core, menurut proposal LlamaRisk tertanggal 9 Mei 2026 untuk memulihkannya. Faktor kesehatan tidak bergerak karenanya.
+
+## Bagaimana cara mengetahui apa yang terjadi pada posisi Anda?
+
+Untuk mengetahui apa yang terjadi pada posisi Aave, periksa apakah posisi itu dilikuidasi, lalu input mana yang bergerak: harga, bunga, ambang, atau oracle. Langkah-langkah ini memakai antarmuka Aave Labs di app.aave.com dan catatan tata kelola publik.
+
+1. **Periksa likuidasi.** Buka "Transaction history" (riwayat transaksi, app.aave.com/history) dengan dompet Anda terhubung dan pasar yang tepat dipilih, lalu saring berdasarkan "Liquidation". Catatan di baliknya mencakup waktu, hash transaksi, jaminan yang diambil, dan utang yang dilunasi; pengembang dapat mengkuerinya dengan `userTransactionHistory` di API Aave.
+2. **Bandingkan harga** aset jaminan dan aset utang Anda dengan saat terakhir Anda memeriksa (Penyebab 1, 2, dan 5).
+3. **Bandingkan utang Anda, dalam satuan token, dengan jumlah yang Anda pinjam.** Jika Anda tidak melakukan pelunasan dan tidak dilikuidasi, selisihnya adalah bunga yang terakumulasi (Penyebab 3).
+4. **Periksa ambang likuidasi** di halaman setiap aset di aplikasi Aave, dan cari di forum tata kelola aset mana pun yang ambangnya tampak lebih rendah (Penyebab 4).
+5. **Cari post-mortem insiden** di forum tata kelola, seperti post-mortem wstETH Maret 2026 (Penyebab 6).
+
+Jika Anda dilikuidasi, [apa yang terjadi dalam likuidasi Aave](/id/blog/cara-kerja-likuidasi-aave) menjelaskan berapa banyak yang bisa diambil sekaligus dan berapa biayanya.
+
+## Bisakah peringatan faktor kesehatan memperingatkan Anda sebelum likuidasi?
+
+Peringatan dapat memperingatkan Anda tepat waktu tentang penurunan faktor kesehatan Aave yang lambat, tetapi tidak tentang lonjakan yang melewati 1,00 di antara dua pemeriksaan. Bunga, pergeseran harga bertahap, dan pemangkasan ambang yang dilakukan bertahap berlangsung selama berjam-jam hingga berbulan-bulan, jadi peringatan yang diatur jauh di atas 1,00 punya banyak kesempatan untuk terkirim. Kejatuhan harga, pemangkasan ambang pada posisi yang sudah dekat dengan batas, atau kesalahan oracle seperti kasus wstETH Maret 2026 dapat melewati 1,00 sebelum pemeriksaan terjadwal mana pun bereaksi.
+
+Tokenping dibuat untuk jenis yang lambat. Tokenping memeriksa faktor kesehatan Aave V3 dan V4 Anda setiap 5 menit di 22 jaringan dan mengirimi Anda pesan di Signal, Telegram, atau email selama nilainya di bawah ambang batas yang Anda tetapkan (1,1 hingga 10). Pesan itu berulang di setiap pemeriksaan sampai faktor kesehatan pulih, atau sampai Anda menurunkan ambang batas di bawahnya atau menghapus peringatan (keduanya memerlukan akses berbayar yang aktif), tanpa pesan "sudah pulih". Di Aave V3, Tokenping mencakup setiap pasar, termasuk keempat pasar Ethereum; di Aave V4, setiap Spoke; setiap pasar punya peringatannya sendiri.
+
+Peringatan juga memerlukan waktu untuk ditindaklanjuti. Dalam sebuah utas forum Polygon tahun 2021, seorang peminjam yang mencoba melunasi pada faktor kesehatan 1,01 terus mengalami error dan dilikuidasi sebelum pelunasannya berhasil. Salah satu pilihan adalah ambang batas yang membuat Anda masih nyaman untuk bertindak; [berapa besar penyangga yang diberikan faktor kesehatan](/id/blog/faktor-kesehatan-aave-yang-aman) membantu Anda memilihnya. Cara mengaturnya ada di [cara mengatur peringatan faktor kesehatan](/id/blog/cara-mengatur-peringatan-faktor-kesehatan-aave), dan [cara menaikkan faktor kesehatan Aave Anda](/id/blog/cara-menghindari-likuidasi-aave) membahas apa yang harus dilakukan saat nilainya turun. Anda juga bisa [memeriksa faktor kesehatan Aave V3 Anda](/id/aave) terlebih dahulu.
+
+## Sumber
+
+- [Ikhtisar Aave V3](https://aave.com/docs/aave-v3/overview.md): faktor kesehatan bergerak mengikuti harga oracle dan bunga yang terakumulasi (diakses 14 Oktober 2026)
+- [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) dan [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): perhitungan faktor kesehatan, pemeriksaan jeda dan pembekuan (aave-v3-origin, diakses 14 Oktober 2026)
+- [PoolDataProvider Aave V3 Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): LTV, ambang, dan suku bunga di blok 26193284, 26193378, dan 26193993 (diakses 14 Oktober 2026); suku bunga USDC di blok 26194052, 26194053, 26194230, dan 26194231 (diakses 15 Oktober 2026)
+- [Oracle Aave V3 Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2#readContract): WETH US$2.414,78 di blok 26193376 (diakses 14 Oktober 2026)
+- [Adapter Capped USDC / USD](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract) dan [kode sumbernya, PriceCapAdapterStable.sol](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol): batas atas 104000000 di blok 26193376 dan 26193993 (diakses 14 Oktober 2026)
+- [Dokumentasi oracle Aave](https://aave.com/docs/ecosystem/oracle.md) (diakses 14 Oktober 2026)
+- [Dokumentasi tata kelola Aave](https://aave.com/docs/ecosystem/governance.md) dan [README Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards) (diakses 14 Oktober 2026)
+- [ARFC: Low Adoption Asset Deprecation on Aave V3](https://governance.aave.com/t/arfc-low-adoption-asset-deprecation-on-aave-v3/25401) (LlamaRisk, 29 Juli 2026, diakses 14 Oktober 2026)
+- [Changelog dokumentasi Aave](https://aave.com/docs/resources/changelog.md): V4 di Ethereum sejak 30 Maret 2026, lalu Avalanche, Arc, dan Base (diakses 14 Oktober 2026)
+- [Dokumentasi Aave V4](https://aave.com/docs/aave-v4.md), [posisi V4](https://aave.com/docs/aave-v4/positions.md), dan [ikhtisar teknis V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md): faktor kesehatan per Spoke, User Risk Premium, konfigurasi risiko dinamis (diakses 14 Oktober 2026)
+- [Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (Gauntlet, 17 Maret 2023, diakses 14 Oktober 2026)
+- [Post-mortem: wstETH exchange-rate misalignment on Core and Prime](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269) (Chaos Labs, 10 Maret 2026, diakses 14 Oktober 2026)
+- [wstETH CAPO Oracle Incident User Reimbursement](https://governance.aave.com/t/direct-to-aip-wsteth-capo-oracle-incident-user-reimbursement/24275) (TokenLogic, 11 Maret 2026, diakses 14 Oktober 2026)
+- [Eksekusi payload tata kelola 413](https://etherscan.io/tx/0xca0bcaa2b20b465afb332677a8425d8a10e050c4a31731feadc3a684ecb9b81e) dan [penarikan Aave Finance Committee](https://etherscan.io/tx/0x7860a20437b36af635e8be248a929c437412915b91de7c45e947475c6bb02f24): allowance 513,19 WETH dari Aave Ethereum Collector, lalu ditarik di blok 24741060 (diakses 15 Oktober 2026)
+- [WETH Unfreeze and LTV Restoration Across Aave V3 Instances](https://governance.aave.com/t/direct-to-aip-weth-unfreeze-and-ltv-restoration-across-aave-v3-instances/24878) (LlamaRisk, 9 Mei 2026, diakses 14 Oktober 2026)
+- [E-Mode terisolasi Aave v3.7](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md) dan [fitur v3.1](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): penanda terisolasi, masa tenggang setelah jeda dicabut (diakses 14 Oktober 2026)
+- [Riwayat transaksi pengguna Aave V3](https://aave.com/docs/aave-v3/markets/advanced.md) dan [filter riwayat antarmuka Aave](https://github.com/aave/interface/blob/main/src/modules/history/HistoryFilterMenu.tsx) (diakses 14 Oktober 2026)
+- Halaman reserve antarmuka Aave, suku bunga ditampilkan sebagai APY: [SupplyInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/SupplyInfo.tsx) (diakses 14 Oktober 2026) dan [BorrowInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/BorrowInfo.tsx), "APY, variable" (diakses 15 Oktober 2026)
+- [Unexpected or poorly executed settlement by the system](https://governance.aave.com/t/unexpected-or-poorly-executed-settlement-by-the-system/21120) (forum tata kelola Aave, 17 Februari 2025, diakses 14 Oktober 2026)
+- [Liquidation on polygon AAVE - JSON ERROR](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067) (forum Polygon, 18 Mei 2021, diakses 14 Oktober 2026)
+
+_Konten edukasi, bukan nasihat keuangan. Peringatan mengurangi risiko, tetapi tidak mencegah likuidasi._

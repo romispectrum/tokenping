@@ -320,6 +320,63 @@ import HowAaveLiquidationWorks, {
 import HowMorphoLiquidationWorks, {
   meta as howMorphoLiquidationWorks,
 } from "~~/content/blog/how-morpho-liquidation-works.mdx";
+import IdAaveLiquidationAlertTools, {
+  meta as idAaveLiquidationAlertTools,
+} from "~~/content/blog/id/alat-peringatan-likuidasi-aave.mdx";
+import IdHowAaveLiquidationWorks, {
+  meta as idHowAaveLiquidationWorks,
+} from "~~/content/blog/id/cara-kerja-likuidasi-aave.mdx";
+import IdHowMorphoLiquidationWorks, {
+  meta as idHowMorphoLiquidationWorks,
+} from "~~/content/blog/id/cara-kerja-likuidasi-morpho.mdx";
+import IdAaveHealthFactorAlertSetup, {
+  meta as idAaveHealthFactorAlertSetup,
+} from "~~/content/blog/id/cara-mengatur-peringatan-faktor-kesehatan-aave.mdx";
+import IdAvoidAaveLiquidation, {
+  meta as idAvoidAaveLiquidation,
+} from "~~/content/blog/id/cara-menghindari-likuidasi-aave.mdx";
+import IdStablecoinDepegAave, { meta as idStablecoinDepegAave } from "~~/content/blog/id/depeg-stablecoin-aave.mdx";
+import IdAaveEMode, { meta as idAaveEMode } from "~~/content/blog/id/e-mode-aave.mdx";
+import IdSafeAaveHealthFactor, {
+  meta as idSafeAaveHealthFactor,
+} from "~~/content/blog/id/faktor-kesehatan-aave-yang-aman.mdx";
+import IdAaveHealthFactor, { meta as idAaveHealthFactor } from "~~/content/blog/id/faktor-kesehatan-aave.mdx";
+import IdMorphoHealthFactor, { meta as idMorphoHealthFactor } from "~~/content/blog/id/faktor-kesehatan-morpho.mdx";
+import IdAaveLiquidationPrice, { meta as idAaveLiquidationPrice } from "~~/content/blog/id/harga-likuidasi-aave.mdx";
+import IdWhyAaveHealthFactorDropped, {
+  meta as idWhyAaveHealthFactorDropped,
+} from "~~/content/blog/id/mengapa-faktor-kesehatan-aave-turun.mdx";
+import IdWhyAaveWithdrawOrBorrowFails, {
+  meta as idWhyAaveWithdrawOrBorrowFails,
+} from "~~/content/blog/id/mengapa-penarikan-atau-pinjaman-aave-gagal.mdx";
+import IdAaveMarketWindDown, { meta as idAaveMarketWindDown } from "~~/content/blog/id/penutupan-pasar-aave.mdx";
+import IdAaveAlertsDoNotDisturb, {
+  meta as idAaveAlertsDoNotDisturb,
+} from "~~/content/blog/id/peringatan-aave-saat-jangan-ganggu.mdx";
+import IdPrivateAaveLiquidationAlerts, {
+  meta as idPrivateAaveLiquidationAlerts,
+} from "~~/content/blog/id/peringatan-likuidasi-aave-yang-privat.mdx";
+import IdCryptoBackedLoans, { meta as idCryptoBackedLoans } from "~~/content/blog/id/pinjaman-berjaminan-kripto.mdx";
+import IdMorphoMidnightFixedRateLoans, {
+  meta as idMorphoMidnightFixedRateLoans,
+} from "~~/content/blog/id/pinjaman-bunga-tetap-morpho-midnight.mdx";
+import IdMorphoPreLiquidation, { meta as idMorphoPreLiquidation } from "~~/content/blog/id/pra-likuidasi-morpho.mdx";
+import IdTokenizedStocksCollateral, {
+  meta as idTokenizedStocksCollateral,
+} from "~~/content/blog/id/saham-tokenisasi-sebagai-jaminan.mdx";
+import IdShortFiatWithAave, {
+  meta as idShortFiatWithAave,
+} from "~~/content/blog/id/short-mata-uang-fiat-dengan-aave.mdx";
+import IdWhoNeedsHealthFactorAlerts, {
+  meta as idWhoNeedsHealthFactorAlerts,
+} from "~~/content/blog/id/siapa-yang-butuh-peringatan-faktor-kesehatan.mdx";
+import IdAaveInterestRates, { meta as idAaveInterestRates } from "~~/content/blog/id/suku-bunga-aave.mdx";
+import IdLiquidatedOnAaveOrMorphoWhatNow, {
+  meta as idLiquidatedOnAaveOrMorphoWhatNow,
+} from "~~/content/blog/id/terlikuidasi-di-aave-atau-morpho-lalu-apa.mdx";
+import IdWrappedBitcoinAaveCollateral, {
+  meta as idWrappedBitcoinAaveCollateral,
+} from "~~/content/blog/id/wrapped-bitcoin-sebagai-jaminan-aave.mdx";
 import ItWhoNeedsHealthFactorAlerts, {
   meta as itWhoNeedsHealthFactorAlerts,
 } from "~~/content/blog/it/a-chi-servono-gli-avvisi-sul-fattore-di-salute.mdx";
@@ -947,5 +1004,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
     { meta: trHowMorphoLiquidationWorks, Content: TrHowMorphoLiquidationWorks },
     { meta: trMorphoPreLiquidation, Content: TrMorphoPreLiquidation },
     { meta: trMorphoMidnightFixedRateLoans, Content: TrMorphoMidnightFixedRateLoans },
+  ],
+  id: [
+    { meta: idAaveHealthFactor, Content: IdAaveHealthFactor },
+    { meta: idSafeAaveHealthFactor, Content: IdSafeAaveHealthFactor },
+    { meta: idHowAaveLiquidationWorks, Content: IdHowAaveLiquidationWorks },
+    { meta: idAaveLiquidationPrice, Content: IdAaveLiquidationPrice },
+    { meta: idWhyAaveHealthFactorDropped, Content: IdWhyAaveHealthFactorDropped },
+    { meta: idAaveHealthFactorAlertSetup, Content: IdAaveHealthFactorAlertSetup },
+    { meta: idAaveLiquidationAlertTools, Content: IdAaveLiquidationAlertTools },
+    { meta: idAvoidAaveLiquidation, Content: IdAvoidAaveLiquidation },
+    { meta: idPrivateAaveLiquidationAlerts, Content: IdPrivateAaveLiquidationAlerts },
+    { meta: idCryptoBackedLoans, Content: IdCryptoBackedLoans },
+    { meta: idShortFiatWithAave, Content: IdShortFiatWithAave },
+    { meta: idAaveInterestRates, Content: IdAaveInterestRates },
+    { meta: idAaveAlertsDoNotDisturb, Content: IdAaveAlertsDoNotDisturb },
+    { meta: idAaveMarketWindDown, Content: IdAaveMarketWindDown },
+    { meta: idStablecoinDepegAave, Content: IdStablecoinDepegAave },
+    { meta: idAaveEMode, Content: IdAaveEMode },
+    { meta: idWhyAaveWithdrawOrBorrowFails, Content: IdWhyAaveWithdrawOrBorrowFails },
+    { meta: idWrappedBitcoinAaveCollateral, Content: IdWrappedBitcoinAaveCollateral },
+    { meta: idTokenizedStocksCollateral, Content: IdTokenizedStocksCollateral },
+    { meta: idWhoNeedsHealthFactorAlerts, Content: IdWhoNeedsHealthFactorAlerts },
+    { meta: idLiquidatedOnAaveOrMorphoWhatNow, Content: IdLiquidatedOnAaveOrMorphoWhatNow },
+    { meta: idMorphoHealthFactor, Content: IdMorphoHealthFactor },
+    { meta: idHowMorphoLiquidationWorks, Content: IdHowMorphoLiquidationWorks },
+    { meta: idMorphoPreLiquidation, Content: IdMorphoPreLiquidation },
+    { meta: idMorphoMidnightFixedRateLoans, Content: IdMorphoMidnightFixedRateLoans },
   ],
 };

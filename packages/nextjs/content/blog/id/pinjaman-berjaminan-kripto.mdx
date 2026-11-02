@@ -1,0 +1,178 @@
+export const meta = {
+  slug: "pinjaman-berjaminan-kripto",
+  title: "Pinjaman berjaminan kripto: cara kerja dan kegunaannya",
+  description:
+    "Cara kerja pinjaman kripto dengan jaminan berlebih di Aave, bedanya dengan bank atau pemberi pinjaman terpusat, kegunaannya dan risikonya.",
+  h1: "Bagaimana pinjaman berjaminan kripto bekerja, dan mengapa orang mengambilnya?",
+  publishedAt: "2026-10-19",
+  primaryQuestion: "Bagaimana pinjaman berjaminan kripto bekerja, dan mengapa orang menggunakannya?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Pinjaman berjaminan kripto memungkinkan Anda meminjam, biasanya stablecoin seperti USDC, dengan kripto yang Anda setor
+  sebagai jaminan, tanpa menjualnya. Di Aave, pinjaman ini dijamin berlebih (overcollateralised): pada 19 Oktober 2026
+  Anda dapat meminjam hingga 73% dari nilai WBTC atau 80,5% dari nilai WETH di pasar Core Ethereum. Protokol hanya
+  memeriksa jaminan, tidak ada tanggal pelunasan dan suku bunganya mengambang. Jika nilai jaminan turun cukup jauh
+  hingga faktor kesehatan (health factor) Anda jatuh di bawah 1, sebagian jaminan dijual untuk melunasi utang, dan Anda
+  membayar penalti. Orang memakai pinjaman ini untuk mendapatkan uang tunai tanpa menjual, menutup kekurangan dana
+  sementara, refinancing, leverage atau lindung nilai, dan setiap kegunaan itu membawa risiko likuidasi, risiko suku
+  bunga dan risiko stablecoin.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Setiap angka on-chain, nomor blok dan sumber di balik panduan ini: content/blog/snapshots/crypto-backed-loans.md */}
+
+## Apa itu pinjaman berjaminan kripto?
+
+Pinjaman berjaminan kripto adalah pinjaman yang dijamin dengan kripto yang Anda setor sebagai jaminan. Di protokol pinjaman seperti Aave, pinjaman ini dijamin berlebih: jaminan harus bernilai lebih besar daripada pinjaman, dan alih-alih memeriksa penghasilan Anda, protokol mengandalkan kemampuan untuk menjual sebagian jaminan jika nilainya turun terlalu jauh. Selama pinjaman masih berjalan, jaminan tetap milik Anda, dengan semua pergerakan harganya, dan Anda dapat mengambilnya kembali setelah utang dilunasi.
+
+Kebanyakan orang meminjam stablecoin, yaitu token yang mengikuti suatu mata uang: USDC dan USDT mengikuti dolar AS, EURC mengikuti euro. Jaminannya biasanya aset yang volatil. Di pasar Ethereum dan Arbitrum Aave, ether hadir sebagai WETH dan bitcoin sebagai token yang mewakilinya, seperti WBTC atau cbBTC.
+
+Dua angka per aset jaminan menentukan berapa banyak yang dapat Anda pinjam dan kapan pinjaman berada dalam bahaya:
+
+- **Rasio pinjaman terhadap nilai (LTV)** adalah jumlah maksimum yang dapat Anda pinjam dengan aset tersebut, sebagai bagian dari nilainya.
+- **Ambang likuidasi (liquidation threshold)** adalah bagian dari nilai aset yang diperhitungkan dalam faktor kesehatan Anda. Ketika jaminan Anda, setelah ditimbang dengan cara ini, bernilai lebih kecil daripada utang Anda, faktor kesehatan berada di bawah 1 dan posisi dapat dilikuidasi.
+
+| Pasar         | Jaminan | LTV (batas pinjaman) | Ambang likuidasi | Bonus likuidasi |
+| ------------- | ------- | -------------------- | ---------------- | --------------- |
+| Ethereum Core | WETH    | 80,5%                | 83%              | 5%              |
+| Ethereum Core | WBTC    | 73%                  | 78%              | 5%              |
+| Ethereum Core | cbBTC   | 73%                  | 78%              | 7,5%            |
+| Arbitrum      | WETH    | 80%                  | 84%              | 5%              |
+| Arbitrum      | WBTC    | 73%                  | 78%              | 7%              |
+
+Nilai-nilai ini dibaca on-chain pada 19 Oktober 2026 dari PoolDataProvider masing-masing pasar, di blok Ethereum 26225342 dan blok Arbitrum 516228495. cbBTC tidak terdaftar di pasar Arbitrum Aave. Tata kelola (governance) Aave dapat mengubah nilai mana pun. Perbedaan LTV dan ambang likuidasi dijelaskan lebih dalam di [apa itu faktor kesehatan Aave](/id/blog/faktor-kesehatan-aave).
+
+## Bagaimana pinjaman di Aave bekerja, langkah demi langkah?
+
+Aave V3 adalah sekumpulan smart contract di setiap jaringan, dan app.aave.com adalah salah satu antarmukanya. Pusat bantuan Aave menjelaskan cara meminjam dan melunasi dalam beberapa langkah; berikut isi setiap langkahnya.
+
+### Langkah 1: Setor jaminan
+
+Hubungkan dompet Anda, pilih aset yang akan disetor, misalnya WBTC, lalu setor. Pastikan aset itu diaktifkan sebagai jaminan, karena hanya jaminan yang diperhitungkan dalam jumlah yang dapat Anda pinjam. Token tersimpan di kontrak Pool pasar tersebut, tempat pengguna lain dapat meminjamnya (itulah yang dibayar oleh bunga setoran yang kecil). Anda dapat menarik jaminan setelah melunasi, atau sebagiannya selagi masih berutang, asalkan faktor kesehatan Anda tetap 1 atau lebih sesudahnya.
+
+### Langkah 2: Pinjam stablecoin
+
+Pilih stablecoin dan jumlah di bawah batas pinjaman Anda, yaitu nilai jaminan dikalikan LTV-nya. Token masuk ke dompet Anda, dan bunga mulai berjalan saat itu juga, dengan suku bunga yang ditetapkan protokol berdasarkan seberapa banyak aset itu dipinjam dan berdasarkan parameter yang dapat diubah oleh governance (pusat bantuan Aave, Borrow Tokens). Aave V3 kini hanya memiliki bunga mengambang: referensi Pool-nya menyebut bahwa pinjaman selalu memakai mode bunga mengambang dan menandai bunga stabil yang lama sebagai usang sejak v3.2.
+
+Suku bunga pinjaman mengambang pada 19 Oktober 2026, sebagai APY tahunan seperti yang ditampilkan aplikasi Aave (blok Ethereum 26225342, blok Arbitrum 516228495):
+
+| Pasar         | USDC  | USDT (USD₮0 di Arbitrum) | GHO   | EURC                             |
+| ------------- | ----- | ------------------------ | ----- | -------------------------------- |
+| Ethereum Core | 4,58% | 4,17%                    | 4,60% | 4,12%                            |
+| Arbitrum      | 3,45% | 4,21%                    | 4,59% | tidak ada stablecoin euro dibuka |
+
+Suku bunga ini berubah terus-menerus dan dapat melonjak. Pada 14 Oktober 2026 suku bunga USDC di Ethereum Core naik menjadi 13,67% APR dalam satu blok dan turun kembali sekitar 36 menit kemudian, seperti yang ditunjukkan [mengapa faktor kesehatan Aave Anda turun dengan sendirinya](/id/blog/mengapa-faktor-kesehatan-aave-turun#penyebab-3-apakah-bunga-pada-utang-anda-bertambah-lebih-cepat-daripada-pada-jaminan-anda).
+
+### Langkah 3: Pantau faktor kesehatan
+
+Faktor kesehatan (HF) adalah jaminan Anda, ditimbang dengan ambang likuidasi setiap aset, dibagi utang Anda. Ambil contoh alice, yang menyetor 1 WBTC di Ethereum Core saat bitcoin berada di harga ilustratif US$80.000 (oracle Aave membaca US$82.680,33 di blok Ethereum 26225364 pada 19 Oktober 2026) dan meminjam 24.000 USDC:
+
+- Batas pinjaman: 80.000 × 0,73 = US$58.400.
+- Faktor kesehatan: 80.000 × 0,78 ÷ 24.000 = 2,60.
+- Harga likuidasi: 24.000 ÷ 0,78 = US$30.769,23, yaitu 61,5% di bawah US$80.000.
+
+Faktor kesehatan turun ketika bitcoin turun, dan turun perlahan saat bunga bertambah: jika suku bunga USDC tetap 4,58% per tahun, utangnya akan menjadi sekitar 25.099 USDC setelah setahun, dan harga likuidasi naik menjadi sekitar US$32.179. Untuk menghitungnya bagi posisi Anda sendiri, lihat [cara menghitung harga likuidasi Aave Anda](/id/blog/harga-likuidasi-aave); untuk menentukan seberapa besar ruang yang perlu disisakan, lihat [berapa faktor kesehatan yang aman di Aave](/id/blog/faktor-kesehatan-aave-yang-aman).
+
+### Langkah 4: Lunasi kapan pun Anda mau
+
+Tidak ada tanggal pelunasan. Fungsi borrow Aave sama sekali tidak memiliki jangka waktu, dan Anda dapat melunasi seluruh atau sebagian utang kapan saja, dengan aset yang Anda pinjam (referensi Pool Aave V3; pusat bantuan Aave, Repay Tokens). Pelunasan penuh membebaskan jaminan Anda. Anda juga dapat melunasi dengan jaminan: di pasar Ethereum dan Arbitrum, antarmuka Aave dapat menjual sebagian jaminan Anda menjadi aset utang dan melunasinya dalam satu transaksi (dokumentasi Aave, swap features).
+
+### Langkah 5: Pahami apa yang terjadi di bawah faktor kesehatan 1
+
+Di bawah 1, siapa pun dapat melikuidasi posisi: mereka melunasi sebagian utang Anda dan mengambil jaminan senilai jumlah tersebut ditambah bonus likuidasi. Satu likuidasi dapat melunasi hingga 50% utang selama faktor kesehatan di atas 0,95 dan jaminan serta utang masing-masing bernilai setidaknya US$2.000, dan hingga 100% ketika faktor kesehatan sama dengan atau di bawah 0,95 atau salah satunya bernilai kurang dari US$2.000 (pusat bantuan Aave).
+
+Jika bitcoin turun ke US$30.000 tidak lama setelah alice meminjam, faktor kesehatannya menjadi 30.000 × 0,78 ÷ 24.000 = 0,975. Seorang likuidator dapat melunasi 12.000 USDC dan mengambil 12.000 × 1,05 ÷ 30.000 = 0,42 WBTC, sehingga alice tersisa 0,58 WBTC dengan utang 12.000 USDC, faktor kesehatan 1,13. Ia akan kehilangan jaminan senilai US$600 di luar utang yang dilunasi, dan 0,42 WBTC akan terjual di harga terendah. Aturan lengkapnya ada di [apa yang terjadi saat posisi Aave Anda dilikuidasi](/id/blog/cara-kerja-likuidasi-aave).
+
+## Apa bedanya pinjaman berjaminan kripto dengan pinjaman bank?
+
+Perbedaan utamanya ada pada apa yang dilihat pemberi pinjaman, kapan Anda melunasi dan apa yang terjadi saat jaminan kehilangan nilai:
+
+|                                       | Pinjaman di Aave                                                                             | Pinjaman bank pada umumnya                                              |
+| ------------------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Penentu jumlah yang dapat Anda pinjam | Nilai jaminan Anda dan LTV-nya                                                               | Biasanya penghasilan dan riwayat kredit Anda, ditambah jaminan jika ada |
+| Pemeriksaan terhadap Anda             | Tidak ada dari protokol, yang hanya melihat jaminan                                          | Biasanya pemeriksaan identitas, penghasilan dan kredit                  |
+| Jangka waktu                          | Tidak ada: lunasi kapan pun Anda mau                                                         | Biasanya jangka waktu tetap dan jadwal cicilan                          |
+| Bunga                                 | Mengambang, dihitung ulang seiring perubahan pinjaman di pasar                               | Tetap atau mengambang, sesuai kontrak                                   |
+| Jika jaminan kehilangan nilai         | Likuidasi otomatis oleh pihak ketiga begitu faktor kesehatan di bawah 1, tanpa pemberitahuan | Tergantung kontrak: permintaan tambahan jaminan, negosiasi, eksekusi    |
+| Siapa yang memegang jaminan           | Smart contract pasar                                                                         | Pemberi pinjaman, atau kustodian yang dipilihnya                        |
+| Jika jaminan tidak menutup utang      | Kekurangannya menjadi kerugian protokol, bukan tagihan kepada Anda                           | Tergantung kontrak dan hukum                                            |
+
+Baris terakhir berasal dari cara Aave V3.3 dan versi sesudahnya menangani likuidasi yang menghabiskan seluruh jaminan: sisa utang dihapus sebagai defisit pada aset tersebut, seperti yang dijelaskan [bagian tentang utang macet](/id/blog/cara-kerja-likuidasi-aave#apakah-likuidasi-dapat-meninggalkan-utang-macet). Pada titik itu Anda tetap sudah kehilangan jaminan.
+
+## Apa bedanya dengan pemberi pinjaman kripto terpusat?
+
+Pemberi pinjaman terpusat mengambil jaminan Anda ke dalam kustodinya sendiri. Pinjamannya bisa terlihat hampir sama, tetapi Anda menjadi kreditur perusahaan itu, dan jika perusahaan itu gagal, jaminan Anda dapat ikut tertahan. Tahun 2022 menunjukkan artinya:
+
+- **Celsius** membekukan penarikan nasabah pada 12 Juni 2022 dan mengajukan kepailitan pada 13 Juli 2022. Menurut Commodity Futures Trading Commission AS, nasabah telah menyetor sekitar US$20 miliar ke Celsius. Pada Januari 2023 pengadilan kepailitan AS di New York memutuskan bahwa kripto di akun Earn Celsius telah menjadi milik Celsius berdasarkan syarat penggunaannya, sehingga nasabah tersebut menjadi kreditur tanpa jaminan.
+- **Voyager Digital** menghentikan perdagangan, setoran dan penarikan pada 1 Juli 2022, setelah Three Arrows Capital gagal membayar pinjaman sebesar 15.250 BTC dan US$350 juta dalam USDC, lalu mengajukan kepailitan Chapter 11 pada 5 Juli 2022.
+- **Genesis** menghentikan penarikan investor program Gemini Earn pada November 2022, ketika memegang sekitar US$900 juta aset mereka, menurut Securities and Exchange Commission AS, dan mengajukan Chapter 11 pada 19 Januari 2023.
+- **BlockFi** mengajukan Chapter 11 pada 28 November 2022, beberapa hari setelah menghentikan penarikan saat FTX runtuh.
+
+Di Aave, jaminan berada di smart contract publik yang aturannya dapat dibaca siapa pun, bukan di neraca sebuah perusahaan. Ini menukar satu kumpulan risiko dengan kumpulan risiko lain, yang dibahas di [risiko](#apa-saja-risiko-pinjaman-berjaminan-kripto) di bawah: bug, kesalahan oracle, keputusan governance dan kustodi di balik wrapped bitcoin. Salah satunya penting di sini: emergency admin atau pool admin Aave dapat menjeda (pause) suatu aset, dan selama dijeda tidak ada yang dapat menarik atau melunasinya (kontrak PoolConfigurator dan ValidationLogic Aave).
+
+## Untuk apa orang menggunakan pinjaman berjaminan kripto?
+
+### Uang tunai tanpa menjual
+
+Salah satu alasannya adalah mendapatkan uang sambil tetap memegang kripto, sering kali karena pemiliknya memperkirakan harganya naik atau ingin menyimpannya bertahun-tahun. Pinjaman ini mempertahankan seluruh potensi kenaikan dan seluruh risiko penurunan jaminan, menambahkan bunga, dan dapat memaksa penjualan di saat terburuk jika harga turun cukup jauh.
+
+Mengambil pinjaman tidak menjual jaminan Anda: jaminan tetap milik Anda. Apakah penyetoran jaminan, pinjaman, bunga atau likuidasi berdampak pajak tergantung negara Anda, dan kadang tergantung syarat protokol. Panduan otoritas pajak Inggris, misalnya, menyatakan bahwa syarat platform pinjaman DeFi menentukan apakah menyerahkan jaminan kepadanya terhitung sebagai pelepasan aset (disposal), dan jika tidak, penjualan jaminan dalam likuidasi diperlakukan sebagai penjualan oleh peminjam sendiri (HMRC Cryptoassets Manual, CRYPTO61640). Panduan ini tidak memberikan nasihat pajak; periksa aturan di tempat Anda tinggal.
+
+### Membiayai pengeluaran atau menutup kekurangan dana sementara
+
+Sebagian orang meminjam untuk menutup pengeluaran sebelum uang yang mereka tunggu datang, seperti tagihan yang jatuh tempo sebelum suatu penjualan atau gaji. Konsekuensinya, tidak ada yang mengakhiri pinjaman itu untuk Anda: tidak ada tanggal pelunasan, suku bunga dapat naik selama Anda menunggu, dan mengubah stablecoin menjadi uang di rekening bank, lalu kembali lagi untuk melunasi, memiliki biayanya sendiri.
+
+### Refinancing
+
+Pinjaman di tempat lain dapat dipindahkan ke Aave jika suku bunga Aave lebih rendah, dan di Aave suatu utang dapat dialihkan dari satu stablecoin ke stablecoin lain dalam satu transaksi dengan fitur debt swap di antarmuka (dokumentasi Aave, swap features). Konsekuensinya: suku bunga mengambang, sehingga aset yang lebih murah hari ini bisa lebih mahal bulan depan, dan beralih dari stablecoin dolar ke stablecoin euro mengubah mata uang utang Anda, yang menjadi pokok bahasan [short mata uang fiat dengan pinjaman Aave](/id/blog/short-mata-uang-fiat-dengan-aave).
+
+### Leverage
+
+Untuk menambah eksposur, sebagian orang meminjam stablecoin, membeli lebih banyak aset jaminan dan menyetornya juga. Jika alice menggunakan 24.000 USDC-nya untuk membeli 0,3 WBTC pada harga US$80.000 lalu menyetornya, ia akan memegang 1,3 WBTC dengan utang 24.000 USDC: faktor kesehatan 3,38 dan harga likuidasi US$23.668,64. Setiap pergerakan bitcoin kini memukulnya 1,3 kali lebih keras daripada memegang 1 bitcoin secara langsung, dan mengulang loop (siklus pinjaman dengan leverage) ini mendorong faktor kesehatan mendekati 1.
+
+### Lindung nilai dan short
+
+Meminjam suatu aset lalu menjualnya adalah taruhan bahwa harganya akan turun: setor stablecoin, pinjam WETH lalu jual, dan posisi itu untung jika ETH turun serta bergerak menuju likuidasi jika ETH naik ([panduan faktor kesehatan yang aman](/id/blog/faktor-kesehatan-aave-yang-aman) menunjukkan seberapa jauh ETH dapat naik). Meminjam stablecoin dolar atau euro dengan jaminan bitcoin adalah kebalikannya, posisi short pada mata uang terhadap jaminan, yang oleh sebagian pemegang bitcoin disebut short fiat; [short mata uang fiat dengan pinjaman Aave](/id/blog/short-mata-uang-fiat-dengan-aave) membahasnya dengan angka.
+
+## Apa saja risiko pinjaman berjaminan kripto?
+
+- **Likuidasi.** Di bawah faktor kesehatan 1, sebagian atau seluruh utang dapat dilunasi dengan jaminan Anda, dan Anda juga kehilangan bonusnya: 5% hingga 7,5% untuk aset di tabel pertama. Likuidasi dijalankan oleh bot yang saling bersaing, sehingga dapat terjadi dengan cepat (pusat bantuan Aave).
+- **Volatilitas jaminan.** Bitcoin mencapai puncak sekitar US$69.000 pada November 2021 dan berada di sekitar US$17.000 pada pertengahan Juni 2022, turun sekitar 75%, lalu jatuh di bawah US$16.000 setelah FTX gagal pada November 2022 (blog ECB). Dengan ambang likuidasi WBTC sebesar 78%, bahkan pinjaman sebesar 20% dari nilai jaminan yang diambil di puncak 2021 akan sudah terlikuidasi pada pertengahan Juni 2022.
+- **Suku bunga mengambang.** Suku bunga tidak dipatok untuk periode apa pun, dan bunga menurunkan faktor kesehatan Anda seiring waktu bahkan ketika harga diam.
+- **Depeg stablecoin.** USDC turun ke sekitar US$0,88 pada 11 Maret 2023, setelah Circle menyatakan US$3,3 miliar cadangannya berada di Silicon Valley Bank, dan kembali di atas US$0,99 pada 13 Maret (unggahan Gauntlet di forum Aave; Circle). TerraUSD, stablecoin algoritmik, mengalami depeg (lepasnya patokan terhadap dolar) pada Mei 2022 dan jatuh mendekati nol, yang menurut SEC AS menghapus nilai pasar sebesar US$40 miliar. Jika stablecoin yang Anda utang turun, utang Anda menjadi lebih murah; jika stablecoin yang Anda pakai sebagai jaminan turun, faktor kesehatan Anda turun.
+- **Wrapped bitcoin.** Bitcoin di Aave adalah token yang didukung bitcoin yang dipegang pihak lain atau dikendalikan sebuah bridge. WBTC, misalnya, menyatakan bahwa setiap token didukung bitcoin yang disimpan dalam kustodi. Jika dukungan itu gagal, token dapat kehilangan nilai apa pun yang terjadi pada bitcoin itu sendiri.
+- **Smart contract, oracle dan governance.** Bug, harga yang salah atau perubahan parameter dapat memukul posisi tanpa ada pergerakan pasar. Pada Maret 2026, oracle (sumber harga) nilai tukar yang tidak selaras di pasar Core dan Prime Ethereum Aave memangkas nilai tukar efektif wstETH sekitar 2,85% dan memicu likuidasi sekitar 10.938 wstETH di 34 akun, menurut post-mortem Chaos Labs ([lebih lanjut tentang kesalahan oracle](/id/blog/mengapa-faktor-kesehatan-aave-turun#penyebab-6-apakah-kesalahan-oracle-atau-nilai-tukar-membuat-harga-jaminan-anda-keliru)). Governance juga dapat menurunkan ambang likuidasi untuk setiap posisi yang terbuka ([lebih lanjut tentang pemangkasan ambang](/id/blog/mengapa-faktor-kesehatan-aave-turun#penyebab-4-apakah-tata-kelola-atau-risk-stewards-memangkas-ambang-likuidasi)).
+- **Melakukannya sendiri.** Anda memegang kunci, Anda mengirim transaksi, dan di pasar yang bergerak cepat, pelunasan dapat memerlukan waktu konfirmasi lebih lama daripada yang Anda perkirakan.
+
+## Bagaimana cara memantau pinjaman?
+
+Antarmuka Aave sendiri menampilkan faktor kesehatan Anda selama Anda membukanya, tetapi tidak mengirimi Anda pesan saat faktor kesehatan turun, seperti yang dijelaskan [panduan peringatan faktor kesehatan](/id/blog/cara-mengatur-peringatan-faktor-kesehatan-aave#apakah-aave-mengirim-peringatan-faktor-kesehatan). Salah satu cara memantaunya adalah memilih faktor kesehatan saat Anda akan bertindak, dengan melunasi sebagian utang atau menambah jaminan, lalu meminta alat terpisah memperingatkan Anda ketika posisi mencapai angka itu. Tokenping memeriksa setiap 5 menit dan mengirimi Anda pesan selama faktor kesehatan Anda berada di bawah ambang batas yang Anda tetapkan; [panduan pengaturan](/id/blog/cara-mengatur-peringatan-faktor-kesehatan-aave) menjelaskan langkah-langkahnya. Peringatan memberi Anda waktu untuk bertindak, bukan perlindungan, dan [cara menghindari likuidasi di Aave](/id/blog/cara-menghindari-likuidasi-aave) membahas apa yang dapat dilakukan dengan waktu itu.
+
+## Sumber
+
+- [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) Aave V3 Ethereum Core dan [PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b) Arbitrum: LTV, ambang likuidasi, bonus dan suku bunga pinjaman mengambang dibaca on-chain di blok Ethereum 26225342 dan blok Arbitrum 516228495 (data RPC, diakses 19 Oktober 2026)
+- [AaveOracle Aave V3 Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): harga WBTC US$82.680,33 di blok Ethereum 26225364 (data RPC, diakses 19 Oktober 2026)
+- [Aave Help: Borrow Tokens](https://aave.com/help/borrowing/borrow-tokens) (diakses 19 Oktober 2026)
+- [Aave Help: Repay Tokens](https://aave.com/help/borrowing/repay-tokens) (diakses 19 Oktober 2026)
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (diakses 19 Oktober 2026)
+- [Referensi smart contract Pool Aave V3](https://aave.com/docs/aave-v3/smart-contracts/pool): parameter borrow dan repay, hanya bunga mengambang, bunga stabil usang sejak v3.2 (diakses 19 Oktober 2026)
+- [Dokumentasi Aave: swap features](https://aave.com/docs/aave-v3/smart-contracts/swap-features): repay with collateral dan debt swap (diakses 19 Oktober 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) dan [PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol), aave-v3-origin: penarikan saat meminjam, jeda dan siapa yang dapat menetapkannya (diakses 19 Oktober 2026)
+- [Siaran pers CFTC 8749-23 tentang Celsius Network](https://www.cftc.gov/PressRoom/PressReleases/8749-23), 13 Juli 2023: sekitar US$20 miliar disetor, penarikan dibekukan pada 12 Juni 2022, kepailitan diajukan pada 13 Juli 2022 (diakses 19 Oktober 2026)
+- [Pengadilan Kepailitan AS, Southern District of New York: putusan tentang kepemilikan aset akun Celsius Earn](https://www.nysb.uscourts.gov/sites/default/files/opinions/312902_1822_opinion.pdf), 4 Januari 2023 (diakses 19 Oktober 2026)
+- [Voyager Digital: market update](https://www.newswire.ca/news-releases/voyager-digital-provides-market-update-851734302.html), 1 Juli 2022, dan [Voyager Digital: pengumuman Chapter 11](https://www.newswire.ca/news-releases/voyager-digital-commences-financial-restructuring-process-to-maximize-value-for-all-stakeholders-888320107.html), 5 Juli 2022 (keduanya diakses 19 Oktober 2026)
+- [Siaran pers SEC 2023-7 tentang Genesis dan program Gemini Earn](https://www.sec.gov/news/press-release/2023-7), 12 Januari 2023 (diakses 19 Oktober 2026)
+- [Siaran pers SEC 2024-37 tentang Genesis](https://www.sec.gov/newsroom/press-releases/2024-37), 19 Maret 2024: permohonan Chapter 11 diajukan pada 19 Januari 2023 (diakses 19 Oktober 2026)
+- [CoinDesk: BlockFi files for bankruptcy as FTX contagion spreads](https://www.coindesk.com/policy/2022/11/28/ftx-fallout-continues-as-crypto-lender-blockfi-declares-bankruptcy), 28 November 2022 (diakses 19 Oktober 2026)
+- [The ECB Blog: Bitcoin's last stand](https://www.ecb.europa.eu/press/blog/date/2022/html/ecb.blog221130~5301eecd19.en.html), 30 November 2022: penurunan dari sekitar US$69.000 ke sekitar US$17.000 dan di bawah US$16.000 (diakses 19 Oktober 2026)
+- [Gauntlet: Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), forum governance Aave, 17 Maret 2023 (diakses 19 Oktober 2026)
+- [Circle: $3.3 Billion of USDC Reserve Risk Removed, Dollar De-peg Closes](https://www.circle.com/pressroom/3-3-billion-of-usdc-reserve-risk-removed-dollar-de-peg-closes), 12 Maret 2023 (diakses 19 Oktober 2026)
+- [Siaran pers SEC 2024-73 tentang Terraform](https://www.sec.gov/newsroom/press-releases/2024-73), 13 Juni 2024: depeg UST pada Mei 2022 (diakses 19 Oktober 2026)
+- [WBTC](https://wbtc.network/): bagaimana WBTC didukung (diakses 19 Oktober 2026)
+- [Chaos Labs: Post-Mortem, Exchange Rate Misalignment on wstETH Core and Prime Instances](https://governance.aave.com/t/24269), forum governance Aave, 10 Maret 2026 (diakses 19 Oktober 2026)
+- [HMRC Cryptoassets Manual, CRYPTO61640: DeFi lending and staking, collateral](https://www.gov.uk/hmrc-internal-manuals/cryptoassets-manual/crypto61640), diperbarui 28 November 2025 (diakses 19 Oktober 2026)
+
+_Konten edukasi, bukan nasihat keuangan. Peringatan mengurangi risiko, tetapi tidak mencegah likuidasi._

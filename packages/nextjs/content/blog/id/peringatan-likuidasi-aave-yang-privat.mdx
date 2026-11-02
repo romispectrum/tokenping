@@ -1,0 +1,190 @@
+export const meta = {
+  slug: "peringatan-likuidasi-aave-yang-privat",
+  title: "Peringatan Aave dan privasi: apa yang disimpan Tokenping",
+  description:
+    "Apa yang disimpan Tokenping, apa yang tetap publik on-chain, dan cara alias email, nama pengguna Signal dan Telegram menjaga kontak Anda tetap anonim.",
+  h1: "Cara mendapatkan peringatan faktor kesehatan Aave tanpa memberikan identitas Anda kepada Tokenping",
+  publishedAt: "2026-10-19",
+  primaryQuestion:
+    "Bisakah saya mendapatkan peringatan faktor kesehatan Aave tanpa mengaitkan identitas saya dengan alamat dompet saya?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Tokenping tidak memakai akun dengan kata sandi: Anda masuk dengan menandatangani pesan menggunakan dompet Anda, dan
+  Tokenping menyimpan alamat dompet Anda bersama kontak yang Anda berikan untuk peringatan. Jadi berikan kontak yang
+  tidak mengungkap apa pun tentang Anda: alias email, bukan alamat Anda sendiri, nama pengguna Signal dengan nomor
+  telepon yang disembunyikan, serta nama pengguna dan nama Telegram yang tidak mengidentifikasi Anda. Dengan begitu
+  kontak itu tidak menyebut siapa Anda. Ini tidak membuat Anda anonim, karena pembayaran Anda publik di Arbitrum One,
+  dompet yang sudah Anda kaitkan di tempat lain tetap terkait, dan layanan yang mengantarkan peringatan Anda menyimpan
+  catatannya sendiri.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Apa yang disimpan Tokenping, dan apa yang tidak dikumpulkannya?
+
+Per 19 Oktober 2026, menyimpan peringatan menulis satu baris per dompet, jaringan dan pasar (pool Aave V3 atau Spoke Aave V4) ke basis data Tokenping. Baris itu berisi:
+
+- Alamat dompet Anda.
+- Jaringan, pasar dan ambang batas Anda.
+- Saluran yang Anda pilih dan bahasa masing-masing.
+- Alamat email, nama pengguna Signal dan nama pengguna Telegram yang Anda ketik, untuk saluran yang Anda pilih.
+- Kapan peringatan dibuat dan terakhir diubah, serta kapan Anda terakhir mengirim pesan tes di setiap saluran. Begitulah batas satu tes per saluran setiap 15 menit bekerja.
+
+Menekan Start di bot Telegram Tokenping juga menyimpan ID obrolan Anda dan waktunya, di tabel terpisah. Jika Anda menjawab pertanyaan opsional "Dari mana Anda mengetahui Tokenping?", jawaban Anda dan waktunya disimpan bersama alamat dompet Anda.
+
+Tokenping tidak meminta atau menyimpan nama, nomor telepon, kata sandi, atau verifikasi identitas. Tokenping tidak memasang piksel pelacak atau cookie iklan, tidak menyimpan riwayat posisi Anda (posisi dibaca langsung dari blockchain) dan tidak menyimpan log peringatan yang dikirimnya di basis datanya. [Halaman privasi](/id/privasi) adalah daftar resminya; panduan ini menjelaskan artinya bagi Anda dan apa yang dapat Anda lakukan.
+
+## Bagaimana cara masuk tanpa akun?
+
+Pengaturan peringatan milik sebuah alamat dompet, bukan milik akun. Untuk membuka atau mengubahnya, Anda menandatangani pesan dengan dompet itu. Pesan itu adalah pesan Sign-in with Ethereum (EIP-4361) yang menyebut situs, alamat Anda dan kode sekali pakai acak. Menandatangani bukan transaksi: tidak memakan gas dan tidak menyetujui token apa pun. Server memeriksa tanda tangan dan menerima kode sekali pakai itu satu kali, dalam 5 menit. Kode itu disimpan tanpa alamat Anda dan dihapus saat dipakai.
+
+Lalu situs memasang satu cookie sesi. Cookie itu membawa alamat dompet Anda dan waktu kedaluwarsa, ditambah tanda tangan yang dibuat dengan rahasia server agar tidak bisa dipalsukan (ditandatangani, bukan dienkripsi), dan skrip halaman tidak dapat membacanya (HttpOnly). Cookie itu berlaku 7 hari, dan situs menghapusnya saat Anda memutus dompet Anda di situs. Selama Anda masuk, cookie kedua menyimpan kode sekali pakai selama beberapa menit itu. Setiap rute peringatan kemudian hanya bertindak untuk dompet di dalam cookie, dan permintaan yang menyebut dompet lain ditolak.
+
+Melihat posisi Anda tidak perlu masuk dan tidak perlu membayar. Penghitungan kunjungan halaman situs berasal dari Vercel Web Analytics, yang menyatakan bahwa layanan itu mengenali pengunjung dengan hash yang dibuat dari permintaan, bukan dengan cookie pihak ketiga, dan membuang sesi itu setelah 24 jam.
+
+## Siapa yang dapat membaca detail kontak yang Anda simpan?
+
+Melalui aplikasi, hanya orang yang dapat menandatangani dengan dompet Anda. Membaca, mengubah atau menghapus peringatan, serta mengirim pesan tes, semuanya memerlukan cookie sesi Anda, dan permintaan yang menyebut dompet lain ditolak. Tabel basis data tertutup bagi kunci publik (anon) Supabase: row level security aktif tanpa kebijakan apa pun, dan peran publik tidak punya hak akses. Hanya server Tokenping, dengan kunci service-role-nya, yang dapat menjangkaunya.
+
+Anda dapat memeriksanya sendiri alih-alih sekadar percaya, karena kode Tokenping bersifat publik. Rute yang membaca dan menulis peringatan ada di [`packages/nextjs/app/api/notifications`](https://github.com/romispectrum/tokenping/tree/main/packages/nextjs/app/api/notifications), rute masuk di [`packages/nextjs/app/api/auth`](https://github.com/romispectrum/tokenping/tree/main/packages/nextjs/app/api/auth), dan migrasi yang menutup tabel bagi kunci publik di [`packages/supabase/migrations`](https://github.com/romispectrum/tokenping/tree/main/packages/supabase/migrations).
+
+Itu tidak sama dengan tidak ada siapa pun:
+
+- Orang yang menjalankan Tokenping, dan penyedia hosting basis datanya, dapat membaca baris-baris itu.
+- Siapa pun dapat menanyakan apakah suatu nama pengguna Telegram sudah menekan Start di bot. Jawabannya ya atau tidak, tidak pernah berupa ID obrolan.
+- Saat pemeriksaan peringatan atau pengiriman pesan gagal, pesan kesalahannya dapat memuat alamat dompet Anda dan penerimanya, dan masuk ke log server.
+
+Saran halaman privasi sendiri adalah jangan memasukkan alamat email atau nama pengguna Signal yang tidak ingin Anda kaitkan dengan alamat dompet Anda. Sisa panduan ini menjelaskan cara mengikutinya.
+
+## Layanan lain apa saja yang menangani data Anda?
+
+Tokenping berjalan di atas penyedia lain, dan masing-masing melihat sebagian dari apa yang Anda berikan. Tabel ini adalah daftar dari halaman privasi dalam bentuk ringkas.
+
+| Layanan              | Fungsinya                                                                | Yang dilihatnya                                                                          |
+| -------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| Vercel               | Meng-hosting situs dan menjalankan pemeriksaan peringatan setiap 5 menit | Setiap permintaan, termasuk alamat IP Anda, dan log server                               |
+| Vercel Web Analytics | Menghitung kunjungan halaman                                             | Alamat halaman, perujuk, perkiraan lokasi, browser, sistem operasi dan jenis perangkat   |
+| Supabase             | Basis data                                                               | Baris-baris yang dijelaskan di atas                                                      |
+| Resend               | Mengirim email peringatan                                                | Alamat email Anda dan teks peringatan                                                    |
+| Relay Fly.io         | Meneruskan peringatan ke Signal                                          | Nama pengguna Signal Anda dan teks peringatan (Signal juga melihatnya)                   |
+| Telegram             | Mengantarkan peringatan melalui Bot API-nya                              | ID obrolan Anda dan teks peringatan                                                      |
+| Penyedia RPC         | Menjawab pembacaan blockchain                                            | Alamat dompet yang dibaca, dan alamat IP Anda saat browser Anda yang melakukan pembacaan |
+| WalletConnect        | Meneruskan koneksi ke aplikasi dompet Anda, jika Anda memakainya         | Apa yang dipertukarkan aplikasi dompet Anda dan situs untuk terhubung                    |
+
+Teks peringatan menyebut pasar, faktor kesehatan (health factor) Anda, ambang batas Anda dan waktunya. Teks itu tidak memuat alamat dompet Anda.
+
+Para penyedia punya catatan sendiri. Adendum pemrosesan data Resend mencantumkan metadata, alamat email dan isi pesan sebagai data pribadi minimum yang diprosesnya untuk pelanggan, dan dokumentasinya menyatakan bahwa Resend menyimpan data email selama 30 hari di semua paket, dengan masa simpan yang fleksibel untuk Enterprise. Signal menyatakan tidak dapat mendekripsi atau dengan cara lain mengakses isi pesan. Kebijakan privasi Telegram menyatakan bahwa cloud chat disimpan di servernya dalam keadaan terenkripsi kuat, sedangkan enkripsi end-to-end berlaku untuk Secret Chat.
+
+## Apa yang tetap publik di blockchain?
+
+Membayar peringatan adalah transaksi di Arbitrum One. Kontrak pembayaran mencatat setiap pembayaran dalam event publik: alamat yang membayar, token, jumlah, waktu, periode yang Anda beli dan tanggal kedaluwarsa yang baru. Siapa pun dapat membacanya dan tidak ada yang dapat menghapusnya. Kode sumber kontrak itu [terverifikasi di Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553).
+
+Tidak ada informasi tentang peringatan Anda yang ditulis ke blockchain: tidak ambang batasnya, tidak alias email Anda, tidak nama pengguna Signal Anda dan tidak nama pengguna Telegram Anda. Posisi Aave Anda juga publik. ethereum.org menggambarkan blockchain sebagai "a public database" (sebuah basis data publik), dan Tokenping membaca posisi Anda dengan view call yang dapat dilakukan siapa saja. Kaitan antara dompet Anda dan posisinya tidak pernah bergantung pada Tokenping.
+
+## Apa yang dapat dan tidak dapat dihubungkan oleh Tokenping?
+
+Tokenping dapat menghubungkan alamat dompet Anda dengan kontak yang Anda simpan, dengan pasar tempat Anda meminjam, dengan ambang batas Anda dan dengan waktu Anda membayar. Layanan ini tidak bisa bekerja tanpa kaitan itu: peringatan memerlukan dompet untuk dipantau dan tempat untuk mengirim pesan.
+
+Dari apa yang disimpan di basis datanya, Tokenping tidak dapat mengaitkan semua itu dengan nama, nomor telepon atau akun Anda yang lain, kecuali kontak yang Anda masukkan melakukannya untuk Anda. Alamat email yang memuat nama Anda, atau nama pengguna yang Anda pakai di situs lain, melakukan hal itu. Inilah gunanya alias dan nama pengguna anonim: kontak itu tidak mengungkap siapa Anda. Alamat IP Anda adalah persoalan terpisah: alamat itu sampai ke Vercel bersama setiap permintaan, bukan ke basis data Tokenping, dan menyembunyikannya berada di luar cakupan panduan ini.
+
+Apa yang dapat dilakukan pihak luar adalah daftar yang berbeda, dan tidak satu pun memerlukan Tokenping:
+
+- Jika dompet Anda punya nama primer ENS, aplikasi apa pun dapat mencarinya dari alamat.
+- Jika Anda mengisi dompet dari bursa tempat Anda memverifikasi identitas, bursa itu biasanya menyimpan catatan penarikan tersebut.
+- Di mana pun Anda pernah menampilkan alamat itu di samping nama atau handle Anda, keduanya terhubung.
+- Pembayaran Anda publik, sehingga siapa pun dapat melihat bahwa alamat itu membayar dan sampai kapan.
+
+## Bagaimana cara memakai alias email, bukan alamat asli Anda?
+
+Alias email adalah alamat tambahan yang meneruskan pesan ke kotak surat asli Anda. Tokenping dan penyedia emailnya hanya melihat alias itu. SimpleLogin, layanan yang dipakai panduan ini sebagai contoh, melihat keduanya, karena layanan itu meneruskan email di antara keduanya. SimpleLogin dibuat oleh Proton AG dan bersifat open source, dan halaman harganya mencantumkan paket tanpa biaya, dengan jumlah alias yang terbatas.
+
+1. Buat akun SimpleLogin dan pilih kotak surat yang akan menerima peringatan yang diteruskan.
+2. Di dasbor, tekan **Random Alias** (alias acak) dan pilih kata acak atau UUID untuk bagian kirinya. Alias kustom juga bisa, tetapi jangan masukkan nama Anda, handle Anda atau apa pun yang Anda pakai di situs lain. SimpleLogin juga memungkinkan Anda menambahkan catatan pada alias, misalnya "Tokenping", agar Anda ingat kegunaannya.
+3. Di formulir peringatan, masukkan alias itu sebagai alamat email (misalnya `alice-aave@example.com`) dan simpan peringatan.
+4. Tekan **Kirim tes** untuk email dan periksa apakah pesannya sampai ke kotak surat asli Anda. Jika tidak, lihat folder spam. [Panduan pengaturan](/id/blog/cara-mengatur-peringatan-faktor-kesehatan-aave) memuat pemeriksaan lainnya.
+
+Peringatan Tokenping hanya satu arah, jadi Anda tidak pernah membalasnya, dan alias yang hanya menerima sudah cukup. Saat Anda berhenti memakai Tokenping, hapus peringatannya dulu, lalu aliasnya, agar tidak ada kontak tersimpan yang bertahan lebih lama dari kegunaannya.
+
+Alias tidak menyembunyikan segalanya. SimpleLogin dan penyedia kotak surat Anda tetap melihat peringatannya, jadi alias menyembunyikan alamat Anda dari Tokenping dan Resend, bukan dari layanan yang meneruskannya. Alias yang juga Anda pakai untuk layanan lain menghubungkan keduanya. Dan alias tidak mengubah isi pesan: pasar, faktor kesehatan Anda dan ambang batas Anda.
+
+SimpleLogin bukan satu-satunya pilihan. DuckDuckGo Email Protection, Firefox Relay (dari Mozilla), addy.io dan Hide My Email dari Apple (termasuk dalam langganan iCloud+) juga memberi Anda alamat yang meneruskan ke alamat Anda sendiri. Batasannya berbeda-beda, jadi baca halaman penyedianya sebelum Anda mengandalkan salah satunya.
+
+## Bagaimana cara memakai nama pengguna Signal, bukan nomor telepon Anda?
+
+Nama pengguna Signal memungkinkan orang memulai obrolan tanpa nomor telepon Anda, dan itulah yang diminta Tokenping: formulirnya tidak pernah meminta nomor. Langkah-langkah ini mengikuti halaman dukungan Signal.
+
+1. **Buat nama pengguna.** Di Signal, buka profil Anda dan ketuk simbol @. Nama pengguna terdiri dari 3 hingga 32 karakter (a-z, 0-9 dan \_) dan diakhiri setidaknya dua angka. Formulir Tokenping mengharapkan bentuk `alice.42`: nama panggilan Anda, titik dan angka. Pilih nama panggilan yang bukan nama Anda atau handle yang Anda pakai di tempat lain.
+2. **Sembunyikan nomor Anda.** Buka "Settings" (Pengaturan), lalu "Privacy" (Privasi), lalu "Phone Number" (Nomor telepon), dan atur "Who can see my number" (siapa yang dapat melihat nomor saya) ke "Nobody" (tidak seorang pun). Orang yang sudah menyimpan nomor Anda di kontak mereka tetap melihatnya. Jika Anda juga ingin hanya bisa dihubungi lewat nama pengguna, atur "Who can find me by my number" (siapa yang dapat menemukan saya lewat nomor saya) ke "Nobody".
+3. **Periksa nama profil Anda.** Profil Signal Anda punya nama depan yang wajib dan foto opsional, dan halaman Signal menyatakan Anda boleh memakai nama panggilan, satu karakter atau emoji. Menerima permintaan pesan memungkinkan pengirimnya melihat profil Anda.
+4. **Tambahkan nama pengguna ke peringatan dan kirim tes.** Masukkan di kolom Nama pengguna Signal, simpan, lalu tekan **Kirim tes** untuk Signal. Karena akun Signal Tokenping tidak ada di kontak Anda, pesan pertama mungkin datang sebagai permintaan pesan. Lakukan langkah 2 dan 3 sebelum Anda menerimanya.
+
+Signal menyatakan bahwa jika Anda tidak menerima permintaan, pengirim hanya melihat nama pengguna yang ditujunya. Jika Anda menerimanya, pengirim melihat nama profil Anda dan mungkin melihat nomor telepon Anda, tergantung pengaturan nomor Anda.
+
+Nama pengguna hanyalah cara untuk memulai obrolan. Signal sendiri tetap menyimpan nomor telepon yang Anda pakai untuk mendaftar, dan tidak ada langkah di sini yang mengubahnya. Jika Anda mengganti atau menghapus nama pengguna, Signal menyatakan siapa pun dapat segera mengklaim nama yang lama, dan Tokenping tetap mengirim ke nama pengguna yang tersimpan, jadi segera perbarui peringatan Anda.
+
+## Bagaimana agar akun Telegram tidak mengungkap identitas Anda?
+
+Telegram adalah pilihan yang paling lemah dari ketiganya, jadi baca bagian ini sebelum Anda memilihnya. Tokenping hanya dapat mengirim pesan ke akun Telegram yang sudah menekan Start di botnya, jadi Anda mengetik @username Anda di peringatan dan menekan Start satu kali. Karena itu akun tersebut memerlukan nama pengguna, dan Telegram menyatakan bahwa nama pengguna bersifat publik: nama pengguna membuat Anda dapat ditemukan lewat pencarian global, dan orang yang menemukan Anda dapat mengirim pesan tanpa nomor Anda. FAQ Telegram sendiri menyarankan agar tidak membuatnya jika Anda tidak nyaman dengan hal itu.
+
+1. **Pilih nama pengguna yang tidak memuat apa pun tentang Anda.** Gunakan a-z, 0-9 dan garis bawah; Tokenping menerima 4 hingga 32 karakter. Atur di "Settings" (Pengaturan) Telegram.
+2. **Periksa nama tampilan dan foto Anda.** Kebijakan privasi Telegram menyatakan nama layar Anda tidak harus nama asli Anda. Bot dapat melihat nama publik, nama pengguna dan foto profil Anda.
+3. **Periksa pengaturan nomor Anda.** Buka "Settings" (Pengaturan), lalu "Privacy and Security" (Privasi dan Keamanan), lalu "Phone Number" (Nomor telepon). Secara bawaan hanya orang yang menyimpan Anda di kontaknya yang melihat nomor Anda, dan Telegram menyatakan bahwa orang yang menemukan Anda lewat nama pengguna juga tidak melihatnya. Bot tidak melihatnya kecuali Anda memberikannya.
+4. **Hubungkan akunnya.** Ketik nama pengguna itu di peringatan, tekan Start di bot dan tunggu sampai formulir menampilkannya sebagai terhubung.
+
+Kode Tokenping hanya menyimpan ID obrolan dan nama pengguna Anda, tetapi Bot API Telegram memberi bot nama depan Anda di setiap pesan dan, jika ada, nama belakang, nama pengguna dan kode bahasa Anda. Siapa pun dapat memeriksa apakah suatu nama pengguna sudah menekan Start. Mengirim /stop ke bot memutus hubungan obrolan Anda.
+
+## Haruskah Anda memakai dompet terpisah?
+
+Hanya jika Anda meminjam dari dompet itu. Tokenping memantau dompet yang Anda hubungkan dan tidak ada yang lain, dan akses milik dompet yang membayar, jadi Anda tidak bisa membayar dari satu alamat untuk memantau posisi yang dipegang alamat lain. Dompet yang hanya Anda pakai untuk Aave menyimpan posisi, pembayaran dan peringatan dalam satu alamat. Cara Anda mengisinya tetap meninggalkan jejak publik, pembayaran Tokenping bersifat publik, dan dompet itu tetap pseudonim, bukan anonim. Memindahkan pinjaman ke dompet baru biasanya berarti menutup dan membuka kembali posisi, dengan biaya dan risiko likuidasi yang menyertainya, jadi panduan ini tidak menyarankannya.
+
+## Apa yang dilindungi setiap langkah, dan apa yang tidak?
+
+| Langkah                                                          | Disembunyikan dari Tokenping dan penyedianya | Tidak disembunyikan                                                                                     |
+| ---------------------------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Alias email                                                      | Alamat email asli Anda                       | Layanan alias melihat kedua alamat dan peringatannya, dan peringatan itu masuk ke kotak surat asli Anda |
+| Nama pengguna Signal, nomor disembunyikan                        | Nomor telepon Anda                           | Signal tetap menyimpan nomor Anda, dan menerima permintaan membagikan nama profil Anda                  |
+| Nama pengguna dan nama Telegram yang tidak mengidentifikasi Anda | Nama asli dan nomor telepon Anda             | Nama pengguna bersifat publik, dan Telegram menyimpan obrolan di servernya                              |
+| Dompet yang hanya dipakai untuk Aave                             | Kaitan dengan riwayat lain dompet tersebut   | Transaksi pengisian dana dan pembayaran Tokenping bersifat publik                                       |
+| Menghapus peringatan                                             | Baris yang tersimpan, termasuk kontaknya     | Pembayaran on-chain, dan apa yang disimpan setiap penyedia menurut aturannya sendiri                    |
+
+## Bagaimana cara menghapus apa yang disimpan Tokenping?
+
+Hapus peringatan di dasbor: tekan **Edit peringatan**, lalu **Hapus peringatan**, dan konfirmasi. Itu menghapus pengaturan untuk pasar tersebut, termasuk alamat email dan nama pengguna Signal, dan memerlukan akses aktif. Peringatan setiap pasar dihapus secara terpisah.
+
+<Callout tone="warning">
+  Berakhirnya akses Anda tidak menghapus apa pun: peringatan dan kontak di dalamnya tetap tersimpan sampai Anda
+  menghapus peringatan itu. Hapus peringatan yang tidak lagi Anda inginkan selagi akses Anda masih aktif. Jika akses
+  sudah berakhir, halaman privasi menyebutkan ke mana Anda dapat menghubungi tim agar pengaturan Anda dihapus.
+</Callout>
+
+Di Telegram, mengirim /stop ke bot memutus hubungan obrolan Anda. Jawaban opsional "Dari mana Anda mengetahui Tokenping?" dapat dihapus atas permintaan, melalui kontak yang sama di halaman privasi. Pembayaran on-chain tidak dapat dihapus oleh siapa pun.
+
+Kode di balik semua ini ada di [repositori Tokenping](https://github.com/romispectrum/tokenping). Jika ada klaim dalam panduan ini yang tidak sesuai dengan kode itu, beri tahu tim melalui kontak di halaman privasi.
+
+## Sumber
+
+- [Halaman privasi Tokenping](/id/privasi) (diakses 19 Oktober 2026; terakhir diperbarui 19 Oktober 2026): apa yang disimpan, siapa yang menanganinya, apa yang publik dan cara menghapusnya
+- [Kode sumber Tokenping di GitHub](https://github.com/romispectrum/tokenping) (diakses 19 Oktober 2026; repositori ini publik): proses masuk di `packages/nextjs/app/api/auth`, pemeriksaan sesi di `packages/nextjs/services/api/server/session.ts`, penyimpanan peringatan di `packages/nextjs/services/notifications`, rute Telegram di `packages/nextjs/app/api/telegram`, migrasi di `packages/supabase/migrations` dan kontrak pembayaran di `packages/hardhat/contracts`
+- [TokenpingPaywall di Arbitrum One, kode sumber terverifikasi di Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553) (diakses 19 Oktober 2026): event PaymentReceived
+- [SimpleLogin](https://simplelogin.io/) (diakses 19 Oktober 2026): fungsi alias, pembuatnya, open source
+- [Harga SimpleLogin](https://simplelogin.io/pricing/) (diakses 19 Oktober 2026): paket tanpa biaya, dengan jumlah alias yang terbatas
+- [Dokumentasi SimpleLogin: membuat alias](https://simplelogin.io/docs/getting-started/create-alias/) (diakses 19 Oktober 2026)
+- [DuckDuckGo Email Protection](https://duckduckgo.com/duckduckgo-help-pages/email-protection/what-is-duckduckgo-email-protection) (diakses 19 Oktober 2026)
+- [Firefox Relay](https://relay.firefox.com/) (diakses 19 Oktober 2026)
+- [addy.io](https://addy.io/) (diakses 19 Oktober 2026)
+- [Apple Support: Hide My Email dengan iCloud+](https://support.apple.com/en-us/102548) (diakses 19 Oktober 2026)
+- [Signal Support: Phone Number Privacy and Usernames](https://support.signal.org/hc/en-us/articles/6712070553754-Phone-Number-Privacy-and-Usernames) (diakses 19 Oktober 2026)
+- [Signal Support: Signal Profiles and Message Requests](https://support.signal.org/hc/en-us/articles/360007459591-Signal-Profiles-and-Message-Requests) (diakses 19 Oktober 2026)
+- [Kebijakan privasi Signal](https://signal.org/legal/) (diakses 19 Oktober 2026)
+- [FAQ Telegram](https://telegram.org/faq) (diakses 19 Oktober 2026): nama pengguna, visibilitas nomor telepon, apa yang dilihat bot
+- [Kebijakan privasi Telegram](https://telegram.org/privacy) (diakses 19 Oktober 2026)
+- [Telegram Bot API: objek User dan Chat](https://core.telegram.org/bots/api) (diakses 19 Oktober 2026)
+- [Adendum pemrosesan data Resend](https://resend.com/legal/dpa) (diakses 19 Oktober 2026)
+- [Dokumentasi Resend: penyimpanan jangka panjang data email](https://www.resend.com/docs/webhooks/how-to-store-webhooks-data) (diakses 19 Oktober 2026)
+- [Vercel Web Analytics: privasi dan kepatuhan](https://vercel.com/docs/analytics/privacy-policy) (diakses 19 Oktober 2026)
+- [Dokumentasi ENS: nama primer](https://docs.ens.domains/web/reverse) (diakses 19 Oktober 2026)
+- [ethereum.org: pengantar Ethereum](https://ethereum.org/en/developers/docs/intro-to-ethereum/) (diakses 19 Oktober 2026)
+
+_Konten edukasi, bukan nasihat keuangan. Peringatan mengurangi risiko, tetapi tidak mencegah likuidasi._

@@ -1,0 +1,163 @@
+export const meta = {
+  slug: "depeg-stablecoin-aave",
+  title: "Dampak depeg stablecoin pada pinjaman Aave Anda",
+  description:
+    "Cara depeg menggerakkan faktor kesehatan Aave di tiap sisi pinjaman, cara feed ber-cap Aave menilai USDC, USDT dan USDe, serta pelajaran 2023 dan 2025.",
+  h1: "Apa yang terjadi pada posisi Aave Anda saat stablecoin mengalami depeg?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "Apa yang terjadi pada faktor kesehatan Aave saya saat stablecoin mengalami depeg?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  Depeg (lepasnya patokan terhadap dolar) sebuah stablecoin menggerakkan faktor kesehatan (health factor) Aave Anda
+  melalui harga oracle (sumber harga), bukan US$1 yang ada di benak Anda. Jika stablecoin itu adalah jaminan Anda,
+  setiap sen penurunannya di bawah US$1 langsung masuk ke faktor kesehatan, karena adaptor harga stablecoin Aave
+  membatasi harga dari atas (di US$1,04 untuk USDC, USDT, DAI, USDS dan PYUSD di Ethereum Core, dibaca pada 28 Oktober
+  2026) dan tidak punya batas bawah. Jika stablecoin itu adalah utang Anda, penurunan harganya menaikkan faktor
+  kesehatan dan kenaikannya menurunkan faktor kesehatan, tetapi tidak pernah lebih dari yang diizinkan batas atas (cap)
+  itu. USDe adalah kasus khusus: sejak 8 Maret 2025 Aave menilainya dengan feed USDT, sehingga harga pasarnya sama
+  sekali tidak sampai ke faktor kesehatan Anda. Depeg dapat menggerakkan posisi sangat jauh di antara dua pemeriksaan
+  peringatan, jadi peringatan memberi Anda waktu, bukan perlindungan.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Angka dan nomor blok tempat angka itu dibaca: content/blog/snapshots/stablecoin-depeg-aave.md */}
+
+## Apa itu depeg stablecoin, dan sisi pinjaman mana yang terkena?
+
+Sebuah stablecoin mengalami depeg saat harga pasarnya meninggalkan US$1 yang seharusnya dipertahankannya. Bagi peminjam di Aave, hal ini berpengaruh di dua sisi, dan keduanya berperilaku berbeda:
+
+- **Stablecoin yang Anda setor sebagai jaminan.** Harga oracle-nya mengalikan nilai jaminan Anda, sehingga penurunan di bawah US$1 menyusutkan sisi jaminan dalam faktor kesehatan. Inilah [Penyebab 5 turunnya faktor kesehatan](/id/blog/mengapa-faktor-kesehatan-aave-turun#penyebab-5-apakah-stablecoin-yang-anda-setor-sebagai-jaminan-mengalami-depeg-ke-bawah), dan inilah sisi yang berbahaya.
+- **Stablecoin yang Anda pinjam.** Harga oracle-nya mengalikan nilai utang Anda. Penurunan di bawah US$1 membuat utang bernilai lebih kecil dan menaikkan faktor kesehatan Anda; kenaikan di atas US$1 membuat utang bernilai lebih besar dan menurunkannya.
+
+Faktor kesehatan sendiri memakai rumus yang sama dalam kedua kasus, seperti dijelaskan dalam [apa itu faktor kesehatan Aave](/id/blog/faktor-kesehatan-aave):
+
+**HF = Σ(nilai jaminan × ambang likuidasi) ÷ total nilai utang**
+
+Kedua nilai itu berasal dari oracle Aave. Tidak ada bagian rumus yang tahu bahwa sebuah aset adalah stablecoin: USDC di US$0,87 hanyalah aset senilai US$0,87. Yang membuat stablecoin berbeda adalah cara Aave menilainya, yang menjadi pokok bagian ketiga. Contoh di bawah memakai parameter Aave V3 Ethereum Core yang dibaca pada 28 Oktober 2026 di blok 26291704 (14:03:35 UTC): ambang likuidasi (liquidation threshold) 78% untuk USDC dan USDT, 84% untuk WETH.
+
+## Apa dampak depeg stablecoin jaminan Anda pada faktor kesehatan?
+
+Penurunan harga oracle stablecoin yang Anda setor menurunkan faktor kesehatan Anda sebanding dengan penurunannya, tanpa ada yang menahannya. Ambil contoh 20.000 USDC disetor dengan 10.000 USDT dipinjam, keduanya di US$1 agar hitungannya bulat (oracle membaca US$0,99971803 untuk USDC dan US$0,99842395 untuk USDT di blok 26291704):
+
+- Di US$1: 20.000 × 0,78 ÷ 10.000 = **1,56**.
+- USDC di US$0,95: 19.000 × 0,78 ÷ 10.000 = **1,48**.
+- USDC di US$0,87, titik terendah Maret 2023: 17.400 × 0,78 ÷ 10.000 = **1,36**.
+- Likuidasi di 1,00 memerlukan USDC di 10.000 ÷ (20.000 × 0,78) = **US$0,64**, dengan USDT tidak berubah.
+
+Posisi itu punya ruang karena hanya meminjam separuh dari yang diizinkan rasio pinjaman terhadap nilai (LTV) 75%. Jaminan yang sama dengan pinjaman hingga batas, 15.000 USDT, dimulai di 15.600 ÷ 15.000 = **1,04**, dan USDC di US$0,95 membawanya ke 14.820 ÷ 15.000 = **0,99**, yang dapat dilikuidasi. Posisi ini mencapai 1,00 pada harga USDC sekitar **US$0,96**, penurunan kurang dari 4%. Di US$0,87 nilainya 0,90. Sebuah loop (siklus pinjaman dengan leverage) stablecoin terlihat tenang sampai oracle bergerak, dan saat itu penyangganya hanyalah selisih yang Anda sisakan antara LTV Anda dan ambang likuidasi; [seberapa besar penyangga yang diberikan faktor kesehatan](/id/blog/faktor-kesehatan-aave-yang-aman) membahas cara memilihnya.
+
+Satu detail membantu: hanya rasio antara kedua harga oracle yang dihitung. Jika USDC dan USDT sama-sama terbaca US$0,95, posisi 15.000 USDT kembali menjadi 14.820 ÷ 14.250 = 1,04, tidak berubah. Yang merugikan pada Maret 2023 adalah USDC turun sementara USDT tidak.
+
+Setiap stablecoin yang Anda setor terpapar dengan cara ini, sebanding dengan porsinya dalam jaminan Anda. Dengan WETH dan USDC disetor dalam jumlah dolar yang sama (ambang 84% dan 78%), USDC sekitar 48% dari jaminan tertimbang Anda, sehingga penurunan USDC sebesar 13% menghapus sekitar 6% darinya.
+
+## Apa dampak depeg stablecoin yang Anda pinjam?
+
+Jika stablecoin itu adalah utang Anda, efeknya terbalik dan, ke satu arah, terbatas. Ambil contoh 10 WETH disetor (ambang 84%) dengan 12.000 USDT dipinjam, dengan ETH di harga ilustratif US$2.300 (oracle membaca US$2.335,08 di blok 26291704):
+
+- USDT di US$1: 23.000 × 0,84 ÷ 12.000 = **1,61**.
+- USDT turun ke US$0,95: utang bernilai 11.400, jadi **1,69**. Di US$0,87 nilainya **1,85**. Depeg ke bawah pada aset utang Anda menguntungkan Anda.
+- USDT naik ke US$1,02: utang bernilai 12.240, jadi **1,58**.
+- USDT naik ke US$1,04 atau lebih: utang bernilai paling banyak 12.480, jadi **1,55**. Cap menahan harga di sana, apa pun kata pasar.
+
+Jadi stablecoin yang dipinjam paling banyak dapat mengurangi sekitar 4% faktor kesehatan Anda melalui harganya sendiri, sedangkan sebagai jaminan ia dapat mengurangi sebanyak penurunannya. Asimetri itu berasal dari adaptor, bukan dari parameter risiko Aave.
+
+<Callout tone="info">
+  Ini juga sebabnya meminjam stablecoin dengan jaminan aset yang volatil, posisi dalam [short mata uang fiat dengan
+  Aave](/id/blog/short-mata-uang-fiat-dengan-aave), hampir tidak terpapar depeg: stablecoin itu adalah utang, dan
+  penurunannya adalah kabar baik bagi peminjam.
+</Callout>
+
+## Bagaimana Aave menilai stablecoin?
+
+Aave tidak menilai stablecoin di US$1. Setiap cadangan (reserve) punya sumber harga yang ditetapkan tata kelola (governance) di kontrak AaveOracle, dan untuk stablecoin sumber itu adalah feed USD Chainlink yang dibungkus adaptor batas harga (price cap adapter) dari repositori price feeds Aave (repositori yang dulu bernama aave-capo; README-nya menyebut namanya diganti menjadi Aave Price Feeds). Adaptor stablecoin adalah `PriceCapAdapterStable`, dan `latestAnswer`-nya melakukan tiga hal: membaca feed Chainlink, mengembalikan cap yang ditetapkan tata kelola jika feed berada di atasnya, dan selain itu mengembalikan harga feed tanpa perubahan (jawaban feed yang tidak positif menjadi 0). Tidak ada batas bawah.
+
+Dibaca dari AaveOracle di Ethereum Core pada blok 26291704 (28 Oktober 2026, 14:03:35 UTC), melalui `getSourceOfAsset` dan getter masing-masing adaptor:
+
+| Aset  | Ambang likuidasi   | Harga oracle  | Sumber harga, sebagaimana adaptor menggambarkan dirinya  | Cap (`getPriceCap`)      |
+| ----- | ------------------ | ------------- | -------------------------------------------------------- | ------------------------ |
+| USDC  | 78%                | US$0,99971803 | "Capped USDC / USD" di atas feed "USDC / USD"            | US$1,04                  |
+| USDT  | 78%                | US$0,99842395 | "Capped USDT/USD" di atas feed "USDT / USD"              | US$1,04                  |
+| USDe  | 75%                | US$0,99842395 | "Capped USDT/USD" di atas feed USDT yang sama            | US$1,04 (lihat di bawah) |
+| DAI   | 77%                | US$0,99923138 | "Capped DAI/USD" di atas feed "DAI / USD"                | US$1,04                  |
+| USDS  | 78%                | US$0,99972900 | "Capped USDS/USD" di atas feed "USDS / USD"              | US$1,04                  |
+| PYUSD | 78%                | US$0,99988808 | "Capped pyUSD/USD" di atas feed "PYUSD / USD"            | US$1,04                  |
+| GHO   | 0% (bukan jaminan) | US$1,00000000 | Sumber tetap yang tidak menjawab satu pun getter adaptor | tidak ada, tetap di US$1 |
+
+`isCapped()` setiap adaptor mengembalikan false hari itu: tidak satu pun feed berada di atas cap-nya. Baris USDe perlu catatan: adaptor yang dirujuk USDe adalah deployment lama dari kontrak yang sama (dibuat 1 Maret 2024) yang tidak punya getter `getPriceCap`, sehingga cap dibaca dari storage-nya, tempat angka 104000000 yang sama tersimpan. sUSDe dinilai oleh adaptor lain, "Capped sUSDe / USDT / USD", yang mengalikan kurs sUSDe ke USDe dengan harga USDT dan terbaca US$1,25333685.
+
+Artinya bagi peminjam:
+
+- **Di atas US$1, Anda terlindungi sebagai peminjam dan dibatasi sebagai penyetor.** Jika USDC diperdagangkan di US$1,10, Aave menilainya US$1,04, sehingga utang USDC paling banyak bertambah 4% dan jaminan USDC paling banyak bertambah nilainya 4%.
+- **Di bawah US$1, tidak ada yang diperhalus.** Adaptor meneruskan US$0,95 atau US$0,87 persis apa adanya. Jaminan Anda bernilai sebesar yang dikatakan feed, dan faktor kesehatan Anda mengikutinya di setiap pembacaan.
+- **Cap dapat berubah.** `setPriceCap` terbuka bagi risk admin dan pool admin Aave, tidak dapat menetapkan cap di bawah harga feed saat ini dan tidak dapat melebihi US$2. Cap di atas adalah yang tercatat on-chain pada 28 Oktober 2026, bukan janji.
+- **Yang penting adalah feed, bukan harga di bursa.** Feed Chainlink menggabungkan beberapa bursa, sehingga harga di satu bursa bukan harga oracle. Apakah itu menenangkan atau berbahaya bergantung pada sisi pinjaman tempat Anda berada; dua bagian berikutnya menunjukkan keduanya.
+
+Kesalahan oracle adalah topik terpisah: adaptor dapat salah menilai aset tanpa pergerakan pasar sama sekali, seperti pada insiden wstETH Maret 2026, dan [Penyebab 6 turunnya faktor kesehatan](/id/blog/mengapa-faktor-kesehatan-aave-turun#penyebab-6-apakah-kesalahan-oracle-atau-nilai-tukar-membuat-harga-jaminan-anda-keliru) membahas kasus itu.
+
+## Mengapa USDe dinilai dengan feed USDT, dan apa artinya pada 10 Oktober 2025?
+
+Sejak 8 Maret 2025 Aave V3 Ethereum Core menilai USDe dengan price feed USDT, sehingga harga pasar USDe sendiri tidak sampai ke faktor kesehatan mana pun di sana. Keputusan itu berasal dari proposal tata kelola, "sUSDe and USDe Price Feed Update", yang diunggah di forum tata kelola Aave oleh Chaos Labs bersama LlamaRisk pada 2 Januari 2025. Dengan kata-katanya sendiri, proposal itu "suggests hardcoding the USDe price to match the USDT price in Aave's pricing feeds" (menyarankan agar harga USDe dipatok sama dengan harga USDT di price feed Aave), dengan argumen bahwa sebagian besar lindung nilai Ethena berdenominasi USDT dan bahwa menilai sUSDe dari pasar sekunder USDe membuat posisi berjaminan sUSDe terpapar penyimpangan jangka pendek dan likuidasi yang tidak perlu. Utas itu menuai penolakan (satu balasan bertanya mengapa tidak dipatok di US$1,00 saja; yang lain khawatir posisi sUSDe kini terpapar harga USDT), dan Chaos Labs menyebut pengaturan itu langkah sementara pada 16 Januari 2025. Pemungutan suara Snapshot berlangsung 3 hingga 6 Februari 2025 dan lolos. On-chain, AIP 262 berlaku di blok 22002625 pada 8 Maret 2025 (14:01:47 UTC): sumber AaveOracle untuk USDe beralih dari adaptor "Capped USDe / USD" ke adaptor "Capped USDT/USD", dan sumber sUSDe ke "Capped sUSDe / USDT / USD". Adaptor USDe/USD lama masih ada dan masih menjawab: di blok 26291704 adaptor itu terbaca US$0,99969500, sementara Aave menilai USDe di harga USDT, US$0,99842395.
+
+Pada 10 Oktober 2025, saat pasar jatuh secara menyeluruh, hal ini diuji. Unggahan forum LlamaRisk tanggal 24 Oktober 2025 menggambarkan "aggressive cryptocurrency market volatility events on centralized exchanges, most notably Binance" (peristiwa volatilitas pasar kripto yang agresif di bursa terpusat, terutama Binance) yang menggerakkan harga pasar sekunder USDe "down to $0.65 at the lowest point" (turun hingga US$0,65 di titik terendah), dan menyatakan bahwa feed USDe/USD Chainlink, yang bersumber dari beberapa bursa, "did not deviate significantly during this localized de-peg" (tidak menyimpang secara berarti selama de-peg lokal ini). Balasan Chaos Labs tanggal 2 November 2025 memberi angkanya: harga USDe/USD Chainlink "reached as low as $0.977" (turun hingga serendah US$0,977). Aave sendiri tidak melihat kedua harga itu. Dalam kata-kata LlamaRisk, "Aave avoided immediate issues from the de-peg on Binance by pricing USDe on par with USDT" (Aave terhindar dari masalah langsung akibat de-peg di Binance dengan menilai USDe setara USDT). Catatan riset LlamaRisk tanggal 18 Oktober 2025 menambahkan bahwa simpanan USDe di Aave sebesar US$1,03 miliar "remained remarkably stable" (tetap sangat stabil) selama peristiwa itu.
+
+Ada dua catatan jujur. Pertama, inilah yang dikatakan sumber, tidak lebih: tidak ada post-mortem publik yang ditemukan untuk panduan ini yang menghitung likuidasi terkait USDe di Aave pada hari itu, jadi panduan ini tidak mengklaim bahwa likuidasi seperti itu tidak ada. Kedua, unggahan LlamaRisk yang sama yang memuji feed USDT karena menghindarkan masalah juga menyebut pendekatan itu "transfers the solvency risk to the Aave protocol" (memindahkan risiko solvabilitas ke protokol Aave): jika USDe suatu saat kehilangan jaminan cadangannya, oracle Aave akan terus menilainya seperti USDT sampai tata kelola turun tangan. Dalam unggahan itu LlamaRisk mengusulkan oracle USDe dengan manajemen risiko dan pembekuan otomatis; Chaos Labs merekomendasikan untuk tidak menerapkannya pada 2 November 2025, dan utas itu ditutup pada 7 Desember 2025 tanpa pemungutan suara yang tercatat. Pada 28 Oktober 2026 USDe di Ethereum Core masih merujuk ke adaptor USDT, dengan ambang likuidasi 75% dan LTV 0.
+
+Bagi peminjam, ini berlaku dua arah. Jika Anda memegang USDe sebagai jaminan di Ethereum Core, aksi jual USDe di bursa tidak menggerakkan faktor kesehatan Anda, tetapi depeg USDT akan menggerakkannya, begitu pula pemungutan suara tata kelola yang mengembalikan feed-nya. Jika Anda meminjam USDe, diskon di pasar membuatnya lebih murah untuk dibeli kembali, tetapi Aave tetap menilai utang Anda di harga USDT.
+
+## Apa yang terjadi pada peminjam Aave saat USDC turun pada Maret 2023?
+
+Pada 11 Maret 2023, setelah Circle mengungkapkan bahwa sebagian cadangan USDC disimpan di Silicon Valley Bank, USDC turun di pasar hingga titik terendah sekitar 88 sen sekitar pukul 08:00 UTC, menurut post-mortem Gauntlet untuk Aave (17 Maret 2023). Harga USDC di Aave ikut turun mengikuti feed Chainlink (adaptor ber-cap baru datang belakangan, dan adaptor itu tidak akan mengubah penurunan), dan setiap posisi dengan jaminan USDC kehilangan faktor kesehatan seiring penurunan itu, persis seperti contoh hitungan pertama di atas.
+
+Tata kelola dan tim risiko bergerak dalam hitungan jam, semuanya di utas forum yang dibuka Gauntlet pukul 08:13 UTC:
+
+- **09:19 UTC:** Gauntlet merekomendasikan menghentikan sementara (pause) semua pasar Aave V2 dan V3, untuk mencegah likuidasi mewujudkan insolvensi.
+- **10:19 UTC:** BGD Labs menunjukkan bahwa Aave Guardian hanya dapat bertindak segera di Aave V3 Avalanche, tempat infrastruktur tata kelola lintas rantai tidak berlaku, dan mengusulkan membekukan stablecoin di sana serta menetapkan LTV-nya ke 0.
+- **Sekitar 13:00 UTC:** Guardian membekukan USDC, USDT, DAI, FRAX dan MAI di Aave V3 Avalanche dan menetapkan LTV-nya ke 0, dikonfirmasi oleh BGD Labs di utas itu, yang menambahkan bahwa pembekuan tidak mengubah faktor kesehatan yang sudah ada. Akun Aave mengumumkannya pukul 16:44 UTC.
+- **Tidak ada pause.** Post-mortem Gauntlet menyebut Guardian tidak menerapkan pause, setelah menimbang risikonya terhadap implikasi strategis dan filosofis; pembekuan memblokir setoran dan pinjaman baru tetapi membiarkan likuidasi tetap berjalan.
+
+Hasilnya, menurut post-mortem yang sama: sekitar US$280.000 insolvensi di Aave V3 Avalanche E-Mode dan sekitar US$20.000 di V3 Arbitrum selama akhir pekan 11 hingga 12 Maret, sekitar US$300.000 seluruhnya, dan tidak ada kerugian yang terealisasi di Aave V2. Gauntlet memperkirakan bahwa pada harga USDC 80 sen, insolvensi V2 saja dapat mencapai sekitar US$1 juta. Pelajaran bagi peminjam adalah bahwa respons protokol terhadap depeg ditujukan untuk protokol: pembekuan menghentikan masuknya risiko baru, tidak membuat posisi Anda lebih aman, dan pause yang bisa menghentikan likuidasi tidak digunakan.
+
+## Bisakah depeg menimbulkan utang macet, dan siapa yang menanggungnya?
+
+Bisa. Saat jaminan turun lebih cepat daripada kemampuan likuidator untuk membereskannya, sebuah posisi dapat berakhir dengan jaminan yang bernilai lebih kecil dari utangnya ditambah bonus likuidasi, dan kekurangannya menjadi utang macet (bad debt). US$300.000 pada Maret 2023 persis itu, sebagian besar di E-Mode stablecoin tempat posisi berjalan dekat batas. Sejak Aave v3.3, kekurangan seperti itu dibakar dari utang peminjam dan dicatat sebagai defisit pada aset, dan Umbrella, penyangga Aave berbasis staking, dapat membakar aToken yang di-stake untuk menutupinya (aktivasinya dimulai di Ethereum, menurut dokumentasi Aave). Semua itu tidak membantu peminjam, yang jaminannya sudah hilang; [bisakah likuidasi meninggalkan utang macet](/id/blog/cara-kerja-likuidasi-aave#apakah-likuidasi-dapat-meninggalkan-utang-macet) memuat mekanismenya dan sebuah contoh hitungan.
+
+## Apa bedanya di Morpho?
+
+Di Morpho tidak ada penilaian stablecoin di tingkat protokol dan tidak ada cap. Setiap pasar Morpho Blue punya oracle sendiri, dipilih oleh siapa pun yang membuat pasar itu dan tetap selama umur pasar, dan dokumentasi Morpho menyatakan "Once a market is deployed, its oracle address cannot be modified." (Setelah pasar di-deploy, alamat oracle-nya tidak dapat diubah.) Sebagian oracle hanya menilai jaminan dan menganggap token pinjaman bernilai US$1, sehingga depeg stablecoin pinjaman tidak mengubah apa pun; yang lain menyertakan feed untuknya. Apakah depeg USDC menyentuh posisi Morpho Anda bergantung pada satu kontrak itu, dan [apa yang menggerakkan faktor kesehatan Morpho](/id/blog/faktor-kesehatan-morpho#apa-yang-menggerakkan-faktor-kesehatan-morpho) menunjukkan cara membacanya.
+
+## Apa yang dapat Anda lakukan terhadap risiko depeg di Aave?
+
+Risiko depeg sebagian besar ditentukan saat Anda memilih posisi, jadi tindakan yang berguna adalah pilihan, bukan reaksi:
+
+1. **Letakkan stablecoin di sisi utang jika memungkinkan.** Stablecoin yang dipinjam hanya dapat merugikan Anda dengan naik, dan cap membatasinya sekitar 4%. Jaminan stablecoin tidak punya batas bawah. [Memilih utang yang cocok dengan jaminan Anda](/id/blog/cara-menghindari-likuidasi-aave#langkah-5-pilih-utang-yang-sesuai-dengan-jaminan-anda) membahas pasangan-pasangannya.
+2. **Jika Anda memegang jaminan stablecoin, jaga penyangga dalam sen, bukan persen.** Contoh dekat batas di atas mencapai 1,00 di sekitar US$0,96. Faktor kesehatan 1,56, yaitu jaminan yang sama dengan utang sepertiga lebih kecil, memerlukan US$0,64. Tentukan pada harga berapa Anda bersedia dilikuidasi, lalu sesuaikan besar pinjaman dengannya.
+3. **Pantau oracle, bukan bursa.** Harga yang melikuidasi Anda adalah `AaveOracle.getAssetPrice(asset)`, yang untuk stablecoin di Ethereum Core adalah feed Chainlink di bawah cap, dan untuk USDe adalah feed USDT. Harga di satu bursa bukan syarat yang perlu maupun cukup.
+4. **Pahami apa yang dapat dilakukan tata kelola.** Cap dan sumber harga berubah lewat pemungutan suara atau tindakan risk admin, dan pembekuan saat krisis tidak akan menghentikan likuidasi. Utas Maret 2023 dan Oktober 2025 di atas adalah catatan tentang apa yang telah dilakukan.
+5. **Siapkan jalan keluar.** Melunasi dengan stablecoin yang mengalami depeg itu murah jika ia adalah utang Anda dan mahal jika Anda harus membelinya; [cara menaikkan faktor kesehatan Aave Anda](/id/blog/cara-menghindari-likuidasi-aave) mencantumkan langkah yang tetap berfungsi saat pembekuan, karena cadangan yang dibekukan tetap mengizinkan pelunasan.
+
+## Bisakah peringatan memberi tahu Anda tentang depeg?
+
+Peringatan dapat memberi tahu Anda bahwa faktor kesehatan Anda telah melewati sebuah garis; peringatan tidak dapat memperlambat depeg. Tokenping memeriksa faktor kesehatan Aave V3 dan V4 Anda setiap 5 menit di 22 jaringan dan mengirimi Anda pesan lewat Signal, Telegram atau email selama faktor kesehatan berada di bawah ambang batas yang Anda tetapkan (1,1 hingga 10). Tokenping membaca faktor kesehatan dari kontrak Pool, sehingga harga di baliknya adalah harga oracle Aave, harga yang sama yang menjadi dasar pembayaran likuidator: harga US$0,65 untuk USDe di Binance tidak sampai ke faktor kesehatan mana pun di Ethereum Core, sedangkan pembacaan USDC Chainlink di US$0,88 sampai ke setiap posisi dengan jaminan USDC, dan peringatan menyusul jika itu membawa faktor kesehatan ke bawah ambang batas Anda.
+
+Lima menit adalah waktu yang lama dalam sebuah depeg. Pada 11 Maret 2023 USDC sudah berada di sekitar 88 sen pada pukul 08:00 UTC, dan posisi dekat batas di atas mencapai 1,00 di sekitar US$0,96, sehingga pemeriksaan setiap 5 menit dapat menemukan posisi seperti itu sudah di bawah 1,00 pada pemeriksaan pertama yang melihat penurunannya. Yang diberikan peringatan adalah bagian yang lambat: stablecoin yang bergeser ke US$0,98 dan bertahan di sana, ambang likuidasi yang dipangkas tata kelola, bunga yang terus bertambah. Tetapkan ambang batas di titik Anda masih nyaman untuk bertindak, dan ingat bahwa bertindak saat depeg berarti melunasi atau menambah jaminan di jaringan yang sedang dipakai semua orang pada saat yang sama. [Cara mengatur peringatan faktor kesehatan](/id/blog/cara-mengatur-peringatan-faktor-kesehatan-aave) membahas langkah-langkahnya, peringatan berbiaya <AlertPrice />, dan Anda dapat [memeriksa faktor kesehatan Aave V3 Anda](/id/aave) terlebih dahulu; untuk melihat posisi Anda, Anda tidak perlu membayar.
+
+## Sumber
+
+- [Aave V3 Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): LTV dan ambang likuidasi USDC, USDT, USDe, DAI, USDS, PYUSD, GHO dan WETH di blok 26291704 (diakses 28 Oktober 2026)
+- [Aave V3 Ethereum Core AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2#readContract): `getAssetPrice` dan `getSourceOfAsset` untuk aset yang sama di blok 26291704, serta event `AssetSourceUpdated` untuk USDe dan sUSDe di blok 22002625 (diakses 28 Oktober 2026)
+- [Adaptor Capped USDC / USD](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract), [adaptor Capped USDT/USD](https://etherscan.io/address/0x260326c220E469358846b187eE53328303Efe19C#readContract) dan [adaptor yang dirujuk USDe](https://etherscan.io/address/0xC26D4a1c46d884cfF6dE9800B6aE7A8Cf48B4Ff8#code), "Aave: Ethena Correlated USDe Price Feed", dibuat 1 Maret 2024: deskripsi, cap, `isCapped` dan feed dasarnya di blok 26291704 (diakses 28 Oktober 2026)
+- [PriceCapAdapterStable.sol](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol) dan [README Aave Price Feeds](https://github.com/aave-dao/aave-price-feeds): logika cap, kontrol akses `setPriceCap`, penggantian nama dari Aave Capo (diakses 28 Oktober 2026)
+- [Dokumentasi oracle Aave](https://aave.com/docs/ecosystem/oracle.md): sumber harga ditetapkan per cadangan oleh tata kelola (diakses 28 Oktober 2026)
+- [ARFC: sUSDe and USDe Price Feed Update](https://governance.aave.com/t/arfc-susde-and-usde-price-feed-update/20495) (Chaos Labs dan LlamaRisk, 2 Januari 2025, Snapshot 3 hingga 6 Februari 2025), [AIP 262](https://vote.onaave.com/proposal/?proposalId=262) dan [pull request payload-nya](https://github.com/aave-dao/aave-proposals-v3/pull/621), di-merge 3 Maret 2025 (diakses 28 Oktober 2026)
+- [Eksekusi AIP 262 di Ethereum](https://etherscan.io/tx/0xbb810541258db350d632e9a22ed7d7547509c67b2585dbc7a64a76b6ac8e42e0): sumber harga USDe dan sUSDe diperbarui di blok 22002625, 8 Maret 2025 14:01:47 UTC (diakses 28 Oktober 2026)
+- [ARFC: Ethena USDe Risk Oracle and Automated Freeze Guardian](https://governance.aave.com/t/arfc-ethena-usde-risk-oracle-and-automated-freeze-guardian/23303) (LlamaRisk, 24 Oktober 2025; balasan Chaos Labs 2 November 2025; ditutup 7 Desember 2025) (diakses 28 Oktober 2026)
+- [When Pricing Breaks: A USDe Case](https://llamarisk.com/research/when-pricing-breaks-usde) (LlamaRisk, 18 Oktober 2025, diakses 28 Oktober 2026)
+- [ARC: Stablecoin Volatility Risk Parameter Recommendations](https://governance.aave.com/t/arc-stablecoin-volatility-risk-parameter-recomendations/12241) (Gauntlet, 11 Maret 2023, dengan konfirmasi pembekuan dari BGD Labs di hari yang sama) dan [pengumuman Aave](https://x.com/aave/status/1634596115483086848) (11 Maret 2023, 16:44 UTC) (diakses 28 Oktober 2026)
+- [Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (Gauntlet, 17 Maret 2023, diakses 28 Oktober 2026)
+- [Fitur Aave v3.3](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md) dan [dokumentasi Aave Umbrella](https://aave.com/docs/aave-v3/umbrella): defisit dan slashing (diakses 28 Oktober 2026)
+- [Dokumentasi Morpho: Oracles](https://docs.morpho.org/learn/concepts/oracle): oracle per pasar, dipilih oleh kurator, tidak dapat diubah (diakses 28 Oktober 2026)
+
+_Konten edukasi, bukan nasihat keuangan. Peringatan mengurangi risiko, tetapi tidak mencegah likuidasi._
