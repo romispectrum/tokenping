@@ -66,6 +66,13 @@ const COPY: Partial<Record<Locale, CopyRules>> = {
     wrongAddress: /(?<!\p{L})(?:tu|toi|ton|tes|t')(?!\p{L})/iu,
     claims: /en temps réel|instantané|multi[- ]?protocole/iu,
   },
+  pt: {
+    h1Channels: /Signal e e-mail/,
+    badges: ["Signal", "E-mail"],
+    // você throughout: never tu, te, teu, tua, contigo, nor the formal o senhor or a senhora.
+    wrongAddress: /(?<!\p{L})(?:tu|teus?|tuas?|contigo|o senhor|a senhora)(?!\p{L})/iu,
+    claims: /em tempo real|instantâne|multi[- ]?protocolo/iu,
+  },
 };
 
 const TRANSLATED = LOCALES.filter(locale => locale !== "en");

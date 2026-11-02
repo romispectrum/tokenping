@@ -331,6 +331,67 @@ import MorphoPreLiquidation, { meta as morphoPreLiquidation } from "~~/content/b
 import PrivateAaveLiquidationAlerts, {
   meta as privateAaveLiquidationAlerts,
 } from "~~/content/blog/private-aave-liquidation-alerts.mdx";
+import PtTokenizedStocksCollateral, {
+  meta as ptTokenizedStocksCollateral,
+} from "~~/content/blog/pt/acoes-tokenizadas-como-garantia.mdx";
+import PtAaveAlertsDoNotDisturb, {
+  meta as ptAaveAlertsDoNotDisturb,
+} from "~~/content/blog/pt/alertas-aave-nao-perturbe.mdx";
+import PtPrivateAaveLiquidationAlerts, {
+  meta as ptPrivateAaveLiquidationAlerts,
+} from "~~/content/blog/pt/alertas-de-liquidacao-aave-privados.mdx";
+import PtWrappedBitcoinAaveCollateral, {
+  meta as ptWrappedBitcoinAaveCollateral,
+} from "~~/content/blog/pt/bitcoin-wrapped-como-garantia-aave.mdx";
+import PtHowAaveLiquidationWorks, {
+  meta as ptHowAaveLiquidationWorks,
+} from "~~/content/blog/pt/como-funciona-a-liquidacao-no-aave.mdx";
+import PtHowMorphoLiquidationWorks, {
+  meta as ptHowMorphoLiquidationWorks,
+} from "~~/content/blog/pt/como-funciona-a-liquidacao-no-morpho.mdx";
+import PtAaveHealthFactorAlertSetup, {
+  meta as ptAaveHealthFactorAlertSetup,
+} from "~~/content/blog/pt/configurar-alertas-fator-de-saude-aave.mdx";
+import PtStablecoinDepegAave, { meta as ptStablecoinDepegAave } from "~~/content/blog/pt/depeg-de-stablecoin-aave.mdx";
+import PtAaveEMode, { meta as ptAaveEMode } from "~~/content/blog/pt/e-mode-aave.mdx";
+import PtCryptoBackedLoans, {
+  meta as ptCryptoBackedLoans,
+} from "~~/content/blog/pt/emprestimos-com-garantia-em-cripto.mdx";
+import PtAaveMarketWindDown, {
+  meta as ptAaveMarketWindDown,
+} from "~~/content/blog/pt/encerramento-de-mercado-aave.mdx";
+import PtAvoidAaveLiquidation, { meta as ptAvoidAaveLiquidation } from "~~/content/blog/pt/evitar-liquidacao-aave.mdx";
+import PtSafeAaveHealthFactor, {
+  meta as ptSafeAaveHealthFactor,
+} from "~~/content/blog/pt/fator-de-saude-aave-seguro.mdx";
+import PtAaveHealthFactor, { meta as ptAaveHealthFactor } from "~~/content/blog/pt/fator-de-saude-aave.mdx";
+import PtMorphoHealthFactor, { meta as ptMorphoHealthFactor } from "~~/content/blog/pt/fator-de-saude-morpho.mdx";
+import PtAaveLiquidationAlertTools, {
+  meta as ptAaveLiquidationAlertTools,
+} from "~~/content/blog/pt/ferramentas-de-alerta-de-liquidacao-aave.mdx";
+import PtLiquidatedOnAaveOrMorphoWhatNow, {
+  meta as ptLiquidatedOnAaveOrMorphoWhatNow,
+} from "~~/content/blog/pt/liquidado-no-aave-ou-morpho-e-agora.mdx";
+import PtMorphoMidnightFixedRateLoans, {
+  meta as ptMorphoMidnightFixedRateLoans,
+} from "~~/content/blog/pt/morpho-midnight-emprestimos-taxa-fixa.mdx";
+import PtWhyAaveHealthFactorDropped, {
+  meta as ptWhyAaveHealthFactorDropped,
+} from "~~/content/blog/pt/por-que-o-fator-de-saude-aave-caiu.mdx";
+import PtWhyAaveWithdrawOrBorrowFails, {
+  meta as ptWhyAaveWithdrawOrBorrowFails,
+} from "~~/content/blog/pt/por-que-saque-ou-emprestimo-aave-falha.mdx";
+import PtMorphoPreLiquidation, { meta as ptMorphoPreLiquidation } from "~~/content/blog/pt/pre-liquidacao-morpho.mdx";
+import PtAaveLiquidationPrice, {
+  meta as ptAaveLiquidationPrice,
+} from "~~/content/blog/pt/preco-de-liquidacao-aave.mdx";
+import PtWhoNeedsHealthFactorAlerts, {
+  meta as ptWhoNeedsHealthFactorAlerts,
+} from "~~/content/blog/pt/quem-precisa-de-alertas-de-fator-de-saude.mdx";
+import PtAaveInterestRates, { meta as ptAaveInterestRates } from "~~/content/blog/pt/taxas-de-juros-aave.mdx";
+import PtShortFiatWithAave, {
+  meta as ptShortFiatWithAave,
+} from "~~/content/blog/pt/vender-moeda-fiduciaria-a-descoberto-com-aave.mdx";
 import SafeAaveHealthFactor, { meta as safeAaveHealthFactor } from "~~/content/blog/safe-aave-health-factor.mdx";
 import ShortFiatWithAave, { meta as shortFiatWithAave } from "~~/content/blog/short-fiat-with-aave.mdx";
 import StablecoinDepegAave, { meta as stablecoinDepegAave } from "~~/content/blog/stablecoin-depeg-aave.mdx";
@@ -607,5 +668,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
     { meta: frHowMorphoLiquidationWorks, Content: FrHowMorphoLiquidationWorks },
     { meta: frMorphoPreLiquidation, Content: FrMorphoPreLiquidation },
     { meta: frMorphoMidnightFixedRateLoans, Content: FrMorphoMidnightFixedRateLoans },
+  ],
+  pt: [
+    { meta: ptAaveHealthFactor, Content: PtAaveHealthFactor },
+    { meta: ptSafeAaveHealthFactor, Content: PtSafeAaveHealthFactor },
+    { meta: ptHowAaveLiquidationWorks, Content: PtHowAaveLiquidationWorks },
+    { meta: ptAaveLiquidationPrice, Content: PtAaveLiquidationPrice },
+    { meta: ptWhyAaveHealthFactorDropped, Content: PtWhyAaveHealthFactorDropped },
+    { meta: ptAaveHealthFactorAlertSetup, Content: PtAaveHealthFactorAlertSetup },
+    { meta: ptAaveLiquidationAlertTools, Content: PtAaveLiquidationAlertTools },
+    { meta: ptAvoidAaveLiquidation, Content: PtAvoidAaveLiquidation },
+    { meta: ptPrivateAaveLiquidationAlerts, Content: PtPrivateAaveLiquidationAlerts },
+    { meta: ptCryptoBackedLoans, Content: PtCryptoBackedLoans },
+    { meta: ptShortFiatWithAave, Content: PtShortFiatWithAave },
+    { meta: ptAaveInterestRates, Content: PtAaveInterestRates },
+    { meta: ptAaveAlertsDoNotDisturb, Content: PtAaveAlertsDoNotDisturb },
+    { meta: ptAaveMarketWindDown, Content: PtAaveMarketWindDown },
+    { meta: ptStablecoinDepegAave, Content: PtStablecoinDepegAave },
+    { meta: ptAaveEMode, Content: PtAaveEMode },
+    { meta: ptWhyAaveWithdrawOrBorrowFails, Content: PtWhyAaveWithdrawOrBorrowFails },
+    { meta: ptWrappedBitcoinAaveCollateral, Content: PtWrappedBitcoinAaveCollateral },
+    { meta: ptTokenizedStocksCollateral, Content: PtTokenizedStocksCollateral },
+    { meta: ptWhoNeedsHealthFactorAlerts, Content: PtWhoNeedsHealthFactorAlerts },
+    { meta: ptLiquidatedOnAaveOrMorphoWhatNow, Content: PtLiquidatedOnAaveOrMorphoWhatNow },
+    { meta: ptMorphoHealthFactor, Content: PtMorphoHealthFactor },
+    { meta: ptHowMorphoLiquidationWorks, Content: PtHowMorphoLiquidationWorks },
+    { meta: ptMorphoPreLiquidation, Content: PtMorphoPreLiquidation },
+    { meta: ptMorphoMidnightFixedRateLoans, Content: PtMorphoMidnightFixedRateLoans },
   ],
 };

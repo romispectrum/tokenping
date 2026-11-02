@@ -1,0 +1,162 @@
+export const meta = {
+  slug: "depeg-de-stablecoin-aave",
+  title: "O que um depeg de stablecoin faz com seu empréstimo no Aave",
+  description:
+    "Como um depeg move o fator de saúde no Aave em cada lado do empréstimo, como o Aave precifica USDC, USDT e USDe com teto e o que 2023 e 2025 mostraram.",
+  h1: "O que acontece com sua posição no Aave quando uma stablecoin perde a paridade?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "O que acontece com meu fator de saúde no Aave quando uma stablecoin sofre depeg?",
+  readingMinutes: 18,
+};
+
+<ShortAnswer>
+  Um depeg (perda da paridade com o dólar) de stablecoin move o fator de saúde (health factor) da sua posição no Aave
+  pelo preço do oráculo, não pelo US$ 1 que você tem em mente. Se a stablecoin é a sua garantia, cada centavo que ela
+  cai abaixo de US$ 1 passa direto para o fator de saúde, porque os adaptadores de preço de stablecoins do Aave limitam
+  o preço por cima (a US$ 1,04 para USDC, USDT, DAI, USDS e PYUSD no Ethereum Core, lido em 28 de outubro de 2026) e não
+  têm piso. Se a stablecoin é a sua dívida, uma queda eleva seu fator de saúde e uma alta o reduz, mas nunca mais do que
+  o teto permite. O USDe é o caso especial: desde 8 de março de 2025 o Aave o precifica com o feed de preço (price feed)
+  do USDT, então o preço de mercado dele não chega ao seu fator de saúde. Um depeg pode mover uma posição para muito
+  longe entre duas verificações de alerta, então um alerta ganha tempo, não proteção.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Números e os blocos em que foram lidos: content/blog/snapshots/stablecoin-depeg-aave.md */}
+
+## O que é um depeg de stablecoin, e qual lado do seu empréstimo ele atinge?
+
+Uma stablecoin sofre depeg quando seu preço de mercado se afasta do US$ 1 que ela deveria manter. Para quem toma empréstimo no Aave, isso importa dos dois lados, e eles se comportam de forma diferente:
+
+- **Uma stablecoin que você depositou como garantia.** O preço dela no oráculo multiplica o valor da sua garantia, então uma queda abaixo de US$ 1 encolhe o lado da garantia no fator de saúde. Essa é a [causa 5 da queda de um fator de saúde](/pt/blog/por-que-o-fator-de-saude-aave-caiu#causa-5-uma-stablecoin-que-voce-depositou-como-garantia-perdeu-a-paridade-para-baixo), e é o lado perigoso.
+- **Uma stablecoin que você pegou emprestada.** O preço dela no oráculo multiplica o valor da sua dívida. Uma queda abaixo de US$ 1 faz a dívida valer menos e eleva seu fator de saúde; uma alta acima de US$ 1 faz a dívida valer mais e o reduz.
+
+O fator de saúde em si segue a mesma fórmula nos dois casos, explicada em [o que é o fator de saúde do Aave](/pt/blog/fator-de-saude-aave):
+
+**HF = Σ(valor da garantia × limite de liquidação) ÷ valor total da dívida**
+
+Os dois valores vêm do oráculo do Aave. Nada na fórmula sabe que um ativo é uma stablecoin: USDC a US$ 0,87 é simplesmente um ativo que vale US$ 0,87. O que diferencia as stablecoins é como o Aave as precifica, assunto da terceira seção. Os exemplos abaixo usam parâmetros do Aave V3 Ethereum Core lidos em 28 de outubro de 2026 no bloco 26291704 (14:03:35 UTC): um limite de liquidação (liquidation threshold) de 78% para USDC e USDT, e de 84% para WETH.
+
+## O que um depeg da sua garantia em stablecoin faz com o fator de saúde?
+
+Uma queda no preço de oráculo de uma stablecoin que você depositou reduz seu fator de saúde na proporção da queda, sem nada que a detenha. Considere 20.000 USDC depositados contra 10.000 USDT emprestados, ambos a US$ 1 para deixar as contas redondas (o oráculo marcava US$ 0,99971803 para o USDC e US$ 0,99842395 para o USDT no bloco 26291704):
+
+- A US$ 1: 20.000 × 0,78 ÷ 10.000 = **1,56**.
+- USDC a US$ 0,95: 19.000 × 0,78 ÷ 10.000 = **1,48**.
+- USDC a US$ 0,87, a mínima de março de 2023: 17.400 × 0,78 ÷ 10.000 = **1,36**.
+- A liquidação em 1,00 exigiria o USDC a 10.000 ÷ (20.000 × 0,78) = **US$ 0,64**, com o USDT inalterado.
+
+Essa posição tem folga porque pegou emprestado metade do que a relação empréstimo/valor (LTV) de 75% permite. A mesma garantia com empréstimo até o limite, 15.000 USDT, começa em 15.600 ÷ 15.000 = **1,04**, e o USDC a US$ 0,95 a leva a 14.820 ÷ 15.000 = **0,99**, que pode ser liquidada. Ela chega a 1,00 com o USDC a cerca de **US$ 0,96**, uma queda de menos de 4%. A US$ 0,87, fica em 0,90. Um loop (empréstimo alavancado em ciclo) de stablecoins parece calmo até o oráculo se mover, e aí a margem é a distância que você deixou entre o seu LTV e o limite; [quanta margem um fator de saúde dá](/pt/blog/fator-de-saude-aave-seguro) explica como escolhê-la.
+
+Um detalhe ajuda: só conta a razão entre os dois preços do oráculo. Se o USDC e o USDT marcarem ambos US$ 0,95, a posição de 15.000 USDT volta a 14.820 ÷ 14.250 = 1,04, inalterada. O que doeu em março de 2023 foi que o USDC caiu e o USDT não.
+
+Qualquer stablecoin que você depositou fica exposta assim, na proporção da participação dela na sua garantia. Com WETH e USDC depositados em valores iguais em dólar (limites de 84% e 78%), o USDC é cerca de 48% da sua garantia ponderada, então uma queda de 13% no USDC remove cerca de 6% dela.
+
+## O que faz um depeg da stablecoin que você pegou emprestada?
+
+Se a stablecoin é a sua dívida, o efeito se inverte e, em uma direção, é limitado. Considere 10 WETH depositados (limite de 84%) contra 12.000 USDT emprestados, com o ETH a US$ 2.300, valor ilustrativo (o oráculo marcava US$ 2.335,08 no bloco 26291704):
+
+- USDT a US$ 1: 23.000 × 0,84 ÷ 12.000 = **1,61**.
+- O USDT cai para US$ 0,95: a dívida vale 11.400, então **1,69**. A US$ 0,87, fica em **1,85**. Um depeg para baixo do ativo da sua dívida ajuda você.
+- O USDT sobe para US$ 1,02: a dívida vale 12.240, então **1,58**.
+- O USDT sobe para US$ 1,04 ou mais: a dívida vale no máximo 12.480, então **1,55**. O teto segura o preço ali, diga o mercado o que disser.
+
+Assim, uma stablecoin emprestada pode custar no máximo cerca de 4% do seu fator de saúde pelo próprio preço, enquanto, como garantia, ela pode levar tanto quanto cair. Essa assimetria vem do adaptador, não dos parâmetros de risco do Aave.
+
+<Callout tone="info">
+  É também por isso que pegar uma stablecoin emprestada contra um ativo volátil, a posição de [vender moeda fiduciária a
+  descoberto com o Aave](/pt/blog/vender-moeda-fiduciaria-a-descoberto-com-aave), quase não fica exposto a depegs: a
+  stablecoin é dívida, e uma queda dela é boa notícia para o tomador.
+</Callout>
+
+## Como o Aave precifica stablecoins?
+
+O Aave não avalia stablecoins a US$ 1. Cada reserva tem uma fonte de preço definida pela governança no contrato AaveOracle, e para stablecoins essa fonte é um feed Chainlink em USD envolto em um adaptador de teto de preço (price cap adapter) do repositório de feeds de preço do Aave (o repositório que se chamava aave-capo; o README dele diz que foi renomeado para Aave Price Feeds). O adaptador para stablecoins é o `PriceCapAdapterStable`, e o `latestAnswer` dele faz três coisas: lê o feed Chainlink, devolve o teto definido pela governança se o feed estiver acima dele e, caso contrário, devolve o preço do feed sem alteração (uma resposta do feed que não seja positiva vira 0). Não há piso.
+
+Lido do AaveOracle no Ethereum Core no bloco 26291704 (28 de outubro de 2026, 14:03:35 UTC), via `getSourceOfAsset` e os getters de cada adaptador:
+
+| Ativo | Limite de liquidação | Preço do oráculo | Fonte de preço, como o adaptador se descreve                      | Teto (`getPriceCap`)   |
+| ----- | -------------------- | ---------------- | ----------------------------------------------------------------- | ---------------------- |
+| USDC  | 78%                  | US$ 0,99971803   | "Capped USDC / USD" sobre um feed "USDC / USD"                    | US$ 1,04               |
+| USDT  | 78%                  | US$ 0,99842395   | "Capped USDT/USD" sobre um feed "USDT / USD"                      | US$ 1,04               |
+| USDe  | 75%                  | US$ 0,99842395   | "Capped USDT/USD" sobre o mesmo feed do USDT                      | US$ 1,04 (veja abaixo) |
+| DAI   | 77%                  | US$ 0,99923138   | "Capped DAI/USD" sobre um feed "DAI / USD"                        | US$ 1,04               |
+| USDS  | 78%                  | US$ 0,99972900   | "Capped USDS/USD" sobre um feed "USDS / USD"                      | US$ 1,04               |
+| PYUSD | 78%                  | US$ 0,99988808   | "Capped pyUSD/USD" sobre um feed "PYUSD / USD"                    | US$ 1,04               |
+| GHO   | 0% (não é garantia)  | US$ 1,00000000   | Uma fonte fixa que não responde a nenhum dos getters do adaptador | nenhum, fixo em US$ 1  |
+
+O `isCapped()` de cada adaptador retornou false naquele dia: nenhum feed estava acima do seu teto. A linha do USDe precisa de uma nota: o adaptador para o qual o USDe aponta é uma implantação mais antiga do mesmo contrato (criada em 1º de março de 2024) que não tem o getter `getPriceCap`, então o teto foi lido do storage dele, onde está o mesmo 104000000. O sUSDe é precificado por outro adaptador, "Capped sUSDe / USDT / USD", que multiplica a taxa de conversão de sUSDe para USDe pelo preço do USDT e marcava US$ 1,25333685.
+
+O que isso significa para quem toma empréstimo:
+
+- **Acima de US$ 1, você fica protegido como tomador e limitado como depositante.** Se o USDC for negociado a US$ 1,10, o Aave o avalia a US$ 1,04, então uma dívida em USDC custa no máximo 4% a mais e uma garantia em USDC rende no máximo 4% a mais.
+- **Abaixo de US$ 1, nada é amortecido.** O adaptador repassa US$ 0,95 ou US$ 0,87 exatamente. Sua garantia vale o que o feed diz, e seu fator de saúde o acompanha a cada leitura.
+- **O teto pode mudar.** `setPriceCap` está aberto aos risk admins e aos pool admins do Aave, não pode definir um teto abaixo do preço atual do feed e não pode passar de US$ 2. Os tetos acima são o que estava on-chain em 28 de outubro de 2026, não uma promessa.
+- **O que importa é o feed, não a cotação na corretora.** O feed da Chainlink agrega vários mercados, então o preço de uma corretora não é o preço do oráculo. Se isso é um conforto ou um perigo depende do lado do empréstimo em que você está; as duas próximas seções mostram os dois casos.
+
+Erros de oráculo são outro assunto: um adaptador pode precificar errado um ativo sem nenhum movimento de mercado, como aconteceu no incidente do wstETH de março de 2026, e a [causa 6 da queda de um fator de saúde](/pt/blog/por-que-o-fator-de-saude-aave-caiu#causa-6-um-erro-de-oraculo-ou-de-taxa-de-cambio-deu-um-preco-errado-a-sua-garantia) trata desse caso.
+
+## Por que o USDe é precificado com o feed do USDT, e o que isso significou em 10 de outubro de 2025?
+
+Desde 8 de março de 2025, o Aave V3 Ethereum Core precifica o USDe com o feed de preço do USDT, então o preço de mercado do próprio USDe não chega a nenhum fator de saúde ali. A decisão veio de uma proposta de governança, "sUSDe and USDe Price Feed Update", publicada no fórum de governança do Aave pela Chaos Labs com a LlamaRisk em 2 de janeiro de 2025. Nas palavras dela, a proposta "suggests hardcoding the USDe price to match the USDT price in Aave's pricing feeds" (sugere fixar no código o preço do USDe igual ao do USDT nos feeds de preço do Aave), com o argumento de que a maior parte dos hedges da Ethena é denominada em USDT e de que precificar o sUSDe pelo mercado secundário do USDe expunha posições lastreadas em sUSDe a desvios de curto prazo e a liquidações desnecessárias. O tópico recebeu críticas (uma resposta perguntou por que não fixar US$ 1,00; outra se preocupou com o fato de as posições em sUSDe passarem a ficar expostas ao preço do USDT), e a Chaos Labs chamou o arranjo de medida temporária em 16 de janeiro de 2025. A votação no Snapshot foi de 3 a 6 de fevereiro de 2025 e aprovou a proposta. On-chain, a AIP 262 entrou em vigor no bloco 22002625 em 8 de março de 2025 (14:01:47 UTC): a fonte do AaveOracle para o USDe passou de um adaptador "Capped USDe / USD" para o adaptador "Capped USDT/USD", e a fonte do sUSDe passou para "Capped sUSDe / USDT / USD". O antigo adaptador USDe/USD ainda existe e ainda responde: no bloco 26291704 marcava US$ 0,99969500, enquanto o Aave precificava o USDe pelos US$ 0,99842395 do USDT.
+
+Em 10 de outubro de 2025, durante a queda geral do mercado, isso foi posto à prova. O post da LlamaRisk no fórum, de 24 de outubro de 2025, descreve "aggressive cryptocurrency market volatility events on centralized exchanges, most notably Binance" (eventos agressivos de volatilidade no mercado cripto em corretoras centralizadas, sobretudo a Binance) que levaram o preço do USDe no mercado secundário "down to $0.65 at the lowest point" (até US$ 0,65 no ponto mais baixo), e diz que o feed Chainlink USDe/USD, que se abastece de vários mercados, "did not deviate significantly during this localized de-peg" (não se desviou de forma significativa durante esse depeg localizado). A resposta da Chaos Labs de 2 de novembro de 2025 dá o número: o preço Chainlink USDe/USD "reached as low as $0.977" (chegou a US$ 0,977 no mínimo). O próprio Aave não viu nenhum dos dois preços. Nas palavras da LlamaRisk, "Aave avoided immediate issues from the de-peg on Binance by pricing USDe on par with USDT" (o Aave evitou problemas imediatos com o depeg na Binance ao precificar o USDe ao par com o USDT). A nota de pesquisa da LlamaRisk de 18 de outubro de 2025 acrescenta que os depósitos de USDe no Aave, de US$ 1,03 bilhão, "remained remarkably stable" (permaneceram notavelmente estáveis) durante o evento.
+
+Duas ressalvas honestas. Primeira: isso é o que as fontes dizem, e nada além: nenhum post-mortem público encontrado para este guia contabiliza liquidações ligadas ao USDe no Aave naquele dia, então este guia não afirma que não houve nenhuma. Segunda: o mesmo post da LlamaRisk que atribui ao feed do USDT o mérito de ter evitado problemas também diz que a abordagem "transfers the solvency risk to the Aave protocol" (transfere o risco de solvência para o protocolo Aave): se o USDe algum dia perdesse o lastro, o oráculo do Aave continuaria a avaliá-lo como USDT até a governança intervir. A LlamaRisk propôs nesse post um oráculo de USDe com gestão de risco e congelamento automático; a Chaos Labs recomendou contra em 2 de novembro de 2025, e o tópico foi encerrado em 7 de dezembro de 2025 sem votação registrada. Em 28 de outubro de 2026, o USDe no Ethereum Core ainda apontava para o adaptador do USDT, com limite de liquidação de 75% e LTV 0.
+
+Para quem toma empréstimo, isso tem dois lados. Se você tem USDe como garantia no Ethereum Core, uma onda de vendas de USDe numa corretora não move seu fator de saúde, mas um depeg do USDT moveria, e também uma votação de governança que trocasse o feed de volta. Se você pegou USDe emprestado, um desconto no mercado o deixa mais barato para recomprar, mas o Aave continua avaliando sua dívida pelo preço do USDT.
+
+## O que aconteceu com quem tinha empréstimo no Aave quando o USDC caiu em março de 2023?
+
+Em 11 de março de 2023, depois que a Circle revelou que parte das reservas do USDC estava no Silicon Valley Bank, o USDC caiu no mercado até uma mínima de cerca de 88 centavos por volta das 08:00 UTC, segundo o post-mortem da Gauntlet para o Aave (17 de março de 2023). O preço do USDC no Aave acompanhou a queda do feed Chainlink (os adaptadores com teto vieram depois, e não teriam mudado uma queda), e toda posição com USDC como garantia perdeu fator de saúde na mesma medida, exatamente como no primeiro exemplo acima.
+
+A governança e as equipes de risco agiram em poucas horas, tudo no tópico do fórum que a Gauntlet abriu às 08:13 UTC:
+
+- **09:19 UTC:** a Gauntlet recomendou pausar temporariamente todos os mercados do Aave V2 e V3, para impedir que as liquidações concretizassem insolvências.
+- **10:19 UTC:** a BGD Labs observou que o Aave Guardian só podia agir de imediato no Aave V3 Avalanche, onde a infraestrutura de governança cross-chain não se aplicava, e propôs congelar as stablecoins ali e definir o LTV delas como 0.
+- **Por volta das 13:00 UTC:** o Guardian congelou USDC, USDT, DAI, FRAX e MAI no Aave V3 Avalanche e definiu o LTV delas como 0, o que a BGD Labs confirmou no tópico, acrescentando que o congelamento não alterou nenhum fator de saúde existente. A conta do Aave anunciou isso às 16:44 UTC.
+- **Nenhuma pausa.** O post-mortem da Gauntlet diz que o Guardian não implementou a pausa, pesando o risco contra as implicações estratégicas e filosóficas; um congelamento bloqueia novos depósitos e empréstimos, mas deixa as liquidações continuarem.
+
+O resultado, segundo o mesmo post-mortem: cerca de US$ 280.000 de insolvências no E-Mode do Aave V3 Avalanche e cerca de US$ 20.000 no V3 Arbitrum no fim de semana de 11 a 12 de março, cerca de US$ 300.000 no total, e nenhuma perda realizada no Aave V2. A Gauntlet estimou que, com o USDC a 80 centavos, só as insolvências do V2 poderiam ter chegado a cerca de US$ 1 milhão. A lição para quem toma empréstimo é que a resposta do protocolo a um depeg mira o protocolo: um congelamento impede a entrada de risco novo, não deixa sua posição mais segura, e a pausa que teria detido as liquidações não foi usada.
+
+## Um depeg pode causar dívida incobrável, e quem paga por ela?
+
+Sim. Quando a garantia cai mais rápido do que os liquidantes conseguem liquidá-la, uma posição pode terminar com uma garantia que vale menos que a dívida mais o bônus de liquidação, e o que falta vira dívida incobrável (bad debt). Os US$ 300.000 de março de 2023 foram exatamente isso, a maior parte num E-Mode de stablecoins em que as posições operavam perto do limite. Desde o Aave v3.3, esse saldo faltante é queimado da dívida do tomador e registrado como déficit no ativo, e o Umbrella, a proteção de staking do Aave, pode queimar aTokens em staking para cobri-lo (a ativação dele começou no Ethereum, segundo a documentação do Aave). Nada disso ajuda o tomador, cuja garantia já se foi; [uma liquidação pode deixar dívida incobrável?](/pt/blog/como-funciona-a-liquidacao-no-aave#uma-liquidacao-pode-deixar-divida-incobravel) mostra a mecânica e um exemplo com números.
+
+## Como isso é diferente no Morpho?
+
+No Morpho não existe precificação de stablecoins válida para o protocolo inteiro, nem teto. Cada mercado do Morpho Blue tem o seu próprio oráculo, escolhido por quem criou o mercado e fixo durante toda a vida do mercado, e a documentação do Morpho diz "Once a market is deployed, its oracle address cannot be modified." (depois que um mercado é implantado, o endereço do oráculo dele não pode ser modificado). Alguns oráculos só precificam a garantia e tratam o token do empréstimo como US$ 1, então um depeg da stablecoin emprestada não muda nada; outros incluem um feed para ela. Se um depeg do USDC afeta sua posição no Morpho depende desse único contrato, e [o que move o fator de saúde no Morpho](/pt/blog/fator-de-saude-morpho#o-que-move-o-fator-de-saude-no-morpho) mostra como lê-lo.
+
+## O que você pode fazer contra o risco de depeg no Aave?
+
+O risco de depeg se decide em grande parte quando você escolhe a posição, então as ações úteis são escolhas, não reações:
+
+1. **Coloque a stablecoin do lado da dívida quando puder.** Stablecoins emprestadas só podem prejudicar você subindo, e o teto limita isso a cerca de 4%. Garantia em stablecoin não tem piso. [Escolher uma dívida que combine com sua garantia](/pt/blog/evitar-liquidacao-aave#passo-5-escolha-uma-divida-que-combine-com-a-sua-garantia) passa pelos pares.
+2. **Se você tem garantia em stablecoin, mantenha uma margem em centavos, não em porcentagem.** O exemplo perto do limite acima chega a 1,00 com cerca de US$ 0,96. Um fator de saúde de 1,56, a mesma garantia com um terço a menos de dívida, precisa de US$ 0,64. Decida a que preço você aceita ser liquidado e então dimensione o empréstimo para ele.
+3. **Observe o oráculo, não a corretora.** O preço que liquida você é `AaveOracle.getAssetPrice(asset)`, que para stablecoins no Ethereum Core é um feed Chainlink sob um teto e, para o USDe, é o feed do USDT. Uma cotação em uma corretora não é nem necessária nem suficiente.
+4. **Saiba o que a governança pode fazer.** Tetos e fontes mudam por votação ou por ação de um risk admin, e um congelamento durante uma crise não pausa as liquidações. Os tópicos de março de 2023 e de outubro de 2025 citados acima são o registro do que foi feito.
+5. **Tenha a saída pronta.** Pagar com a stablecoin em depeg é barato se ela é a sua dívida e caro se você precisa comprá-la; [como aumentar seu fator de saúde no Aave](/pt/blog/evitar-liquidacao-aave) lista as ações que funcionam durante um congelamento, já que uma reserva congelada ainda permite o pagamento.
+
+## Um alerta pode avisar você sobre um depeg?
+
+Um alerta pode dizer que seu fator de saúde cruzou uma linha; ele não pode desacelerar um depeg. O Tokenping verifica seu fator de saúde no Aave V3 e V4 a cada 5 minutos em 22 redes e envia mensagem pelo Signal, pelo Telegram ou por e-mail enquanto ele estiver abaixo do limite que você definiu (de 1,1 a 10). Ele lê o fator de saúde do contrato Pool, então o preço por trás dele é o preço do oráculo do Aave, o mesmo usado para pagar os liquidantes: uma cotação de US$ 0,65 do USDe na Binance não chega a nenhum fator de saúde no Ethereum Core, enquanto uma leitura Chainlink de US$ 0,88 para o USDC chega a toda posição com garantia em USDC, e um alerta vem em seguida se isso levar o fator de saúde abaixo do seu limite.
+
+Cinco minutos é muito tempo num depeg. Em 11 de março de 2023, o USDC já estava por volta de 88 centavos às 08:00 UTC, e a posição perto do limite acima chega a 1,00 com cerca de US$ 0,96, então uma verificação a cada 5 minutos pode encontrar essa posição já abaixo de 1,00 na primeira verificação que vê a queda. O que um alerta dá a você é a parte lenta: uma stablecoin que escorrega até US$ 0,98 e fica ali, um limite que a governança reduz, juros que se acumulam. Defina o limite onde você ainda se sentiria à vontade para agir, e lembre-se de que agir durante um depeg significa pagar dívida ou adicionar garantia numa rede que todo mundo está usando ao mesmo tempo. [Como configurar um alerta de fator de saúde](/pt/blog/configurar-alertas-fator-de-saude-aave) mostra os passos, os alertas custam <AlertPrice />, e você pode antes [verificar seu fator de saúde no Aave V3](/pt/aave); ver suas posições não exige pagamento.
+
+## Fontes
+
+- [PoolDataProvider do Aave V3 Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): LTV e limites de liquidação de USDC, USDT, USDe, DAI, USDS, PYUSD, GHO e WETH no bloco 26291704 (consultado em 28 de outubro de 2026)
+- [AaveOracle do Aave V3 Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2#readContract): `getAssetPrice` e `getSourceOfAsset` para os mesmos ativos no bloco 26291704, e o evento `AssetSourceUpdated` para USDe e sUSDe no bloco 22002625 (consultado em 28 de outubro de 2026)
+- [Adaptador Capped USDC / USD](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract), [adaptador Capped USDT/USD](https://etherscan.io/address/0x260326c220E469358846b187eE53328303Efe19C#readContract) e [o adaptador para o qual o USDe aponta](https://etherscan.io/address/0xC26D4a1c46d884cfF6dE9800B6aE7A8Cf48B4Ff8#code), "Aave: Ethena Correlated USDe Price Feed", criado em 1º de março de 2024: descrições, tetos, `isCapped` e feeds subjacentes no bloco 26291704 (consultado em 28 de outubro de 2026)
+- [PriceCapAdapterStable.sol](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol) e o [README do Aave Price Feeds](https://github.com/aave-dao/aave-price-feeds): lógica do teto, controle de acesso de `setPriceCap`, a mudança de nome a partir de Aave Capo (consultado em 28 de outubro de 2026)
+- [Documentação do oráculo do Aave](https://aave.com/docs/ecosystem/oracle.md): fontes definidas pela governança para cada reserva (consultado em 28 de outubro de 2026)
+- [ARFC: sUSDe and USDe Price Feed Update](https://governance.aave.com/t/arfc-susde-and-usde-price-feed-update/20495) (Chaos Labs e LlamaRisk, 2 de janeiro de 2025, Snapshot de 3 a 6 de fevereiro de 2025), a [AIP 262](https://vote.onaave.com/proposal/?proposalId=262) e o [pull request do payload](https://github.com/aave-dao/aave-proposals-v3/pull/621), incorporado em 3 de março de 2025 (consultado em 28 de outubro de 2026)
+- [Execução da AIP 262 no Ethereum](https://etherscan.io/tx/0xbb810541258db350d632e9a22ed7d7547509c67b2585dbc7a64a76b6ac8e42e0): fontes de USDe e sUSDe atualizadas no bloco 22002625, em 8 de março de 2025, 14:01:47 UTC (consultado em 28 de outubro de 2026)
+- [ARFC: Ethena USDe Risk Oracle and Automated Freeze Guardian](https://governance.aave.com/t/arfc-ethena-usde-risk-oracle-and-automated-freeze-guardian/23303) (LlamaRisk, 24 de outubro de 2025; resposta da Chaos Labs em 2 de novembro de 2025; encerrado em 7 de dezembro de 2025) (consultado em 28 de outubro de 2026)
+- [When Pricing Breaks: A USDe Case](https://llamarisk.com/research/when-pricing-breaks-usde) (LlamaRisk, 18 de outubro de 2025, consultado em 28 de outubro de 2026)
+- [ARC: Stablecoin Volatility Risk Parameter Recommendations](https://governance.aave.com/t/arc-stablecoin-volatility-risk-parameter-recomendations/12241) (Gauntlet, 11 de março de 2023, com a confirmação do congelamento pela BGD Labs no mesmo dia) e o [anúncio do Aave](https://x.com/aave/status/1634596115483086848) (11 de março de 2023, 16:44 UTC) (consultado em 28 de outubro de 2026)
+- [Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (Gauntlet, 17 de março de 2023, consultado em 28 de outubro de 2026)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md) e a [documentação do Aave Umbrella](https://aave.com/docs/aave-v3/umbrella): déficit e slashing (consultado em 28 de outubro de 2026)
+- [Documentação do Morpho: Oracles](https://docs.morpho.org/learn/concepts/oracle): um oráculo por mercado, escolhido pelo curador, imutável (consultado em 28 de outubro de 2026)
+
+_Conteúdo educativo, não é recomendação financeira. Os alertas reduzem o risco, mas não impedem a liquidação._

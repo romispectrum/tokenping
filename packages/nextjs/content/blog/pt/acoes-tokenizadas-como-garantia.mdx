@@ -1,0 +1,141 @@
+export const meta = {
+  slug: "acoes-tokenizadas-como-garantia",
+  title: "Empréstimo com ações tokenizadas no Aave e no Morpho",
+  description:
+    "Ações tokenizadas como garantia no Aave V4 e no Morpho: como os oráculos as precificam, por que param no fim de semana e o efeito de um gap na reabertura.",
+  h1: "Como funciona pegar empréstimo com ações tokenizadas como garantia, e o que acontece no fim de semana?",
+  publishedAt: "2026-10-30",
+  primaryQuestion:
+    "Dá para pegar empréstimo com ações tokenizadas como garantia no Aave ou no Morpho, e quais são os riscos?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Você pode pegar stablecoins emprestadas com ações americanas tokenizadas como garantia em dois lugares que o Tokenping
+  cobre: o Coinbase Stocks Spoke do Aave V4 na Base (tokens de Apple, Amazon, Alphabet, Meta, Microsoft, Nvidia e Tesla,
+  empréstimo em USDC, fatores de garantia de 65% a 79%) e mercados do Morpho na Robinhood Chain (NVDA, SPY, SpaceX e
+  outros, empréstimo em USDG, a maioria com LTV de liquidação, ou LLTV, de 62,5%). O fator de saúde (health factor)
+  funciona como para qualquer garantia, com uma diferença: os feeds da Chainlink que dão o preço desses tokens param de
+  sexta à tarde até domingo às 20:00 no horário de Nova York. No fim de semana, o seu fator de saúde só pode variar com
+  os juros, e no domingo à noite o preço salta para onde a ação estiver sendo negociada. Desde o lançamento, o maior
+  salto de fim de semana nos sete feeds do Aave foi de 1,24%, mas um gap de 25% levaria um empréstimo aberto com fator
+  de saúde de 1,33 direto à liquidação, sem tempo para agir no meio do caminho.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Os números e os blocos em que foram lidos: content/blog/snapshots/tokenized-stocks-collateral.md */}
+
+## O que é uma ação tokenizada?
+
+Uma ação tokenizada é um token cujo valor acompanha uma ação listada em bolsa, emitido por uma empresa que detém ou faz hedge das ações reais e promete uma relação fixa entre as duas. Não é a ação. Os dois emissores cujos tokens você pode usar como garantia no Aave e no Morpho hoje descrevem os seus de forma diferente:
+
+- **Coinbase Tokenized Stocks** (AAPLc, NVDAc e assim por diante) são certificados emitidos pela Coinbase Onchain SPV Ltd. As ações subjacentes ficam com a Alpaca Securities, uma corretora americana (broker-dealer), em contas segregadas em nome do emissor, segundo o post de lançamento do Aave.
+- **Robinhood Stock Tokens** (NVDA, SPY e assim por diante, na Robinhood Chain) são "tokenised debt securities issued by Robinhood Assets (Jersey) Limited" [títulos de dívida tokenizados emitidos pela Robinhood Assets (Jersey) Limited], e a documentação da Robinhood diz que eles não dão nenhum direito legal ou econômico sobre a empresa subjacente.
+
+Os dois têm três coisas em comum que importam para um empréstimo. Nenhum é oferecido a pessoas dos Estados Unidos; a Robinhood também restringe Canadá, Reino Unido e Suíça. Os dividendos não são pagos, mas reinvestidos por meio de um **multiplicador**, um número que começa em 1,0 e sobe, então um token passa aos poucos a representar um pouco mais de uma ação e o preço dele se afasta para cima do preço da ação. E o preço do oráculo já inclui esse multiplicador: a fórmula da Chainlink é "Token Price = Underlying Equity Market Price × Multiplier" [preço do token = preço de mercado da ação subjacente × multiplicador].
+
+## Onde pegar empréstimo com ações tokenizadas como garantia?
+
+| Onde                                   | Garantia                                                          | Você pega emprestado | Linha de liquidação                                                                | Tamanho em 30 de outubro de 2026                                            |
+| -------------------------------------- | ----------------------------------------------------------------- | -------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Aave V4, Coinbase Stocks Spoke na Base | AAPLc, AMZNc, GOOGLc, METAc, MSFTc, NVDAc, TSLAc                  | Só USDC              | Fator de garantia de 65% (META, TSLA) a 79% (MSFT)                                 | 11,23 milhões de USD em garantia em ações, 5,02 milhões de USDC emprestados |
+| Morpho na Robinhood Chain              | Tokens da Robinhood como NVDA, GOOGL, AAPL, META, TSLA, SPCX, SPY | USDG                 | LLTV de 62,5% na maioria dos mercados listados, 77% para SPY e um mercado de GOOGL | 1,75 milhão de USD emprestados em 261 mercados de ações em todas as redes   |
+| Aave V3                                | Nenhuma                                                           |                      |                                                                                    | Nenhum mercado do V3 lista uma ação tokenizada                              |
+
+O Spoke do Aave abriu em 25 de setembro de 2026 e trata os tokens de ações apenas como garantia: você não pode pegá-los emprestados, nem pegar uma ação emprestada contra outra. Cada token tem seu próprio fator de garantia (collateral factor); no Aave V4, esse único número é ao mesmo tempo o limite de empréstimo e a linha de liquidação, como explica a [seção sobre o Aave V4 do guia de liquidação](/pt/blog/como-funciona-a-liquidacao-no-aave#em-que-as-liquidacoes-diferem-no-aave-v4). As configurações do Spoke em 30 de outubro de 2026:
+
+| Token  | Fator de garantia | Depositado                |
+| ------ | ----------------- | ------------------------- |
+| MSFTc  | 79%               | 620,86 (325.687 USD)      |
+| AAPLc  | 78%               | 2.086,63 (732.586 USD)    |
+| GOOGLc | 76%               | 12.739,91 (3.584.144 USD) |
+| AMZNc  | 73%               | 1.938,90 (440.347 USD)    |
+| NVDAc  | 70%               | 14.491,46 (3.032.892 USD) |
+| METAc  | 65%               | 3.374,37 (2.088.305 USD)  |
+| TSLAc  | 65%               | 2.610,34 (1.030.491 USD)  |
+
+O empréstimo com ações do Morpho na Robinhood Chain entrou no ar em 22 de outubro de 2026. A maior parte dos empréstimos com ações está em mercados que o app do Morpho não lista: dos 1,75 milhão de USD emprestados contra tokens de ações em todas as redes, 1,63 milhão está em mercados não listados, o maior deles um mercado NVDA / USDG com 623.189 USD emprestados, contra 118.750 USD nos listados. Isso importa para o oráculo, como mostram as próximas seções. No Ethereum, o Morpho também lista alguns mercados com os tokens da Ondo (SPYon, QQQon, TSLAon) e um token xStocks do S&P 500 como garantia.
+
+## Como as ações tokenizadas são precificadas on-chain?
+
+Os dois lugares usam os feeds de ações tokenizadas da Chainlink: "Coinbase NVDA" e os seus seis irmãos na Base para o Aave, "RHNVDA / USD" e similares na Robinhood Chain para os mercados listados do Morpho. Esses feeds seguem as sessões de negociação dos Estados Unidos cinco dias por semana: o pregão regular (09:30 às 16:00 no horário de Nova York), o pré-mercado a partir das 04:00, o pós-mercado até as 20:00 e uma sessão noturna das 20:00 às 04:00, montada a partir de menos fontes e suavizada com uma média móvel.
+
+O que eles não fazem é publicar nos fins de semana e nos feriados do mercado americano. A documentação da Chainlink é explícita: "These feeds do not publish updates, including heartbeat updates, while markets are closed." [Esses feeds não publicam atualizações, nem mesmo as de heartbeat, enquanto os mercados estão fechados.] O feed continua devolvendo o último valor que publicou, e o timestamp dele simplesmente vai ficando mais antigo. O último fim de semana mostra isso nas duas redes:
+
+| Feed                           | Última atualização antes do fim de semana   | Primeira atualização depois                   | Variação de preço |
+| ------------------------------ | ------------------------------------------- | --------------------------------------------- | ----------------- |
+| Coinbase NVDA (Base)           | sexta, 23 de outubro, 19:54 UTC, 211,45 USD | segunda, 26 de outubro, 00:00 UTC, 211,87 USD | +0,20%            |
+| RHNVDA / USD (Robinhood Chain) | sexta, 23 de outubro, 19:55 UTC, 211,16 USD | segunda, 26 de outubro, 00:00 UTC, 211,92 USD | +0,36%            |
+
+Segunda-feira às 00:00 UTC é domingo às 20:00 em Nova York, quando abre a sessão noturna. Entre essas duas rodadas, passaram-se 52 horas sem nenhum preço novo. O mesmo vale para um fator de saúde do Aave com esses tokens e para um fator de saúde do Morpho em um mercado de ações listado: o preço de entrada fica congelado.
+
+## O que acontece com o seu fator de saúde no fim de semana?
+
+Enquanto o feed está pausado, a parte do preço no seu fator de saúde não pode se mover. O próprio post de lançamento do Aave diz isso com todas as letras: "a position's health factor can fall only through interest accrual during that window." [o fator de saúde de uma posição só pode cair pelo acúmulo de juros nesse período.] Isso vale para os dois lados.
+
+O lado bom: uma notícia no sábado não pode liquidar você no sábado. O lado ruim: tudo o que aconteceu desde sexta chega à sua posição de uma vez, na primeira rodada de domingo à noite. Se a ação reabrir muito mais baixa, o seu fator de saúde vai do valor de sexta para o novo valor em um passo só. Não existe um preço intermediário em que um [alerta de fator de saúde](/pt/blog/configurar-alertas-fator-de-saude-aave) pudesse avisar você, e uma liquidação pode vir no bloco seguinte.
+
+Até agora os gaps foram pequenos. Nos sete feeds da Coinbase e nos cinco fins de semana desde que o Spoke abriu, 35 fechamentos de 51 a 58 horas cada, nenhum preço se moveu mais de 1,24% (TSLA, de 16 a 19 de outubro, de 353,30 para 357,68 USD); a maior queda foi a da AAPL, de 0,37%, no primeiro fim de semana. Cinco fins de semana de preços calmos dizem pouco sobre um fim de semana ruim: uma ação pode abrir 10% ou 20% mais baixa depois de uma notícia que saiu no sábado, e a LlamaRisk, que recomendou os parâmetros do Spoke, observa que os dados históricos "cannot describe a decline rarer than one it contains" [não conseguem descrever uma queda mais rara do que as que eles contêm].
+
+## Exemplo prático: 100 NVDAc contra 11.000 USDC
+
+Considere 100 NVDAc no Coinbase Stocks Spoke ao preço de oráculo de 209,29 USD em 30 de outubro de 2026, ou seja, 20.928,83 USD de garantia, e 11.000 USDC de dívida. Com o fator de garantia de 70% do NVDAc:
+
+- **Fator de saúde:** 20.928,83 × 0,70 ÷ 11.000 = **1,332**.
+- **Limite de empréstimo:** 20.928,83 × 0,70 = 14.650,18 USDC, então este empréstimo usa 75% dele.
+- **Preço de liquidação:** 11.000 ÷ (100 × 0,70) = **157,14 USD**, 24,9% abaixo de 209,29.
+
+O que uma reabertura no domingo à noite faz com ele, com a dívida inalterada:
+
+| NVDA no domingo às 20:00 em Nova York em relação a sexta | Fator de saúde depois da primeira rodada |
+| -------------------------------------------------------- | ---------------------------------------- |
+| -1,24% (o maior gap até agora, em qualquer um dos sete)  | 1,315                                    |
+| -10%                                                     | 1,199                                    |
+| -20%                                                     | 1,065                                    |
+| -25%                                                     | 0,999: liquidável já na primeira rodada  |
+| -30%                                                     | 0,932                                    |
+
+Com -25%, a posição pode ser liquidada no momento em que o feed é atualizado. Neste Spoke, um liquidante pode então pagar dívida suficiente para trazer você de volta a um fator de saúde de 1,24 e levar garantia com um bônus que começa em 4,95% logo abaixo de 1 e chega a 5,5% em 0,90 ou menos. O mesmo empréstimo de 11.000 USDC contra 100 NVDA no mercado listado NVDA / USDG do Morpho, com LLTV de 62,5%, começa com um fator de saúde de apenas 1,185 (preço de liquidação de 176,00 USD, 15,6% abaixo), e um liquidante no Morpho ganha um incentivo de 12,68% nesse LLTV e pode pagar a dívida inteira; [como funciona a liquidação no Morpho](/pt/blog/como-funciona-a-liquidacao-no-morpho#qual-e-o-tamanho-do-incentivo-de-liquidacao-em-cada-lltv) tem a tabela.
+
+Um gap também pode passar de toda a sua garantia. Se a ação reabrir tão baixa que a garantia valha menos do que a dívida mais o bônus do liquidante, o rombo vira dívida incobrável (bad debt). No Aave, ela recai sobre quem depositou USDC neste hub específico, que optou por aceitar a garantia em ações; no Morpho, recai sobre os credores do mercado. Em qualquer caso, o tomador já perdeu a garantia.
+
+## O que mais pode travar um empréstimo com garantia em ações?
+
+- **Eventos corporativos.** Quando uma ação passa por um desdobramento ou um dividendo grande é processado, o emissor pausa o multiplicador e o oráculo até a nova proporção ser confirmada. O Aave pausa a reserva afetada durante esse tempo, então esse token não pode ser sacado nem liquidado até a pausa acabar, e a documentação da Robinhood orienta os integradores a tratar um oráculo pausado como "price temporarily unavailable" [preço temporariamente indisponível].
+- **Mercados rasos.** A LlamaRisk mediu, antes do lançamento, que vender de 0,27 milhão a 1,08 milhão de USD de um único token na Base moveria o preço dele em 2%. Um liquidante que não consegue vender rápido os tokens tomados quer um desconto grande, e isso é parte do motivo pelo qual esses fatores de garantia ficam bem abaixo do limite de liquidação (liquidation threshold) de 84% do WETH no Aave V3 Ethereum Core.
+- **Um congelamento de todo o protocolo.** Na noite de 29 de outubro de 2026, os guardiões do Aave congelaram por precaução todos os mercados V3 e V4 operados pela DAO, depois de relatos de um incidente envolvendo carteiras ligadas à Binance, e o Coinbase Stocks Spoke foi congelado junto: em 30 de outubro, as oito reservas dele constavam como `frozen` on-chain, USDC incluído. Uma reserva congelada não aceita novos depósitos nem novos empréstimos; pagar e sacar continuam funcionando. Até o congelamento ser suspenso, pagar é a única forma de subir o seu fator de saúde ali, como explica o guia sobre [uma reserva congelada](/pt/blog/por-que-saque-ou-emprestimo-aave-falha#5-a-reserva-esta-congelada).
+- **Mercados do Morpho não listados.** Um mercado que o app do Morpho não lista pode usar qualquer oráculo que o criador escolheu. O maior mercado de NVDA na Robinhood Chain, com 623.189 USD emprestados, usa um contrato de oráculo personalizado em vez do oráculo Chainlink padrão do Morpho, e em 30 de outubro ele cotava a NVDA a 208,71 USD enquanto o oráculo do mercado listado dizia 208,55 USD. Leia o oráculo de um mercado antes de pegar empréstimo nele.
+
+## Quanta margem um empréstimo com garantia em ações precisa?
+
+Mais do que um empréstimo em cripto do mesmo tamanho, por um motivo: a sua última chance de agir é a sexta à tarde, não o minuto antes da liquidação. Uma margem que aguenta as variações de um dia normal de negociação não basta; ela precisa aguentar o gap entre o último preço de sexta e o primeiro de domingo à noite, mais o que acontecer antes de você conseguir reagir na segunda. No exemplo acima, um fator de saúde de 1,332 aguenta um gap de 24,9%. Começar em 1,5 aguentaria um gap de 33,3%; em 2,0, de 50%.
+
+Daí saem dois hábitos práticos. Confira as posições com garantia em ações na sexta antes das 20:00 no horário de Nova York (o fim do pós-mercado), e pague ou adicione garantia nesse momento se a margem estiver curta, porque durante o fim de semana o preço não pode dizer nada de novo. E trate o domingo às 20:00 no horário de Nova York, segunda às 00:00 ou 01:00 UTC, como o momento de risco: é quando chega o primeiro preço novo. [Como escolher uma margem](/pt/blog/fator-de-saude-aave-seguro#quanta-margem-voce-precisa-para-ter-tempo-de-agir) mostra o raciocínio para qualquer garantia.
+
+## Um alerta pode ajudar com um empréstimo com garantia em ações?
+
+Em parte. O Tokenping verifica o seu fator de saúde a cada 5 minutos no Coinbase Stocks Spoke (ele aparece no painel como "Base (V4 Coinbase Stocks)") e em todos os mercados do Morpho que o app do Morpho lista, incluindo os da Robinhood Chain, e manda uma mensagem para você no Signal, no Telegram ou por e-mail quando ele está abaixo do seu limite. Nos dias úteis, isso funciona como para qualquer garantia: os feeds são atualizados durante as sessões regular, de pré-mercado, de pós-mercado e noturna, então uma ação em queda move o seu fator de saúde e um alerta pode chegar até você antes da liquidação.
+
+Na reabertura do fim de semana, ele não pode fazer muito. O fator de saúde não cruza o seu limite aos poucos; ele salta na primeira rodada, e uma liquidação pode cair no mesmo bloco. Um alerta, nesse caso, conta o que aconteceu, e não o que está para acontecer. Por isso a proteção contra um gap de segunda-feira é a margem, não o alerta: defina o limite alto o bastante para que a mensagem chegue num dia útil, enquanto ainda há tempo para pagar. O Tokenping não cobre mercados do Morpho não listados, o que inclui o maior de NVDA.
+
+Você pode [conferir os seus Spokes do Aave V4](/pt/aave) ou [as suas posições no Morpho](/pt/morpho) sem pagar nada; os alertas custam <AlertPrice />, um por Spoke ou por mercado. O Tokenping está em beta e não tem garantia de disponibilidade, e nenhum alerta impede uma liquidação.
+
+## Fontes
+
+- [API GraphQL pública do Aave V4](https://api.v4.aave.com/graphql), `reserves` e `spokes` na Base: as reservas, os fatores de garantia, o bônus e a taxa de liquidação, os limites (caps), os valores depositados e emprestados e a configuração de liquidação do Coinbase Stocks Spoke (consultado em 30 de outubro de 2026)
+- [Coinbase Stocks Spoke na Base](https://basescan.org/address/0x17905Db0e4A3514467539956c084180616AE7B8D): `getReserveCount`, `getReserveConfig` e `ORACLE` no bloco 53278437 da Base, e o `getReserveSource` do oráculo para cada reserva (consultado em 30 de outubro de 2026)
+- [Feed Coinbase NVDA na Base](https://basescan.org/address/0x04689a41629776563E6822F76f2e57D148d28513) e os outros seis feeds da Coinbase: `latestRoundData` e `getRoundData` em todos os fins de semana desde 25 de setembro de 2026 (consultado em 30 de outubro de 2026)
+- [API do Morpho](https://api.morpho.org/graphql): todos os mercados do Morpho Blue com garantia em ações tokenizadas, o LLTV, a listagem e o valor emprestado de cada um (consultado em 30 de outubro de 2026)
+- [Morpho Blue na Robinhood Chain](https://robinhoodchain.blockscout.com/address/0x9D53d5E3bd5E8d4Cbfa6DB1ca238AEA02E651010): `idToMarketParams` dos mercados NVDA / USDG listado e maior, os feeds e o `price()` dos oráculos deles, e as rodadas do [feed RHNVDA / USD](https://robinhoodchain.blockscout.com/address/0xCF169363636D73dbBf77733629CB38919d14232d) (consultado em 30 de outubro de 2026)
+- [API do Aave V3](https://api.v3.aave.com/graphql): as reservas de todos os 24 mercados do Aave V3 (consultado em 30 de outubro de 2026)
+- [PoolDataProvider, Aave V3 Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): WETH e USDC congelados no bloco 26304159 (consultado em 30 de outubro de 2026)
+- [ISpoke.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/interfaces/ISpoke.sol): as flags de pausada e congelada de uma reserva do V4 (aave-v4 main, consultado em 30 de outubro de 2026)
+- [Aave: Coinbase Tokenized Stocks Now Live on Aave V4](https://aave.com/blog/coinbase-tokenized-stocks), 25 de setembro de 2026 (consultado em 30 de outubro de 2026)
+- [Chainlink: Tokenized Equity Feeds](https://docs.chain.link/data-feeds/tokenized-equity-feeds) e [Base Tokenized Equities (Coinbase B20)](https://docs.chain.link/data-feeds/tokenized-equity-feeds/coinbase) (consultado em 30 de outubro de 2026)
+- [Robinhood: Stock Tokens](https://docs.robinhood.com/chain/stock-tokens/) e [Oracles & Price Feeds](https://docs.robinhood.com/chain/oracles-and-price-feeds/) (consultado em 30 de outubro de 2026)
+- [CryptoSlate: Aave's stock-token loans expose USDC lenders to a weekend price gap](https://cryptoslate.com/aave-stock-token-loans-expose-usdc-lenders-to-weekend-price-gap/), 27 de setembro de 2026: os parâmetros e os números de profundidade da LlamaRisk (consultado em 30 de outubro de 2026)
+- [Crypto Briefing: Robinhood stock tokens go live on Morpho as collateral](https://cryptobriefing.com/robinhood-stock-tokens-morpho-collateral/), 22 de outubro de 2026 (consultado em 30 de outubro de 2026)
+- [Coingabbar: Aave V3 and V4 markets frozen as precaution](https://coingabbar.com/en/aave-news-binance-wallet-incident-v3-v4-market-freeze), 30 de outubro de 2026 (consultado em 30 de outubro de 2026)
+
+_Conteúdo educativo, não é recomendação financeira. Os alertas reduzem o risco, mas não impedem a liquidação._

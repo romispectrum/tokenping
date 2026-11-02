@@ -1,0 +1,115 @@
+import type { AlertsMessages } from "./shared";
+import { plural, ptForMarket, ptOnMarket } from "~~/i18n/format";
+
+const ATTRIBUTION_QUESTION = "Como você conheceu o Tokenping?";
+
+export const MESSAGES: AlertsMessages = {
+  cardTitle: "Configurações de alerta",
+  active: "Ativo",
+  payToEdit: "Pagar o acesso para editar",
+  editAlert: "Editar alerta",
+  signInTitle: "Entre para gerenciar seus alertas",
+  signInDescription:
+    "A sua carteira assina uma mensagem que prova que o endereço é seu. Não é uma transação e não custa gas.",
+  signIn: "Entrar com a carteira",
+  signingIn: "Aguardando a sua carteira",
+  signInStatement: "Entre no Tokenping para ver e editar seus alertas de fator de saúde.",
+  signInRejected: "Você recusou o pedido de assinatura. Entre para ver e editar seus alertas.",
+  signInFailed: "Não foi possível entrar. Tente de novo.",
+  signInExpired: "A sua sessão terminou. Entre de novo com a sua carteira.",
+  emptyTitle: (chainName, kind) => `Ainda não há alertas ${ptOnMarket(chainName, kind)}`,
+  emptyDescription: "Receba uma mensagem quando o seu fator de saúde cair abaixo de um limite que você escolhe.",
+  createAlert: "Criar alerta",
+  loadErrorTitle: "Não foi possível carregar as configurações de alerta",
+  loadErrorDescription: "Verifique a sua conexão e tente de novo.",
+  tryAgain: "Tentar de novo",
+  retrying: "Tentando de novo",
+  servicesLegend: "Canais de alerta",
+  servicesDescription: "Escolha para onde os alertas vão. Você pode escolher mais de um.",
+  serviceNames: { email: "E-mail", signal: "Signal", telegram: "Telegram" },
+  emailLabel: "Endereço de e-mail",
+  emailDescription: "Os alertas são enviados para este endereço.",
+  emailPlaceholder: "voce@example.com",
+  signalLabel: "Nome de usuário do Signal",
+  signalDescription: "No Signal, abra Configurações e depois Perfil. Ele tem o formato alice.42.",
+  telegramLabel: "Nome de usuário do Telegram",
+  telegramDescription:
+    "Os alertas vão para esta conta do Telegram. Você encontra o nome no Telegram em Configurações, depois Nome de usuário.",
+  telegramPlaceholder: "alice_eth",
+  telegramChecking: "Verificando",
+  telegramLinked: username => `@${username} está vinculado: os alertas vão chegar no seu chat do Telegram.`,
+  telegramPressStart: bot =>
+    `Ainda não vinculado: toque em Start ${bot ? `no @${bot}` : "no bot do Tokenping"} uma vez.`,
+  openBot: bot => `Abrir @${bot}`,
+  telegramStatusUnknown: "Não foi possível verificar se este nome de usuário está vinculado. Você ainda pode salvar.",
+  opensInNewTab: "(abre em uma nova aba)",
+  channelLanguageLabels: {
+    email: "Idioma do e-mail",
+    signal: "Idioma no Signal",
+    telegram: "Idioma no Telegram",
+  },
+  thresholdLabel: "Limite do fator de saúde",
+  thresholdExactValue: "(valor exato)",
+  thresholdScale: { critical: "Crítico", safe: "Seguro", verySafe: "Muito seguro" },
+  thresholdDescription: (threshold, chainName, kind) =>
+    `Você será avisado quando o seu fator de saúde ${ptOnMarket(chainName, kind)} cair abaixo de ${threshold}.`,
+  saveAlert: "Salvar alerta",
+  saving: "Salvando",
+  cancel: "Cancelar",
+  deleteAlert: "Excluir alerta",
+  deleting: "Excluindo",
+  keepAlert: "Manter alerta",
+  deleteTitle: "Excluir este alerta?",
+  deleteDescription: (chainName, kind) =>
+    `O Tokenping vai parar de enviar alertas de fator de saúde ${ptForMarket(chainName, kind)}.`,
+  errorSummaryTitle: count =>
+    plural("pt", count, {
+      one: `Corrija ${count} campo para salvar`,
+      other: `Corrija ${count} campos para salvar`,
+    }),
+  formErrors: {
+    noService: "Selecione pelo menos um canal de alerta.",
+    noEmail: "Digite o seu endereço de e-mail.",
+    invalidEmail: "Digite um endereço de e-mail como nome@example.com.",
+    noSignal: "Digite o seu nome de usuário do Signal.",
+    invalidSignal:
+      "Digite um nome de usuário do Signal como alice.42. Você encontra o seu no Signal em Configurações, depois Perfil.",
+    noTelegram: "Digite o seu nome de usuário do Telegram.",
+    invalidTelegram:
+      "Digite um nome de usuário do Telegram como alice_eth: de 4 a 32 letras, números ou sublinhados, começando com uma letra e sem terminar com _.",
+  },
+  summaryServices: "Canais",
+  summaryNoServices: "Nenhum selecionado",
+  summaryEmail: "E-mail",
+  summarySignal: "Signal",
+  summaryTelegram: "Telegram",
+  summaryLanguage: "Idioma",
+  summaryTelegramNotLinked: bot => `Ainda não vinculado: toque em Start no @${bot} uma vez.`,
+  summaryThreshold: "Limite",
+  sendTest: "Enviar teste",
+  sendingTest: "Enviando",
+  testAgainIn: minutes => `De novo em ${minutes} min`,
+  testSent: channel =>
+    `Mensagem de teste enviada por ${channel === "E-mail" ? "e-mail" : channel}. Confira se ela chegou.`,
+  testFailed: "A mensagem de teste não foi enviada",
+  testLimitNote: minutes =>
+    `Um teste envia este alerta e a sua posição como estão agora. Um por canal ${plural("pt", minutes, { one: "a cada minuto", other: `a cada ${minutes} minutos` })}.`,
+  belowThresholdTitle: "Abaixo do seu limite de alerta",
+  belowThresholdDescription: (healthFactor, threshold) =>
+    `O seu fator de saúde atual (${healthFactor}) está abaixo do seu limite de ${threshold}.`,
+  alertSaved: "Alerta salvo",
+  saveFailed: "Não foi possível salvar o seu alerta",
+  alertDeleted: "Alerta excluído",
+  deleteFailed: "Não foi possível excluir o seu alerta",
+  attributionQuestion: ATTRIBUTION_QUESTION,
+  attributionFormLabel: `${ATTRIBUTION_QUESTION} (opcional)`,
+  attributionDescription: "Ajuda a gente a saber quais canais funcionam. Salvo com o endereço da sua carteira.",
+  attributionEmpty: "Digite uma resposta ou selecione Pular.",
+  // The checks behind it (length, hidden control characters) only fail for pasted text.
+  attributionInvalid: () => "A resposta é longa demais ou tem caracteres ocultos. Escreva de novo e tente outra vez.",
+  attributionSendFailed: "Não foi possível enviar a sua resposta. Tente de novo ou pule.",
+  sendAnswer: "Enviar resposta",
+  sending: "Enviando",
+  skip: "Pular",
+  answerSent: "Resposta enviada",
+};

@@ -4,6 +4,7 @@ import { MESSAGES as en } from "./en";
 import { MESSAGES as es } from "./es";
 import { MESSAGES as fr } from "./fr";
 import { MESSAGES as hi } from "./hi";
+import { MESSAGES as pt } from "./pt";
 import type { DashboardMessages } from "./shared";
 import { MESSAGES as vi } from "./vi";
 import type { Localized } from "~~/i18n/locales";
@@ -14,4 +15,4 @@ import type { Localized } from "~~/i18n/locales";
 
 export type { DashboardMessages, GateMessages } from "./shared";
 
-export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = { en, cs, es, hi, de, vi, fr };
+export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = { en, cs, es, hi, de, vi, fr, pt };

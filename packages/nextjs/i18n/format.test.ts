@@ -13,6 +13,8 @@ import {
   hiMarket,
   joinList,
   plural,
+  ptForMarket,
+  ptOnMarket,
   viMarket,
 } from "~~/i18n/format";
 
@@ -108,6 +110,23 @@ describe("French formatting", () => {
     expect(frOnMarket("Base", "network")).toBe("sur Base");
     expect(frForMarket("Base")).toBe("pour Base");
     expect(frForMarket("USDC | cbBTC (86%)", "market")).toBe("pour le marché USDC | cbBTC (86%)");
+  });
+});
+
+describe("Portuguese formatting", () => {
+  it("joins with e and ou, writes Brazilian dates, a decimal comma and the market wording", () => {
+    expect(joinList("pt", ["Signal", "Telegram", "e-mail"])).toBe("Signal, Telegram e e-mail");
+    expect(joinList("pt", ["Signal", "e-mail"], "disjunction")).toBe("Signal ou e-mail");
+    expect(formatLongDate("pt", "2026-10-14")).toBe("14 de outubro de 2026");
+    expect(formatDecimal("pt", "1.42")).toBe("1,42");
+    // Brazilian Portuguese counts 0 and 1 as one.
+    expect(plural("pt", 0, { one: "0 rede", other: "0 redes" })).toBe("0 rede");
+    expect(plural("pt", 7, { one: "1 rede", other: "7 redes" })).toBe("7 redes");
+    expect(ptOnMarket("Arbitrum")).toBe("na rede Arbitrum");
+    expect(ptOnMarket("Ethereum (V4 Lido)")).toBe("no mercado Ethereum (V4 Lido)");
+    expect(ptOnMarket("Base", "network")).toBe("na rede Base");
+    expect(ptForMarket("Base")).toBe("para a rede Base");
+    expect(ptForMarket("USDC | cbBTC (86%)", "market")).toBe("para o mercado USDC | cbBTC (86%)");
   });
 });
 

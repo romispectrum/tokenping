@@ -4,6 +4,7 @@ import { MESSAGES as en } from "./en";
 import { MESSAGES as es } from "./es";
 import { MESSAGES as fr } from "./fr";
 import { MESSAGES as hi } from "./hi";
+import { MESSAGES as pt } from "./pt";
 import type { PrivacyMessages } from "./shared";
 import { MESSAGES as vi } from "./vi";
 import type { Localized } from "~~/i18n/locales";
@@ -13,4 +14,4 @@ import type { Localized } from "~~/i18n/locales";
 
 export type { PrivacyMessages, PrivacyProcessor } from "./shared";
 
-export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = { en, cs, es, hi, de, vi, fr };
+export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = { en, cs, es, hi, de, vi, fr, pt };

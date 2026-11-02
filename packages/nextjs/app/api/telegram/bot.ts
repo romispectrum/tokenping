@@ -13,6 +13,7 @@ const REPLY_LANGUAGES: Record<string, Locale> = {
   de: "de",
   vi: "vi",
   fr: "fr",
+  pt: "pt",
 };
 
 /** The reply language for a Telegram user: Czech for Czech and Slovak apps, a site language for its own, else English. */

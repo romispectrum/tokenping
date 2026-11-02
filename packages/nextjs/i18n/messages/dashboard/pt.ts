@@ -1,0 +1,178 @@
+import type { DashboardMessages } from "./shared";
+import { plural, ptForMarket, ptOnMarket } from "~~/i18n/format";
+
+/** "30 dias", "1 dia". */
+const ptDays = (days: number) => plural("pt", days, { one: `${days} dia`, other: `${days} dias` });
+
+export const MESSAGES: DashboardMessages = {
+  page: {
+    metaTitle: "Posições no Aave V3 e V4 e fator de saúde",
+    metaDescription: (networkCount, channels) =>
+      `Garantia, dívida e fator de saúde no Aave V3 e V4 em ${networkCount} redes, e alertas por ${channels}, com um limite por mercado.`,
+    title: "Posições no Aave V3 e V4 e alertas de fator de saúde",
+    networkMarkets: (name, markets) => `${name} (mercados ${markets})`,
+    intro: (v3Networks, v4Networks) =>
+      `Conecte a carteira com que você pega empréstimo para ver a garantia, a dívida e o fator de saúde dela no Aave V3 em ${v3Networks}, e em cada Spoke do Aave V4 em ${v4Networks}. Ver não exige nenhuma transação.`,
+    disclosureSummary: "Quanto custam os alertas e com que frequência verificamos",
+    alertsCost: (channels, paymentChain) =>
+      `Para receber uma mensagem por ${channels} quando o fator de saúde de um mercado cair abaixo de um limite que você escolhe, desbloqueie os alertas com um pagamento em USDC${paymentChain ? ` na rede ${paymentChain}` : ""}. O preço atual aparece antes de você pagar.`,
+    checks: minutes =>
+      `O Tokenping verifica ${plural("pt", minutes, { one: "a cada minuto", other: `a cada ${minutes} minutos` })}. Enquanto o fator de saúde ficar abaixo do seu limite, cada verificação envia uma nova mensagem em cada canal que você escolheu.`,
+    guideThreshold: "Como escolher um limite",
+    guideAlerts: "Como os alertas funcionam",
+    morphoDashboard: "Pega empréstimo no Morpho? Abra o painel do Morpho",
+  },
+  gate: {
+    title: "Conecte uma carteira para continuar",
+    description:
+      "O Tokenping precisa do endereço da sua carteira para mostrar suas posições no Aave. Conectar não movimenta fundos nem cobra taxa.",
+    connect: "Conectar carteira",
+    connecting: "Conectando",
+    approveInWallet: "Aprove a conexão na sua carteira.",
+  },
+  positionsHeading: "Suas posições no Aave",
+  loadingDashboard: "Carregando o seu painel",
+  toolbar: {
+    wallet: "Carteira",
+    refresh: "Atualizar posições",
+    refreshing: "Atualizando",
+    loadingPositions: "Carregando posições",
+  },
+  errors: {
+    positionsDidNotLoad: "Não foi possível carregar as posições",
+    refreshFailed: "Não foi possível atualizar",
+    showingLastPositions: "Mostrando as posições do último carregamento bem-sucedido.",
+    tryAgain: "Tentar de novo",
+    fetchPositionsFailed: "Não foi possível buscar as posições no Aave",
+  },
+  totals: {
+    supplied: "Total depositado",
+    borrowed: "Total emprestado",
+    netWorth: "Patrimônio líquido",
+    noData: "Sem dados",
+  },
+  networks: {
+    heading: "Mercados",
+    active: count => plural("pt", count, { one: `${count} ativo`, other: `${count} ativos` }),
+    noPositions: "Nenhuma posição ativa no Aave encontrada nos mercados compatíveis.",
+    selectedRegion: "Mercado selecionado",
+    noneSelectedTitle: "Nenhum mercado selecionado",
+    noneSelectedDescription: "Selecione um mercado para ver sua posição no Aave.",
+    otherMarkets: count => `Outros mercados (${count})`,
+    otherMarketsHint: "Mercados verificados pelo Tokenping em que esta carteira não tem posição nem alerta.",
+    alertSet: "Alerta configurado",
+    supplied: usd => `${usd} depositados,`,
+    borrowed: usd => `${usd} emprestados`,
+    noPosition: "Sem posição",
+  },
+  healthFactor: {
+    srPrefix: "Fator de saúde ",
+    noDebt: "Sem dívida",
+    critical: "Crítico",
+    risky: "Arriscado",
+    safe: "Seguro",
+  },
+  position: {
+    market: version => (version === 4 ? "Spoke do Aave V4" : "Mercado do Aave V3"),
+    noPositionTitle: chainName => `Nenhuma posição ativa ${ptOnMarket(chainName)}`,
+    noPositionDetail: chainName => `O Aave não mostra garantia nem dívida para esta carteira ${ptOnMarket(chainName)}.`,
+    collateral: "Garantia",
+    debt: "Dívida",
+    netWorth: "Patrimônio líquido",
+    suppliedTitle: "Depositado",
+    borrowedTitle: "Emprestado",
+    noCollateral: "Nenhuma garantia depositada",
+    noDebt: "Nenhuma dívida em aberto",
+    tokenIconsFrom: "Ícones de tokens e redes fornecidos por",
+    tokenDetailsFailedTitle: "Não foi possível carregar os detalhes dos tokens",
+    tokenDetailsFailedBody: "Os totais acima vêm do resumo da conta no Aave. Atualize as posições para tentar de novo.",
+  },
+  tokens: {
+    asset: "Ativo",
+    supplied: "Depositado",
+    supplyApy: "APY de depósito",
+    collateral: "Garantia",
+    borrowed: "Emprestado",
+    rateType: "Tipo de taxa",
+    enabled: "Ativada",
+    disabled: "Desativada",
+    stable: amount => `Estável ${amount}`,
+    variable: amount => `Variável ${amount}`,
+    count: count => plural("pt", count, { one: `${count} ativo`, other: `${count} ativos` }),
+  },
+  address: {
+    defaultLabel: "Endereço",
+    copy: (_label, address) => `Copiar o endereço ${address}`,
+    copied: "Endereço copiado",
+    copyFailed: "Não foi possível copiar. Selecione o endereço e copie manualmente.",
+  },
+  opensInNewTab: "(abre em uma nova aba)",
+  paywall: {
+    unlockedUntil: date => `Alertas desbloqueados até ${date}`,
+    titleNew: "Desbloquear alertas de fator de saúde",
+    titleExtend: "Estender o acesso para editar seus alertas",
+    descriptionNew:
+      "Pague uma vez para desbloquear as configurações de alerta e definir um limite de fator de saúde para cada rede. Nada é renovado automaticamente: você paga com a sua carteira quando quiser estender.",
+    descriptionExtend:
+      "Suas configurações de alerta anteriores estão salvas. Pague de novo para estender o acesso e editá-las.",
+    networkDescriptionNew: chainName =>
+      `Pague uma vez para configurar alertas de fator de saúde ${ptOnMarket(chainName)} e em outros mercados. Nada é renovado automaticamente: você paga com a sua carteira quando quiser estender.`,
+    networkDescriptionExtend: chainName =>
+      `Suas configurações de alerta salvas ${ptForMarket(chainName)} continuam na sua conta. Pague de novo para estender o acesso e editá-las.`,
+    connectWallet: "Conecte a sua carteira para pagar o acesso.",
+    unconfigured: "Nenhum contrato de pagamento configurado para esta rede.",
+    noPlan: "Nenhum plano pago está disponível no momento.",
+    paused: "Os pagamentos estão pausados no momento. Tente de novo mais tarde.",
+    statusUnavailable: "Não foi possível carregar o status do pagamento. Recarregue a página para tentar de novo.",
+    wrongNetworkTitle: "Rede errada",
+    wrongNetworkBody: (walletChain, target) =>
+      `A sua carteira está ${walletChain ? `na rede ${walletChain}` : "em outra rede"}. Troque ${target ? `para a rede ${target}` : "para a rede de pagamento"} para pagar.`,
+    switchTo: target => (target ? `Trocar para ${target}` : "Trocar para a rede de pagamento"),
+    switching: "Trocando de rede",
+    loadingDetails: "Carregando os detalhes do pagamento",
+    price: "Preço",
+    access: "Acesso",
+    network: "Rede",
+    networkFee: "Taxa de rede",
+    networkFeeValue: symbol => `Paga em ${symbol} a cada etapa, mostrada na sua carteira`,
+    period: (days, about) => (about ? `Cerca de ${ptDays(days)}` : ptDays(days)),
+    pay: amount => `Pagar ${amount}`,
+    extend: (days, amount) => `Adicionar ${ptDays(days)} por ${amount}`,
+    extendHint: days =>
+      `Cada pagamento adiciona ${ptDays(days)} depois da sua data de término atual. Pague quantas vezes quiser; nada é renovado sozinho.`,
+    accessExtended: date => `Acesso estendido até ${date}.`,
+    accessActive: "Acesso ativo. Agora você pode configurar os alertas.",
+    paymentPending: "Pagamento confirmado. O acesso vai aparecer em breve.",
+    loading: {
+      processing: "Processando",
+      waitingForWallet: "Aguardando a sua carteira",
+      approving: "Aprovando",
+      paying: "Pagando",
+    },
+    unavailable: "O acesso pago não está disponível no momento.",
+    checkFailed: "Não foi possível verificar o status do pagamento. Tente de novo daqui a pouco.",
+    approvalNotVisible: "A aprovação foi confirmada, mas ainda não aparece. Tente de novo daqui a pouco.",
+  },
+  payment: {
+    stepsLabel: "Etapas do pagamento",
+    approveTitle: amount => `Aprovar ${amount}`,
+    approveHint:
+      "Permite que o contrato de pagamento retire exatamente esse valor. A etapa é pulada quando uma aprovação anterior já cobre o valor.",
+    payTitle: amount => `Pagar ${amount}`,
+    payHint: "Envia o pagamento e desbloqueia os alertas.",
+    inProgress: "Em andamento",
+    done: "Concluído",
+    notNeeded: "Não é necessário",
+    transaction: "Transação ",
+    viewOn: explorer => `Ver no ${explorer}`,
+    preparingTitle: "Preparando o pagamento",
+    preparingBody: "Verificando o preço atual e a sua aprovação.",
+    confirmTitle: "Confirme na sua carteira",
+    approveSignBody: amount => `Etapa 1 de 2: aprovar ${amount}. Nada é enviado até você confirmar.`,
+    processingOn: network => (network ? `Processando na rede ${network}` : "Processando na rede"),
+    approvePendingBody:
+      "Etapa 1 de 2: aprovação enviada. Em seguida, a sua carteira pede para você confirmar o pagamento.",
+    paySignBody: amount => `Etapa 2 de 2: pagar ${amount}. Nada é enviado até você confirmar.`,
+    payPendingBody: "Etapa 2 de 2: pagamento enviado. Os alertas são desbloqueados assim que a rede confirmar.",
+  },
+};

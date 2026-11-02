@@ -34,6 +34,7 @@ describe("LanguageSwitch", () => {
       ["EspañolES", "/es/blog/factor-de-salud-aave"],
       ["FrançaisFR", "/fr/blog/facteur-de-sante-aave"],
       ["हिन्दीHI", "/hi/blog/aave-health-factor-kya-hai"],
+      ["PortuguêsPT", "/pt/blog/fator-de-saude-aave"],
       ["English (UK)UK", "/blog/aave-health-factor"],
       ["English (US)US", "/blog/aave-health-factor"],
       ["Tiếng ViệtVI", "/vi/blog/he-so-suc-khoe-aave"],

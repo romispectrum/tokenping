@@ -1,0 +1,208 @@
+export const meta = {
+  slug: "fator-de-saude-morpho",
+  title: "Fator de saúde do Morpho: fórmula e exemplos",
+  description:
+    "O que é o fator de saúde de um empréstimo no Morpho, como o Morpho Blue e o Midnight o calculam, o que o move e como ele difere do Aave.",
+  h1: "O que é o fator de saúde do Morpho e como ele é calculado?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "O que é o fator de saúde de um empréstimo no Morpho e como ele é calculado?",
+  readingMinutes: 16,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  O fator de saúde (health factor) de um empréstimo no Morpho compara o valor da sua garantia, contado até o LTV de
+  liquidação (LLTV) do mercado, com o que você deve: quantidade de garantia × preço do oráculo × LLTV ÷ dívida. Quando a
+  dívida passa desse limite, o fator de saúde fica abaixo de 1 e a posição pode ser liquidada. Em 1,00 ou acima, não
+  pode, exceto parte de um empréstimo no Blue cujo dono autorizou um contrato de pré-liquidação (pre-liquidation), ou um
+  empréstimo no Midnight com dívida restante depois do vencimento. Por exemplo, 1 cbBTC cotado a 80.011,48 USDC no
+  mercado USDC | cbBTC (86%) do Morpho no Ethereum, contra 40.000 USDC de dívida, dá 80.011,48 × 0,86 ÷ 40.000 = 1,72.
+  Cada mercado do Morpho tem sua própria garantia, seu próprio oráculo e seu próprio LLTV, fixados para sempre quando o
+  mercado foi criado, então cada empréstimo tem seu próprio fator de saúde.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Os números e os blocos em que foram lidos: content/blog/snapshots/morpho-health-factor.md */}
+
+## O que é o fator de saúde de um empréstimo no Morpho?
+
+O fator de saúde é o número que mostra a que distância uma posição de empréstimo no Morpho está da liquidação. Ele divide o máximo que você pode dever pelo que você deve agora:
+
+**Fator de saúde = valor da garantia no token do empréstimo × LLTV ÷ dívida**
+
+- **Acima de 1,00:** a posição não pode ser liquidada, a menos que você tenha autorizado um contrato de pré-liquidação ou que seja um empréstimo no Midnight depois do vencimento (os dois casos são tratados abaixo). Quanto maior o número, mais os preços podem andar contra você antes disso.
+- **Abaixo de 1,00:** sua dívida é maior do que o mercado permite, e parte dela ou toda ela pode ser liquidada.
+- **Sem dívida:** não há nada para liquidar, então não há fator de saúde para acompanhar.
+
+Um fator de saúde de 1,72 não significa que você está a 72% da liquidação. Significa que a dívida poderia crescer até 1,72 vez o seu tamanho, ou que o preço da garantia poderia cair 1 − 1 ÷ 1,72 = 41,9%, antes de chegar à linha.
+
+O fator de saúde não fica gravado na blockchain. O contrato do Morpho só verifica se uma posição está saudável; os apps, a API do Morpho e o Tokenping dividem o limite de empréstimo pela dívida para mostrá-lo como um número.
+
+## Como é construído um mercado do Morpho Blue?
+
+O Morpho Blue, que a documentação do Morpho agora chama de mercados com taxa variável, é um conjunto de mercados de empréstimo separados. Cada um é definido por cinco parâmetros escolhidos quando o mercado é criado:
+
+| Parâmetro                     | O que é                                                      | No mercado do exemplo    |
+| ----------------------------- | ------------------------------------------------------------ | ------------------------ |
+| Token do empréstimo           | O único token que você pode pegar emprestado                 | USDC                     |
+| Token de garantia             | O único token que você pode depositar como garantia          | cbBTC                    |
+| Oráculo                       | O contrato que dá o preço da garantia no token do empréstimo | Um feed de preço BTC/USD |
+| Modelo de taxa de juros (IRM) | O contrato que define a taxa do empréstimo                   | AdaptiveCurveIRM         |
+| LLTV                          | O LTV de liquidação                                          | 86%                      |
+
+O app do Morpho dá nome aos mercados a partir deles, com o token do empréstimo primeiro: "USDC | cbBTC (86%)". Qualquer pessoa pode criar um mercado, mas só com um LLTV e um IRM que a governança do Morpho habilitou. Depois de criado, nenhum dos cinco pode ser alterado: o contrato não tem função para editá-los, e a governança pode habilitar novos LLTVs, mas nunca desabilitar um.
+
+Como um mercado tem uma única garantia e um único token de empréstimo, sua garantia em um mercado não cobre dívida em outro. A documentação do Morpho diz isso com todas as letras: a garantia é específica de cada mercado e não há margem cruzada (cross-margining). Dois empréstimos em dois mercados têm dois fatores de saúde.
+
+## Como o Morpho calcula o fator de saúde?
+
+O Morpho Blue verifica a saúde em um único lugar do contrato, `_isHealthy`, e essa mesma verificação protege o empréstimo, o saque de garantia e a liquidação:
+
+1. **Dívida:** suas cotas de empréstimo (borrow shares) convertidas em tokens do empréstimo, arredondadas para cima.
+2. **Valor da garantia:** quantidade de garantia × preço do oráculo ÷ 10^36, arredondado para baixo.
+3. **Limite de empréstimo:** valor da garantia × LLTV, arredondado para baixo.
+4. **Saudável** enquanto o limite de empréstimo for pelo menos igual à dívida.
+
+O fator de saúde é o passo 3 dividido pelo passo 1. O arredondamento sempre favorece o protocolo, então o contrato pode deixar você pegar emprestado uma unidade a menos do que o limite exato. Em exatamente 1,00 o contrato ainda considera a posição saudável; ela passa a poder ser liquidada quando a dívida fica maior do que o limite, o que equivale ao fator de saúde cair abaixo de 1.
+
+### O que significa a escala 10^36 do oráculo?
+
+Um oráculo do Morpho devolve o preço de um token de garantia em tokens do empréstimo, multiplicado por 10^36 e ajustado pelas casas decimais dos dois tokens. Para lê-lo, multiplique por 10^(decimais da garantia − decimais do empréstimo) e divida por 10^36. No mercado do exemplo, o cbBTC tem 8 casas decimais e o USDC 6, então o valor bruto 800114843487200000000000000000000000000 × 10^2 ÷ 10^36 = 80.011,48 USDC por cbBTC.
+
+O oráculo é qualquer contrato que o criador do mercado escolheu. Os comentários do contrato do Morpho dizem que é responsabilidade do usuário escolher mercados com oráculos seguros, e a documentação observa que um oráculo pode combinar vários feeds ou depender de outros dados on-chain. Seu fator de saúde só é tão confiável quanto esse oráculo e os feeds que ele lê.
+
+## Exemplo prático: qual é o fator de saúde de 1 cbBTC contra 40.000 USDC?
+
+O maior mercado listado do Morpho no Ethereum por valor emprestado em 26 de outubro de 2026 era o USDC | cbBTC (86%), com cerca de 309,13 milhões de USDC emprestados contra 343,18 milhões depositados (bloco 26274955 do Ethereum). O oráculo dele cotava o cbBTC a 80.011,48 USDC, tirado apenas de um feed de preço BTC/USD, então o mercado conta 1 cbBTC como 1 BTC e 1 USDC como 1 dólar.
+
+Considere 1 cbBTC de garantia e 40.000 USDC de dívida:
+
+1. Valor da garantia: 1 × 80.011,48 = 80.011,48 USDC.
+2. Limite de empréstimo: 80.011,48 × 0,86 = 68.809,88 USDC.
+3. Fator de saúde: 68.809,88 ÷ 40.000 = **1,72**.
+4. LTV: 40.000 ÷ 80.011,48 = 50,0%, contra o LLTV de 86%.
+5. Preço de liquidação: 40.000 ÷ (1 × 0,86) = **46.511,63 USDC por cbBTC**, 41,9% abaixo de 80.011,48.
+
+Os juros também o movem. A taxa de empréstimo do mercado naquele bloco era de 4,89% ao ano, o que, capitalizado, dá 5,01%. Se a taxa e o preço ficassem onde estavam por um ano, a dívida cresceria para cerca de 42.003 USDC e o fator de saúde cairia para 1,64.
+
+### Como estão os tomadores reais deste mercado?
+
+A API do Morpho listava 437 posições de empréstimo neste mercado em 26 de outubro de 2026. Das 435 com fator de saúde, a mediana era 1,96, um quarto estava abaixo de 1,58, um décimo abaixo de 1,35, e o menor era 1,05. Cerca de 3% estavam abaixo de 1,2. No mercado inteiro, 8.419,83 cbBTC cobriam 309,13 milhões de USDC de dívida, um fator de saúde total de cerca de 1,87.
+
+## Como se relacionam o LTV, o LLTV e o fator de saúde?
+
+O LTV, ou relação empréstimo/valor (loan-to-value), é a sua dívida dividida pelo valor da sua garantia. O LLTV é o teto fixo do mercado para ele. Com uma única garantia e uma dívida estável, o fator de saúde é a razão entre os dois:
+
+**Fator de saúde = LLTV ÷ LTV**
+
+No Morpho Blue o LLTV é a única linha. Não existe um limite separado e mais baixo para novos empréstimos, então o contrato deixa você pegar emprestado ou sacar garantia até o fator de saúde chegar a 1,00. A documentação para desenvolvedores do Morpho pede que os apps mantenham uma margem, por exemplo não permitindo empréstimos que deixem o fator de saúde abaixo de 1,05, mas essa margem é uma escolha, não uma regra do contrato. O quanto você fica abaixo da linha decide a sua margem, seja qual for o LLTV:
+
+| Emprestado, como parte do limite | Fator de saúde | Queda do preço da garantia até a liquidação |
+| -------------------------------- | -------------- | ------------------------------------------- |
+| 50%                              | 2,00           | 50%                                         |
+| 70%                              | 1,43           | 30%                                         |
+| 80%                              | 1,25           | 20%                                         |
+| 90%                              | 1,11           | 10%                                         |
+| 100%                             | 1,00           | 0%                                          |
+
+## Quais LLTVs um mercado do Morpho pode usar?
+
+Em 26 de outubro de 2026, o Morpho Blue no Ethereum e na Base aceitava os nove LLTVs da lista aprovada pela governança do Morpho: 0%, 38,5%, 62,5%, 77%, 86%, 91,5%, 94,5%, 96,5% e 98% (cada um lido como habilitado no bloco 26274950 do Ethereum e no bloco 53102888 da Base). Um LLTV de 0 não permite nenhum empréstimo. Um LLTV do Blue precisa ficar abaixo de 100%.
+
+O LLTV também define o incentivo de liquidação, a garantia extra que um liquidante recebe: 1 ÷ (1 − 0,3 × (1 − LLTV)), com teto de 1,15. Com um LLTV de 86%, isso dá 1,0438: um liquidante que paga 100 USDC da sua dívida recebe 104,38 USDC da sua garantia. Quanto maior o LLTV, menor o incentivo. A documentação do Morpho arredonda o incentivo de 86% para cerca de 5%; a fórmula do contrato dá 4,38%. O incentivo em cada LLTV habilitado, o que uma liquidação leva e quanto de um empréstimo pode ir de uma vez estão em [como funciona a liquidação no Morpho](/pt/blog/como-funciona-a-liquidacao-no-morpho). Quem paga o incentivo é você, com a sua garantia; a sua margem é a distância entre o seu fator de saúde e 1,00.
+
+## O que move o fator de saúde no Morpho?
+
+Três coisas podem movê-lo sem que você faça nada:
+
+- **O preço da garantia, como o oráculo o vê.** No exemplo do cbBTC, o fator de saúde acompanha o feed BTC/USD e só muda quando esse feed é atualizado.
+- **O preço do token do empréstimo, se o oráculo o usar.** Um oráculo com um feed de cotação (quote feed) também reage ao token do empréstimo. O oráculo do mercado de cbBTC não tem nenhum, então um depeg (perda da paridade com o dólar) do USDC não moveria esse fator de saúde. Uma diferença entre cbBTC e BTC também não.
+- **Os juros.** No Morpho Blue a dívida cresce à medida que os juros se acumulam, e a documentação do Morpho avisa que uma posição pode ficar mais arriscada com o tempo só por causa dos juros. O AdaptiveCurveIRM mira 90% de utilização e sobe a taxa quando o mercado está mais disputado e a baixa quando está mais calmo, mantendo a taxa a 90% de utilização entre 0,1% e 200% ao ano. Com utilização total, a taxa pode chegar a quatro vezes a taxa na meta, ou seja, até 800% ao ano. Como uma alta da taxa chega ao fator de saúde é mostrado para o Aave em [como funcionam as taxas de juros do Aave](/pt/blog/taxas-de-juros-aave#como-os-picos-de-taxa-afetam-o-seu-fator-de-saude); o efeito em um empréstimo no Morpho é o mesmo.
+
+O que a governança do Morpho não pode mover é o próprio mercado: o LLTV, o endereço do oráculo e o IRM de um mercado são fixos. O oráculo continua lendo o preço dos feeds por trás dele, então só é tão confiável quanto eles. A governança pode definir uma taxa de mercado de até 25% dos juros, mas isso divide os juros entre os credores e quem recebe a taxa; não muda o que os tomadores devem.
+
+É o oráculo que decide quais preços contam. No mercado WETH | wstETH (96.5%) do Morpho no Ethereum, o oráculo avalia o wstETH pela taxa de câmbio do próprio Lido, 1,24717 WETH por wstETH no bloco 26274979, e conta 1 stETH como 1 ETH. O preço do ETH em dólar não move esse fator de saúde em nada. 10 wstETH contra 11 WETH nesse mercado dão 12,4717 × 0,965 ÷ 11 = 1,094, e a liquidação exigiria que a taxa de câmbio caísse para 1,1399, 8,6% abaixo. Só os juros e essa taxa de câmbio movem esse fator de saúde.
+
+## Como calcular seu preço de liquidação no Morpho?
+
+Para uma posição no Blue, o preço de liquidação é o preço do oráculo em que a sua dívida fica igual ao seu limite de empréstimo:
+
+**Preço de liquidação = dívida ÷ (quantidade de garantia × LLTV)**
+
+Ele é expresso em tokens do empréstimo por token de garantia, porque é assim que o oráculo dá o preço. Com um fator de saúde h, o preço da garantia precisa cair 1 − 1 ÷ h para chegar a ele (veja a tabela acima). À medida que a dívida cresce com os juros, o preço de liquidação sobe aos poucos.
+
+Se você autorizou um contrato de pré-liquidação para o mercado, parte da sua posição pode ser fechada antes, com um LTV menor do que o LLTV. O mercado de cbBTC tem um, com LTV de pré-liquidação de 83,26%: para 1 cbBTC contra 40.000 USDC, o fator de saúde medido contra essa linha é 1,67 em vez de 1,72. O Morpho está aposentando esse recurso: o app dele já não o oferece, e o Morpho pede aos tomadores que o têm que o desativem. Veja [pré-liquidação no Morpho](/pt/blog/pre-liquidacao-morpho) para entender como funciona e como verificá-la e revogá-la.
+
+## Como funciona o fator de saúde no Morpho Midnight?
+
+O Morpho Midnight, os mercados com taxa fixa do Morpho, calcula a saúde do mesmo jeito, com três diferenças: um mercado pode aceitar várias garantias, a dívida não cresce com o tempo, e o vencimento é uma linha rígida.
+
+- **Várias garantias, somadas.** Um mercado do Midnight tem um token do empréstimo, uma data de vencimento e uma ou mais garantias, cada uma com seu próprio LLTV e seu próprio oráculo. O contrato soma valor da garantia × LLTV de cada uma que você depositou e compara o total com a sua dívida. O fator de saúde é esse total ÷ dívida.
+- **Dívida fixa.** Você deve um valor de face, um token do empréstimo por unidade, a pagar no vencimento. Os juros já entram quando você pega o empréstimo: você recebe menos de um token do empréstimo por unidade que deve, então, entre uma operação e outra, só os preços das garantias movem um fator de saúde no Midnight.
+- **O vencimento é uma linha rígida.** Depois do vencimento, qualquer dívida ainda aberta pode ser liquidada seja qual for o fator de saúde, e nesse modo pós-vencimento o incentivo do liquidante cresce de zero até o valor cheio ao longo da primeira hora.
+
+Um mercado do Midnight também pode restringir quem pode liquidar, com um controle de acesso (gate) definido quando o mercado é criado; o mercado do exemplo abaixo não tem nenhum.
+
+O maior mercado listado do Midnight no Ethereum em 26 de outubro de 2026, com cerca de 23,9 milhões de unidades de dívida em USDC em aberto, empresta USDC até 25 de dezembro de 2026, contra USDC com LLTV de 98% e cbBTC com 86%, usando o mesmo oráculo de cbBTC do mercado do Blue acima. Deposite 0,5 cbBTC e 10.000 USDC contra 40.000 unidades de dívida e o limite fica em 34.404,94 + 9.800 = 44.204,94, um fator de saúde de 1,105. Vencimento, rolagem e liquidação depois do vencimento estão em [empréstimos com taxa fixa no Morpho Midnight](/pt/blog/morpho-midnight-emprestimos-taxa-fixa).
+
+## Em que o fator de saúde do Morpho difere do Aave?
+
+A fórmula tem a mesma forma nos dois: garantia ponderada por um limite, dividida pela dívida. As regras em volta dela mudam, como o [guia do fator de saúde do Aave](/pt/blog/fator-de-saude-aave#fator-de-saude-ltv-e-limite-de-liquidacao-qual-e-a-diferenca) explica pelo lado do Aave:
+
+|                              | Morpho Blue                                               | Aave V3                                                                                                                                                                                     |
+| ---------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unidade                      | Um mercado: uma garantia, um token do empréstimo          | Um mercado (um pool em uma rede): toda a sua garantia e dívida nele                                                                                                                         |
+| Como os preços são definidos | O oráculo próprio de cada mercado, no token do empréstimo | O oráculo do Aave, em USD                                                                                                                                                                   |
+| Limite de empréstimo         | Até o LLTV, fator de saúde 1,00                           | Um LTV mais baixo, então um empréstimo no máximo deixa [cerca de 1,03](/pt/blog/fator-de-saude-aave#por-que-pegar-emprestado-o-maximo-deixa-um-fator-de-saude-de-so-cerca-de-103) para WETH |
+| Ativos correlacionados       | Mercados separados com LLTV alto                          | Categorias [E-Mode](/pt/blog/fator-de-saude-aave#como-o-e-mode-muda-o-fator-de-saude)                                                                                                       |
+| O limite pode mudar?         | Não, é fixado quando o mercado é criado                   | Sim, a governança e os Risk Stewards podem mudá-lo                                                                                                                                          |
+
+O Aave V4 muda parte disso, com um fator de saúde por Spoke e um fator de garantia (collateral factor) por ativo; veja [como funciona o fator de saúde no Aave V4](/pt/blog/fator-de-saude-aave#o-fator-de-saude-e-diferente-no-aave-v4).
+
+A diferença prática: no Aave, um problema com um ativo afeta o seu mercado inteiro, enquanto no Morpho ele fica dentro de um mercado. E no Morpho nada no contrato impede você de pegar emprestado até o limite, então manter a margem é com você.
+
+## Onde ver o fator de saúde no Morpho?
+
+A central de ajuda do Morpho diz que o app mostra o fator de saúde e o preço de liquidação em cada posição. A API do Morpho devolve `healthFactor` e a variação de preço até a liquidação para posições no Blue; para o Midnight ela devolve as posições e os parâmetros do mercado, e a documentação orienta os integradores a ler o oráculo de cada garantia on-chain e calcular o limite por conta própria.
+
+O [painel do Morpho](/pt/morpho) do Tokenping mostra as posições de empréstimo de uma carteira no Blue e no Midnight, com fatores de saúde calculados a partir da blockchain com a própria matemática do Morpho, nunca tirados da API do Morpho.
+
+## Como escolher uma margem e um limite de alerta?
+
+Comece pelo quanto o preço poderia se mover antes que você consiga agir e depois some espaço para os juros:
+
+- **Escolha a variação que você quer aguentar.** Use a tabela da seção sobre LTV acima: a queda de preço que você quer cobrir define o fator de saúde.
+- **Olhe o oráculo.** Um oráculo BTC/USD se move com o BTC. Um oráculo de taxa de câmbio, como o do mercado de wstETH, se move bem menos, mas a taxa de empréstimo e a própria taxa de câmbio ainda movem o seu fator de saúde, e um LLTV alto deixa pouco espaço para qualquer uma das duas.
+- **Meça contra a linha mais próxima.** Se você autorizou a pré-liquidação, parte do seu empréstimo pode ir antes de o fator de saúde chegar a 1,00.
+- **No Midnight, fique de olho na data.** Os juros não vão corroer a margem, mas a dívida que sobrar depois do vencimento pode ser liquidada com qualquer fator de saúde.
+- **Saiba como subi-lo.** Pague parte da dívida ou adicione garantia no mesmo mercado: garantia em outro mercado do Morpho não conta. No Midnight, você pode adicionar qualquer garantia que o mercado aceite.
+
+A documentação para desenvolvedores do Morpho dá 1,1 como exemplo de nível para um aviso. Para o raciocínio por trás das margens, veja [quanta margem você precisa para ter tempo de agir](/pt/blog/fator-de-saude-aave-seguro#quanta-margem-voce-precisa-para-ter-tempo-de-agir), escrito para o Aave, mas com a mesma aritmética.
+
+## Como os alertas de fator de saúde podem ajudar no Morpho?
+
+O Tokenping verifica posições no Morpho a cada 5 minutos em 14 redes: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable e Tempo. Ele cobre posições de empréstimo em mercados listados no app do Morpho, tanto no Morpho Blue quanto no Morpho Midnight. Os alertas do Midnight cobrem os mercados que a API do Morpho lista. Em 26 de outubro de 2026, eles estavam no Ethereum e na Base; o Tokenping também cobre Arc e Robinhood Chain assim que o Morpho listar mercados do Midnight nessas redes.
+
+- **Limite:** você o define de 1,02 a 10. Enquanto o fator de saúde estiver abaixo dele, cada verificação envia uma mensagem em cada canal que você escolheu: Signal, Telegram ou e-mail.
+- **Pré-liquidação:** se você autorizou um contrato de pré-liquidação em um mercado do Blue, o alerta usa o menor de dois fatores de saúde: o medido contra o LLTV e o medido contra a linha de pré-liquidação.
+- **Vencimento:** um empréstimo no Midnight também recebe um lembrete nos últimos 7 dias e outro nas últimas 24 horas, e depois um alerta a cada verificação após o vencimento enquanto houver dívida.
+
+Ver suas posições no [painel do Morpho](/pt/morpho) não exige pagamento; os alertas custam <AlertPrice />, o mesmo plano dos alertas do Aave. Um alerta dá a você tempo para agir; ele não impede a liquidação, porque um preço pode se mover entre duas verificações.
+
+## Fontes
+
+- [Documentação do Morpho: Variable Rate Market (Morpho Blue)](https://docs.morpho.org/learn/concepts/blue): os cinco parâmetros, os nomes dos mercados, os LLTVs aprovados pela governança e o IRM (consultado em 26 de outubro de 2026)
+- [Documentação do Morpho: Collateral, LTV and health (desenvolvedores)](https://docs.morpho.org/developers/borrow/concepts/ltv): fórmula, escala do oráculo, ausência de margem cruzada, boas práticas de integração (consultado em 26 de outubro de 2026)
+- [Documentação do Morpho: Liquidation](https://docs.morpho.org/learn/concepts/liquidation) e [central de ajuda do Morpho: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): incentivo de liquidação, onde o app mostra o fator de saúde (consultado em 26 de outubro de 2026)
+- [Documentação do Morpho: Interest rate model](https://docs.morpho.org/learn/concepts/irm) e [taxas de juros para integradores](https://docs.morpho.org/developers/borrow/concepts/interest-rates): AdaptiveCurveIRM, acúmulo de juros (consultado em 26 de outubro de 2026)
+- [Documentação do Morpho: Get data (desenvolvedores)](https://docs.morpho.org/developers/borrow/tutorials/get-data): código do fator de saúde e do preço de liquidação (consultado em 26 de outubro de 2026)
+- [Documentação do Morpho: What is Midnight? (Fixed Rate Markets)](https://docs.morpho.org/learn/concepts/midnight) e [Midnight collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) (consultado em 26 de outubro de 2026)
+- [Documentação do Morpho: Governance organization](https://docs.morpho.org/learn/governance/organization), [endereços dos contratos](https://docs.morpho.org/developers/contracts/addresses) e [política de listagem na interface](https://docs.morpho.org/get-started/resources/interface-listing-policy) (consultado em 26 de outubro de 2026)
+- [morpho-blue](https://github.com/morpho-org/morpho-blue): `Morpho.sol`, `ConstantsLib.sol`, `IOracle.sol` (consultado em 26 de outubro de 2026)
+- [midnight](https://github.com/morpho-org/midnight): `Midnight.sol`, `ConstantsLib.sol` (consultado em 26 de outubro de 2026)
+- [pre-liquidation](https://github.com/morpho-org/pre-liquidation) e [morpho-blue-irm](https://github.com/morpho-org/morpho-blue-irm) (consultado em 26 de outubro de 2026)
+- [Documentação da API do Morpho: Morpho Blue](https://docs.morpho.org/developers/api/morpho/) e [Morpho Midnight](https://docs.morpho.org/developers/api/morpho-midnight) (endpoint GraphQL api.morpho.org/graphql, endpoints REST do Midnight em api.morpho.org/v0/midnight): rankings de mercados, posições e contratos de pré-liquidação (consultado em 26 de outubro de 2026)
+- Leituras on-chain do [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), do [oráculo USDC | cbBTC](https://etherscan.io/address/0xA6D6950c9F177F1De7f7757FB33539e3Ec60182a#readContract), do [oráculo WETH | wstETH](https://etherscan.io/address/0xbD60A6770b27E084E8617335ddE769241B0e71D8#readContract) e do [Morpho Midnight](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract) no Ethereum nos blocos 26274950 a 26274984, e do [Morpho Blue na Base](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) no bloco 53102888 (consultado em 26 de outubro de 2026)
+
+_Conteúdo educativo, não é recomendação financeira. Os alertas reduzem o risco, mas não impedem a liquidação._

@@ -81,8 +81,9 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs, 
   `Vary: Accept`, a canonical `Link`, the Content Signal and an `x-markdown-tokens` estimate. Every other request,
   browsers and search crawlers included, gets the HTML as before. On a preview behind Vercel Authentication the route
   cannot fetch the page, so markdown requests there answer 502.
-- **Seven languages.** The whole site, the guides included, is published in English, Czech (`/cz`), neutral Spanish
-  (`/es`), Hindi (`/hi`), German (`/de`), Vietnamese (`/vi`) and French (`/fr`); see [docs/i18n.md](docs/i18n.md).
+- **Languages.** The whole site, the guides included, is published in every language in the table in
+  [docs/i18n.md](docs/i18n.md), each under its own prefix (`/cz`, `/es`, `/fr` and so on); more are being added one at a
+  time.
 - **Analytics.** [Vercel Web Analytics](https://vercel.com/docs/analytics) counts page views without cookies. It is
   left out of the IPFS build (`yarn ipfs`). The privacy page lists it.
 

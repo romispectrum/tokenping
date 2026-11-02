@@ -4,6 +4,7 @@ import { MESSAGES as en } from "./en";
 import { MESSAGES as es } from "./es";
 import { MESSAGES as fr } from "./fr";
 import { MESSAGES as hi } from "./hi";
+import { MESSAGES as pt } from "./pt";
 import type { TelegramReplies } from "./shared";
 import { MESSAGES as vi } from "./vi";
 import type { Localized } from "~~/i18n/locales";
@@ -15,4 +16,4 @@ import type { Localized } from "~~/i18n/locales";
 
 export type { TelegramReplies } from "./shared";
 
-export const TELEGRAM_REPLIES: Localized<TelegramReplies> = { en, cs, es, hi, de, vi, fr };
+export const TELEGRAM_REPLIES: Localized<TelegramReplies> = { en, cs, es, hi, de, vi, fr, pt };

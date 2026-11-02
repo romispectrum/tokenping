@@ -1,0 +1,177 @@
+export const meta = {
+  slug: "emprestimos-com-garantia-em-cripto",
+  title: "Empréstimos com garantia em cripto: como funcionam e usos",
+  description:
+    "Como funciona um empréstimo cripto sobrecolateralizado no Aave, passo a passo, como difere de um banco ou credor centralizado, para que serve e os riscos.",
+  h1: "Como funcionam os empréstimos com garantia em cripto, e por que as pessoas os tomam?",
+  publishedAt: "2026-10-19",
+  primaryQuestion: "Como funciona um empréstimo com garantia em cripto, e por que as pessoas o usam?",
+  readingMinutes: 15,
+};
+
+<ShortAnswer>
+  Um empréstimo com garantia em cripto permite pegar emprestado, em geral uma stablecoin como USDC, usando como garantia
+  a cripto que você deposita, sem vendê-la. No Aave o empréstimo é sobrecolateralizado: em 19 de outubro de 2026 você
+  podia pegar emprestado até 73% do valor de WBTC ou 80,5% do valor de WETH no mercado Ethereum Core. O protocolo
+  verifica apenas a garantia, não há data de pagamento e a taxa de juros é variável. Se o valor da garantia cair o
+  bastante para que seu fator de saúde (health factor) fique abaixo de 1, parte dela é vendida para pagar a dívida, e
+  você paga uma penalidade. As pessoas usam esses empréstimos para obter dinheiro sem vender, cobrir um intervalo,
+  refinanciar, alavancar ou fazer hedge, e cada um desses usos traz risco de liquidação, de juros e de stablecoin.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Todos os números on-chain, números de bloco e fontes deste guia: content/blog/snapshots/crypto-backed-loans.md */}
+
+## O que é um empréstimo com garantia em cripto?
+
+Um empréstimo com garantia em cripto é um empréstimo assegurado pela cripto que você deposita como garantia. Em um protocolo de empréstimo como o Aave, ele é sobrecolateralizado: a garantia precisa valer mais que o empréstimo e, em vez de verificar sua renda, o protocolo conta com poder vender parte da garantia se o valor dela cair demais. Enquanto o empréstimo está aberto, a garantia continua sua, com todas as variações de preço, e você pode recuperá-la depois de quitar a dívida.
+
+A maioria das pessoas pega emprestado stablecoins, tokens que acompanham uma moeda: USDC e USDT seguem o dólar americano, EURC segue o euro. A garantia costuma ser um ativo volátil. Nos mercados do Aave no Ethereum e no Arbitrum, o ether aparece como WETH e o bitcoin como um token que o representa, como WBTC ou cbBTC.
+
+Dois números por ativo de garantia decidem quanto você pode pegar emprestado e quando o empréstimo corre perigo:
+
+- A **relação empréstimo/valor (LTV)** é o máximo que você pode pegar emprestado contra o ativo, como fração do valor dele.
+- O **limite de liquidação (liquidation threshold)** é a fração do valor do ativo que conta para o seu fator de saúde. Quando sua garantia, ponderada dessa forma, vale menos que sua dívida, o fator de saúde fica abaixo de 1 e a posição pode ser liquidada.
+
+| Mercado       | Garantia | LTV (limite de empréstimo) | Limite de liquidação | Bônus de liquidação |
+| ------------- | -------- | -------------------------- | -------------------- | ------------------- |
+| Ethereum Core | WETH     | 80,5%                      | 83%                  | 5%                  |
+| Ethereum Core | WBTC     | 73%                        | 78%                  | 5%                  |
+| Ethereum Core | cbBTC    | 73%                        | 78%                  | 7,5%                |
+| Arbitrum      | WETH     | 80%                        | 84%                  | 5%                  |
+| Arbitrum      | WBTC     | 73%                        | 78%                  | 7%                  |
+
+Esses valores foram lidos on-chain em 19 de outubro de 2026 no PoolDataProvider de cada mercado, no bloco 26225342 do Ethereum e no bloco 516228495 do Arbitrum. O cbBTC não está listado no mercado do Aave no Arbitrum. A governança do Aave pode mudar qualquer um deles. A diferença entre LTV e limite de liquidação é explicada com mais detalhes em [o que é o fator de saúde do Aave](/pt/blog/fator-de-saude-aave).
+
+## Como funciona um empréstimo no Aave, passo a passo?
+
+O Aave V3 é um conjunto de contratos inteligentes em cada rede, e app.aave.com é uma das interfaces para eles. A central de ajuda do Aave descreve como pegar emprestado e pagar em poucos passos; veja o que cada um envolve.
+
+### Passo 1: deposite a garantia
+
+Conecte sua carteira, escolha o ativo a depositar, por exemplo WBTC, e deposite. Confira se ele está ativado como garantia, porque só a garantia conta para o quanto você pode pegar emprestado. Os tokens ficam no contrato Pool do mercado, onde outros usuários podem tomá-los emprestados (é isso que paga a pequena taxa de depósito). Você pode sacar sua garantia depois de pagar, ou parte dela enquanto ainda deve, desde que seu fator de saúde continue em 1 ou acima depois disso.
+
+### Passo 2: pegue uma stablecoin emprestada
+
+Escolha a stablecoin e um valor abaixo do seu limite de empréstimo, que é o valor da garantia vezes o LTV dela. Os tokens chegam à sua carteira e os juros começam a correr de imediato, a uma taxa que o protocolo define a partir de quanto do ativo está emprestado e de parâmetros que a governança pode mudar (central de ajuda do Aave, Borrow Tokens). O Aave V3 agora só tem taxa variável: a referência do Pool diz que os empréstimos sempre usam o modo de taxa variável e marca a antiga taxa estável como obsoleta desde a v3.2.
+
+Taxas variáveis de empréstimo em 19 de outubro de 2026, como APY anual, do jeito que o app do Aave mostra (bloco 26225342 do Ethereum, bloco 516228495 do Arbitrum):
+
+| Mercado       | USDC  | USDT (USD₮0 no Arbitrum) | GHO   | EURC                              |
+| ------------- | ----- | ------------------------ | ----- | --------------------------------- |
+| Ethereum Core | 4,58% | 4,17%                    | 4,60% | 4,12%                             |
+| Arbitrum      | 3,45% | 4,21%                    | 4,59% | nenhuma stablecoin de euro aberta |
+
+Essas taxas mudam o tempo todo e podem disparar. Em 14 de outubro de 2026, a taxa do USDC no Ethereum Core subiu para 13,67% APR em um único bloco e voltou cerca de 36 minutos depois, como mostra [por que seu fator de saúde do Aave cai sozinho](/pt/blog/por-que-o-fator-de-saude-aave-caiu#causa-3-os-juros-fizeram-sua-divida-crescer-mais-rapido-que-sua-garantia).
+
+### Passo 3: acompanhe o fator de saúde
+
+O fator de saúde (HF) é sua garantia, ponderada pelo limite de liquidação de cada ativo, dividida pela sua dívida. Veja o caso de alice, que deposita 1 WBTC no Ethereum Core quando o bitcoin está, a título de exemplo, em US$ 80.000 (o oráculo do Aave marcava US$ 82.680,33 no bloco 26225364 do Ethereum em 19 de outubro de 2026) e pega emprestado 24.000 USDC:
+
+- Limite de empréstimo: 80.000 × 0,73 = US$ 58.400.
+- Fator de saúde: 80.000 × 0,78 ÷ 24.000 = 2,60.
+- Preço de liquidação: 24.000 ÷ 0,78 = US$ 30.769,23, ou seja, 61,5% abaixo de US$ 80.000.
+
+O fator de saúde cai quando o bitcoin cai, e devagar à medida que os juros se acumulam: se a taxa do USDC ficasse em 4,58% ao ano, a dívida seria de cerca de 25.099 USDC depois de um ano, e o preço de liquidação teria subido para cerca de US$ 32.179. Para fazer essa conta com a sua posição, veja [como calcular seu preço de liquidação no Aave](/pt/blog/preco-de-liquidacao-aave); para saber quanta margem deixar, veja [qual é um fator de saúde seguro no Aave](/pt/blog/fator-de-saude-aave-seguro).
+
+### Passo 4: pague quando quiser
+
+Não há data de pagamento. A função de empréstimo do Aave não recebe nenhum prazo, e você pode pagar toda a dívida ou parte dela a qualquer momento, no ativo que pegou emprestado (referência do Pool do Aave V3; central de ajuda do Aave, Repay Tokens). Pagar tudo libera sua garantia. Você também pode pagar com a garantia: nos mercados do Ethereum e do Arbitrum, a interface do Aave pode vender parte da sua garantia pelo ativo da dívida e pagar em uma única transação (documentação do Aave, swap features).
+
+### Passo 5: saiba o que acontece abaixo de um fator de saúde de 1
+
+Abaixo de 1, qualquer um pode liquidar a posição: paga parte da sua dívida e leva garantia equivalente a esse valor mais um bônus de liquidação. Uma liquidação pode pagar até 50% da dívida enquanto o fator de saúde está acima de 0,95 e a garantia e a dívida valem, cada uma, pelo menos US$ 2.000, e até 100% quando o fator de saúde está em 0,95 ou abaixo ou quando uma delas vale menos de US$ 2.000 (central de ajuda do Aave).
+
+Se o bitcoin caísse para US$ 30.000 logo depois do empréstimo de alice, o fator de saúde dela seria 30.000 × 0,78 ÷ 24.000 = 0,975. Um liquidante poderia pagar 12.000 USDC e levar 12.000 × 1,05 ÷ 30.000 = 0,42 WBTC, deixando a ela 0,58 WBTC contra 12.000 USDC, um fator de saúde de 1,13. Ela perderia US$ 600 de garantia além da dívida paga, e 0,42 WBTC seriam vendidos no fundo. As regras completas estão em [o que acontece quando sua posição no Aave é liquidada](/pt/blog/como-funciona-a-liquidacao-no-aave).
+
+## Em que um empréstimo com garantia em cripto difere de um empréstimo bancário?
+
+As principais diferenças estão no que o credor analisa, em quando você paga e no que acontece quando a garantia perde valor:
+
+|                                                | Empréstimo no Aave                                                                         | Empréstimo bancário típico                                                  |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| O que decide quanto você pode pegar emprestado | O valor da sua garantia e o LTV dela                                                       | Em geral sua renda e seu histórico de crédito, mais eventual garantia       |
+| Verificações sobre você                        | Nenhuma por parte do protocolo, que só olha a garantia                                     | Em geral identidade, renda e análise de crédito                             |
+| Prazo                                          | Nenhum: pague quando quiser                                                                | Em geral um prazo fixo e um cronograma de pagamento                         |
+| Juros                                          | Variáveis, recalculados conforme muda o volume emprestado no mercado                       | Fixos ou variáveis, conforme o contrato                                     |
+| Se a garantia perde valor                      | Liquidação automática por terceiros assim que o fator de saúde fica abaixo de 1, sem aviso | Depende do contrato: pedido de mais garantia, negociação, execução judicial |
+| Quem guarda a garantia                         | O contrato inteligente do mercado                                                          | O credor, ou um custodiante escolhido por ele                               |
+| Se a garantia não cobre a dívida               | A diferença vira prejuízo do protocolo, não uma cobrança contra você                       | Depende do contrato e da lei                                                |
+
+A última linha decorre de como o Aave V3.3 e versões posteriores tratam uma liquidação que consome toda a garantia: a dívida restante é baixada como déficit no ativo, como explica [a seção sobre dívida incobrável (bad debt)](/pt/blog/como-funciona-a-liquidacao-no-aave#uma-liquidacao-pode-deixar-divida-incobravel). A essa altura, você já perdeu a garantia.
+
+## Em que ele difere de um credor de cripto centralizado?
+
+Um credor centralizado fica com a custódia da sua garantia. O empréstimo pode parecer bem parecido, mas você passa a ser credor da empresa e, se ela quebrar, sua garantia pode ficar presa com ela. O ano de 2022 mostrou o que isso significa:
+
+- **Celsius** congelou os saques dos clientes em 12 de junho de 2022 e pediu falência em 13 de julho de 2022. Segundo a Commodity Futures Trading Commission dos EUA, os clientes tinham depositado cerca de US$ 20 bilhões nela. Em janeiro de 2023, o tribunal de falências dos EUA em Nova York decidiu que a cripto nas contas Earn da Celsius tinha se tornado propriedade da Celsius pelos termos de uso, o que deixou esses clientes como credores sem garantia.
+- **Voyager Digital** suspendeu negociações, depósitos e saques em 1º de julho de 2022, depois que a Three Arrows Capital deixou de fazer pagamentos de um empréstimo de 15.250 BTC e US$ 350 milhões em USDC, e entrou com pedido de recuperação pelo Chapter 11 em 5 de julho de 2022.
+- **Genesis** impediu os investidores do programa Gemini Earn de sacar em novembro de 2022, quando detinha cerca de US$ 900 milhões dos ativos deles, segundo a Securities and Exchange Commission dos EUA, e entrou com pedido pelo Chapter 11 em 19 de janeiro de 2023.
+- **BlockFi** entrou com pedido pelo Chapter 11 em 28 de novembro de 2022, dias depois de suspender os saques durante o colapso da FTX.
+
+No Aave, a garantia fica em um contrato inteligente público cujas regras qualquer um pode ler, não no balanço de uma empresa. Isso troca um conjunto de riscos por outro, tratados em [os riscos](#quais-sao-os-riscos-de-um-emprestimo-com-garantia-em-cripto) abaixo: bugs, erros de oráculo, decisões de governança e a custódia por trás do bitcoin wrapped. Um deles importa aqui: o emergency admin ou o pool admin do Aave pode pausar um ativo e, enquanto ele estiver pausado, ninguém pode sacá-lo nem pagá-lo (contratos PoolConfigurator e ValidationLogic do Aave).
+
+## Para que as pessoas usam empréstimos com garantia em cripto?
+
+### Dinheiro sem vender
+
+Um motivo é obter dinheiro mantendo a cripto, muitas vezes porque quem a tem espera que ela suba ou quer guardá-la por anos. O empréstimo mantém toda a alta da garantia e toda a queda, acrescenta juros e pode forçar uma venda no pior momento se o preço cair o bastante.
+
+Pegar o empréstimo não vende sua garantia: ela continua sua. Se depositar a garantia, o empréstimo, os juros ou uma liquidação têm consequências tributárias depende do seu país e, às vezes, dos termos do protocolo. As orientações da autoridade tributária do Reino Unido, por exemplo, dizem que depende dos termos da plataforma de empréstimo DeFi se entregar garantia a ela conta como alienação e, quando não conta, tratam a venda da garantia em uma liquidação como feita pelo próprio tomador (HMRC Cryptoassets Manual, CRYPTO61640). Este guia não dá orientação tributária; confira as regras de onde você mora.
+
+### Cobrir uma despesa ou um intervalo
+
+Algumas pessoas pegam emprestado para cobrir uma despesa antes de chegar um dinheiro esperado, como uma conta que vence antes de uma venda ou de um salário. A contrapartida é que nada encerra o empréstimo por você: não há data de pagamento, a taxa pode subir enquanto você espera, e converter stablecoins em dinheiro na conta bancária, e de volta para pagar, tem custos próprios.
+
+### Refinanciamento
+
+Um empréstimo feito em outro lugar pode ser levado para o Aave se a taxa do Aave for menor e, no Aave, uma dívida pode ser trocada de uma stablecoin para outra em uma única transação com o debt swap da interface (documentação do Aave, swap features). A contrapartida: as taxas são variáveis, então o ativo mais barato hoje pode ficar mais caro no mês que vem, e trocar uma stablecoin de dólar por uma de euro muda a moeda que você deve, que é o tema de [vender moeda fiduciária a descoberto com um empréstimo no Aave](/pt/blog/vender-moeda-fiduciaria-a-descoberto-com-aave).
+
+### Alavancagem
+
+Para aumentar a exposição, algumas pessoas pegam stablecoins emprestadas, compram mais da garantia e depositam também. Se alice usasse seus 24.000 USDC para comprar 0,3 WBTC a US$ 80.000 e os depositasse, teria 1,3 WBTC contra 24.000 USDC: um fator de saúde de 3,38 e um preço de liquidação de US$ 23.668,64. Cada movimento do bitcoin agora a atinge com 1,3 vez mais força do que ter 1 bitcoin diretamente, e repetir o loop (empréstimo alavancado em ciclo) empurra o fator de saúde em direção a 1.
+
+### Hedge e venda a descoberto
+
+Pegar um ativo emprestado e vendê-lo é uma aposta de que ele vai cair: deposite stablecoins, pegue WETH emprestado e venda, e a posição ganha se o ETH cair e se aproxima da liquidação se o ETH subir (o [guia do fator de saúde seguro](/pt/blog/fator-de-saude-aave-seguro) mostra quanto ele pode subir). Pegar emprestada uma stablecoin de dólar ou de euro contra bitcoin é o inverso, uma posição vendida na moeda contra a garantia, que alguns bitcoiners chamam de vender o fiat a descoberto; [vender moeda fiduciária a descoberto com um empréstimo no Aave](/pt/blog/vender-moeda-fiduciaria-a-descoberto-com-aave) faz as contas.
+
+## Quais são os riscos de um empréstimo com garantia em cripto?
+
+- **Liquidação.** Abaixo de um fator de saúde de 1, parte da dívida ou toda ela pode ser paga com sua garantia, e você ainda perde o bônus: de 5% a 7,5% para os ativos da primeira tabela. As liquidações são feitas por bots que competem entre si, então podem vir rápido (central de ajuda do Aave).
+- **Volatilidade da garantia.** O bitcoin chegou ao pico de cerca de US$ 69.000 em novembro de 2021 e estava em cerca de US$ 17.000 em meados de junho de 2022, uma queda de cerca de 75%, e ficou abaixo de US$ 16.000 depois da quebra da FTX em novembro de 2022 (blog do BCE). Com o limite de liquidação de 78% do WBTC, até um empréstimo de 20% do valor da garantia tomado no pico de 2021 teria sido liquidado até meados de junho de 2022.
+- **Taxas de juros variáveis.** A taxa não é fixa por nenhum período, e os juros reduzem seu fator de saúde com o tempo mesmo quando os preços ficam parados.
+- **Depeg (perda da paridade com o dólar) de stablecoins.** O USDC caiu para cerca de US$ 0,88 em 11 de março de 2023, depois que a Circle disse que US$ 3,3 bilhões das suas reservas estavam no Silicon Valley Bank, e voltou a ficar acima de US$ 0,99 em 13 de março (post da Gauntlet no fórum do Aave; Circle). A TerraUSD, uma stablecoin algorítmica, perdeu a paridade em maio de 2022 e caiu para perto de zero, o que, segundo a SEC dos EUA, eliminou US$ 40 bilhões em valor de mercado. Se a stablecoin que você deve cai, sua dívida fica mais barata; se uma stablecoin que você usa como garantia cai, seu fator de saúde cai.
+- **Bitcoin wrapped.** O bitcoin no Aave é um token lastreado em bitcoin que outra pessoa guarda ou que uma ponte controla. O WBTC, por exemplo, diz que cada token é lastreado por bitcoin mantido em custódia. Se esse lastro falhasse, o token poderia perder valor independentemente do que acontecesse com o próprio bitcoin.
+- **Contratos inteligentes, oráculos e governança.** Um bug, um preço errado ou uma mudança de parâmetro pode atingir uma posição sem nenhum movimento de mercado. Em março de 2026, um oráculo de taxa de câmbio desalinhado nos mercados Ethereum Core e Prime do Aave reduziu a taxa efetiva do wstETH em cerca de 2,85% e provocou liquidações de cerca de 10.938 wstETH em 34 contas, segundo o post-mortem da Chaos Labs ([mais sobre erros de oráculo](/pt/blog/por-que-o-fator-de-saude-aave-caiu#causa-6-um-erro-de-oraculo-ou-de-taxa-de-cambio-deu-um-preco-errado-a-sua-garantia)). A governança também pode reduzir um limite de liquidação para todas as posições abertas ([mais sobre cortes de limite](/pt/blog/por-que-o-fator-de-saude-aave-caiu#causa-4-a-governanca-ou-os-risk-stewards-reduziram-um-limite-de-liquidacao)).
+- **Fazer tudo por conta própria.** Você guarda as chaves, você envia as transações e, num mercado rápido, um pagamento pode levar mais tempo para ser confirmado do que você espera.
+
+## Como acompanhar um empréstimo?
+
+As interfaces do próprio Aave mostram seu fator de saúde enquanto estão abertas, mas não mandam mensagem quando ele cai, como explica [o guia de alertas de fator de saúde](/pt/blog/configurar-alertas-fator-de-saude-aave#o-aave-envia-alertas-de-fator-de-saude). Uma forma de acompanhar é escolher o fator de saúde em que você agiria, pagando parte da dívida ou adicionando garantia, e ter uma ferramenta separada que avise quando a posição chegar lá. O Tokenping verifica a cada 5 minutos e manda mensagem enquanto seu fator de saúde estiver abaixo do limite que você definiu; [o guia de configuração](/pt/blog/configurar-alertas-fator-de-saude-aave) mostra o passo a passo. Um alerta dá tempo para agir, não proteção, e [como evitar a liquidação no Aave](/pt/blog/evitar-liquidacao-aave) trata do que fazer com esse tempo.
+
+## Fontes
+
+- [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) do Aave V3 Ethereum Core e [PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b) do Arbitrum: LTV, limites de liquidação, bônus e taxas variáveis de empréstimo lidos on-chain no bloco 26225342 do Ethereum e no bloco 516228495 do Arbitrum (dados RPC, consultado em 19 de outubro de 2026)
+- [AaveOracle do Aave V3 Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): preço do WBTC de US$ 82.680,33 no bloco 26225364 do Ethereum (dados RPC, consultado em 19 de outubro de 2026)
+- [Aave Help: Borrow Tokens](https://aave.com/help/borrowing/borrow-tokens) (consultado em 19 de outubro de 2026)
+- [Aave Help: Repay Tokens](https://aave.com/help/borrowing/repay-tokens) (consultado em 19 de outubro de 2026)
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (consultado em 19 de outubro de 2026)
+- [Referência do contrato inteligente Pool do Aave V3](https://aave.com/docs/aave-v3/smart-contracts/pool): parâmetros de borrow e repay, apenas taxa variável, taxa estável obsoleta na v3.2 (consultado em 19 de outubro de 2026)
+- [Documentação do Aave: swap features](https://aave.com/docs/aave-v3/smart-contracts/swap-features): pagamento com garantia e debt swap (consultado em 19 de outubro de 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) e [PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol), aave-v3-origin: saques com empréstimo aberto, pausas e quem pode aplicá-las (consultado em 19 de outubro de 2026)
+- [Comunicado de imprensa 8749-23 da CFTC sobre a Celsius Network](https://www.cftc.gov/PressRoom/PressReleases/8749-23), 13 de julho de 2023: cerca de US$ 20 bilhões depositados, saques congelados em 12 de junho de 2022, falência pedida em 13 de julho de 2022 (consultado em 19 de outubro de 2026)
+- [Tribunal de Falências dos EUA, Distrito Sul de Nova York: decisão sobre a propriedade dos ativos das contas Earn da Celsius](https://www.nysb.uscourts.gov/sites/default/files/opinions/312902_1822_opinion.pdf), 4 de janeiro de 2023 (consultado em 19 de outubro de 2026)
+- [Voyager Digital: atualização de mercado](https://www.newswire.ca/news-releases/voyager-digital-provides-market-update-851734302.html), 1º de julho de 2022, e [Voyager Digital: anúncio do Chapter 11](https://www.newswire.ca/news-releases/voyager-digital-commences-financial-restructuring-process-to-maximize-value-for-all-stakeholders-888320107.html), 5 de julho de 2022 (ambos consultados em 19 de outubro de 2026)
+- [Comunicado de imprensa 2023-7 da SEC sobre a Genesis e o programa Gemini Earn](https://www.sec.gov/news/press-release/2023-7), 12 de janeiro de 2023 (consultado em 19 de outubro de 2026)
+- [Comunicado de imprensa 2024-37 da SEC sobre a Genesis](https://www.sec.gov/newsroom/press-releases/2024-37), 19 de março de 2024: pedidos pelo Chapter 11 apresentados em 19 de janeiro de 2023 (consultado em 19 de outubro de 2026)
+- [CoinDesk: BlockFi files for bankruptcy as FTX contagion spreads](https://www.coindesk.com/policy/2022/11/28/ftx-fallout-continues-as-crypto-lender-blockfi-declares-bankruptcy), 28 de novembro de 2022 (consultado em 19 de outubro de 2026)
+- [The ECB Blog: Bitcoin's last stand](https://www.ecb.europa.eu/press/blog/date/2022/html/ecb.blog221130~5301eecd19.en.html), 30 de novembro de 2022: a queda de cerca de US$ 69.000 para cerca de US$ 17.000 e abaixo de US$ 16.000 (consultado em 19 de outubro de 2026)
+- [Gauntlet: Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), fórum de governança do Aave, 17 de março de 2023 (consultado em 19 de outubro de 2026)
+- [Circle: $3.3 Billion of USDC Reserve Risk Removed, Dollar De-peg Closes](https://www.circle.com/pressroom/3-3-billion-of-usdc-reserve-risk-removed-dollar-de-peg-closes), 12 de março de 2023 (consultado em 19 de outubro de 2026)
+- [Comunicado de imprensa 2024-73 da SEC sobre a Terraform](https://www.sec.gov/newsroom/press-releases/2024-73), 13 de junho de 2024: o depeg do UST em maio de 2022 (consultado em 19 de outubro de 2026)
+- [WBTC](https://wbtc.network/): como o WBTC é lastreado (consultado em 19 de outubro de 2026)
+- [Chaos Labs: Post-Mortem, Exchange Rate Misalignment on wstETH Core and Prime Instances](https://governance.aave.com/t/24269), fórum de governança do Aave, 10 de março de 2026 (consultado em 19 de outubro de 2026)
+- [HMRC Cryptoassets Manual, CRYPTO61640: DeFi lending and staking, collateral](https://www.gov.uk/hmrc-internal-manuals/cryptoassets-manual/crypto61640), atualizado em 28 de novembro de 2025 (consultado em 19 de outubro de 2026)
+
+_Conteúdo educativo, não é recomendação financeira. Os alertas reduzem o risco, mas não impedem a liquidação._
