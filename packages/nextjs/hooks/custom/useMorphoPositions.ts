@@ -9,6 +9,7 @@ import { isMorphoMarketId, isMorphoProtocol } from "~~/config/protocols";
 import { useNotificationConfig } from "~~/hooks/custom/useNotificationConfig";
 import { type MorphoPositionRef, fetchMorphoPositions } from "~~/services/morpho/api";
 import { type MorphoPosition, morphoRefKey, readMorphoPosition } from "~~/services/morpho/positions";
+import type { MorphoMarketParams } from "~~/services/morpho/types";
 import { normalizeAddress } from "~~/utils/address";
 
 /** One market in the list: the position once read, with its own loading and error state. */
@@ -16,8 +17,12 @@ export type MorphoPositionItem = {
   key: string;
   ref: MorphoPositionRef;
   position: MorphoPosition | undefined;
+  /** The parameters stored with the market's alert, if it has one: they name the market when it cannot be read. */
+  savedParams: MorphoMarketParams | null;
   isLoading: boolean;
   isError: boolean;
+  /** Reads this market again, leaving the others as they are. */
+  retry: () => void;
 };
 
 // As useAavePositions: fetch only on mount, on an account switch and on refetch(), never in the background, since a
@@ -40,7 +45,7 @@ export const useMorphoPositions = () => {
   const { address, isConnected } = useAccount();
   const user = isConnected ? address : undefined;
   const account = user ? normalizeAddress(user) : null;
-  const { savedRefs } = useNotificationConfig();
+  const { savedRefs, getConfig } = useNotificationConfig();
 
   const discovery = useQuery({
     queryKey: ["morphoDiscovery", account],
@@ -74,8 +79,11 @@ export const useMorphoPositions = () => {
     key: morphoRefKey(ref),
     ref,
     position: reads[index]?.data,
+    savedParams:
+      getConfig({ protocol: ref.protocol, chainId: ref.chainId, market: ref.marketId })?.marketParams ?? null,
     isLoading: reads[index]?.isFetching ?? true,
     isError: !!reads[index]?.error && !reads[index]?.isFetching,
+    retry: () => void reads[index]?.refetch(),
   }));
 
   const refetch = () => {

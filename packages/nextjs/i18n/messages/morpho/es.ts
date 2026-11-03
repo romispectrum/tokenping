@@ -38,6 +38,7 @@ export const MESSAGES: MorphoMessages = {
     matures: date => `Vence el ${date}`,
     matured: "Vencido",
     unreadable: "No se pudo leer",
+    retry: market => `Volver a leer ${market}`,
     noneSelectedDescription: "Selecciona un mercado para ver tu posición en Morpho.",
   },
   details: {

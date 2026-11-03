@@ -3,6 +3,7 @@ import "server-only";
 import { type MarketId, type MarketRef, V3_MARKET_ID, isMarketId } from "~~/config/aaveConfig";
 import { type MorphoProtocol, type Protocol, isMorphoMarketId, isProtocol, marketRefKey } from "~~/config/protocols";
 import { DEFAULT_LOCALE, type Locale, isLocale } from "~~/i18n/locales";
+import { isStoredMarketParams } from "~~/services/morpho/storedParams";
 import type { MorphoMarketParams } from "~~/services/morpho/types";
 import type { ConfigValues } from "~~/services/notifications/configInput";
 import { selectAllPages } from "~~/services/supabase/selectAllPages";
@@ -139,7 +140,8 @@ export const rowMarketKey = (row: Pick<NotificationConfigRow, "chain_id" | "prot
 
 /**
  * Optional fields map null to undefined so they are omitted from the JSON response; market, locale and
- * channelLocales are always present. `protocol` is present for Morpho only, so an Aave config reads as it always did.
+ * channelLocales are always present. `protocol` is present for Morpho only, so an Aave config reads as it always did,
+ * and so are `marketParams`, when the stored ones are well formed.
  */
 export const rowToConfig = (row: NotificationConfigRow): NotificationConfigResponse => {
   const protocol = rowProtocol(row);
@@ -156,6 +158,7 @@ export const rowToConfig = (row: NotificationConfigRow): NotificationConfigRespo
     telegramUsername: row.telegram_username ?? undefined,
     locale: rowLocale(row),
     channelLocales: rowChannelLocales(row),
+    ...(morpho && isStoredMarketParams(morpho, row.market_params) ? { marketParams: row.market_params } : {}),
   };
 };
 

@@ -28,6 +28,8 @@ export type MorphoMessages = {
     matures: (date: string) => string;
     matured: string;
     unreadable: string;
+    /** The accessible name of the button that reads one market again: the market's name in words. */
+    retry: (market: string) => string;
     noneSelectedDescription: string;
   };
   details: {

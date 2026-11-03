@@ -37,6 +37,7 @@ export const MESSAGES: MorphoMessages = {
     matures: date => `Jatuh tempo ${date}`,
     matured: "Lewat jatuh tempo",
     unreadable: "Tidak dapat dibaca",
+    retry: market => `Coba baca ${market} lagi`,
     noneSelectedDescription: "Pilih pasar untuk melihat posisi Morpho-nya.",
   },
   details: {

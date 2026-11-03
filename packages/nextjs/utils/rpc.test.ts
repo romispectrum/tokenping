@@ -40,7 +40,7 @@ const alchemy = (network: string, key = KEY) => `https://${network}.g.alchemy.co
 
 // Keyless endpoints for every Aave chain PublicNode serves; Ethereum's and Polygon's viem defaults refuse or
 // rate-limit keyless calls.
-const PUBLICNODE = {
+const PUBLICNODE: Record<number, string> = {
   [mainnet.id]: "https://ethereum-rpc.publicnode.com",
   [polygon.id]: "https://polygon-bor-rpc.publicnode.com",
   [arbitrum.id]: "https://arbitrum-one-rpc.publicnode.com",
@@ -78,6 +78,13 @@ const PUBLICNODE_CHAINS = [
   mantle,
   ink,
 ];
+
+// Ethereum's default (eth.merkle.io) refuses browser requests, so two more keyless endpoints come after PublicNode.
+const EXTRA_PUBLIC: Record<number, string[]> = {
+  [mainnet.id]: ["https://eth.drpc.org", "https://1rpc.io/eth"],
+};
+/** PublicNode's endpoint for the chain, then any extra keyless ones. */
+const publicUrls = (chain: Chain) => [PUBLICNODE[chain.id], ...(EXTRA_PUBLIC[chain.id] ?? [])];
 
 // Aave chains PublicNode does not serve: after any override (and Alchemy, where it has them) comes their own RPC.
 const OWN_RPC_CHAINS = [zksync, plasma, xLayer, megaEth, monad];
@@ -192,9 +199,20 @@ describe("getFallbackTransport", () => {
     chain => {
       config.alchemyApiKey = "";
 
-      expect(transportUrls(chain)).toEqual([PUBLICNODE[chain.id], chain.rpcUrls.default.http[0]]);
+      expect(transportUrls(chain)).toEqual([...publicUrls(chain), chain.rpcUrls.default.http[0]]);
     },
   );
+
+  it("reaches Ethereum through PublicNode, dRPC and 1RPC before its default RPC, which browsers cannot reach", () => {
+    config.alchemyApiKey = "";
+
+    expect(transportUrls(mainnet)).toEqual([
+      "https://ethereum-rpc.publicnode.com",
+      "https://eth.drpc.org",
+      "https://1rpc.io/eth",
+      "https://eth.merkle.io",
+    ]);
+  });
 
   it("covers every Aave chain with PublicNode or, failing that, its own RPC", () => {
     config.alchemyApiKey = "";
@@ -278,7 +296,7 @@ describe("getFallbackTransport", () => {
     config.alchemyApiKey = SHARED_KEY;
 
     expect(transportUrls(mainnet)).toEqual([
-      PUBLICNODE[mainnet.id],
+      ...publicUrls(mainnet),
       mainnet.rpcUrls.default.http[0],
       alchemy("eth-mainnet", SHARED_KEY),
     ]);

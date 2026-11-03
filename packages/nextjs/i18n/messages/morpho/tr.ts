@@ -37,6 +37,7 @@ export const MESSAGES: MorphoMessages = {
     matures: date => `Vade sonu: ${date}`,
     matured: "Vadesi geçti",
     unreadable: "Okunamadı",
+    retry: market => `Yeniden oku: ${market}`,
     noneSelectedDescription: "Morpho pozisyonunu görmek için bir piyasa seçin.",
   },
   details: {

@@ -26,11 +26,13 @@ const refOf = ({ ref }: MorphoPositionItem): MarketRef => ({
   market: ref.marketId,
 });
 
-/** The name the alert form and the paywall use, before the market is read too. */
+/** The name the alert form and the paywall use, from the alert's stored parameters before the market is read too. */
 const itemName = (item: MorphoPositionItem) =>
-  item.position
-    ? marketName(item.position)
-    : marketName({ chain: getMorphoChain(item.ref.chainId)!, params: null, marketId: item.ref.marketId });
+  marketName({
+    chain: getMorphoChain(item.ref.chainId)!,
+    params: item.position?.params ?? item.savedParams,
+    marketId: item.ref.marketId,
+  });
 
 /**
  * The Morpho dashboard, laid out like /aave: the market list and the payment on the left; the selected market's alert
@@ -116,6 +118,7 @@ export const MorphoPositions = () => {
                           isSelected={item.key === selected?.key}
                           onSelect={() => setPick({ account, key: item.key })}
                           hasNotification={hasNotification(item)}
+                          name={itemName(item)}
                         />
                       </li>
                     ))}
@@ -155,7 +158,7 @@ export const MorphoPositions = () => {
                 chainNameKind="market"
                 currentHealthFactor={selected.position?.reading ? healthFactorText(selected.position.reading) : ""}
               />
-              <MorphoPositionDetails item={selected} onRetry={refetch} />
+              <MorphoPositionDetails item={selected} />
             </div>
           ) : (
             <Card>

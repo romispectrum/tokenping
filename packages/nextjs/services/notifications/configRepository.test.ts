@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { MidnightMarketParams } from "~~/services/morpho/types";
+import type { BlueMarketParams, MidnightMarketParams } from "~~/services/morpho/types";
 import {
   type NotificationConfigRow,
   rowChannelLocale,
@@ -101,6 +101,28 @@ describe("rowToConfig", () => {
     expect(Object.keys(morpho).slice(0, 4)).toEqual(["chainId", "market", "protocol", "enabled"]);
     expect(morpho).toMatchObject({ market: MORPHO_ID, protocol: "morpho-midnight" });
     expect(JSON.stringify(morpho)).not.toContain("market_params");
+  });
+
+  it("returns a Morpho alert's stored market parameters when they are well formed, so the dashboard can name it", () => {
+    const params: BlueMarketParams = {
+      kind: "blue",
+      loanToken: { address: "0x00000000000000000000000000000000000000b1", symbol: "RLUSD", decimals: 18 },
+      collateralToken: { address: "0x00000000000000000000000000000000000000b2", symbol: "weETH", decimals: 18 },
+      oracle: "0x00000000000000000000000000000000000000b3",
+      irm: "0x00000000000000000000000000000000000000b4",
+      lltv: "860000000000000000",
+      preLiquidations: [],
+    };
+    const blue = (market_params: unknown) =>
+      rowToConfig(row({ protocol: "morpho-blue", market: MORPHO_ID, market_params }));
+
+    expect(blue(params).marketParams).toStrictEqual(params);
+    expect("marketParams" in blue({ ...params, lltv: 0.86 })).toBe(false);
+    // The kind must match the alert's protocol.
+    expect(
+      "marketParams" in rowToConfig(row({ protocol: "morpho-midnight", market: MORPHO_ID, market_params: params })),
+    ).toBe(false);
+    expect("marketParams" in rowToConfig(row({ market_params: params }))).toBe(false);
   });
 
   it("leaves the protocol out for an Aave row, with or without the column", () => {

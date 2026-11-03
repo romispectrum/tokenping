@@ -37,6 +37,7 @@ export const MESSAGES: MorphoMessages = {
     matures: date => `Splatnost ${date}`,
     matured: "Po splatnosti",
     unreadable: "Nepodařilo se načíst",
+    retry: market => `Zkusit znovu načíst ${market}`,
     noneSelectedDescription: "Vyberte trh a zobrazí se jeho pozice na Morpho.",
   },
   details: {

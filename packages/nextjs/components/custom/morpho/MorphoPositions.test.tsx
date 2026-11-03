@@ -27,18 +27,23 @@ vi.mock("~~/services/morpho/positions", async importOriginal => ({
 
 const notifications = vi.hoisted(() => ({
   isLoaded: true,
-  saved: [] as { chainId: number; market: string; protocol?: string }[],
+  saved: [] as { chainId: number; market: string; protocol?: string; marketParams?: unknown }[],
 }));
-vi.mock("~~/hooks/custom/useNotificationConfig", () => ({
-  useNotificationConfig: () => ({
-    isLoaded: notifications.isLoaded,
-    savedRefs: notifications.saved,
-    hasConfig: (ref: { chainId: number; market: string; protocol?: string }) =>
-      notifications.saved.some(
-        saved => saved.chainId === ref.chainId && saved.market === ref.market && saved.protocol === ref.protocol,
-      ),
-  }),
-}));
+vi.mock("~~/hooks/custom/useNotificationConfig", () => {
+  type Ref = { chainId: number; market: string; protocol?: string };
+  const find = (ref: Ref) =>
+    notifications.saved.find(
+      saved => saved.chainId === ref.chainId && saved.market === ref.market && saved.protocol === ref.protocol,
+    );
+  return {
+    useNotificationConfig: () => ({
+      isLoaded: notifications.isLoaded,
+      savedRefs: notifications.saved,
+      hasConfig: (ref: Ref) => !!find(ref),
+      getConfig: (ref: Ref) => find(ref) ?? null,
+    }),
+  };
+});
 
 vi.mock("~~/components/custom/AccessPaywall", () => ({
   AccessPaywall: ({ description, children }: { description?: string; children?: ReactNode }) => (
@@ -249,6 +254,44 @@ describe("MorphoPositions", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
 
     await waitFor(() => expect(row("OETH/USDC").textContent).toContain("1.29"));
+  });
+
+  it("names a saved market it cannot read from the parameters stored with its alert", async () => {
+    vi.mocked(fetchMorphoPositions).mockResolvedValue([]);
+    const savedRef = ref("morpho-blue", 1, SAVED_ID);
+    const stored = { ...BLUE, loanToken: token("RLUSD", 18), collateralToken: token("weETH", 18) };
+    notifications.saved = [{ chainId: 1, market: SAVED_ID, protocol: "morpho-blue", marketParams: stored }];
+    givenPositions({ [morphoRefKey(savedRef)]: new Error("rpc down") });
+    await renderLoaded();
+
+    expect(row("weETH/RLUSD").textContent).toContain("Could not be read");
+    expect(configProps().chainName).toBe("Ethereum (weETH/RLUSD)");
+    expect(screen.getByRole("heading", { name: "weETH/RLUSD" })).toBeTruthy();
+    expect(screen.getByText("This position could not be read")).toBeTruthy();
+  });
+
+  it("reads only the market whose row's button is pressed again", async () => {
+    givenPositions({
+      [morphoRefKey(BLUE_REF)]: new Error("rpc down"),
+      [morphoRefKey(MIDNIGHT_REF)]: [MIDNIGHT, reading()],
+    });
+    await renderLoaded();
+    expect(list().queryByRole("button", { name: /^Try reading Ethereum/ })).toBeNull();
+    vi.mocked(readMorphoPosition).mockClear();
+
+    givenPositions({
+      [morphoRefKey(BLUE_REF)]: [BLUE, reading()],
+      [morphoRefKey(MIDNIGHT_REF)]: [MIDNIGHT, reading()],
+    });
+    fireEvent.click(
+      list().getByRole("button", { name: `Try reading Base (${BLUE_ID.slice(0, 6)}...${BLUE_ID.slice(-4)}) again` }),
+    );
+
+    await waitFor(() => expect(row("OETH/USDC").textContent).toContain("1.29"));
+    expect(readMorphoPosition).toHaveBeenCalledTimes(1);
+    expect(readMorphoPosition).toHaveBeenCalledWith(BLUE_REF, USER);
+    expect(fetchMorphoPositions).toHaveBeenCalledTimes(1);
+    expect(list().queryByRole("button", { name: /^Try reading/ })).toBeNull();
   });
 
   it("reads in Czech", async () => {

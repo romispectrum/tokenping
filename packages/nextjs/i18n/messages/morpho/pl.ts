@@ -46,6 +46,7 @@ export const MESSAGES: MorphoMessages = {
     matures: date => `Termin zapadalności: ${date}`,
     matured: "Po terminie zapadalności",
     unreadable: "Nie udało się odczytać",
+    retry: market => `Spróbuj ponownie odczytać ${market}`,
     noneSelectedDescription: "Wybierz rynek, aby zobaczyć swoją pozycję w Morpho.",
   },
   details: {

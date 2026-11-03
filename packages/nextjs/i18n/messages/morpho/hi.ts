@@ -37,6 +37,7 @@ export const MESSAGES: MorphoMessages = {
     matures: date => `मैच्योरिटी ${date}`,
     matured: "मैच्योरिटी बीत चुकी",
     unreadable: "पढ़ा नहीं जा सका",
+    retry: market => `${market} को फिर से पढ़ें`,
     noneSelectedDescription: "Morpho पोज़िशन देखने के लिए कोई मार्केट चुनें।",
   },
   details: {

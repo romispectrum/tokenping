@@ -37,6 +37,7 @@ export const MESSAGES: MorphoMessages = {
     matures: date => `Đáo hạn ngày ${date}`,
     matured: "Đã qua ngày đáo hạn",
     unreadable: "Không đọc được",
+    retry: market => `Thử đọc lại ${market}`,
     noneSelectedDescription: "Chọn một thị trường để xem vị thế Morpho của bạn.",
   },
   details: {

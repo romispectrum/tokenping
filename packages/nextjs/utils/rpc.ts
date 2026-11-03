@@ -80,6 +80,14 @@ const PUBLICNODE_RPC_URLS: Record<number, string> = {
   [tempo.id]: "https://tempo-rpc.publicnode.com",
 };
 
+// More keyless endpoints, after PublicNode, where one public endpoint is not enough. Ethereum's default (eth.merkle.io)
+// refuses cross-site requests, so in the browser PublicNode was its only working endpoint without our own Alchemy key,
+// and a saved Morpho alert's market showed as unreadable whenever PublicNode failed. Both answer browser requests and
+// eth_call at past blocks (checked 3 Nov 2026).
+const EXTRA_PUBLIC_RPC_URLS: Record<number, string[]> = {
+  [mainnet.id]: ["https://eth.drpc.org", "https://1rpc.io/eth"],
+};
+
 const isUrl = (url: string | undefined): url is string => !!url;
 
 const getAlchemyUrl = (chainId: number) => {
@@ -116,7 +124,8 @@ const getPublicRpcUrl = (chain: Chain) =>
   chain.id === hardhat.id ? (process.env.NEXT_PUBLIC_HARDHAT_RPC_URL ?? LOCAL_RPC_URL) : chain.rpcUrls.default.http[0];
 
 /**
- * Tries the configured RPC endpoints in order, then PublicNode for the Aave and Morpho chains, then the chain's own public RPC
+ * Tries the configured RPC endpoints in order, then PublicNode for the Aave and Morpho chains (and, on Ethereum, two
+ * more keyless endpoints), then the chain's own public RPC
  * (the local node for hardhat), then Alchemy with Scaffold-ETH's shared key when no key of our own is set. A URL that
  * appears twice, e.g. an override pointing at PublicNode, is tried once.
  * viem's fallback retries the whole list (retryCount 3 unless `config` says otherwise) and gives each endpoint a 10s
@@ -125,7 +134,13 @@ const getPublicRpcUrl = (chain: Chain) =>
  */
 export const getFallbackTransport = (chain: Chain, config?: FallbackTransportConfig) => {
   const sharedAlchemyUrl = isSharedAlchemyKey() ? getAlchemyUrl(chain.id) : undefined;
-  const urls = [...getRpcUrls(chain.id), PUBLICNODE_RPC_URLS[chain.id], getPublicRpcUrl(chain), sharedAlchemyUrl];
+  const urls = [
+    ...getRpcUrls(chain.id),
+    PUBLICNODE_RPC_URLS[chain.id],
+    ...(EXTRA_PUBLIC_RPC_URLS[chain.id] ?? []),
+    getPublicRpcUrl(chain),
+    sharedAlchemyUrl,
+  ];
   return fallback(
     [...new Set(urls.filter(isUrl))].map(url => http(url)),
     config,

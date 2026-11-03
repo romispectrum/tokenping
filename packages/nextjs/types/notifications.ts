@@ -1,6 +1,7 @@
 import type { MarketId } from "~~/config/aaveConfig";
 import type { Protocol } from "~~/config/protocols";
 import type { Locale } from "~~/i18n/locales";
+import type { MorphoMarketParams } from "~~/services/morpho/types";
 
 /** Supported notification delivery channels */
 export type NotificationService = "email" | "signal" | "telegram";
@@ -31,6 +32,11 @@ export type NotificationConfig = {
   locale?: Locale;
   /** The language each channel's alerts are sent in. Only set for the channels that have one. */
   channelLocales?: ChannelLocales;
+  /**
+   * Morpho only: the market's parameters as stored with the alert, so the dashboard can name a market it cannot read
+   * right now. The server takes them from the chain, never from a request.
+   */
+  marketParams?: MorphoMarketParams;
 };
 
 export type ChannelLocales = Partial<Record<NotificationService, Locale>>;

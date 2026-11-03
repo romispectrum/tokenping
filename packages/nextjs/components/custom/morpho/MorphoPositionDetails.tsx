@@ -20,7 +20,6 @@ import { formatUtcTimestamp } from "~~/utils/format";
 
 type MorphoPositionDetailsProps = {
   item: MorphoPositionItem;
-  onRetry: () => void;
 };
 
 /** A centred note with an icon, as the Aave details show a market without a position. */
@@ -37,12 +36,13 @@ const Note = ({ title, detail }: { title: string; detail: string }) => (
 );
 
 /** The selected Morpho position: its health factor, the four numbers that make it, a fixed-rate loan's maturity. */
-export const MorphoPositionDetails = ({ item, onRetry }: MorphoPositionDetailsProps) => {
+export const MorphoPositionDetails = ({ item }: MorphoPositionDetailsProps) => {
   const locale = useLocale();
   const t = useMessages("morpho");
   const { ref, position } = item;
   const chainName = getMorphoChain(ref.chainId)?.name ?? String(ref.chainId);
-  const params = position?.params;
+  // A market that cannot be read is still named from its alert's stored parameters.
+  const params = position?.params ?? item.savedParams;
   const reading = position?.reading;
   const rate = ref.protocol === "morpho-blue" ? t.list.variableRate : t.list.fixedRate;
   const countdown =
@@ -50,7 +50,7 @@ export const MorphoPositionDetails = ({ item, onRetry }: MorphoPositionDetailsPr
 
   const content = (() => {
     if (item.isError || !params || !reading) {
-      return <InlineError title={t.details.unreadableTitle} detail={t.details.unreadableDetail} onRetry={onRetry} />;
+      return <InlineError title={t.details.unreadableTitle} detail={t.details.unreadableDetail} onRetry={item.retry} />;
     }
     if (!hasDebt(reading)) return <Note title={t.details.noDebtTitle} detail={t.details.noDebtDetail} />;
     return (
