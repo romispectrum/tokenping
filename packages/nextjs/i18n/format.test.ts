@@ -4,6 +4,8 @@ import {
   capitalize,
   csForMarket,
   csOnMarket,
+  daForMarket,
+  daOnMarket,
   deForMarket,
   deOnMarket,
   formatDecimal,
@@ -387,6 +389,24 @@ describe("Swedish formatting", () => {
     expect(svForMarket("Base")).toBe("för Base");
     expect(svForMarket("Base (V4 Coinbase Stocks)")).toBe("för marknaden Base (V4 Coinbase Stocks)");
     expect(svForMarket("USDC | cbBTC (86%)", "market")).toBe("för marknaden USDC | cbBTC (86%)");
+  });
+});
+
+describe("Danish formatting", () => {
+  it("joins with og and eller, writes Danish dates, a decimal comma, one/other plurals and the market wording", () => {
+    expect(joinList("da", ["Signal", "Telegram", "e-mail"])).toBe("Signal, Telegram og e-mail");
+    expect(joinList("da", ["Signal", "e-mail"], "disjunction")).toBe("Signal eller e-mail");
+    expect(formatLongDate("da", "2026-10-14")).toBe("14. oktober 2026");
+    expect(formatDecimal("da", "1.42")).toBe("1,42");
+    const networks = (n: number) => plural("da", n, { one: `${n} netværk`, other: `${n} netværk (other)` });
+    expect(networks(1)).toBe("1 netværk");
+    expect(networks(2)).toBe("2 netværk (other)");
+    expect(daOnMarket("Arbitrum")).toBe("på Arbitrum");
+    expect(daOnMarket("Ethereum (V4 Lido)")).toBe("på markedet Ethereum (V4 Lido)");
+    expect(daOnMarket("Base", "network")).toBe("på Base");
+    expect(daForMarket("Base")).toBe("for Base");
+    expect(daForMarket("Base (V4 Coinbase Stocks)")).toBe("for markedet Base (V4 Coinbase Stocks)");
+    expect(daForMarket("USDC | cbBTC (86%)", "market")).toBe("for markedet USDC | cbBTC (86%)");
   });
 });
 

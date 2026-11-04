@@ -1,0 +1,208 @@
+export const meta = {
+  slug: "morpho-health-factor-forklaret",
+  title: "Morpho health factor forklaret: formel og eksempler",
+  description:
+    "Hvad health factor for et Morpho-lån er, hvordan Morpho Blue og Midnight beregner den, hvad der flytter den, og hvordan den adskiller sig fra Aaves.",
+  h1: "Hvad er Morpho health factor, og hvordan beregnes den?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Hvad er health factor for et Morpho-lån, og hvordan beregnes den?",
+  readingMinutes: 13,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Health factor (sundhedsfaktor) for et Morpho-lån sammenligner, hvad din sikkerhed er værd, talt op til markedets
+  likvidations-LTV (LLTV), med det, du skylder: mængde sikkerhed × pris ifølge oraklet (priskilden) × LLTV ÷ gæld. Når
+  gælden overstiger den grænse, er health factor under 1, og positionen kan likvideres. På 1,00 eller derover kan den
+  ikke, bortset fra en del af et Blue-lån, hvis ejer har godkendt en kontrakt til forlikvidation (pre-liquidation),
+  eller et Midnight-lån med gæld tilbage efter forfaldsdatoen. For eksempel giver 1 cbBTC prissat til 80.011,48 USDC i
+  Morphos marked USDC | cbBTC (86%) på Ethereum, mod 40.000 USDC i gæld, 80.011,48 × 0,86 ÷ 40.000 = 1,72. Hvert
+  Morpho-marked har sin egen sikkerhed, sit eget orakel og sin egen LLTV, fastlagt for altid, da det blev oprettet, så
+  hvert lån har sin egen health factor.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Tallene og de bloknumre, de blev aflæst ved: content/blog/snapshots/morpho-health-factor.md */}
+
+## Hvad er health factor for et Morpho-lån?
+
+Health factor er det tal, der fortæller dig, hvor langt en låneposition på Morpho er fra likvidation. Den deler det mest, du må skylde, med det, du skylder nu:
+
+**Health factor = sikkerhedens værdi i lånetokenen × LLTV ÷ gæld**
+
+- **Over 1,00:** positionen kan ikke likvideres, medmindre du har godkendt en kontrakt til forlikvidation, eller det er et Midnight-lån efter forfaldsdatoen (begge dele gennemgås nedenfor). Jo højere tallet er, desto længere kan priserne først bevæge sig imod dig.
+- **Under 1,00:** din gæld er større, end markedet tillader, og en del af den eller det hele kan likvideres.
+- **Ingen gæld:** der er intet at likvidere, så der er ingen health factor at holde øje med.
+
+En health factor på 1,72 betyder ikke, at du er 72 % fra likvidation. Den betyder, at gælden kan vokse til 1,72 gange sin størrelse, eller at sikkerhedens pris kan falde med 1 − 1 ÷ 1,72 = 41,9 %, før grænsen nås.
+
+Health factor gemmes ikke on-chain. Morphos kontrakt tjekker kun, om en position er sund (healthy); apps, Morphos API og Tokenping deler lånegrænsen med gælden for at vise den som et tal.
+
+## Hvordan er et Morpho Blue-marked bygget op?
+
+Morpho Blue, som Morphos dokumentation nu kalder sine markeder med variabel rente, er en samling af separate lånemarkeder. Hvert marked er defineret af fem parametre, der vælges, når markedet oprettes:
+
+| Parameter        | Hvad det er                                          | I eksempelmarkedet      |
+| ---------------- | ---------------------------------------------------- | ----------------------- |
+| Lånetoken        | Den ene token, du kan låne                           | USDC                    |
+| Sikkerhedstoken  | Den ene token, du kan stille som sikkerhed           | cbBTC                   |
+| Orakel           | Kontrakten, der prissætter sikkerheden i lånetokenen | Et prisfeed for BTC/USD |
+| Rentemodel (IRM) | Kontrakten, der fastsætter lånerenten                | AdaptiveCurveIRM        |
+| LLTV             | Likvidations-LTV (liquidation loan-to-value)         | 86 %                    |
+
+Morphos app navngiver markederne efter dem, med lånetokenen først: »USDC | cbBTC (86%)«. Alle kan oprette et marked, men kun med en LLTV og en IRM, som Morphos governance (styring) har aktiveret. Når markedet først er oprettet, kan ingen af de fem ændres: kontrakten har ingen funktion til at redigere dem, og governance kan aktivere nye LLTV'er, men aldrig deaktivere en.
+
+Fordi et marked har én sikkerhed og én lånetoken, dækker din sikkerhed i ét marked ikke gæld i et andet. Morphos dokumentation siger det ligeud: sikkerheden er specifik for hvert marked og ikke krydsmarginaliseret (cross-margined). To lån i to markeder har to health factors.
+
+## Hvordan beregner Morpho health factor?
+
+Morpho Blue tjekker sundheden ét sted i sin kontrakt, `_isHealthy`, og det samme tjek beskytter lån, hævning af sikkerhed og likvidation:
+
+1. **Gæld:** dine låneandele (borrow shares) omregnet til lånetokens, rundet op.
+2. **Sikkerhedens værdi:** mængde sikkerhed × orakelpris ÷ 10^36, rundet ned.
+3. **Lånegrænse:** sikkerhedens værdi × LLTV, rundet ned.
+4. **Sund**, så længe lånegrænsen er mindst lige så stor som gælden.
+
+Health factor er trin 3 delt med trin 1. Afrundingen favoriserer altid protokollen, så kontrakten kan lade dig låne én enhed mindre end den nøjagtige grænse. På præcis 1,00 regner kontrakten stadig positionen som sund; den kan likvideres, når gælden er større end grænsen, hvilket er det samme som, at health factor falder under 1.
+
+### Hvad betyder oraklets skala på 10^36?
+
+Et Morpho-orakel returnerer prisen på én sikkerhedstoken i lånetokens, ganget med 10^36 og justeret for de to tokens' decimaler. For at aflæse den ganger du med 10^(sikkerhedens decimaler − lånetokenens decimaler) og deler med 10^36. I eksempelmarkedet har cbBTC 8 decimaler og USDC 6, så den rå værdi 800114843487200000000000000000000000000 × 10^2 ÷ 10^36 = 80.011,48 USDC pr. cbBTC.
+
+Oraklet er den kontrakt, markedets opretter valgte, hvilken som helst. Kommentarerne i Morphos kontrakt siger, at det er brugerens ansvar at vælge markeder med sikre orakler, og dokumentationen bemærker, at et orakel kan kombinere flere feeds eller bygge på andre data on-chain. Din health factor kan kun være lige så pålidelig som oraklet og de feeds, det læser.
+
+## Regneeksempel: hvad er health factor for 1 cbBTC mod 40.000 USDC?
+
+Det største listede Morpho-marked på Ethereum målt på lånt værdi den 26. oktober 2026 var USDC | cbBTC (86%), med omkring 309,13 mio. USDC lånt mod 343,18 mio. indskudt (Ethereum-blok 26274955). Dets orakel prissatte cbBTC til 80.011,48 USDC, taget alene fra et prisfeed for BTC/USD, så markedet regner 1 cbBTC som 1 BTC og 1 USDC som 1 dollar.
+
+Tag 1 cbBTC i sikkerhed og 40.000 USDC i gæld:
+
+1. Sikkerhedens værdi: 1 × 80.011,48 = 80.011,48 USDC.
+2. Lånegrænse: 80.011,48 × 0,86 = 68.809,88 USDC.
+3. Health factor: 68.809,88 ÷ 40.000 = **1,72**.
+4. LTV: 40.000 ÷ 80.011,48 = 50,0 %, mod en LLTV på 86 %.
+5. Likvidationspris: 40.000 ÷ (1 × 0,86) = **46.511,63 USDC pr. cbBTC**, 41,9 % under 80.011,48.
+
+Renten flytter den også. Markedets lånerente ved den blok var 4,89 % om året, hvilket med renters rente bliver til 5,01 %. Hvis renten og prisen blev, hvor de var, i et år, ville gælden vokse til omkring 42.003 USDC, og health factor ville glide ned til 1,64.
+
+### Hvad har rigtige låntagere i dette marked?
+
+Morphos API listede 437 lånepositioner i dette marked den 26. oktober 2026. Af de 435 med en health factor var medianen 1,96, en fjerdedel lå under 1,58, en tiendedel under 1,35, og den laveste var 1,05. Omkring 3 % lå under 1,2. På tværs af hele markedet dækkede 8.419,83 cbBTC 309,13 mio. USDC i gæld, en samlet health factor på omkring 1,87.
+
+## Hvordan hænger LTV, LLTV og health factor sammen?
+
+LTV, belåningsgraden, er din gæld delt med sikkerhedens værdi. LLTV er markedets faste loft for den. Med én sikkerhed og stabil gæld er health factor forholdet mellem dem:
+
+**Health factor = LLTV ÷ LTV**
+
+På Morpho Blue er LLTV den eneste grænse. Der er ingen separat, lavere grænse for nye lån, så kontrakten lader dig låne eller hæve sikkerhed, indtil health factor er 1,00. Morphos udviklerdokumentation beder apps om at holde en margin, for eksempel ved ikke at lade lån gå under en health factor på 1,05, men marginen er et valg, ikke en regel i kontrakten. Hvor langt under grænsen du holder dig, afgør din buffer, uanset LLTV:
+
+| Lånt, som andel af grænsen | Health factor | Prisfald på sikkerheden til likvidation |
+| -------------------------- | ------------- | --------------------------------------- |
+| 50 %                       | 2,00          | 50 %                                    |
+| 70 %                       | 1,43          | 30 %                                    |
+| 80 %                       | 1,25          | 20 %                                    |
+| 90 %                       | 1,11          | 10 %                                    |
+| 100 %                      | 1,00          | 0 %                                     |
+
+## Hvilke LLTV'er kan et Morpho-marked bruge?
+
+Den 26. oktober 2026 accepterede Morpho Blue på Ethereum og på Base de ni LLTV'er på Morphos liste godkendt af governance: 0 %, 38,5 %, 62,5 %, 77 %, 86 %, 91,5 %, 94,5 %, 96,5 % og 98 % (hver aflæst som aktiveret ved Ethereum-blok 26274950 og Base-blok 53102888). En LLTV på 0 tillader slet ingen lån. En LLTV på Blue skal være under 100 %.
+
+LLTV fastsætter også likvidationsincitamentet, den ekstra sikkerhed, en likvidator får: 1 ÷ (1 − 0,3 × (1 − LLTV)), med et loft på 1,15. Ved en LLTV på 86 % er det 1,0438: en likvidator, der tilbagebetaler 100 USDC af din gæld, får 104,38 USDC af din sikkerhed. En højere LLTV betyder et mindre incitament. Morphos dokumentation runder incitamentet ved 86 % af til omkring 5 %; kontraktens formel giver 4,38 %. Incitamentet ved hver aktiveret LLTV, hvad en likvidation tager, og hvor meget af et lån der kan forsvinde på én gang, gennemgås i [sådan fungerer likvidation på Morpho](/da/blog/saadan-fungerer-likvidation-paa-morpho). Incitamentet betales af dig, ud af din sikkerhed; din egen buffer er afstanden mellem din health factor og 1,00.
+
+## Hvad flytter en Morpho-health factor?
+
+Tre ting kan flytte den, mens du ikke gør noget:
+
+- **Sikkerhedens pris, som oraklet ser den.** I cbBTC-eksemplet følger health factor prisfeedet for BTC/USD og ændrer sig kun, når det feed opdateres.
+- **Lånetokenens pris, hvis oraklet bruger den.** Et orakel med et quote-feed (kursfeed for lånetokenen) reagerer også på lånetokenen. cbBTC-markedets orakel har intet, så en depeg (når koblingen til dollaren brydes) af USDC ville ikke flytte den health factor. Det ville et gab mellem cbBTC og BTC heller ikke.
+- **Rente.** På Morpho Blue vokser gælden, efterhånden som renten påløber, og Morphos dokumentation advarer om, at en position kan blive mere risikabel over tid alene på grund af renten. AdaptiveCurveIRM sigter mod 90 % udnyttelse og hæver renten, når et marked er mere travlt, og sænker den, når det er roligere, og holder renten ved 90 % udnyttelse mellem 0,1 % og 200 % om året. Ved fuld udnyttelse kan renten blive op til fire gange renten ved målet, altså op til 800 % om året. Hvordan en rentestigning slår igennem på en health factor, er vist for Aave i [sådan fungerer Aaves renter](/da/blog/aave-renter#hvordan-pavirker-rentetoppe-din-health-factor); virkningen på et Morpho-lån er den samme.
+
+Det, Morphos governance ikke kan flytte, er selve markedet: et markeds LLTV, orakeladresse og IRM er faste. Oraklet læser stadig sin pris fra de feeds, der ligger bag det, så det er kun lige så pålideligt, som de er. Governance kan fastsætte et markedsgebyr på op til 25 % af renten, men det fordeler renten mellem långiverne og gebyrmodtageren; det ændrer ikke, hvad låntagerne skylder.
+
+Oraklet afgør, hvilke priser der tæller. I Morphos marked WETH | wstETH (96.5%) på Ethereum værdisætter oraklet wstETH til Lidos egen vekselkurs, 1,24717 WETH pr. wstETH ved blok 26274979, og regner 1 stETH som 1 ETH. Dollarprisen på ETH flytter slet ikke den health factor. 10 wstETH mod 11 WETH der giver 12,4717 × 0,965 ÷ 11 = 1,094, og en likvidation ville kræve, at vekselkursen faldt til 1,1399, 8,6 % lavere. Kun renten og den vekselkurs flytter denne health factor.
+
+## Hvordan beregner du din likvidationspris på Morpho?
+
+For en Blue-position er likvidationsprisen den orakelpris, hvor din gæld svarer til din lånegrænse:
+
+**Likvidationspris = gæld ÷ (mængde sikkerhed × LLTV)**
+
+Den angives i lånetokens pr. sikkerhedstoken, fordi det er sådan, oraklet prissætter. Med en health factor h skal sikkerhedens pris falde med 1 − 1 ÷ h for at nå den (se tabellen ovenfor). Når gælden vokser med renten, kryber likvidationsprisen opad.
+
+Hvis du har godkendt en kontrakt til forlikvidation for markedet, kan en del af din position lukkes tidligere, ved en lavere LTV end LLTV. cbBTC-markedet har en, med en forlikvidations-LTV på 83,26 %: for 1 cbBTC mod 40.000 USDC er health factor målt mod den grænse 1,67 i stedet for 1,72. Morpho er ved at udfase denne funktion: appen tilbyder den ikke længere, og Morpho beder låntagere, der har den, om at slå den fra. Se [forlikvidation på Morpho](/da/blog/morpho-forlikvidation) for, hvordan den fungerer, og hvordan du tjekker og tilbagekalder den.
+
+## Hvordan fungerer health factor på Morpho Midnight?
+
+Morpho Midnight, Morphos markeder med fast rente, beregner sundheden på samme måde, med tre forskelle: et marked kan acceptere flere sikkerheder, gælden vokser ikke med tiden, og forfaldsdatoen er en skarp grænse.
+
+- **Flere sikkerheder, lagt sammen.** Et Midnight-marked har én lånetoken, en forfaldsdato og én eller flere sikkerheder, hver med sin egen LLTV og sit eget orakel. Kontrakten lægger sikkerhedens værdi × LLTV sammen for hver sikkerhed, du har stillet, og sammenligner summen med din gæld. Health factor er den sum ÷ gæld.
+- **Fast gæld.** Du skylder et nominelt beløb, én lånetoken pr. enhed, som forfalder på forfaldsdatoen. Renten er bygget ind, når du låner: du modtager mindre end én lånetoken for hver enhed, du skylder, så mellem handlerne er det kun sikkerhedernes priser, der flytter en Midnight-health factor.
+- **Forfaldsdatoen er en skarp grænse.** Efter forfaldsdatoen kan al gæld, der stadig er åben, likvideres uanset health factor, og i den tilstand efter forfald vokser likvidatorens incitament fra ingenting til fuld størrelse i løbet af den første time.
+
+Et Midnight-marked kan også begrænse, hvem der må likvidere, med en spærre, der fastsættes, når markedet oprettes; eksempelmarkedet nedenfor har ingen.
+
+Det største listede Midnight-marked på Ethereum den 26. oktober 2026, med omkring 23,9 mio. USDC i udestående gældsenheder, låner USDC ud til 25. december 2026, mod USDC med en LLTV på 98 % og cbBTC på 86 %, med samme cbBTC-orakel som Blue-markedet ovenfor. Stil 0,5 cbBTC og 10.000 USDC mod 40.000 enheder gæld, så bliver grænsen 34.404,94 + 9.800 = 44.204,94, en health factor på 1,105. Forfaldsdato, forlængelse (rollover) og likvidation efter forfald gennemgås i [Morpho Midnight: lån med fast rente](/da/blog/morpho-midnight-laan-med-fast-rente).
+
+## Hvordan adskiller Morpho health factor sig fra Aaves?
+
+Formlen har samme form på begge: sikkerhed vægtet med en tærskel, delt med gæld. Reglerne omkring den er forskellige, som [guiden om Aave health factor](/da/blog/aave-health-factor-forklaret#health-factor-vs-ltv-vs-likvidationstærskel-hvad-er-forskellen) forklarer fra Aaves side:
+
+|                       | Morpho Blue                                 | Aave V3                                                                                                                                                                             |
+| --------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Enhed                 | Ét marked: én sikkerhed, én lånetoken       | Ét marked (en pool på ét netværk): al din sikkerhed og gæld dér                                                                                                                     |
+| Hvordan priser sættes | Hvert markeds eget orakel, i lånetokenen    | Aaves orakel, i USD                                                                                                                                                                 |
+| Lånegrænse            | Op til LLTV, health factor 1,00             | En lavere LTV, så et maksimalt lån efterlader [omkring 1,03](/da/blog/aave-health-factor-forklaret#hvorfor-efterlader-et-maksimalt-lan-en-health-factor-pa-kun-omkring-103) for WETH |
+| Korrelerede aktiver   | Separate markeder med en høj LLTV           | [E-Mode](/da/blog/aave-health-factor-forklaret#hvordan-ændrer-e-mode-health-factor)-kategorier                                                                                 |
+| Kan tærsklen ændres?  | Nej, den er fastlagt, når markedet oprettes | Ja, governance og Risk Stewards kan ændre den                                                                                                                                       |
+
+Aave V4 ændrer noget af dette, med én health factor pr. Spoke og én sikkerhedsfaktor (collateral factor) pr. aktiv; se [hvordan health factor fungerer på Aave V4](/da/blog/aave-health-factor-forklaret#er-health-factor-anderledes-pa-aave-v4).
+
+Den praktiske forskel: på Aave påvirker et problem med ét aktiv hele dit marked, mens det på Morpho bliver inden for ét marked. Og på Morpho forhindrer intet i kontrakten dig i at låne helt ud til kanten, så det er op til dig at holde marginen.
+
+## Hvor kan du se din Morpho health factor?
+
+Morphos hjælpecenter siger, at appen viser health factor og likvidationsprisen for hver position. Morphos API returnerer `healthFactor` og prisændringen frem til likvidation for Blue-positioner; for Midnight returnerer det positioner og markedsparametre, og dokumentationen beder integratorer om selv at læse hver sikkerheds orakel on-chain og beregne grænsen.
+
+Tokenpings [Morpho-oversigt](/da/morpho) viser en wallets lånepositioner på Blue og Midnight, med health factors beregnet fra kæden med Morphos egen matematik og aldrig hentet fra Morphos API.
+
+## Hvordan vælger du en buffer og en tærskel for alarmer?
+
+Tag udgangspunkt i, hvor langt prisen kan bevæge sig, før du når at handle, og læg så plads til renten oveni:
+
+- **Vælg den bevægelse, du vil kunne klare.** Brug tabellen i LTV-afsnittet ovenfor: det prisfald, du vil dække, bestemmer health factor.
+- **Se på oraklet.** Et BTC/USD-orakel bevæger sig med BTC. Et vekselkursorakel som wstETH-markedets bevæger sig langt mindre, men lånerenten og selve vekselkursen flytter stadig din health factor, og en høj LLTV efterlader kun lidt plads til begge.
+- **Mål mod den nærmeste grænse.** Hvis du har godkendt forlikvidation, kan en del af dit lån forsvinde, før health factor når 1,00.
+- **På Midnight, hold øje med datoen.** Renten slider ikke bufferen ned, men gæld, der er tilbage efter forfaldsdatoen, kan likvideres ved enhver health factor.
+- **Vid, hvordan du hæver den.** Tilbagebetal en del af gælden, eller tilføj sikkerhed i samme marked: sikkerhed i et andet Morpho-marked tæller ikke. På Midnight kan du tilføje enhver sikkerhed, markedet accepterer.
+
+Morphos udviklerdokumentation giver 1,1 som eksempel på et niveau for en advarsel. For ræsonnementet bag buffere, se [hvor stor en buffer du har brug for for at nå at handle](/da/blog/sikker-aave-health-factor#hvor-stor-en-buffer-har-du-brug-for-til-at-na-at-handle), skrevet til Aave, men med samme regnestykke.
+
+## Hvordan kan health factor-alarmer hjælpe på Morpho?
+
+Tokenping tjekker Morpho-positioner hvert 5. minut på 14 netværk: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable og Tempo. Det dækker lånepositioner i markeder, der er listet i Morpho-appen, både Morpho Blue og Morpho Midnight. Midnight-alarmer dækker markeder, som Morphos API lister. Den 26. oktober 2026 lå de på Ethereum og Base; Tokenping dækker også Arc og Robinhood Chain, når Morpho lister Midnight-markeder der.
+
+- **Tærskel:** du sætter den fra 1,02 til 10. Så længe health factor er under den, sender hvert tjek en besked på hver kanal, du har valgt: Signal, Telegram eller e-mail.
+- **Forlikvidation:** hvis du har godkendt en kontrakt til forlikvidation på et Blue-marked, bruger alarmen den laveste af to health factors: den, der måles mod LLTV, og den, der måles mod forlikvidationsgrænsen.
+- **Forfald:** et Midnight-lån får også én påmindelse i sine sidste 7 dage og én i sine sidste 24 timer og derefter en alarm ved hvert tjek efter forfaldsdatoen, så længe der er gæld tilbage.
+
+Det kræver ingen betaling at se dine positioner i [Morpho-oversigten](/da/morpho); alarmer koster <AlertPrice />, samme plan som Aave-alarmer. En alarm giver dig tid til at handle; den forhindrer ikke likvidation, fordi en pris kan bevæge sig mellem to tjek.
+
+## Kilder
+
+- [Morpho docs: Variable Rate Market (Morpho Blue)](https://docs.morpho.org/learn/concepts/blue): de fem parametre, markedsnavne, LLTV'er godkendt af governance og IRM (hentet 26. oktober 2026)
+- [Morpho docs: Collateral, LTV and health (developers)](https://docs.morpho.org/developers/borrow/concepts/ltv): formel, orakelskala, ingen krydsmarginalisering, anbefalinger til integration (hentet 26. oktober 2026)
+- [Morpho docs: Liquidation](https://docs.morpho.org/learn/concepts/liquidation) og [Morpho help centre: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): likvidationsincitament, hvor appen viser health factor (hentet 26. oktober 2026)
+- [Morpho docs: Interest rate model](https://docs.morpho.org/learn/concepts/irm) og [renter for integratorer](https://docs.morpho.org/developers/borrow/concepts/interest-rates): AdaptiveCurveIRM, påløbne renter (hentet 26. oktober 2026)
+- [Morpho docs: Get data (developers)](https://docs.morpho.org/developers/borrow/tutorials/get-data): kode til health factor og likvidationspris (hentet 26. oktober 2026)
+- [Morpho docs: What is Midnight? (Fixed Rate Markets)](https://docs.morpho.org/learn/concepts/midnight) og [Midnight collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) (hentet 26. oktober 2026)
+- [Morpho docs: Governance organization](https://docs.morpho.org/learn/governance/organization), [kontraktadresser](https://docs.morpho.org/developers/contracts/addresses) og [politikken for listning i brugerfladen](https://docs.morpho.org/get-started/resources/interface-listing-policy) (hentet 26. oktober 2026)
+- [morpho-blue](https://github.com/morpho-org/morpho-blue): `Morpho.sol`, `ConstantsLib.sol`, `IOracle.sol` (hentet 26. oktober 2026)
+- [midnight](https://github.com/morpho-org/midnight): `Midnight.sol`, `ConstantsLib.sol` (hentet 26. oktober 2026)
+- [pre-liquidation](https://github.com/morpho-org/pre-liquidation) og [morpho-blue-irm](https://github.com/morpho-org/morpho-blue-irm) (hentet 26. oktober 2026)
+- [Morpho API docs: Morpho Blue](https://docs.morpho.org/developers/api/morpho/) og [Morpho Midnight](https://docs.morpho.org/developers/api/morpho-midnight) (GraphQL-endpoint api.morpho.org/graphql, Midnights REST-endpoints under api.morpho.org/v0/midnight): rangering af markeder, positioner og kontrakter til forlikvidation (hentet 26. oktober 2026)
+- Aflæsninger on-chain af [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), [USDC | cbBTC-oraklet](https://etherscan.io/address/0xA6D6950c9F177F1De7f7757FB33539e3Ec60182a#readContract), [WETH | wstETH-oraklet](https://etherscan.io/address/0xbD60A6770b27E084E8617335ddE769241B0e71D8#readContract) og [Morpho Midnight](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract) på Ethereum ved blok 26274950 til 26274984, og [Morpho Blue på Base](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) ved blok 53102888 (hentet 26. oktober 2026)
+
+_Undervisningsindhold, ikke økonomisk rådgivning. Alarmer mindsker risikoen, men forhindrer ikke likvidation._

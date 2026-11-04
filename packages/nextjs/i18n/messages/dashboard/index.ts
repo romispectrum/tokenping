@@ -1,4 +1,5 @@
 import { MESSAGES as cs } from "./cs";
+import { MESSAGES as da } from "./da";
 import { MESSAGES as de } from "./de";
 import { MESSAGES as en } from "./en";
 import { MESSAGES as es } from "./es";
@@ -46,4 +47,5 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
   sl,
   sr,
   sv,
+  da,
 };

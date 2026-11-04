@@ -1,0 +1,201 @@
+export const meta = {
+  slug: "opsaet-aave-health-factor-alarm",
+  title: "Sådan får du besked, når din Aave health factor falder",
+  description:
+    "Trin for trin: en besked via Signal, Telegram eller e-mail, når din health factor på Aave V3 eller V4 falder under din tærskel. Pris og stop af alarmer.",
+  h1: "Sådan får du en alarm, når din Aave health factor falder",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Hvordan opsætter jeg en besked til, når min Aave health factor falder?",
+  readingMinutes: 15,
+};
+
+<ShortAnswer>
+  Aaves egne brugerflader viser din health factor (sundhedsfaktor), mens du har dem åbne, men de sender ingen besked,
+  når den falder, så advarslen må komme fra et separat værktøj. Med Tokenping forbinder du den wallet, du låner med,
+  betaler for adgang til alarmerne på Arbitrum, logger ind ved at signere en besked med den wallet, sætter en tærskel
+  for hvert marked, du låner på (hvert marked på Aave V3 på 21 netværk, eller hver Spoke på Aave V4 på Ethereum,
+  Avalanche, Arc og Base) og tilføjer en e-mailadresse, et brugernavn på Signal eller et brugernavn på Telegram.
+  Tokenping tjekker derefter hvert 5. minut og sender dig en besked ved hvert tjek, så længe din health factor ligger
+  under den tærskel.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Sender Aave alarmer om health factor?
+
+Nej. Pr. 14. oktober 2026 viser Aaves egne brugerflader din health factor på skærmen, men de sender ingen e-mail, ingen chatbesked og ingen pushnotifikation, når den falder. Health factor (HF) er værdien af din sikkerhed, vægtet med hvert aktivs likvidationstærskel (liquidation threshold), divideret med værdien af din gæld; under 1,00 kan positionen blive likvideret. Hele formlen står i [hvad Aave health factor er](/da/blog/aave-health-factor-forklaret).
+
+Aaves webapp (app.aave.com) linkede engang til notifikationer fra HAL; Aave fjernede den integration den 30. maj 2024, fordi tjenesten HAL var lukket. Aave Pro, appen til Aave V4, beskriver overvågning af health factor inde i appen, og dens produktside nævner ingen notifikationer. Aaves hjælpecenter siger, at løbende overvågning er afgørende; dets korte liste over værktøjer, mærket »Use at your own risk« (brug på eget ansvar), har en simulator og en tjeneste til automatisk tilbagebetaling, men ingen alarmtjeneste.
+
+At blive advaret betyder altså, at du selv tjekker appen eller bruger et værktøj fra tredjepart. Denne guide opsætter [health factor-alarmer for Aave via Signal, Telegram og e-mail](/da) med Tokenping; andre værktøjer gennemgås i [værktøjer til Aave-likvidationsalarmer sammenlignet](/da/blog/vaerktoejer-til-aave-likvidationsalarmer).
+
+## Hvad skal du bruge, før du går i gang?
+
+En health factor-alarm fra Tokenping kræver fire ting:
+
+- **En position på Aave V3 eller V4 med gæld.** På Aave V3: et hvilket som helst af de 24 markeder på 21 netværk, fra Ethereums markeder Core, Prime, EtherFi og Horizon til Polygon, Arbitrum, Optimism, Base, Avalanche, Gnosis, Metis, BNB Chain, Scroll, ZKsync, Linea, Sonic, Celo, Soneium, Plasma, Ink, MegaETH, Mantle, X Layer og Monad (Aave Address Book, 16. oktober 2026). På Aave V4: en hvilken som helst Spoke på Ethereum, Avalanche, Arc eller Base (20 pr. 16. oktober 2026). Uden gæld returnerer Aave den størst mulige værdi (vist som ∞), og ingen alarm kan udløses. Ikke dækket: Aave V3 på Harmony, frosset siden 2022.
+- **Den wallet, du låner med.** Tokenping overvåger kun den wallet, du forbinder; du kan ikke tilføje en anden adresse. Den samme wallet logger dig ind, så der er ingen konto og ingen adgangskode.
+- **Native USDC og lidt ETH på Arbitrum One, i den samme wallet.** Alarmer koster <AlertPrice />, betalt i Circles native USDC på Arbitrum One, også når dit lån ligger på et andet netværk. ETH dækker gas til op til to transaktioner; at logge ind koster ingen gas.
+- **En e-mailadresse, et brugernavn på Signal eller et brugernavn på Telegram**, eller flere af dem.
+
+Opsætningen tager derefter syv trin:
+
+1. Forbind din wallet, og tjek dine positioner.
+2. Betal for adgang til alarmerne på Arbitrum One.
+3. Log ind med din wallet.
+4. Opret en alarm, og vælg e-mail, Signal, Telegram eller flere.
+5. Vælg en tærskel.
+6. Gem alarmen.
+7. Send en testbesked via hver kanal.
+
+## Trin 1: Forbind din wallet og tjek dine positioner
+
+Åbn oversigten for at [tjekke din health factor på Aave V3](/da/aave), og forbind den wallet, du låner med. Det kræver hverken betaling eller login at se positioner: Tokenping læser kun dine positioner on-chain og beder aldrig om en godkendelse eller en transaktion på din Aave-position.
+
+Listen **Markeder** viser de markeder på Aave V3 og de Spokes på Aave V4, hvor din wallet har en position eller en gemt alarm, med et health factor-mærke, hvor du har en position; alle andre markeder er foldet sammen under **Andre markeder**. Vælg det med dit lån for at se dets sikkerhed, gæld og health factor, og notér den health factor: den hjælper dig med at vælge en tærskel. Hvis oversigten siger »Der blev ikke fundet aktive positioner på Aave i de understøttede markeder.«, har du sandsynligvis forbundet en anden wallet, eller lånet ligger i et marked, som Tokenping ikke læser. Positionerne indlæses, når siden åbner, og når du trykker på **Opdater positioner**.
+
+## Trin 2: Lås alarmerne op
+
+For at gemme en alarm i Tokenping skal du have betalt adgang, som koster <AlertPrice />. Prisen er sat i Tokenpings betalingskontrakt på Arbitrum One, og panelet viser den, før du betaler.
+
+1. Under listen **Markeder** i [Tokenpings oversigt](/da/aave) viser panelet **Lås health factor-alarmer op** prisen, hvor længe adgangen varer, netværket og netværksgebyret. Tryk på **Betal** (knappens tekst indeholder prisen i USDC). Hvis din wallet er på et andet netværk, trykker du først på **Skift til Arbitrum One**.
+2. Godkend USDC. Godkendelsen gælder præcis prisen, aldrig et ubegrænset beløb, og springes over, hvis der allerede er godkendt nok.
+3. Bekræft betalingen. Når den er kommet med i en blok, viser panelet **Alarmer låst op til** efterfulgt af en dato.
+
+Én betaling låser alarmindstillingerne op i hvert marked på Aave V3 og hver Spoke på Aave V4 for den wallet, der betalte. Intet fornyes automatisk, men du kan betale forud: mens adgangen er aktiv, viser panelet en knap, der tilføjer endnu en planperiode (knappens tekst nævner dagene og prisen). Hver betaling lægger den periode til efter din nuværende slutdato, så mange gange du vil, og den nye slutdato vises med det samme. Når adgangen er udløbet, starter en ny betaling en ny planperiode fra den dag. Betalingskontrakten er verificeret på Sourcify og har ingen funktion til refusion. Én wallet, som Tokenping-teamet kontrollerer, ejer den og kan ændre prisen, sætte betalinger på pause eller opgradere kontraktens kode.
+
+## Trin 3: Log ind med din wallet
+
+Alarmindstillinger hører til en wallet-adresse, ikke til en konto. Når adgangen er låst op, beder alarmpanelet for det valgte marked dig om at trykke på **Log ind med wallet**. Din wallet viser så en loginbesked (Sign-in with Ethereum), der nævner siden og din adresse og siger »Log ind på Tokenping for at se og redigere dine health factor-alarmer.« At signere den er ikke en transaktion: det koster ingen gas og godkender ingen token. Der er ingen adgangskode at oprette og ingen tilmelding med e-mail.
+
+Loginet varer 7 dage i den browser og ophører, når du afbryder forbindelsen til din wallet; derefter beder panelet dig om at logge ind igen. Hvis du afviser anmodningen, siger panelet det, og du kan trykke på knappen igen. Hvad loginet gemmer og tjekker, står i [hvordan login uden konto fungerer](/da/blog/private-aave-likvidationsalarmer#hvordan-fungerer-login-uden-en-konto).
+
+## Trin 4: Opret en alarm og vælg dine kanaler
+
+Hver alarm i Tokenping dækker ét marked og én tærskel. Et marked er en Pool på Aave V3 (Ethereum har fire, alle andre netværk én) eller en Spoke på Aave V4, fordi hver af dem holder en separat position med sin egen health factor. Med markedet valgt trykker du på **Opret alarm** i dets panel. Formularen åbner med **Alarmkanaler** øverst: sæt flueben ved E-mail, Signal, Telegram eller en kombination. Tokenping kræver mindst én kanal, og hver alarm går til hver kanal, du vælger.
+
+- **E-mail:** skriv din adresse. Hvis den første alarm ikke kommer, så tjek din spammappe.
+- **Signal:** skriv dit brugernavn på Signal, med eller uden @, for eksempel `alice.42`. Signal viser det på din profil: åbn Indstillinger, tryk på din profil, og se ved siden af @-symbolet. Hvis du aldrig har oprettet et brugernavn på Signal, opretter du først et i Signal. Tokenping beder aldrig om dit telefonnummer.
+- **Telegram:** skriv dit brugernavn på Telegram, med eller uden @, for eksempel `alice_eth`. Telegram viser det under Indstillinger og derefter Brugernavn; hvis du ikke har et, opretter du først et der. Bots på Telegram kan ikke starte en samtale, så formularen siger »Ikke forbundet endnu« og linker til Tokenpings bot: åbn den, og tryk på **Start** én gang. Mens du gør det, tjekker formularen igen med få sekunders mellemrum og siger derefter, at dit brugernavn er forbundet. Du kan gemme, før du trykker på Start, men ingen alarm når frem på Telegram, før du har gjort det.
+
+Ved siden af hver adresse eller hvert brugernavn er der en sprogmenu (**Sprog for e-mail**, **Sprog på Signal**, **Sprog på Telegram**), hvor du vælger et af sidens sprog. Hver kanals alarmer og testbeskeder skrives på det sprog, du vælger til den. En ny kanal starter på sproget for den side, du læser, så på den danske side er det dansk.
+
+Fordi Tokenpings Signal-konto ikke er blandt dine kontakter, kan Signal vise den første alarm som en beskedanmodning (message request). Acceptér den; hvis du blokerer afsenderen, når alarmerne ikke frem til dig. At vælge mere end én kanal er en sikring, da hver kanal afhænger af eksterne tjenester (en e-mailudbyder, et selvhostet Signal-relæ og Telegrams Bot API).
+
+Tokenping gemmer din wallet-adresse, markedet, tærsklen og kanalerne med sproget for hver af dem, den e-mailadresse og de brugernavne, du skrev, hvornår alarmen blev oprettet og sidst ændret, og hvornår du sidst sendte en test via hver kanal. Når du trykker på Start i botten, gemmes dit chat-ID på Telegram sammen med dit brugernavn, og dit svar på det valgfrie spørgsmål »Hvordan hørte du om Tokenping?« gemmes, hvis du giver et. Der gemmes ingen historik over din health factor og ingen log over sendte alarmer. For at den adresse eller de brugernavne, du indtaster, ikke afslører, hvem du er, se [hvordan du får Aave-alarmer uden at give Tokenping din identitet](/da/blog/private-aave-likvidationsalarmer).
+
+## Trin 5: Vælg en tærskel
+
+Tærsklen er den health factor, under hvilken du får beskeder. Skyderen går fra 1,1 til 3,0 i trin på 0,1, og feltet ved siden af tager enhver værdi fra 1,1 til 10 med op til to decimaler. Standardværdien er 1,5.
+
+Der findes ikke et tal, der er sikkert for alle. Én fremgangsmåde: vælg den pris på sikkerheden, hvor du ville handle, regn health factor ud ved den pris, og sæt alarmen lidt over, fordi tjekkene ligger 5 minutter fra hinanden, og en tilbagebetaling kan være længe om at blive bekræftet på et travlt netværk. [Hvor stor en buffer en health factor giver dig](/da/blog/sikker-aave-health-factor) har en tabel med almindelige niveauer.
+
+Et regneeksempel med ét volatilt sikkerhedsaktiv og gæld i en stablecoin: likvidationstærsklen for WETH på Ethereum Core-markedet var 83 % (læst on-chain ved blok 26194005, 14. oktober 2026). Med 10 WETH indskudt, 12.000 USDC lånt, ETH til illustrative 2.400 $ (Aaves orakel (priskilde) viste 2.415,56 $ ved den blok) og USDC til 1,00 $ er health factor 10 × 2.400 × 0,83 ÷ 12.000 = 1,66. ETH-prisen ved en given health factor er den health factor × 12.000 ÷ (10 × 0,83):
+
+| Health factor                       | ETH-pris ved den health factor | Fald fra 2.400 $ |
+| ----------------------------------- | ------------------------------ | ---------------- |
+| 1,66 (udgangspunkt)                 | 2.400,00 $                     | 0 %              |
+| 1,5 (mulig alarmtærskel)            | 2.168,67 $                     | 9,6 %            |
+| 1,3 (mulig alarmtærskel)            | 1.879,52 $                     | 21,7 %           |
+| 1,0 (likvidation mulig under dette) | 1.445,78 $                     | 39,8 %           |
+
+Med en tærskel på 1,5 kommer den første besked ved det første tjek, efter at health factor er faldet under 1,5, her når ETH er under 2.168,67 $. ETH skulle så falde omkring 33 % mere, før denne position kunne blive likvideret; med 1,3 er den resterende buffer omkring 23 %. Begge tal ser bort fra renter. Renter og sænkede likvidationstærskler kan også sænke en health factor uden nogen prisbevægelse: se [hvorfor din Aave health factor falder af sig selv](/da/blog/hvorfor-faldt-din-aave-health-factor).
+
+## Trin 6: Gem og se hvordan alarmen ser ud
+
+Tryk på **Gem alarm**. Panelet viser **Alarmindstillinger** med mærket Aktiv og et resumé, der viser hver kanal med dens adresse eller brugernavn og dens sprog. Markedet får et klokkeikon i listen Markeder. Første gang kan det valgfrie spørgsmål »Hvordan hørte du om Tokenping?« dukke op; du kan trykke på **Spring over**. På dansk får Signal og Telegram denne tekst (eksempelværdier):
+
+> Din health factor for Aave på Arbitrum er 1,42. Det er under din tærskel på 1,5. Overvej at tilføje sikkerhed eller tilbagebetale gæld for at undgå likvidation.
+>
+> Sendt: 14. okt. 2026, 21.05.07 Koordineret universaltid
+
+Health factor rundes ned til to decimaler, så en besked aldrig viser en værdi på eller over den tærskel, der blev krydset, og tiden står i UTC. E-mailen indeholder den samme besked med emnet »Health factor-alarm for Aave - Arbitrum«, bortset fra at den sidste linje siger »Oprettet« i stedet for »Sendt«. En kanal, der er sat til et andet af sidens sprog, får den samme alarm på det sprog.
+
+Hvis du har valgt Telegram og ikke har trykket på Start endnu, siger resuméet »Ikke forbundet endnu« med et link til botten.
+
+## Trin 7: Send en testbesked
+
+Når alarmen er gemt, har hver kanal i resuméet en knap **Send test**. En test er en rigtig besked via den kanal, på dens sprog, med alarmen, som den er gemt, og din position, som den er nu: markedet og tærsklen, den aktuelle health factor med betegnelsen sikker, risikabel eller kritisk, sikkerhed og gæld, og om det ligger under din tærskel. Den begynder »Testbesked fra Tokenping: alarmer via denne kanal virker.« Via e-mail er emnet »Testbesked fra Tokenping - Arbitrum« (med dit markeds navn).
+
+- Du kan sende én test pr. kanal hvert 15. minut, talt for din wallet på tværs af alle dens markeder. Indtil da viser knappen, hvor mange minutter der er tilbage. En test, der ikke kunne sendes, tæller ikke med.
+- Telegram-knappen er slået fra, indtil du har trykket på Start i botten.
+- Tests kræver aktiv adgang, ligesom at gemme en alarm.
+
+Hvis en test ikke er kommet frem inden for et par minutter, så gennemgå [hvorfor en alarm måske ikke virker](#hvorfor-virker-min-alarm-ikke). Vil du også se en rigtig alarm komme frem, trykker du på **Rediger alarm**, sætter tærsklen lige over din nuværende health factor og trykker på **Gem alarm**. Det næste tjek, inden for 5 minutter, sender én besked via hver kanal; sæt derefter din rigtige tærskel tilbage på samme måde, så holder beskederne op fra det følgende tjek.
+
+## Hvor ofte får du alarmer?
+
+Mens din health factor ligger under din tærskel, sender Tokenping én besked pr. valgt kanal ved hvert tjek hvert 5. minut. Det er op til 12 beskeder i timen via hver kanal. Der er ingen udsættelse, intet sammendrag og ingen besked om, at alt er normalt igen: alarmerne stopper, når health factor igen ligger på eller over tærsklen.
+
+Tjekket sammenligner din præcise health factor med tærsklen og udløses kun, når den ligger strengt under. Med en tærskel på 1,5 udløser en health factor på 1,4996 en alarm, hvis besked viser 1,49, mens 1,50 ikke gør. Hvis en læsning eller en besked mislykkes, logger Tokenping det, og det næste tjek prøver igen, hvis health factor stadig ligger under tærsklen.
+
+Tjekkene ligger 5 minutter fra hinanden og er ikke kontinuerlige, så et kraftigt fald kan tage en position fra over din tærskel til under 1,0, før nogen besked bliver sendt. Tokenping er i beta, er afhængig af tredjeparter til at læse positioner og levere beskeder og har ingen garanti for oppetid. Se en alarm som tid til at handle, ikke som din eneste beskyttelse.
+
+## Hvordan ændrer eller stopper du alarmer?
+
+Alarmer fra Tokenping stopper, når din health factor stiger tilbage til eller over din tærskel, for eksempel efter at du har tilbagebetalt eller tilføjet sikkerhed, eller når du sletter alarmen. At ændre eller slette en alarm kræver aktiv adgang og et login med din wallet.
+
+- **Ændr tærsklen, kanalerne eller et sprog:** tryk på **Rediger alarm** i markedets panel, foretag ændringen, og tryk på **Gem alarm**.
+- **Stop alarmer for et marked:** tryk på **Rediger alarm**, derefter på **Slet alarm**, og bekræft med **Slet alarm**. Der er ingen pauseknap, og hvert markeds alarm slettes for sig.
+- **Stop alarmer på Telegram:** send /stop til Tokenpings bot. Den glemmer din chat, så ingen alarm fra noget marked når dig der, før du sender /start igen; dine andre kanaler bliver ved med at få alarmer. At blokere botten har samme virkning fra den næste besked, Tokenping forsøger at sende.
+
+<Callout tone="warning">
+  Slet de alarmer, du ikke længere vil have, mens din adgang stadig er aktiv. Når adgangen er udløbet, forbliver dine
+  indstillinger synlige, men skrivebeskyttede (»Betal for adgang for at redigere«) i en browser, hvor du har logget ind
+  før, at slette en alarm kræver en ny betaling, og alarm-e-mails har endnu ikke et link til at afmelde sig. På Telegram
+  virker /stop med eller uden adgang.
+</Callout>
+
+## Hvorfor virker min alarm ikke?
+
+Når en alarm fra Tokenping ikke virker, så tjek syv ting: den forbundne wallet og markedet, brugernavnets format, om Telegram er forbundet, native USDC på Arbitrum One, at positionen har gæld, at hvert marked, du låner i, har en alarm, og din spammappe og Signals beskedanmodninger.
+
+### Oversigten viser ingen positioner
+
+Hvis Tokenpings oversigt ikke viser nogen positioner, er den forbundne wallet ikke den, du låner med, eller lånet ligger i et marked, som Tokenping ikke læser: Aave V3 på Harmony, eller et netværk uden for de 22, det dækker (de 21 netværk med V3 plus Arc, som kun har Aave V4). Et marked, hvor din wallet ikke har nogen position, mangler ikke: det er foldet sammen under **Andre markeder**.
+
+### Tokenping afviser dit brugernavn på Signal eller Telegram
+
+Tokenping viser »Indtast et brugernavn på Signal som alice.42«, når brugernavnet ikke består af et kaldenavn, et punktum og mindst to cifre. Et @ foran er fint. Hvis du ændrer dit brugernavn i Signal, så opdater alarmen med det samme: Signal lader en anden overtage et gammelt brugernavn kort efter, at du har opgivet det.
+
+For Telegram viser den »Indtast et brugernavn på Telegram som alice_eth« og beder om 4 til 32 bogstaver, tal eller understregninger, der begynder med et bogstav og ikke slutter med en understregning. Skriv dit brugernavn, ikke dit visningsnavn eller dit telefonnummer; et @ eller et t.me-link foran er fint, og store bogstaver betyder ikke noget.
+
+### Telegram er ikke forbundet endnu
+
+Botten får først at vide, hvor den skal sende dine alarmer hen, når du trykker på Start (eller sender /start) fra den konto, hvis brugernavn står i alarmen. Åbn botten fra linket i formularen, tryk på Start, og tjek, at brugernavnet passer med det under Indstillinger og derefter Brugernavn i Telegram. Hvis du har sendt /stop, blokeret botten eller ændret dit brugernavn på Telegram, så skriv det nuværende brugernavn i alarmen, og send /start igen.
+
+### Du har ingen USDC på Arbitrum One
+
+Tokenpings betaling tager Circles native USDC på Arbitrum One (kontrakt `0xaf88...5831`), ikke brokoblet USDC.e, plus lidt ETH til gas, i den wallet, du sætter op. Flyt begge dele dertil, for eksempel ved at hæve fra en børs til Arbitrum One eller ved at bruge en bro. USDC.e, du allerede har, skal byttes til native USDC.
+
+### Din position har ingen gæld
+
+Uden gæld returnerer Aave den størst mulige health factor (vist som ∞), så ingen tærskel bliver nogensinde krydset, og ingen alarm bliver sendt.
+
+### Du låner i mere end ét marked
+
+Hvert marked på Aave V3 og hver Spoke på Aave V4 har sin egen alarm, tærskel, sine egne kanaler og sprog. Én betaling dækker dem alle, så opret en alarm i hvert marked, du låner i.
+
+### Beskederne kommer ikke frem
+
+Hvis beskeder fra Tokenping ikke kommer frem, så tjek din spammappe og Signals beskedanmodninger, og sørg for, at du ikke har blokeret Tokenpings afsender eller sendt /stop til Telegram-botten. Tryk derefter på **Send test** for den kanal, som i [trin 7](#trin-7-send-en-testbesked): hvis testen kommer frem, virker kanalen, og alarmer kommer ved hvert tjek, så længe health factor ligger under din tærskel. Hvis en test kommer frem uden lyd, holder en fokustilstand, Forstyr ikke (Do Not Disturb), en lydløs chat eller en strømsparetilstand den tilbage: [hvordan du får alarmer igennem Forstyr ikke](/da/blog/aave-alarmer-i-forstyr-ikke) gennemgår hver af dem.
+
+## Hvilke andre måder er der at få alarmer på?
+
+Med nogle værktøjer indsætter du en hvilken som helst wallet-adresse og får alarmer på Telegram eller i værktøjets egen mobilapp, uden at det koster noget. Browserudvidelser viser health factor i værktøjslinjen, og nogle viser skrivebordsnotifikationer, mens browseren kører. Automatiseringstjenester kan tilbagebetale gæld for dig; de kræver en smart wallet (en wallet, der er en smart kontrakt) eller en tilladelse på din position, og nogle har minimumsstørrelser for positioner eller tager et gebyr pr. handling. Udviklere kan bygge deres egen overvågning. [Værktøjer til Aave-likvidationsalarmer sammenlignet](/da/blog/vaerktoejer-til-aave-likvidationsalarmer) stiller dem op side om side, også hvor Tokenping ikke passer.
+
+## Kilder
+
+- [Aave interface pull request #2084, »chore: remove hal«, flettet 30. maj 2024](https://github.com/aave/interface/pull/2084) (hentet 14. oktober 2026)
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (hentet 14. oktober 2026)
+- [Aave Pro: produktside](https://aave.com/pro) (hentet 14. oktober 2026)
+- [Aaves dokumentation, ændringslog: udrulningen af V3.7 og lanceringerne af V4](https://aave.com/docs/resources/changelog) (hentet 15. oktober 2026)
+- [Aave V3 GenericLogic.sol: formlen for health factor og værdien uden gæld](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) (hentet 14. oktober 2026)
+- Aave V3 Ethereum Core [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) og [AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) (kontraktsider på Etherscan): likvidationstærskel for WETH 83 % og oraklets pris 2.415,56 $, læst on-chain ved blok 26194005 (RPC-data hentet 14. oktober 2026)
+- [TokenpingPaywall på Arbitrum One, kildekoden verificeret på Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553) (hentet 14. oktober 2026); plan, pausestatus og ejer læst on-chain ved blok 514885994 og 514896937
+- [Signal Support: Phone Number Privacy and Usernames](https://support.signal.org/hc/en-us/articles/6712070553754-Phone-Number-Privacy-and-Usernames) (hentet 14. oktober 2026)
+- [Signal Support: Signal Profiles and Message Requests](https://support.signal.org/hc/en-us/articles/360007459591-Signal-Profiles-and-Message-Requests) (hentet 14. oktober 2026)
+- [Telegram: Bots, an introduction for developers](https://core.telegram.org/bots) (hentet 20. oktober 2026): bots kan ikke starte samtaler med brugere
+
+_Undervisningsindhold, ikke økonomisk rådgivning. Alarmer mindsker risikoen, men forhindrer ikke likvidation._

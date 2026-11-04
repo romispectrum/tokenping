@@ -1,0 +1,140 @@
+export const meta = {
+  slug: "tokeniserede-aktier-som-sikkerhed",
+  title: "Lån mod tokeniserede aktier på Aave og Morpho",
+  description:
+    "Tokeniserede aktier som sikkerhed på Aave V4 og Morpho: hvordan orakler prissætter dem, hvorfor de står stille i weekenden, og hvad et kursgab mandag gør.",
+  h1: "Hvordan fungerer lån mod tokeniserede aktier, og hvad sker der i løbet af en weekend?",
+  publishedAt: "2026-10-30",
+  primaryQuestion: "Kan du låne mod tokeniserede aktier på Aave eller Morpho, og hvad er risikoen?",
+  readingMinutes: 10,
+};
+
+<ShortAnswer>
+  Du kan låne stablecoins mod tokeniserede amerikanske aktier to steder, som Tokenping dækker: Aave V4's Coinbase Stocks
+  Spoke på Base (tokens for Apple, Amazon, Alphabet, Meta, Microsoft, Nvidia og Tesla, du låner USDC, sikkerhedsfaktorer
+  (collateral factors) fra 65 % til 79 %) og Morpho-markeder på Robinhood Chain (NVDA, SPY, SpaceX med flere, du låner
+  USDG, for det meste med en likvidations-LTV (LLTV) på 62,5 %). Health factor (sundhedsfaktor) fungerer som for enhver
+  anden sikkerhed, med én forskel: de Chainlink-feeds, der prissætter disse tokens, står stille fra fredag eftermiddag
+  til søndag kl. 20:00 New York-tid. I løbet af en weekend kan din health factor kun glide med renten, og søndag aften
+  springer prisen til det niveau, aktien så handles til. Siden lanceringen var det største weekendspring på Aaves syv
+  feeds 1,24 %, men et kursgab på 25 % ville sende et lån, der blev åbnet på 1,33, direkte i likvidation, uden tid til
+  at handle ind imellem.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Tallene og de bloknumre, de blev aflæst ved: content/blog/snapshots/tokenized-stocks-collateral.md */}
+
+## Hvad er en tokeniseret aktie?
+
+En tokeniseret aktie er en token, hvis værdi følger en børsnoteret aktie, udstedt af et selskab, der ejer eller afdækker de rigtige aktier og lover et fast forhold mellem de to. Den er ikke aktien. De to udstedere, hvis tokens du i dag kan låne mod på Aave og Morpho, beskriver deres på forskellig måde:
+
+- **Coinbase Tokenized Stocks** (AAPLc, NVDAc og så videre) er certifikater udstedt af Coinbase Onchain SPV Ltd. De underliggende aktier ligger hos Alpaca Securities, en amerikansk broker-dealer (værdipapirhandler), på adskilte konti i udstederens navn, ifølge Aaves lanceringsindlæg.
+- **Robinhood Stock Tokens** (NVDA, SPY og så videre, på Robinhood Chain) er »tokenised debt securities issued by Robinhood Assets (Jersey) Limited« (tokeniserede gældsbeviser udstedt af Robinhood Assets (Jersey) Limited), og Robinhoods dokumentation siger, at de ikke giver nogen juridiske eller økonomiske rettigheder i det underliggende selskab.
+
+Begge har tre ting til fælles, som betyder noget for et lån. Ingen af dem tilbydes til amerikanske personer; Robinhood udelukker også Canada, Storbritannien og Schweiz. Udbytter udbetales ikke, men geninvesteres via en **multiplikator** (multiplier), et tal, der starter på 1,0 og stiger, så én token langsomt repræsenterer lidt mere end én aktie, og dens pris glider op over aktiens. Og prisen fra oraklet (priskilden) indeholder allerede den multiplikator: Chainlinks formel er »Token Price = Underlying Equity Market Price × Multiplier« (tokenpris = den underliggende akties markedspris × multiplikator).
+
+## Hvor kan du låne mod tokeniserede aktier?
+
+| Platform                               | Sikkerhed                                                     | Du låner | Likvidationsgrænse                                                        | Størrelse 30. oktober 2026                             |
+| -------------------------------------- | ------------------------------------------------------------- | -------- | ------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Aave V4, Coinbase Stocks Spoke på Base | AAPLc, AMZNc, GOOGLc, METAc, MSFTc, NVDAc, TSLAc              | Kun USDC | Sikkerhedsfaktor 65 % (META, TSLA) til 79 % (MSFT)                        | 11,23 mio. USD i aktiesikkerhed, 5,02 mio. USDC lånt   |
+| Morpho på Robinhood Chain              | Robinhood-tokens som NVDA, GOOGL, AAPL, META, TSLA, SPCX, SPY | USDG     | LLTV 62,5 % i de fleste listede markeder, 77 % for SPY og ét GOOGL-marked | 1,75 mio. USD lånt i 261 aktiemarkeder på alle netværk |
+| Aave V3                                | Ingen                                                         |          |                                                                           | Intet V3-marked lister en tokeniseret aktie            |
+
+Aave-Spoken åbnede den 25. september 2026 og behandler aktietokens udelukkende som sikkerhed: du kan ikke låne dem, og du kan ikke låne én aktie mod en anden. Hver token har sin egen sikkerhedsfaktor; på Aave V4 er det ene tal både lånegrænsen og likvidationsgrænsen, som [Aave V4-afsnittet i likvidationsguiden](/da/blog/saadan-fungerer-likvidation-paa-aave#hvordan-er-likvidationer-anderledes-pa-aave-v4) forklarer. Spokens indstillinger den 30. oktober 2026:
+
+| Token  | Sikkerhedsfaktor | Indskudt                  |
+| ------ | ---------------- | ------------------------- |
+| MSFTc  | 79 %             | 620,86 (325.687 USD)      |
+| AAPLc  | 78 %             | 2.086,63 (732.586 USD)    |
+| GOOGLc | 76 %             | 12.739,91 (3.584.144 USD) |
+| AMZNc  | 73 %             | 1.938,90 (440.347 USD)    |
+| NVDAc  | 70 %             | 14.491,46 (3.032.892 USD) |
+| METAc  | 65 %             | 3.374,37 (2.088.305 USD)  |
+| TSLAc  | 65 %             | 2.610,34 (1.030.491 USD)  |
+
+Morphos udlån mod aktier på Robinhood Chain gik live den 22. oktober 2026. Det meste af lånene mod aktier ligger i markeder, som Morpho-appen ikke lister: af de 1,75 mio. USD, der er lånt mod aktietokens på alle netværk, ligger 1,63 mio. i ulistede markeder, det største et NVDA / USDG-marked med 623.189 USD lånt, mod 118.750 USD i listede markeder. Det betyder noget for oraklet, som de næste afsnit viser. På Ethereum lister Morpho også nogle få markeder mod Ondos tokens (SPYon, QQQon, TSLAon) og en S&P 500-token fra xStocks.
+
+## Hvordan prissættes tokeniserede aktier on-chain?
+
+Begge platforme bruger Chainlinks prisfeeds for tokeniserede aktier (tokenized equity feeds): »Coinbase NVDA« og dets seks søskende på Base for Aave, »RHNVDA / USD« og lignende på Robinhood Chain for de listede Morpho-markeder. Disse feeds følger de amerikanske handelssessioner fem dage om ugen: den ordinære session (09:30 til 16:00 New York-tid), formarkedet fra 04:00, eftermarkedet til 20:00 og en natsession fra 20:00 til 04:00, der bygger på færre handelssteder og udjævnes med et glidende gennemsnit.
+
+Hvad de ikke gør, er at offentliggøre i weekender og på amerikanske børsfridage. Chainlinks dokumentation er tydelig: »These feeds do not publish updates, including heartbeat updates, while markets are closed.« (Disse feeds offentliggør ingen opdateringer, heller ikke heartbeat-opdateringer, mens markederne er lukkede.) Feedet bliver ved med at returnere den seneste værdi, det offentliggjorde, og dets tidsstempel bliver simpelthen ældre. Sidste weekend viser det på begge netværk:
+
+| Feed                           | Seneste opdatering før weekenden        | Første opdatering efter                 | Prisændring |
+| ------------------------------ | --------------------------------------- | --------------------------------------- | ----------- |
+| Coinbase NVDA (Base)           | fre. 23. oktober, 19:54 UTC, 211,45 USD | man. 26. oktober, 00:00 UTC, 211,87 USD | +0,20 %     |
+| RHNVDA / USD (Robinhood Chain) | fre. 23. oktober, 19:55 UTC, 211,16 USD | man. 26. oktober, 00:00 UTC, 211,92 USD | +0,36 %     |
+
+Mandag kl. 00:00 UTC er søndag kl. 20:00 i New York, når natsessionen åbner. Mellem de to runder gik der 52 timer uden en eneste ny pris. Det samme gælder en Aave-health factor på disse tokens og en Morpho-health factor i et listet aktiemarked: prisinputtet står stille.
+
+## Hvad sker der med din health factor i løbet af en weekend?
+
+Mens feedet er sat på pause, kan prisdelen af din health factor ikke bevæge sig. Aaves eget lanceringsindlæg siger det ligeud: »a position's health factor can fall only through interest accrual during that window.« (en positions health factor kan i det tidsrum kun falde gennem påløbne renter.) Det gælder begge veje.
+
+Den gode del: nyheder en lørdag kan ikke likvidere dig en lørdag. Den dårlige del: alt, hvad der er sket siden fredag, rammer din position på én gang, ved første runde søndag aften. Hvis aktien åbner meget lavere, går din health factor fra sin værdi fredag til sin nye værdi i ét skridt. Der er ingen mellemliggende pris, hvor en [health factor-alarm](/da/blog/opsaet-aave-health-factor-alarm) kunne advare dig, og en likvidation kan følge i den næste blok.
+
+Indtil nu har kursgabene været små. På tværs af alle syv Coinbase-feeds og de fem weekender, siden Spoken åbnede, 35 lukninger på 51 til 58 timer hver, bevægede ingen pris sig mere end 1,24 % (TSLA, 16. til 19. oktober, 353,30 til 357,68 USD); det største fald var AAPL's 0,37 % den første weekend. Fem weekender med rolige priser siger ikke meget om en dårlig weekend: en aktie kan åbne 10 % eller 20 % lavere efter nyheder, der kom frem en lørdag, og LlamaRisk, som anbefalede Spokens parametre, påpeger, at historiske data »cannot describe a decline rarer than one it contains« (ikke kan beskrive et fald, der er sjældnere end dem, de indeholder).
+
+## Regneeksempel: 100 NVDAc mod 11.000 USDC
+
+Tag 100 NVDAc på Coinbase Stocks Spoke til orakelprisen 209,29 USD den 30. oktober 2026, hvilket er 20.928,83 USD i sikkerhed, og 11.000 USDC i gæld. Med NVDAc's sikkerhedsfaktor på 70 %:
+
+- **Health factor:** 20.928,83 × 0,70 ÷ 11.000 = **1,332**.
+- **Lånegrænse:** 20.928,83 × 0,70 = 14.650,18 USDC, så dette lån bruger 75 % af den.
+- **Likvidationspris:** 11.000 ÷ (100 × 0,70) = **157,14 USD**, 24,9 % under 209,29.
+
+Hvad en genåbning søndag aften gør ved det, med uændret gæld:
+
+| NVDA søndag kl. 20:00 New York i forhold til fredag  | Health factor efter første runde       |
+| ---------------------------------------------------- | -------------------------------------- |
+| -1,24 % (det største kursgab indtil nu, af alle syv) | 1,315                                  |
+| -10 %                                                | 1,199                                  |
+| -20 %                                                | 1,065                                  |
+| -25 %                                                | 0,999: kan likvideres ved første runde |
+| -30 %                                                | 0,932                                  |
+
+Ved -25 % kan positionen likvideres i samme øjeblik, som feedet opdateres. På denne Spoke kan en likvidator så tilbagebetale nok gæld til at bringe dig tilbage til en health factor på 1,24 og tage sikkerhed med en bonus, der starter på 4,95 % lige under 1 og når 5,5 % ved 0,90 eller lavere. Det samme lån på 11.000 USDC mod 100 NVDA i Morphos listede NVDA / USDG-marked, med dets LLTV på 62,5 %, starter på en health factor på kun 1,185 (likvidationspris 176,00 USD, 15,6 % lavere), og en Morpho-likvidator tjener et incitament (incentive) på 12,68 % ved den LLTV og må tilbagebetale hele gælden; [sådan fungerer likvidation på Morpho](/da/blog/saadan-fungerer-likvidation-paa-morpho#hvor-stort-er-likvidationsincitamentet-ved-hver-lltv) har tabellen.
+
+Et kursgab kan også gå forbi hele din sikkerhed. Hvis aktien åbner så lavt, at sikkerheden er mindre værd end gælden plus likvidatorens bonus, bliver underskuddet til dårlig gæld (bad debt). På Aave falder den på USDC-indskyderne i netop denne hub, som selv valgte aktiesikkerheden til; på Morpho falder den på markedets långivere. Uanset hvad har låntageren allerede mistet sikkerheden.
+
+## Hvad kan ellers låse et lån med aktier som sikkerhed fast?
+
+- **Selskabsbegivenheder (corporate actions).** Når en aktie splittes, eller et stort udbytte behandles, sætter udstederen multiplikatoren og oraklet på pause, indtil det nye forhold er bekræftet. Aave sætter den berørte reserve på pause i den tid, så den token hverken kan hæves eller likvideres, før pausen slutter, og Robinhoods dokumentation beder integratorer om at behandle et orakel på pause som »price temporarily unavailable« (pris midlertidigt utilgængelig).
+- **Tynde markeder.** LlamaRisk målte før lanceringen, at et salg af 0,27 til 1,08 mio. USD af en enkelt token på Base ville flytte dens pris med 2 %. En likvidator, der ikke kan sælge de beslaglagte tokens hurtigt, vil have en stor rabat, og det er en del af forklaringen på, at disse sikkerhedsfaktorer ligger et godt stykke under likvidationstærsklen (liquidation threshold) på 84 % for WETH på Aave V3 Ethereum Core.
+- **En frysning af hele protokollen.** Om aftenen den 29. oktober 2026 frøs Aaves guardians (vogtere) som en forholdsregel alle DAO-drevne V3- og V4-markeder efter meldinger om en hændelse, der ramte wallets med tilknytning til Binance, og Coinbase Stocks Spoke blev frosset sammen med dem: den 30. oktober viste alle otte reserver `frozen` on-chain, USDC medregnet. En frossen reserve tager ikke imod nye indskud eller lån; tilbagebetaling og hævning virker stadig. Indtil frysningen ophæves, er tilbagebetaling den eneste måde at hæve din health factor på der, som guiden om [en frossen reserve](/da/blog/hvorfor-haevning-eller-laan-paa-aave-fejler#5-reserven-er-frosset) forklarer.
+- **Ulistede Morpho-markeder.** Et marked, som Morpho-appen ikke lister, kan bruge et hvilket som helst orakel, som opretteren valgte. Det største NVDA-marked på Robinhood Chain, med 623.189 USD lånt, bruger en egen orakelkontrakt i stedet for Morphos standardorakel fra Chainlink, og den 30. oktober prissatte den NVDA til 208,71 USD, mens det listede markeds orakel angav 208,55 USD. Læs et markeds orakel, før du låner i det.
+
+## Hvor stor en buffer har et lån med aktier som sikkerhed brug for?
+
+Mere end et kryptolån af samme størrelse, af én grund: din sidste chance for at handle er fredag eftermiddag, ikke minuttet før likvidationen. En buffer, der kan klare udsvingene på en normal handelsdag, er ikke nok; den skal klare kursgabet mellem fredagens sidste pris og søndag aftens første, plus det, der sker, før du når at reagere mandag. I eksemplet ovenfor klarer en health factor på 1,332 et kursgab på 24,9 %. At starte på 1,5 ville klare et kursgab på 33,3 %; på 2,0, 50 %.
+
+Der følger to praktiske vaner af det. Tjek positioner med aktier som sikkerhed fredag før kl. 20:00 New York-tid (slutningen af eftermarkedet), og tilbagebetal eller tilføj sikkerhed på det tidspunkt, hvis bufferen er tynd, for i weekenden kan prisen ikke fortælle dig noget nyt. Og betragt søndag kl. 20:00 New York-tid, mandag kl. 00:00 eller 01:00 UTC, som risikoøjeblikket: det er da, den første nye pris kommer. [Sådan vælger du en buffer](/da/blog/sikker-aave-health-factor#hvor-stor-en-buffer-har-du-brug-for-til-at-na-at-handle) gennemgår ræsonnementet for enhver sikkerhed.
+
+## Kan en alarm hjælpe ved et lån med aktier som sikkerhed?
+
+Delvist. Tokenping tjekker din health factor hvert 5. minut på Coinbase Stocks Spoke (den vises i oversigten som »Base (V4 Coinbase Stocks)«) og i alle Morpho-markeder, som Morpho-appen lister, Robinhood Chains medregnet, og sender dig en besked på Signal, Telegram eller e-mail, når den er under din tærskel. På hverdage virker det som for enhver anden sikkerhed: feedsene opdateres gennem ordinær handel, formarked, eftermarked og natsession, så en faldende aktie flytter din health factor, og en alarm kan nå dig før likvidationen.
+
+Ved genåbningen efter weekenden kan den ikke gøre meget. Health factor krydser ikke din tærskel gradvist; den springer ved første runde, og en likvidation kan ske i samme blok. En alarm fortæller dig så, hvad der er sket, snarere end hvad der er ved at ske. Derfor er det bufferen og ikke alarmen, der beskytter mod et kursgab mandag: sæt tærsklen så højt, at beskeden kommer på en hverdag, mens der stadig er tid til at tilbagebetale. Tokenping dækker ikke ulistede Morpho-markeder, og det gælder også det største NVDA-marked.
+
+Du kan [tjekke dine Aave V4-Spokes](/da/aave) eller [dine Morpho-positioner](/da/morpho) uden at betale; alarmer koster <AlertPrice />, én pr. Spoke eller marked. Tokenping er i beta og har ingen garanti for oppetid, og ingen alarm forhindrer en likvidation.
+
+## Kilder
+
+- [Aave V4's offentlige GraphQL-API](https://api.v4.aave.com/graphql), `reserves` og `spokes` på Base: Coinbase Stocks Spokes reserver, sikkerhedsfaktorer, likvidationsbonus og gebyr, lofter, indskudte og lånte beløb samt likvidationskonfiguration (hentet 30. oktober 2026)
+- [Coinbase Stocks Spoke på Base](https://basescan.org/address/0x17905Db0e4A3514467539956c084180616AE7B8D): `getReserveCount`, `getReserveConfig` og `ORACLE` ved Base-blok 53278437, og orakelets `getReserveSource` for hver reserve (hentet 30. oktober 2026)
+- [Coinbase NVDA-feedet på Base](https://basescan.org/address/0x04689a41629776563E6822F76f2e57D148d28513) og de seks andre Coinbase-feeds: `latestRoundData` og `getRoundData` hen over alle weekender siden 25. september 2026 (hentet 30. oktober 2026)
+- [Morpho API](https://api.morpho.org/graphql): alle Morpho Blue-markeder med tokeniserede aktier som sikkerhed, deres LLTV, listning og lånte værdi (hentet 30. oktober 2026)
+- [Morpho Blue på Robinhood Chain](https://robinhoodchain.blockscout.com/address/0x9D53d5E3bd5E8d4Cbfa6DB1ca238AEA02E651010): `idToMarketParams` for de listede og det største NVDA / USDG-marked, deres oraklers feeds og `price()`, og runderne i [RHNVDA / USD-feedet](https://robinhoodchain.blockscout.com/address/0xCF169363636D73dbBf77733629CB38919d14232d) (hentet 30. oktober 2026)
+- [Aave V3 API](https://api.v3.aave.com/graphql): reserverne i alle 24 Aave V3-markeder (hentet 30. oktober 2026)
+- [PoolDataProvider, Aave V3 Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): WETH og USDC frosset ved blok 26304159 (hentet 30. oktober 2026)
+- [ISpoke.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/interfaces/ISpoke.sol): flagene paused og frozen for en V4-reserve (aave-v4 main, hentet 30. oktober 2026)
+- [Aave: Coinbase Tokenized Stocks Now Live on Aave V4](https://aave.com/blog/coinbase-tokenized-stocks), 25. september 2026 (hentet 30. oktober 2026)
+- [Chainlink: Tokenized Equity Feeds](https://docs.chain.link/data-feeds/tokenized-equity-feeds) og [Base Tokenized Equities (Coinbase B20)](https://docs.chain.link/data-feeds/tokenized-equity-feeds/coinbase) (hentet 30. oktober 2026)
+- [Robinhood: Stock Tokens](https://docs.robinhood.com/chain/stock-tokens/) og [Oracles & Price Feeds](https://docs.robinhood.com/chain/oracles-and-price-feeds/) (hentet 30. oktober 2026)
+- [CryptoSlate: Aave's stock-token loans expose USDC lenders to a weekend price gap](https://cryptoslate.com/aave-stock-token-loans-expose-usdc-lenders-to-weekend-price-gap/), 27. september 2026: LlamaRisks parametre og tal for markedsdybde (hentet 30. oktober 2026)
+- [Crypto Briefing: Robinhood stock tokens go live on Morpho as collateral](https://cryptobriefing.com/robinhood-stock-tokens-morpho-collateral/), 22. oktober 2026 (hentet 30. oktober 2026)
+- [Coingabbar: Aave V3 and V4 markets frozen as precaution](https://coingabbar.com/en/aave-news-binance-wallet-incident-v3-v4-market-freeze), 30. oktober 2026 (hentet 30. oktober 2026)
+
+_Undervisningsindhold, ikke økonomisk rådgivning. Alarmer mindsker risikoen, men forhindrer ikke likvidation._

@@ -31,6 +31,7 @@ describe("LanguageSwitch", () => {
       ["Deutsch (Schweiz)CH", "/de/blog/aave-health-factor-erklaert"],
       ["ČeštinaCZ", "/cz/blog/aave-health-factor-vysvetleni"],
       ["Deutsch (Deutschland)DE", "/de/blog/aave-health-factor-erklaert"],
+      ["DanskDK", "/da/blog/aave-health-factor-forklaret"],
       ["EspañolES", "/es/blog/factor-de-salud-aave"],
       ["FrançaisFR", "/fr/blog/facteur-de-sante-aave"],
       ["हिन्दीHI", "/hi/blog/aave-health-factor-kya-hai"],
@@ -63,7 +64,7 @@ describe("LanguageSwitch", () => {
     expect(entry("हिन्दी").getAttribute("hreflang")).toBe("hi");
     expect(entry("Tiếng Việt").getAttribute("lang")).toBe("vi");
     // The short codes and the check are decoration: the options are named by the language alone.
-    expect(entry("Español")).toBe(links[4]);
+    expect(links).toContain(entry("Español"));
   });
 
   it("closes on Escape and puts focus back on the button", () => {

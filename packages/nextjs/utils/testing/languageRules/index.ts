@@ -1,4 +1,5 @@
 import { RULES as cs } from "./cs";
+import { RULES as da } from "./da";
 import { RULES as de } from "./de";
 import { RULES as en } from "./en";
 import { RULES as es } from "./es";
@@ -43,4 +44,5 @@ export const LANGUAGE_RULES: Localized<LanguageRules> = {
   sl,
   sr,
   sv,
+  da,
 };

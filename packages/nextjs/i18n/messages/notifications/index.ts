@@ -1,4 +1,5 @@
 import { MESSAGES as cs } from "./cs";
+import { MESSAGES as da } from "./da";
 import { MESSAGES as de } from "./de";
 import { MESSAGES as en } from "./en";
 import { MESSAGES as es } from "./es";
@@ -52,4 +53,5 @@ export const NOTIFICATION_MESSAGES: Localized<NotificationMessages> = {
   sl,
   sr,
   sv,
+  da,
 };
