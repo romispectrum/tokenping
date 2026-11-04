@@ -11,10 +11,25 @@ import { routePath } from "~~/i18n/routes";
 
 export const PACKAGE_ROOT = path.resolve(__dirname, "..");
 
-/** A web font a language's layout adds to <html> (see components/fonts). */
-const LAYOUT_FONTS: Partial<Record<Locale, { name: string; module: string }>> = {
+type LayoutFont = { name: string; module: string };
+
+const CYRILLIC_GREEK: LayoutFont = { name: "CYRILLIC_GREEK_FONT_CLASSES", module: "~~/components/fonts/cyrillicGreek" };
+
+/**
+ * The web font a language's layout adds to <html> (see components/fonts), by language code. Keyed by plain codes, not
+ * `Locale`, so it also names languages that are not in LOCALES yet: adding one there picks up its font from here.
+ */
+const LAYOUT_FONTS: Partial<Record<string, LayoutFont>> = {
   vi: { name: "VIETNAMESE_FONT_CLASSES", module: "~~/components/fonts/vietnamese" },
+  ru: CYRILLIC_GREEK,
+  uk: CYRILLIC_GREEK,
+  bg: CYRILLIC_GREEK,
+  el: CYRILLIC_GREEK,
+  th: { name: "THAI_FONT_CLASSES", module: "~~/components/fonts/thai" },
 };
+
+/** The web font a language's layout adds, or undefined when Satoshi covers its script. */
+export const layoutFont = (code: string) => LAYOUT_FONTS[code];
 
 /** The message areas client components read (i18n/client/messages.ts). */
 const CLIENT_AREAS = ["alerts", "blog", "calculator", "common", "dashboard", "morpho"] as const;
@@ -33,8 +48,9 @@ const ${name} = () => ${component}({ locale: "${locale}" });
 export default ${name};
 `;
 
-const layout = (locale: Locale) => {
-  const font = LAYOUT_FONTS[locale];
+/** A language's root layout. Takes any code, so a test can render one for a language not in LOCALES yet. */
+export const layoutSource = (locale: string) => {
+  const font = layoutFont(locale);
   return `
 import type { ReactNode } from "react";
 import { ROOT_VIEWPORT, rootDocument } from "~~/components/RootDocument";
@@ -111,7 +127,7 @@ export const localeRouteSources = (locale: Locale): Record<string, string> => {
   const dir = `app/(${locale})/${lastSegment(locale, "home")}`;
   return {
     ...files,
-    [`app/(${locale})/layout.tsx`]: layout(locale),
+    [`app/(${locale})/layout.tsx`]: layoutSource(locale),
     [`${dir}/page.tsx`]: thinPage(
       "HomePage",
       "homeMetadata",

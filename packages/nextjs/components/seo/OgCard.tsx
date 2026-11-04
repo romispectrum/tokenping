@@ -27,28 +27,67 @@ type OgFont = { name: string; file: string; weight: 400 | 500 };
  * the Hindi cards get Devanagari titles and keep Satoshi for Latin letters and digits. The routes run in Node, from
  * the package root.
  */
-const OG_FONTS: readonly OgFont[] = [
+const SATOSHI_OG_FONTS: readonly OgFont[] = [
   { name: "Satoshi", file: "Satoshi-Medium.otf", weight: 500 },
   { name: "Satoshi", file: "Satoshi-Regular.otf", weight: 400 },
+];
+
+const OG_FONTS: readonly OgFont[] = [
+  ...SATOSHI_OG_FONTS,
   { name: "Noto Sans Devanagari", file: "NotoSansDevanagari-Medium.woff", weight: 500 },
   { name: "Noto Sans Devanagari", file: "NotoSansDevanagari-Regular.woff", weight: 400 },
 ];
 
 /**
- * Satoshi also lacks most Vietnamese letters, and a per-letter fallback would mix two typefaces inside one word, so
- * the Vietnamese cards are drawn in Plus Jakarta Sans alone, the font of the Vietnamese pages (components/fonts). Its
- * Fontsource files come split by subset; Satori finds each glyph in whichever file of the family has it.
+ * A family whose Fontsource files come split by subset (app/fonts/og/<prefix>-<subset>-<weight>.woff), Medium then
+ * Regular. Satori finds each glyph in whichever file of the family has it.
  */
-const VIETNAMESE_OG_FONTS: readonly OgFont[] = ([500, 400] as const).flatMap(weight =>
-  ["latin", "latin-ext", "vietnamese"].map(subset => ({
-    name: "Plus Jakarta Sans",
-    file: `PlusJakartaSans-${subset}-${weight}.woff`,
-    weight,
-  })),
-);
+const subsetFonts = (name: string, prefix: string, subsets: readonly string[]): OgFont[] =>
+  ([500, 400] as const).flatMap(weight =>
+    subsets.map(subset => ({ name, file: `${prefix}-${subset}-${weight}.woff`, weight })),
+  );
 
-const OG_FONT_FAMILY: Partial<Record<Locale, string>> = { vi: "Plus Jakarta Sans" };
-const DEFAULT_OG_FONT_FAMILY = "Satoshi, Noto Sans Devanagari";
+/** A card's font files and the font-family that names them, first choice first. */
+type OgType = { family: string; fonts: readonly OgFont[] };
+
+const DEFAULT_OG_TYPE: OgType = { family: "Satoshi, Noto Sans Devanagari", fonts: OG_FONTS };
+
+const MANROPE_FAMILY = "Manrope";
+
+const CYRILLIC_OG_TYPE: OgType = {
+  family: MANROPE_FAMILY,
+  fonts: subsetFonts(MANROPE_FAMILY, "Manrope", ["latin", "cyrillic"]),
+};
+
+/**
+ * The cards whose script Satoshi lacks, by language code. Plain codes, not `Locale`, so languages that are not in
+ * LOCALES yet are already here, and adding one there gives its cards their fonts. Each card reads only its own files.
+ *
+ * - Vietnamese: Satoshi lacks most Vietnamese letters, and a per-letter fallback would mix two typefaces inside one
+ *   word, so the cards are drawn in Plus Jakarta Sans alone, the font of the Vietnamese pages (components/fonts).
+ * - Russian, Ukrainian, Bulgarian and Greek: Cyrillic and Greek letters share shapes with Latin, so the cards are drawn
+ *   in Manrope alone, the font of those pages, with the Latin subset and the language's own script.
+ * - Thai shares no letters with Latin: the cards keep Satoshi and add Noto Sans Thai for the Thai script, as the Hindi
+ *   cards do with Devanagari. Satori does not lift a tone mark above an upper vowel (no mark-to-mark positioning, with
+ *   every Thai font tried), so ที่ draws as ที and กิ่ like กี: check the Thai cards' titles when Thai is added.
+ */
+const OG_TYPES: Partial<Record<string, OgType>> = {
+  vi: {
+    family: "Plus Jakarta Sans",
+    fonts: subsetFonts("Plus Jakarta Sans", "PlusJakartaSans", ["latin", "latin-ext", "vietnamese"]),
+  },
+  ru: CYRILLIC_OG_TYPE,
+  uk: CYRILLIC_OG_TYPE,
+  bg: CYRILLIC_OG_TYPE,
+  el: { family: MANROPE_FAMILY, fonts: subsetFonts(MANROPE_FAMILY, "Manrope", ["latin", "greek"]) },
+  th: {
+    family: "Satoshi, Noto Sans Thai",
+    fonts: [...SATOSHI_OG_FONTS, ...subsetFonts("Noto Sans Thai", "NotoSansThai", ["thai"])],
+  },
+};
+
+/** The fonts of a card in the language `code`: Satoshi and Noto Sans Devanagari unless its script needs others. */
+export const ogType = (code: string): OgType => OG_TYPES[code] ?? DEFAULT_OG_TYPE;
 
 /**
  * next/og sends its cards as "public, immutable, max-age=31536000", which promises the bytes at that URL never change.
@@ -58,18 +97,22 @@ const DEFAULT_OG_FONT_FAMILY = "Satoshi, Noto Sans Devanagari";
 export const OG_CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=604800";
 
 /** The ImageResponse options of a card in `locale`: its size, cache header and fonts. */
-export const ogImageOptions = async (locale: Locale = DEFAULT_LOCALE) => {
-  const list = locale === "vi" ? VIETNAMESE_OG_FONTS : OG_FONTS;
-  const fonts = await Promise.all(
-    list.map(async ({ name, file, weight }) => ({
+export const ogImageOptions = async (locale: Locale = DEFAULT_LOCALE) => ({
+  ...OG_IMAGE_SIZE,
+  headers: { "Cache-Control": OG_CACHE_CONTROL },
+  fonts: await loadOgFonts(locale),
+});
+
+/** Reads the font files of a card in the language `code`, only when a card is drawn. */
+export const loadOgFonts = (code: string) =>
+  Promise.all(
+    ogType(code).fonts.map(async ({ name, file, weight }) => ({
       name,
       data: await readFile(join(process.cwd(), "app/fonts/og", file)),
       weight,
       style: "normal" as const,
     })),
   );
-  return { ...OG_IMAGE_SIZE, headers: { "Cache-Control": OG_CACHE_CONTROL }, fonts };
-};
 
 type OgCardProps = {
   title: string;
@@ -99,7 +142,7 @@ export const OgCard = ({ title, footer, locale = DEFAULT_LOCALE }: OgCardProps) 
       background: OG_COLORS.background,
       color: OG_COLORS.text,
       // lint-brand-ignore-next-line font-family: the names ImageResponse registers the font files under
-      fontFamily: OG_FONT_FAMILY[locale] ?? DEFAULT_OG_FONT_FAMILY,
+      fontFamily: ogType(locale).family,
     }}
   >
     <img src={LOGO_SRC} width={LOGO_WIDTH} height={LOGO_HEIGHT} alt={SITE_NAME} />

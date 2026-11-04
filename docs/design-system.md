@@ -74,11 +74,16 @@ user's theme is dark, for UI that reports the theme, such as the toggle's icon.
   every word in **Plus Jakarta Sans**, a geometric sans close to Satoshi (`components/fonts/vietnamese.ts`, loaded only
   by `app/(vi)/layout.tsx`; `styles/globals.css` points `--font-satoshi` at it under `html:lang(vi)`). Hindi keeps
   Satoshi for Latin letters and digits and falls back to a Devanagari font for the rest.
+- **Planned scripts.** Russian, Ukrainian, Bulgarian and Greek will set every word in **Manrope**
+  (`components/fonts/cyrillicGreek.ts`, no italic: emphasis is slanted by the browser), for the reason Vietnamese
+  does: their letters share shapes with Latin. Thai will keep Satoshi for Latin and add **Noto Sans Thai**
+  (`components/fonts/thai.ts`) for its script, with taller lines for the stacked vowels and tone marks. Each loads
+  only on its languages' pages ([docs/i18n.md](i18n.md), "Adding a language").
 - Both load through `next/font` in `components/RootDocument.tsx`, with `display: "swap"` and a metric-matched fallback.
   Only Satoshi's upright face is preloaded; its italic (same family) and Geist Mono load on the pages that use them.
-- **Font licenses.** Geist Mono and Plus Jakarta Sans (through `next/font/google`), and Noto Sans Devanagari and
-  Plus Jakarta Sans for the Hindi and Vietnamese social cards (in `app/fonts/og` with their license texts), are under
-  the SIL Open Font License, which allows shipping the files.
+- **Font licenses.** Geist Mono, Plus Jakarta Sans, Manrope and Noto Sans Thai (through `next/font/google`), and
+  Noto Sans Devanagari, Plus Jakarta Sans, Manrope and Noto Sans Thai for the social cards (in `app/fonts/og` with
+  their license texts), are under the SIL Open Font License, which allows shipping the files.
   Satoshi is Indian Type Foundry's and has a stricter license: using it on our own site and in images is allowed,
   passing the files on is not, and a public repository counts. So **the Satoshi files are never committed**: `yarn
 next:fonts` downloads the official files from Fontshare and checks each against the SHA-256 pinned in
