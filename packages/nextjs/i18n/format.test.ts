@@ -11,6 +11,8 @@ import {
   frForMarket,
   frOnMarket,
   hiMarket,
+  hrForMarket,
+  hrOnMarket,
   huArticle,
   huForMarket,
   huOnMarket,
@@ -286,6 +288,28 @@ describe("Hungarian formatting", () => {
     expect(huArticle("ZKsync")).toBe("a");
     expect(huArticle("MegaETH")).toBe("a");
     expect(huArticle("wstETH/WETH (94.5%)")).toBe("a");
+  });
+});
+
+describe("Croatian formatting", () => {
+  it("joins with i and ili, writes Croatian dates, a decimal comma, one/few/other plurals and the market wording", () => {
+    expect(joinList("hr", ["Signal", "Telegram", "e-pošta"])).toBe("Signal, Telegram i e-pošta");
+    expect(joinList("hr", ["Signal", "e-pošta"], "disjunction")).toBe("Signal ili e-pošta");
+    expect(formatLongDate("hr", "2026-10-14")).toBe("14. listopada 2026.");
+    expect(formatDecimal("hr", "1.42")).toBe("1,42");
+    const networks = (n: number) => plural("hr", n, { one: `${n} mreža`, few: `${n} mreže`, other: `${n} mreža` });
+    expect(networks(1)).toBe("1 mreža");
+    expect(networks(2)).toBe("2 mreže");
+    expect(networks(5)).toBe("5 mreža");
+    expect(networks(21)).toBe("21 mreža");
+    expect(networks(22)).toBe("22 mreže");
+    expect(networks(29)).toBe("29 mreža");
+    expect(hrOnMarket("Arbitrum")).toBe("na mreži Arbitrum");
+    expect(hrOnMarket("Ethereum (V4 Lido)")).toBe("na tržištu Ethereum (V4 Lido)");
+    expect(hrOnMarket("Base", "network")).toBe("na mreži Base");
+    expect(hrForMarket("Base")).toBe("za mrežu Base");
+    expect(hrForMarket("Base (V4 Coinbase Stocks)")).toBe("za tržište Base (V4 Coinbase Stocks)");
+    expect(hrForMarket("USDC | cbBTC (86%)", "market")).toBe("za tržište USDC | cbBTC (86%)");
   });
 });
 

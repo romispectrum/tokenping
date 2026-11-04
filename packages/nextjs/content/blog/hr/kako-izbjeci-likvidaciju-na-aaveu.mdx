@@ -1,0 +1,149 @@
+export const meta = {
+  slug: "kako-izbjeci-likvidaciju-na-aaveu",
+  title: "Kako izbjeći likvidaciju na Aaveu: 6 praktičnih koraka",
+  description:
+    "Kako smanjiti rizik likvidacije na Aaveu: otplati dug, dodaj kolateral, drži rezervu, zamijeni kolateral ili dug i dobij rano upozorenje. Bez jamstava.",
+  h1: "Kako izbjeći likvidaciju na Aaveu",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-20",
+  primaryQuestion: "Kako podići health factor na Aaveu i smanjiti rizik likvidacije, odmah i prije nego što padne?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Rizik likvidacije na Aaveu smanjuješ tako da podigneš svoj health factor (faktor zdravlja) i držiš ga znatno iznad 1:
+  otplati dio duga, dodaj kolateral, zaduži se znatno ispod svog limita ili zamijeni kolateral ili dug tako da zajam
+  manje ovisi o jednoj nestabilnoj cijeni. Otplaćeni dolar duga podiže health factor više od dolara deponiranog
+  kolaterala. Ništa od toga ne uklanja rizik, a otplate mogu ne uspjeti kad je tržište pod pritiskom, pa ti rano
+  djelovanje ostavlja više prostora.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Što možeš učiniti odmah ako tvoj health factor na Aaveu pada?
+
+Možeš otplatiti dio duga ili dodati kolateral, na istoj mreži i na istom Aave tržištu na kojem je zajam. Oboje podiže health factor čim se transakcija potvrdi, a dolar otplate podiže ga više od dolara novog kolaterala. Ako u novčaniku nemaš slobodnih sredstava, sučelje Aave Labsa (app.aave.com) može [otplatiti dug tvojim kolateralom](#korak-4-otplati-kolateralom-ili-zamijeni-kolateral).
+
+Health factor (HF) je USD vrijednost svake imovine u kolateralu pomnožena s njezinim pragom likvidacije (liquidation threshold), zbrojena i podijeljena s USD vrijednošću tvog duga. Ispod 1,00 pozicija se može likvidirati. Formulu objašnjava vodič [što je health factor na Aaveu](/hr/blog/aave-health-factor-objasnjen). Kad je vremena malo, važne su četiri stvari:
+
+- **Prava pozicija.** Na Aaveu V3 pool svake mreže ima vlastiti health factor, kao i svako tržište na Ethereumu (Core, Prime, EtherFi, Horizon). Kolateral na Ethereumu ne pomaže zajmu na Arbitrumu.
+- **Vrijeme.** Otplate poslane blizu HF-a 1 mogu ne uspjeti ili zapeti na zagušenom tržištu. Dva korisnika foruma, 2021. i 2024., likvidirana su dok su još pokušavala otplatiti ([korak 6](#korak-6-dobij-rano-upozorenje-i-djeluj-rano) donosi detalje), pa ti djelovanje dok je HF jasno iznad 1 ostavlja više prostora.
+- **Što se događa ispod 1.** Na Aaveu V3 likvidator može odjednom otplatiti do 50 % tvog duga, ili 100 % duga u jednoj imovini kad je HF na 0,95 ili ispod ili kad su kolateral ili dug o kojima je riječ vrijedni manje od 2.000 $, i uzima kolateral vrijedan tog duga uvećan za bonus (5 % za WETH na tržištu Ethereum Core u bloku 26193284, 14. listopada 2026.). Aave V4 nema close factor (dio duga koji se može otplatiti odjednom): likvidator otplaćuje samo onoliko koliko treba da HF vrati na ciljnu vrijednost Spokea. Vidi [što se događa pri likvidaciji na Aaveu](/hr/blog/kako-funkcionira-likvidacija-na-aaveu).
+- **Što ne pomaže.** Zamrzavanje tržišta ili promjena LTV-a ne odgađa likvidaciju, a prekid rada sekvencera (sequencer) na L2 mreži više ti ne daje razdoblje odgode. Vidi [što te ne štiti od likvidacije](#sto-te-ne-stiti-od-likvidacije).
+
+## Korak 1: otplati dio duga
+
+Otplata duga odmah podiže tvoj health factor na Aaveu, jer HF dijeli ponderirani kolateral dugom, a otplata smanjuje dug. Uzmi poziciju na Aaveu V3 na tržištu Ethereum Core s 10 deponiranih WETH-a po ilustrativnoj cijeni od 2.400 $ i 12.000 posuđenih USDC-a. Prag likvidacije za WETH bio je 83 % u Ethereum bloku 26193284 (14. listopada 2026.), pa je HF = 24.000 × 0,83 ÷ 12.000 = 1,66. Otplata 1.000 USDC-a podiže ga na 19.920 ÷ 11.000 = 1,811.
+
+### Zašto otplata podiže health factor više od dodavanja kolaterala?
+
+Novi kolateral računa se samo do svog praga likvidacije, a otplaćeni dug računa se u cijelosti. Na Aaveu V3 Ethereum Core 1.000 $ u WETH-u dodaje 830 $ ponderiranog kolaterala, a otplata 1.000 USDC-a uklanja cijelih 1.000 $ duga. Za poziciju s 10 WETH-a i 12.000 USDC-a duga, uz ETH na 2.400 $ i USDC na 1 $:
+
+| Što učiniš s 1.000 $                                          | Ponderirani kolateral | Dug      | Health factor | Cijena ETH-a pri HF-u 1 | Pad ETH-a do te cijene |
+| ------------------------------------------------------------- | --------------------- | -------- | ------------- | ----------------------- | ---------------------- |
+| Ništa (početno stanje)                                        | 19.920 $              | 12.000 $ | 1,660         | 1.445,78 $              | 39,8 %                 |
+| Deponiraš još 0,4167 WETH-a                                   | 20.750 $              | 12.000 $ | 1,729         | 1.387,95 $              | 42,2 %                 |
+| Otplatiš 1.000 USDC-a iz novčanika                            | 19.920 $              | 11.000 $ | 1,811         | 1.325,30 $              | 44,8 %                 |
+| Otplatiš 1.000 USDC-a prodajom WETH kolaterala, prije naknada | 19.090 $              | 11.000 $ | 1,735         | 1.382,92 $              | 42,4 %                 |
+
+Općenito, otplata X $ isplati se više od deponiranja X $ imovine s pragom LT kad god je HF > LT × (1 − X ÷ dug). Aave V3 zahtijeva da umnožak svakog praga i njegova likvidacijskog bonusa bude najviše 100 %, uz bonus iznad 100 %, pa je svaki prag ispod 100 %. Svaka pozicija koja se ne može likvidirati (HF najmanje 1) zato više dobiva otplatom. Deponiranje je izravan put kad imaš imovinu za kolateral i ne bi je htio prodati; da je prodaš i otplatiš zajam, HF bi porastao više, prije troškova zamjene.
+
+## Korak 2: dodaj kolateral ili uključi imovinu koju si već deponirao
+
+Deponiranje kolaterala podiže tvoj health factor na Aaveu za dodanu vrijednost pomnoženu s pragom likvidacije te imovine. Na Aaveu V3 Ethereum Core 1.000 $ u WETH-u dodaje 830 $ (prag 83 %), a 1.000 $ u WBTC-u ili USDC-u dodaje 780 $ (78 %), prema očitanjima s lanca u bloku 26193284 14. listopada 2026. Imovina koju si deponirao, ali je nikad nisi uključio kao kolateral, računa se tek kad za nju uključiš „use as collateral“ (koristi kao kolateral). Četiri pravila Aavea V3 mogu blokirati te putove:
+
+- **Imovina s LTV-om 0 ne može se uključiti.** Omjer zajma i vrijednosti (LTV) je udio vrijednosti imovine koji možeš posuditi uz nju. Aave V3 neće uključiti imovinu s LTV-om 0 kao kolateral. Imovina koju si već prije uključio i dalje se računa u HF do svog praga, ali ne dodaje mogućnost zaduživanja. Primjer je premošteni USDC.e na Arbitrumu: LTV 0, prag 78 % i zamrznut dok ga upravljanje (governance) postupno gasi (Arbitrum blok 514855406, 14. listopada 2026.).
+- **Zamrznuta imovina ne može se deponirati.** Zamrznuta rezerva odbija nove depozite. Otplata duga u zamrznutoj imovini i dalje radi, jer otplata zahtijeva samo da je rezerva aktivna i da nije pauzirana.
+- **Popunjeni limiti deponiranja.** Rezerva koja je dosegla svoj limit deponiranja (supply cap) odbija nove depozite dok se ne oslobodi prostor.
+- **Pauzirana imovina.** Pauzirana rezerva odbija nove depozite i svaku promjenu postavke „use as collateral“.
+
+## Korak 3: drži rezervu ispod limita zaduživanja
+
+Zaduživanje znatno ispod maksimuma ostavlja najviše prostora, jer pozicija na limitu zaduživanja počinje s health factorom od samo prag likvidacije ÷ LTV. Na Aaveu V3 Ethereum Core to je 83 % ÷ 80,5 % ≈ 1,031 za WETH, 78 % ÷ 73 % ≈ 1,068 za WBTC i 78 % ÷ 75 % = 1,04 za USDC (blok 26193284, 14. listopada 2026.). Ako posudiš punih 19.320 $ uz 10 WETH-a po 2.400 $, dovoljan je pad ETH-a od 3,0 %, na 2.327,71 $, da se pozicija može likvidirati.
+
+Podatak „borrow limit used“ (iskorišteni limit zaduživanja) u aplikacijama za posuđivanje je dug ÷ (kolateral × LTV), a ne health factor. S WETH kolateralom na tržištu Ethereum Core 80 % iskorištenog limita znači HF od oko 1,29.
+
+Rezerva mora upiti i ono što snižava HF dok ti ništa ne radiš: kamate, smanjenja praga odlukom upravljanja, depegove (gubitak vezanosti uz dolar) i pogreške orakla (izvora cijene), o čemu govori vodič [zašto tvoj health factor na Aaveu pada sam od sebe](/hr/blog/zasto-je-pao-aave-health-factor). Brojke po imovini su u vodiču [koliku ti rezervu daje health factor](/hr/blog/siguran-aave-health-factor). Aave V4 zamjenjuje par LTV i prag jednim faktorom kolaterala (collateral factor) za svaku imovinu u kolateralu u svakom Spokeu, pa brojke LT ÷ LTV ovdje vrijede samo za V3.
+
+## Korak 4: otplati kolateralom ili zamijeni kolateral
+
+Ako u novčaniku nemaš slobodnih sredstava, sučelje Aave Labsa (app.aave.com) može otplatiti dug prodajom dijela tvog kolaterala ili zamijeniti jednu imovinu u kolateralu drugom, u jednoj transakciji, preko ugovora swap adaptera koji mogu koristiti Aaveov flash loan (brzi zajam). Aaveova dokumentacija navodi obje funkcije za svih sedam mreža koje ovaj vodič obuhvaća, među ostalima (14. listopada 2026.).
+
+Za zamjene koje idu preko CoW Protocola dokumentacija navodi naknade (stanje 14. listopada 2026.) od 0 bps (baznih bodova) za zamjene duga, 15 bps za ostale zamjene između koreliranih imovina (kao što su ETH i wstETH) i 25 bps za sve ostale zamjene. Na nekim mrežama zamjene umjesto toga idu preko ParaSwapa. Na to dolaze utjecaj na cijenu, klizanje cijene (slippage) i gas, plus premija od 0,05 % za Aaveov flash loan kad adapter uzme flash loan (svih sedam mreža, očitano 15. listopada 2026.). Adapter također treba odobrenje (allowance) ili potpisani permit da bi pomaknuo tvoje aTokene, tokene koji predstavljaju tvoj deponirani kolateral.
+
+### Podiže li otplata kolateralom tvoj health factor na Aaveu?
+
+Da, kad god je tvoj health factor iznad praga likvidacije kolaterala koji prodaješ, prije naknada i klizanja cijene. Prodaja X $ kolaterala za otplatu X $ duga daje novi HF od (HF × dug − X × LT) ÷ (dug − X), koji je bolji od starog točno kad je HF > LT. Svaki prag na Aaveu V3 je ispod 100 %, pa dobiva svaka pozicija koja se ne može likvidirati. Dobiva manje nego otplatom iz novčanika: s 10 WETH-a i 12.000 USDC-a duga na Aaveu V3 Ethereum Core (HF 1,66 uz ETH na 2.400 $) prodaja 1.000 $ WETH-a za otplatu 1.000 USDC-a daje 1,735, naspram 1,811 iz novčanika. Naknada od 25 bps i premija od 0,05 % za flash loan, zajedno oko 3 $, i dalje ostavljaju 1,735.
+
+### Može li zamjena kolaterala na Aaveu sniziti tvoj health factor, a ipak smanjiti rizik?
+
+Može. Zamjena nestabilnog kolaterala za stablecoin s nižim pragom može malo sniziti HF, a poziciju učiniti znatno manje izloženom nestabilnoj cijeni. Uzmi 10 WETH-a i 12.000 USDC-a duga na Aaveu V3 Ethereum Core uz ETH na 2.400 $ i zamijeni 5 WETH-a (12.000 $) za USDC. Ponderirani kolateral postaje 5 × 2.400 × 0,83 + 12.000 × 0,78 = 19.320 $, pa HF pada s 1,66 na 1,61, jer je prag USDC-a (78 %) niži od praga WETH-a (83 %). Ali HF sada dolazi do 1 tek ako ETH padne na oko 636 $, što je pad od 73,5 %, umjesto na 1.445,78 $, što je pad od 39,8 %. Naknada od 25 bps (30 $) i premija za flash loan (0,0025 WETH-a, 6 $) daju HF od oko 1,608 i pomiču tu cijenu na oko 642 $. Sam health factor ne pokazuje koja te cijena može pogoditi; to pokazuje sastav kolaterala i duga.
+
+## Korak 5: odaberi dug koji odgovara tvom kolateralu
+
+Vrsta duga koji imaš određuje koje te kretanje cijene može likvidirati. Uz dug u stablecoinu health factor (HF) pada kad pada cijena kolaterala. Uz dug u nestabilnoj imovini pada kad posuđena imovina raste. S koreliranom imovinom u E-Modeu ovisi o tečaju između njih kako ga prijavljuje orakl. Primjeri koriste parametre Aavea V3 Ethereum Core očitane 14. listopada 2026. (blok 26193284; E-Mode u bloku 26193288), uz ETH na 2.400 $:
+
+| Kolateral i dug                           | Što snižava tvoj HF                                                   | Primjer                                                                                                                                                |
+| ----------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Deponiran WETH, posuđen USDC              | Pad ETH-a; kamate. Pad USDC-a ispod 1 $ smanjuje ovaj dug i podiže HF | 10 WETH-a naspram 12.000 USDC-a: HF 1,66, koji dolazi do 1 ako ETH padne 39,8 %, na 1.445,78 $                                                         |
+| Deponiran USDC, posuđen WETH              | Rast ETH-a; pad USDC-a ispod 1 $                                      | 10.000 USDC-a (prag 78 %) naspram 6.000 $ u WETH-u: HF 1,30, koji dolazi do 1 ako ETH poraste 30 %, na 3.120 $. Uz cijenu USDC-a od 0,88 $ HF je 1,144 |
+| Deponiran wstETH, posuđen WETH, u E-Modeu | Tečaj wstETH-a prema ETH-u koji prijavljuje orakl; kamate             | E-Mode „ETH correlated“: LTV 93 %, prag 95 %. Na limitu zaduživanja HF je 95 ÷ 93 ≈ 1,0215, pa pomak tečaja od 2,1 % dovodi do 1                       |
+
+- **Stablecoini doista gube vezanost uz dolar.** Na Ethereumu Aaveov feed cijene za USDC ograničava cijenu na 1,04 $ (blok 26193376, 14. listopada 2026.), ali svaki pad ispod 1 $ prenosi izravno. Dana 11. ožujka 2023. USDC je pao na najnižih oko 88 centi, prema Gauntletovoj analizi incidenta (post-mortem) za Aave.
+- **E-Mode odgovara samo odgovarajućem dugu.** U kategoriju E-Mode možeš ući samo ako je svako tvoje postojeće zaduženje u njezinu skupu imovine koja se smije posuditi. Na tržištu Ethereum Core kategorija „ETH correlated“ dopušta posuđivanje samo WETH-a, pa je USDC zajam uz WETH ne može koristiti.
+- **Korelirano ne znači bez rizika.** U ožujku 2026. pogreška u konfiguraciji adaptera CAPO (Correlated Assets Price Oracle) na tržištima Ethereum Core i Prime smanjila je tečaj wstETH-a koji je Aave koristio za oko 2,85 %. Analiza incidenta Chaos Labsa (10. ožujka 2026.) broji otprilike 10.938 wstETH-a likvidiranih u E-Modeu na 34 računa, a pogođene su bile pozicije s HF-om ispod oko 1,0288.
+- **Imovinu duga možeš promijeniti.** Zamjena duga (debt swap) u sučelju Aave Labsa premješta zajam na drugu posuđenu imovinu u jednoj transakciji, uz 0 bps kad ide preko CoW Protocola (Aaveova dokumentacija, 14. listopada 2026.).
+
+## Korak 6: dobij rano upozorenje i djeluj rano
+
+Upozorenje postavljeno na health factor pri kojem bi još djelovao daje ti vremena da otplatiš dug ili dodaš kolateral prije nego što HF dođe do 1, ali ono ne može djelovati umjesto tebe. Otplate pokrenute blizu 1 mogu ne uspjeti ili zapeti. Korisnik foruma Polygona (Aave V2, svibanj 2021.) koji je pokušao otplatiti pri HF-u 1,01 stalno je dobivao pogreške i bio je likvidiran prije nego što je otplata prošla. U prosincu 2024. korisnik foruma Aavea opisao je više od sat vremena pokušaja otplate na čekanju koji su završili likvidacijom. Aaveovo vlastito sučelje prikazuje tvoj health factor, ali ne šalje push upozorenja; 30. svibnja 2024. uklonilo je poveznicu na HAL obavijesti jer je HAL prestao s radom.
+
+Jedan način da odabereš razinu: odaberi cijenu pri kojoj bi djelovao, izračunaj svoj HF pri toj cijeni i tamo postavi upozorenje. S WETH kolateralom i USDC dugom upozorenje na 1,3 ostavlja prostora za daljnji pad ETH-a od 23,1 % prije nego što HF dođe do 1 (1 − 1 ÷ 1,3). Cijela tablica je u vodiču [koliku ti rezervu daje health factor](/hr/blog/siguran-aave-health-factor).
+
+Tokenping je jedna od mogućnosti. Provjerava tvoj health factor na Aaveu svakih 5 minuta na 22 mreže, svako tržište Aave V3 na njih 21 (24 tržišta, među njima Core, Prime, EtherFi i Horizon na Ethereumu) i svaki Aave V4 Spoke na Ethereumu, Avalancheu, Arcu i Baseu, i šalje ti poruku na Signal, Telegram ili e-poštu dok je HF ispod praga koji si postavio za to V3 tržište ili V4 Spoke, od 1,1 do 10 (zadano 1,5). Na njegovoj nadzornoj ploči možeš [provjeriti svoj health factor na Aaveu V3](/hr/aave); upozorenja koštaju <AlertPrice />, uz plaćanje na Arbitrumu. Njegova ograničenja:
+
+- Samo čita tvoju poziciju, bez ikakvog odobrenja na Aaveu, pa ne može otplatiti umjesto tebe.
+- Pomak koji prijeđe 1,0 između dvije provjere neće biti uhvaćen na vrijeme.
+- Prati samo novčanik koji povežeš.
+- Dok si ispod praga, ponavlja poruku svakih 5 minuta i ne šalje poruku da se pozicija oporavila.
+
+Postavljanje je opisano u vodiču [kako postaviti upozorenje za health factor](/hr/blog/postavljanje-aave-health-factor-upozorenja); alati koji ne koštaju ništa i automatizacija koja može otplatiti umjesto tebe nalaze se u vodiču [usporedba alata za upozorenja o likvidaciji na Aaveu](/hr/blog/alati-za-aave-upozorenja-o-likvidaciji).
+
+## Što te ne štiti od likvidacije?
+
+Na Aaveu V3 zamrznuto tržište, smanjenje LTV-a (čak i na 0) i kolateral u drugom novčaniku, na drugom tržištu ili na drugoj mreži ne zaustavljaju likvidaciju, a od V3.7 prekid rada sekvencera na L2 mreži više ti ne daje vremena nakon što sekvencer ponovno proradi. Pauza doista blokira likvidacije, ali blokira i tvoje otplate. Razlog: za likvidaciju na Aaveu V3 dovoljno je da je health factor (HF) ispod 1,00, da su rezerve kolaterala i duga aktivne i nisu pauzirane te da je isteklo eventualno razdoblje odgode likvidacije.
+
+- **Zamrznuto tržište.** Zamrzavanje zaustavlja nova deponiranja i zaduživanje, ali provjera likvidacije zanemaruje oznaku zamrzavanja.
+- **Smanjenje LTV-a, čak i na 0.** LTV ograničava samo novo zaduživanje, a HF koristi prag likvidacije. Promjena LTV-a niti snižava tvoj HF niti ga štiti.
+- **Prekid rada sekvencera na L2.** Prije V3.7 ugovor sentinel na Aaveovim L2 tržištima blokirao je većinu likvidacija dok sekvencer nije radio i tijekom razdoblja odgode nakon što bi ponovno proradio. Aave V3.7 uklonio je tu provjeru, a svih sedam mreža koje je ovaj vodič provjerio, uključujući Arbitrum, Optimism i Base, koristi V3.7. Kad sekvencer ponovno proradi, likvidacije se nastavljaju bez razdoblja odgode u kojem bi stigao nadoplatiti kolateral.
+- **Pauza.** Kad se pauzirana rezerva ponovno pokrene, Protocol Emergency Guardian (multisig koji ima Aaveovu ulogu emergency admina) ili upravljanje mogu dodati razdoblje odgode likvidacije do 4 sata. Pauza je hitna mjera na koju dužnici nemaju utjecaja, a dok traje, ne možeš ni otplatiti ni deponirati tu imovinu.
+- **Kolateral negdje drugdje.** Tokeni u tvom novčaniku, na drugom Aave tržištu ili na drugoj mreži ne računaju se u HF ove pozicije.
+
+## Izvori
+
+- [Aave V3 GenericLogic.sol: izračun health factora](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol), aave-v3-origin main (pristupljeno 14. listopada 2026.)
+- [Aave V3 ValidationLogic.sol: provjere deponiranja (zamrznuto, pauzirano, limit deponiranja), zaduživanja, otplate, kolaterala i likvidacije](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol) (pristupljeno 14. listopada 2026.)
+- [Aave V3 SupplyLogic.sol: uključivanje imovine kao kolaterala zahtijeva LTV veći od nule](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) (pristupljeno 14. listopada 2026.)
+- [Aave V3 LiquidationLogic.sol: close factor i pravila za male ostatke (dust)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol) (pristupljeno 14. listopada 2026.)
+- [Aave V3 PoolConfigurator.sol: ograničenja praga i bonusa, tko može pauzirati, gornja granica razdoblja odgode od 4 sata](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol) (pristupljeno 14. listopada 2026.)
+- [Funkcije Aavea V3.6: pravila za LTV 0](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.6/Aave-v3.6-features.md) (pristupljeno 14. listopada 2026.)
+- [Aave V3.7: uklanjanje sentinela](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/sentinel-removal.md): što je L2 sentinel blokirao i razdoblje odgode nakon oporavka (pristupljeno 14. listopada 2026.)
+- [Popis promjena u Aaveovoj dokumentaciji](https://aave.com/docs/resources/changelog): Aave V2 na Polygonu (14. travnja 2021.), pokretanje Aavea V3 (16. ožujka 2022.) i uvođenje V3.7 na svih sedam mreža (pristupljeno 14. listopada 2026.)
+- [Aaveova dokumentacija: upravljanje](https://aave.com/docs/ecosystem/governance): Protocol Emergency Guardian ima ulogu `EMERGENCY_ADMIN` (pristupljeno 14. listopada 2026.)
+- [Aaveova dokumentacija: swap funkcije (otplata kolateralom, zamjene kolaterala i duga, flash loanovi, naknade, tržišta)](https://aave.com/docs/aave-v3/smart-contracts/swap-features) (pristupljeno 14. listopada 2026.)
+- [Pregled Aavea V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md) i [Spoke.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/Spoke.sol), aave/aave-v4 main: jedan faktor kolaterala po imovini u kolateralu, koji mora biti ispod 100 %, i ciljni health factor umjesto close factora (pristupljeno 14. listopada 2026.)
+- [Aaveova dokumentacija: pozicije na Aaveu V4](https://aave.com/docs/aave-v4/positions): health factor po Spokeu (pristupljeno 14. listopada 2026.)
+- [Aave V3 PoolDataProvider na Ethereumu](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): `getReserveConfigurationData` za WETH, WBTC i USDC u bloku 26193284, nepromijenjeno u bloku 26194005 (pristupljeno 14. listopada 2026.)
+- [Aave V3 Pool na Ethereumu (Core)](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract): `getEModeCategoryCollateralConfig(1)` i `getEModeCategoryBorrowableBitmap(1)` za „ETH correlated“ u bloku 26193288, nepromijenjeno u bloku 26194006 (pristupljeno 14. listopada 2026.)
+- [Aave V3 PoolDataProvider na Arbitrumu](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b#readContract): konfiguracija USDC.e u Arbitrum bloku 514855406, nepromijenjena u bloku 514886152 (pristupljeno 14. listopada 2026.)
+- [Aave Address Book](https://github.com/aave-dao/aave-address-book): adrese poolova i swap adaptera. `FLASHLOAN_PREMIUM_TOTAL` = 5 (0,05 %) i `POOL_REVISION` = 11 na svih sedam poolova koje ovaj vodič obuhvaća, očitano u 00:23 UTC (Ethereum blok 26194302), bez ijednog adaptera registriranog kao flash zajmoprimac oslobođen naknade na Ethereumu ili Arbitrumu (pristupljeno 15. listopada 2026.)
+- [Adapter cijene USDC-a za Aave V3 na Ethereumu, „Capped USDC / USD“](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract): `getPriceCap` = 1,04 $ u bloku 26193376 (pristupljeno 14. listopada 2026.)
+- [aave-price-feeds PriceCapAdapterStable.sol: cijene iznad gornje granice se ograničavaju, padovi ispod 1 $ prolaze izravno](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol) (pristupljeno 14. listopada 2026.)
+- [Forum Polygona: „Liquidation on polygon AAVE -JSON ERROR“, 18. svibnja 2021.](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067) (pristupljeno 14. listopada 2026.)
+- [Aaveov forum za upravljanje: „Repeatedly Failed Repayment Attempts Leading to Liquidation“, 23. prosinca 2024.](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379) (pristupljeno 14. listopada 2026.)
+- [Gauntlet: „Aave Resilient Through USDC Volatility“, 17. ožujka 2023.](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (pristupljeno 14. listopada 2026.)
+- [Chaos Labs: analiza incidenta s tečajem wstETH-a na instancama Core i Prime, 10. ožujka 2026.](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269) (pristupljeno 14. listopada 2026.)
+- [Aave pomoć: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations), koja traži od dužnika da redovito prate svoj health factor, i [izvorni kod aave/interface](https://github.com/aave/interface), koji ima upozorenja o niskom health factoru unutar aplikacije i nema funkciju obavijesti (stablo izvornog koda provjereno 14. listopada 2026., stranici pomoći pristupljeno 15. listopada 2026.)
+- [aave/interface pull request #2084: „chore: remove hal“, spojen 30. svibnja 2024.](https://github.com/aave/interface/pull/2084) (pristupljeno 14. listopada 2026.)
+
+_Edukativni sadržaj, a ne financijski savjet. Upozorenja smanjuju rizik, ali ne sprječavaju likvidaciju._

@@ -1,0 +1,203 @@
+export const meta = {
+  slug: "aave-e-mode-objasnjen",
+  title: "Aave E-Mode: veća moć zaduživanja, tanja margina",
+  description:
+    "Što je E-Mode na Aaveu V3, koje kategorije postoje na Ethereumu, Arbitrumu, Baseu i Optimismu, kako mijenja health factor i koliko je tanka margina loopa.",
+  h1: "Što je Aave E-Mode i što radi s tvojim rizikom likvidacije?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "Što je Aave E-Mode i koliko blizu likvidacije dovodi poziciju?",
+  readingMinutes: 16,
+};
+
+<ShortAnswer>
+  E-Mode (Efficiency Mode) je postavka Aavea V3 koja ti omogućuje da se zadužiš više uz kolateral čija se cijena kreće
+  zajedno sa sredstvom koje posuđuješ, poput wstETH-a uz WETH: normalni omjer zajma i vrijednosti (LTV) i prag
+  likvidacije (liquidation threshold) zamjenjuje višima, zajedničkima za cijelu kategoriju. Na tržištu Ethereum Core
+  kategorija „ETH correlated“ imala je 28. listopada 2026. LTV od 93 % i prag likvidacije od 95 %, naspram 79 % i 82 %
+  za wstETH izvan nje. Formula za health factor (faktor zdravlja) se ne mijenja, mijenja se samo prag u njoj, pa ista
+  pozicija pokazuje veći broj. Cijena je tanja margina: pozicija zadužena do granice E-Modea počinje na 95 ÷ 93 =
+  1,0215, a u ožujku 2026. pomak orakla (izvora cijene) od 2,85 % likvidirao je pozicije u E-Modeu ispod otprilike
+  1,0288. Loop (ponovljeno zaduživanje s financijskom polugom) zadužen blizu te granice radi ispod 1,1, najnižeg praga
+  upozorenja koji Tokenping prihvaća.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Brojke i brojevi blokova u kojima su očitane: content/blog/snapshots/aave-e-mode.md */}
+
+## Što je Aave E-Mode i zašto postoji?
+
+Aave E-Mode je postavka na razini računa na tržištu Aave V3 koja te svrstava u jednu kategoriju koreliranih sredstava i na kolateral koji ta kategorija navodi primjenjuje njezin LTV, prag likvidacije i likvidacijski bonus, umjesto vlastitih parametara svakog sredstva. Stranica pomoći Aavea opisuje ga kao način da korisnici „maximize their borrowing power by selecting optimized asset categories“ (maksimalno povećaju moć zaduživanja odabirom optimiziranih kategorija sredstava). U ugovoru Pool `setUserEMode(categoryId)` ulazi u kategoriju, `getUserEMode(address)` pokazuje u kojoj je kategoriji neka adresa, a kategorija 0 znači nijednu.
+
+Postoji zato što su normalni parametri postavljeni za najgori slučaj: kolateral i dug čije se cijene kreću neovisno. Kad oboje prati istu stvar, kao što wstETH i WETH oba prate ETH, pad dolarske cijene ETH-a istodobno smanjuje i kolateral i dug, a zdravlje pozicije gotovo se ne mijenja. Aaveovi pružatelji usluga upravljanja rizikom zato za takav par mogu dopustiti viši LTV i prag. Ostaje rizik da se dva sredstva raziđu, i upravo je to rizik kojem je pozicija u E-Modeu stvarno izložena.
+
+Od Aavea V3.2, koji je uveo „liquid E-Modes“, kategoriju određuju tri stvari:
+
+- **Jedan LTV, jedan prag likvidacije i jedan likvidacijski bonus** za cijelu kategoriju.
+- **Skup kolaterala**: rezerve koje dobivaju parametre kategorije dok si u njoj. Kolateral izvan skupa zadržava vlastiti LTV i prag.
+- **Skup za zaduživanje**: jedine rezerve koje smiješ posuditi dok si u kategoriji. Sredstvo može biti u jednom skupu, u drugom ili u oba, i može se pojaviti u više kategorija.
+
+Dakle „ETH correlated“ na tržištu Ethereum Core nije „posudi bilo što uz ETH“: njezin skup za zaduživanje je samo WETH (očitano 28. listopada 2026., blok 26291736). Kategorija određuje što možeš posuditi jednako kao i koliko.
+
+## Koje kategorije E-Modea postoje danas?
+
+Kategorije u nastavku očitane su 28. listopada 2026. iz ugovora Pool svakog tržišta pomoću `getEModeCategoryLabel`, `getEModeCategoryCollateralConfig`, `getEModeCategoryCollateralBitmap` i `getEModeCategoryBorrowableBitmap`, a bitmape su dekodirane prema `getReservesList()`. Sva četiri ugovora Pool prijavila su reviziju 11 (V3.7). Upravljanje (governance) i Risk Stewards mijenjaju te parametre, pa provjeri kategoriju u aplikaciji Aave prije nego što se osloniš na neki broj.
+
+### Ethereum Core (blok 26291736)
+
+Ethereum Core imao je 48 kategorija. Većina spaja jedan Pendleov principal token (PT) ili Ethenino sredstvo sa stablecoinima ili s USDe, a mnoge navode istekle PT-ove koji su tu samo za pozicije koje se još zatvaraju. One na koje će dužnik najvjerojatnije naići:
+
+| Id  | Oznaka                      | LTV  | Prag likvidacije | Bonus  | Skup kolaterala                               | Skup za zaduživanje |
+| --- | --------------------------- | ---- | ---------------- | ------ | --------------------------------------------- | ------------------- |
+| 1   | ETH correlated              | 93 % | 95 %             | 1 %    | WETH, wstETH, cbETH, rETH, weETH, osETH, ETHx | WETH                |
+| 2   | sUSDe Stablecoins           | 90 % | 92 %             | 4 %    | USDe, sUSDe                                   | USDC, USDT          |
+| 11  | USDe Stablecoin             | 90 % | 93 %             | 2 %    | USDe                                          | USDC, USDT          |
+| 4   | LBTC_WBTC                   | 84 % | 86 %             | 3 %    | LBTC                                          | WBTC                |
+| 7   | eBTC/WBTC                   | 83 % | 85 %             | 3 %    | eBTC                                          | WBTC                |
+| 22  | ezETH/wstETH                | 93 % | 95 %             | 1 %    | ezETH                                         | wstETH              |
+| 26  | weETH/wstETH ETH Correlated | 93 % | 95 %             | 1 %    | weETH                                         | WETH, wstETH        |
+| 3   | rsETH\_\_ETH_wstETH_ETHx    | 93 % | 95 %             | 1 %    | rsETH                                         | WETH, wstETH, ETHx  |
+| 40  | LINK\_\_USDC_USDT           | 66 % | 71 %             | 7 %    | LINK                                          | USDC, USDT          |
+| 43  | XAUt\_\_USDC_USDT_GHO       | 70 % | 75 %             | 6 %    | XAUt                                          | USDC, USDT, GHO     |
+| 47  | PT-srUSDe Stablecoins       | 90 % | 92 %             | 4,03 % | sUSDe, PT-srUSDe-22OCT2026                    | USDC, USDT, USDe    |
+
+Dva detalja iz istog očitanja. U „ETH correlated“ ETHx je u skupu kolaterala, ali označen s LTV 0 (`ltvzeroBitmap` kategorije), pa se u health factor računa s 95 %, a ne daje nikakvu moć zaduživanja. Kategorije 47 i 48 (PT-srUSDe uz stablecoine i uz USDe) bile su jedine s postavljenom zastavicom `isolated` iz V3.7; što ona radi, objašnjavaju pravila ulaska niže. Kategorije LINK i XAUt pokazuju da kategorija uopće ne mora biti „korelirana“: one su drugi skup parametara za posuđivanje stablecoina uz jedno sredstvo.
+
+### Arbitrum (blokovi od 519074353 do 519074731)
+
+| Id  | Oznaka                           | LTV  | Prag likvidacije | Bonus | Skup kolaterala        | Skup za zaduživanje |
+| --- | -------------------------------- | ---- | ---------------- | ----- | ---------------------- | ------------------- |
+| 1   | Stablecoins                      | 93 % | 95 %             | 1 %   | DAI, USDC, USD₮0, EURS | nema                |
+| 2   | ETH correlated                   | 93 % | 95 %             | 1 %   | WETH, wstETH, weETH    | WETH                |
+| 7   | wstETH/WETH ETH Correlated       | 94 % | 96 %             | 1 %   | wstETH                 | WETH                |
+| 3   | ezETH/wstETH/WETH ETH Correlated | 93 % | 95 %             | 1 %   | ezETH                  | WETH, wstETH        |
+| 5   | rsETH/wstETH/WETH ETH Correlated | 93 % | 95 %             | 1 %   | rsETH                  | WETH, wstETH        |
+| 4   | ezETH Stablecoins                | 72 % | 75 %             | 7,5 % | ezETH                  | USD₮0, USDC         |
+| 6   | rsETH/Stablecoins                | 72 % | 75 %             | 7,5 % | rsETH                  | USDC, USD₮0         |
+| 8   | AAVE\_\_USDCn_USDT               | 66 % | 73 %             | 10 %  | AAVE                   | USD₮0, USDC         |
+| 9   | ARB\_\_USDCn_USDT                | 58 % | 63 %             | 10 %  | ARB                    | USD₮0, USDC         |
+| 10  | tBTC\_\_USDCn_USDT               | 72 % | 75 %             | 7,5 % | tBTC                   | USD₮0, USDC         |
+
+Kategorija „Stablecoins“ na Arbitrumu ima prazan skup za zaduživanje, pa se u njoj ne može otvoriti novi dug. Arbitrumova kategorija s jednim sredstvom „wstETH/WETH ETH Correlated“ za stupanj je izdašnija od Ethereumove: 94 % i 96 %, uz marginu na granici od 96 ÷ 94 = 1,0213.
+
+### Base (blok 53204166)
+
+Base je imao 15 kategorija. One za ETH i dvije za BTC na koje dužnici najčešće nailaze:
+
+| Id  | Oznaka            | LTV  | Prag likvidacije | Bonus  | Skup kolaterala            | Skup za zaduživanje |
+| --- | ----------------- | ---- | ---------------- | ------ | -------------------------- | ------------------- |
+| 1   | ETH correlated    | 90 % | 93 %             | 2 %    | WETH, cbETH, wstETH, weETH | WETH                |
+| 8   | wstETH/WETH       | 93 % | 95 %             | 1 %    | wstETH                     | WETH                |
+| 9   | cbETH/WETH        | 93 % | 95 %             | 2 %    | cbETH                      | WETH                |
+| 7   | weETH/WETH        | 93 % | 95 %             | 1,25 % | weETH                      | WETH                |
+| 2   | ezETH wstETH      | 93 % | 95 %             | 1 %    | ezETH                      | wstETH              |
+| 4   | LBTC_cbBTC        | 82 % | 84 %             | 3 %    | LBTC                       | cbBTC               |
+| 10  | cbBTC Stablecoins | 82 % | 85 %             | 4 %    | cbBTC                      | USDC, GHO           |
+
+Ostale spajaju jedno sredstvo (wrsETH, syrupUSDC, AAVE, EURC, LBTC, tBTC, ezETH) s USDC-om i GHO-om ili s wstETH-om. Base pokazuje kako se široka kategorija dijeli na kategorije s jednim sredstvom: kategorija „ETH correlated“ s više sredstava radi s 90 % i 93 %, dok wstETH/WETH, cbETH/WETH i weETH/WETH rade s 93 % i 95 %.
+
+### Optimism (blok 158799548)
+
+| Id  | Oznaka         | LTV    | Prag likvidacije | Bonus | Skup kolaterala                              | Skup za zaduživanje |
+| --- | -------------- | ------ | ---------------- | ----- | -------------------------------------------- | ------------------- |
+| 1   | Stablecoins    | 0,01 % | 87 %             | 1 %   | DAI, USDC (premošteni i nativni), USDT, sUSD | nema                |
+| 2   | ETH correlated | 93 %   | 95 %             | 1 %   | WETH, wstETH, rETH (rETH s LTV-om 0)         | WETH                |
+
+Kategorija „Stablecoins“ na Optimismu je ostatak, s LTV-om od 0,01 % i ničim za posuđivanje. Njegova kategorija „ETH correlated“ ima iste brojeve kao Ethereumova.
+
+## Kako se health factor računa u E-Modeu?
+
+U E-Modeu health factor koristi istu formulu kao i uvijek, Σ(vrijednost kolaterala × prag likvidacije) ÷ vrijednost duga, osim što svako kolateralno sredstvo iz skupa tvoje kategorije uzima prag kategorije umjesto vlastitog. To je jedina promjena: `GenericLogic.calculateUserAccountData` bira prag za svako sredstvo, a `getUserAccountData` vraća rezultat, pa svaki alat koji čita taj poziv već prikazuje broj iz E-Modea. Opća formula je u dijelu [kako se računa Aave health factor](/hr/blog/aave-health-factor-objasnjen#kako-se-izracunava-health-factor-na-aaveu), a dio [kako E-Mode mijenja health factor](/hr/blog/aave-health-factor-objasnjen#kako-e-mode-mijenja-health-factor) istog vodiča daje kratku verziju onoga što slijedi.
+
+Uzmi wstETH kolateral vrijedan 10.000 $ i WETH dug vrijedan 9.000 $ na tržištu Ethereum Core, s parametrima kategorije „ETH correlated“ očitanima 28. listopada 2026. (blok 26291736) i vlastitim parametrima wstETH-a očitanima istog dana (blok 26291849: LTV 79 %, prag likvidacije 82 %):
+
+1. **U E-Modeu:** HF = 10.000 × 0,95 ÷ 9.000 = **1,056**. Granica zaduživanja je 10.000 × 0,93 = 9.300 $, pa bi se moglo posuditi još 300 $.
+2. **Izvan E-Modea:** ista bi pozicija imala HF = 10.000 × 0,82 ÷ 9.000 = 0,911 i uopće se ne bi mogla otvoriti: LTV wstETH-a od 79 % ograničava zaduživanje na 7.900 $.
+3. **Na granici E-Modea:** posudi punih 9.300 $ i HF = 9.500 ÷ 9.300 = **1,0215**. Pozicija je na dan otvaranja 2,1 % udaljena od likvidacije.
+
+Normalna pozicija zadužena do svoje granice također počinje na pragu ÷ LTV, 84 ÷ 81 = 1,037 za WETH na tržištu Ethereum Core 28. listopada 2026. (blok 26291849). E-Mode sužava razliku između LTV-a i praga na 2 postotna boda, a ta je razlika cijela margina maksimalno zadužene pozicije. [Zašto zaduživanje do maksimuma ostavlja health factor od samo oko 1,03](/hr/blog/aave-health-factor-objasnjen#zasto-zaduzivanje-do-maksimuma-ostavlja-health-factor-od-samo-oko-103) pokriva isti račun izvan E-Modea.
+
+Drugačije je i ono što pomiče broj. S wstETH kolateralom i WETH dugom obje strane dobivaju cijenu iz ETH-a, pa se dolarska cijena ETH-a poništava: ako ETH padne na pola, kolateral i dug zajedno padnu na pola, a HF ostaje 1,056. Ostaje tečaj wstETH/ETH koji prijavljuje Aaveov orakl. Pozicija dolazi do 1,00 kad taj tečaj padne za 1 − 90 ÷ 95 = 5,3 %, a maksimalno zadužena pozicija kad padne za 2,1 %. [Kako E-Mode mijenja tvoju likvidacijsku cijenu](/hr/blog/aave-likvidacijska-cijena#kako-e-mode-mijenja-tvoju-likvidacijsku-cijenu) to pretvara u tečaj umjesto dolarske cijene.
+
+## Kako funkcionira loop stakinga s polugom u E-Modeu i na što se njime kladiš?
+
+Loop stakinga s financijskom polugom deponira wstETH, uz njega posuđuje WETH, pretvara WETH u još wstETH-a i deponira i njega, ponavljajući dok pozicija ne drži nekoliko puta veću količinu wstETH-a od početne uz gotovo jednako velik WETH dug. E-Mode je ono što to čini isplativim: uz LTV od 93 % loop može doseći 1 ÷ (1 − 0,93) = 14,3 puta početni kapital, naspram 1 ÷ (1 − 0,79) = 4,8 puta uz normalni LTV wstETH-a.
+
+Izračunaj to u ETH-u, jedinici u kojoj loop živi. Kreni s wstETH-om vrijednim 10 ETH, napravi loop do kolaterala vrijednog 100 ETH i duga od 90 WETH, i imaš gornju poziciju od 1,056, s deseterostrukom polugom. Dana 28. listopada 2026. Aaveov orakl na tržištu Ethereum Core cijenio je wstETH na 2.912,79 $, a WETH na 2.335,08 $ (blok 26291849), što je tečaj od 1,2474 ETH po wstETH-u koji se poklapao s Lidovim `stEthPerToken()` u istom bloku, pa je 100 ETH kolaterala oko 80,2 wstETH-a.
+
+Dva broja odlučuju zarađuje li loop ili gubi, i nijedan nije dolarska cijena ETH-a:
+
+- **Tečaj wstETH/ETH.** Raste kako se nagrade od stakinga gomilaju: Lido je 28. listopada 2026. prijavio APR za stETH od 2,25 % i sedmodnevni prosjek od 2,33 %. Loop ubire taj prinos na 100 ETH dok plaća kamatu na 90, pa 10 ETH kapitala zarađuje otprilike deset puta razliku između dviju stopa. Pad tečaja koji prijavljuje orakl, zbog tržišnog diskonta na wstETH ili zbog pogreške u konfiguraciji, smanjuje kolateral, a ne dug, i jedini je pomak cijene koji može likvidirati loop.
+- **Kamatna stopa na zaduživanje u WETH-u.** Dug raste po Aaveovoj promjenjivoj kamati, 1,94 % APR za WETH na tržištu Ethereum Core u bloku 26291849, dok wstETH koji loop deponira od samog Aavea ne zarađuje gotovo ništa (0,0002 % u istom bloku). Kad god je kamata na zaduživanje viša od prinosa od stakinga, loop gubi novac, a njegov health factor polako pada.
+
+Spoji to dvoje za jednu godinu na deseterostrukoj poziciji, bez složenih kamata i pomaka cijena. Kolateral raste s prinosom od stakinga na otprilike 102,3 ETH. Uz kamatu na zaduživanje od 1,94 % dug dolazi do 91,75 WETH: kapital je 10,55 ETH, 5,5 % više, naspram 2,3 % za samo držanje wstETH-a, a HF raste na 1,059. Uz prosječnu kamatu od 5 % dug dolazi do 94,5 WETH, kapital pada na 7,8 ETH, a HF klizi na 1,028. Uz 8 % dug dolazi do 97,2 WETH, a HF je 1,000: loop bi bio likvidiran samo zbog kamata. Kamate na zaduživanje u WETH-u doista skaču kad je iskorištenost visoka; [zašto kamate na zaduživanje na Aaveu skaču](/hr/blog/aave-kamatne-stope#zasto-kamatne-stope-na-zajam-na-aaveu-naglo-skacu) objašnjava krivulju.
+
+Dolarska cijena ETH-a i dalje je važna vlasniku loopa, jer 10 ETH kapitala vrijedi koliko vrijedi ETH, ali nije važna za health factor. Loop je oklada da prinos od stakinga ostaje iznad kamate na zaduživanje i da tečaj wstETH/ETH u oraklu ne padne više od margine. Druga oklada je ona koja je izgubljena u ožujku 2026.
+
+## Koja su pravila za ulazak u kategoriju E-Modea i izlazak iz nje?
+
+Ulazak u kategoriju ili izlazak iz nje jedan je poziv, `setUserEMode(categoryId)` na ugovoru Pool, a Pool prije nego što promjena stupi na snagu provodi tri provjere, u `ValidationLogic.validateSetUserEMode` i `SupplyLogic.executeSetUserEMode` iz aave-v3-origin (grana main, očitano 28. listopada 2026.):
+
+1. **Svako sredstvo koje posuđuješ mora se moći posuditi u ciljnoj kategoriji.** Za kategoriju to znači njezinu bitmapu za zaduživanje; za izlazak (kategorija 0) to da rezerva ima omogućeno zaduživanje. Greška je `InvalidDebtInEmode`. Novčanik s USDC dugom ne može ući u „ETH correlated“ na tržištu Ethereum Core, gdje je WETH jedino sredstvo za zaduživanje, dok se USDC ne otplati.
+2. **Svako sredstvo koje si omogućio kao kolateral mora u ciljnoj kategoriji zadržati LTV veći od nule.** Greška je `InvalidCollateralInEmode`. Provjera prolazi kroz `getUserReserveLtv`, koji vraća LTV kategorije za sredstva iz njezina skupa kolaterala (ili 0 ako ih kategorija označava s LTV 0), vlastiti LTV sredstva za kolateral izvan skupa i 0 za vanjski kolateral kad je kategorija izolirana.
+3. **Nakon promjene tvoj health factor mora biti 1 ili više.** `executeSetUserEMode` najprije mijenja kategoriju, a zatim poziva `validateHealthFactor`, pa se promjena koja bi tvoju poziciju učinila likvidacijski izloženom poništava (revert).
+
+Novčanik bez depozita i duga uvijek može promijeniti kategoriju, a novčanik koji je već u traženoj kategoriji ne dobiva nikakvu promjenu ni provjere.
+
+Dvije napomene o verzijama važne su svakome tko čita starije vodiče. Od V3.2 kolateral izvan skupa tvoje kategorije zadržava vlastiti LTV i prag, pa je držanje WBTC-a dok si u „ETH correlated“ dopušteno, a WBTC se računa s vlastitim parametrima WBTC-a: bilješke o značajkama V3.2 kažu da se parametri E-Modea „will only apply for the ones listed as eModeCollateral“ (primjenjuju samo na ona navedena kao eModeCollateral). Od V3.7 kategorija može nositi zastavicu `isolated` (`getIsEModeCategoryIsolated`). U izoliranoj kategoriji kolateral izvan skupa dobiva LTV 0, ali zadržava vlastiti prag: i dalje se računa u health factor, ali ne podupire novo zaduživanje, ulazak je blokiran dok je takav kolateral omogućen, a omogućivanje takvog kolaterala iz same kategorije se odbija. Ako upravljanje uključi zastavicu za kategoriju koja je u upotrebi, bilješke V3.7 kažu da vanjski kolateral „immediately becomes LTV-zero“ (odmah dobiva LTV nula), a da „health factor is unaffected“ (health factor ostaje nepromijenjen). Dana 28. listopada 2026. zastavicu su imale samo dvije kategorije PT-srUSDe na tržištu Ethereum Core.
+
+Izlazak blokiraju iste tri provjere, provedene za kategoriju 0. Ne možeš izaći dok posuđuješ sredstvo čija rezerva ima onemogućeno zaduživanje, i ne možeš izaći ako bi izlazak spustio tvoj health factor ispod 1, što je čest slučaj: gornja pozicija od 1,056 izvan E-Modea pokazala bi 0,911, pa se poziv poništava. Da izađeš, najprije moraš otplatiti dovoljno WETH-a, do duga od oko 8.200 uz 10.000 kolaterala uz prag wstETH-a od 82 %. U E-Mode je lako ući, a teško izaći kad jednom iskoristiš prostor koji daje.
+
+## Što se dogodilo s loopovima u E-Modeu u ožujku 2026.?
+
+U ožujku 2026. pogrešno konfiguriran cjenovni adapter smanjio je tečaj wstETH-a koji je Aave koristio na tržištima Ethereum Core i Prime za oko 2,85 %, i svaka pozicija u E-Modeu s health factorom ispod otprilike 1,0288 odjednom je postala izložena likvidaciji. Izvor je post-mortem tvrtke Chaos Labs na Aaveovu forumu za upravljanje, objavljen 10. ožujka 2026. i ponovno pročitan 28. listopada 2026.; ništa ovdje ne ide dalje od njega.
+
+Aave cijeni wstETH preko adaptera CAPO (Correlated Assets Price Oracle) koji ograničava koliko brzo smije rasti tečaj wstETH/stETH koji prijavljuje, kako bi blokirao napade napuhavanjem. Gornja granica gradi se iz snimljenog omjera, vremenske oznake snimke i najvećeg godišnjeg rasta. Jedno ažuriranje postavilo je vremensku oznaku snimke na referencu staru sedam dana, dok je ograničenje na lancu (omjer smije rasti najviše 3 % svaka 3 dana) spriječilo da omjer dosegne vrijednost koju je ta vremenska oznaka pretpostavljala, pa je granica izračunata iz preniske reference. Post-mortem kaže da je najveći dopušteni tečaj ispao oko 1,1939, ispod stvarnog tečaja, pa ga je granica nadjačala i efektivni tečaj pao je za „around 2.855%“ (oko 2,855 %).
+
+Kao posljedice navodi:
+
+- Otprilike 10.938 wstETH-a likvidacija u E-Modeu na 34 računa, što je pogodilo pozicije „with a health factor lower than 1.0288“ (s health factorom nižim od 1,0288).
+- Nikakav nenaplativi dug (bad debt) za protokol.
+- Oko 512 ETH koje su likvidatori uzeli u bonusima i vrijednosti iz razlike u tečaju, od čega je 141 ETH prihoda od likvidacijskog bonusa i oko 13 ETH pristojbi vraćeno kako bi se obeštetili pogođeni korisnici, a ostatak treba pokriti riznica DAO-a.
+- Gornja granica zaduživanja (borrow cap) za wstETH na oba tržišta privremeno je smanjena na 1 dok se konfiguracija ispravljala.
+
+Veličina pomaka pouka je za loop. Pozicija zadužena do granice „ETH correlated“ počinje na 1,0215, unutar raspona koji je likvidiran; pozicija na 1,056 nije bila pogođena. Ništa u samoj poziciji nije upozorilo, jer je pomak došao iz konfiguracije orakla, a ne s ikakvog tržišta. Adapter je 28. listopada 2026. još bio u upotrebi (blok 26291849): izvor orakla za wstETH na tržištu Ethereum Core opisivao se kao „Capped wstETH / stETH(ETH) / USD“, sa snimljenim omjerom 1,2283 od 3. ožujka 2026., najvećim godišnjim rastom od 8,8 % i prijavljenim omjerom 1,2474, jednakim Lidovu. [Uzrok 6 u vodiču o tome zašto ti pada health factor](/hr/blog/zasto-je-pao-aave-health-factor#uzrok-6-je-li-greska-orakla-ili-tecaja-pogresno-vrednovala-tvoj-kolateral) pokriva obeštećenje koje je uslijedilo.
+
+## Kada E-Mode ne pomaže?
+
+E-Mode ne čini ništa za poziciju čiji je dug izvan kategorije, a malo za nekoliko drugih čestih postavki:
+
+- **Dug koji kategorija ne navodi.** Dok ga posuđuješ, uopće ne možeš ući. Pozicija od 10 WETH uz 12.000 USDC duga iz vodiča o health factoru ostaje na vlastitom pragu WETH-a od 84 % na tržištu Ethereum Core (blok 26291849), jer „ETH correlated“ dopušta posuđivanje samo WETH-a.
+- **Kolateral izvan skupa.** Zadržava vlastite parametre, pa dodavanje WBTC-a poziciji u „ETH correlated“ podiže health factor po vlastitom pragu WBTC-a, 85 % na tržištu Ethereum Core u bloku 26291889, a ne po 95 %. U izoliranoj kategoriji ne dodaje ništa moći zaduživanja.
+- **Kategorije stablecoina.** Na Arbitrumu i Optimismu kategorija „Stablecoins“ 28. listopada 2026. nije imala nijedno sredstvo za zaduživanje, pa se ne može koristiti za novi zajam. Na tržištu Ethereum Core kategorije stablecoina spajaju jedno sredstvo (USDe, sUSDe, neki PT) s USDC-om i USDT-om uz LTV od 90 % do 94 %. Rizik je tu depeg (gubitak vezanosti uz dolar) kolaterala, koji korelirana kategorija ne smanjuje; zbog tanje margine ranije zaboli.
+- **Male pozicije.** Likvidator smije otplatiti do 100 % duga u jednoj rezervi kad kolateral ili dug o kojem je riječ vrijedi manje od 2.000 $ (`LiquidationLogic`, očitano 28. listopada 2026.), pa se mali loop koji padne ispod 1,00 zatvara, a ne smanjuje; pravilo je u dijelu [koliko mog duga može biti likvidirano odjednom](/hr/blog/kako-funkcionira-likvidacija-na-aaveu#koliki-se-dio-mog-duga-moze-likvidirati-odjednom). Bonus od 1 % u „ETH correlated“ malen je za Aaveove standarde, ali plaća se na cijeli iznos.
+- **Tanka margina koju nisi namjeravao.** Ako uđeš u kategoriju i zadužiš se blizu njezine granice, margina je 2 %, kakav god da je health factor bio prije promjene.
+
+Ako je bilo što od toga tvoja situacija, normalni parametri i širi tampon bolji su alat; [koliko ti tampona daje health factor](/hr/blog/siguran-aave-health-factor#zasto-je-siguran-broj-drukciji-za-dug-u-stablecoinu-volatilni-dug-i-e-mode-loopove) uspoređuje što isti health factor znači za loop u E-Modeu i za druge pozicije.
+
+## Može li upozorenje pomoći kod pozicije u E-Modeu?
+
+Upozorenje za health factor pomaže kod pozicije u E-Modeu koja se drži iznad otprilike 1,1 do 1,15, a ne odgovara loopu koji namjerno radi ispod toga. Tokenping čita isti health factor koji prijavljuje ugovor, iz `getUserAccountData`, koji već primjenjuje tvoju kategoriju E-Modea, pa za E-Mode nemaš što podešavati: broj na nadzornoj ploči i u porukama je broj koji vidi likvidator.
+
+Ograničenje je prag. Tokenpingov prag upozorenja za Aave ide od 1,1 do 10, a zadana vrijednost je 1,5. Loop na 1,056, ili bilo koja pozicija koja namjerno radi ispod 1,1, ispod je svakog praga koji možeš postaviti. Upozorenje postavljeno na 1,1 pri svakoj provjeri svakih 5 minuta našlo bi health factor ispod praga i svaki put poslalo poruku, na svakom kanalu koji si odabrao, dok se pozicija ne vrati iznad 1,1. Nema odgode ni sažetka; [koliko često ćeš dobivati upozorenja](/hr/blog/postavljanje-aave-health-factor-upozorenja#koliko-cesto-ces-dobivati-upozorenja) to ponašanje detaljno opisuje.
+
+Za tanak loop iskren savjet svodi se na jedno od dvoje. Zadrži marginu: vodi loop tako da mu health factor bude iznad razine o kojoj želiš čuti, recimo od 1,12 do 1,15 za loop wstETH/WETH, što košta polugu, ali pomak orakla od 2,85 % ostavlja nedovoljnim za likvidaciju, i postavi upozorenje tamo, tako da prvo čuješ za kamatu koja polako spušta poziciju. Ili prihvati stalne poruke: postavi 1,1 i shvati niz poruka kao signal da radiš ispod te razine, što malo tko želi na Signalu ili Telegramu pri svakoj provjeri. Ono što upozorenje ni u jednom slučaju ne može jest reagirati brže od orakla: pomak iz ožujka 2026. učinio je pozicije izloženima likvidaciji u trenutku kad je granica primijenjena, a provjera svakih 5 minuta ne daje vremena da na to reagiraš. [Kako korak po korak odabrati prag upozorenja](/hr/blog/siguran-aave-health-factor#kako-odabrati-prag-upozorenja-korak-po-korak) i [kako postaviti upozorenje za health factor](/hr/blog/postavljanje-aave-health-factor-upozorenja#korak-5-odaberi-prag) pokrivaju postavljanje; [kako podići health factor na Aaveu](/hr/blog/kako-izbjeci-likvidaciju-na-aaveu#korak-1-otplati-dio-duga) pokriva što učiniti kad stigne poruka, a kod loopa to obično znači otplatu WETH-a.
+
+Najprije možeš [provjeriti svoj health factor na Aaveu V3](/hr/aave); pregled pozicija ne košta ništa. Upozorenja koštaju <AlertPrice />, plaćaju se na Arbitrumu, po jedno za svako tržište Aave V3 ili Spoke V4, i stižu putem Signala, Telegrama ili e-pošte. Tokenping je u beta fazi i nema jamstva dostupnosti. Kod pozicije s marginom od 2 % nijedno upozorenje ne zamjenjuje samu marginu.
+
+## Izvori
+
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): `POOL_REVISION`, `getReservesList` te oznaka, konfiguracija kolaterala, bitmape kolaterala, zaduživanja i LTV-a 0 i zastavica izolacije kategorija od 1 do 48, u bloku 26291736 (pristupljeno 28. listopada 2026.)
+- Aave V3 Pool na [Arbitrumu](https://arbiscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD), [Baseu](https://basescan.org/address/0xA238Dd80C259a72e81d7e4664a9801593F98d1c5) i [Optimismu](https://optimistic.etherscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD): isti pozivi za svaku kategoriju, u blokovima Arbitruma od 519074353 do 519074731, bloku Basea 53204166 i bloku Optimisma 158799548 (pristupljeno 28. listopada 2026.)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): LTV, prag, bonus i kamatne stope za WETH, wstETH i USDC u bloku 26291849; WBTC u bloku 26291889 (pristupljeno 28. listopada 2026.)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) i njegov [wstETH CAPO adapter](https://etherscan.io/address/0xe1D97bF61901B075E9626c8A2340a7De385861Ef): cijene WETH-a i wstETH-a, opis adaptera, snimljeni omjer, vremenska oznaka snimke, najveći godišnji rast i omjer u bloku 26291849 (pristupljeno 28. listopada 2026.)
+- [wstETH token](https://etherscan.io/address/0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0): `stEthPerToken()` u bloku 26291849 (pristupljeno 28. listopada 2026.)
+- [Lido stETH APR API](https://eth-api.lido.fi/v1/protocol/steth/apr/sma): posljednji APR i sedmodnevni prosjek (pristupljeno 28. listopada 2026.)
+- [IPool.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/interfaces/IPool.sol): getteri za E-Mode, `setUserEMode` i `getUserEMode` (aave-v3-origin main, pristupljeno 28. listopada 2026.)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) i [LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): `validateSetUserEMode`, `getUserReserveLtv`, `executeSetUserEMode` i prag od 2.000 $ za close factor (dio duga koji se može otplatiti odjednom) (aave-v3-origin main, pristupljeno 28. listopada 2026.)
+- [Aave V3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): liquid E-Modes, kolateral izvan kategorije zadržava vlastite parametre, pravila ulaska i izlaska (pristupljeno 28. listopada 2026.)
+- [Aave V3.7 isolated E-Mode](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md): učinci zastavice izolacije (pristupljeno 28. listopada 2026.)
+- [Aave help: Efficiency Mode (E-mode)](https://aave.com/help/borrowing/e-mode) (pristupljeno 28. listopada 2026.)
+- [Chaos Labs post-mortem, exchange rate misalignment on wstETH Core and Prime instances](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): objavljeno 10. ožujka 2026. (pristupljeno 28. listopada 2026.)
+
+_Edukativni sadržaj, a ne financijski savjet. Upozorenja smanjuju rizik, ali ne sprječavaju likvidaciju._

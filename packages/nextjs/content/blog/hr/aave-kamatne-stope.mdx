@@ -1,0 +1,157 @@
+export const meta = {
+  slug: "aave-kamatne-stope",
+  title: "Kako funkcioniraju kamatne stope na Aaveu i zašto skaču",
+  description:
+    "Kamate na zajam na Aaveu prate krivulju iskorištenosti: blagu do optimalne razine, strmu iznad nje. Formula, stvarni parametri, skokovi i što učiniti.",
+  h1: "Kako funkcioniraju kamatne stope na Aaveu i zašto kamate na zajam naglo skaču?",
+  publishedAt: "2026-10-25",
+  primaryQuestion: "Kako Aave određuje kamatne stope na zaduživanje i depozite i zašto one naglo skaču?",
+  readingMinutes: 9,
+};
+
+<ShortAnswer>
+  Na Aaveu V3 promjenjiva kamatna stopa na zajam za svaku imovinu prati krivulju koju određuje upravljanje (governance):
+  blago raste s iskorištenošću (utilization), udjelom deponiranih tokena koji su posuđeni, do optimalne razine, a iznad
+  nje strmo. Deponenti zarađuju kamatnu stopu na zajam pomnoženu s iskorištenošću, umanjenu za faktor rezerve (reserve
+  factor). Stope se ponovno izračunavaju pri svakom depozitu, zaduživanju, otplati i povlačenju, pa jedno veliko
+  povlačenje može gurnuti iskorištenost iznad optimalne razine i višestruko povećati stopu unutar jednog bloka: USDC na
+  tržištu Ethereum Core porastao je 14. listopada 2026. s 4,50 % na 13,67 % APR, a oko 36 minuta kasnije bio je opet na
+  4,76 %. Sav dug na Aaveu V3 ima promjenjivu kamatu.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Brojke i brojevi blokova u kojima su očitane: content/blog/snapshots/aave-interest-rates.md */}
+
+## Što određuje kamatnu stopu na zajam na Aaveu?
+
+Na Aaveu V3 kamatnu stopu na zajam za neku imovinu određuju dvije stvari: njezina iskorištenost i njezini parametri kamatne stope. Iskorištenost je udio bazena (pool) te imovine koji je posuđen: dug podijeljen zbrojem duga i tokena koji su još dostupni. Parametri su četiri broja po imovini koje određuje upravljanje Aavea, a Aaveovi Risk Stewardi mogu ih prilagođavati u ograničenim koracima i uz najmanje razmake između promjena:
+
+- **Optimalni omjer iskorištenosti (optimal usage ratio):** iskorištenost na kojoj se krivulja lomi.
+- **Osnovna stopa (base rate):** kamatna stopa na zajam pri iskorištenosti od 0 %.
+- **Slope 1 (nagib 1):** koliko stopa raste od 0 % do optimalnog omjera iskorištenosti.
+- **Slope 2 (nagib 2):** koliko još raste od optimalnog omjera iskorištenosti do 100 %.
+
+Očitano 25. listopada 2026. u Ethereum bloku 26269328 i Arbitrum bloku 518125419, parametri i stope nekoliko uobičajenih imovina bili su:
+
+| Tržište i imovina  | Optimalna iskorištenost | Osnovna | Slope 1 | Slope 2 | Iskorištenost | APR zajma | APR depozita |
+| ------------------ | ----------------------- | ------- | ------- | ------- | ------------- | --------- | ------------ |
+| Ethereum Core USDC | 94 %                    | 0 %     | 4,5 %   | 10 %    | 93,72 %       | 4,49 %    | 3,78 %       |
+| Ethereum Core USDT | 92 %                    | 0 %     | 4,5 %   | 10 %    | 87,81 %       | 4,30 %    | 3,39 %       |
+| Ethereum Core WETH | 92 %                    | 0 %     | 2,2 %   | 6 %     | 81,31 %       | 1,94 %    | 1,31 %       |
+| Ethereum Core GHO  | 99 %                    | 4,5 %   | 0 %     | 0 %     | ne koristi se | 4,50 %    | 0 %          |
+| Arbitrum USDC      | 90 %                    | 0 %     | 4 %     | 10 %    | 77,32 %       | 3,44 %    | 2,39 %       |
+
+GHO je iznimka: oba su mu nagiba nula, pa mu stopa ostaje ista bez obzira na iskorištenost i mijenja se ručno (vidi [GHO i Aave V4](#kako-se-odreduju-stope-za-gho-i-na-aaveu-v4)).
+
+## Kako se izračunava kamatna stopa na zajam na Aaveu?
+
+Kamatna stopa na zajam na Aaveu V3 ravna je linija do optimalnog omjera iskorištenosti i mnogo strmija linija iznad njega. Uz U kao iskorištenost:
+
+**Do optimalnog omjera iskorištenosti: kamatna stopa na zajam = osnovna + slope 1 × U ÷ optimalni omjer iskorištenosti**
+
+**Iznad njega: kamatna stopa na zajam = osnovna + slope 1 + slope 2 × (U − optimalni omjer iskorištenosti) ÷ (1 − optimalni omjer iskorištenosti)**
+
+U ugovoru je U ukupni dug podijeljen zbrojem ukupnog duga i tokena koje bazen još drži. S parametrima USDC-a na tržištu Ethereum Core stopa pri pojedinoj iskorištenosti iznosi:
+
+| Iskorištenost    | APR zajma |
+| ---------------- | --------- |
+| 50 %             | 2,39 %    |
+| 80 %             | 3,83 %    |
+| 90 %             | 4,31 %    |
+| 94 % (optimalno) | 4,50 %    |
+| 95 %             | 6,17 %    |
+| 96 %             | 7,83 %    |
+| 98 %             | 11,17 %   |
+| 100 %            | 14,50 %   |
+
+Ispod 94 % deset postotnih bodova iskorištenosti pomiče stopu za manje od pola boda. Iznad toga svaki bod dodaje oko 1,67 bodova, a zadnjih šest bodova iskorištenosti više nego utrostručuje stopu. Očitano 25. listopada 2026., USDC je bio na 93,72 %, tik ispod loma: 4,5 % × 0,9372 ÷ 0,94 daje 4,49 % koje je naplaćivao.
+
+Krivulja je namjerno takva. Ispod optimalne razine jeftino zaduživanje drži bazen u upotrebi; iznad nje strma stopa čini zaduživanje dovoljno skupim da neki dužnici otplate dug, a neki imatelji deponiraju, što vraća iskorištenost dolje i ostavlja tokene dostupnima deponentima koji žele povući sredstva.
+
+## Zašto kamatne stope na zajam na Aaveu naglo skaču?
+
+Kamatne stope na zajam na Aaveu naglo skaču kad iskorištenost prijeđe optimalni omjer iskorištenosti, obično zato što veliki deponent povuče sredstva ili se veliki dužnik zaduži. Stopa se ponovno izračunava u istoj transakciji i svaki dužnik te imovine plaća novu stopu od tog trenutka do sljedeće promjene.
+
+Dana 14. listopada 2026. jedno povlačenje od točno 133.898.000 USDC s tržišta Ethereum Core gurnulo je iskorištenost u jednom bloku s 93,92 % na 99,50 %:
+
+| Ethereum blok (UTC)                | Što se dogodilo                                    | Iskorištenost | APR zajma u USDC |
+| ---------------------------------- | -------------------------------------------------- | ------------- | ---------------- |
+| 26194052 (14. listopada, 23:32:47) | Prije                                              | 93,92 %       | 4,50 %           |
+| 26194053 (14. listopada, 23:32:59) | Povučeno 133.898.000 USDC                          | 99,50 %       | 13,67 %          |
+| 26194088 (14. listopada, 23:39:59) | Najviša točka u tom razdoblju                      | oko 99,8 %    | 14,18 %          |
+| 26194231 (15. listopada, 00:08:35) | Ista adresa ponovno je deponirala 133.898.000 USDC | 94,16 %       | 4,76 %           |
+
+Dužnici su 36 minuta plaćali otprilike trostruku uobičajenu stopu, a gornja formula iz iskorištenosti reproducira svaku od tih stopa. Skok traje dok god iskorištenost ostaje visoka: ovdje su se vratili isti tokeni, ali u drugim slučajevima potrebni su novi deponenti ili otplate, privučeni visokom stopom, da je spuste.
+
+Kamatnu stopu na zajam mijenjaju još dvije stvari. Upravljanje ili Risk Stewardi mogu promijeniti četiri parametra, što odjednom pomiče cijelu krivulju. A između transakcija stopa se ne mijenja: Aave je ponovno izračunava pri svakom depozitu, zaduživanju, otplati, povlačenju i likvidaciji te imovine, a kamata se po toj stopi obračunava, sekundu po sekundu, do sljedeće.
+
+## Zašto deponenti zarađuju manje nego što dužnici plaćaju?
+
+Deponenti zarađuju manje nego što dužnici plaćaju jer kamatu plaća samo posuđeni dio bazena, a protokol zadržava dio nje. Stopa depozita je:
+
+**Stopa depozita = kamatna stopa na zajam × iskorištenost × (1 − faktor rezerve)**
+
+Za USDC na tržištu Ethereum Core 25. listopada 2026.: 4,4866 % × 0,9372 × (1 − 0,10) = 3,78 %. Faktor rezerve, 10 % za USDC i 15 % za WETH, ide u Aaveovu riznicu. Kad rezerva nosi manjak zbog nenaplativog duga (bad debt), ugovor ga također uračunava na strani depozita, što malo snižava stopu depozita.
+
+## Koja je razlika između APR-a i APY-ja na Aaveu?
+
+Ugovori pohranjuju stope kao APR, a aplikacija Aave prikazuje APY, koji dodaje složeno ukamaćivanje. Matematička biblioteka aplikacije ukamaćuje APR svake sekunde tijekom godine od 31.536.000 sekundi:
+
+**APY = (1 + APR ÷ 31.536.000)^31.536.000 − 1**
+
+APR od 4,4866 % za USDC na tržištu Ethereum Core u aplikaciji se prikazuje kao APY od 4,59 %. Na tim razinama razlika je oko desetinke boda; uz APR od 14 % iznosi oko jedan bod (15,0 % APY).
+
+## Kako skokovi stope utječu na tvoj health factor?
+
+Kratak skok jedva pomakne tvoj health factor (faktor zdravlja); visoka stopa koja traje mjesecima pomiče ga. Kamata se dodaje tvom dugu, a veći dug snižava health factor, kako objašnjava [uzrok vezan uz kamatu u vodiču o tome zašto ti health factor pada](/hr/blog/zasto-je-pao-aave-health-factor#uzrok-3-je-li-kamata-na-tvoj-dug-rasla-brze-od-kamate-na-kolateral).
+
+Uzmi 10 WETH deponiranih uz 12.000 USDC posuđenih na tržištu Ethereum Core, s pragom likvidacije (liquidation threshold) za WETH od 83 % (očitano 14. listopada 2026.) i ilustrativnom cijenom ETH-a od 2.400 $: health factor je 1,66. Uz ono što WETH zarađuje po stopi depozita od 1,31 %:
+
+| Koliko dugo stopa traje | Uz 4,49 % (25. listopada 2026.) | Uz 14,50 % (vrh krivulje) |
+| ----------------------- | ------------------------------- | ------------------------- |
+| 36 minuta               | oko 0,04 USDC kamate, 1,66      | oko 0,12 USDC, 1,66       |
+| 30 dana                 | oko 1,66                        | oko 1,64                  |
+| Godinu dana             | oko 1,61                        | oko 1,45                  |
+
+Skok od 14. listopada ovu je poziciju stajao oko 12 centi. Tržište koje godinu dana ostane na vrhu svoje krivulje spustilo bi je s 1,66 na oko 1,45 bez ikakvog pomaka cijene, zbog čega se za sporo klizanje isplati prag upozorenja s dovoljno prostora ([koliku ti rezervu daje health factor](/hr/blog/siguran-aave-health-factor#koliko-brzo-kamata-i-promjene-parametara-nagrizaju-tvoju-rezervu)).
+
+## Što možeš učiniti kad ti kamatna stopa na zajam skoči?
+
+Kad ti kamatna stopa na zajam skoči, najprije provjeri iskorištenost imovine na njezinoj stranici u aplikaciji Aave: tik iznad optimalnog omjera iskorištenosti stopa pada čim padne iskorištenost. Zatim imaš četiri mogućnosti, svaku sa svojim troškom:
+
+- **Pričekaj.** Skok uzrokovan jednim velikim povlačenjem može završiti kad se ti tokeni vrate, kao 14. listopada 2026. Ništa ne jamči da hoće, a u međuvremenu plaćaš visoku stopu.
+- **Otplati dio duga.** To ti snižava i kamatu i rizik; [kako podići health factor na Aaveu](/hr/blog/kako-izbjeci-likvidaciju-na-aaveu) opisuje otplatu vlastitim tokenima ili kolateralom.
+- **Zamijeni dug drugom imovinom.** Sučelje Aave Labsa ima zamjenu duga (debt swap) koja jednu posuđenu imovinu zamjenjuje drugom u jednoj transakciji, na tržištima Ethereum Core, Prime i EtherFi te na mrežama Arbitrum, Avalanche, Base, BNB Chain, Optimism, Polygon, Gnosis i Sonic, prema Aaveovoj dokumentaciji. Nije navedena za mreže Metis, Scroll, ZKsync, Celo, Soneium, Linea, Plasma i Ink. Nova imovina ima svoju krivulju i svoj rizik ako joj se cijena kreće drukčije od tvog starog duga.
+- **Zaduži se na drugom tržištu.** Svako tržište ima svoj bazen i svoju iskorištenost: 25. listopada 2026. USDC je stajao 4,49 % na tržištu Ethereum Core i 3,44 % na Arbitrumu. Prelazak znači otplatu na jednom tržištu i zaduživanje na drugom, s kolateralom na toj mreži.
+
+## Kako se određuju stope za GHO i na Aaveu V4?
+
+GHO, Aaveov vlastiti stablecoin, ima ravnu kamatnu stopu na zajam koju biraju ljudi, a ne krivulja. Na tržištu Ethereum Core oba su mu nagiba nula, pa je stopa jednaka osnovnoj stopi, 25. listopada 2026. 4,50 %. Mijenja je Risk Council s pravilom 2-of-3 (dva od tri potpisnika) preko ugovora GHO stewarda: najviše za 5 postotnih bodova po promjeni i najviše jednom dnevno. Zadnja promjena, 3. listopada 2026., podigla ju je s 4,25 % na 4,50 %; od studenoga 2024. mijenjana je 44 puta, između 3,00 % i 14,50 %. Stari popust za imatelje stkAAVE-a uklonjen je s Aaveom v3.4.
+
+Aave V4 zadržava krivulju iskorištenosti, ali njegova je dokumentacija opisuje kao konfiguriranu po imovini na Hubu, bazenu koji posuđuje svim Spokeovima. Povrh te zajedničke stope svaki dužnik plaća User Risk Premium (premiju rizika korisnika) koja ovisi o kvaliteti njegova kolaterala: Aaveov je primjer premija od 50 % na osnovnu stopu od 5 %, što daje 7,5 %. Dva dužnika na Aaveu V4 koja posuđuju istu imovinu stoga mogu plaćati različite stope, a [odjeljak o V4 u vodiču o health factoru](/hr/blog/aave-health-factor-objasnjen#je-li-health-factor-drukciji-na-aave-v4) opisuje što još V4 mijenja.
+
+## Možeš li na Aaveu dobiti fiksnu kamatu?
+
+Ne. Aave V3 nekoć je imao opciju stabilne stope (stable rate), ali ona je 2024. potpuno ukinuta nakon prijave greške, a Aave v3.2 uklonio je njezin kod. Svaki zajam na Aaveu V3 plaća promjenjivu kamatu, a ravna stopa GHO-a i dalje se može promijeniti u bilo kojem trenutku unutar ograničenja njegova stewarda.
+
+## Može li te upozorenje upozoriti na rast kamata?
+
+Upozorenje za health factor ne prati stope; prati što stope čine tvojoj poziciji. Tokenping provjerava tvoj health factor na Aaveu V3 i V4 svakih 5 minuta na 22 mreže i šalje ti poruke putem Signala, Telegrama ili e-pošte dok je ispod praga koji si postavio (od 1,1 do 10). Skok poput onoga od 14. listopada 2026. neće ga aktivirati, jer jedva pomiče health factor; mjeseci visoke kamate hoće, kad dug dovoljno naraste da prijeđe tvoj prag.
+
+Ako želiš poruku o samoj stopi, neki drugi alati šalju upozorenja o stopama, a [naša usporedba alata za Aave upozorenja](/hr/blog/alati-za-aave-upozorenja-o-likvidaciji) navodi što koji od njih prati. Postavljanje upozorenja za health factor opisano je u vodiču [kako postaviti upozorenje za health factor](/hr/blog/postavljanje-aave-health-factor-upozorenja), a prije toga možeš [provjeriti svoj health factor na Aaveu V3](/hr/aave); pregled pozicija ne košta ništa.
+
+## Izvori
+
+- [DefaultReserveInterestRateStrategyV2.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/misc/DefaultReserveInterestRateStrategyV2.sol) i [ReserveLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ReserveLogic.sol): krivulja stope, omjer iskorištenosti, stopa depozita i kada se stope ponovno izračunavaju (aave-v3-origin, pristupljeno 25. listopada 2026.)
+- [Strategija kamatnih stopa Aavea V3 za Ethereum Core](https://etherscan.io/address/0x9ec6F08190DeA04A54f8Afc53Db96134e5E3FdFB#readContract) i [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): parametri i stope u bloku 26269328; USDC u blokovima 26194052, 26194053, 26194088, 26194230 i 26194231 (pristupljeno 25. listopada 2026.)
+- [Strategija kamatnih stopa Aavea V3 za Arbitrum](https://arbiscan.io/address/0x429F16dBA3B9e1900087Cbaa7b50D38Bc60fB73F#readContract): parametri i stope za USDC u bloku 518125419 (pristupljeno 25. listopada 2026.)
+- [Aave Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): parametri kamatne stope među vrijednostima koje stewardi smiju mijenjati, uz najveću promjenu i najmanji razmak po promjeni (pristupljeno 25. listopada 2026.)
+- [calculateCompoundedRate u aave-utilities](https://github.com/aave/aave-utilities/blob/master/packages/math-utils/src/formatters/compounded-interest/calculate-compounded-interest.ts): APR u APY tijekom 31.536.000 sekundi (pristupljeno 25. listopada 2026.)
+- [Aave swap features](https://aave.com/docs/aave-v3/smart-contracts/swap-features.md): zamjena duga i otplata kolateralom te tržišta koja ih podržavaju (pristupljeno 25. listopada 2026.)
+- [GHO Stewards: October 2026 GHO borrow rate update](https://governance.aave.com/t/gho-stewards-october-2026-gho-borrow-rate-update/25754) (TokenLogic, 2. listopada 2026., pristupljeno 25. listopada 2026.) i [ugovor GHO stewarda](https://etherscan.io/address/0x98217A06721Ebf727f2C8d9aD7718ec28b7aAe34#readContract): ograničenja po promjeni i povijest stope od studenoga 2024. (pristupljeno 25. listopada 2026.)
+- [Aave v3.4 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.4/Aave-v3.4-features.md): uklanjanje popusta za stkAAVE na GHO (pristupljeno 25. listopada 2026.)
+- [BGD: Full deprecation of stable rate](https://governance.aave.com/t/bgd-full-deprecation-of-stable-rate/16473) (31. siječnja 2024.) i [Aave v3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): uklanjanje stabilne stope (pristupljeno 25. listopada 2026.)
+- [Dokumentacija Aavea V4](https://aave.com/docs/aave-v4.md) i [V4 positions](https://aave.com/docs/aave-v4/positions.md): krivulja stope po imovini Huba i User Risk Premium (pristupljeno 25. listopada 2026.)
+
+_Edukativni sadržaj, a ne financijski savjet. Upozorenja smanjuju rizik, ali ne sprječavaju likvidaciju._

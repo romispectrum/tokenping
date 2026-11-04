@@ -16,6 +16,7 @@ export const LOCALES = [
   "nl",
   "ro",
   "hu",
+  "hr",
 ] as const;
 
 export type Locale = (typeof LOCALES)[number];
@@ -206,6 +207,16 @@ export const LOCALE_INFO: Record<Locale, LocaleInfo> = {
     name: "Magyar",
     englishName: "Hungarian",
     short: "HU",
+  },
+  // Decimal comma, dot thousands ("12.000,5"), "83 %", dates "14. listopada 2026.".
+  hr: {
+    htmlLang: "hr",
+    ogLocale: "hr_HR",
+    intl: "hr-HR",
+    numbers: "hr-HR",
+    name: "Hrvatski",
+    englishName: "Croatian",
+    short: "HR",
   },
 };
 

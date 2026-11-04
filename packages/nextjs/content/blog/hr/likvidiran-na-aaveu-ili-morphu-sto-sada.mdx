@@ -1,0 +1,135 @@
+export const meta = {
+  slug: "likvidiran-na-aaveu-ili-morphu-sto-sada",
+  title: "Likvidiran na Aaveu ili Morphu: što sada učiniti",
+  description:
+    "Kako pronaći transakciju likvidacije, izračunati što je uzeto i što ti je ostalo, zašto se to dogodilo i kako izbjeći drugu likvidaciju.",
+  h1: "Likvidiran sam na Aaveu ili Morphu: što sada?",
+  publishedAt: "2026-10-31",
+  primaryQuestion: "Što učiniti nakon likvidacije na Aaveu ili Morphu?",
+  readingMinutes: 11,
+};
+
+<ShortAnswer>
+  Najprije pronađi transakciju: na Aaveu u povijesti transakcija u aplikaciji ili među prijenosima tokena tvog novčanika
+  na block exploreru, na Morphu putem aplikacije Morpho ili Morphova javnog API-ja, jer se likvidatorova transakcija
+  nikad ne pojavljuje na tvom vlastitom popisu. Zatim je pročitaj: dug koji je otplaćen umjesto tebe, kolateral koji je
+  uzet i razlika među njima, a to je bonus koji si platio. Tokeni koje si posudio ostaju tvoji, kao i sav kolateral koji
+  nije zaplijenjen. Na Aaveu likvidacija obično otplati polovicu tvog duga i ostavi poziciju koja se može ponovno
+  likvidirati; na Morphu može odjednom uzeti gotovo sve. U 30 dana do 30. listopada 2026. 932 dužnika na Morphu
+  likvidirana su više puta, pa je najkorisniji posljednji korak: sigurnosna rezerva i upozorenje prije nego što se
+  ponovno zadužiš.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Brojke i vrijeme kada su očitane: content/blog/snapshots/liquidated-on-aave-or-morpho-what-now.md */}
+
+## Kako znaš da je to bila likvidacija i gdje je transakcija?
+
+Prvi je znak obično to da pozicija izgleda pogrešno: dug je manji nego što pamtiš, kolateral je mnogo manji, health factor (faktor zdravlja) odjednom je viši ili pozicije više nema. Otplata koju nisi napravio i povlačenje kolaterala koje nisi potpisao, u istoj transakciji, znače likvidaciju.
+
+Transakciju je teško pronaći jer je nisi ti poslao. Poslao ju je likvidatorov bot, pa je nema na popisu „Transactions“ tvoje adrese na Etherscanu, Basescanu ili Arbiscanu. Gdje umjesto toga tražiti:
+
+- **Aave, u aplikaciji.** Otvori „Transaction history“ (povijest transakcija, app.aave.com/history) s povezanim novčanikom i odabranim pravim tržištem te filtriraj po „Liquidation“. Svaki zapis ima vrijeme, hash transakcije, uzeti kolateral i otplaćeni dug.
+- **Aave, na block exploreru.** Otvori svoju adresu i karticu „Token transfers (ERC-20)“. Likvidacija se prikazuje kao prijenos tvog aTokena (na primjer aEthWETH) i tvog tokena duga (variableDebtEthUSDT) na nultu adresu, u transakciji koju nisi potpisao. Otvori je i prebaci se na karticu „Logs“: događaj nazvan `LiquidationCall` na ugovoru Pool zapis je koji ti treba. Jedna transakcija može sadržavati više likvidacija više dužnika, pa traži onu čiji je `user` tvoja adresa.
+- **Morpho.** Na exploreru tvoja adresa ne pokazuje ništa jer je tvoj kolateral bio u ugovoru Morpho, a likvidatorova otplata također je otišla ugovoru. Aplikacija Morpho prikazuje poziciju manjom ili je više nema; Morphov javni API navodi svaku likvidaciju tvoje adrese (`marketTransactions` tipa Liquidation); a u zapisniku događaja ugovora Morpho na exploreru nalazi se događaj nazvan `Liquidate` s tvojom adresom kao `borrower`.
+- **Tokenping.** [Nadzorna ploča za Aave](/hr/aave) i [nadzorna ploča za Morpho](/hr/morpho) prikazuju poziciju kakva je sada. Health factor koji je skočio s blizu 1 na znatno više ili pozicija koja je nestala upućuju na likvidaciju. Nadzorne ploče ne navode prošle transakcije.
+
+Sačuvaj hash transakcije. Trebat će ti za očitavanje iznosa, a u mnogim se zemljama likvidacija računa kao prodaja uzetog kolaterala, pa ti treba i za poreznu evidenciju.
+
+## Kako pročitati transakciju likvidacije?
+
+Oba protokola upisuju cijelu likvidaciju u jedan događaj. Nazivi se razlikuju, sadržaj je isti: koji je dug otplaćen umjesto tebe, koji je kolateral uzet i koliko jednog i drugog.
+
+**Aave V3** emitira `LiquidationCall(collateralAsset, debtAsset, user, debtToCover, liquidatedCollateralAmount, liquidator, receiveAToken)`. Stvarni primjer s tržišta Ethereum Core, blok 26305893, 30. listopada 2026. u 13:33 UTC:
+
+| Polje                      | Vrijednost        | Što znači                                                                      |
+| -------------------------- | ----------------- | ------------------------------------------------------------------------------ |
+| collateralAsset            | WETH              | Uzeta imovina                                                                  |
+| debtAsset                  | USDT              | Otplaćena imovina                                                              |
+| user                       | adresa dužnika    | Čija je to pozicija bila                                                       |
+| debtToCover                | 1.320,785158 USDT | Dug otplaćen umjesto dužnika, 1.319,32 USD po cijeni iz orakla (izvora cijene) |
+| liquidatedCollateralAmount | 0,619088749 WETH  | Kolateral poslan likvidatoru, 1.372,09 USD po 2.216,31 USD/ETH                 |
+| liquidator                 | adresa ugovora    | Tko je otplatio i primio                                                       |
+| receiveAToken              | false             | Uzeo je sam WETH, a ne aEthWETH                                                |
+
+Jedan iznos nije u događaju. U istoj je transakciji 0,005952776 aEthWETH (13,19 USD) prešlo od dužnika na Aaveov ugovor collector: to je naknada protokola za likvidaciju, 20 % bonusa za WETH na tržištu Ethereum Core u tom bloku. Kad se sve zbroji, dužnik je dao 1.385,28 USD u WETH-u za 1.319,32 USD duga, likvidacijski bonus od 5 %, od čega je likvidator zadržao 52,77 USD, a riznica 13,19 USD. Kartica „Logs“ na exploreru prikazuje naknadu kao prijenos aTokena na collector odmah nakon spaljivanja (burn) aTokena.
+
+**Morpho Blue** emitira `Liquidate(id, caller, borrower, repaidAssets, repaidShares, seizedAssets, badDebtAssets, badDebtShares)`. Stvarni primjer s tržišta USDC | cbBTC (86%) na Baseu, blok 53265200, 30. listopada 2026. u 00:22 UTC:
+
+| Polje         | Vrijednost        | Što znači                                                      |
+| ------------- | ----------------- | -------------------------------------------------------------- |
+| id            | 0x9103c3b4…       | Tržište                                                        |
+| caller        | likvidator        | Tko je otplatio i primio                                       |
+| borrower      | adresa dužnika    | Čija je to pozicija bila                                       |
+| repaidAssets  | 2.174,732093 USDC | Dug otplaćen umjesto dužnika                                   |
+| seizedAssets  | 0,02952084 cbBTC  | Kolateral poslan likvidatoru, 2.270,08 USD po cijeni iz orakla |
+| badDebtAssets | 0                 | Ništa nije otpisano                                            |
+
+Orakl je u tom bloku cijenio cbBTC na 76.897,38 USDC. Uzeti kolateral vrijedio je 2.270,08 USD za 2.174,73 USD duga, omjer 1,0438, što je točno faktor likvidacijskog poticaja koji plaća tržište od 86 %. Razlika od 95,34 USD u cijelosti je pripala likvidatoru: Morpho ne uzima naknadu. Ta je transakcija sadržavala 30 događaja `Liquidate` jednog likvidatora, svaki s drugim dužnikom, i upravo tako u zapisniku tržišta izgleda najužurbanija minuta sloma.
+
+## Što je uzeto, a što ti je ostalo?
+
+Treba razdvojiti tri stvari:
+
+1. **Dug otplaćen umjesto tebe više ne postoji, kao ni kolateral kojim je plaćen.** Otplaćeni dio više ne duguješ. Likvidator ga je platio vlastitim tokenima i zauzvrat uzeo tvoj kolateral, uz bonus. Bonus je cijena likvidacije: u dva primjera 65,96 USD na 1.319 USD duga na Aaveu i 95,34 USD na 2.175 USD na Morphu.
+2. **Tokeni koje si posudio i dalje su tvoji.** Ako si posudio USDT i potrošio ga, ništa se ne mijenja. Ako je još u tvom novčaniku, još je ondje. Likvidacija nikad ne dira posuđene tokene u tvom novčaniku; mijenja samo poziciju.
+3. **Kolateral koji nije zaplijenjen ostaje u poziciji.** Na Aaveu je stanje aTokena manje; na Morphu je manje stanje kolaterala na tom tržištu. Ako je dug preostao, kolateral ga i dalje pokriva. Ako duga više nema, možeš ga povući.
+
+Koliko ostaje ovisi o protokolu. Na Aaveu V3 jedna likvidacija otplaćuje najviše 50 % tvog ukupnog duga kad je health factor iznad 0,95, a i uzeti kolateral i otplaćeni dug vrijede najmanje 2.000 USD; ispod 0,95, ili za manje iznose, može otplatiti sav dug u toj imovini ([koliko se može likvidirati odjednom](/hr/blog/kako-funkcionira-likvidacija-na-aaveu#koliki-se-dio-mog-duga-moze-likvidirati-odjednom)). Primjer s Ethereuma slijedio je pravilo od 50 % do centa: 2.638,63 USD duga prije, 1.319,32 poslije. Dužnik je zadržao 0,7906 WETH (1.752 USD) naspram 1.319,32 USDT, uz health factor 1,12, i ta se pozicija može ponovno likvidirati ako ETH padne za još 10,4 %. Na Aaveu V4 likvidacija umjesto toga otplaćuje onoliko koliko je potrebno da se pozicija vrati na ciljni health factor Spokea, 1,24 na Ethereum Main Spokeu, pa se otplati više, ali je ono što ostane sigurnije ([likvidacije na Aaveu V4](/hr/blog/kako-funkcionira-likvidacija-na-aaveu#po-cemu-se-likvidacije-razlikuju-na-aave-v4)).
+
+Morpho Blue nema close factor (dio duga koji se može otplatiti odjednom): likvidator u jednom pozivu smije otplatiti do cijelog duga ([koliko se tvog duga može likvidirati odjednom](/hr/blog/kako-funkcionira-likvidacija-na-morphu#koliki-se-dio-tvog-duga-moze-likvidirati-odjednom)). Likvidator na Baseu uzeo je 0,02952 od 0,03286 cbBTC, 90 % kolaterala, i otplatio cijeli dug osim 0,0005 USDC koje je ostavilo zaokruživanje udjela (shares). Dužnik je zadržao 0,003342 cbBTC, oko 257 USD, i može ih povući.
+
+Još dvije stvari treba provjeriti. Na Aaveu je likvidator birao koji će kolateral uzeti ([koji kolateral uzima likvidator](/hr/blog/kako-funkcionira-likvidacija-na-aaveu#koji-kolateral-uzima-likvidator)), pa je pozicija s više vrsta kolaterala možda izgubila onaj koji si najmanje očekivao. Na Morphu `repaidAssets` manji nego što si očekivao može značiti da je prije prave likvidacije provedena [predlikvidacija (pre-liquidation)](/hr/blog/morpho-predlikvidacija), pri nižem omjeru zajma i vrijednosti (LTV) i s nižim poticajem; aplikacija i API prikazuju obje vrste.
+
+## Što ako je likvidacija uzela sve?
+
+Ako je na Morphu `badDebtAssets` veći od nule, ili ako te događaj na Aaveu ostavio bez kolaterala dok je dug preostao, kolateral je u trenutku kad ga je netko likvidirao vrijedio manje od duga uvećanog za bonus. Oba protokola tada zatvaraju poziciju umjesto da te progone:
+
+- **Aave** (od verzije V3.3) spaljuje preostali dug i bilježi ga kao manjak (deficit) te rezerve, koji kasnije mogu pokriti stakeri Umbrelle. Ostaješ bez kolaterala i bez duga ([može li likvidacija ostaviti nenaplativi dug (bad debt)](/hr/blog/kako-funkcionira-likvidacija-na-aaveu#moze-li-likvidacija-ostaviti-nenaplativi-dug)).
+- **Morpho Blue** otpisuje preostali dug u istoj transakciji i raspoređuje gubitak na zajmodavce tog tržišta. Dužnik ostaje bez kolaterala i bez duga ([što se događa s nenaplativim dugom na Morpho Blue](/hr/blog/kako-funkcionira-likvidacija-na-morphu#sto-se-dogada-s-nenaplativim-dugom-na-morpho-blue)).
+
+Nitko te neće tražiti razliku i na poziciji ništa ne ostaje. No ni tebi ne ostaje ništa, a tvoj je gubitak cijeli kolateral, a ne samo bonus. Nenaplativi dug bio je rijedak u mjesecu iz primjera: nula od 393 likvidacije na tržištu cbBTC na Baseu u tri dana oko sloma, oko 3,5 milijuna USD ukupno u 7.521 likvidaciji na cijelom Morphu u 30 dana do 30. listopada.
+
+## Zašto se to dogodilo?
+
+Oba primjera imaju isti uzrok: nije bilo sigurnosne rezerve. Blok prije likvidacije na Aaveu health factor tog dužnika bio je 1,0049; sljedeće ažuriranje Chainlinka pomaknulo je WETH s oko 2.229,77 na 2.216,31 USD, 0,6 % niže, i health factor je bio 0,9988. Blok prije likvidacije na Morphu health factor dužnika na Baseu bio je 1,0025; orakl je pomaknuo cbBTC sa 77.140,46 na 76.897,38 USDC, 0,3 % niže, i health factor je bio 0,9993. Nijednom nije trebao slom. Bilo je dovoljno jedno obično ažuriranje cijene, a u slučaju Morpha u 00:22 UTC, u šestosatnom razdoblju u kojem se događa [više od trećine likvidacija na Morphu](/hr/blog/kome-trebaju-health-factor-upozorenja#koliko-cesto-se-duznici-likvidiraju).
+
+Ako tvoj health factor nije bio toliko blizu, pomaknulo ga je nešto drugo. [Zašto je pao tvoj health factor](/hr/blog/zasto-je-pao-aave-health-factor) navodi šest uzroka i način da provjeriš svaki: pala je cijena tvog kolaterala, porasla je cijena onoga što si posudio, kamata na dug narasla je brže od prinosa na kolateral, upravljanje (governance) je snizilo prag likvidacije (liquidation threshold), stablecoin koji si deponirao doživio je depeg (gubitak vezanosti uz dolar) ili je orakl pogrešno procijenio omotani token (wrapper). Verzija za Morpho isti je popis bez sniženja praga, jer se likvidacijski LTV (LLTV) tržišta na Morphu nikad ne mijenja ([što pomiče health factor na Morphu](/hr/blog/morpho-health-factor-objasnjen#sto-pomice-health-factor-na-morphu)). Dva je slučaja lako previdjeti: zajam na [Midnightu](/hr/blog/morpho-midnight-zajmovi-s-fiksnom-kamatom) nakon dospijeća može se likvidirati pri bilo kojem health factoru, a zajam uz [tokenizirane dionice](/hr/blog/tokenizirane-dionice-kao-kolateral) može se likvidirati po cijeni od nedjelje navečer koja se pomaknula dok je feed bio pauziran.
+
+## Što učiniti u prvom satu?
+
+1. **Pročitaj preostalu poziciju prije nego što je dirneš.** Health factor, preostali dug, preostali kolateral, na [nadzornoj ploči za Aave](/hr/aave) ili [nadzornoj ploči za Morpho](/hr/morpho), u aplikaciji protokola ili na exploreru. Djelomična likvidacija na Aaveu ostavlja poziciju blizu 1,1, koju sljedeći pomak od 10 % ponovno likvidira.
+2. **Odluči hoćeš li je zatvoriti ili zadržati.** Ako zajam više ne želiš, otplati ostatak i povuci kolateral; na Aaveu možeš otplatiti samim kolateralom ([otplata kolateralom](/hr/blog/kako-izbjeci-likvidaciju-na-aaveu#korak-4-otplati-kolateralom-ili-zamijeni-kolateral)). Ako ga zadržiš, otplaćuj ili dodaj kolateral dok health factor ne bude ondje gdje ga želiš, a ne ondje gdje je bio. [Otplata podiže health factor više po dolaru nego dodavanje kolaterala](/hr/blog/kako-izbjeci-likvidaciju-na-aaveu#zasto-otplata-podize-health-factor-vise-od-dodavanja-kolaterala).
+3. **Ne zadužuj se ponovno do granice.** Pozicija koja je upravo likvidirana pri 1,005 ponovno će biti likvidirana pri 1,005. Ponovno zaduživanje do istog LTV-a samo ponovno pokreće sat.
+4. **Provjeri svoje druge pozicije.** Svako tržište na Aaveu, svaki Spoke na V4 i svako tržište na Morphu ima vlastiti health factor, a isti pomak cijene koji je likvidirao jednu poziciju snizio je i ostale.
+5. **Na Aaveu provjeri je li rezerva zamrznuta.** Kad je Aave 29. listopada 2026. zamrznuo sva tržišta DAO-a, dodavanje kolaterala u zamrznutu rezervu bilo je nemoguće, a otplata je bila jedini put prema gore ([zašto povlačenje ili zaduživanje ne uspijeva](/hr/blog/zasto-ne-uspijeva-povlacenje-ili-zaduzivanje-na-aaveu)).
+6. **Na Morphu provjeri predlikvidaciju.** Ako si ovlastio ugovor za predlikvidaciju, on je i dalje ovlašten; [provjeri ga i opozovi](/hr/blog/morpho-predlikvidacija#kako-provjeriti-je-li-tvoj-novcanik-ovlastio-takav-ugovor) ako ga više ne želiš.
+7. **Sačuvaj zapis.** Hash transakcije, oba iznosa, datum, cijene iz orakla ako ih možeš očitati. Exploreri čuvaju podatke, ali u travnju ih nećeš htjeti tražiti.
+
+## Kako izbjeći drugu likvidaciju?
+
+Od 5.703 dužnika na Morphu likvidiranih u 30 dana do 30. listopada 2026., njih 932 likvidirano je više puta. Dužnik s Basea iz primjera bio je jedan od njih: zajam uz cbBTC likvidiran 3. lipnja, zajam uz cbZEC 14. listopada i ponovno zajam uz cbBTC 30. listopada. Svaka ga je likvidacija koštala bonusa i nijedna nije dovela do promjene. Promjena su tri odluke:
+
+- **Sigurnosna rezerva.** Health factor od 1,005 ne preživljava ništa. [Koliko cijene mogu pasti pri svakom health factoru](/hr/blog/siguran-aave-health-factor#koliko-cijene-mogu-pasti-prije-likvidacije-pri-svakom-health-factoru) daje tablicu: 1,5 preživljava pad od 33,3 %, 2 preživljava 50 %. Broj koji odabereš ovisi o tome što si posudio uz što; [metoda korak po korak](/hr/blog/siguran-aave-health-factor#kako-odabrati-prag-upozorenja-korak-po-korak) prolazi kroz to, a [verzija za Morpho](/hr/blog/morpho-health-factor-objasnjen#kako-odabrati-rezervu-i-prag-upozorenja) uzima u obzir fiksni LLTV.
+- **Upozorenje iznad rezerve.** Poruka kad health factor prijeđe granicu koju si odabrao, dovoljno rano da reagiraš. Tokenping provjerava svakih 5 minuta i šalje ti poruku na Signal, Telegram ili e-poštu; prag može biti bilo gdje od 1,1 do 10 na Aaveu i od 1,02 do 10 na Morphu. [Postavljanje upozorenja](/hr/blog/postavljanje-aave-health-factor-upozorenja) traje nekoliko minuta. Upozorenje ne može uhvatiti skok između dviju provjera i ne može ništa otplatiti umjesto tebe, zato dolazi nakon rezerve, a ne umjesto nje.
+- **Sredstva kojima možeš reagirati.** Sredstva za otplatu na mreži na kojoj si se zadužio, u imovini koju duguješ ili u nekoj koju možeš zamijeniti i noću, te telefon koji propušta poruku ([upozorenja u načinu Ne uznemiravaj](/hr/blog/aave-upozorenja-u-nacinu-ne-uznemiravaj)). Likvidacija na Morphu iz primjera dogodila se u 00:22 UTC; upozorenje na 1,1 stiglo bi satima ranije, a odgovoriti na njega mogla su samo sredstva na Baseu.
+
+Ako je zajam bio toliko malen da ne bi premjestio sredstva kako bi ga spasio, iskren je zaključak drukčiji: ili se uz njega zaduži manje, ili prihvati da je bonus cijena toga što ga ne pratiš.
+
+## Kako se Tokenping uklapa
+
+Tokenping svakih 5 minuta prati svaku poziciju koju postaviš, na svakom tržištu Aave V3 na 21 mreži, svakom Spokeu na Aaveu V4 i svakom tržištu Morpha koje navodi aplikacija Morpho, i šalje ti poruku na Signal, Telegram ili e-poštu kad je health factor ispod tvog praga. Poruka se ponavlja pri svakoj provjeri dok se pozicija ne oporavi, na bilo kojem od jezika stranice. Nakon likvidacije nadzorne ploče pokazuju što je ostalo: [nadzorna ploča za Aave](/hr/aave) s health factorom svakog tržišta, [nadzorna ploča za Morpho](/hr/morpho) s LTV-om, LLTV-om i health factorom svakog tržišta, izračunatima izravno iz lanca.
+
+Svoje pozicije možeš pregledati bez plaćanja. Upozorenja koštaju <AlertPrice />, jedno po tržištu Aave V3, Spokeu V4 ili tržištu Morpha. Tokenping je u beta fazi i nema jamstvo dostupnosti, a nijedno upozorenje ne sprječava likvidaciju.
+
+## Izvori
+
+- [Ethereum transakcija 0x5f88aa61…12fb6](https://etherscan.io/tx/0x5f88aa61ca6180e132a627c5e4d483c4098becc65359fa6af50551c405312fb6) (blok 26305893): `LiquidationCall`, spaljivanje aEthWETH i variableDebtEthUSDT, prijenos naknade na collector; cijene iz Aave Oracle i `getUserAccountData` u blokovima 26305892 i 26305893; `getReserveConfigurationData` i `getLiquidationProtocolFee` za WETH, očitano putem javnog RPC-a (pristupljeno 31. listopada 2026.)
+- [Base transakcija 0xc2df272f…f0178](https://basescan.org/tx/0xc2df272f36d8b0b566c24988052c1508a4c90a97999b2da5a8c8ec7f8e3f0178) (blok 53265200): 30 događaja `Liquidate`; Morpho Blue `position`, `market` i `price()` orakla tržišta u blokovima 53265199 i 53265200, očitano putem javnog RPC-a (pristupljeno 31. listopada 2026.)
+- [Morpho API](https://api.morpho.org/graphql): `marketTransactions` tipa Liquidation za tržište cbBTC na Baseu od 28. do 31. listopada 2026. i za adresu dužnika iz primjera; `markets` za LLTV i orakl tržišta (pristupljeno 31. listopada 2026.)
+- [Morpho API](https://api.morpho.org/graphql): sve likvidacije od 30. rujna 2026. u 08:36 UTC do 30. listopada 2026. u 08:36 UTC, kao u [vodiču o upozorenjima](/hr/blog/kome-trebaju-health-factor-upozorenja) (pristupljeno 30. listopada 2026.)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): nenaplativi dug spaljen i zabilježen kao deficit rezerve, pravila za close factor, Umbrellino uklanjanje deficita (pristupljeno 31. listopada 2026.)
+- [Liquidation on Morpho](https://docs.morpho.org/learn/concepts/liquidation): formula poticaja, do 100 % u jednom pozivu, bez naknade protokola (pristupljeno 31. listopada 2026.)
+
+_Edukativni sadržaj, a ne financijski savjet. Upozorenja smanjuju rizik, ali ne sprječavaju likvidaciju._

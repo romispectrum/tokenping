@@ -4,6 +4,7 @@ import { MESSAGES as en } from "./en";
 import { MESSAGES as es } from "./es";
 import { MESSAGES as fr } from "./fr";
 import { MESSAGES as hi } from "./hi";
+import { MESSAGES as hr } from "./hr";
 import { MESSAGES as hu } from "./hu";
 import { MESSAGES as id } from "./id";
 import { MESSAGES as it } from "./it";
@@ -38,4 +39,5 @@ export const DASHBOARD_MESSAGES: Localized<DashboardMessages> = {
   nl,
   ro,
   hu,
+  hr,
 };

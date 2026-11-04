@@ -1,0 +1,169 @@
+export const meta = {
+  slug: "morpho-predlikvidacija",
+  title: "Predlikvidacija na Morphu: što je i kako je isključiti",
+  description:
+    "Kako predlikvidacija na Morphu (Auto-deleverage) prodaje dio zajma prije LLTV-a, zašto je Morpho povlači i kako je provjeriti i opozvati.",
+  h1: "Što je predlikvidacija na Morphu i kako je provjeriti ili isključiti?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Što je predlikvidacija na Morphu i kako provjeriti je li uključena te je isključiti?",
+  readingMinutes: 11,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Predlikvidacija (pre-liquidation) je ugovor koji se uključuje po izboru, za jedno tržište Morpho Blue (s promjenjivom
+  kamatom), i koji svakome dopušta da proda dio tvog kolaterala kako bi otplatio dug prije nego što tvoja pozicija
+  dosegne likvidacijski LTV (LLTV) tog tržišta. Morphova aplikacija imala je značajku Auto-deleverage koja radi na taj
+  način. Morpho je sada povlači: aplikacija ne prima nove pozicije, njezin centar za pomoć traži od onih koji je imaju
+  da je isključe, a njezin SDK je 22. rujna 2026. označio kôd za predlikvidaciju kao zastario (deprecated). Ugovori i
+  dalje rade, pa ako je predlikvidacija ikad bila uključena na tvom novčaniku, provjeri je funkcijom `isAuthorized` na
+  ugovoru Morpho Blue i opozovi je gumbom za upravljanje u aplikaciji ili pozivom `setAuthorization(contract, false)`.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Brojke, brojevi blokova i izvori: content/blog/snapshots/morpho-pre-liquidation.md */}
+
+## Što je predlikvidacija na Morphu?
+
+Predlikvidacija je druga, ranija granica likvidacije koju dužnik može dodati na jedno tržište Morpho Blue. Na običnom tržištu Blue pozicija se može likvidirati tek kad joj health factor (faktor zdravlja) padne ispod 1, mjereno prema likvidacijskom omjeru zajma i vrijednosti (LLTV) tog tržišta; [vodič o health factoru na Morphu](/hr/blog/morpho-health-factor-objasnjen) objašnjava taj broj. Ugovor za predlikvidaciju postavlja nižu granicu, preLLTV. Između te dvije granice bilo tko može u koracima otplatiti dio tvog duga, do granice koju određuje ugovor, i uzeti kolateral vrijedan tog duga uvećanog za bonus.
+
+Izdvajaju je tri stvari:
+
+- **Uključuje se po izboru.** Vrijedi tek nakon što ovlastiš ugovor na Morpho Blue. Bez toga ugovor ne može dirati tvoju poziciju.
+- **Vrijedi za jedno tržište.** Svaki ugovor vezan je uz jedno tržište Blue i jedan nepromjenjiv skup parametara, a nema vlasnika, administratora ni funkciju nadogradnje.
+- **Postoji samo na Blueu.** Morpho Midnight, tržišta s fiksnom kamatom iz [vodiča o Midnightu](/hr/blog/morpho-midnight-zajmovi-s-fiksnom-kamatom), nema predlikvidaciju.
+
+Morpho je 4. ožujka 2025. najavio tvornicu (factory) za predlikvidaciju i kao primjene naveo automatsko smanjenje zaduženosti (auto-deleverage) i automatsko zatvaranje (auto-close). U ugovorima, API-ju i SDK-u zove se pre-liquidation. Morphova aplikacija imala je značajku Auto-deleverage, koju njezin centar za pomoć opisuje istim riječima: kad tvoj omjer zajma i vrijednosti (LTV) prijeđe zadani prag, dio pozicije može se zatvoriti, uz naknadu samo na zatvoreni dio.
+
+## Je li predlikvidacija još dostupna u aplikaciji Morpho?
+
+U aplikaciji Morpho više se ne može postaviti nova predlikvidacija. Stanje 26. listopada 2026.:
+
+| Gdje                                | Stanje                                                                                                                                                                                                                        |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Aplikacija Morpho i centar za pomoć | Članak pomoći sada nosi naslov „Sunsetting Auto-deleverage“ (povlačenje značajke Auto-deleverage), zadnji put ažuriran 13. svibnja 2026.: značajka ne prima nove pozicije, a korisnici koji je imaju trebali bi je isključiti |
+| Morpho SDK                          | Svaki izvoz za predlikvidaciju označen kao zastario 22. rujna 2026. (pull request 1132), uklanja se u sljedećoj glavnoj verziji, bez nasljednika                                                                              |
+| Morpho dokumentacija                | Stranica o predlikvidaciji je nestala; njezina stara adresa sada vodi na opću stranicu o likvidaciji                                                                                                                          |
+| Morpho API                          | I dalje navodi 106 ugovora za predlikvidaciju na navedenim tržištima na Ethereumu (50), Baseu (37), Arbitrumu (8), Polygonu (6), Katani (3) i Unichainu (2)                                                                   |
+| Ugovori                             | Nepromijenjeni i ispravni: bilo tko ih i dalje može pozvati na dužniku koji ih je ovlastio                                                                                                                                    |
+
+Zadnji redak je onaj koji je važan ako je značajka ranije bila uključena. Povlačenje značajke u aplikaciji ne poništava ovlaštenje zapisano na lancu.
+
+## Kako funkcionira ugovor za predlikvidaciju?
+
+Ugovor za predlikvidaciju stvara Morphov PreLiquidationFactory, koji svatko može koristiti: bilo tko može postaviti ugovor za bilo koje tržište Blue, a svaka kombinacija tržišta i skupa parametara može postojati samo jednom. Njegovi nepromjenjivi parametri su:
+
+| Parametar        | Što određuje                                                                                                                                                           |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| preLLTV          | Omjer zajma i vrijednosti iznad kojeg je predlikvidacija dopuštena. Mora biti ispod LLTV-a tržišta                                                                     |
+| preLCF1, preLCF2 | Close factor (dio duga koji se može otplatiti odjednom): najveći udio tvog duga koji jedan poziv smije otplatiti, na preLLTV-u i na LLTV-u                             |
+| preLIF1, preLIF2 | Faktor poticaja: otplaćeni dug množi se njime da bi se dobio uzeti kolateral, u iste dvije točke                                                                       |
+| Orakl            | Orakl (izvor cijene) koji odlučuje može li tvoja pozicija biti predlikvidirana i po kojoj se cijeni uzima tvoj kolateral. Može biti orakl samog tržišta ili neki drugi |
+
+Prije nego što djeluje, ugovor po cijeni iz vlastitog orakla provjerava je li tvoj omjer zajma i vrijednosti iznad preLLTV-a i još uvijek jednak LLTV-u ili ispod njega. Iznad LLTV-a predlikvidacija prestaje i preuzima obična likvidacija na Blueu. Nakon toga Morpho Blue provjerava je li tvoja pozicija zdrava prema oraklu samog tržišta; ako nije, cijeli se poziv poništava (revert).
+
+Konstruktor nameće ograničenja parametrima. Close factor ne smije padati kako raste rizik, a samo je njegova prva vrijednost ograničena na 100 %: ugovor čija je druga vrijednost iznad 100 % može dopustiti da jedan poziv otplati cijeli tvoj dug prije nego što se dosegne LLTV. Morphove zadane vrijednosti ostaju daleko ispod toga. Faktor poticaja mora biti najmanje 1 (bez bonusa) i najviše 1 ÷ LLTV (bonus od oko 16 % na tržištu s LLTV-om 86 %). Morphov repozitorij kaže da to ograničenje, zajedno s pravilom da predlikvidacija prestaje na LLTV-u, sprječava da predlikvidacija ostavi poziciju manje zdravom nego prije.
+
+### Kako close factor i bonus rastu između preLLTV-a i LLTV-a?
+
+Oba rastu linearno s tvojim omjerom zajma i vrijednosti. Ugovor mjeri koliko si daleko od preLLTV-a prema LLTV-u, kao udio od 0 do 1, i pomiče svaki faktor za taj udio puta od njegove prve prema drugoj vrijednosti. Na pola puta između dviju granica close factor je na pola puta između preLCF1 i preLCF2.
+
+Iz koda slijede dva ograničenja. Close factor ograničava jedan poziv, a ne ukupni iznos: Morphov vlastiti repozitorij napominje da likvidator može zatvoriti mali dio, ostaviti te i dalje iznad preLLTV-a i pozvati ponovno, pa ukupno zatvoreni iznos može biti veći od close factora. Osim toga, close factor je udio tvog duga, a ne tvog kolaterala; [vodič o close factoru na Aaveu](/hr/blog/kako-funkcionira-likvidacija-na-aaveu#koliki-se-dio-mog-duga-moze-likvidirati-odjednom) objašnjava istu ideju na Aaveu.
+
+## Koje su Morphove zadane postavke predlikvidacije?
+
+Morpho je u svom SDK-u držao zadani skup parametara za svaki od osam uobičajenih LLTV-ova, i svaki od 106 ugovora koje navodi njegov API koristi te zadane vrijednosti. API navodi samo ugovore s poznatim zadanim parametrima, pa ugovori s drugim postavkama mogu postojati, a da se ondje ne pojavljuju. Šest LLTV-ova koji imaju navedene ugovore:
+
+| LLTV tržišta | preLLTV | Close factor (od preLLTV-a do LLTV-a) | Bonus   | Predlikvidacija počinje pri health factoru tržišta od | Navedeni ugovori |
+| ------------ | ------- | ------------------------------------- | ------- | ----------------------------------------------------- | ---------------- |
+| 62,5 %       | 56,26 % | 0,75 % do 27,95 %                     | 12,68 % | 1,111                                                 | 2                |
+| 77 %         | 72,74 % | 0,37 % do 25,66 %                     | 7,41 %  | 1,059                                                 | 12               |
+| 86 %         | 83,26 % | 0,20 % do 24,53 %                     | 4,38 %  | 1,033                                                 | 50               |
+| 91,5 %       | 89,79 % | 0,11 % do 23,92 %                     | 2,62 %  | 1,019                                                 | 21               |
+| 94,5 %       | 93,37 % | 0,07 % do 23,61 %                     | 1,68 %  | 1,012                                                 | 15               |
+| 96,5 %       | 95,78 % | 0,04 % do 23,41 %                     | 1,06 %  | 1,008                                                 | 6                |
+
+U svakom zadanom skupu bonus je isti na oba kraja i jednak je bonusu koji na tom tržištu plaća obična likvidacija na Blueu. Zadane vrijednosti ne čine prodaju jeftinijom po dolaru; čine svaku prodaju manjom. Obična likvidacija na Blueu uopće nema close factor, pa likvidator smije odjednom otplatiti cijeli dug. [Kako funkcionira likvidacija na Morphu](/hr/blog/kako-funkcionira-likvidacija-na-morphu) pokriva tu stranu.
+
+## Stvarni ugovor: USDC | cbBTC (86%) na Baseu
+
+Najveće navedeno tržište Blue na Baseu po iznosu posuđenog, USDC | cbBTC (86%) (kolateral cbBTC, dug u USDC-u, LLTV 86 %), ima jedan ugovor za predlikvidaciju koji navodi Morphov API, na adresi `0xa7272aFc21f9C321024ED93892a1abfeb621C374`. Očitano s Basea 26. listopada 2026. i provjereno prema Morphovom API-ju:
+
+- PreLiquidationFactory na Baseu potvrđuje da je stvorio taj ugovor, a ugovor upućuje na ovo tržište.
+- preLLTV 83,26 %, close factor raste od 0,20 % do 24,53 %, bonus 4,38 % na oba kraja: zadane vrijednosti za 86 %.
+- Njegov orakl je orakl samog tržišta. Cijenio je cbBTC na 80.000,15 USDC u blokovima Basea 53102870 i 53102952; [kako funkcionira likvidacija na Morphu](/hr/blog/kako-funkcionira-likvidacija-na-morphu) koristi istu cijenu.
+- Tržište je imalo oko 1,61 milijarde USDC posuđenog uz oko 40.051 cbBTC, u oko 43.000 pozicija zaduživanja.
+- U otprilike 28 sati blokova Basea očitanih prije bloka 53102692 nije se pojavila nijedna predlikvidacija ovim ugovorom.
+
+Na Ethereumu najveće navedeno tržište USDC | cbBTC (86%) ima ugovor s istim parametrima, na adresi `0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A`, koji također koristi orakl svog tržišta.
+
+## Primjer s izračunom: koliko može uzeti jedna predlikvidacija?
+
+Uzmimo ilustrativnu poziciju na tom tržištu na Baseu: 1 cbBTC kolaterala i 50.000 USDC duga, pri cijeni od 80.000,15 USDC za cbBTC. Njezin health factor je 1,376 prema LLTV-u od 86 % i 1,332 prema granici predlikvidacije od 83,26 %. S istim oraklom vrijednost za predlikvidaciju uvijek je vrijednost tržišta pomnožena s 0,968 (83,26 ÷ 86).
+
+Predlikvidacija može početi kad cbBTC padne ispod 60.052,58 USDC, 24,9 % ispod te cijene. Obična likvidacija počinje ispod 58.139,53 USDC, 27,3 % niže. Između tih cijena najveća pojedinačna predlikvidacija izgleda ovako:
+
+| Omjer zajma i vrijednosti | Cijena cbBTC-a | Close factor | Otplaćeni dug | Uzeti kolateral (vrijednost u USDC-u) | Bonus | Omjer zajma i vrijednosti nakon |
+| ------------------------- | -------------- | ------------ | ------------- | ------------------------------------- | ----- | ------------------------------- |
+| 84 %                      | 59.523,81      | 6,77 %       | 3.384         | 3.533                                 | 148   | 83,26 %                         |
+| 85 %                      | 58.823,53      | 15,65 %      | 7.825         | 8.168                                 | 343   | 83,26 %                         |
+| 86 %                      | 58.139,53      | 24,53 %      | 12.266        | 12.803                                | 538   | 83,23 %                         |
+
+Sa zadanim vrijednostima jedan poziv pune veličine vraća omjer zajma i vrijednosti otprilike na preLLTV, gdje ugovor staje. Usporedi to s običnom likvidacijom na Blueu pri 87 %: likvidator smije otplatiti svih 50.000 USDC i uzeti cbBTC vrijedan 52.192 USDC, pa ti ostaje oko 5.279 USDC kolaterala i nikakav zajam.
+
+## Zašto su se dužnici uključivali i koliko ih je to koštalo?
+
+Razlog za uključivanje bile su manje, postupne prodaje. Morphov članak pomoći opisuje Auto-deleverage kao zatvaranje samo dijela pozicije kako bi joj se vratilo zdravlje, uz naknadu samo na zatvoreni iznos. U gornjem primjeru dužnik koji se uključio plaćao je od 148 do 538 USDC bonusa po koraku, dok obična likvidacija pri 87 % koja otplaćuje cijeli zajam košta 2.192 USDC; nekoliko koraka, ili obična likvidacija nakon njih, može ukupno stajati više.
+
+Troškovi:
+
+- **Prodaja počinje ranije.** Na tržištu s LLTV-om 86 % dio tvoje pozicije može se prodati već od health factora tržišta od oko 1,033, dok je health factor koji opisuje Morphov centar za pomoć, mjeren prema LLTV-u, još iznad 1.
+- **Koraci se mogu ponavljati.** Close factor ograničava svaki poziv, a ne ukupni iznos, pa nekoliko poziva može slijediti jedan za drugim dok god ostaješ iznad preLLTV-a.
+- **Cijena se može razlikovati.** Ugovor može koristiti drugi orakl, a ne orakl tržišta. Svih 106 ugovora koje navodi Morphov API koristi orakl svog tržišta; ugovor koji API ne navodi možda ne.
+- **Nitko ne mora djelovati.** Ako nijedan likvidator ne pozove ugovor, prije LLTV-a se ne događa ništa; kad ga prijeđeš, pozicija se može likvidirati na uobičajen način.
+
+Budući da se značajka sada povlači, Morpho traži od dužnika koji je još imaju da je isključe, a nova uključivanja su zatvorena.
+
+## Kako provjeriti je li tvoj novčanik ovlastio takav ugovor?
+
+Tvoj novčanik ovlastio je ugovor za predlikvidaciju ako funkcija `isAuthorized(your wallet, contract)` na Morpho Blue vraća true. Ovlaštenje je zapisano u samom Morpho Blue, a ne u ugovoru za predlikvidaciju.
+
+1. **Pronađi ugovor za svoje tržište.** Morphov API navodi ga među predlikvidacijama tržišta; Morphov centar za pomoć također upućuje na gumb za upravljanje na stranici tvoje pozicije ili tržišta u aplikaciji.
+2. **Pozovi `isAuthorized` na ugovoru Morpho Blue te mreže.** U pregledniku blokova (block explorer) otvori funkcije za čitanje (read) ugovora Blue i unesi svoj novčanik kao prvu adresu, a ugovor za predlikvidaciju kao drugu.
+3. **Pročitaj odgovor.** True znači da te ugovor može predlikvidirati; false znači da ne može.
+
+Za ove korake treba adresa ugovora, a Morphov API navodi samo ugovore sa zadanim postavkama. Ovlaštenje se može dati i potpisom koji onda pošalje netko drugi, pa se ne mora pojaviti na popisu transakcija tvog novčanika. Za pregled svih adresa koje je tvoj novčanik ovlastio pogledaj događaje SetAuthorization ugovora Morpho Blue u pregledniku blokova, s tvojim novčanikom kao onim koji daje ovlaštenje (authorizer). Najnoviji događaj za svaku adresu pokazuje je li ovlaštenje još uključeno, a PreLiquidationFactory te mreže na `isPreLiquidation(address)` odgovara true za ugovore koje je stvorio.
+
+Ovdje je važan jedan detalj. Ovlaštenje na Blueu ne sadrži tržište: adresa koju ovlastiš prolazi Blueove provjere za tvoje zaduživanje, povlačenja i povlačenja kolaterala na cijelom tom ugovoru Blue. Nepromjenjivi kôd ugovora za predlikvidaciju uvijek samo otplaćuje dug i povlači kolateral na vlastitom tržištu, ali druge adrese koje je tvoj novčanik ovlastio nisu tako ograničene.
+
+## Kako isključiti predlikvidaciju?
+
+Isključuješ je tako da ovlaštenje vratiš na false:
+
+- **U aplikaciji Morpho:** Morphov centar za pomoć kaže da klikneš gumb za upravljanje na poziciji na svojoj nadzornoj ploči ili na stranici tržišta, čime se otvara prozor za uklanjanje značajke Auto-deleverage.
+- **Na ugovoru:** iz svog novčanika pozovi `setAuthorization(pre-liquidation contract, false)` na Morpho Blue. Poziv ne uspijeva ako je vrijednost već false, pa neuspjeli poziv može značiti i da nije bilo ničega za uklanjanje.
+
+Nakon opoziva pokušaji ugovora da povuče tvoj kolateral ne uspijevaju i vrijedi samo obična likvidacija na Blueu ispod health factora 1. Stoji te gas jedne transakcije.
+
+## Kako Tokenping mjeri poziciju s predlikvidacijom?
+
+Za dužnika koji je ovlastio ugovor za predlikvidaciju na tržištu Blue, Tokenping šalje upozorenja prema nižoj od dviju granica: granici LLTV-a i granici predlikvidacije. To je važno jer Morphov centar za pomoć opisuje da health factor prikazan u njegovoj aplikaciji dolazi do 1 kad omjer zajma i vrijednosti prijeđe LLTV, a tu počinje i Blueova vlastita likvidacija. Na tržištu s LLTV-om 86 % i zadanim ugovorom prag upozorenja od 1,10 na granici predlikvidacije aktivira se pri health factoru tržišta od oko 1,136, a najniži prag, 1,02, pri oko 1,054, otprilike 2 % iznad granice na kojoj predlikvidacija može početi.
+
+Kad spremiš ili urediš upozorenje, Tokenping zabilježi ugovore za predlikvidaciju koje Morphov API navodi za to tržište; svaka provjera zatim očitava je li tvoj novčanik ovlastio svaki od njih i računa health factor s lanca Morphovom vlastitom matematikom, nikad iz Morphova API-ja. Ugovor za predlikvidaciju koji Morphov API ne navodi ne provjerava se, pa ako je tvoj novčanik ovlastio ugovor s prilagođenim postavkama, upozorenje mjeri samo prema granici LLTV-a.
+
+Ostalo radi kao kod svakog upozorenja za Morpho. Tokenping provjerava svakih 5 minuta, na 14 mreža, i dok god je tvoj health factor ispod tvog praga (bilo koja vrijednost od 1,02 do 10), svaka provjera šalje poruku na svaki odabrani kanal: Signal, Telegram ili e-poštu. Upozorenja koštaju <AlertPrice />, isti plan kao upozorenja za Aave, a [pregled tvojih pozicija na Morphu](/hr/morpho) ne košta ništa. [Kako odabrati prag upozorenja](/hr/blog/siguran-aave-health-factor#kako-odabrati-prag-upozorenja-korak-po-korak) prolazi kroz taj kompromis na Aaveu; isto razmišljanje vrijedi i ovdje. Upozorenje ti daje vremena za reakciju, a ne jamstvo: cijena se može pomaknuti između dviju provjera. Ako više ne želiš predlikvidaciju, opozovi je kako je gore opisano; tvoje upozorenje tada mjeri samo prema granici LLTV-a.
+
+## Izvori
+
+- [morpho-org/pre-liquidation](https://github.com/morpho-org/pre-liquidation): README, [PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidation.sol), [PreLiquidationFactory.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidationFactory.sol) i [IPreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/interfaces/IPreLiquidation.sol), za parametre, ograničenja, interpolaciju i provjere (pristupljeno 26. listopada 2026.)
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) i [EventsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/EventsLib.sol): `isAuthorized`, `setAuthorization`, događaj SetAuthorization, provjera zdravlja i bonus obične likvidacije (pristupljeno 26. listopada 2026.)
+- [Introducing pre-liquidations](https://morpho.org/blog/introducing-pre-liquidations-enhanced-loan-management-on-morpho) (Morpho, 4. ožujka 2025.): auto-deleverage i auto-close kao primjene te obična likvidacija kad do predlikvidacije ne dođe (pristupljeno 26. listopada 2026.)
+- [Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (Morphov centar za pomoć, ažurirano 13. svibnja 2026.): nema novih pozicija, kako isključiti, što je značajka radila (pristupljeno 26. listopada 2026.)
+- [Morphov centar za pomoć: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): aplikacija prikazuje health factor svake pozicije, a pozicija se može likvidirati pri 1 ili ispod, kad njezin omjer zajma i vrijednosti prijeđe LLTV (pristupljeno 26. listopada 2026.)
+- [Morpho SDK pull request 1132](https://github.com/morpho-org/sdks/pull/1132) (spojen 22. rujna 2026.) i [preLiquidation.ts](https://github.com/morpho-org/sdks/blob/main/packages/blue-sdk/src/preLiquidation.ts): proglašenje zastarjelim i zadani parametri (pristupljeno 26. listopada 2026.)
+- [Morpho dokumentacija: liquidation](https://docs.morpho.org/developers/borrow/concepts/liquidation): kamo sada vodi stara stranica o predlikvidaciji (pristupljeno 26. listopada 2026.)
+- [Morpho API](https://api.morpho.org/graphql): navedena tržišta, njihovi ugovori za predlikvidaciju i orakli te tržišta USDC | cbBTC (86%) na Baseu i Ethereumu (pristupljeno 26. listopada 2026.)
+- Ugovori za predlikvidaciju očitani na lancu: [Base](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374) u blokovima od 53102692 do 53102952 i [Ethereum](https://etherscan.io/address/0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A) u bloku 26274980, s njihovim tvornicama, tržištima i oraklima (pristupljeno 26. listopada 2026.)
+
+_Edukativni sadržaj, a ne financijski savjet. Upozorenja smanjuju rizik, ali ne sprječavaju likvidaciju._

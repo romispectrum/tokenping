@@ -1,0 +1,183 @@
+export const meta = {
+  slug: "kako-funkcionira-likvidacija-na-aaveu",
+  title: "Što se događa kad ti je pozicija na Aaveu likvidirana",
+  description:
+    "Kako danas funkcioniraju likvidacije na Aave V3: kada se pokreću, koliko se duga može otplatiti (50 % ili 100 %), bonus koji plaćaš i primjer.",
+  h1: "Što se događa kad ti je pozicija na Aaveu likvidirana?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Što se događa kad ti likvidiraju poziciju na Aaveu?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Kad tvoj health factor (faktor zdravlja) na Aave V3 padne ispod 1, bilo koja druga adresa može otplatiti dio ili
+  cijeli tvoj dug i uzeti kolateral vrijedan tog iznosa plus likvidacijski bonus, na primjer 5 % za WETH na tržištu
+  Ethereum Core. Jedna likvidacija može otplatiti do 50 % tvog duga dok je health factor iznad 0,95, a i tvoj kolateral
+  u preuzetoj imovini i tvoj dug u otplaćenoj imovini vrijede barem 2.000 $; u suprotnom cijeli dug u toj imovini može
+  se otplatiti odjednom. Posuđene tokene zadržavaš, kao i preostali kolateral i dug, pa je bonus ono što te likvidacija
+  stoji.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Kada se pozicija na Aaveu može likvidirati?
+
+Pozicija na Aave V3 može se likvidirati čim joj health factor padne ispod 1,00. Health factor dijeli vrijednost tvog kolaterala, ponderiranu pragom likvidacije (liquidation threshold) svake imovine, s vrijednošću tvog duga, pa ispod 1,00 ponderirani kolateral više ne pokriva dug (formula i primjer: [što je health factor na Aaveu](/hr/blog/aave-health-factor-objasnjen)).
+
+Ugovori Aave V3.7 provjeravaju pet stvari prije nego što likvidacija prođe (`validateLiquidationCall` u `ValidationLogic.sol`):
+
+1. Health factor dužnika je ispod 1,00.
+2. Imovina kolaterala koja se preuzima i imovina duga koja se otplaćuje obje su aktivne i **nisu pauzirane**.
+3. Svako razdoblje odgode likvidacije (grace period) na bilo kojoj od te dvije imovine je završilo. Kad Aaveov hitni čuvar (emergency guardian) ili upravljanje (governance) ukine pauzu imovine, može postaviti razdoblje odgode do 4 sata.
+4. Dužnik ima tu imovinu uključenu kao kolateral i duguje odabranu imovinu duga.
+5. Pozivatelj nije dužnik: ne možeš likvidirati vlastitu poziciju.
+
+Zamrznuta imovina i dalje se može likvidirati, jer provjera gleda je li imovina „paused“ (pauzirana), a ne „frozen“ (zamrznuta). Bilo koja druga adresa može pozvati funkciju `liquidationCall` na Poolu.
+
+Protokol te ne upozorava prije likvidacije, a ni Aaveova aplikacija na app.aave.com ne šalje upozorenja. S jednom imovinom promjenjive cijene kao kolateralom i dugom u stablecoinu možeš [izračunati svoju likvidacijsku cijenu na Aaveu](/hr/blog/aave-likvidacijska-cijena): cijenu kolaterala pri kojoj health factor dolazi do 1.
+
+## Koliki se dio mog duga može likvidirati odjednom?
+
+Na Aave V3.7 close factor (dio duga koji se može otplatiti odjednom, u jednoj likvidaciji) ograničen je na 50 % tvog ukupnog duga samo kad su ispunjena sva tri uvjeta: health factor je iznad 0,95, tvoj kolateral u imovini koja se preuzima vrijedi barem 2.000 $, a tvoj dug u imovini koja se otplaćuje vrijedi barem 2.000 $. U svim ostalim slučajevima likvidator može u jednoj transakciji otplatiti do 100 % tvog duga u odabranoj imovini.
+
+| Stanje u trenutku likvidacije                                                                | Najviše što jedna likvidacija može otplatiti                                                 |
+| -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Health factor iznad 0,95, a odabrani kolateral i odabrani dug vrijede svaki 2.000 $ ili više | 50 % tvog ukupnog duga u svim imovinama (u USD), nikad više od tvog duga u odabranoj imovini |
+| Health factor na 0,95 ili ispod                                                              | 100 % tvog duga u odabranoj imovini                                                          |
+| Odabrani kolateral ili odabrani dug vrijedi manje od 2.000 $                                 | 100 % tvog duga u odabranoj imovini                                                          |
+
+Te su granice konstante u Aaveovu `LiquidationLogic.sol` (aave-v3-origin, pročitano 14. listopada 2026.). Od verzije v3.3 tih 50 % odnosi se na cijelu poziciju, a ne na svaku imovinu duga zasebno. Aaveove bilješke za v3.3 daju primjer s po 3.000 $ duga u GHO-u, USDC-u i DAI-ju, ukupno 9.000 $: svih 3.000 $ bilo kojeg od njih može se otplatiti u jednom pozivu, jer je 50 % ukupnog iznosa 4.500 $.
+
+Drugo pravilo sprječava ostatke (dust). Djelomična likvidacija mora ostaviti barem 1.000 $ duga u otplaćenoj imovini i barem 1.000 $ kolaterala u preuzetoj imovini. Inače likvidator mora uzeti sav taj dug ili sav taj kolateral, ili se transakcija poništava (revert).
+
+Likvidacija uzima samo kolateral vrijedan otplaćenog duga plus bonus, a ne sav tvoj kolateral. Likvidator otplaćuje dug vlastitim sredstvima, pa posuđeni tokeni ostaju tvoji; dok god kolateral to pokriva, bonus je ono što gubiš.
+
+Stariji vodiči opisuju fiksni close factor od 50 %, a i Aaveova referenca za ugovor Pool na aave.com i dalje kaže „close factor is 0.5“ („close factor je 0,5“, pristupljeno 14. listopada 2026.). Oboje je zastarjelo: fiksnih 50 % bilo je pravilo na Aave V2, a kod V3.7 na kojem rade ova tržišta koristi pravilo 50 % ili 100 % iz tablice.
+
+## Što je likvidacijski bonus i tko ga plaća?
+
+Likvidacijski bonus, često zvan i likvidacijska kazna, dodatni je kolateral koji likvidator dobiva povrh duga koji otplati, a plaća ga dužnik. Uz bonus od 5 % otplata 1.000 USDC tvog duga stoji te kolaterala vrijednog 1.050 USDC. Aaveova riznica zadržava dio bonusa kao naknadu protokola za likvidaciju, pa likvidator dobiva nešto manje nego što ti gubiš.
+
+Bonus i naknada koji vrijede pripadaju kolateralu koji se preuzima, a ne dugu. Vrijednosti na Aave V3 pročitane na lancu 14. listopada 2026. (blok 26193284 na Ethereumu, blok 514855406 na Arbitrumu):
+
+| Tržište       | Preuzeti kolateral | Likvidacijski bonus | Naknada protokola (udio u bonusu) | Kolateral koji gubiš na svakih 1.000 $ otplate | Likvidator dobiva |
+| ------------- | ------------------ | ------------------- | --------------------------------- | ---------------------------------------------- | ----------------- |
+| Ethereum Core | WETH               | 5 %                 | 10 %                              | 1.050 $                                        | 1.045 $           |
+| Ethereum Core | WBTC               | 5 %                 | 10 %                              | 1.050 $                                        | 1.045 $           |
+| Ethereum Core | USDC               | 4,5 %               | 20 %                              | 1.045 $                                        | 1.036 $           |
+| Arbitrum      | WETH               | 5 %                 | 10 %                              | 1.050 $                                        | 1.045 $           |
+| Arbitrum      | WBTC               | 7 %                 | 10 %                              | 1.070 $                                        | 1.063 $           |
+| Arbitrum      | USDC (nativni)     | 5 %                 | 10 %                              | 1.050 $                                        | 1.045 $           |
+
+U E-Modeu, ako je preuzeta imovina u skupu kolaterala tvoje kategorije, bonus kategorije zamjenjuje bonus same imovine: 1 % za „ETH correlated“ na Ethereum Core (pročitano u bloku 26193288 na Ethereumu, 14. listopada 2026.), pa svaka likvidacija stoji manje. Upravljanje može promijeniti bilo koji od tih parametara, a Aaveovi Risk Stewards mogu prilagođavati likvidacijske bonuse unutar zadanih granica, pa trenutačne vrijednosti provjeri u aplikaciji Aave.
+
+## Koji kolateral uzima likvidator?
+
+Bira likvidator. Svaka likvidacija na Aave V3 navodi jednu imovinu kolaterala koja se preuzima i jednu imovinu duga koja se otplaćuje, a par bira likvidator, pa ti nemaš utjecaja na to koja tvoja imovina ide prva. Preuzeti se može samo imovina koju imaš uključenu kao kolateral; deponirana imovina s isključenom opcijom „used as collateral“ (koristi se kao kolateral) ne može se uzeti, ali ni ne pridonosi tvom health factoru.
+
+Ako odabrani kolateral ne može pokriti otplatu plus bonus, gubiš svu tu imovinu (likvidator je dobiva umanjenu za naknadu protokola), a otplaćuje se manje duga. Budući da svaka likvidacija obrađuje jedan par, pozicija s više imovina može se likvidirati u više transakcija, a dok god health factor ostaje ispod 1, mogu uslijediti nove likvidacije.
+
+## Primjer s izračunom: ETH pada na 1.420 $, zatim na 1.330 $
+
+U ovom primjeru likvidacija pri cijeni ETH-a od 1.420 $ otplaćuje 6.000 USDC i dužnika stoji 300 $ u WETH-u; ako nitko ne likvidira dok ETH ne dođe do 1.330 $, svih 12.000 USDC može se otplatiti odjednom, a trošak se udvostručuje na 600 $.
+
+Pozicija: 10 WETH kolaterala i 12.000 USDC duga na tržištu Ethereum Core na Aave V3. WETH ima prag likvidacije 83 %, bonus 5 % i naknadu protokola 10 % (pročitano na lancu u bloku 26193284, 14. listopada 2026.). Cijene ETH-a su ilustrativne, USDC se računa kao 1,00 $, a kamata se zanemaruje.
+
+Pri 2.400 $ health factor iznosi 24.000 × 0,83 ÷ 12.000 = 1,66. Do 1 dolazi pri cijeni ETH-a od 12.000 ÷ (10 × 0,83) = 1.445,78 $, a do 0,95 pri 1.373,49 $.
+
+| Cijena ETH-a                    | Health factor       | Najviše što jedna likvidacija može otplatiti                                                                                       |
+| ------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Iznad oko 1.445,78 $            | 1,00 ili više       | Ništa; pozicija se ne može likvidirati                                                                                             |
+| Od oko 1.373,50 $ do 1.445,78 $ | Između 0,95 i 1,00  | 50 %: 6.000 USDC                                                                                                                   |
+| Od oko 1.260 $ do 1.373,49 $    | Od oko 0,87 do 0,95 | 100 %: 12.000 USDC                                                                                                                 |
+| Ispod oko 1.260 $               | Ispod oko 0,87      | Manje od 12.000 USDC: preuzima se svih 10 WETH, a ostatak postaje [nenaplativi dug](#moze-li-likvidacija-ostaviti-nenaplativi-dug) |
+
+### Korak 1: ETH na 1.420 $, health factor 0,982
+
+Pri 1.420 $ 10 WETH vrijedi 14.200 $, pa health factor iznosi 14.200 × 0,83 ÷ 12.000 = 0,982. To je iznad 0,95, a tvoj WETH kolateral i tvoj USDC dug vrijede svaki više od 2.000 $, pa likvidator može otplatiti najviše 6.000 USDC.
+
+- Likvidator otplaćuje 6.000 USDC tvog duga.
+- Tvoja pozicija gubi 6.000 × 1,05 = 6.300 $ u WETH-u (4,4366 WETH).
+- Naknada protokola iznosi 10 % od bonusa od 300 $: 30 $ (0,0211 WETH) ide Aaveovoj riznici, a likvidator dobiva 6.270 $ (4,4155 WETH).
+- Ostaje ti 5,5634 WETH (7.900 $) i 6.000 USDC duga: health factor 7.900 × 0,83 ÷ 6.000 = 1,093.
+
+Tvoja neto pozicija (kolateral minus dug) pada s 2.200 $ na 1.900 $. Razlika od 300 $ je bonus.
+
+### Korak 2: ETH na 1.330 $, health factor 1,024
+
+Preostalih 5,5634 WETH vrijedi 7.399 $ pri 1.330 $, što je health factor 7.399 × 0,83 ÷ 6.000 = 1,024, pa se pozicija pri toj cijeni ne može ponovno likvidirati. Njezina nova likvidacijska cijena je oko 1.299 $, iz 6.000 ÷ (5,5634 × 0,83). Prepolovljeni dug spustio je likvidacijsku cijenu; trošak je bio bonus od 300 $.
+
+### Što ako nitko ne likvidira dok ETH ne dođe do 1.330 $?
+
+Ako se prva likvidacija dogodi tek kad je ETH već na 1.330 $, izvorna pozicija ima health factor 13.300 × 0,83 ÷ 12.000 = 0,920. To je na 0,95 ili ispod, pa likvidator može otplatiti svih 12.000 USDC odjednom. Tvoja pozicija gubi 12.000 × 1,05 = 12.600 $ u WETH-u (9,4737 WETH), od čega je 60 $ naknada protokola, a 12.540 $ ide likvidatoru. Zadržavaš 0,5263 WETH (700 $) i ne duguješ ništa; pravilo o ostacima ne primjenjuje se jer je dug u potpunosti otplaćen.
+
+Neto pozicija pada s 1.300 $ na 700 $. Gubitak od 600 $ dvostruko je veći nego u koraku 1, jer je uz isti bonus od 5 % otplaćeno dvostruko više duga.
+
+## Može li likvidacija ostaviti nenaplativi dug?
+
+Da. Nenaplativi dug (bad debt) nastaje kad kolateral pozicije vrijedi manje od njezina duga plus likvidacijski bonus, pa ni preuzimanje svake jedinice kolaterala ne otplaćuje sve. Od Aave V3.3, kad likvidacija potroši sav dužnikov kolateral, a dug ostane, ugovor spaljuje preostali dug i bilježi ga kao „deficit“ na toj imovini. Dužnik ostaje bez kolaterala i bez duga, a gubitak snosi protokol.
+
+Primjer s parametrima WETH-a na Ethereum Core: 10.000 $ u WETH-u kao jedini kolateral naspram 9.800 USDC duga daje health factor 0,847. Otplata svih 9.800 USDC uz bonus od 5 % zahtijevala bi 10.290 $ u WETH-u, pa se preuzima svih 10.000 $ u WETH-u (od toga oko 47,62 $ kao naknada protokola) i otplaćuje se oko 9.524 USDC (10.000 ÷ 1,05). Preostalih oko 276 USDC postaje deficit.
+
+Umbrella, Aaveov zaštitni mehanizam temeljen na stakingu, može spaliti aTokene stakera u pogođenoj imovini kako bi pokrio takve deficite; njegova aktivacija započela je na Ethereumu (Aave dokumentacija, pristupljeno 14. listopada 2026.). Štiti protokol, a ne dužnika, čiji je kolateral već nestao.
+
+To se na Aave V3 već dogodilo. Nakon što se USDC 11. ožujka 2023. trgovao po oko 0,88 $, post-mortem tvrtke Gauntlet zabilježio je oko 280.000 $ nenaplativog duga u E-Modeu na V3 Avalancheu i oko 20.000 $ na V3 Arbitrumu te napomenuo da, čim kolateral vrijedi manje od duga pomnoženog s jedan plus bonus, svaka djelomična likvidacija gura račun još dublje u minus. To je bilo prije nego što je v3.3 uveo mehanizam deficita.
+
+## Zaustavljaju li se likvidacije kad je tržište zamrznuto ili kad L2 sequencer padne?
+
+Ne, ni u jednom slučaju. Na Aave V3.7 zamrznuta imovina i dalje se može likvidirati, a likvidacije na Arbitrumu, Optimismu i Baseu više ne ovise o tome radi li L2 sequencer. Ono što blokira likvidacije je pauza.
+
+- **Zamrznuto (frozen):** zamrzavanje blokira nove pozicije u imovini, ali ga provjera za likvidaciju zanemaruje. Tijekom depega (gubitka vezanosti uz dolar) USDC-a u ožujku 2023. stablecoini na Aave V3 Avalancheu bili su zamrznuti, a likvidacije su se nastavile. Bridgeani USDC.e na Arbitrumu bio je 14. listopada 2026. zamrznut s omjerom zajma i vrijednosti (LTV) od 0 (blok 514855406 na Arbitrumu), a ipak se i dalje računa u health factor po svom pragu likvidacije od 78 % i može se preuzeti.
+- **L2 sequencer:** prije v3.7 sentinel ugovor na L2 tržištima mogao je blokirati likvidacije i zaduživanje dok sequencer ne radi i još neko vrijeme (grace period) nakon što se vrati. Aave V3.7, na kojem 14. listopada 2026. rade sva tržišta V3 na Arbitrumu, Optimismu i Baseu, uklonio je sentinel. Prekid rada i dalje zadržava svačije transakcije, i dužnika i likvidatora, ali pozicija koja je tijekom prekida pala ispod 1 sada se može likvidirati čim se sequencer vrati.
+- **Pauzirano (paused):** pauzirana imovina kolaterala ili duga blokira svaku likvidaciju u kojoj sudjeluje. Pri ukidanju pauze Aaveov hitni čuvar ili upravljanje mogu postaviti razdoblje odgode do 4 sata u kojem likvidacije ostaju blokirane kako bi dužnici mogli otplatiti dug ili dodati kolateral; zaduživanje je u tom razdoblju dopušteno.
+
+## Po čemu se likvidacije razlikuju na Aave V4?
+
+Aave V4, koji radi na Ethereumu od 30. ožujka 2026., a od tada i na Avalancheu, Arcu i Baseu, zamjenjuje close factor ciljnim health factorom i isplaćuje bonus koji raste kako health factor pada. V3 nastavlja raditi uz njega, s vlastitim pravilima.
+
+- **Ciljni health factor umjesto 50 % ili 100 %.** Likvidator na V4 može otplatiti samo onoliko duga koliko je potrebno da se pozicija vrati na ciljni health factor svog Spokea, 1,24 na Ethereum Main Spokeu (pročitano na lancu u bloku 26193995 na Ethereumu, 14. listopada 2026.). Iznimka je kad bi to ostavilo vrlo mali ostatak; tada se može otplatiti cijeli dug u toj rezervi.
+- **Rastući bonus.** Aaveova dokumentacija to naziva nizozemskom dražbom (Dutch auction). Na Ethereum Main Spokeu bonus počinje na 90 % maksimuma imovine tik ispod health factora 1 i dostiže puni maksimum na 0,90 ili niže. Za WETH, s maksimumom od 5,55 % (Aave V4 API, 14. listopada 2026.), to je oko 5,0 % tik ispod 1 i 5,55 % na 0,90. Naknada od 10 % uzima se iz bonusa, kao na V3.
+
+Tokenping prati i pozicije na Aave V4: svaki Spoke na Ethereumu, Avalancheu, Arcu i Baseu (20 na dan 16. listopada 2026.), s posebnim upozorenjem za svaki Spoke, jer svaki ima vlastitu poziciju i health factor.
+
+## Po čemu se likvidacija na Aaveu razlikuje od one na Morphu?
+
+Na Morpho Blue nema close factora: čim health factor pozicije padne ispod 1, likvidator može otplatiti sav dug u jednom pozivu. Poticaj ovisi samo o likvidacijskom LTV-u (LLTV) tržišta, oko 0,6 % pri LLTV-u od 98 %, uz gornju granicu od 15 % za niske LLTV-ove, a ako kolateral ponestane prije, preostali dug otpisuje se na teret zajmodavaca tog tržišta. [Kako funkcionira likvidacija na Morphu](/hr/blog/kako-funkcionira-likvidacija-na-morphu) donosi formulu, poticaj za svaki LLTV i primjer s izračunom.
+
+## Što možeš učiniti prije nego što health factor dođe do 1?
+
+Prije nego što health factor dođe do 1, možeš otplatiti dug ili dodati kolateral; oboje ga odmah podiže i nijedno ne stoji bonusa. Kad padne ispod 1, likvidator može djelovati prije tebe, a i djelomična likvidacija stoji te bonusa na preuzeti kolateral: 300 $ za 6.000 USDC otplaćenih uz bonus od 5 %.
+
+Čekanje do posljednjeg trenutka je rizično jer transakcije mogu propasti ili zapeti. U svibnju 2021. korisnik foruma Polygon pokušao je otplatiti dug pri health factoru 1,01, stalno je dobivao greške i bio je likvidiran prije nego što je otplata prošla. U prosincu 2024. korisnik Aaveova foruma opisao je više od sat vremena pokušaja otplate koji su stalno zapinjali prije nego što je pozicija likvidirana.
+
+Mogućnosti su obrađene u vodiču [kako podići health factor na Aaveu](/hr/blog/kako-izbjeci-likvidaciju-na-aaveu), a razlozi zbog kojih health factor pada iako ništa ne radiš u vodiču [zašto tvoj health factor na Aaveu pada sam od sebe](/hr/blog/zasto-je-pao-aave-health-factor).
+
+Tokenping provjerava tvoj health factor na Aaveu svakih 5 minuta, na svakom tržištu Aave V3 na 21 mreži i u svakom Spokeu Aave V4, i šalje ti poruku putem Signala, Telegrama ili e-pošte kad je ispod praga koji odabereš (od 1,1 do 10), ponavljajući je pri svakoj provjeri dok se ne oporavi. Likvidacija stoji barem bonus na preuzeti kolateral. Upozorenje postavljeno iznad 1,0 može ti dati vremena da otplatiš dug ili dodaš kolateral, ali nagli pomak cijene i dalje može spustiti health factor ispod 1 između dviju provjera, a upozorenje ne može djelovati umjesto tebe. Možeš [provjeriti svoj health factor na Aave V3](/hr/aave) ili pročitati [kako postaviti upozorenje za health factor](/hr/blog/postavljanje-aave-health-factor-upozorenja).
+
+## Izvori
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), aave-dao/aave-v3-origin, grana main: pravila za close factor, ostatke i nenaplativi dug (pristupljeno 14. listopada 2026.)
+- [Aave V3 ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): uvjeti za likvidaciju (pristupljeno 14. listopada 2026.)
+- [Značajke Aave v3.3](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): nenaplativi dug, close factor za cijelu poziciju i njegov primjer s GHO/USDC/DAI, prag od 2.000 $ (pristupljeno 14. listopada 2026.)
+- [Značajke Aave v3.1](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): razdoblje odgode likvidacije do 4 sata (pristupljeno 14. listopada 2026.)
+- [Aave V3 PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol): pauziranje i ukidanje pauze s razdobljem odgode ograničeno je na emergency admin ili pool admin, `MAX_GRACE_PERIOD = 4 hours` (pristupljeno 14. listopada 2026.)
+- [Aave dokumentacija o upravljanju](https://aave.com/docs/ecosystem/governance): Protocol Emergency Guardian ima ulogu emergency admin (pristupljeno 14. listopada 2026.)
+- [Aave V3 Risk Stewards README](https://github.com/aave-dao/aave-v3-risk-stewards): parametri koje stewardi smiju mijenjati, unutar zadanih granica (pristupljeno 14. listopada 2026.)
+- [Aave v3.7, uklanjanje PriceOracleSentinela](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/sentinel-removal.md) (pristupljeno 14. listopada 2026.)
+- [Referenca za ugovor Aave V3 Pool](https://aave.com/docs/aave-v3/smart-contracts/pool), koja i dalje navodi close factor iz vremena prije v3.3 (pristupljeno 14. listopada 2026.)
+- [Aave Umbrella dokumentacija](https://aave.com/docs/aave-v3/umbrella) (pristupljeno 14. listopada 2026.)
+- [Aave V3 PoolDataProvider na Ethereumu](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): konfiguracija rezervi i naknada protokola za likvidaciju za WETH, WBTC i USDC u bloku 26193284, ponovno pročitano bez promjena u bloku 26193992 (pristupljeno 14. listopada 2026.)
+- [Aave V3 PoolDataProvider na Arbitrumu](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): ista očitanja za WETH, WBTC, nativni USDC i USDC.e u bloku 514855406 (pristupljeno 14. listopada 2026.)
+- [Aave V3 Ethereum Core Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): E-Mode kategorija 1 „ETH correlated“ u bloku 26193288 (pristupljeno 14. listopada 2026.)
+- [Aave V4 dokumentacija o likvidacijama](https://aave.com/docs/aave-v4/positions/liquidations) (pristupljeno 14. listopada 2026.)
+- [Pregled Aave V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md) i [V4 LiquidationLogic.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/libraries/LiquidationLogic.sol), aave/aave-v4 main (pristupljeno 14. listopada 2026.)
+- [Aave V4 Ethereum Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485): ciljni health factor i postavke bonusa u bloku 26193995 (pristupljeno 14. listopada 2026.)
+- [Javni GraphQL API za Aave V4](https://api.v4.aave.com/graphql), upit `reserves`: maksimalni likvidacijski bonus i naknada za likvidaciju za WETH na Ethereum Main Spokeu (pristupljeno 14. listopada 2026.)
+- [Dnevnik promjena Aave dokumentacije](https://aave.com/docs/resources/changelog): datumi pokretanja V4 (pristupljeno 14. listopada 2026.)
+- [Gauntlet, „Aave Resilient Through USDC Volatility“](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), objavljeno 17. ožujka 2023. (pristupljeno 14. listopada 2026.)
+- [Forum Polygon, „Liquidation on polygon AAVE -JSON ERROR“](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067), objavljeno 18. svibnja 2021. (pristupljeno 14. listopada 2026.)
+- [Aave forum, „Repeatedly Failed Repayment Attempts Leading to Liquidation“](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379), objavljeno 23. prosinca 2024. (pristupljeno 14. listopada 2026.)
+- [Pull request #2084 za Aave interface](https://github.com/aave/interface/pull/2084), koji je u svibnju 2024. uklonio jedinu integraciju upozorenja u aplikaciji (pristupljeno 14. listopada 2026.)
+
+_Edukativni sadržaj, a ne financijski savjet. Upozorenja smanjuju rizik, ali ne sprječavaju likvidaciju._
