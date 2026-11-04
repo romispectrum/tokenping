@@ -2,6 +2,8 @@
 import type { PostContent } from "~~/content/blog/types";
 import AaveEMode from "~~/content/blog/uk/aave-e-mode-poiasnennia.mdx";
 import AaveHealthFactor from "~~/content/blog/uk/aave-health-factor-poiasnennia.mdx";
+import AaveV4VsV3 from "~~/content/blog/uk/aave-v4-vs-v3-vidminnosti.mdx";
+import AaveVsMorpho from "~~/content/blog/uk/aave-vs-morpho-porivniannia.mdx";
 import SafeAaveHealthFactor from "~~/content/blog/uk/bezpechnyi-health-factor-aave.mdx";
 import WhyAaveWithdrawOrBorrowFails from "~~/content/blog/uk/chomu-ne-vdaietsia-vyvesty-abo-pozychyty-na-aave.mdx";
 import WhyAaveHealthFactorDropped from "~~/content/blog/uk/chomu-vpav-health-factor-aave.mdx";
@@ -53,4 +55,6 @@ export const POST_CONTENT: PostContent = {
   "yak-pratsiuie-likvidatsiia-na-morpho": HowMorphoLiquidationWorks,
   "morpho-peredlikvidatsiia": MorphoPreLiquidation,
   "morpho-midnight-pozyky-z-fiksovanoiu-stavkoiu": MorphoMidnightFixedRateLoans,
+  "aave-vs-morpho-porivniannia": AaveVsMorpho,
+  "aave-v4-vs-v3-vidminnosti": AaveV4VsV3,
 };

@@ -14,6 +14,8 @@ import AaveMarketWindDown from "~~/content/blog/hi/aave-market-band-hone-par.mdx
 import WhyAaveWithdrawOrBorrowFails from "~~/content/blog/hi/aave-par-withdraw-ya-borrow-kyon-fail-hota-hai.mdx";
 import ShortFiatWithAave from "~~/content/blog/hi/aave-se-fiat-short-kaise-karein.mdx";
 import SafeAaveHealthFactor from "~~/content/blog/hi/aave-surakshit-health-factor.mdx";
+import AaveV4VsV3 from "~~/content/blog/hi/aave-v4-vs-v3-antar.mdx";
+import AaveVsMorpho from "~~/content/blog/hi/aave-vs-morpho-tulna.mdx";
 import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/hi/aave-ya-morpho-par-liquidate-ho-gaye-ab-kya.mdx";
 import CryptoBackedLoans from "~~/content/blog/hi/crypto-backed-loan-kya-hai.mdx";
 import WhoNeedsHealthFactorAlerts from "~~/content/blog/hi/health-factor-alert-kiske-liye-hai.mdx";
@@ -53,4 +55,6 @@ export const POST_CONTENT: PostContent = {
   "morpho-liquidation-kaise-hoti-hai": HowMorphoLiquidationWorks,
   "morpho-pre-liquidation-kya-hai": MorphoPreLiquidation,
   "morpho-midnight-fixed-rate-loan": MorphoMidnightFixedRateLoans,
+  "aave-vs-morpho-tulna": AaveVsMorpho,
+  "aave-v4-vs-v3-antar": AaveV4VsV3,
 };

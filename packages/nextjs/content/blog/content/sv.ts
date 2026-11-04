@@ -4,6 +4,8 @@ import AaveHealthFactor from "~~/content/blog/sv/aave-health-factor-forklarad.md
 import AaveAlertsDoNotDisturb from "~~/content/blog/sv/aave-larm-i-stor-ej-lage.mdx";
 import AaveLiquidationPrice from "~~/content/blog/sv/aave-likvidationspris.mdx";
 import AaveInterestRates from "~~/content/blog/sv/aave-rantor.mdx";
+import AaveV4VsV3 from "~~/content/blog/sv/aave-v4-vs-v3-skillnader.mdx";
+import AaveVsMorpho from "~~/content/blog/sv/aave-vs-morpho-jamforelse.mdx";
 import ShortFiatWithAave from "~~/content/blog/sv/blanka-fiatvaluta-med-aave.mdx";
 import CryptoBackedLoans from "~~/content/blog/sv/lan-med-krypto-som-sakerhet.mdx";
 import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/sv/likviderad-pa-aave-eller-morpho-vad-nu.mdx";
@@ -53,4 +55,6 @@ export const POST_CONTENT: PostContent = {
   "sa-fungerar-likvidation-pa-morpho": HowMorphoLiquidationWorks,
   "morpho-forlikvidation": MorphoPreLiquidation,
   "morpho-midnight-lan-med-fast-ranta": MorphoMidnightFixedRateLoans,
+  "aave-vs-morpho-jamforelse": AaveVsMorpho,
+  "aave-v4-vs-v3-skillnader": AaveV4VsV3,
 };

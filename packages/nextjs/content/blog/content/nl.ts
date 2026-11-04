@@ -6,6 +6,8 @@ import AaveHealthFactor from "~~/content/blog/nl/aave-health-factor-uitgelegd.md
 import AvoidAaveLiquidation from "~~/content/blog/nl/aave-liquidatie-voorkomen.mdx";
 import AaveLiquidationPrice from "~~/content/blog/nl/aave-liquidatieprijs.mdx";
 import AaveInterestRates from "~~/content/blog/nl/aave-rente.mdx";
+import AaveV4VsV3 from "~~/content/blog/nl/aave-v4-vs-v3-verschillen.mdx";
+import AaveVsMorpho from "~~/content/blog/nl/aave-vs-morpho-vergelijking.mdx";
 import AaveMarketWindDown from "~~/content/blog/nl/afbouw-van-een-aave-markt.mdx";
 import ShortFiatWithAave from "~~/content/blog/nl/fiat-shorten-met-aave.mdx";
 import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/nl/geliquideerd-op-aave-of-morpho-wat-nu.mdx";
@@ -53,4 +55,6 @@ export const POST_CONTENT: PostContent = {
   "hoe-werkt-liquidatie-op-morpho": HowMorphoLiquidationWorks,
   "morpho-pre-liquidatie": MorphoPreLiquidation,
   "morpho-midnight-leningen-met-vaste-rente": MorphoMidnightFixedRateLoans,
+  "aave-vs-morpho-vergelijking": AaveVsMorpho,
+  "aave-v4-vs-v3-verschillen": AaveV4VsV3,
 };

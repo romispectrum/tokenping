@@ -1,0 +1,175 @@
+export const meta = {
+  slug: "aave-v4-vs-v3-perbedaan",
+  title: "Aave V4 vs V3: apa yang berubah bagi pinjaman Anda",
+  description:
+    "Aave V4 vs V3 bagi peminjam: Hub dan Spoke, faktor kesehatan per Spoke, likuidasi ke faktor kesehatan target, premi risiko, Spoke E-Mode, dan migrasi.",
+  h1: "Aave V4 vs V3: apa bedanya, dan apa artinya bagi pinjaman Anda?",
+  publishedAt: "2026-11-04",
+  primaryQuestion: "Apa perbedaan antara Aave V3 dan Aave V4 bagi peminjam?",
+  readingMinutes: 13,
+  figuresAsOf: "2026-11-04",
+};
+
+<ShortAnswer>
+  Aave V4 aktif di Ethereum pada 30 Maret 2026 dan kini juga berjalan di Avalanche, Arc, dan Base. V3 tetap berjalan di
+  sampingnya dan masih memegang sebagian besar dana. Di V4 Anda meminjam di sebuah Spoke, pasar dengan aturannya sendiri
+  yang menarik likuiditas dari Hub bersama, dan setiap Spoke memiliki faktor kesehatan (health factor) sendiri. Satu
+  faktor jaminan (collateral factor) per aset menggantikan LTV dan ambang likuidasi V3, sehingga Anda dapat meminjam
+  sampai tepat di faktor kesehatan 1,00. Likuidasi melunasi utang secukupnya untuk mengangkat Anda ke faktor kesehatan
+  target Spoke (1,24 di Main Spoke) alih-alih 50% atau 100% seperti di V3, dan bonusnya membesar saat faktor kesehatan
+  Anda turun. Suku bunga ditetapkan per Hub, ditambah premi risiko untuk jaminan yang lebih berisiko. Tidak ada yang
+  berpindah sendiri: pinjaman V3 tetap di V3 sampai Anda memindahkannya.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Angka dan nomor blok saat angka tersebut dibaca: content/blog/snapshots/aave-v4-vs-v3.md */}
+
+## Apa itu Aave V4, dan kapan mulai aktif?
+
+Aave V4 adalah versi baru protokol pinjaman Aave dengan kontraknya sendiri. V4 tidak meningkatkan pasar V3 yang sudah ada. Menurut changelog Aave, V4 diluncurkan di Ethereum pada 30 Maret 2026 dengan tiga Hub dan sebelas Spoke, lalu di Avalanche (15 Juli), Arc (16 September), dan Base (7 Oktober 2026). V3 berjalan di 21 jaringan; V4 berjalan di empat, dan Arc hanya memiliki V4.
+
+V3 masih jauh lebih besar. Pada 4 November 2026 DefiLlama menghitung sekitar US$15,6 miliar di Aave V3 dan sekitar US$0,79 miliar di V4, keduanya setelah dikurangi pinjaman, dengan sekitar US$11,4 miliar dan US$0,47 miliar yang dipinjam. Pembaruan Oktober dari Aave Labs menyebut V4 di atas US$1,5 miliar simpanan dan US$450 juta pinjaman aktif.
+
+Bagi peminjam, kedua versi berbeda dalam hal tempat posisi Anda berada, berapa banyak yang dapat Anda pinjam, bagaimana besar likuidasi ditentukan, dan bagaimana suku bunga Anda ditetapkan. Tabel di bawah merangkumnya; bagian-bagian setelahnya menjelaskan setiap baris.
+
+## Apa yang berubah bagi peminjam, dan apa yang tetap sama?
+
+| Topik                                       | Aave V3                                                                                             | Aave V4                                                                                                                |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Tempat pinjaman Anda berada                 | Sebuah pasar: satu Pool di satu jaringan                                                            | Sebuah Spoke, yang menarik likuiditas dari satu Hub atau lebih                                                         |
+| Faktor kesehatan                            | Satu per pasar                                                                                      | Satu per Spoke                                                                                                         |
+| Rumus                                       | Σ(jaminan × ambang likuidasi) ÷ utang                                                               | Σ(jaminan × faktor jaminan) ÷ utang                                                                                    |
+| Batas pinjaman                              | LTV, ditetapkan di bawah ambang likuidasi                                                           | Faktor jaminan itu sendiri: Anda dapat meminjam sampai faktor kesehatan 1,00                                           |
+| Garis likuidasi                             | Faktor kesehatan di bawah 1                                                                         | Faktor kesehatan di bawah 1 (tidak berubah)                                                                            |
+| Paling banyak dilunasi dalam satu panggilan | 50% dari utang Anda, atau 100% pada faktor kesehatan pada atau di bawah 0,95 atau pada posisi kecil | Cukup untuk membawa Anda ke faktor kesehatan target Spoke                                                              |
+| Bonus likuidasi                             | Tetap per aset jaminan                                                                              | Naik saat faktor kesehatan Anda turun, hingga maksimum per aset                                                        |
+| Aturan dust (sisa kecil)                    | Harus tersisa US$1.000, atau semuanya diambil                                                       | Harus tersisa US$1.000, atau semuanya diambil (tidak berubah)                                                          |
+| Suku bunga                                  | Satu kurva utilisasi per aset per pasar                                                             | Satu kurva utilisasi per aset per Hub, ditambah User Risk Premium                                                      |
+| Perubahan parameter                         | Mengenai setiap posisi terbuka sekaligus                                                            | Pengaturan baru biasanya berlaku saat Anda berikutnya meminjam atau menarik, kecuali tata kelola memperbarui yang lama |
+| Aset berkorelasi                            | Kategori E-Mode di dalam sebuah pasar                                                               | Spoke terpisah untuk pasangan berkorelasi, seperti Spoke Lido dan EtherFi                                              |
+| Bunga dan harga                             | Utang tumbuh dengan bunga; harga oracle menggerakkan faktor kesehatan                               | Sama                                                                                                                   |
+| Pinjaman Anda yang sudah ada                | Tetap di V3                                                                                         | Dibuka baru; tidak ada yang bermigrasi sendiri                                                                         |
+
+## Bagaimana Hub dan Spoke V4 bekerja?
+
+Hub memegang likuiditas bersama setiap aset dan menetapkan suku bunganya. Spoke adalah yang Anda gunakan: Spoke mencantumkan aset yang dapat Anda setor dan pinjam, menetapkan faktor jaminannya, memilih oracle (sumber harga), dan memegang pengaturan likuidasi. Dokumentasi Aave menjelaskannya begini: pengguna berinteraksi dengan Spoke, yang mengalirkan likuiditas ke dan dari Hub, dan risiko diisolasi di tingkat Spoke.
+
+Di V3, sebuah pasar menjalankan kedua tugas itu. Pasar Ethereum Core memegang USDC-nya sendiri dan menetapkan aturannya sendiri, dan pasar Prime memegang USDC terpisah dengan aturan terpisah. Di V4, beberapa Spoke dapat meminjamkan USDC yang sama dari satu Hub sementara masing-masing mempertahankan pengaturan risikonya sendiri, dan satu Spoke dapat meminjam dari lebih dari satu Hub: Bluechip Spoke di Ethereum meminjamkan USDC dari Core Hub maupun Prime Hub.
+
+API V4 Aave mencantumkan 24 Spoke dan 8 Hub pada 4 November 2026:
+
+| Jaringan  | Hub                                       | Spoke                                                                                                                                                                                                      |
+| --------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ethereum  | Core, Prime, Plus, Global Dollar, Sentora | Main, Bluechip, Lido, EtherFi, Kelp, Lombard, Ethena Ecosystem, Ethena Correlated, Gold, PAXG Gold, Forex, USDG Pendle, Maple SyrupUSDG; di Hub milik Sentora: RLUSD Yield, OUSD Yield, dan Bluechip kedua |
+| Avalanche | Core                                      | Main, AVAX Correlated, Forex, Ethena Ecosystem                                                                                                                                                             |
+| Arc       | Core                                      | Main, Forex, Maple SyrupUSDC                                                                                                                                                                               |
+| Base      | Coinbase Stocks                           | Coinbase Stocks                                                                                                                                                                                            |
+
+Sentora adalah kurator luar pertama di V4: menurut Aave Labs, Sentora menjalankan Hub dan Spoke-nya sendiri di Ethereum serta menetapkan jaminan, parameter, kurva suku bunga, dan oracle-nya, sementara Aave DAO memiliki kontraknya. Spoke di Base meminjamkan USDC terhadap saham tokenisasi, yang dibahas di [meminjam dengan jaminan saham tokenisasi](/id/blog/saham-tokenisasi-sebagai-jaminan#di-mana-anda-dapat-meminjam-dengan-jaminan-saham-tokenisasi).
+
+## Bagaimana faktor kesehatan bekerja di Spoke V4?
+
+Faktor kesehatan memiliki arti yang sama di kedua versi: jaminan terbobot dibagi utang, dan di bawah 1 Anda dapat dilikuidasi. Di V4, bobotnya adalah faktor jaminan (CF). Contoh dari Aave sendiri: ETH senilai US$10.000 pada CF 80% terhadap GHO senilai US$6.000 menghasilkan 1,333. [Bagian V4 dalam panduan faktor kesehatan](/id/blog/faktor-kesehatan-aave#apakah-faktor-kesehatan-berbeda-di-aave-v4) membahas dasarnya; tiga konsekuensi lebih penting daripada rumusnya.
+
+**Satu faktor kesehatan per Spoke.** Dokumentasi Aave menyebutkan bahwa posisi di Spoke yang berbeda tidak saling memengaruhi, dan Anda hanya dapat meminjam terhadap jaminan yang disetor ke Spoke yang sama. ETH di Main Spoke tidak berguna bagi pinjaman di Gold Spoke. Di V3 hal yang sama berlaku antarpasar, tetapi di dalam satu pasar semua jaminan Anda menjamin semua utang Anda.
+
+**Tidak ada jarak antara batas pinjaman dan garis likuidasi.** Di V3 Anda dapat meminjam hingga LTV (rasio pinjaman terhadap nilai), yang berada di bawah ambang likuidasi: WETH di Ethereum Core memiliki LTV 81% dan ambang 84% pada 4 November 2026, jadi meminjam maksimum terhadap WETH saja menyisakan faktor kesehatan sekitar 1,037 ([mengapa meminjam maksimum menyisakan sekitar 1,03](/id/blog/faktor-kesehatan-aave#mengapa-meminjam-maksimum-hanya-menyisakan-faktor-kesehatan-sekitar-103)). Di V4 tidak ada LTV terpisah. Dokumentasi Aave menyebutkan bahwa pinjaman atau penarikan hanya diblokir jika akan membawa faktor kesehatan di bawah 1,0, dan kodenya memeriksa tepat hal itu. Posisi yang dipinjam hingga maksimum di V4 dimulai tepat di garis likuidasi, dan sedikit saja tambahan bunga atau pergerakan harga dapat melewatinya. Tentukan margin Anda sendiri.
+
+**Aset yang sama dapat membawa bobot yang sama.** Sebagian parameter diselaraskan antarversi. WETH dihitung 84% baik di V3 Ethereum Core maupun di V4 Main Spoke pada 4 November 2026, jadi 10 WETH terhadap 12.000 USDC memiliki faktor kesehatan yang sama dan harga likuidasi US$1.428,57 yang sama di keduanya.
+
+### Apa yang terjadi saat tata kelola mengubah faktor jaminan?
+
+Di V3, ambang likuidasi yang lebih rendah berlaku untuk setiap posisi terbuka begitu perubahan dieksekusi, yang dapat mendorong peminjam di bawah 1 tanpa pergerakan harga apa pun ([penyebab 4 dalam mengapa faktor kesehatan Anda turun](/id/blog/mengapa-faktor-kesehatan-aave-turun#penyebab-4-apakah-tata-kelola-atau-risk-stewards-memangkas-ambang-likuidasi)).
+
+V4 menyimpan riwayat faktor jaminan, bonus maksimum, dan biaya likuidasi setiap aset. Saat tata kelola (governance) menambahkan konfigurasi baru, posisi Anda tetap memakai konfigurasi yang terikat padanya sampai Anda meminjam, menarik, atau menonaktifkan jaminan; menyetor dan melunasi tidak mengubahnya. Jika posisi Anda akan tidak sehat dengan pengaturan terbaru, pinjaman atau penarikan itu dibatalkan (revert). Jadi setelah pemotongan, Anda mungkin mendapati bahwa Anda tidak dapat menarik jaminan meskipun faktor kesehatan Anda tampak baik.
+
+Perlindungan itu tidak mutlak. Tata kelola juga dapat mengedit konfigurasi yang sudah ada, yang mengenai setiap posisi yang terikat padanya, atau memaksa sebuah posisi pindah ke konfigurasi terbaru. Pada 28 Oktober 2026, satu payload tata kelola (AIP 536) menaikkan WETH dari 83% ke 84% di V3 Ethereum Core dan mengedit konfigurasi WETH yang sudah ada di V4 Main Spoke dari 83% ke 84% dalam transaksi yang sama. Perubahan itu menguntungkan peminjam; edit ke arah sebaliknya akan bekerja dengan cara yang sama.
+
+## Apa bedanya likuidasi di V4?
+
+Di V3, likuidator dapat melunasi hingga 50% dari utang Anda selama faktor kesehatan Anda di atas 0,95 dan jaminan maupun utang yang terlibat bernilai setidaknya US$2.000, dan hingga 100% dalam kasus lain ([berapa yang dapat dilikuidasi sekaligus](/id/blog/cara-kerja-likuidasi-aave#berapa-bagian-utang-anda-yang-dapat-dilikuidasi-sekaligus)). Bonusnya tetap per aset jaminan: 5% untuk WETH di Ethereum Core.
+
+Di V4 tidak ada close factor (bagian utang yang dapat dilunasi sekaligus). Likuidator dapat melunasi utang sebanyak yang diperlukan untuk membawa faktor kesehatan Anda ke target Spoke, dan tidak lebih, kecuali hal itu akan menyisakan utang atau jaminan kurang dari US$1.000. Bonusnya dimulai dari sebagian maksimum aset tepat di bawah 1 dan naik secara linear hingga maksimum penuh pada faktor kesehatan tertentu. Pengaturannya pada 4 November 2026, dibaca on-chain:
+
+| Spoke                                                         | Faktor kesehatan target  | Bonus penuh pada | Bonus tepat di bawah 1 |
+| ------------------------------------------------------------- | ------------------------ | ---------------- | ---------------------- |
+| Main (Ethereum, Avalanche, Arc), Coinbase Stocks (Base)       | 1,24                     | 0,90             | 90% dari maksimum      |
+| Bluechip (Ethereum)                                           | 1,174                    | 0,90             | 90% dari maksimum      |
+| Gold (Ethereum)                                               | 1,3075                   | 0,90             | 90% dari maksimum      |
+| Lido, EtherFi, Kelp, Lombard, Ethena, Forex, dan Spoke serupa | sekitar 1,01 hingga 1,06 | 0,99             | Maksimum penuh, datar  |
+
+### Contoh perhitungan: 10 WETH terhadap 12.000 USDC di kedua versi
+
+Ambil posisi yang sama di V3 Ethereum Core (ambang 84%, bonus 5%) dan di V4 Main Spoke (CF 84%, bonus maksimum 5,55%, target 1,24). Keduanya dapat dilikuidasi begitu ETH di bawah US$1.428,57. Inilah jumlah terbesar yang dapat diambil satu likuidasi pada dua harga:
+
+| Harga ETH (faktor kesehatan) | Versi | Bonus | Utang dilunasi       | Bonus yang Anda bayar | Faktor kesehatan sesudahnya | Sisa utang  |
+| ---------------------------- | ----- | ----- | -------------------- | --------------------- | --------------------------- | ----------- |
+| US$1.400 (0,98)              | V3    | 5%    | US$6.000 (50%)       | US$300                | 1,078                       | US$6.000    |
+| US$1.400 (0,98)              | V4    | 5,11% | US$8.736,81 (72,8%)  | US$446,10             | 1,24                        | US$3.263,19 |
+| US$1.330 (0,931)             | V3    | 5%    | US$12.000 (100%)     | US$600                | tidak ada (tanpa utang)     | US$0        |
+| US$1.330 (0,931)             | V4    | 5,38% | US$10.450,22 (87,1%) | US$562,01             | 1,24                        | US$1.549,78 |
+
+Dua hal menonjol. Tepat di bawah 1, likuidasi V4 di Main Spoke dapat mengambil bagian utang Anda yang lebih besar daripada 50% di V3, karena target 1,24 memerlukan pelunasan yang besar, dan Anda membayar bonus yang lebih besar dalam dolar. Lebih dalam lagi, V3 dapat melunasi semuanya sementara V4 tetap berhenti di target dan menyisakan posisi pada 1,24. Bagaimanapun, Anda tetap memegang USDC yang Anda pinjam; yang hilang adalah bonusnya. Likuidator selalu dapat memilih untuk melunasi lebih sedikit daripada jumlah maksimum ini.
+
+Di Spoke bergaya E-Mode, targetnya sedikit di atas 1 dan bonusnya datar 1% untuk wstETH dan weETH. Bonusnya kecil, tetapi dengan CF 95,5%, setiap langkah di bawah 1 memerlukan pelunasan yang besar: di Lido Spoke, posisi pada faktor kesehatan 0,987 dapat dilunasi sekitar 55% utangnya dalam satu likuidasi. [Bagian V4 dalam panduan likuidasi](/id/blog/cara-kerja-likuidasi-aave#apa-bedanya-likuidasi-di-aave-v4) memuat rumus bonusnya.
+
+## Apa bedanya suku bunga di V4?
+
+Di V3, setiap aset memiliki kurva utilisasi di setiap pasar: USDC di Ethereum Core dan USDC di Arbitrum memiliki pool dan suku bunga terpisah ([cara kerja suku bunga Aave](/id/blog/suku-bunga-aave)). V4 mempertahankan kurvanya tetapi memindahkannya ke Hub, sehingga setiap Spoke yang meminjam USDC dari Hub yang sama membayar suku bunga dasar yang sama, dan token yang sama dapat berbiaya berbeda dari dua Hub. Pada 4 November 2026, API Aave menunjukkan USDC di Bluechip Spoke pada 5,41% dari Core Hub dan 4,45% dari Prime Hub.
+
+Di atas suku bunga dasar, V4 menambahkan User Risk Premium. Setiap aset jaminan memiliki risiko jaminan (collateral risk) dari 0% hingga 1.000% di setiap Spoke; premi Anda adalah rata-rata risiko jaminan Anda, dengan menghitung yang paling aman lebih dulu dan hanya sebanyak jaminan yang menutup utang Anda. Contoh Aave: premi 50% pada suku bunga dasar 5% berarti Anda membayar 7,5%.
+
+Sebagian besar Spoke masih menetapkan setiap risiko jaminan ke 0, sehingga peminjamnya hanya membayar suku bunga dasar. Pengecualian pada 4 November 2026 antara lain syrupUSDC di Maple Spoke milik Arc (20%), USDe di Ethena Ecosystem Spoke milik Avalanche (16,5%), SPCXc di Coinbase Stocks Spoke (10%), dan beberapa aset di Spoke milik Sentora. Pinjaman USDC yang hanya dijamin syrupUSDC di Arc, dengan suku bunga dasar 3,06%, berbiaya sekitar 3,7%.
+
+Premi Anda dihitung ulang saat Anda meminjam, menarik, mengubah jaminan, atau dilikuidasi, bukan saat Anda menyetor atau melunasi. Jika tata kelola menurunkan risiko suatu aset, Anda baru mendapat manfaatnya setelah salah satu tindakan itu atau penyegaran manual; jika tata kelola menaikkannya, premi Anda tetap sampai saat itu, kecuali tata kelola memaksakan pembaruan. Selengkapnya tentang GHO dan suku bunga V4 ada di [cara suku bunga ditetapkan di Aave V4](/id/blog/suku-bunga-aave#bagaimana-suku-bunga-ditetapkan-untuk-gho-dan-di-aave-v4).
+
+## Apa yang menggantikan E-Mode di Aave V4?
+
+Di V3, E-Mode adalah sakelar di dalam sebuah pasar: Anda memilih kategori seperti "ETH correlated" di Ethereum Core (LTV 93%, ambang 95%, bonus 1% pada 4 November 2026), dan seluruh posisi Anda di pasar itu memakai pengaturan tersebut ([cara kerja E-Mode](/id/blog/e-mode-aave)).
+
+V4 tidak memiliki sakelar E-Mode. Sebagai gantinya, pasangan berkorelasi mendapat Spoke sendiri: dokumentasi Aave menyebut Spoke Lido, EtherFi, dan Kelp sebagai "eSpokes", dan proposal aktivasinya melabeli ketiganya, bersama Lombard BTC, sebagai e-Mode Spoke. Lido Spoke menerima wstETH sebagai jaminan dengan CF 95,5% dan hanya meminjamkan WETH; EtherFi Spoke melakukan hal yang sama dengan weETH. Keduanya memiliki bonus likuidasi 1% pada 4 November 2026.
+
+Perbedaan praktisnya: di V3 Anda dapat memindahkan posisi masuk dan keluar dari E-Mode selama posisi tetap sehat. Di V4, loop (siklus pinjaman dengan leverage) di Lido Spoke adalah posisi yang terpisah dari apa pun yang Anda pegang di Main Spoke. Untuk beralih, Anda menutup yang satu dan membuka yang lain.
+
+## Apakah Aave V3 tetap berjalan, dan apakah pinjaman V3 pindah ke V4?
+
+V3 tetap berjalan, dan tidak ada yang berpindah sendiri. Temp check Aave Labs pada Februari 2026, kerangka "Aave Will Win", menyebutkan "no need for a rushed, or forced, migration" (tidak perlu migrasi yang terburu-buru atau dipaksakan) dan bahwa V3 akan berjalan berdampingan dengan V4 sampai DAO memutuskan lain. Dokumen itu juga menyebutkan bahwa begitu V4 matang, parameter V3 "could be gradually adjusted to encourage migration" (dapat disesuaikan secara bertahap untuk mendorong migrasi), dan bahwa V3 tetap terbuka untuk penarikan tanpa batas waktu. Beberapa pasar V3 sudah ditutup karena alasan lain, seperti dijelaskan [panduan penutupan pasar](/id/blog/penutupan-pasar-aave#pasar-aave-mana-yang-sedang-ditutup).
+
+Dokumentasi V4 Aave tidak menyebutkan alat apa pun yang memindahkan posisi V3 ke V4, dan juga tidak ada alat untuk memindahkan posisi dari satu Spoke V4 ke Spoke lain. Memindahkan secara manual berarti melunasi utang V3, menarik jaminan, menyetornya ke Spoke V4, dan meminjam lagi, dalam urutan itu, sehingga jaminan Anda tidak pernah ditarik selama masih ada utang yang bergantung padanya. Beberapa alat pihak ketiga menggabungkan langkah-langkah ini menjadi satu transaksi. Bagaimanapun, periksa dulu faktor jaminan, faktor kesehatan target, dan suku bunga Spoke yang baru: faktor kesehatan yang sama dapat berarti margin yang berbeda dan besar likuidasi yang berbeda di sana.
+
+## Apa yang perlu Anda pantau jika memiliki pinjaman di keduanya?
+
+- **Dua faktor kesehatan atau lebih.** Setiap pasar V3 dan setiap Spoke V4 memiliki faktor kesehatannya sendiri. Pinjaman V3 yang sehat tidak membantu pinjaman V4 yang mendekati 1.
+- **Margin awal yang berbeda.** Posisi V4 yang dipinjam hingga maksimum berada di 1,00, sementara LTV V3 menyisakan jarak. Jangan meniru kebiasaan V3 "meminjam sampai batas".
+- **Besar likuidasi yang berbeda.** Di Main Spoke, satu likuidasi dapat mengambil lebih dari separuh utang Anda; di V3 paling banyak separuh selama faktor kesehatan Anda di atas 0,95.
+- **Perubahan yang mengenai keduanya.** Satu payload mengubah WETH di kedua versi pada 28 Oktober 2026. Pantau tata kelola untuk keduanya.
+- **Suku bunga yang bergerak terpisah.** Suku bunga V3 mengikuti pool setiap pasar; suku bunga V4 mengikuti Hub, ditambah premi Anda.
+- **Perubahan V3 di masa depan.** Jika tata kelola mulai menyesuaikan V3 untuk mendorong peminjam ke V4, perkirakan suku bunga atau parameter akan bergerak merugikan pinjaman V3.
+
+## Dapatkah peringatan mencakup kedua versi?
+
+Ya, sebagai peringatan terpisah. Tokenping memeriksa faktor kesehatan Anda setiap 5 menit di setiap pasar Aave V3 di 21 jaringan dan di semua 24 Spoke V4 di Ethereum, Avalanche, Arc, dan Base, dengan satu peringatan per pasar V3 atau Spoke V4. Tokenping mengirim pesan kepada Anda lewat Signal, Telegram, atau email saat faktor kesehatan berada di bawah ambang batas yang Anda pilih (1,1 hingga 10), dan mengulanginya pada setiap pemeriksaan sampai pulih.
+
+Di V4, ambang batas lebih penting, karena batas pinjaman adalah garis likuidasi: tetapkan jauh di atas 1 agar pesan tiba saat Anda masih punya waktu untuk melunasi atau menambah jaminan, sebelum likuidasi menurunkan utang Anda ke target Spoke. Peringatan tidak dapat bertindak untuk Anda, dan pergerakan cepat dapat melewati 1 di antara dua pemeriksaan. [Seberapa besar penyangga yang perlu dijaga](/id/blog/faktor-kesehatan-aave-yang-aman#berapa-besar-penyangga-yang-anda-butuhkan-agar-sempat-bertindak) membantu Anda memilih angka.
+
+Anda dapat [memeriksa posisi Aave V3 dan V4 Anda](/id/aave) tanpa membayar; peringatan berbiaya <AlertPrice />, dibayar di Arbitrum. Tokenping masih dalam tahap beta dan tidak memiliki jaminan uptime. Cara pengaturannya ada di [cara mengatur peringatan faktor kesehatan](/id/blog/cara-mengatur-peringatan-faktor-kesehatan-aave).
+
+## Sumber
+
+- [Ikhtisar Aave V4](https://aave.com/docs/aave-v4.md): Hub, Spoke, suku bunga per aset Hub, User Risk Premium, faktor kesehatan target dan aturan dust US$1.000 (diakses 4 November 2026)
+- [Posisi pengguna Aave V4](https://aave.com/docs/aave-v4/positions.md), [meminjam](https://aave.com/docs/aave-v4/positions/borrow.md) dan [kondisi posisi](https://aave.com/docs/aave-v4/positions/conditions.md): posisi per Spoke, pinjaman diblokir di bawah 1,0, jaminan di Spoke yang sama, konfigurasi dinamis dan pembaruan premi (diakses 4 November 2026)
+- [Spoke Aave V4](https://aave.com/docs/aave-v4/liquidity/spokes.md) dan [likuidasi](https://aave.com/docs/aave-v4/positions/liquidations.md): Spoke yang diluncurkan di Ethereum dan nama eSpoke, bonus lelang Belanda (Dutch auction) (diakses 4 November 2026)
+- [Changelog dokumentasi Aave](https://aave.com/docs/resources/changelog.md): tanggal peluncuran V4 di Ethereum, Avalanche, Arc dan Base (diakses 4 November 2026)
+- [Ikhtisar aave/aave-v4](https://github.com/aave/aave-v4/blob/main/docs/overview.md), [LiquidationLogic.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/libraries/LiquidationLogic.sol) dan [Spoke.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/Spoke.sol), commit a3ef63e: premi risiko, konfigurasi risiko dinamis, mesin likuidasi, pemeriksaan faktor kesehatan (diakses 4 November 2026)
+- [API GraphQL publik Aave V4](https://api.v4.aave.com/graphql), `chains`, `hubs`, `spokes` dan `reserves`: Spoke, Hub, faktor jaminan, risiko jaminan, bonus dan suku bunga pinjaman (diakses 4 November 2026)
+- Pembacaan on-chain `getLiquidationConfig` dan `getReserve` setiap Spoke V4, misalnya [Ethereum Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485#readContract) pada blok 26341712 (diakses 4 November 2026)
+- [Transaksi eksekusi AIP 536](https://etherscan.io/tx/0x226c48626ec314b194dfa080e992dcabfa1526f813835f81914e1885d5af1275), 28 Oktober 2026: WETH di V3 Ethereum Core dan V4 Main Spoke (diakses 4 November 2026)
+- [PoolDataProvider Aave V3, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) dan [Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract): LTV, ambang dan bonus WETH, kategori E-Mode 1 pada blok 26341695 (diakses 4 November 2026)
+- [LiquidationLogic.sol Aave V3](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): batas pelunasan 50% dan 100% (close factor), ambang US$2.000 dan US$1.000 (diakses 4 November 2026)
+- [ARFC: Aave V4 Activation on Ethereum Mainnet](https://governance.aave.com/t/arfc-aave-v4-activation-on-ethereum-mainnet/24293), Aave Labs, 13 Maret 2026: Spoke peluncuran dan e-Mode Spoke (diakses 4 November 2026)
+- [TEMP CHECK: Aave Will Win Framework](https://governance.aave.com/t/temp-check-aave-will-win-framework/24055), Aave Labs, 12 Februari 2026: V3 berdampingan dengan V4, tanpa migrasi paksa (diakses 4 November 2026)
+- [AL Development Update, October 2026](https://governance.aave.com/t/al-development-update-october-2026/25979), Aave Labs, 2 November 2026: simpanan V4, Sentora, cadangan Risk Premium pertama, AIP 536 (diakses 4 November 2026)
+- [API protokol DefiLlama](https://api.llama.fi/protocols): TVL dan jumlah pinjaman Aave V3 dan V4 (diakses 4 November 2026)
+
+_Konten edukasi, bukan nasihat keuangan. Peringatan mengurangi risiko, tetapi tidak mencegah likuidasi._

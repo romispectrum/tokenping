@@ -2,6 +2,8 @@
 import AaveAlertsDoNotDisturb from "~~/content/blog/fil/aave-alert-kahit-naka-do-not-disturb.mdx";
 import AaveEMode from "~~/content/blog/fil/aave-e-mode-ipinaliwanag.mdx";
 import AaveHealthFactor from "~~/content/blog/fil/aave-health-factor-ipinaliwanag.mdx";
+import AaveV4VsV3 from "~~/content/blog/fil/aave-v4-vs-v3-pagkakaiba.mdx";
+import AaveVsMorpho from "~~/content/blog/fil/aave-vs-morpho-paghahambing.mdx";
 import WhyAaveHealthFactorDropped from "~~/content/blog/fil/bakit-bumaba-ang-aave-health-factor.mdx";
 import WhyAaveWithdrawOrBorrowFails from "~~/content/blog/fil/bakit-pumapalya-ang-withdraw-o-borrow-sa-aave.mdx";
 import AaveMarketWindDown from "~~/content/blog/fil/kapag-isinara-ng-aave-ang-isang-market.mdx";
@@ -53,4 +55,6 @@ export const POST_CONTENT: PostContent = {
   "paano-gumagana-ang-liquidation-sa-morpho": HowMorphoLiquidationWorks,
   "morpho-pre-liquidation-ipinaliwanag": MorphoPreLiquidation,
   "mga-fixed-rate-loan-sa-morpho-midnight": MorphoMidnightFixedRateLoans,
+  "aave-vs-morpho-paghahambing": AaveVsMorpho,
+  "aave-v4-vs-v3-pagkakaiba": AaveV4VsV3,
 };

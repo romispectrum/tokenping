@@ -1,0 +1,179 @@
+export const meta = {
+  slug: "aave-vs-morpho-srovnani",
+  title: "Aave vs Morpho pro dlužníky: čím se liší",
+  description:
+    "Aave vs Morpho pro dlužníky: sdílené a izolované trhy, health factor, likvidace, úrokové sazby, E-Mode vs LLTV, orákula a riziko governance.",
+  h1: "Aave vs Morpho: čím se liší pro dlužníka?",
+  publishedAt: "2026-11-04",
+  primaryQuestion: "Čím se Aave a Morpho liší pro dlužníka a který z nich se hodí pro mou půjčku?",
+  readingMinutes: 12,
+  figuresAsOf: "2026-11-04",
+};
+
+<ShortAnswer>
+  Aave vaši půjčku sdružuje: na Aave V3 sdílí veškerý váš kolaterál a dluh na jednom trhu jeden health factor (faktor
+  zdraví pozice) a governance a její Risk Stewards mohou parametry měnit, zatímco máte půjčku otevřenou. Aave V4 tuto
+  myšlenku zachovává v rámci každého Spoke. Morpho Blue půjčku izoluje: každý trh má jeden kolaterál, jeden půjčovaný
+  token, jedno orákulum a jedno LLTV, vše natrvalo pevně dané při vytvoření trhu, takže každá půjčka má vlastní health
+  factor. Morpho Midnight přidává půjčky s pevnou sazbou, které končí datem splatnosti. Na Aave může zdravé aktivum
+  podržet klesající aktivum, ale likvidace si může vzít kterýkoli váš kolaterál; na Morpho ohrožuje klesající aktivum
+  jen vlastní půjčku a první likvidátor ji může splatit celou najednou. Ani jeden není obecně bezpečnější: jde o to, kdo
+  určuje pravidla a na jak velkou část vaší pozice dosáhne jedno špatné aktivum.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Čísla a bloky, ve kterých byla načtena: content/blog/snapshots/aave-vs-morpho.md */}
+
+## Jak vypadá srovnání Aave a Morpho na první pohled?
+
+Tabulka shrnuje pravidla, na kterých dlužníkovi záleží. Aktuální hodnoty byly načteny 4. listopadu 2026 na Ethereu; každý řádek vysvětlujeme níže.
+
+|                                     | Aave V3                                                          | Aave V4                                                                            | Morpho Blue                             | Morpho Midnight                                         |
+| ----------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------- |
+| Jeden health factor pokrývá         | Veškerý váš kolaterál a dluh na jednom trhu (Pool na jedné síti) | Veškerý váš kolaterál a dluh v jednom Spoke                                        | Jeden kolaterál a jeden půjčovaný token | Jeden půjčovaný token, až 16 kolaterálů trhu            |
+| Výpůjční limit a likvidační hranice | Nižší LTV pro půjčky, vyšší likvidační práh                      | Jeden collateral factor na aktivum                                                 | LLTV je obojím                          | LLTV každého kolaterálu                                 |
+| Kdo určuje parametry                | Governance a Risk Stewards, mohou je kdykoli změnit              | Governance; změny se obvykle týkají jen nových pozic                               | Tvůrce trhu, natrvalo pevně dané        | Tvůrce trhu, natrvalo pevně dané                        |
+| Úrok                                | Variabilní, křivka pro každé aktivum                             | Variabilní, křivka pro každé aktivum Hubu plus riziková přirážka každého uživatele | Variabilní, AdaptiveCurveIRM            | Pevný do splatnosti                                     |
+| Nejvíc, co splatí jedna likvidace   | 50 % nebo 100 % dluhu                                            | Tolik, aby pozice dosáhla cílového health factoru Spoke                            | Celý dluh                               | Tolik, co obnoví zdraví pozice; po splatnosti celý dluh |
+| Likvidační bonus                    | Pro každé aktivum kolaterálu, nastavuje governance               | Roste s klesajícím health factorem                                                 | Vyplývá z LLTV                          | Vyplývá z LLTV a kurzoru každého kolaterálu             |
+| Nedobytný dluh                      | Deficit; na Ethereu ho mohou pokrýt stakeři Umbrella             | Deficit; může ho pokrýt jiný Spoke                                                 | Odepíše se na úkor věřitelů daného trhu | Nesou ho věřitelé daného trhu                           |
+| Orákulum                            | Volí governance                                                  | Volí governance, pro každý Spoke                                                   | Volí tvůrce trhu, nelze ho vyměnit      | Volí tvůrce trhu pro každý kolaterál                    |
+
+## Jak je každý z nich postavený?
+
+### Aave: sdílené trhy, V3 a V4
+
+Trh Aave V3 je jeden Pool na jedné síti: Ethereum Core, Arbitrum, Base a tak dále. Vše, co v tomto Poolu vložíte jako kolaterál, kryje vše, co si v něm půjčíte, a kontrakt spočítá pro celou pozici jeden health factor:
+
+**HF = Σ (hodnota kolaterálu × likvidační práh) ÷ celkový dluh**
+
+Každé aktivum má dvě čísla: LTV, které omezuje nové půjčky, a vyšší likvidační práh, který rozhoduje o likvidaci. Na Ethereum Core měl WETH 4. listopadu 2026 LTV 81 % a práh 84 %. Ceny pocházejí z orákula Aave, v amerických dolarech. Vzorec a příklady výpočtu najdete v [průvodci health factorem na Aave](/cz/blog/aave-health-factor-vysvetleni).
+
+Aave V4 rozděluje síť na Hub, který drží likviditu, a Spoky, tedy trhy, ve kterých si půjčujete. Vaše pozice i health factor patří k jednomu Spoke a každé aktivum má místo LTV a prahu jediný collateral factor (faktor kolaterálu). API Aave V4 uvádělo 4. listopadu 2026 24 trhů (Spoke) na sítích Ethereum, Avalanche, Arc a Base. Podrobnosti popisuje část [jak funguje health factor na Aave V4](/cz/blog/aave-health-factor-vysvetleni#lisi-se-health-factor-na-aave-v4).
+
+### Morpho: izolované trhy, Blue a Midnight
+
+Trh Morpho Blue určuje pět věcí: půjčovaný token, kolaterálový token, orákulum, úrokový model a LLTV (likvidační poměr půjčky k hodnotě kolaterálu, liquidation loan-to-value). Vytvořit ho může kdokoli a žádnou z pěti věcí nelze poté změnit. Váš kolaterál v jednom trhu nekryje dluh v jiném, takže dvě půjčky ve dvou trzích mají dva health factory:
+
+**HF = množství kolaterálu × cena z orákula × LLTV ÷ dluh**
+
+Žádný nižší limit pro půjčky neexistuje: kontrakt vám dovolí půjčit si až k LLTV, tedy na health factor 1,00. Postup ukazuje [průvodce health factorem na Morpho](/cz/blog/morpho-health-factor-vysvetleni).
+
+Morpho Midnight je samostatný kontrakt pro půjčky s pevnou sazbou a pevnou dobou splatnosti. Trh Midnight má jeden půjčovaný token, datum splatnosti a až 128 kolaterálů, každý s vlastním LLTV a orákulem, a jeden dlužník jich může použít až 16 najednou. Jak funguje, vysvětluje článek [půjčky s pevnou sazbou na Morpho Midnight](/cz/blog/morpho-midnight-pujcky-s-pevnou-sazbou).
+
+## Co se stane s vaším health factorem, když jedno aktivum klesne?
+
+Tady se oba přístupy liší nejvíc. Vezměte na obou stejný kolaterál, s ilustrativními cenami 2 400 $ za ETH a 80 000 $ za BTC, a dluh 20 000 USDC.
+
+**Na Aave V3 Ethereum Core**, s 10 WETH (práh 84 %) a 0,2 WBTC (práh 85 %) v jedné pozici, bez započtení úroku:
+
+- Vážený kolaterál: 24 000 × 0,84 + 16 000 × 0,85 = 33 760.
+- Health factor: 33 760 ÷ 20 000 = **1,69**.
+- Pokud BTC klesne o 40 % na 48 000 $: 24 000 × 0,84 + 9 600 × 0,85 = 28 320, tedy health factor **1,42**. Zlikvidovat nelze nic.
+
+WETH podrží WBTC. V této pozici se samotné WETH počítá jako 20 160, víc než celý dluh, takže i bezcenné WBTC by ponechalo health factor 1,008.
+
+**Na Morpho Blue**, se stejnými aktivy rozdělenými do dvou uvedených trhů na Ethereu, USDC | WETH (86%) a USDC | WBTC (86%), a s 10 000 USDC vypůjčenými v každém z nich:
+
+- Půjčka proti WETH: 24 000 × 0,86 ÷ 10 000 = **2,06**.
+- Půjčka proti WBTC: 16 000 × 0,86 ÷ 10 000 = **1,38**, s likvidační cenou 58 139,53 $, o 27,3 % níž než 80 000 $.
+- Pokud BTC klesne o 40 %: půjčka proti WBTC je na 9 600 × 0,86 ÷ 10 000 = **0,83** a lze ji zlikvidovat, zatímco půjčka proti WETH zůstává na 2,06.
+
+Druhá strana mince je stejně skutečná. Na Aave, jakmile celá pozice klesne pod 1, vybírá likvidátor, který kolaterál si vezme, takže pokles BTC vás může stát WETH. Na Morpho je půjčka proti WETH mimo dosah, ať se s BTC stane cokoli. Sdílení vám dává společnou rezervu; izolace vám dává rezervu pro každou půjčku zvlášť a každou musíte nadimenzovat sami.
+
+## Čím se liší likvidace?
+
+V obou protokolech likvidátor pod health factorem 1 splatí část vašeho dluhu a vezme si kolaterál v hodnotě této částky plus bonus. Vypůjčené prostředky vám zůstávají, takže likvidace vás stojí právě ten bonus. Pravidla kolem toho se liší:
+
+- **Kolik najednou.** Na Aave V3.7 může jedna likvidace splatit až 50 % vašeho celkového dluhu, dokud je váš health factor nad 0,95 a dotčený kolaterál i dluh mají každý hodnotu alespoň 2 000 $; při 0,95 nebo níž, nebo u menších částek, může splatit celý dluh v daném aktivu. Aave V4 toto pravidlo ruší: likvidátor splatí jen tolik, aby vás vrátil na cílový health factor daného Spoke, 4. listopadu 2026 to bylo 1,24 na Ethereum Main Spoke. Morpho Blue žádný limit nemá: první likvidátor může splatit celý váš dluh jedním voláním.
+- **Bonus.** Na Aave V3 ho nastavuje governance pro každé aktivum kolaterálu: 4. listopadu 2026 to bylo 5 % pro WETH i WBTC na Ethereum Core, z čehož si pokladna Aave brala 20 % jako poplatek protokolu. Na V4 roste s klesajícím health factorem. Na Morpho Blue vyplývá z LLTV, 1 ÷ (1 − 0,3 × (1 − LLTV)) s horní hranicí 15 %: 4,38 % při LLTV 86 %, 1,06 % při 96,5 %, a celý připadne likvidátorovi.
+- **Předběžná likvidace.** Na Morpho Blue se dlužník mohl přihlásit ke kontraktu, který likviduje části půjčky ještě před LLTV. Morpho tuto funkci ukončuje a žádá dlužníky, kteří ji mají, aby ji vypnuli; pokud jste kdysi zapnuli Auto-deleverage, článek [předběžná likvidace na Morpho](/cz/blog/predbezna-likvidace-morpho) ukazuje, jak to ověřit a zrušit. Aave nic podobného nemá.
+- **Splatnost.** Na Morpho Midnight lze jakýkoli dluh, který zůstane po splatnosti, zlikvidovat i u zdravé pozice, přičemž bonus během první hodiny roste od nuly do plné výše.
+- **Nedobytný dluh.** Když kolaterál dojde dřív než dluh, Aave V3 zaznamená deficit, který mohou na Ethereu pokrýt stakeři Umbrella (u USDC, USDT, WETH a GHO, podle dokumentace Aave); ve V4 ho může pokrýt jiný Spoke. Na Morpho se ztráta odepíše na úkor věřitelů toho jednoho trhu. Pro vás jako dlužníka je výsledek všude stejný: kolaterál je pryč a žádný dluh nezůstává.
+
+Celý mechanismus popisuje článek [jak funguje likvidace na Aave](/cz/blog/jak-funguje-likvidace-aave), včetně [pravidel V4](/cz/blog/jak-funguje-likvidace-aave#jak-se-likvidace-lisi-na-aave-v4), a článek [jak funguje likvidace na Morpho](/cz/blog/jak-funguje-likvidace-morpho), kde najdete i [srovnávací tabulku obou protokolů](/cz/blog/jak-funguje-likvidace-morpho#cim-se-likvidace-na-morpho-lisi-od-likvidace-na-aave).
+
+## Čím se liší úrokové sazby?
+
+**Aave V3** určuje variabilní sazbu každého aktiva pevnou křivkou: s využitím (podílem poolu, který je půjčený) roste pozvolna do optimální úrovně, pak strmě. Čtyři čísla křivky nastavuje governance a Risk Stewards je mohou v mezích upravovat. USDC na Ethereum Core používalo optimální úroveň 94 %, první sklon 4,5 % a druhý sklon 10 %. V bloku 26341682 na Ethereu 4. listopadu 2026 bylo jeho využití 94,7 %, těsně za zlomem, a půjčka stála 5,67 % ročně. Mezi změnami parametrů se sazba hýbe jen s využitím. Vzorec a skutečný skok sazby najdete v článku [jak fungují úrokové sazby na Aave](/cz/blog/urokove-sazby-aave).
+
+**Aave V4** zachovává křivku pro každé aktivum na úrovni Hubu a přidává k ní User Risk Premium (rizikovou přirážku uživatele), od 0 % do 1 000 % sdílené sazby podle kvality vašeho kolaterálu: příklad Aave je přirážka 50 % k sazbě 5 %, což dává 7,5 %.
+
+**Trhy Morpho Blue** používají AdaptiveCurveIRM, který míří na využití 90 %. V každém okamžiku leží sazba na křivce kolem „sazby při cílovém využití“ (rate at target): při 0% využití je to její čtvrtina, při 100% využití její čtyřnásobek. Na rozdíl od křivky Aave se samotná sazba při cílovém využití posouvá: nahoru, dokud využití zůstává nad 90 %, dolů, dokud zůstává pod, v rozmezí 0,1 % až 200 % ročně. Při 100% využití se zdvojnásobí zhruba za pět dní. Dne 4. listopadu 2026 měl trh USDC | cbBTC (86%) na Ethereu využití 90,3 %, sazbu při cílovém využití 4,97 % a výpůjční sazbu zhruba 5,4 % ročně. Vytížený trh proto dál zdražuje, dokud dlužníci nesplatí nebo nepřijdou věřitelé; klidný zlevňuje.
+
+**Morpho Midnight** vám sazbu zafixuje při půjčení. Prodáte jednotky dluhu pod nominální hodnotou a při splatnosti dlužíte přesně jeden půjčovaný token za jednotku, takže váš dluh neroste a health factorem hýbou jen ceny kolaterálu. Aave pevnou sazbu nemá: V3.2 odstranila kód staré stabilní sazby a každá půjčka na Aave je variabilní.
+
+## E-Mode, nebo trh s vysokým LLTV: kolik si můžete půjčit?
+
+Oba protokoly vám dovolí půjčit si víc proti kolaterálu, který se hýbe s tím, co si půjčujete, každý jinak.
+
+**Aave E-Mode** je nastavení celé vaší pozice na V3. Zvolíte kategorii a dokud v ní jste, platí pro její kolaterál LTV, práh a bonus kategorie. Na Ethereum Core používala 4. listopadu 2026 kategorie „ETH correlated“ LTV 93 %, práh 95 % a bonus 1 % a WETH bylo jediné aktivum, které si v ní šlo půjčit. Každé aktivum, které si půjčujete, musí být v kategorii půjčitelné, takže pozice s dluhem v USDC ji použít nemůže. Kategorie a likvidace z března 2026 popisuje článek [Aave E-Mode](/cz/blog/aave-e-mode-vysvetleni).
+
+**Na Morpho** žádný režim není: zvolíte trh, jehož LLTV dané dvojici odpovídá. LLTV, která měla governance Morpho 4. listopadu 2026 povolená, byla 0 %, 38,5 %, 62,5 %, 77 %, 86 %, 91,5 %, 94,5 %, 96,5 % a 98 %. Trh WETH | wstETH na Ethereu používá 96,5 %, s likvidační pobídkou 1,06 %.
+
+Dlužník, který dělá smyčku (loop) s wstETH proti WETH, se může na obou dostat na podobné místo, s jedním rozdílem: na Aave si můžete půjčit jen do LTV 93 %, což ponechá health factor zhruba 95 ÷ 93 = 1,02; na Morpho vám kontrakt dovolí půjčit si až k hranici 96,5 %, tedy na health factor 1,00.
+
+## Na kterých sítích Aave a Morpho běží?
+
+|                  | Aave                                                                                                                                      | Morpho                                                                                                                                                 |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Variabilní sazba | V3 na více než 20 sítích, mezi nimi Ethereum, Arbitrum, Base, Avalanche, Polygon a Optimism; V4 na sítích Ethereum, Avalanche, Arc a Base | Blue na 14 sítích: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable a Tempo |
+| Pevná sazba      | Žádná                                                                                                                                     | Midnight, s uvedenými trhy na Ethereu a na síti Base ke 4. listopadu 2026                                                                              |
+
+Na Aave o zařazení každého aktiva na trh rozhoduje governance. Na Morpho může trh vytvořit kdokoli a aplikace Morpho ukazuje jen ty, které se Morpho Association rozhodne uvést (viz níže). Několik sítí Aave V3 se ukončuje; co to znamená pro otevřené půjčky, vysvětluje článek [co se stane, když Aave ukončuje trh](/cz/blog/ukonceni-trhu-aave).
+
+## Jaká rizika se u nich liší?
+
+Oba nesou stejná základní rizika: pokles ceny, chybu orákula, chybu v chytrém kontraktu. Liší se v tom, kde leží.
+
+**Kdo může změnit vaši půjčku.** Na Aave může governance změnit LTV, likvidační práh, bonus a úrokovou křivku aktiva na V3 a Risk Stewards je mohou posouvat v omezených krocích a s minimálními odstupy. Nižší práh na V3 platí pro všechny otevřené pozice naráz. Aktiva lze také zmrazit, což blokuje nové půjčky, ale ne likvidaci, nebo pozastavit, což blokuje i likvidace, s ochrannou lhůtou až 4 hodiny poté. Na V4 se nové collateral factory a bonusy obvykle dostanou k vaší pozici, až si příště půjčíte nebo vyberete. Na Morpho Blue nemůže trh změnit nikdo: governance může povolit nová LLTV a úrokové modely a nastavit poplatek až 25 % úroku, který platí věřitelé, ale existujícího trhu se dotknout nemůže a kontrakt nemá žádné pozastavení.
+
+**Kdo vybírá orákulum.** Governance Aave volí zdroj ceny pro každé aktivum. Na Morpho vybírá orákulum ten, kdo trh vytvoří, a nikdy ho nelze vyměnit. Dokumentace Morpho uvádí, že tato volba, protože je trvalá, určuje rizikový profil trhu. Některá orákula sledují směnný kurz místo tržní ceny nebo počítají stablecoin jako přesně jeden dolar. Než si na Morpho půjčíte, ověřte, co orákulum vašeho trhu měří; [část o orákulu v průvodci likvidací](/cz/blog/jak-funguje-likvidace-morpho#jakou-roli-hraje-pri-likvidaci-orakulum) ukazuje, na co se dívat.
+
+**Uvedený, nebo neuvedený.** Aplikace Morpho ukazuje jen trhy, které uvádí Morpho Association, hlavně ty, do kterých půjčuje některý uvedený vault. Její zásady označují uvedení za „a discovery decision“ (rozhodnutí o tom, co se zobrazí), ne za doporučení nebo hodnocení rizika, a neuvedený trh na blockchainu dál funguje. I neuvedené trhy mohou držet velké půjčky, jak u půjček krytých akciemi ukazuje článek [tokenizované akcie jako kolaterál](/cz/blog/tokenizovane-akcie-jako-kolateral#kde-si-muzete-pujcit-proti-tokenizovanym-akciim), takže to, že trh v aplikaci chybí, vám říká jen to, že se ho Morpho rozhodlo nezobrazit.
+
+**Kam dosáhne jedno špatné aktivum.** Na Aave pohne špatně oceněné aktivum nebo aktivum, které ztrácí vazbu (depeg), celým vaším health factorem na daném trhu. Na Morpho pohne jen půjčkami, které ho používají, ale ty nemají žádný jiný kolaterál, o který by se mohly opřít.
+
+## Který se hodí pro jakého dlužníka?
+
+Ani jeden není lepší protokol; každý se hodí pro jiný způsob půjčování. Několik hrubých vodítek:
+
+- **Několik aktiv jako kolaterál, jedna rezerva ke sledování:** sdílená pozice na Aave jim dovolí krýt se navzájem, za cenu pravidel, která může governance změnit.
+- **Pravidla, která se po půjčení nemohou změnit:** LLTV, orákulum a úrokový model trhu Morpho jsou natrvalo pevné, ale orákulum musíte posoudit sami.
+- **Půjčka, která se nesmí dotknout vašeho ostatního kolaterálu:** Morpho drží každou půjčku zvlášť; na Aave totéž zajistí samostatné trhy nebo sítě.
+- **Půjčování těsně u hranice u korelované dvojice:** nabízejí to oba, přes E-Mode nebo vysoké LLTV, a oba nechávají rezervu několika procent.
+- **Sazba, která se nehýbe:** nabízí ji jen Morpho Midnight, výměnou za datum splatnosti, které nesmíte zmeškat.
+- **Malé pozice:** v obou může likvidace splatit celý dluh najednou, na Aave pod 2 000 $ v dotčených aktivech a na Morpho při jakékoli velikosti.
+
+Tento průvodce porovnává mechanismy; nejde o finanční poradenství.
+
+## Jak mohou upozornění pomoct na obou?
+
+Tokenping sleduje oba. Kontroluje každých 5 minut a dokud je health factor pod prahem, který si nastavíte, pošle při každé kontrole zprávu na každý kanál, který jste zvolili: Signal, Telegram nebo e-mail.
+
+- **Aave:** jedno upozornění pro každý trh V3 nebo Spoke V4, na 24 trzích V3 na 21 sítích a ve všech 24 trzích (Spoke) V4 na sítích Ethereum, Avalanche, Arc a Base. Práh nastavíte od 1,1 do 10. Nejdřív si můžete [zkontrolovat svůj health factor na Aave](/cz/aave).
+- **Morpho:** jedno upozornění pro každý trh, ve kterém si půjčujete, v trzích uvedených v aplikaci Morpho: Blue na 14 sítích a Midnight tam, kde API Morpho uvádí trhy (ke 4. listopadu 2026 Ethereum a Base). Práh jde až na 1,02, protože půjčky s vysokým LLTV často běží blízko 1. Pokud jste povolili předběžnou likvidaci, upozornění měří vůči této dřívější hranici a půjčka na Midnight navíc dostane připomínky 7 dní a 24 hodin před splatností. Své pozice uvidíte v [přehledu Morpho](/cz/morpho).
+
+Prohlížení pozic nevyžaduje platbu. Upozornění stojí <AlertPrice /> a stejný plán pokrývá Aave i Morpho. Upozornění vám dá čas splatit dluh nebo přidat kolaterál; likvidaci nezabrání a cena se může přes vaši hranici pohnout mezi dvěma kontrolami.
+
+## Zdroje
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) a [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), aave-dao/aave-v3-origin: close factor, deficit, health factor, pozastavení a ochranná lhůta (načteno 4. listopadu 2026)
+- [Funkce Aave V3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): odstranění dluhu se stabilní sazbou (načteno 4. listopadu 2026)
+- [Aave Generalized Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): které parametry mohou Risk Stewards měnit, minimální odstupy a největší kroky (načteno 4. listopadu 2026)
+- [Dokumentace Aave: Umbrella](https://aave.com/docs/aave-v3/umbrella): pokrytí deficitu, aktiva a síť (načteno 4. listopadu 2026)
+- [Dokumentace Aave V4](https://aave.com/docs/aave-v4) a [pozice ve V4](https://aave.com/docs/aave-v4/positions): Hub a Spoky, health factor, User Risk Premium, likvidace (načteno 4. listopadu 2026)
+- [Přehled Aave V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md), aave/aave-v4: dynamická konfigurace rizik, cílový health factor, proměnlivý bonus, deficity, orákula jednotlivých Spoků (načteno 4. listopadu 2026)
+- [Aave V4 API](https://api.v4.aave.com/graphql): Spoky a sítě (načteno 4. listopadu 2026)
+- [Aave address book](https://github.com/bgd-labs/aave-address-book): sítě Aave V3 (načteno 4. listopadu 2026)
+- Čtení z blockchainu na Ethereu v blocích 26341682 a 26341689: [Aave V3 Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract) a [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) (parametry rezerv, E-Mode, sazba USDC), [Aave V4 Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485#readContract) (cílový health factor) a [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) (trhy, povolená LLTV, sazby) (načteno 4. listopadu 2026)
+- [Morpho.sol a ConstantsLib.sol](https://github.com/morpho-org/morpho-blue), morpho-org/morpho-blue: pravomoci vlastníka, strop poplatku 25 %, likvidační pobídka, nedobytný dluh (načteno 4. listopadu 2026)
+- [Konstanty AdaptiveCurveIRM](https://github.com/morpho-org/morpho-blue-irm/blob/main/src/adaptive-curve-irm/libraries/ConstantsLib.sol), morpho-org/morpho-blue-irm: cílové využití, strmost, rychlost úprav a meze (načteno 4. listopadu 2026)
+- [Midnight.sol a ConstantsLib.sol](https://github.com/morpho-org/midnight), morpho-org/midnight: limity kolaterálů, likvidace po splatnosti a 60minutový náběh (načteno 4. listopadu 2026)
+- [Dokumentace Morpho: Morpho Blue](https://docs.morpho.org/learn/concepts/blue), [orákula](https://docs.morpho.org/learn/concepts/oracle) a [Midnight](https://docs.morpho.org/learn/concepts/midnight) (načteno 4. listopadu 2026)
+- [Zásady Morpho pro uvádění trhů v rozhraní](https://docs.morpho.org/get-started/resources/interface-listing-policy): co uvedení znamená a kdo o něm rozhoduje (načteno 4. listopadu 2026)
+- [Nápověda Morpho: Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (načteno 4. listopadu 2026)
+- [Morpho API](https://api.morpho.org/graphql): sítě, uvedené trhy Blue a uvedené trhy Midnight na jednotlivých sítích (načteno 4. listopadu 2026)
+
+_Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání._

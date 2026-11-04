@@ -1,0 +1,175 @@
+export const meta = {
+  slug: "aave-v4-vs-v3-kulonbsegek",
+  title: "Aave V4 vs V3: mi változik a hiteledben",
+  description:
+    "Aave V4 vs V3 hitelfelvevőknek: Hubok és Spoke-ok, Spoke-onkénti health factor, likvidálás cél health factorig, kockázati felár, E-Mode Spoke-ok, átállás.",
+  h1: "Aave V4 vs V3: mi más, és mit jelent ez a hiteledre nézve?",
+  publishedAt: "2026-11-04",
+  primaryQuestion: "Mi a különbség az Aave V3 és az Aave V4 között egy hitelfelvevő számára?",
+  readingMinutes: 13,
+  figuresAsOf: "2026-11-04",
+};
+
+<ShortAnswer>
+  Az Aave V4 2026. március 30-án indult az Ethereumon, és ma már az Avalanche-on, az Arcon és a Base-en is fut. A V3
+  mellette tovább működik, és még mindig nála van a pénz nagy része. A V4-en egy Spoke-ban veszel fel hitelt, egy saját
+  szabályokkal működő piacon, amely egy közös Hubból kapja a likviditást, és minden Spoke-nak saját health factora
+  (egészségi mutató) van. Eszközönként egyetlen collateral factor váltja fel a V3 LTV-jét és likvidálási küszöbét, így
+  egészen 1,00-es health factorig vehetsz fel hitelt. Egy likvidálás annyi adósságot fizet vissza, amennyi a Spoke cél
+  health factorára emel (a Main Spoke-okon 1,24) a V3 50%-a vagy 100%-a helyett, és a bónusz nő, ahogy a health factorod
+  esik. A kamatot Hubonként határozzák meg, plusz egy kockázati felár a kockázatosabb fedezetre. Semmi sem költözik
+  magától: egy V3-hitel a V3-on marad, amíg át nem viszed.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Az adatok és a blokkszámok, amelyeknél kiolvastuk őket: content/blog/snapshots/aave-v4-vs-v3.md */}
+
+## Mi az Aave V4, és mikor indult?
+
+Az Aave V4 az Aave hitelprotokoll új verziója, saját szerződésekkel. Nem a helyükön frissíti a V3-piacokat. Az Aave változásnaplója szerint 2026. március 30-án indult az Ethereumon három Hubbal és tizenegy Spoke-kal, majd az Avalanche-on (július 15.), az Arcon (szeptember 16.) és a Base-en (2026. október 7.). A V3 21 hálózaton fut, a V4 négyen, és az Arcon csak V4 van.
+
+A V3 még mindig jóval nagyobb. 2026. november 4-én a DefiLlama nagyjából 15,6 milliárd $-t számolt az Aave V3-ban és nagyjából 0,79 milliárd $-t a V4-ben, mindkettőt a hitelek levonása után, nagyjából 11,4 milliárd $ és 0,47 milliárd $ felvett összeggel. Az Aave Labs októberi jelentése szerint a V4 1,5 milliárd $ fölötti betétnél és 450 millió $ aktív hitelnél tartott.
+
+Hitelfelvevőként a két verzió abban különbözik, hol él a pozíciód, mennyit vehetsz fel, mekkora egy likvidálás, és hogyan alakul a kamatod. Az alábbi táblázat összefoglalja; az utána következő részek minden sort elmagyaráznak.
+
+## Mi változik egy hitelfelvevő számára, és mi marad ugyanaz?
+
+| Téma                                     | Aave V3                                                                                              | Aave V4                                                                                                                                                |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Hol él a hiteled                         | Egy piacon: egy Pool egy hálózaton                                                                   | Egy Spoke-ban, amely egy vagy több Hubból kapja a likviditást                                                                                          |
+| Health factor                            | Piaconként egy                                                                                       | Spoke-onként egy                                                                                                                                       |
+| Képlet                                   | Σ(fedezet × likvidálási küszöb) ÷ adósság                                                            | Σ(fedezet × collateral factor) ÷ adósság                                                                                                               |
+| Hitelfelvételi korlát                    | LTV, a likvidálási küszöb alatt                                                                      | Maga a collateral factor: addig vehetsz fel hitelt, amíg a health factor 1,00                                                                          |
+| Likvidálási határ                        | 1 alatti health factor                                                                               | 1 alatti health factor (változatlan)                                                                                                                   |
+| Legfeljebb ennyit fizet vissza egy hívás | Az adósságod 50%-át, vagy 100%-át 0,95-ös vagy alacsonyabb health factornál, illetve kis pozícióknál | Annyit, amennyi a Spoke cél health factorára emel                                                                                                      |
+| Likvidálási bónusz                       | Fedezeti eszközönként rögzített                                                                      | Nő, ahogy a health factorod esik, eszközönként egy maximumig                                                                                           |
+| Porszabály (dust rule)                   | 1000 $-nak meg kell maradnia, különben az egész megy                                                 | 1000 $-nak meg kell maradnia, különben az egész megy (változatlan)                                                                                     |
+| Kamat                                    | Kihasználtsági görbe eszközönként és piaconként                                                      | Kihasználtsági görbe eszközönként és Hubonként, plusz egy User Risk Premium                                                                            |
+| Paraméterváltozások                      | Egyszerre minden nyitott pozíciót érintenek                                                          | Az új beállítások általában akkor érvényesek, amikor legközelebb hitelt veszel fel vagy kivételt indítasz, hacsak a governance nem frissíti a régieket |
+| Együtt mozgó eszközök                    | E-Mode-kategóriák egy piacon belül                                                                   | Külön Spoke-ok az együtt mozgó párokra, például a Lido és az EtherFi Spoke                                                                             |
+| Kamat és árak                            | Az adósság a kamattal nő; az orákulumárak mozgatják a health factort                                 | Ugyanígy                                                                                                                                               |
+| A meglévő hiteled                        | A V3-on marad                                                                                        | Újonnan nyitod; semmi sem költözik magától                                                                                                             |
+
+## Hogyan működnek a V4 Hubjai és Spoke-jai?
+
+Egy Hub tartja minden eszköz közös likviditását, és meghatározza a kamatát. A Spoke az, amit használsz: felsorolja az elhelyezhető és felvehető eszközöket, beállítja a collateral factoraikat, kiválasztja az árorákulumokat, és a likvidálási beállításokat is tartalmazza. Az Aave dokumentációja így fogalmaz: a felhasználók a Spoke-okkal lépnek kapcsolatba, amelyek a Hubba és onnan irányítják a likviditást, a kockázat pedig Spoke-szinten elkülönül.
+
+A V3-on egy piac mindkét feladatot ellátta. Az Ethereum Core piac a saját USDC-jét tartja és a saját szabályait állítja be, a Prime piac pedig külön USDC-t tart, külön szabályokkal. A V4-en több Spoke is kölcsönözheti ugyanazt az USDC-t egy Hubból, miközben mindegyik megtartja a saját kockázati beállításait, és egy Spoke több Hubból is vehet fel: az ethereumi Bluechip Spoke a Core Hubból és a Prime Hubból is kölcsönöz USDC-t.
+
+Az Aave V4 API-ja 2026. november 4-én 24 Spoke-ot és 8 Hubot listázott:
+
+| Hálózat   | Hubok                                     | Spoke-ok                                                                                                                                                                                                   |
+| --------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ethereum  | Core, Prime, Plus, Global Dollar, Sentora | Main, Bluechip, Lido, EtherFi, Kelp, Lombard, Ethena Ecosystem, Ethena Correlated, Gold, PAXG Gold, Forex, USDG Pendle, Maple SyrupUSDG; a Sentora Hubján: RLUSD Yield, OUSD Yield és egy második Bluechip |
+| Avalanche | Core                                      | Main, AVAX Correlated, Forex, Ethena Ecosystem                                                                                                                                                             |
+| Arc       | Core                                      | Main, Forex, Maple SyrupUSDC                                                                                                                                                                               |
+| Base      | Coinbase Stocks                           | Coinbase Stocks                                                                                                                                                                                            |
+
+A Sentora az első külső kurátor a V4-en: az Aave Labs szerint saját Hubot és Spoke-okat működtet az Ethereumon, és ő határozza meg ezek fedezeteit, paramétereit, kamatgörbéit és orákulumait, a szerződések tulajdonosa pedig az Aave DAO. A Base Spoke tokenizált részvényekre ad USDC-hitelt, erről a [tokenizált részvényekre felvett hitel](/hu/blog/tokenizalt-reszvenyek-fedezetkent#hol-vehetsz-fel-hitelt-tokenizalt-reszvenyekre) szól.
+
+## Hogyan működik a health factor egy V4 Spoke-ban?
+
+A health factor mindkét verzión ugyanazt jelenti: súlyozott fedezet osztva az adóssággal, és 1 alatt likvidálhatnak. A V4-en a súly a collateral factor (CF, fedezeti tényező). Az Aave saját példája: 10 000 $ ETH 80%-os CF-fel, 6000 $ GHO-val szemben 1,333-at ad. A [health factor útmutató V4-ről szóló része](/hu/blog/aave-health-factor-magyarazat#mas-a-health-factor-az-aave-v4-en) bemutatja az alapokat; három következmény többet számít a képletnél.
+
+**Spoke-onként egy health factor.** Az Aave dokumentációja szerint a különböző Spoke-okban lévő pozíciók nem hatnak egymásra, és csak az ugyanabban a Spoke-ban elhelyezett fedezetre vehetsz fel hitelt. A Main Spoke-ban lévő ETH semmit nem tesz egy Gold Spoke-beli hitelért. A V3-on ugyanez igaz a piacok között, de egy piacon belül minden fedezeted minden adósságodat fedezi.
+
+**Nincs rés a hitelfelvételi korlát és a likvidálási határ között.** A V3-on az LTV-ig vehetsz fel hitelt, amely a likvidálási küszöb alatt van: a WETH-nek az Ethereum Core-on 2026. november 4-én 81%-os LTV-je és 84%-os küszöbe volt, így ha csak WETH-re veszed fel a maximumot, nagyjából 1,037-es health factor marad ([miért marad nagyjából 1,03, ha a maximumot veszed fel](/hu/blog/aave-health-factor-magyarazat#miert-csak-nagyjabol-103-a-health-factor-ha-a-maximumot-veszed-fel)). A V4-en nincs külön LTV. Az Aave dokumentációja szerint egy hitelfelvételt vagy kivételt csak akkor tilt le, ha 1,0 alá vinné a health factort, és a kód pontosan ezt ellenőrzi. Egy V4-en a maximumig felvett pozíció a likvidálási határon indul, és a kamat vagy az ár első apró mozgása átviheti rajta. Válaszd meg a saját tartalékodat.
+
+**Ugyanazok az eszközök ugyanakkora súllyal számíthatnak.** Egyes paraméterek a két verzió között össze vannak hangolva. A WETH 2026. november 4-én 84%-kal számított a V3 Ethereum Core-on és a V4 Main Spoke-on is, így 10 WETH 12 000 USDC-vel szemben mindkettőn ugyanazt a health factort és ugyanazt az 1428,57 $-os likvidálási árat adja.
+
+### Mi történik, ha a governance módosít egy collateral factort?
+
+A V3-on egy alacsonyabb likvidálási küszöb abban a pillanatban minden nyitott pozícióra érvényes, amikor a módosítás végrehajtódik, és ez ármozgás nélkül is 1 alá nyomhat egy hitelfelvevőt ([a 4. ok abban, miért esett a health factorod](/hu/blog/miert-csokkent-az-aave-health-factor#4-ok-csokkentette-a-governance-vagy-a-risk-stewards-a-likvidalasi-kuszobot)).
+
+A V4 minden eszköz collateral factorának, maximális bónuszának és likvidálási díjának előzményeit megőrzi. Amikor a governance új konfigurációt ad hozzá, a pozíciód megtartja azt, amelyhez kötve volt, amíg hitelt nem veszel fel, nem indítasz kivételt vagy nem kapcsolsz ki fedezetet; az elhelyezés és a visszafizetés nem változtat rajta. Ha a pozíciód a legújabb beállítások szerint nem lenne egészséges, a hitelfelvétel vagy a kivétel visszafordul. Így egy csökkentés után előfordulhat, hogy nem tudsz fedezetet kivenni, pedig a health factorod rendben lévőnek tűnik.
+
+Ez a védelem nem abszolút. A governance egy meglévő konfigurációt is szerkeszthet, ami minden hozzá kötött pozíciót elér, vagy egy pozíciót a legújabbra kényszeríthet. 2026. október 28-án egyetlen governance payload (AIP 536) a V3 Ethereum Core-on 83%-ról 84%-ra emelte a WETH-et, és ugyanabban a tranzakcióban a V4 Main Spoke meglévő WETH-konfigurációját is 83%-ról 84%-ra szerkesztette. Ez a változás a hitelfelvevőknek kedvezett; egy ellenkező irányú szerkesztés ugyanígy működne.
+
+## Miben mások a likvidálások a V4-en?
+
+A V3-on egy likvidátor az adósságod legfeljebb 50%-át fizetheti vissza, amíg a health factorod 0,95 fölött van, és az érintett fedezet és adósság is legalább 2000 $-t ér, különben akár 100%-át ([mennyit likvidálhatnak egyszerre](/hu/blog/hogyan-mukodik-a-likvidalas-az-aave-on#mennyi-adossagomat-likvidalhatjak-egyszerre)). A bónusz fedezeti eszközönként rögzített: a WETH-nél az Ethereum Core-on 5%.
+
+A V4-en nincs close factor (az adósság egyszerre visszafizethető része). Egy likvidátor annyi adósságot fizethet vissza, amennyi ahhoz kell, hogy a health factorod elérje a Spoke célértékét, és nem többet, kivéve, ha ez 1000 $-nál kevesebb adósságot vagy fedezetet hagyna. A bónusz közvetlenül 1 alatt az eszköz maximumának egy részéről indul, és egyenes vonalban nő a teljes maximumig egy meghatározott health factornál. A beállítások 2026. november 4-én, on-chain kiolvasva:
+
+| Spoke                                                           | Cél health factor             | Teljes bónusz ennél | Bónusz közvetlenül 1 alatt  |
+| --------------------------------------------------------------- | ----------------------------- | ------------------- | --------------------------- |
+| Main (Ethereum, Avalanche, Arc), Coinbase Stocks (Base)         | 1,24                          | 0,90                | A maximum 90%-a             |
+| Bluechip (Ethereum)                                             | 1,174                         | 0,90                | A maximum 90%-a             |
+| Gold (Ethereum)                                                 | 1,3075                        | 0,90                | A maximum 90%-a             |
+| Lido, EtherFi, Kelp, Lombard, Ethena, Forex és hasonló Spoke-ok | nagyjából 1,01 és 1,06 között | 0,99                | A teljes maximum, állandóan |
+
+### Kidolgozott példa: 10 WETH 12 000 USDC-vel szemben mindkét verzión
+
+Vegyük ugyanazt a pozíciót a V3 Ethereum Core-on (84%-os küszöb, 5%-os bónusz) és a V4 Main Spoke-on (84%-os CF, 5,55%-os maximális bónusz, 1,24-es cél). Mindkettő likvidálható, amint az ETH 1428,57 $ alá esik. Egy likvidálás legfeljebb ennyit vihet el két árnál:
+
+| ETH-ár (health factor) | Verzió | Bónusz | Visszafizetett adósság | Általad fizetett bónusz | Health factor utána   | Megmaradó adósság |
+| ---------------------- | ------ | ------ | ---------------------- | ----------------------- | --------------------- | ----------------- |
+| 1400 $ (0,98)          | V3     | 5%     | 6000 $ (50%)           | 300 $                   | 1,078                 | 6000 $            |
+| 1400 $ (0,98)          | V4     | 5,11%  | 8736,81 $ (72,8%)      | 446,10 $                | 1,24                  | 3263,19 $         |
+| 1330 $ (0,931)         | V3     | 5%     | 12 000 $ (100%)        | 600 $                   | nincs (nincs adósság) | 0 $               |
+| 1330 $ (0,931)         | V4     | 5,38%  | 10 450,22 $ (87,1%)    | 562,01 $                | 1,24                  | 1549,78 $         |
+
+Két dolog tűnik ki. Közvetlenül 1 alatt egy V4-likvidálás a Main Spoke-on az adósságod nagyobb részét viheti el, mint a V3 50%-a, mert az 1,24-es célhoz nagy visszafizetés kell, és dollárban nagyobb bónuszt fizetsz. Lejjebb a V3 mindent rendezhet, míg a V4 továbbra is a célnál áll meg, és 1,24-es pozíciót hagy neked. A felvett USDC mindkét esetben nálad marad; amit elveszítesz, az a bónusz. Egy likvidátor mindig dönthet úgy, hogy ezeknél a maximumoknál kevesebbet fizet vissza.
+
+Az E-Mode-szerű Spoke-okon a célok közvetlenül 1 fölött vannak, és a bónusz a wstETH-nél és a weETH-nél állandó 1%. A bónusz kicsi, de 95,5%-os CF mellett minden 1 alatti lépéshez nagy visszafizetés kell: a Lido Spoke-on egy 0,987-es health factorú pozíció adósságának nagyjából 55%-a visszafizethető egyetlen likvidálásban. A [likvidálási útmutató V4-ről szóló része](/hu/blog/hogyan-mukodik-a-likvidalas-az-aave-on#miben-masok-a-likvidalasok-az-aave-v4-en) tartalmazza a bónusz képletét.
+
+## Miben mások a kamatok a V4-en?
+
+A V3-on minden eszköznek minden piacon van egy kihasználtsági görbéje: az USDC-nek az Ethereum Core-on és az Arbitrumon külön poolja és külön kamata van ([hogyan működnek az Aave kamatai](/hu/blog/aave-kamatok)). A V4 megtartja a görbét, de a Hubba helyezi, így minden Spoke, amely ugyanabból a Hubból vesz fel USDC-t, ugyanazt az alapkamatot fizeti, és ugyanaz a token két Hubból eltérő árú lehet. 2026. november 4-én az Aave API-ja a Bluechip Spoke-ban az USDC-t 5,41%-on mutatta a Core Hubból és 4,45%-on a Prime Hubból.
+
+Az alapkamatra a V4 egy User Risk Premiumot (felhasználói kockázati felár) tesz. Minden fedezeti eszköznek minden Spoke-ban van egy 0% és 1000% közötti fedezeti kockázata (collateral risk); a felárad a fedezeteid kockázatának átlaga, amelyben a legbiztonságosabb számít először, és csak annyi fedezet, amennyi az adósságodat fedezi. Az Aave példája: 5%-os alapkamatra 50%-os felár azt jelenti, hogy 7,5%-ot fizetsz.
+
+A legtöbb Spoke még minden fedezeti kockázatot 0-ra állít, így a hitelfelvevőik csak az alapkamatot fizetik. A kivételek 2026. november 4-én többek között: a syrupUSDC az Arc Maple Spoke-ján (20%), az USDe az Avalanche Ethena Ecosystem Spoke-ján (16,5%), az SPCXc a Coinbase Stocks Spoke-on (10%) és több eszköz a Sentora Spoke-jain. Egy csak syrupUSDC-vel fedezett USDC-hitel az Arcon, 3,06%-os alapkamat mellett, nagyjából 3,7%-ba került.
+
+A felárat akkor számolják újra, amikor hitelt veszel fel, kivételt indítasz, fedezetet módosítasz vagy likvidálnak, nem akkor, amikor elhelyezel vagy visszafizetsz. Ha a governance csökkenti egy eszköz kockázatát, csak ezek egyike vagy egy kézi frissítés után jársz jobban; ha emeli, a felárad addig nem változik, hacsak a governance nem kényszerít ki frissítést. A GHO-ról és a V4-es kamatokról bővebben: [hogyan határozzák meg a kamatot az Aave V4-ben](/hu/blog/aave-kamatok#hogyan-hatarozzak-meg-a-kamatot-a-gho-nal-es-az-aave-v4-ben).
+
+## Mi váltotta fel az E-Mode-ot az Aave V4-en?
+
+A V3-on az E-Mode egy kapcsoló egy piacon belül: kiválasztasz egy kategóriát, például az „ETH correlated” kategóriát az Ethereum Core-on (2026. november 4-én 93%-os LTV, 95%-os küszöb, 1%-os bónusz), és a teljes pozíciód abban a piacban ezeket a beállításokat használja ([hogyan működik az E-Mode](/hu/blog/aave-e-mode-magyarazat)).
+
+A V4-ben nincs E-Mode-kapcsoló. Az együtt mozgó párok ehelyett saját Spoke-okat kapnak: az Aave dokumentációja a Lido, az EtherFi és a Kelp Spoke-ot „eSpokes” néven említi, az aktiválási javaslat pedig a Lombard BTC-vel együtt e-Mode Spoke-oknak nevezte őket. A Lido Spoke 95,5%-os CF-fel fogad el wstETH-t fedezetként, és csak WETH-et kölcsönöz; az EtherFi Spoke ugyanezt teszi weETH-vel. 2026. november 4-én mindkettőnek 1%-os likvidálási bónusza volt.
+
+A gyakorlati különbség: a V3-on egy pozíciót be- és kiléptethetsz az E-Mode-ba, amíg egészséges marad. A V4-en egy loop (ismételt hitelfelvétel tőkeáttétellel) a Lido Spoke-on külön pozíció attól, amit a Main Spoke-on tartasz. Váltáshoz az egyiket lezárod, a másikat megnyitod.
+
+## Tovább működik az Aave V3, és átkerülnek a V3-hitelek a V4-re?
+
+A V3 tovább működik, és semmi sem költözik magától. Az Aave Labs 2026. februári temp checkje, az „Aave Will Win” keretrendszer szerint „no need for a rushed, or forced, migration” (nincs szükség elsietett vagy kényszerített átállásra), és a V3 a V4 mellett fut, amíg a DAO másként nem dönt. Azt is írja, hogy amint a V4 kiforrott, a V3 paraméterei „could be gradually adjusted to encourage migration” (fokozatosan módosíthatók az átállás ösztönzésére), és hogy a V3 határozatlan ideig nyitva marad a kivételekre. Néhány V3-piacot már más okokból leépítenek, ahogy [a leépítésről szóló útmutató](/hu/blog/egy-aave-piac-leepitese#mely-aave-piacokat-epitik-le) elmagyarázza.
+
+Az Aave V4 dokumentációja nem ír le olyan eszközt, amely egy V3-pozíciót átvinne a V4-be, és olyat sem, amely egy pozíciót egyik V4 Spoke-ból a másikba vinne. A kézi átköltözés azt jelenti, hogy visszafizeted a V3-adósságot, kiveszed a fedezetet, elhelyezed egy V4 Spoke-ban, és újra hitelt veszel fel, ebben a sorrendben, így a fedezeted soha nincs kivéve, amíg adósság függ tőle. Egyes külső eszközök ezeket a lépéseket egyetlen tranzakcióba csomagolják. Akárhogy is, előbb nézd meg az új Spoke collateral factorát, cél health factorát és kamatát: ugyanaz a health factor ott más mozgásteret és más likvidálási méretet jelenthet.
+
+## Mire figyelj, ha mindkét verzión van hiteled?
+
+- **Két vagy több health factor.** Minden V3-piacnak és minden V4 Spoke-nak saját van. Egy egészséges V3-hitel semmit nem tesz egy 1 közelében álló V4-hitelért.
+- **Eltérő kiinduló mozgástér.** Egy V4-en a maximumig felvett pozíció 1,00-en áll, míg a V3 LTV-je rést hagy. Ne vidd át azt a V3-as szokást, hogy „vegyél fel a határig”.
+- **Eltérő likvidálási méretek.** A Main Spoke-okon egy likvidálás az adósságod több mint felét elviheti; a V3-on legfeljebb a felét, amíg a health factorod 0,95 fölött van.
+- **Változások, amelyek mindkettőt elérik.** 2026. október 28-án egyetlen payload mindkét verzión módosította a WETH-et. Mindkettőnél figyeld a governance-t.
+- **Széttartó kamatok.** A V3-kamatok az egyes piacok poolját követik; a V4-kamatok a Hubot, plusz a feláradat.
+- **Jövőbeli V3-változások.** Ha a governance elkezdi úgy módosítani a V3-at, hogy a hitelfelvevőket a V4 felé terelje, számíts arra, hogy a kamatok vagy a paraméterek a V3-hitelek kárára mozdulnak.
+
+## Lefedheti egy riasztás mindkét verziót?
+
+Igen, külön riasztásokként. A Tokenping 5 percenként ellenőrzi a health factorodat minden Aave V3 piacon 21 hálózaton és mind a 24 V4 Spoke-ban az Ethereumon, az Avalanche-on, az Arcon és a Base-en, V3-piaconként vagy V4-Spoke-onként egy riasztással. Üzenetet küld Signalon, Telegramon vagy e-mailben, amikor a health factor az általad választott küszöbérték (1,1 és 10 között) alatt van, és minden ellenőrzéskor megismétli, amíg helyre nem áll.
+
+A V4-en a küszöbérték többet számít, mert a hitelfelvételi korlát a likvidálási határ: állítsd jóval 1 fölé, hogy az üzenet akkor érkezzen, amikor még van időd visszafizetni vagy fedezetet hozzáadni, mielőtt egy likvidálás a Spoke céljáig viszi le az adósságodat. Egy riasztás nem tud helyetted cselekedni, és egy gyors mozgás két ellenőrzés között is átviheti az 1-et. [Mekkora tartalékot tarts](/hu/blog/biztonsagos-aave-health-factor#mekkora-tartalek-kell-ahhoz-hogy-legyen-idod-lepni): ez segít kiválasztani a számot.
+
+Az [Aave V3 és V4 pozícióidat](/hu/aave) fizetés nélkül ellenőrizheted; a riasztások ára <AlertPrice />, Arbitrumon fizetve. A Tokenping béta, és nincs rendelkezésre állási garanciája. A beállítás lépései: [hogyan állíts be health factor-riasztást](/hu/blog/aave-health-factor-riasztas-beallitasa).
+
+## Források
+
+- [Aave V4 overview](https://aave.com/docs/aave-v4.md): Hubok, Spoke-ok, Hub-eszközönkénti kamatok, User Risk Premium, cél health factor és az 1000 $-os porszabály (megtekintve: 2026. november 4.)
+- [Aave V4 user positions](https://aave.com/docs/aave-v4/positions.md), [borrow](https://aave.com/docs/aave-v4/positions/borrow.md) és [position conditions](https://aave.com/docs/aave-v4/positions/conditions.md): Spoke-onkénti pozíciók, 1,0 alatt tiltott hitelfelvétel, azonos Spoke-beli fedezet, dinamikus konfiguráció és a felár frissítése (megtekintve: 2026. november 4.)
+- [Aave V4 Spokes](https://aave.com/docs/aave-v4/liquidity/spokes.md) és [liquidations](https://aave.com/docs/aave-v4/positions/liquidations.md): a telepített ethereumi Spoke-ok és az eSpoke-nevek, holland aukciós bónusz (megtekintve: 2026. november 4.)
+- [Aave docs changelog](https://aave.com/docs/resources/changelog.md): a V4 indulási dátumai az Ethereumon, az Avalanche-on, az Arcon és a Base-en (megtekintve: 2026. november 4.)
+- [aave/aave-v4 overview](https://github.com/aave/aave-v4/blob/main/docs/overview.md), [LiquidationLogic.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/libraries/LiquidationLogic.sol) és [Spoke.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/Spoke.sol), a3ef63e commit: kockázati felár, dinamikus kockázati konfiguráció, likvidálási motor, health factor-ellenőrzés (megtekintve: 2026. november 4.)
+- [Aave V4 nyilvános GraphQL API](https://api.v4.aave.com/graphql), `chains`, `hubs`, `spokes` és `reserves`: Spoke-ok, Hubok, collateral factorok, fedezeti kockázat, bónuszok és hitelkamatok (megtekintve: 2026. november 4.)
+- Minden V4 Spoke `getLiquidationConfig` és `getReserve` függvényének on-chain kiolvasása, például az [Ethereum Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485#readContract) a 26341712-es blokkban (megtekintve: 2026. november 4.)
+- [Az AIP 536 végrehajtási tranzakciója](https://etherscan.io/tx/0x226c48626ec314b194dfa080e992dcabfa1526f813835f81914e1885d5af1275), 2026. október 28.: a WETH a V3 Ethereum Core-on és a V4 Main Spoke-on (megtekintve: 2026. november 4.)
+- [Aave V3 PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) és [Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract): a WETH LTV-je, küszöbe és bónusza, az 1-es E-Mode-kategória a 26341695-ös blokkban (megtekintve: 2026. november 4.)
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): az 50%-os és 100%-os close factor, a 2000 $-os és 1000 $-os határ (megtekintve: 2026. november 4.)
+- [ARFC: Aave V4 Activation on Ethereum Mainnet](https://governance.aave.com/t/arfc-aave-v4-activation-on-ethereum-mainnet/24293), Aave Labs, 2026. március 13.: az induló Spoke-ok és az e-Mode Spoke-ok (megtekintve: 2026. november 4.)
+- [TEMP CHECK: Aave Will Win Framework](https://governance.aave.com/t/temp-check-aave-will-win-framework/24055), Aave Labs, 2026. február 12.: a V3 a V4 mellett, nincs kényszerített átállás (megtekintve: 2026. november 4.)
+- [AL Development Update, October 2026](https://governance.aave.com/t/al-development-update-october-2026/25979), Aave Labs, 2026. november 2.: V4-betétek, Sentora, az első Risk Premium reserve, AIP 536 (megtekintve: 2026. november 4.)
+- [DefiLlama protocols API](https://api.llama.fi/protocols): az Aave V3 és V4 TVL-je és felvett összegei (megtekintve: 2026. november 4.)
+
+_Oktatási tartalom, nem pénzügyi tanácsadás. A riasztások csökkentik a kockázatot, de nem akadályozzák meg a likvidálást._

@@ -1,0 +1,180 @@
+export const meta = {
+  slug: "aave-vs-morpho-perbandingan",
+  title: "Aave vs Morpho untuk peminjam: apa bedanya",
+  description:
+    "Aave vs Morpho bagi peminjam: pasar gabungan vs terisolasi, faktor kesehatan, likuidasi, suku bunga, E-Mode vs LLTV, oracle, dan risiko tata kelola.",
+  h1: "Aave vs Morpho: apa bedanya bagi peminjam?",
+  publishedAt: "2026-11-04",
+  primaryQuestion: "Apa beda Aave dan Morpho bagi peminjam, dan mana yang cocok untuk pinjaman saya?",
+  readingMinutes: 13,
+  figuresAsOf: "2026-11-04",
+};
+
+<ShortAnswer>
+  Aave menggabungkan pinjaman Anda: di Aave V3, semua jaminan dan utang Anda di satu pasar berbagi satu faktor kesehatan
+  (health factor), dan tata kelola (governance) serta Risk Stewards-nya dapat mengubah parameter selama Anda meminjam.
+  Aave V4 mempertahankan gagasan itu per Spoke. Morpho Blue mengisolasinya: setiap pasar memiliki satu jaminan, satu
+  token pinjaman, satu oracle, dan satu LLTV, semuanya ditetapkan untuk selamanya saat pasar dibuat, sehingga setiap
+  pinjaman memiliki faktor kesehatannya sendiri. Morpho Midnight menambahkan pinjaman bunga tetap yang berakhir pada
+  tanggal jatuh tempo. Di Aave, aset yang sehat dapat menopang aset yang turun, tetapi likuidasi dapat mengambil jaminan
+  Anda yang mana pun; di Morpho, aset yang turun hanya mengancam pinjamannya sendiri, dan likuidator pertama dapat
+  melunasi seluruhnya sekaligus. Secara umum tidak ada yang lebih aman: pertukarannya adalah siapa yang menetapkan
+  aturan, dan seberapa banyak posisi Anda yang dapat dijangkau oleh satu aset yang bermasalah.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Angka dan nomor blok saat angka tersebut dibaca: content/blog/snapshots/aave-vs-morpho.md */}
+
+## Bagaimana perbandingan Aave dan Morpho secara sekilas?
+
+Tabel ini merangkum aturan yang penting bagi peminjam. Nilai terkini dibaca pada 4 November 2026 di Ethereum; setiap baris dijelaskan di bawah.
+
+|                                            | Aave V3                                                                  | Aave V4                                                                | Morpho Blue                                         | Morpho Midnight                                           |
+| ------------------------------------------ | ------------------------------------------------------------------------ | ---------------------------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------- |
+| Satu faktor kesehatan mencakup             | Semua jaminan dan utang Anda di satu pasar (satu Pool di satu jaringan)  | Semua jaminan dan utang Anda di satu Spoke                             | Satu jaminan dan satu token pinjaman                | Satu token pinjaman, hingga 16 jaminan pasar tersebut     |
+| Batas pinjaman dan garis likuidasi         | LTV yang lebih rendah untuk meminjam, ambang likuidasi yang lebih tinggi | Satu faktor jaminan per aset                                           | LLTV berfungsi sebagai keduanya                     | LLTV setiap jaminan                                       |
+| Siapa yang menetapkan parameter            | Tata kelola dan Risk Stewards, dapat diubah kapan saja                   | Tata kelola; perubahan biasanya hanya mencapai posisi baru             | Siapa pun yang membuat pasar, tetap untuk selamanya | Siapa pun yang membuat pasar, tetap untuk selamanya       |
+| Bunga                                      | Mengambang, satu kurva per aset                                          | Mengambang, satu kurva per aset Hub ditambah premi risiko per pengguna | Mengambang, AdaptiveCurveIRM                        | Tetap hingga jatuh tempo                                  |
+| Paling banyak yang dilunasi satu likuidasi | 50% atau 100% dari utang                                                 | Cukup untuk mencapai faktor kesehatan target Spoke                     | Seluruh utang                                       | Yang memulihkan kesehatan; seluruhnya setelah jatuh tempo |
+| Bonus likuidasi                            | Per aset jaminan, ditetapkan tata kelola                                 | Membesar saat faktor kesehatan turun                                   | Mengikuti LLTV                                      | Mengikuti LLTV dan kursor setiap jaminan                  |
+| Utang macet (bad debt)                     | Defisit; staker Umbrella dapat menutupnya di Ethereum                    | Defisit; Spoke lain dapat menutupnya                                   | Dihapusbukukan terhadap pemberi pinjaman pasar itu  | Ditanggung bersama pemberi pinjaman pasar itu             |
+| Oracle                                     | Dipilih tata kelola                                                      | Dipilih tata kelola, per Spoke                                         | Dipilih pembuat pasar, tidak dapat diganti          | Dipilih pembuat pasar untuk setiap jaminan                |
+
+## Bagaimana masing-masing dibangun?
+
+### Aave: pasar gabungan, V3 dan V4
+
+Pasar Aave V3 adalah satu Pool di satu jaringan: Ethereum Core, Arbitrum, Base, dan seterusnya. Semua yang Anda setor sebagai jaminan di Pool itu menjamin semua yang Anda pinjam di sana, dan kontrak menghitung satu faktor kesehatan untuk seluruh posisi:
+
+**HF = Σ (nilai jaminan × ambang likuidasi) ÷ total utang**
+
+Setiap aset memiliki dua angka: LTV (rasio pinjaman terhadap nilai), yang membatasi pinjaman baru, dan ambang likuidasi (liquidation threshold) yang lebih tinggi, yang menentukan likuidasi. Di Ethereum Core pada 4 November 2026, WETH memiliki LTV 81% dan ambang 84%. Harga berasal dari oracle (sumber harga) Aave, dalam dolar AS. [Panduan faktor kesehatan Aave](/id/blog/faktor-kesehatan-aave) memuat rumus dan contoh perhitungannya.
+
+Aave V4 membagi sebuah jaringan menjadi Hub, yang memegang likuiditas, dan Spoke, pasar tempat Anda meminjam. Posisi dan faktor kesehatan Anda berada di satu Spoke, dan setiap aset memiliki satu faktor jaminan (collateral factor) sebagai pengganti LTV dan ambang. Pada 4 November 2026, API V4 Aave mencantumkan 24 Spoke di Ethereum, Avalanche, Arc, dan Base. [Cara kerja faktor kesehatan di Aave V4](/id/blog/faktor-kesehatan-aave#apakah-faktor-kesehatan-berbeda-di-aave-v4) membahas detailnya.
+
+### Morpho: pasar terisolasi, Blue dan Midnight
+
+Pasar Morpho Blue ditentukan oleh lima hal: token pinjaman, token jaminan, oracle, model suku bunga, dan LLTV (LTV likuidasi). Siapa pun dapat membuatnya, dan tidak satu pun dari kelimanya dapat diubah sesudahnya. Jaminan Anda di satu pasar tidak menjamin utang di pasar lain, jadi dua pinjaman di dua pasar memiliki dua faktor kesehatan:
+
+**HF = jumlah jaminan × harga oracle × LLTV ÷ utang**
+
+Tidak ada batas pinjaman yang lebih rendah: kontrak mengizinkan Anda meminjam sampai tepat di LLTV, yaitu faktor kesehatan 1,00. [Panduan faktor kesehatan Morpho](/id/blog/faktor-kesehatan-morpho) menguraikannya langkah demi langkah.
+
+Morpho Midnight adalah kontrak terpisah untuk pinjaman bunga tetap dengan jangka waktu tetap. Pasar Midnight memiliki satu token pinjaman, satu tanggal jatuh tempo, dan hingga 128 jaminan, masing-masing dengan LLTV dan oracle-nya sendiri, dan satu peminjam dapat menggunakan hingga 16 di antaranya sekaligus. [Pinjaman bunga tetap Morpho Midnight](/id/blog/pinjaman-bunga-tetap-morpho-midnight) menjelaskan cara kerjanya.
+
+## Apa yang terjadi pada faktor kesehatan Anda saat satu aset turun?
+
+Di sinilah kedua desain paling terasa berbeda. Ambil jaminan yang sama di keduanya, dengan harga ilustratif US$2.400 untuk ETH dan US$80.000 untuk BTC, serta utang 20.000 USDC.
+
+**Di Aave V3 Ethereum Core**, dengan 10 WETH (ambang 84%) dan 0,2 WBTC (ambang 85%) dalam satu posisi, tanpa memperhitungkan bunga:
+
+- Jaminan terbobot: 24.000 × 0,84 + 16.000 × 0,85 = 33.760.
+- Faktor kesehatan: 33.760 ÷ 20.000 = **1,69**.
+- Jika BTC turun 40% ke US$48.000: 24.000 × 0,84 + 9.600 × 0,85 = 28.320, faktor kesehatan **1,42**. Tidak ada yang dapat dilikuidasi.
+
+WETH menopang WBTC. Dalam posisi ini, WETH saja dihitung sebesar 20.160, lebih dari seluruh utang, jadi bahkan WBTC yang sama sekali tidak bernilai akan tetap menyisakan faktor kesehatan 1,008.
+
+**Di Morpho Blue**, dengan aset yang sama dibagi ke dua pasar Ethereum yang tercantum, USDC | WETH (86%) dan USDC | WBTC (86%), dan 10.000 USDC dipinjam di masing-masing:
+
+- Pinjaman WETH: 24.000 × 0,86 ÷ 10.000 = **2,06**.
+- Pinjaman WBTC: 16.000 × 0,86 ÷ 10.000 = **1,38**, dengan harga likuidasi US$58.139,53, 27,3% di bawah US$80.000.
+- Jika BTC turun 40%: pinjaman WBTC berada di 9.600 × 0,86 ÷ 10.000 = **0,83** dan dapat dilikuidasi, sementara pinjaman WETH tetap di 2,06.
+
+Sisi sebaliknya sama nyatanya. Di Aave, begitu seluruh posisi turun di bawah 1, likuidator memilih jaminan mana yang diambil, jadi penurunan BTC dapat membuat Anda kehilangan WETH. Di Morpho, pinjaman WETH tidak dapat dijangkau, apa pun yang terjadi pada BTC. Penggabungan memberi Anda penyangga bersama; isolasi memberi Anda penyangga per pinjaman, dan Anda harus menentukan besar masing-masing.
+
+## Apa bedanya likuidasi?
+
+Di kedua protokol, likuidator melunasi sebagian utang Anda di bawah faktor kesehatan 1 dan mengambil jaminan senilai jumlah itu ditambah bonus. Anda tetap memegang apa yang Anda pinjam, jadi bonus itulah biaya likuidasi bagi Anda. Aturan di sekitarnya berbeda:
+
+- **Berapa banyak sekaligus.** Di Aave V3.7, satu likuidasi dapat melunasi hingga 50% dari total utang Anda selama faktor kesehatan Anda di atas 0,95 dan jaminan serta utang yang terlibat masing-masing bernilai setidaknya US$2.000; pada atau di bawah 0,95, atau untuk jumlah yang lebih kecil, likuidasi dapat melunasi seluruh utang dalam aset tersebut. Aave V4 menghapus aturan ini: likuidator hanya melunasi secukupnya untuk mengembalikan Anda ke faktor kesehatan target Spoke, 1,24 di Ethereum Main Spoke pada 4 November 2026. Morpho Blue tidak memiliki batas: likuidator pertama dapat melunasi seluruh utang Anda dalam satu panggilan.
+- **Bonusnya.** Di Aave V3, bonus ditetapkan per aset jaminan oleh tata kelola: 5% untuk WETH dan WBTC di Ethereum Core pada 4 November 2026, dan 20% darinya diambil kas (treasury) Aave sebagai biaya protokol. Di V4, bonus membesar saat faktor kesehatan turun. Di Morpho Blue, bonus mengikuti LLTV, 1 ÷ (1 − 0,3 × (1 − LLTV)) dengan batas 15%: 4,38% pada LLTV 86%, 1,06% pada 96,5%, seluruhnya untuk likuidator.
+- **Pra-likuidasi.** Di Morpho Blue, peminjam dapat memilih ikut serta dalam kontrak pra-likuidasi (pre-liquidation) yang melikuidasi pinjaman sedikit demi sedikit sebelum LLTV. Morpho sedang menghentikan fitur ini dan meminta peminjam yang memilikinya untuk mematikannya; jika Anda pernah menyalakan "Auto-deleverage", [pra-likuidasi Morpho](/id/blog/pra-likuidasi-morpho) menunjukkan cara memeriksa dan mencabutnya. Aave tidak memiliki yang serupa.
+- **Jatuh tempo.** Di Morpho Midnight, utang yang tersisa setelah jatuh tempo dapat dilikuidasi bahkan pada posisi yang sehat, dengan bonus yang naik dari nol hingga ukuran penuhnya selama satu jam pertama.
+- **Utang macet.** Saat jaminan habis lebih dulu daripada utangnya, Aave V3 mencatat defisit, yang dapat ditutup staker Umbrella di Ethereum (untuk USDC, USDT, WETH, dan GHO, menurut dokumentasi Aave); di V4, Spoke lain dapat menutupnya. Di Morpho, kerugiannya dihapusbukukan terhadap pemberi pinjaman di pasar itu saja. Bagi Anda sebagai peminjam, hasilnya sama di mana pun: jaminannya hilang dan tidak ada utang yang tersisa.
+
+Mekanisme lengkapnya ada di [cara kerja likuidasi Aave](/id/blog/cara-kerja-likuidasi-aave), dengan [aturan V4](/id/blog/cara-kerja-likuidasi-aave#apa-bedanya-likuidasi-di-aave-v4), dan di [cara kerja likuidasi Morpho](/id/blog/cara-kerja-likuidasi-morpho), yang memuat [tabel perbandingan berdampingan](/id/blog/cara-kerja-likuidasi-morpho#apa-bedanya-likuidasi-morpho-dengan-aave).
+
+## Apa bedanya suku bunga?
+
+**Aave V3** menetapkan suku bunga mengambang setiap aset pada kurva tetap: naik perlahan seiring utilisasi (bagian pool yang dipinjam) hingga level optimal, lalu naik curam. Tata kelola menetapkan empat angka kurva itu, dan Risk Stewards dapat menyesuaikannya dalam batas tertentu. USDC di Ethereum Core memakai level optimal 94%, kemiringan pertama 4,5%, dan kemiringan kedua 10%. Pada blok Ethereum 26341682 tanggal 4 November 2026, utilisasinya 94,7%, sedikit melewati titik belok, dan biaya meminjam 5,67% per tahun. Di antara perubahan parameter, suku bunga hanya bergerak mengikuti utilisasi. [Cara kerja suku bunga Aave](/id/blog/suku-bunga-aave) memuat rumusnya dan sebuah lonjakan nyata.
+
+**Aave V4** mempertahankan kurva per aset di Hub dan menambahkan User Risk Premium di atasnya, dari 0% hingga 1.000% dari suku bunga bersama tergantung kualitas jaminan Anda: contoh Aave adalah premi 50% pada suku bunga 5%, yang menghasilkan 7,5%.
+
+**Pasar Morpho Blue** memakai AdaptiveCurveIRM, yang menargetkan utilisasi 90%. Pada setiap saat, suku bunga berada pada kurva di sekitar "suku bunga pada target" (rate at target): seperempatnya pada utilisasi 0%, empat kalinya pada 100%. Berbeda dengan kurva Aave, suku bunga pada target itu sendiri bergeser: naik selama utilisasi tetap di atas 90%, turun selama tetap di bawahnya, antara 0,1% dan 200% per tahun. Pada utilisasi 100%, nilainya berlipat dua dalam sekitar lima hari. Pada 4 November 2026, pasar USDC | cbBTC (86%) di Ethereum berada pada utilisasi 90,3%, dengan suku bunga pada target 4,97% dan suku bunga pinjaman sekitar 5,4% per tahun. Karena itu, pasar yang ramai terus menjadi lebih mahal sampai peminjam melunasi atau pemberi pinjaman datang; pasar yang sepi menjadi lebih murah.
+
+**Morpho Midnight** mengunci suku bunga Anda saat Anda meminjam. Anda menjual unit utang di bawah nilai nominal dan berutang tepat satu token pinjaman per unit saat jatuh tempo, sehingga utang Anda tidak bertambah dan hanya harga jaminan yang menggerakkan faktor kesehatan Anda. Aave tidak memiliki suku bunga tetap: V3.2 menghapus kode stable rate yang lama, dan setiap pinjaman Aave memakai bunga mengambang.
+
+## E-Mode atau pasar LLTV tinggi: berapa banyak yang dapat Anda pinjam?
+
+Kedua protokol mengizinkan Anda meminjam lebih banyak terhadap jaminan yang bergerak seiring aset yang Anda pinjam, dengan cara yang berbeda.
+
+**E-Mode Aave** adalah pengaturan untuk seluruh posisi V3 Anda. Anda memilih satu kategori dan, selama Anda berada di dalamnya, jaminannya mendapat LTV, ambang, dan bonus kategori itu. Di Ethereum Core pada 4 November 2026, "ETH correlated" memakai LTV 93%, ambang 95%, dan bonus 1%, dan WETH adalah satu-satunya aset yang dapat Anda pinjam di dalamnya. Setiap aset yang Anda pinjam harus dapat dipinjam dalam kategori itu, jadi posisi dengan utang USDC tidak dapat memakainya. [E-Mode Aave](/id/blog/e-mode-aave) membahas kategorinya dan likuidasi Maret 2026.
+
+**Di Morpho** tidak ada mode: Anda memilih pasar yang LLTV-nya cocok dengan pasangan aset tersebut. LLTV yang telah diaktifkan tata kelola Morpho pada 4 November 2026 adalah 0%, 38,5%, 62,5%, 77%, 86%, 91,5%, 94,5%, 96,5%, dan 98%. Pasar WETH | wstETH di Ethereum memakai 96,5%, dengan insentif likuidasi 1,06%.
+
+Peminjam yang menjalankan loop (siklus pinjaman dengan leverage) wstETH terhadap WETH dapat mencapai posisi serupa di keduanya, dengan satu perbedaan: di Aave Anda hanya dapat meminjam sampai LTV 93%, yang menyisakan faktor kesehatan sekitar 95 ÷ 93 = 1,02; di Morpho, kontrak mengizinkan Anda meminjam sampai tepat di garis 96,5%, yaitu faktor kesehatan 1,00.
+
+## Di jaringan apa saja Aave dan Morpho berjalan?
+
+|                  | Aave                                                                                                                                        | Morpho                                                                                                                                                      |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bunga mengambang | V3 di lebih dari 20 jaringan, termasuk Ethereum, Arbitrum, Base, Avalanche, Polygon, dan Optimism; V4 di Ethereum, Avalanche, Arc, dan Base | Blue di 14 jaringan: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable, dan Tempo |
+| Bunga tetap      | Tidak ada                                                                                                                                   | Midnight, dengan pasar yang tercantum di Ethereum dan Base pada 4 November 2026                                                                             |
+
+Di Aave, setiap aset di sebuah pasar dicantumkan oleh tata kelola. Di Morpho, siapa pun dapat membuat pasar, dan aplikasi Morpho hanya menampilkan pasar yang dipilih Morpho Association untuk dicantumkan (lihat di bawah). Beberapa jaringan Aave V3 sedang ditutup secara bertahap; [apa yang terjadi saat Aave menutup sebuah pasar](/id/blog/penutupan-pasar-aave) menjelaskan artinya bagi pinjaman yang masih terbuka.
+
+## Risiko apa yang berbeda di masing-masing?
+
+Keduanya membawa risiko dasar yang sama: penurunan harga, kesalahan oracle, bug kontrak pintar. Yang berbeda adalah letaknya.
+
+**Siapa yang dapat mengubah pinjaman Anda.** Di Aave, tata kelola dapat mengubah LTV, ambang likuidasi, bonus, dan kurva suku bunga sebuah aset V3, dan Risk Stewards dapat menggesernya dalam langkah yang dibatasi dan dengan waktu tunggu minimum. Ambang yang lebih rendah di V3 langsung berlaku untuk setiap posisi terbuka sekaligus. Aset juga dapat dibekukan (frozen), yang menghalangi pinjaman baru tetapi tidak menghalangi likuidasi, atau dijeda (paused), yang juga menghalangi likuidasi, dengan masa tenggang (grace period) hingga 4 jam sesudahnya. Di V4, faktor jaminan dan bonus baru biasanya baru mencapai posisi Anda saat Anda berikutnya meminjam atau menarik. Di Morpho Blue, tidak ada yang dapat mengubah sebuah pasar: tata kelola dapat mengaktifkan LLTV dan model suku bunga baru serta menetapkan biaya hingga 25% dari bunga, yang dibayar pemberi pinjaman, tetapi tidak dapat menyentuh pasar yang sudah ada, dan kontraknya tidak memiliki fungsi jeda.
+
+**Siapa yang memilih oracle.** Tata kelola Aave memilih sumber harga untuk setiap aset. Di Morpho, siapa pun yang membuat pasar memilih oracle-nya, dan oracle itu tidak pernah dapat diganti. Dokumentasi Morpho menyebutkan bahwa pilihan itu, karena permanen, menentukan profil risiko pasar. Sebagian oracle mengikuti nilai tukar alih-alih harga pasar, atau menganggap stablecoin bernilai tepat satu dolar. Sebelum meminjam di Morpho, periksa apa yang diukur oracle pasar Anda; [bagian oracle dalam panduan likuidasi](/id/blog/cara-kerja-likuidasi-morpho#apa-peran-oracle-dalam-likuidasi) menunjukkan apa yang perlu diperhatikan.
+
+**Tercantum atau tidak tercantum.** Aplikasi Morpho hanya menampilkan pasar yang dicantumkan Morpho Association, terutama pasar tempat vault yang tercantum meminjamkan dana. Kebijakannya menyebut pencantuman sebagai "a discovery decision" (keputusan agar pasar mudah ditemukan), bukan dukungan atau peringkat risiko, dan pasar yang tidak tercantum tetap berfungsi on-chain. Pasar yang tidak tercantum tetap dapat memegang pinjaman besar, seperti yang ditunjukkan [saham tokenisasi sebagai jaminan](/id/blog/saham-tokenisasi-sebagai-jaminan#di-mana-anda-dapat-meminjam-dengan-jaminan-saham-tokenisasi) untuk pinjaman berjaminan saham, jadi ketiadaan sebuah pasar di aplikasi hanya memberi tahu Anda bahwa Morpho memilih untuk tidak menampilkannya.
+
+**Apa yang dapat dijangkau satu aset bermasalah.** Di Aave, aset yang salah harga atau mengalami depeg (lepasnya patokan terhadap dolar) di pasar Anda menggerakkan seluruh faktor kesehatan Anda. Di Morpho, aset itu hanya menggerakkan pinjaman yang memakainya, tetapi pinjaman tersebut tidak memiliki jaminan lain untuk bersandar.
+
+## Mana yang cocok untuk peminjam yang mana?
+
+Tidak ada yang merupakan protokol yang lebih baik; masing-masing cocok untuk cara meminjam yang berbeda. Beberapa gambaran kasar:
+
+- **Beberapa aset sebagai jaminan, satu penyangga untuk dipantau:** posisi gabungan Aave membuat aset-aset itu saling menopang, dengan konsekuensi aturan yang dapat diubah tata kelola.
+- **Aturan yang tidak dapat berubah setelah Anda meminjam:** LLTV, oracle, dan model suku bunga pasar Morpho tetap untuk selamanya, tetapi Anda harus menilai oracle itu sendiri.
+- **Pinjaman yang tidak boleh menyentuh jaminan Anda yang lain:** Morpho memisahkan setiap pinjaman; di Aave, pasar atau jaringan yang terpisah memberi hasil yang sama.
+- **Meminjam dekat garis likuidasi pada pasangan yang berkorelasi:** keduanya menawarkannya, lewat E-Mode atau LLTV tinggi, dan keduanya menyisakan margin beberapa persen.
+- **Suku bunga yang tidak bergerak:** hanya Morpho Midnight yang menawarkannya, dengan imbalan tanggal jatuh tempo yang tidak boleh Anda lewatkan.
+- **Posisi kecil:** di keduanya, satu likuidasi dapat melunasi seluruh utang sekaligus, di Aave di bawah US$2.000 pada aset yang terlibat dan di Morpho berapa pun ukurannya.
+
+Panduan ini membandingkan mekanisme; ini bukan nasihat keuangan.
+
+## Bagaimana peringatan dapat membantu di keduanya?
+
+Tokenping memantau keduanya. Tokenping memeriksa setiap 5 menit dan, selama faktor kesehatan berada di bawah ambang batas yang Anda tetapkan, mengirim pesan pada setiap pemeriksaan di setiap saluran yang Anda pilih: Signal, Telegram, atau email.
+
+- **Aave:** satu peringatan per pasar V3 atau Spoke V4, di 24 pasar V3 di 21 jaringan dan semua 24 Spoke V4 di Ethereum, Avalanche, Arc, dan Base. Ambang batasnya dari 1,1 hingga 10. Anda dapat [memeriksa faktor kesehatan Aave Anda](/id/aave) lebih dulu.
+- **Morpho:** satu peringatan per pasar tempat Anda meminjam, di pasar yang dicantumkan aplikasi Morpho: Blue di 14 jaringan dan Midnight di jaringan tempat API Morpho mencantumkan pasar (Ethereum dan Base pada 4 November 2026). Ambang batasnya dapat turun hingga 1,02, karena pinjaman dengan LLTV tinggi sering berjalan dekat dengan 1. Jika Anda mengizinkan pra-likuidasi, peringatan diukur terhadap garis yang lebih awal itu, dan pinjaman Midnight juga mendapat pengingat 7 hari dan 24 jam sebelum jatuh tempo. Posisi Anda ada di [dasbor Morpho](/id/morpho).
+
+Melihat posisi Anda tidak memerlukan pembayaran. Peringatan berbiaya <AlertPrice />, dan paket yang sama mencakup Aave dan Morpho. Peringatan memberi Anda waktu untuk melunasi atau menambah jaminan; peringatan tidak mencegah likuidasi, dan harga dapat bergerak melewati garis Anda di antara dua pemeriksaan.
+
+## Sumber
+
+- [LiquidationLogic.sol Aave V3](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) dan [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), aave-dao/aave-v3-origin: close factor, defisit, faktor kesehatan, jeda dan masa tenggang (diakses 4 November 2026)
+- [Fitur Aave V3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): penghapusan utang stable rate (diakses 4 November 2026)
+- [Aave Generalized Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): parameter yang dapat diubah para steward, waktu tunggu minimum dan langkah maksimum (diakses 4 November 2026)
+- [Dokumentasi Aave: Umbrella](https://aave.com/docs/aave-v3/umbrella): penutupan defisit, aset dan jaringan (diakses 4 November 2026)
+- [Dokumentasi Aave V4](https://aave.com/docs/aave-v4) dan [posisi V4](https://aave.com/docs/aave-v4/positions): Hub dan Spoke, faktor kesehatan, User Risk Premium, likuidasi (diakses 4 November 2026)
+- [Ikhtisar Aave V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md), aave/aave-v4: konfigurasi risiko dinamis, faktor kesehatan target, bonus variabel, defisit, oracle Spoke (diakses 4 November 2026)
+- [API Aave V4](https://api.v4.aave.com/graphql): Spoke dan jaringan (diakses 4 November 2026)
+- [Aave address book](https://github.com/bgd-labs/aave-address-book): jaringan Aave V3 (diakses 4 November 2026)
+- Pembacaan on-chain di Ethereum pada blok 26341682 dan 26341689: [Pool Aave V3](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract) dan [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) (parameter cadangan, E-Mode, suku bunga USDC), [Aave V4 Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485#readContract) (faktor kesehatan target) dan [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) (pasar, LLTV yang diaktifkan, suku bunga) (diakses 4 November 2026)
+- [Morpho.sol dan ConstantsLib.sol](https://github.com/morpho-org/morpho-blue), morpho-org/morpho-blue: wewenang pemilik, batas biaya 25%, insentif likuidasi, utang macet (diakses 4 November 2026)
+- [Konstanta AdaptiveCurveIRM](https://github.com/morpho-org/morpho-blue-irm/blob/main/src/adaptive-curve-irm/libraries/ConstantsLib.sol), morpho-org/morpho-blue-irm: utilisasi target, kecuraman, kecepatan penyesuaian dan batas (diakses 4 November 2026)
+- [Midnight.sol dan ConstantsLib.sol](https://github.com/morpho-org/midnight), morpho-org/midnight: batas jaminan, likuidasi setelah jatuh tempo dan kenaikan bonus selama 60 menit (diakses 4 November 2026)
+- [Dokumentasi Morpho: Morpho Blue](https://docs.morpho.org/learn/concepts/blue), [oracle](https://docs.morpho.org/learn/concepts/oracle) dan [Midnight](https://docs.morpho.org/learn/concepts/midnight) (diakses 4 November 2026)
+- [Kebijakan pencantuman antarmuka Morpho](https://docs.morpho.org/get-started/resources/interface-listing-policy): arti pencantuman dan siapa yang memutuskan (diakses 4 November 2026)
+- [Bantuan Morpho: Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (diakses 4 November 2026)
+- [API Morpho](https://api.morpho.org/graphql): jaringan, pasar Blue yang tercantum, dan pasar Midnight yang tercantum per jaringan (diakses 4 November 2026)
+
+_Konten edukasi, bukan nasihat keuangan. Peringatan mengurangi risiko, tetapi tidak mencegah likuidasi._

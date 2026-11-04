@@ -1,0 +1,174 @@
+export const meta = {
+  slug: "aave-v4-vs-v3-razlike",
+  title: "Aave V4 vs V3: što se mijenja za tvoj zajam",
+  description:
+    "Aave V4 vs V3 za dužnike: Hubovi i Spokeovi, health factor po Spokeu, likvidacije do ciljnog health factora, premije za rizik, E-Mode Spokeovi i prelazak.",
+  h1: "Aave V4 vs V3: što je drukčije i što to znači za tvoj zajam?",
+  publishedAt: "2026-11-04",
+  primaryQuestion: "Koja je razlika između Aave V3 i Aave V4 za dužnika?",
+  readingMinutes: 13,
+  figuresAsOf: "2026-11-04",
+};
+
+<ShortAnswer>
+  Aave V4 pokrenut je na Ethereumu 30. ožujka 2026., a sada radi i na Avalancheu, Arcu i Baseu. V3 nastavlja raditi uz
+  njega i još drži većinu novca. Na V4 se zadužuješ u Spokeu, tržištu s vlastitim pravilima koje likvidnost crpi iz
+  zajedničkog Huba, a svaki Spoke ima vlastiti health factor (faktor zdravlja). Jedan faktor kolaterala (collateral
+  factor) po imovini zamjenjuje LTV i prag likvidacije s V3, pa se možeš zadužiti sve do health factora od 1,00.
+  Likvidacija otplaćuje dovoljno duga da te podigne na ciljni health factor Spokea (1,24 na Main Spokeovima) umjesto 50
+  % ili 100 % kao na V3, a bonus raste kako ti health factor pada. Stope se određuju po Hubu, plus premija za rizik za
+  rizičniji kolateral. Ništa se ne seli samo od sebe: zajam na V3 ostaje na V3 dok ga ne preseliš.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Brojke i brojevi blokova u kojima su očitane: content/blog/snapshots/aave-v4-vs-v3.md */}
+
+## Što je Aave V4 i kada je pokrenut?
+
+Aave V4 nova je verzija Aaveova protokola za pozajmljivanje, s vlastitim ugovorima. Ne nadograđuje tržišta V3 na mjestu. Prema Aaveovu dnevniku promjena (changelog), pokrenut je na Ethereumu 30. ožujka 2026. s tri Huba i jedanaest Spokeova, zatim na Avalancheu (15. srpnja), Arcu (16. rujna) i Baseu (7. listopada 2026.). V3 radi na 21 mreži; V4 radi na četiri, a Arc ima samo V4.
+
+V3 je i dalje mnogo veći. Dana 4. studenoga 2026. DefiLlama je brojao oko 15,6 milijardi $ u Aave V3 i oko 0,79 milijardi $ u V4, oboje nakon oduzimanja zajmova, uz oko 11,4 milijarde $ i 0,47 milijardi $ posuđenih. Listopadsko ažuriranje Aave Labsa navelo je za V4 više od 1,5 milijardi $ depozita i 450 milijuna $ aktivnih zajmova.
+
+Za dužnika se dvije verzije razlikuju u tome gdje se nalazi tvoja pozicija, koliko se možeš zadužiti, kako se određuje veličina likvidacije i kako se određuje tvoja stopa. Tablica niže to sažima; odjeljci nakon nje objašnjavaju svaki redak.
+
+## Što se mijenja za dužnika, a što ostaje isto?
+
+| Tema                              | Aave V3                                                                                | Aave V4                                                                                                              |
+| --------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Gdje se nalazi tvoj zajam         | Tržište: jedan Pool na jednoj mreži                                                    | Spoke, koji likvidnost crpi iz jednog ili više Hubova                                                                |
+| Health factor                     | Jedan po tržištu                                                                       | Jedan po Spokeu                                                                                                      |
+| Formula                           | Σ(kolateral × prag likvidacije) ÷ dug                                                  | Σ(kolateral × faktor kolaterala) ÷ dug                                                                               |
+| Granica zaduživanja               | LTV, postavljen ispod praga likvidacije                                                | Sam faktor kolaterala: možeš se zadužiti dok health factor ne dođe do 1,00                                           |
+| Granica likvidacije               | Health factor ispod 1                                                                  | Health factor ispod 1 (nepromijenjeno)                                                                               |
+| Najviše otplaćeno u jednom pozivu | 50 % tvog duga, ili 100 % pri health factoru na 0,95 ili ispod ili na malim pozicijama | Dovoljno da te dovede na ciljni health factor Spokea                                                                 |
+| Likvidacijski bonus               | Fiksan po imovini kolaterala                                                           | Raste kako ti health factor pada, do maksimuma po imovini                                                            |
+| Pravilo o ostacima (dust)         | Mora ostati 1.000 $, ili ide sve                                                       | Mora ostati 1.000 $, ili ide sve (nepromijenjeno)                                                                    |
+| Kamatna stopa                     | Krivulja iskorištenosti po imovini po tržištu                                          | Krivulja iskorištenosti po imovini po Hubu, plus User Risk Premium                                                   |
+| Promjene parametara               | Odmah pogađaju svaku otvorenu poziciju                                                 | Nove postavke obično vrijede kad se sljedeći put zadužiš ili povučeš sredstva, osim ako upravljanje ne ažurira stare |
+| Korelirana imovina                | Kategorije E-Mode unutar tržišta                                                       | Zasebni Spokeovi za korelirane parove, poput Spokeova Lido i EtherFi                                                 |
+| Kamata i cijene                   | Dug raste s kamatom; cijene iz orakla pomiču health factor                             | Isto                                                                                                                 |
+| Tvoj postojeći zajam              | Ostaje na V3                                                                           | Otvara se iznova; ništa se ne seli samo od sebe                                                                      |
+
+## Kako funkcioniraju Hubovi i Spokeovi na V4?
+
+Hub drži zajedničku likvidnost svake imovine i određuje njezinu kamatnu stopu. Spoke je ono što koristiš: navodi imovinu koju možeš deponirati i posuditi, određuje njezine faktore kolaterala, bira cjenovne orakle (izvore cijene) i drži postavke likvidacije. Aaveova dokumentacija kaže to ovako: korisnici rade sa Spokeovima, koji usmjeravaju likvidnost prema Hubu i iz njega, a rizik je izoliran na razini Spokea.
+
+Na V3 tržište je radilo oba posla. Tržište Ethereum Core drži vlastiti USDC i postavlja vlastita pravila, a tržište Prime drži zaseban USDC sa zasebnim pravilima. Na V4 nekoliko Spokeova može posuđivati isti USDC iz jednog Huba, a svaki zadržava vlastite postavke rizika, dok se jedan Spoke može oslanjati na više Hubova: Bluechip Spoke na Ethereumu posuđuje USDC i iz Core Huba i iz Prime Huba.
+
+Aaveov V4 API naveo je 24 Spokea i 8 Hubova 4. studenoga 2026.:
+
+| Mreža     | Hubovi                                    | Spokeovi                                                                                                                                                                                             |
+| --------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ethereum  | Core, Prime, Plus, Global Dollar, Sentora | Main, Bluechip, Lido, EtherFi, Kelp, Lombard, Ethena Ecosystem, Ethena Correlated, Gold, PAXG Gold, Forex, USDG Pendle, Maple SyrupUSDG; na Sentorinu Hubu: RLUSD Yield, OUSD Yield i drugi Bluechip |
+| Avalanche | Core                                      | Main, AVAX Correlated, Forex, Ethena Ecosystem                                                                                                                                                       |
+| Arc       | Core                                      | Main, Forex, Maple SyrupUSDC                                                                                                                                                                         |
+| Base      | Coinbase Stocks                           | Coinbase Stocks                                                                                                                                                                                      |
+
+Sentora je prvi vanjski kurator (curator) na V4: prema Aave Labsu, vodi vlastiti Hub i Spokeove na Ethereumu i određuje njihov kolateral, parametre, krivulje stope i orakle, dok su ugovori u vlasništvu Aave DAO-a. Spoke na Baseu posuđuje USDC uz tokenizirane dionice, o čemu piše vodič [zaduživanje uz tokenizirane dionice](/hr/blog/tokenizirane-dionice-kao-kolateral#gdje-se-mozes-zaduziti-uz-tokenizirane-dionice).
+
+## Kako funkcionira health factor na Spokeu V4?
+
+Health factor znači isto na obje verzije: ponderirani kolateral podijeljen dugom, a ispod 1 možeš biti likvidiran. Na V4 ponder je faktor kolaterala (CF). Aaveov vlastiti primjer: 10.000 $ u ETH-u uz CF od 80 % naspram 6.000 $ u GHO-u daje 1,333. [Odjeljak o V4 u vodiču za health factor](/hr/blog/aave-health-factor-objasnjen#je-li-health-factor-drukciji-na-aave-v4) obrađuje osnove; tri posljedice važnije su od formule.
+
+**Jedan health factor po Spokeu.** Aaveova dokumentacija kaže da pozicije u različitim Spokeovima ne utječu jedna na drugu i da se možeš zadužiti samo uz kolateral deponiran u isti Spoke. ETH u Main Spokeu ne pomaže zajmu u Gold Spokeu. Na V3 isto vrijedi između tržišta, ali unutar tržišta sav tvoj kolateral pokriva sav tvoj dug.
+
+**Nema razmaka između granice zaduživanja i granice likvidacije.** Na V3 se možeš zadužiti do LTV-a, koji je ispod praga likvidacije: WETH na Ethereum Core imao je LTV od 81 % i prag od 84 % 4. studenoga 2026., pa zaduživanje do maksimuma samo uz WETH ostavlja health factor od oko 1,037 ([zašto maksimum ostavlja oko 1,03](/hr/blog/aave-health-factor-objasnjen#zasto-zaduzivanje-do-maksimuma-ostavlja-health-factor-od-samo-oko-103)). Na V4 nema zasebnog LTV-a. Aaveova dokumentacija kaže da se zaduživanje ili povlačenje blokira samo ako bi spustilo health factor ispod 1,0, a kod provjerava upravo to. Pozicija zadužena do maksimuma na V4 počinje na granici likvidacije, a prvi pomak kamate ili cijene može je prijeći. Odaberi vlastitu marginu.
+
+**Ista imovina može imati isti ponder.** Neki su parametri usklađeni između verzija. WETH se 4. studenoga 2026. računao s 84 % i na V3 Ethereum Core i na V4 Main Spokeu, pa 10 WETH uz 12.000 USDC duga ima isti health factor i istu likvidacijsku cijenu od 1.428,57 $ na obje.
+
+### Što se događa kad upravljanje promijeni faktor kolaterala?
+
+Na V3 niži prag likvidacije vrijedi za svaku otvorenu poziciju u trenutku kad se promjena izvrši, što dužnika može gurnuti ispod 1 bez ikakve promjene cijene ([uzrok 4 u vodiču o tome zašto ti je pao health factor](/hr/blog/zasto-je-pao-aave-health-factor#uzrok-4-jesu-li-governance-ili-risk-stewards-smanjili-prag-likvidacije)).
+
+V4 čuva povijest faktora kolaterala, maksimalnog bonusa i naknade za likvidaciju svake imovine. Kad upravljanje (governance) doda novu konfiguraciju, tvoja pozicija zadržava onu uz koju je vezana dok se ne zadužiš, ne povučeš sredstva ili ne isključiš kolateral; deponiranje i otplata to ne mijenjaju. Ako bi tvoja pozicija prema najnovijim postavkama bila nezdrava, zaduživanje ili povlačenje umjesto toga se poništava (revert). Zato nakon smanjenja možeš otkriti da ne možeš povući kolateral iako ti health factor izgleda dobro.
+
+Ta zaštita nije apsolutna. Upravljanje može i urediti postojeću konfiguraciju, što doseže svaku poziciju vezanu uz nju, ili prisiliti poziciju na najnoviju. Dana 28. listopada 2026. jedan payload upravljanja (AIP 536) podigao je WETH s 83 % na 84 % na V3 Ethereum Core i u istoj transakciji uredio postojeću konfiguraciju WETH-a na V4 Main Spokeu s 83 % na 84 %. Ta je promjena pomogla dužnicima; uređivanje u suprotnom smjeru funkcioniralo bi na isti način.
+
+## Po čemu se likvidacije razlikuju na V4?
+
+Na V3 likvidator smije otplatiti do 50 % tvog duga dok je health factor iznad 0,95, a i kolateral i dug o kojima je riječ vrijede barem 2.000 $, a inače do 100 % ([koliko se može likvidirati odjednom](/hr/blog/kako-funkcionira-likvidacija-na-aaveu#koliki-se-dio-mog-duga-moze-likvidirati-odjednom)). Bonus je fiksan po imovini kolaterala: 5 % za WETH na Ethereum Core.
+
+Na V4 nema close factora (dijela duga koji se može otplatiti odjednom). Likvidator smije otplatiti onoliko duga koliko je potrebno da tvoj health factor dođe do cilja Spokea, i ne više, osim ako bi to ostavilo manje od 1.000 $ duga ili kolaterala. Bonus počinje kao udio maksimuma imovine tik ispod 1 i linearno raste do punog maksimuma pri određenom health factoru. Postavke 4. studenoga 2026., očitane na lancu:
+
+| Spoke                                                         | Ciljni health factor | Puni bonus pri | Bonus tik ispod 1    |
+| ------------------------------------------------------------- | -------------------- | -------------- | -------------------- |
+| Main (Ethereum, Avalanche, Arc), Coinbase Stocks (Base)       | 1,24                 | 0,90           | 90 % maksimuma       |
+| Bluechip (Ethereum)                                           | 1,174                | 0,90           | 90 % maksimuma       |
+| Gold (Ethereum)                                               | 1,3075               | 0,90           | 90 % maksimuma       |
+| Lido, EtherFi, Kelp, Lombard, Ethena, Forex i slični Spokeovi | oko 1,01 do 1,06     | 0,99           | Puni maksimum, ravno |
+
+### Primjer s izračunom: 10 WETH uz 12.000 USDC na obje verzije
+
+Uzmi istu poziciju na V3 Ethereum Core (prag 84 %, bonus 5 %) i na V4 Main Spokeu (CF 84 %, maksimalni bonus 5,55 %, cilj 1,24). Obje se mogu likvidirati čim je ETH ispod 1.428,57 $. Evo najviše što jedna likvidacija može uzeti pri dvije cijene:
+
+| Cijena ETH-a (health factor) | Verzija | Bonus  | Otplaćeni dug        | Bonus koji plaćaš | Health factor nakon | Preostali dug |
+| ---------------------------- | ------- | ------ | -------------------- | ----------------- | ------------------- | ------------- |
+| 1.400 $ (0,98)               | V3      | 5 %    | 6.000 $ (50 %)       | 300 $             | 1,078               | 6.000 $       |
+| 1.400 $ (0,98)               | V4      | 5,11 % | 8.736,81 $ (72,8 %)  | 446,10 $          | 1,24                | 3.263,19 $    |
+| 1.330 $ (0,931)              | V3      | 5 %    | 12.000 $ (100 %)     | 600 $             | nema (nema duga)    | 0 $           |
+| 1.330 $ (0,931)              | V4      | 5,38 % | 10.450,22 $ (87,1 %) | 562,01 $          | 1,24                | 1.549,78 $    |
+
+Ističu se dvije stvari. Tik ispod 1 likvidacija na V4 Main Spokeu može uzeti veći dio tvog duga od 50 % na V3, jer cilj od 1,24 zahtijeva veliku otplatu, i plaćaš veći bonus u dolarima. Dublje dolje V3 može očistiti sve, dok V4 i dalje staje na cilju i ostavlja ti poziciju na 1,24. U oba slučaja zadržavaš posuđeni USDC; ono što gubiš je bonus. Likvidator uvijek može odlučiti otplatiti manje od tih maksimuma.
+
+Na Spokeovima u stilu E-Modea ciljevi su tik iznad 1, a bonus je ravnih 1 % na wstETH i weETH. Bonus je malen, ali uz CF od 95,5 % svaki korak ispod 1 zahtijeva veliku otplatu: na Lido Spokeu pozicija s health factorom od 0,987 može u jednoj likvidaciji imati otplaćeno oko 55 % duga. [Odjeljak o V4 u vodiču o likvidaciji](/hr/blog/kako-funkcionira-likvidacija-na-aaveu#po-cemu-se-likvidacije-razlikuju-na-aave-v4) donosi formulu bonusa.
+
+## Po čemu se kamatne stope razlikuju na V4?
+
+Na V3 svaka imovina ima krivulju iskorištenosti na svakom tržištu: USDC na Ethereum Core i USDC na Arbitrumu imaju zasebne poolove i zasebne stope ([kako funkcioniraju stope na Aaveu](/hr/blog/aave-kamatne-stope)). V4 zadržava krivulju, ali je premješta u Hub, pa svaki Spoke koji posuđuje USDC iz istog Huba plaća istu osnovnu stopu, a isti token može stajati različito iz dva Huba. Dana 4. studenoga 2026. Aaveov API pokazivao je USDC u Bluechip Spokeu na 5,41 % iz Core Huba i 4,45 % iz Prime Huba.
+
+Povrh osnovne stope V4 dodaje User Risk Premium (dodatak za rizik korisnika). Svaka imovina kolaterala ima rizik kolaterala (collateral risk) od 0 % do 1.000 % u svakom Spokeu; tvoja premija je prosjek rizika tvojih kolaterala, pri čemu se najsigurniji računaju prvi, i to samo onoliko kolaterala koliko pokriva tvoj dug. Aaveov primjer: premija od 50 % na osnovnu stopu od 5 % znači da plaćaš 7,5 %.
+
+Većina Spokeova i dalje postavlja svaki rizik kolaterala na 0, pa njihovi dužnici plaćaju samo osnovnu stopu. Iznimke 4. studenoga 2026. uključivale su syrupUSDC na Maple Spokeu na Arcu (20 %), USDe na Ethena Ecosystem Spokeu na Avalancheu (16,5 %), SPCXc na Coinbase Stocks Spokeu (10 %) i nekoliko imovina na Sentorinim Spokeovima. Zajam u USDC-u pokriven samo syrupUSDC-om na Arcu, uz osnovnu stopu od 3,06 %, stajao je oko 3,7 %.
+
+Tvoja premija ponovno se izračunava kad se zadužiš, povučeš sredstva, promijeniš kolateral ili budeš likvidiran, a ne kad deponiraš ili otplatiš. Ako upravljanje snizi rizik imovine, koristi od toga imaš tek nakon jedne od tih radnji ili ručnog osvježavanja; ako ga podigne, tvoja premija ostaje ista do tada, osim ako upravljanje ne nametne ažuriranje. Više o GHO-u i stopama na V4 u vodiču [kako se određuju stope na Aave V4](/hr/blog/aave-kamatne-stope#kako-se-odreduju-stope-za-gho-i-na-aaveu-v4).
+
+## Što je zamijenilo E-Mode na Aave V4?
+
+Na V3 E-Mode je prekidač unutar tržišta: odabereš kategoriju poput „ETH correlated“ na Ethereum Core (LTV 93 %, prag 95 %, bonus 1 % 4. studenoga 2026.) i cijela tvoja pozicija na tom tržištu koristi te postavke ([kako funkcionira E-Mode](/hr/blog/aave-e-mode-objasnjen)).
+
+V4 nema prekidač za E-Mode. Korelirani parovi umjesto toga dobivaju vlastite Spokeove: Aaveova dokumentacija Spokeove Lido, EtherFi i Kelp naziva „eSpokes“, a prijedlog za aktivaciju označio ih je, zajedno s Lombard BTC, kao e-Mode Spokeove. Lido Spoke prihvaća wstETH kao kolateral uz CF od 95,5 % i posuđuje samo WETH; EtherFi Spoke radi isto s weETH-om. Oba su 4. studenoga 2026. imala likvidacijski bonus od 1 %.
+
+Praktična razlika: na V3 možeš poziciju uvesti u E-Mode i izvesti iz njega dok god ostaje zdrava. Na V4 loop (ponovljeno zaduživanje s financijskom polugom) na Lido Spokeu zasebna je pozicija od svega što držiš na Main Spokeu. Da bi prešao, zatvaraš jednu i otvaraš drugu.
+
+## Nastavlja li Aave V3 raditi i sele li se zajmovi s V3 na V4?
+
+V3 nastavlja raditi i ništa se ne seli samo od sebe. Privremena provjera (temp check) Aave Labsa iz veljače 2026., okvir „Aave Will Win“, kaže da nema potrebe za ishitrenim ili prisilnim prelaskom („no need for a rushed, or forced, migration“) i da će V3 raditi uz V4 dok DAO ne odluči drukčije. Kaže i da bi se, kad V4 sazrije, parametri V3 „could be gradually adjusted to encourage migration“ (mogli postupno prilagođavati kako bi potaknuli prelazak) te da V3 ostaje otvoren za povlačenja na neodređeno vrijeme. Neka tržišta V3 već se zatvaraju iz drugih razloga, kako objašnjava [vodič o gašenju tržišta](/hr/blog/gasenje-aave-trzista#koja-se-aave-trzista-gase).
+
+Aaveova dokumentacija za V4 ne opisuje alat koji prenosi poziciju s V3 na V4, ni alat za premještanje pozicije s jednog Spokea V4 na drugi. Ručno premještanje znači otplatiti dug na V3, povući kolateral, deponirati ga u Spoke V4 i ponovno se zadužiti, tim redom, tako da tvoj kolateral nikad nije povučen dok o njemu još ovisi dug. Neki alati trećih strana spajaju te korake u jednu transakciju. U svakom slučaju najprije provjeri faktor kolaterala, ciljni health factor i stopu novog Spokea: isti health factor ondje može značiti drukčiju marginu i drukčiju veličinu likvidacije.
+
+## Na što paziti ako imaš zajmove na obje verzije?
+
+- **Dva ili više health factora.** Svako tržište V3 i svaki Spoke V4 ima vlastiti. Zdrav zajam na V3 ne pomaže zajmu na V4 blizu 1.
+- **Različite početne margine.** Pozicija na V4 zadužena do maksimuma nalazi se na 1,00, dok LTV na V3 ostavlja razmak. Ne prenosi naviku s V3 da se „zadužiš do limita“.
+- **Različite veličine likvidacije.** Na Main Spokeovima jedna likvidacija može uzeti više od pola tvog duga; na V3 uzima najviše pola dok je health factor iznad 0,95.
+- **Promjene koje dosežu obje.** Jedan payload promijenio je WETH na obje verzije 28. listopada 2026. Prati upravljanje za obje.
+- **Stope koje se razilaze.** Stope na V3 prate pool svakog tržišta; stope na V4 prate Hub, plus tvoju premiju.
+- **Buduće promjene na V3.** Ako upravljanje počne prilagođavati V3 kako bi potaknulo dužnike na prelazak na V4, očekuj da se stope ili parametri pomaknu na štetu zajmova na V3.
+
+## Može li upozorenje pokriti obje verzije?
+
+Da, kao zasebna upozorenja. Tokenping provjerava tvoj health factor svakih 5 minuta na svakom tržištu Aave V3 na 21 mreži i u sva 24 Spokea V4 na Ethereumu, Avalancheu, Arcu i Baseu, s jednim upozorenjem po tržištu V3 ili Spokeu V4. Šalje ti poruku putem Signala, Telegrama ili e-pošte kad je health factor ispod praga koji odabereš (od 1,1 do 10) i ponavlja je pri svakoj provjeri dok se ne oporavi.
+
+Na V4 prag je važniji, jer je granica zaduživanja ujedno granica likvidacije: postavi ga znatno iznad 1 kako bi poruka stigla dok još imaš vremena otplatiti dug ili dodati kolateral, prije nego što likvidacija smanji tvoj dug do cilja Spokea. Upozorenje ne može djelovati umjesto tebe, a nagli pomak može prijeći 1 između dviju provjera. [Koliku rezervu zadržati](/hr/blog/siguran-aave-health-factor#koliku-rezervu-trebas-da-stignes-reagirati) pomaže ti odabrati broj.
+
+Možeš [provjeriti svoje pozicije na Aave V3 i V4](/hr/aave) bez plaćanja; upozorenja koštaju <AlertPrice />, uz plaćanje na Arbitrumu. Tokenping je u beta fazi i nema jamstvo dostupnosti. Postavljanje je opisano u vodiču [kako postaviti upozorenje za health factor](/hr/blog/postavljanje-aave-health-factor-upozorenja).
+
+## Izvori
+
+- [Pregled Aave V4](https://aave.com/docs/aave-v4.md): Hubovi, Spokeovi, stope po imovini u Hubu, User Risk Premium, ciljni health factor i pravilo o ostacima od 1.000 $ (pristupljeno 4. studenoga 2026.)
+- [Korisničke pozicije na Aave V4](https://aave.com/docs/aave-v4/positions.md), [zaduživanje](https://aave.com/docs/aave-v4/positions/borrow.md) i [uvjeti pozicije](https://aave.com/docs/aave-v4/positions/conditions.md): pozicije po Spokeu, zaduživanje blokirano ispod 1,0, kolateral u istom Spokeu, dinamička konfiguracija i ažuriranja premije (pristupljeno 4. studenoga 2026.)
+- [Spokeovi na Aave V4](https://aave.com/docs/aave-v4/liquidity/spokes.md) i [likvidacije](https://aave.com/docs/aave-v4/positions/liquidations.md): Spokeovi pokrenuti na Ethereumu i nazivi eSpokeova, bonus kao nizozemska dražba (Dutch auction) (pristupljeno 4. studenoga 2026.)
+- [Dnevnik promjena Aave dokumentacije](https://aave.com/docs/resources/changelog.md): datumi pokretanja V4 na Ethereumu, Avalancheu, Arcu i Baseu (pristupljeno 4. studenoga 2026.)
+- [Pregled aave/aave-v4](https://github.com/aave/aave-v4/blob/main/docs/overview.md), [LiquidationLogic.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/libraries/LiquidationLogic.sol) i [Spoke.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/Spoke.sol), commit a3ef63e: premija za rizik, dinamička konfiguracija rizika, mehanizam likvidacije, provjera health factora (pristupljeno 4. studenoga 2026.)
+- [Javni GraphQL API za Aave V4](https://api.v4.aave.com/graphql), `chains`, `hubs`, `spokes` i `reserves`: Spokeovi, Hubovi, faktori kolaterala, rizik kolaterala, bonusi i stope zaduživanja (pristupljeno 4. studenoga 2026.)
+- Očitanja na lancu funkcija `getLiquidationConfig` i `getReserve` svakog Spokea V4, na primjer [Ethereum Main Spokea](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485#readContract) u bloku 26341712 (pristupljeno 4. studenoga 2026.)
+- [Transakcija izvršenja AIP 536](https://etherscan.io/tx/0x226c48626ec314b194dfa080e992dcabfa1526f813835f81914e1885d5af1275), 28. listopada 2026.: WETH na V3 Ethereum Core i na V4 Main Spokeu (pristupljeno 4. studenoga 2026.)
+- [Aave V3 PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) i [Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract): LTV, prag i bonus za WETH, E-Mode kategorija 1 u bloku 26341695 (pristupljeno 4. studenoga 2026.)
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): close factor od 50 % i 100 %, pragovi od 2.000 $ i 1.000 $ (pristupljeno 4. studenoga 2026.)
+- [ARFC: Aave V4 Activation on Ethereum Mainnet](https://governance.aave.com/t/arfc-aave-v4-activation-on-ethereum-mainnet/24293), Aave Labs, 13. ožujka 2026.: Spokeovi pri pokretanju i e-Mode Spokeovi (pristupljeno 4. studenoga 2026.)
+- [TEMP CHECK: Aave Will Win Framework](https://governance.aave.com/t/temp-check-aave-will-win-framework/24055), Aave Labs, 12. veljače 2026.: V3 uz V4, bez prisilnog prelaska (pristupljeno 4. studenoga 2026.)
+- [AL Development Update, October 2026](https://governance.aave.com/t/al-development-update-october-2026/25979), Aave Labs, 2. studenoga 2026.: depoziti na V4, Sentora, prva rezerva s premijom za rizik, AIP 536 (pristupljeno 4. studenoga 2026.)
+- [DefiLlama API za protokole](https://api.llama.fi/protocols): TVL i posuđeni iznosi za Aave V3 i V4 (pristupljeno 4. studenoga 2026.)
+
+_Edukativni sadržaj, a ne financijski savjet. Upozorenja smanjuju rizik, ali ne sprječavaju likvidaciju._

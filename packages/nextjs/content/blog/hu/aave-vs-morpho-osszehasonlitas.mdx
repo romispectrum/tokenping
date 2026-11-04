@@ -1,0 +1,180 @@
+export const meta = {
+  slug: "aave-vs-morpho-osszehasonlitas",
+  title: "Aave vs Morpho hitelfelvevőknek: miben különböznek",
+  description:
+    "Aave vs Morpho hitelfelvevőknek: közös és izolált piacok, health factor, likvidálás, kamatok, E-Mode vs LLTV, orákulumok és governance-kockázat.",
+  h1: "Aave vs Morpho: miben különböznek egy hitelfelvevő számára?",
+  publishedAt: "2026-11-04",
+  primaryQuestion: "Miben különbözik az Aave és a Morpho egy hitelfelvevő számára, és melyik illik a hitelemhez?",
+  readingMinutes: 13,
+  figuresAsOf: "2026-11-04",
+};
+
+<ShortAnswer>
+  Az Aave összevonja a hitelpozíciódat: az Aave V3-on egy piacon belül minden fedezeted és adósságod egyetlen health
+  factoron (egészségi mutató) osztozik, és a governance és a Risk Stewards módosíthatja a paramétereket, amíg a hitel
+  fut. Az Aave V4 ezt az elvet Spoke-onként tartja meg. A Morpho Blue elkülöníti: minden piacnak egy fedezete, egy
+  hiteltokenje, egy orákuluma és egy LLTV-je van, mind végleg rögzítve a piac létrehozásakor, így minden hitelnek saját
+  health factora van. A Morpho Midnight ehhez lejárati dátummal záruló fix kamatozású hiteleket ad. Az Aave-on egy
+  egészséges eszköz elviheti a hátán az eső eszközt, de egy likvidálás bármelyik fedezetedet elviheti; a Morphón egy eső
+  eszköz csak a saját hitelét veszélyezteti, viszont az első likvidátor egyszerre visszafizetheti az egészet. Általában
+  egyik sem biztonságosabb: a kérdés az, ki szabja meg a szabályokat, és a pozíciód mekkora részét érheti el egy rossz
+  eszköz.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Az adatok és a blokkszámok, amelyeknél kiolvastuk őket: content/blog/snapshots/aave-vs-morpho.md */}
+
+## Hogyan hasonlítható össze az Aave és a Morpho egy pillantásra?
+
+A táblázat összefoglalja a hitelfelvevő számára fontos szabályokat. Az élő értékeket 2026. november 4-én olvastuk ki az Ethereumon; minden sort lent magyarázunk el.
+
+|                                                  | Aave V3                                                                    | Aave V4                                                                     | Morpho Blue                                  | Morpho Midnight                                                |
+| ------------------------------------------------ | -------------------------------------------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------- |
+| Mit fed le egy health factor                     | Egy piacon (egy hálózat egy Poolja) lévő összes fedezetedet és adósságodat | Egy Spoke-ban lévő összes fedezetedet és adósságodat                        | Egy fedezetet és egy hiteltokent             | Egy hiteltokent, a piac fedezetei közül legfeljebb 16-ot       |
+| Hitelfelvételi korlát és likvidálási határ       | Alacsonyabb LTV a hitelfelvételhez, magasabb likvidálási küszöb            | Eszközönként egy collateral factor                                          | Az LLTV mindkettő                            | Minden fedezet saját LLTV-je                                   |
+| Ki határozza meg a paramétereket                 | A governance és a Risk Stewards, bármikor módosíthatók                     | A governance; a változások általában csak az új pozíciókat érik el          | A piac létrehozója, végleg rögzítve          | A piac létrehozója, végleg rögzítve                            |
+| Kamat                                            | Változó, eszközönként egy görbe                                            | Változó, Hub-eszközönként egy görbe plusz felhasználónkénti kockázati felár | Változó, AdaptiveCurveIRM                    | Fix a lejáratig                                                |
+| Legfeljebb ennyit fizethet vissza egy likvidálás | Az adósság 50%-át vagy 100%-át                                             | Annyit, amennyi a Spoke cél health factorához kell                          | A teljes adósságot                           | Amennyi helyreállítja az egészséget; a lejárat után az egészet |
+| Likvidálási bónusz                               | Fedezeti eszközönként, a governance határozza meg                          | Nő, ahogy a health factor esik                                              | Az LLTV-ből következik                       | Minden fedezet LLTV-jéből és kurzorából következik             |
+| Behajthatatlan adósság                           | Deficit; az Ethereumon az Umbrella stakerei fedezhetik                     | Deficit; egy másik Spoke fedezheti                                          | Az adott piac hitelezőivel szemben leírják   | Az adott piac hitelezői között szétosztva                      |
+| Orákulum                                         | A governance választja                                                     | A governance választja, Spoke-onként                                        | A piac létrehozója választja, nem cserélhető | A piac létrehozója választja, fedezetenként                    |
+
+## Hogyan épül fel az egyik és a másik?
+
+### Aave: összevont piacok, V3 és V4
+
+Egy Aave V3 piac egy Pool egy hálózaton: Ethereum Core, Arbitrum, Base és így tovább. Minden, amit abban a Poolban fedezetként elhelyezel, fedezi mindazt, amit ott felveszel, és a szerződés egyetlen health factort számol a teljes pozícióra:
+
+**HF = Σ (a fedezet értéke × likvidálási küszöb) ÷ teljes adósság**
+
+Minden eszköznek két száma van: egy LTV (hitel-fedezet arány), amely az új hitelfelvételt korlátozza, és egy magasabb likvidálási küszöb (liquidation threshold), amely a likvidálásról dönt. Az Ethereum Core-on 2026. november 4-én a WETH LTV-je 81%, a küszöbe 84% volt. Az árak az Aave orákulumából (árforrás) jönnek, USD-ben. [Az Aave health factor útmutató](/hu/blog/aave-health-factor-magyarazat) bemutatja a képletet és kidolgozott példákat.
+
+Az Aave V4 egy hálózatot egy Hubra, amely a likviditást tartja, és Spoke-okra, azokra a piacokra bontja, ahol hitelt veszel fel. A pozíciód és a health factorod egy Spoke-ban él, és minden eszköznek egyetlen collateral factora (fedezeti tényező) van az LTV és a küszöb helyett. 2026. november 4-én az Aave V4 API-ja 24 Spoke-ot listázott az Ethereumon, az Avalanche-on, az Arcon és a Base-en. [Hogyan működik a health factor az Aave V4-en](/hu/blog/aave-health-factor-magyarazat#mas-a-health-factor-az-aave-v4-en): itt vannak a részletek.
+
+### Morpho: elkülönített piacok, Blue és Midnight
+
+Egy Morpho Blue piacot öt dolog határoz meg: egy hiteltoken, egy fedezettoken, egy orákulum, egy kamatmodell és egy LLTV (likvidálási LTV). Bárki létrehozhat egyet, és az öt közül utána egyik sem változhat. Az egyik piacon elhelyezett fedezeted nem fedezi a másik piacon lévő adósságot, így két piacon lévő két hitelnek két health factora van:
+
+**HF = fedezet mennyisége × orákulumár × LLTV ÷ adósság**
+
+Nincs alacsonyabb hitelfelvételi korlát: a szerződés egészen az LLTV-ig engedi a hitelfelvételt, vagyis 1,00-es health factorig. [A Morpho health factor útmutató](/hu/blog/morpho-health-factor-magyarazat) végigszámolja.
+
+A Morpho Midnight egy külön szerződés fix kamatozású, határozott futamidejű hitelekhez. Egy Midnight-piacnak egy hiteltokenje, egy lejárati dátuma és legfeljebb 128 fedezete van, mindegyik saját LLTV-vel és orákulummal, és egy hitelfelvevő egyszerre legfeljebb 16-ot használhat közülük. [A Morpho Midnight fix kamatozású hitelei](/hu/blog/morpho-midnight-fix-kamatozasu-hitelek) elmagyarázza, hogyan működik.
+
+## Mi történik a health factoroddal, ha egy eszköz esik?
+
+Itt különbözik a két felépítés a legjobban. Vegyük ugyanazt a fedezetet mindkettőn, szemléltető árakkal, ETH-ra 2400 $-ral, BTC-re 80 000 $-ral, és 20 000 USDC adóssággal.
+
+**Az Aave V3 Ethereum Core piacán**, 10 WETH-tel (84%-os küszöb) és 0,2 WBTC-vel (85%-os küszöb) egy pozícióban, a kamatot figyelmen kívül hagyva:
+
+- Súlyozott fedezet: 24 000 × 0,84 + 16 000 × 0,85 = 33 760.
+- Health factor: 33 760 ÷ 20 000 = **1,69**.
+- Ha a BTC 40%-ot esik, 48 000 $-ra: 24 000 × 0,84 + 9600 × 0,85 = 28 320, ami **1,42**-es health factor. Semmi sem likvidálható.
+
+A WETH elviszi a hátán a WBTC-t. Ebben a pozícióban a WETH egymagában 20 160-at ér, többet a teljes adósságnál, így még értéktelen WBTC mellett is 1,008 lenne a health factor.
+
+**A Morpho Blue-n**, ugyanezekkel az eszközökkel két listázott ethereumi piacra osztva, USDC | WETH (86%) és USDC | WBTC (86%), mindkettőben 10 000 USDC hitellel:
+
+- WETH-hitel: 24 000 × 0,86 ÷ 10 000 = **2,06**.
+- WBTC-hitel: 16 000 × 0,86 ÷ 10 000 = **1,38**, 58 139,53 $-os likvidálási árral, ami 27,3%-kal van 80 000 $ alatt.
+- Ha a BTC 40%-ot esik: a WBTC-hitel 9600 × 0,86 ÷ 10 000 = **0,83**-on áll, és likvidálható, a WETH-hitel pedig 2,06-on marad.
+
+A másik oldal ugyanilyen valós. Az Aave-on, ha a teljes pozíció 1 alá esik, a likvidátor választja ki, melyik fedezetet viszi el, így a BTC esése WETH-be kerülhet neked. A Morphón a WETH-hitel elérhetetlen, bármi történjék is a BTC-vel. Az összevonás közös tartalékot ad; az elkülönítés hitelenkénti tartalékot, és mindegyik méretét neked kell megválasztanod.
+
+## Miben különböznek a likvidálások?
+
+Mindkét protokollon 1-es health factor alatt egy likvidátor visszafizeti az adósságod egy részét, és ennek megfelelő értékű fedezetet visz el plusz egy bónuszt. A felvett összeg nálad marad, így a likvidálás a bónuszba kerül neked. A körülötte lévő szabályok eltérnek:
+
+- **Mennyit egyszerre.** Az Aave V3.7-en egy likvidálás a teljes adósságod legfeljebb 50%-át fizetheti vissza, amíg a health factorod 0,95 fölött van, és az érintett fedezet és adósság egyenként legalább 2000 $-t ér; 0,95-nél vagy alatta, illetve kisebb összegeknél az abban az eszközben lévő teljes adósságot visszafizetheti. Az Aave V4 elhagyja ezt a szabályt: a likvidátor csak annyit fizet vissza, amennyi visszaemel a Spoke cél health factorára, ami az Ethereum Main Spoke-on 1,24 volt 2026. november 4-én. A Morpho Blue-n nincs korlát: az első likvidátor egyetlen hívásban visszafizetheti a teljes adósságodat.
+- **A bónusz.** Az Aave V3-on fedezeti eszközönként a governance határozza meg: 2026. november 4-én az Ethereum Core-on 5% a WETH-nél és a WBTC-nél, amelyből az Aave kincstára 20%-ot vitt el protokolldíjként. A V4-en nő, ahogy a health factor esik. A Morpho Blue-n az LLTV-ből következik, 1 ÷ (1 − 0,3 × (1 − LLTV)), legfeljebb 15%: 86%-os LLTV-nél 4,38%, 96,5%-nál 1,06%, és mind a likvidátoré.
+- **Előlikvidálás.** A Morpho Blue-n egy hitelfelvevő bekapcsolhatott egy szerződést, amely az LLTV előtt szeletenként likvidálja a hitelt. A Morpho kivezeti a funkciót, és arra kéri azokat a hitelfelvevőket, akiknél be van kapcsolva, hogy kapcsolják ki; ha valaha bekapcsoltad az „Auto-deleverage” funkciót, a [Morpho-előlikvidálás](/hu/blog/morpho-elolikvidalas) megmutatja, hogyan ellenőrizd és vond vissza. Az Aave-on nincs ilyen.
+- **Lejárat.** A Morpho Midnighton a lejárat után megmaradt adósság egészséges pozíción is likvidálható, és a bónusz az első órában nulláról a teljes méretére nő.
+- **Behajthatatlan adósság.** Ha előbb fogy el a fedezet, mint az adósság, az Aave V3 deficitet rögzít, amelyet az Ethereumon az Umbrella stakerei fedezhetnek (az Aave dokumentációja szerint USDC-re, USDT-re, WETH-re és GHO-ra); a V4-ben egy másik Spoke fedezheti. A Morphón a veszteséget az adott piac hitelezőivel szemben írják le. Számodra, hitelfelvevőként, az eredmény mindenhol ugyanaz: a fedezet elveszett, és nem marad adósság.
+
+A teljes működést lásd: [hogyan működik a likvidálás az Aave-on](/hu/blog/hogyan-mukodik-a-likvidalas-az-aave-on), [a V4 szabályaival](/hu/blog/hogyan-mukodik-a-likvidalas-az-aave-on#miben-masok-a-likvidalasok-az-aave-v4-en), és [hogyan működik a likvidálás a Morphón](/hu/blog/hogyan-mukodik-a-likvidalas-a-morphon), amelyben egy [összehasonlító táblázat](/hu/blog/hogyan-mukodik-a-likvidalas-a-morphon#miben-kulonbozik-a-morpho-likvidalasa-az-aave-etol) is van.
+
+## Miben különböznek a kamatok?
+
+**Az Aave V3** minden eszköz változó kamatát egy rögzített görbén határozza meg: a kihasználtsággal (utilization, a pool kikölcsönzött része) enyhén emelkedik egy optimális szintig, utána meredeken. A görbe négy számát a governance állítja be, a Risk Stewards pedig korlátok között módosíthatja őket. Az USDC az Ethereum Core-on 94%-os optimális szinttel, 4,5%-os első és 10%-os második meredekséggel dolgozott. A 26341682-es Ethereum-blokkban, 2026. november 4-én a kihasználtsága 94,7% volt, épp a törésponton túl, és a hitelfelvétel évi 5,67%-ba került. Két paraméterváltozás között a kamat csak a kihasználtsággal mozog. [Hogyan működnek az Aave kamatai](/hu/blog/aave-kamatok): itt a képlet és egy valódi kamatugrás.
+
+**Az Aave V4** eszközönként egy görbét tart a Hubnál, és erre jön egy User Risk Premium (felhasználói kockázati felár), a közös kamat 0%-ától 1000%-áig, a fedezeted minőségétől függően: az Aave példájában egy 5%-os kamatra 50%-os felár jön, ami 7,5%-ot ad.
+
+**A Morpho Blue** piacai az AdaptiveCurveIRM-et használják, amely 90%-os kihasználtságot céloz. A kamat minden pillanatban egy görbén ül egy „célszintű kamat” (rate at target) körül: 0%-os kihasználtságnál annak negyede, 100%-nál a négyszerese. Az Aave görbéjével ellentétben maga a célszintű kamat is elmozdul: felfelé, amíg a kihasználtság 90% fölött marad, lefelé, amíg alatta, évi 0,1% és 200% között. 100%-os kihasználtságnál nagyjából öt nap alatt duplázódik. 2026. november 4-én az ethereumi USDC | cbBTC (86%) piac 90,3%-os kihasználtságon állt, 4,97%-os célszintű kamattal és nagyjából évi 5,4%-os hitelkamattal. Egy forgalmas piac tehát egyre drágább lesz, amíg a hitelfelvevők vissza nem fizetnek, vagy új hitelezők nem érkeznek; egy csendes piac olcsóbb lesz.
+
+**A Morpho Midnight** a hitelfelvételkor rögzíti a kamatodat. Névérték alatt adsz el adósságegységeket, és a lejáratkor egységenként pontosan egy hiteltokennel tartozol, így az adósságod nem nő, és a health factorodat csak a fedezet ára mozgatja. Az Aave-on nincs fix kamat: a V3.2 eltávolította a régi stabil kamatozású (stable rate) kódot, és minden Aave-hitel változó kamatozású.
+
+## E-Mode vagy magas LLTV-jű piac: mennyit vehetsz fel?
+
+Mindkét protokoll többet enged felvenni olyan fedezetre, amely együtt mozog azzal, amit felveszel, csak másképp.
+
+**Az Aave E-Mode** a teljes V3-pozíciódra vonatkozó beállítás. Kiválasztasz egy kategóriát, és amíg benne vagy, a fedezete a kategória LTV-jét, küszöbét és bónuszát kapja. Az Ethereum Core-on 2026. november 4-én az „ETH correlated” 93%-os LTV-vel, 95%-os küszöbbel és 1%-os bónusszal dolgozott, és benne csak a WETH volt felvehető. Minden felvett eszközödnek felvehetőnek kell lennie a kategóriában, így egy USDC-adóssággal rendelkező pozíció nem használhatja. [Az Aave E-Mode](/hu/blog/aave-e-mode-magyarazat) bemutatja a kategóriákat és a 2026. márciusi likvidálásokat.
+
+**A Morphón** nincs mód: olyan piacot választasz, amelynek az LLTV-je illik a párhoz. A Morpho governance által 2026. november 4-én engedélyezett LLTV-k: 0%, 38,5%, 62,5%, 77%, 86%, 91,5%, 94,5%, 96,5% és 98%. Az ethereumi WETH | wstETH piac 96,5%-ot használ, 1,06%-os likvidálási ösztönzővel.
+
+Egy hitelfelvevő, aki wstETH-t loopol (ismételt hitelfelvétel tőkeáttétellel) WETH-tel szemben, mindkettőn hasonló helyre juthat, egy különbséggel: az Aave-on csak a 93%-os LTV-ig vehetsz fel hitelt, ami nagyjából 95 ÷ 93 = 1,02-es health factort hagy; a Morphón a szerződés egészen a 96,5%-os határig engedi a hitelfelvételt, vagyis 1,00-es health factorig.
+
+## Mely hálózatokon fut az Aave és a Morpho?
+
+|               | Aave                                                                                                                                                                               | Morpho                                                                                                                                                  |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Változó kamat | V3 több mint 20 hálózaton, köztük az Ethereumon, az Arbitrumon, a Base-en, az Avalanche-on, a Polygonon és az Optimismon; V4 az Ethereumon, az Avalanche-on, az Arcon és a Base-en | Blue 14 hálózaton: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable és Tempo |
+| Fix kamat     | Nincs                                                                                                                                                                              | Midnight, 2026. november 4-én listázott piacokkal az Ethereumon és a Base-en                                                                            |
+
+Az Aave-on egy piac minden eszközét a governance listázza. A Morphón bárki létrehozhat piacot, és a Morpho alkalmazása csak azokat mutatja, amelyeket a Morpho Association listázni választ (lásd lent). Néhány Aave V3 hálózatot leépítenek; [mi történik, amikor az Aave leépít egy piacot](/hu/blog/egy-aave-piac-leepitese) elmagyarázza, mit jelent ez a nyitott hitelekre.
+
+## Milyen kockázatok mások az egyiken és a másikon?
+
+Mindkettő ugyanazokat az alapkockázatokat hordozza: áresés, orákulumhiba, okosszerződés-hiba. Az eltérés abban van, hol ülnek.
+
+**Ki módosíthatja a hiteledet.** Az Aave-on a governance megváltoztathatja egy V3-eszköz LTV-jét, likvidálási küszöbét, bónuszát és kamatgörbéjét, a Risk Stewards pedig korlátozott lépésekben, minimális várakozási idővel mozgathatja őket. Egy alacsonyabb küszöb a V3-on egyszerre minden nyitott pozícióra érvényes. Az eszközöket be is lehet fagyasztani, ami az új hitelfelvételt tiltja, de a likvidálást nem, vagy szüneteltetni, ami a likvidálásokat is leállítja, utána akár 4 órás türelmi idővel. A V4-en az új collateral factorok és bónuszok általában csak akkor érik el a pozíciódat, amikor legközelebb hitelt veszel fel vagy kivételt indítasz. A Morpho Blue-n senki sem módosíthat egy piacot: a governance engedélyezhet új LLTV-ket és kamatmodelleket, és beállíthat a kamat legfeljebb 25%-áig terjedő díjat, amelyet a hitelezők fizetnek, de egy meglévő piachoz nem nyúlhat, és a szerződésben nincs szüneteltetés.
+
+**Ki választja az orákulumot.** Az Aave governance minden eszköz árforrását kiválasztja. A Morphón a piac létrehozója választja ki az orákulumot, és azt soha nem lehet lecserélni. A Morpho dokumentációja szerint ez a választás, mivel végleges, meghatározza a piac kockázati profilját. Egyes orákulumok piaci ár helyett egy átváltási árfolyamot követnek, vagy egy stablecoint pontosan egy dollárnak vesznek. Mielőtt a Morphón hitelt veszel fel, nézd meg, mit mér a piacod orákuluma; [a likvidálási útmutató orákulumról szóló része](/hu/blog/hogyan-mukodik-a-likvidalas-a-morphon#milyen-szerepe-van-az-orakulumnak-egy-likvidalasban) megmutatja, mire figyelj.
+
+**Listázott vagy nem listázott.** A Morpho alkalmazása csak azokat a piacokat mutatja, amelyeket a Morpho Association listáz, főleg azokat, amelyeknek egy listázott vault hitelez. A szabályzata a listázást „a discovery decision” (felfedezhetőségi döntés) néven írja le, nem jóváhagyásként vagy kockázati minősítésként, és egy nem listázott piac a láncon ugyanúgy működik. Nem listázott piacokon is lehetnek nagy hitelek, ahogy [a tokenizált részvények fedezetként](/hu/blog/tokenizalt-reszvenyek-fedezetkent#hol-vehetsz-fel-hitelt-tokenizalt-reszvenyekre) mutatja a részvényfedezetű hitelfelvételnél, így ha egy piac hiányzik az alkalmazásból, abból csak annyi derül ki, hogy a Morpho úgy döntött, nem mutatja.
+
+**Mit érhet el egy rossz eszköz.** Az Aave-on egy rosszul árazott vagy depegelő (a dollárhoz kötött árfolyamát elvesztő) eszköz a piacodon a teljes health factorodat mozgatja. A Morphón csak az azt használó hiteleket mozgatja, de ezeknek nincs más fedezetük, amelyre támaszkodhatnának.
+
+## Melyik illik melyik hitelfelvevőhöz?
+
+Egyik sem a jobb protokoll; mindegyik a hitelfelvétel más módjához illik. Néhány durva párosítás:
+
+- **Több eszköz fedezetként, egy figyelendő tartalék:** az Aave összevont pozíciójában ezek fedezik egymást, annak árán, hogy a governance módosíthatja a szabályokat.
+- **Szabályok, amelyek a hitelfelvétel után nem változhatnak:** egy Morpho-piac LLTV-je, orákuluma és kamatmodellje végleg rögzített, de az orákulumot magadnak kell megítélned.
+- **Hitel, amely nem érintheti a többi fedezetedet:** a Morpho minden hitelt külön tart; az Aave-on külön piacok vagy hálózatok érik el ugyanezt.
+- **Hitelfelvétel közel a határhoz egy együtt mozgó páron:** mindkettő kínálja, E-Mode-dal vagy magas LLTV-vel, és mindkettő néhány százalékos mozgásteret hagy.
+- **Kamat, amely nem mozog:** csak a Morpho Midnight kínál ilyet, cserébe egy lejárati dátumért, amelyet nem szabad elmulasztanod.
+- **Kis pozíciók:** mindkettőn egy likvidálás egyszerre rendezheti a teljes adósságot, az Aave-on 2000 $ alatt az érintett eszközökben, a Morphón bármekkora méretnél.
+
+Ez az útmutató mechanizmusokat hasonlít össze; nem pénzügyi tanácsadás.
+
+## Hogyan segíthetnek a riasztások mindkettőn?
+
+A Tokenping mindkettőt figyeli. 5 percenként ellenőriz, és amíg egy health factor az általad beállított küszöbérték alatt van, minden ellenőrzéskor üzenetet küld minden általad választott csatornán: Signalon, Telegramon vagy e-mailben.
+
+- **Aave:** V3-piaconként vagy V4-Spoke-onként egy riasztás, 24 V3-piacon 21 hálózaton és mind a 24 V4-Spoke-ban az Ethereumon, az Avalanche-on, az Arcon és a Base-en. A küszöbérték 1,1 és 10 között lehet. Előbb [ellenőrizheted az Aave health factorodat](/hu/aave).
+- **Morpho:** piaconként egy riasztás minden piacra, ahol hitelt veszel fel, a Morpho alkalmazásában listázott piacokon: Blue 14 hálózaton, és Midnight ott, ahol a Morpho API-ja piacokat listáz (2026. november 4-én az Ethereumon és a Base-en). A küszöbérték 1,02-ig mehet le, mert a magas LLTV-jű hitelek gyakran 1 közelében futnak. Ha engedélyezted az előlikvidálást, a riasztás ehhez a korábbi határhoz mér, és egy Midnight-hitel emlékeztetőt is kap 7 nappal és 24 órával a lejárat előtt. A pozícióidat a [Morpho irányítópulton](/hu/morpho) látod.
+
+A pozícióid megtekintéséért nem kell fizetned. A riasztások ára <AlertPrice />, és ugyanaz a csomag fedezi az Aave-ot és a Morphót. Egy riasztás időt ad a visszafizetésre vagy fedezet hozzáadására; nem akadályozza meg a likvidálást, és egy ár két ellenőrzés között is átlépheti a határodat.
+
+## Források
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) és [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), aave-dao/aave-v3-origin: close factor, deficit, health factor, szüneteltetés és türelmi idő (megtekintve: 2026. november 4.)
+- [Aave V3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): a stabil kamatozású adósság eltávolítása (megtekintve: 2026. november 4.)
+- [Aave Generalized Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): mely paramétereket módosíthatják a stewardok, minimális várakozási idők és maximális lépések (megtekintve: 2026. november 4.)
+- [Aave docs: Umbrella](https://aave.com/docs/aave-v3/umbrella): deficitfedezet, eszközök és hálózat (megtekintve: 2026. november 4.)
+- [Aave V4 docs](https://aave.com/docs/aave-v4) és [V4 positions](https://aave.com/docs/aave-v4/positions): Hub és Spoke-ok, health factor, User Risk Premium, likvidálások (megtekintve: 2026. november 4.)
+- [Aave V4 overview](https://github.com/aave/aave-v4/blob/main/docs/overview.md), aave/aave-v4: dinamikus kockázati konfiguráció, cél health factor, változó bónusz, deficitek, Spoke-orákulumok (megtekintve: 2026. november 4.)
+- [Aave V4 API](https://api.v4.aave.com/graphql): Spoke-ok és hálózatok (megtekintve: 2026. november 4.)
+- [Aave address book](https://github.com/bgd-labs/aave-address-book): az Aave V3 hálózatai (megtekintve: 2026. november 4.)
+- On-chain kiolvasások az Ethereumon a 26341682-es és a 26341689-es blokkban: [Aave V3 Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract) és [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) (reserve-paraméterek, E-Mode, USDC-kamat), [Aave V4 Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485#readContract) (cél health factor) és [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) (piacok, engedélyezett LLTV-k, kamatok) (megtekintve: 2026. november 4.)
+- [Morpho.sol és ConstantsLib.sol](https://github.com/morpho-org/morpho-blue), morpho-org/morpho-blue: a tulajdonos jogkörei, 25%-os díjplafon, likvidálási ösztönző, behajthatatlan adósság (megtekintve: 2026. november 4.)
+- [AdaptiveCurveIRM constants](https://github.com/morpho-org/morpho-blue-irm/blob/main/src/adaptive-curve-irm/libraries/ConstantsLib.sol), morpho-org/morpho-blue-irm: célkihasználtság, meredekség, igazodási sebesség és határok (megtekintve: 2026. november 4.)
+- [Midnight.sol és ConstantsLib.sol](https://github.com/morpho-org/midnight), morpho-org/midnight: fedezeti korlátok, lejárat utáni likvidálás és a 60 perces felfutás (megtekintve: 2026. november 4.)
+- [Morpho docs: Morpho Blue](https://docs.morpho.org/learn/concepts/blue), [oracles](https://docs.morpho.org/learn/concepts/oracle) és [Midnight](https://docs.morpho.org/learn/concepts/midnight) (megtekintve: 2026. november 4.)
+- [Morpho interface listing policy](https://docs.morpho.org/get-started/resources/interface-listing-policy): mit jelent a listázás, és ki dönt róla (megtekintve: 2026. november 4.)
+- [Morpho help: Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (megtekintve: 2026. november 4.)
+- [Morpho API](https://api.morpho.org/graphql): hálózatok, listázott Blue-piacok és hálózatonként listázott Midnight-piacok (megtekintve: 2026. november 4.)
+
+_Oktatási tartalom, nem pénzügyi tanácsadás. A riasztások csökkentik a kockázatot, de nem akadályozzák meg a likvidálást._

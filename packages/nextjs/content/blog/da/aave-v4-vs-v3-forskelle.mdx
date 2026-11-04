@@ -1,0 +1,175 @@
+export const meta = {
+  slug: "aave-v4-vs-v3-forskelle",
+  title: "Aave V4 vs. V3: hvad ændrer sig for dit lån",
+  description:
+    "Aave V4 vs. V3 for låntagere: Hubs og Spokes, health factor pr. Spoke, likvidationer mod et mål, risikotillæg, E-Mode-Spokes og flytning af lån.",
+  h1: "Aave V4 vs. V3: hvad er forskelligt, og hvad betyder det for dit lån?",
+  publishedAt: "2026-11-04",
+  primaryQuestion: "Hvad er forskellen på Aave V3 og Aave V4 for en låntager?",
+  readingMinutes: 13,
+  figuresAsOf: "2026-11-04",
+};
+
+<ShortAnswer>
+  Aave V4 gik live på Ethereum den 30. marts 2026 og kører nu også på Avalanche, Arc og Base. V3 kører videre ved siden
+  af og rummer stadig de fleste af pengene. På V4 låner du i en Spoke, et marked med sine egne regler, der henter
+  likviditet fra en fælles Hub, og hver Spoke har sin egen health factor (sundhedsfaktor). Én sikkerhedsfaktor
+  (collateral factor) pr. aktiv erstatter V3's belåningsgrad (LTV) og likvidationstærskel (liquidation threshold), så du
+  kan låne helt op til en health factor på 1,00. En likvidation tilbagebetaler nok gæld til at løfte dig op til Spokens
+  mål-health factor (target health factor), 1,24 på Main Spokes, i stedet for V3's 50 % eller 100 %, og bonussen vokser,
+  jo lavere din health factor falder. Renterne fastsættes pr. Hub, plus et risikotillæg for mere risikabel sikkerhed.
+  Intet flytter sig af sig selv: et V3-lån bliver på V3, indtil du flytter det.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Tallene og de bloknumre, de blev aflæst ved: content/blog/snapshots/aave-v4-vs-v3.md */}
+
+## Hvad er Aave V4, og hvornår gik den live?
+
+Aave V4 er en ny version af Aaves udlånsprotokol med sine egne kontrakter. Den opgraderer ikke V3-markederne, hvor de står. Ifølge Aaves changelog blev den lanceret på Ethereum den 30. marts 2026 med tre Hubs og elleve Spokes, derefter på Avalanche (15. juli), Arc (16. september) og Base (7. oktober 2026). V3 kører på 21 netværk; V4 kører på fire, og Arc har kun V4.
+
+V3 er stadig meget større. Den 4. november 2026 talte DefiLlama omkring 15,6 milliarder $ i Aave V3 og omkring 0,79 milliarder $ i V4, begge efter fradrag af lån, med omkring 11,4 milliarder $ og 0,47 milliarder $ lånt. Aave Labs' opdatering for oktober satte V4 til over 1,5 milliarder $ i indskud og 450 mio. $ i aktive lån.
+
+For en låntager adskiller de to versioner sig i, hvor din position ligger, hvor meget du kan låne, hvor stor en likvidation kan blive, og hvordan din rente fastsættes. Tabellen nedenfor opsummerer det; afsnittene efter den forklarer hver række.
+
+## Hvad ændrer sig for en låntager, og hvad forbliver det samme?
+
+| Emne                                    | Aave V3                                                                                        | Aave V4                                                                                                      |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Hvor dit lån ligger                     | Et marked: én Pool på ét netværk                                                               | En Spoke, som henter likviditet fra én eller flere Hubs                                                      |
+| Health factor                           | Én pr. marked                                                                                  | Én pr. Spoke                                                                                                 |
+| Formel                                  | Σ(sikkerhed × likvidationstærskel) ÷ gæld                                                      | Σ(sikkerhed × sikkerhedsfaktor) ÷ gæld                                                                       |
+| Lånegrænse                              | LTV, sat under likvidationstærsklen                                                            | Selve sikkerhedsfaktoren: du kan låne, indtil health factor er 1,00                                          |
+| Likvidationsgrænse                      | Health factor under 1                                                                          | Health factor under 1 (uændret)                                                                              |
+| Det meste, der tilbagebetales i ét kald | 50 % af din gæld, eller 100 % ved en health factor på eller under 0,95 eller på små positioner | Nok til at bringe dig op på Spokens mål-health factor                                                        |
+| Likvidationsbonus                       | Fast pr. sikkerhedsaktiv                                                                       | Stiger, jo lavere din health factor falder, op til et maksimum pr. aktiv                                     |
+| Støvregel (dust)                        | 1.000 $ skal blive tilbage, ellers går det hele                                                | 1.000 $ skal blive tilbage, ellers går det hele (uændret)                                                    |
+| Rentesats                               | En kurve for udnyttelsesgraden pr. aktiv pr. marked                                            | En kurve for udnyttelsesgraden pr. aktiv pr. Hub plus en User Risk Premium                                   |
+| Ændringer af parametre                  | Rammer alle åbne positioner på én gang                                                         | Nye indstillinger gælder som regel, næste gang du låner eller hæver, medmindre governance opdaterer de gamle |
+| Korrelerede aktiver                     | E-Mode-kategorier i et marked                                                                  | Separate Spokes til korrelerede par, som Lido- og EtherFi-Spokes                                             |
+| Renter og priser                        | Gælden vokser med renten; orakelpriser flytter health factor                                   | Det samme                                                                                                    |
+| Dit eksisterende lån                    | Bliver på V3                                                                                   | Åbnes på ny; intet flyttes af sig selv                                                                       |
+
+## Hvordan fungerer V4's Hubs og Spokes?
+
+En Hub rummer den fælles likviditet for hvert aktiv og fastsætter dets rente. En Spoke er det, du bruger: den lister de aktiver, du kan indskyde og låne, fastsætter deres sikkerhedsfaktorer, vælger prisoraklerne og rummer likvidationsindstillingerne. Aaves dokumentation formulerer det sådan: brugerne interagerer med Spokes, som sender likviditet til og fra Hub, og risikoen er isoleret på Spoke-niveau.
+
+På V3 gjorde et marked begge dele. Ethereum Core-markedet rummer sin egen USDC og fastsætter sine egne regler, og Prime-markedet rummer separat USDC med separate regler. På V4 kan flere Spokes låne den samme USDC ud fra én Hub, mens hver beholder sine egne risikoindstillinger, og én Spoke kan låne fra mere end én Hub: Bluechip Spoke på Ethereum låner USDC ud fra både Core Hub og Prime Hub.
+
+Aaves V4 API listede 24 Spokes og 8 Hubs den 4. november 2026:
+
+| Netværk   | Hubs                                      | Spokes                                                                                                                                                                                                 |
+| --------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Ethereum  | Core, Prime, Plus, Global Dollar, Sentora | Main, Bluechip, Lido, EtherFi, Kelp, Lombard, Ethena Ecosystem, Ethena Correlated, Gold, PAXG Gold, Forex, USDG Pendle, Maple SyrupUSDG; på Sentoras Hub: RLUSD Yield, OUSD Yield og en anden Bluechip |
+| Avalanche | Core                                      | Main, AVAX Correlated, Forex, Ethena Ecosystem                                                                                                                                                         |
+| Arc       | Core                                      | Main, Forex, Maple SyrupUSDC                                                                                                                                                                           |
+| Base      | Coinbase Stocks                           | Coinbase Stocks                                                                                                                                                                                        |
+
+Sentora er den første eksterne kurator på V4: ifølge Aave Labs driver den sin egen Hub og sine egne Spokes på Ethereum og fastsætter deres sikkerhed, parametre, rentekurver og orakler, mens Aave DAO ejer kontrakterne. Spoken på Base låner USDC ud mod tokeniserede aktier, som gennemgås i [lån mod tokeniserede aktier](/da/blog/tokeniserede-aktier-som-sikkerhed#hvor-kan-du-lane-mod-tokeniserede-aktier).
+
+## Hvordan fungerer health factor på en V4 Spoke?
+
+Health factor betyder det samme på begge versioner: vægtet sikkerhed divideret med gæld, og under 1 kan du blive likvideret. På V4 er vægten sikkerhedsfaktoren (CF). Aaves eget eksempel: 10.000 $ i ETH med en CF på 80 % mod 6.000 $ i GHO giver 1,333. [Afsnittet om V4 i guiden om health factor](/da/blog/aave-health-factor-forklaret#er-health-factor-anderledes-pa-aave-v4) gennemgår det grundlæggende; tre konsekvenser betyder mere end formlen.
+
+**Én health factor pr. Spoke.** Aaves dokumentation siger, at positioner i forskellige Spokes ikke påvirker hinanden, og at du kun kan låne mod sikkerhed indskudt i den samme Spoke. ETH i Main Spoke gør intet for et lån i Gold Spoke. På V3 gælder det samme mellem markeder, men inden for et marked dækker al din sikkerhed al din gæld.
+
+**Intet mellemrum mellem lånegrænsen og likvidationsgrænsen.** På V3 kan du låne op til LTV, som ligger under likvidationstærsklen: WETH på Ethereum Core havde en LTV på 81 % og en tærskel på 84 % den 4. november 2026, så et maksimalt lån mod WETH alene efterlader en health factor på omkring 1,037 ([hvorfor et maksimalt lån efterlader omkring 1,03](/da/blog/aave-health-factor-forklaret#hvorfor-efterlader-et-maksimalt-lan-en-health-factor-pa-kun-omkring-103)). På V4 er der ingen separat LTV. Aaves dokumentation siger, at et lån eller en hævning kun blokeres, hvis det ville tage health factor under 1,0, og koden tjekker præcis det. En position, der er lånt op til maksimum på V4, starter ved likvidationsgrænsen, og den første smule rente eller prisbevægelse kan krydse den. Vælg din egen margin.
+
+**De samme aktiver kan have samme vægt.** Nogle parametre er afstemt på tværs af versionerne. WETH talte med 84 % på både V3 Ethereum Core og V4 Main Spoke den 4. november 2026, så 10 WETH mod 12.000 USDC har samme health factor og samme likvidationspris på 1.428,57 $ på begge.
+
+### Hvad sker der, når governance ændrer en sikkerhedsfaktor?
+
+På V3 gælder en lavere likvidationstærskel for alle åbne positioner i det øjeblik, ændringen udføres, hvilket kan skubbe en låntager under 1 uden nogen prisbevægelse ([årsag 4 i hvorfor din health factor faldt](/da/blog/hvorfor-faldt-din-aave-health-factor#arsag-4-har-governance-eller-risk-stewards-sænket-en-likvidationstærskel)).
+
+V4 gemmer en historik over hvert aktivs sikkerhedsfaktor, maksimale bonus og likvidationsgebyr. Når governance tilføjer en ny konfiguration, beholder din position den, den var bundet til, indtil du låner, hæver eller slår sikkerhed fra; indskud og tilbagebetaling ændrer den ikke. Hvis din position ville være usund under de nyeste indstillinger, bliver lånet eller hævningen i stedet afvist (reverts). Så efter en sænkning kan du opleve, at du ikke kan hæve sikkerhed, selv om din health factor ser fin ud.
+
+Den beskyttelse er ikke absolut. Governance kan også redigere en eksisterende konfiguration, hvilket når alle positioner, der er bundet til den, eller tvinge en position over på den nyeste. Den 28. oktober 2026 hævede én governance-payload (AIP 536) WETH fra 83 % til 84 % på V3 Ethereum Core og redigerede V4 Main Spokes eksisterende WETH-konfiguration fra 83 % til 84 % i samme transaktion. Den ændring hjalp låntagerne; en redigering i den anden retning ville virke på samme måde.
+
+## Hvordan er likvidationer anderledes på V4?
+
+På V3 må en likvidator tilbagebetale op til 50 % af din gæld, så længe din health factor er over 0,95, og både den sikkerhed og den gæld, der er involveret, er mindst 2.000 $ værd, og op til 100 % ellers ([hvor meget der kan likvideres på én gang](/da/blog/saadan-fungerer-likvidation-paa-aave#hvor-meget-af-min-gæld-kan-likvideres-pa-en-gang)). Bonussen er fast pr. sikkerhedsaktiv: 5 % for WETH på Ethereum Core.
+
+På V4 er der ingen close factor (den del af gælden, der kan betales på én gang). En likvidator må tilbagebetale så meget gæld, som der skal til for at bringe din health factor op på Spokens mål, og ikke mere, medmindre det ville efterlade mindre end 1.000 $ i gæld eller sikkerhed. Bonussen starter ved en andel af aktivets maksimum lige under 1 og stiger i en ret linje til det fulde maksimum ved en fastsat health factor. Indstillingerne den 4. november 2026, aflæst on-chain:
+
+| Spoke                                                          | Mål-health factor     | Fuld bonus ved | Bonus lige under 1        |
+| -------------------------------------------------------------- | --------------------- | -------------- | ------------------------- |
+| Main (Ethereum, Avalanche, Arc), Coinbase Stocks (Base)        | 1,24                  | 0,90           | 90 % af maksimum          |
+| Bluechip (Ethereum)                                            | 1,174                 | 0,90           | 90 % af maksimum          |
+| Gold (Ethereum)                                                | 1,3075                | 0,90           | 90 % af maksimum          |
+| Lido, EtherFi, Kelp, Lombard, Ethena, Forex og lignende Spokes | Omkring 1,01 til 1,06 | 0,99           | Det fulde maksimum, fladt |
+
+### Regneeksempel: 10 WETH mod 12.000 USDC på begge versioner
+
+Tag den samme position på V3 Ethereum Core (tærskel 84 %, bonus 5 %) og på V4 Main Spoke (CF 84 %, maksimal bonus 5,55 %, mål 1,24). Begge kan likvideres, når ETH er under 1.428,57 $. Her er det meste, én likvidation kan tage ved to priser:
+
+| ETH-pris (health factor) | Version | Bonus  | Tilbagebetalt gæld   | Bonus, du betaler | Health factor bagefter | Gæld tilbage |
+| ------------------------ | ------- | ------ | -------------------- | ----------------- | ---------------------- | ------------ |
+| 1.400 $ (0,98)           | V3      | 5 %    | 6.000 $ (50 %)       | 300 $             | 1,078                  | 6.000 $      |
+| 1.400 $ (0,98)           | V4      | 5,11 % | 8.736,81 $ (72,8 %)  | 446,10 $          | 1,24                   | 3.263,19 $   |
+| 1.330 $ (0,931)          | V3      | 5 %    | 12.000 $ (100 %)     | 600 $             | Ingen (ingen gæld)     | 0 $          |
+| 1.330 $ (0,931)          | V4      | 5,38 % | 10.450,22 $ (87,1 %) | 562,01 $          | 1,24                   | 1.549,78 $   |
+
+To ting skiller sig ud. Lige under 1 kan en V4-likvidation på Main Spoke tage en større andel af din gæld end V3's 50 %, fordi et mål på 1,24 kræver en stor tilbagebetaling, og du betaler en større bonus i dollar. Længere nede kan V3 rydde det hele, mens V4 stadig stopper ved målet og efterlader dig en position på 1,24. Uanset hvad beholder du de USDC, du lånte; det, du taber, er bonussen. En likvidator kan altid vælge at tilbagebetale mindre end disse maksimumbeløb.
+
+På Spokes i E-Mode-stil ligger målene lige over 1, og bonussen er fladt 1 % på wstETH og weETH. Bonussen er lille, men med en CF på 95,5 % kræver hvert trin under 1 en stor tilbagebetaling: på Lido Spoke kan en position med en health factor på 0,987 få omkring 55 % af sin gæld tilbagebetalt i én likvidation. [Afsnittet om V4 i guiden om likvidation](/da/blog/saadan-fungerer-likvidation-paa-aave#hvordan-er-likvidationer-anderledes-pa-aave-v4) har formlen for bonussen.
+
+## Hvordan er renterne anderledes på V4?
+
+På V3 har hvert aktiv en kurve for udnyttelsesgraden i hvert marked: USDC på Ethereum Core og USDC på Arbitrum har separate puljer og separate renter ([sådan fungerer Aaves renter](/da/blog/aave-renter)). V4 beholder kurven, men flytter den til Hub, så alle Spokes, der låner USDC fra den samme Hub, betaler den samme basisrente, og den samme token kan koste forskelligt fra to Hubs. Den 4. november 2026 viste Aaves API USDC i Bluechip Spoke til 5,41 % fra Core Hub og 4,45 % fra Prime Hub.
+
+Oven på basisrenten lægger V4 en User Risk Premium (risikotillæg pr. bruger). Hvert sikkerhedsaktiv har en sikkerhedsrisiko (collateral risk) fra 0 % til 1.000 % i hver Spoke; dit tillæg er gennemsnittet af dine sikkerheders risiko, hvor den sikreste tælles først, og kun så meget sikkerhed, som dækker din gæld. Aaves eksempel: et tillæg på 50 % på en basisrente på 5 % betyder, at du betaler 7,5 %.
+
+De fleste Spokes sætter stadig hver sikkerhedsrisiko til 0, så deres låntagere betaler kun basisrenten. Undtagelserne den 4. november 2026 omfattede syrupUSDC på Arcs Maple Spoke (20 %), USDe på Avalanches Ethena Ecosystem Spoke (16,5 %), SPCXc på Coinbase Stocks Spoke (10 %) og flere aktiver på Sentoras Spokes. Et USDC-lån med kun syrupUSDC som sikkerhed på Arc kostede omkring 3,7 %, med basisrenten på 3,06 %.
+
+Dit tillæg genberegnes, når du låner, hæver, ændrer sikkerhed eller bliver likvideret, ikke når du indskyder eller tilbagebetaler. Hvis governance sænker et aktivs risiko, får du kun gavn af det efter en af de handlinger eller en manuel opdatering; hvis den hæver den, bliver dit tillæg, hvor det er, indtil da, medmindre governance gennemtvinger en opdatering. Mere om GHO og renter på V4 i [hvordan renter fastsættes på Aave V4](/da/blog/aave-renter#hvordan-fastsættes-renten-for-gho-og-pa-aave-v4).
+
+## Hvad erstattede E-Mode på Aave V4?
+
+På V3 er E-Mode en kontakt i et marked: du vælger en kategori som »ETH correlated« på Ethereum Core (LTV 93 %, tærskel 95 %, bonus 1 % den 4. november 2026), og hele din position i det marked bruger de indstillinger ([sådan fungerer E-Mode](/da/blog/aave-e-mode-forklaret)).
+
+V4 har ingen E-Mode-kontakt. Korrelerede par får i stedet deres egne Spokes: Aaves dokumentation kalder Lido-, EtherFi- og Kelp-Spokes »eSpokes«, og aktiveringsforslaget betegnede dem, sammen med Lombard BTC, som e-Mode Spokes. Lido Spoke accepterer wstETH som sikkerhed med en CF på 95,5 % og låner kun WETH ud; EtherFi Spoke gør det samme med weETH. Begge havde en likvidationsbonus på 1 % den 4. november 2026.
+
+Den praktiske forskel: på V3 kan du flytte en position ind i og ud af E-Mode, så længe den forbliver sund. På V4 er et loop (gentagen belåning med gearing) på Lido Spoke en separat position fra alt, hvad du har på Main Spoke. For at skifte lukker du den ene og åbner den anden.
+
+## Kører Aave V3 videre, og flyttes V3-lån til V4?
+
+V3 kører videre, og intet flytter sig af sig selv. Aave Labs' temp check fra februar 2026, rammeværket »Aave Will Win«, siger, at der er »no need for a rushed, or forced, migration« (intet behov for en forhastet eller tvungen flytning), og at V3 vil køre ved siden af V4, indtil DAO'en beslutter andet. Den siger også, at V3's parametre, når V4 er moden, »could be gradually adjusted to encourage migration« (gradvist kunne justeres for at tilskynde til flytning), og at V3 forbliver åben for hævninger på ubestemt tid. Nogle V3-markeder er allerede ved at blive lukket ned af andre grunde, som [guiden om afvikling](/da/blog/naar-aave-afvikler-et-marked#hvilke-aave-markeder-er-ved-at-blive-afviklet) forklarer.
+
+Aaves V4-dokumentation beskriver intet værktøj, der fører en V3-position over i V4, og intet til at flytte en position fra én V4 Spoke til en anden. At flytte manuelt betyder at tilbagebetale V3-gælden, hæve sikkerheden, indskyde den i en V4 Spoke og låne igen, i den rækkefølge, så din sikkerhed aldrig hæves, mens der stadig er gæld, der afhænger af den. Nogle tredjepartsværktøjer samler disse trin i én transaktion. Uanset hvad, så tjek først den nye Spokes sikkerhedsfaktor, mål-health factor og rente: den samme health factor kan betyde en anden margin og en anden størrelse på en likvidation dér.
+
+## Hvad skal du holde øje med, hvis du har lån på begge?
+
+- **To eller flere health factors.** Hvert V3-marked og hver V4 Spoke har sin egen. Et sundt V3-lån gør intet for et V4-lån tæt på 1.
+- **Forskellige startmarginer.** En V4-position, der er lånt op til maksimum, ligger på 1,00, mens V3's LTV efterlader et mellemrum. Kopiér ikke en V3-vane med at »låne op til grænsen«.
+- **Forskellige størrelser på likvidationer.** På Main Spokes kan én likvidation tage mere end halvdelen af din gæld; på V3 tager den højst halvdelen, så længe din health factor er over 0,95.
+- **Ændringer, der rammer begge.** Én payload ændrede WETH på begge versioner den 28. oktober 2026. Hold øje med governance for begge.
+- **Renter, der bevæger sig fra hinanden.** V3-renter følger hvert markeds pulje; V4-renter følger Hub plus dit tillæg.
+- **Fremtidige ændringer af V3.** Hvis governance begynder at justere V3 for at skubbe låntagere over på V4, så forvent, at renter eller parametre bevæger sig imod V3-lån.
+
+## Kan en alarm dække begge versioner?
+
+Ja, som separate alarmer. Tokenping tjekker din health factor hvert 5. minut i hvert Aave V3-marked på 21 netværk og i alle 24 V4 Spokes på Ethereum, Avalanche, Arc og Base, med én alarm pr. V3-marked eller V4 Spoke. Det sender dig en besked på Signal, Telegram eller e-mail, når health factor er under den tærskel, du vælger (1,1 til 10), og gentager det ved hvert tjek, indtil den er kommet op igen.
+
+På V4 betyder tærsklen mere, fordi lånegrænsen er likvidationsgrænsen: sæt den et godt stykke over 1, så beskeden kommer, mens du stadig har tid til at tilbagebetale eller tilføje sikkerhed, før en likvidation tager din gæld ned til Spokens mål. En alarm kan ikke handle for dig, og en hurtig bevægelse kan krydse 1 mellem to tjek. [Hvor stor en buffer du skal holde](/da/blog/sikker-aave-health-factor#hvor-stor-en-buffer-har-du-brug-for-til-at-na-at-handle) hjælper dig med at vælge et tal.
+
+Du kan [tjekke dine Aave V3- og V4-positioner](/da/aave) uden at betale; alarmer koster <AlertPrice />, betalt på Arbitrum. Tokenping er i beta og har ingen garanti for oppetid. Opsætningen står i [sådan opsætter du en health factor-alarm](/da/blog/opsaet-aave-health-factor-alarm).
+
+## Kilder
+
+- [Oversigt over Aave V4](https://aave.com/docs/aave-v4.md): Hubs, Spokes, renter pr. Hub-aktiv, User Risk Premium, mål-health factor og støvreglen på 1.000 $ (hentet 4. november 2026)
+- [Aave V4-brugerpositioner](https://aave.com/docs/aave-v4/positions.md), [lån](https://aave.com/docs/aave-v4/positions/borrow.md) og [betingelser for positioner](https://aave.com/docs/aave-v4/positions/conditions.md): positioner pr. Spoke, lån blokeret under 1,0, sikkerhed i samme Spoke, dynamisk konfiguration og opdatering af tillægget (hentet 4. november 2026)
+- [Aave V4 Spokes](https://aave.com/docs/aave-v4/liquidity/spokes.md) og [likvidationer](https://aave.com/docs/aave-v4/positions/liquidations.md): udrullede Spokes på Ethereum og navnet eSpoke, bonus som hollandsk auktion (hentet 4. november 2026)
+- [Changeloggen i Aaves dokumentation](https://aave.com/docs/resources/changelog.md): datoerne for lanceringen af V4 på Ethereum, Avalanche, Arc og Base (hentet 4. november 2026)
+- [Oversigt over aave/aave-v4](https://github.com/aave/aave-v4/blob/main/docs/overview.md), [LiquidationLogic.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/libraries/LiquidationLogic.sol) og [Spoke.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/Spoke.sol), commit a3ef63e: risikotillæg, dynamisk risikokonfiguration, likvidationsmotor, tjek af health factor (hentet 4. november 2026)
+- [Aave V4's offentlige GraphQL API](https://api.v4.aave.com/graphql), `chains`, `hubs`, `spokes` og `reserves`: Spokes, Hubs, sikkerhedsfaktorer, sikkerhedsrisiko, bonusser og lånerenter (hentet 4. november 2026)
+- Aflæsninger on-chain af hver V4 Spokes `getLiquidationConfig` og `getReserve`, for eksempel [Ethereum Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485#readContract) ved blok 26341712 (hentet 4. november 2026)
+- [Transaktionen, der udførte AIP 536](https://etherscan.io/tx/0x226c48626ec314b194dfa080e992dcabfa1526f813835f81914e1885d5af1275), 28. oktober 2026: WETH på V3 Ethereum Core og V4 Main Spoke (hentet 4. november 2026)
+- [Aave V3 PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) og [Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract): LTV, tærskel og bonus for WETH, E-Mode-kategori 1 ved blok 26341695 (hentet 4. november 2026)
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): close factor på 50 % og 100 %, grænserne på 2.000 $ og 1.000 $ (hentet 4. november 2026)
+- [ARFC: Aave V4 Activation on Ethereum Mainnet](https://governance.aave.com/t/arfc-aave-v4-activation-on-ethereum-mainnet/24293), Aave Labs, 13. marts 2026: Spokes ved lanceringen og e-Mode Spokes (hentet 4. november 2026)
+- [TEMP CHECK: Aave Will Win Framework](https://governance.aave.com/t/temp-check-aave-will-win-framework/24055), Aave Labs, 12. februar 2026: V3 ved siden af V4, ingen tvungen flytning (hentet 4. november 2026)
+- [AL Development Update, October 2026](https://governance.aave.com/t/al-development-update-october-2026/25979), Aave Labs, 2. november 2026: indskud i V4, Sentora, første reserve med risikotillæg, AIP 536 (hentet 4. november 2026)
+- [DefiLlamas protokol-API](https://api.llama.fi/protocols): TVL og lånte beløb for Aave V3 og V4 (hentet 4. november 2026)
+
+_Undervisningsindhold, ikke økonomisk rådgivning. Alarmer mindsker risikoen, men forhindrer ikke likvidation._

@@ -4,6 +4,8 @@ import AaveHealthFactor from "~~/content/blog/hr/aave-health-factor-objasnjen.md
 import AaveInterestRates from "~~/content/blog/hr/aave-kamatne-stope.mdx";
 import AaveLiquidationPrice from "~~/content/blog/hr/aave-likvidacijska-cijena.mdx";
 import AaveAlertsDoNotDisturb from "~~/content/blog/hr/aave-upozorenja-u-nacinu-ne-uznemiravaj.mdx";
+import AaveV4VsV3 from "~~/content/blog/hr/aave-v4-vs-v3-razlike.mdx";
+import AaveVsMorpho from "~~/content/blog/hr/aave-vs-morpho-usporedba.mdx";
 import AaveLiquidationAlertTools from "~~/content/blog/hr/alati-za-aave-upozorenja-o-likvidaciji.mdx";
 import StablecoinDepegAave from "~~/content/blog/hr/depeg-stablecoina-na-aaveu.mdx";
 import AaveMarketWindDown from "~~/content/blog/hr/gasenje-aave-trzista.mdx";
@@ -53,4 +55,6 @@ export const POST_CONTENT: PostContent = {
   "kako-funkcionira-likvidacija-na-morphu": HowMorphoLiquidationWorks,
   "morpho-predlikvidacija": MorphoPreLiquidation,
   "morpho-midnight-zajmovi-s-fiksnom-kamatom": MorphoMidnightFixedRateLoans,
+  "aave-vs-morpho-usporedba": AaveVsMorpho,
+  "aave-v4-vs-v3-razlike": AaveV4VsV3,
 };

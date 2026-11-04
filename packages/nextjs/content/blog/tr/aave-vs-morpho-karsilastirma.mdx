@@ -1,0 +1,180 @@
+export const meta = {
+  slug: "aave-vs-morpho-karsilastirma",
+  title: "Borç alanlar için Aave ve Morpho: iki protokolün farkları",
+  description:
+    "Borç alanlar için Aave ve Morpho: ortak ve izole piyasalar, sağlık faktörü, likidasyonlar, faizler, E-Mode ve LLTV, oracle'lar ve yönetişim riski.",
+  h1: "Aave ve Morpho: borç alan biri için farkları nelerdir?",
+  publishedAt: "2026-11-04",
+  primaryQuestion: "Aave ve Morpho borç alan biri için nasıl farklıdır ve kredime hangisi uyar?",
+  readingMinutes: 12,
+  figuresAsOf: "2026-11-04",
+};
+
+<ShortAnswer>
+  Aave kredinizi ortak bir havuzda tutar: Aave V3'te bir piyasadaki tüm teminatınız ve borcunuz tek bir sağlık faktörünü
+  (health factor) paylaşır ve siz borçluyken yönetişim (governance) ile risk yöneticileri (risk stewards) parametreleri
+  değiştirebilir. Aave V4 bu fikri Spoke başına korur. Morpho Blue ise krediyi izole eder: her piyasanın tek bir
+  teminatı, tek bir kredi tokenı, tek bir oracle'ı ve tek bir LLTV'si vardır ve bunların hepsi piyasa oluşturulurken
+  kalıcı olarak sabitlenmiştir; bu yüzden her kredinin kendi sağlık faktörü vardır. Morpho Midnight, bir vade tarihinde
+  sona eren sabit faizli krediler ekler. Aave'de sağlam bir varlık düşen bir varlığı taşıyabilir, ama bir likidasyon
+  teminatınızın herhangi birini alabilir; Morpho'da düşen bir varlık yalnızca kendi kredisini tehdit eder ve ilk
+  likidatör o kredinin tamamını tek seferde geri ödeyebilir. Hiçbiri genel olarak daha güvenli değildir: tercih,
+  kuralları kimin koyduğu ve tek bir kötü varlığın pozisyonunuzun ne kadarına ulaşabileceğidir.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Rakamlar ve okundukları blok numaraları: content/blog/snapshots/aave-vs-morpho.md */}
+
+## Aave ve Morpho bir bakışta nasıl karşılaştırılır?
+
+Tablo, borç alan biri için önemli olan kuralları özetler. Canlı değerler 4 Kasım 2026'da Ethereum'da okundu; her satır aşağıda açıklanıyor.
+
+|                                       | Aave V3                                                                | Aave V4                                                                    | Morpho Blue                                  | Morpho Midnight                                            |
+| ------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------- | ---------------------------------------------------------- |
+| Tek bir sağlık faktörünün kapsadığı   | Bir piyasadaki tüm teminatınız ve borcunuz (tek bir ağda tek bir Pool) | Bir Spoke'taki tüm teminatınız ve borcunuz                                 | Bir teminat ve bir kredi tokenı              | Bir kredi tokenı, piyasanın teminatlarından en fazla 16'sı |
+| Borç limiti ve likidasyon sınırı      | Borç almak için daha düşük bir LTV, daha yüksek bir likidasyon eşiği   | Varlık başına tek bir teminat faktörü                                      | İkisi de LLTV'dir                            | Her teminatın LLTV'si                                      |
+| Parametreleri kim belirler            | Yönetişim ve risk yöneticileri, her an değiştirilebilir                | Yönetişim; değişiklikler genellikle yalnızca yeni pozisyonlara ulaşır      | Piyasayı oluşturan kişi, kalıcı olarak sabit | Piyasayı oluşturan kişi, kalıcı olarak sabit               |
+| Faiz                                  | Değişken, varlık başına bir eğri                                       | Değişken, Hub varlığı başına bir eğri artı kullanıcı başına bir risk primi | Değişken, AdaptiveCurveIRM                   | Vadeye kadar sabit                                         |
+| Tek bir likidasyonun en fazla ödediği | Borcun %50'si veya %100'ü                                              | Spoke'un hedef sağlık faktörüne ulaşmaya yetecek kadarı                    | Borcun tamamı                                | Sağlığı geri getiren kadarı; vadeden sonra tamamı          |
+| Likidasyon bonusu                     | Teminat varlığı başına, yönetişim belirler                             | Sağlık faktörü düştükçe büyür                                              | LLTV'den çıkar                               | Her teminatın LLTV'sinden ve imlecinden çıkar              |
+| Batık borç                            | Bir açık (deficit); Ethereum'da Umbrella staker'ları karşılayabilir    | Bir açık; başka bir Spoke karşılayabilir                                   | O piyasanın borç verenlerine karşı silinir   | O piyasanın borç verenleri paylaşır                        |
+| Oracle                                | Yönetişim seçer                                                        | Yönetişim seçer, Spoke başına                                              | Piyasayı oluşturan seçer, değiştirilemez     | Piyasayı oluşturan teminat başına seçer                    |
+
+## Her biri nasıl kurulmuştur?
+
+### Aave: ortak piyasalar, V3 ve V4
+
+Bir Aave V3 piyasası, tek bir ağdaki tek bir Pool'dur: Ethereum Core, Arbitrum, Base ve diğerleri. O Pool'a teminat olarak yatırdığınız her şey orada borç aldığınız her şeyi karşılar ve kontrat pozisyonun tamamı için tek bir sağlık faktörü hesaplar:
+
+**HF = Σ (teminat değeri × likidasyon eşiği) ÷ toplam borç**
+
+Her varlığın iki sayısı vardır: yeni borçlanmayı sınırlayan bir kredi/değer oranı (LTV) ve likidasyonu belirleyen, daha yüksek bir likidasyon eşiği (liquidation threshold). 4 Kasım 2026'da Ethereum Core'da WETH'in LTV'si %81, eşiği %84'tü. Fiyatlar ABD doları cinsinden Aave oracle'ından (fiyat kaynağı) gelir. [Aave sağlık faktörü rehberi](/tr/blog/aave-saglik-faktoru) formülü ve hesaplamalı örnekleri içerir.
+
+Aave V4 bir ağı, likiditeyi tutan bir Hub'a ve borç aldığınız piyasalar olan Spoke'lara ayırır. Pozisyonunuz ve sağlık faktörünüz tek bir Spoke'ta yaşar ve her varlığın bir LTV ile bir eşik yerine tek bir teminat faktörü (collateral factor) vardır. 4 Kasım 2026'da Aave'nin V4 API'si Ethereum, Avalanche, Arc ve Base'de 24 Spoke listeliyordu. [Aave V4'te sağlık faktörü nasıl işler](/tr/blog/aave-saglik-faktoru#aave-v4te-saglık-faktoru-farklı-mı) ayrıntıları ele alır.
+
+### Morpho: izole piyasalar, Blue ve Midnight
+
+Bir Morpho Blue piyasası beş şeyle tanımlanır: bir kredi tokenı, bir teminat tokenı, bir oracle, bir faiz oranı modeli ve bir LLTV (likidasyon LTV'si, liquidation loan-to-value). Herkes bir piyasa oluşturabilir ve beşinden hiçbiri sonradan değişemez. Bir piyasadaki teminatınız başka bir piyasadaki borcu karşılamaz; bu yüzden iki piyasadaki iki kredinin iki sağlık faktörü vardır:
+
+**HF = teminat miktarı × oracle fiyatı × LLTV ÷ borç**
+
+Daha düşük bir borçlanma limiti yoktur: kontrat, LLTV'ye, yani 1,00 sağlık faktörüne kadar borç almanıza izin verir. [Morpho sağlık faktörü rehberi](/tr/blog/morpho-saglik-faktoru) bunu adım adım hesaplar.
+
+Morpho Midnight, sabit faizli ve sabit vadeli krediler için ayrı bir kontrattır. Bir Midnight piyasasının tek bir kredi tokenı, bir vade tarihi ve her birinin kendi LLTV'si ve oracle'ı olan en fazla 128 teminatı vardır; bir borç alan bunlardan en fazla 16'sını aynı anda kullanabilir. [Morpho Midnight sabit faizli krediler](/tr/blog/morpho-midnight-sabit-faizli-krediler) nasıl işlediğini açıklar.
+
+## Bir varlık düştüğünde sağlık faktörünüze ne olur?
+
+İki tasarımın en farklı hissettirdiği yer burasıdır. İkisinde de aynı teminatı alın; temsili fiyatlar ETH için 2.400 $, BTC için 80.000 $ olsun, borç da 20.000 USDC.
+
+**Aave V3 Ethereum Core'da**, tek bir pozisyonda 10 WETH (eşik %84) ve 0,2 WBTC (eşik %85) ile, faiz yok sayılarak:
+
+- Ağırlıklı teminat: 24.000 × 0,84 + 16.000 × 0,85 = 33.760.
+- Sağlık faktörü: 33.760 ÷ 20.000 = **1,69**.
+- BTC %40 düşüp 48.000 $ olursa: 24.000 × 0,84 + 9.600 × 0,85 = 28.320, yani **1,42** sağlık faktörü. Hiçbir şey likide edilemez.
+
+WETH, WBTC'yi taşır. Bu pozisyonda WETH tek başına 20.160 olarak sayılır, yani borcun tamamından fazla; bu yüzden WBTC hiçbir değer taşımasa bile sağlık faktörü 1,008 kalırdı.
+
+**Morpho Blue'da**, aynı varlıklar Ethereum'da listelenmiş iki piyasaya, USDC | WETH (86%) ve USDC | WBTC (86%) piyasalarına bölünmüş ve her birinde 10.000 USDC borç alınmışken:
+
+- WETH kredisi: 24.000 × 0,86 ÷ 10.000 = **2,06**.
+- WBTC kredisi: 16.000 × 0,86 ÷ 10.000 = **1,38**; likidasyon fiyatı 58.139,53 $, yani 80.000 $'ın %27,3 altında.
+- BTC %40 düşerse: WBTC kredisi 9.600 × 0,86 ÷ 10.000 = **0,83** olur ve likide edilebilir, WETH kredisi ise 2,06'da kalır.
+
+Madalyonun öbür yüzü de aynı ölçüde gerçektir. Aave'de pozisyonun tamamı 1'in altına düştüğünde hangi teminatın alınacağını likidatör seçer; yani BTC'deki bir düşüş size WETH kaybettirebilir. Morpho'da BTC'ye ne olursa olsun WETH kredisine ulaşılamaz. Havuzlama size ortak bir tampon verir; izolasyon kredi başına bir tampon verir ve her birinin boyutunu sizin ayarlamanız gerekir.
+
+## Likidasyonlar nasıl farklıdır?
+
+İki protokolde de sağlık faktörü 1'in altına düştüğünde bir likidatör borcunuzun bir kısmını geri öder ve bu tutar artı bir bonus değerinde teminat alır. Borç aldığınız tutar sizde kalır, yani bir likidasyonun size maliyeti bonustur. Çevresindeki kurallar farklıdır:
+
+- **Tek seferde ne kadar.** Aave V3.7'de, sağlık faktörünüz 0,95'in üzerindeyken ve ilgili teminat ile borcun her biri en az 2.000 $ değerindeyken tek bir likidasyon toplam borcunuzun en fazla %50'sini geri ödeyebilir; 0,95 veya altında ya da daha küçük tutarlarda o varlıktaki borcun tamamını geri ödeyebilir. Aave V4 bu kuralı kaldırır: bir likidatör yalnızca sizi Spoke'un hedef sağlık faktörüne geri getirmeye yetecek kadar geri öder; bu, 4 Kasım 2026'da Ethereum Main Spoke'ta 1,24'tü. Morpho Blue'da sınır yoktur: ilk likidatör borcunuzun tamamını tek bir çağrıda geri ödeyebilir.
+- **Bonus.** Aave V3'te teminat varlığı başına yönetişim tarafından belirlenir: 4 Kasım 2026'da Ethereum Core'da WETH ve WBTC için %5'ti ve bunun %20'sini Aave hazinesi protokol ücreti olarak alıyordu. V4'te sağlık faktörü düştükçe büyür. Morpho Blue'da LLTV'den çıkar: 1 ÷ (1 − 0,3 × (1 − LLTV)), en fazla %15; %86 LLTV'de %4,38, %96,5'te %1,06 ve tamamı likidatöre gider.
+- **Ön likidasyon.** Morpho Blue'da bir borç alan, krediyi LLTV'den önce dilimler hâlinde likide eden bir kontrata katılmayı seçebiliyordu. Morpho bu özelliği kaldırıyor ve ona sahip borç alanlardan kapatmalarını istiyor; bir zamanlar "Auto-deleverage" özelliğini açtıysanız, [Morpho ön likidasyonu (pre-liquidation)](/tr/blog/morpho-on-likidasyon) bunu nasıl kontrol edip iptal edeceğinizi gösterir. Aave'de buna benzer bir şey yoktur.
+- **Vade.** Morpho Midnight'ta vadeden sonra kalan her borç, sağlıklı bir pozisyonda bile likide edilebilir; bonus ilk bir saat içinde sıfırdan tam boyutuna yükselir.
+- **Batık borç (bad debt).** Teminat borçtan önce tükendiğinde Aave V3 bir açık (deficit) kaydeder; Ethereum'da bunu Umbrella staker'ları karşılayabilir (Aave'nin belgelerine göre USDC, USDT, WETH ve GHO için); V4'te başka bir Spoke karşılayabilir. Morpho'da zarar o tek piyasanın borç verenlerine karşı silinir. Borç alan olarak sizin için sonuç her yerde aynıdır: teminat gitmiştir ve hiç borç kalmaz.
+
+Mekanizmanın tamamı, [V4'ün kurallarıyla](/tr/blog/aave-likidasyonu-nasil-isler#aave-v4te-likidasyonlar-nasıl-farklıdır) birlikte [Aave likidasyonu nasıl işler](/tr/blog/aave-likidasyonu-nasil-isler) rehberinde ve bir [karşılaştırma tablosu](/tr/blog/morpho-likidasyonu-nasil-isler#morpho-likidasyonu-aaveninkinden-nasıl-farklıdır) içeren [Morpho likidasyonu nasıl işler](/tr/blog/morpho-likidasyonu-nasil-isler) rehberinde anlatılıyor.
+
+## Faiz oranları nasıl farklıdır?
+
+**Aave V3** her varlığın değişken faizini sabit bir eğri üzerinde belirler: faiz, kullanım oranıyla (havuzun borç alınan payı) optimal bir seviyeye kadar yavaşça, sonra dik bir şekilde yükselir. Eğrinin dört sayısını yönetişim belirler ve risk yöneticileri bunları belirli sınırlar içinde ayarlayabilir. Ethereum Core'da USDC %94 optimal seviye, %4,5 birinci eğim ve %10 ikinci eğim kullanıyordu. 4 Kasım 2026'da 26341682 numaralı Ethereum bloğunda kullanım oranı %94,7'ydi, yani kırılma noktasının hemen ötesindeydi ve borçlanma yıllık %5,67'ye mal oluyordu. Parametre değişiklikleri arasında faiz yalnızca kullanım oranıyla hareket eder. [Aave faiz oranları nasıl işler](/tr/blog/aave-faiz-oranlari) formülü ve gerçek bir sıçramayı içerir.
+
+**Aave V4** Hub'da varlık başına bir eğri tutar ve üstüne bir User Risk Premium (kullanıcı risk primi) ekler; bu prim, teminatınızın kalitesine bağlı olarak ortak faizin %0'ı ile %1.000'i arasındadır: Aave'nin örneği, %5'lik bir faiz üzerine %50'lik bir primdir ve sonuç %7,5'tir.
+
+**Morpho Blue** piyasaları %90 kullanım oranını hedefleyen AdaptiveCurveIRM'i kullanır. Her an faiz, bir "hedefteki faiz" (rate at target) etrafındaki bir eğri üzerinde durur: %0 kullanım oranında bunun dörtte biri, %100'de dört katı. Aave'nin eğrisinden farklı olarak hedefteki faizin kendisi de kayar: kullanım oranı %90'ın üzerinde kaldıkça yukarı, altında kaldıkça aşağı, yıllık %0,1 ile %200 arasında. %100 kullanım oranında yaklaşık beş günde iki katına çıkar. 4 Kasım 2026'da Ethereum'daki USDC | cbBTC (86%) piyasası %90,3 kullanım oranındaydı; hedefteki faiz %4,97, borç faizi ise yıllık yaklaşık %5,4'tü. Dolayısıyla yoğun bir piyasa, borç alanlar geri ödeyene veya borç verenler gelene kadar pahalanmaya devam eder; sakin bir piyasa ise ucuzlar.
+
+**Morpho Midnight** borç aldığınızda faizinizi sabitler. Borç birimlerini nominal değerinin altında satarsınız ve vadede birim başına tam olarak bir kredi tokenı borçlu olursunuz; bu yüzden borcunuz büyümez ve sağlık faktörünüzü yalnızca teminat fiyatları hareket ettirir. Aave'de sabit faiz yoktur: V3.2 eski sabit faiz (stable rate) kodunu kaldırdı ve her Aave kredisi değişken faizlidir.
+
+## E-Mode mu, yüksek LLTV'li bir piyasa mı: ne kadar borç alabilirsiniz?
+
+İki protokol de, borç aldığınız varlıkla birlikte hareket eden teminata karşı daha fazla borç almanıza izin verir, ama farklı yollarla.
+
+**Aave E-Mode**, V3 pozisyonunuzun tamamı için bir ayardır. Bir kategori seçersiniz ve onun içindeyken teminatınız kategorinin LTV'sini, eşiğini ve bonusunu alır. 4 Kasım 2026'da Ethereum Core'da "ETH correlated" (ETH ile bağlantılı) %93 LTV, %95 eşik ve %1 bonus kullanıyordu ve içinde borç alabileceğiniz tek varlık WETH'ti. Borç aldığınız her varlık kategoride borç alınabilir olmalıdır; bu yüzden USDC borcu olan bir pozisyon onu kullanamaz. [Aave E-Mode](/tr/blog/aave-e-mode) kategorileri ve Mart 2026 likidasyonlarını ele alır.
+
+**Morpho'da** bir mod yoktur: LLTV'si çifte uyan bir piyasa seçersiniz. 4 Kasım 2026'da Morpho yönetişiminin etkinleştirdiği LLTV'ler %0, %38,5, %62,5, %77, %86, %91,5, %94,5, %96,5 ve %98'di. Ethereum'daki WETH | wstETH piyasası %96,5 kullanır ve likidasyon teşviki %1,06'dır.
+
+WETH'e karşı wstETH ile loop (kaldıraçlı borç döngüsü) yapan bir borç alan iki protokolde de benzer bir yere varabilir, tek bir farkla: Aave'de yalnızca %93 LTV'ye kadar borç alabilirsiniz, bu da yaklaşık 95 ÷ 93 = 1,02 sağlık faktörü bırakır; Morpho'da kontrat %96,5 sınırına, yani 1,00 sağlık faktörüne kadar borç almanıza izin verir.
+
+## Aave ve Morpho hangi ağlarda çalışır?
+
+|               | Aave                                                                                                                              | Morpho                                                                                                                                             |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Değişken faiz | V3 20'den fazla ağda, aralarında Ethereum, Arbitrum, Base, Avalanche, Polygon ve Optimism; V4 Ethereum, Avalanche, Arc ve Base'de | Blue 14 ağda: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable ve Tempo |
+| Sabit faiz    | Yok                                                                                                                               | Midnight; 4 Kasım 2026'da Ethereum ve Base'de listelenmiş piyasalarla                                                                              |
+
+Aave'de bir piyasadaki her varlığı yönetişim listeler. Morpho'da herkes bir piyasa oluşturabilir ve Morpho uygulaması yalnızca Morpho Association'ın listelemeyi seçtiklerini gösterir (aşağıya bakın). Birkaç Aave V3 ağı kademeli olarak kapatılıyor; [Aave bir piyasayı kapattığında ne olur](/tr/blog/aave-piyasa-kapanisi) bunun açık krediler için ne anlama geldiğini açıklar.
+
+## Her birinde hangi riskler farklıdır?
+
+İkisi de aynı temel riskleri taşır: bir fiyat düşüşü, bir oracle hatası, bir akıllı kontrat hatası. Bu risklerin nerede durduğu farklıdır.
+
+**Kredinizi kim değiştirebilir.** Aave'de yönetişim bir V3 varlığının LTV'sini, likidasyon eşiğini, bonusunu ve faiz eğrisini değiştirebilir; risk yöneticileri de bunları sınırlı adımlarla ve asgari bekleme süreleriyle oynatabilir. V3'te daha düşük bir eşik her açık pozisyona aynı anda uygulanır. Varlıklar ayrıca dondurulabilir (frozen), bu yeni borçlanmayı engeller ama likidasyonu engellemez; ya da duraklatılabilir (paused), bu likidasyonları da engeller ve ardından 4 saate kadar bir ek süre (grace period) gelir. V4'te yeni teminat faktörleri ve bonuslar pozisyonunuza genellikle ancak bir sonraki borç alışınızda veya teminat çekişinizde ulaşır. Morpho Blue'da hiç kimse bir piyasayı değiştiremez: yönetişim yeni LLTV'leri ve faiz modellerini etkinleştirebilir ve faizin %25'ine kadar, borç verenlerin ödediği bir ücret belirleyebilir, ama mevcut bir piyasaya dokunamaz ve kontratta duraklatma yoktur.
+
+**Oracle'ı kim seçer.** Aave yönetişimi her varlığın fiyat kaynağını seçer. Morpho'da bir piyasayı oluşturan kişi onun oracle'ını seçer ve bu oracle hiçbir zaman değiştirilemez. Morpho'nun belgeleri, kalıcı olduğu için bu seçimin piyasanın risk profilini belirlediğini söyler. Bazı oracle'lar bir piyasa fiyatı yerine bir dönüşüm oranını (exchange rate) izler ya da bir stablecoin'i tam olarak bir dolar sayar. Morpho'da borç almadan önce piyasanızın oracle'ının neyi ölçtüğünü kontrol edin; [likidasyon rehberinin oracle bölümü](/tr/blog/morpho-likidasyonu-nasil-isler#oracle-bir-likidasyonda-nasıl-bir-rol-oynar) neye bakmanız gerektiğini gösterir.
+
+**Listelenmiş veya listelenmemiş.** Morpho'nun uygulaması yalnızca Morpho Association'ın listelediği piyasaları, esas olarak listelenmiş bir vault'un borç verdiği piyasaları gösterir. Politikası listelemeyi bir onay veya risk derecelendirmesi değil, "a discovery decision" (bir keşif kararı) olarak tanımlar ve listelenmemiş bir piyasa zincir üstünde çalışmaya devam eder. Listelenmemiş piyasalar yine de büyük krediler tutabilir; [teminat olarak tokenize hisseler](/tr/blog/teminat-olarak-tokenize-hisseler#tokenize-hisselere-karsı-nerede-borc-alabilirsiniz) bunu hisse teminatlı borçlanma için gösterir. Dolayısıyla bir piyasanın uygulamada olmaması size yalnızca Morpho'nun onu göstermemeyi seçtiğini söyler.
+
+**Tek bir kötü varlık neye ulaşabilir.** Aave'de piyasanızdaki yanlış fiyatlanmış veya depeg (dolar sabitinin kaybı) yaşayan bir varlık tüm sağlık faktörünüzü hareket ettirir. Morpho'da yalnızca onu kullanan kredileri hareket ettirir, ama bu kredilerin dayanabileceği başka bir teminat yoktur.
+
+## Hangisi hangi borç alana uyar?
+
+İkisi de daha iyi protokol değildir; her biri farklı bir borçlanma biçimine uyar. Bazı kaba eşleşmeler:
+
+- **Teminat olarak birkaç varlık, izlenecek tek bir tampon:** Aave'nin ortak pozisyonu bunların birbirini desteklemesini sağlar; bedeli, yönetişimin değiştirebileceği kurallardır.
+- **Borç aldıktan sonra değişemeyen kurallar:** bir Morpho piyasasının LLTV'si, oracle'ı ve faiz modeli kalıcı olarak sabittir, ama o oracle'ı kendiniz değerlendirmeniz gerekir.
+- **Diğer teminatınıza dokunmaması gereken bir kredi:** Morpho her krediyi ayrı tutar; Aave'de ayrı piyasalar veya ağlar aynı işi görür.
+- **Bağlantılı bir çiftte sınıra yakın borç almak:** ikisi de bunu E-Mode veya yüksek bir LLTV ile sunar ve ikisi de yüzde birkaçlık bir marj bırakır.
+- **Hareket etmeyen bir faiz:** bunu yalnızca Morpho Midnight sunar, karşılığında da kaçırmamanız gereken bir vade tarihi vardır.
+- **Küçük pozisyonlar:** ikisinde de bir likidasyon borcun tamamını tek seferde kapatabilir; Aave'de ilgili varlıklarda 2.000 $'ın altında, Morpho'da her boyutta.
+
+Bu rehber mekanizmaları karşılaştırır; finansal tavsiye değildir.
+
+## Uyarılar ikisinde de nasıl yardımcı olabilir?
+
+Tokenping ikisini de izler. Her 5 dakikada bir kontrol eder ve sağlık faktörü belirlediğiniz eşiğin altındayken her kontrolde, seçtiğiniz her kanala bir mesaj gönderir: Signal, Telegram veya e-posta.
+
+- **Aave:** V3 piyasası veya V4 Spoke'u başına bir uyarı; 21 ağdaki 24 V3 piyasasında ve Ethereum, Avalanche, Arc ve Base'deki 24 V4 Spoke'unun tümünde. Eşik 1,1 ile 10 arasındadır. Önce [Aave sağlık faktörünüzü kontrol edebilirsiniz](/tr/aave).
+- **Morpho:** borç aldığınız piyasa başına bir uyarı, Morpho uygulamasının listelediği piyasalarda: 14 ağda Blue ve Morpho'nun API'sinin piyasa listelediği yerlerde Midnight (4 Kasım 2026'da Ethereum ve Base). Eşik 1,02'ye kadar iner, çünkü yüksek LLTV'li krediler çoğu zaman 1'e yakın seyreder. Ön likidasyona yetki verdiyseniz uyarı o daha erken sınıra göre ölçer; bir Midnight kredisi ayrıca vadeden 7 gün ve 24 saat önce hatırlatma alır. Pozisyonlarınız [Morpho panelinde](/tr/morpho).
+
+Pozisyonlarınıza bakmak ödeme gerektirmez. Uyarıların fiyatı: <AlertPrice />; aynı plan Aave ve Morpho'yu kapsar. Bir uyarı size borcu geri ödemek veya teminat eklemek için zaman kazandırır; likidasyonu önlemez ve fiyat iki kontrol arasında sınırınızı geçebilir.
+
+## Kaynaklar
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) ve [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), aave-dao/aave-v3-origin: close factor, açık (deficit), sağlık faktörü, duraklatma ve ek süre (erişim tarihi: 4 Kasım 2026)
+- [Aave V3.2 özellikleri](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): sabit faizli borcun kaldırılması (erişim tarihi: 4 Kasım 2026)
+- [Aave Generalized Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): risk yöneticilerinin hangi parametreleri değiştirebildiği, asgari bekleme süreleri ve azami adımlar (erişim tarihi: 4 Kasım 2026)
+- [Aave belgeleri: Umbrella](https://aave.com/docs/aave-v3/umbrella): açıkların karşılanması, varlıklar ve ağ (erişim tarihi: 4 Kasım 2026)
+- [Aave V4 belgeleri](https://aave.com/docs/aave-v4) ve [V4 pozisyonları](https://aave.com/docs/aave-v4/positions): Hub ve Spoke'lar, sağlık faktörü, User Risk Premium, likidasyonlar (erişim tarihi: 4 Kasım 2026)
+- [Aave V4'e genel bakış](https://github.com/aave/aave-v4/blob/main/docs/overview.md), aave/aave-v4: dinamik risk yapılandırması, hedef sağlık faktörü, değişken bonus, açıklar, Spoke oracle'ları (erişim tarihi: 4 Kasım 2026)
+- [Aave V4 API](https://api.v4.aave.com/graphql): Spoke'lar ve ağlar (erişim tarihi: 4 Kasım 2026)
+- [Aave address book](https://github.com/bgd-labs/aave-address-book): Aave V3 ağları (erişim tarihi: 4 Kasım 2026)
+- Ethereum'da 26341682 ve 26341689 numaralı bloklarda yapılan zincir üstü okumalar: [Aave V3 Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract) ve [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) (rezerv parametreleri, E-Mode, USDC faizi), [Aave V4 Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485#readContract) (hedef sağlık faktörü) ve [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) (piyasalar, etkin LLTV'ler, faizler) (erişim tarihi: 4 Kasım 2026)
+- [Morpho.sol ve ConstantsLib.sol](https://github.com/morpho-org/morpho-blue), morpho-org/morpho-blue: sahibin yetkileri, %25 ücret tavanı, likidasyon teşviki, batık borç (erişim tarihi: 4 Kasım 2026)
+- [AdaptiveCurveIRM sabitleri](https://github.com/morpho-org/morpho-blue-irm/blob/main/src/adaptive-curve-irm/libraries/ConstantsLib.sol), morpho-org/morpho-blue-irm: hedef kullanım oranı, diklik, ayarlama hızı ve sınırlar (erişim tarihi: 4 Kasım 2026)
+- [Midnight.sol ve ConstantsLib.sol](https://github.com/morpho-org/midnight), morpho-org/midnight: teminat sınırları, vade sonrası likidasyon ve 60 dakikalık artış (erişim tarihi: 4 Kasım 2026)
+- [Morpho belgeleri: Morpho Blue](https://docs.morpho.org/learn/concepts/blue), [oracle'lar](https://docs.morpho.org/learn/concepts/oracle) ve [Midnight](https://docs.morpho.org/learn/concepts/midnight) (erişim tarihi: 4 Kasım 2026)
+- [Morpho arayüz listeleme politikası](https://docs.morpho.org/get-started/resources/interface-listing-policy): listelemenin ne anlama geldiği ve kimin karar verdiği (erişim tarihi: 4 Kasım 2026)
+- [Morpho yardım: Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (erişim tarihi: 4 Kasım 2026)
+- [Morpho API](https://api.morpho.org/graphql): ağlar, listelenmiş Blue piyasaları ve ağ başına listelenmiş Midnight piyasaları (erişim tarihi: 4 Kasım 2026)
+
+_Eğitim amaçlı içeriktir, finansal tavsiye değildir. Uyarılar riski azaltır ama likidasyonu önlemez._

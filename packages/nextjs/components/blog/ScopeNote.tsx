@@ -21,12 +21,14 @@ type ScopeNoteProps = {
   locale?: Locale;
   /** The post's protocol (meta.protocol): a Morpho guide has its own scope and figures date. Aave when absent. */
   protocol?: "morpho";
+  /** The post's own figures date (meta.figuresAsOf), when its figures were read on another day than its protocol's. */
+  figuresAsOf?: string;
 };
 
 /** The standard scope line every article carries under its short answer. */
-export const ScopeNote = ({ locale = DEFAULT_LOCALE, protocol }: ScopeNoteProps) => {
+export const ScopeNote = ({ locale = DEFAULT_LOCALE, protocol, figuresAsOf: postFiguresAsOf }: ScopeNoteProps) => {
   const { text, morphoText, figuresAsOf } = BLOG_MESSAGES[locale].scopeNote;
-  const asOf = protocol === "morpho" ? MORPHO_FIGURES_AS_OF : FIGURES_AS_OF;
+  const asOf = postFiguresAsOf ?? (protocol === "morpho" ? MORPHO_FIGURES_AS_OF : FIGURES_AS_OF);
   const shortDate = formatShortDate(asOf, locale);
   return (
     <p className="my-6 border-l-2 border-border pl-4 text-sm leading-relaxed text-muted-foreground">

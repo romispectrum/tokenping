@@ -1,0 +1,179 @@
+export const meta = {
+  slug: "aave-vs-morpho-sammenligning",
+  title: "Aave vs. Morpho for låntagere: sådan adskiller de sig",
+  description:
+    "Aave vs. Morpho for låntagere: fælles mod isolerede markeder, health factor, likvidationer, renter, E-Mode mod LLTV, orakler og governance-risiko.",
+  h1: "Aave vs. Morpho: hvordan adskiller de sig for en låntager?",
+  publishedAt: "2026-11-04",
+  primaryQuestion: "Hvordan adskiller Aave og Morpho sig for en låntager, og hvilken passer til mit lån?",
+  readingMinutes: 14,
+  figuresAsOf: "2026-11-04",
+};
+
+<ShortAnswer>
+  Aave samler dit lån i en fælles pulje: på Aave V3 deler al din sikkerhed og gæld i ét marked én health factor
+  (sundhedsfaktor), og governance og Risk Stewards kan ændre parametrene, mens du låner. Aave V4 bevarer den idé pr.
+  Spoke. Morpho Blue isolerer det: hvert marked har én sikkerhed, én lånetoken, ét orakel (priskilde) og én
+  likvidations-LTV (LLTV), alle fastlagt for altid, da markedet blev oprettet, så hvert lån har sin egen health factor.
+  Morpho Midnight tilføjer lån med fast rente, der udløber på en forfaldsdato. På Aave kan et sundt aktiv bære et
+  faldende, men en likvidation kan tage enhver del af din sikkerhed; på Morpho truer et faldende aktiv kun sit eget lån,
+  og den første likvidator kan tilbagebetale det hele på én gang. Ingen af dem er generelt sikrere: afvejningen handler
+  om, hvem der fastsætter reglerne, og hvor meget af din position ét dårligt aktiv kan nå.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Tallene og de bloknumre, de blev aflæst ved: content/blog/snapshots/aave-vs-morpho.md */}
+
+## Hvordan ser Aave og Morpho ud ved siden af hinanden?
+
+Tabellen opsummerer de regler, der betyder noget for en låntager. Aktuelle værdier blev aflæst den 4. november 2026 på Ethereum; hver række forklares nedenfor.
+
+|                                             | Aave V3                                                            | Aave V4                                                          | Morpho Blue                                     | Morpho Midnight                                               |
+| ------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------- |
+| Én health factor dækker                     | Al din sikkerhed og gæld i ét marked (en Pool på ét netværk)       | Al din sikkerhed og gæld i én Spoke                              | Én sikkerhed og én lånetoken                    | Én lånetoken, op til 16 af markedets sikkerheder              |
+| Lånegrænse og likvidationsgrænse            | En lavere LTV for lån, en højere likvidationstærskel               | Én sikkerhedsfaktor pr. aktiv                                    | LLTV er begge dele                              | Hver sikkerheds LLTV                                          |
+| Hvem fastsætter parametrene                 | Governance og Risk Stewards, kan ændres når som helst              | Governance; ændringer når som regel kun nye positioner           | Den, der oprettede markedet, fastlagt for altid | Den, der oprettede markedet, fastlagt for altid               |
+| Rente                                       | Variabel, en kurve pr. aktiv                                       | Variabel, en kurve pr. Hub-aktiv plus et risikotillæg pr. bruger | Variabel, AdaptiveCurveIRM                      | Fast indtil forfaldsdatoen                                    |
+| Det meste, én likvidation kan tilbagebetale | 50 % eller 100 % af gælden                                         | Nok til at nå Spokens mål-health factor                          | Hele gælden                                     | Det, der genopretter sundheden; det hele efter forfaldsdatoen |
+| Likvidationsbonus                           | Pr. sikkerhedsaktiv, fastsat af governance                         | Vokser, jo lavere health factor falder                           | Følger af LLTV                                  | Følger af hver sikkerheds LLTV og markør (cursor)             |
+| Dårlig gæld (bad debt)                      | Et underskud (deficit); Umbrella-stakere kan dække det på Ethereum | Et underskud; en anden Spoke kan dække det                       | Afskrives hos markedets långivere               | Deles af markedets långivere                                  |
+| Orakel                                      | Valgt af governance                                                | Valgt af governance, pr. Spoke                                   | Valgt af markedets opretter, kan ikke udskiftes | Valgt pr. sikkerhed af markedets opretter                     |
+
+## Hvordan er hver af dem bygget op?
+
+### Aave: fælles markeder, V3 og V4
+
+Et Aave V3-marked er én Pool på ét netværk: Ethereum Core, Arbitrum, Base og så videre. Alt, hvad du indskyder som sikkerhed i den Pool, dækker alt, hvad du låner dér, og kontrakten beregner én health factor for hele positionen:
+
+**HF = Σ (sikkerhedens værdi × likvidationstærskel) ÷ samlet gæld**
+
+Hvert aktiv har to tal: en belåningsgrad (LTV), som sætter loftet for nye lån, og en højere likvidationstærskel (liquidation threshold), som afgør likvidation. På Ethereum Core havde WETH den 4. november 2026 en LTV på 81 % og en tærskel på 84 %. Priserne kommer fra Aaves orakel, i amerikanske dollar. [Guiden om Aave health factor](/da/blog/aave-health-factor-forklaret) har formlen og regneeksempler.
+
+Aave V4 deler et netværk op i en Hub, som rummer likviditeten, og Spokes, de markeder, du låner i. Din position og health factor ligger i én Spoke, og hvert aktiv har én enkelt sikkerhedsfaktor (collateral factor) i stedet for en LTV og en tærskel. Den 4. november 2026 listede Aaves V4 API 24 Spokes på Ethereum, Avalanche, Arc og Base. [Hvordan health factor fungerer på Aave V4](/da/blog/aave-health-factor-forklaret#er-health-factor-anderledes-pa-aave-v4) gennemgår detaljerne.
+
+### Morpho: isolerede markeder, Blue og Midnight
+
+Et Morpho Blue-marked er defineret af fem ting: en lånetoken, en sikkerhedstoken, et orakel, en rentemodel og en LLTV (liquidation loan-to-value). Alle kan oprette et, og ingen af de fem kan ændres bagefter. Din sikkerhed i ét marked dækker ikke gæld i et andet, så to lån i to markeder har to health factors:
+
+**HF = mængde sikkerhed × orakelpris × LLTV ÷ gæld**
+
+Der er ingen lavere lånegrænse: kontrakten lader dig låne helt op til LLTV, en health factor på 1,00. [Guiden om Morpho health factor](/da/blog/morpho-health-factor-forklaret) gennemgår det.
+
+Morpho Midnight er en separat kontrakt til lån med fast rente og fast løbetid. Et Midnight-marked har én lånetoken, en forfaldsdato og op til 128 sikkerheder, hver med sin egen LLTV og sit eget orakel, og én låntager kan bruge op til 16 af dem på én gang. [Morpho Midnight: lån med fast rente](/da/blog/morpho-midnight-laan-med-fast-rente) forklarer, hvordan det fungerer.
+
+## Hvad sker der med din health factor, når ét aktiv falder?
+
+Det er her, de to designs føles mest forskellige. Tag den samme sikkerhed på begge, med illustrative priser på 2.400 $ for ETH og 80.000 $ for BTC, og 20.000 USDC i gæld.
+
+**På Aave V3 Ethereum Core**, med 10 WETH (tærskel 84 %) og 0,2 WBTC (tærskel 85 %) i én position, uden renter:
+
+- Vægtet sikkerhed: 24.000 × 0,84 + 16.000 × 0,85 = 33.760.
+- Health factor: 33.760 ÷ 20.000 = **1,69**.
+- Hvis BTC falder 40 % til 48.000 $: 24.000 × 0,84 + 9.600 × 0,85 = 28.320, en health factor på **1,42**. Intet kan likvideres.
+
+WETH bærer WBTC. I denne position tæller WETH alene for 20.160, mere end hele gælden, så selv hvis WBTC var værdiløs, ville health factor være 1,008.
+
+**På Morpho Blue**, med de samme aktiver fordelt på to listede Ethereum-markeder, USDC | WETH (86%) og USDC | WBTC (86%), og 10.000 USDC lånt i hver:
+
+- WETH-lånet: 24.000 × 0,86 ÷ 10.000 = **2,06**.
+- WBTC-lånet: 16.000 × 0,86 ÷ 10.000 = **1,38**, med en likvidationspris på 58.139,53 $, 27,3 % under 80.000 $.
+- Hvis BTC falder 40 %: WBTC-lånet står på 9.600 × 0,86 ÷ 10.000 = **0,83** og kan likvideres, mens WETH-lånet bliver på 2,06.
+
+Bagsiden er lige så reel. På Aave vælger likvidatoren, hvilken sikkerhed der tages, når hele positionen er faldet under 1, så et fald i BTC kan koste dig WETH. På Morpho er WETH-lånet uden for rækkevidde, uanset hvad der sker med BTC. En fælles pulje giver dig én fælles buffer; isolation giver dig en buffer pr. lån, og du skal selv dimensionere hver af dem.
+
+## Hvordan adskiller likvidationerne sig?
+
+På begge protokoller tilbagebetaler en likvidator en del af din gæld under en health factor på 1 og tager sikkerhed til en værdi af det beløb plus en bonus. Du beholder det, du lånte, så bonussen er det, en likvidation koster dig. Reglerne omkring den er forskellige:
+
+- **Hvor meget på én gang.** På Aave V3.7 kan én likvidation tilbagebetale op til 50 % af din samlede gæld, så længe din health factor er over 0,95, og den sikkerhed og gæld, der er involveret, hver er mindst 2.000 $ værd; på eller under 0,95, eller ved mindre beløb, kan den tilbagebetale hele gælden i det aktiv. Aave V4 dropper denne regel: en likvidator tilbagebetaler kun nok til at bringe dig tilbage til Spokens mål-health factor (target health factor), 1,24 på Ethereum Main Spoke den 4. november 2026. Morpho Blue har ingen grænse: den første likvidator kan tilbagebetale hele din gæld i ét kald.
+- **Bonussen.** På Aave V3 fastsættes den pr. sikkerhedsaktiv af governance: 5 % for WETH og WBTC på Ethereum Core den 4. november 2026, hvoraf Aaves treasury tog 20 % som protokolgebyr. På V4 vokser den, jo lavere health factor falder. På Morpho Blue følger den af LLTV, 1 ÷ (1 − 0,3 × (1 − LLTV)) med et loft på 15 %: 4,38 % ved en LLTV på 86 %, 1,06 % ved 96,5 %, og det hele går til likvidatoren.
+- **Forlikvidation.** På Morpho Blue kunne en låntager tilvælge en kontrakt til forlikvidation (pre-liquidation), der likviderer dele af lånet før LLTV. Morpho er ved at udfase funktionen og beder låntagere, der har den, om at slå den fra; hvis du engang slog Auto-deleverage til, viser [forlikvidation på Morpho](/da/blog/morpho-forlikvidation), hvordan du tjekker og tilbagekalder den. Aave har intet lignende.
+- **Forfaldsdato.** På Morpho Midnight kan al gæld, der er tilbage efter forfaldsdatoen, likvideres, selv på en sund position, med en bonus, der stiger fra ingenting til fuld størrelse i løbet af den første time.
+- **Dårlig gæld.** Når sikkerheden slipper op før gælden, bogfører Aave V3 et underskud, som Umbrella-stakere kan dække på Ethereum (for USDC, USDT, WETH og GHO ifølge Aaves dokumentation); i V4 kan en anden Spoke dække det. På Morpho afskrives tabet hos långiverne i det ene marked. For dig som låntager er resultatet det samme overalt: sikkerheden er væk, og der er ingen gæld tilbage.
+
+Den fulde mekanik står i [sådan fungerer likvidation på Aave](/da/blog/saadan-fungerer-likvidation-paa-aave), med [reglerne for V4](/da/blog/saadan-fungerer-likvidation-paa-aave#hvordan-er-likvidationer-anderledes-pa-aave-v4), og i [sådan fungerer likvidation på Morpho](/da/blog/saadan-fungerer-likvidation-paa-morpho), som har en [tabel side om side](/da/blog/saadan-fungerer-likvidation-paa-morpho#hvordan-adskiller-likvidation-pa-morpho-sig-fra-aaves).
+
+## Hvordan adskiller renterne sig?
+
+**Aave V3** fastsætter hvert aktivs variable rente på en fast kurve: den stiger svagt med udnyttelsesgraden (utilization, den andel af puljen, der er lånt ud) op til et optimalt niveau og derefter stejlt. Governance fastsætter kurvens fire tal, og Risk Stewards kan justere dem inden for grænser. USDC på Ethereum Core brugte et optimalt niveau på 94 %, en første hældning (slope 1) på 4,5 % og en anden hældning (slope 2) på 10 %. Ved Ethereum-blok 26341682 den 4. november 2026 var udnyttelsesgraden 94,7 %, lige forbi knækket, og det kostede 5,67 % om året at låne. Mellem ændringer af parametrene bevæger renten sig alene med udnyttelsesgraden. [Sådan fungerer Aaves renter](/da/blog/aave-renter) har formlen og en rigtig rentetop.
+
+**Aave V4** beholder en kurve pr. aktiv i Hub og lægger en User Risk Premium (risikotillæg pr. bruger) ovenpå, fra 0 % til 1.000 % af den fælles rente afhængigt af kvaliteten af din sikkerhed: Aaves eksempel er et tillæg på 50 % på en rente på 5 %, hvilket giver 7,5 %.
+
+**Morpho Blue**-markeder bruger AdaptiveCurveIRM, som sigter mod 90 % udnyttelse. I hvert øjeblik ligger renten på en kurve omkring en »rente ved målet« (rate at target): en fjerdedel af den ved 0 % udnyttelse, fire gange den ved 100 %. I modsætning til Aaves kurve driver selve renten ved målet: op, mens udnyttelsen bliver over 90 %, ned, mens den bliver under, mellem 0,1 % og 200 % om året. Ved 100 % udnyttelse fordobles den på omkring fem dage. Den 4. november 2026 lå Ethereums marked USDC | cbBTC (86%) på 90,3 % udnyttelse, med en rente ved målet på 4,97 % og en lånerente på omkring 5,4 % om året. Et travlt marked bliver derfor ved med at blive dyrere, indtil låntagere tilbagebetaler eller långivere kommer til; et roligt bliver billigere.
+
+**Morpho Midnight** fastlåser din rente, når du låner. Du sælger gældsenheder under pålydende og skylder præcis én lånetoken pr. enhed ved forfaldsdatoen, så din gæld vokser ikke, og kun sikkerhedens priser flytter din health factor. Aave har ingen fast rente: V3.2 fjernede den gamle kode til stabil rente, og alle Aave-lån har variabel rente.
+
+## E-Mode eller et marked med høj LLTV: hvor meget kan du låne?
+
+Begge protokoller lader dig låne mere mod sikkerhed, der følger det, du låner, på hver sin måde.
+
+**Aave E-Mode** er en indstilling for hele din V3-position. Du vælger en kategori, og så længe du er i den, får dens sikkerhed kategoriens LTV, tærskel og bonus. På Ethereum Core brugte »ETH correlated« den 4. november 2026 en LTV på 93 %, en tærskel på 95 % og en bonus på 1 %, og WETH var det eneste aktiv, du kunne låne i den. Alle aktiver, du låner, skal kunne lånes i kategorien, så en position med gæld i USDC kan ikke bruge den. [Aave E-Mode](/da/blog/aave-e-mode-forklaret) gennemgår kategorierne og likvidationerne i marts 2026.
+
+**På Morpho** er der ingen tilstand: du vælger et marked, hvis LLTV passer til parret. De LLTV'er, Morphos governance havde aktiveret den 4. november 2026, var 0 %, 38,5 %, 62,5 %, 77 %, 86 %, 91,5 %, 94,5 %, 96,5 % og 98 %. Ethereums marked WETH | wstETH bruger 96,5 %, med et likvidationsincitament på 1,06 %.
+
+En låntager, der kører et loop (gentagen belåning med gearing) med wstETH mod WETH, kan nå et lignende sted på begge, med én forskel: på Aave kan du kun låne op til LTV på 93 %, hvilket efterlader en health factor på omkring 95 ÷ 93 = 1,02; på Morpho lader kontrakten dig låne helt op til grænsen på 96,5 %, en health factor på 1,00.
+
+## Hvilke netværk kører Aave og Morpho på?
+
+|                | Aave                                                                                                                                   | Morpho                                                                                                                                                   |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Variabel rente | V3 på mere end 20 netværk, blandt dem Ethereum, Arbitrum, Base, Avalanche, Polygon og Optimism; V4 på Ethereum, Avalanche, Arc og Base | Blue på 14 netværk: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable og Tempo |
+| Fast rente     | Ingen                                                                                                                                  | Midnight, med listede markeder på Ethereum og Base den 4. november 2026                                                                                  |
+
+På Aave bliver hvert aktiv i et marked listet af governance. På Morpho kan alle oprette et marked, og Morpho-appen viser kun dem, Morpho Association vælger at liste (se nedenfor). Nogle få Aave V3-netværk er ved at blive afviklet; [når Aave afvikler et marked](/da/blog/naar-aave-afvikler-et-marked) forklarer, hvad det betyder for åbne lån.
+
+## Hvilke risici er forskellige på de to?
+
+Begge har de samme grundlæggende risici: et prisfald, en fejl i et orakel, en fejl i en smart contract. Hvor de ligger, er forskelligt.
+
+**Hvem kan ændre dit lån.** På Aave kan governance ændre et V3-aktivs LTV, likvidationstærskel, bonus og rentekurve, og Risk Stewards kan flytte dem i begrænsede trin og med minimumsforsinkelser. En lavere tærskel på V3 gælder for alle åbne positioner på én gang. Aktiver kan også indefryses (frozen), hvilket blokerer nye lån, men ikke likvidation, eller sættes på pause (paused), hvilket også blokerer likvidationer, med en frist (grace period) på op til 4 timer bagefter. På V4 når nye sikkerhedsfaktorer og bonusser som regel først din position, næste gang du låner eller hæver. På Morpho Blue kan ingen ændre et marked: governance kan aktivere nye LLTV'er og rentemodeller og fastsætte et gebyr på op til 25 % af renten, som långiverne betaler, men den kan ikke røre et eksisterende marked, og kontrakten har ingen pause.
+
+**Hvem vælger oraklet.** Aaves governance vælger priskilden for hvert aktiv. På Morpho vælger den, der opretter et marked, dets orakel, og det kan aldrig udskiftes. Morphos dokumentation siger, at det valg, fordi det er permanent, bestemmer markedets risikoprofil. Nogle orakler følger en vekselkurs i stedet for en markedspris eller regner en stablecoin som præcis én dollar. Før du låner på Morpho, så tjek, hvad dit markeds orakel måler; [afsnittet om orakler i guiden om likvidation](/da/blog/saadan-fungerer-likvidation-paa-morpho#hvilken-rolle-spiller-oraklet-i-en-likvidation) viser, hvad du skal kigge efter.
+
+**Listet eller ikke listet.** Morphos app viser kun markeder, som Morpho Association lister, primært dem, en listet vault låner ud til. Dens politik kalder listning »a discovery decision« (en beslutning om at gøre et marked synligt), ikke en anbefaling eller en risikovurdering, og et marked, der ikke er listet, fungerer stadig on-chain. Markeder, der ikke er listet, kan stadig rumme store lån, som [tokeniserede aktier som sikkerhed](/da/blog/tokeniserede-aktier-som-sikkerhed#hvor-kan-du-lane-mod-tokeniserede-aktier) viser for lån med aktier som sikkerhed, så et markeds fravær i appen fortæller dig kun, at Morpho valgte ikke at vise det.
+
+**Hvad ét dårligt aktiv kan nå.** På Aave flytter et fejlprissat aktiv eller et aktiv med depeg (når koblingen til dollaren brydes) i dit marked hele din health factor. På Morpho flytter det kun de lån, der bruger det, men de lån har ingen anden sikkerhed at læne sig op ad.
+
+## Hvilken passer til hvilken låntager?
+
+Ingen af dem er den bedste protokol; hver passer til sin måde at låne på. Nogle grove bud:
+
+- **Flere aktiver som sikkerhed, én buffer at holde øje med:** Aaves fælles position lader dem bakke hinanden op, til gengæld for regler, som governance kan ændre.
+- **Regler, der ikke kan ændres, efter du har lånt:** et Morpho-markeds LLTV, orakel og rentemodel er fastlagt for altid, men du skal selv vurdere oraklet.
+- **Et lån, der ikke må røre din øvrige sikkerhed:** Morpho holder hvert lån adskilt; på Aave gør separate markeder eller netværk det samme.
+- **Lån tæt på grænsen på et korreleret par:** begge tilbyder det, via E-Mode eller en høj LLTV, og begge efterlader en margin på få procent.
+- **En rente, der ikke bevæger sig:** kun Morpho Midnight tilbyder en, til gengæld for en forfaldsdato, du ikke må overse.
+- **Små positioner:** på begge kan en likvidation rydde hele gælden på én gang, på Aave under 2.000 $ i de involverede aktiver og på Morpho i enhver størrelse.
+
+Denne guide sammenligner mekanismer; den er ikke økonomisk rådgivning.
+
+## Hvordan kan alarmer hjælpe på begge?
+
+Tokenping overvåger begge. Det tjekker hvert 5. minut og sender, så længe en health factor er under den tærskel, du har sat, en besked ved hvert tjek på hver kanal, du har valgt: Signal, Telegram eller e-mail.
+
+- **Aave:** én alarm pr. V3-marked eller V4 Spoke, på 24 V3-markeder på 21 netværk og alle 24 V4 Spokes på Ethereum, Avalanche, Arc og Base. Tærsklen går fra 1,1 til 10. Du kan [tjekke din Aave health factor](/da/aave) først.
+- **Morpho:** én alarm pr. marked, du låner i, i markeder, som Morpho-appen lister: Blue på 14 netværk og Midnight, hvor Morphos API lister markeder (Ethereum og Base den 4. november 2026). Tærsklen går ned til 1,02, fordi lån med høj LLTV ofte ligger tæt på 1. Hvis du har godkendt forlikvidation, måler alarmen mod den tidligere grænse, og et Midnight-lån får også påmindelser 7 dage og 24 timer før forfaldsdatoen. Dine positioner står på [Morpho-oversigten](/da/morpho).
+
+Det kræver ingen betaling at se dine positioner. Alarmer koster <AlertPrice />, og samme plan dækker Aave og Morpho. En alarm giver dig tid til at tilbagebetale eller tilføje sikkerhed; den forhindrer ikke likvidation, og en pris kan bevæge sig forbi din grænse mellem to tjek.
+
+## Kilder
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) og [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), aave-dao/aave-v3-origin: close factor, underskud, health factor, pause og frist (hentet 4. november 2026)
+- [Funktioner i Aave V3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): fjernelse af gæld med stabil rente (hentet 4. november 2026)
+- [Aave Generalized Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): hvilke parametre stewards kan ændre, minimumsforsinkelser og maksimale trin (hentet 4. november 2026)
+- [Aave-dokumentation: Umbrella](https://aave.com/docs/aave-v3/umbrella): dækning af underskud, aktiver og netværk (hentet 4. november 2026)
+- [Aave V4-dokumentation](https://aave.com/docs/aave-v4) og [V4-positioner](https://aave.com/docs/aave-v4/positions): Hub og Spokes, health factor, User Risk Premium, likvidationer (hentet 4. november 2026)
+- [Oversigt over Aave V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md), aave/aave-v4: dynamisk risikokonfiguration, mål-health factor, variabel bonus, underskud, Spokes' orakler (hentet 4. november 2026)
+- [Aave V4 API](https://api.v4.aave.com/graphql): Spokes og netværk (hentet 4. november 2026)
+- [Aave address book](https://github.com/bgd-labs/aave-address-book): Aave V3-netværk (hentet 4. november 2026)
+- Aflæsninger on-chain på Ethereum ved blok 26341682 og 26341689: [Aave V3 Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract) og [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) (reserveparametre, E-Mode, USDC-rente), [Aave V4 Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485#readContract) (mål-health factor) og [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) (markeder, aktiverede LLTV'er, renter) (hentet 4. november 2026)
+- [Morpho.sol og ConstantsLib.sol](https://github.com/morpho-org/morpho-blue), morpho-org/morpho-blue: ejerens beføjelser, loft på 25 % for gebyret, likvidationsincitament, dårlig gæld (hentet 4. november 2026)
+- [Konstanter i AdaptiveCurveIRM](https://github.com/morpho-org/morpho-blue-irm/blob/main/src/adaptive-curve-irm/libraries/ConstantsLib.sol), morpho-org/morpho-blue-irm: målrettet udnyttelse, stejlhed, justeringshastighed og grænser (hentet 4. november 2026)
+- [Midnight.sol og ConstantsLib.sol](https://github.com/morpho-org/midnight), morpho-org/midnight: grænser for sikkerheder, likvidation efter forfaldsdatoen og optrapningen over 60 minutter (hentet 4. november 2026)
+- [Morpho-dokumentation: Morpho Blue](https://docs.morpho.org/learn/concepts/blue), [orakler](https://docs.morpho.org/learn/concepts/oracle) og [Midnight](https://docs.morpho.org/learn/concepts/midnight) (hentet 4. november 2026)
+- [Morphos politik for listning i brugerfladen](https://docs.morpho.org/get-started/resources/interface-listing-policy): hvad listning betyder, og hvem der beslutter (hentet 4. november 2026)
+- [Morpho-hjælp: Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (hentet 4. november 2026)
+- [Morpho API](https://api.morpho.org/graphql): netværk, listede Blue-markeder og listede Midnight-markeder pr. netværk (hentet 4. november 2026)
+
+_Undervisningsindhold, ikke økonomisk rådgivning. Alarmer mindsker risikoen, men forhindrer ikke likvidation._

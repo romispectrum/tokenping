@@ -8,6 +8,8 @@ import AvoidAaveLiquidation from "~~/content/blog/de/aave-liquidation-vermeiden.
 import AaveLiquidationAlertTools from "~~/content/blog/de/aave-liquidations-alert-tools-im-vergleich.mdx";
 import AaveLiquidationPrice from "~~/content/blog/de/aave-liquidationspreis-berechnen.mdx";
 import AaveMarketWindDown from "~~/content/blog/de/aave-markt-abwicklung.mdx";
+import AaveV4VsV3 from "~~/content/blog/de/aave-v4-vs-v3-unterschiede.mdx";
+import AaveVsMorpho from "~~/content/blog/de/aave-vs-morpho-vergleich.mdx";
 import AaveInterestRates from "~~/content/blog/de/aave-zinssaetze.mdx";
 import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/de/auf-aave-oder-morpho-liquidiert-was-jetzt.mdx";
 import ShortFiatWithAave from "~~/content/blog/de/fiat-short-mit-aave-kredit.mdx";
@@ -53,4 +55,6 @@ export const POST_CONTENT: PostContent = {
   "so-funktioniert-die-liquidation-bei-morpho": HowMorphoLiquidationWorks,
   "morpho-vorliquidation": MorphoPreLiquidation,
   "morpho-midnight-festzinskredite": MorphoMidnightFixedRateLoans,
+  "aave-vs-morpho-vergleich": AaveVsMorpho,
+  "aave-v4-vs-v3-unterschiede": AaveV4VsV3,
 };

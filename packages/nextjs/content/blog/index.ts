@@ -216,6 +216,21 @@ export const RELATED_SLUGS: Record<string, readonly string[]> = {
     "how-morpho-liquidation-works",
     "morpho-pre-liquidation",
   ],
+  // The comparisons sit between the two clusters; they link the Aave hub first, like every Aave guide.
+  "aave-vs-morpho": [
+    "aave-health-factor",
+    "morpho-health-factor",
+    "how-morpho-liquidation-works",
+    "how-aave-liquidation-works",
+    "aave-v4-vs-v3",
+  ],
+  "aave-v4-vs-v3": [
+    "aave-health-factor",
+    "how-aave-liquidation-works",
+    "aave-interest-rates",
+    "aave-e-mode",
+    "aave-vs-morpho",
+  ],
 };
 
 export const RELATED_POST_COUNT = 3;

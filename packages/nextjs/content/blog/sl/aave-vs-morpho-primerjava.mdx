@@ -1,0 +1,180 @@
+export const meta = {
+  slug: "aave-vs-morpho-primerjava",
+  title: "Aave ali Morpho za posojilojemalce: v čem se razlikujeta",
+  description:
+    "Aave ali Morpho za posojilojemalce: skupni in ločeni trgi, health factor, likvidacije, obrestne mere, E-Mode in LLTV, oraklji in tveganje upravljanja.",
+  h1: "Aave ali Morpho: v čem se razlikujeta za posojilojemalca?",
+  publishedAt: "2026-11-04",
+  primaryQuestion: "V čem se Aave in Morpho razlikujeta za posojilojemalca in kateri ustreza mojemu posojilu?",
+  readingMinutes: 13,
+  figuresAsOf: "2026-11-04",
+};
+
+<ShortAnswer>
+  Aave tvoje posojilo združi v skupno pozicijo: na Aave V3 si vse tvoje zavarovanje in dolg na enem trgu delita en
+  health factor (faktor zdravja), upravljanje (governance) in njegovi Risk Stewards pa lahko parametre spremenijo,
+  medtem ko si izposojaš. Aave V4 to zamisel ohrani za vsak Spoke posebej. Morpho Blue posojilo loči: vsak trg ima eno
+  zavarovanje, en žeton posojila, en orakelj (vir cene) in en LLTV, vse za vedno določeno ob nastanku trga, zato ima
+  vsako posojilo svoj health factor. Morpho Midnight doda posojila s fiksno obrestno mero, ki se končajo z datumom
+  zapadlosti. Na Aave lahko zdravo sredstvo nosi padajoče, a likvidacija lahko vzame katerokoli tvoje zavarovanje; na
+  Morpho padajoče sredstvo ogroža le svoje posojilo, prvi likvidator pa ga lahko odplača v celoti naenkrat. Nobeden ni
+  na splošno varnejši: razlika je v tem, kdo določa pravila in kolikšen del tvoje pozicije lahko doseže eno slabo
+  sredstvo.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Številke in številke blokov, v katerih so bile odčitane: content/blog/snapshots/aave-vs-morpho.md */}
+
+## Kako se Aave in Morpho primerjata na prvi pogled?
+
+Tabela povzema pravila, ki so pomembna za posojilojemalca. Aktualne vrednosti so bile odčitane 4. novembra 2026 na Ethereumu; vsaka vrstica je pojasnjena spodaj.
+
+|                                           | Aave V3                                                                   | Aave V4                                                                                      | Morpho Blue                                        | Morpho Midnight                                                |
+| ----------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------- |
+| En health factor pokriva                  | Vse tvoje zavarovanje in dolg na enem trgu (en Pool na enem omrežju)      | Vse tvoje zavarovanje in dolg v enem Spoku                                                   | Eno zavarovanje in en žeton posojila               | En žeton posojila, do 16 zavarovanj trga                       |
+| Meja izposoje in likvidacijska meja       | Nižji LTV za izposojo, višji prag likvidacije                             | En faktor zavarovanja na sredstvo                                                            | LLTV je oboje                                      | LLTV vsakega zavarovanja                                       |
+| Kdo določa parametre                      | Upravljanje in Risk Stewards, spremenljivi kadarkoli                      | Upravljanje; spremembe običajno dosežejo le nove pozicije                                    | Ustvarjalec trga, za vedno določeni                | Ustvarjalec trga, za vedno določeni                            |
+| Obresti                                   | Spremenljive, krivulja za vsako sredstvo                                  | Spremenljive, krivulja za vsako sredstvo v Hubu in premija za tveganje za vsakega uporabnika | Spremenljive, AdaptiveCurveIRM                     | Fiksne do zapadlosti                                           |
+| Največ, kar lahko odplača ena likvidacija | 50 % ali 100 % dolga                                                      | Toliko, da doseže ciljni health factor Spoka                                                 | Ves dolg                                           | Kolikor povrne zdravje; po zapadlosti ves                      |
+| Likvidacijski bonus                       | Za vsako sredstvo zavarovanja, določi ga upravljanje                      | Raste, ko health factor pada                                                                 | Izhaja iz LLTV                                     | Izhaja iz LLTV in likvidacijskega kurzorja vsakega zavarovanja |
+| Neizterljiv dolg (bad debt)               | Primanjkljaj (deficit); na Ethereumu ga lahko pokrijejo stakerji Umbrella | Primanjkljaj; pokrije ga lahko drug Spoke                                                    | Odpisan v breme posojilodajalcev tega trga         | Razdelijo si ga posojilodajalci tega trga                      |
+| Orakelj                                   | Izbere ga upravljanje                                                     | Izbere ga upravljanje, za vsak Spoke                                                         | Izbere ga ustvarjalec trga, ni ga mogoče zamenjati | Izbere ga ustvarjalec trga, za vsako zavarovanje               |
+
+## Kako je zgrajen vsak od njiju?
+
+### Aave: skupni trgi, V3 in V4
+
+Trg Aave V3 je en Pool na enem omrežju: Ethereum Core, Arbitrum, Base in tako naprej. Vse, kar v tem Poolu položiš kot zavarovanje, krije vse, kar si tam izposodiš, pogodba pa za celotno pozicijo izračuna en health factor:
+
+**HF = Σ (vrednost zavarovanja × prag likvidacije) ÷ skupni dolg**
+
+Vsako sredstvo ima dve števili: razmerje med posojilom in vrednostjo (LTV), ki omejuje novo izposojo, in višji prag likvidacije (liquidation threshold), ki odloča o likvidaciji. Na Ethereum Core je imel WETH 4. novembra 2026 LTV 81 % in prag 84 %. Cene prihajajo iz oraklja Aave, v ameriških dolarjih. [Vodnik o health factorju na Aave](/sl/blog/aave-health-factor-razlozen) vsebuje formulo in primere z izračunom.
+
+Aave V4 omrežje razdeli na Hub, ki hrani likvidnost, in Spoke, trge, na katerih si izposojaš. Tvoja pozicija in health factor sta v enem Spoku, vsako sredstvo pa ima namesto LTV in praga en sam faktor zavarovanja (collateral factor). API Aave V4 je 4. novembra 2026 navajal 24 Spokov na omrežjih Ethereum, Avalanche, Arc in Base. [Kako deluje health factor na Aave V4](/sl/blog/aave-health-factor-razlozen#ali-je-health-factor-na-aave-v4-drugacen) opisuje podrobnosti.
+
+### Morpho: ločeni trgi, Blue in Midnight
+
+Trg Morpho Blue določa pet stvari: žeton posojila, žeton zavarovanja, orakelj, model obrestne mere in LLTV (likvidacijski LTV, liquidation loan-to-value). Ustvari ga lahko kdorkoli, nobene od petih stvari pa pozneje ni mogoče spremeniti. Tvoje zavarovanje na enem trgu ne krije dolga na drugem, zato imata dve posojili na dveh trgih dva health factorja:
+
+**HF = količina zavarovanja × cena oraklja × LLTV ÷ dolg**
+
+Nižje meje za izposojo ni: pogodba ti dovoli izposoditi si vse do LLTV, torej do health factorja 1,00. [Vodnik o health factorju na Morpho](/sl/blog/morpho-health-factor-razlozen) to podrobno razloži.
+
+Morpho Midnight je ločena pogodba za posojila s fiksno obrestno mero in fiksnim rokom. Trg Midnight ima en žeton posojila, datum zapadlosti in do 128 zavarovanj, vsako s svojim LLTV in orakljem, en posojilojemalec pa jih lahko hkrati uporablja do 16. [Morpho Midnight: posojila s fiksno obrestno mero](/sl/blog/morpho-midnight-posojila-s-fiksno-obrestno-mero) pojasnjuje, kako deluje.
+
+## Kaj se zgodi s tvojim health factorjem, ko eno sredstvo pade?
+
+Tu se zasnovi najbolj razlikujeta. Vzemi enako zavarovanje na obeh, z ilustrativnima cenama 2.400 $ za ETH in 80.000 $ za BTC, ter 20.000 USDC dolga.
+
+**Na Aave V3 Ethereum Core**, z 10 WETH (prag 84 %) in 0,2 WBTC (prag 85 %) v eni poziciji, brez upoštevanja obresti:
+
+- Uteženo zavarovanje: 24.000 × 0,84 + 16.000 × 0,85 = 33.760.
+- Health factor: 33.760 ÷ 20.000 = **1,69**.
+- Če BTC pade za 40 % na 48.000 $: 24.000 × 0,84 + 9.600 × 0,85 = 28.320, kar je health factor **1,42**. Ničesar ni mogoče likvidirati.
+
+WETH nosi WBTC. V tej poziciji WETH sam šteje 20.160, več kot ves dolg, zato bi celo WBTC brez vrednosti pustil health factor 1,008.
+
+**Na Morpho Blue**, z istimi sredstvi, razdeljenimi na dva navedena trga na Ethereumu, USDC | WETH (86%) in USDC | WBTC (86%), ter po 10.000 izposojenih USDC na vsakem:
+
+- Posojilo z WETH: 24.000 × 0,86 ÷ 10.000 = **2,06**.
+- Posojilo z WBTC: 16.000 × 0,86 ÷ 10.000 = **1,38**, z likvidacijsko ceno 58.139,53 $, 27,3 % pod 80.000 $.
+- Če BTC pade za 40 %: posojilo z WBTC je pri 9.600 × 0,86 ÷ 10.000 = **0,83** in ga je mogoče likvidirati, posojilo z WETH pa ostane pri 2,06.
+
+Druga plat je prav tako resnična. Na Aave, ko celotna pozicija pade pod 1, likvidator izbere, katero zavarovanje vzame, zato te lahko padec BTC stane WETH. Na Morpho je posojilo z WETH nedosegljivo, karkoli se zgodi z BTC. Skupna pozicija ti da skupno rezervo; ločenost ti da rezervo za vsako posojilo, velikost vsake pa moraš določiti sam.
+
+## V čem se razlikujejo likvidacije?
+
+Na obeh protokolih likvidator pod health factorjem 1 odplača del tvojega dolga in vzame zavarovanje v vrednosti tega zneska in še bonus. Izposojeno ostane tvoje, zato je bonus tisto, kar te likvidacija stane. Pravila okoli tega se razlikujejo:
+
+- **Koliko naenkrat.** Na Aave V3.7 lahko ena likvidacija odplača do 50 % tvojega celotnega dolga, dokler je tvoj health factor nad 0,95 in sta zavarovanje in dolg, ki nastopata, vsak vredna vsaj 2.000 $; pri 0,95 ali manj ali pri manjših zneskih lahko odplača ves dolg v tem sredstvu. Aave V4 to pravilo opusti: likvidator odplača le toliko, da te vrne na ciljni health factor Spoka, 1,24 na Ethereum Main Spoke 4. novembra 2026. Morpho Blue omejitve nima: prvi likvidator lahko z enim klicem odplača ves tvoj dolg.
+- **Bonus.** Na Aave V3 ga za vsako sredstvo zavarovanja določi upravljanje: 4. novembra 2026 5 % za WETH in WBTC na Ethereum Core, od tega je zakladnica Aave vzela 20 % kot protokolarno provizijo. Na V4 raste, ko health factor pada. Na Morpho Blue izhaja iz LLTV, 1 ÷ (1 − 0,3 × (1 − LLTV)), omejeno na 15 %: 4,38 % pri LLTV 86 %, 1,06 % pri 96,5 %, vse likvidatorju.
+- **Predlikvidacija.** Na Morpho Blue se je posojilojemalec lahko odločil za pogodbo, ki likvidira dele posojila pred LLTV, imenovano predlikvidacija (pre-liquidation). Morpho funkcijo ukinja in posojilojemalce, ki jo imajo, prosi, naj jo izklopijo; če si nekoč vklopil „Auto-deleverage“, [predlikvidacija na Morpho](/sl/blog/morpho-predlikvidacija) pokaže, kako jo preveriš in prekličeš. Aave nima ničesar podobnega.
+- **Zapadlost.** Na Morpho Midnight je mogoče ves dolg, ki ostane po zapadlosti, likvidirati tudi pri zdravi poziciji, bonus pa v prvi uri zraste od nič do polne velikosti.
+- **Neizterljiv dolg.** Ko zavarovanja zmanjka prej kot dolga, Aave V3 zabeleži primanjkljaj, ki ga lahko na Ethereumu pokrijejo stakerji Umbrella (za USDC, USDT, WETH in GHO, po dokumentaciji Aave); v V4 ga lahko pokrije drug Spoke. Na Morpho se izguba odpiše v breme posojilodajalcev tega enega trga. Zate kot posojilojemalca je rezultat povsod enak: zavarovanja ni več in dolga ne ostane.
+
+Celotna mehanika je opisana v vodnikih [kako deluje likvidacija na Aave](/sl/blog/kako-deluje-likvidacija-na-aave), s [pravili V4](/sl/blog/kako-deluje-likvidacija-na-aave#kako-se-likvidacije-razlikujejo-na-aave-v4), in [kako deluje likvidacija na Morpho](/sl/blog/kako-deluje-likvidacija-na-morpho), ki vsebuje [primerjalno tabelo](/sl/blog/kako-deluje-likvidacija-na-morpho#v-cem-se-likvidacija-na-morpho-razlikuje-od-tiste-na-aave).
+
+## V čem se razlikujejo obrestne mere?
+
+**Aave V3** spremenljivo obrestno mero vsakega sredstva določa s fiksno krivuljo: z izkoriščenostjo (deležem sklada, ki je izposojen) raste blago do optimalne ravni, nato strmo. Štiri števila krivulje določi upravljanje, Risk Stewards pa jih lahko prilagajajo znotraj omejitev. USDC na Ethereum Core je uporabljal optimalno raven 94 %, prvi naklon 4,5 % in drugi naklon 10 %. V Ethereumovem bloku 26341682 4. novembra 2026 je bila njegova izkoriščenost 94,7 %, tik za prelomom, izposoja pa je stala 5,67 % na leto. Med spremembami parametrov se obrestna mera premika le z izkoriščenostjo. [Kako delujejo obrestne mere na Aave](/sl/blog/aave-obrestne-mere) vsebuje formulo in resničen skok.
+
+**Aave V4** obdrži krivuljo za vsako sredstvo v Hubu in nanjo doda User Risk Premium (premijo za tveganje uporabnika), od 0 % do 1.000 % skupne obrestne mere, odvisno od kakovosti tvojega zavarovanja: primer Aave je 50-odstotna premija na 5-odstotno obrestno mero, kar da 7,5 %.
+
+**Trgi Morpho Blue** uporabljajo AdaptiveCurveIRM, ki cilja na 90-odstotno izkoriščenost. V vsakem trenutku je obrestna mera na krivulji okoli „obrestne mere pri cilju“ (rate at target): četrtina te pri 0-odstotni izkoriščenosti, štirikratnik pri 100-odstotni. Za razliko od krivulje Aave se obrestna mera pri cilju sama premika: navzgor, dokler izkoriščenost ostaja nad 90 %, navzdol, dokler ostaja pod tem, med 0,1 % in 200 % na leto. Pri 100-odstotni izkoriščenosti se podvoji v približno petih dneh. 4. novembra 2026 je bil trg USDC | cbBTC (86%) na Ethereumu pri 90,3-odstotni izkoriščenosti, z obrestno mero pri cilju 4,97 % in obrestno mero za izposojo približno 5,4 % na leto. Zaseden trg se zato draži, dokler posojilojemalci ne odplačajo ali ne pridejo posojilodajalci; miren trg se poceni.
+
+**Morpho Midnight** tvojo obrestno mero določi ob izposoji. Prodaš enote dolga pod nominalno vrednostjo in ob zapadlosti dolguješ natanko en žeton posojila na enoto, zato tvoj dolg ne raste in tvoj health factor premikajo le cene zavarovanja. Aave fiksne obrestne mere nima: V3.2 je odstranila staro kodo za stabilno obrestno mero, vsako posojilo na Aave pa ima spremenljivo obrestno mero.
+
+## E-Mode ali trg z visokim LLTV: koliko si lahko izposodiš?
+
+Oba protokola ti dovolita izposoditi si več proti zavarovanju, ki sledi temu, kar si izposojaš, a na različne načine.
+
+**Aave E-Mode** je nastavitev za celotno tvojo pozicijo na V3. Izbereš kategorijo in, dokler si v njej, njeno zavarovanje dobi LTV, prag in bonus kategorije. Na Ethereum Core je 4. novembra 2026 kategorija „ETH correlated“ uporabljala LTV 93 %, prag 95 % in bonus 1 %, WETH pa je bil edino sredstvo, ki si si ga v njej lahko izposodil. Vsako sredstvo, ki si ga izposodiš, mora biti v kategoriji na voljo za izposojo, zato je pozicija z dolgom v USDC ne more uporabljati. [Aave E-Mode](/sl/blog/aave-e-mode-razlozen) opisuje kategorije in likvidacije marca 2026.
+
+**Na Morpho** načina ni: izbereš trg, katerega LLTV ustreza paru. LLTV, ki jih je upravljanje Morpho omogočilo do 4. novembra 2026, so bili 0 %, 38,5 %, 62,5 %, 77 %, 86 %, 91,5 %, 94,5 %, 96,5 % in 98 %. Trg WETH | wstETH na Ethereumu uporablja 96,5 %, z likvidacijsko spodbudo 1,06 %.
+
+Posojilojemalec, ki dela loop (ponavljajoče se zadolževanje z vzvodom) z wstETH proti WETH, lahko na obeh pride do podobne točke, z eno razliko: na Aave si lahko izposodiš le do LTV 93 %, kar pusti health factor približno 95 ÷ 93 = 1,02; na Morpho ti pogodba dovoli izposoditi si vse do meje 96,5 %, torej do health factorja 1,00.
+
+## Na katerih omrežjih delujeta Aave in Morpho?
+
+|                            | Aave                                                                                                                                   | Morpho                                                                                                                                                    |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Spremenljiva obrestna mera | V3 na več kot 20 omrežjih, med njimi Ethereum, Arbitrum, Base, Avalanche, Polygon in Optimism; V4 na Ethereumu, Avalanche, Arc in Base | Blue na 14 omrežjih: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable in Tempo |
+| Fiksna obrestna mera       | Brez                                                                                                                                   | Midnight, z navedenimi trgi na Ethereumu in Base 4. novembra 2026                                                                                         |
+
+Na Aave vsako sredstvo na trgu navede upravljanje. Na Morpho lahko trg ustvari kdorkoli, aplikacija Morpho pa prikaže le tiste, ki jih Morpho Association izbere za navedbo (glej spodaj). Nekaj omrežij Aave V3 se zapira; [kaj se zgodi, ko Aave zapre trg](/sl/blog/zapiranje-aave-trga) pojasni, kaj to pomeni za odprta posojila.
+
+## Katera tveganja so pri vsakem drugačna?
+
+Oba nosita enaka osnovna tveganja: padec cene, napako oraklja, hrošča v pametni pogodbi. Razlikuje se, kje so.
+
+**Kdo lahko spremeni tvoje posojilo.** Na Aave lahko upravljanje spremeni LTV, prag likvidacije, bonus in krivuljo obrestne mere sredstva na V3, Risk Stewards pa jih lahko premikajo v omejenih korakih in z najkrajšimi zamiki. Nižji prag na V3 velja za vsako odprto pozicijo hkrati. Sredstva je mogoče tudi zamrzniti (freeze), kar blokira novo izposojo, ne pa likvidacije, ali zaustaviti (pause), kar blokira tudi likvidacije, s poznejšim obdobjem odloga (grace period) do 4 ur. Na V4 novi faktorji zavarovanja in bonusi običajno dosežejo tvojo pozicijo šele, ko si naslednjič izposodiš ali dvigneš. Na Morpho Blue trga ne more spremeniti nihče: upravljanje lahko omogoči nove LLTV in modele obrestne mere ter določi provizijo do 25 % obresti, ki jo plačajo posojilodajalci, obstoječega trga pa se ne more dotakniti, pogodba pa nima zaustavitve.
+
+**Kdo izbere orakelj.** Upravljanje Aave izbere vir cene za vsako sredstvo. Na Morpho orakelj trga izbere tisti, ki trg ustvari, in ga ni mogoče nikoli zamenjati. Dokumentacija Morpho pravi, da ta izbira, ker je trajna, določa profil tveganja trga. Nekateri oraklji sledijo menjalnemu tečaju namesto tržni ceni ali štejejo stablecoin za natanko en dolar. Preden si izposodiš na Morpho, preveri, kaj meri orakelj tvojega trga; [razdelek o oraklju v vodniku o likvidaciji](/sl/blog/kako-deluje-likvidacija-na-morpho#kaksno-vlogo-ima-orakelj-pri-likvidaciji) pokaže, na kaj paziti.
+
+**Naveden ali nenaveden.** Aplikacija Morpho prikaže le trge, ki jih navede Morpho Association, predvsem tiste, ki jim posoja kakšen naveden trezor (vault). Njena pravila navedbo imenujejo „a discovery decision“ (odločitev o tem, kaj je mogoče najti), ne priporočilo ali oceno tveganja, nenaveden trg pa na verigi še vedno deluje. Nenavedeni trgi lahko kljub temu vsebujejo velika posojila, kot za izposojo proti delnicam pokaže vodnik [tokenizirane delnice kot zavarovanje](/sl/blog/tokenizirane-delnice-kot-zavarovanje#kje-si-lahko-izposodis-z-zavarovanjem-v-tokeniziranih-delnicah), zato ti odsotnost trga v aplikaciji pove le, da se je Morpho odločil, da ga ne prikaže.
+
+**Kaj lahko doseže eno slabo sredstvo.** Na Aave napačno ovrednoteno sredstvo ali sredstvo, ki doživlja depeg (izgubo vezave na dolar), na tvojem trgu premakne ves tvoj health factor. Na Morpho premakne le posojila, ki ga uporabljajo, ta posojila pa nimajo drugega zavarovanja, na katerega bi se oprla.
+
+## Kateri ustreza kateremu posojilojemalcu?
+
+Noben ni boljši protokol; vsak ustreza drugačnemu načinu izposoje. Nekaj grobih ujemanj:
+
+- **Več sredstev kot zavarovanje, ena rezerva za spremljanje:** skupna pozicija na Aave jim omogoča, da krijejo druga drugo, za ceno pravil, ki jih upravljanje lahko spremeni.
+- **Pravila, ki se po izposoji ne morejo spremeniti:** LLTV, orakelj in model obrestne mere trga Morpho so za vedno določeni, a ta orakelj moraš oceniti sam.
+- **Posojilo, ki se ne sme dotakniti tvojega drugega zavarovanja:** Morpho vsako posojilo drži ločeno; na Aave enako dosežejo ločeni trgi ali omrežja.
+- **Izposoja blizu meje pri koreliranem paru:** oba to ponujata, prek E-Mode ali visokega LLTV, in oba pustita nekaj odstotkov prostora.
+- **Obrestna mera, ki se ne premika:** ponuja jo le Morpho Midnight, v zameno za datum zapadlosti, ki ga ne smeš zamuditi.
+- **Majhne pozicije:** na obeh lahko likvidacija naenkrat poplača ves dolg, na Aave pod 2.000 $ v sredstvih, ki nastopajo, na Morpho pri kateremkoli znesku.
+
+Ta vodnik primerja mehanizme; ni finančni nasvet.
+
+## Kako lahko opozorila pomagajo na obeh?
+
+Tokenping spremlja oba. Preverja vsakih 5 minut in, dokler je health factor pod pragom, ki si ga nastavil, ob vsakem preverjanju pošlje sporočilo na vsak kanal, ki si ga izbral: Signal, Telegram ali e-pošta.
+
+- **Aave:** eno opozorilo za vsak trg V3 ali Spoke V4, na 24 trgih V3 na 21 omrežjih in v vseh 24 Spokih V4 na Ethereumu, Avalanche, Arc in Base. Prag gre od 1,1 do 10. Najprej lahko [preveriš svoj health factor na Aave](/sl/aave).
+- **Morpho:** eno opozorilo za vsak trg, na katerem si izposojaš, na trgih, ki jih navaja aplikacija Morpho: Blue na 14 omrežjih in Midnight, kjer API Morpho navaja trge (4. novembra 2026 Ethereum in Base). Prag gre do 1,02, ker posojila z visokim LLTV pogosto tečejo blizu 1. Če si odobril predlikvidacijo, opozorilo meri glede na to zgodnejšo mejo, posojilo na Midnight pa dobi tudi opomnika 7 dni in 24 ur pred zapadlostjo. Tvoje pozicije so na [nadzorni plošči Morpho](/sl/morpho).
+
+Za ogled pozicij ne plačaš ničesar. Opozorila stanejo <AlertPrice />, isti paket pa pokriva Aave in Morpho. Opozorilo ti da čas, da odplačaš dolg ali dodaš zavarovanje; likvidacije ne prepreči, cena pa lahko med dvema preverjanjema preskoči tvojo mejo.
+
+## Viri
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) in [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), aave-dao/aave-v3-origin: close factor, primanjkljaj, health factor, zaustavitev in obdobje odloga (dostopano 4. novembra 2026)
+- [Funkcije Aave V3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): odstranitev dolga s stabilno obrestno mero (dostopano 4. novembra 2026)
+- [Aave Generalized Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): katere parametre lahko stewardi spreminjajo, najkrajši zamiki in največji koraki (dostopano 4. novembra 2026)
+- [Dokumentacija Aave: Umbrella](https://aave.com/docs/aave-v3/umbrella): kritje primanjkljaja, sredstva in omrežje (dostopano 4. novembra 2026)
+- [Dokumentacija Aave V4](https://aave.com/docs/aave-v4) in [pozicije V4](https://aave.com/docs/aave-v4/positions): Hub in Spoki, health factor, User Risk Premium, likvidacije (dostopano 4. novembra 2026)
+- [Pregled Aave V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md), aave/aave-v4: dinamična konfiguracija tveganja, ciljni health factor, spremenljiv bonus, primanjkljaji, oraklji Spokov (dostopano 4. novembra 2026)
+- [API Aave V4](https://api.v4.aave.com/graphql): Spoki in omrežja (dostopano 4. novembra 2026)
+- [Aave address book](https://github.com/bgd-labs/aave-address-book): omrežja Aave V3 (dostopano 4. novembra 2026)
+- Branja na verigi na Ethereumu v blokih 26341682 in 26341689: [Aave V3 Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract) in [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) (parametri rezerv, E-Mode, obrestna mera za USDC), [Aave V4 Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485#readContract) (ciljni health factor) in [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) (trgi, omogočeni LLTV, obrestne mere) (dostopano 4. novembra 2026)
+- [Morpho.sol in ConstantsLib.sol](https://github.com/morpho-org/morpho-blue), morpho-org/morpho-blue: pooblastila lastnika, zgornja meja provizije 25 %, likvidacijska spodbuda, neizterljiv dolg (dostopano 4. novembra 2026)
+- [Konstante AdaptiveCurveIRM](https://github.com/morpho-org/morpho-blue-irm/blob/main/src/adaptive-curve-irm/libraries/ConstantsLib.sol), morpho-org/morpho-blue-irm: ciljna izkoriščenost, strmina, hitrost prilagajanja in meje (dostopano 4. novembra 2026)
+- [Midnight.sol in ConstantsLib.sol](https://github.com/morpho-org/midnight), morpho-org/midnight: omejitve zavarovanj, likvidacija po zapadlosti in 60-minutno naraščanje (dostopano 4. novembra 2026)
+- [Dokumentacija Morpho: Morpho Blue](https://docs.morpho.org/learn/concepts/blue), [oraklji](https://docs.morpho.org/learn/concepts/oracle) in [Midnight](https://docs.morpho.org/learn/concepts/midnight) (dostopano 4. novembra 2026)
+- [Pravila Morpho za navajanje v vmesniku](https://docs.morpho.org/get-started/resources/interface-listing-policy): kaj pomeni navedba in kdo o njej odloča (dostopano 4. novembra 2026)
+- [Pomoč Morpho: Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (dostopano 4. novembra 2026)
+- [API Morpho](https://api.morpho.org/graphql): omrežja, navedeni trgi Blue in navedeni trgi Midnight po omrežjih (dostopano 4. novembra 2026)
+
+_Izobraževalna vsebina, ne finančni nasvet. Opozorila zmanjšajo tveganje, a ne preprečijo likvidacije._

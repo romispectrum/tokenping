@@ -7,6 +7,8 @@ import AaveInterestRates from "~~/content/blog/aave-interest-rates.mdx";
 import AaveLiquidationAlertTools from "~~/content/blog/aave-liquidation-alert-tools.mdx";
 import AaveLiquidationPrice from "~~/content/blog/aave-liquidation-price.mdx";
 import AaveMarketWindDown from "~~/content/blog/aave-market-wind-down.mdx";
+import AaveV4VsV3 from "~~/content/blog/aave-v4-vs-v3.mdx";
+import AaveVsMorpho from "~~/content/blog/aave-vs-morpho.mdx";
 import AvoidAaveLiquidation from "~~/content/blog/avoid-aave-liquidation.mdx";
 import CryptoBackedLoans from "~~/content/blog/crypto-backed-loans.mdx";
 import HowAaveLiquidationWorks from "~~/content/blog/how-aave-liquidation-works.mdx";
@@ -53,4 +55,6 @@ export const POST_CONTENT: PostContent = {
   "how-morpho-liquidation-works": HowMorphoLiquidationWorks,
   "morpho-pre-liquidation": MorphoPreLiquidation,
   "morpho-midnight-fixed-rate-loans": MorphoMidnightFixedRateLoans,
+  "aave-vs-morpho": AaveVsMorpho,
+  "aave-v4-vs-v3": AaveV4VsV3,
 };

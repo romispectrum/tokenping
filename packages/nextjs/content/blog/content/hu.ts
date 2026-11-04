@@ -7,6 +7,8 @@ import AvoidAaveLiquidation from "~~/content/blog/hu/aave-likvidalas-elkerulese.
 import AaveLiquidationPrice from "~~/content/blog/hu/aave-likvidalasi-ar.mdx";
 import AaveLiquidationAlertTools from "~~/content/blog/hu/aave-likvidalasi-riasztas-eszkozok.mdx";
 import AaveAlertsDoNotDisturb from "~~/content/blog/hu/aave-riasztasok-ne-zavarjanak-modban.mdx";
+import AaveV4VsV3 from "~~/content/blog/hu/aave-v4-vs-v3-kulonbsegek.mdx";
+import AaveVsMorpho from "~~/content/blog/hu/aave-vs-morpho-osszehasonlitas.mdx";
 import SafeAaveHealthFactor from "~~/content/blog/hu/biztonsagos-aave-health-factor.mdx";
 import AaveMarketWindDown from "~~/content/blog/hu/egy-aave-piac-leepitese.mdx";
 import ShortFiatWithAave from "~~/content/blog/hu/fiat-shortolasa-aave-val.mdx";
@@ -53,4 +55,6 @@ export const POST_CONTENT: PostContent = {
   "hogyan-mukodik-a-likvidalas-a-morphon": HowMorphoLiquidationWorks,
   "morpho-elolikvidalas": MorphoPreLiquidation,
   "morpho-midnight-fix-kamatozasu-hitelek": MorphoMidnightFixedRateLoans,
+  "aave-vs-morpho-osszehasonlitas": AaveVsMorpho,
+  "aave-v4-vs-v3-kulonbsegek": AaveV4VsV3,
 };

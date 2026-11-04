@@ -1,0 +1,175 @@
+export const meta = {
+  slug: "aave-v4-vs-v3-differences",
+  title: "Aave V4 vs V3 : ce qui change pour votre prêt",
+  description:
+    "Aave V4 vs V3 pour l'emprunteur : Hubs et Spokes, facteur de santé par Spoke, liquidation au facteur cible, primes de risque, Spokes E-Mode et migration.",
+  h1: "Aave V4 vs V3 : qu'est-ce qui change, et qu'est-ce que cela signifie pour votre prêt ?",
+  publishedAt: "2026-11-04",
+  primaryQuestion: "Quelle est la différence entre Aave V3 et Aave V4 pour un emprunteur ?",
+  readingMinutes: 16,
+  figuresAsOf: "2026-11-04",
+};
+
+<ShortAnswer>
+  Aave V4 a été lancée sur Ethereum le 30 mars 2026 et fonctionne désormais aussi sur Avalanche, Arc et Base. La V3
+  continue de tourner à côté et détient encore l'essentiel de l'argent. Sur la V4, vous empruntez dans un Spoke, un
+  marché avec ses propres règles qui puise sa liquidité dans un Hub partagé, et chaque Spoke a son propre facteur de
+  santé (health factor). Un seul facteur de collatéral par actif remplace le LTV et le seuil de liquidation de la V3 :
+  vous pouvez donc emprunter jusqu'à un facteur de santé de 1,00. Une liquidation rembourse assez de dette pour vous
+  ramener au facteur de santé cible du Spoke (1,24 sur les Main Spokes) au lieu des 50 % ou 100 % de la V3, et le bonus
+  augmente à mesure que votre facteur de santé baisse. Les taux sont fixés par Hub, plus une prime de risque pour un
+  collatéral plus risqué. Rien ne bouge tout seul : un prêt V3 reste sur la V3 jusqu'à ce que vous le déplaciez.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Les chiffres et les numéros de bloc auxquels ils ont été lus : content/blog/snapshots/aave-v4-vs-v3.md */}
+
+## Qu'est-ce qu'Aave V4, et quand a-t-elle été lancée ?
+
+Aave V4 est une nouvelle version du protocole de prêt Aave, avec ses propres contrats. Elle ne met pas à niveau les marchés V3 sur place. Selon le journal des modifications d'Aave, elle a été lancée sur Ethereum le 30 mars 2026 avec trois Hubs et onze Spokes, puis sur Avalanche (15 juillet), Arc (16 septembre) et Base (7 octobre 2026). La V3 fonctionne sur 21 réseaux ; la V4 sur quatre, et Arc n'a que la V4.
+
+La V3 reste bien plus grande. Le 4 novembre 2026, DefiLlama comptait environ 15,6 milliards de dollars dans Aave V3 et environ 0,79 milliard dans la V4, prêts déduits dans les deux cas, avec environ 11,4 milliards et 0,47 milliard empruntés. Le point d'octobre d'Aave Labs plaçait la V4 au-dessus de 1,5 milliard de dollars de dépôts et de 450 millions de dollars de prêts actifs.
+
+Pour un emprunteur, les deux versions diffèrent par l'endroit où se trouve votre position, le montant que vous pouvez emprunter, la façon dont une liquidation est dimensionnée et la façon dont votre taux est fixé. Le tableau ci-dessous les résume ; les sections suivantes expliquent chaque ligne.
+
+## Qu'est-ce qui change pour un emprunteur, et qu'est-ce qui reste identique ?
+
+| Sujet                               | Aave V3                                                                                           | Aave V4                                                                                                                     |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Où se trouve votre prêt             | Un marché : un Pool sur un réseau                                                                 | Un Spoke, qui puise sa liquidité dans un ou plusieurs Hubs                                                                  |
+| Facteur de santé                    | Un par marché                                                                                     | Un par Spoke                                                                                                                |
+| Formule                             | Σ(collatéral × seuil de liquidation) ÷ dette                                                      | Σ(collatéral × facteur de collatéral) ÷ dette                                                                               |
+| Limite d'emprunt                    | Le LTV, fixé sous le seuil de liquidation                                                         | Le facteur de collatéral lui-même : vous pouvez emprunter jusqu'à un facteur de santé de 1,00                               |
+| Ligne de liquidation                | Facteur de santé sous 1                                                                           | Facteur de santé sous 1 (inchangé)                                                                                          |
+| Maximum remboursé en un appel       | 50 % de votre dette, ou 100 % à un facteur de santé de 0,95 ou moins ou sur les petites positions | De quoi vous ramener au facteur de santé cible du Spoke                                                                     |
+| Bonus de liquidation                | Fixe par actif de collatéral                                                                      | Augmente à mesure que votre facteur de santé baisse, jusqu'à un maximum par actif                                           |
+| Règle des montants résiduels (dust) | Il doit rester 1 000 $, sinon tout part                                                           | Il doit rester 1 000 $, sinon tout part (inchangé)                                                                          |
+| Taux d'intérêt                      | Une courbe d'utilisation par actif et par marché                                                  | Une courbe d'utilisation par actif et par Hub, plus une User Risk Premium                                                   |
+| Changements de paramètres           | Touchent d'un coup toutes les positions ouvertes                                                  | Les nouveaux réglages s'appliquent en général au prochain emprunt ou retrait, sauf si la gouvernance met à jour les anciens |
+| Actifs corrélés                     | Catégories E-Mode au sein d'un marché                                                             | Des Spokes séparés pour les paires corrélées, comme les Spokes Lido et EtherFi                                              |
+| Intérêts et prix                    | La dette grossit avec les intérêts ; les prix de l'oracle font bouger le facteur de santé         | Pareil                                                                                                                      |
+| Votre prêt existant                 | Reste sur la V3                                                                                   | Ouvert de zéro ; rien ne migre tout seul                                                                                    |
+
+## Comment fonctionnent les Hubs et les Spokes de la V4 ?
+
+Un Hub détient la liquidité partagée de chaque actif et fixe son taux d'intérêt. Un Spoke est ce que vous utilisez : il liste les actifs que vous pouvez déposer et emprunter, fixe leurs facteurs de collatéral, choisit les oracles de prix et porte les réglages de liquidation. La documentation d'Aave le résume ainsi : les utilisateurs interagissent avec les Spokes, qui acheminent la liquidité vers le Hub et depuis celui-ci, et le risque est isolé au niveau du Spoke.
+
+En V3, un marché faisait les deux. Le marché Core d'Ethereum détient son propre USDC et fixe ses propres règles, et le marché Prime détient un USDC séparé avec des règles séparées. En V4, plusieurs Spokes peuvent prêter le même USDC depuis un seul Hub tout en gardant chacun ses propres réglages de risque, et un Spoke peut emprunter auprès de plusieurs Hubs : le Bluechip Spoke sur Ethereum prête de l'USDC à la fois depuis le Core Hub et depuis le Prime Hub.
+
+L'API V4 d'Aave listait 24 Spokes et 8 Hubs le 4 novembre 2026 :
+
+| Réseau    | Hubs                                      | Spokes                                                                                                                                                                                                          |
+| --------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ethereum  | Core, Prime, Plus, Global Dollar, Sentora | Main, Bluechip, Lido, EtherFi, Kelp, Lombard, Ethena Ecosystem, Ethena Correlated, Gold, PAXG Gold, Forex, USDG Pendle, Maple SyrupUSDG ; sur le Hub de Sentora : RLUSD Yield, OUSD Yield et un second Bluechip |
+| Avalanche | Core                                      | Main, AVAX Correlated, Forex, Ethena Ecosystem                                                                                                                                                                  |
+| Arc       | Core                                      | Main, Forex, Maple SyrupUSDC                                                                                                                                                                                    |
+| Base      | Coinbase Stocks                           | Coinbase Stocks                                                                                                                                                                                                 |
+
+Sentora est le premier curateur externe sur la V4 : selon Aave Labs, il gère son propre Hub et ses propres Spokes sur Ethereum et fixe leur collatéral, leurs paramètres, leurs courbes de taux et leurs oracles, tandis que la DAO d'Aave est propriétaire des contrats. Le Spoke de Base prête de l'USDC contre des actions tokenisées, sujet traité dans [emprunter contre des actions tokenisées](/fr/blog/actions-tokenisees-comme-collateral#ou-emprunter-contre-des-actions-tokenisees).
+
+## Comment fonctionne le facteur de santé sur un Spoke V4 ?
+
+Le facteur de santé signifie la même chose dans les deux versions : le collatéral pondéré divisé par la dette, et sous 1 vous pouvez être liquidé. En V4, la pondération est le facteur de collatéral (CF, collateral factor). L'exemple d'Aave : 10 000 $ d'ETH avec un CF de 80 % face à 6 000 $ de GHO donnent 1,333. La [section V4 du guide du facteur de santé](/fr/blog/facteur-de-sante-aave#le-facteur-de-sante-est-il-different-sur-aave-v4) couvre les bases ; trois conséquences comptent plus que la formule.
+
+**Un facteur de santé par Spoke.** La documentation d'Aave indique que les positions dans des Spokes différents ne s'affectent pas entre elles, et que vous ne pouvez emprunter que contre du collatéral déposé dans le même Spoke. De l'ETH dans le Main Spoke ne fait rien pour un prêt dans le Gold Spoke. En V3, c'est aussi vrai d'un marché à l'autre, mais au sein d'un marché, tout votre collatéral garantit toute votre dette.
+
+**Pas d'écart entre la limite d'emprunt et la ligne de liquidation.** En V3, vous pouvez emprunter jusqu'au LTV, qui se situe sous le seuil de liquidation : le WETH sur Ethereum Core avait un LTV de 81 % et un seuil de 84 % le 4 novembre 2026, si bien qu'emprunter le maximum contre du WETH seul laisse un facteur de santé d'environ 1,037 ([pourquoi le maximum laisse environ 1,03](/fr/blog/facteur-de-sante-aave#pourquoi-emprunter-le-maximum-ne-laisse-t-il-quun-facteur-de-sante-denviron-103)). En V4, il n'y a pas de LTV distinct. La documentation d'Aave indique qu'un emprunt ou un retrait n'est bloqué que s'il ferait passer le facteur de santé sous 1,0, et le code vérifie exactement cela. Une position empruntée au maximum en V4 démarre sur la ligne de liquidation, et le moindre intérêt couru ou le moindre mouvement de prix peut suffire à la franchir. Choisissez votre propre marge.
+
+**Les mêmes actifs peuvent avoir le même poids.** Certains paramètres sont alignés entre les versions. Le WETH comptait pour 84 % à la fois sur Ethereum Core en V3 et sur le Main Spoke en V4 le 4 novembre 2026 : 10 WETH face à 12 000 USDC ont donc le même facteur de santé et le même prix de liquidation de 1 428,57 $ dans les deux.
+
+### Que se passe-t-il quand la gouvernance modifie un facteur de collatéral ?
+
+En V3, un seuil de liquidation abaissé s'applique à toutes les positions ouvertes dès que le changement est exécuté, ce qui peut faire passer un emprunteur sous 1 sans aucun mouvement de prix ([cause 4 dans pourquoi votre facteur de santé a baissé](/fr/blog/pourquoi-facteur-de-sante-aave-a-baisse#cause-4-la-gouvernance-ou-les-risk-stewards-ont-ils-abaisse-un-seuil-de-liquidation)).
+
+La V4 garde un historique du facteur de collatéral, du bonus maximum et des frais de liquidation de chaque actif. Quand la gouvernance ajoute une nouvelle configuration, votre position garde celle à laquelle elle était liée jusqu'à ce que vous empruntiez, retiriez ou désactiviez un collatéral ; déposer et rembourser ne la changent pas. Si votre position n'était pas saine avec les réglages les plus récents, l'emprunt ou le retrait échoue à la place. Ainsi, après une baisse, vous pouvez vous retrouver dans l'impossibilité de retirer du collatéral alors que votre facteur de santé semble correct.
+
+Cette protection n'est pas absolue. La gouvernance peut aussi modifier une configuration existante, ce qui atteint toutes les positions qui y sont liées, ou forcer une position à passer à la plus récente. Le 28 octobre 2026, un seul payload de gouvernance (AIP 536) a relevé le WETH de 83 % à 84 % sur Ethereum Core en V3 et modifié la configuration WETH existante du Main Spoke V4 de 83 % à 84 % dans la même transaction. Ce changement a aidé les emprunteurs ; une modification dans l'autre sens fonctionnerait de la même façon.
+
+## En quoi les liquidations diffèrent-elles sur la V4 ?
+
+En V3, un liquidateur peut rembourser jusqu'à 50 % de votre dette tant que votre facteur de santé est au-dessus de 0,95 et que le collatéral et la dette concernés valent chacun au moins 2 000 $, et jusqu'à 100 % sinon ([quelle part peut être liquidée d'un coup](/fr/blog/fonctionnement-liquidation-aave#quelle-part-de-ma-dette-peut-etre-liquidee-dun-coup)). Le bonus est fixe par actif de collatéral : 5 % pour le WETH sur Ethereum Core.
+
+En V4, il n'y a pas de close factor (part de la dette remboursable en une fois). Un liquidateur peut rembourser autant de dette qu'il en faut pour amener votre facteur de santé à la cible du Spoke, et pas plus, sauf si cela laissait moins de 1 000 $ de dette ou de collatéral. Le bonus commence à une fraction du maximum de l'actif juste sous 1 et monte en ligne droite jusqu'au maximum complet à un facteur de santé donné. Les réglages au 4 novembre 2026, lus on-chain :
+
+| Spoke                                                            | Facteur de santé cible | Bonus complet à | Bonus juste sous 1           |
+| ---------------------------------------------------------------- | ---------------------- | --------------- | ---------------------------- |
+| Main (Ethereum, Avalanche, Arc), Coinbase Stocks (Base)          | 1,24                   | 0,90            | 90 % du maximum              |
+| Bluechip (Ethereum)                                              | 1,174                  | 0,90            | 90 % du maximum              |
+| Gold (Ethereum)                                                  | 1,3075                 | 0,90            | 90 % du maximum              |
+| Lido, EtherFi, Kelp, Lombard, Ethena, Forex et Spokes similaires | environ 1,01 à 1,06    | 0,99            | Le maximum complet, constant |
+
+### Exemple chiffré : 10 WETH face à 12 000 USDC sur les deux versions
+
+Prenons la même position sur Ethereum Core en V3 (seuil de 84 %, bonus de 5 %) et sur le Main Spoke en V4 (CF de 84 %, bonus maximum de 5,55 %, cible 1,24). Les deux deviennent liquidables dès que l'ETH passe sous 1 428,57 $. Voici le maximum qu'une seule liquidation peut prendre à deux prix :
+
+| Prix de l'ETH (facteur de santé) | Version | Bonus  | Dette remboursée     | Bonus que vous payez | Facteur de santé après | Dette restante |
+| -------------------------------- | ------- | ------ | -------------------- | -------------------- | ---------------------- | -------------- |
+| 1 400 $ (0,98)                   | V3      | 5 %    | 6 000 $ (50 %)       | 300 $                | 1,078                  | 6 000 $        |
+| 1 400 $ (0,98)                   | V4      | 5,11 % | 8 736,81 $ (72,8 %)  | 446,10 $             | 1,24                   | 3 263,19 $     |
+| 1 330 $ (0,931)                  | V3      | 5 %    | 12 000 $ (100 %)     | 600 $                | aucun (pas de dette)   | 0 $            |
+| 1 330 $ (0,931)                  | V4      | 5,38 % | 10 450,22 $ (87,1 %) | 562,01 $             | 1,24                   | 1 549,78 $     |
+
+Deux choses ressortent. Juste sous 1, une liquidation V4 sur le Main Spoke peut prendre une plus grande part de votre dette que les 50 % de la V3, parce qu'une cible de 1,24 exige un gros remboursement, et vous payez un bonus plus élevé en dollars. Plus bas, la V3 peut tout solder alors que la V4 s'arrête toujours à la cible et vous laisse une position à 1,24. Dans les deux cas, vous gardez l'USDC emprunté ; ce que vous perdez, c'est le bonus. Un liquidateur peut toujours choisir de rembourser moins que ces maximums.
+
+Sur les Spokes de type E-Mode, les cibles se situent juste au-dessus de 1 et le bonus est de 1 % constant sur le wstETH et le weETH. Le bonus est faible, mais avec un CF de 95,5 %, chaque palier sous 1 exige un gros remboursement : sur le Lido Spoke, une position à un facteur de santé de 0,987 peut voir environ 55 % de sa dette remboursée en une seule liquidation. La [section V4 du guide de la liquidation](/fr/blog/fonctionnement-liquidation-aave#en-quoi-les-liquidations-different-elles-sur-aave-v4) donne la formule du bonus.
+
+## En quoi les taux d'intérêt diffèrent-ils sur la V4 ?
+
+En V3, chaque actif a une courbe d'utilisation dans chaque marché : l'USDC sur Ethereum Core et l'USDC sur Arbitrum ont des pools séparés et des taux séparés ([comment fonctionnent les taux d'Aave](/fr/blog/taux-interet-aave)). La V4 garde la courbe mais la déplace vers le Hub : chaque Spoke qui emprunte de l'USDC au même Hub paie le même taux de base, et le même token peut coûter des montants différents selon le Hub. Le 4 novembre 2026, l'API d'Aave affichait l'USDC dans le Bluechip Spoke à 5,41 % depuis le Core Hub et à 4,45 % depuis le Prime Hub.
+
+En plus du taux de base, la V4 ajoute une User Risk Premium (prime de risque utilisateur). Chaque actif de collatéral a un risque de collatéral de 0 % à 1 000 % dans chaque Spoke ; votre prime est la moyenne du risque de vos collatéraux, en comptant les plus sûrs en premier et seulement le collatéral nécessaire pour couvrir votre dette. L'exemple d'Aave : une prime de 50 % sur un taux de base de 5 % signifie que vous payez 7,5 %.
+
+La plupart des Spokes fixent encore chaque risque de collatéral à 0 : leurs emprunteurs ne paient donc que le taux de base. Les exceptions au 4 novembre 2026 comprenaient le syrupUSDC sur le Maple Spoke d'Arc (20 %), l'USDe sur l'Ethena Ecosystem Spoke d'Avalanche (16,5 %), le SPCXc sur le Coinbase Stocks Spoke (10 %) et plusieurs actifs sur les Spokes de Sentora. Un prêt en USDC garanti uniquement par du syrupUSDC sur Arc, avec un taux de base de 3,06 %, coûtait environ 3,7 %.
+
+Votre prime est recalculée quand vous empruntez, retirez, modifiez votre collatéral ou êtes liquidé, pas quand vous déposez ou remboursez. Si la gouvernance abaisse le risque d'un actif, vous n'en profitez qu'après l'une de ces actions ou une actualisation manuelle ; si elle le relève, votre prime ne bouge pas d'ici là, sauf si la gouvernance impose une mise à jour. Plus de détails sur le GHO et les taux de la V4 dans [comment les taux sont fixés sur Aave V4](/fr/blog/taux-interet-aave#comment-les-taux-sont-ils-fixes-pour-gho-et-sur-aave-v4).
+
+## Qu'est-ce qui a remplacé l'E-Mode sur Aave V4 ?
+
+En V3, l'E-Mode est un interrupteur au sein d'un marché : vous choisissez une catégorie comme « ETH correlated » sur Ethereum Core (LTV de 93 %, seuil de 95 %, bonus de 1 % le 4 novembre 2026), et toute votre position dans ce marché utilise ces réglages ([comment fonctionne l'E-Mode](/fr/blog/e-mode-aave)).
+
+La V4 n'a pas d'interrupteur E-Mode. Les paires corrélées ont à la place leurs propres Spokes : la documentation d'Aave appelle les Spokes Lido, EtherFi et Kelp des « eSpokes », et la proposition d'activation les qualifiait, avec Lombard BTC, de Spokes e-Mode. Le Lido Spoke accepte le wstETH comme collatéral avec un CF de 95,5 % et ne prête que du WETH ; l'EtherFi Spoke fait de même avec le weETH. Les deux avaient un bonus de liquidation de 1 % le 4 novembre 2026.
+
+La différence pratique : en V3, vous pouvez faire entrer et sortir une position de l'E-Mode tant qu'elle reste saine. En V4, un loop (boucle d'emprunt à effet de levier) sur le Lido Spoke est une position distincte de tout ce que vous détenez sur le Main Spoke. Pour passer de l'un à l'autre, vous fermez l'une et ouvrez l'autre.
+
+## Aave V3 continue-t-elle de fonctionner, et les prêts V3 passent-ils sur la V4 ?
+
+La V3 continue de fonctionner, et rien ne bouge tout seul. Le temp check d'Aave Labs de février 2026, le cadre « Aave Will Win », indique qu'il n'y a « no need for a rushed, or forced, migration » (aucun besoin d'une migration précipitée ou forcée) et que la V3 fonctionnera aux côtés de la V4 jusqu'à ce que la DAO en décide autrement. Il précise aussi qu'une fois la V4 arrivée à maturité, les paramètres de la V3 « could be gradually adjusted to encourage migration » (pourraient être ajustés progressivement pour encourager la migration), et que la V3 reste ouverte aux retraits indéfiniment. Certains marchés V3 sont déjà en cours de fermeture pour d'autres raisons, comme l'explique [le guide sur la fermeture des marchés](/fr/blog/fermeture-marche-aave#quels-marches-aave-sont-en-cours-de-fermeture).
+
+La documentation V4 d'Aave ne décrit aucun outil qui transfère une position V3 vers la V4, ni aucun pour déplacer une position d'un Spoke V4 à un autre. Un déplacement manuel consiste à rembourser la dette V3, retirer le collatéral, le déposer dans un Spoke V4 et emprunter à nouveau, dans cet ordre, pour que votre collatéral ne soit jamais retiré tant qu'une dette en dépend encore. Certains outils tiers regroupent ces étapes en une seule transaction. Dans tous les cas, vérifiez d'abord le facteur de collatéral, le facteur de santé cible et le taux du nouveau Spoke : le même facteur de santé peut y signifier une marge différente et une taille de liquidation différente.
+
+## Que surveiller si vous avez des prêts sur les deux ?
+
+- **Deux facteurs de santé ou plus.** Chaque marché V3 et chaque Spoke V4 a le sien. Un prêt V3 sain ne fait rien pour un prêt V4 proche de 1.
+- **Des marges de départ différentes.** Une position V4 empruntée au maximum se trouve à 1,00, alors que le LTV de la V3 laisse un écart. Ne reprenez pas l'habitude V3 d'« emprunter jusqu'à la limite ».
+- **Des tailles de liquidation différentes.** Sur les Main Spokes, une seule liquidation peut prendre plus de la moitié de votre dette ; en V3, elle en prend au plus la moitié tant que votre facteur de santé est au-dessus de 0,95.
+- **Des changements qui touchent les deux.** Un seul payload a modifié le WETH dans les deux versions le 28 octobre 2026. Surveillez la gouvernance pour l'une comme pour l'autre.
+- **Des taux qui divergent.** Les taux V3 suivent le pool de chaque marché ; les taux V4 suivent le Hub, plus votre prime.
+- **De futurs changements en V3.** Si la gouvernance commence à ajuster la V3 pour pousser les emprunteurs vers la V4, attendez-vous à ce que les taux ou les paramètres évoluent au détriment des prêts V3.
+
+## Une alerte peut-elle couvrir les deux versions ?
+
+Oui, sous forme d'alertes séparées. Tokenping vérifie votre facteur de santé toutes les 5 minutes dans chaque marché Aave V3 sur 21 réseaux et dans les 24 Spokes V4 sur Ethereum, Avalanche, Arc et Base, avec une alerte par marché V3 ou par Spoke V4. Il vous envoie un message sur Signal, Telegram ou par e-mail quand le facteur de santé est sous le seuil que vous choisissez (de 1,1 à 10), et le répète à chaque vérification jusqu'à ce qu'il remonte.
+
+Sur la V4, le seuil compte davantage, car la limite d'emprunt est la ligne de liquidation : placez-le bien au-dessus de 1 pour que le message arrive alors que vous avez encore le temps de rembourser ou d'ajouter du collatéral, avant qu'une liquidation ne réduise votre dette jusqu'à la cible du Spoke. Une alerte ne peut pas agir à votre place, et un mouvement rapide peut franchir 1 entre deux vérifications. [Quelle marge garder](/fr/blog/facteur-de-sante-aave-sur#de-quelle-marge-avez-vous-besoin-pour-avoir-le-temps-dagir) vous aide à choisir un nombre.
+
+Vous pouvez [vérifier vos positions Aave V3 et V4](/fr/aave) sans payer ; les alertes coûtent <AlertPrice />, à payer sur Arbitrum. Tokenping est en bêta et n'offre aucune garantie de disponibilité. La configuration est détaillée dans [comment configurer une alerte de facteur de santé](/fr/blog/configurer-alertes-facteur-de-sante-aave).
+
+## Sources
+
+- [Présentation d'Aave V4](https://aave.com/docs/aave-v4.md) : Hubs, Spokes, taux par actif du Hub, User Risk Premium, facteur de santé cible et règle des 1 000 $ de montant résiduel (consulté le 4 novembre 2026)
+- [Positions utilisateur Aave V4](https://aave.com/docs/aave-v4/positions.md), [emprunt](https://aave.com/docs/aave-v4/positions/borrow.md) et [conditions de position](https://aave.com/docs/aave-v4/positions/conditions.md) : positions par Spoke, emprunt bloqué sous 1,0, collatéral dans le même Spoke, configuration dynamique et mises à jour de la prime (consulté le 4 novembre 2026)
+- [Spokes Aave V4](https://aave.com/docs/aave-v4/liquidity/spokes.md) et [liquidations](https://aave.com/docs/aave-v4/positions/liquidations.md) : Spokes déployés sur Ethereum et noms des eSpokes, bonus en enchère hollandaise (consulté le 4 novembre 2026)
+- [Journal des modifications de la documentation Aave](https://aave.com/docs/resources/changelog.md) : dates de lancement de la V4 sur Ethereum, Avalanche, Arc et Base (consulté le 4 novembre 2026)
+- [Présentation d'aave/aave-v4](https://github.com/aave/aave-v4/blob/main/docs/overview.md), [LiquidationLogic.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/libraries/LiquidationLogic.sol) et [Spoke.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/Spoke.sol), commit a3ef63e : prime de risque, configuration dynamique du risque, moteur de liquidation, contrôle du facteur de santé (consulté le 4 novembre 2026)
+- [API GraphQL publique d'Aave V4](https://api.v4.aave.com/graphql), `chains`, `hubs`, `spokes` et `reserves` : Spokes, Hubs, facteurs de collatéral, risque de collatéral, bonus et taux d'emprunt (consulté le 4 novembre 2026)
+- Lectures on-chain de `getLiquidationConfig` et `getReserve` pour chaque Spoke V4, par exemple le [Main Spoke d'Ethereum](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485#readContract) au bloc 26341712 (consulté le 4 novembre 2026)
+- [Transaction d'exécution de l'AIP 536](https://etherscan.io/tx/0x226c48626ec314b194dfa080e992dcabfa1526f813835f81914e1885d5af1275), 28 octobre 2026 : le WETH sur Ethereum Core en V3 et sur le Main Spoke V4 (consulté le 4 novembre 2026)
+- [Aave V3 PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) et [Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract) : LTV, seuil et bonus du WETH, catégorie E-Mode 1 au bloc 26341695 (consulté le 4 novembre 2026)
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol) : close factor de 50 % et 100 %, seuils de 2 000 $ et 1 000 $ (consulté le 4 novembre 2026)
+- [ARFC: Aave V4 Activation on Ethereum Mainnet](https://governance.aave.com/t/arfc-aave-v4-activation-on-ethereum-mainnet/24293), Aave Labs, 13 mars 2026 : Spokes de lancement et Spokes e-Mode (consulté le 4 novembre 2026)
+- [TEMP CHECK: Aave Will Win Framework](https://governance.aave.com/t/temp-check-aave-will-win-framework/24055), Aave Labs, 12 février 2026 : la V3 aux côtés de la V4, pas de migration forcée (consulté le 4 novembre 2026)
+- [AL Development Update, October 2026](https://governance.aave.com/t/al-development-update-october-2026/25979), Aave Labs, 2 novembre 2026 : dépôts de la V4, Sentora, première réserve avec Risk Premium, AIP 536 (consulté le 4 novembre 2026)
+- [API des protocoles de DefiLlama](https://api.llama.fi/protocols) : TVL et montants empruntés d'Aave V3 et V4 (consulté le 4 novembre 2026)
+
+_Contenu éducatif, pas un conseil financier. Les alertes réduisent le risque, elles n'empêchent pas la liquidation._

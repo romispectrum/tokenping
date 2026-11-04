@@ -37,7 +37,10 @@ const MORPHO_SLUGS = [
   "morpho-midnight-fixed-rate-loans",
 ];
 
-const EXPECTED_SLUGS = [...AAVE_SLUGS, ...MORPHO_SLUGS];
+// The comparisons, after both clusters; they count as Aave guides for the hub link.
+const COMPARISON_SLUGS = ["aave-vs-morpho", "aave-v4-vs-v3"];
+
+const EXPECTED_SLUGS = [...AAVE_SLUGS, ...MORPHO_SLUGS, ...COMPARISON_SLUGS];
 
 const CS_SLUGS = EXPECTED_SLUGS.map(slug => POST_SLUGS[slug].cs);
 

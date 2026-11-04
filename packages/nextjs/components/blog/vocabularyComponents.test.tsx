@@ -61,6 +61,14 @@ describe("ScopeNote", () => {
     );
     expect(container.querySelector("time")?.getAttribute("dateTime")).toBe(FIGURES_AS_OF);
   });
+
+  it("shows a post's own figures date when it has one", async () => {
+    const { ScopeNote } = await import("~~/components/blog/ScopeNote");
+    const { container } = render(<ScopeNote figuresAsOf="2026-11-04" />);
+
+    expect(container.textContent).toMatch(/Figures as of 4 Nov 2026\.$/);
+    expect(container.querySelector("time")?.getAttribute("dateTime")).toBe("2026-11-04");
+  });
 });
 
 describe("Callout", () => {

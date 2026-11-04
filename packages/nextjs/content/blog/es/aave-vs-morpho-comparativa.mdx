@@ -1,0 +1,180 @@
+export const meta = {
+  slug: "aave-vs-morpho-comparativa",
+  title: "Aave vs Morpho para prestatarios: en qué se diferencian",
+  description:
+    "Aave vs Morpho para prestatarios: mercados agrupados o aislados, factor de salud, liquidaciones, tasas, E-Mode vs LLTV, oráculos y riesgo de gobernanza.",
+  h1: "Aave vs Morpho: ¿en qué se diferencian para un prestatario?",
+  publishedAt: "2026-11-04",
+  primaryQuestion: "¿En qué se diferencian Aave y Morpho para un prestatario y cuál encaja con mi préstamo?",
+  readingMinutes: 16,
+  figuresAsOf: "2026-11-04",
+};
+
+<ShortAnswer>
+  Aave agrupa tu préstamo: en Aave V3, todo tu colateral y toda tu deuda en un mercado comparten un factor de salud
+  (health factor), y la gobernanza y sus Risk Stewards pueden cambiar los parámetros mientras tienes el préstamo
+  abierto. Aave V4 mantiene esa idea por Spoke. Morpho Blue lo aísla: cada mercado tiene un colateral, un token del
+  préstamo, un oráculo y un LLTV, todos fijados para siempre al crearse el mercado, así que cada préstamo tiene su
+  propio factor de salud. Morpho Midnight añade préstamos a tasa fija que terminan en una fecha de vencimiento. En Aave
+  un activo sano puede sostener a uno que cae, pero una liquidación puede tomar cualquiera de tus colaterales; en Morpho
+  un activo que cae solo amenaza su propio préstamo, y el primer liquidador puede pagarlo entero de una vez. Ninguno es
+  más seguro en general: la diferencia está en quién fija las reglas y hasta qué parte de tu posición puede llegar un
+  activo en problemas.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Cifras y números de bloque en los que se leyeron: content/blog/snapshots/aave-vs-morpho.md */}
+
+## ¿Cómo se comparan Aave y Morpho de un vistazo?
+
+La tabla resume las reglas que importan a un prestatario. Los valores en vivo se leyeron el 4 de noviembre de 2026 en Ethereum; cada fila se explica más abajo.
+
+|                                           | Aave V3                                                                | Aave V4                                                                    | Morpho Blue                                             | Morpho Midnight                                                |
+| ----------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------- |
+| Qué cubre un factor de salud              | Todo tu colateral y toda tu deuda en un mercado (un Pool en una red)   | Todo tu colateral y toda tu deuda en un Spoke                              | Un colateral y un token del préstamo                    | Un token del préstamo, hasta 16 de los colaterales del mercado |
+| Límite de préstamo y línea de liquidación | Un LTV más bajo para pedir prestado, un umbral de liquidación más alto | Un factor de colateral por activo                                          | El LLTV es ambos                                        | El LLTV de cada colateral                                      |
+| Quién fija los parámetros                 | La gobernanza y los Risk Stewards, modificables en cualquier momento   | La gobernanza; los cambios suelen llegar solo a las posiciones nuevas      | Quien creó el mercado, fijados para siempre             | Quien creó el mercado, fijados para siempre                    |
+| Interés                                   | Variable, una curva por activo                                         | Variable, una curva por activo del Hub más una prima de riesgo por usuario | Variable, AdaptiveCurveIRM                              | Fijo hasta el vencimiento                                      |
+| Máximo que puede pagar una liquidación    | El 50% o el 100% de la deuda                                           | Lo suficiente para llegar al factor de salud objetivo del Spoke            | Toda la deuda                                           | Lo que restablece la salud; toda la deuda tras el vencimiento  |
+| Bonificación de liquidación               | Por activo de colateral, fijada por la gobernanza                      | Crece a medida que baja el factor de salud                                 | Se deriva del LLTV                                      | Se deriva del LLTV y del cursor de cada colateral              |
+| Deuda incobrable                          | Un déficit; los stakers de Umbrella pueden cubrirlo en Ethereum        | Un déficit; otro Spoke puede cubrirlo                                      | Se cancela a cargo de los prestamistas de ese mercado   | La reparten los prestamistas de ese mercado                    |
+| Oráculo                                   | Lo elige la gobernanza                                                 | Lo elige la gobernanza, por Spoke                                          | Lo elige el creador del mercado, no se puede reemplazar | Lo elige el creador del mercado, por colateral                 |
+
+## ¿Cómo está construido cada uno?
+
+### Aave: mercados agrupados, V3 y V4
+
+Un mercado de Aave V3 es un Pool en una red: Ethereum Core, Arbitrum, Base, etc. Todo lo que depositas como colateral en ese Pool respalda todo lo que pides prestado ahí, y el contrato calcula un solo factor de salud para toda la posición:
+
+**HF = Σ (valor del colateral × umbral de liquidación) ÷ deuda total**
+
+Cada activo tiene dos números: una relación préstamo-valor (LTV), que limita los nuevos préstamos, y un umbral de liquidación más alto, que decide la liquidación. En Ethereum Core, el 4 de noviembre de 2026, WETH tenía un LTV del 81% y un umbral del 84%. Los precios vienen del oráculo de Aave, en dólares estadounidenses. [La guía del factor de salud de Aave](/es/blog/factor-de-salud-aave) tiene la fórmula y ejemplos resueltos.
+
+Aave V4 divide una red en un Hub, que guarda la liquidez, y Spokes, los mercados en los que pides prestado. Tu posición y tu factor de salud viven en un Spoke, y cada activo tiene un único factor de colateral en lugar de un LTV y un umbral. El 4 de noviembre de 2026, la API de V4 de Aave listaba 24 Spokes en Ethereum, Avalanche, Arc y Base. [Cómo funciona el factor de salud en Aave V4](/es/blog/factor-de-salud-aave#es-diferente-el-factor-de-salud-en-aave-v4) explica los detalles.
+
+### Morpho: mercados aislados, Blue y Midnight
+
+Un mercado de Morpho Blue se define con cinco cosas: un token del préstamo, un token de colateral, un oráculo, un modelo de tasa de interés y un LTV de liquidación (LLTV). Cualquiera puede crear uno, y ninguna de las cinco puede cambiar después. Tu colateral en un mercado no respalda deuda en otro, así que dos préstamos en dos mercados tienen dos factores de salud:
+
+**HF = cantidad de colateral × precio del oráculo × LLTV ÷ deuda**
+
+No hay un límite de préstamo más bajo: el contrato te deja pedir prestado justo hasta el LLTV, un factor de salud de 1.00. [La guía del factor de salud de Morpho](/es/blog/factor-de-salud-morpho) lo explica paso a paso.
+
+Morpho Midnight es un contrato aparte para préstamos a tasa fija y a plazo fijo. Un mercado de Midnight tiene un token del préstamo, una fecha de vencimiento y hasta 128 colaterales, cada uno con su propio LLTV y su propio oráculo, y un prestatario puede usar hasta 16 de ellos a la vez. [Préstamos a tasa fija de Morpho Midnight](/es/blog/morpho-midnight-prestamos-a-tasa-fija) explica cómo funciona.
+
+## ¿Qué le pasa a tu factor de salud cuando cae un activo?
+
+Aquí es donde los dos diseños se sienten más distintos. Toma el mismo colateral en ambos, con precios ilustrativos de $2,400 para ETH y $80,000 para BTC, y 20,000 USDC de deuda.
+
+**En Aave V3 Ethereum Core**, con 10 WETH (umbral del 84%) y 0.2 WBTC (umbral del 85%) en una sola posición, sin tener en cuenta el interés:
+
+- Colateral ponderado: 24,000 × 0.84 + 16,000 × 0.85 = 33,760.
+- Factor de salud: 33,760 ÷ 20,000 = **1.69**.
+- Si BTC cae un 40% hasta $48,000: 24,000 × 0.84 + 9,600 × 0.85 = 28,320, un factor de salud de **1.42**. No se puede liquidar nada.
+
+El WETH sostiene al WBTC. En esta posición el WETH por sí solo cuenta 20,160, más que toda la deuda, así que incluso con el WBTC sin ningún valor quedaría un factor de salud de 1.008.
+
+**En Morpho Blue**, con los mismos activos repartidos en dos mercados listados de Ethereum, USDC | WETH (86%) y USDC | WBTC (86%), y 10,000 USDC prestados en cada uno:
+
+- Préstamo con WETH: 24,000 × 0.86 ÷ 10,000 = **2.06**.
+- Préstamo con WBTC: 16,000 × 0.86 ÷ 10,000 = **1.38**, con un precio de liquidación de $58,139.53, un 27.3% por debajo de $80,000.
+- Si BTC cae un 40%: el préstamo con WBTC queda en 9,600 × 0.86 ÷ 10,000 = **0.83** y se puede liquidar, mientras que el préstamo con WETH sigue en 2.06.
+
+La otra cara es igual de real. En Aave, una vez que toda la posición baja de 1, el liquidador elige qué colateral tomar, así que una caída de BTC puede costarte WETH. En Morpho, el préstamo con WETH queda fuera de alcance pase lo que pase con BTC. Agrupar te da un margen compartido; aislar te da un margen por préstamo, y tienes que dimensionar cada uno.
+
+## ¿En qué se diferencian las liquidaciones?
+
+En los dos protocolos, por debajo de un factor de salud de 1 un liquidador paga parte de tu deuda y se lleva colateral por ese valor más una bonificación. Conservas lo que pediste prestado, así que la bonificación es lo que te cuesta una liquidación. Las reglas a su alrededor son distintas:
+
+- **Cuánto de una vez.** En Aave V3.7, una liquidación puede pagar hasta el 50% de tu deuda total mientras tu factor de salud esté por encima de 0.95 y el colateral y la deuda implicados valgan cada uno al menos $2,000; con 0.95 o menos, o con montos más pequeños, puede pagar toda la deuda en ese activo. Aave V4 elimina esta regla: un liquidador paga solo lo suficiente para devolverte al factor de salud objetivo del Spoke, 1.24 en el Ethereum Main Spoke el 4 de noviembre de 2026. Morpho Blue no tiene límite: el primer liquidador puede pagar toda tu deuda en una sola llamada.
+- **La bonificación.** En Aave V3 la fija la gobernanza por activo de colateral: 5% para WETH y WBTC en Ethereum Core el 4 de noviembre de 2026, de la que la tesorería de Aave se quedaba con el 20% como comisión de protocolo. En V4 crece a medida que baja el factor de salud. En Morpho Blue se deriva del LLTV, 1 ÷ (1 − 0.3 × (1 − LLTV)) con un tope del 15%: 4.38% con un LLTV del 86%, 1.06% con uno del 96.5%, todo para el liquidador.
+- **Preliquidación.** En Morpho Blue un prestatario podía activar un contrato que liquida partes del préstamo antes del LLTV. Morpho está retirando la función y pide a los prestatarios que la tienen que la desactiven; si alguna vez activaste Auto-deleverage, [preliquidación en Morpho](/es/blog/preliquidacion-morpho) muestra cómo comprobarla y revocarla. Aave no tiene nada parecido.
+- **Vencimiento.** En Morpho Midnight, cualquier deuda que quede después del vencimiento se puede liquidar aunque la posición esté sana, con una bonificación que sube desde cero hasta su tamaño completo durante la primera hora.
+- **Deuda incobrable.** Cuando el colateral se agota antes que la deuda, Aave V3 registra un déficit, que los stakers de Umbrella pueden cubrir en Ethereum (para USDC, USDT, WETH y GHO, según la documentación de Aave); en V4 otro Spoke puede cubrirlo. En Morpho la pérdida se cancela a cargo de los prestamistas de ese único mercado. Para ti como prestatario el resultado es el mismo en todos los casos: el colateral ya no está y no queda deuda.
+
+La mecánica completa está en [cómo funciona la liquidación en Aave](/es/blog/como-funciona-la-liquidacion-en-aave), con [las reglas de V4](/es/blog/como-funciona-la-liquidacion-en-aave#en-que-se-diferencian-las-liquidaciones-en-aave-v4), y en [cómo funciona la liquidación en Morpho](/es/blog/como-funciona-la-liquidacion-en-morpho), que tiene una [tabla comparativa](/es/blog/como-funciona-la-liquidacion-en-morpho#en-que-se-diferencia-la-liquidacion-de-morpho-de-la-de-aave).
+
+## ¿En qué se diferencian las tasas de interés?
+
+**Aave V3** fija la tasa variable de cada activo con una curva fija: sube suavemente con la utilización (la parte del pool que está prestada) hasta un nivel óptimo, y a partir de ahí con fuerza. La gobernanza fija los cuatro números de la curva, y los Risk Stewards pueden ajustarlos dentro de unos límites. USDC en Ethereum Core usaba un nivel óptimo del 94%, una primera pendiente del 4.5% y una segunda pendiente del 10%. En el bloque 26341682 de Ethereum, el 4 de noviembre de 2026, su utilización era del 94.7%, justo pasado el codo, y pedir prestado costaba un 5.67% anual. Entre cambios de parámetros, la tasa solo se mueve con la utilización. [Cómo funcionan las tasas de interés de Aave](/es/blog/tasas-de-interes-aave) tiene la fórmula y un pico real.
+
+**Aave V4** mantiene una curva por activo en el Hub y añade encima una User Risk Premium (prima de riesgo del usuario), del 0% al 1,000% de la tasa compartida según la calidad de tu colateral: el ejemplo de Aave es una prima del 50% sobre una tasa del 5%, lo que da un 7.5%.
+
+**Los mercados de Morpho Blue** usan el AdaptiveCurveIRM, que apunta a una utilización del 90%. En cada momento la tasa está en una curva alrededor de una "tasa objetivo": una cuarta parte de ella con un 0% de utilización y cuatro veces ella con un 100%. A diferencia de la curva de Aave, la propia tasa objetivo se desplaza: sube mientras la utilización se mantiene por encima del 90% y baja mientras se mantiene por debajo, entre el 0.1% y el 200% anual. Con un 100% de utilización se duplica en unos cinco días. El 4 de noviembre de 2026, el mercado USDC | cbBTC (86%) de Ethereum estaba en un 90.3% de utilización, con una tasa objetivo del 4.97% y una tasa de préstamo de alrededor del 5.4% anual. Así, un mercado muy demandado se encarece cada vez más hasta que los prestatarios pagan o llegan prestamistas; uno tranquilo se abarata.
+
+**Morpho Midnight** fija tu tasa cuando pides prestado. Vendes unidades de deuda por debajo de su valor nominal y debes exactamente un token del préstamo por unidad al vencimiento, así que tu deuda no crece y solo los precios del colateral mueven tu factor de salud. Aave no tiene tasa fija: V3.2 eliminó el antiguo código de tasa estable, y todos los préstamos de Aave son a tasa variable.
+
+## E-Mode o un mercado con LLTV alto: ¿cuánto puedes pedir prestado?
+
+Los dos protocolos te dejan pedir prestado más contra un colateral que sigue de cerca a lo que pides prestado, de formas distintas.
+
+**El E-Mode de Aave** es una configuración de toda tu posición de V3. Eliges una categoría y, mientras estás en ella, su colateral recibe el LTV, el umbral y la bonificación de la categoría. En Ethereum Core, el 4 de noviembre de 2026, "ETH correlated" usaba un LTV del 93%, un umbral del 95% y una bonificación del 1%, y WETH era el único activo que podías pedir prestado en ella. Cada activo que pides prestado tiene que poder pedirse prestado en la categoría, así que una posición con deuda en USDC no puede usarla. [El E-Mode de Aave](/es/blog/e-mode-de-aave) explica las categorías y las liquidaciones de marzo de 2026.
+
+**En Morpho** no hay modo: eliges un mercado cuyo LLTV encaje con el par. Los LLTV que la gobernanza de Morpho tenía habilitados el 4 de noviembre de 2026 eran 0%, 38.5%, 62.5%, 77%, 86%, 91.5%, 94.5%, 96.5% y 98%. El mercado WETH | wstETH de Ethereum usa 96.5%, con un incentivo de liquidación del 1.06%.
+
+Un prestatario que hace un loop (préstamo apalancado en bucle) de wstETH contra WETH puede llegar a un punto parecido en cualquiera de los dos, con una diferencia: en Aave solo puedes pedir prestado hasta el LTV del 93%, lo que deja un factor de salud de alrededor de 95 ÷ 93 = 1.02; en Morpho el contrato te deja pedir prestado justo hasta la línea del 96.5%, un factor de salud de 1.00.
+
+## ¿En qué redes funcionan Aave y Morpho?
+
+|               | Aave                                                                                                                              | Morpho                                                                                                                                                |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tasa variable | V3 en más de 20 redes, entre ellas Ethereum, Arbitrum, Base, Avalanche, Polygon y Optimism; V4 en Ethereum, Avalanche, Arc y Base | Blue en 14 redes: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable y Tempo |
+| Tasa fija     | Ninguna                                                                                                                           | Midnight, con mercados listados en Ethereum y Base el 4 de noviembre de 2026                                                                          |
+
+En Aave, cada activo de un mercado lo lista la gobernanza. En Morpho, cualquiera puede crear un mercado, y la aplicación de Morpho muestra solo los que la Morpho Association decide listar (ver más abajo). Algunas redes de Aave V3 se están cerrando; [qué pasa cuando Aave cierra un mercado](/es/blog/cierre-de-mercados-aave) explica lo que eso significa para los préstamos abiertos.
+
+## ¿Qué riesgos son distintos en cada uno?
+
+Los dos tienen los mismos riesgos básicos: una caída de precios, un error del oráculo, un fallo en un contrato inteligente. Lo que cambia es dónde están.
+
+**Quién puede cambiar tu préstamo.** En Aave, la gobernanza puede cambiar el LTV, el umbral de liquidación, la bonificación y la curva de tasas de un activo de V3, y los Risk Stewards pueden moverlos con pasos limitados y plazos mínimos. Un umbral más bajo en V3 se aplica a la vez a todas las posiciones abiertas. Los activos también se pueden congelar, lo que bloquea los nuevos préstamos pero no la liquidación, o pausar, lo que bloquea también las liquidaciones, con un período de gracia de hasta 4 horas después. En V4, los nuevos factores de colateral y bonificaciones suelen llegar a tu posición solo cuando vuelves a pedir prestado o a retirar. En Morpho Blue nadie puede cambiar un mercado: la gobernanza puede habilitar nuevos LLTV y modelos de tasa y fijar una comisión de hasta el 25% del interés, que pagan los prestamistas, pero no puede tocar un mercado existente, y el contrato no tiene pausa.
+
+**Quién elige el oráculo.** La gobernanza de Aave elige la fuente de precios de cada activo. En Morpho, quien crea un mercado elige su oráculo, y nunca se puede reemplazar. La documentación de Morpho dice que esa elección, al ser permanente, define el perfil de riesgo del mercado. Algunos oráculos siguen una tasa de cambio en lugar de un precio de mercado, o tratan una stablecoin como si valiera exactamente un dólar. Antes de pedir prestado en Morpho, comprueba qué mide el oráculo de tu mercado; [la sección sobre el oráculo de la guía de liquidación](/es/blog/como-funciona-la-liquidacion-en-morpho#que-papel-cumple-el-oraculo-en-una-liquidacion) muestra qué mirar.
+
+**Listado o no listado.** La aplicación de Morpho solo muestra los mercados que lista la Morpho Association, sobre todo aquellos a los que presta una bóveda listada. Su política llama al listado "a discovery decision" (una decisión de descubrimiento), no un respaldo ni una calificación de riesgo, y un mercado no listado sigue funcionando on-chain. Los mercados no listados también pueden tener préstamos grandes, como muestra [acciones tokenizadas como colateral](/es/blog/acciones-tokenizadas-como-colateral#donde-puedes-pedir-prestado-contra-acciones-tokenizadas) para los préstamos respaldados por acciones, así que la ausencia de un mercado en la aplicación solo te dice que Morpho decidió no mostrarlo.
+
+**Hasta dónde llega un activo en problemas.** En Aave, un activo con un precio erróneo o que pierde su paridad en tu mercado mueve todo tu factor de salud. En Morpho solo mueve los préstamos que lo usan, pero esos préstamos no tienen otro colateral en el que apoyarse.
+
+## ¿Cuál encaja con qué prestatario?
+
+Ninguno es el mejor protocolo; cada uno se adapta a una forma distinta de pedir prestado. Algunas orientaciones generales:
+
+- **Varios activos como colateral y un solo margen que vigilar:** la posición agrupada de Aave deja que se respalden entre sí, a cambio de reglas que la gobernanza puede cambiar.
+- **Reglas que no pueden cambiar después de pedir prestado:** el LLTV, el oráculo y el modelo de tasa de un mercado de Morpho son fijos para siempre, pero tienes que juzgar ese oráculo por tu cuenta.
+- **Un préstamo que no debe tocar tu otro colateral:** Morpho mantiene cada préstamo por separado; en Aave, usar mercados o redes distintos consigue lo mismo.
+- **Pedir prestado cerca de la línea con un par correlacionado:** los dos lo ofrecen, con E-Mode o con un LLTV alto, y los dos dejan un margen de un pequeño porcentaje.
+- **Una tasa que no se mueve:** solo Morpho Midnight la ofrece, a cambio de una fecha de vencimiento que no debes pasar por alto.
+- **Posiciones pequeñas:** en los dos, una liquidación puede saldar toda la deuda de una vez, en Aave por debajo de $2,000 en los activos implicados y en Morpho con cualquier tamaño.
+
+Esta guía compara mecanismos; no es asesoramiento financiero.
+
+## ¿Cómo pueden ayudar las alertas en cualquiera de los dos?
+
+Tokenping vigila los dos. Revisa cada 5 minutos y, mientras un factor de salud esté por debajo del umbral que fijaste, envía un mensaje en cada revisión por cada canal que elegiste: Signal, Telegram o correo electrónico.
+
+- **Aave:** una alerta por mercado de V3 o por Spoke de V4, en 24 mercados de V3 en 21 redes y todos los 24 Spokes de V4 en Ethereum, Avalanche, Arc y Base. El umbral va de 1.1 a 10. Puedes [consultar tu factor de salud de Aave](/es/aave) primero.
+- **Morpho:** una alerta por cada mercado en el que pides prestado, en los mercados que lista la aplicación de Morpho: Blue en 14 redes y Midnight donde la API de Morpho lista mercados (Ethereum y Base el 4 de noviembre de 2026). El umbral baja hasta 1.02, porque los préstamos con un LLTV alto suelen estar cerca de 1. Si autorizaste la preliquidación, la alerta mide contra esa línea anterior, y un préstamo de Midnight también recibe recordatorios 7 días y 24 horas antes del vencimiento. Tus posiciones están en el [panel de Morpho](/es/morpho).
+
+Ver tus posiciones no requiere pago. Las alertas cuestan <AlertPrice />, y el mismo plan cubre Aave y Morpho. Una alerta te da tiempo para pagar deuda o añadir colateral; no evita la liquidación, y un precio puede pasar tu línea entre dos revisiones.
+
+## Fuentes
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) y [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), aave-dao/aave-v3-origin: factor de cierre, déficit, factor de salud, pausa y período de gracia (consultado el 4 de noviembre de 2026)
+- [Funciones de Aave V3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): eliminación de la deuda a tasa estable (consultado el 4 de noviembre de 2026)
+- [Aave Generalized Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): qué parámetros pueden cambiar los stewards, plazos mínimos y pasos máximos (consultado el 4 de noviembre de 2026)
+- [Documentación de Aave: Umbrella](https://aave.com/docs/aave-v3/umbrella): cobertura de déficits, activos y red (consultado el 4 de noviembre de 2026)
+- [Documentación de Aave V4](https://aave.com/docs/aave-v4) y [posiciones en V4](https://aave.com/docs/aave-v4/positions): Hub y Spokes, factor de salud, User Risk Premium, liquidaciones (consultado el 4 de noviembre de 2026)
+- [Visión general de Aave V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md), aave/aave-v4: configuración de riesgo dinámica, factor de salud objetivo, bonificación variable, déficits, oráculos de los Spokes (consultado el 4 de noviembre de 2026)
+- [API de Aave V4](https://api.v4.aave.com/graphql): Spokes y redes (consultado el 4 de noviembre de 2026)
+- [Aave address book](https://github.com/bgd-labs/aave-address-book): redes de Aave V3 (consultado el 4 de noviembre de 2026)
+- Lecturas on-chain en Ethereum en los bloques 26341682 y 26341689: [Pool de Aave V3](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract) y [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) (parámetros de las reservas, E-Mode, tasa de USDC), [Main Spoke de Aave V4](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485#readContract) (factor de salud objetivo) y [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) (mercados, LLTV habilitados, tasas) (consultado el 4 de noviembre de 2026)
+- [Morpho.sol y ConstantsLib.sol](https://github.com/morpho-org/morpho-blue), morpho-org/morpho-blue: poderes del owner, tope de comisión del 25%, incentivo de liquidación, deuda incobrable (consultado el 4 de noviembre de 2026)
+- [Constantes del AdaptiveCurveIRM](https://github.com/morpho-org/morpho-blue-irm/blob/main/src/adaptive-curve-irm/libraries/ConstantsLib.sol), morpho-org/morpho-blue-irm: utilización objetivo, pendiente, velocidad de ajuste y límites (consultado el 4 de noviembre de 2026)
+- [Midnight.sol y ConstantsLib.sol](https://github.com/morpho-org/midnight), morpho-org/midnight: límites de colateral, liquidación posterior al vencimiento y la rampa de 60 minutos (consultado el 4 de noviembre de 2026)
+- [Documentación de Morpho: Morpho Blue](https://docs.morpho.org/learn/concepts/blue), [oráculos](https://docs.morpho.org/learn/concepts/oracle) y [Midnight](https://docs.morpho.org/learn/concepts/midnight) (consultado el 4 de noviembre de 2026)
+- [Política de listado en la interfaz de Morpho](https://docs.morpho.org/get-started/resources/interface-listing-policy): qué significa el listado y quién lo decide (consultado el 4 de noviembre de 2026)
+- [Ayuda de Morpho: Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (consultado el 4 de noviembre de 2026)
+- [API de Morpho](https://api.morpho.org/graphql): redes, mercados de Blue listados y mercados de Midnight listados por red (consultado el 4 de noviembre de 2026)
+
+_Contenido educativo, no asesoramiento financiero. Las alertas reducen el riesgo, pero no evitan la liquidación._

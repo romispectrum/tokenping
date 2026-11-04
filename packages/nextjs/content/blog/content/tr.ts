@@ -12,7 +12,9 @@ import WhyAaveHealthFactorDropped from "~~/content/blog/tr/aave-saglik-faktoru-n
 import AaveHealthFactorAlertSetup from "~~/content/blog/tr/aave-saglik-faktoru-uyarisi-kurulumu.mdx";
 import AaveHealthFactor from "~~/content/blog/tr/aave-saglik-faktoru.mdx";
 import WrappedBitcoinAaveCollateral from "~~/content/blog/tr/aave-teminati-olarak-wrapped-bitcoin.mdx";
+import AaveV4VsV3 from "~~/content/blog/tr/aave-v4-vs-v3-farklar.mdx";
 import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/tr/aave-veya-morphoda-likide-oldum-simdi-ne-olacak.mdx";
+import AaveVsMorpho from "~~/content/blog/tr/aave-vs-morpho-karsilastirma.mdx";
 import PrivateAaveLiquidationAlerts from "~~/content/blog/tr/gizli-aave-likidasyon-uyarilari.mdx";
 import SafeAaveHealthFactor from "~~/content/blog/tr/guvenli-aave-saglik-faktoru.mdx";
 import CryptoBackedLoans from "~~/content/blog/tr/kripto-teminatli-krediler.mdx";
@@ -53,4 +55,6 @@ export const POST_CONTENT: PostContent = {
   "morpho-likidasyonu-nasil-isler": HowMorphoLiquidationWorks,
   "morpho-on-likidasyon": MorphoPreLiquidation,
   "morpho-midnight-sabit-faizli-krediler": MorphoMidnightFixedRateLoans,
+  "aave-vs-morpho-karsilastirma": AaveVsMorpho,
+  "aave-v4-vs-v3-farklar": AaveV4VsV3,
 };

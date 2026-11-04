@@ -1,0 +1,179 @@
+export const meta = {
+  slug: "aave-vs-morpho-vergelijking",
+  title: "Aave vs Morpho voor leners: zo verschillen ze",
+  description:
+    "Aave vs Morpho voor leners: gebundelde of losse markten, health factor, liquidaties, rente, E-Mode vs LLTV, oracles en governancerisico.",
+  h1: "Aave vs Morpho: hoe verschillen ze voor een lener?",
+  publishedAt: "2026-11-04",
+  primaryQuestion: "Hoe verschillen Aave en Morpho voor een lener, en welke past bij mijn lening?",
+  readingMinutes: 14,
+  figuresAsOf: "2026-11-04",
+};
+
+<ShortAnswer>
+  Aave bundelt je lening: op Aave V3 delen al je onderpand en schuld in één markt één health factor (gezondheidsfactor),
+  en governance en de Risk Stewards kunnen de parameters veranderen terwijl je leent. Aave V4 houdt dat idee aan per
+  Spoke. Morpho Blue isoleert haar: elke markt heeft één onderpand, één leentoken, één oracle (prijsbron) en één LLTV,
+  allemaal voorgoed vastgelegd bij het aanmaken van de markt, dus elke lening heeft een eigen health factor. Morpho
+  Midnight voegt leningen met vaste rente toe die op een vervaldatum aflopen. Op Aave kan een gezond asset een dalend
+  asset dragen, maar een liquidatie kan elk deel van je onderpand nemen; op Morpho bedreigt een dalend asset alleen zijn
+  eigen lening, en de eerste liquidator kan die in één keer helemaal aflossen. Geen van beide is in het algemeen
+  veiliger: de afweging is wie de regels bepaalt, en hoeveel van je positie één slecht asset kan raken.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Cijfers en de bloknummers waarop ze zijn gelezen: content/blog/snapshots/aave-vs-morpho.md */}
+
+## Hoe verhouden Aave en Morpho zich in één oogopslag?
+
+De tabel vat de regels samen die voor een lener tellen. Live waarden zijn op 4 november 2026 op Ethereum gelezen; elke rij wordt hieronder uitgelegd.
+
+|                                         | Aave V3                                                              | Aave V4                                                            | Morpho Blue                                           | Morpho Midnight                                             |
+| --------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------- | ----------------------------------------------------------- |
+| Eén health factor dekt                  | Al je onderpand en schuld in één markt (een Pool op één netwerk)     | Al je onderpand en schuld in één Spoke                             | Eén onderpand en één leentoken                        | Eén leentoken, tot 16 van de soorten onderpand van de markt |
+| Leenlimiet en liquidatiegrens           | Een lagere LTV om te lenen, een hogere liquidatiedrempel             | Eén onderpandfactor per asset                                      | De LLTV is beide                                      | De LLTV van elk onderpand                                   |
+| Wie de parameters bepaalt               | Governance en Risk Stewards, op elk moment te wijzigen               | Governance; wijzigingen bereiken meestal alleen nieuwe posities    | Wie de markt aanmaakte, voorgoed vastgelegd           | Wie de markt aanmaakte, voorgoed vastgelegd                 |
+| Rente                                   | Variabel, een curve per asset                                        | Variabel, een curve per Hub-asset plus een risico-opslag per lener | Variabel, AdaptiveCurveIRM                            | Vast tot de vervaldatum                                     |
+| Maximum dat één liquidatie kan aflossen | 50% of 100% van de schuld                                            | Genoeg om de doel-health factor van de Spoke te bereiken           | De hele schuld                                        | Wat de gezondheid herstelt; na de vervaldatum alles         |
+| Liquidatiebonus                         | Per onderpandasset, ingesteld door governance                        | Groeit naarmate de health factor daalt                             | Volgt uit de LLTV                                     | Volgt uit de LLTV en de cursor van elk onderpand            |
+| Oninbare schuld (bad debt)              | Een deficit (tekort); Umbrella-stakers kunnen het op Ethereum dekken | Een deficit; een andere Spoke kan het dekken                       | Afgeschreven ten laste van de uitleners van die markt | Gedeeld door de uitleners van die markt                     |
+| Oracle                                  | Gekozen door governance                                              | Gekozen door governance, per Spoke                                 | Gekozen door de maker van de markt, niet te vervangen | Per onderpand gekozen door de maker van de markt            |
+
+## Hoe is elk van beide opgebouwd?
+
+### Aave: gebundelde markten, V3 en V4
+
+Een Aave V3-markt is één Pool op één netwerk: Ethereum Core, Arbitrum, Base enzovoort. Alles wat je in die Pool als onderpand stort, dekt alles wat je daar leent, en het contract berekent één health factor voor de hele positie:
+
+**HF = Σ (waarde van het onderpand × liquidatiedrempel) ÷ totale schuld**
+
+Elk asset heeft twee getallen: een loan-to-value (LTV), die nieuwe leningen begrenst, en een hogere liquidatiedrempel (liquidation threshold), die over liquidatie beslist. Op Ethereum Core had WETH op 4 november 2026 een LTV van 81% en een drempel van 84%. Prijzen komen van de Aave-oracle, in Amerikaanse dollars. [De gids over de Aave health factor](/nl/blog/aave-health-factor-uitgelegd) geeft de formule en rekenvoorbeelden.
+
+Aave V4 splitst een netwerk op in een Hub, die de liquiditeit vasthoudt, en Spokes, de markten waarin je leent. Je positie en health factor horen bij één Spoke, en elk asset heeft één onderpandfactor (collateral factor) in plaats van een LTV en een drempel. Op 4 november 2026 vermeldde de V4-API van Aave 24 Spokes op Ethereum, Avalanche, Arc en Base. [Hoe de health factor op Aave V4 werkt](/nl/blog/aave-health-factor-uitgelegd#is-de-health-factor-anders-op-aave-v4) gaat op de details in.
+
+### Morpho: geïsoleerde markten, Blue en Midnight
+
+Een Morpho Blue-markt wordt bepaald door vijf dingen: een leentoken, een onderpandtoken, een oracle, een rentemodel en een liquidatie-LTV (LLTV, liquidation loan-to-value). Iedereen kan er een aanmaken, en geen van de vijf kan daarna nog veranderen. Je onderpand in de ene markt dekt geen schuld in een andere, dus twee leningen in twee markten hebben twee health factors:
+
+**HF = hoeveelheid onderpand × oracleprijs × LLTV ÷ schuld**
+
+Er is geen lagere leenlimiet: het contract laat je lenen tot precies de LLTV, een health factor van 1,00. [De gids over de Morpho health factor](/nl/blog/morpho-health-factor-uitgelegd) rekent het door.
+
+Morpho Midnight is een apart contract voor leningen met vaste rente en een vaste looptijd. Een Midnight-markt heeft één leentoken, een vervaldatum en tot 128 soorten onderpand, elk met een eigen LLTV en oracle, en één lener kan er tot 16 tegelijk gebruiken. [Morpho Midnight-leningen met vaste rente](/nl/blog/morpho-midnight-leningen-met-vaste-rente) legt uit hoe het werkt.
+
+## Wat gebeurt er met je health factor als één asset daalt?
+
+Hier voelen de twee ontwerpen het meest verschillend aan. Neem hetzelfde onderpand op beide, met illustratieve prijzen van $2.400 voor ETH en $80.000 voor BTC, en 20.000 USDC schuld.
+
+**Op Aave V3 Ethereum Core**, met 10 WETH (drempel 84%) en 0,2 WBTC (drempel 85%) in één positie, zonder rente:
+
+- Gewogen onderpand: 24.000 × 0,84 + 16.000 × 0,85 = 33.760.
+- Health factor: 33.760 ÷ 20.000 = **1,69**.
+- Als BTC 40% daalt naar $48.000: 24.000 × 0,84 + 9.600 × 0,85 = 28.320, een health factor van **1,42**. Er kan niets worden geliquideerd.
+
+De WETH draagt de WBTC. In deze positie telt de WETH alleen al voor 20.160, meer dan de hele schuld, dus zelfs WBTC die niets meer waard is, zou een health factor van 1,008 overlaten.
+
+**Op Morpho Blue**, met dezelfde assets verdeeld over twee gelijste Ethereum-markten, USDC | WETH (86%) en USDC | WBTC (86%), en in elk 10.000 USDC geleend:
+
+- WETH-lening: 24.000 × 0,86 ÷ 10.000 = **2,06**.
+- WBTC-lening: 16.000 × 0,86 ÷ 10.000 = **1,38**, met een liquidatieprijs van $58.139,53, 27,3% onder $80.000.
+- Als BTC 40% daalt: de WBTC-lening staat op 9.600 × 0,86 ÷ 10.000 = **0,83** en kan worden geliquideerd, terwijl de WETH-lening op 2,06 blijft.
+
+De keerzijde is net zo echt. Op Aave kiest de liquidator, zodra de hele positie onder 1 zakt, welk onderpand hij neemt, dus een daling van BTC kan je WETH kosten. Op Morpho blijft de WETH-lening buiten bereik, wat er ook met BTC gebeurt. Bundelen geeft je een gedeelde buffer; isoleren geeft je een buffer per lening, en die moet je elk apart op maat maken.
+
+## Hoe verschillen liquidaties?
+
+Op beide protocollen lost een liquidator onder een health factor van 1 een deel van je schuld af en neemt hij onderpand ter waarde van dat bedrag plus een bonus. Je houdt wat je leende, dus de bonus is wat een liquidatie je kost. De regels eromheen verschillen:
+
+- **Hoeveel in één keer.** Op Aave V3.7 kan één liquidatie tot 50% van je totale schuld aflossen zolang je health factor boven 0,95 ligt en het betrokken onderpand en de betrokken schuld elk minstens $2.000 waard zijn; op of onder 0,95, of bij kleinere bedragen, kan ze de hele schuld in dat asset aflossen. Aave V4 laat deze regel vallen: een liquidator lost alleen genoeg af om je terug te brengen naar de doel-health factor (target health factor) van de Spoke, 1,24 op de Ethereum Main Spoke op 4 november 2026. Morpho Blue heeft geen limiet: de eerste liquidator kan al je schuld in één aanroep aflossen.
+- **De bonus.** Op Aave V3 stelt governance hem per onderpandasset in: 5% voor WETH en WBTC op Ethereum Core op 4 november 2026, waarvan de treasury van Aave 20% als protocolvergoeding nam. Op V4 groeit hij naarmate de health factor daalt. Op Morpho Blue volgt hij uit de LLTV, 1 ÷ (1 − 0,3 × (1 − LLTV)) met een maximum van 15%: 4,38% bij een LLTV van 86%, 1,06% bij 96,5%, en alles gaat naar de liquidator.
+- **Pre-liquidatie (pre-liquidation).** Op Morpho Blue kon een lener kiezen voor een contract dat plakken van de lening liquideert vóór de LLTV. Morpho faseert de functie uit en vraagt leners die haar hebben om haar uit te zetten; als je ooit Auto-deleverage hebt aangezet, laat [Morpho pre-liquidatie](/nl/blog/morpho-pre-liquidatie) zien hoe je dat controleert en intrekt. Aave heeft niets vergelijkbaars.
+- **Vervaldatum.** Op Morpho Midnight kan elke schuld die na de vervaldatum overblijft worden geliquideerd, zelfs bij een gezonde positie, waarbij de bonus in het eerste uur oploopt van niets tot zijn volle omvang.
+- **Oninbare schuld.** Als het onderpand op is voordat de schuld dat is, boekt Aave V3 een deficit, dat Umbrella-stakers op Ethereum kunnen dekken (voor USDC, USDT, WETH en GHO, volgens de docs van Aave); in V4 kan een andere Spoke het dekken. Op Morpho wordt het verlies afgeschreven ten laste van de uitleners van die ene markt. Voor jou als lener is het resultaat overal hetzelfde: het onderpand is weg en er blijft geen schuld over.
+
+De volledige werking staat in [hoe liquidatie op Aave werkt](/nl/blog/hoe-werkt-liquidatie-op-aave), met [de regels van V4](/nl/blog/hoe-werkt-liquidatie-op-aave#hoe-verschillen-liquidaties-op-aave-v4), en in [hoe liquidatie op Morpho werkt](/nl/blog/hoe-werkt-liquidatie-op-morpho), met een [tabel die beide naast elkaar zet](/nl/blog/hoe-werkt-liquidatie-op-morpho#hoe-verschilt-liquidatie-op-morpho-van-die-op-aave).
+
+## Hoe verschilt de rente?
+
+**Aave V3** zet de variabele rente van elk asset op een vaste curve: ze stijgt geleidelijk met de benutting (utilization, het deel van de pool dat is uitgeleend) tot een optimaal niveau, en daarna steil. Governance stelt de vier getallen van de curve in, en de Risk Stewards kunnen ze binnen grenzen aanpassen. USDC op Ethereum Core gebruikte een optimaal niveau van 94%, een eerste helling van 4,5% en een tweede helling van 10%. In Ethereum-blok 26341682 op 4 november 2026 lag de benutting op 94,7%, net voorbij de knik, en kostte lenen 5,67% per jaar. Tussen wijzigingen van de parameters beweegt de rente alleen met de benutting. [Hoe de rente op Aave werkt](/nl/blog/aave-rente) geeft de formule en een echte piek.
+
+**Aave V4** houdt een curve per asset aan in de Hub en zet er een User Risk Premium (risico-opslag per gebruiker) bovenop, van 0% tot 1.000% van de gedeelde rente, afhankelijk van de kwaliteit van je onderpand: het voorbeeld van Aave is een opslag van 50% op een rente van 5%, wat 7,5% geeft.
+
+**Morpho Blue**-markten gebruiken het AdaptiveCurveIRM, dat mikt op 90% benutting. Op elk moment ligt de rente op een curve rond een "rente bij het doel" (rate at target): een kwart daarvan bij 0% benutting, vier keer zoveel bij 100%. Anders dan bij de curve van Aave verschuift de rente bij het doel zelf: omhoog zolang de benutting boven 90% blijft, omlaag zolang ze eronder blijft, tussen 0,1% en 200% per jaar. Bij 100% benutting verdubbelt ze in ongeveer vijf dagen. Op 4 november 2026 stond de markt USDC | cbBTC (86%) op Ethereum op 90,3% benutting, met een rente bij het doel van 4,97% en een leenrente van ongeveer 5,4% per jaar. Een drukke markt wordt daardoor steeds duurder tot leners aflossen of uitleners erbij komen; een rustige wordt goedkoper.
+
+**Morpho Midnight** legt je rente vast als je leent. Je verkoopt schuldeenheden onder de nominale waarde en bent op de vervaldatum precies één leentoken per eenheid verschuldigd, dus je schuld groeit niet en alleen onderpandprijzen bewegen je health factor. Aave heeft geen vaste rente: V3.2 verwijderde de oude code voor stabiele rente, en elke Aave-lening is variabel.
+
+## E-Mode of een markt met een hoge LLTV: hoeveel kun je lenen?
+
+Beide protocollen laten je meer lenen tegen onderpand dat meebeweegt met wat je leent, elk op een eigen manier.
+
+**Aave E-Mode** is een instelling op je hele V3-positie. Je kiest een categorie en zolang je erin zit, krijgt het onderpand ervan de LTV, de drempel en de bonus van de categorie. Op Ethereum Core gebruikte "ETH correlated" op 4 november 2026 een LTV van 93%, een drempel van 95% en een bonus van 1%, en WETH was het enige asset dat je erin kon lenen. Elk asset dat je leent, moet in de categorie leenbaar zijn, dus een positie met USDC-schuld kan haar niet gebruiken. [Aave E-Mode](/nl/blog/aave-e-mode-uitgelegd) behandelt de categorieën en de liquidaties van maart 2026.
+
+**Op Morpho** is er geen modus: je kiest een markt waarvan de LLTV bij het paar past. De LLTV's die Morpho-governance op 4 november 2026 had vrijgegeven, waren 0%, 38,5%, 62,5%, 77%, 86%, 91,5%, 94,5%, 96,5% en 98%. De markt WETH | wstETH op Ethereum gebruikt 96,5%, met een liquidatie-incentive van 1,06%.
+
+Een lener met een loop (herhaald lenen met hefboom) van wstETH tegen WETH kan op beide op een vergelijkbaar punt uitkomen, met één verschil: op Aave kun je alleen lenen tot de LTV van 93%, wat een health factor van ongeveer 95 ÷ 93 = 1,02 overlaat; op Morpho laat het contract je lenen tot precies de grens van 96,5%, een health factor van 1,00.
+
+## Op welke netwerken draaien Aave en Morpho?
+
+|                 | Aave                                                                                                                                    | Morpho                                                                                                                                                     |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Variabele rente | V3 op meer dan 20 netwerken, waaronder Ethereum, Arbitrum, Base, Avalanche, Polygon en Optimism; V4 op Ethereum, Avalanche, Arc en Base | Blue op 14 netwerken: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable en Tempo |
+| Vaste rente     | Geen                                                                                                                                    | Midnight, met gelijste markten op Ethereum en Base op 4 november 2026                                                                                      |
+
+Op Aave bepaalt governance welke assets in een markt staan. Op Morpho kan iedereen een markt aanmaken, en de Morpho-app toont alleen de markten die de Morpho Association kiest te vermelden (zie hieronder). Een paar Aave V3-netwerken worden afgebouwd; [wat er gebeurt als Aave een markt afbouwt](/nl/blog/afbouw-van-een-aave-markt) legt uit wat dat betekent voor openstaande leningen.
+
+## Welke risico's verschillen per protocol?
+
+Beide dragen dezelfde basisrisico's: een prijsdaling, een fout in de oracle, een bug in een smart contract. Waar ze zitten, verschilt.
+
+**Wie je lening kan veranderen.** Op Aave kan governance de LTV, de liquidatiedrempel, de bonus en de rentecurve van een V3-asset veranderen, en de Risk Stewards kunnen ze verschuiven in begrensde stappen en met minimale wachttijden. Een lagere drempel op V3 geldt meteen voor elke open positie. Assets kunnen ook bevroren worden, wat nieuwe leningen blokkeert maar liquidatie niet, of gepauzeerd, wat ook liquidaties blokkeert, met daarna een respijtperiode van maximaal 4 uur. Op V4 bereiken nieuwe onderpandfactoren en bonussen je positie meestal pas als je opnieuw leent of opneemt. Op Morpho Blue kan niemand een markt veranderen: governance kan nieuwe LLTV's en rentemodellen vrijgeven en een fee instellen van maximaal 25% van de rente, die uitleners betalen, maar ze kan een bestaande markt niet aanraken, en het contract heeft geen pauze.
+
+**Wie de oracle kiest.** De governance van Aave kiest de prijsbron voor elk asset. Op Morpho kiest wie een markt aanmaakt haar oracle, en die kan nooit worden vervangen. De docs van Morpho zeggen dat die keuze, omdat ze permanent is, het risicoprofiel van de markt bepaalt. Sommige oracles volgen een wisselkoers in plaats van een marktprijs, of tellen een stablecoin als precies één dollar. Controleer voordat je op Morpho leent wat de oracle van je markt meet; [het oracle-deel van de liquidatiegids](/nl/blog/hoe-werkt-liquidatie-op-morpho#welke-rol-speelt-de-oracle-bij-een-liquidatie) laat zien waar je op moet letten.
+
+**Gelijst of niet gelijst.** De app van Morpho toont alleen markten die de Morpho Association vermeldt, vooral markten waaraan een gelijste vault uitleent. Haar beleid noemt vermelding "a discovery decision" (een keuze over vindbaarheid), geen aanbeveling of risicobeoordeling, en een niet-gelijste markt werkt on-chain gewoon. Niet-gelijste markten kunnen toch grote leningen bevatten, zoals [getokeniseerde aandelen als onderpand](/nl/blog/getokeniseerde-aandelen-als-onderpand#waar-kun-je-lenen-tegen-getokeniseerde-aandelen) laat zien voor lenen tegen aandelen, dus als een markt niet in de app staat, zegt dat alleen dat Morpho ervoor koos haar niet te tonen.
+
+**Wat één slecht asset kan raken.** Op Aave beweegt een verkeerd geprijsd asset of een asset met een depeg (loslaten van de koppeling aan de dollar) in je markt je hele health factor. Op Morpho beweegt het alleen de leningen die het gebruiken, maar die leningen hebben geen ander onderpand om op te leunen.
+
+## Welke past bij welke lener?
+
+Geen van beide is het betere protocol; elk past bij een andere manier van lenen. Een paar ruwe richtlijnen:
+
+- **Meerdere assets als onderpand, één buffer om in de gaten te houden:** met de gebundelde positie van Aave dekken ze elkaar, ten koste van regels die governance kan veranderen.
+- **Regels die niet kunnen veranderen nadat je hebt geleend:** de LLTV, de oracle en het rentemodel van een Morpho-markt liggen voorgoed vast, maar die oracle moet je zelf beoordelen.
+- **Een lening die je overige onderpand niet mag raken:** Morpho houdt elke lening apart; op Aave doen aparte markten of netwerken hetzelfde.
+- **Dicht bij de grens lenen op een gecorreleerd paar:** beide bieden het, via E-Mode of een hoge LLTV, en beide laten een marge van een paar procent.
+- **Een rente die niet beweegt:** alleen Morpho Midnight biedt die, in ruil voor een vervaldatum die je niet mag laten verstrijken.
+- **Kleine posities:** op beide kan een liquidatie de hele schuld in één keer wegnemen, op Aave onder $2.000 in de betrokken assets en op Morpho bij elke omvang.
+
+Deze gids vergelijkt mechanismen; het is geen financieel advies.
+
+## Hoe kunnen alerts op beide helpen?
+
+Tokenping volgt beide. Het controleert elke 5 minuten en stuurt, zolang een health factor onder de drempel ligt die je instelt, bij elke controle een bericht via elk kanaal dat je koos: Signal, Telegram of e-mail.
+
+- **Aave:** één alert per V3-markt of V4-Spoke, op 24 V3-markten op 21 netwerken en alle 24 V4-Spokes op Ethereum, Avalanche, Arc en Base. De drempel gaat van 1,1 tot 10. Je kunt eerst [je Aave health factor controleren](/nl/aave).
+- **Morpho:** één alert per markt waarin je leent, in markten die de Morpho-app toont: Blue op 14 netwerken en Midnight waar de API van Morpho markten toont (Ethereum en Base op 4 november 2026). De drempel gaat omlaag tot 1,02, omdat leningen met een hoge LLTV vaak dicht bij 1 lopen. Als je toestemming gaf voor pre-liquidatie, meet de alert tegen die eerdere grens, en een Midnight-lening krijgt ook herinneringen 7 dagen en 24 uur vóór de vervaldatum. Je posities staan op het [Morpho-dashboard](/nl/morpho).
+
+Je posities bekijken kost niets. Alerts kosten <AlertPrice />, en hetzelfde plan dekt Aave en Morpho. Een alert geeft je tijd om af te lossen of onderpand bij te storten; hij voorkomt geen liquidatie, en een prijs kan tussen twee controles voorbij je grens bewegen.
+
+## Bronnen
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) en [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), aave-dao/aave-v3-origin: close factor, deficit, health factor, pauze en respijtperiode (geraadpleegd op 4 november 2026)
+- [Aave V3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): verwijdering van schuld met stabiele rente (geraadpleegd op 4 november 2026)
+- [Aave Generalized Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): welke parameters stewards kunnen wijzigen, minimale wachttijden en maximale stappen (geraadpleegd op 4 november 2026)
+- [Aave-docs: Umbrella](https://aave.com/docs/aave-v3/umbrella): dekking van deficits, assets en netwerk (geraadpleegd op 4 november 2026)
+- [Aave V4-docs](https://aave.com/docs/aave-v4) en [V4-posities](https://aave.com/docs/aave-v4/positions): Hub en Spokes, health factor, User Risk Premium, liquidaties (geraadpleegd op 4 november 2026)
+- [Overzicht van Aave V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md), aave/aave-v4: dynamische risicoconfiguratie, doel-health factor, variabele bonus, deficits, oracles van Spokes (geraadpleegd op 4 november 2026)
+- [Aave V4-API](https://api.v4.aave.com/graphql): Spokes en netwerken (geraadpleegd op 4 november 2026)
+- [Aave address book](https://github.com/bgd-labs/aave-address-book): netwerken van Aave V3 (geraadpleegd op 4 november 2026)
+- On-chain gelezen waarden op Ethereum in de blokken 26341682 en 26341689: [Aave V3 Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract) en [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) (reserveparameters, E-Mode, USDC-rente), [Aave V4 Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485#readContract) (doel-health factor) en [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) (markten, vrijgegeven LLTV's, rentes) (geraadpleegd op 4 november 2026)
+- [Morpho.sol en ConstantsLib.sol](https://github.com/morpho-org/morpho-blue), morpho-org/morpho-blue: bevoegdheden van de owner, feeplafond van 25%, liquidatie-incentive, oninbare schuld (geraadpleegd op 4 november 2026)
+- [Constanten van AdaptiveCurveIRM](https://github.com/morpho-org/morpho-blue-irm/blob/main/src/adaptive-curve-irm/libraries/ConstantsLib.sol), morpho-org/morpho-blue-irm: doelbenutting, steilheid, aanpassingssnelheid en grenzen (geraadpleegd op 4 november 2026)
+- [Midnight.sol en ConstantsLib.sol](https://github.com/morpho-org/midnight), morpho-org/midnight: limieten voor onderpand, liquidatie na de vervaldatum en de oploop van 60 minuten (geraadpleegd op 4 november 2026)
+- [Morpho-documentatie: Morpho Blue](https://docs.morpho.org/learn/concepts/blue), [oracles](https://docs.morpho.org/learn/concepts/oracle) en [Midnight](https://docs.morpho.org/learn/concepts/midnight) (geraadpleegd op 4 november 2026)
+- [Beleid van Morpho voor opname in de interface](https://docs.morpho.org/get-started/resources/interface-listing-policy): wat vermelding betekent en wie beslist (geraadpleegd op 4 november 2026)
+- [Morpho-helpcentrum: Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (geraadpleegd op 4 november 2026)
+- [Morpho-API](https://api.morpho.org/graphql): netwerken, gelijste Blue-markten en gelijste Midnight-markten per netwerk (geraadpleegd op 4 november 2026)
+
+_Educatieve inhoud, geen financieel advies. Alerts verkleinen het risico, maar voorkomen geen liquidatie._

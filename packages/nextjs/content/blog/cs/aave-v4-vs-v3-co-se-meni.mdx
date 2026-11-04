@@ -1,0 +1,174 @@
+export const meta = {
+  slug: "aave-v4-vs-v3-co-se-meni",
+  title: "Aave V4 vs V3: co se mění pro vaši půjčku",
+  description:
+    "Aave V4 vs V3 pro dlužníky: Huby a Spoky, health factor v každém Spoke, likvidace na cílový health factor, rizikové přirážky, Spoky místo E-Mode a migrace.",
+  h1: "Aave V4 vs V3: co je jinak a co to znamená pro vaši půjčku?",
+  publishedAt: "2026-11-04",
+  primaryQuestion: "Jaký je rozdíl mezi Aave V3 a Aave V4 pro dlužníka?",
+  readingMinutes: 13,
+  figuresAsOf: "2026-11-04",
+};
+
+<ShortAnswer>
+  Aave V4 bylo spuštěno na Ethereu 30. března 2026 a dnes běží také na sítích Avalanche, Arc a Base. V3 dál běží vedle
+  něj a stále drží většinu peněz. Na V4 si půjčujete ve Spoke, trhu s vlastními pravidly, který čerpá likviditu ze
+  sdíleného Hubu, a každý Spoke má vlastní health factor (faktor zdraví pozice). Jeden collateral factor (faktor
+  kolaterálu) na aktivum nahrazuje LTV a likvidační práh z V3, takže si můžete půjčit až na health factor 1,00.
+  Likvidace splatí tolik dluhu, aby vás zvedla na cílový health factor daného Spoke (1,24 na Main Spokech), místo 50 %
+  nebo 100 % jako na V3, a bonus roste s tím, jak váš health factor klesá. Sazby se určují pro každý Hub, plus riziková
+  přirážka za rizikovější kolaterál. Nic se nepřesune samo: půjčka na V3 zůstane na V3, dokud ji nepřesunete.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Čísla a bloky, ve kterých byla načtena: content/blog/snapshots/aave-v4-vs-v3.md */}
+
+## Co je Aave V4 a kdy bylo spuštěno?
+
+Aave V4 je nová verze protokolu Aave pro půjčky s vlastními kontrakty. Trhy V3 neupgraduje na místě. Podle changelogu Aave bylo spuštěno na Ethereu 30. března 2026 se třemi Huby a jedenácti Spoky, poté na Avalanche (15. července), na síti Arc (16. září) a na síti Base (7. října 2026). V3 běží na 21 sítích; V4 na čtyřech a Arc má jen V4.
+
+V3 je stále mnohem větší. DefiLlama napočítala 4. listopadu 2026 zhruba 15,6 mld. $ v Aave V3 a zhruba 0,79 mld. $ ve V4, obojí po odečtení půjček, přičemž vypůjčeno bylo zhruba 11,4 mld. $ a 0,47 mld. $. Říjnová zpráva Aave Labs uvedla u V4 přes 1,5 mld. $ vkladů a 450 mil. $ aktivních půjček.
+
+Pro dlužníka se obě verze liší v tom, kde vaše pozice žije, kolik si můžete půjčit, jak velká je likvidace a jak se určuje vaše sazba. Tabulka níže to shrnuje; další části vysvětlují jednotlivé řádky.
+
+## Co se pro dlužníka mění a co zůstává stejné?
+
+| Téma                           | Aave V3                                                                            | Aave V4                                                                                                   |
+| ------------------------------ | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Kde vaše půjčka žije           | Trh: jeden Pool na jedné síti                                                      | Spoke, který čerpá likviditu z jednoho nebo více Hubů                                                     |
+| Health factor                  | Jeden pro každý trh                                                                | Jeden pro každý Spoke                                                                                     |
+| Vzorec                         | Σ(kolaterál × likvidační práh) ÷ dluh                                              | Σ(kolaterál × collateral factor) ÷ dluh                                                                   |
+| Výpůjční limit                 | LTV, nastavené pod likvidačním prahem                                              | Samotný collateral factor: půjčovat si můžete, dokud health factor není 1,00                              |
+| Likvidační hranice             | Health factor pod 1                                                                | Health factor pod 1 (beze změny)                                                                          |
+| Nejvíc splaceno jedním voláním | 50 % vašeho dluhu, nebo 100 % při health factoru 0,95 a nižším nebo u malých pozic | Tolik, aby se pozice dostala na cílový health factor daného Spoke                                         |
+| Likvidační bonus               | Pevný pro každé aktivum kolaterálu                                                 | Roste s klesajícím health factorem, až do maxima pro každé aktivum                                        |
+| Pravidlo drobných zbytků       | Musí zůstat 1 000 $, jinak jde všechno                                             | Musí zůstat 1 000 $, jinak jde všechno (beze změny)                                                       |
+| Úroková sazba                  | Křivka využití pro každé aktivum na každém trhu                                    | Křivka využití pro každé aktivum na každém Hubu, plus User Risk Premium                                   |
+| Změny parametrů                | Zasáhnou všechny otevřené pozice naráz                                             | Nová nastavení se obvykle uplatní, až si příště půjčíte nebo vyberete, pokud governance neupraví ta stará |
+| Korelovaná aktiva              | Kategorie E-Mode v rámci trhu                                                      | Samostatné Spoky pro korelované dvojice, například Spoky Lido a EtherFi                                   |
+| Úrok a ceny                    | Dluh roste s úrokem; ceny z orákula hýbou health factorem                          | Stejně                                                                                                    |
+| Vaše stávající půjčka          | Zůstává na V3                                                                      | Otevírá se nově; nic se nepřesune samo                                                                    |
+
+## Jak fungují Huby a Spoky ve V4?
+
+Hub drží sdílenou likviditu každého aktiva a určuje jeho úrokovou sazbu. Spoke je to, co používáte vy: uvádí aktiva, která můžete vložit a půjčit si, nastavuje jejich collateral factory, vybírá cenová orákula a drží nastavení likvidací. Dokumentace Aave to popisuje takto: uživatelé pracují se Spoky, které směrují likviditu do Hubu a z něj, a riziko je izolované na úrovni Spoke.
+
+Na V3 dělal obě práce trh. Trh Ethereum Core drží vlastní USDC a určuje vlastní pravidla a trh Prime drží oddělené USDC s oddělenými pravidly. Na V4 může několik Spoků půjčovat stejné USDC z jednoho Hubu, přičemž každý si drží vlastní nastavení rizik, a jeden Spoke může čerpat z více Hubů: Spoke Bluechip na Ethereu půjčuje USDC z Hubu Core i z Hubu Prime.
+
+API Aave V4 uvádělo 4. listopadu 2026 24 trhů (Spoke) a 8 Hubů:
+
+| Síť       | Huby                                      | Spoky                                                                                                                                                                                              |
+| --------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ethereum  | Core, Prime, Plus, Global Dollar, Sentora | Main, Bluechip, Lido, EtherFi, Kelp, Lombard, Ethena Ecosystem, Ethena Correlated, Gold, PAXG Gold, Forex, USDG Pendle, Maple SyrupUSDG; na Hubu Sentora: RLUSD Yield, OUSD Yield a druhý Bluechip |
+| Avalanche | Core                                      | Main, AVAX Correlated, Forex, Ethena Ecosystem                                                                                                                                                     |
+| Arc       | Core                                      | Main, Forex, Maple SyrupUSDC                                                                                                                                                                       |
+| Base      | Coinbase Stocks                           | Coinbase Stocks                                                                                                                                                                                    |
+
+Sentora je první externí kurátor na V4: podle Aave Labs provozuje vlastní Hub a Spoky na Ethereu a určuje jejich kolaterál, parametry, úrokové křivky a orákula, zatímco kontrakty vlastní Aave DAO. Spoke na síti Base půjčuje USDC proti tokenizovaným akciím, jak popisuje článek [půjčky proti tokenizovaným akciím](/cz/blog/tokenizovane-akcie-jako-kolateral#kde-si-muzete-pujcit-proti-tokenizovanym-akciim).
+
+## Jak funguje health factor ve Spoke na V4?
+
+Health factor znamená na obou verzích totéž: vážený kolaterál vydělený dluhem, a pod 1 můžete být zlikvidováni. Na V4 je vahou collateral factor (CF). Vlastní příklad Aave: ETH za 10 000 $ s CF 80 % proti GHO za 6 000 $ dává 1,333. Základy popisuje [část o V4 v průvodci health factorem](/cz/blog/aave-health-factor-vysvetleni#lisi-se-health-factor-na-aave-v4); víc než na vzorci ale záleží na třech důsledcích.
+
+**Jeden health factor pro každý Spoke.** Dokumentace Aave uvádí, že pozice v různých Spokech se navzájem neovlivňují a půjčit si můžete jen proti kolaterálu vloženému do stejného Spoke. ETH v Main Spoke nijak nepomůže půjčce v Gold Spoke. Na V3 platí totéž mezi trhy, ale v rámci jednoho trhu kryje veškerý váš kolaterál veškerý váš dluh.
+
+**Žádná mezera mezi výpůjčním limitem a likvidační hranicí.** Na V3 si můžete půjčit až do LTV, které leží pod likvidačním prahem: WETH na Ethereum Core mělo 4. listopadu 2026 LTV 81 % a práh 84 %, takže maximální půjčka proti samotnému WETH ponechá health factor zhruba 1,037 ([proč maximum ponechá zhruba 1,03](/cz/blog/aave-health-factor-vysvetleni#proc-po-vypujceni-maxima-zustane-health-factor-jen-zhruba-103)). Na V4 žádné samostatné LTV není. Dokumentace Aave uvádí, že půjčka nebo výběr se zablokuje, jen pokud by health factor stáhl pod 1,0, a kód kontroluje přesně to. Pozice vypůjčená na V4 na maximum začíná přímo na likvidační hranici a první tik úroku nebo ceny ji může překročit. Zvolte si vlastní rezervu.
+
+**Stejná aktiva mohou mít stejnou váhu.** Některé parametry jsou mezi verzemi sladěné. WETH se 4. listopadu 2026 počítalo s 84 % na V3 Ethereum Core i na V4 Main Spoke, takže 10 WETH proti 12 000 USDC má na obou stejný health factor a stejnou likvidační cenu 1 428,57 $.
+
+### Co se stane, když governance změní collateral factor?
+
+Na V3 platí nižší likvidační práh pro všechny otevřené pozice v okamžiku, kdy se změna provede, což může dlužníka stáhnout pod 1 bez jakéhokoli pohybu ceny ([příčina 4 v článku proč váš health factor klesl](/cz/blog/proc-klesl-health-factor-aave#pricina-4-snizila-governance-nebo-risk-stewards-likvidacni-prah)).
+
+V4 si u každého aktiva vede historii collateral factoru, maximálního bonusu a likvidačního poplatku. Když governance přidá novou konfiguraci, vaše pozice si ponechá tu, ke které byla vázaná, dokud si nepůjčíte, nevyberete nebo nevypnete kolaterál; vklad a splátka ji nemění. Pokud by vaše pozice byla podle nejnovějšího nastavení nezdravá, půjčka nebo výběr místo toho selže (revert). Po snížení tak můžete zjistit, že kolaterál vybrat nemůžete, i když váš health factor vypadá v pořádku.
+
+Tato ochrana není absolutní. Governance může také upravit existující konfiguraci, což zasáhne všechny pozice, které jsou k ní vázané, nebo pozici převést na nejnovější. Dne 28. října 2026 jeden balíček změn governance (payload, AIP 536) zvýšil WETH z 83 % na 84 % na V3 Ethereum Core a ve stejné transakci upravil existující konfiguraci WETH na V4 Main Spoke z 83 % na 84 %. Tato změna dlužníkům pomohla; úprava opačným směrem by fungovala stejně.
+
+## Čím se liší likvidace na V4?
+
+Na V3 smí likvidátor splatit až 50 % vašeho dluhu, dokud je váš health factor nad 0,95 a dotčený kolaterál i dluh mají každý hodnotu alespoň 2 000 $, a jinak až 100 % ([kolik lze zlikvidovat najednou](/cz/blog/jak-funguje-likvidace-aave#kolik-meho-dluhu-lze-zlikvidovat-najednou)). Bonus je pevný pro každé aktivum kolaterálu: 5 % pro WETH na Ethereum Core.
+
+Na V4 žádný close factor není. Likvidátor smí splatit tolik dluhu, kolik je potřeba, aby se váš health factor dostal na cíl daného Spoke, a ne víc, ledaže by tím zůstalo méně než 1 000 $ dluhu nebo kolaterálu. Bonus začíná těsně pod 1 na určitém podílu z maxima daného aktiva a lineárně roste do plného maxima při stanoveném health factoru. Nastavení ze 4. listopadu 2026, přečtená on-chain:
+
+| Spoke                                                       | Cílový health factor | Plný bonus při | Bonus těsně pod 1        |
+| ----------------------------------------------------------- | -------------------- | -------------- | ------------------------ |
+| Main (Ethereum, Avalanche, Arc), Coinbase Stocks (Base)     | 1,24                 | 0,90           | 90 % maxima              |
+| Bluechip (Ethereum)                                         | 1,174                | 0,90           | 90 % maxima              |
+| Gold (Ethereum)                                             | 1,3075               | 0,90           | 90 % maxima              |
+| Lido, EtherFi, Kelp, Lombard, Ethena, Forex a podobné Spoky | zhruba 1,01 až 1,06  | 0,99           | Plné maximum, konstantní |
+
+### Příklad s výpočtem: 10 WETH proti 12 000 USDC na obou verzích
+
+Vezměte stejnou pozici na V3 Ethereum Core (práh 84 %, bonus 5 %) a na V4 Main Spoke (CF 84 %, maximální bonus 5,55 %, cíl 1,24). Obě lze zlikvidovat, jakmile je ETH pod 1 428,57 $. Takto vypadá to nejvíc, co může jedna likvidace vzít, při dvou cenách:
+
+| Cena ETH (health factor) | Verze | Bonus  | Splacený dluh        | Bonus, který zaplatíte | Health factor po likvidaci | Zbývající dluh |
+| ------------------------ | ----- | ------ | -------------------- | ---------------------- | -------------------------- | -------------- |
+| 1 400 $ (0,98)           | V3    | 5 %    | 6 000 $ (50 %)       | 300 $                  | 1,078                      | 6 000 $        |
+| 1 400 $ (0,98)           | V4    | 5,11 % | 8 736,81 $ (72,8 %)  | 446,10 $               | 1,24                       | 3 263,19 $     |
+| 1 330 $ (0,931)          | V3    | 5 %    | 12 000 $ (100 %)     | 600 $                  | žádný (bez dluhu)          | 0 $            |
+| 1 330 $ (0,931)          | V4    | 5,38 % | 10 450,22 $ (87,1 %) | 562,01 $               | 1,24                       | 1 549,78 $     |
+
+Vyčnívají dvě věci. Těsně pod 1 může likvidace na Main Spoke V4 vzít větší podíl vašeho dluhu než 50 % na V3, protože cíl 1,24 vyžaduje velkou splátku, a zaplatíte větší bonus v dolarech. Hlouběji může V3 splatit všechno, zatímco V4 se stále zastaví na cíli a nechá vám pozici na 1,24. V obou případech vám vypůjčené USDC zůstává; ztrácíte bonus. Likvidátor se vždy může rozhodnout splatit méně, než jsou tato maxima.
+
+Na Spokech ve stylu E-Mode leží cíle těsně nad 1 a bonus je konstantní 1 % u wstETH a weETH. Bonus je malý, ale s CF 95,5 % vyžaduje každý krok pod 1 velkou splátku: na Lido Spoke může mít pozice s health factorem 0,987 jednou likvidací splaceno zhruba 55 % dluhu. Vzorec bonusu najdete v [části o V4 v průvodci likvidací](/cz/blog/jak-funguje-likvidace-aave#jak-se-likvidace-lisi-na-aave-v4).
+
+## Čím se liší úrokové sazby na V4?
+
+Na V3 má každé aktivum křivku využití na každém trhu: USDC na Ethereum Core a USDC na síti Arbitrum mají oddělené pooly a oddělené sazby ([jak fungují sazby na Aave](/cz/blog/urokove-sazby-aave)). V4 křivku zachovává, ale přesouvá ji do Hubu, takže každý Spoke, který si půjčuje USDC ze stejného Hubu, platí stejnou základní sazbu, a stejný token může ze dvou Hubů stát různě. Dne 4. listopadu 2026 ukazovalo API Aave USDC v Bluechip Spoke za 5,41 % z Hubu Core a za 4,45 % z Hubu Prime.
+
+K základní sazbě přidává V4 User Risk Premium (rizikovou přirážku uživatele). Každé aktivum kolaterálu má v každém Spoke kolaterálové riziko (collateral risk) od 0 % do 1 000 %; vaše přirážka je průměr rizika vašich kolaterálů, přičemž se nejdřív počítá ten nejbezpečnější a jen tolik kolaterálu, kolik pokryje váš dluh. Příklad Aave: přirážka 50 % k základní sazbě 5 % znamená, že platíte 7,5 %.
+
+Většina Spoků má stále riziko všech kolaterálů nastavené na 0, takže jejich dlužníci platí jen základní sazbu. Mezi výjimkami 4. listopadu 2026 byly syrupUSDC v Maple Spoke na síti Arc (20 %), USDe v Ethena Ecosystem Spoke na Avalanche (16,5 %), SPCXc v Coinbase Stocks Spoke (10 %) a několik aktiv ve Spokech Sentory. Půjčka v USDC krytá jen syrupUSDC na síti Arc stála při základní sazbě 3,06 % zhruba 3,7 %.
+
+Vaše přirážka se přepočítá, když si půjčíte, vyberete, změníte kolaterál nebo jste zlikvidováni, ne když vkládáte nebo splácíte. Pokud governance riziko aktiva sníží, máte z toho prospěch až po jedné z těchto akcí nebo po ručním obnovení; pokud ho zvýší, vaše přirážka do té doby zůstane stejná, pokud governance nevynutí aktualizaci. Víc o GHO a sazbách na V4 najdete v části [jak se určují sazby na Aave V4](/cz/blog/urokove-sazby-aave#jak-se-urcuji-sazby-u-gho-a-na-aave-v4).
+
+## Co na Aave V4 nahradilo E-Mode?
+
+Na V3 je E-Mode přepínač uvnitř trhu: zvolíte kategorii, například „ETH correlated“ na Ethereum Core (LTV 93 %, práh 95 %, bonus 1 % ke 4. listopadu 2026), a celá vaše pozice na tomto trhu používá tato nastavení ([jak funguje E-Mode](/cz/blog/aave-e-mode-vysvetleni)).
+
+V4 žádný přepínač E-Mode nemá. Korelované dvojice místo toho dostávají vlastní Spoky: dokumentace Aave nazývá Spoky Lido, EtherFi a Kelp „eSpokes“ a návrh na aktivaci je spolu s Lombard BTC označil za e-Mode Spoky. Lido Spoke přijímá wstETH jako kolaterál s CF 95,5 % a půjčuje jen WETH; EtherFi Spoke dělá totéž s weETH. Oba měly 4. listopadu 2026 likvidační bonus 1 %.
+
+Praktický rozdíl: na V3 můžete pozici přepínat do E-Mode a z něj, dokud zůstává zdravá. Na V4 je smyčka (loop) na Lido Spoke samostatná pozice, oddělená od všeho, co držíte na Main Spoke. Chcete-li přejít, jednu pozici uzavřete a druhou otevřete.
+
+## Běží Aave V3 dál a přesunou se půjčky z V3 na V4?
+
+V3 běží dál a nic se nepřesune samo. Temp check Aave Labs z února 2026, rámec „Aave Will Win“, uvádí, že není potřeba žádná uspěchaná ani vynucená migrace („no need for a rushed, or forced, migration“), a že V3 poběží vedle V4, dokud DAO nerozhodne jinak. Uvádí také, že jakmile V4 dospěje, parametry V3 „could be gradually adjusted to encourage migration“ (by mohly být postupně upravovány tak, aby migraci podpořily) a že V3 zůstane otevřené pro výběry po neomezenou dobu. Některé trhy V3 se už ukončují z jiných důvodů, jak vysvětluje [průvodce ukončováním trhů](/cz/blog/ukonceni-trhu-aave#ktere-trhy-aave-se-ukoncuji).
+
+Dokumentace Aave V4 nepopisuje žádný nástroj, který by přenesl pozici z V3 do V4, ani žádný pro přesun pozice z jednoho Spoke V4 do jiného. Ruční přesun znamená splatit dluh na V3, vybrat kolaterál, vložit ho do Spoke na V4 a znovu si půjčit, v tomto pořadí, aby váš kolaterál nikdy nebyl vybraný, dokud na něm ještě závisí dluh. Některé nástroje třetích stran spojují tyto kroky do jedné transakce. Tak či tak si nejdřív ověřte collateral factor, cílový health factor a sazbu nového Spoke: stejný health factor tam může znamenat jinou rezervu a jinou velikost likvidace.
+
+## Na co si dát pozor, pokud máte půjčky na obou?
+
+- **Dva nebo více health factorů.** Každý trh V3 a každý Spoke V4 má vlastní. Zdravá půjčka na V3 nijak nepomůže půjčce na V4 blízko 1.
+- **Různé výchozí rezervy.** Pozice na V4 vypůjčená na maximum stojí na 1,00, zatímco LTV na V3 nechává mezeru. Nepřenášejte si z V3 zvyk „půjčit si až po limit“.
+- **Různé velikosti likvidace.** Na Main Spokech může jedna likvidace vzít víc než polovinu vašeho dluhu; na V3 vezme nanejvýš polovinu, dokud je váš health factor nad 0,95.
+- **Změny, které zasáhnou obě verze.** Jeden payload změnil 28. října 2026 WETH na obou verzích. Sledujte governance u obou.
+- **Sazby, které se rozcházejí.** Sazby na V3 sledují pool každého trhu; sazby na V4 sledují Hub plus vaši přirážku.
+- **Budoucí změny V3.** Pokud governance začne V3 upravovat, aby dlužníky tlačila na V4, počítejte s tím, že se sazby nebo parametry pohnou v neprospěch půjček na V3.
+
+## Může jedno upozornění pokrýt obě verze?
+
+Ano, jako samostatná upozornění. Tokenping kontroluje váš health factor každých 5 minut na každém trhu Aave V3 na 21 sítích a ve všech 24 trzích (Spoke) V4 na sítích Ethereum, Avalanche, Arc a Base, s jedním upozorněním pro každý trh V3 nebo Spoke V4. Pošle vám zprávu přes Signal, Telegram nebo e-mailem, když je health factor pod prahem, který si zvolíte (1,1 až 10), a opakuje ji při každé kontrole, dokud se nezotaví.
+
+Na V4 záleží na prahu víc, protože výpůjční limit je zároveň likvidační hranicí: nastavte ho výrazně nad 1, aby zpráva dorazila, dokud ještě máte čas splatit dluh nebo přidat kolaterál, a ne až poté, co likvidace sníží váš dluh tak, aby pozice dosáhla cíle daného Spoke. Upozornění za vás nic neudělá a rychlý pohyb může 1 překročit mezi dvěma kontrolami. S volbou čísla vám pomůže část [jak velkou rezervu potřebujete, abyste stihli zareagovat](/cz/blog/bezpecny-health-factor-aave#jak-velkou-rezervu-potrebujete-abyste-stihli-zareagovat).
+
+Své [pozice na Aave V3 a V4 si můžete zkontrolovat](/cz/aave) bez placení; upozornění stojí <AlertPrice />, placené na síti Arbitrum. Tokenping je v betě a nemá žádnou záruku dostupnosti. Nastavení popisuje návod [jak nastavit upozornění na health factor](/cz/blog/nastaveni-upozorneni-health-factor-aave).
+
+## Zdroje
+
+- [Přehled Aave V4](https://aave.com/docs/aave-v4.md): Huby, Spoky, sazby pro každé aktivum Hubu, User Risk Premium, cílový health factor a pravidlo drobných zbytků 1 000 $ (načteno 4. listopadu 2026)
+- [Uživatelské pozice na Aave V4](https://aave.com/docs/aave-v4/positions.md), [půjčování](https://aave.com/docs/aave-v4/positions/borrow.md) a [podmínky pozic](https://aave.com/docs/aave-v4/positions/conditions.md): pozice pro každý Spoke, půjčování zablokované pod 1,0, kolaterál ve stejném Spoke, dynamická konfigurace a aktualizace přirážky (načteno 4. listopadu 2026)
+- [Spoky Aave V4](https://aave.com/docs/aave-v4/liquidity/spokes.md) a [likvidace](https://aave.com/docs/aave-v4/positions/liquidations.md): nasazené Spoky na Ethereu a názvy eSpoke, bonus formou holandské aukce (načteno 4. listopadu 2026)
+- [Changelog dokumentace Aave](https://aave.com/docs/resources/changelog.md): data spuštění V4 na sítích Ethereum, Avalanche, Arc a Base (načteno 4. listopadu 2026)
+- [Přehled aave/aave-v4](https://github.com/aave/aave-v4/blob/main/docs/overview.md), [LiquidationLogic.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/libraries/LiquidationLogic.sol) a [Spoke.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/Spoke.sol), commit a3ef63e: riziková přirážka, dynamická konfigurace rizik, likvidační mechanismus, kontrola health factoru (načteno 4. listopadu 2026)
+- [Veřejné GraphQL API Aave V4](https://api.v4.aave.com/graphql), `chains`, `hubs`, `spokes` a `reserves`: Spoky, Huby, collateral factory, kolaterálové riziko, bonusy a výpůjční sazby (načteno 4. listopadu 2026)
+- Čtení `getLiquidationConfig` a `getReserve` každého Spoke V4 z blockchainu, například [Ethereum Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485#readContract) v bloku 26341712 (načteno 4. listopadu 2026)
+- [Transakce provedení AIP 536](https://etherscan.io/tx/0x226c48626ec314b194dfa080e992dcabfa1526f813835f81914e1885d5af1275), 28. října 2026: WETH na V3 Ethereum Core a na V4 Main Spoke (načteno 4. listopadu 2026)
+- [Aave V3 PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) a [Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract): LTV, práh a bonus WETH, kategorie E-Mode 1 v bloku 26341695 (načteno 4. listopadu 2026)
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): close factor 50 % a 100 %, hranice 2 000 $ a 1 000 $ (načteno 4. listopadu 2026)
+- [ARFC: Aave V4 Activation on Ethereum Mainnet](https://governance.aave.com/t/arfc-aave-v4-activation-on-ethereum-mainnet/24293), Aave Labs, 13. března 2026: Spoky při spuštění a e-Mode Spoky (načteno 4. listopadu 2026)
+- [TEMP CHECK: Aave Will Win Framework](https://governance.aave.com/t/temp-check-aave-will-win-framework/24055), Aave Labs, 12. února 2026: V3 vedle V4, žádná vynucená migrace (načteno 4. listopadu 2026)
+- [AL Development Update, October 2026](https://governance.aave.com/t/al-development-update-october-2026/25979), Aave Labs, 2. listopadu 2026: vklady ve V4, Sentora, první rezerva s Risk Premium, AIP 536 (načteno 4. listopadu 2026)
+- [DefiLlama protocols API](https://api.llama.fi/protocols): TVL a vypůjčené částky Aave V3 a V4 (načteno 4. listopadu 2026)
+
+_Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání._

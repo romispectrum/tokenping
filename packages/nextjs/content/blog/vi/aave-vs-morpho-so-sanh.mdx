@@ -1,0 +1,181 @@
+export const meta = {
+  slug: "aave-vs-morpho-so-sanh",
+  title: "Aave và Morpho cho người vay: khác nhau ở đâu",
+  description:
+    "So sánh Aave và Morpho cho người vay: thị trường gộp chung và riêng biệt, hệ số sức khỏe, thanh lý, lãi suất, E-Mode và LLTV, oracle, rủi ro quản trị.",
+  h1: "Aave và Morpho khác nhau thế nào đối với người vay?",
+  publishedAt: "2026-11-04",
+  primaryQuestion: "Aave và Morpho khác nhau thế nào đối với người vay, và giao thức nào hợp với khoản vay của tôi?",
+  readingMinutes: 19,
+  figuresAsOf: "2026-11-04",
+};
+
+<ShortAnswer>
+  Aave gộp chung khoản vay của bạn: trên Aave V3, toàn bộ tài sản thế chấp và khoản nợ của bạn trong một thị trường dùng
+  chung một hệ số sức khỏe (health factor), và quản trị (governance) cùng các Risk Stewards của Aave có thể thay đổi các
+  tham số trong khi bạn đang vay. Aave V4 giữ ý tưởng đó theo từng Spoke. Morpho Blue tách riêng nó: mỗi thị trường có
+  một tài sản thế chấp, một token vay, một oracle (nguồn giá) và một tỷ lệ cho vay trên giá trị thanh lý (LLTV), tất cả
+  được cố định vĩnh viễn khi thị trường được tạo, nên mỗi khoản vay có hệ số sức khỏe riêng. Morpho Midnight thêm các
+  khoản vay lãi suất cố định kết thúc vào một ngày đáo hạn. Trên Aave, một tài sản khỏe có thể gánh cho một tài sản đang
+  giảm giá, nhưng một lần thanh lý có thể lấy bất kỳ tài sản thế chấp nào của bạn; trên Morpho, một tài sản giảm giá chỉ
+  đe dọa khoản vay của chính nó, và bên thanh lý đầu tiên có thể trả toàn bộ khoản vay đó cùng lúc. Nói chung không giao
+  thức nào an toàn hơn: sự đánh đổi nằm ở chỗ ai đặt ra quy tắc, và một tài sản xấu có thể với tới bao nhiêu phần vị thế
+  của bạn.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Số liệu và số khối mà chúng được đọc tại đó: content/blog/snapshots/aave-vs-morpho.md */}
+
+## Nhìn tổng quát, Aave và Morpho khác nhau thế nào?
+
+Bảng dưới đây tóm tắt các quy tắc quan trọng với người vay. Các giá trị thực được đọc vào ngày 4 tháng 11 năm 2026 trên Ethereum; mỗi hàng được giải thích ở các phần sau.
+
+|                                      | Aave V3                                                                                    | Aave V4                                                                                    | Morpho Blue                                              | Morpho Midnight                                              |
+| ------------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | -------------------------------------------------------- | ------------------------------------------------------------ |
+| Một hệ số sức khỏe tính cho          | Toàn bộ tài sản thế chấp và khoản nợ của bạn trong một thị trường (một Pool trên một mạng) | Toàn bộ tài sản thế chấp và khoản nợ của bạn trong một Spoke                               | Một tài sản thế chấp và một token vay                    | Một token vay, tối đa 16 tài sản thế chấp của thị trường     |
+| Giới hạn vay và ranh giới thanh lý   | Một LTV thấp hơn để vay, một ngưỡng thanh lý (liquidation threshold) cao hơn               | Một hệ số thế chấp (collateral factor) cho mỗi tài sản                                     | LLTV là cả hai                                           | LLTV của từng tài sản thế chấp                               |
+| Ai đặt tham số                       | Quản trị và Risk Stewards, có thể thay đổi bất cứ lúc nào                                  | Quản trị; thay đổi thường chỉ áp dụng cho vị thế mới                                       | Người tạo thị trường, cố định vĩnh viễn                  | Người tạo thị trường, cố định vĩnh viễn                      |
+| Lãi                                  | Thả nổi, một đường cong cho mỗi tài sản                                                    | Thả nổi, một đường cong cho mỗi tài sản của Hub cộng một phần bù rủi ro cho mỗi người dùng | Thả nổi, AdaptiveCurveIRM                                | Cố định đến ngày đáo hạn                                     |
+| Một lần thanh lý trả được nhiều nhất | 50% hoặc 100% khoản nợ                                                                     | Đủ để đạt hệ số sức khỏe mục tiêu của Spoke                                                | Toàn bộ khoản nợ                                         | Phần đủ để khôi phục sức khỏe; toàn bộ sau ngày đáo hạn      |
+| Thưởng thanh lý                      | Theo từng tài sản thế chấp, do quản trị đặt                                                | Tăng khi hệ số sức khỏe giảm                                                               | Suy ra từ LLTV                                           | Suy ra từ LLTV và con trỏ (cursor) của từng tài sản thế chấp |
+| Nợ xấu (bad debt)                    | Một khoản thâm hụt; người staking Umbrella có thể bù trên Ethereum                         | Một khoản thâm hụt; một Spoke khác có thể bù                                               | Xóa và tính lỗ cho những người cho vay của thị trường đó | Những người cho vay của thị trường đó chia nhau gánh         |
+| Oracle                               | Do quản trị chọn                                                                           | Do quản trị chọn, theo từng Spoke                                                          | Do người tạo thị trường chọn, không thể thay             | Do người tạo thị trường chọn cho từng tài sản thế chấp       |
+
+## Mỗi giao thức được xây dựng thế nào?
+
+### Aave: thị trường gộp chung, V3 và V4
+
+Một thị trường Aave V3 là một Pool trên một mạng: Ethereum Core, Arbitrum, Base, v.v. Mọi thứ bạn gửi làm tài sản thế chấp trong Pool đó bảo đảm cho mọi thứ bạn vay ở đó, và hợp đồng tính ra một hệ số sức khỏe cho toàn bộ vị thế:
+
+**HF = Σ (giá trị tài sản thế chấp × ngưỡng thanh lý) ÷ tổng nợ**
+
+Mỗi tài sản có hai con số: một tỷ lệ cho vay trên giá trị (LTV), giới hạn việc vay mới, và một ngưỡng thanh lý cao hơn, quyết định việc thanh lý. Trên Ethereum Core vào ngày 4 tháng 11 năm 2026, WETH có LTV 81% và ngưỡng 84%. Giá lấy từ oracle của Aave, tính bằng đô la Mỹ. [Bài hướng dẫn về hệ số sức khỏe Aave](/vi/blog/he-so-suc-khoe-aave) có công thức và các ví dụ cụ thể.
+
+Aave V4 chia một mạng thành một Hub, nơi giữ thanh khoản, và các Spoke, những thị trường nơi bạn vay. Vị thế và hệ số sức khỏe của bạn nằm trong một Spoke, và mỗi tài sản có một hệ số thế chấp duy nhất thay cho LTV và ngưỡng. Vào ngày 4 tháng 11 năm 2026, API V4 của Aave liệt kê 24 Spoke trên Ethereum, Avalanche, Arc và Base. [Hệ số sức khỏe hoạt động thế nào trên Aave V4](/vi/blog/he-so-suc-khoe-aave#he-so-suc-khoe-tren-aave-v4-co-khac-khong) trình bày chi tiết.
+
+### Morpho: thị trường riêng biệt, Blue và Midnight
+
+Một thị trường Morpho Blue được xác định bởi năm thứ: một token vay, một token thế chấp, một oracle, một mô hình lãi suất và một LLTV (liquidation loan-to-value). Ai cũng có thể tạo một thị trường, và không thứ nào trong năm thứ đó có thể thay đổi sau đó. Tài sản thế chấp của bạn ở một thị trường không bảo đảm cho khoản nợ ở thị trường khác, nên hai khoản vay ở hai thị trường có hai hệ số sức khỏe:
+
+**HF = lượng tài sản thế chấp × giá oracle × LLTV ÷ khoản nợ**
+
+Không có giới hạn vay thấp hơn: hợp đồng cho bạn vay đến sát LLTV, tức hệ số sức khỏe 1,00. [Bài hướng dẫn về hệ số sức khỏe Morpho](/vi/blog/he-so-suc-khoe-morpho) đi qua từng bước.
+
+Morpho Midnight là một hợp đồng riêng cho các khoản vay lãi suất cố định, kỳ hạn cố định. Một thị trường Midnight có một token vay, một ngày đáo hạn và tối đa 128 tài sản thế chấp, mỗi loại có LLTV và oracle riêng, và một người vay có thể dùng tối đa 16 loại cùng lúc. [Khoản vay lãi suất cố định Morpho Midnight](/vi/blog/khoan-vay-lai-suat-co-dinh-morpho-midnight) giải thích cách nó hoạt động.
+
+## Điều gì xảy ra với hệ số sức khỏe khi một tài sản giảm giá?
+
+Đây là chỗ hai thiết kế khác nhau rõ nhất. Lấy cùng một tài sản thế chấp trên cả hai, với giá minh họa 2.400 $ cho ETH và 80.000 $ cho BTC, và khoản nợ 20.000 USDC.
+
+**Trên Aave V3 Ethereum Core**, với 10 WETH (ngưỡng 84%) và 0,2 WBTC (ngưỡng 85%) trong một vị thế, bỏ qua lãi:
+
+- Tài sản thế chấp có trọng số: 24.000 × 0,84 + 16.000 × 0,85 = 33.760.
+- Hệ số sức khỏe: 33.760 ÷ 20.000 = **1,69**.
+- Nếu BTC giảm 40% xuống 48.000 $: 24.000 × 0,84 + 9.600 × 0,85 = 28.320, tức hệ số sức khỏe **1,42**. Không có gì có thể bị thanh lý.
+
+WETH gánh cho WBTC. Trong vị thế này, riêng WETH đã được tính 20.160, nhiều hơn toàn bộ khoản nợ, nên ngay cả khi WBTC không còn giá trị gì, hệ số sức khỏe vẫn là 1,008.
+
+**Trên Morpho Blue**, với cùng các tài sản đó chia ra hai thị trường được niêm yết trên Ethereum, USDC | WETH (86%) và USDC | WBTC (86%), và vay 10.000 USDC ở mỗi thị trường:
+
+- Khoản vay WETH: 24.000 × 0,86 ÷ 10.000 = **2,06**.
+- Khoản vay WBTC: 16.000 × 0,86 ÷ 10.000 = **1,38**, với giá thanh lý 58.139,53 $, thấp hơn 80.000 $ là 27,3%.
+- Nếu BTC giảm 40%: khoản vay WBTC ở mức 9.600 × 0,86 ÷ 10.000 = **0,83** và có thể bị thanh lý, trong khi khoản vay WETH vẫn ở 2,06.
+
+Mặt trái cũng có thật. Trên Aave, một khi toàn bộ vị thế xuống dưới 1, bên thanh lý chọn lấy tài sản thế chấp nào, nên BTC giảm giá có thể khiến bạn mất WETH. Trên Morpho, khoản vay WETH nằm ngoài tầm với dù BTC có ra sao. Gộp chung cho bạn một vùng đệm dùng chung; tách riêng cho bạn một vùng đệm cho mỗi khoản vay, và bạn phải tự định cỡ cho từng vùng đệm.
+
+## Thanh lý khác nhau thế nào?
+
+Trên cả hai giao thức, khi hệ số sức khỏe dưới 1, bên thanh lý trả một phần khoản nợ của bạn và lấy tài sản thế chấp trị giá bằng số đó cộng một khoản thưởng. Bạn giữ lại những gì đã vay, nên khoản thưởng chính là cái giá của một lần thanh lý đối với bạn. Các quy tắc xung quanh thì khác nhau:
+
+- **Trả bao nhiêu một lần.** Trên Aave V3.7, một lần thanh lý có thể trả tối đa 50% tổng nợ của bạn khi hệ số sức khỏe trên 0,95 và tài sản thế chấp lẫn khoản nợ liên quan đều trị giá ít nhất 2.000 $; ở mức 0,95 trở xuống, hoặc với số tiền nhỏ hơn, nó có thể trả toàn bộ khoản nợ ở tài sản đó. Aave V4 bỏ quy tắc này: bên thanh lý chỉ trả đủ để đưa bạn trở lại hệ số sức khỏe mục tiêu của Spoke, là 1,24 trên Ethereum Main Spoke vào ngày 4 tháng 11 năm 2026. Morpho Blue không có giới hạn: bên thanh lý đầu tiên có thể trả toàn bộ khoản nợ của bạn trong một lệnh gọi.
+- **Khoản thưởng.** Trên Aave V3, quản trị đặt nó cho từng tài sản thế chấp: 5% với WETH và WBTC trên Ethereum Core vào ngày 4 tháng 11 năm 2026, trong đó kho bạc của Aave lấy 20% làm phí giao thức. Trên V4, nó tăng khi hệ số sức khỏe giảm. Trên Morpho Blue, nó suy ra từ LLTV, 1 ÷ (1 − 0,3 × (1 − LLTV)), tối đa 15%: 4,38% ở LLTV 86%, 1,06% ở 96,5%, tất cả thuộc về bên thanh lý.
+- **Thanh lý trước (pre-liquidation).** Trên Morpho Blue, người vay có thể chọn dùng một hợp đồng thanh lý từng phần khoản vay trước khi chạm LLTV. Morpho đang ngừng tính năng này và đề nghị những người vay đang dùng nó tắt đi; nếu bạn từng bật Auto-deleverage, [thanh lý trước trên Morpho](/vi/blog/thanh-ly-truoc-tren-morpho) chỉ cách kiểm tra và thu hồi nó. Aave không có gì tương tự.
+- **Ngày đáo hạn.** Trên Morpho Midnight, mọi khoản nợ còn lại sau ngày đáo hạn đều có thể bị thanh lý, ngay cả trên một vị thế khỏe, với khoản thưởng tăng từ 0 lên mức đầy đủ trong giờ đầu tiên.
+- **Nợ xấu.** Khi tài sản thế chấp cạn trước khoản nợ, Aave V3 ghi nhận một khoản thâm hụt, mà người staking Umbrella có thể bù trên Ethereum (với USDC, USDT, WETH và GHO, theo tài liệu của Aave); trên V4, một Spoke khác có thể bù. Trên Morpho, khoản lỗ được xóa và tính cho những người cho vay của riêng thị trường đó. Với bạn là người vay, kết quả ở đâu cũng như nhau: tài sản thế chấp đã mất và không còn khoản nợ nào.
+
+Toàn bộ cơ chế có trong [cơ chế thanh lý trên Aave](/vi/blog/co-che-thanh-ly-tren-aave), với [các quy tắc của V4](/vi/blog/co-che-thanh-ly-tren-aave#thanh-ly-tren-aave-v4-khac-the-nao), và [cơ chế thanh lý trên Morpho](/vi/blog/co-che-thanh-ly-tren-morpho), nơi có [bảng so sánh song song](/vi/blog/co-che-thanh-ly-tren-morpho#thanh-ly-tren-morpho-khac-gi-so-voi-aave).
+
+## Lãi suất khác nhau thế nào?
+
+**Aave V3** đặt lãi suất thả nổi của mỗi tài sản theo một đường cong cố định: nó tăng chậm theo tỷ lệ sử dụng (utilization, phần của pool đang được cho vay) cho đến một mức tối ưu, rồi tăng dốc. Quản trị đặt bốn con số của đường cong, và Risk Stewards có thể điều chỉnh chúng trong giới hạn. USDC trên Ethereum Core dùng mức tối ưu 94%, độ dốc thứ nhất 4,5% và độ dốc thứ hai 10%. Tại khối Ethereum 26341682 vào ngày 4 tháng 11 năm 2026, tỷ lệ sử dụng của nó là 94,7%, vừa qua điểm gãy, và lãi suất vay là 5,67% một năm. Giữa các lần thay đổi tham số, lãi suất chỉ dịch chuyển theo tỷ lệ sử dụng. [Cơ chế lãi suất của Aave](/vi/blog/lai-suat-aave) có công thức và một đợt tăng vọt thực tế.
+
+**Aave V4** giữ một đường cong cho mỗi tài sản tại Hub và cộng thêm một User Risk Premium (phần bù rủi ro người dùng), từ 0% đến 1.000% lãi suất chung tùy theo chất lượng tài sản thế chấp của bạn: ví dụ của Aave là phần bù 50% trên lãi suất 5%, cho ra 7,5%.
+
+**Các thị trường Morpho Blue** dùng AdaptiveCurveIRM, nhắm đến tỷ lệ sử dụng 90%. Tại mỗi thời điểm, lãi suất nằm trên một đường cong quanh một "lãi suất tại mục tiêu": bằng một phần tư mức đó ở tỷ lệ sử dụng 0%, gấp bốn lần ở 100%. Khác với đường cong của Aave, chính lãi suất tại mục tiêu cũng trôi: tăng khi tỷ lệ sử dụng còn trên 90%, giảm khi còn dưới, trong khoảng 0,1% đến 200% một năm. Ở tỷ lệ sử dụng 100%, nó tăng gấp đôi trong khoảng năm ngày. Vào ngày 4 tháng 11 năm 2026, thị trường USDC | cbBTC (86%) trên Ethereum có tỷ lệ sử dụng 90,3%, lãi suất tại mục tiêu 4,97% và lãi suất vay khoảng 5,4% một năm. Vì vậy một thị trường bận rộn cứ đắt dần lên cho đến khi người vay trả nợ hoặc người cho vay đổ vào; một thị trường vắng thì rẻ dần đi.
+
+**Morpho Midnight** cố định lãi suất của bạn khi bạn vay. Bạn bán các đơn vị nợ dưới mệnh giá và nợ đúng một token vay cho mỗi đơn vị vào ngày đáo hạn, nên khoản nợ của bạn không tăng và chỉ giá tài sản thế chấp làm hệ số sức khỏe thay đổi. Aave không có lãi suất cố định: V3.2 đã gỡ bỏ phần mã lãi suất ổn định (stable rate) cũ, và mọi khoản vay Aave đều là lãi suất thả nổi.
+
+## E-Mode hay thị trường LLTV cao: bạn vay được bao nhiêu?
+
+Cả hai giao thức đều cho bạn vay nhiều hơn với tài sản thế chấp đi cùng chiều với thứ bạn vay, theo những cách khác nhau.
+
+**E-Mode của Aave** là một thiết lập trên toàn bộ vị thế V3 của bạn. Bạn chọn một danh mục và, khi đang ở trong đó, tài sản thế chấp của danh mục dùng LTV, ngưỡng và khoản thưởng của danh mục. Trên Ethereum Core vào ngày 4 tháng 11 năm 2026, "ETH correlated" dùng LTV 93%, ngưỡng 95% và khoản thưởng 1%, và WETH là tài sản duy nhất bạn có thể vay trong danh mục này. Mọi tài sản bạn vay đều phải được phép vay trong danh mục, nên một vị thế có nợ USDC không thể dùng nó. [E-Mode của Aave](/vi/blog/e-mode-cua-aave) trình bày các danh mục và các vụ thanh lý tháng 3 năm 2026.
+
+**Trên Morpho** không có chế độ nào: bạn chọn một thị trường có LLTV phù hợp với cặp tài sản. Các LLTV mà quản trị Morpho đã bật vào ngày 4 tháng 11 năm 2026 là 0%, 38,5%, 62,5%, 77%, 86%, 91,5%, 94,5%, 96,5% và 98%. Thị trường WETH | wstETH trên Ethereum dùng 96,5%, với khoản thưởng thanh lý 1,06%.
+
+Một người vay loop (vòng vay đòn bẩy) wstETH so với WETH có thể đạt tới mức tương tự trên cả hai, với một điểm khác: trên Aave bạn chỉ vay được đến LTV 93%, để lại hệ số sức khỏe khoảng 95 ÷ 93 = 1,02; trên Morpho, hợp đồng cho bạn vay đến sát ranh giới 96,5%, tức hệ số sức khỏe 1,00.
+
+## Aave và Morpho chạy trên những mạng nào?
+
+|                  | Aave                                                                                                                                | Morpho                                                                                                                                                  |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lãi suất thả nổi | V3 trên hơn 20 mạng, trong đó có Ethereum, Arbitrum, Base, Avalanche, Polygon và Optimism; V4 trên Ethereum, Avalanche, Arc và Base | Blue trên 14 mạng: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable và Tempo |
+| Lãi suất cố định | Không có                                                                                                                            | Midnight, với các thị trường được niêm yết trên Ethereum và Base vào ngày 4 tháng 11 năm 2026                                                           |
+
+Trên Aave, mọi tài sản trong một thị trường đều do quản trị niêm yết. Trên Morpho, ai cũng có thể tạo thị trường, và ứng dụng Morpho chỉ hiển thị những thị trường mà Morpho Association chọn niêm yết (xem bên dưới). Một vài mạng Aave V3 đang được đóng dần; [điều gì xảy ra khi Aave đóng dần một thị trường](/vi/blog/khi-aave-dong-cua-thi-truong) giải thích điều đó có nghĩa gì với các khoản vay đang mở.
+
+## Mỗi giao thức có những rủi ro khác nhau nào?
+
+Cả hai đều mang cùng những rủi ro cơ bản: giá giảm, lỗi oracle, lỗi hợp đồng thông minh. Chỗ các rủi ro đó nằm thì khác.
+
+**Ai có thể thay đổi khoản vay của bạn.** Trên Aave, quản trị có thể thay đổi LTV, ngưỡng thanh lý, khoản thưởng và đường cong lãi suất của một tài sản V3, và Risk Stewards có thể dịch chuyển chúng theo các bước có giới hạn và với khoảng chờ tối thiểu. Một ngưỡng thấp hơn trên V3 áp dụng ngay cho mọi vị thế đang mở. Tài sản cũng có thể bị đóng băng (frozen), chặn việc vay mới nhưng không chặn thanh lý, hoặc bị tạm dừng (paused), chặn cả thanh lý, với thời gian ân hạn tối đa 4 giờ sau đó. Trên V4, hệ số thế chấp và khoản thưởng mới thường chỉ áp dụng cho vị thế của bạn khi bạn vay hoặc rút lần tiếp theo. Trên Morpho Blue, không ai có thể thay đổi một thị trường: quản trị có thể bật LLTV và mô hình lãi suất mới và đặt mức phí tối đa 25% tiền lãi, do người cho vay trả, nhưng không thể động đến một thị trường đã có, và hợp đồng không có chức năng tạm dừng.
+
+**Ai chọn oracle.** Quản trị Aave chọn nguồn giá cho mọi tài sản. Trên Morpho, người tạo thị trường chọn oracle của nó, và oracle đó không thể bị thay thế. Tài liệu của Morpho nói rằng lựa chọn đó, vì là vĩnh viễn, định hình hồ sơ rủi ro của thị trường. Một số oracle theo một tỷ giá quy đổi thay vì giá thị trường, hoặc coi một stablecoin đúng bằng một đô la. Trước khi vay trên Morpho, hãy kiểm tra oracle của thị trường bạn đo cái gì; [phần về oracle trong bài hướng dẫn thanh lý](/vi/blog/co-che-thanh-ly-tren-morpho#oracle-dong-vai-tro-gi-trong-mot-lan-thanh-ly) chỉ ra những gì cần xem.
+
+**Được niêm yết hay không.** Ứng dụng của Morpho chỉ hiển thị các thị trường mà Morpho Association niêm yết, chủ yếu là những thị trường mà một vault được niêm yết cho vay vào. Chính sách của tổ chức này gọi việc niêm yết là "một quyết định về khả năng khám phá", không phải một sự bảo chứng hay một xếp hạng rủi ro, và một thị trường không được niêm yết vẫn hoạt động trên chuỗi. Các thị trường không được niêm yết vẫn có thể giữ những khoản vay lớn, như [cổ phiếu token hóa làm tài sản thế chấp](/vi/blog/co-phieu-token-hoa-lam-tai-san-the-chap#ban-co-the-vay-the-chap-co-phieu-token-hoa-o-dau) cho thấy với việc vay bằng cổ phiếu, nên việc một thị trường vắng mặt trong ứng dụng chỉ cho bạn biết rằng Morpho đã chọn không hiển thị nó.
+
+**Một tài sản xấu có thể với tới đâu.** Trên Aave, một tài sản bị định giá sai hoặc mất neo (depeg) trong thị trường của bạn làm toàn bộ hệ số sức khỏe thay đổi. Trên Morpho, nó chỉ làm thay đổi những khoản vay dùng nó, nhưng những khoản vay đó không có tài sản thế chấp nào khác để dựa vào.
+
+## Giao thức nào hợp với kiểu người vay nào?
+
+Không giao thức nào tốt hơn; mỗi giao thức hợp với một cách vay khác nhau. Vài trường hợp phù hợp, nói đại khái:
+
+- **Nhiều tài sản làm thế chấp, một vùng đệm để theo dõi:** vị thế gộp chung của Aave cho phép chúng hỗ trợ lẫn nhau, đổi lại là các quy tắc mà quản trị có thể thay đổi.
+- **Quy tắc không thể thay đổi sau khi bạn vay:** LLTV, oracle và mô hình lãi suất của một thị trường Morpho được cố định vĩnh viễn, nhưng bạn phải tự đánh giá oracle đó.
+- **Một khoản vay không được đụng đến tài sản thế chấp khác của bạn:** Morpho giữ mỗi khoản vay tách riêng; trên Aave, các thị trường hoặc mạng riêng cũng làm được như vậy.
+- **Vay sát ranh giới với một cặp tài sản tương quan:** cả hai đều cho phép, qua E-Mode hoặc một LLTV cao, và cả hai đều để lại một khoảng an toàn vài phần trăm.
+- **Một lãi suất không thay đổi:** chỉ Morpho Midnight có, đổi lại là một ngày đáo hạn mà bạn không được để lỡ.
+- **Vị thế nhỏ:** trên cả hai, một lần thanh lý có thể xóa toàn bộ khoản nợ cùng lúc, trên Aave khi dưới 2.000 $ ở các tài sản liên quan và trên Morpho ở mọi quy mô.
+
+Bài hướng dẫn này so sánh các cơ chế; nó không phải lời khuyên tài chính.
+
+## Cảnh báo giúp được gì trên cả hai?
+
+Tokenping theo dõi cả hai. Nó kiểm tra 5 phút một lần và, khi một hệ số sức khỏe còn dưới ngưỡng bạn đặt, gửi một tin nhắn ở mỗi lần kiểm tra trên từng kênh bạn chọn: Signal, Telegram hoặc email.
+
+- **Aave:** một cảnh báo cho mỗi thị trường V3 hoặc Spoke V4, trên 24 thị trường V3 trên 21 mạng và tất cả 24 Spoke V4 trên Ethereum, Avalanche, Arc và Base. Ngưỡng từ 1,1 đến 10. Bạn có thể [kiểm tra hệ số sức khỏe Aave của bạn](/vi/aave) trước.
+- **Morpho:** một cảnh báo cho mỗi thị trường bạn vay, trong các thị trường mà ứng dụng Morpho niêm yết: Blue trên 14 mạng và Midnight ở những nơi API của Morpho liệt kê thị trường (Ethereum và Base vào ngày 4 tháng 11 năm 2026). Ngưỡng xuống đến 1,02, vì các khoản vay LLTV cao thường chạy sát 1. Nếu bạn đã ủy quyền thanh lý trước, cảnh báo đo theo ranh giới sớm hơn đó, và một khoản vay Midnight còn nhận lời nhắc 7 ngày và 24 giờ trước ngày đáo hạn. Các vị thế của bạn có trên [bảng điều khiển Morpho](/vi/morpho).
+
+Xem vị thế không cần thanh toán. Cảnh báo có giá <AlertPrice />, và cùng một gói áp dụng cho cả Aave và Morpho. Một cảnh báo cho bạn thời gian để trả nợ hoặc thêm tài sản thế chấp; nó không ngăn được việc thanh lý, và giá có thể vượt qua ranh giới của bạn giữa hai lần kiểm tra.
+
+## Nguồn
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) và [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), aave-dao/aave-v3-origin: close factor, khoản thâm hụt, hệ số sức khỏe, tạm dừng và thời gian ân hạn (truy cập ngày 4 tháng 11 năm 2026)
+- [Các tính năng của Aave V3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): gỡ bỏ nợ lãi suất ổn định (truy cập ngày 4 tháng 11 năm 2026)
+- [Aave Generalized Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): những tham số mà stewards có thể thay đổi, khoảng chờ tối thiểu và bước thay đổi tối đa (truy cập ngày 4 tháng 11 năm 2026)
+- [Tài liệu Aave: Umbrella](https://aave.com/docs/aave-v3/umbrella): việc bù thâm hụt, các tài sản và mạng (truy cập ngày 4 tháng 11 năm 2026)
+- [Tài liệu Aave V4](https://aave.com/docs/aave-v4) và [vị thế trên V4](https://aave.com/docs/aave-v4/positions): Hub và Spoke, hệ số sức khỏe, User Risk Premium, thanh lý (truy cập ngày 4 tháng 11 năm 2026)
+- [Tổng quan Aave V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md), aave/aave-v4: cấu hình rủi ro động, hệ số sức khỏe mục tiêu, khoản thưởng thay đổi, khoản thâm hụt, oracle của Spoke (truy cập ngày 4 tháng 11 năm 2026)
+- [API Aave V4](https://api.v4.aave.com/graphql): các Spoke và mạng (truy cập ngày 4 tháng 11 năm 2026)
+- [Aave address book](https://github.com/bgd-labs/aave-address-book): các mạng Aave V3 (truy cập ngày 4 tháng 11 năm 2026)
+- Dữ liệu đọc trên chuỗi trên Ethereum tại các khối 26341682 và 26341689: [Aave V3 Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract) và [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) (tham số reserve, E-Mode, lãi suất USDC), [Aave V4 Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485#readContract) (hệ số sức khỏe mục tiêu) và [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) (thị trường, các LLTV đã bật, lãi suất) (truy cập ngày 4 tháng 11 năm 2026)
+- [Morpho.sol và ConstantsLib.sol](https://github.com/morpho-org/morpho-blue), morpho-org/morpho-blue: quyền của chủ sở hữu, mức trần phí 25%, khoản thưởng thanh lý, nợ xấu (truy cập ngày 4 tháng 11 năm 2026)
+- [Các hằng số của AdaptiveCurveIRM](https://github.com/morpho-org/morpho-blue-irm/blob/main/src/adaptive-curve-irm/libraries/ConstantsLib.sol), morpho-org/morpho-blue-irm: tỷ lệ sử dụng mục tiêu, độ dốc, tốc độ điều chỉnh và các giới hạn (truy cập ngày 4 tháng 11 năm 2026)
+- [Midnight.sol và ConstantsLib.sol](https://github.com/morpho-org/midnight), morpho-org/midnight: giới hạn tài sản thế chấp, thanh lý sau ngày đáo hạn và giai đoạn tăng dần 60 phút (truy cập ngày 4 tháng 11 năm 2026)
+- [Tài liệu Morpho: Morpho Blue](https://docs.morpho.org/learn/concepts/blue), [oracle](https://docs.morpho.org/learn/concepts/oracle) và [Midnight](https://docs.morpho.org/learn/concepts/midnight) (truy cập ngày 4 tháng 11 năm 2026)
+- [Chính sách niêm yết trên giao diện của Morpho](https://docs.morpho.org/get-started/resources/interface-listing-policy): niêm yết có nghĩa là gì và ai quyết định (truy cập ngày 4 tháng 11 năm 2026)
+- [Trợ giúp Morpho: Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (truy cập ngày 4 tháng 11 năm 2026)
+- [API của Morpho](https://api.morpho.org/graphql): các mạng, thị trường Blue được niêm yết và thị trường Midnight được niêm yết trên từng mạng (truy cập ngày 4 tháng 11 năm 2026)
+
+_Nội dung mang tính giáo dục, không phải lời khuyên tài chính. Cảnh báo giúp giảm rủi ro, nhưng không ngăn được việc thanh lý._

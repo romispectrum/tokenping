@@ -1,0 +1,180 @@
+export const meta = {
+  slug: "aave-vs-morpho-comparatie",
+  title: "Aave vs Morpho pentru debitori: prin ce diferă",
+  description:
+    "Aave vs Morpho pentru debitori: piețe comune vs izolate, health factor, lichidări, dobânzi, E-Mode vs LLTV, oracole și riscul de guvernanță.",
+  h1: "Aave vs Morpho: prin ce diferă pentru un debitor?",
+  publishedAt: "2026-11-04",
+  primaryQuestion: "Prin ce diferă Aave și Morpho pentru un debitor și care se potrivește împrumutului meu?",
+  readingMinutes: 12,
+  figuresAsOf: "2026-11-04",
+};
+
+<ShortAnswer>
+  Aave îți pune împrumutul la comun: pe Aave V3, toată garanția și toată datoria ta dintr-o piață au un singur health
+  factor (factor de sănătate), iar guvernanța și risk stewards ai săi pot schimba parametrii în timp ce ești împrumutat.
+  Aave V4 păstrează această idee la nivel de Spoke. Morpho Blue îl izolează: fiecare piață are o singură garanție, un
+  singur token împrumutat, un singur oracol și un singur LLTV, toate fixate definitiv la crearea pieței, așa că fiecare
+  împrumut are propriul health factor. Morpho Midnight adaugă împrumuturi cu dobândă fixă care se încheie la o dată de
+  scadență. Pe Aave un activ sănătos poate susține unul care scade, dar o lichidare poate lua oricare dintre garanțiile
+  tale; pe Morpho un activ care scade amenință doar propriul împrumut, iar primul lichidator îl poate rambursa în
+  întregime dintr-o dată. Niciunul nu este mai sigur în general: compromisul ține de cine stabilește regulile și de cât
+  din poziția ta poate atinge un singur activ problematic.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Cifrele și numerele de bloc la care au fost citite: content/blog/snapshots/aave-vs-morpho.md */}
+
+## Cum se compară Aave și Morpho dintr-o privire?
+
+Tabelul rezumă regulile care contează pentru un debitor. Valorile live au fost citite pe 4 noiembrie 2026 pe Ethereum; fiecare rând este explicat mai jos.
+
+|                                          | Aave V3                                                         | Aave V4                                                                    | Morpho Blue                                             | Morpho Midnight                                          |
+| ---------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------- |
+| Un singur health factor acoperă          | Toată garanția și datoria ta dintr-o piață (un Pool pe o rețea) | Toată garanția și datoria ta dintr-un Spoke                                | O garanție și un token împrumutat                       | Un token împrumutat, până la 16 dintre garanțiile pieței |
+| Limita de împrumut și linia de lichidare | Un LTV mai mic pentru împrumut, un prag de lichidare mai mare   | Un singur collateral factor pe activ                                       | LLTV-ul este ambele                                     | LLTV-ul fiecărei garanții                                |
+| Cine stabilește parametrii               | Guvernanța și risk stewards, oricând modificabili               | Guvernanța; schimbările ajung de obicei doar la pozițiile noi              | Cel care a creat piața, fixați definitiv                | Cel care a creat piața, fixați definitiv                 |
+| Dobânda                                  | Variabilă, o curbă pe activ                                     | Variabilă, o curbă pe activ al Hub-ului plus o primă de risc pe utilizator | Variabilă, AdaptiveCurveIRM                             | Fixă până la scadență                                    |
+| Cel mult cât poate rambursa o lichidare  | 50% sau 100% din datorie                                        | Cât să ajungi la health factor-ul țintă al Spoke-ului                      | Toată datoria                                           | Cât restabilește sănătatea; toată după scadență          |
+| Bonusul de lichidare                     | Pe activ de garanție, stabilit de guvernanță                    | Crește pe măsură ce health factor-ul scade                                 | Rezultă din LLTV                                        | Rezultă din LLTV-ul și cursorul fiecărei garanții        |
+| Datoria neacoperită (bad debt)           | Un deficit; stakerii Umbrella îl pot acoperi pe Ethereum        | Un deficit; un alt Spoke îl poate acoperi                                  | Trecută pe pierdere în contul creditorilor acelei piețe | Împărțită între creditorii acelei piețe                  |
+| Oracol                                   | Ales de guvernanță                                              | Ales de guvernanță, pe Spoke                                               | Ales de creatorul pieței, nu poate fi înlocuit          | Ales pentru fiecare garanție de creatorul pieței         |
+
+## Cum este construit fiecare?
+
+### Aave: piețe comune, V3 și V4
+
+O piață Aave V3 este un Pool pe o rețea: Ethereum Core, Arbitrum, Base și așa mai departe. Tot ce depui ca garanție în acel Pool acoperă tot ce împrumuți acolo, iar contractul calculează un singur health factor pentru întreaga poziție:
+
+**HF = Σ (valoarea garanției × pragul de lichidare) ÷ datoria totală**
+
+Fiecare activ are două numere: un LTV, care limitează împrumuturile noi, și un prag de lichidare (liquidation threshold) mai mare, care decide lichidarea. Pe Ethereum Core, pe 4 noiembrie 2026, WETH avea un LTV de 81% și un prag de 84%. Prețurile vin de la oracolul (sursa de preț) Aave, în dolari americani. [Ghidul despre health factor-ul pe Aave](/ro/blog/health-factor-aave-explicat) conține formula și exemple calculate.
+
+Aave V4 împarte o rețea într-un Hub, care deține lichiditatea, și Spoke-uri, piețele în care te împrumuți. Poziția și health factor-ul tău trăiesc într-un singur Spoke, iar fiecare activ are un singur collateral factor (factor de garanție) în loc de un LTV și un prag. Pe 4 noiembrie 2026, API-ul V4 al Aave lista 24 de Spoke-uri pe Ethereum, Avalanche, Arc și Base. [Cum funcționează health factor-ul pe Aave V4](/ro/blog/health-factor-aave-explicat#este-health-factor-ul-diferit-pe-aave-v4) intră în detalii.
+
+### Morpho: piețe izolate, Blue și Midnight
+
+O piață Morpho Blue este definită de cinci lucruri: un token împrumutat, un token de garanție, un oracol, un model al ratei dobânzii și un LLTV (LTV de lichidare, liquidation loan-to-value). Oricine poate crea una și niciunul dintre cele cinci nu se poate schimba după aceea. Garanția ta dintr-o piață nu acoperă datoria din alta, așa că două împrumuturi în două piețe au două health factor-uri:
+
+**HF = cantitatea de garanție × prețul oracolului × LLTV ÷ datorie**
+
+Nu există o limită de împrumut mai mică: contractul te lasă să te împrumuți până la LLTV, la un health factor de 1,00. [Ghidul despre health factor-ul pe Morpho](/ro/blog/health-factor-morpho-explicat) îl explică pas cu pas.
+
+Morpho Midnight este un contract separat pentru împrumuturi cu dobândă fixă și termen fix. O piață Midnight are un token împrumutat, o dată de scadență și până la 128 de garanții, fiecare cu propriul LLTV și propriul oracol, iar un debitor poate folosi până la 16 dintre ele în același timp. [Împrumuturile cu dobândă fixă pe Morpho Midnight](/ro/blog/imprumuturi-cu-dobanda-fixa-morpho-midnight) explică cum funcționează.
+
+## Ce se întâmplă cu health factor-ul tău când un activ scade?
+
+Aici cele două designuri se simt cel mai diferit. Ia aceeași garanție pe ambele, cu prețuri ilustrative de 2.400 $ pentru ETH și 80.000 $ pentru BTC, și o datorie de 20.000 USDC.
+
+**Pe Aave V3 Ethereum Core**, cu 10 WETH (prag 84%) și 0,2 WBTC (prag 85%) într-o singură poziție, fără dobândă:
+
+- Garanția ponderată: 24.000 × 0,84 + 16.000 × 0,85 = 33.760.
+- Health factor: 33.760 ÷ 20.000 = **1,69**.
+- Dacă BTC scade cu 40%, la 48.000 $: 24.000 × 0,84 + 9.600 × 0,85 = 28.320, un health factor de **1,42**. Nimic nu poate fi lichidat.
+
+WETH-ul susține WBTC-ul. În această poziție, WETH-ul singur contează 20.160, mai mult decât toată datoria, așa că, chiar dacă WBTC n-ar mai valora nimic, health factor-ul ar rămâne la 1,008.
+
+**Pe Morpho Blue**, cu aceleași active împărțite în două piețe listate pe Ethereum, USDC | WETH (86%) și USDC | WBTC (86%), și 10.000 USDC împrumutați în fiecare:
+
+- Împrumutul cu WETH: 24.000 × 0,86 ÷ 10.000 = **2,06**.
+- Împrumutul cu WBTC: 16.000 × 0,86 ÷ 10.000 = **1,38**, cu un preț de lichidare de 58.139,53 $, cu 27,3% sub 80.000 $.
+- Dacă BTC scade cu 40%: împrumutul cu WBTC ajunge la 9.600 × 0,86 ÷ 10.000 = **0,83** și poate fi lichidat, în timp ce împrumutul cu WETH rămâne la 2,06.
+
+Reversul este la fel de real. Pe Aave, odată ce întreaga poziție scade sub 1, lichidatorul alege ce garanție ia, așa că o scădere a BTC te poate costa WETH. Pe Morpho, împrumutul cu WETH rămâne în afara oricărei atingeri, orice s-ar întâmpla cu BTC. Punerea la comun îți dă o rezervă comună; izolarea îți dă o rezervă pentru fiecare împrumut, iar pe fiecare trebuie să o dimensionezi tu.
+
+## Prin ce diferă lichidările?
+
+Pe ambele protocoale, sub un health factor de 1, un lichidator rambursează o parte din datoria ta și ia garanție în valoare de acea sumă plus un bonus. Păstrezi ce ai împrumutat, așa că bonusul este ce te costă o lichidare. Regulile din jurul ei diferă:
+
+- **Cât dintr-o dată.** Pe Aave V3.7, o lichidare poate rambursa până la 50% din datoria ta totală cât timp health factor-ul este peste 0,95 și garanția și datoria implicate valorează fiecare cel puțin 2.000 $; la 0,95 sau sub, ori pentru sume mai mici, poate rambursa toată datoria în acel activ. Aave V4 renunță la această regulă: un lichidator rambursează doar cât să te aducă înapoi la health factor-ul țintă al Spoke-ului, 1,24 pe Ethereum Main Spoke pe 4 noiembrie 2026. Morpho Blue nu are nicio limită: primul lichidator poate rambursa toată datoria ta într-un singur apel.
+- **Bonusul.** Pe Aave V3 este stabilit de guvernanță pentru fiecare activ de garanție: 5% pentru WETH și WBTC pe Ethereum Core pe 4 noiembrie 2026, din care trezoreria Aave a luat 20% ca taxă de protocol. Pe V4 crește pe măsură ce health factor-ul scade. Pe Morpho Blue rezultă din LLTV, 1 ÷ (1 − 0,3 × (1 − LLTV)), plafonat la 15%: 4,38% la un LLTV de 86%, 1,06% la 96,5%, totul pentru lichidator.
+- **Pre-lichidarea (pre-liquidation).** Pe Morpho Blue, un debitor putea alege un contract care lichidează bucăți din împrumut înainte de LLTV. Morpho renunță la această funcție și le cere debitorilor care o au să o dezactiveze; dacă ai activat cândva „Auto-deleverage”, [pre-lichidarea pe Morpho](/ro/blog/pre-lichidare-morpho) arată cum o verifici și o revoci. Aave nu are nimic asemănător.
+- **Scadența.** Pe Morpho Midnight, orice datorie rămasă după scadență poate fi lichidată chiar și pe o poziție sănătoasă, iar bonusul crește de la zero la mărimea lui completă în prima oră.
+- **Datoria neacoperită.** Când garanția se termină înaintea datoriei, Aave V3 înregistrează un deficit, pe care stakerii Umbrella îl pot acoperi pe Ethereum (pentru USDC, USDT, WETH și GHO, potrivit documentației Aave); în V4 îl poate acoperi un alt Spoke. Pe Morpho pierderea este trecută în contul creditorilor acelei singure piețe. Pentru tine ca debitor rezultatul este același peste tot: garanția a dispărut și nu mai rămâne nicio datorie.
+
+Mecanismele complete sunt în [cum funcționează lichidarea pe Aave](/ro/blog/cum-functioneaza-lichidarea-pe-aave), cu [regulile V4](/ro/blog/cum-functioneaza-lichidarea-pe-aave#prin-ce-difera-lichidarile-pe-aave-v4), și în [cum funcționează lichidarea pe Morpho](/ro/blog/cum-functioneaza-lichidarea-pe-morpho), care are un [tabel comparativ](/ro/blog/cum-functioneaza-lichidarea-pe-morpho#prin-ce-difera-lichidarea-pe-morpho-de-cea-pe-aave).
+
+## Prin ce diferă dobânzile?
+
+**Aave V3** stabilește dobânda variabilă a fiecărui activ pe o curbă fixă: crește lin odată cu utilizarea (partea din pool care este împrumutată) până la un nivel optim, apoi abrupt. Guvernanța stabilește cele patru numere ale curbei, iar risk stewards le pot ajusta în anumite limite. USDC pe Ethereum Core folosea un nivel optim de 94%, o primă pantă de 4,5% și o a doua pantă de 10%. La blocul Ethereum 26341682, pe 4 noiembrie 2026, utilizarea sa era de 94,7%, imediat după cot, iar împrumutul costa 5,67% pe an. Între schimbările de parametri, dobânda se mișcă doar odată cu utilizarea. [Cum funcționează dobânzile pe Aave](/ro/blog/dobanzile-aave) conține formula și un salt real.
+
+**Aave V4** păstrează o curbă pe activ la nivelul Hub-ului și adaugă deasupra un User Risk Premium (primă de risc a utilizatorului), de la 0% la 1.000% din dobânda comună, în funcție de calitatea garanției tale: exemplul Aave este o primă de 50% la o dobândă de 5%, ceea ce dă 7,5%.
+
+**Piețele Morpho Blue** folosesc AdaptiveCurveIRM, care țintește o utilizare de 90%. În orice moment, dobânda se află pe o curbă în jurul unei „dobânzi la țintă” (rate at target): un sfert din ea la 0% utilizare, de patru ori ea la 100%. Spre deosebire de curba Aave, dobânda la țintă însăși se deplasează: urcă cât timp utilizarea rămâne peste 90%, coboară cât timp rămâne sub, între 0,1% și 200% pe an. La 100% utilizare se dublează în aproximativ cinci zile. Pe 4 noiembrie 2026, piața USDC | cbBTC (86%) de pe Ethereum era la 90,3% utilizare, cu o dobândă la țintă de 4,97% și o dobândă la împrumut de aproximativ 5,4% pe an. O piață aglomerată devine deci tot mai scumpă până când debitorii rambursează sau vin creditori noi; una liniștită devine mai ieftină.
+
+**Morpho Midnight** îți fixează dobânda când te împrumuți. Vinzi unități de datorie sub valoarea nominală și datorezi exact un token împrumutat pe unitate la scadență, așa că datoria ta nu crește și doar prețurile garanțiilor îți mișcă health factor-ul. Aave nu are dobândă fixă: V3.2 a eliminat vechiul cod pentru dobânda stabilă, iar fiecare împrumut Aave are dobândă variabilă.
+
+## E-Mode sau o piață cu LLTV mare: cât te poți împrumuta?
+
+Ambele protocoale te lasă să te împrumuți mai mult contra unei garanții care urmează ce împrumuți, în moduri diferite.
+
+**E-Mode pe Aave** este o setare pentru întreaga ta poziție V3. Alegi o categorie și, cât timp ești în ea, garanția ta primește LTV-ul, pragul și bonusul categoriei. Pe Ethereum Core, pe 4 noiembrie 2026, „ETH correlated” folosea un LTV de 93%, un prag de 95% și un bonus de 1%, iar WETH era singurul activ pe care îl puteai împrumuta în ea. Fiecare activ pe care îl împrumuți trebuie să poată fi împrumutat în categorie, așa că o poziție cu datorie în USDC nu o poate folosi. [E-Mode pe Aave](/ro/blog/aave-e-mode-explicat) explică categoriile și lichidările din martie 2026.
+
+**Pe Morpho** nu există niciun mod: alegi o piață al cărei LLTV se potrivește perechii. LLTV-urile pe care guvernanța Morpho le activase pe 4 noiembrie 2026 erau 0%, 38,5%, 62,5%, 77%, 86%, 91,5%, 94,5%, 96,5% și 98%. Piața WETH | wstETH de pe Ethereum folosește 96,5%, cu un stimulent de lichidare de 1,06%.
+
+Un debitor care face loop (împrumut repetat cu efect de levier) cu wstETH contra WETH poate ajunge într-un loc asemănător pe oricare dintre ele, cu o diferență: pe Aave te poți împrumuta doar până la LTV-ul de 93%, ceea ce lasă un health factor de aproximativ 95 ÷ 93 = 1,02; pe Morpho contractul te lasă să te împrumuți până la linia de 96,5%, la un health factor de 1,00.
+
+## Pe ce rețele rulează Aave și Morpho?
+
+|                   | Aave                                                                                                                                    | Morpho                                                                                                                                                  |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dobândă variabilă | V3 pe peste 20 de rețele, printre care Ethereum, Arbitrum, Base, Avalanche, Polygon și Optimism; V4 pe Ethereum, Avalanche, Arc și Base | Blue pe 14 rețele: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable și Tempo |
+| Dobândă fixă      | Niciuna                                                                                                                                 | Midnight, cu piețe listate pe Ethereum și Base pe 4 noiembrie 2026                                                                                      |
+
+Pe Aave, fiecare activ dintr-o piață este listat de guvernanță. Pe Morpho, oricine poate crea o piață, iar aplicația Morpho le arată doar pe cele pe care Morpho Association alege să le listeze (vezi mai jos). Câteva rețele Aave V3 sunt în curs de închidere; [ce se întâmplă când Aave închide o piață](/ro/blog/inchiderea-unei-piete-aave) explică ce înseamnă asta pentru împrumuturile deschise.
+
+## Ce riscuri diferă pe fiecare?
+
+Ambele au aceleași riscuri de bază: o scădere de preț, o eroare de oracol, un bug în smart contract. Diferă locul în care stau.
+
+**Cine îți poate schimba împrumutul.** Pe Aave, guvernanța poate schimba LTV-ul, pragul de lichidare, bonusul și curba dobânzii unui activ V3, iar risk stewards le pot muta în pași plafonați și cu întârzieri minime. Un prag mai mic pe V3 se aplică dintr-odată tuturor pozițiilor deschise. Activele pot fi și înghețate, ceea ce blochează împrumuturile noi, dar nu și lichidarea, sau puse pe pauză, ceea ce blochează și lichidările, cu o perioadă de grație de până la 4 ore după aceea. Pe V4, noile collateral factor-uri și bonusuri ajung de obicei la poziția ta doar când te mai împrumuți sau retragi. Pe Morpho Blue, nimeni nu poate schimba o piață: guvernanța poate activa LLTV-uri și modele de dobândă noi și poate stabili un comision de până la 25% din dobândă, plătit de creditori, dar nu poate atinge o piață existentă, iar contractul nu are pauză.
+
+**Cine alege oracolul.** Guvernanța Aave alege sursa de preț pentru fiecare activ. Pe Morpho, cel care creează o piață îi alege oracolul, iar acesta nu poate fi înlocuit niciodată. Documentația Morpho spune că această alegere, fiind permanentă, stabilește profilul de risc al pieței. Unele oracole urmăresc un curs de schimb în locul unui preț de piață sau tratează un stablecoin ca valorând exact un dolar. Înainte să te împrumuți pe Morpho, verifică ce măsoară oracolul pieței tale; [secțiunea despre oracol din ghidul despre lichidare](/ro/blog/cum-functioneaza-lichidarea-pe-morpho#ce-rol-joaca-oracolul-intr-o-lichidare) arată la ce să te uiți.
+
+**Listată sau nelistată.** Aplicația Morpho arată doar piețele pe care le listează Morpho Association, în principal cele cărora le împrumută un vault listat. Politica sa numește listarea „a discovery decision” (o decizie de descoperire), nu o recomandare sau o evaluare a riscului, iar o piață nelistată funcționează în continuare on-chain. Piețele nelistate pot avea totuși împrumuturi mari, după cum arată [acțiunile tokenizate ca garanție](/ro/blog/actiuni-tokenizate-ca-garantie#unde-te-poti-imprumuta-cu-actiuni-tokenizate-ca-garantie) pentru împrumuturile garantate cu acțiuni, așa că lipsa unei piețe din aplicație îți spune doar că Morpho a ales să nu o arate.
+
+**Ce poate atinge un singur activ problematic.** Pe Aave, un activ evaluat greșit sau care face depeg (pierderea parității cu dolarul) în piața ta îți mișcă tot health factor-ul. Pe Morpho mișcă doar împrumuturile care îl folosesc, dar acele împrumuturi nu au altă garanție pe care să se sprijine.
+
+## Care se potrivește cărui debitor?
+
+Niciunul nu este protocolul mai bun; fiecare se potrivește unui alt mod de a te împrumuta. Câteva potriviri aproximative:
+
+- **Mai multe active ca garanție, o singură rezervă de urmărit:** poziția comună de pe Aave le lasă să se susțină între ele, cu prețul unor reguli pe care guvernanța le poate schimba.
+- **Reguli care nu se pot schimba după ce te împrumuți:** LLTV-ul, oracolul și modelul de dobândă ale unei piețe Morpho sunt fixate definitiv, dar oracolul trebuie să-l judeci singur.
+- **Un împrumut care nu trebuie să-ți atingă restul garanției:** Morpho ține fiecare împrumut separat; pe Aave, piețe sau rețele separate fac același lucru.
+- **Împrumut aproape de linie pe o pereche corelată:** ambele îl oferă, prin E-Mode sau printr-un LLTV mare, și ambele lasă o marjă de câteva procente.
+- **O dobândă care nu se mișcă:** doar Morpho Midnight oferă una, în schimbul unei date de scadență pe care nu trebuie să o ratezi.
+- **Poziții mici:** pe ambele, o lichidare poate șterge toată datoria dintr-o dată, pe Aave sub 2.000 $ în activele implicate, iar pe Morpho la orice mărime.
+
+Acest ghid compară mecanisme; nu este sfat financiar.
+
+## Cum te pot ajuta alertele pe oricare dintre ele?
+
+Tokenping le urmărește pe amândouă. Verifică la fiecare 5 minute și, cât timp un health factor este sub pragul pe care l-ai setat, trimite un mesaj la fiecare verificare pe fiecare canal ales: Signal, Telegram sau e-mail.
+
+- **Aave:** o alertă pentru fiecare piață V3 sau Spoke V4, pe 24 de piețe V3 din 21 de rețele și toate cele 24 de Spoke-uri V4 pe Ethereum, Avalanche, Arc și Base. Pragul merge de la 1,1 la 10. Îți poți [verifica mai întâi health factor-ul pe Aave](/ro/aave).
+- **Morpho:** o alertă pentru fiecare piață în care te împrumuți, în piețele listate de aplicația Morpho: Blue pe 14 rețele și Midnight acolo unde API-ul Morpho listează piețe (Ethereum și Base pe 4 noiembrie 2026). Pragul coboară până la 1,02, pentru că împrumuturile cu LLTV mare stau adesea aproape de 1. Dacă ai autorizat pre-lichidarea, alerta măsoară față de acea linie mai timpurie, iar un împrumut Midnight primește și mementouri cu 7 zile și cu 24 de ore înainte de scadență. Pozițiile tale sunt în [panoul Morpho](/ro/morpho).
+
+Vizualizarea pozițiilor nu necesită plată. Alertele costă <AlertPrice />, iar același plan acoperă Aave și Morpho. O alertă îți dă timp să rambursezi sau să adaugi garanție; nu împiedică lichidarea, iar un preț poate trece de linia ta între două verificări.
+
+## Surse
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) și [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), aave-dao/aave-v3-origin: close factor, deficit, health factor, pauză și perioadă de grație (accesat la 4 noiembrie 2026)
+- [Funcționalitățile Aave V3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): eliminarea datoriei cu dobândă stabilă (accesat la 4 noiembrie 2026)
+- [Aave Generalized Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): ce parametri pot schimba stewards, întârzierile minime și pașii maximi (accesat la 4 noiembrie 2026)
+- [Documentația Aave: Umbrella](https://aave.com/docs/aave-v3/umbrella): acoperirea deficitelor, active și rețea (accesat la 4 noiembrie 2026)
+- [Documentația Aave V4](https://aave.com/docs/aave-v4) și [poziții V4](https://aave.com/docs/aave-v4/positions): Hub și Spoke-uri, health factor, User Risk Premium, lichidări (accesat la 4 noiembrie 2026)
+- [Prezentarea Aave V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md), aave/aave-v4: configurare dinamică a riscului, health factor țintă, bonus variabil, deficite, oracolele Spoke-urilor (accesat la 4 noiembrie 2026)
+- [API-ul Aave V4](https://api.v4.aave.com/graphql): Spoke-uri și rețele (accesat la 4 noiembrie 2026)
+- [Aave address book](https://github.com/bgd-labs/aave-address-book): rețelele Aave V3 (accesat la 4 noiembrie 2026)
+- Citiri on-chain pe Ethereum la blocurile 26341682 și 26341689: [Aave V3 Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract) și [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) (parametrii rezervelor, E-Mode, dobânda USDC), [Aave V4 Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485#readContract) (health factor-ul țintă) și [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) (piețe, LLTV-uri activate, dobânzi) (accesat la 4 noiembrie 2026)
+- [Morpho.sol și ConstantsLib.sol](https://github.com/morpho-org/morpho-blue), morpho-org/morpho-blue: puterile owner-ului, plafonul comisionului de 25%, stimulentul de lichidare, datoria neacoperită (accesat la 4 noiembrie 2026)
+- [Constantele AdaptiveCurveIRM](https://github.com/morpho-org/morpho-blue-irm/blob/main/src/adaptive-curve-irm/libraries/ConstantsLib.sol), morpho-org/morpho-blue-irm: utilizarea țintă, abruptețea curbei, viteza de ajustare și limitele (accesat la 4 noiembrie 2026)
+- [Midnight.sol și ConstantsLib.sol](https://github.com/morpho-org/midnight), morpho-org/midnight: limitele de garanții, lichidarea după scadență și rampa de 60 de minute (accesat la 4 noiembrie 2026)
+- [Documentația Morpho: Morpho Blue](https://docs.morpho.org/learn/concepts/blue), [oracole](https://docs.morpho.org/learn/concepts/oracle) și [Midnight](https://docs.morpho.org/learn/concepts/midnight) (accesat la 4 noiembrie 2026)
+- [Politica de listare în interfața Morpho](https://docs.morpho.org/get-started/resources/interface-listing-policy): ce înseamnă listarea și cine decide (accesat la 4 noiembrie 2026)
+- [Ajutor Morpho: Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (accesat la 4 noiembrie 2026)
+- [API-ul Morpho](https://api.morpho.org/graphql): rețele, piețe Blue listate și piețe Midnight listate pe fiecare rețea (accesat la 4 noiembrie 2026)
+
+_Conținut educațional, nu sfat financiar. Alertele reduc riscul, dar nu împiedică lichidarea._

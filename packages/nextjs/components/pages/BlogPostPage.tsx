@@ -97,7 +97,7 @@ export const BlogPostPage = async ({ locale, slug, content }: BlogPostPageProps)
   const plan = await getAlertPlan();
   const PostAlertPrice = () => <AlertPriceText plan={plan} locale={locale} />;
   // The article components in the post's language, with the plan already read.
-  const components = { ...blogMdxComponents(locale, meta.protocol), AlertPrice: PostAlertPrice };
+  const components = { ...blogMdxComponents(locale, meta.protocol, meta.figuresAsOf), AlertPrice: PostAlertPrice };
   const { kicker, morphoKicker } = BLOG_MESSAGES[locale].post;
 
   return (

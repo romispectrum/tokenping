@@ -1,0 +1,178 @@
+export const meta = {
+  slug: "aave-vs-morpho",
+  title: "Aave vs Morpho for borrowers: how the two differ",
+  description:
+    "Aave vs Morpho for borrowers: pooled vs isolated markets, health factor, liquidations, interest rates, E-Mode vs LLTV, oracles and governance risk.",
+  h1: "Aave vs Morpho: how do they differ for a borrower?",
+  publishedAt: "2026-11-04",
+  primaryQuestion: "How do Aave and Morpho differ for a borrower, and which one fits my loan?",
+  readingMinutes: 12,
+  figuresAsOf: "2026-11-04",
+};
+
+<ShortAnswer>
+  Aave pools your loan: on Aave V3, all your collateral and debt in one market share one health factor, and governance
+  and its risk stewards can change the parameters while you borrow. Aave V4 keeps that idea per Spoke. Morpho Blue
+  isolates it: each market has one collateral, one loan token, one oracle and one LLTV, all fixed for good when the
+  market was created, so each loan has its own health factor. Morpho Midnight adds fixed-rate loans that end at a
+  maturity date. On Aave a healthy asset can carry a falling one, but a liquidation can take any of your collateral; on
+  Morpho a falling asset only threatens its own loan, and the first liquidator can repay all of it at once. Neither is
+  safer in general: the trade-off is who sets the rules, and how much of your position one bad asset can reach.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Figures and the block numbers they were read at: content/blog/snapshots/aave-vs-morpho.md */}
+
+## How do Aave and Morpho compare at a glance?
+
+The table sums up the rules that matter to a borrower. Live values were read on 4 Nov 2026 on Ethereum; each row is explained below.
+
+|                                   | Aave V3                                                            | Aave V4                                                      | Morpho Blue                                        | Morpho Midnight                                      |
+| --------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------ | -------------------------------------------------- | ---------------------------------------------------- |
+| One health factor covers          | All your collateral and debt in one market (a Pool on one network) | All your collateral and debt in one Spoke                    | One collateral and one loan token                  | One loan token, up to 16 of the market's collaterals |
+| Borrow limit and liquidation line | A lower LTV for borrowing, a higher liquidation threshold          | One collateral factor per asset                              | The LLTV is both                                   | Each collateral's LLTV                               |
+| Who sets the parameters           | Governance and risk stewards, changeable at any time               | Governance; changes usually reach new positions only         | Whoever created the market, fixed for good         | Whoever created the market, fixed for good           |
+| Interest                          | Variable, a curve per asset                                        | Variable, a curve per Hub asset plus a risk premium per user | Variable, AdaptiveCurveIRM                         | Fixed until maturity                                 |
+| Most one liquidation can repay    | 50% or 100% of the debt                                            | Enough to reach the Spoke's target health factor             | All of the debt                                    | What restores health; all of it after maturity       |
+| Liquidation bonus                 | Per collateral asset, set by governance                            | Grows as the health factor falls                             | Follows from the LLTV                              | Follows from each collateral's LLTV and cursor       |
+| Bad debt                          | A deficit; Umbrella stakers can cover it on Ethereum               | A deficit; another Spoke can cover it                        | Written off against that market's lenders          | Shared by that market's lenders                      |
+| Oracle                            | Chosen by governance                                               | Chosen by governance, per Spoke                              | Chosen by the market's creator, cannot be replaced | Chosen per collateral by the market's creator        |
+
+## How is each one built?
+
+### Aave: pooled markets, V3 and V4
+
+An Aave V3 market is one Pool on one network: Ethereum Core, Arbitrum, Base and so on. Everything you supply as collateral in that Pool backs everything you borrow there, and the contract works out one health factor for the whole position:
+
+**HF = Σ (collateral value × liquidation threshold) ÷ total debt**
+
+Each asset has two numbers: an LTV, which caps new borrowing, and a higher liquidation threshold, which decides liquidation. On Ethereum Core on 4 Nov 2026, WETH had an LTV of 81% and a threshold of 84%. Prices come from the Aave oracle, in US dollars. [The Aave health factor guide](/blog/aave-health-factor) has the formula and worked examples.
+
+Aave V4 splits a network into a Hub, which holds the liquidity, and Spokes, the markets you borrow in. Your position and health factor live in one Spoke, and each asset has a single collateral factor instead of an LTV and a threshold. On 4 Nov 2026 Aave's V4 API listed 24 Spokes on Ethereum, Avalanche, Arc and Base. [How the health factor works on Aave V4](/blog/aave-health-factor#is-the-health-factor-different-on-aave-v4) covers the details.
+
+### Morpho: isolated markets, Blue and Midnight
+
+A Morpho Blue market is defined by five things: a loan token, a collateral token, an oracle, an interest rate model and an LLTV (liquidation loan-to-value). Anyone can create one, and none of the five can change afterwards. Your collateral in one market does not back debt in another, so two loans in two markets have two health factors:
+
+**HF = collateral amount × oracle price × LLTV ÷ debt**
+
+There is no lower borrowing limit: the contract lets you borrow right up to the LLTV, a health factor of 1.00. [The Morpho health factor guide](/blog/morpho-health-factor) works through it.
+
+Morpho Midnight is a separate contract for fixed-rate, fixed-term loans. A Midnight market has one loan token, a maturity date and up to 128 collaterals, each with its own LLTV and oracle, and one borrower can use up to 16 of them at once. [Morpho Midnight fixed-rate loans](/blog/morpho-midnight-fixed-rate-loans) explains how it works.
+
+## What happens to your health factor when one asset drops?
+
+This is where the two designs feel most different. Take the same collateral on both, with illustrative prices of $2,400 for ETH and $80,000 for BTC, and 20,000 USDC of debt.
+
+**On Aave V3 Ethereum Core**, with 10 WETH (threshold 84%) and 0.2 WBTC (threshold 85%) in one position, ignoring interest:
+
+- Weighted collateral: 24,000 × 0.84 + 16,000 × 0.85 = 33,760.
+- Health factor: 33,760 ÷ 20,000 = **1.69**.
+- If BTC falls 40% to $48,000: 24,000 × 0.84 + 9,600 × 0.85 = 28,320, a health factor of **1.42**. Nothing can be liquidated.
+
+The WETH carries the WBTC. In this position the WETH alone counts for 20,160, more than the whole debt, so even WBTC worth nothing would leave a health factor of 1.008.
+
+**On Morpho Blue**, with the same assets split across two listed Ethereum markets, USDC | WETH (86%) and USDC | WBTC (86%), and 10,000 USDC borrowed in each:
+
+- WETH loan: 24,000 × 0.86 ÷ 10,000 = **2.06**.
+- WBTC loan: 16,000 × 0.86 ÷ 10,000 = **1.38**, with a liquidation price of $58,139.53, 27.3% below $80,000.
+- If BTC falls 40%: the WBTC loan is at 9,600 × 0.86 ÷ 10,000 = **0.83** and can be liquidated, while the WETH loan stays at 2.06.
+
+The flip side is just as real. On Aave, once the whole position falls below 1, the liquidator chooses which collateral to take, so a fall in BTC can cost you WETH. On Morpho, the WETH loan is out of reach whatever happens to BTC. Pooling gives you a shared buffer; isolation gives you a buffer per loan, and you have to size each one.
+
+## How do liquidations differ?
+
+On both protocols a liquidator repays part of your debt below a health factor of 1 and takes collateral worth that amount plus a bonus. You keep what you borrowed, so the bonus is what a liquidation costs you. The rules around it differ:
+
+- **How much at once.** On Aave V3.7, one liquidation can repay up to 50% of your total debt while your health factor is above 0.95 and the collateral and debt involved are each worth at least $2,000; at or below 0.95, or for smaller amounts, it can repay all of the debt in that asset. Aave V4 drops this rule: a liquidator repays only enough to bring you back to the Spoke's target health factor, 1.24 on the Ethereum Main Spoke on 4 Nov 2026. Morpho Blue has no limit: the first liquidator can repay all of your debt in one call.
+- **The bonus.** On Aave V3 it is set per collateral asset by governance: 5% for WETH and WBTC on Ethereum Core on 4 Nov 2026, of which Aave's treasury took 20% as a protocol fee. On V4 it grows as the health factor falls. On Morpho Blue it follows from the LLTV, 1 ÷ (1 − 0.3 × (1 − LLTV)) capped at 15%: 4.38% at an 86% LLTV, 1.06% at 96.5%, all of it to the liquidator.
+- **Pre-liquidation.** On Morpho Blue a borrower could opt into a contract that liquidates slices of the loan before the LLTV. Morpho is retiring the feature and asks borrowers who have it to switch it off; if you once turned on Auto-deleverage, [Morpho pre-liquidation](/blog/morpho-pre-liquidation) shows how to check and revoke it. Aave has nothing like it.
+- **Maturity.** On Morpho Midnight, any debt left after maturity can be liquidated even on a healthy position, with the bonus rising from nothing to its full size over the first hour.
+- **Bad debt.** When collateral runs out before the debt does, Aave V3 records a deficit, which Umbrella stakers can cover on Ethereum (for USDC, USDT, WETH and GHO, per Aave's docs); in V4 another Spoke can cover it. On Morpho the loss is written off against that one market's lenders. For you as a borrower the result is the same everywhere: the collateral is gone and no debt remains.
+
+The full mechanics are in [how Aave liquidation works](/blog/how-aave-liquidation-works), with [V4's rules](/blog/how-aave-liquidation-works#how-are-liquidations-different-on-aave-v4), and [how Morpho liquidation works](/blog/how-morpho-liquidation-works), which has a [side-by-side table](/blog/how-morpho-liquidation-works#how-does-morpho-liquidation-differ-from-aaves).
+
+## How do interest rates differ?
+
+**Aave V3** sets each asset's variable rate on a fixed curve: it rises gently with utilization (the share of the pool that is borrowed) up to an optimal level, then steeply. Governance sets the four numbers of the curve, and the risk stewards can adjust them within limits. USDC on Ethereum Core used a 94% optimal level, a 4.5% first slope and a 10% second slope. At Ethereum block 26341682 on 4 Nov 2026 its utilization was 94.7%, just past the bend, and borrowing cost 5.67% a year. Between parameter changes, the rate moves with utilization alone. [How Aave interest rates work](/blog/aave-interest-rates) has the formula and a real spike.
+
+**Aave V4** keeps a curve per asset at the Hub and adds a User Risk Premium on top, from 0% to 1,000% of the shared rate depending on the quality of your collateral: Aave's example is a 50% premium on a 5% rate, giving 7.5%.
+
+**Morpho Blue** markets use the AdaptiveCurveIRM, which aims for 90% utilization. At any moment the rate sits on a curve around a "rate at target": a quarter of it at 0% utilization, four times it at 100%. Unlike Aave's curve, the rate at target itself drifts: up while utilization stays above 90%, down while it stays below, between 0.1% and 200% a year. At 100% utilization it doubles in about five days. On 4 Nov 2026 Ethereum's USDC | cbBTC (86%) market was at 90.3% utilization, with a rate at target of 4.97% and a borrow rate of about 5.4% a year. A busy market therefore keeps getting more expensive until borrowers repay or lenders arrive; a quiet one gets cheaper.
+
+**Morpho Midnight** fixes your rate when you borrow. You sell debt units below face value and owe exactly one loan token per unit at maturity, so your debt does not grow and only collateral prices move your health factor. Aave has no fixed rate: V3.2 removed the old stable-rate code, and every Aave loan is variable.
+
+## E-Mode or a high-LLTV market: how much can you borrow?
+
+Both protocols let you borrow more against collateral that tracks what you borrow, in different ways.
+
+**Aave E-Mode** is a setting on your whole V3 position. You pick a category and, while you are in it, its collateral gets the category's LTV, threshold and bonus. On Ethereum Core on 4 Nov 2026, "ETH correlated" used an LTV of 93%, a 95% threshold and a 1% bonus, and WETH was the only asset you could borrow in it. Every asset you borrow has to be borrowable in the category, so a position with USDC debt cannot use it. [Aave E-Mode](/blog/aave-e-mode) covers the categories and the March 2026 liquidations.
+
+**On Morpho** there is no mode: you pick a market whose LLTV fits the pair. The LLTVs Morpho governance had enabled on 4 Nov 2026 were 0%, 38.5%, 62.5%, 77%, 86%, 91.5%, 94.5%, 96.5% and 98%. Ethereum's WETH | wstETH market uses 96.5%, with a 1.06% liquidation incentive.
+
+A borrower looping wstETH against WETH can reach a similar place on either, with one difference: on Aave you can borrow only to the 93% LTV, which leaves a health factor of about 95 ÷ 93 = 1.02; on Morpho the contract lets you borrow right up to the 96.5% line, a health factor of 1.00.
+
+## Which networks do Aave and Morpho run on?
+
+|               | Aave                                                                                                                                       | Morpho                                                                                                                                                     |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Variable rate | V3 on more than 20 networks, Ethereum, Arbitrum, Base, Avalanche, Polygon and Optimism among them; V4 on Ethereum, Avalanche, Arc and Base | Blue on 14 networks: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable and Tempo |
+| Fixed rate    | None                                                                                                                                       | Midnight, with listed markets on Ethereum and Base on 4 Nov 2026                                                                                           |
+
+On Aave, every asset in a market is listed by governance. On Morpho, anyone can create a market, and the Morpho app shows only those the Morpho Association chooses to list (see below). A few Aave V3 networks are being wound down; [what happens when Aave winds down a market](/blog/aave-market-wind-down) explains what that means for open loans.
+
+## What risks are different on each?
+
+Both carry the same basic risks, a price fall, an oracle error, a smart contract bug. Where they sit differs.
+
+**Who can change your loan.** On Aave, governance can change a V3 asset's LTV, liquidation threshold, bonus and rate curve, and the risk stewards can move them within capped steps and minimum delays. A lower threshold on V3 applies to every open position at once. Assets can also be frozen, which blocks new borrowing but not liquidation, or paused, which blocks liquidations too, with a grace period of up to 4 hours afterwards. On V4, new collateral factors and bonuses usually reach your position only when you next borrow or withdraw. On Morpho Blue, nobody can change a market: governance can enable new LLTVs and rate models and set a fee of up to 25% of the interest, which lenders pay, but it cannot touch an existing market, and the contract has no pause.
+
+**Who picks the oracle.** Aave governance chooses the price source for every asset. On Morpho, whoever creates a market picks its oracle, and it can never be replaced. Morpho's docs say that choice, being permanent, sets the market's risk profile. Some oracles track an exchange rate rather than a market price, or treat a stablecoin as exactly one dollar. Before borrowing on Morpho, check what your market's oracle measures; [the oracle section of the liquidation guide](/blog/how-morpho-liquidation-works#what-role-does-the-oracle-play-in-a-liquidation) shows what to look for.
+
+**Listed or unlisted.** Morpho's app shows only markets the Morpho Association lists, mainly those a listed vault lends to. Its policy calls listing "a discovery decision", not an endorsement or a risk rating, and an unlisted market still works on-chain. Unlisted markets can still hold large loans, as [tokenized stocks as collateral](/blog/tokenized-stocks-collateral#where-can-you-borrow-against-tokenized-stocks) shows for stock-backed borrowing, so a market's absence from the app tells you only that Morpho chose not to show it.
+
+**What one bad asset can reach.** On Aave, a mispriced or depegging asset in your market moves your whole health factor. On Morpho it moves only the loans that use it, but those loans have no other collateral to lean on.
+
+## Which one fits which borrower?
+
+Neither is the better protocol; each suits a different way of borrowing. Some rough fits:
+
+- **Several assets as collateral, one buffer to watch:** Aave's pooled position lets them back each other, at the cost of rules governance can change.
+- **Rules that cannot change after you borrow:** a Morpho market's LLTV, oracle and rate model are fixed for good, but you have to judge that oracle yourself.
+- **A loan that must not touch your other collateral:** Morpho keeps each loan separate; on Aave, separate markets or networks do the same.
+- **Borrowing close to the line on a correlated pair:** both offer it, through E-Mode or a high LLTV, and both leave a margin of a few percent.
+- **A rate that does not move:** only Morpho Midnight offers one, in exchange for a maturity date you must not miss.
+- **Small positions:** on both, a liquidation can clear the whole debt at once, on Aave below $2,000 in the assets involved and on Morpho at any size.
+
+This guide compares mechanisms; it is not financial advice.
+
+## How can alerts help on either?
+
+Tokenping watches both. It checks every 5 minutes and, while a health factor is below the threshold you set, sends a message at each check on each channel you chose: Signal, Telegram or email.
+
+- **Aave:** one alert per V3 market or V4 Spoke, on 24 V3 markets on 21 networks and all 24 V4 Spokes on Ethereum, Avalanche, Arc and Base. The threshold goes from 1.1 to 10. You can [check your Aave health factor](/aave) first.
+- **Morpho:** one alert per market you borrow in, in markets the Morpho app lists: Blue on 14 networks and Midnight where Morpho's API lists markets (Ethereum and Base on 4 Nov 2026). The threshold goes down to 1.02, because high-LLTV loans often run close to 1. If you authorised pre-liquidation, the alert measures against that earlier line, and a Midnight loan also gets reminders 7 days and 24 hours before maturity. Your positions are on the [Morpho dashboard](/morpho).
+
+Looking at your positions needs no payment. Alerts cost <AlertPrice />, and the same plan covers Aave and Morpho. An alert gives you time to repay or add collateral; it does not prevent liquidation, and a price can move past your line between two checks.
+
+## Sources
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) and [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), aave-dao/aave-v3-origin: close factor, deficit, health factor, pause and grace period (fetched 4 Nov 2026)
+- [Aave V3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): removal of stable rate debt (fetched 4 Nov 2026)
+- [Aave Generalized Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): which parameters stewards can change, minimum delays and maximum steps (fetched 4 Nov 2026)
+- [Aave docs: Umbrella](https://aave.com/docs/aave-v3/umbrella): deficit coverage, assets and network (fetched 4 Nov 2026)
+- [Aave V4 docs](https://aave.com/docs/aave-v4) and [V4 positions](https://aave.com/docs/aave-v4/positions): Hub and Spokes, health factor, User Risk Premium, liquidations (fetched 4 Nov 2026)
+- [Aave V4 overview](https://github.com/aave/aave-v4/blob/main/docs/overview.md), aave/aave-v4: dynamic risk configuration, target health factor, variable bonus, deficits, Spoke oracles (fetched 4 Nov 2026)
+- [Aave V4 API](https://api.v4.aave.com/graphql): Spokes and networks (fetched 4 Nov 2026)
+- [Aave address book](https://github.com/bgd-labs/aave-address-book): Aave V3 networks (fetched 4 Nov 2026)
+- On-chain reads on Ethereum at blocks 26341682 and 26341689: [Aave V3 Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract) and [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) (reserve parameters, E-Mode, USDC rate), [Aave V4 Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485#readContract) (target health factor) and [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) (markets, enabled LLTVs, rates) (fetched 4 Nov 2026)
+- [Morpho.sol and ConstantsLib.sol](https://github.com/morpho-org/morpho-blue), morpho-org/morpho-blue: owner powers, 25% fee cap, liquidation incentive, bad debt (fetched 4 Nov 2026)
+- [AdaptiveCurveIRM constants](https://github.com/morpho-org/morpho-blue-irm/blob/main/src/adaptive-curve-irm/libraries/ConstantsLib.sol), morpho-org/morpho-blue-irm: target utilization, steepness, adjustment speed and bounds (fetched 4 Nov 2026)
+- [Midnight.sol and ConstantsLib.sol](https://github.com/morpho-org/midnight), morpho-org/midnight: collateral limits, post-maturity liquidation and the 60-minute ramp (fetched 4 Nov 2026)
+- [Morpho docs: Morpho Blue](https://docs.morpho.org/learn/concepts/blue), [oracles](https://docs.morpho.org/learn/concepts/oracle) and [Midnight](https://docs.morpho.org/learn/concepts/midnight) (fetched 4 Nov 2026)
+- [Morpho interface listing policy](https://docs.morpho.org/get-started/resources/interface-listing-policy): what listing means and who decides (fetched 4 Nov 2026)
+- [Morpho help: Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (fetched 4 Nov 2026)
+- [Morpho API](https://api.morpho.org/graphql): networks, listed Blue markets, and listed Midnight markets per network (fetched 4 Nov 2026)
+
+_Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation._

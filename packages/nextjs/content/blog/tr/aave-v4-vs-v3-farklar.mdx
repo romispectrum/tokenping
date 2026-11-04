@@ -1,0 +1,175 @@
+export const meta = {
+  slug: "aave-v4-vs-v3-farklar",
+  title: "Aave V4 ve V3: krediniz için neler değişiyor",
+  description:
+    "Borç alanlar için Aave V4 ve V3: Hub ve Spoke'lar, Spoke başına sağlık faktörü, hedef sağlık faktörlü likidasyon, risk primi, E-Mode Spoke'ları ve taşıma.",
+  h1: "Aave V4 ve V3: ne farklı ve bu krediniz için ne anlama geliyor?",
+  publishedAt: "2026-11-04",
+  primaryQuestion: "Borç alan biri için Aave V3 ile Aave V4 arasındaki fark nedir?",
+  readingMinutes: 12,
+  figuresAsOf: "2026-11-04",
+};
+
+<ShortAnswer>
+  Aave V4, 30 Mart 2026'da Ethereum'da yayına girdi ve şimdi Avalanche, Arc ve Base'de de çalışıyor. V3 onun yanında
+  çalışmaya devam ediyor ve paranın çoğunu hâlâ o tutuyor. V4'te bir Spoke'ta borç alırsınız: ortak bir Hub'dan likidite
+  çeken, kendi kuralları olan bir piyasa; her Spoke'un kendi sağlık faktörü (health factor) vardır. Varlık başına tek
+  bir teminat faktörü, V3'ün LTV'sinin ve likidasyon eşiğinin yerini alır; bu yüzden 1,00 sağlık faktörüne kadar borç
+  alabilirsiniz. Bir likidasyon, V3'ün %50'si veya %100'ü yerine sizi Spoke'un hedef sağlık faktörüne (Main Spoke'larda
+  1,24) çıkaracak kadar borç geri öder ve bonus, sağlık faktörünüz düştükçe büyür. Faizler Hub başına belirlenir, daha
+  riskli teminat için üstüne bir risk primi eklenir. Hiçbir şey kendiliğinden taşınmaz: bir V3 kredisi siz taşıyana
+  kadar V3'te kalır.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Rakamlar ve okundukları blok numaraları: content/blog/snapshots/aave-v4-vs-v3.md */}
+
+## Aave V4 nedir ve ne zaman yayına girdi?
+
+Aave V4, Aave borç verme protokolünün kendi kontratlarına sahip yeni bir sürümüdür. V3 piyasalarını yerinde yükseltmez. Aave'nin değişiklik günlüğüne göre 30 Mart 2026'da Ethereum'da üç Hub ve on bir Spoke ile başladı, ardından Avalanche (15 Temmuz), Arc (16 Eylül) ve Base (7 Ekim 2026) ağlarında yayına girdi. V3 21 ağda, V4 dört ağda çalışıyor; Arc'ta yalnızca V4 var.
+
+V3 hâlâ çok daha büyük. 4 Kasım 2026'da DefiLlama, ikisi de krediler düşüldükten sonra Aave V3'te yaklaşık 15,6 milyar $, V4'te yaklaşık 0,79 milyar $ sayıyordu; borç alınan tutarlar yaklaşık 11,4 milyar $ ve 0,47 milyar $'dı. Aave Labs'in Ekim güncellemesi V4'ü 1,5 milyar $'ın üzerinde mevduat ve 450 milyon $ aktif krediyle gösteriyordu.
+
+Borç alan biri için iki sürüm şu konularda farklıdır: pozisyonunuzun nerede yaşadığı, ne kadar borç alabileceğiniz, bir likidasyonun nasıl boyutlandırıldığı ve faizinizin nasıl belirlendiği. Aşağıdaki tablo bunu özetler; ondan sonraki bölümler her satırı açıklar.
+
+## Borç alan biri için ne değişir, ne aynı kalır?
+
+| Konu                             | Aave V3                                                                                       | Aave V4                                                                                                                    |
+| -------------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Kredinizin yaşadığı yer          | Bir piyasa: tek bir ağda tek bir Pool                                                         | Bir veya daha fazla Hub'dan likidite çeken bir Spoke                                                                       |
+| Sağlık faktörü                   | Piyasa başına bir                                                                             | Spoke başına bir                                                                                                           |
+| Formül                           | Σ(teminat × likidasyon eşiği) ÷ borç                                                          | Σ(teminat × teminat faktörü) ÷ borç                                                                                        |
+| Borç limiti                      | Likidasyon eşiğinin altında belirlenen LTV                                                    | Teminat faktörünün kendisi: sağlık faktörü 1,00 olana kadar borç alabilirsiniz                                             |
+| Likidasyon sınırı                | 1'in altında sağlık faktörü                                                                   | 1'in altında sağlık faktörü (değişmedi)                                                                                    |
+| Tek çağrıda en fazla geri ödenen | Borcunuzun %50'si; 0,95 veya altındaki bir sağlık faktöründe ya da küçük pozisyonlarda %100'ü | Sizi Spoke'un hedef sağlık faktörüne getirecek kadarı                                                                      |
+| Likidasyon bonusu                | Teminat varlığı başına sabit                                                                  | Sağlık faktörünüz düştükçe, varlık başına bir azami değere kadar yükselir                                                  |
+| Kırıntı (dust) kuralı            | 1.000 $ kalmalı, yoksa tamamı gider                                                           | 1.000 $ kalmalı, yoksa tamamı gider (değişmedi)                                                                            |
+| Faiz oranı                       | Piyasa başına, varlık başına bir kullanım oranı eğrisi                                        | Hub başına, varlık başına bir kullanım oranı eğrisi, artı bir User Risk Premium                                            |
+| Parametre değişiklikleri         | Her açık pozisyonu aynı anda etkiler                                                          | Yeni ayarlar genellikle bir sonraki borç alışınızda veya teminat çekişinizde uygulanır, yönetişim eskileri güncellemedikçe |
+| Bağlantılı varlıklar             | Bir piyasa içindeki E-Mode kategorileri                                                       | Bağlantılı çiftler için ayrı Spoke'lar, örneğin Lido ve EtherFi Spoke'ları                                                 |
+| Faiz ve fiyatlar                 | Borç faizle büyür; oracle fiyatları sağlık faktörünü hareket ettirir                          | Aynı                                                                                                                       |
+| Mevcut krediniz                  | V3'te kalır                                                                                   | Sıfırdan açılır; hiçbir şey kendiliğinden taşınmaz                                                                         |
+
+## V4'ün Hub'ları ve Spoke'ları nasıl işler?
+
+Bir Hub, her varlığın ortak likiditesini tutar ve faiz oranını belirler. Spoke ise sizin kullandığınız şeydir: yatırabileceğiniz ve borç alabileceğiniz varlıkları listeler, teminat faktörlerini belirler, fiyat oracle'larını (fiyat kaynakları) seçer ve likidasyon ayarlarını tutar. Aave'nin belgeleri bunu şöyle anlatır: kullanıcılar, likiditeyi Hub'a ve Hub'dan yönlendiren Spoke'larla etkileşime girer ve risk Spoke düzeyinde izole edilir.
+
+V3'te bir piyasa iki işi birden yapıyordu. Ethereum Core piyasası kendi USDC'sini tutar ve kendi kurallarını belirler; Prime piyasası ise ayrı kurallarla ayrı USDC tutar. V4'te birkaç Spoke aynı USDC'yi tek bir Hub'dan ödünç verebilir ve her biri kendi risk ayarlarını korur; bir Spoke da birden fazla Hub'dan borç alabilir: Ethereum'daki Bluechip Spoke, hem Core Hub'dan hem Prime Hub'dan USDC verir.
+
+Aave'nin V4 API'si 4 Kasım 2026'da 24 Spoke ve 8 Hub listeliyordu:
+
+| Ağ        | Hub'lar                                   | Spoke'lar                                                                                                                                                                                                     |
+| --------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ethereum  | Core, Prime, Plus, Global Dollar, Sentora | Main, Bluechip, Lido, EtherFi, Kelp, Lombard, Ethena Ecosystem, Ethena Correlated, Gold, PAXG Gold, Forex, USDG Pendle, Maple SyrupUSDG; Sentora'nın Hub'ında: RLUSD Yield, OUSD Yield ve ikinci bir Bluechip |
+| Avalanche | Core                                      | Main, AVAX Correlated, Forex, Ethena Ecosystem                                                                                                                                                                |
+| Arc       | Core                                      | Main, Forex, Maple SyrupUSDC                                                                                                                                                                                  |
+| Base      | Coinbase Stocks                           | Coinbase Stocks                                                                                                                                                                                               |
+
+Sentora, V4'teki ilk dış küratördür: Aave Labs'e göre Ethereum'da kendi Hub'ını ve Spoke'larını çalıştırır ve bunların teminatlarını, parametrelerini, faiz eğrilerini ve oracle'larını belirler; kontratların sahibi ise Aave DAO'dur. Base'deki Spoke tokenize hisselere karşı USDC verir; bu konu [tokenize hisselere karşı borç almak](/tr/blog/teminat-olarak-tokenize-hisseler#tokenize-hisselere-karsı-nerede-borc-alabilirsiniz) rehberinde ele alınıyor.
+
+## Bir V4 Spoke'unda sağlık faktörü nasıl işler?
+
+Sağlık faktörü iki sürümde de aynı anlama gelir: ağırlıklı teminat bölü borç; 1'in altında likide edilebilirsiniz. V4'te ağırlık teminat faktörüdür (collateral factor, CF). Aave'nin kendi örneği: %80 CF ile 10.000 $ değerinde ETH, 6.000 $ değerinde GHO'ya karşı 1,333 verir. [Sağlık faktörü rehberinin V4 bölümü](/tr/blog/aave-saglik-faktoru#aave-v4te-saglık-faktoru-farklı-mı) temelleri ele alır; formülden daha önemli üç sonuç vardır.
+
+**Spoke başına bir sağlık faktörü.** Aave'nin belgeleri farklı Spoke'lardaki pozisyonların birbirini etkilemediğini ve yalnızca aynı Spoke'a yatırılmış teminata karşı borç alabileceğinizi söyler. Main Spoke'taki ETH, Gold Spoke'taki bir kredi için hiçbir şey yapmaz. V3'te piyasalar arasında da aynısı geçerlidir, ama bir piyasa içinde tüm teminatınız tüm borcunuzu karşılar.
+
+**Borç limiti ile likidasyon sınırı arasında boşluk yok.** V3'te likidasyon eşiğinin altında duran LTV'ye kadar borç alabilirsiniz: 4 Kasım 2026'da Ethereum Core'da WETH'in LTV'si %81, eşiği %84'tü; bu yüzden yalnızca WETH'e karşı azami tutarda borç almak yaklaşık 1,037 sağlık faktörü bırakır ([azami borcun neden yaklaşık 1,03 bıraktığı](/tr/blog/aave-saglik-faktoru#maksimum-borc-almak-neden-saglık-faktorunu-yalnızca-yaklasık-103te-bırakır)). V4'te ayrı bir LTV yoktur. Aave'nin belgeleri bir borç alma veya teminat çekme işleminin yalnızca sağlık faktörünü 1,0'ın altına indirecekse engellendiğini söyler ve kod tam olarak bunu kontrol eder. V4'te azami tutarda borç alınmış bir pozisyon likidasyon sınırında başlar ve ilk faiz işlemesi ya da ilk fiyat hareketi onu sınırın öbür tarafına geçirebilir. Kendi marjınızı seçin.
+
+**Aynı varlıklar aynı ağırlığı taşıyabilir.** Bazı parametreler sürümler arasında eşitlenmiştir. 4 Kasım 2026'da WETH hem V3 Ethereum Core'da hem V4 Main Spoke'ta %84 olarak sayılıyordu; bu yüzden 12.000 USDC'ye karşı 10 WETH ikisinde de aynı sağlık faktörüne ve aynı 1.428,57 $ likidasyon fiyatına sahiptir.
+
+### Yönetişim bir teminat faktörünü değiştirdiğinde ne olur?
+
+V3'te daha düşük bir likidasyon eşiği, değişiklik yürürlüğe girdiği an her açık pozisyona uygulanır; bu da hiçbir fiyat hareketi olmadan bir borç alanı 1'in altına itebilir ([sağlık faktörünüzün neden düştüğüne dair 4. neden](/tr/blog/aave-saglik-faktoru-neden-dustu#neden-4-yonetisim-veya-risk-stewards-bir-likidasyon-esigini-mi-dusurdu)).
+
+V4 her varlığın teminat faktörünün, azami bonusunun ve likidasyon ücretinin bir geçmişini tutar. Yönetişim (governance) yeni bir yapılandırma eklediğinde pozisyonunuz, siz borç alana, teminat çekene veya bir teminatı kapatana kadar bağlı olduğu yapılandırmayı korur; yatırma ve geri ödeme onu değiştirmez. Pozisyonunuz en yeni ayarlarla sağlıksız olacaksa, borç alma veya teminat çekme işlemi geri döner (revert). Bu yüzden bir indirimden sonra, sağlık faktörünüz iyi görünse bile teminat çekemediğinizi fark edebilirsiniz.
+
+Bu koruma mutlak değildir. Yönetişim mevcut bir yapılandırmayı da düzenleyebilir, bu da ona bağlı her pozisyona ulaşır; ya da bir pozisyonu en yeni yapılandırmaya zorlayabilir. 28 Ekim 2026'da tek bir yönetişim paketi (payload, AIP 536), V3 Ethereum Core'da WETH'i %83'ten %84'e çıkardı ve aynı işlemde V4 Main Spoke'un mevcut WETH yapılandırmasını %83'ten %84'e düzenledi. Bu değişiklik borç alanların işine yaradı; ters yöndeki bir düzenleme de aynı şekilde işlerdi.
+
+## V4'te likidasyonlar nasıl farklıdır?
+
+V3'te sağlık faktörünüz 0,95'in üzerindeyken ve hem ilgili teminat hem ilgili borç en az 2.000 $ değerindeyken bir likidatör borcunuzun en fazla %50'sini, aksi hâlde %100'üne kadarını geri ödeyebilir ([borcun ne kadarı tek seferde likide edilebilir](/tr/blog/aave-likidasyonu-nasil-isler#borcumun-ne-kadarı-tek-seferde-likide-edilebilir)). Bonus teminat varlığı başına sabittir: Ethereum Core'da WETH için %5.
+
+V4'te close factor (tek seferde ödenebilecek borç payı) yoktur. Bir likidatör, sağlık faktörünüzü Spoke'un hedefine getirmek için gereken kadar borcu geri ödeyebilir, daha fazlasını değil; tek istisna, bunun 1.000 $'dan az borç veya teminat bırakacağı durumdur. Bonus, 1'in hemen altında varlığın azami bonusunun bir payıyla başlar ve belirli bir sağlık faktöründe tam azami değere kadar doğrusal olarak yükselir. 4 Kasım 2026'da zincir üstünde okunan ayarlar:
+
+| Spoke                                                            | Hedef sağlık faktörü         | Tam bonusun başladığı seviye | 1'in hemen altındaki bonus  |
+| ---------------------------------------------------------------- | ---------------------------- | ---------------------------- | --------------------------- |
+| Main (Ethereum, Avalanche, Arc), Coinbase Stocks (Base)          | 1,24                         | 0,90                         | Azami değerin %90'ı         |
+| Bluechip (Ethereum)                                              | 1,174                        | 0,90                         | Azami değerin %90'ı         |
+| Gold (Ethereum)                                                  | 1,3075                       | 0,90                         | Azami değerin %90'ı         |
+| Lido, EtherFi, Kelp, Lombard, Ethena, Forex ve benzeri Spoke'lar | yaklaşık 1,01 ile 1,06 arası | 0,99                         | Azami değerin tamamı, sabit |
+
+### Hesaplamalı örnek: iki sürümde 12.000 USDC'ye karşı 10 WETH
+
+Aynı pozisyonu V3 Ethereum Core'da (%84 eşik, %5 bonus) ve V4 Main Spoke'ta (%84 CF, %5,55 azami bonus, hedef 1,24) alın. İkisi de ETH 1.428,57 $'ın altına indiğinde likide edilebilir. İki fiyatta tek bir likidasyonun alabileceği en fazla tutar şöyledir:
+
+| ETH fiyatı (sağlık faktörü) | Sürüm | Bonus | Geri ödenen borç    | Ödediğiniz bonus | Sonraki sağlık faktörü | Kalan borç |
+| --------------------------- | ----- | ----- | ------------------- | ---------------- | ---------------------- | ---------- |
+| 1.400 $ (0,98)              | V3    | %5    | 6.000 $ (%50)       | 300 $            | 1,078                  | 6.000 $    |
+| 1.400 $ (0,98)              | V4    | %5,11 | 8.736,81 $ (%72,8)  | 446,10 $         | 1,24                   | 3.263,19 $ |
+| 1.330 $ (0,931)             | V3    | %5    | 12.000 $ (%100)     | 600 $            | yok (borç kalmadı)     | 0 $        |
+| 1.330 $ (0,931)             | V4    | %5,38 | 10.450,22 $ (%87,1) | 562,01 $         | 1,24                   | 1.549,78 $ |
+
+İki şey göze çarpar. 1'in hemen altında Main Spoke'taki bir V4 likidasyonu, borcunuzun V3'ün %50'sinden daha büyük bir payını alabilir, çünkü 1,24'lük bir hedef büyük bir geri ödeme gerektirir; siz de dolar olarak daha büyük bir bonus ödersiniz. Daha aşağıda V3 her şeyi kapatabilirken V4 yine hedefte durur ve size 1,24'te bir pozisyon bırakır. Her iki durumda da borç aldığınız USDC sizde kalır; kaybettiğiniz şey bonustur. Bir likidatör her zaman bu azami tutarlardan daha azını geri ödemeyi seçebilir.
+
+E-Mode tarzı Spoke'larda hedefler 1'in hemen üzerindedir ve bonus wstETH ile weETH'te sabit %1'dir. Bonus küçüktür, ama %95,5 CF ile 1'in altındaki her adım büyük bir geri ödeme gerektirir: Lido Spoke'ta 0,987 sağlık faktöründeki bir pozisyonun borcunun yaklaşık %55'i tek bir likidasyonda geri ödenebilir. [Likidasyon rehberinin V4 bölümü](/tr/blog/aave-likidasyonu-nasil-isler#aave-v4te-likidasyonlar-nasıl-farklıdır) bonus formülünü içerir.
+
+## V4'te faiz oranları nasıl farklıdır?
+
+V3'te her varlığın her piyasada bir kullanım oranı eğrisi vardır: Ethereum Core'daki USDC ile Arbitrum'daki USDC'nin ayrı havuzları ve ayrı faizleri vardır ([Aave faizleri nasıl işler](/tr/blog/aave-faiz-oranlari)). V4 eğriyi korur ama Hub'a taşır; böylece aynı Hub'dan USDC borç alan her Spoke aynı taban faizi öder ve aynı token iki farklı Hub'dan farklı maliyetlerle alınabilir. 4 Kasım 2026'da Aave'nin API'si Bluechip Spoke'taki USDC'yi Core Hub'dan %5,41, Prime Hub'dan %4,45 olarak gösteriyordu.
+
+V4 taban faizin üzerine bir User Risk Premium (kullanıcı risk primi) ekler. Her teminat varlığının her Spoke'ta %0 ile %1.000 arasında bir teminat riski vardır; priminiz, teminatlarınızın riskinin ortalamasıdır: en güvenli olanı önce sayılır ve yalnızca borcunuzu karşılayacak kadar teminat hesaba katılır. Aave'nin örneği: %5'lik bir taban faiz üzerine %50'lik bir prim, %7,5 ödediğiniz anlamına gelir.
+
+Çoğu Spoke hâlâ her teminat riskini 0'a ayarlıyor; bu yüzden borç alanları yalnızca taban faizi öder. 4 Kasım 2026'daki istisnalar arasında Arc'taki Maple Spoke'ta syrupUSDC (%20), Avalanche'taki Ethena Ecosystem Spoke'ta USDe (%16,5), Coinbase Stocks Spoke'ta SPCXc (%10) ve Sentora'nın Spoke'larındaki birkaç varlık vardı. Arc'ta yalnızca syrupUSDC ile karşılanan bir USDC kredisi, taban faiz %3,06 iken yaklaşık %3,7'ye mal oluyordu.
+
+Priminiz borç aldığınızda, teminat çektiğinizde, teminatı değiştirdiğinizde veya likide edildiğinizde yeniden hesaplanır; yatırdığınızda veya geri ödediğinizde değil. Yönetişim bir varlığın riskini düşürürse bundan ancak bu işlemlerden biri veya elle yapılan bir yenilemeden sonra yararlanırsınız; yükseltirse, yönetişim bir güncellemeyi zorlamadıkça priminiz o zamana kadar aynı kalır. GHO ve V4 faizleri hakkında daha fazlası [Aave V4'te faizler nasıl belirlenir](/tr/blog/aave-faiz-oranlari#gho-icin-ve-aave-v4te-faizler-nasıl-belirlenir) bölümünde.
+
+## Aave V4'te E-Mode'un yerini ne aldı?
+
+V3'te E-Mode bir piyasa içindeki bir anahtardır: Ethereum Core'da "ETH correlated" (ETH ile bağlantılı) gibi bir kategori seçersiniz (4 Kasım 2026'da %93 LTV, %95 eşik, %1 bonus) ve o piyasadaki pozisyonunuzun tamamı bu ayarları kullanır ([E-Mode nasıl işler](/tr/blog/aave-e-mode)).
+
+V4'te E-Mode anahtarı yoktur. Bunun yerine bağlantılı çiftler kendi Spoke'larını alır: Aave'nin belgeleri Lido, EtherFi ve Kelp Spoke'larını "eSpokes" diye adlandırır; etkinleştirme önerisi de bunları Lombard BTC ile birlikte e-Mode Spoke'ları olarak etiketledi. Lido Spoke, wstETH'i %95,5 CF ile teminat olarak kabul eder ve yalnızca WETH verir; EtherFi Spoke aynısını weETH ile yapar. 4 Kasım 2026'da ikisinin de likidasyon bonusu %1'di.
+
+Pratik fark şudur: V3'te pozisyon sağlıklı kaldığı sürece onu E-Mode'a sokup çıkarabilirsiniz. V4'te Lido Spoke'taki bir loop (kaldıraçlı borç döngüsü), Main Spoke'ta tuttuğunuz her şeyden ayrı bir pozisyondur. Geçiş yapmak için birini kapatıp diğerini açarsınız.
+
+## Aave V3 çalışmaya devam ediyor mu, V3 kredileri V4'e taşınıyor mu?
+
+V3 çalışmaya devam ediyor ve hiçbir şey kendiliğinden taşınmıyor. Aave Labs'in Şubat 2026 tarihli temp check'i, yani "Aave Will Win" çerçevesi, "no need for a rushed, or forced, migration" (aceleye getirilmiş veya zorunlu bir taşımaya gerek yok) olduğunu ve DAO aksi yönde karar verene kadar V3'ün V4 ile birlikte çalışacağını söylüyor. Ayrıca V4 olgunlaştığında V3 parametrelerinin "could be gradually adjusted to encourage migration" (taşımayı teşvik etmek için kademeli olarak ayarlanabileceğini) ve V3'ün çekimlere süresiz olarak açık kalacağını söylüyor. Bazı V3 piyasaları başka nedenlerle zaten kapatılıyor; bunu [piyasa kapanışı rehberi](/tr/blog/aave-piyasa-kapanisi#hangi-aave-piyasaları-kapatılıyor) açıklıyor.
+
+Aave'nin V4 belgeleri bir V3 pozisyonunu V4'e taşıyan bir araç tanımlamıyor; bir pozisyonu bir V4 Spoke'tan diğerine taşıyan bir araç da tanımlamıyor. Elle taşımak şu sırayla yapılır: V3 borcunu geri ödemek, teminatı çekmek, onu bir V4 Spoke'a yatırmak ve yeniden borç almak; böylece borç hâlâ teminata dayanırken teminatınız hiçbir zaman çekilmez. Bazı üçüncü taraf araçlar bu adımları tek bir işlemde birleştirir. Her iki durumda da önce yeni Spoke'un teminat faktörünü, hedef sağlık faktörünü ve faizini kontrol edin: aynı sağlık faktörü orada farklı bir marj ve farklı bir likidasyon boyutu anlamına gelebilir.
+
+## İkisinde de krediniz varsa neyi izlemelisiniz?
+
+- **İki veya daha fazla sağlık faktörü.** Her V3 piyasasının ve her V4 Spoke'unun kendi sağlık faktörü vardır. Sağlıklı bir V3 kredisi, 1'e yakın bir V4 kredisi için hiçbir şey yapmaz.
+- **Farklı başlangıç marjları.** Azami tutarda borç alınmış bir V4 pozisyonu 1,00'da durur, V3'ün LTV'si ise bir boşluk bırakır. V3'teki "limite kadar borç al" alışkanlığını V4'e taşımayın.
+- **Farklı likidasyon boyutları.** Main Spoke'larda tek bir likidasyon borcunuzun yarısından fazlasını alabilir; V3'te sağlık faktörünüz 0,95'in üzerindeyken en fazla yarısını alır.
+- **İkisine de ulaşan değişiklikler.** Tek bir paket 28 Ekim 2026'da WETH'i iki sürümde de değiştirdi. İkisi için de yönetişimi izleyin.
+- **Birbirinden ayrılan faizler.** V3 faizleri her piyasanın havuzunu izler; V4 faizleri Hub'ı izler, artı priminiz.
+- **Gelecekteki V3 değişiklikleri.** Yönetişim borç alanları V4'e yöneltmek için V3'ü ayarlamaya başlarsa, faizlerin veya parametrelerin V3 kredilerinin aleyhine hareket etmesini bekleyin.
+
+## Bir uyarı iki sürümü de kapsayabilir mi?
+
+Evet, ayrı uyarılar olarak. Tokenping sağlık faktörünüzü her 5 dakikada bir, 21 ağdaki her Aave V3 piyasasında ve Ethereum, Avalanche, Arc ve Base'deki 24 V4 Spoke'unun tümünde kontrol eder; her V3 piyasası veya V4 Spoke'u için bir uyarıyla. Sağlık faktörü seçtiğiniz eşiğin (1,1 ile 10 arası) altındayken size Signal, Telegram veya e-posta ile mesaj gönderir ve sağlık faktörü toparlanana kadar her kontrolde tekrarlar.
+
+V4'te eşik daha önemlidir, çünkü borç limiti likidasyon sınırıdır: mesajın, borcu geri ödemek veya teminat eklemek için hâlâ zamanınız varken ve bir likidasyon borcunuzu Spoke'un hedefine indirmeden önce gelmesi için eşiği 1'in epey üzerine kurun. Bir uyarı sizin yerinize işlem yapamaz ve hızlı bir hareket iki kontrol arasında 1'i geçebilir. [Ne kadar tampon bırakmalısınız](/tr/blog/guvenli-aave-saglik-faktoru#harekete-gecmeye-zamanınız-olması-icin-ne-kadar-tampona-ihtiyacınız-var) bir sayı seçmenize yardımcı olur.
+
+[Aave V3 ve V4 pozisyonlarınızı kontrol etmek](/tr/aave) ödeme gerektirmez; uyarıların fiyatı: <AlertPrice />, ödeme Arbitrum ağında yapılır. Tokenping beta aşamasındadır ve çalışma süresi garantisi yoktur. Kurulum adımları [sağlık faktörü uyarısı nasıl kurulur](/tr/blog/aave-saglik-faktoru-uyarisi-kurulumu) rehberinde.
+
+## Kaynaklar
+
+- [Aave V4'e genel bakış](https://aave.com/docs/aave-v4.md): Hub'lar, Spoke'lar, Hub varlığı başına faizler, User Risk Premium, hedef sağlık faktörü ve 1.000 $ kırıntı kuralı (erişim tarihi: 4 Kasım 2026)
+- [Aave V4 kullanıcı pozisyonları](https://aave.com/docs/aave-v4/positions.md), [borç alma](https://aave.com/docs/aave-v4/positions/borrow.md) ve [pozisyon koşulları](https://aave.com/docs/aave-v4/positions/conditions.md): Spoke başına pozisyonlar, 1,0'ın altında engellenen borçlanma, aynı Spoke'taki teminat, dinamik yapılandırma ve prim güncellemeleri (erişim tarihi: 4 Kasım 2026)
+- [Aave V4 Spoke'ları](https://aave.com/docs/aave-v4/liquidity/spokes.md) ve [likidasyonlar](https://aave.com/docs/aave-v4/positions/liquidations.md): Ethereum'da dağıtılmış Spoke'lar ve eSpoke adları, Hollanda usulü açık artırma (Dutch auction) bonusu (erişim tarihi: 4 Kasım 2026)
+- [Aave belgeleri değişiklik günlüğü](https://aave.com/docs/resources/changelog.md): Ethereum, Avalanche, Arc ve Base'de V4 yayın tarihleri (erişim tarihi: 4 Kasım 2026)
+- [aave/aave-v4 genel bakış](https://github.com/aave/aave-v4/blob/main/docs/overview.md), [LiquidationLogic.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/libraries/LiquidationLogic.sol) ve [Spoke.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/Spoke.sol), commit a3ef63e: risk primi, dinamik risk yapılandırması, likidasyon motoru, sağlık faktörü kontrolü (erişim tarihi: 4 Kasım 2026)
+- [Aave V4 herkese açık GraphQL API'si](https://api.v4.aave.com/graphql), `chains`, `hubs`, `spokes` ve `reserves`: Spoke'lar, Hub'lar, teminat faktörleri, teminat riski, bonuslar ve borç faizleri (erişim tarihi: 4 Kasım 2026)
+- Her V4 Spoke'unun `getLiquidationConfig` ve `getReserve` fonksiyonlarının zincir üstü okumaları, örneğin 26341712 numaralı blokta [Ethereum Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485#readContract) (erişim tarihi: 4 Kasım 2026)
+- [AIP 536 yürütme işlemi](https://etherscan.io/tx/0x226c48626ec314b194dfa080e992dcabfa1526f813835f81914e1885d5af1275), 28 Ekim 2026: V3 Ethereum Core'da ve V4 Main Spoke'ta WETH (erişim tarihi: 4 Kasım 2026)
+- [Aave V3 PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) ve [Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract): 26341695 numaralı blokta WETH LTV'si, eşiği ve bonusu, E-Mode kategorisi 1 (erişim tarihi: 4 Kasım 2026)
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): %50 ve %100 close factor, 2.000 $ ve 1.000 $ eşikleri (erişim tarihi: 4 Kasım 2026)
+- [ARFC: Aave V4 Activation on Ethereum Mainnet](https://governance.aave.com/t/arfc-aave-v4-activation-on-ethereum-mainnet/24293), Aave Labs, 13 Mart 2026: başlangıç Spoke'ları ve e-Mode Spoke'ları (erişim tarihi: 4 Kasım 2026)
+- [TEMP CHECK: Aave Will Win Framework](https://governance.aave.com/t/temp-check-aave-will-win-framework/24055), Aave Labs, 12 Şubat 2026: V3'ün V4 ile birlikte çalışması, zorunlu taşıma olmaması (erişim tarihi: 4 Kasım 2026)
+- [AL Development Update, October 2026](https://governance.aave.com/t/al-development-update-october-2026/25979), Aave Labs, 2 Kasım 2026: V4 mevduatları, Sentora, ilk Risk Premium rezervi, AIP 536 (erişim tarihi: 4 Kasım 2026)
+- [DefiLlama protocols API](https://api.llama.fi/protocols): Aave V3 ve V4 TVL ve borç alınan tutarlar (erişim tarihi: 4 Kasım 2026)
+
+_Eğitim amaçlı içeriktir, finansal tavsiye değildir. Uyarılar riski azaltır ama likidasyonu önlemez._

@@ -319,6 +319,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         protocol: "morpho",
       },
     },
+    {
+      meta: {
+        slug: "aave-vs-morpho",
+        title: "Aave vs Morpho for borrowers: how the two differ",
+        description:
+          "Aave vs Morpho for borrowers: pooled vs isolated markets, health factor, liquidations, interest rates, E-Mode vs LLTV, oracles and governance risk.",
+        h1: "Aave vs Morpho: how do they differ for a borrower?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "How do Aave and Morpho differ for a borrower, and which one fits my loan?",
+        readingMinutes: 12,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3",
+        title: "Aave V4 vs V3: what changes for your loan",
+        description:
+          "Aave V4 vs V3 for borrowers: hubs and Spokes, the health factor per Spoke, target health factor liquidations, risk premiums, E-Mode Spokes and migration.",
+        h1: "Aave V4 vs V3: what is different, and what does it mean for your loan?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "What is the difference between Aave V3 and Aave V4 for a borrower?",
+        readingMinutes: 13,
+        figuresAsOf: "2026-11-04",
+      },
+    },
   ],
   cs: [
     {
@@ -633,6 +659,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
           "Jak funguje půjčka s pevnou sazbou na Morpho Midnight a co se stane, když ji do splatnosti nesplatím?",
         readingMinutes: 11,
         protocol: "morpho",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-vs-morpho-srovnani",
+        title: "Aave vs Morpho pro dlužníky: čím se liší",
+        description:
+          "Aave vs Morpho pro dlužníky: sdílené a izolované trhy, health factor, likvidace, úrokové sazby, E-Mode vs LLTV, orákula a riziko governance.",
+        h1: "Aave vs Morpho: čím se liší pro dlužníka?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Čím se Aave a Morpho liší pro dlužníka a který z nich se hodí pro mou půjčku?",
+        readingMinutes: 12,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-co-se-meni",
+        title: "Aave V4 vs V3: co se mění pro vaši půjčku",
+        description:
+          "Aave V4 vs V3 pro dlužníky: Huby a Spoky, health factor v každém Spoke, likvidace na cílový health factor, rizikové přirážky, Spoky místo E-Mode a migrace.",
+        h1: "Aave V4 vs V3: co je jinak a co to znamená pro vaši půjčku?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Jaký je rozdíl mezi Aave V3 a Aave V4 pro dlužníka?",
+        readingMinutes: 13,
+        figuresAsOf: "2026-11-04",
       },
     },
   ],
@@ -955,6 +1007,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         protocol: "morpho",
       },
     },
+    {
+      meta: {
+        slug: "aave-vs-morpho-comparativa",
+        title: "Aave vs Morpho para prestatarios: en qué se diferencian",
+        description:
+          "Aave vs Morpho para prestatarios: mercados agrupados o aislados, factor de salud, liquidaciones, tasas, E-Mode vs LLTV, oráculos y riesgo de gobernanza.",
+        h1: "Aave vs Morpho: ¿en qué se diferencian para un prestatario?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "¿En qué se diferencian Aave y Morpho para un prestatario y cuál encaja con mi préstamo?",
+        readingMinutes: 16,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-diferencias",
+        title: "Aave V4 vs V3: qué cambia para tu préstamo",
+        description:
+          "Aave V4 vs V3 para prestatarios: Hubs y Spokes, factor de salud por Spoke, liquidaciones hasta un objetivo, primas de riesgo, Spokes de E-Mode y migración.",
+        h1: "Aave V4 vs V3: ¿qué es diferente y qué significa para tu préstamo?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "¿Cuál es la diferencia entre Aave V3 y Aave V4 para un prestatario?",
+        readingMinutes: 16,
+        figuresAsOf: "2026-11-04",
+      },
+    },
   ],
   hi: [
     {
@@ -1269,6 +1347,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
           "फ़िक्स्ड रेट Morpho Midnight लोन कैसे काम करता है, और अगर मैंने मैच्योरिटी तक नहीं चुकाया तो क्या होता है?",
         readingMinutes: 14,
         protocol: "morpho",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-vs-morpho-tulna",
+        title: "Aave बनाम Morpho: उधार लेने वालों के लिए क्या अंतर है",
+        description:
+          "उधार लेने वालों के लिए Aave बनाम Morpho: साझा बनाम अलग-अलग मार्केट, हेल्थ फ़ैक्टर, लिक्विडेशन, ब्याज दरें, E-Mode बनाम LLTV, ओरेकल और गवर्नेंस का जोखिम।",
+        h1: "Aave बनाम Morpho: उधार लेने वाले के लिए दोनों में क्या अंतर है?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "उधार लेने वाले के लिए Aave और Morpho में क्या अंतर है, और मेरे लोन के लिए कौन सा ठीक है?",
+        readingMinutes: 16,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-antar",
+        title: "Aave V4 बनाम V3: आपके लोन के लिए क्या बदलता है",
+        description:
+          "उधार लेने वालों के लिए Aave V4 बनाम V3: Hub, Spoke, हर Spoke का हेल्थ फ़ैक्टर, लक्ष्य हेल्थ फ़ैक्टर पर लिक्विडेशन, रिस्क प्रीमियम, E-Mode Spoke, माइग्रेशन।",
+        h1: "Aave V4 बनाम V3: क्या अलग है, और आपके लोन के लिए इसका क्या मतलब है?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "उधार लेने वाले के लिए Aave V3 और Aave V4 में क्या अंतर है?",
+        readingMinutes: 15,
+        figuresAsOf: "2026-11-04",
       },
     },
   ],
@@ -1590,6 +1694,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         protocol: "morpho",
       },
     },
+    {
+      meta: {
+        slug: "aave-vs-morpho-vergleich",
+        title: "Aave vs. Morpho für Kreditnehmer: die Unterschiede",
+        description:
+          "Aave vs. Morpho für Kreditnehmer: gepoolte vs. isolierte Märkte, Health Factor, Liquidationen, Zinsen, E-Mode vs. LLTV, Orakel und Governance-Risiko.",
+        h1: "Aave vs. Morpho: Wie unterscheiden sie sich für Kreditnehmer?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Wie unterscheiden sich Aave und Morpho für Kreditnehmer, und welches passt zu deinem Kredit?",
+        readingMinutes: 14,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-unterschiede",
+        title: "Aave V4 vs. V3: Was sich für deinen Kredit ändert",
+        description:
+          "Aave V4 vs. V3 für Kreditnehmer: Hubs und Spokes, Health Factor pro Spoke, Liquidation bis zum Ziel-Health-Factor, Risikoprämien, E-Mode-Spokes, Migration.",
+        h1: "Aave V4 vs. V3: Was ist anders, und was bedeutet das für deinen Kredit?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Was ist der Unterschied zwischen Aave V3 und Aave V4 für Kreditnehmer?",
+        readingMinutes: 14,
+        figuresAsOf: "2026-11-04",
+      },
+    },
   ],
   vi: [
     {
@@ -1904,6 +2034,33 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
           "Khoản vay lãi suất cố định trên Morpho Midnight hoạt động thế nào, và điều gì xảy ra nếu chưa trả nợ trước ngày đáo hạn?",
         readingMinutes: 18,
         protocol: "morpho",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-vs-morpho-so-sanh",
+        title: "Aave và Morpho cho người vay: khác nhau ở đâu",
+        description:
+          "So sánh Aave và Morpho cho người vay: thị trường gộp chung và riêng biệt, hệ số sức khỏe, thanh lý, lãi suất, E-Mode và LLTV, oracle, rủi ro quản trị.",
+        h1: "Aave và Morpho khác nhau thế nào đối với người vay?",
+        publishedAt: "2026-11-04",
+        primaryQuestion:
+          "Aave và Morpho khác nhau thế nào đối với người vay, và giao thức nào hợp với khoản vay của tôi?",
+        readingMinutes: 19,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-khac-biet",
+        title: "Aave V4 và V3: điều gì thay đổi với khoản vay của bạn",
+        description:
+          "Aave V4 và V3 cho người vay: Hub và Spoke, hệ số sức khỏe theo Spoke, thanh lý theo mức mục tiêu, phần bù rủi ro, Spoke kiểu E-Mode và chuyển đổi.",
+        h1: "Aave V4 và V3: khác nhau ở đâu, và điều đó có ý nghĩa gì với khoản vay của bạn?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Aave V3 và Aave V4 khác nhau thế nào đối với người vay?",
+        readingMinutes: 18,
+        figuresAsOf: "2026-11-04",
       },
     },
   ],
@@ -2227,6 +2384,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         protocol: "morpho",
       },
     },
+    {
+      meta: {
+        slug: "aave-vs-morpho-comparatif",
+        title: "Aave vs Morpho pour l'emprunteur : les différences",
+        description:
+          "Aave vs Morpho pour emprunter : marchés mutualisés ou isolés, facteur de santé, liquidations, taux, E-Mode ou LLTV, oracles et risque de gouvernance.",
+        h1: "Aave vs Morpho : en quoi diffèrent-ils pour un emprunteur ?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "En quoi Aave et Morpho diffèrent-ils pour un emprunteur, et lequel convient à mon prêt ?",
+        readingMinutes: 16,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-differences",
+        title: "Aave V4 vs V3 : ce qui change pour votre prêt",
+        description:
+          "Aave V4 vs V3 pour l'emprunteur : Hubs et Spokes, facteur de santé par Spoke, liquidation au facteur cible, primes de risque, Spokes E-Mode et migration.",
+        h1: "Aave V4 vs V3 : qu'est-ce qui change, et qu'est-ce que cela signifie pour votre prêt ?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Quelle est la différence entre Aave V3 et Aave V4 pour un emprunteur ?",
+        readingMinutes: 16,
+        figuresAsOf: "2026-11-04",
+      },
+    },
   ],
   pt: [
     {
@@ -2547,6 +2730,33 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         protocol: "morpho",
       },
     },
+    {
+      meta: {
+        slug: "aave-vs-morpho-comparacao",
+        title: "Aave vs Morpho para tomadores: como os dois diferem",
+        description:
+          "Aave vs Morpho para tomadores: mercados compartilhados ou isolados, fator de saúde, liquidações, juros, E-Mode vs LLTV, oráculos e risco de governança.",
+        h1: "Aave vs Morpho: em que eles diferem para quem toma empréstimo?",
+        publishedAt: "2026-11-04",
+        primaryQuestion:
+          "Em que o Aave e o Morpho diferem para quem toma empréstimo, e qual combina com o meu empréstimo?",
+        readingMinutes: 16,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-diferencas",
+        title: "Aave V4 vs V3: o que muda no seu empréstimo",
+        description:
+          "Aave V4 vs V3 para tomadores: Hubs e Spokes, fator de saúde por Spoke, liquidação até o fator de saúde alvo, prêmio de risco, Spokes de E-Mode e migração.",
+        h1: "Aave V4 vs V3: o que é diferente e o que isso significa para o seu empréstimo?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Qual é a diferença entre o Aave V3 e o Aave V4 para quem toma empréstimo?",
+        readingMinutes: 16,
+        figuresAsOf: "2026-11-04",
+      },
+    },
   ],
   it: [
     {
@@ -2863,6 +3073,33 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
           "Come funziona un prestito a tasso fisso su Morpho Midnight, e cosa succede se non ho rimborsato entro la scadenza?",
         readingMinutes: 14,
         protocol: "morpho",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-vs-morpho-confronto",
+        title: "Aave vs Morpho per i debitori: in cosa differiscono",
+        description:
+          "Aave vs Morpho per i debitori: mercati condivisi o isolati, fattore di salute, liquidazioni, tassi, E-Mode o LLTV, oracoli e rischio di governance.",
+        h1: "Aave vs Morpho: in cosa differiscono per chi prende in prestito?",
+        publishedAt: "2026-11-04",
+        primaryQuestion:
+          "In cosa differiscono Aave e Morpho per chi prende in prestito, e quale si adatta al mio prestito?",
+        readingMinutes: 15,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-differenze",
+        title: "Aave V4 vs V3: cosa cambia per il tuo prestito",
+        description:
+          "Aave V4 vs V3 per i debitori: Hub e Spoke, fattore di salute per Spoke, liquidazioni al valore obiettivo, premi di rischio, Spoke E-Mode e migrazione.",
+        h1: "Aave V4 vs V3: cosa cambia, e cosa significa per il tuo prestito?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Qual è la differenza tra Aave V3 e Aave V4 per chi prende in prestito?",
+        readingMinutes: 15,
+        figuresAsOf: "2026-11-04",
       },
     },
   ],
@@ -3183,6 +3420,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         protocol: "morpho",
       },
     },
+    {
+      meta: {
+        slug: "aave-vs-morpho-porownanie",
+        title: "Aave vs Morpho dla pożyczkobiorcy: czym się różnią",
+        description:
+          "Aave vs Morpho dla pożyczkobiorcy: pule a izolowane rynki, współczynnik zdrowia, likwidacje, oprocentowanie, E-Mode a LLTV, wyrocznie i governance.",
+        h1: "Aave vs Morpho: czym różnią się dla pożyczkobiorcy?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Czym Aave i Morpho różnią się dla pożyczkobiorcy i który z nich pasuje do mojej pożyczki?",
+        readingMinutes: 12,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-roznice",
+        title: "Aave V4 vs V3: co zmienia się dla twojej pożyczki",
+        description:
+          "Aave V4 vs V3 dla pożyczkobiorcy: Huby i Spoke'i, współczynnik zdrowia na Spoke, likwidacje do celu, premia za ryzyko, Spoke'i E-Mode i migracja.",
+        h1: "Aave V4 vs V3: co się różni i co to oznacza dla twojej pożyczki?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Czym Aave V3 różni się od Aave V4 dla pożyczkobiorcy?",
+        readingMinutes: 13,
+        figuresAsOf: "2026-11-04",
+      },
+    },
   ],
   tr: [
     {
@@ -3498,6 +3761,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Sabit faizli bir Morpho Midnight kredisi nasıl işler ve vadeye kadar geri ödemezsem ne olur?",
         readingMinutes: 11,
         protocol: "morpho",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-vs-morpho-karsilastirma",
+        title: "Borç alanlar için Aave ve Morpho: iki protokolün farkları",
+        description:
+          "Borç alanlar için Aave ve Morpho: ortak ve izole piyasalar, sağlık faktörü, likidasyonlar, faizler, E-Mode ve LLTV, oracle'lar ve yönetişim riski.",
+        h1: "Aave ve Morpho: borç alan biri için farkları nelerdir?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Aave ve Morpho borç alan biri için nasıl farklıdır ve kredime hangisi uyar?",
+        readingMinutes: 12,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-farklar",
+        title: "Aave V4 ve V3: krediniz için neler değişiyor",
+        description:
+          "Borç alanlar için Aave V4 ve V3: Hub ve Spoke'lar, Spoke başına sağlık faktörü, hedef sağlık faktörlü likidasyon, risk primi, E-Mode Spoke'ları ve taşıma.",
+        h1: "Aave V4 ve V3: ne farklı ve bu krediniz için ne anlama geliyor?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Borç alan biri için Aave V3 ile Aave V4 arasındaki fark nedir?",
+        readingMinutes: 12,
+        figuresAsOf: "2026-11-04",
       },
     },
   ],
@@ -3821,6 +4110,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         protocol: "morpho",
       },
     },
+    {
+      meta: {
+        slug: "aave-vs-morpho-perbandingan",
+        title: "Aave vs Morpho untuk peminjam: apa bedanya",
+        description:
+          "Aave vs Morpho bagi peminjam: pasar gabungan vs terisolasi, faktor kesehatan, likuidasi, suku bunga, E-Mode vs LLTV, oracle, dan risiko tata kelola.",
+        h1: "Aave vs Morpho: apa bedanya bagi peminjam?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Apa beda Aave dan Morpho bagi peminjam, dan mana yang cocok untuk pinjaman saya?",
+        readingMinutes: 13,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-perbedaan",
+        title: "Aave V4 vs V3: apa yang berubah bagi pinjaman Anda",
+        description:
+          "Aave V4 vs V3 bagi peminjam: Hub dan Spoke, faktor kesehatan per Spoke, likuidasi ke faktor kesehatan target, premi risiko, Spoke E-Mode, dan migrasi.",
+        h1: "Aave V4 vs V3: apa bedanya, dan apa artinya bagi pinjaman Anda?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Apa perbedaan antara Aave V3 dan Aave V4 bagi peminjam?",
+        readingMinutes: 13,
+        figuresAsOf: "2026-11-04",
+      },
+    },
   ],
   nl: [
     {
@@ -4138,6 +4453,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         protocol: "morpho",
       },
     },
+    {
+      meta: {
+        slug: "aave-vs-morpho-vergelijking",
+        title: "Aave vs Morpho voor leners: zo verschillen ze",
+        description:
+          "Aave vs Morpho voor leners: gebundelde of losse markten, health factor, liquidaties, rente, E-Mode vs LLTV, oracles en governancerisico.",
+        h1: "Aave vs Morpho: hoe verschillen ze voor een lener?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Hoe verschillen Aave en Morpho voor een lener, en welke past bij mijn lening?",
+        readingMinutes: 14,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-verschillen",
+        title: "Aave V4 vs V3: wat er verandert voor je lening",
+        description:
+          "Aave V4 vs V3 voor leners: Hubs en Spokes, de health factor per Spoke, liquidaties tot een doel-health factor, risico-opslag, E-Mode-Spokes en migratie.",
+        h1: "Aave V4 vs V3: wat is er anders, en wat betekent dat voor je lening?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Wat is het verschil tussen Aave V3 en Aave V4 voor een lener?",
+        readingMinutes: 14,
+        figuresAsOf: "2026-11-04",
+      },
+    },
   ],
   ro: [
     {
@@ -4453,6 +4794,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
           "Cum funcționează un împrumut cu dobândă fixă pe Morpho Midnight și ce se întâmplă dacă nu l-am rambursat până la scadență?",
         readingMinutes: 13,
         protocol: "morpho",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-vs-morpho-comparatie",
+        title: "Aave vs Morpho pentru debitori: prin ce diferă",
+        description:
+          "Aave vs Morpho pentru debitori: piețe comune vs izolate, health factor, lichidări, dobânzi, E-Mode vs LLTV, oracole și riscul de guvernanță.",
+        h1: "Aave vs Morpho: prin ce diferă pentru un debitor?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Prin ce diferă Aave și Morpho pentru un debitor și care se potrivește împrumutului meu?",
+        readingMinutes: 12,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-diferente",
+        title: "Aave V4 vs V3: ce se schimbă pentru împrumutul tău",
+        description:
+          "Aave V4 vs V3 pentru debitori: Hub-uri și Spoke-uri, health factor pe Spoke, lichidări până la o țintă, prime de risc, Spoke-uri E-Mode și migrare.",
+        h1: "Aave V4 vs V3: ce este diferit și ce înseamnă pentru împrumutul tău?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Care este diferența dintre Aave V3 și Aave V4 pentru un debitor?",
+        readingMinutes: 13,
+        figuresAsOf: "2026-11-04",
       },
     },
   ],
@@ -4775,6 +5142,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         protocol: "morpho",
       },
     },
+    {
+      meta: {
+        slug: "aave-vs-morpho-osszehasonlitas",
+        title: "Aave vs Morpho hitelfelvevőknek: miben különböznek",
+        description:
+          "Aave vs Morpho hitelfelvevőknek: közös és izolált piacok, health factor, likvidálás, kamatok, E-Mode vs LLTV, orákulumok és governance-kockázat.",
+        h1: "Aave vs Morpho: miben különböznek egy hitelfelvevő számára?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Miben különbözik az Aave és a Morpho egy hitelfelvevő számára, és melyik illik a hitelemhez?",
+        readingMinutes: 13,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-kulonbsegek",
+        title: "Aave V4 vs V3: mi változik a hiteledben",
+        description:
+          "Aave V4 vs V3 hitelfelvevőknek: Hubok és Spoke-ok, Spoke-onkénti health factor, likvidálás cél health factorig, kockázati felár, E-Mode Spoke-ok, átállás.",
+        h1: "Aave V4 vs V3: mi más, és mit jelent ez a hiteledre nézve?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Mi a különbség az Aave V3 és az Aave V4 között egy hitelfelvevő számára?",
+        readingMinutes: 13,
+        figuresAsOf: "2026-11-04",
+      },
+    },
   ],
   hr: [
     {
@@ -5090,6 +5483,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
           "Kako radi zajam s fiksnom kamatom na Morpho Midnightu i što se događa ako ga ne otplatim do dospijeća?",
         readingMinutes: 12,
         protocol: "morpho",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-vs-morpho-usporedba",
+        title: "Aave vs Morpho za dužnike: po čemu se razlikuju",
+        description:
+          "Aave vs Morpho za dužnike: objedinjena i izolirana tržišta, health factor, likvidacije, kamate, E-Mode naspram LLTV-a, orakli i rizik upravljanja.",
+        h1: "Aave vs Morpho: po čemu se razlikuju za dužnika?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Po čemu se Aave i Morpho razlikuju za dužnika i koji odgovara mom zajmu?",
+        readingMinutes: 13,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-razlike",
+        title: "Aave V4 vs V3: što se mijenja za tvoj zajam",
+        description:
+          "Aave V4 vs V3 za dužnike: Hubovi i Spokeovi, health factor po Spokeu, likvidacije do ciljnog health factora, premije za rizik, E-Mode Spokeovi i prelazak.",
+        h1: "Aave V4 vs V3: što je drukčije i što to znači za tvoj zajam?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Koja je razlika između Aave V3 i Aave V4 za dužnika?",
+        readingMinutes: 13,
+        figuresAsOf: "2026-11-04",
       },
     },
   ],
@@ -5409,6 +5828,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         protocol: "morpho",
       },
     },
+    {
+      meta: {
+        slug: "aave-vs-morpho-primerjava",
+        title: "Aave ali Morpho za posojilojemalce: v čem se razlikujeta",
+        description:
+          "Aave ali Morpho za posojilojemalce: skupni in ločeni trgi, health factor, likvidacije, obrestne mere, E-Mode in LLTV, oraklji in tveganje upravljanja.",
+        h1: "Aave ali Morpho: v čem se razlikujeta za posojilojemalca?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "V čem se Aave in Morpho razlikujeta za posojilojemalca in kateri ustreza mojemu posojilu?",
+        readingMinutes: 13,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-razlike",
+        title: "Aave V4 proti V3: kaj se spremeni za tvoje posojilo",
+        description:
+          "Aave V4 proti V3 za posojilojemalce: Hubi in Spoki, health factor po Spokih, likvidacije do ciljnega HF, premije za tveganje, E-Mode Spoki in selitev.",
+        h1: "Aave V4 proti V3: kaj je drugače in kaj to pomeni za tvoje posojilo?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Kakšna je razlika med Aave V3 in Aave V4 za posojilojemalca?",
+        readingMinutes: 13,
+        figuresAsOf: "2026-11-04",
+      },
+    },
   ],
   sr: [
     {
@@ -5726,6 +6171,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         protocol: "morpho",
       },
     },
+    {
+      meta: {
+        slug: "aave-vs-morpho-poredjenje",
+        title: "Aave vs Morpho za dužnike: po čemu se razlikuju",
+        description:
+          "Aave vs Morpho za dužnike: objedinjena i izolovana tržišta, health factor, likvidacije, kamate, E-Mode i LLTV, orakli i rizik upravljanja.",
+        h1: "Aave vs Morpho: po čemu se razlikuju za dužnika?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Po čemu se Aave i Morpho razlikuju za dužnika i koji od njih odgovara mom zajmu?",
+        readingMinutes: 13,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-razlike",
+        title: "Aave V4 vs V3: šta se menja za tvoj zajam",
+        description:
+          "Aave V4 vs V3 za dužnike: Hubovi i Spokeovi, health factor po Spokeu, likvidacije do ciljnog health factora, premije rizika, E-Mode Spokeovi i migracija.",
+        h1: "Aave V4 vs V3: šta je drugačije i šta to znači za tvoj zajam?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Koja je razlika između Aave V3 i Aave V4 za dužnika?",
+        readingMinutes: 13,
+        figuresAsOf: "2026-11-04",
+      },
+    },
   ],
   sv: [
     {
@@ -6041,6 +6512,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
           "Hur fungerar ett Morpho Midnight-lån med fast ränta, och vad händer om jag inte har betalat tillbaka till förfallodagen?",
         readingMinutes: 13,
         protocol: "morpho",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-vs-morpho-jamforelse",
+        title: "Aave vs Morpho för låntagare: så skiljer de sig åt",
+        description:
+          "Aave vs Morpho för låntagare: poolade och isolerade marknader, health factor, likvidationer, räntor, E-Mode mot LLTV, orakel och governance-risk.",
+        h1: "Aave vs Morpho: hur skiljer de sig åt för en låntagare?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Hur skiljer sig Aave och Morpho åt för en låntagare, och vilket passar mitt lån?",
+        readingMinutes: 14,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-skillnader",
+        title: "Aave V4 vs V3: vad som ändras för ditt lån",
+        description:
+          "Aave V4 vs V3 för låntagare: Hubs och Spokes, health factor per Spoke, likvidationer mot en mål-health factor, riskpåslag, E-Mode-Spokes och flytt.",
+        h1: "Aave V4 vs V3: vad är annorlunda, och vad betyder det för ditt lån?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Vad är skillnaden mellan Aave V3 och Aave V4 för en låntagare?",
+        readingMinutes: 13,
+        figuresAsOf: "2026-11-04",
       },
     },
   ],
@@ -6361,6 +6858,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         protocol: "morpho",
       },
     },
+    {
+      meta: {
+        slug: "aave-vs-morpho-sammenligning",
+        title: "Aave vs. Morpho for låntagere: sådan adskiller de sig",
+        description:
+          "Aave vs. Morpho for låntagere: fælles mod isolerede markeder, health factor, likvidationer, renter, E-Mode mod LLTV, orakler og governance-risiko.",
+        h1: "Aave vs. Morpho: hvordan adskiller de sig for en låntager?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Hvordan adskiller Aave og Morpho sig for en låntager, og hvilken passer til mit lån?",
+        readingMinutes: 14,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-forskelle",
+        title: "Aave V4 vs. V3: hvad ændrer sig for dit lån",
+        description:
+          "Aave V4 vs. V3 for låntagere: Hubs og Spokes, health factor pr. Spoke, likvidationer mod et mål, risikotillæg, E-Mode-Spokes og flytning af lån.",
+        h1: "Aave V4 vs. V3: hvad er forskelligt, og hvad betyder det for dit lån?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Hvad er forskellen på Aave V3 og Aave V4 for en låntager?",
+        readingMinutes: 13,
+        figuresAsOf: "2026-11-04",
+      },
+    },
   ],
   nb: [
     {
@@ -6676,6 +7199,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
           "Hvordan fungerer et Morpho Midnight-lån med fast rente, og hva skjer hvis jeg ikke har betalt tilbake innen forfallsdatoen?",
         readingMinutes: 13,
         protocol: "morpho",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-vs-morpho-sammenligning",
+        title: "Aave vs Morpho for låntakere: slik skiller de seg",
+        description:
+          "Aave vs Morpho for låntakere: samlede og isolerte markeder, health factor, likvidasjoner, renter, E-Mode og LLTV, orakler og governance-risiko.",
+        h1: "Aave vs Morpho: hvordan skiller de seg for en låntaker?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Hvordan skiller Aave og Morpho seg for en låntaker, og hvilken passer lånet mitt?",
+        readingMinutes: 12,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-forskjeller",
+        title: "Aave V4 vs V3: hva endres for lånet ditt",
+        description:
+          "Aave V4 vs V3 for låntakere: Hubs og Spokes, health factor per Spoke, likvidasjon til mål-health factor, risikopremier, E-Mode-Spokes og migrering.",
+        h1: "Aave V4 vs V3: hva er forskjellig, og hva betyr det for lånet ditt?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Hva er forskjellen mellom Aave V3 og Aave V4 for en låntaker?",
+        readingMinutes: 13,
+        figuresAsOf: "2026-11-04",
       },
     },
   ],
@@ -6998,6 +7547,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         protocol: "morpho",
       },
     },
+    {
+      meta: {
+        slug: "aave-vs-morpho-paghahambing",
+        title: "Aave vs Morpho para sa borrower: paano sila nagkakaiba",
+        description:
+          "Aave vs Morpho para sa borrower: pooled vs isolated na market, health factor, liquidation, interest rate, E-Mode vs LLTV, oracle at panganib ng governance.",
+        h1: "Aave vs Morpho: paano sila nagkakaiba para sa isang borrower?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Paano nagkakaiba ang Aave at Morpho para sa isang borrower, at alin ang bagay sa loan ko?",
+        readingMinutes: 16,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-pagkakaiba",
+        title: "Aave V4 vs V3: ano ang nagbabago para sa loan mo",
+        description:
+          "Aave V4 vs V3 para sa borrower: Hub at Spoke, health factor bawat Spoke, liquidation sa target health factor, risk premium, E-Mode Spoke at paglipat.",
+        h1: "Aave V4 vs V3: ano ang naiiba, at ano ang ibig sabihin nito para sa loan mo?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Ano ang pagkakaiba ng Aave V3 at Aave V4 para sa isang borrower?",
+        readingMinutes: 16,
+        figuresAsOf: "2026-11-04",
+      },
+    },
   ],
   bg: [
     {
@@ -7313,6 +7888,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
           "Как работи заем с фиксирана лихва в Morpho Midnight и какво става, ако не съм го погасил до падежа?",
         readingMinutes: 13,
         protocol: "morpho",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-vs-morpho-sravnenie",
+        title: "Aave срещу Morpho за кредитополучатели: разликите",
+        description:
+          "Aave срещу Morpho за кредитополучатели: общи и изолирани пазари, health factor, ликвидации, лихви, E-Mode и LLTV, оракули и риск от управлението.",
+        h1: "Aave срещу Morpho: с какво се различават за кредитополучателя?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "С какво се различават Aave и Morpho за кредитополучателя и кой подхожда на моя заем?",
+        readingMinutes: 14,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-razliki",
+        title: "Aave V4 срещу V3: какво се променя за заема ви",
+        description:
+          "Aave V4 срещу V3 за кредитополучатели: Hubs и Spokes, health factor за всеки Spoke, ликвидации до целеви health factor, рискови премии и миграция.",
+        h1: "Aave V4 срещу V3: какво е различно и какво означава това за заема ви?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Каква е разликата между Aave V3 и Aave V4 за кредитополучателя?",
+        readingMinutes: 14,
+        figuresAsOf: "2026-11-04",
       },
     },
   ],
@@ -7632,6 +8233,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         protocol: "morpho",
       },
     },
+    {
+      meta: {
+        slug: "aave-vs-morpho-sravnenie",
+        title: "Aave или Morpho для заёмщика: в чём разница",
+        description:
+          "Aave и Morpho для заёмщика: общие и изолированные рынки, health factor, ликвидации, процентные ставки, E-Mode и LLTV, оракулы и риски governance.",
+        h1: "Aave и Morpho: чем они отличаются для заёмщика?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Чем Aave и Morpho отличаются для заёмщика и какой из них подходит для моего займа?",
+        readingMinutes: 13,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-razlichiya",
+        title: "Aave V4 и V3: что меняется для вашего займа",
+        description:
+          "Aave V4 и V3 для заёмщика: Hub и Spoke, health factor для каждого Spoke, ликвидации до целевого health factor, надбавки за риск, E-Mode Spoke и переход.",
+        h1: "Aave V4 и V3: в чём разница и что это значит для вашего займа?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Чем Aave V3 отличается от Aave V4 для заёмщика?",
+        readingMinutes: 13,
+        figuresAsOf: "2026-11-04",
+      },
+    },
   ],
   uk: [
     {
@@ -7947,6 +8574,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
           "Як працює позика з фіксованою ставкою на Morpho Midnight і що буде, якщо я не погашу її до строку погашення?",
         readingMinutes: 12,
         protocol: "morpho",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-vs-morpho-porivniannia",
+        title: "Aave чи Morpho для позичальника: у чому різниця",
+        description:
+          "Aave і Morpho для позичальника: спільні й ізольовані ринки, health factor, ліквідації, ставки, E-Mode і LLTV, оракули та ризик управління.",
+        h1: "Aave чи Morpho: чим вони відрізняються для позичальника?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Чим Aave і Morpho відрізняються для позичальника і що краще підходить для моєї позики?",
+        readingMinutes: 13,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-vidminnosti",
+        title: "Aave V4 чи V3: що змінюється для вашої позики",
+        description:
+          "Aave V4 і V3 для позичальника: Hub і Spoke, health factor для кожного Spoke, ліквідації до цільового рівня, надбавки за ризик, E-Mode і міграція.",
+        h1: "Aave V4 і V3: що відрізняється і що це означає для вашої позики?",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Яка різниця між Aave V3 і Aave V4 для позичальника?",
+        readingMinutes: 13,
+        figuresAsOf: "2026-11-04",
       },
     },
   ],
@@ -8269,6 +8922,33 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
           "Πώς λειτουργεί ένα δάνειο σταθερού επιτοκίου στο Morpho Midnight και τι γίνεται αν δεν έχετε αποπληρώσει έως τη λήξη?",
         readingMinutes: 14,
         protocol: "morpho",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-vs-morpho-sygkrisi",
+        title: "Aave vs Morpho για δανειολήπτες: σε τι διαφέρουν",
+        description:
+          "Aave vs Morpho για δανειολήπτες: κοινές ή απομονωμένες αγορές, health factor, ρευστοποιήσεις, επιτόκια, E-Mode και LLTV, oracles, διακυβέρνηση.",
+        h1: "Aave vs Morpho: σε τι διαφέρουν για έναν δανειολήπτη;",
+        publishedAt: "2026-11-04",
+        primaryQuestion:
+          "Σε τι διαφέρουν το Aave και το Morpho για έναν δανειολήπτη και ποιο ταιριάζει στο δάνειό μου?",
+        readingMinutes: 15,
+        figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "aave-v4-vs-v3-diafores",
+        title: "Aave V4 vs V3: τι αλλάζει για το δάνειό σας",
+        description:
+          "Aave V4 vs V3 για δανειολήπτες: Hubs και Spokes, health factor ανά Spoke, ρευστοποιήσεις με target health factor, πριμ κινδύνου, eSpokes και μετάβαση.",
+        h1: "Aave V4 vs V3: τι διαφέρει και τι σημαίνει για το δάνειό σας;",
+        publishedAt: "2026-11-04",
+        primaryQuestion: "Ποια είναι η διαφορά ανάμεσα στο Aave V3 και στο Aave V4 για έναν δανειολήπτη?",
+        readingMinutes: 15,
+        figuresAsOf: "2026-11-04",
       },
     },
   ],

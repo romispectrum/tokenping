@@ -1,0 +1,181 @@
+export const meta = {
+  slug: "aave-vs-morpho-paghahambing",
+  title: "Aave vs Morpho para sa borrower: paano sila nagkakaiba",
+  description:
+    "Aave vs Morpho para sa borrower: pooled vs isolated na market, health factor, liquidation, interest rate, E-Mode vs LLTV, oracle at panganib ng governance.",
+  h1: "Aave vs Morpho: paano sila nagkakaiba para sa isang borrower?",
+  publishedAt: "2026-11-04",
+  primaryQuestion: "Paano nagkakaiba ang Aave at Morpho para sa isang borrower, at alin ang bagay sa loan ko?",
+  readingMinutes: 16,
+  figuresAsOf: "2026-11-04",
+};
+
+<ShortAnswer>
+  Pinagsasama-sama ng Aave ang loan mo: sa Aave V3, iisang health factor ang pinagsasaluhan ng lahat ng collateral at
+  utang mo sa isang market, at puwedeng baguhin ng governance at ng mga risk steward nito ang mga parameter habang
+  naka-borrow ka. Pinapanatili ng Aave V4 ang ideyang iyon bawat Spoke. Hinihiwalay naman ito ng Morpho Blue: bawat
+  market ay may iisang collateral, iisang loan token, iisang oracle (pinagkukunan ng presyo) at iisang LLTV, na
+  nakapirmi na habambuhay mula nang gawin ang market, kaya may sariling health factor ang bawat loan. Nagdadagdag ang
+  Morpho Midnight ng mga fixed-rate na loan na nagtatapos sa isang maturity date. Sa Aave, kayang buhatin ng isang
+  malusog na asset ang isang bumabagsak, pero puwedeng kunin ng isang liquidation ang alinman sa collateral mo; sa
+  Morpho, ang sariling loan lang nito ang nalalagay sa panganib ng bumabagsak na asset, at puwedeng bayaran ng unang
+  liquidator ang buong loan nang sabay-sabay. Walang mas ligtas sa pangkalahatan: ang kapalit ay kung sino ang
+  nagtatakda ng mga patakaran, at gaano kalaki ng posisyon mo ang maaabot ng isang masamang asset.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Mga numero at ang mga block number kung kailan sila nabasa: content/blog/snapshots/aave-vs-morpho.md */}
+
+## Paano naghahambing ang Aave at Morpho sa isang tingin?
+
+Ibinubuod ng table ang mga patakarang mahalaga sa isang borrower. Binasa ang mga live na value noong Nobyembre 4, 2026 sa Ethereum; ipinapaliwanag sa ibaba ang bawat row.
+
+|                                                 | Aave V3                                                                       | Aave V4                                                                      | Morpho Blue                                             | Morpho Midnight                                                       |
+| ----------------------------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------- |
+| Saklaw ng iisang health factor                  | Lahat ng collateral at utang mo sa isang market (isang Pool sa isang network) | Lahat ng collateral at utang mo sa isang Spoke                               | Isang collateral at isang loan token                    | Isang loan token, hanggang 16 sa mga collateral ng market             |
+| Borrow limit at linya ng liquidation            | Mas mababang LTV para sa pag-borrow, mas mataas na liquidation threshold      | Isang collateral factor bawat asset                                          | Ang LLTV ang dalawa                                     | Ang LLTV ng bawat collateral                                          |
+| Sino ang nagtatakda ng mga parameter            | Ang governance at ang mga risk steward, puwedeng baguhin anumang oras         | Ang governance; kadalasang sa mga bagong posisyon lang umaabot ang pagbabago | Kung sinuman ang gumawa ng market, nakapirmi habambuhay | Kung sinuman ang gumawa ng market, nakapirmi habambuhay               |
+| Interes                                         | Variable, isang curve bawat asset                                             | Variable, isang curve bawat Hub asset dagdag ang risk premium bawat user     | Variable, AdaptiveCurveIRM                              | Fixed hanggang sa maturity                                            |
+| Pinakamalaking mababayaran ng isang liquidation | 50% o 100% ng utang                                                           | Sapat para maabot ang target health factor ng Spoke                          | Ang buong utang                                         | Ang nagpapanumbalik ng health; ang buong utang pagkatapos ng maturity |
+| Liquidation bonus                               | Bawat collateral asset, itinatakda ng governance                              | Lumalaki habang bumababa ang health factor                                   | Sumusunod sa LLTV                                       | Sumusunod sa LLTV at cursor ng bawat collateral                       |
+| Bad debt (utang na hindi na mababayaran)        | Isang deficit; puwede itong tapatan ng mga Umbrella staker sa Ethereum        | Isang deficit; puwede itong tapatan ng ibang Spoke                           | Ibinabawas sa mga lender ng market na iyon              | Pinaghahatian ng mga lender ng market na iyon                         |
+| Oracle                                          | Pinipili ng governance                                                        | Pinipili ng governance, bawat Spoke                                          | Pinipili ng gumawa ng market, hindi mapapalitan         | Pinipili bawat collateral ng gumawa ng market                         |
+
+## Paano binuo ang bawat isa?
+
+### Aave: mga pooled market, V3 at V4
+
+Ang isang Aave V3 market ay isang Pool sa isang network: Ethereum Core, Arbitrum, Base at iba pa. Sinusuportahan ng lahat ng idineposito mo bilang collateral sa Pool na iyon ang lahat ng hiniram mo roon, at iisang health factor ang kinukuwenta ng contract para sa buong posisyon:
+
+**HF = Σ (halaga ng collateral × liquidation threshold) ÷ kabuuang utang**
+
+May dalawang numero ang bawat asset: isang LTV, na naglilimita sa bagong pag-borrow, at mas mataas na liquidation threshold, na nagpapasya sa liquidation. Sa Ethereum Core noong Nobyembre 4, 2026, may LTV na 81% at threshold na 84% ang WETH. Galing ang mga presyo sa Aave oracle, sa US dollar. Nasa [gabay sa Aave health factor](/fil/blog/aave-health-factor-ipinaliwanag) ang formula at mga halimbawang may kuwenta.
+
+Hinahati ng Aave V4 ang isang network sa isang Hub, na humahawak ng liquidity, at mga Spoke, ang mga market kung saan ka nagbo-borrow. Nasa iisang Spoke ang posisyon at health factor mo, at iisang collateral factor ang bawat asset sa halip na isang LTV at isang threshold. Noong Nobyembre 4, 2026, naglista ang V4 API ng Aave ng 24 na Spoke sa Ethereum, Avalanche, Arc at Base. Tinatalakay ng [paano gumagana ang health factor sa Aave V4](/fil/blog/aave-health-factor-ipinaliwanag#iba-ba-ang-health-factor-sa-aave-v4) ang mga detalye.
+
+### Morpho: mga isolated market, Blue at Midnight
+
+Limang bagay ang tumutukoy sa isang Morpho Blue market: isang loan token, isang collateral token, isang oracle, isang interest rate model at isang LLTV (liquidation loan-to-value). Kahit sino ay puwedeng gumawa nito, at wala sa lima ang puwedeng baguhin pagkatapos. Hindi sumusuporta ang collateral mo sa isang market sa utang sa ibang market, kaya dalawang health factor ang dalawang loan sa dalawang market:
+
+**HF = dami ng collateral × presyo ng oracle × LLTV ÷ utang**
+
+Walang mas mababang borrowing limit: hinahayaan ka ng contract na mag-borrow hanggang mismo sa LLTV, health factor na 1.00. Dinadaanan ito ng [gabay sa Morpho health factor](/fil/blog/morpho-health-factor-ipinaliwanag) hakbang-hakbang.
+
+Hiwalay na contract ang Morpho Midnight para sa mga loan na fixed ang rate at fixed ang term. May iisang loan token ang isang Midnight market, isang maturity date at hanggang 128 collateral, bawat isa ay may sariling LLTV at oracle, at puwedeng gumamit ang isang borrower ng hanggang 16 sa mga ito nang sabay. Ipinapaliwanag ng [mga fixed-rate loan sa Morpho Midnight](/fil/blog/mga-fixed-rate-loan-sa-morpho-midnight) kung paano ito gumagana.
+
+## Ano ang nangyayari sa health factor mo kapag bumagsak ang isang asset?
+
+Dito pinakaramdam ang pagkakaiba ng dalawang disenyo. Kunin ang parehong collateral sa dalawa, na may halimbawang presyong $2,400 para sa ETH at $80,000 para sa BTC, at 20,000 USDC na utang.
+
+**Sa Aave V3 Ethereum Core**, na may 10 WETH (threshold 84%) at 0.2 WBTC (threshold 85%) sa iisang posisyon, hindi isinasama ang interes:
+
+- Tinimbang na collateral: 24,000 × 0.84 + 16,000 × 0.85 = 33,760.
+- Health factor: 33,760 ÷ 20,000 = **1.69**.
+- Kung bumagsak ang BTC nang 40% sa $48,000: 24,000 × 0.84 + 9,600 × 0.85 = 28,320, health factor na **1.42**. Walang puwedeng i-liquidate.
+
+Binubuhat ng WETH ang WBTC. Sa posisyong ito, 20,160 ang bilang ng WETH lang, higit sa buong utang, kaya kahit walang halaga ang WBTC, mag-iiwan pa rin ito ng health factor na 1.008.
+
+**Sa Morpho Blue**, na hinati ang parehong mga asset sa dalawang nakalistang market sa Ethereum, USDC | WETH (86%) at USDC | WBTC (86%), at 10,000 USDC ang hiniram sa bawat isa:
+
+- WETH loan: 24,000 × 0.86 ÷ 10,000 = **2.06**.
+- WBTC loan: 16,000 × 0.86 ÷ 10,000 = **1.38**, na may liquidation price na $58,139.53, 27.3% sa ilalim ng $80,000.
+- Kung bumagsak ang BTC nang 40%: nasa 9,600 × 0.86 ÷ 10,000 = **0.83** ang WBTC loan at puwede itong i-liquidate, habang nananatili sa 2.06 ang WETH loan.
+
+Kasintotoo rin ang kabilang panig. Sa Aave, kapag bumaba na sa ilalim ng 1 ang buong posisyon, ang liquidator ang pumipili kung aling collateral ang kukunin, kaya puwedeng mawalan ka ng WETH dahil sa pagbagsak ng BTC. Sa Morpho, hindi maaabot ang WETH loan anuman ang mangyari sa BTC. Nagbibigay ang pooling ng pinagsasaluhang buffer; nagbibigay ang isolation ng buffer bawat loan, at kailangan mong sukatin ang bawat isa.
+
+## Paano nagkakaiba ang mga liquidation?
+
+Sa parehong protocol, nagbabayad ang isang liquidator ng bahagi ng utang mo sa ilalim ng health factor na 1 at kumukuha ng collateral na katumbas ng halagang iyon dagdag ang isang bonus. Sa iyo pa rin ang hiniram mo, kaya ang bonus ang gastos mo sa liquidation. Magkakaiba ang mga patakaran sa paligid nito:
+
+- **Gaano karami nang sabay.** Sa Aave V3.7, ang isang liquidation ay puwedeng magbayad ng hanggang 50% ng kabuuang utang mo habang nasa itaas ng 0.95 ang health factor mo at nagkakahalaga ng hindi bababa sa $2,000 ang bawat isa sa collateral at utang na sangkot; sa 0.95 o mas mababa, o para sa mas maliliit na halaga, puwede nitong bayaran ang buong utang sa asset na iyon. Inaalis ng Aave V4 ang patakarang ito: sapat lang para maibalik ka sa target health factor ng Spoke ang binabayaran ng liquidator, 1.24 sa Ethereum Main Spoke noong Nobyembre 4, 2026. Walang limitasyon ang Morpho Blue: puwedeng bayaran ng unang liquidator ang buong utang mo sa iisang call.
+- **Ang bonus.** Sa Aave V3, itinatakda ito ng governance bawat collateral asset: 5% para sa WETH at WBTC sa Ethereum Core noong Nobyembre 4, 2026, kung saan 20% ang kinuha ng treasury ng Aave bilang protocol fee. Sa V4, lumalaki ito habang bumababa ang health factor. Sa Morpho Blue, sumusunod ito sa LLTV, 1 ÷ (1 − 0.3 × (1 − LLTV)) na may cap na 15%: 4.38% sa 86% na LLTV, 1.06% sa 96.5%, at lahat ay napupunta sa liquidator.
+- **Pre-liquidation.** Sa Morpho Blue, puwedeng mag-opt in ang isang borrower sa isang contract na nagli-liquidate ng mga bahagi ng loan bago ang LLTV. Inireretiro ng Morpho ang feature at hinihiling sa mga borrower na mayroon nito na i-off ito; kung minsan mong in-on ang Auto-deleverage, ipinapakita ng [Morpho pre-liquidation](/fil/blog/morpho-pre-liquidation-ipinaliwanag) kung paano ito suriin at bawiin. Walang katulad nito ang Aave.
+- **Maturity.** Sa Morpho Midnight, puwedeng i-liquidate ang anumang utang na natitira pagkatapos ng maturity kahit healthy ang posisyon, na ang bonus ay tumataas mula sa wala hanggang sa buong laki nito sa loob ng unang oras.
+- **Bad debt.** Kapag naubos ang collateral bago ang utang, nagtatala ang Aave V3 ng deficit, na puwedeng tapatan ng mga Umbrella staker sa Ethereum (para sa USDC, USDT, WETH at GHO, ayon sa docs ng Aave); sa V4, puwede itong tapatan ng ibang Spoke. Sa Morpho, ibinabawas ang lugi sa mga lender ng iisang market na iyon. Para sa iyo bilang borrower, pareho ang resulta saanman: wala na ang collateral at wala nang natitirang utang.
+
+Nasa [paano gumagana ang liquidation sa Aave](/fil/blog/paano-gumagana-ang-liquidation-sa-aave) ang buong mekanismo, kasama ang [mga patakaran ng V4](/fil/blog/paano-gumagana-ang-liquidation-sa-aave#paano-naiiba-ang-liquidation-sa-aave-v4), at ang sa Morpho ay nasa [paano gumagana ang liquidation sa Morpho](/fil/blog/paano-gumagana-ang-liquidation-sa-morpho), na may [magkatabing table](/fil/blog/paano-gumagana-ang-liquidation-sa-morpho#paano-naiiba-ang-liquidation-sa-morpho-kumpara-sa-aave).
+
+## Paano nagkakaiba ang mga interest rate?
+
+Sa **Aave V3**, itinatakda ang variable rate ng bawat asset sa isang nakapirming curve: banayad itong tumataas kasabay ng utilization (ang bahagi ng pool na hiniram) hanggang sa isang optimal level, pagkatapos ay matarik. Ang governance ang nagtatakda ng apat na numero ng curve, at puwedeng i-adjust ng mga risk steward ang mga ito sa loob ng mga limitasyon. Gumamit ang USDC sa Ethereum Core ng 94% na optimal level, 4.5% na unang slope at 10% na ikalawang slope. Sa Ethereum block 26341682 noong Nobyembre 4, 2026, 94.7% ang utilization nito, bahagyang lampas sa liko, at 5.67% kada taon ang gastos ng pag-borrow. Sa pagitan ng mga pagbabago sa parameter, utilization lang ang gumagalaw sa rate. Nasa [paano gumagana ang mga interest rate sa Aave](/fil/blog/mga-interest-rate-sa-aave) ang formula at isang totoong biglang pagtaas.
+
+Sa **Aave V4**, may isang curve pa rin bawat asset sa Hub, at may User Risk Premium na idinadagdag sa ibabaw nito, mula 0% hanggang 1,000% ng pinagsasaluhang rate depende sa kalidad ng collateral mo: ang halimbawa ng Aave ay 50% na premium sa 5% na rate, na nagbibigay ng 7.5%.
+
+Sa **Morpho Blue**, gumagamit ang mga market ng AdaptiveCurveIRM, na tumututok sa 90% na utilization. Sa anumang sandali, nasa isang curve ang rate sa paligid ng isang "rate at target" (rate sa target): sangkapat nito sa 0% na utilization, apat na beses nito sa 100%. Hindi tulad ng curve ng Aave, gumagalaw mismo ang rate at target: pataas habang nananatili sa itaas ng 90% ang utilization, pababa habang nananatili ito sa ilalim, sa pagitan ng 0.1% at 200% kada taon. Sa 100% na utilization, dumodoble ito sa mga limang araw. Noong Nobyembre 4, 2026, nasa 90.3% na utilization ang USDC | cbBTC (86%) market ng Ethereum, na may rate at target na 4.97% at borrow rate na mga 5.4% kada taon. Kaya patuloy na nagmamahal ang isang abalang market hanggang magbayad ang mga borrower o dumating ang mga lender, at bumababa naman ang gastos sa isang tahimik.
+
+Sa **Morpho Midnight**, napipirmi ang rate mo kapag nag-borrow ka. Nagbebenta ka ng mga debt unit sa ilalim ng face value at may utang kang eksaktong isang loan token bawat unit sa maturity, kaya hindi lumalaki ang utang mo at mga presyo lang ng collateral ang gumagalaw sa health factor mo. Walang fixed rate ang Aave: inalis ng V3.2 ang lumang stable-rate code, at variable ang bawat loan sa Aave.
+
+## E-Mode o market na mataas ang LLTV: magkano ang puwede mong i-borrow?
+
+Hinahayaan ka ng dalawang protocol na mag-borrow nang mas malaki laban sa collateral na sumasabay sa hiniram mo, sa magkaibang paraan.
+
+**Ang Aave E-Mode** ay setting sa buong V3 posisyon mo. Pumipili ka ng category at, habang nasa loob ka nito, nakukuha ng collateral nito ang LTV, threshold at bonus ng category. Sa Ethereum Core noong Nobyembre 4, 2026, gumamit ang "ETH correlated" ng LTV na 93%, threshold na 95% at bonus na 1%, at WETH lang ang asset na puwede mong i-borrow dito. Dapat puwedeng i-borrow sa category ang bawat asset na hiniram mo, kaya hindi ito magagamit ng posisyong may USDC na utang. Tinatalakay ng [Aave E-Mode](/fil/blog/aave-e-mode-ipinaliwanag) ang mga category at ang mga liquidation noong Marso 2026.
+
+**Sa Morpho**, walang mode: pumipili ka ng market na may LLTV na bagay sa pares. Ang mga LLTV na pinagana ng governance ng Morpho noong Nobyembre 4, 2026 ay 0%, 38.5%, 62.5%, 77%, 86%, 91.5%, 94.5%, 96.5% at 98%. Gumagamit ang WETH | wstETH market ng Ethereum ng 96.5%, na may 1.06% na liquidation incentive.
+
+Kayang umabot sa magkatulad na lugar sa alinman ang isang borrower na gumagawa ng loop (paulit-ulit na pag-borrow gamit ang leverage) ng wstETH laban sa WETH, na may isang pagkakaiba: sa Aave, hanggang sa 93% na LTV lang ang puwede mong i-borrow, na nag-iiwan ng health factor na mga 95 ÷ 93 = 1.02; sa Morpho, hinahayaan ka ng contract na mag-borrow hanggang mismo sa 96.5% na linya, health factor na 1.00.
+
+## Saang mga network tumatakbo ang Aave at Morpho?
+
+|               | Aave                                                                                                                                   | Morpho                                                                                                                                                      |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Variable rate | V3 sa higit sa 20 network, kasama ang Ethereum, Arbitrum, Base, Avalanche, Polygon at Optimism; V4 sa Ethereum, Avalanche, Arc at Base | Blue sa 14 na network: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable at Tempo |
+| Fixed rate    | Wala                                                                                                                                   | Midnight, na may mga nakalistang market sa Ethereum at Base noong Nobyembre 4, 2026                                                                         |
+
+Sa Aave, ang governance ang naglilista ng bawat asset sa isang market. Sa Morpho, kahit sino ay puwedeng gumawa ng market, at ipinapakita lang ng app ng Morpho ang mga piniling ilista ng Morpho Association (tingnan sa ibaba). Unti-unting isinasara ang ilang Aave V3 network; ipinapaliwanag ng [ano ang nangyayari kapag isinara ng Aave ang isang market](/fil/blog/kapag-isinara-ng-aave-ang-isang-market) kung ano ang ibig sabihin nito para sa mga bukas na loan.
+
+## Anong mga panganib ang naiiba sa bawat isa?
+
+Parehong dala ng dalawa ang parehong mga pangunahing panganib: pagbagsak ng presyo, error sa oracle, bug sa smart contract. Ang naiiba ay kung saan nakapuwesto ang mga ito.
+
+**Sino ang puwedeng magbago ng loan mo.** Sa Aave, puwedeng baguhin ng governance ang LTV, liquidation threshold, bonus at rate curve ng isang V3 asset, at puwedeng igalaw ng mga risk steward ang mga ito sa loob ng mga hakbang na may cap at may minimum na pagitan. Sabay-sabay na naaapply sa bawat bukas na posisyon ang mas mababang threshold sa V3. Puwede ring i-freeze ang mga asset, na humaharang sa bagong pag-borrow pero hindi sa liquidation, o i-pause, na humaharang din sa mga liquidation, na may grace period na hanggang 4 na oras pagkatapos. Sa V4, kadalasang umaabot lang sa posisyon mo ang mga bagong collateral factor at bonus sa susunod mong pag-borrow o pag-withdraw. Sa Morpho Blue, walang makakapagbago ng isang market: puwedeng magpagana ang governance ng mga bagong LLTV at rate model at magtakda ng fee na hanggang 25% ng interes, na binabayaran ng mga lender, pero hindi nito magagalaw ang isang umiiral na market, at walang pause ang contract.
+
+**Sino ang pumipili ng oracle.** Ang governance ng Aave ang pumipili ng pinagkukunan ng presyo para sa bawat asset. Sa Morpho, ang gumagawa ng market ang pumipili ng oracle nito, at hindi na ito kailanman mapapalitan. Sinasabi ng docs ng Morpho na dahil permanente ang pagpiling iyon, ito ang nagtatakda ng risk profile ng market. Sinusundan ng ilang oracle ang isang exchange rate sa halip na presyo sa merkado, o itinuturing ang isang stablecoin bilang eksaktong isang dolyar. Bago mag-borrow sa Morpho, tingnan kung ano ang sinusukat ng oracle ng market mo; ipinapakita ng [seksiyon tungkol sa oracle sa gabay sa liquidation](/fil/blog/paano-gumagana-ang-liquidation-sa-morpho#ano-ang-papel-ng-oracle-sa-isang-liquidation) kung ano ang hahanapin.
+
+**Nakalista o hindi nakalista.** Ipinapakita lang ng app ng Morpho ang mga market na inililista ng Morpho Association, pangunahin ang mga pinauutangan ng isang nakalistang vault. Tinatawag ng patakaran nito ang paglilista na "a discovery decision" (isang desisyon para sa pagtuklas), hindi endorsement o risk rating, at gumagana pa rin on-chain ang isang hindi nakalistang market. Puwede pa ring magkaroon ng malalaking loan ang mga hindi nakalistang market, gaya ng ipinapakita ng [tokenized stocks bilang collateral](/fil/blog/tokenized-stocks-bilang-collateral#saan-ka-puwedeng-mag-borrow-gamit-ang-tokenized-stocks) para sa pag-borrow laban sa stocks, kaya ang pagkawala ng isang market sa app ay nagsasabi lang sa iyo na piniling hindi ito ipakita ng Morpho.
+
+**Ano ang maaabot ng isang masamang asset.** Sa Aave, ginagalaw ng isang asset sa market mo na mali ang presyo o dumaranas ng depeg (pagkawala ng peg sa dolyar) ang buong health factor mo. Sa Morpho, ang mga loan lang na gumagamit nito ang ginagalaw nito, pero walang ibang collateral na masasandalan ang mga loan na iyon.
+
+## Alin ang bagay sa aling borrower?
+
+Walang mas mahusay na protocol sa dalawa; bagay ang bawat isa sa ibang paraan ng pag-borrow. Ilang magaspang na pagtutugma:
+
+- **Ilang asset bilang collateral, iisang buffer na babantayan:** hinahayaan ng pooled na posisyon ng Aave na suportahan nila ang isa't isa, kapalit ng mga patakarang puwedeng baguhin ng governance.
+- **Mga patakarang hindi na mababago pagkatapos mong mag-borrow:** nakapirmi habambuhay ang LLTV, oracle at rate model ng isang Morpho market, pero ikaw mismo ang kailangang humatol sa oracle na iyon.
+- **Loan na hindi dapat makagalaw sa iba mong collateral:** pinapanatiling hiwalay ng Morpho ang bawat loan; sa Aave, ganoon din ang nagagawa ng magkakahiwalay na market o network.
+- **Pag-borrow nang malapit sa linya sa isang correlated na pares:** iniaalok ito ng dalawa, sa pamamagitan ng E-Mode o ng mataas na LLTV, at parehong nag-iiwan ng margin na ilang porsiyento.
+- **Rate na hindi gumagalaw:** Morpho Midnight lang ang nag-aalok nito, kapalit ng maturity date na hindi mo dapat makaligtaan.
+- **Maliliit na posisyon:** sa dalawa, puwedeng i-clear ng isang liquidation ang buong utang nang sabay-sabay, sa Aave kapag mas mababa sa $2,000 ang mga asset na sangkot at sa Morpho sa anumang laki.
+
+Paghahambing ng mga mekanismo ang gabay na ito; hindi ito payong pinansyal.
+
+## Paano makakatulong ang mga alerto sa alinman?
+
+Binabantayan ng Tokenping ang dalawa. Tumitingin ito tuwing 5 minuto at, habang nasa ilalim ng threshold na itinakda mo ang isang health factor, nagpapadala ng mensahe sa bawat check sa bawat channel na pinili mo: Signal, Telegram o email.
+
+- **Aave:** isang alerto bawat V3 market o V4 Spoke, sa 24 na V3 market sa 21 network at lahat ng 24 na V4 Spoke sa Ethereum, Avalanche, Arc at Base. Mula 1.1 hanggang 10 ang threshold. Puwede mo munang [tingnan ang Aave health factor mo](/fil/aave).
+- **Morpho:** isang alerto bawat market kung saan ka nagbo-borrow, sa mga market na inililista ng app ng Morpho: Blue sa 14 na network at Midnight kung saan naglilista ng mga market ang API ng Morpho (Ethereum at Base noong Nobyembre 4, 2026). Bumababa ang threshold hanggang 1.02, dahil madalas tumatakbo nang malapit sa 1 ang mga loan na mataas ang LLTV. Kung nag-authorize ka ng pre-liquidation, sinusukat ng alerto laban sa mas maagang linyang iyon, at nakakatanggap din ang isang Midnight loan ng mga paalala 7 araw at 24 na oras bago ang maturity. Nasa [Morpho dashboard](/fil/morpho) ang mga posisyon mo.
+
+Hindi mo kailangang magbayad para tingnan ang mga posisyon mo. Nagkakahalaga ang mga alerto ng <AlertPrice />, at saklaw ng iisang plan ang Aave at Morpho. Binibigyan ka ng alerto ng oras para magbayad o magdagdag ng collateral; hindi nito napipigilan ang liquidation, at puwedeng lumampas ang presyo sa linya mo sa pagitan ng dalawang check.
+
+## Mga sanggunian
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) at [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), aave-dao/aave-v3-origin: close factor, deficit, health factor, pause at grace period (na-access noong Nobyembre 4, 2026)
+- [Aave V3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): pag-alis ng stable rate debt (na-access noong Nobyembre 4, 2026)
+- [Aave Generalized Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): aling mga parameter ang puwedeng baguhin ng mga steward, minimum na pagitan at maximum na hakbang (na-access noong Nobyembre 4, 2026)
+- [Aave docs: Umbrella](https://aave.com/docs/aave-v3/umbrella): pagtapat sa deficit, mga asset at network (na-access noong Nobyembre 4, 2026)
+- [Aave V4 docs](https://aave.com/docs/aave-v4) at [V4 positions](https://aave.com/docs/aave-v4/positions): Hub at mga Spoke, health factor, User Risk Premium, mga liquidation (na-access noong Nobyembre 4, 2026)
+- [Aave V4 overview](https://github.com/aave/aave-v4/blob/main/docs/overview.md), aave/aave-v4: dynamic risk configuration, target health factor, variable na bonus, mga deficit, mga oracle ng Spoke (na-access noong Nobyembre 4, 2026)
+- [Aave V4 API](https://api.v4.aave.com/graphql): mga Spoke at network (na-access noong Nobyembre 4, 2026)
+- [Aave address book](https://github.com/bgd-labs/aave-address-book): mga network ng Aave V3 (na-access noong Nobyembre 4, 2026)
+- Mga on-chain na pagbasa sa Ethereum sa mga block 26341682 at 26341689: [Aave V3 Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract) at [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) (mga parameter ng reserve, E-Mode, rate ng USDC), [Aave V4 Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485#readContract) (target health factor) at [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) (mga market, mga pinaganang LLTV, mga rate) (na-access noong Nobyembre 4, 2026)
+- [Morpho.sol at ConstantsLib.sol](https://github.com/morpho-org/morpho-blue), morpho-org/morpho-blue: mga kapangyarihan ng owner, 25% na cap sa fee, liquidation incentive, bad debt (na-access noong Nobyembre 4, 2026)
+- [AdaptiveCurveIRM constants](https://github.com/morpho-org/morpho-blue-irm/blob/main/src/adaptive-curve-irm/libraries/ConstantsLib.sol), morpho-org/morpho-blue-irm: target utilization, steepness, bilis ng adjustment at mga hangganan (na-access noong Nobyembre 4, 2026)
+- [Midnight.sol at ConstantsLib.sol](https://github.com/morpho-org/midnight), morpho-org/midnight: mga limitasyon sa collateral, liquidation pagkatapos ng maturity at ang 60 minutong ramp (na-access noong Nobyembre 4, 2026)
+- [Morpho docs: Morpho Blue](https://docs.morpho.org/learn/concepts/blue), [oracles](https://docs.morpho.org/learn/concepts/oracle) at [Midnight](https://docs.morpho.org/learn/concepts/midnight) (na-access noong Nobyembre 4, 2026)
+- [Morpho interface listing policy](https://docs.morpho.org/get-started/resources/interface-listing-policy): kung ano ang ibig sabihin ng paglilista at sino ang nagpapasya (na-access noong Nobyembre 4, 2026)
+- [Morpho help: Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (na-access noong Nobyembre 4, 2026)
+- [Morpho API](https://api.morpho.org/graphql): mga network, mga nakalistang Blue market, at mga nakalistang Midnight market bawat network (na-access noong Nobyembre 4, 2026)
+
+_Pang-edukasyong nilalaman, hindi payong pinansyal. Binabawasan ng mga alerto ang panganib, pero hindi nito napipigilan ang liquidation._

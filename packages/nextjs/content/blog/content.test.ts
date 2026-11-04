@@ -38,6 +38,7 @@ const META_KEYS = new Set<string>([
   "readingMinutes",
   "stub",
   "protocol",
+  "figuresAsOf",
 ]);
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const SITE_HOST = /^https?:\/\/(?:www\.)?tokenping\.xyz(?:[/?#]|$)/i;
@@ -353,6 +354,11 @@ const checkMeta = (post: LoadedPost): string[] => {
   if (meta.stub !== undefined && meta.stub !== true) problems.push("meta.stub must be `true` or absent");
   if (meta.protocol !== undefined && meta.protocol !== "morpho")
     problems.push('meta.protocol must be "morpho" or absent (Aave)');
+  if (meta.figuresAsOf !== undefined) {
+    if (!isIsoDate(meta.figuresAsOf)) problems.push(`meta.figuresAsOf "${meta.figuresAsOf}" must be a YYYY-MM-DD date`);
+    else if (isIsoDate(meta.publishedAt) && meta.figuresAsOf > (meta.updatedAt ?? meta.publishedAt))
+      problems.push("meta.figuresAsOf is after the post's last date: its figures cannot be newer than the post");
+  }
 
   for (const field of ["title", "description", "h1", "primaryQuestion"] as const) {
     if (typeof meta[field] === "string")
@@ -874,6 +880,16 @@ describe("checkMeta", () => {
   it.each(["2026-13-40", "2026-02-30", "14 Oct 2026"])("reports the invalid date %j instead of throwing", date => {
     expect(checkMeta({ slug: FIXTURE_META.slug, meta: { ...FIXTURE_META, publishedAt: date } })).toEqual([
       `meta.publishedAt "${date}" must be a YYYY-MM-DD date`,
+    ]);
+  });
+
+  it("takes a post's own figures date, never a malformed one or one after the post", () => {
+    const check = (figuresAsOf: string) =>
+      checkMeta({ slug: FIXTURE_META.slug, meta: { ...FIXTURE_META, figuresAsOf } });
+    expect(check("2026-10-13")).toEqual([]);
+    expect(check("13 Oct 2026")).toEqual(['meta.figuresAsOf "13 Oct 2026" must be a YYYY-MM-DD date']);
+    expect(check("2026-10-15")).toEqual([
+      "meta.figuresAsOf is after the post's last date: its figures cannot be newer than the post",
     ]);
   });
 });

@@ -21,6 +21,11 @@ export type PostMeta = {
   stub?: true;
   /** "morpho" for a guide about Morpho: it carries Morpho's scope line, label and end box. Absent for Aave. */
   protocol?: "morpho";
+  /**
+   * YYYY-MM-DD: the day this post's own on-chain and API figures were read, when it differs from its protocol's date in
+   * components/blog/ScopeNote.tsx. Its scope line shows this date instead. Translations copy it.
+   */
+  figuresAsOf?: string;
 };
 
 /** A post as the lists, feeds and metadata see it. Its body is in content/blog/content/<locale>.ts. */

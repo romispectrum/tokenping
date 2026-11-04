@@ -1,0 +1,175 @@
+export const meta = {
+  slug: "aave-v4-vs-v3-diferente",
+  title: "Aave V4 vs V3: ce se schimbă pentru împrumutul tău",
+  description:
+    "Aave V4 vs V3 pentru debitori: Hub-uri și Spoke-uri, health factor pe Spoke, lichidări până la o țintă, prime de risc, Spoke-uri E-Mode și migrare.",
+  h1: "Aave V4 vs V3: ce este diferit și ce înseamnă pentru împrumutul tău?",
+  publishedAt: "2026-11-04",
+  primaryQuestion: "Care este diferența dintre Aave V3 și Aave V4 pentru un debitor?",
+  readingMinutes: 13,
+  figuresAsOf: "2026-11-04",
+};
+
+<ShortAnswer>
+  Aave V4 a fost lansat pe Ethereum pe 30 martie 2026 și acum rulează și pe Avalanche, Arc și Base. V3 continuă să
+  funcționeze alături de el și deține încă majoritatea banilor. Pe V4 te împrumuți într-un Spoke, o piață cu propriile
+  reguli care atrage lichiditate dintr-un Hub comun, iar fiecare Spoke are propriul health factor (factor de sănătate).
+  Un singur collateral factor (factor de garanție) pe activ înlocuiește LTV-ul și pragul de lichidare din V3, așa că te
+  poți împrumuta până la un health factor de 1,00. O lichidare rambursează cât să te ridice la health factor-ul țintă al
+  Spoke-ului (1,24 pe Spoke-urile Main) în loc de 50% sau 100% ca în V3, iar bonusul crește pe măsură ce health
+  factor-ul scade. Dobânzile se stabilesc pe Hub, plus o primă de risc pentru garanția mai riscantă. Nimic nu se mută
+  singur: un împrumut V3 rămâne pe V3 până îl muți tu.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Cifrele și numerele de bloc la care au fost citite: content/blog/snapshots/aave-v4-vs-v3.md */}
+
+## Ce este Aave V4 și când a fost lansat?
+
+Aave V4 este o nouă versiune a protocolului de creditare Aave, cu propriile contracte. Nu actualizează pe loc piețele V3. Potrivit changelogului Aave, a fost lansat pe Ethereum pe 30 martie 2026 cu trei Hub-uri și unsprezece Spoke-uri, apoi pe Avalanche (15 iulie), Arc (16 septembrie) și Base (7 octombrie 2026). V3 rulează pe 21 de rețele; V4 rulează pe patru, iar Arc are doar V4.
+
+V3 este încă mult mai mare. Pe 4 noiembrie 2026, DefiLlama număra aproximativ 15,6 miliarde $ în Aave V3 și aproximativ 0,79 miliarde $ în V4, ambele după scăderea împrumuturilor, cu aproximativ 11,4 miliarde $ și 0,47 miliarde $ împrumutați. Actualizarea din octombrie a Aave Labs plasa V4 peste 1,5 miliarde $ în depozite și 450 de milioane $ în împrumuturi active.
+
+Pentru un debitor, cele două versiuni diferă prin locul în care trăiește poziția ta, cât te poți împrumuta, cum se dimensionează o lichidare și cum se stabilește dobânda. Tabelul de mai jos le rezumă; secțiunile de după el explică fiecare rând.
+
+## Ce se schimbă pentru un debitor și ce rămâne la fel?
+
+| Subiect                         | Aave V3                                                                               | Aave V4                                                                                                                                  |
+| ------------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Unde trăiește împrumutul tău    | O piață: un Pool pe o rețea                                                           | Un Spoke, care atrage lichiditate din unul sau mai multe Hub-uri                                                                         |
+| Health factor                   | Unul pe piață                                                                         | Unul pe Spoke                                                                                                                            |
+| Formula                         | Σ(garanție × prag de lichidare) ÷ datorie                                             | Σ(garanție × collateral factor) ÷ datorie                                                                                                |
+| Limita de împrumut              | LTV, stabilit sub pragul de lichidare                                                 | Collateral factor-ul însuși: te poți împrumuta până când health factor-ul este 1,00                                                      |
+| Linia de lichidare              | Health factor sub 1                                                                   | Health factor sub 1 (neschimbat)                                                                                                         |
+| Cel mult rambursat într-un apel | 50% din datorie, sau 100% la un health factor de 0,95 sau mai mic ori pe poziții mici | Cât să te aducă la health factor-ul țintă al Spoke-ului                                                                                  |
+| Bonusul de lichidare            | Fix pe activ de garanție                                                              | Crește pe măsură ce health factor-ul scade, până la un maxim pe activ                                                                    |
+| Regula resturilor (dust)        | Trebuie să rămână 1.000 $, altfel pleacă tot                                          | Trebuie să rămână 1.000 $, altfel pleacă tot (neschimbat)                                                                                |
+| Dobânda                         | O curbă de utilizare pe activ, pe piață                                               | O curbă de utilizare pe activ, pe Hub, plus un User Risk Premium                                                                         |
+| Schimbările de parametri        | Lovesc dintr-odată toate pozițiile deschise                                           | Setările noi se aplică de obicei când te mai împrumuți sau retragi, cu excepția cazului în care guvernanța le actualizează pe cele vechi |
+| Active corelate                 | Categorii E-Mode în interiorul unei piețe                                             | Spoke-uri separate pentru perechi corelate, precum Spoke-urile Lido și EtherFi                                                           |
+| Dobândă și prețuri              | Datoria crește cu dobânda; prețurile oracolului mișcă health factor-ul                | La fel                                                                                                                                   |
+| Împrumutul tău existent         | Rămâne pe V3                                                                          | Se deschide de la zero; nimic nu migrează singur                                                                                         |
+
+## Cum funcționează Hub-urile și Spoke-urile din V4?
+
+Un Hub deține lichiditatea comună a fiecărui activ și îi stabilește dobânda. Un Spoke este ce folosești tu: listează activele pe care le poți depune și împrumuta, le stabilește collateral factor-urile, alege oracolele (sursele de preț) și deține setările de lichidare. Documentația Aave o spune așa: utilizatorii interacționează cu Spoke-urile, care direcționează lichiditatea către și dinspre Hub, iar riscul este izolat la nivelul Spoke-ului.
+
+Pe V3, o piață făcea ambele lucruri. Piața Ethereum Core își deține propriii USDC și își stabilește propriile reguli, iar piața Prime deține USDC separați, cu reguli separate. Pe V4, mai multe Spoke-uri pot împrumuta aceiași USDC dintr-un Hub, fiecare păstrându-și propriile setări de risc, iar un Spoke se poate împrumuta din mai multe Hub-uri: Spoke-ul Bluechip de pe Ethereum împrumută USDC atât din Core Hub, cât și din Prime Hub.
+
+API-ul V4 al Aave lista 24 de Spoke-uri și 8 Hub-uri pe 4 noiembrie 2026:
+
+| Rețea     | Hub-uri                                   | Spoke-uri                                                                                                                                                                                                    |
+| --------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Ethereum  | Core, Prime, Plus, Global Dollar, Sentora | Main, Bluechip, Lido, EtherFi, Kelp, Lombard, Ethena Ecosystem, Ethena Correlated, Gold, PAXG Gold, Forex, USDG Pendle, Maple SyrupUSDG; pe Hub-ul Sentora: RLUSD Yield, OUSD Yield și un al doilea Bluechip |
+| Avalanche | Core                                      | Main, AVAX Correlated, Forex, Ethena Ecosystem                                                                                                                                                               |
+| Arc       | Core                                      | Main, Forex, Maple SyrupUSDC                                                                                                                                                                                 |
+| Base      | Coinbase Stocks                           | Coinbase Stocks                                                                                                                                                                                              |
+
+Sentora este primul curator extern pe V4: potrivit Aave Labs, rulează propriul Hub și propriile Spoke-uri pe Ethereum și le stabilește garanțiile, parametrii, curbele de dobândă și oracolele, în timp ce Aave DAO deține contractele. Spoke-ul de pe Base împrumută USDC contra acțiunilor tokenizate, subiect tratat în [împrumuturile garantate cu acțiuni tokenizate](/ro/blog/actiuni-tokenizate-ca-garantie#unde-te-poti-imprumuta-cu-actiuni-tokenizate-ca-garantie).
+
+## Cum funcționează health factor-ul pe un Spoke V4?
+
+Health factor-ul înseamnă același lucru pe ambele versiuni: garanția ponderată împărțită la datorie, iar sub 1 poți fi lichidat. Pe V4, ponderea este collateral factor-ul (CF). Exemplul Aave: 10.000 $ în ETH la un CF de 80% contra 6.000 $ în GHO dau 1,333. [Secțiunea despre V4 din ghidul despre health factor](/ro/blog/health-factor-aave-explicat#este-health-factor-ul-diferit-pe-aave-v4) acoperă noțiunile de bază; trei consecințe contează mai mult decât formula.
+
+**Un health factor pe Spoke.** Documentația Aave spune că pozițiile din Spoke-uri diferite nu se influențează între ele și că te poți împrumuta doar contra garanției depuse în același Spoke. ETH-ul din Spoke-ul Main nu face nimic pentru un împrumut din Spoke-ul Gold. Pe V3 același lucru e valabil între piețe, dar în interiorul unei piețe toată garanția ta acoperă toată datoria.
+
+**Niciun spațiu între limita de împrumut și linia de lichidare.** Pe V3 te poți împrumuta până la LTV, care stă sub pragul de lichidare (liquidation threshold): WETH pe Ethereum Core avea un LTV de 81% și un prag de 84% pe 4 noiembrie 2026, așa că împrumutul maxim contra WETH singur lasă un health factor de aproximativ 1,037 ([de ce maximul lasă aproximativ 1,03](/ro/blog/health-factor-aave-explicat#de-ce-imprumutul-maxim-lasa-un-health-factor-de-doar-aproximativ-103)). Pe V4 nu există un LTV separat. Documentația Aave spune că un împrumut sau o retragere este blocată doar dacă ar duce health factor-ul sub 1,0, iar codul verifică exact acest lucru. O poziție împrumutată la maximum pe V4 pornește de pe linia de lichidare, iar prima mică acumulare de dobândă sau mișcare de preț o poate trece. Alege-ți singur marja.
+
+**Aceleași active pot avea aceeași pondere.** Unii parametri sunt aliniați între versiuni. WETH conta 84% atât pe V3 Ethereum Core, cât și pe Spoke-ul Main din V4 pe 4 noiembrie 2026, așa că 10 WETH contra 12.000 USDC au același health factor și același preț de lichidare de 1.428,57 $ pe ambele.
+
+### Ce se întâmplă când guvernanța schimbă un collateral factor?
+
+Pe V3, un prag de lichidare mai mic se aplică tuturor pozițiilor deschise din momentul în care schimbarea se execută, ceea ce poate împinge un debitor sub 1 fără nicio mișcare de preț ([cauza 4 din de ce ți-a scăzut health factor-ul](/ro/blog/de-ce-a-scazut-health-factor-aave#cauza-4-a-redus-guvernanta-sau-risk-stewards-un-prag-de-lichidare)).
+
+V4 păstrează un istoric al collateral factor-ului, bonusului maxim și taxei de lichidare ale fiecărui activ. Când guvernanța adaugă o configurație nouă, poziția ta o păstrează pe cea de care era legată până când te împrumuți, retragi sau dezactivezi o garanție; depunerea și rambursarea nu o schimbă. Dacă poziția ta ar fi nesănătoasă cu cele mai noi setări, împrumutul sau retragerea eșuează (revert). Așa că după o reducere s-ar putea să descoperi că nu poți retrage garanție, deși health factor-ul tău arată bine.
+
+Această protecție nu este absolută. Guvernanța poate și să editeze o configurație existentă, ceea ce ajunge la fiecare poziție legată de ea, sau să mute forțat o poziție pe cea mai nouă. Pe 28 octombrie 2026, un singur payload de guvernanță (AIP 536) a ridicat WETH de la 83% la 84% pe V3 Ethereum Core și a editat configurația WETH existentă a Spoke-ului Main din V4 de la 83% la 84%, în aceeași tranzacție. Acea schimbare i-a ajutat pe debitori; o editare în sens invers ar funcționa la fel.
+
+## Prin ce diferă lichidările pe V4?
+
+Pe V3, un lichidator poate rambursa până la 50% din datoria ta cât timp health factor-ul este peste 0,95 și atât garanția, cât și datoria implicate valorează cel puțin 2.000 $, și până la 100% în rest ([cât poate fi lichidat dintr-o dată](/ro/blog/cum-functioneaza-lichidarea-pe-aave#ce-parte-din-datoria-mea-poate-fi-lichidata-dintr-o-data)). Bonusul este fix pe activ de garanție: 5% pentru WETH pe Ethereum Core.
+
+Pe V4 nu există close factor (partea din datorie care poate fi rambursată dintr-o dată). Un lichidator poate rambursa atâta datorie cât e nevoie ca health factor-ul tău să ajungă la ținta Spoke-ului, și nu mai mult, cu excepția cazului în care asta ar lăsa mai puțin de 1.000 $ datorie sau garanție. Bonusul pornește de la o parte din maximul activului imediat sub 1 și crește liniar până la maximul complet la un health factor stabilit. Setările de pe 4 noiembrie 2026, citite on-chain:
+
+| Spoke                                                             | Health factor țintă            | Bonus complet la | Bonusul imediat sub 1     |
+| ----------------------------------------------------------------- | ------------------------------ | ---------------- | ------------------------- |
+| Main (Ethereum, Avalanche, Arc), Coinbase Stocks (Base)           | 1,24                           | 0,90             | 90% din maxim             |
+| Bluechip (Ethereum)                                               | 1,174                          | 0,90             | 90% din maxim             |
+| Gold (Ethereum)                                                   | 1,3075                         | 0,90             | 90% din maxim             |
+| Lido, EtherFi, Kelp, Lombard, Ethena, Forex și Spoke-uri similare | între aproximativ 1,01 și 1,06 | 0,99             | Maximul complet, constant |
+
+### Exemplu calculat: 10 WETH contra 12.000 USDC pe ambele versiuni
+
+Ia aceeași poziție pe V3 Ethereum Core (prag 84%, bonus 5%) și pe Spoke-ul Main din V4 (CF 84%, bonus maxim 5,55%, țintă 1,24). Ambele pot fi lichidate odată ce ETH este sub 1.428,57 $. Iată cel mult cât poate lua o lichidare la două prețuri:
+
+| Prețul ETH (health factor) | Versiune | Bonus | Datorie rambursată  | Bonusul pe care îl plătești | Health factor după      | Datorie rămasă |
+| -------------------------- | -------- | ----- | ------------------- | --------------------------- | ----------------------- | -------------- |
+| 1.400 $ (0,98)             | V3       | 5%    | 6.000 $ (50%)       | 300 $                       | 1,078                   | 6.000 $        |
+| 1.400 $ (0,98)             | V4       | 5,11% | 8.736,81 $ (72,8%)  | 446,10 $                    | 1,24                    | 3.263,19 $     |
+| 1.330 $ (0,931)            | V3       | 5%    | 12.000 $ (100%)     | 600 $                       | niciunul (fără datorie) | 0 $            |
+| 1.330 $ (0,931)            | V4       | 5,38% | 10.450,22 $ (87,1%) | 562,01 $                    | 1,24                    | 1.549,78 $     |
+
+Ies în evidență două lucruri. Imediat sub 1, o lichidare V4 pe Spoke-ul Main poate lua o parte mai mare din datoria ta decât cei 50% din V3, pentru că o țintă de 1,24 cere o rambursare mare, iar tu plătești un bonus mai mare în dolari. Mai jos, V3 poate șterge tot, în timp ce V4 se oprește tot la țintă și îți lasă o poziție la 1,24. În ambele cazuri păstrezi USDC-ul pe care l-ai împrumutat; ce pierzi este bonusul. Un lichidator poate alege oricând să ramburseze mai puțin decât aceste maxime.
+
+Pe Spoke-urile în stil E-Mode, țintele stau imediat peste 1, iar bonusul este constant 1% pentru wstETH și weETH. Bonusul este mic, dar cu un CF de 95,5% fiecare pas sub 1 cere o rambursare mare: pe Spoke-ul Lido, unei poziții cu un health factor de 0,987 i se poate rambursa aproximativ 55% din datorie într-o singură lichidare. [Secțiunea despre V4 din ghidul despre lichidare](/ro/blog/cum-functioneaza-lichidarea-pe-aave#prin-ce-difera-lichidarile-pe-aave-v4) conține formula bonusului.
+
+## Prin ce diferă dobânzile pe V4?
+
+Pe V3, fiecare activ are o curbă de utilizare în fiecare piață: USDC pe Ethereum Core și USDC pe Arbitrum au pool-uri separate și dobânzi separate ([cum funcționează dobânzile pe Aave](/ro/blog/dobanzile-aave)). V4 păstrează curba, dar o mută la Hub, așa că fiecare Spoke care împrumută USDC din același Hub plătește aceeași dobândă de bază, iar același token poate costa diferit din două Hub-uri. Pe 4 noiembrie 2026, API-ul Aave arăta USDC în Spoke-ul Bluechip la 5,41% din Core Hub și la 4,45% din Prime Hub.
+
+Peste dobânda de bază, V4 adaugă un User Risk Premium (primă de risc a utilizatorului). Fiecare activ de garanție are un risc de garanție (collateral risk) între 0% și 1.000% în fiecare Spoke; prima ta este media riscului garanțiilor tale, socotind mai întâi pe cele mai sigure și doar atâta garanție cât îți acoperă datoria. Exemplul Aave: o primă de 50% la o dobândă de bază de 5% înseamnă că plătești 7,5%.
+
+Majoritatea Spoke-urilor stabilesc încă fiecare risc de garanție la 0, așa că debitorii lor plătesc doar dobânda de bază. Excepțiile de pe 4 noiembrie 2026 includeau syrupUSDC pe Spoke-ul Maple de pe Arc (20%), USDe pe Spoke-ul Ethena Ecosystem de pe Avalanche (16,5%), SPCXc pe Spoke-ul Coinbase Stocks (10%) și mai multe active de pe Spoke-urile Sentora. Un împrumut în USDC garantat doar cu syrupUSDC pe Arc, cu dobânda de bază la 3,06%, costa aproximativ 3,7%.
+
+Prima ta este recalculată când te împrumuți, retragi, schimbi garanția sau ești lichidat, nu când depui sau rambursezi. Dacă guvernanța coboară riscul unui activ, beneficiezi doar după una dintre aceste acțiuni sau după o reîmprospătare manuală; dacă îl ridică, prima ta rămâne neschimbată până atunci, cu excepția cazului în care guvernanța impune o actualizare. Mai multe despre GHO și dobânzile V4 în [cum se stabilesc dobânzile pe Aave V4](/ro/blog/dobanzile-aave#cum-se-stabilesc-dobanzile-pentru-gho-si-pe-aave-v4).
+
+## Ce a înlocuit E-Mode pe Aave V4?
+
+Pe V3, E-Mode este un comutator în interiorul unei piețe: alegi o categorie precum „ETH correlated” pe Ethereum Core (LTV 93%, prag 95%, bonus 1% pe 4 noiembrie 2026), iar toată poziția ta din acea piață folosește aceste setări ([cum funcționează E-Mode](/ro/blog/aave-e-mode-explicat)).
+
+V4 nu are un comutator E-Mode. Perechile corelate primesc în schimb propriile Spoke-uri: documentația Aave numește Spoke-urile Lido, EtherFi și Kelp „eSpokes”, iar propunerea de activare le-a etichetat, împreună cu Lombard BTC, drept Spoke-uri e-Mode. Spoke-ul Lido acceptă wstETH ca garanție la un CF de 95,5% și împrumută doar WETH; Spoke-ul EtherFi face același lucru cu weETH. Ambele aveau un bonus de lichidare de 1% pe 4 noiembrie 2026.
+
+Diferența practică: pe V3 poți muta o poziție în și din E-Mode cât timp rămâne sănătoasă. Pe V4, un loop (împrumut repetat cu efect de levier) pe Spoke-ul Lido este o poziție separată de orice ai pe Spoke-ul Main. Ca să schimbi, închizi una și o deschizi pe cealaltă.
+
+## Continuă Aave V3 să funcționeze și se mută împrumuturile V3 pe V4?
+
+V3 continuă să funcționeze și nimic nu se mută singur. Temp check-ul Aave Labs din februarie 2026, cadrul „Aave Will Win”, spune că nu este nevoie de o migrare grăbită sau forțată („no need for a rushed, or forced, migration”) și că V3 va funcționa alături de V4 până când DAO decide altfel. Mai spune că, odată ce V4 va fi matur, parametrii V3 „could be gradually adjusted to encourage migration” (ar putea fi ajustați treptat ca să încurajeze migrarea) și că V3 rămâne deschis pentru retrageri pe termen nelimitat. Unele piețe V3 sunt deja închise din alte motive, după cum explică [ghidul despre închiderea piețelor](/ro/blog/inchiderea-unei-piete-aave#ce-piete-aave-sunt-inchise-treptat).
+
+Documentația V4 a Aave nu descrie niciun instrument care să mute o poziție V3 în V4 și niciunul pentru mutarea unei poziții dintr-un Spoke V4 în altul. Mutarea manuală înseamnă să rambursezi datoria V3, să retragi garanția, să o depui într-un Spoke V4 și să te împrumuți din nou, în această ordine, ca garanția ta să nu fie niciodată retrasă cât timp o datorie încă depinde de ea. Unele instrumente terțe grupează acești pași într-o singură tranzacție. Oricum ar fi, verifică mai întâi collateral factor-ul, health factor-ul țintă și dobânda noului Spoke: același health factor poate însemna acolo o altă marjă și o altă mărime a lichidării.
+
+## La ce să fii atent dacă ai împrumuturi pe ambele?
+
+- **Două sau mai multe health factor-uri.** Fiecare piață V3 și fiecare Spoke V4 are propriul health factor. Un împrumut V3 sănătos nu face nimic pentru un împrumut V4 aproape de 1.
+- **Marje de pornire diferite.** O poziție V4 împrumutată la maximum stă la 1,00, în timp ce LTV-ul din V3 lasă un spațiu. Nu copia obiceiul din V3 de a te „împrumuta până la limită”.
+- **Mărimi diferite ale lichidării.** Pe Spoke-urile Main, o lichidare poate lua mai mult de jumătate din datoria ta; pe V3 ia cel mult jumătate cât timp health factor-ul este peste 0,95.
+- **Schimbări care ajung la ambele.** Un singur payload a schimbat WETH pe ambele versiuni pe 28 octombrie 2026. Urmărește guvernanța pentru oricare dintre ele.
+- **Dobânzi care se depărtează.** Dobânzile V3 urmează pool-ul fiecărei piețe; dobânzile V4 urmează Hub-ul, plus prima ta.
+- **Schimbări viitoare în V3.** Dacă guvernanța începe să ajusteze V3 ca să-i împingă pe debitori spre V4, așteaptă-te ca dobânzile sau parametrii să se miște împotriva împrumuturilor V3.
+
+## Poate o alertă să acopere ambele versiuni?
+
+Da, ca alerte separate. Tokenping îți verifică health factor-ul la fiecare 5 minute în fiecare piață Aave V3 din 21 de rețele și în toate cele 24 de Spoke-uri V4 pe Ethereum, Avalanche, Arc și Base, cu o alertă pentru fiecare piață V3 sau Spoke V4. Îți trimite un mesaj pe Signal, Telegram sau e-mail când health factor-ul este sub pragul ales (între 1,1 și 10) și îl repetă la fiecare verificare până își revine.
+
+Pe V4 pragul contează mai mult, pentru că limita de împrumut este linia de lichidare: setează-l mult peste 1, ca mesajul să ajungă cât timp mai ai timp să rambursezi sau să adaugi garanție, înainte ca o lichidare să-ți coboare datoria până la ținta Spoke-ului. O alertă nu poate acționa în locul tău, iar o mișcare rapidă poate trece de 1 între două verificări. [Câtă marjă să păstrezi](/ro/blog/health-factor-sigur-aave#de-cata-marja-ai-nevoie-ca-sa-ai-timp-sa-actionezi) te ajută să alegi un număr.
+
+Îți poți [verifica pozițiile Aave V3 și V4](/ro/aave) fără să plătești; alertele costă <AlertPrice />, plătite pe Arbitrum. Tokenping este în beta și nu are nicio garanție de disponibilitate (uptime). Configurarea este în [cum configurezi o alertă de health factor](/ro/blog/configurare-alerta-health-factor-aave).
+
+## Surse
+
+- [Prezentarea Aave V4](https://aave.com/docs/aave-v4.md): Hub-uri, Spoke-uri, dobânzi pe activ al Hub-ului, User Risk Premium, health factor țintă și regula resturilor de 1.000 $ (accesat la 4 noiembrie 2026)
+- [Pozițiile utilizatorilor în Aave V4](https://aave.com/docs/aave-v4/positions.md), [împrumut](https://aave.com/docs/aave-v4/positions/borrow.md) și [condițiile poziției](https://aave.com/docs/aave-v4/positions/conditions.md): poziții pe Spoke, împrumut blocat sub 1,0, garanție în același Spoke, configurare dinamică și actualizarea primei (accesat la 4 noiembrie 2026)
+- [Spoke-urile Aave V4](https://aave.com/docs/aave-v4/liquidity/spokes.md) și [lichidări](https://aave.com/docs/aave-v4/positions/liquidations.md): Spoke-urile implementate pe Ethereum și numele eSpoke, bonusul de tip licitație olandeză (Dutch auction) (accesat la 4 noiembrie 2026)
+- [Changelogul documentației Aave](https://aave.com/docs/resources/changelog.md): datele de lansare V4 pe Ethereum, Avalanche, Arc și Base (accesat la 4 noiembrie 2026)
+- [Prezentarea aave/aave-v4](https://github.com/aave/aave-v4/blob/main/docs/overview.md), [LiquidationLogic.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/libraries/LiquidationLogic.sol) și [Spoke.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/Spoke.sol), commit a3ef63e: prima de risc, configurarea dinamică a riscului, motorul de lichidare, verificarea health factor-ului (accesat la 4 noiembrie 2026)
+- [API-ul GraphQL public Aave V4](https://api.v4.aave.com/graphql), `chains`, `hubs`, `spokes` și `reserves`: Spoke-uri, Hub-uri, collateral factor-uri, riscul garanțiilor, bonusuri și dobânzi la împrumut (accesat la 4 noiembrie 2026)
+- Citiri on-chain ale `getLiquidationConfig` și `getReserve` pentru fiecare Spoke V4, de exemplu [Ethereum Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485#readContract) la blocul 26341712 (accesat la 4 noiembrie 2026)
+- [Tranzacția de execuție AIP 536](https://etherscan.io/tx/0x226c48626ec314b194dfa080e992dcabfa1526f813835f81914e1885d5af1275), 28 octombrie 2026: WETH pe V3 Ethereum Core și pe Spoke-ul Main din V4 (accesat la 4 noiembrie 2026)
+- [Aave V3 PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract) și [Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract): LTV-ul, pragul și bonusul WETH, categoria E-Mode 1 la blocul 26341695 (accesat la 4 noiembrie 2026)
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): close factor de 50% și 100%, pragurile de 2.000 $ și 1.000 $ (accesat la 4 noiembrie 2026)
+- [ARFC: Aave V4 Activation on Ethereum Mainnet](https://governance.aave.com/t/arfc-aave-v4-activation-on-ethereum-mainnet/24293), Aave Labs, 13 martie 2026: Spoke-urile de la lansare și Spoke-urile e-Mode (accesat la 4 noiembrie 2026)
+- [TEMP CHECK: Aave Will Win Framework](https://governance.aave.com/t/temp-check-aave-will-win-framework/24055), Aave Labs, 12 februarie 2026: V3 alături de V4, fără migrare forțată (accesat la 4 noiembrie 2026)
+- [AL Development Update, October 2026](https://governance.aave.com/t/al-development-update-october-2026/25979), Aave Labs, 2 noiembrie 2026: depozitele V4, Sentora, prima rezervă cu Risk Premium, AIP 536 (accesat la 4 noiembrie 2026)
+- [API-ul de protocoale DefiLlama](https://api.llama.fi/protocols): TVL-ul și sumele împrumutate în Aave V3 și V4 (accesat la 4 noiembrie 2026)
+
+_Conținut educațional, nu sfat financiar. Alertele reduc riscul, dar nu împiedică lichidarea._
