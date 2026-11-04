@@ -124,13 +124,13 @@ and keeps the $0.88 arithmetic.
 
 ## 8. Product facts used (from `SCRATCH/mkt/product.md`)
 
-| Fact                                                                                               | Source                                              |
-| -------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| Checks every 5 minutes                                                                             | P§4.1 (`vercel.json`, `constants/notifications.ts`) |
-| On every check while below threshold, one message to each selected channel (Signal, email or both; since 2026-10-20 Signal, Telegram, email or several of them) | P§4.2 step 3, P§4.3                                 |
-| Threshold range 1.1-10, one config per wallet per network                                          | P§4.5, P§4.6                                        |
-| No liquidation-price or asset-price alerts                                                         | P§10.5                                              |
-| Aave V3 and V4 (V4 since 2026-10-16, `AAVE_V4_SPOKES`); Signal and email channels in articles (superseded 2026-10-20: Signal, Telegram and email, see the update at the end)      | P§10.1, P§10.2, build spec owner decision           |
+| Fact                                                                                                                                                                         | Source                                              |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| Checks every 5 minutes                                                                                                                                                       | P§4.1 (`vercel.json`, `constants/notifications.ts`) |
+| On every check while below threshold, one message to each selected channel (Signal, email or both; since 2026-10-20 Signal, Telegram, email or several of them)              | P§4.2 step 3, P§4.3                                 |
+| Threshold range 1.1-10, one config per wallet per network                                                                                                                    | P§4.5, P§4.6                                        |
+| No liquidation-price or asset-price alerts                                                                                                                                   | P§10.5                                              |
+| Aave V3 and V4 (V4 since 2026-10-16, `AAVE_V4_SPOKES`); Signal and email channels in articles (superseded 2026-10-20: Signal, Telegram and email, see the update at the end) | P§10.1, P§10.2, build spec owner decision           |
 
 ## Update of 2026-10-20
 

@@ -12,8 +12,8 @@ export const meta = {
 
 <ShortAnswer>
   Health factor (faktor zdraví pozice) půjčky na Morpho porovnává hodnotu vašeho kolaterálu, započtenou až do
-  likvidačního poměru půjčky k hodnotě kolaterálu (LLTV) daného trhu, s tím, kolik dlužíte: množství kolaterálu × cena
-  z orákula × LLTV ÷ dluh. Jakmile dluh tento limit překročí, health factor je pod 1 a pozici lze zlikvidovat. Při 1,00
+  likvidačního poměru půjčky k hodnotě kolaterálu (LLTV) daného trhu, s tím, kolik dlužíte: množství kolaterálu × cena z
+  orákula × LLTV ÷ dluh. Jakmile dluh tento limit překročí, health factor je pod 1 a pozici lze zlikvidovat. Při 1,00
   nebo výš to nejde, s výjimkou části půjčky na Blue, jejíž vlastník povolil kontrakt předběžné likvidace
   (pre-liquidation), a půjčky na Midnight, na které po splatnosti zbývá dluh. Například 1 cbBTC oceněný na 80 011,48
   USDC v trhu Morpho USDC | cbBTC (86%) na Ethereu proti dluhu 40 000 USDC dává 80 011,48 × 0,86 ÷ 40 000 = 1,72. Každý
@@ -43,13 +43,13 @@ Health factor není uložený na blockchainu. Kontrakt Morpho jen kontroluje, zd
 
 Morpho Blue, kterému dokumentace Morpho dnes říká trhy s variabilní sazbou, je soubor samostatných úvěrových trhů. Každý z nich určuje pět parametrů zvolených při jeho vytvoření:
 
-| Parametr | Co to je | V příkladovém trhu |
-| --- | --- | --- |
-| Půjčovaný token (loan token) | Jediný token, který si můžete půjčit | USDC |
-| Kolaterálový token | Jediný token, který můžete vložit | cbBTC |
-| Orákulum | Kontrakt, který oceňuje kolaterál v půjčovaném tokenu | Cenový zdroj BTC/USD |
-| Úrokový model (IRM) | Kontrakt, který určuje výpůjční sazbu | AdaptiveCurveIRM |
-| LLTV | Likvidační poměr půjčky k hodnotě kolaterálu (liquidation loan-to-value) | 86 % |
+| Parametr                     | Co to je                                                                 | V příkladovém trhu   |
+| ---------------------------- | ------------------------------------------------------------------------ | -------------------- |
+| Půjčovaný token (loan token) | Jediný token, který si můžete půjčit                                     | USDC                 |
+| Kolaterálový token           | Jediný token, který můžete vložit                                        | cbBTC                |
+| Orákulum                     | Kontrakt, který oceňuje kolaterál v půjčovaném tokenu                    | Cenový zdroj BTC/USD |
+| Úrokový model (IRM)          | Kontrakt, který určuje výpůjční sazbu                                    | AdaptiveCurveIRM     |
+| LLTV                         | Likvidační poměr půjčky k hodnotě kolaterálu (liquidation loan-to-value) | 86 %                 |
 
 Aplikace Morpho podle nich trhy pojmenovává, s půjčovaným tokenem na prvním místě: „USDC | cbBTC (86%)“. Trh může vytvořit kdokoli, ale jen s LLTV a IRM, které povolila governance Morpho. Po vytvoření nelze žádný z pěti parametrů změnit: kontrakt nemá funkci, která by je upravila, a governance může nová LLTV povolit, ale žádné nikdy zakázat.
 
@@ -99,12 +99,12 @@ LTV je váš dluh vydělený hodnotou vašeho kolaterálu. LLTV je jeho pevný s
 Na Morpho Blue je LLTV jedinou hranicí. Neexistuje žádný samostatný, nižší limit pro nové výpůjčky, takže kontrakt vám dovolí půjčovat si nebo vybírat kolaterál, dokud health factor nedosáhne 1,00. Vývojářská dokumentace Morpho žádá aplikace, aby si nechávaly rezervu, například aby nepovolily výpůjčky pod health factor 1,05, ale rezerva je volba, ne pravidlo kontraktu. Jak daleko pod hranicí zůstanete, určuje vaši rezervu bez ohledu na LLTV:
 
 | Vypůjčeno jako podíl limitu | Health factor | Pokles ceny kolaterálu do likvidace |
-| --- | --- | --- |
-| 50 % | 2,00 | 50 % |
-| 70 % | 1,43 | 30 % |
-| 80 % | 1,25 | 20 % |
-| 90 % | 1,11 | 10 % |
-| 100 % | 1,00 | 0 % |
+| --------------------------- | ------------- | ----------------------------------- |
+| 50 %                        | 2,00          | 50 %                                |
+| 70 %                        | 1,43          | 30 %                                |
+| 80 %                        | 1,25          | 20 %                                |
+| 90 %                        | 1,11          | 10 %                                |
+| 100 %                       | 1,00          | 0 %                                 |
 
 ## Jaká LLTV může trh Morpho používat?
 
@@ -150,13 +150,13 @@ Největší uvedený trh Midnight na Ethereu 26. října 2026, se zhruba 23,9 mi
 
 Vzorec má v obou protokolech stejný tvar: kolaterál vážený prahem, vydělený dluhem. Pravidla kolem něj se liší, jak ze strany Aave vysvětluje [průvodce health factorem na Aave](/cz/blog/aave-health-factor-vysvetleni#health-factor-vs-ltv-vs-likvidacni-prah-jaky-je-rozdil):
 
-| | Morpho Blue | Aave V3 |
-| --- | --- | --- |
-| Jednotka | Jeden trh: jeden kolaterál, jeden půjčovaný token | Jeden trh (pool na jedné síti): veškerý váš kolaterál a dluh na něm |
-| Jak se určují ceny | Vlastní orákulum každého trhu, v půjčovaném tokenu | Orákulum Aave, v USD |
-| Výpůjční limit | Až do LLTV, tedy health factor 1,00 | Nižší LTV, takže maximální výpůjčka nechá u WETH [zhruba 1,03](/cz/blog/aave-health-factor-vysvetleni#proc-po-vypujceni-maxima-zustane-health-factor-jen-zhruba-103) |
-| Korelovaná aktiva | Samostatné trhy s vysokým LLTV | Kategorie [E-Mode](/cz/blog/aave-health-factor-vysvetleni#jak-e-mode-meni-health-factor) |
-| Může se práh změnit? | Ne, je pevně daný při vytvoření trhu | Ano, mohou ho změnit governance a Risk Stewards |
+|                      | Morpho Blue                                        | Aave V3                                                                                                                                                              |
+| -------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Jednotka             | Jeden trh: jeden kolaterál, jeden půjčovaný token  | Jeden trh (pool na jedné síti): veškerý váš kolaterál a dluh na něm                                                                                                  |
+| Jak se určují ceny   | Vlastní orákulum každého trhu, v půjčovaném tokenu | Orákulum Aave, v USD                                                                                                                                                 |
+| Výpůjční limit       | Až do LLTV, tedy health factor 1,00                | Nižší LTV, takže maximální výpůjčka nechá u WETH [zhruba 1,03](/cz/blog/aave-health-factor-vysvetleni#proc-po-vypujceni-maxima-zustane-health-factor-jen-zhruba-103) |
+| Korelovaná aktiva    | Samostatné trhy s vysokým LLTV                     | Kategorie [E-Mode](/cz/blog/aave-health-factor-vysvetleni#jak-e-mode-meni-health-factor)                                                                             |
+| Může se práh změnit? | Ne, je pevně daný při vytvoření trhu               | Ano, mohou ho změnit governance a Risk Stewards                                                                                                                      |
 
 Aave V4 část z toho mění, s jedním health factorem pro každý trh (Spoke) a jedním kolaterálovým faktorem pro každé aktivum; viz [jak funguje health factor na Aave V4](/cz/blog/aave-health-factor-vysvetleni#lisi-se-health-factor-na-aave-v4).
 
@@ -205,4 +205,4 @@ Prohlížení pozic v [přehledu Morpho](/cz/morpho) nevyžaduje platbu; upozorn
 - [Dokumentace API Morpho: Morpho Blue](https://docs.morpho.org/developers/api/morpho/) a [Morpho Midnight](https://docs.morpho.org/developers/api/morpho-midnight) (endpoint GraphQL api.morpho.org/graphql, endpointy REST pro Midnight pod api.morpho.org/v0/midnight): pořadí trhů, pozice a kontrakty předběžné likvidace (načteno 26. října 2026)
 - Čtení z blockchainu: [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), [orákulum USDC | cbBTC](https://etherscan.io/address/0xA6D6950c9F177F1De7f7757FB33539e3Ec60182a#readContract), [orákulum WETH | wstETH](https://etherscan.io/address/0xbD60A6770b27E084E8617335ddE769241B0e71D8#readContract) a [Morpho Midnight](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract) na Ethereu v blocích 26274950 až 26274984 a [Morpho Blue na síti Base](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) v bloku 53102888 (načteno 26. října 2026)
 
-*Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání.*
+_Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání._

@@ -1,0 +1,135 @@
+export const meta = {
+  slug: "na-liquidate-sa-aave-o-morpho-ano-na",
+  title: "Na-liquidate sa Aave o Morpho: ano ang gagawin ngayon",
+  description:
+    "Paano hanapin ang liquidation transaction, alamin kung ano ang kinuha at ang natira sa iyo, kung bakit ito nangyari, at paano maiwasan ang ikalawa.",
+  h1: "Na-liquidate ako sa Aave o Morpho: ano na?",
+  publishedAt: "2026-10-31",
+  primaryQuestion: "Ano ang dapat mong gawin pagkatapos ng isang liquidation sa Aave o Morpho?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Hanapin muna ang transaction: sa Aave, sa transaction history ng app o sa mga token transfer ng wallet mo sa isang
+  block explorer; sa Morpho, sa Morpho app o sa public API ng Morpho, dahil hindi kailanman lumalabas sa sarili mong
+  listahan ang transaction ng liquidator. Pagkatapos, basahin ito: ang utang na binayaran para sa iyo, ang collateral na
+  kinuha, at ang pagitan nila, na siyang bonus na ibinayad mo. Sa iyo pa rin ang mga token na hiniram mo, at pati ang
+  anumang collateral na hindi kinuha. Sa Aave, kadalasang kalahati ng utang mo ang binabayaran ng isang liquidation at
+  nag-iiwan ito ng posisyong puwedeng i-liquidate ulit; sa Morpho, puwede nitong kunin ang halos lahat nang sabay-sabay.
+  Sa 30 araw hanggang Oktubre 30, 2026, 932 na borrower sa Morpho ang na-liquidate nang higit sa isang beses, kaya ang
+  pinakakapaki-pakinabang na hakbang ay ang huli: isang buffer at isang alerto bago ka mag-borrow ulit.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Ang mga numero at ang oras kung kailan binasa ang mga ito: content/blog/snapshots/liquidated-on-aave-or-morpho-what-now.md */}
+
+## Paano mo malalaman na liquidation ito, at nasaan ang transaction?
+
+Ang karaniwang unang senyales ay mukhang mali ang isang posisyon: mas maliit ang utang kaysa sa naaalala mo, mas maliit nang husto ang collateral, biglang mas mataas ang health factor, o wala na ang posisyon. Ang isang bayad na hindi mo ginawa at isang withdrawal ng collateral na hindi mo pinirmahan, sa iisang transaction, ay isang liquidation.
+
+Mahirap hanapin ang transaction dahil hindi ikaw ang nagpadala nito. Ang bot ng isang liquidator ang nagpadala, kaya wala ito sa listahang "Transactions" ng address mo sa Etherscan, Basescan o Arbiscan. Kung saan ka titingin sa halip:
+
+- **Aave, sa app.** Buksan ang "Transaction history" (app.aave.com/history) nang nakakonekta ang wallet mo at napili ang tamang market, at i-filter ayon sa "Liquidation". May oras, transaction hash, kinuhang collateral at binayarang utang ang bawat record.
+- **Aave, sa isang block explorer.** Buksan ang address mo at ang tab na "Token transfers (ERC-20)". Lumalabas ang liquidation bilang transfer ng aToken mo (halimbawa aEthWETH) at ng debt token mo (variableDebtEthUSDT) papunta sa zero address, sa isang transaction na hindi mo pinirmahan. Buksan ito at lumipat sa tab na "Logs": ang event na `LiquidationCall` sa Pool contract ang record na kailangan mo. Puwedeng maglaman ang isang transaction ng ilang liquidation ng ilang borrower, kaya hanapin ang may `user` na address mo.
+- **Morpho.** Walang ipinapakita ang address mo sa explorer, dahil nasa Morpho contract ang collateral mo at sa contract din napunta ang bayad ng liquidator. Ipinapakita ng Morpho app na mas maliit o wala na ang posisyon; inililista ng public API ng Morpho ang bawat liquidation ng address mo (`marketTransactions` na may uring Liquidation); at sa event log ng Morpho contract sa explorer, may event na `Liquidate` na ang `borrower` ay ang address mo.
+- **Tokenping.** Ipinapakita ng [Aave dashboard](/fil/aave) at ng [Morpho dashboard](/fil/morpho) ang posisyon kung ano ito ngayon. Ang health factor na tumalon mula malapit sa 1 hanggang malayo sa itaas nito, o isang posisyong nawala, ay tumuturo sa isang liquidation. Hindi naglilista ang mga dashboard ng mga nakaraang transaction.
+
+Itago ang transaction hash. Kakailanganin mo ito para basahin ang mga halaga, at sa maraming bansa, itinuturing na pagbebenta ng kinuhang collateral ang isang liquidation, kaya kailangan din ito ng mga tala mo para sa buwis.
+
+## Paano mo babasahin ang liquidation transaction?
+
+Isinusulat ng parehong protocol ang buong liquidation sa iisang event. Magkaiba ang mga pangalan, pareho ang laman: aling utang ang binayaran para sa iyo, aling collateral ang kinuha, at gaano karami ang bawat isa.
+
+**Aave V3** ay naglalabas ng `LiquidationCall(collateralAsset, debtAsset, user, debtToCover, liquidatedCollateralAmount, liquidator, receiveAToken)`. Isang totoong halimbawa mula sa Ethereum Core, block 26305893, Oktubre 30, 2026 nang 13:33 UTC:
+
+| Field                      | Halaga                  | Ibig sabihin                                                            |
+| -------------------------- | ----------------------- | ----------------------------------------------------------------------- |
+| collateralAsset            | WETH                    | Ang asset na kinuha                                                     |
+| debtAsset                  | USDT                    | Ang asset na binayaran                                                  |
+| user                       | ang address ng borrower | Kanino ang posisyon                                                     |
+| debtToCover                | 1,320.785158 USDT       | Utang na binayaran para sa borrower, 1,319.32 USD sa presyo ng oracle   |
+| liquidatedCollateralAmount | 0.619088749 WETH        | Collateral na ipinadala sa liquidator, 1,372.09 USD sa 2,216.31 USD/ETH |
+| liquidator                 | isang contract address  | Sino ang nagbayad at tumanggap                                          |
+| receiveAToken              | false                   | WETH mismo ang kinuha nila, hindi aEthWETH                              |
+
+May isang halagang wala sa event. Sa parehong transaction, lumipat ang 0.005952776 aEthWETH (13.19 USD) mula sa borrower papunta sa collector contract ng Aave: ang liquidation protocol fee, 20% ng bonus para sa WETH sa Ethereum Core sa block na iyon. Kapag pinagsama, nagbigay ang borrower ng 1,385.28 USD na WETH para sa 1,319.32 USD na utang, isang 5% na bonus, kung saan 52.77 USD ang napunta sa liquidator at 13.19 USD sa treasury. Ipinapakita ng tab na "Logs" ng explorer ang fee bilang aToken transfer papunta sa collector, kasunod mismo ng aToken burn.
+
+**Morpho Blue** ay naglalabas ng `Liquidate(id, caller, borrower, repaidAssets, repaidShares, seizedAssets, badDebtAssets, badDebtShares)`. Isang totoong halimbawa mula sa market na USDC | cbBTC (86%) sa Base, block 53265200, Oktubre 30, 2026 nang 00:22 UTC:
+
+| Field         | Halaga                  | Ibig sabihin                                                            |
+| ------------- | ----------------------- | ----------------------------------------------------------------------- |
+| id            | 0x9103c3b4…             | Ang market                                                              |
+| caller        | ang liquidator          | Sino ang nagbayad at tumanggap                                          |
+| borrower      | ang address ng borrower | Kanino ang posisyon                                                     |
+| repaidAssets  | 2,174.732093 USDC       | Utang na binayaran para sa borrower                                     |
+| seizedAssets  | 0.02952084 cbBTC        | Collateral na ipinadala sa liquidator, 2,270.08 USD sa presyo ng oracle |
+| badDebtAssets | 0                       | Walang na-write off                                                     |
+
+Ang presyo ng cbBTC ayon sa oracle (pinagkukunan ng presyo) ay 76,897.38 USDC sa block na iyon. Nagkakahalaga ng 2,270.08 USD ang kinuhang collateral para sa 2,174.73 USD na utang, ratio na 1.0438, na eksaktong liquidation incentive factor na ibinabayad ng isang 86% na market. Buong napunta sa liquidator ang 95.34 USD na pagitan: walang kinukuhang fee ang Morpho. May 30 na `Liquidate` event mula sa iisang liquidator ang transaction na iyon, bawat isa may ibang borrower, at ganyan ang hitsura ng pinakaabalang minuto ng isang pagbagsak sa log ng isang market.
+
+## Ano ang kinuha, at ano ang natira sa iyo?
+
+Tatlong bagay na dapat paghiwalayin:
+
+1. **Wala na ang utang na binayaran para sa iyo, at wala na rin ang collateral na ipinambayad dito.** Hindi mo na utang ang bahaging nabayaran. Binayaran ito ng liquidator gamit ang sarili nilang mga token at kinuha ang collateral mo kapalit nito, dagdag ang bonus. Ang bonus ang gastos ng liquidation: sa dalawang halimbawa, 65.96 USD sa 1,319 USD na utang sa Aave at 95.34 USD sa 2,175 USD sa Morpho.
+2. **Sa iyo pa rin ang mga token na hiniram mo.** Kung nag-borrow ka ng USDT at ginastos mo ito, walang nagbabago. Kung nasa wallet mo pa ito, naroon pa rin ito. Hindi kailanman ginagalaw ng liquidation ang mga hiniram na token sa wallet mo; ang posisyon lang ang binabago nito.
+3. **Nananatili sa posisyon ang collateral na hindi kinuha.** Sa Aave, mas maliit ang balanse ng aToken; sa Morpho, mas maliit ang balanse ng collateral sa market na iyon. Kung may natitirang utang, patuloy itong sinusuportahan ng collateral. Kung wala nang utang, puwede mo itong i-withdraw.
+
+Nakadepende sa protocol kung gaano karami ang natitira. Sa Aave V3, ang isang liquidation ay nagbabayad ng hanggang 50% ng kabuuang utang mo kapag nasa itaas ng 0.95 ang health factor at parehong nagkakahalaga ng hindi bababa sa 2,000 USD ang kinuhang collateral at ang binayarang utang; sa 0.95 o mas mababa, o para sa mas maliliit na halaga, puwede nitong bayaran ang lahat ng utang sa asset na iyon ([gaano karami ang puwedeng i-liquidate nang sabay-sabay](/fil/blog/paano-gumagana-ang-liquidation-sa-aave#gaano-karami-sa-utang-ko-ang-puwedeng-i-liquidate-nang-sabay-sabay)). Sinunod ng halimbawa sa Ethereum ang 50% na patakaran hanggang sa sentimo: 2,638.63 USD na utang bago, 1,319.32 pagkatapos. Naiwan sa borrower ang 0.7906 WETH (1,752 USD) laban sa 1,319.32 USDT, health factor na 1.12, at puwedeng i-liquidate ulit ang posisyong iyon kung bumaba pa ang ETH nang 10.4%. Sa Aave V4 naman, binabayaran ng liquidation ang kailangan para maibalik ang posisyon sa target health factor ng Spoke, 1.24 sa Ethereum Main Spoke, kaya mas marami ang nababayaran pero mas ligtas ang natitira ([mga liquidation sa Aave V4](/fil/blog/paano-gumagana-ang-liquidation-sa-aave#paano-naiiba-ang-liquidation-sa-aave-v4)).
+
+Walang close factor (ang bahagi ng utang na puwedeng bayaran nang isang beses) ang Morpho Blue: puwedeng bayaran ng liquidator ang hanggang lahat ng utang sa iisang call ([gaano karami sa utang mo ang puwedeng i-liquidate nang sabay-sabay](/fil/blog/paano-gumagana-ang-liquidation-sa-morpho#gaano-kalaki-ng-utang-mo-ang-puwedeng-ma-liquidate-nang-isang-beses)). Kinuha ng liquidator sa Base ang 0.02952 sa 0.03286 cbBTC, 90% ng collateral, at binayaran ang buong utang maliban sa 0.0005 USDC na naiwan dahil sa share rounding. Naiwan sa borrower ang 0.003342 cbBTC, mga 257 USD, at puwede niya itong i-withdraw.
+
+Dalawa pang dapat suriin. Sa Aave, ang liquidator ang pumili kung aling collateral ang kukunin ([aling collateral ang kinukuha ng liquidator](/fil/blog/paano-gumagana-ang-liquidation-sa-aave#aling-collateral-ang-kinukuha-ng-liquidator)), kaya ang isang posisyong may ilang collateral asset ay posibleng nawalan ng hindi mo pinakainaasahan. Sa Morpho, ang `repaidAssets` na mas maliit kaysa sa inaasahan mo ay puwedeng mangahulugang may [pre-liquidation](/fil/blog/morpho-pre-liquidation-ipinaliwanag) na tumakbo bago ang totoong liquidation, sa mas mababang LTV at mas mababang incentive; ipinapakita ng app at ng API ang dalawang uri.
+
+## Paano kung kinuha ng liquidation ang lahat?
+
+Kung nasa itaas ng zero ang `badDebtAssets` sa Morpho, o kung iniwan ka ng event sa Aave na walang collateral habang may natitirang utang, mas mababa na ang halaga ng collateral kaysa sa utang dagdag ang bonus nang may mag-liquidate. Isinasara ng parehong protocol ang posisyon sa halip na habulin ka:
+
+- **Aave** (mula V3.3): sinusunog ang natitirang utang at itinatala ito bilang deficit sa reserve na iyon, na puwedeng takpan ng mga Umbrella staker sa ibang pagkakataon. Wala kang collateral at wala kang utang sa huli ([puwede bang mag-iwan ng bad debt ang isang liquidation](/fil/blog/paano-gumagana-ang-liquidation-sa-aave#puwede-bang-mag-iwan-ng-bad-debt-ang-isang-liquidation)).
+- **Morpho Blue**: ini-write off ang natitirang utang sa parehong transaction at ikinakalat ang pagkalugi sa mga lender sa market na iyon. Walang collateral at walang utang ang borrower sa huli ([ano ang nangyayari sa bad debt sa Morpho Blue](/fil/blog/paano-gumagana-ang-liquidation-sa-morpho#ano-ang-nangyayari-sa-bad-debt-sa-morpho-blue)).
+
+Walang hahabol sa iyo para sa pagitan, at walang natitira sa posisyon. Pero wala ring naiwan, at ang buong collateral ang nawala sa iyo, hindi lang isang bonus. Bihira ang bad debt (utang na hindi na mababayaran) sa buwan ng mga halimbawa: zero sa 393 liquidation ng Base cbBTC market sa tatlong araw sa paligid ng pagbagsak, mga 3.5M USD sa lahat ng 7,521 liquidation ng Morpho sa 30 araw hanggang Oktubre 30.
+
+## Bakit ito nangyari?
+
+Iisa ang sanhi ng dalawang halimbawa: walang buffer. Isang block bago ang liquidation sa Aave, 1.0049 ang health factor ng borrower na iyon; inilipat ng sumunod na Chainlink update ang WETH mula mga 2,229.77 hanggang 2,216.31 USD, 0.6% na mas mababa, at naging 0.9988 ang health factor. Isang block bago ang liquidation sa Morpho, 1.0025 ang health factor ng borrower sa Base; inilipat ng oracle ang cbBTC mula 77,140.46 hanggang 76,897.38 USDC, 0.3% na mas mababa, at naging 0.9993 ito. Walang kailangang pagbagsak sa dalawa. Isang ordinaryong price update lang ang gumawa nito, at sa kaso ng Morpho nang 00:22 UTC, sa anim na oras na window kung kailan nangyayari ang [higit sa sangkatlo ng mga liquidation sa Morpho](/fil/blog/sino-ang-kailangan-ng-health-factor-alert#gaano-kadalas-na-liquidate-ang-mga-borrower).
+
+Kung hindi ganoon kalapit ang health factor mo, may iba pang nagpagalaw nito. Inililista ng [kung bakit bumaba ang health factor mo](/fil/blog/bakit-bumaba-ang-aave-health-factor) ang anim na sanhi kasama ang paraan para suriin ang bawat isa: bumaba ang presyo ng collateral mo, tumaas ang presyo ng hiniram mo, lumaki ang interes sa utang nang higit sa yield ng collateral, binawasan ng governance ang isang liquidation threshold, nag-depeg (nawalan ng peg sa dolyar) ang isang stablecoin na idineposito mo, o mali ang presyo ng isang oracle para sa isang wrapper. Pareho ang listahan sa Morpho maliban sa pagbaba ng threshold, dahil hindi kailanman nagbabago ang LLTV ng isang Morpho market ([ano ang nagpapagalaw sa Morpho health factor](/fil/blog/morpho-health-factor-ipinaliwanag#ano-ang-gumagalaw-sa-isang-morpho-health-factor)). Dalawang kaso ang madaling makaligtaan: ang isang [Midnight](/fil/blog/mga-fixed-rate-loan-sa-morpho-midnight) loan na lampas na sa maturity ay puwedeng i-liquidate sa anumang health factor, at ang isang loan na [tokenized stocks](/fil/blog/tokenized-stocks-bilang-collateral) ang collateral ay puwedeng i-liquidate sa presyo ng Linggo ng gabi na gumalaw habang naka-pause ang feed.
+
+## Ano ang dapat mong gawin sa unang oras?
+
+1. **Basahin ang natitirang posisyon bago mo ito galawin.** Health factor, natitirang utang, natitirang collateral, sa [Aave dashboard](/fil/aave) o [Morpho dashboard](/fil/morpho), sa app ng protocol o sa explorer. Nag-iiwan ang isang partial liquidation sa Aave ng posisyong malapit sa 1.1, na mali-liquidate ulit ng susunod na 10% na galaw.
+2. **Magpasya kung isasara o pananatilihin.** Kung ayaw mo na ng loan, bayaran ang natitira at i-withdraw ang collateral; sa Aave, puwede mong bayaran gamit ang collateral mismo ([pagbabayad gamit ang collateral](/fil/blog/paano-iwasan-ang-liquidation-sa-aave#hakbang-4-magbayad-gamit-ang-collateral-o-i-swap-ang-collateral)). Kung pananatilihin mo ito, magbayad o magdagdag ng collateral hanggang nasa gusto mong antas ang health factor, hindi kung nasaan ito dati. [Mas tumataas ang health factor kada dolyar kapag nagbayad ka kaysa kapag nagdagdag ng collateral](/fil/blog/paano-iwasan-ang-liquidation-sa-aave#bakit-mas-tumataas-ang-health-factor-sa-pagbabayad-kaysa-sa-pagdagdag-ng-collateral).
+3. **Huwag mag-borrow ulit hanggang sa limitasyon.** Ang posisyong kaka-liquidate lang sa 1.005 ay mali-liquidate ulit sa 1.005. Ang muling pag-borrow hanggang sa parehong LTV ay nagsisimula lang ulit ng orasan.
+4. **Suriin ang iba mo pang posisyon.** May sariling health factor ang bawat Aave market, bawat V4 Spoke at bawat Morpho market, at ang parehong galaw ng presyo na nag-liquidate sa isa ay nagpababa rin sa iba.
+5. **Sa Aave, tingnan kung may frozen na reserve.** Nang i-freeze ng Aave ang bawat DAO market noong Oktubre 29, 2026, imposibleng magdagdag ng collateral sa frozen na reserve at pagbabayad lang ang paraan para tumaas ([bakit pumapalya ang withdraw o borrow](/fil/blog/bakit-pumapalya-ang-withdraw-o-borrow-sa-aave)).
+6. **Sa Morpho, suriin ang pre-liquidation.** Kung nag-authorize ka ng isang pre-liquidation contract, naka-authorize pa rin ito; [suriin at i-revoke ito](/fil/blog/morpho-pre-liquidation-ipinaliwanag#paano-mo-malalaman-kung-nag-authorize-ka-ng-isa) kung ayaw mo na nito.
+7. **I-save ang record.** Transaction hash, ang dalawang halaga, ang petsa, ang mga presyo ng oracle kung kaya mong basahin ang mga ito. Itinatago ng mga explorer ang data, pero hindi mo gugustuhing hanapin ito pagdating ng Abril.
+
+## Paano mo maiiwasan ang ikalawa?
+
+Sa 5,703 na borrower sa Morpho na na-liquidate sa 30 araw hanggang Oktubre 30, 2026, 932 ang na-liquidate nang higit sa isang beses. Isa sa kanila ang borrower sa Base sa itaas: isang cbBTC loan na na-liquidate noong Hunyo 3, isang cbZEC loan noong Oktubre 14, at ang cbBTC loan ulit noong Oktubre 30. Bawat isa ay nagkahalaga ng isang bonus, at walang humantong sa pagbabago. Tatlong desisyon ang pagbabagong iyon:
+
+- **Isang buffer.** Walang nalalampasan ang health factor na 1.005. Ibinibigay ng [gaano kalaki ang puwedeng ibagsak ng presyo sa bawat health factor](/fil/blog/ligtas-na-aave-health-factor#gaano-kalayo-ang-puwedeng-ibagsak-ng-presyo-bago-ang-liquidation-sa-bawat-health-factor) ang table: nakakaligtas ang 1.5 sa 33.3% na pagbagsak, ang 2 sa 50%. Nakadepende ang numerong pipiliin mo sa kung ano ang hiniram mo laban sa ano; tinatalakay ito ng [paraang hakbang-hakbang](/fil/blog/ligtas-na-aave-health-factor#paano-ka-pipili-ng-alert-threshold-hakbang-hakbang), at isinasaalang-alang ng [bersyon para sa Morpho](/fil/blog/morpho-health-factor-ipinaliwanag#paano-ka-pipili-ng-buffer-at-alert-threshold) ang permanenteng LLTV.
+- **Isang alerto sa itaas ng buffer.** Isang mensahe kapag tumawid ang health factor sa linyang pinili mo, nang maaga para makakilos ka. Tumitingin ang Tokenping kada 5 minuto at pinapadalhan ka ng mensahe sa Signal, Telegram o email; puwedeng nasa kahit saan mula 1.1 hanggang 10 ang threshold sa Aave at mula 1.02 hanggang 10 sa Morpho. Ilang minuto lang ang [pag-set up nito](/fil/blog/paano-mag-set-ng-aave-health-factor-alert). Hindi kayang saluhin ng alerto ang biglang talon sa pagitan ng dalawang check, at hindi ito makakapagbayad ng anuman para sa iyo, kaya ito ay sumusunod sa buffer, hindi pumapalit dito.
+- **Pondong magagamit mo para kumilos.** Pondong pambayad sa network kung saan ka nag-borrow, sa asset na inutang mo o sa isang asset na kaya mong i-swap kahit gabi, at isang phone na nagpapadaan ng mensahe ([mga alerto kahit naka-Do Not Disturb](/fil/blog/aave-alert-kahit-naka-do-not-disturb)). Nangyari ang liquidation sa Morpho sa itaas nang 00:22 UTC; ang alertong naka-set sa 1.1 ay dumating sana ilang oras bago nito, at pondo lang sa Base ang makakatugon dito.
+
+Kung sapat na maliit ang loan na hindi ka sana maglilipat ng pondo para iligtas ito, iba ang tapat na konklusyon: mag-borrow nang mas kaunti laban dito, o tanggapin na ang bonus ang presyo ng hindi pagbabantay.
+
+## Kung saan pumapasok ang Tokenping
+
+Binabantayan ng Tokenping kada 5 minuto ang bawat posisyong sine-set up mo, sa bawat Aave V3 market sa 21 network, bawat Aave V4 Spoke at bawat Morpho market na nakalista sa Morpho app, at pinapadalhan ka ng mensahe sa Signal, Telegram o email kapag nasa ilalim ng threshold mo ang health factor. Inuulit ang mensahe sa bawat check hanggang makabawi ang posisyon, sa alinmang wika ng site. Pagkatapos ng isang liquidation, ipinapakita ng mga dashboard ang natitira: ang [Aave dashboard](/fil/aave) na may health factor ng bawat market, ang [Morpho dashboard](/fil/morpho) na may LTV, LLTV at health factor ng bawat market, na kinukuwenta mula sa chain.
+
+Puwede mong tingnan ang mga posisyon mo nang hindi mo kailangang magbayad. Ang mga alerto ay nagkakahalaga ng <AlertPrice />, isa bawat Aave V3 market, V4 Spoke o Morpho market. Nasa beta ang Tokenping at walang garantiya sa uptime, at walang alertong pumipigil sa liquidation.
+
+## Mga sanggunian
+
+- [Ethereum transaction 0x5f88aa61…12fb6](https://etherscan.io/tx/0x5f88aa61ca6180e132a627c5e4d483c4098becc65359fa6af50551c405312fb6) (block 26305893): `LiquidationCall`, mga burn ng aEthWETH at variableDebtEthUSDT, ang fee transfer papunta sa collector; mga presyo ng Aave Oracle at `getUserAccountData` sa mga block 26305892 at 26305893; `getReserveConfigurationData` at `getLiquidationProtocolFee` para sa WETH, binasa sa pamamagitan ng isang public RPC (na-access noong Oktubre 31, 2026)
+- [Base transaction 0xc2df272f…f0178](https://basescan.org/tx/0xc2df272f36d8b0b566c24988052c1508a4c90a97999b2da5a8c8ec7f8e3f0178) (block 53265200): ang 30 na `Liquidate` event; Morpho Blue `position`, `market` at ang `price()` ng oracle ng market sa mga block 53265199 at 53265200, binasa sa pamamagitan ng isang public RPC (na-access noong Oktubre 31, 2026)
+- [Morpho API](https://api.morpho.org/graphql): `marketTransactions` na may uring Liquidation para sa Base cbBTC market mula Oktubre 28 hanggang 31, 2026 at para sa address ng borrower sa halimbawa; `markets` para sa LLTV at oracle ng market (na-access noong Oktubre 31, 2026)
+- [Morpho API](https://api.morpho.org/graphql): lahat ng liquidation mula Setyembre 30, 2026 08:36 UTC hanggang Oktubre 30, 2026 08:36 UTC, gaya sa [gabay sa mga alerto](/fil/blog/sino-ang-kailangan-ng-health-factor-alert) (na-access noong Oktubre 30, 2026)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): bad debt na sinusunog at itinatala bilang reserve deficit, mga patakaran ng close factor, ang deficit elimination ng Umbrella (na-access noong Oktubre 31, 2026)
+- [Liquidation on Morpho](https://docs.morpho.org/learn/concepts/liquidation): ang formula ng incentive, hanggang 100% sa iisang call, walang protocol fee (na-access noong Oktubre 31, 2026)
+
+_Pang-edukasyong nilalaman, hindi payong pinansyal. Binabawasan ng mga alerto ang panganib, pero hindi nito napipigilan ang liquidation._

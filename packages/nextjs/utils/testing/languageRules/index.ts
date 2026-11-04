@@ -3,6 +3,7 @@ import { RULES as da } from "./da";
 import { RULES as de } from "./de";
 import { RULES as en } from "./en";
 import { RULES as es } from "./es";
+import { RULES as fil } from "./fil";
 import { RULES as fr } from "./fr";
 import { RULES as hi } from "./hi";
 import { RULES as hr } from "./hr";
@@ -47,4 +48,5 @@ export const LANGUAGE_RULES: Localized<LanguageRules> = {
   sv,
   da,
   nb,
+  fil,
 };

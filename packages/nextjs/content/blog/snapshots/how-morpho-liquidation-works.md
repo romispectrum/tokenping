@@ -8,12 +8,12 @@ figures here also carry their own block numbers.
 
 ## 1. Contract source read
 
-| Repo | Commit | Files | Supports |
-| --- | --- | --- | --- |
-| github.com/morpho-org/morpho-blue | `9cf6d5b844625ba108e36d1cf911f5d2faf7c136` (16 Oct 2026) | `src/Morpho.sol`, `src/libraries/ConstantsLib.sol`, `src/interfaces/IMorpho.sol`, `src/interfaces/IOracle.sol` | health check, liquidation, LIF, bad debt, oracle assumptions |
-| github.com/morpho-org/midnight | `719fe585e4a7a70883ef2fe19640db036e487437` (22 Oct 2026) | `src/Midnight.sol`, `src/libraries/ConstantsLib.sol` | liquidation modes, RCF, LIF ramp, maxLif, slashing, gates |
-| github.com/morpho-org/pre-liquidation | `6f15d201b15f101f0956b8b7eab0d85defe18959` | `README.md`, `src/PreLiquidation.sol` | pre-liquidation rules |
-| github.com/morpho-org/morpho-blue-oracles | `9d2a0b66589d0669c52e47310af8eb804facf97e` | `src/morpho-chainlink/libraries/ChainlinkDataFeedLib.sol` | no staleness, bounds or sequencer checks |
+| Repo                                      | Commit                                                   | Files                                                                                                          | Supports                                                     |
+| ----------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| github.com/morpho-org/morpho-blue         | `9cf6d5b844625ba108e36d1cf911f5d2faf7c136` (16 Oct 2026) | `src/Morpho.sol`, `src/libraries/ConstantsLib.sol`, `src/interfaces/IMorpho.sol`, `src/interfaces/IOracle.sol` | health check, liquidation, LIF, bad debt, oracle assumptions |
+| github.com/morpho-org/midnight            | `719fe585e4a7a70883ef2fe19640db036e487437` (22 Oct 2026) | `src/Midnight.sol`, `src/libraries/ConstantsLib.sol`                                                           | liquidation modes, RCF, LIF ramp, maxLif, slashing, gates    |
+| github.com/morpho-org/pre-liquidation     | `6f15d201b15f101f0956b8b7eab0d85defe18959`               | `README.md`, `src/PreLiquidation.sol`                                                                          | pre-liquidation rules                                        |
+| github.com/morpho-org/morpho-blue-oracles | `9d2a0b66589d0669c52e47310af8eb804facf97e`               | `src/morpho-chainlink/libraries/ChainlinkDataFeedLib.sol`                                                      | no staleness, bounds or sequencer checks                     |
 
 Morpho.sol at HEAD was diffed against `12b8a453643d5ef9d55abd88b9f8cfa866882aa5` (the commit Morpho's docs link to):
 only formatting and the SPDX line differ.
@@ -46,17 +46,17 @@ only formatting and the SPDX line differ.
 
 ## 3. LIF table (contract integer math, WAD, Python)
 
-| LLTV | LIF raw | LIF |
-| --- | --- | --- |
-| 0% | 1150000000000000000 | 1.15 (cap) |
+| LLTV  | LIF raw             | LIF                              |
+| ----- | ------------------- | -------------------------------- |
+| 0%    | 1150000000000000000 | 1.15 (cap)                       |
 | 38.5% | 1150000000000000000 | 1.15 (cap; uncapped 1.226241...) |
-| 62.5% | 1126760563380281690 | 1.126761 |
-| 77% | 1074113856068743286 | 1.074114 |
-| 86% | 1043841336116910229 | 1.043841 |
-| 91.5% | 1026167265264238070 | 1.026167 |
-| 94.5% | 1016776817488561260 | 1.016777 |
-| 96.5% | 1010611419909044972 | 1.010611 |
-| 98% | 1006036217303822937 | 1.006036 |
+| 62.5% | 1126760563380281690 | 1.126761                         |
+| 77%   | 1074113856068743286 | 1.074114                         |
+| 86%   | 1043841336116910229 | 1.043841                         |
+| 91.5% | 1026167265264238070 | 1.026167                         |
+| 94.5% | 1016776817488561260 | 1.016777                         |
+| 96.5% | 1010611419909044972 | 1.010611                         |
+| 98%   | 1006036217303822937 | 1.006036                         |
 
 "Collateral you lose per 1,000 of debt repaid" = 1,000 × LIF. LLTV 0 is left out of the article's table: `maxBorrow`
 is always 0 there, so `borrow` fails its health check (derived from the code). Docs (learn page, developer page) round
@@ -74,13 +74,13 @@ Blue `0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb` at block 26274948, every 0.5% 
 Market `0x9103c3b4e834476c9a62ea009ba2c884ee42e94e6e314a26f04d312434191836`, Morpho Blue
 `0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb`, Base block 53102870 (2026-10-26 06:11:27), RPC base-rpc.publicnode.com.
 
-| Call | Value |
-| --- | --- |
-| `idToMarketParams(bytes32)` | loan USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` (6 dec), collateral cbBTC `0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf` (8 dec), oracle `0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9`, IRM `0x46415998764C29aB2a25CbeA6254146D50D22687`, lltv 860000000000000000 |
-| `market(bytes32)` | totalSupplyAssets 1789899612834178 (about 1.79bn USDC), totalBorrowAssets 1613068465459818 (about 1.61bn USDC), fee 0 |
-| oracle `price()` | 800001529753600000000000000000000000000; scale 36 + 6 - 8 = 34 decimals, so 80,000.15 USDC per cbBTC |
-| oracle feeds | BASE_FEED_1 `0x64c911996D3c6aC71f9b455B1E8E7266BcbD848F` (`description()` "BTC / USD", 8 decimals, answer 8000015297536, updatedAt 1792994887); every other feed and vault 0x0; SCALE_FACTOR 1e26 |
-| feed `aggregator()` / `owner()` (review, latest block, 26 Oct) | `0xe5ec87a39445b8D5b751b116802A53C5ae7e9Df1` / `0xf0Db7318A51a21C413CaDd4AbDC1E8a500fE5B1b`: a proxy whose owner can repoint it, so the article says the feed's source can change while the oracle address cannot |
+| Call                                                           | Value                                                                                                                                                                                                                                                                 |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `idToMarketParams(bytes32)`                                    | loan USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` (6 dec), collateral cbBTC `0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf` (8 dec), oracle `0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9`, IRM `0x46415998764C29aB2a25CbeA6254146D50D22687`, lltv 860000000000000000 |
+| `market(bytes32)`                                              | totalSupplyAssets 1789899612834178 (about 1.79bn USDC), totalBorrowAssets 1613068465459818 (about 1.61bn USDC), fee 0                                                                                                                                                 |
+| oracle `price()`                                               | 800001529753600000000000000000000000000; scale 36 + 6 - 8 = 34 decimals, so 80,000.15 USDC per cbBTC                                                                                                                                                                  |
+| oracle feeds                                                   | BASE_FEED_1 `0x64c911996D3c6aC71f9b455B1E8E7266BcbD848F` (`description()` "BTC / USD", 8 decimals, answer 8000015297536, updatedAt 1792994887); every other feed and vault 0x0; SCALE_FACTOR 1e26                                                                     |
+| feed `aggregator()` / `owner()` (review, latest block, 26 Oct) | `0xe5ec87a39445b8D5b751b116802A53C5ae7e9Df1` / `0xf0Db7318A51a21C413CaDd4AbDC1E8a500fE5B1b`: a proxy whose owner can repoint it, so the article says the feed's source can change while the oracle address cannot                                                     |
 
 "Largest listed market by borrowing on Ethereum and Base": API `markets` ordered by BorrowAssetsUsd, listed true
 (research pass). API on 26 Oct 2026: `listed: true`, borrowApy 0.05224 (research pass 0.0524; article says "about
@@ -137,7 +137,7 @@ Debt-weighted LTV at the oracle price: median 54.1%, so HF 0.86 ÷ 0.541 = 1.59.
 
 - Header L17-21 and ConstantsLib: up to 128 collaterals per market, 16 per borrower; LLTV = 1 has no incentive and no RCF.
 - Header L49-67 and `liquidate` (L570-680): liquidatable if `postMaturityMode ? block.timestamp > maturity : debt >
-  maxDebt`; normal mode LIF = maxLif with RCF `repaid <= (debt - maxDebt) ÷ (1 - LIF × LLTV)`, skipped when
+maxDebt`; normal mode LIF = maxLif with RCF `repaid <= (debt - maxDebt) ÷ (1 - LIF × LLTV)`, skipped when
   `collateral × price ÷ LIF - maxRepaid < rcfThreshold`; post-maturity LIF = min(maxLif, 1 + (maxLif - 1) × elapsed ÷
   TIME_TO_MAX_LIF), no RCF; `TIME_TO_MAX_LIF = 60 minutes`. Header L53: after maturity, an unhealthy borrower's
   liquidator can choose either mode (`postMaturityMode` argument), so the ramp only protects a borrower who is healthy.
@@ -173,16 +173,16 @@ Debt-weighted LTV at the oracle price: median 54.1%, so HF 0.86 ÷ 0.541 = 1.59.
 
 ## 8. Docs pages (fetched as `.md`, 26 Oct 2026)
 
-| Page | Supports |
-| --- | --- |
-| docs.morpho.org/learn/concepts/liquidation | below 1; liquidators (bots, individuals, RPC node and wallet); no auction; up to 100%; LIF all to the liquidator; vault bad debt handling (Bad Debt Consideration: Vault V2 and legacy V1.0 pass the loss through the share price, legacy V1.1 does not realize it and the debt stays in the market until paid down manually); oracle price used; no price floor |
-| docs.morpho.org/developers/borrow/concepts/liquidation | "1 or below" wording (not followed); higher LLTV smaller incentive to avoid cascades; bad debt is a loss for that market's lenders |
-| docs.morpho.org/learn/concepts/oracle | oracle-agnostic; curators choose; immutable oracle |
-| docs.morpho.org/learn/concepts/blue | permanent parameters; enabled LLTVs; isolated markets |
-| docs.morpho.org/learn/concepts/midnight/liquidations | two modes; LIF ramp over 60 minutes; RCF and its exceptions; liquidator gates |
-| docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations | per-collateral parameters; liquidator picks collateral |
-| docs.morpho.org/learn/concepts/midnight | debt units at a fixed rate |
-| docs.morpho.org/learn/resources/risks | oracle manipulation can cause liquidations or bad debt; counterparty risk (token governance can blacklist) |
+| Page                                                                        | Supports                                                                                                                                                                                                                                                                                                                                                         |
+| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| docs.morpho.org/learn/concepts/liquidation                                  | below 1; liquidators (bots, individuals, RPC node and wallet); no auction; up to 100%; LIF all to the liquidator; vault bad debt handling (Bad Debt Consideration: Vault V2 and legacy V1.0 pass the loss through the share price, legacy V1.1 does not realize it and the debt stays in the market until paid down manually); oracle price used; no price floor |
+| docs.morpho.org/developers/borrow/concepts/liquidation                      | "1 or below" wording (not followed); higher LLTV smaller incentive to avoid cascades; bad debt is a loss for that market's lenders                                                                                                                                                                                                                               |
+| docs.morpho.org/learn/concepts/oracle                                       | oracle-agnostic; curators choose; immutable oracle                                                                                                                                                                                                                                                                                                               |
+| docs.morpho.org/learn/concepts/blue                                         | permanent parameters; enabled LLTVs; isolated markets                                                                                                                                                                                                                                                                                                            |
+| docs.morpho.org/learn/concepts/midnight/liquidations                        | two modes; LIF ramp over 60 minutes; RCF and its exceptions; liquidator gates                                                                                                                                                                                                                                                                                    |
+| docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations | per-collateral parameters; liquidator picks collateral                                                                                                                                                                                                                                                                                                           |
+| docs.morpho.org/learn/concepts/midnight                                     | debt units at a fixed rate                                                                                                                                                                                                                                                                                                                                       |
+| docs.morpho.org/learn/resources/risks                                       | oracle manipulation can cause liquidations or bad debt; counterparty risk (token governance can blacklist)                                                                                                                                                                                                                                                       |
 
 Cluster review: the vault sentence now says only that a Vault V2 passes the loss on to its share price and legacy V1.1
 vaults do not. The docs' "debt stays in the market" wording was dropped: it reads as if the borrower's debt survived,

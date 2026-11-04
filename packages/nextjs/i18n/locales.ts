@@ -22,6 +22,7 @@ export const LOCALES = [
   "sv",
   "da",
   "nb",
+  "fil",
 ] as const;
 
 export type Locale = (typeof LOCALES)[number];
@@ -272,6 +273,16 @@ export const LOCALE_INFO: Record<Locale, LocaleInfo> = {
     name: "Norsk",
     englishName: "Norwegian",
     short: "NO",
+  },
+  // Numbers as in English ("12,000.5", "83%"), dates "Oktubre 14, 2026".
+  fil: {
+    htmlLang: "fil",
+    ogLocale: "fil_PH",
+    intl: "fil-PH",
+    numbers: "fil-PH",
+    name: "Filipino",
+    englishName: "Filipino",
+    short: "FIL",
   },
 };
 

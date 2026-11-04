@@ -8,6 +8,8 @@ import {
   daOnMarket,
   deForMarket,
   deOnMarket,
+  filForMarket,
+  filOnMarket,
   formatDecimal,
   formatLongDate,
   frForMarket,
@@ -427,6 +429,25 @@ describe("Norwegian formatting", () => {
     expect(nbForMarket("Base")).toBe("for Base");
     expect(nbForMarket("Base (V4 Coinbase Stocks)")).toBe("for markedet Base (V4 Coinbase Stocks)");
     expect(nbForMarket("USDC | cbBTC (86%)", "market")).toBe("for markedet USDC | cbBTC (86%)");
+  });
+});
+
+describe("Filipino formatting", () => {
+  it("joins with at and o, writes Filipino dates, a decimal point, the same noun after any number and the market wording", () => {
+    expect(joinList("fil", ["Signal", "Telegram", "email"])).toBe("Signal, Telegram at email");
+    expect(joinList("fil", ["Signal", "email"], "disjunction")).toBe("Signal o email");
+    expect(formatLongDate("fil", "2026-10-14")).toBe("Oktubre 14, 2026");
+    expect(formatDecimal("fil", "1.42")).toBe("1.42");
+    // CLDR one covers 1, 2, 3, 5...; other covers 4, 6, 9... The noun does not change, so both forms read the same.
+    const networks = (n: number) => plural("fil", n, { one: `${n} network (one)`, other: `${n} network (other)` });
+    expect(networks(1)).toBe("1 network (one)");
+    expect(networks(4)).toBe("4 network (other)");
+    expect(filOnMarket("Arbitrum")).toBe("sa Arbitrum");
+    expect(filOnMarket("Ethereum (V4 Lido)")).toBe("sa market na Ethereum (V4 Lido)");
+    expect(filOnMarket("Base", "network")).toBe("sa Base");
+    expect(filForMarket("Base")).toBe("para sa Base");
+    expect(filForMarket("Base (V4 Coinbase Stocks)")).toBe("para sa market na Base (V4 Coinbase Stocks)");
+    expect(filForMarket("USDC | cbBTC (86%)", "market")).toBe("para sa market na USDC | cbBTC (86%)");
   });
 });
 

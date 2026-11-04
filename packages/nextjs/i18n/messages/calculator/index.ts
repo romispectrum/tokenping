@@ -3,6 +3,7 @@ import { MESSAGES as da } from "./da";
 import { MESSAGES as de } from "./de";
 import { MESSAGES as en } from "./en";
 import { MESSAGES as es } from "./es";
+import { MESSAGES as fil } from "./fil";
 import { MESSAGES as fr } from "./fr";
 import { MESSAGES as hi } from "./hi";
 import { MESSAGES as hr } from "./hr";
@@ -49,4 +50,5 @@ export const CALCULATOR_MESSAGES: Localized<CalculatorMessages> = {
   sv,
   da,
   nb,
+  fil,
 };

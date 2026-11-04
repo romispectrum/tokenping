@@ -1,0 +1,157 @@
+export const meta = {
+  slug: "mga-interest-rate-sa-aave",
+  title: "Interest rate sa Aave: paano gumagana at bakit sumisirit",
+  description:
+    "Sumusunod ang borrow rate ng Aave sa utilization curve: banayad hanggang sa optimal level, matarik pagkatapos. Formula, tunay na datos at ang gagawin mo.",
+  h1: "Paano gumagana ang mga interest rate sa Aave, at bakit biglang sumisirit ang borrow rate?",
+  publishedAt: "2026-10-25",
+  primaryQuestion: "Paano itinatakda ng Aave ang borrow at supply rate nito, at bakit biglang tumataas ang mga ito?",
+  readingMinutes: 10,
+};
+
+<ShortAnswer>
+  Sa Aave V3, ang variable borrow rate ng bawat asset ay sumusunod sa curve na itinakda ng governance: dahan-dahan itong
+  tumataas kasabay ng utilization, ang bahagi ng mga naka-deposit na token na hiniram, hanggang sa isang optimal level,
+  at matarik na pagkatapos nito. Ang kinikita ng mga nagde-deposit ay ang borrow rate na pinarami sa utilization, bawas
+  ang reserve factor. Kinakalkula muli ang mga rate sa bawat deposit, borrow, pagbabayad at withdrawal, kaya puwedeng
+  itulak ng isang malaking withdrawal ang utilization lampas sa optimal level at paramihin ang rate sa loob ng isang
+  block: ang USDC sa Ethereum Core ay umakyat mula 4.50% tungo sa 13.67% APR noong Oktubre 14, 2026, at bumalik sa 4.76%
+  makalipas ang mga 36 minuto. Variable ang lahat ng utang sa Aave V3.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Ang mga numero at ang mga block number kung kailan binasa ang mga ito: content/blog/snapshots/aave-interest-rates.md */}
+
+## Ano ang nagtatakda ng borrow rate sa Aave?
+
+Sa Aave V3, dalawang bagay ang nagtatakda ng borrow rate ng isang asset: ang utilization nito at ang mga parameter ng interest rate nito. Ang utilization ay ang bahagi ng pool ng asset na nakapautang: ang utang na hinati sa utang kasama ang mga token na available pa. Ang mga parameter ay apat na numero para sa bawat asset, na itinatakda ng Aave governance, at puwedeng baguhin ng Risk Stewards ng Aave ang mga ito sa loob ng limitadong hakbang at may minimum na pagitan:
+
+- **Optimal usage ratio:** ang utilization kung saan bumabaluktot ang curve.
+- **Base rate:** ang borrow rate sa 0% utilization.
+- **Slope 1:** kung gaano tumataas ang rate mula 0% hanggang sa optimal usage ratio.
+- **Slope 2:** kung gaano pa ito tumataas mula sa optimal usage ratio hanggang 100%.
+
+Nang basahin noong Oktubre 25, 2026 sa Ethereum block 26269328 at Arbitrum block 518125419, ito ang mga parameter at rate ng ilang karaniwang asset:
+
+| Market at asset    | Optimal usage | Base | Slope 1 | Slope 2 | Utilization     | Borrow APR | Supply APR |
+| ------------------ | ------------- | ---- | ------- | ------- | --------------- | ---------- | ---------- |
+| Ethereum Core USDC | 94%           | 0%   | 4.5%    | 10%     | 93.72%          | 4.49%      | 3.78%      |
+| Ethereum Core USDT | 92%           | 0%   | 4.5%    | 10%     | 87.81%          | 4.30%      | 3.39%      |
+| Ethereum Core WETH | 92%           | 0%   | 2.2%    | 6%      | 81.31%          | 1.94%      | 1.31%      |
+| Ethereum Core GHO  | 99%           | 4.5% | 0%      | 0%      | hindi ginagamit | 4.50%      | 0%         |
+| Arbitrum USDC      | 90%           | 0%   | 4%      | 10%     | 77.32%          | 3.44%      | 2.39%      |
+
+Ang GHO ang eksepsiyon: zero ang dalawang slope nito, kaya hindi gumagalaw ang rate nito anuman ang utilization, at binabago ito nang mano-mano (tingnan ang [GHO at Aave V4](#paano-itinatakda-ang-mga-rate-ng-gho-at-sa-aave-v4)).
+
+## Paano kinakalkula ang borrow rate sa Aave?
+
+Ang borrow rate ng Aave V3 ay isang tuwid na linya hanggang sa optimal usage ratio at isang mas matarik na linya lampas dito. Kung U ang utilization:
+
+**Hanggang sa optimal usage ratio: borrow rate = base + slope 1 × U ÷ optimal usage ratio**
+
+**Lampas dito: borrow rate = base + slope 1 + slope 2 × (U − optimal usage ratio) ÷ (1 − optimal usage ratio)**
+
+Sa contract, ang U ay ang kabuuang utang na hinati sa kabuuang utang kasama ang mga token na hawak pa ng pool. Gamit ang mga parameter ng USDC sa Ethereum Core, ito ang rate sa bawat utilization:
+
+| Utilization   | Borrow APR |
+| ------------- | ---------- |
+| 50%           | 2.39%      |
+| 80%           | 3.83%      |
+| 90%           | 4.31%      |
+| 94% (optimal) | 4.50%      |
+| 95%           | 6.17%      |
+| 96%           | 7.83%      |
+| 98%           | 11.17%     |
+| 100%          | 14.50%     |
+
+Sa ibaba ng 94%, ang sampung puntos ng utilization ay gumagalaw sa rate nang wala pang kalahating puntos. Lampas dito, nagdadagdag ang bawat puntos ng mga 1.67 puntos, at ang huling anim na puntos ng utilization ay higit pa sa nagtitriple ng rate. Nang basahin noong Oktubre 25, 2026, nasa 93.72% ang USDC, bahagya sa ibaba ng baluktot: ang 4.5% × 0.9372 ÷ 0.94 ay nagbibigay ng 4.49% na sinisingil nito.
+
+Sinadya ang ganitong takbo ng curve. Sa ibaba ng optimal level, pinapanatiling ginagamit ng murang pag-borrow ang pool; lampas dito, ginagawang sapat na mahal ng matarik na rate ang pag-borrow para magbayad ang ilang borrower at mag-deposit ang ilang may hawak ng token, na nagpapababa muli sa utilization at nag-iiwan ng mga token para sa mga supplier na gustong mag-withdraw.
+
+## Bakit biglang tumataas ang borrow rate sa Aave?
+
+Biglang tumataas ang borrow rate sa Aave kapag lumampas ang utilization sa optimal usage ratio, kadalasan dahil may malaking supplier na nag-withdraw o malaking borrower na nag-borrow. Kinakalkula muli ang rate sa parehong transaksyon, at binabayaran ng bawat borrower ng asset na iyon ang bagong rate mula sa sandaling iyon hanggang sa susunod na pagbabago.
+
+Noong Oktubre 14, 2026, isang withdrawal na eksaktong 133,898,000 USDC mula sa Ethereum Core ang nagtulak sa utilization mula 93.92% tungo sa 99.50% sa iisang block:
+
+| Ethereum block (UTC)            | Ano ang nangyari                                  | Utilization | USDC borrow APR |
+| ------------------------------- | ------------------------------------------------- | ----------- | --------------- |
+| 26194052 (Oktubre 14, 23:32:47) | Bago                                              | 93.92%      | 4.50%           |
+| 26194053 (Oktubre 14, 23:32:59) | 133,898,000 USDC ang na-withdraw                  | 99.50%      | 13.67%          |
+| 26194088 (Oktubre 14, 23:39:59) | Pinakamataas na punto sa panahong ito             | mga 99.8%   | 14.18%          |
+| 26194231 (Oktubre 15, 00:08:35) | Ibinalik ng parehong address ang 133,898,000 USDC | 94.16%      | 4.76%           |
+
+Nagbayad ang mga borrower ng mga tatlong beses ng karaniwang rate sa loob ng 36 minuto, at nakukuha muli ng formula sa itaas ang bawat isa sa mga rate na iyon mula sa utilization. Tumatagal ang biglang pagtaas hangga't mataas ang utilization: dito, bumalik ang parehong mga token, pero sa ibang kaso, kailangan ng mga bagong supplier o mga pagbabayad, na naakit ng mataas na rate, para ibaba ito.
+
+Dalawa pang bagay ang nagbabago sa borrow rate. Puwedeng baguhin ng governance o ng Risk Stewards ang apat na parameter, na gumagalaw sa buong curve nang sabay-sabay. At sa pagitan ng mga transaksyon, hindi nagbabago ang rate: kinakalkula ito muli ng Aave sa bawat deposit, borrow, pagbabayad, withdrawal at liquidation ng asset na iyon, at naiipon ang interes sa rate na iyon, segundo por segundo, hanggang sa susunod.
+
+## Bakit mas maliit ang kinikita ng mga supplier kaysa sa binabayaran ng mga borrower?
+
+Mas maliit ang kinikita ng mga supplier (ang mga nagde-deposit sa pool) kaysa sa binabayaran ng mga borrower dahil ang hiniram na bahagi lang ng pool ang nagbabayad ng interes, at kumukuha ang protocol ng bahagi nito. Ang supply rate ay:
+
+**Supply rate = borrow rate × utilization × (1 − reserve factor)**
+
+Para sa USDC sa Ethereum Core noong Oktubre 25, 2026: 4.4866% × 0.9372 × (1 − 0.10) = 3.78%. Ang reserve factor, 10% para sa USDC at 15% para sa WETH, ay napupunta sa treasury ng Aave. Kapag may deficit ang isang reserve dahil sa bad debt (utang na hindi na mababayaran), isinasama rin ito ng contract sa supply side, na bahagyang nagpapababa sa supply rate.
+
+## Ano ang pagkakaiba ng APR at APY sa Aave?
+
+Nakaimbak ang mga rate sa mga contract bilang APR, at APY ang ipinapakita ng Aave app, na may kasamang compounding. Kino-compound ng math library ng app ang APR bawat segundo sa loob ng isang taon na may 31,536,000 segundo:
+
+**APY = (1 + APR ÷ 31,536,000)^31,536,000 − 1**
+
+Ang 4.4866% APR ng USDC sa Ethereum Core ay lumalabas sa app bilang 4.59% APY. Sa ganitong antas, mga ikasampu ng isang puntos ang agwat; sa 14% APR, mga isang puntos (15.0% APY).
+
+## Paano naaapektuhan ng biglang pagtaas ng rate ang health factor mo?
+
+Halos hindi ginagalaw ng maikling pagtaas ang health factor mo; ang mataas na rate na tumatagal nang ilang buwan ang may epekto. Nadaragdag ang interes sa utang mo, at ang mas malaking utang ay nagpapababa sa health factor, gaya ng ipinapaliwanag ng [dahilan tungkol sa interes sa kung bakit bumababa ang health factor mo](/fil/blog/bakit-bumaba-ang-aave-health-factor#sanhi-3-mas-mabilis-bang-lumaki-ang-interes-sa-utang-mo-kaysa-sa-collateral-mo).
+
+Halimbawa: 10 WETH na naka-deposit laban sa 12,000 USDC na hiniram sa Ethereum Core, na may 83% na liquidation threshold ng WETH (binasa noong Oktubre 14, 2026) at halimbawang presyo ng ETH na $2,400: 1.66 ang health factor. Kasama ang kinikita ng WETH sa 1.31% na supply rate nito:
+
+| Gaano katagal ang rate | Sa 4.49% (Oktubre 25, 2026)    | Sa 14.50% (tuktok ng curve) |
+| ---------------------- | ------------------------------ | --------------------------- |
+| 36 minuto              | mga 0.04 USDC na interes, 1.66 | mga 0.12 USDC, 1.66         |
+| 30 araw                | mga 1.66                       | mga 1.64                    |
+| Isang taon             | mga 1.61                       | mga 1.45                    |
+
+Mga 12 sentimo ang nagastos ng posisyong ito sa pagtaas noong Oktubre 14. Ang market na mananatili sa tuktok ng curve nito nang isang taon ay magbababa nito mula 1.66 tungo sa mga 1.45 nang walang anumang galaw sa presyo, kaya sulit para sa mabagal na pagbaba ang alert threshold na may sapat na palugit ([gaano kalaking buffer ang ibinibigay ng health factor](/fil/blog/ligtas-na-aave-health-factor#gaano-kabilis-kinakain-ng-interes-at-ng-mga-pagbabago-sa-parameter-ang-buffer-mo)).
+
+## Ano ang magagawa mo kapag tumalon ang borrow rate mo?
+
+Kapag tumalon ang borrow rate mo, tingnan muna ang utilization ng asset sa page nito sa Aave app: kung bahagya lang itong lampas sa optimal usage ratio, bababa muli ang rate sa sandaling bumaba ang utilization. Pagkatapos, may apat kang opsyon, at may kapalit ang bawat isa:
+
+- **Maghintay.** Puwedeng matapos ang pagtaas na dulot ng isang malaking withdrawal kapag bumalik ang mga token na iyon, gaya noong Oktubre 14, 2026. Walang garantiyang babalik ang mga ito, at mataas na rate ang binabayaran mo habang naghihintay.
+- **Bayaran ang bahagi ng utang.** Ibinababa nito ang interes at ang panganib mo; sakop ng [paano itaas ang health factor mo sa Aave](/fil/blog/paano-iwasan-ang-liquidation-sa-aave) ang pagbabayad gamit ang sarili mong mga token o gamit ang collateral mo.
+- **Ilipat ang utang sa ibang asset.** May debt swap ang interface ng Aave Labs na pinapalitan ang isang hiniram na asset ng iba sa iisang transaksyon, sa mga market na Ethereum Core, Prime at EtherFi at sa Arbitrum, Avalanche, Base, BNB Chain, Optimism, Polygon, Gnosis at Sonic, ayon sa docs ng Aave. Hindi ito nakalista para sa Metis, Scroll, ZKsync, Celo, Soneium, Linea, Plasma o Ink. May sariling curve ang bagong asset, at sarili nitong panganib kung iba ang galaw ng presyo nito kumpara sa dati mong utang.
+- **Mag-borrow sa ibang market.** May sariling pool at sariling utilization ang bawat market: noong Oktubre 25, 2026, 4.49% ang halaga ng USDC sa Ethereum Core at 3.44% sa Arbitrum. Ang paglipat ay nangangahulugang magbabayad ka sa isang market at magbo-borrow sa iba, na may collateral sa network na iyon.
+
+## Paano itinatakda ang mga rate ng GHO at sa Aave V4?
+
+Ang GHO, ang sariling stablecoin ng Aave, ay may flat na borrow rate na pinipili ng mga tao sa halip na ng curve. Sa Ethereum Core, zero ang dalawang slope sa mga parameter nito, kaya ang rate ay ang base rate, 4.50% noong Oktubre 25, 2026. Binabago ito sa pamamagitan ng isang GHO steward contract ng isang 2-of-3 Risk Council: nang hindi hihigit sa 5 percentage point bawat update at hindi hihigit sa isang beses kada araw. Ang huling pagbabago, noong Oktubre 3, 2026, ay nagtaas nito mula 4.25% tungo sa 4.50%; mula Nobyembre 2024, 44 na beses na itong binago, sa pagitan ng 3.00% at 14.50%. Inalis sa Aave v3.4 ang dating discount para sa mga may hawak ng stkAAVE.
+
+May utilization curve pa rin ang Aave V4, pero ayon sa docs nito, itinatakda ito para sa bawat asset sa Hub, ang pool na nagpapautang sa bawat Spoke. Bukod sa shared rate na iyon, nagbabayad ang bawat borrower ng User Risk Premium na nakadepende sa kalidad ng collateral nila: sa halimbawa ng Aave, 50% na premium sa 5% na base rate, kaya 7.5%. Kaya puwedeng magkaiba ang rate na binabayaran ng dalawang borrower ng parehong asset sa V4, at sakop ng [seksyon tungkol sa V4 sa gabay sa health factor](/fil/blog/aave-health-factor-ipinaliwanag#iba-ba-ang-health-factor-sa-aave-v4) kung ano pa ang binabago ng V4.
+
+## Puwede ka bang makakuha ng fixed rate sa Aave?
+
+Hindi. Dati ay may stable rate option ang Aave V3, pero tuluyan itong itinigil noong 2024 matapos ang isang bug report, at inalis ng Aave v3.2 ang code. Variable rate ang binabayaran ng bawat loan sa Aave V3, at puwede pa ring baguhin anumang oras ang flat rate ng GHO sa loob ng mga limitasyon ng steward nito.
+
+## Kaya ka bang babalaan ng alerto tungkol sa tumataas na rate?
+
+Hindi binabantayan ng health factor alert ang mga rate; binabantayan nito ang epekto ng mga rate sa posisyon mo. Tinitingnan ng Tokenping ang Aave V3 at V4 health factor mo kada 5 minuto sa 22 network at pinapadalhan ka ng mensahe sa Signal, Telegram o email habang nasa ibaba ito ng threshold na itinakda mo (1.1 hanggang 10). Hindi ito mati-trigger ng pagtaas na tulad noong Oktubre 14, 2026, dahil halos hindi nito ginagalaw ang health factor; ang ilang buwan ng mataas na interes ang magti-trigger nito, kapag lumaki na nang sapat ang utang para tumawid sa threshold mo.
+
+Kung gusto mo ng mensahe tungkol sa rate mismo, may ibang tool na nagpapadala ng rate alert, at nakalista sa [paghahambing namin ng mga alert tool para sa Aave](/fil/blog/mga-tool-para-sa-aave-liquidation-alert) kung ano ang binabantayan ng bawat isa. Nasa [paano mag-set ng health factor alert](/fil/blog/paano-mag-set-ng-aave-health-factor-alert) ang setup, at puwede mo munang [tingnan ang Aave V3 health factor mo](/fil/aave); hindi mo kailangang magbayad para tingnan ang mga posisyon mo.
+
+## Mga sanggunian
+
+- [DefaultReserveInterestRateStrategyV2.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/misc/DefaultReserveInterestRateStrategyV2.sol) at [ReserveLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ReserveLogic.sol): ang rate curve, ang usage ratio, ang supply rate at kung kailan kinakalkula muli ang mga rate (aave-v3-origin, na-access noong Oktubre 25, 2026)
+- [Aave V3 Ethereum Core interest rate strategy](https://etherscan.io/address/0x9ec6F08190DeA04A54f8Afc53Db96134e5E3FdFB#readContract) at [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): mga parameter at rate sa block 26269328; USDC sa mga block 26194052, 26194053, 26194088, 26194230 at 26194231 (na-access noong Oktubre 25, 2026)
+- [Aave V3 Arbitrum interest rate strategy](https://arbiscan.io/address/0x429F16dBA3B9e1900087Cbaa7b50D38Bc60fB73F#readContract): mga parameter at rate ng USDC sa block 518125419 (na-access noong Oktubre 25, 2026)
+- [Aave Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): kabilang ang mga parameter ng interest rate sa mga value na puwedeng baguhin ng mga steward, na may maximum na pagbabago at minimum na pagitan bawat update (na-access noong Oktubre 25, 2026)
+- [calculateCompoundedRate sa aave-utilities](https://github.com/aave/aave-utilities/blob/master/packages/math-utils/src/formatters/compounded-interest/calculate-compounded-interest.ts): APR tungo sa APY sa loob ng 31,536,000 segundo (na-access noong Oktubre 25, 2026)
+- [Aave swap features](https://aave.com/docs/aave-v3/smart-contracts/swap-features.md): debt swap at repay with collateral, at ang mga market na sumusuporta sa mga ito (na-access noong Oktubre 25, 2026)
+- [GHO Stewards: October 2026 GHO borrow rate update](https://governance.aave.com/t/gho-stewards-october-2026-gho-borrow-rate-update/25754) (TokenLogic, Oktubre 2, 2026, na-access noong Oktubre 25, 2026) at ang [GHO steward contract](https://etherscan.io/address/0x98217A06721Ebf727f2C8d9aD7718ec28b7aAe34#readContract): mga limitasyon bawat update at kasaysayan ng rate mula Nobyembre 2024 (na-access noong Oktubre 25, 2026)
+- [Aave v3.4 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.4/Aave-v3.4-features.md): pag-alis ng discount ng stkAAVE sa GHO (na-access noong Oktubre 25, 2026)
+- [BGD: Full deprecation of stable rate](https://governance.aave.com/t/bgd-full-deprecation-of-stable-rate/16473) (Enero 31, 2024) at [Aave v3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): inalis ang stable rate (na-access noong Oktubre 25, 2026)
+- [Aave V4 documentation](https://aave.com/docs/aave-v4.md) at [V4 positions](https://aave.com/docs/aave-v4/positions.md): ang rate curve bawat asset ng Hub at ang User Risk Premium (na-access noong Oktubre 25, 2026)
+
+_Pang-edukasyong nilalaman, hindi payong pinansyal. Binabawasan ng mga alerto ang panganib, pero hindi nito napipigilan ang liquidation._

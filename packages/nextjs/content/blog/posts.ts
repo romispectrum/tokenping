@@ -251,6 +251,77 @@ import EsWhoNeedsHealthFactorAlerts, {
 } from "~~/content/blog/es/quien-necesita-alertas-del-factor-de-salud.mdx";
 import EsShortFiatWithAave, { meta as esShortFiatWithAave } from "~~/content/blog/es/short-de-moneda-fiat-con-aave.mdx";
 import EsAaveInterestRates, { meta as esAaveInterestRates } from "~~/content/blog/es/tasas-de-interes-aave.mdx";
+import FilAaveAlertsDoNotDisturb, {
+  meta as filAaveAlertsDoNotDisturb,
+} from "~~/content/blog/fil/aave-alert-kahit-naka-do-not-disturb.mdx";
+import FilAaveEMode, { meta as filAaveEMode } from "~~/content/blog/fil/aave-e-mode-ipinaliwanag.mdx";
+import FilAaveHealthFactor, {
+  meta as filAaveHealthFactor,
+} from "~~/content/blog/fil/aave-health-factor-ipinaliwanag.mdx";
+import FilWhyAaveHealthFactorDropped, {
+  meta as filWhyAaveHealthFactorDropped,
+} from "~~/content/blog/fil/bakit-bumaba-ang-aave-health-factor.mdx";
+import FilWhyAaveWithdrawOrBorrowFails, {
+  meta as filWhyAaveWithdrawOrBorrowFails,
+} from "~~/content/blog/fil/bakit-pumapalya-ang-withdraw-o-borrow-sa-aave.mdx";
+import FilAaveMarketWindDown, {
+  meta as filAaveMarketWindDown,
+} from "~~/content/blog/fil/kapag-isinara-ng-aave-ang-isang-market.mdx";
+import FilSafeAaveHealthFactor, {
+  meta as filSafeAaveHealthFactor,
+} from "~~/content/blog/fil/ligtas-na-aave-health-factor.mdx";
+import FilMorphoMidnightFixedRateLoans, {
+  meta as filMorphoMidnightFixedRateLoans,
+} from "~~/content/blog/fil/mga-fixed-rate-loan-sa-morpho-midnight.mdx";
+import FilAaveInterestRates, { meta as filAaveInterestRates } from "~~/content/blog/fil/mga-interest-rate-sa-aave.mdx";
+import FilCryptoBackedLoans, {
+  meta as filCryptoBackedLoans,
+} from "~~/content/blog/fil/mga-loan-na-may-crypto-collateral.mdx";
+import FilAaveLiquidationAlertTools, {
+  meta as filAaveLiquidationAlertTools,
+} from "~~/content/blog/fil/mga-tool-para-sa-aave-liquidation-alert.mdx";
+import FilMorphoHealthFactor, {
+  meta as filMorphoHealthFactor,
+} from "~~/content/blog/fil/morpho-health-factor-ipinaliwanag.mdx";
+import FilMorphoPreLiquidation, {
+  meta as filMorphoPreLiquidation,
+} from "~~/content/blog/fil/morpho-pre-liquidation-ipinaliwanag.mdx";
+import FilLiquidatedOnAaveOrMorphoWhatNow, {
+  meta as filLiquidatedOnAaveOrMorphoWhatNow,
+} from "~~/content/blog/fil/na-liquidate-sa-aave-o-morpho-ano-na.mdx";
+import FilHowAaveLiquidationWorks, {
+  meta as filHowAaveLiquidationWorks,
+} from "~~/content/blog/fil/paano-gumagana-ang-liquidation-sa-aave.mdx";
+import FilHowMorphoLiquidationWorks, {
+  meta as filHowMorphoLiquidationWorks,
+} from "~~/content/blog/fil/paano-gumagana-ang-liquidation-sa-morpho.mdx";
+import FilAvoidAaveLiquidation, {
+  meta as filAvoidAaveLiquidation,
+} from "~~/content/blog/fil/paano-iwasan-ang-liquidation-sa-aave.mdx";
+import FilAaveLiquidationPrice, {
+  meta as filAaveLiquidationPrice,
+} from "~~/content/blog/fil/paano-kalkulahin-ang-aave-liquidation-price.mdx";
+import FilAaveHealthFactorAlertSetup, {
+  meta as filAaveHealthFactorAlertSetup,
+} from "~~/content/blog/fil/paano-mag-set-ng-aave-health-factor-alert.mdx";
+import FilShortFiatWithAave, {
+  meta as filShortFiatWithAave,
+} from "~~/content/blog/fil/pag-short-ng-fiat-gamit-ang-aave.mdx";
+import FilPrivateAaveLiquidationAlerts, {
+  meta as filPrivateAaveLiquidationAlerts,
+} from "~~/content/blog/fil/pribadong-aave-liquidation-alert.mdx";
+import FilWhoNeedsHealthFactorAlerts, {
+  meta as filWhoNeedsHealthFactorAlerts,
+} from "~~/content/blog/fil/sino-ang-kailangan-ng-health-factor-alert.mdx";
+import FilStablecoinDepegAave, {
+  meta as filStablecoinDepegAave,
+} from "~~/content/blog/fil/stablecoin-depeg-sa-aave.mdx";
+import FilTokenizedStocksCollateral, {
+  meta as filTokenizedStocksCollateral,
+} from "~~/content/blog/fil/tokenized-stocks-bilang-collateral.mdx";
+import FilWrappedBitcoinAaveCollateral, {
+  meta as filWrappedBitcoinAaveCollateral,
+} from "~~/content/blog/fil/wrapped-bitcoin-bilang-collateral-sa-aave.mdx";
 import FrTokenizedStocksCollateral, {
   meta as frTokenizedStocksCollateral,
 } from "~~/content/blog/fr/actions-tokenisees-comme-collateral.mdx";
@@ -1813,5 +1884,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
     { meta: nbHowMorphoLiquidationWorks, Content: NbHowMorphoLiquidationWorks },
     { meta: nbMorphoPreLiquidation, Content: NbMorphoPreLiquidation },
     { meta: nbMorphoMidnightFixedRateLoans, Content: NbMorphoMidnightFixedRateLoans },
+  ],
+  fil: [
+    { meta: filAaveHealthFactor, Content: FilAaveHealthFactor },
+    { meta: filSafeAaveHealthFactor, Content: FilSafeAaveHealthFactor },
+    { meta: filHowAaveLiquidationWorks, Content: FilHowAaveLiquidationWorks },
+    { meta: filAaveLiquidationPrice, Content: FilAaveLiquidationPrice },
+    { meta: filWhyAaveHealthFactorDropped, Content: FilWhyAaveHealthFactorDropped },
+    { meta: filAaveHealthFactorAlertSetup, Content: FilAaveHealthFactorAlertSetup },
+    { meta: filAaveLiquidationAlertTools, Content: FilAaveLiquidationAlertTools },
+    { meta: filAvoidAaveLiquidation, Content: FilAvoidAaveLiquidation },
+    { meta: filPrivateAaveLiquidationAlerts, Content: FilPrivateAaveLiquidationAlerts },
+    { meta: filCryptoBackedLoans, Content: FilCryptoBackedLoans },
+    { meta: filShortFiatWithAave, Content: FilShortFiatWithAave },
+    { meta: filAaveInterestRates, Content: FilAaveInterestRates },
+    { meta: filAaveAlertsDoNotDisturb, Content: FilAaveAlertsDoNotDisturb },
+    { meta: filAaveMarketWindDown, Content: FilAaveMarketWindDown },
+    { meta: filStablecoinDepegAave, Content: FilStablecoinDepegAave },
+    { meta: filAaveEMode, Content: FilAaveEMode },
+    { meta: filWhyAaveWithdrawOrBorrowFails, Content: FilWhyAaveWithdrawOrBorrowFails },
+    { meta: filWrappedBitcoinAaveCollateral, Content: FilWrappedBitcoinAaveCollateral },
+    { meta: filTokenizedStocksCollateral, Content: FilTokenizedStocksCollateral },
+    { meta: filWhoNeedsHealthFactorAlerts, Content: FilWhoNeedsHealthFactorAlerts },
+    { meta: filLiquidatedOnAaveOrMorphoWhatNow, Content: FilLiquidatedOnAaveOrMorphoWhatNow },
+    { meta: filMorphoHealthFactor, Content: FilMorphoHealthFactor },
+    { meta: filHowMorphoLiquidationWorks, Content: FilHowMorphoLiquidationWorks },
+    { meta: filMorphoPreLiquidation, Content: FilMorphoPreLiquidation },
+    { meta: filMorphoMidnightFixedRateLoans, Content: FilMorphoMidnightFixedRateLoans },
   ],
 };

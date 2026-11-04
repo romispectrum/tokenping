@@ -1,0 +1,134 @@
+export const meta = {
+  slug: "bakit-pumapalya-ang-withdraw-o-borrow-sa-aave",
+  title: "Bakit hindi maka-withdraw o maka-borrow sa Aave? 9 dahilan",
+  description:
+    "Bakit pumapalya ang withdraw, borrow o pagbabayad sa Aave V3: health factor check, liquidity, supply at borrow cap, naka-freeze o naka-pause na reserve.",
+  h1: "Bakit pumapalya ang withdraw, borrow o pagbabayad ko ng utang sa Aave?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "Bakit pumapalya ang withdraw, borrow o repay na transaksyon sa Aave?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  Pumapalya ang isang transaksyon sa Aave V3 kapag tinanggihan ito ng isa sa mga check ng Pool contract, at halos laging
+  isa ito sa siyam na dahilan. Ibababa ng withdraw ang health factor mo sa ilalim ng 1. Mas kaunti ang hindi pa
+  nahihiram na liquidity sa reserve kaysa sa hinihingi mo. Puno na ang supply cap o borrow cap ng asset. Naka-freeze ang
+  reserve (walang bagong deposit o borrow) o naka-pause (walang gumagana, kasama ang pagbabayad ng utang). Hindi
+  puwedeng i-borrow ang asset, o hindi puwede sa E-Mode category mo. May hawak kang collateral na may loan-to-value
+  (LTV) na 0, na kailangang mauna sa paglabas. O ang pagbabayad ay tumutukoy sa utang na wala ka o sa token na hindi mo
+  pa na-approve. Sa Ethereum Core noong Oktubre 29, 2026, 35 sa 66 na nakalistang reserve ang naka-freeze, puno ang
+  supply cap ng LBTC at 0.07 LBTC na lang ang natitirang puwang, at 134.4M lang sa 2,347.5M USDC na naka-deposit ang
+  naroon para i-withdraw.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Ang mga numero at ang mga block number kung kailan binasa ang mga ito: content/blog/snapshots/why-aave-withdraw-or-borrow-fails.md */}
+
+## Anong mga check ang kailangang malampasan ng isang transaksyon sa Aave?
+
+Bawat deposit, withdraw, borrow at pagbabayad ng utang sa Aave V3 ay dumadaan sa Pool contract, at bago ito maglipat ng token, pinapatakbo ng Pool ang isang listahan ng mga check sa isang library na tinatawag na `ValidationLogic`. Bawat check na pumalya ay humihinto sa buong transaksyon na may pangalang error: `ReserveFrozen`, `SupplyCapExceeded`, `HealthFactorLowerThanLiquidationThreshold` at iba pa. Kadalasan, "execution reverted" at isang maikling hex code lang ang ipinapakita ng wallet mo, dahil nasa code ng Aave ang mga pangalan, wala sa wallet. Sinusuri ng Aave app ang karamihan sa mga ito bago ka pumirma, kaya madalas itong tumatanggi bago ka pa makakita ng transaksyon.
+
+Iba-iba ang mga check depende sa aksyon. Ang withdraw ay nangangailangan ng reserve na active at hindi naka-pause, ng balanseng hindi bababa sa halaga, at, kung may utang ka at collateral ang asset, ng health factor na mananatiling 1 o mas mataas pagkatapos. Ang borrow ay nangangailangan ng reserve na active, hindi naka-pause at hindi naka-freeze kung saan naka-enable ang pag-borrow, ng puwang sa ilalim ng borrow cap, at ng sapat na collateral ayon sa LTV mo. Ang deposit ay nangangailangan ng reserve na hindi naka-freeze at may puwang sa ilalim ng supply cap. Ang pagbabayad ng utang ay nangangailangan lang ng reserve na active at hindi naka-pause, at ng utang sa asset na iyon. Sinusundan ng siyam na dahilan sa ibaba ang listahang iyon, halos ayon sa pagkakasunod-sunod kung kailan mo malamang na makakasalubong ang mga ito.
+
+Aave V3 ang saklaw ng gabay na ito. May sariling configuration ang mga Spoke ng Aave V4, at wala sa Morpho ang alinman sa mga mekanismong ito maliban sa oracle (pinagkukunan ng presyo) at sa health factor: walang cap, walang freeze at walang pause ang isang Morpho market.
+
+## 1. Ibababa ng withdraw ang health factor mo sa ilalim ng 1
+
+Ito ang pinakamadalas na tamaan ng mga borrower. Kapag nag-withdraw ka ng asset na ginagamit mong collateral habang may utang ka, kinukuwenta ulit ng Pool ang account mo pagkatapos ng withdraw at hinihingi nito ang health factor na hindi bababa sa 1 (`HealthFactorLowerThanLiquidationThreshold`). Ganito rin ang check kapag pinatay mo ang isang asset bilang collateral o naglipat ka ng aTokens sa ibang address. Hindi ito tumatakbo kapag wala kang utang, kaya laging puwedeng i-withdraw ang buong balanse ng posisyong puro deposit lang.
+
+Halimbawa: 10 WETH sa Ethereum Core sa presyo ng oracle na $2,309.84 noong Oktubre 29, 2026 ($23,098.41), liquidation threshold na 84%, at 12,000 USDC na utang. Ang [health factor](/fil/blog/aave-health-factor-ipinaliwanag) ay 23,098.41 × 0.84 ÷ 12,000 = 1.617. Para manatili ito sa eksaktong 1, kailangan mo ng 12,000 ÷ 0.84 = $14,285.71 na WETH, o 6.185 WETH, kaya ang pinakamalaking puwede mong i-withdraw ay 3.815 WETH. Humingi ng 4 at magre-revert ang transaksyon; humingi ng 3.815 at tutuloy ito, at maiiwan ang posisyong magiging liquidatable sa susunod na kaunting pagbaba ng presyo. Ito ang maximum ng Aave app, at ang pag-withdraw ng lahat nito ang pinakamabilis na paraan para gawing posisyong mangangailangan ng [liquidation alert](/fil/blog/paano-mag-set-ng-aave-health-factor-alert) sa loob ng isang oras ang isang ligtas na posisyon.
+
+Mas mahigpit ang kapatid nitong check sa pag-borrow. Ang bagong borrow ay dapat mag-iwan ng health factor na 1 o mas mataas at dapat ding magkasya sa ilalim ng weighted LTV mo: dapat sakop ng collateral × LTV ang utang (`CollateralCannotCoverNewBorrow`). Kung 81% ang LTV ng WETH, hanggang $18,709.71 na utang lang ang kaya ng 10 WETH sa itaas, at ang posisyong humiram ng lahat ng iyon ay nagsisimula sa health factor na 84 ÷ 81 = 1.037. Ipinapaliwanag ng [kung ano ang ligtas na health factor](/fil/blog/ligtas-na-aave-health-factor) kung bakit manipis na simula iyon.
+
+## 2. Mas kaunti ang hindi pa nahihiram na liquidity sa reserve kaysa sa gusto mo
+
+Ipinapahiram ng Aave ang idine-deposit ng mga supplier, kaya ang hawak lang ng isang reserve ay ang bahaging walang humiram. Pumapalya ang withdraw, o borrow, na mas malaki sa bahaging iyon, at walang pangalang error sa Aave ang kasong ito: sinusubukan ng aToken na ilabas ang underlying token at ang token contract mismo ang nagre-revert, para sa USDC na may "ERC20: transfer amount exceeds balance". Hinihingi lang ng borrow check na hindi bababa sa halaga ang buong supply ng aToken, na humuhuli lang sa mga kakatwang hiling at wala nang iba.
+
+Sa Ethereum Core noong Oktubre 29, 2026, 2,347,525,372.91 USDC ang naka-deposit, 2,213,199,103.54 USDC ang hiniram at 134,360,379.94 USDC ang hawak ng aToken contract: 94.28% na utilization, 5.72% ng supply ang puwedeng i-withdraw o i-borrow. Hindi makaaalis ang isang supplier na gustong umalis dala ang 200M USDC, at walang makagagawa nito hangga't walang nagbabayad o nagde-deposit. Ipinapakita ng gabay sa [kung paano gumagana ang mga interest rate ng Aave](/fil/blog/mga-interest-rate-sa-aave) kung ano ang hitsura nito sa praktika: noong Oktubre 14, 2026, isang withdraw na 133,898,000 USDC ang nagtulak sa parehong reserve sa 99.50% na utilization, at sa borrow rate mula 4.50% hanggang 13.67% sa iisang block.
+
+Apat na bagay ang gumagana kapag liquidity ang problema. Mag-withdraw ng mas maliit na halaga, hanggang sa hawak ng contract. Maghintay: dinisenyo ang rate curve para hilahin pabalik ang liquidity, at natapos ang spike noong Oktubre 14 sa loob ng mga 36 minuto, kahit walang garantiya iyon. Mag-withdraw ng ibang collateral asset, kung mayroon ka at kung papayag ang health factor. At kung sinusubukan mong bayaran ang utang na USDC pero aUSDC ang hawak mo, gamitin ang `repayWithATokens`: sinusunog nito ang aTokens mo laban sa utang mo nang walang inililipat na kahit isang USDC, kaya hindi ito nangangailangan ng anumang liquidity.
+
+## 3. Puno na ang supply cap
+
+Bawat reserve ay may supply cap, na itinatakda ng mga risk steward at ng governance ng Aave, at pumapalya na may `SupplyCapExceeded` ang deposit na magtutulak sa kabuuan nang lampas dito. Ang cap na 0 ay nangangahulugang walang cap. Binibilang ng cap ang mga umiiral na aToken at ang interes na naipon para sa treasury, kaya kusa itong napupuno habang naiipon ang interes, kahit walang nagde-deposit.
+
+Mas madalas tumama ang mga cap kaysa inaasahan ng mga tao. Noong Oktubre 29, 2026, 2,690 LBTC ang cap ng LBTC sa Ethereum Core laban sa 2,689.93 na naka-deposit: 0.07 LBTC na lang ang natitirang puwang, at hindi makapagdagdag ng 1 LBTC ang borrower na gustong idagdag ito sa posisyong nanganganib. Nasa 96.9% ng cap nito ang sUSDe, 98.9% ang tBTC, 91.7% ang USDe, 91.2% ang weETH at 89.4% ang WBTC. Gumagalaw ang mga cap pataas at pababa. Noong Hulyo 10, 2026, ibinaba ng LlamaRisk ang supply cap ng USDm sa MegaETH instance ng Aave mula 1,000,000,000 patungong 300,000,000 dahil ang kisame ay "well above current demand" (malayo sa itaas ng kasalukuyang demand); itinataas ng mga steward ang mga cap kapag dumating ang demand, kadalasan sa loob ng ilang araw.
+
+Para sa isang borrower, mahalaga ang cap bilang saradong pinto: ang pagdagdag ng collateral ay isa sa dalawang paraan para itaas ang health factor, at tinatanggal ito ng punong cap para sa asset na iyon. Gumagana pa rin ang pagbabayad ng utang, na siyang isa pang paraan, at gayundin ang pagdagdag ng ibang collateral asset na may puwang pa ang cap.
+
+## 4. Puno na ang borrow cap
+
+Ganito rin gumagana ang mga borrow cap para sa utang: hindi dapat lumampas sa cap ang kabuuang variable na utang ng reserve pagkatapos ng borrow mo (`BorrowCapExceeded`), at ang 0 ay walang cap. Tumatakbo ang check sa bawat borrow, kaya hinaharang ng cap na lampas na sa limit nito ang bawat bagong borrow ng asset na iyon hanggang may magbayad. Wala nang ibang hinaharang ang punong borrow cap: tumutuloy ang pagbabayad ng utang, ang withdraw at ang liquidation.
+
+Ang tBTC sa Ethereum Core ang pinakamatinding kaso: naka-enable ang pag-borrow noong Oktubre 29, 2026, pero 1 tBTC ang cap at 2.57 tBTC na ang hiniram, kaya nagre-revert kahit ang pinakamaliit na borrow. May 2,213.2M na hiniram ang USDC laban sa cap na 2,700M, 82.0% ang gamit, na may 486.8M na puwang; nasa 80.8% ang USDT. Kapag napuno ang mga cap ng stablecoin, pumapalya ang borrow kahit maaaring marami pang liquidity ang reserve.
+
+## 5. Naka-freeze ang reserve
+
+Walang tinatanggap na bagong deposit at bagong borrow ang naka-freeze na reserve (`ReserveFrozen` sa dalawa). Inililista ng dokumentasyon ng Pool Configurator ng Aave kung ano ang gumagana pa: pagbabayad ng utang, liquidation at withdraw. Ang pag-freeze ang paraan ng governance para unti-unting isara ang isang asset nang walang nakukulong; isa-isang ipinapaliwanag ng [kung ano ang nangyayari kapag isinara ng Aave ang isang market](/fil/blog/kapag-isinara-ng-aave-ang-isang-market) ang mga hakbang.
+
+Hindi bihira ang mga naka-freeze na reserve. Noong Oktubre 29, 2026, 35 sa 66 na reserve sa Ethereum Core ang naka-freeze: CRV, MKR, UNI, LUSD, FRAX, sDAI, crvUSD, FBTC at mahabang listahan ng mga Pendle PT token na lampas na sa maturity, halos lahat ay may supply at borrow cap din na 1. Kung may collateral ka pa sa isa sa mga ito, puwede mo itong i-withdraw at puwede kang ma-liquidate mula rito, pero hindi mo ito madadagdagan.
+
+## 6. Naka-pause ang reserve
+
+Ang pag-pause ang emergency switch. Tinatanggihan ng naka-pause na reserve ang lahat: deposit, borrow, pagbabayad ng utang, withdraw, liquidation at paglipat ng aToken (`ReservePaused`). Walang naka-pause na reserve sa Ethereum Core noong Oktubre 29, 2026, at sa karaniwang linggo ay wala.
+
+Nagamit na ang pause. Noong Nobyembre 4, 2023, matapos ang isang kritikal na bug bounty report, pinause ng Guardian ng Aave ang Aave V2 sa Ethereum at ang ilang asset sa V3 Arbitrum, Avalanche, Optimism at Polygon. Sa loob ng mga isang linggo, walang makapagbayad ng utang o makapagdagdag ng collateral sa mga reserve na iyon, habang patuloy na gumagalaw ang mga presyo. Na-unpause ang mga V3 instance noong Nobyembre 12, 2023, ang V2 Ethereum noong Nobyembre 13 matapos ang liquidation grace period na mga tatlong oras para sa mga borrower ng WETH, at ang CRV sa V3 Polygon noong Nobyembre 16. Ngayon, bahagi na ng protocol ang grace period na iyon: pumapalya na may `LiquidationGraceSentinelCheckFailed` ang liquidation sa loob ng grace period ng isang reserve, na nagbibigay sa mga borrower na naharangan ng maikling panahon para magbayad bago kumilos ang mga liquidator.
+
+Kung pumalya ang transaksyon mo dahil sa pause error, wala kang magagawa sa Aave hangga't hindi naaalis ang pause. Gamitin ang oras para ihanda ang pambayad sa tamang network, dahil ang grace period pagkatapos ng unpause ay itinatakda ng governance o ng Guardian at naging kasing-ikli na ito ng tatlong oras.
+
+## 7. Naka-off ang pag-borrow para sa asset na iyon, o hindi ito pinapayagan sa E-Mode category mo
+
+Maraming asset ang puwedeng i-deposit bilang collateral pero hindi puwedeng i-borrow. Sa Ethereum Core noong Oktubre 29, 2026, naka-disable ang pag-borrow sa 15 reserve na hindi naka-freeze, kasama ang wstETH, cbETH, rETH, weETH, LBTC, eBTC, AAVE at XAUt, at pumapalya na may `BorrowingNotEnabled` ang borrow ng alinman sa mga ito. Itinatakda ng governance ang flag kada reserve, at makikita ito sa Aave app bilang nawawalang borrow button.
+
+Kung nasa isang [E-Mode category](/fil/blog/aave-e-mode-ipinaliwanag) ka, ibang patakaran ang pumapalit doon: puwede mo lang i-borrow ang mga asset sa borrowable set ng category, at pumapalya na may `NotBorrowableInEMode` ang anumang iba pa, kahit asset na puwede mong i-borrow sa labas ng category. Halimbawa, WETH lang ang pinapayagang i-borrow ng "ETH correlated" category ng Ethereum Core. Naaayos ng pag-alis sa category ang borrow, pero may sariling mga check ang pag-alis: bawat asset na inuutang mo ay dapat puwedeng i-borrow sa labas ng category, at dapat manatiling 1 o mas mataas ang health factor mo sa normal at mas mababang mga threshold (`InvalidDebtInEmode`, `InvalidCollateralInEmode`, `HealthFactorLowerThanLiquidationThreshold`).
+
+## 8. May hawak kang collateral na may LTV na 0
+
+Itinatakda ng governance sa 0 ang LTV ng isang asset kapag gusto nitong hindi na sumuporta ang asset sa bagong utang habang tuloy pa rin ang mga umiiral na posisyon. Noong Oktubre 29, 2026, 11 reserve na hindi naka-freeze sa Ethereum Core ang naka-enable bilang collateral na may LTV na 0, kasama ang DAI (liquidation threshold na 77%), LINK, PYUSD, USDe, sUSDe, USDS, EURC at XAUt. Binibilang pa rin ang ganitong asset sa health factor mo, sa pamamagitan ng liquidation threshold nito, pero wala itong naidadagdag sa borrowing power mo. Dalawang check ang sumusunod dito.
+
+Ang una ay sa pag-borrow. Kung LTV na 0 ang lahat ng collateral na naka-enable sa iyo, 0 ang weighted LTV mo at pumapalya ang anumang borrow na may `LtvValidationFailed`. Kung halo, halimbawa DAI at WETH, tumutuloy ang borrow, na limitado sa WETH lang.
+
+Ang ikalawa ay sa pag-withdraw, at ikinagugulat ito ng mga tao. Kung may utang ka at may naka-enable na collateral na may LTV na 0, ang asset na iwi-withdraw mo, ililipat o papatayin bilang collateral ay dapat mismong asset na LTV 0, o pumapalya ang transaksyon na may parehong `LtvValidationFailed`. Sinasabi ng sariling comment ng code ang layunin: ang patakaran ay "ensures that a multi-collateral position needs to withdraw/transfer the ltv0 asset first" (tinitiyak na kailangang unahing i-withdraw o ilipat ng posisyong maraming collateral ang ltv0 na asset). Kaya ang borrower na may DAI at WETH na sumusubok maglabas ng kaunting WETH ay tatanggihan hangga't hindi pa nailalabas ang DAI; nalalapat pa rin ang health factor check sa mismong pag-withdraw ng DAI. Ang solusyon ay ang pagkakasunod-sunod: unahing i-withdraw ang asset na LTV 0, o magbayad ng sapat para payagan ng health factor ang dalawa.
+
+## 9. Ang pagbabayad ay tumutukoy sa utang na wala ka, o sa token na hindi mo pa na-approve
+
+Ang pagbabayad ng utang ang pinakasimpleng aksyon pero pumapalya pa rin, kadalasan dahil sa isa sa limang dahilan.
+
+- **Walang utang na ganoong uri.** Ang ibig sabihin ng `NoDebtOfSelectedType` ay walang variable na utang sa asset na iyon para sa address na iyon ang Pool na tinawag mo. Ang karaniwang dahilan ay maling market: may hiwalay na Core, Prime at Lido instance ang Ethereum, bawat isa ay may sariling Pool, at puwedeng may utang na USDC ang iisang wallet sa isa at wala sa iba. Hiwalay rin ang mga market ng bawat network.
+- **Rate mode na wala na.** Ang variable mode (2) lang ang tinatanggap; wala na sa code ang stable-rate borrowing, at pumapalya na may `InvalidInterestRateModeSelected` ang tawag na may mode 1.
+- **Walang allowance.** Hinihila ng Pool ang bayad gamit ang `transferFrom`, kaya kailangan ng token ng approval na hindi bababa sa halaga, o ng pinirmahang permit. Kung wala ito, magre-revert ang token contract bago pa tumakbo ang mga check ng Aave.
+- **Pagbabayad para sa iba nang walang halaga.** Pumapalya na may `NoExplicitAmountToRepayOnBehalf` ang pagbabayad para sa ibang address gamit ang halagang "buong utang" (`type(uint256).max`); ilagay ang halaga.
+- **Dust.** Naiipon ang interes bawat segundo, kaya ang pagbabayad ng eksaktong balanseng nakita mo isang minuto ang nakalipas ay nag-iiwan ng ilang wei na utang. Para tuluyang mabayaran ang utang, magbayad gamit ang maximum value, na nililimitahan ng Pool sa halagang inuutang mo.
+
+## Mga dahilang hindi mo na kailangang hanapin
+
+Hindi na totoo ang dalawang lumang paliwanag. Inalis sa Aave V3.7 ang Isolation Mode at ang mga debt ceiling nito, pati ang siloed borrowing, kaya walang borrow na pumapalya ngayon dahil isolated ang isang asset o naabot ang ceiling. At wala na ang stable-rate borrowing mula pa noong V3.2, kaya walang pumapalya sa paglipat ng rate. Kung binabanggit ng isang lumang gabay ang alinman dito, bersyon ng Aave na hindi na naka-deploy ang inilalarawan nito.
+
+## Ano ang gagawin kapag pumalya ang transaksyon habang bumabagsak ang presyo
+
+Abala lang ang pumalyang transaksyon sa tahimik na market pero problema sa bumabagsak, dahil ang oras na ginugugol mo sa pag-alam ng sanhi ay ang oras na kailangan ng health factor mo. Isang maikling pagkakasunod-sunod:
+
+1. **Basahin ang error.** I-simulate ang transaksyon sa wallet mo, o i-paste ang hex selector sa decoder ng isang block explorer; sasabihin sa iyo ng mga pangalan sa itaas kung aling kaso ang sa iyo.
+2. **Unahin ang pagbabayad kaysa pagdagdag ng collateral.** Gumagana ang pagbabayad kahit naka-freeze ang reserve at puno ang supply cap, at sa `repayWithATokens`, gumagana rin ito kahit ubos ang liquidity. Nakadepende ang pagdagdag ng collateral sa cap na may puwang at sa reserve na hindi naka-freeze.
+3. **Subukan ang mas maliliit na halaga.** Mga dami ang liquidity at ang mga cap; tumutuloy ang withdraw o borrow na kasya habang pumapalya ang buo.
+4. **Gumamit ng ibang asset.** Madalas may ibang collateral na maiwi-withdraw, o ibang asset na mababayaran, kapag naharangan ang una.
+5. **Suriin ang instance at ang network.** Pumapalya na may `NoDebtOfSelectedType` ang bayad na ipinadala sa tamang asset pero sa maling Pool, at gagastusan ka nito ng gas at oras.
+6. **Kunin nang mas maaga ang alerto sa susunod.** Ilang minuto ang kailangan para malusutan ang bawat isa sa mga kasong ito. Ang health factor alert na naka-set nang may sapat na palugit ang bumibili ng mga minutong iyon.
+
+Tinitingnan ng Tokenping ang health factor mo sa Aave tuwing 5 minuto, sa bawat Aave V3 market sa 21 network at bawat Aave V4 Spoke, at pinapadalhan ka ng mensahe sa Signal, Telegram o email kapag bumaba ito sa threshold na pinili mo (1.1 hanggang 10), at inuulit ito sa bawat check hanggang sa makabawi ito. Binabasa nito ang numero mula sa `getUserAccountData`, ang parehong numerong ginagamit ng withdraw check. Hindi kayang kumilos ng alerto para sa iyo, at walang anuman sa gabay na ito ang pumipigil sa liquidation; sinasabi lang nito kung aling pinto ang sarado para subukan mo muna ang bukas. Puwede mong [tingnan ang health factor mo sa Aave V3](/fil/aave) nang hindi nagbabayad; nagkakahalaga ang mga alerto ng <AlertPrice />, isa kada market o Spoke. Detalyadong tinatalakay ng [paano iwasan ang liquidation sa Aave](/fil/blog/paano-iwasan-ang-liquidation-sa-aave) ang pagpili sa pagitan ng pagbabayad at pagdagdag, at ng [kung bakit bumaba ang health factor mo](/fil/blog/bakit-bumaba-ang-aave-health-factor) ang mga sanhing tinutugunan mo.
+
+## Mga sanggunian
+
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol), [BorrowLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/BorrowLogic.sol) at [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): bawat check na binanggit sa itaas, ang pagkakasunod-sunod ng pagtakbo ng mga ito, ang comment tungkol sa LTV 0, at ang zero-LTV flag (aave-v3-origin main, na-access noong Oktubre 29, 2026)
+- [Errors.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/helpers/Errors.sol): ang mga pangalan ng error at ang mga paglalarawan nila (aave-v3-origin main, na-access noong Oktubre 29, 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getAllReservesTokens`, at para sa bawat reserve, `getReserveConfigurationData`, `getReserveCaps`, `getPaused` at `getReserveData`, sa block 26296985 (na-access noong Oktubre 29, 2026)
+- [aEthUSDC](https://etherscan.io/address/0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c): ang USDC na hawak ng aToken contract sa block 26296985 (na-access noong Oktubre 29, 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): ang mga presyo ng WETH at USDC sa block 26296985 (na-access noong Oktubre 29, 2026)
+- [Dokumentasyon ng Aave: Pool Configurator](https://aave.com/docs/aave-v3/smart-contracts/pool-configurator): kung ano ang pinapayagan sa naka-freeze at naka-pause na reserve, mga cap na 0 (na-access noong Oktubre 29, 2026)
+- [Aave v2/v3 security incident 04/11/2023](https://governance.aave.com/t/aave-v2-v3-security-incident-04-11-2023/15335): ang mga pause noong Nobyembre 4, 2023, ang mga unpause noong Nobyembre 12, 13 at 16, at ang grace period (na-access noong Oktubre 29, 2026)
+- [Mga feature ng Aave V3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): ang pag-alis ng stable-rate borrowing (na-access noong Oktubre 29, 2026)
+- [Aave V3.7: pag-alis ng isolation mode at siloed borrowing](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/mode-removal.md) (na-access noong Oktubre 29, 2026)
+- [Risk Stewards: Supply and Borrow Cap Reductions on Aave V3 / 2026.07.10](https://governance.aave.com/t/risk-stewards-supply-and-borrow-cap-reductions-on-aave-v3-2026-07-10/25296): ang pagbaba ng LlamaRisk sa mga cap sa MegaETH, ipinatupad noong Hulyo 14, 2026 (na-access noong Oktubre 29, 2026)
+
+_Pang-edukasyong nilalaman, hindi payong pinansyal. Binabawasan ng mga alerto ang panganib, pero hindi nito napipigilan ang liquidation._

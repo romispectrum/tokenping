@@ -1,0 +1,190 @@
+export const meta = {
+  slug: "pribadong-aave-liquidation-alert",
+  title: "Aave alert at ang privacy mo: ano ang iniimbak ng Tokenping",
+  description:
+    "Ano ang iniimbak ng Tokenping, ano ang publiko on-chain, at paano pinipigilan ng email alias, Signal username at Telegram username na makilala ka.",
+  h1: "Paano makakuha ng Aave health factor alert nang hindi ibinibigay sa Tokenping ang pagkakakilanlan mo",
+  publishedAt: "2026-10-19",
+  primaryQuestion:
+    "Puwede ba akong makakuha ng Aave health factor alert nang hindi naiuugnay ang pagkakakilanlan ko sa wallet address ko?",
+  readingMinutes: 15,
+};
+
+<ShortAnswer>
+  Walang account na may password ang Tokenping: nagsa-sign in ka sa pamamagitan ng pagpirma ng isang mensahe gamit ang
+  wallet mo, at iniimbak nito ang wallet address mo katabi ng contact na ibinibigay mo para sa mga alerto. Kaya magbigay
+  ka ng mga contact na walang sinasabi tungkol sa iyo: isang email alias sa halip na sarili mong address, isang Signal
+  username na nakatago ang phone number mo, at isang Telegram username at pangalan na hindi nagpapakilala sa iyo. Sa
+  ganoon, hindi ka makikilala mula sa contact. Hindi ka nito ginagawang anonymous, dahil publiko sa Arbitrum One ang
+  bayad mo, nananatiling naka-link ang wallet na na-link mo na sa ibang lugar, at may sarili nilang mga record ang mga
+  serbisyong naghahatid ng mga alerto mo.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Ano ang iniimbak ng Tokenping, at ano ang hindi nito kinokolekta?
+
+Noong Oktubre 19, 2026, ang pag-save ng alerto ay nagsusulat ng isang row bawat wallet, network at market (isang Aave V3 pool o isang Aave V4 Spoke) sa database ng Tokenping. Laman ng row:
+
+- Ang wallet address mo.
+- Ang network, ang market at ang threshold mo.
+- Ang mga channel na pinili mo at ang wika ng bawat isa.
+- Ang email address, Signal username at Telegram username na tinype mo, para sa mga channel na pinili mo.
+- Kung kailan ginawa ang alerto at kung kailan ito huling binago, at kung kailan ka huling nagpadala ng test na mensahe sa bawat channel. Ganoon gumagana ang limitasyong isang test bawat channel kada 15 minuto.
+
+Kapag pinindot mo ang Start sa Telegram bot ng Tokenping, iniimbak din ang chat ID mo at ang oras, sa hiwalay na table. Kung sasagutin mo ang opsyonal na tanong na "Paano mo nalaman ang Tokenping?", iniimbak ang sagot mo at ang oras kasama ng wallet address mo.
+
+Hindi humihingi o nag-iimbak ang Tokenping ng pangalan, phone number, password o identity check. Wala itong inilalagay na tracking pixel o advertising cookie, hindi ito nagtatago ng kasaysayan ng mga posisyon mo (binabasa ang mga ito nang live mula sa blockchain) at walang log sa database nito ng mga alertong naipadala nito. Ang [privacy page](/fil/privacy) ang opisyal na listahan; ipinapaliwanag ng gabay na ito kung ano ang ibig sabihin nito para sa iyo at kung ano ang puwede mong gawin tungkol dito.
+
+## Paano gumagana ang sign-in nang walang account?
+
+Pag-aari ng isang wallet address ang mga setting ng alerto, hindi ng isang account. Para buksan o baguhin ang mga ito, pumipirma ka ng isang mensahe gamit ang wallet na iyon. Isa itong Sign-in with Ethereum na mensahe (EIP-4361) na nagsasaad ng site, ng address mo at ng isang random na one-time code. Hindi transaksyon ang pagpirma: walang gas na nagagastos at walang token na na-a-approve. Sinusuri ng server ang pirma at tinatanggap ang one-time code nang isang beses lang, sa loob ng 5 minuto. Iniimbak ang code nang wala ang address mo at binubura kapag nagamit na.
+
+Pagkatapos, naglalagay ang site ng isang session cookie. Dala nito ang wallet address mo at isang oras ng pag-expire, kasama ang isang pirmang gawa gamit ang isang server secret para hindi ito mapeke (naka-sign ito, hindi naka-encrypt), at hindi ito nababasa ng mga script ng page (HttpOnly). Tumatagal ito nang 7 araw, at binubura ito ng site kapag dinisconnect mo ang wallet mo sa site. Habang nagsa-sign in ka, may pangalawang cookie na humahawak sa one-time code sa loob ng ilang minutong iyon. Pagkatapos, kumikilos lang ang bawat alert route para sa wallet na nasa cookie, at tinatanggihan ang request na nagsasaad ng ibang wallet.
+
+Hindi kailangan ng sign-in o bayad para tingnan ang mga posisyon mo. Galing sa Vercel Web Analytics ang bilang ng page view ng site, na nagsasabing kinikilala nito ang mga bisita gamit ang isang hash na ginawa mula sa request sa halip na mga third-party cookie, at itinatapon nito ang session na iyon pagkalipas ng 24 oras.
+
+## Sino ang nakakabasa ng mga contact detail na sine-save mo?
+
+Sa pamamagitan ng app, ang taong nakakapirma lang gamit ang wallet mo. Ang pagbasa, pagbago o pag-delete ng alerto, at ang pagpapadala ng test na mensahe, ay nangangailangan lahat ng session cookie mo, at tinatanggihan ang request na nagsasaad ng ibang wallet. Sarado ang mga table ng database sa public (anon) key ng Supabase: naka-on ang row level security nang walang policy, at walang privilege ang mga public role. Ang server lang ng Tokenping, gamit ang service-role key nito, ang nakakaabot sa mga ito.
+
+Puwede mo itong suriin sa halip na basta magtiwala, dahil publiko ang code ng Tokenping. Nasa [`packages/nextjs/app/api/notifications`](https://github.com/romispectrum/tokenping/tree/main/packages/nextjs/app/api/notifications) ang mga route na nagbabasa at nagsusulat ng mga alerto, nasa [`packages/nextjs/app/api/auth`](https://github.com/romispectrum/tokenping/tree/main/packages/nextjs/app/api/auth) ang mga sign-in route, at nasa [`packages/supabase/migrations`](https://github.com/romispectrum/tokenping/tree/main/packages/supabase/migrations) ang mga migration na nagsasara ng mga table sa public key.
+
+Hindi iyon katumbas ng walang sinuman:
+
+- Nababasa ng mga taong nagpapatakbo ng Tokenping, at ng host ng database nito, ang mga row.
+- Puwedeng itanong ng kahit sino kung pinindot na ng isang partikular na Telegram username ang Start sa bot. Oo o hindi ang sagot, hindi kailanman chat ID.
+- Kapag pumalya ang isang alert check o isang mensahe, puwedeng kasama sa error ang wallet address mo at ang recipient, at napupunta ito sa mga server log.
+
+Ang mismong payo ng privacy page ay huwag maglagay ng email address o Signal username na ayaw mong maiugnay sa wallet address mo. Ang natitirang bahagi ng gabay na ito ay kung paano iyon sundin.
+
+## Aling ibang mga serbisyo ang humahawak ng data mo?
+
+Tumatakbo ang Tokenping sa ibang mga provider, at bawat isa ay nakakakita ng bahagi ng ibinibigay mo. Ang table na ito ay maikling bersyon ng listahan ng privacy page.
+
+| Serbisyo             | Ano ang ginagawa nito                                            | Ano ang nakikita nito                                                                             |
+| -------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Vercel               | Nagho-host ng site at nagpapatakbo ng alert check kada 5 minuto  | Bawat request, kasama ang IP address mo, at ang mga server log                                    |
+| Vercel Web Analytics | Nagbibilang ng mga page view                                     | Address ng page, referrer, tantiyang lokasyon, browser, operating system at uri ng device         |
+| Supabase             | Ang database                                                     | Ang mga row na inilarawan sa itaas                                                                |
+| Resend               | Nagpapadala ng mga alert email                                   | Ang email address mo at ang teksto ng alerto                                                      |
+| Fly.io relay         | Ipinapasa ang mga alerto sa Signal                               | Ang Signal username mo at ang teksto ng alerto (nakikita rin ng Signal)                           |
+| Telegram             | Naghahatid ng mga alerto sa pamamagitan ng Bot API nito          | Ang chat ID mo at ang teksto ng alerto                                                            |
+| Mga RPC provider     | Sumasagot sa mga pagbasa sa blockchain                           | Ang wallet address na binabasa, at ang IP address mo kapag ang browser mo ang gumagawa ng pagbasa |
+| WalletConnect        | Nire-relay ang koneksyon sa wallet app mo, kung ginagamit mo ito | Ang ipinagpapalitan ng wallet app mo at ng site para kumonekta                                    |
+
+Nakasaad sa teksto ng alerto ang market, ang health factor mo, ang threshold mo at ang oras. Hindi nito kasama ang wallet address mo.
+
+May sarili nilang mga record ang mga provider. Inililista ng data processing addendum ng Resend ang metadata, email address at nilalaman ng mensahe bilang pinakamababang personal data na pinoproseso nito para sa isang customer, at sinasabi ng dokumentasyon nito na itinatago nito ang email data nang 30 araw sa lahat ng plan, na may flexible na retention para sa Enterprise. Sinasabi ng Signal na hindi nito kayang i-decrypt o sa anumang paraan ay ma-access ang nilalaman ng mga mensahe. Sinasabi ng privacy policy ng Telegram na iniimbak ang mga cloud chat sa mga server nito, nang mabigat na naka-encrypt, habang sa mga Secret Chat lang ang end-to-end encryption.
+
+## Ano ang nananatiling publiko sa blockchain?
+
+Ang pagbabayad para sa mga alerto ay isang transaksyon sa Arbitrum One. Itinatala ng payment contract ang bawat isa sa isang public event: ang address na nagbayad, ang token, ang halaga, ang oras, ang period na binili mo at ang bagong petsa ng pag-expire. Nababasa ito ng kahit sino at walang makakabura nito. Ang source ng contract ay [verified sa Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553).
+
+Walang anumang tungkol sa alerto mo ang isinusulat sa blockchain: hindi ang threshold, hindi ang email alias mo, hindi ang Signal username mo at hindi ang Telegram username mo. Publiko rin ang mga Aave posisyon mo. Inilalarawan ng ethereum.org ang blockchain bilang "a public database" (isang pampublikong database), at binabasa ng Tokenping ang posisyon mo gamit ang mga view call na puwedeng gawin ng kahit sino. Hindi kailanman nakadepende sa Tokenping ang ugnayan ng wallet mo at ng mga posisyon nito.
+
+## Ano ang kayang iugnay ng Tokenping, at ano ang hindi?
+
+Kayang iugnay ng Tokenping ang wallet address mo sa mga contact na sine-save mo para dito, sa mga market kung saan ka nagbo-borrow, sa mga threshold mo at sa kung kailan ka nagbayad. Hindi gagana ang serbisyo nang wala ang ugnayang iyon: kailangan ng alerto ng wallet na babantayan at ng lugar na pagpapadalhan ng mensahe.
+
+Mula sa iniimbak nito sa database nito, hindi kayang iugnay ng Tokenping ang alinman diyan sa pangalan mo, phone number mo o iba mong mga account, maliban kung ang contact na inilagay mo ang gagawa niyon para sa iyo. Ganoon mismo ang ginagawa ng email address na may pangalan mo, o ng username na ginagamit mo sa ibang mga site. Ito ang punto ng alias at ng anonymous na username: walang sinasabi ang contact tungkol sa kung sino ka. Hiwalay na usapin ang IP address mo: umaabot ito sa Vercel sa bawat request, hindi sa database ng Tokenping, at labas sa gabay na ito ang pagtatago nito.
+
+Iba namang listahan ang kayang gawin ng isang taga-labas, at walang bahagi nito ang nangangailangan ng Tokenping:
+
+- Kung may ENS primary name ang wallet mo, kayang hanapin iyon ng kahit anong app mula sa address.
+- Kung pinondohan mo ang wallet mula sa isang exchange kung saan na-verify mo ang pagkakakilanlan mo, kadalasang may record ang exchange ng withdrawal na iyon.
+- Kahit saan mo naipakita ang address katabi ng pangalan o handle mo, naiuugnay ang dalawa.
+- Publiko ang bayad mo, kaya makikita ng kahit sino na nagbayad ang address at hanggang kailan.
+
+## Paano gumamit ng email alias sa halip na totoong address mo?
+
+Ang email alias ay isang dagdag na address na nagpapasa ng mail sa totoong mailbox mo. Ang alias lang ang nakikita ng Tokenping at ng email provider nito. Nakikita ng SimpleLogin, ang serbisyong ginagamit ng gabay na ito bilang halimbawa, ang dalawa, dahil ito ang nagpapasa ng mail sa pagitan nila. Gawa ito ng Proton AG at open source, at may nakalista sa pricing page nito na planong walang kailangang bayaran, na may limitadong bilang ng alias.
+
+1. Gumawa ng SimpleLogin account at piliin ang mailbox na tatanggap ng mga ipinasang alerto.
+2. Sa dashboard, pindutin ang **Random Alias** at pumili ng mga random na salita o UUID para sa kaliwang bahagi. Puwede rin ang custom alias, pero huwag isama roon ang pangalan mo, ang mga handle mo at anumang ginagamit mo sa ibang mga site. Hinahayaan ka rin ng SimpleLogin na maglagay ng note sa isang alias, gaya ng "Tokenping", para maalala mo kung para saan ito.
+3. Sa alert form, ilagay ang alias bilang email address (halimbawa `alice-aave@example.com`) at i-save ang alerto.
+4. Pindutin ang **Magpadala ng test** para sa email at tingnan kung umaabot ang mensahe sa totoong mailbox mo. Kung hindi, tingnan ang spam folder mo. Nasa [gabay sa pag-set up](/fil/blog/paano-mag-set-ng-aave-health-factor-alert) ang iba pang mga pagsusuri.
+
+Iisang direksyon lang ang mga alerto ng Tokenping, kaya hindi mo sinasagot ang mga ito, at sapat na ang alias na tumatanggap lang. Kapag tumigil ka nang gumamit ng Tokenping, i-delete muna ang alerto, saka ang alias, para walang naka-imbak na contact na lalampas sa layunin nito.
+
+Hindi itinatago ng alias ang lahat. Nakikita pa rin ng SimpleLogin at ng mailbox provider mo ang mga alerto, kaya itinatago nito ang address mo sa Tokenping at sa Resend, hindi sa serbisyong nagpapasa. Naiuugnay ng alias na ginagamit mo rin sa ibang serbisyo ang dalawa. At hindi nito binabago ang sinasabi ng mensahe: ang market, ang health factor mo at ang threshold mo.
+
+Hindi lang SimpleLogin ang pagpipilian. Nagbibigay rin ng mga address na nagpapasa sa sarili mong address ang DuckDuckGo Email Protection, Firefox Relay (mula sa Mozilla), addy.io at Hide My Email ng Apple (kasama sa iCloud+ subscription). Magkakaiba ang mga limitasyon nila, kaya basahin ang page ng vendor bago ka umasa sa isa.
+
+## Paano gumamit ng Signal username sa halip na phone number mo?
+
+Hinahayaan ng Signal username na makapagsimula ng chat ang isang tao nang wala ang phone number mo, at ito ang hinihingi ng Tokenping: hindi kailanman humihingi ng numero ang form nito. Sinusunod ng mga hakbang na ito ang mga support page ng Signal.
+
+1. **Gumawa ng username.** Sa Signal, buksan ang profile mo at i-tap ang simbolong @. 3 hanggang 32 character ang mga username (a-z, 0-9 at \_) at nagtatapos sa kahit dalawang digit. Ganitong hugis ang inaasahan ng form ng Tokenping: `alice.42`, ang nickname mo, isang tuldok at ang mga digit. Pumili ng nickname na hindi mo pangalan o handle na ginagamit mo sa ibang lugar.
+2. **Itago ang numero mo.** Buksan ang Settings, tapos Privacy, tapos Phone Number, at itakda ang "Who can see my number" (sino ang nakakakita ng numero ko) sa Nobody. Nakikita pa rin ito ng mga taong naka-save na ang numero mo sa contacts nila. Kung gusto mo ring maabot ka lang sa pamamagitan ng username mo, itakda ang "Who can find me by my number" (sino ang makakahanap sa akin gamit ang numero ko) sa Nobody.
+3. **Tingnan ang profile name mo.** May required na first name at opsyonal na litrato ang Signal profile mo, at sinasabi ng page ng Signal na puwede kang gumamit ng nickname, isang character o isang emoji. Kapag tinanggap mo ang isang message request, makikita ng nagpadala ang profile mo.
+4. **Idagdag ang username sa alerto at magpadala ng test.** Ilagay ito sa field na Signal username, i-save, at pindutin ang **Magpadala ng test** para sa Signal. Dahil wala sa contacts mo ang Signal account ng Tokenping, puwedeng dumating ang unang mensahe bilang message request. Gawin ang mga hakbang 2 at 3 bago mo ito tanggapin.
+
+Sinasabi ng Signal na kung hindi mo tatanggapin ang request, ang username lang na sinulatan nito ang makikita ng nagpadala. Kung tatanggapin mo, makikita ng nagpadala ang profile name mo at puwede nitong makita ang phone number mo, depende sa mga setting ng numero mo.
+
+Paraan lang ang username para makapagsimula ng chat. Hawak pa rin ng Signal mismo ang phone number na ginamit mo sa pag-register, at walang binabago roon ang alinman dito. Kung babaguhin o ide-delete mo ang username, sinasabi ng Signal na puwede nang kunin ng kahit sino ang luma pagkalipas ng maikling panahon, at patuloy na magpapadala ang Tokenping sa username na naka-imbak dito, kaya i-update agad ang alerto.
+
+## Paano mo mapipigilang ipakilala ka ng Telegram account mo?
+
+Ang Telegram ang pinakahindi akma sa tatlo, kaya basahin ito bago mo ito piliin. Makakapagpadala lang ang Tokenping sa Telegram account na nakapindot na ng Start sa bot nito, kaya tina-type mo ang @username mo sa alerto at pinipindot ang Start nang isang beses. Kaya kailangan ng account ng username, at sinasabi ng Telegram na publiko ang mga username: ginagawa ka nitong mahahanap sa global search, at puwede kang padalhan ng mensahe ng mga taong nakakita sa iyo nang hindi kailangan ang numero mo. Pinapayuhan ng sariling FAQ ng Telegram na huwag maglagay nito kung hindi ka komportable roon.
+
+1. **Pumili ng username na walang anumang tungkol sa iyo.** Gumamit ng a-z, 0-9 at underscore; tumatanggap ang Tokenping ng 4 hanggang 32 character. Itakda ito sa Settings ng Telegram.
+2. **Tingnan ang display name at litrato mo.** Sinasabi ng privacy policy ng Telegram na hindi kailangang totoong pangalan mo ang screen name mo. Nakikita ng isang bot ang public name, username at mga profile picture mo.
+3. **Tingnan ang setting ng numero mo.** Buksan ang Settings, tapos Privacy and Security, tapos Phone Number. Bilang default, ang mga taong naka-save ka sa contacts nila lang ang nakakakita ng numero mo, at sinasabi ng Telegram na hindi rin ito nakikita ng taong nakahanap sa iyo gamit ang username. Hindi ito nakikita ng isang bot maliban kung ibibigay mo.
+4. **I-link ang account.** I-type ang username sa alerto, pindutin ang Start sa bot at hintaying ipakita ng form na naka-link na ito.
+
+Ang chat ID at username mo lang ang itinatago ng code ng Tokenping, pero ibinibigay ng Bot API ng Telegram sa isang bot ang first name mo sa bawat mensahe at, kapag mayroon, ang last name, username at language code mo. Puwedeng tingnan ng kahit sino kung pinindot na ng isang username ang Start. Kapag nagpadala ka ng /stop sa bot, maa-unlink ang chat mo.
+
+## Dapat ka bang gumamit ng hiwalay na wallet?
+
+Kung doon ka lang din magbo-borrow. Ang wallet na ikinonekta mo lang ang binabantayan ng Tokenping at wala nang iba, at pag-aari ng wallet na nagbayad ang access, kaya hindi ka puwedeng magbayad mula sa isang address para bantayan ang posisyong hawak ng iba. Pinagsasama ng wallet na para lang sa Aave ang posisyon, ang bayad at ang mga alerto sa iisang address. Nag-iiwan pa rin ng public trail ang paraan ng pagpondo mo rito, publiko ang bayad sa Tokenping, at nananatiling pseudonymous ang wallet, hindi anonymous. Ang paglipat ng loan sa bagong wallet ay kadalasang nangangahulugang pagsasara at muling pagbubukas ng posisyon, kasama ang mga gastos at panganib ng liquidation na dala niyon, kaya hindi ito inirerekomenda ng gabay na ito.
+
+## Ano ang pinoprotektahan ng bawat hakbang, at ano ang hindi?
+
+| Hakbang                                                     | Itinatago sa Tokenping at sa mga provider nito   | Hindi itinatago                                                                                                  |
+| ----------------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| Email alias                                                 | Ang totoong email address mo                     | Nakikita ng alias service ang dalawang address at ang mga alerto, at napupunta ang mga ito sa totoong mailbox mo |
+| Signal username, nakatago ang numero                        | Ang phone number mo                              | Hawak pa rin ng Signal ang numero mo, at ibinabahagi ng pagtanggap ng request ang profile name mo                |
+| Telegram username at pangalan na hindi nagpapakilala sa iyo | Ang totoong pangalan at phone number mo          | Publiko ang username, at iniimbak ng Telegram ang chat sa mga server nito                                        |
+| Wallet na para lang sa Aave                                 | Ugnayan sa iba pang kasaysayan ng wallet na iyon | Publiko ang mga transaksyon ng pagpondo at ang bayad sa Tokenping                                                |
+| Pag-delete ng alerto                                        | Ang naka-imbak na row, kasama ang contact        | Ang on-chain na bayad, at ang itinatago ng bawat provider ayon sa sarili nitong mga patakaran                    |
+
+## Paano i-delete ang iniimbak ng Tokenping?
+
+I-delete ang alerto sa dashboard: pindutin ang **I-edit ang alerto**, tapos ang **I-delete ang alerto**, at kumpirmahin. Inaalis nito ang mga setting para sa market na iyon, kasama ang email address at Signal username, at nangangailangan ito ng aktibong access. Hiwalay na dine-delete ang alerto ng bawat market.
+
+<Callout tone="warning">
+  Hindi nagbubura ng anuman ang pagtatapos ng access mo: nananatiling naka-imbak ang alerto at ang contact dito hanggang
+  i-delete mo ang alerto. I-delete ang mga alertong ayaw mo na habang aktibo pa ang access mo. Kung nag-expire na ito,
+  sinasabi ng privacy page kung saan magme-message sa team para ipa-delete ang mga setting mo.
+</Callout>
+
+Sa Telegram, maa-unlink ang chat mo kapag nagpadala ka ng /stop sa bot. Puwedeng ipaalis kapag hiniling ang opsyonal na sagot sa "Paano mo nalaman", sa pamamagitan ng parehong mga contact sa privacy page. Walang sinumang makakapag-delete ng on-chain na bayad.
+
+Nasa [Tokenping repository](https://github.com/romispectrum/tokenping) ang code sa likod ng lahat ng ito. Kung may pahayag sa gabay na ito na hindi tugma rito, sabihin sa team sa pamamagitan ng mga contact sa privacy page.
+
+## Mga sanggunian
+
+- [Privacy page ng Tokenping](/fil/privacy) (na-access noong Oktubre 19, 2026; huling na-update noong Oktubre 19, 2026): ano ang iniimbak, sino ang humahawak nito, ano ang publiko at paano ito i-delete
+- [Source code ng Tokenping sa GitHub](https://github.com/romispectrum/tokenping) (na-access noong Oktubre 19, 2026; publiko ang repository): sign-in sa `packages/nextjs/app/api/auth`, mga session check sa `packages/nextjs/services/api/server/session.ts`, pag-iimbak ng alerto sa `packages/nextjs/services/notifications`, ang mga Telegram route sa `packages/nextjs/app/api/telegram`, ang mga migration sa `packages/supabase/migrations` at ang payment contract sa `packages/hardhat/contracts`
+- [TokenpingPaywall sa Arbitrum One, verified ang source sa Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553) (na-access noong Oktubre 19, 2026): ang PaymentReceived event
+- [SimpleLogin](https://simplelogin.io/) (na-access noong Oktubre 19, 2026): ano ang ginagawa ng alias, sino ang gumagawa nito, open source
+- [SimpleLogin pricing](https://simplelogin.io/pricing/) (na-access noong Oktubre 19, 2026): isang planong walang kailangang bayaran, na may limitadong bilang ng alias
+- [Dokumentasyon ng SimpleLogin: paggawa ng alias](https://simplelogin.io/docs/getting-started/create-alias/) (na-access noong Oktubre 19, 2026)
+- [DuckDuckGo Email Protection](https://duckduckgo.com/duckduckgo-help-pages/email-protection/what-is-duckduckgo-email-protection) (na-access noong Oktubre 19, 2026)
+- [Firefox Relay](https://relay.firefox.com/) (na-access noong Oktubre 19, 2026)
+- [addy.io](https://addy.io/) (na-access noong Oktubre 19, 2026)
+- [Apple Support: Hide My Email with iCloud+](https://support.apple.com/en-us/102548) (na-access noong Oktubre 19, 2026)
+- [Signal Support: Phone Number Privacy and Usernames](https://support.signal.org/hc/en-us/articles/6712070553754-Phone-Number-Privacy-and-Usernames) (na-access noong Oktubre 19, 2026)
+- [Signal Support: Signal Profiles and Message Requests](https://support.signal.org/hc/en-us/articles/360007459591-Signal-Profiles-and-Message-Requests) (na-access noong Oktubre 19, 2026)
+- [Privacy policy ng Signal](https://signal.org/legal/) (na-access noong Oktubre 19, 2026)
+- [Telegram FAQ](https://telegram.org/faq) (na-access noong Oktubre 19, 2026): mga username, visibility ng phone number, ano ang nakikita ng mga bot
+- [Privacy policy ng Telegram](https://telegram.org/privacy) (na-access noong Oktubre 19, 2026)
+- [Telegram Bot API: User at Chat objects](https://core.telegram.org/bots/api) (na-access noong Oktubre 19, 2026)
+- [Data processing addendum ng Resend](https://resend.com/legal/dpa) (na-access noong Oktubre 19, 2026)
+- [Dokumentasyon ng Resend: pangmatagalang retention ng email data](https://www.resend.com/docs/webhooks/how-to-store-webhooks-data) (na-access noong Oktubre 19, 2026)
+- [Vercel Web Analytics: privacy and compliance](https://vercel.com/docs/analytics/privacy-policy) (na-access noong Oktubre 19, 2026)
+- [Dokumentasyon ng ENS: mga primary name](https://docs.ens.domains/web/reverse) (na-access noong Oktubre 19, 2026)
+- [ethereum.org: introduction to Ethereum](https://ethereum.org/en/developers/docs/intro-to-ethereum/) (na-access noong Oktubre 19, 2026)
+
+_Pang-edukasyong nilalaman, hindi payong pinansyal. Binabawasan ng mga alerto ang panganib, pero hindi nito napipigilan ang liquidation._

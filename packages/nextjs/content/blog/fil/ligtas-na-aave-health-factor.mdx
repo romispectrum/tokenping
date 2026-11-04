@@ -1,0 +1,158 @@
+export const meta = {
+  slug: "ligtas-na-aave-health-factor",
+  title: "Ano ang ligtas na health factor sa Aave? Table ng buffer",
+  description:
+    "Walang iisang ligtas na Aave health factor. Tingnan kung gaano kalayo ang puwedeng ibagsak ng presyo sa 1.2, 1.5 o 2.0, at paano pumili ng buffer.",
+  h1: "Ano ang ligtas na health factor sa Aave?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-20",
+  primaryQuestion: "Anong health factor ang ligtas sa Aave?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  Walang iisang ligtas o "magandang" health factor sa Aave. Sinasabi mismo ng help centre ng Aave na nakadepende ang
+  tamang antas sa kung gaano ka-volatile at gaano magkaugnay ang mga asset mo. Ang sinasabi ng numero ay kung gaano
+  kalayo ang puwedeng igalaw ng mga presyo bago ang liquidation: kapag iisa ang volatile na collateral at stablecoin ang
+  utang, umaabot sa 1.00 ang health factor na 1.2 pagkatapos ng 16.7% na pagbagsak ng presyo, ang 1.5 pagkatapos ng
+  33.3% na pagbagsak at ang 2.0 pagkatapos ng 50% na pagbagsak.
+</ShortAnswer>
+
+<ScopeNote />
+
+## May ligtas bang health factor sa Aave?
+
+Wala. Sinasabi ng help centre ng Aave na walang "universally 'safe' health factor" (health factor na ligtas para sa lahat), dahil nakadepende ang tamang antas sa volatility at ugnayan ng mga asset sa isang posisyon ([Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations), na-access noong Oktubre 14, 2026). Idinadagdag nito na puwedeng katanggap-tanggap ang mas mababang health factor para sa magkakaugnay na asset, gaya ng mga stablecoin o mga asset na malapit na nakatali sa ETH.
+
+Ang health factor (HF) ay numerong naghahambing sa collateral at utang mo sa isang Aave market: HF = Σ(halaga ng collateral × liquidation threshold) ÷ kabuuang halaga ng utang, sa USD sa mga presyo ng oracle (pinagkukunan ng presyo) ng Aave. Ang liquidation threshold ay ang bahagi ng halaga ng collateral na binibilang sa health factor, halimbawa 83% para sa WETH sa Ethereum Core market (binasa on-chain sa Ethereum block 26193284 noong Oktubre 14, 2026). Sa ilalim ng 1.00, puwedeng bayaran ng isang liquidator ang bahagi o lahat ng utang mo, at mawawalan ka ng collateral na katumbas ng halagang binayaran at isang liquidation bonus. Nasa gabay na [ano ang Aave health factor](/fil/blog/aave-health-factor-ipinaliwanag) ang formula at iba pang halimbawa.
+
+Kaya nauuwi ang "ligtas" na health factor sa dalawang pagpili na ikaw lang ang makagagawa: gaano kalaking galaw ng presyo ang dapat kayanin ng posisyon mo, at gaano karaming oras ang kailangan mo para kumilos kapag nagsimula nang gumalaw ang mga presyo. Nilalagyan ng mga dashboard, kasama ang sa Tokenping, ng label ang mga health factor gamit ang mga salitang gaya ng "Ligtas" o "Delikado". Mga display band lang ang mga label na iyon; walang antas na naggagarantiyang ligtas sa liquidation ang isang posisyon.
+
+## Gaano kalayo ang puwedeng ibagsak ng presyo bago ang liquidation sa bawat health factor?
+
+Kapag iisa ang volatile na collateral at stablecoin ang utang, umaabot sa health factor na 1.00 ang isang posisyon sa Aave pagkatapos bumagsak ang presyo ng collateral nang 1 − 1/HF. Sa HF 1.2, 16.7% na pagbagsak iyon, sa HF 1.5 ay 33.3%, at sa HF 2.0 ay 50%.
+
+Maikli ang derivation. Kapag iisa ang collateral, HF = (dami ng collateral × presyo × liquidation threshold) ÷ utang. Kung stablecoin na nagkakahalaga ng $1 ang utang at walang ibang nagbabago, gumagalaw ang health factor nang eksaktong proporsyonal sa presyo ng collateral. Umaabot ito sa 1.00 kapag bumaba na ang presyo sa 1/HF ng presyo ngayon, kaya ang pagbagsak ay 1 − 1/HF.
+
+| Health factor ngayon                                                       | Pagbagsak ng presyo na magdadala sa HF sa 1.00 | Presyo ng ETH sa HF 1.00, kung $2,400 ang ETH ngayon |
+| -------------------------------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------- |
+| 83 ÷ 80.5 ≈ 1.031 (WETH na naka-borrow hanggang sa limit sa Ethereum Core) | 3.0%                                           | $2,327.71                                            |
+| 1.1                                                                        | 9.1%                                           | $2,181.82                                            |
+| 1.2                                                                        | 16.7%                                          | $2,000.00                                            |
+| 1.3                                                                        | 23.1%                                          | $1,846.15                                            |
+| 1.5                                                                        | 33.3%                                          | $1,600.00                                            |
+| 1.66 (ang halimbawa sa ibaba)                                              | 39.8%                                          | $1,445.78                                            |
+| 2.0                                                                        | 50.0%                                          | $1,200.00                                            |
+| 3.0                                                                        | 66.7%                                          | $800.00                                              |
+
+Isang halimbawang pagsusuri sa Ethereum Core market, gamit ang WETH liquidation threshold na 83% na binasa on-chain noong Oktubre 14, 2026 (Ethereum block 26193284): kumuha ng 10 WETH na naka-deposit sa halimbawang presyong $2,400 ($24,000) at 12,000 USDC na hiniram. HF = 24,000 × 0.83 ÷ 12,000 = 1.66. Umaabot ang ETH sa linya ng liquidation sa 12,000 ÷ (10 × 0.83) = $1,445.78, na 39.8% sa ilalim ng $2,400, kapareho ng 1 − 1/1.66. Binilog ang ETH sa $2,400 dito; $2,414.78 ang basa ng oracle ng Aave sa block 26193376 sa parehong araw.
+
+Ipinapalagay ng table na mananatili sa $1 ang stablecoin, walang naiipong interes at hindi nagbabago ang liquidation threshold. Kapag dalawa ang collateral asset, o volatile na asset ang utang, nagbabago ang aritmetika; ipinapaliwanag ng gabay na [kalkulahin ang Aave liquidation price mo](/fil/blog/paano-kalkulahin-ang-aave-liquidation-price) ang dalawang kaso.
+
+## Bakit iba ang "ligtas" na numero para sa stablecoin na utang, volatile na utang at mga E-Mode loop?
+
+Iba-iba ang ibig sabihin ng parehong health factor para sa magkakaibang posisyon sa Aave, dahil sinusukat nito ang layo sa liquidation sa presyong nagpapagalaw sa posisyon, at nakadepende iyon sa idineposito mo at sa hiniram mo. Ito ang kayang saluhin ng health factor na 1.5 sa apat na karaniwang setup:
+
+| Uri ng posisyon                             | Halimbawa                                                             | Presyong nagpapagalaw sa health factor   | Galaw na magdadala sa HF mula 1.5 hanggang 1.00 |
+| ------------------------------------------- | --------------------------------------------------------------------- | ---------------------------------------- | ----------------------------------------------- |
+| Volatile na collateral, stablecoin na utang | WETH na naka-deposit, USDC na hiniram                                 | Presyo ng ETH sa USD                     | Bumagsak ang ETH nang 33.3%                     |
+| Stablecoin na collateral, volatile na utang | USDC na naka-deposit, WETH na hiniram                                 | Presyo ng ETH sa USD                     | Tumaas ang ETH nang 50%                         |
+| Dalawang volatile na asset                  | WBTC na naka-deposit, WETH na hiniram                                 | Presyo ng BTC na hinati sa presyo ng ETH | Bumagsak ang BTC/ETH ratio nang 33.3%           |
+| Magkaugnay na E-Mode loop                   | wstETH na naka-deposit, WETH na hiniram sa E-Mode na "ETH correlated" | wstETH/ETH rate mula sa oracle           | Bumagsak ang rate nang 33.3%                    |
+
+**Stablecoin na utang.** Kapag stablecoin ang utang laban sa ETH o BTC, halos isa-sa-isang sinusundan ng health factor ang presyo ng collateral. Kaunti lang ang galaw sa panig ng utang: nililimitahan ng USDC price adapter ng Aave sa Ethereum ang presyo ng USDC sa $1.04 (binasa on-chain sa Ethereum block 26193376 noong Oktubre 14, 2026), kaya hindi kailanman pinahahalagahan ang utang na USDC nang higit sa 4% sa itaas ng $1, at ang presyo ng USDC na mas mababa sa $1 ay nagpapababa sa halaga ng utang, na nagpapataas sa health factor.
+
+**Volatile na utang.** Kapag volatile na asset ang hiniram mo laban sa mga stablecoin, bumababa ang health factor kapag tumaas ang hiniram na asset, at puwedeng tumaas ang hiniram na asset nang HF − 1 bago ang liquidation (50% sa HF 1.5). Halimbawa, 10,000 USDC na naka-deposit (liquidation threshold na 78% sa Ethereum Core sa block 26193284, Oktubre 14, 2026) laban sa WETH na nagkakahalaga ng $6,000 na hiniram: HF = 10,000 × 0.78 ÷ 6,000 = 1.30. Kung nagsimula ang ETH sa $2,400, aabot sa HF 1.00 ang posisyon kapag tumaas ang ETH nang 30%, sa $3,120. Puwede ring gumalaw ang stablecoin na collateral: noong Marso 11, 2023, bumagsak ang USDC sa mga $0.88, ayon sa post-mortem ng Gauntlet, at sa presyong iyon ay nasa 8,800 × 0.78 ÷ 6,000 = 1.144 ang parehong posisyon.
+
+**Mga E-Mode loop.** Sa E-Mode category na "ETH correlated" sa Ethereum Core (LTV 93%, liquidation threshold 95% sa Ethereum block 26193288, Oktubre 14, 2026; pareho sa Arbitrum), sinusundan ng health factor ng isang loop (paulit-ulit na pag-borrow gamit ang leverage) na wstETH laban sa WETH ang wstETH/ETH rate na iniuulat ng oracle, hindi ang presyo ng ETH sa dolyar. Binabawasan niyon ang pagiging sensitibo nito sa market price ng ETH, pero ang loop na naka-borrow hanggang sa limit nito ay nagsisimula sa 95 ÷ 93 = 1.0215 at umaabot sa 1.00 pagkatapos ng 2.1% na pagbagsak ng rate na iyon. Noong Marso 2026, binawasan ng isang maling na-configure na CAPO oracle ang epektibong wstETH rate nang mga 2.85% sa mga market na Ethereum Core at Prime, sapat para ma-liquidate ang mga E-Mode loop na mahigpit ang leverage, ayon sa post-mortem ng Chaos Labs. Kaya para sa isang loop, puwedeng mas mahalaga ang error sa oracle o sa exchange rate kaysa sa pagbagsak ng market, at kung tumaas ang WETH borrow rate nang higit sa kinikita ng collateral, unti-unti ring kinakain ng interes ang maliit na buffer. Tinatalakay ng gabay na [bakit kusang bumababa ang Aave health factor mo](/fil/blog/bakit-bumaba-ang-aave-health-factor) ang insidenteng iyon.
+
+## Gaano kabilis kinakain ng interes at ng mga pagbabago sa parameter ang buffer mo?
+
+Sa mga rate noong Oktubre 14, 2026 sa Ethereum Core market ng Aave (block 26193378), babawasan ng interes nang humigit-kumulang 3% kada taon ang health factor ng posisyong may WETH na collateral at USDC na utang, kung mananatili ang mga rate at presyo; ang pagbaba ng isang liquidation threshold ay kumukuha ng bahagi nito sa isang hakbang. Pinabababa ng interes ang health factor kapag mas mataas ang borrow rate ng utang kaysa sa supply rate ng collateral, kaya ang posisyong mas malaki ang kinikita ng collateral kaysa sa gastos ng utang, gaya ng USDC na naka-deposit laban sa WETH na hiniram, ay gumagalaw pataas. Sa Aave V3, agad naaapply ang mas mababang liquidation threshold sa bawat bukas na posisyong gumagamit ng collateral na iyon, at kapag iisa ang collateral, bumababa ang health factor sa parehong proporsyon. Ipinapaliwanag ng gabay na [bakit kusang bumababa ang Aave health factor mo](/fil/blog/bakit-bumaba-ang-aave-health-factor) ang dalawa gamit ang mga numero.
+
+## Gaano kalaking buffer ang kailangan mo para may oras kang kumilos?
+
+Kailangan ng posisyon sa Aave ng sapat na buffer para patuloy na makagalaw ang mga presyo habang dumarating sa iyo ang babala at habang nakukumpirma ang repay o supply transaction mo. Walang nakapirming numero: nakadepende ito sa kung gaano kabilis gumalaw ang collateral mo, kung gaano kaaga mo nakikita ang babala at kung gaano ka maaasahang makapagpapasok ng transaksyon.
+
+Nagsasama-sama ang tatlong pagkaantala:
+
+1. **Pagtuklas.** Binubuksan mo ang Aave app, o tumitingin ang isang serbisyo ayon sa iskedyul. Tumitingin ang Tokenping tuwing 5 minuto, kaya puwedeng tumawid sa 1.00 ang isang mabilis na galaw sa pagitan ng dalawang check.
+2. **Pagtugon.** Nakikita mo ang mensahe at napupuntahan mo ang wallet mo. Sa gabi o habang bumibiyahe, puwedeng umabot iyon nang ilang oras.
+3. **Pagpapatupad.** Kailangang mapirmahan, maipadala at maisama sa isang block ang transaksyon, at sa market na may stress ay tumataas ang gas at puwedeng pumalya ang mga interface o RPC endpoint. Sa Polygon forum noong Mayo 2021, sinubukan ng isang borrower na magbayad sa HF 1.01, paulit-ulit na nagka-error at na-liquidate bago tumuloy ang bayad. Sa Aave forum noong Disyembre 2024, iniulat ng isa pa ang mahigit isang oras ng mga pagtatangkang magbayad na naka-pending, at pagkatapos ay isang liquidation. Hindi napapatunayan ng alinmang thread ang sanhi.
+
+Sa ilalim ng 1.00, puwedeng mabilis na sumunod ang liquidation: inilalarawan ng help centre ng Aave ang mga liquidation bilang lubhang mapagkumpitensya, na kadalasang pinapatakbo ng mga custom bot na tumutugon sa mga pagbabago sa presyo ng oracle at nagsusumite ng mga transaksyon nila nang may mataas na priority.
+
+Kaya sinasaklaw ng buffer na kailangan mo ang galaw ng presyo na puwedeng mangyari habang nasa pagtuklas, pagtugon at pagpapatupad. Dahil dito, nasa itaas ng huling health factor kung saan makakakilos ka pa ang isang kapaki-pakinabang na alerto, hindi mismo roon.
+
+## Paano ka pipili ng alert threshold, hakbang-hakbang?
+
+Isang paraan ng pagpili ng threshold ang magsimula sa presyo, hindi sa health factor: piliin ang presyo ng collateral kung saan gusto mo nang magsimulang kumilos, gawin itong health factor, at i-set ang alerto sa antas na iyon o bahagyang nasa itaas nito, dahil tumatakbo ayon sa iskedyul ang mga check at puwedeng matagalan bago makumpirma ang repay. Gumagamit ang halimbawa ng posisyon sa Ethereum Core na may 10 WETH na naka-deposit at 12,000 USDC na hiniram, WETH liquidation threshold na 83% (Ethereum block 26193284, Oktubre 14, 2026) at ETH sa halimbawang presyong $2,400. Nagbibigay iyon ng HF 1.66 at liquidation price na $1,445.78.
+
+1. **Piliin ang presyo kung saan gusto mo nang magsimulang kumilos.** Halimbawa, gusto mong magbayad o magdagdag ng collateral kapag umabot ang ETH sa $2,000, isang 16.7% na pagbagsak mula $2,400.
+2. **Gawing health factor ang presyong iyon.** Kapag iisa ang collateral at stablecoin ang utang, HF sa bagong presyo = HF ngayon × bagong presyo ÷ presyo ngayon. Dito, 1.66 × 2,000 ÷ 2,400 = 1.38 iyon. Kapag marami ang collateral asset o volatile ang utang, ipinapakita ng gabay na [kalkulahin ang Aave liquidation price mo](/fil/blog/paano-kalkulahin-ang-aave-liquidation-price) kung paano kunin ang health factor sa kahit anong presyo.
+3. **Tingnan ang natitirang puwang.** Sa ETH na $2,000, kaya pa ng posisyon ang karagdagang 27.7% na pagbagsak, pababa sa $1,445.78. Kung hindi sapat ang puwang na iyon para sa oras na kailangan mo para kumilos, pumili ng mas mataas na presyo at ulitin. Ang threshold na nag-iiwan ng isang partikular na karagdagang pagbagsak ay 1 ÷ (1 − pagbagsak):
+
+   | Karagdagang pagbagsak ng presyo na gusto mong matira kapag nag-fire ang alerto | Alert threshold |
+   | ------------------------------------------------------------------------------ | --------------- |
+   | 10%                                                                            | 1.11            |
+   | 15%                                                                            | 1.18            |
+   | 20%                                                                            | 1.25            |
+   | 25%                                                                            | 1.33            |
+   | 33.3%                                                                          | 1.50            |
+
+   Ipinapalagay ng mga row na ito na iisa ang volatile na collateral at stablecoin ang utang.
+
+4. **Panatilihing health factor ang threshold, hindi presyo.** Para sa iisang collateral na may stablecoin na utang, napapanatili ng threshold ang kahulugan nito pagkatapos mong magbayad, magdagdag ng collateral o mag-borrow pa: palaging nag-iiwan ng 20% na pagbagsak ang 1.25, habang gumagalaw kasama ng posisyon ang presyo ng ETH kung saan ito nagfa-fire.
+5. **Ulitin para sa bawat market.** Sa Aave V3, may sariling health factor ang market ng bawat network, kaya kailangan ng magkahiwalay na threshold ang mga posisyon sa Arbitrum at Base.
+
+Sa Tokenping, itinatakda mo ang numerong ito bawat Aave V3 market o Aave V4 Spoke, mula 1.1 hanggang 10 (1.5 ang default), at makakatanggap ka ng mensahe sa Signal, Telegram o email tuwing 5 minuto habang nasa ilalim nito ang health factor mo. Ang posisyong karaniwang tumatakbo sa ilalim ng 1.1, gaya ng isang E-Mode loop na malapit sa limit nito, ay magti-trigger ng mensahe sa bawat check, kaya hindi ito bagay sa Tokenping. Puwede mo munang [tingnan ang Aave V3 health factor mo](/fil/aave); tinatalakay ng gabay na [paano mag-set up ng health factor alert](/fil/blog/paano-mag-set-ng-aave-health-factor-alert) ang iba pa.
+
+## Ano ang nagagawa sa buffer mo ng pag-borrow ng maximum?
+
+Halos walang buffer na naiiwan kapag nag-borrow ka ng maximum. Sa Aave V3, nagsisimula ang posisyong nasa borrow limit nito sa health factor na LT ÷ LTV, na mga 1.02 hanggang 1.07 lang para sa mga pangunahing asset sa Ethereum Core at Arbitrum. Para sa WETH sa Ethereum Core, 83 ÷ 80.5 = 1.031 iyon, kaya umaabot sa linya ng liquidation ang 3.0% na pagbagsak ng ETH.
+
+Umiiral ang puwang dahil dalawang porsiyento bawat collateral ang ginagamit ng Aave V3. Nililimitahan ng loan-to-value ratio (LTV) kung magkano ang puwede mong i-borrow laban dito; ang liquidation threshold (LT), na palaging kasintaas man lang nito, ang nagpapasya kung kailan ka puwedeng ma-liquidate. Tinatanggap lang ang bagong borrow habang nananatili ang utang mo sa loob ng collateral × LTV. Sa limit, utang = collateral × LTV, kaya HF = collateral × LT ÷ (collateral × LTV) = LT ÷ LTV.
+
+| Market                                    | Collateral                           | LTV   | Liquidation threshold | HF sa borrow limit (LT ÷ LTV) | Galaw na magdadala sa HF sa 1.00                 |
+| ----------------------------------------- | ------------------------------------ | ----- | --------------------- | ----------------------------- | ------------------------------------------------ |
+| Ethereum Core                             | WETH                                 | 80.5% | 83%                   | 1.031                         | Bumagsak ang ETH nang 3.0% (stablecoin na utang) |
+| Ethereum Core                             | WBTC                                 | 73%   | 78%                   | 1.068                         | Bumagsak ang BTC nang 6.4% (stablecoin na utang) |
+| Ethereum Core                             | USDC                                 | 75%   | 78%                   | 1.040                         | Tumaas ang hiniram na asset nang 4.0%            |
+| Arbitrum                                  | WETH                                 | 80%   | 84%                   | 1.050                         | Bumagsak ang ETH nang 4.8% (stablecoin na utang) |
+| Arbitrum                                  | WBTC                                 | 73%   | 78%                   | 1.068                         | Bumagsak ang BTC nang 6.4% (stablecoin na utang) |
+| Arbitrum                                  | USDC                                 | 75%   | 78%                   | 1.040                         | Tumaas ang hiniram na asset nang 4.0%            |
+| Ethereum Core, E-Mode na "ETH correlated" | wstETH o cbETH, nagbo-borrow ng WETH | 93%   | 95%                   | 1.0215                        | Bumagsak nang 2.1% ang rate ng collateral sa ETH |
+
+Binasa on-chain ang mga row ng asset noong Oktubre 14, 2026 mula sa PoolDataProvider ng bawat market sa Ethereum block 26193284 at Arbitrum block 514855406, at hindi nagbago nang basahin muli sa Ethereum block 26193988 at Arbitrum block 514885451. Galing ang row ng E-Mode sa Ethereum Core Pool sa mga block 26193288 at 26193990; ang category na "ETH correlated" ng Arbitrum, na binasa mula sa Pool nito sa Arbitrum block 514855561 at 514885562, ay may parehong mga value. Puwedeng baguhin ng governance ang alinman sa mga ito anumang oras.
+
+Sa dolyar: ang 10 WETH sa halimbawang presyong $2,400 sa Ethereum Core ay sumusuporta sa hanggang 24,000 × 0.805 = $19,320 na utang na USDC. Ang pag-borrow ng lahat ng iyon ay nagbibigay ng HF = 19,920 ÷ 19,320 = 1.031 at liquidation price na 19,320 ÷ (10 × 0.83) = $2,327.71, 3.0% lang sa ilalim ng simula, at sa mga rate noong Oktubre 14, 2026 ay itinutulak pa pababa ng interes ang health factor kahit hindi gumalaw ang ETH. Kapag marami ang collateral asset, ang HF sa limit ay ang tinimbang na liquidation threshold na hinati sa tinimbang na LTV, kadalasang ilang porsiyento lang sa itaas ng 1.
+
+Ang mga metrong "borrow limit used" (nagamit na borrow limit) sa mga app ay nagpapakita ng utang ÷ (collateral × LTV), na hindi ang health factor. Ang posisyong WETH sa Ethereum Core na nasa 100% ng borrow limit nito ay may HF pa ring mga 1.031, hindi 1.00.
+
+<Callout tone="info">
+  Binibigyan ng Aave V4 ang bawat collateral ng iisang collateral factor sa halip na magkahiwalay na LTV at liquidation
+  threshold, kaya patakaran ng V3 ang puwang na LT ÷ LTV sa table na ito. Sa Aave V3, binabantayan ng Tokenping ang
+  bawat market sa 21 network, kasama ang mga market na Core, Prime, EtherFi at Horizon ng Ethereum. Sa Aave V4,
+  binabantayan nito ang bawat Spoke sa Ethereum, Avalanche, Arc at Base, bawat isa bilang sariling market.
+</Callout>
+
+## Mga sanggunian
+
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations): walang health factor na ligtas para sa lahat; mapagkumpitensyang mga liquidation (na-access noong Oktubre 14, 2026)
+- [GenericLogic.sol, aave-v3-origin](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): formula ng health factor (na-access noong Oktubre 14, 2026)
+- [ValidationLogic.sol, aave-v3-origin](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): nililimitahan ng LTV ang mga borrow; liquidation sa ilalim ng HF 1.00 (na-access noong Oktubre 14, 2026)
+- [LiquidationLogic.sol, aave-v3-origin](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): bahagya o buong pagbabayad ng utang; collateral na kinukuha nang may liquidation bonus (na-access noong Oktubre 14, 2026)
+- [Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): LTV at liquidation threshold sa mga block 26193284 at 26193988; mga rate sa block 26193378 (na-access noong Oktubre 14, 2026)
+- [Ethereum Core Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): ang E-Mode category na "ETH correlated" sa mga block 26193288 at 26193990 (na-access noong Oktubre 14, 2026)
+- [Ethereum Core AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) (presyo ng ETH na $2,414.78 sa block 26193376) at ang [USDC price adapter](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B) nito (price cap na $1.04 sa block 26193376) (na-access noong Oktubre 14, 2026)
+- [PriceCapAdapterStable, aave-dao/aave-price-feeds](https://github.com/aave-dao/aave-price-feeds): paano gumagana ang cap ng USDC: binabalewala ang mga presyong lampas sa cap, ipinapasa ang mga presyong mas mababa sa $1 (na-access noong Oktubre 14, 2026)
+- [Arbitrum PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): LTV at liquidation threshold sa Arbitrum block 514855406 at 514885451 (na-access noong Oktubre 14, 2026)
+- [Arbitrum Pool](https://arbiscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD): ang E-Mode category na "ETH correlated", id 2, sa Arbitrum block 514855561 at 514885562 (na-access noong Oktubre 14, 2026)
+- [Aave V4 overview, aave/aave-v4](https://github.com/aave/aave-v4/blob/main/docs/overview.md): Dynamic Risk Configuration: collateral factor bilang parameter ng collateral sa V4; sa V3, naaapektuhan ng pagbaba ng liquidation threshold ang bawat bukas na posisyon (na-access noong Oktubre 14, 2026)
+- [Spoke.sol, aave/aave-v4](https://github.com/aave/aave-v4/blob/main/src/spoke/Spoke.sol): health factor ng V4 na tinimbang ng mga collateral factor (na-access noong Oktubre 14, 2026)
+- [Gauntlet: Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330): pinakamababang presyo ng USDC na mga $0.88, Marso 11, 2023 (na-access noong Oktubre 14, 2026)
+- [Chaos Labs: Post-Mortem, Exchange Rate Misalignment on wstETH Core and Prime Instances](https://governance.aave.com/t/24269): ang insidente ng CAPO noong Marso 2026 (na-access noong Oktubre 14, 2026)
+- [Polygon forum: Liquidation on polygon AAVE, JSON ERROR](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067): Mayo 2021 (na-access noong Oktubre 14, 2026)
+- [Aave forum: Repeatedly Failed Repayment Attempts Leading to Liquidation](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379): Disyembre 2024 (na-access noong Oktubre 14, 2026)
+
+_Pang-edukasyong nilalaman, hindi payong pinansyal. Binabawasan ng mga alerto ang panganib, pero hindi nito napipigilan ang liquidation._

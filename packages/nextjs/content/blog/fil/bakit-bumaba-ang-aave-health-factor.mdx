@@ -1,0 +1,157 @@
+export const meta = {
+  slug: "bakit-bumaba-ang-aave-health-factor",
+  title: "Bakit bumaba ang Aave health factor ko? 6 na sanhi",
+  description:
+    "Puwedeng bumaba ang Aave health factor mo kahit wala kang ginagawa: galaw ng presyo, interes, bawas sa threshold, depeg ng stablecoin at error ng oracle.",
+  h1: "Bakit bumaba ang Aave health factor ko kahit wala akong ginawa?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-25",
+  primaryQuestion: "Bakit kusang bumababa ang Aave health factor ko?",
+  readingMinutes: 15,
+};
+
+<ShortAnswer>
+  Kinukuwenta ulit ng Aave ang health factor mo mula sa presyo ng oracle (pinagkukunan ng presyo), sa kasalukuyang
+  balanse mo at sa kasalukuyang mga liquidation threshold tuwing binabasa ito, kaya gumagalaw ito kahit wala kang
+  ipinapadalang transaksyon. Sa Aave V3, bumababa ito kapag bumaba ang presyo ng collateral mo, tumaas ang asset na
+  hiniram mo, lumampas ang interes sa utang mo sa kinikita ng collateral mo, binawasan ng governance ang isang
+  liquidation threshold, bumaba sa ilalim ng $1 ang stablecoin na idineposito mo bilang collateral, o mali ang
+  configuration ng isang oracle. Kapag mas mababa sa 1.00, puwedeng i-liquidate ang posisyon.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Ang mga numero at ang mga block number kung kailan binasa ang mga ito: content/blog/snapshots/why-aave-health-factor-dropped.md (ang English na artikulo; ang gabay na ito ang Filipino na salin nito) */}
+
+## Bakit kusang nagbabago ang Aave health factor?
+
+Kusang nagbabago ang Aave health factor dahil hindi ito naka-store: kinukuwenta ito ulit ng protocol mula sa kasalukuyang presyo ng oracle, mga balanse (kasama ang naipong interes) at mga risk parameter tuwing binabasa ito:
+
+**HF = Σ(halaga ng collateral × liquidation threshold) ÷ kabuuang halaga ng utang**
+
+Parehong nasa USD ang dalawang panig, sa presyo ng Aave oracle, at kapag mas mababa sa 1.00 ay puwedeng i-liquidate ang posisyon. Ipinapaliwanag ang formula sa [ano ang Aave health factor](/fil/blog/aave-health-factor-ipinaliwanag). Sa Aave V3, anim na bagay ang nagpapababa rito nang walang anumang aksyon mula sa iyo. Gumagamit ang mga halimbawa ng mga parameter ng Ethereum Core na binasa noong Oktubre 14, 2026 at ng halimbawang presyo ng ETH na $2,400.
+
+| Sanhi                                               | Bumababa ang health factor mo kapag                                                                | Gaano kabilis          | Halimbawa                                                                  |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------- | -------------------------------------------------------------------------- |
+| 1. Bumaba ang presyo ng collateral                  | Bumaba ang presyo ng asset na idineposito mo bilang collateral                                     | Kasimbilis ng market   | 10 WETH laban sa 12,000 USDC, bumaba ang ETH nang 10%: 1.66 tungo sa 1.49  |
+| 2. Tumaas ang hiniram na asset                      | Nag-borrow ka ng volatile na asset at tumaas ito                                                   | Kasimbilis ng market   | 10,000 USDC laban sa 2.5 WETH, tumaas ang ETH nang 10%: 1.30 tungo sa 1.18 |
+| 3. Interes                                          | Mas mataas ang borrow rate ng utang mo kaysa sa supply rate ng collateral mo                       | Mabagal at tuloy-tuloy | 10 WETH laban sa 12,000 USDC: mga 1.66 tungo sa 1.61 sa loob ng isang taon |
+| 4. Bawas sa liquidation threshold                   | Binabaan ng governance o ng Risk Stewards ang threshold ng collateral mo                           | Biglaan, sabay-sabay   | Hypothetical na bawas sa WETH mula 83% tungo sa 82%: 1.66 tungo sa 1.64    |
+| 5. Depeg (pagkawala ng peg sa dolyar) ng stablecoin | Bumaba sa ilalim ng $1 ang stablecoin na idineposito mo bilang collateral                          | Kasimbilis ng market   | 10,000 USDC laban sa 2.5 WETH, USDC sa $0.88: 1.30 tungo sa 1.14           |
+| 6. Error ng oracle o exchange rate                  | Masyadong mababa ang halagang ibinibigay ng oracle sa collateral mo o masyadong mataas sa utang mo | Biglaan, sabay-sabay   | Marso 2026: halos 2.85% na mas mababa ang halagang ibinigay sa wstETH      |
+
+Sa isang thread sa Aave governance forum noong Pebrero 2025, isang borrower na nagsimula ang posisyon sa health factor na 1.71 ang nakakita ng partial liquidation, nagdagdag ng collateral nang umabot sa 1.01 ang health factor, at nakakita ng ikalawang liquidation nang tingnan niya ito kinaumagahan, kumbinsidong hindi bumaba nang sapat ang ETH para ipaliwanag ang alinman sa dalawa. Walang nakahanap ng sanhi sa thread; ang anim na sanhi sa ibaba ang mga dapat mong unang tingnan.
+
+Ang Aave V4, live sa Ethereum mula Marso 30, 2026 at mula noon sa Avalanche, Arc at Base, ay kumukuwenta ng health factor kada Spoke, na may iisang collateral factor kada asset. Pareho ang epekto ng presyo at interes, pero iba ang paraan ng pag-abot ng mga pagbabago sa parameter sa mga kasalukuyang posisyon (tingnan ang [kung paano inilalapat ng V4 ang mga pagbabago sa parameter, sa Sanhi 4](#sanhi-4-binawasan-ba-ng-governance-o-ng-risk-stewards-ang-isang-liquidation-threshold)).
+
+## Sanhi 1: Bumaba ba ang presyo ng collateral mo?
+
+Ang pagbaba ng presyo ng alinmang asset na idineposito mo bilang collateral ay nagpapababa ng Aave health factor mo, dahil sa presyo ng oracle tinataya ang halaga ng collateral. Kung iisa ang volatile na collateral at stablecoin ang utang, gumagalaw ang health factor nang proporsyonal sa presyo: ang 10% na pagbaba ay nagbabawas dito nang 10%.
+
+Halimbawa: 10 WETH na naka-deposit laban sa 12,000 USDC na hiniram sa Aave V3 Ethereum Core, kung saan 83% ang liquidation threshold ng WETH sa block 26193284 (Oktubre 14, 2026). Sa halimbawang $2,400 kada ETH (nagbasa ang Aave oracle ng $2,414.78 sa block 26193376 nang araw na iyon), ang health factor ay 24,000 × 0.83 ÷ 12,000 = 1.66. Sa $2,160 ito ay 1.49, sa $1,920 ito ay 1.33, at sa $1,445.78, pagbagsak na 39.8%, umaabot ito sa 1.00.
+
+Kapag marami ang collateral asset, ang weighted na bahagi lang ng bumababang asset ang gumagalaw. Ang presyong binibilang ay ang sa Aave oracle (sa Ethereum Core, gumagamit ang WETH ng feed na "ETH / USD"). Kung gaano kalayo puwedeng bumaba ang presyo sa bawat health factor ay nasa [gaano kalaking buffer ang ibinibigay ng health factor](/fil/blog/ligtas-na-aave-health-factor).
+
+## Sanhi 2: Tumaas ba ang presyo ng asset na hiniram mo?
+
+Kung volatile na asset ang hiniram mo, ang pagtaas ng presyo nito ay nagpapababa ng Aave health factor mo, dahil sa presyo ng oracle din tinataya ang utang.
+
+Halimbawa: 10,000 USDC na naka-deposit laban sa 2.5 WETH na hiniram sa Aave V3 Ethereum Core, kung saan 78% ang liquidation threshold ng USDC sa block 26193284 (Oktubre 14, 2026). Sa halimbawang $2,400, $6,000 ang halaga ng utang at ang health factor ay 10,000 × 0.78 ÷ 6,000 = 1.30. Kung tumaas ang ETH nang 10% sa $2,640, bababa ito sa 7,800 ÷ 6,600 = 1.18. Sa $3,120, 30% na mas mataas, umaabot ito sa 1.00.
+
+Nababawasan ang epektong ito ng mga correlated na pares gaya ng wstETH na collateral at WETH na utang, dahil parehong sumasabay sa ETH ang dalawang panig. Sa ganitong kaso, nakadepende ang health factor higit sa lahat sa wstETH-to-ETH rate na iniuulat ng oracle, kaya napapalitan ng oracle risk ang market risk (tingnan ang [mga error ng oracle at exchange rate, Sanhi 6](#sanhi-6-mali-ba-ang-presyong-ibinigay-ng-oracle-o-exchange-rate-sa-collateral-mo)).
+
+## Sanhi 3: Mas mabilis bang lumaki ang interes sa utang mo kaysa sa collateral mo?
+
+Pinabababa ng interes ang Aave health factor mo kapag mas mabilis lumaki ang utang mo kaysa sa collateral mo. Lumalaki bawat segundo ang variable na utang ayon sa borrow rate, habang kumikita ang collateral sa supply rate na karaniwang mas mababa. Kung iisa ang collateral asset, iisa ang utang na asset at hindi gumagalaw ang presyo, unti-unting bumababa ang health factor kapag mas mataas ang borrow rate ng utang kaysa sa supply rate ng collateral, at tumataas kapag mas mababa.
+
+Sa Aave V3 Ethereum Core sa block 26193378 (Oktubre 14, 2026), nagbabayad ang USDC ng 3.800% sa mga nagde-deposit at naniningil ng 4.496% kada taon sa mga borrower; ang WETH ay nagbabayad ng 1.309% at naniningil ng 1.943%. APR ang mga ito; bahagyang mas mataas na APY ang ipinapakita ng Aave app (4.60% para sa borrow rate na iyon ng USDC). Halimbawa: 10 WETH na naka-deposit (threshold 83%) laban sa 12,000 USDC na hiniram, na nananatili ang ETH sa halimbawang $2,400 at hindi nagbabago ang mga rate nang isang taon. Lumalaki ang utang sa mga 12,550 USDC, ang collateral sa mga 10.13 WETH, at dumudulas ang health factor mula 1.66 tungo sa mga 1.61. Variable ang mga rate, kaya ituring ito bilang sukat, hindi hula.
+
+Puwede ring biglang tumalon ang mga rate. Kalaunan noong Oktubre 14, 2026, tumalon ang USDC borrow rate ng Ethereum Core sa 13.67% APR sa iisang block (26194053, 23:32:59 UTC) nang umalis sa reserve ang mga $134 milyon na naka-deposit na USDC, umabot sa 14.18% sa loob ng pitong minuto, at bumalik sa 4.76% mga 36 minuto matapos ang pagtalon (block 26194231, 00:08 UTC noong Oktubre 15) nang bumalik ang pondong iyon. Kung bakit kayang i-triple ng iisang withdrawal ang isang rate ay nasa [kung paano gumagana ang mga interest rate sa Aave](/fil/blog/mga-interest-rate-sa-aave).
+
+Kumikita naman ang kabaligtarang posisyon: ang 10,000 USDC na naka-deposit laban sa 2.5 WETH na hiniram ay kumikita ng 3.800% at nagbabayad ng 1.943%, kaya dahan-dahang tumataas ang health factor nito mula 1.30 tungo sa mga 1.32 sa loob ng isang taon. Sa Aave V4, may User Risk Premium na idinadagdag sa borrow rate para sa mas mapanganib na collateral, kaya mas mabilis lumaki ang utang na iyon.
+
+## Sanhi 4: Binawasan ba ng governance o ng Risk Stewards ang isang liquidation threshold?
+
+Sa Aave V3, ang pagbawas sa liquidation threshold ng isang asset ay agad na nagpapababa ng health factor ng bawat bukas na posisyong nagbibilang ng asset na iyon sa normal nitong threshold. Ang mga posisyong may E-Mode category na kasama ang asset ay gumagamit ng threshold ng category, at puwede ring bawasan iyon ng governance o ng Risk Stewards sa parehong paraan. Hindi nagbabago ang mga balanse mo; ang lumiliit lang ay ang bahagi ng collateral na binibilang.
+
+Binabago ng governance ang mga threshold sa pamamagitan ng on-chain na botohan, karaniwan matapos ang isang post sa Aave governance forum. Ang Risk Stewards, mga contract na nagpapahintulot sa mga risk service provider ng Aave na mag-adjust ng mga parameter nang walang buong botohan, ay puwede ring maggalaw ng threshold sa loob ng itinakdang limitasyon kada update, pero hindi kailanman hanggang 0. Ginagamit din ang mga bawas para magretiro ng mga asset: sinasabi ng isang proposal ng LlamaRisk noong Hulyo 29, 2026 na puwedeng unti-unting bawasan ang mga threshold para alisin ang natitirang collateral, at ang limang market na isinasara ng Aave ay tinatalakay sa [ano ang nangyayari kapag isinara ng Aave ang isang market](/fil/blog/kapag-isinara-ng-aave-ang-isang-market).
+
+Isang hypothetical na halimbawa, hindi nakabinbing pagbabago: ang 10 WETH sa halimbawang $2,400 laban sa 12,000 USDC sa Ethereum Core (threshold ng WETH 83% noong Oktubre 14, 2026) ay may health factor na 1.66. Sa 82% ito ay magiging 1.64; sa 80%, 1.60. Para tingnan, ikumpara ang "Liquidation threshold" sa pahina ng asset sa Aave app sa mga kamakailang pagbabago ng threshold sa Aave governance forum.
+
+Iba ang paraan ng Aave V4. Gumagawa ng bagong configuration ang pagbabago sa collateral factor, at pinananatili ng mga kasalukuyang posisyon ang luma hanggang mag-borrow, mag-withdraw o magbago ng collateral settings ang user, maliban kung sapilitang i-update ng Governor ang mga ito.
+
+## Sanhi 5: Nag-depeg ba pababa ang stablecoin na idineposito mo bilang collateral?
+
+Pinabababa ng stablecoin na idineposito mo bilang collateral ang Aave health factor mo kapag bumaba ang presyo nito sa ilalim ng $1, dahil presyo ng oracle ang ginagamit ng Aave, hindi nakapirming $1. Sa Aave V3 Ethereum Core, napepresyuhan ang USDC sa pamamagitan ng adapter na "Capped USDC / USD" na may cap na $1.04 (nagbalik ang `getPriceCap` ng 104000000, 8 decimal, sa mga block 26193376 at 26193993 noong Oktubre 14, 2026). Kapag mas mataas sa cap ang presyo sa market, $1.04 ang iniuulat ng adapter; anumang mas mababang presyo, kasama ang anumang nasa ilalim ng $1, ay direktang dumaraan.
+
+Halimbawa: 10,000 USDC na naka-deposit (threshold 78%) laban sa 2.5 WETH na hiniram sa halimbawang $2,400, kaya $6,000 ang utang: health factor na 1.30. Kapag $0.88 ang USDC, bumababa ito sa 8,800 × 0.78 ÷ 6,000 = 1.14, at sa mga $0.77, na hindi gumagalaw ang ETH, umaabot ito sa 1.00.
+
+Galing sa kasaysayan ang $0.88. Noong Marso 11, 2023, matapos ang balita tungkol sa Silicon Valley Bank, bumaba ang USDC sa mga 88 sentimo. Itinatala ng post-mortem ng Gauntlet ang mga $280,000 na bad debt (utang na hindi na mababayaran) sa Aave V3 Avalanche E-Mode at mga $20,000 sa V3 Arbitrum; na-freeze ang mga stablecoin sa Avalanche, pero hindi na-pause ang protocol, kaya nagpatuloy ang mga liquidation.
+
+Ang kabilang panig: kung stablecoin ang utang mo, ang pababang depeg ay nagbabawas sa utang mo at nagpapataas ng health factor mo. Ang 10 WETH sa $2,400 (threshold 83%) laban sa 12,000 USDC ay mula 1.66 tungo sa mga 1.89 kapag $0.88 ang USDC. Ang pagtaas sa ibabaw ng $1 ay nagpapababa nito, pero hanggang mga 1.60 lang habang nananatili sa $1.04 ang cap, dahil hindi kailanman tinataya ng oracle ang utang na iyon nang higit sa $12,480.
+
+## Sanhi 6: Mali ba ang presyong ibinigay ng oracle o exchange rate sa collateral mo?
+
+Kayang ibaba nang biglaan ng maling configuration ng oracle o exchange rate ang Aave health factor mo, nang walang galaw sa market, sa pagtataya nang masyadong mababa sa collateral mo o masyadong mataas sa utang mo. Ang mga E-Mode na posisyong mahigpit ang leverage ang pinakananganganib.
+
+Ang dokumentadong kaso ay mula Marso 2026. Pinepresyuhan ng Aave ang wstETH gamit ang CAPO (Correlated Assets Price Oracle), na naglilimita kung gaano kabilis puwedeng tumaas ang wstETH-to-stETH rate. Sinasabi ng post-mortem ng Chaos Labs noong Marso 10, 2026 na nawala sa pagkakatugma ang snapshot ratio at timestamp ng cap, kaya nabawasan nang mga 2.85% ang epektibong wstETH rate sa Ethereum Core at Prime. Humigit-kumulang 10,938 wstETH ang na-liquidate sa E-Mode sa 34 na account na may health factor na mas mababa sa mga 1.0288, nang walang bad debt sa protocol. Inaprubahan ng DAO ang refund na iminungkahi noong Marso 11, at noong Marso 26, 2026 kumuha ang Aave Finance Committee ng 513.19 WETH mula sa treasury ng Aave para bayaran ito (Ethereum block 24741060); hindi sinuri para sa gabay na ito ang mga indibidwal na bayad.
+
+Para sa sukat, ang ETH-correlated E-Mode ng Ethereum Core ay may loan-to-value (LTV) na 93% at threshold na 95% noong Oktubre 14, 2026. Ang posisyong nag-borrow hanggang sa limitasyong iyon ay nagsisimula sa 95 ÷ 93 ≈ 1.02, nasa loob ng saklaw na na-liquidate ng error na iyon. Walang anumang bahagi ng sarili mong posisyon ang nagbababala sa iyo tungkol sa error ng oracle; ang layo mula sa 1.00 ang tanging buffer na kontrolado mo.
+
+## Aling mga pagbabago ang hindi nagpapababa ng health factor mo?
+
+Sa Aave V3, hindi binabago ng bawas sa LTV (kasama ang LTV 0), ng pag-freeze ng reserve, ng pag-pause ng reserve at ng paggawang isolated sa isang E-Mode category ang health factor mo, dahil wala sa mga ito ang nagbabago ng presyo, balanse o liquidation threshold. Sa halip, hinaharangan nila ang pag-borrow o iba pang aksyon.
+
+| Pagbabago sa Aave V3                         | Ano ang hinaharangan nito                                                           | Nagbabago ba ang health factor mo?                                                  | Puwede ka pa bang ma-liquidate?                                                                                                                                                                   |
+| -------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bawas sa LTV, kasama ang LTV 0               | Bagong pag-borrow laban sa asset na iyon                                            | Hindi: threshold ang ginagamit ng health factor, hindi LTV                          | Oo, kapag mas mababa sa 1.00                                                                                                                                                                      |
+| Na-freeze ang reserve                        | Bagong deposit at pag-borrow ng asset na iyon                                       | Hindi                                                                               | Oo, puwede pa ring i-liquidate ang mga naka-freeze na reserve                                                                                                                                     |
+| Ginawang isolated ang E-Mode category (V3.7) | Pag-borrow laban sa collateral na wala sa category                                  | Hindi: nagkakaroon ng LTV 0 ang collateral na iyon at nananatili ang threshold nito | Oo, kapag mas mababa sa 1.00                                                                                                                                                                      |
+| Na-pause ang reserve                         | Pag-deposit, pag-withdraw, pag-borrow, pagbabayad at pag-liquidate ng asset na iyon | Hindi                                                                               | Hindi gamit ang asset na iyon, bilang collateral man o utang, habang naka-pause ito; puwede pa rin ang ibang asset. Puwedeng sumunod ang hanggang 4 na oras na grace period pagkatapos ng unpause |
+
+Isang totoong kaso ng unang hilera: matapos ang exploit sa rsETH bridge ng Kelp/LayerZero noong Abril 18, 2026, itinakda sa 0 ang LTV ng WETH sa ilang Aave V3 instance habang nanatili sa 83% ang threshold nito sa Ethereum Core, ayon sa proposal ng LlamaRisk noong Mayo 9, 2026 na ibalik ito. Hindi gumalaw ang mga health factor dahil dito.
+
+## Paano mo malalaman kung ano ang nangyari sa posisyon mo?
+
+Para malaman kung ano ang nangyari sa isang Aave position, tingnan muna kung na-liquidate ito, saka kung aling input ang gumalaw: presyo, interes, threshold o oracle. Gumagamit ang mga hakbang na ito ng interface ng Aave Labs sa app.aave.com at ng mga pampublikong rekord ng governance.
+
+1. **Tingnan kung may liquidation.** Buksan ang "Transaction history" (kasaysayan ng transaksyon, app.aave.com/history) habang nakakonekta ang wallet mo at napili ang tamang market, saka i-filter ayon sa "Liquidation". Kasama sa mga rekord sa likod nito ang oras, transaction hash, collateral na kinuha at utang na binayaran; puwedeng i-query ng mga developer ang mga ito gamit ang `userTransactionHistory` sa API ng Aave.
+2. **Ikumpara ang presyo** ng mga collateral at utang na asset mo sa presyo noong huli mong tiningnan (Sanhi 1, 2 at 5).
+3. **Ikumpara ang utang mo, sa bilang ng token, sa hiniram mo.** Kung wala kang ibinayad at hindi ka na-liquidate, ang diperensya ay naipong interes (Sanhi 3).
+4. **Tingnan ang liquidation threshold** sa pahina ng bawat asset sa Aave app, at hanapin sa governance forum ang anumang asset na mukhang bumaba ang threshold (Sanhi 4).
+5. **Maghanap ng mga post-mortem ng insidente** sa governance forum, gaya ng sa wstETH noong Marso 2026 (Sanhi 6).
+
+Kung na-liquidate ka, ipinapaliwanag ng [ano ang nangyayari sa isang Aave liquidation](/fil/blog/paano-gumagana-ang-liquidation-sa-aave) kung gaano kalaki ang puwedeng kunin nang isang beses at kung magkano ang gastos nito.
+
+## Mababalaan ka ba ng health factor alert bago ang liquidation?
+
+Kayang magbigay ng alerto ng babala sa tamang oras tungkol sa mabagal na pagbaba ng Aave health factor mo, pero hindi tungkol sa biglang pagtalon na lumalampas sa 1.00 sa pagitan ng dalawang check. Ang interes, unti-unting pagdulas ng presyo at mga bawas sa threshold na ginagawa nang paunti-unti ay nangyayari sa loob ng ilang oras hanggang ilang buwan, kaya maraming pagkakataong mag-fire ang alertong naka-set nang malayo sa itaas ng 1.00. Ang crash, ang bawas sa threshold sa posisyong malapit na sa linya, o ang error ng oracle gaya ng sa wstETH noong Marso 2026 ay puwedeng lumampas sa 1.00 bago pa makatugon ang anumang nakatakdang check.
+
+Ginawa ang Tokenping para sa mabagal na uri. Tinitingnan nito ang Aave V3 at V4 health factor mo kada 5 minuto sa 22 network at pinadadalhan ka ng mensahe sa Signal, Telegram o email habang mas mababa ito sa threshold na itinakda mo (1.1 hanggang 10). Inuulit ang mensahe sa bawat check hanggang makabawi ang health factor, o hanggang ibaba mo ang threshold sa ilalim nito o burahin ang alerto (parehong nangangailangan ng aktibong bayad na access), at walang hiwalay na mensaheng nagsasabing nakabawi na ito. Sa Aave V3, sakop nito ang bawat market, kasama ang apat ng Ethereum; sa Aave V4, ang bawat Spoke; may sariling alerto ang bawat market.
+
+Kailangan din ng alerto ng panahon para makakilos ka. Sa isang thread sa Polygon forum noong 2021, ang isang borrower na sumubok magbayad sa health factor na 1.01 ay paulit-ulit na nagka-error at na-liquidate bago natuloy ang bayad. Isang opsyon ang threshold kung saan komportable ka pang kumilos; tinutulungan ka ng [gaano kalaking buffer ang ibinibigay ng health factor](/fil/blog/ligtas-na-aave-health-factor) na pumili nito. Ang setup ay nasa [paano mag-set ng health factor alert](/fil/blog/paano-mag-set-ng-aave-health-factor-alert), at tinatalakay ng [paano itaas ang Aave health factor mo](/fil/blog/paano-iwasan-ang-liquidation-sa-aave) ang dapat gawin kapag bumaba ito. Puwede mo ring [tingnan muna ang Aave V3 health factor mo](/fil/aave).
+
+## Mga sanggunian
+
+- [Pangkalahatang-ideya ng Aave V3](https://aave.com/docs/aave-v3/overview.md): gumagalaw ang health factor kasabay ng presyo ng oracle at ng naipong interes (na-access noong Oktubre 14, 2026)
+- [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) at [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): pagkuwenta ng health factor, mga check sa pause at freeze (aave-v3-origin, na-access noong Oktubre 14, 2026)
+- [Aave V3 Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): LTV, mga threshold at rate sa mga block 26193284, 26193378 at 26193993 (na-access noong Oktubre 14, 2026); mga USDC rate sa mga block 26194052, 26194053, 26194230 at 26194231 (na-access noong Oktubre 15, 2026)
+- [Aave V3 Ethereum Core oracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2#readContract): WETH $2,414.78 sa block 26193376 (na-access noong Oktubre 14, 2026)
+- [Capped USDC / USD adapter](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract) at ang [source nito, PriceCapAdapterStable.sol](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol): cap 104000000 sa mga block 26193376 at 26193993 (na-access noong Oktubre 14, 2026)
+- [Dokumentasyon ng Aave oracle](https://aave.com/docs/ecosystem/oracle.md) (na-access noong Oktubre 14, 2026)
+- [Dokumentasyon ng Aave governance](https://aave.com/docs/ecosystem/governance.md) at [README ng Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards) (na-access noong Oktubre 14, 2026)
+- [ARFC: Low Adoption Asset Deprecation on Aave V3](https://governance.aave.com/t/arfc-low-adoption-asset-deprecation-on-aave-v3/25401) (LlamaRisk, Hulyo 29, 2026, na-access noong Oktubre 14, 2026)
+- [Changelog ng Aave docs](https://aave.com/docs/resources/changelog.md): V4 sa Ethereum mula Marso 30, 2026, saka Avalanche, Arc at Base (na-access noong Oktubre 14, 2026)
+- [Dokumentasyon ng Aave V4](https://aave.com/docs/aave-v4.md), [mga posisyon sa V4](https://aave.com/docs/aave-v4/positions.md) at [teknikal na pangkalahatang-ideya ng V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md): health factor kada Spoke, User Risk Premium, dynamic na risk configuration (na-access noong Oktubre 14, 2026)
+- [Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (Gauntlet, Marso 17, 2023, na-access noong Oktubre 14, 2026)
+- [Post-mortem: wstETH exchange-rate misalignment on Core and Prime](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269) (Chaos Labs, Marso 10, 2026, na-access noong Oktubre 14, 2026)
+- [wstETH CAPO Oracle Incident User Reimbursement](https://governance.aave.com/t/direct-to-aip-wsteth-capo-oracle-incident-user-reimbursement/24275) (TokenLogic, Marso 11, 2026, na-access noong Oktubre 14, 2026)
+- [Execution ng governance payload 413](https://etherscan.io/tx/0xca0bcaa2b20b465afb332677a8425d8a10e050c4a31731feadc3a684ecb9b81e) at [withdrawal ng Aave Finance Committee](https://etherscan.io/tx/0x7860a20437b36af635e8be248a929c437412915b91de7c45e947475c6bb02f24): allowance na 513.19 WETH mula sa Aave Ethereum Collector, saka kinuha sa block 24741060 (na-access noong Oktubre 15, 2026)
+- [WETH Unfreeze and LTV Restoration Across Aave V3 Instances](https://governance.aave.com/t/direct-to-aip-weth-unfreeze-and-ltv-restoration-across-aave-v3-instances/24878) (LlamaRisk, Mayo 9, 2026, na-access noong Oktubre 14, 2026)
+- [Isolated E-Mode ng Aave v3.7](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md) at [mga feature ng v3.1](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): isolated flag, grace period matapos ang unpause (na-access noong Oktubre 14, 2026)
+- [Transaction history ng user sa Aave V3](https://aave.com/docs/aave-v3/markets/advanced.md) at [mga history filter ng Aave interface](https://github.com/aave/interface/blob/main/src/modules/history/HistoryFilterMenu.tsx) (na-access noong Oktubre 14, 2026)
+- Pahina ng reserve sa Aave interface, mga rate na ipinapakita bilang APY: [SupplyInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/SupplyInfo.tsx) (na-access noong Oktubre 14, 2026) at [BorrowInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/BorrowInfo.tsx), "APY, variable" (na-access noong Oktubre 15, 2026)
+- [Unexpected or poorly executed settlement by the system](https://governance.aave.com/t/unexpected-or-poorly-executed-settlement-by-the-system/21120) (Aave governance forum, Pebrero 17, 2025, na-access noong Oktubre 14, 2026)
+- [Liquidation on polygon AAVE - JSON ERROR](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067) (Polygon forum, Mayo 18, 2021, na-access noong Oktubre 14, 2026)
+
+_Pang-edukasyong nilalaman, hindi payong pinansyal. Binabawasan ng mga alerto ang panganib, pero hindi nito napipigilan ang liquidation._

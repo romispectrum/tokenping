@@ -12,9 +12,9 @@ export const meta = {
 <ShortAnswer>
   Depeg stablecoinu (ztráta vazby na dolar) hýbe vaším health factorem (faktorem zdraví pozice) přes cenu orákula, ne
   přes 1 $, který máte v hlavě. Pokud je stablecoin vaším kolaterálem, každý cent, o který klesne pod 1 $, se promítne
-  rovnou do health factoru, protože cenové adaptéry Aave pro stablecoiny omezují cenu jen shora (na 1,04 $ u USDC,
-  USDT, DAI, USDS a PYUSD na trhu Core na Ethereu, načteno 28. října 2026) a žádné dno nemají. Pokud je stablecoin
-  vaším dluhem, pokles váš health factor zvyšuje a růst ho snižuje, ale nikdy o víc, než strop dovolí. USDe je zvláštní
+  rovnou do health factoru, protože cenové adaptéry Aave pro stablecoiny omezují cenu jen shora (na 1,04 $ u USDC, USDT,
+  DAI, USDS a PYUSD na trhu Core na Ethereu, načteno 28. října 2026) a žádné dno nemají. Pokud je stablecoin vaším
+  dluhem, pokles váš health factor zvyšuje a růst ho snižuje, ale nikdy o víc, než strop dovolí. USDe je zvláštní
   případ: od 8. března 2025 ho Aave oceňuje feedem USDT, takže jeho tržní cena se k vašemu health factoru vůbec
   nedostane. Depeg může pozici mezi dvěma kontrolami upozornění posunout hodně daleko, takže upozornění vám kupuje čas,
   ne ochranu.
@@ -64,7 +64,9 @@ Pokud je stablecoin vaším dluhem, efekt je opačný a v jednom směru omezený
 Vypůjčený stablecoin vás tedy svou vlastní cenou může stát nejvýše zhruba 4 % health factoru, zatímco jako kolaterál vám z něj může vzít tolik, o kolik klesne. Tato asymetrie pochází z adaptéru, ne z rizikových parametrů Aave.
 
 <Callout tone="info">
-  Proto je také půjčka stablecoinu proti volatilnímu aktivu, tedy pozice z článku [short na fiat půjčkou na Aave](/cz/blog/short-fiatu-pujckou-na-aave), depegům vystavena jen málo: stablecoin je dluh a jeho pokles je pro dlužníka dobrá zpráva.
+  Proto je také půjčka stablecoinu proti volatilnímu aktivu, tedy pozice z článku [short na fiat půjčkou na
+  Aave](/cz/blog/short-fiatu-pujckou-na-aave), depegům vystavena jen málo: stablecoin je dluh a jeho pokles je pro
+  dlužníka dobrá zpráva.
 </Callout>
 
 ## Jak Aave oceňuje stablecoiny?
@@ -73,15 +75,15 @@ Aave neoceňuje stablecoiny na 1 $. Každá rezerva má zdroj ceny, který gover
 
 Načteno z AaveOracle na trhu Core na Ethereu v bloku 26291704 (28. října 2026, 14:03:35 UTC) přes `getSourceOfAsset` a gettery jednotlivých adaptérů:
 
-| Aktivum | Likvidační práh      | Cena z orákula | Zdroj ceny, jak se adaptér sám popisuje                  | Strop (`getPriceCap`) |
-| ------- | -------------------- | -------------- | -------------------------------------------------------- | --------------------- |
-| USDC    | 78 %                 | 0,99971803 $   | „Capped USDC / USD“ nad feedem „USDC / USD“              | 1,04 $                |
-| USDT    | 78 %                 | 0,99842395 $   | „Capped USDT/USD“ nad feedem „USDT / USD“                | 1,04 $                |
-| USDe    | 75 %                 | 0,99842395 $   | „Capped USDT/USD“ nad týmž feedem USDT                   | 1,04 $ (viz níže)     |
-| DAI     | 77 %                 | 0,99923138 $   | „Capped DAI/USD“ nad feedem „DAI / USD“                  | 1,04 $                |
-| USDS    | 78 %                 | 0,99972900 $   | „Capped USDS/USD“ nad feedem „USDS / USD“                | 1,04 $                |
-| PYUSD   | 78 %                 | 0,99988808 $   | „Capped pyUSD/USD“ nad feedem „PYUSD / USD“              | 1,04 $                |
-| GHO     | 0 % (není kolaterál) | 1,00000000 $   | Pevný zdroj, který na žádný getter adaptéru neodpovídá   | žádný, pevně 1 $      |
+| Aktivum | Likvidační práh      | Cena z orákula | Zdroj ceny, jak se adaptér sám popisuje                | Strop (`getPriceCap`) |
+| ------- | -------------------- | -------------- | ------------------------------------------------------ | --------------------- |
+| USDC    | 78 %                 | 0,99971803 $   | „Capped USDC / USD“ nad feedem „USDC / USD“            | 1,04 $                |
+| USDT    | 78 %                 | 0,99842395 $   | „Capped USDT/USD“ nad feedem „USDT / USD“              | 1,04 $                |
+| USDe    | 75 %                 | 0,99842395 $   | „Capped USDT/USD“ nad týmž feedem USDT                 | 1,04 $ (viz níže)     |
+| DAI     | 77 %                 | 0,99923138 $   | „Capped DAI/USD“ nad feedem „DAI / USD“                | 1,04 $                |
+| USDS    | 78 %                 | 0,99972900 $   | „Capped USDS/USD“ nad feedem „USDS / USD“              | 1,04 $                |
+| PYUSD   | 78 %                 | 0,99988808 $   | „Capped pyUSD/USD“ nad feedem „PYUSD / USD“            | 1,04 $                |
+| GHO     | 0 % (není kolaterál) | 1,00000000 $   | Pevný zdroj, který na žádný getter adaptéru neodpovídá | žádný, pevně 1 $      |
 
 `isCapped()` každého adaptéru ten den vrátilo false: žádný feed nebyl nad svým stropem. Řádek USDe potřebuje poznámku: adaptér, na který USDe ukazuje, je starší nasazení téhož kontraktu (vytvořené 1. března 2024), které getter `getPriceCap` nemá, takže strop byl přečten z jeho úložiště (storage), kde je týchž 104000000. sUSDe oceňuje jiný adaptér, „Capped sUSDe / USDT / USD“, který násobí směnný kurz sUSDe k USDe cenou USDT a ukazoval 1,25333685 $.
 
@@ -157,4 +159,4 @@ Pět minut je v depegu dlouhá doba. Dne 11. března 2023 bylo USDC kolem 88 cen
 - [Funkce Aave v3.3](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md) a [dokumentace Aave Umbrella](https://aave.com/docs/aave-v3/umbrella): deficit a slashing (načteno 28. října 2026)
 - [Dokumentace Morpho: Oracles](https://docs.morpho.org/learn/concepts/oracle): orákulum pro každý trh, volí ho kurátor, neměnné (načteno 28. října 2026)
 
-*Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání.*
+_Vzdělávací obsah, nikoli finanční poradenství. Upozornění snižují riziko, likvidaci ale nezabrání._

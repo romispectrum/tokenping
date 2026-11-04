@@ -1,0 +1,194 @@
+export const meta = {
+  slug: "mga-fixed-rate-loan-sa-morpho-midnight",
+  title: "Mga fixed-rate loan sa Morpho Midnight: paano gumagana",
+  description:
+    "Paano gumagana ang fixed-rate loan sa Morpho Midnight: ang rate, utang sa maturity, health sa ilang collateral at liquidation ng hindi nabayarang utang.",
+  h1: "Paano gumagana ang mga fixed-rate loan sa Morpho Midnight, at ano ang nangyayari sa maturity?",
+  publishedAt: "2026-10-26",
+  primaryQuestion:
+    "Paano gumagana ang fixed-rate na loan sa Morpho Midnight, at ano ang mangyayari kung hindi ko pa ito nababayaran pagdating ng maturity?",
+  readingMinutes: 15,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Ang Morpho Midnight ang fixed-rate at fixed-term na pagpapautang ng Morpho. Nangungutang ka sa pamamagitan ng
+  pagbebenta ng mga debt unit (yunit ng utang) nang mas mababa sa face value: bawat unit ay nagbibigay sa iyo ngayon ng
+  kaunting kulang sa isang loan token at isang pangakong magbabayad ng eksaktong isa sa maturity ng market, kaya
+  nakapirmi ang rate pagka-borrow mo at hindi lumalaki ang utang mo. Bago ang maturity, puwede lang ma-liquidate ang
+  posisyon mo kung ang collateral mo, na tinimbang ayon sa liquidation LTV (LLTV) ng bawat collateral, ay hindi na sapat
+  para sa utang (health factor na mas mababa sa 1). Kapag lumipas na ang maturity, puwedeng ma-liquidate ang anumang
+  natitirang utang anuman ang health factor mo, at tumataas ang bonus ng liquidator sa unang oras. Bayaran ang utang
+  bago ang maturity, saka ikaw mismo ang mag-withdraw ng collateral mo.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Ang mga numero at ang block number kung kailan binasa ang mga ito: content/blog/snapshots/morpho-midnight-fixed-rate-loans.md */}
+
+## Ano ang Morpho Midnight?
+
+Ang Morpho Midnight ang bahagi ng Morpho na nag-aalok ng mga loan na may fixed na rate hanggang sa isang takdang petsa, ang maturity. Tinatawag ito ng docs ng Morpho na "Fixed Rate Markets (Midnight)", katabi ng Morpho Blue, ang mga variable-rate market nito. Kung bago ka sa health math ng Morpho, magsimula sa [gabay sa Morpho health factor](/fil/blog/morpho-health-factor-ipinaliwanag), na pinagbabatayan ng gabay na ito.
+
+Nagbukas ang Midnight sa publiko noong Hulyo 21, 2026, sa Base, na may iisang pares (cbBTC na collateral, USDC na loan) at ilang maturity. Sa gabay na ito, pinapangalanan ang isang Midnight market ayon sa pares na iyon: ang "cbBTC/USDC market" ay tumatanggap ng cbBTC bilang collateral at nagpapautang ng USDC. Tumatakbo na ngayon ang parehong contract code sa limang network:
+
+| Network         | May code ang Midnight contract mula noong | Mga market na nakalista sa API ng Morpho (Oktubre 26, 2026) |
+| --------------- | ----------------------------------------- | ----------------------------------------------------------- |
+| Base            | Hulyo 6, 2026                             | Oo; may bukas na loan ang 19 na nakalistang market          |
+| Ethereum        | Agosto 20, 2026                           | Oo; may bukas na loan ang 12 nakalistang market             |
+| Arc             | Setyembre 11, 2026                        | Wala (may 13 market)                                        |
+| Robinhood Chain | Walang available na petsa                 | Wala (may 34 market)                                        |
+| Tempo           | Oktubre 3, 2026                           | Wala (walang ipinapakitang market ang API)                  |
+
+Kahit sino ay puwedeng gumawa ng Midnight market, kaya kaunti lang ang sinasabi ng pagkakaroon ng isang market on-chain. Ang mga market na ipinapakita ng app ng Morpho ay ang mga inililista ng API nito, at noong Oktubre 26, 2026, nasa Ethereum at Base ang lahat ng iyon.
+
+Sa isang naunang post ng Morpho, ipinakilala ang Midnight, kasama ang Vaults V2, bilang "Morpho V2". Sinasabi naman ng launch post nito na ang Midnight ay hindi ikalawang bersyon ng Blue at hindi rin pamalit dito: magkatabing tumatakbo ang dalawa. Magkahiwalay silang contract.
+
+## Paano binubuo ang isang Midnight market?
+
+Itinatakda ang isang Midnight market kapag ginawa ito, at hindi na ito nagbabago. Binubuo ito ng:
+
+- **Isang loan token**, halimbawa USDC.
+- **Isa o higit pang collateral** (hanggang 128), bawat isa may sariling LLTV (ang bahagi ng halaga ng collateral na puwede mong utangin bago ang liquidation), sariling oracle (pinagkukunan ng presyo) at sariling liquidation cursor, na nagtatakda ng bonus ng liquidator.
+- **Isang maturity**, isang petsa at oras kung kailan dapat nang bayaran ang bawat loan sa market.
+- **Isang recovery threshold** (rcfThreshold), na nagpapasya kung kailan puwedeng i-liquidate nang buo ang maliit na halaga ng isang collateral (tingnan sa ibaba).
+- **Mga opsyonal na gate**, na puwedeng maglimita kung sino ang puwedeng magpautang, mangutang o mag-liquidate. Hindi ka kailanman mapipigilan ng isang gate na magbayad o umalis. Walang gate ang alinman sa mga nakalistang market sa Ethereum o Base noong Oktubre 26, 2026.
+
+Puwedeng gumamit ang isang borrower ng hanggang 16 sa mga collateral ng isang market nang sabay. Para tumanggap ng bagong collateral o ilipat ang maturity, kailangang may gumawa ng bagong market. Ang mga nakalistang market na may loan, sa parehong network, ay nagma-mature sa huling Biyernes ng buwan nang 15:00 UTC: Oktubre 30, Nobyembre 27 at Disyembre 25, 2026, at Marso 26, 2027.
+
+## Paano itinatakda ang fixed rate, at magkano ang utang mo sa maturity?
+
+Nagmumula ang rate sa isang presyo, hindi sa isang interest-rate model. Binibilang ng Midnight ang utang sa mga unit, at ang isang debt unit ay pangakong magbabayad ng isang loan token sa maturity. Para mangutang, nagbebenta ka ng mga unit sa mga lender sa presyong mas mababa sa 1: sa presyong 0.99, tumatanggap ka ngayon ng 0.99 USDC para sa bawat unit at may utang kang 1 USDC bawat unit sa maturity. Ang rate para sa buong term ay 1 na hinati sa presyo, bawas 1, at ginagawa itong taunang numero ng docs ng Morpho sa paghahati nito sa bahagi ng taon na natitira.
+
+Nagmumula ang mga presyo sa mga offer na inilalathala ng mga lender at borrower, kaya puwedeng magkaiba ang rate na binabayaran ng dalawang borrower sa iisang market. Noong Oktubre 26, 2026, inilagay ng API ng Morpho ang mga rate ng 117 borrower sa Base cbBTC/USDC market na nagma-mature sa Disyembre 25, 2026 sa pagitan ng 1.93% at 6.84% kada taon.
+
+Simple ang utang mo: ang bilang ng mga unit na ibinenta mo, sa loan token, na dapat bayaran sa maturity. Walang idinadagdag habang tumatakbo ang loan. Binabago lang ng contract ng Midnight ang utang ng isang borrower kapag nangutang ka pa, nagbayad, bumili pabalik ng mga unit o na-liquidate; walang interes na naiipon dito bago o pagkatapos ng maturity.
+
+May dalawang fee ang Midnight, parehong itinatakda bawat market at parehong zero sa dalawang market sa gabay na ito:
+
+- **Settlement fee** sa bawat trade, na binabayaran ng sinumang tumanggap ng isang offer. Nilalagyan ito ng contract ng cap ayon sa natitirang oras bago ang maturity, mula 0.0014% para sa isang araw hanggang 0.5% para sa 360 araw.
+- **Continuous fee**, na sinasagot lang ng mga lender at may cap na 1% kada taon.
+
+## Paano kinakalkula ang health factor kapag may ilang collateral?
+
+Sinusuri ng contract ng Midnight ang health sa pamamagitan ng oo o hindi: healthy ang isang posisyon habang ang maximum debt nito ay hindi bababa sa utang nito. Ang maximum debt ay ang kabuuan, para sa bawat collateral na ginagamit mo, ng halaga nito sa loan token ayon sa presyo ng oracle nito na pinarami sa sarili nitong LLTV. Isinusulat ng docs ng Morpho ang check bilang maxDebt ≥ debt; ang health factor ay ang parehong check na isinulat bilang ratio, maximum debt na hinati sa utang, at kapag mas mababa ito sa 1, puwedeng ma-liquidate ang posisyon.
+
+Kunin ang pinakamalaking nakalistang market sa Ethereum, na nagpapautang ng USDC laban sa dalawang collateral na magkaiba ang LLTV: USDC mismo sa 98% at cbBTC sa 86%. Kapag ang cbBTC ay 80,011.48 USDC (ang presyo ng oracle nito noong Oktubre 26, 2026), ang halimbawang posisyon mula sa [gabay sa Morpho health factor](/fil/blog/morpho-health-factor-ipinaliwanag), 0.5 cbBTC at 10,000 USDC na collateral laban sa 40,000 USDC na utang, ay may:
+
+| Collateral  | Halaga (USDC) | LLTV | Binibilang bilang (USDC) |
+| ----------- | ------------- | ---- | ------------------------ |
+| 0.5 cbBTC   | 40,005.74     | 86%  | 34,404.94                |
+| 10,000 USDC | 10,000.00     | 98%  | 9,800.00                 |
+| Kabuuan     | 50,005.74     |      | 44,204.94                |
+
+Ang health factor nito ay 44,204.94 ÷ 40,000 = 1.105, at bababa ito sa 1 kung bumaba ang cbBTC sa ilalim ng mga 70,233 USDC, 12.2% na mas mababa, habang hindi nagbabago ang halaga ng USDC na collateral. Pareho ang ideya sa [ikalawang collateral sa Aave](/fil/blog/aave-health-factor-ipinaliwanag#ano-ang-nagbabago-kapag-may-pangalawang-collateral-asset): binibilang ang bawat asset sa sarili nitong rate.
+
+Puwede kang magdagdag, mag-alis o magpalit ng collateral anumang oras, basta't healthy ka pa rin pagkatapos ng isang withdrawal. Kung huminto sa pagsagot ang oracle ng alinmang collateral na ginagamit mo, papalya ang mga health check, pag-borrow, withdrawal at liquidation para sa posisyon mo habang may utang ka. Gumagana pa rin ang pagbabayad, at kapag zero na ang utang mo, puwede kang mag-withdraw nang walang anumang oracle.
+
+## Kailan puwedeng ma-liquidate ang isang Midnight loan?
+
+Puwedeng ma-liquidate ang isang Midnight loan sa dalawang paraan: kapag hindi na ito healthy, anumang oras, o kapag may natitirang utang pagkatapos ng maturity, anuman ang health nito. Ipinapaliwanag ng [paano gumagana ang liquidation sa Morpho](/fil/blog/paano-gumagana-ang-liquidation-sa-morpho) ang mga mekanismong pareho sa dalawa; narito ang partikular sa Midnight.
+
+### Bago ang maturity
+
+Bago ang maturity, health lang ang mahalaga. Kapag mas mababa na sa 1 ang health factor, puwedeng bayaran ng isang liquidator ang bahagi ng utang mo at kunin ang collateral na katumbas ng halagang iyon dagdag ang isang bonus. Itinatakda ang bonus bawat collateral: 1 ÷ (1 − cursor × (1 − LLTV)). Para sa cbBTC sa 86% na LLTV na may 0.3 na cursor, iyon ay 1.0438, isang 4.38% na bonus; para sa USDC sa 98%, mga 0.6%. Ang liquidator ang pumipili kung alin sa mga collateral mo ang kukunin, at nagbababala ang docs ng Morpho na pipiliin nila ang alinmang pinakamalaki ang kita.
+
+Nakadepende sa laki kung gaano karami ang puwedeng mawala nang sabay. Karaniwan, puwede lang bayaran ng liquidator ang sapat para maging healthy ulit ang posisyon. Ang exception: kapag ang collateral na matitira pagkatapos ng ganitong limitadong liquidation ay makakabayad ng mas mababa sa rcfThreshold ng market, puwedeng kunin nang buo ang collateral na iyon. Ang threshold ay 3,000 USDC sa Base cbBTC/USDC market sa halimbawa sa ibaba at 300,000 USDC sa Ethereum market sa itaas. Sa isang loan na iisa ang collateral at mas maliit sa halagang iyon, puwedeng mawala nang sabay ang buong posisyon.
+
+### Pagkatapos ng maturity
+
+Kapag lumipas na ang oras ng maturity, puwedeng ma-liquidate ang anumang natitirang utang kahit 2 o 10 ang health factor mo. Orasan lang ang tinitingnan ng post-maturity path ng contract. Ang dahilan ng Morpho: inaasahan ng mga lender na makakapag-withdraw sila sa maturity, at hinaharangan sila ng borrower na hindi pa nagbabayad, healthy man o hindi.
+
+Sa path na ito, nagsisimula sa zero ang bonus sa maturity at pantay na lumalaki hanggang sa buong bonus sa loob ng 60 minuto. Kung hindi rin healthy ang posisyon mo pagkatapos ng maturity, puwedeng gamitin ng liquidator ang health-based path at kunin agad ang buong bonus. Sa post-maturity path, walang cap sa kung gaano karami ang puwedeng bayaran, kaya puwedeng ma-liquidate ang buong utang nang isang beses. Pagkatapos ng maturity, hindi ka na puwedeng magdagdag ng utang, pero puwede ka pa ring magbayad, bumili pabalik ng mga unit at mag-withdraw ng collateral.
+
+<Callout tone="warning">
+  Sa mismong segundo ng maturity, ligtas pa ang isang healthy na posisyon; makalipas ang isang segundo, hindi na. Ang
+  late na pagbabayad sa isang healthy na posisyon ay puwedeng magkahalaga sa iyo ng hanggang sa buong liquidation bonus,
+  mga 4.4% ng utang sa isang cbBTC loan na may 86% na LLTV.
+</Callout>
+
+Kung mag-iwan ang isang liquidation ng utang na hindi kayang sagutin ng collateral, ituturing na lugi ang kakulangan at paghahatian lang ito ng mga lender ng market na iyon.
+
+## Paano magbayad nang maaga, sa maturity, o mag-roll sa mas huling maturity?
+
+May tatlo kang paraan para makaalis sa isang Midnight loan, dagdag ang isang fallback na kailangan mong i-opt in:
+
+- **Direktang magbayad.** Ang pagbabayad ay nagkakahalaga ng eksaktong isang loan token bawat unit, bago, sa, o pagkatapos ng maturity. Palagi itong gumagana, at itinatakda nito ang pinakamalaking dapat mong ibayad para umalis nang maaga. Hindi ibinabalik ng maagang pagbabayad ang anumang bahagi ng interes: binabayaran mo ang buong halagang dapat bayaran sa maturity, mas maaga lang.
+- **Bumili pabalik ng mga unit bago ang maturity.** Puwede ka ring bumili ng mga unit mula sa mga sell offer ng mga lender sa presyong mas mababa sa 1, na nagkakansela ng ganoong halaga ng utang sa mas mababa sa face value. Nakadepende ito sa kung may nag-aalok ng mga unit sa sandaling gusto mong umalis.
+- **Mag-roll sa mas huling maturity.** Inilalarawan ng docs ng Morpho ang pagbabayad o pagbili pabalik sa isang market at pangungutang sa isang market na may mas huling petsa sa iisang transaksyon, gamit ang mga callback. Inilista ng launch post ng Morpho noong Hulyo ang awtomatikong pag-roll bilang feature na darating pa; noong Oktubre 26, 2026, inilalarawan lang ng docs ang pag-roll bilang isang bagay na ikaw mismo ang gumagawa, o sa pamamagitan ng Blue fallback sa ibaba.
+- **Bumalik sa Blue.** Nag-deploy ang Morpho ng isang contract, ang BlueFallbackRolling, sa lahat ng limang network. Kung mag-opt in ka at i-authorize mo ito sa parehong Midnight at Blue, kahit sino ay puwedeng maglipat ng utang at collateral mo sa Midnight papunta sa isang variable-rate na Blue market na pinili mo, mula sa oras na pinili mo. Ang reward ng tumawag ay isang bahagi ng utang na ikaw ang nagtatakda; lumalaki ito sa pagitan ng simula at katapusang oras na itinakda mo, puwedeng umabot sa buong utang, at idinadagdag ito sa bago mong utang sa Blue. Kailangan nito ng eksaktong isang collateral na tugma sa collateral ng Blue market.
+
+## Ano ang nangyayari sa collateral mo pagkatapos mong magbayad?
+
+Nananatili ang collateral mo kung nasaan ito hanggang i-withdraw mo ito. Hindi ito ibinabalik ng pagbabayad. Kapag zero na ang utang mo, pumapasa ang health check nang hindi nagtatanong sa anumang oracle, kaya puwede mong i-withdraw ang lahat ng ito, at walang gate na makakapigil sa iyo. Ikaw lang, isang account na in-authorize mo, o isang liquidator ng posisyong puwedeng ma-liquidate ang makakagalaw nito.
+
+Ganoon din pagkatapos ng isang liquidation: ang anumang collateral na hindi kinuha ng liquidator ay nananatili sa posisyon mo para i-withdraw mo.
+
+## Halimbawa: isang cbBTC/USDC loan na dapat bayaran sa Disyembre 25, 2026
+
+Ang market na ito, sa pares na inilunsad kasama ng Midnight, ay ginawa noong Hulyo 14, 2026, isang linggo bago ang public launch, at ito ang pinakamalaking nakalistang market sa Base. Binasa on-chain noong Oktubre 26, 2026 nang 06:06 UTC:
+
+| Field             | Halaga                                      |
+| ----------------- | ------------------------------------------- |
+| Loan token        | USDC                                        |
+| Collateral        | cbBTC, ang nag-iisa                         |
+| LLTV              | 86%                                         |
+| Liquidation bonus | 4.38% (cursor 0.3)                          |
+| Maturity          | Disyembre 25, 2026, 15:00 UTC, 60.4 araw pa |
+| rcfThreshold      | 3,000 USDC                                  |
+| Mga gate at fee   | Wala                                        |
+| Utang sa maturity | 1,530,235.58 USDC mula sa 117 borrower      |
+| Presyo ng cbBTC   | 80,097.33 USDC (ang oracle ng market)       |
+
+**Pangungutang.** Ang pinakamagandang presyo kung saan puwedeng magbenta ng mga unit ang isang borrower ay 0.9901297. Ang pagkuha ng 10,000 USDC sa presyong iyon ay nangangahulugang may utang kang mga 10,099.69 USDC sa Disyembre 25, 2026: 0.997% para sa 60.4 na araw, mga 6.0% kada taon. Gumagalaw ang presyong iyon bawat minuto.
+
+**Isang karaniwang posisyon.** Ang median na borrower ay may utang na 37.08 USDC sa maturity laban sa 0.00060018 cbBTC, na nagkakahalaga ng 48.07 USDC. Ang maximum debt nito ay 48.07 × 0.86 = 41.34 USDC, kaya ang health factor nito ay 41.34 ÷ 37.08 = 1.11. Aabot ito sa 1 kung bumaba ang cbBTC sa mga 71,838 USDC, 10.3% na mas mababa.
+
+**Kung bumaba ang cbBTC nang bahagya sa ilalim ng 71,838 USDC bago ang maturity.** Malayong mas mababa ang posisyon sa 3,000 USDC na threshold, kaya puwedeng bayaran ng isang liquidator ang buong 37.08 USDC at kumuha ng cbBTC na nagkakahalaga ng 38.71 USDC. Sa 43.12 USDC na cbBTC, mga 4.41 USDC ang naiiwan sa borrower para i-withdraw.
+
+**Kung makalimutan ng borrower na magbayad at manatili ang cbBTC sa 80,097 USDC.** Mula 15:00:01 UTC sa Disyembre 25, kahit sino ay puwedeng magbayad ng 37.08 USDC at kumuha ng cbBTC; puwedeng kumilos ang isang liquidator sa anumang segundo pagkatapos ng 15:00:00. Lumalaki ang bonus habang tumatagal: mga 2.2% pagkalipas ng tatlumpung minuto, ang buong 4.38% pagkalipas ng isang oras. Ang liquidation na isang oras o higit pa pagkatapos ng maturity ay kumukuha ng cbBTC na nagkakahalaga ng 38.71 USDC at nag-iiwan sa borrower ng 9.37 USDC nito. Kung nagbayad ng 37.08 USDC sa tamang oras, naitabi sana ang buong 48.07 USDC na cbBTC, netong 10.99 USDC, kaya ang liquidation na iyon ay nagkakahalaga sa borrower ng 1.63 USDC, ang buong bonus. Mas mababa ang gastos ng mas maagang liquidation, pero walang pumipilit sa liquidator na maghintay.
+
+## Paano ikinukumpara ang Midnight sa isang variable-rate na loan sa Morpho Blue?
+
+|                             | Morpho Blue                                                                                                           | Morpho Midnight                                                                                                                                                                        |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rate                        | Palaging nagbabago ayon sa interest-rate model ng market                                                              | Fixed mula nang mangutang ka                                                                                                                                                           |
+| Utang                       | Lumalaki dahil sa interes                                                                                             | Takdang bilang ng mga unit, hindi lumalaki                                                                                                                                             |
+| Petsa ng pagtatapos         | Wala                                                                                                                  | Maturity                                                                                                                                                                               |
+| Collateral bawat market     | Isa                                                                                                                   | Isa o higit pa, bawat isa may sariling LLTV                                                                                                                                            |
+| Puwedeng ma-liquidate kapag | Hindi healthy                                                                                                         | Hindi healthy, o anumang utang pagkatapos ng maturity                                                                                                                                  |
+| Bonus                       | 1 ÷ (1 − 0.3 × (1 − LLTV)), hanggang 15%                                                                              | 1 ÷ (1 − cursor × (1 − LLTV)), cursor na itinatakda bawat collateral, walang 15% na cap                                                                                                |
+| Gaano karami nang sabay     | Hanggang sa buong utang sa isang call                                                                                 | Bago ang maturity, ang sapat para maibalik ang health (isang buong collateral kung ang matitira ay makakabayad ng mas mababa sa rcfThreshold); pagkatapos ng maturity, ang buong utang |
+| Pre-liquidation             | Unti-unting itinitigil ng Morpho, tingnan ang [Morpho pre-liquidation](/fil/blog/morpho-pre-liquidation-ipinaliwanag) | Hindi bahagi ng Midnight                                                                                                                                                               |
+| Maagang pag-alis            | Magbayad anumang oras                                                                                                 | Magbayad sa face value, o bumili pabalik ng mga unit kung may nagbebenta                                                                                                               |
+
+Ang praktikal na pagkakaiba para sa health factor mo: sa Blue, puwede itong bumaba dahil sa interes lang, gaya sa Aave ([paano naaapektuhan ng biglang pagtaas ng rate ang health factor mo](/fil/blog/mga-interest-rate-sa-aave#paano-naaapektuhan-ng-biglang-pagtaas-ng-rate-ang-health-factor-mo)). Sa Midnight, bumababa lang ito kapag bumaba ang presyo ng collateral, o kapag nag-withdraw ka ng collateral o nangutang pa. Kapalit nito, nagdadagdag ang Midnight ng isang petsang hindi mo dapat makaligtaan.
+
+## Paano makakatulong ang mga alerto sa isang Midnight loan?
+
+Puwede kang babalaan ng isang alerto tungkol sa parehong panganib ng isang Midnight loan: ang bumababang health factor at ang papalapit na maturity. Nagsusuri ang Tokenping bawat 5 minuto. Inililista ng [Morpho dashboard](/fil/morpho) nito ang mga borrow position ng isang wallet sa mga market na nakalista sa app ng Morpho sa 14 na network, Blue at Midnight, at hindi mo kailangang magbayad para tingnan ang mga posisyon mo. Sinasaklaw ng mga Midnight alert ang mga market na inililista ng API ng Morpho. Noong Oktubre 26, 2026, nasa Ethereum at Base ang mga iyon; sinasaklaw din ng Tokenping ang Arc at Robinhood Chain kapag naglista na ang Morpho ng mga Midnight market doon. Hanggang doon, walang Midnight alert na posible sa dalawang network na iyon.
+
+Para sa isang Midnight loan:
+
+- **Health.** Kinakalkula ng Tokenping ang health factor mo mula sa chain gamit ang sariling math ng Morpho, hindi kailanman mula sa API ng Morpho. Habang mas mababa ito sa threshold na itinakda mo (1.02 hanggang 10), bawat check ay nagpapadala ng mensahe sa bawat channel na pinili mo: Signal, Telegram o email.
+- **Maturity.** Makakatanggap ka ng isang paalala sa huling 7 araw bago ang maturity at isa pa sa huling 24 na oras.
+- **Pagkatapos ng maturity.** Habang may natitirang utang, bawat check ay nagpapadala ng alerto, dahil puwedeng ma-liquidate ang loan anuman ang health factor nito.
+
+Ang mga alerto ay nagkakahalaga ng <AlertPrice />, ang parehong plan ng mga Aave alert. Binibigyan ka ng alerto ng oras para kumilos; hindi nito napipigilan ang liquidation, at puwedeng gumalaw ang presyo sa pagitan ng dalawang check.
+
+## Mga sanggunian
+
+- [Morpho docs: Midnight concepts](https://docs.morpho.org/learn/concepts/midnight): mga unit, credit at utang, maagang pag-alis, collateral at health (na-access noong Oktubre 26, 2026)
+- [Morpho docs: Midnight liquidations](https://docs.morpho.org/learn/concepts/midnight/liquidations): ang dalawang liquidation path, ang pagtaas ng bonus pagkatapos ng maturity at kung bakit puwedeng ma-liquidate ang hindi nabayarang utang pagkatapos ng maturity (na-access noong Oktubre 26, 2026)
+- [Morpho docs: offers](https://docs.morpho.org/learn/concepts/midnight/offers) at [gates](https://docs.morpho.org/learn/concepts/midnight/gates): pag-roll gamit ang mga callback, at kung ano ang kaya at hindi kayang harangan ng mga gate (na-access noong Oktubre 26, 2026)
+- [Morpho docs: market mechanics](https://docs.morpho.org/developers/midnight/concepts/market-mechanics), [collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) at [fees](https://docs.morpho.org/developers/midnight/concepts/fees) (na-access noong Oktubre 26, 2026)
+- [Morpho docs: exit a borrow early](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-early) at [exit a borrow at maturity](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-by-repaying-in-full-at-maturity) (na-access noong Oktubre 26, 2026)
+- [Morpho docs: contract addresses](https://docs.morpho.org/developers/contracts/addresses): Midnight at BlueFallbackRolling sa bawat network (na-access noong Oktubre 26, 2026)
+- [morpho-org/midnight](https://github.com/morpho-org/midnight): Midnight.sol (health check, liquidation, pagbabayad, withdrawal), ConstantsLib.sol (mga fee, bonus, 60 minutong pagtaas, mga limitasyon ng collateral) at ang README ng periphery (na-access noong Oktubre 26, 2026)
+- [morpho-org/morpho-blue](https://github.com/morpho-org/morpho-blue): ang mga constant ng liquidation at bonus ng Blue (na-access noong Oktubre 26, 2026)
+- [Now live: Morpho Midnight and the new Markets App](https://morpho.org/blog/now-live-morpho-midnight) (Hulyo 21, 2026) at [Morpho Midnight: what to expect at launch](https://morpho.org/blog/morpho-midnight-what-to-expect-at-launch) (Hulyo 17, 2026) (na-access noong Oktubre 26, 2026)
+- [Morpho Fixed Rate Markets](https://morpho.org/blog/morpho-v2-liberating-the-potential-of-onchain-loans): ang naunang post ng Morpho tungkol sa Midnight at Vaults V2 (na-access noong Oktubre 26, 2026)
+- [Morpho Midnight API](https://api.morpho.org/v0/midnight/markets): mga nakalistang market, order book at mga posisyon ng borrower (na-access noong Oktubre 26, 2026)
+- Mga Midnight contract sa [Base](https://basescan.org/address/0xAdedD8ab6dE832766Fedf0FaC4992E5C4D3EA18A) sa block 53102734 at sa [Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f) sa block 26274992: mga depinisyon ng market, mga kabuuan, mga fee at mga presyo ng oracle (na-access noong Oktubre 26, 2026)
+
+_Pang-edukasyong nilalaman, hindi payong pinansyal. Binabawasan ng mga alerto ang panganib, pero hindi nito napipigilan ang liquidation._

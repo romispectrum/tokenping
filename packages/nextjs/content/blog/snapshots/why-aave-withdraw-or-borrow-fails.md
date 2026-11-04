@@ -6,13 +6,13 @@ https://ethereum-rpc.publicnode.com on 29 Oct 2026. Re-read before changing a nu
 
 ## 1. Contracts (Aave V3 Ethereum Core)
 
-| Contract | Address |
-| --- | --- |
-| PoolDataProvider | `0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD` |
-| Aave Oracle | `0x54586bE62E3c3580375aE3723C145253060Ca0C2` |
+| Contract               | Address                                      |
+| ---------------------- | -------------------------------------------- |
+| PoolDataProvider       | `0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD` |
+| Aave Oracle            | `0x54586bE62E3c3580375aE3723C145253060Ca0C2` |
 | aEthUSDC (USDC aToken) | `0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c` |
-| aEthWETH | `0x4d5F47FA6A74757f35C14fD3a6Ef8E3C9BC514E8` |
-| aEthLBTC | `0x65906988ADEe75306021C417a1A3458040239602` |
+| aEthWETH               | `0x4d5F47FA6A74757f35C14fD3a6Ef8E3C9BC514E8` |
+| aEthLBTC               | `0x65906988ADEe75306021C417a1A3458040239602` |
 
 ## 2. Reserve reads, block 26296985 (2026-10-29 07:45:11 UTC)
 
@@ -31,29 +31,29 @@ https://ethereum-rpc.publicnode.com on 29 Oct 2026. Re-read before changing a nu
   USDe (75%), sUSDe (75%), USDS (78%), EURC (78%), tETH (0.1%), XAUt (75%).
 - Borrow cap 1 with borrowing enabled: tBTC (2.5695 tBTC borrowed).
 
-| Reserve | Supplied (totalAToken) | Supply cap | Borrowed (variable) | Borrow cap | Utilization | LTV / LT |
-| --- | --- | --- | --- | --- | --- | --- |
-| USDC | 2,347,525,372.91 | 3,000,000,000 (78.3%) | 2,213,199,103.54 | 2,700,000,000 (82.0%) | 94.28% | 75 / 78 |
-| USDT | 2,720,521,909.43 | 3,480,000,000 (78.2%) | 2,497,221,560.89 | 3,090,000,000 (80.8%) | 91.79% | 75 / 78 |
-| WETH | 2,173,258.87 | 2,700,000 (80.5%) | 1,721,604.37 | 2,400,000 (71.7%) | 79.22% | 81 / 84 |
-| DAI | 128,645,219.28 | 200,000,000 | 116,643,515.54 | 180,000,000 | 90.67% | 0 / 77 |
-| WBTC | 34,138.21 | 38,200 (89.4%) | 721.66 | 1,500 (48.1%) | 2.11% | 81 / 85 |
-| weETH | 1,367,578.30 | 1,500,000 (91.2%) | 50.92 | 1 | 0.00% | 78 / 81 |
-| USDe | 252,266,760.45 | 275,000,000 (91.7%) | 12,065,666.93 | 50,000,000 | 4.78% | 0 / 75 |
-| sUSDe | 101,740,707.77 | 105,000,000 (96.9%) | 0 | 0 (none) | 0.00% | 0 / 75 |
-| tBTC | 1,779.39 | 1,800 (98.9%) | 2.57 | 1 | 0.14% | 73 / 78 |
-| LBTC | 2,689.93 | 2,690 (100.0%) | 0.017 | 1 | 0.00% | 70 / 75 |
+| Reserve | Supplied (totalAToken) | Supply cap            | Borrowed (variable) | Borrow cap            | Utilization | LTV / LT |
+| ------- | ---------------------- | --------------------- | ------------------- | --------------------- | ----------- | -------- |
+| USDC    | 2,347,525,372.91       | 3,000,000,000 (78.3%) | 2,213,199,103.54    | 2,700,000,000 (82.0%) | 94.28%      | 75 / 78  |
+| USDT    | 2,720,521,909.43       | 3,480,000,000 (78.2%) | 2,497,221,560.89    | 3,090,000,000 (80.8%) | 91.79%      | 75 / 78  |
+| WETH    | 2,173,258.87           | 2,700,000 (80.5%)     | 1,721,604.37        | 2,400,000 (71.7%)     | 79.22%      | 81 / 84  |
+| DAI     | 128,645,219.28         | 200,000,000           | 116,643,515.54      | 180,000,000           | 90.67%      | 0 / 77   |
+| WBTC    | 34,138.21              | 38,200 (89.4%)        | 721.66              | 1,500 (48.1%)         | 2.11%       | 81 / 85  |
+| weETH   | 1,367,578.30           | 1,500,000 (91.2%)     | 50.92               | 1                     | 0.00%       | 78 / 81  |
+| USDe    | 252,266,760.45         | 275,000,000 (91.7%)   | 12,065,666.93       | 50,000,000            | 4.78%       | 0 / 75   |
+| sUSDe   | 101,740,707.77         | 105,000,000 (96.9%)   | 0                   | 0 (none)              | 0.00%       | 0 / 75   |
+| tBTC    | 1,779.39               | 1,800 (98.9%)         | 2.57                | 1                     | 0.14%       | 73 / 78  |
+| LBTC    | 2,689.93               | 2,690 (100.0%)        | 0.017               | 1                     | 0.00%       | 70 / 75  |
 
 Utilization = totalVariableDebt ÷ totalAToken.
 
 ## 3. Available liquidity (underlying held by the aToken), block 26296985
 
-| Reserve | `balanceOf(aToken)` | Human |
-| --- | --- | --- |
-| USDC | 134360379936548 | 134,360,379.94 USDC (5.72% of 2,347,525,372.91 supplied) |
-| WETH | 398689880850443536846240 | 398,689.88 WETH |
-| WBTC | 3341656183983 | 33,416.56 WBTC |
-| LBTC | 268991318540 | 2,689.91 LBTC |
+| Reserve | `balanceOf(aToken)`      | Human                                                    |
+| ------- | ------------------------ | -------------------------------------------------------- |
+| USDC    | 134360379936548          | 134,360,379.94 USDC (5.72% of 2,347,525,372.91 supplied) |
+| WETH    | 398689880850443536846240 | 398,689.88 WETH                                          |
+| WBTC    | 3341656183983            | 33,416.56 WBTC                                           |
+| LBTC    | 268991318540             | 2,689.91 LBTC                                            |
 
 ## 4. Prices (Aave Oracle `getAssetPrice`, 8 decimals), block 26296985
 
@@ -90,13 +90,13 @@ Section 3: LBTC cap 2,690 − 2,689.93 = 0.07 LBTC of room (2,690 − 2689.93014
   the ltv0 asset first."); `validateLiquidationCall` (LiquidationGraceSentinelCheckFailed); `validateSetUserEMode`
   (InvalidDebtInEmode, InvalidCollateralInEmode). No isolation mode, siloed borrowing or debt ceiling checks remain.
 - `GenericLogic.sol` `calculateUserAccountData`: `if (vars.ltv == 0) hasZeroLtvCollateral = true; else avgLtv +=
-  balance × ltv`.
+balance × ltv`.
 - `SupplyLogic.sol` `executeWithdraw`: `validateWithdraw`, burn, then `validateHFAndLtvzero` only when the asset is
   used as collateral and `isBorrowingAny()`. The underlying leaves through `aToken.transferUnderlyingTo`, whose ERC-20
   transfer reverts when the aToken holds less than the amount; no Aave error names that case.
 - `BorrowLogic.sol` `executeBorrow`: `validateBorrow`, mint debt, `transferUnderlyingTo`, then `validateHFAndLtv`.
 - `Errors.sol`: custom errors, e.g. `error ReserveFrozen(); // 'Action cannot be performed because the reserve is
-  frozen'`, `error SupplyCapExceeded(); // 'Supply cap is exceeded'`.
+frozen'`, `error SupplyCapExceeded(); // 'Supply cap is exceeded'`.
 
 ## 7. Docs and threads quoted
 

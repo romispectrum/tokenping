@@ -10,15 +10,14 @@ export const meta = {
 };
 
 <ShortAnswer>
-  Una pérdida de paridad (depeg) de una stablecoin mueve tu factor de salud (health factor) en Aave a través del
-  precio del oráculo, no del $1 que tienes en mente. Si la stablecoin es tu colateral, cada centavo que cae por debajo
-  de $1 pasa directamente al factor de salud, porque los adaptadores de precio de Aave para stablecoins limitan el
-  precio por arriba (con un tope de $1.04 para USDC, USDT, DAI, USDS y PYUSD en Ethereum Core, leído el 28 de octubre
-  de 2026) y no tienen suelo. Si la stablecoin es tu deuda, una caída sube tu factor de salud y una subida lo baja,
-  pero nunca más de lo que permite el tope. USDe es el caso especial: desde el 8 de marzo de 2025 Aave la valora con
-  el feed de USDT, así que su precio de mercado no llega a tu factor de salud en absoluto. Una pérdida de paridad
-  puede mover mucho una posición entre dos comprobaciones de una alerta, así que una alerta te da tiempo, no
-  protección.
+  Una pérdida de paridad (depeg) de una stablecoin mueve tu factor de salud (health factor) en Aave a través del precio
+  del oráculo, no del $1 que tienes en mente. Si la stablecoin es tu colateral, cada centavo que cae por debajo de $1
+  pasa directamente al factor de salud, porque los adaptadores de precio de Aave para stablecoins limitan el precio por
+  arriba (con un tope de $1.04 para USDC, USDT, DAI, USDS y PYUSD en Ethereum Core, leído el 28 de octubre de 2026) y no
+  tienen suelo. Si la stablecoin es tu deuda, una caída sube tu factor de salud y una subida lo baja, pero nunca más de
+  lo que permite el tope. USDe es el caso especial: desde el 8 de marzo de 2025 Aave la valora con el feed de USDT, así
+  que su precio de mercado no llega a tu factor de salud en absoluto. Una pérdida de paridad puede mover mucho una
+  posición entre dos comprobaciones de una alerta, así que una alerta te da tiempo, no protección.
 </ShortAnswer>
 
 <ScopeNote />
@@ -65,7 +64,9 @@ Si la stablecoin es tu deuda, el efecto se invierte y, en una dirección, está 
 Así que una stablecoin prestada puede costarte como mucho cerca de un 4% de tu factor de salud por su propio precio, mientras que como colateral puede quitarte tanto como caiga. Esa asimetría viene del adaptador, no de los parámetros de riesgo de Aave.
 
 <Callout tone="info">
-  Por eso pedir prestada una stablecoin contra un activo volátil, la posición de [hacer short de moneda fiat con Aave](/es/blog/short-de-moneda-fiat-con-aave), apenas está expuesta a las pérdidas de paridad: la stablecoin es deuda, y que caiga es una buena noticia para el prestatario.
+  Por eso pedir prestada una stablecoin contra un activo volátil, la posición de [hacer short de moneda fiat con
+  Aave](/es/blog/short-de-moneda-fiat-con-aave), apenas está expuesta a las pérdidas de paridad: la stablecoin es deuda,
+  y que caiga es una buena noticia para el prestatario.
 </Callout>
 
 ## ¿Cómo valora Aave las stablecoins?
@@ -74,15 +75,15 @@ Aave no valora las stablecoins a $1. Cada reserva tiene una fuente de precio fij
 
 Leído del AaveOracle en Ethereum Core en el bloque 26291704 (28 de octubre de 2026, 14:03:35 UTC), mediante `getSourceOfAsset` y los getters de cada adaptador:
 
-| Activo | Umbral de liquidación | Precio del oráculo | Fuente de precio, según se describe el propio adaptador | Tope (`getPriceCap`) |
-| ------ | --------------------- | ------------------ | ------------------------------------------------------- | -------------------- |
-| USDC   | 78%                   | $0.99971803        | "Capped USDC / USD" sobre un feed "USDC / USD"          | $1.04                |
-| USDT   | 78%                   | $0.99842395        | "Capped USDT/USD" sobre un feed "USDT / USD"            | $1.04                |
-| USDe   | 75%                   | $0.99842395        | "Capped USDT/USD" sobre el mismo feed de USDT           | $1.04 (ver abajo)    |
-| DAI    | 77%                   | $0.99923138        | "Capped DAI/USD" sobre un feed "DAI / USD"              | $1.04                |
-| USDS   | 78%                   | $0.99972900        | "Capped USDS/USD" sobre un feed "USDS / USD"            | $1.04                |
-| PYUSD  | 78%                   | $0.99988808        | "Capped pyUSD/USD" sobre un feed "PYUSD / USD"          | $1.04                |
-| GHO    | 0% (no es colateral)  | $1.00000000        | Una fuente fija que no responde a ninguno de los getters del adaptador | ninguno, fijo en $1 |
+| Activo | Umbral de liquidación | Precio del oráculo | Fuente de precio, según se describe el propio adaptador                | Tope (`getPriceCap`) |
+| ------ | --------------------- | ------------------ | ---------------------------------------------------------------------- | -------------------- |
+| USDC   | 78%                   | $0.99971803        | "Capped USDC / USD" sobre un feed "USDC / USD"                         | $1.04                |
+| USDT   | 78%                   | $0.99842395        | "Capped USDT/USD" sobre un feed "USDT / USD"                           | $1.04                |
+| USDe   | 75%                   | $0.99842395        | "Capped USDT/USD" sobre el mismo feed de USDT                          | $1.04 (ver abajo)    |
+| DAI    | 77%                   | $0.99923138        | "Capped DAI/USD" sobre un feed "DAI / USD"                             | $1.04                |
+| USDS   | 78%                   | $0.99972900        | "Capped USDS/USD" sobre un feed "USDS / USD"                           | $1.04                |
+| PYUSD  | 78%                   | $0.99988808        | "Capped pyUSD/USD" sobre un feed "PYUSD / USD"                         | $1.04                |
+| GHO    | 0% (no es colateral)  | $1.00000000        | Una fuente fija que no responde a ninguno de los getters del adaptador | ninguno, fijo en $1  |
 
 El `isCapped()` de todos los adaptadores devolvió false ese día: ningún feed estaba por encima de su tope. La fila de USDe necesita una nota: el adaptador al que apunta USDe es un despliegue más antiguo del mismo contrato (creado el 1 de marzo de 2024) que no tiene el getter `getPriceCap`, así que el tope se leyó de su almacenamiento, donde está el mismo 104000000. sUSDe se valora con un adaptador distinto, "Capped sUSDe / USDT / USD", que multiplica la tasa de cambio de sUSDe a USDe por el precio de USDT y marcaba $1.25333685.
 
@@ -158,4 +159,4 @@ Cinco minutos son mucho tiempo en una pérdida de paridad. El 11 de marzo de 202
 - [Funciones de Aave v3.3](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md) y [documentación de Aave Umbrella](https://aave.com/docs/aave-v3/umbrella): déficit y slashing (consultado el 28 de octubre de 2026)
 - [Documentación de Morpho: oráculos](https://docs.morpho.org/learn/concepts/oracle): un oráculo por mercado, elegido por el curador, inmutable (consultado el 28 de octubre de 2026)
 
-*Contenido educativo, no asesoramiento financiero. Las alertas reducen el riesgo, pero no evitan la liquidación.*
+_Contenido educativo, no asesoramiento financiero. Las alertas reducen el riesgo, pero no evitan la liquidación._

@@ -10,12 +10,12 @@ export const meta = {
 };
 
 <ShortAnswer>
-  On Aave V3, each asset's variable borrow rate follows a curve set by governance: it rises gently with utilization,
-  the share of the supplied tokens that is borrowed, up to an optimal level, then steeply above it. Suppliers earn the
-  borrow rate times utilization, minus the reserve factor. Rates are recalculated at every supply, borrow, repayment
-  and withdrawal, so one large withdrawal can push utilization past the optimal level and multiply the rate within a
-  block: USDC on Ethereum Core went from 4.50% to 13.67% APR on 14 Oct 2026 and was back at 4.76% about 36 minutes
-  later. All Aave V3 debt is variable.
+  On Aave V3, each asset's variable borrow rate follows a curve set by governance: it rises gently with utilization, the
+  share of the supplied tokens that is borrowed, up to an optimal level, then steeply above it. Suppliers earn the
+  borrow rate times utilization, minus the reserve factor. Rates are recalculated at every supply, borrow, repayment and
+  withdrawal, so one large withdrawal can push utilization past the optimal level and multiply the rate within a block:
+  USDC on Ethereum Core went from 4.50% to 13.67% APR on 14 Oct 2026 and was back at 4.76% about 36 minutes later. All
+  Aave V3 debt is variable.
 </ShortAnswer>
 
 <ScopeNote />
@@ -33,13 +33,13 @@ On Aave V3, an asset's borrow rate is set by two things: its utilization and its
 
 Read on 25 Oct 2026 at Ethereum block 26269328 and Arbitrum block 518125419, the parameters and rates of a few common assets were:
 
-| Market and asset | Optimal usage | Base | Slope 1 | Slope 2 | Utilization | Borrow APR | Supply APR |
-| ---------------- | ------------- | ---- | ------- | ------- | ----------- | ---------- | ---------- |
-| Ethereum Core USDC | 94% | 0% | 4.5% | 10% | 93.72% | 4.49% | 3.78% |
-| Ethereum Core USDT | 92% | 0% | 4.5% | 10% | 87.81% | 4.30% | 3.39% |
-| Ethereum Core WETH | 92% | 0% | 2.2% | 6% | 81.31% | 1.94% | 1.31% |
-| Ethereum Core GHO | 99% | 4.5% | 0% | 0% | not used | 4.50% | 0% |
-| Arbitrum USDC | 90% | 0% | 4% | 10% | 77.32% | 3.44% | 2.39% |
+| Market and asset   | Optimal usage | Base | Slope 1 | Slope 2 | Utilization | Borrow APR | Supply APR |
+| ------------------ | ------------- | ---- | ------- | ------- | ----------- | ---------- | ---------- |
+| Ethereum Core USDC | 94%           | 0%   | 4.5%    | 10%     | 93.72%      | 4.49%      | 3.78%      |
+| Ethereum Core USDT | 92%           | 0%   | 4.5%    | 10%     | 87.81%      | 4.30%      | 3.39%      |
+| Ethereum Core WETH | 92%           | 0%   | 2.2%    | 6%      | 81.31%      | 1.94%      | 1.31%      |
+| Ethereum Core GHO  | 99%           | 4.5% | 0%      | 0%      | not used    | 4.50%      | 0%         |
+| Arbitrum USDC      | 90%           | 0%   | 4%      | 10%     | 77.32%      | 3.44%      | 2.39%      |
 
 GHO is the exception: both its slopes are zero, so its rate stays flat whatever the utilization, and it is changed by hand (see [GHO and Aave V4](#how-are-rates-set-for-gho-and-on-aave-v4)).
 
@@ -53,16 +53,16 @@ The Aave V3 borrow rate is a straight line up to the optimal usage ratio and a m
 
 In the contract, U is total debt divided by total debt plus the tokens the pool still holds. With USDC's Ethereum Core parameters, the rate at each utilization is:
 
-| Utilization | Borrow APR |
-| ----------- | ---------- |
-| 50%         | 2.39%      |
-| 80%         | 3.83%      |
-| 90%         | 4.31%      |
-| 94% (optimal) | 4.50%    |
-| 95%         | 6.17%      |
-| 96%         | 7.83%      |
-| 98%         | 11.17%     |
-| 100%        | 14.50%     |
+| Utilization   | Borrow APR |
+| ------------- | ---------- |
+| 50%           | 2.39%      |
+| 80%           | 3.83%      |
+| 90%           | 4.31%      |
+| 94% (optimal) | 4.50%      |
+| 95%           | 6.17%      |
+| 96%           | 7.83%      |
+| 98%           | 11.17%     |
+| 100%          | 14.50%     |
 
 Below 94%, ten points of utilization move the rate by less than half a point. Above it, each point adds about 1.67 points, and the last six points of utilization more than triple the rate. Read on 25 Oct 2026, USDC sat at 93.72%, just below the bend: 4.5% × 0.9372 ÷ 0.94 gives the 4.49% it was charging.
 
@@ -74,12 +74,12 @@ Aave borrow rates spike when utilization crosses the optimal usage ratio, usuall
 
 On 14 Oct 2026, one withdrawal of exactly 133,898,000 USDC from Ethereum Core pushed utilization from 93.92% to 99.50% in a single block:
 
-| Ethereum block (UTC)          | What happened                         | Utilization | USDC borrow APR |
-| ----------------------------- | ------------------------------------- | ----------- | --------------- |
-| 26194052 (14 Oct, 23:32:47)   | Before                                | 93.92%      | 4.50%           |
-| 26194053 (14 Oct, 23:32:59)   | 133,898,000 USDC withdrawn            | 99.50%      | 13.67%          |
-| 26194088 (14 Oct, 23:39:59)   | Highest point in the window           | about 99.8% | 14.18%          |
-| 26194231 (15 Oct, 00:08:35)   | The same address supplied 133,898,000 USDC back | 94.16% | 4.76% |
+| Ethereum block (UTC)        | What happened                                   | Utilization | USDC borrow APR |
+| --------------------------- | ----------------------------------------------- | ----------- | --------------- |
+| 26194052 (14 Oct, 23:32:47) | Before                                          | 93.92%      | 4.50%           |
+| 26194053 (14 Oct, 23:32:59) | 133,898,000 USDC withdrawn                      | 99.50%      | 13.67%          |
+| 26194088 (14 Oct, 23:39:59) | Highest point in the window                     | about 99.8% | 14.18%          |
+| 26194231 (15 Oct, 00:08:35) | The same address supplied 133,898,000 USDC back | 94.16%      | 4.76%           |
 
 Borrowers paid about three times the usual rate for 36 minutes, and the formula above reproduces each of those rates from the utilization. A spike lasts as long as utilization stays high: here the same tokens came back, but in other cases it takes new suppliers or repayments, drawn in by the high rate, to bring it down.
 
@@ -107,11 +107,11 @@ A short spike barely moves your health factor; a high rate that lasts for months
 
 Take 10 WETH supplied against 12,000 USDC borrowed on Ethereum Core, with WETH's 83% liquidation threshold (read on 14 Oct 2026) and an illustrative ETH price of $2,400: the health factor is 1.66. Counting what the WETH earns at its 1.31% supply rate:
 
-| How long the rate lasts | At 4.49% (25 Oct 2026) | At 14.50% (the curve's top) |
-| ----------------------- | ---------------------- | --------------------------- |
-| 36 minutes              | about 0.04 USDC of interest, 1.66 | about 0.12 USDC, 1.66 |
-| 30 days                 | about 1.66             | about 1.64                  |
-| One year                | about 1.61             | about 1.45                  |
+| How long the rate lasts | At 4.49% (25 Oct 2026)            | At 14.50% (the curve's top) |
+| ----------------------- | --------------------------------- | --------------------------- |
+| 36 minutes              | about 0.04 USDC of interest, 1.66 | about 0.12 USDC, 1.66       |
+| 30 days                 | about 1.66                        | about 1.64                  |
+| One year                | about 1.61                        | about 1.45                  |
 
 The 14 Oct spike cost this position about 12 cents. A market that stays at the top of its curve for a year would take it from 1.66 to about 1.45 with no price move at all, which is why a slow drift is worth an alert threshold with room to spare ([how much buffer a health factor gives you](/blog/safe-aave-health-factor#how-quickly-do-interest-and-parameter-changes-eat-into-your-buffer)).
 
@@ -153,4 +153,4 @@ If you want a message about the rate itself, some other tools send rate alerts, 
 - [BGD: Full deprecation of stable rate](https://governance.aave.com/t/bgd-full-deprecation-of-stable-rate/16473) (31 Jan 2024) and [Aave v3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): stable rate removed (fetched 25 Oct 2026)
 - [Aave V4 documentation](https://aave.com/docs/aave-v4.md) and [V4 positions](https://aave.com/docs/aave-v4/positions.md): the rate curve per Hub asset and the User Risk Premium (fetched 25 Oct 2026)
 
-*Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation.*
+_Educational content, not financial advice. Alerts reduce risk; they do not prevent liquidation._

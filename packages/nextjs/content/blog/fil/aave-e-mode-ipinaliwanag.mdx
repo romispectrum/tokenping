@@ -1,0 +1,204 @@
+export const meta = {
+  slug: "aave-e-mode-ipinaliwanag",
+  title: "Aave E-Mode: mas maraming mahihiram, mas manipis na margin",
+  description:
+    "Ano ang Aave V3 E-Mode, aling mga kategorya ang nasa Ethereum, Arbitrum, Base at Optimism, paano nito binabago ang health factor at gaano kanipis ang loop.",
+  h1: "Ano ang Aave E-Mode, at ano ang ginagawa nito sa liquidation risk mo?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "Ano ang Aave E-Mode, at gaano kalapit sa liquidation nito inilalagay ang isang posisyon?",
+  readingMinutes: 19,
+};
+
+<ShortAnswer>
+  Ang E-Mode (Efficiency Mode) ay setting ng Aave V3 na nagpapahintulot sa iyong mangutang nang mas malaki laban sa
+  collateral na gumagalaw ang presyo kasabay ng asset na hinihiram mo, gaya ng wstETH laban sa WETH, sa pagpapalit sa
+  karaniwang loan-to-value (LTV) at liquidation threshold ng mas matataas na halagang para sa buong kategorya. Sa
+  Ethereum Core, gumamit ang kategoryang "ETH correlated" ng LTV na 93% at liquidation threshold na 95% noong Oktubre
+  28, 2026, kumpara sa 79% at 82% para sa wstETH sa labas nito. Hindi nagbabago ang formula ng health factor, ang
+  threshold lang sa loob nito, kaya mas mataas na numero ang ipinapakita ng parehong posisyon. Ang kapalit ay mas
+  manipis na margin: ang posisyong hiniraman hanggang sa limit ng E-Mode ay nagsisimula sa 95 ÷ 93 = 1.0215, at noong
+  Marso 2026, na-liquidate ng 2.85% na galaw ng oracle (pinagkukunan ng presyo) ang mga posisyon sa E-Mode na mas mababa
+  sa mga 1.0288. Ang isang loop (paulit-ulit na pag-borrow gamit ang leverage) na hiniraman malapit sa limit na iyon ay
+  tumatakbo sa ilalim ng 1.1, ang pinakamababang alert threshold na tinatanggap ng Tokenping.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Ang mga numero at ang mga block number kung saan binasa ang mga ito: content/blog/snapshots/aave-e-mode.md */}
+
+## Ano ang Aave E-Mode, at bakit ito umiiral?
+
+Ang Aave E-Mode ay setting kada account sa isang Aave V3 market na naglalagay sa iyo sa isang kategorya ng magkakaugnay na asset at inilalapat ang LTV, liquidation threshold at liquidation bonus ng kategoryang iyon sa collateral na nakalista rito, sa halip na ang sariling mga parameter ng bawat asset. Inilalarawan ito ng help page ng Aave bilang paraan para "maximize their borrowing power by selecting optimized asset categories" (mapalaki ang kanilang borrowing power sa pagpili ng mga optimized na kategorya ng asset). Sa Pool contract, pumapasok sa kategorya ang `setUserEMode(categoryId)`, ipinapakita ng `getUserEMode(address)` kung nasaang kategorya ang isang address, at ang kategorya 0 ay nangangahulugang wala.
+
+Umiiral ito dahil nakatakda para sa pinakamasamang kaso ang mga karaniwang parameter: isang collateral asset at isang debt asset na magkahiwalay na gumagalaw ang presyo. Kapag iisang bagay ang sinusundan ng dalawa, gaya ng pagsunod ng wstETH at WETH sa ETH, sabay na ibinababa ng pagbaba ng presyo ng ETH sa dolyar ang collateral at ang utang, at halos hindi gumagalaw ang kalusugan ng posisyon. Kaya puwedeng payagan ng mga risk provider ng Aave ang mas mataas na LTV at threshold para sa pares na iyon. Ang natitira ay ang panganib na maghiwalay ang galaw ng dalawang asset, at iyon ang panganib na talagang kinakaharap ng isang posisyon sa E-Mode.
+
+Tatlong bagay ang bumubuo sa isang kategorya mula Aave V3.2, na nagpakilala ng "liquid E-Modes":
+
+- **Isang LTV, isang liquidation threshold at isang liquidation bonus** para sa buong kategorya.
+- **Isang set ng collateral**: ang mga reserve na nakakakuha ng mga parameter ng kategorya habang nasa loob ka nito. Pinapanatili ng collateral sa labas ng set ang sarili nitong LTV at threshold.
+- **Isang set na mahihiram**: ang tanging mga reserve na puwede mong hiramin habang nasa kategorya. Puwedeng nasa isang set ang isang asset, sa isa pa, o sa pareho, at puwede itong lumabas sa ilang kategorya.
+
+Kaya ang "ETH correlated" sa Ethereum Core ay hindi "hiramin ang kahit ano laban sa ETH": WETH lang ang laman ng set na mahihiram nito (binasa noong Oktubre 28, 2026, block 26291736). Ang kategorya ang nagpapasya kung ano ang puwede mong hiramin, gaya ng pagpapasya nito kung magkano.
+
+## Aling mga kategorya ng E-Mode ang umiiral ngayon?
+
+Binasa ang mga kategorya sa ibaba mula sa Pool contract ng bawat market noong Oktubre 28, 2026 gamit ang `getEModeCategoryLabel`, `getEModeCategoryCollateralConfig`, `getEModeCategoryCollateralBitmap` at `getEModeCategoryBorrowableBitmap`, at na-decode ang mga bitmap laban sa `getReservesList()`. Nag-ulat ang apat na Pool ng revision 11 (V3.7). Binabago ng governance at ng mga Risk Steward ang mga parameter na ito, kaya i-check ang kategorya sa Aave app bago umasa sa isang numero.
+
+### Ethereum Core (block 26291736)
+
+May 48 kategorya ang Ethereum Core. Karamihan ay nagpapares ng isang Pendle principal token (PT) o Ethena asset sa mga stablecoin o sa USDe, at marami ang naglilista ng mga expired na PT na naroon lang para sa mga posisyong inaayos pa. Ang mga pinakamalamang na makaharap ng isang borrower:
+
+| Id  | Label                       | LTV | Liquidation threshold | Bonus | Set ng collateral                             | Set na mahihiram   |
+| --- | --------------------------- | --- | --------------------- | ----- | --------------------------------------------- | ------------------ |
+| 1   | ETH correlated              | 93% | 95%                   | 1%    | WETH, wstETH, cbETH, rETH, weETH, osETH, ETHx | WETH               |
+| 2   | sUSDe Stablecoins           | 90% | 92%                   | 4%    | USDe, sUSDe                                   | USDC, USDT         |
+| 11  | USDe Stablecoin             | 90% | 93%                   | 2%    | USDe                                          | USDC, USDT         |
+| 4   | LBTC_WBTC                   | 84% | 86%                   | 3%    | LBTC                                          | WBTC               |
+| 7   | eBTC/WBTC                   | 83% | 85%                   | 3%    | eBTC                                          | WBTC               |
+| 22  | ezETH/wstETH                | 93% | 95%                   | 1%    | ezETH                                         | wstETH             |
+| 26  | weETH/wstETH ETH Correlated | 93% | 95%                   | 1%    | weETH                                         | WETH, wstETH       |
+| 3   | rsETH\_\_ETH_wstETH_ETHx    | 93% | 95%                   | 1%    | rsETH                                         | WETH, wstETH, ETHx |
+| 40  | LINK\_\_USDC_USDT           | 66% | 71%                   | 7%    | LINK                                          | USDC, USDT         |
+| 43  | XAUt\_\_USDC_USDT_GHO       | 70% | 75%                   | 6%    | XAUt                                          | USDC, USDT, GHO    |
+| 47  | PT-srUSDe Stablecoins       | 90% | 92%                   | 4.03% | sUSDe, PT-srUSDe-22OCT2026                    | USDC, USDT, USDe   |
+
+Dalawang detalye mula sa parehong pagbasa. Sa "ETH correlated", nasa set ng collateral ang ETHx pero naka-flag na LTV 0 (ang `ltvzeroBitmap` ng kategorya), kaya binibilang ito sa health factor sa 95% pero walang ibinibigay na borrowing power. At ang mga kategorya 47 at 48 (PT-srUSDe laban sa mga stablecoin at laban sa USDe) lang ang may naka-set na `isolated` flag ng V3.7; nasa mga patakaran sa pagpasok sa ibaba kung ano ang ginagawa nito. Ipinapakita ng mga kategoryang LINK at XAUt na hindi kailangang "correlated" ang isang kategorya: ikalawang set sila ng mga parameter para sa pag-borrow ng mga stablecoin laban sa iisang asset.
+
+### Arbitrum (mga block 519074353 hanggang 519074731)
+
+| Id  | Label                            | LTV | Liquidation threshold | Bonus | Set ng collateral      | Set na mahihiram |
+| --- | -------------------------------- | --- | --------------------- | ----- | ---------------------- | ---------------- |
+| 1   | Stablecoins                      | 93% | 95%                   | 1%    | DAI, USDC, USD₮0, EURS | wala             |
+| 2   | ETH correlated                   | 93% | 95%                   | 1%    | WETH, wstETH, weETH    | WETH             |
+| 7   | wstETH/WETH ETH Correlated       | 94% | 96%                   | 1%    | wstETH                 | WETH             |
+| 3   | ezETH/wstETH/WETH ETH Correlated | 93% | 95%                   | 1%    | ezETH                  | WETH, wstETH     |
+| 5   | rsETH/wstETH/WETH ETH Correlated | 93% | 95%                   | 1%    | rsETH                  | WETH, wstETH     |
+| 4   | ezETH Stablecoins                | 72% | 75%                   | 7.5%  | ezETH                  | USD₮0, USDC      |
+| 6   | rsETH/Stablecoins                | 72% | 75%                   | 7.5%  | rsETH                  | USDC, USD₮0      |
+| 8   | AAVE\_\_USDCn_USDT               | 66% | 73%                   | 10%   | AAVE                   | USD₮0, USDC      |
+| 9   | ARB\_\_USDCn_USDT                | 58% | 63%                   | 10%   | ARB                    | USD₮0, USDC      |
+| 10  | tBTC\_\_USDCn_USDT               | 72% | 75%                   | 7.5%  | tBTC                   | USD₮0, USDC      |
+
+Walang laman ang set na mahihiram ng kategoryang "Stablecoins" ng Arbitrum, kaya walang bagong utang na mabubuksan dito. Isang antas na mas maluwag kaysa sa Ethereum ang single-asset na kategoryang "wstETH/WETH ETH Correlated" nito: 94% at 96%, margin sa limit na 96 ÷ 94 = 1.0213.
+
+### Base (block 53204166)
+
+May 15 kategorya ang Base. Ang mga para sa ETH, at ang dalawang para sa BTC na pinakamadalas makaharap ng mga borrower:
+
+| Id  | Label             | LTV | Liquidation threshold | Bonus | Set ng collateral          | Set na mahihiram |
+| --- | ----------------- | --- | --------------------- | ----- | -------------------------- | ---------------- |
+| 1   | ETH correlated    | 90% | 93%                   | 2%    | WETH, cbETH, wstETH, weETH | WETH             |
+| 8   | wstETH/WETH       | 93% | 95%                   | 1%    | wstETH                     | WETH             |
+| 9   | cbETH/WETH        | 93% | 95%                   | 2%    | cbETH                      | WETH             |
+| 7   | weETH/WETH        | 93% | 95%                   | 1.25% | weETH                      | WETH             |
+| 2   | ezETH wstETH      | 93% | 95%                   | 1%    | ezETH                      | wstETH           |
+| 4   | LBTC_cbBTC        | 82% | 84%                   | 3%    | LBTC                       | cbBTC            |
+| 10  | cbBTC Stablecoins | 82% | 85%                   | 4%    | cbBTC                      | USDC, GHO        |
+
+Ang iba ay nagpapares ng isang asset (wrsETH, syrupUSDC, AAVE, EURC, LBTC, tBTC, ezETH) sa USDC at GHO o sa wstETH. Ipinapakita ng Base kung paano hinahati ang isang malawak na kategorya sa mga single-asset na kategorya: tumatakbo sa 90% at 93% ang multi-asset na "ETH correlated", habang tumatakbo sa 93% at 95% ang wstETH/WETH, cbETH/WETH at weETH/WETH.
+
+### Optimism (block 158799548)
+
+| Id  | Label          | LTV   | Liquidation threshold | Bonus | Set ng collateral                         | Set na mahihiram |
+| --- | -------------- | ----- | --------------------- | ----- | ----------------------------------------- | ---------------- |
+| 1   | Stablecoins    | 0.01% | 87%                   | 1%    | DAI, USDC (bridged at native), USDT, sUSD | wala             |
+| 2   | ETH correlated | 93%   | 95%                   | 1%    | WETH, wstETH, rETH (rETH sa LTV na 0)     | WETH             |
+
+Naiwang labi ang kategoryang "Stablecoins" ng Optimism, na may LTV na 0.01% at walang mahihiram. Tugma sa mga numero ng Ethereum ang kategoryang "ETH correlated" nito.
+
+## Paano kinukuwenta ang health factor sa E-Mode?
+
+Sa E-Mode, ginagamit ng health factor ang parehong formula gaya ng dati, Σ(halaga ng collateral × liquidation threshold) ÷ halaga ng utang, maliban na ang bawat collateral asset sa set ng kategorya mo ay kumukuha ng threshold ng kategorya sa halip na sarili nito. Iyon lang ang pagbabago: pinipili ng `GenericLogic.calculateUserAccountData` ang threshold kada asset at ibinabalik ng `getUserAccountData` ang resulta, kaya anumang tool na nagbabasa ng call na iyon ay nagpapakita na ng numero sa E-Mode. Nasa [paano kinukuwenta ang Aave health factor](/fil/blog/aave-health-factor-ipinaliwanag#paano-kinakalkula-ang-aave-health-factor) ang pangkalahatang formula, at ibinibigay ng [paano binabago ng E-Mode ang health factor](/fil/blog/aave-health-factor-ipinaliwanag#paano-binabago-ng-e-mode-ang-health-factor) sa parehong gabay ang maikling bersyon ng kasunod.
+
+Halimbawa ang wstETH na collateral na nagkakahalaga ng $10,000 at WETH na utang na nagkakahalaga ng $9,000 sa Ethereum Core, gamit ang mga parameter ng "ETH correlated" na binasa noong Oktubre 28, 2026 (block 26291736) at ang sariling mga parameter ng wstETH na binasa sa parehong araw (block 26291849: LTV na 79%, liquidation threshold na 82%):
+
+1. **Sa E-Mode:** HF = 10,000 × 0.95 ÷ 9,000 = **1.056**. Ang borrow limit ay 10,000 × 0.93 = $9,300, kaya $300 pa ang puwedeng hiramin.
+2. **Sa labas ng E-Mode:** ang parehong posisyon ay magkakaroon ng HF = 10,000 × 0.82 ÷ 9,000 = 0.911, at hindi ito mabubuksan talaga: nililimitahan ng 79% na LTV ng wstETH ang hiram sa $7,900.
+3. **Sa limit ng E-Mode:** hiramin ang buong $9,300 at HF = 9,500 ÷ 9,300 = **1.0215**. 2.1% ang layo ng posisyon sa liquidation sa mismong araw na binuksan ito.
+
+Ang karaniwang posisyong hiniraman hanggang sa limit nito ay nagsisimula rin sa threshold ÷ LTV, 84 ÷ 81 = 1.037 para sa WETH sa Ethereum Core noong Oktubre 28, 2026 (block 26291849). Pinapaliit ng E-Mode ang agwat ng LTV at threshold sa 2 percentage point, at ang agwat na iyon ang buong margin ng posisyong sinagad. Tinatalakay ng [bakit health factor na mga 1.03 lang ang naiiwan kapag hiniram ang maximum](/fil/blog/aave-health-factor-ipinaliwanag#bakit-mga-103-lang-ang-health-factor-kapag-nag-borrow-ka-ng-maximum) ang parehong aritmetika sa labas ng E-Mode.
+
+Iba rin ang gumagalaw sa numero. Kapag wstETH ang collateral at WETH ang utang, parehong pinepresyuhan mula sa ETH ang dalawang panig, kaya nagkakansela ang presyo ng ETH sa dolyar: kung mahati ang ETH, sabay na mahahati ang collateral at ang utang at mananatili sa 1.056 ang HF. Ang natitira ay ang wstETH/ETH rate na iniuulat ng oracle ng Aave. Umaabot sa 1.00 ang posisyon kapag bumaba ang rate na iyon nang 1 − 90 ÷ 95 = 5.3%, at ang posisyong sinagad kapag bumaba ito nang 2.1%. Ginagawa itong rate sa halip na presyo sa dolyar ng [paano binabago ng E-Mode ang liquidation price mo](/fil/blog/paano-kalkulahin-ang-aave-liquidation-price#paano-binabago-ng-e-mode-ang-liquidation-price-mo).
+
+## Paano gumagana ang leveraged staking loop sa E-Mode, at saan ito pumupusta?
+
+Ang leveraged staking loop ay nagdedeposito ng wstETH, humihiram ng WETH laban dito, ginagawang mas maraming wstETH ang WETH at idinedeposito rin iyon, at inuulit hanggang ilang beses na ng panimulang dami ng wstETH ang hawak ng posisyon laban sa halos ganoon ding laking utang na WETH. E-Mode ang nagpapasulit dito: sa 93% na LTV, kayang umabot ng loop sa 1 ÷ (1 − 0.93) = 14.3 beses ng panimulang equity, kumpara sa 1 ÷ (1 − 0.79) = 4.8 beses sa karaniwang LTV ng wstETH.
+
+Kuwentahin ito sa ETH, ang yunit na kinabubuhayan ng loop. Magsimula sa wstETH na nagkakahalaga ng 10 ETH, mag-loop hanggang collateral na 100 ETH at utang na 90 WETH, at mayroon ka ng posisyong 1.056 sa itaas, sampung beses na levered. Noong Oktubre 28, 2026, itinakda ng oracle ng Aave sa Ethereum Core ang presyo ng wstETH sa $2,912.79 at ng WETH sa $2,335.08 (block 26291849), rate na 1.2474 ETH kada wstETH na tumugma sa sariling `stEthPerToken()` ng Lido sa parehong block, kaya ang 100 ETH na collateral ay mga 80.2 wstETH.
+
+Dalawang numero ang nagpapasya kung kikita o malulugi ang loop, at wala sa mga ito ang presyo ng ETH sa dolyar:
+
+- **Ang wstETH/ETH exchange rate.** Tumataas ito habang naiipon ang staking rewards: nag-ulat ang Lido ng stETH APR na 2.25% noong Oktubre 28, 2026 at 7-day average na 2.33%. Kinokolekta ng loop ang yield na iyon sa 100 ETH habang nagbabayad ng interes sa 90, kaya ang 10 ETH na equity ay kumikita ng mga sampung beses ng agwat ng dalawang rate. Ang pagbaba ng rate na iniuulat ng oracle, dahil sa diskwento sa market ng wstETH o sa error sa configuration, ay nagpapababa sa collateral at hindi sa utang, at ito lang ang galaw ng presyo na kayang mag-liquidate sa loop.
+- **Ang borrow rate ng WETH.** Lumalaki ang utang ayon sa variable rate ng Aave, 1.94% APR para sa WETH sa Ethereum Core sa block 26291849, habang halos walang kinikita mula sa Aave mismo ang wstETH na idinedeposito ng loop (0.0002% sa parehong block). Tuwing mas mataas ang borrow rate kaysa sa staking yield, nalulugi ang loop at dahan-dahang bumababa ang health factor nito.
+
+Pagsamahin ang dalawa sa loob ng isang taon sa posisyong sampung beses, nang hindi isinasama ang compounding at mga galaw ng presyo. Lumalaki ang collateral kasabay ng staking yield hanggang mga 102.3 ETH. Sa borrow rate na 1.94%, umaabot sa 91.75 WETH ang utang: 10.55 ETH ang equity, tumaas nang 5.5% kumpara sa 2.3% sa simpleng paghawak ng wstETH, at tumataas ang HF sa 1.059. Sa average na borrow rate na 5%, umaabot sa 94.5 WETH ang utang, bumababa ang equity sa 7.8 ETH at dumudulas ang HF sa 1.028. Sa 8%, umaabot sa 97.2 WETH ang utang at 1.000 ang HF: mali-liquidate ang loop dahil sa interes lang. Talagang sumisirit ang borrow rate ng WETH kapag mataas ang utilization; ipinapaliwanag ng [bakit sumisirit ang borrow rate sa Aave](/fil/blog/mga-interest-rate-sa-aave#bakit-biglang-tumataas-ang-borrow-rate-sa-aave) ang curve.
+
+Mahalaga pa rin ang presyo ng ETH sa dolyar sa may-ari ng loop, dahil ang 10 ETH na equity ay nagkakahalaga ng kung ano ang halaga ng ETH, pero hindi ito mahalaga sa health factor. Ang loop ay pusta na mananatiling mas mataas ang staking yield kaysa sa borrow rate at na hindi bababa ang wstETH/ETH rate ng oracle nang higit sa margin. Ang ikalawang pusta ang natalo noong Marso 2026.
+
+## Ano ang mga patakaran sa pagpasok at paglabas sa isang kategorya ng E-Mode?
+
+Isang call lang ang pagpasok o paglabas sa isang kategorya, `setUserEMode(categoryId)` sa Pool, at tatlong check ang pinapatakbo ng Pool bago ito magkabisa, sa `ValidationLogic.validateSetUserEMode` at `SupplyLogic.executeSetUserEMode` ng aave-v3-origin (main branch, binasa noong Oktubre 28, 2026):
+
+1. **Bawat asset na hinihiram mo ay dapat mahihiram sa target na kategorya.** Para sa isang kategorya, ibig sabihin nito ang borrowable bitmap nito; para sa paglabas (kategorya 0), na naka-enable ang pag-borrow sa reserve. Ang error ay `InvalidDebtInEmode`. Hindi makakapasok sa "ETH correlated" sa Ethereum Core, kung saan WETH lang ang mahihiram, ang wallet na may utang na USDC hangga't hindi nababayaran ang USDC.
+2. **Bawat asset na in-enable mo bilang collateral ay dapat may LTV na hindi zero sa target na kategorya.** Ang error ay `InvalidCollateralInEmode`. Dumadaan ang check sa `getUserReserveLtv`, na nagbabalik ng LTV ng kategorya para sa mga asset sa set ng collateral nito (o 0 kung naka-flag ng kategorya na LTV 0 ang mga ito), ng sariling LTV ng asset para sa collateral sa labas ng set, at ng 0 para sa collateral sa labas kapag isolated ang kategorya.
+3. **Pagkatapos ng paglipat, dapat nasa 1 o mas mataas ang health factor mo.** Binabago muna ng `executeSetUserEMode` ang kategorya at saka tinatawag ang `validateHealthFactor`, kaya nagre-revert ang paglipat na mag-iiwan sa iyong puwedeng i-liquidate.
+
+Laging makakalipat ang wallet na walang deposito o utang, at walang pagbabago at walang check para sa wallet na nasa hinihiling na kategorya na.
+
+Dalawang tala sa bersyon ang mahalaga sa sinumang nagbabasa ng mas lumang mga gabay. Mula V3.2, pinapanatili ng collateral sa labas ng set ng kategorya mo ang sarili nitong LTV at threshold, kaya pinapayagan ang paghawak ng WBTC habang nasa "ETH correlated" at binibilang ang WBTC sa sariling mga parameter ng WBTC: sabi ng V3.2 feature notes, ang mga parameter ng E-Mode ay "will only apply for the ones listed as eModeCollateral" (ilalapat lang sa mga nakalista bilang eModeCollateral). Mula V3.7, puwedeng magdala ang isang kategorya ng `isolated` flag (`getIsEModeCategoryIsolated`). Sa isang isolated na kategorya, nakakakuha ng LTV 0 ang collateral sa labas ng set pero pinapanatili ang sarili nitong threshold: binibilang pa rin ito sa health factor pero hindi sumusuporta sa bagong pag-borrow, hinaharangan ang pagpasok habang naka-enable ang ganitong collateral, at tinatanggihan ang pag-enable dito bilang collateral mula sa loob ng kategorya. Kung bubuksan ng governance ang flag para sa isang aktibong kategorya, sabi ng V3.7 notes, ang collateral sa labas ay "immediately becomes LTV-zero" (agad na nagiging LTV-zero) habang ang "health factor is unaffected" (hindi apektado ang health factor). Noong Oktubre 28, 2026, ang dalawang kategoryang PT-srUSDe lang ng Ethereum Core ang may naka-set na flag.
+
+Ang humaharang sa paglabas ay ang parehong tatlong check na pinapatakbo laban sa kategorya 0. Hindi ka makakalabas habang humihiram ka ng asset na naka-disable ang pag-borrow sa reserve nito, at hindi ka makakalabas habang itutulak ng paglabas ang health factor mo sa ilalim ng 1, na siyang karaniwang kaso: magpapakita ng 0.911 sa labas ng E-Mode ang posisyong 1.056 sa itaas, kaya nagre-revert ang call. Para makalabas, kailangan mo munang magbayad ng sapat na WETH, hanggang utang na mga 8,200 laban sa 10,000 na collateral sa 82% na threshold ng wstETH. Madaling pasukin ang E-Mode at mahirap labasan kapag nagamit mo na ang puwang na ibinibigay nito.
+
+## Ano ang nangyari sa mga loop sa E-Mode noong Marso 2026?
+
+Noong Marso 2026, binawasan ng isang maling na-configure na price adapter nang mga 2.85% ang wstETH exchange rate na ginamit ng Aave sa mga market ng Ethereum Core at Prime, at sabay-sabay na naging puwedeng i-liquidate ang bawat posisyon sa E-Mode na may health factor na mas mababa sa mga 1.0288. Ang salaysay ay mula sa post-mortem ng Chaos Labs sa governance forum ng Aave, na ipinost noong Marso 10, 2026 at muling binasa noong Oktubre 28, 2026; walang anumang lumalampas dito ang nakasulat dito.
+
+Pinepresyuhan ng Aave ang wstETH sa pamamagitan ng CAPO adapter (Correlated Assets Price Oracle) na naglilimita kung gaano kabilis puwedeng tumaas ang wstETH/stETH rate na iniuulat nito, para harangan ang mga atake na parang inflation. Binubuo ang cap mula sa snapshot ratio, snapshot timestamp at maximum yearly growth rate. Itinakda ng isang update ang snapshot timestamp sa isang reference na pitong araw na ang tanda, habang pinigilan ng isang limit sa chain (puwedeng tumaas ang ratio nang hanggang 3% lang kada 3 araw) ang ratio na maabot ang halagang inaasahan ng timestamp na iyon, kaya kinuwenta ang cap mula sa reference na masyadong mababa. Sabi ng post-mortem, lumabas na mga 1.1939 ang maximum na pinapayagang rate, mas mababa sa aktuwal na rate, kaya nanaig ang cap dito at bumaba ang epektibong rate nang "around 2.855%" (mga 2.855%).
+
+Ang iniuulat nitong mga naging bunga:
+
+- Mga 10,938 wstETH ng mga liquidation sa E-Mode sa 34 account, na tumama sa mga posisyong "with a health factor lower than 1.0288" (na may health factor na mas mababa sa 1.0288).
+- Walang bad debt (utang na hindi na mababayaran) sa protocol.
+- Mga 512 ETH ang nakuha ng mga liquidator sa mga bonus at sa halaga mula sa agwat ng rate, kung saan 141 ETH ng kita sa liquidation bonus at mga 13 ETH ng fees ang nabawi para bayaran ang mga apektadong user, at sasagutin ng DAO treasury ang natitira.
+- Pansamantalang ibinaba sa 1 ang wstETH borrow cap sa dalawang market habang inaayos ang configuration.
+
+Ang laki ng galaw ang aral para sa isang loop. Ang posisyong hiniraman hanggang sa limit ng "ETH correlated" ay nagsisimula sa 1.0215, nasa loob ng saklaw na na-liquidate; hindi nagalaw ang posisyong nasa 1.056. Walang anumang babala mula sa posisyon mismo, dahil galing ang galaw sa configuration ng oracle at hindi sa anumang market. Ginagamit pa rin ang adapter noong Oktubre 28, 2026 (block 26291849): inilarawan ng oracle source para sa wstETH sa Ethereum Core ang sarili nito bilang "Capped wstETH / stETH(ETH) / USD", na may snapshot ratio na 1.2283 na may petsang Marso 3, 2026, maximum yearly growth na 8.8% at iniulat na ratio na 1.2474, kapareho ng sa Lido. Tinatalakay ng [Sanhi 6 ng pagbaba ng health factor mo](/fil/blog/bakit-bumaba-ang-aave-health-factor#sanhi-6-mali-ba-ang-presyong-ibinigay-ng-oracle-o-exchange-rate-sa-collateral-mo) ang kompensasyong sumunod.
+
+## Kailan hindi nakakatulong ang E-Mode?
+
+Walang nagagawa ang E-Mode para sa posisyong nasa labas ng kategorya ang utang, at kaunti lang para sa ilan pang karaniwang setup:
+
+- **Utang na hindi nakalista sa kategorya.** Hindi ka talaga makakapasok habang hinihiram mo ito. Nananatili sa sariling 84% na threshold ng WETH sa Ethereum Core (block 26291849) ang posisyong 10 WETH laban sa 12,000 USDC mula sa gabay sa health factor, dahil WETH lang ang pinapahiram ng "ETH correlated".
+- **Collateral sa labas ng set.** Pinapanatili nito ang sarili nitong mga parameter, kaya ang pagdagdag ng WBTC sa isang posisyong "ETH correlated" ay nagpapataas sa health factor sa sariling threshold ng WBTC, 85% sa Ethereum Core sa block 26291889, hindi 95%. Sa isang isolated na kategorya, wala itong idinadagdag sa borrowing power.
+- **Mga kategorya ng stablecoin.** Sa Arbitrum at Optimism, walang mahihiram na asset ang kategoryang "Stablecoins" noong Oktubre 28, 2026, kaya hindi ito magagamit para sa bagong loan. Sa Ethereum Core, ipinapares ng mga kategorya ng stablecoin ang isang asset (USDe, sUSDe, isang PT) sa USDC at USDT sa 90% hanggang 94% na LTV. Ang panganib doon ay ang depeg (pagkawala ng peg sa dolyar) ng collateral, na hindi binabawasan ng isang correlated na kategorya; pinapabilis ng mas manipis na margin ang pagtama nito.
+- **Maliliit na posisyon.** Puwedeng i-clear ng isang liquidator ang hanggang 100% ng isang debt reserve kapag mas mababa sa $2,000 ang halaga ng collateral o utang na sangkot (`LiquidationLogic`, binasa noong Oktubre 28, 2026), kaya isinasara sa halip na binabawasan ang maliit na loop na tumawid sa 1.00; nasa [gaano kalaki ng utang ko ang puwedeng i-liquidate nang sabay](/fil/blog/paano-gumagana-ang-liquidation-sa-aave#gaano-karami-sa-utang-ko-ang-puwedeng-i-liquidate-nang-sabay-sabay) ang patakaran. Maliit ayon sa pamantayan ng Aave ang 1% na bonus sa "ETH correlated", pero binabayaran ito sa buong halaga.
+- **Manipis na margin na hindi mo sinadya.** Kung papasok ka sa isang kategorya at hihiram malapit sa limit nito, 2% ang margin, anuman ang hitsura ng health factor bago ang paglipat.
+
+Kung alinman diyan ang sitwasyon mo, ang mga karaniwang parameter at mas malawak na buffer ang mas mabuting kasangkapan; ikinukumpara ng [gaano kalaking buffer ang ibinibigay ng health factor](/fil/blog/ligtas-na-aave-health-factor#bakit-iba-ang-ligtas-na-numero-para-sa-stablecoin-na-utang-volatile-na-utang-at-mga-e-mode-loop) kung ano ang ibig sabihin ng parehong health factor para sa isang loop sa E-Mode at para sa ibang mga posisyon.
+
+## Makakatulong ba ang isang alerto sa posisyon sa E-Mode?
+
+Nakakatulong ang health factor alert sa posisyon sa E-Mode na pinananatili sa itaas ng mga 1.1 hanggang 1.15, at hindi ito angkop sa loop na sadyang pinatatakbo sa ilalim niyon. Binabasa ng Tokenping ang parehong health factor na iniuulat ng contract, mula sa `getUserAccountData`, na isinasaalang-alang na ang kategorya mo sa E-Mode, kaya walang kailangang i-configure para sa E-Mode: ang numero sa dashboard at sa mga mensahe ay ang numerong nakikita ng isang liquidator.
+
+Ang hangganan ay ang threshold. Mula 1.1 hanggang 10 ang Aave alert threshold ng Tokenping, na 1.5 ang default. Ang loop na nasa 1.056, o anumang posisyong sadyang pinatatakbo sa ilalim ng 1.1, ay nasa ilalim ng bawat threshold na maitatakda mo. Ang alertong naka-set sa 1.1 ay makikitang nasa ilalim nito ang health factor sa bawat check kada 5 minuto at magpapadala ng mensahe sa bawat isa, sa bawat channel na pinili mo, hanggang bumalik ang posisyon sa itaas ng 1.1. Walang snooze at walang digest; ipinapaliwanag ng [gaano kadalas kang aalertuhan](/fil/blog/paano-mag-set-ng-aave-health-factor-alert#gaano-kadalas-kang-aalertuhan) ang kilos na ito.
+
+Para sa manipis na loop, isa sa dalawa ang tapat na payo. Panatilihin ang margin: patakbuhin ang loop para nasa itaas ng antas na gusto mong marinig ang health factor nito, halimbawa 1.12 hanggang 1.15 para sa wstETH/WETH loop, na kapalit ang leverage pero hindi pa umaabot sa liquidation ang 2.85% na galaw ng oracle, at i-set doon ang alerto para ang interes na dahan-dahang nagpapababa sa posisyon ang una mong marinig. O tanggapin ang tuloy-tuloy na mga mensahe: i-set sa 1.1 at ituring ang daloy na senyales na tumatakbo ka sa ilalim nito, na iilan lang ang gustong makatanggap sa Signal o Telegram sa bawat check. Ang hindi kayang gawin ng alerto sa alinmang kaso ay kumilos nang mas mabilis kaysa sa oracle: ginawang puwedeng i-liquidate ng galaw noong Marso 2026 ang mga posisyon sa sandaling umiral ang cap, at walang naibibigay na oras para kumilos ang check kada 5 minuto. Nasa [paano pumili ng alert threshold, hakbang-hakbang](/fil/blog/ligtas-na-aave-health-factor#paano-ka-pipili-ng-alert-threshold-hakbang-hakbang) at [paano mag-set ng health factor alert](/fil/blog/paano-mag-set-ng-aave-health-factor-alert#hakbang-5-pumili-ng-threshold) ang setup; nasa [paano itaas ang Aave health factor mo](/fil/blog/paano-iwasan-ang-liquidation-sa-aave#hakbang-1-bayaran-ang-bahagi-ng-utang-mo) kung ano ang gagawin kapag may dumating na mensahe, na para sa isang loop ay kadalasang pagbabayad ng WETH.
+
+Puwede mo munang [i-check ang Aave V3 health factor mo](/fil/aave); hindi mo kailangang magbayad para tingnan ang mga posisyon mo. Nagkakahalaga ang mga alerto ng <AlertPrice />, binabayaran sa Arbitrum, isa kada Aave V3 market o V4 Spoke, at ipinapadala sa Signal, Telegram o email. Nasa beta ang Tokenping at walang garantiya ng uptime. Para sa posisyong may 2% na margin, walang alertong makakapalit sa margin mismo.
+
+## Mga sanggunian
+
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): `POOL_REVISION`, `getReservesList`, at ang label, collateral config, mga bitmap ng collateral, mahihiram at LTV-0 at ang isolated flag ng mga kategorya 1 hanggang 48, sa block 26291736 (na-access noong Oktubre 28, 2026)
+- Aave V3 Pool sa [Arbitrum](https://arbiscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD), [Base](https://basescan.org/address/0xA238Dd80C259a72e81d7e4664a9801593F98d1c5) at [Optimism](https://optimistic.etherscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD): ang parehong mga call para sa bawat kategorya, sa mga block 519074353 hanggang 519074731 ng Arbitrum, block 53204166 ng Base at block 158799548 ng Optimism (na-access noong Oktubre 28, 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): LTV, threshold, bonus at mga rate ng WETH, wstETH at USDC sa block 26291849; WBTC sa block 26291889 (na-access noong Oktubre 28, 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) at ang [wstETH CAPO adapter](https://etherscan.io/address/0xe1D97bF61901B075E9626c8A2340a7De385861Ef) nito: mga presyo ng WETH at wstETH, ang paglalarawan ng adapter, snapshot ratio, snapshot timestamp, maximum yearly growth at ratio sa block 26291849 (na-access noong Oktubre 28, 2026)
+- [wstETH token](https://etherscan.io/address/0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0): `stEthPerToken()` sa block 26291849 (na-access noong Oktubre 28, 2026)
+- [Lido stETH APR API](https://eth-api.lido.fi/v1/protocol/steth/apr/sma): huling APR at 7-day average (na-access noong Oktubre 28, 2026)
+- [IPool.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/interfaces/IPool.sol): ang mga getter ng E-Mode, `setUserEMode` at `getUserEMode` (aave-v3-origin main, na-access noong Oktubre 28, 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) at [LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): `validateSetUserEMode`, `getUserReserveLtv`, `executeSetUserEMode` at ang $2,000 na threshold ng close factor (ang bahagi ng utang na puwedeng bayaran nang isang beses) (aave-v3-origin main, na-access noong Oktubre 28, 2026)
+- [Aave V3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): liquid E-Modes, pinapanatili ng collateral sa labas ng kategorya ang sarili nitong mga parameter, mga patakaran sa pagpasok at paglabas (na-access noong Oktubre 28, 2026)
+- [Aave V3.7 isolated E-Mode](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md): ang mga epekto ng isolated flag (na-access noong Oktubre 28, 2026)
+- [Aave help: Efficiency Mode (E-mode)](https://aave.com/help/borrowing/e-mode) (na-access noong Oktubre 28, 2026)
+- [Post-mortem ng Chaos Labs, exchange rate misalignment sa mga instance ng wstETH Core at Prime](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): ipinost noong Marso 10, 2026 (na-access noong Oktubre 28, 2026)
+
+_Pang-edukasyong nilalaman, hindi payong pinansyal. Binabawasan ng mga alerto ang panganib, pero hindi nito napipigilan ang liquidation._

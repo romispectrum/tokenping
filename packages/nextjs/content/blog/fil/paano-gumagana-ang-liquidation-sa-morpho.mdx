@@ -1,0 +1,185 @@
+export const meta = {
+  slug: "paano-gumagana-ang-liquidation-sa-morpho",
+  title: "Paano gumagana ang Morpho liquidation: incentive, bad debt",
+  description:
+    "Kailan puwedeng ma-liquidate ang loan sa Morpho, gaano karami ang makukuha, ang incentive sa bawat LLTV, bad debt, oracle at ang kaibahan ng Midnight.",
+  h1: "Ano ang nangyayari kapag na-liquidate ang posisyon mo sa Morpho?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Paano gumagana ang liquidation sa Morpho, at magkano ang nagagastos ng borrower?",
+  readingMinutes: 14,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Puwedeng ma-liquidate ang isang posisyon sa Morpho Blue kapag tumaas ang loan-to-value (LTV) nito lampas sa
+  liquidation LTV (LLTV) ng market, na katumbas ng health factor na mas mababa sa 1. Mula noon, kahit sino ay puwedeng
+  magbayad ng bahagi o ng buong utang mo sa iisang transaksyon at kumuha ng collateral na nagkakahalaga ng binayarang
+  halaga na pinarami sa liquidation incentive factor ng market, ayon sa presyo ng oracle (pinagkukunan ng presyo) ng
+  market. Ang LLTV lang ang nagtatakda ng incentive: 4.38% sa LLTV na 86%, at lahat ng ito ay napupunta sa liquidator.
+  Sa iyo pa rin ang hiniram mo, kaya ang incentive ang ginagastos mo sa liquidation, maliban kung hindi na sapat ang
+  collateral mo para sa utang; doon, mawawala sa iyo ang lahat ng ito at sasaluhin ng mga lender ng market ang natitira
+  bilang bad debt (utang na hindi na mababayaran). May dalawang kaibahan ang mga fixed-rate na loan ng Morpho Midnight:
+  bago ang maturity, ang isang liquidation ay puwede lang kumuha ng sapat para maging malusog muli ang posisyon, maliban
+  kung ang matitirang collateral ay makakabayad ng mas mababa sa threshold ng market, at pagkatapos ng maturity,
+  puwedeng i-liquidate ang anumang natitirang utang, kahit malusog ang posisyon.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Ang mga numero at ang mga block number kung kailan binasa ang mga ito: content/blog/snapshots/how-morpho-liquidation-works.md */}
+
+## Kailan puwedeng ma-liquidate ang isang posisyon sa Morpho?
+
+Puwedeng ma-liquidate ang isang posisyon sa Morpho Blue sa sandaling mas malaki na ang utang mo kaysa sa halaga ng collateral mo na pinarami sa LLTV ng market. Sa health factor, iyan ay anumang halagang mas mababa sa 1.00 (nasa [paano kinakalkula ang Morpho health factor](/fil/blog/morpho-health-factor-ipinaliwanag) ang formula at mga halimbawa).
+
+Ang contract mismo ang sumusuri nito. Ang function na `liquidate` ng Morpho Blue ay unang nagdadagdag ng interes na inutang hanggang sa block na iyon, saka binabasa nang isang beses ang oracle ng market, saka nagre-revert maliban kung hindi malusog ang posisyon. Malusog pa rin ang posisyong eksaktong nasa LLTV nito; kailangan nitong lumampas doon.
+
+Dalawang bagay lang ang nagtutulak sa posisyon lampas sa linya:
+
+- **Bumababa ang presyo ng collateral** kumpara sa loan token, ayon sa iniuulat ng oracle.
+- **Lumalaki ang utang mo** habang naiipon ang interes sa isang variable-rate na loan sa Blue.
+
+Itinatakda ng bawat market sa Blue ang LLTV at oracle nito sa paggawa nito, at hindi na mababago ang alinman sa dalawa pagkatapos. Wala ring pause, freeze o grace period ang contract ng Morpho Blue: hindi kayang ihinto ng Morpho ang mga liquidation sa isang market o pigilan kang magbayad. Puwede pa ring i-pause o i-block ng mismong issuer ng isang token ang mga transfer ng token na iyon, na pipigil sa dalawa.
+
+## Sino ang nagli-liquidate ng posisyon sa Morpho, at paano?
+
+Kahit sino. Walang restriksyon ang `liquidate` sa kung sino ang tumatawag nito, at hindi mismong Morpho ang nagli-liquidate ng mga posisyon. Ang mga liquidator ay mula sa mga team na nagpapatakbo ng mga bot na nagbabantay sa mga posisyon at sa presyo ng mga oracle hanggang sa mga indibidwal; ayon sa docs ng Morpho, ang kailangan lang ay isang RPC node at isang wallet na may sapat na loan token.
+
+Kung sino ang mauna, siya ang makakakuha. Walang auction, kaya nagkukumpitensya ang mga liquidator sa bilis, at bahagi nito ang mga gas race at MEV (pag-aayos ng pagkakasunod-sunod ng mga transaksyon para kumita). Ipinapadala ng contract ang nakumpiskang collateral sa liquidator bago kolektahin ang mga loan token, kaya puwedeng ibenta ng isang bot ang collateral sa loob ng parehong transaksyon at magbayad mula sa kinita.
+
+Hindi garantisado ang mga liquidation; nangyayari ang mga ito dahil kumikita ang incentive. Sa praktika, karaniwan ang mga ito: bumibilang ang API ng Morpho ng 14,024 na liquidation sa market na USDC | cbBTC (86%) sa Base lamang.
+
+## Gaano kalaki ng utang mo ang puwedeng ma-liquidate nang isang beses?
+
+Lahat. Walang close factor (ang bahagi ng utang na puwedeng bayaran nang isang beses) at walang minimum na laki ang Morpho Blue: puwedeng bayaran ng isang liquidator ang anumang halaga ng utang mo, mula sa maliit na bahagi hanggang sa kabuuan nito, sa iisang call. Ang tanging limitasyon ay hindi sila puwedeng magbayad nang higit sa utang mo o kumuha ng collateral nang higit sa mayroon ka.
+
+Ito ang pinakamalaking pagkakaiba sa Aave V3, na naglilimita sa isang liquidation sa 50% ng utang habang mas mataas sa 0.95 ang health factor at hindi maliit ang posisyon ([gaano kalaki ng utang sa Aave ang puwedeng ma-liquidate nang isang beses](/fil/blog/paano-gumagana-ang-liquidation-sa-aave#gaano-karami-sa-utang-ko-ang-puwedeng-i-liquidate-nang-sabay-sabay)). Sa Blue, ang posisyong bahagyang lumampas sa LLTV nito ay puwedeng isara nang buo ng unang liquidator na dumating.
+
+## Gaano kalaki ang liquidation incentive sa bawat LLTV?
+
+Ang liquidation incentive factor (LIF) ay itinatakda ng isang formula sa contract, mula sa LLTV ng market:
+
+**LIF = min(1.15, 1 ÷ (1 − 0.3 × (1 − LLTV)))**
+
+Binabayaran ng liquidator ang bahagi ng utang mo at tumatanggap ng collateral na nagkakahalaga ng halagang iyon na pinarami sa LIF, sa presyo ng oracle. Ang bahaging lampas sa 1 ang incentive, na binabayaran mula sa collateral mo. Walang kinukuhang bahagi nito ang Morpho.
+
+Puwede lang gumamit ang isang market ng LLTV na pinagana ng governance ng Morpho. Noong Oktubre 26, 2026, ito ang mga pinaganang halaga, at bawat market sa Blue sa API ng Morpho ay gumagamit ng isa sa mga ito. Gamit ang sariling integer math ng contract:
+
+| LLTV  | Liquidation incentive factor | Collateral na nawawala sa iyo kada 1,000 ng utang na binayaran | Ang incentive rito |
+| ----- | ---------------------------- | -------------------------------------------------------------- | ------------------ |
+| 38.5% | 1.1500 (naka-cap)            | 1,150.00                                                       | 150.00             |
+| 62.5% | 1.1268                       | 1,126.76                                                       | 126.76             |
+| 77%   | 1.0741                       | 1,074.11                                                       | 74.11              |
+| 86%   | 1.0438                       | 1,043.84                                                       | 43.84              |
+| 91.5% | 1.0262                       | 1,026.17                                                       | 26.17              |
+| 94.5% | 1.0168                       | 1,016.78                                                       | 16.78              |
+| 96.5% | 1.0106                       | 1,010.61                                                       | 10.61              |
+| 98%   | 1.0060                       | 1,006.04                                                       | 6.04               |
+
+Pinagana rin ang LLTV na 0, pero walang mahihiram sa ganoong market. Kapag mas mataas ang LLTV, mas maliit ang incentive; ipinapaliwanag ito ng docs ng Morpho bilang proteksyon laban sa sunud-sunod na liquidation (cascading liquidations) sa mas mapanganib na mga market. Ini-round din nila ang numero para sa 86% sa "approximately 1.05" (humigit-kumulang 1.05); ang eksaktong halaga ay 1.0438.
+
+## Halimbawa: 1 cbBTC laban sa 50,000 USDC sa Base
+
+Kunin ang pinakamalaking nakalistang market sa Blue ayon sa hiniram sa Ethereum at Base: USDC | cbBTC (86%) sa Base, na may mga 1.61 bilyong USDC na hiniram. Noong Oktubre 26, 2026, pinresyuhan ng oracle nito ang 1 cbBTC sa 80,000.15 USDC (Base block 53102870). Gawa-gawa lang ang posisyon: 1 cbBTC bilang collateral at 50,000 USDC na utang.
+
+- **LTV:** 50,000 ÷ 80,000.15 = 62.5%.
+- **Health factor:** 80,000.15 × 0.86 ÷ 50,000 = 1.376.
+- **Liquidation price:** 50,000 ÷ 0.86 = 58,139.53 USDC kada cbBTC, 27.3% na mas mababa sa presyo ng oracle.
+
+Ang interes ang mabagal na nagtutulak. Sa borrow rate ng market na mga 5.2% kada taon noong Oktubre 26, 2026, at kung nanatili ang rate na iyon, aabutin nang mahigit anim na taon bago madala ng interes lang ang posisyong ito mula 62.5% hanggang 86% LTV. Ang presyo ang mabilis.
+
+Bilang paghahambing, sa 11,000 pinakamalaking borrow position sa market na ito, na may hawak ng 96% ng utang nito, kalahati ng hiniram na USDC ay nasa mga posisyong mas mababa sa mga 54% LTV, ibig sabihin ay health factor na mas mataas sa mga 1.59. Kalkulasyon iyan ng Tokenping mula sa API ng Morpho at sa on-chain na presyo, hindi numero ng Morpho.
+
+### Buong liquidation sa 58,139.53
+
+Sa bahagyang paglampas sa liquidation price, puwedeng bayaran ng isang liquidator ang buong 50,000 USDC at kumuha ng 50,000 × 1.0438 ÷ 58,139.53 = 0.8977 cbBTC, na nagkakahalaga ng 52,192.07 USDC. Sa iyo pa rin ang 50,000 USDC na hiniram mo at 0.1023 cbBTC (5,947.47 USDC), at wala ka nang utang. Ang liquidation ay nagkahalaga sa iyo ng 2,192.07 USDC kumpara sa kung ikaw mismo ang nagbayad: 4.38% ng utang.
+
+### Bahagyang liquidation ng 10,000 USDC
+
+Puwede ring tumigil ang isang liquidator sa 10,000 USDC. Kumukuha iyon ng 0.1795 cbBTC (10,438.41 USDC) at nag-iiwan ng 0.8205 cbBTC laban sa 40,000 USDC: LTV na 83.9% at health factor na 1.026, malusog muli. Laging nakakatulong ang isang bahagi rito, dahil ang LIF × LLTV = 0.898 ay mas mababa sa 1. Pero walang nag-oobliga sa liquidator na piliin ang bahagi kaysa sa buong utang.
+
+### Paano kung walang mag-liquidate hanggang 50,000 na ang cbBTC?
+
+Sa 50,000 USDC, eksaktong katumbas ng utang mo ang halaga ng collateral mo, na mas mababa sa utang × LIF. Ang pagkuha sa buong 1 cbBTC ay nakakabayad lang ng 50,000 ÷ 1.0438 = 47,900 USDC. Mawawala sa iyo ang lahat ng collateral mo, at ang natitirang 2,100 USDC ay ise-write off bilang bad debt, na sasaluhin ng mga lender ng market.
+
+## Ano ang nangyayari sa bad debt sa Morpho Blue?
+
+Kapag nag-iwan ang isang liquidation ng borrower na walang collateral pero may utang pa, ise-write off ng contract ang utang na iyon sa parehong transaksyon. Inaalis nito ang natitirang utang sa kabuuang hiniram sa market at ang parehong halaga sa kabuuang supply nito, kaya bawat lender sa market na iyon ay nalulugi ayon sa laki ng bahagi niya. Hindi apektado ang mga lender sa ibang market, dahil hiwalay ang bawat market sa Blue.
+
+Nagiging posible ang bad debt kapag mas mababa ang halaga ng collateral kaysa sa utang na pinarami sa LIF. Sa market na 86%, iyan ay anumang LTV na mas mataas sa 95.8%, na maaabot lang ng posisyon kung lumampas ang presyo sa LLTV bago may mag-liquidate. Nangyayari ito, bagaman bihira sa malalaking halaga: nagtatala ang API ng Morpho ng bad debt sa 1,428 liquidation sa Blue sa Ethereum at Base, karamihan ay mas mababa sa 1 US dollar o nasa mga market na hindi nakalista sa app ng Morpho.
+
+Para sa borrower, pareho ang resulta sa alinmang kaso: wala na ang lahat ng collateral at wala nang natitirang utang. Para sa mga lender, nakadepende ito sa paraan ng pagpapautang nila: ipinapasa ng Morpho Vault V2 ang lugi sa presyo ng share nito, habang hindi ito ipinapasa ng mga legacy V1.1 vault sa presyo ng share nila. Iba ang paraan ng Aave: mula v3.3, itinatala nito ang natirang utang bilang deficit na puwedeng sagutin ng mga Umbrella staker nito ([bad debt sa Aave](/fil/blog/paano-gumagana-ang-liquidation-sa-aave#puwede-bang-mag-iwan-ng-bad-debt-ang-isang-liquidation)).
+
+## Ano ang papel ng oracle sa isang liquidation?
+
+Ang oracle ang nagtatakda ng presyo para sa bawat desisyon sa liquidation. Bawat market ay may isang oracle na nagbibigay ng presyo ng collateral sa loan token, at ang presyong iyon, hindi ang presyo sa mga exchange, ang ginagamit para sa sandaling nagiging puwedeng ma-liquidate ang posisyon at para sa dami ng collateral na natatanggap ng liquidator. Hindi ang Morpho ang pumipili ng mga oracle: ang gumawa ng market ang pumipili. Hindi kailanman mapapalitan ang address ng oracle ng market, pero ang mga price feed na binabasa ng oracle ay puwedeng pinapatakbo ng iba na kayang mag-update ng mga ito. Halimbawa, ang BTC/USD feed sa halimbawa sa Base ay may owner na kayang ituro ito sa isang bagong source.
+
+Mahalaga sa iyo kung ano ang sinusukat ng oracle. Gumagamit ang oracle ng halimbawang market sa Base ng BTC/USD price feed para sa cbBTC at itinuturing ang USDC na eksaktong 1 US dollar, kaya hindi ito gagalaw sa depeg (pagkawala ng peg: sa BTC para sa cbBTC, sa dolyar para sa USDC) ng alinmang token. Hindi sinusuri ng reference oracle ng Morpho para sa mga Chainlink-compatible na feed kung gaano kaluma ang isang presyo o kung nasa loob ito ng mga hangganan, at wala itong dagdag na pagsusuri para sa mga outage ng L2 sequencer.
+
+May dalawang paraan para mapinsala ng problema sa oracle ang mga borrower:
+
+- **Mali o manipuladong presyo.** Nagbababala ang risk page ng Morpho na walang oracle na ligtas sa manipulasyon, na puwedeng magdulot ng mga liquidation o kahit bad debt.
+- **Oracle na tumigil sumagot.** Ang pag-borrow, pag-withdraw ng collateral at pag-liquidate ay pare-parehong nagbabasa ng oracle at mabibigo. Hindi ito binabasa ng pagbabayad at pagdagdag ng collateral, kaya mapapabuti mo pa rin ang posisyon mo habang walang makapag-liquidate dito.
+
+## Paano naiiba ang mga liquidation sa Morpho Midnight?
+
+Ang mga market sa Morpho Midnight ay nagpapautang ng isang token sa fixed rate hanggang sa isang itinakdang petsa ng maturity laban sa isa o higit pang collateral, bawat isa ay may sariling LLTV, oracle at liquidation cursor (ang 0.3 sa formula ng incentive sa itaas, na itinatakda ng Midnight kada collateral). Nakapirmi sa units ang utang mo, kaya bago ang maturity, presyo lang ng collateral ang gumagalaw sa health factor mo. Puwedeng ma-liquidate ang isang posisyon sa Midnight sa dalawang paraan:
+
+- **Batay sa kalusugan, anumang oras** habang mas malaki ang utang kaysa sa kabuuan ng halaga ng bawat collateral na pinarami sa LLTV nito. Ang incentive ay ang buong bonus ng collateral na iyon, at ang isang liquidation ay puwede lang magbayad ng sapat para maging malusog muli ang posisyon. Ang eksepsyon: kapag ang collateral na matitira pagkatapos ng ganoong naka-cap na liquidation ay makakabayad ng mas mababa sa rcfThreshold ng market, puwedeng kunin nang buo ang collateral na iyon.
+- **Pagkatapos ng maturity**, kung may natitirang utang, kahit malusog ang posisyon. Walang cap, at ang incentive ay nagsisimula sa wala at tumataas hanggang sa buong bonus sa loob ng 60 minuto.
+
+Ang liquidator ang pumipili kung aling collateral ang kukunin, at walang cap na 1.15; noong Oktubre 26, 2026, bawat nakalistang market sa Midnight ay gumamit ng cursor na 0.3 na may mga collateral LLTV mula 62.5% hanggang 98%, na nagbibigay ng parehong incentive gaya ng nasa talahanayan sa itaas. Hinahati ang bad debt sa mga lender ng market na iyon. Saklaw ng [paano gumagana ang mga fixed-rate na loan sa Midnight](/fil/blog/mga-fixed-rate-loan-sa-morpho-midnight) ang maturity, ang mga threshold ng totoong mga market at isang halimbawa.
+
+## Ano ang pre-liquidation?
+
+Ang pre-liquidation ay isang opt-in na karagdagan sa Morpho Blue. Ang borrower na nag-authorize ng pre-liquidation contract para sa isang market ay nagpapahintulot sa mga liquidator na gamitin ito, sa sandaling lumampas ang LTV sa isang linyang nakatakda sa ibaba ng LLTV, para bayaran ang mga bahagi ng utang, call pagkatapos ng call, sa incentive na nakatakda sa contract na iyon, hanggang bumalik ang LTV sa ibaba ng linyang iyon. Sa itaas ng LLTV, nalalapat pa rin ang normal na liquidation.
+
+May isa ang halimbawang market sa Base: mula 83.26% LTV, puwede itong magbayad ng hanggang 0.20% ng utang kada call (puwedeng maulit ang mga call), na tumataas hanggang 24.53% malapit sa 86%, sa parehong incentive na 1.0438. Kumikilos lang ito kung na-authorize mo ito. Inireretiro na ng Morpho ang feature: hindi na tumatanggap ng bagong posisyon ang app nito, at hinihiling ng help centre nito sa mga borrower na mayroon nito na i-off ito. Ipinapaliwanag ng [Morpho pre-liquidation](/fil/blog/morpho-pre-liquidation-ipinaliwanag) ang mga kondisyon at kung paano ito suriin at bawiin.
+
+## Paano naiiba ang liquidation sa Morpho kumpara sa Aave?
+
+Pareho ang ubod: sa ibaba ng 1, nagbabayad ng utang ang isang liquidator at kumukuha ng collateral kasama ang bonus. Magkaiba ang mga patakaran sa paligid nito ([paano gumagana ang liquidation sa Aave](/fil/blog/paano-gumagana-ang-liquidation-sa-aave)):
+
+|                                        | Aave V3                                                   | Morpho Blue                                         | Morpho Midnight                                                                                                                                                                        |
+| -------------------------------------- | --------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gaano karami nang isang beses          | 50% o 100% ng utang, kasama ang dust rule                 | Hanggang sa buong utang sa iisang call              | Bago ang maturity, ang sapat para maging malusog muli (isang buong collateral kung ang matitira ay makakabayad ng mas mababa sa rcfThreshold); pagkatapos ng maturity, ang buong utang |
+| Bonus                                  | Itinatakda ng governance kada collateral asset            | Nakapirmi ayon sa LLTV ng market                    | Kada collateral, mula sa LLTV at cursor nito                                                                                                                                           |
+| Kanino napupunta ang bonus             | Sa liquidator, bawas ang protocol fee                     | Sa liquidator, lahat ng ito                         | Sa liquidator                                                                                                                                                                          |
+| Puwede bang magbago ang mga patakaran? | Puwedeng baguhin ng governance at ng mga risk steward     | Hindi, nakapirmi sa paggawa ng market               | Nakapirmi sa paggawa ng market                                                                                                                                                         |
+| Pause                                  | Puwedeng i-pause ang mga asset, may grace period          | Walang pause                                        | Walang pause                                                                                                                                                                           |
+| Bad debt                               | Isang deficit, na puwedeng sagutin ng mga Umbrella staker | Ise-write off laban sa mga lender ng market na iyon | Hinahati sa mga lender ng market na iyon                                                                                                                                               |
+| Saklaw ng isang posisyon               | Maraming asset sa iisang posisyon                         | Isang collateral, isang loan token                  | Isang loan token, ilang collateral                                                                                                                                                     |
+
+## Paano mo maiiwasang ma-liquidate sa Morpho?
+
+- **Magtira ng palugit sa ibaba ng LLTV.** Ligtas muli ang posisyong nakabawi bago may mag-liquidate, pero walang pumipigil sa presyo na bumaba pa, at puwedeng bayaran ng unang liquidator na dumating ang buong utang mo nang isang beses.
+- **Magbayad o magdagdag ng collateral nang maaga.** Parehong pinabababa agad ng dalawa ang LTV mo, walang gastos na incentive at gumagana kahit pumalya ang oracle.
+- **Kilalanin ang oracle mo.** Bago ka mag-borrow, alamin kung aling oracle ang ginagamit ng market mo at kung ano ang sinusukat nito.
+- **Sa Midnight, magbayad bago ang maturity.** Pagkatapos ng maturity, puwedeng i-liquidate ang anumang natitirang utang, malusog man o hindi ang posisyon.
+- **Suriin ang anumang lumang pre-liquidation.** Kung minsan mong in-on ang Auto-deleverage (pre-liquidation), inireretiro na ito ng Morpho at hinihiling sa mga borrower na i-off ito; ipinapakita ng [Morpho pre-liquidation](/fil/blog/morpho-pre-liquidation-ipinaliwanag) kung paano.
+
+## Paano makakatulong ang mga alerto?
+
+Sinusuri ng Tokenping tuwing 5 minuto ang bawat borrow position sa Morpho na nilagyan mo ng alerto, sa mga market na nakalista sa app ng Morpho: Morpho Blue sa 14 na network, at Morpho Midnight. Saklaw ng mga alerto sa Midnight ang mga market na nakalista sa API ng Morpho. Noong Oktubre 26, 2026, nasa Ethereum at Base ang mga iyon; saklaw rin ng Tokenping ang Arc at Robinhood Chain kapag naglista na ang Morpho ng mga market sa Midnight doon. Kinakalkula nito ang bawat health factor mula sa chain gamit ang sariling math ng Morpho, hindi mula sa API ng Morpho. Habang mas mababa ang health factor sa threshold na itinakda mo (1.02 hanggang 10), bawat pagsusuri ay nagpapadala ng mensahe sa bawat channel na pinili mo: Signal, Telegram o email. Kung nag-authorize ka ng pre-liquidation contract sa isang market sa Blue, sinusukat ng alerto laban sa alinmang linya ang mas mababa: ang LLTV o ang linya ng pre-liquidation. Ang isang loan sa Midnight ay nakakatanggap din ng isang paalala sa huling 7 araw nito at isa sa huling 24 na oras nito bago ang maturity, saka isang alerto sa bawat pagsusuri pagkatapos ng maturity habang may natitirang utang.
+
+Puwede mong [tingnan ang mga posisyon mo sa Morpho](/fil/morpho); hindi mo kailangang magbayad para doon. Nagkakahalaga ng <AlertPrice /> ang mga alerto. Binibigyan ka ng alerto ng oras para kumilos, pero puwedeng lumampas ang presyo sa LLTV mo sa pagitan ng dalawang pagsusuri, at hindi napipigilan ng alerto ang liquidation.
+
+## Mga sanggunian
+
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) at [IMorpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/interfaces/IMorpho.sol), morpho-org/morpho-blue: health check, liquidation, formula ng incentive, bad debt at mga ipinapalagay tungkol sa oracle (na-access noong Oktubre 26, 2026)
+- [Midnight.sol](https://github.com/morpho-org/midnight/blob/main/src/Midnight.sol) at [ConstantsLib.sol](https://github.com/morpho-org/midnight/blob/main/src/libraries/ConstantsLib.sol), morpho-org/midnight: mga paraan ng liquidation, RCF, pagtaas ng incentive at slashing (na-access noong Oktubre 26, 2026)
+- [README ng pre-liquidation at PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation), morpho-org/pre-liquidation (na-access noong Oktubre 26, 2026)
+- [ChainlinkDataFeedLib.sol](https://github.com/morpho-org/morpho-blue-oracles/blob/main/src/morpho-chainlink/libraries/ChainlinkDataFeedLib.sol), morpho-org/morpho-blue-oracles: walang pagsusuri sa staleness, hangganan o sequencer (na-access noong Oktubre 26, 2026)
+- [Liquidation on Morpho](https://docs.morpho.org/learn/concepts/liquidation): mga liquidator, walang auction, hanggang 100% nang isang beses, walang protocol fee, bad debt sa mga vault (na-access noong Oktubre 26, 2026)
+- [Morpho developer docs: liquidation](https://docs.morpho.org/developers/borrow/concepts/liquidation): incentive ayon sa LLTV at bad debt (na-access noong Oktubre 26, 2026)
+- [Morpho docs: oracles](https://docs.morpho.org/learn/concepts/oracle): pagpili ng oracle at hindi pagbabago nito (na-access noong Oktubre 26, 2026)
+- [Morpho docs: Morpho Blue](https://docs.morpho.org/learn/concepts/blue): permanenteng mga parameter ng market at mga pinaganang LLTV (na-access noong Oktubre 26, 2026)
+- [Morpho docs: Midnight liquidations](https://docs.morpho.org/learn/concepts/midnight/liquidations), [collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) at [what is Midnight](https://docs.morpho.org/learn/concepts/midnight) (na-access noong Oktubre 26, 2026)
+- [Morpho docs: risks](https://docs.morpho.org/learn/resources/risks): panganib sa oracle, liquidation, bad debt at counterparty (na-access noong Oktubre 26, 2026)
+- [Morpho API](https://api.morpho.org/graphql): bilang ng mga liquidation at bad debt, listahan ng mga market, borrow rate, mga borrow position at mga market sa Midnight (na-access noong Oktubre 26, 2026)
+- [Morpho Blue sa Base](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), ang market na USDC | cbBTC (86%) sa Base block 53102870 (na-access noong Oktubre 26, 2026)
+- [Ang oracle ng market](https://basescan.org/address/0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9#readContract) at [ang BTC/USD feed nito](https://basescan.org/address/0x64c911996D3c6aC71f9b455B1E8E7266BcbD848F#readContract) sa Base: ang presyo sa block 53102870 at ang owner ng feed (na-access noong Oktubre 26, 2026)
+- [Ang pre-liquidation contract ng market](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374#readContract) sa Base: ang mga parameter nito sa block 53102870 (na-access noong Oktubre 26, 2026)
+- [Morpho Midnight sa Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract): mga pinaganang LLTV at liquidation cursor sa block 26274998 (na-access noong Oktubre 26, 2026)
+
+_Pang-edukasyong nilalaman, hindi payong pinansyal. Binabawasan ng mga alerto ang panganib, pero hindi nito napipigilan ang liquidation._

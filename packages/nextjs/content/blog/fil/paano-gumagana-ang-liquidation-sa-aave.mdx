@@ -1,0 +1,184 @@
+export const meta = {
+  slug: "paano-gumagana-ang-liquidation-sa-aave",
+  title: "Ano ang nangyayari kapag na-liquidate ka sa Aave",
+  description:
+    "Paano gumagana ang liquidation sa Aave V3 ngayon: kailan ito nangyayari, gaano karaming utang ang mababayaran (50% o 100%), ang bonus at isang halimbawa.",
+  h1: "Ano ang nangyayari kapag na-liquidate ang posisyon mo sa Aave?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Ano ang nangyayari kapag na-liquidate ka sa Aave?",
+  readingMinutes: 15,
+};
+
+<ShortAnswer>
+  Kapag bumaba sa ilalim ng 1 ang health factor mo sa Aave V3, puwedeng bayaran ng kahit anong ibang address ang bahagi
+  o lahat ng utang mo at kunin ang collateral na katumbas ng halagang iyon dagdag ang liquidation bonus, halimbawa 5% sa
+  WETH sa Ethereum Core market. Ang isang liquidation ay puwedeng magbayad ng hanggang 50% ng utang mo habang nasa itaas
+  ng 0.95 ang health factor mo at nagkakahalaga ng hindi bababa sa $2,000 ang bawat isa sa collateral mo sa asset na
+  kinukuha at sa utang mo sa asset na binabayaran; kung hindi, puwedeng mabayaran nang sabay-sabay ang buong utang sa
+  asset na iyon. Sa iyo pa rin ang mga token na hiniram mo at ang natitirang collateral at utang, kaya ang bonus ang
+  talagang gastos mo sa liquidation.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Kailan puwedeng i-liquidate ang isang posisyon sa Aave?
+
+Puwedeng i-liquidate ang isang posisyon sa Aave V3 sa sandaling bumaba sa ilalim ng 1.00 ang health factor nito. Hinahati ng health factor ang halaga ng collateral mo, na tinimbang ayon sa liquidation threshold ng bawat asset, sa halaga ng utang mo, kaya sa ilalim ng 1.00 hindi na sapat ang tinimbang na collateral para tapatan ang utang (formula at halimbawa: [ano ang Aave health factor](/fil/blog/aave-health-factor-ipinaliwanag)).
+
+Limang bagay ang sinusuri ng mga kontrata ng Aave V3.7 bago matuloy ang isang liquidation (`validateLiquidationCall` sa `ValidationLogic.sol`):
+
+1. Nasa ilalim ng 1.00 ang health factor ng borrower.
+2. Parehong aktibo at **hindi naka-pause** ang collateral asset na kinukuha at ang debt asset na binabayaran.
+3. Tapos na ang anumang liquidation grace period sa alinmang asset. Kapag inalis ng emergency guardian o ng governance ng Aave ang pause ng isang asset, puwede silang magtakda ng grace period na hanggang 4 na oras.
+4. Naka-enable bilang collateral ang collateral na iyon sa borrower, at may utang ang borrower sa napiling debt asset.
+5. Hindi ang borrower ang tumatawag: hindi mo puwedeng i-liquidate ang sarili mong posisyon.
+
+Puwede pa ring i-liquidate ang isang frozen na asset, dahil "paused" ang tinitingnan ng check, hindi "frozen". Kahit anong ibang address ay puwedeng tumawag sa `liquidationCall` function ng Pool.
+
+Hindi ka binabalaan ng protocol bago ang liquidation, at hindi rin nagpapadala ng alerto ang sariling app ng Aave sa app.aave.com. Kung iisa ang volatile na collateral mo at stablecoin ang utang mo, puwede mong [kalkulahin ang Aave liquidation price mo](/fil/blog/paano-kalkulahin-ang-aave-liquidation-price): ang presyo ng collateral kung saan aabot sa 1 ang health factor.
+
+## Gaano karami sa utang ko ang puwedeng i-liquidate nang sabay-sabay?
+
+Sa Aave V3.7, nagiging 50% lang ng kabuuang utang mo ang close factor (ang bahagi ng utang na puwedeng bayaran nang isang beses) kapag totoo ang lahat ng tatlong kondisyong ito: nasa itaas ng 0.95 ang health factor mo, nagkakahalaga ng hindi bababa sa $2,000 ang collateral mo sa asset na kinukuha, at nagkakahalaga ng hindi bababa sa $2,000 ang utang mo sa asset na binabayaran. Sa lahat ng ibang kaso, puwedeng bayaran ng liquidator ang hanggang 100% ng utang mo sa napiling asset sa iisang transaction.
+
+| Sitwasyon sa sandali ng liquidation                                                                                            | Pinakamalaking puwedeng bayaran ng isang liquidation                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| Nasa itaas ng 0.95 ang health factor, at $2,000 o higit pa ang halaga ng bawat isa sa napiling collateral at sa napiling utang | 50% ng kabuuang utang mo sa lahat ng asset (sa USD), hindi kailanman lalampas sa utang mo sa napiling asset |
+| Health factor na nasa 0.95 o mas mababa                                                                                        | 100% ng utang mo sa napiling asset                                                                          |
+| Mas mababa sa $2,000 ang halaga ng napiling collateral o ng napiling utang                                                     | 100% ng utang mo sa napiling asset                                                                          |
+
+Mga constant sa `LiquidationLogic.sol` ng Aave (aave-v3-origin, binasa noong Oktubre 14, 2026) ang mga limitasyong ito. Mula v3.3, sa buong posisyon inilalapat ang 50% sa halip na sa bawat debt asset. Sa mga tala ng Aave para sa v3.3, ang halimbawa ay tig-$3,000 na utang sa GHO, USDC at DAI, $9,000 lahat: puwedeng bayaran sa isang call ang buong $3,000 ng alinman sa mga ito, dahil $4,500 ang 50% ng kabuuan.
+
+May ikalawang patakaran laban sa dust. Ang isang partial liquidation ay dapat mag-iwan ng hindi bababa sa $1,000 na utang sa binayarang asset at hindi bababa sa $1,000 na collateral sa kinuhang asset. Kung hindi, kailangang kunin ng liquidator ang lahat ng utang na iyon o ang lahat ng collateral na iyon, o magre-revert ang transaction.
+
+Collateral na katumbas lang ng binayarang utang dagdag ang bonus ang kinukuha ng liquidation, hindi ang lahat ng collateral mo. Sariling pondo ng liquidator ang ipinambabayad sa utang, kaya sa iyo pa rin ang mga token na hiniram mo; hangga't sapat ang collateral, ang bonus ang nawawala sa iyo.
+
+Inilalarawan ng mas lumang mga gabay ang isang flat na 50% na close factor, at sinasabi pa rin ng sariling Pool contract reference ng aave.com na "close factor is 0.5" (na-access noong Oktubre 14, 2026). Luma na ang dalawa: patakaran ng Aave V2 ang flat na 50%, at ang V3.7 code na pinapatakbo ng mga market na ito ay gumagamit ng patakarang 50% o 100% na nasa table.
+
+## Ano ang liquidation bonus, at sino ang nagbabayad nito?
+
+Ang liquidation bonus, na madalas tawaging liquidation penalty, ay ang dagdag na collateral na natatanggap ng liquidator bukod sa utang na binabayaran nila, at ang borrower ang nagbabayad nito. Sa 5% na bonus, ang pagbayad sa 1,000 USDC ng utang mo ay nagkakahalaga sa iyo ng collateral na katumbas ng 1,050 USDC. Itinatabi ng treasury ng Aave ang bahagi ng bonus bilang liquidation protocol fee, kaya medyo mas maliit ang nakukuha ng liquidator kaysa sa nawawala sa iyo.
+
+Ang bonus at fee na ginagamit ay sa collateral na kinukuha, hindi sa utang. Mga halaga ng Aave V3 na binasa on-chain noong Oktubre 14, 2026 (Ethereum block 26193284, Arbitrum block 514855406):
+
+| Market        | Kinuhang collateral | Liquidation bonus | Protocol fee (bahagi ng bonus) | Collateral na nawawala sa iyo kada $1,000 na binayaran | Natatanggap ng liquidator |
+| ------------- | ------------------- | ----------------- | ------------------------------ | ------------------------------------------------------ | ------------------------- |
+| Ethereum Core | WETH                | 5%                | 10%                            | $1,050                                                 | $1,045                    |
+| Ethereum Core | WBTC                | 5%                | 10%                            | $1,050                                                 | $1,045                    |
+| Ethereum Core | USDC                | 4.5%              | 20%                            | $1,045                                                 | $1,036                    |
+| Arbitrum      | WETH                | 5%                | 10%                            | $1,050                                                 | $1,045                    |
+| Arbitrum      | WBTC                | 7%                | 10%                            | $1,070                                                 | $1,063                    |
+| Arbitrum      | USDC (native)       | 5%                | 10%                            | $1,050                                                 | $1,045                    |
+
+Sa E-Mode, kung kasama ang kinuhang asset sa collateral set ng category mo, ang bonus ng category ang pumapalit sa sariling bonus ng asset: 1% para sa "ETH correlated" sa Ethereum Core (binasa sa Ethereum block 26193288, Oktubre 14, 2026), kaya mas mura ang bawat liquidation. Puwedeng baguhin ng governance ang alinman sa mga parameter na ito, at puwedeng i-adjust ng risk stewards ng Aave ang mga liquidation bonus sa loob ng itinakdang mga limitasyon, kaya tingnan ang kasalukuyang mga halaga sa Aave app.
+
+## Aling collateral ang kinukuha ng liquidator?
+
+Ang liquidator ang pumipili. Sa bawat liquidation sa Aave V3, may isang collateral asset na kukunin at isang debt asset na babayaran, at ang liquidator ang pumipili ng pares, kaya wala kang say kung alin sa mga asset mo ang mauuna. Ang mga asset lang na naka-enable mo bilang collateral ang puwedeng kunin; hindi makukuha ang isang naka-deposit na asset na naka-off ang "used as collateral" (ginagamit bilang collateral), pero wala rin itong naidadagdag sa health factor mo.
+
+Kung hindi kayang tapatan ng napiling collateral ang bayad dagdag ang bonus, mawawala sa iyo ang lahat ng asset na iyon (makukuha ito ng liquidator, bawas ang protocol fee) at mas kaunting utang ang mababayaran. Dahil iisang pares lang ang hinahawakan ng bawat liquidation, puwedeng i-liquidate sa ilang transaction ang isang posisyong maraming asset, at habang nasa ilalim ng 1 ang health factor, puwede pang sumunod ang iba pang liquidation.
+
+## Halimbawa: bumaba ang ETH sa $1,420, tapos sa $1,330
+
+Sa halimbawang ito, ang liquidation sa presyo ng ETH na $1,420 ay nagbabayad ng 6,000 USDC at nagkakahalaga sa borrower ng $300 na WETH; kung walang mag-li-liquidate hanggang $1,330 na ang ETH, puwedeng bayaran nang sabay-sabay ang lahat ng 12,000 USDC at dumodoble ang gastos sa $600.
+
+Ang posisyon: 10 WETH na collateral at 12,000 USDC na utang sa Aave V3 Ethereum Core. May liquidation threshold ang WETH na 83%, 5% na bonus at 10% na protocol fee (binasa on-chain sa block 26193284, Oktubre 14, 2026). Halimbawa lang ang mga presyo ng ETH, $1.00 ang turing sa USDC at hindi isinama ang interes.
+
+Sa $2,400, ang health factor ay 24,000 × 0.83 ÷ 12,000 = 1.66. Umaabot ito sa 1 sa presyo ng ETH na 12,000 ÷ (10 × 0.83) = $1,445.78, at sa 0.95 sa $1,373.49.
+
+| Presyo ng ETH                    | Health factor              | Pinakamalaking puwedeng bayaran ng isang liquidation                                                                                                                                  |
+| -------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lampas sa mga $1,445.78          | 1.00 o mas mataas          | Wala; hindi puwedeng i-liquidate ang posisyon                                                                                                                                         |
+| Mga $1,373.50 hanggang $1,445.78 | Sa pagitan ng 0.95 at 1.00 | 50%: 6,000 USDC                                                                                                                                                                       |
+| Mga $1,260 hanggang $1,373.49    | Mga 0.87 hanggang 0.95     | 100%: 12,000 USDC                                                                                                                                                                     |
+| Mas mababa sa mga $1,260         | Mas mababa sa mga 0.87     | Mas mababa sa 12,000 USDC: kinukuha ang lahat ng 10 WETH at nagiging [bad debt](#puwede-bang-mag-iwan-ng-bad-debt-ang-isang-liquidation) (utang na hindi na mababayaran) ang natitira |
+
+### Hakbang 1: ETH sa $1,420, health factor 0.982
+
+Sa $1,420, nagkakahalaga ng $14,200 ang 10 WETH, kaya ang health factor ay 14,200 × 0.83 ÷ 12,000 = 0.982. Nasa itaas iyon ng 0.95, at lampas sa $2,000 ang halaga ng bawat isa sa WETH collateral mo at sa USDC na utang mo, kaya hanggang 6,000 USDC lang ang puwedeng bayaran ng liquidator.
+
+- Binabayaran ng liquidator ang 6,000 USDC ng utang mo.
+- Nawawalan ang posisyon mo ng 6,000 × 1.05 = $6,300 na WETH (4.4366 WETH).
+- Ang protocol fee ay 10% ng $300 na bonus: $30 (0.0211 WETH) ang napupunta sa treasury ng Aave at $6,270 (4.4155 WETH) ang natatanggap ng liquidator.
+- Natitira sa iyo ang 5.5634 WETH ($7,900) at 6,000 USDC na utang: health factor na 7,900 × 0.83 ÷ 6,000 = 1.093.
+
+Bumababa ang net position mo (collateral bawas utang) mula $2,200 hanggang $1,900. Ang $300 na diperensya ay ang bonus.
+
+### Hakbang 2: ETH sa $1,330, health factor 1.024
+
+Nagkakahalaga ng $7,399 sa $1,330 ang natitirang 5.5634 WETH, health factor na 7,399 × 0.83 ÷ 6,000 = 1.024, kaya hindi puwedeng i-liquidate ulit ang posisyon sa presyong ito. Mga $1,299 ang bago nitong liquidation price, mula sa 6,000 ÷ (5.5634 × 0.83). Ibinaba ng paghati sa utang ang liquidation price; ang $300 na bonus ang naging kapalit.
+
+### Paano kung walang mag-liquidate hanggang $1,330 na ang ETH?
+
+Kung saka lang mangyayari ang unang liquidation kapag $1,330 na ang ETH, may health factor ang orihinal na posisyon na 13,300 × 0.83 ÷ 12,000 = 0.920. Nasa 0.95 o mas mababa iyon, kaya puwedeng bayaran ng liquidator ang lahat ng 12,000 USDC nang sabay-sabay. Nawawalan ang posisyon mo ng 12,000 × 1.05 = $12,600 na WETH (9.4737 WETH), kung saan $60 ang protocol fee at $12,540 ang napupunta sa liquidator. Natitira sa iyo ang 0.5263 WETH ($700) at wala ka nang utang; hindi umiiral ang dust rule dahil buong nabayaran ang utang.
+
+Bumababa ang net position mula $1,300 hanggang $700. Doble ng sa Hakbang 1 ang $600 na nawala, dahil doble ang utang na nabayaran sa parehong 5% na bonus.
+
+## Puwede bang mag-iwan ng bad debt ang isang liquidation?
+
+Oo. Nagkakaroon ng bad debt kapag mas mababa ang halaga ng collateral ng isang posisyon kaysa sa utang nito dagdag ang liquidation bonus, kaya kahit kunin ang bawat unit ng collateral, hindi pa rin nababayaran ang lahat. Mula Aave V3.3, kapag naubos ng isang liquidation ang lahat ng collateral ng borrower at may natitira pang utang, sinusunog ng kontrata ang natitirang utang at itinatala ito bilang "deficit" sa asset na iyon. Walang collateral at walang utang ang borrower sa huli, at sa protocol napupunta ang lugi.
+
+Halimbawa gamit ang mga parameter ng WETH sa Ethereum Core: ang $10,000 na WETH bilang tanging collateral laban sa 9,800 USDC na utang ay health factor na 0.847. Para mabayaran ang lahat ng 9,800 USDC sa 5% na bonus, kailangan ng $10,290 na WETH, kaya kinukuha ang lahat ng $10,000 na WETH (mga $47.62 dito bilang protocol fee) at mga 9,524 USDC ang nababayaran (10,000 ÷ 1.05). Ang natitirang mga 276 USDC ay nagiging deficit.
+
+Puwedeng sunugin ng Umbrella, ang staking backstop ng Aave, ang aTokens ng mga staker sa apektadong asset para tapatan ang ganitong deficit; nagsimula ang activation nito sa Ethereum (Aave docs, na-access noong Oktubre 14, 2026). Pinoprotektahan nito ang protocol, hindi ang borrower, na wala nang collateral.
+
+Nangyari na ito sa Aave V3. Matapos ma-trade ang USDC sa mga $0.88 noong Marso 11, 2023, nagtala ang post-mortem ng Gauntlet ng mga $280k na bad debt sa V3 Avalanche E-Mode at mga $20k sa V3 Arbitrum, at binanggit nito na kapag mas mababa na ang halaga ng collateral kaysa sa utang na pinarami ng isa dagdag ang bonus, lalong lumulubog ang account sa bawat partial liquidation. Bago pa iyon idinagdag ng v3.3 ang deficit mechanism.
+
+## Humihinto ba ang liquidation kapag frozen ang isang market o down ang L2 sequencer?
+
+Hindi sa dalawa. Sa Aave V3.7, puwede pa ring i-liquidate ang isang frozen na asset, at hindi na nakadepende ang liquidation sa Arbitrum, Optimism at Base sa kung gumagana ang L2 sequencer. Ang talagang humaharang sa liquidation ay ang pause.
+
+- **Frozen:** hinaharang ng pag-freeze ang mga bagong posisyon sa isang asset, pero hindi ito pinapansin ng liquidation check. Noong depeg (pagkawala ng peg sa dolyar) ng USDC noong Marso 2023, na-freeze ang mga stablecoin sa Aave V3 Avalanche at nagpatuloy ang liquidation. Naka-freeze ang bridged na USDC.e sa Arbitrum na may LTV na 0 noong Oktubre 14, 2026 (Arbitrum block 514855406), pero kasama pa rin ito sa health factor sa 78% na liquidation threshold nito at puwedeng kunin.
+- **L2 sequencer:** bago ang v3.7, puwedeng harangin ng isang sentinel contract sa mga L2 market ang liquidation at pag-borrow habang down ang sequencer at sa loob ng isang grace period matapos itong bumalik. Inalis ng Aave V3.7, na pinapatakbo ng lahat ng V3 market sa Arbitrum, Optimism at Base noong Oktubre 14, 2026, ang sentinel. Naaantala pa rin ng isang outage ang transaction ng lahat, ng mga borrower at ng mga liquidator, pero ang posisyong bumaba sa ilalim ng 1 habang may outage ay puwede na ngayong i-liquidate sa sandaling bumalik ang sequencer.
+- **Paused:** hinaharang ng naka-pause na collateral o debt asset ang bawat liquidation na kasangkot ito. Sa pag-unpause, puwedeng magtakda ang emergency guardian o ang governance ng Aave ng grace period na hanggang 4 na oras kung saan nananatiling harang ang liquidation para makapagbayad o makapagdagdag ng collateral ang mga borrower; pinapayagan ang pag-borrow sa panahong iyon.
+
+## Paano naiiba ang liquidation sa Aave V4?
+
+Ang Aave V4, live sa Ethereum mula Marso 30, 2026 at mula noon sa Avalanche, Arc at Base, ay pinapalitan ang close factor ng target health factor at nagbabayad ng bonus na lumalaki habang bumababa ang health factor. Patuloy na tumatakbo ang V3 kasabay nito, na may sariling mga patakaran.
+
+- **Target health factor sa halip na 50% o 100%.** Ang liquidator sa V4 ay puwedeng magbayad lang ng sapat na utang para maibalik ang posisyon sa target health factor ng Spoke nito, 1.24 sa Ethereum Main Spoke (binasa on-chain sa Ethereum block 26193995, Oktubre 14, 2026). Ang eksepsiyon ay kapag mag-iiwan iyon ng napakaliit na natitira; saka puwedeng bayaran ang buong utang sa reserve na iyon.
+- **Bonus na tumataas.** Tinatawag ito ng docs ng Aave na Dutch auction. Sa Ethereum Main Spoke, nagsisimula ang bonus sa 90% ng maximum ng asset sa bahagyang ilalim ng health factor na 1 at umaabot sa buong maximum sa 0.90 o mas mababa. Para sa WETH, na may 5.55% na maximum (Aave V4 API, Oktubre 14, 2026), mga 5.0% iyon sa bahagyang ilalim ng 1 at 5.55% sa 0.90. Isang 10% na fee ang kinukuha mula sa bonus, gaya sa V3.
+
+Mino-monitor din ng Tokenping ang mga posisyon sa Aave V4: bawat Spoke sa Ethereum, Avalanche, Arc at Base (20 noong Oktubre 16, 2026), na may hiwalay na alerto para sa bawat Spoke, dahil may sariling posisyon at health factor ang bawat isa.
+
+## Paano naiiba ang liquidation sa Aave sa liquidation sa Morpho?
+
+Sa Morpho Blue, walang close factor: kapag nasa ilalim na ng 1 ang health factor ng isang posisyon, puwedeng bayaran ng liquidator ang lahat ng utang sa iisang call. Nakadepende lang ang incentive sa liquidation loan-to-value (LLTV) ng market, mga 0.6% sa 98% na LLTV at hanggang 15% lang para sa mabababang LLTV, at kung maunang maubos ang collateral, ang natitirang utang ay ibinabawas bilang lugi ng mga lender ng market. Nasa [paano gumagana ang liquidation sa Morpho](/fil/blog/paano-gumagana-ang-liquidation-sa-morpho) ang formula, ang incentive sa bawat LLTV at isang halimbawa.
+
+## Ano ang puwede mong gawin bago umabot sa 1 ang health factor mo?
+
+Bago umabot sa 1 ang health factor, puwede kang magbayad ng utang o magdagdag ng collateral; parehong itinataas nito agad ang health factor at walang bonus na kailangang bayaran sa alinman. Kapag nasa ilalim na ito ng 1, puwedeng maunahan ka ng liquidator, at kahit ang partial liquidation ay nagkakahalaga sa iyo ng bonus sa kinuhang collateral: $300 para sa 6,000 USDC na binayaran sa 5% na bonus.
+
+Delikado ang paghihintay hanggang sa huling sandali dahil puwedeng pumalya o maipit ang mga transaction. Noong Mayo 2021, sinubukan ng isang user sa Polygon forum na magbayad sa health factor na 1.01, paulit-ulit na nagka-error, at na-liquidate bago natuloy ang pagbabayad. Noong Disyembre 2024, inilarawan ng isang user sa Aave forum ang mahigit isang oras ng mga pagtatangkang magbayad na paulit-ulit na nabibitin bago na-liquidate ang posisyon.
+
+Nasa [paano itaas ang Aave health factor mo](/fil/blog/paano-iwasan-ang-liquidation-sa-aave) ang mga opsyon, at nasa [bakit kusang bumababa ang Aave health factor mo](/fil/blog/bakit-bumaba-ang-aave-health-factor) ang mga dahilan kung bakit bumababa ang health factor kahit wala kang ginagawa.
+
+Sinusuri ng Tokenping ang Aave health factor mo kada 5 minuto, sa bawat Aave V3 market sa 21 network at sa bawat Aave V4 Spoke, at pinapadalhan ka nito ng mensahe sa Signal, Telegram o email kapag mas mababa ito sa threshold na pinili mo (1.1 hanggang 10), at inuulit ito sa bawat check hanggang makabawi ang health factor. Ang liquidation ay nagkakahalaga ng hindi bababa sa bonus sa kinuhang collateral. Ang alertong naka-set sa itaas ng 1.0 ay puwedeng magbigay sa iyo ng oras para magbayad o magdagdag ng collateral, pero puwede pa ring ibaba ng mabilis na galaw ng presyo ang health factor sa ilalim ng 1 sa pagitan ng dalawang check, at hindi kayang kumilos ng alerto para sa iyo. Puwede mong [tingnan ang Aave V3 health factor mo](/fil/aave) o basahin ang [paano mag-set up ng health factor alert](/fil/blog/paano-mag-set-ng-aave-health-factor-alert).
+
+## Mga sanggunian
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), aave-dao/aave-v3-origin, branch main: mga patakaran sa close factor, dust at bad debt (na-access noong Oktubre 14, 2026)
+- [Aave V3 ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): mga kondisyon ng liquidation (na-access noong Oktubre 14, 2026)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): bad debt, close factor para sa buong posisyon at ang halimbawa nitong GHO/USDC/DAI, threshold na $2,000 (na-access noong Oktubre 14, 2026)
+- [Aave v3.1 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): liquidation grace period na hanggang 4 na oras (na-access noong Oktubre 14, 2026)
+- [Aave V3 PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol): ang emergency admin o pool admin lang ang puwedeng mag-pause at mag-unpause na may grace period, `MAX_GRACE_PERIOD = 4 hours` (na-access noong Oktubre 14, 2026)
+- [Aave governance documentation](https://aave.com/docs/ecosystem/governance): hawak ng Protocol Emergency Guardian ang emergency admin role (na-access noong Oktubre 14, 2026)
+- [Aave V3 Risk Stewards README](https://github.com/aave-dao/aave-v3-risk-stewards): mga parameter na puwedeng baguhin ng stewards, sa loob ng itinakdang mga limitasyon (na-access noong Oktubre 14, 2026)
+- [Aave v3.7 PriceOracleSentinel removal](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/sentinel-removal.md) (na-access noong Oktubre 14, 2026)
+- [Aave V3 Pool contract reference](https://aave.com/docs/aave-v3/smart-contracts/pool), na nagsasaad pa rin ng close factor bago ang v3.3 (na-access noong Oktubre 14, 2026)
+- [Aave Umbrella documentation](https://aave.com/docs/aave-v3/umbrella) (na-access noong Oktubre 14, 2026)
+- [Aave V3 PoolDataProvider sa Ethereum](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): reserve configuration at liquidation protocol fee ng WETH, WBTC at USDC sa block 26193284, binasa ulit nang walang pagbabago sa block 26193992 (na-access noong Oktubre 14, 2026)
+- [Aave V3 PoolDataProvider sa Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): ang parehong pagbasa para sa WETH, WBTC, native USDC at USDC.e sa block 514855406 (na-access noong Oktubre 14, 2026)
+- [Aave V3 Ethereum Core Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): E-Mode category 1 "ETH correlated" sa block 26193288 (na-access noong Oktubre 14, 2026)
+- [Aave V4 liquidations documentation](https://aave.com/docs/aave-v4/positions/liquidations) (na-access noong Oktubre 14, 2026)
+- [Aave V4 overview](https://github.com/aave/aave-v4/blob/main/docs/overview.md) at [V4 LiquidationLogic.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/libraries/LiquidationLogic.sol), aave/aave-v4 main (na-access noong Oktubre 14, 2026)
+- [Aave V4 Ethereum Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485): mga setting ng target health factor at bonus sa block 26193995 (na-access noong Oktubre 14, 2026)
+- [Aave V4 public GraphQL API](https://api.v4.aave.com/graphql), `reserves` query: maximum liquidation bonus at liquidation fee ng WETH sa Ethereum Main Spoke (na-access noong Oktubre 14, 2026)
+- [Aave docs changelog](https://aave.com/docs/resources/changelog): mga petsa ng paglulunsad ng V4 (na-access noong Oktubre 14, 2026)
+- [Gauntlet, "Aave Resilient Through USDC Volatility"](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), na-post noong Marso 17, 2023 (na-access noong Oktubre 14, 2026)
+- [Polygon forum, "Liquidation on polygon AAVE -JSON ERROR"](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067), na-post noong Mayo 18, 2021 (na-access noong Oktubre 14, 2026)
+- [Aave forum, "Repeatedly Failed Repayment Attempts Leading to Liquidation"](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379), na-post noong Disyembre 23, 2024 (na-access noong Oktubre 14, 2026)
+- [Aave interface pull request #2084](https://github.com/aave/interface/pull/2084), na nag-alis sa nag-iisang alert integration ng app noong Mayo 2024 (na-access noong Oktubre 14, 2026)
+
+_Pang-edukasyong nilalaman, hindi payong pinansyal. Binabawasan ng mga alerto ang panganib, pero hindi nito napipigilan ang liquidation._

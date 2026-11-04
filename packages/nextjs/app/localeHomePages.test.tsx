@@ -168,6 +168,13 @@ const COPY: Partial<Record<Locale, CopyRules>> = {
     wrongAddress: /[^.!?:\s]\s+(?:De|Dem|Deres)(?!\p{L})/u,
     claims: /sanntid|umiddelbar\p{L}* (?:varsel|melding)|multi[- ]?protokoll/iu,
   },
+  fil: {
+    h1Channels: /Signal.*email/iu,
+    badges: ["Signal", "Email"],
+    // Ikaw / mo throughout: no "po" and no plural kayo or ninyo.
+    wrongAddress: /(?<!\p{L})(?:po|kayo|ninyo)(?!\p{L})/iu,
+    claims: /real[- ]?time|agarang (?:alerto|abiso)|multi[- ]?protocol/iu,
+  },
 };
 
 const TRANSLATED = LOCALES.filter(locale => locale !== "en");

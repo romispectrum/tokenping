@@ -12,16 +12,16 @@ Tokenping config: `config/aaveConfig.ts` lists it as "Base (V4 Coinbase Stocks)"
 
 Aave V4 API `reserves` (chainIds 1, 43114, 5042, 8453), 30 Oct 2026 about 07:40 UTC:
 
-| Reserve | Token | Collateral factor | Max liquidation bonus | Liquidation fee | Supply cap | Supplied | Supplied (USD) | Borrowable |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| AAPLc | `0xb200000000000000000000C2e324d24d7eEcd1fb` | 78% | 5.5% | 10% | 15,000 | 2,086.63 | 732,586.41 | no |
-| AMZNc | `0xb200000000000000000000d9192b6B456483C2E8` | 73% | 5.5% | 10% | 10,500 | 1,938.90 | 440,346.88 | no |
-| GOOGLc | `0xb2000000000000000000002D0BA3164cc74f58B7` | 76% | 5.5% | 10% | 15,000 | 12,739.91 | 3,584,143.58 | no |
-| METAc | `0xb2000000000000000000008bC8786B856E61707C` | 65% | 5.5% | 10% | 5,800 | 3,374.37 | 2,088,305.41 | no |
-| MSFTc | `0xB200000000000000000000Ab99cFa739E253872B` | 79% | 5.5% | 10% | 5,200 | 620.86 | 325,686.90 | no |
-| NVDAc | `0xb20000000000000000000078ee7ce2fE4908108C` | 70% | 5.5% | 10% | 24,000 | 14,491.46 | 3,032,892.48 | no |
-| TSLAc | `0xb2000000000000000000001e800a7f5189430cD0` | 65% | 5.5% | 10% | 14,000 | 2,610.34 | 1,030,490.91 | no |
-| USDC | | 0% | | | | | 6,256,083.14 | yes, 5,020,022.47 borrowed |
+| Reserve | Token                                        | Collateral factor | Max liquidation bonus | Liquidation fee | Supply cap | Supplied  | Supplied (USD) | Borrowable                 |
+| ------- | -------------------------------------------- | ----------------- | --------------------- | --------------- | ---------- | --------- | -------------- | -------------------------- |
+| AAPLc   | `0xb200000000000000000000C2e324d24d7eEcd1fb` | 78%               | 5.5%                  | 10%             | 15,000     | 2,086.63  | 732,586.41     | no                         |
+| AMZNc   | `0xb200000000000000000000d9192b6B456483C2E8` | 73%               | 5.5%                  | 10%             | 10,500     | 1,938.90  | 440,346.88     | no                         |
+| GOOGLc  | `0xb2000000000000000000002D0BA3164cc74f58B7` | 76%               | 5.5%                  | 10%             | 15,000     | 12,739.91 | 3,584,143.58   | no                         |
+| METAc   | `0xb2000000000000000000008bC8786B856E61707C` | 65%               | 5.5%                  | 10%             | 5,800      | 3,374.37  | 2,088,305.41   | no                         |
+| MSFTc   | `0xB200000000000000000000Ab99cFa739E253872B` | 79%               | 5.5%                  | 10%             | 5,200      | 620.86    | 325,686.90     | no                         |
+| NVDAc   | `0xb20000000000000000000078ee7ce2fE4908108C` | 70%               | 5.5%                  | 10%             | 24,000     | 14,491.46 | 3,032,892.48   | no                         |
+| TSLAc   | `0xb2000000000000000000001e800a7f5189430cD0` | 65%               | 5.5%                  | 10%             | 14,000     | 2,610.34  | 1,030,490.91   | no                         |
+| USDC    |                                              | 0%                |                       |                 |            |           | 6,256,083.14   | yes, 5,020,022.47 borrowed |
 
 Stock collateral total: 11,234,452.57 USD. All seven stock tokens: collateral only, 8 decimals, ticker and ISIN in the
 API's `tokenizedStock` (exchange NASDAQ, 09:30 to 16:00 America/New_York).
@@ -33,15 +33,15 @@ On-chain, Base block 53278437 (30 Oct 2026, 07:43 UTC): `getReserveCount()` = 8;
 returned `paused false, frozen true` for every reserve (USDC: borrowable true). Each stock reserve's
 `getReserveSource(i)` on the oracle and the feed's `description()` / `latestRoundData()`:
 
-| i | Token | Source | description | answer (8 dec) | updatedAt |
-| --- | --- | --- | --- | --- | --- |
-| 0 | AAPLc | `0x787f13dEa48Db0897CbCDD985de77809D837F988` | Coinbase AAPL | 35108580000 = 351.09 | 1793304217 |
-| 1 | AMZNc | `0x06A8E4b3aBB3B7543d8396FB2B763d22820cB295` | Coinbase AMZN | 22711221132 = 227.11 | 1793338757 |
-| 2 | GOOGLc | `0x5bF49E0ffA937CE2FfF033c739aD7C634c4D34F2` | Coinbase GOOGL | 28133183413 = 281.33 | 1793330709 |
-| 3 | METAc | `0x6526aE6797A76123638b863AeE4dD27Ba4E4b27D` | Coinbase META | 61887334833 = 618.87 | 1793335995 |
-| 4 | MSFTc | `0xeB10A6c9aa7E537aEd766C08c35Dae35B321b18c` | Coinbase MSFT | 52457185852 = 524.57 | 1793323421 |
-| 5 | NVDAc | `0x04689a41629776563E6822F76f2e57D148d28513` | Coinbase NVDA | 20928830475 = 209.29 | 1793335141 |
-| 6 | TSLAc | `0xFaf869185383a24F8cb00e27BdA6b63B9905DCb4` | Coinbase TSLA | 39477200089 = 394.77 | 1793340659 |
+| i   | Token  | Source                                       | description    | answer (8 dec)       | updatedAt  |
+| --- | ------ | -------------------------------------------- | -------------- | -------------------- | ---------- |
+| 0   | AAPLc  | `0x787f13dEa48Db0897CbCDD985de77809D837F988` | Coinbase AAPL  | 35108580000 = 351.09 | 1793304217 |
+| 1   | AMZNc  | `0x06A8E4b3aBB3B7543d8396FB2B763d22820cB295` | Coinbase AMZN  | 22711221132 = 227.11 | 1793338757 |
+| 2   | GOOGLc | `0x5bF49E0ffA937CE2FfF033c739aD7C634c4D34F2` | Coinbase GOOGL | 28133183413 = 281.33 | 1793330709 |
+| 3   | METAc  | `0x6526aE6797A76123638b863AeE4dD27Ba4E4b27D` | Coinbase META  | 61887334833 = 618.87 | 1793335995 |
+| 4   | MSFTc  | `0xeB10A6c9aa7E537aEd766C08c35Dae35B321b18c` | Coinbase MSFT  | 52457185852 = 524.57 | 1793323421 |
+| 5   | NVDAc  | `0x04689a41629776563E6822F76f2e57D148d28513` | Coinbase NVDA  | 20928830475 = 209.29 | 1793335141 |
+| 6   | TSLAc  | `0xFaf869185383a24F8cb00e27BdA6b63B9905DCb4` | Coinbase TSLA  | 39477200089 = 394.77 | 1793340659 |
 
 ## 2. The freeze of 29 Oct 2026
 
