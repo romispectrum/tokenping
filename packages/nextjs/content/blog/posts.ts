@@ -1361,6 +1361,69 @@ import TrTokenizedStocksCollateral, {
   meta as trTokenizedStocksCollateral,
 } from "~~/content/blog/tr/teminat-olarak-tokenize-hisseler.mdx";
 import type { Post } from "~~/content/blog/types";
+import UkAaveEMode, { meta as ukAaveEMode } from "~~/content/blog/uk/aave-e-mode-poiasnennia.mdx";
+import UkAaveHealthFactor, { meta as ukAaveHealthFactor } from "~~/content/blog/uk/aave-health-factor-poiasnennia.mdx";
+import UkSafeAaveHealthFactor, {
+  meta as ukSafeAaveHealthFactor,
+} from "~~/content/blog/uk/bezpechnyi-health-factor-aave.mdx";
+import UkWhyAaveWithdrawOrBorrowFails, {
+  meta as ukWhyAaveWithdrawOrBorrowFails,
+} from "~~/content/blog/uk/chomu-ne-vdaietsia-vyvesty-abo-pozychyty-na-aave.mdx";
+import UkWhyAaveHealthFactorDropped, {
+  meta as ukWhyAaveHealthFactorDropped,
+} from "~~/content/blog/uk/chomu-vpav-health-factor-aave.mdx";
+import UkStablecoinDepegAave, { meta as ukStablecoinDepegAave } from "~~/content/blog/uk/depeg-steiblkoina-na-aave.mdx";
+import UkAaveLiquidationAlertTools, {
+  meta as ukAaveLiquidationAlertTools,
+} from "~~/content/blog/uk/instrumenty-spovishchen-pro-likvidatsiiu-aave.mdx";
+import UkWhoNeedsHealthFactorAlerts, {
+  meta as ukWhoNeedsHealthFactorAlerts,
+} from "~~/content/blog/uk/komu-potribni-spovishchennia-health-factor.mdx";
+import UkLiquidatedOnAaveOrMorphoWhatNow, {
+  meta as ukLiquidatedOnAaveOrMorphoWhatNow,
+} from "~~/content/blog/uk/likviduvaly-na-aave-chy-morpho-shcho-robyty.mdx";
+import UkMorphoHealthFactor, {
+  meta as ukMorphoHealthFactor,
+} from "~~/content/blog/uk/morpho-health-factor-poiasnennia.mdx";
+import UkMorphoMidnightFixedRateLoans, {
+  meta as ukMorphoMidnightFixedRateLoans,
+} from "~~/content/blog/uk/morpho-midnight-pozyky-z-fiksovanoiu-stavkoiu.mdx";
+import UkMorphoPreLiquidation, {
+  meta as ukMorphoPreLiquidation,
+} from "~~/content/blog/uk/morpho-peredlikvidatsiia.mdx";
+import UkAaveHealthFactorAlertSetup, {
+  meta as ukAaveHealthFactorAlertSetup,
+} from "~~/content/blog/uk/nalashtuvannia-spovishchen-health-factor-aave.mdx";
+import UkCryptoBackedLoans, {
+  meta as ukCryptoBackedLoans,
+} from "~~/content/blog/uk/pozyky-pid-zastavu-kryptovaliuty.mdx";
+import UkPrivateAaveLiquidationAlerts, {
+  meta as ukPrivateAaveLiquidationAlerts,
+} from "~~/content/blog/uk/pryvatni-spovishchennia-pro-likvidatsiiu-aave.mdx";
+import UkShortFiatWithAave, {
+  meta as ukShortFiatWithAave,
+} from "~~/content/blog/uk/short-fiatnoi-valiuty-cherez-aave.mdx";
+import UkAaveAlertsDoNotDisturb, {
+  meta as ukAaveAlertsDoNotDisturb,
+} from "~~/content/blog/uk/spovishchennia-aave-v-rezhymi-ne-turbuvaty.mdx";
+import UkTokenizedStocksCollateral, {
+  meta as ukTokenizedStocksCollateral,
+} from "~~/content/blog/uk/tokenizovani-aktsii-yak-zastava.mdx";
+import UkAaveLiquidationPrice, { meta as ukAaveLiquidationPrice } from "~~/content/blog/uk/tsina-likvidatsii-aave.mdx";
+import UkAaveInterestRates, { meta as ukAaveInterestRates } from "~~/content/blog/uk/vidsotkovi-stavky-aave.mdx";
+import UkWrappedBitcoinAaveCollateral, {
+  meta as ukWrappedBitcoinAaveCollateral,
+} from "~~/content/blog/uk/wrapped-bitcoin-yak-zastava-na-aave.mdx";
+import UkHowAaveLiquidationWorks, {
+  meta as ukHowAaveLiquidationWorks,
+} from "~~/content/blog/uk/yak-pratsiuie-likvidatsiia-na-aave.mdx";
+import UkHowMorphoLiquidationWorks, {
+  meta as ukHowMorphoLiquidationWorks,
+} from "~~/content/blog/uk/yak-pratsiuie-likvidatsiia-na-morpho.mdx";
+import UkAvoidAaveLiquidation, {
+  meta as ukAvoidAaveLiquidation,
+} from "~~/content/blog/uk/yak-unyknuty-likvidatsii-na-aave.mdx";
+import UkAaveMarketWindDown, { meta as ukAaveMarketWindDown } from "~~/content/blog/uk/zakryttia-rynku-aave.mdx";
 import ViWhoNeedsHealthFactorAlerts, {
   meta as viWhoNeedsHealthFactorAlerts,
 } from "~~/content/blog/vi/ai-can-canh-bao-he-so-suc-khoe.mdx";
@@ -2089,5 +2152,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
     { meta: ruHowMorphoLiquidationWorks, Content: RuHowMorphoLiquidationWorks },
     { meta: ruMorphoPreLiquidation, Content: RuMorphoPreLiquidation },
     { meta: ruMorphoMidnightFixedRateLoans, Content: RuMorphoMidnightFixedRateLoans },
+  ],
+  uk: [
+    { meta: ukAaveHealthFactor, Content: UkAaveHealthFactor },
+    { meta: ukSafeAaveHealthFactor, Content: UkSafeAaveHealthFactor },
+    { meta: ukHowAaveLiquidationWorks, Content: UkHowAaveLiquidationWorks },
+    { meta: ukAaveLiquidationPrice, Content: UkAaveLiquidationPrice },
+    { meta: ukWhyAaveHealthFactorDropped, Content: UkWhyAaveHealthFactorDropped },
+    { meta: ukAaveHealthFactorAlertSetup, Content: UkAaveHealthFactorAlertSetup },
+    { meta: ukAaveLiquidationAlertTools, Content: UkAaveLiquidationAlertTools },
+    { meta: ukAvoidAaveLiquidation, Content: UkAvoidAaveLiquidation },
+    { meta: ukPrivateAaveLiquidationAlerts, Content: UkPrivateAaveLiquidationAlerts },
+    { meta: ukCryptoBackedLoans, Content: UkCryptoBackedLoans },
+    { meta: ukShortFiatWithAave, Content: UkShortFiatWithAave },
+    { meta: ukAaveInterestRates, Content: UkAaveInterestRates },
+    { meta: ukAaveAlertsDoNotDisturb, Content: UkAaveAlertsDoNotDisturb },
+    { meta: ukAaveMarketWindDown, Content: UkAaveMarketWindDown },
+    { meta: ukStablecoinDepegAave, Content: UkStablecoinDepegAave },
+    { meta: ukAaveEMode, Content: UkAaveEMode },
+    { meta: ukWhyAaveWithdrawOrBorrowFails, Content: UkWhyAaveWithdrawOrBorrowFails },
+    { meta: ukWrappedBitcoinAaveCollateral, Content: UkWrappedBitcoinAaveCollateral },
+    { meta: ukTokenizedStocksCollateral, Content: UkTokenizedStocksCollateral },
+    { meta: ukWhoNeedsHealthFactorAlerts, Content: UkWhoNeedsHealthFactorAlerts },
+    { meta: ukLiquidatedOnAaveOrMorphoWhatNow, Content: UkLiquidatedOnAaveOrMorphoWhatNow },
+    { meta: ukMorphoHealthFactor, Content: UkMorphoHealthFactor },
+    { meta: ukHowMorphoLiquidationWorks, Content: UkHowMorphoLiquidationWorks },
+    { meta: ukMorphoPreLiquidation, Content: UkMorphoPreLiquidation },
+    { meta: ukMorphoMidnightFixedRateLoans, Content: UkMorphoMidnightFixedRateLoans },
   ],
 };

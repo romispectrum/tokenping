@@ -22,6 +22,7 @@ import { RULES as sr } from "./sr";
 import { RULES as sv } from "./sv";
 import { RULES as tr } from "./tr";
 import type { LanguageRules } from "./types";
+import { RULES as uk } from "./uk";
 import { RULES as vi } from "./vi";
 import type { Localized } from "~~/i18n/locales";
 
@@ -53,4 +54,5 @@ export const LANGUAGE_RULES: Localized<LanguageRules> = {
   fil,
   bg,
   ru,
+  uk,
 };

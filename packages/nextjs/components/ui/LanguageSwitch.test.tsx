@@ -51,6 +51,7 @@ describe("LanguageSwitch", () => {
       ["SvenskaSE", "/sv/blog/aave-health-factor-forklarad"],
       ["SlovenščinaSI", "/sl/blog/aave-health-factor-razlozen"],
       ["TürkçeTR", "/tr/blog/aave-saglik-faktoru"],
+      ["УкраїнськаUA", "/uk/blog/aave-health-factor-poiasnennia"],
       ["English (UK)UK", "/blog/aave-health-factor"],
       ["English (US)US", "/blog/aave-health-factor"],
       ["Tiếng ViệtVI", "/vi/blog/he-so-suc-khoe-aave"],
