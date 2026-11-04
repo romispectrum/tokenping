@@ -1,0 +1,178 @@
+export const meta = {
+  slug: "imprumuturi-garantate-cu-crypto",
+  title: "Împrumuturi garantate cu crypto: cum funcționează și de ce",
+  description:
+    "Cum funcționează pas cu pas un împrumut crypto supragarantat pe Aave, prin ce diferă de o bancă sau de un creditor centralizat, utilizări și riscuri.",
+  h1: "Cum funcționează împrumuturile garantate cu crypto și de ce le iau oamenii?",
+  publishedAt: "2026-10-19",
+  primaryQuestion: "Cum funcționează un împrumut garantat cu crypto și de ce îl folosesc oamenii?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  Un împrumut garantat cu crypto îți permite să te împrumuți, de obicei într-un stablecoin precum USDC, cu garanția unor
+  active crypto pe care le depui, fără să le vinzi. Pe Aave împrumutul este supragarantat: pe 19 octombrie 2026 te
+  puteai împrumuta până la 73% din valoarea WBTC sau 80,5% din valoarea WETH pe piața Ethereum Core. Protocolul verifică
+  doar garanția, nu există o dată de rambursare, iar dobânda este variabilă. Dacă valoarea garanției scade atât de mult
+  încât health factor-ul (factor de sănătate) coboară sub 1, o parte din ea este vândută ca să ramburseze datoria, iar
+  tu plătești o penalizare. Oamenii folosesc aceste împrumuturi ca să obțină bani fără să vândă, ca să acopere un gol
+  temporar, ca să refinanțeze, pentru efect de levier sau ca acoperire a riscului, iar fiecare dintre aceste utilizări
+  vine cu risc de lichidare, de dobândă și de stablecoin.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Fiecare cifră on-chain, număr de bloc și sursă din spatele acestui articol: content/blog/snapshots/crypto-backed-loans.md */}
+
+## Ce este un împrumut garantat cu crypto?
+
+Un împrumut garantat cu crypto este un împrumut asigurat cu active crypto pe care le depui ca garanție. Pe un protocol de creditare precum Aave este supragarantat: garanția trebuie să valoreze mai mult decât împrumutul, iar în loc să îți verifice venitul, protocolul se bazează pe faptul că poate vinde o parte din garanție dacă valoarea ei scade prea mult. Cât timp împrumutul este deschis, garanția rămâne a ta, cu toate mișcările ei de preț, și o poți lua înapoi după ce datoria este rambursată.
+
+Cei mai mulți se împrumută în stablecoins, tokenuri care urmăresc o monedă: USDC și USDT urmăresc dolarul american, EURC urmărește euro. Garanția este de obicei un activ volatil. Pe piețele Aave de pe Ethereum și Arbitrum, etherul apare ca WETH, iar bitcoinul ca un token care îl reprezintă, precum WBTC sau cbBTC.
+
+Două cifre pentru fiecare activ de garanție decid cât te poți împrumuta și când împrumutul este în pericol:
+
+- **Raportul loan-to-value (LTV)** este suma maximă pe care o poți împrumuta pe baza activului, ca procent din valoarea lui.
+- **Pragul de lichidare (liquidation threshold)** este partea din valoarea activului care contează pentru health factor. Când garanția ta, ponderată astfel, valorează mai puțin decât datoria, health factor-ul este sub 1 și poziția poate fi lichidată.
+
+| Piață         | Garanție | LTV (limita de împrumut) | Prag de lichidare | Bonus de lichidare |
+| ------------- | -------- | ------------------------ | ----------------- | ------------------ |
+| Ethereum Core | WETH     | 80,5%                    | 83%               | 5%                 |
+| Ethereum Core | WBTC     | 73%                      | 78%               | 5%                 |
+| Ethereum Core | cbBTC    | 73%                      | 78%               | 7,5%               |
+| Arbitrum      | WETH     | 80%                      | 84%               | 5%                 |
+| Arbitrum      | WBTC     | 73%                      | 78%               | 7%                 |
+
+Aceste valori au fost citite on-chain pe 19 octombrie 2026 din PoolDataProvider-ul fiecărei piețe, la blocul Ethereum 26225342 și la blocul Arbitrum 516228495. cbBTC nu este listat pe piața Aave de pe Arbitrum. Guvernanța Aave poate schimba oricare dintre ele. Diferența dintre LTV și pragul de lichidare este explicată mai pe larg în [ce este health factor-ul Aave](/ro/blog/health-factor-aave-explicat).
+
+## Cum funcționează un împrumut pe Aave, pas cu pas?
+
+Aave V3 este un set de smart contracte pe fiecare rețea, iar app.aave.com este una dintre interfețele lor. Centrul de ajutor Aave descrie împrumutul și rambursarea în câțiva pași; iată ce presupune fiecare.
+
+### Pasul 1: Depune garanția
+
+Conectează-ți portofelul, alege activul pe care îl depui, de exemplu WBTC, și depune-l. Verifică dacă este activat ca garanție, pentru că doar garanția contează la cât te poți împrumuta. Tokenurile stau în contractul Pool al pieței, de unde alți utilizatori le pot împrumuta (asta plătește mica dobândă pe care o primești la depunere). Îți poți retrage garanția după ce rambursezi, sau o parte din ea cât timp încă datorezi, cu condiția ca health factor-ul să rămână după aceea la 1 sau peste.
+
+### Pasul 2: Împrumută un stablecoin
+
+Alege stablecoin-ul și o sumă sub limita ta de împrumut, adică valoarea garanției înmulțită cu LTV-ul ei. Tokenurile ajung în portofel, iar dobânda începe să curgă imediat, la o rată pe care protocolul o stabilește în funcție de cât din activ este împrumutat și de parametri pe care guvernanța îi poate schimba (centrul de ajutor Aave, Borrow Tokens). Aave V3 are acum doar dobândă variabilă: referința sa pentru Pool spune că împrumuturile folosesc întotdeauna modul cu dobândă variabilă și marchează vechea dobândă stabilă ca depreciată începând cu v3.2.
+
+Dobânzile variabile la împrumut pe 19 octombrie 2026, ca APY anual, așa cum le arată aplicația Aave (blocul Ethereum 26225342, blocul Arbitrum 516228495):
+
+| Piață         | USDC  | USDT (USD₮0 pe Arbitrum) | GHO   | EURC                              |
+| ------------- | ----- | ------------------------ | ----- | --------------------------------- |
+| Ethereum Core | 4,58% | 4,17%                    | 4,60% | 4,12%                             |
+| Arbitrum      | 3,45% | 4,21%                    | 4,59% | niciun stablecoin în euro deschis |
+
+Aceste dobânzi se schimbă tot timpul și pot sări brusc. Pe 14 octombrie 2026, dobânda la USDC pe Ethereum Core a urcat la 13,67% APR într-un singur bloc și a revenit după circa 36 de minute, cum arată [de ce scade singur health factor-ul tău pe Aave](/ro/blog/de-ce-a-scazut-health-factor-aave#cauza-3-s-a-acumulat-dobanda-pe-datorie-mai-repede-decat-pe-garantie).
+
+### Pasul 3: Urmărește health factor-ul
+
+Health factor-ul (HF) este garanția ta, ponderată cu pragul de lichidare al fiecărui activ, împărțită la datorie. Să o luăm pe alice, care depune 1 WBTC pe Ethereum Core când bitcoinul este la un preț ilustrativ de 80.000 $ (oracolul Aave, adică sursa de preț, a citit 82.680,33 $ la blocul Ethereum 26225364 pe 19 octombrie 2026) și se împrumută 24.000 USDC:
+
+- Limita de împrumut: 80.000 × 0,73 = 58.400 $.
+- Health factor: 80.000 × 0,78 ÷ 24.000 = 2,60.
+- Prețul de lichidare: 24.000 ÷ 0,78 = 30.769,23 $, adică cu 61,5% sub 80.000 $.
+
+Health factor-ul scade când scade bitcoinul și, încet, pe măsură ce se adaugă dobânda: dacă dobânda la USDC ar rămâne la 4,58% pe an, datoria ar fi de circa 25.099 USDC după un an, iar prețul de lichidare ar urca la circa 32.179 $. Ca să calculezi asta pentru poziția ta, vezi [cum îți calculezi prețul de lichidare pe Aave](/ro/blog/pretul-de-lichidare-aave); pentru cât spațiu să lași, vezi [ce health factor este sigur pe Aave](/ro/blog/health-factor-sigur-aave).
+
+### Pasul 4: Rambursează când vrei
+
+Nu există o dată de rambursare. Funcția de împrumut a Aave nu primește niciun termen, iar tu poți rambursa toată datoria sau o parte din ea oricând, în activul pe care l-ai împrumutat (referința Pool pentru Aave V3; centrul de ajutor Aave, Repay Tokens). Rambursarea completă îți eliberează garanția. Poți rambursa și cu garanția: pe piețele de pe Ethereum și Arbitrum, interfața Aave poate vinde o parte din garanție pentru activul datorat și poate rambursa într-o singură tranzacție (documentația Aave, swap features).
+
+### Pasul 5: Află ce se întâmplă sub un health factor de 1
+
+Sub 1, oricine poate lichida poziția: rambursează o parte din datoria ta și ia garanție în valoare de acea sumă plus un bonus de lichidare. O singură lichidare poate rambursa până la 50% din datorie cât timp health factor-ul este peste 0,95 și garanția și datoria valorează fiecare cel puțin 2.000 $, și până la 100% când health factor-ul este la 0,95 sau sub, ori când una dintre ele valorează mai puțin de 2.000 $ (centrul de ajutor Aave).
+
+Dacă bitcoinul ar scădea la 30.000 $ la scurt timp după ce alice s-a împrumutat, health factor-ul ei ar fi 30.000 × 0,78 ÷ 24.000 = 0,975. Un lichidator ar putea rambursa 12.000 USDC și ar lua 12.000 × 1,05 ÷ 30.000 = 0,42 WBTC, lăsându-i 0,58 WBTC față de 12.000 USDC, un health factor de 1,13. Ea ar pierde 600 $ din garanție peste datoria rambursată, iar 0,42 WBTC ar fi vânduți la minim. Regulile complete sunt în [ce se întâmplă când poziția ta pe Aave este lichidată](/ro/blog/cum-functioneaza-lichidarea-pe-aave).
+
+## Prin ce diferă un împrumut garantat cu crypto de un credit bancar?
+
+Principalele diferențe sunt ce verifică creditorul, când rambursezi și ce se întâmplă când garanția pierde din valoare:
+
+|                                  | Împrumut pe Aave                                                                  | Credit bancar tipic                                                                   |
+| -------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Ce decide cât te poți împrumuta  | Valoarea garanției și LTV-ul ei                                                   | De obicei venitul și istoricul de credit, plus eventuale garanții                     |
+| Verificări asupra ta             | Niciuna din partea protocolului, care se uită doar la garanție                    | De obicei verificări de identitate, de venit și de credit                             |
+| Termen                           | Niciunul: rambursezi când vrei                                                    | De obicei un termen fix și un grafic de rambursare                                    |
+| Dobândă                          | Variabilă, recalculată pe măsură ce se schimbă împrumuturile din piață            | Fixă sau variabilă, cum prevede contractul                                            |
+| Dacă garanția pierde din valoare | Lichidare automată de către terți odată ce health factor-ul e sub 1, fără preaviz | Depinde de contract: o cerere de garanții suplimentare, o negociere, executare silită |
+| Cine deține garanția             | Smart contractul pieței                                                           | Creditorul sau un custode ales de el                                                  |
+| Dacă garanția nu acoperă datoria | Diferența devine o pierdere a protocolului, nu o creanță asupra ta                | Depinde de contract și de lege                                                        |
+
+Ultimul rând decurge din felul în care Aave V3.3 și versiunile ulterioare tratează o lichidare care consumă toată garanția: datoria rămasă este anulată ca deficit pe activ, cum explică [secțiunea despre datoria neacoperită](/ro/blog/cum-functioneaza-lichidarea-pe-aave#poate-o-lichidare-sa-lase-datorie-neacoperita). Până atunci ai pierdut totuși garanția.
+
+## Prin ce diferă de un creditor crypto centralizat?
+
+Un creditor centralizat îți ia garanția în propria custodie. Împrumutul poate arăta aproape la fel, dar devii creditorul companiei, iar dacă aceasta se prăbușește, garanția ta poate rămâne blocată la ea. Anul 2022 a arătat ce înseamnă asta:
+
+- **Celsius** a blocat retragerile clienților pe 12 iunie 2022 și a depus cerere de faliment pe 13 iulie 2022. Potrivit Commodity Futures Trading Commission din SUA, clienții depuseseră la ea circa 20 de miliarde $. În ianuarie 2023, tribunalul de faliment al SUA din New York a hotărât că activele crypto din conturile Earn ale Celsius deveniseră proprietatea Celsius conform termenilor de utilizare, ceea ce i-a lăsat pe acei clienți creditori negarantați.
+- **Voyager Digital** a suspendat tranzacționarea, depunerile și retragerile pe 1 iulie 2022, după ce Three Arrows Capital nu a făcut plățile pentru un împrumut de 15.250 BTC și 350 de milioane $ în USDC, și a cerut protecție în baza Chapter 11 pe 5 iulie 2022.
+- **Genesis** i-a împiedicat pe investitorii din programul Gemini Earn să își retragă fondurile în noiembrie 2022, când deținea circa 900 de milioane $ din activele lor, potrivit Securities and Exchange Commission din SUA, și a cerut Chapter 11 pe 19 ianuarie 2023.
+- **BlockFi** a cerut Chapter 11 pe 28 noiembrie 2022, la câteva zile după ce suspendase retragerile, în timp ce FTX se prăbușea.
+
+Pe Aave, garanția stă într-un smart contract public ale cărui reguli le poate citi oricine, nu în bilanțul unei companii. Asta înlocuiește un set de riscuri cu altul, descrise mai jos la [riscuri](#care-sunt-riscurile-unui-imprumut-garantat-cu-crypto): bug-uri, erori de oracol, decizii de guvernanță și custodia din spatele bitcoinului wrapped. Unul dintre ele contează aici: emergency admin sau pool admin al Aave poate pune un activ pe pauză, iar cât timp este pe pauză nimeni nu îl poate retrage sau rambursa (contractele PoolConfigurator și ValidationLogic ale Aave).
+
+## Pentru ce folosesc oamenii împrumuturile garantate cu crypto?
+
+### Bani fără să vinzi
+
+Un motiv este să obții bani păstrând activele crypto, adesea pentru că deținătorul se așteaptă să crească sau vrea să le păstreze ani de zile. Împrumutul păstrează tot potențialul de creștere al garanției și tot riscul ei de scădere, adaugă dobândă și poate forța o vânzare în cel mai prost moment dacă prețul scade suficient.
+
+Luarea împrumutului nu îți vinde garanția: ea rămâne a ta. Dacă depunerea garanției, împrumutul, dobânda sau o lichidare au consecințe fiscale depinde de țara ta și uneori de termenii protocolului. Ghidul autorității fiscale din Regatul Unit, de exemplu, spune că depinde de termenii unei platforme de creditare DeFi dacă predarea garanției către ea contează drept înstrăinare, iar acolo unde nu contează, tratează vânzarea garanției într-o lichidare ca vânzare făcută de debitorul însuși (HMRC Cryptoassets Manual, CRYPTO61640). Acest ghid nu oferă consultanță fiscală; verifică regulile din țara în care locuiești.
+
+### Cheltuieli sau acoperirea unui gol
+
+Unii se împrumută ca să acopere o cheltuială înainte să sosească bani pe care îi așteaptă, cum ar fi o factură scadentă înainte de o vânzare sau de un salariu. Compromisul este că nimic nu închide împrumutul în locul tău: nu există o dată de rambursare, dobânda poate crește cât aștepți, iar transformarea stablecoin-urilor în bani într-un cont bancar, și înapoi ca să rambursezi, are propriile costuri.
+
+### Refinanțare
+
+Un împrumut luat în altă parte poate fi mutat pe Aave dacă dobânda Aave este mai mică, iar pe Aave o datorie poate fi schimbată dintr-un stablecoin în altul într-o singură tranzacție cu funcția debt swap a interfeței (documentația Aave, swap features). Compromisul: dobânzile sunt variabile, așa că activul mai ieftin azi poate fi mai scump luna viitoare, iar trecerea de la un stablecoin în dolari la unul în euro schimbă moneda în care datorezi, subiectul ghidului [short pe fiat cu un împrumut Aave](/ro/blog/short-pe-fiat-cu-aave).
+
+### Efect de levier
+
+Ca să își mărească expunerea, unii se împrumută în stablecoins, cumpără mai mult din activul de garanție și îl depun și pe acesta. Dacă alice și-ar folosi cei 24.000 USDC ca să cumpere 0,3 WBTC la 80.000 $ și i-ar depune, ar avea 1,3 WBTC față de 24.000 USDC: un health factor de 3,38 și un preț de lichidare de 23.668,64 $. Fiecare mișcare a bitcoinului o lovește acum de 1,3 ori mai tare decât dacă ar deține direct 1 bitcoin, iar repetarea acestui loop (împrumut repetat cu efect de levier) împinge health factor-ul spre 1.
+
+### Acoperirea riscului și poziții short
+
+Să împrumuți un activ și să îl vinzi este un pariu că va scădea: depui stablecoins, împrumuți WETH și îl vinzi, iar poziția câștigă dacă ETH scade și se apropie de lichidare dacă ETH crește ([ghidul despre un health factor sigur](/ro/blog/health-factor-sigur-aave) arată cât de mult poate crește). Să împrumuți un stablecoin în dolari sau în euro cu garanție în bitcoin este imaginea în oglindă, un short pe monedă față de garanție, pe care unii bitcoineri îl numesc short pe fiat (shorting fiat); [short pe fiat cu un împrumut Aave](/ro/blog/short-pe-fiat-cu-aave) îl parcurge cu cifre.
+
+## Care sunt riscurile unui împrumut garantat cu crypto?
+
+- **Lichidarea.** Sub un health factor de 1, o parte din datorie sau toată poate fi rambursată cu garanția ta, iar pe deasupra pierzi și bonusul: între 5% și 7,5% pentru activele din primul tabel. Lichidările sunt făcute de boți care concurează între ei, așa că pot urma rapid (centrul de ajutor Aave).
+- **Volatilitatea garanției.** Bitcoinul a atins un maxim de circa 69.000 $ în noiembrie 2021 și era la circa 17.000 $ la jumătatea lui iunie 2022, o scădere de circa 75%, iar după prăbușirea FTX din noiembrie 2022 a coborât sub 16.000 $ (blogul BCE). Cu pragul de lichidare de 78% al WBTC, chiar și un împrumut de 20% din valoarea garanției, luat la vârful din 2021, ar fi fost lichidat până la jumătatea lui iunie 2022.
+- **Dobânzi variabile.** Dobânda nu este fixă pentru nicio perioadă, iar dobânda îți scade health factor-ul în timp chiar și când prețurile stau pe loc.
+- **Depeg-ul stablecoin-urilor (pierderea parității cu dolarul).** USDC a scăzut la circa 0,88 $ pe 11 martie 2023, după ce Circle a anunțat că 3,3 miliarde $ din rezervele sale se aflau la Silicon Valley Bank, și a revenit peste 0,99 $ până pe 13 martie (postarea Gauntlet pe forumul Aave; Circle). TerraUSD, un stablecoin algoritmic, și-a pierdut paritatea în mai 2022 și a scăzut aproape de zero, ceea ce, potrivit SEC din SUA, a șters 40 de miliarde $ din valoarea de piață. Dacă stablecoin-ul pe care îl datorezi scade, datoria ta se ieftinește; dacă scade un stablecoin pe care îl folosești ca garanție, health factor-ul tău scade.
+- **Bitcoinul wrapped.** Bitcoinul de pe Aave este un token acoperit de bitcoin deținut de altcineva sau controlat de un bridge. WBTC, de exemplu, spune că fiecare token este acoperit de bitcoin ținut în custodie. Dacă această acoperire ar ceda, tokenul ar putea pierde din valoare indiferent de ce face bitcoinul însuși.
+- **Smart contracte, oracole și guvernanță.** Un bug, un preț greșit sau o schimbare de parametru poate lovi o poziție fără nicio mișcare de piață. În martie 2026, un oracol de curs de schimb dezaliniat pe piețele Ethereum Core și Prime ale Aave a redus cursul efectiv al wstETH cu circa 2,85% și a declanșat lichidări de circa 10.938 wstETH în 34 de conturi, potrivit post-mortem-ului Chaos Labs ([mai multe despre erorile de oracol](/ro/blog/de-ce-a-scazut-health-factor-aave#cauza-6-a-evaluat-gresit-garantia-o-eroare-de-oracol-sau-de-curs-de-schimb)). Guvernanța poate și să reducă un prag de lichidare pentru toate pozițiile deschise ([mai multe despre reducerea pragurilor](/ro/blog/de-ce-a-scazut-health-factor-aave#cauza-4-a-redus-guvernanta-sau-risk-stewards-un-prag-de-lichidare)).
+- **Faci totul singur.** Tu deții cheile, tu trimiți tranzacțiile, iar pe o piață care se mișcă repede o rambursare poate avea nevoie de mai mult timp decât te aștepți ca să fie confirmată.
+
+## Cum îți supraveghezi împrumutul?
+
+Interfețele Aave îți arată health factor-ul cât timp le ai deschise, dar nu îți trimit un mesaj când scade, cum explică [ghidul despre alertele de health factor](/ro/blog/configurare-alerta-health-factor-aave#trimite-aave-alerte-de-health-factor). Un mod de a-l supraveghea este să alegi health factor-ul la care ai acționa, rambursând o parte din datorie sau adăugând garanție, și să lași un instrument separat să te avertizeze când poziția ajunge acolo. Tokenping verifică la fiecare 5 minute și îți trimite mesaje cât timp health factor-ul tău este sub pragul pe care l-ai setat; [ghidul de configurare](/ro/blog/configurare-alerta-health-factor-aave) te conduce pas cu pas. O alertă îți dă timp să acționezi, nu protecție, iar [cum eviți lichidarea pe Aave](/ro/blog/cum-eviti-lichidarea-pe-aave) explică ce să faci cu acel timp.
+
+## Surse
+
+- Aave V3 Ethereum Core [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) și Arbitrum [PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): LTV, praguri de lichidare, bonusuri și dobânzi variabile la împrumut citite on-chain la blocul Ethereum 26225342 și la blocul Arbitrum 516228495 (date RPC, accesat la 19 octombrie 2026)
+- [Aave V3 Ethereum Core AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): prețul WBTC de 82.680,33 $ la blocul Ethereum 26225364 (date RPC, accesat la 19 octombrie 2026)
+- [Aave Help: Borrow Tokens](https://aave.com/help/borrowing/borrow-tokens) (accesat la 19 octombrie 2026)
+- [Aave Help: Repay Tokens](https://aave.com/help/borrowing/repay-tokens) (accesat la 19 octombrie 2026)
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (accesat la 19 octombrie 2026)
+- [Referința smart contractului Pool din Aave V3](https://aave.com/docs/aave-v3/smart-contracts/pool): parametrii pentru împrumut și rambursare, doar dobândă variabilă, dobânda stabilă depreciată în v3.2 (accesat la 19 octombrie 2026)
+- [Documentația Aave: swap features](https://aave.com/docs/aave-v3/smart-contracts/swap-features): rambursare cu garanția și debt swap (accesat la 19 octombrie 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) și [PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol), aave-v3-origin: retragerile cât timp ai un împrumut, pauzele și cine le poate seta (accesat la 19 octombrie 2026)
+- [Comunicatul de presă CFTC 8749-23 despre Celsius Network](https://www.cftc.gov/PressRoom/PressReleases/8749-23), 13 iulie 2023: circa 20 de miliarde $ depuși, retrageri blocate pe 12 iunie 2022, cerere de faliment pe 13 iulie 2022 (accesat la 19 octombrie 2026)
+- [Tribunalul de faliment al SUA, Districtul de Sud New York: opinia privind proprietatea asupra activelor din conturile Celsius Earn](https://www.nysb.uscourts.gov/sites/default/files/opinions/312902_1822_opinion.pdf), 4 ianuarie 2023 (accesat la 19 octombrie 2026)
+- [Voyager Digital: market update](https://www.newswire.ca/news-releases/voyager-digital-provides-market-update-851734302.html), 1 iulie 2022, și [Voyager Digital: anunțul Chapter 11](https://www.newswire.ca/news-releases/voyager-digital-commences-financial-restructuring-process-to-maximize-value-for-all-stakeholders-888320107.html), 5 iulie 2022 (ambele, accesat la 19 octombrie 2026)
+- [Comunicatul de presă SEC 2023-7 despre Genesis și programul Gemini Earn](https://www.sec.gov/news/press-release/2023-7), 12 ianuarie 2023 (accesat la 19 octombrie 2026)
+- [Comunicatul de presă SEC 2024-37 despre Genesis](https://www.sec.gov/newsroom/press-releases/2024-37), 19 martie 2024: cererile Chapter 11 depuse pe 19 ianuarie 2023 (accesat la 19 octombrie 2026)
+- [CoinDesk: BlockFi files for bankruptcy as FTX contagion spreads](https://www.coindesk.com/policy/2022/11/28/ftx-fallout-continues-as-crypto-lender-blockfi-declares-bankruptcy), 28 noiembrie 2022 (accesat la 19 octombrie 2026)
+- [The ECB Blog: Bitcoin's last stand](https://www.ecb.europa.eu/press/blog/date/2022/html/ecb.blog221130~5301eecd19.en.html), 30 noiembrie 2022: scăderea de la circa 69.000 $ la circa 17.000 $ și sub 16.000 $ (accesat la 19 octombrie 2026)
+- [Gauntlet: Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), forumul de guvernanță Aave, 17 martie 2023 (accesat la 19 octombrie 2026)
+- [Circle: $3.3 Billion of USDC Reserve Risk Removed, Dollar De-peg Closes](https://www.circle.com/pressroom/3-3-billion-of-usdc-reserve-risk-removed-dollar-de-peg-closes), 12 martie 2023 (accesat la 19 octombrie 2026)
+- [Comunicatul de presă SEC 2024-73 despre Terraform](https://www.sec.gov/newsroom/press-releases/2024-73), 13 iunie 2024: depeg-ul UST din mai 2022 (accesat la 19 octombrie 2026)
+- [WBTC](https://wbtc.network/): cum este acoperit WBTC (accesat la 19 octombrie 2026)
+- [Chaos Labs: Post-Mortem, Exchange Rate Misalignment on wstETH Core and Prime Instances](https://governance.aave.com/t/24269), forumul de guvernanță Aave, 10 martie 2026 (accesat la 19 octombrie 2026)
+- [HMRC Cryptoassets Manual, CRYPTO61640: DeFi lending and staking, collateral](https://www.gov.uk/hmrc-internal-manuals/cryptoassets-manual/crypto61640), actualizat pe 28 noiembrie 2025 (accesat la 19 octombrie 2026)
+
+_Conținut educațional, nu sfat financiar. Alertele reduc riscul, dar nu împiedică lichidarea._

@@ -1,0 +1,188 @@
+export const meta = {
+  slug: "alerte-private-de-lichidare-aave",
+  title: "Alertele Aave și confidențialitatea: ce păstrează Tokenping",
+  description:
+    "Ce păstrează Tokenping, ce rămâne public on-chain și cum un alias de e-mail și numele de utilizator Signal și Telegram nu te dau de gol.",
+  h1: "Cum primești alerte de health factor pe Aave fără să-i dai lui Tokenping identitatea ta",
+  publishedAt: "2026-10-19",
+  primaryQuestion: "Pot primi alerte de health factor pe Aave fără să-mi leg identitatea de adresa portofelului?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  Tokenping nu are conturi cu parolă: te autentifici semnând un mesaj cu portofelul, iar Tokenping îți păstrează adresa
+  portofelului lângă contactul pe care i-l dai pentru alerte. Așa că dă-i contacte care nu spun nimic despre tine: un
+  alias de e-mail în locul adresei tale, un nume de utilizator Signal cu numărul de telefon ascuns și un nume de
+  utilizator și un nume Telegram care nu te identifică. Astfel contactul nu te dă de gol. Nu te face anonim, pentru că
+  plata ta este publică pe Arbitrum One, un portofel pe care l-ai legat de tine în altă parte rămâne legat, iar
+  serviciile care îți livrează alertele își păstrează propriile evidențe.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Ce păstrează Tokenping și ce nu colectează?
+
+La 19 octombrie 2026, salvarea unei alerte scrie în baza de date Tokenping câte un rând pentru fiecare portofel, rețea și piață (un pool Aave V3 sau un Spoke Aave V4). Rândul conține:
+
+- Adresa portofelului tău.
+- Rețeaua, piața și pragul tău.
+- Canalele alese și limba fiecăruia.
+- Adresa de e-mail, numele de utilizator Signal și numele de utilizator Telegram pe care le-ai introdus, pentru canalele alese.
+- Când a fost creată alerta și când a fost modificată ultima dată, și când ai trimis ultima dată un mesaj de test pe fiecare canal. Așa funcționează limita de un test pe canal la fiecare 15 minute.
+
+Când apeși Start în botul Tokenping de pe Telegram se păstrează și ID-ul chatului tău și ora, într-un tabel separat. Dacă răspunzi la întrebarea opțională „Cum ai aflat de Tokenping?”, răspunsul tău și ora sunt păstrate împreună cu adresa portofelului.
+
+Tokenping nu cere și nu păstrează un nume, un număr de telefon, o parolă sau o verificare a identității. Nu folosește pixeli de urmărire sau cookie-uri de publicitate, nu păstrează un istoric al pozițiilor tale (sunt citite direct din blockchain, la fiecare afișare) și nu ține în baza de date o evidență a alertelor trimise. [Pagina de confidențialitate](/ro/confidentialitate) este lista oficială; acest ghid explică ce înseamnă pentru tine și ce poți face.
+
+## Cum funcționează autentificarea fără cont?
+
+Setările alertei aparțin unei adrese de portofel, nu unui cont. Ca să le deschizi sau să le schimbi, semnezi un mesaj cu acel portofel. Este un mesaj Sign-in with Ethereum (EIP-4361) care numește site-ul, adresa ta și un cod aleatoriu de unică folosință. Semnătura nu este o tranzacție: nu costă gas și nu aprobă niciun token. Serverul verifică semnătura și acceptă codul de unică folosință o singură dată, în 5 minute. Codul este păstrat fără adresa ta și șters când este folosit.
+
+Apoi site-ul setează un cookie de sesiune. Acesta conține adresa portofelului tău și un moment de expirare, plus o semnătură făcută cu un secret al serverului, ca să nu poată fi falsificat (este semnat, nu criptat), iar scripturile din pagină nu îl pot citi (HttpOnly). Durează 7 zile, iar site-ul îl șterge când îți deconectezi portofelul de pe site. Cât timp te autentifici, un al doilea cookie ține codul de unică folosință pentru acele câteva minute. Fiecare rută pentru alerte acționează apoi doar pentru portofelul din cookie, iar o cerere care numește alt portofel este refuzată.
+
+Ca să-ți vezi pozițiile nu ai nevoie de autentificare și nu plătești nimic. Numărătoarea vizitelor de pe site vine de la Vercel Web Analytics, care spune că identifică vizitatorii printr-un hash creat din cerere, în loc de cookie-uri terțe, și renunță la acea sesiune după 24 de ore.
+
+## Cine poate citi datele de contact pe care le salvezi?
+
+Prin aplicație, doar cineva care poate semna cu portofelul tău. Citirea, modificarea sau ștergerea unei alerte, precum și trimiterea unui mesaj de test, au toate nevoie de cookie-ul tău de sesiune, iar o cerere care numește alt portofel este refuzată. Tabelele bazei de date sunt închise pentru cheia publică (anon) a Supabase: row level security este activat fără nicio politică, iar rolurile publice nu au privilegii. Doar serverul Tokenping, cu cheia lui service-role, ajunge la ele.
+
+Poți verifica asta în loc să ai încredere pe cuvânt, pentru că codul Tokenping este public. Rutele care citesc și scriu alerte sunt în [`packages/nextjs/app/api/notifications`](https://github.com/romispectrum/tokenping/tree/main/packages/nextjs/app/api/notifications), rutele de autentificare în [`packages/nextjs/app/api/auth`](https://github.com/romispectrum/tokenping/tree/main/packages/nextjs/app/api/auth), iar migrările care închid tabelele pentru cheia publică în [`packages/supabase/migrations`](https://github.com/romispectrum/tokenping/tree/main/packages/supabase/migrations).
+
+Asta nu înseamnă că nu le poate citi nimeni:
+
+- Oamenii care administrează Tokenping și furnizorul bazei de date pot citi rândurile.
+- Oricine poate întreba dacă un anumit nume de utilizator Telegram a apăsat Start în bot. Răspunsul este da sau nu, niciodată un ID de chat.
+- Când o verificare a alertei sau un mesaj eșuează, eroarea poate include adresa portofelului tău și destinatarul, iar ea ajunge în logurile serverului.
+
+Sfatul pe care îl dă chiar pagina de confidențialitate este să nu introduci o adresă de e-mail sau un nume de utilizator Signal pe care nu ai vrea să le vezi legate de adresa portofelului tău. Restul acestui ghid arată cum să-l urmezi.
+
+## Ce alte servicii îți gestionează datele?
+
+Tokenping rulează pe alți furnizori, iar fiecare vede o parte din ce îi dai. Acest tabel este lista de pe pagina de confidențialitate, pe scurt.
+
+| Serviciu             | Ce face                                                                 | Ce vede                                                                                                  |
+| -------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Vercel               | Găzduiește site-ul și rulează verificarea alertelor la fiecare 5 minute | Fiecare cerere, inclusiv adresa ta IP, și logurile serverului                                            |
+| Vercel Web Analytics | Numără vizualizările de pagină                                          | Adresa paginii, referrerul, locația aproximativă, browserul, sistemul de operare și tipul dispozitivului |
+| Supabase             | Baza de date                                                            | Rândurile descrise mai sus                                                                               |
+| Resend               | Trimite e-mailurile cu alerte                                           | Adresa ta de e-mail și textul alertei                                                                    |
+| Releul Fly.io        | Predă alertele către Signal                                             | Numele tău de utilizator Signal și textul alertei (le vede și Signal)                                    |
+| Telegram             | Livrează alertele prin Bot API                                          | ID-ul chatului tău și textul alertei                                                                     |
+| Furnizori RPC        | Răspund la citirile din blockchain                                      | Adresa de portofel citită și adresa ta IP, când citirea o face browserul tău                             |
+| WalletConnect        | Transmite conexiunea către aplicația portofelului, dacă o folosești     | Ce schimbă aplicația portofelului și site-ul ca să se conecteze                                          |
+
+Textul alertei numește piața, health factor-ul tău (factor de sănătate), pragul tău și ora. Nu include adresa portofelului tău.
+
+Furnizorii au propriile evidențe. Anexa privind prelucrarea datelor a Resend enumeră metadatele, adresa de e-mail și conținutul mesajului ca date personale minime pe care le prelucrează pentru un client, iar documentația sa spune că păstrează datele e-mailurilor 30 de zile pe toate planurile, cu păstrare flexibilă pentru Enterprise. Signal spune că nu poate decripta și nici accesa în alt fel conținutul mesajelor. Politica de confidențialitate a Telegram spune că chaturile cloud sunt stocate pe serverele sale, puternic criptate, în timp ce criptarea end-to-end se aplică chaturilor secrete (Secret Chats).
+
+## Ce rămâne public în blockchain?
+
+Plata pentru alerte este o tranzacție pe Arbitrum One. Contractul de plată o înregistrează pe fiecare într-un eveniment public: adresa care plătește, tokenul, suma, ora, perioada cumpărată și noua dată de expirare. Oricine o poate citi și nimeni nu o poate șterge. Codul sursă al contractului este [verificat pe Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553).
+
+Nimic despre alerta ta nu este scris într-un blockchain: nici pragul, nici aliasul de e-mail, nici numele de utilizator Signal și nici cel de Telegram. Pozițiile tale pe Aave sunt și ele publice. ethereum.org descrie un blockchain drept „a public database” (o bază de date publică), iar Tokenping îți citește poziția cu apeluri view pe care le poate face oricine. Legătura dintre portofelul tău și pozițiile lui nu a depins niciodată de Tokenping.
+
+## Ce poate lega Tokenping și ce nu?
+
+Tokenping îți poate lega adresa portofelului de contactele pe care le salvezi pentru el, de piețele în care te împrumuți, de pragurile tale și de momentul în care ai plătit. Serviciul nu poate funcționa fără această legătură: o alertă are nevoie de un portofel de urmărit și de un loc unde să trimită mesajul.
+
+Din ce păstrează în baza de date, Tokenping nu poate lega nimic din toate acestea de numele tău, de numărul de telefon sau de alte conturi, decât dacă un contact pe care îl introduci face asta în locul lui. O adresă de e-mail care îți conține numele sau un nume de utilizator pe care îl folosești pe alte site-uri face exact asta. Acesta este rostul unui alias și al unui nume de utilizator anonim: contactul nu spune nimic despre cine ești. Adresa ta IP este o altă poveste: ajunge la Vercel cu fiecare cerere, nu în baza de date Tokenping, iar ascunderea ei depășește subiectul acestui ghid.
+
+Ce poate face cineva din afară este o altă listă, și nimic din ea nu are nevoie de Tokenping:
+
+- Dacă portofelul tău are un nume ENS principal (primary name), orice aplicație îl poate găsi pornind de la adresă.
+- Dacă ai alimentat portofelul de pe un exchange unde ți-ai verificat identitatea, exchange-ul păstrează de obicei o evidență a acelei retrageri.
+- Orice loc în care ai arătat adresa lângă numele sau handle-ul tău le leagă pe cele două.
+- Plata ta este publică, așa că oricine poate vedea că adresa a plătit și până când.
+
+## Cum folosești un alias de e-mail în locul adresei reale?
+
+Un alias de e-mail este o adresă în plus care redirecționează către căsuța ta reală. Tokenping și furnizorul lui de e-mail văd doar aliasul. SimpleLogin, serviciul pe care acest ghid îl folosește ca exemplu, le vede pe amândouă, pentru că redirecționează e-mailurile între ele. Este făcut de Proton AG, este open source, iar pagina lui de prețuri listează un plan care nu costă nimic, cu un număr limitat de aliasuri.
+
+1. Creează un cont SimpleLogin și alege căsuța de e-mail care să primească alertele redirecționate.
+2. În panoul SimpleLogin, apasă **Random Alias** (alias aleatoriu) și alege cuvinte aleatorii sau un UUID pentru partea din stânga. Merge și un alias personalizat, dar ține departe de el numele tău, handle-urile tale și orice folosești pe alte site-uri. SimpleLogin îți permite și să atașezi o notă unui alias, de exemplu „Tokenping”, ca să ții minte la ce folosește.
+3. În formularul alertei, introdu aliasul ca adresă de e-mail (de exemplu `alice-aave@example.com`) și salvează alerta.
+4. Apasă **Trimite un test** pentru e-mail și verifică dacă mesajul ajunge în căsuța ta reală. Dacă nu ajunge, uită-te în dosarul de spam. [Ghidul de configurare](/ro/blog/configurare-alerta-health-factor-aave) are restul verificărilor.
+
+Alertele Tokenping merg într-o singură direcție, așa că nu le răspunzi niciodată, iar un alias care doar primește e suficient. Când nu mai folosești Tokenping, șterge întâi alerta, apoi aliasul, ca niciun contact păstrat să nu rămână după ce nu-și mai are rostul.
+
+Un alias nu ascunde totul. SimpleLogin și furnizorul căsuței tale văd în continuare alertele, așa că aliasul îți ascunde adresa de Tokenping și de Resend, nu și de serviciul care redirecționează. Un alias pe care îl folosești și pentru alt serviciu le leagă pe cele două. Și nu schimbă ce spune mesajul: piața, health factor-ul tău și pragul tău.
+
+SimpleLogin nu este singura variantă. DuckDuckGo Email Protection, Firefox Relay (de la Mozilla), addy.io și Hide My Email de la Apple (inclus în abonamentul iCloud+) îți dau și ele adrese care redirecționează către a ta. Limitele lor diferă, așa că citește pagina furnizorului înainte să te bazezi pe una.
+
+## Cum folosești un nume de utilizator Signal în locul numărului de telefon?
+
+Un nume de utilizator Signal îi permite cuiva să înceapă un chat fără numărul tău de telefon și este ce cere Tokenping: formularul lui nu cere niciodată un număr. Pașii de mai jos urmează paginile de asistență Signal.
+
+1. **Creează un nume de utilizator.** În Signal, deschide-ți profilul și atinge simbolul @. Numele de utilizator au între 3 și 32 de caractere (a-z, 0-9 și \_) și se termină cu cel puțin două cifre. Formularul Tokenping așteaptă forma `alice.42`: porecla ta, un punct și cifrele. Alege o poreclă care nu este numele tău și nici un handle pe care îl folosești în altă parte.
+2. **Ascunde-ți numărul.** Deschide „Settings” (Setări), apoi „Privacy” (Confidențialitate), apoi „Phone Number” (Număr de telefon) și setează „Who can see my number” (cine îmi poate vedea numărul) la „Nobody” (nimeni). Cei care au deja numărul tău salvat în contacte îl văd în continuare. Dacă vrei să poți fi găsit doar prin numele de utilizator, setează și „Who can find me by my number” (cine mă poate găsi după număr) la „Nobody”.
+3. **Verifică-ți numele de profil.** Profilul tău Signal are un prenume obligatoriu și o fotografie opțională, iar pagina Signal spune că poți folosi o poreclă, un singur caracter sau un emoji. Când accepți o cerere de mesaj, expeditorul îți vede profilul.
+4. **Adaugă numele de utilizator în alertă și trimite un test.** Introdu-l în câmpul Nume de utilizator Signal, salvează și apasă **Trimite un test** pentru Signal. Pentru că contul Signal al Tokenping nu este în contactele tale, primul mesaj poate sosi ca cerere de mesaj. Fă pașii 2 și 3 înainte s-o accepți.
+
+Signal spune că, dacă nu accepți o cerere, expeditorul vede doar numele de utilizator căruia i-a scris. Dacă o accepți, expeditorul îți vede numele de profil și poate să-ți vadă numărul de telefon, în funcție de setările numărului.
+
+Un nume de utilizator este doar o cale de a începe un chat. Signal păstrează în continuare numărul de telefon cu care te-ai înregistrat, iar nimic de aici nu schimbă asta. Dacă schimbi sau ștergi numele de utilizator, Signal spune că oricine îl poate revendica pe cel vechi în scurt timp, iar Tokenping continuă să trimită la numele de utilizator pe care l-a păstrat, așa că actualizează imediat alerta.
+
+## Cum faci ca un cont Telegram să nu te identifice?
+
+Telegram este cea mai slabă potrivire dintre cele trei, așa că citește asta înainte să-l alegi. Tokenping poate trimite mesaje doar unui cont Telegram care a apăsat Start în botul lui, așa că îți scrii @numele de utilizator în alertă și apeși Start o dată. Prin urmare, contul are nevoie de un nume de utilizator, iar Telegram spune că numele de utilizator sunt publice: te fac ușor de găsit în căutarea globală, iar cei care te găsesc îți pot scrie fără numărul tău. FAQ-ul Telegram te sfătuiește să nu setezi unul dacă nu te simți confortabil cu asta.
+
+1. **Alege un nume de utilizator în care nu e nimic de-al tău.** Folosește a-z, 0-9 și liniuțe de subliniere; Tokenping acceptă între 4 și 32 de caractere. Îl setezi în „Settings” (Setări) din Telegram.
+2. **Verifică-ți numele afișat și fotografia.** Politica de confidențialitate a Telegram spune că numele afișat nu trebuie să fie numele tău real. Un bot îți poate vedea numele public, numele de utilizator și fotografiile de profil.
+3. **Verifică setarea numărului.** Deschide „Settings” (Setări), apoi „Privacy and Security” (Confidențialitate și securitate), apoi „Phone Number” (Număr de telefon). Implicit, numărul tău îl văd doar cei care te au în contacte, iar Telegram spune că nici cine te găsește după numele de utilizator nu îl vede. Un bot nu îl vede decât dacă i-l dai tu.
+4. **Conectează contul.** Scrie numele de utilizator în alertă, apasă Start în bot și așteaptă ca formularul să-l arate ca fiind conectat.
+
+Codul Tokenping păstrează doar ID-ul chatului și numele tău de utilizator, dar Bot API-ul Telegram îi dă unui bot prenumele tău cu fiecare mesaj și, când există, numele de familie, numele de utilizator și codul limbii. Oricine poate verifica dacă un nume de utilizator a apăsat Start. Dacă îi trimiți /stop botului, chatul tău este deconectat.
+
+## Ar trebui să folosești un portofel separat?
+
+Doar dacă te împrumuți din el. Tokenping urmărește portofelul pe care îl conectezi și nimic altceva, iar accesul aparține portofelului care a plătit, așa că nu poți plăti de pe o adresă ca să urmărești o poziție deținută de alta. Un portofel pe care îl folosești doar pentru Aave ține poziția, plata și alertele într-o singură adresă. Felul în care îl alimentezi lasă totuși o urmă publică, plata către Tokenping este publică, iar portofelul rămâne pseudonim, nu anonim. Mutarea unui împrumut într-un portofel nou înseamnă de obicei închiderea și redeschiderea poziției, cu costurile și riscul de lichidare pe care le implică, așa că acest ghid nu o recomandă.
+
+## Ce protejează fiecare pas și ce nu?
+
+| Pas                                                       | Ascunde de Tokenping și furnizorii lui           | Nu ascunde                                                                                  |
+| --------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| Alias de e-mail                                           | Adresa ta reală de e-mail                        | Serviciul de alias vede ambele adrese și alertele, iar ele ajung în căsuța ta reală         |
+| Nume de utilizator Signal, număr ascuns                   | Numărul tău de telefon                           | Signal are în continuare numărul tău, iar acceptarea unei cereri îți arată numele de profil |
+| Nume de utilizator și nume Telegram care nu te identifică | Numele tău real și numărul de telefon            | Numele de utilizator este public, iar Telegram stochează chatul pe serverele sale           |
+| Un portofel folosit doar pentru Aave                      | Legăturile cu restul istoricului acelui portofel | Tranzacțiile de alimentare și plata către Tokenping sunt publice                            |
+| Ștergerea alertei                                         | Rândul păstrat, inclusiv contactul               | Plata on-chain și ce păstrează fiecare furnizor după propriile reguli                       |
+
+## Cum ștergi ce păstrează Tokenping?
+
+Șterge alerta din panou: apasă **Editează alerta**, apoi **Șterge alerta** și confirmă. Asta elimină setările pentru acea piață, inclusiv adresa de e-mail și numele de utilizator Signal, și are nevoie de acces activ. Alerta fiecărei piețe se șterge separat.
+
+<Callout tone="warning">
+  Încheierea accesului nu șterge nimic: alerta și contactul din ea rămân păstrate până când ștergi alerta. Șterge
+  alertele de care nu mai ai nevoie cât timp accesul tău este activ. Dacă a expirat, pagina de confidențialitate spune
+  unde să scrii echipei ca să-ți fie șterse setările.
+</Callout>
+
+Pe Telegram, dacă îi trimiți /stop botului, chatul tău este deconectat. Răspunsul opțional la „Cum ai aflat de Tokenping?” poate fi șters la cerere, prin aceleași contacte de pe pagina de confidențialitate. Plata on-chain nu poate fi ștearsă de nimeni.
+
+Codul din spatele tuturor acestor lucruri este în [depozitul Tokenping](https://github.com/romispectrum/tokenping). Dacă o afirmație din acest ghid nu se potrivește cu el, spune-i echipei prin contactele de pe pagina de confidențialitate.
+
+## Surse
+
+- [Pagina de confidențialitate Tokenping](/ro/confidentialitate) (accesat la 19 octombrie 2026; ultima actualizare 19 octombrie 2026): ce se păstrează, cine se ocupă de date, ce este public și cum le ștergi
+- [Codul sursă Tokenping pe GitHub](https://github.com/romispectrum/tokenping) (accesat la 19 octombrie 2026; depozitul este public): autentificarea în `packages/nextjs/app/api/auth`, verificările sesiunii în `packages/nextjs/services/api/server/session.ts`, stocarea alertelor în `packages/nextjs/services/notifications`, rutele Telegram în `packages/nextjs/app/api/telegram`, migrările în `packages/supabase/migrations` și contractul de plată în `packages/hardhat/contracts`
+- [TokenpingPaywall pe Arbitrum One, cod sursă verificat pe Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553) (accesat la 19 octombrie 2026): evenimentul PaymentReceived
+- [SimpleLogin](https://simplelogin.io/) (accesat la 19 octombrie 2026): ce face un alias, cine îl face, open source
+- [Prețurile SimpleLogin](https://simplelogin.io/pricing/) (accesat la 19 octombrie 2026): un plan care nu costă nimic, cu un număr limitat de aliasuri
+- [Documentația SimpleLogin: crearea unui alias](https://simplelogin.io/docs/getting-started/create-alias/) (accesat la 19 octombrie 2026)
+- [DuckDuckGo Email Protection](https://duckduckgo.com/duckduckgo-help-pages/email-protection/what-is-duckduckgo-email-protection) (accesat la 19 octombrie 2026)
+- [Firefox Relay](https://relay.firefox.com/) (accesat la 19 octombrie 2026)
+- [addy.io](https://addy.io/) (accesat la 19 octombrie 2026)
+- [Apple Support: Hide My Email with iCloud+](https://support.apple.com/en-us/102548) (accesat la 19 octombrie 2026)
+- [Signal Support: Phone Number Privacy and Usernames](https://support.signal.org/hc/en-us/articles/6712070553754-Phone-Number-Privacy-and-Usernames) (accesat la 19 octombrie 2026)
+- [Signal Support: Signal Profiles and Message Requests](https://support.signal.org/hc/en-us/articles/360007459591-Signal-Profiles-and-Message-Requests) (accesat la 19 octombrie 2026)
+- [Politica de confidențialitate Signal](https://signal.org/legal/) (accesat la 19 octombrie 2026)
+- [FAQ Telegram](https://telegram.org/faq) (accesat la 19 octombrie 2026): numele de utilizator, vizibilitatea numărului de telefon, ce văd boții
+- [Politica de confidențialitate Telegram](https://telegram.org/privacy) (accesat la 19 octombrie 2026)
+- [Telegram Bot API: obiectele User și Chat](https://core.telegram.org/bots/api) (accesat la 19 octombrie 2026)
+- [Anexa Resend privind prelucrarea datelor](https://resend.com/legal/dpa) (accesat la 19 octombrie 2026)
+- [Documentația Resend: păstrarea pe termen lung a datelor e-mailurilor](https://www.resend.com/docs/webhooks/how-to-store-webhooks-data) (accesat la 19 octombrie 2026)
+- [Vercel Web Analytics: confidențialitate și conformitate](https://vercel.com/docs/analytics/privacy-policy) (accesat la 19 octombrie 2026)
+- [Documentația ENS: nume principale](https://docs.ens.domains/web/reverse) (accesat la 19 octombrie 2026)
+- [ethereum.org: introducere în Ethereum](https://ethereum.org/en/developers/docs/intro-to-ethereum/) (accesat la 19 octombrie 2026)
+
+_Conținut educațional, nu sfat financiar. Alertele reduc riscul, dar nu împiedică lichidarea._

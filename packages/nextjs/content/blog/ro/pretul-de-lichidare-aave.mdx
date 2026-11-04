@@ -1,0 +1,183 @@
+export const meta = {
+  slug: "pretul-de-lichidare-aave",
+  title: "Cum calculezi prețul de lichidare pe Aave",
+  description:
+    "Formula prețului de lichidare pe Aave V3, cu exemple pentru o garanție, două garanții și datorie volatilă, plus un calculator.",
+  h1: "Cum calculezi prețul de lichidare pe Aave",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-20",
+  primaryQuestion: "La ce preț va fi lichidată poziția mea pe Aave?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  Prețul tău de lichidare pe Aave este prețul de oracol al unui activ la care health factor-ul (factorul de sănătate) ar
+  scădea la 1,00, cu toate celelalte prețuri neschimbate; dincolo de el (sub, pentru garanție, peste, pentru un activ
+  împrumutat), poziția poate fi lichidată. Cu o singură garanție volatilă și datorie în stablecoin, este egal cu datorie
+  ÷ (cantitatea de garanție × pragul de lichidare), sau cu prețul curent ÷ health factor-ul tău. De exemplu, 10 WETH
+  care garantează 12.000 USDC pe Aave V3 Ethereum Core (pragul de lichidare al WETH 83% pe 14 octombrie 2026) pot fi
+  lichidați odată ce ETH scade sub 1.445,78 $, cu USDC socotit la 1,00 $.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Ce este prețul de lichidare pe Aave?
+
+Prețul de lichidare pe Aave este prețul unui activ din poziția ta la care health factor-ul ar ajunge exact la 1,00, cu toate celelalte prețuri neschimbate. Aave V3 permite lichidarea odată ce health factor-ul este sub 1,00. Un lichidator poate atunci să ramburseze o parte sau toată datoria ta și să ia garanție în valoare egală cu acea sumă plus un bonus (5% pentru garanția WETH pe Ethereum Core, citit on-chain pe 14 octombrie 2026). Întregul proces este descris în [ce se întâmplă la o lichidare pe Aave](/ro/blog/cum-functioneaza-lichidarea-pe-aave).
+
+Ține cont de trei lucruri când folosești această cifră:
+
+- **Este derivată.** Contractul Pool din Aave V3 raportează un health factor prin `getUserAccountData`, nu un preț de lichidare. Obții prețul rezolvând formula health factor-ului pentru un singur activ; [ce este health factor-ul pe Aave](/ro/blog/health-factor-aave-explicat) explică formula.
+- **Este un preț de oracol.** Aave evaluează pozițiile cu propriul oracol (sursa de preț), construit pe feed-uri Chainlink și adaptoare CAPO, iar aplicația Aave arată acest preț ca „Oracle price” (prețul oracolului) pe pagina fiecărui activ. Ultima tranzacție de pe un exchange poate fi diferită.
+- **Ține restul pe loc.** Cu două active de garanție sau cu datorie volatilă, multe combinații de prețuri ajung la 1,00, așa că un singur preț de lichidare îți spune doar cât se poate mișca un activ de unul singur.
+
+## Care este formula prețului de lichidare pe Aave?
+
+Pentru o poziție Aave V3 cu un singur activ volatil ca garanție și datorie în stablecoin, prețul de lichidare este datorie ÷ (cantitatea de garanție × pragul de lichidare), unde pragul de lichidare (liquidation threshold, LT) este partea din valoarea garanției care contează la health factor.
+
+**Preț de lichidare = datorie ÷ (cantitatea de garanție × pragul de lichidare)**
+
+Este health factor-ul rezolvat pentru preț. Aave V3 calculează HF = Σ(valoarea garanției × pragul de lichidare) ÷ valoarea totală a datoriei, în USD. Cu un singur activ de garanție, HF = cantitate × preț × LT ÷ datorie. Pune HF egal cu 1 și rezolvă pentru preț.
+
+Pentru că health factor-ul conține deja pragul, există o scurtătură: **preț de lichidare = prețul curent ÷ health factor**. Scăderea necesară ca să ajungi la el este 1 − 1 ÷ HF.
+
+Alte tipuri de poziții folosesc o variantă a aceleiași formule:
+
+| Poziție                                       | Preț de lichidare                                                                  | Scurtătură pornind de la health factor                                     |
+| --------------------------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| O garanție volatilă, datorie în stablecoin    | datorie ÷ (cantitate × LT)                                                         | prețul curent ÷ HF                                                         |
+| Două garanții volatile, datorie în stablecoin | (datorie − valoarea celeilalte garanții × LT-ul ei) ÷ (cantitate × LT)             | niciuna pentru un singur preț; dacă scad amândouă: o scădere de 1 − 1 ÷ HF |
+| Garanție în stablecoin, datorie volatilă      | Σ(valoarea garanției × LT) ÷ cantitatea împrumutată, un preț în sus                | prețul curent × HF                                                         |
+| Garanție wstETH, datorie WETH, în E-Mode      | un raport de preț wstETH/ETH: datoria în WETH ÷ (cantitatea de wstETH × LT E-Mode) | raportul curent ÷ HF                                                       |
+
+### Exemplu calculat: 10 WETH și 12.000 USDC pe Ethereum Core
+
+Depui 10 WETH și împrumuți 12.000 USDC pe Aave V3 Ethereum Core. Pragul de lichidare al WETH acolo era 83%, iar LTV-ul (loan-to-value) 80,5% (citire on-chain la blocul Ethereum 26193284, 14 octombrie 2026). Exemplul folosește ETH la 2.400 $, pentru cifre rotunde; oracolul Aave arăta 2.414,78 $ la blocul 26193376 în aceeași zi. USDC contează ca 1,00 $.
+
+| Pas                | Calcul                 | Rezultat   |
+| ------------------ | ---------------------- | ---------- |
+| Valoarea garanției | 10 × 2.400 $           | 24.000 $   |
+| Health factor      | 24.000 × 0,83 ÷ 12.000 | 1,66       |
+| Preț de lichidare  | 12.000 ÷ (10 × 0,83)   | 1.445,78 $ |
+| Verificare rapidă  | 2.400 ÷ 1,66           | 1.445,78 $ |
+| Scăderea necesară  | 1 − 1 ÷ 1,66           | 39,8%      |
+
+Limita de împrumut nu este o marjă de siguranță. La un LTV de 80,5%, aceiași 10 WETH susțin până la 19.320 $ de datorie, ceea ce dă un health factor de 1,031 și un preț de lichidare de 2.327,71 $, doar cu 3,0% sub 2.400 $. [Câtă marjă îți dă un health factor](/ro/blog/health-factor-sigur-aave) arată această diferență pentru fiecare activ.
+
+### Ce prag de lichidare ar trebui să folosești?
+
+Folosește pragul de lichidare al pieței Aave în care se află poziția ta. Aplicația Aave îl arată ca „Liquidation threshold” (prag de lichidare) la „Collateral usage” (utilizarea ca garanție) pe pagina fiecărui activ. Același token poate avea praguri diferite în piețe diferite, iar guvernanța le poate schimba. În E-Mode, pragul categoriei îl înlocuiește pe cel al activului doar pentru activele din setul de garanții al categoriei; orice altă garanție își păstrează propriul prag.
+
+| Piață Aave V3                          | Activ                                         | LTV           | Prag de lichidare |
+| -------------------------------------- | --------------------------------------------- | ------------- | ----------------- |
+| Ethereum Core                          | WETH                                          | 80,5%         | 83%               |
+| Ethereum Core                          | WBTC                                          | 73%           | 78%               |
+| Ethereum Core                          | USDC                                          | 75%           | 78%               |
+| Ethereum Core, E-Mode „ETH correlated” | WETH, wstETH, cbETH, rETH, weETH, osETH, ETHx | 93% (ETHx 0%) | 95%               |
+| Arbitrum                               | WETH                                          | 80%           | 84%               |
+| Arbitrum                               | WBTC                                          | 73%           | 78%               |
+| Arbitrum                               | USDC (nativ)                                  | 75%           | 78%               |
+
+Citite on-chain pe 14 octombrie 2026 la blocul Ethereum 26193284 (E-Mode la blocul 26193288) și la blocul Arbitrum 514855406. O nouă citire imediat după miezul nopții UTC (blocul Ethereum 26194239, blocul Arbitrum 514896811) a returnat aceleași valori și a dat LTV-ul E-Mode de 0% al ETHx.
+
+### Formula este diferită pe Aave V4?
+
+Aave V4, activ pe Ethereum, Avalanche, Arc și Base, folosește aceeași formă, cu două diferențe: un singur collateral factor (factor de garanție) pentru fiecare activ din fiecare Spoke înlocuiește LTV-ul și pragul de lichidare separate, iar health factor-ul se calculează pentru fiecare Spoke. O poziție V4 devine eligibilă pentru lichidare sub un health factor de 1,0, deci prețul ei de lichidare este datorie ÷ (cantitatea de garanție × collateral factor). Collateral factor-ul WETH pe Ethereum Main Spoke era 83% pe 14 octombrie 2026 (Aave V4 API), deci 10 WETH față de 12.000 USDC ar fi lichidați tot sub 1.445,78 $. Tokenping urmărește atât pozițiile V3, cât și pe cele V4, cu o alertă separată pentru fiecare Spoke V4.
+
+## Cum calculezi prețul de lichidare pe Aave cu două active de garanție?
+
+Cu două active de garanție, prețul de lichidare al unui activ presupune că celălalt își păstrează prețul curent: scazi din datorie valoarea ponderată a celuilalt activ, apoi împarți la cantitatea primului activ înmulțită cu pragul lui de lichidare.
+
+**Prețul de lichidare al activului A = (datorie − valoarea lui B × LT-ul lui B) ÷ (cantitatea lui A × LT-ul lui A)**
+
+Exemplu pe Aave V3 Ethereum Core: 10 WETH la 2.400 $ (LT 83%) plus 0,2 WBTC la un preț ilustrativ de 81.500 $ (LT 78%; oracolul arăta 81.528,44 $ pe 14 octombrie 2026), față de 20.000 USDC datorie. Garanția ponderată este 24.000 × 0,83 + 16.300 × 0,78 = 19.920 + 12.714 = 32.634, deci health factor-ul este 32.634 ÷ 20.000 = 1,632.
+
+| Scenariu                           | Preț de lichidare                                    | Scăderea necesară     |
+| ---------------------------------- | ---------------------------------------------------- | --------------------- |
+| ETH scade, WBTC rămâne la 81.500 $ | (20.000 − 12.714) ÷ (10 × 0,83) = 877,83 $ per ETH   | 63,4%                 |
+| WBTC scade, ETH rămâne la 2.400 $  | (20.000 − 19.920) ÷ (0,2 × 0,78) = 512,82 $ per WBTC | 99,4%                 |
+| Ambele scad cu același procent     | ETH la 1.470,86 $ și WBTC la 49.948 $, împreună      | 38,7% (1 − 1 ÷ 1,632) |
+
+Primele două rânduri par confortabile pentru că fiecare presupune că celălalt activ își păstrează valoarea. Aici WETH singur acoperă aproape toată datoria (19.920 de valoare ponderată față de 20.000), așa că WBTC ar trebui să scadă singur cu 99,4%. Pentru garanții care tind să se miște împreună, al treilea rând, o scădere de 38,7% a amândurora, este testul realist.
+
+## Ce se întâmplă dacă ai împrumutat un activ volatil în loc de un stablecoin?
+
+Dacă ai împrumutat un activ volatil, cum ar fi WETH, poziția ta pe Aave are un preț de lichidare în sus: prețul activului împrumutat la care health factor-ul ajunge la 1,00. Pe măsură ce acest preț crește, datoria valorează mai mult și health factor-ul scade.
+
+**Prețul de lichidare al activului împrumutat = Σ(valoarea garanției × LT) ÷ cantitatea împrumutată**, sau, ca scurtătură, prețul curent × health factor.
+
+Exemplu pe Aave V3 Ethereum Core: depui 10.000 USDC (LT 78%) și împrumuți 2,5 WETH, în valoare de 6.000 $ cu ETH la 2.400 $. Health factor-ul este 10.000 × 0,78 ÷ 6.000 = 1,30. Poziția poate fi lichidată odată ce ETH urcă peste 7.800 ÷ 2,5 = 3.120 $ (adică și 2.400 × 1,30), o creștere de 30%.
+
+Și partea de stablecoin se poate mișca. Prețul USDC folosit de Aave pe Ethereum este plafonat la 1,04 $, dar prețurile sub 1 $ trec direct (plafon citit on-chain la blocul Ethereum 26194239). USDC și-a mai pierdut paritatea cu dolarul: pe 11 martie 2023 a scăzut la un minim de aproximativ 88 de cenți, după cum consemnează analiza post-mortem a Gauntlet de pe forumul Aave. La 0,88 $, aceeași poziție ar avea un health factor de 8.800 × 0,78 ÷ 6.000 = 1,144, iar prețul de lichidare al ETH ar coborî de la 3.120 $ la 2.745,60 $.
+
+Când atât garanția, cât și datoria sunt volatile, de exemplu garanție WBTC față de datorie WETH, contează doar raportul dintre cele două prețuri: health factor-ul ajunge la 1,00 când raportul WBTC/ETH scade la datoria în ETH ÷ (cantitatea de WBTC × LT-ul WBTC).
+
+## Cum îți schimbă E-Mode prețul de lichidare?
+
+E-Mode crește pragul de lichidare pentru activele corelate. Când garanția și datoria urmăresc același preț de bază, așa cum wstETH și WETH urmăresc amândouă ETH, prețul de lichidare devine un raport de preț (wstETH/ETH) în loc de un preț în dolari. Pe Aave V3 Ethereum Core, categoria E-Mode „ETH correlated” avea pe 14 octombrie 2026 un LTV de 93%, un prag de lichidare de 95% și un bonus de lichidare de 1%. Setul ei de garanții este WETH, wstETH, cbETH, rETH, weETH, osETH și ETHx, iar WETH este singurul activ pe care te lasă să-l împrumuți. Garanțiile din afara acestui set își păstrează pragul normal.
+
+Cu garanție wstETH și datorie WETH, ambele părți sunt evaluate în funcție de ETH, deci prețul ETH în dolari se anulează în mare parte. Ce decide lichidarea este cursul wstETH/ETH pe care îl folosește oracolul Aave:
+
+- Depui wstETH în valoare de 100 ETH la cursul oracolului și împrumuți 90 WETH. Health factor-ul este 100 × 0,95 ÷ 90 = 1,056. Dacă prețul ETH în dolari se înjumătățește, ambele părți se înjumătățesc și health factor-ul rămâne la 1,056. Dacă cursul wstETH/ETH al oracolului scade cu 5,3% (1 − 90 ÷ 95), poziția ajunge la 1,00.
+- La împrumutul maxim al categoriei, 93 WETH pe aceeași garanție, health factor-ul pornește de la 95 ÷ 93 = 1,0215, iar o scădere de 2,1% a cursului este suficientă.
+
+O mișcare de această mărime s-a mai întâmplat. Aave evaluează wstETH printr-un adaptor CAPO (Correlated Assets Price Oracle), care plafonează cursul de schimb pe care îl raportează. În martie 2026, un plafon configurat greșit pe piețele Ethereum Core și Prime a redus cu aproximativ 2,85% cursul folosit de Aave. Analiza post-mortem a Chaos Labs (10 martie 2026) numără aproximativ 10.938 wstETH în lichidări E-Mode în 34 de conturi, afectând poziții cu un health factor sub aproximativ 1,0288. Mișcarea a venit din configurația oracolului, nu din piață.
+
+## De ce se mișcă prețul tău de lichidare în timp?
+
+Prețul tău de lichidare pe Aave se mișcă chiar și când nu faci nimic, pentru că datele lui de intrare se schimbă: dobânda se adaugă la datorie, dobânda de depunere adaugă puțin la garanție, iar guvernanța poate schimba pragurile de lichidare. Îl mișcă și propriile tale tranzacții: un împrumut îl crește, în timp ce o rambursare sau o garanție adăugată îl scade.
+
+- **Dobânda.** Ia 10 WETH și 12.000 USDC datorie pe Aave V3 Ethereum Core, cu ETH la 2.400 $. Pe 14 octombrie 2026 (blocul 26193378), dobânda variabilă de împrumut pentru USDC era 4,496% APR, iar dobânda de depunere pentru WETH 1,309% APR. Menținute constante un an, aceste dobânzi ar crește prețul de lichidare de la 1.445,78 $ la aproximativ 1.490 $, cu ETH neschimbat. Dobânzile sunt variabile: mai târziu în aceeași seară, dobânda de împrumut pentru USDC a atins 14,1% pentru mai puțin de o oră (blocul 26194180), când aproape tot USDC-ul depus era împrumutat.
+- **Reducerile de prag.** În Aave V3, un prag de lichidare mai mic se aplică tuturor pozițiilor deschise deodată, iar prețul de lichidare se scalează cu LT vechi ÷ LT nou. O reducere ipotetică a pragului WETH de la 83% la 80% ar muta prețul de lichidare al aceleiași poziții de la 1.445,78 $ la 1.500,00 $. Reducerile vin prin propuneri de guvernanță sau prin Risk Stewards, care pot ajusta pragurile în limite configurate.
+- **Modificările de LTV nu contează.** Reducerea LTV-ului unui activ, chiar la 0, scade sau elimină puterea de împrumut pe care o dă, dar lasă neschimbate health factor-ul și prețul de lichidare.
+- **Aave V4 funcționează altfel.** Modificările de collateral factor se aplică în mod normal pozițiilor noi; cele existente își păstrează vechile setări până când utilizatorul se împrumută, retrage sau schimbă setările de garanție, ori până când Governor-ul le actualizează. V4 adaugă și un User Risk Premium (primă de risc a utilizatorului) la dobânda de împrumut pentru garanțiile mai riscante, deci datoria, și odată cu ea prețul de lichidare, poate crește mai repede.
+
+## Cât de aproape de prețul de lichidare este prea aproape?
+
+Nicio distanță față de prețul de lichidare nu este sigură pentru toată lumea. Pentru o garanție volatilă cu datorie în stablecoin, distanța este 1 − 1 ÷ HF: un health factor de 1,25 lasă loc pentru o scădere de 20%, 1,5 lasă 33,3%, iar 2,0 lasă 50%. De câtă marjă ai nevoie depinde de volatilitatea garanției, de cât de repede poți rambursa sau adăuga garanție și de cât de aglomerată este rețeaua în acel moment. [Câtă marjă îți dă un health factor](/ro/blog/health-factor-sigur-aave) are tabelul complet.
+
+### Cum transformi un preț de lichidare într-un prag de alertă pentru health factor?
+
+Alege prețul la care ai vrea să acționezi și transformă-l într-un health factor. Pentru o garanție volatilă cu datorie în stablecoin, **HF la un anumit preț = acel preț ÷ prețul de lichidare**. Pentru 10 WETH față de 12.000 USDC (preț de lichidare 1.445,78 $), a acționa la ETH 1.800 $ înseamnă un health factor de 1.800 ÷ 1.445,78 = 1,245, deci un prag de aproximativ 1,25. Cu datorie volatilă, se inversează: HF = prețul de lichidare ÷ prețul activului împrumutat.
+
+Un prag de health factor are două avantaje față de un nivel de preț. Urmărește prețul tău de lichidare pe măsură ce se acumulează dobânda și pe măsură ce modifici poziția, și acoperă deodată fiecare activ de garanție și de datorie. O alertă la un preț fix se învechește imediat ce datoria crește.
+
+Tokenping funcționează așa: trimite alerte pe baza health factor-ului și nu are alerte de preț. Setezi un prag pentru fiecare piață Aave V3 sau Spoke Aave V4, de la 1,1 la 10. Tokenping verifică la fiecare 5 minute și, la fiecare verificare în care health factor-ul tău este sub prag, trimite un mesaj pe fiecare canal ales (Signal, Telegram, e-mail sau mai multe dintre ele). O mișcare rapidă poate trece de 1,00 între două verificări, așa că un prag peste nivelul la care ai acționa îți câștigă timp; nu poate opri o lichidare. Pașii sunt în [cum setezi o alertă de health factor](/ro/blog/configurare-alerta-health-factor-aave), sau poți mai întâi să-ți [verifici health factor-ul pe Aave V3](/ro/aave).
+
+## Cum afli prețul de lichidare al propriei poziții?
+
+Ca să afli propriul preț de lichidare pe Aave, ai nevoie de cantitatea fiecărei garanții, de pragul de lichidare al fiecărei garanții, de datoria totală și de prețul curent al oracolului. Aplicația Aave le arată pe toate patru.
+
+1. Notează cantitatea fiecărei garanții, datoria totală și dacă contul tău este în E-Mode.
+2. Găsește pragul de lichidare al fiecărei garanții pe pagina activului din aplicația Aave („Liquidation threshold” la „Collateral usage”). În E-Mode, folosește pragul categoriei doar pentru garanțiile din setul categoriei; orice altă garanție își păstrează propriul prag.
+3. Cu o garanție volatilă și datorie în stablecoin, împarte prețul oracolului la health factor-ul tău. Cu două garanții, prețul lui A este (datorie − valoarea lui B × LT-ul lui B) ÷ (cantitatea lui A × LT-ul lui A). Cu un activ volatil împrumutat, prețul lui este Σ(valoarea garanției × LT) ÷ cantitatea împrumutată. Calculatorul de mai jos le acoperă pe toate trei.
+4. Recalculează după ce te împrumuți, rambursezi sau adaugi garanție și după o modificare de prag.
+
+Exemplu calculat pe Aave V3 Arbitrum, unde pragul de lichidare al WETH era 84% pe 14 octombrie 2026: 5 WETH la 2.400 $ față de 7.000 USDC dau un health factor de 12.000 × 0,84 ÷ 7.000 = 1,44 și un preț de lichidare de 2.400 ÷ 1,44 = 1.666,67 $, o scădere de 30,6%. La pragul de 83% de pe Ethereum Core, aceeași poziție ar fi lichidată sub 1.686,75 $.
+
+<LiquidationCalculator />
+
+Orice calculator îți dă prețul de lichidare de azi. Dobânda, modificările de prag și propriile tranzacții îl mută după aceea, așa că merită să recalculezi rezultatul de luna trecută.
+
+## Surse
+
+- [Aave V3 GenericLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): formula health factor-ului și pragul E-Mode aplicat doar setului de garanții al categoriei (accesat la 14 octombrie 2026)
+- [Aave V3 ValidationLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): lichidarea sub un health factor de 1,00, verificările LTV la împrumut (accesat la 14 octombrie 2026)
+- [Aave V3 LiquidationLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): cât din datorie poate rambursa o singură lichidare (accesat la 14 octombrie 2026)
+- [Aave V3 Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getReserveConfigurationData` la blocurile 26193284 și 26194239; `getReserveData` la blocurile 26193378 și 26194180 (accesat la 14 octombrie 2026; recitit la 15 octombrie 2026)
+- [Aave V3 Arbitrum PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): `getReserveConfigurationData` la blocurile Arbitrum 514855406 și 514896811 (accesat la 14 octombrie 2026; recitit la 15 octombrie 2026)
+- [Aave V3 Ethereum Core Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): categoria E-Mode 1 „ETH correlated”: configurația garanțiilor și bitmap-urile pentru garanții, active împrumutabile și LTV zero (accesat la 14 octombrie 2026; recitit la 15 octombrie 2026)
+- [AaveOracle pe Ethereum](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): `getAssetPrice` la blocul 26193376; `getSourceOfAsset(USDC)` la blocul 26194239 (accesat la 14 octombrie 2026; recitit la 15 octombrie 2026)
+- [Adaptorul de preț USDC al Aave pe Ethereum, „Capped USDC / USD”](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B): `getPriceCap` = 104000000 (1,04 $) la blocul 26194239 (accesat la 15 octombrie 2026)
+- [Documentația oracolului Aave](https://aave.com/docs/ecosystem/oracle.md): feed-urile Chainlink și adaptoarele CAPO (accesat la 14 octombrie 2026)
+- [Repository-ul de feed-uri de preț Aave (PriceCapAdapterStable)](https://github.com/aave-dao/aave-price-feeds): cum funcționează plafonul de preț al USDC (accesat la 14 octombrie 2026)
+- [Gauntlet, „Aave Resilient Through USDC Volatility” (Aave rezistă volatilității USDC)](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330): minimul USDC de aproximativ 88 de cenți din 11 martie 2023 (accesat la 14 octombrie 2026)
+- [Chaos Labs, analiza post-mortem a cursului wstETH](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): incidentul CAPO din martie 2026 (accesat la 14 octombrie 2026)
+- [Aave V3 Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): cum se pot schimba parametrii de risc între voturile de guvernanță (accesat la 14 octombrie 2026)
+- [Documentația pozițiilor utilizatorilor în Aave V4](https://aave.com/docs/aave-v4/positions.md): collateral factor și lichidarea sub un health factor de 1,0 (accesat la 14 octombrie 2026)
+- [Prezentarea Aave V4 (aave/aave-v4)](https://github.com/aave/aave-v4/blob/main/docs/overview.md): configurația de risc dinamică și User Risk Premium (accesat la 14 octombrie 2026)
+- [Aave V4 API](https://api.v4.aave.com/graphql): interogarea `reserves`, collateral factor-ul WETH pentru fiecare Spoke pe Ethereum (accesat la 14 octombrie 2026)
+- [Changelog-ul Aave](https://aave.com/docs/resources/changelog.md): rețelele V4 (accesat la 14 octombrie 2026)
+- [Codul sursă al interfeței Aave, SupplyInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/SupplyInfo.tsx) și [ReserveTopDetails.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/ReserveTopDetails.tsx): etichetele „Liquidation threshold” și „Oracle price” din aplicația Aave (accesat la 14 octombrie 2026)
+
+_Conținut educațional, nu sfat financiar. Alertele reduc riscul, dar nu împiedică lichidarea._

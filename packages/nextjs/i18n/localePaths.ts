@@ -16,6 +16,7 @@ export const LOCALE_PATHS: Record<Locale, { prefix: string; privacy: string }> =
   tr: { prefix: "/tr", privacy: "gizlilik" },
   id: { prefix: "/id", privacy: "privasi" },
   nl: { prefix: "/nl", privacy: "privacy" },
+  ro: { prefix: "/ro", privacy: "confidentialitate" },
 };
 
 /** The page paths of one language, by route: what i18n/routes serves and next.config.ts rewrites and links. */

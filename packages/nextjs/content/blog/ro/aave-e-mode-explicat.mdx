@@ -1,0 +1,203 @@
+export const meta = {
+  slug: "aave-e-mode-explicat",
+  title: "Aave E-Mode: mai multă putere de împrumut, marjă mai mică",
+  description:
+    "Ce este E-Mode în Aave V3, ce categorii are pe Ethereum, Arbitrum, Base și Optimism, cum schimbă health factor-ul și cât de mică e marja unui loop.",
+  h1: "Ce este Aave E-Mode și ce face cu riscul tău de lichidare?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "Ce este Aave E-Mode și cât de aproape de lichidare aduce o poziție?",
+  readingMinutes: 18,
+};
+
+<ShortAnswer>
+  E-Mode (Efficiency Mode) este o setare din Aave V3 care te lasă să te împrumuți mai mult pe o garanție al cărei preț
+  se mișcă odată cu activul pe care îl împrumuți, cum ar fi wstETH contra WETH, înlocuind loan-to-value (LTV) și pragul
+  de lichidare (liquidation threshold) obișnuite cu unele mai mari, comune întregii categorii. Pe Ethereum Core,
+  categoria „ETH correlated” folosea pe 28 octombrie 2026 un LTV de 93% și un prag de lichidare de 95%, față de 79% și
+  82% pentru wstETH în afara ei. Formula health factor-ului (factor de sănătate) nu se schimbă, ci doar pragul din ea,
+  așa că aceeași poziție arată un număr mai mare. Prețul este o marjă mai mică: o poziție împrumutată până la limita
+  E-Mode pornește de la 95 ÷ 93 = 1,0215, iar în martie 2026 o mișcare de 2,85% a oracolului (sursa de preț) a lichidat
+  pozițiile în E-Mode aflate sub aproximativ 1,0288. Un loop (împrumut repetat cu efect de levier) împrumutat aproape de
+  acea limită stă sub 1,1, cel mai mic prag de alertă pe care îl acceptă Tokenping.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Cifrele și numerele de bloc la care au fost citite: content/blog/snapshots/aave-e-mode.md */}
+
+## Ce este Aave E-Mode și de ce există?
+
+Aave E-Mode este o setare la nivel de cont, pe o piață Aave V3, care te plasează într-o categorie de active corelate și aplică garanțiilor listate de acea categorie LTV-ul, pragul de lichidare și bonusul de lichidare ale categoriei, în locul parametrilor proprii ai fiecărui activ. Pagina de ajutor Aave o descrie ca pe o modalitate de a „maximize their borrowing power by selecting optimized asset categories” (a-și maximiza puterea de împrumut alegând categorii de active optimizate). În contractul Pool, `setUserEMode(categoryId)` intră într-o categorie, `getUserEMode(address)` arată în care se află o adresă, iar categoria 0 înseamnă niciuna.
+
+Există pentru că parametrii obișnuiți sunt stabiliți pentru cazul cel mai rău: un activ de garanție și un activ de datorie ale căror prețuri se mișcă independent. Când amândouă urmăresc același lucru, așa cum wstETH și WETH urmăresc amândouă ETH, o scădere a prețului în dolari al ETH reduce garanția și datoria împreună, iar sănătatea poziției abia se mișcă. Furnizorii de analiză de risc ai Aave pot deci permite un LTV și un prag mai mari pentru această pereche. Ce rămâne este riscul ca cele două active să se îndepărteze unul de altul, iar acesta este riscul la care este de fapt expusă o poziție în E-Mode.
+
+De la Aave V3.2, care a introdus „liquid E-Modes”, o categorie este definită de trei lucruri:
+
+- **Un singur LTV, un singur prag de lichidare și un singur bonus de lichidare** pentru toată categoria.
+- **Un set de garanții**: rezervele care primesc parametrii categoriei cât timp ești în ea. Garanțiile din afara setului își păstrează propriul LTV și propriul prag.
+- **Un set împrumutabil**: singurele rezerve pe care le poți împrumuta cât timp ești în categorie. Un activ poate fi într-un set, în celălalt sau în amândouă și poate apărea în mai multe categorii.
+
+Așadar, „ETH correlated” pe Ethereum Core nu înseamnă „împrumuți orice contra ETH”: setul său împrumutabil conține doar WETH (citit pe 28 octombrie 2026, blocul 26291736). Categoria decide ce poți împrumuta la fel de mult cum decide cât.
+
+## Ce categorii E-Mode există astăzi?
+
+Categoriile de mai jos au fost citite din contractul Pool al fiecărei piețe pe 28 octombrie 2026 cu `getEModeCategoryLabel`, `getEModeCategoryCollateralConfig`, `getEModeCategoryCollateralBitmap` și `getEModeCategoryBorrowableBitmap`, cu bitmap-urile decodate pe baza `getReservesList()`. Toate cele patru Pool-uri raportau revizia 11 (V3.7). Guvernanța și Risk Stewards schimbă acești parametri, așa că verifică categoria în aplicația Aave înainte să te bazezi pe un număr.
+
+### Ethereum Core (blocul 26291736)
+
+Ethereum Core avea 48 de categorii. Cele mai multe împerechează un principal token (PT) Pendle sau un activ Ethena cu stablecoinuri sau cu USDe, iar multe listează PT-uri expirate, care rămân acolo doar pentru pozițiile aflate încă în curs de închidere. Cele pe care un debitor le întâlnește cel mai probabil:
+
+| Id  | Etichetă                    | LTV | Prag de lichidare | Bonus | Set de garanții                               | Set împrumutabil   |
+| --- | --------------------------- | --- | ----------------- | ----- | --------------------------------------------- | ------------------ |
+| 1   | ETH correlated              | 93% | 95%               | 1%    | WETH, wstETH, cbETH, rETH, weETH, osETH, ETHx | WETH               |
+| 2   | sUSDe Stablecoins           | 90% | 92%               | 4%    | USDe, sUSDe                                   | USDC, USDT         |
+| 11  | USDe Stablecoin             | 90% | 93%               | 2%    | USDe                                          | USDC, USDT         |
+| 4   | LBTC_WBTC                   | 84% | 86%               | 3%    | LBTC                                          | WBTC               |
+| 7   | eBTC/WBTC                   | 83% | 85%               | 3%    | eBTC                                          | WBTC               |
+| 22  | ezETH/wstETH                | 93% | 95%               | 1%    | ezETH                                         | wstETH             |
+| 26  | weETH/wstETH ETH Correlated | 93% | 95%               | 1%    | weETH                                         | WETH, wstETH       |
+| 3   | rsETH\_\_ETH_wstETH_ETHx    | 93% | 95%               | 1%    | rsETH                                         | WETH, wstETH, ETHx |
+| 40  | LINK\_\_USDC_USDT           | 66% | 71%               | 7%    | LINK                                          | USDC, USDT         |
+| 43  | XAUt\_\_USDC_USDT_GHO       | 70% | 75%               | 6%    | XAUt                                          | USDC, USDT, GHO    |
+| 47  | PT-srUSDe Stablecoins       | 90% | 92%               | 4,03% | sUSDe, PT-srUSDe-22OCT2026                    | USDC, USDT, USDe   |
+
+Două detalii din aceeași citire. În „ETH correlated”, ETHx este în setul de garanții, dar marcat cu LTV 0 (`ltvzeroBitmap` al categoriei), așa că se socotește în health factor la 95%, dar nu dă nicio putere de împrumut. Iar categoriile 47 și 48 (PT-srUSDe contra stablecoinuri și contra USDe) erau singurele cu flagul `isolated` din V3.7 activat; ce face acesta este explicat mai jos, la regulile de intrare. Categoriile LINK și XAUt arată că o categorie nu trebuie să fie deloc „corelată”: ele sunt un al doilea set de parametri pentru a te împrumuta în stablecoinuri contra unui singur activ.
+
+### Arbitrum (blocurile de la 519074353 la 519074731)
+
+| Id  | Etichetă                         | LTV | Prag de lichidare | Bonus | Set de garanții        | Set împrumutabil |
+| --- | -------------------------------- | --- | ----------------- | ----- | ---------------------- | ---------------- |
+| 1   | Stablecoins                      | 93% | 95%               | 1%    | DAI, USDC, USD₮0, EURS | niciunul         |
+| 2   | ETH correlated                   | 93% | 95%               | 1%    | WETH, wstETH, weETH    | WETH             |
+| 7   | wstETH/WETH ETH Correlated       | 94% | 96%               | 1%    | wstETH                 | WETH             |
+| 3   | ezETH/wstETH/WETH ETH Correlated | 93% | 95%               | 1%    | ezETH                  | WETH, wstETH     |
+| 5   | rsETH/wstETH/WETH ETH Correlated | 93% | 95%               | 1%    | rsETH                  | WETH, wstETH     |
+| 4   | ezETH Stablecoins                | 72% | 75%               | 7,5%  | ezETH                  | USD₮0, USDC      |
+| 6   | rsETH/Stablecoins                | 72% | 75%               | 7,5%  | rsETH                  | USDC, USD₮0      |
+| 8   | AAVE\_\_USDCn_USDT               | 66% | 73%               | 10%   | AAVE                   | USD₮0, USDC      |
+| 9   | ARB\_\_USDCn_USDT                | 58% | 63%               | 10%   | ARB                    | USD₮0, USDC      |
+| 10  | tBTC\_\_USDCn_USDT               | 72% | 75%               | 7,5%  | tBTC                   | USD₮0, USDC      |
+
+Categoria „Stablecoins” de pe Arbitrum are un set împrumutabil gol, așa că în ea nu se poate deschide nicio datorie nouă. Categoria sa cu un singur activ, „wstETH/WETH ETH Correlated”, este cu o treaptă mai generoasă decât cea de pe Ethereum: 94% și 96%, o marjă la limită de 96 ÷ 94 = 1,0213.
+
+### Base (blocul 53204166)
+
+Base avea 15 categorii. Cele pentru ETH și cele două pentru BTC pe care le întâlnesc cei mai mulți debitori:
+
+| Id  | Etichetă          | LTV | Prag de lichidare | Bonus | Set de garanții            | Set împrumutabil |
+| --- | ----------------- | --- | ----------------- | ----- | -------------------------- | ---------------- |
+| 1   | ETH correlated    | 90% | 93%               | 2%    | WETH, cbETH, wstETH, weETH | WETH             |
+| 8   | wstETH/WETH       | 93% | 95%               | 1%    | wstETH                     | WETH             |
+| 9   | cbETH/WETH        | 93% | 95%               | 2%    | cbETH                      | WETH             |
+| 7   | weETH/WETH        | 93% | 95%               | 1,25% | weETH                      | WETH             |
+| 2   | ezETH wstETH      | 93% | 95%               | 1%    | ezETH                      | wstETH           |
+| 4   | LBTC_cbBTC        | 82% | 84%               | 3%    | LBTC                       | cbBTC            |
+| 10  | cbBTC Stablecoins | 82% | 85%               | 4%    | cbBTC                      | USDC, GHO        |
+
+Restul împerechează un singur activ (wrsETH, syrupUSDC, AAVE, EURC, LBTC, tBTC, ezETH) cu USDC și GHO sau cu wstETH. Base arată cum o categorie largă se împarte în categorii cu un singur activ: categoria „ETH correlated”, cu mai multe active, merge la 90% și 93%, în timp ce wstETH/WETH, cbETH/WETH și weETH/WETH merg la 93% și 95%.
+
+### Optimism (blocul 158799548)
+
+| Id  | Etichetă       | LTV   | Prag de lichidare | Bonus | Set de garanții                          | Set împrumutabil |
+| --- | -------------- | ----- | ----------------- | ----- | ---------------------------------------- | ---------------- |
+| 1   | Stablecoins    | 0,01% | 87%               | 1%    | DAI, USDC (bridged și nativ), USDT, sUSD | niciunul         |
+| 2   | ETH correlated | 93%   | 95%               | 1%    | WETH, wstETH, rETH (rETH cu LTV 0)       | WETH             |
+
+Categoria „Stablecoins” de pe Optimism este o rămășiță, cu un LTV de 0,01% și nimic împrumutabil. Categoria sa „ETH correlated” are aceleași valori ca cea de pe Ethereum.
+
+## Cum se calculează health factor-ul în E-Mode?
+
+În E-Mode, health factor-ul folosește aceeași formulă ca întotdeauna, Σ(valoarea garanției × pragul de lichidare) ÷ valoarea datoriei, doar că fiecare activ de garanție din setul categoriei tale primește pragul categoriei în locul celui propriu. Aceasta este singura schimbare: `GenericLogic.calculateUserAccountData` alege pragul pentru fiecare activ, iar `getUserAccountData` întoarce rezultatul, așa că orice instrument care citește acest apel arată deja numărul din E-Mode. Formula generală este în [cum se calculează health factor-ul pe Aave](/ro/blog/health-factor-aave-explicat#cum-se-calculeaza-health-factor-ul-pe-aave), iar [cum schimbă E-Mode health factor-ul](/ro/blog/health-factor-aave-explicat#cum-schimba-e-mode-health-factor-ul), în același ghid, dă varianta scurtă a ceea ce urmează.
+
+Ia o garanție în wstETH în valoare de 10.000 $ și o datorie în WETH de 9.000 $ pe Ethereum Core, cu parametrii „ETH correlated” citiți pe 28 octombrie 2026 (blocul 26291736) și parametrii proprii ai wstETH citiți în aceeași zi (blocul 26291849: LTV 79%, prag de lichidare 82%):
+
+1. **În E-Mode:** HF = 10.000 × 0,95 ÷ 9.000 = **1,056**. Limita de împrumut este 10.000 × 0,93 = 9.300 $, deci se mai pot împrumuta 300 $.
+2. **În afara E-Mode:** aceeași poziție ar avea HF = 10.000 × 0,82 ÷ 9.000 = 0,911 și nici n-ar putea fi deschisă: LTV-ul de 79% al wstETH limitează împrumutul la 7.900 $.
+3. **La limita E-Mode:** împrumuți toți cei 9.300 $ și HF = 9.500 ÷ 9.300 = **1,0215**. Poziția este la 2,1% de lichidare chiar din ziua în care o deschizi.
+
+O poziție obișnuită împrumutată până la limită pornește tot de la prag ÷ LTV, adică 84 ÷ 81 = 1,037 pentru WETH pe Ethereum Core pe 28 octombrie 2026 (blocul 26291849). E-Mode îngustează diferența dintre LTV și prag la 2 puncte procentuale, iar această diferență este toată marja unei poziții împrumutate la maximum. [De ce împrumutul maxim lasă un health factor de doar aproximativ 1,03](/ro/blog/health-factor-aave-explicat#de-ce-imprumutul-maxim-lasa-un-health-factor-de-doar-aproximativ-103) face același calcul în afara E-Mode.
+
+Și ce mișcă numărul este altceva. Cu garanție în wstETH și datorie în WETH, ambele părți sunt evaluate pornind de la ETH, așa că prețul în dolari al ETH se anulează: dacă ETH se înjumătățește, garanția și datoria se înjumătățesc împreună, iar HF rămâne la 1,056. Ce rămâne este cursul wstETH/ETH pe care îl raportează oracolul Aave. Poziția ajunge la 1,00 când acest curs scade cu 1 − 90 ÷ 95 = 5,3%, iar poziția împrumutată la maximum, când scade cu 2,1%. [Cum schimbă E-Mode prețul de lichidare](/ro/blog/pretul-de-lichidare-aave#cum-iti-schimba-e-mode-pretul-de-lichidare) transformă asta într-un curs, nu într-un preț în dolari.
+
+## Cum funcționează un loop de staking cu efect de levier în E-Mode și pe ce pariază?
+
+Un loop de staking cu efect de levier depune wstETH, împrumută WETH pe baza lui, transformă WETH-ul în mai mult wstETH și îl depune și pe acesta, repetând până când poziția deține de câteva ori cantitatea inițială de wstETH, contra unei datorii în WETH aproape la fel de mari. E-Mode este ce îl face să merite: la un LTV de 93%, loop-ul poate ajunge la 1 ÷ (1 − 0,93) = 14,3 ori capitalul propriu inițial, față de 1 ÷ (1 − 0,79) = 4,8 ori la LTV-ul obișnuit al wstETH.
+
+Fă calculul în ETH, unitatea în care trăiește loop-ul. Pornești cu wstETH în valoare de 10 ETH, faci loop până la o garanție de 100 ETH și o datorie de 90 WETH și ai poziția de 1,056 de mai sus, cu un levier de zece ori. Pe 28 octombrie 2026, oracolul Aave de pe Ethereum Core evalua wstETH la 2.912,79 $ și WETH la 2.335,08 $ (blocul 26291849), un curs de 1,2474 ETH pe wstETH, egal cu `stEthPerToken()` al Lido la același bloc, așa că 100 ETH de garanție înseamnă aproximativ 80,2 wstETH.
+
+Două numere decid dacă loop-ul câștigă sau pierde, și niciunul nu este prețul în dolari al ETH:
+
+- **Cursul de schimb wstETH/ETH.** Crește pe măsură ce se acumulează recompensele de staking: Lido raporta un APR stETH de 2,25% pe 28 octombrie 2026 și o medie pe 7 zile de 2,33%. Loop-ul încasează acest randament pe 100 ETH și plătește dobândă pe 90, așa că cei 10 ETH de capital propriu câștigă de aproximativ zece ori diferența dintre cele două rate. O scădere a cursului raportat de oracol, din cauza unui discount de piață la wstETH sau a unei erori de configurare, reduce garanția, nu și datoria, și este singura mișcare de preț care poate lichida loop-ul.
+- **Dobânda la împrumutul de WETH.** Datoria crește cu dobânda variabilă a Aave, 1,94% APR pentru WETH pe Ethereum Core la blocul 26291849, în timp ce wstETH-ul pe care îl depune loop-ul nu câștigă aproape nimic de la Aave însuși (0,0002% la același bloc). Ori de câte ori dobânda la împrumut este peste randamentul din staking, loop-ul pierde bani, iar health factor-ul lui coboară treptat.
+
+Pune-le cap la cap pe un an, pentru poziția cu levier de zece ori, ignorând capitalizarea și mișcările de preț. Garanția crește cu randamentul din staking până la aproximativ 102,3 ETH. La o dobândă de 1,94%, datoria ajunge la 91,75 WETH: capitalul propriu este de 10,55 ETH, în creștere cu 5,5%, față de 2,3% dacă doar ții wstETH, iar HF urcă la 1,059. La o dobândă medie de 5%, datoria ajunge la 94,5 WETH, capitalul propriu scade la 7,8 ETH, iar HF coboară la 1,028. La 8%, datoria ajunge la 97,2 WETH și HF este 1,000: loop-ul ar fi lichidat doar din cauza dobânzii. Dobânzile la WETH chiar sar când gradul de utilizare este mare; [de ce sar dobânzile la împrumut pe Aave](/ro/blog/dobanzile-aave#de-ce-cresc-brusc-dobanzile-de-imprumut-pe-aave) explică curba.
+
+Prețul în dolari al ETH contează în continuare pentru proprietarul loop-ului, pentru că 10 ETH de capital propriu valorează cât valorează ETH, dar nu contează pentru health factor. Un loop este un pariu că randamentul din staking rămâne peste dobânda la împrumut și că cursul wstETH/ETH al oracolului nu scade cu mai mult decât marja. Al doilea pariu este cel care a fost pierdut în martie 2026.
+
+## Care sunt regulile pentru a intra într-o categorie E-Mode și a ieși din ea?
+
+Intrarea într-o categorie sau ieșirea din ea înseamnă un singur apel, `setUserEMode(categoryId)` pe Pool, iar Pool-ul face trei verificări înainte ca schimbarea să aibă efect, în `ValidationLogic.validateSetUserEMode` și `SupplyLogic.executeSetUserEMode` din aave-v3-origin (ramura main, citită pe 28 octombrie 2026):
+
+1. **Fiecare activ pe care îl împrumuți trebuie să fie împrumutabil în categoria țintă.** Pentru o categorie, asta înseamnă bitmap-ul ei împrumutabil; pentru ieșire (categoria 0), ca rezerva să aibă împrumutul activat. Eroarea este `InvalidDebtInEmode`. Un portofel cu datorie în USDC nu poate intra în „ETH correlated” pe Ethereum Core, unde WETH este singurul activ împrumutabil, până nu rambursează USDC-ul.
+2. **Fiecare activ pe care l-ai activat ca garanție trebuie să păstreze un LTV diferit de zero în categoria țintă.** Eroarea este `InvalidCollateralInEmode`. Verificarea trece prin `getUserReserveLtv`, care întoarce LTV-ul categoriei pentru activele din setul ei de garanții (sau 0 dacă categoria le marchează cu LTV 0), LTV-ul propriu al activului pentru garanțiile din afara setului și 0 pentru garanțiile din afara setului când categoria este izolată.
+3. **După schimbare, health factor-ul tău trebuie să fie cel puțin 1.** `executeSetUserEMode` schimbă întâi categoria și abia apoi apelează `validateHealthFactor`, așa că o schimbare care te-ar lăsa lichidabil eșuează (revert).
+
+Un portofel fără depuneri și fără datorii poate schimba oricând, iar un portofel aflat deja în categoria cerută nu primește nicio schimbare și nicio verificare.
+
+Două note de versiune contează pentru oricine citește ghiduri mai vechi. De la V3.2, garanțiile din afara setului categoriei tale își păstrează propriul LTV și propriul prag, așa că poți deține WBTC cât timp ești în „ETH correlated”, iar WBTC se socotește la parametrii proprii ai WBTC: notele de funcționalități ale V3.2 spun că parametrii E-Mode „will only apply for the ones listed as eModeCollateral” (se vor aplica doar celor listate ca eModeCollateral). De la V3.7, o categorie poate avea un flag `isolated` (`getIsEModeCategoryIsolated`). Într-o categorie izolată, garanțiile din afara setului primesc LTV 0, dar își păstrează propriul prag: se socotesc în continuare în health factor, dar nu susțin niciun împrumut nou, intrarea este blocată cât timp astfel de garanții sunt activate, iar activarea lor ca garanție din interiorul categoriei este refuzată. Dacă guvernanța activează flagul pentru o categorie aflată în uz, notele V3.7 spun că garanțiile din afara setului „immediately becomes LTV-zero” (devin imediat LTV zero), în timp ce „health factor is unaffected” (health factor-ul nu este afectat). Pe 28 octombrie 2026, doar cele două categorii PT-srUSDe de pe Ethereum Core aveau flagul activat.
+
+Ieșirea este blocată de aceleași trei verificări, rulate față de categoria 0. Nu poți ieși cât timp împrumuți un activ a cărui rezervă are împrumutul dezactivat și nu poți ieși dacă ieșirea ți-ar împinge health factor-ul sub 1, care este cazul obișnuit: poziția de 1,056 de mai sus ar arăta 0,911 în afara E-Mode, așa că apelul eșuează. Ca să ieși, trebuie mai întâi să rambursezi suficient WETH, până la o datorie de aproximativ 8.200 contra 10.000 de garanție, la pragul de 82% al wstETH. În E-Mode intri ușor, dar ieși greu după ce ai folosit spațiul pe care ți-l dă.
+
+## Ce s-a întâmplat cu loop-urile în E-Mode în martie 2026?
+
+În martie 2026, un adaptor de preț configurat greșit a redus cu aproximativ 2,85% cursul de schimb al wstETH folosit de Aave pe piețele Ethereum Core și Prime, iar toate pozițiile în E-Mode aflate sub un health factor de aproximativ 1,0288 au devenit lichidabile deodată. Relatarea este post-mortemul Chaos Labs de pe forumul de guvernanță Aave, publicat pe 10 martie 2026 și recitit pe 28 octombrie 2026; nimic de aici nu merge dincolo de el.
+
+Aave evaluează wstETH printr-un adaptor CAPO (Correlated Assets Price Oracle), care limitează cât de repede poate crește cursul wstETH/stETH pe care îl raportează, pentru a bloca atacurile de tip inflație. Plafonul este construit dintr-un raport de snapshot, un timestamp de snapshot și o rată maximă de creștere anuală. O actualizare a setat timestamp-ul snapshotului la o referință veche de șapte zile, în timp ce o limită on-chain (raportul poate crește cu cel mult 3% la fiecare 3 zile) a împiedicat raportul să ajungă la valoarea pe care o presupunea acel timestamp, așa că plafonul a fost calculat dintr-o referință prea mică. Post-mortemul spune că rata maximă permisă a ieșit la aproximativ 1,1939, sub cursul real, așa că plafonul a înlocuit cursul real, iar cursul efectiv a scăzut cu „around 2.855%” (în jur de 2,855%).
+
+Consecințele pe care le raportează:
+
+- Lichidări în E-Mode de aproximativ 10.938 wstETH, pe 34 de conturi, care au afectat pozițiile „with a health factor lower than 1.0288” (cu un health factor mai mic de 1,0288).
+- Nicio datorie neacoperită (bad debt) pentru protocol.
+- Aproximativ 512 ETH încasați de lichidatori din bonusuri și din valoarea diferenței de curs, din care 141 ETH din veniturile din bonusul de lichidare și aproximativ 13 ETH din comisioane au fost recuperați pentru a despăgubi utilizatorii afectați, iar trezoreria DAO urma să acopere restul.
+- Plafonul de împrumut (borrow cap) pentru wstETH a fost redus temporar la 1 pe ambele piețe, cât timp configurația a fost reparată.
+
+Mărimea mișcării este lecția pentru un loop. O poziție împrumutată până la limita „ETH correlated” pornește de la 1,0215, în interiorul intervalului care a fost lichidat; o poziție la 1,056 nu a fost atinsă. Nimic din poziția însăși nu a dat vreun avertisment, pentru că mișcarea a venit din configurația oracolului, nu din vreo piață. Adaptorul era încă folosit pe 28 octombrie 2026 (blocul 26291849): sursa oracolului pentru wstETH pe Ethereum Core se descria ca „Capped wstETH / stETH(ETH) / USD”, cu un raport de snapshot de 1,2283 datat 3 martie 2026, o creștere anuală maximă de 8,8% și un raport raportat de 1,2474, egal cu cel al Lido. [Cauza 6 din ghidul despre de ce scade health factor-ul](/ro/blog/de-ce-a-scazut-health-factor-aave#cauza-6-a-evaluat-gresit-garantia-o-eroare-de-oracol-sau-de-curs-de-schimb) descrie despăgubirea care a urmat.
+
+## Când nu ajută E-Mode?
+
+E-Mode nu face nimic pentru o poziție a cărei datorie este în afara categoriei și ajută puțin în alte câteva situații frecvente:
+
+- **O datorie pe care categoria nu o listează.** Nu poți intra deloc cât timp o împrumuți. Poziția cu 10 WETH contra 12.000 USDC din ghidul despre health factor rămâne la pragul propriu de 84% al WETH pe Ethereum Core (blocul 26291849), pentru că „ETH correlated” te lasă să împrumuți doar WETH.
+- **Garanții din afara setului.** Își păstrează parametrii proprii, așa că adăugarea de WBTC la o poziție „ETH correlated” crește health factor-ul la pragul propriu al WBTC, 85% pe Ethereum Core la blocul 26291889, nu la 95%. Într-o categorie izolată, nu adaugă nimic la puterea de împrumut.
+- **Categoriile de stablecoinuri.** Pe Arbitrum și Optimism, categoria „Stablecoins” nu avea niciun activ împrumutabil pe 28 octombrie 2026, așa că nu poate fi folosită pentru un împrumut nou. Pe Ethereum Core, categoriile de stablecoinuri împerechează un singur activ (USDe, sUSDe, un PT) cu USDC și USDT, la un LTV între 90% și 94%. Riscul acolo este un depeg (pierderea parității cu dolarul) al garanției, pe care o categorie corelată nu îl reduce; marja mai mică îl face să lovească mai devreme.
+- **Pozițiile mici.** Un lichidator poate închide până la 100% dintr-o rezervă de datorie când garanția sau datoria implicată valorează sub 2.000 $ (`LiquidationLogic`, citit pe 28 octombrie 2026), așa că un loop mic care coboară sub 1,00 este închis, nu doar redus; [cât din datorie poate fi lichidat dintr-odată](/ro/blog/cum-functioneaza-lichidarea-pe-aave#ce-parte-din-datoria-mea-poate-fi-lichidata-dintr-o-data) are regula. Bonusul de 1% din „ETH correlated” este mic după standardele Aave, dar se plătește pe toată suma.
+- **O marjă mică pe care nu ai vrut-o.** Dacă intri într-o categorie și te împrumuți aproape de limita ei, marja este de 2%, indiferent cum arăta health factor-ul înainte de schimbare.
+
+Dacă te regăsești în vreuna dintre aceste situații, parametrii obișnuiți și o rezervă mai mare sunt instrumentul mai bun; [câtă rezervă îți dă un health factor](/ro/blog/health-factor-sigur-aave#de-ce-difera-numarul-sigur-pentru-datoria-in-stablecoin-datoria-volatila-si-loopurile-in-e-mode) compară ce înseamnă același health factor pentru un loop în E-Mode și pentru alte poziții.
+
+## Te poate ajuta o alertă cu o poziție în E-Mode?
+
+O alertă de health factor ajută la o poziție în E-Mode ținută peste aproximativ 1,1-1,15 și nu se potrivește unui loop ținut intenționat sub acest nivel. Tokenping citește același health factor pe care îl raportează contractul, din `getUserAccountData`, care aplică deja categoria ta E-Mode, așa că nu ai nimic de configurat pentru E-Mode: numărul din panou și din mesaje este numărul pe care îl vede un lichidator.
+
+Limita este pragul. Pragul de alertă Aave din Tokenping merge de la 1,1 la 10, cu 1,5 implicit. Un loop la 1,056, sau orice poziție ținută intenționat sub 1,1, este sub orice prag pe care îl poți seta. O alertă setată la 1,1 ar găsi health factor-ul sub prag la fiecare verificare de 5 minute și ar trimite un mesaj la fiecare verificare, pe fiecare canal ales, până când poziția revine peste 1,1. Nu există amânare (snooze) și nici rezumat; [cât de des vei primi alerte](/ro/blog/configurare-alerta-health-factor-aave#cat-de-des-vei-primi-alerte) descrie comportamentul în detaliu.
+
+Pentru un loop cu marjă mică, sfatul cinstit este unul din două. Păstrează marja: ține loop-ul astfel încât health factor-ul să stea peste nivelul la care vrei să fii anunțat, de exemplu 1,12-1,15 pentru un loop wstETH/WETH, ceea ce costă levier, dar face ca o mișcare a oracolului de 2,85% să nu ajungă la lichidare, și setează alerta acolo, ca primul lucru de care afli să fie dobânda care împinge treptat poziția în jos. Sau acceptă mesajele continue: setează 1,1 și tratează șirul de mesaje ca semnalul că ești sub acest nivel, lucru pe care puțini îl vor pe Signal sau Telegram la fiecare verificare. Ce nu poate face o alertă în niciunul dintre cazuri este să reacționeze mai repede decât oracolul: mișcarea din martie 2026 a făcut pozițiile lichidabile în momentul în care s-a aplicat plafonul, iar un interval de verificare de 5 minute nu îți lasă timp să reacționezi la așa ceva. [Cum alegi un prag de alertă, pas cu pas](/ro/blog/health-factor-sigur-aave#cum-alegi-un-prag-de-alerta-pas-cu-pas) și [cum configurezi o alertă de health factor](/ro/blog/configurare-alerta-health-factor-aave#pasul-5-alege-un-prag) acoperă configurarea; [cum îți crești health factor-ul pe Aave](/ro/blog/cum-eviti-lichidarea-pe-aave#pasul-1-ramburseaza-o-parte-din-datorie) arată ce faci când vine un mesaj, ceea ce pentru un loop înseamnă de obicei să rambursezi WETH.
+
+Poți [verifica mai întâi health factor-ul tău pe Aave V3](/ro/aave); vizualizarea pozițiilor nu necesită plată. Alertele costă <AlertPrice />, se plătesc pe Arbitrum, câte una pentru fiecare piață Aave V3 sau Spoke V4, și sunt trimise pe Signal, Telegram sau e-mail. Tokenping este în beta și nu are nicio garanție de disponibilitate (uptime). Pentru o poziție cu o marjă de 2%, nicio alertă nu înlocuiește marja însăși.
+
+## Surse
+
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): `POOL_REVISION`, `getReservesList`, iar pentru categoriile 1-48 eticheta, configurația garanțiilor, bitmap-urile garanțiilor, activelor împrumutabile și LTV 0 și flagul isolated, la blocul 26291736 (accesat la 28 octombrie 2026)
+- Aave V3 Pool pe [Arbitrum](https://arbiscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD), [Base](https://basescan.org/address/0xA238Dd80C259a72e81d7e4664a9801593F98d1c5) și [Optimism](https://optimistic.etherscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD): aceleași apeluri pentru fiecare categorie, la blocurile Arbitrum de la 519074353 la 519074731, blocul Base 53204166 și blocul Optimism 158799548 (accesat la 28 octombrie 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): LTV, prag, bonus și dobânzi pentru WETH, wstETH și USDC la blocul 26291849; WBTC la blocul 26291889 (accesat la 28 octombrie 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) și [adaptorul său CAPO pentru wstETH](https://etherscan.io/address/0xe1D97bF61901B075E9626c8A2340a7De385861Ef): prețurile WETH și wstETH, descrierea adaptorului, raportul de snapshot, timestamp-ul de snapshot, creșterea anuală maximă și raportul la blocul 26291849 (accesat la 28 octombrie 2026)
+- [Tokenul wstETH](https://etherscan.io/address/0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0): `stEthPerToken()` la blocul 26291849 (accesat la 28 octombrie 2026)
+- [API-ul Lido pentru APR-ul stETH](https://eth-api.lido.fi/v1/protocol/steth/apr/sma): ultimul APR și media pe 7 zile (accesat la 28 octombrie 2026)
+- [IPool.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/interfaces/IPool.sol): getterii E-Mode, `setUserEMode` și `getUserEMode` (aave-v3-origin main, accesat la 28 octombrie 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) și [LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): `validateSetUserEMode`, `getUserReserveLtv`, `executeSetUserEMode` și pragul de 2.000 $ pentru close factor (aave-v3-origin main, accesat la 28 octombrie 2026)
+- [Funcționalitățile Aave V3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): liquid E-Modes, garanțiile din afara unei categorii își păstrează parametrii proprii, regulile de intrare și de ieșire (accesat la 28 octombrie 2026)
+- [E-Mode izolat în Aave V3.7](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md): efectele flagului isolated (accesat la 28 octombrie 2026)
+- [Ajutor Aave: Efficiency Mode (E-mode)](https://aave.com/help/borrowing/e-mode) (accesat la 28 octombrie 2026)
+- [Post-mortemul Chaos Labs, exchange rate misalignment on wstETH Core and Prime instances](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): publicat pe 10 martie 2026 (accesat la 28 octombrie 2026)
+
+_Conținut educațional, nu sfat financiar. Alertele reduc riscul, dar nu împiedică lichidarea._

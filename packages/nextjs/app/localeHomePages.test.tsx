@@ -108,6 +108,13 @@ const COPY: Partial<Record<Locale, CopyRules>> = {
     wrongAddress: /(?<!\p{L})(?:u|uw)(?!\p{L})/u,
     claims: /real[- ]?time|(?<!\p{L})onmiddellijk|multi[- ]?protocol/iu,
   },
+  ro: {
+    h1Channels: /Signal și e-mail/,
+    badges: ["Signal", "E-mail"],
+    // Informal tu throughout: never the formal dumneavoastră or dvs.
+    wrongAddress: /dumneavoastr|(?<!\p{L})dvs(?!\p{L})/iu,
+    claims: /în timp real|(?<!\p{L})instant|multi[- ]?protocol/iu,
+  },
 };
 
 const TRANSLATED = LOCALES.filter(locale => locale !== "en");

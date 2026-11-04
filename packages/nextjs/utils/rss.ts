@@ -18,6 +18,7 @@ const RSS_DESCRIPTIONS: Localized<string> = {
   tr: "Aave ve Morpho'da sağlık faktörü, likidasyon riski ve uyarılar üzerine rehberler.",
   id: "Panduan tentang faktor kesehatan di Aave dan Morpho, risiko likuidasi, dan peringatan.",
   nl: "Gidsen over de health factor op Aave en Morpho, liquidatierisico en alerts.",
+  ro: "Ghiduri despre health factor pe Aave și Morpho, riscul de lichidare și alerte.",
 };
 
 const XML_ENTITIES: Record<string, string> = { "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" };

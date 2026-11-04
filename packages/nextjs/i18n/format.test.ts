@@ -24,6 +24,8 @@ import {
   plural,
   ptForMarket,
   ptOnMarket,
+  roForMarket,
+  roOnMarket,
   trForMarket,
   trOnMarket,
   viMarket,
@@ -232,6 +234,25 @@ describe("Dutch formatting", () => {
     expect(nlOnMarket("Base", "network")).toBe("op Base");
     expect(nlForMarket("Base")).toBe("voor Base");
     expect(nlForMarket("USDC | cbBTC (86%)", "market")).toBe("voor de markt USDC | cbBTC (86%)");
+  });
+});
+
+describe("Romanian formatting", () => {
+  it("joins with și and sau, writes Romanian dates, a decimal comma, one/few/other plurals and the market wording", () => {
+    expect(joinList("ro", ["Signal", "Telegram", "e-mail"])).toBe("Signal, Telegram și e-mail");
+    expect(joinList("ro", ["Signal", "e-mail"], "disjunction")).toBe("Signal sau e-mail");
+    expect(formatLongDate("ro", "2026-10-14")).toBe("14 octombrie 2026");
+    expect(formatDecimal("ro", "1.42")).toBe("1,42");
+    const networks = (n: number) => plural("ro", n, { one: `${n} rețea`, few: `${n} rețele`, other: `${n} de rețele` });
+    expect(networks(1)).toBe("1 rețea");
+    expect(networks(3)).toBe("3 rețele");
+    expect(networks(19)).toBe("19 rețele");
+    expect(networks(29)).toBe("29 de rețele");
+    expect(roOnMarket("Arbitrum")).toBe("pe Arbitrum");
+    expect(roOnMarket("Ethereum (V4 Lido)")).toBe("pe piața Ethereum (V4 Lido)");
+    expect(roOnMarket("Base", "network")).toBe("pe Base");
+    expect(roForMarket("Base")).toBe("pentru Base");
+    expect(roForMarket("USDC | cbBTC (86%)", "market")).toBe("pentru piața USDC | cbBTC (86%)");
   });
 });
 

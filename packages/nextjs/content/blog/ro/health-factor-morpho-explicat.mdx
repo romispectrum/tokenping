@@ -1,0 +1,208 @@
+export const meta = {
+  slug: "health-factor-morpho-explicat",
+  title: "Health factor pe Morpho explicat: formulă și exemple",
+  description:
+    "Ce este health factor-ul unui împrumut Morpho, cum îl calculează Morpho Blue și Midnight, ce îl mișcă și cum diferă de cel de pe Aave.",
+  h1: "Ce este health factor-ul pe Morpho și cum se calculează?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Ce este health factor-ul unui împrumut Morpho și cum se calculează?",
+  readingMinutes: 14,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Health factor-ul (factor de sănătate) unui împrumut Morpho compară valoarea garanției tale, socotită până la LTV-ul de
+  lichidare (LLTV) al pieței, cu ce datorezi: cantitatea de garanție × prețul oracolului × LLTV ÷ datorie. Când datoria
+  depășește această limită, health factor-ul scade sub 1 și poziția poate fi lichidată. La 1,00 sau peste nu poate fi,
+  cu excepția unei părți dintr-un împrumut Blue al cărui proprietar a autorizat un contract de pre-lichidare sau a unui
+  împrumut Midnight cu datorie rămasă după scadență. De exemplu, 1 cbBTC evaluat la 80.011,48 USDC în piața USDC | cbBTC
+  (86%) a Morpho de pe Ethereum, contra unei datorii de 40.000 USDC, dă 80.011,48 × 0,86 ÷ 40.000 = 1,72. Fiecare piață
+  Morpho are propria garanție, propriul oracol și propriul LLTV, fixate definitiv la crearea ei, așa că fiecare împrumut
+  are propriul health factor.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Cifrele și numerele de bloc la care au fost citite: content/blog/snapshots/morpho-health-factor.md */}
+
+## Ce este health factor-ul unui împrumut Morpho?
+
+Health factor-ul este numărul care îți spune cât de departe este o poziție de împrumut Morpho de lichidare. Împarte suma maximă pe care ai voie să o datorezi la ce datorezi acum:
+
+**Health factor = valoarea garanției în tokenul împrumutat × LLTV ÷ datorie**
+
+- **Peste 1,00:** poziția nu poate fi lichidată, decât dacă ai autorizat un contract de pre-lichidare sau dacă este un împrumut Midnight trecut de scadență (ambele cazuri sunt explicate mai jos). Cu cât numărul este mai mare, cu atât prețurile se pot mișca mai mult împotriva ta înainte de asta.
+- **Sub 1,00:** datoria ta este mai mare decât permite piața, iar o parte din ea sau toată poate fi lichidată.
+- **Fără datorie:** nu este nimic de lichidat, deci nu există niciun health factor de urmărit.
+
+Un health factor de 1,72 nu înseamnă că ești la 72% distanță de lichidare. Înseamnă că datoria ar putea crește până la de 1,72 ori mărimea ei sau că prețul garanției ar putea scădea cu 1 − 1 ÷ 1,72 = 41,9% înainte să fie atinsă linia.
+
+Health factor-ul nu este stocat pe blockchain. Contractul Morpho verifică doar dacă o poziție este sănătoasă; aplicațiile, API-ul Morpho și Tokenping împart limita de împrumut la datorie ca să-l arate ca număr.
+
+## Cum este construită o piață Morpho Blue?
+
+Morpho Blue, pe care documentația Morpho o numește acum piețele sale cu dobândă variabilă, este un set de piețe de creditare separate. Fiecare este definită de cinci parametri aleși la crearea pieței:
+
+| Parametru                              | Ce este                                                  | În piața din exemplu    |
+| -------------------------------------- | -------------------------------------------------------- | ----------------------- |
+| Tokenul împrumutat (loan token)        | Singurul token pe care îl poți împrumuta                 | USDC                    |
+| Tokenul de garanție (collateral token) | Singurul token pe care îl poți depune ca garanție        | cbBTC                   |
+| Oracol                                 | Contractul care evaluează garanția în tokenul împrumutat | Un feed de preț BTC/USD |
+| Modelul ratei dobânzii (IRM)           | Contractul care stabilește dobânda la împrumut           | AdaptiveCurveIRM        |
+| LLTV                                   | LTV-ul de lichidare (liquidation loan-to-value)          | 86%                     |
+
+Aplicația Morpho numește piețele după ei, cu tokenul împrumutat primul: „USDC | cbBTC (86%)”. Oricine poate crea o piață, dar doar cu un LLTV și un IRM pe care guvernanța Morpho le-a activat. Odată creată piața, niciunul dintre cei cinci parametri nu mai poate fi schimbat: contractul nu are nicio funcție care să-i modifice, iar guvernanța poate activa LLTV-uri noi, dar nu poate dezactiva niciodată unul.
+
+Pentru că o piață are o singură garanție și un singur token împrumutat, garanția ta dintr-o piață nu acoperă datoria din alta. Documentația Morpho o spune direct: garanția este specifică fiecărei piețe și nu există marjă încrucișată (cross-margin). Două împrumuturi în două piețe au două health factor-uri.
+
+## Cum calculează Morpho health factor-ul?
+
+Morpho Blue verifică sănătatea poziției într-un singur loc din contract, `_isHealthy`, iar aceeași verificare păzește împrumutul, retragerea garanției și lichidarea:
+
+1. **Datoria:** acțiunile tale de împrumut (borrow shares) convertite în tokeni împrumutați, rotunjit în sus.
+2. **Valoarea garanției:** cantitatea de garanție × prețul oracolului ÷ 10^36, rotunjit în jos.
+3. **Limita de împrumut:** valoarea garanției × LLTV, rotunjit în jos.
+4. **Sănătoasă** cât timp limita de împrumut este cel puțin egală cu datoria.
+
+Health factor-ul este pasul 3 împărțit la pasul 1. Rotunjirea favorizează mereu protocolul, așa că contractul te poate lăsa să împrumuți cu o unitate mai puțin decât limita exactă. La exact 1,00 contractul consideră încă poziția sănătoasă; ea devine lichidabilă când datoria depășește limita, ceea ce este același lucru cu scăderea health factor-ului sub 1.
+
+### Ce înseamnă scala 10^36 a oracolului?
+
+Un oracol (sursa de preț) Morpho returnează prețul unui token de garanție în tokeni împrumutați, înmulțit cu 10^36 și ajustat pentru zecimalele celor doi tokeni. Ca să-l citești, înmulțește cu 10^(zecimalele garanției − zecimalele tokenului împrumutat) și împarte la 10^36. În piața din exemplu, cbBTC are 8 zecimale și USDC 6, deci valoarea brută 800114843487200000000000000000000000000 × 10^2 ÷ 10^36 = 80.011,48 USDC pentru un cbBTC.
+
+Oracolul este orice contract a ales creatorul pieței. Comentariile din contractul Morpho spun că este responsabilitatea utilizatorului să aleagă piețe cu oracole sigure, iar documentația notează că un oracol poate combina mai multe feed-uri sau se poate baza pe alte date de pe blockchain. Health factor-ul tău poate fi doar atât de fiabil cât sunt oracolul și feed-urile pe care le citește.
+
+## Exemplu calculat: ce health factor are 1 cbBTC contra 40.000 USDC?
+
+Cea mai mare piață Morpho listată pe Ethereum după valoarea împrumutată, pe 26 octombrie 2026, era USDC | cbBTC (86%), cu aproximativ 309,13 milioane USDC împrumutați din 343,18 milioane depuși (blocul Ethereum 26274955). Oracolul ei evalua cbBTC la 80.011,48 USDC, luat doar dintr-un feed de preț BTC/USD, așa că piața socotește 1 cbBTC ca 1 BTC și 1 USDC ca 1 dolar.
+
+Ia 1 cbBTC ca garanție și o datorie de 40.000 USDC:
+
+1. Valoarea garanției: 1 × 80.011,48 = 80.011,48 USDC.
+2. Limita de împrumut: 80.011,48 × 0,86 = 68.809,88 USDC.
+3. Health factor: 68.809,88 ÷ 40.000 = **1,72**.
+4. LTV: 40.000 ÷ 80.011,48 = 50,0%, față de LLTV-ul de 86%.
+5. Prețul de lichidare: 40.000 ÷ (1 × 0,86) = **46.511,63 USDC pentru un cbBTC**, cu 41,9% sub 80.011,48.
+
+Și dobânda îl mișcă. Dobânda la împrumut a pieței la acel bloc era de 4,89% pe an, adică 5,01% compus. Dacă dobânda și prețul ar rămâne unde erau timp de un an, datoria ar crește la aproximativ 42.003 USDC, iar health factor-ul ar coborî la 1,64.
+
+### Ce poziții au debitorii reali din această piață?
+
+API-ul Morpho lista 437 de poziții de împrumut în această piață pe 26 octombrie 2026. Dintre cele 435 cu health factor, mediana era 1,96, un sfert erau sub 1,58, o zecime sub 1,35, iar cea mai mică era 1,05. Aproximativ 3% erau sub 1,2. Pe întreaga piață, 8.419,83 cbBTC acopereau o datorie de 309,13 milioane USDC, un health factor total de aproximativ 1,87.
+
+## Ce legătură au LTV-ul, LLTV-ul și health factor-ul?
+
+LTV-ul (loan-to-value) este datoria ta împărțită la valoarea garanției. LLTV-ul este plafonul fix al pieței pentru el. Cu o singură garanție și o datorie stabilă, health factor-ul este raportul dintre ele:
+
+**Health factor = LLTV ÷ LTV**
+
+Pe Morpho Blue, LLTV-ul este singura linie. Nu există o limită separată, mai joasă, pentru împrumuturile noi, așa că contractul te lasă să împrumuți sau să retragi garanție până când health factor-ul ajunge la 1,00. Documentația pentru dezvoltatori a Morpho cere aplicațiilor să păstreze o marjă, de exemplu să nu permită împrumuturi care coboară health factor-ul sub 1,05, dar marja este o alegere, nu o regulă a contractului. Cât de departe rămâi sub linie îți decide rezerva, oricare ar fi LLTV-ul:
+
+| Împrumutat, ca procent din limită | Health factor | Scăderea prețului garanției până la lichidare |
+| --------------------------------- | ------------- | --------------------------------------------- |
+| 50%                               | 2,00          | 50%                                           |
+| 70%                               | 1,43          | 30%                                           |
+| 80%                               | 1,25          | 20%                                           |
+| 90%                               | 1,11          | 10%                                           |
+| 100%                              | 1,00          | 0%                                            |
+
+## Ce LLTV-uri poate folosi o piață Morpho?
+
+Pe 26 octombrie 2026, Morpho Blue pe Ethereum și pe Base accepta cele nouă LLTV-uri de pe lista aprobată de guvernanța Morpho: 0%, 38,5%, 62,5%, 77%, 86%, 91,5%, 94,5%, 96,5% și 98% (fiecare citit ca activat la blocul Ethereum 26274950 și la blocul Base 53102888). Un LLTV de 0 nu permite deloc împrumuturi. Un LLTV Blue trebuie să fie sub 100%.
+
+LLTV-ul stabilește și stimulentul de lichidare (liquidation incentive), garanția în plus pe care o primește un lichidator: 1 ÷ (1 − 0,3 × (1 − LLTV)), plafonat la 1,15. La un LLTV de 86% acesta este 1,0438: un lichidator care rambursează 100 USDC din datoria ta primește 104,38 USDC din garanția ta. Un LLTV mai mare înseamnă un stimulent mai mic. Documentația Morpho rotunjește stimulentul de la 86% la aproximativ 5%; formula din contract dă 4,38%. Stimulentul pentru fiecare LLTV activat, ce ia o lichidare și cât dintr-un împrumut poate fi lichidat dintr-o dată sunt explicate în [cum funcționează lichidarea pe Morpho](/ro/blog/cum-functioneaza-lichidarea-pe-morpho). Stimulentul îl plătești tu, din garanția ta; rezerva ta este distanța dintre health factor-ul tău și 1,00.
+
+## Ce mișcă un health factor pe Morpho?
+
+Trei lucruri îl pot mișca în timp ce tu nu faci nimic:
+
+- **Prețul garanției, așa cum îl vede oracolul.** În exemplul cu cbBTC, health factor-ul se mișcă odată cu feed-ul BTC/USD și se schimbă doar când acel feed se actualizează.
+- **Prețul tokenului împrumutat, dacă oracolul îl folosește.** Un oracol cu un feed de cotare (quote feed) reacționează și la tokenul împrumutat. Oracolul pieței cbBTC nu are unul, așa că un depeg (pierderea parității cu dolarul) al USDC nu ar mișca acel health factor. Nici o diferență între cbBTC și BTC nu l-ar mișca.
+- **Dobânda.** Pe Morpho Blue datoria crește pe măsură ce se acumulează dobânda, iar documentația Morpho avertizează că o poziție poate deveni mai riscantă în timp doar din cauza dobânzii. AdaptiveCurveIRM țintește o utilizare de 90% și urcă dobânda când o piață este mai solicitată și o coboară când este mai liniștită, ținând dobânda la 90% utilizare între 0,1% și 200% pe an. La utilizare completă, dobânda poate fi de până la patru ori dobânda de la țintă, deci de până la 800% pe an. Cum se reflectă o creștere a dobânzii într-un health factor este arătat pentru Aave în [cum funcționează dobânzile pe Aave](/ro/blog/dobanzile-aave#cum-iti-afecteaza-health-factor-ul-cresterile-bruste-de-dobanda); efectul asupra unui împrumut Morpho este același.
+
+Ce nu poate mișca guvernanța Morpho este piața în sine: LLTV-ul, adresa oracolului și IRM-ul unei piețe sunt fixe. Oracolul își citește totuși prețul din feed-urile din spatele lui, deci este doar atât de fiabil cât sunt ele. Guvernanța poate stabili un comision de piață de până la 25% din dobândă, dar acesta împarte dobânda între creditori și beneficiarul comisionului; nu schimbă ce datorează debitorii.
+
+Oracolul decide ce prețuri contează. În piața WETH | wstETH (96.5%) a Morpho de pe Ethereum, oracolul evaluează wstETH la cursul de schimb propriu al Lido, 1,24717 WETH pentru un wstETH la blocul 26274979, și socotește 1 stETH ca 1 ETH. Prețul în dolari al ETH nu mișcă deloc acel health factor. 10 wstETH contra 11 WETH acolo dau 12,4717 × 0,965 ÷ 11 = 1,094, iar lichidarea ar cere ca acest curs să scadă la 1,1399, cu 8,6% mai jos. Doar dobânda și acel curs de schimb mișcă acest health factor.
+
+## Cum îți calculezi prețul de lichidare pe Morpho?
+
+Pentru o poziție Blue, prețul de lichidare este prețul oracolului la care datoria ta este egală cu limita de împrumut:
+
+**Prețul de lichidare = datorie ÷ (cantitatea de garanție × LLTV)**
+
+Este exprimat în tokeni împrumutați pentru un token de garanție, pentru că așa îl evaluează oracolul. Cu un health factor h, prețul garanției trebuie să scadă cu 1 − 1 ÷ h ca să-l atingă (vezi tabelul de mai sus). Pe măsură ce datoria crește cu dobânda, prețul de lichidare urcă încet.
+
+Dacă ai autorizat un contract de pre-lichidare (pre-liquidation) pentru piață, o parte din poziția ta poate fi închisă mai devreme, la un LTV mai mic decât LLTV-ul. Piața cbBTC are unul, cu un LTV de pre-lichidare de 83,26%: pentru 1 cbBTC contra 40.000 USDC, health factor-ul măsurat față de acea linie este 1,67 în loc de 1,72. Morpho renunță la această funcție: aplicația sa nu o mai oferă, iar Morpho le cere debitorilor care o au să o dezactiveze. Vezi [pre-lichidarea pe Morpho](/ro/blog/pre-lichidare-morpho) pentru cum funcționează și cum o verifici și o revoci.
+
+## Cum funcționează health factor-ul pe Morpho Midnight?
+
+Morpho Midnight, piețele cu dobândă fixă ale Morpho, calculează sănătatea poziției la fel, cu trei diferențe: o piață poate accepta mai multe garanții, datoria nu crește cu timpul, iar scadența este o linie fermă.
+
+- **Mai multe garanții, adunate.** O piață Midnight are un token împrumutat, o dată de scadență și una sau mai multe garanții, fiecare cu propriul LLTV și propriul oracol. Contractul adună valoarea garanției × LLTV pentru fiecare garanție depusă și compară totalul cu datoria ta. Health factor-ul este acel total ÷ datorie.
+- **Datorie fixă.** Datorezi o sumă nominală, un token împrumutat pe unitate, plătibilă la scadență. Dobânda este inclusă când te împrumuți: primești mai puțin de un token împrumutat pentru fiecare unitate pe care o datorezi, așa că între tranzacții doar prețurile garanțiilor mișcă un health factor Midnight.
+- **Scadența este o linie fermă.** După scadență, orice datorie încă deschisă poate fi lichidată indiferent de health factor, iar în acest mod de după scadență stimulentul lichidatorului crește de la zero până la mărimea lui completă în prima oră.
+
+O piață Midnight poate și să restricționeze cine are voie să lichideze, cu o barieră (gate) stabilită la crearea pieței; piața din exemplul de mai jos nu are una.
+
+Cea mai mare piață Midnight listată pe Ethereum pe 26 octombrie 2026, cu aproximativ 23,9 milioane de unități de datorie în USDC în circulație, împrumută USDC până pe 25 decembrie 2026, contra USDC la un LLTV de 98% și cbBTC la 86%, cu același oracol cbBTC ca piața Blue de mai sus. Depune 0,5 cbBTC și 10.000 USDC contra a 40.000 de unități de datorie, iar limita este 34.404,94 + 9.800 = 44.204,94, un health factor de 1,105. Scadența, reînnoirea (rollover) și lichidarea de după scadență sunt explicate în [împrumuturile cu dobândă fixă pe Morpho Midnight](/ro/blog/imprumuturi-cu-dobanda-fixa-morpho-midnight).
+
+## Prin ce diferă health factor-ul pe Morpho de cel de pe Aave?
+
+Formula are aceeași formă pe ambele: garanția ponderată cu un prag, împărțită la datorie. Regulile din jurul ei diferă, așa cum explică din partea Aave [ghidul despre health factor-ul pe Aave](/ro/blog/health-factor-aave-explicat#health-factor-ltv-si-prag-de-lichidare-care-este-diferenta):
+
+|                            | Morpho Blue                                               | Aave V3                                                                                                                                                                                   |
+| -------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unitatea                   | O piață: o garanție, un token împrumutat                  | O piață (un pool pe o rețea): toată garanția și datoria ta de acolo                                                                                                                       |
+| Cum se stabilesc prețurile | Oracolul propriu al fiecărei piețe, în tokenul împrumutat | Oracolul Aave, în USD                                                                                                                                                                     |
+| Limita de împrumut         | Până la LLTV, health factor 1,00                          | Un LTV mai mic, așa că un împrumut maxim lasă [aproximativ 1,03](/ro/blog/health-factor-aave-explicat#de-ce-imprumutul-maxim-lasa-un-health-factor-de-doar-aproximativ-103) pentru WETH |
+| Active corelate            | Piețe separate cu un LLTV mare                            | Categorii [E-Mode](/ro/blog/health-factor-aave-explicat#cum-schimba-e-mode-health-factor-ul)                                                                                         |
+| Se poate schimba pragul?   | Nu, este fixat la crearea pieței                          | Da, guvernanța și Risk Stewards îl pot schimba                                                                                                                                            |
+
+Aave V4 schimbă o parte din acestea, cu un health factor pe Spoke și un factor de garanție (collateral factor) pe activ; vezi [cum funcționează health factor-ul pe Aave V4](/ro/blog/health-factor-aave-explicat#este-health-factor-ul-diferit-pe-aave-v4).
+
+Diferența practică: pe Aave, o problemă cu un activ îți afectează toată piața, în timp ce pe Morpho rămâne în interiorul unei singure piețe. Și pe Morpho nimic din contract nu te oprește să te împrumuți până la limită, așa că marja o păstrezi tu.
+
+## Unde îți poți vedea health factor-ul pe Morpho?
+
+Centrul de ajutor Morpho spune că aplicația arată health factor-ul și prețul de lichidare pentru fiecare poziție. API-ul Morpho returnează `healthFactor` și variația de preț până la lichidare pentru pozițiile Blue; pentru Midnight returnează pozițiile și parametrii pieței, iar documentația le cere integratorilor să citească pe blockchain oracolul fiecărei garanții și să calculeze singuri limita.
+
+[Panoul Morpho](/ro/morpho) al Tokenping arată pozițiile de împrumut Blue și Midnight ale unui portofel, cu health factor-uri calculate din blockchain cu matematica proprie a Morpho, niciodată preluate din API-ul Morpho.
+
+## Cum alegi o rezervă și un prag de alertă?
+
+Pornește de la cât de mult s-ar putea mișca prețul înainte să poți acționa, apoi adaugă loc pentru dobândă:
+
+- **Alege mișcarea pe care vrei să o suporți.** Folosește tabelul din secțiunea despre LTV de mai sus: scăderea de preț pe care vrei să o acoperi stabilește health factor-ul.
+- **Uită-te la oracol.** Un oracol BTC/USD se mișcă odată cu BTC. Un oracol bazat pe cursul de schimb, ca cel al pieței wstETH, se mișcă mult mai puțin, dar dobânda la împrumut și cursul de schimb însuși îți mișcă totuși health factor-ul, iar un LLTV mare lasă puțin loc pentru oricare dintre ele.
+- **Măsoară față de cea mai apropiată linie.** Dacă ai autorizat pre-lichidarea, o parte din împrumut poate fi lichidată înainte ca health factor-ul să ajungă la 1,00.
+- **Pe Midnight, ține cont de dată.** Dobânda nu îți va eroda rezerva, dar datoria rămasă după scadență poate fi lichidată la orice health factor.
+- **Știi cum să-l ridici.** Rambursează o parte din datorie sau adaugă garanție în aceeași piață: garanția dintr-o altă piață Morpho nu contează. Pe Midnight poți adăuga orice garanție acceptată de piață.
+
+Documentația pentru dezvoltatori a Morpho dă 1,1 ca exemplu de nivel pentru un avertisment. Pentru raționamentul din spatele rezervelor, vezi [ce rezervă îți trebuie ca să ai timp să acționezi](/ro/blog/health-factor-sigur-aave#de-cata-marja-ai-nevoie-ca-sa-ai-timp-sa-actionezi), scris pentru Aave, dar cu aceeași aritmetică.
+
+## Cum te pot ajuta alertele de health factor pe Morpho?
+
+Tokenping verifică pozițiile Morpho la fiecare 5 minute pe 14 rețele: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable și Tempo. Acoperă pozițiile de împrumut din piețele listate în aplicația Morpho, atât Morpho Blue, cât și Morpho Midnight. Alertele Midnight acoperă piețele listate de API-ul Morpho. Pe 26 octombrie 2026 acestea erau pe Ethereum și Base; Tokenping acoperă și Arc și Robinhood Chain din momentul în care Morpho listează piețe Midnight acolo.
+
+- **Prag:** îl setezi între 1,02 și 10. Cât timp health factor-ul este sub el, fiecare verificare trimite un mesaj pe fiecare canal ales: Signal, Telegram sau e-mail.
+- **Pre-lichidare:** dacă ai autorizat un contract de pre-lichidare pe o piață Blue, alerta folosește cel mai mic dintre două health factor-uri: cel măsurat față de LLTV și cel măsurat față de linia de pre-lichidare.
+- **Scadență:** un împrumut Midnight primește și un memento în ultimele 7 zile și unul în ultimele 24 de ore, apoi o alertă la fiecare verificare după scadență cât timp rămâne datorie.
+
+Vizualizarea pozițiilor în [panoul Morpho](/ro/morpho) nu necesită plată; alertele costă <AlertPrice />, același plan ca alertele pentru Aave. O alertă îți dă timp să acționezi; nu împiedică lichidarea, pentru că un preț se poate mișca între două verificări.
+
+## Surse
+
+- [Documentația Morpho: Variable Rate Market (Morpho Blue)](https://docs.morpho.org/learn/concepts/blue): cei cinci parametri, numele piețelor, LLTV-urile aprobate de guvernanță și IRM (accesat la 26 octombrie 2026)
+- [Documentația Morpho: Collateral, LTV and health (dezvoltatori)](https://docs.morpho.org/developers/borrow/concepts/ltv): formula, scala oracolului, lipsa marjei încrucișate, practici de integrare (accesat la 26 octombrie 2026)
+- [Documentația Morpho: Liquidation](https://docs.morpho.org/learn/concepts/liquidation) și [centrul de ajutor Morpho: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): stimulentul de lichidare, unde arată aplicația health factor-ul (accesat la 26 octombrie 2026)
+- [Documentația Morpho: Interest rate model](https://docs.morpho.org/learn/concepts/irm) și [ratele dobânzii pentru integratori](https://docs.morpho.org/developers/borrow/concepts/interest-rates): AdaptiveCurveIRM, acumularea dobânzii (accesat la 26 octombrie 2026)
+- [Documentația Morpho: Get data (dezvoltatori)](https://docs.morpho.org/developers/borrow/tutorials/get-data): cod pentru health factor și prețul de lichidare (accesat la 26 octombrie 2026)
+- [Documentația Morpho: What is Midnight? (Fixed Rate Markets)](https://docs.morpho.org/learn/concepts/midnight) și [Midnight collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) (accesat la 26 octombrie 2026)
+- [Documentația Morpho: Governance organization](https://docs.morpho.org/learn/governance/organization), [adresele contractelor](https://docs.morpho.org/developers/contracts/addresses) și [politica de listare în interfață](https://docs.morpho.org/get-started/resources/interface-listing-policy) (accesat la 26 octombrie 2026)
+- [morpho-blue](https://github.com/morpho-org/morpho-blue): `Morpho.sol`, `ConstantsLib.sol`, `IOracle.sol` (accesat la 26 octombrie 2026)
+- [midnight](https://github.com/morpho-org/midnight): `Midnight.sol`, `ConstantsLib.sol` (accesat la 26 octombrie 2026)
+- [pre-liquidation](https://github.com/morpho-org/pre-liquidation) și [morpho-blue-irm](https://github.com/morpho-org/morpho-blue-irm) (accesat la 26 octombrie 2026)
+- [Documentația API Morpho: Morpho Blue](https://docs.morpho.org/developers/api/morpho/) și [Morpho Midnight](https://docs.morpho.org/developers/api/morpho-midnight) (endpoint GraphQL api.morpho.org/graphql, endpoint-uri REST Midnight sub api.morpho.org/v0/midnight): clasamentele piețelor, pozițiile și contractele de pre-lichidare (accesat la 26 octombrie 2026)
+- Citiri pe blockchain din [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), [oracolul USDC | cbBTC](https://etherscan.io/address/0xA6D6950c9F177F1De7f7757FB33539e3Ec60182a#readContract), [oracolul WETH | wstETH](https://etherscan.io/address/0xbD60A6770b27E084E8617335ddE769241B0e71D8#readContract) și [Morpho Midnight](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract) pe Ethereum la blocurile de la 26274950 până la 26274984 și din [Morpho Blue pe Base](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) la blocul 53102888 (accesat la 26 octombrie 2026)
+
+_Conținut educațional, nu sfat financiar. Alertele reduc riscul, dar nu împiedică lichidarea._

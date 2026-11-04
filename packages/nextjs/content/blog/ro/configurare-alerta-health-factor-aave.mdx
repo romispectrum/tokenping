@@ -1,0 +1,201 @@
+export const meta = {
+  slug: "configurare-alerta-health-factor-aave",
+  title: "Cum primești o alertă când scade health factor-ul Aave",
+  description:
+    "Pas cu pas: un mesaj pe Signal, Telegram sau e-mail când health factor-ul Aave V3 sau V4 scade sub pragul tău. Cât costă și cum oprești alertele.",
+  h1: "Cum primești o alertă când health factor-ul tău Aave scade",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Cum setez o notificare pentru momentul în care health factor-ul meu Aave scade?",
+  readingMinutes: 16,
+};
+
+<ShortAnswer>
+  Interfețele Aave îți arată health factor-ul (factorul de sănătate) cât timp le ții deschise, dar nu îți trimit niciun
+  mesaj când scade, așa că avertismentul trebuie să vină de la un instrument separat. Cu Tokenping conectezi portofelul
+  cu care te împrumuți, plătești accesul la alerte pe Arbitrum, te autentifici semnând un mesaj cu acel portofel, setezi
+  un prag pentru fiecare piață pe care te împrumuți (fiecare piață Aave V3 de pe 21 de rețele sau fiecare Spoke Aave V4
+  de pe Ethereum, Avalanche, Arc și Base) și adaugi o adresă de e-mail, un nume de utilizator Signal sau un nume de
+  utilizator Telegram. Apoi Tokenping verifică la fiecare 5 minute și îți scrie la fiecare verificare cât timp health
+  factor-ul tău este sub acel prag.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Trimite Aave alerte de health factor?
+
+Nu. La 14 octombrie 2026, interfețele Aave îți arată health factor-ul pe ecran, dar nu trimit niciun e-mail, mesaj de chat sau notificare push când scade. Health factor-ul (HF) este valoarea garanției tale, ponderată cu pragul de lichidare (liquidation threshold) al fiecărui activ, împărțită la valoarea datoriei tale; sub 1,00, poziția poate fi lichidată. Formula completă este în [ce este health factor-ul Aave](/ro/blog/health-factor-aave-explicat).
+
+Aplicația web Aave (app.aave.com) avea cândva un link către notificările HAL; Aave a eliminat această integrare pe 30 mai 2024, pentru că serviciul HAL se închisese. Aave Pro, aplicația pentru Aave V4, descrie o monitorizare a health factor-ului în interiorul aplicației, iar pagina ei de produs nu menționează notificări. Centrul de ajutor Aave spune că monitorizarea regulată este esențială; scurta lui listă de instrumente, cu eticheta „Use at your own risk” (folosește-le pe propriul risc), are un simulator și un serviciu de rambursare automată, dar niciun serviciu de alerte.
+
+Așa că, ca să fii avertizat, fie verifici singur aplicația, fie folosești un instrument terț. Acest ghid configurează [alerte de health factor Aave pe Signal, Telegram și e-mail](/ro) cu Tokenping; alte instrumente sunt prezentate în [instrumentele de alertă de lichidare Aave comparate](/ro/blog/instrumente-alerte-lichidare-aave).
+
+## De ce ai nevoie înainte să începi?
+
+O alertă de health factor Tokenping are nevoie de patru lucruri:
+
+- **O poziție Aave V3 sau V4 cu datorie.** Pe Aave V3: oricare dintre cele 24 de piețe de pe 21 de rețele, de la piețele Core, Prime, EtherFi și Horizon de pe Ethereum până la Polygon, Arbitrum, Optimism, Base, Avalanche, Gnosis, Metis, BNB Chain, Scroll, ZKsync, Linea, Sonic, Celo, Soneium, Plasma, Ink, MegaETH, Mantle, X Layer și Monad (Aave Address Book, 16 octombrie 2026). Pe Aave V4: orice Spoke de pe Ethereum, Avalanche, Arc sau Base (20 la 16 octombrie 2026). Fără datorie, Aave întoarce cea mai mare valoare posibilă (afișată ca ∞) și nicio alertă nu poate fi declanșată. Nu este acoperit: Aave V3 pe Harmony, înghețat din 2022.
+- **Portofelul cu care te împrumuți.** Tokenping urmărește doar portofelul pe care îl conectezi; nu poți adăuga o altă adresă. Același portofel te autentifică, deci nu există cont și nici parolă.
+- **USDC nativ și puțin ETH pe Arbitrum One, în același portofel.** Alertele costă <AlertPrice />, plătite în USDC nativ de la Circle pe Arbitrum One chiar dacă împrumutul tău este pe altă rețea. ETH-ul acoperă gas-ul pentru cel mult două tranzacții; autentificarea nu costă gas.
+- **O adresă de e-mail, un nume de utilizator Signal sau un nume de utilizator Telegram**, ori mai multe dintre ele.
+
+Apoi configurarea are șapte pași:
+
+1. Conectează portofelul și verifică-ți pozițiile.
+2. Plătește accesul la alerte pe Arbitrum One.
+3. Autentifică-te cu portofelul.
+4. Creează o alertă și alege e-mail, Signal, Telegram sau mai multe.
+5. Alege un prag.
+6. Salvează alerta.
+7. Trimite un mesaj de test pe fiecare canal.
+
+## Pasul 1: conectează portofelul și verifică-ți pozițiile
+
+Deschide panoul ca să [verifici health factor-ul Aave V3](/ro/aave) și conectează portofelul cu care te împrumuți. Vizualizarea pozițiilor nu cere nicio plată și nicio autentificare: Tokenping doar citește pozițiile tale on-chain și nu îți cere niciodată o aprobare sau o tranzacție pe poziția ta Aave.
+
+Lista **Piețe** arată piețele Aave V3 și Spoke-urile Aave V4 în care portofelul are o poziție sau o alertă salvată, cu o insignă de health factor acolo unde ai o poziție; toate celelalte piețe sunt strânse sub **Alte piețe**. Alege piața cu împrumutul tău ca să-i vezi garanția, datoria și health factor-ul, și notează acel health factor: te ajută să alegi un prag. Dacă panoul spune „Nu am găsit poziții Aave active în piețele acceptate.”, probabil ai conectat alt portofel sau împrumutul se află pe o piață pe care Tokenping nu o citește. Pozițiile se încarcă atunci când se deschide pagina și când apeși **Reîmprospătează pozițiile**.
+
+## Pasul 2: deblochează alertele
+
+Ca să salvezi o alertă Tokenping ai nevoie de acces plătit, care costă <AlertPrice />. Prețul este setat în contractul de plată al Tokenping pe Arbitrum One, iar panoul ți-l arată înainte să plătești.
+
+1. Sub lista **Piețe** din [panoul Tokenping](/ro/aave), panoul **Deblochează alertele de health factor** arată prețul, cât durează accesul, rețeaua și taxa de rețea. Apasă **Plătește** (eticheta include prețul în USDC). Dacă portofelul tău este pe altă rețea, apasă mai întâi **Treci la Arbitrum One**.
+2. Aprobă USDC-ul. Aprobarea este pentru exact prețul, niciodată pentru o sumă nelimitată, și este omisă dacă există deja o aprobare suficientă.
+3. Confirmă plata. După ce tranzacția este minată, panoul arată **Alerte deblocate până la** urmat de o dată.
+
+O singură plată deblochează setările alertei pe fiecare piață Aave V3 și în fiecare Spoke Aave V4 pentru portofelul care a plătit. Nimic nu se reînnoiește automat, dar poți plăti în avans: cât timp accesul este activ, panoul arată un buton care adaugă încă o perioadă a planului (eticheta lui numește zilele și prețul). Fiecare plată adaugă acea perioadă după data ta actuală de încheiere, de câte ori vrei, iar noua dată de încheiere apare imediat. După ce accesul s-a încheiat, o nouă plată începe o nouă perioadă a planului din acea zi. Contractul de plată este verificat pe Sourcify și nu are nicio funcție de restituire a banilor. Un singur portofel controlat de echipa Tokenping îl deține și poate schimba prețul, poate suspenda plățile sau poate actualiza codul contractului.
+
+## Pasul 3: autentifică-te cu portofelul
+
+Setările alertei aparțin unei adrese de portofel, nu unui cont. După ce accesul este deblocat, panoul de alerte al pieței alese îți cere **Autentifică-te cu portofelul**. Portofelul îți arată apoi un mesaj de autentificare (Sign-in with Ethereum) care numește site-ul și adresa ta și spune „Autentifică-te în Tokenping ca să vezi și să editezi alertele de health factor.” Semnarea lui nu este o tranzacție: nu costă gas și nu aprobă niciun token. Nu trebuie să creezi o parolă și nu există înregistrare prin e-mail.
+
+Autentificarea durează 7 zile în acel browser și se încheie când deconectezi portofelul; după aceea, panoul îți cere să te autentifici din nou. Dacă refuzi cererea, panoul îți spune asta și poți apăsa din nou butonul. Ce stochează și ce verifică autentificarea este explicat în [cum funcționează autentificarea fără cont](/ro/blog/alerte-private-de-lichidare-aave#cum-functioneaza-autentificarea-fara-cont).
+
+## Pasul 4: creează o alertă și alege canalele
+
+Fiecare alertă Tokenping acoperă o piață și un prag. O piață este un Pool Aave V3 (Ethereum are patru, fiecare altă rețea are unul) sau un Spoke Aave V4, pentru că fiecare păstrează o poziție separată, cu propriul health factor. Cu piața aleasă, apasă **Creează o alertă** în panoul ei. Formularul se deschide cu **Canale de alertă** în partea de sus: bifează E-mail, Signal, Telegram sau orice combinație. Tokenping are nevoie de cel puțin un canal, iar fiecare alertă ajunge pe fiecare canal pe care îl alegi.
+
+- **E-mail:** scrie adresa ta. Dacă prima alertă lipsește, verifică dosarul de spam.
+- **Signal:** scrie numele tău de utilizator Signal, cu sau fără @, de exemplu `alice.42`. Signal îl arată în profilul tău: deschide Setări, atinge profilul și uită-te lângă simbolul @. Dacă nu ți-ai creat niciodată un nume de utilizator Signal, creează-l mai întâi în Signal. Tokenping nu îți cere niciodată numărul de telefon.
+- **Telegram:** scrie numele tău de utilizator Telegram, cu sau fără @, de exemplu `alice_eth`. Telegram îl arată la Setări, apoi Nume de utilizator; dacă nu ai unul, setează-l mai întâi acolo. Boții Telegram nu pot începe o conversație, așa că formularul spune „Nu este conectat încă” și are un link către botul Tokenping: deschide-l și apasă **Start** o dată. Cât timp faci asta, formularul verifică din nou la câteva secunde și apoi îți spune că numele tău de utilizator este conectat. Poți salva înainte să apeși Start, dar nicio alertă nu ajunge pe Telegram până nu o faci.
+
+Lângă fiecare adresă sau nume de utilizator este un meniu de limbă (**Limba e-mailurilor**, **Limba pe Signal**, **Limba pe Telegram**) cu limbile site-ului. Alertele și mesajele de test ale fiecărui canal sunt scrise în limba pe care o alegi pentru el. Un canal nou pornește în limba paginii pe care o citești, deci pe site-ul în română este româna.
+
+Pentru că contul de Signal al Tokenping nu este în contactele tale, Signal poate afișa prima alertă ca cerere de mesaj. Accept-o; dacă blochezi expeditorul, alertele nu te vor mai găsi. Alegerea mai multor canale este o măsură de prevedere, pentru că fiecare depinde de servicii externe (un furnizor de e-mail, un releu Signal găzduit de Tokenping și Bot API-ul Telegram).
+
+Tokenping stochează adresa portofelului tău, piața, pragul și canalele cu limba fiecăruia, adresa de e-mail și numele de utilizator pe care le-ai scris, când a fost creată și modificată ultima dată alerta și când ai trimis ultimul test pe fiecare canal. Apăsarea pe Start în bot stochează ID-ul chatului tău de Telegram împreună cu numele tău de utilizator, iar răspunsul tău la întrebarea opțională „Cum ai aflat de Tokenping?” este păstrat dacă îl dai. Nu păstrează niciun istoric al health factor-ului și niciun jurnal al alertelor trimise. Ca adresa sau numele de utilizator pe care le introduci să nu te identifice, vezi [cum primești alerte Aave fără să-i dai Tokenping identitatea ta](/ro/blog/alerte-private-de-lichidare-aave).
+
+## Pasul 5: alege un prag
+
+Pragul este health factor-ul sub care primești mesaje. Cursorul merge de la 1,1 la 3,0 în pași de 0,1, iar căsuța de lângă el acceptă orice valoare de la 1,1 la 10, cu cel mult două zecimale. Valoarea implicită este 1,5.
+
+Nu există un număr sigur în orice situație. O abordare: alege prețul garanției la care ai acționa, calculează health factor-ul la acel preț și setează alerta puțin peste el, pentru că verificările sunt la 5 minute distanță, iar o rambursare poate fi confirmată greu pe o rețea aglomerată. [Cât spațiu de siguranță îți dă un health factor](/ro/blog/health-factor-sigur-aave) are un tabel cu nivelurile obișnuite.
+
+Un exemplu calculat, cu un singur activ volatil ca garanție și datorie în stablecoin: pragul de lichidare al WETH pe piața Ethereum Core era 83% (citit on-chain la blocul 26194005, 14 octombrie 2026). Cu 10 WETH depuși, 12.000 USDC împrumutați, ETH la un preț ilustrativ de 2.400 $ (oracolul Aave arăta 2.415,56 $ la acel bloc) și USDC la 1,00 $, health factor-ul este 10 × 2.400 × 0,83 ÷ 12.000 = 1,66. Prețul ETH la orice health factor este acel health factor × 12.000 ÷ (10 × 0,83):
+
+| Health factor                          | Prețul ETH la acel health factor | Scădere de la 2.400 $ |
+| -------------------------------------- | -------------------------------- | --------------------- |
+| 1,66 (punctul de plecare)              | 2.400,00 $                       | 0%                    |
+| 1,5 (prag de alertă posibil)           | 2.168,67 $                       | 9,6%                  |
+| 1,3 (prag de alertă posibil)           | 1.879,52 $                       | 21,7%                 |
+| 1,0 (sub el, lichidarea este posibilă) | 1.445,78 $                       | 39,8%                 |
+
+Cu un prag de 1,5, primul mesaj vine la prima verificare după ce health factor-ul scade sub 1,5, aici odată ce ETH este sub 2.168,67 $. ETH ar trebui apoi să mai scadă cu aproximativ 33% înainte ca această poziție să poată fi lichidată; cu 1,3, această rezervă rămasă este de aproximativ 23%. Ambele cifre ignoră dobânda. Dobânda și reducerile pragului de lichidare pot scădea și ele un health factor fără nicio mișcare de preț: vezi [de ce health factor-ul tău Aave scade de la sine](/ro/blog/de-ce-a-scazut-health-factor-aave).
+
+## Pasul 6: salvează și află cum arată alerta
+
+Apasă **Salvează alerta**. Panoul arată **Setările alertei** cu o insignă „Activă” și un rezumat care listează fiecare canal cu adresa sau numele de utilizator și limba lui. Piața primește o pictogramă cu un clopoțel în lista Piețe. Prima dată poate apărea întrebarea opțională „Cum ai aflat de Tokenping?”; poți apăsa **Sari peste**. În română, Signal și Telegram primesc acest text (valori ilustrative):
+
+> Health factor-ul tău Aave pe Arbitrum este 1,42. Este sub pragul tău de 1,5. Ia în calcul să adaugi garanție sau să rambursezi datorie ca să eviți lichidarea.
+>
+> Trimis la: 14 oct. 2026, 21:05:07 Timpul universal coordonat
+
+Health factor-ul este rotunjit în jos la două zecimale, astfel încât un mesaj nu arată niciodată o valoare egală cu pragul pe care l-a depășit sau peste el, iar ora este în UTC. E-mailul conține același mesaj, cu subiectul „Alertă de health factor Aave - Arbitrum”, doar că ultimul lui rând spune „Creat la” în loc de „Trimis la”. Un canal setat pe altă limbă a site-ului primește aceeași alertă în acea limbă.
+
+Dacă ai ales Telegram și nu ai apăsat încă Start, rezumatul spune „Nu este conectat încă” și are un link către bot.
+
+## Pasul 7: trimite un mesaj de test
+
+După ce alerta este salvată, fiecare canal din rezumat are un buton **Trimite un test**. Un test este un mesaj real pe acel canal, în limba lui, cu alerta așa cum este salvată și poziția ta așa cum este acum: piața și pragul, health factor-ul actual cu eticheta lui (sigur, riscant sau critic), garanția și datoria, și dacă valoarea este sub pragul tău. Începe cu „Mesaj de test de la Tokenping: alertele pe acest canal funcționează.” Pe e-mail, subiectul este „Mesaj de test Tokenping - Arbitrum” (cu numele pieței tale).
+
+- Poți trimite un test pe canal la fiecare 15 minute, socotit pentru portofelul tău pe toate piețele lui. Până atunci, butonul arată câte minute au mai rămas. Un test care nu reușește să fie trimis nu se socotește.
+- Butonul de Telegram rămâne dezactivat până când apeși Start în bot.
+- Testele au nevoie de acces activ, la fel ca salvarea unei alerte.
+
+Dacă un test nu ajunge în câteva minute, parcurge [de ce s-ar putea ca o alertă să nu funcționeze](#de-ce-nu-functioneaza-alerta-mea). Ca să vezi și o alertă reală sosind, apasă **Editează alerta**, setează pragul puțin peste health factor-ul tău actual și apasă **Salvează alerta**. Următoarea verificare, în cel mult 5 minute, trimite câte un mesaj pe fiecare canal; apoi pune la loc pragul tău real în același mod, iar mesajele se opresc de la verificarea următoare.
+
+## Cât de des vei primi alerte?
+
+Cât timp health factor-ul tău este sub prag, Tokenping trimite un mesaj pe fiecare canal ales la fiecare verificare de 5 minute. Asta înseamnă până la 12 mesaje pe oră pe fiecare canal. Nu există amânare, nici rezumat și nici mesaj de „revenire la normal”: alertele se opresc când health factor-ul este din nou egal cu pragul sau peste el.
+
+Verificarea compară health factor-ul tău exact cu pragul și se declanșează doar când este strict sub el. Cu un prag de 1,5, un health factor de 1,4996 declanșează o alertă, al cărei mesaj arată 1,49, iar 1,50 nu declanșează. Dacă o citire sau un mesaj eșuează, Tokenping înregistrează eroarea, iar următoarea verificare încearcă din nou dacă health factor-ul este încă sub prag.
+
+Verificările sunt la 5 minute distanță, nu continue, așa că o scădere bruscă poate duce o poziție de deasupra pragului tău sub 1,0 înainte să plece vreun mesaj. Tokenping este în beta, se bazează pe terți ca să citească pozițiile și să livreze mesajele și nu are nicio garanție de disponibilitate. Tratează o alertă ca pe un semnal că e timpul să acționezi, nu ca pe singura ta protecție.
+
+## Cum modifici sau oprești alertele?
+
+Alertele Tokenping se opresc când health factor-ul tău revine la prag sau peste el, de exemplu după ce rambursezi sau adaugi garanție, ori când ștergi alerta. Modificarea sau ștergerea unei alerte cere acces activ și autentificare cu portofelul.
+
+- **Ca să schimbi pragul, canalele sau o limbă:** apasă **Editează alerta** în panoul pieței, fă modificarea și apasă **Salvează alerta**.
+- **Ca să oprești alertele pe o piață:** apasă **Editează alerta**, apoi **Șterge alerta**, și confirmă cu **Șterge alerta**. Nu există un buton de pauză, iar alerta fiecărei piețe se șterge separat.
+- **Ca să oprești alertele pe Telegram:** trimite /stop botului Tokenping. Botul îți uită chatul, așa că nicio alertă de pe nicio piață nu te mai găsește acolo până nu trimiți din nou /start; celelalte canale continuă să primească alerte. Blocarea botului are același efect, începând cu următorul mesaj pe care Tokenping încearcă să-l trimită.
+
+<Callout tone="warning">
+  Șterge alertele pe care nu le mai vrei cât timp accesul tău este încă activ. După ce accesul expiră, setările tale
+  rămân vizibile, dar doar pentru citire („Plătește accesul ca să editezi”), într-un browser în care te-ai autentificat
+  înainte, ștergerea unei alerte cere o nouă plată, iar e-mailurile de alertă nu au încă un link de dezabonare. Pe
+  Telegram, /stop funcționează cu sau fără acces.
+</Callout>
+
+## De ce nu funcționează alerta mea?
+
+Când o alertă Tokenping nu funcționează, verifică șapte lucruri: portofelul conectat și piața, formatul numelui de utilizator, dacă Telegram este conectat, USDC nativ pe Arbitrum One, dacă poziția are datorie, dacă fiecare piață pe care te împrumuți are o alertă, și dosarul de spam împreună cu cererile de mesaj din Signal.
+
+### Panoul nu arată nicio poziție
+
+Dacă panoul Tokenping nu arată nicio poziție, portofelul conectat nu este cel cu care te împrumuți sau împrumutul este pe o piață pe care Tokenping nu o citește: Aave V3 pe Harmony sau o rețea din afara celor 22 acoperite (cele 21 de rețele V3 plus Arc, care are doar Aave V4). O piață în care portofelul nu are nicio poziție nu lipsește: este strânsă sub **Alte piețe**.
+
+### Tokenping îți respinge numele de utilizator Signal sau Telegram
+
+Tokenping îți cere „Introdu un nume de utilizator Signal precum alice.42” atunci când numele de utilizator nu este format dintr-un pseudonim, un punct și cel puțin două cifre. Un @ în față este în regulă. Dacă îți schimbi numele de utilizator în Signal, actualizează imediat alerta: Signal permite altcuiva să revendice un nume de utilizator vechi la scurt timp după ce renunți la el.
+
+Pentru Telegram, îți cere „un nume de utilizator Telegram precum alice_eth”: între 4 și 32 de litere, cifre sau liniuțe de subliniere, care începe cu o literă și nu se termină cu o liniuță de subliniere. Scrie numele de utilizator, nu numele afișat sau numărul de telefon; un @ sau un link t.me în față este în regulă, iar majusculele nu contează.
+
+### Telegram nu este conectat încă
+
+Botul află unde să-ți trimită alertele doar când apeși Start (sau trimiți /start) din contul al cărui nume de utilizator este în alertă. Deschide botul din linkul din formular, apasă Start și verifică dacă numele de utilizator este același cu cel din Telegram, la Setări, apoi Nume de utilizator. Dacă ai trimis /stop, ai blocat botul sau ți-ai schimbat numele de utilizator Telegram, scrie numele de utilizator actual în alertă și trimite din nou /start.
+
+### Nu ai USDC pe Arbitrum One
+
+Plata Tokenping acceptă USDC nativ de la Circle pe Arbitrum One (contractul `0xaf88...5831`), nu USDC.e transferat printr-un bridge, plus puțin ETH pentru gas, în portofelul pe care îl configurezi. Mută-le pe amândouă acolo, de exemplu retrăgându-le de pe un exchange direct pe Arbitrum One sau printr-un bridge. USDC.e pe care îl ai deja trebuie schimbat pe USDC nativ.
+
+### Poziția ta nu are datorie
+
+Fără datorie, Aave întoarce cel mai mare health factor posibil (afișat ca ∞), așa că niciun prag nu este depășit vreodată și nu se trimite nicio alertă.
+
+### Te împrumuți pe mai multe piețe
+
+Fiecare piață Aave V3 și fiecare Spoke Aave V4 are propria alertă, propriul prag, propriile canale și propriile limbi. O singură plată le acoperă pe toate, așa că creează o alertă pe fiecare piață pe care te împrumuți.
+
+### Mesajele nu ajung
+
+Dacă mesajele Tokenping nu ajung, verifică dosarul de spam și cererile de mesaj din Signal și asigură-te că nu ai blocat expeditorul Tokenping și nu ai trimis /stop botului de Telegram. Apoi apasă **Trimite un test** pentru acel canal, ca la [pasul 7](#pasul-7-trimite-un-mesaj-de-test): dacă testul ajunge, canalul funcționează, iar alertele vin la fiecare verificare cât timp health factor-ul este sub prag. Dacă un test ajunge, dar fără sunet, îl reține un mod de concentrare (Focus), modul Nu deranja, un chat pus pe silențios sau economizorul de baterie: [cum primești alerte și în modul Nu deranja](/ro/blog/alerte-aave-in-modul-nu-deranja) le ia pe rând.
+
+## Ce alte moduri există de a primi alerte?
+
+Unele instrumente te lasă să lipești orice adresă de portofel și să primești alerte pe Telegram sau în propria lor aplicație mobilă, fără să plătești nimic. Extensiile de browser arată health factor-ul în bara de instrumente, iar unele afișează notificări pe desktop, cât timp browserul rulează. Serviciile de automatizare pot rambursa datoria în locul tău; au nevoie de un smart wallet sau de o permisiune pe poziția ta, iar unele impun dimensiuni minime ale poziției sau percep un comision pe fiecare acțiune. Dezvoltatorii își pot construi propria monitorizare. [Instrumentele de alertă de lichidare Aave comparate](/ro/blog/instrumente-alerte-lichidare-aave) le pune una lângă alta, inclusiv situațiile în care Tokenping nu este alegerea potrivită.
+
+## Surse
+
+- [Aave interface pull request #2084, „chore: remove hal”, integrat pe 30 mai 2024](https://github.com/aave/interface/pull/2084) (accesat la 14 octombrie 2026)
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (accesat la 14 octombrie 2026)
+- [Pagina de produs Aave Pro](https://aave.com/pro) (accesat la 14 octombrie 2026)
+- [Jurnalul de modificări din documentația Aave: lansarea V3.7 și lansările V4](https://aave.com/docs/resources/changelog) (accesat la 15 octombrie 2026)
+- [Aave V3 GenericLogic.sol: formula health factor-ului și valoarea fără datorie](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) (accesat la 14 octombrie 2026)
+- [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) și [AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) de pe Aave V3 Ethereum Core (paginile contractelor pe Etherscan): pragul de lichidare al WETH de 83% și prețul oracolului de 2.415,56 $, citite on-chain la blocul 26194005 (date RPC, accesat la 14 octombrie 2026)
+- [TokenpingPaywall pe Arbitrum One, cod sursă verificat pe Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553) (accesat la 14 octombrie 2026); planul, starea de pauză și proprietarul citite on-chain la blocurile 514885994 și 514896937
+- [Signal Support: Phone Number Privacy and Usernames](https://support.signal.org/hc/en-us/articles/6712070553754-Phone-Number-Privacy-and-Usernames) (accesat la 14 octombrie 2026)
+- [Signal Support: Signal Profiles and Message Requests](https://support.signal.org/hc/en-us/articles/360007459591-Signal-Profiles-and-Message-Requests) (accesat la 14 octombrie 2026)
+- [Telegram: Bots, an introduction for developers](https://core.telegram.org/bots) (accesat la 20 octombrie 2026): boții nu pot începe conversații cu utilizatorii
+
+_Conținut educațional, nu sfat financiar. Alertele reduc riscul, dar nu împiedică lichidarea._

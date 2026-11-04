@@ -1,0 +1,169 @@
+export const meta = {
+  slug: "pre-lichidare-morpho",
+  title: "Pre-lichidarea Morpho: ce este și cum o dezactivezi",
+  description:
+    "Cum vinde pre-lichidarea Morpho (Auto-deleverage) o parte din împrumut înainte de LLTV, de ce o retrage Morpho și cum o verifici și o revoci.",
+  h1: "Ce este pre-lichidarea pe Morpho și cum o verifici sau o dezactivezi?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Ce este pre-lichidarea pe Morpho și cum verific dacă este activă și cum o dezactivez?",
+  readingMinutes: 12,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Pre-lichidarea (pre-liquidation) este un contract opțional pentru o singură piață Morpho Blue (cu dobândă variabilă),
+  care îi permite oricui să vândă o parte din garanția ta pentru a rambursa datorie înainte ca poziția ta să ajungă la
+  LTV-ul de lichidare (LLTV) al pieței. Aplicația Morpho avea o funcție numită Auto-deleverage care funcționează astfel.
+  Morpho o retrage acum: aplicația nu mai acceptă poziții noi, centrul său de ajutor le cere celor care o au să o
+  dezactiveze, iar SDK-ul său a marcat codul de pre-lichidare ca depreciat (deprecated) pe 22 septembrie 2026.
+  Contractele funcționează în continuare, așa că, dacă ai activat-o cândva, verific-o cu `isAuthorized` pe contractul
+  Morpho Blue și revoc-o cu butonul de gestionare din aplicație sau cu `setAuthorization(contract, false)`.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Cifre, numere de bloc și surse: content/blog/snapshots/morpho-pre-liquidation.md */}
+
+## Ce este pre-lichidarea pe Morpho?
+
+Pre-lichidarea este o a doua linie de lichidare, mai timpurie, pe care un debitor o poate adăuga unei singure piețe Morpho Blue. Pe o piață Blue obișnuită, o poziție poate fi lichidată doar după ce health factor-ul (factor de sănătate) ei scade sub 1, măsurat față de LTV-ul de lichidare (LLTV, liquidation loan-to-value) al pieței; [ghidul despre health factor-ul pe Morpho](/ro/blog/health-factor-morpho-explicat) explică acest număr. Un contract de pre-lichidare stabilește o linie mai joasă, preLLTV. Între cele două linii, oricine poate rambursa o parte din datoria ta, până la o limită stabilită de contract, și poate lua garanție în valoare de acea datorie plus un bonus, în pași succesivi.
+
+Trei lucruri o deosebesc:
+
+- **Este opțională (opt-in).** Se aplică doar după ce autorizezi contractul pe Morpho Blue. Fără asta, contractul nu se poate atinge de poziția ta.
+- **Este pentru o singură piață.** Fiecare contract este legat de o singură piață Blue și de un singur set fix de parametri și nu are proprietar, administrator sau funcție de actualizare (upgrade).
+- **Există doar pe Blue.** Morpho Midnight, piețele cu dobândă fixă din [ghidul despre Midnight](/ro/blog/imprumuturi-cu-dobanda-fixa-morpho-midnight), nu are pre-lichidare.
+
+Morpho a anunțat fabrica de contracte de pre-lichidare (factory) pe 4 martie 2025 și a numit auto-deleverage și auto-close ca utilizări ale ei. În contracte, în API și în SDK se numește pre-liquidation. Aplicația Morpho avea o funcție numită Auto-deleverage, pe care centrul său de ajutor o descrie în aceiași termeni: odată ce loan-to-value (LTV) al poziției tale trece de un anumit prag, o parte din poziție poate fi închisă, cu un comision doar pe partea închisă.
+
+## Mai este disponibilă pre-lichidarea în aplicația Morpho?
+
+În aplicația Morpho nu se mai poate configura nicio pre-lichidare nouă. Situația citită pe 26 octombrie 2026:
+
+| Unde                                  | Stare                                                                                                                                                                                                                               |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Aplicația și centrul de ajutor Morpho | Articolul de ajutor se intitulează acum „Sunsetting Auto-deleverage” (retragerea Auto-deleverage), actualizat ultima dată pe 13 mai 2026: funcția nu mai acceptă poziții noi, iar utilizatorii care o au ar trebui să o dezactiveze |
+| SDK-ul Morpho                         | Toate exporturile de pre-lichidare au fost marcate ca deprecated pe 22 septembrie 2026 (pull request 1132), urmând să fie eliminate în următoarea versiune majoră, fără înlocuitor                                                  |
+| Documentația Morpho                   | Pagina despre pre-lichidare a dispărut; vechea ei adresă duce acum la pagina generală despre lichidare                                                                                                                              |
+| API-ul Morpho                         | Listează în continuare 106 contracte de pre-lichidare pe piețele listate de pe Ethereum (50), Base (37), Arbitrum (8), Polygon (6), Katana (3) și Unichain (2)                                                                      |
+| Contractele                           | Neschimbate și funcționale: oricine le poate apela în continuare pentru un debitor care le-a autorizat                                                                                                                              |
+
+Ultimul rând este cel care contează dacă ai activat funcția înainte. Retragerea unei funcții dintr-o aplicație nu anulează o autorizare stocată on-chain.
+
+## Cum funcționează un contract de pre-lichidare?
+
+Un contract de pre-lichidare este creat de PreLiquidationFactory al Morpho, pe care îl poate folosi oricine: oricine poate implementa (deploy) un contract pentru orice piață Blue, iar fiecare combinație de piață și set de parametri poate exista o singură dată. Parametrii săi ficși sunt:
+
+| Parametru        | Ce stabilește                                                                                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| preLLTV          | Loan-to-value peste care pre-lichidarea este permisă. Trebuie să fie sub LLTV-ul pieței                                                                                   |
+| preLCF1, preLCF2 | Close factor (partea din datorie care poate fi rambursată dintr-o dată): cea mai mare parte din datoria ta pe care o poate rambursa un singur apel, la preLLTV și la LLTV |
+| preLIF1, preLIF2 | Factorul de stimulent (incentive factor): datoria rambursată se înmulțește cu el pentru a obține garanția luată, în aceleași două puncte                                  |
+| Oracol           | Sursa de preț care decide dacă poți fi pre-lichidat și la ce preț ți se ia garanția. Poate fi oracolul pieței sau altul                                                   |
+
+Înainte să acționeze, contractul verifică, cu prețul propriului oracol, că loan-to-value al tău este peste preLLTV și încă cel mult egal cu LLTV. Peste LLTV, pre-lichidarea se oprește și preia lichidarea obișnuită a Blue. După aceea, Morpho Blue verifică dacă poziția ta este sănătoasă pe oracolul pieței; dacă nu este, întregul apel eșuează (revert).
+
+Constructorul impune limite parametrilor. Close factor nu poate scădea pe măsură ce riscul crește și doar prima sa valoare este plafonată la 100%: un contract a cărui a doua valoare este peste 100% poate permite unui singur apel să-ți ramburseze toată datoria înainte să se ajungă la LLTV. Valorile implicite ale Morpho rămân mult sub acest nivel. Factorul de stimulent trebuie să fie cel puțin 1 (fără bonus) și cel mult 1 ÷ LLTV (un bonus de aproximativ 16% pe o piață de 86%). Repository-ul Morpho spune că acest plafon, împreună cu regula că pre-lichidarea se oprește la LLTV, împiedică o pre-lichidare să lase o poziție mai puțin sănătoasă decât înainte.
+
+### Cum cresc close factor și bonusul între preLLTV și LLTV?
+
+Amândouă cresc liniar cu loan-to-value al tău. Contractul măsoară cât ai înaintat de la preLLTV spre LLTV, ca o fracție între 0 și 1, și mută fiecare factor cu acea fracție din drumul de la prima valoare la a doua. La jumătatea distanței dintre cele două linii, close factor este la jumătatea distanței dintre preLCF1 și preLCF2.
+
+Din cod decurg două limite. Close factor plafonează un apel, nu totalul: chiar repository-ul Morpho notează că un lichidator poate închide o parte mică, te poate lăsa tot peste preLLTV și poate apela din nou, așa că totalul închis poate depăși close factor. Iar close factor este o parte din datoria ta, nu din garanția ta; [ghidul Aave despre close factor](/ro/blog/cum-functioneaza-lichidarea-pe-aave#ce-parte-din-datoria-mea-poate-fi-lichidata-dintr-o-data) prezintă aceeași idee pe Aave.
+
+## Care sunt setările implicite de pre-lichidare ale Morpho?
+
+Morpho a păstrat în SDK-ul său un set implicit de parametri pentru fiecare dintre opt LLTV-uri uzuale, iar toate cele 106 contracte listate de API-ul său folosesc aceste valori implicite. API-ul listează doar contractele cu parametri impliciți cunoscuți, așa că pot exista contracte cu alte setări care nu apar acolo. Cele șase LLTV-uri care au contracte listate:
+
+| LLTV-ul pieței | preLLTV | Close factor (de la preLLTV la LLTV) | Bonus  | Pre-lichidarea începe la un health factor al pieței de | Contracte listate |
+| -------------- | ------- | ------------------------------------ | ------ | ------------------------------------------------------ | ----------------- |
+| 62,5%          | 56,26%  | de la 0,75% la 27,95%                | 12,68% | 1,111                                                  | 2                 |
+| 77%            | 72,74%  | de la 0,37% la 25,66%                | 7,41%  | 1,059                                                  | 12                |
+| 86%            | 83,26%  | de la 0,20% la 24,53%                | 4,38%  | 1,033                                                  | 50                |
+| 91,5%          | 89,79%  | de la 0,11% la 23,92%                | 2,62%  | 1,019                                                  | 21                |
+| 94,5%          | 93,37%  | de la 0,07% la 23,61%                | 1,68%  | 1,012                                                  | 15                |
+| 96,5%          | 95,78%  | de la 0,04% la 23,41%                | 1,06%  | 1,008                                                  | 6                 |
+
+În fiecare set implicit, bonusul este același la ambele capete și este egal cu bonusul pe care îl plătește lichidarea obișnuită Blue pe acea piață. Valorile implicite nu fac vânzarea mai ieftină per dolar; fac fiecare vânzare mai mică. O lichidare Blue obișnuită nu are deloc close factor, așa că lichidatorul poate rambursa toată datoria dintr-odată. [Cum funcționează lichidarea pe Morpho](/ro/blog/cum-functioneaza-lichidarea-pe-morpho) descrie această parte.
+
+## Un contract real: USDC | cbBTC (86%) pe Base
+
+Cea mai mare piață Blue listată de pe Base după suma împrumutată, USDC | cbBTC (86%) (garanție cbBTC, datorie USDC, un LLTV de 86%), are un singur contract de pre-lichidare listat de API-ul Morpho, la `0xa7272aFc21f9C321024ED93892a1abfeb621C374`. Citit pe Base pe 26 octombrie 2026 și verificat cu API-ul Morpho:
+
+- PreLiquidationFactory de pe Base confirmă că a creat contractul, iar contractul indică această piață.
+- preLLTV 83,26%, close factor de la 0,20% crescând la 24,53%, bonus de 4,38% la ambele capete: valorile implicite pentru 86%.
+- Oracolul său este oracolul pieței. Acesta evalua cbBTC la 80.000,15 USDC la blocurile Base 53102870 și 53102952; [cum funcționează lichidarea pe Morpho](/ro/blog/cum-functioneaza-lichidarea-pe-morpho) folosește același preț.
+- Piața avea aproximativ 1,61 miliarde USDC împrumutați contra a aproximativ 40.051 cbBTC, în aproximativ 43.000 de poziții de împrumut.
+- Nicio pre-lichidare făcută de acest contract nu a apărut în cele aproximativ 28 de ore de blocuri Base citite înainte de blocul 53102692.
+
+Pe Ethereum, cea mai mare piață listată USDC | cbBTC (86%) are un contract cu aceiași parametri, la `0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A`, care folosește tot oracolul pieței sale.
+
+## Exemplu calculat: cât poate lua o singură pre-lichidare?
+
+Ia o poziție ilustrativă pe acea piață de pe Base: 1 cbBTC garanție și 50.000 USDC datorie, la 80.000,15 USDC per cbBTC. Health factor-ul ei este 1,376 față de LLTV-ul de 86% și 1,332 față de linia de pre-lichidare de 83,26%. Cu același oracol, cifra pentru pre-lichidare este întotdeauna cifra pieței înmulțită cu 0,968 (83,26 ÷ 86).
+
+Pre-lichidarea poate începe odată ce cbBTC scade sub 60.052,58 USDC, cu 24,9% sub acest preț. Lichidarea obișnuită începe sub 58.139,53 USDC, cu 27,3% mai jos. Între aceste prețuri, cea mai mare pre-lichidare dintr-un singur apel arată așa:
+
+| Loan-to-value | Prețul cbBTC | Close factor | Datorie rambursată | Garanție luată (valoare în USDC) | Bonus | Loan-to-value după |
+| ------------- | ------------ | ------------ | ------------------ | -------------------------------- | ----- | ------------------ |
+| 84%           | 59.523,81    | 6,77%        | 3.384              | 3.533                            | 148   | 83,26%             |
+| 85%           | 58.823,53    | 15,65%       | 7.825              | 8.168                            | 343   | 83,26%             |
+| 86%           | 58.139,53    | 24,53%       | 12.266             | 12.803                           | 538   | 83,23%             |
+
+Cu valorile implicite, un apel de mărime maximă aduce loan-to-value înapoi la aproximativ preLLTV, unde contractul se oprește. Compară cu o lichidare Blue obișnuită la 87%: un lichidator poate rambursa toți cei 50.000 USDC și poate lua cbBTC în valoare de 52.192 USDC, lăsându-ți aproximativ 5.279 USDC de garanție și niciun împrumut.
+
+## De ce au optat debitorii pentru ea și cât i-a costat?
+
+Argumentul pentru a opta pentru ea erau vânzările mai mici și treptate. Articolul de ajutor al Morpho descrie Auto-deleverage ca închizând doar o parte dintr-o poziție pentru a-i reface sănătatea, cu un comision perceput doar pe suma închisă. În exemplul de mai sus, un debitor care optase plătea între 148 și 538 USDC bonus la fiecare pas, în timp ce o lichidare obișnuită la 87% care rambursează tot împrumutul costă 2.192 USDC; mai mulți pași, sau o lichidare obișnuită după ei, pot ajunge la mai mult.
+
+Costurile:
+
+- **Vânzarea începe mai devreme.** Pe o piață de 86%, o parte din poziția ta poate fi vândută de la un health factor al pieței de aproximativ 1,033, în timp ce health factor-ul descris de centrul de ajutor Morpho, măsurat față de LLTV, este încă peste 1.
+- **Pașii se pot repeta.** Close factor limitează fiecare apel, nu totalul, așa că mai multe apeluri pot urma unul după altul cât timp rămâi peste preLLTV.
+- **Prețul poate fi diferit.** Un contract poate folosi alt oracol decât cel al pieței. Toate cele 106 contracte listate de API-ul Morpho folosesc oracolul propriei piețe; un contract pe care nu îl listează s-ar putea să nu o facă.
+- **Nimeni nu este obligat să acționeze.** Dacă niciun lichidator nu apelează contractul, nu se întâmplă nimic înainte de LLTV; odată ce îl depășești, poți fi lichidat în mod obișnuit.
+
+Acum că funcția este retrasă, Morpho le cere debitorilor care o mai au să o dezactiveze, iar înscrierile noi sunt închise.
+
+## Cum verifici dacă ai autorizat un astfel de contract?
+
+Ai autorizat un contract de pre-lichidare dacă `isAuthorized(your wallet, contract)` din Morpho Blue întoarce true. Autorizarea este stocată chiar în Morpho Blue, nu în contractul de pre-lichidare.
+
+1. **Găsește contractul pentru piața ta.** API-ul Morpho îl listează la pre-lichidările pieței; centrul de ajutor Morpho indică și butonul de gestionare (manage) de pe pagina poziției sau a pieței din aplicație.
+2. **Apelează `isAuthorized` pe contractul Morpho Blue din rețeaua respectivă.** Într-un block explorer, deschide funcțiile de citire (read) ale contractului Blue și introdu portofelul tău ca primă adresă și contractul de pre-lichidare ca a doua.
+3. **Citește răspunsul.** True înseamnă că contractul te poate pre-lichida; false înseamnă că nu poate.
+
+Acești pași au nevoie de adresa contractului, iar API-ul Morpho listează doar contractele cu setări implicite. O autorizare poate fi dată și prin semnătură și trimisă de altcineva, așa că s-ar putea să nu apară în lista de tranzacții a portofelului tău. Ca să vezi toate adresele pe care le-ai autorizat, caută evenimentele SetAuthorization ale contractului Morpho Blue într-un block explorer, cu portofelul tău ca authorizer. Cel mai recent eveniment pentru fiecare adresă arată dacă autorizarea este încă activă, iar PreLiquidationFactory din rețeaua respectivă răspunde la `isPreLiquidation(address)` cu true pentru contractele pe care le-a creat.
+
+Un detaliu contează aici. Autorizarea din Blue nu conține nicio piață: o adresă pe care o autorizezi trece verificările Blue pentru împrumuturile, retragerile și retragerile de garanție ale tale pe tot acel contract Blue. Codul fix al unui contract de pre-lichidare doar rambursează și retrage garanție pe propria piață, dar alte adrese pe care le-ai autorizat nu sunt limitate astfel.
+
+## Cum dezactivezi pre-lichidarea?
+
+O dezactivezi setând autorizarea înapoi la false:
+
+- **În aplicația Morpho:** centrul de ajutor Morpho spune să dai clic pe butonul de gestionare (manage) al poziției, în panoul tău din aplicație sau pe pagina pieței, care deschide o fereastră de eliminare pentru Auto-deleverage.
+- **Pe contract:** apelează `setAuthorization(pre-liquidation contract, false)` pe Morpho Blue din portofelul tău. Apelul eșuează dacă valoarea este deja false, așa că un apel eșuat poate însemna și că nu era nimic de eliminat.
+
+Odată revocată autorizarea, încercările contractului de a-ți retrage garanția eșuează și se aplică doar lichidarea obișnuită Blue, sub un health factor de 1. Te costă gazul unei singure tranzacții.
+
+## Cum măsoară Tokenping o poziție cu pre-lichidare?
+
+Pentru un debitor care a autorizat un contract de pre-lichidare pe o piață Blue, Tokenping alertează după valoarea mai mică dintre cele două linii: linia LLTV și linia de pre-lichidare. Asta contează pentru că centrul de ajutor Morpho descrie health factor-ul afișat în aplicația sa ca ajungând la 1 când loan-to-value trece de LLTV, adică exact acolo unde începe și lichidarea proprie a Blue. Pe o piață de 86% cu contractul implicit, un prag de alertă de 1,10 pe linia de pre-lichidare se declanșează la un health factor al pieței de aproximativ 1,136, iar cel mai mic prag, 1,02, se declanșează la aproximativ 1,054, cu aproximativ 2% peste linia de la care poate începe pre-lichidarea.
+
+Când salvezi sau editezi o alertă, Tokenping notează contractele de pre-lichidare pe care API-ul Morpho le listează pentru acea piață; la fiecare verificare citește apoi dacă ai autorizat fiecare dintre ele și calculează health factor-ul din datele on-chain, cu formulele Morpho, niciodată din API-ul Morpho. Un contract de pre-lichidare pe care API-ul Morpho nu îl listează nu este verificat, așa că, dacă ai autorizat unul cu setări personalizate, alerta măsoară doar față de linia LLTV.
+
+Restul funcționează ca la orice alertă Morpho. Tokenping verifică la fiecare 5 minute, pe 14 rețele, și cât timp health factor-ul tău este sub prag (orice valoare de la 1,02 la 10), fiecare verificare trimite un mesaj pe fiecare canal ales: Signal, Telegram sau e-mail. Alertele costă <AlertPrice />, același plan ca pentru alertele Aave, iar [vizualizarea pozițiilor tale Morpho](/ro/morpho) nu necesită plată. [Cum alegi un prag de alertă](/ro/blog/health-factor-sigur-aave#cum-alegi-un-prag-de-alerta-pas-cu-pas) explică compromisul pe Aave; același raționament se aplică și aici. O alertă îți dă timp să acționezi, nu o garanție: un preț se poate mișca între două verificări. Dacă nu mai vrei pre-lichidare, revoc-o cum este arătat mai sus; alerta ta măsoară apoi doar față de linia LLTV.
+
+## Surse
+
+- [morpho-org/pre-liquidation](https://github.com/morpho-org/pre-liquidation): README, [PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidation.sol), [PreLiquidationFactory.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidationFactory.sol) și [IPreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/interfaces/IPreLiquidation.sol), pentru parametri, limite, interpolare și verificări (accesat la 26 octombrie 2026)
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) și [EventsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/EventsLib.sol): `isAuthorized`, `setAuthorization`, evenimentul SetAuthorization, verificarea sănătății poziției și bonusul obișnuit de lichidare (accesat la 26 octombrie 2026)
+- [Introducing pre-liquidations](https://morpho.org/blog/introducing-pre-liquidations-enhanced-loan-management-on-morpho) (Morpho, 4 martie 2025): auto-deleverage și auto-close ca utilizări și lichidarea obișnuită când nu are loc nicio pre-lichidare (accesat la 26 octombrie 2026)
+- [Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (centrul de ajutor Morpho, actualizat pe 13 mai 2026): fără poziții noi, cum o dezactivezi, ce făcea funcția (accesat la 26 octombrie 2026)
+- [Centrul de ajutor Morpho: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): aplicația arată health factor-ul fiecărei poziții, iar o poziție poate fi lichidată la 1 sau mai jos, odată ce loan-to-value al ei trece de LLTV (accesat la 26 octombrie 2026)
+- [Pull request 1132 din SDK-ul Morpho](https://github.com/morpho-org/sdks/pull/1132) (îmbinat pe 22 septembrie 2026) și [preLiquidation.ts](https://github.com/morpho-org/sdks/blob/main/packages/blue-sdk/src/preLiquidation.ts): marcarea ca deprecated și parametrii impliciți (accesat la 26 octombrie 2026)
+- [Documentația Morpho: liquidation](https://docs.morpho.org/developers/borrow/concepts/liquidation): unde duce acum vechea pagină despre pre-lichidare (accesat la 26 octombrie 2026)
+- [API-ul Morpho](https://api.morpho.org/graphql): piețele listate, contractele lor de pre-lichidare și oracolele, precum și piețele USDC | cbBTC (86%) de pe Base și Ethereum (accesat la 26 octombrie 2026)
+- Contracte de pre-lichidare citite on-chain: [Base](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374) la blocurile de la 53102692 la 53102952 și [Ethereum](https://etherscan.io/address/0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A) la blocul 26274980, cu fabricile, piețele și oracolele lor (accesat la 26 octombrie 2026)
+
+_Conținut educațional, nu sfat financiar. Alertele reduc riscul, dar nu împiedică lichidarea._

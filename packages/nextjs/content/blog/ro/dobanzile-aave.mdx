@@ -1,0 +1,156 @@
+export const meta = {
+  slug: "dobanzile-aave",
+  title: "Cum funcționează dobânzile pe Aave și de ce cresc brusc",
+  description:
+    "Dobânzile de împrumut Aave urmează o curbă de utilizare: lină până la un nivel optim, abruptă peste el. Formula, parametri reali, de ce cresc și ce faci.",
+  h1: "Cum funcționează dobânzile pe Aave și de ce cresc brusc dobânzile de împrumut?",
+  publishedAt: "2026-10-25",
+  primaryQuestion: "Cum stabilește Aave dobânzile de împrumut și de depunere și de ce cresc ele brusc?",
+  readingMinutes: 9,
+};
+
+<ShortAnswer>
+  Pe Aave V3, dobânda variabilă de împrumut a fiecărui activ urmează o curbă stabilită de guvernanță: crește lin odată
+  cu utilizarea, adică partea din tokenurile depuse care este împrumutată, până la un nivel optim, apoi abrupt peste el.
+  Deponenții câștigă dobânda de împrumut înmulțită cu utilizarea, minus reserve factor-ul. Dobânzile sunt recalculate la
+  fiecare depunere, împrumut, rambursare și retragere, așa că o singură retragere mare poate împinge utilizarea peste
+  nivelul optim și poate multiplica dobânda în același bloc: USDC pe Ethereum Core a trecut de la 4,50% la 13,67% APR pe
+  14 octombrie 2026 și a revenit la 4,76% după aproximativ 36 de minute. Toată datoria pe Aave V3 are dobândă variabilă.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Cifrele și blocurile la care au fost citite: content/blog/snapshots/aave-interest-rates.md */}
+
+## Ce stabilește dobânda de împrumut pe Aave?
+
+Pe Aave V3, dobânda de împrumut a unui activ este stabilită de două lucruri: utilizarea lui și parametrii lui de dobândă. Utilizarea este partea din pool-ul activului care este împrumutată: datoria împărțită la datorie plus tokenurile încă disponibile. Parametrii sunt patru numere pentru fiecare activ, stabilite de guvernanța Aave, iar Risk Stewards ai Aave le pot ajusta în pași limitați și cu intervale minime între ajustări:
+
+- **Optimal usage ratio (rata optimă de utilizare):** utilizarea la care curba se frânge.
+- **Base rate (dobânda de bază):** dobânda de împrumut la o utilizare de 0%.
+- **Slope 1 (panta 1):** cât crește dobânda de la 0% până la rata optimă de utilizare.
+- **Slope 2 (panta 2):** cât mai crește de la rata optimă de utilizare până la 100%.
+
+Citiți pe 25 octombrie 2026 la blocul Ethereum 26269328 și la blocul Arbitrum 518125419, parametrii și dobânzile câtorva active uzuale erau:
+
+| Piață și activ     | Utilizare optimă | Bază | Panta 1 | Panta 2 | Utilizare       | APR împrumut | APR depunere |
+| ------------------ | ---------------- | ---- | ------- | ------- | --------------- | ------------ | ------------ |
+| Ethereum Core USDC | 94%              | 0%   | 4,5%    | 10%     | 93,72%          | 4,49%        | 3,78%        |
+| Ethereum Core USDT | 92%              | 0%   | 4,5%    | 10%     | 87,81%          | 4,30%        | 3,39%        |
+| Ethereum Core WETH | 92%              | 0%   | 2,2%    | 6%      | 81,31%          | 1,94%        | 1,31%        |
+| Ethereum Core GHO  | 99%              | 4,5% | 0%      | 0%      | nu se folosește | 4,50%        | 0%           |
+| Arbitrum USDC      | 90%              | 0%   | 4%      | 10%     | 77,32%          | 3,44%        | 2,39%        |
+
+GHO este excepția: ambele pante sunt zero, așa că dobânda lui rămâne aceeași indiferent de utilizare și este schimbată manual (vezi [GHO și Aave V4](#cum-se-stabilesc-dobanzile-pentru-gho-si-pe-aave-v4)).
+
+## Cum se calculează dobânda de împrumut pe Aave?
+
+Dobânda de împrumut pe Aave V3 este o linie dreaptă până la rata optimă de utilizare și o linie mult mai abruptă peste ea. Cu U pentru utilizare:
+
+**Până la rata optimă de utilizare: dobânda de împrumut = bază + panta 1 × U ÷ rata optimă de utilizare**
+
+**Peste ea: dobânda de împrumut = bază + panta 1 + panta 2 × (U − rata optimă de utilizare) ÷ (1 − rata optimă de utilizare)**
+
+În contract, U este datoria totală împărțită la datoria totală plus tokenurile pe care pool-ul le mai deține. Cu parametrii USDC de pe Ethereum Core, dobânda la fiecare nivel de utilizare este:
+
+| Utilizare    | APR împrumut |
+| ------------ | ------------ |
+| 50%          | 2,39%        |
+| 80%          | 3,83%        |
+| 90%          | 4,31%        |
+| 94% (optimă) | 4,50%        |
+| 95%          | 6,17%        |
+| 96%          | 7,83%        |
+| 98%          | 11,17%       |
+| 100%         | 14,50%       |
+
+Sub 94%, zece puncte de utilizare mișcă dobânda cu mai puțin de jumătate de punct. Peste acest nivel, fiecare punct adaugă aproximativ 1,67 puncte, iar ultimele șase puncte de utilizare mai mult decât triplează dobânda. Citit pe 25 octombrie 2026, USDC era la 93,72%, chiar sub punctul de frângere: 4,5% × 0,9372 ÷ 0,94 dă cei 4,49% pe care îi cerea.
+
+Curba este gândită să funcționeze așa. Sub nivelul optim, împrumutul ieftin ține pool-ul în uz; peste el, dobânda abruptă face împrumutul suficient de scump încât unii debitori să ramburseze și unii deținători să depună, ceea ce coboară din nou utilizarea și lasă tokenuri disponibile pentru deponenții care vor să retragă.
+
+## De ce cresc brusc dobânzile de împrumut pe Aave?
+
+Dobânzile de împrumut pe Aave cresc brusc când utilizarea trece de rata optimă de utilizare, de obicei pentru că un deponent mare retrage sau un debitor mare se împrumută. Dobânda este recalculată în aceeași tranzacție, iar fiecare debitor al acelui activ plătește noua dobândă din acel moment până la următoarea modificare.
+
+Pe 14 octombrie 2026, o singură retragere de exact 133.898.000 USDC din Ethereum Core a împins utilizarea de la 93,92% la 99,50% într-un singur bloc:
+
+| Blocul Ethereum (UTC)        | Ce s-a întâmplat                               | Utilizare         | APR împrumut USDC |
+| ---------------------------- | ---------------------------------------------- | ----------------- | ----------------- |
+| 26194052 (14 oct., 23:32:47) | Înainte                                        | 93,92%            | 4,50%             |
+| 26194053 (14 oct., 23:32:59) | 133.898.000 USDC retrași                       | 99,50%            | 13,67%            |
+| 26194088 (14 oct., 23:39:59) | Punctul cel mai înalt din interval             | aproximativ 99,8% | 14,18%            |
+| 26194231 (15 oct., 00:08:35) | Aceeași adresă a depus înapoi 133.898.000 USDC | 94,16%            | 4,76%             |
+
+Debitorii au plătit aproximativ de trei ori dobânda obișnuită timp de 36 de minute, iar formula de mai sus reproduce fiecare dintre aceste dobânzi pornind de la utilizare. O creștere bruscă durează cât timp utilizarea rămâne ridicată: aici au revenit aceleași tokenuri, dar în alte cazuri e nevoie de deponenți noi sau de rambursări, atrase de dobânda mare, ca să o coboare.
+
+Încă două lucruri schimbă o dobândă de împrumut. Guvernanța sau Risk Stewards pot schimba cei patru parametri, ceea ce mută toată curba deodată. Iar între tranzacții dobânda nu se schimbă: Aave o recalculează la fiecare depunere, împrumut, rambursare, retragere și lichidare a acelui activ, iar dobânda se acumulează la acel nivel, secundă cu secundă, până la următoarea tranzacție.
+
+## De ce câștigă deponenții mai puțin decât plătesc debitorii?
+
+Deponenții câștigă mai puțin decât plătesc debitorii pentru că doar partea împrumutată din pool plătește dobândă, iar protocolul păstrează o parte din ea. Dobânda de depunere este:
+
+**Dobânda de depunere = dobânda de împrumut × utilizarea × (1 − reserve factor)**
+
+Pentru USDC pe Ethereum Core, pe 25 octombrie 2026: 4,4866% × 0,9372 × (1 − 0,10) = 3,78%. Reserve factor-ul (partea păstrată de protocol), 10% pentru USDC și 15% pentru WETH, merge în trezoreria Aave. Acolo unde o rezervă are un deficit din datorie neacoperită (bad debt), contractul îl socotește și pe partea de depunere, ceea ce scade puțin dobânda de depunere.
+
+## Care este diferența dintre APR și APY pe Aave?
+
+Contractele stochează dobânzile ca APR, iar aplicația Aave arată APY, care adaugă capitalizarea. Biblioteca de calcul a aplicației capitalizează APR-ul în fiecare secundă, pe un an de 31.536.000 de secunde:
+
+**APY = (1 + APR ÷ 31.536.000)^31.536.000 − 1**
+
+APR-ul de 4,4866% pentru USDC pe Ethereum Core apare în aplicație ca un APY de 4,59%. La aceste niveluri diferența este de aproximativ o zecime de punct; la un APR de 14% este de aproximativ un punct (15,0% APY).
+
+## Cum îți afectează health factor-ul creșterile bruște de dobândă?
+
+O creștere bruscă și scurtă abia îți mișcă health factor-ul (factorul de sănătate); o dobândă mare care durează luni de zile îl mișcă. Dobânda se adaugă la datorie, iar mai multă datorie scade health factor-ul, așa cum explică [cauza legată de dobândă din ghidul despre de ce scade health factor-ul](/ro/blog/de-ce-a-scazut-health-factor-aave#cauza-3-s-a-acumulat-dobanda-pe-datorie-mai-repede-decat-pe-garantie).
+
+Ia 10 WETH depuși față de 12.000 USDC împrumutați pe Ethereum Core, cu pragul de lichidare de 83% al WETH (citit pe 14 octombrie 2026) și un preț ilustrativ al ETH de 2.400 $: health factor-ul este 1,66. Socotind și ce câștigă WETH la dobânda lui de depunere de 1,31%:
+
+| Cât durează dobânda | La 4,49% (25 octombrie 2026)           | La 14,50% (vârful curbei)   |
+| ------------------- | -------------------------------------- | --------------------------- |
+| 36 de minute        | aproximativ 0,04 USDC de dobândă, 1,66 | aproximativ 0,12 USDC, 1,66 |
+| 30 de zile          | aproximativ 1,66                       | aproximativ 1,64            |
+| Un an               | aproximativ 1,61                       | aproximativ 1,45            |
+
+Creșterea bruscă din 14 octombrie a costat această poziție aproximativ 12 cenți. O piață care rămâne un an în vârful curbei ar duce-o de la 1,66 la aproximativ 1,45 fără nicio mișcare de preț, motiv pentru care o derivă lentă justifică un prag de alertă cu marjă suficientă ([câtă marjă îți dă un health factor](/ro/blog/health-factor-sigur-aave#cat-de-repede-iti-mananca-marja-dobanda-si-schimbarile-de-parametri)).
+
+## Ce poți face când dobânda ta de împrumut sare?
+
+Când dobânda ta de împrumut sare, verifică mai întâi utilizarea activului pe pagina lui din aplicația Aave: dacă e chiar peste rata optimă de utilizare, dobânda scade din nou imediat ce scade utilizarea. Apoi ai patru opțiuni, fiecare cu un cost:
+
+- **Aștepți.** O creștere bruscă provocată de o singură retragere mare se poate încheia când acele tokenuri revin, ca pe 14 octombrie 2026. Nimic nu garantează că vor reveni, iar între timp plătești dobânda mare.
+- **Rambursezi o parte din datorie.** Îți scade atât dobânda, cât și riscul; [cum îți crești health factor-ul pe Aave](/ro/blog/cum-eviti-lichidarea-pe-aave) explică rambursarea cu propriile tokenuri sau cu garanția ta.
+- **Muți datoria pe alt activ.** Interfața Aave Labs are un debt swap care înlocuiește un activ împrumutat cu altul într-o singură tranzacție, pe piețele Ethereum Core, Prime și EtherFi și pe Arbitrum, Avalanche, Base, BNB Chain, Optimism, Polygon, Gnosis și Sonic, potrivit documentației Aave. Nu este listat pentru Metis, Scroll, ZKsync, Celo, Soneium, Linea, Plasma sau Ink. Noul activ are propria curbă și propriul risc, dacă prețul lui se mișcă altfel decât vechea ta datorie.
+- **Te împrumuți în altă piață.** Fiecare piață are propriul pool și propria utilizare: pe 25 octombrie 2026, USDC costa 4,49% pe Ethereum Core și 3,44% pe Arbitrum. Mutarea înseamnă să rambursezi într-o piață și să te împrumuți în alta, cu garanție pe acea rețea.
+
+## Cum se stabilesc dobânzile pentru GHO și pe Aave V4?
+
+GHO, stablecoin-ul propriu al Aave, are o dobândă de împrumut constantă, aleasă de oameni, nu de curbă. Pe Ethereum Core, parametrii lui au ambele pante la zero, deci dobânda este dobânda de bază, 4,50% pe 25 octombrie 2026. Este schimbată printr-un contract steward pentru GHO de un Risk Council 2-din-3: cu cel mult 5 puncte procentuale la o actualizare și cel mult o dată pe zi. Ultima modificare, pe 3 octombrie 2026, a crescut-o de la 4,25% la 4,50%; din noiembrie 2024 a fost schimbată de 44 de ori, între 3,00% și 14,50%. Vechea reducere pentru deținătorii de stkAAVE a fost eliminată odată cu Aave v3.4.
+
+Aave V4 păstrează o curbă de utilizare, dar documentația sa o descrie ca fiind configurată pentru fiecare activ la nivelul Hub-ului, pool-ul care împrumută fiecărui Spoke. Peste această dobândă comună, fiecare debitor plătește un User Risk Premium (primă de risc a utilizatorului) care depinde de calitatea garanției sale: exemplul Aave este o primă de 50% la o dobândă de bază de 5%, ceea ce dă 7,5%. Doi debitori V4 ai aceluiași activ pot plăti deci dobânzi diferite, iar [secțiunea despre V4 din ghidul despre health factor](/ro/blog/health-factor-aave-explicat#este-health-factor-ul-diferit-pe-aave-v4) explică ce altceva schimbă V4.
+
+## Poți obține o dobândă fixă pe Aave?
+
+Nu. Aave V3 a avut cândva o opțiune de dobândă stabilă, dar a fost scoasă complet din uz în 2024, după un raport de bug, iar Aave v3.2 a eliminat codul. Fiecare împrumut pe Aave V3 plătește dobânda variabilă, iar dobânda constantă a GHO poate fi schimbată oricând în limitele steward-ului său.
+
+## Te poate avertiza o alertă despre dobânzile în creștere?
+
+O alertă de health factor nu urmărește dobânzile; urmărește ce fac dobânzile cu poziția ta. Tokenping îți verifică health factor-ul pe Aave V3 și V4 la fiecare 5 minute pe 22 de rețele și îți trimite mesaj pe Signal, Telegram sau e-mail cât timp este sub pragul pe care l-ai setat (de la 1,1 la 10). O creștere bruscă precum cea din 14 octombrie 2026 nu o va declanșa, pentru că abia mișcă health factor-ul; lunile de dobândă mare o vor declanșa, odată ce datoria a crescut destul cât să treacă de pragul tău.
+
+Dacă vrei un mesaj despre dobânda în sine, unele alte instrumente trimit alerte de dobândă, iar [comparația noastră a instrumentelor de alertă pentru Aave](/ro/blog/instrumente-alerte-lichidare-aave) arată ce urmărește fiecare. Configurarea unei alerte de health factor este în [cum setezi o alertă de health factor](/ro/blog/configurare-alerta-health-factor-aave), iar mai întâi îți poți [verifica health factor-ul pe Aave V3](/ro/aave); vizualizarea pozițiilor nu necesită plată.
+
+## Surse
+
+- [DefaultReserveInterestRateStrategyV2.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/misc/DefaultReserveInterestRateStrategyV2.sol) și [ReserveLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ReserveLogic.sol): curba dobânzii, rata de utilizare, dobânda de depunere și momentele în care sunt recalculate dobânzile (aave-v3-origin, accesat la 25 octombrie 2026)
+- [Strategia de dobândă Aave V3 pe Ethereum Core](https://etherscan.io/address/0x9ec6F08190DeA04A54f8Afc53Db96134e5E3FdFB#readContract) și [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): parametri și dobânzi la blocul 26269328; USDC la blocurile 26194052, 26194053, 26194088, 26194230 și 26194231 (accesat la 25 octombrie 2026)
+- [Strategia de dobândă Aave V3 pe Arbitrum](https://arbiscan.io/address/0x429F16dBA3B9e1900087Cbaa7b50D38Bc60fB73F#readContract): parametrii și dobânzile USDC la blocul 518125419 (accesat la 25 octombrie 2026)
+- [Aave Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): parametrii de dobândă printre valorile pe care steward-ii le pot schimba, cu o modificare maximă și un interval minim pentru fiecare actualizare (accesat la 25 octombrie 2026)
+- [calculateCompoundedRate în aave-utilities](https://github.com/aave/aave-utilities/blob/master/packages/math-utils/src/formatters/compounded-interest/calculate-compounded-interest.ts): trecerea de la APR la APY pe 31.536.000 de secunde (accesat la 25 octombrie 2026)
+- [Funcțiile de swap Aave](https://aave.com/docs/aave-v3/smart-contracts/swap-features.md): debt swap și rambursarea cu garanția, plus piețele care le acceptă (accesat la 25 octombrie 2026)
+- [GHO Stewards: actualizarea din octombrie 2026 a dobânzii de împrumut GHO](https://governance.aave.com/t/gho-stewards-october-2026-gho-borrow-rate-update/25754) (TokenLogic, 2 octombrie 2026, accesat la 25 octombrie 2026) și [contractul steward pentru GHO](https://etherscan.io/address/0x98217A06721Ebf727f2C8d9aD7718ec28b7aAe34#readContract): limitele pentru fiecare actualizare și istoricul dobânzii din noiembrie 2024 (accesat la 25 octombrie 2026)
+- [Funcțiile Aave v3.4](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.4/Aave-v3.4-features.md): eliminarea reducerii stkAAVE pentru GHO (accesat la 25 octombrie 2026)
+- [BGD: Full deprecation of stable rate](https://governance.aave.com/t/bgd-full-deprecation-of-stable-rate/16473) (scoaterea completă din uz a dobânzii stabile, 31 ianuarie 2024) și [funcțiile Aave v3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): eliminarea dobânzii stabile (accesat la 25 octombrie 2026)
+- [Documentația Aave V4](https://aave.com/docs/aave-v4.md) și [pozițiile V4](https://aave.com/docs/aave-v4/positions.md): curba dobânzii pentru fiecare activ al Hub-ului și User Risk Premium (accesat la 25 octombrie 2026)
+
+_Conținut educațional, nu sfat financiar. Alertele reduc riscul, dar nu împiedică lichidarea._

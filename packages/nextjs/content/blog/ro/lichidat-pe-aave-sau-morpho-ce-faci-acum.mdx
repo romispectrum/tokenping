@@ -1,0 +1,135 @@
+export const meta = {
+  slug: "lichidat-pe-aave-sau-morpho-ce-faci-acum",
+  title: "Lichidat pe Aave sau Morpho: ce faci acum",
+  description:
+    "Cum găsești tranzacția de lichidare, afli ce ți s-a luat și ce ai păstrat, de ce s-a întâmplat și cum eviți o a doua lichidare.",
+  h1: "Am fost lichidat pe Aave sau Morpho: ce fac acum?",
+  publishedAt: "2026-10-31",
+  primaryQuestion: "Ce ar trebui să faci după o lichidare pe Aave sau Morpho?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Mai întâi găsește tranzacția: pe Aave în istoricul de tranzacții al aplicației sau în transferurile de tokenuri ale
+  portofelului tău pe un block explorer, pe Morpho prin aplicația Morpho sau prin API-ul public Morpho, pentru că
+  tranzacția lichidatorului nu apare niciodată în propria ta listă. Apoi citește-o: datoria rambursată în locul tău,
+  garanția luată și diferența, care este bonusul pe care l-ai plătit. Tokenurile pe care le-ai împrumutat rămân ale
+  tale, la fel și garanția care nu a fost confiscată. Pe Aave, o lichidare rambursează de obicei jumătate din datorie și
+  lasă o poziție care poate fi lichidată din nou; pe Morpho poate lua aproape tot dintr-o dată. În cele 30 de zile până
+  la 30 octombrie 2026, 932 de debitori Morpho au fost lichidați de mai multe ori, așa că pasul cel mai util este
+  ultimul: o marjă de siguranță și o alertă înainte să te împrumuți din nou.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Cifrele și ora la care au fost citite: content/blog/snapshots/liquidated-on-aave-or-morpho-what-now.md (articolul în engleză; acest text este traducerea sa în română) */}
+
+## Cum știi că a fost o lichidare și unde este tranzacția?
+
+Primul semn obișnuit este că o poziție arată greșit: datoria este mai mică decât îți amintești, garanția este mult mai mică, health factor-ul (factor de sănătate) este brusc mai mare sau poziția a dispărut. O rambursare pe care nu ai făcut-o și o retragere de garanție pe care nu ai semnat-o, în aceeași tranzacție, înseamnă o lichidare.
+
+Tranzacția este greu de găsit pentru că nu tu ai trimis-o. A trimis-o botul unui lichidator, așa că nu apare în lista „Transactions” (tranzacții) a adresei tale pe Etherscan, Basescan sau Arbiscan. Unde să cauți în schimb:
+
+- **Aave, în aplicație.** Deschide „Transaction history” (istoricul tranzacțiilor, app.aave.com/history) cu portofelul conectat și piața potrivită selectată și filtrează după „Liquidation” (lichidare). Fiecare înregistrare are ora, hash-ul tranzacției, garanția luată și datoria rambursată.
+- **Aave, pe un block explorer.** Deschide adresa ta și fila „Token transfers (ERC-20)” (transferuri de tokenuri). O lichidare apare ca un transfer al aToken-ului tău (de exemplu aEthWETH) și al tokenului tău de datorie (variableDebtEthUSDT) către adresa zero, într-o tranzacție pe care nu ai semnat-o. Deschide-o și treci la fila „Logs” (jurnale): evenimentul numit `LiquidationCall` pe contractul Pool este înregistrarea de care ai nevoie. O tranzacție poate conține mai multe lichidări ale mai multor debitori, așa că o cauți pe cea al cărei `user` este adresa ta.
+- **Morpho.** Adresa ta nu arată nimic pe explorer, pentru că garanția ta stătea în contractul Morpho, iar rambursarea lichidatorului a mers tot la contract. Aplicația Morpho arată poziția micșorată sau dispărută; API-ul public Morpho listează fiecare lichidare a adresei tale (`marketTransactions` de tip Liquidation); iar jurnalul de evenimente al contractului Morpho de pe explorer are un eveniment numit `Liquidate` cu adresa ta ca `borrower`.
+- **Tokenping.** [Panoul Aave](/ro/aave) și [panoul Morpho](/ro/morpho) arată poziția așa cum este acum. Un health factor care a sărit de aproape de 1 la mult peste 1 sau o poziție care a dispărut indică o lichidare. Panourile nu listează tranzacțiile trecute.
+
+Păstrează hash-ul tranzacției. Îți va trebui ca să citești sumele, iar în multe țări o lichidare contează ca o vânzare a garanției care a fost luată, așa că îți trebuie și pentru evidențele fiscale.
+
+## Cum citești tranzacția de lichidare?
+
+Ambele protocoale scriu întreaga lichidare într-un singur eveniment. Numele diferă, conținutul este același: ce datorie a fost rambursată în locul tău, ce garanție a fost luată și cât din fiecare.
+
+**Aave V3** emite `LiquidationCall(collateralAsset, debtAsset, user, debtToCover, liquidatedCollateralAmount, liquidator, receiveAToken)`. Unul real de pe Ethereum Core, blocul 26305893, 30 octombrie 2026 la 13:33 UTC:
+
+| Câmp                       | Valoare              | Ce înseamnă                                                                                |
+| -------------------------- | -------------------- | ------------------------------------------------------------------------------------------ |
+| collateralAsset            | WETH                 | Activul luat                                                                               |
+| debtAsset                  | USDT                 | Activul rambursat                                                                          |
+| user                       | adresa debitorului   | A cui era poziția                                                                          |
+| debtToCover                | 1.320,785158 USDT    | Datoria rambursată în locul debitorului, 1.319,32 USD la prețul oracolului (sursa de preț) |
+| liquidatedCollateralAmount | 0,619088749 WETH     | Garanția trimisă lichidatorului, 1.372,09 USD la 2.216,31 USD/ETH                          |
+| liquidator                 | adresa unui contract | Cine a rambursat și a primit                                                               |
+| receiveAToken              | false                | A luat WETH propriu-zis, nu aEthWETH                                                       |
+
+O sumă nu apare în eveniment. În aceeași tranzacție, 0,005952776 aEthWETH (13,19 USD) au trecut de la debitor la contractul collector al Aave: taxa de protocol pentru lichidare, 20% din bonus pentru WETH pe Ethereum Core la acel bloc. Adunând totul, debitorul a dat 1.385,28 USD în WETH pentru 1.319,32 USD de datorie, un bonus de 5%, din care lichidatorul a păstrat 52,77 USD, iar trezoreria 13,19 USD. Fila „Logs” a explorerului arată taxa ca un transfer de aToken către collector imediat după arderea (burn) aToken-ului.
+
+**Morpho Blue** emite `Liquidate(id, caller, borrower, repaidAssets, repaidShares, seizedAssets, badDebtAssets, badDebtShares)`. Unul real din piața USDC | cbBTC (86%) de pe Base, blocul 53265200, 30 octombrie 2026 la 00:22 UTC:
+
+| Câmp          | Valoare            | Ce înseamnă                                                        |
+| ------------- | ------------------ | ------------------------------------------------------------------ |
+| id            | 0x9103c3b4…        | Piața                                                              |
+| caller        | lichidatorul       | Cine a rambursat și a primit                                       |
+| borrower      | adresa debitorului | A cui era poziția                                                  |
+| repaidAssets  | 2.174,732093 USDC  | Datoria rambursată în locul debitorului                            |
+| seizedAssets  | 0,02952084 cbBTC   | Garanția trimisă lichidatorului, 2.270,08 USD la prețul oracolului |
+| badDebtAssets | 0                  | Nimic nu a fost trecut pe pierdere                                 |
+
+Oracolul a evaluat cbBTC la 76.897,38 USDC în acel bloc. Garanția luată valora 2.270,08 USD pentru 2.174,73 USD de datorie, un raport de 1,0438, care este exact factorul de stimulent de lichidare (liquidation incentive factor) pe care îl plătește o piață de 86%. Diferența de 95,34 USD a mers integral la lichidator: Morpho nu ia nicio taxă. Acea tranzacție conținea 30 de evenimente `Liquidate` de la un singur lichidator, fiecare cu alt debitor, și exact așa arată în jurnalul unei piețe minutul cel mai aglomerat al unui crash.
+
+## Ce ți s-a luat și ce ai păstrat?
+
+Trei lucruri de separat:
+
+1. **Datoria rambursată în locul tău a dispărut, la fel și garanția care a plătit-o.** Nu mai datorezi partea rambursată. Lichidatorul a plătit-o cu propriile tokenuri și a luat în schimb garanția ta, plus bonusul. Bonusul este costul lichidării: în cele două exemple, 65,96 USD la 1.319 USD de datorie pe Aave și 95,34 USD la 2.175 USD pe Morpho.
+2. **Tokenurile pe care le-ai împrumutat sunt încă ale tale.** Dacă ai împrumutat USDT și i-ai cheltuit, nu se schimbă nimic. Dacă sunt încă în portofel, sunt tot acolo. O lichidare nu atinge niciodată tokenurile împrumutate din portofelul tău; schimbă doar poziția.
+3. **Garanția care nu a fost confiscată rămâne în poziție.** Pe Aave soldul de aToken este mai mic; pe Morpho soldul garanției în acea piață este mai mic. Dacă a rămas datorie, garanția continuă să o acopere. Dacă nu a rămas datorie, o poți retrage.
+
+Cât rămâne depinde de protocol. Pe Aave V3, o lichidare rambursează cel mult 50% din datoria ta totală când health factor-ul este peste 0,95 și atât garanția luată, cât și datoria rambursată valorează cel puțin 2.000 USD; sub 0,95 sau pentru sume mai mici, poate rambursa toată datoria în acel activ ([cât poate fi lichidat dintr-o dată](/ro/blog/cum-functioneaza-lichidarea-pe-aave#ce-parte-din-datoria-mea-poate-fi-lichidata-dintr-o-data)). Exemplul de pe Ethereum a urmat regula de 50% la cent: 2.638,63 USD de datorie înainte, 1.319,32 după. Debitorul a păstrat 0,7906 WETH (1.752 USD) față de 1.319,32 USDT, un health factor de 1,12, iar acea poziție poate fi lichidată din nou dacă ETH mai scade cu 10,4%. Pe Aave V4, o lichidare rambursează în schimb cât este nevoie pentru a readuce poziția la health factor-ul țintă al Spoke-ului, 1,24 pe Main Spoke de pe Ethereum, așa că se rambursează mai mult, dar ce rămâne este mai sigur ([lichidările pe Aave V4](/ro/blog/cum-functioneaza-lichidarea-pe-aave#prin-ce-difera-lichidarile-pe-aave-v4)).
+
+Morpho Blue nu are close factor (partea din datorie care poate fi rambursată dintr-o dată): un lichidator poate rambursa până la toată datoria într-un singur apel ([cât din datoria ta poate fi lichidat dintr-o dată](/ro/blog/cum-functioneaza-lichidarea-pe-morpho#cat-din-datoria-ta-poate-fi-lichidat-dintr-o-data)). Lichidatorul de pe Base a luat 0,02952 din 0,03286 cbBTC, 90% din garanție, și a rambursat toată datoria, cu excepția a 0,0005 USDC rămași din cauza rotunjirii acțiunilor (shares). Debitorul a păstrat 0,003342 cbBTC, aproximativ 257 USD, și îi poate retrage.
+
+Încă două lucruri de verificat. Pe Aave, garanția luată a fost alegerea lichidatorului ([ce garanție ia lichidatorul](/ro/blog/cum-functioneaza-lichidarea-pe-aave#ce-garantie-ia-lichidatorul)), așa că o poziție cu mai multe active de garanție poate să o fi pierdut pe cea la care te așteptai cel mai puțin. Pe Morpho, un `repaidAssets` mai mic decât te așteptai poate însemna că o [pre-lichidare (pre-liquidation)](/ro/blog/pre-lichidare-morpho) a rulat înaintea celei reale, la un loan-to-value (LTV) mai mic și cu un stimulent mai mic; aplicația și API-ul le arată pe amândouă.
+
+## Ce se întâmplă dacă lichidarea a luat tot?
+
+Dacă `badDebtAssets` este peste zero pe Morpho sau dacă evenimentul Aave te-a lăsat fără garanție în timp ce datoria a rămas, garanția valora mai puțin decât datoria plus bonusul în momentul în care cineva a lichidat-o. Ambele protocoale închid poziția în loc să te urmărească:
+
+- **Aave** (de la V3.3) arde datoria rămasă și o înregistrează ca deficit pe acea rezervă, pe care stakerii Umbrella îl pot acoperi ulterior. Rămâi fără garanție și fără datorie ([poate o lichidare să lase datorie neacoperită (bad debt)](/ro/blog/cum-functioneaza-lichidarea-pe-aave#poate-o-lichidare-sa-lase-datorie-neacoperita)).
+- **Morpho Blue** trece datoria rămasă pe pierdere în aceeași tranzacție și împarte pierderea între creditorii din acea piață. Debitorul rămâne fără garanție și fără datorie ([ce se întâmplă cu datoria neacoperită pe Morpho Blue](/ro/blog/cum-functioneaza-lichidarea-pe-morpho#ce-se-intampla-cu-datoria-neacoperita-pe-morpho-blue)).
+
+Nimeni nu va veni după tine pentru diferență și nu rămâne nimic pe poziție. Dar nici nu îți mai rămâne nimic, iar pierderea ta este toată garanția, nu doar un bonus. Datoria neacoperită a fost rară în luna exemplelor: zero în cele 393 de lichidări din piața cbBTC de pe Base în cele trei zile din jurul crash-ului, aproximativ 3,5 milioane USD în toate cele 7.521 de lichidări Morpho din cele 30 de zile până la 30 octombrie.
+
+## De ce s-a întâmplat?
+
+Cele două exemple au o cauză comună: nicio marjă de siguranță. Cu un bloc înainte de lichidarea pe Aave, health factor-ul acelui debitor era 1,0049; următoarea actualizare Chainlink a mutat WETH de la aproximativ 2.229,77 la 2.216,31 USD, cu 0,6% mai jos, iar health factor-ul a ajuns la 0,9988. Cu un bloc înainte de lichidarea pe Morpho, health factor-ul debitorului de pe Base era 1,0025; oracolul a mutat cbBTC de la 77.140,46 la 76.897,38 USDC, cu 0,3% mai jos, iar acesta a ajuns la 0,9993. Niciunul nu a avut nevoie de un crash. A fost suficientă o singură actualizare obișnuită de preț, iar în cazul Morpho la 00:22 UTC, în intervalul de șase ore în care au loc [peste o treime din lichidările Morpho](/ro/blog/cine-are-nevoie-de-alerte-health-factor#cat-de-des-sunt-lichidati-debitorii).
+
+Dacă health factor-ul tău nu era atât de aproape, altceva l-a mișcat. [De ce a scăzut health factor-ul tău](/ro/blog/de-ce-a-scazut-health-factor-aave) enumeră șase cauze, cu un mod de a o verifica pe fiecare: prețul garanției tale a scăzut, prețul a ceea ce ai împrumutat a crescut, dobânda la datorie a depășit randamentul garanției, guvernanța a redus un prag de lichidare, un stablecoin pe care l-ai depus a suferit un depeg (pierderea parității cu dolarul) sau un oracol a evaluat greșit un wrapper. Versiunea pentru Morpho este aceeași listă fără reducerea pragului, pentru că LTV-ul de lichidare (LLTV) al unei piețe Morpho nu se schimbă niciodată ([ce mișcă un health factor pe Morpho](/ro/blog/health-factor-morpho-explicat#ce-misca-un-health-factor-pe-morpho)). Două cazuri sunt ușor de trecut cu vederea: un împrumut [Midnight](/ro/blog/imprumuturi-cu-dobanda-fixa-morpho-midnight) trecut de scadență poate fi lichidat la orice health factor, iar un împrumut garantat cu [acțiuni tokenizate](/ro/blog/actiuni-tokenizate-ca-garantie) poate fi lichidat la un preț de duminică seara care s-a mișcat în timp ce feed-ul era întrerupt.
+
+## Ce ar trebui să faci în prima oră?
+
+1. **Citește poziția rămasă înainte să o atingi.** Health factor-ul, datoria rămasă, garanția rămasă, în [panoul Aave](/ro/aave) sau în [panoul Morpho](/ro/morpho), în aplicația protocolului sau pe explorer. O lichidare parțială pe Aave lasă o poziție în jur de 1,1, pe care următoarea mișcare de 10% o lichidează din nou.
+2. **Decide dacă închizi sau păstrezi.** Dacă nu mai vrei împrumutul, rambursează restul și retrage garanția; pe Aave poți rambursa cu garanția însăși ([rambursarea cu garanția](/ro/blog/cum-eviti-lichidarea-pe-aave#pasul-4-ramburseaza-cu-garantia-sau-schimba-garantia)). Dacă îl păstrezi, rambursează sau adaugă garanție până când health factor-ul ajunge unde îl vrei, nu unde era. [Rambursarea ridică health factor-ul mai mult pe fiecare dolar decât adăugarea de garanție](/ro/blog/cum-eviti-lichidarea-pe-aave#de-ce-rambursarea-creste-health-factor-ul-mai-mult-decat-adaugarea-de-garantie).
+3. **Nu te împrumuta din nou până la limită.** Poziția care tocmai a fost lichidată la 1,005 va fi lichidată din nou la 1,005. Dacă te împrumuți din nou până la același LTV, ceasul pornește iar.
+4. **Verifică-ți celelalte poziții.** Fiecare piață Aave, fiecare Spoke V4 și fiecare piață Morpho are propriul health factor, iar aceeași mișcare de preț care a lichidat una le-a scăzut pe celelalte.
+5. **Pe Aave, verifică dacă o rezervă este înghețată.** Când Aave a înghețat toate piețele DAO pe 29 octombrie 2026, adăugarea de garanție într-o rezervă înghețată era imposibilă, iar rambursarea era singura cale de a urca ([de ce eșuează o retragere sau un împrumut](/ro/blog/de-ce-nu-poti-retrage-sau-imprumuta-pe-aave)).
+6. **Pe Morpho, verifică pre-lichidarea.** Dacă ai autorizat un contract de pre-lichidare, este încă autorizat; [verifică-l și revocă-l](/ro/blog/pre-lichidare-morpho#cum-verifici-daca-ai-autorizat-un-astfel-de-contract) dacă nu îl mai vrei.
+7. **Salvează înregistrarea.** Hash-ul tranzacției, cele două sume, data, prețurile oracolului dacă le poți citi. Explorerele păstrează datele, dar nu vei vrea să le cauți în aprilie.
+
+## Cum eviți o a doua lichidare?
+
+Dintre cei 5.703 debitori Morpho lichidați în cele 30 de zile până la 30 octombrie 2026, 932 au fost lichidați de mai multe ori. Debitorul de pe Base de mai sus a fost unul dintre ei: un împrumut garantat cu cbBTC lichidat pe 3 iunie, un împrumut garantat cu cbZEC pe 14 octombrie și din nou împrumutul cu cbBTC pe 30 octombrie. Fiecare lichidare a costat un bonus și niciuna nu a dus la o schimbare. Schimbarea înseamnă trei decizii:
+
+- **O marjă de siguranță.** Un health factor de 1,005 nu rezistă la nimic. [Cât pot scădea prețurile la fiecare health factor](/ro/blog/health-factor-sigur-aave#cat-pot-scadea-preturile-inainte-de-lichidare-la-fiecare-health-factor) dă tabelul: 1,5 rezistă la o scădere de 33,3%, 2 rezistă la 50%. Numărul pe care îl alegi depinde de ce ai împrumutat și cu ce garanție; [metoda pas cu pas](/ro/blog/health-factor-sigur-aave#cum-alegi-un-prag-de-alerta-pas-cu-pas) o explică, iar [versiunea pentru Morpho](/ro/blog/health-factor-morpho-explicat#cum-alegi-o-rezerva-si-un-prag-de-alerta) ține cont de LLTV-ul fix.
+- **O alertă deasupra marjei.** Un mesaj când health factor-ul trece de o linie aleasă de tine, suficient de devreme ca să acționezi. Tokenping verifică la fiecare 5 minute și îți trimite un mesaj pe Signal, Telegram sau prin e-mail; pragul poate fi oriunde între 1,1 și 10 pe Aave și între 1,02 și 10 pe Morpho. [Configurarea unei alerte](/ro/blog/configurare-alerta-health-factor-aave) durează câteva minute. O alertă nu poate prinde un salt între două verificări și nu poate rambursa nimic în locul tău, de aceea vine după marjă, nu în locul ei.
+- **Fonduri cu care poți acționa.** Fonduri pentru rambursare pe rețeaua pe care te-ai împrumutat, în activul pe care îl datorezi sau într-unul pe care îl poți schimba noaptea, și un telefon care lasă mesajul să treacă ([alertele în modul Nu deranja](/ro/blog/alerte-aave-in-modul-nu-deranja)). Lichidarea Morpho de mai sus a avut loc la 00:22 UTC; o alertă la 1,1 ar fi sosit cu ore mai devreme și doar fonduri aflate pe Base ar fi putut răspunde la ea.
+
+Dacă împrumutul era atât de mic încât nu ai fi mutat fonduri ca să-l salvezi, concluzia onestă este alta: fie te împrumuți mai puțin cu acea garanție, fie accepți că bonusul este prețul faptului că nu urmărești poziția.
+
+## Unde se încadrează Tokenping
+
+Tokenping urmărește la fiecare 5 minute fiecare poziție pe care o configurezi, în fiecare piață Aave V3 de pe 21 de rețele, în fiecare Spoke Aave V4 și în fiecare piață Morpho listată de aplicația Morpho, și îți trimite un mesaj pe Signal, Telegram sau prin e-mail când health factor-ul este sub pragul tău. Mesajul se repetă la fiecare verificare până când poziția își revine, în oricare dintre limbile site-ului. După o lichidare, panourile arată ce a rămas: [panoul Aave](/ro/aave) cu health factor-ul fiecărei piețe, [panoul Morpho](/ro/morpho) cu LTV-ul, LLTV-ul și health factor-ul fiecărei piețe, calculate din datele de pe lanț.
+
+Îți poți vedea pozițiile fără să plătești. Alertele costă <AlertPrice />, câte una pentru fiecare piață Aave V3, Spoke V4 sau piață Morpho. Tokenping este în beta și nu are nicio garanție de uptime, iar nicio alertă nu previne o lichidare.
+
+## Surse
+
+- [Tranzacția Ethereum 0x5f88aa61…12fb6](https://etherscan.io/tx/0x5f88aa61ca6180e132a627c5e4d483c4098becc65359fa6af50551c405312fb6) (blocul 26305893): `LiquidationCall`, arderea aEthWETH și variableDebtEthUSDT, transferul taxei către collector; prețurile Aave Oracle și `getUserAccountData` la blocurile 26305892 și 26305893; `getReserveConfigurationData` și `getLiquidationProtocolFee` pentru WETH, citite printr-un RPC public (accesat la 31 octombrie 2026)
+- [Tranzacția Base 0xc2df272f…f0178](https://basescan.org/tx/0xc2df272f36d8b0b566c24988052c1508a4c90a97999b2da5a8c8ec7f8e3f0178) (blocul 53265200): cele 30 de evenimente `Liquidate`; `position` și `market` din Morpho Blue și `price()` al oracolului pieței la blocurile 53265199 și 53265200, citite printr-un RPC public (accesat la 31 octombrie 2026)
+- [API-ul Morpho](https://api.morpho.org/graphql): `marketTransactions` de tip Liquidation pentru piața cbBTC de pe Base între 28 și 31 octombrie 2026 și pentru adresa debitorului din exemplu; `markets` pentru LLTV-ul și oracolul pieței (accesat la 31 octombrie 2026)
+- [API-ul Morpho](https://api.morpho.org/graphql): toate lichidările de pe 30 septembrie 2026, ora 08:36 UTC, până pe 30 octombrie 2026, ora 08:36 UTC, ca în [ghidul despre alerte](/ro/blog/cine-are-nevoie-de-alerte-health-factor) (accesat la 30 octombrie 2026)
+- [Funcțiile Aave v3.3](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): datoria neacoperită arsă și înregistrată ca deficit al rezervei, regulile close factor, eliminarea deficitului de către Umbrella (accesat la 31 octombrie 2026)
+- [Liquidation on Morpho](https://docs.morpho.org/learn/concepts/liquidation): formula stimulentului, până la 100% într-un singur apel, nicio taxă de protocol (accesat la 31 octombrie 2026)
+
+_Conținut educațional, nu sfat financiar. Alertele reduc riscul, dar nu împiedică lichidarea._

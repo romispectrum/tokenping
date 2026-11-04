@@ -1,0 +1,133 @@
+export const meta = {
+  slug: "de-ce-nu-poti-retrage-sau-imprumuta-pe-aave",
+  title: "De ce nu pot retrage sau împrumuta pe Aave? 9 cauze",
+  description:
+    "De ce eșuează o retragere, un împrumut sau o rambursare pe Aave V3: health factor, lichiditate, plafoane de depunere și împrumut, rezerve înghețate.",
+  h1: "De ce eșuează retragerea, împrumutul sau rambursarea mea pe Aave?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "De ce eșuează o tranzacție de retragere, împrumut sau rambursare pe Aave?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  O tranzacție Aave V3 eșuează când una dintre verificările contractului Pool o respinge, iar motivul este aproape
+  întotdeauna unul din nouă. Retragerea ți-ar duce health factor-ul (factorul de sănătate) sub 1. Rezerva are mai puțină
+  lichiditate neîmprumutată decât ceri. Plafonul de depunere sau plafonul de împrumut al activului este plin. Rezerva
+  este înghețată (fără depuneri și împrumuturi noi) sau suspendată (nimic, nici măcar rambursări). Activul nu poate fi
+  împrumutat sau nu poate fi împrumutat în categoria ta E-Mode. Ai o garanție cu un LTV de 0, care trebuie să iasă
+  prima. Sau o rambursare indică o datorie pe care nu o ai ori tokenuri pe care nu le-ai aprobat. Pe Ethereum Core, pe
+  29 octombrie 2026, 35 din cele 66 de rezerve listate erau înghețate, plafonul de depunere al LBTC era plin până la
+  ultimii 0,07 LBTC și doar 134,4 milioane din cei 2.347,5 milioane de USDC depuși erau disponibili pentru retragere.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Cifrele și numerele de bloc la care au fost citite: content/blog/snapshots/why-aave-withdraw-or-borrow-fails.md */}
+
+## Ce verificări trebuie să treacă o tranzacție Aave?
+
+Fiecare depunere, retragere, împrumut și rambursare pe Aave V3 trece prin contractul Pool, iar Pool-ul rulează o listă de verificări dintr-o bibliotecă numită `ValidationLogic` înainte să miște vreun token. Fiecare verificare care eșuează oprește întreaga tranzacție cu o eroare care are un nume: `ReserveFrozen`, `SupplyCapExceeded`, `HealthFactorLowerThanLiquidationThreshold` și așa mai departe. Portofelul tău arată de obicei doar „execution reverted” (execuția a fost anulată) și un cod hex scurt, pentru că numele se află în codul Aave, nu în portofel. Aplicația Aave verifică cele mai multe dintre ele înainte să semnezi, motiv pentru care deseori refuză înainte să vezi vreo tranzacție.
+
+Verificările diferă în funcție de acțiune. O retragere are nevoie de o rezervă activă și nesuspendată, de un sold cel puțin egal cu suma și, dacă ai vreo datorie și activul contează ca garanție, de un health factor care rămâne după aceea la 1 sau peste. Un împrumut are nevoie de o rezervă activă, nesuspendată și neînghețată în care împrumutul este activat, de spațiu sub plafonul de împrumut și de suficientă garanție la LTV-ul tău. O depunere are nevoie de o rezervă neînghețată cu spațiu sub plafonul de depunere. O rambursare are nevoie doar de o rezervă activă și nesuspendată și de o datorie în acel activ. Cele nouă cauze de mai jos urmează această listă, aproximativ în ordinea în care e probabil să le întâlnești.
+
+Acest ghid acoperă Aave V3. Spoke-urile Aave V4 își păstrează propria configurație, iar Morpho nu are niciunul dintre aceste mecanisme, cu excepția oracolului și a health factor-ului: o piață Morpho nu are plafoane, nu poate fi înghețată și nu poate fi suspendată.
+
+## 1. Retragerea ți-ar lăsa health factor-ul sub 1
+
+Aceasta este cauza pe care o întâlnesc cel mai des debitorii. Când retragi un activ pe care îl folosești ca garanție în timp ce ai datorie, Pool-ul îți recalculează contul după retragere și cere un health factor de cel puțin 1 (`HealthFactorLowerThanLiquidationThreshold`). Aceeași verificare rulează când dezactivezi un activ ca garanție sau transferi aTokens la altă adresă. Nu rulează când nu ai datorie, motiv pentru care soldul întreg poate fi retras oricând dintr-o poziție care are doar depuneri.
+
+Ia 10 WETH pe Ethereum Core la prețul oracolului de 2.309,84 $ din 29 octombrie 2026 (23.098,41 $), un prag de lichidare (liquidation threshold) de 84% și o datorie de 12.000 USDC. [Health factor-ul](/ro/blog/health-factor-aave-explicat) este 23.098,41 × 0,84 ÷ 12.000 = 1,617. Ca să-l menții la exact 1 ai nevoie de 12.000 ÷ 0,84 = 14.285,71 $ în WETH, adică 6,185 WETH, deci poți retrage cel mult 3,815 WETH. Cere 4 și tranzacția este anulată; cere 3,815 și trece, lăsând o poziție pe care următoarea mică scădere de preț o face lichidabilă. Maximul din aplicația Aave este acest număr, iar retragerea lui integrală este cea mai rapidă cale de a transforma o poziție sigură într-una care are nevoie de o [alertă de lichidare](/ro/blog/configurare-alerta-health-factor-aave) în următoarea oră.
+
+Împrumutul are o regulă înrudită mai strictă. Un împrumut nou trebuie să lase health factor-ul la 1 sau peste și trebuie, în plus, să încapă sub LTV-ul tău ponderat: garanția × LTV trebuie să acopere datoria (`CollateralCannotCoverNewBorrow`). Cu WETH la un LTV de 81%, cei 10 WETH de mai sus susțin cel mult 18.709,71 $ de datorie, iar poziția care împrumută toată această sumă pornește de la un health factor de 84 ÷ 81 = 1,037. [Ce înseamnă un health factor sigur](/ro/blog/health-factor-sigur-aave) explică de ce acesta este un punct de plecare fragil.
+
+## 2. Rezerva are mai puțină lichiditate neîmprumutată decât vrei
+
+Aave împrumută mai departe ce depun deponenții, așa că o rezervă păstrează doar partea pe care n-a împrumutat-o nimeni. O retragere, sau un împrumut, mai mare decât acea parte eșuează, iar acest caz nu are un nume de eroare Aave: aToken-ul încearcă să transfere în afară tokenul de bază, iar contractul tokenului însuși anulează tranzacția, pentru USDC cu „ERC20: transfer amount exceeds balance” (suma transferului depășește soldul). Verificarea împrumutului cere doar ca întreaga ofertă de aTokens să fie cel puțin egală cu suma, ceea ce prinde cererile absurde și nimic altceva.
+
+Pe Ethereum Core, pe 29 octombrie 2026, erau depuși 2.347.525.372,91 USDC, erau împrumutați 2.213.199.103,54 USDC, iar contractul aToken deținea 134.360.379,94 USDC: un grad de utilizare de 94,28%, cu 5,72% din depuneri disponibili pentru retragere sau împrumut. Un deponent care voia să plece cu 200 de milioane de USDC nu putea, și nimeni nu putea până când cineva nu rambursa sau nu depunea. Ghidul despre [cum funcționează dobânzile Aave](/ro/blog/dobanzile-aave) arată cum arată asta în practică: pe 14 octombrie 2026, o singură retragere de 133.898.000 USDC a împins aceeași rezervă la un grad de utilizare de 99,50%, iar rata de împrumut de la 4,50% la 13,67% într-un singur bloc.
+
+Patru lucruri funcționează când problema este lichiditatea. Retrage o sumă mai mică, până la cât deține contractul. Așteaptă: curba dobânzii este gândită să atragă lichiditatea înapoi, iar vârful din 14 octombrie s-a încheiat în aproximativ 36 de minute, deși nimic nu garantează asta. Retrage un alt activ de garanție, dacă ai unul și health factor-ul permite. Iar dacă încerci să rambursezi o datorie în USDC, dar deții aUSDC, folosește `repayWithATokens`: îți arde aTokens în contul datoriei fără să miște niciun USDC, deci nu are nevoie deloc de lichiditate.
+
+## 3. Plafonul de depunere este plin
+
+Fiecare rezervă are un plafon de depunere (supply cap), stabilit de risk stewards ai Aave și de guvernanță, iar o depunere care ar împinge totalul peste el eșuează cu `SupplyCapExceeded`. Un plafon de 0 înseamnă fără plafon. Plafonul numără aTokens existenți plus dobânda acumulată pentru trezorerie, așa că se umple singur pe măsură ce se acumulează dobânda, fără ca cineva să depună.
+
+Plafoanele blochează mai des decât se crede. Pe 29 octombrie 2026, plafonul LBTC de pe Ethereum Core era de 2.690 LBTC, față de 2.689,93 depuși: spațiul rămas era de 0,07 LBTC, iar un debitor care voia să adauge 1 LBTC la o poziție sub presiune nu putea. sUSDe era la 96,9% din plafon, tBTC la 98,9%, USDe la 91,7%, weETH la 91,2% și WBTC la 89,4%. Plafoanele se mișcă în ambele direcții. Pe 10 iulie 2026, LlamaRisk a redus plafonul de depunere USDm pe instanța Aave de pe MegaETH de la 1.000.000.000 la 300.000.000, pentru că plafonul era „well above current demand” (cu mult peste cererea actuală); stewards ridică plafoanele când apare cererea, de obicei în câteva zile.
+
+Pentru un debitor, plafonul contează ca o ușă închisă: adăugarea de garanție este una dintre cele două căi de a ridica un health factor, iar un plafon plin o elimină pentru acel activ. Rambursarea datoriei funcționează în continuare, iar ea este cealaltă cale, la fel și adăugarea unui alt activ de garanție al cărui plafon mai are spațiu.
+
+## 4. Plafonul de împrumut este plin
+
+Plafoanele de împrumut (borrow caps) funcționează la fel pentru datorie: datoria variabilă totală a rezervei după împrumutul tău nu trebuie să depășească plafonul (`BorrowCapExceeded`), iar 0 înseamnă fără plafon. Verificarea rulează la fiecare împrumut, așa că un plafon deja depășit oprește orice împrumut nou din acel activ până când cineva rambursează. Un plafon de împrumut plin nu oprește nimic altceva: rambursările, retragerile și lichidările trec.
+
+tBTC pe Ethereum Core este cazul extrem: pe 29 octombrie 2026 împrumutul era activat, dar plafonul era de 1 tBTC și erau deja împrumutați 2,57 tBTC, așa că și cel mai mic împrumut era anulat. USDC avea 2.213,2 milioane împrumutați față de un plafon de 2.700 de milioane, 82,0% folosit, cu 486,8 milioane spațiu liber; USDT era la 80,8%. Când plafoanele stablecoinurilor se umplu, un împrumut eșuează chiar dacă rezerva mai poate avea lichiditate din belșug.
+
+## 5. Rezerva este înghețată
+
+O rezervă înghețată (frozen) nu acceptă nicio depunere nouă și niciun împrumut nou (`ReserveFrozen` în ambele cazuri). Documentația Pool Configurator a Aave listează ce funcționează în continuare: rambursările, lichidările și retragerile. Înghețarea este felul în care guvernanța închide treptat un activ fără să blocheze pe nimeni; [ce se întâmplă când Aave închide o piață](/ro/blog/inchiderea-unei-piete-aave) trece prin pași.
+
+Rezervele înghețate nu sunt rare. Pe 29 octombrie 2026, 35 din cele 66 de rezerve de pe Ethereum Core erau înghețate: CRV, MKR, UNI, LUSD, FRAX, sDAI, crvUSD, FBTC și o listă lungă de tokenuri Pendle PT trecute de scadență, aproape toate având și plafoane de depunere și de împrumut de 1. Dacă mai ai garanție într-una dintre ele, o poți retrage și poți fi lichidat din ea, dar nu poți adăuga la ea.
+
+## 6. Rezerva este suspendată
+
+Suspendarea (pause) este butonul de urgență. O rezervă suspendată respinge totul: depunere, împrumut, rambursare, retragere, lichidare și transferuri de aTokens (`ReservePaused`). Nicio rezervă de pe Ethereum Core nu era suspendată pe 29 octombrie 2026, iar în săptămânile obișnuite niciuna nu este.
+
+Suspendarea a fost folosită. Pe 4 noiembrie 2023, după un raport critic dintr-un program de bug bounty, Guardian-ul Aave a suspendat Aave V2 pe Ethereum și un set de active pe V3 Arbitrum, Avalanche, Optimism și Polygon. Timp de aproximativ o săptămână, nimeni nu a putut rambursa sau adăuga garanție în acele rezerve, în timp ce prețurile continuau să se miște. Instanțele V3 au fost reactivate pe 12 noiembrie 2023, V2 Ethereum pe 13 noiembrie, după o perioadă de grație pentru lichidare de aproximativ trei ore pentru debitorii de WETH, iar CRV pe V3 Polygon pe 16 noiembrie. Astăzi, această perioadă de grație face parte din protocol: o lichidare în timpul perioadei de grație a unei rezerve eșuează cu `LiquidationGraceSentinelCheckFailed`, ceea ce le dă debitorilor care au fost blocați o fereastră scurtă ca să ramburseze înainte să intervină lichidatorii.
+
+Dacă tranzacția ta eșuează cu o eroare de suspendare, nu ai nimic de făcut pe Aave până nu se ridică suspendarea. Folosește timpul ca să ai fondurile pentru rambursare pregătite pe rețeaua potrivită, pentru că perioada de grație de după reactivare este stabilită de guvernanță sau de Guardian și a fost și de doar trei ore.
+
+## 7. Împrumutul este dezactivat pentru acel activ sau nu este permis în categoria ta E-Mode
+
+Multe active pot fi depuse ca garanție, dar nu pot fi împrumutate. Pe Ethereum Core, pe 29 octombrie 2026, împrumutul era dezactivat pe 15 rezerve neînghețate, printre ele wstETH, cbETH, rETH, weETH, LBTC, eBTC, AAVE și XAUt, iar un împrumut din oricare dintre ele eșuează cu `BorrowingNotEnabled`. Indicatorul este setat de guvernanță pentru fiecare rezervă și se vede în aplicația Aave ca un buton de împrumut care lipsește.
+
+Dacă ești într-o [categorie E-Mode](/ro/blog/aave-e-mode-explicat), o altă regulă o înlocuiește pe aceasta: poți împrumuta doar activele din setul de active împrumutabile al categoriei, iar orice altceva eșuează cu `NotBorrowableInEMode`, chiar și un activ pe care l-ai putea împrumuta în afara categoriei. Categoria „ETH correlated” de pe Ethereum Core, de exemplu, te lasă să împrumuți WETH și nimic altceva. Ieșirea din categorie rezolvă împrumutul, dar ieșirea rulează propriile verificări: fiecare activ pe care îl datorezi trebuie să poată fi împrumutat în afara categoriei, iar health factor-ul tău trebuie să rămână la 1 sau peste cu pragurile normale, mai mici (`InvalidDebtInEmode`, `InvalidCollateralInEmode`, `HealthFactorLowerThanLiquidationThreshold`).
+
+## 8. Ai garanție cu un LTV de 0
+
+Guvernanța setează LTV-ul unui activ la 0 când vrea ca activul să nu mai susțină datorii noi, în timp ce pozițiile existente continuă. Pe 29 octombrie 2026, 11 rezerve neînghețate de pe Ethereum Core erau activate ca garanție cu un LTV de 0, printre ele DAI (prag de lichidare 77%), LINK, PYUSD, USDe, sUSDe, USDS, EURC și XAUt. Un astfel de activ contează în continuare în health factor-ul tău, prin pragul lui de lichidare, dar nu adaugă nimic la puterea ta de împrumut. De aici decurg două verificări.
+
+Prima privește împrumutul. Dacă fiecare garanție pe care ai activat-o are un LTV de 0, LTV-ul tău ponderat este 0 și orice împrumut eșuează cu `LtvValidationFailed`. Cu un amestec, de exemplu DAI și WETH, împrumutul trece, limitat doar de WETH.
+
+A doua privește retragerea și îi surprinde pe mulți. Dacă ai datorie și orice garanție activată cu un LTV de 0, atunci activul pe care îl retragi, îl transferi sau îl dezactivezi ca garanție trebuie să fie el însuși un activ cu LTV 0, altfel tranzacția eșuează cu același `LtvValidationFailed`. Comentariul din cod spune intenția: regula „ensures that a multi-collateral position needs to withdraw/transfer the ltv0 asset first” (asigură că o poziție cu mai multe garanții trebuie să retragă sau să transfere mai întâi activul cu LTV 0). Așa că un debitor care deține DAI și WETH și încearcă să scoată o parte din WETH este refuzat până când DAI-ul iese; verificarea health factor-ului se aplică în continuare retragerii de DAI. Soluția este ordinea operațiunilor: retrage mai întâi activul cu LTV 0 sau rambursează suficient încât health factor-ul să le permită pe amândouă.
+
+## 9. O rambursare indică o datorie pe care nu o ai sau tokenuri pe care nu le-ai aprobat
+
+Rambursările sunt acțiunea cea mai simplă și totuși eșuează, de obicei din unul din cinci motive.
+
+- **Nicio datorie de acel tip.** `NoDebtOfSelectedType` înseamnă că Pool-ul pe care l-ai apelat nu are nicio datorie variabilă din acel activ pentru acea adresă. Cauza obișnuită este piața greșită: Ethereum are instanțe separate Core, Prime și Lido, fiecare cu propriul Pool, iar același portofel poate datora USDC pe una și nimic pe alta. Piețele fiecărei rețele sunt și ele separate.
+- **Un mod de dobândă care nu mai există.** Este acceptat doar modul variabil (2); împrumutul cu dobândă stabilă a dispărut din cod, iar un apel cu modul 1 eșuează cu `InvalidInterestRateModeSelected`.
+- **Nicio aprobare.** Pool-ul preia rambursarea cu `transferFrom`, așa că tokenul are nevoie de o aprobare pentru cel puțin suma respectivă sau de un permit semnat. Fără ea, contractul tokenului anulează tranzacția înainte să ruleze verificările Aave.
+- **Rambursare pentru altcineva fără o sumă.** Rambursarea în numele altei adrese cu valoarea „toată datoria” (`type(uint256).max`) eșuează cu `NoExplicitAmountToRepayOnBehalf`; precizează suma.
+- **Resturi infime.** Dobânda se acumulează în fiecare secundă, așa că o rambursare a soldului exact pe care l-ai văzut acum un minut lasă câțiva wei de datorie. Ca să închizi complet o datorie, rambursează cu valoarea maximă, pe care Pool-ul o limitează la cât datorezi.
+
+## Cauze pe care nu mai trebuie să le cauți
+
+Două explicații vechi nu se mai aplică. Isolation Mode și plafoanele lui de datorie (debt ceilings) au fost eliminate în Aave V3.7, la fel și siloed borrowing, așa că astăzi niciun împrumut nu eșuează pentru că un activ este izolat sau pentru că a fost atins un plafon. Iar împrumutul cu dobândă stabilă a dispărut din V3.2, deci nimic nu eșuează la o schimbare a tipului de dobândă. Dacă un ghid mai vechi numește una dintre aceste cauze, descrie o versiune de Aave care nu mai este implementată.
+
+## Ce să faci când o tranzacție eșuează în timpul unei scăderi de preț
+
+O tranzacție eșuată este o neplăcere pe o piață liniștită și o problemă pe una în scădere, pentru că ora pe care o petreci ca să afli cauza este exact ora de care are nevoie health factor-ul tău. O ordine scurtă a operațiunilor:
+
+1. **Citește eroarea.** Simulează tranzacția în portofel sau lipește selectorul hex în decodorul unui block explorer; numele de mai sus îți spun în ce caz te afli.
+2. **Preferă rambursarea în locul adăugării de garanție.** Rambursarea funcționează și cu rezerve înghețate și plafoane de depunere pline, iar cu `repayWithATokens` funcționează și fără lichiditate. Adăugarea de garanție depinde de un plafon cu spațiu și de o rezervă neînghețată.
+3. **Încearcă sume mai mici.** Lichiditatea și plafoanele sunt cantități; o retragere sau un împrumut care încape trece, în timp ce suma întreagă eșuează.
+4. **Folosește alt activ.** O altă garanție de retras sau alt activ de rambursat este deseori disponibil când primul este blocat.
+5. **Verifică instanța și rețeaua.** O rambursare trimisă pentru activul corect, dar către Pool-ul greșit eșuează cu `NoDebtOfSelectedType` și te costă gas și timp.
+6. **Data viitoare, primește alerta mai devreme.** Fiecare dintre aceste cazuri cere câteva minute ca să-l ocolești. O alertă de health factor setată cu o marjă suficientă îți câștigă acele minute.
+
+Tokenping îți verifică health factor-ul Aave la fiecare 5 minute, pe fiecare piață Aave V3 de pe 21 de rețele și în fiecare Spoke Aave V4, și îți trimite un mesaj pe Signal, Telegram sau e-mail când este sub un prag ales de tine (între 1,1 și 10), repetat la fiecare verificare până când își revine. Citește numărul din `getUserAccountData`, același pe care îl folosește verificarea retragerii. O alertă nu poate acționa în locul tău și nimic din acest ghid nu împiedică lichidarea; îți spune care ușă este închisă, ca să o încerci mai întâi pe cea deschisă. Poți [verifica health factor-ul Aave V3](/ro/aave) fără să plătești; alertele costă <AlertPrice />, câte una pentru fiecare piață sau Spoke. [Cum eviți lichidarea pe Aave](/ro/blog/cum-eviti-lichidarea-pe-aave) tratează în detaliu alegerea între rambursare și adăugare de garanție, iar [de ce a scăzut health factor-ul tău](/ro/blog/de-ce-a-scazut-health-factor-aave), cauzele la care reacționezi.
+
+## Surse
+
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol), [BorrowLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/BorrowLogic.sol) și [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): fiecare verificare numită mai sus, ordinea în care rulează, comentariul despre LTV 0 și indicatorul pentru LTV zero (aave-v3-origin main, accesat la 29 octombrie 2026)
+- [Errors.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/helpers/Errors.sol): numele erorilor și descrierile lor (aave-v3-origin main, accesat la 29 octombrie 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getAllReservesTokens` și, pentru fiecare rezervă, `getReserveConfigurationData`, `getReserveCaps`, `getPaused` și `getReserveData`, la blocul 26296985 (accesat la 29 octombrie 2026)
+- [aEthUSDC](https://etherscan.io/address/0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c): USDC deținuți de contractul aToken la blocul 26296985 (accesat la 29 octombrie 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): prețurile WETH și USDC la blocul 26296985 (accesat la 29 octombrie 2026)
+- [Documentația Aave: Pool Configurator](https://aave.com/docs/aave-v3/smart-contracts/pool-configurator): ce permit rezervele înghețate și cele suspendate, plafoanele de 0 (accesat la 29 octombrie 2026)
+- [Aave v2/v3 security incident 04/11/2023](https://governance.aave.com/t/aave-v2-v3-security-incident-04-11-2023/15335): suspendările din 4 noiembrie 2023, reactivările din 12, 13 și 16 noiembrie și perioada de grație (accesat la 29 octombrie 2026)
+- [Aave V3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): eliminarea împrumutului cu dobândă stabilă (accesat la 29 octombrie 2026)
+- [Aave V3.7: isolation mode and siloed borrowing removal](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/mode-removal.md) (accesat la 29 octombrie 2026)
+- [Risk Stewards: Supply and Borrow Cap Reductions on Aave V3 / 2026.07.10](https://governance.aave.com/t/risk-stewards-supply-and-borrow-cap-reductions-on-aave-v3-2026-07-10/25296): reducerile de plafoane făcute de LlamaRisk pe MegaETH, executate pe 14 iulie 2026 (accesat la 29 octombrie 2026)
+
+_Conținut educațional, nu sfat financiar. Alertele reduc riscul, dar nu împiedică lichidarea._

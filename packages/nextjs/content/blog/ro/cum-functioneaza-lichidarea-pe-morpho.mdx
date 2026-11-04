@@ -1,0 +1,184 @@
+export const meta = {
+  slug: "cum-functioneaza-lichidarea-pe-morpho",
+  title: "Lichidarea pe Morpho: stimulentul și datoria neacoperită",
+  description:
+    "Când e lichidat un împrumut Morpho, cât poate lua un lichidator, stimulentul la fiecare LLTV, datoria neacoperită, oracolele și diferențele Midnight.",
+  h1: "Ce se întâmplă când poziția ta pe Morpho este lichidată?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Cum funcționează lichidarea pe Morpho și cât îl costă pe debitor?",
+  readingMinutes: 13,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  O poziție Morpho Blue poate fi lichidată când raportul loan-to-value (LTV) depășește LTV-ul de lichidare (LLTV) al
+  pieței, ceea ce echivalează cu un health factor (factor de sănătate) sub 1. Din acel moment, oricine îți poate
+  rambursa o parte sau toată datoria într-o singură tranzacție și poate lua garanție în valoare de suma rambursată
+  înmulțită cu factorul stimulentului de lichidare al pieței, la prețul dat de oracolul (sursa de preț) pieței.
+  Stimulentul rezultă doar din LLTV: 4,38% la un LLTV de 86%, și merge integral la lichidator. Păstrezi ce ai
+  împrumutat, așa că stimulentul este ce te costă lichidarea, cu excepția cazului în care garanția nu mai acoperă
+  datoria; atunci o pierzi în întregime, iar creditorii pieței absorb restul ca datorie neacoperită (bad debt).
+  Împrumuturile cu dobândă fixă de pe Morpho Midnight adaugă două particularități: înainte de scadență, o lichidare
+  poate lua doar cât readuce poziția la sănătate, cu excepția cazului în care garanția rămasă ar rambursa mai puțin
+  decât pragul pieței, iar după scadență orice datorie rămasă poate fi lichidată, chiar și pe o poziție sănătoasă.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Cifrele și numerele de bloc la care au fost citite: content/blog/snapshots/how-morpho-liquidation-works.md */}
+
+## Când poate fi lichidată o poziție pe Morpho?
+
+O poziție Morpho Blue poate fi lichidată de îndată ce datoria ta este mai mare decât valoarea garanției înmulțită cu LLTV-ul pieței. În termeni de health factor, asta înseamnă orice valoare sub 1,00 ([cum se calculează health factor-ul pe Morpho](/ro/blog/health-factor-morpho-explicat) are formula și exemple).
+
+Contractul verifică asta singur. Funcția `liquidate` din Morpho Blue adaugă mai întâi dobânda datorată până la acel bloc, apoi citește o singură dată oracolul pieței, apoi anulează tranzacția (revert) dacă poziția nu este nesănătoasă. O poziție aflată exact la LLTV este încă sănătoasă; trebuie să fie peste el.
+
+Doar două lucruri pot împinge o poziție peste linie:
+
+- **Prețul garanției scade** față de tokenul împrumutat, așa cum îl raportează oracolul.
+- **Datoria ta crește** pe măsură ce se acumulează dobânda la un împrumut Blue cu dobândă variabilă.
+
+Fiecare piață Blue își fixează LLTV-ul și oracolul la creare și niciunul dintre ele nu se mai poate schimba după aceea. Contractul Morpho Blue nu are nici suspendare, nici înghețare, nici perioadă de grație: Morpho nu poate opri lichidările într-o piață și nici nu te poate împiedica să rambursezi. Emitentul unui token poate totuși suspenda sau bloca transferurile acelui token, ceea ce le-ar opri pe amândouă.
+
+## Cine lichidează o poziție pe Morpho și cum?
+
+Oricine. `liquidate` nu restricționează apelantul, iar Morpho însuși nu lichidează poziții. Lichidatorii merg de la echipe care rulează boți ce urmăresc pozițiile și prețurile oracolelor până la persoane fizice; documentația Morpho notează că e nevoie doar de un nod RPC și de un portofel cu suficient din tokenul împrumutat.
+
+Primul venit, primul servit. Nu există licitație, așa că lichidatorii concurează la viteză, iar cursele pe gaz și MEV (ordonarea tranzacțiilor pentru profit) fac parte din joc. Contractul îi trimite lichidatorului garanția confiscată înainte să încaseze tokenii împrumutați, ceea ce îi permite unui bot să vândă garanția în aceeași tranzacție și să ramburseze din încasări.
+
+Lichidările nu sunt garantate; au loc pentru că stimulentul merită. În practică sunt de rutină: API-ul Morpho numără 14.024 de lichidări doar în piața USDC | cbBTC (86%) de pe Base.
+
+## Cât din datoria ta poate fi lichidat dintr-o dată?
+
+Toată. Morpho Blue nu are close factor (partea din datorie care poate fi rambursată dintr-o dată) și nici dimensiune minimă: un lichidator poate rambursa orice sumă din datoria ta, de la o felie mică până la întreaga datorie, într-un singur apel. Singurele limite sunt că nu poate rambursa mai mult decât datorezi și nu poate confisca mai multă garanție decât ai.
+
+Aceasta este cea mai mare diferență față de Aave V3, care limitează o lichidare la 50% din datorie cât timp health factor-ul este peste 0,95 și poziția nu este mică ([cât dintr-o datorie Aave poate fi lichidat dintr-o dată](/ro/blog/cum-functioneaza-lichidarea-pe-aave#ce-parte-din-datoria-mea-poate-fi-lichidata-dintr-o-data)). Pe Blue, o poziție care trece puțin de LLTV poate fi închisă complet de primul lichidator care ajunge.
+
+## Cât de mare este stimulentul de lichidare la fiecare LLTV?
+
+Factorul stimulentului de lichidare (liquidation incentive factor, LIF) este stabilit printr-o formulă din contract, pe baza LLTV-ului pieței:
+
+**LIF = min(1,15; 1 ÷ (1 − 0,3 × (1 − LLTV)))**
+
+Lichidatorul îți rambursează o parte din datorie și primește garanție în valoare de acea sumă înmulțită cu LIF, la prețul oracolului. Partea de peste 1 este stimulentul, plătit din garanția ta. Morpho nu ia nicio parte din el.
+
+O piață poate folosi doar un LLTV pe care guvernanța Morpho l-a activat. Pe 26 octombrie 2026 acestea erau valorile activate, iar fiecare piață Blue din API-ul Morpho folosește una dintre ele. Cu propria aritmetică pe numere întregi a contractului:
+
+| LLTV  | Factorul stimulentului de lichidare | Garanția pe care o pierzi la 1.000 de datorie rambursată | Din care stimulentul |
+| ----- | ----------------------------------- | -------------------------------------------------------- | -------------------- |
+| 38,5% | 1,1500 (plafonat)                   | 1.150,00                                                 | 150,00               |
+| 62,5% | 1,1268                              | 1.126,76                                                 | 126,76               |
+| 77%   | 1,0741                              | 1.074,11                                                 | 74,11                |
+| 86%   | 1,0438                              | 1.043,84                                                 | 43,84                |
+| 91,5% | 1,0262                              | 1.026,17                                                 | 26,17                |
+| 94,5% | 1,0168                              | 1.016,78                                                 | 16,78                |
+| 96,5% | 1,0106                              | 1.010,61                                                 | 10,61                |
+| 98%   | 1,0060                              | 1.006,04                                                 | 6,04                 |
+
+Un LLTV de 0 este și el activat, dar într-o astfel de piață nu se poate împrumuta nimic. Cu cât LLTV-ul este mai mare, cu atât stimulentul este mai mic; documentația Morpho explică asta ca pe o protecție împotriva lichidărilor în cascadă în piețele mai riscante. Tot ea rotunjește valoarea pentru 86% la „approximately 1.05” (aproximativ 1,05); valoarea exactă este 1,0438.
+
+## Exemplu calculat: 1 cbBTC contra 50.000 USDC pe Base
+
+Să luăm cea mai mare piață Blue listată după suma împrumutată pe Ethereum și Base: USDC | cbBTC (86%) pe Base, cu aproximativ 1,61 miliarde USDC împrumutați. Pe 26 octombrie 2026, oracolul ei evalua 1 cbBTC la 80.000,15 USDC (blocul Base 53102870). Poziția este inventată: 1 cbBTC ca garanție și 50.000 USDC datorie.
+
+- **LTV:** 50.000 ÷ 80.000,15 = 62,5%.
+- **Health factor:** 80.000,15 × 0,86 ÷ 50.000 = 1,376.
+- **Preț de lichidare:** 50.000 ÷ 0,86 = 58.139,53 USDC per cbBTC, cu 27,3% sub prețul oracolului.
+
+Dobânda este motorul lent. La rata dobânzii la împrumut a pieței, de aproximativ 5,2% pe an pe 26 octombrie 2026, și dacă rata ar rămâne aceeași, doar dobânda ar avea nevoie de peste șase ani ca să ducă această poziție de la 62,5% la 86% LTV. Prețul este motorul rapid.
+
+Pentru comparație, în cele mai mari 11.000 de poziții de împrumut din această piață, care dețin 96% din datoria ei, jumătate din USDC-ul împrumutat se afla în poziții sub aproximativ 54% LTV, adică un health factor peste aproximativ 1,59. Acesta este calculul Tokenping pe baza API-ului Morpho și a prețului de pe blockchain, nu o cifră Morpho.
+
+### Lichidare completă la 58.139,53
+
+Imediat după prețul de lichidare, un lichidator poate rambursa toți cei 50.000 USDC și poate lua 50.000 × 1,0438 ÷ 58.139,53 = 0,8977 cbBTC, în valoare de 52.192,07 USDC. Păstrezi cei 50.000 USDC împrumutați și 0,1023 cbBTC (5.947,47 USDC) și nu mai datorezi nimic. Lichidarea te-a costat 2.192,07 USDC față de situația în care ai fi rambursat singur: 4,38% din datorie.
+
+### Lichidare parțială de 10.000 USDC
+
+Un lichidator se poate opri și la 10.000 USDC. Asta confiscă 0,1795 cbBTC (10.438,41 USDC) și lasă 0,8205 cbBTC contra 40.000 USDC: un LTV de 83,9% și un health factor de 1,026, din nou sănătos. Aici o felie ajută întotdeauna, pentru că LIF × LLTV = 0,898 este sub 1. Dar nimic nu obligă un lichidator să aleagă felia în locul întregii datorii.
+
+### Ce se întâmplă dacă nimeni nu lichidează până când cbBTC ajunge la 50.000?
+
+La 50.000 USDC, garanția ta valorează exact cât datoria, adică mai puțin decât datoria × LIF. Confiscarea întregului 1 cbBTC rambursează doar 50.000 ÷ 1,0438 = 47.900 USDC. Îți pierzi toată garanția, iar cei 2.100 USDC rămași sunt trecuți pe pierdere ca datorie neacoperită, pe care o absorb creditorii pieței.
+
+## Ce se întâmplă cu datoria neacoperită pe Morpho Blue?
+
+Când o lichidare lasă un debitor fără garanție, dar cu o parte din datorie, contractul trece acea datorie pe pierdere în aceeași tranzacție. Scade datoria rămasă din totalul împrumuturilor pieței și aceeași sumă din totalul depunerilor ei, așa că fiecare creditor din acea piață pierde proporțional cu partea lui. Creditorii din alte piețe nu sunt afectați, pentru că fiecare piață Blue este izolată.
+
+Datoria neacoperită devine posibilă când garanția valorează mai puțin decât datoria înmulțită cu LIF. Într-o piață de 86%, asta înseamnă orice LTV peste 95,8%, pe care o poziție îl poate atinge doar dacă prețul trece de LLTV înainte ca cineva s-o lichideze. Se întâmplă, deși rar în sume mari: API-ul Morpho înregistrează datorie neacoperită în 1.428 de lichidări Blue pe Ethereum și Base, cele mai multe sub 1 dolar american sau în piețe pe care aplicația Morpho nu le listează.
+
+Pentru debitor rezultatul este același în ambele cazuri: toată garanția s-a dus și nu mai rămâne nicio datorie. Pentru creditori depinde de felul în care împrumută: un Morpho Vault V2 transmite pierderea în prețul acțiunilor sale (share price), în timp ce vault-urile vechi V1.1 nu o transmit în al lor. Aave tratează situația altfel: din v3.3 înregistrează datoria rămasă ca deficit, pe care stakerii Umbrella îl pot acoperi ([datoria neacoperită pe Aave](/ro/blog/cum-functioneaza-lichidarea-pe-aave#poate-o-lichidare-sa-lase-datorie-neacoperita)).
+
+## Ce rol joacă oracolul într-o lichidare?
+
+Oracolul stabilește prețul pentru fiecare decizie de lichidare. Fiecare piață numește un oracol care întoarce prețul garanției în tokenul împrumutat, iar atât momentul în care o poziție devine lichidabilă, cât și cantitatea de garanție pe care o primește un lichidator folosesc acel preț, nu prețurile de pe exchange-uri. Morpho nu alege oracolele: le alege cine creează piața. Adresa oracolului unei piețe nu poate fi înlocuită niciodată, dar feed-urile de preț pe care le citește un oracol pot fi administrate de alții, care le pot actualiza. Feed-ul BTC/USD din exemplul de pe Base, de pildă, are un proprietar care îl poate îndrepta spre o sursă nouă.
+
+Contează ce măsoară un oracol. Oracolul pieței din exemplul de pe Base folosește un feed de preț BTC/USD pentru cbBTC și tratează USDC ca valorând exact 1 dolar american, așa că un depeg (pierderea parității) al oricăruia dintre cei doi tokeni nu l-ar mișca. Oracolul de referință al Morpho pentru feed-urile compatibile cu Chainlink nu verifică cât de vechi este un preț sau dacă se încadrează în limite și nu adaugă nicio verificare pentru căderile sequencer-ului pe L2.
+
+O problemă de oracol îi poate afecta pe debitori în două feluri:
+
+- **Un preț greșit sau manipulat.** Pagina de riscuri a Morpho avertizează că niciun oracol nu este imun la manipulare, iar aceasta poate provoca lichidări sau chiar datorie neacoperită.
+- **Un oracol care nu mai răspunde.** Împrumutul, retragerea garanției și lichidarea citesc toate oracolul și ar eșua. Rambursarea și adăugarea de garanție nu îl citesc, așa că îți poți îmbunătăți poziția în timp ce nimeni nu o poate lichida.
+
+## Prin ce diferă lichidările pe Morpho Midnight?
+
+Piețele Morpho Midnight împrumută un singur token cu dobândă fixă până la o dată de scadență stabilită, contra uneia sau mai multor garanții, fiecare cu propriul LLTV, propriul oracol și propriul cursor de lichidare (liquidation cursor: acel 0,3 din formula stimulentului de mai sus, pe care Midnight îl stabilește pentru fiecare garanție). Datoria ta este fixă în unități, așa că înainte de scadență doar prețurile garanțiilor îți mișcă health factor-ul. O poziție Midnight poate fi lichidată în două feluri:
+
+- **Pe baza sănătății, oricând,** cât timp datoria depășește suma valorilor fiecărei garanții înmulțite cu LLTV-ul ei. Stimulentul este bonusul complet al acelei garanții, iar o lichidare poate rambursa doar cât e nevoie ca poziția să redevină sănătoasă. Excepția: când garanția rămasă după o astfel de lichidare plafonată ar rambursa mai puțin decât rcfThreshold-ul pieței, acea garanție poate fi luată integral.
+- **După scadență**, dacă a rămas orice datorie, chiar și pe o poziție sănătoasă. Nu există plafon, iar stimulentul pornește de la zero și crește până la bonusul complet în 60 de minute.
+
+Lichidatorul alege ce garanție ia și nu există plafonul de 1,15; pe 26 octombrie 2026, fiecare piață Midnight listată folosea un cursor de 0,3, cu LLTV-uri ale garanțiilor între 62,5% și 98%, care dau aceleași stimulente ca tabelul de mai sus. Datoria neacoperită este împărțită între creditorii acelei piețe. [Cum funcționează împrumuturile cu dobândă fixă Midnight](/ro/blog/imprumuturi-cu-dobanda-fixa-morpho-midnight) acoperă scadența, pragurile piețelor reale și un exemplu calculat.
+
+## Ce este pre-lichidarea?
+
+Pre-lichidarea (pre-liquidation) este o funcție opțională pe Morpho Blue. Un debitor care a autorizat un contract de pre-lichidare pentru o piață le permite lichidatorilor să-l folosească, după ce LTV-ul trece de o linie stabilită sub LLTV, ca să ramburseze felii din datorie, apel după apel, cu un stimulent stabilit în acel contract, până când LTV-ul revine sub acea linie. Peste LLTV se aplică în continuare lichidarea normală.
+
+Piața din exemplul de pe Base are unul: de la 83,26% LTV poate rambursa până la 0,20% din datorie per apel (apelurile se pot repeta), proporție care crește până la 24,53% aproape de 86%, cu același stimulent de 1,0438. Acționează doar dacă l-ai autorizat. Morpho retrage funcția: aplicația nu mai acceptă poziții noi, iar centrul de ajutor le cere debitorilor care o au s-o dezactiveze. [Pre-lichidarea pe Morpho](/ro/blog/pre-lichidare-morpho) explică termenii și cum o verifici și o revoci.
+
+## Prin ce diferă lichidarea pe Morpho de cea pe Aave?
+
+Esența este aceeași: sub 1, un lichidator rambursează datorie și ia garanție plus un bonus. Regulile din jur diferă ([cum funcționează lichidarea pe Aave](/ro/blog/cum-functioneaza-lichidarea-pe-aave)):
+
+|                          | Aave V3                                                                  | Morpho Blue                                             | Morpho Midnight                                                                                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cât dintr-o dată         | 50% sau 100% din datorie, plus o regulă pentru sumele foarte mici (dust) | Până la toată datoria într-un singur apel               | Înainte de scadență, cât readuce poziția la sănătate (o garanție întreagă dacă ce rămâne ar rambursa mai puțin decât rcfThreshold); după scadență, toată datoria |
+| Bonus                    | Stabilit de guvernanță pentru fiecare activ de garanție                  | Fixat de LLTV-ul pieței                                 | Pentru fiecare garanție, din LLTV-ul și cursorul ei                                                                                                              |
+| Cine păstrează bonusul   | Lichidatorul, minus o taxă de protocol                                   | Lichidatorul, integral                                  | Lichidatorul                                                                                                                                                     |
+| Se pot schimba regulile? | Guvernanța și risk stewards le pot schimba                               | Nu, sunt fixate la crearea pieței                       | Fixate la crearea pieței                                                                                                                                         |
+| Suspendare               | Activele pot fi suspendate, cu o perioadă de grație                      | Fără suspendare                                         | Fără suspendare                                                                                                                                                  |
+| Datorie neacoperită      | Un deficit, pe care stakerii Umbrella îl pot acoperi                     | Trecută pe pierdere în contul creditorilor acelei piețe | Împărțită între creditorii acelei piețe                                                                                                                          |
+| Ce acoperă o poziție     | Mai multe active într-o singură poziție                                  | O garanție, un token împrumutat                         | Un token împrumutat, mai multe garanții                                                                                                                          |
+
+## Cum poți evita lichidarea pe Morpho?
+
+- **Păstrează o marjă sub LLTV.** O poziție care își revine înainte s-o lichideze cineva este din nou în siguranță, dar nimic nu împiedică prețul să scadă mai departe, iar primul lichidator care ajunge îți poate rambursa toată datoria dintr-o dată.
+- **Rambursează sau adaugă garanție din timp.** Ambele îți scad LTV-ul pe loc, nu costă niciun stimulent și funcționează chiar dacă oracolul cade.
+- **Cunoaște-ți oracolul.** Verifică ce oracol folosește piața ta și ce măsoară, înainte să te împrumuți.
+- **Pe Midnight, rambursează înainte de scadență.** După scadență, orice datorie rămasă poate fi lichidată, fie că poziția este sănătoasă, fie că nu.
+- **Verifică orice pre-lichidare veche.** Dacă ai activat cândva „Auto-deleverage” (pre-lichidarea), Morpho o retrage și le cere debitorilor s-o dezactiveze; [pre-lichidarea pe Morpho](/ro/blog/pre-lichidare-morpho) arată cum.
+
+## Cum te pot ajuta alertele?
+
+Tokenping verifică la fiecare 5 minute fiecare poziție de împrumut Morpho pentru care setezi o alertă, în piețele listate în aplicația Morpho: Morpho Blue pe 14 rețele și Morpho Midnight. Alertele Midnight acoperă piețele listate de API-ul Morpho. Pe 26 octombrie 2026 acestea erau pe Ethereum și Base; Tokenping acoperă și Arc și Robinhood Chain de îndată ce Morpho listează piețe Midnight acolo. Calculează fiecare health factor din datele de pe blockchain, cu propria matematică a Morpho, nu din API-ul Morpho. Cât timp un health factor este sub pragul setat de tine (între 1,02 și 10), fiecare verificare trimite un mesaj pe fiecare canal ales: Signal, Telegram sau e-mail. Dacă ai autorizat un contract de pre-lichidare pe o piață Blue, alerta măsoară față de cea mai joasă dintre cele două linii: LLTV-ul sau linia de pre-lichidare. Un împrumut Midnight primește și un memento în ultimele 7 zile și unul în ultimele 24 de ore înainte de scadență, apoi o alertă la fiecare verificare de după scadență, cât timp rămâne datorie.
+
+Îți poți [vedea pozițiile pe Morpho](/ro/morpho); asta nu necesită plată. Alertele costă <AlertPrice />. O alertă îți dă timp să acționezi, dar un preț poate trece de LLTV-ul tău între două verificări, iar o alertă nu împiedică lichidarea.
+
+## Surse
+
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) și [IMorpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/interfaces/IMorpho.sol), morpho-org/morpho-blue: verificarea sănătății, lichidarea, formula stimulentului, datoria neacoperită și ipotezele despre oracol (accesat la 26 octombrie 2026)
+- [Midnight.sol](https://github.com/morpho-org/midnight/blob/main/src/Midnight.sol) și [ConstantsLib.sol](https://github.com/morpho-org/midnight/blob/main/src/libraries/ConstantsLib.sol), morpho-org/midnight: modurile de lichidare, RCF, creșterea treptată a stimulentului și slashing (accesat la 26 octombrie 2026)
+- [README-ul pre-liquidation și PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation), morpho-org/pre-liquidation (accesat la 26 octombrie 2026)
+- [ChainlinkDataFeedLib.sol](https://github.com/morpho-org/morpho-blue-oracles/blob/main/src/morpho-chainlink/libraries/ChainlinkDataFeedLib.sol), morpho-org/morpho-blue-oracles: fără verificări de vechime a prețului, de limite sau de sequencer (accesat la 26 octombrie 2026)
+- [Lichidarea pe Morpho](https://docs.morpho.org/learn/concepts/liquidation): lichidatorii, fără licitație, până la 100% dintr-o dată, fără taxă de protocol, datoria neacoperită în vault-uri (accesat la 26 octombrie 2026)
+- [Documentația Morpho pentru dezvoltatori: lichidarea](https://docs.morpho.org/developers/borrow/concepts/liquidation): stimulentul în funcție de LLTV și datoria neacoperită (accesat la 26 octombrie 2026)
+- [Documentația Morpho: oracole](https://docs.morpho.org/learn/concepts/oracle): alegerea oracolului și imuabilitatea (accesat la 26 octombrie 2026)
+- [Documentația Morpho: Morpho Blue](https://docs.morpho.org/learn/concepts/blue): parametrii permanenți ai piețelor și LLTV-urile activate (accesat la 26 octombrie 2026)
+- [Documentația Morpho: lichidările Midnight](https://docs.morpho.org/learn/concepts/midnight/liquidations), [garanția, sănătatea și lichidările](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) și [ce este Midnight](https://docs.morpho.org/learn/concepts/midnight) (accesat la 26 octombrie 2026)
+- [Documentația Morpho: riscuri](https://docs.morpho.org/learn/resources/risks): riscul de oracol, de lichidare, de datorie neacoperită și de contraparte (accesat la 26 octombrie 2026)
+- [API-ul Morpho](https://api.morpho.org/graphql): numărul de lichidări și de cazuri de datorie neacoperită, listarea piețelor, rata dobânzii la împrumut, pozițiile de împrumut și piețele Midnight (accesat la 26 octombrie 2026)
+- [Morpho Blue pe Base](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), piața USDC | cbBTC (86%) la blocul Base 53102870 (accesat la 26 octombrie 2026)
+- [Oracolul pieței](https://basescan.org/address/0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9#readContract) și [feed-ul său BTC/USD](https://basescan.org/address/0x64c911996D3c6aC71f9b455B1E8E7266BcbD848F#readContract) pe Base: prețul la blocul 53102870 și proprietarul feed-ului (accesat la 26 octombrie 2026)
+- [Contractul de pre-lichidare al pieței](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374#readContract) pe Base: parametrii săi la blocul 53102870 (accesat la 26 octombrie 2026)
+- [Morpho Midnight pe Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract): LLTV-urile activate și cursoarele de lichidare la blocul 26274998 (accesat la 26 octombrie 2026)
+
+_Conținut educațional, nu sfat financiar. Alertele reduc riscul, dar nu împiedică lichidarea._

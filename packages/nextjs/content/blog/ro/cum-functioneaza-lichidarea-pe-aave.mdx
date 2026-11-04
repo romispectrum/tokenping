@@ -1,0 +1,183 @@
+export const meta = {
+  slug: "cum-functioneaza-lichidarea-pe-aave",
+  title: "Ce se întâmplă când poziția ta pe Aave este lichidată",
+  description:
+    "Cum funcționează azi lichidările Aave V3: când se declanșează, cât din datorie poate fi rambursat (50% sau 100%), bonusul plătit și un exemplu de calcul.",
+  h1: "Ce se întâmplă când poziția ta pe Aave este lichidată?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Ce se întâmplă când ești lichidat pe Aave?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  Când health factor-ul (factor de sănătate) al poziției tale pe Aave V3 scade sub 1, orice altă adresă poate rambursa o
+  parte din datoria ta sau toată și poate lua garanție în valoare de acea sumă plus un bonus de lichidare, de exemplu 5%
+  pentru WETH pe piața Ethereum Core. O singură lichidare poate rambursa până la 50% din datorie cât timp health
+  factor-ul este peste 0,95 și atât garanția ta în activul confiscat, cât și datoria ta în activul rambursat valorează
+  cel puțin 2.000 $; altfel, toată datoria în acel activ poate dispărea dintr-o dată. Păstrezi tokenurile pe care le-ai
+  împrumutat și garanția și datoria care rămân, așa că bonusul este ce te costă lichidarea.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Când poate fi lichidată o poziție Aave?
+
+O poziție Aave V3 poate fi lichidată de îndată ce health factor-ul ei este sub 1,00. Health factor-ul împarte valoarea garanției, ponderată cu pragul de lichidare (liquidation threshold) al fiecărui activ, la valoarea datoriei, așa că sub 1,00 garanția ponderată nu mai acoperă datoria (formula și un exemplu: [ce este health factor-ul Aave](/ro/blog/health-factor-aave-explicat)).
+
+Contractele Aave V3.7 verifică cinci lucruri înainte ca o lichidare să treacă (`validateLiquidationCall` în `ValidationLogic.sol`):
+
+1. Health factor-ul debitorului este sub 1,00.
+2. Activul de garanție confiscat și activul de datorie rambursat sunt amândouă activate și **nu sunt pe pauză**.
+3. Orice perioadă de grație pentru lichidare pe oricare dintre cele două active s-a încheiat. Când gardianul de urgență al Aave sau guvernanța scoate un activ de pe pauză, poate seta o perioadă de grație de până la 4 ore.
+4. Debitorul are acea garanție activată ca garanție și datorează activul de datorie ales.
+5. Cel care face apelul nu este debitorul: nu îți poți lichida propria poziție.
+
+Un activ înghețat (frozen) poate fi totuși lichidat, pentru că verificarea se uită la „paused”, nu la „frozen”. Orice altă adresă poate apela funcția `liquidationCall` a contractului Pool.
+
+Protocolul nu te avertizează înainte de o lichidare, iar aplicația Aave de la app.aave.com nu trimite alerte. Cu o singură garanție volatilă și o datorie în stablecoin, îți poți [calcula prețul de lichidare pe Aave](/ro/blog/pretul-de-lichidare-aave): prețul garanției la care health factor-ul ajunge la 1.
+
+## Ce parte din datoria mea poate fi lichidată dintr-o dată?
+
+Pe Aave V3.7, close factor (partea din datorie care poate fi rambursată dintr-o dată) se limitează la 50% din datoria ta totală doar când sunt îndeplinite toate cele trei condiții: health factor-ul tău este peste 0,95, garanția ta în activul confiscat valorează cel puțin 2.000 $, iar datoria ta în activul rambursat valorează cel puțin 2.000 $. În orice alt caz, un lichidator poate rambursa până la 100% din datoria ta în activul ales, într-o singură tranzacție.
+
+| Situația în momentul lichidării                                                                        | Maximul pe care îl poate rambursa o singură lichidare                                                     |
+| ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| Health factor peste 0,95, iar garanția aleasă și datoria aleasă valorează fiecare 2.000 $ sau mai mult | 50% din datoria ta totală pe toate activele (în USD), niciodată mai mult decât datoria ta în activul ales |
+| Health factor la 0,95 sau sub                                                                          | 100% din datoria ta în activul ales                                                                       |
+| Garanția aleasă sau datoria aleasă valorează mai puțin de 2.000 $                                      | 100% din datoria ta în activul ales                                                                       |
+
+Aceste limite sunt constante în `LiquidationLogic.sol` al Aave (aave-v3-origin, citit pe 14 octombrie 2026). Începând cu v3.3, limita de 50% se aplică întregii poziții, nu fiecărui activ de datorie în parte. Notele Aave pentru v3.3 dau exemplul a câte 3.000 $ datorie în GHO, USDC și DAI, 9.000 $ în total: toți cei 3.000 $ din oricare dintre ele pot fi rambursați într-un singur apel, pentru că 50% din total înseamnă 4.500 $.
+
+O a doua regulă previne resturile foarte mici (dust). O lichidare parțială trebuie să lase cel puțin 1.000 $ datorie în activul rambursat și cel puțin 1.000 $ garanție în activul confiscat. Altfel, lichidatorul trebuie să ia toată acea datorie sau toată acea garanție, ori tranzacția eșuează (revert).
+
+O lichidare ia doar garanție în valoare de datoria rambursată plus bonusul, nu toată garanția ta. Lichidatorul rambursează datoria cu propriii bani, așa că tokenurile pe care le-ai împrumutat rămân ale tale; cât timp garanția o acoperă, bonusul este ceea ce pierzi.
+
+Ghidurile mai vechi descriu un close factor fix de 50%, iar referința contractului Pool de pe aave.com spune încă „close factor is 0.5” (accesat la 14 octombrie 2026). Ambele sunt depășite: un 50% fix era regula din Aave V2, iar codul V3.7 pe care rulează aceste piețe folosește regula 50% sau 100% din tabel.
+
+## Ce este bonusul de lichidare și cine îl plătește?
+
+Bonusul de lichidare, numit adesea penalizare de lichidare, este garanția suplimentară pe care o primește un lichidator peste datoria pe care o rambursează, iar debitorul îl plătește. La un bonus de 5%, achitarea a 1.000 USDC din datoria ta te costă garanție în valoare de 1.050 USDC. Trezoreria Aave păstrează o parte din bonus ca taxă de protocol pentru lichidare (liquidation protocol fee), așa că lichidatorul primește puțin mai puțin decât pierzi tu.
+
+Bonusul și taxa care se aplică țin de garanția confiscată, nu de datorie. Valori Aave V3 citite on-chain pe 14 octombrie 2026 (blocul Ethereum 26193284, blocul Arbitrum 514855406):
+
+| Piață         | Garanție confiscată | Bonus de lichidare | Taxă de protocol (parte din bonus) | Garanție pierdută la 1.000 $ rambursați | Lichidatorul primește |
+| ------------- | ------------------- | ------------------ | ---------------------------------- | --------------------------------------- | --------------------- |
+| Ethereum Core | WETH                | 5%                 | 10%                                | 1.050 $                                 | 1.045 $               |
+| Ethereum Core | WBTC                | 5%                 | 10%                                | 1.050 $                                 | 1.045 $               |
+| Ethereum Core | USDC                | 4,5%               | 20%                                | 1.045 $                                 | 1.036 $               |
+| Arbitrum      | WETH                | 5%                 | 10%                                | 1.050 $                                 | 1.045 $               |
+| Arbitrum      | WBTC                | 7%                 | 10%                                | 1.070 $                                 | 1.063 $               |
+| Arbitrum      | USDC (nativ)        | 5%                 | 10%                                | 1.050 $                                 | 1.045 $               |
+
+În E-Mode, dacă activul confiscat face parte din setul de garanții al categoriei tale, bonusul categoriei îl înlocuiește pe cel al activului: 1% pentru „ETH correlated” pe Ethereum Core (citit la blocul Ethereum 26193288, 14 octombrie 2026), așa că fiecare lichidare costă mai puțin. Guvernanța poate schimba oricare dintre acești parametri, iar risk stewards ai Aave pot ajusta bonusurile de lichidare în limite stabilite, așa că verifică valorile curente în aplicația Aave.
+
+## Ce garanție ia lichidatorul?
+
+Alege lichidatorul. Fiecare lichidare Aave V3 numește un activ de garanție de confiscat și un activ de datorie de rambursat, iar lichidatorul alege perechea, așa că nu ai niciun cuvânt de spus în privința activului care pleacă primul. Pot fi confiscate doar activele pe care le-ai activat ca garanție; un activ depus cu „used as collateral” (folosit ca garanție) dezactivat nu poate fi luat, dar nici nu adaugă nimic la health factor-ul tău.
+
+Dacă garanția aleasă nu poate acoperi rambursarea plus bonusul, pierzi tot acel activ (lichidatorul îl primește minus taxa de protocol) și se rambursează mai puțină datorie. Pentru că fiecare lichidare tratează o singură pereche, o poziție cu mai multe active poate fi lichidată în mai multe tranzacții, iar cât timp health factor-ul rămâne sub 1 pot urma alte lichidări.
+
+## Exemplu de calcul: ETH scade la 1.420 $, apoi la 1.330 $
+
+În acest exemplu, o lichidare la un preț ETH de 1.420 $ rambursează 6.000 USDC și îl costă pe debitor 300 $ în WETH; dacă nimeni nu lichidează până când ETH ajunge la 1.330 $, toți cei 12.000 USDC pot fi rambursați dintr-o dată, iar costul se dublează la 600 $.
+
+Poziția: 10 WETH garanție și 12.000 USDC datorie pe Aave V3 Ethereum Core. WETH are un prag de lichidare de 83%, un bonus de 5% și o taxă de protocol de 10% (citite on-chain la blocul 26193284, 14 octombrie 2026). Prețurile ETH sunt ilustrative, USDC este luat la 1,00 $, iar dobânda este ignorată.
+
+La 2.400 $, health factor-ul este 24.000 × 0,83 ÷ 12.000 = 1,66. Ajunge la 1 la un preț ETH de 12.000 ÷ (10 × 0,83) = 1.445,78 $ și la 0,95 la 1.373,49 $.
+
+| Preț ETH                             | Health factor            | Maximul pe care îl poate rambursa o singură lichidare                                                                                                          |
+| ------------------------------------ | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Peste circa 1.445,78 $               | 1,00 sau mai mult        | Nimic; poziția nu poate fi lichidată                                                                                                                           |
+| Între circa 1.373,50 $ și 1.445,78 $ | Între 0,95 și 1,00       | 50%: 6.000 USDC                                                                                                                                                |
+| Între circa 1.260 $ și 1.373,49 $    | Între circa 0,87 și 0,95 | 100%: 12.000 USDC                                                                                                                                              |
+| Sub circa 1.260 $                    | Sub circa 0,87           | Mai puțin de 12.000 USDC: toți cei 10 WETH sunt confiscați, iar restul devine [datorie neacoperită (bad debt)](#poate-o-lichidare-sa-lase-datorie-neacoperita) |
+
+### Pasul 1: ETH la 1.420 $, health factor 0,982
+
+La 1.420 $, cei 10 WETH valorează 14.200 $, deci health factor-ul este 14.200 × 0,83 ÷ 12.000 = 0,982. Asta e peste 0,95, iar garanția ta în WETH și datoria ta în USDC valorează fiecare mai mult de 2.000 $, așa că un lichidator poate rambursa cel mult 6.000 USDC.
+
+- Lichidatorul rambursează 6.000 USDC din datoria ta.
+- Poziția ta pierde 6.000 × 1,05 = 6.300 $ în WETH (4,4366 WETH).
+- Taxa de protocol este 10% din bonusul de 300 $: 30 $ (0,0211 WETH) merg la trezoreria Aave, iar lichidatorul primește 6.270 $ (4,4155 WETH).
+- Îți rămân 5,5634 WETH (7.900 $) și 6.000 USDC datorie: un health factor de 7.900 × 0,83 ÷ 6.000 = 1,093.
+
+Poziția ta netă (garanția minus datoria) scade de la 2.200 $ la 1.900 $. Diferența de 300 $ este bonusul.
+
+### Pasul 2: ETH la 1.330 $, health factor 1,024
+
+Cei 5,5634 WETH rămași valorează 7.399 $ la 1.330 $, un health factor de 7.399 × 0,83 ÷ 6.000 = 1,024, așa că poziția nu poate fi lichidată din nou la acest preț. Noul ei preț de lichidare este de circa 1.299 $, din 6.000 ÷ (5,5634 × 0,83). Înjumătățirea datoriei a coborât prețul de lichidare; bonusul de 300 $ a fost costul.
+
+### Ce se întâmplă dacă nimeni nu lichidează până când ETH ajunge la 1.330 $?
+
+Dacă prima lichidare are loc abia când ETH este deja la 1.330 $, poziția inițială are un health factor de 13.300 × 0,83 ÷ 12.000 = 0,920. Asta e la 0,95 sau sub, așa că un lichidator poate rambursa toți cei 12.000 USDC dintr-o dată. Poziția ta pierde 12.000 × 1,05 = 12.600 $ în WETH (9,4737 WETH), din care 60 $ sunt taxa de protocol și 12.540 $ merg la lichidator. Păstrezi 0,5263 WETH (700 $) și nu mai datorezi nimic; regula resturilor foarte mici nu se aplică, pentru că datoria a fost achitată complet.
+
+Poziția netă scade de la 1.300 $ la 700 $. Pierderea de 600 $ este dublul celei din Pasul 1, pentru că a fost rambursată de două ori mai multă datorie la același bonus de 5%.
+
+## Poate o lichidare să lase datorie neacoperită?
+
+Da. Datoria neacoperită (bad debt) apare când garanția unei poziții valorează mai puțin decât datoria plus bonusul de lichidare, așa că nici luarea întregii garanții nu rambursează totul. Începând cu Aave V3.3, când o lichidare consumă toată garanția unui debitor și mai rămâne datorie, contractul arde datoria rămasă și o înregistrează ca „deficit” pe acel activ. Debitorul rămâne fără garanție și fără datorie, iar pierderea rămâne la protocol.
+
+Exemplu cu parametrii WETH de pe Ethereum Core: 10.000 $ în WETH ca singură garanție față de 9.800 USDC datorie înseamnă un health factor de 0,847. Achitarea tuturor celor 9.800 USDC la un bonus de 5% ar cere 10.290 $ în WETH, așa că toți cei 10.000 $ în WETH sunt confiscați (circa 47,62 $ din ei ca taxă de protocol) și se rambursează circa 9.524 USDC (10.000 ÷ 1,05). Restul de aproximativ 276 USDC devine deficit.
+
+Umbrella, plasa de siguranță cu staking a Aave, poate arde aTokens ale stakerilor în activul afectat ca să acopere astfel de deficite; activarea ei a început pe Ethereum (documentația Aave, accesat la 14 octombrie 2026). Ea protejează protocolul, nu debitorul, a cărui garanție a dispărut deja.
+
+S-a întâmplat deja pe Aave V3. După ce USDC s-a tranzacționat la circa 0,88 $ pe 11 martie 2023, post-mortem-ul Gauntlet a înregistrat circa 280.000 $ datorie neacoperită pe V3 Avalanche în E-Mode și circa 20.000 $ pe V3 Arbitrum și a observat că, odată ce garanția valorează mai puțin decât datoria înmulțită cu unu plus bonusul, fiecare lichidare parțială scufundă contul și mai adânc. Asta se întâmpla înainte ca v3.3 să adauge mecanismul de deficit.
+
+## Se opresc lichidările când o piață este înghețată sau când cade un sequencer L2?
+
+Nu, în niciunul dintre cazuri. Pe Aave V3.7, un activ înghețat poate fi totuși lichidat, iar lichidările pe Arbitrum, Optimism și Base nu mai depind de faptul că sequencer-ul L2 funcționează. Ce blochează lichidările este o pauză.
+
+- **Înghețat (frozen):** înghețarea blochează pozițiile noi într-un activ, dar verificarea lichidării o ignoră. În depeg-ul USDC (pierderea parității cu dolarul) din martie 2023, stablecoin-urile de pe Aave V3 Avalanche au fost înghețate, iar lichidările au continuat. USDC.e, varianta bridged de pe Arbitrum, era înghețat cu un LTV de 0 pe 14 octombrie 2026 (blocul Arbitrum 514855406), dar încă contează pentru health factor la pragul său de lichidare de 78% și poate fi confiscat.
+- **Sequencer-ul L2:** înainte de v3.7, un contract sentinel de pe piețele L2 putea bloca lichidările și împrumuturile cât timp sequencer-ul era căzut și o perioadă de grație după ce revenea. Aave V3.7, pe care rulează toate piețele V3 de pe Arbitrum, Optimism și Base la 14 octombrie 2026, a eliminat sentinel-ul. O întrerupere blochează în continuare tranzacțiile tuturor, ale debitorilor și ale lichidatorilor deopotrivă, dar o poziție care a scăzut sub 1 în timpul ei poate fi acum lichidată de îndată ce sequencer-ul revine.
+- **Pe pauză (paused):** un activ de garanție sau de datorie pus pe pauză blochează orice lichidare care îl implică. La scoaterea de pe pauză, gardianul de urgență al Aave sau guvernanța poate seta o perioadă de grație de până la 4 ore în care lichidările rămân blocate, ca debitorii să poată rambursa sau adăuga garanție; împrumuturile sunt permise în acest interval.
+
+## Prin ce diferă lichidările pe Aave V4?
+
+Aave V4, activ pe Ethereum din 30 martie 2026 și de atunci și pe Avalanche, Arc și Base, înlocuiește close factor cu un health factor țintă și plătește un bonus care crește pe măsură ce health factor-ul scade. V3 continuă să funcționeze în paralel, cu propriile reguli.
+
+- **Un health factor țintă în loc de 50% sau 100%.** Un lichidator V4 poate rambursa doar atâta datorie cât e nevoie ca poziția să revină la health factor-ul țintă al Spoke-ului ei, 1,24 pe Ethereum Main Spoke (citit on-chain la blocul Ethereum 26193995, 14 octombrie 2026). Excepția apare când asta ar lăsa un rest foarte mic; atunci toată datoria din acea rezervă poate fi achitată.
+- **Un bonus care crește.** Documentația Aave îl numește licitație olandeză (Dutch auction). Pe Ethereum Main Spoke, bonusul pornește de la 90% din maximul activului imediat sub un health factor de 1 și ajunge la maximul complet la 0,90 sau mai jos. Pentru WETH, cu un maxim de 5,55% (API-ul Aave V4, 14 octombrie 2026), asta înseamnă circa 5,0% imediat sub 1 și 5,55% la 0,90. O taxă de 10% se scade din bonus, ca în V3.
+
+Tokenping monitorizează și pozițiile Aave V4: fiecare Spoke de pe Ethereum, Avalanche, Arc și Base (20 la 16 octombrie 2026), cu o alertă separată pentru fiecare Spoke, pentru că fiecare își păstrează propria poziție și propriul health factor.
+
+## Prin ce diferă o lichidare pe Aave de una pe Morpho?
+
+Pe Morpho Blue nu există close factor: odată ce health factor-ul unei poziții este sub 1, un lichidator poate rambursa toată datoria într-un singur apel. Stimulentul depinde doar de LTV-ul de lichidare (LLTV) al pieței, circa 0,6% la un LLTV de 98% și plafonat la 15% pentru LLTV-uri mici, iar dacă garanția se termină prima, datoria rămasă este trecută pe pierdere în contul creditorilor pieței. [Cum funcționează lichidarea pe Morpho](/ro/blog/cum-functioneaza-lichidarea-pe-morpho) conține formula, stimulentul la fiecare LLTV și un exemplu de calcul.
+
+## Ce poți face înainte ca health factor-ul să ajungă la 1?
+
+Înainte ca health factor-ul să ajungă la 1 poți rambursa datorie sau adăuga garanție; ambele îl cresc imediat și niciuna nu costă un bonus. Odată ce e sub 1, un lichidator poate acționa înaintea ta, iar chiar și o lichidare parțială te costă bonusul pe garanția confiscată: 300 $ pentru 6.000 USDC rambursați la un bonus de 5%.
+
+E riscant să lași totul pe ultima clipă, pentru că tranzacțiile pot eșua sau se pot bloca. În mai 2021, un utilizator de pe forumul Polygon a încercat să ramburseze la un health factor de 1,01, a primit erori la fiecare încercare și a fost lichidat înainte ca rambursarea să treacă. În decembrie 2024, un utilizator de pe forumul Aave a descris peste o oră de încercări de rambursare care rămâneau blocate, până când poziția a fost lichidată.
+
+Opțiunile sunt descrise în [cum îți crești health factor-ul pe Aave](/ro/blog/cum-eviti-lichidarea-pe-aave), iar motivele pentru care un health factor scade fără să faci nimic, în [de ce scade singur health factor-ul tău pe Aave](/ro/blog/de-ce-a-scazut-health-factor-aave).
+
+Tokenping îți verifică health factor-ul Aave la fiecare 5 minute, pe fiecare piață Aave V3 din 21 de rețele și în fiecare Spoke Aave V4, și îți trimite un mesaj pe Signal, Telegram sau e-mail când este sub un prag ales de tine (între 1,1 și 10), repetându-l la fiecare verificare până își revine. Lichidarea costă cel puțin bonusul pe garanția confiscată. O alertă setată peste 1,0 îți poate da timp să rambursezi sau să adaugi garanție, dar o mișcare rapidă de preț poate duce totuși health factor-ul sub 1 între două verificări, iar o alertă nu poate acționa în locul tău. Îți poți [verifica health factor-ul Aave V3](/ro/aave) sau poți citi [cum configurezi o alertă de health factor](/ro/blog/configurare-alerta-health-factor-aave).
+
+## Surse
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), aave-dao/aave-v3-origin, branch main: regulile pentru close factor, resturi foarte mici și datorie neacoperită (accesat la 14 octombrie 2026)
+- [Aave V3 ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): condițiile de lichidare (accesat la 14 octombrie 2026)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): datoria neacoperită, close factor pe întreaga poziție și exemplul său cu GHO/USDC/DAI, pragul de 2.000 $ (accesat la 14 octombrie 2026)
+- [Aave v3.1 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): perioada de grație pentru lichidare de până la 4 ore (accesat la 14 octombrie 2026)
+- [Aave V3 PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol): punerea și scoaterea de pe pauză cu o perioadă de grație sunt rezervate pentru emergency admin sau pool admin, `MAX_GRACE_PERIOD = 4 hours` (accesat la 14 octombrie 2026)
+- [Documentația de guvernanță Aave](https://aave.com/docs/ecosystem/governance): Protocol Emergency Guardian deține rolul de emergency admin (accesat la 14 octombrie 2026)
+- [README Aave V3 Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): parametrii pe care îi pot schimba stewards, în limite stabilite (accesat la 14 octombrie 2026)
+- [Aave v3.7: eliminarea PriceOracleSentinel](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/sentinel-removal.md) (accesat la 14 octombrie 2026)
+- [Referința contractului Pool din Aave V3](https://aave.com/docs/aave-v3/smart-contracts/pool), care încă indică close factor-ul de dinainte de v3.3 (accesat la 14 octombrie 2026)
+- [Documentația Aave Umbrella](https://aave.com/docs/aave-v3/umbrella) (accesat la 14 octombrie 2026)
+- [Aave V3 PoolDataProvider pe Ethereum](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): configurația rezervelor și taxa de protocol pentru lichidare la WETH, WBTC și USDC la blocul 26193284, recitite neschimbate la blocul 26193992 (accesat la 14 octombrie 2026)
+- [Aave V3 PoolDataProvider pe Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): aceleași citiri pentru WETH, WBTC, USDC nativ și USDC.e la blocul 514855406 (accesat la 14 octombrie 2026)
+- [Aave V3 Ethereum Core Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): categoria E-Mode 1 „ETH correlated” la blocul 26193288 (accesat la 14 octombrie 2026)
+- [Documentația Aave V4 despre lichidări](https://aave.com/docs/aave-v4/positions/liquidations) (accesat la 14 octombrie 2026)
+- [Prezentarea Aave V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md) și [V4 LiquidationLogic.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/libraries/LiquidationLogic.sol), aave/aave-v4 main (accesat la 14 octombrie 2026)
+- [Aave V4 Ethereum Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485): health factor-ul țintă și setările bonusului la blocul 26193995 (accesat la 14 octombrie 2026)
+- [API-ul GraphQL public Aave V4](https://api.v4.aave.com/graphql), interogarea `reserves`: bonusul maxim de lichidare și taxa de lichidare pentru WETH pe Ethereum Main Spoke (accesat la 14 octombrie 2026)
+- [Changelog-ul documentației Aave](https://aave.com/docs/resources/changelog): datele de lansare V4 (accesat la 14 octombrie 2026)
+- [Gauntlet, „Aave Resilient Through USDC Volatility”](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), publicat pe 17 martie 2023 (accesat la 14 octombrie 2026)
+- [Forumul Polygon, „Liquidation on polygon AAVE -JSON ERROR”](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067), publicat pe 18 mai 2021 (accesat la 14 octombrie 2026)
+- [Forumul Aave, „Repeatedly Failed Repayment Attempts Leading to Liquidation”](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379), publicat pe 23 decembrie 2024 (accesat la 14 octombrie 2026)
+- [Pull request-ul #2084 al interfeței Aave](https://github.com/aave/interface/pull/2084), care a eliminat singura integrare de alerte a aplicației în mai 2024 (accesat la 14 octombrie 2026)
+
+_Conținut educațional, nu sfat financiar. Alertele reduc riscul, dar nu împiedică lichidarea._

@@ -1,0 +1,193 @@
+export const meta = {
+  slug: "imprumuturi-cu-dobanda-fixa-morpho-midnight",
+  title: "Împrumuturi cu dobândă fixă pe Morpho Midnight explicate",
+  description:
+    "Cum funcționează împrumuturile cu dobândă fixă pe Morpho Midnight: dobânda, ce datorezi la scadență, mai multe garanții și lichidarea datoriei neplătite.",
+  h1: "Cum funcționează împrumuturile cu dobândă fixă pe Morpho Midnight și ce se întâmplă la scadență?",
+  publishedAt: "2026-10-26",
+  primaryQuestion:
+    "Cum funcționează un împrumut cu dobândă fixă pe Morpho Midnight și ce se întâmplă dacă nu l-am rambursat până la scadență?",
+  readingMinutes: 13,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Morpho Midnight este creditarea cu dobândă fixă și termen fix a Morpho. Te împrumuți vânzând unități de datorie sub
+  valoarea nominală: fiecare unitate îți dă acum puțin mai puțin de un token împrumutat și este promisiunea de a
+  rambursa exact unul la scadența pieței, așa că dobânda este fixată când te împrumuți, iar datoria ta nu crește.
+  Înainte de scadență, poziția ta poate fi lichidată doar dacă garanția, ponderată cu LTV-ul de lichidare (LLTV) al
+  fiecărei garanții, nu mai acoperă datoria (un health factor sub 1). După scadență, orice datorie rămasă poate fi
+  lichidată oricare ar fi health factor-ul, iar bonusul lichidatorului crește în prima oră. Rambursează înainte de
+  scadență, apoi retrage-ți singur garanția.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Cifrele și numerele de bloc la care au fost citite: content/blog/snapshots/morpho-midnight-fixed-rate-loans.md */}
+
+## Ce este Morpho Midnight?
+
+Morpho Midnight este partea din Morpho care oferă împrumuturi cu dobândă fixă până la o dată fixă, scadența. Documentația Morpho o numește „Fixed Rate Markets (Midnight)” (piețe cu dobândă fixă), alături de Morpho Blue, piețele sale cu dobândă variabilă. Dacă matematica health factor-ului (factor de sănătate) pe Morpho este nouă pentru tine, începe cu [ghidul despre health factor-ul pe Morpho](/ro/blog/health-factor-morpho-explicat), pe care se sprijină acest ghid.
+
+Midnight s-a deschis publicului pe 21 iulie 2026, pe Base, cu o singură pereche (garanție cbBTC, împrumuturi în USDC) și câteva scadențe. În acest ghid, o piață Midnight este numită după această pereche: o „piață cbBTC/USDC” primește cbBTC ca garanție și împrumută USDC. Același cod de contract rulează acum pe cinci rețele:
+
+| Rețea           | Contractul Midnight are cod din | Piețe listate de API-ul Morpho (26 octombrie 2026) |
+| --------------- | ------------------------------- | -------------------------------------------------- |
+| Base            | 6 iulie 2026                    | Da; 19 piețe listate au împrumuturi deschise       |
+| Ethereum        | 20 august 2026                  | Da; 12 piețe listate au împrumuturi deschise       |
+| Arc             | 11 septembrie 2026              | Niciuna (există 13 piețe)                          |
+| Robinhood Chain | Dată indisponibilă              | Niciuna (există 34 de piețe)                       |
+| Tempo           | 3 octombrie 2026                | Niciuna (API-ul nu arată nicio piață)              |
+
+Oricine poate crea o piață Midnight, așa că faptul că o piață există pe blockchain spune puțin. Piețele pe care le arată aplicația Morpho sunt cele listate de API-ul său, iar pe 26 octombrie 2026 toate erau pe Ethereum și Base.
+
+O postare mai veche a Morpho prezenta Midnight, împreună cu Vaults V2, drept „Morpho V2”. Postarea de lansare spune că Midnight nu este nici o a doua versiune a Blue, nici un înlocuitor al ei: cele două funcționează în paralel. Sunt contracte separate.
+
+## Cum este definită o piață Midnight?
+
+O piață Midnight este fixată la creare și nu se mai schimbă niciodată. Este definită de:
+
+- **Un token împrumutat**, de exemplu USDC.
+- **Una sau mai multe garanții** (până la 128), fiecare cu propriul LLTV (partea din valoarea garanției pe care o poți datora înainte de lichidare), propriul oracol (sursa de preț) și propriul cursor de lichidare (liquidation cursor), care stabilește bonusul lichidatorului.
+- **O scadență**, o dată și o oră la care fiecare împrumut din piață devine exigibil.
+- **Un prag de recuperare** (rcfThreshold), care decide când o cantitate mică dintr-o garanție poate fi lichidată în întregime (vezi mai jos).
+- **Bariere opționale** (gates), care pot limita cine are voie să dea cu împrumut, să se împrumute sau să lichideze. O barieră nu te poate opri niciodată să rambursezi sau să ieși. Niciuna dintre piețele listate pe Ethereum sau Base nu avea o barieră pe 26 octombrie 2026.
+
+Un debitor poate folosi până la 16 dintre garanțiile unei piețe în același timp. Ca să accepte o garanție nouă sau să mute scadența, cineva trebuie să creeze o piață nouă. Piețele listate cu împrumuturi, pe ambele rețele, ajung la scadență în ultima vineri a unei luni, la 15:00 UTC: 30 octombrie, 27 noiembrie și 25 decembrie 2026 și 26 martie 2027.
+
+## Cum se stabilește dobânda fixă și ce datorezi la scadență?
+
+Dobânda vine dintr-un preț, nu dintr-un model al ratei dobânzii. Midnight socotește datoria în unități, iar o unitate de datorie este promisiunea de a rambursa un token împrumutat la scadență. Ca să te împrumuți, vinzi unități creditorilor la un preț sub 1: la un preț de 0,99 primești acum 0,99 USDC pentru fiecare unitate și datorezi 1 USDC pe unitate la scadență. Dobânda pentru întregul termen este 1 împărțit la preț, minus 1, iar documentația Morpho o transformă într-o cifră anuală împărțind-o la partea din an rămasă.
+
+Prețurile vin din oferte publicate de creditori și debitori, așa că doi debitori din aceeași piață pot plăti dobânzi diferite. Pe 26 octombrie 2026, API-ul Morpho arăta pentru cei 117 debitori din piața cbBTC/USDC de pe Base cu scadența pe 25 decembrie 2026 dobânzi între 1,93% și 6,84% pe an.
+
+Ce datorezi este simplu: numărul de unități pe care le-ai vândut, în tokeni împrumutați, plătibil la scadență. Nu se adaugă nimic cât timp curge împrumutul. Contractul Midnight schimbă datoria unui debitor doar când te împrumuți mai mult, rambursezi, cumperi unități înapoi sau ești lichidat; nu se acumulează dobândă pe ea nici înainte, nici după scadență.
+
+Midnight are două comisioane, ambele stabilite pe piață și ambele zero în cele două piețe din acest ghid:
+
+- **Un comision de decontare** (settlement fee) pe fiecare tranzacție, plătit de cel care acceptă o ofertă. Contractul îl plafonează în funcție de timpul până la scadență, de la 0,0014% pentru o zi până la 0,5% pentru 360 de zile.
+- **Un comision continuu** (continuous fee), suportat doar de creditori și plafonat la 1% pe an.
+
+## Cum se calculează health factor-ul cu mai multe garanții?
+
+Contractul Midnight verifică sănătatea cu un da sau un nu: o poziție este sănătoasă cât timp datoria ei maximă este cel puțin egală cu datoria. Datoria maximă este suma, pentru fiecare garanție pe care o folosești, a valorii ei în tokenul împrumutat la prețul oracolului înmulțită cu propriul LLTV. Documentația Morpho formulează verificarea ca maxDebt ≥ debt; health factor-ul este aceeași verificare scrisă ca raport, datoria maximă împărțită la datorie, iar sub 1 poziția poate fi lichidată.
+
+Ia cea mai mare piață listată pe Ethereum, care împrumută USDC contra a două garanții cu LLTV-uri diferite: USDC însuși la 98% și cbBTC la 86%. Cu cbBTC la 80.011,48 USDC (prețul oracolului său pe 26 octombrie 2026), poziția ilustrativă din [ghidul despre health factor-ul pe Morpho](/ro/blog/health-factor-morpho-explicat), 0,5 cbBTC și 10.000 USDC ca garanție contra unei datorii de 40.000 USDC, are:
+
+| Garanție    | Valoare (USDC) | LLTV | Contează pentru (USDC) |
+| ----------- | -------------- | ---- | ---------------------- |
+| 0,5 cbBTC   | 40.005,74      | 86%  | 34.404,94              |
+| 10.000 USDC | 10.000,00      | 98%  | 9.800,00               |
+| Total       | 50.005,74      |      | 44.204,94              |
+
+Health factor-ul ei este 44.204,94 ÷ 40.000 = 1,105 și scade sub 1 dacă cbBTC coboară sub aproximativ 70.233 USDC, cu 12,2% mai jos, cu garanția în USDC păstrându-și valoarea. Ideea este aceeași ca la [o a doua garanție pe Aave](/ro/blog/health-factor-aave-explicat#ce-se-schimba-cu-un-al-doilea-activ-ca-garantie): fiecare activ contează la propria rată.
+
+Poți adăuga, retrage sau schimba garanții oricând, cu condiția ca o retragere să te lase sănătos. Dacă oracolul oricărei garanții pe care o folosești nu mai răspunde, verificările de sănătate, împrumuturile, retragerile și lichidările eșuează toate pentru poziția ta cât timp ai datorie. Rambursarea funcționează în continuare, iar când datoria ta ajunge la zero poți retrage fără niciun oracol.
+
+## Când poate fi lichidat un împrumut Midnight?
+
+Un împrumut Midnight poate fi lichidat în două feluri: când este nesănătos, oricând, sau când rămâne datorie după scadență, oricare i-ar fi sănătatea. [Cum funcționează lichidarea pe Morpho](/ro/blog/cum-functioneaza-lichidarea-pe-morpho) explică mecanismele comune; aici este ce e specific pentru Midnight.
+
+### Înainte de scadență
+
+Înainte de scadență contează doar sănătatea. Când health factor-ul scade sub 1, un lichidator poate rambursa o parte din datoria ta și poate lua garanție în valoarea acelei sume plus un bonus. Bonusul este stabilit pe garanție: 1 ÷ (1 − cursor × (1 − LLTV)). Pentru cbBTC la un LLTV de 86% cu un cursor de 0,3, acesta este 1,0438, un bonus de 4,38%; pentru USDC la 98%, aproximativ 0,6%. Un lichidator alege pe care dintre garanțiile tale să o ia, iar documentația Morpho avertizează că o va alege pe cea care aduce cel mai mult.
+
+Cât poate fi lichidat dintr-o dată depinde de mărime. În mod normal, un lichidator poate rambursa doar cât e nevoie ca poziția să redevină sănătoasă. Excepția: când garanția rămasă după o astfel de lichidare plafonată ar rambursa mai puțin decât rcfThreshold-ul pieței, acea garanție poate fi luată în întregime. Pragul este de 3.000 USDC în piața cbBTC/USDC de pe Base din exemplul calculat de mai jos și de 300.000 USDC în piața de pe Ethereum de mai sus. Pentru un împrumut cu o singură garanție sub această mărime, întreaga poziție poate fi lichidată dintr-o dată.
+
+### După scadență
+
+Odată ce ora scadenței a trecut, orice datorie rămasă poate fi lichidată chiar dacă health factor-ul tău este 2 sau 10. Calea de după scadență din contract verifică doar ceasul. Motivul Morpho este că creditorii se așteaptă să-și retragă fondurile la scadență, iar un debitor care nu a plătit, sănătos sau nu, îi blochează.
+
+Bonusul pe această cale pornește de la zero la scadență și crește uniform până la bonusul complet în 60 de minute. Dacă poziția ta este și nesănătoasă după scadență, un lichidator poate folosi în schimb calea bazată pe sănătate și poate lua tot bonusul imediat. Pe calea de după scadență nu există un plafon pentru cât poate fi rambursat, așa că întreaga datorie poate fi lichidată dintr-o dată. După scadență nu mai poți adăuga datorie, dar poți în continuare să rambursezi, să cumperi unități înapoi și să retragi garanție.
+
+<Callout tone="warning">
+  În secunda exactă a scadenței, o poziție sănătoasă este încă în siguranță; o secundă mai târziu nu mai este.
+  Rambursarea cu întârziere a unei poziții sănătoase te poate costa până la întregul bonus de lichidare, aproximativ
+  4,4% din datorie pentru un împrumut cbBTC la un LLTV de 86%.
+</Callout>
+
+Dacă o lichidare lasă datorie pe care garanția nu o poate acoperi, diferența este anulată și suportată doar de creditorii acelei piețe.
+
+## Cum rambursezi înainte de scadență, la scadență sau treci la o scadență ulterioară?
+
+Ai trei căi de ieșire dintr-un împrumut Midnight, plus o variantă de rezervă la care trebuie să optezi:
+
+- **Rambursezi direct.** Rambursarea costă exact un token împrumutat pe unitate, înainte, la sau după scadență. Funcționează mereu și stabilește cât ar trebui să plătești cel mult ca să ieși mai devreme. Rambursarea anticipată nu îți returnează nimic din dobândă: plătești întreaga sumă datorată la scadență, doar mai devreme.
+- **Cumperi unități înapoi înainte de scadență.** Poți în schimb să cumperi unități din ofertele de vânzare ale creditorilor la un preț sub 1, ceea ce anulează atâta datorie pentru mai puțin decât valoarea nominală. Depinde de existența cuiva care oferă unități în momentul în care vrei să ieși.
+- **Treci la o scadență ulterioară (rollover).** Documentația Morpho descrie rambursarea sau răscumpărarea într-o piață și împrumutul într-o piață cu scadență mai târzie într-o singură tranzacție, folosind callback-uri. Postarea de lansare a Morpho din iulie enumera reînnoirea automată ca funcție viitoare; pe 26 octombrie 2026, documentația descrie reînnoirea doar ca pe ceva ce faci singur sau prin varianta de rezervă Blue de mai jos.
+- **Treci pe Blue ca rezervă.** Morpho a implementat un contract, BlueFallbackRolling, pe toate cele cinci rețele. Dacă optezi pentru el și îl autorizezi atât pe Midnight, cât și pe Blue, oricine îți poate muta datoria și garanția Midnight într-o piață Blue cu dobândă variabilă aleasă de tine, începând de la un moment ales de tine. Recompensa celui care face mutarea este o parte din datorie pe care o stabilești tu; crește între un moment de început și unul de sfârșit pe care le stabilești, poate ajunge la toată datoria și se adaugă la noua ta datorie Blue. Are nevoie de exact o garanție, aceeași cu cea a pieței Blue.
+
+## Ce se întâmplă cu garanția ta după ce rambursezi?
+
+Garanția ta rămâne unde este până când o retragi. Rambursarea nu ți-o trimite înapoi. Când datoria ta este zero, verificarea de sănătate trece fără să întrebe vreun oracol, așa că o poți retrage în întregime și nicio barieră nu te poate opri. Doar tu, un cont pe care l-ai autorizat sau un lichidator al unei poziții lichidabile o pot muta.
+
+La fel și după o lichidare: orice garanție pe care lichidatorul nu a luat-o rămâne în poziția ta, ca să o retragi.
+
+## Exemplu calculat: un împrumut cbBTC/USDC scadent pe 25 decembrie 2026
+
+Această piață, pe perechea cu care s-a lansat Midnight, a fost creată pe 14 iulie 2026, cu o săptămână înainte de lansarea publică, și este cea mai mare piață listată pe Base. Citită pe blockchain pe 26 octombrie 2026 la 06:06 UTC:
+
+| Câmp                  | Valoare                                       |
+| --------------------- | --------------------------------------------- |
+| Token împrumutat      | USDC                                          |
+| Garanție              | cbBTC, singura                                |
+| LLTV                  | 86%                                           |
+| Bonus de lichidare    | 4,38% (cursor 0,3)                            |
+| Scadență              | 25 decembrie 2026, 15:00 UTC, peste 60,4 zile |
+| rcfThreshold          | 3.000 USDC                                    |
+| Bariere și comisioane | Niciunele                                     |
+| Datorat la scadență   | 1.530.235,58 USDC de la 117 debitori          |
+| Prețul cbBTC          | 80.097,33 USDC (oracolul pieței)              |
+
+**Împrumutul.** Cel mai bun preț la care un debitor putea vinde unități era 0,9901297. Dacă iei 10.000 USDC la acest preț, datorezi aproximativ 10.099,69 USDC pe 25 decembrie 2026: 0,997% pentru cele 60,4 zile, aproximativ 6,0% pe an. Prețul se schimbă de la un minut la altul.
+
+**O poziție tipică.** Debitorul median datorează 37,08 USDC la scadență contra a 0,00060018 cbBTC, în valoare de 48,07 USDC. Datoria lui maximă este 48,07 × 0,86 = 41,34 USDC, deci health factor-ul lui este 41,34 ÷ 37,08 = 1,11. Ajunge la 1 dacă cbBTC scade la aproximativ 71.838 USDC, cu 10,3% mai jos.
+
+**Dacă cbBTC scade puțin sub 71.838 USDC înainte de scadență.** Poziția este mult sub pragul de 3.000 USDC, așa că un lichidator poate rambursa toți cei 37,08 USDC și poate lua cbBTC în valoare de 38,71 USDC. Din cei 43,12 USDC în cbBTC, debitorului îi rămân aproximativ 4,41 USDC de retras.
+
+**Dacă debitorul uită să ramburseze și cbBTC rămâne la 80.097 USDC.** Începând cu 15:00:01 UTC pe 25 decembrie, oricine poate rambursa cei 37,08 USDC și poate lua cbBTC; un lichidator poate acționa în orice secundă după 15:00:00. Bonusul crește cu timpul: aproximativ 2,2% după treizeci de minute, întregul 4,38% după o oră. O lichidare la o oră sau mai mult după scadență ia cbBTC în valoare de 38,71 USDC și îi lasă debitorului 9,37 USDC din el. Rambursarea la timp a celor 37,08 USDC ar fi păstrat toți cei 48,07 USDC în cbBTC, net 10,99 USDC, așa că acea lichidare îl costă pe debitor 1,63 USDC, întregul bonus. Una mai timpurie costă mai puțin, dar nimic nu obligă un lichidator să aștepte.
+
+## Cum se compară Midnight cu un împrumut Morpho Blue cu dobândă variabilă?
+
+|                        | Morpho Blue                                                                          | Morpho Midnight                                                                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dobânda                | Se schimbă tot timpul după modelul ratei dobânzii al pieței                          | Fixată când te împrumuți                                                                                                                                    |
+| Datoria                | Crește cu dobânda                                                                    | Un număr stabilit de unități, nu crește                                                                                                                     |
+| Data de final          | Niciuna                                                                              | Scadența                                                                                                                                                    |
+| Garanții pe piață      | Una                                                                                  | Una sau mai multe, fiecare cu propriul LLTV                                                                                                                 |
+| Poate fi lichidat când | Este nesănătos                                                                       | Este nesănătos, sau orice datorie după scadență                                                                                                             |
+| Bonusul                | 1 ÷ (1 − 0,3 × (1 − LLTV)), cel mult 15%                                             | 1 ÷ (1 − cursor × (1 − LLTV)), cursor stabilit pe garanție, fără plafonul de 15%                                                                            |
+| Cât dintr-o dată       | Până la toată datoria într-un singur apel                                            | Înainte de scadență, cât restabilește sănătatea (o garanție întreagă dacă ce rămâne ar rambursa mai puțin decât rcfThreshold); după scadență, toată datoria |
+| Pre-lichidare          | Morpho renunță la ea, vezi [pre-lichidarea pe Morpho](/ro/blog/pre-lichidare-morpho) | Nu face parte din Midnight                                                                                                                                  |
+| Ieșirea mai devreme    | Rambursezi oricând                                                                   | Rambursezi la valoarea nominală sau cumperi unități înapoi dacă există vânzători                                                                            |
+
+Diferența practică pentru health factor-ul tău: pe Blue poate scădea și numai din cauza dobânzii, ca pe Aave ([cum îți afectează health factor-ul creșterile bruște de dobândă](/ro/blog/dobanzile-aave#cum-iti-afecteaza-health-factor-ul-cresterile-bruste-de-dobanda)). Pe Midnight scade doar când scad prețurile garanțiilor sau când retragi garanție ori te împrumuți mai mult. În schimb, Midnight adaugă o dată pe care nu ai voie să o ratezi.
+
+## Cum te pot ajuta alertele cu un împrumut Midnight?
+
+O alertă te poate avertiza despre ambele riscuri ale unui împrumut Midnight: un health factor în scădere și o scadență care se apropie. Tokenping verifică la fiecare 5 minute. [Panoul Morpho](/ro/morpho) listează pozițiile de împrumut ale unui portofel din piețele listate în aplicația Morpho pe 14 rețele, Blue și Midnight, iar vizualizarea pozițiilor nu necesită plată. Alertele Midnight acoperă piețele listate de API-ul Morpho. Pe 26 octombrie 2026 acestea erau pe Ethereum și Base; Tokenping acoperă și Arc și Robinhood Chain din momentul în care Morpho listează piețe Midnight acolo. Până atunci, pe aceste două rețele nu sunt posibile alerte Midnight.
+
+Pentru un împrumut Midnight:
+
+- **Sănătatea.** Tokenping îți calculează health factor-ul din blockchain cu matematica proprie a Morpho, niciodată din API-ul Morpho. Cât timp este sub pragul pe care l-ai setat (între 1,02 și 10), fiecare verificare trimite un mesaj pe fiecare canal ales: Signal, Telegram sau e-mail.
+- **Scadența.** Primești un memento în ultimele 7 zile înainte de scadență și unul în ultimele 24 de ore.
+- **După scadență.** Cât timp rămâne datorie, fiecare verificare trimite o alertă, pentru că împrumutul poate fi lichidat oricare ar fi health factor-ul.
+
+Alertele costă <AlertPrice />, același plan ca alertele pentru Aave. O alertă îți dă timp să acționezi; nu împiedică lichidarea, iar un preț se poate mișca între două verificări.
+
+## Surse
+
+- [Documentația Morpho: Midnight concepts](https://docs.morpho.org/learn/concepts/midnight): unități, credit și datorie, ieșiri anticipate, garanție și sănătate (accesat la 26 octombrie 2026)
+- [Documentația Morpho: Midnight liquidations](https://docs.morpho.org/learn/concepts/midnight/liquidations): cele două căi de lichidare, creșterea bonusului după scadență și de ce datoria neplătită este lichidabilă după scadență (accesat la 26 octombrie 2026)
+- [Documentația Morpho: offers](https://docs.morpho.org/learn/concepts/midnight/offers) și [gates](https://docs.morpho.org/learn/concepts/midnight/gates): reînnoirea cu callback-uri și ce pot și ce nu pot bloca barierele (accesat la 26 octombrie 2026)
+- [Documentația Morpho: market mechanics](https://docs.morpho.org/developers/midnight/concepts/market-mechanics), [collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) și [fees](https://docs.morpho.org/developers/midnight/concepts/fees) (accesat la 26 octombrie 2026)
+- [Documentația Morpho: exit a borrow early](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-early) și [exit a borrow at maturity](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-by-repaying-in-full-at-maturity) (accesat la 26 octombrie 2026)
+- [Documentația Morpho: contract addresses](https://docs.morpho.org/developers/contracts/addresses): Midnight și BlueFallbackRolling pe fiecare rețea (accesat la 26 octombrie 2026)
+- [morpho-org/midnight](https://github.com/morpho-org/midnight): Midnight.sol (verificarea de sănătate, lichidarea, rambursarea, retragerile), ConstantsLib.sol (comisioanele, bonusul, creșterea în 60 de minute, limitele de garanții) și README-ul periferiei (accesat la 26 octombrie 2026)
+- [morpho-org/morpho-blue](https://github.com/morpho-org/morpho-blue): constantele de lichidare și de bonus ale Blue (accesat la 26 octombrie 2026)
+- [Now live: Morpho Midnight and the new Markets App](https://morpho.org/blog/now-live-morpho-midnight) (21 iulie 2026) și [Morpho Midnight: what to expect at launch](https://morpho.org/blog/morpho-midnight-what-to-expect-at-launch) (17 iulie 2026) (accesat la 26 octombrie 2026)
+- [Morpho Fixed Rate Markets](https://morpho.org/blog/morpho-v2-liberating-the-potential-of-onchain-loans): postarea mai veche a Morpho despre Midnight și Vaults V2 (accesat la 26 octombrie 2026)
+- [Morpho Midnight API](https://api.morpho.org/v0/midnight/markets): piețele listate, registrul de ordine și pozițiile debitorilor (accesat la 26 octombrie 2026)
+- Contractele Midnight pe [Base](https://basescan.org/address/0xAdedD8ab6dE832766Fedf0FaC4992E5C4D3EA18A) la blocul 53102734 și pe [Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f) la blocul 26274992: definițiile piețelor, totalurile, comisioanele și prețurile oracolelor (accesat la 26 octombrie 2026)
+
+_Conținut educațional, nu sfat financiar. Alertele reduc riscul, dar nu împiedică lichidarea._
