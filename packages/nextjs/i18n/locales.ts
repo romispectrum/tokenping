@@ -1,6 +1,22 @@
 // The site's languages. English is served at the root; the others under their prefix (i18n/localePaths.ts).
 
-export const LOCALES = ["en", "cs", "es", "hi", "de", "vi", "fr", "pt", "it", "pl", "tr", "id", "nl", "ro"] as const;
+export const LOCALES = [
+  "en",
+  "cs",
+  "es",
+  "hi",
+  "de",
+  "vi",
+  "fr",
+  "pt",
+  "it",
+  "pl",
+  "tr",
+  "id",
+  "nl",
+  "ro",
+  "hu",
+] as const;
 
 export type Locale = (typeof LOCALES)[number];
 
@@ -180,6 +196,16 @@ export const LOCALE_INFO: Record<Locale, LocaleInfo> = {
     name: "Română",
     englishName: "Romanian",
     short: "RO",
+  },
+  // Decimal comma, space thousands ("12 000,5"), dates "2026. október 14.".
+  hu: {
+    htmlLang: "hu",
+    ogLocale: "hu_HU",
+    intl: "hu-HU",
+    numbers: "hu-HU",
+    name: "Magyar",
+    englishName: "Hungarian",
+    short: "HU",
   },
 };
 

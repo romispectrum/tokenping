@@ -27,13 +27,15 @@ type ScopeNoteProps = {
 export const ScopeNote = ({ locale = DEFAULT_LOCALE, protocol }: ScopeNoteProps) => {
   const { text, morphoText, figuresAsOf } = BLOG_MESSAGES[locale].scopeNote;
   const asOf = protocol === "morpho" ? MORPHO_FIGURES_AS_OF : FIGURES_AS_OF;
+  const shortDate = formatShortDate(asOf, locale);
   return (
     <p className="my-6 border-l-2 border-border pl-4 text-sm leading-relaxed text-muted-foreground">
       {`${protocol === "morpho" ? morphoText : text} ${figuresAsOf}`}{" "}
       <time dateTime={asOf} title={formatPostDate(asOf, locale)}>
-        {formatShortDate(asOf, locale)}
+        {shortDate}
       </time>
-      .
+      {/* Hungarian dates already end in a full stop ("2026. okt. 14."). */}
+      {shortDate.endsWith(".") ? null : "."}
     </p>
   );
 };

@@ -1,0 +1,178 @@
+export const meta = {
+  slug: "kriptofedezetu-hitelek",
+  title: "Kriptofedezetű hitelek: hogyan működnek, mire használják",
+  description:
+    "Hogyan működik lépésről lépésre egy túlfedezett kriptohitel az Aave-on, miben más, mint a banki vagy centralizált hitel, mire jó, és mik a kockázatai.",
+  h1: "Hogyan működnek a kriptofedezetű hitelek, és miért veszik fel őket?",
+  publishedAt: "2026-10-19",
+  primaryQuestion: "Hogyan működik egy kriptofedezetű hitel, és mire használják?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Kriptofedezetű hitellel úgy vehetsz fel hitelt, többnyire egy stablecoint, például USDC-t, hogy fedezetként kriptót
+  helyezel el, és nem adod el. Az Aave-on a hitel túlfedezett: 2026. október 19-én az Ethereum Core piacon a WBTC
+  értékének legfeljebb 73%-át vagy a WETH értékének 80,5%-át vehetted fel. A protokoll csak a fedezetet nézi, nincs
+  visszafizetési határidő, és a kamat változó. Ha a fedezet értéke annyira esik, hogy a health factorod (egészségi
+  mutató) 1 alá csökken, egy részét eladják az adósság visszafizetésére, és büntetést fizetsz. Az emberek arra
+  használják ezeket a hiteleket, hogy eladás nélkül jussanak pénzhez, áthidaljanak egy időszakot, refinanszírozzanak,
+  tőkeáttételt vegyenek fel vagy fedezzék magukat, és mindegyik használat likvidálási, kamat- és stablecoin-kockázattal
+  jár.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Minden on-chain adat, blokkszám és forrás e bejegyzés mögött: content/blog/snapshots/crypto-backed-loans.md */}
+
+## Mi az a kriptofedezetű hitel?
+
+A kriptofedezetű hitel olyan hitel, amelynek biztosítéka a fedezetként elhelyezett kripto. Egy hitelezési protokollon, például az Aave-on, túlfedezett: a fedezetnek többet kell érnie, mint a hitel, és a protokoll a jövedelmed ellenőrzése helyett arra támaszkodik, hogy el tudja adni a fedezet egy részét, ha az értéke túlságosan esik. Amíg a hitel nyitva van, a fedezet a tiéd marad, minden árfolyammozgásával együtt, és visszaveheted, miután visszafizetted az adósságot.
+
+A legtöbben stablecoint vesznek fel: olyan tokent, amely egy valutát követ. Az USDC és az USDT az amerikai dollárt, az EURC az eurót követi. A fedezet többnyire volatilis eszköz. Az Aave Ethereum és Arbitrum piacain az ether WETH formájában érhető el, a bitcoin pedig egy azt képviselő tokenként, például WBTC-ként vagy cbBTC-ként.
+
+Fedezeti eszközönként két szám dönti el, mennyi hitelt vehetsz fel, és mikor kerül veszélybe a hitel:
+
+- A **hitel-fedezet arány (LTV)** az a legnagyobb összeg, amelyet az eszközre felvehetsz, az eszköz értékének arányában.
+- A **likvidálási küszöb (liquidation threshold)** az eszköz értékének az a része, amely beleszámít a health factorodba. Ha az így súlyozott fedezeted kevesebbet ér, mint az adósságod, a health factor 1 alatt van, és a pozíció likvidálható.
+
+| Piac          | Fedezet | LTV (hitelkeret) | Likvidálási küszöb | Likvidálási bónusz |
+| ------------- | ------- | ---------------- | ------------------ | ------------------ |
+| Ethereum Core | WETH    | 80,5%            | 83%                | 5%                 |
+| Ethereum Core | WBTC    | 73%              | 78%                | 5%                 |
+| Ethereum Core | cbBTC   | 73%              | 78%                | 7,5%               |
+| Arbitrum      | WETH    | 80%              | 84%                | 5%                 |
+| Arbitrum      | WBTC    | 73%              | 78%                | 7%                 |
+
+Ezeket az értékeket 2026. október 19-én olvastuk ki on-chain az egyes piacok PoolDataProvider szerződéséből, a 26225342-es Ethereum-blokknál és az 516228495-ös Arbitrum-blokknál. A cbBTC nincs listázva az Aave Arbitrum-piacán. Az Aave governance bármelyik értéket megváltoztathatja. Hogy miben különbözik az LTV és a likvidálási küszöb, azt részletesebben [az Aave health factorról szóló útmutató](/hu/blog/aave-health-factor-magyarazat) magyarázza el.
+
+## Hogyan működik egy hitel az Aave-on, lépésről lépésre?
+
+Az Aave V3 okosszerződések készlete minden hálózaton, és az app.aave.com az egyik felület hozzájuk. Az Aave súgóközpontja néhány lépésben írja le a hitelfelvételt és a visszafizetést; ez az, amivel az egyes lépések járnak.
+
+### 1. lépés: helyezz el fedezetet
+
+Csatlakoztasd a tárcádat, válaszd ki az elhelyezendő eszközt, például a WBTC-t, és helyezd el. Ellenőrizd, hogy be van-e kapcsolva fedezetként, mert csak a fedezet számít bele abba, mennyi hitelt vehetsz fel. A tokenek a piac Pool szerződésében vannak, ahol más felhasználók hitelként felvehetik őket (ezért kapod a kis elhelyezési kamatot). A fedezetedet a visszafizetés után kiveheted, vagy egy részét akkor is, amíg még tartozol, ha a health factorod utána is legalább 1 marad.
+
+### 2. lépés: vegyél fel egy stablecoint
+
+Válaszd ki a stablecoint és egy összeget a hitelkereted alatt, amely a fedezet értéke szorozva az LTV-jével. A tokenek megérkeznek a tárcádba, és a kamat rögtön elkezd felhalmozódni, olyan kamatlábbal, amelyet a protokoll abból számol, mennyit vettek fel az eszközből, és olyan paraméterekből, amelyeket a governance módosíthat (Aave súgóközpont, Borrow Tokens). Az Aave V3-ban ma már csak változó kamat van: a Pool-referenciája szerint a hitelfelvétel mindig a változó kamatozású módot használja, a régi stabil kamatot pedig a v3.2 óta elavultnak jelöli.
+
+Változó hitelkamatok 2026. október 19-én, éves APY-ként, ahogy az Aave alkalmazás mutatja őket (26225342-es Ethereum-blokk, 516228495-ös Arbitrum-blokk):
+
+| Piac          | USDC  | USDT (az Arbitrumon USD₮0) | GHO   | EURC                          |
+| ------------- | ----- | -------------------------- | ----- | ----------------------------- |
+| Ethereum Core | 4,58% | 4,17%                      | 4,60% | 4,12%                         |
+| Arbitrum      | 3,45% | 4,21%                      | 4,59% | nincs nyitott euró-stablecoin |
+
+Ezek a kamatok folyamatosan változnak, és ugrásszerűen megnőhetnek. 2026. október 14-én az Ethereum Core USDC-kamata egyetlen blokk alatt 13,67% APR-re emelkedett, és körülbelül 36 perccel később esett vissza, ahogy [az útmutató arról, miért esik magától az Aave health factorod](/hu/blog/miert-csokkent-az-aave-health-factor#3-ok-gyorsabban-nott-a-kamat-az-adossagodon-mint-a-fedezeteden) mutatja.
+
+### 3. lépés: figyeld a health factort
+
+A health factor (HF) a fedezeted, minden eszköz likvidálási küszöbével súlyozva, osztva az adósságoddal. Vegyük alice-t, aki 1 WBTC-t helyez el az Ethereum Core-on, amikor a bitcoin szemléltető árfolyama 80 000 $ (az Aave orákuluma (árforrása) 82 680,33 $-t mutatott a 26225364-es Ethereum-blokknál, 2026. október 19-én), és 24 000 USDC-t vesz fel:
+
+- Hitelkeret: 80 000 × 0,73 = 58 400 $.
+- Health factor: 80 000 × 0,78 ÷ 24 000 = 2,60.
+- Likvidálási ár: 24 000 ÷ 0,78 = 30 769,23 $, ami 61,5%-kal van 80 000 $ alatt.
+
+A health factor csökken, amikor a bitcoin esik, és lassan akkor is, amikor kamat adódik az adóssághoz: ha az USDC-kamat évi 4,58% maradna, egy év múlva az adósság kb. 25 099 USDC lenne, a likvidálási ár pedig kb. 32 179 $-ra emelkedne. Ha a saját pozíciódra akarod kiszámolni, lásd [hogyan számold ki az Aave likvidálási áradat](/hu/blog/aave-likvidalasi-ar); hogy mekkora mozgásteret hagyj, azt [a biztonságos Aave health factorról szóló útmutató](/hu/blog/biztonsagos-aave-health-factor) mutatja.
+
+### 4. lépés: fizess vissza, amikor akarod
+
+Nincs visszafizetési határidő. Az Aave borrow függvénye egyáltalán nem kér futamidőt, és az adósságot bármikor visszafizetheted részben vagy egészben, abban az eszközben, amelyet felvettél (Aave V3 Pool-referencia; Aave súgóközpont, Repay Tokens). A teljes visszafizetés felszabadítja a fedezetedet. Fedezettel is visszafizethetsz: az Ethereum és Arbitrum piacokon az Aave felülete eladhatja a fedezeted egy részét az adósság eszközéért, és egyetlen tranzakcióban visszafizet (Aave docs, swap features).
+
+### 5. lépés: tudd, mi történik 1-es health factor alatt
+
+1 alatt bárki likvidálhatja a pozíciót: visszafizeti az adósságod egy részét, és elvisz ennek megfelelő értékű fedezetet plusz egy likvidálási bónuszt. Egy likvidálás az adósság legfeljebb 50%-át fizetheti vissza, amíg a health factor 0,95 fölött van, és a fedezet és az adósság egyenként legalább 2000 $-t ér, és legfeljebb 100%-át, ha a health factor 0,95 vagy az alatt van, vagy bármelyikük 2000 $-nál kevesebbet ér (Aave súgóközpont).
+
+Ha a bitcoin röviddel azután, hogy alice felvette a hitelt, 30 000 $-ra esne, a health factora 30 000 × 0,78 ÷ 24 000 = 0,975 lenne. Egy likvidátor visszafizethetne 12 000 USDC-t, és elvihetne 12 000 × 1,05 ÷ 30 000 = 0,42 WBTC-t, így alice-nek 0,58 WBTC maradna 12 000 USDC-vel szemben, 1,13-as health factorral. A visszafizetett adósságon felül 600 $ értékű fedezetet veszítene, és 0,42 WBTC-t a mélyponton adnának el. A teljes szabályokat [az útmutató arról, mi történik, amikor likvidálják az Aave-pozíciódat](/hu/blog/hogyan-mukodik-a-likvidalas-az-aave-on) tartalmazza.
+
+## Miben különbözik a kriptofedezetű hitel a banki hiteltől?
+
+A fő különbségek: mit néz a hitelező, mikor fizetsz vissza, és mi történik, ha a fedezet veszít az értékéből:
+
+|                                        | Hitel az Aave-on                                                                                 | Tipikus banki hitel                                                     |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| Mi dönti el, mennyi hitelt vehetsz fel | A fedezeted értéke és az LTV-je                                                                  | Általában a jövedelmed és a hiteltörténeted, plusz az esetleges fedezet |
+| Rólad végzett ellenőrzések             | A protokoll semmit nem ellenőriz, csak a fedezetet nézi                                          | Általában személyazonosság-, jövedelem- és hitelképesség-ellenőrzés     |
+| Futamidő                               | Nincs: akkor fizetsz vissza, amikor akarsz                                                       | Általában fix futamidő és törlesztési ütemterv                          |
+| Kamat                                  | Változó, újraszámolva, ahogy a hitelfelvétel változik a piacon                                   | Fix vagy változó, ahogy a szerződés mondja                              |
+| Ha a fedezet veszít az értékéből       | Automatikus likvidálás harmadik felek által, amint a health factor 1 alatt van, értesítés nélkül | A szerződéstől függ: további fedezet kérése, tárgyalás, végrehajtás     |
+| Ki tartja a fedezetet                  | A piac okosszerződése                                                                            | A hitelező vagy egy általa választott letétkezelő                       |
+| Ha a fedezet nem fedezi az adósságot   | A hiány a protokoll vesztesége lesz, nem követelés veled szemben                                 | A szerződéstől és a jogszabályoktól függ                                |
+
+Az utolsó sor abból következik, ahogy az Aave V3.3 és a későbbi verziók kezelik az olyan likvidálást, amely az összes fedezetet elhasználja: a maradék adósságot hiányként (deficit) leírják az eszközön, ahogy [a behajthatatlan adósságról szóló rész](/hu/blog/hogyan-mukodik-a-likvidalas-az-aave-on#hagyhat-egy-likvidalas-behajthatatlan-adossagot) elmagyarázza. A fedezetedet addigra már elvesztetted.
+
+## Miben különbözik egy centralizált kriptohitelezőtől?
+
+Egy centralizált hitelező a saját letétébe veszi a fedezetedet. A hitel nagyon hasonlóan nézhet ki, de te a cég hitelezőjévé válsz, és ha a cég csődbe megy, a fedezeted nála ragadhat. 2022 megmutatta, mit jelent ez:
+
+- **Celsius**: 2022. június 12-én befagyasztotta az ügyfelek kivételeit, és 2022. július 13-án csődöt jelentett. Az amerikai árutőzsdei felügyelet (Commodity Futures Trading Commission) szerint az ügyfelek kb. 20 milliárd $-t helyeztek el nála. 2023 januárjában a New York-i amerikai csődbíróság kimondta, hogy a Celsius Earn számláin lévő kripto a felhasználási feltételek alapján a Celsius tulajdonába került, így ezek az ügyfelek fedezetlen hitelezők lettek.
+- **Voyager Digital**: 2022. július 1-jén felfüggesztette a kereskedést, a befizetéseket és a kivételeket, miután a Three Arrows Capital nem teljesítette a fizetéseket egy 15 250 BTC-ből és 350 millió $ értékű USDC-ből álló hitelen, majd 2022. július 5-én Chapter 11 szerinti csődeljárást kezdeményezett.
+- **Genesis**: 2022 novemberében leállította a Gemini Earn program befektetőinek kivételeit, amikor az amerikai értékpapír-felügyelet (Securities and Exchange Commission) szerint kb. 900 millió $ értékben tartotta az eszközeiket, és 2023. január 19-én Chapter 11 szerinti eljárást kezdeményezett.
+- **BlockFi**: 2022. november 28-án kezdeményezett Chapter 11 szerinti eljárást, néhány nappal azután, hogy az FTX összeomlása közben felfüggesztette a kivételeket.
+
+Az Aave-on a fedezet egy nyilvános okosszerződésben van, amelynek szabályait bárki elolvashatja, nem egy cég mérlegében. Ez az egyik kockázatcsoportot egy másikra cseréli, amelyről lent, [a kockázatoknál](#milyen-kockazatai-vannak-egy-kriptofedezetu-hitelnek) olvashatsz: hibák, orákulumhibák, governance-döntések és a wrapped bitcoin mögötti letétkezelés. Ezek közül egy itt is számít: az Aave emergency adminja vagy pool adminja szüneteltethet (pause) egy eszközt, és amíg szüneteltetve van, senki sem veheti ki és nem fizetheti vissza (az Aave PoolConfigurator és ValidationLogic szerződései).
+
+## Mire használják a kriptofedezetű hiteleket?
+
+### Pénz eladás nélkül
+
+Az egyik ok, hogy pénzhez jussanak, miközben megtartják a kriptót, gyakran azért, mert a tulajdonos emelkedésre számít, vagy évekig meg akarja tartani. A hitel mellett a fedezet teljes emelkedése és teljes esése is megmarad, hozzájön a kamat, és ha az ár elég mélyre esik, a legrosszabb pillanatban kényszeríthet eladásra.
+
+A hitelfelvétel nem adja el a fedezetedet: az a tiéd marad. Hogy a fedezet elhelyezésének, a hitelnek, a kamatnak vagy egy likvidálásnak van-e adózási következménye, az az országodtól függ, és néha a protokoll feltételeitől is. Az Egyesült Királyság adóhatóságának útmutatója például azt mondja, hogy egy DeFi-hitelezési platform feltételeitől függ, elidegenítésnek számít-e, ha fedezetet adsz neki, és ahol nem, ott a fedezet likvidáláskori eladását a hitelfelvevő saját eladásaként kezeli (HMRC Cryptoassets Manual, CRYPTO61640). Ez az útmutató nem ad adótanácsot; nézz utána a lakóhelyed szabályainak.
+
+### Kiadás vagy egy időszak áthidalása
+
+Van, aki egy kiadás fedezésére vesz fel hitelt, mielőtt megérkezik a várt pénz, például egy számlára, amely egy eladás vagy a fizetés előtt esedékes. Az ára az, hogy semmi sem zárja le helyetted a hitelt: nincs visszafizetési határidő, a kamat várakozás közben emelkedhet, és a stablecoinok bankszámlán lévő pénzre váltásának, majd a visszafizetéshez a visszaváltásnak is megvannak a maga költségei.
+
+### Refinanszírozás
+
+Egy máshol felvett hitel átvihető az Aave-ra, ha ott alacsonyabb a kamat, és az Aave-on egy adósság egyetlen tranzakcióban átváltható egyik stablecoinról a másikra a felület debt swap funkciójával (Aave docs, swap features). Az ára: a kamatok változók, így a ma olcsóbb eszköz jövő hónapban drágább lehet, és ha dollár-stablecoinról euró-stablecoinra váltasz, megváltozik, milyen valutában tartozol; erről szól [a fiat shortolása Aave-hitellel](/hu/blog/fiat-shortolasa-aave-val).
+
+### Tőkeáttétel
+
+A kitettség növelésére van, aki stablecoint vesz fel, vesz belőle még a fedezetből, és azt is elhelyezi. Ha alice a 24 000 USDC-jéből 0,3 WBTC-t venne 80 000 $-os áron, és elhelyezné, 1,3 WBTC-je lenne 24 000 USDC-vel szemben: 3,38-as health factor és 23 668,64 $-os likvidálási ár. A bitcoin minden mozgása ettől kezdve 1,3-szer olyan erősen érinti, mintha közvetlenül 1 bitcoint tartana, és a loop (ismételt hitelfelvétel tőkeáttétellel) megismétlése a health factort 1 felé tolja.
+
+### Fedezés és shortolás
+
+Ha felveszel egy eszközt hitelként és eladod, arra fogadsz, hogy esni fog: stablecoint helyezel el, WETH-et veszel fel és eladod, és a pozíció nyer, ha az ETH esik, és a likvidálás felé mozdul, ha az ETH emelkedik ([a biztonságos health factorról szóló útmutató](/hu/blog/biztonsagos-aave-health-factor) megmutatja, mennyit emelkedhet). Dollár- vagy euró-stablecoin felvétele bitcoinra ennek a tükörképe, short a valután a fedezettel szemben, amit egyes bitcoinosok a fiat shortolásának hívnak; [a fiat shortolása Aave-hitellel](/hu/blog/fiat-shortolasa-aave-val) számokkal végigveszi.
+
+## Milyen kockázatai vannak egy kriptofedezetű hitelnek?
+
+- **Likvidálás.** 1-es health factor alatt az adósság egy része vagy egésze visszafizethető a fedezetedből, és ráadásul elveszíted a bónuszt is: az első táblázat eszközeinél 5% és 7,5% között. A likvidálásokat egymással versengő botok hajtják végre, így gyorsan bekövetkezhetnek (Aave súgóközpont).
+- **A fedezet volatilitása.** A bitcoin 2021 novemberében kb. 69 000 $-on tetőzött, 2022. június közepére kb. 17 000 $-on állt, ami kb. 75%-os esés, és az FTX csődje után, 2022 novemberében 16 000 $ alá ment (EKB-blog). A WBTC 78%-os likvidálási küszöbével még a 2021-es csúcson felvett, a fedezet értékének 20%-át kitevő hitelt is likvidálták volna 2022. június közepéig.
+- **Változó kamatok.** A kamat semmilyen időszakra nincs rögzítve, és a kamat idővel csökkenti a health factorodat akkor is, ha az árak nem mozdulnak.
+- **Stablecoin-depeg (a dollárhoz kötött árfolyam elvesztése).** Az USDC 2023. március 11-én kb. 0,88 $-ra esett, miután a Circle közölte, hogy tartalékaiból 3,3 milliárd $ a Silicon Valley Banknál van, és március 13-ára visszament 0,99 $ fölé (a Gauntlet bejegyzése az Aave fórumán; Circle). A TerraUSD, egy algoritmikus stablecoin, 2022 májusában elvesztette az árfolyamkötését, és közel nullára esett, ami az amerikai SEC szerint 40 milliárd $ piaci értéket semmisített meg. Ha a stablecoin, amellyel tartozol, esik, az adósságod olcsóbb lesz; ha egy fedezetként használt stablecoin esik, a health factorod csökken.
+- **Wrapped bitcoin.** Az Aave-on a bitcoin egy token, amelyet valaki más által tartott vagy egy híd által ellenőrzött bitcoin fedez. A WBTC például azt mondja, hogy minden tokenjét letétben tartott bitcoin fedezi. Ha ez a fedezet megszűnne, a token értéket veszíthetne, bármit is csinál maga a bitcoin.
+- **Okosszerződések, orákulumok és governance.** Egy hiba, egy rossz ár vagy egy paraméterváltozás piaci mozgás nélkül is eltalálhat egy pozíciót. 2026 márciusában egy rosszul illesztett árfolyam-orákulum az Aave Ethereum Core és Prime piacain kb. 2,85%-kal csökkentette a wstETH effektív árfolyamát, és kb. 10 938 wstETH likvidálását váltotta ki 34 számlán, a Chaos Labs utólagos elemzése szerint ([bővebben az orákulumhibákról](/hu/blog/miert-csokkent-az-aave-health-factor#6-ok-rosszul-arazta-a-fedezetedet-egy-orakulum-vagy-arfolyamhiba)). A governance minden nyitott pozícióra csökkentheti a likvidálási küszöböt is ([bővebben a küszöbcsökkentésekről](/hu/blog/miert-csokkent-az-aave-health-factor#4-ok-csokkentette-a-governance-vagy-a-risk-stewards-a-likvidalasi-kuszobot)).
+- **Mindent magad csinálsz.** Te tartod a kulcsokat, te küldöd a tranzakciókat, és gyors piacon egy visszafizetés megerősítése tovább tarthat, mint gondolnád.
+
+## Hogyan tarthatod szemmel a hitelt?
+
+Az Aave saját felületei mutatják a health factorodat, amíg nyitva vannak, de nem küldenek üzenetet, amikor esik, ahogy [a health factor-riasztásokról szóló útmutató](/hu/blog/aave-health-factor-riasztas-beallitasa#kuld-az-aave-health-factor-riasztasokat) elmagyarázza. A szemmel tartás egyik módja, hogy kiválasztod azt a health factort, amelynél cselekednél, az adósság egy részének visszafizetésével vagy fedezet hozzáadásával, és egy külön eszközzel figyelmeztetést kérsz, amikor a pozíció odaér. A Tokenping 5 percenként ellenőriz, és üzenetet küld, amíg a health factorod az általad beállított küszöbérték alatt van; [a beállítási útmutató](/hu/blog/aave-health-factor-riasztas-beallitasa) végigvezet rajta. Egy riasztás időt ad a cselekvésre, nem védelmet, és [az útmutató arról, hogyan kerüld el a likvidálást az Aave-on](/hu/blog/aave-likvidalas-elkerulese) azt tárgyalja, mit kezdj ezzel az idővel.
+
+## Források
+
+- Aave V3 Ethereum Core [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) és Arbitrum [PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): LTV, likvidálási küszöbök, bónuszok és változó hitelkamatok, on-chain kiolvasva a 26225342-es Ethereum-blokknál és az 516228495-ös Arbitrum-blokknál (RPC-adatok, megtekintve: 2026. október 19.)
+- [Aave V3 Ethereum Core AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): WBTC-ár 82 680,33 $ a 26225364-es Ethereum-blokknál (RPC-adatok, megtekintve: 2026. október 19.)
+- [Aave Help: Borrow Tokens](https://aave.com/help/borrowing/borrow-tokens) (megtekintve: 2026. október 19.)
+- [Aave Help: Repay Tokens](https://aave.com/help/borrowing/repay-tokens) (megtekintve: 2026. október 19.)
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (megtekintve: 2026. október 19.)
+- [Aave V3 Pool okosszerződés-referencia](https://aave.com/docs/aave-v3/smart-contracts/pool): a borrow és repay paraméterei, csak változó kamat, a stabil kamat a v3.2-ben elavult (megtekintve: 2026. október 19.)
+- [Aave docs: swap features](https://aave.com/docs/aave-v3/smart-contracts/swap-features): visszafizetés fedezettel és debt swap (megtekintve: 2026. október 19.)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) és [PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol), aave-v3-origin: kivétel hitel mellett, szüneteltetések, és ki állíthatja be őket (megtekintve: 2026. október 19.)
+- [A CFTC 8749-23-as sajtóközleménye a Celsius Networkről](https://www.cftc.gov/PressRoom/PressReleases/8749-23), 2023. július 13.: kb. 20 milliárd $ elhelyezett összeg, a kivételek befagyasztása 2022. június 12-én, csődbejelentés 2022. július 13-án (megtekintve: 2026. október 19.)
+- [Az amerikai csődbíróság (Southern District of New York) határozata a Celsius Earn számlák eszközeinek tulajdonjogáról](https://www.nysb.uscourts.gov/sites/default/files/opinions/312902_1822_opinion.pdf), 2023. január 4. (megtekintve: 2026. október 19.)
+- [Voyager Digital: piaci tájékoztató](https://www.newswire.ca/news-releases/voyager-digital-provides-market-update-851734302.html), 2022. július 1., és [Voyager Digital: a Chapter 11 szerinti eljárás bejelentése](https://www.newswire.ca/news-releases/voyager-digital-commences-financial-restructuring-process-to-maximize-value-for-all-stakeholders-888320107.html), 2022. július 5. (mindkettő megtekintve: 2026. október 19.)
+- [A SEC 2023-7-es sajtóközleménye a Genesisről és a Gemini Earn programról](https://www.sec.gov/news/press-release/2023-7), 2023. január 12. (megtekintve: 2026. október 19.)
+- [A SEC 2024-37-es sajtóközleménye a Genesisről](https://www.sec.gov/newsroom/press-releases/2024-37), 2024. március 19.: a Chapter 11 szerinti kérelmek benyújtása 2023. január 19-én (megtekintve: 2026. október 19.)
+- [CoinDesk: BlockFi files for bankruptcy as FTX contagion spreads](https://www.coindesk.com/policy/2022/11/28/ftx-fallout-continues-as-crypto-lender-blockfi-declares-bankruptcy), 2022. november 28. (megtekintve: 2026. október 19.)
+- [The ECB Blog: Bitcoin's last stand](https://www.ecb.europa.eu/press/blog/date/2022/html/ecb.blog221130~5301eecd19.en.html), 2022. november 30.: az esés kb. 69 000 $-ról kb. 17 000 $-ra és 16 000 $ alá (megtekintve: 2026. október 19.)
+- [Gauntlet: Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), Aave governance fórum, 2023. március 17. (megtekintve: 2026. október 19.)
+- [Circle: $3.3 Billion of USDC Reserve Risk Removed, Dollar De-peg Closes](https://www.circle.com/pressroom/3-3-billion-of-usdc-reserve-risk-removed-dollar-de-peg-closes), 2023. március 12. (megtekintve: 2026. október 19.)
+- [A SEC 2024-73-as sajtóközleménye a Terraformról](https://www.sec.gov/newsroom/press-releases/2024-73), 2024. június 13.: az UST 2022. májusi depegje (megtekintve: 2026. október 19.)
+- [WBTC](https://wbtc.network/): mi fedezi a WBTC-t (megtekintve: 2026. október 19.)
+- [Chaos Labs: Post-Mortem, Exchange Rate Misalignment on wstETH Core and Prime Instances](https://governance.aave.com/t/24269), Aave governance fórum, 2026. március 10. (megtekintve: 2026. október 19.)
+- [HMRC Cryptoassets Manual, CRYPTO61640: DeFi lending and staking, collateral](https://www.gov.uk/hmrc-internal-manuals/cryptoassets-manual/crypto61640), frissítve 2025. november 28-án (megtekintve: 2026. október 19.)
+
+_Oktatási tartalom, nem pénzügyi tanácsadás. A riasztások csökkentik a kockázatot, de nem akadályozzák meg a likvidálást._

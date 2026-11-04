@@ -59,6 +59,7 @@ const LIST_WORDS: Record<Locale, ListWords> = {
   id: { conjunction: "dan", disjunction: "atau" },
   nl: { conjunction: "en", disjunction: "of" },
   ro: { conjunction: "și", disjunction: "sau" },
+  hu: { conjunction: "és", disjunction: "vagy" },
 };
 
 /**
@@ -217,6 +218,26 @@ export const roOnMarket = (name: string, kind?: MarketNameKind) =>
 /** Romanian "pentru Arbitrum" for a V3 market, "pentru piața Ethereum (V4 Lido)" for a V4 Spoke or a Morpho market. */
 export const roForMarket = (name: string, kind?: MarketNameKind) =>
   marketNameKind(name, kind) === "market" ? `pentru piața ${name}` : `pentru ${name}`;
+
+// A name that starts with a capital not followed by a small letter is spelled out ("BNB Chain", "LBTC/USDC",
+// "X Layer"); these Hungarian letter names start with a vowel sound (ef, el, em, en, er, es, iksz, ipszilon).
+const HU_SPELLED_VOWEL = /^[AEFILMNORSUXYÁÉÍÓÖŐÚÜŰ]/u;
+const HU_VOWEL = /^[aáeéiíoóöőuúüű]/iu;
+
+/** The Hungarian article before a name: "az" before a vowel sound ("az Arbitrum", "az LBTC/USDC"), "a" otherwise. */
+export const huArticle = (name: string) =>
+  (/^[A-Z]+(?![a-z])/u.test(name) ? HU_SPELLED_VOWEL : HU_VOWEL).test(name) ? "az" : "a";
+
+/**
+ * Hungarian "az Arbitrum hálózaton" for a V3 market, "az Ethereum (V4 Lido) piacon" for a V4 Spoke or a Morpho market:
+ * the suffix goes on the noun after the name, so nothing attaches to the name itself.
+ */
+export const huOnMarket = (name: string, kind?: MarketNameKind) =>
+  `${huArticle(name)} ${name} ${marketNameKind(name, kind) === "market" ? "piacon" : "hálózaton"}`;
+
+/** Hungarian "az Arbitrum hálózatra" for a V3 market, "a Base (V4 Coinbase Stocks) piacra" for a V4 Spoke or a Morpho market. */
+export const huForMarket = (name: string, kind?: MarketNameKind) =>
+  `${huArticle(name)} ${name} ${marketNameKind(name, kind) === "market" ? "piacra" : "hálózatra"}`;
 
 /** Vietnamese "mạng" before a V3 market's name (its network's), "thị trường" before a V4 Spoke's or a Morpho market's. */
 export const viMarketNoun = (name: string, kind?: MarketNameKind) =>

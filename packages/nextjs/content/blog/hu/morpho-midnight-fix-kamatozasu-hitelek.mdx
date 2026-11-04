@@ -1,0 +1,193 @@
+export const meta = {
+  slug: "morpho-midnight-fix-kamatozasu-hitelek",
+  title: "Morpho Midnight fix kamatozású hitelek: így működnek",
+  description:
+    "Hogyan működnek a Morpho Midnight fix kamatozású hitelei: a kamat, a lejáratkor fizetendő összeg, több fedezet és a ki nem fizetett adósság likvidálása.",
+  h1: "Hogyan működnek a Morpho Midnight fix kamatozású hitelei, és mi történik a lejáratkor?",
+  publishedAt: "2026-10-26",
+  primaryQuestion:
+    "Hogyan működik egy fix kamatozású Morpho Midnight-hitel, és mi történik, ha a lejáratig nem fizettem vissza?",
+  readingMinutes: 12,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  A Morpho Midnight a Morpho fix kamatozású, határozott futamidejű hitelezése. Úgy veszel fel hitelt, hogy névérték
+  alatt adósságegységeket adsz el: minden egységért most valamivel kevesebb mint egy hiteltokent kapsz, és vállalod,
+  hogy a piac lejáratakor pontosan egyet visszafizetsz, így a kamat a hitelfelvételkor rögzül, és az adósságod nem nő. A
+  lejárat előtt a pozíciód csak akkor likvidálható, ha a fedezeted, az egyes fedezetek LLTV-jével súlyozva, már nem
+  fedezi az adósságot (1 alatti health factor). A lejárat után minden megmaradt adósság likvidálható, a health
+  factorodtól függetlenül, és a likvidátor bónusza az első óra alatt emelkedik. Fizesd vissza a lejárat előtt, aztán
+  vedd ki magad a fedezetedet.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Az adatok és a blokkszámok, amelyeknél kiolvastuk őket: content/blog/snapshots/morpho-midnight-fixed-rate-loans.md */}
+
+## Mi a Morpho Midnight?
+
+A Morpho Midnight a Morpho azon része, amely fix kamatú hitelt kínál egy rögzített időpontig, a lejáratig. A Morpho dokumentációja „Fixed Rate Markets (Midnight)” néven említi (fix kamatozású piacok), a Morpho Blue, vagyis a változó kamatozású piacai mellett. Ha még nem ismered a Morpho egészségi számítását, kezdd a [Morpho health factor útmutatóval](/hu/blog/morpho-health-factor-magyarazat), amelyre ez az útmutató épít.
+
+A Midnight 2026. július 21-én nyílt meg a nyilvánosság előtt a Base-en, egyetlen párral (cbBTC fedezet, USDC hitel) és néhány lejárattal. Ebben az útmutatóban egy Midnight-piacot erről a párról nevezünk el: egy „cbBTC/USDC-piac” cbBTC-t fogad el fedezetként, és USDC-t ad kölcsön. Ugyanaz a szerződéskód ma öt hálózaton fut:
+
+| Hálózat         | A Midnight-szerződésnek kódja van ekkortól | A Morpho API-ja által listázott piacok (2026. október 26.) |
+| --------------- | ------------------------------------------ | ---------------------------------------------------------- |
+| Base            | 2026. július 6.                            | Igen; 19 listázott piacon van nyitott hitel                |
+| Ethereum        | 2026. augusztus 20.                        | Igen; 12 listázott piacon van nyitott hitel                |
+| Arc             | 2026. szeptember 11.                       | Nincs (13 piac létezik)                                    |
+| Robinhood Chain | A dátum nem érhető el                      | Nincs (34 piac létezik)                                    |
+| Tempo           | 2026. október 3.                           | Nincs (az API nem mutat piacot)                            |
+
+Bárki létrehozhat Midnight-piacot, így az, hogy egy piac létezik a láncon, keveset mond. A Morpho alkalmazása azokat a piacokat mutatja, amelyeket az API-ja listáz, és 2026. október 26-án ezek mind az Ethereumon és a Base-en voltak.
+
+Egy korábbi Morpho-bejegyzés a Midnightot a Vaults V2-vel együtt „Morpho V2”-ként mutatta be. A bevezető bejegyzése szerint a Midnight sem a Blue második verziója, sem a helyettesítője: a kettő egymás mellett fut. Különálló szerződések.
+
+## Hogyan határozzák meg egy Midnight-piacot?
+
+Egy Midnight-piac a létrehozásakor rögzül, és soha nem változik. Ezek határozzák meg:
+
+- **Egy hiteltoken**, például USDC.
+- **Egy vagy több fedezet** (legfeljebb 128), mindegyik saját LLTV-vel (a fedezet értékének az a része, amennyivel a likvidálás előtt tartozhatsz), saját orákulummal (árforrás) és saját likvidálási kurzorral (liquidation cursor), amely a likvidátor bónuszát határozza meg.
+- **Egy lejárat**, egy dátum és időpont, amikor a piac minden hitele esedékes.
+- **Egy helyreállítási küszöb** (rcfThreshold), amely eldönti, mikor likvidálható teljes egészében egy fedezet kis mennyisége (lásd lent).
+- **Opcionális kapuk** (gates), amelyek korlátozhatják, ki hitelezhet, vehet fel hitelt vagy likvidálhat. Egy kapu soha nem akadályozhat meg a visszafizetésben vagy a kilépésben. 2026. október 26-án az Ethereum és a Base egyik listázott piacán sem volt kapu.
+
+Egy hitelfelvevő egyszerre egy piac legfeljebb 16 fedezetét használhatja. Egy új fedezet elfogadásához vagy a lejárat áthelyezéséhez valakinek új piacot kell létrehoznia. A mindkét hálózaton listázott, hitellel rendelkező piacok egy hónap utolsó péntekén 15:00 UTC-kor járnak le: 2026. október 30-án, november 27-én és december 25-én, valamint 2027. március 26-án.
+
+## Hogyan alakul ki a fix kamat, és mennyivel tartozol a lejáratkor?
+
+A kamat egy árból adódik, nem kamatmodellből. A Midnight egységekben számolja az adósságot, és egy adósságegység annak vállalása, hogy a lejáratkor visszafizetsz egy hiteltokent. Hitelfelvételhez 1 alatti áron adsz el egységeket a hitelezőknek: 0,99-es áron minden egységért most 0,99 USDC-t kapsz, és a lejáratkor egységenként 1 USDC-vel tartozol. A teljes futamidőre vetített kamat 1 osztva az árral, mínusz 1, és a Morpho dokumentációja ezt úgy alakítja éves számmá, hogy elosztja az évből hátralévő hányaddal.
+
+Az árak a hitelezők és a hitelfelvevők által közzétett ajánlatokból születnek, így ugyanazon a piacon két hitelfelvevő különböző kamatot fizethet. 2026. október 26-án a Morpho API-ja szerint a Base 2026. december 25-én lejáró cbBTC/USDC-piacán a 117 hitelfelvevő kamata évi 1,93% és 6,84% között volt.
+
+Az, amennyivel tartozol, egyszerű: az eladott egységek száma hiteltokenben, a lejáratkor esedékesen. A hitel futamideje alatt semmi sem adódik hozzá. A Midnight szerződése csak akkor változtatja meg egy hitelfelvevő adósságát, ha többet veszel fel, visszafizetsz, egységeket vásárolsz vissza vagy likvidálnak; a lejárat előtt és után sem halmozódik rajta kamat.
+
+A Midnightnak két díja van, mindkettőt piaconként állítják be, és mindkettő nulla az ebben az útmutatóban szereplő két piacon:
+
+- **Elszámolási díj** (settlement fee) minden kereskedésnél, amelyet az fizet, aki elfogad egy ajánlatot. A szerződés a lejáratig hátralévő idő szerint korlátozza, egy napra 0,0014%-tól 360 napra 0,5%-ig.
+- **Folyamatos díj** (continuous fee), amelyet csak a hitelezők viselnek, és évi 1%-ban van maximálva.
+
+## Hogyan számolják a health factort több fedezettel?
+
+A Midnight szerződése igen-nem alapon ellenőrzi az egészséget: egy pozíció egészséges, amíg a maximális adóssága legalább akkora, mint az adóssága. A maximális adósság az általad használt fedezetekre vett összeg: mindegyik értéke a hiteltokenben, az orákuluma szerinti áron, szorozva a saját LLTV-jével. A Morpho dokumentációja az ellenőrzést maxDebt ≥ debt alakban írja fel; a health factor ugyanez az ellenőrzés arányként felírva, maximális adósság osztva az adóssággal, és 1 alatt a pozíció likvidálható.
+
+Vegyük az Ethereum legnagyobb listázott piacát, amely két, eltérő LLTV-jű fedezettel szemben ad USDC-t kölcsön: magával az USDC-vel 98%-on és cbBTC-vel 86%-on. 80 011,48 USDC-s cbBTC-árral (az orákuluma ára 2026. október 26-án) a [Morpho health factor útmutató](/hu/blog/morpho-health-factor-magyarazat) szemléltető pozíciója, 0,5 cbBTC és 10 000 USDC fedezet 40 000 USDC adóssággal szemben, így néz ki:
+
+| Fedezet     | Érték (USDC) | LLTV | Ennyit ér (USDC) |
+| ----------- | ------------ | ---- | ---------------- |
+| 0,5 cbBTC   | 40 005,74    | 86%  | 34 404,94        |
+| 10 000 USDC | 10 000,00    | 98%  | 9800,00          |
+| Összesen    | 50 005,74    |      | 44 204,94        |
+
+A health factora 44 204,94 ÷ 40 000 = 1,105, és 1 alá esik, ha a cbBTC nagyjából 70 233 USDC alá esik, 12,2%-kal lejjebb, miközben az USDC-fedezet megtartja az értékét. Az elv ugyanaz, mint [egy második fedezetnél az Aave-on](/hu/blog/aave-health-factor-magyarazat#mi-valtozik-egy-masodik-fedezeti-eszkozzel): minden eszköz a saját arányában számít.
+
+Bármikor hozzáadhatsz, kivehetsz vagy lecserélhetsz fedezeteket, amíg egy kivétel után egészséges maradsz. Ha bármelyik általad használt fedezet orákuluma nem válaszol, az egészségi ellenőrzés, a hitelfelvétel, a kivétel és a likvidálás is meghiúsul a pozíciódnál, amíg adósságod van. A visszafizetés ekkor is működik, és ha az adósságod nulla, orákulum nélkül is kiveheted a fedezetet.
+
+## Mikor likvidálható egy Midnight-hitel?
+
+Egy Midnight-hitel kétféleképpen likvidálható: ha egészségtelen, bármikor, vagy ha a lejárat után adósság maradt, az egészségétől függetlenül. A [hogyan működik a likvidálás a Morphón](/hu/blog/hogyan-mukodik-a-likvidalas-a-morphon) útmutató a közös mechanikát tárgyalja; itt az következik, ami a Midnightra jellemző.
+
+### A lejárat előtt
+
+A lejárat előtt csak az egészség számít. Ha a health factor 1 alatt van, egy likvidátor visszafizetheti az adósságod egy részét, és elviheti az ennek megfelelő értékű fedezetet egy bónusszal. A bónuszt fedezetenként határozzák meg: 1 ÷ (1 − kurzor × (1 − LLTV)). 86%-os LLTV-jű cbBTC-nél 0,3-as kurzorral ez 1,0438, vagyis 4,38%-os bónusz; 98%-os USDC-nél nagyjából 0,6%. A likvidátor választja ki, melyik fedezetedet viszi el, és a Morpho dokumentációja figyelmeztet, hogy azt fogja választani, amelyik a legjobban fizet.
+
+Hogy egyszerre mennyi mehet el, a mérettől függ. Általában egy likvidátor csak annyit fizethet vissza, amennyi a pozíció egészségének helyreállításához kell. A kivétel: ha egy ilyen korlátozott likvidálás után megmaradó fedezet kevesebbet fizetne vissza, mint a piac rcfThreshold értéke, az a fedezet teljes egészében elvihető. A küszöb 3000 USDC a lenti kidolgozott példa Base-en lévő cbBTC/USDC-piacán, és 300 000 USDC a fenti ethereumos piacon. Egy ennél kisebb, egyfedezetes hitelnél az egész pozíció egyszerre elmehet.
+
+### A lejárat után
+
+Ha a lejárat időpontja elmúlt, minden megmaradt adósság likvidálható, akkor is, ha a health factorod 2 vagy 10. A szerződés lejárat utáni ága csak az órát nézi. A Morpho indoklása az, hogy a hitelezők a lejáratkor ki akarják venni a pénzüket, és egy nem fizető hitelfelvevő, akár egészséges, akár nem, ebben megakadályozza őket.
+
+Ebben az ágban a bónusz a lejáratkor nulláról indul, és 60 perc alatt egyenletesen nő a teljes bónuszig. Ha a pozíciód a lejárat után egészségtelen is, egy likvidátor helyette az egészségen alapuló ágat használhatja, és azonnal a teljes bónuszt kaphatja. A lejárat utáni ágban nincs korlátja annak, mennyit lehet visszafizetni, így a teljes adósság egyszerre likvidálható. A lejárat után már nem vehetsz fel több hitelt, de még visszafizethetsz, visszavásárolhatsz egységeket és kiveheted a fedezetet.
+
+<Callout tone="warning">
+  A lejárat pontos másodpercében egy egészséges pozíció még biztonságban van; egy másodperccel később már nincs. Ha egy
+  egészséges pozíciót későn fizetsz vissza, az akár a teljes likvidálási bónuszodba kerülhet, ami egy 86%-os LLTV-jű
+  cbBTC-hitelnél az adósság nagyjából 4,4%-a.
+</Callout>
+
+Ha egy likvidálás után olyan adósság marad, amelyet a fedezet nem fedez, a hiányt leírják, és csak az adott piac hitelezői viselik.
+
+## Hogyan fizethetsz vissza korán, a lejáratkor, vagy görgetheted át egy későbbi lejáratra?
+
+Egy Midnight-hitelből háromféleképpen léphetsz ki, plusz egy választható tartalékmegoldással:
+
+- **Közvetlen visszafizetés.** A visszafizetés egységenként pontosan egy hiteltokenbe kerül, a lejárat előtt, alatt vagy után. Mindig működik, és ez szabja meg, legfeljebb mennyit érdemes fizetned egy korai kilépésért. A korai visszafizetés a kamatból semmit nem térít vissza: a lejáratkor esedékes teljes összeget fizeted, csak hamarabb.
+- **Egységek visszavásárlása a lejárat előtt.** Ehelyett a hitelezők eladási ajánlataiból 1 alatti áron is vásárolhatsz egységeket, ami névérték alatt töröl ennyi adósságot. Ehhez kell, hogy valaki éppen akkor kínáljon egységeket, amikor ki akarsz lépni.
+- **Átgörgetés egy későbbi lejáratra.** A Morpho dokumentációja leírja, hogyan lehet az egyik piacon visszafizetni vagy visszavásárolni, és egy későbbi lejáratú piacon hitelt felvenni egyetlen tranzakcióban, visszahívásokkal (callbacks). A Morpho júliusi bevezető bejegyzése az automatikus átgörgetést későbbi funkcióként említette; 2026. október 26-án a dokumentáció az átgörgetést csak olyasmiként írja le, amit magad csinálsz, vagy a lenti Blue-tartalékkal.
+- **Tartalék a Blue-ra.** A Morpho mind az öt hálózaton telepített egy BlueFallbackRolling nevű szerződést. Ha bekapcsolod, és a Midnighton és a Blue-n is engedélyezed, bárki átviheti a Midnight-adósságodat és -fedezetedet egy általad választott változó kamatozású Blue-piacra, egy általad választott időponttól. A hívó jutalma az adósság egy általad beállított része; egy általad megadott kezdő és záró időpont között nő, elérheti a teljes adósságot, és hozzáadódik az új Blue-adósságodhoz. Pontosan egy fedezet kell hozzá, amely megegyezik a Blue-piacéval.
+
+## Mi történik a fedezeteddel a visszafizetés után?
+
+A fedezeted ott marad, ahol van, amíg ki nem veszed. A visszafizetés nem küldi vissza. Ha az adósságod nulla, az egészségi ellenőrzés egyetlen orákulum megkérdezése nélkül teljesül, így az egészet kiveheted, és egyetlen kapu sem állíthat meg. Csak te, egy általad engedélyezett fiók, vagy egy likvidálható pozíció likvidátora mozgathatja.
+
+Ugyanez érvényes egy likvidálás után: az a fedezet, amelyet a likvidátor nem vitt el, a pozíciódban marad, és kiveheted.
+
+## Kidolgozott példa: 2026. december 25-én lejáró cbBTC/USDC-hitel
+
+Ezt a piacot azon a páron, amellyel a Midnight indult, 2026. július 14-én hozták létre, egy héttel a nyilvános indulás előtt, és ez a Base legnagyobb listázott piaca. A láncon kiolvasva 2026. október 26-án 06:06 UTC-kor:
+
+| Mező                 | Érték                                         |
+| -------------------- | --------------------------------------------- |
+| Hiteltoken           | USDC                                          |
+| Fedezet              | cbBTC, az egyetlen                            |
+| LLTV                 | 86%                                           |
+| Likvidálási bónusz   | 4,38% (0,3-as kurzor)                         |
+| Lejárat              | 2026. december 25., 15:00 UTC, 60,4 nap múlva |
+| rcfThreshold         | 3000 USDC                                     |
+| Kapuk és díjak       | Nincsenek                                     |
+| Lejáratkor fizetendő | 1 530 235,58 USDC, 117 hitelfelvevő között    |
+| cbBTC-ár             | 80 097,33 USDC (a piac orákuluma szerint)     |
+
+**Hitelfelvétel.** A legjobb ár, amelyen egy hitelfelvevő egységeket adhatott el, 0,9901297 volt. 10 000 USDC felvétele ezen az áron azt jelenti, hogy 2026. december 25-én nagyjából 10 099,69 USDC-vel tartozol: 0,997% a 60,4 napra, ami nagyjából évi 6,0%. Ez az ár percről percre változik.
+
+**Egy tipikus pozíció.** A medián hitelfelvevő a lejáratkor 37,08 USDC-vel tartozik 0,00060018 cbBTC-vel szemben, amely 48,07 USDC-t ér. A maximális adóssága 48,07 × 0,86 = 41,34 USDC, így a health factora 41,34 ÷ 37,08 = 1,11. Akkor éri el az 1-et, ha a cbBTC nagyjából 71 838 USDC-re esik, 10,3%-kal lejjebb.
+
+**Ha a cbBTC a lejárat előtt valamivel 71 838 USDC alá esik.** A pozíció jóval a 3000 USDC-s küszöb alatt van, így egy likvidátor visszafizetheti mind a 37,08 USDC-t, és elvihet 38,71 USDC értékű cbBTC-t. A 43,12 USDC értékű cbBTC-ből nagyjából 4,41 USDC marad a hitelfelvevőnek, amelyet kivehet.
+
+**Ha a hitelfelvevő elfelejt visszafizetni, és a cbBTC 80 097 USDC-n marad.** December 25-én 15:00:01 UTC-től bárki visszafizetheti a 37,08 USDC-t, és elviheti a cbBTC-t; egy likvidátor 15:00:00 után bármelyik másodpercben léphet. A bónusz az idővel nő: harminc perc után nagyjából 2,2%, egy óra után a teljes 4,38%. Egy legalább egy órával a lejárat után történő likvidálás 38,71 USDC értékű cbBTC-t visz el, és 9,37 USDC értékűt hagy a hitelfelvevőnek. A 37,08 USDC időben történő visszafizetése mind a 48,07 USDC értékű cbBTC-t megtartotta volna, nettó 10,99 USDC-t, így ez a likvidálás 1,63 USDC-be, a teljes bónuszba kerül a hitelfelvevőnek. Egy korábbi kevesebbe kerül, de semmi sem kényszeríti a likvidátort a várakozásra.
+
+## Hogyan viszonyul a Midnight egy változó kamatozású Morpho Blue-hitelhez?
+
+|                    | Morpho Blue                                                                    | Morpho Midnight                                                                                                                                                                |
+| ------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Kamat              | Folyamatosan változik a piac kamatmodelljével                                  | A hitelfelvételkor rögzül                                                                                                                                                      |
+| Adósság            | A kamattal nő                                                                  | Meghatározott számú egység, nem nő                                                                                                                                             |
+| Záró dátum         | Nincs                                                                          | Lejárat                                                                                                                                                                        |
+| Fedezet piaconként | Egy                                                                            | Egy vagy több, mindegyik saját LLTV-vel                                                                                                                                        |
+| Mikor likvidálható | Ha egészségtelen                                                               | Ha egészségtelen, vagy bármilyen adósság a lejárat után                                                                                                                        |
+| Bónusz             | 1 ÷ (1 − 0,3 × (1 − LLTV)), legfeljebb 15%                                     | 1 ÷ (1 − kurzor × (1 − LLTV)), a kurzort fedezetenként állítják be, nincs 15%-os plafon                                                                                        |
+| Mennyi egyszerre   | Egyetlen hívással akár a teljes adósság                                        | A lejárat előtt annyi, amennyi helyreállítja az egészséget (egy teljes fedezet, ha a maradék kevesebbet fizetne vissza, mint az rcfThreshold); a lejárat után a teljes adósság |
+| Előlikvidálás      | A Morpho kivezeti, lásd: [Morpho előlikvidálás](/hu/blog/morpho-elolikvidalas) | Nem része a Midnightnak                                                                                                                                                        |
+| Korai kilépés      | Bármikor visszafizethető                                                       | Visszafizetés névértéken, vagy egységek visszavásárlása, ha van eladó                                                                                                          |
+
+A gyakorlati különbség a health factorod szempontjából: a Blue-n pusztán a kamattól is eshet, mint az Aave-on ([hogyan hatnak a kamatugrások a health factorodra](/hu/blog/aave-kamatok#hogyan-hatnak-a-kamatugrasok-a-health-factorodra)). A Midnighton csak akkor esik, ha a fedezetek ára esik, vagy ha fedezetet veszel ki, illetve több hitelt veszel fel. Cserébe a Midnight hozzáad egy dátumot, amelyet nem szabad elmulasztanod.
+
+## Hogyan segíthetnek a riasztások egy Midnight-hitelnél?
+
+Egy riasztás egy Midnight-hitel mindkét kockázatára figyelmeztethet: a csökkenő health factorra és a közeledő lejáratra. A Tokenping 5 percenként ellenőriz. A [Morpho irányítópultja](/hu/morpho) egy tárca hitelpozícióit listázza a Morpho alkalmazásában listázott piacokon 14 hálózaton, Blue-t és Midnightot is, és a pozícióid megtekintéséért nem kell fizetned. A Midnight-riasztások a Morpho API-ja által listázott piacokra vonatkoznak. 2026. október 26-án ezek az Ethereumon és a Base-en voltak; a Tokenping az Arcot és a Robinhood Chaint is lefedi, amint a Morpho ott is listáz Midnight-piacokat. Addig azon a két hálózaton nem lehetséges Midnight-riasztás.
+
+Egy Midnight-hitelnél:
+
+- **Egészség.** A Tokenping a health factorodat a láncról, a Morpho saját matematikájával számolja, soha nem a Morpho API-jából. Amíg az általad beállított küszöbérték (1,02 és 10 között) alatt van, minden ellenőrzés üzenetet küld minden általad választott csatornán: Signal, Telegram vagy e-mail.
+- **Lejárat.** Egy emlékeztetőt kapsz a lejárat előtti utolsó 7 napban, és egyet az utolsó 24 órában.
+- **A lejárat után.** Amíg adósság marad, minden ellenőrzés riasztást küld, mert a hitel a health factorától függetlenül likvidálható.
+
+A riasztások ára: <AlertPrice />, ugyanaz a csomag, mint az Aave-riasztásoké. Egy riasztás időt ad a cselekvésre; a likvidálást nem akadályozza meg, és az ár két ellenőrzés között is elmozdulhat.
+
+## Források
+
+- [Morpho docs: Midnight concepts](https://docs.morpho.org/learn/concepts/midnight): egységek, követelés és adósság, korai kilépés, fedezet és egészség (megtekintve: 2026. október 26.)
+- [Morpho docs: Midnight liquidations](https://docs.morpho.org/learn/concepts/midnight/liquidations): a két likvidálási ág, a lejárat utáni bónusz felfutása, és miért likvidálható a ki nem fizetett adósság a lejárat után (megtekintve: 2026. október 26.)
+- [Morpho docs: offers](https://docs.morpho.org/learn/concepts/midnight/offers) és [gates](https://docs.morpho.org/learn/concepts/midnight/gates): átgörgetés visszahívásokkal, és mit tudnak és mit nem tudnak blokkolni a kapuk (megtekintve: 2026. október 26.)
+- [Morpho docs: market mechanics](https://docs.morpho.org/developers/midnight/concepts/market-mechanics), [collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) és [fees](https://docs.morpho.org/developers/midnight/concepts/fees) (megtekintve: 2026. október 26.)
+- [Morpho docs: exit a borrow early](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-early) és [exit a borrow at maturity](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-by-repaying-in-full-at-maturity) (megtekintve: 2026. október 26.)
+- [Morpho docs: contract addresses](https://docs.morpho.org/developers/contracts/addresses): a Midnight és a BlueFallbackRolling minden hálózaton (megtekintve: 2026. október 26.)
+- [morpho-org/midnight](https://github.com/morpho-org/midnight): Midnight.sol (egészségi ellenőrzés, likvidálás, visszafizetés, kivétel), ConstantsLib.sol (díjak, bónusz, 60 perces felfutás, fedezeti korlátok) és a periphery README (megtekintve: 2026. október 26.)
+- [morpho-org/morpho-blue](https://github.com/morpho-org/morpho-blue): a Blue likvidálási és bónuszkonstansai (megtekintve: 2026. október 26.)
+- [Now live: Morpho Midnight and the new Markets App](https://morpho.org/blog/now-live-morpho-midnight) (2026. július 21.) és [Morpho Midnight: what to expect at launch](https://morpho.org/blog/morpho-midnight-what-to-expect-at-launch) (2026. július 17.) (megtekintve: 2026. október 26.)
+- [Morpho Fixed Rate Markets](https://morpho.org/blog/morpho-v2-liberating-the-potential-of-onchain-loans): a Morpho korábbi bejegyzése a Midnightról és a Vaults V2-ről (megtekintve: 2026. október 26.)
+- [Morpho Midnight API](https://api.morpho.org/v0/midnight/markets): listázott piacok, ajánlati könyv és hitelfelvevői pozíciók (megtekintve: 2026. október 26.)
+- Midnight-szerződések: [Base](https://basescan.org/address/0xAdedD8ab6dE832766Fedf0FaC4992E5C4D3EA18A) az 53102734-es blokknál és [Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f) a 26274992-es blokknál: piacdefiníciók, összesítések, díjak és orákulumárak (megtekintve: 2026. október 26.)
+
+_Oktatási tartalom, nem pénzügyi tanácsadás. A riasztások csökkentik a kockázatot, de nem akadályozzák meg a likvidálást._

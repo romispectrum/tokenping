@@ -11,6 +11,9 @@ import {
   frForMarket,
   frOnMarket,
   hiMarket,
+  huArticle,
+  huForMarket,
+  huOnMarket,
   idForMarket,
   idOnMarket,
   itForMarket,
@@ -253,6 +256,36 @@ describe("Romanian formatting", () => {
     expect(roOnMarket("Base", "network")).toBe("pe Base");
     expect(roForMarket("Base")).toBe("pentru Base");
     expect(roForMarket("USDC | cbBTC (86%)", "market")).toBe("pentru piața USDC | cbBTC (86%)");
+  });
+});
+
+describe("Hungarian formatting", () => {
+  it("joins with és and vagy, writes Hungarian dates, a decimal comma, a singular noun after a number and the market wording", () => {
+    expect(joinList("hu", ["Signal", "Telegram", "e-mail"])).toBe("Signal, Telegram és e-mail");
+    expect(joinList("hu", ["Signal", "e-mail"], "disjunction")).toBe("Signal vagy e-mail");
+    expect(formatLongDate("hu", "2026-10-14")).toBe("2026. október 14.");
+    expect(formatDecimal("hu", "1.42")).toBe("1,42");
+    const networks = (n: number) => plural("hu", n, { one: `${n} hálózat`, other: `${n} hálózat` });
+    expect(networks(1)).toBe("1 hálózat");
+    expect(networks(29)).toBe("29 hálózat");
+    expect(huOnMarket("Arbitrum")).toBe("az Arbitrum hálózaton");
+    expect(huOnMarket("Polygon")).toBe("a Polygon hálózaton");
+    expect(huOnMarket("Ethereum (V4 Lido)")).toBe("az Ethereum (V4 Lido) piacon");
+    expect(huOnMarket("Base", "network")).toBe("a Base hálózaton");
+    expect(huForMarket("Base")).toBe("a Base hálózatra");
+    expect(huForMarket("Base (V4 Coinbase Stocks)")).toBe("a Base (V4 Coinbase Stocks) piacra");
+    expect(huForMarket("USDC | cbBTC (86%)", "market")).toBe("az USDC | cbBTC (86%) piacra");
+  });
+
+  it("picks az before a vowel sound, spelled-out letters included", () => {
+    expect(huArticle("Ethereum (Core)")).toBe("az");
+    expect(huArticle("Ink")).toBe("az");
+    expect(huArticle("X Layer")).toBe("az");
+    expect(huArticle("LBTC/USDC (86%)")).toBe("az");
+    expect(huArticle("BNB Chain")).toBe("a");
+    expect(huArticle("ZKsync")).toBe("a");
+    expect(huArticle("MegaETH")).toBe("a");
+    expect(huArticle("wstETH/WETH (94.5%)")).toBe("a");
   });
 });
 

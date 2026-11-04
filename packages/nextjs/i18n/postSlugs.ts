@@ -21,6 +21,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "faktor-kesehatan-aave",
     nl: "aave-health-factor-uitgelegd",
     ro: "health-factor-aave-explicat",
+    hu: "aave-health-factor-magyarazat",
   },
   "safe-aave-health-factor": {
     en: "safe-aave-health-factor",
@@ -37,6 +38,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "faktor-kesehatan-aave-yang-aman",
     nl: "veilige-aave-health-factor",
     ro: "health-factor-sigur-aave",
+    hu: "biztonsagos-aave-health-factor",
   },
   "how-aave-liquidation-works": {
     en: "how-aave-liquidation-works",
@@ -53,6 +55,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "cara-kerja-likuidasi-aave",
     nl: "hoe-werkt-liquidatie-op-aave",
     ro: "cum-functioneaza-lichidarea-pe-aave",
+    hu: "hogyan-mukodik-a-likvidalas-az-aave-on",
   },
   "aave-liquidation-price": {
     en: "aave-liquidation-price",
@@ -69,6 +72,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "harga-likuidasi-aave",
     nl: "aave-liquidatieprijs",
     ro: "pretul-de-lichidare-aave",
+    hu: "aave-likvidalasi-ar",
   },
   "why-aave-health-factor-dropped": {
     en: "why-aave-health-factor-dropped",
@@ -85,6 +89,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "mengapa-faktor-kesehatan-aave-turun",
     nl: "waarom-daalde-je-aave-health-factor",
     ro: "de-ce-a-scazut-health-factor-aave",
+    hu: "miert-csokkent-az-aave-health-factor",
   },
   "aave-health-factor-alert-setup": {
     en: "aave-health-factor-alert-setup",
@@ -101,6 +106,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "cara-mengatur-peringatan-faktor-kesehatan-aave",
     nl: "aave-health-factor-alert-instellen",
     ro: "configurare-alerta-health-factor-aave",
+    hu: "aave-health-factor-riasztas-beallitasa",
   },
   "aave-liquidation-alert-tools": {
     en: "aave-liquidation-alert-tools",
@@ -117,6 +123,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "alat-peringatan-likuidasi-aave",
     nl: "tools-voor-aave-liquidatie-alerts",
     ro: "instrumente-alerte-lichidare-aave",
+    hu: "aave-likvidalasi-riasztas-eszkozok",
   },
   "avoid-aave-liquidation": {
     en: "avoid-aave-liquidation",
@@ -133,6 +140,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "cara-menghindari-likuidasi-aave",
     nl: "aave-liquidatie-voorkomen",
     ro: "cum-eviti-lichidarea-pe-aave",
+    hu: "aave-likvidalas-elkerulese",
   },
   "private-aave-liquidation-alerts": {
     en: "private-aave-liquidation-alerts",
@@ -149,6 +157,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "peringatan-likuidasi-aave-yang-privat",
     nl: "prive-aave-liquidatie-alerts",
     ro: "alerte-private-de-lichidare-aave",
+    hu: "privat-aave-likvidalasi-riasztasok",
   },
   "crypto-backed-loans": {
     en: "crypto-backed-loans",
@@ -165,6 +174,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "pinjaman-berjaminan-kripto",
     nl: "leningen-met-crypto-als-onderpand",
     ro: "imprumuturi-garantate-cu-crypto",
+    hu: "kriptofedezetu-hitelek",
   },
   "short-fiat-with-aave": {
     en: "short-fiat-with-aave",
@@ -181,6 +191,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "short-mata-uang-fiat-dengan-aave",
     nl: "fiat-shorten-met-aave",
     ro: "short-pe-fiat-cu-aave",
+    hu: "fiat-shortolasa-aave-val",
   },
   "aave-interest-rates": {
     en: "aave-interest-rates",
@@ -197,6 +208,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "suku-bunga-aave",
     nl: "aave-rente",
     ro: "dobanzile-aave",
+    hu: "aave-kamatok",
   },
   "aave-alerts-do-not-disturb": {
     en: "aave-alerts-do-not-disturb",
@@ -213,6 +225,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "peringatan-aave-saat-jangan-ganggu",
     nl: "aave-alerts-bij-niet-storen",
     ro: "alerte-aave-in-modul-nu-deranja",
+    hu: "aave-riasztasok-ne-zavarjanak-modban",
   },
   "aave-market-wind-down": {
     en: "aave-market-wind-down",
@@ -229,6 +242,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "penutupan-pasar-aave",
     nl: "afbouw-van-een-aave-markt",
     ro: "inchiderea-unei-piete-aave",
+    hu: "egy-aave-piac-leepitese",
   },
   "stablecoin-depeg-aave": {
     en: "stablecoin-depeg-aave",
@@ -245,6 +259,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "depeg-stablecoin-aave",
     nl: "stablecoin-depeg-op-aave",
     ro: "depeg-stablecoin-pe-aave",
+    hu: "stablecoin-depeg-az-aave-on",
   },
   "aave-e-mode": {
     en: "aave-e-mode",
@@ -261,6 +276,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "e-mode-aave",
     nl: "aave-e-mode-uitgelegd",
     ro: "aave-e-mode-explicat",
+    hu: "aave-e-mode-magyarazat",
   },
   "why-aave-withdraw-or-borrow-fails": {
     en: "why-aave-withdraw-or-borrow-fails",
@@ -277,6 +293,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "mengapa-penarikan-atau-pinjaman-aave-gagal",
     nl: "waarom-opnemen-of-lenen-op-aave-mislukt",
     ro: "de-ce-nu-poti-retrage-sau-imprumuta-pe-aave",
+    hu: "miert-nem-sikerul-a-kivetel-vagy-hitelfelvetel-aave",
   },
   "wrapped-bitcoin-aave-collateral": {
     en: "wrapped-bitcoin-aave-collateral",
@@ -293,6 +310,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "wrapped-bitcoin-sebagai-jaminan-aave",
     nl: "wrapped-bitcoin-als-onderpand-op-aave",
     ro: "wrapped-bitcoin-ca-garantie-pe-aave",
+    hu: "wrapped-bitcoin-fedezetkent-az-aave-on",
   },
   "tokenized-stocks-collateral": {
     en: "tokenized-stocks-collateral",
@@ -309,6 +327,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "saham-tokenisasi-sebagai-jaminan",
     nl: "getokeniseerde-aandelen-als-onderpand",
     ro: "actiuni-tokenizate-ca-garantie",
+    hu: "tokenizalt-reszvenyek-fedezetkent",
   },
   "who-needs-health-factor-alerts": {
     en: "who-needs-health-factor-alerts",
@@ -325,6 +344,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "siapa-yang-butuh-peringatan-faktor-kesehatan",
     nl: "wie-heeft-health-factor-alerts-nodig",
     ro: "cine-are-nevoie-de-alerte-health-factor",
+    hu: "kinek-kell-health-factor-riasztas",
   },
   "liquidated-on-aave-or-morpho-what-now": {
     en: "liquidated-on-aave-or-morpho-what-now",
@@ -341,6 +361,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "terlikuidasi-di-aave-atau-morpho-lalu-apa",
     nl: "geliquideerd-op-aave-of-morpho-wat-nu",
     ro: "lichidat-pe-aave-sau-morpho-ce-faci-acum",
+    hu: "likvidaltak-az-aave-on-vagy-morphon-mi-most",
   },
   "morpho-health-factor": {
     en: "morpho-health-factor",
@@ -357,6 +378,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "faktor-kesehatan-morpho",
     nl: "morpho-health-factor-uitgelegd",
     ro: "health-factor-morpho-explicat",
+    hu: "morpho-health-factor-magyarazat",
   },
   "how-morpho-liquidation-works": {
     en: "how-morpho-liquidation-works",
@@ -373,6 +395,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "cara-kerja-likuidasi-morpho",
     nl: "hoe-werkt-liquidatie-op-morpho",
     ro: "cum-functioneaza-lichidarea-pe-morpho",
+    hu: "hogyan-mukodik-a-likvidalas-a-morphon",
   },
   "morpho-pre-liquidation": {
     en: "morpho-pre-liquidation",
@@ -389,6 +412,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "pra-likuidasi-morpho",
     nl: "morpho-pre-liquidatie",
     ro: "pre-lichidare-morpho",
+    hu: "morpho-elolikvidalas",
   },
   "morpho-midnight-fixed-rate-loans": {
     en: "morpho-midnight-fixed-rate-loans",
@@ -405,6 +429,7 @@ export const POST_SLUGS: Readonly<Record<string, Record<Locale, string>>> = {
     id: "pinjaman-bunga-tetap-morpho-midnight",
     nl: "morpho-midnight-leningen-met-vaste-rente",
     ro: "imprumuturi-cu-dobanda-fixa-morpho-midnight",
+    hu: "morpho-midnight-fix-kamatozasu-hitelek",
   },
 };
 

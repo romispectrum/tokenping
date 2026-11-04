@@ -1,0 +1,204 @@
+export const meta = {
+  slug: "aave-e-mode-magyarazat",
+  title: "Aave E-Mode: több hitelkeret, kisebb biztonsági sáv",
+  description:
+    "Mi az Aave V3 E-Mode, milyen kategóriák vannak Ethereumon, Arbitrumon, Base-en és Optimismen, hogyan hat a health factorra, és mennyire szűk egy loop.",
+  h1: "Mi az Aave E-Mode, és mit tesz a likvidálási kockázatoddal?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "Mi az Aave E-Mode, és milyen közel viszi a pozíciót a likvidáláshoz?",
+  readingMinutes: 16,
+};
+
+<ShortAnswer>
+  Az E-Mode (Efficiency Mode) az Aave V3 egyik beállítása, amellyel többet vehetsz fel hitelként olyan fedezetre,
+  amelynek ára együtt mozog a felvett eszközzel, például wstETH-re WETH-et: a szokásos hitel-fedezet arányt (LTV) és
+  likvidálási küszöböt (liquidation threshold) a teljes kategóriára érvényes, magasabb értékek váltják fel. Az Ethereum
+  Core piacon az „ETH correlated” kategória 2026. október 28-án 93%-os LTV-t és 95%-os likvidálási küszöböt használt,
+  szemben a wstETH kategórián kívüli 79%-ával és 82%-ával. A health factor (egészségi mutató) képlete nem változik, csak
+  a benne szereplő küszöb, így ugyanaz a pozíció magasabb számot mutat. Az ára egy kisebb biztonsági sáv: az E-Mode
+  határáig felvett hitellel egy pozíció 95 ÷ 93 = 1,0215-ről indul, és 2026 márciusában az orákulum (árforrás) 2,85%-os
+  elmozdulása likvidálta azokat az E-Mode pozíciókat, amelyek nagyjából 1,0288 alatt voltak. Egy loop (ismételt
+  hitelfelvétel tőkeáttétellel), amely e határ közelében vett fel hitelt, 1,1 alatt fut, ez a legalacsonyabb riasztási
+  küszöbérték, amit a Tokenping elfogad.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Számok és a blokkszámok, amelyeknél kiolvastuk őket: content/blog/snapshots/aave-e-mode.md */}
+
+## Mi az Aave E-Mode, és miért létezik?
+
+Az Aave E-Mode egy fiókonkénti beállítás egy Aave V3 piacon, amely korrelált eszközök egy kategóriájába sorol, és a kategória LTV-jét, likvidálási küszöbét és likvidálási bónuszát alkalmazza az általa felsorolt fedezetekre, az egyes eszközök saját paraméterei helyett. Az Aave súgóoldala szerint így a felhasználók „maximize their borrowing power by selecting optimized asset categories” (optimalizált eszközkategóriák kiválasztásával a lehető legnagyobbra növelhetik a hitelfelvételi kapacitásukat). A Pool szerződésben a `setUserEMode(categoryId)` belép egy kategóriába, a `getUserEMode(address)` megmutatja, melyikben van egy cím, a 0-s kategória pedig azt jelenti, hogy egyikben sem.
+
+Azért létezik, mert a szokásos paramétereket a legrosszabb esetre állítják be: egy fedezeti és egy adósságeszközre, amelyek ára egymástól függetlenül mozog. Ha mindkettő ugyanazt követi, ahogy a wstETH és a WETH is az ETH-t, akkor az ETH dollárárának esése együtt csökkenti a fedezetet és az adósságot, és a pozíció állapota alig változik. Az Aave kockázati szolgáltatói ezért magasabb LTV-t és küszöböt engedhetnek erre a párosra. Ami megmarad, az a kockázat, hogy a két eszköz eltávolodik egymástól, és egy E-Mode pozíció valójában ennek a kockázatnak van kitéve.
+
+Az Aave V3.2 óta, amely bevezette a „liquid E-Modes” megoldást, három dolog határoz meg egy kategóriát:
+
+- **Egy LTV, egy likvidálási küszöb és egy likvidálási bónusz** az egész kategóriára.
+- **Egy fedezeti halmaz**: azok az eszközök (reserve-ek), amelyek a kategória paramétereit kapják, amíg benne vagy. A halmazon kívüli fedezet megtartja a saját LTV-jét és küszöbét.
+- **Egy felvehető halmaz**: csak ezekből az eszközökből vehetsz fel hitelt, amíg a kategóriában vagy. Egy eszköz lehet az egyik halmazban, a másikban vagy mindkettőben, és több kategóriában is szerepelhet.
+
+Az Ethereum Core „ETH correlated” kategóriája tehát nem azt jelenti, hogy „bármit felvehetsz ETH-re”: a felvehető halmaza csak a WETH (kiolvasva 2026. október 28-án, a 26291736-os blokknál). A kategória ugyanúgy eldönti, mit vehetsz fel, mint azt, hogy mennyit.
+
+## Milyen E-Mode-kategóriák léteznek ma?
+
+Az alábbi kategóriákat 2026. október 28-án olvastuk ki az egyes piacok Pool szerződéséből a `getEModeCategoryLabel`, `getEModeCategoryCollateralConfig`, `getEModeCategoryCollateralBitmap` és `getEModeCategoryBorrowableBitmap` hívásokkal, a bitmapeket a `getReservesList()` alapján dekódolva. Mind a négy Pool a 11-es revíziót jelezte (V3.7). A governance és a Risk Stewards módosítja ezeket a paramétereket, ezért mielőtt egy számra hagyatkozol, nézd meg a kategóriát az Aave alkalmazásban.
+
+### Ethereum Core (26291736-os blokk)
+
+Az Ethereum Core-on 48 kategória volt. A legtöbb egy Pendle principal tokent (PT) vagy egy Ethena-eszközt párosít stablecoinokkal vagy USDe-vel, és sok közülük lejárt PT-ket listáz, amelyek csak a még leépülő pozíciók miatt maradtak benne. Azok, amelyekkel egy hitelfelvevő a legnagyobb eséllyel találkozik:
+
+| Id  | Címke                       | LTV | Likvidálási küszöb | Bónusz | Fedezeti halmaz                               | Felvehető halmaz   |
+| --- | --------------------------- | --- | ------------------ | ------ | --------------------------------------------- | ------------------ |
+| 1   | ETH correlated              | 93% | 95%                | 1%     | WETH, wstETH, cbETH, rETH, weETH, osETH, ETHx | WETH               |
+| 2   | sUSDe Stablecoins           | 90% | 92%                | 4%     | USDe, sUSDe                                   | USDC, USDT         |
+| 11  | USDe Stablecoin             | 90% | 93%                | 2%     | USDe                                          | USDC, USDT         |
+| 4   | LBTC_WBTC                   | 84% | 86%                | 3%     | LBTC                                          | WBTC               |
+| 7   | eBTC/WBTC                   | 83% | 85%                | 3%     | eBTC                                          | WBTC               |
+| 22  | ezETH/wstETH                | 93% | 95%                | 1%     | ezETH                                         | wstETH             |
+| 26  | weETH/wstETH ETH Correlated | 93% | 95%                | 1%     | weETH                                         | WETH, wstETH       |
+| 3   | rsETH\_\_ETH_wstETH_ETHx    | 93% | 95%                | 1%     | rsETH                                         | WETH, wstETH, ETHx |
+| 40  | LINK\_\_USDC_USDT           | 66% | 71%                | 7%     | LINK                                          | USDC, USDT         |
+| 43  | XAUt\_\_USDC_USDT_GHO       | 70% | 75%                | 6%     | XAUt                                          | USDC, USDT, GHO    |
+| 47  | PT-srUSDe Stablecoins       | 90% | 92%                | 4,03%  | sUSDe, PT-srUSDe-22OCT2026                    | USDC, USDT, USDe   |
+
+Két részlet ugyanebből a kiolvasásból. Az „ETH correlated” kategóriában az ETHx benne van a fedezeti halmazban, de 0 LTV-vel van megjelölve (a kategória `ltvzeroBitmap` mezője), így 95%-on beszámít a health factorba, de nem ad hitelfelvételi kapacitást. A 47-es és a 48-as kategória (PT-srUSDe stablecoinokkal, illetve USDe-vel szemben) volt az egyetlen, amelyen be volt állítva a V3.7-es `isolated` jelző; hogy ez mit tesz, azt lent, a belépési szabályoknál találod. A LINK és XAUt kategóriák mutatják, hogy egy kategóriának egyáltalán nem kell „korreláltnak” lennie: ezek egy második paraméterkészletet adnak ahhoz, hogy egyetlen eszközre stablecoint vegyél fel.
+
+### Arbitrum (519074353 és 519074731 közötti blokkok)
+
+| Id  | Címke                            | LTV | Likvidálási küszöb | Bónusz | Fedezeti halmaz        | Felvehető halmaz |
+| --- | -------------------------------- | --- | ------------------ | ------ | ---------------------- | ---------------- |
+| 1   | Stablecoins                      | 93% | 95%                | 1%     | DAI, USDC, USD₮0, EURS | nincs            |
+| 2   | ETH correlated                   | 93% | 95%                | 1%     | WETH, wstETH, weETH    | WETH             |
+| 7   | wstETH/WETH ETH Correlated       | 94% | 96%                | 1%     | wstETH                 | WETH             |
+| 3   | ezETH/wstETH/WETH ETH Correlated | 93% | 95%                | 1%     | ezETH                  | WETH, wstETH     |
+| 5   | rsETH/wstETH/WETH ETH Correlated | 93% | 95%                | 1%     | rsETH                  | WETH, wstETH     |
+| 4   | ezETH Stablecoins                | 72% | 75%                | 7,5%   | ezETH                  | USD₮0, USDC      |
+| 6   | rsETH/Stablecoins                | 72% | 75%                | 7,5%   | rsETH                  | USDC, USD₮0      |
+| 8   | AAVE\_\_USDCn_USDT               | 66% | 73%                | 10%    | AAVE                   | USD₮0, USDC      |
+| 9   | ARB\_\_USDCn_USDT                | 58% | 63%                | 10%    | ARB                    | USD₮0, USDC      |
+| 10  | tBTC\_\_USDCn_USDT               | 72% | 75%                | 7,5%   | tBTC                   | USD₮0, USDC      |
+
+Az Arbitrum „Stablecoins” kategóriájának felvehető halmaza üres, így benne nem nyitható új adósság. Az egyetlen eszközre szóló „wstETH/WETH ETH Correlated” kategóriája egy fokkal nagyvonalúbb az Ethereumon lévőnél: 94% és 96%, így a határon a biztonsági sáv 96 ÷ 94 = 1,0213.
+
+### Base (53204166-os blokk)
+
+A Base-en 15 kategória volt. Az ETH-alapúak, és az a kettő a BTC-sek közül, amellyel a legtöbb hitelfelvevő találkozik:
+
+| Id  | Címke             | LTV | Likvidálási küszöb | Bónusz | Fedezeti halmaz            | Felvehető halmaz |
+| --- | ----------------- | --- | ------------------ | ------ | -------------------------- | ---------------- |
+| 1   | ETH correlated    | 90% | 93%                | 2%     | WETH, cbETH, wstETH, weETH | WETH             |
+| 8   | wstETH/WETH       | 93% | 95%                | 1%     | wstETH                     | WETH             |
+| 9   | cbETH/WETH        | 93% | 95%                | 2%     | cbETH                      | WETH             |
+| 7   | weETH/WETH        | 93% | 95%                | 1,25%  | weETH                      | WETH             |
+| 2   | ezETH wstETH      | 93% | 95%                | 1%     | ezETH                      | wstETH           |
+| 4   | LBTC_cbBTC        | 82% | 84%                | 3%     | LBTC                       | cbBTC            |
+| 10  | cbBTC Stablecoins | 82% | 85%                | 4%     | cbBTC                      | USDC, GHO        |
+
+A többi egy-egy eszközt (wrsETH, syrupUSDC, AAVE, EURC, LBTC, tBTC, ezETH) párosít USDC-vel és GHO-val vagy wstETH-vel. A Base megmutatja, hogyan bomlik egy széles kategória egyetlen eszközre szóló kategóriákra: a több eszközt tartalmazó „ETH correlated” kategória 90%-kal és 93%-kal fut, míg a wstETH/WETH, a cbETH/WETH és a weETH/WETH 93%-kal és 95%-kal.
+
+### Optimism (158799548-as blokk)
+
+| Id  | Címke          | LTV   | Likvidálási küszöb | Bónusz | Fedezeti halmaz                          | Felvehető halmaz |
+| --- | -------------- | ----- | ------------------ | ------ | ---------------------------------------- | ---------------- |
+| 1   | Stablecoins    | 0,01% | 87%                | 1%     | DAI, USDC (bridged és natív), USDT, sUSD | nincs            |
+| 2   | ETH correlated | 93%   | 95%                | 1%     | WETH, wstETH, rETH (a rETH 0 LTV-vel)    | WETH             |
+
+Az Optimism „Stablecoins” kategóriája egy megmaradt kategória, 0,01%-os LTV-vel és semmi felvehetővel. Az „ETH correlated” kategóriája az Ethereum számaival egyezik.
+
+## Hogyan számolják a health factort E-Mode-ban?
+
+E-Mode-ban a health factor ugyanazzal a képlettel számolódik, mint mindig, Σ(fedezet értéke × likvidálási küszöb) ÷ adósság értéke, azzal a különbséggel, hogy a kategóriád halmazában lévő minden fedezeti eszköz a kategória küszöbét kapja a saját helyett. Ez az egyetlen változás: a `GenericLogic.calculateUserAccountData` eszközönként választja ki a küszöböt, a `getUserAccountData` pedig az eredményt adja vissza, így minden eszköz, amely ezt a hívást olvassa, már az E-Mode-os számot mutatja. Az általános képlet [az Aave health factor kiszámításáról](/hu/blog/aave-health-factor-magyarazat#hogyan-szamitjak-ki-az-aave-health-factort) szóló részben van, ugyanabban az útmutatóban pedig [az, hogyan változtatja meg az E-Mode a health factort](/hu/blog/aave-health-factor-magyarazat#hogyan-valtoztatja-meg-az-e-mode-a-health-factort), röviden összefoglalja az alábbiakat.
+
+Vegyünk 10 000 $ értékű wstETH fedezetet és 9000 $ értékű WETH adósságot az Ethereum Core-on, a 2026. október 28-án kiolvasott „ETH correlated” paraméterekkel (26291736-os blokk) és a wstETH ugyanazon a napon kiolvasott saját paramétereivel (26291849-es blokk: LTV 79%, likvidálási küszöb 82%):
+
+1. **E-Mode-ban:** HF = 10 000 × 0,95 ÷ 9000 = **1,056**. A hitelfelvételi határ 10 000 × 0,93 = 9300 $, tehát még 300 $ vehető fel.
+2. **E-Mode-on kívül:** ugyanennek a pozíciónak HF = 10 000 × 0,82 ÷ 9000 = 0,911 lenne, és meg sem lehetne nyitni: a wstETH 79%-os LTV-je 7900 $-nál korlátozza a hitelt.
+3. **Az E-Mode határán:** vedd fel a teljes 9300 $-t, és HF = 9500 ÷ 9300 = **1,0215**. A pozíció a megnyitás napján 2,1%-ra van a likvidálástól.
+
+Egy határáig felvett hitellel futó normál pozíció is küszöb ÷ LTV értékről indul, ez a WETH-nél az Ethereum Core-on 2026. október 28-án 84 ÷ 81 = 1,037 volt (26291849-es blokk). Az E-Mode 2 százalékpontra szűkíti az LTV és a küszöb közötti rést, és ez a rés egy kimaxolt pozíció teljes biztonsági sávja. [Miért csak körülbelül 1,03 a health factor, ha a maximumot veszed fel](/hu/blog/aave-health-factor-magyarazat#miert-csak-nagyjabol-103-a-health-factor-ha-a-maximumot-veszed-fel): ez a rész ugyanezt a számítást mutatja be E-Mode-on kívül.
+
+Az is más, ami a számot mozgatja. wstETH fedezettel és WETH adóssággal mindkét oldal árát az ETH adja, így az ETH dollárára kiesik: ha az ETH ára a felére esik, a fedezet és az adósság együtt feleződik, és a HF 1,056 marad. Ami megmarad, az a wstETH/ETH árfolyam, amelyet az Aave orákuluma jelent. A pozíció akkor éri el az 1,00-t, ha ez az árfolyam 1 − 90 ÷ 95 = 5,3%-kal esik, a kimaxolt pozíció pedig már 2,1%-os esésnél. [Hogyan változtatja meg az E-Mode a likvidálási áradat](/hu/blog/aave-likvidalasi-ar#hogyan-valtoztatja-meg-az-e-mode-a-likvidalasi-arat): ez a rész dollárár helyett árfolyamként fejezi ki ugyanezt.
+
+## Hogyan működik egy tőkeáttételes staking loop E-Mode-ban, és mire fogad?
+
+Egy tőkeáttételes staking loop wstETH-et helyez el, WETH-et vesz fel rá, a WETH-ből újabb wstETH-et csinál, és azt is elhelyezi, és ezt addig ismétli, amíg a pozíció a kiinduló wstETH-mennyiség többszörösét tartja majdnem ugyanannyi WETH adóssággal szemben. Az E-Mode teszi megérővé: 93%-os LTV-vel a loop a kiinduló saját tőke 1 ÷ (1 − 0,93) = 14,3-szorosáig juthat, szemben a wstETH normál LTV-jénél elérhető 1 ÷ (1 − 0,79) = 4,8-szorossal.
+
+Számold végig ETH-ban, abban az egységben, amelyben a loop él. Indulj 10 ETH értékű wstETH-ből, loopolj 100 ETH értékű fedezetig és 90 WETH adósságig, és megkapod a fenti 1,056-os pozíciót, tízszeres tőkeáttétellel. 2026. október 28-án az Aave orákuluma az Ethereum Core-on 2912,79 $-ra árazta a wstETH-et és 2335,08 $-ra a WETH-et (26291849-es blokk), ami wstETH-enként 1,2474 ETH-s árfolyam, és ez megegyezett a Lido saját `stEthPerToken()` értékével ugyanannál a blokknál, így 100 ETH fedezet körülbelül 80,2 wstETH.
+
+Két szám dönti el, hogy a loop nyer vagy veszít, és egyik sem az ETH dollárára:
+
+- **A wstETH/ETH árfolyam.** A staking jutalmak gyűlésével emelkedik: a Lido 2026. október 28-án 2,25%-os stETH APR-t és 2,33%-os 7 napos átlagot jelentett. A loop ezt a hozamot 100 ETH után kapja, miközben 90 után fizet kamatot, így a 10 ETH saját tőke nagyjából a két kamat közötti különbség tízszeresét keresi. Ha az orákulum által jelentett árfolyam esik, akár a wstETH piaci diszkontja, akár konfigurációs hiba miatt, az a fedezetet csökkenti, az adósságot nem, és ez az egyetlen ármozgás, amely likvidálhatja a loopot.
+- **A WETH hitelkamata.** Az adósság az Aave változó kamatával nő, ami a WETH-nél az Ethereum Core-on 1,94% APR volt a 26291849-es blokknál, miközben a loop által elhelyezett wstETH szinte semmit nem keres magán az Aave-on (0,0002% ugyanannál a blokknál). Amikor a hitelkamat a staking hozam fölött van, a loop pénzt veszít, és a health factora lefelé csúszik.
+
+Tedd össze a kettőt egy évre a tízszeres pozíciónál, a kamatos kamatot és az ármozgásokat figyelmen kívül hagyva. A fedezet a staking hozammal körülbelül 102,3 ETH-ra nő. 1,94%-os hitelkamattal az adósság 91,75 WETH-re nő: a saját tőke 10,55 ETH, 5,5%-kal több, szemben a wstETH tartásával elérhető 2,3%-kal, és a HF 1,059-re emelkedik. 5%-os átlagos hitelkamattal az adósság 94,5 WETH-re nő, a saját tőke 7,8 ETH-ra esik, a HF pedig 1,028-ra csúszik. 8%-nál az adósság 97,2 WETH, a HF 1,000: a loopot pusztán a kamat likvidálná. A WETH hitelkamatai magas kihasználtságnál valóban kiugranak; [miért ugranak meg az Aave hitelkamatai](/hu/blog/aave-kamatok#miert-ugranak-meg-az-aave-hitelkamatai): ez a rész elmagyarázza a görbét.
+
+Az ETH dollárára továbbra is számít a loop tulajdonosának, hiszen a 10 ETH saját tőke annyit ér, amennyit az ETH, de a health factornak nem számít. Egy loop arra fogad, hogy a staking hozam a hitelkamat fölött marad, és hogy az orákulum wstETH/ETH árfolyama nem esik többet, mint a biztonsági sáv. A második fogadás az, amely 2026 márciusában elveszett.
+
+## Milyen szabályok szerint lehet belépni egy E-Mode-kategóriába és kilépni belőle?
+
+Egy kategóriába belépni vagy onnan kilépni egyetlen hívás, a `setUserEMode(categoryId)` a Poolon, és a Pool három ellenőrzést futtat, mielőtt a váltás érvénybe lép, az aave-v3-origin `ValidationLogic.validateSetUserEMode` és `SupplyLogic.executeSetUserEMode` függvényeiben (main ág, kiolvasva 2026. október 28-án):
+
+1. **Minden eszköznek, amelyből hitelt vettél fel, felvehetőnek kell lennie a célkategóriában.** Egy kategóriánál ez a felvehető bitmapjét jelenti; kilépésnél (0-s kategória) azt, hogy az eszközön engedélyezett a hitelfelvétel. A hiba `InvalidDebtInEmode`. Egy USDC adóssággal rendelkező tárca nem léphet be az Ethereum Core „ETH correlated” kategóriájába, ahol a WETH az egyetlen felvehető eszköz, amíg az USDC-t vissza nem fizette.
+2. **Minden fedezetként engedélyezett eszközödnek nem nulla LTV-t kell megtartania a célkategóriában.** A hiba `InvalidCollateralInEmode`. Az ellenőrzés a `getUserReserveLtv` függvényen keresztül megy, amely a fedezeti halmazban lévő eszközökre a kategória LTV-jét adja vissza (vagy 0-t, ha a kategória 0 LTV-vel jelöli őket), a halmazon kívüli fedezetre az eszköz saját LTV-jét, és 0-t a halmazon kívüli fedezetre, ha a kategória izolált.
+3. **A váltás után a health factorodnak legalább 1-nek kell lennie.** Az `executeSetUserEMode` előbb módosítja a kategóriát, majd meghívja a `validateHealthFactor` függvényt, így egy olyan váltás, amely likvidálhatóvá tenne, visszafordul (revert).
+
+Egy elhelyezett eszköz és adósság nélküli tárca mindig válthat, és egy tárca, amely már a kért kategóriában van, nem kap sem változást, sem ellenőrzést.
+
+Két verziós megjegyzés számít annak, aki régebbi útmutatókat olvas. A V3.2 óta a kategóriád halmazán kívüli fedezet megtartja a saját LTV-jét és küszöbét, így az „ETH correlated” kategóriában WBTC-t tartani megengedett, és a WBTC a saját paramétereivel számít: a V3.2 funkcióleírása szerint az E-Mode paraméterei „will only apply for the ones listed as eModeCollateral” (csak az eModeCollateralként felsoroltakra vonatkoznak). A V3.7 óta egy kategória `isolated` jelzőt kaphat (`getIsEModeCategoryIsolated`). Egy izolált kategóriában a halmazon kívüli fedezet 0 LTV-t kap, de megtartja a saját küszöbét: továbbra is beszámít a health factorba, de nem fedez új hitelt, a belépés le van tiltva, amíg ilyen fedezet engedélyezve van, és ha a kategórián belül próbálod fedezetként engedélyezni, a Pool elutasítja. Ha a governance egy élő kategóriánál bekapcsolja a jelzőt, a V3.7 jegyzetei szerint a halmazon kívüli fedezet „immediately becomes LTV-zero” (azonnal 0 LTV-jűvé válik), miközben a „health factor is unaffected” (a health factor nem változik). 2026. október 28-án csak az Ethereum Core két PT-srUSDe kategóriáján volt beállítva a jelző.
+
+A kilépést ugyanaz a három ellenőrzés akadályozza, a 0-s kategóriára futtatva. Nem léphetsz ki, amíg olyan eszközből van hiteled, amelynél le van tiltva a hitelfelvétel, és akkor sem, ha a kilépés 1 alá vinné a health factorodat, ami a gyakori eset: a fenti 1,056-os pozíció E-Mode-on kívül 0,911-et mutatna, így a hívás visszafordul. A kilépéshez előbb elég WETH-et kell visszafizetned, nagyjából 8200-as adósságig 10 000 fedezettel szemben, a wstETH 82%-os küszöbével. Az E-Mode-ba könnyű belépni, és nehéz kilépni belőle, ha már kihasználtad a mozgásteret, amit ad.
+
+## Mi történt az E-Mode loopokkal 2026 márciusában?
+
+2026 márciusában egy rosszul konfigurált ár-adapter körülbelül 2,85%-kal csökkentette azt a wstETH árfolyamot, amelyet az Aave az Ethereum Core és Prime piacokon használt, és minden E-Mode pozíció, amelynek health factora nagyjából 1,0288 alatt volt, egyszerre likvidálhatóvá vált. A beszámoló a Chaos Labs utólagos elemzése (post-mortem) az Aave governance fórumán, amely 2026. március 10-én jelent meg, és amelyet 2026. október 28-án újraolvastunk; semmi itt nem megy túl rajta.
+
+Az Aave a wstETH-et egy CAPO adapteren (Correlated Assets Price Oracle) keresztül árazza, amely korlátozza, milyen gyorsan emelkedhet az általa jelentett wstETH/stETH árfolyam, hogy megakadályozza az inflációs jellegű támadásokat. A korlát egy pillanatképarányból (snapshot ratio), egy pillanatkép-időbélyegből és egy maximális éves növekedési rátából épül fel. Egy frissítés a pillanatkép-időbélyeget egy hét nappal korábbi referenciára állította, miközben egy láncon belüli korlát (az arány 3 naponta legfeljebb 3%-kal emelkedhet) megakadályozta, hogy az arány elérje azt az értéket, amelyet ez az időbélyeg feltételezett, így a korlátot egy túl alacsony referenciából számolták. A post-mortem szerint a megengedett legnagyobb árfolyam körülbelül 1,1939 lett, az élő árfolyam alatt, így a korlát felülírta azt, és a tényleges árfolyam „around 2.855%” (nagyjából 2,855%-kal) esett.
+
+Amit következményként közöl:
+
+- Nagyjából 10 938 wstETH értékű E-Mode likvidálás 34 fiókban, amely azokat a pozíciókat érintette, amelyek „with a health factor lower than 1.0288” (1,0288-nál alacsonyabb health factorral) rendelkeztek.
+- Nem keletkezett behajthatatlan adósság (bad debt) a protokollnál.
+- A likvidátorok körülbelül 512 ETH-t szereztek bónuszokban és az árfolyamrésből adódó értékben, amelyből 141 ETH likvidálási bónuszbevételt és körülbelül 13 ETH díjat visszaszereztek az érintett felhasználók kártalanítására, a többit a DAO kincstára fedezi.
+- A wstETH hitelfelvételi plafonját (borrow cap) mindkét piacon ideiglenesen 1-re csökkentették, amíg a konfigurációt javították.
+
+Egy loop számára a mozgás mérete a tanulság. Az „ETH correlated” határáig felvett hitellel egy pozíció 1,0215-ről indul, a likvidált sávon belül; egy 1,056-os pozíciót nem érintett. Magában a pozícióban semmi nem adott figyelmeztetést, mert a mozgás az orákulum konfigurációjából jött, nem a piacról. Az adapter 2026. október 28-án is használatban volt (26291849-es blokk): az Ethereum Core wstETH orákulumforrása „Capped wstETH / stETH(ETH) / USD” leírással azonosította magát, 1,2283-as pillanatképaránnyal, 2026. március 3-i dátummal, 8,8%-os maximális éves növekedéssel és 1,2474-es jelentett aránnyal, ami megegyezett a Lidóéval. [A health factor csökkenésének 6. oka](/hu/blog/miert-csokkent-az-aave-health-factor#6-ok-rosszul-arazta-a-fedezetedet-egy-orakulum-vagy-arfolyamhiba) az ezt követő kártalanítást tárgyalja.
+
+## Mikor nem segít az E-Mode?
+
+Az E-Mode semmit nem tesz egy olyan pozícióért, amelynek adóssága a kategórián kívül van, és keveset több más gyakori felállásnál:
+
+- **Adósság, amelyet a kategória nem listáz.** Amíg ilyen hiteled van, egyáltalán nem léphetsz be. A health factor útmutató pozíciója, 10 WETH fedezet 12 000 USDC adóssággal szemben, a WETH saját 84%-os küszöbén marad az Ethereum Core-on (26291849-es blokk), mert az „ETH correlated” csak WETH felvételét engedi.
+- **Halmazon kívüli fedezet.** Megtartja a saját paramétereit, így ha WBTC-t adsz egy „ETH correlated” pozícióhoz, az a WBTC saját küszöbén emeli a health factort, ami az Ethereum Core-on 85% volt a 26291889-es blokknál, nem 95%. Izolált kategóriában semmit nem ad a hitelfelvételi kapacitáshoz.
+- **Stablecoin kategóriák.** Az Arbitrumon és az Optimismen a „Stablecoins” kategóriának 2026. október 28-án nem volt felvehető eszköze, így új hitelhez nem használható. Az Ethereum Core-on a stablecoin kategóriák egy eszközt (USDe, sUSDe, egy PT) párosítanak USDC-vel és USDT-vel, 90% és 94% közötti LTV-vel. Ott a kockázat a fedezet depegje (a dollárhoz kötött árfolyam elvesztése), amelyet egy korrelált kategória nem csökkent; a kisebb biztonsági sáv miatt hamarabb üt be.
+- **Kis pozíciók.** Egy likvidátor egy adósságeszköz 100%-át is rendezheti, ha az érintett fedezet vagy adósság kevesebb mint 2000 $-t ér (`LiquidationLogic`, kiolvasva 2026. október 28-án), így egy kis loopot, amely átlépi az 1,00-t, teljesen lezárnak, nem csak megnyesnek; [mennyi adósságom likvidálható egyszerre](/hu/blog/hogyan-mukodik-a-likvidalas-az-aave-on#mennyi-adossagomat-likvidalhatjak-egyszerre): ez a rész tartalmazza a szabályt. Az „ETH correlated” 1%-os bónusza az Aave mércéjével kicsi, de a teljes összeg után fizetik.
+- **Nem szándékolt szűk biztonsági sáv.** Ha belépsz egy kategóriába, és a határa közelében veszel fel hitelt, a biztonsági sáv 2%, függetlenül attól, milyen volt a health factor a váltás előtt.
+
+Ha ezek bármelyike a te helyzeted, a normál paraméterek és egy szélesebb puffer a jobb eszköz; [mennyi puffert ad egy health factor](/hu/blog/biztonsagos-aave-health-factor#miert-mas-a-biztonsagos-szam-stablecoin-adossagnal-volatilis-adossagnal-es-e-mode-loopoknal): ez a rész összeveti, mit jelent ugyanaz a health factor egy E-Mode loopnál és más pozícióknál.
+
+## Segíthet egy riasztás egy E-Mode pozíciónál?
+
+Egy health factor-riasztás segít egy olyan E-Mode pozíciónál, amelyet nagyjából 1,1-1,15 fölött tartanak, és nem illik egy olyan loophoz, amelyet szándékosan ez alatt futtatnak. A Tokenping ugyanazt a health factort olvassa, amelyet a szerződés jelent, a `getUserAccountData` hívásból, amely már alkalmazza az E-Mode-kategóriádat, így az E-Mode miatt semmit nem kell beállítanod: az irányítópulton és az üzenetekben szereplő szám ugyanaz, amit egy likvidátor lát.
+
+A korlát a küszöbérték. A Tokenping Aave riasztási küszöbértéke 1,1 és 10 között lehet, az alapértelmezett 1,5. Egy 1,056-os loop, vagy bármely szándékosan 1,1 alatt futtatott pozíció, minden beállítható küszöbérték alatt van. Egy 1,1-re állított riasztás minden 5 perces ellenőrzésnél a küszöb alatt találná a health factort, és mindegyiknél üzenetet küldene, minden kiválasztott csatornán, amíg a pozíció vissza nem kerül 1,1 fölé. Nincs szundi és nincs összesítő; [milyen gyakran kapsz riasztást](/hu/blog/aave-health-factor-riasztas-beallitasa#milyen-gyakran-kapsz-riasztast): ez a rész részletezi a működést.
+
+Egy szűk loopnál az őszinte tanács kétféle lehet. Tartsd meg a biztonsági sávot: futtasd úgy a loopot, hogy a health factora afölött legyen, amiről értesülni szeretnél, egy wstETH/WETH loopnál mondjuk 1,12 és 1,15 között, ami tőkeáttételbe kerül, de így egy 2,85%-os orákulummozgás sem visz el a likvidálásig, és állítsd oda a riasztást, hogy elsőként a pozíciót lefelé húzó kamatról halljál. Vagy fogadd el az állandó üzeneteket: állítsd 1,1-re, és vedd az üzenetek folyamát annak jeleként, hogy alatta futsz, amit kevesen szeretnének minden ellenőrzésnél Signalon vagy Telegramon. Amit egy riasztás egyik esetben sem tud, az az, hogy gyorsabban reagáljon az orákulumnál: a 2026 márciusi mozgás abban a pillanatban tette likvidálhatóvá a pozíciókat, amikor a korlát érvénybe lépett, és egy 5 perces ellenőrzési időköz nem ad időt arra, hogy erre reagálj. [Hogyan válassz riasztási küszöbértéket, lépésről lépésre](/hu/blog/biztonsagos-aave-health-factor#hogyan-valassz-riasztasi-kuszoberteket-lepesrol-lepesre) és [hogyan állíts be egy health factor-riasztást](/hu/blog/aave-health-factor-riasztas-beallitasa#5-lepes-valassz-kuszoberteket): ezek a beállítást tárgyalják; [hogyan emeld az Aave health factorodat](/hu/blog/aave-likvidalas-elkerulese#1-lepes-fizesd-vissza-az-adossagod-egy-reszet): ez azt, mit tegyél, ha üzenet érkezik, ami egy loopnál általában WETH visszafizetését jelenti.
+
+Előbb [ellenőrizheted az Aave V3 health factorodat](/hu/aave); a pozícióid megtekintéséért nem kell fizetned. A riasztások ára: <AlertPrice />, Arbitrumon fizetve, Aave V3 piaconként vagy V4 Spoke-onként egy, és Signalon, Telegramon vagy e-mailben érkeznek. A Tokenping béta állapotban van, és nincs rendelkezésre állási garancia. Egy 2%-os biztonsági sávú pozíciónál egyetlen riasztás sem helyettesíti magát a biztonsági sávot.
+
+## Források
+
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): `POOL_REVISION`, `getReservesList`, valamint az 1-48. kategória címkéje, fedezeti konfigurációja, fedezeti, felvehető és LTV-0 bitmapje és isolated jelzője, a 26291736-os blokknál (megtekintve: 2026. október 28.)
+- Aave V3 Pool az [Arbitrumon](https://arbiscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD), a [Base-en](https://basescan.org/address/0xA238Dd80C259a72e81d7e4664a9801593F98d1c5) és az [Optimismen](https://optimistic.etherscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD): ugyanezek a hívások minden kategóriára, az Arbitrum 519074353 és 519074731 közötti blokkjainál, a Base 53204166-os és az Optimism 158799548-as blokkjánál (megtekintve: 2026. október 28.)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): a WETH, a wstETH és az USDC LTV-je, küszöbe, bónusza és kamatai a 26291849-es blokknál; a WBTC a 26291889-es blokknál (megtekintve: 2026. október 28.)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) és a [wstETH CAPO adaptere](https://etherscan.io/address/0xe1D97bF61901B075E9626c8A2340a7De385861Ef): a WETH és a wstETH ára, az adapter leírása, pillanatképaránya, pillanatkép-időbélyege, maximális éves növekedése és aránya a 26291849-es blokknál (megtekintve: 2026. október 28.)
+- [wstETH token](https://etherscan.io/address/0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0): `stEthPerToken()` a 26291849-es blokknál (megtekintve: 2026. október 28.)
+- [Lido stETH APR API](https://eth-api.lido.fi/v1/protocol/steth/apr/sma): utolsó APR és 7 napos átlag (megtekintve: 2026. október 28.)
+- [IPool.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/interfaces/IPool.sol): az E-Mode getterek, a `setUserEMode` és a `getUserEMode` (aave-v3-origin main, megtekintve: 2026. október 28.)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) és [LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): `validateSetUserEMode`, `getUserReserveLtv`, `executeSetUserEMode` és a close factor 2000 $-os határa (aave-v3-origin main, megtekintve: 2026. október 28.)
+- [Az Aave V3.2 funkciói](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): liquid E-Modes, a kategórián kívüli fedezet megtartja a saját paramétereit, belépési és kilépési szabályok (megtekintve: 2026. október 28.)
+- [Az Aave V3.7 izolált E-Mode-ja](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md): az isolated jelző hatásai (megtekintve: 2026. október 28.)
+- [Aave súgó: Efficiency Mode (E-mode)](https://aave.com/help/borrowing/e-mode) (megtekintve: 2026. október 28.)
+- [A Chaos Labs post-mortemje a wstETH árfolyam eltéréséről a Core és Prime példányokon](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): közzétéve 2026. március 10-én (megtekintve: 2026. október 28.)
+
+_Oktatási tartalom, nem pénzügyi tanácsadás. A riasztások csökkentik a kockázatot, de nem akadályozzák meg a likvidálást._

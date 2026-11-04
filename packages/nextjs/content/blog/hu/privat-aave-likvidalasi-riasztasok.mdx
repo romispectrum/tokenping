@@ -1,0 +1,188 @@
+export const meta = {
+  slug: "privat-aave-likvidalasi-riasztasok",
+  title: "Aave-riasztások és adatvédelem: mit tárol a Tokenping",
+  description:
+    "Mit tárol a Tokenping, mi marad nyilvános on-chain, és hogyan véd meg egy e-mail-alias, egy Signal- és egy Telegram-felhasználónév a beazonosítástól.",
+  h1: "Hogyan kaphatsz Aave health factor-riasztást úgy, hogy nem adod meg a kilétedet a Tokenpingnek?",
+  publishedAt: "2026-10-19",
+  primaryQuestion: "Kaphatok Aave health factor-riasztást úgy, hogy a kilétem nem kapcsolódik a tárcacímemhez?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  A Tokenpingben nincs jelszavas fiók: úgy jelentkezel be, hogy a tárcáddal aláírsz egy üzenetet, és a Tokenping a
+  tárcacímedet a riasztásokhoz megadott elérhetőség mellett tárolja. Adj meg tehát olyan elérhetőségeket, amelyek semmit
+  nem árulnak el rólad: a saját címed helyett egy e-mail-aliast, egy Signal-felhasználónevet rejtett telefonszámmal, és
+  egy olyan Telegram-felhasználónevet és nevet, amely nem azonosít. Így az elérhetőség nem nevez meg téged. Névtelenné
+  ettől nem válsz, mert a fizetésed nyilvános az Arbitrum One-on, a máshol már hozzád kötött tárca hozzád kötve marad,
+  és a riasztásaidat kézbesítő szolgáltatások saját nyilvántartást vezetnek.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Mit tárol a Tokenping, és mit nem gyűjt?
+
+2026. október 19-i állapot szerint egy riasztás mentése tárcánként, hálózatonként és piaconként (egy Aave V3 pool vagy egy Aave V4 Spoke) egy sort ír a Tokenping adatbázisába. A sor tartalma:
+
+- A tárcacímed.
+- A hálózat, a piac és a küszöbértéked.
+- A kiválasztott csatornák és mindegyik nyelve.
+- A beírt e-mail-cím, Signal-felhasználónév és Telegram-felhasználónév, a választott csatornákhoz.
+- Mikor jött létre és mikor módosult utoljára a riasztás, és mikor küldtél utoljára tesztüzenetet az egyes csatornákon. Ez teszi lehetővé, hogy csatornánként 15 percenként csak egy teszt legyen.
+
+Ha megnyomod a Start gombot a Tokenping Telegram-botjában, a csevegésazonosítód (chat ID) és az időpont is tárolódik, egy külön táblában. Ha válaszolsz a nem kötelező „Honnan hallottál a Tokenpingről?” kérdésre, a válaszod és az időpont a tárcacímeddel együtt tárolódik.
+
+A Tokenping nem kér és nem tárol nevet, telefonszámot, jelszót vagy személyazonosság-ellenőrzést. Nem használ követőpixelt vagy reklámsütit, nem őrzi a pozícióid előzményeit (azokat élőben olvassa a blokkláncról), és az adatbázisában nem naplózza az elküldött riasztásokat. A hiteles lista az [adatvédelmi oldalon](/hu/adatvedelem) van; ez az útmutató azt magyarázza el, mit jelent ez neked, és mit tehetsz.
+
+## Hogyan működik a bejelentkezés fiók nélkül?
+
+A riasztási beállítások egy tárcacímhez tartoznak, nem egy fiókhoz. A megnyitásukhoz vagy módosításukhoz aláírsz egy üzenetet azzal a tárcával. Ez egy Sign-in with Ethereum üzenet (EIP-4361), amely megnevezi az oldalt, a címedet és egy véletlenszerű, egyszer használható kódot. Az aláírás nem tranzakció: nem kerül gas díjba, és semmilyen tokent nem hagy jóvá. A szerver ellenőrzi az aláírást, és az egyszer használható kódot egyszer, 5 percen belül fogadja el. A kódot a címed nélkül tárolja, és felhasználáskor törli.
+
+Ezután az oldal beállít egy munkamenet-sütit. Ez a tárcacímedet és egy lejárati időt tartalmaz, egy szerveroldali titokkal készült aláírással, hogy ne lehessen hamisítani (aláírt, nem titkosított), és az oldal szkriptjei nem olvashatják (HttpOnly). 7 napig érvényes, és az oldal törli, ha az oldalon leválasztod a tárcádat. Bejelentkezés közben egy második süti tartja azt a néhány percet az egyszer használható kódot. Ezután minden riasztási útvonal csak a sütiben szereplő tárca nevében jár el, és egy másik tárcát megnevező kérést elutasít.
+
+A pozícióid megtekintéséhez nem kell bejelentkezned, és fizetned sem kell. Az oldal látogatottsági adatai a Vercel Web Analytics-től származnak, amely saját közlése szerint harmadik féltől származó sütik helyett a kérésből képzett hash alapján azonosítja a látogatókat, és 24 óra után eldobja ezt a munkamenetet.
+
+## Ki olvashatja el az általad mentett elérhetőségeket?
+
+Az alkalmazáson keresztül csak az, aki alá tud írni a tárcáddal. Egy riasztás megtekintéséhez, módosításához vagy törléséhez és a tesztüzenet küldéséhez is a munkamenet-sütid kell, és egy másik tárcát megnevező kérést a rendszer elutasít. Az adatbázistáblák zárva vannak a Supabase nyilvános (anon) kulcsa előtt: a sorszintű biztonság (row level security) be van kapcsolva szabályok nélkül, és a nyilvános szerepköröknek nincs jogosultságuk. Csak a Tokenping szervere éri el őket a service-role kulcsával.
+
+Ezt nem kell elhinned, ellenőrizheted, mert a Tokenping kódja nyilvános. A riasztásokat olvasó és író útvonalak a [`packages/nextjs/app/api/notifications`](https://github.com/romispectrum/tokenping/tree/main/packages/nextjs/app/api/notifications) mappában vannak, a bejelentkezési útvonalak a [`packages/nextjs/app/api/auth`](https://github.com/romispectrum/tokenping/tree/main/packages/nextjs/app/api/auth) mappában, a táblákat a nyilvános kulcs előtt lezáró migrációk pedig a [`packages/supabase/migrations`](https://github.com/romispectrum/tokenping/tree/main/packages/supabase/migrations) mappában.
+
+Ez nem ugyanaz, mint hogy senki:
+
+- A Tokenping üzemeltetői és az adatbázis tárhelyszolgáltatója olvashatják a sorokat.
+- Bárki megkérdezheti, hogy egy adott Telegram-felhasználónév megnyomta-e a Start gombot a botban. A válasz igen vagy nem, csevegésazonosító soha.
+- Ha egy riasztás-ellenőrzés vagy egy üzenet meghiúsul, a hibaüzenet tartalmazhatja a tárcacímedet és a címzettet, és a szervernaplókba kerül.
+
+Maga az adatvédelmi oldal azt tanácsolja, hogy ne adj meg olyan e-mail-címet vagy Signal-felhasználónevet, amelyet nem szeretnél a tárcacímedhez kötni. Az útmutató többi része arról szól, hogyan követheted ezt a tanácsot.
+
+## Mely más szolgáltatások kezelik az adataidat?
+
+A Tokenping más szolgáltatókra épül, és mindegyik látja annak egy részét, amit megadsz. Ez a táblázat az adatvédelmi oldal listájának rövidített változata.
+
+| Szolgáltatás         | Mit csinál                                                         | Mit lát                                                                                                               |
+| -------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| Vercel               | Az oldal tárhelye, és 5 percenként futtatja a riasztás-ellenőrzést | Minden kérést, az IP-címedet is, és a szervernaplókat                                                                 |
+| Vercel Web Analytics | Számolja az oldalmegtekintéseket                                   | Az oldal címét, a hivatkozó oldalt, a hozzávetőleges helyet, a böngészőt, az operációs rendszert és az eszköz típusát |
+| Supabase             | Az adatbázis                                                       | A fent leírt sorokat                                                                                                  |
+| Resend               | Elküldi a riasztási e-maileket                                     | Az e-mail-címedet és a riasztás szövegét                                                                              |
+| Fly.io relay         | Átadja a riasztásokat a Signalnak                                  | A Signal-felhasználónevedet és a riasztás szövegét (a Signal is látja őket)                                           |
+| Telegram             | A Bot API-ján keresztül kézbesíti a riasztásokat                   | A csevegésazonosítódat és a riasztás szövegét                                                                         |
+| RPC-szolgáltatók     | Megválaszolják a blokklánc-lekérdezéseket                          | A lekérdezett tárcacímet, és az IP-címedet, ha a böngésződ végzi a lekérdezést                                        |
+| WalletConnect        | Továbbítja a kapcsolatot a tárcaalkalmazásodhoz, ha használod      | Amit a tárcaalkalmazásod és az oldal a kapcsolódáshoz kicserél                                                        |
+
+A riasztás szövege megnevezi a piacot, a health factorodat, a küszöbértékedet és az időpontot. A tárcacímedet nem tartalmazza.
+
+A szolgáltatóknak saját nyilvántartásuk van. A Resend adatfeldolgozási kiegészítője (data processing addendum) a metaadatokat, az e-mail-címet és az üzenet tartalmát sorolja fel azon személyes adatok minimumaként, amelyeket egy ügyfél számára kezel, a dokumentációja pedig azt írja, hogy minden csomagban 30 napig őrzi az e-mail-adatokat, az Enterprise csomagban rugalmas megőrzéssel. A Signal azt írja, hogy nem tudja visszafejteni és semmilyen más módon sem fér hozzá az üzenetek tartalmához. A Telegram adatvédelmi szabályzata szerint a felhőalapú csevegéseket erős titkosítással a szerverein tárolja, a végpontok közötti titkosítás pedig a titkos csevegésekre (Secret Chats) vonatkozik.
+
+## Mi marad nyilvános a blokkláncon?
+
+A riasztásokért fizetés egy tranzakció az Arbitrum One-on. A fizetési szerződés mindegyiket egy nyilvános eseményben rögzíti: a fizető cím, a token, az összeg, az időpont, a megvásárolt időszak és az új lejárati dátum. Bárki elolvashatja, és senki sem törölheti. A szerződés forráskódja [ellenőrizve van a Sourcifyon](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553).
+
+A riasztásodról semmi nem kerül blokkláncra: sem a küszöbérték, sem az e-mail-aliasod, sem a Signal-felhasználóneved, sem a Telegram-felhasználóneved. Az Aave-pozícióid is nyilvánosak. Az ethereum.org a blokkláncot „a public database”-ként (nyilvános adatbázisként) írja le, és a Tokenping olyan view hívásokkal olvassa a pozíciódat, amelyeket bárki elvégezhet. A tárcád és a pozíciói közötti kapcsolat soha nem a Tokenpingen múlt.
+
+## Mit tud összekapcsolni a Tokenping, és mit nem?
+
+A Tokenping össze tudja kapcsolni a tárcacímedet az ott mentett elérhetőségeiddel, a piacokkal, ahol hitelt veszel fel, a küszöbértékeiddel, és azzal, hogy mikor fizettél. A szolgáltatás e kapcsolat nélkül nem működhet: egy riasztáshoz kell egy figyelendő tárca és egy hely, ahová az üzenet menjen.
+
+Abból, amit az adatbázisában tárol, a Tokenping mindezt nem tudja a nevedhez, a telefonszámodhoz vagy más fiókjaidhoz kötni, hacsak egy általad megadott elérhetőség meg nem teszi helyette. Egy e-mail-cím a neveddel, vagy egy felhasználónév, amelyet más oldalakon is használsz, pontosan ezt teszi. Ezért kell az alias és a névtelen felhasználónév: az elérhetőség semmit nem mond arról, ki vagy. Az IP-címed külön kérdés: minden kéréssel a Vercelhez jut el, nem a Tokenping adatbázisába, és az elrejtése kívül esik ezen az útmutatón.
+
+Amit egy kívülálló megtehet, az egy másik lista, és egyik eleméhez sincs szükség a Tokenpingre:
+
+- Ha a tárcádnak van ENS elsődleges neve (primary name), bármelyik alkalmazás kikeresheti a címből.
+- Ha a tárcát egy olyan tőzsdéről töltötted fel, ahol igazoltad a személyazonosságodat, a tőzsdénél általában nyoma van ennek a kivételnek.
+- Bárhol, ahol a címet a neved vagy a felhasználóneved mellett mutattad meg, a kettő összekapcsolódik.
+- A fizetésed nyilvános, így bárki láthatja, hogy a cím fizetett, és meddig.
+
+## Hogyan használj e-mail-aliast a valódi címed helyett?
+
+Az e-mail-alias egy további cím, amely továbbít a valódi postafiókodba. A Tokenping és az e-mail-szolgáltatója csak az aliast látja. A SimpleLogin, amelyet ez az útmutató példaként használ, mindkettőt látja, mert ő továbbítja köztük a leveleket. A Proton AG készíti, nyílt forráskódú, és az árazási oldalán szerepel egy csomag, amelyért nem kell fizetned, korlátozott számú aliasszal.
+
+1. Hozz létre egy SimpleLogin-fiókot, és válaszd ki a postafiókot, amelybe a továbbított riasztások érkezzenek.
+2. Az irányítópulton nyomd meg a **Random Alias** (véletlen alias) gombot, és a bal oldali részhez válassz véletlen szavakat vagy UUID-t. Egyéni alias is működik, de hagyd ki belőle a nevedet, a felhasználóneveidet és mindent, amit más oldalakon használsz. A SimpleLogin megjegyzést is enged fűzni egy aliashoz, például „Tokenping”, hogy emlékezz, mire való.
+3. A riasztási űrlapon add meg az aliast e-mail-címként (például `alice-aave@example.com`), és mentsd a riasztást.
+4. Nyomd meg a **Teszt küldése** gombot az e-mailnél, és ellenőrizd, hogy az üzenet megérkezik-e a valódi postafiókodba. Ha nem, nézd meg a spam mappát. A többi ellenőrzést a [beállítási útmutató](/hu/blog/aave-health-factor-riasztas-beallitasa) tartalmazza.
+
+A Tokenping riasztásai egyirányúak, így soha nem válaszolsz rájuk, és elég egy csak fogadó alias. Ha abbahagyod a Tokenping használatát, előbb a riasztást töröld, aztán az aliast, hogy egyetlen tárolt elérhetőség se élje túl a célját.
+
+Egy alias nem rejt el mindent. A SimpleLogin és a postafiók-szolgáltatód továbbra is látja a riasztásokat, így a címedet a Tokenping és a Resend elől rejti el, a továbbító szolgáltatás elől nem. Egy alias, amelyet egy másik szolgáltatáshoz is használsz, összekapcsolja a kettőt. És nem változtat azon, amit az üzenet mond: a piacon, a health factorodon és a küszöbértékeden.
+
+Nem a SimpleLogin az egyetlen lehetőség. A DuckDuckGo Email Protection, a Firefox Relay (a Mozillától), az addy.io és az Apple Hide My Email szolgáltatása (az iCloud+ előfizetés része) is ad olyan címeket, amelyek a sajátodba továbbítanak. A korlátaik eltérnek, ezért olvasd el a szolgáltató oldalát, mielőtt valamelyikre hagyatkozol.
+
+## Hogyan használj Signal-felhasználónevet a telefonszámod helyett?
+
+A Signal-felhasználónévvel valaki a telefonszámod nélkül kezdhet veled csevegést, és a Tokenping ezt kéri: az űrlapja soha nem kér telefonszámot. Ezek a lépések a Signal támogatási oldalait követik.
+
+1. **Hozz létre felhasználónevet.** A Signalban nyisd meg a profilodat, és koppints a @ jelre. A felhasználónév 3-32 karakteres (a-z, 0-9 és \_), és legalább két számjegyre végződik. A Tokenping űrlapja az `alice.42` formát várja: a beceneved, egy pont és a számjegyek. Olyan becenevet válassz, amely nem a neved, és nem egy máshol használt felhasználóneved.
+2. **Rejtsd el a számodat.** Nyisd meg a „Settings” (Beállítások), majd a „Privacy” (Adatvédelem), majd a „Phone Number” (Telefonszám) menüt, és a „Who can see my number” (Ki láthatja a számomat) beállítást állítsd „Nobody” (Senki) értékre. Akiknek a számod már el van mentve a névjegyeik között, továbbra is látják. Ha azt is szeretnéd, hogy csak a felhasználóneveden keresztül lehessen elérni, a „Who can find me by my number” (Ki találhat meg a számom alapján) beállítást is állítsd „Nobody” értékre.
+3. **Ellenőrizd a profilneved.** A Signal-profilodban kötelező egy keresztnév és opcionális egy fotó, és a Signal oldala szerint becenevet, egyetlen karaktert vagy emojit is használhatsz. Ha elfogadsz egy üzenetkérést, a küldő látja a profilodat.
+4. **Add hozzá a felhasználónevet a riasztáshoz, és küldj tesztet.** Írd be a Signal-felhasználónév mezőbe, mentsd, és nyomd meg a **Teszt küldése** gombot a Signalnál. Mivel a Tokenping Signal-fiókja nincs a névjegyeid között, az első üzenet üzenetkérésként érkezhet. A 2. és a 3. lépést végezd el, mielőtt elfogadod.
+
+A Signal szerint ha nem fogadod el a kérést, a küldő csak azt a felhasználónevet látja, amelyre írt. Ha elfogadod, a küldő látja a profilnevedet, és a számbeállításaidtól függően a telefonszámodat is láthatja.
+
+A felhasználónév csak egy mód a csevegés elindítására. Maga a Signal továbbra is tárolja a telefonszámot, amellyel regisztráltál, és ezen semmi itt leírt nem változtat. Ha megváltoztatod vagy törlöd a felhasználónevet, a Signal szerint bárki hamarosan lefoglalhatja a régit, a Tokenping pedig továbbra is a tárolt felhasználónévre küld, ezért azonnal frissítsd a riasztást.
+
+## Hogyan érheted el, hogy egy Telegram-fiók ne azonosítson?
+
+A három közül a Telegram illik ide a legkevésbé, ezért olvasd el ezt, mielőtt választod. A Tokenping csak olyan Telegram-fióknak tud üzenni, amely megnyomta a Start gombot a botjában, ezért beírod a riasztásba az @felhasználónevedet, és egyszer megnyomod a Start gombot. A fióknak tehát felhasználónév kell, és a Telegram szerint a felhasználónevek nyilvánosak: a globális keresésben megtalálhatóvá tesznek, és aki megtalál, a számod nélkül is írhat neked. A Telegram saját GYIK-ja azt tanácsolja, hogy ne állíts be ilyet, ha ez kényelmetlen neked.
+
+1. **Válassz olyan felhasználónevet, amelyben semmi sincs belőled.** Használj a-z, 0-9 karaktereket és aláhúzásjelet; a Tokenping 4-32 karaktert fogad el. A Telegram beállításaiban állíthatod be.
+2. **Ellenőrizd a megjelenített nevedet és a fotódat.** A Telegram adatvédelmi szabályzata szerint a megjelenített nevednek nem kell a valódi nevednek lennie. Egy bot látja a nyilvános nevedet, a felhasználónevedet és a profilképeidet.
+3. **Ellenőrizd a számbeállításodat.** Nyisd meg a „Settings” (Beállítások), majd a „Privacy and Security” (Adatvédelem és biztonság), majd a „Phone Number” (Telefonszám) menüt. Alapértelmezés szerint csak azok látják a számodat, akiknek a névjegyei között szerepelsz, és a Telegram szerint aki felhasználónév alapján talál meg, az sem látja. Egy bot nem látja, hacsak meg nem adod neki.
+4. **Kapcsold össze a fiókot.** Írd be a felhasználónevet a riasztásba, nyomd meg a Start gombot a botban, és várd meg, amíg az űrlap összekapcsoltként mutatja.
+
+A Tokenping kódja csak a csevegésazonosítódat és a felhasználónevedet tartja meg, de a Telegram Bot API-ja minden üzenettel átadja egy botnak a keresztnevedet, és ha vannak, a vezetéknevedet, a felhasználónevedet és a nyelvkódodat is. Bárki ellenőrizheti, hogy egy felhasználónév megnyomta-e a Start gombot. Ha a botnak elküldöd a /stop parancsot, a csevegésed leválik.
+
+## Érdemes külön tárcát használnod?
+
+Csak ha abból veszel fel hitelt. A Tokenping a csatlakoztatott tárcát figyeli, semmi mást, és a hozzáférés a fizető tárcáé, így nem fizethetsz egy címről azért, hogy egy másik címen tartott pozíciót figyeljen. Egy csak az Aave-hoz használt tárca egy címen tartja a pozíciót, a fizetést és a riasztásokat. Az, ahogyan feltöltöd, továbbra is nyilvános nyomot hagy, a Tokenping-fizetés nyilvános, és a tárca álnevű marad, nem névtelen. Egy hitel új tárcába költöztetése általában a pozíció lezárását és újranyitását jelenti, az ezzel járó költségekkel és likvidálási kockázattal, ezért ez az útmutató nem javasolja.
+
+## Mit véd meg egy-egy lépés, és mit nem?
+
+| Lépés                                              | Elrejti a Tokenping és szolgáltatói elől | Nem rejti el                                                                                         |
+| -------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| E-mail-alias                                       | A valódi e-mail-címedet                  | Az alias-szolgáltatás látja mindkét címet és a riasztásokat, és azok a valódi postafiókodba érkeznek |
+| Signal-felhasználónév, rejtett számmal             | A telefonszámodat                        | A Signal továbbra is tárolja a számodat, és egy kérés elfogadása megosztja a profilnevedet           |
+| Telegram-felhasználónév és név, amely nem azonosít | A valódi nevedet és a telefonszámodat    | A felhasználónév nyilvános, és a Telegram a szerverein tárolja a csevegést                           |
+| Csak az Aave-hoz használt tárca                    | A kapcsolatot a tárca más előzményeivel  | A feltöltő tranzakciók és a Tokenping-fizetés nyilvánosak                                            |
+| A riasztás törlése                                 | A tárolt sort, az elérhetőséggel együtt  | Az on-chain fizetést, és amit az egyes szolgáltatók a saját szabályaik szerint megőriznek            |
+
+## Hogyan törölheted, amit a Tokenping tárol?
+
+Töröld a riasztást az irányítópulton: nyomd meg a **Riasztás szerkesztése**, majd a **Riasztás törlése** gombot, és erősítsd meg. Ez törli az adott piac beállításait, az e-mail-címet és a Signal-felhasználónevet is, és aktív hozzáférést igényel. Minden piac riasztását külön kell törölni.
+
+<Callout tone="warning">
+  A hozzáférésed lejárta semmit nem töröl: a riasztás és a benne lévő elérhetőség addig tárolva marad, amíg nem törlöd a
+  riasztást. A már nem kívánt riasztásokat akkor töröld, amikor még aktív a hozzáférésed. Ha már lejárt, az adatvédelmi
+  oldal megmondja, hová írj a csapatnak, hogy töröljék a beállításaidat.
+</Callout>
+
+A Telegramon a /stop parancs elküldése a botnak leválasztja a csevegésedet. A nem kötelező „Honnan hallottál” válasz kérésre törölhető, ugyanazokon az elérhetőségeken az adatvédelmi oldalon. Az on-chain fizetést senki sem törölheti.
+
+Mindennek a kódja a [Tokenping repositoryban](https://github.com/romispectrum/tokenping) van. Ha ennek az útmutatónak egy állítása nem egyezik vele, szólj a csapatnak az adatvédelmi oldalon található elérhetőségeken.
+
+## Források
+
+- [A Tokenping adatvédelmi oldala](/hu/adatvedelem) (megtekintve: 2026. október 19.; utolsó frissítés: 2026. október 19.): mit tárol, ki kezeli, mi nyilvános és hogyan törölhető
+- [A Tokenping forráskódja a GitHubon](https://github.com/romispectrum/tokenping) (megtekintve: 2026. október 19.; a repository nyilvános): a bejelentkezés a `packages/nextjs/app/api/auth`, a munkamenet-ellenőrzés a `packages/nextjs/services/api/server/session.ts`, a riasztások tárolása a `packages/nextjs/services/notifications`, a Telegram-útvonalak a `packages/nextjs/app/api/telegram`, a migrációk a `packages/supabase/migrations`, a fizetési szerződés a `packages/hardhat/contracts` alatt
+- [TokenpingPaywall az Arbitrum One-on, a forráskód ellenőrizve a Sourcifyon](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553) (megtekintve: 2026. október 19.): a PaymentReceived esemény
+- [SimpleLogin](https://simplelogin.io/) (megtekintve: 2026. október 19.): mit csinál egy alias, ki készíti, nyílt forráskód
+- [SimpleLogin árazás](https://simplelogin.io/pricing/) (megtekintve: 2026. október 19.): egy csomag, amelyért nem kell fizetned, korlátozott számú aliasszal
+- [SimpleLogin dokumentáció: alias létrehozása](https://simplelogin.io/docs/getting-started/create-alias/) (megtekintve: 2026. október 19.)
+- [DuckDuckGo Email Protection](https://duckduckgo.com/duckduckgo-help-pages/email-protection/what-is-duckduckgo-email-protection) (megtekintve: 2026. október 19.)
+- [Firefox Relay](https://relay.firefox.com/) (megtekintve: 2026. október 19.)
+- [addy.io](https://addy.io/) (megtekintve: 2026. október 19.)
+- [Apple támogatás: Hide My Email az iCloud+ szolgáltatással](https://support.apple.com/en-us/102548) (megtekintve: 2026. október 19.)
+- [Signal Support: Phone Number Privacy and Usernames](https://support.signal.org/hc/en-us/articles/6712070553754-Phone-Number-Privacy-and-Usernames) (megtekintve: 2026. október 19.)
+- [Signal Support: Signal Profiles and Message Requests](https://support.signal.org/hc/en-us/articles/360007459591-Signal-Profiles-and-Message-Requests) (megtekintve: 2026. október 19.)
+- [A Signal adatvédelmi szabályzata](https://signal.org/legal/) (megtekintve: 2026. október 19.)
+- [Telegram GYIK](https://telegram.org/faq) (megtekintve: 2026. október 19.): felhasználónevek, a telefonszám láthatósága, mit látnak a botok
+- [A Telegram adatvédelmi szabályzata](https://telegram.org/privacy) (megtekintve: 2026. október 19.)
+- [Telegram Bot API: User és Chat objektumok](https://core.telegram.org/bots/api) (megtekintve: 2026. október 19.)
+- [A Resend adatfeldolgozási kiegészítője](https://resend.com/legal/dpa) (megtekintve: 2026. október 19.)
+- [Resend dokumentáció: az e-mail-adatok hosszú távú megőrzése](https://www.resend.com/docs/webhooks/how-to-store-webhooks-data) (megtekintve: 2026. október 19.)
+- [Vercel Web Analytics: adatvédelem és megfelelőség](https://vercel.com/docs/analytics/privacy-policy) (megtekintve: 2026. október 19.)
+- [ENS dokumentáció: elsődleges nevek](https://docs.ens.domains/web/reverse) (megtekintve: 2026. október 19.)
+- [ethereum.org: bevezetés az Ethereumba](https://ethereum.org/en/developers/docs/intro-to-ethereum/) (megtekintve: 2026. október 19.)
+
+_Oktatási tartalom, nem pénzügyi tanácsadás. A riasztások csökkentik a kockázatot, de nem akadályozzák meg a likvidálást._

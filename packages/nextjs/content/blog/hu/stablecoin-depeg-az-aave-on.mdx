@@ -1,0 +1,162 @@
+export const meta = {
+  slug: "stablecoin-depeg-az-aave-on",
+  title: "Mit tesz egy stablecoin-depeg az Aave-hiteleddel",
+  description:
+    "Hogyan hat a depeg az Aave health factorra a hitel két oldalán, hogyan árazza az Aave korlátosan az USDC-t, USDT-t és USDe-t, mit mutatott 2023 és 2025.",
+  h1: "Mi történik az Aave-pozícióddal, ha egy stablecoin elveszíti a dollárhoz kötött árfolyamát?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "Mi történik az Aave health factorommal, ha egy stablecoin elveszíti a dollárhoz kötött árfolyamát?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  Egy stablecoin depegje (a dollárhoz kötött árfolyam elvesztése) az orákulum (árforrás) árán keresztül mozgatja az Aave
+  health factorodat (egészségi mutató), nem azon az 1 dolláron keresztül, amire gondolsz. Ha a stablecoin a fedezeted,
+  minden cent, amennyivel 1 $ alá esik, egyenesen átmegy a health factorba, mert az Aave stablecoin-áradapterei felülről
+  korlátozzák az árat (az Ethereum Core piacon az USDC, USDT, DAI, USDS és PYUSD esetén 1,04 $-nál, 2026. október 28-i
+  leolvasás szerint), alsó határuk viszont nincs. Ha a stablecoin az adósságod, egy esés növeli a health factorodat, egy
+  emelkedés pedig csökkenti, de soha nem jobban, mint amennyit a felső korlát enged. Az USDe a különleges eset: 2025.
+  március 8. óta az Aave az USDT árfolyamforrásával árazza, így a piaci ára egyáltalán nem jut el a health factorodig.
+  Egy depeg két riasztási ellenőrzés között messzire elviheti a pozíciót, ezért a riasztás időt ad, nem védelmet.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Számok és a blokkszámok, amelyeknél kiolvastuk őket: content/blog/snapshots/stablecoin-depeg-aave.md */}
+
+## Mi az a stablecoin-depeg, és a hiteled melyik oldalát érinti?
+
+Egy stablecoin akkor depegel, amikor a piaci ára eltávolodik attól az 1 dollártól, amelyet tartania kellene. Egy Aave-hitelfelvevő számára ez két oldalon számít, és a két oldal másképp viselkedik:
+
+- **Egy stablecoin, amelyet fedezetként helyeztél el.** Az orákulumára megszorozza a fedezeted értékét, így egy 1 $ alatti esés a health factor fedezeti oldalát zsugorítja. Ez [a health factor csökkenésének 5. oka](/hu/blog/miert-csokkent-az-aave-health-factor#5-ok-lefele-depegelt-egy-stablecoin-amelyet-fedezetkent-helyeztel-el), és ez a veszélyes oldal.
+- **Egy stablecoin, amelyet hitelként vettél fel.** Az orákulumára az adósságod értékét szorozza meg. Egy 1 $ alatti esés csökkenti az adósság értékét és növeli a health factorodat; egy 1 $ feletti emelkedés növeli az adósság értékét és csökkenti a health factort.
+
+Maga a health factor mindkét esetben ugyanaz a képlet, amelyet [az Aave health factor magyarázata](/hu/blog/aave-health-factor-magyarazat) mutat be:
+
+**HF = Σ(fedezet értéke × likvidálási küszöb) ÷ teljes adósság értéke**
+
+Mindkét érték az Aave orákulumából jön. A képletben semmi sem tudja, hogy egy eszköz stablecoin: a 0,87 $-os USDC egyszerűen egy 0,87 $ értékű eszköz. A stablecoinokat az teszi mássá, ahogyan az Aave árazza őket, erről szól a harmadik szakasz. Az alábbi példák az Aave V3 Ethereum Core paramétereit használják, amelyeket 2026. október 28-án, a 26291704-es blokknál (14:03:35 UTC) olvastunk ki: a likvidálási küszöb (liquidation threshold) az USDC és az USDT esetén 78%, a WETH esetén 84%.
+
+## Mit tesz a health factorral a stablecoin-fedezeted depegje?
+
+Egy általad elhelyezett stablecoin orákulumárának esése az eséssel arányosan csökkenti a health factorodat, és semmi sem állítja meg. Vegyünk 20 000 elhelyezett USDC-t 10 000 felvett USDT-vel szemben, a kerek számok kedvéért mindkettőt 1 $-on (az orákulum a 26291704-es blokknál 0,99971803 $-t mutatott az USDC-re és 0,99842395 $-t az USDT-re):
+
+- 1 $-on: 20 000 × 0,78 ÷ 10 000 = **1,56**.
+- USDC 0,95 $-on: 19 000 × 0,78 ÷ 10 000 = **1,48**.
+- USDC 0,87 $-on, a 2023. márciusi mélyponton: 17 400 × 0,78 ÷ 10 000 = **1,36**.
+- Az 1,00-s likvidálási ponthoz az USDC-nek 10 000 ÷ (20 000 × 0,78) = **0,64 $**-ra kellene esnie, változatlan USDT mellett.
+
+Ennek a pozíciónak azért van mozgástere, mert feleannyi hitelt vett fel, mint amennyit a 75%-os hitel-fedezet arány (LTV) megenged. Ugyanez a fedezet a határig kihasználva, 15 000 USDT-vel 15 600 ÷ 15 000 = **1,04**-ről indul, és 0,95 $-os USDC mellett 14 820 ÷ 15 000 = **0,99**-re kerül, vagyis likvidálható. Az 1,00-t nagyjából **0,96 $**-os USDC-árnál éri el, ami 4%-nál kisebb esés. 0,87 $-nál 0,90-en áll. Egy stablecoin-loop (ismételt hitelfelvétel tőkeáttétellel) nyugodtnak tűnik, amíg az orákulum meg nem mozdul, és akkor a puffer pontosan akkora, amekkora rést az LTV-d és a küszöb között hagytál; [hogy mekkora puffert ad egy health factor](/hu/blog/biztonsagos-aave-health-factor), abból kiderül, hogyan válaszd meg.
+
+Egy részlet segít: csak a két orákulumár aránya számít. Ha az USDC és az USDT is 0,95 $-t mutat, a 15 000 USDT-s pozíció ismét 14 820 ÷ 14 250 = 1,04, változatlan. 2023 márciusában az fájt, hogy az USDC esett, az USDT viszont nem.
+
+Bármely elhelyezett stablecoin így ki van téve ennek, a fedezetedben való részarányával arányosan. Ha WETH-et és USDC-t azonos dollárösszegben helyeztél el (84% és 78% küszöbbel), az USDC a súlyozott fedezeted körülbelül 48%-a, így az USDC 13%-os esése körülbelül 6%-ot visz el belőle.
+
+## Mit tesz a felvett stablecoin depegje?
+
+Ha a stablecoin az adósságod, a hatás fordított, és az egyik irányban korlátozott. Vegyünk 10 elhelyezett WETH-et (84% küszöb) 12 000 felvett USDT-vel szemben, szemléltetésként 2300 $-os ETH-árral (az orákulum a 26291704-es blokknál 2335,08 $-t mutatott):
+
+- USDT 1 $-on: 23 000 × 0,84 ÷ 12 000 = **1,61**.
+- Az USDT 0,95 $-ra esik: az adósság 11 400-at ér, tehát **1,69**. 0,87 $-nál **1,85**. Az adósságeszközöd lefelé irányuló depegje neked kedvez.
+- Az USDT 1,02 $-ra emelkedik: az adósság 12 240-et ér, tehát **1,58**.
+- Az USDT 1,04 $-ra vagy afölé emelkedik: az adósság legfeljebb 12 480-at ér, tehát **1,55**. A felső korlát ott tartja az árat, bármit mond is a piac.
+
+Egy felvett stablecoin tehát a saját árán keresztül legfeljebb körülbelül 4%-ot vehet el a health factorodból, míg fedezetként annyit vehet el, amennyit esik. Ez az aszimmetria az adapterből fakad, nem az Aave kockázati paramétereiből.
+
+<Callout tone="info">
+  Ezért van az is, hogy ha volatilis eszközzel szemben stablecoint veszel fel, ahogy a [fiat shortolása
+  Aave-val](/hu/blog/fiat-shortolasa-aave-val) pozíciója, az alig van kitéve a depegnek: a stablecoin adósság, és az
+  esése jó hír a hitelfelvevőnek.
+</Callout>
+
+## Hogyan árazza az Aave a stablecoinokat?
+
+Az Aave nem 1 $-on értékeli a stablecoinokat. Minden tartaléknak (reserve) van egy árforrása, amelyet a governance állít be az AaveOracle szerződésben, és stablecoinok esetén ez a forrás egy Chainlink USD-árfolyamforrás (feed), egy árkorlát-adapterbe csomagolva az Aave árfolyamforrás-repozitóriumából (abból a repozitóriumból, amelyet korábban aave-capónak hívtak; a README szerint átnevezték Aave Price Feedsre). A stablecoin-adapter a `PriceCapAdapterStable`, és a `latestAnswer` függvénye három dolgot tesz: kiolvassa a Chainlink feedet, visszaadja a governance által beállított korlátot, ha a feed afölött van, egyébként pedig változatlanul visszaadja a feed árát (egy nem pozitív feed-válaszból 0 lesz). Alsó határ nincs.
+
+Az AaveOracle-ből kiolvasva az Ethereum Core piacon, a 26291704-es blokknál (2026. október 28., 14:03:35 UTC), a `getSourceOfAsset` és az egyes adapterek saját getterei segítségével:
+
+| Eszköz | Likvidálási küszöb | Orákulumár   | Árforrás, ahogy az adapter leírja magát                         | Korlát (`getPriceCap`) |
+| ------ | ------------------ | ------------ | --------------------------------------------------------------- | ---------------------- |
+| USDC   | 78%                | 0,99971803 $ | „Capped USDC / USD” egy „USDC / USD” feed fölött                | 1,04 $                 |
+| USDT   | 78%                | 0,99842395 $ | „Capped USDT/USD” egy „USDT / USD” feed fölött                  | 1,04 $                 |
+| USDe   | 75%                | 0,99842395 $ | „Capped USDT/USD” ugyanazon USDT-feed fölött                    | 1,04 $ (lásd lent)     |
+| DAI    | 77%                | 0,99923138 $ | „Capped DAI/USD” egy „DAI / USD” feed fölött                    | 1,04 $                 |
+| USDS   | 78%                | 0,99972900 $ | „Capped USDS/USD” egy „USDS / USD” feed fölött                  | 1,04 $                 |
+| PYUSD  | 78%                | 0,99988808 $ | „Capped pyUSD/USD” egy „PYUSD / USD” feed fölött                | 1,04 $                 |
+| GHO    | 0% (nem fedezet)   | 1,00000000 $ | Rögzített forrás, amely az adapter egyik getterére sem válaszol | nincs, rögzítve 1 $-on |
+
+Aznap minden adapter `isCapped()` függvénye false-t adott vissza: egyik feed sem volt a korlátja fölött. Az USDe sorához megjegyzés kell: az adapter, amelyre az USDe mutat, ugyanennek a szerződésnek egy régebbi telepítése (2024. március 1-jén hozták létre), amelynek nincs `getPriceCap` gettere, ezért a korlátot a tárolójából olvastuk ki, ahol ugyanaz a 104000000 áll. Az sUSDe-t egy másik adapter árazza, a „Capped sUSDe / USDT / USD”, amely az sUSDe és USDe közötti átváltási arányt megszorozza az USDT árával, és 1,25333685 $-t mutatott.
+
+Mit jelent ez egy hitelfelvevőnek:
+
+- **1 $ fölött hitelfelvevőként védve vagy, elhelyezőként korlátozva.** Ha az USDC 1,10 $-on forog, az Aave 1,04 $-ra értékeli, így egy USDC-adósság legfeljebb 4%-kal kerül többe, és az USDC-fedezet legfeljebb 4%-kal ér többet.
+- **1 $ alatt semmi sem tompít.** Az adapter a 0,95 $-t vagy 0,87 $-t pontosan továbbadja. A fedezeted annyit ér, amennyit a feed mond, és a health factorod minden kiolvasásnál ezt követi.
+- **A korlát változhat.** A `setPriceCap` az Aave risk adminjai és pool adminjai számára elérhető, nem állíthat be a feed aktuális áránál alacsonyabb korlátot, és nem mehet 2 $ fölé. A fenti korlátok azok, amelyek 2026. október 28-án a láncon voltak, nem ígéretek.
+- **A feed számít, nem a tőzsdei árfolyam.** A Chainlink feedje több kereskedési helyszínt összesít, így egy tőzsde ára nem az orákulumár. Hogy ez megnyugtató vagy veszélyes, az attól függ, a hitel melyik oldalán állsz; a következő két szakasz mindkettőt megmutatja.
+
+Az orákulumhibák külön téma: egy adapter piaci mozgás nélkül is félreárazhat egy eszközt, ahogy a 2026. márciusi wstETH-incidensben történt, és [a health factor csökkenésének 6. oka](/hu/blog/miert-csokkent-az-aave-health-factor#6-ok-rosszul-arazta-a-fedezetedet-egy-orakulum-vagy-arfolyamhiba) ezt az esetet tárgyalja.
+
+## Miért árazzák az USDe-t az USDT feedjével, és mit jelentett ez 2025. október 10-én?
+
+2025. március 8. óta az Aave V3 Ethereum Core az USDe-t az USDT árfolyamforrásával árazza, így az USDe saját piaci ára ott egyetlen health factorig sem jut el. A döntés egy governance-javaslatból született, a „sUSDe and USDe Price Feed Update” címűből, amelyet a Chaos Labs a LlamaRiskkel közösen tett közzé az Aave governance fórumán 2025. január 2-án. Saját szavaival azt „suggests hardcoding the USDe price to match the USDT price in Aave's pricing feeds” (javasolja, hogy az Aave árfolyamforrásaiban az USDe árát fixen az USDT árához kössék), azzal az érveléssel, hogy az Ethena fedezeti ügyleteinek többsége USDT-ben denominált, és hogy az sUSDe árazása az USDe másodlagos piacáról az sUSDe-fedezetű pozíciókat rövid távú eltéréseknek és szükségtelen likvidálásoknak tette ki. A szál ellenvéleményeket is kapott (az egyik válasz azt kérdezte, miért nem 1,00 $-t rögzítenek inkább; egy másik attól tartott, hogy az sUSDe-pozíciók így az USDT árának lesznek kitéve), és a Chaos Labs 2025. január 16-án ideiglenes intézkedésnek nevezte a beállítást. A Snapshot-szavazás 2025. február 3. és 6. között zajlott, és elfogadták. A láncon az AIP 262 a 22002625-ös blokkban lépett életbe 2025. március 8-án (14:01:47 UTC): az AaveOracle USDe-forrása egy „Capped USDe / USD” adapterről a „Capped USDT/USD” adapterre váltott, az sUSDe forrása pedig a „Capped sUSDe / USDT / USD” adapterre. A régi USDe/USD adapter még létezik és még válaszol: a 26291704-es blokknál 0,99969500 $-t mutatott, miközben az Aave az USDe-t az USDT 0,99842395 $-os árán árazta.
+
+2026. október 10-én, a piac egészét érintő összeomlás során ezt próbára tették. A LlamaRisk 2025. október 24-i fórumbejegyzése „aggressive cryptocurrency market volatility events on centralized exchanges, most notably Binance” (agresszív kriptopiaci volatilitási eseményeket a centralizált tőzsdéken, legfőképp a Binance-en) ír le, amelyek az USDe másodlagos piaci árát „down to $0.65 at the lowest point” (a mélypontján 0,65 $-ig) vitték le, és azt írja, hogy a Chainlink USDe/USD feedje, amely több helyszínről merít, „did not deviate significantly during this localized de-peg” (nem tért el jelentősen ezen a helyi depeg során). A Chaos Labs 2025. november 2-i válasza megadja a számot: a Chainlink USDe/USD ára „reached as low as $0.977” (akár 0,977 $-ig is lement). Maga az Aave egyik árat sem látta. A LlamaRisk szavaival: „Aave avoided immediate issues from the de-peg on Binance by pricing USDe on par with USDT” (az Aave elkerülte a Binance-en történt depeg közvetlen problémáit azzal, hogy az USDe-t az USDT-vel egyenértékűen árazta). A LlamaRisk 2025. október 18-i kutatási jegyzete hozzáteszi, hogy az Aave 1,03 milliárd dolláros USDe-betétei az esemény alatt „remained remarkably stable” (figyelemreméltóan stabilak maradtak).
+
+Két őszinte fenntartás. Először: ez az, amit a források mondanak, és nem több: ehhez az útmutatóhoz nem találtunk olyan nyilvános utólagos elemzést, amely megszámolná az aznapi USDe-hez kapcsolódó likvidálásokat az Aave-on, így ez az útmutató nem állítja, hogy nem voltak. Másodszor: ugyanaz a LlamaRisk-bejegyzés, amely az USDT-feednek tulajdonítja a baj elkerülését, azt is mondja, hogy a megközelítés „transfers the solvency risk to the Aave protocol” (a fizetőképességi kockázatot az Aave protokollra hárítja): ha az USDe valaha elveszítené a fedezetét, az Aave orákuluma továbbra is USDT-ként értékelné, amíg a governance közbe nem lép. A LlamaRisk ebben a bejegyzésben egy kockázatkezelt, automatikus befagyasztással működő USDe-orákulumot javasolt; a Chaos Labs 2025. november 2-án ellene foglalt állást, és a szál 2025. december 7-én szavazás nélkül zárult. 2026. október 28-án az Ethereum Core piacon az USDe még mindig az USDT-adapterre mutatott, 75%-os likvidálási küszöbbel és 0-s LTV-vel.
+
+Egy hitelfelvevő számára ez mindkét irányba vág. Ha az Ethereum Core piacon USDe a fedezeted, egy tőzsdei USDe-eladási hullám nem mozdítja a health factorodat, egy USDT-depeg viszont igen, és egy olyan governance-szavazás is, amely visszaállítja a feedet. Ha USDe-t vettél fel, a piaci diszkont olcsóbbá teszi a visszavásárlását, de az Aave továbbra is az USDT árán értékeli az adósságodat.
+
+## Mi történt az Aave hitelfelvevőivel, amikor az USDC 2023 márciusában esett?
+
+2023. március 11-én, miután a Circle nyilvánosságra hozta, hogy az USDC tartalékainak egy része a Silicon Valley Banknál volt, az USDC a piacon körülbelül 88 centes mélypontig esett nagyjából 08:00 UTC-kor, a Gauntlet Aave-nak készült utólagos elemzése (2023. március 17.) szerint. Az Aave USDC-ára követte lefelé a Chainlink feedet (az árkorlátos adapterek később jöttek, és egy esésen nem változtattak volna), és minden USDC-fedezetű pozíció ezzel lépést tartva veszített a health factorából, ami pontosan a fenti első számított példa.
+
+A governance és a kockázati csapatok órákon belül mozdultak, mindez azon a fórumszálon, amelyet a Gauntlet 08:13 UTC-kor nyitott:
+
+- **09:19 UTC:** a Gauntlet azt javasolta, hogy ideiglenesen szüneteltessék az összes Aave V2 és V3 piacot, hogy a likvidálások ne realizáljanak fizetésképtelenségeket.
+- **10:19 UTC:** a BGD Labs rámutatott, hogy az Aave Guardian csak az Aave V3 Avalanche piacon tud azonnal cselekedni, ahol a láncok közötti governance-infrastruktúra nem volt érvényes, és azt javasolta, hogy ott fagyasszák be a stablecoinokat és állítsák az LTV-jüket 0-ra.
+- **Körülbelül 13:00 UTC:** a Guardian befagyasztotta az USDC-t, USDT-t, DAI-t, FRAX-et és MAI-t az Aave V3 Avalanche piacon, és 0-ra állította az LTV-jüket, amit a BGD Labs megerősített a szálban, hozzátéve, hogy a befagyasztás egyetlen meglévő health factort sem változtatott meg. Az Aave fiókja 16:44 UTC-kor jelentette be.
+- **Szüneteltetés nem volt.** A Gauntlet utólagos elemzése szerint a Guardian nem hajtotta végre a szüneteltetést, mert a kockázatot a stratégiai és elvi következményekkel szemben mérlegelte; a befagyasztás megakadályozza az új elhelyezést és hitelfelvételt, de a likvidálásokat engedi folytatódni.
+
+Az eredmény ugyanazon utólagos elemzés szerint: körülbelül 280 000 $ fizetésképtelenség az Aave V3 Avalanche E-Mode-ban és körülbelül 20 000 $ a V3 Arbitrumon a március 11-12-i hétvégén, összesen körülbelül 300 000 $, és az Aave V2-n nem keletkezett realizált veszteség. A Gauntlet becslése szerint 80 centes USDC-ár mellett már csak a V2 fizetésképtelenségei elérhették volna a körülbelül 1 millió dollárt. A tanulság egy hitelfelvevő számára az, hogy a protokoll válasza egy depegre a protokollt védi: a befagyasztás megállítja az új kockázat beáramlását, a pozíciódat nem teszi biztonságosabbá, és a szüneteltetést, amely megállította volna a likvidálásokat, nem alkalmazták.
+
+## Okozhat-e egy depeg behajthatatlan adósságot, és ki fizeti meg?
+
+Igen. Ha a fedezet gyorsabban esik, mint ahogy a likvidátorok le tudják bontani, egy pozíció végül olyan fedezettel maradhat, amely kevesebbet ér, mint az adóssága plusz a likvidálási bónusz, és a hiány behajthatatlan adóssággá (bad debt) válik. A 2023. márciusi 300 000 $ pontosan ez volt, főleg egy stablecoin E-Mode-ban, ahol a pozíciók közel jártak a határhoz. Az Aave v3.3 óta az ilyen hiányt elégetik a hitelfelvevő adósságából, és deficitként rögzítik az eszközön, az Umbrella, az Aave staking-alapú tartalékvédelme pedig elégethet stakelt aTokeneket a fedezésére (az aktiválása az Aave dokumentációja szerint az Ethereumon kezdődött). Mindez nem segít a hitelfelvevőn, akinek a fedezete már elveszett; [hagyhat-e egy likvidálás behajthatatlan adósságot](/hu/blog/hogyan-mukodik-a-likvidalas-az-aave-on#hagyhat-egy-likvidalas-behajthatatlan-adossagot) bemutatja a mechanizmust és egy számított példát.
+
+## Miben más ez a Morphón?
+
+A Morphón nincs protokollszintű stablecoin-árazás és nincs felső korlát. Minden Morpho Blue piacnak saját orákuluma van, amelyet az választ ki, aki a piacot létrehozta, és amely a piac egész élettartamára rögzített, a Morpho dokumentációja szerint pedig „Once a market is deployed, its oracle address cannot be modified.” (Ha egy piacot már telepítettek, az orákulumcíme nem módosítható.) Egyes orákulumok csak a fedezetet árazzák, és a hiteltokent 1 $-nak veszik, így a felvett stablecoin depegje semmin sem változtat; mások tartalmaznak hozzá feedet is. Hogy egy USDC-depeg érinti-e a Morpho-pozíciódat, az ezen az egy szerződésen múlik, és [hogy mi mozgatja a Morpho health factort](/hu/blog/morpho-health-factor-magyarazat#mi-mozgatja-a-morpho-health-factort), abból kiderül, hogyan olvasd ki.
+
+## Mit tehetsz a depegkockázat ellen az Aave-on?
+
+A depegkockázatról többnyire akkor döntesz, amikor a pozíciót választod, ezért a hasznos lépések inkább döntések, mint reakciók:
+
+1. **Tedd a stablecoint az adósságoldalra, ha teheted.** A felvett stablecoinok csak emelkedéssel árthatnak neked, és a korlát ezt körülbelül 4%-ra szorítja. A stablecoin-fedezetnek nincs alsó határa. [A fedezetedhez illő adósság kiválasztása](/hu/blog/aave-likvidalas-elkerulese#5-lepes-valassz-a-fedezetedhez-illo-adossagot) végigveszi a párokat.
+2. **Ha stablecoin-fedezeted van, centben tarts puffert, ne százalékban.** A fenti, határhoz közeli példa körülbelül 0,96 $-nál éri el az 1,00-t. Egy 1,56-os health factor, ugyanaz a fedezet egyharmaddal kevesebb adóssággal, 0,64 $-ig bírja. Döntsd el, melyik árnál vagy hajlandó likvidálódni, és ehhez méretezd a hitelt.
+3. **Az orákulumot figyeld, ne a tőzsdét.** Az ár, amelyen likvidálnak, az `AaveOracle.getAssetPrice(asset)`, amely az Ethereum Core stablecoinjainál egy korlát alatti Chainlink feed, az USDe esetén pedig az USDT feedje. Egy tőzsde árfolyama se nem szükséges, se nem elégséges feltétel.
+4. **Tudd, mit tehet a governance.** A korlátok és a források szavazással vagy risk admin-lépéssel változnak, és egy válság alatti befagyasztás nem szünetelteti a likvidálásokat. A fenti 2023. márciusi és 2025. októberi szálak dokumentálják, mi történt.
+5. **Legyen kész a kiút.** A depegelt stablecoinnal visszafizetni olcsó, ha az az adósságod, és drága, ha meg kell vásárolnod; [hogyan növeld az Aave health factorodat](/hu/blog/aave-likvidalas-elkerulese) felsorolja a befagyasztás alatt is működő lépéseket, mivel egy befagyasztott tartalék továbbra is engedi a visszafizetést.
+
+## Figyelmeztethet-e egy riasztás a depegre?
+
+Egy riasztás megmondhatja, hogy a health factorod átlépett egy határt; egy depeget nem tud lelassítani. A Tokenping 5 percenként ellenőrzi az Aave V3 és V4 health factorodat 22 hálózaton, és üzen neked Signalon, Telegramon vagy e-mailben, amíg az általad beállított küszöbérték (1,1 és 10 között) alatt van. A health factort a Pool szerződésből olvassa ki, így a mögötte álló ár az Aave orákulumára, ugyanaz, amelyen a likvidátorokat kifizetik: egy 0,65 $-os Binance-árfolyam az USDe-re egyetlen health factorig sem jut el az Ethereum Core piacon, egy 0,88 $-os Chainlink USDC-érték viszont minden USDC-fedezetű pozícióig eljut, és riasztás következik, ha ez a health factort a küszöbértéked alá viszi.
+
+Öt perc egy depegben hosszú idő. 2023. március 11-én az USDC 08:00 UTC-re körülbelül 88 centen állt, a fenti határhoz közeli pozíció pedig körülbelül 0,96 $-nál éri el az 1,00-t, így egy 5 percenkénti ellenőrzés az ilyen pozíciót már 1,00 alatt találhatja azon az első ellenőrzésen, amely látja az esést. Amit egy riasztás ad, az a lassú rész: egy stablecoin, amely 0,98 $-ra sodródik és ott marad, egy küszöb, amelyet a governance csökkent, a felhalmozódó kamat. Oda állítsd a küszöbértéket, ahol még kényelmesen tudnál cselekedni, és ne feledd, hogy egy depeg alatt cselekedni azt jelenti, hogy visszafizetsz vagy fedezetet adsz hozzá egy olyan hálózaton, amelyet ugyanabban az időben mindenki más is használ. [Hogyan állíts be health factor-riasztást](/hu/blog/aave-health-factor-riasztas-beallitasa) végigveszi a lépéseket, a riasztások ára <AlertPrice />, és előtte [megnézheted az Aave V3 health factorodat](/hu/aave); a pozícióid megtekintéséért nem kell fizetned.
+
+## Források
+
+- [Aave V3 Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): az USDC, USDT, USDe, DAI, USDS, PYUSD, GHO és WETH LTV-je és likvidálási küszöbe a 26291704-es blokknál (megtekintve: 2026. október 28.)
+- [Aave V3 Ethereum Core AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2#readContract): `getAssetPrice` és `getSourceOfAsset` ugyanezekre az eszközökre a 26291704-es blokknál, valamint az `AssetSourceUpdated` esemény az USDe-re és az sUSDe-re a 22002625-ös blokknál (megtekintve: 2026. október 28.)
+- [Capped USDC / USD adapter](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract), [Capped USDT/USD adapter](https://etherscan.io/address/0x260326c220E469358846b187eE53328303Efe19C#readContract) és [az adapter, amelyre az USDe mutat](https://etherscan.io/address/0xC26D4a1c46d884cfF6dE9800B6aE7A8Cf48B4Ff8#code), „Aave: Ethena Correlated USDe Price Feed”, létrehozva 2024. március 1-jén: leírások, korlátok, `isCapped` és a mögöttes feedek a 26291704-es blokknál (megtekintve: 2026. október 28.)
+- [PriceCapAdapterStable.sol](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol) és az [Aave Price Feeds README](https://github.com/aave-dao/aave-price-feeds): a korlát logikája, a `setPriceCap` hozzáférés-kezelése, az Aave Capo átnevezése (megtekintve: 2026. október 28.)
+- [Az Aave orákulum-dokumentációja](https://aave.com/docs/ecosystem/oracle.md): tartalékonként a governance által beállított források (megtekintve: 2026. október 28.)
+- [ARFC: sUSDe and USDe Price Feed Update](https://governance.aave.com/t/arfc-susde-and-usde-price-feed-update/20495) (Chaos Labs és LlamaRisk, 2025. január 2., Snapshot 2025. február 3-6.), [AIP 262](https://vote.onaave.com/proposal/?proposalId=262) és a [payload pull requestje](https://github.com/aave-dao/aave-proposals-v3/pull/621), egyesítve 2025. március 3-án (megtekintve: 2026. október 28.)
+- [Az AIP 262 végrehajtása az Ethereumon](https://etherscan.io/tx/0xbb810541258db350d632e9a22ed7d7547509c67b2585dbc7a64a76b6ac8e42e0): az USDe és az sUSDe forrásának frissítése a 22002625-ös blokknál, 2025. március 8., 14:01:47 UTC (megtekintve: 2026. október 28.)
+- [ARFC: Ethena USDe Risk Oracle and Automated Freeze Guardian](https://governance.aave.com/t/arfc-ethena-usde-risk-oracle-and-automated-freeze-guardian/23303) (LlamaRisk, 2025. október 24.; a Chaos Labs válasza 2025. november 2.; lezárva 2025. december 7.) (megtekintve: 2026. október 28.)
+- [When Pricing Breaks: A USDe Case](https://llamarisk.com/research/when-pricing-breaks-usde) (LlamaRisk, 2025. október 18., megtekintve: 2026. október 28.)
+- [ARC: Stablecoin Volatility Risk Parameter Recommendations](https://governance.aave.com/t/arc-stablecoin-volatility-risk-parameter-recomendations/12241) (Gauntlet, 2023. március 11., a BGD Labs ugyanaznapi befagyasztási megerősítésével) és [az Aave bejelentése](https://x.com/aave/status/1634596115483086848) (2023. március 11., 16:44 UTC) (megtekintve: 2026. október 28.)
+- [Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (Gauntlet, 2023. március 17., megtekintve: 2026. október 28.)
+- [Az Aave v3.3 funkciói](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md) és [az Aave Umbrella dokumentációja](https://aave.com/docs/aave-v3/umbrella): deficit és slashing (megtekintve: 2026. október 28.)
+- [Morpho dokumentáció: Oracles](https://docs.morpho.org/learn/concepts/oracle): piaconként egy orákulum, amelyet a kurátor választ, és amely megváltoztathatatlan (megtekintve: 2026. október 28.)
+
+_Oktatási tartalom, nem pénzügyi tanácsadás. A riasztások csökkentik a kockázatot, de nem akadályozzák meg a likvidálást._

@@ -1,0 +1,208 @@
+export const meta = {
+  slug: "morpho-health-factor-magyarazat",
+  title: "A Morpho health factor magyarázata: képlet és példák",
+  description:
+    "Mi a Morpho-hitel health factora, hogyan számolja a Morpho Blue és a Midnight, mi mozgatja, és miben különbözik az Aave-étól.",
+  h1: "Mi a Morpho health factor, és hogyan számolják ki?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Mi egy Morpho-hitel health factora, és hogyan számolják ki?",
+  readingMinutes: 12,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Egy Morpho-hitel health factora (egészségi mutató) azt veti össze, mennyit ér a fedezeted a piac likvidálási LTV-jéig
+  (LLTV) számolva, azzal, amennyivel tartozol: fedezet mennyisége × orákulumár × LLTV ÷ adósság. Ha az adósság
+  meghaladja ezt a határt, a health factor 1 alá esik, és a pozíció likvidálható. 1,00-nál vagy afölött nem az, kivéve
+  egy olyan Blue-hitel egy részét, amelynek tulajdonosa engedélyezett egy előlikvidálási szerződést, vagy egy olyan
+  Midnight-hitelt, amelyen a lejárat után adósság maradt. Például 1 cbBTC 80 011,48 USDC-s áron a Morpho USDC | cbBTC
+  (86%) piacán az Ethereumon, 40 000 USDC adóssággal szemben: 80 011,48 × 0,86 ÷ 40 000 = 1,72. Minden Morpho-piacnak
+  saját fedezete, orákuluma és LLTV-je van, amelyeket a piac létrehozásakor végleg rögzítettek, így minden hitelnek
+  saját health factora van.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Az adatok és a blokkszámok, amelyeknél kiolvastuk őket: content/blog/snapshots/morpho-health-factor.md */}
+
+## Mi egy Morpho-hitel health factora?
+
+A health factor az a szám, amely megmutatja, milyen messze van egy Morpho-hitelpozíció a likvidálástól. Elosztja azt, amennyivel legfeljebb tartozhatsz, azzal, amennyivel most tartozol:
+
+**Health factor = a fedezet értéke a hiteltokenben × LLTV ÷ adósság**
+
+- **1,00 fölött:** a pozíció nem likvidálható, hacsak nem engedélyeztél egy előlikvidálási szerződést, vagy nem egy lejárat utáni Midnight-hitelről van szó (mindkettőről lent lesz szó). Minél magasabb a szám, annál többet mozdulhatnak ellened az árak, mielőtt ez megváltozna.
+- **1,00 alatt:** az adósságod nagyobb, mint amit a piac megenged, és egy része vagy egésze likvidálható.
+- **Nincs adósság:** nincs mit likvidálni, így nincs figyelendő health factor sem.
+
+Az 1,72-es health factor nem azt jelenti, hogy 72%-ra vagy a likvidálástól. Azt jelenti, hogy az adósság a mostani 1,72-szeresére nőhet, vagy a fedezet ára 1 − 1 ÷ 1,72 = 41,9%-ot eshet, mielőtt eléred a határt.
+
+A health factort nem tárolják a láncon. A Morpho szerződése csak azt ellenőrzi, hogy egy pozíció egészséges-e; az alkalmazások, a Morpho API-ja és a Tokenping osztják el a hitelfelvételi korlátot az adóssággal, hogy számként mutassák.
+
+## Hogyan épül fel egy Morpho Blue piac?
+
+A Morpho Blue, amelyet a Morpho dokumentációja ma már változó kamatozású piacoknak nevez, egymástól független hitelpiacok halmaza. Mindegyiket öt paraméter határozza meg, amelyeket a piac létrehozásakor választanak ki:
+
+| Paraméter                       | Mi ez                                                 | A példapiacon                           |
+| ------------------------------- | ----------------------------------------------------- | --------------------------------------- |
+| Hiteltoken (loan token)         | Az egyetlen token, amelyet felvehetsz                 | USDC                                    |
+| Fedezettoken (collateral token) | Az egyetlen token, amelyet fedezetként elhelyezhetsz  | cbBTC                                   |
+| Orákulum                        | A szerződés, amely a fedezetet a hiteltokenben árazza | Egy BTC/USD árfolyamforrás (price feed) |
+| Kamatmodell (IRM)               | A szerződés, amely a hitelkamatot meghatározza        | AdaptiveCurveIRM                        |
+| LLTV                            | A likvidálási LTV                                     | 86%                                     |
+
+A Morpho alkalmazása ezek alapján nevezi el a piacokat, elöl a hiteltokennel: „USDC | cbBTC (86%)”. Bárki létrehozhat piacot, de csak olyan LLTV-vel és IRM-mel, amelyet a Morpho governance engedélyezett. A létrehozás után az öt közül egyik sem módosítható: a szerződésnek nincs függvénye a szerkesztésükre, a governance pedig engedélyezhet új LLTV-ket, de egyet sem tilthat le.
+
+Mivel egy piac egyetlen fedezetet és egyetlen hiteltokent kezel, az egyik piacon elhelyezett fedezeted nem fedezi a másik piacon lévő adósságodat. A Morpho dokumentációja egyértelműen fogalmaz: a fedezet minden piacra külön vonatkozik, nincs keresztfedezet (cross-margin). Két piacon lévő két hitelnek két health factora van.
+
+## Hogyan számolja ki a Morpho a health factort?
+
+A Morpho Blue egyetlen helyen ellenőrzi az egészséget a szerződésében, az `_isHealthy` függvényben, és ugyanez az ellenőrzés védi a hitelfelvételt, a fedezet kivételét és a likvidálást:
+
+1. **Adósság:** a hitelrészesedéseid (borrow shares) hiteltokenre átszámítva, felfelé kerekítve.
+2. **A fedezet értéke:** fedezet mennyisége × orákulumár ÷ 10^36, lefelé kerekítve.
+3. **Hitelfelvételi korlát:** a fedezet értéke × LLTV, lefelé kerekítve.
+4. **Egészséges**, amíg a hitelfelvételi korlát legalább akkora, mint az adósság.
+
+A health factor a 3. lépés osztva az 1. lépéssel. A kerekítés mindig a protokollnak kedvez, így a szerződés előfordulhat, hogy egy egységgel kevesebbet enged felvenni a pontos korlátnál. Pontosan 1,00-nál a szerződés még egészségesnek tekinti a pozíciót; akkor válik likvidálhatóvá, amikor az adósság nagyobb a korlátnál, ami ugyanaz, mint hogy a health factor 1 alá esik.
+
+### Mit jelent az orákulum 10^36-os skálája?
+
+Egy Morpho-orákulum egy fedezettoken árát adja meg hiteltokenben, 10^36-nal szorozva és a két token tizedesjegyeihez igazítva. A kiolvasáshoz szorozd meg 10^(fedezet tizedesjegyei − hiteltoken tizedesjegyei)-nel, és oszd el 10^36-nal. A példapiacon a cbBTC 8, az USDC 6 tizedesjegyű, így a nyers 800114843487200000000000000000000000000 × 10^2 ÷ 10^36 = 80 011,48 USDC cbBTC-nként.
+
+Az orákulum bármilyen szerződés lehet, amelyet a piac létrehozója választott. A Morpho szerződésének megjegyzései szerint a felhasználó felelőssége, hogy biztonságos orákulumú piacokat válasszon, a dokumentáció pedig megjegyzi, hogy egy orákulum több árfolyamforrást is kombinálhat, vagy más láncon lévő adatokra támaszkodhat. A health factorod csak annyira megbízható, mint ez az orákulum és az általa olvasott árfolyamforrások.
+
+## Kidolgozott példa: mennyi a health factora 1 cbBTC-nek 40 000 USDC-vel szemben?
+
+Az Ethereum felvett érték szerint legnagyobb listázott Morpho-piaca 2026. október 26-án az USDC | cbBTC (86%) volt, nagyjából 309,13 millió USDC felvett hitellel 343,18 millió elhelyezett összeggel szemben (Ethereum-blokk: 26274955). Az orákuluma 80 011,48 USDC-re árazta a cbBTC-t, kizárólag egy BTC/USD árfolyamforrásból, így a piac 1 cbBTC-t 1 BTC-nek, 1 USDC-t pedig 1 dollárnak számít.
+
+Vegyünk 1 cbBTC fedezetet és 40 000 USDC adósságot:
+
+1. A fedezet értéke: 1 × 80 011,48 = 80 011,48 USDC.
+2. Hitelfelvételi korlát: 80 011,48 × 0,86 = 68 809,88 USDC.
+3. Health factor: 68 809,88 ÷ 40 000 = **1,72**.
+4. LTV: 40 000 ÷ 80 011,48 = 50,0%, a 86%-os LLTV-vel szemben.
+5. Likvidálási ár: 40 000 ÷ (1 × 0,86) = **46 511,63 USDC cbBTC-nként**, 41,9%-kal 80 011,48 alatt.
+
+A kamat is mozgatja. A piac hitelkamata ennél a blokknál évi 4,89% volt, ami kamatos kamattal 5,01%. Ha a kamat és az ár egy évig változatlan maradna, az adósság nagyjából 42 003 USDC-re nőne, a health factor pedig 1,64-re csúszna.
+
+### Mit tartanak a valódi hitelfelvevők ezen a piacon?
+
+A Morpho API-ja 2026. október 26-án 437 hitelpozíciót listázott ezen a piacon. A 435 health factorral rendelkező pozíció mediánja 1,96 volt, negyedük 1,58 alatt, tizedük 1,35 alatt volt, a legalacsonyabb pedig 1,05. Nagyjából 3%-uk volt 1,2 alatt. A teljes piacon 8419,83 cbBTC fedezett 309,13 millió USDC adósságot, ami nagyjából 1,87-es összesített health factor.
+
+## Hogyan függ össze az LTV, az LLTV és a health factor?
+
+Az LTV (hitel-fedezet arány) az adósságod osztva a fedezeted értékével. Az LLTV ennek a piacon rögzített felső határa. Egyetlen fedezettel és stabil adóssággal a health factor a kettő hányadosa:
+
+**Health factor = LLTV ÷ LTV**
+
+A Morpho Blue-n az LLTV az egyetlen határ. Nincs külön, alacsonyabb korlát az új hitelfelvételre, így a szerződés 1,00-os health factorig enged hitelt felvenni vagy fedezetet kivenni. A Morpho fejlesztői dokumentációja arra kéri az alkalmazásokat, hogy tartsanak tartalékot, például ne engedjék a hitelfelvételt 1,05-ös health factor alá, de a tartalék választás kérdése, nem a szerződés szabálya. Az, hogy mennyivel maradsz a határ alatt, dönti el a pufferedet, bármekkora is az LLTV:
+
+| Felvett összeg a korlát arányában | Health factor | A fedezet áresése a likvidálásig |
+| --------------------------------- | ------------- | -------------------------------- |
+| 50%                               | 2,00          | 50%                              |
+| 70%                               | 1,43          | 30%                              |
+| 80%                               | 1,25          | 20%                              |
+| 90%                               | 1,11          | 10%                              |
+| 100%                              | 1,00          | 0%                               |
+
+## Milyen LLTV-ket használhat egy Morpho-piac?
+
+2026. október 26-án a Morpho Blue az Ethereumon és a Base-en a Morpho governance által jóváhagyott lista kilenc LLTV-jét fogadta el: 0%, 38,5%, 62,5%, 77%, 86%, 91,5%, 94,5%, 96,5% és 98% (mindegyiket engedélyezettként olvastuk ki a 26274950-es Ethereum-blokknál és az 53102888-as Base-blokknál). A 0-s LLTV egyáltalán nem enged hitelfelvételt. Egy Blue LLTV-nek 100% alatt kell lennie.
+
+Az LLTV határozza meg a likvidálási ösztönzőt (liquidation incentive) is, azt a többletfedezetet, amelyet a likvidátor kap: 1 ÷ (1 − 0,3 × (1 − LLTV)), legfeljebb 1,15. 86%-os LLTV-nél ez 1,0438: a likvidátor, aki 100 USDC-t visszafizet az adósságodból, 104,38 USDC értékű fedezetet kap tőled. Magasabb LLTV kisebb ösztönzőt jelent. A Morpho dokumentációja a 86%-os ösztönzőt nagyjából 5%-ra kerekíti; a szerződés képlete 4,38%-ot ad. Az ösztönzőt minden engedélyezett LLTV-nél, azt, hogy mit visz el egy likvidálás, és hogy egy hitelből mennyi mehet el egyszerre, a [hogyan működik a likvidálás a Morphón](/hu/blog/hogyan-mukodik-a-likvidalas-a-morphon) útmutató tárgyalja. Az ösztönzőt te fizeted a fedezetedből; a saját puffered a health factorod és az 1,00 közötti távolság.
+
+## Mi mozgatja a Morpho health factort?
+
+Három dolog mozgathatja, miközben te semmit sem csinálsz:
+
+- **A fedezet ára, ahogyan az orákulum látja.** A cbBTC-példában a health factor a BTC/USD árfolyamforrással mozog, és csak akkor változik, amikor az frissül.
+- **A hiteltoken ára, ha az orákulum használja.** Egy jegyzési árfolyamforrással (quote feed) rendelkező orákulum a hiteltokenre is reagál. A cbBTC-piac orákulumának nincs ilyen, így egy USDC-depeg (a dollárhoz kötött árfolyam elvesztése) nem mozdítaná meg azt a health factort. Ahogy a cbBTC és a BTC közötti eltérés sem.
+- **A kamat.** A Morpho Blue-n az adósság a kamat felhalmozódásával nő, és a Morpho dokumentációja figyelmeztet, hogy egy pozíció pusztán a kamat miatt is kockázatosabbá válhat idővel. Az AdaptiveCurveIRM 90%-os kihasználtságot céloz, emeli a kamatot, ha a piac forgalmasabb, és csökkenti, ha csendesebb, a 90%-os kihasználtsághoz tartozó kamatot évi 0,1% és 200% között tartva. Teljes kihasználtságnál a kamat a célszintű kamat akár négyszerese lehet, vagyis évi 800%-ig. Hogy egy kamatemelkedés hogyan hat a health factorra, azt az Aave-ra a [hogyan működnek az Aave kamatai](/hu/blog/aave-kamatok#hogyan-hatnak-a-kamatugrasok-a-health-factorodra) útmutató mutatja be; egy Morpho-hitelre ugyanez a hatás.
+
+Amit a Morpho governance nem tud megváltoztatni, az maga a piac: egy piac LLTV-je, orákulumcíme és IRM-je rögzített. Az orákulum ettől még a mögötte álló árfolyamforrásokból olvassa az árat, így csak annyira megbízható, mint azok. A governance legfeljebb a kamat 25%-áig terjedő piaci díjat állíthat be, de ez a kamatot osztja meg a hitelezők és a díj kedvezményezettje között; azt nem változtatja meg, mennyivel tartoznak a hitelfelvevők.
+
+Az orákulum dönti el, mely árak számítanak. A Morpho WETH | wstETH (96,5%) piacán az Ethereumon az orákulum a wstETH-t a Lido saját átváltási árfolyamán értékeli, a 26274979-es blokknál 1,24717 WETH wstETH-nként, és 1 stETH-t 1 ETH-nak számít. Az ETH dollárárfolyama egyáltalán nem mozdítja meg ezt a health factort. Itt 10 wstETH 11 WETH-val szemben 12,4717 × 0,965 ÷ 11 = 1,094-et ad, és a likvidáláshoz az átváltási árfolyamnak 1,1399-re kellene esnie, 8,6%-kal lejjebb. Ezt a health factort csak a kamat és ez az átváltási árfolyam mozgatja.
+
+## Hogyan számolod ki a likvidálási áradat a Morphón?
+
+Egy Blue-pozíciónál a likvidálási ár az az orákulumár, amelynél az adósságod megegyezik a hitelfelvételi korlátoddal:
+
+**Likvidálási ár = adósság ÷ (fedezet mennyisége × LLTV)**
+
+Hiteltokenben értendő fedezettokenenként, mert az orákulum így árazza. h health factornál a fedezet árának 1 − 1 ÷ h arányban kell esnie, hogy elérje (lásd a fenti táblázatot). Ahogy az adósság a kamattal nő, a likvidálási ár lassan felfelé kúszik.
+
+Ha egy piacon engedélyeztél egy előlikvidálási (pre-liquidation) szerződést, a pozíciód egy része korábban, az LLTV-nél alacsonyabb LTV-nél lezárható. A cbBTC-piacon van ilyen, 83,26%-os előlikvidálási LTV-vel: 1 cbBTC és 40 000 USDC esetén az ehhez a határhoz mért health factor 1,67 az 1,72 helyett. A Morpho kivezeti ezt a funkciót: az alkalmazása már nem kínálja, és arra kéri az ezt használó hitelfelvevőket, hogy kapcsolják ki. Hogy hogyan működik, és hogyan ellenőrizheted és vonhatod vissza, lásd a [Morpho előlikvidálás](/hu/blog/morpho-elolikvidalas) útmutatót.
+
+## Hogyan működik a health factor a Morpho Midnighton?
+
+A Morpho Midnight, a Morpho fix kamatozású piacai, ugyanígy számolja az egészséget, három különbséggel: egy piac több fedezetet is elfogadhat, az adósság nem nő az idővel, és a lejárat éles határ.
+
+- **Több fedezet, összeadva.** Egy Midnight-piacnak egy hiteltokenje, egy lejárati dátuma és egy vagy több fedezete van, mindegyik saját LLTV-vel és orákulummal. A szerződés minden általad elhelyezett fedezetre összeadja a fedezet értéke × LLTV szorzatot, és az összeget az adósságoddal veti össze. A health factor ez az összeg ÷ adósság.
+- **Rögzített adósság.** Egy névértéket tartozol, egységenként egy hiteltokent, a lejáratkor esedékesen. A kamat a hitelfelvételkor beépül: minden egységért, amellyel tartozol, egy hiteltokennél kevesebbet kapsz, így két kereskedés között csak a fedezetek árai mozgatják a Midnight health factort.
+- **A lejárat éles határ.** A lejárat után minden még nyitott adósság likvidálható, a health factortól függetlenül, és ebben a lejárat utáni módban a likvidátor ösztönzője az első óra alatt nulláról nő a teljes méretére.
+
+Egy Midnight-piac a létrehozáskor beállított kapuval (gate) azt is korlátozhatja, ki likvidálhat; a lenti példapiacon nincs ilyen.
+
+Az Ethereum legnagyobb listázott Midnight-piaca 2026. október 26-án, nagyjából 23,9 millió USDC kintlévő adósságegységgel, 2026. december 25-ig ad USDC-t kölcsön, USDC fedezettel 98%-os LLTV-n és cbBTC-vel 86%-on, ugyanazzal a cbBTC-orákulummal, mint a fenti Blue-piac. Helyezz el 0,5 cbBTC-t és 10 000 USDC-t 40 000 adósságegységgel szemben, és a korlát 34 404,94 + 9800 = 44 204,94, ami 1,105-ös health factor. A lejáratot, az átgörgetést (rollover) és a lejárat utáni likvidálást a [Morpho Midnight fix kamatozású hitelek](/hu/blog/morpho-midnight-fix-kamatozasu-hitelek) útmutató tárgyalja.
+
+## Miben különbözik a Morpho health factor az Aave-étól?
+
+A képlet mindkettőn ugyanolyan alakú: küszöbértékkel súlyozott fedezet osztva az adóssággal. A szabályok körülötte eltérnek, ahogy az [Aave health factor útmutató](/hu/blog/aave-health-factor-magyarazat#health-factor-ltv-es-likvidalasi-kuszob-mi-a-kulonbseg) az Aave oldaláról elmagyarázza:
+
+|                          | Morpho Blue                                  | Aave V3                                                                                                                                                                                                |
+| ------------------------ | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Egység                   | Egy piac: egy fedezet, egy hiteltoken        | Egy piac (egy pool egy hálózaton): az ott lévő összes fedezeted és adósságod                                                                                                                           |
+| Hogyan születnek az árak | Minden piac saját orákuluma, a hiteltokenben | Az Aave orákuluma, USD-ben                                                                                                                                                                             |
+| Hitelfelvételi korlát    | Az LLTV-ig, 1,00-os health factorig          | Egy alacsonyabb LTV, így a maximális hitelfelvétel WETH esetén [nagyjából 1,03-at](/hu/blog/aave-health-factor-magyarazat#miert-csak-nagyjabol-103-a-health-factor-ha-a-maximumot-veszed-fel) hagy |
+| Korreláló eszközök       | Külön piacok magas LLTV-vel                  | [E-Mode](/hu/blog/aave-health-factor-magyarazat#hogyan-valtoztatja-meg-az-e-mode-a-health-factort)-kategóriák                                                                                                   |
+| Változhat a küszöb?      | Nem, a piac létrehozásakor rögzítik          | Igen, a governance és a Risk Stewardok módosíthatják                                                                                                                                                   |
+
+Az Aave V4 ezen részben változtat, Spoke-onként egy health factorral és eszközönként egy fedezeti tényezővel (collateral factor); lásd: [hogyan működik a health factor az Aave V4-en](/hu/blog/aave-health-factor-magyarazat#mas-a-health-factor-az-aave-v4-en).
+
+A gyakorlati különbség: az Aave-on egy eszköz problémája az egész piacodat érinti, a Morphón viszont egyetlen piacon belül marad. A Morphón pedig a szerződésben semmi sem akadályozza meg, hogy a határig vegyél fel hitelt, így a tartalék megtartása a te dolgod.
+
+## Hol láthatod a Morpho health factorodat?
+
+A Morpho súgóközpontja szerint az alkalmazás minden pozíciónál mutatja a health factort és a likvidálási árat. A Morpho API-ja Blue-pozíciókhoz visszaadja a `healthFactor` értéket és a likvidálásig hátralévő árváltozást; Midnighthoz pozíciókat és piaci paramétereket ad vissza, a dokumentációja pedig arra kéri az integrátorokat, hogy minden fedezet orákulumát a láncon olvassák ki, és a korlátot maguk számolják ki.
+
+A Tokenping [Morpho irányítópultja](/hu/morpho) egy tárca Blue és Midnight hitelpozícióit mutatja, a health factorokat a láncról, a Morpho saját matematikájával számolva, soha nem a Morpho API-jából átvéve.
+
+## Hogyan válassz puffert és riasztási küszöbértéket?
+
+Abból indulj ki, mennyit mozdulhat az ár, mielőtt cselekedni tudsz, aztán adj hozzá helyet a kamatnak:
+
+- **Válaszd ki, milyen mozgást akarsz túlélni.** Használd a fenti LTV-szakasz táblázatát: az áresés, amelyet le akarsz fedni, meghatározza a health factort.
+- **Nézd meg az orákulumot.** Egy BTC/USD-orákulum a BTC-vel mozog. Egy átváltási árfolyamos orákulum, mint a wstETH-piacé, sokkal kevésbé mozog, de a hitelkamat és maga az átváltási árfolyam így is mozgatja a health factorodat, és egy magas LLTV egyiknek sem hagy sok helyet.
+- **A legközelebbi határhoz mérj.** Ha engedélyezted az előlikvidálást, a hiteled egy része elmehet, mielőtt a health factor eléri az 1,00-t.
+- **A Midnighton figyelj a dátumra.** A kamat nem koptatja a pufferedet, de a lejárat után megmaradt adósság bármilyen health factornál likvidálható.
+- **Tudd, hogyan emelheted.** Fizesd vissza az adósság egy részét, vagy tegyél hozzá fedezetet ugyanazon a piacon: egy másik Morpho-piacon lévő fedezet nem számít. A Midnighton bármilyen fedezetet hozzáadhatsz, amelyet a piac elfogad.
+
+A Morpho fejlesztői dokumentációja példaként 1,1-et ad meg figyelmeztetési szintnek. A pufferek mögötti gondolatmenetért lásd: [mekkora puffer kell ahhoz, hogy legyen időd cselekedni](/hu/blog/biztonsagos-aave-health-factor#mekkora-tartalek-kell-ahhoz-hogy-legyen-idod-lepni), amely az Aave-ra készült, de ugyanazt a számítást használja.
+
+## Hogyan segíthetnek a health factor-riasztások a Morphón?
+
+A Tokenping 5 percenként ellenőrzi a Morpho-pozíciókat 14 hálózaton: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable és Tempo. A Morpho alkalmazásában listázott piacok hitelpozícióit figyeli, a Morpho Blue és a Morpho Midnight piacokét is. A Midnight-riasztások a Morpho API-ja által listázott piacokra vonatkoznak. 2026. október 26-án ezek az Ethereumon és a Base-en voltak; a Tokenping az Arcot és a Robinhood Chaint is lefedi, amint a Morpho ott is listáz Midnight-piacokat.
+
+- **Küszöbérték:** 1,02 és 10 között állítod be. Amíg a health factor alatta van, minden ellenőrzés üzenetet küld minden általad választott csatornán: Signal, Telegram vagy e-mail.
+- **Előlikvidálás:** ha egy Blue-piacon engedélyeztél előlikvidálási szerződést, a riasztás a két health factor közül az alacsonyabbat használja: az LLTV-hez mértet és az előlikvidálási határhoz mértet.
+- **Lejárat:** egy Midnight-hitel az utolsó 7 napjában és az utolsó 24 órájában is kap egy-egy emlékeztetőt, a lejárat után pedig minden ellenőrzéskor riasztást, amíg adósság marad.
+
+A pozícióid megtekintéséért a [Morpho irányítópulton](/hu/morpho) nem kell fizetned; a riasztások ára: <AlertPrice />, ugyanaz a csomag, mint az Aave-riasztásoké. Egy riasztás időt ad a cselekvésre; a likvidálást nem akadályozza meg, mert az ár két ellenőrzés között is elmozdulhat.
+
+## Források
+
+- [Morpho docs: Variable Rate Market (Morpho Blue)](https://docs.morpho.org/learn/concepts/blue): az öt paraméter, a piacok nevei, a governance által jóváhagyott LLTV-k és az IRM (megtekintve: 2026. október 26.)
+- [Morpho docs: Collateral, LTV and health (developers)](https://docs.morpho.org/developers/borrow/concepts/ltv): a képlet, az orákulum skálája, a keresztfedezet hiánya, integrációs gyakorlatok (megtekintve: 2026. október 26.)
+- [Morpho docs: Liquidation](https://docs.morpho.org/learn/concepts/liquidation) és [Morpho help centre: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): a likvidálási ösztönző, hol mutatja az alkalmazás a health factort (megtekintve: 2026. október 26.)
+- [Morpho docs: Interest rate model](https://docs.morpho.org/learn/concepts/irm) és [interest rates for integrators](https://docs.morpho.org/developers/borrow/concepts/interest-rates): AdaptiveCurveIRM, a kamat felhalmozódása (megtekintve: 2026. október 26.)
+- [Morpho docs: Get data (developers)](https://docs.morpho.org/developers/borrow/tutorials/get-data): health factor- és likvidálásiár-kód (megtekintve: 2026. október 26.)
+- [Morpho docs: What is Midnight? (Fixed Rate Markets)](https://docs.morpho.org/learn/concepts/midnight) és [Midnight collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) (megtekintve: 2026. október 26.)
+- [Morpho docs: Governance organization](https://docs.morpho.org/learn/governance/organization), [contract addresses](https://docs.morpho.org/developers/contracts/addresses) és [interface listing policy](https://docs.morpho.org/get-started/resources/interface-listing-policy) (megtekintve: 2026. október 26.)
+- [morpho-blue](https://github.com/morpho-org/morpho-blue): `Morpho.sol`, `ConstantsLib.sol`, `IOracle.sol` (megtekintve: 2026. október 26.)
+- [midnight](https://github.com/morpho-org/midnight): `Midnight.sol`, `ConstantsLib.sol` (megtekintve: 2026. október 26.)
+- [pre-liquidation](https://github.com/morpho-org/pre-liquidation) és [morpho-blue-irm](https://github.com/morpho-org/morpho-blue-irm) (megtekintve: 2026. október 26.)
+- [Morpho API docs: Morpho Blue](https://docs.morpho.org/developers/api/morpho/) és [Morpho Midnight](https://docs.morpho.org/developers/api/morpho-midnight) (GraphQL-végpont: api.morpho.org/graphql, Midnight REST-végpontok: api.morpho.org/v0/midnight alatt): piaci rangsorok, pozíciók és előlikvidálási szerződések (megtekintve: 2026. október 26.)
+- Láncon végzett kiolvasások: [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), az [USDC | cbBTC orákulum](https://etherscan.io/address/0xA6D6950c9F177F1De7f7757FB33539e3Ec60182a#readContract), a [WETH | wstETH orákulum](https://etherscan.io/address/0xbD60A6770b27E084E8617335ddE769241B0e71D8#readContract) és a [Morpho Midnight](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract) az Ethereumon a 26274950 és 26274984 közötti blokkoknál, valamint a [Morpho Blue a Base-en](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) az 53102888-as blokknál (megtekintve: 2026. október 26.)
+
+_Oktatási tartalom, nem pénzügyi tanácsadás. A riasztások csökkentik a kockázatot, de nem akadályozzák meg a likvidálást._

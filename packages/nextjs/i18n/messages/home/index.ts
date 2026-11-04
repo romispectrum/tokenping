@@ -4,6 +4,7 @@ import { MESSAGES as en } from "./en";
 import { MESSAGES as es } from "./es";
 import { MESSAGES as fr } from "./fr";
 import { MESSAGES as hi } from "./hi";
+import { MESSAGES as hu } from "./hu";
 import { MESSAGES as id } from "./id";
 import { MESSAGES as it } from "./it";
 import { MESSAGES as nl } from "./nl";
@@ -23,4 +24,4 @@ import type { Localized } from "~~/i18n/locales";
 
 export type { HomeMessages } from "./shared";
 
-export const HOME_MESSAGES: Localized<HomeMessages> = { en, cs, es, hi, de, vi, fr, pt, it, pl, tr, id, nl, ro };
+export const HOME_MESSAGES: Localized<HomeMessages> = { en, cs, es, hi, de, vi, fr, pt, it, pl, tr, id, nl, ro, hu };

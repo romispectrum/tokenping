@@ -1,0 +1,154 @@
+export const meta = {
+  slug: "wrapped-bitcoin-fedezetkent-az-aave-on",
+  title: "Wrapped BTC az Aave-on és Morphón: WBTC, cbBTC, tBTC, LBTC",
+  description:
+    "Miben tér el a WBTC, cbBTC, tBTC, LBTC és eBTC mint fedezet az Aave V3-on és Morphón: küszöbök, plafonok, orákulumok és mit tesz egy wrapper depeg.",
+  h1: "Melyik wrapped bitcoinra vegyél fel hitelt, és mi romolhat el?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "Miben különbözik a WBTC, a cbBTC, a tBTC és az LBTC mint fedezet az Aave-on és a Morphón?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  A bitcoin wrapped tokenként érkezik az Aave-ra és a Morphóra, mindegyik mögött máshol őrzött BTC áll, és a protokollok
+  eltérően kezelik őket. Az Aave V3 Ethereum Core piacán 2026. október 29-én a WBTC és a cbBTC hitel-fedezet aránya
+  (LTV) 81%, likvidálási küszöbe (liquidation threshold) 85% volt, a tBTC és a BTC.b esetében 73% és 78%, az LBTC-nél
+  70% és 75%, az eBTC-nél 67% és 72%. Az árazásuk is eltér: az Aave a WBTC-t egy WBTC/BTC feed és a BTC/USD szorzatával
+  árazza, így ha a WBTC diszkonttal forog, a health factorod (egészségi mutató) csökken (a feed aznap 0,9985-öt
+  mutatott), a cbBTC-t és a tBTC-t pontosan 1 BTC-nek veszi, az LBTC-t és az eBTC-t pedig a staking-árfolyamuk alapján,
+  egy plafon alatt. A Morphón minden piac maga választja meg az orákulumát (árforrás) és a likvidálási LTV-jét (LLTV): a
+  nagy cbBTC/USDC piacok 86%-ot és egyedül egy BTC/USD feedet használnak. A wrapper megválasztása akár 18%-kal is
+  módosítja a likvidálási áradat, és eldönti, hogy maga a wrapper depegje (a BTC-hez kötött árfolyam elvesztése)
+  likvidálhat-e.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Az adatok és a blokkszámok, amelyeknél kiolvastuk őket: content/blog/snapshots/wrapped-bitcoin-aave-collateral.md */}
+
+## Miért számít, melyik wrapped bitcoint helyezed el fedezetként?
+
+Az Aave és a Morpho EVM-láncokon fut, a bitcoin viszont nem, ezért minden BTC-pozíció rajtuk egy wrapped token: egy ERC-20, amelyről valaki megígéri, hogy bitcoinra váltja vissza. Az, hogy ki és hogyan teszi ezt az ígéretet, az első különbség a wrapperek között. A WBTC-t letétkezelők bocsátják ki hideg tárolóban őrzött bitcoin ellenében, 2024 októbere óta a BitGo és a BiT Global közös vállalata, amelynek kulcsai az Egyesült Államokban, Szingapúrban és Hongkongban oszlanak meg. A cbBTC a Coinbase wrappere, a Coinbase által őrzött bitcoin fedezi. A tBTC a Threshold Network wrappere, amelyet nem egy cég, hanem aláírók hálózata bocsát ki. Az LBTC a Lombardé: Babylonon keresztül stake-elt bitcoin, a befizetéseket és a visszaváltásokat üzemeltetők konzorciuma ellenőrzi és írja alá, és 2025 óta hozamot termel, így egy LBTC lassan többet ér egy BTC-nél. Az eBTC az ether.fi wrappere, amelyet nagyrészt LBTC fedez. A BTC.b az Avalanche hídon átvitt bitcoinja, az FBTC pedig a Functioné.
+
+Egy hitelprotokoll három dolgot lát ebben a listában: mennyire valószínű, hogy a wrapper eltér a BTC árfolyamától, milyen mély a piaca, ha a likvidátoroknak el kell adniuk, és hogyan kell beárazni. Ez a három dönti el a likvidálási küszöböt, a plafonokat és az orákulumot, és együtt ezek döntik el a health factorodat, a likvidálási áradat, és azt, hogy milyen események likvidálhatnak. Ugyanaz az 1 BTC fedezet más hitelt jelent attól függően, milyen wrapperben érkezik.
+
+## Mely wrappereket fogadja el az Aave, és milyen feltételekkel?
+
+Az Aave V3 Ethereum Core 2026. október 29-én hét BTC-wrappert listázott. A PoolDataProviderből kiolvasva a 26296985-ös blokknál:
+
+| Wrapper | LTV | Likvidálási küszöb | Bónusz | Felvehető | Supply cap (kihasználtság) | Elhelyezve |
+| ------- | --- | ------------------ | ------ | --------- | -------------------------- | ---------- |
+| WBTC    | 81% | 85%                | 5,0%   | igen      | 38 200 (89,4%)             | 34 138,21  |
+| cbBTC   | 81% | 85%                | 7,5%   | igen      | 20 000 (86,5%)             | 17 303,85  |
+| tBTC    | 73% | 78%                | 7,5%   | plafon: 1 | 1800 (98,9%)               | 1779,39    |
+| LBTC    | 70% | 75%                | 8,5%   | nem       | 2690 (100,0%)              | 2689,93    |
+| eBTC    | 67% | 72%                | 10,0%  | nem       | 134 (56,0%)                | 75,02      |
+| BTC.b   | 73% | 78%                | 7,5%   | nem       | 225 (7,0%)                 | 15,84      |
+| FBTC    | 0%  | 78%                | 7,5%   | nem       | befagyasztva               | 153,83     |
+
+A WBTC és a cbBTC az a fedezet, amelyben a piac a leginkább megbízik: a legmagasabb küszöb, a legalacsonyabb bónusz és a legnagyobb elhelyezett mennyiség, a Core 56 156 wrapped BTC-jének 60,8%-a, illetve 30,8%-a. Az újabb vagy vékonyabb piacú wrapperek alacsonyabb küszöböt és magasabb bónuszt kapnak: így fizet többet a protokoll a likvidátoroknak egy kisebb piaci mélységű token eladásáért. Az FBTC 0-s LTV-vel be van fagyasztva, így továbbra is beszámít a health factorba, de új adósságot nem támaszt alá, és új befizetést sem fogad.
+
+A hét plafonból (supply cap) három majdnem vagy teljesen betelt. Az LBTC-nél 0,07 LBTC hely maradt: aki nyomás alatt lévő LBTC-hitellel rendelkezett, aznap nem tudott LBTC-t hozzáadni, és vissza kellett fizetnie. Azt, hogy mit blokkol egy betelt plafon, a [sikertelen Aave-tranzakciókról szóló útmutató](/hu/blog/miert-nem-sikerul-a-kivetel-vagy-hitelfelvetel-aave#3-a-supply-cap-megtelt) írja le. A tBTC-nél a hitelfelvétel engedélyezve volt 1-es plafonnal, ami a már felvett 2,57 tBTC mellett azt jelenti, hogy új hitelfelvétel nem megy át.
+
+A WBTC saját feltételei is változtak. 2026. október 14-én az Ethereum Core-on a WBTC LTV-je 73%, küszöbe 78% volt, ezeket a számokat használja a [health factor útmutató](/hu/blog/aave-health-factor-magyarazat); október 28-ra 81% és 85% lett belőlük. Az alacsonyabb számok előzményeiről egy későbbi szakasz szól.
+
+## Hogyan árazza az Aave az egyes wrappereket?
+
+Az Aave-nak piaconként és eszközönként egy ára van, az Aave Oracle-től, és ezt használja a health factor és minden likvidálás. A hét wrapper háromféle megoldást használ. Ugyanannál a blokknál kiolvasva:
+
+| Wrapper                  | Orákulumforrás            | Hogyan épül fel                                       | Ár 2026. október 29-én |
+| ------------------------ | ------------------------- | ----------------------------------------------------- | ---------------------- |
+| WBTC                     | „wBTC/BTC/USD”            | WBTC/BTC feed (0,9985) × BTC/USD                      | 79 699,16 $            |
+| cbBTC, tBTC, BTC.b, FBTC | „BTC / USD”               | egyedül a BTC/USD feed                                | 79 818,89 $            |
+| LBTC                     | „Capped LBTC / BTC / USD” | a Lombard árfolyama (1,005244) × BTC/USD, plafonnal   | 80 237,45 $            |
+| eBTC                     | „Capped eBTC / BTC / USD” | az ether.fi árfolyama (1,004224) × BTC/USD, plafonnal | 80 156,03 $            |
+
+A különbség dönti el, mit tesz veled egy wrapper depegje.
+
+**A WBTC-t a BTC-hez mért piaci arányán árazza.** Az adapter egy WBTC/BTC feedet szoroz meg a BTC/USD-vel, így ha a WBTC diszkonttal forog, a fedezeted kevesebbet ér a health factorban, és a likvidálási árad emelkedik. 2026. október 29-én az arány 0,9985 volt, ami a WBTC-t 119,73 $-ral a cbBTC alá árazta. Ha valóban megrendülne a bizalom a letétkezelőben, az arány esne, és a WBTC-pozíciókat úgy is likvidálhatnák, hogy maga a bitcoin ára nem változik.
+
+**A cbBTC-t, a tBTC-t, a BTC.b-t és az FBTC-t pontosan 1 BTC-nek veszi.** Az orákulum a BTC/USD feedet használja, mást nem. A wrapper piacán megjelenő diszkont nem éri el a health factorodat, hanem a protokollt éri el, amelynek likvidátorai az orákulum szerintinél kevesebbet érő fedezetet foglalnának le. Az Aave ezt szigorúbb plafonokkal és a tBTC és a BTC.b esetén alacsonyabb küszöbbel ellensúlyozza. A hitelfelvevőnek ez a megoldás egy wrapper-pánikban kíméletesebb, minden más napon szigorúbb.
+
+**Az LBTC-t és az eBTC-t az árfolyamuk alapján árazza, CAPO-plafon alatt.** Az LBTC staking-hozamot termel, ezért a Lombard orákuluma azt jelenti, hány BTC-t képvisel egy LBTC (2026. október 29-én 1,005244-et), és az Aave ezt szorozza meg a BTC/USD-vel. A CAPO adapter korlátozza, milyen gyorsan nőhet az arány: évi 2,00%-kal az LBTC és 1,90%-kal az eBTC esetén, 1,0-s kiinduló értéktől, így egy manipulált vagy hibás árfolyam nem fújhatja fel a fedezetet; a plafon aznap 1,0274-en állt az LBTC-nél, a tényleges arány fölött, tehát nem volt korlátozó. Az árfolyam esni is tud: ha a Babylon valaha slashinggel büntetné a stake-elt bitcoint, a Lombard aránya csökkenne, és vele minden LBTC-pozíció health factora. A Chaos Labs 2025-ös javaslata, amely az LBTC-t egy sima BTC/USD feedről erre a megoldásra állította át, megmagyarázza a döntést: a fix 1:1 ár „would underprice LBTC relative to its intrinsic value” (alulárazná az LBTC-t a belső értékéhez képest), amint a hozam megindul.
+
+A [stablecoin depeg útmutató](/hu/blog/stablecoin-depeg-az-aave-on) ugyanezt a kettősséget írja le a dollártokenekre: ami az orákulum mér, az likvidálhat téged.
+
+## Számpélda: 1 BTC fedezet 40 000 USDC ellenében
+
+Helyezz el minden wrapperből egy egységet az Ethereum Core-on, és vegyél fel 40 000 USDC-t. A health factor a fedezet értéke × likvidálási küszöb ÷ adósság, a likvidálási ár pedig 40 000 ÷ küszöb, abban az árban, amelyet az orákulum használ:
+
+| Fedezet | Orákulumár  | Küszöb | Health factor | Likvidálási ár                          |
+| ------- | ----------- | ------ | ------------- | --------------------------------------- |
+| 1 WBTC  | 79 699,16 $ | 85%    | 1,694         | 47 058,82 $ WBTC-nként                  |
+| 1 cbBTC | 79 818,89 $ | 85%    | 1,696         | 47 058,82 $ BTC-nként                   |
+| 1 tBTC  | 79 818,89 $ | 78%    | 1,557         | 51 282,05 $ BTC-nként                   |
+| 1 LBTC  | 80 237,45 $ | 75%    | 1,505         | 53 333,33 $ LBTC-nként, BTC 53 055 $-on |
+| 1 eBTC  | 80 156,03 $ | 72%    | 1,443         | 55 555,56 $ eBTC-nként                  |
+
+A WBTC és az eBTC között ugyanaz az adósság és ugyanaz a bitcoin 18%-kal magasabb likvidálási árat ad. A hitelkeret ugyanígy mozog: az LTV-nél a WBTC és a cbBTC az értékük 81%-át támasztja alá, és egy a határig felvett pozíció 85 ÷ 81 = 1,049-es health factorral indul; az LBTC-nél ez 75 ÷ 70 = 1,071, az eBTC-nél 72 ÷ 67 = 1,075. Az általános képletet és egy kalkulátort a [likvidálási ár kiszámításáról szóló útmutató](/hu/blog/aave-likvidalasi-ar) tartalmazza.
+
+E sorok közül kettő nem csak a bitcoin árával mozog. A WBTC sora a WBTC/BTC feeddel is mozog; egy 2%-os diszkont változatlan BTC mellett 1,694-ről 1,660-ra vinné a pozíciót. Az LBTC sora a Lombard árfolyamával mozog, amely minden nap kicsit emelkedik, slashing esetén pedig esik.
+
+## Miért változtak a WBTC feltételei, és mit tanultak belőle a hitelfelvevők?
+
+2024 augusztusában a BitGo bejelentette, hogy a WBTC letétkezelését egy közös vállalatba viszi a BiT Globallal, egy hongkongi letétkezelővel, amely Justin Sunhoz kötődik. Az Aave fórumán lezajlott reakció mutatja a legvilágosabban, hogyan ér el egy letétkezelési változás egy hitelfelvevőt. 2024. szeptember 18-án a LlamaRisk azt javasolta, hogy a WBTC LTV-jét minden Aave V3 példányon állítsák 0-ra, a plafonokat pedig csökkentsék a kihasználtság fölötti 5-10%-ra, miközben hangsúlyozta, hogy a terv „not to offboard WBTC, nor to reduce current exposure” (nem a WBTC kivezetése és nem a meglévő kitettség csökkentése). A Chaos Labs elhamarkodottnak nevezte a kockázatcsökkentő javaslatot. A terv, amelyben a kettő 2024. szeptember 24-én megegyezett, enyhébb volt, de valós: plafonok a kihasználtság fölött 15%-kal, a likvidálási küszöb mindenhol egy ponttal lejjebb, az LTV 70%-ra csökkentve, ahol magasabb volt, a tartalékfaktor (reserve factor) 20%-ról 40%-ra, és az Ethereumon a WBTC hitelfelvételi plafonja 28 000-ről 3250-re. A letétkezelés átadása 2024. október 8-án zárult le.
+
+Ebben az epizódban semmi sem mozdította el a bitcoin árát. A feltételek változtak: alacsonyabb küszöbök és alacsonyabb plafonok minden WBTC-hitelfelvevőnek, egy olyan governance-folyamat döntése nyomán, amelyet figyelemmel kísérhettek, de nem irányíthattak. Két évvel később a paraméterek ismét magasabbak, és a 73%/78%-ról 81%/85%-ra lépés 2026 októberében 8%-kal csökkentette egy WBTC-pozíció likvidálási árát. A tanulság az, hogy a küszöb paraméter, nem a bitcoin tulajdonsága: a governance csökkentheti, ami megemeli a likvidálási áradat, miközben alszol, és a piacleépítési útmutató leírja, [mi történik, amikor az Aave leépít egy piacot](/hu/blog/egy-aave-piac-leepitese).
+
+## Miben mások a BTC E-Mode-kategóriák?
+
+Az Aave [E-Mode](/hu/blog/aave-e-mode-magyarazat) azoknak a pároknak készült, amelyek együtt mozognak, és a wrapped bitcoinok egymással szemben a legtisztább eset. Az Ethereum Core-on 2026. október 28-án az LBTC_WBTC, az LBTC_cbBTC és az LBTC_tBTC kategória 84%-os LTV-t, 86%-os küszöböt és 3%-os bónuszt adott az LBTC-fedezetnek, ha ezt az egy wrappert veszed fel hitelként; az eBTC/WBTC 83%-ot, 85%-ot és 3%-ot adott. A Base-en az LBTC_cbBTC 82%/84% volt, és egy „cbBTC Stablecoins” kategória 82%/85% volt USDC vagy GHO cbBTC ellenében történő felvételére. Az Arbitrumon és a Base-en tBTC-kategóriák is voltak stablecoin-adósságra 72%/75%-kal.
+
+A BTC a BTC ellen kategóriákban élnek a tőkeáttételes loopok (ismételt hitelfelvétel tőkeáttétellel): elhelyezel LBTC-t, felveszel WBTC-t, LBTC-t veszel belőle, és ismétled, hogy a tőkéd többszörösén szerezd meg a Lombard hozamát. Egy 84%-os határig felvett loop 86 ÷ 84 = 1,024-ről indul, és a health factorát egyáltalán nem érdekli a bitcoin ára, csak az LBTC és a WBTC aránya, ahogy a két orákulum látja: az egyik oldalon a Lombard árfolyama, a másikon a WBTC/BTC feed. Egy körülbelül 2,4%-os elmozdulás közöttük likvidálja. Ez 1,1 alatt van, a Tokenping által elfogadott legalacsonyabb küszöbérték alatt, így az ilyen loopok minden riasztás alatt futnak; [az E-Mode útmutató](/hu/blog/aave-e-mode-magyarazat#segithet-egy-riasztas-egy-e-mode-pozicional) elmagyarázza a kompromisszumot.
+
+## Hogyan kezeli a Morpho a wrapped bitcoint?
+
+A Morphónak nincs eszközlistája és nincs tokenenként governance által beállított küszöbe. Bárki létrehozhat egy piacot egy fedezettel, egy hiteleszközzel, egy orákulummal és egy LLTV-vel az engedélyezett értékek közül, és a paraméterek soha nem változnak. A wrapped bitcoin esetében ez azt jelenti, hogy a wrapper és az orákulum kiválasztása is piaconként történik, és a listázott piacok különböznek.
+
+A Morpho API-ja 2026. október 29-én ezeket a BTC-fedezetű piacokat listázta felvett érték szerint az Ethereumon és a Base-en:
+
+| Piac                   | LLTV | Felvéve         | Mit mér az orákulum                                              |
+| ---------------------- | ---- | --------------- | ---------------------------------------------------------------- |
+| cbBTC / USDC, Base     | 86%  | 1,62 milliárd $ | egyedül a BTC/USD: a cbBTC 1 BTC, az USDC 1 $                    |
+| cbBTC / USDC, Ethereum | 86%  | 309,8 millió $  | egyedül a BTC/USD                                                |
+| WBTC / USDC, Ethereum  | 86%  | 115,8 millió $  | WBTC/BTC × BTC/USD ÷ USDC/USD                                    |
+| WBTC / USDT, Ethereum  | 86%  | 84,1 millió $   | nem olvastuk ki                                                  |
+| LBTC / USDC, Ethereum  | 86%  | 1,9 millió $    | a Redstone LBTC/BTC fundamentális árfolyama (1,005244) × BTC/USD |
+| tBTC / USDC, Ethereum  | 77%  | 0,6 millió $    | nem olvastuk ki                                                  |
+
+Két dolog tűnik fel az Aave-hoz képest. Az LLTV minden jelentős wrappernél 86%, egy ponttal az Aave WBTC-re és cbBTC-re vonatkozó 85%-os küszöbe fölött és tizeneggyel az LBTC-re vonatkozó fölött, mert a Morphón nem egy kockázati bizottság, hanem a piac létrehozója állítja be, és a hitelezők döntik el, finanszírozzák-e. Az orákulum pedig a piacot követi, nem a tokent: a fenti WBTC/USDC piac a WBTC-t egy WBTC/BTC feeden, az USDC-t egy USDC/USD feeden keresztül árazza, míg a cbBTC piacok, amelyek a forgalom nagyobb részét viszik, mindkét tokent pontosan a rögzített értékén veszik. 2026. október 29-én az Ethereum cbBTC/USDC orákuluma 79 752,37 USDC-t adott cbBTC-nként, így 1 cbBTC 40 000 USDC ellenében 79 752,37 × 0,86 ÷ 40 000 = 1,715-ös [Morpho health factort](/hu/blog/morpho-health-factor-magyarazat) és 46 511,63-as likvidálási árat jelentett, valamivel az Aave ugyanerre a hitelre adott 47 058,82-es értéke alatt.
+
+A likvidálás is eltér. A [Morpho likvidálási ösztönzője](/hu/blog/hogyan-mukodik-a-likvidalas-a-morphon) 86%-os LLTV-nél 4,38%, közel az Aave WBTC-re adott 5%-os bónuszához és a cbBTC-re adott 7,5% alatt, de a Morphón egy likvidátor egy tranzakcióban a teljes adósságot visszafizetheti, míg az Aave a legtöbb likvidálást a felére korlátozza. Egy Morpho WBTC-hitel WBTC/BTC-t figyelembe vevő orákulummal ugyanazt a letétkezelési kitettséget hordozza, mint az Aave-on; egy cbBTC-hitel bármelyik protokollon semmit sem hordoz belőle a health factorában, és az egészet a protokoll fizetőképességében.
+
+## Mi romolhat el valójában egy wrapped bitcoin-hitelnél?
+
+- **A bitcoin ára.** A szokásos kockázat, és a nagy. 2025. október 10-én az Aave Labs szerint egyetlen nap alatt több mint 250 millió $-t likvidáltak az Aave-on, és az Aave Labs 2020 és 2026 februárja között 310 000 likvidálásban 4,65 milliárd $-t számol. A health factor matematikája minden wrapperre ugyanaz; a küszöb különbözik.
+- **Wrapper-diszkont az orákulumon keresztül.** Eléri a WBTC-pozíciókat az Aave-on és a WBTC/BTC feedet használó Morpho piacokon. Nem éri el a cbBTC- és tBTC-pozíciókat az Aave-on, sem a BTC/USD orákulumot használó Morpho cbBTC piacokat, ahol helyette a protokoll viseli.
+- **Árfolyamesés.** Az LBTC-t és az eBTC-t staking-árfolyam alapján árazzák; egy slashing a Babylonon csökkentené, és vele minden pozíciót az Aave-on és az ugyanezt az árfolyamot használó Morpho piacokon.
+- **Paraméterváltozás.** Az Aave governance csökkentheti egy wrapper küszöbét vagy LTV-jét, 0-ra állíthatja az LTV-jét vagy befagyaszthatja, ahogy az FBTC-vel tette. Egy Morpho piac LLTV-je soha nem változik, de a piacot levehetik az alkalmazás listájáról.
+- **Betelt plafon vagy befagyasztott tartalék.** Az Aave-on mindkettő lezárja a „fedezet hozzáadása” utat, és a visszafizetés marad az egyetlen mód a health factor emelésére. A Morphón nincsenek plafonok.
+- **A wrapper vékony likviditása.** Ez áll a tBTC, az LBTC és az eBTC magasabb bónuszai mögött: egy likvidátor, aki nem tudja gyorsan eladni a lefoglalt tokent, több pénzt kér azért, hogy átvegye, és feszült piacon talán meg sem jelenik, amíg a pozíció mélyebbre nem süllyed.
+
+## Hogyan segíthetnek a riasztások egy wrapped bitcoin-pozíciónál?
+
+Egy riasztás nem tudja és nem is érdekli, melyik wrappert tartod. A Tokenping az Aave health factort a `getUserAccountData` hívásból olvassa ki, amely már alkalmazza a wrapper küszöbét és az orákulum árát, a WBTC/BTC arányt és az LBTC árfolyamát is beleértve, a Morpho health factort pedig on-chain számolja ki a piac saját orákulumából. A wrapper azt változtatja meg, hogyan mozog a szám. Egy 1,5-ös health factorú pozíciót az orákulumára 33%-os esés után likvidálnak, bármilyen wrapperről legyen szó; egy WBTC-pozíció a WBTC/BTC arány 33%-os esésével is eljut oda, egy LBTC-pozíció pedig az árfolyamán keresztül, ezért a riasztásnak ott kell lennie, ahol bármelyik elmozdulás még időt hagy a visszafizetésre. Egy BTC a BTC ellen loop 1,03-on teljesen kívül esik a tartományon.
+
+A Tokenping 5 percenként ellenőrzi a pozíciódat, 21 hálózat minden Aave V3 piacán, minden Aave V4 Spoke-ban és 14 lánc minden listázott Morpho Blue és Midnight piacán, és Signalon, Telegramon vagy e-mailben üzen, ha a health factor a küszöbértéked alá esik (az Aave-on 1,1 és 10 között, a Morphón 1,02 és 10 között), minden ellenőrzéskor megismételve, amíg helyre nem áll. Helyetted nem tud visszafizetni, és egy éles mozgás két ellenőrzésen is átfuthat, mielőtt az üzenet megérkezik. [Az Aave V3 health factorodat](/hu/aave) vagy [a Morpho pozícióidat](/hu/morpho) fizetés nélkül megnézheted; a riasztások ára <AlertPrice />, piaconként vagy Spoke-onként egy. A többit [a riasztási küszöbérték kiválasztásáról](/hu/blog/biztonsagos-aave-health-factor#hogyan-valassz-riasztasi-kuszoberteket-lepesrol-lepesre) és [a riasztás beállításáról](/hu/blog/aave-health-factor-riasztas-beallitasa) szóló útmutató írja le.
+
+## Források
+
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getAllReservesTokens`, `getReserveConfigurationData`, `getReserveCaps` és `getReserveData` a WBTC, cbBTC, tBTC, LBTC, eBTC, BTC.b és FBTC tokenre a 26296985-ös blokknál (megtekintve: 2026. október 29.)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): `getSourceOfAsset` és `getAssetPrice` a hét wrapperre, valamint minden forrás `description()` értéke a 26296985-ös blokknál (megtekintve: 2026. október 29.)
+- [WBTC adapter](https://etherscan.io/address/0xDaa4B74C6bAc4e25188e64ebc68DB5050b690cAc): `ASSET_TO_PEG` (a [WBTC / BTC feed](https://etherscan.io/address/0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23), 0,9985) és `PEG_TO_BASE` a 26296985-ös blokknál (megtekintve: 2026. október 29.)
+- [LBTC CAPO adapter](https://etherscan.io/address/0xf8c04B50499872A5B5137219DEc0F791f7f620D0) és [eBTC CAPO adapter](https://etherscan.io/address/0x03bB418e89B75407585f8198178f253DA3216218): `getRatio`, `getSnapshotRatio`, `getSnapshotTimestamp`, `getMaxYearlyGrowthRatePercent`, `getMaxRatioGrowthPerSecond` és `isCapped` a 26296985-ös blokknál (megtekintve: 2026. október 29.)
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2) és a Base és az Arbitrum Poolja: a BTC E-Mode-kategóriák, kiolvasva [az E-Mode útmutatóhoz](/hu/blog/aave-e-mode-magyarazat) a 26291736-os Ethereum-blokknál és az 53204166-os Base-blokknál (megtekintve: 2026. október 28.)
+- [Morpho API](https://api.morpho.org/graphql): a listázott, WBTC, cbBTC, tBTC, LBTC vagy eBTC fedezetű piacok az Ethereumon és a Base-en, az LLTV-jük, a felvett érték, az orákulum és a feedek (megtekintve: 2026. október 29.)
+- [Morpho Blue az Ethereumon](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb): a cbBTC / USDC (86%) orákulum `price()` értéke a 26297045-ös blokknál, valamint a WBTC / USDC (86%) orákulum feedjei és `price()` értéke; a feedek `description()` értéke (megtekintve: 2026. október 29.)
+- [ARFC: Adjusting WBTC Parameters to Address BitGo Transition Risks](https://governance.aave.com/t/arfc-adjusting-wbtc-parameters-to-address-bitgo-transition-risks/19096): a LlamaRisk 2024. szeptember 18-i javaslata és a 2024. szeptember 24-én egyesített terv (megtekintve: 2026. október 29.)
+- [ARFC: Onboard LBTC on Aave v3 Core Instance](https://governance.aave.com/t/arfc-onboard-lbtc-on-aave-v3-core-instance/20142): mi az LBTC, a kezdeti paraméterei és az orákulumvita (megtekintve: 2026. október 29.)
+- [Direct to AIP: LBTC Oracle and CAPO implementation Update](https://governance.aave.com/t/direct-to-aip-lbtc-oracle-and-capo-implementation-update/22614): Chaos Labs, 2025. július 17., az árfolyam-orákulum és a CAPO-paraméterek (megtekintve: 2026. október 29.)
+- [ARFC: Core & Base - BTC Correlated Asset Update](https://governance.aave.com/t/arfc-core-base-btc-correlated-asset-update/20940): az LBTC E-Mode-ok és a Base-listázás, 2025. február 4. (megtekintve: 2026. október 29.)
+- [Unchained: WBTC completes shift to multi-jurisdiction custody model](https://unchainedcrypto.com/wbtc-completes-shift-to-multi-jurisdiction-custody-model/): 2024. október 9. (megtekintve: 2026. október 29.)
+- [Aave Labs: How Aave Liquidations Perform Under Volatile Conditions](https://aave.com/blog/historical-liquidations): 2026. február 6. (megtekintve: 2026. október 29.)
+
+_Oktatási tartalom, nem pénzügyi tanácsadás. A riasztások csökkentik a kockázatot, de nem akadályozzák meg a likvidálást._

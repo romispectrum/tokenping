@@ -1,0 +1,134 @@
+export const meta = {
+  slug: "miert-nem-sikerul-a-kivetel-vagy-hitelfelvetel-aave",
+  title: "Miért nem tudok kivenni vagy hitelt felvenni az Aave-on?",
+  description:
+    "Miért hiúsul meg egy Aave V3-kivétel, hitelfelvétel vagy visszafizetés: health factor, likviditás, supply és borrow cap, befagyasztott tartalékok.",
+  h1: "Miért nem sikerül a kivétel, a hitelfelvétel vagy a visszafizetés az Aave-on?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "Miért hiúsul meg egy Aave-kivétel, -hitelfelvétel vagy -visszafizetés?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Egy Aave V3-tranzakció akkor hiúsul meg, ha a Pool szerződés valamelyik ellenőrzése elutasítja, és az ok szinte mindig
+  a kilenc közül az egyik. A kivétel 1 alá vinné a health factorodat (egészségi mutató). A tartalékban (reserve)
+  kevesebb fel nem vett likviditás van, mint amennyit kérsz. Az eszköz supply capje vagy borrow capje megtelt. A
+  tartalék be van fagyasztva (nincs új elhelyezés és új hitelfelvétel) vagy szüneteltetve van (semmi sem megy, a
+  visszafizetés sem). Az eszköz nem vehető fel hitelként, vagy az E-Mode-kategóriádban nem vehető fel. Van olyan
+  fedezeted, amelynek LTV-je 0, és annak kell először távoznia. Vagy a visszafizetés olyan adósságra szól, amely nincs,
+  vagy olyan tokenre, amelyet nem hagytál jóvá. Az Ethereum Core piacon 2026. október 29-én a 66 listázott tartalékból
+  35 be volt fagyasztva, az LBTC supply capjéből csak 0,07 LBTC maradt szabadon, és a 2347,5 millió elhelyezett USDC-ből
+  csak 134,4 millió volt kivehető.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* A számok és a blokkszámok, amelyeknél kiolvastuk őket: content/blog/snapshots/why-aave-withdraw-or-borrow-fails.md */}
+
+## Milyen ellenőrzéseken kell átmennie egy Aave-tranzakciónak?
+
+Az Aave V3-on minden elhelyezés, kivétel, hitelfelvétel és visszafizetés a Pool szerződésen megy keresztül, és a Pool egy `ValidationLogic` nevű könyvtárban ellenőrzések sorát futtatja le, mielőtt bármilyen tokent mozgatna. Minden sikertelen ellenőrzés egy megnevezett hibával állítja le az egész tranzakciót: `ReserveFrozen`, `SupplyCapExceeded`, `HealthFactorLowerThanLiquidationThreshold` és így tovább. A tárcád általában csak annyit mutat, hogy „execution reverted” (a végrehajtás visszafordult), és egy rövid hexadecimális kódot, mert a nevek az Aave kódjában vannak, nem a tárcában. Az Aave alkalmazás ezek többségét az aláírás előtt ellenőrzi, ezért gyakran már azelőtt elutasít, hogy egyáltalán tranzakciót látnál.
+
+Az ellenőrzések műveletenként eltérnek. A kivételhez aktív, nem szüneteltetett tartalék kell, legalább akkora egyenleg, mint az összeg, és ha van adósságod, és az eszköz fedezetként számít, olyan health factor, amely utána is legalább 1 marad. A hitelfelvételhez aktív, nem szüneteltetett, nem befagyasztott tartalék kell, ahol a hitelfelvétel engedélyezett, hely a borrow cap alatt, és elég fedezet az LTV-d mellett. Az elhelyezéshez nem befagyasztott tartalék kell, ahol a supply cap alatt van még hely. A visszafizetéshez csak aktív, nem szüneteltetett tartalék és az adott eszközben fennálló adósság kell. Az alábbi kilenc ok ezt a listát követi, nagyjából abban a sorrendben, ahogy valószínűleg találkozol velük.
+
+Ez az útmutató az Aave V3-ról szól. Az Aave V4 Spoke-jainak saját konfigurációjuk van, a Morphón pedig ezek közül a mechanizmusok közül csak az orákulum (árforrás) és a health factor létezik: egy Morpho-piacnak nincs capje, nem fagyasztható be és nem szüneteltethető.
+
+## 1. A kivétel 1 alá vinné a health factorodat
+
+Ebbe futnak bele a hitelfelvevők a leggyakrabban. Ha olyan eszközt veszel ki, amelyet fedezetként használsz, miközben adósságod van, a Pool a kivétel utáni állapotra újraszámolja a számládat, és legalább 1-es health factort követel meg (`HealthFactorLowerThanLiquidationThreshold`). Ugyanez az ellenőrzés fut le, amikor egy eszközt kikapcsolsz fedezetként, vagy aTokeneket utalsz egy másik címre. Nem fut le, ha nincs adósságod, ezért egy tisztán elhelyezési pozícióból mindig kivehető a teljes egyenleg.
+
+Vegyünk 10 WETH-t az Ethereum Core piacon, 2026. október 29-i 2309,84 $-os orákulumáron (23 098,41 $), 84%-os likvidálási küszöbbel (liquidation threshold) és 12 000 USDC adóssággal. A [health factor](/hu/blog/aave-health-factor-magyarazat) 23 098,41 × 0,84 ÷ 12 000 = 1,617. Ahhoz, hogy pontosan 1-en maradjon, 12 000 ÷ 0,84 = 14 285,71 $ értékű, azaz 6,185 WETH kell, így legfeljebb 3,815 WETH-t vehetsz ki. Ha 4-et kérsz, a tranzakció visszafordul; ha 3,815-öt, átmegy, és olyan pozíciót hagy maga után, amelyet a következő lefelé mozduló ár likvidálhatóvá tesz. Az Aave alkalmazás maximuma ez a szám, és ha mindet kiveszed, az a leggyorsabb módja annak, hogy egy biztonságos pozícióból olyan legyen, amelyhez egy órán belül [likvidálási riasztás](/hu/blog/aave-health-factor-riasztas-beallitasa) kell.
+
+A hitelfelvételnek van egy szigorúbb testvére. Egy új hitelfelvétel után a health factornak legalább 1-nek kell maradnia, és a súlyozott LTV-d alá is be kell férnie: a fedezet × LTV-nek fedeznie kell az adósságot (`CollateralCannotCoverNewBorrow`). 81%-os WETH LTV mellett a fenti 10 WETH legfeljebb 18 709,71 $ adósságot bír el, és az a pozíció, amely mindet felveszi, 84 ÷ 81 = 1,037-es health factorról indul. [Mi a biztonságos health factor](/hu/blog/biztonsagos-aave-health-factor) elmagyarázza, miért vékony ez a kiindulópont.
+
+## 2. A tartalékban kevesebb fel nem vett likviditás van, mint amennyit szeretnél
+
+Az Aave kölcsönadja, amit az elhelyezők betesznek, így egy tartalékban csak az a rész marad, amelyet senki sem vett fel hitelként. Az ennél nagyobb kivétel vagy hitelfelvétel meghiúsul, és ennek az esetnek nincs Aave-hibaneve: az aToken megpróbálja kiutalni a mögöttes tokent, és maga a tokenszerződés fordul vissza, USDC esetén ezzel: „ERC20: transfer amount exceeds balance” (az utalt összeg meghaladja az egyenleget). A hitelfelvételi ellenőrzés csak azt kérdezi, hogy a teljes aToken-kínálat legalább akkora-e, mint az összeg, ami az abszurd kéréseket kiszűri, mást viszont nem.
+
+Az Ethereum Core piacon 2026. október 29-én 2 347 525 372,91 USDC volt elhelyezve, 2 213 199 103,54 USDC felvéve, az aToken-szerződés pedig 134 360 379,94 USDC-t tartott: 94,28%-os kihasználtság, a kínálat 5,72%-a volt kivehető vagy felvehető. Egy elhelyező, aki 200 millió USDC-vel akart volna távozni, nem tudott, és senki sem tudott volna, amíg valaki vissza nem fizet vagy be nem tesz. [Az Aave kamatairól szóló útmutató](/hu/blog/aave-kamatok) megmutatja, hogyan néz ki ez a gyakorlatban: 2026. október 14-én egyetlen 133 898 000 USDC-s kivétel ugyanezt a tartalékot 99,50%-os kihasználtságra lökte, a hitelkamatot pedig egyetlen blokk alatt 4,50%-ról 13,67%-ra.
+
+Ha a likviditás a gond, négy dolog működik. Vegyél ki kisebb összeget, legfeljebb annyit, amennyi a szerződésben van. Várj: a kamatgörbe arra készült, hogy visszahúzza a likviditást, és az október 14-i kiugrás körülbelül 36 perc alatt lecsengett, bár erre semmi sem ad garanciát. Vegyél ki egy másik fedezeti eszközt, ha van ilyened, és a health factor engedi. És ha USDC-adósságot próbálsz visszafizetni, de aUSDC-d van, használd a `repayWithATokens` függvényt: az aTokenjeidet az adósságod ellenében égeti el anélkül, hogy egyetlen USDC-t is mozgatna, így egyáltalán nincs szüksége likviditásra.
+
+## 3. A supply cap megtelt
+
+Minden tartaléknak van supply capje (elhelyezési plafonja), amelyet az Aave kockázati felügyelői (risk stewards) és a kormányzás állítanak be, és az az elhelyezés, amely a teljes összeget e fölé vinné, `SupplyCapExceeded` hibával meghiúsul. A 0-s cap azt jelenti, hogy nincs plafon. A cap a létező aTokeneket és a kincstárnak járó felhalmozott kamatot számolja, így a kamat felhalmozódásával magától is telik, anélkül hogy bárki betenne valamit.
+
+A capek gyakrabban kötnek, mint gondolnád. 2026. október 29-én az Ethereum Core LBTC-capje 2690 LBTC volt, szemben a 2689,93 elhelyezett LBTC-vel: 0,07 LBTC hely maradt, és az a hitelfelvevő, aki egy nyomás alatt lévő pozícióhoz 1 LBTC-t akart volna hozzáadni, nem tudta megtenni. Az sUSDe a capje 96,9%-án állt, a tBTC 98,9%-án, az USDe 91,7%-án, a weETH 91,2%-án, a WBTC pedig 89,4%-án. A capek mindkét irányba mozognak. 2026. július 10-én a LlamaRisk az Aave MegaETH-példányán az USDm supply capjét 1 000 000 000-ről 300 000 000-ra csökkentette, mert a plafon „well above current demand” (jóval a jelenlegi kereslet felett) volt; a felügyelők akkor emelik a capeket, amikor megjön a kereslet, általában néhány napon belül.
+
+Egy hitelfelvevő számára a cap zárt ajtóként számít: a fedezet hozzáadása a health factor emelésének egyik módja, és a megtelt cap ezt az utat elzárja az adott eszköznél. A visszafizetés, a másik út, továbbra is működik, és az is, ha egy másik fedezeti eszközt adsz hozzá, amelynek a capjében van még hely.
+
+## 4. A borrow cap megtelt
+
+A borrow capek (hitelfelvételi plafonok) ugyanígy működnek az adósságra: a tartalék teljes változó kamatozású adóssága a hitelfelvételed után nem haladhatja meg a capet (`BorrowCapExceeded`), és a 0 azt jelenti, hogy nincs plafon. Az ellenőrzés minden hitelfelvételnél lefut, így egy már túllépett cap az adott eszköz minden új hitelfelvételét megállítja, amíg valaki vissza nem fizet. A megtelt borrow cap mást nem állít meg: a visszafizetések, a kivételek és a likvidálások átmennek.
+
+A tBTC az Ethereum Core piacon a szélsőséges eset: 2026. október 29-én a hitelfelvétel engedélyezve volt, de a cap 1 tBTC volt, és már 2,57 tBTC fel volt véve, így a legkisebb hitelfelvétel is visszafordult. Az USDC-ből 2213,2 millió volt felvéve egy 2700 milliós cappel szemben, 82,0%-os kihasználtsággal és 486,8 millió szabad hellyel; az USDT 80,8%-on állt. Amikor a stablecoin-capek megtelnek, a hitelfelvétel akkor is meghiúsul, ha a tartalékban még bőven van likviditás.
+
+## 5. A tartalék be van fagyasztva
+
+Egy befagyasztott tartalék nem fogad új elhelyezést és új hitelfelvételt (mindkettőnél `ReserveFrozen`). Az Aave Pool Configurator dokumentációja felsorolja, mi működik továbbra is: a visszafizetések, a likvidálások és a kivételek. A befagyasztással vezeti ki a kormányzás egy eszközt anélkül, hogy bárkit csapdába ejtene; [mi történik, amikor az Aave leépít egy piacot](/hu/blog/egy-aave-piac-leepitese) végigveszi a lépéseket.
+
+A befagyasztott tartalékok nem ritkák. 2026. október 29-én az Ethereum Core 66 tartalékából 35 be volt fagyasztva: CRV, MKR, UNI, LUSD, FRAX, sDAI, crvUSD, FBTC és a lejáratukon túli Pendle PT-tokenek hosszú sora, szinte mind 1-es supply és borrow cappel is. Ha még van fedezeted valamelyikben, kiveheted, és likvidálhatnak is belőle, de feltölteni nem tudod.
+
+## 6. A tartalék szüneteltetve van
+
+A szüneteltetés a vészkapcsoló. Egy szüneteltetett tartalék mindent elutasít: az elhelyezést, a hitelfelvételt, a visszafizetést, a kivételt, a likvidálást és az aToken-utalásokat (`ReservePaused`). 2026. október 29-én egyetlen Ethereum Core-tartalék sem volt szüneteltetve, és átlagos heteken egy sem szokott.
+
+A szüneteltetést már használták. 2023. november 4-én egy kritikus bug bounty-bejelentés után az Aave Guardianje szüneteltette az Aave V2-t az Ethereumon, valamint több eszközt a V3 Arbitrum, Avalanche, Optimism és Polygon példányán. Körülbelül egy hétig senki sem tudott visszafizetni vagy fedezetet hozzáadni ezeken a tartalékokon, miközben az árak tovább mozogtak. A V3-példányok szüneteltetését 2023. november 12-én oldották fel, a V2 Ethereumét november 13-án, a WETH-hitelfelvevőknek adott nagyjából háromórás likvidálási türelmi idő után, a V3 Polygon CRV-jét pedig november 16-án. Ma ez a türelmi idő a protokoll része: egy tartalék türelmi ideje alatt a likvidálás `LiquidationGraceSentinelCheckFailed` hibával meghiúsul, ami a kizárt hitelfelvevőknek rövid időt ad a visszafizetésre, mielőtt a likvidátorok lépnek.
+
+Ha a tranzakciód szüneteltetési hibával hiúsul meg, az Aave-on semmit sem tehetsz, amíg a szüneteltetés fel nem oldódik. Használd ki az időt arra, hogy a visszafizetéshez szükséges összeg a megfelelő hálózaton készen álljon, mert a feloldás utáni türelmi időt a kormányzás vagy a Guardian határozza meg, és már három óra is volt.
+
+## 7. Az adott eszköznél ki van kapcsolva a hitelfelvétel, vagy az E-Mode-kategóriádban nem engedélyezett
+
+Sok eszköz elhelyezhető fedezetként, de hitelként nem vehető fel. Az Ethereum Core piacon 2026. október 29-én 15 nem befagyasztott tartaléknál volt kikapcsolva a hitelfelvétel, köztük a wstETH, a cbETH, az rETH, a weETH, az LBTC, az eBTC, az AAVE és az XAUt esetén, és ezek bármelyikének felvétele `BorrowingNotEnabled` hibával meghiúsul. A jelzőt a kormányzás tartalékonként állítja be, és az Aave alkalmazásban a hiányzó hitelfelvételi gomb jelzi.
+
+Ha egy [E-Mode-kategóriában](/hu/blog/aave-e-mode-magyarazat) vagy, ezt a szabályt egy másik váltja fel: csak a kategória felvehető eszközkörébe tartozó eszközöket veheted fel, minden más `NotBorrowableInEMode` hibával meghiúsul, még az az eszköz is, amelyet a kategórián kívül felvehetnél. Az Ethereum Core „ETH correlated” kategóriája például csak WETH felvételét engedi, semmi mást. A kategória elhagyása megoldja a hitelfelvételt, de az elhagyásnak saját ellenőrzései vannak: minden eszköznek, amellyel tartozol, a kategórián kívül is felvehetőnek kell lennie, és a health factorodnak a normál, alacsonyabb küszöbökkel is legalább 1-nek kell maradnia (`InvalidDebtInEmode`, `InvalidCollateralInEmode`, `HealthFactorLowerThanLiquidationThreshold`).
+
+## 8. Olyan fedezeted van, amelynek LTV-je 0
+
+A kormányzás akkor állítja egy eszköz LTV-jét 0-ra, ha azt szeretné, hogy az eszköz ne támogasson új adósságot, a meglévő pozíciók viszont tovább fussanak. 2026. október 29-én az Ethereum Core piacon 11 nem befagyasztott tartalék volt fedezetként engedélyezve 0-s LTV-vel, köztük a DAI (likvidálási küszöb 77%), a LINK, a PYUSD, az USDe, az sUSDe, az USDS, az EURC és az XAUt. Egy ilyen eszköz a likvidálási küszöbén keresztül továbbra is beleszámít a health factorodba, de a hitelfelvételi kereteden semmit sem növel. Ebből két ellenőrzés következik.
+
+Az első a hitelfelvételre vonatkozik. Ha minden engedélyezett fedezeted LTV-je 0, a súlyozott LTV-d 0, és minden hitelfelvétel `LtvValidationFailed` hibával meghiúsul. Vegyes fedezetnél, mondjuk DAI és WETH esetén, a hitelfelvétel átmegy, de csak a WETH korlátozza.
+
+A második a kivételre vonatkozik, és ez meglepi az embereket. Ha van adósságod, és van 0-s LTV-jű engedélyezett fedezeted, akkor az eszköznek, amelyet kiveszel, átutalsz vagy fedezetként kikapcsolsz, magának is 0-s LTV-jű eszköznek kell lennie, különben a tranzakció ugyanazzal a `LtvValidationFailed` hibával meghiúsul. A kód saját megjegyzése kimondja a szándékot: a szabály „ensures that a multi-collateral position needs to withdraw/transfer the ltv0 asset first” (biztosítja, hogy egy többfedezetes pozíciónak először a 0-s LTV-jű eszközt kell kivennie vagy átutalnia). Így egy DAI-t és WETH-t tartó hitelfelvevőt, aki WETH-t próbál kivenni, a rendszer elutasít, amíg a DAI ki nem került; magára a DAI kivételére a health factor-ellenőrzés továbbra is vonatkozik. A megoldás a műveletek sorrendje: először a 0-s LTV-jű eszközt vedd ki, vagy fizess vissza annyit, hogy a health factor mindkettőt megengedje.
+
+## 9. A visszafizetés olyan adósságra szól, amely nincs, vagy olyan tokenre, amelyet nem hagytál jóvá
+
+A visszafizetés a legegyszerűbb művelet, mégis meghiúsul, általában az alábbi öt ok egyike miatt.
+
+- **Nincs ilyen típusú adósság.** A `NoDebtOfSelectedType` azt jelenti, hogy a meghívott Poolban az adott címnek nincs változó kamatozású adóssága abban az eszközben. A szokásos ok a rossz piac: az Ethereumnak külön Core, Prime és Lido példánya van, mindegyik saját Poollal, és ugyanaz a tárca tartozhat USDC-vel az egyiken, a másikon pedig semmivel. Minden hálózat piacai is külön vannak.
+- **Olyan kamatmód, amely már nem létezik.** Csak a változó mód (2) elfogadott; a stabil kamatozású hitelfelvétel kikerült a kódból, és az 1-es móddal indított hívás `InvalidInterestRateModeSelected` hibával meghiúsul.
+- **Nincs jóváhagyás (allowance).** A Pool a visszafizetést `transferFrom` hívással húzza be, ezért a tokennek legalább az összegre szóló jóváhagyás kell, vagy egy aláírt permit. Enélkül a tokenszerződés még az Aave ellenőrzései előtt visszafordul.
+- **Visszafizetés valaki más helyett összeg megadása nélkül.** Egy másik cím nevében a „teljes adósság” értékkel (`type(uint256).max`) indított visszafizetés `NoExplicitAmountToRepayOnBehalf` hibával meghiúsul; add meg az összeget.
+- **Por (dust).** A kamat másodpercenként halmozódik, így ha pontosan azt az egyenleget fizeted vissza, amelyet egy perccel korábban láttál, néhány wei adósság megmarad. Az adósság teljes rendezéséhez a maximális értékkel fizess vissza, amelyet a Pool a tartozásod összegére korlátoz.
+
+## Okok, amelyeket már nem kell keresned
+
+Két régi magyarázat már nem érvényes. Az Isolation Mode és az adósságplafonjai (debt ceilings) az Aave V3.7-ben kikerültek, és ugyanígy kikerült a siloed borrowing, így ma egyetlen hitelfelvétel sem hiúsul meg azért, mert egy eszköz izolált, vagy elérte a plafont. A stabil kamatozású hitelfelvétel pedig a V3.2 óta megszűnt, így kamatmódváltáson sem bukik el semmi. Ha egy régebbi útmutató ezek valamelyikét említi, az az Aave egy olyan verzióját írja le, amely már nincs telepítve.
+
+## Mit tegyél, ha egy tranzakció árzuhanás közben hiúsul meg?
+
+Egy sikertelen tranzakció nyugodt piacon kellemetlenség, eső piacon viszont probléma, mert az az óra, amelyet a hiba felderítésével töltesz, épp az az óra, amelyre a health factorodnak szüksége van. Egy rövid sorrend:
+
+1. **Olvasd el a hibát.** Szimuláld a tranzakciót a tárcádban, vagy másold be a hexadecimális szelektort egy blokkfelfedező dekóderébe; a fenti nevek megmondják, melyik esetről van szó.
+2. **A visszafizetést részesítsd előnyben a fedezet hozzáadásával szemben.** A visszafizetés befagyasztott tartalékoknál és megtelt supply capeknél is működik, a `repayWithATokens` használatával pedig üres likviditásnál is. A fedezet hozzáadásához olyan cap kell, amelyben van hely, és nem befagyasztott tartalék.
+3. **Próbálj kisebb összegeket.** A likviditás és a capek mennyiségek; a beleférő kivétel vagy hitelfelvétel átmegy, miközben a teljes meghiúsul.
+4. **Használj másik eszközt.** Egy másik kivehető fedezet vagy egy másik visszafizethető eszköz gyakran elérhető, amikor az első blokkolva van.
+5. **Ellenőrizd a példányt és a hálózatot.** A megfelelő eszközre, de rossz Poolra küldött visszafizetés `NoDebtOfSelectedType` hibával meghiúsul, és gas díjba és időbe kerül.
+6. **Legközelebb kapd meg korábban a riasztást.** Ezek közül minden eset megkerülése perceket vesz igénybe. Egy bőséges tartalékkal beállított health factor-riasztás ezeket a perceket nyeri meg neked.
+
+A Tokenping 5 percenként ellenőrzi az Aave health factorodat, minden Aave V3-piacon 21 hálózaton és minden Aave V4 Spoke-ban, és üzenetet küld Signalon, Telegramon vagy e-mailben, ha a health factor az általad választott küszöbérték (1,1 és 10 között) alatt van, és ezt minden ellenőrzéskor megismétli, amíg helyre nem áll. A számot a `getUserAccountData` függvényből olvassa ki, ugyanabból, amelyet a kivételi ellenőrzés használ. Egy riasztás nem tud helyetted cselekedni, és ebben az útmutatóban semmi sem akadályozza meg a likvidálást; azt mondja meg, melyik ajtó van zárva, hogy először a nyitottal próbálkozz. Az [Aave V3 health factorodat](/hu/aave) fizetés nélkül ellenőrizheted; a riasztások ára <AlertPrice />, piaconként vagy Spoke-onként egy riasztással. A [hogyan kerüld el a likvidálást az Aave-on](/hu/blog/aave-likvidalas-elkerulese) részletesen tárgyalja a visszafizetés vagy fedezet hozzáadása közötti döntést, a [miért esett a health factorod](/hu/blog/miert-csokkent-az-aave-health-factor) pedig azokat az okokat, amelyekre reagálsz.
+
+## Források
+
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol), [BorrowLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/BorrowLogic.sol) és [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): minden fent említett ellenőrzés, a futásuk sorrendje, a 0-s LTV-ről szóló megjegyzés és a nulla LTV-jelző (aave-v3-origin main, megtekintve: 2026. október 29.)
+- [Errors.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/helpers/Errors.sol): a hibanevek és leírásaik (aave-v3-origin main, megtekintve: 2026. október 29.)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getAllReservesTokens`, valamint minden tartaléknál `getReserveConfigurationData`, `getReserveCaps`, `getPaused` és `getReserveData`, blokk: 26296985 (megtekintve: 2026. október 29.)
+- [aEthUSDC](https://etherscan.io/address/0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c): az aToken-szerződésben tartott USDC, blokk: 26296985 (megtekintve: 2026. október 29.)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): a WETH és az USDC ára, blokk: 26296985 (megtekintve: 2026. október 29.)
+- [Aave docs: Pool Configurator](https://aave.com/docs/aave-v3/smart-contracts/pool-configurator): mit engednek a befagyasztott és a szüneteltetett tartalékok, a 0-s capek (megtekintve: 2026. október 29.)
+- [Aave v2/v3 security incident 04/11/2023](https://governance.aave.com/t/aave-v2-v3-security-incident-04-11-2023/15335): a 2023. november 4-i szüneteltetések, a november 12-i, 13-i és 16-i feloldások és a türelmi idő (megtekintve: 2026. október 29.)
+- [Aave V3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): a stabil kamatozású hitelfelvétel megszüntetése (megtekintve: 2026. október 29.)
+- [Aave V3.7: isolation mode and siloed borrowing removal](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/mode-removal.md) (megtekintve: 2026. október 29.)
+- [Risk Stewards: Supply and Borrow Cap Reductions on Aave V3 / 2026.07.10](https://governance.aave.com/t/risk-stewards-supply-and-borrow-cap-reductions-on-aave-v3-2026-07-10/25296): a LlamaRisk MegaETH-capcsökkentései, végrehajtva: 2026. július 14. (megtekintve: 2026. október 29.)
+
+_Oktatási tartalom, nem pénzügyi tanácsadás. A riasztások csökkentik a kockázatot, de nem akadályozzák meg a likvidálást._

@@ -1,0 +1,157 @@
+export const meta = {
+  slug: "aave-kamatok",
+  title: "Az Aave kamatai: hogyan működnek, és miért ugranak meg",
+  description:
+    "Az Aave hitelkamata kihasználtsági görbét követ: az optimális szintig enyhén, fölötte meredeken nő. Képlet, valós paraméterek, kamatugrások és teendők.",
+  h1: "Hogyan működnek az Aave kamatai, és miért ugranak meg a hitelkamatok?",
+  publishedAt: "2026-10-25",
+  primaryQuestion: "Hogyan határozza meg az Aave a hitel- és az elhelyezési kamatot, és miért ugranak meg ezek?",
+  readingMinutes: 9,
+};
+
+<ShortAnswer>
+  Az Aave V3-on minden eszköz változó hitelkamata egy governance által beállított görbét követ: a kihasználtsággal,
+  vagyis az elhelyezett tokenek felvett részével, egy optimális szintig enyhén emelkedik, fölötte pedig meredeken. Az
+  elhelyezők a hitelkamat és a kihasználtság szorzatát kapják, csökkentve a tartalékhányaddal. A kamatot minden
+  elhelyezésnél, hitelfelvételnél, visszafizetésnél és kivételnél újraszámolják, így egyetlen nagy kivétel az optimális
+  szint fölé tolhatja a kihasználtságot, és egy blokkon belül megtöbbszörözheti a kamatot: az USDC az Ethereum Core
+  piacon 2026. október 14-én 4,50%-ról 13,67%-os APR-re ugrott, és körülbelül 36 perccel később már 4,76%-on állt. Az
+  Aave V3-ban minden adósság változó kamatozású.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* A számok és a blokkszámok, amelyeknél lekérdeztük őket: content/blog/snapshots/aave-interest-rates.md */}
+
+## Mi határozza meg a hitelkamatot az Aave-on?
+
+Az Aave V3-on egy eszköz hitelkamatát két dolog határozza meg: a kihasználtsága és a kamatparaméterei. A kihasználtság (utilization) az eszköz pooljának kikölcsönzött része: az adósság osztva az adósság és a még rendelkezésre álló tokenek összegével. A paraméterek eszközönként négy számot jelentenek, amelyeket az Aave governance (a protokoll közösségi irányítása) állít be, és az Aave Risk Stewardjai korlátozott lépésekben, minimális várakozási idővel módosíthatják őket:
+
+- **Optimális kihasználtsági arány (optimal usage ratio):** az a kihasználtság, amelynél a görbe megtörik.
+- **Alapkamat (base rate):** a hitelkamat 0%-os kihasználtságnál.
+- **1. meredekség (slope 1):** mennyit emelkedik a kamat 0%-tól az optimális kihasználtsági arányig.
+- **2. meredekség (slope 2):** mennyivel emelkedik még tovább az optimális kihasználtsági aránytól 100%-ig.
+
+A 26269328-as Ethereum-blokkban és az 518125419-es Arbitrum-blokkban, 2026. október 25-én lekérdezve néhány gyakori eszköz paraméterei és kamatai ezek voltak:
+
+| Piac és eszköz     | Optimális kihasználtság | Alapkamat | 1. meredekség | 2. meredekség | Kihasználtság | Hitel-APR | Elhelyezési APR |
+| ------------------ | ----------------------- | --------- | ------------- | ------------- | ------------- | --------- | --------------- |
+| Ethereum Core USDC | 94%                     | 0%        | 4,5%          | 10%           | 93,72%        | 4,49%     | 3,78%           |
+| Ethereum Core USDT | 92%                     | 0%        | 4,5%          | 10%           | 87,81%        | 4,30%     | 3,39%           |
+| Ethereum Core WETH | 92%                     | 0%        | 2,2%          | 6%            | 81,31%        | 1,94%     | 1,31%           |
+| Ethereum Core GHO  | 99%                     | 4,5%      | 0%            | 0%            | nem használt  | 4,50%     | 0%              |
+| Arbitrum USDC      | 90%                     | 0%        | 4%            | 10%           | 77,32%        | 3,44%     | 2,39%           |
+
+A GHO a kivétel: mindkét meredeksége nulla, így a kamata a kihasználtságtól függetlenül állandó, és kézzel módosítják (lásd: [a GHO és az Aave V4](#hogyan-hatarozzak-meg-a-kamatot-a-gho-nal-es-az-aave-v4-ben)).
+
+## Hogyan számolják ki az Aave hitelkamatát?
+
+Az Aave V3 hitelkamata az optimális kihasználtsági arányig egyenes vonal, fölötte pedig egy sokkal meredekebb egyenes. U-val jelölve a kihasználtságot:
+
+**Az optimális kihasználtsági arányig: hitelkamat = alapkamat + 1. meredekség × U ÷ optimális kihasználtsági arány**
+
+**Fölötte: hitelkamat = alapkamat + 1. meredekség + 2. meredekség × (U − optimális kihasználtsági arány) ÷ (1 − optimális kihasználtsági arány)**
+
+A szerződésben U a teljes adósság osztva a teljes adósság és a pool által még tartott tokenek összegével. Az USDC Ethereum Core-paramétereivel a kamat az egyes kihasználtsági szinteken:
+
+| Kihasználtság   | Hitel-APR |
+| --------------- | --------- |
+| 50%             | 2,39%     |
+| 80%             | 3,83%     |
+| 90%             | 4,31%     |
+| 94% (optimális) | 4,50%     |
+| 95%             | 6,17%     |
+| 96%             | 7,83%     |
+| 98%             | 11,17%    |
+| 100%            | 14,50%    |
+
+94% alatt tíz százalékpontnyi kihasználtság kevesebb mint fél ponttal mozdítja el a kamatot. Fölötte minden pont körülbelül 1,67 pontot ad hozzá, és a kihasználtság utolsó hat pontja több mint megháromszorozza a kamatot. 2026. október 25-én lekérdezve az USDC 93,72%-on állt, közvetlenül a törés alatt: 4,5% × 0,9372 ÷ 0,94 adja az akkor felszámított 4,49%-ot.
+
+A görbe szándékosan működik így. Az optimális szint alatt az olcsó hitel használatban tartja a poolt; fölötte a meredek kamat annyira megdrágítja a hitelfelvételt, hogy egyes hitelfelvevők visszafizetnek, egyes tulajdonosok pedig elhelyeznek, ami visszahozza a kihasználtságot, és rendelkezésre álló tokeneket hagy azoknak az elhelyezőknek, akik ki akarják venni a pénzüket.
+
+## Miért ugranak meg az Aave hitelkamatai?
+
+Az Aave hitelkamatai akkor ugranak meg, amikor a kihasználtság átlépi az optimális kihasználtsági arányt, általában azért, mert egy nagy elhelyező kivesz, vagy egy nagy hitelfelvevő hitelt vesz fel. A kamatot ugyanabban a tranzakcióban újraszámolják, és az adott eszköz minden hitelfelvevője attól a pillanattól a következő változásig az új kamatot fizeti.
+
+2026. október 14-én egyetlen, pontosan 133 898 000 USDC-s kivétel az Ethereum Core piacon egyetlen blokk alatt 93,92%-ról 99,50%-ra tolta a kihasználtságot:
+
+| Ethereum-blokk (UTC)             | Mi történt                                       | Kihasználtság    | USDC hitel-APR |
+| -------------------------------- | ------------------------------------------------ | ---------------- | -------------- |
+| 26194052 (október 14., 23:32:47) | Előtte                                           | 93,92%           | 4,50%          |
+| 26194053 (október 14., 23:32:59) | 133 898 000 USDC-t vettek ki                     | 99,50%           | 13,67%         |
+| 26194088 (október 14., 23:39:59) | A legmagasabb pont az időszakban                 | körülbelül 99,8% | 14,18%         |
+| 26194231 (október 15., 00:08:35) | Ugyanaz a cím visszahelyezett 133 898 000 USDC-t | 94,16%           | 4,76%          |
+
+A hitelfelvevők 36 percig a szokásos kamat nagyjából háromszorosát fizették, és a fenti képlet a kihasználtságból mindegyik kamatot visszaadja. Egy kamatugrás addig tart, amíg a kihasználtság magas marad: itt ugyanazok a tokenek tértek vissza, más esetekben viszont új elhelyezők vagy visszafizetések kellenek ahhoz, hogy lejjebb hozzák, amelyeket a magas kamat vonz be.
+
+Két másik dolog is megváltoztatja a hitelkamatot. A governance vagy a Risk Stewardok módosíthatják a négy paramétert, ami az egész görbét egyszerre mozdítja el. Két tranzakció között pedig a kamat nem változik: az Aave az adott eszköz minden elhelyezésénél, hitelfelvételénél, visszafizetésénél, kivételénél és likvidálásánál újraszámolja, és a kamat ezen a szinten gyűlik, másodpercről másodpercre, egészen a következőig.
+
+## Miért kapnak kevesebbet az elhelyezők, mint amennyit a hitelfelvevők fizetnek?
+
+Az elhelyezők azért kapnak kevesebbet, mint amennyit a hitelfelvevők fizetnek, mert a poolnak csak a kikölcsönzött része fizet kamatot, és a protokoll ennek egy részét megtartja. Az elhelyezési kamat:
+
+**Elhelyezési kamat = hitelkamat × kihasználtság × (1 − tartalékhányad)**
+
+Az Ethereum Core USDC-re 2026. október 25-én: 4,4866% × 0,9372 × (1 − 0,10) = 3,78%. A tartalékhányad (reserve factor), amely az USDC-nél 10%, a WETH-nél 15%, az Aave kincstárába kerül. Ahol egy eszköznek behajthatatlan adósságból (bad debt) eredő hiánya van, a szerződés ezt is beszámítja az elhelyezési oldalon, ami kissé csökkenti az elhelyezési kamatot.
+
+## Mi a különbség az APR és az APY között az Aave-on?
+
+A szerződések a kamatot éves kamatlábként (APR) tárolják, az Aave alkalmazás pedig APY-t mutat, amely a kamatos kamatot is tartalmazza. Az alkalmazás matematikai könyvtára az APR-t másodpercenként tőkésíti egy 31 536 000 másodperces éven át:
+
+**APY = (1 + APR ÷ N)^N − 1, ahol N = 31 536 000**
+
+Az Ethereum Core USDC 4,4866%-os APR-je az alkalmazásban 4,59%-os APY-ként jelenik meg. Ezeken a szinteken a különbség körülbelül egytized pont; 14%-os APR-nél körülbelül egy pont (15,0% APY).
+
+## Hogyan hatnak a kamatugrások a health factorodra?
+
+Egy rövid kamatugrás alig mozdítja el a health factorodat (egészségi mutató); egy hónapokig tartó magas kamat viszont igen. A kamat növeli az adósságodat, a több adósság pedig csökkenti a health factort, ahogy [a kamatról mint okról szóló rész az útmutatóban, amely azt magyarázza, miért csökken a health factorod](/hu/blog/miert-csokkent-az-aave-health-factor#3-ok-gyorsabban-nott-a-kamat-az-adossagodon-mint-a-fedezeteden) kifejti.
+
+Vegyünk 10 elhelyezett WETH-et 12 000 felvett USDC ellenében az Ethereum Core piacon, a WETH 83%-os likvidálási küszöbével (liquidation threshold, lekérdezve 2026. október 14-én) és szemléltető 2400 $-os ETH-árral: a health factor 1,66. Ha azt is beszámítjuk, amit a WETH az 1,31%-os elhelyezési kamatán keres:
+
+| Meddig tart a kamat | 4,49%-on (2026. október 25.)     | 14,50%-on (a görbe teteje) |
+| ------------------- | -------------------------------- | -------------------------- |
+| 36 perc             | körülbelül 0,04 USDC kamat, 1,66 | körülbelül 0,12 USDC, 1,66 |
+| 30 nap              | körülbelül 1,66                  | körülbelül 1,64            |
+| Egy év              | körülbelül 1,61                  | körülbelül 1,45            |
+
+Az október 14-i kamatugrás nagyjából 12 centjébe került ennek a pozíciónak. Egy piac, amely egy évig a görbéje tetején marad, ármozgás nélkül is 1,66-ról körülbelül 1,45-re vinné, ezért egy lassú sodródás ellen olyan riasztási küszöbértéket érdemes választani, amely bőven hagy mozgásteret ([a health factor által adott tartalékról szóló útmutató](/hu/blog/biztonsagos-aave-health-factor#milyen-gyorsan-eszi-fel-a-kamat-es-a-parametervaltozas-a-tartalekodat)).
+
+## Mit tehetsz, ha megugrik a hitelkamatod?
+
+Ha megugrik a hitelkamatod, először nézd meg az eszköz kihasználtságát az oldalán az Aave alkalmazásban: ha éppen csak az optimális kihasználtsági arány fölött van, a kamat azonnal visszaesik, amint a kihasználtság is. Ezután négy lehetőséged van, mindegyiknek megvan az ára:
+
+- **Várni.** Egy nagy kivétel okozta kamatugrás véget érhet, amikor azok a tokenek visszajönnek, ahogy 2026. október 14-én. Semmi sem garantálja, hogy visszajönnek, és addig a magas kamatot fizeted.
+- **Az adósság egy részének visszafizetése.** Csökkenti a kamatodat és a kockázatodat is; [az Aave health factorod emeléséről szóló útmutató](/hu/blog/aave-likvidalas-elkerulese) bemutatja a visszafizetést saját tokenekből vagy a fedezetedből.
+- **Az adósság átváltása egy másik eszközre.** Az Aave Labs felületén van egy debt swap (adósságcsere) funkció, amely egyetlen tranzakcióban cseréli le az egyik felvett eszközt egy másikra, az Aave dokumentációja szerint az Ethereum Core, Prime és EtherFi piacon, valamint az Arbitrumon, az Avalanche-on, a Base-en, a BNB Chainen, az Optimismon, a Polygonon, a Gnosison és a Sonicon. A Metis, a Scroll, a ZKsync, a Celo, a Soneium, a Linea, a Plasma és az Ink esetében nincs feltüntetve. Az új eszköznek saját görbéje van, és saját kockázata, ha az ára másként mozog, mint a régi adósságodé.
+- **Hitelfelvétel egy másik piacon.** Minden piacnak saját poolja és saját kihasználtsága van: 2026. október 25-én az USDC 4,49%-ba került az Ethereum Core piacon és 3,44%-ba az Arbitrumon. Az átköltözés azt jelenti, hogy az egyik piacon visszafizetsz, a másikon hitelt veszel fel, az ottani hálózaton lévő fedezettel.
+
+## Hogyan határozzák meg a kamatot a GHO-nál és az Aave V4-ben?
+
+A GHO, az Aave saját stablecoinja, rögzített hitelkamattal rendelkezik, amelyet emberek választanak meg, nem a görbe. Az Ethereum Core piacon mindkét meredeksége nulla, így a kamat az alapkamat, amely 2026. október 25-én 4,50% volt. Egy GHO steward-szerződésen keresztül egy 2-of-3 Risk Council (három tagból kettő aláírásával döntő kockázati tanács) módosítja: frissítésenként legfeljebb 5 százalékponttal, és legfeljebb naponta egyszer. A legutóbbi módosítás 2026. október 3-án 4,25%-ról 4,50%-ra emelte; 2024 novembere óta 44-szer változtatták, 3,00% és 14,50% között. A stkAAVE-tulajdonosok korábbi kedvezményét az Aave v3.4 megszüntette.
+
+Az Aave V4 megtartja a kihasználtsági görbét, de a dokumentációja szerint azt eszközönként a Hubnál állítják be, abban a poolban, amely minden Spoke-nak kölcsönöz. Erre a közös kamatra minden hitelfelvevő egy User Risk Premiumot (felhasználói kockázati felár) fizet, amely a fedezete minőségétől függ: az Aave példájában egy 5%-os alapkamatra 50%-os felár jön, ami 7,5%-ot ad. Ugyanannak az eszköznek két V4-es hitelfelvevője így eltérő kamatot fizethet, és [a health factor-útmutató V4-ről szóló része](/hu/blog/aave-health-factor-magyarazat#mas-a-health-factor-az-aave-v4-en) azt is bemutatja, mi minden más változik még a V4-ben.
+
+## Kaphatsz fix kamatot az Aave-on?
+
+Nem. Az Aave V3-ban egykor volt stabil kamatozású (stable rate) lehetőség, de egy hibajelentés után 2024-ben teljesen kivezették, és az Aave v3.2 eltávolította a kódját. Minden Aave V3-hitel változó kamatot fizet, és a GHO rögzített kamata is bármikor módosítható a steward korlátain belül.
+
+## Figyelmeztethet egy riasztás az emelkedő kamatokra?
+
+Egy health factor-riasztás nem a kamatokat figyeli, hanem azt, hogy mit tesznek a kamatok a pozícióddal. A Tokenping 5 percenként ellenőrzi az Aave V3 és V4 health factorodat 22 hálózaton, és Signalon, Telegramon vagy e-mailben üzen neked, amíg az az általad beállított küszöbérték (1,1 és 10 között) alatt van. Egy olyan kamatugrás, mint a 2026. október 14-i, nem váltja ki, mert alig mozdítja el a health factort; a hónapokig tartó magas kamat viszont kiváltja, amint az adósság annyira megnőtt, hogy átlépje a küszöbértékedet.
+
+Ha magáról a kamatról szeretnél üzenetet kapni, más eszközök küldenek kamatriasztást, és [az Aave riasztóeszközeit összehasonlító útmutatónk](/hu/blog/aave-likvidalasi-riasztas-eszkozok) felsorolja, melyik mit figyel. A health factor-riasztás beállítását [a health factor-riasztás beállításáról szóló útmutató](/hu/blog/aave-health-factor-riasztas-beallitasa) írja le, előtte pedig [ellenőrizheted az Aave V3 health factorodat](/hu/aave); a pozícióid megtekintéséért nem kell fizetned.
+
+## Források
+
+- [DefaultReserveInterestRateStrategyV2.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/misc/DefaultReserveInterestRateStrategyV2.sol) és [ReserveLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ReserveLogic.sol): a kamatgörbe, a kihasználtsági arány, az elhelyezési kamat, és hogy mikor számolják újra a kamatokat (aave-v3-origin, megtekintve: 2026. október 25.)
+- [Az Aave V3 Ethereum Core kamatstratégiája](https://etherscan.io/address/0x9ec6F08190DeA04A54f8Afc53Db96134e5E3FdFB#readContract) és [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): paraméterek és kamatok a 26269328-as blokkban; az USDC a 26194052-es, 26194053-as, 26194088-as, 26194230-as és 26194231-es blokkban (megtekintve: 2026. október 25.)
+- [Az Aave V3 Arbitrum kamatstratégiája](https://arbiscan.io/address/0x429F16dBA3B9e1900087Cbaa7b50D38Bc60fB73F#readContract): az USDC paraméterei és kamatai az 518125419-es blokkban (megtekintve: 2026. október 25.)
+- [Aave Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): a kamatparaméterek azon értékek között, amelyeket a stewardok módosíthatnak, frissítésenként maximális változással és minimális várakozási idővel (megtekintve: 2026. október 25.)
+- [calculateCompoundedRate az aave-utilitiesben](https://github.com/aave/aave-utilities/blob/master/packages/math-utils/src/formatters/compounded-interest/calculate-compounded-interest.ts): APR-ből APY 31 536 000 másodpercen át (megtekintve: 2026. október 25.)
+- [Az Aave swapfunkciói](https://aave.com/docs/aave-v3/smart-contracts/swap-features.md): adósságcsere és visszafizetés fedezetből, valamint az ezeket támogató piacok (megtekintve: 2026. október 25.)
+- [GHO Stewards: October 2026 GHO borrow rate update (a GHO hitelkamatának 2026. októberi frissítése)](https://governance.aave.com/t/gho-stewards-october-2026-gho-borrow-rate-update/25754) (TokenLogic, 2026. október 2., megtekintve: 2026. október 25.) és a [GHO steward-szerződés](https://etherscan.io/address/0x98217A06721Ebf727f2C8d9aD7718ec28b7aAe34#readContract): frissítésenkénti korlátok és a kamat története 2024 novembere óta (megtekintve: 2026. október 25.)
+- [Az Aave v3.4 újdonságai](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.4/Aave-v3.4-features.md): a GHO stkAAVE-kedvezményének megszüntetése (megtekintve: 2026. október 25.)
+- [BGD: Full deprecation of stable rate (a stabil kamat teljes kivezetése)](https://governance.aave.com/t/bgd-full-deprecation-of-stable-rate/16473) (2024. január 31.) és [az Aave v3.2 újdonságai](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): a stabil kamat eltávolítása (megtekintve: 2026. október 25.)
+- [Az Aave V4 dokumentációja](https://aave.com/docs/aave-v4.md) és [a V4-pozíciók](https://aave.com/docs/aave-v4/positions.md): a kamatgörbe Hub-eszközönként és a User Risk Premium (megtekintve: 2026. október 25.)
+
+_Oktatási tartalom, nem pénzügyi tanácsadás. A riasztások csökkentik a kockázatot, de nem akadályozzák meg a likvidálást._

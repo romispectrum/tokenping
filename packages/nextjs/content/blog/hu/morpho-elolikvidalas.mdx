@@ -1,0 +1,169 @@
+export const meta = {
+  slug: "morpho-elolikvidalas",
+  title: "Morpho előlikvidálás: mi ez, és hogyan kapcsold ki",
+  description:
+    "Hogyan ad el a Morpho előlikvidálás (Auto-deleverage) egy hitelrészt az LLTV előtt, miért vezeti ki a Morpho, és hogyan ellenőrizd és vond vissza.",
+  h1: "Mi a Morpho előlikvidálás, és hogyan ellenőrizd vagy kapcsold ki?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Mi a Morpho előlikvidálás, és hogyan ellenőrzöm, hogy be van-e kapcsolva, és hogyan kapcsolom ki?",
+  readingMinutes: 11,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Az előlikvidálás (pre-liquidation) egy választható szerződés egyetlen Morpho Blue (változó kamatozású) piachoz, amely
+  lehetővé teszi, hogy bárki eladja a fedezeted egy részét az adósságod törlesztésére, mielőtt a pozíciód eléri a piac
+  LLTV-jét. A Morpho alkalmazásában volt egy Auto-deleverage (automatikus tőkeáttétel-csökkentés) nevű funkció, amely
+  így működik. A Morpho most kivezeti: az alkalmazás nem fogad új pozíciókat, a súgóközpont arra kéri azokat, akiknél be
+  van kapcsolva, hogy kapcsolják ki, az SDK pedig 2026. szeptember 22-én elavultnak jelölte az előlikvidálás kódját. A
+  szerződések továbbra is működnek, így ha valaha bekapcsoltad, ellenőrizd az `isAuthorized` hívással a Morpho Blue
+  szerződésen, és vond vissza az alkalmazás kezelés gombjával vagy a `setAuthorization(contract, false)` hívással.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Számok, blokkszámok és források: content/blog/snapshots/morpho-pre-liquidation.md */}
+
+## Mi az előlikvidálás a Morphón?
+
+Az előlikvidálás egy második, korábbi likvidálási határ, amelyet egy hitelfelvevő hozzáadhat egy Morpho Blue piachoz. Egy normál Blue piacon egy pozíció csak akkor likvidálható, ha a health factora (egészségi mutató) 1 alá esik, a piac likvidálási LTV-jéhez (LLTV) mérve; [a Morpho health factor útmutató](/hu/blog/morpho-health-factor-magyarazat) elmagyarázza ezt a számot. Egy előlikvidálási szerződés egy alacsonyabb határt állít be, a preLLTV-t. A két határ között bárki visszafizetheti az adósságod egy részét, a szerződés által megszabott korlátig, és elviheti az adósság értékének megfelelő fedezetet egy bónusszal együtt, lépésenként.
+
+Három dolog különbözteti meg:
+
+- **Választható.** Csak azután érvényes, hogy a Morpho Blue-n engedélyezted a szerződést. Enélkül a szerződés nem nyúlhat a pozíciódhoz.
+- **Piaconként működik.** Minden szerződés egyetlen Blue piachoz és egyetlen rögzített paraméterkészlethez kötődik, és nincs tulajdonosa, adminisztrátora vagy frissítési funkciója.
+- **Csak a Blue-n létezik.** A Morpho Midnight, a [Midnight útmutatóban](/hu/blog/morpho-midnight-fix-kamatozasu-hitelek) leírt fix kamatozású piacok, nem ismeri az előlikvidálást.
+
+A Morpho 2025. március 4-én jelentette be az előlikvidálási factory-t, és az auto-deleverage és az auto-close funkciókat nevezte meg felhasználási módként. A szerződésekben, az API-ban és az SDK-ban pre-liquidation a neve. A Morpho alkalmazásában volt egy Auto-deleverage nevű funkció, amelyet a súgóközpont ugyanígy ír le: ha a hitel-fedezet arányod (LTV) átlép egy beállított küszöböt, a pozíció egy része lezárható, és díjat csak a lezárt rész után számítanak fel.
+
+## Elérhető még az előlikvidálás a Morpho alkalmazásban?
+
+A Morpho alkalmazásban nem lehet új előlikvidálást beállítani. 2026. október 26-i állapot:
+
+| Hol                              | Állapot                                                                                                                                                                                                              |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Morpho alkalmazás és súgóközpont | A súgócikk címe most „Sunsetting Auto-deleverage” (az Auto-deleverage kivezetése), utoljára 2026. május 13-án frissítve: a funkció nem fogad új pozíciókat, és akiknél be van kapcsolva, azoknak ki kell kapcsolniuk |
+| Morpho SDK                       | Minden előlikvidálási exportot elavultnak jelöltek 2026. szeptember 22-én (1132-es pull request), a következő főverzióban eltávolítják, utód nélkül                                                                  |
+| Morpho dokumentáció              | Az előlikvidálás oldala megszűnt; a régi címe most az általános likvidálási oldalra vezet                                                                                                                            |
+| Morpho API                       | Még mindig 106 előlikvidálási szerződést listáz a listázott piacokon: Ethereum (50), Base (37), Arbitrum (8), Polygon (6), Katana (3) és Unichain (2)                                                                |
+| A szerződések                    | Változatlanok és működnek: bárki meghívhatja őket egy hitelfelvevőre, aki engedélyezte őket                                                                                                                          |
+
+Az utolsó sor számít, ha korábban bekapcsoltad a funkciót. Ha egy alkalmazás kivezet egy funkciót, az nem vonja vissza a láncon tárolt engedélyt.
+
+## Hogyan működik egy előlikvidálási szerződés?
+
+Egy előlikvidálási szerződést a Morpho PreLiquidationFactory szerződése hoz létre, amelyet bárki használhat: bárki telepíthet szerződést bármely Blue piacra, és minden piac és paraméterkészlet csak egyszer létezhet. A rögzített paraméterei:
+
+| Paraméter        | Mit állít be                                                                                                                                               |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| preLLTV          | A hitel-fedezet arány, amely felett az előlikvidálás megengedett. A piac LLTV-je alatt kell lennie                                                         |
+| preLCF1, preLCF2 | A close factor (az adósság egyszerre visszafizethető része): az adósságod legnagyobb része, amelyet egy hívás visszafizethet, a preLLTV-nél és az LLTV-nél |
+| preLIF1, preLIF2 | Az ösztönző szorzó (incentive factor): a visszafizetett adósságot ezzel szorozva kapjuk az elvitt fedezetet, ugyanannál a két pontnál                      |
+| Orákulum         | Az árforrás, amely eldönti, előlikvidálható vagy-e, és milyen áron viszik el a fedezetedet. Lehet a piac saját orákuluma vagy egy másik                    |
+
+Mielőtt cselekszik, a szerződés a saját orákulumának árával ellenőrzi, hogy a hitel-fedezet arányod a preLLTV felett és még legfeljebb az LLTV-n van. Az LLTV felett az előlikvidálás leáll, és a Blue normál likvidálása veszi át a helyét. Utána a Morpho Blue a piac saját orákulumán ellenőrzi, hogy a pozíciód egészséges-e; ha nem, az egész hívás visszafordul (revert).
+
+A konstruktor korlátokat szab a paraméterekre. A close factor nem csökkenhet, ahogy a kockázat nő, és csak az első értéke van 100%-ban korlátozva: egy szerződés, amelynek második értéke 100% feletti, lehetővé teheti, hogy egyetlen hívás a teljes adósságodat visszafizesse, mielőtt az LLTV-t elérnéd. A Morpho alapértelmezett értékei messze ez alatt maradnak. Az ösztönző szorzónak legalább 1-nek (nincs bónusz) és legfeljebb 1 ÷ LLTV-nek kell lennie (egy 86%-os piacon körülbelül 16%-os bónusz). A Morpho repója szerint ez a korlát, azzal a szabállyal együtt, hogy az előlikvidálás az LLTV-nél leáll, megakadályozza, hogy egy előlikvidálás a korábbinál kevésbé egészséges állapotban hagyja a pozíciót.
+
+### Hogyan nő a close factor és a bónusz a preLLTV és az LLTV között?
+
+Mindkettő egyenes arányban nő a hitel-fedezet arányoddal. A szerződés megméri, milyen messze jársz a preLLTV-től az LLTV felé, 0 és 1 közötti arányként, és mindkét szorzót ennyivel mozdítja el az első értékétől a második felé. A két határ felénél a close factor félúton van a preLCF1 és a preLCF2 között.
+
+Két korlát következik a kódból. A close factor egy hívást korlátoz, nem az összeget: a Morpho saját repója megjegyzi, hogy egy likvidátor lezárhat egy kis részt, a preLLTV felett hagyhat, és újra hívhat, így a lezárt összeg több lehet a close factornál. És a close factor az adósságod aránya, nem a fedezetedé; az [Aave útmutató a close factorról](/hu/blog/hogyan-mukodik-a-likvidalas-az-aave-on#mennyi-adossagomat-likvidalhatjak-egyszerre) ugyanezt a gondolatot mutatja be az Aave-on.
+
+## Melyek a Morpho alapértelmezett előlikvidálási beállításai?
+
+A Morpho az SDK-jában nyolc gyakori LLTV mindegyikéhez tartott egy alapértelmezett paraméterkészletet, és az API-ja által listázott mind a 106 szerződés ezeket az alapértékeket használja. Az API csak az ismert alapértelmezett paraméterekkel rendelkező szerződéseket listázza, így más beállítású szerződések is létezhetnek anélkül, hogy ott megjelennének. A hat LLTV, amelyhez listázott szerződés tartozik:
+
+| Piaci LLTV | preLLTV | Close factor (preLLTV-től LLTV-ig) | Bónusz | Az előlikvidálás ennél a piaci health factornál kezdődik | Listázott szerződések |
+| ---------- | ------- | ---------------------------------- | ------ | -------------------------------------------------------- | --------------------- |
+| 62,5%      | 56,26%  | 0,75%-tól 27,95%-ig                | 12,68% | 1,111                                                    | 2                     |
+| 77%        | 72,74%  | 0,37%-tól 25,66%-ig                | 7,41%  | 1,059                                                    | 12                    |
+| 86%        | 83,26%  | 0,20%-tól 24,53%-ig                | 4,38%  | 1,033                                                    | 50                    |
+| 91,5%      | 89,79%  | 0,11%-tól 23,92%-ig                | 2,62%  | 1,019                                                    | 21                    |
+| 94,5%      | 93,37%  | 0,07%-tól 23,61%-ig                | 1,68%  | 1,012                                                    | 15                    |
+| 96,5%      | 95,78%  | 0,04%-tól 23,41%-ig                | 1,06%  | 1,008                                                    | 6                     |
+
+Minden alapértelmezett készletben a bónusz a két végponton azonos, és megegyezik azzal a bónusszal, amelyet a Blue normál likvidálása fizet azon a piacon. Az alapértékek nem teszik olcsóbbá az eladást dolláronként; minden egyes eladást kisebbé tesznek. Egy normál Blue likvidálásnak egyáltalán nincs close factora, így a likvidátor egyszerre a teljes adósságot visszafizetheti. [Hogyan működik a likvidálás a Morphón](/hu/blog/hogyan-mukodik-a-likvidalas-a-morphon): ez az útmutató azt az oldalt tárgyalja.
+
+## Egy valódi szerződés: USDC | cbBTC (86%) a Base-en
+
+A Base legnagyobb listázott Blue piacának hitelfelvétel szerint, az USDC | cbBTC (86%) piacnak (cbBTC fedezet, USDC adósság, 86%-os LLTV) egy előlikvidálási szerződése van, amelyet a Morpho API-ja listáz, a `0xa7272aFc21f9C321024ED93892a1abfeb621C374` címen. A Base-ről kiolvasva 2026. október 26-án, a Morpho API-jával összevetve:
+
+- A Base PreLiquidationFactory szerződése megerősíti, hogy ő hozta létre a szerződést, és a szerződés erre a piacra mutat.
+- preLLTV 83,26%, a close factor 0,20%-ról 24,53%-ra nő, a bónusz mindkét végponton 4,38%: a 86%-os alapértékek.
+- Az orákuluma a piac saját orákuluma. A cbBTC-t 80 000,15 USDC-re árazta a Base 53102870-es és 53102952-es blokkjánál; [a Morpho likvidálásáról szóló útmutató](/hu/blog/hogyan-mukodik-a-likvidalas-a-morphon) ugyanezt az árat használja.
+- A piacon körülbelül 1,61 milliárd USDC hitelt vettek fel nagyjából 40 051 cbBTC-vel szemben, körülbelül 43 000 hitelfelvevő pozícióban.
+- A 53102692-es blokk előtti, nagyjából 28 órányi Base-blokkban, amelyet kiolvastunk, nem volt előlikvidálás ezzel a szerződéssel.
+
+Az Ethereumon a legnagyobb listázott USDC | cbBTC (86%) piacnak ugyanilyen paraméterű szerződése van, a `0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A` címen, amely szintén a piac orákulumát használja.
+
+## Számolt példa: mennyit vihet el egy előlikvidálás?
+
+Vegyünk egy szemléltető pozíciót ezen a Base-piacon: 1 cbBTC fedezet és 50 000 USDC adósság, cbBTC-nként 80 000,15 USDC áron. A health factora a 86%-os LLTV-hez mérve 1,376, a 83,26%-os előlikvidálási határhoz mérve 1,332. Ugyanazzal az orákulummal az előlikvidálási érték mindig a piaci érték 0,968-szorosa (83,26 ÷ 86).
+
+Az előlikvidálás akkor kezdődhet, amikor a cbBTC 60 052,58 USDC alá esik, ami 24,9%-kal az említett ár alatt van. A normál likvidálás 58 139,53 USDC alatt kezdődik, 27,3%-kal alatta. E két ár között a legnagyobb egyszeri előlikvidálás így néz ki:
+
+| Hitel-fedezet arány | cbBTC ár  | Close factor | Visszafizetett adósság | Elvitt fedezet (USDC-értékben) | Bónusz | Hitel-fedezet arány utána |
+| ------------------- | --------- | ------------ | ---------------------- | ------------------------------ | ------ | ------------------------- |
+| 84%                 | 59 523,81 | 6,77%        | 3384                   | 3533                           | 148    | 83,26%                    |
+| 85%                 | 58 823,53 | 15,65%       | 7825                   | 8168                           | 343    | 83,26%                    |
+| 86%                 | 58 139,53 | 24,53%       | 12 266                 | 12 803                         | 538    | 83,23%                    |
+
+Az alapértékekkel egy teljes méretű hívás nagyjából a preLLTV-re hozza vissza a hitel-fedezet arányt, ahol a szerződés leáll. Hasonlítsd össze egy normál Blue likvidálással 87%-nál: a likvidátor visszafizetheti mind az 50 000 USDC-t, és elvihet 52 192 USDC értékű cbBTC-t, így neked körülbelül 5279 USDC fedezeted marad, hitel nélkül.
+
+## Miért kapcsolták be a hitelfelvevők, és mibe került nekik?
+
+A bekapcsolás mellett a kisebb, fokozatos eladások szóltak. A Morpho súgócikke úgy írja le az Auto-deleverage funkciót, hogy csak a pozíció egy részét zárja le az egészsége helyreállításához, és díjat csak a lezárt összeg után számít fel. A fenti példában egy hitelfelvevő, aki bekapcsolta, lépésenként 148-538 USDC bónuszt fizetett, míg egy normál likvidálás 87%-nál, amely a teljes hitelt visszafizeti, 2192 USDC-be kerül; több lépés, vagy utánuk egy normál likvidálás, ennél többet is kiadhat.
+
+A költségek:
+
+- **Az eladás korábban kezdődik.** Egy 86%-os piacon a pozíciód egy része már körülbelül 1,033-as piaci health factortól eladható, miközben a Morpho súgóközpontja által leírt, az LLTV-hez mért health factor még 1 felett van.
+- **A lépések ismétlődhetnek.** A close factor minden hívást korlátoz, nem az összeget, így több hívás követheti egymást, amíg a preLLTV felett maradsz.
+- **Az ár eltérhet.** Egy szerződés a piacétól eltérő orákulumot is használhat. A Morpho API-ja által listázott mind a 106 szerződés a piaca saját orákulumát használja; egy nem listázott szerződésre ez nem feltétlenül igaz.
+- **Senkinek nem kötelező cselekednie.** Ha egyetlen likvidátor sem hívja meg a szerződést, az LLTV előtt nem történik semmi; ha átléped, a szokásos módon likvidálhatnak.
+
+Mivel a funkciót most kivezetik, a Morpho arra kéri azokat a hitelfelvevőket, akiknél még be van kapcsolva, hogy kapcsolják ki, új bekapcsolásra pedig nincs lehetőség.
+
+## Hogyan ellenőrizd, hogy engedélyeztél-e egyet?
+
+Akkor engedélyeztél egy előlikvidálási szerződést, ha a Morpho Blue `isAuthorized(your wallet, contract)` hívása true értéket ad vissza. Az engedélyt maga a Morpho Blue tárolja, nem az előlikvidálási szerződés.
+
+1. **Keresd meg a piacod szerződését.** A Morpho API-ja a piac előlikvidálásai között listázza; a Morpho súgóközpontja az alkalmazásban a pozíciód vagy a piac oldalán lévő kezelés („manage”) gombra is utal.
+2. **Hívd meg az `isAuthorized` függvényt az adott hálózat Morpho Blue szerződésén.** Egy blokkböngészőben nyisd meg a Blue szerződés olvasó függvényeit, és első címként a tárcádat, második címként az előlikvidálási szerződést add meg.
+3. **Olvasd le a választ.** A true azt jelenti, hogy a szerződés előlikvidálhat, a false azt, hogy nem.
+
+Ezekhez a lépésekhez kell a szerződés címe, és a Morpho API-ja csak az alapértelmezett beállítású szerződéseket listázza. Egy engedély aláírással is megadható, és más is beküldheti, így nem feltétlenül látszik a tárcád saját tranzakciólistájában. Ha minden engedélyezett címedet látni szeretnéd, nézd meg egy blokkböngészőben a Morpho Blue szerződés SetAuthorization eseményeit, ahol a tárcád az engedélyező (authorizer). Minden címnél a legutóbbi esemény mutatja, hogy még be van-e kapcsolva, és a hálózat PreLiquidationFactory szerződése az `isPreLiquidation(address)` hívásra true értékkel felel az általa létrehozott szerződéseknél.
+
+Egy részlet itt fontos. A Blue engedélyében nincs piac: egy általad engedélyezett cím átmegy a Blue ellenőrzésein a hitelfelvételeidnél, a kivételeidnél és a fedezetkivételeidnél az egész Blue szerződésen. Egy előlikvidálási szerződés rögzített kódja csak a saját piacán fizet vissza és vesz ki fedezetet, de más általad engedélyezett címekre ez a korlát nem vonatkozik.
+
+## Hogyan kapcsold ki az előlikvidálást?
+
+Úgy kapcsolod ki, hogy az engedélyt visszaállítod false értékre:
+
+- **A Morpho alkalmazásban:** a Morpho súgóközpontja szerint kattints a kezelés („manage”) gombra a pozíción az irányítópultodon vagy a piac oldalán, amely megnyit egy eltávolítási ablakot az Auto-deleverage funkcióhoz.
+- **A szerződésen:** hívd meg a `setAuthorization(pre-liquidation contract, false)` függvényt a Morpho Blue-n a tárcádból. A hívás sikertelen, ha az érték már false, így egy sikertelen hívás azt is jelentheti, hogy nem volt mit eltávolítani.
+
+A visszavonás után a szerződés próbálkozásai a fedezeted kivételére meghiúsulnak, és csak a Blue normál likvidálása érvényes 1 alatti health factornál. Egy tranzakció gázdíjába kerül.
+
+## Hogyan méri a Tokenping az előlikvidálással rendelkező pozíciót?
+
+Ha egy hitelfelvevő engedélyezett egy előlikvidálási szerződést egy Blue piacon, a Tokenping a két határ közül az alacsonyabbra riaszt: az LLTV határára vagy az előlikvidálási határra. Ez azért számít, mert a Morpho súgóközpontja szerint az alkalmazásában mutatott health factor akkor éri el az 1-et, amikor a hitel-fedezet arány átlépi az LLTV-t, ahol a Blue saját likvidálása is kezdődik. Egy 86%-os piacon az alapértelmezett szerződéssel az előlikvidálási határhoz mért 1,10-es riasztási küszöbérték körülbelül 1,136-os piaci health factornál jelez, a legalacsonyabb küszöbérték, az 1,02, pedig körülbelül 1,054-nél, nagyjából 2%-kal afölött a határ fölött, ahol az előlikvidálás kezdődhet.
+
+Amikor elmentesz vagy szerkesztesz egy riasztást, a Tokenping feljegyzi azokat az előlikvidálási szerződéseket, amelyeket a Morpho API-ja az adott piacra listáz; ezután minden ellenőrzés kiolvassa, hogy mindegyiket engedélyezted-e, és a health factort a láncról, a Morpho saját matematikájával számolja, soha nem a Morpho API-jából. Egy előlikvidálási szerződést, amelyet a Morpho API-ja nem listáz, nem ellenőriz, így ha egyedi beállítású szerződést engedélyeztél, a riasztás csak az LLTV határához mér.
+
+A többi úgy működik, mint minden Morpho-riasztásnál. A Tokenping 5 percenként ellenőriz, 14 hálózaton, és amíg a health factorod a küszöbértéked alatt van (1,02 és 10 között bármi), minden ellenőrzés üzenetet küld minden kiválasztott csatornán: Signalon, Telegramon vagy e-mailben. A riasztások ára: <AlertPrice />, ugyanaz a csomag, mint az Aave-riasztásoké, és [a Morpho pozícióid megtekintéséért](/hu/morpho) nem kell fizetned. [Hogyan válassz riasztási küszöbértéket](/hu/blog/biztonsagos-aave-health-factor#hogyan-valassz-riasztasi-kuszoberteket-lepesrol-lepesre): ez a rész az Aave-on mutatja be a mérlegelést; ugyanez a gondolkodás érvényes itt is. Egy riasztás időt ad a cselekvésre, nem garanciát: az ár két ellenőrzés között is elmozdulhat. Ha már nem szeretnéd az előlikvidálást, vond vissza a fent leírt módon; a riasztásod ezután csak az LLTV határához mér.
+
+## Források
+
+- [morpho-org/pre-liquidation](https://github.com/morpho-org/pre-liquidation): README, [PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidation.sol), [PreLiquidationFactory.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidationFactory.sol) és [IPreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/interfaces/IPreLiquidation.sol), a paraméterekhez, korlátokhoz, az interpolációhoz és az ellenőrzésekhez (megtekintve: 2026. október 26.)
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) és [EventsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/EventsLib.sol): `isAuthorized`, `setAuthorization`, a SetAuthorization esemény, az egészségi ellenőrzés és a normál likvidálási bónusz (megtekintve: 2026. október 26.)
+- [Introducing pre-liquidations](https://morpho.org/blog/introducing-pre-liquidations-enhanced-loan-management-on-morpho) (Morpho, 2025. március 4.): az auto-deleverage és az auto-close mint felhasználási mód, és a normál likvidálás, ha nem történik előlikvidálás (megtekintve: 2026. október 26.)
+- [Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (Morpho súgóközpont, frissítve 2026. május 13-án): nincs új pozíció, hogyan kapcsold ki, mit csinált a funkció (megtekintve: 2026. október 26.)
+- [Morpho súgóközpont: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): az alkalmazás minden pozíció health factorát mutatja, és egy pozíció 1-nél vagy alatta likvidálható, amikor a hitel-fedezet aránya átlépi az LLTV-t (megtekintve: 2026. október 26.)
+- [Morpho SDK 1132-es pull request](https://github.com/morpho-org/sdks/pull/1132) (beolvasztva 2026. szeptember 22-én) és [preLiquidation.ts](https://github.com/morpho-org/sdks/blob/main/packages/blue-sdk/src/preLiquidation.ts): az elavultnak jelölés és az alapértelmezett paraméterek (megtekintve: 2026. október 26.)
+- [Morpho dokumentáció: liquidation](https://docs.morpho.org/developers/borrow/concepts/liquidation): ahová a régi előlikvidálási oldal most vezet (megtekintve: 2026. október 26.)
+- [Morpho API](https://api.morpho.org/graphql): listázott piacok, előlikvidálási szerződéseik és orákulumaik, valamint az USDC | cbBTC (86%) piacok a Base-en és az Ethereumon (megtekintve: 2026. október 26.)
+- Láncon kiolvasott előlikvidálási szerződések: [Base](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374) az 53102692 és 53102952 közötti blokkoknál és [Ethereum](https://etherscan.io/address/0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A) a 26274980-as blokknál, a factory-jaikkal, piacaikkal és orákulumaikkal együtt (megtekintve: 2026. október 26.)
+
+_Oktatási tartalom, nem pénzügyi tanácsadás. A riasztások csökkentik a kockázatot, de nem akadályozzák meg a likvidálást._

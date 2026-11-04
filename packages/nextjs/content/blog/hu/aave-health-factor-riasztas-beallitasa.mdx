@@ -1,0 +1,201 @@
+export const meta = {
+  slug: "aave-health-factor-riasztas-beallitasa",
+  title: "Így kapsz értesítést, ha esik az Aave health factorod",
+  description:
+    "Lépésről lépésre: Signal-, Telegram- vagy e-mail-üzenet, ha az Aave V3 vagy V4 health factorod a küszöbérték alá esik. Ár és leállítás.",
+  h1: "Hogyan kapj riasztást, ha esik az Aave health factorod",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Hogyan állíthatok be értesítést arra az esetre, ha esik az Aave health factorom?",
+  readingMinutes: 15,
+};
+
+<ShortAnswer>
+  Az Aave saját felületei megmutatják a health factorodat (egészségi mutató), amíg nyitva vannak, de nem küldenek
+  üzenetet, amikor esik, így a figyelmeztetésnek egy külön eszköztől kell jönnie. A Tokenpinggel csatlakoztatod a
+  tárcát, amellyel hitelt veszel fel, kifizeted a riasztási hozzáférést az Arbitrumon, bejelentkezel egy üzenet
+  aláírásával ugyanazzal a tárcával, beállítasz egy küszöbértéket minden piacra, ahol hitelt veszel fel (minden Aave
+  V3-piacra 21 hálózaton, vagy minden Aave V4 Spoke-ra az Ethereumon, az Avalanche-on, az Arcon és a Base-en), és
+  megadsz egy e-mail-címet, egy Signal-felhasználónevet vagy egy Telegram-felhasználónevet. A Tokenping ezután 5
+  percenként ellenőriz, és minden ellenőrzéskor üzenetet küld, amíg a health factorod a küszöbérték alatt van.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Küld az Aave health factor-riasztásokat?
+
+Nem. 2026. október 14-i állapot szerint az Aave saját felületei megjelenítik a health factorodat a képernyőn, de nem küldenek e-mailt, csevegőüzenetet vagy push-értesítést, amikor esik. A health factor (HF) a fedezeted értéke, minden eszköznél a likvidálási küszöbbel (liquidation threshold) súlyozva, elosztva az adósságod értékével; 1,00 alatt a pozíció likvidálható. A teljes képletet [az Aave health factor magyarázata](/hu/blog/aave-health-factor-magyarazat) tartalmazza.
+
+Az Aave webalkalmazása (app.aave.com) egykor a HAL értesítéseire hivatkozott; az Aave 2024. május 30-án eltávolította ezt az integrációt, mert a HAL szolgáltatás megszűnt. Az Aave Pro, az Aave V4 alkalmazása, alkalmazáson belüli health factor-figyelést ír le, és a termékoldala nem említ értesítéseket. Az Aave súgóközpontja szerint a rendszeres figyelés elengedhetetlen; a rövid eszközlistáján, amelyen a „Use at your own risk” (saját felelősségre) címke áll, van egy szimulátor és egy automatikus visszafizetési szolgáltatás, de riasztási szolgáltatás nincs.
+
+Ahhoz tehát, hogy időben figyelmeztetést kapj, vagy magad nézed az alkalmazást, vagy egy külső eszközt használsz. Ez az útmutató a Tokenpinggel állítja be az [Aave health factor-riasztásokat Signalon, Telegramon és e-mailben](/hu); a többi eszközről az [Aave likvidálási riasztási eszközök összehasonlítása](/hu/blog/aave-likvidalasi-riasztas-eszkozok) szól.
+
+## Mire van szükséged, mielőtt belekezdesz?
+
+Egy Tokenping health factor-riasztáshoz négy dolog kell:
+
+- **Egy Aave V3 vagy V4 pozíció adóssággal.** Aave V3-on: a 21 hálózat 24 piacának bármelyike, az Ethereum Core, Prime, EtherFi és Horizon piacaitól a Polygon, Arbitrum, Optimism, Base, Avalanche, Gnosis, Metis, BNB Chain, Scroll, ZKsync, Linea, Sonic, Celo, Soneium, Plasma, Ink, MegaETH, Mantle, X Layer és Monad hálózatig (Aave Address Book, 2026. október 16.). Aave V4-en: bármelyik Spoke az Ethereumon, az Avalanche-on, az Arcon vagy a Base-en (2026. október 16-án összesen 20). Adósság nélkül az Aave a lehető legnagyobb értéket adja vissza (∞-ként jelenik meg), és nem indulhat riasztás. Nem támogatott: az Aave V3 a Harmonyn, amely 2022 óta be van fagyasztva.
+- **A tárca, amellyel hitelt veszel fel.** A Tokenping csak a csatlakoztatott tárcát figyeli; másik címet nem adhatsz hozzá. Ugyanezzel a tárcával jelentkezel be, így nincs fiók és nincs jelszó.
+- **Natív USDC és egy kevés ETH az Arbitrum One hálózaton, ugyanabban a tárcában.** A riasztások ára <AlertPrice />, amelyet a Circle natív USDC-jében fizetsz az Arbitrum One hálózaton akkor is, ha a hiteled egy másik hálózaton van. Az ETH legfeljebb két tranzakció gas díját fedezi; a bejelentkezésért nem fizetsz gas díjat.
+- **Egy e-mail-cím, egy Signal-felhasználónév vagy egy Telegram-felhasználónév**, vagy ezek közül több is.
+
+A beállítás ezután hét lépés:
+
+1. Csatlakoztasd a tárcát, és nézd meg a pozícióidat.
+2. Fizesd ki a riasztási hozzáférést az Arbitrum One hálózaton.
+3. Jelentkezz be a tárcával.
+4. Hozz létre egy riasztást, és válassz e-mailt, Signalt, Telegramot vagy többet közülük.
+5. Válassz küszöbértéket.
+6. Mentsd el a riasztást.
+7. Küldj tesztüzenetet minden csatornán.
+
+## 1. lépés: csatlakoztasd a tárcádat, és nézd meg a pozícióidat
+
+Nyisd meg az irányítópultot, hogy [ellenőrizd az Aave V3 health factorodat](/hu/aave), és csatlakoztasd a tárcát, amellyel hitelt veszel fel. A pozíciók megtekintéséért nem kell fizetned, és bejelentkezni sem kell: a Tokenping csak kiolvassa a pozícióidat a láncról, és soha nem kér jóváhagyást vagy tranzakciót az Aave-pozíciódra.
+
+A **Piacok** lista azokat az Aave V3-piacokat és Aave V4 Spoke-okat mutatja, ahol a tárcának pozíciója vagy mentett riasztása van, és ahol pozíciód van, ott egy health factor-jelvényt is; minden más piac a **Többi piac** alá van összecsukva. Válaszd ki azt, amelyiken a hiteled van, hogy lásd a fedezetét, az adósságát és a health factorát, és jegyezd fel ezt a health factort: segít küszöbértéket választani. Ha az irányítópult azt írja, hogy „A támogatott piacokon nem találtunk aktív Aave-pozíciót”, valószínűleg egy másik tárcát csatlakoztattál, vagy a hitel olyan piacon van, amelyet a Tokenping nem olvas. A pozíciók az oldal megnyitásakor és a **Pozíciók frissítése** gomb megnyomásakor töltődnek be.
+
+## 2. lépés: oldd fel a riasztásokat
+
+Egy Tokenping-riasztás mentéséhez fizetős hozzáférés kell, amelynek ára <AlertPrice />. Az árat a Tokenping fizetési szerződése határozza meg az Arbitrum One hálózaton, és a panel fizetés előtt megmutatja.
+
+1. A [Tokenping irányítópultján](/hu/aave) a **Piacok** lista alatt a **Health factor-riasztások feloldása** panel felsorolja az árat, a hozzáférés időtartamát, a hálózatot és a hálózati díjat. Nyomd meg a **Fizetés** gombot (a felirata tartalmazza az árat USDC-ben). Ha a tárcád egy másik hálózaton van, előbb nyomd meg a **Váltás az Arbitrum One hálózatra** gombot.
+2. Hagyd jóvá az USDC-t. A jóváhagyás pontosan az árra szól, soha nem korlátlan összegre, és kimarad, ha már elég van jóváhagyva.
+3. Erősítsd meg a fizetést. Amint bekerül egy blokkba, a panel a **Riasztások feloldva eddig:** feliratot mutatja, utána egy dátummal.
+
+Egy fizetés a fizető tárca számára minden Aave V3-piacon és Aave V4 Spoke-ban feloldja a riasztási beállításokat. Semmi sem újul meg automatikusan, de előre is fizethetsz: amíg a hozzáférés aktív, a panel egy gombot mutat, amely még egy csomagidőszakot ad hozzá (a felirata megnevezi a napokat és az árat). Minden fizetés a jelenlegi lejárati dátumod után adja hozzá ezt az időszakot, ahányszor csak szeretnéd, és az új lejárati dátum rögtön megjelenik. Ha a hozzáférés már lejárt, egy újabb fizetés aznaptól indít új csomagidőszakot. A fizetési szerződés forráskódja ellenőrzött (verified) a Sourcifyon, és nincs visszatérítési funkciója. A tulajdonosa egyetlen tárca, amelyet a Tokenping csapata kezel, és amely módosíthatja az árat, szüneteltetheti a fizetéseket vagy frissítheti a szerződés kódját.
+
+## 3. lépés: jelentkezz be a tárcáddal
+
+A riasztási beállítások egy tárcacímhez tartoznak, nem egy fiókhoz. Amint a hozzáférés feloldódott, a kiválasztott piac riasztási panelje arra kér, hogy nyomd meg a **Bejelentkezés tárcával** gombot. A tárcád ekkor egy bejelentkezési üzenetet mutat (Sign-in with Ethereum), amely megnevezi az oldalt és a címedet, és ezt írja: „Jelentkezz be, hogy lásd és szerkeszd a Tokenping health factor-riasztásaidat.” Az aláírás nem tranzakció: nem kerül gas díjba, és semmilyen tokent nem hagy jóvá. Nem kell jelszót létrehoznod, és e-mailes regisztráció sincs.
+
+A bejelentkezés 7 napig érvényes az adott böngészőben, és véget ér, amikor leválasztod a tárcát; utána a panel újra bejelentkezést kér. Ha elutasítod a kérést, a panel jelzi ezt, és újra megnyomhatod a gombot. Hogy a bejelentkezés mit tárol és mit ellenőriz, azt a [hogyan működik a bejelentkezés fiók nélkül](/hu/blog/privat-aave-likvidalasi-riasztasok#hogyan-mukodik-a-bejelentkezes-fiok-nelkul) írja le.
+
+## 4. lépés: hozz létre egy riasztást, és válaszd ki a csatornákat
+
+Minden Tokenping-riasztás egy piacra és egy küszöbértékre vonatkozik. Egy piac egy Aave V3 Pool (az Ethereumnak négy van, minden más hálózatnak egy) vagy egy Aave V4 Spoke, mert mindegyik külön pozíciót vezet, saját health factorral. Kiválasztott piacnál nyomd meg a panelén a **Riasztás létrehozása** gombot. Az űrlap tetején a **Riasztási csatornák** rész nyílik meg: jelöld be az E-mail, a Signal vagy a Telegram lehetőséget, vagy ezek tetszőleges kombinációját. A Tokenpingnek legalább egy csatorna kell, és minden riasztás minden kiválasztott csatornára elmegy.
+
+- **E-mail:** írd be a címedet. Ha az első riasztás nem érkezik meg, nézd meg a spam mappát.
+- **Signal:** írd be a Signal-felhasználónevedet, @-val vagy anélkül, például `alice.42`. A Signal a profilodon mutatja: nyisd meg a Beállításokat, koppints a profilodra, és nézd meg a @ szimbólum mellett. Ha még soha nem hoztál létre Signal-felhasználónevet, előbb hozz létre egyet a Signalban. A Tokenping soha nem kéri el a telefonszámodat.
+- **Telegram:** írd be a Telegram-felhasználónevedet, @-val vagy anélkül, például `alice_eth`. A Telegram a Beállítások, majd a Felhasználónév alatt mutatja; ha nincs ilyened, előbb ott állíts be egyet. A Telegram-botok nem kezdeményezhetnek beszélgetést, ezért az űrlapon a „Még nincs összekapcsolva” szöveg áll, egy linkkel a Tokenping botjára: nyisd meg, és nyomd meg egyszer a **Start** gombot. Közben az űrlap néhány másodpercenként újra ellenőriz, majd jelzi, hogy a felhasználóneved össze van kapcsolva. A Start megnyomása előtt is menthetsz, de addig egyetlen riasztás sem jut el a Telegramra.
+
+Minden cím és felhasználónév mellett van egy nyelvmenü (**Az e-mailek nyelve**, **A Signal-üzenetek nyelve**, **A Telegram-üzenetek nyelve**), benne az oldal bármelyik nyelvével. Minden csatorna riasztásai és tesztüzenetei azon a nyelven készülnek, amelyet hozzá választasz. Egy új csatorna annak az oldalnak a nyelvén indul, amelyet éppen olvasol, a magyar oldalon tehát magyarul.
+
+Mivel a Tokenping Signal-fiókja nincs a névjegyeid között, a Signal az első riasztást üzenetkérésként mutathatja. Fogadd el; ha letiltod a feladót, a riasztások nem jutnak el hozzád. Több csatorna választása biztosíték, mert mindegyik külső szolgáltatásokon múlik (egy e-mail-szolgáltatón, egy saját üzemeltetésű Signal-továbbítón és a Telegram Bot API-ján).
+
+A Tokenping tárolja a tárcacímedet, a piacot, a küszöbértéket és a csatornákat mindegyik nyelvével, a beírt e-mail-címet és felhasználóneveket, a riasztás létrehozásának és utolsó módosításának idejét, valamint azt, hogy mikor küldtél utoljára tesztet az egyes csatornákon. Ha a botban megnyomod a Start gombot, a Telegram-csevegésazonosítód (chat ID) a felhasználóneveddel együtt tárolódik, és a nem kötelező „Honnan hallottál a Tokenpingről?” kérdésre adott válaszod is megmarad, ha adsz ilyet. Nem tárol health factor-előzményt, és nem naplózza az elküldött riasztásokat. Ha nem szeretnéd, hogy a megadott cím vagy felhasználónevek azonosítsanak, olvasd el, [hogyan kaphatsz Aave-riasztásokat anélkül, hogy megadnád a Tokenpingnek a személyazonosságodat](/hu/blog/privat-aave-likvidalasi-riasztasok).
+
+## 5. lépés: válassz küszöbértéket
+
+A küszöbérték az a health factor, amely alatt üzeneteket kapsz. A csúszka 1,1 és 3,0 között mozog 0,1-es lépésekben, a mellette lévő mező pedig 1,1 és 10 között bármilyen értéket elfogad, legfeljebb két tizedesjeggyel. Az alapértelmezett érték 1,5.
+
+Nincs mindenkire érvényes biztonságos szám. Egy lehetséges megközelítés: válaszd ki azt a fedezeti árat, amelynél lépnél, számold ki a health factort ennél az árnál, és állítsd a riasztást kicsivel fölé, mert az ellenőrzések között 5 perc telik el, és egy visszafizetés megerősítése lassú lehet egy zsúfolt hálózaton. A [mennyi tartalékot ad egy health factor](/hu/blog/biztonsagos-aave-health-factor) útmutatóban táblázat van a szokásos szintekről.
+
+Egy számolt példa egy volatilis fedezeti eszközzel és stablecoin-adóssággal: a WETH likvidálási küszöbe az Ethereum Core piacon 83% volt (a láncról kiolvasva, blokk: 26194005, 2026. október 14.). 10 elhelyezett WETH-vel és 12 000 felvett USDC-vel, ha az ETH ára szemléltetésképpen 2400 $ (az Aave orákuluma (árforrás) ennél a blokknál 2415,56 $ árat mutatott) és az USDC ára 1,00 $, a health factor 10 × 2400 × 0,83 ÷ 12 000 = 1,66. Az ETH ára bármely health factornál: az adott health factor × 12 000 ÷ (10 × 0,83):
+
+| Health factor                          | ETH-ár ennél a health factornál | Esés a 2400 $-hoz képest |
+| -------------------------------------- | ------------------------------- | ------------------------ |
+| 1,66 (kiindulópont)                    | 2400,00 $                       | 0%                       |
+| 1,5 (lehetséges riasztási küszöbérték) | 2168,67 $                       | 9,6%                     |
+| 1,3 (lehetséges riasztási küszöbérték) | 1879,52 $                       | 21,7%                    |
+| 1,0 (ez alatt lehetséges a likvidálás) | 1445,78 $                       | 39,8%                    |
+
+1,5-ös küszöbértéknél az első üzenet az első olyan ellenőrzéskor jön, amely előtt a health factor 1,5 alá esett, itt tehát amint az ETH 2168,67 $ alá kerül. Az ETH-nek ezután még nagyjából további 33%-ot kellene esnie, mielőtt ez a pozíció likvidálható lenne; 1,3-nál ez a megmaradó tartalék körülbelül 23%. Mindkét szám figyelmen kívül hagyja a kamatot. A kamat és a likvidálási küszöb csökkentése árváltozás nélkül is lejjebb viheti a health factort: lásd, [miért esik magától az Aave health factorod](/hu/blog/miert-csokkent-az-aave-health-factor).
+
+## 6. lépés: mentsd el, és nézd meg, hogyan néz ki a riasztás
+
+Nyomd meg a **Riasztás mentése** gombot. A panel a **Riasztási beállítások** részt mutatja egy Aktív jelvénnyel és egy összesítővel, amely felsorolja az egyes csatornákat a címükkel vagy felhasználónevükkel és a nyelvükkel. A piac egy csengő ikont kap a Piacok listában. Első alkalommal megjelenhet a nem kötelező „Honnan hallottál a Tokenpingről?” kérdés; megnyomhatod a **Kihagyás** gombot. Magyarul a Signal és a Telegram ezt a szöveget kapja (szemléltető értékekkel):
+
+> Az Arbitrum hálózaton az Aave health factorod 1,42. Ez a küszöbértéked (1,5) alatt van. A likvidálás elkerüléséhez érdemes fedezetet hozzáadni vagy adósságot visszafizetni.
+>
+> Elküldve: 2026. okt. 14. 21:05:07 koordinált világidő
+
+A health factor két tizedesjegyre lefelé kerekítve jelenik meg, így egy üzenet soha nem mutat olyan értéket, amely eléri vagy meghaladja az átlépett küszöbértéket, az időpont pedig UTC szerinti. Az e-mail ugyanezt az üzenetet tartalmazza „Aave health factor-riasztás - Arbitrum” tárggyal, azzal a különbséggel, hogy az utolsó sora „Elküldve” helyett „Létrehozva”. Egy más nyelvre állított csatorna ugyanezt a riasztást azon a nyelven kapja.
+
+Ha a Telegramot választottad, és még nem nyomtad meg a Start gombot, az összesítőben a „Még nincs összekapcsolva” szöveg áll, egy linkkel a botra.
+
+## 7. lépés: küldj tesztüzenetet
+
+Amint a riasztás el van mentve, az összesítőben minden csatornánál van egy **Teszt küldése** gomb. A teszt valódi üzenet azon a csatornán, annak nyelvén, a riasztással úgy, ahogy elmentetted, és a pozícióddal úgy, ahogy most áll: a piac és a küszöbérték, a jelenlegi health factor a Biztonságos, Kockázatos vagy Kritikus címkéjével, a fedezet és az adósság, és hogy ez a küszöbértéked alatt van-e. Így kezdődik: „Tesztüzenet a Tokenpingtől: a riasztások ezen a csatornán működnek.” E-mailben a tárgya „Tokenping-tesztüzenet - Arbitrum” (a piacod nevével).
+
+- Csatornánként 15 percenként egy tesztet küldhetsz, a tárcádra számolva, az összes piacát együtt véve. Addig a gomb mutatja, hány perc van hátra. A sikertelenül elküldött teszt nem számít bele.
+- A Telegram-gomb addig nem használható, amíg meg nem nyomod a Start gombot a botban.
+- A tesztekhez aktív hozzáférés kell, ugyanúgy, mint egy riasztás mentéséhez.
+
+Ha egy teszt néhány percen belül nem érkezik meg, nézd végig, [miért nem működhet egy riasztás](#miert-nem-mukodik-a-riasztasom). Ha egy valódi riasztás megérkezését is látni szeretnéd, nyomd meg a **Riasztás szerkesztése** gombot, állítsd a küszöbértéket kicsivel a jelenlegi health factorod fölé, és nyomd meg a **Riasztás mentése** gombot. A következő ellenőrzés, 5 percen belül, minden csatornára küld egy üzenetet; utána ugyanígy állítsd vissza a valódi küszöbértékedet, és a következő ellenőrzéstől az üzenetek megszűnnek.
+
+## Milyen gyakran kapsz riasztást?
+
+Amíg a health factorod a küszöbértéked alatt van, a Tokenping minden 5 perces ellenőrzéskor kiválasztott csatornánként egy üzenetet küld. Ez csatornánként óránként legfeljebb 12 üzenet. Nincs szundi, nincs összesítő és nincs „minden rendben” üzenet: a riasztások akkor szűnnek meg, amikor a health factor újra eléri vagy meghaladja a küszöbértéket.
+
+Az ellenőrzés a pontos health factorodat veti össze a küszöbértékkel, és csak akkor riaszt, ha szigorúan alatta van. 1,5-ös küszöbértéknél egy 1,4996-os health factor riasztást vált ki, amelynek üzenete 1,49-et mutat, az 1,50 viszont nem. Ha egy kiolvasás vagy egy üzenet sikertelen, a Tokenping naplózza, és a következő ellenőrzés újrapróbálja, ha a health factor még mindig a küszöbérték alatt van.
+
+Az ellenőrzések között 5 perc telik el, nem folyamatosak, így egy éles esés a küszöbértéked fölötti pozíciót 1,0 alá viheti, mielőtt bármilyen üzenet kimenne. A Tokenping béta állapotban van, harmadik felekre támaszkodik a pozíciók kiolvasásában és az üzenetek kézbesítésében, és nem garantál rendelkezésre állást. A riasztást tekintsd a cselekvésre kapott időnek, ne az egyetlen védelmednek.
+
+## Hogyan módosíthatod vagy állíthatod le a riasztásokat?
+
+A Tokenping-riasztások leállnak, amikor a health factorod újra eléri vagy meghaladja a küszöbértéket, például miután visszafizetsz vagy fedezetet adsz hozzá, illetve amikor törlöd a riasztást. Egy riasztás módosításához vagy törléséhez aktív hozzáférés és tárcás bejelentkezés kell.
+
+- **A küszöbérték, a csatornák vagy egy nyelv módosítása:** nyomd meg a piac panelén a **Riasztás szerkesztése** gombot, végezd el a módosítást, és nyomd meg a **Riasztás mentése** gombot.
+- **Riasztások leállítása egy piacon:** nyomd meg a **Riasztás szerkesztése**, majd a **Riasztás törlése** gombot, és erősítsd meg a **Riasztás törlése** gombbal. Nincs szüneteltető kapcsoló, és minden piac riasztását külön kell törölni.
+- **Telegram-riasztások leállítása:** küldd el a /stop parancsot a Tokenping botjának. A bot elfelejti a csevegésedet, így egyik piac riasztása sem jut el oda, amíg újra el nem küldöd a /start parancsot; a többi csatornád továbbra is kapja a riasztásokat. A bot letiltása ugyanezzel a hatással jár attól az üzenettől kezdve, amelyet a Tokenping legközelebb megpróbál elküldeni.
+
+<Callout tone="warning">
+  A már nem kívánt riasztásokat töröld, amíg a hozzáférésed még aktív. A hozzáférés lejárta után a beállításaid láthatók
+  maradnak, de csak olvashatók („Hozzáférés kifizetése a szerkesztéshez”) abban a böngészőben, ahol korábban
+  bejelentkeztél, egy riasztás törléséhez újabb fizetés kell, és a riasztási e-mailekben még nincs leiratkozási link. A
+  Telegramon a /stop hozzáféréssel és anélkül is működik.
+</Callout>
+
+## Miért nem működik a riasztásom?
+
+Ha egy Tokenping-riasztás nem működik, hét dolgot ellenőrizz: a csatlakoztatott tárcát és a piacot, a felhasználónév formátumát, hogy a Telegram össze van-e kapcsolva, a natív USDC-t az Arbitrum One hálózaton, hogy a pozíción van-e adósság, hogy minden piacon, ahol hitelt veszel fel, van-e riasztás, végül a spam mappádat és a Signal üzenetkéréseit.
+
+### Az irányítópult nem mutat pozíciót
+
+Ha a Tokenping irányítópultja nem mutat pozíciót, a csatlakoztatott tárca nem az, amellyel hitelt veszel fel, vagy a hitel olyan piacon van, amelyet a Tokenping nem olvas: az Aave V3 a Harmonyn, vagy egy hálózat a lefedett 22-n kívül (a 21 V3-hálózat és az Arc, amelyen csak Aave V4 van). Az a piac, ahol a tárcának nincs pozíciója, nem hiányzik: a **Többi piac** alá van összecsukva.
+
+### A Tokenping elutasítja a Signal- vagy Telegram-felhasználónevedet
+
+A Tokenping ezt kéri: „Adj meg egy Signal-felhasználónevet, például alice.42”, ha a felhasználónév nem egy becenévből, egy pontból és legalább két számjegyből áll. Az elején egy @ nem gond. Ha a Signalban módosítod a felhasználónevedet, rögtön frissítsd a riasztást: a Signal nem sokkal azután, hogy lemondasz egy régi felhasználónévről, másnak is engedi lefoglalni.
+
+Telegramnál ezt kéri: „Adj meg egy Telegram-felhasználónevet, például alice_eth”: 4-32 betű, számjegy vagy aláhúzásjel, betűvel kezdődik, és nem végződik aláhúzásjellel. A felhasználónevedet írd be, ne a megjelenített nevedet vagy a telefonszámodat; az elején egy @ vagy egy t.me link nem gond, és a kis- és nagybetűk sem számítanak.
+
+### A Telegram még nincs összekapcsolva
+
+A bot csak akkor tudja meg, hová küldje a riasztásaidat, amikor megnyomod a Start gombot (vagy elküldöd a /start parancsot) arról a fiókról, amelynek a felhasználóneve a riasztásban szerepel. Nyisd meg a botot az űrlapon lévő linkről, nyomd meg a Start gombot, és ellenőrizd, hogy a felhasználónév egyezik-e azzal, ami a Telegramban a Beállítások, majd a Felhasználónév alatt áll. Ha elküldted a /stop parancsot, letiltottad a botot vagy módosítottad a Telegram-felhasználónevedet, írd be a jelenlegi felhasználónevet a riasztásba, és küldd el újra a /start parancsot.
+
+### Nincs USDC-d az Arbitrum One hálózaton
+
+A Tokenping-fizetés a Circle natív USDC-jét fogadja el az Arbitrum One hálózaton (szerződés: `0xaf88...5831`), nem a bridge-elt USDC.e-t, és egy kevés ETH is kell a gas díjra, abban a tárcában, amelyet beállítasz. Vidd át mindkettőt oda, például úgy, hogy egy kriptotőzsdéről az Arbitrum One hálózatra veszed ki, vagy bridge-eléssel. A már meglévő USDC.e-t natív USDC-re kell váltanod.
+
+### A pozíciódon nincs adósság
+
+Adósság nélkül az Aave a lehető legnagyobb health factort adja vissza (∞-ként jelenik meg), így egyetlen küszöbérték sem kerül átlépésre, és nem megy ki riasztás.
+
+### Több piacon is veszel fel hitelt
+
+Minden Aave V3-piacnak és minden Aave V4 Spoke-nak saját riasztása, küszöbértéke, csatornái és nyelvei vannak. Egy fizetés mindegyiket lefedi, ezért hozz létre riasztást minden piacon, ahol hitelt veszel fel.
+
+### Nem érkeznek meg az üzenetek
+
+Ha a Tokenping üzenetei nem érkeznek meg, nézd meg a spam mappádat és a Signal üzenetkéréseit, és győződj meg róla, hogy nem tiltottad le a Tokenping feladóját, és nem küldtél /stop parancsot a Telegram-botnak. Ezután nyomd meg az adott csatorna **Teszt küldése** gombját, ahogy a [7. lépésben](#7-lepes-kuldj-tesztuzenetet): ha a teszt megérkezik, a csatorna működik, és a riasztások minden ellenőrzéskor jönnek, amíg a health factor a küszöbértéked alatt van. Ha egy teszt megérkezik, de nem szól, egy Fókusz mód, a Ne zavarjanak mód, egy némított csevegés vagy egy energiatakarékos mód tartja vissza: [a riasztások átjuttatása a Ne zavarjanak módon](/hu/blog/aave-riasztasok-ne-zavarjanak-modban) mindegyiket végigveszi.
+
+## Milyen más módon kaphatsz riasztást?
+
+Néhány eszközbe bármely tárca címét beillesztheted, és fizetés nélkül kapsz riasztásokat a Telegramon vagy az eszköz saját mobilalkalmazásában. A böngészőbővítmények az eszköztáron mutatják a health factort, és némelyik asztali értesítést is küld, amíg a böngésző fut. Az automatizálási szolgáltatások visszafizethetik helyetted az adósságot; ehhez okostárca vagy a pozíciódra adott engedély kell, és némelyik minimális pozícióméretet szab, vagy műveletenként díjat számol fel. A fejlesztők saját figyelőrendszert is építhetnek. Az [Aave likvidálási riasztási eszközök összehasonlítása](/hu/blog/aave-likvidalasi-riasztas-eszkozok) egymás mellé állítja ezeket, azt is megmutatva, mikor nem a Tokenping a megfelelő választás.
+
+## Források
+
+- [Az Aave interface #2084-es pull requestje, „chore: remove hal”, egyesítve: 2024. május 30.](https://github.com/aave/interface/pull/2084) (megtekintve: 2026. október 14.)
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (megtekintve: 2026. október 14.)
+- [Az Aave Pro termékoldala](https://aave.com/pro) (megtekintve: 2026. október 14.)
+- [Aave docs changelog: a V3.7 bevezetése és a V4 indulásai](https://aave.com/docs/resources/changelog) (megtekintve: 2026. október 15.)
+- [Aave V3 GenericLogic.sol: a health factor képlete és az adósság nélküli érték](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) (megtekintve: 2026. október 14.)
+- Aave V3 Ethereum Core [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) és [AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) (szerződésoldalak az Etherscanen): a WETH likvidálási küszöbe 83%, az orákulumár 2415,56 $, a láncról kiolvasva, blokk: 26194005 (RPC-adatok megtekintve: 2026. október 14.)
+- [TokenpingPaywall az Arbitrum One hálózaton, a forráskód ellenőrizve a Sourcifyon](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553) (megtekintve: 2026. október 14.); a csomag, a szüneteltetési állapot és a tulajdonos a láncról kiolvasva, blokkok: 514885994 és 514896937
+- [Signal Support: Phone Number Privacy and Usernames](https://support.signal.org/hc/en-us/articles/6712070553754-Phone-Number-Privacy-and-Usernames) (megtekintve: 2026. október 14.)
+- [Signal Support: Signal Profiles and Message Requests](https://support.signal.org/hc/en-us/articles/360007459591-Signal-Profiles-and-Message-Requests) (megtekintve: 2026. október 14.)
+- [Telegram: Bots, an introduction for developers](https://core.telegram.org/bots) (megtekintve: 2026. október 20.): a botok nem kezdeményezhetnek beszélgetést a felhasználókkal
+
+_Oktatási tartalom, nem pénzügyi tanácsadás. A riasztások csökkentik a kockázatot, de nem akadályozzák meg a likvidálást._

@@ -115,6 +115,14 @@ const COPY: Partial<Record<Locale, CopyRules>> = {
     wrongAddress: /dumneavoastr|(?<!\p{L})dvs(?!\p{L})/iu,
     claims: /în timp real|(?<!\p{L})instant|multi[- ]?protocol/iu,
   },
+  hu: {
+    // The channels are inflected in Hungarian ("Signalon ... e-mailben"), so only their order is checked.
+    h1Channels: /Signal.*e-mail/iu,
+    badges: ["Signal", "E-mail"],
+    // Informal te throughout: never the formal Ön.
+    wrongAddress: /(?<!\p{L})Ön(?:nek|t|é|ök|öknek|öket|ben|re|nél|hez|től|nel)?(?!\p{L})/u,
+    claims: /valós idej|azonnali (?:riasztás|értesítés)|multi[- ]?protokoll/iu,
+  },
 };
 
 const TRANSLATED = LOCALES.filter(locale => locale !== "en");

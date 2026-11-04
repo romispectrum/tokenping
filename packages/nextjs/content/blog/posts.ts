@@ -320,6 +320,65 @@ import HowAaveLiquidationWorks, {
 import HowMorphoLiquidationWorks, {
   meta as howMorphoLiquidationWorks,
 } from "~~/content/blog/how-morpho-liquidation-works.mdx";
+import HuAaveEMode, { meta as huAaveEMode } from "~~/content/blog/hu/aave-e-mode-magyarazat.mdx";
+import HuAaveHealthFactor, { meta as huAaveHealthFactor } from "~~/content/blog/hu/aave-health-factor-magyarazat.mdx";
+import HuAaveHealthFactorAlertSetup, {
+  meta as huAaveHealthFactorAlertSetup,
+} from "~~/content/blog/hu/aave-health-factor-riasztas-beallitasa.mdx";
+import HuAaveInterestRates, { meta as huAaveInterestRates } from "~~/content/blog/hu/aave-kamatok.mdx";
+import HuAvoidAaveLiquidation, {
+  meta as huAvoidAaveLiquidation,
+} from "~~/content/blog/hu/aave-likvidalas-elkerulese.mdx";
+import HuAaveLiquidationPrice, { meta as huAaveLiquidationPrice } from "~~/content/blog/hu/aave-likvidalasi-ar.mdx";
+import HuAaveLiquidationAlertTools, {
+  meta as huAaveLiquidationAlertTools,
+} from "~~/content/blog/hu/aave-likvidalasi-riasztas-eszkozok.mdx";
+import HuAaveAlertsDoNotDisturb, {
+  meta as huAaveAlertsDoNotDisturb,
+} from "~~/content/blog/hu/aave-riasztasok-ne-zavarjanak-modban.mdx";
+import HuSafeAaveHealthFactor, {
+  meta as huSafeAaveHealthFactor,
+} from "~~/content/blog/hu/biztonsagos-aave-health-factor.mdx";
+import HuAaveMarketWindDown, { meta as huAaveMarketWindDown } from "~~/content/blog/hu/egy-aave-piac-leepitese.mdx";
+import HuShortFiatWithAave, { meta as huShortFiatWithAave } from "~~/content/blog/hu/fiat-shortolasa-aave-val.mdx";
+import HuHowMorphoLiquidationWorks, {
+  meta as huHowMorphoLiquidationWorks,
+} from "~~/content/blog/hu/hogyan-mukodik-a-likvidalas-a-morphon.mdx";
+import HuHowAaveLiquidationWorks, {
+  meta as huHowAaveLiquidationWorks,
+} from "~~/content/blog/hu/hogyan-mukodik-a-likvidalas-az-aave-on.mdx";
+import HuWhoNeedsHealthFactorAlerts, {
+  meta as huWhoNeedsHealthFactorAlerts,
+} from "~~/content/blog/hu/kinek-kell-health-factor-riasztas.mdx";
+import HuCryptoBackedLoans, { meta as huCryptoBackedLoans } from "~~/content/blog/hu/kriptofedezetu-hitelek.mdx";
+import HuLiquidatedOnAaveOrMorphoWhatNow, {
+  meta as huLiquidatedOnAaveOrMorphoWhatNow,
+} from "~~/content/blog/hu/likvidaltak-az-aave-on-vagy-morphon-mi-most.mdx";
+import HuWhyAaveHealthFactorDropped, {
+  meta as huWhyAaveHealthFactorDropped,
+} from "~~/content/blog/hu/miert-csokkent-az-aave-health-factor.mdx";
+import HuWhyAaveWithdrawOrBorrowFails, {
+  meta as huWhyAaveWithdrawOrBorrowFails,
+} from "~~/content/blog/hu/miert-nem-sikerul-a-kivetel-vagy-hitelfelvetel-aave.mdx";
+import HuMorphoPreLiquidation, { meta as huMorphoPreLiquidation } from "~~/content/blog/hu/morpho-elolikvidalas.mdx";
+import HuMorphoHealthFactor, {
+  meta as huMorphoHealthFactor,
+} from "~~/content/blog/hu/morpho-health-factor-magyarazat.mdx";
+import HuMorphoMidnightFixedRateLoans, {
+  meta as huMorphoMidnightFixedRateLoans,
+} from "~~/content/blog/hu/morpho-midnight-fix-kamatozasu-hitelek.mdx";
+import HuPrivateAaveLiquidationAlerts, {
+  meta as huPrivateAaveLiquidationAlerts,
+} from "~~/content/blog/hu/privat-aave-likvidalasi-riasztasok.mdx";
+import HuStablecoinDepegAave, {
+  meta as huStablecoinDepegAave,
+} from "~~/content/blog/hu/stablecoin-depeg-az-aave-on.mdx";
+import HuTokenizedStocksCollateral, {
+  meta as huTokenizedStocksCollateral,
+} from "~~/content/blog/hu/tokenizalt-reszvenyek-fedezetkent.mdx";
+import HuWrappedBitcoinAaveCollateral, {
+  meta as huWrappedBitcoinAaveCollateral,
+} from "~~/content/blog/hu/wrapped-bitcoin-fedezetkent-az-aave-on.mdx";
 import IdAaveLiquidationAlertTools, {
   meta as idAaveLiquidationAlertTools,
 } from "~~/content/blog/id/alat-peringatan-likuidasi-aave.mdx";
@@ -1205,5 +1264,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
     { meta: roHowMorphoLiquidationWorks, Content: RoHowMorphoLiquidationWorks },
     { meta: roMorphoPreLiquidation, Content: RoMorphoPreLiquidation },
     { meta: roMorphoMidnightFixedRateLoans, Content: RoMorphoMidnightFixedRateLoans },
+  ],
+  hu: [
+    { meta: huAaveHealthFactor, Content: HuAaveHealthFactor },
+    { meta: huSafeAaveHealthFactor, Content: HuSafeAaveHealthFactor },
+    { meta: huHowAaveLiquidationWorks, Content: HuHowAaveLiquidationWorks },
+    { meta: huAaveLiquidationPrice, Content: HuAaveLiquidationPrice },
+    { meta: huWhyAaveHealthFactorDropped, Content: HuWhyAaveHealthFactorDropped },
+    { meta: huAaveHealthFactorAlertSetup, Content: HuAaveHealthFactorAlertSetup },
+    { meta: huAaveLiquidationAlertTools, Content: HuAaveLiquidationAlertTools },
+    { meta: huAvoidAaveLiquidation, Content: HuAvoidAaveLiquidation },
+    { meta: huPrivateAaveLiquidationAlerts, Content: HuPrivateAaveLiquidationAlerts },
+    { meta: huCryptoBackedLoans, Content: HuCryptoBackedLoans },
+    { meta: huShortFiatWithAave, Content: HuShortFiatWithAave },
+    { meta: huAaveInterestRates, Content: HuAaveInterestRates },
+    { meta: huAaveAlertsDoNotDisturb, Content: HuAaveAlertsDoNotDisturb },
+    { meta: huAaveMarketWindDown, Content: HuAaveMarketWindDown },
+    { meta: huStablecoinDepegAave, Content: HuStablecoinDepegAave },
+    { meta: huAaveEMode, Content: HuAaveEMode },
+    { meta: huWhyAaveWithdrawOrBorrowFails, Content: HuWhyAaveWithdrawOrBorrowFails },
+    { meta: huWrappedBitcoinAaveCollateral, Content: HuWrappedBitcoinAaveCollateral },
+    { meta: huTokenizedStocksCollateral, Content: HuTokenizedStocksCollateral },
+    { meta: huWhoNeedsHealthFactorAlerts, Content: HuWhoNeedsHealthFactorAlerts },
+    { meta: huLiquidatedOnAaveOrMorphoWhatNow, Content: HuLiquidatedOnAaveOrMorphoWhatNow },
+    { meta: huMorphoHealthFactor, Content: HuMorphoHealthFactor },
+    { meta: huHowMorphoLiquidationWorks, Content: HuHowMorphoLiquidationWorks },
+    { meta: huMorphoPreLiquidation, Content: HuMorphoPreLiquidation },
+    { meta: huMorphoMidnightFixedRateLoans, Content: HuMorphoMidnightFixedRateLoans },
   ],
 };

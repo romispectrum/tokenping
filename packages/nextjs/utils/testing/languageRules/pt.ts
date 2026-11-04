@@ -29,7 +29,7 @@ const BANNED_PATTERNS: readonly BannedPattern[] = [
     allowQuoted: true,
   },
   {
-    pattern: /(?<![\d.,])3(?:,0+)? ?USDC\b/iu,
+    pattern: /(?<![\p{L}\d.,])3(?:,0+)? ?USDC\b/iu,
     reason: "hard-coded alert price: use <AlertPrice /> (the owner can change the plan on-chain)",
   },
   { pattern: /\bUSDC (?:por|para|a cada) 30 dias\b/iu, reason: "hard-coded alert plan: use <AlertPrice />" },

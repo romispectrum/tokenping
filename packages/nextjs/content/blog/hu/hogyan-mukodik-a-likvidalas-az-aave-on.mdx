@@ -1,0 +1,183 @@
+export const meta = {
+  slug: "hogyan-mukodik-a-likvidalas-az-aave-on",
+  title: "Mi történik, amikor likvidálják az Aave-pozíciódat",
+  description:
+    "Így működik ma az Aave V3 likvidálás: mikor indul, mennyi adósság fizethető vissza (50% vagy 100%), mekkora bónuszt fizetsz, és egy kidolgozott példa.",
+  h1: "Mi történik, amikor likvidálják az Aave-pozíciódat?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Mi történik, amikor likvidálnak az Aave-on?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Amikor az Aave V3 health factorod (egészségi mutató) 1 alá esik, bármely más cím visszafizetheti az adósságod egy
+  részét vagy egészét, és elvihet ennek megfelelő értékű fedezetet plusz egy likvidálási bónuszt, például WETH esetén
+  5%-ot az Ethereum Core piacon. Egy likvidálás az adósságod legfeljebb 50%-át fizetheti vissza, amíg a health factorod
+  0,95 fölött van, és a lefoglalt eszközben lévő fedezeted és a visszafizetett eszközben lévő adósságod is legalább 2000
+  $-t ér; különben az abban az eszközben lévő teljes adósság egyszerre mehet. A felvett tokenek nálad maradnak, ahogy a
+  megmaradó fedezet és adósság is, így a likvidálás a bónuszba kerül neked.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Mikor likvidálható egy Aave-pozíció?
+
+Egy Aave V3 pozíció abban a pillanatban likvidálható, amikor a health factora 1,00 alá kerül. A health factor a fedezeted értékét, minden eszköz likvidálási küszöbével (liquidation threshold) súlyozva, elosztja az adósságod értékével, így 1,00 alatt a súlyozott fedezet már nem fedezi az adósságot (képlet és példa: [mi az Aave health factor](/hu/blog/aave-health-factor-magyarazat)).
+
+Az Aave V3.7 szerződései öt dolgot ellenőriznek, mielőtt egy likvidálás végbemegy (`validateLiquidationCall` a `ValidationLogic.sol` fájlban):
+
+1. A hitelfelvevő health factora 1,00 alatt van.
+2. A lefoglalt fedezeti eszköz és a visszafizetett adóssági eszköz is aktív, és **nincs szüneteltetve** (paused).
+3. Bármelyik eszközön lejárt az esetleges likvidálási türelmi idő. Amikor az Aave emergency guardianje vagy a governance feloldja egy eszköz szüneteltetését, legfeljebb 4 órás türelmi időt állíthat be.
+4. A hitelfelvevőnél az adott fedezet fedezetként be van kapcsolva, és tartozik a választott adóssági eszközzel.
+5. A hívó nem maga a hitelfelvevő: a saját pozíciódat nem likvidálhatod.
+
+Egy befagyasztott (frozen) eszköz továbbra is likvidálható, mert az ellenőrzés a „paused” állapotot nézi, nem a „frozen” állapotot. Bármely más cím meghívhatja a Pool `liquidationCall` függvényét.
+
+A protokoll nem figyelmeztet a likvidálás előtt, és az Aave saját alkalmazása az app.aave.com címen nem küld riasztást. Ha egyetlen volatilis fedezeted és stablecoin-adósságod van, [kiszámolhatod az Aave likvidálási áradat](/hu/blog/aave-likvidalasi-ar): azt a fedezeti árat, amelynél a health factor eléri az 1-et.
+
+## Mennyi adósságomat likvidálhatják egyszerre?
+
+Az Aave V3.7-en a close factor (az adósság egyszerre visszafizethető része) csak akkor a teljes adósságod 50%-a, ha mindhárom feltétel teljesül: a health factorod 0,95 fölött van, a lefoglalt eszközben lévő fedezeted legalább 2000 $-t ér, és a visszafizetett eszközben lévő adósságod legalább 2000 $-t ér. Minden más esetben egy likvidátor egyetlen tranzakcióban a választott eszközben lévő adósságod akár 100%-át is visszafizetheti.
+
+| Helyzet a likvidálás pillanatában                                                                               | Ennyit fizethet vissza legfeljebb egy likvidálás                                                                    |
+| --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| A health factor 0,95 fölött van, és a választott fedezet és a választott adósság egyenként legalább 2000 $-t ér | A teljes adósságod 50%-a az összes eszközön (USD-ben), de soha nem több, mint a választott eszközben lévő adósságod |
+| A health factor 0,95 vagy az alatt van                                                                          | A választott eszközben lévő adósságod 100%-a                                                                        |
+| A választott fedezet vagy a választott adósság 2000 $-nál kevesebbet ér                                         | A választott eszközben lévő adósságod 100%-a                                                                        |
+
+Ezek a korlátok konstansok az Aave `LiquidationLogic.sol` fájljában (aave-v3-origin, kiolvasva 2026. október 14-én). A v3.3 óta az 50% a teljes pozícióra vonatkozik, nem adóssági eszközönként. Az Aave v3.3-as leírása példaként 3000 $ GHO-, 3000 $ USDC- és 3000 $ DAI-adósságot hoz, összesen 9000 $-t: bármelyikük teljes 3000 $-ja visszafizethető egy hívásban, mert a teljes összeg 50%-a 4500 $.
+
+Egy második szabály a porszemnyi maradékot (dust) akadályozza meg. Egy részleges likvidálásnak legalább 1000 $ adósságot kell hagynia a visszafizetett eszközben, és legalább 1000 $ fedezetet a lefoglalt eszközben. Különben a likvidátornak az egész adósságot vagy az egész fedezetet kell elvinnie abban az eszközben, vagy a tranzakció visszafordul (revert).
+
+Egy likvidálás csak a visszafizetett adósság plusz a bónusz értékének megfelelő fedezetet visz el, nem az összes fedezetedet. A likvidátor a saját pénzéből fizeti vissza az adósságot, így a felvett tokenek a tieid maradnak; amíg a fedezet elég rá, a bónuszt veszíted el.
+
+A régebbi útmutatók fix 50%-os close factort írnak le, és az aave.com saját Pool-szerződésreferenciája még mindig azt írja: „close factor is 0.5” (megtekintve 2026. október 14-én). Mindkettő elavult: a fix 50% az Aave V2 szabálya volt, és a piacokon futó V3.7-es kód a táblázatban látható 50%-os vagy 100%-os szabályt használja.
+
+## Mi a likvidálási bónusz, és ki fizeti?
+
+A likvidálási bónusz, amelyet gyakran likvidálási büntetésnek is hívnak, az a többletfedezet, amelyet a likvidátor a visszafizetett adósságon felül kap, és a hitelfelvevő fizeti. 5%-os bónusznál az adósságod 1000 USDC-jének rendezése 1050 USDC értékű fedezetedbe kerül. Az Aave kincstára a bónusz egy részét likvidálási protokolldíjként (liquidation protocol fee) megtartja, így a likvidátor valamivel kevesebbet kap, mint amennyit te veszítesz.
+
+Az érvényes bónusz és díj a lefoglalt fedezethez tartozik, nem az adóssághoz. Aave V3 értékek, on-chain kiolvasva 2026. október 14-én (26193284-es Ethereum-blokk, 514855406-os Arbitrum-blokk):
+
+| Piac          | Lefoglalt fedezet | Likvidálási bónusz | Protokolldíj (a bónusz része) | Elvesztett fedezet 1000 $ visszafizetésenként | A likvidátor kap |
+| ------------- | ----------------- | ------------------ | ----------------------------- | --------------------------------------------- | ---------------- |
+| Ethereum Core | WETH              | 5%                 | 10%                           | 1050 $                                        | 1045 $           |
+| Ethereum Core | WBTC              | 5%                 | 10%                           | 1050 $                                        | 1045 $           |
+| Ethereum Core | USDC              | 4,5%               | 20%                           | 1045 $                                        | 1036 $           |
+| Arbitrum      | WETH              | 5%                 | 10%                           | 1050 $                                        | 1045 $           |
+| Arbitrum      | WBTC              | 7%                 | 10%                           | 1070 $                                        | 1063 $           |
+| Arbitrum      | USDC (natív)      | 5%                 | 10%                           | 1050 $                                        | 1045 $           |
+
+E-Mode-ban, ha a lefoglalt eszköz benne van a kategóriád fedezeti körében, a kategória bónusza lép az eszköz saját bónusza helyébe: az Ethereum Core „ETH correlated” kategóriájában 1% (kiolvasva a 26193288-as Ethereum-blokknál, 2026. október 14-én), így minden likvidálás kevesebbe kerül. A governance bármelyik paramétert megváltoztathatja, az Aave risk stewardjai pedig rögzített határokon belül módosíthatják a likvidálási bónuszokat, ezért az aktuális értékeket az Aave alkalmazásban ellenőrizd.
+
+## Melyik fedezetet viszi el a likvidátor?
+
+A likvidátor dönt. Minden Aave V3 likvidálás egy lefoglalandó fedezeti eszközt és egy visszafizetendő adóssági eszközt nevez meg, és a párt a likvidátor választja ki, így nincs beleszólásod abba, melyik eszközöd megy először. Csak a fedezetként bekapcsolt eszközeid foglalhatók le; egy elhelyezett eszköz, amelynél a „used as collateral” (fedezetként használva) ki van kapcsolva, nem vihető el, de a health factorodhoz sem ad hozzá semmit.
+
+Ha a választott fedezet nem fedezi a visszafizetést plusz a bónuszt, az egész eszközt elveszíted (a likvidátor a protokolldíj levonásával kapja meg), és kevesebb adósság fizetődik vissza. Mivel minden likvidálás egy párt kezel, egy több eszközből álló pozíciót több tranzakcióban is likvidálhatnak, és amíg a health factor 1 alatt marad, további likvidálások következhetnek.
+
+## Kidolgozott példa: az ETH 1420 $-ra, majd 1330 $-ra esik
+
+Ebben a példában egy likvidálás 1420 $-os ETH-árnál 6000 USDC-t fizet vissza, és 300 $ értékű WETH-be kerül a hitelfelvevőnek; ha senki sem likvidál, amíg az ETH 1330 $-ra nem esik, mind a 12 000 USDC egyszerre visszafizethető, és a költség a duplájára, 600 $-ra nő.
+
+A pozíció: 10 WETH fedezet és 12 000 USDC adósság az Aave V3 Ethereum Core piacán. A WETH likvidálási küszöbe 83%, a bónusza 5%, a protokolldíja 10% (on-chain kiolvasva a 26193284-es blokknál, 2026. október 14-én). Az ETH-árak szemléltetők, az USDC-t 1,00 $-nak vesszük, a kamatot figyelmen kívül hagyjuk.
+
+2400 $-on a health factor 24 000 × 0,83 ÷ 12 000 = 1,66. 12 000 ÷ (10 × 0,83) = 1445,78 $ ETH-árnál éri el az 1-et, és 1373,49 $-nál a 0,95-öt.
+
+| ETH-ár                            | Health factor           | Ennyit fizethet vissza legfeljebb egy likvidálás                                                                                                                      |
+| --------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Kb. 1445,78 $ fölött              | 1,00 vagy több          | Semmit; a pozíció nem likvidálható                                                                                                                                    |
+| Kb. 1373,50 $ és 1445,78 $ között | 0,95 és 1,00 között     | 50%: 6000 USDC                                                                                                                                                        |
+| Kb. 1260 $ és 1373,49 $ között    | Kb. 0,87 és 0,95 között | 100%: 12 000 USDC                                                                                                                                                     |
+| Kb. 1260 $ alatt                  | Kb. 0,87 alatt          | 12 000 USDC-nél kevesebbet: mind a 10 WETH-et lefoglalják, a maradék pedig [behajthatatlan adósság (bad debt)](#hagyhat-egy-likvidalas-behajthatatlan-adossagot) lesz |
+
+### 1. lépés: ETH 1420 $-on, health factor 0,982
+
+1420 $-on a 10 WETH 14 200 $-t ér, így a health factor 14 200 × 0,83 ÷ 12 000 = 0,982. Ez 0,95 fölött van, és a WETH-fedezeted és az USDC-adósságod is egyenként több mint 2000 $-t ér, így egy likvidátor legfeljebb 6000 USDC-t fizethet vissza.
+
+- A likvidátor visszafizet 6000 USDC-t az adósságodból.
+- A pozíciód 6000 × 1,05 = 6300 $ értékű WETH-et veszít (4,4366 WETH).
+- A protokolldíj a 300 $-os bónusz 10%-a: 30 $ (0,0211 WETH) az Aave kincstárához kerül, a likvidátor pedig 6270 $-t kap (4,4155 WETH).
+- Marad 5,5634 WETH-ed (7900 $) és 6000 USDC adósságod: a health factor 7900 × 0,83 ÷ 6000 = 1,093.
+
+A nettó pozíciód (fedezet mínusz adósság) 2200 $-ról 1900 $-ra esik. A 300 $ különbség a bónusz.
+
+### 2. lépés: ETH 1330 $-on, health factor 1,024
+
+A megmaradt 5,5634 WETH 1330 $-on 7399 $-t ér, ami 7399 × 0,83 ÷ 6000 = 1,024-es health factor, így a pozíció ezen az áron nem likvidálható újra. Az új likvidálási ára kb. 1299 $, 6000 ÷ (5,5634 × 0,83) alapján. Az adósság felére csökkentése lejjebb tolta a likvidálási árat; ennek ára a 300 $-os bónusz volt.
+
+### Mi van, ha senki sem likvidál, amíg az ETH 1330 $-ra nem esik?
+
+Ha az első likvidálás csak akkor történik meg, amikor az ETH már 1330 $-on áll, az eredeti pozíció health factora 13 300 × 0,83 ÷ 12 000 = 0,920. Ez 0,95 vagy az alatt van, így egy likvidátor mind a 12 000 USDC-t egyszerre visszafizetheti. A pozíciód 12 000 × 1,05 = 12 600 $ értékű WETH-et veszít (9,4737 WETH), ebből 60 $ a protokolldíj, 12 540 $ pedig a likvidátorhoz kerül. Marad 0,5263 WETH-ed (700 $), és nem tartozol semmivel; a dust-szabály nem érvényes, mert az adósság teljesen rendeződött.
+
+A nettó pozíció 1300 $-ról 700 $-ra esik. A 600 $-os veszteség az 1. lépés kétszerese, mert kétszer annyi adósságot fizettek vissza ugyanazzal az 5%-os bónusszal.
+
+## Hagyhat egy likvidálás behajthatatlan adósságot?
+
+Igen. Behajthatatlan adósság akkor keletkezik, amikor egy pozíció fedezete kevesebbet ér, mint az adóssága plusz a likvidálási bónusz, így a fedezet minden egységének lefoglalása sem fizet vissza mindent. Az Aave V3.3 óta, ha egy likvidálás egy hitelfelvevő összes fedezetét elhasználja, és marad adósság, a szerződés elégeti a maradék adósságot, és „deficitként” (hiányként) rögzíti az adott eszközön. A hitelfelvevőnek nem marad sem fedezete, sem adóssága, a veszteség pedig a protokollnál marad.
+
+Példa az Ethereum Core WETH-paramétereivel: 10 000 $ WETH mint egyetlen fedezet 9800 USDC adóssággal szemben 0,847-es health factort jelent. Mind a 9800 USDC rendezéséhez 5%-os bónusszal 10 290 $ WETH kellene, így mind a 10 000 $ WETH-et lefoglalják (ebből kb. 47,62 $ a protokolldíj), és kb. 9524 USDC fizetődik vissza (10 000 ÷ 1,05). A maradék kb. 276 USDC deficit lesz.
+
+Az Umbrella, az Aave staking-alapú biztonsági hálója, elégetheti a stakerek aTokenjeit az érintett eszközben az ilyen deficitek fedezésére; az aktiválása az Ethereumon kezdődött (Aave docs, megtekintve 2026. október 14-én). A protokollt védi, nem a hitelfelvevőt, akinek a fedezete addigra már elfogyott.
+
+Ez az Aave V3-on már megtörtént. Miután az USDC 2023. március 11-én kb. 0,88 $-on forgott, a Gauntlet utólagos elemzése kb. 280 ezer $ behajthatatlan adósságot rögzített a V3 Avalanche E-Mode-ban és kb. 20 ezer $-t a V3 Arbitrumon, és megjegyezte, hogy amint a fedezet kevesebbet ér, mint az adósság szorozva egy plusz a bónusszal, minden részleges likvidálás mélyebbre nyomja a számlát a víz alá. Ez még azelőtt volt, hogy a v3.3 bevezette a deficitmechanizmust.
+
+## Leállnak a likvidálások, ha egy piacot befagyasztanak vagy leáll egy L2 sequencer?
+
+Egyik esetben sem. Az Aave V3.7-en egy befagyasztott eszköz továbbra is likvidálható, és az Arbitrumon, az Optimismon és a Base-en a likvidálások már nem függenek attól, hogy az L2 sequencer működik-e. Ami valóban blokkolja a likvidálásokat, az a szüneteltetés.
+
+- **Befagyasztva (frozen):** a befagyasztás új pozíciókat blokkol egy eszközben, de a likvidálási ellenőrzés figyelmen kívül hagyja. A 2023. márciusi USDC-depegnél (a dollárhoz kötött árfolyam elvesztése) az Aave V3 Avalanche stablecoinjait befagyasztották, és a likvidálások folytatódtak. Az Arbitrumon a hídon áthozott USDC.e 2026. október 14-én be volt fagyasztva 0-s LTV-vel (514855406-os Arbitrum-blokk), mégis beleszámít a health factorba a 78%-os likvidálási küszöbével, és lefoglalható.
+- **L2 sequencer:** a v3.7 előtt az L2 piacokon egy sentinel szerződés blokkolhatta a likvidálásokat és a hitelfelvételt, amíg a sequencer állt, és a visszaállása után még egy türelmi ideig. Az Aave V3.7, amelyet 2026. október 14-én az Arbitrum, az Optimism és a Base V3 piacai mind futtatnak, megszüntette a sentinelt. Egy leállás továbbra is mindenki tranzakcióit feltartja, a hitelfelvevőkét és a likvidátorokét egyaránt, de egy pozíció, amely közben 1 alá esett, ma már likvidálható, amint a sequencer visszaáll.
+- **Szüneteltetve (paused):** egy szüneteltetett fedezeti vagy adóssági eszköz minden olyan likvidálást blokkol, amelyben szerepel. A szüneteltetés feloldásakor az Aave emergency guardianje vagy a governance legfeljebb 4 órás türelmi időt állíthat be, amely alatt a likvidálások blokkolva maradnak, hogy a hitelfelvevők visszafizethessenek vagy fedezetet adhassanak hozzá; ebben az időszakban a hitelfelvétel engedélyezett.
+
+## Miben mások a likvidálások az Aave V4-en?
+
+Az Aave V4, amely 2026. március 30-a óta működik az Ethereumon, azóta pedig az Avalanche-on, az Arcon és a Base-en is, a close factort egy cél health factorral váltja fel, és olyan bónuszt fizet, amely a health factor csökkenésével nő. A V3 mellette tovább működik a saját szabályaival.
+
+- **Cél health factor az 50% vagy 100% helyett.** Egy V4 likvidátor csak annyi adósságot fizethet vissza, amennyi ahhoz kell, hogy a pozíció visszaérjen a Spoke-ja cél health factorához, amely az Ethereum Main Spoke-on 1,24 (on-chain kiolvasva a 26193995-ös Ethereum-blokknál, 2026. október 14-én). A kivétel az, ha ez nagyon kicsi maradékot hagyna; ekkor az abban a reserve-ben lévő teljes adósság rendezhető.
+- **Növekvő bónusz.** Az Aave dokumentációja holland aukciónak hívja. Az Ethereum Main Spoke-on a bónusz közvetlenül 1-es health factor alatt az eszköz maximumának 90%-áról indul, és 0,90-nál vagy az alatt éri el a teljes maximumot. A WETH-nél, 5,55%-os maximummal (Aave V4 API, 2026. október 14.), ez közvetlenül 1 alatt kb. 5,0%, 0,90-nál pedig 5,55%. A bónuszból 10%-os díj jön le, mint a V3-ban.
+
+A Tokenping az Aave V4 pozíciókat is figyeli: minden Spoke-ot az Ethereumon, az Avalanche-on, az Arcon és a Base-en (2026. október 16-án 20 Spoke), Spoke-onként külön riasztással, mert mindegyik a saját pozícióját és health factorát tartja nyilván.
+
+## Miben különbözik egy Aave-likvidálás egy Morpho-likvidálástól?
+
+A Morpho Blue-n nincs close factor: amint egy pozíció health factora 1 alá esik, egy likvidátor egyetlen hívásban visszafizetheti a teljes adósságot. Az ösztönző csak a piac likvidálási LTV-jétől (LLTV) függ, 98%-os LLTV-nél kb. 0,6%, alacsony LLTV-knél legfeljebb 15%, és ha előbb fogy el a fedezet, a maradék adósságot a piac hitelezőire írják le. [A Morpho-likvidálásról szóló útmutatóban](/hu/blog/hogyan-mukodik-a-likvidalas-a-morphon) megtalálod a képletet, az ösztönzőt minden LLTV-nél és egy kidolgozott példát.
+
+## Mit tehetsz, mielőtt a health factorod eléri az 1-et?
+
+Mielőtt a health factor eléri az 1-et, visszafizethetsz adósságot vagy hozzáadhatsz fedezetet; mindkettő rögtön növeli, és egyik sem kerül bónuszba. Amint 1 alatt van, egy likvidátor megelőzhet, és még egy részleges likvidálás is a lefoglalt fedezet bónuszába kerül: 300 $ 6000 USDC visszafizetésénél 5%-os bónusszal.
+
+Kockázatos az utolsó pillanatra hagyni, mert a tranzakciók elbukhatnak vagy elakadhatnak. 2021 májusában egy Polygon-fórumfelhasználó 1,01-es health factornál próbált visszafizetni, folyamatosan hibákat kapott, és likvidálták, mielőtt a visszafizetés átment volna. 2024 decemberében egy Aave-fórumfelhasználó több mint egy órányi visszafizetési kísérletet írt le, amelyek folyton elakadtak, mielőtt a pozícióját likvidálták.
+
+A lehetőségeket [az útmutató arról, hogyan növeld az Aave health factorodat](/hu/blog/aave-likvidalas-elkerulese) tárgyalja, azt pedig, hogy miért esik a health factor akkor is, ha semmit sem csinálsz, [az útmutató arról, miért esik magától az Aave health factorod](/hu/blog/miert-csokkent-az-aave-health-factor).
+
+A Tokenping 5 percenként ellenőrzi az Aave health factorodat, minden Aave V3 piacon 21 hálózaton és minden Aave V4 Spoke-ban, és üzenetet küld Signalon, Telegramon vagy e-mailben, amikor egy általad választott küszöbérték (1,1 és 10 között) alatt van, és minden ellenőrzéskor megismétli, amíg helyre nem áll. A likvidálás legalább a lefoglalt fedezet bónuszába kerül. Egy 1,0 fölé állított riasztás időt adhat a visszafizetésre vagy fedezet hozzáadására, de egy gyors ármozgás két ellenőrzés között is 1 alá viheti a health factort, és a riasztás nem tud helyetted cselekedni. [Ellenőrizheted az Aave V3 health factorodat](/hu/aave), vagy elolvashatod, [hogyan állíts be health factor-riasztást](/hu/blog/aave-health-factor-riasztas-beallitasa).
+
+## Források
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), aave-dao/aave-v3-origin, main ág: close factor, dust- és bad debt-szabályok (megtekintve: 2026. október 14.)
+- [Aave V3 ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): a likvidálás feltételei (megtekintve: 2026. október 14.)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): bad debt, a teljes pozícióra vonatkozó close factor és a GHO/USDC/DAI példa, 2000 $-os küszöb (megtekintve: 2026. október 14.)
+- [Aave v3.1 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): legfeljebb 4 órás likvidálási türelmi idő (megtekintve: 2026. október 14.)
+- [Aave V3 PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol): a szüneteltetés és a türelmi idővel történő feloldás csak az emergency admin vagy a pool admin joga, `MAX_GRACE_PERIOD = 4 hours` (megtekintve: 2026. október 14.)
+- [Aave governance dokumentáció](https://aave.com/docs/ecosystem/governance): az emergency admin szerepét a Protocol Emergency Guardian tölti be (megtekintve: 2026. október 14.)
+- [Aave V3 Risk Stewards README](https://github.com/aave-dao/aave-v3-risk-stewards): a paraméterek, amelyeket a stewardok rögzített határokon belül módosíthatnak (megtekintve: 2026. október 14.)
+- [Aave v3.7 PriceOracleSentinel removal](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/sentinel-removal.md) (megtekintve: 2026. október 14.)
+- [Aave V3 Pool-szerződésreferencia](https://aave.com/docs/aave-v3/smart-contracts/pool), amely még a v3.3 előtti close factort írja (megtekintve: 2026. október 14.)
+- [Aave Umbrella dokumentáció](https://aave.com/docs/aave-v3/umbrella) (megtekintve: 2026. október 14.)
+- [Aave V3 PoolDataProvider az Ethereumon](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): a WETH, a WBTC és az USDC reserve-konfigurációja és likvidálási protokolldíja a 26193284-es blokknál, a 26193992-es blokknál változatlanul újraolvasva (megtekintve: 2026. október 14.)
+- [Aave V3 PoolDataProvider az Arbitrumon](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): ugyanezek a lekérdezések a WETH-re, a WBTC-re, a natív USDC-re és az USDC.e-re az 514855406-os blokknál (megtekintve: 2026. október 14.)
+- [Aave V3 Ethereum Core Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): az 1-es „ETH correlated” E-Mode-kategória a 26193288-as blokknál (megtekintve: 2026. október 14.)
+- [Aave V4 likvidálási dokumentáció](https://aave.com/docs/aave-v4/positions/liquidations) (megtekintve: 2026. október 14.)
+- [Aave V4 overview](https://github.com/aave/aave-v4/blob/main/docs/overview.md) és [V4 LiquidationLogic.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/libraries/LiquidationLogic.sol), aave/aave-v4 main (megtekintve: 2026. október 14.)
+- [Aave V4 Ethereum Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485): cél health factor és bónuszbeállítások a 26193995-ös blokknál (megtekintve: 2026. október 14.)
+- [Aave V4 nyilvános GraphQL API](https://api.v4.aave.com/graphql), `reserves` lekérdezés: a WETH maximális likvidálási bónusza és likvidálási díja az Ethereum Main Spoke-on (megtekintve: 2026. október 14.)
+- [Aave docs changelog](https://aave.com/docs/resources/changelog): a V4 indulási dátumai (megtekintve: 2026. október 14.)
+- [Gauntlet, „Aave Resilient Through USDC Volatility”](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), közzétéve 2023. március 17-én (megtekintve: 2026. október 14.)
+- [Polygon-fórum, „Liquidation on polygon AAVE -JSON ERROR”](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067), közzétéve 2021. május 18-án (megtekintve: 2026. október 14.)
+- [Aave-fórum, „Repeatedly Failed Repayment Attempts Leading to Liquidation”](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379), közzétéve 2024. december 23-án (megtekintve: 2026. október 14.)
+- [Az Aave interface #2084-es pull requestje](https://github.com/aave/interface/pull/2084), amely 2024 májusában eltávolította az alkalmazás egyetlen riasztási integrációját (megtekintve: 2026. október 14.)
+
+_Oktatási tartalom, nem pénzügyi tanácsadás. A riasztások csökkentik a kockázatot, de nem akadályozzák meg a likvidálást._

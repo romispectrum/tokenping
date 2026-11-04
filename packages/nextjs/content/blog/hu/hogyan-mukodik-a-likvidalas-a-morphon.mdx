@@ -1,0 +1,184 @@
+export const meta = {
+  slug: "hogyan-mukodik-a-likvidalas-a-morphon",
+  title: "Hogyan működik a likvidálás a Morphón: ösztönző és bad debt",
+  description:
+    "Mikor likvidálható egy Morpho-hitel, mennyit vihet el a likvidátor, az ösztönző minden LLTV-nél, bad debt, orákulumok, és miben más a Midnight.",
+  h1: "Mi történik, amikor likvidálják a Morpho-pozíciódat?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Hogyan működik a likvidálás a Morphón, és mibe kerül a hitelfelvevőnek?",
+  readingMinutes: 11,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Egy Morpho Blue pozíció akkor likvidálható, amikor a hitel-fedezet aránya (LTV) a piac likvidálási LTV-je (LLTV) fölé
+  emelkedik, ami ugyanaz, mint az 1 alatti health factor (egészségi mutató). Ettől kezdve bárki visszafizetheti az
+  adósságod egy részét vagy egészét egyetlen tranzakcióban, és elviheti a visszafizetett összeg és a piac likvidálási
+  ösztönzőszorzójának szorzatát érő fedezetet, a piac orákulumának (árforrásának) árán. Az ösztönző kizárólag az
+  LLTV-ből következik: 86%-os LLTV-nél 4,38%, és mind a likvidátoré. A felvett összeg nálad marad, így az ösztönző az,
+  amibe a likvidálás kerül neked, hacsak a fedezeted már nem fedezi az adósságot; akkor az egészet elveszíted, a
+  maradékot pedig a piac hitelezői viselik behajthatatlan adósságként (bad debt). A Morpho Midnight fix kamatozású
+  hitelei két csavart hoznak: a lejárat előtt egy likvidálás csak annyit vihet el, amennyi helyreállítja a pozíció
+  egészségét, kivéve, ha a megmaradó fedezet kevesebbet fizetne vissza a piac küszöbénél, a lejárat után pedig a maradék
+  adósság likvidálható, még egészséges pozíciónál is.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Számok és a blokkszámok, amelyeknél kiolvastuk őket: content/blog/snapshots/how-morpho-liquidation-works.md */}
+
+## Mikor likvidálható egy Morpho-pozíció?
+
+Egy Morpho Blue pozíció akkor likvidálható, amint az adósságod nagyobb, mint a fedezeted értéke szorozva a piac LLTV-jével. Health factorban kifejezve ez bármely 1,00 alatti érték ([hogyan számolják a Morpho health factort](/hu/blog/morpho-health-factor-magyarazat): a képlet és példák).
+
+Ezt maga a szerződés ellenőrzi. A Morpho Blue `liquidate` függvénye először hozzáadja az addig a blokkig esedékes kamatot, aztán egyszer kiolvassa a piac orákulumát, majd visszavonja a tranzakciót, hacsak a pozíció nem egészségtelen. A pontosan az LLTV-jén álló pozíció még egészséges; fölötte kell lennie.
+
+Csak két dolog lökheti át a pozíciót a határon:
+
+- **A fedezet ára esik** a hiteltokenhez képest, ahogy az orákulum jelenti.
+- **Az adósságod nő**, ahogy a kamat halmozódik egy változó kamatú Blue-hitelen.
+
+Minden Blue-piac a létrehozásakor rögzíti az LLTV-jét és az orákulumát, és egyik sem változhat utána. A Morpho Blue szerződésben nincs szüneteltetés, befagyasztás vagy türelmi idő sem: a Morpho nem tudja leállítani a likvidálásokat egy piacon, és azt sem, hogy visszafizess. Egy token saját kibocsátója viszont szüneteltetheti vagy blokkolhatja a token átutalásait, ami mindkettőt megállítaná.
+
+## Ki likvidál egy Morpho-pozíciót, és hogyan?
+
+Bárki. A `liquidate` függvénynek nincs hívói korlátozása, és maga a Morpho nem likvidál pozíciókat. A likvidátorok a pozíciókat és orákulumárakat figyelő botokat futtató csapatoktól a magánszemélyekig terjednek; a Morpho dokumentációja szerint ehhez csak egy RPC-csomópont és egy tárca kell, amelyben elég hiteltoken van.
+
+Aki előbb jön, az viszi. Nincs aukció, így a likvidátorok gyorsaságban versenyeznek, és ehhez hozzátartoznak a gázversenyek és a MEV (a tranzakciók profitcélú sorba rendezése) is. A szerződés a lefoglalt fedezetet még azelőtt elküldi a likvidátornak, hogy beszedné a hiteltokeneket, így egy bot ugyanabban a tranzakcióban eladhatja a fedezetet, és a bevételből fizet vissza.
+
+A likvidálások nem garantáltak; azért történnek, mert az ösztönző megéri. A gyakorlatban rutinszerűek: a Morpho API-ja csak a Base USDC | cbBTC (86%) piacán 14 024 likvidálást számol.
+
+## Mennyi adósságodat likvidálhatják egyszerre?
+
+Az egészet. A Morpho Blue-nak nincs close factora (az adósság egyszerre visszafizethető része) és nincs minimális mérete: egy likvidátor az adósságod bármekkora részét visszafizetheti, egy kis szelettől az egészéig, egyetlen hívásban. Az egyetlen korlát, hogy nem fizethet vissza többet, mint amennyivel tartozol, és nem foglalhat le több fedezetet, mint amennyi neked van.
+
+Ez a legnagyobb különbség az Aave V3-hoz képest, amely egy likvidálást az adósság 50%-ára korlátoz, amíg a health factor 0,95 fölött van és a pozíció nem kicsi ([mennyi Aave-adósság likvidálható egyszerre](/hu/blog/hogyan-mukodik-a-likvidalas-az-aave-on#mennyi-adossagomat-likvidalhatjak-egyszerre)). A Blue-n egy pozíciót, amely épp csak átcsúszik az LLTV-jén, az elsőként érkező likvidátor teljesen lezárhat.
+
+## Mekkora a likvidálási ösztönző az egyes LLTV-knél?
+
+A likvidálási ösztönzőszorzót (liquidation incentive factor, LIF) a szerződésben egy képlet határozza meg a piac LLTV-jéből:
+
+**LIF = min(1,15, 1 ÷ (1 − 0,3 × (1 − LLTV)))**
+
+A likvidátor visszafizeti az adósságod egy részét, és ennek az összegnek a LIF-szeresét érő fedezetet kap az orákulumáron. Az 1 feletti rész az ösztönző, amelyet a fedezetedből fizetnek ki. A Morpho nem kap belőle részesedést.
+
+Egy piac csak olyan LLTV-t használhat, amelyet a Morpho governance engedélyezett. 2026. október 26-án ezek voltak az engedélyezett értékek, és a Morpho API-jában minden Blue-piac ezek egyikét használja. A szerződés saját egészszám-aritmetikájával:
+
+| LLTV  | Likvidálási ösztönzőszorzó | Elvesztett fedezet 1000 visszafizetett adósságonként | Ebből az ösztönző |
+| ----- | -------------------------- | ---------------------------------------------------- | ----------------- |
+| 38,5% | 1,1500 (korlátozva)        | 1150,00                                              | 150,00            |
+| 62,5% | 1,1268                     | 1126,76                                              | 126,76            |
+| 77%   | 1,0741                     | 1074,11                                              | 74,11             |
+| 86%   | 1,0438                     | 1043,84                                              | 43,84             |
+| 91,5% | 1,0262                     | 1026,17                                              | 26,17             |
+| 94,5% | 1,0168                     | 1016,78                                              | 16,78             |
+| 96,5% | 1,0106                     | 1010,61                                              | 10,61             |
+| 98%   | 1,0060                     | 1006,04                                              | 6,04              |
+
+A 0-s LLTV is engedélyezett, de egy ilyen piacon semmit sem lehet felvenni. Minél magasabb az LLTV, annál kisebb az ösztönző; a Morpho dokumentációja ezt a kockázatosabb piacokon a láncszerű likvidálások elleni védelemként magyarázza. A 86%-os értéket „approximately 1.05” (körülbelül 1,05) értékre kerekíti; a pontos érték 1,0438.
+
+## Számított példa: 1 cbBTC 50 000 USDC-vel szemben a Base-en
+
+Vegyük az Ethereumon és a Base-en hitelfelvétel szerint legnagyobb listázott Blue-piacot: a Base USDC | cbBTC (86%) piacát, körülbelül 1,61 milliárd felvett USDC-vel. 2026. október 26-án az orákuluma 1 cbBTC-t 80 000,15 USDC-re árazott (Base-blokk: 53102870). A pozíció kitalált: 1 cbBTC fedezet és 50 000 USDC adósság.
+
+- **LTV:** 50 000 ÷ 80 000,15 = 62,5%.
+- **Health factor:** 80 000,15 × 0,86 ÷ 50 000 = 1,376.
+- **Likvidálási ár:** 50 000 ÷ 0,86 = 58 139,53 USDC cbBTC-nként, 27,3%-kal az orákulumár alatt.
+
+A kamat a lassú tényező. A piac 2026. október 26-i, évi körülbelül 5,2%-os hitelkamata mellett, ha ez a kamat megmaradna, csak a kamatnak több mint hat év kellene ahhoz, hogy ezt a pozíciót 62,5%-ról 86%-os LTV-re vigye. Az ár a gyors tényező.
+
+Összehasonlításképp: a piac 11 000 legnagyobb hitelpozíciójában, amelyek az adósság 96%-át tartják, a felvett USDC fele körülbelül 54%-os LTV alatti pozíciókban volt, ami nagyjából 1,59 feletti health factort jelent. Ez a Tokenping számítása a Morpho API-jából és a láncon lévő árból, nem a Morpho adata.
+
+### Teljes likvidálás 58 139,53-nál
+
+Épp a likvidálási ár után egy likvidátor visszafizetheti mind az 50 000 USDC-t, és elvihet 50 000 × 1,0438 ÷ 58 139,53 = 0,8977 cbBTC-t, amely 52 192,07 USDC-t ér. Nálad marad a felvett 50 000 USDC és 0,1023 cbBTC (5947,47 USDC), és semmivel sem tartozol. A likvidálás 2192,07 USDC-be került ahhoz képest, mintha magad fizettél volna vissza: az adósság 4,38%-ába.
+
+### 10 000 USDC részleges likvidálása
+
+Egy likvidátor 10 000 USDC-nél is megállhat. Ez 0,1795 cbBTC-t (10 438,41 USDC) foglal le, és 0,8205 cbBTC-t hagy 40 000 USDC-vel szemben: 83,9%-os LTV és 1,026-os health factor, vagyis ismét egészséges. Itt egy szelet mindig segít, mert LIF × LLTV = 0,898, ami 1 alatt van. Semmi sem kényszeríti azonban a likvidátort, hogy a szeletet válassza a teljes adósság helyett.
+
+### Mi van, ha senki sem likvidál, amíg a cbBTC 50 000-en nem áll?
+
+50 000 USDC-nél a fedezeted pontosan annyit ér, mint az adósságod, ami kevesebb, mint az adósság × LIF. A teljes 1 cbBTC lefoglalása csak 50 000 ÷ 1,0438 = 47 900 USDC-t fizet vissza. Az összes fedezetedet elveszíted, a maradék 2100 USDC-t pedig behajthatatlan adósságként leírják, amelyet a piac hitelezői viselnek.
+
+## Mi történik a behajthatatlan adóssággal a Morpho Blue-n?
+
+Ha egy likvidálás után a hitelfelvevőnek nem marad fedezete, de marad adóssága, a szerződés ugyanabban a tranzakcióban leírja ezt az adósságot. A maradék adósságot levonja a piac teljes felvett összegéből, és ugyanennyit a teljes elhelyezett összegéből, így a piac minden hitelezője a részesedése arányában veszít. A többi piac hitelezőit ez nem érinti, mert minden Blue-piac elszigetelt.
+
+Behajthatatlan adósság akkor keletkezhet, ha a fedezet kevesebbet ér, mint az adósság szorozva a LIF-fel. Egy 86%-os piacon ez bármely 95,8% feletti LTV, amelyet egy pozíció csak akkor érhet el, ha az ár túllép az LLTV-n, mielőtt bárki likvidálná. Előfordul, bár ritkán nagy összegekben: a Morpho API-ja az Ethereumon és a Base-en 1428 Blue-likvidálásnál rögzít behajthatatlan adósságot, többségüket 1 USA-dollár alatt vagy olyan piacokon, amelyeket a Morpho alkalmazás nem listáz.
+
+A hitelfelvevő számára az eredmény mindkét esetben ugyanaz: az összes fedezet elveszett, és nem marad adósság. A hitelezők számára attól függ, hogyan hiteleznek: egy Morpho Vault V2 a veszteséget a részesedési árára terheli, míg a régebbi V1.1-es vaultok nem terhelik rá a sajátjukra. Az Aave másképp kezeli: a v3.3 óta a maradék adósságot deficitként rögzíti, amelyet az Umbrella stakerei fedezhetnek ([behajthatatlan adósság az Aave-on](/hu/blog/hogyan-mukodik-a-likvidalas-az-aave-on#hagyhat-egy-likvidalas-behajthatatlan-adossagot)).
+
+## Milyen szerepe van az orákulumnak egy likvidálásban?
+
+Az orákulum adja az árat minden likvidálási döntéshez. Minden piac megnevez egy orákulumot, amely a fedezet árát adja meg a hiteltokenben, és mind az a pillanat, amikor egy pozíció likvidálhatóvá válik, mind a likvidátornak járó fedezet mennyisége ezt az árat használja, nem a tőzsdei árakat. Az orákulumot nem a Morpho választja ki, hanem az, aki a piacot létrehozza. A piac orákulumcíme soha nem cserélhető le, de az árfolyamforrásokat (feedeket), amelyeket egy orákulum olvas, mások is működtethetik, akik frissíthetik őket. A Base-példa BTC/USD feedjének például van tulajdonosa, aki új forrásra irányíthatja.
+
+Számít, hogy egy orákulum mit mér. A Base-példa piacának orákuluma BTC/USD feedet használ a cbBTC-hez, és az USDC-t pontosan 1 USA-dollárnak veszi, így egyik token depegje (a dollárhoz kötött árfolyam elvesztése) sem mozdítaná. A Morpho Chainlink-kompatibilis feedekhez készült referencia-orákuluma nem ellenőrzi, milyen régi egy ár, sem azt, hogy határokon belül van-e, és az L2 sequencer kieséseire sem tartalmaz ellenőrzést.
+
+Egy orákulumprobléma kétféleképpen árthat a hitelfelvevőknek:
+
+- **Hibás vagy manipulált ár.** A Morpho kockázati oldala figyelmeztet, hogy egyetlen orákulum sem védett a manipuláció ellen, ami likvidálásokat vagy akár behajthatatlan adósságot is okozhat.
+- **Egy orákulum, amely nem válaszol többé.** A hitelfelvétel, a fedezet kivétele és a likvidálás mind kiolvassa az orákulumot, és meghiúsulna. A visszafizetés és a fedezet hozzáadása nem olvassa ki, így továbbra is javíthatsz a pozíciódon, miközben senki sem tudja likvidálni.
+
+## Miben mások a Morpho Midnight likvidálásai?
+
+A Morpho Midnight piacai egy tokent hiteleznek fix kamattal egy meghatározott lejárati dátumig, egy vagy több fedezettel szemben, mindegyiknek saját LLTV-jével, orákulumával és likvidálási kurzorával (liquidation cursor: a fenti ösztönzőképletben szereplő 0,3, amelyet a Midnight fedezetenként állít be). Az adósságod egységekben rögzített, így a lejárat előtt csak a fedezetárak mozgatják a health factorodat. Egy Midnight-pozíció kétféleképpen likvidálható:
+
+- **Egészség alapján, bármikor**, amíg az adósság meghaladja az egyes fedezetek értéke és LLTV-je szorzatainak összegét. Az ösztönző az adott fedezet teljes bónusza, és egy likvidálás csak annyit fizethet vissza, amennyi a pozíció egészségének helyreállításához kell. A kivétel: ha egy ilyen korlátozott likvidálás után megmaradó fedezet kevesebbet fizetne vissza, mint a piac rcfThreshold értéke, az a fedezet teljes egészében elvihető.
+- **A lejárat után**, ha maradt adósság, még egészséges pozíciónál is. Nincs korlát, és az ösztönző nulláról indul, majd 60 perc alatt emelkedik a teljes bónuszig.
+
+A likvidátor választja ki, melyik fedezetet viszi el, és nincs 1,15-ös felső korlát; 2026. október 26-án minden listázott Midnight-piac 0,3-as kurzort használt, 62,5% és 98% közötti fedezeti LLTV-kkel, amelyek ugyanazokat az ösztönzőket adják, mint a fenti táblázat. A behajthatatlan adósságot az adott piac hitelezői osztják meg egymás között. [Hogyan működnek a Midnight fix kamatozású hitelei](/hu/blog/morpho-midnight-fix-kamatozasu-hitelek): a lejárat, valós piacok küszöbei és egy számított példa.
+
+## Mi az előlikvidálás?
+
+Az előlikvidálás (pre-liquidation) egy választható kiegészítés a Morpho Blue-n. Az a hitelfelvevő, aki egy piacon engedélyezett egy előlikvidálási szerződést, megengedi a likvidátoroknak, hogy azt használva, amint az LTV átlép egy az LLTV alatt meghatározott határt, hívásról hívásra szeleteket fizessenek vissza az adósságból, az abban a szerződésben rögzített ösztönzővel, amíg az LTV vissza nem kerül e határ alá. Az LLTV fölött továbbra is a normál likvidálás érvényes.
+
+A Base-példa piacának van ilyen szerződése: 83,26%-os LTV-től hívásonként az adósság legfeljebb 0,20%-át fizetheti vissza (a hívások ismétlődhetnek), ami 86% közelében 24,53%-ra emelkedik, ugyanazzal az 1,0438-as ösztönzővel. Csak akkor lép működésbe, ha engedélyezted. A Morpho kivezeti a funkciót: az alkalmazása nem fogad új pozíciókat, a súgóközpontja pedig arra kéri az ezt használó hitelfelvevőket, hogy kapcsolják ki. [Morpho-előlikvidálás](/hu/blog/morpho-elolikvidalas): a feltételek, és hogyan ellenőrizd és vond vissza.
+
+## Miben különbözik a Morpho likvidálása az Aave-étól?
+
+A lényeg ugyanaz: 1 alatt egy likvidátor visszafizeti az adósságot, és elviszi a fedezetet plusz egy bónuszt. A körülötte lévő szabályok eltérnek ([hogyan működik a likvidálás az Aave-on](/hu/blog/hogyan-mukodik-a-likvidalas-az-aave-on)):
+
+|                           | Aave V3                                                          | Morpho Blue                                | Morpho Midnight                                                                                                                                                                         |
+| ------------------------- | ---------------------------------------------------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mennyit egyszerre         | Az adósság 50%-át vagy 100%-át, plusz egy porszabály (dust rule) | Akár a teljes adósságot egy hívásban       | A lejárat előtt annyit, amennyi helyreállítja az egészséget (egy teljes fedezetet, ha a maradék kevesebbet fizetne vissza az rcfThreshold értékénél); a lejárat után a teljes adósságot |
+| Bónusz                    | Fedezeti eszközönként a governance állítja be                    | A piac LLTV-je rögzíti                     | Fedezetenként, az LLTV-jéből és a kurzorából                                                                                                                                            |
+| Kié a bónusz              | A likvidátoré, egy protokolldíj levonásával                      | A likvidátoré, teljes egészében            | A likvidátoré                                                                                                                                                                           |
+| Változhatnak a szabályok? | A governance és a risk stewardok megváltoztathatják              | Nem, a piac létrehozásakor rögzítettek     | A piac létrehozásakor rögzítettek                                                                                                                                                       |
+| Szüneteltetés             | Az eszközök szüneteltethetők, türelmi idővel                     | Nincs szüneteltetés                        | Nincs szüneteltetés                                                                                                                                                                     |
+| Behajthatatlan adósság    | Deficit, amelyet az Umbrella stakerei fedezhetnek                | Az adott piac hitelezőivel szemben leírják | Az adott piac hitelezői között szétosztva                                                                                                                                               |
+| Mit fed le egy pozíció    | Sok eszközt egy pozícióban                                       | Egy fedezet, egy hiteltoken                | Egy hiteltoken, több fedezet                                                                                                                                                            |
+
+## Hogyan kerülheted el a likvidálást a Morphón?
+
+- **Tarts puffert az LLTV alatt.** Egy pozíció, amely helyreáll, mielőtt bárki likvidálná, ismét biztonságban van, de semmi sem akadályozza meg, hogy az ár tovább essen, és az elsőként érkező likvidátor egyszerre visszafizetheti a teljes adósságodat.
+- **Fizess vissza vagy adj hozzá fedezetet időben.** Mindkettő azonnal csökkenti az LTV-det, nem kerül ösztönzőbe, és akkor is működik, ha az orákulum nem válaszol.
+- **Ismerd az orákulumodat.** Hitelfelvétel előtt nézd meg, melyik orákulumot használja a piacod, és mit mér.
+- **A Midnighton fizess vissza a lejárat előtt.** A lejárat után bármely maradék adósság likvidálható, egészséges pozíciónál is.
+- **Ellenőrizd a régi előlikvidálást.** Ha valaha bekapcsoltad az „Auto-deleverage” funkciót (előlikvidálás), a Morpho kivezeti, és arra kéri a hitelfelvevőket, hogy kapcsolják ki; [Morpho-előlikvidálás](/hu/blog/morpho-elolikvidalas): így teheted meg.
+
+## Hogyan segíthetnek a riasztások?
+
+A Tokenping 5 percenként ellenőriz minden Morpho-hitelpozíciót, amelyre riasztást állítasz be, a Morpho alkalmazásban listázott piacokon: a Morpho Blue-t 14 hálózaton, és a Morpho Midnightot. A Midnight-riasztások azokat a piacokat fedik le, amelyeket a Morpho API-ja listáz. 2026. október 26-án ezek az Ethereumon és a Base-en voltak; a Tokenping az Arcot és a Robinhood Chaint is lefedi, amint a Morpho ott Midnight-piacokat listáz. Minden health factort a láncból számol a Morpho saját matematikájával, nem a Morpho API-jából. Amíg egy health factor az általad beállított küszöbérték (1,02 és 10 között) alatt van, minden ellenőrzés üzenetet küld minden általad választott csatornán: Signalon, Telegramon vagy e-mailben. Ha egy Blue-piacon engedélyeztél egy előlikvidálási szerződést, a riasztás a két határ közül az alacsonyabbhoz mér: az LLTV-hez vagy az előlikvidálási határhoz. Egy Midnight-hitel emellett kap egy emlékeztetőt a lejárat előtti utolsó 7 napban és egyet az utolsó 24 órában, majd a lejárat után minden ellenőrzéskor riasztást, amíg adósság marad.
+
+[Megnézheted a Morpho-pozícióidat](/hu/morpho); ezért nem kell fizetned. A riasztások ára <AlertPrice />. Egy riasztás időt ad a cselekvésre, de egy ár két ellenőrzés között átléphet az LLTV-den, és egy riasztás nem akadályozza meg a likvidálást.
+
+## Források
+
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) és [IMorpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/interfaces/IMorpho.sol), morpho-org/morpho-blue: egészségellenőrzés, likvidálás, ösztönzőképlet, behajthatatlan adósság és orákulum-feltevések (megtekintve: 2026. október 26.)
+- [Midnight.sol](https://github.com/morpho-org/midnight/blob/main/src/Midnight.sol) és [ConstantsLib.sol](https://github.com/morpho-org/midnight/blob/main/src/libraries/ConstantsLib.sol), morpho-org/midnight: likvidálási módok, RCF, az ösztönző felfutása és slashing (megtekintve: 2026. október 26.)
+- [Pre-liquidation README és PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation), morpho-org/pre-liquidation (megtekintve: 2026. október 26.)
+- [ChainlinkDataFeedLib.sol](https://github.com/morpho-org/morpho-blue-oracles/blob/main/src/morpho-chainlink/libraries/ChainlinkDataFeedLib.sol), morpho-org/morpho-blue-oracles: nincs elavultsági, határ- vagy sequencer-ellenőrzés (megtekintve: 2026. október 26.)
+- [Liquidation on Morpho](https://docs.morpho.org/learn/concepts/liquidation): likvidátorok, nincs aukció, akár 100% egyszerre, nincs protokolldíj, behajthatatlan adósság a vaultokban (megtekintve: 2026. október 26.)
+- [Morpho fejlesztői dokumentáció: likvidálás](https://docs.morpho.org/developers/borrow/concepts/liquidation): ösztönző LLTV szerint és behajthatatlan adósság (megtekintve: 2026. október 26.)
+- [Morpho dokumentáció: orákulumok](https://docs.morpho.org/learn/concepts/oracle): az orákulum kiválasztása és megváltoztathatatlansága (megtekintve: 2026. október 26.)
+- [Morpho dokumentáció: Morpho Blue](https://docs.morpho.org/learn/concepts/blue): végleges piaci paraméterek és engedélyezett LLTV-k (megtekintve: 2026. október 26.)
+- [Morpho dokumentáció: Midnight-likvidálások](https://docs.morpho.org/learn/concepts/midnight/liquidations), [fedezet, egészség és likvidálások](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) és [mi a Midnight](https://docs.morpho.org/learn/concepts/midnight) (megtekintve: 2026. október 26.)
+- [Morpho dokumentáció: kockázatok](https://docs.morpho.org/learn/resources/risks): orákulum-, likvidálási, behajthatatlanadósság- és partnerkockázat (megtekintve: 2026. október 26.)
+- [Morpho API](https://api.morpho.org/graphql): likvidálások és behajthatatlan adósságok száma, piaclista, hitelkamat, hitelpozíciók és Midnight-piacok (megtekintve: 2026. október 26.)
+- [Morpho Blue a Base-en](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), az USDC | cbBTC (86%) piac az 53102870-es Base-blokknál (megtekintve: 2026. október 26.)
+- [A piac orákuluma](https://basescan.org/address/0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9#readContract) és [a BTC/USD feedje](https://basescan.org/address/0x64c911996D3c6aC71f9b455B1E8E7266BcbD848F#readContract) a Base-en: az ár az 53102870-es blokknál és a feed tulajdonosa (megtekintve: 2026. október 26.)
+- [A piac előlikvidálási szerződése](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374#readContract) a Base-en: a paraméterei az 53102870-es blokknál (megtekintve: 2026. október 26.)
+- [Morpho Midnight az Ethereumon](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract): engedélyezett LLTV-k és likvidálási kurzorok a 26274998-as blokknál (megtekintve: 2026. október 26.)
+
+_Oktatási tartalom, nem pénzügyi tanácsadás. A riasztások csökkentik a kockázatot, de nem akadályozzák meg a likvidálást._

@@ -1,0 +1,135 @@
+export const meta = {
+  slug: "likvidaltak-az-aave-on-vagy-morphon-mi-most",
+  title: "Likvidáltak az Aave-on vagy a Morphón: mit tegyél most",
+  description:
+    "Hogyan találd meg a likvidálási tranzakciót, mit vittek el és mi maradt, miért történt, és hogyan kerüld el, hogy másodszor is likvidáljanak.",
+  h1: "Likvidáltak az Aave-on vagy a Morphón: mi most a teendő?",
+  publishedAt: "2026-10-31",
+  primaryQuestion: "Mit tegyél egy Aave- vagy Morpho-likvidálás után?",
+  readingMinutes: 11,
+};
+
+<ShortAnswer>
+  Először keresd meg a tranzakciót: az Aave-on az alkalmazás tranzakcióelőzményeiben vagy a tárcád tokenátutalásai
+  között egy blokkböngészőben, a Morphón a Morpho alkalmazásban vagy a Morpho nyilvános API-ján keresztül, mert a
+  likvidátor tranzakciója sosem jelenik meg a saját listádban. Aztán olvasd ki: a helyetted visszafizetett adósságot, az
+  elvitt fedezetet és a kettő különbségét, vagyis a bónuszt, amelyet kifizettél. A felvett tokenek a tieid maradnak,
+  ahogy a le nem foglalt fedezet is. Az Aave-on egy likvidálás általában az adósságod felét fizeti vissza, és olyan
+  pozíciót hagy hátra, amely újra likvidálható; a Morphón szinte az egészet elviheti egyszerre. A 2026. október 30-ig
+  tartó 30 napban 932 Morpho-hitelfelvevőt likvidáltak egynél többször, így a leghasznosabb lépés az utolsó: puffer és
+  riasztás, mielőtt újra hitelt veszel fel.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Az adatok és kiolvasásuk időpontja: content/blog/snapshots/liquidated-on-aave-or-morpho-what-now.md */}
+
+## Honnan tudod, hogy likvidálás volt, és hol a tranzakció?
+
+Az első jel általában az, hogy egy pozíció furcsán néz ki: az adósság kisebb, mint amire emlékszel, a fedezet sokkal kisebb, a health factor (egészségi mutató) hirtelen magasabb, vagy a pozíció eltűnt. Egy visszafizetés, amelyet nem te intéztél, és egy fedezetkivétel, amelyet nem te írtál alá, ugyanabban a tranzakcióban: ez likvidálás.
+
+A tranzakciót azért nehéz megtalálni, mert nem te küldted. Egy likvidátor botja küldte, ezért nem szerepel a címed „Transactions” listájában az Etherscanen, a Basescanen vagy az Arbiscanen. Helyette itt keresd:
+
+- **Aave, az alkalmazásban.** Nyisd meg a tranzakcióelőzményeket (Transaction history, app.aave.com/history) csatlakoztatott tárcával és a megfelelő piacot kiválasztva, és szűrj a Liquidation típusra. Minden bejegyzésben ott az időpont, a tranzakció hash-e, az elvitt fedezet és a visszafizetett adósság.
+- **Aave, blokkböngészőben.** Nyisd meg a címedet és a „Token transfers (ERC-20)” fület. A likvidálás úgy jelenik meg, mint az aTokened (például aEthWETH) és az adósságtokened (variableDebtEthUSDT) átutalása a nullcímre, egy olyan tranzakcióban, amelyet nem te írtál alá. Nyisd meg, és válts a „Logs” fülre: a Pool szerződés `LiquidationCall` nevű eseménye az a bejegyzés, amelyre szükséged van. Egy tranzakció több hitelfelvevő több likvidálását is tartalmazhatja, ezért azt keresd, amelynek `user` mezője a te címed.
+- **Morpho.** A címednél a blokkböngészőben semmi sem látszik, mert a fedezeted a Morpho szerződésben volt, és a likvidátor visszafizetése is a szerződésbe ment. A Morpho alkalmazás kisebbnek mutatja a pozíciót, vagy már nem mutatja; a Morpho nyilvános API-ja a címed minden likvidálását listázza (`marketTransactions`, Liquidation típussal); a Morpho szerződés eseménynaplójában pedig a blokkböngészőben ott van egy `Liquidate` nevű esemény, amelyben a te címed a `borrower`.
+- **Tokenping.** Az [Aave irányítópult](/hu/aave) és a [Morpho irányítópult](/hu/morpho) a pozíciót a mostani állapotában mutatja. Egy health factor, amely 1 közeléből jóval fölé ugrott, vagy egy eltűnt pozíció likvidálásra utal. A korábbi tranzakciókat az irányítópultok nem listázzák.
+
+Őrizd meg a tranzakció hash-ét. Szükséged lesz rá az összegek kiolvasásához, és sok országban a likvidálás az elvitt fedezet eladásának számít, így az adónyilvántartásodhoz is kell.
+
+## Hogyan olvasd ki a likvidálási tranzakciót?
+
+Mindkét protokoll egyetlen eseménybe írja a teljes likvidálást. A nevek eltérnek, a tartalom ugyanaz: melyik adósságot fizették vissza helyetted, melyik fedezetet vitték el, és mennyit mindegyikből.
+
+Az **Aave V3** a `LiquidationCall(collateralAsset, debtAsset, user, debtToCover, liquidatedCollateralAmount, liquidator, receiveAToken)` eseményt bocsátja ki. Egy valós példa az Ethereum Core-ról, 26305893-as blokk, 2026. október 30., 13:33 UTC:
+
+| Mező                       | Érték               | Mit jelent                                                                             |
+| -------------------------- | ------------------- | -------------------------------------------------------------------------------------- |
+| collateralAsset            | WETH                | Az elvitt eszköz                                                                       |
+| debtAsset                  | USDT                | A visszafizetett eszköz                                                                |
+| user                       | a hitelfelvevő címe | Kinek a pozíciója volt                                                                 |
+| debtToCover                | 1320,785158 USDT    | A hitelfelvevő helyett visszafizetett adósság, az orákulum (árforrás) árán 1319,32 USD |
+| liquidatedCollateralAmount | 0,619088749 WETH    | A likvidátornak küldött fedezet, 2216,31 USD/ETH árfolyamon 1372,09 USD                |
+| liquidator                 | egy szerződéscím    | Ki fizetett vissza, és ki kapta a fedezetet                                            |
+| receiveAToken              | false               | Magát a WETH-et vitte el, nem aEthWETH-et                                              |
+
+Egy összeg nincs benne az eseményben. Ugyanabban a tranzakcióban 0,005952776 aEthWETH (13,19 USD) került át a hitelfelvevőtől az Aave collector szerződéséhez: ez a likvidálási protokolldíj, a WETH bónuszának 20%-a az Ethereum Core-on abban a blokkban. Összeadva: a hitelfelvevő 1385,28 USD értékű WETH-et adott 1319,32 USD adósságért, ez 5% bónusz, amelyből a likvidátor 52,77 USD-t, a kincstár 13,19 USD-t tartott meg. A blokkböngésző „Logs” fülén a díj a collector felé irányuló aToken-átutalásként látszik, közvetlenül az aToken elégetése (burn) után.
+
+A **Morpho Blue** a `Liquidate(id, caller, borrower, repaidAssets, repaidShares, seizedAssets, badDebtAssets, badDebtShares)` eseményt bocsátja ki. Egy valós példa a Base USDC | cbBTC (86%) piacáról, 53265200-as blokk, 2026. október 30., 00:22 UTC:
+
+| Mező          | Érték               | Mit jelent                                                    |
+| ------------- | ------------------- | ------------------------------------------------------------- |
+| id            | 0x9103c3b4…         | A piac                                                        |
+| caller        | a likvidátor        | Ki fizetett vissza, és ki kapta a fedezetet                   |
+| borrower      | a hitelfelvevő címe | Kinek a pozíciója volt                                        |
+| repaidAssets  | 2174,732093 USDC    | A hitelfelvevő helyett visszafizetett adósság                 |
+| seizedAssets  | 0,02952084 cbBTC    | A likvidátornak küldött fedezet, az orákulum árán 2270,08 USD |
+| badDebtAssets | 0                   | Semmit nem írtak le                                           |
+
+Az orákulum abban a blokkban 76 897,38 USDC-re árazta a cbBTC-t. Az elvitt fedezet 2270,08 USD-t ért 2174,73 USD adósságért, ez 1,0438-as arány, ami pontosan az a likvidálási ösztönző szorzó (liquidation incentive factor), amelyet egy 86%-os piac fizet. A 95,34 USD különbség teljes egészében a likvidátorhoz került: a Morpho nem számít fel díjat. Abban a tranzakcióban egyetlen likvidátor 30 `Liquidate` eseménye volt, mindegyik más hitelfelvevővel: így néz ki egy összeomlás legforgalmasabb perce egy piac naplójában.
+
+## Mit vittek el, és mi maradt meg?
+
+Három dolgot kell szétválasztani:
+
+1. **A helyetted visszafizetett adósság eltűnt, és vele együtt a fedezet is, amely kifizette.** A visszafizetett résszel már nem tartozol. A likvidátor a saját tokenjeivel fizette ki, és cserébe elvitte a fedezetedet, plusz a bónuszt. A bónusz a likvidálás költsége: a két példában 65,96 USD 1319 USD adósságon az Aave-on, és 95,34 USD 2175 USD-n a Morphón.
+2. **A felvett tokenek továbbra is a tieid.** Ha USDT-t vettél fel és elköltötted, semmi sem változik. Ha még a tárcádban van, most is ott van. A likvidálás sosem nyúl a tárcádban lévő kölcsönvett tokenekhez; csak a pozíciót változtatja meg.
+3. **A le nem foglalt fedezet a pozícióban marad.** Az Aave-on az aToken-egyenleg kisebb; a Morphón az adott piac fedezetegyenlege kisebb. Ha marad adósság, a fedezet továbbra is azt biztosítja. Ha nem marad adósság, kiveheted.
+
+Hogy mennyi marad, az a protokolltól függ. Az Aave V3-on egy likvidálás legfeljebb a teljes adósságod 50%-át fizeti vissza, ha a health factor 0,95 fölött van, és mind az elvitt fedezet, mind a visszafizetett adósság legalább 2000 USD-t ér; 0,95 alatt, vagy kisebb összegeknél, az adott eszközben fennálló teljes adósságot visszafizetheti ([mennyi likvidálható egyszerre](/hu/blog/hogyan-mukodik-a-likvidalas-az-aave-on#mennyi-adossagomat-likvidalhatjak-egyszerre)). Az ethereumos példa centre pontosan követte az 50%-os szabályt: előtte 2638,63 USD adósság, utána 1319,32. A hitelfelvevőnek 0,7906 WETH (1752 USD) maradt 1319,32 USDT-vel szemben, ez 1,12-es health factor, és ez a pozíció újra likvidálható, ha az ETH további 10,4%-ot esik. Az Aave V4-en egy likvidálás ehelyett annyit fizet vissza, amennyi ahhoz kell, hogy a pozíció visszaérjen a Spoke cél health factorára, ami az Ethereum Main Spoke-on 1,24, így többet fizet vissza, de ami marad, az biztonságosabb ([likvidálások az Aave V4-en](/hu/blog/hogyan-mukodik-a-likvidalas-az-aave-on#miben-masok-a-likvidalasok-az-aave-v4-en)).
+
+A Morpho Blue-ban nincs close factor (az adósság egyszerre visszafizethető része): egy likvidátor egyetlen hívásban akár a teljes adósságot visszafizetheti ([mennyi likvidálható az adósságodból egyszerre](/hu/blog/hogyan-mukodik-a-likvidalas-a-morphon#mennyi-adossagodat-likvidalhatjak-egyszerre)). A base-i likvidátor 0,03286 cbBTC-ből 0,02952-t vitt el, a fedezet 90%-át, és a teljes adósságot visszafizette, kivéve 0,0005 USDC-t, amelyet a részesedések (shares) kerekítése hagyott meg. A hitelfelvevőnek 0,003342 cbBTC maradt, nagyjából 257 USD, és ki is veheti.
+
+Még két dolgot érdemes ellenőrizni. Az Aave-on az, hogy melyik fedezetet vitték el, a likvidátor döntése volt ([melyik fedezetet viszi el a likvidátor](/hu/blog/hogyan-mukodik-a-likvidalas-az-aave-on#melyik-fedezetet-viszi-el-a-likvidator)), így egy több fedezeti eszközt tartalmazó pozíció épp azt veszíthette el, amelyikre a legkevésbé számítottál. A Morphón a vártnál kisebb `repaidAssets` azt jelentheti, hogy a valódi likvidálás előtt egy [előlikvidálás (pre-liquidation)](/hu/blog/morpho-elolikvidalas) futott le, alacsonyabb hitel-fedezet aránynál (LTV) és alacsonyabb ösztönzővel; az alkalmazás és az API mindkét fajtát mutatja.
+
+## Mi van, ha a likvidálás mindent elvitt?
+
+Ha a Morphón a `badDebtAssets` nagyobb nullánál, vagy ha az Aave-esemény után nem maradt fedezeted, miközben adósság maradt, akkor a fedezet kevesebbet ért, mint az adósság plusz a bónusz, mire valaki likvidálta. Mindkét protokoll lezárja a pozíciót ahelyett, hogy téged üldözne:
+
+- **Az Aave** (a V3.3 óta) elégeti a fennmaradó adósságot, és hiányként (deficit) rögzíti az adott tartaléknál, amelyet később az Umbrella stakerei fedezhetnek. A végén nincs se fedezeted, se adósságod ([hagyhat-e egy likvidálás behajthatatlan adósságot (bad debt)](/hu/blog/hogyan-mukodik-a-likvidalas-az-aave-on#hagyhat-egy-likvidalas-behajthatatlan-adossagot)).
+- **A Morpho Blue** ugyanabban a tranzakcióban leírja a fennmaradó adósságot, és a veszteséget szétteríti az adott piac hitelezői között. A hitelfelvevőnek a végén nincs se fedezete, se adóssága ([mi történik a behajthatatlan adóssággal a Morpho Blue-n](/hu/blog/hogyan-mukodik-a-likvidalas-a-morphon#mi-tortenik-a-behajthatatlan-adossaggal-a-morpho-blue-n)).
+
+Senki nem fog a különbözetért üldözni, és semmi sem marad a pozíción. De más sem marad, és a te oldaladon a veszteség a teljes fedezet, nem csak egy bónusz. A behajthatatlan adósság ritka volt a példák hónapjában: nulla a base-i cbBTC-piac 393 likvidálásában az összeomlás körüli három napban, és nagyjából 3,5 millió USD a Morpho összes, 7521 likvidálásában az október 30-ig tartó 30 napban.
+
+## Miért történt?
+
+A két példának egy közös oka van: nem volt puffer. Egy blokkal az Aave-likvidálás előtt a hitelfelvevő health factora 1,0049 volt; a következő Chainlink-frissítés a WETH-et nagyjából 2229,77-ről 2216,31 USD-re vitte, 0,6%-kal lejjebb, és a health factor 0,9988 lett. Egy blokkal a Morpho-likvidálás előtt a base-i hitelfelvevő health factora 1,0025 volt; az orákulum a cbBTC-t 77 140,46-ról 76 897,38 USDC-re vitte, 0,3%-kal lejjebb, és az érték 0,9993 lett. Egyikhez sem kellett összeomlás. Egyetlen szokásos árfrissítés elég volt, a Morpho esetében ráadásul 00:22 UTC-kor, abban a hatórás sávban, amelyben [a Morpho likvidálásainak több mint harmada](/hu/blog/kinek-kell-health-factor-riasztas#milyen-gyakran-likvidaljak-a-hitelfelvevoket) történik.
+
+Ha a health factorod nem volt ilyen közel, valami más mozgatta. [Miért esett a health factorod](/hu/blog/miert-csokkent-az-aave-health-factor) hat okot sorol fel, mindegyikhez egy ellenőrzési módszerrel: esett a fedezeted ára, emelkedett a felvett eszköz ára, az adósság kamata meghaladta a fedezet hozamát, a governance csökkentett egy likvidálási küszöböt (liquidation threshold), egy általad elhelyezett stablecoinnál depeg (a dollárhoz kötött árfolyam elvesztése) történt, vagy egy orákulum rosszul árazott be egy wrappert. A Morpho-változat ugyanez a lista a küszöbcsökkentés nélkül, mert egy Morpho-piac likvidálási LTV-je (LLTV) sosem változik ([mi mozgatja a Morpho health factort](/hu/blog/morpho-health-factor-magyarazat#mi-mozgatja-a-morpho-health-factort)). Két esetet könnyű elnézni: egy lejárata után járó [Midnight-hitel](/hu/blog/morpho-midnight-fix-kamatozasu-hitelek) bármilyen health factornál likvidálható, és egy [tokenizált részvényekkel](/hu/blog/tokenizalt-reszvenyek-fedezetkent) fedezett hitelt egy olyan vasárnap esti árfolyamon is likvidálhatnak, amely akkor mozdult el, amikor az árfolyamforrás szünetelt.
+
+## Mit tegyél az első órában?
+
+1. **Mielőtt hozzányúlnál, nézd meg a megmaradt pozíciót.** Health factor, fennmaradó adósság, fennmaradó fedezet az [Aave irányítópulton](/hu/aave) vagy a [Morpho irányítópulton](/hu/morpho), a protokoll alkalmazásában vagy a blokkböngészőben. Egy részleges likvidálás az Aave-on 1,1 körüli pozíciót hagy hátra, amelyet a következő 10%-os elmozdulás újra likvidál.
+2. **Döntsd el, lezárod vagy megtartod.** Ha már nem kell a hitel, fizesd vissza a maradékot, és vedd ki a fedezetet; az Aave-on magával a fedezettel is visszafizethetsz ([visszafizetés fedezettel](/hu/blog/aave-likvidalas-elkerulese#4-lepes-fizess-vissza-fedezetbol-vagy-csereld-le-a-fedezetet)). Ha megtartod, fizess vissza vagy helyezz el több fedezetet, amíg a health factor ott nem lesz, ahol szeretnéd, és nem ott, ahol volt. [A visszafizetés dolláronként jobban emeli a health factort, mint a fedezet hozzáadása](/hu/blog/aave-likvidalas-elkerulese#miert-emeli-jobban-a-health-factort-a-visszafizetes-mint-a-fedezet-hozzaadasa).
+3. **Ne vegyél fel újra hitelt a határig.** Az a pozíció, amelyet most 1,005-nél likvidáltak, 1,005-nél újra likvidálható lesz. Ha ugyanarra az LTV-re veszel fel újra, újraindítod az órát.
+4. **Ellenőrizd a többi pozíciódat.** Minden Aave-piacnak, minden V4 Spoke-nak és minden Morpho-piacnak saját health factora van, és ugyanaz az ármozgás, amely az egyiket likvidálta, a többit is lejjebb vitte.
+5. **Az Aave-on ellenőrizd, nincs-e befagyasztott tartalék.** Amikor az Aave 2026. október 29-én minden DAO-piacát befagyasztotta, befagyasztott tartalékhoz nem lehetett fedezetet hozzáadni, és csak visszafizetéssel lehetett feljebb vinni a health factort ([miért nem sikerül a kivétel vagy a hitelfelvétel](/hu/blog/miert-nem-sikerul-a-kivetel-vagy-hitelfelvetel-aave)).
+6. **A Morphón ellenőrizd az előlikvidálást.** Ha engedélyeztél egy előlikvidálási szerződést, az továbbra is engedélyezve van; [ellenőrizd és vond vissza](/hu/blog/morpho-elolikvidalas#hogyan-ellenorizd-hogy-engedelyeztel-e-egyet), ha már nem szeretnéd.
+7. **Mentsd el a nyilvántartást.** A tranzakció hash-e, a két összeg, a dátum, és az orákulumárak, ha ki tudod olvasni őket. A blokkböngészők megőrzik az adatokat, de áprilisban nem lesz kedved keresgélni.
+
+## Hogyan kerüld el a másodikat?
+
+A 2026. október 30-ig tartó 30 napban likvidált 5703 Morpho-hitelfelvevő közül 932-t többször is likvidáltak. A fenti base-i hitelfelvevő is köztük volt: egy cbBTC-hitelét június 3-án likvidálták, egy cbZEC-hitelét október 14-én, a cbBTC-hitelét pedig újra október 30-án. Mindegyik egy bónuszba került, és egyik sem vezetett változáshoz. A változás három döntés:
+
+- **Puffer.** Egy 1,005-ös health factor semmit nem bír ki. [Mennyit eshetnek az árak az egyes health factor-értékeknél](/hu/blog/biztonsagos-aave-health-factor#mennyit-eshetnek-az-arak-a-likvidalasig-az-egyes-health-factoroknal) megadja a táblázatot: az 1,5 egy 33,3%-os esést bír ki, a 2 egy 50%-osat. A választott szám attól függ, mit mivel szemben vettél fel; [a lépésenkénti módszer](/hu/blog/biztonsagos-aave-health-factor#hogyan-valassz-riasztasi-kuszoberteket-lepesrol-lepesre) végigvezet rajta, a [Morpho-változat](/hu/blog/morpho-health-factor-magyarazat#hogyan-valassz-puffert-es-riasztasi-kuszoberteket) pedig a rögzített LLTV-vel is számol.
+- **Riasztás a puffer fölött.** Egy üzenet, amikor a health factor átlép egy általad választott határt, elég korán ahhoz, hogy cselekedni tudj. A Tokenping 5 percenként ellenőriz, és Signalon, Telegramon vagy e-mailben üzen; a küszöbérték az Aave-on 1,1 és 10, a Morphón 1,02 és 10 között bárhol lehet. [A beállítása](/hu/blog/aave-health-factor-riasztas-beallitasa) néhány percig tart. A riasztás nem tudja elkapni a két ellenőrzés közötti ugrást, és helyetted semmit nem tud visszafizetni, ezért jön a puffer után, és nem helyette.
+- **Pénz, amellyel cselekedni tudsz.** Visszafizetésre szánt pénz azon a hálózaton, ahol a hitelt felvetted, abban az eszközben, amellyel tartozol, vagy egy olyanban, amelyet éjjel is el tudsz cserélni, és egy telefon, amely átengedi az üzenetet ([riasztások a Ne zavarjanak módon át](/hu/blog/aave-riasztasok-ne-zavarjanak-modban)). A fenti Morpho-likvidálás 00:22 UTC-kor történt; egy 1,1-es riasztás órákkal korábban megérkezett volna, és csak a Base-en lévő pénzzel lehetett volna reagálni rá.
+
+Ha a hitel olyan kicsi volt, hogy nem mozgattál volna pénzt a megmentéséért, az őszinte következtetés más: vagy vegyél fel kevesebbet ellene, vagy fogadd el, hogy a bónusz az ára annak, hogy nem figyelsz.
+
+## Hogyan illeszkedik ide a Tokenping
+
+A Tokenping 5 percenként figyeli az összes általad beállított pozíciót, minden Aave V3-piacon 21 hálózaton, minden Aave V4 Spoke-ban és a Morpho alkalmazásban listázott minden Morpho-piacon, és Signalon, Telegramon vagy e-mailben üzen neked, ha a health factor a küszöbértéked alatt van. Az üzenet minden ellenőrzéskor megismétlődik, amíg a pozíció helyre nem áll, az oldal bármelyik nyelvén. Egy likvidálás után az irányítópultok megmutatják, mi maradt: az [Aave irányítópult](/hu/aave) minden piac health factorát, a [Morpho irányítópult](/hu/morpho) minden piac LTV-jét, LLTV-jét és health factorát, a láncból számolva.
+
+A pozícióidat fizetés nélkül is megnézheted. A riasztások ára: <AlertPrice />; egy riasztás egy Aave V3-piacra, egy V4 Spoke-ra vagy egy Morpho-piacra szól. A Tokenping bétában van, nincs rendelkezésre állási garanciája, és egyetlen riasztás sem akadályozza meg a likvidálást.
+
+## Források
+
+- [Ethereum-tranzakció 0x5f88aa61…12fb6](https://etherscan.io/tx/0x5f88aa61ca6180e132a627c5e4d483c4098becc65359fa6af50551c405312fb6) (26305893-as blokk): `LiquidationCall`, az aEthWETH és a variableDebtEthUSDT elégetése, a díj átutalása a collectornak; az Aave Oracle árai és a `getUserAccountData` a 26305892-es és a 26305893-as blokknál; a `getReserveConfigurationData` és a `getLiquidationProtocolFee` a WETH-re, nyilvános RPC-n keresztül kiolvasva (megtekintve: 2026. október 31.)
+- [Base-tranzakció 0xc2df272f…f0178](https://basescan.org/tx/0xc2df272f36d8b0b566c24988052c1508a4c90a97999b2da5a8c8ec7f8e3f0178) (53265200-as blokk): a 30 `Liquidate` esemény; a Morpho Blue `position` és `market` adatai, valamint a piac orákulumának `price()` értéke az 53265199-es és az 53265200-as blokknál, nyilvános RPC-n keresztül kiolvasva (megtekintve: 2026. október 31.)
+- [Morpho API](https://api.morpho.org/graphql): `marketTransactions` Liquidation típussal a base-i cbBTC-piacra 2026. október 28. és 31. között, valamint a példabeli hitelfelvevő címére; `markets` a piac LLTV-jéhez és orákulumához (megtekintve: 2026. október 31.)
+- [Morpho API](https://api.morpho.org/graphql): az összes likvidálás 2026. szeptember 30., 08:36 UTC és 2026. október 30., 08:36 UTC között, ahogy a [riasztásokról szóló útmutatóban](/hu/blog/kinek-kell-health-factor-riasztas) (megtekintve: 2026. október 30.)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): a behajthatatlan adósság elégetése és tartalékhiányként való rögzítése, a close factor szabályai, a hiány megszüntetése az Umbrellával (megtekintve: 2026. október 31.)
+- [Liquidation on Morpho](https://docs.morpho.org/learn/concepts/liquidation): az ösztönző képlete, akár 100% egyetlen hívásban, nincs protokolldíj (megtekintve: 2026. október 31.)
+
+_Oktatási tartalom, nem pénzügyi tanácsadás. A riasztások csökkentik a kockázatot, de nem akadályozzák meg a likvidálást._

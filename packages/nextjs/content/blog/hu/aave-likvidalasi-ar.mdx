@@ -1,0 +1,183 @@
+export const meta = {
+  slug: "aave-likvidalasi-ar",
+  title: "Így számold ki a likvidálási áradat az Aave-on",
+  description:
+    "Az Aave V3 likvidálási árának képlete kidolgozott példákkal egy és két fedezettel, valamint ingadozó adóssággal, és egy kalkulátor.",
+  h1: "Így számold ki a likvidálási áradat az Aave-on",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-20",
+  primaryQuestion: "Milyen áron likvidálhatják az Aave-pozíciómat?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Az Aave likvidálási árad egy eszköz orákulum (árforrás) szerinti ára, amelynél a health factorod (egészségi mutató)
+  1,00-ra esne, miközben minden más ár változatlan; ezen túl (fedezetnél lefelé, felvett eszköznél felfelé) a pozíció
+  likvidálható. Egy ingadozó fedezettel és stablecoin-adóssággal ez adósság ÷ (fedezet mennyisége × likvidálási küszöb),
+  vagy a jelenlegi ár ÷ a health factorod. Például 10 WETH, amely 12 000 USDC hitelt fedez az Aave V3 Ethereum Core
+  piacon (a WETH likvidálási küszöbe 2026. október 14-én 83% volt), akkor likvidálható, amikor az ETH 1445,78 $ alá
+  esik, az USDC-t 1,00 $-ral számolva.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Mi az a likvidálási ár az Aave-on?
+
+A likvidálási ár az Aave-on a pozíciód egyik eszközének az az ára, amelynél a health factorod pontosan 1,00 lenne, miközben minden más ár változatlan. Az Aave V3 akkor engedi a likvidálást, ha a health factor 1,00 alatt van. Ekkor egy likvidátor visszafizetheti az adósságod egy részét vagy egészét, és ennek megfelelő értékű fedezetet vihet el, plusz egy bónuszt (WETH-fedezetnél 5% az Ethereum Core piacon, a láncon lekérdezve 2026. október 14-én). A teljes folyamatot [az Aave-likvidálás menetét bemutató útmutató](/hu/blog/hogyan-mukodik-a-likvidalas-az-aave-on) ismerteti.
+
+Amikor ezt a számot használod, három dolgot tarts észben:
+
+- **Származtatott érték.** Az Aave V3 Pool szerződése a `getUserAccountData` függvénnyel health factort ad vissza, nem likvidálási árat. Az árat úgy kapod meg, hogy a health factor képletét egy eszközre megoldod; a képletet [az Aave health factort bemutató útmutató](/hu/blog/aave-health-factor-magyarazat) magyarázza el.
+- **Orákulumár.** Az Aave a pozíciókat a saját, Chainlink-feedekre és CAPO-adapterekre épülő orákulumával (árforrás) értékeli, és az Aave alkalmazás ezt az árat minden eszköz oldalán „Oracle price” (orákulumár) néven mutatja. Egy tőzsde utolsó kötési ára ettől eltérhet.
+- **Minden mást rögzít.** Két fedezeti eszköz vagy ingadozó adósság esetén sokféle árkombináció vezet 1,00-hoz, így egyetlen likvidálási ár csak azt mutatja meg, mennyit mozdulhat egy eszköz önmagában.
+
+## Mi az Aave likvidálási árának képlete?
+
+Egy ingadozó fedezeti eszközzel és stablecoin-adóssággal rendelkező Aave V3-pozíciónál a likvidálási ár adósság ÷ (fedezet mennyisége × likvidálási küszöb), ahol a likvidálási küszöb (liquidation threshold, LT) a fedezet értékének az a része, amely beleszámít a health factorba.
+
+**Likvidálási ár = adósság ÷ (fedezet mennyisége × likvidálási küszöb)**
+
+Ez a health factor képlete az árra megoldva. Az Aave V3 így számol: HF = Σ(fedezet értéke × likvidálási küszöb) ÷ teljes adósság értéke, USD-ben. Egy fedezeti eszközzel HF = mennyiség × ár × LT ÷ adósság. Állítsd a HF-et 1-re, és oldd meg az árra.
+
+Mivel a health factor már tartalmazza a küszöböt, van egy rövidebb út is: **likvidálási ár = jelenlegi ár ÷ health factor**. Az eléréséhez szükséges esés 1 − 1 ÷ HF.
+
+Más felépítésű pozíciókra ugyanennek a képletnek egy változata érvényes:
+
+| Pozíció                                  | Likvidálási ár                                                      | Rövidebb út a health factorodból                                  |
+| ---------------------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Egy ingadozó fedezet, stablecoin-adósság | adósság ÷ (mennyiség × LT)                                          | jelenlegi ár ÷ HF                                                 |
+| Két ingadozó fedezet, stablecoin-adósság | (adósság − a másik fedezet értéke × annak LT-je) ÷ (mennyiség × LT) | egy árra nincs; ha mindkettő együtt esik: 1 − 1 ÷ HF mértékű esés |
+| Stablecoin-fedezet, ingadozó adósság     | Σ(fedezet értéke × LT) ÷ felvett mennyiség, felfelé értendő ár      | jelenlegi ár × HF                                                 |
+| wstETH-fedezet, WETH-adósság, E-Mode-ban | wstETH/ETH árarány: WETH-adósság ÷ (wstETH mennyisége × E-Mode LT)  | jelenlegi arány ÷ HF                                              |
+
+### Kidolgozott példa: 10 WETH és 12 000 USDC az Ethereum Core piacon
+
+Helyezz el 10 WETH-et, és vegyél fel 12 000 USDC-t az Aave V3 Ethereum Core piacon. A WETH likvidálási küszöbe itt 83%, a hitel-fedezet aránya (LTV) 80,5% volt (láncon belüli lekérdezés a 26193284-es Ethereum-blokkban, 2026. október 14.). A példa a kerek számok kedvéért 2400 $-os ETH-val számol; az Aave orákuluma ugyanazon a napon a 26193376-os blokkban 2414,78 $-t mutatott. Az USDC 1,00 $-nak számít.
+
+| Lépés              | Számítás               | Eredmény  |
+| ------------------ | ---------------------- | --------- |
+| A fedezet értéke   | 10 × 2400 $            | 24 000 $  |
+| Health factor      | 24 000 × 0,83 ÷ 12 000 | 1,66      |
+| Likvidálási ár     | 12 000 ÷ (10 × 0,83)   | 1445,78 $ |
+| Ellenőrzés röviden | 2400 ÷ 1,66            | 1445,78 $ |
+| Szükséges esés     | 1 − 1 ÷ 1,66           | 39,8%     |
+
+A hitelkeret nem biztonsági tartalék. 80,5%-os LTV mellett ugyanaz a 10 WETH legfeljebb 19 320 $ adósságot bír el, ami 1,031-es health factort és 2327,71 $-os likvidálási árat ad, mindössze 3,0%-kal 2400 $ alatt. [A health factor által adott tartalékról szóló útmutató](/hu/blog/biztonsagos-aave-health-factor) eszközönként bemutatja ezt a különbséget.
+
+### Melyik likvidálási küszöböt használd?
+
+Annak az Aave-piacnak a likvidálási küszöbét, amelyen a pozíciód van. Az Aave alkalmazás minden eszköz oldalán a „Collateral usage” (fedezeti használat) alatt „Liquidation threshold” néven mutatja. Ugyanannak a tokennek különböző piacokon különböző küszöbe lehet, és a governance (a protokoll közösségi irányítása) módosíthatja őket. E-Mode-ban a kategória küszöbe csak a kategória fedezeti körébe tartozó eszközöknél lép az eszköz saját küszöbének helyére; minden más fedezet megtartja a saját küszöbét.
+
+| Aave V3-piac                           | Eszköz                                        | LTV           | Likvidálási küszöb |
+| -------------------------------------- | --------------------------------------------- | ------------- | ------------------ |
+| Ethereum Core                          | WETH                                          | 80,5%         | 83%                |
+| Ethereum Core                          | WBTC                                          | 73%           | 78%                |
+| Ethereum Core                          | USDC                                          | 75%           | 78%                |
+| Ethereum Core, „ETH correlated” E-Mode | WETH, wstETH, cbETH, rETH, weETH, osETH, ETHx | 93% (ETHx 0%) | 95%                |
+| Arbitrum                               | WETH                                          | 80%           | 84%                |
+| Arbitrum                               | WBTC                                          | 73%           | 78%                |
+| Arbitrum                               | USDC (natív)                                  | 75%           | 78%                |
+
+Láncon lekérdezve 2026. október 14-én a 26193284-es Ethereum-blokkban (E-Mode: 26193288-as blokk) és az 514855406-os Arbitrum-blokkban. Egy közvetlenül UTC éjfél utáni újabb lekérdezés (26194239-es Ethereum-blokk, 514896811-es Arbitrum-blokk) ugyanezeket az értékeket adta, és megadta az ETHx 0%-os E-Mode LTV-jét.
+
+### Más a képlet az Aave V4-ben?
+
+Az Aave V4, amely az Ethereumon, az Avalanche-on, az Arcon és a Base-en fut, ugyanezt a felépítést használja két eltéréssel: minden Spoke-ban eszközönként egyetlen collateral factor (fedezeti tényező) váltja fel a külön LTV-t és likvidálási küszöböt, a health factort pedig Spoke-onként számolja. Egy V4-pozíció 1,0 alatti health factornál válik likvidálhatóvá, így a likvidálási ára adósság ÷ (fedezet mennyisége × collateral factor). A WETH collateral factora az Ethereum Main Spoke-ban 2026. október 14-én 83% volt (Aave V4 API), így 10 WETH 12 000 USDC ellenében ott is 1445,78 $ alatt lenne likvidálható. A Tokenping a V3- és a V4-pozíciókat is figyeli, minden V4 Spoke-ra külön riasztással.
+
+## Hogyan számolod ki az Aave likvidálási árat két fedezeti eszközzel?
+
+Két fedezeti eszköznél az egyik eszköz likvidálási ára azt feltételezi, hogy a másik megtartja jelenlegi árát: vond le az adósságodból a másik eszköz súlyozott értékét, majd oszd el az első eszköz mennyiségének és likvidálási küszöbének szorzatával.
+
+**Az A eszköz likvidálási ára = (adósság − B értéke × B LT-je) ÷ (A mennyisége × A LT-je)**
+
+Példa az Aave V3 Ethereum Core piacon: 10 WETH 2400 $-on (LT 83%) és 0,2 WBTC szemléltető 81 500 $-os áron (LT 78%; az orákulum 2026. október 14-én 81 528,44 $-t mutatott), 20 000 USDC adósság ellenében. A súlyozott fedezet 24 000 × 0,83 + 16 300 × 0,78 = 19 920 + 12 714 = 32 634, így a health factor 32 634 ÷ 20 000 = 1,632.
+
+| Forgatókönyv                          | Likvidálási ár                                         | Szükséges esés        |
+| ------------------------------------- | ------------------------------------------------------ | --------------------- |
+| Az ETH esik, a WBTC 81 500 $-on marad | (20 000 − 12 714) ÷ (10 × 0,83) = 877,83 $ ETH-onként  | 63,4%                 |
+| A WBTC esik, az ETH 2400 $-on marad   | (20 000 − 19 920) ÷ (0,2 × 0,78) = 512,82 $ WBTC-nként | 99,4%                 |
+| Mindkettő ugyanannyi százalékkal esik | Az ETH 1470,86 $-on és a WBTC 49 948 $-on, egyszerre   | 38,7% (1 − 1 ÷ 1,632) |
+
+Az első két sor kényelmesnek tűnik, mert mindkettő azt feltételezi, hogy a másik eszköz megtartja az értékét. Itt a WETH egyedül majdnem fedezi az adósságot (19 920 súlyozott érték 20 000-rel szemben), így a WBTC-nek önmagában 99,4%-ot kellene esnie. Az együtt mozgó fedezeteknél a harmadik sor, mindkettő 38,7%-os esése a reális próba.
+
+## Mi a helyzet, ha stablecoin helyett ingadozó eszközt vettél fel?
+
+Ha ingadozó eszközt, például WETH-et vettél fel, az Aave-pozíciódnak felfelé van likvidálási ára: a felvett eszköznek az az ára, amelynél a health factorod eléri az 1,00-t. Ahogy ez az ár emelkedik, az adósság többet ér, és a health factor esik.
+
+**A felvett eszköz likvidálási ára = Σ(fedezet értéke × LT) ÷ felvett mennyiség**, vagy rövidebben: jelenlegi ár × health factor.
+
+Példa az Aave V3 Ethereum Core piacon: helyezz el 10 000 USDC-t (LT 78%), és vegyél fel 2,5 WETH-et, amely 2400 $-os ETH mellett 6000 $-t ér. A health factor 10 000 × 0,78 ÷ 6000 = 1,30. A pozíció akkor likvidálható, amikor az ETH 7800 ÷ 2,5 = 3120 $ fölé emelkedik (ami 2400 × 1,30 is), ez 30%-os emelkedés.
+
+A stablecoin oldala is mozdulhat. Az Aave USDC-ára az Ethereumon 1,04 $-ban van maximálva, de az 1 $ alatti árak változatlanul átmennek (a felső korlát a 26194239-es Ethereum-blokkban lekérdezve). Az USDC már elvesztette korábban a dollárhoz kötött árfolyamát: 2023. március 11-én körülbelül 88 centes mélypontra esett, ahogy a Gauntlet utólagos elemzése (post-mortem) az Aave fórumán rögzíti. 0,88 $-on ugyanennek a pozíciónak 8800 × 0,78 ÷ 6000 = 1,144 lenne a health factora, és az ETH likvidálási ára 3120 $-ról 2745,60 $-ra esne.
+
+Ha a fedezet és az adósság is ingadozó, például WBTC-fedezet WETH-adósság ellenében, csak a két ár aránya számít: a health factor akkor éri el az 1,00-t, amikor a WBTC/ETH arány az ETH-adósság ÷ (WBTC mennyisége × a WBTC LT-je) értékre esik.
+
+## Hogyan változtatja meg az E-Mode a likvidálási árat?
+
+Az E-Mode megemeli a korrelált eszközök likvidálási küszöbét. Ha a fedezet és az adósság is ugyanazt a mögöttes árat követi, ahogy a wstETH és a WETH is az ETH-ot, a likvidálási ár dollárár helyett árarány (wstETH/ETH) lesz. Az Aave V3 Ethereum Core piacon az „ETH correlated” E-Mode-kategóriában 2026. október 14-én 93% volt az LTV, 95% a likvidálási küszöb és 1% a likvidálási bónusz. A fedezeti köre a WETH, a wstETH, a cbETH, az rETH, a weETH, az osETH és az ETHx, felvenni pedig csak WETH-et enged. Az ezen a körön kívüli fedezet megtartja a szokásos küszöbét.
+
+wstETH-fedezettel és WETH-adóssággal mindkét oldal árát az ETH adja, így az ETH dollárára nagyrészt kiesik. A likvidálásról az Aave orákuluma által használt wstETH/ETH árfolyam dönt:
+
+- Helyezz el az orákulum árfolyamán 100 ETH-t érő wstETH-et, és vegyél fel 90 WETH-et. A health factor 100 × 0,95 ÷ 90 = 1,056. Ha az ETH dollárára a felére esik, mindkét oldal a felére csökken, és a health factor 1,056 marad. Ha az orákulum wstETH/ETH árfolyama 5,3%-ot esik (1 − 90 ÷ 95), a pozíció eléri az 1,00-t.
+- A kategória maximális hitelfelvételénél, 93 WETH-nél ugyanazzal a fedezettel, a health factor 95 ÷ 93 = 1,0215-ről indul, és az árfolyam 2,1%-os esése is elég.
+
+Ekkora elmozdulás már történt. Az Aave a wstETH-et egy CAPO (Correlated Assets Price Oracle) adapteren keresztül árazza, amely felülről korlátozza a jelentett árfolyamot. 2026 márciusában egy rosszul beállított korlát az Ethereum Core és Prime piacon körülbelül 2,85%-kal csökkentette az Aave által használt árfolyamot. A Chaos Labs utólagos elemzése (2026. március 10.) nagyjából 10 938 wstETH E-Mode-likvidálását számolja 34 fiókban, amely a körülbelül 1,0288 alatti health factorú pozíciókat érintette. Az elmozdulást az orákulum beállítása okozta, nem a piac.
+
+## Miért mozdul el idővel a likvidálási árad?
+
+Az Aave likvidálási árad akkor is mozog, ha nem csinálsz semmit, mert a bemenetei változnak: a kamat növeli az adósságodat, az elhelyezési kamat kicsit növeli a fedezetedet, a governance pedig módosíthatja a likvidálási küszöböket. A saját tranzakcióid is mozgatják: a hitelfelvétel emeli, a visszafizetés vagy a fedezet hozzáadása csökkenti.
+
+- **Kamat.** Vegyünk 10 WETH-et és 12 000 USDC adósságot az Aave V3 Ethereum Core piacon 2400 $-os ETH mellett. 2026. október 14-én (26193378-as blokk) az USDC változó hitelkamata évi 4,496% APR volt, a WETH elhelyezési kamata pedig évi 1,309% APR. Ha ezek a kamatok egy évig változatlanok maradnának, a likvidálási ár változatlan ETH mellett 1445,78 $-ról körülbelül 1490 $-ra emelkedne. A kamatok változók: aznap este az USDC hitelkamata kevesebb mint egy órára 14,1%-ra ugrott (26194180-as blokk), mert szinte az összes elhelyezett USDC ki volt kölcsönözve.
+- **Küszöbcsökkentés.** Az Aave V3-ban egy alacsonyabb likvidálási küszöb egyszerre minden nyitott pozícióra érvényes, és a likvidálási ár régi LT ÷ új LT arányban változik. Ha a WETH küszöbét elméletben 83%-ról 80%-ra csökkentenék, ugyanennek a pozíciónak a likvidálási ára 1445,78 $-ról 1500,00 $-ra nőne. A csökkentések governance-javaslatokon vagy a Risk Stewardokon keresztül jönnek, akik beállított határokon belül módosíthatják a küszöböket.
+- **Az LTV változása nem számít.** Ha egy eszköz LTV-jét csökkentik, akár 0-ra is, az csökkenti vagy megszünteti az általa adott hitelkeretet, de a health factort és a likvidálási árat nem változtatja meg.
+- **Az Aave V4 másképp működik.** A collateral factor módosítása általában az új pozíciókra vonatkozik; a meglévők megtartják a régi beállításaikat, amíg a felhasználó hitelt nem vesz fel, ki nem vesz fedezetet vagy meg nem változtatja a fedezeti beállításait, illetve amíg a Governor frissíti őket. A V4 emellett a kockázatosabb fedezetre User Risk Premiumot (felhasználói kockázati felár) tesz a hitelkamatra, így az adósság, és vele a likvidálási ár, gyorsabban nőhet.
+
+## Mikor vagy túl közel a likvidálási áradhoz?
+
+Nincs olyan távolság a likvidálási ártól, amely mindenkinek biztonságos. Egy ingadozó fedezetnél stablecoin-adóssággal a távolság 1 − 1 ÷ HF: az 1,25-ös health factor 20%-os esésnek hagy helyet, az 1,5-ös 33,3%-nak, a 2,0-s 50%-nak. Hogy mennyi hely kell neked, az a fedezet volatilitásától, attól, hogy milyen gyorsan tudsz visszafizetni vagy fedezetet hozzáadni, és a hálózat aktuális zsúfoltságától függ. [A health factor által adott tartalékról szóló útmutatóban](/hu/blog/biztonsagos-aave-health-factor) megtalálod a teljes táblázatot.
+
+### Hogyan lesz a likvidálási árból health factor-riasztási küszöbérték?
+
+Válaszd ki azt az árat, amelynél lépni szeretnél, és váltsd át health factorra. Egy ingadozó fedezetnél stablecoin-adóssággal **a HF egy adott áron = az az ár ÷ likvidálási ár**. 10 WETH és 12 000 USDC esetén (likvidálási ár 1445,78 $) ha 1800 $-os ETH-nál akarsz lépni, az 1800 ÷ 1445,78 = 1,245-ös health factort jelent, vagyis körülbelül 1,25-ös küszöbértéket. Ingadozó adósságnál fordítva: HF = likvidálási ár ÷ a felvett eszköz ára.
+
+A health factor-küszöbértéknek két előnye van egy árszinttel szemben. Követi a likvidálási áradat, ahogy a kamat gyűlik és ahogy módosítod a pozíciót, és egyszerre lefed minden fedezeti és adósságeszközt. Egy rögzített árriasztás elavul, amint nő az adósság.
+
+A Tokenping így működik: health factorra riaszt, árriasztása nincs. Aave V3-piaconként vagy Aave V4 Spoke-onként egy küszöbértéket állítasz be, 1,1 és 10 között. A Tokenping 5 percenként ellenőriz, és minden ellenőrzéskor, amikor a health factorod a küszöbérték alatt van, üzenetet küld minden általad választott csatornára (Signal, Telegram, e-mail vagy több közülük). Egy gyors mozgás két ellenőrzés között is átlépheti az 1,00-t, ezért egy olyan küszöbérték, amely annál a szintnél magasabb, ahol lépnél, időt nyer; a likvidálást nem tudja megakadályozni. A lépéseket [a health factor-riasztás beállításáról szóló útmutató](/hu/blog/aave-health-factor-riasztas-beallitasa) írja le, vagy előbb [ellenőrizheted az Aave V3 health factorodat](/hu/aave).
+
+## Hogyan számolod ki a saját pozíciód likvidálási árát?
+
+A saját Aave likvidálási árad kiszámításához ismerned kell minden fedezet mennyiségét, minden fedezet likvidálási küszöbét, a teljes adósságodat és a jelenlegi orákulumárat. Az Aave alkalmazás mind a négyet mutatja.
+
+1. Jegyezd fel minden fedezet mennyiségét, a teljes adósságodat és azt, hogy a fiókod E-Mode-ban van-e.
+2. Keresd meg minden fedezet likvidálási küszöbét az eszköz oldalán az Aave alkalmazásban („Liquidation threshold” a „Collateral usage” alatt). E-Mode-ban a kategória küszöbét csak a kategória körébe tartozó fedezetnél használd; minden más fedezet megtartja a saját küszöbét.
+3. Egy ingadozó fedezetnél stablecoin-adóssággal oszd el az orákulumárat a health factoroddal. Két fedezetnél A ára (adósság − B értéke × B LT-je) ÷ (A mennyisége × A LT-je). Felvett ingadozó eszköznél az ára Σ(fedezet értéke × LT) ÷ felvett mennyiség. Az alábbi kalkulátor mindhárom esetet kezeli.
+4. Számold újra, miután hitelt veszel fel, visszafizetsz vagy fedezetet adsz hozzá, és egy küszöbváltozás után.
+
+Kidolgozott példa az Aave V3 Arbitrum piacon, ahol a WETH likvidálási küszöbe 2026. október 14-én 84% volt: 5 WETH 2400 $-on 7000 USDC ellenében 12 000 × 0,84 ÷ 7000 = 1,44-es health factort és 2400 ÷ 1,44 = 1666,67 $-os likvidálási árat ad, ami 30,6%-os esés. Az Ethereum Core 83%-os küszöbével ugyanez a pozíció 1686,75 $ alatt lenne likvidálható.
+
+<LiquidationCalculator />
+
+Bármelyik kalkulátor a mai likvidálási áradat adja meg. A kamat, a küszöbváltozások és a saját tranzakcióid utána elmozdítják, ezért a múlt havi eredményt érdemes újraszámolni.
+
+## Források
+
+- [Aave V3 GenericLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): a health factor képlete, és hogy az E-Mode-küszöb csak a kategória fedezeti körére érvényes (megtekintve: 2026. október 14.)
+- [Aave V3 ValidationLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): likvidálás 1,00 alatti health factornál, LTV-ellenőrzések a hitelfelvételnél (megtekintve: 2026. október 14.)
+- [Aave V3 LiquidationLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): mennyi adósságot fizethet vissza egy likvidálás (megtekintve: 2026. október 14.)
+- [Aave V3 Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getReserveConfigurationData` a 26193284-es és a 26194239-es blokkban; `getReserveData` a 26193378-as és a 26194180-as blokkban (megtekintve: 2026. október 14.; újra lekérdezve: 2026. október 15.)
+- [Aave V3 Arbitrum PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): `getReserveConfigurationData` az 514855406-os és az 514896811-es Arbitrum-blokkban (megtekintve: 2026. október 14.; újra lekérdezve: 2026. október 15.)
+- [Aave V3 Ethereum Core Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): az 1-es „ETH correlated” E-Mode-kategória: fedezeti beállítások, valamint a fedezeti, a felvehető és a nulla LTV-s eszközök bitmapjei (megtekintve: 2026. október 14.; újra lekérdezve: 2026. október 15.)
+- [AaveOracle az Ethereumon](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): `getAssetPrice` a 26193376-os blokkban; `getSourceOfAsset(USDC)` a 26194239-es blokkban (megtekintve: 2026. október 14.; újra lekérdezve: 2026. október 15.)
+- [Az Aave USDC-áradaptere az Ethereumon, „Capped USDC / USD”](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B): `getPriceCap` = 104000000 (1,04 $) a 26194239-es blokkban (megtekintve: 2026. október 15.)
+- [Az Aave orákulum-dokumentációja](https://aave.com/docs/ecosystem/oracle.md): Chainlink-feedek és CAPO-adapterek (megtekintve: 2026. október 14.)
+- [Az Aave price feeds repository (PriceCapAdapterStable)](https://github.com/aave-dao/aave-price-feeds): hogyan működik az USDC árának felső korlátja (megtekintve: 2026. október 14.)
+- [Gauntlet, „Aave Resilient Through USDC Volatility” (Az Aave ellenállt az USDC volatilitásának)](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330): az USDC körülbelül 88 centes mélypontja 2023. március 11-én (megtekintve: 2026. október 14.)
+- [Chaos Labs, utólagos elemzés a wstETH-árfolyamról](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): a 2026. márciusi CAPO-incidens (megtekintve: 2026. október 14.)
+- [Aave V3 Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): hogyan változhatnak a kockázati paraméterek két governance-szavazás között (megtekintve: 2026. október 14.)
+- [Az Aave V4 felhasználói pozícióinak dokumentációja](https://aave.com/docs/aave-v4/positions.md): a collateral factor és a likvidálás 1,0 alatti health factornál (megtekintve: 2026. október 14.)
+- [Aave V4 áttekintés (aave/aave-v4)](https://github.com/aave/aave-v4/blob/main/docs/overview.md): dinamikus kockázati beállítások és a User Risk Premium (megtekintve: 2026. október 14.)
+- [Aave V4 API](https://api.v4.aave.com/graphql): `reserves` lekérdezés, a WETH collateral factora Spoke-onként az Ethereumon (megtekintve: 2026. október 14.)
+- [Az Aave változásnaplója](https://aave.com/docs/resources/changelog.md): a V4 hálózatai (megtekintve: 2026. október 14.)
+- [Az Aave felületének forráskódja, SupplyInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/SupplyInfo.tsx) és [ReserveTopDetails.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/ReserveTopDetails.tsx): a „Liquidation threshold” és az „Oracle price” felirat az Aave alkalmazásban (megtekintve: 2026. október 14.)
+
+_Oktatási tartalom, nem pénzügyi tanácsadás. A riasztások csökkentik a kockázatot, de nem akadályozzák meg a likvidálást._
