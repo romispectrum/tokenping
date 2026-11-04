@@ -232,11 +232,9 @@ describe("blog post page", () => {
         </p>
       );
     };
-    vi.doMock("~~/content/blog", async importOriginal => {
-      const blog = await importOriginal<typeof import("~~/content/blog")>();
-      const [first, ...rest] = blog.POSTS;
-      const POSTS = [{ ...first, Content: PriceBody }, ...rest];
-      return { ...blog, POSTS, getPost: (slug: string) => POSTS.find(({ meta }) => meta.slug === slug) };
+    vi.doMock("~~/content/blog/content/en", async importOriginal => {
+      const { POST_CONTENT } = await importOriginal<typeof import("~~/content/blog/content/en")>();
+      return { POST_CONTENT: { ...POST_CONTENT, "aave-health-factor": PriceBody } };
     });
     await renderPost("aave-health-factor");
 

@@ -214,15 +214,9 @@ describe("Czech blog post page", () => {
         </p>
       );
     };
-    vi.doMock("~~/content/blog", async importOriginal => {
-      const blog = await importOriginal<typeof import("~~/content/blog")>();
-      return {
-        ...blog,
-        getPost: (slug: string, locale?: "en" | "cs") => {
-          const post = blog.getPost(slug, locale);
-          return post && { ...post, Content: PriceBody };
-        },
-      };
+    vi.doMock("~~/content/blog/content/cs", async importOriginal => {
+      const { POST_CONTENT } = await importOriginal<typeof import("~~/content/blog/content/cs")>();
+      return { POST_CONTENT: { ...POST_CONTENT, "aave-health-factor-vysvetleni": PriceBody } };
     });
     await renderPost("aave-health-factor-vysvetleni");
 

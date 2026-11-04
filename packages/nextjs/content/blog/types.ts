@@ -23,7 +23,10 @@ export type PostMeta = {
   protocol?: "morpho";
 };
 
+/** A post as the lists, feeds and metadata see it. Its body is in content/blog/content/<locale>.ts. */
 export type Post = {
   meta: PostMeta;
-  Content: MDXContent;
 };
+
+/** One language's post bodies, by the post's slug in that language. */
+export type PostContent = Readonly<Record<string, MDXContent>>;

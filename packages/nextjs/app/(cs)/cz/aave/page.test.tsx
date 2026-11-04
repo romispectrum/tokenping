@@ -2,26 +2,14 @@
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AAVE_V3_NETWORKS } from "~~/config/aaveConfig";
-import type { PostMeta } from "~~/content/blog/types";
+import { mockPostStubs } from "~~/utils/testing/blogPosts";
 import { FREE_WORDS } from "~~/utils/testing/copyRules";
 import { renderMarkup } from "~~/utils/testing/render";
 
 vi.mock("~~/components/dashboard/AaveDashboard", () => ({ AaveDashboard: () => <div data-stub="aave-dashboard" /> }));
 
-const CS_GUIDES = ["bezpecny-health-factor-aave", "nastaveni-upozorneni-health-factor-aave"];
-
-/** Publishes the two Czech guides the page links, or marks the given ones as placeholders. */
-const mockCzechGuides = (stubSlugs: readonly string[] = []) => {
-  for (const slug of CS_GUIDES) {
-    vi.doMock(`~~/content/blog/cs/${slug}.mdx`, async importOriginal => {
-      const post = await importOriginal<{ meta: PostMeta }>();
-      const meta: PostMeta = { ...post.meta };
-      if (stubSlugs.includes(slug)) meta.stub = true;
-      else delete meta.stub;
-      return { ...post, meta };
-    });
-  }
-};
+/** Publishes every Czech guide, the two the page links included, or marks the given ones as placeholders. */
+const mockCzechGuides = (stubSlugs: readonly string[] = []) => mockPostStubs([], { cs: stubSlugs });
 
 const loadPage = () => import("~~/app/(cs)/cz/aave/page");
 

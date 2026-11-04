@@ -16,7 +16,7 @@ import { JsonLd } from "~~/components/seo/JsonLd";
 import { Kicker } from "~~/components/ui/Kicker";
 import { cx } from "~~/components/ui/classNames";
 import { getPost, getPostByKey, getPosts, getRelatedPosts, isPublished } from "~~/content/blog";
-import type { PostMeta } from "~~/content/blog/types";
+import type { PostContent, PostMeta } from "~~/content/blog/types";
 import { LOCALES, type Locale } from "~~/i18n/locales";
 import { BLOG_MESSAGES } from "~~/i18n/messages/blog";
 import { postKeyForSlug } from "~~/i18n/postSlugs";
@@ -35,6 +35,8 @@ type BlogPostPageProps = {
   locale: Locale;
   /** The post's slug in `locale`. */
   slug: string;
+  /** The language's post bodies (content/blog/content/<locale>.ts), which only its own route imports. */
+  content: PostContent;
 };
 
 /** Every post slug of a language, for its route's generateStaticParams. */
@@ -85,10 +87,11 @@ export const blogPostMetadata = (locale: Locale, slug: string) => {
  * reading measure, with no effects; the end area (the product box and related guides) closes the page on a second
  * wash.
  */
-export const BlogPostPage = async ({ locale, slug }: BlogPostPageProps) => {
+export const BlogPostPage = async ({ locale, slug, content }: BlogPostPageProps) => {
   const post = getPost(slug, locale);
-  if (!post) notFound();
-  const { meta, Content } = post;
+  const Content = content[slug];
+  if (!post || !Content) notFound();
+  const { meta } = post;
   const crumbs = postCrumbs(locale, meta);
   // Read once for the whole page: the end box and every <AlertPrice /> in the body show the same plan.
   const plan = await getAlertPlan();

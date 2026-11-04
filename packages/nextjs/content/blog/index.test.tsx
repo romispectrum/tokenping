@@ -69,7 +69,10 @@ describe("POSTS", () => {
 
   it("renders every post body through mdx-components without an H1", async () => {
     const { POSTS } = await loadBlog();
-    for (const { meta, Content } of POSTS) {
+    const { POST_CONTENT } = await import("~~/content/blog/content/en");
+    for (const { meta } of POSTS) {
+      const Content = POST_CONTENT[meta.slug];
+      expect(Content, meta.slug).toBeDefined();
       const html = renderToStaticMarkup(<Content components={{ AlertPrice: () => "3 USDC per 30 days" }} />);
 
       expect(html, meta.slug).not.toBe("");
@@ -200,7 +203,10 @@ describe("Czech posts", () => {
 
   it("renders every Czech post body through mdx-components without an H1", async () => {
     const { getPosts } = await loadBlog();
-    for (const { meta, Content } of getPosts("cs")) {
+    const { POST_CONTENT } = await import("~~/content/blog/content/cs");
+    for (const { meta } of getPosts("cs")) {
+      const Content = POST_CONTENT[meta.slug];
+      expect(Content, meta.slug).toBeDefined();
       const html = renderToStaticMarkup(<Content components={{ AlertPrice: () => "3 USDC na 30 dní" }} />);
 
       expect(html, meta.slug).not.toBe("");

@@ -16,7 +16,6 @@ const post = (meta: Partial<PostMeta>): Post => ({
     readingMinutes: 1,
     ...meta,
   },
-  Content: () => null,
 });
 
 describe("buildRssFeed", () => {

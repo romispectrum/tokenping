@@ -70,6 +70,7 @@ export default RootLayout;
 
 const blogPost = (locale: Locale) => `
 import { BlogPostPage, blogPostMetadata, blogPostParams } from "~~/components/pages/BlogPostPage";
+import { POST_CONTENT } from "~~/content/blog/content/${locale}";
 
 // Unknown slugs are a real 404. The pages are prerendered and re-rendered at most hourly, matching the cache of the
 // alert price they show (ALERT_PLAN_REVALIDATE_SECONDS; route config must be a literal).
@@ -84,7 +85,8 @@ type PostRouteProps = {
 
 export const generateMetadata = async ({ params }: PostRouteProps) => blogPostMetadata("${locale}", (await params).slug);
 
-const Post = async ({ params }: PostRouteProps) => BlogPostPage({ locale: "${locale}", slug: (await params).slug });
+const Post = async ({ params }: PostRouteProps) =>
+  BlogPostPage({ locale: "${locale}", slug: (await params).slug, content: POST_CONTENT });
 
 export default Post;
 `;

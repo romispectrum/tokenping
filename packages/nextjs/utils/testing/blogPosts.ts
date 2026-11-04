@@ -2,8 +2,8 @@ import { readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { vi } from "vitest";
-import type { PostMeta } from "~~/content/blog/types";
-import { DEFAULT_LOCALE, LOCALES, type Locale } from "~~/i18n/locales";
+import type { Post } from "~~/content/blog/types";
+import { DEFAULT_LOCALE, LOCALES, type Locale, type Localized } from "~~/i18n/locales";
 
 // A path string, not a URL object: jsdom test files replace the global URL, which node:fs does not accept.
 const BLOG_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "../../content/blog");
@@ -24,17 +24,13 @@ export const PUBLISH_EVERY_TRANSLATION: Partial<Record<Locale, readonly string[]
   LOCALES.filter(locale => locale !== DEFAULT_LOCALE).map(locale => [locale, []]),
 );
 
-const mockStubs = (modulePrefix: string, slugs: readonly string[], stubSlugs: readonly string[]) => {
-  for (const slug of slugs) {
-    vi.doMock(`${modulePrefix}${slug}.mdx`, async importOriginal => {
-      const post = await importOriginal<{ meta: PostMeta }>();
-      const meta: PostMeta = { ...post.meta };
-      if (stubSlugs.includes(slug)) meta.stub = true;
-      else delete meta.stub;
-      return { ...post, meta };
-    });
-  }
-};
+const withStubs = (posts: readonly Post[], stubSlugs: readonly string[]): Post[] =>
+  posts.map(post => {
+    const meta = { ...post.meta };
+    if (stubSlugs.includes(meta.slug)) meta.stub = true;
+    else delete meta.stub;
+    return { meta };
+  });
 
 /**
  * Sets each post's `stub` flag, so tests of what is published do not depend on which articles the writers and
@@ -48,9 +44,15 @@ export const mockPostStubs = (
   stubSlugs: readonly string[] = [],
   translations: Partial<Record<Locale, readonly string[]>> = {},
 ) => {
-  mockStubs("~~/content/blog/", POST_SLUGS, stubSlugs);
-  for (const locale of LOCALES) {
-    const slugs = translations[locale];
-    if (locale !== DEFAULT_LOCALE && slugs) mockStubs(`~~/content/blog/${locale}/`, translatedPostSlugs(locale), slugs);
-  }
+  vi.doMock("~~/content/blog/posts", async importOriginal => {
+    const { POSTS_BY_LOCALE } = await importOriginal<{ POSTS_BY_LOCALE: Localized<readonly Post[]> }>();
+    return {
+      POSTS_BY_LOCALE: Object.fromEntries(
+        LOCALES.map(locale => {
+          const stubs = locale === DEFAULT_LOCALE ? stubSlugs : translations[locale];
+          return [locale, stubs ? withStubs(POSTS_BY_LOCALE[locale], stubs) : POSTS_BY_LOCALE[locale]];
+        }),
+      ),
+    };
+  });
 };

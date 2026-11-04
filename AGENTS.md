@@ -44,7 +44,7 @@ yarn next:network-icons     # Refresh network logos from CoinGecko
 yarn next:telegram-webhook  # Register the Telegram bot's webhook (info | set <url>)
 yarn next:indexnow          # Tell IndexNow engines about the live sitemap's pages after a deploy (--since, --dry-run)
 yarn next:locale-routes     # Write every language's route group and client root from the templates
-yarn next:blog-index        # Regenerate content/blog/posts.ts after adding a post or a translation
+yarn next:blog-index        # Regenerate content/blog/posts.ts and content/blog/content/* after adding or editing a post's meta
 
 # Deployer account (Hardhat)
 yarn generate            # Generate new deployer account

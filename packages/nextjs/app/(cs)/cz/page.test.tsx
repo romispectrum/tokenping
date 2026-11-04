@@ -3,7 +3,6 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NETWORK_ICONS } from "~~/config/networkIcons.generated";
 import { SUPPORTED_NETWORKS } from "~~/config/networks";
-import type { PostMeta } from "~~/content/blog/types";
 import { POST_SLUGS } from "~~/i18n/postSlugs";
 import type { AlertPlan } from "~~/services/marketing/alertPlan";
 import { buildAlertEmail, buildAlertText } from "~~/services/notifications/runNotificationCheck";
@@ -25,17 +24,7 @@ const csSlug = (key: string) => POST_SLUGS[key].cs;
  * Sets the `stub` flag of the Czech posts (mockPostStubs covers the English ones): the given keys stay placeholders
  * and every other Czech post is published. Call it after vi.resetModules() and before rendering.
  */
-const mockCzechPostStubs = (stubKeys: readonly string[] = []) => {
-  for (const key of Object.keys(POST_SLUGS)) {
-    vi.doMock(`~~/content/blog/cs/${csSlug(key)}.mdx`, async importOriginal => {
-      const post = await importOriginal<{ meta: PostMeta }>();
-      const meta: PostMeta = { ...post.meta };
-      if (stubKeys.includes(key)) meta.stub = true;
-      else delete meta.stub;
-      return { ...post, meta };
-    });
-  }
-};
+const mockCzechPostStubs = (stubKeys: readonly string[] = []) => mockPostStubs([], { cs: stubKeys.map(csSlug) });
 
 const loadHome = () => import("~~/app/(cs)/cz/page");
 
