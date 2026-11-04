@@ -68,6 +68,7 @@ const LIST_WORDS: Record<Locale, ListWords> = {
   nb: { conjunction: "og", disjunction: "eller" },
   fil: { conjunction: "at", disjunction: "o" },
   bg: { conjunction: "и", disjunction: "или" },
+  ru: { conjunction: "и", disjunction: "или" },
 };
 
 /**
@@ -323,6 +324,14 @@ export const bgOnMarket = (name: string, kind?: MarketNameKind) =>
 /** Bulgarian "за мрежата Arbitrum" for a V3 market, "за пазара Ethereum (V4 Lido)" for a V4 Spoke or a Morpho market. */
 export const bgForMarket = (name: string, kind?: MarketNameKind) =>
   marketNameKind(name, kind) === "market" ? `за пазара ${name}` : `за мрежата ${name}`;
+
+/** Russian "в сети Arbitrum" for a V3 market, "на рынке Ethereum (V4 Lido)" for a V4 Spoke or a Morpho market. */
+export const ruOnMarket = (name: string, kind?: MarketNameKind) =>
+  marketNameKind(name, kind) === "market" ? `на рынке ${name}` : `в сети ${name}`;
+
+/** Russian "для сети Arbitrum" for a V3 market, "для рынка Ethereum (V4 Lido)" for a V4 Spoke or a Morpho market. */
+export const ruForMarket = (name: string, kind?: MarketNameKind) =>
+  marketNameKind(name, kind) === "market" ? `для рынка ${name}` : `для сети ${name}`;
 
 /** Vietnamese "mạng" before a V3 market's name (its network's), "thị trường" before a V4 Spoke's or a Morpho market's. */
 export const viMarketNoun = (name: string, kind?: MarketNameKind) =>

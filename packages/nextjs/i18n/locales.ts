@@ -24,6 +24,7 @@ export const LOCALES = [
   "nb",
   "fil",
   "bg",
+  "ru",
 ] as const;
 
 export type Locale = (typeof LOCALES)[number];
@@ -294,6 +295,16 @@ export const LOCALE_INFO: Record<Locale, LocaleInfo> = {
     name: "Български",
     englishName: "Bulgarian",
     short: "BG",
+  },
+  // Russian: set in the Cyrillic and Greek face.
+  ru: {
+    htmlLang: "ru",
+    ogLocale: "ru_RU",
+    intl: "ru-RU",
+    numbers: "ru-RU",
+    name: "Русский",
+    englishName: "Russian",
+    short: "RU",
   },
 };
 

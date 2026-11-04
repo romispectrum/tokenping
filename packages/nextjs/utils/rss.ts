@@ -28,6 +28,7 @@ const RSS_DESCRIPTIONS: Localized<string> = {
   nb: "Guider om health factor på Aave og Morpho, likvidasjonsrisiko og varsler.",
   fil: "Mga gabay tungkol sa health factor sa Aave at Morpho, panganib ng liquidation at mga alerto.",
   bg: "Ръководства за health factor в Aave и Morpho, риска от ликвидация и известията.",
+  ru: "Руководства о health factor в Aave и Morpho, риске ликвидации и оповещениях.",
 };
 
 const XML_ENTITIES: Record<string, string> = { "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" };

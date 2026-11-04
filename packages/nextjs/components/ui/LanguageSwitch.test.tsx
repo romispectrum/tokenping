@@ -47,6 +47,7 @@ describe("LanguageSwitch", () => {
       ["PortuguêsPT", "/pt/blog/fator-de-saude-aave"],
       ["RomânăRO", "/ro/blog/health-factor-aave-explicat"],
       ["SrpskiRS", "/sr/blog/aave-health-factor-objasnjen"],
+      ["РусскийRU", "/ru/blog/aave-health-factor-obyasnenie"],
       ["SvenskaSE", "/sv/blog/aave-health-factor-forklarad"],
       ["SlovenščinaSI", "/sl/blog/aave-health-factor-razlozen"],
       ["TürkçeTR", "/tr/blog/aave-saglik-faktoru"],

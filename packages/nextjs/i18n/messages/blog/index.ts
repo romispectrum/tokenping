@@ -16,6 +16,7 @@ import { MESSAGES as nl } from "./nl";
 import { MESSAGES as pl } from "./pl";
 import { MESSAGES as pt } from "./pt";
 import { MESSAGES as ro } from "./ro";
+import { MESSAGES as ru } from "./ru";
 import type { BlogMessages } from "./shared";
 import { MESSAGES as sl } from "./sl";
 import { MESSAGES as sr } from "./sr";
@@ -55,4 +56,5 @@ export const BLOG_MESSAGES: Localized<BlogMessages> = {
   nb,
   fil,
   bg,
+  ru,
 };

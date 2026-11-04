@@ -16,6 +16,7 @@ import { RULES as nl } from "./nl";
 import { RULES as pl } from "./pl";
 import { RULES as pt } from "./pt";
 import { RULES as ro } from "./ro";
+import { RULES as ru } from "./ru";
 import { RULES as sl } from "./sl";
 import { RULES as sr } from "./sr";
 import { RULES as sv } from "./sv";
@@ -51,4 +52,5 @@ export const LANGUAGE_RULES: Localized<LanguageRules> = {
   nb,
   fil,
   bg,
+  ru,
 };

@@ -40,6 +40,8 @@ import {
   ptOnMarket,
   roForMarket,
   roOnMarket,
+  ruForMarket,
+  ruOnMarket,
   slForMarket,
   slOnMarket,
   srForMarket,
@@ -469,6 +471,31 @@ describe("Bulgarian formatting", () => {
     expect(bgForMarket("Base")).toBe("за мрежата Base");
     expect(bgForMarket("Base (V4 Coinbase Stocks)")).toBe("за пазара Base (V4 Coinbase Stocks)");
     expect(bgForMarket("USDC | cbBTC (86%)", "market")).toBe("за пазара USDC | cbBTC (86%)");
+  });
+});
+
+describe("Russian formatting", () => {
+  it("joins with и and или, writes Russian dates, a decimal comma, one/few/many plurals and the market wording", () => {
+    expect(joinList("ru", ["Signal", "Telegram", "email"])).toBe("Signal, Telegram и email");
+    expect(joinList("ru", ["Signal", "email"], "disjunction")).toBe("Signal или email");
+    expect(formatLongDate("ru", "2026-10-14")).toBe("14 октября 2026 г.");
+    expect(formatDecimal("ru", "1.42")).toBe("1,42");
+    const networks = (n: number) =>
+      plural("ru", n, { one: `${n} сеть`, few: `${n} сети`, many: `${n} сетей`, other: `${n} сети (other)` });
+    expect(networks(1)).toBe("1 сеть");
+    expect(networks(2)).toBe("2 сети");
+    expect(networks(5)).toBe("5 сетей");
+    expect(networks(11)).toBe("11 сетей");
+    expect(networks(21)).toBe("21 сеть");
+    expect(networks(22)).toBe("22 сети");
+    expect(networks(29)).toBe("29 сетей");
+    expect(networks(1.5)).toBe("1.5 сети (other)");
+    expect(ruOnMarket("Arbitrum")).toBe("в сети Arbitrum");
+    expect(ruOnMarket("Ethereum (V4 Lido)")).toBe("на рынке Ethereum (V4 Lido)");
+    expect(ruOnMarket("Base", "network")).toBe("в сети Base");
+    expect(ruForMarket("Base")).toBe("для сети Base");
+    expect(ruForMarket("Base (V4 Coinbase Stocks)")).toBe("для рынка Base (V4 Coinbase Stocks)");
+    expect(ruForMarket("USDC | cbBTC (86%)", "market")).toBe("для рынка USDC | cbBTC (86%)");
   });
 });
 

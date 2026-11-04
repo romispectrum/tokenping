@@ -1061,6 +1061,65 @@ import RoShortFiatWithAave, { meta as roShortFiatWithAave } from "~~/content/blo
 import RoWrappedBitcoinAaveCollateral, {
   meta as roWrappedBitcoinAaveCollateral,
 } from "~~/content/blog/ro/wrapped-bitcoin-ca-garantie-pe-aave.mdx";
+import RuAaveEMode, { meta as ruAaveEMode } from "~~/content/blog/ru/aave-e-mode-obyasnenie.mdx";
+import RuAaveHealthFactor, { meta as ruAaveHealthFactor } from "~~/content/blog/ru/aave-health-factor-obyasnenie.mdx";
+import RuSafeAaveHealthFactor, {
+  meta as ruSafeAaveHealthFactor,
+} from "~~/content/blog/ru/bezopasnyy-health-factor-aave.mdx";
+import RuStablecoinDepegAave, { meta as ruStablecoinDepegAave } from "~~/content/blog/ru/depeg-steyblkoina-na-aave.mdx";
+import RuAaveLiquidationAlertTools, {
+  meta as ruAaveLiquidationAlertTools,
+} from "~~/content/blog/ru/instrumenty-opoveshcheniy-o-likvidatsii-aave.mdx";
+import RuAvoidAaveLiquidation, {
+  meta as ruAvoidAaveLiquidation,
+} from "~~/content/blog/ru/kak-izbezhat-likvidatsii-na-aave.mdx";
+import RuHowAaveLiquidationWorks, {
+  meta as ruHowAaveLiquidationWorks,
+} from "~~/content/blog/ru/kak-rabotaet-likvidatsiya-na-aave.mdx";
+import RuHowMorphoLiquidationWorks, {
+  meta as ruHowMorphoLiquidationWorks,
+} from "~~/content/blog/ru/kak-rabotaet-likvidatsiya-na-morpho.mdx";
+import RuWhoNeedsHealthFactorAlerts, {
+  meta as ruWhoNeedsHealthFactorAlerts,
+} from "~~/content/blog/ru/komu-nuzhny-opoveshcheniya-health-factor.mdx";
+import RuLiquidatedOnAaveOrMorphoWhatNow, {
+  meta as ruLiquidatedOnAaveOrMorphoWhatNow,
+} from "~~/content/blog/ru/likvidirovali-na-aave-ili-morpho-chto-delat.mdx";
+import RuMorphoHealthFactor, {
+  meta as ruMorphoHealthFactor,
+} from "~~/content/blog/ru/morpho-health-factor-obyasnenie.mdx";
+import RuMorphoMidnightFixedRateLoans, {
+  meta as ruMorphoMidnightFixedRateLoans,
+} from "~~/content/blog/ru/morpho-midnight-zaymy-s-fiksirovannoy-stavkoy.mdx";
+import RuMorphoPreLiquidation, { meta as ruMorphoPreLiquidation } from "~~/content/blog/ru/morpho-predlikvidatsiya.mdx";
+import RuAaveHealthFactorAlertSetup, {
+  meta as ruAaveHealthFactorAlertSetup,
+} from "~~/content/blog/ru/nastroyka-opoveshcheniy-health-factor-aave.mdx";
+import RuAaveAlertsDoNotDisturb, {
+  meta as ruAaveAlertsDoNotDisturb,
+} from "~~/content/blog/ru/opoveshcheniya-aave-v-rezhime-ne-bespokoit.mdx";
+import RuWhyAaveWithdrawOrBorrowFails, {
+  meta as ruWhyAaveWithdrawOrBorrowFails,
+} from "~~/content/blog/ru/pochemu-ne-udaetsya-vyvesti-ili-zanyat-na-aave.mdx";
+import RuWhyAaveHealthFactorDropped, {
+  meta as ruWhyAaveHealthFactorDropped,
+} from "~~/content/blog/ru/pochemu-upal-health-factor-aave.mdx";
+import RuPrivateAaveLiquidationAlerts, {
+  meta as ruPrivateAaveLiquidationAlerts,
+} from "~~/content/blog/ru/privatnye-opoveshcheniya-o-likvidatsii-aave.mdx";
+import RuAaveInterestRates, { meta as ruAaveInterestRates } from "~~/content/blog/ru/protsentnye-stavki-aave.mdx";
+import RuShortFiatWithAave, {
+  meta as ruShortFiatWithAave,
+} from "~~/content/blog/ru/short-fiatnoy-valyuty-cherez-aave.mdx";
+import RuTokenizedStocksCollateral, {
+  meta as ruTokenizedStocksCollateral,
+} from "~~/content/blog/ru/tokenizirovannye-aktsii-kak-zalog.mdx";
+import RuAaveLiquidationPrice, { meta as ruAaveLiquidationPrice } from "~~/content/blog/ru/tsena-likvidatsii-aave.mdx";
+import RuWrappedBitcoinAaveCollateral, {
+  meta as ruWrappedBitcoinAaveCollateral,
+} from "~~/content/blog/ru/wrapped-bitcoin-kak-zalog-na-aave.mdx";
+import RuAaveMarketWindDown, { meta as ruAaveMarketWindDown } from "~~/content/blog/ru/zakrytie-rynka-aave.mdx";
+import RuCryptoBackedLoans, { meta as ruCryptoBackedLoans } from "~~/content/blog/ru/zaymy-pod-zalog-kriptovalyuty.mdx";
 import SafeAaveHealthFactor, { meta as safeAaveHealthFactor } from "~~/content/blog/safe-aave-health-factor.mdx";
 import ShortFiatWithAave, { meta as shortFiatWithAave } from "~~/content/blog/short-fiat-with-aave.mdx";
 import SlAaveEMode, { meta as slAaveEMode } from "~~/content/blog/sl/aave-e-mode-razlozen.mdx";
@@ -2003,5 +2062,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
     { meta: bgHowMorphoLiquidationWorks, Content: BgHowMorphoLiquidationWorks },
     { meta: bgMorphoPreLiquidation, Content: BgMorphoPreLiquidation },
     { meta: bgMorphoMidnightFixedRateLoans, Content: BgMorphoMidnightFixedRateLoans },
+  ],
+  ru: [
+    { meta: ruAaveHealthFactor, Content: RuAaveHealthFactor },
+    { meta: ruSafeAaveHealthFactor, Content: RuSafeAaveHealthFactor },
+    { meta: ruHowAaveLiquidationWorks, Content: RuHowAaveLiquidationWorks },
+    { meta: ruAaveLiquidationPrice, Content: RuAaveLiquidationPrice },
+    { meta: ruWhyAaveHealthFactorDropped, Content: RuWhyAaveHealthFactorDropped },
+    { meta: ruAaveHealthFactorAlertSetup, Content: RuAaveHealthFactorAlertSetup },
+    { meta: ruAaveLiquidationAlertTools, Content: RuAaveLiquidationAlertTools },
+    { meta: ruAvoidAaveLiquidation, Content: RuAvoidAaveLiquidation },
+    { meta: ruPrivateAaveLiquidationAlerts, Content: RuPrivateAaveLiquidationAlerts },
+    { meta: ruCryptoBackedLoans, Content: RuCryptoBackedLoans },
+    { meta: ruShortFiatWithAave, Content: RuShortFiatWithAave },
+    { meta: ruAaveInterestRates, Content: RuAaveInterestRates },
+    { meta: ruAaveAlertsDoNotDisturb, Content: RuAaveAlertsDoNotDisturb },
+    { meta: ruAaveMarketWindDown, Content: RuAaveMarketWindDown },
+    { meta: ruStablecoinDepegAave, Content: RuStablecoinDepegAave },
+    { meta: ruAaveEMode, Content: RuAaveEMode },
+    { meta: ruWhyAaveWithdrawOrBorrowFails, Content: RuWhyAaveWithdrawOrBorrowFails },
+    { meta: ruWrappedBitcoinAaveCollateral, Content: RuWrappedBitcoinAaveCollateral },
+    { meta: ruTokenizedStocksCollateral, Content: RuTokenizedStocksCollateral },
+    { meta: ruWhoNeedsHealthFactorAlerts, Content: RuWhoNeedsHealthFactorAlerts },
+    { meta: ruLiquidatedOnAaveOrMorphoWhatNow, Content: RuLiquidatedOnAaveOrMorphoWhatNow },
+    { meta: ruMorphoHealthFactor, Content: RuMorphoHealthFactor },
+    { meta: ruHowMorphoLiquidationWorks, Content: RuHowMorphoLiquidationWorks },
+    { meta: ruMorphoPreLiquidation, Content: RuMorphoPreLiquidation },
+    { meta: ruMorphoMidnightFixedRateLoans, Content: RuMorphoMidnightFixedRateLoans },
   ],
 };

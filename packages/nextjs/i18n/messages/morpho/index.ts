@@ -16,6 +16,7 @@ import { MESSAGES as nl } from "./nl";
 import { MESSAGES as pl } from "./pl";
 import { MESSAGES as pt } from "./pt";
 import { MESSAGES as ro } from "./ro";
+import { MESSAGES as ru } from "./ru";
 import type { MorphoMessages } from "./shared";
 import { MESSAGES as sl } from "./sl";
 import { MESSAGES as sr } from "./sr";
@@ -53,4 +54,5 @@ export const MORPHO_MESSAGES: Localized<MorphoMessages> = {
   nb,
   fil,
   bg,
+  ru,
 };
