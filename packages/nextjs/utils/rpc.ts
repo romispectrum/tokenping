@@ -81,11 +81,17 @@ const PUBLICNODE_RPC_URLS: Record<number, string> = {
 };
 
 // More keyless endpoints, after PublicNode, where one public endpoint is not enough. Ethereum's default (eth.merkle.io)
-// refuses cross-site requests, so in the browser PublicNode was its only working endpoint without our own Alchemy key,
-// and a saved Morpho alert's market showed as unreadable whenever PublicNode failed. Both answer browser requests and
-// eth_call at past blocks (checked 3 Nov 2026).
+// refuses cross-site requests, and so does 1RPC's preflight, so in the browser PublicNode and dRPC were its only working
+// endpoints without our own Alchemy key, and an Ethereum Morpho market showed as unreadable whenever both failed for a
+// visitor. dRPC, Tenderly's public gateway and Blast's public endpoint answer requests from tokenping.xyz and eth_call
+// at past blocks (checked 4 Nov 2026); 1RPC comes last for the server, which it answers, though not at old blocks.
 const EXTRA_PUBLIC_RPC_URLS: Record<number, string[]> = {
-  [mainnet.id]: ["https://eth.drpc.org", "https://1rpc.io/eth"],
+  [mainnet.id]: [
+    "https://eth.drpc.org",
+    "https://gateway.tenderly.co/public/mainnet",
+    "https://eth-mainnet.public.blastapi.io",
+    "https://1rpc.io/eth",
+  ],
 };
 
 const isUrl = (url: string | undefined): url is string => !!url;

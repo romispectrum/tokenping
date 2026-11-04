@@ -79,9 +79,14 @@ const PUBLICNODE_CHAINS = [
   ink,
 ];
 
-// Ethereum's default (eth.merkle.io) refuses browser requests, so two more keyless endpoints come after PublicNode.
+// Ethereum's default (eth.merkle.io) refuses browser requests, so more keyless endpoints come after PublicNode.
 const EXTRA_PUBLIC: Record<number, string[]> = {
-  [mainnet.id]: ["https://eth.drpc.org", "https://1rpc.io/eth"],
+  [mainnet.id]: [
+    "https://eth.drpc.org",
+    "https://gateway.tenderly.co/public/mainnet",
+    "https://eth-mainnet.public.blastapi.io",
+    "https://1rpc.io/eth",
+  ],
 };
 /** PublicNode's endpoint for the chain, then any extra keyless ones. */
 const publicUrls = (chain: Chain) => [PUBLICNODE[chain.id], ...(EXTRA_PUBLIC[chain.id] ?? [])];
@@ -209,6 +214,8 @@ describe("getFallbackTransport", () => {
     expect(transportUrls(mainnet)).toEqual([
       "https://ethereum-rpc.publicnode.com",
       "https://eth.drpc.org",
+      "https://gateway.tenderly.co/public/mainnet",
+      "https://eth-mainnet.public.blastapi.io",
       "https://1rpc.io/eth",
       "https://eth.merkle.io",
     ]);
