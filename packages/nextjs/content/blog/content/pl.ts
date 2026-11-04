@@ -26,7 +26,7 @@ import MorphoHealthFactor from "~~/content/blog/pl/wspolczynnik-zdrowia-morpho.m
 import AaveMarketWindDown from "~~/content/blog/pl/zamkniecie-rynku-aave.mdx";
 import type { PostContent } from "~~/content/blog/types";
 
-/** The body of every pl post, by its slug. Only the pl post route imports this. */
+/** The body of every pl post, by its slug. Only the pl post pages load this. */
 export const POST_CONTENT: PostContent = {
   "wspolczynnik-zdrowia-aave": AaveHealthFactor,
   "bezpieczny-wspolczynnik-zdrowia-aave": SafeAaveHealthFactor,

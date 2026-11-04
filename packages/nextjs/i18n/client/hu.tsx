@@ -11,7 +11,7 @@ import { MESSAGES as morpho } from "~~/i18n/messages/morpho/hu";
 
 const MESSAGES = { alerts, blog, calculator, common, dashboard, morpho };
 
-/** The hu root layout's client root: the only module that brings hu strings into the browser. */
+/** The hu client root: the only module that brings hu strings into the browser. */
 export const LocaleRoot = ({ children }: { children: ReactNode }) => (
   <ClientRoot locale="hu" messages={MESSAGES}>
     {children}

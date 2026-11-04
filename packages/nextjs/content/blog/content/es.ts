@@ -26,7 +26,7 @@ import ShortFiatWithAave from "~~/content/blog/es/short-de-moneda-fiat-con-aave.
 import AaveInterestRates from "~~/content/blog/es/tasas-de-interes-aave.mdx";
 import type { PostContent } from "~~/content/blog/types";
 
-/** The body of every es post, by its slug. Only the es post route imports this. */
+/** The body of every es post, by its slug. Only the es post pages load this. */
 export const POST_CONTENT: PostContent = {
   "factor-de-salud-aave": AaveHealthFactor,
   "factor-de-salud-seguro-aave": SafeAaveHealthFactor,

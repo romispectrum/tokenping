@@ -26,7 +26,7 @@ import TokenizedStocksCollateral from "~~/content/blog/hu/tokenizalt-reszvenyek-
 import WrappedBitcoinAaveCollateral from "~~/content/blog/hu/wrapped-bitcoin-fedezetkent-az-aave-on.mdx";
 import type { PostContent } from "~~/content/blog/types";
 
-/** The body of every hu post, by its slug. Only the hu post route imports this. */
+/** The body of every hu post, by its slug. Only the hu post pages load this. */
 export const POST_CONTENT: PostContent = {
   "aave-health-factor-magyarazat": AaveHealthFactor,
   "biztonsagos-aave-health-factor": SafeAaveHealthFactor,

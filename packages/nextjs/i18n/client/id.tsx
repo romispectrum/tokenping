@@ -11,7 +11,7 @@ import { MESSAGES as morpho } from "~~/i18n/messages/morpho/id";
 
 const MESSAGES = { alerts, blog, calculator, common, dashboard, morpho };
 
-/** The id root layout's client root: the only module that brings id strings into the browser. */
+/** The id client root: the only module that brings id strings into the browser. */
 export const LocaleRoot = ({ children }: { children: ReactNode }) => (
   <ClientRoot locale="id" messages={MESSAGES}>
     {children}

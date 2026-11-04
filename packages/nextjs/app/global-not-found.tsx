@@ -9,6 +9,14 @@ import { rootMetadata } from "~~/utils/seo";
 // language, with links to each language's pages.
 export const metadata = { ...rootMetadata(localeFromPath("/")), ...notFoundMetadata("en") };
 
-const GlobalNotFound = () => rootDocument({ locale: "en", LocaleRoot, children: <MultilingualNotFoundPage /> });
+const GlobalNotFound = () =>
+  rootDocument({
+    locale: "en",
+    body: (
+      <LocaleRoot>
+        <MultilingualNotFoundPage />
+      </LocaleRoot>
+    ),
+  });
 
 export default GlobalNotFound;

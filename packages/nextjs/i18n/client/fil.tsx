@@ -11,7 +11,7 @@ import { MESSAGES as morpho } from "~~/i18n/messages/morpho/fil";
 
 const MESSAGES = { alerts, blog, calculator, common, dashboard, morpho };
 
-/** The fil root layout's client root: the only module that brings fil strings into the browser. */
+/** The fil client root: the only module that brings fil strings into the browser. */
 export const LocaleRoot = ({ children }: { children: ReactNode }) => (
   <ClientRoot locale="fil" messages={MESSAGES}>
     {children}

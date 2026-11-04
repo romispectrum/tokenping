@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import "@scaffold-ui/components/styles.css";
@@ -55,27 +55,29 @@ export const ROOT_VIEWPORT: Viewport = {
 
 type RootDocumentProps = {
   locale: Locale;
-  /** The language's client root (i18n/client/<locale>.tsx): providers and the page's strings for client components. */
-  LocaleRoot: ComponentType<{ children: ReactNode }>;
-  children: ReactNode;
-  /** next/font classes a language adds to <html>: Vietnamese sets its words in its own font (components/fonts). */
+  /**
+   * The page inside its language's client root (i18n/client/<locale>.tsx, or i18n/client/roots.tsx for the prefixed
+   * languages): providers and the page's strings for client components.
+   */
+  body: ReactNode;
+  /** next/font classes a language adds to <html> when Satoshi lacks its letters (components/fonts/index.ts). */
   fontClassName?: string;
 };
 
 /**
- * The <html> document of one language. The site has a root layout per language (app/(en)/layout.tsx,
- * app/(cs)/layout.tsx and so on), so <html lang> is right on the server for every page, without middleware (the IPFS
- * build is a static export). Moving between languages is a full page load, which is fine for a language switch.
+ * The <html> document of one language. English has its root layout (app/(en)/layout.tsx) and every other language
+ * shares app/(intl)/[lang]/layout.tsx, which reads the language from the URL, so <html lang> is right on the server for
+ * every page, without middleware (the IPFS build is a static export). Moving between languages must stay a full page
+ * load: two prefixed languages share one root layout, so a client navigation between them would keep the document
+ * and remount the providers (components/ui/LanguageSwitch.tsx uses plain links for that reason).
  * A plain function, not a component, so a layout returns the <html> element itself.
  */
-export const rootDocument = ({ locale, LocaleRoot, children, fontClassName }: RootDocumentProps) => (
+export const rootDocument = ({ locale, body, fontClassName }: RootDocumentProps) => (
   <html
     lang={LOCALE_INFO[locale].htmlLang}
     suppressHydrationWarning
     className={[satoshi.variable, satoshiItalic.variable, geistMono.variable, fontClassName].filter(Boolean).join(" ")}
   >
-    <body>
-      <LocaleRoot>{children}</LocaleRoot>
-    </body>
+    <body>{body}</body>
   </html>
 );

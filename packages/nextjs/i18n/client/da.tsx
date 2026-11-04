@@ -11,7 +11,7 @@ import { MESSAGES as morpho } from "~~/i18n/messages/morpho/da";
 
 const MESSAGES = { alerts, blog, calculator, common, dashboard, morpho };
 
-/** The da root layout's client root: the only module that brings da strings into the browser. */
+/** The da client root: the only module that brings da strings into the browser. */
 export const LocaleRoot = ({ children }: { children: ReactNode }) => (
   <ClientRoot locale="da" messages={MESSAGES}>
     {children}

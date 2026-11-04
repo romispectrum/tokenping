@@ -26,7 +26,7 @@ import AaveMarketWindDown from "~~/content/blog/sl/zapiranje-aave-trga.mdx";
 import PrivateAaveLiquidationAlerts from "~~/content/blog/sl/zasebna-aave-opozorila-o-likvidaciji.mdx";
 import type { PostContent } from "~~/content/blog/types";
 
-/** The body of every sl post, by its slug. Only the sl post route imports this. */
+/** The body of every sl post, by its slug. Only the sl post pages load this. */
 export const POST_CONTENT: PostContent = {
   "aave-health-factor-razlozen": AaveHealthFactor,
   "varen-aave-health-factor": SafeAaveHealthFactor,

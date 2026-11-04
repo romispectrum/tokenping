@@ -26,7 +26,7 @@ import AaveInterestRates from "~~/content/blog/pt/taxas-de-juros-aave.mdx";
 import ShortFiatWithAave from "~~/content/blog/pt/vender-moeda-fiduciaria-a-descoberto-com-aave.mdx";
 import type { PostContent } from "~~/content/blog/types";
 
-/** The body of every pt post, by its slug. Only the pt post route imports this. */
+/** The body of every pt post, by its slug. Only the pt post pages load this. */
 export const POST_CONTENT: PostContent = {
   "fator-de-saude-aave": AaveHealthFactor,
   "fator-de-saude-aave-seguro": SafeAaveHealthFactor,

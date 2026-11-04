@@ -30,11 +30,12 @@ const MENU_ENTRIES: readonly MenuEntry[] = LOCALES.flatMap(locale => {
 
 /**
  * The language menu: a button with the current language's code that drops down a list of every language, each a
- * link to this page in that language, every entry of the current one marked. Plain <a> links, not next/link: each language has its
- * own root layout, so switching is a full page load either way. A disclosure like the header's menu rather than a
- * <select>, so a keyboard arrow never navigates by itself; it closes on Escape (focus back on the button), on a
- * click outside and when focus leaves it. Each option is spoken in its own language (lang). The button is sized
- * like ThemeToggle, with the same accent hover.
+ * link to this page in that language, every entry of the current one marked. Plain <a> links on purpose, not
+ * next/link: every prefixed language shares app/(intl)/[lang]/layout.tsx, so a client navigation between two of them
+ * would keep the document and remount the providers; a full page load gets the new language's <html> and client root.
+ * A disclosure like the header's menu rather than a <select>, so a keyboard arrow never navigates by itself; it closes
+ * on Escape (focus back on the button), on a click outside and when focus leaves it. Each option is spoken in its own
+ * language (lang). The button is sized like ThemeToggle, with the same accent hover.
  */
 export const LanguageSwitch = ({ className }: { className?: string }) => {
   const pathname = usePathname() ?? "/";

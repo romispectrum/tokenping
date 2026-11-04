@@ -71,8 +71,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // No "X-Powered-By: Next.js" header: it tells scanners the framework and helps nobody.
   poweredByHeader: false,
-  // Each language has its own root layout (app/(en), app/(cs)), so a URL that matches no route needs
-  // app/global-not-found.tsx, which brings its own <html>.
+  // English and the other languages have separate root layouts (app/(en), app/(intl)/[lang]), so a URL that matches
+  // no route needs app/global-not-found.tsx, which brings its own <html>.
   experimental: {
     globalNotFound: true,
     // The CSS goes into each page's <head> (production builds only) instead of two render-blocking stylesheet

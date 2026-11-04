@@ -26,7 +26,7 @@ import WhoNeedsHealthFactorAlerts from "~~/content/blog/nl/wie-heeft-health-fact
 import WrappedBitcoinAaveCollateral from "~~/content/blog/nl/wrapped-bitcoin-als-onderpand-op-aave.mdx";
 import type { PostContent } from "~~/content/blog/types";
 
-/** The body of every nl post, by its slug. Only the nl post route imports this. */
+/** The body of every nl post, by its slug. Only the nl post pages load this. */
 export const POST_CONTENT: PostContent = {
   "aave-health-factor-uitgelegd": AaveHealthFactor,
   "veilige-aave-health-factor": SafeAaveHealthFactor,

@@ -11,7 +11,7 @@ import { MESSAGES as morpho } from "~~/i18n/messages/morpho/hi";
 
 const MESSAGES = { alerts, blog, calculator, common, dashboard, morpho };
 
-/** The hi root layout's client root: the only module that brings hi strings into the browser. */
+/** The hi client root: the only module that brings hi strings into the browser. */
 export const LocaleRoot = ({ children }: { children: ReactNode }) => (
   <ClientRoot locale="hi" messages={MESSAGES}>
     {children}

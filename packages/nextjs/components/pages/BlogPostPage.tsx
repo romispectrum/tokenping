@@ -35,7 +35,7 @@ type BlogPostPageProps = {
   locale: Locale;
   /** The post's slug in `locale`. */
   slug: string;
-  /** The language's post bodies (content/blog/content/<locale>.ts), which only its own route imports. */
+  /** The language's post bodies (content/blog/content/<locale>.ts), which only its own language's pages load. */
   content: PostContent;
 };
 

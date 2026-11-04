@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { Post, PostMeta } from "~~/content/blog/types";
 import { buildRssFeed } from "~~/utils/rss";
 import { POST_SLUGS, mockPostStubs, translatedPostSlugs } from "~~/utils/testing/blogPosts";
+import { langParams } from "~~/utils/testing/langParams";
 
 const CS_POST_SLUGS = translatedPostSlugs("cs");
 
@@ -109,15 +110,17 @@ describe("buildRssFeed in Czech", () => {
 });
 
 describe("GET /cz/blog/feed.xml", () => {
+  const FEED_REQUEST = new Request("https://tokenping.xyz/cz/blog/feed.xml");
+
   const loadRoute = async (csStubSlugs: readonly string[]) => {
     vi.resetModules();
     mockPostStubs([], { cs: csStubSlugs });
-    return import("~~/app/(cs)/cz/blog/feed.xml/route");
+    return import("~~/app/(intl)/[lang]/blog/feed.xml/route");
   };
 
   it("is static and serves the published Czech posts at their Czech URLs, without placeholders", async () => {
     const { GET, dynamic } = await loadRoute(["bezpecny-health-factor-aave"]);
-    const response = GET();
+    const response = await GET(FEED_REQUEST, langParams("cz"));
 
     expect(dynamic).toBe("force-static");
     expect(response.headers.get("Content-Type")).toBe("application/rss+xml; charset=utf-8");
@@ -130,7 +133,7 @@ describe("GET /cz/blog/feed.xml", () => {
 
   it("has no items while every Czech post is a placeholder, whatever English has published", async () => {
     const { GET } = await loadRoute(CS_POST_SLUGS);
-    const xml = await GET().text();
+    const xml = await (await GET(FEED_REQUEST, langParams("cz"))).text();
 
     expect(xml).not.toContain("<item>");
     expect(xml).not.toContain("<lastBuildDate>");

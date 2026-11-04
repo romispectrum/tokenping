@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { format, resolveConfig } from "prettier";
-import { DEFAULT_LOCALE, LOCALES, type Locale } from "~~/i18n/locales";
+import { DEFAULT_LOCALE, LOCALES, type Locale, PREFIXED_LOCALES } from "~~/i18n/locales";
 import { POST_SLUGS } from "~~/i18n/postSlugs";
 
 // The blog index is generated from i18n/postSlugs.ts and the files in content/blog (`yarn blog-index`), and
@@ -10,15 +10,19 @@ import { POST_SLUGS } from "~~/i18n/postSlugs";
 //
 // - content/blog/posts.ts holds every post's `meta`, copied from its .mdx file, and imports no post. The pages that
 //   list posts (the blog index, feeds, sitemap, llms.txt, OG cards, hreflang) read it.
-// - content/blog/content/<locale>.ts imports one language's post bodies, and only that language's post route imports
-//   it. When every route imported every language's .mdx files, each route's compile held them all and the production
-//   build outgrew Node's default heap at about 23 languages.
+// - content/blog/content/<locale>.ts imports one language's post bodies. English's post route imports en.ts, and the
+//   post route of the other languages (app/(intl)/[lang]/blog/[slug]) loads its language's module on demand through
+//   content/blog/content/index.ts. When every route imported every language's .mdx files, each route's compile held
+//   them all and the production build outgrew Node's default heap at about 23 languages.
 
 const PACKAGE_ROOT = path.resolve(__dirname, "..");
 export const BLOG_INDEX_FILE = "content/blog/posts.ts";
 
 /** The module of one language's post bodies, relative to the package root. */
 export const blogContentFile = (locale: Locale) => `content/blog/content/${locale}.ts`;
+
+/** The module that loads each language's post bodies on demand. */
+export const BLOG_CONTENT_LOADERS_FILE = "content/blog/content/index.ts";
 
 const pascal = (text: string) => text.replace(/(?:^|-)([a-z0-9])/g, (_, letter: string) => letter.toUpperCase());
 
@@ -79,7 +83,7 @@ export const blogContentSource = async (locale: Locale, posts = postsByLocale())
 ${imports.join("\n")}
 import type { PostContent } from "~~/content/blog/types";
 
-/** The body of every ${locale} post, by its slug. Only the ${locale} post route imports this. */
+/** The body of every ${locale} post, by its slug. Only the ${locale} post pages load this. */
 export const POST_CONTENT: PostContent = {
 ${entries.join("\n")}
 };
@@ -87,11 +91,35 @@ ${entries.join("\n")}
   );
 };
 
+const contentLoader = (locale: Locale) =>
+  `  ${locale}: () => import("~~/content/blog/content/${locale}").then(module => module.POST_CONTENT),`;
+
+export const blogContentLoadersSource = () =>
+  formatted(
+    BLOG_CONTENT_LOADERS_FILE,
+    `${GENERATED}
+import type { PostContent } from "~~/content/blog/types";
+import type { PrefixedLocale } from "~~/i18n/locales";
+
+/**
+ * The post bodies of each prefixed language, for app/(intl)/[lang]/blog/[slug]: one chunk per language, and a page
+ * loads only its own. English's post route imports content/blog/content/en.ts directly.
+ */
+export const POST_CONTENT_LOADERS: Record<PrefixedLocale, () => Promise<PostContent>> = {
+${PREFIXED_LOCALES.map(contentLoader).join("\n")}
+};
+`,
+  );
+
 /** Every generated file, by its path relative to the package root. */
 export const blogIndexFiles = async (): Promise<Record<string, string>> => {
   const posts = postsByLocale();
   const content = await Promise.all(
     LOCALES.map(async locale => [blogContentFile(locale), await blogContentSource(locale, posts)] as const),
   );
-  return { [BLOG_INDEX_FILE]: await blogIndexSource(posts), ...Object.fromEntries(content) };
+  return {
+    [BLOG_INDEX_FILE]: await blogIndexSource(posts),
+    ...Object.fromEntries(content),
+    [BLOG_CONTENT_LOADERS_FILE]: await blogContentLoadersSource(),
+  };
 };

@@ -26,7 +26,7 @@ import WhyAaveHealthFactorDropped from "~~/content/blog/vi/vi-sao-he-so-suc-khoe
 import WhyAaveWithdrawOrBorrowFails from "~~/content/blog/vi/vi-sao-khong-rut-hoac-vay-duoc-tren-aave.mdx";
 import WrappedBitcoinAaveCollateral from "~~/content/blog/vi/wrapped-bitcoin-lam-tai-san-the-chap.mdx";
 
-/** The body of every vi post, by its slug. Only the vi post route imports this. */
+/** The body of every vi post, by its slug. Only the vi post pages load this. */
 export const POST_CONTENT: PostContent = {
   "he-so-suc-khoe-aave": AaveHealthFactor,
   "he-so-suc-khoe-an-toan-tren-aave": SafeAaveHealthFactor,

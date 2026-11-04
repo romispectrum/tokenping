@@ -71,14 +71,14 @@ user's theme is dark, for UI that reports the theme, such as the toggle's icon.
   transaction ids and numbers compared digit by digit, nothing else.
 - **The one exception: Vietnamese.** Satoshi lacks most Vietnamese letters (ơ, ư and the stacked tone marks), and a
   per-letter fallback would mix two typefaces inside one word, so the Vietnamese pages and their social cards set
-  every word in **Plus Jakarta Sans**, a geometric sans close to Satoshi (`components/fonts/vietnamese.ts`, loaded only
-  by `app/(vi)/layout.tsx`; `styles/globals.css` points `--font-satoshi` at it under `html:lang(vi)`). Hindi keeps
+  every word in **Plus Jakarta Sans**, a geometric sans close to Satoshi (`components/fonts/vietnamese.ts`, downloaded
+  only on the Vietnamese pages; `styles/globals.css` points `--font-satoshi` at it under `html:lang(vi)`). Hindi keeps
   Satoshi for Latin letters and digits and falls back to a Devanagari font for the rest.
-- **Planned scripts.** Russian, Ukrainian, Bulgarian and Greek will set every word in **Manrope**
+- **Other scripts.** Russian, Ukrainian, Bulgarian and Greek set every word in **Manrope**
   (`components/fonts/cyrillicGreek.ts`, no italic: emphasis is slanted by the browser), for the reason Vietnamese
-  does: their letters share shapes with Latin. Thai will keep Satoshi for Latin and add **Noto Sans Thai**
-  (`components/fonts/thai.ts`) for its script, with taller lines for the stacked vowels and tone marks. Each loads
-  only on its languages' pages ([docs/i18n.md](i18n.md), "Adding a language").
+  does: their letters share shapes with Latin. Thai (planned) keeps Satoshi for Latin and adds **Noto Sans Thai**
+  (`components/fonts/thai.ts`) for its script, with taller lines for the stacked vowels and tone marks. Each is
+  downloaded only on its languages' pages and none is preloaded ([docs/i18n.md](i18n.md), "Adding a language").
 - Both load through `next/font` in `components/RootDocument.tsx`, with `display: "swap"` and a metric-matched fallback.
   Only Satoshi's upright face is preloaded; its italic (same family) and Geist Mono load on the pages that use them.
 - **Font licenses.** Geist Mono, Plus Jakarta Sans, Manrope and Noto Sans Thai (through `next/font/google`), and
@@ -156,7 +156,7 @@ each has tests next to it.
 | `Kicker`, `SectionHeader`                       | The one heading formula.                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `GrainCard`, `Glow`, `GlowWash`, `BrandDivider` | Marketing pages only.                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `ThemeToggle`, `ThemeChoice`                    | `ThemeToggle` flips light and dark (top bar); `ThemeChoice` offers Light, Dark and System (footer, settings).                                                                                                                                                                                                                                                                                                                    |
-| `LanguageSwitch`                                | The language menu in the header: a disclosure with one plain link per language (each language has its own root layout, so switching is a full page load). Import it from `~~/components/ui/LanguageSwitch`; the index does not re-export it. See [i18n.md](i18n.md).                                                                                                                                                             |
+| `LanguageSwitch`                                | The language menu in the header: a disclosure with one plain link per language (the root layout reads the language once, so switching is a full page load). Import it from `~~/components/ui/LanguageSwitch`; the index does not re-export it. See [i18n.md](i18n.md).                                                                                                                                                           |
 
 DaisyUI components used directly (`btn`, `input`, `checkbox`, `toggle`, `badge`, `menu`, `card-title`, `table` ...)
 take their colours from the tokens and follow the same focus, boundary, checked and weight rules (500 for titles and

@@ -33,6 +33,11 @@ export type Locale = (typeof LOCALES)[number];
 
 export const DEFAULT_LOCALE: Locale = "en";
 
+/** Every language but English, which has no URL prefix: the languages app/(intl)/[lang] serves. */
+export type PrefixedLocale = Exclude<Locale, "en">;
+
+export const PREFIXED_LOCALES = LOCALES.filter((locale): locale is PrefixedLocale => locale !== DEFAULT_LOCALE);
+
 type LocaleInfo = {
   /** The <html lang> and hreflang value. */
   htmlLang: string;

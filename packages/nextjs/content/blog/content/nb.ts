@@ -26,7 +26,7 @@ import AaveLiquidationAlertTools from "~~/content/blog/nb/verktoy-for-aave-likvi
 import WrappedBitcoinAaveCollateral from "~~/content/blog/nb/wrapped-bitcoin-som-sikkerhet-pa-aave.mdx";
 import type { PostContent } from "~~/content/blog/types";
 
-/** The body of every nb post, by its slug. Only the nb post route imports this. */
+/** The body of every nb post, by its slug. Only the nb post pages load this. */
 export const POST_CONTENT: PostContent = {
   "aave-health-factor-forklart": AaveHealthFactor,
   "trygg-aave-health-factor": SafeAaveHealthFactor,

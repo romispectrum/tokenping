@@ -26,7 +26,7 @@ import AaveLiquidationAlertTools from "~~/content/blog/it/strumenti-avvisi-liqui
 import AaveInterestRates from "~~/content/blog/it/tassi-di-interesse-aave.mdx";
 import type { PostContent } from "~~/content/blog/types";
 
-/** The body of every it post, by its slug. Only the it post route imports this. */
+/** The body of every it post, by its slug. Only the it post pages load this. */
 export const POST_CONTENT: PostContent = {
   "fattore-di-salute-aave": AaveHealthFactor,
   "fattore-di-salute-aave-sicuro": SafeAaveHealthFactor,

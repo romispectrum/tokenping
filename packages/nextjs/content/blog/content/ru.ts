@@ -26,7 +26,7 @@ import AaveMarketWindDown from "~~/content/blog/ru/zakrytie-rynka-aave.mdx";
 import CryptoBackedLoans from "~~/content/blog/ru/zaymy-pod-zalog-kriptovalyuty.mdx";
 import type { PostContent } from "~~/content/blog/types";
 
-/** The body of every ru post, by its slug. Only the ru post route imports this. */
+/** The body of every ru post, by its slug. Only the ru post pages load this. */
 export const POST_CONTENT: PostContent = {
   "aave-health-factor-obyasnenie": AaveHealthFactor,
   "bezopasnyy-health-factor-aave": SafeAaveHealthFactor,

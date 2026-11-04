@@ -11,7 +11,7 @@ import { MESSAGES as morpho } from "~~/i18n/messages/morpho/bg";
 
 const MESSAGES = { alerts, blog, calculator, common, dashboard, morpho };
 
-/** The bg root layout's client root: the only module that brings bg strings into the browser. */
+/** The bg client root: the only module that brings bg strings into the browser. */
 export const LocaleRoot = ({ children }: { children: ReactNode }) => (
   <ClientRoot locale="bg" messages={MESSAGES}>
     {children}

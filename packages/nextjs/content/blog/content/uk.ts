@@ -26,7 +26,7 @@ import HowMorphoLiquidationWorks from "~~/content/blog/uk/yak-pratsiuie-likvidat
 import AvoidAaveLiquidation from "~~/content/blog/uk/yak-unyknuty-likvidatsii-na-aave.mdx";
 import AaveMarketWindDown from "~~/content/blog/uk/zakryttia-rynku-aave.mdx";
 
-/** The body of every uk post, by its slug. Only the uk post route imports this. */
+/** The body of every uk post, by its slug. Only the uk post pages load this. */
 export const POST_CONTENT: PostContent = {
   "aave-health-factor-poiasnennia": AaveHealthFactor,
   "bezpechnyi-health-factor-aave": SafeAaveHealthFactor,

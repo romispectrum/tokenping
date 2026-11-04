@@ -6,6 +6,7 @@ import { rootMetadata } from "~~/utils/seo";
 export const metadata = rootMetadata("en");
 export const viewport = ROOT_VIEWPORT;
 
-const RootLayout = ({ children }: { children: ReactNode }) => rootDocument({ locale: "en", LocaleRoot, children });
+const RootLayout = ({ children }: { children: ReactNode }) =>
+  rootDocument({ locale: "en", body: <LocaleRoot>{children}</LocaleRoot> });
 
 export default RootLayout;

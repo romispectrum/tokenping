@@ -26,7 +26,7 @@ import WhyAaveHealthFactorDropped from "~~/content/blog/bg/zashto-padna-health-f
 import WhyAaveWithdrawOrBorrowFails from "~~/content/blog/bg/zashto-tegleneto-ili-zaemat-v-aave-ne-uspyava.mdx";
 import type { PostContent } from "~~/content/blog/types";
 
-/** The body of every bg post, by its slug. Only the bg post route imports this. */
+/** The body of every bg post, by its slug. Only the bg post pages load this. */
 export const POST_CONTENT: PostContent = {
   "aave-health-factor-obyasnenie": AaveHealthFactor,
   "bezopasen-health-factor-aave": SafeAaveHealthFactor,

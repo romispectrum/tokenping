@@ -26,7 +26,7 @@ import TokenizedStocksCollateral from "~~/content/blog/el/tokenopoiimenes-metoch
 import WrappedBitcoinAaveCollateral from "~~/content/blog/el/wrapped-bitcoin-os-exasfalisi-sto-aave.mdx";
 import type { PostContent } from "~~/content/blog/types";
 
-/** The body of every el post, by its slug. Only the el post route imports this. */
+/** The body of every el post, by its slug. Only the el post pages load this. */
 export const POST_CONTENT: PostContent = {
   "aave-health-factor-exigisi": AaveHealthFactor,
   "asfalis-health-factor-aave": SafeAaveHealthFactor,

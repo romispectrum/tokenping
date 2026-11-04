@@ -1,19 +1,20 @@
 // @vitest-environment jsdom
 /// <reference types="vite/client" />
-import type { ReactElement } from "react";
 import { render, screen } from "@testing-library/react";
-import type { Metadata } from "next";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HOME_BLOG_SLUGS } from "~~/components/home/homeContent";
-import { LOCALES, LOCALE_INFO, type Locale } from "~~/i18n/locales";
+import { langSegment } from "~~/i18n/localeSegment";
+import { LOCALES, LOCALE_INFO, type Locale, PREFIXED_LOCALES, type PrefixedLocale } from "~~/i18n/locales";
 import { POST_SLUGS } from "~~/i18n/postSlugs";
 import { routePath } from "~~/i18n/routes";
 import type { AlertPlan } from "~~/services/marketing/alertPlan";
 import { PUBLISH_EVERY_TRANSLATION, mockPostStubs } from "~~/utils/testing/blogPosts";
 import { FREE_WORDS } from "~~/utils/testing/copyRules";
+import { langParams } from "~~/utils/testing/langParams";
 
-// Every translated home page (app/(<locale>)/<prefix>/page.tsx), checked the same way. A new language adds a row
-// to COPY; English has its own test (app/(en)/page.test.tsx), and Czech has more in app/(cs)/cz/page.test.tsx.
+// Every translated home page (app/(intl)/[lang]/page.tsx with each language's params), checked the same way. A new
+// language adds a row to COPY; English has its own test (app/(en)/page.test.tsx), and Czech has more in
+// app/(intl)/[lang]/page.test.tsx.
 
 type CopyRules = {
   /** The h1 names the live channels (Signal and email while Telegram is off). */
@@ -205,24 +206,20 @@ const COPY: Partial<Record<Locale, CopyRules>> = {
   },
 };
 
-const TRANSLATED = LOCALES.filter(locale => locale !== "en");
+const TRANSLATED = PREFIXED_LOCALES;
 
-const HOME_MODULES = import.meta.glob<{ default: () => Promise<ReactElement>; metadata: Metadata }>(
-  "./\\([a-z]*\\)/*/page.tsx",
-);
-
-const homeModule = (locale: Locale) => {
-  const key = `./(${locale})${routePath(locale, "home")}/page.tsx`;
-  const load = HOME_MODULES[key];
-  if (!load) throw new Error(`no home page at ${key}`);
-  return load();
+/** A language's home page (app/(intl)/[lang]/page.tsx) with that language's params: its page and its metadata. */
+const homeModule = async (locale: PrefixedLocale) => {
+  const page = await import("~~/app/(intl)/[lang]/page");
+  const props = langParams(langSegment(locale));
+  return { default: () => page.default(props), metadata: await page.generateMetadata(props) };
 };
 
 const PLAN: AlertPlan = { priceLabel: "3 USDC", days: 30 };
 const mocks = vi.hoisted(() => ({ getAlertPlan: vi.fn() }));
 vi.mock("~~/services/marketing/alertPlan", () => ({ getAlertPlan: mocks.getAlertPlan }));
 
-const renderHome = async (locale: Locale) => {
+const renderHome = async (locale: PrefixedLocale) => {
   const { default: Home } = await homeModule(locale);
   return render(await Home());
 };

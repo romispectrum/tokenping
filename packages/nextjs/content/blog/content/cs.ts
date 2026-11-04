@@ -26,7 +26,7 @@ import AaveInterestRates from "~~/content/blog/cs/urokove-sazby-aave.mdx";
 import WrappedBitcoinAaveCollateral from "~~/content/blog/cs/wrapped-bitcoin-jako-kolateral-na-aave.mdx";
 import type { PostContent } from "~~/content/blog/types";
 
-/** The body of every cs post, by its slug. Only the cs post route imports this. */
+/** The body of every cs post, by its slug. Only the cs post pages load this. */
 export const POST_CONTENT: PostContent = {
   "aave-health-factor-vysvetleni": AaveHealthFactor,
   "bezpecny-health-factor-aave": SafeAaveHealthFactor,

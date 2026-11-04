@@ -26,7 +26,7 @@ import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/id/terlikuidasi-di-
 import WrappedBitcoinAaveCollateral from "~~/content/blog/id/wrapped-bitcoin-sebagai-jaminan-aave.mdx";
 import type { PostContent } from "~~/content/blog/types";
 
-/** The body of every id post, by its slug. Only the id post route imports this. */
+/** The body of every id post, by its slug. Only the id post pages load this. */
 export const POST_CONTENT: PostContent = {
   "faktor-kesehatan-aave": AaveHealthFactor,
   "faktor-kesehatan-aave-yang-aman": SafeAaveHealthFactor,

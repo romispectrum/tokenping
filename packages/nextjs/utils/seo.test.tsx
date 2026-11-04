@@ -327,6 +327,7 @@ describe("faqPageJsonLd", () => {
         question: "What do you store?",
         answer: (
           <>
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a plain anchor is the input under test */}
             Contact details. The <a href="/privacy">privacy page</a> has the list.
           </>
         ),

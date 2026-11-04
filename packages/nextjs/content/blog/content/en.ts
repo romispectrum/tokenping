@@ -26,7 +26,7 @@ import WhyAaveHealthFactorDropped from "~~/content/blog/why-aave-health-factor-d
 import WhyAaveWithdrawOrBorrowFails from "~~/content/blog/why-aave-withdraw-or-borrow-fails.mdx";
 import WrappedBitcoinAaveCollateral from "~~/content/blog/wrapped-bitcoin-aave-collateral.mdx";
 
-/** The body of every en post, by its slug. Only the en post route imports this. */
+/** The body of every en post, by its slug. Only the en post pages load this. */
 export const POST_CONTENT: PostContent = {
   "aave-health-factor": AaveHealthFactor,
   "safe-aave-health-factor": SafeAaveHealthFactor,

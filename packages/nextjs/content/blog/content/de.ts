@@ -26,7 +26,7 @@ import WhoNeedsHealthFactorAlerts from "~~/content/blog/de/wer-health-factor-ale
 import WrappedBitcoinAaveCollateral from "~~/content/blog/de/wrapped-bitcoin-als-sicherheit-auf-aave.mdx";
 import type { PostContent } from "~~/content/blog/types";
 
-/** The body of every de post, by its slug. Only the de post route imports this. */
+/** The body of every de post, by its slug. Only the de post pages load this. */
 export const POST_CONTENT: PostContent = {
   "aave-health-factor-erklaert": AaveHealthFactor,
   "sicherer-health-factor-aave": SafeAaveHealthFactor,

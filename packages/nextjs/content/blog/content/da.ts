@@ -26,7 +26,7 @@ import AaveLiquidationAlertTools from "~~/content/blog/da/vaerktoejer-til-aave-l
 import WrappedBitcoinAaveCollateral from "~~/content/blog/da/wrapped-bitcoin-som-sikkerhed-paa-aave.mdx";
 import type { PostContent } from "~~/content/blog/types";
 
-/** The body of every da post, by its slug. Only the da post route imports this. */
+/** The body of every da post, by its slug. Only the da post pages load this. */
 export const POST_CONTENT: PostContent = {
   "aave-health-factor-forklaret": AaveHealthFactor,
   "sikker-aave-health-factor": SafeAaveHealthFactor,

@@ -11,7 +11,7 @@ import { MESSAGES as morpho } from "~~/i18n/messages/morpho/vi";
 
 const MESSAGES = { alerts, blog, calculator, common, dashboard, morpho };
 
-/** The vi root layout's client root: the only module that brings vi strings into the browser. */
+/** The vi client root: the only module that brings vi strings into the browser. */
 export const LocaleRoot = ({ children }: { children: ReactNode }) => (
   <ClientRoot locale="vi" messages={MESSAGES}>
     {children}

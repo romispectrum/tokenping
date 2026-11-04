@@ -26,7 +26,7 @@ import TokenizedStocksCollateral from "~~/content/blog/hi/tokenized-stocks-ke-ba
 import WrappedBitcoinAaveCollateral from "~~/content/blog/hi/wrapped-bitcoin-aave-collateral.mdx";
 import type { PostContent } from "~~/content/blog/types";
 
-/** The body of every hi post, by its slug. Only the hi post route imports this. */
+/** The body of every hi post, by its slug. Only the hi post pages load this. */
 export const POST_CONTENT: PostContent = {
   "aave-health-factor-kya-hai": AaveHealthFactor,
   "aave-surakshit-health-factor": SafeAaveHealthFactor,

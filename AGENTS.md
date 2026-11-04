@@ -43,7 +43,7 @@ yarn next:token-icons       # Refresh Aave token icons from CoinGecko
 yarn next:network-icons     # Refresh network logos from CoinGecko
 yarn next:telegram-webhook  # Register the Telegram bot's webhook (info | set <url>)
 yarn next:indexnow          # Tell IndexNow engines about the live sitemap's pages after a deploy (--since, --dry-run)
-yarn next:locale-routes     # Write every language's route group and client root from the templates
+yarn next:locale-clients    # Write every language's client root (i18n/client) from the templates
 yarn next:blog-index        # Regenerate content/blog/posts.ts and content/blog/content/* after adding or editing a post's meta
 
 # Deployer account (Hardhat)
@@ -184,12 +184,13 @@ import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 
 ### Creating pages
 
-Route files are thin. They render a shared component from `components/pages/` with a locale. English's are written by
-hand under `app/(en)`; every other language's route group (`app/(cs)/cz`, `app/(de)/de` and so on) and every client root
-(`i18n/client/<locale>.tsx`) are generated from the templates in `scripts/localeRoutes.ts` by `yarn next:locale-routes`,
-and `scripts/localeRoutes.test.ts` fails when one differs. A new page goes into `app/(en)` and the template:
+Route files are thin. They render a shared component from `components/pages/` with a locale. English's are under
+`app/(en)`. Every other language is served by the same files under `app/(intl)/[lang]`, which read the language from
+the URL's first segment (`pageLocale` in `i18n/localeSegment.ts`; `/cz` and `/no` are Czech and Norwegian). A new page
+goes into both:
 
 ```tsx
+// app/(en)/aave/page.tsx
 import {
   DashboardPage,
   dashboardMetadata,
@@ -201,6 +202,27 @@ const Dashboard = () => DashboardPage({ locale: "en" });
 
 export default Dashboard;
 ```
+
+```tsx
+// app/(intl)/[lang]/aave/page.tsx
+import {
+  DashboardPage,
+  dashboardMetadata,
+} from "~~/components/pages/DashboardPage";
+import { type LangParams, pageLocale } from "~~/i18n/localeSegment";
+
+export const generateMetadata = async (props: LangParams) =>
+  dashboardMetadata(await pageLocale(props));
+
+const Dashboard = async (props: LangParams) =>
+  DashboardPage({ locale: await pageLocale(props) });
+
+export default Dashboard;
+```
+
+Every language's client root (`i18n/client/<locale>.tsx`) and `i18n/client/roots.tsx`, which loads the root of the
+page's language only, are generated from `scripts/localeClients.ts` by `yarn next:locale-clients`, and
+`scripts/localeClients.test.ts` fails when one differs.
 
 ### TypeScript conventions
 

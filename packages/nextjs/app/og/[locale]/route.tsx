@@ -3,7 +3,7 @@ import { siteOgImageResponse } from "~~/components/seo/ogImages";
 import { LOCALES, isLocale } from "~~/i18n/locales";
 
 // The site's social card in each language, at a fixed URL (/og/en, /og/cs) that utils/seo siteOgImage names. A route
-// handler rather than an opengraph-image file: those get a hashed URL inside the (en) and (cs) route groups.
+// handler rather than an opengraph-image file: those get a hashed URL inside the (en) and (intl) route groups.
 export const dynamic = "force-static";
 export const dynamicParams = false;
 

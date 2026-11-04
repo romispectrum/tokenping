@@ -69,8 +69,8 @@ describe("next.config", () => {
       webpack: expect.any(Function),
       headers: expect.any(Function),
       rewrites: expect.any(Function),
-      // One root layout per language needs app/global-not-found.tsx for URLs that match no route. The CSS goes into
-      // each page's <head> instead of render-blocking stylesheet requests.
+      // Two root layouts (English, every other language) need app/global-not-found.tsx for URLs that match no route. The
+      // CSS goes into each page's <head> instead of render-blocking stylesheet requests.
       experimental: { globalNotFound: true, inlineCss: true },
     });
     expect(Object.keys(config)).toEqual([

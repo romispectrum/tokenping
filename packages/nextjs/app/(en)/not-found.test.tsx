@@ -9,7 +9,7 @@ import { routePath } from "~~/i18n/routes";
 
 // The global 404 brings its own <html> document (fonts, providers); only the page inside it is under test here.
 vi.mock("~~/components/RootDocument", () => ({
-  rootDocument: ({ children }: { children: ReactNode }) => <>{children}</>,
+  rootDocument: ({ body }: { body: ReactNode }) => <>{body}</>,
 }));
 vi.mock("~~/i18n/client/en", () => ({ LocaleRoot: ({ children }: { children: ReactNode }) => <>{children}</> }));
 

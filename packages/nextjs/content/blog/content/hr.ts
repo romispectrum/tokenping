@@ -26,7 +26,7 @@ import WhyAaveHealthFactorDropped from "~~/content/blog/hr/zasto-je-pao-aave-hea
 import WhyAaveWithdrawOrBorrowFails from "~~/content/blog/hr/zasto-ne-uspijeva-povlacenje-ili-zaduzivanje-na-aaveu.mdx";
 import type { PostContent } from "~~/content/blog/types";
 
-/** The body of every hr post, by its slug. Only the hr post route imports this. */
+/** The body of every hr post, by its slug. Only the hr post pages load this. */
 export const POST_CONTENT: PostContent = {
   "aave-health-factor-objasnjen": AaveHealthFactor,
   "siguran-aave-health-factor": SafeAaveHealthFactor,

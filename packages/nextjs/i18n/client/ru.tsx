@@ -11,7 +11,7 @@ import { MESSAGES as morpho } from "~~/i18n/messages/morpho/ru";
 
 const MESSAGES = { alerts, blog, calculator, common, dashboard, morpho };
 
-/** The ru root layout's client root: the only module that brings ru strings into the browser. */
+/** The ru client root: the only module that brings ru strings into the browser. */
 export const LocaleRoot = ({ children }: { children: ReactNode }) => (
   <ClientRoot locale="ru" messages={MESSAGES}>
     {children}

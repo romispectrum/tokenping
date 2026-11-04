@@ -26,7 +26,7 @@ import TokenizedStocksCollateral from "~~/content/blog/fil/tokenized-stocks-bila
 import WrappedBitcoinAaveCollateral from "~~/content/blog/fil/wrapped-bitcoin-bilang-collateral-sa-aave.mdx";
 import type { PostContent } from "~~/content/blog/types";
 
-/** The body of every fil post, by its slug. Only the fil post route imports this. */
+/** The body of every fil post, by its slug. Only the fil post pages load this. */
 export const POST_CONTENT: PostContent = {
   "aave-health-factor-ipinaliwanag": AaveHealthFactor,
   "ligtas-na-aave-health-factor": SafeAaveHealthFactor,

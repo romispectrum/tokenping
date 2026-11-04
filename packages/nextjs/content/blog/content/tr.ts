@@ -26,7 +26,7 @@ import StablecoinDepegAave from "~~/content/blog/tr/stablecoin-depeg-aave.mdx";
 import TokenizedStocksCollateral from "~~/content/blog/tr/teminat-olarak-tokenize-hisseler.mdx";
 import type { PostContent } from "~~/content/blog/types";
 
-/** The body of every tr post, by its slug. Only the tr post route imports this. */
+/** The body of every tr post, by its slug. Only the tr post pages load this. */
 export const POST_CONTENT: PostContent = {
   "aave-saglik-faktoru": AaveHealthFactor,
   "guvenli-aave-saglik-faktoru": SafeAaveHealthFactor,

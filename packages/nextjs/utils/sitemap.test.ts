@@ -1,6 +1,8 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_LOCALE, LOCALES, LOCALE_INFO, type Locale } from "~~/i18n/locales";
+import { LOCALE_PATHS } from "~~/i18n/localePaths";
+import { langSegment } from "~~/i18n/localeSegment";
+import { LOCALES, LOCALE_INFO, type Locale, PREFIXED_LOCALES } from "~~/i18n/locales";
 import { POST_SLUGS as POST_SLUG_PAIRS } from "~~/i18n/postSlugs";
 import { postPath, routePath } from "~~/i18n/routes";
 import { parseSitemap } from "~~/scripts/indexNow";
@@ -10,17 +12,27 @@ const APP_DIR = new URL("../app/", import.meta.url);
 
 // Not indexable: noindex (/admin) or a 404 outside local hardhat builds (/debug, /blockexplorer).
 const NON_INDEXED_PREFIXES = ["/admin", "/debug", "/blockexplorer"];
-const TRANSLATED = LOCALES.filter(locale => locale !== DEFAULT_LOCALE);
+const TRANSLATED = PREFIXED_LOCALES;
 const MORPHO_PAGES = LOCALES.map(locale => routePath(locale, "morpho"));
 
-/** Every app/**\/page.tsx without a dynamic segment, by its URL path ("/", "/aave", "/cz/blog", …). */
-const staticPageFiles = (dir = APP_DIR, prefix = ""): [string, URL][] =>
+/**
+ * Every app/**\/page.tsx by its URL path ("/", "/aave", "/cz/blog", …). The [lang] route counts once per prefixed
+ * language and its [privacy] page under that language's word; other dynamic and private folders are no static pages.
+ */
+const staticPageFiles = (dir = APP_DIR, prefix = "", locale?: Locale): [string, URL][] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((entry): [string, URL][] => {
     if (entry.isDirectory()) {
-      // Route groups "(x)" add no path segment; dynamic "[x]" and private "_x" folders are not static pages.
+      const child = new URL(`${entry.name}/`, dir);
+      if (entry.name === "[lang]") {
+        return TRANSLATED.flatMap(code => staticPageFiles(child, `${prefix}/${langSegment(code)}`, code));
+      }
+      if (entry.name === "[privacy]" && locale) {
+        return staticPageFiles(child, `${prefix}/${LOCALE_PATHS[locale].privacy}`, locale);
+      }
+      // Route groups "(x)" add no path segment; other dynamic "[x]" and private "_x" folders are not static pages.
       if (/^[[_]/.test(entry.name)) return [];
       const segment = /^\(.*\)$/.test(entry.name) ? "" : `/${entry.name}`;
-      return staticPageFiles(new URL(`${entry.name}/`, dir), `${prefix}${segment}`);
+      return staticPageFiles(child, `${prefix}${segment}`, locale);
     }
     return entry.name === "page.tsx" ? [[prefix || "/", new URL(entry.name, dir)]] : [];
   });

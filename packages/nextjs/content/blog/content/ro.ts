@@ -26,7 +26,7 @@ import ShortFiatWithAave from "~~/content/blog/ro/short-pe-fiat-cu-aave.mdx";
 import WrappedBitcoinAaveCollateral from "~~/content/blog/ro/wrapped-bitcoin-ca-garantie-pe-aave.mdx";
 import type { PostContent } from "~~/content/blog/types";
 
-/** The body of every ro post, by its slug. Only the ro post route imports this. */
+/** The body of every ro post, by its slug. Only the ro post pages load this. */
 export const POST_CONTENT: PostContent = {
   "health-factor-aave-explicat": AaveHealthFactor,
   "health-factor-sigur-aave": SafeAaveHealthFactor,
