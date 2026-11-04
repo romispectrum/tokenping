@@ -1,5 +1,5 @@
 import type { MorphoMessages } from "./shared";
-import { hrForMarket, hrOnMarket, plural } from "~~/i18n/format";
+import { hrForMarket, hrOnMarket, hrSrChannelsGenitive, plural } from "~~/i18n/format";
 
 /** "na 7 mreža", "na 2 mreže", "na 1 mreži". */
 const onNetworks = (count: number) =>
@@ -19,7 +19,7 @@ export const MESSAGES: MorphoMessages = {
   page: {
     metaTitle: "Upozorenja za health factor na Morphu, Blue i Midnight",
     metaDescription: (networkCount, channels) =>
-      `Upozorenja za health factor na Morphu Blue i Midnight, putem kanala ${channels}, ${onNetworks(networkCount)}. Podsjetnik prije dospijeća fiksnog zajma.`,
+      `Upozorenja za health factor na Morphu Blue i Midnight, putem ${hrSrChannelsGenitive(channels)}, ${onNetworks(networkCount)}. Podsjetnik prije dospijeća fiksnog zajma.`,
     title: "Pozicije na Morphu Blue i Midnight i upozorenja za health factor",
     intro: networks =>
       `Tvoje pozicije zaduženja na tržištima koja navodi aplikacija Morpho, na ovim mrežama: ${networks}. Zajmovi s promjenjivom kamatom (Morpho Blue) i zajmovi s fiksnom kamatom (Morpho Midnight). Health factor se čita s blockchaina.`,

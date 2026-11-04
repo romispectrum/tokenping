@@ -1,5 +1,5 @@
 import type { DashboardMessages } from "./shared";
-import { hrForMarket, hrOnMarket, plural } from "~~/i18n/format";
+import { hrForMarket, hrOnMarket, hrSrChannelsGenitive, plural } from "~~/i18n/format";
 
 /** "1 dan", "2 dana", "30 dana", "21 dan". */
 const days = (count: number) =>
@@ -23,14 +23,14 @@ export const MESSAGES: DashboardMessages = {
   page: {
     metaTitle: "Pozicije i health factor na Aaveu V3 i V4",
     metaDescription: (networkCount, channels) =>
-      `Vidi kolateral, dug i health factor na Aaveu V3 i V4 ${onNetworks(networkCount)} i postavi upozorenja putem kanala ${channels}, jedan prag po tržištu.`,
+      `Vidi kolateral, dug i health factor na Aaveu V3 i V4 ${onNetworks(networkCount)} i postavi upozorenja putem ${hrSrChannelsGenitive(channels)}, jedan prag po tržištu.`,
     title: "Pozicije na Aaveu V3 i V4 i upozorenja za health factor",
     networkMarkets: (name, markets) => `${name} (tržišta ${markets})`,
     intro: (v3Networks, v4Networks) =>
       `Poveži novčanik kojim se zadužuješ da vidiš njegov kolateral, dug i health factor na Aaveu V3 na ovim mrežama: ${v3Networks}, te u svakom Spokeu Aavea V4 na ovim mrežama: ${v4Networks}. Za pregled ne treba nikakva transakcija.`,
     disclosureSummary: "Koliko koštaju upozorenja i koliko često provjeravamo",
     alertsCost: (channels, paymentChain) =>
-      `Da dobiješ poruku putem kanala ${channels} kad health factor nekog tržišta padne ispod praga koji odabereš, otključaj upozorenja plaćanjem u USDC-u${paymentChain ? ` ${hrOnMarket(paymentChain, "network")}` : ""}. Trenutačnu cijenu vidiš prije plaćanja.`,
+      `Da dobiješ poruku putem ${hrSrChannelsGenitive(channels)} kad health factor nekog tržišta padne ispod praga koji odabereš, otključaj upozorenja plaćanjem u USDC-u${paymentChain ? ` ${hrOnMarket(paymentChain, "network")}` : ""}. Trenutačnu cijenu vidiš prije plaćanja.`,
     checks: minutes =>
       `Tokenping provjerava ${everyMinutes(minutes)}. Dok god je health factor ispod tvog praga, svaka provjera šalje novu poruku na svaki odabrani kanal.`,
     guideThreshold: "Kako odabrati prag",

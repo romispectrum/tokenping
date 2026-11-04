@@ -1,0 +1,133 @@
+export const meta = {
+  slug: "zasto-povlacenje-ili-zaduzivanje-na-aaveu-ne-uspeva",
+  title: "Zašto ne mogu da povučem ili pozajmim na Aaveu? 9 uzroka",
+  description:
+    "Zašto povlačenje, zaduživanje ili otplata na Aave V3 ne uspeva: provera health factora, likvidnost, limiti, zamrznute ili pauzirane rezerve.",
+  h1: "Zašto ne uspeva moje povlačenje, zaduživanje ili otplata na Aaveu?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "Zašto transakcija povlačenja, zaduživanja ili otplate na Aaveu ne uspeva?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Transakcija na Aave V3 ne uspeva kada je odbije jedna od provera ugovora Pool, a razlog je gotovo uvek jedan od devet.
+  Povlačenje bi spustilo tvoj health factor (faktor zdravlja) ispod 1. Rezerva drži manje nepozajmljene likvidnosti nego
+  što tražiš. Limit depozita (supply cap) ili limit zaduživanja (borrow cap) za tu imovinu je popunjen. Rezerva je
+  zamrznuta (nema novih depozita ni zaduživanja) ili pauzirana (ništa ne prolazi, ni otplate). Imovina ne može da se
+  pozajmi, ili ne može da se pozajmi u tvojoj E-Mode kategoriji. Držiš kolateral sa odnosom zajma i vrednosti (LTV) od
+  0, koji mora prvi da izađe. Ili otplata navodi dug koji nemaš ili tokene koje nisi odobrio. Na tržištu Ethereum Core
+  29. oktobra 2026. bilo je zamrznuto 35 od 66 navedenih rezervi, limit depozita za LBTC bio je popunjen do poslednjih
+  0,07 LBTC, a od 2.347,5 miliona deponovanih USDC samo je 134,4 miliona bilo dostupno za povlačenje.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Brojke i brojevi blokova na kojima su očitane: content/blog/snapshots/why-aave-withdraw-or-borrow-fails.md */}
+
+## Koje provere transakcija na Aaveu mora da prođe?
+
+Svaki depozit, povlačenje, zaduživanje i otplata na Aave V3 prolazi kroz ugovor Pool, a Pool pre nego što pomeri ijedan token izvršava niz provera u biblioteci `ValidationLogic`. Svaka provera koja ne prođe zaustavlja celu transakciju sa imenovanom greškom: `ReserveFrozen`, `SupplyCapExceeded`, `HealthFactorLowerThanLiquidationThreshold` i tako dalje. Tvoj novčanik obično prikazuje samo „execution reverted“ (izvršenje poništeno) i kratak heksadecimalni kod, jer imena postoje u Aaveovom kodu, a ne u novčaniku. Aplikacija Aave većinu ovoga proverava pre nego što potpišeš, pa često odbije zahtev pre nego što uopšte vidiš transakciju.
+
+Provere se razlikuju po radnji. Povlačenje traži aktivnu, nepauziranu rezervu, stanje najmanje jednako iznosu i, ako imaš bilo kakav dug, a imovina se računa kao kolateral, health factor koji posle toga ostaje 1 ili više. Zaduživanje traži aktivnu, nepauziranu, nezamrznutu rezervu na kojoj je zaduživanje omogućeno, prostor ispod limita zaduživanja i dovoljno kolaterala uz tvoj LTV. Depozit traži nezamrznutu rezervu sa prostorom ispod limita depozita. Otplata traži samo aktivnu, nepauziranu rezervu i dug u toj imovini. Devet uzroka u nastavku prati taj spisak, otprilike redom kojim ćeš verovatno na njih naići.
+
+Ovaj vodič pokriva Aave V3. Aave V4 Spokeovi imaju sopstvenu konfiguraciju, a Morpho nema nijedan od ovih mehanizama osim orakla (izvora cene) i health factora: tržište na Morphu nema limite, zamrzavanje ni pauzu.
+
+## 1. Povlačenje bi tvoj health factor ostavilo ispod 1
+
+Na ovo dužnici najčešće nailaze. Kada povlačiš imovinu koju koristiš kao kolateral dok imaš dug, Pool posle povlačenja ponovo izračunava tvoj račun i traži health factor od najmanje 1 (`HealthFactorLowerThanLiquidationThreshold`). Ista provera se izvršava kada isključiš imovinu kao kolateral ili preneseš aTokene na drugu adresu. Ne izvršava se kada nemaš dug, zato se iz čiste depozitne pozicije uvek može povući celo stanje.
+
+Uzmi 10 WETH na tržištu Ethereum Core po ceni orakla od 2.309,84 $ 29. oktobra 2026. (23.098,41 $), prag likvidacije (liquidation threshold) od 84% i 12.000 USDC duga. [Health factor](/sr/blog/aave-health-factor-objasnjen) je 23.098,41 × 0,84 ÷ 12.000 = 1,617. Da bi ostao tačno 1, treba ti 12.000 ÷ 0,84 = 14.285,71 $ u WETH-u, odnosno 6,185 WETH, pa je najviše što možeš da povučeš 3,815 WETH. Zatraži 4 i transakcija se poništava; zatraži 3,815 i prolazi, ostavljajući poziciju koju sledeći mali pad cene čini podložnom likvidaciji. Maksimum u aplikaciji Aave je upravo taj broj, a povlačenje celog tog iznosa je najbrži način da bezbednu poziciju pretvoriš u onu kojoj u roku od sat vremena treba [upozorenje o likvidaciji](/sr/blog/podesavanje-aave-health-factor-upozorenja).
+
+Zaduživanje ima stroži pandan. Novo zaduživanje mora da ostavi health factor na 1 ili više i mora da stane ispod tvog ponderisanog LTV-a: kolateral × LTV mora da pokrije dug (`CollateralCannotCoverNewBorrow`). Uz LTV za WETH od 81%, gornjih 10 WETH podržava najviše 18.709,71 $ duga, a pozicija koja pozajmi sve to počinje sa health factorom od 84 ÷ 81 = 1,037. [Šta je bezbedan health factor](/sr/blog/bezbedan-aave-health-factor) objašnjava zašto je to tesan početak.
+
+## 2. Rezerva drži manje nepozajmljene likvidnosti nego što želiš
+
+Aave pozajmljuje ono što deponenti uplate, pa rezerva drži samo deo koji niko nije pozajmio. Povlačenje ili zaduživanje veće od tog dela ne uspeva, a ovaj slučaj nema ime greške na Aaveu: aToken pokušava da prenese osnovni token napolje i sam ugovor tokena poništava transakciju, za USDC sa porukom „ERC20: transfer amount exceeds balance“ (iznos prenosa premašuje stanje). Provera zaduživanja traži samo da ukupna ponuda aTokena bude najmanje jednaka iznosu, što hvata besmislene zahteve i ništa drugo.
+
+Na tržištu Ethereum Core 29. oktobra 2026. bilo je deponovano 2.347.525.372,91 USDC, pozajmljeno 2.213.199.103,54 USDC, a ugovor aTokena držao je 134.360.379,94 USDC: 94,28% iskorišćenosti, 5,72% depozita dostupno za povlačenje ili zaduživanje. Deponent koji je hteo da izađe sa 200 miliona USDC nije mogao, i niko nije mogao dok neko ne otplati ili ne uplati. Vodič [kako funkcionišu kamatne stope na Aaveu](/sr/blog/aave-kamatne-stope) pokazuje kako to izgleda u praksi: 14. oktobra 2026. jedno povlačenje od 133.898.000 USDC gurnulo je istu rezervu na 99,50% iskorišćenosti, a kamatnu stopu na zaduživanje sa 4,50% na 13,67% u jednom bloku.
+
+Kada je problem likvidnost, pomažu četiri stvari. Povuci manji iznos, do onoliko koliko ugovor drži. Sačekaj: kriva kamatnih stopa je osmišljena da vrati likvidnost, a skok od 14. oktobra završio se za oko 36 minuta, mada to ništa ne garantuje. Povuci neku drugu kolateralnu imovinu, ako je imaš i ako health factor to dozvoljava. A ako pokušavaš da otplatiš USDC dug, a držiš aUSDC, koristi `repayWithATokens`: on sagoreva tvoje aTokene naspram duga bez pomeranja ijednog USDC, pa mu likvidnost uopšte nije potrebna.
+
+## 3. Limit depozita je popunjen
+
+Svaka rezerva ima limit depozita (supply cap), koji postavljaju Aaveovi risk stewards i upravljanje protokolom (governance), a depozit koji bi ukupan iznos gurnuo preko njega ne uspeva sa `SupplyCapExceeded`. Limit od 0 znači da limita nema. Limit broji postojeće aTokene plus kamatu obračunatu trezoru, pa se puni sam od sebe kako kamata raste, a da niko ništa ne uplati.
+
+Limiti su dostignuti češće nego što ljudi očekuju. Dana 29. oktobra 2026. limit za LBTC na tržištu Ethereum Core bio je 2.690 LBTC naspram 2.689,93 deponovanih: preostali prostor bio je 0,07 LBTC, i dužnik koji je hteo da doda 1 LBTC poziciji pod pritiskom nije mogao. sUSDe je bio na 96,9% svog limita, tBTC na 98,9%, USDe na 91,7%, weETH na 91,2%, a WBTC na 89,4%. Limiti se menjaju u oba smera. Dana 10. jula 2026. LlamaRisk je smanjio limit depozita za USDm na Aaveovoj instanci na MegaETH-u sa 1.000.000.000 na 300.000.000 jer je granica bila „well above current demand“ (znatno iznad trenutne potražnje); stewardi podižu limite kada potražnja stigne, obično u roku od nekoliko dana.
+
+Za dužnika je limit važan kao zatvorena vrata: dodavanje kolaterala je jedan od dva načina da se podigne health factor, a popunjen limit uklanja taj način za tu imovinu. Otplata duga i dalje radi, a to je drugi način, kao i dodavanje druge kolateralne imovine čiji limit ima prostora.
+
+## 4. Limit zaduživanja je popunjen
+
+Limiti zaduživanja rade isto za dug: ukupan promenljivi dug rezerve posle tvog zaduživanja ne sme da premaši limit (`BorrowCapExceeded`), a 0 znači da limita nema. Provera se izvršava pri svakom zaduživanju, pa limit koji je već prekoračen zaustavlja svako novo zaduživanje te imovine dok neko ne otplati. Popunjen limit zaduživanja ne zaustavlja ništa drugo: otplate, povlačenja i likvidacije prolaze.
+
+tBTC na tržištu Ethereum Core je krajnji slučaj: zaduživanje je 29. oktobra 2026. bilo omogućeno, ali limit je bio 1 tBTC, a već je bilo pozajmljeno 2,57 tBTC, pa se i najmanje zaduživanje poništavalo. USDC je imao 2.213,2 miliona pozajmljeno naspram limita od 2.700 miliona, 82,0% iskorišćeno, sa 486,8 miliona prostora; USDT je bio na 80,8%. Kada se limiti za stablecoine popune, zaduživanje ne uspeva iako rezerva možda još drži mnogo likvidnosti.
+
+## 5. Rezerva je zamrznuta
+
+Zamrznuta rezerva ne prima nove depozite ni nova zaduživanja (`ReserveFrozen` za oba). Aaveova dokumentacija za Pool Configurator navodi šta i dalje radi: otplate, likvidacije i povlačenja. Zamrzavanjem upravljanje postepeno gasi imovinu, a da nikoga ne zarobi; [šta se dešava kada Aave gasi tržište](/sr/blog/gasenje-aave-trzista) prolazi kroz korake.
+
+Zamrznute rezerve nisu retkost. Dana 29. oktobra 2026. bilo je zamrznuto 35 od 66 rezervi na tržištu Ethereum Core: CRV, MKR, UNI, LUSD, FRAX, sDAI, crvUSD, FBTC i dugačak spisak Pendleovih PT tokena kojima je prošlo dospeće, gotovo svi i sa limitima depozita i zaduživanja od 1. Ako u nekoj od njih još imaš kolateral, možeš da ga povučeš i možeš da budeš likvidiran iz njega, ali ne možeš da ga dopuniš.
+
+## 6. Rezerva je pauzirana
+
+Pauza je prekidač za hitne slučajeve. Pauzirana rezerva odbija sve: depozit, zaduživanje, otplatu, povlačenje, likvidaciju i prenose aTokena (`ReservePaused`). Nijedna rezerva na tržištu Ethereum Core nije bila pauzirana 29. oktobra 2026., a u normalnim nedeljama nijedna nije.
+
+Pauza je već korišćena. Dana 4. novembra 2023., posle prijave kritične greške u programu nagrada za pronalaženje grešaka (bug bounty), Aaveov Guardian je pauzirao Aave V2 na Ethereumu i skup imovine na V3 na Arbitrumu, Avalancheu, Optimismu i Polygonu. Oko nedelju dana niko nije mogao da otplati ni da doda kolateral na tim rezervama, dok su se cene i dalje kretale. V3 instance su ponovo pokrenute 12. novembra 2023., V2 na Ethereumu 13. novembra posle perioda odlaganja likvidacije (grace period) od oko tri sata za dužnike u WETH-u, a CRV na V3 na Polygonu 16. novembra. Danas je taj period odlaganja deo protokola: likvidacija tokom perioda odlaganja neke rezerve ne uspeva sa `LiquidationGraceSentinelCheckFailed`, što dužnicima koji su bili zaključani daje kratak prozor da otplate pre nego što likvidatori krenu.
+
+Ako tvoja transakcija ne uspe zbog greške pauze, na Aaveu nemaš šta da uradiš dok se pauza ne ukine. Iskoristi to vreme da sredstva za otplatu pripremiš na pravoj mreži, jer period odlaganja posle ukidanja pauze određuje upravljanje ili Guardian, a bio je kratak i samo tri sata.
+
+## 7. Zaduživanje je za tu imovinu isključeno ili nije dozvoljeno u tvojoj E-Mode kategoriji
+
+Mnogo imovine može da se deponuje kao kolateral, ali ne i da se pozajmi. Na tržištu Ethereum Core 29. oktobra 2026. zaduživanje je bilo onemogućeno na 15 nezamrznutih rezervi, među njima wstETH, cbETH, rETH, weETH, LBTC, eBTC, AAVE i XAUt, a zaduživanje bilo koje od njih ne uspeva sa `BorrowingNotEnabled`. Oznaku postavlja upravljanje za svaku rezervu posebno, a u aplikaciji Aave vidi se kao dugme za zaduživanje koje nedostaje.
+
+Ako si u [E-Mode kategoriji](/sr/blog/aave-e-mode-objasnjen), to pravilo zamenjuje drugo: možeš da pozajmiš samo imovinu iz skupa za zaduživanje te kategorije, a sve ostalo ne uspeva sa `NotBorrowableInEMode`, čak i imovina koju bi mogao da pozajmiš van kategorije. Kategorija „ETH correlated“ na tržištu Ethereum Core, na primer, dozvoljava pozajmljivanje WETH-a i ničega drugog. Izlazak iz kategorije rešava zaduživanje, ali izlazak ima sopstvene provere: svaka imovina koju duguješ mora moći da se pozajmi van kategorije, a tvoj health factor i dalje mora biti 1 ili više sa normalnim, nižim pragovima (`InvalidDebtInEmode`, `InvalidCollateralInEmode`, `HealthFactorLowerThanLiquidationThreshold`).
+
+## 8. Držiš kolateral sa LTV-om od 0
+
+Upravljanje postavlja LTV imovine na 0 kada želi da ta imovina prestane da podržava novi dug, a da postojeće pozicije nastave da rade. Dana 29. oktobra 2026. na tržištu Ethereum Core 11 nezamrznutih rezervi bilo je omogućeno kao kolateral sa LTV-om od 0, među njima DAI (prag likvidacije 77%), LINK, PYUSD, USDe, sUSDe, USDS, EURC i XAUt. Takva imovina se i dalje računa u tvoj health factor, kroz svoj prag likvidacije, ali ne dodaje ništa tvojoj moći zaduživanja. Iz toga slede dve provere.
+
+Prva je pri zaduživanju. Ako svaki kolateral koji si omogućio ima LTV od 0, tvoj ponderisani LTV je 0 i svako zaduživanje ne uspeva sa `LtvValidationFailed`. Sa mešavinom, recimo DAI i WETH, zaduživanje prolazi, ograničeno samo WETH-om.
+
+Druga je pri povlačenju i iznenađuje ljude. Ako imaš dug i bilo koji omogućeni kolateral sa LTV-om od 0, onda imovina koju povlačiš, prenosiš ili isključuješ kao kolateral i sama mora biti imovina sa LTV-om 0, inače transakcija ne uspeva sa istim `LtvValidationFailed`. Komentar u samom kodu navodi nameru: pravilo „ensures that a multi-collateral position needs to withdraw/transfer the ltv0 asset first“ (obezbeđuje da pozicija sa više kolaterala prvo mora da povuče ili prenese imovinu sa LTV-om 0). Dakle, dužnik koji drži DAI i WETH i pokuša da povuče deo WETH-a biće odbijen dok DAI ne izađe; provera health factora i dalje važi za samo povlačenje DAI-ja. Rešenje je redosled radnji: prvo povuci imovinu sa LTV-om 0 ili otplati dovoljno da health factor dozvoli oba.
+
+## 9. Otplata navodi dug koji nemaš ili tokene koje nisi odobrio
+
+Otplate su najjednostavnija radnja, a ipak ne uspevaju, obično iz jednog od pet razloga.
+
+- **Nema duga te vrste.** `NoDebtOfSelectedType` znači da Pool koji si pozvao ne drži promenljivi dug te imovine za tu adresu. Uobičajeni uzrok je pogrešno tržište: Ethereum ima odvojene instance Core, Prime i Lido, svaku sa sopstvenim Poolom, i isti novčanik može da duguje USDC na jednoj, a ništa na drugoj. Tržišta svake mreže su takođe odvojena.
+- **Režim kamate koji više ne postoji.** Prihvata se samo promenljivi režim (2); zaduživanje sa stabilnom kamatom (stable rate) uklonjeno je iz koda, a poziv sa režimom 1 ne uspeva sa `InvalidInterestRateModeSelected`.
+- **Nema odobrenja.** Pool povlači otplatu preko `transferFrom`, pa token treba odobrenje za najmanje taj iznos ili potpisani permit. Bez toga ugovor tokena poništava transakciju pre nego što se pokrenu Aaveove provere.
+- **Otplata za nekog drugog bez iznosa.** Otplata u ime druge adrese sa vrednošću „ceo dug“ (`type(uint256).max`) ne uspeva sa `NoExplicitAmountToRepayOnBehalf`; navedi iznos.
+- **Ostaci (dust).** Kamata se obračunava svake sekunde, pa otplata tačnog stanja koje si video pre minut ostavlja nekoliko weija duga. Da bi dug potpuno zatvorio, otplati sa maksimalnom vrednošću, koju Pool ograničava na iznos koji duguješ.
+
+## Uzroci koje više ne moraš da tražiš
+
+Dva stara objašnjenja više ne važe. Isolation Mode i njegovi limiti duga (debt ceilings) uklonjeni su u Aave V3.7, kao i siloed borrowing, pa danas nijedno zaduživanje ne pada zato što je imovina izolovana ili je dostignut limit duga. A zaduživanja sa stabilnom kamatom nema još od V3.2, pa ništa ne pada ni zbog promene vrste kamate. Ako neki stariji vodič pominje nešto od ovoga, opisuje verziju Aavea koja više nije u upotrebi.
+
+## Šta da uradiš kada transakcija ne uspe tokom pada cene
+
+Neuspela transakcija je smetnja na mirnom tržištu, a problem na tržištu koje pada, jer je sat koji potrošiš na dijagnozu upravo sat koji je potreban tvom health factoru. Kratak redosled radnji:
+
+1. **Pročitaj grešku.** Simuliraj transakciju u novčaniku ili nalepi heksadecimalni selektor u dekoder na block exploreru; gornja imena ti govore u kom si slučaju.
+2. **Radije otplati nego što dodaješ kolateral.** Otplata radi i kada je rezerva zamrznuta ili je limit depozita popunjen, a sa `repayWithATokens` radi i kada likvidnosti nema. Dodavanje kolaterala zavisi od limita sa prostorom i nezamrznute rezerve.
+3. **Probaj sa manjim iznosima.** Likvidnost i limiti su količine; povlačenje ili zaduživanje koje stane prolazi, dok ceo iznos ne uspeva.
+4. **Koristi drugu imovinu.** Drugi kolateral za povlačenje ili druga imovina za otplatu često je dostupna kada je prva blokirana.
+5. **Proveri instancu i mrežu.** Otplata poslata za pravu imovinu na pogrešan Pool ne uspeva sa `NoDebtOfSelectedType` i košta te gasa i vremena.
+6. **Sledeći put primi upozorenje ranije.** Za svaki od ovih slučajeva treba nekoliko minuta da ga zaobiđeš. Upozorenje za health factor podešeno sa rezervom kupuje te minute.
+
+Tokenping proverava tvoj health factor na Aaveu svakih 5 minuta, na svakom Aave V3 tržištu na 21 mreži i u svakom Aave V4 Spokeu, i šalje ti poruku na Signal, Telegram ili e-poštu kada padne ispod praga koji izabereš (od 1,1 do 10), ponavljajući je pri svakoj proveri dok se ne oporavi. Broj čita iz `getUserAccountData`, istog izvora koji koristi provera povlačenja. Upozorenje ne može da deluje umesto tebe i ništa u ovom vodiču ne sprečava likvidaciju; ono ti govori koja su vrata zatvorena, da bi prvo probao otvorena. Možeš da [proveriš svoj Aave V3 health factor](/sr/aave) bez plaćanja; upozorenja koštaju <AlertPrice />, po jedno za svako tržište ili Spoke. [Kako izbeći likvidaciju na Aaveu](/sr/blog/kako-izbeci-likvidaciju-na-aaveu) detaljno pokriva odluku između otplate i dodavanja kolaterala, a [zašto je pao tvoj health factor](/sr/blog/zasto-je-pao-aave-health-factor) uzroke na koje reaguješ.
+
+## Izvori
+
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol), [BorrowLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/BorrowLogic.sol) i [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): svaka gore navedena provera, redosled kojim se izvršavaju, komentar o LTV-u 0 i oznaka za nulti LTV (aave-v3-origin main, pristupljeno 29. oktobra 2026)
+- [Errors.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/helpers/Errors.sol): imena grešaka i njihovi opisi (aave-v3-origin main, pristupljeno 29. oktobra 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getAllReservesTokens`, a za svaku rezervu `getReserveConfigurationData`, `getReserveCaps`, `getPaused` i `getReserveData`, na bloku 26296985 (pristupljeno 29. oktobra 2026)
+- [aEthUSDC](https://etherscan.io/address/0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c): USDC koji drži ugovor aTokena na bloku 26296985 (pristupljeno 29. oktobra 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): cene WETH-a i USDC-a na bloku 26296985 (pristupljeno 29. oktobra 2026)
+- [Aave docs: Pool Configurator](https://aave.com/docs/aave-v3/smart-contracts/pool-configurator): šta dozvoljavaju zamrznute i pauzirane rezerve, limiti od 0 (pristupljeno 29. oktobra 2026)
+- [Aave v2/v3 security incident 04/11/2023](https://governance.aave.com/t/aave-v2-v3-security-incident-04-11-2023/15335): pauze od 4. novembra 2023., ponovna pokretanja 12, 13. i 16. novembra i period odlaganja (pristupljeno 29. oktobra 2026)
+- [Aave V3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): uklanjanje zaduživanja sa stabilnom kamatom (pristupljeno 29. oktobra 2026)
+- [Aave V3.7: isolation mode and siloed borrowing removal](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/mode-removal.md) (pristupljeno 29. oktobra 2026)
+- [Risk Stewards: Supply and Borrow Cap Reductions on Aave V3 / 2026.07.10](https://governance.aave.com/t/risk-stewards-supply-and-borrow-cap-reductions-on-aave-v3-2026-07-10/25296): LlamaRiskova smanjenja limita na MegaETH-u, izvršena 14. jula 2026. (pristupljeno 29. oktobra 2026)
+
+_Edukativni sadržaj, a ne finansijski savet. Upozorenja smanjuju rizik, ali ne sprečavaju likvidaciju._

@@ -1,0 +1,177 @@
+export const meta = {
+  slug: "zajmovi-uz-kripto-kolateral",
+  title: "Zajmovi uz kripto kolateral: kako rade i zašto se uzimaju",
+  description:
+    "Kako korak po korak radi prekolateralizovan kripto zajam na Aaveu, po čemu se razlikuje od banke i centralizovanog zajmodavca, namene i rizici.",
+  h1: "Kako funkcionišu zajmovi uz kripto kolateral i zašto ih ljudi uzimaju?",
+  publishedAt: "2026-10-19",
+  primaryQuestion: "Kako funkcioniše zajam uz kripto kolateral i zašto ga ljudi uzimaju?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Zajam uz kripto kolateral ti omogućava da pozajmiš, najčešće stablecoin kao što je USDC, uz kripto imovinu koju
+  deponuješ kao kolateral, a da je ne prodaš. Na Aaveu je zajam prekolateralizovan: 19. oktobra 2026. na tržištu
+  Ethereum Core mogao si da pozajmiš do 73% vrednosti WBTC-a ili 80,5% vrednosti WETH-a. Protokol proverava samo
+  kolateral, nema datuma otplate, a kamatna stopa je promenljiva. Ako vrednost kolaterala padne toliko da tvoj health
+  factor (faktor zdravlja) padne ispod 1, deo kolaterala se prodaje da bi se otplatio dug, a ti plaćaš penal. Ljudi
+  koriste ove zajmove da dođu do novca bez prodaje, da premoste period do priliva, za refinansiranje, finansijsku polugu
+  ili zaštitu od rizika, a svaka od tih namena nosi rizik likvidacije, kamatne stope i stablecoina.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Svaki podatak sa lanca, broj bloka i izvor na kojima se zasniva ovaj članak: content/blog/snapshots/crypto-backed-loans.md */}
+
+## Šta je zajam uz kripto kolateral?
+
+Zajam uz kripto kolateral je zajam obezbeđen kripto imovinom koju deponuješ kao kolateral. Na protokolu za pozajmljivanje kao što je Aave on je prekolateralizovan: kolateral mora da vredi više od zajma, a umesto da proverava tvoje prihode, protokol se oslanja na to da može da proda deo kolaterala ako njegova vrednost previše padne. Dok je zajam otvoren, kolateral ostaje tvoj, sa svim promenama cene, i možeš da ga vratiš kad otplatiš dug.
+
+Većina ljudi pozajmljuje stablecoine, tokene koji prate neku valutu: USDC i USDT prate američki dolar, EURC prati evro. Kolateral je obično volatilna imovina. Na Aaveovim tržištima na Ethereumu i Arbitrumu ether dolazi kao WETH, a bitcoin kao token koji ga predstavlja, kao što su WBTC ili cbBTC.
+
+Dva broja za svaku imovinu u kolateralu određuju koliko možeš da pozajmiš i kada je zajam u opasnosti:
+
+- **Odnos zajma i vrednosti (LTV)** je najviše što možeš da pozajmiš uz tu imovinu, izraženo kao udeo njene vrednosti.
+- **Prag likvidacije (liquidation threshold)** je udeo vrednosti imovine koji se računa u tvoj health factor. Kad tako ponderisan kolateral vredi manje od tvog duga, health factor je ispod 1 i pozicija može da bude likvidirana.
+
+| Tržište       | Kolateral | LTV (limit zaduživanja) | Prag likvidacije | Likvidacioni bonus |
+| ------------- | --------- | ----------------------- | ---------------- | ------------------ |
+| Ethereum Core | WETH      | 80,5%                   | 83%              | 5%                 |
+| Ethereum Core | WBTC      | 73%                     | 78%              | 5%                 |
+| Ethereum Core | cbBTC     | 73%                     | 78%              | 7,5%               |
+| Arbitrum      | WETH      | 80%                     | 84%              | 5%                 |
+| Arbitrum      | WBTC      | 73%                     | 78%              | 7%                 |
+
+Ove vrednosti su pročitane sa lanca 19. oktobra 2026. iz PoolDataProvidera svakog tržišta, u Ethereum bloku 26225342 i Arbitrum bloku 516228495. cbBTC nije uvršten na Aaveovo tržište na Arbitrumu. Aaveovo upravljanje (governance) može da promeni bilo koju od njih. Po čemu se LTV i prag likvidacije razlikuju detaljnije objašnjava vodič [šta je health factor na Aaveu](/sr/blog/aave-health-factor-objasnjen).
+
+## Kako zajam na Aaveu funkcioniše, korak po korak?
+
+Aave V3 je skup pametnih ugovora na svakoj mreži, a app.aave.com je jedan od interfejsa prema njima. Aaveov centar za pomoć opisuje zaduživanje i otplatu u nekoliko koraka; evo šta svaki od njih podrazumeva.
+
+### Korak 1: deponuj kolateral
+
+Poveži novčanik, izaberi imovinu koju deponuješ, na primer WBTC, i deponuj je. Proveri da li je uključena kao kolateral, jer se samo kolateral računa u ono što možeš da pozajmiš. Tokeni stoje u ugovoru Pool tog tržišta, gde drugi korisnici mogu da ih pozajme (za to se plaća mala kamata na depozit). Kolateral možeš da povučeš posle otplate, ili njegov deo dok još duguješ, sve dok ti health factor posle toga ostane 1 ili više.
+
+### Korak 2: pozajmi stablecoin
+
+Izaberi stablecoin i iznos ispod svog limita zaduživanja, koji je vrednost kolaterala pomnožena njegovim LTV-om. Tokeni stižu u tvoj novčanik i kamata počinje odmah da se obračunava, po stopi koju protokol određuje prema tome koliki je deo imovine pozajmljen i prema parametrima koje upravljanje može da menja (Aaveov centar za pomoć, Borrow Tokens). Aave V3 sada ima samo promenljivu kamatu: referenca za njegov Pool kaže da zaduženja uvek koriste režim promenljive kamate i označava staru stabilnu kamatu kao zastarelu od v3.2.
+
+Promenljive kamatne stope na zaduživanje 19. oktobra 2026., kao godišnji APY, kako ih prikazuje aplikacija Aave (Ethereum blok 26225342, Arbitrum blok 516228495):
+
+| Tržište       | USDC  | USDT (USD₮0 na Arbitrumu) | GHO   | EURC                            |
+| ------------- | ----- | ------------------------- | ----- | ------------------------------- |
+| Ethereum Core | 4,58% | 4,17%                     | 4,60% | 4,12%                           |
+| Arbitrum      | 3,45% | 4,21%                     | 4,59% | nema otvorenog evro stablecoina |
+
+Ove stope se stalno menjaju i mogu da skoče. Dana 14. oktobra 2026. stopa za USDC na tržištu Ethereum Core porasla je na 13,67% APR u jednom bloku i vratila se otprilike 36 minuta kasnije, kao što pokazuje vodič [zašto tvoj health factor na Aaveu pada sam od sebe](/sr/blog/zasto-je-pao-aave-health-factor#uzrok-3-da-li-je-kamata-na-tvoj-dug-rasla-brze-od-kamate-na-kolateral).
+
+### Korak 3: prati health factor
+
+Health factor (HF) je tvoj kolateral, ponderisan pragom likvidacije svake imovine, podeljen tvojim dugom. Uzmimo korisnicu alice, koja deponuje 1 WBTC na tržištu Ethereum Core dok je bitcoin na ilustrativnih 80.000 $ (Aaveov orakl (izvor cene) je pokazivao 82.680,33 $ u Ethereum bloku 26225364 19. oktobra 2026.) i pozajmi 24.000 USDC:
+
+- Limit zaduživanja: 80.000 × 0,73 = 58.400 $.
+- Health factor: 80.000 × 0,78 ÷ 24.000 = 2,60.
+- Likvidaciona cena: 24.000 ÷ 0,78 = 30.769,23 $, što je 61,5% ispod 80.000 $.
+
+Health factor pada kad bitcoin pada, a polako i kako se dodaje kamata: kad bi stopa za USDC ostala 4,58% godišnje, dug bi posle godinu dana iznosio oko 25.099 USDC, a likvidaciona cena bi se popela na oko 32.179 $. Da to izračunaš za svoju poziciju, pogledaj [kako da izračunaš likvidacionu cenu na Aaveu](/sr/blog/aave-likvidaciona-cena); koliko prostora da ostaviš objašnjava vodič [koji je health factor na Aaveu bezbedan](/sr/blog/bezbedan-aave-health-factor).
+
+### Korak 4: otplati kad sam odlučiš
+
+Nema datuma otplate. Aaveova funkcija borrow ne prima nikakav rok, a dug možeš da otplatiš u celosti ili delimično u bilo kom trenutku, u imovini koju si pozajmio (referenca za Aave V3 Pool; Aaveov centar za pomoć, Repay Tokens). Otplata u celosti oslobađa tvoj kolateral. Možeš da otplatiš i kolateralom: na tržištima na Ethereumu i Arbitrumu Aaveov interfejs može da proda deo tvog kolaterala za imovinu duga i otplati dug u jednoj transakciji (Aaveova dokumentacija, swap features).
+
+### Korak 5: znaj šta se dešava kad je health factor ispod 1
+
+Ispod 1 bilo ko može da likvidira poziciju: otplati deo tvog duga i uzme kolateral vredan tog iznosa uvećan za likvidacioni bonus. Jedna likvidacija može da otplati do 50% duga dok je health factor iznad 0,95, a kolateral i dug vrede svaki najmanje 2.000 $, i do 100% kad je health factor 0,95 ili niži ili kad bilo koji od njih vredi manje od 2.000 $ (Aaveov centar za pomoć).
+
+Kad bi bitcoin pao na 30.000 $ ubrzo pošto je alice pozajmila, njen health factor bi bio 30.000 × 0,78 ÷ 24.000 = 0,975. Likvidator bi mogao da otplati 12.000 USDC i uzme 12.000 × 1,05 ÷ 30.000 = 0,42 WBTC, pa bi joj ostalo 0,58 WBTC naspram 12.000 USDC duga, uz health factor od 1,13. Izgubila bi 600 $ kolaterala povrh otplaćenog duga, a 0,42 WBTC bi bilo prodato na dnu. Sva pravila su u vodiču [šta se dešava kad ti je pozicija na Aaveu likvidirana](/sr/blog/kako-funkcionise-likvidacija-na-aaveu).
+
+## Po čemu se zajam uz kripto kolateral razlikuje od bankarskog kredita?
+
+Glavne razlike su u tome šta zajmodavac gleda, kada otplaćuješ i šta se dešava kad kolateral izgubi vrednost:
+
+|                                       | Zajam na Aaveu                                                                             | Tipičan bankarski kredit                                                       |
+| ------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| Šta određuje koliko možeš da pozajmiš | Vrednost tvog kolaterala i njegov LTV                                                      | Obično tvoji prihodi i kreditna istorija, plus eventualni kolateral            |
+| Provere tebe                          | Protokol ne sprovodi nikakve, gleda samo kolateral                                         | Obično provere identiteta, prihoda i kreditne sposobnosti                      |
+| Rok                                   | Nema ga: otplaćuješ kad želiš                                                              | Obično fiksni rok i plan otplate                                               |
+| Kamata                                | Promenljiva, preračunava se kako se menja zaduživanje na tržištu                           | Fiksna ili promenljiva, kako stoji u ugovoru                                   |
+| Ako kolateral izgubi vrednost         | Automatska likvidacija koju sprovode treće strane čim je health factor ispod 1, bez najave | Zavisi od ugovora: zahtev za dodatnim kolateralom, pregovori, prinudna naplata |
+| Ko drži kolateral                     | Pametni ugovor tržišta                                                                     | Zajmodavac ili kastodijan koga on izabere                                      |
+| Ako kolateral ne pokriva dug          | Manjak postaje gubitak protokola, a ne potraživanje prema tebi                             | Zavisi od ugovora i zakona                                                     |
+
+Poslednji red proizlazi iz toga kako Aave V3.3 i novije verzije postupaju sa likvidacijom koja potroši sav kolateral: preostali dug se otpisuje kao deficit na toj imovini, kao što objašnjava [odeljak o nenaplativom dugu (bad debt)](/sr/blog/kako-funkcionise-likvidacija-na-aaveu#moze-li-likvidacija-ostaviti-nenaplativ-dug). Kolateral si do tada ipak izgubio.
+
+## Po čemu se razlikuje od centralizovanog kripto zajmodavca?
+
+Centralizovani zajmodavac preuzima tvoj kolateral u sopstveno čuvanje. Zajam može da izgleda vrlo slično, ali ti postaješ poverilac te kompanije, a ako ona propadne, tvoj kolateral može da ostane zaglavljen kod nje. Godina 2022. je pokazala šta to znači:
+
+- **Celsius** je 12. juna 2022. zamrznuo isplate klijentima, a 13. jula 2022. podneo je zahtev za stečaj. Prema američkoj Komisiji za trgovanje robnim fjučersima (CFTC), klijenti su kod njega deponovali oko 20 milijardi dolara. U januaru 2023. američki stečajni sud u Njujorku presudio je da je kripto imovina na Celsiusovim Earn računima prema njegovim uslovima korišćenja postala Celsiusovo vlasništvo, čime su ti klijenti postali neobezbeđeni poverioci.
+- **Voyager Digital** je obustavio trgovanje, uplate i isplate 1. jula 2022., pošto Three Arrows Capital nije izvršio plaćanja po zajmu od 15.250 BTC i 350 miliona dolara u USDC-u, a 5. jula 2022. podneo je zahtev za stečaj po Chapter 11.
+- **Genesis** je u novembru 2022. onemogućio investitorima u programu Gemini Earn da povuku sredstva, kada je kod sebe imao oko 900 miliona dolara njihove imovine, prema američkoj Komisiji za hartije od vrednosti (SEC), a 19. januara 2023. podneo je zahtev po Chapter 11.
+- **BlockFi** je 28. novembra 2022. podneo zahtev po Chapter 11, nekoliko dana pošto je obustavio isplate dok je FTX propadao.
+
+Na Aaveu kolateral stoji u javnom pametnom ugovoru čija pravila svako može da pročita, a ne u bilansu neke kompanije. Time jedan skup rizika menjaš drugim, o čemu govori odeljak [o rizicima](#koji-su-rizici-zajma-uz-kripto-kolateral) u nastavku: greške u kodu, greške orakla, odluke upravljanja i čuvanje iza wrapped bitcoina. Jedan od njih je ovde važan: Aaveov emergency admin ili pool admin može da pauzira imovinu, a dok je pauzirana, niko ne može da je povuče ni otplati (Aaveovi ugovori PoolConfigurator i ValidationLogic).
+
+## Za šta ljudi koriste zajmove uz kripto kolateral?
+
+### Novac bez prodaje
+
+Jedan razlog je da dođeš do novca, a zadržiš kripto imovinu, često zato što vlasnik očekuje da će joj vrednost rasti ili želi da je zadrži godinama. Zajam zadržava sav potencijalni rast kolaterala i sav njegov pad, dodaje kamatu i može da natera na prodaju u najgorem trenutku ako cena dovoljno padne.
+
+Uzimanjem zajma ne prodaješ kolateral: on ostaje tvoj. Da li deponovanje kolaterala, zajam, kamata ili likvidacija imaju poreske posledice zavisi od tvoje zemlje, a ponekad i od uslova protokola. Smernice britanske poreske uprave, na primer, kažu da od uslova DeFi platforme za pozajmljivanje zavisi da li se davanje kolaterala toj platformi računa kao otuđenje, a kad se ne računa, prodaju kolaterala pri likvidaciji tretiraju kao prodaju samog dužnika (HMRC Cryptoassets Manual, CRYPTO61640). Ovaj vodič ne daje poreske savete; proveri pravila tamo gde živiš.
+
+### Trošenje ili premošćavanje praznine
+
+Neki se zadužuju da pokriju trošak pre nego što stigne novac koji očekuju, na primer račun koji dospeva pre neke prodaje ili pre plate. Cena je u tome što zajam ništa ne zatvara umesto tebe: nema datuma otplate, stopa može da raste dok čekaš, a pretvaranje stablecoina u novac na bankovnom računu, i nazad radi otplate, ima sopstvene troškove.
+
+### Refinansiranje
+
+Zajam sa nekog drugog mesta može da se prebaci na Aave ako je Aaveova stopa niža, a na Aaveu dug može da se prebaci sa jednog stablecoina na drugi u jednoj transakciji pomoću zamene duga (debt swap) u interfejsu (Aaveova dokumentacija, swap features). Cena: stope su promenljive, pa današnja jeftinija imovina sledećeg meseca može da bude skuplja, a prelazak sa dolarskog stablecoina na evro stablecoin menja valutu u kojoj duguješ, o čemu govori vodič [šortovanje fiata zajmom na Aaveu](/sr/blog/sortovanje-fiat-valute-uz-aave).
+
+### Finansijska poluga
+
+Da bi povećali izloženost, neki pozajmljuju stablecoine, kupuju još kolaterala i deponuju i njega. Kad bi alice svojih 24.000 USDC iskoristila za kupovinu 0,3 WBTC po 80.000 $ i deponovala ga, imala bi 1,3 WBTC naspram 24.000 USDC: health factor 3,38 i likvidacionu cenu od 23.668,64 $. Svaki pomak bitcoina sada je pogađa 1,3 puta jače nego da direktno drži 1 bitcoin, a ponavljanje tog loopa (ponovljeno zaduživanje s finansijskom polugom) gura health factor prema 1.
+
+### Zaštita od rizika i šortovanje
+
+Pozajmiti imovinu i prodati je znači kladiti se da će pasti: deponuj stablecoine, pozajmi WETH i prodaj ga, i pozicija dobija ako ETH padne, a približava se likvidaciji ako ETH raste ([vodič o bezbednom health factoru](/sr/blog/bezbedan-aave-health-factor) pokazuje koliko sme da poraste). Pozajmljivanje dolarskog ili evro stablecoina uz bitcoin je slika u ogledalu, šort na valutu u odnosu na kolateral, što neki bitcoineri zovu šortovanjem fiata; vodič [šortovanje fiata zajmom na Aaveu](/sr/blog/sortovanje-fiat-valute-uz-aave) to prolazi sa brojevima.
+
+## Koji su rizici zajma uz kripto kolateral?
+
+- **Likvidacija.** Ispod health factora 1 deo duga ili ceo dug može da se otplati tvojim kolateralom, a povrh toga gubiš bonus: od 5% do 7,5% za imovinu iz prve tabele. Likvidacije sprovode botovi koji se međusobno takmiče, pa mogu da uslede brzo (Aaveov centar za pomoć).
+- **Volatilnost kolaterala.** Bitcoin je dostigao vrhunac od oko 69.000 $ u novembru 2021., a sredinom juna 2022. bio je na oko 17.000 $, što je pad od oko 75%, i pao je ispod 16.000 $ posle propasti FTX-a u novembru 2022. (blog ECB-a). Uz prag likvidacije WBTC-a od 78%, čak bi i zajam od 20% vrednosti kolaterala uzet na vrhuncu 2021. bio likvidiran do sredine juna 2022.
+- **Promenljive kamatne stope.** Stopa nije fiksirana ni za jedan period, a kamata vremenom snižava tvoj health factor čak i kad cene miruju.
+- **Depeg (gubitak vezanosti za dolar) stablecoina.** USDC je 11. marta 2023. pao na oko 0,88 $, pošto je Circle objavio da je 3,3 milijarde dolara njegovih rezervi u Silicon Valley Bank, a do 13. marta se vratio iznad 0,99 $ (Gauntletova objava na Aave forumu; Circle). TerraUSD, algoritamski stablecoin, izgubio je vezanost u maju 2022. i pao skoro na nulu, što je prema američkom SEC-u izbrisalo 40 milijardi dolara tržišne vrednosti. Ako stablecoin koji duguješ padne, dug ti postaje jeftiniji; ako padne stablecoin koji koristiš kao kolateral, health factor ti pada.
+- **Wrapped bitcoin.** Bitcoin na Aaveu je token pokriven bitcoinom koji drži neko drugi ili koji kontroliše most (bridge). WBTC, na primer, navodi da je svaki token pokriven bitcoinom koji se drži kod kastodijana. Kad bi to pokriće zakazalo, token bi mogao da izgubi vrednost bez obzira na to šta radi sam bitcoin.
+- **Pametni ugovori, orakli i upravljanje.** Greška u kodu, pogrešna cena ili promena parametra mogu da pogode poziciju bez ikakvog kretanja tržišta. U martu 2026. neusklađen orakl kursa na Aaveovim tržištima Ethereum Core i Prime smanjio je efektivni kurs wstETH-a za oko 2,85% i pokrenuo likvidacije oko 10.938 wstETH na 34 naloga, prema analizi incidenta Chaos Labsa ([više o greškama orakla](/sr/blog/zasto-je-pao-aave-health-factor#uzrok-6-da-li-je-greska-orakla-ili-kursa-pogresno-vrednovala-tvoj-kolateral)). Upravljanje može i da snizi prag likvidacije za svaku otvorenu poziciju ([više o smanjenjima praga](/sr/blog/zasto-je-pao-aave-health-factor#uzrok-4-da-li-su-governance-ili-risk-stewards-smanjili-prag-likvidacije)).
+- **Sve radiš sam.** Ti držiš ključeve, ti šalješ transakcije, a na brzom tržištu potvrda otplate može da potraje duže nego što očekuješ.
+
+## Kako pratiti zajam?
+
+Aaveovi sopstveni interfejsi prikazuju tvoj health factor dok su otvoreni, ali ti ne šalju poruku kad padne, kao što objašnjava [vodič o upozorenjima za health factor](/sr/blog/podesavanje-aave-health-factor-upozorenja#da-li-aave-salje-upozorenja-za-health-factor). Jedan način praćenja je da izabereš health factor pri kom bi reagovao, otplatom dela duga ili dodavanjem kolaterala, i da podesiš poseban alat da te upozori kad pozicija stigne do njega. Tokenping proverava na svakih 5 minuta i šalje ti poruku dok je tvoj health factor ispod praga koji si podesio; [vodič za podešavanje](/sr/blog/podesavanje-aave-health-factor-upozorenja) te vodi kroz to. Upozorenje ti daje vreme da reaguješ, a ne zaštitu, a vodič [kako da izbegneš likvidaciju na Aaveu](/sr/blog/kako-izbeci-likvidaciju-na-aaveu) opisuje šta da uradiš sa tim vremenom.
+
+## Izvori
+
+- Aave V3 Ethereum Core [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) i Arbitrum [PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): LTV, pragovi likvidacije, bonusi i promenljive kamatne stope na zaduživanje pročitani sa lanca u Ethereum bloku 26225342 i Arbitrum bloku 516228495 (RPC podaci, pristupljeno 19. oktobra 2026)
+- [Aave V3 Ethereum Core AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): cena WBTC-a 82.680,33 $ u Ethereum bloku 26225364 (RPC podaci, pristupljeno 19. oktobra 2026)
+- [Aave pomoć: Borrow Tokens](https://aave.com/help/borrowing/borrow-tokens) (pristupljeno 19. oktobra 2026)
+- [Aave pomoć: Repay Tokens](https://aave.com/help/borrowing/repay-tokens) (pristupljeno 19. oktobra 2026)
+- [Aave pomoć: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (pristupljeno 19. oktobra 2026)
+- [Referenca pametnog ugovora Aave V3 Pool](https://aave.com/docs/aave-v3/smart-contracts/pool): parametri za borrow i repay, samo promenljiva kamata, stabilna kamata zastarela od v3.2 (pristupljeno 19. oktobra 2026)
+- [Aaveova dokumentacija: swap funkcije](https://aave.com/docs/aave-v3/smart-contracts/swap-features): otplata kolateralom i zamena duga (pristupljeno 19. oktobra 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) i [PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol), aave-v3-origin: povlačenje dok imaš dug, pauze i ko može da ih postavi (pristupljeno 19. oktobra 2026)
+- [Saopštenje CFTC-a 8749-23 o Celsius Networku](https://www.cftc.gov/PressRoom/PressReleases/8749-23), 13. jul 2023.: oko 20 milijardi dolara depozita, isplate zamrznute 12. juna 2022., zahtev za stečaj podnet 13. jula 2022. (pristupljeno 19. oktobra 2026)
+- [Američki stečajni sud, Južni okrug Njujorka: mišljenje o vlasništvu nad imovinom na Celsiusovim Earn računima](https://www.nysb.uscourts.gov/sites/default/files/opinions/312902_1822_opinion.pdf), 4. januar 2023. (pristupljeno 19. oktobra 2026)
+- [Voyager Digital: vesti o tržištu](https://www.newswire.ca/news-releases/voyager-digital-provides-market-update-851734302.html), 1. jul 2022., i [Voyager Digital: najava postupka po Chapter 11](https://www.newswire.ca/news-releases/voyager-digital-commences-financial-restructuring-process-to-maximize-value-for-all-stakeholders-888320107.html), 5. jul 2022. (oba pristupljeno 19. oktobra 2026)
+- [Saopštenje SEC-a 2023-7 o Genesisu i programu Gemini Earn](https://www.sec.gov/news/press-release/2023-7), 12. januar 2023. (pristupljeno 19. oktobra 2026)
+- [Saopštenje SEC-a 2024-37 o Genesisu](https://www.sec.gov/newsroom/press-releases/2024-37), 19. mart 2024.: zahtevi po Chapter 11 podneti 19. januara 2023. (pristupljeno 19. oktobra 2026)
+- [CoinDesk: BlockFi files for bankruptcy as FTX contagion spreads](https://www.coindesk.com/policy/2022/11/28/ftx-fallout-continues-as-crypto-lender-blockfi-declares-bankruptcy), 28. novembar 2022. (pristupljeno 19. oktobra 2026)
+- [The ECB Blog: Bitcoin's last stand](https://www.ecb.europa.eu/press/blog/date/2022/html/ecb.blog221130~5301eecd19.en.html), 30. novembar 2022.: pad sa oko 69.000 $ na oko 17.000 $ i ispod 16.000 $ (pristupljeno 19. oktobra 2026)
+- [Gauntlet: Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), Aave forum za upravljanje, 17. mart 2023. (pristupljeno 19. oktobra 2026)
+- [Circle: $3.3 Billion of USDC Reserve Risk Removed, Dollar De-peg Closes](https://www.circle.com/pressroom/3-3-billion-of-usdc-reserve-risk-removed-dollar-de-peg-closes), 12. mart 2023. (pristupljeno 19. oktobra 2026)
+- [Saopštenje SEC-a 2024-73 o Terraformu](https://www.sec.gov/newsroom/press-releases/2024-73), 13. jun 2024.: depeg UST-a u maju 2022. (pristupljeno 19. oktobra 2026)
+- [WBTC](https://wbtc.network/): kako je WBTC pokriven (pristupljeno 19. oktobra 2026)
+- [Chaos Labs: Post-Mortem, Exchange Rate Misalignment on wstETH Core and Prime Instances](https://governance.aave.com/t/24269), Aave forum za upravljanje, 10. mart 2026. (pristupljeno 19. oktobra 2026)
+- [HMRC Cryptoassets Manual, CRYPTO61640: DeFi lending and staking, collateral](https://www.gov.uk/hmrc-internal-manuals/cryptoassets-manual/crypto61640), ažurirano 28. novembra 2025. (pristupljeno 19. oktobra 2026)
+
+_Edukativni sadržaj, a ne finansijski savet. Upozorenja smanjuju rizik, ali ne sprečavaju likvidaciju._

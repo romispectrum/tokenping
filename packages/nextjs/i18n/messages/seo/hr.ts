@@ -1,9 +1,5 @@
 import { type SeoMessages, minutes, networks } from "./shared";
-
-// The channels arrive joined ("Signal i e-pošta") from a fixed set of names (services/marketing/alertChannels), so
-// after "putem" each one is written out in the genitive: "putem Signala, Telegrama i e-pošte".
-const VIA_CHANNEL: Record<string, string> = { Signal: "Signala", Telegram: "Telegrama", "e-pošta": "e-pošte" };
-const viaChannels = (channels: string) => channels.replace(/Signal|Telegram|e-pošta/g, name => VIA_CHANNEL[name]);
+import { hrSrChannelsGenitive } from "~~/i18n/format";
 
 export const MESSAGES: SeoMessages = {
   defaultTitle: "Tokenping: upozorenja za health factor na Aaveu i Morphu",
@@ -14,7 +10,7 @@ export const MESSAGES: SeoMessages = {
   rssTitle: "Tokenping blog (na hrvatskom)",
   postOgAlt: title => `${title} (Tokenpingov vodič za Aave V3)`,
   morphoPostOgAlt: title => `${title} (Tokenpingov vodič za Morpho)`,
-  siteOgTitle: channels => `Upozorenja za health factor na Aaveu i Morphu putem ${viaChannels(channels)}`,
+  siteOgTitle: channels => `Upozorenja za health factor na Aaveu i Morphu putem ${hrSrChannelsGenitive(channels)}`,
   siteOgFooter: "Tokenping · Aave i Morpho",
   postOgFooter: "Tokenping · vodiči za Aave V3",
   morphoPostOgFooter: "Tokenping · vodiči za Morpho",

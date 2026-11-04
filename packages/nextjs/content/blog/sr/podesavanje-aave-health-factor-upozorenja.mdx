@@ -1,0 +1,200 @@
+export const meta = {
+  slug: "podesavanje-aave-health-factor-upozorenja",
+  title: "Kako da dobiješ obaveštenje kad padne Aave health factor",
+  description:
+    "Korak po korak: poruka na Signal, Telegram ili e-poštu kad health factor na Aaveu V3 ili V4 padne ispod praga. Cena i kako da zaustaviš upozorenja.",
+  h1: "Kako da dobiješ upozorenje kad padne health factor na Aaveu",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Kako da podesim obaveštenje za pad health factora na Aaveu?",
+  readingMinutes: 15,
+};
+
+<ShortAnswer>
+  Aaveovi interfejsi prikazuju tvoj health factor (faktor zdravlja) dok su otvoreni, ali ti ne šalju poruku kad padne,
+  pa upozorenje mora da dođe iz zasebnog alata. Sa Tokenpingom povežeš novčanik kojim se zadužuješ, platiš pristup
+  upozorenjima na Arbitrumu, prijaviš se potpisivanjem poruke tim novčanikom, podesiš prag za svako tržište na kom se
+  zadužuješ (svako Aave V3 tržište na 21 mreži ili svaki Aave V4 Spoke na Ethereumu, Avalancheu, Arcu i Baseu) i dodaš
+  adresu e-pošte, korisničko ime na Signalu ili korisničko ime na Telegramu. Tokenping zatim proverava svakih 5 minuta i
+  šalje ti poruku pri svakoj proveri dok je tvoj health factor ispod tog praga.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Da li Aave šalje upozorenja za health factor?
+
+Ne. Na dan 14. oktobra 2026. Aaveovi interfejsi prikazuju tvoj health factor na ekranu, ali ne šalju e-poštu, poruku u četu ni push obaveštenje kad padne. Health factor (HF) je vrednost tvog kolaterala, ponderisana pragom likvidacije (liquidation threshold) svake imovine, podeljena vrednošću tvog duga; ispod 1,00 pozicija može da se likvidira. Cela formula je u vodiču [šta je health factor na Aaveu](/sr/blog/aave-health-factor-objasnjen).
+
+Aaveova veb-aplikacija (app.aave.com) nekada je vodila na obaveštenja servisa HAL; Aave je tu integraciju uklonio 30. maja 2024. jer je servis HAL prestao sa radom. Aave Pro, aplikacija za Aave V4, opisuje praćenje health factora unutar aplikacije, a njena stranica proizvoda ne pominje obaveštenja. Aaveov centar za pomoć kaže da je redovno praćenje neophodno; njegov kratak spisak alata, označen „Use at your own risk“ (koristiš na sopstvenu odgovornost), ima simulator i uslugu automatske otplate, ali nema uslugu upozorenja.
+
+Da bi bio upozoren, dakle, moraš sam da proveravaš aplikaciju ili da koristiš alat treće strane. Ovaj vodič podešava [upozorenja za health factor na Aaveu preko Signala, Telegrama i e-pošte](/sr) sa Tokenpingom; ostali alati su obrađeni u vodiču [poređenje alata za upozorenja o likvidaciji na Aaveu](/sr/blog/alati-za-aave-upozorenja-o-likvidaciji).
+
+## Šta ti treba pre početka?
+
+Upozorenju za health factor u Tokenpingu potrebne su četiri stvari:
+
+- **Pozicija na Aaveu V3 ili V4 sa dugom.** Na Aaveu V3: bilo koje od 24 tržišta na 21 mreži, od tržišta Core, Prime, EtherFi i Horizon na Ethereumu do mreža Polygon, Arbitrum, Optimism, Base, Avalanche, Gnosis, Metis, BNB Chain, Scroll, ZKsync, Linea, Sonic, Celo, Soneium, Plasma, Ink, MegaETH, Mantle, X Layer i Monad (Aave Address Book, 16. oktobar 2026.). Na Aaveu V4: bilo koji Spoke na Ethereumu, Avalancheu, Arcu ili Baseu (20 na dan 16. oktobra 2026.). Bez duga Aave vraća najveću moguću vrednost (prikazanu kao ∞) i nijedno upozorenje ne može da se aktivira. Nije pokriveno: Aave V3 na Harmonyju, zamrznut od 2022.
+- **Novčanik kojim se zadužuješ.** Tokenping prati samo novčanik koji povežeš; ne možeš da dodaš drugu adresu. Isti novčanik te i prijavljuje, pa nema naloga ni lozinke.
+- **Nativni USDC i malo ETH-a na mreži Arbitrum One, u tom istom novčaniku.** Upozorenja koštaju <AlertPrice />, a plaćaju se u Circleovom nativnom USDC-u na mreži Arbitrum One čak i kad je tvoj zajam na drugoj mreži. ETH pokriva gas za najviše dve transakcije; prijava ne troši gas.
+- **Adresa e-pošte, korisničko ime na Signalu ili korisničko ime na Telegramu**, ili više njih.
+
+Podešavanje zatim ima sedam koraka:
+
+1. Poveži novčanik i proveri svoje pozicije.
+2. Plati pristup upozorenjima na mreži Arbitrum One.
+3. Prijavi se novčanikom.
+4. Napravi upozorenje i izaberi e-poštu, Signal, Telegram ili više njih.
+5. Izaberi prag.
+6. Sačuvaj upozorenje.
+7. Pošalji test poruku na svaki kanal.
+
+## Korak 1: poveži novčanik i proveri svoje pozicije
+
+Otvori kontrolnu tablu da [proveriš svoj health factor na Aaveu V3](/sr/aave) i poveži novčanik kojim se zadužuješ. Za pregled pozicija ne plaćaš ništa i ne moraš da se prijaviš: Tokenping samo čita tvoje pozicije on-chain i nikad ne traži odobrenje ni transakciju na tvojoj poziciji na Aaveu.
+
+Spisak **Tržišta** prikazuje Aave V3 tržišta i Aave V4 Spokeove na kojima novčanik ima poziciju ili sačuvano upozorenje, sa oznakom health factora tamo gde imaš poziciju; sva ostala tržišta su skupljena pod **Ostala tržišta**. Izaberi ono na kom je tvoj zajam da vidiš njegov kolateral, dug i health factor, i zapamti taj health factor: pomaže ti da izabereš prag. Ako kontrolna tabla kaže „Na podržanim tržištima nisu pronađene aktivne Aave pozicije.“, verovatno si povezao drugi novčanik ili je zajam na tržištu koje Tokenping ne čita. Pozicije se učitavaju kad se stranica otvori i kad pritisneš **Osveži pozicije**.
+
+## Korak 2: otključaj upozorenja
+
+Za čuvanje upozorenja u Tokenpingu potreban je plaćeni pristup, koji košta <AlertPrice />. Cena je zadata u Tokenpingovom ugovoru za plaćanje na mreži Arbitrum One, a panel je prikazuje pre nego što platiš.
+
+1. Ispod spiska **Tržišta** na [Tokenpingovoj kontrolnoj tabli](/sr/aave) panel **Otključaj upozorenja za health factor** navodi cenu, koliko dugo pristup traje, mrežu i naknadu mreže. Pritisni **Plati** (njegova oznaka sadrži cenu u USDC-u). Ako je tvoj novčanik na drugoj mreži, prvo pritisni **Prebaci se na mrežu Arbitrum One**.
+2. Odobri USDC. Odobrenje je tačno na iznos cene, nikad na neograničen iznos, i preskače se ako je dovoljan iznos već odobren.
+3. Potvrdi plaćanje. Kad se transakcija uključi u blok, panel prikazuje **Upozorenja otključana do** i zatim datum.
+
+Jedno plaćanje otključava podešavanja upozorenja na svakom Aave V3 tržištu i u svakom Aave V4 Spokeu za novčanik koji je platio. Ništa se ne obnavlja automatski, ali možeš da platiš unapred: dok je pristup aktivan, panel prikazuje dugme koje dodaje još jedan period plana (njegova oznaka navodi broj dana i cenu). Svako plaćanje dodaje taj period posle tvog trenutnog datuma isteka, koliko god puta želiš, a novi datum isteka se odmah prikazuje. Kad pristup istekne, novo plaćanje počinje novi period plana od tog dana. Ugovor za plaćanje je verifikovan na Sourcifyju i nema funkciju povraćaja novca. Vlasnik mu je jedan novčanik pod kontrolom Tokenping tima, koji može da promeni cenu, pauzira plaćanja ili nadogradi kod ugovora.
+
+## Korak 3: prijavi se novčanikom
+
+Podešavanja upozorenja pripadaju adresi novčanika, a ne nalogu. Kad je pristup otključan, panel upozorenja za izabrano tržište traži da pritisneš **Prijavi se novčanikom**. Tvoj novčanik tada prikazuje poruku za prijavu (Sign-in with Ethereum) koja navodi sajt i tvoju adresu i kaže „Prijavi se na Tokenping da vidiš i menjaš svoja upozorenja za health factor.“ Potpisivanje nije transakcija: ne troši gas i ne odobrava nijedan token. Nema lozinke koju treba napraviti ni registracije e-poštom.
+
+Prijava traje 7 dana u tom pregledaču i završava se kad prekineš vezu sa novčanikom; posle toga panel traži da se ponovo prijaviš. Ako odbiješ zahtev, panel to javlja i možeš ponovo da pritisneš dugme. Šta prijava čuva i proverava, opisano je u vodiču [kako prijava radi bez naloga](/sr/blog/privatna-aave-upozorenja-o-likvidaciji#kako-funkcionise-prijava-bez-naloga).
+
+## Korak 4: napravi upozorenje i izaberi kanale
+
+Svako upozorenje u Tokenpingu pokriva jedno tržište i jedan prag. Tržište je Aave V3 Pool (Ethereum ih ima četiri, svaka druga mreža jedan) ili Aave V4 Spoke, jer svaki od njih vodi zasebnu poziciju sa sopstvenim health factorom. Kad je tržište izabrano, pritisni **Napravi upozorenje** na njegovom panelu. Obrazac se otvara sa odeljkom **Kanali upozorenja** na vrhu: označi E-pošta, Signal, Telegram ili bilo koju kombinaciju. Tokenping traži bar jedan kanal, a svako upozorenje stiže na svaki kanal koji izabereš.
+
+- **E-pošta:** upiši svoju adresu. Ako prvo upozorenje ne stigne, proveri folder za neželjenu poštu.
+- **Signal:** upiši svoje korisničko ime na Signalu, sa @ ili bez njega, na primer `alice.42`. Signal ga prikazuje na tvom profilu: otvori podešavanja (Settings), dodirni svoj profil i pogledaj pored simbola @. Ako nikad nisi napravio korisničko ime na Signalu, prvo ga napravi u Signalu. Tokenping nikad ne traži tvoj broj telefona.
+- **Telegram:** upiši svoje korisničko ime na Telegramu, sa @ ili bez njega, na primer `alice_eth`. Telegram ga prikazuje pod Podešavanja, zatim Korisničko ime; ako ga nemaš, prvo ga tamo podesi. Botovi na Telegramu ne mogu da započnu razgovor, pa obrazac kaže „Još nije povezano“ i daje link ka Tokenpingovom botu: otvori ga i jednom pritisni **Start**. Dok to radiš, obrazac proverava na svakih nekoliko sekundi, a zatim javlja da je tvoje korisničko ime povezano. Možeš da sačuvaš i pre nego što pritisneš Start, ali nijedno upozorenje ne stiže na Telegram dok to ne uradiš.
+
+Pored svake adrese ili korisničkog imena nalazi se meni za jezik (**Jezik e-pošte**, **Jezik za Signal**, **Jezik za Telegram**) sa bilo kojim od jezika sajta. Upozorenja i test poruke svakog kanala pišu se na jeziku koji za njega izabereš. Novi kanal počinje na jeziku stranice koju čitaš, pa je na srpskom sajtu to srpski.
+
+Pošto Tokenpingov nalog na Signalu nije među tvojim kontaktima, Signal može da prikaže prvo upozorenje kao zahtev za poruku (message request). Prihvati ga; ako blokiraš pošiljaoca, upozorenja neće stizati do tebe. Izbor više kanala služi kao zaštita, jer svaki zavisi od spoljnih usluga (dobavljača e-pošte, samostalno hostovanog Signal relaya i Telegramovog Bot API-ja).
+
+Tokenping čuva adresu tvog novčanika, tržište, prag i kanale sa jezikom svakog od njih, adresu e-pošte i korisnička imena koja si upisao, kada je upozorenje napravljeno i kada je poslednji put promenjeno, kao i kada si poslednji put poslao test na svakom kanalu. Pritiskom na Start u botu čuva se ID tvog četa na Telegramu uz tvoje korisničko ime, a tvoj odgovor na neobavezno pitanje „Kako si saznao za Tokenping?“ čuva se ako ga daš. Tokenping ne čuva istoriju health factora ni zapis poslatih upozorenja. Da te adresa ili korisnička imena koja upišeš ne otkriju, pogledaj [kako da dobijaš upozorenja za Aave bez davanja svog identiteta Tokenpingu](/sr/blog/privatna-aave-upozorenja-o-likvidaciji).
+
+## Korak 5: izaberi prag
+
+Prag je health factor ispod kog dobijaš poruke. Klizač ide od 1,1 do 3,0 u koracima od 0,1, a polje pored njega prima bilo koju vrednost od 1,1 do 10 sa najviše dve decimale. Podrazumevana vrednost je 1,5.
+
+Ne postoji univerzalno bezbedan broj. Jedan pristup: izaberi cenu kolaterala pri kojoj bi delovao, izračunaj health factor pri toj ceni i podesi upozorenje malo iznad njega, jer su provere razmaknute 5 minuta, a potvrda otplate na zagušenoj mreži može da potraje. [Koliku rezervu daje health factor](/sr/blog/bezbedan-aave-health-factor) ima tabelu uobičajenih nivoa.
+
+Primer sa jednom imovinom promenljive cene kao kolateralom i dugom u stablecoinu: prag likvidacije za WETH na tržištu Ethereum Core bio je 83% (očitano on-chain u bloku 26194005, 14. oktobra 2026.). Sa 10 deponovanih WETH, 12.000 pozajmljenih USDC, ETH-om po ilustrativnoj ceni od 2.400 $ (Aaveov orakl, odnosno izvor cene, pokazivao je 2.415,56 $ u tom bloku) i USDC-om po 1,00 $, health factor iznosi 10 × 2.400 × 0,83 ÷ 12.000 = 1,66. Cena ETH-a pri bilo kom health factoru je taj health factor × 12.000 ÷ (10 × 0,83):
+
+| Health factor                                   | Cena ETH-a pri tom health factoru | Pad od 2.400 $ |
+| ----------------------------------------------- | --------------------------------- | -------------- |
+| 1,66 (početna tačka)                            | 2.400,00 $                        | 0%             |
+| 1,5 (mogući prag upozorenja)                    | 2.168,67 $                        | 9,6%           |
+| 1,3 (mogući prag upozorenja)                    | 1.879,52 $                        | 21,7%          |
+| 1,0 (ispod ove vrednosti moguća je likvidacija) | 1.445,78 $                        | 39,8%          |
+
+Sa pragom 1,5 prva poruka stiže pri prvoj proveri posle pada health factora ispod 1,5, ovde kad ETH padne ispod 2.168,67 $. ETH bi tada morao da padne za još otprilike 33% pre nego što bi ova pozicija mogla da bude likvidirana; sa pragom 1,3 ta preostala rezerva iznosi oko 23%. Obe brojke zanemaruju kamatu. Kamata i smanjenja praga likvidacije takođe mogu da snize health factor bez ikakve promene cene: pogledaj [zašto tvoj health factor na Aaveu pada sam od sebe](/sr/blog/zasto-je-pao-aave-health-factor).
+
+## Korak 6: sačuvaj upozorenje i saznaj kako izgleda
+
+Pritisni **Sačuvaj upozorenje**. Panel prikazuje **Podešavanja upozorenja** sa oznakom Aktivno i rezimeom koji navodi svaki kanal sa njegovom adresom ili korisničkim imenom i jezikom. Tržište dobija ikonu zvona na spisku Tržišta. Prvi put može da se pojavi neobavezno pitanje „Kako si saznao za Tokenping?“; možeš da pritisneš **Preskoči**. Na srpskom Signal i Telegram dobijaju ovaj tekst (ilustrativne vrednosti):
+
+> Tvoj Aave health factor na mreži Arbitrum iznosi 1,42, što je ispod tvog praga od 1,5. Da izbegneš likvidaciju, razmisli o dodavanju kolaterala ili otplati duga.
+>
+> Poslato: 14. okt 2026. 21:05:07 Koordinisano univerzalno vreme
+
+Health factor se zaokružuje naniže na dve decimale, pa poruka nikad ne prikazuje vrednost jednaku pragu koji je pređen ili višu od njega, a vreme je u UTC-u. E-pošta sadrži istu poruku sa naslovom „Aave upozorenje za health factor - Arbitrum“, osim što njen poslednji red kaže „Napravljeno“ umesto „Poslato“. Kanal podešen na neki drugi jezik sajta dobija isto upozorenje na tom jeziku.
+
+Ako si izabrao Telegram, a još nisi pritisnuo Start, rezime kaže „Još nije povezano“ sa linkom ka botu.
+
+## Korak 7: pošalji test poruku
+
+Kad je upozorenje sačuvano, svaki kanal u rezimeu ima dugme **Pošalji test**. Test je prava poruka na tom kanalu, na njegovom jeziku, sa upozorenjem onakvim kakvo je sačuvano i tvojom pozicijom onakvom kakva je sada: tržište i prag, trenutni health factor sa oznakom „bezbedno“, „rizično“ ili „kritično“, kolateral i dug, i da li je to ispod tvog praga. Počinje rečenicom „Test poruka od Tokenpinga: upozorenja na ovom kanalu rade.“ U e-pošti naslov glasi „Tokenping test poruka - Arbitrum“ (sa nazivom tvog tržišta).
+
+- Možeš da pošalješ jedan test po kanalu na svakih 15 minuta, računato za tvoj novčanik na svim njegovim tržištima. Do tada dugme prikazuje koliko je minuta preostalo. Test koji ne uspe da se pošalje ne računa se.
+- Dugme za Telegram ostaje isključeno dok ne pritisneš Start u botu.
+- Za testove je potreban aktivan pristup, kao i za čuvanje upozorenja.
+
+Ako test ne stigne u roku od nekoliko minuta, prođi kroz [razloge zašto upozorenje možda ne radi](#zasto-moje-upozorenje-ne-radi). Ako želiš da vidiš i kako stiže pravo upozorenje, pritisni **Izmeni upozorenje**, podesi prag malo iznad svog trenutnog health factora i pritisni **Sačuvaj upozorenje**. Sledeća provera, u roku od 5 minuta, šalje po jednu poruku na svaki kanal; zatim na isti način vrati svoj pravi prag i poruke prestaju od sledeće provere.
+
+## Koliko često ćeš dobijati upozorenja?
+
+Dok je tvoj health factor ispod tvog praga, Tokenping šalje jednu poruku po izabranom kanalu pri svakoj proveri, a provera je na svakih 5 minuta. To je do 12 poruka na sat na svakom kanalu. Nema odlaganja, nema zbirnog pregleda i nema poruke „vraćeno u normalu“: upozorenja prestaju kad health factor ponovo bude na pragu ili iznad njega.
+
+Provera poredi tvoj tačan health factor sa pragom i aktivira se samo kad je strogo ispod njega. Sa pragom 1,5 health factor od 1,4996 pokreće upozorenje, čija poruka prikazuje 1,49, a 1,50 ga ne pokreće. Ako očitavanje ili poruka ne uspe, Tokenping to beleži, a sledeća provera pokušava ponovo ako je health factor i dalje ispod praga.
+
+Provere su razmaknute 5 minuta, a ne neprekidne, pa nagli pad može da odvede poziciju od iznad tvog praga do ispod 1,0 pre nego što ijedna poruka bude poslata. Tokenping je u beta verziji, oslanja se na treće strane za čitanje pozicija i dostavu poruka i nema garanciju dostupnosti. Shvati upozorenje kao vreme za delovanje, a ne kao svoju jedinu zaštitu.
+
+## Kako da promeniš ili zaustaviš upozorenja?
+
+Upozorenja iz Tokenpinga prestaju kad se tvoj health factor vrati na prag ili iznad njega, na primer pošto otplatiš dug ili dodaš kolateral, ili kad obrišeš upozorenje. Za menjanje ili brisanje upozorenja potrebni su aktivan pristup i prijava novčanikom.
+
+- **Promena praga, kanala ili jezika:** pritisni **Izmeni upozorenje** na panelu tržišta, napravi promenu i pritisni **Sačuvaj upozorenje**.
+- **Zaustavljanje upozorenja na jednom tržištu:** pritisni **Izmeni upozorenje**, zatim **Obriši upozorenje** i potvrdi sa **Obriši upozorenje**. Nema prekidača za pauzu, a upozorenje svakog tržišta briše se zasebno.
+- **Zaustavljanje upozorenja na Telegramu:** pošalji /stop Tokenpingovom botu. On zaboravlja tvoj čet, pa ti tamo ne stiže nijedno upozorenje ni sa jednog tržišta dok ponovo ne pošalješ /start; tvoji ostali kanali i dalje dobijaju upozorenja. Blokiranje bota ima isti efekat od sledeće poruke koju Tokenping pokuša da pošalje.
+
+<Callout tone="warning">
+  Obriši upozorenja koja više ne želiš dok ti je pristup još aktivan. Posle isteka pristupa tvoja podešavanja ostaju
+  vidljiva, ali samo za čitanje („Plati pristup da bi menjao“) u pregledaču u kom si se ranije prijavio, za brisanje
+  upozorenja potrebno je novo plaćanje, a mejlovi sa upozorenjima još nemaju link za odjavu. Na Telegramu /stop radi sa
+  pristupom ili bez njega.
+</Callout>
+
+## Zašto moje upozorenje ne radi?
+
+Kad upozorenje iz Tokenpinga ne radi, proveri sedam stvari: povezani novčanik i tržište, format korisničkog imena, da li je Telegram povezan, nativni USDC na mreži Arbitrum One, da li pozicija ima dug, da li svako tržište na kom se zadužuješ ima upozorenje, kao i folder za neželjenu poštu i zahteve za poruke na Signalu.
+
+### Kontrolna tabla ne prikazuje pozicije
+
+Ako Tokenpingova kontrolna tabla ne prikazuje pozicije, povezani novčanik nije onaj kojim se zadužuješ ili je zajam na tržištu koje Tokenping ne čita: Aave V3 na Harmonyju ili mreža van 22 mreže koje pokriva (21 mreža za V3 plus Arc, koji ima samo Aave V4). Tržište na kom novčanik nema poziciju ne nedostaje: skupljeno je pod **Ostala tržišta**.
+
+### Tokenping odbija tvoje korisničko ime na Signalu ili Telegramu
+
+Tokenping ti poručuje „Unesi korisničko ime na Signalu poput alice.42“ kad korisničko ime nije nadimak, tačka i najmanje dve cifre. @ ispred je u redu. Ako promeniš korisničko ime u Signalu, odmah ažuriraj upozorenje: Signal dozvoljava da neko drugi preuzme staro korisničko ime ubrzo pošto ga se odrekneš.
+
+Za Telegram traži „korisničko ime na Telegramu poput alice_eth“: od 4 do 32 slova, cifre ili donje crte, počinje slovom i ne završava se donjom crtom. Upiši svoje korisničko ime, a ne ime za prikaz ni broj telefona; @ ili t.me link ispred su u redu, a velika slova nisu bitna.
+
+### Telegram još nije povezan
+
+Bot saznaje gde da šalje tvoja upozorenja tek kad pritisneš Start (ili pošalješ /start) sa naloga čije je korisničko ime u upozorenju. Otvori bot preko linka u obrascu, pritisni Start i proveri da li se korisničko ime poklapa sa onim u Telegramu pod Podešavanja, zatim Korisničko ime. Ako si poslao /stop, blokirao bot ili promenio korisničko ime na Telegramu, upiši trenutno korisničko ime u upozorenje i ponovo pošalji /start.
+
+### Nemaš USDC na mreži Arbitrum One
+
+Plaćanje u Tokenpingu prima Circleov nativni USDC na mreži Arbitrum One (ugovor `0xaf88...5831`), a ne premošćeni USDC.e, plus malo ETH-a za gas, u novčaniku koji podešavaš. Prebaci oboje tamo, na primer povlačenjem sa menjačnice na Arbitrum One ili premošćavanjem (bridging). USDC.e koji već imaš treba zameniti za nativni USDC.
+
+### Tvoja pozicija nema dug
+
+Bez duga Aave vraća najveći mogući health factor (prikazan kao ∞), pa nijedan prag nikad nije pređen i nijedno upozorenje se ne šalje.
+
+### Zadužuješ se na više tržišta
+
+Svako Aave V3 tržište i svaki Aave V4 Spoke ima sopstveno upozorenje, prag, kanale i jezike. Jedno plaćanje pokriva sve njih, pa napravi upozorenje na svakom tržištu na kom se zadužuješ.
+
+### Poruke ne stižu
+
+Ako poruke iz Tokenpinga ne stižu, proveri folder za neželjenu poštu i zahteve za poruke na Signalu i uveri se da nisi blokirao Tokenpingovog pošiljaoca ili poslao /stop botu na Telegramu. Zatim pritisni **Pošalji test** za taj kanal, kao u [koraku 7](#korak-7-posalji-test-poruku): ako test stigne, kanal radi, a upozorenja stižu pri svakoj proveri dok je health factor ispod tvog praga. Ako test stigne, ali bez zvuka, zadržava ga Focus, režim Ne uznemiravaj (Do Not Disturb), utišan čet ili ušteda baterije: [kako da upozorenja prođu kroz režim Ne uznemiravaj](/sr/blog/aave-upozorenja-u-rezimu-ne-uznemiravaj) prolazi kroz svaki od njih.
+
+## Koji još načini postoje za dobijanje upozorenja?
+
+Neki alati ti omogućavaju da nalepiš bilo koju adresu novčanika i dobijaš upozorenja na Telegramu ili u njihovoj sopstvenoj mobilnoj aplikaciji bez naplate. Proširenja pregledača prikazuju health factor na traci sa alatkama, a neka prikazuju i obaveštenja na radnoj površini dok pregledač radi. Usluge automatizacije mogu da otplate dug umesto tebe; potreban im je pametni novčanik ili dozvola na tvojoj poziciji, a neke postavljaju minimalnu veličinu pozicije ili naplaćuju naknadu po radnji. Programeri mogu da naprave sopstveno praćenje. [Poređenje alata za upozorenja o likvidaciji na Aaveu](/sr/blog/alati-za-aave-upozorenja-o-likvidaciji) stavlja ih jedne pored drugih, uključujući slučajeve u kojima Tokenping nije pravi izbor.
+
+## Izvori
+
+- [Pull request #2084 u repozitorijumu Aave interface, „chore: remove hal“, spojen 30. maja 2024.](https://github.com/aave/interface/pull/2084) (pristupljeno 14. oktobra 2026)
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (pristupljeno 14. oktobra 2026)
+- [Stranica proizvoda Aave Pro](https://aave.com/pro) (pristupljeno 14. oktobra 2026)
+- [Dnevnik izmena Aave dokumentacije: uvođenje V3.7 i pokretanja V4](https://aave.com/docs/resources/changelog) (pristupljeno 15. oktobra 2026)
+- [Aave V3 GenericLogic.sol: formula health factora i vrednost bez duga](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) (pristupljeno 14. oktobra 2026)
+- Aave V3 Ethereum Core [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) i [AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) (stranice ugovora na Etherscanu): prag likvidacije za WETH 83% i cena orakla 2.415,56 $, očitano on-chain u bloku 26194005 (RPC podaci, pristupljeno 14. oktobra 2026)
+- [TokenpingPaywall na mreži Arbitrum One, izvorni kod verifikovan na Sourcifyju](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553) (pristupljeno 14. oktobra 2026); plan, stanje pauze i vlasnik očitani on-chain u blokovima 514885994 i 514896937
+- [Signal Support: Phone Number Privacy and Usernames](https://support.signal.org/hc/en-us/articles/6712070553754-Phone-Number-Privacy-and-Usernames) (pristupljeno 14. oktobra 2026)
+- [Signal Support: Signal Profiles and Message Requests](https://support.signal.org/hc/en-us/articles/360007459591-Signal-Profiles-and-Message-Requests) (pristupljeno 14. oktobra 2026)
+- [Telegram: Bots, an introduction for developers](https://core.telegram.org/bots) (pristupljeno 20. oktobra 2026): botovi ne mogu da započnu razgovor sa korisnicima
+
+_Edukativni sadržaj, a ne finansijski savet. Upozorenja smanjuju rizik, ali ne sprečavaju likvidaciju._

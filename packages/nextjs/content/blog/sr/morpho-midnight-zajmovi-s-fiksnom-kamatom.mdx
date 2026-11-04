@@ -1,0 +1,192 @@
+export const meta = {
+  slug: "morpho-midnight-zajmovi-s-fiksnom-kamatom",
+  title: "Morpho Midnight zajmovi s fiksnom kamatom: kako rade",
+  description:
+    "Kako rade Morpho Midnight zajmovi s fiksnom kamatom: kamata, dug na dospeću, zdravlje s više kolaterala i zašto se neotplaćen dug može likvidirati.",
+  h1: "Kako rade Morpho Midnight zajmovi s fiksnom kamatom i šta se dešava na dospeću?",
+  publishedAt: "2026-10-26",
+  primaryQuestion:
+    "Kako funkcioniše zajam s fiksnom kamatom na Morpho Midnightu i šta se dešava ako ga ne otplatim do dospeća?",
+  readingMinutes: 12,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Morpho Midnight je Morphovo zaduživanje s fiksnom kamatom i fiksnim rokom. Zadužuješ se tako što prodaješ jedinice
+  duga ispod nominalne vrednosti: svaka jedinica ti sada donosi nešto manje od jednog tokena zajma i predstavlja
+  obećanje da ćeš na dospeću tržišta vratiti tačno jedan, pa je kamata fiksna u trenutku zaduživanja, a tvoj dug ne
+  raste. Pre dospeća tvoja pozicija može biti likvidirana samo ako tvoj kolateral, ponderisan likvidacionim LTV-om
+  (LLTV) svakog kolaterala, više ne pokriva dug (health factor ispod 1). Kada dospeće prođe, sav preostali dug može biti
+  likvidiran bez obzira na health factor, a bonus likvidatora raste tokom prvog sata. Otplati pre dospeća, a zatim sam
+  povuci svoj kolateral.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Brojke i brojevi blokova u kojima su očitane: content/blog/snapshots/morpho-midnight-fixed-rate-loans.md */}
+
+## Šta je Morpho Midnight?
+
+Morpho Midnight je deo Morpha koji nudi zajmove s fiksnom kamatom do fiksnog datuma, dospeća. Morphova dokumentacija ga naziva „Fixed Rate Markets (Midnight)“ (tržišta s fiksnom kamatom), pored Morpho Blue, njegovih tržišta s promenljivom kamatom. Ako ti je Morphova matematika zdravlja pozicije nova, počni od [vodiča o health factoru (faktor zdravlja) na Morphu](/sr/blog/morpho-health-factor-objasnjen), na koji se ovaj vodič nadovezuje.
+
+Midnight je otvoren za javnost 21. jula 2026., na mreži Base, s jednim parom (kolateral cbBTC, zajmovi u USDC) i nekoliko dospeća. U ovom vodiču Midnight tržište nazivamo po tom paru: „cbBTC/USDC tržište“ prima cbBTC kao kolateral i pozajmljuje USDC. Isti kod ugovora sada radi na pet mreža:
+
+| Mreža           | Midnight ugovor ima kod od | Tržišta koja navodi Morphov API (26. oktobar 2026.) |
+| --------------- | -------------------------- | --------------------------------------------------- |
+| Base            | 6. jul 2026.               | Da; 19 navedenih tržišta ima otvorene zajmove       |
+| Ethereum        | 20. avgust 2026.           | Da; 12 navedenih tržišta ima otvorene zajmove       |
+| Arc             | 11. septembar 2026.        | Nijedno (postoji 13 tržišta)                        |
+| Robinhood Chain | Datum nije dostupan        | Nijedno (postoje 34 tržišta)                        |
+| Tempo           | 3. oktobar 2026.           | Nijedno (API ne prikazuje tržišta)                  |
+
+Svako može da napravi Midnight tržište, pa to što tržište postoji na lancu malo govori. Tržišta koja prikazuje Morphova aplikacija su ona koja navodi njegov API, a 26. oktobra 2026. sva su bila na Ethereumu i Base-u.
+
+Jedna ranija Morphova objava predstavila je Midnight, zajedno s Vaults V2, kao „Morpho V2“. Objava o lansiranju kaže da Midnight nije ni druga verzija Blue-a ni njegova zamena: njih dvoje rade paralelno. To su odvojeni ugovori.
+
+## Kako je definisano Midnight tržište?
+
+Midnight tržište se utvrđuje pri kreiranju i nikada se ne menja. Definišu ga:
+
+- **Token zajma**, na primer USDC.
+- **Jedan ili više kolaterala** (do 128), svaki sa sopstvenim LLTV-om (udeo vrednosti kolaterala koji smeš da duguješ pre likvidacije), sopstvenim oraklom (izvor cene) i sopstvenim likvidacionim kursorom (cursor), koji određuje bonus likvidatora.
+- **Dospeće**, datum i vreme kada dospeva svaki zajam na tržištu.
+- **Prag oporavka** (rcfThreshold), koji odlučuje kada mali iznos nekog kolaterala može biti likvidiran u celosti (vidi niže).
+- **Opcione kapije (gates)**, koje mogu da ograniče ko sme da pozajmljuje, da se zadužuje ili da likvidira. Kapija te nikada ne može sprečiti da otplatiš dug ili izađeš. Nijedno navedeno tržište na Ethereumu ni na Base-u nije imalo kapiju 26. oktobra 2026.
+
+Jedan dužnik može istovremeno da koristi do 16 kolaterala tržišta. Da bi se prihvatio novi kolateral ili pomerilo dospeće, neko mora da napravi novo tržište. Navedena tržišta sa zajmovima, na obe mreže, dospevaju poslednjeg petka u mesecu u 15:00 UTC: 30. oktobra, 27. novembra i 25. decembra 2026. i 26. marta 2027.
+
+## Kako se određuje fiksna kamata i koliko duguješ na dospeću?
+
+Kamata proizlazi iz cene, a ne iz modela kamatne stope. Midnight broji dug u jedinicama, a jedna jedinica duga je obećanje da ćeš na dospeću vratiti jedan token zajma. Da bi se zadužio, prodaješ jedinice zajmodavcima po ceni ispod 1: po ceni od 0,99 sada dobijaš 0,99 USDC za svaku jedinicu, a na dospeću duguješ 1 USDC po jedinici. Kamata za ceo period je 1 podeljeno cenom, minus 1, a Morphova dokumentacija je pretvara u godišnju vrednost tako što je deli preostalim delom godine.
+
+Cene potiču iz ponuda koje objavljuju zajmodavci i dužnici, pa dva dužnika na istom tržištu mogu da plaćaju različite kamate. Prema Morphovom API-ju, 26. oktobra 2026. kamate 117 dužnika na cbBTC/USDC tržištu na Base-u s dospećem 25. decembra 2026. bile su između 1,93% i 6,84% godišnje.
+
+Ono što duguješ je jednostavno: broj jedinica koje si prodao, u tokenima zajma, dospeva na dospeću. Dok zajam traje, ništa se ne dodaje. Midnight ugovor menja dug dužnika samo kada se dodatno zadužiš, otplatiš, otkupiš jedinice ili budeš likvidiran; na njega se ne obračunava kamata ni pre ni posle dospeća.
+
+Midnight ima dve naknade, obe se postavljaju po tržištu i obe su nula na dva tržišta iz ovog vodiča:
+
+- **Naknada za poravnanje** (settlement fee) na svaku trgovinu, koju plaća onaj ko prihvati ponudu. Ugovor je ograničava prema vremenu do dospeća, od 0,0014% za jedan dan do 0,5% za 360 dana.
+- **Kontinuirana naknada** (continuous fee), koju snose samo zajmodavci i koja je ograničena na 1% godišnje.
+
+## Kako se računa health factor s više kolaterala?
+
+Midnight ugovor proverava zdravlje odgovorom da ili ne: pozicija je zdrava dok joj je maksimalni dug najmanje jednak dugu. Maksimalni dug je zbir, za svaki kolateral koji koristiš, njegove vrednosti u tokenu zajma po ceni njegovog orakla pomnožene njegovim sopstvenim LLTV-om. Morphova dokumentacija tu proveru zapisuje kao maxDebt ≥ debt; health factor je ista provera zapisana kao odnos, maksimalni dug podeljen dugom, a ispod 1 pozicija može biti likvidirana.
+
+Uzmimo najveće navedeno tržište na Ethereumu, koje pozajmljuje USDC uz dva kolaterala s različitim LLTV-ovima: sam USDC sa 98% i cbBTC sa 86%. Uz cbBTC po 80.011,48 USDC (cena njegovog orakla 26. oktobra 2026.), ilustrativna pozicija iz [vodiča o health factoru na Morphu](/sr/blog/morpho-health-factor-objasnjen), 0,5 cbBTC i 10.000 USDC kolaterala uz 40.000 USDC duga, ima:
+
+| Kolateral   | Vrednost (USDC) | LLTV | Računa se kao (USDC) |
+| ----------- | --------------- | ---- | -------------------- |
+| 0,5 cbBTC   | 40.005,74       | 86%  | 34.404,94            |
+| 10.000 USDC | 10.000,00       | 98%  | 9.800,00             |
+| Ukupno      | 50.005,74       |      | 44.204,94            |
+
+Njen health factor je 44.204,94 ÷ 40.000 = 1,105 i pada ispod 1 ako cbBTC padne ispod otprilike 70.233 USDC, 12,2% niže, dok USDC kolateral zadržava vrednost. Ideja je ista kao kod [drugog kolaterala na Aave-u](/sr/blog/aave-health-factor-objasnjen#sta-se-menja-sa-drugom-imovinom-u-kolateralu): svaka imovina se računa po sopstvenoj stopi.
+
+Kolaterale možeš da dodaješ, uklanjaš ili menjaš u bilo kom trenutku, sve dok te povlačenje ostavlja zdravim. Ako orakl bilo kog kolaterala koji koristiš prestane da odgovara, provere zdravlja, zaduživanje, povlačenja i likvidacije za tvoju poziciju ne uspevaju dok god imaš dug. Otplata i dalje radi, a kada ti je dug nula, možeš da povučeš kolateral bez ikakvog orakla.
+
+## Kada Midnight zajam može biti likvidiran?
+
+Midnight zajam može biti likvidiran na dva načina: kada nije zdrav, u bilo kom trenutku, ili kada posle dospeća ostane dug, bez obzira na zdravlje. [Kako funkcioniše likvidacija na Morphu](/sr/blog/kako-funkcionise-likvidacija-na-morphu) pokriva zajedničku mehaniku; ovde je ono što je specifično za Midnight.
+
+### Pre dospeća
+
+Pre dospeća važno je samo zdravlje. Kada health factor padne ispod 1, likvidator može da otplati deo tvog duga i uzme kolateral vredan tog iznosa uvećanog za bonus. Bonusa se određuje po kolateralu: 1 ÷ (1 − cursor × (1 − LLTV)). Za cbBTC s LLTV-om od 86% i kursorom 0,3 to je 1,0438, bonus od 4,38%; za USDC sa 98% oko 0,6%. Likvidator bira koji će od tvojih kolaterala uzeti, a Morphova dokumentacija upozorava da će izabrati onaj koji mu najviše donosi.
+
+Koliko može da ode odjednom zavisi od veličine. Obično likvidator sme da otplati samo onoliko koliko je potrebno da pozicija ponovo postane zdrava. Izuzetak: kada bi kolateral preostao posle takve ograničene likvidacije otplatio manje od rcfThreshold-a tržišta, taj kolateral može biti uzet u celosti. Prag iznosi 3.000 USDC na cbBTC/USDC tržištu na Base-u iz primera s proračunom niže i 300.000 USDC na gore navedenom tržištu na Ethereumu. Kod zajma s jednim kolateralom ispod te veličine cela pozicija može da ode odjednom.
+
+### Posle dospeća
+
+Kada vreme dospeća prođe, sav preostali dug može biti likvidiran čak i ako ti je health factor 2 ili 10. Put likvidacije posle dospeća u ugovoru proverava samo sat. Morpho to obrazlaže time da zajmodavci očekuju da povuku sredstva na dospeću, a neplaćeni dužnik, zdrav ili ne, ih u tome sprečava.
+
+Bonus na tom putu počinje od nule na dospeću i ravnomerno raste do punog bonusa tokom 60 minuta. Ako je tvoja pozicija posle dospeća i nezdrava, likvidator umesto toga može da koristi put zasnovan na zdravlju i odmah uzme pun bonus. Na putu posle dospeća nema ograničenja koliko može da se otplati, pa ceo dug može biti likvidiran odjednom. Posle dospeća više ne možeš da se dodatno zadužiš, ali i dalje možeš da otplaćuješ, otkupljuješ jedinice i povlačiš kolateral.
+
+<Callout tone="warning">
+  U tačnoj sekundi dospeća zdrava pozicija je još bezbedna; sekundu kasnije više nije. Zakasnela otplata zdrave pozicije
+  može da te košta do punog likvidacionog bonusa, oko 4,4% duga kod cbBTC zajma s LLTV-om od 86%.
+</Callout>
+
+Ako likvidacija ostavi dug koji kolateral ne može da pokrije, manjak se otpisuje i dele ga samo zajmodavci tog tržišta.
+
+## Kako otplatiti ranije, na dospeću ili preći na kasnije dospeće?
+
+Iz Midnight zajma možeš da izađeš na tri načina, uz jednu rezervnu opciju koju uključuješ po izboru:
+
+- **Direktna otplata.** Otplata košta tačno jedan token zajma po jedinici, pre, na ili posle dospeća. Uvek radi i određuje najviše što bi trebalo da platiš za raniji izlazak. Ranija otplata ne vraća ništa od kamate: plaćaš pun iznos koji dospeva na dospeću, samo ranije.
+- **Otkup jedinica pre dospeća.** Umesto toga možeš da kupiš jedinice iz prodajnih ponuda zajmodavaca po ceni ispod 1, čime poništavaš toliko duga za manje od nominalne vrednosti. To zavisi od toga da li neko nudi jedinice u trenutku kada želiš da izađeš.
+- **Prelazak na kasnije dospeće.** Morphova dokumentacija opisuje otplatu ili otkup na jednom tržištu i zaduživanje na tržištu s kasnijim dospećem u jednoj transakciji, pomoću povratnih poziva (callbacks). Morphova objava o lansiranju u julu navela je automatski prelazak kao kasniju funkciju; 26. oktobra 2026. dokumentacija opisuje prelazak samo kao nešto što radiš sam, ili preko rezervnog prelaska na Blue opisanog niže.
+- **Rezervni prelazak na Blue.** Morpho je na svih pet mreža postavio ugovor BlueFallbackRolling. Ako ga uključiš i ovlastiš i na Midnightu i na Blue-u, bilo ko može da premesti tvoj Midnight dug i kolateral na Blue tržište s promenljivom kamatom koje si izabrao, od trenutka koji si izabrao. Nagrada onoga ko to pokrene je udeo duga koji ti određuješ; raste između početnog i završnog vremena koje postaviš, može da dostigne ceo dug i dodaje se tvom novom dugu na Blue-u. Zahteva tačno jedan kolateral koji odgovara kolateralu Blue tržišta.
+
+## Šta se dešava s tvojim kolateralom posle otplate?
+
+Tvoj kolateral ostaje gde jeste dok ga ne povučeš. Otplata ti ga ne vraća. Kada ti je dug nula, provera zdravlja prolazi bez pitanja ijednom oraklu, pa možeš da ga povučeš u celosti, i nijedna kapija ne može da te spreči. Pomeriti ga možeš samo ti, nalog koji si ovlastio ili likvidator pozicije koja može biti likvidirana.
+
+Isto važi i posle likvidacije: kolateral koji likvidator nije uzeo ostaje u tvojoj poziciji i možeš da ga povučeš.
+
+## Primer s proračunom: cbBTC/USDC zajam s dospećem 25. decembra 2026.
+
+Ovo tržište, na paru s kojim je Midnight lansiran, napravljeno je 14. jula 2026., nedelju dana pre javnog lansiranja, i najveće je navedeno tržište na Base-u. Očitano na lancu 26. oktobra 2026. u 06:06 UTC:
+
+| Polje              | Vrednost                                    |
+| ------------------ | ------------------------------------------- |
+| Token zajma        | USDC                                        |
+| Kolateral          | cbBTC, jedini                               |
+| LLTV               | 86%                                         |
+| Likvidacioni bonus | 4,38% (kursor 0,3)                          |
+| Dospeće            | 25. decembar 2026., 15:00 UTC, za 60,4 dana |
+| rcfThreshold       | 3.000 USDC                                  |
+| Kapije i naknade   | Nema                                        |
+| Dug na dospeću     | 1.530.235,58 USDC kod 117 dužnika           |
+| Cena cbBTC-a       | 80.097,33 USDC (orakl tržišta)              |
+
+**Zaduživanje.** Najbolja cena po kojoj je dužnik mogao da proda jedinice bila je 0,9901297. Uzeti 10.000 USDC po toj ceni znači dugovati oko 10.099,69 USDC 25. decembra 2026.: 0,997% za 60,4 dana, oko 6,0% godišnje. Ta cena se menja iz minuta u minut.
+
+**Tipična pozicija.** Medijalni dužnik na dospeću duguje 37,08 USDC uz 0,00060018 cbBTC vrednih 48,07 USDC. Njegov maksimalni dug je 48,07 × 0,86 = 41,34 USDC, pa mu je health factor 41,34 ÷ 37,08 = 1,11. Do 1 stiže ako cbBTC padne na oko 71.838 USDC, 10,3% niže.
+
+**Ako cbBTC pre dospeća padne malo ispod 71.838 USDC.** Pozicija je daleko ispod praga od 3.000 USDC, pa likvidator može da otplati svih 37,08 USDC i uzme cbBTC vredan 38,71 USDC. Od 43,12 USDC u cbBTC-u dužniku ostaje oko 4,41 USDC za povlačenje.
+
+**Ako dužnik zaboravi da otplati, a cbBTC ostane na 80.097 USDC.** Od 15:00:01 UTC 25. decembra bilo ko može da otplati 37,08 USDC i uzme cbBTC; likvidator može da deluje u bilo kojoj sekundi posle 15:00:00. Bonus raste s vremenom: oko 2,2% posle trideset minuta, punih 4,38% posle sat vremena. Likvidacija sat vremena ili više posle dospeća uzima cbBTC vredan 38,71 USDC i dužniku ostavlja 9,37 USDC u cbBTC-u. Otplata od 37,08 USDC na vreme zadržala bi svih 48,07 USDC u cbBTC-u, neto 10,99 USDC, pa ta likvidacija dužnika košta 1,63 USDC, pun bonus. Ranija likvidacija košta manje, ali ništa ne tera likvidatora da čeka.
+
+## Kako se Midnight poredi sa zajmom s promenljivom kamatom na Morpho Blue?
+
+|                                   | Morpho Blue                                                                          | Morpho Midnight                                                                                                            |
+| --------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| Kamata                            | Stalno se menja prema modelu kamatne stope tržišta                                   | Fiksna u trenutku zaduživanja                                                                                              |
+| Dug                               | Raste s kamatom                                                                      | Utvrđen broj jedinica, ne raste                                                                                            |
+| Datum završetka                   | Nema                                                                                 | Dospeće                                                                                                                    |
+| Kolateral po tržištu              | Jedan                                                                                | Jedan ili više, svaki sa sopstvenim LLTV-om                                                                                |
+| Može biti likvidiran kada         | Nije zdrav                                                                           | Nije zdrav, ili bilo koji dug posle dospeća                                                                                |
+| Bonus                             | 1 ÷ (1 − 0,3 × (1 − LLTV)), najviše 15%                                              | 1 ÷ (1 − cursor × (1 − LLTV)), kursor se postavlja po kolateralu, bez gornje granice od 15%                                |
+| Koliko odjednom                   | Do celog duga u jednom pozivu                                                        | Pre dospeća, koliko vraća zdravlje (ceo kolateral ako bi ostatak otplatio manje od rcfThreshold-a); posle dospeća, ceo dug |
+| Predlikvidacija (pre-liquidation) | Morpho je povlači, vidi [predlikvidaciju na Morphu](/sr/blog/morpho-predlikvidacija) | Nije deo Midnighta                                                                                                         |
+| Raniji izlazak                    | Otplata u bilo kom trenutku                                                          | Otplata po nominalnoj vrednosti ili otkup jedinica ako postoje prodavci                                                    |
+
+Praktična razlika za tvoj health factor: na Blue-u može da padne samo zbog kamate, kao na Aave-u ([kako skokovi kamata utiču na tvoj health factor](/sr/blog/aave-kamatne-stope#kako-skokovi-stope-uticu-na-tvoj-health-factor)). Na Midnightu pada samo kada padnu cene kolaterala, ili kada povučeš kolateral ili se dodatno zadužiš. Zauzvrat, Midnight dodaje datum koji ne smeš da propustiš.
+
+## Kako upozorenja mogu da pomognu kod Midnight zajma?
+
+Upozorenje može da te obavesti o oba rizika Midnight zajma: o padu health factora i o približavanju dospeća. Tokenping proverava na svakih 5 minuta. Njegova [Morpho kontrolna tabla](/sr/morpho) prikazuje pozicije zaduživanja novčanika na tržištima navedenim u Morphovoj aplikaciji na 14 mreža, Blue i Midnight, a pregled tvojih pozicija ne zahteva plaćanje. Upozorenja za Midnight pokrivaju tržišta koja navodi Morphov API. Na dan 26. oktobra 2026. ta tržišta su bila na Ethereumu i Base-u; Tokenping pokriva i Arc i Robinhood Chain čim Morpho tamo navede Midnight tržišta. Do tada upozorenja za Midnight na te dve mreže nisu moguća.
+
+Za Midnight zajam:
+
+- **Zdravlje.** Tokenping računa tvoj health factor sa lanca Morphovom sopstvenom matematikom, nikada iz Morphovog API-ja. Dok je ispod praga koji postaviš (od 1,02 do 10), svaka provera šalje poruku na svaki kanal koji si izabrao: Signal, Telegram ili e-poštu.
+- **Dospeće.** Dobijaš jedan podsetnik u poslednjih 7 dana pre dospeća i jedan u poslednja 24 sata.
+- **Posle dospeća.** Dok god dug postoji, svaka provera šalje upozorenje, jer zajam može biti likvidiran bez obzira na health factor.
+
+Upozorenja koštaju <AlertPrice />, isti plan kao upozorenja za Aave. Upozorenje ti daje vreme da reaguješ; ne sprečava likvidaciju, a cena može da se pomeri između dve provere.
+
+## Izvori
+
+- [Morpho dokumentacija: Midnight concepts](https://docs.morpho.org/learn/concepts/midnight): jedinice, potraživanje i dug, raniji izlasci, kolateral i zdravlje (pristupljeno 26. oktobra 2026)
+- [Morpho dokumentacija: Midnight liquidations](https://docs.morpho.org/learn/concepts/midnight/liquidations): dva puta likvidacije, rast bonusa posle dospeća i zašto neotplaćen dug posle dospeća može biti likvidiran (pristupljeno 26. oktobra 2026)
+- [Morpho dokumentacija: offers](https://docs.morpho.org/learn/concepts/midnight/offers) i [gates](https://docs.morpho.org/learn/concepts/midnight/gates): prelazak pomoću povratnih poziva i šta kapije mogu, a šta ne mogu da blokiraju (pristupljeno 26. oktobra 2026)
+- [Morpho dokumentacija: market mechanics](https://docs.morpho.org/developers/midnight/concepts/market-mechanics), [collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) i [fees](https://docs.morpho.org/developers/midnight/concepts/fees) (pristupljeno 26. oktobra 2026)
+- [Morpho dokumentacija: exit a borrow early](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-early) i [exit a borrow at maturity](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-by-repaying-in-full-at-maturity) (pristupljeno 26. oktobra 2026)
+- [Morpho dokumentacija: contract addresses](https://docs.morpho.org/developers/contracts/addresses): Midnight i BlueFallbackRolling na svakoj mreži (pristupljeno 26. oktobra 2026)
+- [morpho-org/midnight](https://github.com/morpho-org/midnight): Midnight.sol (provera zdravlja, likvidacija, otplata, povlačenja), ConstantsLib.sol (naknade, bonus, rast tokom 60 minuta, ograničenja kolaterala) i README periferije (periphery) (pristupljeno 26. oktobra 2026)
+- [morpho-org/morpho-blue](https://github.com/morpho-org/morpho-blue): Blue konstante za likvidaciju i bonus (pristupljeno 26. oktobra 2026)
+- [Now live: Morpho Midnight and the new Markets App](https://morpho.org/blog/now-live-morpho-midnight) (21. jul 2026.) i [Morpho Midnight: what to expect at launch](https://morpho.org/blog/morpho-midnight-what-to-expect-at-launch) (17. jul 2026.) (pristupljeno 26. oktobra 2026)
+- [Morpho Fixed Rate Markets](https://morpho.org/blog/morpho-v2-liberating-the-potential-of-onchain-loans): ranija Morphova objava o Midnightu i Vaults V2 (pristupljeno 26. oktobra 2026)
+- [Morpho Midnight API](https://api.morpho.org/v0/midnight/markets): navedena tržišta, knjiga naloga i pozicije dužnika (pristupljeno 26. oktobra 2026)
+- Midnight ugovori na mrežama [Base](https://basescan.org/address/0xAdedD8ab6dE832766Fedf0FaC4992E5C4D3EA18A) u bloku 53102734 i [Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f) u bloku 26274992: definicije tržišta, ukupni iznosi, naknade i cene orakla (pristupljeno 26. oktobra 2026)
+
+_Edukativni sadržaj, a ne finansijski savet. Upozorenja smanjuju rizik, ali ne sprečavaju likvidaciju._

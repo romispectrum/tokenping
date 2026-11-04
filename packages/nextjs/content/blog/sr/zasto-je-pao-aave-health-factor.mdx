@@ -1,0 +1,156 @@
+export const meta = {
+  slug: "zasto-je-pao-aave-health-factor",
+  title: "Zašto je pao moj Aave health factor? 6 uzroka",
+  description:
+    "Aave health factor može da padne i kad ništa ne radiš: kretanje cena, kamata, niži prag likvidacije, depeg stablecoina i greške orakla, objašnjeno.",
+  h1: "Zašto je moj Aave health factor pao kad nisam ništa uradio?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-25",
+  primaryQuestion: "Zašto moj Aave health factor pada sam od sebe?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Aave ponovo izračunava tvoj health factor (faktor zdravlja) iz cena orakla (izvora cene), tvojih trenutnih stanja i
+  važećih pragova likvidacije pri svakom očitavanju, pa se menja i kad ne šalješ nikakve transakcije. Na Aave V3 pada
+  kad padne cena tvog kolaterala, kad poraste imovina u kojoj si se zadužio, kad kamata na tvoj dug nadmaši ono što
+  zarađuje tvoj kolateral, kad governance smanji prag likvidacije, kad stablecoin koji si deponovao kao kolateral
+  sklizne ispod 1 $ ili kad je orakl pogrešno konfigurisan. Ispod 1,00 pozicija može biti likvidirana.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Brojke i brojevi blokova u kojima su očitane: content/blog/snapshots/why-aave-health-factor-dropped.md */}
+
+## Zašto se Aave health factor menja sam od sebe?
+
+Aave health factor se menja sam od sebe jer nije sačuvan: protokol ga ponovo izračunava iz trenutnih cena orakla, stanja (uključujući obračunatu kamatu) i parametara rizika pri svakom očitavanju:
+
+**HF = Σ(vrednost kolaterala × prag likvidacije) ÷ ukupna vrednost duga**
+
+Obe strane su izražene u USD po ceni Aave orakla, a ispod 1,00 pozicija može biti likvidirana. Formulu objašnjava vodič [šta je Aave health factor](/sr/blog/aave-health-factor-objasnjen). Na Aave V3 šest stvari ga snižava bez ikakve tvoje radnje. Primeri koriste parametre tržišta Ethereum Core očitane 14. oktobra 2026. i ilustrativnu cenu ETH-a od 2.400 $.
+
+| Uzrok                                             | Snižava tvoj health factor kad                                                          | Koliko brzo        | Primer                                                       |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------ | ------------------------------------------------------------ |
+| 1. Pad cene kolaterala                            | Imovina koju si deponovao kao kolateral pojeftini                                       | Brzinom tržišta    | 10 WETH uz 12.000 USDC, ETH niži 10%: sa 1,66 na 1,49        |
+| 2. Rast pozajmljene imovine                       | Zadužio si se u volatilnoj imovini i ona poskupi                                        | Brzinom tržišta    | 10.000 USDC uz 2,5 WETH, ETH viši 10%: sa 1,30 na 1,18       |
+| 3. Kamata                                         | Kamatna stopa na zaduživanje za tvoj dug je viša od kamatne stope na depozit kolaterala | Sporo i neprekidno | 10 WETH uz 12.000 USDC: sa oko 1,66 na 1,61 za godinu        |
+| 4. Niži prag likvidacije                          | Governance ili Risk Stewards snize prag tvog kolaterala                                 | Sve odjednom       | Hipotetičko smanjenje za WETH sa 83% na 82%: sa 1,66 na 1,64 |
+| 5. Depeg stablecoina (gubitak vezanosti za dolar) | Stablecoin koji si deponovao kao kolateral padne ispod 1 $                              | Brzinom tržišta    | 10.000 USDC uz 2,5 WETH, USDC na 0,88 $: sa 1,30 na 1,14     |
+| 6. Greška orakla ili kursa                        | Orakl vrednuje tvoj kolateral prenisko ili tvoj dug previsoko                           | Sve odjednom       | Mart 2026.: wstETH vrednovan oko 2,85% prenisko              |
+
+U jednoj temi na Aave forumu za governance iz februara 2025. dužnik čija je pozicija krenula sa health factorom 1,71 zatekao je delimičnu likvidaciju, dodao kolateral kad je health factor stigao do 1,01, a ujutru, pri proveri, zatekao i drugu likvidaciju, uveren da ETH nije pao dovoljno da objasni bilo koju od njih. Niko u temi nije pronašao uzrok; šest uzroka u nastavku su mesto odakle treba početi traženje.
+
+Aave V4, aktivan na Ethereumu od 30. marta 2026., a od tada i na Avalancheu, Arcu i Baseu, računa health factor po Spokeu, sa jednim faktorom kolaterala (collateral factor) po imovini. Cene i kamata ga pomeraju na isti način, ali promene parametara do postojećih pozicija stižu drugačije (vidi [kako V4 primenjuje promene parametara, pod uzrokom 4](#uzrok-4-da-li-su-governance-ili-risk-stewards-smanjili-prag-likvidacije)).
+
+## Uzrok 1: da li je pala cena tvog kolaterala?
+
+Pad cene bilo koje imovine koju si deponovao kao kolateral snižava tvoj Aave health factor, jer se kolateral vrednuje po ceni orakla. Sa jednom volatilnom imovinom kao kolateralom i dugom u stablecoinu, health factor se kreće srazmerno ceni: pad od 10% smanjuje ga za 10%.
+
+Uzmi 10 WETH deponovanih uz 12.000 pozajmljenih USDC na Aave V3 Ethereum Core, gde je prag likvidacije (liquidation threshold) za WETH u bloku 26193284 (14. oktobra 2026.) iznosio 83%. Uz ilustrativnih 2.400 $ po ETH-u (Aave orakl je tog dana u bloku 26193376 pokazivao 2.414,78 $), health factor iznosi 24.000 × 0,83 ÷ 12.000 = 1,66. Pri 2.160 $ iznosi 1,49, pri 1.920 $ iznosi 1,33, a pri 1.445,78 $, posle pada od 39,8%, stiže do 1,00.
+
+Sa više vrsta imovine kao kolateralom pomera se samo ponderisani udeo imovine koja pada. Važna je cena Aave orakla (na Ethereum Core WETH koristi feed nazvan „ETH / USD“). Koliko cene mogu da padnu pri kom health factoru, piše u vodiču [koliko prostora ti daje health factor](/sr/blog/bezbedan-aave-health-factor).
+
+## Uzrok 2: da li je porasla cena imovine koju si pozajmio?
+
+Ako si se zadužio u volatilnoj imovini, rast njene cene snižava tvoj Aave health factor, jer se i dug vrednuje po ceni orakla.
+
+Uzmi 10.000 deponovanih USDC uz 2,5 pozajmljenih WETH na Aave V3 Ethereum Core, gde je prag likvidacije za USDC u bloku 26193284 (14. oktobra 2026.) iznosio 78%. Uz ilustrativnih 2.400 $ dug vredi 6.000 $, a health factor iznosi 10.000 × 0,78 ÷ 6.000 = 1,30. Ako ETH poraste 10%, na 2.640 $, health factor padne na 7.800 ÷ 6.600 = 1,18. Pri 3.120 $, 30% više, stiže do 1,00.
+
+Korelisani parovi, kao što je wstETH kao kolateral uz dug u WETH-u, smanjuju ovaj efekat jer se obe strane kreću sa ETH-om. Health factor tada uglavnom zavisi od kursa wstETH-a prema ETH-u koji prijavljuje orakl, čime se tržišni rizik menja za rizik orakla (vidi [greške orakla i kursa, uzrok 6](#uzrok-6-da-li-je-greska-orakla-ili-kursa-pogresno-vrednovala-tvoj-kolateral)).
+
+## Uzrok 3: da li je kamata na tvoj dug rasla brže od kamate na kolateral?
+
+Kamata snižava tvoj Aave health factor kad tvoj dug raste brže od kolaterala. Promenljivi dug raste svake sekunde po kamatnoj stopi na zaduživanje, dok kolateral zarađuje obično nižu kamatnu stopu na depozit. Sa jednom imovinom kao kolateralom, jednom imovinom duga i stabilnim cenama, health factor polako klizi naniže kad je kamatna stopa na zaduživanje za dug viša od kamatne stope na depozit kolaterala, a naviše kad je niža.
+
+Na Aave V3 Ethereum Core u bloku 26193378 (14. oktobra 2026.) USDC je deponentima plaćao 3,800%, a dužnike koštao 4,496% godišnje; WETH je plaćao 1,309% i koštao 1,943%. To su APR vrednosti; aplikacija Aave prikazuje nešto više APY vrednosti (4,60% za tu kamatnu stopu na zaduživanje u USDC-u). Uzmi 10 deponovanih WETH (prag 83%) uz 12.000 pozajmljenih USDC, sa ETH-om stabilnim na ilustrativnih 2.400 $ i stopama nepromenjenim godinu dana. Dug naraste na oko 12.550 USDC, kolateral na oko 10,13 WETH, a health factor sklizne sa 1,66 na oko 1,61. Stope su promenljive, pa to shvati kao red veličine, a ne kao prognozu.
+
+Stope mogu i da skoče. Kasnije 14. oktobra 2026. kamatna stopa na zaduživanje u USDC-u na tržištu Ethereum Core u jednom bloku je skočila na 13,67% APR (26194053, 23:32:59 UTC) kad je oko 134 miliona $ deponovanog USDC-a napustilo rezervu, za sedam minuta stigla do 14,18% i vratila se na 4,76% oko 36 minuta posle skoka (blok 26194231, u 00:08 UTC 15. oktobra), kad se taj USDC vratio. Zašto jedno povlačenje može da utrostruči stopu, objašnjava vodič [kako funkcionišu kamatne stope na Aaveu](/sr/blog/aave-kamatne-stope).
+
+Obrnuta pozicija dobija: 10.000 deponovanih USDC uz 2,5 pozajmljenih WETH zarađuje 3,800% i plaća 1,943%, pa joj health factor za godinu dana polako poraste sa 1,30 na oko 1,32. Na Aave V4 User Risk Premium (dodatak za rizik korisnika) povećava kamatnu stopu na zaduživanje za rizičniji kolateral, pa takav dug raste brže.
+
+## Uzrok 4: da li su governance ili Risk Stewards smanjili prag likvidacije?
+
+Na Aave V3 smanjenje praga likvidacije neke imovine odmah snižava health factor svake otvorene pozicije koja tu imovinu računa po njenom uobičajenom pragu. Pozicije čija kategorija E-Mode uključuje tu imovinu umesto toga koriste prag kategorije, a governance ili Risk Stewards mogu i njega da smanje na isti način. Tvoja stanja ostaju ista; smanjuje se samo udeo kolaterala koji se računa.
+
+Upravljanje protokolom (governance) menja pragove glasanjem on-chain, obično posle objave na Aave forumu za governance. Risk Stewards, ugovori koji Aaveovim pružaocima usluga upravljanja rizikom omogućavaju da podese parametre bez punog glasanja, takođe mogu da pomere prag u okviru zadatih granica po jednoj izmeni, ali nikad na 0. Smanjenjima se imovina i povlači iz upotrebe: predlog LlamaRiska od 29. jula 2026. navodi da se pragovi mogu postepeno smanjivati kako bi se uklonio preostali kolateral, a pet tržišta koja Aave gasi obrađuje vodič [šta se dešava kad Aave gasi tržište](/sr/blog/gasenje-aave-trzista).
+
+Hipotetički primer, a ne promena koja je na čekanju: 10 WETH po ilustrativnih 2.400 $ uz 12.000 USDC na Ethereum Core (prag za WETH 83% 14. oktobra 2026.) ima health factor 1,66. Uz 82% bio bi 1,64, a uz 80% 1,60. Da proveriš, uporedi „Liquidation threshold“ (prag likvidacije) na stranici imovine u aplikaciji Aave sa nedavnim promenama pragova na Aave forumu za governance.
+
+Aave V4 radi drugačije. Promena faktora kolaterala stvara novu konfiguraciju, a postojeće pozicije zadržavaju staru dok se korisnik ne zaduži, ne povuče sredstva ili ne promeni podešavanja kolaterala, osim ako ih Governor prinudno ne ažurira.
+
+## Uzrok 5: da li je stablecoin koji si deponovao kao kolateral doživeo depeg naniže?
+
+Stablecoin koji si deponovao kao kolateral snižava tvoj Aave health factor kad mu cena padne ispod 1 $, jer Aave koristi cenu orakla, a ne fiksni 1 $. Na Aave V3 Ethereum Core cena USDC-a dolazi preko adaptera nazvanog „Capped USDC / USD“ sa gornjom granicom od 1,04 $ (`getPriceCap` je vratio 104000000, 8 decimala, u blokovima 26193376 i 26193993 14. oktobra 2026.). Kad je tržišna cena iznad granice, adapter prijavljuje 1,04 $; svaka niža cena, uključujući sve ispod 1 $, prolazi direktno.
+
+Uzmi 10.000 deponovanih USDC (prag 78%) uz 2,5 WETH pozajmljenih po ilustrativnih 2.400 $, dakle 6.000 $ duga: health factor 1,30. Sa USDC-om na 0,88 $ padne na 8.800 × 0,78 ÷ 6.000 = 1,14, a pri otprilike 0,77 $, uz nepromenjen ETH, stiže do 1,00.
+
+Iznos od 0,88 $ je istorijski. Dana 11. marta 2023., posle vesti o Silicon Valley Banku, USDC je pao na oko 88 centi. Gauntletova analiza incidenta beleži oko 280.000 $ nenaplativog duga (bad debt) na Aave V3 Avalanche u E-Modeu i oko 20.000 $ na V3 Arbitrum; stablecoini na Avalancheu su bili zamrznuti, ali protokol nije bio pauziran, pa su se likvidacije nastavile.
+
+Druga strana: ako je stablecoin tvoj dug, depeg naniže smanjuje ono što duguješ i podiže tvoj health factor. 10 WETH po 2.400 $ (prag 83%) uz 12.000 USDC ide sa 1,66 na oko 1,89 sa USDC-om na 0,88 $. Rast iznad 1 $ ga snižava, ali samo na oko 1,60 dok gornja granica ostaje na 1,04 $, jer orakl taj dug nikad ne vrednuje iznad 12.480 $.
+
+## Uzrok 6: da li je greška orakla ili kursa pogrešno vrednovala tvoj kolateral?
+
+Pogrešna konfiguracija orakla ili kursa može tvoj Aave health factor da snizi odjednom, bez ikakvog pomaka na tržištu, tako što tvoj kolateral vrednuje prenisko ili tvoj dug previsoko. Najizloženije su pozicije u E-Modeu sa visokom finansijskom polugom.
+
+Dokumentovani slučaj je iz marta 2026. Aave određuje cenu wstETH-a preko CAPO-a (Correlated Assets Price Oracle), koji ograničava koliko brzo kurs wstETH-a prema stETH-u sme da raste. Analiza incidenta firme Chaos Labs od 10. marta 2026. navodi da su se odnos i vremenska oznaka snimka te granice razišli, čime je efektivni kurs wstETH-a na tržištima Ethereum Core i Prime smanjen za oko 2,85%. Otprilike 10.938 wstETH likvidirano je u E-Modeu na 34 naloga sa health factorom ispod otprilike 1,0288, bez nenaplativog duga za protokol. DAO je odobrio nadoknadu predloženu 11. marta, a 26. marta 2026. Aave Finance Committee je povukao 513,19 WETH iz Aave trezora da je isplati (Ethereum blok 24741060); pojedinačne isplate za ovaj vodič nisu proveravane.
+
+Poređenja radi, E-Mode za imovinu korelisanu sa ETH-om na Ethereum Core imao je 14. oktobra 2026. LTV od 93% i prag od 95%. Pozicija zadužena do te granice počinje na 95 ÷ 93 ≈ 1,02, unutar raspona koji je ta greška likvidirala. Ništa u tvojoj sopstvenoj poziciji te ne upozorava na grešku orakla; udaljenost od 1,00 je jedina zaštita koju kontrolišeš.
+
+## Koje promene ne snižavaju tvoj health factor?
+
+Na Aave V3 smanjenje odnosa zajma i vrednosti (LTV), uključujući LTV 0, zamrzavanje rezerve, pauziranje rezerve i prebacivanje kategorije E-Mode u izolovani režim ne menjaju tvoj health factor, jer nijedna od tih promena ne menja cene, stanja ni pragove likvidacije. Umesto toga blokiraju zaduživanje ili druge radnje.
+
+| Promena na Aave V3                         | Šta blokira                                                            | Da li menja tvoj health factor?                     | Da li i dalje možeš biti likvidiran?                                                                                                                                  |
+| ------------------------------------------ | ---------------------------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Smanjenje LTV-a, uključujući LTV 0         | Novo zaduživanje uz tu imovinu                                         | Ne: health factor koristi prag, a ne LTV            | Da, ispod 1,00                                                                                                                                                        |
+| Zamrznuta rezerva                          | Novo deponovanje i zaduživanje te imovine                              | Ne                                                  | Da, zamrznute rezerve i dalje mogu da se likvidiraju                                                                                                                  |
+| Kategorija E-Mode postala izolovana (V3.7) | Zaduživanje uz kolateral van kategorije                                | Ne: taj kolateral dobija LTV 0 i zadržava svoj prag | Da, ispod 1,00                                                                                                                                                        |
+| Pauzirana rezerva                          | Deponovanje, povlačenje, zaduživanje, otplatu i likvidaciju te imovine | Ne                                                  | Ne sa tom imovinom, ni kao kolateralom ni kao dugom, dok je pauzirana; sa drugom imovinom i dalje možeš. Posle ponovnog pokretanja može da usledi do 4 sata odlaganja |
+
+Stvaran slučaj iz prvog reda: posle napada na rsETH most Kelp/LayerZero 18. aprila 2026. LTV za WETH je postavljen na 0 na nekoliko instanci Aave V3, dok je njegov prag na Ethereum Core ostao 83%, prema predlogu LlamaRiska od 9. maja 2026. da se on vrati. Health factori se zbog toga nisu pomerili.
+
+## Kako da saznaš šta se desilo sa tvojom pozicijom?
+
+Da saznaš šta se desilo sa pozicijom na Aaveu, proveri da li je bila likvidirana, a zatim koji se ulazni podatak pomerio: cene, kamata, pragovi ili orakl. Ovi koraci koriste interfejs Aave Labsa na app.aave.com i javne zapise governancea.
+
+1. **Proveri likvidacije.** Otvori „Transaction history“ (istorija transakcija, app.aave.com/history) sa povezanim novčanikom i izabranim pravim tržištem, a zatim filtriraj po „Liquidation“ (likvidacija). Zapisi iza toga uključuju vreme, hash transakcije, uzeti kolateral i otplaćeni dug; programeri mogu da ih preuzmu upitom `userTransactionHistory` u Aave API-ju.
+2. **Uporedi cene** imovine kolaterala i duga sa onima kad si poslednji put proveravao (uzroci 1, 2 i 5).
+3. **Uporedi svoj dug, u jedinicama tokena, sa onim što si pozajmio.** Ako nisi ništa otplaćivao i nisi bio likvidiran, razlika je obračunata kamata (uzrok 3).
+4. **Proveri prag likvidacije** na stranici svake imovine u aplikaciji Aave i na forumu za governance potraži svaku imovinu čiji prag deluje niže (uzrok 4).
+5. **Potraži analize incidenata** na forumu za governance, poput one o wstETH-u iz marta 2026. (uzrok 6).
+
+Ako si bio likvidiran, vodič [šta se dešava pri likvidaciji na Aaveu](/sr/blog/kako-funkcionise-likvidacija-na-aaveu) objašnjava koliko može da se uzme odjednom i koliko to košta.
+
+## Može li upozorenje za health factor da te upozori pre likvidacije?
+
+Upozorenje može na vreme da te upozori na spor pad tvog Aave health factora, ali ne i na skok koji pređe 1,00 između dve provere. Kamata, postepeni padovi cena i smanjenja pragova u fazama odvijaju se tokom sati ili meseci, pa upozorenje postavljeno dobro iznad 1,00 ima mnogo prilika da se aktivira. Krah, smanjenje praga na poziciji koja je već blizu granice ili greška orakla poput one sa wstETH-om iz marta 2026. mogu da pređu 1,00 pre nego što bilo koja zakazana provera reaguje.
+
+Tokenping je napravljen za tu sporu vrstu. Proverava tvoj health factor na Aave V3 i V4 svakih 5 minuta na 22 mreže i šalje ti poruku na Signal, Telegram ili e-poštu dok je ispod praga koji si postavio (od 1,1 do 10). Poruka se ponavlja pri svakoj proveri dok se health factor ne oporavi ili dok prag ne spustiš ispod njega ili ne obrišeš upozorenje (za oboje ti treba aktivan plaćeni pristup), bez poruke o oporavku. Na Aave V3 pokriva svako tržište, uključujući četiri na Ethereumu; na Aave V4 svaki Spoke; svako tržište ima sopstveno upozorenje.
+
+Upozorenju treba i vremena da se na njega reaguje. U jednoj temi na Polygon forumu iz 2021. dužnik koji je pokušao da otplati dug pri health factoru 1,01 stalno je nailazio na greške i bio likvidiran pre nego što je otplata prošla. Jedna mogućnost je prag pri kojem bi ti i dalje bilo prijatno da reaguješ; vodič [koliko prostora ti daje health factor](/sr/blog/bezbedan-aave-health-factor) pomaže ti da ga izabereš. Podešavanje je opisano u vodiču [kako da podesiš upozorenje za health factor](/sr/blog/podesavanje-aave-health-factor-upozorenja), a vodič [kako da podigneš svoj Aave health factor](/sr/blog/kako-izbeci-likvidaciju-na-aaveu) obrađuje šta da radiš kad padne. Možeš i najpre da [proveriš svoj health factor na Aave V3](/sr/aave).
+
+## Izvori
+
+- [Pregled Aave V3](https://aave.com/docs/aave-v3/overview.md): health factor se menja sa cenama orakla i obračunatom kamatom (pristupljeno 14. oktobra 2026)
+- [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) i [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): izračun health factora, provere pauziranja i zamrzavanja (aave-v3-origin, pristupljeno 14. oktobra 2026)
+- [Aave V3 Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): LTV, pragovi i stope u blokovima 26193284, 26193378 i 26193993 (pristupljeno 14. oktobra 2026); stope za USDC u blokovima 26194052, 26194053, 26194230 i 26194231 (pristupljeno 15. oktobra 2026)
+- [Aave V3 Ethereum Core orakl](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2#readContract): WETH 2.414,78 $ u bloku 26193376 (pristupljeno 14. oktobra 2026)
+- [Adapter Capped USDC / USD](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract) i njegov [izvorni kod, PriceCapAdapterStable.sol](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol): gornja granica 104000000 u blokovima 26193376 i 26193993 (pristupljeno 14. oktobra 2026)
+- [Aave dokumentacija o oraklu](https://aave.com/docs/ecosystem/oracle.md) (pristupljeno 14. oktobra 2026)
+- [Aave dokumentacija o governanceu](https://aave.com/docs/ecosystem/governance.md) i [README za Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards) (pristupljeno 14. oktobra 2026)
+- [ARFC: Low Adoption Asset Deprecation on Aave V3](https://governance.aave.com/t/arfc-low-adoption-asset-deprecation-on-aave-v3/25401) (LlamaRisk, 29. jul 2026, pristupljeno 14. oktobra 2026)
+- [Aave spisak promena u dokumentaciji (changelog)](https://aave.com/docs/resources/changelog.md): V4 na Ethereumu od 30. marta 2026, zatim Avalanche, Arc i Base (pristupljeno 14. oktobra 2026)
+- [Dokumentacija za Aave V4](https://aave.com/docs/aave-v4.md), [pozicije na V4](https://aave.com/docs/aave-v4/positions.md) i [tehnički pregled V4](https://github.com/aave/aave-v4/blob/main/docs/overview.md): health factor po Spokeu, User Risk Premium, dinamička konfiguracija rizika (pristupljeno 14. oktobra 2026)
+- [Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (Gauntlet, 17. mart 2023, pristupljeno 14. oktobra 2026)
+- [Post-mortem: wstETH exchange-rate misalignment on Core and Prime](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269) (Chaos Labs, 10. mart 2026, pristupljeno 14. oktobra 2026)
+- [wstETH CAPO Oracle Incident User Reimbursement](https://governance.aave.com/t/direct-to-aip-wsteth-capo-oracle-incident-user-reimbursement/24275) (TokenLogic, 11. mart 2026, pristupljeno 14. oktobra 2026)
+- [Izvršenje governance payloada 413](https://etherscan.io/tx/0xca0bcaa2b20b465afb332677a8425d8a10e050c4a31731feadc3a684ecb9b81e) i [povlačenje Aave Finance Committeeja](https://etherscan.io/tx/0x7860a20437b36af635e8be248a929c437412915b91de7c45e947475c6bb02f24): odobrenje za 513,19 WETH iz Aave Ethereum Collectora, zatim povučeno u bloku 24741060 (pristupljeno 15. oktobra 2026)
+- [WETH Unfreeze and LTV Restoration Across Aave V3 Instances](https://governance.aave.com/t/direct-to-aip-weth-unfreeze-and-ltv-restoration-across-aave-v3-instances/24878) (LlamaRisk, 9. maj 2026, pristupljeno 14. oktobra 2026)
+- [Aave v3.7, izolovani E-Mode](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md) i [funkcije v3.1](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): oznaka izolovanosti, period odlaganja posle ponovnog pokretanja (pristupljeno 14. oktobra 2026)
+- [Istorija korisničkih transakcija na Aave V3](https://aave.com/docs/aave-v3/markets/advanced.md) i [filteri istorije u Aave interfejsu](https://github.com/aave/interface/blob/main/src/modules/history/HistoryFilterMenu.tsx) (pristupljeno 14. oktobra 2026)
+- Stranica rezerve u Aave interfejsu, stope prikazane kao APY: [SupplyInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/SupplyInfo.tsx) (pristupljeno 14. oktobra 2026) i [BorrowInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/BorrowInfo.tsx), „APY, variable“ (pristupljeno 15. oktobra 2026)
+- [Unexpected or poorly executed settlement by the system](https://governance.aave.com/t/unexpected-or-poorly-executed-settlement-by-the-system/21120) (Aave forum za governance, 17. februar 2025, pristupljeno 14. oktobra 2026)
+- [Liquidation on polygon AAVE - JSON ERROR](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067) (Polygon forum, 18. maj 2021, pristupljeno 14. oktobra 2026)
+
+_Edukativni sadržaj, a ne finansijski savet. Upozorenja smanjuju rizik, ali ne sprečavaju likvidaciju._

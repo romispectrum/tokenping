@@ -868,6 +868,67 @@ import SlAaveMarketWindDown, { meta as slAaveMarketWindDown } from "~~/content/b
 import SlPrivateAaveLiquidationAlerts, {
   meta as slPrivateAaveLiquidationAlerts,
 } from "~~/content/blog/sl/zasebna-aave-opozorila-o-likvidaciji.mdx";
+import SrAaveEMode, { meta as srAaveEMode } from "~~/content/blog/sr/aave-e-mode-objasnjen.mdx";
+import SrAaveHealthFactor, { meta as srAaveHealthFactor } from "~~/content/blog/sr/aave-health-factor-objasnjen.mdx";
+import SrAaveInterestRates, { meta as srAaveInterestRates } from "~~/content/blog/sr/aave-kamatne-stope.mdx";
+import SrAaveLiquidationPrice, { meta as srAaveLiquidationPrice } from "~~/content/blog/sr/aave-likvidaciona-cena.mdx";
+import SrAaveAlertsDoNotDisturb, {
+  meta as srAaveAlertsDoNotDisturb,
+} from "~~/content/blog/sr/aave-upozorenja-u-rezimu-ne-uznemiravaj.mdx";
+import SrAaveLiquidationAlertTools, {
+  meta as srAaveLiquidationAlertTools,
+} from "~~/content/blog/sr/alati-za-aave-upozorenja-o-likvidaciji.mdx";
+import SrSafeAaveHealthFactor, {
+  meta as srSafeAaveHealthFactor,
+} from "~~/content/blog/sr/bezbedan-aave-health-factor.mdx";
+import SrStablecoinDepegAave, {
+  meta as srStablecoinDepegAave,
+} from "~~/content/blog/sr/depeg-stablecoina-na-aaveu.mdx";
+import SrAaveMarketWindDown, { meta as srAaveMarketWindDown } from "~~/content/blog/sr/gasenje-aave-trzista.mdx";
+import SrHowAaveLiquidationWorks, {
+  meta as srHowAaveLiquidationWorks,
+} from "~~/content/blog/sr/kako-funkcionise-likvidacija-na-aaveu.mdx";
+import SrHowMorphoLiquidationWorks, {
+  meta as srHowMorphoLiquidationWorks,
+} from "~~/content/blog/sr/kako-funkcionise-likvidacija-na-morphu.mdx";
+import SrAvoidAaveLiquidation, {
+  meta as srAvoidAaveLiquidation,
+} from "~~/content/blog/sr/kako-izbeci-likvidaciju-na-aaveu.mdx";
+import SrWhoNeedsHealthFactorAlerts, {
+  meta as srWhoNeedsHealthFactorAlerts,
+} from "~~/content/blog/sr/kome-trebaju-health-factor-upozorenja.mdx";
+import SrLiquidatedOnAaveOrMorphoWhatNow, {
+  meta as srLiquidatedOnAaveOrMorphoWhatNow,
+} from "~~/content/blog/sr/likvidiran-na-aaveu-ili-morphu-sta-sada.mdx";
+import SrMorphoHealthFactor, {
+  meta as srMorphoHealthFactor,
+} from "~~/content/blog/sr/morpho-health-factor-objasnjen.mdx";
+import SrMorphoMidnightFixedRateLoans, {
+  meta as srMorphoMidnightFixedRateLoans,
+} from "~~/content/blog/sr/morpho-midnight-zajmovi-s-fiksnom-kamatom.mdx";
+import SrMorphoPreLiquidation, { meta as srMorphoPreLiquidation } from "~~/content/blog/sr/morpho-predlikvidacija.mdx";
+import SrAaveHealthFactorAlertSetup, {
+  meta as srAaveHealthFactorAlertSetup,
+} from "~~/content/blog/sr/podesavanje-aave-health-factor-upozorenja.mdx";
+import SrPrivateAaveLiquidationAlerts, {
+  meta as srPrivateAaveLiquidationAlerts,
+} from "~~/content/blog/sr/privatna-aave-upozorenja-o-likvidaciji.mdx";
+import SrShortFiatWithAave, {
+  meta as srShortFiatWithAave,
+} from "~~/content/blog/sr/sortovanje-fiat-valute-uz-aave.mdx";
+import SrTokenizedStocksCollateral, {
+  meta as srTokenizedStocksCollateral,
+} from "~~/content/blog/sr/tokenizovane-akcije-kao-kolateral.mdx";
+import SrWrappedBitcoinAaveCollateral, {
+  meta as srWrappedBitcoinAaveCollateral,
+} from "~~/content/blog/sr/wrapped-bitcoin-kao-kolateral-na-aaveu.mdx";
+import SrCryptoBackedLoans, { meta as srCryptoBackedLoans } from "~~/content/blog/sr/zajmovi-uz-kripto-kolateral.mdx";
+import SrWhyAaveHealthFactorDropped, {
+  meta as srWhyAaveHealthFactorDropped,
+} from "~~/content/blog/sr/zasto-je-pao-aave-health-factor.mdx";
+import SrWhyAaveWithdrawOrBorrowFails, {
+  meta as srWhyAaveWithdrawOrBorrowFails,
+} from "~~/content/blog/sr/zasto-povlacenje-ili-zaduzivanje-na-aaveu-ne-uspeva.mdx";
 import StablecoinDepegAave, { meta as stablecoinDepegAave } from "~~/content/blog/stablecoin-depeg-aave.mdx";
 import TokenizedStocksCollateral, {
   meta as tokenizedStocksCollateral,
@@ -1467,5 +1528,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
     { meta: slHowMorphoLiquidationWorks, Content: SlHowMorphoLiquidationWorks },
     { meta: slMorphoPreLiquidation, Content: SlMorphoPreLiquidation },
     { meta: slMorphoMidnightFixedRateLoans, Content: SlMorphoMidnightFixedRateLoans },
+  ],
+  sr: [
+    { meta: srAaveHealthFactor, Content: SrAaveHealthFactor },
+    { meta: srSafeAaveHealthFactor, Content: SrSafeAaveHealthFactor },
+    { meta: srHowAaveLiquidationWorks, Content: SrHowAaveLiquidationWorks },
+    { meta: srAaveLiquidationPrice, Content: SrAaveLiquidationPrice },
+    { meta: srWhyAaveHealthFactorDropped, Content: SrWhyAaveHealthFactorDropped },
+    { meta: srAaveHealthFactorAlertSetup, Content: SrAaveHealthFactorAlertSetup },
+    { meta: srAaveLiquidationAlertTools, Content: SrAaveLiquidationAlertTools },
+    { meta: srAvoidAaveLiquidation, Content: SrAvoidAaveLiquidation },
+    { meta: srPrivateAaveLiquidationAlerts, Content: SrPrivateAaveLiquidationAlerts },
+    { meta: srCryptoBackedLoans, Content: SrCryptoBackedLoans },
+    { meta: srShortFiatWithAave, Content: SrShortFiatWithAave },
+    { meta: srAaveInterestRates, Content: SrAaveInterestRates },
+    { meta: srAaveAlertsDoNotDisturb, Content: SrAaveAlertsDoNotDisturb },
+    { meta: srAaveMarketWindDown, Content: SrAaveMarketWindDown },
+    { meta: srStablecoinDepegAave, Content: SrStablecoinDepegAave },
+    { meta: srAaveEMode, Content: SrAaveEMode },
+    { meta: srWhyAaveWithdrawOrBorrowFails, Content: SrWhyAaveWithdrawOrBorrowFails },
+    { meta: srWrappedBitcoinAaveCollateral, Content: SrWrappedBitcoinAaveCollateral },
+    { meta: srTokenizedStocksCollateral, Content: SrTokenizedStocksCollateral },
+    { meta: srWhoNeedsHealthFactorAlerts, Content: SrWhoNeedsHealthFactorAlerts },
+    { meta: srLiquidatedOnAaveOrMorphoWhatNow, Content: SrLiquidatedOnAaveOrMorphoWhatNow },
+    { meta: srMorphoHealthFactor, Content: SrMorphoHealthFactor },
+    { meta: srHowMorphoLiquidationWorks, Content: SrHowMorphoLiquidationWorks },
+    { meta: srMorphoPreLiquidation, Content: SrMorphoPreLiquidation },
+    { meta: srMorphoMidnightFixedRateLoans, Content: SrMorphoMidnightFixedRateLoans },
   ],
 };

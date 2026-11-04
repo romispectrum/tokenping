@@ -1,0 +1,189 @@
+export const meta = {
+  slug: "privatna-aave-upozorenja-o-likvidaciji",
+  title: "Aave upozorenja i tvoja privatnost: šta Tokenping čuva",
+  description:
+    "Šta Tokenping čuva, šta ostaje javno na lancu i kako alias e-pošte i korisnička imena na Signalu i Telegramu sprečavaju da te kontakti otkriju.",
+  h1: "Kako da dobijaš upozorenja za health factor na Aaveu a da Tokenpingu ne daš svoj identitet",
+  publishedAt: "2026-10-19",
+  primaryQuestion:
+    "Mogu li da dobijam upozorenja za health factor na Aaveu a da svoj identitet ne povežem sa adresom novčanika?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Tokenping nema nalog sa lozinkom: prijavljuješ se tako što novčanikom potpišeš poruku, a on čuva adresu tvog novčanika
+  uz kontakt koji mu daš za upozorenja. Zato mu daj kontakte koji o tebi ništa ne govore: alias e-pošte umesto sopstvene
+  adrese, korisničko ime na Signalu sa skrivenim brojem telefona i korisničko ime i ime na Telegramu koji te ne
+  identifikuju. Tako kontakt ne otkriva ko si. To te ne čini anonimnim, jer je tvoje plaćanje javno na Arbitrum One,
+  novčanik koji si negde drugde povezao sa sobom ostaje povezan, a servisi koji dostavljaju tvoja upozorenja vode
+  sopstvene zapise.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Šta Tokenping čuva, a šta ne prikuplja?
+
+Na dan 19. oktobra 2026. čuvanje upozorenja upisuje u Tokenpingovu bazu podataka jedan red po novčaniku, mreži i tržištu (Aave V3 pool ili Aave V4 Spoke). Red sadrži:
+
+- Adresu tvog novčanika.
+- Mrežu, tržište i tvoj prag.
+- Kanale koje si izabrao i jezik svakog od njih.
+- Adresu e-pošte, korisničko ime na Signalu i korisničko ime na Telegramu koje si uneo, za kanale koje si izabrao.
+- Kada je upozorenje napravljeno i poslednji put izmenjeno i kada si poslednji put poslao test poruku na svakom kanalu. Tako radi ograničenje od jednog testa po kanalu na svakih 15 minuta.
+
+Pritisak na Start u Tokenpingovom Telegram botu čuva i tvoj chat ID i vreme, u posebnoj tabeli. Ako odgovoriš na neobavezno pitanje „Kako si saznao za Tokenping?“, tvoj odgovor i vreme čuvaju se uz adresu tvog novčanika.
+
+Tokenping ne traži i ne čuva ime, broj telefona, lozinku ni proveru identiteta. Ne postavlja piksele za praćenje ni reklamne kolačiće, ne čuva istoriju tvojih pozicija (čitaju se direktno sa blockchaina) i u svojoj bazi podataka ne vodi zapis o poslatim upozorenjima. [Stranica o privatnosti](/sr/privatnost) je merodavan spisak; ovaj vodič objašnjava šta to znači za tebe i šta možeš da preduzmeš.
+
+## Kako funkcioniše prijava bez naloga?
+
+Podešavanja upozorenja pripadaju adresi novčanika, a ne nalogu. Da bi ih otvorio ili izmenio, potpisuješ poruku tim novčanikom. To je poruka Sign-in with Ethereum (EIP-4361) koja navodi sajt, tvoju adresu i nasumični jednokratni kod. Potpisivanje nije transakcija: ne košta gas i ne odobrava nijedan token. Server proverava potpis i prihvata jednokratni kod jednom, u roku od 5 minuta. Kod se čuva bez tvoje adrese i briše se kad se iskoristi.
+
+Zatim sajt postavlja jedan kolačić sesije. On nosi adresu tvog novčanika i vreme isteka, plus potpis napravljen tajnim ključem servera da ne bi mogao da se falsifikuje (potpisan je, a ne šifrovan), a skripte na stranici ne mogu da ga pročitaju (HttpOnly). Traje 7 dana, a sajt ga briše kad na sajtu prekineš vezu sa novčanikom. Dok se prijavljuješ, drugi kolačić tih nekoliko minuta čuva jednokratni kod. Svaka ruta za upozorenja zatim radi samo za novčanik iz kolačića, a zahtev koji navodi drugi novčanik se odbija.
+
+Pregled tvojih pozicija ne traži prijavu ni plaćanje. Brojevi poseta sajtu dolaze iz Vercel Web Analyticsa, koji kaže da posetioce prepoznaje po hešu napravljenom iz zahteva umesto po kolačićima trećih strana i da tu sesiju odbacuje posle 24 sata.
+
+## Ko može da pročita kontakt podatke koje sačuvaš?
+
+Kroz aplikaciju samo neko ko može da potpisuje tvojim novčanikom. Čitanje, menjanje ili brisanje upozorenja, kao i slanje test poruke, traže tvoj kolačić sesije, a zahtev koji navodi drugi novčanik se odbija. Tabele baze podataka zatvorene su za Supabaseov javni (anon) ključ: row level security je uključen bez ikakvih pravila (policies), a javne uloge nemaju nikakve privilegije. Do njih dolazi samo Tokenpingov server, sa svojim service-role ključem.
+
+To možeš da proveriš umesto da veruješ na reč, jer je Tokenpingov kod javan. Rute koje čitaju i upisuju upozorenja nalaze se u [`packages/nextjs/app/api/notifications`](https://github.com/romispectrum/tokenping/tree/main/packages/nextjs/app/api/notifications), rute za prijavu u [`packages/nextjs/app/api/auth`](https://github.com/romispectrum/tokenping/tree/main/packages/nextjs/app/api/auth), a migracije koje zatvaraju tabele za javni ključ u [`packages/supabase/migrations`](https://github.com/romispectrum/tokenping/tree/main/packages/supabase/migrations).
+
+To nije isto što i niko:
+
+- Ljudi koji vode Tokenping i hosting njegove baze podataka mogu da čitaju redove.
+- Bilo ko može da pita da li je određeno korisničko ime na Telegramu pritisnulo Start u botu. Odgovor je da ili ne, nikad chat ID.
+- Kad provera upozorenja ili poruka ne uspe, greška može da sadrži adresu tvog novčanika i primaoca, a završava u logovima servera.
+
+Sopstveni savet stranice o privatnosti je da ne unosiš adresu e-pošte ili korisničko ime na Signalu koje ne bi želeo da povežeš sa adresom svog novčanika. Ostatak ovog vodiča govori kako da ga slediš.
+
+## Koji drugi servisi obrađuju tvoje podatke?
+
+Tokenping radi na drugim provajderima, a svaki vidi deo onoga što mu daš. Ova tabela je skraćeni spisak sa stranice o privatnosti.
+
+| Servis               | Šta radi                                                     | Šta vidi                                                                                                             |
+| -------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| Vercel               | Hostuje sajt i na svakih 5 minuta pokreće proveru upozorenja | Svaki zahtev, uključujući tvoju IP adresu, i logove servera                                                          |
+| Vercel Web Analytics | Broji preglede stranica                                      | Adresu stranice, referrer (stranicu sa koje dolaziš), približnu lokaciju, pregledač, operativni sistem i tip uređaja |
+| Supabase             | Baza podataka                                                | Redove opisane gore                                                                                                  |
+| Resend               | Šalje upozorenja e-poštom                                    | Tvoju adresu e-pošte i tekst upozorenja                                                                              |
+| Fly.io relej         | Predaje upozorenja Signalu                                   | Tvoje korisničko ime na Signalu i tekst upozorenja (vidi ih i Signal)                                                |
+| Telegram             | Dostavlja upozorenja preko svog Bot API-ja                   | Tvoj chat ID i tekst upozorenja                                                                                      |
+| RPC provajderi       | Odgovaraju na čitanja sa blockchaina                         | Adresu novčanika koja se čita i tvoju IP adresu kad čitanje radi tvoj pregledač                                      |
+| WalletConnect        | Prenosi vezu sa aplikacijom tvog novčanika, ako ga koristiš  | Ono što aplikacija tvog novčanika i sajt razmenjuju da bi se povezali                                                |
+
+Tekst upozorenja navodi tržište, tvoj health factor (faktor zdravlja), tvoj prag i vreme. Ne sadrži adresu tvog novčanika.
+
+Provajderi vode sopstvene zapise. Resendov dodatak o obradi podataka (data processing addendum) navodi metapodatke, adresu e-pošte i sadržaj poruke kao minimalne lične podatke koje obrađuje za klijenta, a njegova dokumentacija kaže da podatke o e-pošti čuva 30 dana na svim planovima, uz prilagodljiv period čuvanja za Enterprise. Signal kaže da ne može da dešifruje sadržaj poruka niti da mu na drugi način pristupi. Telegramova politika privatnosti kaže da se cloud razgovori čuvaju na njegovim serverima, snažno šifrovani, dok se end-to-end šifrovanje primenjuje na Secret Chats (tajne razgovore).
+
+## Šta ostaje javno na blockchainu?
+
+Plaćanje upozorenja je transakcija na Arbitrum One. Ugovor za plaćanje beleži svaku u javnom događaju: adresu koja plaća, token, iznos, vreme, period koji si kupio i novi datum isteka. Svako može da ga pročita i niko ne može da ga obriše. Izvorni kod ugovora je [verifikovan na Sourcifyju](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553).
+
+Ništa o tvom upozorenju ne upisuje se na blockchain: ni prag, ni tvoj alias e-pošte, ni tvoje korisničko ime na Signalu, ni tvoje korisničko ime na Telegramu. I tvoje pozicije na Aaveu su javne. ethereum.org opisuje blockchain kao „a public database“ (javnu bazu podataka), a Tokenping čita tvoju poziciju view pozivima koje može da napravi bilo ko. Veza između tvog novčanika i njegovih pozicija nikad nije zavisila od Tokenpinga.
+
+## Šta Tokenping može da poveže, a šta ne može?
+
+Tokenping može da poveže adresu tvog novčanika sa kontaktima koje mu sačuvaš, sa tržištima na kojima se zadužuješ, sa tvojim pragovima i sa vremenom kad si platio. Servis bez te veze ne može da radi: upozorenju treba novčanik koji prati i mesto na koje šalje poruku.
+
+Iz onoga što čuva u svojoj bazi podataka Tokenping ništa od toga ne može da poveže sa tvojim imenom, brojem telefona ili drugim nalozima, osim ako to umesto njega ne uradi kontakt koji uneseš. Adresa e-pošte sa tvojim imenom ili korisničko ime koje koristiš na drugim sajtovima rade upravo to. U tome je smisao aliasa i anonimnog korisničkog imena: kontakt ne govori ništa o tome ko si. Tvoja IP adresa je posebna stvar: sa svakim zahtevom stiže do Vercela, a ne u Tokenpingovu bazu podataka, a njeno skrivanje izlazi iz okvira ovog vodiča.
+
+Šta neko spolja može da uradi je drugi spisak, i ništa od toga ne zahteva Tokenping:
+
+- Ako tvoj novčanik ima ENS primarno ime (primary name), bilo koja aplikacija može da ga pronađe iz adrese.
+- Ako si novčanik napunio sa menjačnice na kojoj si potvrdio identitet, menjačnica obično ima zapis o tom povlačenju.
+- Svako mesto na kom si adresu pokazao uz svoje ime ili nadimak povezuje to dvoje.
+- Tvoje plaćanje je javno, pa svako može da vidi da je adresa platila i do kada.
+
+## Kako da koristiš alias e-pošte umesto prave adrese?
+
+Alias e-pošte je dodatna adresa koja prosleđuje poštu u tvoje pravo sanduče. Tokenping i njegov provajder e-pošte vide samo alias. SimpleLogin, servis koji ovaj vodič koristi kao primer, vidi obe, jer prosleđuje poštu između njih. Pravi ga Proton AG, otvorenog je koda, a njegova stranica sa cenama navodi plan za koji ne plaćaš ništa, sa ograničenim brojem aliasa.
+
+1. Otvori nalog na SimpleLoginu i izaberi sanduče u koje treba da stižu prosleđena upozorenja.
+2. Na kontrolnoj tabli SimpleLogina pritisni **Random Alias** (nasumični alias) i za levi deo izaberi nasumične reči ili UUID. Radi i sopstveni alias, ali u njemu ne sme da bude tvoje ime, tvoji nadimci ni bilo šta što koristiš na drugim sajtovima. SimpleLogin ti omogućava i da aliasu dodaš belešku, poput „Tokenping“, da se setiš čemu služi.
+3. U formularu upozorenja unesi alias kao adresu e-pošte (na primer `alice-aave@example.com`) i sačuvaj upozorenje.
+4. Pritisni **Pošalji test** za e-poštu i proveri da li poruka stiže u tvoje pravo sanduče. Ako ne stiže, pogledaj u folder za neželjenu poštu. [Vodič za podešavanje](/sr/blog/podesavanje-aave-health-factor-upozorenja) sadrži ostale provere.
+
+Tokenpingova upozorenja idu samo u jednom smeru, pa na njih nikad ne odgovaraš, i dovoljan je alias koji samo prima. Kad prestaneš da koristiš Tokenping, prvo obriši upozorenje, a zatim alias, da nijedan sačuvan kontakt ne bi nadživeo svoju svrhu.
+
+Alias ne skriva sve. SimpleLogin i provajder tvog sandučeta i dalje vide upozorenja, pa alias skriva tvoju adresu od Tokenpinga i Resenda, a ne od servisa koji prosleđuje. Alias koji koristiš i za drugi servis povezuje ta dva. I ne menja ono što poruka kaže: tržište, tvoj health factor i tvoj prag.
+
+SimpleLogin nije jedini izbor. DuckDuckGo Email Protection, Firefox Relay (od Mozille), addy.io i Appleov Hide My Email (uključen u iCloud+ pretplatu) takođe ti daju adrese koje prosleđuju poštu na tvoju. Njihova ograničenja se razlikuju, pa pročitaj stranicu dobavljača pre nego što se osloniš na neki od njih.
+
+## Kako da koristiš korisničko ime na Signalu umesto broja telefona?
+
+Korisničko ime na Signalu omogućava nekome da započne razgovor bez tvog broja telefona, a upravo to Tokenping traži: njegov formular nikad ne traži broj. Ovi koraci prate Signalove stranice podrške.
+
+1. **Napravi korisničko ime.** U Signalu otvori svoj profil i dodirni simbol @. Korisnička imena imaju od 3 do 32 znaka (a-z, 0-9 i \_) i završavaju se sa najmanje dve cifre. Tokenpingov formular očekuje oblik `alice.42`: tvoj nadimak, tačku i cifre. Izaberi nadimak koji nije tvoje ime ni nadimak koji koristiš negde drugde.
+2. **Sakrij svoj broj.** Otvori „Settings“ (Podešavanja), zatim „Privacy“ (Privatnost), zatim „Phone Number“ (Broj telefona) i postavi „Who can see my number“ (ko može da vidi moj broj) na „Nobody“ (niko). Ljudi koji već imaju tvoj broj sačuvan u kontaktima i dalje ga vide. Ako želiš da te mogu pronaći samo preko korisničkog imena, postavi i „Who can find me by my number“ (ko može da me pronađe po broju) na „Nobody“.
+3. **Proveri ime profila.** Tvoj profil na Signalu ima obavezno ime i neobaveznu fotografiju, a Signalova stranica kaže da možeš da koristiš nadimak, jedan znak ili emoji. Kad prihvatiš zahtev za poruku (message request), pošiljalac vidi tvoj profil.
+4. **Dodaj korisničko ime u upozorenje i pošalji test.** Unesi ga u polje Korisničko ime na Signalu, sačuvaj i pritisni **Pošalji test** za Signal. Pošto Tokenpingov nalog na Signalu nije u tvojim kontaktima, prva poruka može da stigne kao zahtev za poruku. Uradi korake 2 i 3 pre nego što ga prihvatiš.
+
+Signal kaže da, ako ne prihvatiš zahtev, pošiljalac vidi samo korisničko ime na koje je pisao. Ako ga prihvatiš, pošiljalac vidi ime tvog profila i, u zavisnosti od podešavanja broja, možda i tvoj broj telefona.
+
+Korisničko ime je samo način da se započne razgovor. Sam Signal i dalje ima broj telefona sa kojim si se registrovao, i ništa ovde to ne menja. Ako promeniš ili obrišeš korisničko ime, Signal kaže da staro uskoro može da preuzme bilo ko, a Tokenping nastavlja da šalje na korisničko ime koje ima sačuvano, pa odmah ažuriraj upozorenje.
+
+## Kako da sprečiš da te Telegram nalog identifikuje?
+
+Telegram je od ta tri kanala najslabiji izbor, pa ovo pročitaj pre nego što ga izabereš. Tokenping može da pošalje poruku samo Telegram nalogu koji je pritisnuo Start u njegovom botu, pa u upozorenje uneseš svoje @korisničko ime i jednom pritisneš Start. Nalogu zato treba korisničko ime, a Telegram kaže da su korisnička imena javna: čine te vidljivim u globalnoj pretrazi, a ljudi koji te pronađu mogu da ti pišu bez tvog broja. Telegramov sopstveni FAQ savetuje da ga ne postavljaš ako ti to ne odgovara.
+
+1. **Izaberi korisničko ime u kom nema ničeg tvog.** Koristi a-z, 0-9 i donje crte; Tokenping prihvata od 4 do 32 znaka. Postavi ga u Telegramovim podešavanjima („Settings“).
+2. **Proveri prikazano ime i fotografiju.** Telegramova politika privatnosti kaže da tvoje prikazano ime ne mora da bude tvoje pravo ime. Bot može da vidi tvoje javno ime, korisničko ime i profilne fotografije.
+3. **Proveri podešavanje broja.** Otvori „Settings“ (Podešavanja), zatim „Privacy and Security“ (Privatnost i bezbednost), zatim „Phone Number“ (Broj telefona). Podrazumevano tvoj broj vide samo ljudi koji te imaju u kontaktima, a Telegram kaže da ga ne vidi ni neko ko te pronađe po korisničkom imenu. Bot ga ne vidi osim ako mu ga ne daš.
+4. **Poveži nalog.** Unesi korisničko ime u upozorenje, pritisni Start u botu i sačekaj da ga formular prikaže kao povezanog.
+
+Tokenpingov kod čuva samo tvoj chat ID i korisničko ime, ali Telegramov Bot API uz svaku poruku botu predaje tvoje ime i, kad postoje, prezime, korisničko ime i kod jezika. Bilo ko može da proveri da li je neko korisničko ime pritisnulo Start. Slanjem /stop botu prekidaš vezu sa razgovorom.
+
+## Da li treba da koristiš poseban novčanik?
+
+Samo ako se iz njega zadužuješ. Tokenping prati novčanik koji povežeš i ništa drugo, a pristup pripada novčaniku koji je platio, pa ne možeš da platiš sa jedne adrese da bi pratio poziciju koju drži druga. Novčanik koji koristiš samo za Aave drži poziciju, plaćanje i upozorenja na jednoj adresi. Način na koji ga puniš i dalje ostavlja javni trag, plaćanje Tokenpingu je javno, a novčanik ostaje pseudoniman, a ne anoniman. Premeštanje zajma u novi novčanik obično znači zatvaranje i ponovno otvaranje pozicije, sa troškovima i rizikom likvidacije koje to nosi, pa ga ovaj vodič ne preporučuje.
+
+## Šta koji korak štiti, a šta ne?
+
+| Korak                                                     | Skriva od Tokenpinga i njegovih provajdera | Ne skriva                                                                        |
+| --------------------------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------- |
+| Alias e-pošte                                             | Tvoju pravu adresu e-pošte                 | Servis za aliase vidi obe adrese i upozorenja, a ona stižu u tvoje pravo sanduče |
+| Korisničko ime na Signalu, skriven broj                   | Tvoj broj telefona                         | Signal i dalje ima tvoj broj, a prihvatanje zahteva deli ime tvog profila        |
+| Korisničko ime i ime na Telegramu koji te ne identifikuju | Tvoje pravo ime i broj telefona            | Korisničko ime je javno, a Telegram čuva razgovor na svojim serverima            |
+| Novčanik koji koristiš samo za Aave                       | Veze sa ostalom istorijom tog novčanika    | Transakcije punjenja novčanika i plaćanje Tokenpingu su javni                    |
+| Brisanje upozorenja                                       | Sačuvan red, uključujući kontakt           | Plaćanje na lancu i ono što svaki provajder čuva prema sopstvenim pravilima      |
+
+## Kako da obrišeš ono što Tokenping čuva?
+
+Obriši upozorenje na kontrolnoj tabli: pritisni **Izmeni upozorenje**, zatim **Obriši upozorenje** i potvrdi. Time se uklanjaju podešavanja za to tržište, uključujući adresu e-pošte i korisničko ime na Signalu, a za to je potreban aktivan pristup. Upozorenje svakog tržišta briše se posebno.
+
+<Callout tone="warning">
+  Istek tvog pristupa ne briše ništa: upozorenje i kontakt u njemu ostaju sačuvani dok ne obrišeš upozorenje. Upozorenja
+  koja više ne želiš obriši dok ti je pristup aktivan. Ako je istekao, stranica o privatnosti navodi gde da pišeš timu
+  da se tvoja podešavanja obrišu.
+</Callout>
+
+Na Telegramu slanjem /stop botu prekidaš vezu sa svojim razgovorom. Neobavezni odgovor na pitanje „Kako si saznao za Tokenping?“ može da se ukloni na zahtev, preko istih kontakata sa stranice o privatnosti. Plaćanje na lancu ne može da obriše niko.
+
+Kod iza svega ovoga nalazi se u [Tokenpingovom repozitorijumu](https://github.com/romispectrum/tokenping). Ako se neka tvrdnja u ovom vodiču ne slaže sa njim, javi timu preko kontakata sa stranice o privatnosti.
+
+## Izvori
+
+- [Tokenpingova stranica o privatnosti](/sr/privatnost) (pristupljeno 19. oktobra 2026; poslednja izmena 19. oktobra 2026): šta se čuva, ko to obrađuje, šta je javno i kako da se obriše
+- [Tokenpingov izvorni kod na GitHubu](https://github.com/romispectrum/tokenping) (pristupljeno 19. oktobra 2026; repozitorijum je javan): prijava u `packages/nextjs/app/api/auth`, provere sesije u `packages/nextjs/services/api/server/session.ts`, čuvanje upozorenja u `packages/nextjs/services/notifications`, Telegram rute u `packages/nextjs/app/api/telegram`, migracije u `packages/supabase/migrations` i ugovor za plaćanje u `packages/hardhat/contracts`
+- [TokenpingPaywall na Arbitrum One, izvorni kod verifikovan na Sourcifyju](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553) (pristupljeno 19. oktobra 2026): događaj PaymentReceived
+- [SimpleLogin](https://simplelogin.io/) (pristupljeno 19. oktobra 2026): šta alias radi, ko ga pravi, otvoreni kod
+- [Cene SimpleLogina](https://simplelogin.io/pricing/) (pristupljeno 19. oktobra 2026): plan za koji ne plaćaš ništa, sa ograničenim brojem aliasa
+- [Dokumentacija SimpleLogina: pravljenje aliasa](https://simplelogin.io/docs/getting-started/create-alias/) (pristupljeno 19. oktobra 2026)
+- [DuckDuckGo Email Protection](https://duckduckgo.com/duckduckgo-help-pages/email-protection/what-is-duckduckgo-email-protection) (pristupljeno 19. oktobra 2026)
+- [Firefox Relay](https://relay.firefox.com/) (pristupljeno 19. oktobra 2026)
+- [addy.io](https://addy.io/) (pristupljeno 19. oktobra 2026)
+- [Apple podrška: Hide My Email uz iCloud+](https://support.apple.com/en-us/102548) (pristupljeno 19. oktobra 2026)
+- [Signal podrška: Phone Number Privacy and Usernames](https://support.signal.org/hc/en-us/articles/6712070553754-Phone-Number-Privacy-and-Usernames) (pristupljeno 19. oktobra 2026)
+- [Signal podrška: Signal Profiles and Message Requests](https://support.signal.org/hc/en-us/articles/360007459591-Signal-Profiles-and-Message-Requests) (pristupljeno 19. oktobra 2026)
+- [Signalova politika privatnosti](https://signal.org/legal/) (pristupljeno 19. oktobra 2026)
+- [Telegram FAQ](https://telegram.org/faq) (pristupljeno 19. oktobra 2026): korisnička imena, vidljivost broja telefona, šta botovi vide
+- [Telegramova politika privatnosti](https://telegram.org/privacy) (pristupljeno 19. oktobra 2026)
+- [Telegram Bot API: objekti User i Chat](https://core.telegram.org/bots/api) (pristupljeno 19. oktobra 2026)
+- [Resendov dodatak o obradi podataka](https://resend.com/legal/dpa) (pristupljeno 19. oktobra 2026)
+- [Resend dokumentacija: dugoročno čuvanje podataka o e-pošti](https://www.resend.com/docs/webhooks/how-to-store-webhooks-data) (pristupljeno 19. oktobra 2026)
+- [Vercel Web Analytics: privatnost i usklađenost](https://vercel.com/docs/analytics/privacy-policy) (pristupljeno 19. oktobra 2026)
+- [ENS dokumentacija: primarna imena](https://docs.ens.domains/web/reverse) (pristupljeno 19. oktobra 2026)
+- [ethereum.org: uvod u Ethereum](https://ethereum.org/en/developers/docs/intro-to-ethereum/) (pristupljeno 19. oktobra 2026)
+
+_Edukativni sadržaj, a ne finansijski savet. Upozorenja smanjuju rizik, ali ne sprečavaju likvidaciju._

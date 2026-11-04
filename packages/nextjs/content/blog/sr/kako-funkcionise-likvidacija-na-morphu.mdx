@@ -1,0 +1,183 @@
+export const meta = {
+  slug: "kako-funkcionise-likvidacija-na-morphu",
+  title: "Kako radi likvidacija na Morphu: podsticaj i nenaplativ dug",
+  description:
+    "Kada zajam na Morphu može da se likvidira, koliko likvidator može da uzme, podsticaj pri svakom LLTV-u, nenaplativ dug, orakli i razlike na Midnightu.",
+  h1: "Šta se dešava kada se tvoja pozicija na Morphu likvidira?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Kako funkcioniše likvidacija na Morphu i koliko ona košta dužnika?",
+  readingMinutes: 12,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Pozicija na Morpho Blue može da se likvidira čim njen odnos zajma i vrednosti (LTV) poraste iznad likvidacionog LTV-a
+  (LLTV) tržišta, što je isto kao health factor (faktor zdravlja) ispod 1. Od tog trenutka bilo ko može u jednoj
+  transakciji da otplati deo ili ceo tvoj dug i uzme kolateral vredan otplaćenog iznosa pomnoženog faktorom
+  likvidacionog podsticaja tržišta, po ceni iz orakla (izvora cene) tržišta. Podsticaj proizlazi samo iz LLTV-a: 4,38%
+  pri LLTV-u od 86%, i ceo pripada likvidatoru. Ono što si pozajmio ostaje tebi, pa je podsticaj ono što te likvidacija
+  košta, osim ako tvoj kolateral više ne pokriva dug; tada gubiš ceo kolateral, a zajmodavci tržišta ostatak preuzimaju
+  kao nenaplativ dug (bad debt). Zajmovi s fiksnom kamatom na Morpho Midnightu donose dve posebnosti: pre dospeća jedna
+  likvidacija može da uzme samo onoliko koliko vraća zdravlje pozicije, osim ako bi preostali kolateral otplatio manje
+  od praga tržišta, a posle dospeća svaki preostali dug može da se likvidira, čak i na zdravoj poziciji.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Brojke i brojevi blokova u kojima su očitane: content/blog/snapshots/how-morpho-liquidation-works.md */}
+
+## Kada pozicija na Morphu može da se likvidira?
+
+Pozicija na Morpho Blue može da se likvidira čim je tvoj dug veći od vrednosti tvog kolaterala pomnožene LLTV-om tržišta. Izraženo health factorom, to je svaka vrednost ispod 1,00 (formulu i primere ima vodič [kako se računa health factor na Morphu](/sr/blog/morpho-health-factor-objasnjen)).
+
+To proverava sam ugovor. Funkcija `liquidate` na Morpho Blue najpre dodaje kamatu dugovanu do tog bloka, zatim jednom čita orakl tržišta, a onda poništava transakciju (revert) ako pozicija nije nezdrava. Pozicija tačno na svom LLTV-u još je zdrava; mora da bude iznad njega.
+
+Samo dve stvari guraju poziciju preko granice:
+
+- **Cena kolaterala pada** u odnosu na token zajma, kako je prijavljuje orakl.
+- **Tvoj dug raste** kako se obračunava kamata na zajam s promenljivom kamatom na Morpho Blue.
+
+Svako tržište na Morpho Blue određuje svoj LLTV i orakl pri kreiranju, i nijedno od toga ne može kasnije da se promeni. Ugovor Morpho Blue nema ni pauzu, ni zamrzavanje, ni period odlaganja (grace period): Morpho ne može da zaustavi likvidacije na tržištu niti da te spreči da otplatiš dug. Izdavalac samog tokena i dalje može da pauzira ili blokira prenose tog tokena, što bi zaustavilo oboje.
+
+## Ko likvidira poziciju na Morphu i kako?
+
+Bilo ko. `liquidate` ne ograničava ko sme da je pozove, a sam Morpho ne likvidira pozicije. Likvidatori su i timovi s botovima koji prate pozicije i cene orakla i pojedinci; Morphova dokumentacija napominje da su za to dovoljni RPC čvor i novčanik s dovoljno tokena zajma.
+
+Ko prvi stigne, taj uzima. Nema aukcije, pa se likvidatori takmiče u brzini, a trke u gasu i MEV (redosled transakcija radi zarade) deo su toga. Ugovor šalje zaplenjeni kolateral likvidatoru pre nego što naplati tokene zajma, što botu omogućava da proda kolateral u okviru iste transakcije i otplati dug iz prihoda.
+
+Likvidacije nisu garantovane; dešavaju se zato što se podsticaj isplati. U praksi su rutinske: Morphov API broji 14.024 likvidacije samo na tržištu USDC | cbBTC (86%) na Baseu.
+
+## Koliki deo tvog duga može da se likvidira odjednom?
+
+Ceo. Morpho Blue nema close factor (deo duga koji se može otplatiti odjednom) ni minimalnu veličinu: likvidator može da otplati bilo koji iznos tvog duga, od malog dela do celog, u jednom pozivu. Jedina ograničenja su da ne može da otplati više nego što duguješ ni da zapleni više kolaterala nego što imaš.
+
+To je najveća razlika u odnosu na Aave V3, koji ograničava likvidaciju na 50% duga dok je health factor iznad 0,95 i pozicija nije mala ([koliki deo duga na Aaveu može da se likvidira odjednom](/sr/blog/kako-funkcionise-likvidacija-na-aaveu#koliki-deo-mog-duga-moze-biti-likvidiran-odjednom)). Na Morpho Blue poziciju koja tek malo pređe svoj LLTV može u potpunosti da zatvori prvi likvidator koji stigne.
+
+## Koliki je likvidacioni podsticaj pri svakom LLTV-u?
+
+Faktor likvidacionog podsticaja (liquidation incentive factor, LIF) određuje formula u ugovoru, iz LLTV-a tržišta:
+
+**LIF = min(1,15; 1 ÷ (1 − 0,3 × (1 − LLTV)))**
+
+Likvidator otplaćuje deo tvog duga i dobija kolateral vredan tog iznosa pomnoženog LIF-om, po ceni orakla. Deo iznad 1 je podsticaj, plaćen iz tvog kolaterala. Morpho od njega ne uzima ništa.
+
+Tržište može da koristi samo LLTV koji je omogućilo upravljanje Morpha (governance). Na dan 26. oktobra 2026. ovo su bile omogućene vrednosti, i svako tržište na Morpho Blue u Morphovom API-ju koristi jednu od njih. Uz celobrojnu matematiku samog ugovora:
+
+| LLTV  | Faktor likvidacionog podsticaja | Kolateral koji gubiš na 1.000 otplaćenog duga | Od toga podsticaj |
+| ----- | ------------------------------- | --------------------------------------------- | ----------------- |
+| 38,5% | 1,1500 (ograničeno)             | 1.150,00                                      | 150,00            |
+| 62,5% | 1,1268                          | 1.126,76                                      | 126,76            |
+| 77%   | 1,0741                          | 1.074,11                                      | 74,11             |
+| 86%   | 1,0438                          | 1.043,84                                      | 43,84             |
+| 91,5% | 1,0262                          | 1.026,17                                      | 26,17             |
+| 94,5% | 1,0168                          | 1.016,78                                      | 16,78             |
+| 96,5% | 1,0106                          | 1.010,61                                      | 10,61             |
+| 98%   | 1,0060                          | 1.006,04                                      | 6,04              |
+
+LLTV od 0 je takođe omogućen, ali na takvom tržištu ništa ne može da se pozajmi. Što je LLTV viši, to je podsticaj manji; Morphova dokumentacija to objašnjava kao zaštitu od kaskadnih likvidacija na rizičnijim tržištima. Ona takođe zaokružuje vrednost za 86% na „approximately 1.05“ (približno 1,05); tačna vrednost je 1,0438.
+
+## Primer proračuna: 1 cbBTC uz 50.000 USDC duga na Baseu
+
+Uzmi najveće navedeno tržište na Morpho Blue po zaduživanju na Ethereumu i Baseu: USDC | cbBTC (86%) na Baseu, s oko 1,61 milijarde pozajmljenih USDC. Na dan 26. oktobra 2026. njegov orakl odredio je cenu 1 cbBTC na 80.000,15 USDC (Base blok 53102870). Pozicija je izmišljena: 1 cbBTC kao kolateral i 50.000 USDC duga.
+
+- **LTV:** 50.000 ÷ 80.000,15 = 62,5%.
+- **Health factor:** 80.000,15 × 0,86 ÷ 50.000 = 1,376.
+- **Likvidaciona cena:** 50.000 ÷ 0,86 = 58.139,53 USDC po cbBTC, 27,3% ispod cene orakla.
+
+Kamata je spori pokretač. Uz kamatnu stopu na zaduživanje na tom tržištu od oko 5,2% godišnje 26. oktobra 2026., ako bi se ta stopa zadržala, samoj kamati bilo bi potrebno više od šest godina da ovu poziciju dovede sa 62,5% na 86% LTV-a. Cena je brzi pokretač.
+
+Poređenja radi, među 11.000 najvećih pozicija zaduživanja na ovom tržištu, koje drže 96% njegovog duga, polovina pozajmljenih USDC bila je u pozicijama ispod oko 54% LTV-a, odnosno s health factorom iznad oko 1,59. To je Tokenpingov proračun iz Morphovog API-ja i cene na lancu, a ne Morphov podatak.
+
+### Potpuna likvidacija pri 58.139,53
+
+Odmah iza likvidacione cene likvidator može da otplati svih 50.000 USDC i uzme 50.000 × 1,0438 ÷ 58.139,53 = 0,8977 cbBTC, vredno 52.192,07 USDC. Tebi ostaje 50.000 USDC koje si pozajmio i 0,1023 cbBTC (5.947,47 USDC), i ne duguješ ništa. Likvidacija te je koštala 2.192,07 USDC više nego da si sam otplatio dug: 4,38% duga.
+
+### Delimična likvidacija od 10.000 USDC
+
+Likvidator može da stane i na 10.000 USDC. Time zapleni 0,1795 cbBTC (10.438,41 USDC) i ostavlja 0,8205 cbBTC uz 40.000 USDC duga: LTV od 83,9% i health factor od 1,026, pozicija je ponovo zdrava. Ovde delimična likvidacija uvek pomaže, jer je LIF × LLTV = 0,898, ispod 1. Ali ništa ne tera likvidatora da izabere deo umesto celog duga.
+
+### Šta ako niko ne likvidira dok cbBTC ne padne na 50.000?
+
+Pri 50.000 USDC tvoj kolateral vredi tačno koliko i dug, što je manje od dug × LIF. Zaplena celog 1 cbBTC otplaćuje samo 50.000 ÷ 1,0438 = 47.900 USDC. Gubiš ceo kolateral, a preostalih 2.100 USDC otpisuje se kao nenaplativ dug, koji preuzimaju zajmodavci tržišta.
+
+## Šta se dešava s nenaplativim dugom na Morpho Blue?
+
+Kada likvidacija ostavi dužnika bez kolaterala, ali s nešto duga, ugovor taj dug otpisuje u istoj transakciji. Uklanja preostali dug iz ukupnih zaduženja tržišta i isti iznos iz njegovih ukupnih depozita, pa svaki zajmodavac na tom tržištu gubi srazmerno svom udelu. Zajmodavci na drugim tržištima nisu pogođeni, jer je svako tržište na Morpho Blue izolovano.
+
+Nenaplativ dug postaje moguć kada kolateral vredi manje od duga pomnoženog LIF-om. Na tržištu s LLTV-om od 86% to je svaki LTV iznad 95,8%, a do njega pozicija može da stigne samo ako cena pređe LLTV pre nego što je iko likvidira. To se dešava, iako retko u velikim iznosima: Morphov API beleži nenaplativ dug u 1.428 likvidacija na Morpho Blue na Ethereumu i Baseu, uglavnom ispod 1 američkog dolara ili na tržištima koja aplikacija Morpho ne navodi.
+
+Za dužnika je ishod isti u oba slučaja: ceo kolateral je nestao i ne ostaje nikakav dug. Za zajmodavce zavisi od toga kako pozajmljuju: Morpho Vault V2 prenosi gubitak na cenu svojih udela, dok stari trezori V1.1 (legacy vaults) ne prenose gubitak na cenu svojih udela. Aave to rešava drugačije: od v3.3 beleži preostali dug kao deficit koji mogu da pokriju njegovi Umbrella stejkeri ([nenaplativ dug na Aaveu](/sr/blog/kako-funkcionise-likvidacija-na-aaveu#moze-li-likvidacija-ostaviti-nenaplativ-dug)).
+
+## Kakvu ulogu ima orakl u likvidaciji?
+
+Orakl određuje cenu za svaku odluku o likvidaciji. Svako tržište navodi jedan orakl koji vraća cenu kolaterala u tokenu zajma, i trenutak kada pozicija postaje podložna likvidaciji i količina kolaterala koju likvidator dobija koriste tu cenu, a ne cene na berzama. Morpho ne bira orakle: bira ih onaj ko kreira tržište. Adresa orakla tržišta nikada ne može da se zameni, ali cenovne feedove koje orakl čita mogu da vode drugi, koji mogu da ih ažuriraju. Feed BTC/USD iz primera na Baseu, na primer, ima vlasnika koji može da ga usmeri na novi izvor.
+
+Za tebe je važno šta orakl meri. Orakl tržišta iz primera na Baseu koristi cenovni feed BTC/USD za cbBTC i tretira USDC kao tačno 1 američki dolar, pa ga depeg (gubitak vezanosti za dolar) bilo kog od ta dva tokena ne bi pomerio. Morphov referentni orakl za feedove kompatibilne s Chainlinkom ne proverava koliko je cena stara ni da li je u granicama, i ne dodaje proveru za prekide rada L2 sequencera.
+
+Problem s oraklom može da našteti dužnicima na dva načina:
+
+- **Pogrešna ili izmanipulisana cena.** Morphova stranica o rizicima upozorava da nijedan orakl nije imun na manipulaciju, što može da izazove likvidacije ili čak nenaplativ dug.
+- **Orakl koji prestane da odgovara.** Zaduživanje, povlačenje kolaterala i likvidacija čitaju orakl i ne bi uspeli. Otplata i dodavanje kolaterala ga ne čitaju, pa i dalje možeš da poboljšaš svoju poziciju dok niko ne može da je likvidira.
+
+## Po čemu se razlikuju likvidacije na Morpho Midnightu?
+
+Tržišta na Morpho Midnightu pozajmljuju jedan token s fiksnom kamatom do određenog datuma dospeća uz jedan ili više kolaterala, svaki sa sopstvenim LLTV-om, oraklom i likvidacionim kursorom (liquidation cursor: 0,3 u formuli podsticaja iznad, koji Midnight određuje za svaki kolateral). Tvoj dug je fiksan u jedinicama, pa pre dospeća tvoj health factor pomeraju samo cene kolaterala. Pozicija na Midnightu može da se likvidira na dva načina:
+
+- **Prema zdravlju pozicije, u bilo kom trenutku** dok dug premašuje zbir vrednosti svakog kolaterala pomnožene njegovim LLTV-om. Podsticaj je pun bonus tog kolaterala, a jedna likvidacija može da otplati samo onoliko koliko je potrebno da pozicija ponovo postane zdrava. Izuzetak: kada bi kolateral koji ostane posle takve ograničene likvidacije otplatio manje od rcfThreshold tržišta, taj kolateral može da se uzme u celosti.
+- **Posle dospeća**, ako je ostalo duga, čak i na zdravoj poziciji. Nema ograničenja, a podsticaj počinje od nule i raste do punog bonusa tokom 60 minuta.
+
+Likvidator bira koji kolateral uzima, a gornje granice od 1,15 nema; 26. oktobra 2026. svako navedeno tržište Midnight koristilo je kursor od 0,3 s LLTV-ovima kolaterala od 62,5% do 98%, što daje iste podsticaje kao tabela iznad. Nenaplativ dug dele zajmodavci tog tržišta. Vodič [kako funkcionišu zajmovi s fiksnom kamatom na Midnightu](/sr/blog/morpho-midnight-zajmovi-s-fiksnom-kamatom) objašnjava dospeće, pragove stvarnih tržišta i donosi primer proračuna.
+
+## Šta je predlikvidacija?
+
+Predlikvidacija (pre-liquidation) je dodatak na Morpho Blue koji se uključuje po izboru. Dužnik koji je za tržište odobrio ugovor za predlikvidaciju dozvoljava likvidatorima da ga koriste, čim LTV pređe granicu postavljenu ispod LLTV-a, za otplatu delova duga, poziv za pozivom, uz podsticaj određen u tom ugovoru, dok LTV ne padne nazad ispod te granice. Iznad LLTV-a i dalje važi obična likvidacija.
+
+Tržište iz primera na Baseu ima takav ugovor: od 83,26% LTV-a može da otplati do 0,20% duga po pozivu (pozivi mogu da se ponavljaju), što raste do 24,53% blizu 86%, uz isti podsticaj od 1,0438. Deluje samo ako si ga odobrio. Morpho ukida tu funkciju: njegova aplikacija ne prima nove pozicije, a njegov centar za pomoć traži od dužnika koji je imaju da je isključe. Vodič [predlikvidacija na Morphu](/sr/blog/morpho-predlikvidacija) objašnjava uslove i kako da je proveriš i opozoveš.
+
+## Po čemu se likvidacija na Morphu razlikuje od one na Aaveu?
+
+Suština je ista: ispod 1 likvidator otplaćuje dug i uzima kolateral plus bonus. Pravila oko toga se razlikuju ([kako funkcioniše likvidacija na Aaveu](/sr/blog/kako-funkcionise-likvidacija-na-aaveu)):
+
+|                                   | Aave V3                                                 | Morpho Blue                                  | Morpho Midnight                                                                                                                         |
+| --------------------------------- | ------------------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Koliko odjednom                   | 50% ili 100% duga, plus pravilo za sitne ostatke (dust) | Do celog duga u jednom pozivu                | Pre dospeća onoliko koliko vraća zdravlje pozicije (ceo kolateral ako bi ostatak otplatio manje od rcfThreshold); posle dospeća ceo dug |
+| Bonus                             | Za svaku imovinu kolaterala određuje ga governance      | Fiksno određen LLTV-om tržišta               | Za svaki kolateral, iz njegovog LLTV-a i kursora                                                                                        |
+| Ko zadržava bonus                 | Likvidator, umanjeno za naknadu protokola               | Likvidator, ceo                              | Likvidator                                                                                                                              |
+| Da li pravila mogu da se promene? | Mogu da ih promene governance i risk stewardi           | Ne, fiksna su od kreiranja tržišta           | Fiksna su od kreiranja tržišta                                                                                                          |
+| Pauza                             | Imovina može da se pauzira, uz period odlaganja         | Nema pauze                                   | Nema pauze                                                                                                                              |
+| Nenaplativ dug                    | Deficit, koji mogu da pokriju Umbrella stejkeri         | Otpisuje se na teret zajmodavaca tog tržišta | Raspoređuje se na zajmodavce tog tržišta                                                                                                |
+| Šta pozicija obuhvata             | Mnogo imovine u jednoj poziciji                         | Jedan kolateral, jedan token zajma           | Jedan token zajma, više kolaterala                                                                                                      |
+
+## Kako da izbegneš likvidaciju na Morphu?
+
+- **Drži rezervu ispod LLTV-a.** Pozicija koja se oporavi pre nego što je iko likvidira ponovo je bezbedna, ali ništa ne sprečava dalji pad cene, a prvi likvidator koji stigne može odjednom da otplati ceo tvoj dug.
+- **Otplati dug ili dodaj kolateral na vreme.** Oboje odmah smanjuje tvoj LTV, ne košta podsticaj i radi čak i ako orakl zakaže.
+- **Upoznaj svoj orakl.** Pre zaduživanja proveri koji orakl koristi tvoje tržište i šta meri.
+- **Na Midnightu otplati pre dospeća.** Posle dospeća svaki preostali dug može da se likvidira, bila pozicija zdrava ili ne.
+- **Proveri staru predlikvidaciju.** Ako si nekada uključio „Auto-deleverage“ (predlikvidaciju), Morpho tu funkciju ukida i traži od dužnika da je isključe; vodič [predlikvidacija na Morphu](/sr/blog/morpho-predlikvidacija) pokazuje kako.
+
+## Kako upozorenja mogu da pomognu?
+
+Tokenping na svakih 5 minuta proverava svaku poziciju zaduživanja na Morphu za koju podesiš upozorenje, na tržištima navedenim u aplikaciji Morpho: Morpho Blue na 14 mreža i Morpho Midnight. Upozorenja za Midnight pokrivaju tržišta koja navodi Morphov API. Na dan 26. oktobra 2026. ta tržišta su bila na Ethereumu i Baseu; Tokenping pokriva i Arc i Robinhood Chain čim Morpho tamo navede tržišta Midnight. Svaki health factor računa iz podataka na lancu sopstvenom matematikom Morpha, a ne iz Morphovog API-ja. Dok je health factor ispod praga koji podesiš (od 1,02 do 10), svaka provera šalje poruku na svaki kanal koji si izabrao: Signal, Telegram ili e-poštu. Ako si na tržištu Morpho Blue odobrio ugovor za predlikvidaciju, upozorenje meri prema nižoj od dve granice: LLTV-u ili granici predlikvidacije. Zajam na Midnightu dobija i jedan podsetnik u poslednjih 7 dana i jedan u poslednja 24 sata pre dospeća, a posle dospeća upozorenje pri svakoj proveri dok god dug postoji.
+
+Možeš da [pogledaš svoje pozicije na Morphu](/sr/morpho); za to ne plaćaš ništa. Upozorenja koštaju <AlertPrice />. Upozorenje ti daje vremena da reaguješ, ali cena može da pređe tvoj LLTV između dve provere, a upozorenje ne sprečava likvidaciju.
+
+## Izvori
+
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) i [IMorpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/interfaces/IMorpho.sol), morpho-org/morpho-blue: provera zdravlja, likvidacija, formula podsticaja, nenaplativ dug i pretpostavke o oraklu (pristupljeno 26. oktobra 2026)
+- [Midnight.sol](https://github.com/morpho-org/midnight/blob/main/src/Midnight.sol) i [ConstantsLib.sol](https://github.com/morpho-org/midnight/blob/main/src/libraries/ConstantsLib.sol), morpho-org/midnight: načini likvidacije, RCF, postepeni rast podsticaja i umanjenje (slashing) (pristupljeno 26. oktobra 2026)
+- [Pre-liquidation README i PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation), morpho-org/pre-liquidation (pristupljeno 26. oktobra 2026)
+- [ChainlinkDataFeedLib.sol](https://github.com/morpho-org/morpho-blue-oracles/blob/main/src/morpho-chainlink/libraries/ChainlinkDataFeedLib.sol), morpho-org/morpho-blue-oracles: bez provere starosti cene, granica ili sequencera (pristupljeno 26. oktobra 2026)
+- [Liquidation on Morpho](https://docs.morpho.org/learn/concepts/liquidation): likvidatori, bez aukcije, do 100% odjednom, bez naknade protokola, nenaplativ dug u trezorima (pristupljeno 26. oktobra 2026)
+- [Morphova dokumentacija za developere: liquidation](https://docs.morpho.org/developers/borrow/concepts/liquidation): podsticaj prema LLTV-u i nenaplativ dug (pristupljeno 26. oktobra 2026)
+- [Morpho docs: oracles](https://docs.morpho.org/learn/concepts/oracle): izbor orakla i njegova nepromenljivost (pristupljeno 26. oktobra 2026)
+- [Morpho docs: Morpho Blue](https://docs.morpho.org/learn/concepts/blue): trajni parametri tržišta i omogućeni LLTV-ovi (pristupljeno 26. oktobra 2026)
+- [Morpho docs: Midnight liquidations](https://docs.morpho.org/learn/concepts/midnight/liquidations), [collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) i [what is Midnight](https://docs.morpho.org/learn/concepts/midnight) (pristupljeno 26. oktobra 2026)
+- [Morpho docs: risks](https://docs.morpho.org/learn/resources/risks): rizik orakla, likvidacije, nenaplativog duga i druge strane (pristupljeno 26. oktobra 2026)
+- [Morpho API](https://api.morpho.org/graphql): broj likvidacija i slučajeva nenaplativog duga, spisak tržišta, kamatna stopa na zaduživanje, pozicije zaduživanja i tržišta Midnight (pristupljeno 26. oktobra 2026)
+- [Morpho Blue na Baseu](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), tržište USDC | cbBTC (86%) u Base bloku 53102870 (pristupljeno 26. oktobra 2026)
+- [Orakl tržišta](https://basescan.org/address/0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9#readContract) i [njegov feed BTC/USD](https://basescan.org/address/0x64c911996D3c6aC71f9b455B1E8E7266BcbD848F#readContract) na Baseu: cena u bloku 53102870 i vlasnik feeda (pristupljeno 26. oktobra 2026)
+- [Ugovor za predlikvidaciju na tržištu](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374#readContract) na Baseu: njegovi parametri u bloku 53102870 (pristupljeno 26. oktobra 2026)
+- [Morpho Midnight na Ethereumu](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract): omogućeni LLTV-ovi i likvidacioni kursori u bloku 26274998 (pristupljeno 26. oktobra 2026)
+
+_Edukativni sadržaj, a ne finansijski savet. Upozorenja smanjuju rizik, ali ne sprečavaju likvidaciju._

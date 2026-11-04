@@ -1,6 +1,6 @@
 import type { BlogMessages } from "./shared";
 // The alert price ("3 USDC za 30 dana" or the fallback) stands where the nominative reads: "Cijena upozorenja: ...".
-import { formatDecimal, hrOnMarket, plural } from "~~/i18n/format";
+import { formatDecimal, hrOnMarket, hrSrChannelsGenitive, plural } from "~~/i18n/format";
 
 /** "svakih 5 minuta", "svake 2 minute", "svake minute". */
 const everyMinutes = (minutes: number) =>
@@ -64,12 +64,12 @@ export const MESSAGES: BlogMessages = {
     label: "O Tokenpingu",
     title: "Upozorenja za health factor od Tokenpinga",
     body: ({ minutes, networks, channels, price, paymentChain }) =>
-      `Tokenping provjerava tvoj health factor na Aaveu V3 i V4 ${everyMinutes(minutes)} ${onNetworks(networks)} i šalje ti poruku putem kanala ${channels} kad padne ispod tvog praga. Cijena upozorenja: ${price}${paidOn(paymentChain)}; pregled pozicija ne košta ništa. Upozorenja ti daju vremena da reagiraš, ali ne sprječavaju likvidaciju.`,
+      `Tokenping provjerava tvoj health factor na Aaveu V3 i V4 ${everyMinutes(minutes)} ${onNetworks(networks)} i šalje ti poruku putem ${hrSrChannelsGenitive(channels)} kad padne ispod tvog praga. Cijena upozorenja: ${price}${paidOn(paymentChain)}; pregled pozicija ne košta ništa. Upozorenja ti daju vremena da reagiraš, ali ne sprječavaju likvidaciju.`,
     cta: "Otvori nadzornu ploču",
     morpho: {
       title: "Upozorenja za health factor na Morphu od Tokenpinga",
       body: ({ minutes, networks, channels, price, paymentChain }) =>
-        `Tokenping provjerava tvoj health factor na Morphu Blue i Midnight ${everyMinutes(minutes)} ${onNetworks(networks)} i šalje ti poruku putem kanala ${channels} kad padne ispod tvog praga, uz podsjetnike prije dospijeća zajma s fiksnom kamatom. Cijena upozorenja: ${price}${paidOn(paymentChain)}, isti plan kao za upozorenja na Aaveu; pregled pozicija ne košta ništa. Upozorenja ti daju vremena da reagiraš, ali ne sprječavaju likvidaciju.`,
+        `Tokenping provjerava tvoj health factor na Morphu Blue i Midnight ${everyMinutes(minutes)} ${onNetworks(networks)} i šalje ti poruku putem ${hrSrChannelsGenitive(channels)} kad padne ispod tvog praga, uz podsjetnike prije dospijeća zajma s fiksnom kamatom. Cijena upozorenja: ${price}${paidOn(paymentChain)}, isti plan kao za upozorenja na Aaveu; pregled pozicija ne košta ništa. Upozorenja ti daju vremena da reagiraš, ali ne sprječavaju likvidaciju.`,
       cta: "Otvori nadzornu ploču za Morpho",
     },
   },

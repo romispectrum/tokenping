@@ -62,6 +62,7 @@ const LIST_WORDS: Record<Locale, ListWords> = {
   hu: { conjunction: "és", disjunction: "vagy" },
   hr: { conjunction: "i", disjunction: "ili" },
   sl: { conjunction: "in", disjunction: "ali" },
+  sr: { conjunction: "i", disjunction: "ili" },
 };
 
 /**
@@ -241,6 +242,19 @@ export const huOnMarket = (name: string, kind?: MarketNameKind) =>
 export const huForMarket = (name: string, kind?: MarketNameKind) =>
   `${huArticle(name)} ${name} ${marketNameKind(name, kind) === "market" ? "piacra" : "hálózatra"}`;
 
+const HR_SR_CHANNEL_GENITIVE: Record<string, string> = {
+  Signal: "Signala",
+  Telegram: "Telegrama",
+  "e-pošta": "e-pošte",
+};
+
+/**
+ * Croatian and Serbian: the joined channel names ("Signal, Telegram i e-pošta", a fixed set from
+ * services/marketing/alertChannels) in the genitive, for after "putem" or "preko": "Signala, Telegrama i e-pošte".
+ */
+export const hrSrChannelsGenitive = (channels: string) =>
+  channels.replace(/Signal|Telegram|e-pošta/g, name => HR_SR_CHANNEL_GENITIVE[name]);
+
 /** Croatian "na mreži Arbitrum" for a V3 market, "na tržištu Ethereum (V4 Lido)" for a V4 Spoke or a Morpho market. */
 export const hrOnMarket = (name: string, kind?: MarketNameKind) =>
   marketNameKind(name, kind) === "market" ? `na tržištu ${name}` : `na mreži ${name}`;
@@ -256,6 +270,14 @@ export const slOnMarket = (name: string, kind?: MarketNameKind) =>
 /** Slovenian "za omrežje Arbitrum" for a V3 market, "za trg Ethereum (V4 Lido)" for a V4 Spoke or a Morpho market. */
 export const slForMarket = (name: string, kind?: MarketNameKind) =>
   marketNameKind(name, kind) === "market" ? `za trg ${name}` : `za omrežje ${name}`;
+
+/** Serbian "na mreži Arbitrum" for a V3 market, "na tržištu Ethereum (V4 Lido)" for a V4 Spoke or a Morpho market. */
+export const srOnMarket = (name: string, kind?: MarketNameKind) =>
+  marketNameKind(name, kind) === "market" ? `na tržištu ${name}` : `na mreži ${name}`;
+
+/** Serbian "za mrežu Arbitrum" for a V3 market, "za tržište Ethereum (V4 Lido)" for a V4 Spoke or a Morpho market. */
+export const srForMarket = (name: string, kind?: MarketNameKind) =>
+  marketNameKind(name, kind) === "market" ? `za tržište ${name}` : `za mrežu ${name}`;
 
 /** Vietnamese "mạng" before a V3 market's name (its network's), "thị trường" before a V4 Spoke's or a Morpho market's. */
 export const viMarketNoun = (name: string, kind?: MarketNameKind) =>

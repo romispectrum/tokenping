@@ -1,4 +1,5 @@
 import type { CommonMessages } from "./shared";
+import { hrSrChannelsGenitive } from "~~/i18n/format";
 
 export const MESSAGES: CommonMessages = {
   skipToContent: "Preskoči na sadržaj",
@@ -17,7 +18,7 @@ export const MESSAGES: CommonMessages = {
     language: "Jezik",
   },
   footer: {
-    tagline: channels => `Upozorenja za health factor na Aaveu i Morphu putem kanala ${channels}.`,
+    tagline: channels => `Upozorenja za health factor na Aaveu i Morphu putem ${hrSrChannelsGenitive(channels)}.`,
     navLabel: "Podnožje",
     resources: "Resursi",
     community: "Zajednica",

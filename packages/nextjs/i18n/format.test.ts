@@ -13,6 +13,7 @@ import {
   hiMarket,
   hrForMarket,
   hrOnMarket,
+  hrSrChannelsGenitive,
   huArticle,
   huForMarket,
   huOnMarket,
@@ -33,6 +34,8 @@ import {
   roOnMarket,
   slForMarket,
   slOnMarket,
+  srForMarket,
+  srOnMarket,
   trForMarket,
   trOnMarket,
   viMarket,
@@ -315,6 +318,13 @@ describe("Croatian formatting", () => {
   });
 });
 
+describe("hrSrChannelsGenitive", () => {
+  it("puts the joined channel names in the genitive, for after putem or preko", () => {
+    expect(hrSrChannelsGenitive("Signal, Telegram i e-pošta")).toBe("Signala, Telegrama i e-pošte");
+    expect(hrSrChannelsGenitive("Signal ili e-pošta")).toBe("Signala ili e-pošte");
+  });
+});
+
 describe("Slovenian formatting", () => {
   it("joins with in and ali, writes Slovenian dates, a decimal comma, the dual and the market wording", () => {
     expect(joinList("sl", ["Signal", "Telegram", "e-pošta"])).toBe("Signal, Telegram in e-pošta");
@@ -335,6 +345,28 @@ describe("Slovenian formatting", () => {
     expect(slForMarket("Base")).toBe("za omrežje Base");
     expect(slForMarket("Base (V4 Coinbase Stocks)")).toBe("za trg Base (V4 Coinbase Stocks)");
     expect(slForMarket("USDC | cbBTC (86%)", "market")).toBe("za trg USDC | cbBTC (86%)");
+  });
+});
+
+describe("Serbian formatting", () => {
+  it("joins with i and ili, writes Serbian dates, a decimal comma, the plurals and the market wording", () => {
+    expect(joinList("sr", ["Signal", "Telegram", "e-pošta"])).toBe("Signal, Telegram i e-pošta");
+    expect(joinList("sr", ["Signal", "e-pošta"], "disjunction")).toBe("Signal ili e-pošta");
+    expect(formatLongDate("sr", "2026-10-14")).toBe("14. oktobar 2026.");
+    expect(formatDecimal("sr", "1.42")).toBe("1,42");
+    const networks = (n: number) => plural("sr", n, { one: `${n} mreža`, few: `${n} mreže`, other: `${n} mreža` });
+    expect(networks(1)).toBe("1 mreža");
+    expect(networks(2)).toBe("2 mreže");
+    expect(networks(5)).toBe("5 mreža");
+    expect(networks(21)).toBe("21 mreža");
+    expect(networks(22)).toBe("22 mreže");
+    expect(networks(29)).toBe("29 mreža");
+    expect(srOnMarket("Arbitrum")).toBe("na mreži Arbitrum");
+    expect(srOnMarket("Ethereum (V4 Lido)")).toBe("na tržištu Ethereum (V4 Lido)");
+    expect(srOnMarket("Base", "network")).toBe("na mreži Base");
+    expect(srForMarket("Base")).toBe("za mrežu Base");
+    expect(srForMarket("Base (V4 Coinbase Stocks)")).toBe("za tržište Base (V4 Coinbase Stocks)");
+    expect(srForMarket("USDC | cbBTC (86%)", "market")).toBe("za tržište USDC | cbBTC (86%)");
   });
 });
 

@@ -1,5 +1,5 @@
 import { type HomeMessages, rich } from "./shared";
-import { capitalize, formatDecimal, hrOnMarket, plural } from "~~/i18n/format";
+import { capitalize, formatDecimal, hrOnMarket, hrSrChannelsGenitive, plural } from "~~/i18n/format";
 import type { AlertPlan } from "~~/services/marketing/alertPlan";
 
 // The alert price ("3 USDC za 30 dana" or the blog's fallback) always stands where the nominative reads correctly:
@@ -45,17 +45,12 @@ const hrSpokes = (spokes: number) =>
 const hrOnChain = (chainName: string | undefined) =>
   chainName ? hrOnMarket(chainName, "network") : "na mreži za plaćanje";
 
-// The channels arrive joined ("Signal i e-pošta") from a fixed set of names (services/marketing/alertChannels), so
-// after "putem" each one is written out in the genitive: "putem Signala, Telegrama i e-pošte".
-const VIA_CHANNEL: Record<string, string> = { Signal: "Signala", Telegram: "Telegrama", "e-pošta": "e-pošte" };
-const viaChannels = (channels: string) => channels.replace(/Signal|Telegram|e-pošta/g, name => VIA_CHANNEL[name]);
-
 export const MESSAGES: HomeMessages = {
-  headline: channels => `Upozorenja za health factor na Aaveu i Morphu putem ${viaChannels(channels)}`,
+  headline: channels => `Upozorenja za health factor na Aaveu i Morphu putem ${hrSrChannelsGenitive(channels)}`,
   description: ({ channels, networks, minutes, short }) =>
     short
-      ? `Upozorenja putem ${viaChannels(channels)} kad je health factor na Aaveu ili Morphu ispod tvog praga, ${hrOnNetworks(networks)}, ${hrEveryMinutes(minutes)}.`
-      : `Upozorenja putem ${viaChannels(channels)} kad tvoj health factor na Aaveu ili Morphu padne ispod tvog praga, ${hrOnNetworks(networks)}. Provjera ${hrEveryMinutes(minutes)}.`,
+      ? `Upozorenja putem ${hrSrChannelsGenitive(channels)} kad je health factor na Aaveu ili Morphu ispod tvog praga, ${hrOnNetworks(networks)}, ${hrEveryMinutes(minutes)}.`
+      : `Upozorenja putem ${hrSrChannelsGenitive(channels)} kad tvoj health factor na Aaveu ili Morphu padne ispod tvog praga, ${hrOnNetworks(networks)}. Provjera ${hrEveryMinutes(minutes)}.`,
   channelBadge: capitalize,
   pricingCta: plan => (plan ? `Postavi upozorenja: ${hrPrice(plan)}` : "Postavi upozorenja"),
   offerDescription: ({ days, currency }) =>
@@ -63,7 +58,7 @@ export const MESSAGES: HomeMessages = {
 
   kicker: "Aave V3 i V4, Morpho Blue i Midnight",
   heroLead: ({ minutes, channels }) =>
-    `Provjera ${hrEveryMinutes(minutes)}. Poruka putem ${viaChannels(channels)} dok si ispod svoje granice. Samo za čitanje, bez odobrenja tokena.`,
+    `Provjera ${hrEveryMinutes(minutes)}. Poruka putem ${hrSrChannelsGenitive(channels)} dok si ispod svoje granice. Samo za čitanje, bez odobrenja tokena.`,
   networksLabel: "Mreže",
   heroCoverage: networks => hrNetworks(networks),
   channelsLabel: "Upozorenja putem:",
@@ -126,7 +121,7 @@ export const MESSAGES: HomeMessages = {
       },
       {
         title: "Primaj poruke dok si ispod nje",
-        body: `${capitalize(hrEveryMinutes(minutes))}, putem ${viaChannels(channels)}, dok se ne vratiš iznad svoje granice.`,
+        body: `${capitalize(hrEveryMinutes(minutes))}, putem ${hrSrChannelsGenitive(channels)}, dok se ne vratiš iznad svoje granice.`,
       },
     ];
   },

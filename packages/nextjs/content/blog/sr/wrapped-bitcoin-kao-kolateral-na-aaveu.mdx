@@ -1,0 +1,153 @@
+export const meta = {
+  slug: "wrapped-bitcoin-kao-kolateral-na-aaveu",
+  title: "Wrapped bitcoin na Aaveu i Morphu: WBTC, cbBTC, tBTC, LBTC",
+  description:
+    "Kako se WBTC, cbBTC, tBTC, LBTC i eBTC razlikuju kao kolateral na Aave V3 i Morphu: pragovi, limiti, orakli i šta depeg wrappera radi tvom zajmu.",
+  h1: "Uz koji wrapped bitcoin da se zadužiš i šta može da pođe po zlu?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "Kako se WBTC, cbBTC, tBTC i LBTC razlikuju kao kolateral na Aaveu i Morphu?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Bitcoin stiže na Aave i Morpho kao wrapped tokeni, od kojih je svaki pokriven BTC-om koji se čuva negde drugde, a
+  protokoli ih tretiraju različito. Na Aave V3 Ethereum Core 29. oktobra 2026. WBTC i cbBTC su imali odnos zajma i
+  vrednosti (LTV) od 81% i prag likvidacije (liquidation threshold) od 85%, tBTC i BTC.b 73% i 78%, LBTC 70% i 75%, eBTC
+  67% i 72%. I cena im se određuje različito: Aave vrednuje WBTC feedom WBTC/BTC pomnoženim sa BTC/USD, pa diskont
+  WBTC-a snižava tvoj health factor (faktor zdravlja); feed je tog dana pokazivao 0,9985. cbBTC i tBTC se vrednuju kao
+  tačno 1 BTC, a LBTC i eBTC po svom kursu iz stakinga, uz gornju granicu. Na Morphu svako tržište bira sopstveni orakl
+  (izvor cene) i likvidacioni LTV (LLTV): velika cbBTC/USDC tržišta koriste 86% i samo feed BTC/USD. Izbor wrappera
+  menja tvoju likvidacionu cenu do 18% i odlučuje da li te depeg (gubitak vezanosti za BTC) samog wrappera može
+  likvidirati.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Brojke i brojevi blokova na kojima su očitane: content/blog/snapshots/wrapped-bitcoin-aave-collateral.md */}
+
+## Zašto je važno koji wrapped bitcoin deponuješ?
+
+Aave i Morpho rade na EVM lancima, a bitcoin ne, pa je svaka BTC pozicija na njima wrapped token: ERC-20 token za koji neko obećava da će ga zameniti za bitcoin. Ko daje to obećanje i kako, prva je razlika među wrapperima (tokenima omotačima). WBTC izdaju kastodijani uz bitcoin u hladnom skladištu (cold storage), od oktobra 2024. zajedničko preduzeće (joint venture) kompanija BitGo i BiT Global, sa ključevima raspoređenim po Sjedinjenim Američkim Državama, Singapuru i Hongkongu. cbBTC je Coinbaseov wrapper, pokriven bitcoinom koji drži Coinbase. tBTC pripada Threshold Networku, a izdaje ga mreža potpisnika, a ne jedna kompanija. LBTC je Lombardov: bitcoin uložen u staking preko Babylona, sa konzorcijumom operatera koji proveravaju uplate i potpisuju otkupe, a od 2025. donosi prinos, pa jedan LBTC polako vredi više od jednog BTC-a. eBTC je wrapper kompanije ether.fi, pokriven uglavnom LBTC-om. BTC.b je Avalancheov premošćeni bitcoin, a FBTC pripada Functionu.
+
+Protokol za zajmove u tom spisku vidi tri stvari: koliko je verovatno da će se cena wrappera odvojiti od BTC-a, koliko je duboko njegovo tržište ako likvidatori moraju da ga prodaju i kako mu odrediti cenu. Te tri stvari određuju prag likvidacije, limite i orakl, a zajedno odlučuju o tvom health factoru, tvojoj likvidacionoj ceni i o tome koji te događaji mogu likvidirati. Isti 1 BTC kolaterala je drugačiji zajam u zavisnosti od wrappera u kom stiže.
+
+## Koje wrappere Aave prihvata i pod kojim uslovima?
+
+Aave V3 Ethereum Core je 29. oktobra 2026. imao sedam BTC wrappera. Očitano iz PoolDataProvidera na bloku 26296985:
+
+| Wrapper | LTV | Prag likvidacije | Bonus | Može da se pozajmi | Limit depozita (iskorišćeno) | Deponovano |
+| ------- | --- | ---------------- | ----- | ------------------ | ---------------------------- | ---------- |
+| WBTC    | 81% | 85%              | 5,0%  | da                 | 38.200 (89,4%)               | 34.138,21  |
+| cbBTC   | 81% | 85%              | 7,5%  | da                 | 20.000 (86,5%)               | 17.303,85  |
+| tBTC    | 73% | 78%              | 7,5%  | limit 1            | 1.800 (98,9%)                | 1.779,39   |
+| LBTC    | 70% | 75%              | 8,5%  | ne                 | 2.690 (100,0%)               | 2.689,93   |
+| eBTC    | 67% | 72%              | 10,0% | ne                 | 134 (56,0%)                  | 75,02      |
+| BTC.b   | 73% | 78%              | 7,5%  | ne                 | 225 (7,0%)                   | 15,84      |
+| FBTC    | 0%  | 78%              | 7,5%  | ne                 | zamrznut                     | 153,83     |
+
+WBTC i cbBTC su kolateral kom tržište najviše veruje: najviši prag, najniži bonus i najveći depoziti, 60,8% i 30,8% od 56.156 wrapped BTC-a na Coreu. Noviji ili manje likvidni wrapperi dobijaju niži prag i viši bonus, što znači da protokol plaća likvidatorima više da prodaju token sa plićim tržištem. FBTC je zamrznut sa LTV-om 0, pa se i dalje računa u health factor, ali ne podržava novi dug i ne prima nove depozite.
+
+Tri od sedam limita bila su gotovo ili potpuno iskorišćena. LBTC je imao 0,07 LBTC slobodnog prostora: dužnik čiji je zajam uz LBTC bio pod pritiskom tog dana nije mogao da doda LBTC i morao je umesto toga da otplaćuje. [Zašto transakcija na Aaveu ne uspeva](/sr/blog/zasto-povlacenje-ili-zaduzivanje-na-aaveu-ne-uspeva#3-limit-depozita-je-popunjen) opisuje šta blokira popunjen limit. tBTC je imao omogućeno zaduživanje sa limitom 1, što uz 2,57 tBTC već pozajmljenih znači da nijedno novo zaduživanje ne prolazi.
+
+Uslovi samog WBTC-a su se menjali. Dana 14. oktobra 2026. Ethereum Core je za WBTC imao LTV od 73% i prag od 78%, brojke koje koristi [vodič o health factoru](/sr/blog/aave-health-factor-objasnjen); do 28. oktobra bili su 81% i 85%. Istorija iza nižih brojki je u jednom od sledećih odeljaka.
+
+## Kako Aave određuje cenu svakog wrappera?
+
+Aave ima jednu cenu po imovini po tržištu, iz Aave Oraclea, i nju koriste health factor i svaka likvidacija. Sedam wrappera koristi tri konstrukcije. Očitano na istom bloku:
+
+| Wrapper                  | Izvor orakla              | Kako je napravljen                                       | Cena 29. oktobra 2026. |
+| ------------------------ | ------------------------- | -------------------------------------------------------- | ---------------------- |
+| WBTC                     | „wBTC/BTC/USD“            | feed WBTC/BTC (0,9985) × BTC/USD                         | 79.699,16 $            |
+| cbBTC, tBTC, BTC.b, FBTC | „BTC / USD“               | samo feed BTC/USD                                        | 79.818,89 $            |
+| LBTC                     | „Capped LBTC / BTC / USD“ | Lombardov kurs (1,005244) × BTC/USD, uz gornju granicu   | 80.237,45 $            |
+| eBTC                     | „Capped eBTC / BTC / USD“ | kurs ether.fi-ja (1,004224) × BTC/USD, uz gornju granicu | 80.156,03 $            |
+
+Ta razlika odlučuje šta ti depeg wrappera radi.
+
+**WBTC se vrednuje po svom tržišnom odnosu prema BTC-u.** Adapter množi feed WBTC/BTC sa BTC/USD, pa ako se WBTC trguje uz diskont, tvoj kolateral u health factoru vredi manje, a tvoja likvidaciona cena raste. Dana 29. oktobra 2026. odnos je bio 0,9985, što je WBTC vrednovalo 119,73 $ ispod cbBTC-a. Pri stvarnom gubitku poverenja u kastodijana odnos pada i WBTC pozicije mogu biti likvidirane iako se sam bitcoin nije pomerio.
+
+**cbBTC, tBTC, BTC.b i FBTC se vrednuju kao tačno 1 BTC.** Orakl koristi feed BTC/USD i ništa drugo. Diskont na tržištu wrappera ne stiže do tvog health factora; stiže do protokola, čiji bi likvidatori zaplenili kolateral koji vredi manje nego što orakl kaže. Aave to nadoknađuje strožim limitima, a za tBTC i BTC.b i nižim pragom. Za dužnika je ova konstrukcija blaža u panici oko wrappera, a stroža svakog drugog dana.
+
+**LBTC i eBTC se vrednuju po svom kursu, ispod CAPO granice.** LBTC donosi prinos od stakinga, pa Lombardov orakl javlja koliko BTC-a predstavlja jedan LBTC, 1,005244 na dan 29. oktobra 2026., a Aave to množi sa BTC/USD. CAPO adapter ograničava koliko brzo odnos sme da raste, 2,00% godišnje za LBTC i 1,90% za eBTC od snimka (snapshot) vrednosti 1,0, tako da izmanipulisan ili pokvaren kurs ne može da naduva kolateral; granica je tog dana za LBTC iznosila 1,0274, iznad stvarnog odnosa, pa nije delovala. Kurs može i da padne: kada bi Babylon ikada sproveo slashing (kazneno oduzimanje dela uloženih sredstava) nad uloženim bitcoinom, Lombardov odnos bi pao, a sa njim i health factor svake LBTC pozicije. Predlog Chaos Labsa iz 2025., kojim je LBTC prebačen sa običnog feeda BTC/USD na ovu konstrukciju, objašnjava izbor: fiksna cena 1:1 „would underprice LBTC relative to its intrinsic value“ (potcenila bi LBTC u odnosu na njegovu unutrašnju vrednost) čim prinos krene.
+
+[Vodič o depegu stablecoina](/sr/blog/depeg-stablecoina-na-aaveu) opisuje istu podelu za dolarske tokene: ono što orakl meri, to te može likvidirati.
+
+## Primer sa brojkama: 1 BTC kolaterala uz 40.000 USDC
+
+Deponuj po jednu jedinicu svakog wrappera na Ethereum Core i pozajmi 40.000 USDC. Health factor je vrednost kolaterala × prag likvidacije ÷ dug, a likvidaciona cena je 40.000 ÷ prag, u ceni koju koristi orakl:
+
+| Kolateral | Cena orakla | Prag | Health factor | Likvidaciona cena                      |
+| --------- | ----------- | ---- | ------------- | -------------------------------------- |
+| 1 WBTC    | 79.699,16 $ | 85%  | 1,694         | 47.058,82 $ po WBTC-u                  |
+| 1 cbBTC   | 79.818,89 $ | 85%  | 1,696         | 47.058,82 $ po BTC-u                   |
+| 1 tBTC    | 79.818,89 $ | 78%  | 1,557         | 51.282,05 $ po BTC-u                   |
+| 1 LBTC    | 80.237,45 $ | 75%  | 1,505         | 53.333,33 $ po LBTC-u, BTC na 53.055 $ |
+| 1 eBTC    | 80.156,03 $ | 72%  | 1,443         | 55.555,56 $ po eBTC-u                  |
+
+Između WBTC-a i eBTC-a isti dug i isti bitcoin daju 18% višu likvidacionu cenu. Granica zaduživanja se kreće na isti način: pri LTV-u WBTC i cbBTC podržavaju 81% svoje vrednosti, a pozicija zadužena do te granice počinje sa health factorom 85 ÷ 81 = 1,049; za LBTC to je 75 ÷ 70 = 1,071, za eBTC 72 ÷ 67 = 1,075. [Kako izračunati likvidacionu cenu](/sr/blog/aave-likvidaciona-cena) daje opštu formulu i kalkulator.
+
+Dva od ovih redova se menjaju i zbog nečega osim cene bitcoina. Red WBTC-a se menja i sa feedom WBTC/BTC; diskont od 2% spustio bi poziciju sa 1,694 na 1,660 uz nepromenjen BTC. Red LBTC-a se menja sa Lombardovim kursom, koji svakog dana malo raste, a pri slashingu pada.
+
+## Zašto su se uslovi za WBTC promenili i šta su dužnici iz toga naučili?
+
+U avgustu 2024. BitGo je najavio da će čuvanje WBTC-a prebaciti u zajedničko preduzeće sa BiT Globalom, kastodijanom iz Hongkonga povezanim sa Justinom Sunom. Reakcija na Aaveovom forumu je najjasniji zapis o tome kako promena kastodijana stiže do dužnika. Dana 18. septembra 2024. LlamaRisk je predložio da se LTV WBTC-a postavi na 0 na svakoj Aave V3 instanci i da se limiti smanje na 5 do 10% iznad iskorišćenosti, naglašavajući pritom da namera plana „not to offboard WBTC, nor to reduce current exposure“ (nije da se WBTC ukloni niti da se smanji postojeća izloženost). Chaos Labs je preporuku o smanjenju rizika nazvao preuranjenom. Plan koji su njih dvoje spojili 24. septembra 2024. bio je blaži, ali stvaran: limiti 15% iznad iskorišćenosti, prag likvidacije svuda niži za jedan poen, LTV spušten na 70% gde je bio viši, reserve factor (deo kamate koji odlazi u rezervu protokola) sa 20% na 40% i limit zaduživanja za WBTC na Ethereumu sa 28.000 na 3.250. Prenos čuvanja je završen 8. oktobra 2024.
+
+Ništa u toj epizodi nije pomerilo cenu bitcoina. Promenili su se uslovi: niži pragovi i niži limiti za svakog dužnika sa WBTC-om, o kojima je odlučio proces upravljanja protokolom (governance) koji su mogli da prate, ali ne i da kontrolišu. Dve godine kasnije parametri su opet viši, a pomak sa 73%/78% na 81%/85% u oktobru 2026. snizio je likvidacionu cenu WBTC pozicije za 8%. Pouka je da je prag parametar, a ne svojstvo bitcoina: governance može da ga snizi, što podiže tvoju likvidacionu cenu dok spavaš, a vodič o gašenju tržišta opisuje [šta se dešava kada Aave gasi tržište](/sr/blog/gasenje-aave-trzista).
+
+## Po čemu se razlikuju BTC E-Mode kategorije?
+
+Aaveov [E-Mode](/sr/blog/aave-e-mode-objasnjen) postoji za parove koji se kreću zajedno, a wrapped bitcoini jedni prema drugima su najjasniji primer. Na Ethereum Coreu 28. oktobra 2026. kategorije LBTC_WBTC, LBTC_cbBTC i LBTC_tBTC davale su LBTC kolateralu LTV od 84%, prag od 86% i bonus od 3% za zaduživanje u tom jednom wrapperu; eBTC/WBTC je davala 83%, 85% i 3%. Base je imao LBTC_cbBTC sa 82%/84% i kategoriju „cbBTC Stablecoins“ sa 82%/85% za zaduživanje u USDC ili GHO uz cbBTC. Arbitrum i Base su imali i tBTC kategorije za dug u stablecoinima sa 72%/75%.
+
+Kategorije BTC prema BTC-u su mesto gde žive loopovi (loop: ponovljeno zaduživanje sa finansijskom polugom): deponuješ LBTC, pozajmiš WBTC, kupiš LBTC i ponoviš, da bi zarađivao Lombardov prinos na višestrukom iznosu svog kapitala. Loop zadužen do granice od 84% počinje na 86 ÷ 84 = 1,024, a njegov health factor uopšte ne zavisi od cene bitcoina, već samo od odnosa LBTC-a i WBTC-a kako ga vide dva orakla: Lombardov kurs sa jedne strane i feed WBTC/BTC sa druge. Razmak od oko 2,4% između njih ga likvidira. To je ispod 1,1, najnižeg praga koji Tokenping prihvata, pa takvi loopovi rade ispod svakog upozorenja; [vodič o E-Modeu](/sr/blog/aave-e-mode-objasnjen#moze-li-upozorenje-da-pomogne-kod-pozicije-u-e-modeu) objašnjava taj kompromis.
+
+## Kako Morpho postupa sa wrapped bitcoinom?
+
+Morpho nema spisak imovine ni prag po tokenu koji određuje governance. Bilo ko može da napravi tržište sa jednim kolateralom, jednom imovinom za zajam, jednim oraklom i jednim LLTV-om iz dozvoljenog skupa, a parametri se nikada ne menjaju. Za wrapped bitcoin to znači da se i izbor wrappera i izbor orakla donose po tržištu, a tržišta koja Morpho navodi međusobno se razlikuju.
+
+Morphov API je 29. oktobra 2026. naveo ova tržišta sa BTC kolateralom na Ethereumu i Baseu, poređana po pozajmljenoj vrednosti:
+
+| Tržište                | LLTV | Pozajmljeno      | Šta orakl meri                                              |
+| ---------------------- | ---- | ---------------- | ----------------------------------------------------------- |
+| cbBTC / USDC, Base     | 86%  | 1,62 milijarde $ | samo BTC/USD: cbBTC je 1 BTC, USDC je 1 $                   |
+| cbBTC / USDC, Ethereum | 86%  | 309,8 miliona $  | samo BTC/USD                                                |
+| WBTC / USDC, Ethereum  | 86%  | 115,8 miliona $  | WBTC/BTC × BTC/USD ÷ USDC/USD                               |
+| WBTC / USDT, Ethereum  | 86%  | 84,1 miliona $   | nije očitano                                                |
+| LBTC / USDC, Ethereum  | 86%  | 1,9 miliona $    | Redstoneov fundamentalni kurs LBTC/BTC (1,005244) × BTC/USD |
+| tBTC / USDC, Ethereum  | 77%  | 0,6 miliona $    | nije očitano                                                |
+
+U poređenju sa Aaveom ističu se dve stvari. LLTV je 86% za svaki veliki wrapper, jedan poen iznad Aaveovog praga od 85% za WBTC i cbBTC i jedanaest poena iznad Aaveovog praga za LBTC, jer na Morphu LLTV određuje tvorac tržišta, a ne komitet za rizik, a zajmodavci odlučuju da li će tržište finansirati. I orakl prati tržište, a ne token: gore navedeno tržište WBTC/USDC vrednuje WBTC preko feeda WBTC/BTC, a USDC preko feeda USDC/USD, dok cbBTC tržišta, koja nose većinu volumena, oba tokena tretiraju kao da vrede tačno svoj peg (vezanu vrednost). Dana 29. oktobra 2026. cbBTC/USDC orakl na Ethereumu davao je 79.752,37 USDC po cbBTC-u, pa je 1 cbBTC uz 40.000 USDC imao [Morpho health factor](/sr/blog/morpho-health-factor-objasnjen) od 79.752,37 × 0,86 ÷ 40.000 = 1,715 i likvidacionu cenu od 46.511,63, malo ispod Aaveovih 47.058,82 za isti zajam.
+
+I likvidacija se razlikuje. [Morphov likvidacioni podsticaj](/sr/blog/kako-funkcionise-likvidacija-na-morphu) pri LLTV-u od 86% iznosi 4,38%, blizu Aaveovog bonusa od 5% na WBTC i ispod njegovih 7,5% na cbBTC, ali likvidator na Morphu sme da otplati ceo dug u jednoj transakciji, dok Aave većinu likvidacija ograničava na polovinu duga. Zajam uz WBTC na Morphu sa oraklom koji uzima u obzir WBTC/BTC nosi istu izloženost kastodijanu kao na Aaveu; zajam uz cbBTC na bilo kom od dva protokola ne nosi je nimalo u svom health factoru, a celu je prebacuje na solventnost protokola.
+
+## Šta stvarno može da pođe po zlu sa zajmom uz wrapped bitcoin?
+
+- **Cena bitcoina.** Uobičajeni rizik, i to veliki. Dana 10. oktobra 2025. na Aaveu je za jedan dan likvidirano više od 250 miliona $, prema Aave Labsu, koji broji i 4,65 milijarde $ u 310.000 likvidacija od 2020. do februara 2026. Matematika health factora je ista za svaki wrapper; razlikuje se prag.
+- **Diskont wrappera, preko orakla.** Pogađa WBTC pozicije na Aaveu i na Morpho tržištima sa feedom WBTC/BTC. Ne pogađa cbBTC ni tBTC pozicije na Aaveu, ni cbBTC tržišta na Morphu sa oraklom BTC/USD, gde ga umesto dužnika nosi protokol.
+- **Pad kursa.** LBTC i eBTC se vrednuju po kursu iz stakinga; slashing na Babylonu bi ga snizio, a sa njim i svaku poziciju, na Aaveu i na Morpho tržištima koja koriste isti kurs.
+- **Promena parametara.** Aaveov governance može da snizi prag ili LTV wrappera, da mu postavi LTV na 0 ili da ga zamrzne, kao što je uradio sa FBTC-om. LLTV Morpho tržišta se nikada ne menja, ali tržište može biti uklonjeno sa spiska u aplikaciji.
+- **Popunjen limit ili zamrznuta rezerva.** Na Aaveu oba zatvaraju put „dodaj kolateral“ i ostavljaju otplatu kao jedini način da se health factor podigne. Morpho nema limite.
+- **Slaba likvidnost wrappera.** Razlog viših bonusa na tBTC, LBTC i eBTC: likvidator koji zaplenjeni token ne može brzo da proda želi da bude bolje plaćen da ga preuzme, a na tržištu pod stresom možda neće ni doći dok pozicija ne potone dublje.
+
+## Kako upozorenja mogu da pomognu kod pozicije sa wrapped bitcoinom?
+
+Upozorenje ne zna i ne zanima ga koji wrapper držiš. Tokenping čita Aave health factor iz `getUserAccountData`, koji već primenjuje prag wrappera i cenu orakla, uključujući odnos WBTC/BTC i kurs LBTC-a, a Morpho health factor računa on-chain iz sopstvenog orakla tržišta. Wrapper menja to kako se taj broj kreće. Pozicija sa health factorom 1,5 se likvidira posle pada cene orakla od 33%, bez obzira na wrapper; WBTC pozicija tamo stiže i padom odnosa WBTC/BTC od 33%, a LBTC pozicija preko svog kursa, pa upozorenje treba da stoji tamo gde bi ti i jedna i druga vrsta pomaka još ostavila vremena za otplatu. Loop BTC prema BTC-u na 1,03 je potpuno van opsega.
+
+Tokenping proverava tvoju poziciju svakih 5 minuta, na svakom Aave V3 tržištu na 21 mreži, u svakom Aave V4 Spokeu i na svakom navedenom Morpho Blue i Midnight tržištu na 14 lanaca, i šalje ti poruku na Signal, Telegram ili e-poštu kada je health factor ispod tvog praga (od 1,1 do 10 na Aaveu, od 1,02 do 10 na Morphu), ponavljajući je pri svakoj proveri dok se ne oporavi. Ne može da otplati umesto tebe, a nagli pomak može da prođe kroz dve provere pre nego što poruka stigne. Možeš da [proveriš svoj Aave V3 health factor](/sr/aave) ili [svoje Morpho pozicije](/sr/morpho) bez plaćanja; upozorenja koštaju <AlertPrice />, po jedno za svako tržište ili Spoke. [Kako izabrati prag upozorenja](/sr/blog/bezbedan-aave-health-factor#kako-da-izaberes-prag-upozorenja-korak-po-korak) i [kako ga podesiti](/sr/blog/podesavanje-aave-health-factor-upozorenja) pokrivaju ostalo.
+
+## Izvori
+
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getAllReservesTokens`, `getReserveConfigurationData`, `getReserveCaps` i `getReserveData` za WBTC, cbBTC, tBTC, LBTC, eBTC, BTC.b i FBTC na bloku 26296985 (pristupljeno 29. oktobra 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): `getSourceOfAsset` i `getAssetPrice` za sedam wrappera, kao i `description()` svakog izvora, na bloku 26296985 (pristupljeno 29. oktobra 2026)
+- [WBTC adapter](https://etherscan.io/address/0xDaa4B74C6bAc4e25188e64ebc68DB5050b690cAc): `ASSET_TO_PEG` ([feed WBTC / BTC](https://etherscan.io/address/0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23), 0,9985) i `PEG_TO_BASE` na bloku 26296985 (pristupljeno 29. oktobra 2026)
+- [LBTC CAPO adapter](https://etherscan.io/address/0xf8c04B50499872A5B5137219DEc0F791f7f620D0) i [eBTC CAPO adapter](https://etherscan.io/address/0x03bB418e89B75407585f8198178f253DA3216218): `getRatio`, `getSnapshotRatio`, `getSnapshotTimestamp`, `getMaxYearlyGrowthRatePercent`, `getMaxRatioGrowthPerSecond` i `isCapped` na bloku 26296985 (pristupljeno 29. oktobra 2026)
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2) i Poolovi na Baseu i Arbitrumu: BTC E-Mode kategorije, očitane za [vodič o E-Modeu](/sr/blog/aave-e-mode-objasnjen) na Ethereum bloku 26291736 i Base bloku 53204166 (pristupljeno 28. oktobra 2026)
+- [Morpho API](https://api.morpho.org/graphql): navedena tržišta sa WBTC, cbBTC, tBTC, LBTC ili eBTC kolateralom na Ethereumu i Baseu, njihov LLTV, pozajmljena vrednost, orakl i feedovi (pristupljeno 29. oktobra 2026)
+- [Morpho Blue na Ethereumu](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb): `price()` orakla tržišta cbBTC / USDC (86%) na bloku 26297045, kao i feedovi i `price()` orakla tržišta WBTC / USDC (86%); `description()` feedova (pristupljeno 29. oktobra 2026)
+- [ARFC: Adjusting WBTC Parameters to Address BitGo Transition Risks](https://governance.aave.com/t/arfc-adjusting-wbtc-parameters-to-address-bitgo-transition-risks/19096): LlamaRiskov predlog od 18. septembra 2024. i spojeni plan od 24. septembra 2024. (pristupljeno 29. oktobra 2026)
+- [ARFC: Onboard LBTC on Aave v3 Core Instance](https://governance.aave.com/t/arfc-onboard-lbtc-on-aave-v3-core-instance/20142): šta je LBTC, njegovi početni parametri i rasprava o oraklu (pristupljeno 29. oktobra 2026)
+- [Direct to AIP: LBTC Oracle and CAPO implementation Update](https://governance.aave.com/t/direct-to-aip-lbtc-oracle-and-capo-implementation-update/22614): Chaos Labs, 17. jul 2025., orakl zasnovan na kursu i CAPO parametri (pristupljeno 29. oktobra 2026)
+- [ARFC: Core & Base - BTC Correlated Asset Update](https://governance.aave.com/t/arfc-core-base-btc-correlated-asset-update/20940): LBTC E-Mode kategorije i listing na Baseu, 4. februar 2025. (pristupljeno 29. oktobra 2026)
+- [Unchained: WBTC completes shift to multi-jurisdiction custody model](https://unchainedcrypto.com/wbtc-completes-shift-to-multi-jurisdiction-custody-model/): 9. oktobar 2024. (pristupljeno 29. oktobra 2026)
+- [Aave Labs: How Aave Liquidations Perform Under Volatile Conditions](https://aave.com/blog/historical-liquidations): 6. februar 2026. (pristupljeno 29. oktobra 2026)
+
+_Edukativni sadržaj, a ne finansijski savet. Upozorenja smanjuju rizik, ali ne sprečavaju likvidaciju._
