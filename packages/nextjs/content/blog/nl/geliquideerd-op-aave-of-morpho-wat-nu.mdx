@@ -1,0 +1,135 @@
+export const meta = {
+  slug: "geliquideerd-op-aave-of-morpho-wat-nu",
+  title: "Geliquideerd op Aave of Morpho: wat moet je nu doen",
+  description:
+    "Zo vind je de liquidatietransactie, zie je wat er is genomen en wat je hield, waarom het gebeurde en hoe je een tweede liquidatie voorkomt.",
+  h1: "Ik ben geliquideerd op Aave of Morpho: wat nu?",
+  publishedAt: "2026-10-31",
+  primaryQuestion: "Wat moet je doen na een liquidatie op Aave of Morpho?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Zoek eerst de transactie: op Aave in de transactiegeschiedenis van de app of in de tokentransfers van je wallet op een
+  block explorer, op Morpho via de Morpho-app of de openbare API van Morpho, want de transactie van de liquidator
+  verschijnt nooit in je eigen lijst. Lees haar daarna: de schuld die voor je is afgelost, het onderpand dat is genomen,
+  en het verschil, de bonus die je hebt betaald. De tokens die je leende blijven van jou, net als onderpand dat niet in
+  beslag is genomen. Op Aave lost een liquidatie meestal de helft van je schuld af en laat ze een positie achter die
+  opnieuw kan worden geliquideerd; op Morpho kan ze bijna alles in één keer nemen. In de 30 dagen tot 30 oktober 2026
+  werden 932 leners op Morpho meer dan eens geliquideerd, dus de nuttigste stap is de laatste: een buffer en een alert
+  voordat je opnieuw leent.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* De cijfers en het moment waarop ze zijn gelezen: content/blog/snapshots/liquidated-on-aave-or-morpho-what-now.md (het Engelse artikel; dit is de Nederlandse vertaling) */}
+
+## Hoe weet je dat het een liquidatie was, en waar is de transactie?
+
+Het eerste teken is meestal dat een positie er verkeerd uitziet: de schuld is kleiner dan je je herinnert, het onderpand is veel kleiner, de health factor (gezondheidsfactor) is ineens hoger, of de positie is weg. Een aflossing die je niet hebt gedaan en een opname van onderpand die je niet hebt ondertekend, in dezelfde transactie: dat is een liquidatie.
+
+De transactie is moeilijk te vinden omdat jij haar niet hebt verstuurd. De bot van een liquidator deed dat, dus ze staat niet in de lijst "Transactions" van je adres op Etherscan, Basescan of Arbiscan. Waar je in plaats daarvan kijkt:
+
+- **Aave, in de app.** Open "Transaction history" (transactiegeschiedenis, app.aave.com/history) met je wallet gekoppeld en de juiste markt gekozen, en filter op "Liquidation". Elke regel heeft het tijdstip, de transactiehash, het genomen onderpand en de afgeloste schuld.
+- **Aave, op een block explorer.** Open je adres en het tabblad "Token transfers (ERC-20)". Een liquidatie verschijnt als een transfer van je aToken (bijvoorbeeld aEthWETH) en van je schuldtoken (variableDebtEthUSDT) naar het nuladres, in een transactie die je niet hebt ondertekend. Open haar en ga naar het tabblad "Logs": het event `LiquidationCall` op het Pool-contract is het record dat je nodig hebt. Eén transactie kan meerdere liquidaties van meerdere leners bevatten, dus zoek degene waarvan `user` jouw adres is.
+- **Morpho.** Je adres toont niets op de explorer, omdat je onderpand in het Morpho-contract stond en de aflossing van de liquidator ook naar het contract ging. De Morpho-app toont de positie kleiner of verdwenen; de openbare API van Morpho noemt elke liquidatie van je adres (`marketTransactions` van het type Liquidation); en de eventlog van het Morpho-contract op de explorer heeft een event `Liquidate` met jouw adres als `borrower`.
+- **Tokenping.** Het [Aave-dashboard](/nl/aave) en het [Morpho-dashboard](/nl/morpho) tonen de positie zoals ze nu is. Een health factor die van bijna 1 naar ruim daarboven is gesprongen, of een positie die is verdwenen, wijst op een liquidatie. De dashboards tonen geen eerdere transacties.
+
+Bewaar de transactiehash. Je hebt hem nodig om de bedragen te lezen, en in veel landen telt een liquidatie als een verkoop van het onderpand dat is genomen, dus je belastingadministratie heeft hem ook nodig.
+
+## Hoe lees je de liquidatietransactie?
+
+Beide protocollen schrijven de hele liquidatie in één event. De namen verschillen, de inhoud is dezelfde: welke schuld voor je is afgelost, welk onderpand is genomen, en hoeveel van elk.
+
+**Aave V3** zendt `LiquidationCall(collateralAsset, debtAsset, user, debtToCover, liquidatedCollateralAmount, liquidator, receiveAToken)` uit. Een echte van Ethereum Core, blok 26305893, 30 oktober 2026 om 13:33 UTC:
+
+| Veld                       | Waarde                 | Wat het betekent                                                                     |
+| -------------------------- | ---------------------- | ------------------------------------------------------------------------------------ |
+| collateralAsset            | WETH                   | De asset die is genomen                                                              |
+| debtAsset                  | USDT                   | De asset die is afgelost                                                             |
+| user                       | het adres van de lener | Wiens positie het was                                                                |
+| debtToCover                | 1.320,785158 USDT      | Schuld afgelost voor de lener, 1.319,32 USD tegen de prijs van de oracle (prijsbron) |
+| liquidatedCollateralAmount | 0,619088749 WETH       | Onderpand naar de liquidator gestuurd, 1.372,09 USD bij 2.216,31 USD/ETH             |
+| liquidator                 | een contractadres      | Wie aflost en ontvangt                                                               |
+| receiveAToken              | false                  | Hij nam WETH zelf, geen aEthWETH                                                     |
+
+Eén bedrag staat niet in het event. In dezelfde transactie ging 0,005952776 aEthWETH (13,19 USD) van de lener naar het collector-contract van Aave: de liquidation protocol fee, 20% van de bonus voor WETH op Ethereum Core in dat blok. Opgeteld gaf de lener 1.385,28 USD aan WETH voor 1.319,32 USD aan schuld, een bonus van 5%, waarvan de liquidator 52,77 USD hield en de treasury 13,19 USD. Het tabblad "Logs" van de explorer toont de fee als een aToken-transfer naar de collector, direct na de burn van het aToken.
+
+**Morpho Blue** zendt `Liquidate(id, caller, borrower, repaidAssets, repaidShares, seizedAssets, badDebtAssets, badDebtShares)` uit. Een echte uit de markt USDC | cbBTC (86%) op Base, blok 53265200, 30 oktober 2026 om 00:22 UTC:
+
+| Veld          | Waarde                 | Wat het betekent                                                                 |
+| ------------- | ---------------------- | -------------------------------------------------------------------------------- |
+| id            | 0x9103c3b4…            | De markt                                                                         |
+| caller        | de liquidator          | Wie aflost en ontvangt                                                           |
+| borrower      | het adres van de lener | Wiens positie het was                                                            |
+| repaidAssets  | 2.174,732093 USDC      | Schuld afgelost voor de lener                                                    |
+| seizedAssets  | 0,02952084 cbBTC       | Onderpand naar de liquidator gestuurd, 2.270,08 USD tegen de prijs van de oracle |
+| badDebtAssets | 0                      | Er is niets afgeschreven                                                         |
+
+De oracle prijsde cbBTC in dat blok op 76.897,38 USDC. Het genomen onderpand was 2.270,08 USD waard voor 2.174,73 USD aan schuld, een verhouding van 1,0438, precies de liquidation incentive factor die een markt van 86% betaalt. Het verschil van 95,34 USD ging volledig naar de liquidator: Morpho neemt geen fee. Die transactie bevatte 30 `Liquidate`-events van één liquidator, elk met een andere lener: zo ziet de drukste minuut van een crash eruit in de log van een markt.
+
+## Wat is er genomen, en wat heb je gehouden?
+
+Drie dingen om uit elkaar te houden:
+
+1. **De schuld die voor je is afgelost is weg, en het onderpand dat ervoor betaalde ook.** Je bent het afgeloste deel niet meer schuldig. De liquidator betaalde het met zijn eigen tokens en nam in ruil je onderpand, plus de bonus. De bonus is wat de liquidatie je kost: in de twee voorbeelden 65,96 USD op 1.319 USD schuld op Aave en 95,34 USD op 2.175 USD op Morpho.
+2. **De tokens die je leende zijn nog steeds van jou.** Als je USDT leende en uitgaf, verandert er niets. Als het nog in je wallet staat, staat het er nog. Een liquidatie raakt de geleende tokens in je wallet nooit aan; ze verandert alleen de positie.
+3. **Het onderpand dat niet in beslag is genomen, blijft in de positie.** Op Aave is het aToken-saldo kleiner; op Morpho is het onderpandsaldo in die markt kleiner. Als er schuld overblijft, blijft het onderpand die dekken. Als er geen schuld overblijft, kun je het opnemen.
+
+Hoeveel er overblijft, hangt af van het protocol. Op Aave V3 lost één liquidatie hoogstens 50% van je totale schuld af wanneer de health factor boven 0,95 ligt en zowel het genomen onderpand als de afgeloste schuld minstens 2.000 USD waard zijn; onder 0,95, of bij kleinere bedragen, kan ze de hele schuld in die asset aflossen ([hoeveel er in één keer kan worden geliquideerd](/nl/blog/hoe-werkt-liquidatie-op-aave#hoeveel-van-mijn-schuld-kan-in-een-keer-worden-geliquideerd)). Het voorbeeld op Ethereum volgde de regel van 50% tot op de cent: 2.638,63 USD schuld ervoor, 1.319,32 erna. De lener hield 0,7906 WETH (1.752 USD) tegenover 1.319,32 USDT, een health factor van 1,12, en die positie kan opnieuw worden geliquideerd als ETH nog eens 10,4% daalt. Op Aave V4 lost een liquidatie in plaats daarvan af wat nodig is om de positie terug te brengen naar de doel-health factor van de Spoke, 1,24 op de Main Spoke op Ethereum, dus er wordt meer afgelost, maar wat overblijft is veiliger ([liquidaties op Aave V4](/nl/blog/hoe-werkt-liquidatie-op-aave#hoe-verschillen-liquidaties-op-aave-v4)).
+
+Morpho Blue heeft geen close factor (het deel van de schuld dat in één keer kan worden afgelost): een liquidator mag in één aanroep tot de hele schuld aflossen ([hoeveel van je schuld er in één keer kan worden geliquideerd](/nl/blog/hoe-werkt-liquidatie-op-morpho#hoeveel-van-je-schuld-kan-in-een-keer-geliquideerd-worden)). De liquidator op Base nam 0,02952 van 0,03286 cbBTC, 90% van het onderpand, en loste de hele schuld af op 0,0005 USDC na, die door de afronding van shares overbleef. De lener hield 0,003342 cbBTC, ongeveer 257 USD, en kan dat opnemen.
+
+Nog twee dingen om na te gaan. Op Aave was het de keuze van de liquidator welk onderpand werd genomen ([welk onderpand de liquidator neemt](/nl/blog/hoe-werkt-liquidatie-op-aave#welk-onderpand-neemt-de-liquidator)), dus een positie met meerdere onderpandassets kan precies de asset kwijt zijn die je het minst verwachtte. Op Morpho kan een `repaidAssets` die kleiner is dan je verwachtte betekenen dat er vóór de echte liquidatie een [pre-liquidatie (pre-liquidation)](/nl/blog/morpho-pre-liquidatie) liep, bij een lagere loan-to-value (LTV) en een lagere incentive; de app en de API tonen beide soorten.
+
+## Wat als de liquidatie alles nam?
+
+Als `badDebtAssets` op Morpho boven nul ligt, of als het event op Aave je zonder onderpand achterliet terwijl er schuld overbleef, was het onderpand minder waard dan de schuld plus de bonus tegen de tijd dat iemand liquideerde. Beide protocollen sluiten de positie in plaats van achter je aan te gaan:
+
+- **Aave** (sinds V3.3) verbrandt de resterende schuld en boekt die als tekort op die reserve, dat stakers van Umbrella later kunnen dekken. Je eindigt zonder onderpand en zonder schuld ([kan een liquidatie oninbare schuld achterlaten](/nl/blog/hoe-werkt-liquidatie-op-aave#kan-een-liquidatie-oninbare-schuld-achterlaten)).
+- **Morpho Blue** schrijft de resterende schuld in dezelfde transactie af en verdeelt het verlies over de uitleners in die markt. De lener eindigt zonder onderpand en zonder schuld ([wat er met oninbare schuld gebeurt op Morpho Blue](/nl/blog/hoe-werkt-liquidatie-op-morpho#wat-gebeurt-er-met-oninbare-schuld-op-morpho-blue)).
+
+Niemand komt het verschil bij je halen, en er blijft niets op de positie staan. Maar er blijft ook niets over, en het verlies aan jouw kant is het hele onderpand, niet alleen een bonus. Oninbare schuld (bad debt) was zeldzaam in de maand van de voorbeelden: nul bij de 393 liquidaties in de cbBTC-markt op Base in de drie dagen rond de crash, ongeveer 3,5 miljoen USD over alle 7.521 liquidaties op Morpho in de 30 dagen tot 30 oktober.
+
+## Waarom gebeurde het?
+
+De twee voorbeelden hebben één oorzaak gemeen: geen buffer. Eén blok vóór de liquidatie op Aave was de health factor van die lener 1,0049; de volgende update van Chainlink bracht WETH van ongeveer 2.229,77 naar 2.216,31 USD, 0,6% lager, en de health factor was 0,9988. Eén blok vóór de liquidatie op Morpho was de health factor van de lener op Base 1,0025; de oracle bracht cbBTC van 77.140,46 naar 76.897,38 USDC, 0,3% lager, en hij was 0,9993. Geen van beide had een crash nodig. Eén gewone prijsupdate deed het, en in het geval van Morpho om 00:22 UTC, in het venster van zes uur waarin [meer dan een derde van de liquidaties op Morpho](/nl/blog/wie-heeft-health-factor-alerts-nodig#hoe-vaak-worden-leners-geliquideerd) plaatsvindt.
+
+Als je health factor niet zo dichtbij lag, heeft iets anders hem bewogen. [Waarom je health factor daalde](/nl/blog/waarom-daalde-je-aave-health-factor) noemt zes oorzaken met voor elk een manier om het na te gaan: de koers van je onderpand daalde, de koers van wat je leende steeg, de rente op de schuld groeide harder dan het rendement op het onderpand, governance verlaagde een liquidatiedrempel (liquidation threshold), een stablecoin die je stortte verloor zijn koppeling aan de dollar (depeg), of een oracle prijsde een wrapper verkeerd. De Morpho-versie is dezelfde lijst zonder de verlaagde drempel, omdat de liquidatie-LTV (LLTV) van een Morpho-markt nooit verandert ([wat een Morpho health factor beweegt](/nl/blog/morpho-health-factor-uitgelegd#wat-beweegt-een-morpho-health-factor)). Twee gevallen mis je makkelijk: een lening op [Midnight](/nl/blog/morpho-midnight-leningen-met-vaste-rente) na de vervaldatum kan bij elke health factor worden geliquideerd, en een lening tegen [getokeniseerde aandelen](/nl/blog/getokeniseerde-aandelen-als-onderpand) kan worden geliquideerd op een koers van zondagavond die bewoog terwijl de feed gepauzeerd was.
+
+## Wat moet je in het eerste uur doen?
+
+1. **Lees de resterende positie voordat je eraan komt.** Health factor, resterende schuld, resterend onderpand, op het [Aave-dashboard](/nl/aave) of het [Morpho-dashboard](/nl/morpho), in de app van het protocol of op de explorer. Een gedeeltelijke liquidatie op Aave laat een positie rond 1,1 achter, die de volgende beweging van 10% opnieuw liquideert.
+2. **Beslis of je sluit of houdt.** Wil je de lening niet meer, los dan de rest af en neem het onderpand op; op Aave kun je met het onderpand zelf aflossen ([aflossen met onderpand](/nl/blog/aave-liquidatie-voorkomen#stap-4-los-af-met-onderpand-of-swap-je-onderpand)). Houd je haar, los dan af of voeg onderpand toe tot de health factor staat waar jij hem wilt hebben, niet waar hij stond. [Aflossen verhoogt de health factor per dollar meer dan onderpand toevoegen](/nl/blog/aave-liquidatie-voorkomen#waarom-verhoogt-aflossen-de-health-factor-meer-dan-onderpand-toevoegen).
+3. **Leen niet opnieuw tot aan de grens.** De positie die net bij 1,005 is geliquideerd, wordt bij 1,005 opnieuw geliquideerd. Opnieuw lenen tot dezelfde LTV zet de klok terug op nul.
+4. **Controleer je andere posities.** Elke Aave-markt, elke V4-Spoke en elke Morpho-markt heeft een eigen health factor, en dezelfde koersbeweging die de ene liquideerde, heeft de andere verlaagd.
+5. **Controleer op Aave of een reserve bevroren is.** Toen Aave op 29 oktober 2026 elke DAO-markt bevroor, was onderpand toevoegen aan een bevroren reserve onmogelijk en was aflossen de enige weg omhoog ([waarom opnemen of lenen mislukt](/nl/blog/waarom-opnemen-of-lenen-op-aave-mislukt)).
+6. **Controleer op Morpho de pre-liquidatie.** Als je een pre-liquidatiecontract had gemachtigd, is het nog steeds gemachtigd; [controleer en trek de machtiging in](/nl/blog/morpho-pre-liquidatie#hoe-controleer-je-of-je-er-een-hebt-geautoriseerd) als je dat niet meer wilt.
+7. **Bewaar het record.** Transactiehash, de twee bedragen, de datum, de oracleprijzen als je ze kunt lezen. Explorers bewaren de gegevens, maar je wilt er in april niet naar zoeken.
+
+## Hoe voorkom je een tweede liquidatie?
+
+Van de 5.703 leners op Morpho die in de 30 dagen tot 30 oktober 2026 werden geliquideerd, werden er 932 meer dan eens geliquideerd. De lener op Base hierboven was een van hen: een cbBTC-lening geliquideerd op 3 juni, een cbZEC-lening op 14 oktober, en de cbBTC-lening opnieuw op 30 oktober. Elke liquidatie kostte een bonus, en geen enkele leidde tot een verandering. De verandering bestaat uit drie beslissingen:
+
+- **Een buffer.** Een health factor van 1,005 overleeft niets. [Hoe ver koersen bij elke health factor kunnen dalen](/nl/blog/veilige-aave-health-factor#hoe-ver-kunnen-prijzen-dalen-voor-liquidatie-bij-elke-health-factor) geeft de tabel: 1,5 overleeft een daling van 33,3%, 2 overleeft 50%. Welk getal je kiest, hangt af van wat je tegen wat leende; [de methode stap voor stap](/nl/blog/veilige-aave-health-factor#hoe-kies-je-stap-voor-stap-een-alertdrempel) werkt dat uit, en de [Morpho-versie](/nl/blog/morpho-health-factor-uitgelegd#hoe-kies-je-een-buffer-en-een-alertdrempel) houdt rekening met de vaste LLTV.
+- **Een alert boven de buffer.** Een bericht wanneer de health factor een lijn passeert die je zelf koos, vroeg genoeg om te handelen. Tokenping controleert elke 5 minuten en stuurt je een bericht via Signal, Telegram of e-mail; de drempel kan overal tussen 1,1 en 10 liggen op Aave en tussen 1,02 en 10 op Morpho. [Er een instellen](/nl/blog/aave-health-factor-alert-instellen) kost een paar minuten. Een alert kan geen sprong tussen twee controles opvangen, en kan niets voor je aflossen; daarom komt hij na de buffer, niet in plaats ervan.
+- **Geld waarmee je kunt handelen.** Geld om af te lossen op het netwerk waar je leende, in de asset die je verschuldigd bent of in een asset die je 's nachts kunt swappen, en een telefoon die het bericht doorlaat ([alerts bij Niet storen](/nl/blog/aave-alerts-bij-niet-storen)). De liquidatie op Morpho hierboven gebeurde om 00:22 UTC; een alert bij 1,1 was uren eerder aangekomen, en alleen geld op Base had erop kunnen reageren.
+
+Was de lening zo klein dat je geen geld had verplaatst om haar te redden, dan is de eerlijke conclusie anders: leen er minder tegen, of accepteer dat de bonus de prijs is van niet opletten.
+
+## Hoe Tokenping hierin past
+
+Tokenping bewaakt elke positie die je instelt elke 5 minuten, in elke Aave V3-markt op 21 netwerken, elke Aave V4-Spoke en elke Morpho-markt die de Morpho-app toont, en stuurt je een bericht via Signal, Telegram of e-mail wanneer de health factor onder je drempel ligt. Het bericht herhaalt zich bij elke controle tot de positie hersteld is, in elke taal van de site. Na een liquidatie tonen de dashboards wat er over is: het [Aave-dashboard](/nl/aave) met de health factor van elke markt, het [Morpho-dashboard](/nl/morpho) met de LTV, LLTV en health factor van elke markt, berekend uit de chain.
+
+Je kunt je posities bekijken zonder te betalen. Alerts kosten <AlertPrice />, één per Aave V3-markt, V4-Spoke of Morpho-markt. Tokenping is in bèta en heeft geen uptimegarantie, en geen enkele alert voorkomt een liquidatie.
+
+## Bronnen
+
+- [Ethereum-transactie 0x5f88aa61…12fb6](https://etherscan.io/tx/0x5f88aa61ca6180e132a627c5e4d483c4098becc65359fa6af50551c405312fb6) (blok 26305893): `LiquidationCall`, de burns van aEthWETH en variableDebtEthUSDT, de transfer van de fee naar de collector; prijzen van de Aave Oracle en `getUserAccountData` in de blokken 26305892 en 26305893; `getReserveConfigurationData` en `getLiquidationProtocolFee` voor WETH, gelezen via een openbare RPC (geraadpleegd op 31 oktober 2026)
+- [Base-transactie 0xc2df272f…f0178](https://basescan.org/tx/0xc2df272f36d8b0b566c24988052c1508a4c90a97999b2da5a8c8ec7f8e3f0178) (blok 53265200): de 30 `Liquidate`-events; `position` en `market` van Morpho Blue en `price()` van de oracle van de markt in de blokken 53265199 en 53265200, gelezen via een openbare RPC (geraadpleegd op 31 oktober 2026)
+- [Morpho API](https://api.morpho.org/graphql): `marketTransactions` van het type Liquidation voor de cbBTC-markt op Base van 28 tot 31 oktober 2026 en voor het adres van de voorbeeldlener; `markets` voor de LLTV en de oracle van de markt (geraadpleegd op 31 oktober 2026)
+- [Morpho API](https://api.morpho.org/graphql): alle liquidaties van 30 september 2026 08:36 UTC tot 30 oktober 2026 08:36 UTC, zoals in de [gids over alerts](/nl/blog/wie-heeft-health-factor-alerts-nodig) (geraadpleegd op 30 oktober 2026)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): oninbare schuld verbrand en geboekt als tekort op de reserve, regels voor de close factor, wegwerken van het tekort door Umbrella (geraadpleegd op 31 oktober 2026)
+- [Liquidation on Morpho](https://docs.morpho.org/learn/concepts/liquidation): de formule voor de incentive, tot 100% in één aanroep, geen protocolfee (geraadpleegd op 31 oktober 2026)
+
+_Educatieve inhoud, geen financieel advies. Alerts verkleinen het risico, maar voorkomen geen liquidatie._

@@ -1,0 +1,178 @@
+import type { DashboardMessages } from "./shared";
+import { nlForMarket, nlOnMarket, plural } from "~~/i18n/format";
+
+const nlDays = (days: number) => plural("nl", days, { one: `${days} dag`, other: `${days} dagen` });
+
+export const MESSAGES: DashboardMessages = {
+  page: {
+    metaTitle: "Aave V3 en V4: posities en health factor",
+    metaDescription: (networkCount, channels) =>
+      `Bekijk onderpand, schuld en health factor op Aave V3 en V4 op ${networkCount} netwerken. Alerts via ${channels}, één drempel per markt.`,
+    title: "Aave V3 en V4: posities en health factor-alerts",
+    networkMarkets: (name, markets) => `${name} (markten ${markets})`,
+    intro: (v3Networks, v4Networks) =>
+      `Koppel de wallet waarmee je leent om het onderpand, de schuld en de health factor te zien op Aave V3 op ${v3Networks}, en in elke Spoke van Aave V4 op ${v4Networks}. Bekijken vraagt geen transactie.`,
+    disclosureSummary: "Wat alerts kosten en hoe vaak we controleren",
+    alertsCost: (channels, paymentChain) =>
+      `Wil je een bericht via ${channels} als de health factor van een markt onder een drempel zakt die je zelf kiest? Ontgrendel de alerts met een betaling in USDC${paymentChain ? ` op ${paymentChain}` : ""}. De actuele prijs zie je voordat je betaalt.`,
+    checks: minutes =>
+      `Tokenping controleert ${plural("nl", minutes, { one: "elke minuut", other: `elke ${minutes} minuten` })}. Zolang de health factor onder je drempel blijft, stuurt elke controle opnieuw een bericht via elk kanaal dat je hebt gekozen.`,
+    guideThreshold: "Zo kies je een drempel",
+    guideAlerts: "Zo werken alerts",
+    morphoDashboard: "Leen je op Morpho? Open het Morpho-dashboard",
+  },
+  gate: {
+    title: "Koppel een wallet om verder te gaan",
+    description:
+      "Tokenping heeft je walletadres nodig om je Aave-posities te tonen. Koppelen verplaatst geen geld en kost niets.",
+    connect: "Wallet koppelen",
+    connecting: "Koppelen",
+    approveInWallet: "Keur de koppeling goed in je wallet.",
+  },
+  positionsHeading: "Je Aave-posities",
+  loadingDashboard: "Je dashboard wordt geladen",
+  toolbar: {
+    wallet: "Wallet",
+    refresh: "Posities vernieuwen",
+    refreshing: "Vernieuwen",
+    loadingPositions: "Posities laden",
+  },
+  errors: {
+    positionsDidNotLoad: "De posities zijn niet geladen",
+    refreshFailed: "Vernieuwen mislukt",
+    showingLastPositions: "Je ziet de posities van de laatste keer dat het laden lukte.",
+    tryAgain: "Opnieuw proberen",
+    fetchPositionsFailed: "Aave-posities ophalen is mislukt",
+  },
+  totals: {
+    supplied: "Totaal gestort",
+    borrowed: "Totaal geleend",
+    netWorth: "Nettowaarde",
+    noData: "Geen gegevens",
+  },
+  networks: {
+    heading: "Markten",
+    active: count => `${count} actief`,
+    noPositions: "Geen actieve Aave-posities gevonden in de ondersteunde markten.",
+    selectedRegion: "Gekozen markt",
+    noneSelectedTitle: "Geen markt gekozen",
+    noneSelectedDescription: "Kies een markt om de Aave-positie te zien.",
+    otherMarkets: count => `Andere markten (${count})`,
+    otherMarketsHint: "Markten die Tokenping heeft gecontroleerd waar deze wallet geen positie en geen alert heeft.",
+    alertSet: "Alert ingesteld",
+    supplied: usd => `${usd} gestort,`,
+    borrowed: usd => `${usd} geleend`,
+    noPosition: "Geen positie",
+  },
+  healthFactor: {
+    srPrefix: "Health factor ",
+    noDebt: "Geen schuld",
+    critical: "Kritiek",
+    risky: "Riskant",
+    safe: "Veilig",
+  },
+  position: {
+    market: version => (version === 4 ? "Spoke van Aave V4" : "Markt van Aave V3"),
+    noPositionTitle: chainName => `Geen actieve positie ${nlOnMarket(chainName)}`,
+    noPositionDetail: chainName =>
+      `Aave meldt voor deze wallet geen onderpand en geen schuld ${nlOnMarket(chainName)}.`,
+    collateral: "Onderpand",
+    debt: "Schuld",
+    netWorth: "Nettowaarde",
+    suppliedTitle: "Gestort",
+    borrowedTitle: "Geleend",
+    noCollateral: "Geen onderpand gestort",
+    noDebt: "Geen openstaande schuld",
+    tokenIconsFrom: "Token- en netwerkiconen van",
+    tokenDetailsFailedTitle: "De tokengegevens zijn niet geladen",
+    tokenDetailsFailedBody:
+      "De totalen hierboven komen uit het accountoverzicht van Aave. Vernieuw de posities om het opnieuw te proberen.",
+  },
+  tokens: {
+    asset: "Asset",
+    supplied: "Gestort",
+    supplyApy: "APY op storting",
+    collateral: "Als onderpand",
+    borrowed: "Geleend",
+    rateType: "Soort rente",
+    enabled: "Aan",
+    disabled: "Uit",
+    stable: amount => `Stabiel ${amount}`,
+    variable: amount => `Variabel ${amount}`,
+    count: count => plural("nl", count, { one: `${count} asset`, other: `${count} assets` }),
+  },
+  address: {
+    defaultLabel: "Adres",
+    copy: (_label, address) => `Adres ${address} kopiëren`,
+    copied: "Adres gekopieerd",
+    copyFailed: "Kopiëren is mislukt. Selecteer het adres en kopieer het zelf.",
+  },
+  opensInNewTab: "(opent in een nieuw tabblad)",
+  paywall: {
+    unlockedUntil: date => `Alerts ontgrendeld tot ${date}`,
+    titleNew: "Health factor-alerts ontgrendelen",
+    titleExtend: "Toegang verlengen om je alerts te bewerken",
+    descriptionNew:
+      "Betaal één keer om de alertinstellingen te ontgrendelen en voor elk netwerk een health factor-drempel in te stellen. Niets wordt automatisch verlengd: je betaalt vanuit je wallet als je wilt verlengen.",
+    descriptionExtend:
+      "Je eerdere alertinstellingen zijn bewaard. Betaal opnieuw om de toegang te verlengen en ze te bewerken.",
+    networkDescriptionNew: chainName =>
+      `Betaal één keer om health factor-alerts in te stellen ${nlOnMarket(chainName)} en in andere markten. Niets wordt automatisch verlengd: je betaalt vanuit je wallet als je wilt verlengen.`,
+    networkDescriptionExtend: chainName =>
+      `Je bewaarde alertinstellingen ${nlForMarket(chainName)} staan nog in je account. Betaal opnieuw om de toegang te verlengen en ze te bewerken.`,
+    connectWallet: "Koppel je wallet om voor toegang te betalen.",
+    unconfigured: "Voor dit netwerk is geen betaalcontract ingesteld.",
+    noPlan: "Er is op dit moment geen betaald plan beschikbaar.",
+    paused: "Betalingen zijn nu gepauzeerd. Probeer het later opnieuw.",
+    statusUnavailable: "De betaalstatus kon niet worden geladen. Laad de pagina opnieuw om het nog eens te proberen.",
+    wrongNetworkTitle: "Verkeerd netwerk",
+    wrongNetworkBody: (walletChain, target) =>
+      `Je wallet staat op ${walletChain ?? "een ander netwerk"}. Schakel over naar ${target ?? "het betaalnetwerk"} om te betalen.`,
+    switchTo: target => `Overschakelen naar ${target ?? "het betaalnetwerk"}`,
+    switching: "Netwerk wisselen",
+    loadingDetails: "Betaalgegevens laden",
+    price: "Prijs",
+    access: "Toegang",
+    network: "Netwerk",
+    networkFee: "Netwerkkosten",
+    networkFeeValue: symbol => `Betaald in ${symbol} voor elke stap, getoond in je wallet`,
+    period: (days, about) => (about ? `Ongeveer ${nlDays(days)}` : nlDays(days)),
+    pay: amount => `${amount} betalen`,
+    extend: (days, amount) => `${nlDays(days)} toevoegen voor ${amount}`,
+    extendHint: days =>
+      `Elke betaling voegt ${nlDays(days)} toe na je huidige einddatum. Betaal zo vaak je wilt; niets wordt vanzelf verlengd.`,
+    accessExtended: date => `Toegang verlengd tot ${date}.`,
+    accessActive: "Toegang actief. Je kunt nu je alerts instellen.",
+    paymentPending: "Betaling bevestigd. De toegang verschijnt zo.",
+    loading: {
+      processing: "Verwerken",
+      waitingForWallet: "Wachten op je wallet",
+      approving: "Goedkeuren",
+      paying: "Betalen",
+    },
+    unavailable: "Betaalde toegang is nu niet beschikbaar.",
+    checkFailed: "De betaalstatus kon niet worden gecontroleerd. Probeer het zo opnieuw.",
+    approvalNotVisible: "De goedkeuring is bevestigd maar nog niet zichtbaar. Probeer het zo opnieuw.",
+  },
+  payment: {
+    stepsLabel: "Betaalstappen",
+    approveTitle: amount => `${amount} goedkeuren`,
+    approveHint:
+      "Laat het betaalcontract precies dit bedrag innen. Wordt overgeslagen als een eerdere goedkeuring het al dekt.",
+    payTitle: amount => `${amount} betalen`,
+    payHint: "Verstuurt de betaling en ontgrendelt de alerts.",
+    inProgress: "Bezig",
+    done: "Klaar",
+    notNeeded: "Niet nodig",
+    transaction: "Transactie ",
+    viewOn: explorer => `Bekijken op ${explorer}`,
+    preparingTitle: "Betaling voorbereiden",
+    preparingBody: "De actuele prijs en je goedkeuring worden gecontroleerd.",
+    confirmTitle: "Bevestig in je wallet",
+    approveSignBody: amount => `Stap 1 van 2: ${amount} goedkeuren. Er wordt niets verstuurd tot je bevestigt.`,
+    processingOn: network => `Verwerken op ${network ?? "het netwerk"}`,
+    approvePendingBody: "Stap 1 van 2: goedkeuring verstuurd. Daarna vraagt je wallet je de betaling te bevestigen.",
+    paySignBody: amount => `Stap 2 van 2: ${amount} betalen. Er wordt niets verstuurd tot je bevestigt.`,
+    payPendingBody: "Stap 2 van 2: betaling verstuurd. De alerts worden ontgrendeld zodra het netwerk die bevestigt.",
+  },
+};

@@ -1,0 +1,157 @@
+export const meta = {
+  slug: "veilige-aave-health-factor",
+  title: "Wat is een veilige health factor op Aave? Een buffertabel",
+  description:
+    "Er is geen universeel veilige health factor op Aave. Zie hoe ver prijzen kunnen dalen bij 1,2, 1,5 of 2,0 en hoe je een buffer kiest voor je onderpand.",
+  h1: "Wat is een veilige health factor op Aave?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-20",
+  primaryQuestion: "Welke health factor is veilig op Aave?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Er bestaat niet één veilige of "goede" health factor (gezondheidsfactor) op Aave. Het eigen helpcentrum van Aave zegt
+  dat het juiste niveau afhangt van hoe volatiel en hoe gecorreleerd je assets zijn. Wat het getal je wel vertelt, is
+  hoe ver prijzen kunnen bewegen voor liquidatie: met één volatiel onderpand en schuld in een stablecoin bereikt een
+  health factor van 1,2 de 1,00 na een prijsdaling van 16,7%, 1,5 na een daling van 33,3% en 2,0 na een daling van 50%.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Bestaat er een veilige health factor op Aave?
+
+Nee. Het helpcentrum van Aave zegt dat er "no universally 'safe' health factor" (geen universeel "veilige" health factor) bestaat, omdat het juiste niveau afhangt van de volatiliteit en de correlatie van de assets in een positie ([Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations), geraadpleegd op 14 oktober 2026). Het voegt eraan toe dat lagere health factors acceptabel kunnen zijn voor gecorreleerde assets, zoals stablecoins of assets die nauw aan ETH gekoppeld zijn.
+
+De health factor (HF) is een getal dat je onderpand vergelijkt met je schuld op één Aave-markt: HF = Σ(waarde van het onderpand × liquidatiedrempel) ÷ totale waarde van de schuld, in USD tegen de prijzen van de oracle (prijsbron) van Aave. De liquidatiedrempel (liquidation threshold) is het deel van de waarde van een onderpand dat meetelt voor de health factor, bijvoorbeeld 83% voor WETH op de Ethereum Core-markt (on-chain gelezen op Ethereum-blok 26193284 op 14 oktober 2026). Onder 1,00 kan een liquidator een deel of al je schuld aflossen, en verlies je onderpand ter waarde van het afgeloste bedrag plus een liquidatiebonus. De formule en meer voorbeelden staan in de gids over [wat de Aave health factor is](/nl/blog/aave-health-factor-uitgelegd).
+
+Een "veilige" health factor komt dus neer op twee keuzes die alleen jij kunt maken: hoe grote prijsbeweging je positie moet kunnen opvangen, en hoeveel tijd je nodig hebt om in te grijpen zodra prijzen beginnen te bewegen. Dashboards, dat van Tokenping inbegrepen, geven health factors labels als "Veilig" of "Riskant". Dat zijn weergavebanden; geen enkel niveau garandeert dat een positie niet kan worden geliquideerd.
+
+## Hoe ver kunnen prijzen dalen voor liquidatie bij elke health factor?
+
+Met één volatiel onderpand en schuld in een stablecoin bereikt een Aave-positie een health factor van 1,00 nadat de prijs van het onderpand met 1 − 1/HF is gedaald. Bij HF 1,2 is dat een daling van 16,7%, bij HF 1,5 is het 33,3% en bij HF 2,0 is het 50%.
+
+De afleiding is kort. Met één onderpand is HF = (hoeveelheid onderpand × prijs × liquidatiedrempel) ÷ schuld. Als de schuld een stablecoin van $1 is en verder niets verandert, beweegt de health factor precies evenredig met de prijs van het onderpand. Hij bereikt 1,00 als de prijs is gedaald tot 1/HF van de huidige prijs, dus de daling is 1 − 1/HF.
+
+| Health factor nu                                                | Prijsdaling die de HF naar 1,00 brengt | ETH-prijs bij HF 1,00, als ETH nu $2.400 is |
+| --------------------------------------------------------------- | -------------------------------------- | ------------------------------------------- |
+| 83 ÷ 80,5 ≈ 1,031 (WETH tot de limiet beleend op Ethereum Core) | 3,0%                                   | $2.327,71                                   |
+| 1,1                                                             | 9,1%                                   | $2.181,82                                   |
+| 1,2                                                             | 16,7%                                  | $2.000,00                                   |
+| 1,3                                                             | 23,1%                                  | $1.846,15                                   |
+| 1,5                                                             | 33,3%                                  | $1.600,00                                   |
+| 1,66 (het rekenvoorbeeld hieronder)                             | 39,8%                                  | $1.445,78                                   |
+| 2,0                                                             | 50,0%                                  | $1.200,00                                   |
+| 3,0                                                             | 66,7%                                  | $800,00                                     |
+
+Een controle op de Ethereum Core-markt, met de WETH-liquidatiedrempel van 83% on-chain gelezen op 14 oktober 2026 (Ethereum-blok 26193284): neem 10 WETH gestort tegen een illustratieve $2.400 ($24.000) en 12.000 USDC geleend. HF = 24.000 × 0,83 ÷ 12.000 = 1,66. ETH bereikt de liquidatiegrens bij 12.000 ÷ (10 × 0,83) = $1.445,78, wat 39,8% onder $2.400 ligt, hetzelfde als 1 − 1/1,66. ETH is hier afgerond op $2.400; de oracle van Aave gaf dezelfde dag $2.414,78 op blok 26193376.
+
+De tabel gaat ervan uit dat de stablecoin op $1 blijft, er geen rente oploopt en de liquidatiedrempel niet verandert. Met twee onderpanden, of met schuld in een volatiel asset, verandert de rekensom; de gids [bereken je Aave-liquidatieprijs](/nl/blog/aave-liquidatieprijs) loopt beide gevallen door.
+
+## Waarom is het "veilige" getal anders bij stablecoinschuld, volatiele schuld en E-Mode-loops?
+
+Dezelfde health factor betekent iets anders voor verschillende Aave-posities, omdat hij de afstand tot liquidatie meet in de prijs die de positie bepaalt, en die hangt af van wat je hebt gestort en wat je hebt geleend. Dit vangt een health factor van 1,5 op in vier veelvoorkomende opstellingen:
+
+| Type positie                                           | Voorbeeld                                               | Prijs die de health factor bepaalt | Beweging die de HF van 1,5 naar 1,00 brengt |
+| ------------------------------------------------------ | ------------------------------------------------------- | ---------------------------------- | ------------------------------------------- |
+| Volatiel onderpand, stablecoinschuld                   | WETH gestort, USDC geleend                              | ETH-prijs in USD                   | ETH daalt 33,3%                             |
+| Stablecoin als onderpand, volatiele schuld             | USDC gestort, WETH geleend                              | ETH-prijs in USD                   | ETH stijgt 50%                              |
+| Twee volatiele assets                                  | WBTC gestort, WETH geleend                              | BTC-prijs gedeeld door ETH-prijs   | De BTC/ETH-verhouding daalt 33,3%           |
+| Gecorreleerde E-Mode-loop (herhaald lenen met hefboom) | wstETH gestort, WETH geleend in E-Mode "ETH correlated" | wstETH/ETH-koers van de oracle     | De koers daalt 33,3%                        |
+
+**Stablecoinschuld.** Met stablecoinschuld tegenover ETH of BTC volgt de health factor de prijs van het onderpand vrijwel één op één. De schuldkant beweegt weinig: de USDC-prijsadapter van Aave op Ethereum begrenst de USDC-prijs op $1,04 (on-chain gelezen op Ethereum-blok 26193376 op 14 oktober 2026), dus USDC-schuld wordt nooit hoger gewaardeerd dan 4% boven $1, en een USDC-prijs onder $1 verlaagt de waarde van de schuld, wat de health factor verhoogt.
+
+**Volatiele schuld.** Als je een volatiel asset leent tegen stablecoins, daalt de health factor wanneer het geleende asset stijgt, en het geleende asset kan met HF − 1 stijgen voor liquidatie (50% bij HF 1,5). Neem 10.000 USDC gestort (liquidatiedrempel 78% op Ethereum Core op blok 26193284, 14 oktober 2026) tegenover geleende WETH ter waarde van $6.000: HF = 10.000 × 0,78 ÷ 6.000 = 1,30. Als ETH op $2.400 begon, bereikt de positie HF 1,00 wanneer ETH 30% stijgt, naar $3.120. Ook het stablecoin-onderpand kan bewegen: op 11 maart 2023 zakte USDC naar ongeveer $0,88, volgens de post-mortem van Gauntlet, en bij die prijs zou dezelfde positie op 8.800 × 0,78 ÷ 6.000 = 1,144 staan.
+
+**E-Mode-loops.** In de E-Mode-categorie "ETH correlated" op Ethereum Core (een loan-to-value (LTV) van 93% en een liquidatiedrempel van 95% op Ethereum-blok 26193288, 14 oktober 2026; hetzelfde op Arbitrum) volgt de health factor van een loop van wstETH tegen WETH de wstETH/ETH-koers die de oracle meldt, niet de dollarprijs van ETH. Dat maakt hem minder gevoelig voor de marktprijs van ETH, maar een loop die tot zijn limiet is geleend, begint op 95 ÷ 93 = 1,0215 en bereikt 1,00 na een daling van 2,1% in die koers. In maart 2026 verlaagde een verkeerd geconfigureerde CAPO-oracle de effectieve wstETH-koers met ongeveer 2,85% op de markten Ethereum Core en Prime, genoeg om E-Mode-loops met een hoge hefboom te liquideren, volgens de post-mortem van Chaos Labs. Voor een loop kan een fout in een oracle of een wisselkoers dus zwaarder wegen dan een marktcrash, en als de leenrente op WETH boven de opbrengst van het onderpand stijgt, slijt de rente de kleine buffer ook af. De gids over [waarom je Aave health factor vanzelf daalt](/nl/blog/waarom-daalde-je-aave-health-factor) behandelt dat incident.
+
+## Hoe snel vreten rente en parameterwijzigingen je buffer op?
+
+Tegen de rentes van 14 oktober 2026 op de Ethereum Core-markt van Aave (blok 26193378) zou rente ongeveer 3% per jaar van de health factor afhalen bij een positie met WETH als onderpand en USDC-schuld, als rentes en prijzen gelijk bleven; een verlaging van een liquidatiedrempel neemt haar deel in één stap. Rente verlaagt een health factor wanneer de leenrente van de schuld boven de stortingsrente van het onderpand ligt, dus een positie waarvan het onderpand meer opbrengt dan de schuld kost, zoals USDC gestort tegenover geleende WETH, schuift juist omhoog. Op Aave V3 geldt een lagere liquidatiedrempel meteen voor elke open positie die dat onderpand gebruikt, en met één onderpand daalt de health factor in dezelfde verhouding. De gids over [waarom je Aave health factor vanzelf daalt](/nl/blog/waarom-daalde-je-aave-health-factor) werkt beide uit met getallen.
+
+## Hoeveel buffer heb je nodig om tijd te hebben om in te grijpen?
+
+Een Aave-positie heeft genoeg buffer nodig om prijzen te laten doorbewegen terwijl een waarschuwing je bereikt en je aflossings- of stortingstransactie wordt bevestigd. Er is geen vast getal: het hangt af van hoe snel je onderpand beweegt, hoe snel je een waarschuwing ziet en hoe betrouwbaar je een transactie erdoor krijgt.
+
+Drie vertragingen tellen op:
+
+1. **Detectie.** Je opent de Aave-app, of een dienst controleert volgens een schema. Tokenping controleert elke 5 minuten, dus een snelle beweging kan tussen twee controles door 1,00 passeren.
+2. **Reactie.** Je ziet het bericht en pakt je wallet. 's Nachts of op reis kan dat uren duren.
+3. **Uitvoering.** De transactie moet worden ondertekend, verzonden en in een blok opgenomen, en in een gespannen markt stijgen de gaskosten en kunnen interfaces of RPC-endpoints uitvallen. Op het Polygon-forum probeerde in mei 2021 een lener af te lossen bij HF 1,01, kreeg herhaaldelijk foutmeldingen en werd geliquideerd voordat de aflossing doorging. Op het Aave-forum meldde in december 2024 een ander dat aflossingspogingen meer dan een uur op pending bleven hangen, gevolgd door een liquidatie. Geen van beide threads stelt de oorzaak vast.
+
+Onder 1,00 kan liquidatie snel volgen: het helpcentrum van Aave beschrijft liquidaties als zeer competitief, vaak uitgevoerd door eigen bots die reageren op prijswijzigingen van de oracle en hun transacties met hoge prioriteit insturen.
+
+De buffer die je nodig hebt, dekt dus de prijsbeweging die kan plaatsvinden tijdens detectie, reactie en uitvoering. Een nuttige alert hoort daarom boven de laatste health factor waarbij je nog kunt ingrijpen, niet erop.
+
+## Hoe kies je stap voor stap een alertdrempel?
+
+Een manier om een drempel te kiezen, is te beginnen bij een prijs, niet bij een health factor: kies de prijs van het onderpand waarbij je zou willen beginnen met ingrijpen, zet die om in een health factor en stel de alert in op of iets boven dat niveau, omdat controles volgens een schema lopen en een aflossing tijd nodig kan hebben om te worden bevestigd. Het voorbeeld gebruikt een positie op Ethereum Core met 10 WETH gestort en 12.000 USDC geleend, een WETH-liquidatiedrempel van 83% (Ethereum-blok 26193284, 14 oktober 2026) en ETH tegen een illustratieve $2.400. Dat geeft HF 1,66 en een liquidatieprijs van $1.445,78.
+
+1. **Kies de prijs waarbij je zou willen beginnen met ingrijpen.** Stel dat je zou willen aflossen of onderpand toevoegen als ETH $2.000 bereikt, een daling van 16,7% vanaf $2.400.
+2. **Zet die prijs om in een health factor.** Met één onderpand en stablecoinschuld is de HF bij een nieuwe prijs = de huidige HF × nieuwe prijs ÷ huidige prijs. Hier is dat 1,66 × 2.000 ÷ 2.400 = 1,38. Met meerdere onderpanden of volatiele schuld laat de gids [bereken je Aave-liquidatieprijs](/nl/blog/aave-liquidatieprijs) zien hoe je de health factor bij elke prijs uitrekent.
+3. **Controleer de ruimte die overblijft.** Bij ETH $2.000 kan de positie nog een verdere daling van 27,7% opvangen, tot $1.445,78. Is dat niet genoeg ruimte voor de tijd die je nodig hebt om in te grijpen, kies dan een hogere prijs en herhaal. De drempel die een bepaalde verdere daling overlaat, is 1 ÷ (1 − daling):
+
+   | Verdere prijsdaling die je over wilt hebben als de alert afgaat | Alertdrempel |
+   | --------------------------------------------------------------- | ------------ |
+   | 10%                                                             | 1,11         |
+   | 15%                                                             | 1,18         |
+   | 20%                                                             | 1,25         |
+   | 25%                                                             | 1,33         |
+   | 33,3%                                                           | 1,50         |
+
+   Deze rijen gaan uit van één volatiel onderpand en stablecoinschuld.
+
+4. **Houd de drempel aan als health factor, niet als prijs.** Voor één onderpand met stablecoinschuld behoudt een drempel zijn betekenis nadat je aflost, onderpand toevoegt of meer leent: 1,25 laat altijd een daling van 20% over, terwijl de ETH-prijs waarbij hij afgaat met de positie meebeweegt.
+5. **Herhaal dit voor elke markt.** Op Aave V3 heeft de markt van elk netwerk een eigen health factor, dus posities op Arbitrum en Base hebben aparte drempels nodig.
+
+In Tokenping stel je dit getal in per Aave V3-markt of Aave V4-Spoke, van 1,1 tot 10 (de standaard is 1,5), en je krijgt elke 5 minuten een bericht via Signal, Telegram of e-mail zolang je health factor eronder staat. Een positie die normaal onder 1,1 draait, zoals een E-Mode-loop vlak bij zijn limiet, zou bij elke controle een bericht opleveren, dus daar past Tokenping niet bij. Je kunt eerst [je Aave V3 health factor controleren](/nl/aave); de gids over [hoe je een health factor-alert instelt](/nl/blog/aave-health-factor-alert-instellen) behandelt de rest.
+
+## Wat doet maximaal lenen met je buffer?
+
+Maximaal lenen laat bijna geen buffer over. Op Aave V3 begint een positie op haar leenlimiet met een health factor van LT ÷ LTV, wat voor de belangrijkste assets op Ethereum Core en Arbitrum maar ongeveer 1,02 tot 1,07 is. Voor WETH op Ethereum Core is dat 83 ÷ 80,5 = 1,031, dus een daling van 3,0% in ETH bereikt de liquidatiegrens.
+
+Het verschil bestaat omdat Aave V3 twee percentages per onderpand gebruikt. De loan-to-value-ratio (LTV) begrenst hoeveel je ertegen kunt lenen; de liquidatiedrempel (LT), die altijd minstens zo hoog is, bepaalt wanneer je kunt worden geliquideerd. Een nieuwe lening wordt alleen geaccepteerd zolang je schuld binnen onderpand × LTV blijft. Op de limiet is schuld = onderpand × LTV, dus HF = onderpand × LT ÷ (onderpand × LTV) = LT ÷ LTV.
+
+| Markt                                  | Onderpand                         | LTV   | Liquidatiedrempel | HF op de leenlimiet (LT ÷ LTV) | Beweging die de HF naar 1,00 brengt                        |
+| -------------------------------------- | --------------------------------- | ----- | ----------------- | ------------------------------ | ---------------------------------------------------------- |
+| Ethereum Core                          | WETH                              | 80,5% | 83%               | 1,031                          | ETH daalt 3,0% (stablecoinschuld)                          |
+| Ethereum Core                          | WBTC                              | 73%   | 78%               | 1,068                          | BTC daalt 6,4% (stablecoinschuld)                          |
+| Ethereum Core                          | USDC                              | 75%   | 78%               | 1,040                          | Het geleende asset stijgt 4,0%                             |
+| Arbitrum                               | WETH                              | 80%   | 84%               | 1,050                          | ETH daalt 4,8% (stablecoinschuld)                          |
+| Arbitrum                               | WBTC                              | 73%   | 78%               | 1,068                          | BTC daalt 6,4% (stablecoinschuld)                          |
+| Arbitrum                               | USDC                              | 75%   | 78%               | 1,040                          | Het geleende asset stijgt 4,0%                             |
+| Ethereum Core, E-Mode "ETH correlated" | wstETH of cbETH, met WETH geleend | 93%   | 95%               | 1,0215                         | De koers van het onderpand ten opzichte van ETH daalt 2,1% |
+
+De assetrijen zijn op 14 oktober 2026 on-chain gelezen uit de PoolDataProvider van elke markt op Ethereum-blok 26193284 en Arbitrum-blok 514855406, en waren ongewijzigd bij een nieuwe uitlezing op Ethereum-blok 26193988 en Arbitrum-blok 514885451. De E-Mode-rij komt van de Ethereum Core Pool op blokken 26193288 en 26193990; de categorie "ETH correlated" van Arbitrum, gelezen uit de Pool daar op Arbitrum-blokken 514855561 en 514885562, had dezelfde waarden. Governance kan elk van deze waarden op elk moment wijzigen.
+
+In dollars: 10 WETH tegen een illustratieve $2.400 op Ethereum Core ondersteunt maximaal 24.000 × 0,805 = $19.320 aan USDC-schuld. Alles lenen geeft HF = 19.920 ÷ 19.320 = 1,031 en een liquidatieprijs van 19.320 ÷ (10 × 0,83) = $2.327,71, maar 3,0% onder het startpunt, en tegen de rentes van 14 oktober 2026 drukt de rente de health factor daarna verder omlaag, ook als ETH gelijk blijft. Met meerdere onderpanden is de HF op de limiet de gewogen liquidatiedrempel gedeeld door de gewogen LTV, meestal maar een paar procent boven 1.
+
+De meters voor "gebruikte leenlimiet" ("borrow limit used") in apps tonen schuld ÷ (onderpand × LTV), en dat is niet de health factor. Een WETH-positie op Ethereum Core op 100% van haar leenlimiet heeft nog steeds een HF van ongeveer 1,031, niet 1,00.
+
+<Callout tone="info">
+  Aave V4 geeft elk onderpand één onderpandfactor (collateral factor) in plaats van een aparte LTV en liquidatiedrempel,
+  dus het verschil tussen LT en LTV in deze tabel is een regel van V3. Op Aave V3 bewaakt Tokenping elke markt op 21
+  netwerken, inclusief de markten Core, Prime, EtherFi en Horizon op Ethereum. Op Aave V4 bewaakt het elke Spoke op
+  Ethereum, Avalanche, Arc en Base, elk als een eigen markt.
+</Callout>
+
+## Bronnen
+
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (geen universeel veilige health factor; competitieve liquidaties), geraadpleegd op 14 oktober 2026
+- [GenericLogic.sol, aave-v3-origin](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol) (formule van de health factor), geraadpleegd op 14 oktober 2026
+- [ValidationLogic.sol, aave-v3-origin](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol) (leningen begrensd door de LTV; liquidatie onder HF 1,00), geraadpleegd op 14 oktober 2026
+- [LiquidationLogic.sol, aave-v3-origin](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol) (gedeeltelijke of volledige aflossing van de schuld; onderpand overgenomen met een liquidatiebonus), geraadpleegd op 14 oktober 2026
+- [Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) (LTV en liquidatiedrempel op blokken 26193284 en 26193988; rentes op blok 26193378), geraadpleegd op 14 oktober 2026
+- [Ethereum Core Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2) (E-Mode-categorie "ETH correlated" op blokken 26193288 en 26193990), geraadpleegd op 14 oktober 2026
+- [Ethereum Core AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) (ETH-prijs $2.414,78 op blok 26193376) en zijn [USDC-prijsadapter](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B) (prijslimiet $1,04 op blok 26193376), geraadpleegd op 14 oktober 2026
+- [PriceCapAdapterStable, aave-dao/aave-price-feeds](https://github.com/aave-dao/aave-price-feeds) (hoe de USDC-limiet werkt: prijzen boven de limiet worden genegeerd, prijzen onder $1 gaan ongewijzigd door), geraadpleegd op 14 oktober 2026
+- [Arbitrum PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b) (LTV en liquidatiedrempel op Arbitrum-blokken 514855406 en 514885451), geraadpleegd op 14 oktober 2026
+- [Arbitrum Pool](https://arbiscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD) (E-Mode-categorie "ETH correlated", id 2, op Arbitrum-blokken 514855561 en 514885562), geraadpleegd op 14 oktober 2026
+- [Aave V4 overview, aave/aave-v4](https://github.com/aave/aave-v4/blob/main/docs/overview.md) (Dynamic Risk Configuration: onderpandfactor als onderpandparameter in V4; in V3 raakt een verlaging van de liquidatiedrempel elke open positie), geraadpleegd op 14 oktober 2026
+- [Spoke.sol, aave/aave-v4](https://github.com/aave/aave-v4/blob/main/src/spoke/Spoke.sol) (health factor in V4 gewogen met onderpandfactoren), geraadpleegd op 14 oktober 2026
+- [Gauntlet: Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (dieptepunt van USDC rond $0,88, 11 maart 2023), geraadpleegd op 14 oktober 2026
+- [Chaos Labs: Post-Mortem, Exchange Rate Misalignment on wstETH Core and Prime Instances](https://governance.aave.com/t/24269) (CAPO-incident van maart 2026), geraadpleegd op 14 oktober 2026
+- [Polygon forum: Liquidation on polygon AAVE, JSON ERROR](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067) (mei 2021), geraadpleegd op 14 oktober 2026
+- [Aave forum: Repeatedly Failed Repayment Attempts Leading to Liquidation](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379) (december 2024), geraadpleegd op 14 oktober 2026
+
+_Educatieve inhoud, geen financieel advies. Alerts verkleinen het risico, maar voorkomen geen liquidatie._

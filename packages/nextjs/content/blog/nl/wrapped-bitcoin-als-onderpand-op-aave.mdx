@@ -1,0 +1,153 @@
+export const meta = {
+  slug: "wrapped-bitcoin-als-onderpand-op-aave",
+  title: "Wrapped bitcoin op Aave en Morpho: WBTC, cbBTC, tBTC, LBTC",
+  description:
+    "Hoe WBTC, cbBTC, tBTC, LBTC en eBTC verschillen als onderpand op Aave V3 en Morpho: drempels, caps, oracles en wat een wrapper-depeg met je lening doet.",
+  h1: "Tegen welke wrapped bitcoin kun je het best lenen, en wat kan er misgaan?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "Hoe verschillen WBTC, cbBTC, tBTC en LBTC als onderpand op Aave en Morpho?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  Bitcoin komt op Aave en Morpho binnen als wrapped tokens, elk gedekt door BTC die ergens anders wordt bewaard, en de
+  protocollen behandelen ze verschillend. Op Aave V3 Ethereum Core hadden WBTC en cbBTC op 29 oktober 2026 een
+  loan-to-value (LTV) van 81% en een liquidatiedrempel (liquidation threshold) van 85%, tBTC en BTC.b 73% en 78%, LBTC
+  70% en 75%, eBTC 67% en 72%. Ook de prijs wordt verschillend bepaald: Aave prijst WBTC met een WBTC/BTC-feed maal
+  BTC/USD, zodat een korting op WBTC je health factor (gezondheidsfactor) verlaagt (de feed stond die dag op 0,9985),
+  terwijl cbBTC en tBTC als precies 1 BTC worden geprijsd en LBTC en eBTC via hun staking-wisselkoers onder een cap. Op
+  Morpho kiest elke markt een eigen oracle (prijsbron) en een eigen liquidatie-LTV (LLTV): de grote cbBTC/USDC-markten
+  gebruiken 86% en alleen een BTC/USD-feed. De keuze van de wrapper verandert je liquidatieprijs met tot 18% en bepaalt
+  of een depeg (loslaten van de koppeling aan BTC) van de wrapper zelf je kan laten liquideren.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* De cijfers en de bloknummers waarop ze zijn gelezen: content/blog/snapshots/wrapped-bitcoin-aave-collateral.md */}
+
+## Waarom maakt het uit welke wrapped bitcoin je als onderpand stort?
+
+Aave en Morpho draaien op EVM-chains en bitcoin niet, dus elke BTC-positie daarop is een wrapped token: een ERC-20 waarvan iemand belooft dat hij hem inwisselt voor bitcoin. Wie die belofte doet, en hoe, is het eerste verschil tussen de wrappers. WBTC wordt uitgegeven door bewaarders (custodians) tegen bitcoin in cold storage, sinds oktober 2024 een joint venture van BitGo en BiT Global met sleutels verspreid over de Verenigde Staten, Singapore en Hongkong. cbBTC is de wrapper van Coinbase, gedekt door bitcoin die Coinbase aanhoudt. tBTC is die van Threshold Network, uitgegeven door een netwerk van ondertekenaars in plaats van één bedrijf. LBTC is die van Lombard: bitcoin die via Babylon wordt gestaket, met een consortium van operators dat stortingen controleert en inwisselingen ondertekent, en sinds 2025 met rendement, zodat één LBTC langzaam meer waard wordt dan één BTC. eBTC is de wrapper van ether.fi, grotendeels gedekt door LBTC. BTC.b is de gebridgede bitcoin van Avalanche, en FBTC die van Function.
+
+Een leenprotocol ziet in dat rijtje drie dingen: hoe waarschijnlijk het is dat de wrapper van BTC gaat afwijken, hoe diep de markt ervoor is als liquidators hem moeten verkopen, en hoe je hem prijst. Die drie bepalen de liquidatiedrempel, de caps en de oracle, en samen bepalen ze je health factor, je liquidatieprijs en door welke gebeurtenissen je geliquideerd kunt worden. Dezelfde 1 BTC aan onderpand is een andere lening, afhankelijk van de wrapper waarin hij binnenkomt.
+
+## Welke wrappers accepteert Aave, en onder welke voorwaarden?
+
+Aave V3 Ethereum Core had op 29 oktober 2026 zeven BTC-wrappers genoteerd. Gelezen uit de PoolDataProvider bij blok 26296985:
+
+| Wrapper | LTV | Liquidatiedrempel | Bonus | Leenbaar | Supply cap (gebruikt) | Gestort   |
+| ------- | --- | ----------------- | ----- | -------- | --------------------- | --------- |
+| WBTC    | 81% | 85%               | 5,0%  | ja       | 38.200 (89,4%)        | 34.138,21 |
+| cbBTC   | 81% | 85%               | 7,5%  | ja       | 20.000 (86,5%)        | 17.303,85 |
+| tBTC    | 73% | 78%               | 7,5%  | cap 1    | 1.800 (98,9%)         | 1.779,39  |
+| LBTC    | 70% | 75%               | 8,5%  | nee      | 2.690 (100,0%)        | 2.689,93  |
+| eBTC    | 67% | 72%               | 10,0% | nee      | 134 (56,0%)           | 75,02     |
+| BTC.b   | 73% | 78%               | 7,5%  | nee      | 225 (7,0%)            | 15,84     |
+| FBTC    | 0%  | 78%               | 7,5%  | nee      | bevroren              | 153,83    |
+
+WBTC en cbBTC zijn het onderpand dat de markt het meest vertrouwt: de hoogste drempel, de laagste bonus en het grootste gestorte volume, 60,8% en 30,8% van de 56.156 wrapped BTC op Core. De nieuwere of dunnere wrappers krijgen een lagere drempel en een hogere bonus: zo betaalt het protocol liquidators meer om een token met minder marktdiepte te verkopen. FBTC is bevroren met een LTV van 0, dus het telt nog mee in een health factor, maar ondersteunt geen nieuwe schuld en neemt geen nieuwe stortingen aan.
+
+Drie van de zeven caps waren bijna of helemaal vol. LBTC had nog 0,07 LBTC ruimte: een lener met een LBTC-lening onder druk kon die dag geen LBTC bijstorten en moest in plaats daarvan aflossen. [Waarom een Aave-transactie mislukt](/nl/blog/waarom-opnemen-of-lenen-op-aave-mislukt#3-de-supply-cap-is-vol) behandelt wat een volle cap blokkeert. Bij tBTC was lenen ingeschakeld met een cap van 1, wat met 2,57 tBTC al geleend betekent dat er geen nieuwe lening doorheen komt.
+
+De voorwaarden voor WBTC zelf zijn verschoven. Op 14 oktober 2026 had Ethereum Core WBTC op een LTV van 73% en een drempel van 78%, de cijfers die de [gids over de health factor](/nl/blog/aave-health-factor-uitgelegd) gebruikt; op 28 oktober waren het 81% en 85%. De geschiedenis achter de lagere cijfers staat in een latere sectie.
+
+## Hoe prijst Aave elke wrapper?
+
+Aave heeft één prijs per asset per markt, uit de Aave Oracle, en de health factor en elke liquidatie gebruiken die. De zeven wrappers gebruiken drie ontwerpen. Gelezen bij hetzelfde blok:
+
+| Wrapper                  | Oraclebron                | Hoe hij is opgebouwd                                  | Prijs op 29 oktober 2026 |
+| ------------------------ | ------------------------- | ----------------------------------------------------- | ------------------------ |
+| WBTC                     | "wBTC/BTC/USD"            | WBTC/BTC-feed (0,9985) × BTC/USD                      | $79.699,16               |
+| cbBTC, tBTC, BTC.b, FBTC | "BTC / USD"               | alleen de BTC/USD-feed                                | $79.818,89               |
+| LBTC                     | "Capped LBTC / BTC / USD" | wisselkoers van Lombard (1,005244) × BTC/USD, met cap | $80.237,45               |
+| eBTC                     | "Capped eBTC / BTC / USD" | koers van ether.fi (1,004224) × BTC/USD, met cap      | $80.156,03               |
+
+Het verschil bepaalt wat een depeg van de wrapper met jou doet.
+
+**WBTC wordt geprijsd tegen zijn marktverhouding tot BTC.** De adapter vermenigvuldigt een WBTC/BTC-feed met BTC/USD, dus als WBTC met korting handelt, is je onderpand minder waard in de health factor en stijgt je liquidatieprijs. Op 29 oktober 2026 was de verhouding 0,9985, waardoor WBTC $119,73 lager werd geprijsd dan cbBTC. Bij een echt verlies van vertrouwen in de bewaarder daalt de verhouding, en kunnen WBTC-posities worden geliquideerd terwijl bitcoin zelf niet beweegt.
+
+**cbBTC, tBTC, BTC.b en FBTC worden geprijsd als precies 1 BTC.** De oracle gebruikt de BTC/USD-feed en niets anders. Een korting in de markt van de wrapper bereikt je health factor niet; ze bereikt het protocol, waarvan de liquidators onderpand zouden innemen dat minder waard is dan de oracle zegt. Aave compenseert dat met krappere caps en, voor tBTC en BTC.b, een lagere drempel. Voor de lener is dit ontwerp milder bij paniek rond een wrapper en strenger op elke andere dag.
+
+**LBTC en eBTC worden geprijsd via hun wisselkoers, onder een CAPO-cap.** LBTC verdient staking-rendement, dus de oracle van Lombard meldt hoeveel BTC één LBTC vertegenwoordigt, 1,005244 op 29 oktober 2026, en Aave vermenigvuldigt dat met BTC/USD. De CAPO-adapter begrenst hoe snel de verhouding mag stijgen, 2,00% per jaar voor LBTC en 1,90% voor eBTC vanaf een snapshot van 1,0, zodat een gemanipuleerde of kapotte koers het onderpand niet kan opblazen; de cap stond die dag voor LBTC op 1,0274, boven de werkelijke verhouding, dus hij beperkte niets. De koers kan ook dalen: als Babylon ooit gestakete bitcoin zou slashen, zou de verhouding van Lombard dalen en de health factor van elke LBTC-positie mee. Het voorstel van Chaos Labs uit 2025 dat LBTC van een gewone BTC/USD-feed naar dit ontwerp overzette, legt de keuze uit: een vaste prijs van 1:1 "would underprice LBTC relative to its intrinsic value" (zou LBTC onder zijn intrinsieke waarde prijzen) zodra het rendement begon.
+
+De [gids over een stablecoin-depeg](/nl/blog/stablecoin-depeg-op-aave) beschrijft dezelfde tweedeling voor dollartokens: wat de oracle meet, is wat je kan laten liquideren.
+
+## Rekenvoorbeeld: 1 BTC onderpand tegen 40.000 USDC
+
+Stort één eenheid van elke wrapper op Ethereum Core en leen 40.000 USDC. De health factor is waarde van het onderpand × liquidatiedrempel ÷ schuld, en de liquidatieprijs is 40.000 ÷ drempel, in de prijs die de oracle gebruikt:
+
+| Onderpand | Oracleprijs | Drempel | Health factor | Liquidatieprijs                     |
+| --------- | ----------- | ------- | ------------- | ----------------------------------- |
+| 1 WBTC    | $79.699,16  | 85%     | 1,694         | $47.058,82 per WBTC                 |
+| 1 cbBTC   | $79.818,89  | 85%     | 1,696         | $47.058,82 per BTC                  |
+| 1 tBTC    | $79.818,89  | 78%     | 1,557         | $51.282,05 per BTC                  |
+| 1 LBTC    | $80.237,45  | 75%     | 1,505         | $53.333,33 per LBTC, BTC op $53.055 |
+| 1 eBTC    | $80.156,03  | 72%     | 1,443         | $55.555,56 per eBTC                 |
+
+Tussen WBTC en eBTC geven dezelfde schuld en dezelfde bitcoin een 18% hogere liquidatieprijs. De leenlimiet beweegt op dezelfde manier: bij de LTV ondersteunen WBTC en cbBTC 81% van hun waarde, en een positie die tot die limiet heeft geleend, begint op een health factor van 85 ÷ 81 = 1,049; voor LBTC is dat 75 ÷ 70 = 1,071, voor eBTC 72 ÷ 67 = 1,075. [Hoe je je liquidatieprijs berekent](/nl/blog/aave-liquidatieprijs) geeft de algemene formule en een rekenhulp.
+
+Twee van deze regels bewegen op meer dan de bitcoinprijs. De WBTC-regel beweegt ook mee met de WBTC/BTC-feed; een korting van 2% zou de positie van 1,694 naar 1,660 brengen terwijl BTC gelijk blijft. De LBTC-regel beweegt met de wisselkoers van Lombard, elke dag een beetje omhoog en omlaag bij een slashing.
+
+## Waarom veranderden de voorwaarden voor WBTC, en wat leerden leners ervan?
+
+In augustus 2024 kondigde BitGo aan dat het de bewaring van WBTC zou onderbrengen in een joint venture met BiT Global, een bewaarder uit Hongkong met banden met Justin Sun. De reactie op het forum van Aave is het duidelijkste verslag van hoe een wissel van bewaarder bij een lener aankomt. Op 18 september 2024 stelde LlamaRisk voor om de LTV van WBTC op elke Aave V3-instantie op 0 te zetten en de caps te verlagen tot 5 tot 10% boven het gebruik, met de nadruk dat het plan "not to offboard WBTC, nor to reduce current exposure" was (niet om WBTC af te voeren of de huidige blootstelling te verkleinen). Chaos Labs noemde een risk-off-aanbeveling voorbarig. Het plan waarin de twee op 24 september 2024 samenkwamen, was milder maar echt: caps 15% boven het gebruik, de liquidatiedrempel overal één punt lager, de LTV naar 70% waar die hoger was, de reserve factor van 20% naar 40%, en de WBTC-borrow cap op Ethereum van 28.000 naar 3.250. De overdracht van de bewaring was op 8 oktober 2024 afgerond.
+
+Niets in die episode bewoog de bitcoinprijs. Wat veranderde, waren de voorwaarden: lagere drempels en lagere caps voor elke WBTC-lener, besloten in een governanceproces dat ze konden volgen maar niet sturen. Twee jaar later zijn de parameters weer hoger, en de stap van 73%/78% naar 81%/85% in oktober 2026 verlaagde de liquidatieprijs van een WBTC-positie met 8%. De les is dat de drempel een parameter is, geen eigenschap van bitcoin: governance kan hem verlagen, wat je liquidatieprijs verhoogt terwijl je slaapt, en de gids over het afbouwen van een markt behandelt [wat er gebeurt als Aave een markt afbouwt](/nl/blog/afbouw-van-een-aave-markt).
+
+## Hoe verschillen de BTC-categorieën van E-Mode?
+
+De [E-Mode](/nl/blog/aave-e-mode-uitgelegd) van Aave bestaat voor paren die samen bewegen, en wrapped bitcoins onderling zijn het duidelijkste geval. Op Ethereum Core gaven de categorieën LBTC_WBTC, LBTC_cbBTC en LBTC_tBTC op 28 oktober 2026 LBTC-onderpand een LTV van 84%, een drempel van 86% en een bonus van 3% om precies die ene wrapper te lenen; eBTC/WBTC gaf 83%, 85% en 3%. Base had LBTC_cbBTC op 82%/84% en een categorie "cbBTC Stablecoins" op 82%/85% om USDC of GHO te lenen tegen cbBTC. Arbitrum en Base hadden ook tBTC-categorieën voor stablecoinschuld op 72%/75%.
+
+In de categorieën BTC tegen BTC zitten de loops (herhaald lenen met hefboom): LBTC storten, WBTC lenen, LBTC kopen, herhalen, om het rendement van Lombard te verdienen op een veelvoud van je kapitaal. Een loop die tot de limiet van 84% is geleend, begint op 86 ÷ 84 = 1,024, en de health factor ervan trekt zich niets aan van de bitcoinprijs, alleen van de verhouding van LBTC tot WBTC zoals de twee oracles die zien: de wisselkoers van Lombard aan de ene kant en de WBTC/BTC-feed aan de andere. Een beweging van ongeveer 2,4% tussen die twee liquideert hem. Dat ligt onder 1,1, de laagste drempel die Tokenping accepteert, dus zulke loops draaien onder elke alert; [de E-Mode-gids](/nl/blog/aave-e-mode-uitgelegd#kan-een-alert-helpen-bij-een-e-mode-positie) legt de afweging uit.
+
+## Hoe gaat Morpho om met wrapped bitcoin?
+
+Morpho heeft geen lijst met assets en geen door governance vastgestelde drempel per token. Iedereen kan een markt aanmaken met één onderpand, één leenasset, één oracle en één LLTV uit de toegestane set, en de parameters veranderen nooit. Voor wrapped bitcoin betekent dat dat de keuze van de wrapper en de keuze van de oracle allebei per markt worden gemaakt, en dat de vermelde markten onderling verschillen.
+
+De API van Morpho vermeldde op 29 oktober 2026 deze markten met BTC als onderpand, gesorteerd op geleende waarde, op Ethereum en Base:
+
+| Markt                  | LLTV | Geleend    | Wat de oracle meet                                            |
+| ---------------------- | ---- | ---------- | ------------------------------------------------------------- |
+| cbBTC / USDC, Base     | 86%  | $1,62 mld. | alleen BTC/USD: cbBTC is 1 BTC, USDC is $1                    |
+| cbBTC / USDC, Ethereum | 86%  | $309,8 mln | alleen BTC/USD                                                |
+| WBTC / USDC, Ethereum  | 86%  | $115,8 mln | WBTC/BTC × BTC/USD ÷ USDC/USD                                 |
+| WBTC / USDT, Ethereum  | 86%  | $84,1 mln  | niet gelezen                                                  |
+| LBTC / USDC, Ethereum  | 86%  | $1,9 mln   | fundamentele LBTC/BTC-koers van Redstone (1,005244) × BTC/USD |
+| tBTC / USDC, Ethereum  | 77%  | $0,6 mln   | niet gelezen                                                  |
+
+Twee dingen vallen op naast Aave. De LLTV is 86% voor elke grote wrapper, één punt boven de drempel van 85% die Aave voor WBTC en cbBTC hanteert en elf boven die van Aave voor LBTC, omdat op Morpho de maker van de markt hem vaststelt, niet een risicocomité, en uitleners beslissen of ze hem financieren. En de oracle volgt de markt, niet de token: de WBTC/USDC-markt hierboven prijst WBTC via een WBTC/BTC-feed en USDC via een USDC/USD-feed, terwijl de cbBTC-markten, die het meeste volume dragen, beide tokens behandelen als precies hun peg. Op 29 oktober 2026 gaf de oracle van cbBTC/USDC op Ethereum 79.752,37 USDC per cbBTC, dus 1 cbBTC tegen 40.000 USDC had een [Morpho-health factor](/nl/blog/morpho-health-factor-uitgelegd) van 79.752,37 × 0,86 ÷ 40.000 = 1,715 en een liquidatieprijs van 46.511,63, iets onder de 47.058,82 van Aave voor dezelfde lening.
+
+Ook de liquidatie verschilt. [De liquidatievergoeding van Morpho](/nl/blog/hoe-werkt-liquidatie-op-morpho) is bij een LLTV van 86% 4,38%, dicht bij de bonus van 5% die Aave op WBTC geeft en onder de 7,5% op cbBTC, maar een liquidator op Morpho mag de hele schuld in één transactie aflossen, waar Aave de meeste liquidaties beperkt tot de helft. Een WBTC-lening op Morpho met een oracle die WBTC/BTC meeneemt, draagt hetzelfde bewaarrisico als op Aave; een cbBTC-lening draagt op beide protocollen daar niets van in haar health factor en alles in de solvabiliteit van het protocol.
+
+## Wat kan er echt misgaan met een lening tegen wrapped bitcoin?
+
+- **De bitcoinprijs.** Het gewone risico, en het grote. Op 10 oktober 2025 werd op Aave op één dag meer dan $250 miljoen geliquideerd, volgens Aave Labs, dat ook $4,65 miljard telt in 310.000 liquidaties van 2020 tot februari 2026. De rekensom van de health factor is voor elke wrapper dezelfde; de drempel verschilt.
+- **Een korting op de wrapper, via de oracle.** Bereikt WBTC-posities op Aave en op Morpho-markten met een WBTC/BTC-feed. Bereikt geen cbBTC- of tBTC-posities op Aave, en geen cbBTC-markten op Morpho met een BTC/USD-oracle, waar het protocol hem in plaats daarvan draagt.
+- **Een dalende wisselkoers.** LBTC en eBTC worden geprijsd via een staking-koers; slashing op Babylon zou die verlagen en elke positie mee, op Aave en op Morpho-markten die dezelfde koers gebruiken.
+- **Een parameterwijziging.** De governance van Aave kan de drempel of LTV van een wrapper verlagen, de LTV op 0 zetten of hem bevriezen, zoals bij FBTC gebeurde. De LLTV van een Morpho-markt verandert nooit, maar een markt kan uit de app worden verwijderd.
+- **Een volle cap of een bevroren reserve.** Op Aave sluiten ze allebei de route "onderpand bijstorten" af en blijft aflossen de enige weg omhoog. Morpho heeft geen caps.
+- **Dunne liquiditeit voor de wrapper.** De reden achter de hogere bonussen op tBTC, LBTC en eBTC: een liquidator die de ingenomen token niet snel kan verkopen, wil meer betaald krijgen om hem over te nemen, en komt in een gestreste markt misschien helemaal niet totdat de positie dieper onder water staat.
+
+## Hoe kunnen alerts helpen bij een positie in wrapped bitcoin?
+
+Een alert weet niet welke wrapper je aanhoudt, en het maakt ook niet uit. Tokenping leest de Aave-health factor uit `getUserAccountData`, dat de drempel van de wrapper en de prijs van de oracle al toepast, de WBTC/BTC-verhouding en de LBTC-koers inbegrepen, en berekent de Morpho-health factor on-chain uit de eigen oracle van de markt. Wat de wrapper verandert, is hoe het getal beweegt. Een positie met een health factor van 1,5 wordt geliquideerd na een daling van 33% in haar oracleprijs, welke wrapper het ook is; een WBTC-positie komt daar ook door een daling van 33% in de WBTC/BTC-verhouding, en een LBTC-positie via haar wisselkoers, dus de alert hoort te staan waar elk van beide soorten bewegingen je nog tijd laat om af te lossen. Een loop BTC tegen BTC op 1,03 valt helemaal buiten het bereik.
+
+Tokenping controleert je positie elke 5 minuten, in elke Aave V3-markt op 21 netwerken, elke Aave V4-Spoke en elke vermelde markt van Morpho Blue en Midnight op 14 chains, en stuurt je een bericht via Signal, Telegram of e-mail wanneer de health factor onder je drempel ligt (1,1 tot 10 op Aave, 1,02 tot 10 op Morpho), en herhaalt dat bij elke controle totdat hij herstelt. Het kan niet voor je aflossen, en een scherpe beweging kan twee controles passeren voordat er een bericht aankomt. Je kunt [je Aave V3-health factor bekijken](/nl/aave) of [je Morpho-posities](/nl/morpho) zonder te betalen; alerts kosten <AlertPrice />, één per markt of Spoke. [Hoe je een alertdrempel kiest](/nl/blog/veilige-aave-health-factor#hoe-kies-je-stap-voor-stap-een-alertdrempel) en [hoe je er een instelt](/nl/blog/aave-health-factor-alert-instellen) behandelen de rest.
+
+## Bronnen
+
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getAllReservesTokens`, `getReserveConfigurationData`, `getReserveCaps` en `getReserveData` voor WBTC, cbBTC, tBTC, LBTC, eBTC, BTC.b en FBTC bij blok 26296985 (geraadpleegd op 29 oktober 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): `getSourceOfAsset` en `getAssetPrice` voor de zeven wrappers, en de `description()` van elke bron, bij blok 26296985 (geraadpleegd op 29 oktober 2026)
+- [WBTC-adapter](https://etherscan.io/address/0xDaa4B74C6bAc4e25188e64ebc68DB5050b690cAc): `ASSET_TO_PEG` (de [WBTC / BTC-feed](https://etherscan.io/address/0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23), 0,9985) en `PEG_TO_BASE` bij blok 26296985 (geraadpleegd op 29 oktober 2026)
+- [LBTC-CAPO-adapter](https://etherscan.io/address/0xf8c04B50499872A5B5137219DEc0F791f7f620D0) en [eBTC-CAPO-adapter](https://etherscan.io/address/0x03bB418e89B75407585f8198178f253DA3216218): `getRatio`, `getSnapshotRatio`, `getSnapshotTimestamp`, `getMaxYearlyGrowthRatePercent`, `getMaxRatioGrowthPerSecond` en `isCapped` bij blok 26296985 (geraadpleegd op 29 oktober 2026)
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2) en de Pools op Base en Arbitrum: de BTC-categorieën van E-Mode, gelezen voor [de E-Mode-gids](/nl/blog/aave-e-mode-uitgelegd) bij Ethereum-blok 26291736 en Base-blok 53204166 (geraadpleegd op 28 oktober 2026)
+- [Morpho API](https://api.morpho.org/graphql): vermelde markten met WBTC, cbBTC, tBTC, LBTC of eBTC als onderpand op Ethereum en Base, hun LLTV, geleende waarde, oracle en feeds (geraadpleegd op 29 oktober 2026)
+- [Morpho Blue op Ethereum](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb): `price()` van de oracle van cbBTC / USDC (86%) bij blok 26297045 en de feeds en `price()` van de oracle van WBTC / USDC (86%); `description()` van de feeds (geraadpleegd op 29 oktober 2026)
+- [ARFC: Adjusting WBTC Parameters to Address BitGo Transition Risks](https://governance.aave.com/t/arfc-adjusting-wbtc-parameters-to-address-bitgo-transition-risks/19096): het voorstel van LlamaRisk van 18 september 2024 en het samengevoegde plan van 24 september 2024 (geraadpleegd op 29 oktober 2026)
+- [ARFC: Onboard LBTC on Aave v3 Core Instance](https://governance.aave.com/t/arfc-onboard-lbtc-on-aave-v3-core-instance/20142): wat LBTC is, de eerste parameters en het debat over de oracle (geraadpleegd op 29 oktober 2026)
+- [Direct to AIP: LBTC Oracle and CAPO implementation Update](https://governance.aave.com/t/direct-to-aip-lbtc-oracle-and-capo-implementation-update/22614): Chaos Labs, 17 juli 2025, de wisselkoers-oracle en de CAPO-parameters (geraadpleegd op 29 oktober 2026)
+- [ARFC: Core & Base - BTC Correlated Asset Update](https://governance.aave.com/t/arfc-core-base-btc-correlated-asset-update/20940): de E-Modes voor LBTC en de notering op Base, 4 februari 2025 (geraadpleegd op 29 oktober 2026)
+- [Unchained: WBTC completes shift to multi-jurisdiction custody model](https://unchainedcrypto.com/wbtc-completes-shift-to-multi-jurisdiction-custody-model/): 9 oktober 2024 (geraadpleegd op 29 oktober 2026)
+- [Aave Labs: How Aave Liquidations Perform Under Volatile Conditions](https://aave.com/blog/historical-liquidations): 6 februari 2026 (geraadpleegd op 29 oktober 2026)
+
+_Educatieve inhoud, geen financieel advies. Alerts verkleinen het risico, maar voorkomen geen liquidatie._

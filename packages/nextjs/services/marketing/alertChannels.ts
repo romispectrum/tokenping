@@ -24,6 +24,7 @@ const CHANNEL_NAMES: Partial<Record<Locale, Record<string, string>>> = {
   pt: { email: "e-mail" },
   pl: { email: "e-mail" },
   tr: { email: "e-posta" },
+  nl: { email: "e-mail" },
 };
 
 /**

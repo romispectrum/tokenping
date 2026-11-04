@@ -31,6 +31,7 @@ const EMAIL_BADGE: Partial<Record<Locale, string>> = {
   pt: "e-mail",
   pl: "e-mail",
   tr: "e-posta",
+  nl: "E-mail",
 };
 
 /** Channel names for badges: "Signal", "Email" ("E-mail", "Correo") and, once the bot is configured, "Telegram". */

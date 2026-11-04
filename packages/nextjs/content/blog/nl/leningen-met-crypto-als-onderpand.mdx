@@ -1,0 +1,178 @@
+export const meta = {
+  slug: "leningen-met-crypto-als-onderpand",
+  title: "Lenen met crypto als onderpand: zo werkt het en waarom",
+  description:
+    "Hoe een overgedekte cryptolening op Aave stap voor stap werkt, het verschil met een bank of gecentraliseerde uitlener, het gebruik en de risico's.",
+  h1: "Hoe werken leningen met crypto als onderpand, en waarom sluiten mensen ze af?",
+  publishedAt: "2026-10-19",
+  primaryQuestion: "Hoe werkt een lening met crypto als onderpand, en waarom gebruiken mensen er een?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  Met een lening met crypto als onderpand leen je, meestal een stablecoin zoals USDC, tegen crypto die je als onderpand
+  stort, zonder die crypto te verkopen. Op Aave is de lening overgedekt: op 19 oktober 2026 kon je in de Ethereum
+  Core-markt tot 73% van de waarde van WBTC lenen of tot 80,5% van de waarde van WETH. Het protocol kijkt alleen naar
+  het onderpand, er is geen aflosdatum en de rente is variabel. Daalt de waarde van het onderpand zo ver dat je health
+  factor (gezondheidsfactor) onder 1 zakt, dan wordt een deel ervan verkocht om de schuld af te lossen, en betaal je een
+  boete. Mensen gebruiken deze leningen om aan geld te komen zonder te verkopen, om een gat te overbruggen, om te
+  herfinancieren, voor een hefboom of om zich in te dekken, en elk van die toepassingen brengt liquidatie-, rente- en
+  stablecoinrisico met zich mee.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Elk on-chain cijfer, elk bloknummer en elke bron achter dit artikel: content/blog/snapshots/crypto-backed-loans.md */}
+
+## Wat is een lening met crypto als onderpand?
+
+Een lening met crypto als onderpand is een lening die gedekt is door crypto die je als onderpand stort. Op een leenprotocol zoals Aave is ze overgedekt: het onderpand moet meer waard zijn dan de lening, en in plaats van je inkomen te controleren rekent het protocol erop dat het een deel van het onderpand kan verkopen als de waarde te ver daalt. Zolang de lening loopt, blijft het onderpand van jou, met al zijn koersbewegingen, en je kunt het terugnemen zodra de schuld is afgelost.
+
+De meeste mensen lenen stablecoins, tokens die een munt volgen: USDC en USDT volgen de Amerikaanse dollar, EURC volgt de euro. Het onderpand is meestal een volatiel asset. In de markten van Aave op Ethereum en Arbitrum komt ether binnen als WETH en bitcoin als een token dat bitcoin vertegenwoordigt, zoals WBTC of cbBTC.
+
+Twee getallen per onderpandasset bepalen hoeveel je kunt lenen en wanneer de lening in gevaar komt:
+
+- De **loan-to-value (LTV)** is het maximum dat je tegen het asset kunt lenen, als deel van de waarde ervan.
+- De **liquidatiedrempel (liquidation threshold)** is het deel van de waarde van het asset dat meetelt voor je health factor. Is je onderpand, op die manier gewogen, minder waard dan je schuld, dan zit de health factor onder 1 en kan de positie worden geliquideerd.
+
+| Markt         | Onderpand | LTV (leenlimiet) | Liquidatiedrempel | Liquidatiebonus |
+| ------------- | --------- | ---------------- | ----------------- | --------------- |
+| Ethereum Core | WETH      | 80,5%            | 83%               | 5%              |
+| Ethereum Core | WBTC      | 73%              | 78%               | 5%              |
+| Ethereum Core | cbBTC     | 73%              | 78%               | 7,5%            |
+| Arbitrum      | WETH      | 80%              | 84%               | 5%              |
+| Arbitrum      | WBTC      | 73%              | 78%               | 7%              |
+
+Deze waarden zijn op 19 oktober 2026 on-chain gelezen uit de PoolDataProvider van elke markt, bij Ethereum-blok 26225342 en Arbitrum-blok 516228495. cbBTC staat niet op de Arbitrum-markt van Aave. Aave governance kan elk van deze waarden wijzigen. Hoe LTV en de liquidatiedrempel verschillen, lees je uitgebreider in [wat de Aave health factor is](/nl/blog/aave-health-factor-uitgelegd).
+
+## Hoe werkt een lening op Aave, stap voor stap?
+
+Aave V3 is een set smart contracts op elk netwerk, en app.aave.com is één interface daarvoor. Het helpcentrum van Aave beschrijft lenen en aflossen in een handvol stappen; dit is wat elke stap inhoudt.
+
+### Stap 1: Onderpand storten
+
+Koppel je wallet, kies het asset dat je wilt storten, bijvoorbeeld WBTC, en stort het. Controleer of het als onderpand is ingeschakeld, want alleen onderpand telt mee voor wat je kunt lenen. De tokens staan in het Pool-contract van de markt, waar andere gebruikers ze kunnen lenen (daar betaalt de kleine stortingsrente voor). Je kunt je onderpand opnemen nadat je hebt afgelost, of een deel ervan terwijl je nog schuld hebt, zolang je health factor daarna op 1 of hoger blijft.
+
+### Stap 2: Een stablecoin lenen
+
+Kies de stablecoin en een bedrag onder je leenlimiet, die gelijk is aan de waarde van het onderpand maal de LTV. De tokens komen in je wallet terecht en er begint meteen rente op te lopen, tegen een rentepercentage dat het protocol bepaalt op basis van hoeveel van het asset is uitgeleend en van parameters die governance kan wijzigen (Aave-helpcentrum, Borrow Tokens). Aave V3 heeft nu alleen nog een variabele rente: de Pool-referentie zegt dat leningen altijd de variabele rentemodus gebruiken en markeert de oude stabiele rente als verouderd sinds v3.2.
+
+Variabele leenrentes op 19 oktober 2026, als jaarlijkse APY zoals de Aave-app ze toont (Ethereum-blok 26225342, Arbitrum-blok 516228495):
+
+| Markt         | USDC  | USDT (USD₮0 op Arbitrum) | GHO   | EURC                      |
+| ------------- | ----- | ------------------------ | ----- | ------------------------- |
+| Ethereum Core | 4,58% | 4,17%                    | 4,60% | 4,12%                     |
+| Arbitrum      | 3,45% | 4,21%                    | 4,59% | geen euro-stablecoin open |
+
+Deze rentes veranderen voortdurend en kunnen plotseling stijgen. Op 14 oktober 2026 steeg de USDC-rente op Ethereum Core in één blok naar 13,67% APR en zakte ongeveer 36 minuten later weer terug, zoals [waarom je Aave health factor vanzelf daalt](/nl/blog/waarom-daalde-je-aave-health-factor#oorzaak-3-groeide-de-rente-op-je-schuld-sneller-dan-op-je-onderpand) laat zien.
+
+### Stap 3: De health factor in de gaten houden
+
+De health factor (HF) is je onderpand, gewogen met de liquidatiedrempel van elk asset, gedeeld door je schuld. Neem alice, die 1 WBTC stort op Ethereum Core bij een bitcoinkoers van een illustratieve $80.000 (de oracle van Aave las $82.680,33 bij Ethereum-blok 26225364 op 19 oktober 2026) en 24.000 USDC leent:
+
+- Leenlimiet: 80.000 × 0,73 = $58.400.
+- Health factor: 80.000 × 0,78 ÷ 24.000 = 2,60.
+- Liquidatieprijs: 24.000 ÷ 0,78 = $30.769,23, dat is 61,5% onder $80.000.
+
+De health factor daalt als bitcoin daalt, en langzaam doordat er rente bijkomt: als de USDC-rente een jaar lang op 4,58% bleef, zou de schuld na een jaar ongeveer 25.099 USDC zijn en zou de liquidatieprijs gestegen zijn naar ongeveer $32.179. Om dit voor je eigen positie uit te rekenen, zie [hoe je je liquidatieprijs op Aave berekent](/nl/blog/aave-liquidatieprijs); voor hoeveel ruimte je moet laten, zie [wat een veilige health factor op Aave is](/nl/blog/veilige-aave-health-factor).
+
+### Stap 4: Aflossen wanneer jij wilt
+
+Er is geen aflosdatum. De borrow-functie van Aave kent helemaal geen looptijd, en je kunt de schuld op elk moment geheel of gedeeltelijk aflossen, in het asset dat je hebt geleend (Aave V3 Pool-referentie; Aave-helpcentrum, Repay Tokens). Volledig aflossen maakt je onderpand vrij. Je kunt ook aflossen met onderpand: in de markten op Ethereum en Arbitrum kan de interface van Aave een deel van je onderpand verkopen voor het schuldasset en in één transactie aflossen (Aave-docs, swapfuncties).
+
+### Stap 5: Weten wat er gebeurt onder een health factor van 1
+
+Onder 1 kan iedereen de positie liquideren: die lost een deel van je schuld af en neemt onderpand ter waarde van dat bedrag plus een liquidatiebonus. Eén liquidatie kan tot 50% van de schuld aflossen zolang de health factor boven 0,95 ligt en het onderpand en de schuld elk minstens $2.000 waard zijn, en tot 100% als de health factor op of onder 0,95 ligt of een van beide minder dan $2.000 waard is (Aave-helpcentrum).
+
+Als bitcoin kort nadat alice leende naar $30.000 zakte, zou haar health factor 30.000 × 0,78 ÷ 24.000 = 0,975 zijn. Een liquidator zou 12.000 USDC kunnen aflossen en 12.000 × 1,05 ÷ 30.000 = 0,42 WBTC nemen, waardoor ze 0,58 WBTC overhoudt tegen 12.000 USDC, een health factor van 1,13. Ze zou $600 aan onderpand verliezen bovenop de afgeloste schuld, en 0,42 WBTC zou op het dieptepunt verkocht zijn. De volledige regels staan in [wat er gebeurt als je Aave-positie wordt geliquideerd](/nl/blog/hoe-werkt-liquidatie-op-aave).
+
+## Hoe verschilt een lening met crypto als onderpand van een banklening?
+
+De belangrijkste verschillen zijn waar de uitlener naar kijkt, wanneer je aflost en wat er gebeurt als het onderpand in waarde daalt:
+
+|                                       | Lening op Aave                                                                                     | Gewone banklening                                                                        |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Wat bepaalt hoeveel je kunt lenen     | De waarde van je onderpand en de LTV ervan                                                         | Meestal je inkomen en kredietverleden, plus eventueel onderpand                          |
+| Controles op jou                      | Geen door het protocol, dat alleen naar het onderpand kijkt                                        | Meestal controles van identiteit, inkomen en kredietwaardigheid                          |
+| Looptijd                              | Geen: los af wanneer je wilt                                                                       | Meestal een vaste looptijd en een aflosschema                                            |
+| Rente                                 | Variabel, herberekend als het lenen in de markt verandert                                          | Vast of variabel, zoals het contract zegt                                                |
+| Als het onderpand in waarde daalt     | Automatische liquidatie door derden zodra de health factor onder 1 zit, zonder waarschuwing vooraf | Hangt af van het contract: een verzoek om meer onderpand, een onderhandeling, uitwinning |
+| Wie het onderpand beheert             | Het smart contract van de markt                                                                    | De uitlener, of een bewaarder die die kiest                                              |
+| Als het onderpand de schuld niet dekt | Het tekort wordt een verlies voor het protocol, geen vordering op jou                              | Hangt af van het contract en de wet                                                      |
+
+De laatste rij volgt uit hoe Aave V3.3 en later omgaan met een liquidatie die al het onderpand opmaakt: de resterende schuld wordt afgeschreven als een tekort (deficit) op het asset, zoals [het deel over oninbare schuld](/nl/blog/hoe-werkt-liquidatie-op-aave#kan-een-liquidatie-oninbare-schuld-achterlaten) uitlegt. Je onderpand ben je dan wel al kwijt.
+
+## Hoe verschilt het van een gecentraliseerde crypto-uitlener?
+
+Een gecentraliseerde uitlener neemt je onderpand in eigen bewaring. De lening kan er grotendeels hetzelfde uitzien, maar jij wordt schuldeiser van het bedrijf, en als het failliet gaat, kan je onderpand bij het bedrijf vast komen te zitten. 2022 liet zien wat dat betekent:
+
+- **Celsius** bevroor opnames van klanten op 12 juni 2022 en vroeg op 13 juli 2022 faillissement aan. Volgens de Amerikaanse Commodity Futures Trading Commission hadden klanten er ongeveer $20 miljard gestort. In januari 2023 oordeelde de Amerikaanse faillissementsrechtbank in New York dat crypto op de Earn-rekeningen van Celsius volgens de gebruiksvoorwaarden eigendom van Celsius was geworden, waardoor die klanten schuldeisers zonder zekerheid werden.
+- **Voyager Digital** schortte op 1 juli 2022 handel, stortingen en opnames op, nadat Three Arrows Capital betalingen niet had gedaan op een lening van 15.250 BTC en $350 miljoen in USDC, en vroeg op 5 juli 2022 Chapter 11-faillissement aan.
+- **Genesis** hield in november 2022 beleggers in het Gemini Earn-programma tegen bij opnames, toen het ongeveer $900 miljoen van hun bezittingen aanhield, volgens de Amerikaanse Securities and Exchange Commission, en vroeg op 19 januari 2023 Chapter 11 aan.
+- **BlockFi** vroeg op 28 november 2022 Chapter 11 aan, een paar dagen nadat het opnames had opgeschort toen FTX instortte.
+
+Op Aave staat het onderpand in een openbaar smart contract waarvan iedereen de regels kan lezen, niet op de balans van een bedrijf. Daarmee ruil je de ene set risico's in voor een andere, die hieronder bij [de risico's](#wat-zijn-de-risicos-van-een-lening-met-crypto-als-onderpand) aan bod komen: bugs, fouten van de oracle (prijsbron), besluiten van governance en de bewaring achter wrapped bitcoin. Eén ervan is hier van belang: de emergency admin of pool admin van Aave kan een asset pauzeren, en zolang het gepauzeerd is, kan niemand het opnemen of aflossen (de contracten PoolConfigurator en ValidationLogic van Aave).
+
+## Waarvoor gebruiken mensen leningen met crypto als onderpand?
+
+### Geld zonder te verkopen
+
+Een reden is om aan geld te komen en toch de crypto te houden, vaak omdat de houder verwacht dat die stijgt of hem jaren wil houden. Met de lening houd je alle koerswinst en al het koersverlies van het onderpand, komt er rente bij en kan een verkoop afdwingen op het slechtste moment als de koers ver genoeg daalt.
+
+Een lening afsluiten verkoopt je onderpand niet: het blijft van jou. Of het storten van onderpand, de lening, de rente of een liquidatie fiscale gevolgen heeft, hangt af van je land en soms van de voorwaarden van het protocol. De richtlijnen van de Britse belastingdienst zeggen bijvoorbeeld dat het van de voorwaarden van een DeFi-leenplatform afhangt of het geven van onderpand als vervreemding telt, en behandelen, waar dat niet zo is, de verkoop van onderpand bij een liquidatie als een verkoop door de lener zelf (HMRC Cryptoassets Manual, CRYPTO61640). Deze gids geeft geen belastingadvies; controleer de regels waar je woont.
+
+### Uitgaven doen of een gat overbruggen
+
+Sommigen lenen om een uitgave te dekken voordat geld binnenkomt dat ze verwachten, zoals een rekening die betaald moet worden voor een verkoop of een salaris. De keerzijde is dat niets de lening voor je beëindigt: er is geen aflosdatum, de rente kan stijgen terwijl je wacht, en stablecoins omzetten naar geld op een bankrekening, en weer terug om af te lossen, kost zelf ook geld.
+
+### Herfinancieren
+
+Een lening elders kan naar Aave worden verplaatst als de rente op Aave lager is, en op Aave kan een schuld in één transactie van de ene stablecoin naar de andere worden omgezet met de debt swap van de interface (Aave-docs, swapfuncties). De keerzijde: de rentes zijn variabel, dus het goedkopere asset van vandaag kan volgende maand duurder zijn, en overstappen van een dollar-stablecoin naar een euro-stablecoin verandert in welke munt je schuld hebt, en dat is het onderwerp van [fiat shorten met een lening op Aave](/nl/blog/fiat-shorten-met-aave).
+
+### Hefboom
+
+Om hun blootstelling te vergroten lenen sommigen stablecoins, kopen ze daarmee meer van het onderpand en storten ze dat ook. Als alice haar 24.000 USDC gebruikte om 0,3 WBTC te kopen tegen $80.000 en die stortte, zou ze 1,3 WBTC hebben tegen 24.000 USDC: een health factor van 3,38 en een liquidatieprijs van $23.668,64. Elke beweging van bitcoin raakt haar nu 1,3 keer zo hard als het bezitten van 1 bitcoin, en het herhalen van de loop (herhaald lenen met hefboom) duwt de health factor richting 1.
+
+### Afdekken en shorten
+
+Een asset lenen en verkopen is een gok dat het daalt: stort stablecoins, leen WETH en verkoop die, en de positie wint als ETH daalt en schuift richting liquidatie als ETH stijgt (de [gids over een veilige health factor](/nl/blog/veilige-aave-health-factor) laat zien hoe ver het kan stijgen). Een dollar- of euro-stablecoin lenen tegen bitcoin is het spiegelbeeld, een short op de munt tegenover het onderpand, wat sommige bitcoiners fiat shorten noemen; [fiat shorten met een lening op Aave](/nl/blog/fiat-shorten-met-aave) rekent het door met getallen.
+
+## Wat zijn de risico's van een lening met crypto als onderpand?
+
+- **Liquidatie.** Onder een health factor van 1 kan een deel van de schuld of de hele schuld met je onderpand worden afgelost, en je verliest de bonus daarbovenop: 5% tot 7,5% voor de assets in de eerste tabel. Liquidaties worden uitgevoerd door concurrerende bots, dus ze kunnen snel volgen (Aave-helpcentrum).
+- **Volatiliteit van het onderpand.** Bitcoin piekte in november 2021 rond $69.000 en stond medio juni 2022 rond $17.000, een daling van ongeveer 75%, en zakte onder $16.000 nadat FTX in november 2022 omviel (ECB-blog). Met de liquidatiedrempel van 78% van WBTC zou zelfs een lening van 20% van de waarde van het onderpand, afgesloten op de piek van 2021, medio juni 2022 zijn geliquideerd.
+- **Variabele rente.** De rente staat voor geen enkele periode vast, en rente verlaagt je health factor na verloop van tijd, ook als de koersen stilstaan.
+- **Depegs van stablecoins.** Een depeg is het loslaten van de koppeling aan de dollar. USDC zakte op 11 maart 2023 naar ongeveer $0,88, nadat Circle had gemeld dat $3,3 miljard van zijn reserves bij Silicon Valley Bank stond, en stond op 13 maart weer boven $0,99 (de post van Gauntlet op het Aave-forum; Circle). TerraUSD, een algoritmische stablecoin, verloor in mei 2022 zijn koppeling en zakte tot bijna nul, wat volgens de Amerikaanse SEC $40 miljard aan marktwaarde wegvaagde. Zakt de stablecoin die je verschuldigd bent, dan wordt je schuld goedkoper; zakt een stablecoin die je als onderpand gebruikt, dan daalt je health factor.
+- **Wrapped bitcoin.** Bitcoin op Aave is een token dat gedekt is door bitcoin die iemand anders bewaart of een bridge beheert. WBTC zegt bijvoorbeeld dat elk token gedekt is door bitcoin in bewaring. Als die dekking wegviel, zou het token waarde kunnen verliezen, ongeacht wat bitcoin zelf deed.
+- **Smart contracts, oracles en governance.** Een bug, een verkeerde prijs of een gewijzigde parameter kan een positie raken zonder dat de markt beweegt. In maart 2026 verlaagde een verkeerd afgestemde wisselkoers-oracle in de Ethereum Core- en Prime-markten van Aave de effectieve wstETH-koers met ongeveer 2,85% en leidde tot liquidaties van ongeveer 10.938 wstETH over 34 accounts, volgens de post-mortem van Chaos Labs ([meer over oracle-fouten](/nl/blog/waarom-daalde-je-aave-health-factor#oorzaak-6-heeft-een-fout-in-een-oracle-of-wisselkoers-je-onderpand-verkeerd-gewaardeerd)). Governance kan ook een liquidatiedrempel verlagen voor elke open positie ([meer over verlaagde drempels](/nl/blog/waarom-daalde-je-aave-health-factor#oorzaak-4-heeft-governance-of-hebben-de-risk-stewards-een-liquidatiedrempel-verlaagd)).
+- **Alles zelf doen.** Jij beheert de sleutels, jij verstuurt de transacties, en in een snelle markt kan het langer duren dan je verwacht voordat een aflossing is bevestigd.
+
+## Hoe houd je een lening in de gaten?
+
+De eigen interfaces van Aave tonen je health factor zolang je ze open hebt, maar sturen je geen bericht als die daalt, zoals [de gids over health factor-alerts](/nl/blog/aave-health-factor-alert-instellen#stuurt-aave-health-factor-alerts) uitlegt. Een manier om de lening in de gaten te houden is de health factor kiezen waarbij je zou ingrijpen, door een deel van de schuld af te lossen of onderpand bij te storten, en een aparte tool je laten waarschuwen als de positie daar aankomt. Tokenping controleert elke 5 minuten en stuurt je berichten zolang je health factor onder de drempel zit die je hebt ingesteld; [de gids voor het instellen](/nl/blog/aave-health-factor-alert-instellen) loopt het met je door. Een alert geeft je tijd om in te grijpen, geen bescherming, en [hoe je liquidatie op Aave voorkomt](/nl/blog/aave-liquidatie-voorkomen) behandelt wat je met die tijd doet.
+
+## Bronnen
+
+- Aave V3 Ethereum Core [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) en Arbitrum [PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): LTV, liquidatiedrempels, bonussen en variabele leenrentes on-chain gelezen bij Ethereum-blok 26225342 en Arbitrum-blok 516228495 (RPC-gegevens geraadpleegd op 19 oktober 2026)
+- [Aave V3 Ethereum Core AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): WBTC-prijs $82.680,33 bij Ethereum-blok 26225364 (RPC-gegevens geraadpleegd op 19 oktober 2026)
+- [Aave Help: Borrow Tokens](https://aave.com/help/borrowing/borrow-tokens) (geraadpleegd op 19 oktober 2026)
+- [Aave Help: Repay Tokens](https://aave.com/help/borrowing/repay-tokens) (geraadpleegd op 19 oktober 2026)
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (geraadpleegd op 19 oktober 2026)
+- [Aave V3 Pool smart contract reference](https://aave.com/docs/aave-v3/smart-contracts/pool): parameters van borrow en repay, alleen variabele rente, stabiele rente verouderd sinds v3.2 (geraadpleegd op 19 oktober 2026)
+- [Aave docs: swap features](https://aave.com/docs/aave-v3/smart-contracts/swap-features): aflossen met onderpand en debt swap (geraadpleegd op 19 oktober 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) en [PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol), aave-v3-origin: opnemen terwijl je leent, pauzes en wie ze kan instellen (geraadpleegd op 19 oktober 2026)
+- [CFTC-persbericht 8749-23 over Celsius Network](https://www.cftc.gov/PressRoom/PressReleases/8749-23), 13 juli 2023: ongeveer $20 miljard gestort, opnames bevroren op 12 juni 2022, faillissement aangevraagd op 13 juli 2022 (geraadpleegd op 19 oktober 2026)
+- [US Bankruptcy Court, Southern District of New York: uitspraak over het eigendom van de tegoeden op Celsius Earn-rekeningen](https://www.nysb.uscourts.gov/sites/default/files/opinions/312902_1822_opinion.pdf), 4 januari 2023 (geraadpleegd op 19 oktober 2026)
+- [Voyager Digital: marktupdate](https://www.newswire.ca/news-releases/voyager-digital-provides-market-update-851734302.html), 1 juli 2022, en [Voyager Digital: aankondiging van Chapter 11](https://www.newswire.ca/news-releases/voyager-digital-commences-financial-restructuring-process-to-maximize-value-for-all-stakeholders-888320107.html), 5 juli 2022 (beide geraadpleegd op 19 oktober 2026)
+- [SEC-persbericht 2023-7 over Genesis en het Gemini Earn-programma](https://www.sec.gov/news/press-release/2023-7), 12 januari 2023 (geraadpleegd op 19 oktober 2026)
+- [SEC-persbericht 2024-37 over Genesis](https://www.sec.gov/newsroom/press-releases/2024-37), 19 maart 2024: Chapter 11-verzoeken ingediend op 19 januari 2023 (geraadpleegd op 19 oktober 2026)
+- [CoinDesk: BlockFi files for bankruptcy as FTX contagion spreads](https://www.coindesk.com/policy/2022/11/28/ftx-fallout-continues-as-crypto-lender-blockfi-declares-bankruptcy), 28 november 2022 (geraadpleegd op 19 oktober 2026)
+- [The ECB Blog: Bitcoin's last stand](https://www.ecb.europa.eu/press/blog/date/2022/html/ecb.blog221130~5301eecd19.en.html), 30 november 2022: de daling van ongeveer $69.000 naar ongeveer $17.000 en onder $16.000 (geraadpleegd op 19 oktober 2026)
+- [Gauntlet: Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), governanceforum van Aave, 17 maart 2023 (geraadpleegd op 19 oktober 2026)
+- [Circle: $3.3 Billion of USDC Reserve Risk Removed, Dollar De-peg Closes](https://www.circle.com/pressroom/3-3-billion-of-usdc-reserve-risk-removed-dollar-de-peg-closes), 12 maart 2023 (geraadpleegd op 19 oktober 2026)
+- [SEC-persbericht 2024-73 over Terraform](https://www.sec.gov/newsroom/press-releases/2024-73), 13 juni 2024: de depeg van UST in mei 2022 (geraadpleegd op 19 oktober 2026)
+- [WBTC](https://wbtc.network/): hoe WBTC gedekt is (geraadpleegd op 19 oktober 2026)
+- [Chaos Labs: Post-Mortem, Exchange Rate Misalignment on wstETH Core and Prime Instances](https://governance.aave.com/t/24269), governanceforum van Aave, 10 maart 2026 (geraadpleegd op 19 oktober 2026)
+- [HMRC Cryptoassets Manual, CRYPTO61640: DeFi lending and staking, collateral](https://www.gov.uk/hmrc-internal-manuals/cryptoassets-manual/crypto61640), bijgewerkt op 28 november 2025 (geraadpleegd op 19 oktober 2026)
+
+_Educatieve inhoud, geen financieel advies. Alerts verkleinen het risico, maar voorkomen geen liquidatie._

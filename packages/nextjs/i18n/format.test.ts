@@ -17,6 +17,8 @@ import {
   itOnMarket,
   itTo,
   joinList,
+  nlForMarket,
+  nlOnMarket,
   plForMarket,
   plOnMarket,
   plural,
@@ -214,6 +216,22 @@ describe("Indonesian formatting", () => {
     expect(idOnMarket("Base", "network")).toBe("di jaringan Base");
     expect(idForMarket("Base")).toBe("untuk jaringan Base");
     expect(idForMarket("USDC | cbBTC (86%)", "market")).toBe("untuk pasar USDC | cbBTC (86%)");
+  });
+});
+
+describe("Dutch formatting", () => {
+  it("joins with en and of, writes Dutch dates, a decimal comma and the market wording", () => {
+    expect(joinList("nl", ["Signal", "Telegram", "e-mail"])).toBe("Signal, Telegram en e-mail");
+    expect(joinList("nl", ["Signal", "e-mail"], "disjunction")).toBe("Signal of e-mail");
+    expect(formatLongDate("nl", "2026-10-14")).toBe("14 oktober 2026");
+    expect(formatDecimal("nl", "1.42")).toBe("1,42");
+    expect(plural("nl", 1, { one: "1 netwerk", other: "1 netwerken" })).toBe("1 netwerk");
+    expect(plural("nl", 3, { one: "x", other: "3 netwerken" })).toBe("3 netwerken");
+    expect(nlOnMarket("Arbitrum")).toBe("op Arbitrum");
+    expect(nlOnMarket("Ethereum (V4 Lido)")).toBe("op de markt Ethereum (V4 Lido)");
+    expect(nlOnMarket("Base", "network")).toBe("op Base");
+    expect(nlForMarket("Base")).toBe("voor Base");
+    expect(nlForMarket("USDC | cbBTC (86%)", "market")).toBe("voor de markt USDC | cbBTC (86%)");
   });
 });
 

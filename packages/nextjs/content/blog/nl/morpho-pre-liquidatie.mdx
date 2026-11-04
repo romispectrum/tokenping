@@ -1,0 +1,169 @@
+export const meta = {
+  slug: "morpho-pre-liquidatie",
+  title: "Morpho pre-liquidatie: wat het is en hoe je het uitzet",
+  description:
+    "Hoe Morpho pre-liquidatie (Auto-deleverage) een deel van een lening verkoopt vóór de LLTV, waarom Morpho ermee stopt en hoe je het controleert en intrekt.",
+  h1: "Wat is pre-liquidatie op Morpho, en hoe controleer je het of zet je het uit?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Wat is pre-liquidatie op Morpho, en hoe controleer ik of het aan staat en zet ik het uit?",
+  readingMinutes: 12,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Pre-liquidatie (pre-liquidation) is een contract voor één markt op Morpho Blue (variabele rente) waarvoor je zelf
+  kiest, en waarmee iedereen een deel van je onderpand mag verkopen om schuld af te lossen voordat je positie de LLTV
+  van de markt bereikt. De app van Morpho had een functie met de naam Auto-deleverage die zo werkt. Morpho stopt er nu
+  mee: de app neemt geen nieuwe posities aan, het helpcentrum vraagt wie de functie heeft om haar uit te zetten, en de
+  SDK markeerde de code voor pre-liquidatie op 22 september 2026 als verouderd (deprecated). De contracten werken nog,
+  dus als je het ooit hebt aangezet, controleer het met `isAuthorized` op het Morpho Blue-contract en trek het in met de
+  beheerknop in de app of met `setAuthorization(contract, false)`.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Cijfers, bloknummers en bronnen: content/blog/snapshots/morpho-pre-liquidation.md */}
+
+## Wat is pre-liquidatie op Morpho?
+
+Pre-liquidatie is een tweede, eerdere liquidatiegrens die een lener aan één markt op Morpho Blue kan toevoegen. Op een normale Blue-markt kan een positie pas worden geliquideerd als haar health factor (gezondheidsfactor) onder 1 ligt, gemeten tegen de liquidatie-LTV (LLTV) van de markt; [de gids over de Morpho health factor](/nl/blog/morpho-health-factor-uitgelegd) legt dat getal uit. Een pre-liquidatiecontract legt een lagere grens vast, de preLLTV. Tussen de twee grenzen mag iedereen een deel van je schuld aflossen, tot een limiet die het contract vastlegt, en onderpand nemen ter waarde van die schuld plus een bonus, in stappen.
+
+Drie dingen maken het anders:
+
+- **Je kiest er zelf voor.** Het geldt pas nadat je het contract op Morpho Blue hebt geautoriseerd. Zonder die autorisatie kan het contract niet aan je positie komen.
+- **Het geldt per markt.** Elk contract hoort bij één Blue-markt en één vaste set parameters, en heeft geen eigenaar, beheerder of upgradefunctie.
+- **Het bestaat alleen op Blue.** Morpho Midnight, de markten met vaste rente uit [de gids over Midnight](/nl/blog/morpho-midnight-leningen-met-vaste-rente), heeft geen pre-liquidatie.
+
+Morpho kondigde de factory voor pre-liquidatie aan op 4 maart 2025 en noemde auto-deleverage en auto-close als toepassingen. In de contracten, de API en de SDK heet het pre-liquidation. De app van Morpho had een functie met de naam Auto-deleverage, die het helpcentrum in dezelfde termen beschrijft: zodra je loan-to-value een ingestelde drempel passeert, kan een deel van de positie worden gesloten, met een vergoeding alleen over het gesloten deel.
+
+## Is pre-liquidatie nog beschikbaar in de Morpho-app?
+
+In de Morpho-app kun je geen nieuwe pre-liquidatie meer instellen. Gelezen op 26 oktober 2026:
+
+| Waar                      | Status                                                                                                                                                                                                                       |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Morpho-app en helpcentrum | Het helpartikel heet nu "Sunsetting Auto-deleverage" (het uitfaseren van Auto-deleverage, laatst bijgewerkt op 13 mei 2026): de functie neemt geen nieuwe posities aan, en gebruikers die haar hebben, moeten haar uitzetten |
+| Morpho SDK                | Elke export voor pre-liquidatie op 22 september 2026 als verouderd gemarkeerd (pull request 1132), te verwijderen in de volgende hoofdversie, zonder opvolger                                                                |
+| Morpho-documentatie       | De pagina over pre-liquidatie is weg; het oude adres leidt nu naar de algemene pagina over liquidatie                                                                                                                        |
+| Morpho API                | Noemt nog 106 pre-liquidatiecontracten op vermelde markten op Ethereum (50), Base (37), Arbitrum (8), Polygon (6), Katana (3) en Unichain (2)                                                                                |
+| De contracten             | Ongewijzigd en werkend: iedereen kan ze nog aanroepen op een lener die ze heeft geautoriseerd                                                                                                                                |
+
+De laatste rij is de rij die telt als je de functie eerder hebt aangezet. Een functie in een app uitfaseren maakt een autorisatie die on-chain is opgeslagen niet ongedaan.
+
+## Hoe werkt een pre-liquidatiecontract?
+
+Een pre-liquidatiecontract wordt gemaakt door de PreLiquidationFactory van Morpho, die iedereen kan gebruiken: iedereen kan een contract uitrollen voor elke Blue-markt, en elke combinatie van markt en parameters kan maar één keer bestaan. De vaste parameters zijn:
+
+| Parameter        | Wat het vastlegt                                                                                                                                                       |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| preLLTV          | De loan-to-value waarboven pre-liquidatie is toegestaan. Moet onder de LLTV van de markt liggen                                                                        |
+| preLCF1, preLCF2 | De close factor (het deel van de schuld dat in één keer kan worden afgelost): het grootste deel van je schuld dat één call mag aflossen, bij de preLLTV en bij de LLTV |
+| preLIF1, preLIF2 | De incentive factor: de afgeloste schuld wordt ermee vermenigvuldigd om het genomen onderpand te krijgen, op dezelfde twee punten                                      |
+| Oracle           | De prijsbron die bepaalt of je kunt worden gepre-liquideerd en tegen welke prijs je onderpand wordt genomen. Dat kan de eigen oracle van de markt zijn of een andere   |
+
+Voordat het iets doet, controleert het contract met de prijs van zijn eigen oracle dat je loan-to-value boven de preLLTV ligt en nog op of onder de LLTV. Boven de LLTV stopt pre-liquidatie en neemt de normale liquidatie van Blue het over. Daarna controleert Morpho Blue met de eigen oracle van de markt of je positie gezond is; zo niet, dan wordt de hele call teruggedraaid.
+
+De constructor dwingt grenzen af voor de parameters. De close factor mag niet dalen als het risico stijgt, en alleen de eerste waarde is begrensd op 100%: met een contract waarvan de tweede waarde boven 100% ligt, kan één call je hele schuld aflossen voordat de LLTV is bereikt. De standaardwaarden van Morpho blijven daar ver onder. De incentive factor moet minstens 1 zijn (geen bonus) en hooguit 1 ÷ LLTV (een bonus van ongeveer 16% op een markt van 86%). Volgens de repository van Morpho zorgt die grens, samen met de regel dat pre-liquidatie stopt bij de LLTV, ervoor dat een pre-liquidatie een positie niet minder gezond achterlaat dan ervoor.
+
+### Hoe groeien de close factor en de bonus tussen de preLLTV en de LLTV?
+
+Beide groeien in een rechte lijn met je loan-to-value. Het contract meet hoe ver je van de preLLTV richting de LLTV zit, als een deel van 0 tot 1, en verschuift elke factor met dat deel van zijn eerste waarde naar zijn tweede. Halverwege de twee grenzen ligt de close factor halverwege preLCF1 en preLCF2.
+
+Uit de code volgen twee beperkingen. De close factor begrenst één call, niet het totaal: de eigen repository van Morpho merkt op dat een liquidator een klein deel kan sluiten, je boven de preLLTV kan laten en opnieuw kan aanroepen, dus het totaal dat wordt gesloten, kan groter zijn dan de close factor. En de close factor is een deel van je schuld, niet van je onderpand; de [gids over close factors op Aave](/nl/blog/hoe-werkt-liquidatie-op-aave#hoeveel-van-mijn-schuld-kan-in-een-keer-worden-geliquideerd) behandelt hetzelfde idee op Aave.
+
+## Wat zijn de standaardinstellingen van Morpho voor pre-liquidatie?
+
+Morpho hield in zijn SDK een standaardset parameters bij voor elk van acht veelvoorkomende LLTV's, en elk van de 106 contracten die de API noemt, gebruikt die standaardwaarden. De API noemt alleen contracten met bekende standaardparameters, dus contracten met andere instellingen kunnen bestaan zonder daar te verschijnen. De zes LLTV's met vermelde contracten:
+
+| LLTV van de markt | preLLTV | Close factor (preLLTV tot LLTV) | Bonus  | Pre-liquidatie begint bij een health factor van de markt van | Vermelde contracten |
+| ----------------- | ------- | ------------------------------- | ------ | ------------------------------------------------------------ | ------------------- |
+| 62,5%             | 56,26%  | 0,75% tot 27,95%                | 12,68% | 1,111                                                        | 2                   |
+| 77%               | 72,74%  | 0,37% tot 25,66%                | 7,41%  | 1,059                                                        | 12                  |
+| 86%               | 83,26%  | 0,20% tot 24,53%                | 4,38%  | 1,033                                                        | 50                  |
+| 91,5%             | 89,79%  | 0,11% tot 23,92%                | 2,62%  | 1,019                                                        | 21                  |
+| 94,5%             | 93,37%  | 0,07% tot 23,61%                | 1,68%  | 1,012                                                        | 15                  |
+| 96,5%             | 95,78%  | 0,04% tot 23,41%                | 1,06%  | 1,008                                                        | 6                   |
+
+In elke standaardset is de bonus aan beide kanten gelijk, en gelijk aan de bonus die de normale liquidatie van Blue op die markt betaalt. De standaardwaarden maken de verkoop per dollar niet goedkoper; ze maken elke verkoop kleiner. Een normale liquidatie op Blue heeft helemaal geen close factor, dus de liquidator mag de hele schuld in één keer aflossen. [Hoe liquidatie op Morpho werkt](/nl/blog/hoe-werkt-liquidatie-op-morpho) behandelt die kant.
+
+## Een echt contract: USDC | cbBTC (86%) op Base
+
+De grootste vermelde Blue-markt op Base naar geleend bedrag, USDC | cbBTC (86%) (cbBTC als onderpand, USDC als schuld, een LLTV van 86%), heeft één pre-liquidatiecontract dat de API van Morpho noemt, op `0xa7272aFc21f9C321024ED93892a1abfeb621C374`. Gelezen op Base op 26 oktober 2026 en vergeleken met de API van Morpho:
+
+- De PreLiquidationFactory van Base bevestigt dat hij het contract heeft gemaakt, en het contract verwijst naar deze markt.
+- preLLTV 83,26%, close factor van 0,20% oplopend naar 24,53%, bonus 4,38% aan beide kanten: de standaardwaarden voor 86%.
+- De oracle is de eigen oracle van de markt. Die prijsde cbBTC op 80.000,15 USDC in Base-blokken 53102870 en 53102952; [hoe liquidatie op Morpho werkt](/nl/blog/hoe-werkt-liquidatie-op-morpho) gebruikt dezelfde prijs.
+- Op de markt was ongeveer 1,61 miljard USDC geleend tegen ongeveer 40.051 cbBTC, verdeeld over ongeveer 43.000 leenposities.
+- In de ongeveer 28 uur aan Base-blokken die vóór blok 53102692 zijn gelezen, verscheen geen pre-liquidatie door dit contract.
+
+Op Ethereum heeft de grootste vermelde markt USDC | cbBTC (86%) een contract met dezelfde parameters, op `0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A`, dat ook de oracle van zijn markt gebruikt.
+
+## Rekenvoorbeeld: hoeveel kan één pre-liquidatie nemen?
+
+Neem een voorbeeldpositie op die markt op Base: 1 cbBTC aan onderpand en 50.000 USDC aan schuld, bij 80.000,15 USDC per cbBTC. De health factor is 1,376 tegen de LLTV van 86%, en 1,332 tegen de pre-liquidatiegrens van 83,26%. Met dezelfde oracle is het getal voor pre-liquidatie altijd het getal van de markt maal 0,968 (83,26 ÷ 86).
+
+Pre-liquidatie kan beginnen zodra cbBTC onder 60.052,58 USDC zakt, 24,9% onder die prijs. Normale liquidatie begint onder 58.139,53 USDC, 27,3% eronder. Tussen die prijzen ziet de grootste enkele pre-liquidatie er zo uit:
+
+| Loan-to-value | Prijs cbBTC | Close factor | Afgeloste schuld | Genomen onderpand (waarde in USDC) | Bonus | Loan-to-value erna |
+| ------------- | ----------- | ------------ | ---------------- | ---------------------------------- | ----- | ------------------ |
+| 84%           | 59.523,81   | 6,77%        | 3.384            | 3.533                              | 148   | 83,26%             |
+| 85%           | 58.823,53   | 15,65%       | 7.825            | 8.168                              | 343   | 83,26%             |
+| 86%           | 58.139,53   | 24,53%       | 12.266           | 12.803                             | 538   | 83,23%             |
+
+Met de standaardwaarden brengt één call van volle grootte de loan-to-value terug tot ongeveer de preLLTV, waar het contract stopt. Vergelijk een normale liquidatie op Blue bij 87%: een liquidator mag alle 50.000 USDC aflossen en cbBTC ter waarde van 52.192 USDC nemen, waarna je ongeveer 5.279 USDC aan onderpand overhoudt en geen lening.
+
+## Waarom kozen leners ervoor, en wat kostte het ze?
+
+Het argument om ervoor te kiezen was: kleinere, geleidelijke verkopen. Het helpartikel van Morpho beschrijft Auto-deleverage als het sluiten van alleen een deel van een positie om de gezondheid te herstellen, met een vergoeding alleen over het gesloten bedrag. In het voorbeeld hierboven betaalde een lener die ervoor koos 148 tot 538 USDC aan bonus per stap, terwijl een normale liquidatie bij 87% die de hele lening aflost 2.192 USDC kost; meerdere stappen, of een normale liquidatie erna, kunnen samen meer kosten.
+
+De kosten:
+
+- **De verkoop begint eerder.** Op een markt van 86% kan een deel van je positie al worden verkocht vanaf een health factor van de markt van ongeveer 1,033, terwijl de health factor die het helpcentrum van Morpho beschrijft, gemeten tegen de LLTV, nog boven 1 ligt.
+- **De stappen kunnen zich herhalen.** De close factor begrenst elke call, niet het totaal, dus er kunnen meerdere calls op elkaar volgen zolang je boven de preLLTV blijft.
+- **De prijs kan verschillen.** Een contract kan een andere oracle gebruiken dan die van de markt. Alle 106 contracten die de API van Morpho noemt, gebruiken de eigen oracle van hun markt; een contract dat de API niet noemt, misschien niet.
+- **Niemand hoeft te handelen.** Als geen liquidator het contract aanroept, gebeurt er niets vóór de LLTV; zodra je die passeert, kun je op de normale manier worden geliquideerd.
+
+Nu de functie wordt uitgefaseerd, vraagt Morpho leners die haar nog hebben om haar uit te zetten, en kun je er niet meer nieuw voor kiezen.
+
+## Hoe controleer je of je er een hebt geautoriseerd?
+
+Je hebt een pre-liquidatiecontract geautoriseerd als `isAuthorized(your wallet, contract)` van Morpho Blue true teruggeeft. De autorisatie is opgeslagen in Morpho Blue zelf, niet in het pre-liquidatiecontract.
+
+1. **Zoek het contract voor je markt.** De API van Morpho noemt het onder de pre-liquidaties van de markt; het helpcentrum van Morpho verwijst ook naar de beheerknop op je positie of op de marktpagina in de app.
+2. **Roep `isAuthorized` aan op het Morpho Blue-contract van dat netwerk.** Open op een block explorer de leesfuncties van het Blue-contract en vul je wallet in als eerste adres en het pre-liquidatiecontract als tweede.
+3. **Lees het antwoord.** True betekent dat het contract je kan pre-liquideren; false betekent dat het dat niet kan.
+
+Voor deze stappen heb je het adres van het contract nodig, en de API van Morpho noemt alleen contracten met standaardinstellingen. Een autorisatie kan ook met een handtekening worden gegeven en door iemand anders worden verstuurd, dus misschien staat ze niet in de eigen transactielijst van je wallet. Om elk adres te zien dat je hebt geautoriseerd, bekijk je op een block explorer de SetAuthorization-events van het Morpho Blue-contract met je wallet als authorizer. Het laatste event voor elk adres laat zien of het nog aan staat, en de PreLiquidationFactory van het netwerk antwoordt op `isPreLiquidation(address)` met true voor de contracten die hij heeft gemaakt.
+
+Eén detail is hier belangrijk. De autorisatie van Blue bevat geen markt: een adres dat je autoriseert, komt door de controles van Blue voor je leningen, opnames en opnames van onderpand op dat hele Blue-contract. De vaste code van een pre-liquidatiecontract lost alleen schuld af en neemt alleen onderpand op in zijn eigen markt, maar andere adressen die je hebt geautoriseerd, zijn niet zo beperkt.
+
+## Hoe zet je pre-liquidatie uit?
+
+Je zet het uit door de autorisatie terug op false te zetten:
+
+- **In de Morpho-app:** het helpcentrum van Morpho zegt dat je op de beheerknop klikt bij de positie in je dashboard of op de marktpagina, waarna een venster opengaat om Auto-deleverage te verwijderen.
+- **Op het contract:** roep vanuit je wallet `setAuthorization(pre-liquidation contract, false)` aan op Morpho Blue. De call mislukt als de waarde al false is, dus een mislukte call kan ook betekenen dat er niets te verwijderen was.
+
+Na het intrekken mislukken de pogingen van het contract om je onderpand op te nemen, en geldt alleen de normale liquidatie van Blue onder een health factor van 1. Het kost de gas van één transactie.
+
+## Hoe meet Tokenping een positie met pre-liquidatie?
+
+Voor een lener die op een Blue-markt een pre-liquidatiecontract heeft geautoriseerd, stuurt Tokenping alerts op basis van de laagste van de twee grenzen: de LLTV-grens en de pre-liquidatiegrens. Dat is belangrijk omdat het helpcentrum van Morpho beschrijft dat de health factor in de app 1 bereikt als de loan-to-value de LLTV passeert, en daar begint ook de eigen liquidatie van Blue. Op een markt van 86% met het standaardcontract gaat een alertdrempel van 1,10 op de pre-liquidatiegrens af bij een health factor van de markt van ongeveer 1,136, en de laagste drempel, 1,02, gaat af bij ongeveer 1,054, ongeveer 2% boven de grens waar pre-liquidatie kan beginnen.
+
+Als je een alert opslaat of bewerkt, noteert Tokenping de pre-liquidatiecontracten die de API van Morpho voor die markt noemt; bij elke controle leest Tokenping daarna of je elk ervan hebt geautoriseerd, en berekent het de health factor uit de chain met de eigen rekenregels van Morpho, nooit uit de API van Morpho. Een pre-liquidatiecontract dat de API van Morpho niet noemt, wordt niet gecontroleerd, dus als je er een met aangepaste instellingen hebt geautoriseerd, meet de alert alleen tegen de LLTV-grens.
+
+De rest werkt zoals bij elke Morpho-alert. Tokenping controleert elke 5 minuten, op 14 netwerken, en zolang je health factor onder je drempel ligt (alles van 1,02 tot 10), stuurt elke controle een bericht op elk kanaal dat je hebt gekozen: Signal, Telegram of e-mail. Alerts kosten <AlertPrice />, hetzelfde plan als Aave-alerts, en [je Morpho-posities bekijken](/nl/morpho) kost niets. [Hoe je een alertdrempel kiest](/nl/blog/veilige-aave-health-factor#hoe-kies-je-stap-voor-stap-een-alertdrempel) loopt de afweging door voor Aave; dezelfde redenering geldt hier. Een alert geeft je tijd om te handelen, geen garantie: een prijs kan tussen twee controles bewegen. Als je geen pre-liquidatie meer wilt, trek haar dan in zoals hierboven beschreven; je alert meet dan alleen tegen de LLTV-grens.
+
+## Bronnen
+
+- [morpho-org/pre-liquidation](https://github.com/morpho-org/pre-liquidation): README, [PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidation.sol), [PreLiquidationFactory.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidationFactory.sol) en [IPreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/interfaces/IPreLiquidation.sol), voor de parameters, grenzen, interpolatie en controles (geraadpleegd op 26 oktober 2026)
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) en [EventsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/EventsLib.sol): `isAuthorized`, `setAuthorization`, het SetAuthorization-event, de gezondheidscontrole en de normale liquidatiebonus (geraadpleegd op 26 oktober 2026)
+- [Introducing pre-liquidations](https://morpho.org/blog/introducing-pre-liquidations-enhanced-loan-management-on-morpho) (Morpho, 4 maart 2025): auto-deleverage en auto-close als toepassingen, en normale liquidatie als er geen pre-liquidatie plaatsvindt (geraadpleegd op 26 oktober 2026)
+- [Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (helpcentrum van Morpho, bijgewerkt op 13 mei 2026): geen nieuwe posities, hoe je het uitzet, wat de functie deed (geraadpleegd op 26 oktober 2026)
+- [Helpcentrum van Morpho: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): de app toont de health factor van elke positie, en een positie kan worden geliquideerd bij 1 of lager, zodra haar loan-to-value de LLTV passeert (geraadpleegd op 26 oktober 2026)
+- [Morpho SDK pull request 1132](https://github.com/morpho-org/sdks/pull/1132) (samengevoegd op 22 september 2026) en [preLiquidation.ts](https://github.com/morpho-org/sdks/blob/main/packages/blue-sdk/src/preLiquidation.ts): de markering als verouderd en de standaardparameters (geraadpleegd op 26 oktober 2026)
+- [Morpho-documentatie: liquidation](https://docs.morpho.org/developers/borrow/concepts/liquidation): waar de oude pagina over pre-liquidatie nu naartoe leidt (geraadpleegd op 26 oktober 2026)
+- [Morpho API](https://api.morpho.org/graphql): vermelde markten, hun pre-liquidatiecontracten en oracles, en de markten USDC | cbBTC (86%) op Base en Ethereum (geraadpleegd op 26 oktober 2026)
+- Pre-liquidatiecontracten on-chain gelezen: [Base](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374) in blokken 53102692 tot 53102952 en [Ethereum](https://etherscan.io/address/0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A) in blok 26274980, met hun factories, markten en oracles (geraadpleegd op 26 oktober 2026)
+
+_Educatieve inhoud, geen financieel advies. Alerts verkleinen het risico, maar voorkomen geen liquidatie._

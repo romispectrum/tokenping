@@ -6,6 +6,7 @@ import { MESSAGES as fr } from "./fr";
 import { MESSAGES as hi } from "./hi";
 import { MESSAGES as id } from "./id";
 import { MESSAGES as it } from "./it";
+import { MESSAGES as nl } from "./nl";
 import { MESSAGES as pl } from "./pl";
 import { MESSAGES as pt } from "./pt";
 import type { BlogMessages } from "./shared";
@@ -20,4 +21,4 @@ import type { Localized } from "~~/i18n/locales";
 
 export type { BlogMessages } from "./shared";
 
-export const BLOG_MESSAGES: Localized<BlogMessages> = { en, cs, es, hi, de, vi, fr, pt, it, pl, tr, id };
+export const BLOG_MESSAGES: Localized<BlogMessages> = { en, cs, es, hi, de, vi, fr, pt, it, pl, tr, id, nl };

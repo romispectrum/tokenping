@@ -1,0 +1,163 @@
+export const meta = {
+  slug: "stablecoin-depeg-op-aave",
+  title: "Wat een stablecoin-depeg doet met je Aave-lening",
+  description:
+    "Hoe een depeg je Aave health factor aan elke kant van de lening raakt, hoe Aave USDC, USDT en USDe met gecapte feeds prijst, en wat 2023 en 2025 toonden.",
+  h1: "Wat gebeurt er met je Aave-positie bij een depeg van een stablecoin?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "Wat gebeurt er met mijn Aave health factor bij een depeg van een stablecoin?",
+  readingMinutes: 16,
+};
+
+<ShortAnswer>
+  Een depeg (loslaten van de koppeling aan de dollar) van een stablecoin beweegt je Aave health factor
+  (gezondheidsfactor) via de prijs van de oracle (prijsbron), niet via de $1 die jij in gedachten hebt. Is de stablecoin
+  je onderpand, dan gaat elke cent die hij onder $1 zakt rechtstreeks door naar de health factor, omdat de prijsadapters
+  van Aave voor stablecoins de prijs alleen aan de bovenkant begrenzen (op $1,04 voor USDC, USDT, DAI, USDS en PYUSD op
+  Ethereum Core, gelezen op 28 oktober 2026) en geen ondergrens hebben. Is de stablecoin je schuld, dan verhoogt een
+  daling je health factor en verlaagt een stijging hem, maar nooit meer dan de cap toelaat. USDe is het bijzondere
+  geval: sinds 8 maart 2025 prijst Aave het met de feed van USDT, dus de marktprijs van USDe bereikt je health factor
+  helemaal niet. Een depeg kan een positie tussen twee alertcontroles ver verplaatsen, dus een alert geeft je tijd, geen
+  bescherming.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* De cijfers en de bloknummers waarop ze zijn gelezen: content/blog/snapshots/stablecoin-depeg-aave.md */}
+
+## Wat is een stablecoin-depeg, en welke kant van je lening raakt die?
+
+Er is sprake van een depeg als de marktprijs van een stablecoin loskomt van de $1 die hij hoort vast te houden. Voor wie op Aave leent, telt dat aan twee kanten, en die gedragen zich verschillend:
+
+- **Een stablecoin die je als onderpand hebt gestort.** Zijn oracleprijs vermenigvuldigt je onderpandwaarde, dus een daling onder $1 verkleint de onderpandkant van de health factor. Dit is [Oorzaak 5 van waarom een health factor daalt](/nl/blog/waarom-daalde-je-aave-health-factor#oorzaak-5-had-een-stablecoin-die-je-als-onderpand-stortte-een-depeg-naar-beneden), en het is de gevaarlijke kant.
+- **Een stablecoin die je hebt geleend.** Zijn oracleprijs vermenigvuldigt de waarde van je schuld. Een daling onder $1 maakt de schuld minder waard en verhoogt je health factor; een stijging boven $1 maakt de schuld meer waard en verlaagt hem.
+
+De health factor zelf is in beide gevallen dezelfde formule, uitgelegd in [wat de Aave health factor is](/nl/blog/aave-health-factor-uitgelegd):
+
+**HF = Σ(onderpandwaarde × liquidatiedrempel) ÷ totale schuldwaarde**
+
+Beide waarden komen van de oracle van Aave. Niets in de formule weet dat een asset een stablecoin is: USDC op $0,87 is gewoon een asset dat $0,87 waard is. Wat stablecoins anders maakt, is hoe Aave ze prijst, en daarover gaat de derde sectie. De voorbeelden hieronder gebruiken parameters van Aave V3 Ethereum Core, gelezen op 28 oktober 2026 bij blok 26291704 (14:03:35 UTC): een liquidatiedrempel (liquidation threshold) van 78% voor USDC en USDT, 84% voor WETH.
+
+## Wat doet een depeg van je stablecoin-onderpand met de health factor?
+
+Een daling van de oracleprijs van een stablecoin die je hebt gestort, verlaagt je health factor in verhouding tot de daling, en niets houdt dat tegen. Neem 20.000 USDC gestort tegenover 10.000 USDT geleend, beide op $1 om de sommen rond te houden (de oracle las $0,99971803 voor USDC en $0,99842395 voor USDT bij blok 26291704):
+
+- Op $1: 20.000 × 0,78 ÷ 10.000 = **1,56**.
+- USDC op $0,95: 19.000 × 0,78 ÷ 10.000 = **1,48**.
+- USDC op $0,87, het dieptepunt van maart 2023: 17.400 × 0,78 ÷ 10.000 = **1,36**.
+- Liquidatie bij 1,00 zou USDC op 10.000 ÷ (20.000 × 0,78) = **$0,64** vereisen, met USDT ongewijzigd.
+
+Die positie heeft ruimte omdat ze de helft leende van wat de loan-to-value (LTV) van 75% toestaat. Hetzelfde onderpand, tot de limiet geleend, 15.000 USDT, begint op 15.600 ÷ 15.000 = **1,04**, en USDC op $0,95 brengt het naar 14.820 ÷ 15.000 = **0,99**, en dan kan de positie geliquideerd worden. Ze bereikt 1,00 bij een USDC-prijs van ongeveer **$0,96**, een daling van minder dan 4%. Bij $0,87 is het 0,90. Een stablecoin-loop (herhaald lenen met hefboom) lijkt rustig tot de oracle beweegt, en dan is de buffer de ruimte die je hebt gelaten tussen je LTV en de drempel; [hoeveel buffer een health factor je geeft](/nl/blog/veilige-aave-health-factor) legt uit hoe je die kiest.
+
+Eén detail helpt: alleen de verhouding tussen de twee oracleprijzen telt. Als USDC en USDT allebei $0,95 lezen, staat de positie met 15.000 USDT weer op 14.820 ÷ 14.250 = 1,04, ongewijzigd. Wat in maart 2023 pijn deed, was dat USDC daalde terwijl USDT dat niet deed.
+
+Elke stablecoin die je hebt gestort, is zo blootgesteld, in verhouding tot zijn aandeel in je onderpand. Met WETH en USDC gestort in gelijke dollarbedragen (drempels 84% en 78%) is USDC ongeveer 48% van je gewogen onderpand, dus een daling van USDC met 13% haalt er ongeveer 6% van af.
+
+## Wat doet een depeg van de stablecoin die je hebt geleend?
+
+Is de stablecoin je schuld, dan is het effect omgekeerd en in één richting begrensd. Neem 10 WETH gestort (drempel 84%) tegenover 12.000 USDT geleend, met ETH op een illustratieve $2.300 (de oracle las $2.335,08 bij blok 26291704):
+
+- USDT op $1: 23.000 × 0,84 ÷ 12.000 = **1,61**.
+- USDT daalt naar $0,95: de schuld is 11.400 waard, dus **1,69**. Bij $0,87 is het **1,85**. Een neerwaartse depeg van je schuldasset helpt je.
+- USDT stijgt naar $1,02: de schuld is 12.240 waard, dus **1,58**.
+- USDT stijgt naar $1,04 of hoger: de schuld is hooguit 12.480 waard, dus **1,55**. De cap houdt de prijs daar vast, wat de markt ook zegt.
+
+Een geleende stablecoin kan je door zijn eigen prijs dus hooguit ongeveer 4% van je health factor kosten, terwijl hij als onderpand er zoveel van kan afnemen als hij daalt. Die asymmetrie komt van de adapter, niet van de risicoparameters van Aave.
+
+<Callout tone="info">
+  Daarom is het lenen van een stablecoin tegen een volatiel asset, de positie uit [fiat shorten met
+  Aave](/nl/blog/fiat-shorten-met-aave), nauwelijks blootgesteld aan depegs: de stablecoin is schuld, en een daling
+  ervan is goed nieuws voor de lener.
+</Callout>
+
+## Hoe prijst Aave stablecoins?
+
+Aave waardeert stablecoins niet op $1. Elke reserve heeft een prijsbron die de governance instelt in het AaveOracle-contract, en voor stablecoins is die bron een Chainlink-feed in USD, verpakt in een price cap adapter uit de price feeds-repository van Aave (de repository die vroeger aave-capo heette; de README zegt dat hij is hernoemd naar Aave Price Feeds). De adapter voor stablecoins is `PriceCapAdapterStable`, en zijn `latestAnswer` doet drie dingen: hij leest de Chainlink-feed, geeft de door de governance ingestelde cap terug als de feed daarboven staat, en geeft anders de prijs van de feed ongewijzigd terug (een antwoord van de feed dat niet positief is, wordt 0). Er is geen ondergrens.
+
+Gelezen uit de AaveOracle op Ethereum Core bij blok 26291704 (28 oktober 2026, 14:03:35 UTC), via `getSourceOfAsset` en de eigen getters van elke adapter:
+
+| Asset | Liquidatiedrempel   | Oracleprijs | Prijsbron, zoals de adapter zichzelf beschrijft                   | Cap (`getPriceCap`)   |
+| ----- | ------------------- | ----------- | ----------------------------------------------------------------- | --------------------- |
+| USDC  | 78%                 | $0,99971803 | "Capped USDC / USD" boven een feed "USDC / USD"                   | $1,04                 |
+| USDT  | 78%                 | $0,99842395 | "Capped USDT/USD" boven een feed "USDT / USD"                     | $1,04                 |
+| USDe  | 75%                 | $0,99842395 | "Capped USDT/USD" boven dezelfde USDT-feed                        | $1,04 (zie hieronder) |
+| DAI   | 77%                 | $0,99923138 | "Capped DAI/USD" boven een feed "DAI / USD"                       | $1,04                 |
+| USDS  | 78%                 | $0,99972900 | "Capped USDS/USD" boven een feed "USDS / USD"                     | $1,04                 |
+| PYUSD | 78%                 | $0,99988808 | "Capped pyUSD/USD" boven een feed "PYUSD / USD"                   | $1,04                 |
+| GHO   | 0% (geen onderpand) | $1,00000000 | Een vaste bron die geen van de getters van de adapter beantwoordt | geen, vast op $1      |
+
+De `isCapped()` van elke adapter gaf die dag false terug: geen van de feeds stond boven zijn cap. De rij van USDe heeft een toelichting nodig: de adapter waar USDe naar verwijst, is een oudere deployment van hetzelfde contract (aangemaakt op 1 maart 2024) zonder getter `getPriceCap`, dus de cap is uit de storage gelezen, waar dezelfde 104000000 staat. sUSDe wordt geprijsd door een andere adapter, "Capped sUSDe / USDT / USD", die de wisselkoers van sUSDe naar USDe vermenigvuldigt met de prijs van USDT en $1,25333685 las.
+
+Wat dit betekent voor een lener:
+
+- **Boven $1 ben je als lener beschermd en als storter begrensd.** Als USDC op $1,10 handelt, waardeert Aave het op $1,04, dus een USDC-schuld kost hooguit 4% meer en USDC-onderpand levert hooguit 4% meer op.
+- **Onder $1 wordt niets verzacht.** De adapter geeft $0,95 of $0,87 precies door. Je onderpand is waard wat de feed zegt, en je health factor volgt dat bij elke uitlezing.
+- **De cap kan veranderen.** `setPriceCap` staat open voor de risk admins en pool admins van Aave, kan geen cap onder de huidige prijs van de feed instellen en kan niet boven $2. De caps hierboven zijn wat er op 28 oktober 2026 on-chain stond, geen belofte.
+- **De feed telt, niet de koers op een exchange.** De feed van Chainlink combineert meerdere handelsplatformen, dus de prijs van één exchange is niet de oracleprijs. Of dat een geruststelling of een gevaar is, hangt ervan af aan welke kant van de lening je staat; de volgende twee secties laten beide zien.
+
+Oraclefouten zijn een apart onderwerp: een adapter kan een asset verkeerd prijzen zonder enige marktbeweging, zoals bij het wstETH-incident van maart 2026, en [Oorzaak 6 van waarom een health factor daalt](/nl/blog/waarom-daalde-je-aave-health-factor#oorzaak-6-heeft-een-fout-in-een-oracle-of-wisselkoers-je-onderpand-verkeerd-gewaardeerd) behandelt dat geval.
+
+## Waarom wordt USDe geprijsd met de feed van USDT, en wat betekende dat op 10 oktober 2025?
+
+Sinds 8 maart 2025 prijst Aave V3 Ethereum Core USDe met de prijsfeed van USDT, dus de eigen marktprijs van USDe bereikt daar geen enkele health factor. Het besluit kwam uit een governancevoorstel, "sUSDe and USDe Price Feed Update", dat Chaos Labs samen met LlamaRisk op 2 januari 2025 op het governanceforum van Aave plaatste. Het zei in eigen woorden dat het "suggests hardcoding the USDe price to match the USDT price in Aave's pricing feeds" (voorstelt de prijs van USDe in de prijsfeeds van Aave vast te koppelen aan de prijs van USDT), met als argument dat de meeste hedges van Ethena in USDT luiden en dat het prijzen van sUSDe op basis van de secundaire markt van USDe posities met sUSDe als dekking blootstelde aan kortstondige afwijkingen en onnodige liquidaties. De thread kreeg tegengas (één reactie vroeg waarom er niet in plaats daarvan $1,00 werd vastgezet; een andere maakte zich zorgen dat sUSDe-posities nu blootstonden aan de prijs van USDT), en Chaos Labs noemde de opzet op 16 januari 2025 een tijdelijke maatregel. De Snapshot-stemming liep van 3 tot 6 februari 2025 en werd aangenomen. On-chain trad AIP 262 in werking in blok 22002625 op 8 maart 2025 (14:01:47 UTC): de bron van de AaveOracle voor USDe wisselde van een adapter "Capped USDe / USD" naar de adapter "Capped USDT/USD", en de bron van sUSDe naar "Capped sUSDe / USDT / USD". De oude USDe/USD-adapter bestaat nog en antwoordt nog: bij blok 26291704 las hij $0,99969500, terwijl Aave USDe prijsde op de $0,99842395 van USDT.
+
+Op 10 oktober 2025, tijdens de crash over de hele markt, werd dit op de proef gesteld. Het forumbericht van LlamaRisk van 24 oktober 2025 beschrijft "aggressive cryptocurrency market volatility events on centralized exchanges, most notably Binance" (hevige volatiliteit op gecentraliseerde exchanges, vooral op Binance) die de prijs van USDe op de secundaire markt "down to $0.65 at the lowest point" (op het laagste punt tot $0,65) duwde, en zegt dat de Chainlink-feed USDe/USD, die uit meerdere handelsplatformen put, "did not deviate significantly during this localized de-peg" (tijdens deze lokale depeg niet sterk afweek). De reactie van Chaos Labs van 2 november 2025 geeft het getal: de Chainlink-prijs van USDe/USD "reached as low as $0.977" (zakte tot $0,977). Aave zelf zag geen van beide prijzen. In de woorden van LlamaRisk: "Aave avoided immediate issues from the de-peg on Binance by pricing USDe on par with USDT" (Aave vermeed acute problemen door de depeg op Binance door USDe gelijk te prijzen aan USDT). De onderzoeksnotitie van LlamaRisk van 18 oktober 2025 voegt toe dat de USDe-deposito's van $1,03 miljard op Aave tijdens het voorval "remained remarkably stable" (opmerkelijk stabiel bleven).
+
+Twee eerlijke kanttekeningen. Ten eerste: dit is wat de bronnen zeggen, en niet meer. Geen enkele openbare post-mortem die voor deze gids is gevonden, telt liquidaties op Aave die op die dag met USDe te maken hadden, dus deze gids beweert niet dat er geen waren. Ten tweede: hetzelfde bericht van LlamaRisk dat de USDT-feed het vermijden van problemen toeschrijft, zegt ook dat de aanpak "transfers the solvency risk to the Aave protocol" (het solvabiliteitsrisico naar het Aave-protocol verschuift): als USDe ooit zijn dekking zou verliezen, zou de oracle van Aave het blijven waarderen als USDT tot de governance ingreep. LlamaRisk stelde in dat bericht een USDe-oracle met risicobeheer en een automatische bevriezing voor; Chaos Labs raadde dat op 2 november 2025 af, en de thread werd op 7 december 2025 gesloten zonder geregistreerde stemming. Op 28 oktober 2026 verwees USDe op Ethereum Core nog steeds naar de USDT-adapter, met een liquidatiedrempel van 75% en een LTV van 0.
+
+Voor een lener snijdt dit aan twee kanten. Heb je USDe als onderpand op Ethereum Core, dan beweegt een verkoopgolf van USDe op een exchange je health factor niet, maar een depeg van USDT wel, en een governancestemming die de feed terugzet ook. Heb je USDe geleend, dan maakt een korting op de markt het goedkoper om terug te kopen, maar Aave waardeert je schuld nog steeds tegen de prijs van USDT.
+
+## Wat gebeurde er met leners op Aave toen USDC in maart 2023 daalde?
+
+Op 11 maart 2023, nadat Circle bekend had gemaakt dat een deel van de reserves van USDC bij Silicon Valley Bank stond, zakte USDC op de markt rond 08:00 UTC naar een dieptepunt van ongeveer 88 cent, volgens de post-mortem van Gauntlet voor Aave (17 maart 2023). De USDC-prijs van Aave volgde de Chainlink-feed omlaag (de adapters met cap kwamen later, en die hadden aan een daling niets veranderd), en elke positie met USDC als onderpand verloor in gelijke tred health factor, precies zoals in het eerste rekenvoorbeeld hierboven.
+
+Governance en de risicoteams kwamen binnen enkele uren in actie, alles in de forumthread die Gauntlet om 08:13 UTC opende:
+
+- **09:19 UTC:** Gauntlet adviseerde alle markten van Aave V2 en V3 tijdelijk te pauzeren, om te voorkomen dat liquidaties insolventies zouden realiseren.
+- **10:19 UTC:** BGD Labs wees erop dat de Aave Guardian alleen op Aave V3 Avalanche meteen kon ingrijpen, waar de cross-chain governance-infrastructuur niet van toepassing was, en stelde voor om stablecoins daar te bevriezen en hun LTV op 0 te zetten.
+- **Rond 13:00 UTC:** de Guardian bevroor USDC, USDT, DAI, FRAX en MAI op Aave V3 Avalanche en zette hun LTV op 0, bevestigd door BGD Labs in de thread, dat eraan toevoegde dat de bevriezing geen enkele bestaande health factor veranderde. Het account van Aave maakte het om 16:44 UTC bekend.
+- **Geen pauze.** De post-mortem van Gauntlet zegt dat de Guardian de pauze niet doorvoerde, na afweging van het risico tegen de strategische en principiële gevolgen; een bevriezing blokkeert nieuwe stortingen en leningen, maar laat liquidaties doorgaan.
+
+Het resultaat, volgens dezelfde post-mortem: ongeveer $280.000 aan insolventies in E-Mode op Aave V3 Avalanche en ongeveer $20.000 op V3 Arbitrum in het weekend van 11 tot 12 maart, ongeveer $300.000 in totaal, en geen gerealiseerde verliezen op Aave V2. Gauntlet schatte dat bij een USDC-prijs van 80 cent alleen al de insolventies op V2 ongeveer $1 miljoen hadden kunnen bereiken. De les voor een lener is dat de reactie van het protocol op een depeg op het protocol gericht is: een bevriezing houdt nieuw risico tegen, ze maakt jouw positie niet veiliger, en de pauze die liquidaties had gestopt, werd niet gebruikt.
+
+## Kan een depeg oninbare schuld veroorzaken, en wie betaalt die?
+
+Ja. Als onderpand sneller daalt dan liquidators het kunnen afwikkelen, kan een positie eindigen met onderpand dat minder waard is dan de schuld plus de liquidatiebonus, en het tekort wordt oninbare schuld (bad debt). De $300.000 van maart 2023 was precies dat, vooral in een stablecoin-E-Mode waarin posities dicht tegen de limiet aan zaten. Sinds Aave v3.3 wordt zo'n tekort van de schuld van de lener verbrand en als deficit op het asset vastgelegd, en Umbrella, de staking-backstop van Aave, kan gestakte aTokens verbranden om het te dekken (de activering begon op Ethereum, volgens de documentatie van Aave). Niets daarvan helpt de lener, wiens onderpand al weg is; [kan een liquidatie oninbare schuld achterlaten](/nl/blog/hoe-werkt-liquidatie-op-aave#kan-een-liquidatie-oninbare-schuld-achterlaten) behandelt de mechaniek met een rekenvoorbeeld.
+
+## Hoe is dit anders op Morpho?
+
+Op Morpho is er geen protocolbrede prijsbepaling voor stablecoins en geen cap. Elke Morpho Blue-markt heeft haar eigen oracle, gekozen door wie de markt heeft aangemaakt en vast voor de hele looptijd van de markt, en de documentatie van Morpho zegt "Once a market is deployed, its oracle address cannot be modified." (Zodra een markt is gedeployed, kan het oracle-adres niet meer worden gewijzigd.) Sommige oracles prijzen alleen het onderpand en behandelen het geleende token als $1, dus een depeg van de geleende stablecoin verandert niets; andere bevatten er een feed voor. Of een USDC-depeg je Morpho-positie raakt, hangt af van dat ene contract, en [wat een Morpho health factor beweegt](/nl/blog/morpho-health-factor-uitgelegd#wat-beweegt-een-morpho-health-factor) laat zien hoe je het leest.
+
+## Wat kun je doen aan depegrisico op Aave?
+
+Depegrisico wordt grotendeels bepaald wanneer je de positie kiest, dus de nuttige acties zijn keuzes en geen reacties:
+
+1. **Zet de stablecoin aan de schuldkant als dat kan.** Geleende stablecoins kunnen je alleen schaden door te stijgen, en de cap beperkt dat tot ongeveer 4%. Stablecoin-onderpand heeft geen ondergrens. [Kies schuld die bij je onderpand past](/nl/blog/aave-liquidatie-voorkomen#stap-5-kies-schuld-die-past-bij-je-onderpand) loopt de paren door.
+2. **Heb je stablecoin-onderpand, houd dan een buffer in centen, niet in procenten.** Het voorbeeld dicht bij de limiet hierboven bereikt 1,00 bij ongeveer $0,96. Een health factor van 1,56, hetzelfde onderpand met een derde minder schuld, heeft $0,64 nodig. Bepaal bij welke prijs je bereid bent geliquideerd te worden, en stem de lening daarop af.
+3. **Let op de oracle, niet op de exchange.** De prijs waarop je geliquideerd wordt, is `AaveOracle.getAssetPrice(asset)`, en dat is voor stablecoins op Ethereum Core een Chainlink-feed onder een cap, en voor USDe de feed van USDT. Een koers op één exchange is niet nodig en niet voldoende.
+4. **Weet wat de governance kan doen.** Caps en bronnen veranderen door een stemming of een ingreep van een risk admin, en een bevriezing tijdens een crisis pauzeert geen liquidaties. De threads van maart 2023 en oktober 2025 hierboven leggen vast wat er is gedaan.
+5. **Houd de uitweg klaar.** Aflossen met de stablecoin die zijn koppeling kwijt is, is goedkoop als het je schuld is en duur als je hem moet kopen; [hoe je je Aave health factor verhoogt](/nl/blog/aave-liquidatie-voorkomen) zet de stappen op een rij die tijdens een bevriezing werken, want een bevroren reserve staat aflossen nog toe.
+
+## Kan een alert je waarschuwen voor een depeg?
+
+Een alert kan je vertellen dat je health factor een grens is gepasseerd; een depeg afremmen kan een alert niet. Tokenping controleert je health factor op Aave V3 en V4 elke 5 minuten op 22 netwerken en stuurt je een bericht via Signal, Telegram of e-mail zolang hij onder de drempel staat die je hebt ingesteld (1,1 tot 10). Tokenping leest de health factor uit het Pool-contract, dus de prijs erachter is de oracleprijs van Aave, dezelfde waarop liquidators worden uitbetaald: een Binance-koers van $0,65 voor USDe bereikt geen enkele health factor op Ethereum Core, terwijl een Chainlink-waarde van $0,88 voor USDC elke positie met USDC-onderpand bereikt, en er volgt een alert als dat de health factor onder je drempel brengt.
+
+Vijf minuten is lang bij een depeg. Op 11 maart 2023 stond USDC rond 08:00 UTC op ongeveer 88 cent, en de positie dicht bij de limiet hierboven bereikt 1,00 bij ongeveer $0,96, dus een controle elke 5 minuten kan zo'n positie al onder 1,00 aantreffen bij de eerste controle die de daling ziet. Wat een alert je wel geeft, is het langzame deel: een stablecoin die naar $0,98 afdrijft en daar blijft, een drempel die de governance verlaagt, rente die oploopt. Stel de drempel in op een punt waar je je nog prettig voelt om te handelen, en onthoud dat handelen tijdens een depeg betekent dat je aflost of onderpand bijstort op een netwerk dat iedereen op hetzelfde moment gebruikt. [Hoe je een health factor-alert instelt](/nl/blog/aave-health-factor-alert-instellen) beschrijft de stappen, alerts kosten <AlertPrice />, en je kunt eerst [je Aave V3 health factor bekijken](/nl/aave); je posities bekijken kost niets.
+
+## Bronnen
+
+- [Aave V3 Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): LTV en liquidatiedrempels van USDC, USDT, USDe, DAI, USDS, PYUSD, GHO en WETH bij blok 26291704 (geraadpleegd op 28 oktober 2026)
+- [Aave V3 Ethereum Core AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2#readContract): `getAssetPrice` en `getSourceOfAsset` voor dezelfde assets bij blok 26291704, en het event `AssetSourceUpdated` voor USDe en sUSDe bij blok 22002625 (geraadpleegd op 28 oktober 2026)
+- [Adapter Capped USDC / USD](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract), [adapter Capped USDT/USD](https://etherscan.io/address/0x260326c220E469358846b187eE53328303Efe19C#readContract) en [de adapter waar USDe naar verwijst](https://etherscan.io/address/0xC26D4a1c46d884cfF6dE9800B6aE7A8Cf48B4Ff8#code), "Aave: Ethena Correlated USDe Price Feed", aangemaakt op 1 maart 2024: beschrijvingen, caps, `isCapped` en onderliggende feeds bij blok 26291704 (geraadpleegd op 28 oktober 2026)
+- [PriceCapAdapterStable.sol](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol) en de [README van Aave Price Feeds](https://github.com/aave-dao/aave-price-feeds): logica van de cap, toegangsrechten voor `setPriceCap`, de naamswijziging van Aave Capo (geraadpleegd op 28 oktober 2026)
+- [Oracledocumentatie van Aave](https://aave.com/docs/ecosystem/oracle.md): bronnen per reserve, ingesteld door de governance (geraadpleegd op 28 oktober 2026)
+- [ARFC: sUSDe and USDe Price Feed Update](https://governance.aave.com/t/arfc-susde-and-usde-price-feed-update/20495) (Chaos Labs en LlamaRisk, 2 januari 2025, Snapshot 3 tot 6 februari 2025), [AIP 262](https://vote.onaave.com/proposal/?proposalId=262) en de bijbehorende [payload-pull request](https://github.com/aave-dao/aave-proposals-v3/pull/621), gemerged op 3 maart 2025 (geraadpleegd op 28 oktober 2026)
+- [Uitvoering van AIP 262 op Ethereum](https://etherscan.io/tx/0xbb810541258db350d632e9a22ed7d7547509c67b2585dbc7a64a76b6ac8e42e0): bronnen van USDe en sUSDe bijgewerkt bij blok 22002625, 8 maart 2025, 14:01:47 UTC (geraadpleegd op 28 oktober 2026)
+- [ARFC: Ethena USDe Risk Oracle and Automated Freeze Guardian](https://governance.aave.com/t/arfc-ethena-usde-risk-oracle-and-automated-freeze-guardian/23303) (LlamaRisk, 24 oktober 2025; reactie van Chaos Labs op 2 november 2025; gesloten op 7 december 2025) (geraadpleegd op 28 oktober 2026)
+- [When Pricing Breaks: A USDe Case](https://llamarisk.com/research/when-pricing-breaks-usde) (LlamaRisk, 18 oktober 2025, geraadpleegd op 28 oktober 2026)
+- [ARC: Stablecoin Volatility Risk Parameter Recommendations](https://governance.aave.com/t/arc-stablecoin-volatility-risk-parameter-recomendations/12241) (Gauntlet, 11 maart 2023, met de bevestiging van de bevriezing door BGD Labs op dezelfde dag) en [de aankondiging van Aave](https://x.com/aave/status/1634596115483086848) (11 maart 2023, 16:44 UTC) (geraadpleegd op 28 oktober 2026)
+- [Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (Gauntlet, 17 maart 2023, geraadpleegd op 28 oktober 2026)
+- [Functies van Aave v3.3](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md) en [Umbrella-documentatie van Aave](https://aave.com/docs/aave-v3/umbrella): deficit en slashing (geraadpleegd op 28 oktober 2026)
+- [Morpho-documentatie: Oracles](https://docs.morpho.org/learn/concepts/oracle): een oracle per markt, gekozen door de curator, onveranderlijk (geraadpleegd op 28 oktober 2026)
+
+_Educatieve inhoud, geen financieel advies. Alerts verkleinen het risico, maar voorkomen geen liquidatie._

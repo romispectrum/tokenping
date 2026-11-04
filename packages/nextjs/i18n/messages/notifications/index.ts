@@ -6,6 +6,7 @@ import { MESSAGES as fr } from "./fr";
 import { MESSAGES as hi } from "./hi";
 import { MESSAGES as id } from "./id";
 import { MESSAGES as it } from "./it";
+import { MESSAGES as nl } from "./nl";
 import { MESSAGES as pl } from "./pl";
 import { MESSAGES as pt } from "./pt";
 import type { NotificationMessages } from "./shared";
@@ -38,4 +39,5 @@ export const NOTIFICATION_MESSAGES: Localized<NotificationMessages> = {
   pl,
   tr,
   id,
+  nl,
 };

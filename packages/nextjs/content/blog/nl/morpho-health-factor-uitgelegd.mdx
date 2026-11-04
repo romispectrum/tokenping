@@ -1,0 +1,209 @@
+export const meta = {
+  slug: "morpho-health-factor-uitgelegd",
+  title: "Morpho health factor uitgelegd: formule en voorbeelden",
+  description:
+    "Wat de health factor van een Morpho-lening is, hoe Morpho Blue en Midnight hem berekenen, wat hem beweegt en hoe hij verschilt van die van Aave.",
+  h1: "Wat is de Morpho health factor en hoe wordt hij berekend?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Wat is de health factor van een Morpho-lening en hoe wordt hij berekend?",
+  readingMinutes: 14,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  De health factor (gezondheidsfactor) van een Morpho-lening vergelijkt wat je onderpand waard is, meegeteld tot de
+  liquidatie-LTV (LLTV) van de markt, met wat je schuldig bent: hoeveelheid onderpand × oracleprijs × LLTV ÷ schuld.
+  Zodra de schuld die grens overschrijdt, ligt de health factor onder 1 en kan de positie worden geliquideerd. Op 1,00
+  of hoger kan dat niet, behalve voor een deel van een Blue-lening waarvan de eigenaar toestemming gaf aan een
+  pre-liquidatiecontract, of voor een Midnight-lening met schuld die na de vervaldatum overblijft. Een voorbeeld: 1
+  cbBTC tegen een prijs van 80.011,48 USDC in de markt USDC | cbBTC (86%) van Morpho op Ethereum, tegenover 40.000 USDC
+  schuld, geeft 80.011,48 × 0,86 ÷ 40.000 = 1,72. Elke Morpho-markt heeft een eigen onderpand, een eigen oracle
+  (prijsbron) en een eigen LLTV, die bij het aanmaken voorgoed zijn vastgelegd, dus elke lening heeft een eigen health
+  factor.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Cijfers en de bloknummers waarop ze zijn gelezen: content/blog/snapshots/morpho-health-factor.md */}
+
+## Wat is de health factor van een Morpho-lening?
+
+De health factor is het getal dat aangeeft hoe ver een leenpositie op Morpho van liquidatie af zit. Hij deelt het maximum dat je schuldig mag zijn door wat je nu schuldig bent:
+
+**Health factor = waarde van het onderpand in de leentoken × LLTV ÷ schuld**
+
+- **Boven 1,00:** de positie kan niet worden geliquideerd, tenzij je toestemming gaf aan een pre-liquidatiecontract of het een Midnight-lening na de vervaldatum is (beide komen hieronder aan bod). Hoe hoger het getal, hoe verder prijzen eerst tegen je in kunnen bewegen.
+- **Onder 1,00:** je schuld is groter dan de markt toestaat, en een deel ervan of alles kan worden geliquideerd.
+- **Geen schuld:** er valt niets te liquideren, dus er is ook geen health factor om in de gaten te houden.
+
+Een health factor van 1,72 betekent niet dat je 72% van liquidatie verwijderd bent. Het betekent dat de schuld kan groeien tot 1,72 keer haar omvang, of dat de prijs van het onderpand kan dalen met 1 − 1 ÷ 1,72 = 41,9%, voordat de grens bereikt is.
+
+De health factor wordt niet on-chain opgeslagen. Het contract van Morpho controleert alleen of een positie gezond is; apps, de API van Morpho en Tokenping delen de leenlimiet door de schuld om hem als getal te tonen.
+
+## Hoe is een Morpho Blue-markt opgebouwd?
+
+Morpho Blue, dat de documentatie van Morpho tegenwoordig zijn markten met variabele rente noemt, is een verzameling afzonderlijke leenmarkten. Elke markt wordt bepaald door vijf parameters die bij het aanmaken van de markt worden gekozen:
+
+| Parameter        | Wat het is                                            | In de voorbeeldmarkt  |
+| ---------------- | ----------------------------------------------------- | --------------------- |
+| Leentoken        | De enige token die je kunt lenen                      | USDC                  |
+| Onderpandtoken   | De enige token die je als onderpand kunt storten      | cbBTC                 |
+| Oracle           | Het contract dat het onderpand prijst in de leentoken | Een BTC/USD-prijsfeed |
+| Rentemodel (IRM) | Het contract dat het leenrentepercentage bepaalt      | AdaptiveCurveIRM      |
+| LLTV             | De liquidatie-LTV (liquidation loan-to-value)         | 86%                   |
+
+De app van Morpho noemt markten naar deze parameters, de leentoken eerst: "USDC | cbBTC (86%)". Iedereen kan een markt aanmaken, maar alleen met een LLTV en een IRM die Morpho-governance heeft vrijgegeven. Eenmaal aangemaakt kan geen van de vijf nog worden veranderd: het contract heeft geen functie om ze te bewerken, en governance kan nieuwe LLTV's vrijgeven maar er nooit een uitschakelen.
+
+Omdat een markt één onderpand en één leentoken heeft, dekt je onderpand in de ene markt geen schuld in een andere. De documentatie van Morpho zegt het zonder omwegen: onderpand hoort bij één markt en wordt niet over markten heen verrekend (not cross-margined). Twee leningen in twee markten hebben twee health factors.
+
+## Hoe berekent Morpho de health factor?
+
+Morpho Blue controleert de gezondheid op één plek in zijn contract, `_isHealthy`, en dezelfde controle bewaakt lenen, onderpand opnemen en liquidatie:
+
+1. **Schuld:** je leenaandelen (borrow shares) omgerekend naar leentokens, naar boven afgerond.
+2. **Waarde van het onderpand:** hoeveelheid onderpand × oracleprijs ÷ 10^36, naar beneden afgerond.
+3. **Leenlimiet:** waarde van het onderpand × LLTV, naar beneden afgerond.
+4. **Gezond** zolang de leenlimiet minstens zo groot is als de schuld.
+
+De health factor is stap 3 gedeeld door stap 1. De afronding valt altijd uit in het voordeel van het protocol, dus het contract kan je één eenheid minder laten lenen dan de exacte limiet. Op precies 1,00 telt het contract de positie nog als gezond; ze wordt liquideerbaar zodra de schuld groter is dan de limiet, wat hetzelfde is als een health factor die onder 1 zakt.
+
+### Wat betekent de schaal 10^36 van de oracle?
+
+Een Morpho-oracle geeft de prijs van één onderpandtoken in leentokens, vermenigvuldigd met 10^36 en aangepast voor de decimalen van beide tokens. Om die waarde te lezen vermenigvuldig je met 10^(decimalen onderpand − decimalen leentoken) en deel je door 10^36. In de voorbeeldmarkt heeft cbBTC 8 decimalen en USDC 6, dus de ruwe waarde 800114843487200000000000000000000000000 × 10^2 ÷ 10^36 = 80.011,48 USDC per cbBTC.
+
+De oracle is het contract dat de maker van de markt koos, welk dat ook is. Het commentaar in het contract van Morpho zegt dat het de verantwoordelijkheid van de gebruiker is om markten met veilige oracles te kiezen, en de documentatie merkt op dat een oracle meerdere feeds kan combineren of op andere on-chain gegevens kan steunen. Je health factor kan maar zo betrouwbaar zijn als die oracle en de feeds die hij leest.
+
+## Rekenvoorbeeld: wat is de health factor van 1 cbBTC tegenover 40.000 USDC?
+
+De grootste gelijste Morpho-markt op Ethereum naar geleende waarde was op 26 oktober 2026 USDC | cbBTC (86%), met ongeveer 309,13 miljoen USDC geleend tegenover 343,18 miljoen gestort (Ethereum-blok 26274955). Haar oracle gaf cbBTC een prijs van 80.011,48 USDC, uitsluitend afgeleid van een BTC/USD-prijsfeed, dus de markt telt 1 cbBTC als 1 BTC en 1 USDC als 1 dollar.
+
+Neem 1 cbBTC aan onderpand en 40.000 USDC schuld:
+
+1. Waarde van het onderpand: 1 × 80.011,48 = 80.011,48 USDC.
+2. Leenlimiet: 80.011,48 × 0,86 = 68.809,88 USDC.
+3. Health factor: 68.809,88 ÷ 40.000 = **1,72**.
+4. LTV: 40.000 ÷ 80.011,48 = 50,0%, tegenover de LLTV van 86%.
+5. Liquidatieprijs: 40.000 ÷ (1 × 0,86) = **46.511,63 USDC per cbBTC**, 41,9% onder 80.011,48.
+
+Ook rente beweegt hem. Het leenrentepercentage van de markt was in dat blok 4,89% per jaar, wat samengesteld 5,01% wordt. Als het rentepercentage en de prijs een jaar lang gelijk bleven, zou de schuld groeien tot ongeveer 42.003 USDC en zou de health factor wegzakken naar 1,64.
+
+### Wat houden echte leners in deze markt aan?
+
+De API van Morpho toonde op 26 oktober 2026 437 leenposities in deze markt. Van de 435 met een health factor lag de mediaan op 1,96, een kwart lag onder 1,58, een tiende onder 1,35, en de laagste was 1,05. Ongeveer 3% lag onder 1,2. Over de hele markt dekte 8.419,83 cbBTC 309,13 miljoen USDC aan schuld, een totale health factor van ongeveer 1,87.
+
+## Hoe hangen LTV, LLTV en de health factor samen?
+
+De loan-to-value (LTV) is je schuld gedeeld door de waarde van je onderpand. De LLTV is het vaste plafond van de markt daarvoor. Met één onderpand en een stabiele schuld is de health factor hun verhouding:
+
+**Health factor = LLTV ÷ LTV**
+
+Op Morpho Blue is de LLTV de enige grens. Er is geen aparte, lagere limiet voor nieuwe leningen, dus het contract laat je lenen of onderpand opnemen tot de health factor op 1,00 staat. De ontwikkelaarsdocumentatie van Morpho vraagt apps om een marge aan te houden, bijvoorbeeld door geen leningen toe te staan die de health factor onder 1,05 brengen, maar die marge is een keuze, geen regel van het contract. Hoe ver je onder de grens blijft, bepaalt je buffer, welke LLTV het ook is:
+
+| Geleend, als deel van de limiet | Health factor | Daling van de onderpandprijs tot liquidatie |
+| ------------------------------- | ------------- | ------------------------------------------- |
+| 50%                             | 2,00          | 50%                                         |
+| 70%                             | 1,43          | 30%                                         |
+| 80%                             | 1,25          | 20%                                         |
+| 90%                             | 1,11          | 10%                                         |
+| 100%                            | 1,00          | 0%                                          |
+
+## Welke LLTV's kan een Morpho-markt gebruiken?
+
+Op 26 oktober 2026 accepteerde Morpho Blue op Ethereum en op Base de negen LLTV's op de door governance goedgekeurde lijst van Morpho: 0%, 38,5%, 62,5%, 77%, 86%, 91,5%, 94,5%, 96,5% en 98% (elk gelezen als vrijgegeven in Ethereum-blok 26274950 en Base-blok 53102888). Een LLTV van 0 staat helemaal geen lenen toe. Een Blue-LLTV moet onder 100% liggen.
+
+De LLTV bepaalt ook de liquidatie-incentive, het extra onderpand dat een liquidator krijgt: 1 ÷ (1 − 0,3 × (1 − LLTV)), met een maximum van 1,15. Bij een LLTV van 86% is dat 1,0438: een liquidator die 100 USDC van je schuld aflost, krijgt 104,38 USDC van je onderpand. Een hogere LLTV betekent een kleinere incentive. De documentatie van Morpho rondt de incentive bij 86% af op ongeveer 5%; de formule van het contract geeft 4,38%. De incentive bij elke vrijgegeven LLTV, wat een liquidatie neemt en hoeveel van een lening in één keer kan verdwijnen, staan in [hoe liquidatie op Morpho werkt](/nl/blog/hoe-werkt-liquidatie-op-morpho). De incentive betaal jij, uit je onderpand; je eigen buffer is de afstand tussen je health factor en 1,00.
+
+## Wat beweegt een Morpho health factor?
+
+Drie dingen kunnen hem bewegen terwijl jij niets doet:
+
+- **De prijs van het onderpand, zoals de oracle die ziet.** In het cbBTC-voorbeeld beweegt de health factor met de BTC/USD-feed en verandert hij alleen als die feed wordt bijgewerkt.
+- **De prijs van de leentoken, als de oracle die gebruikt.** Een oracle met een quote-feed reageert ook op de leentoken. De oracle van de cbBTC-markt heeft er geen, dus een depeg (loslaten van de koppeling aan de dollar) van USDC zou die health factor niet bewegen. Een verschil tussen cbBTC en BTC evenmin.
+- **Rente.** Op Morpho Blue groeit de schuld naarmate rente oploopt, en de documentatie van Morpho waarschuwt dat een positie met de tijd alleen al door rente riskanter kan worden. Het AdaptiveCurveIRM mikt op 90% benutting (utilization) en verhoogt het rentepercentage als een markt drukker is en verlaagt het als het rustiger is, waarbij het rentepercentage bij 90% benutting tussen 0,1% en 200% per jaar blijft. Bij volledige benutting kan het rentepercentage oplopen tot vier keer het percentage bij het doel, dus tot 800% per jaar. Hoe een rentestijging doorwerkt in een health factor, staat voor Aave in [hoe de rente op Aave werkt](/nl/blog/aave-rente#hoe-beinvloeden-rentepieken-je-health-factor); op een Morpho-lening is het effect hetzelfde.
+
+Wat Morpho-governance niet kan bewegen, is de markt zelf: de LLTV, het oracleadres en het IRM van een markt liggen vast. De oracle leest zijn prijs nog steeds uit de feeds erachter, dus hij is maar zo betrouwbaar als die feeds. Governance kan een marktfee instellen van maximaal 25% van de rente, maar die verdeelt de rente tussen uitleners en de ontvanger van de fee; ze verandert niet wat leners verschuldigd zijn.
+
+De oracle bepaalt welke prijzen ertoe doen. In de markt WETH | wstETH (96.5%) van Morpho op Ethereum waardeert de oracle wstETH tegen de eigen wisselkoers van Lido, 1,24717 WETH per wstETH in blok 26274979, en telt hij 1 stETH als 1 ETH. De dollarprijs van ETH beweegt die health factor helemaal niet. 10 wstETH tegenover 11 WETH geeft daar 12,4717 × 0,965 ÷ 11 = 1,094, en voor liquidatie zou de wisselkoers moeten dalen tot 1,1399, 8,6% lager. Alleen rente en die wisselkoers bewegen deze health factor.
+
+## Hoe bereken je je liquidatieprijs op Morpho?
+
+Voor een Blue-positie is de liquidatieprijs de oracleprijs waarbij je schuld gelijk is aan je leenlimiet:
+
+**Liquidatieprijs = schuld ÷ (hoeveelheid onderpand × LLTV)**
+
+Hij wordt uitgedrukt in leentokens per onderpandtoken, omdat de oracle zo prijst. Met een health factor h moet de onderpandprijs met 1 − 1 ÷ h dalen om hem te bereiken (zie de tabel hierboven). Naarmate de schuld met rente groeit, kruipt de liquidatieprijs omhoog.
+
+Als je voor de markt toestemming gaf aan een pre-liquidatiecontract, kan een deel van je positie eerder worden gesloten, bij een lagere LTV dan de LLTV. De cbBTC-markt heeft er een, met een pre-liquidatie-LTV van 83,26%: voor 1 cbBTC tegenover 40.000 USDC is de health factor gemeten tegen die grens 1,67 in plaats van 1,72. Morpho bouwt deze functie af: de app biedt haar niet meer aan, en Morpho vraagt leners die haar gebruiken om haar uit te zetten. Zie [Morpho pre-liquidatie](/nl/blog/morpho-pre-liquidatie) voor hoe pre-liquidatie (pre-liquidation) werkt en hoe je haar controleert en intrekt.
+
+## Hoe werkt de health factor op Morpho Midnight?
+
+Morpho Midnight, de markten met vaste rente van Morpho, berekent de gezondheid op dezelfde manier, met drie verschillen: een markt kan meerdere soorten onderpand accepteren, de schuld groeit niet met de tijd, en de vervaldatum is een harde grens.
+
+- **Meerdere soorten onderpand, opgeteld.** Een Midnight-markt heeft één leentoken, een vervaldatum en één of meer soorten onderpand, elk met een eigen LLTV en een eigen oracle. Het contract telt waarde van het onderpand × LLTV op voor elk onderpand dat je stortte en vergelijkt het totaal met je schuld. De health factor is dat totaal ÷ schuld.
+- **Vaste schuld.** Je bent een nominaal bedrag verschuldigd, één leentoken per eenheid, te betalen op de vervaldatum. De rente zit er al in als je leent: je ontvangt minder dan één leentoken voor elke eenheid die je verschuldigd bent, dus tussen transacties bewegen alleen onderpandprijzen een Midnight-health factor.
+- **De vervaldatum is een harde grens.** Na de vervaldatum kan elke schuld die nog openstaat worden geliquideerd, wat de health factor ook is, en in die modus na de vervaldatum groeit de incentive van de liquidator in het eerste uur van niets tot de volle omvang.
+
+Een Midnight-markt kan ook beperken wie mag liquideren, met een gate die bij het aanmaken van de markt wordt ingesteld; de voorbeeldmarkt hieronder heeft er geen.
+
+De grootste gelijste Midnight-markt op Ethereum op 26 oktober 2026, met ongeveer 23,9 miljoen uitstaande schuldeenheden in USDC, leent USDC uit tot 25 december 2026, tegen USDC met een LLTV van 98% en cbBTC met 86%, met dezelfde cbBTC-oracle als de Blue-markt hierboven. Stort je 0,5 cbBTC en 10.000 USDC tegenover 40.000 eenheden schuld, dan is de limiet 34.404,94 + 9.800 = 44.204,94, een health factor van 1,105. De vervaldatum, doorrollen (rollover) en liquidatie na de vervaldatum staan in [Morpho Midnight-leningen met vaste rente](/nl/blog/morpho-midnight-leningen-met-vaste-rente).
+
+## Hoe verschilt de Morpho health factor van die van Aave?
+
+De formule heeft op beide dezelfde vorm: onderpand gewogen met een drempel, gedeeld door schuld. De regels eromheen verschillen, zoals de [gids over de Aave health factor](/nl/blog/aave-health-factor-uitgelegd#health-factor-vs-ltv-vs-liquidatiedrempel-wat-is-het-verschil) vanuit Aave uitlegt:
+
+|                            | Morpho Blue                                     | Aave V3                                                                                                                                                                             |
+| -------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Eenheid                    | Eén markt: één onderpand, één leentoken         | Eén markt (een pool op één netwerk): al je onderpand en schuld daar                                                                                                                 |
+| Hoe prijzen worden bepaald | De eigen oracle van elke markt, in de leentoken | De Aave-oracle, in USD                                                                                                                                                              |
+| Leenlimiet                 | Tot de LLTV, health factor 1,00                 | Een lagere LTV, dus maximaal lenen laat bij WETH [ongeveer 1,03](/nl/blog/aave-health-factor-uitgelegd#waarom-blijft-er-bij-maximaal-lenen-maar-een-health-factor-van-ongeveer-103-over) over |
+| Gecorreleerde assets       | Aparte markten met een hoge LLTV                | [E-Mode](/nl/blog/aave-health-factor-uitgelegd#hoe-verandert-e-mode-de-health-factor)-categorieën                                                                                |
+| Kan de drempel veranderen? | Nee, vastgelegd bij het aanmaken van de markt   | Ja, governance en de Risk Stewards kunnen hem veranderen                                                                                                                            |
+
+Aave V4 verandert hier een deel van, met één health factor per Spoke en één onderpandfactor (collateral factor) per asset; zie [hoe de health factor op Aave V4 werkt](/nl/blog/aave-health-factor-uitgelegd#is-de-health-factor-anders-op-aave-v4).
+
+Het praktische verschil: op Aave raakt een probleem met één asset je hele markt, terwijl het op Morpho binnen één markt blijft. En op Morpho houdt niets in het contract je tegen om tot de rand te lenen, dus de marge aanhouden is aan jou.
+
+## Waar zie je je Morpho health factor?
+
+Het helpcentrum van Morpho zegt dat de app bij elke positie de health factor en de liquidatieprijs toont. De API van Morpho geeft `healthFactor` en de prijsverandering tot liquidatie voor Blue-posities; voor Midnight geeft hij posities en marktparameters, en de documentatie vraagt integratoren om de oracle van elk onderpand on-chain te lezen en de limiet zelf te berekenen.
+
+Het [Morpho-dashboard](/nl/morpho) van Tokenping toont de Blue- en Midnight-leenposities van een wallet, met health factors die uit de chain worden berekend met de eigen rekenregels van Morpho, nooit overgenomen uit de API van Morpho.
+
+## Hoe kies je een buffer en een alertdrempel?
+
+Begin bij hoe ver de prijs kan bewegen voordat je kunt ingrijpen, en tel er ruimte voor rente bij op:
+
+- **Kies de beweging die je wilt overleven.** Gebruik de tabel in het LTV-deel hierboven: de prijsdaling die je wilt opvangen, bepaalt de health factor.
+- **Kijk naar de oracle.** Een BTC/USD-oracle beweegt met BTC. Een wisselkoersoracle zoals die van de wstETH-markt beweegt veel minder, maar het leenrentepercentage en de wisselkoers zelf bewegen je health factor nog steeds, en een hoge LLTV laat voor beide weinig ruimte.
+- **Meet tegen de dichtstbijzijnde grens.** Als je toestemming gaf voor pre-liquidatie, kan een deel van je lening verdwijnen voordat de health factor 1,00 bereikt.
+- **Let op Midnight op de datum.** Rente slijt de buffer niet weg, maar schuld die na de vervaldatum overblijft, kan bij elke health factor worden geliquideerd.
+- **Weet hoe je hem verhoogt.** Los een deel van de schuld af of voeg onderpand toe in dezelfde markt: onderpand in een andere Morpho-markt telt niet. Op Midnight kun je elk onderpand toevoegen dat de markt accepteert.
+
+De ontwikkelaarsdocumentatie van Morpho noemt 1,1 als voorbeeldniveau voor een waarschuwing. Voor de redenering achter buffers, zie [hoeveel buffer je nodig hebt om tijd te hebben om in te grijpen](/nl/blog/veilige-aave-health-factor#hoeveel-buffer-heb-je-nodig-om-tijd-te-hebben-om-in-te-grijpen), geschreven voor Aave maar met dezelfde rekensom.
+
+## Hoe kunnen health factor-alerts helpen op Morpho?
+
+Tokenping controleert Morpho-posities elke 5 minuten op 14 netwerken: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable en Tempo. Het dekt leenposities in markten die in de Morpho-app staan, zowel Morpho Blue als Morpho Midnight. Midnight-alerts dekken markten die de API van Morpho toont. Op 26 oktober 2026 waren die er op Ethereum en Base; Tokenping dekt ook Arc en Robinhood Chain zodra Morpho daar Midnight-markten toont.
+
+- **Drempel:** je stelt hem in van 1,02 tot 10. Zolang de health factor eronder ligt, stuurt elke controle een bericht via elk kanaal dat je koos: Signal, Telegram of e-mail.
+- **Pre-liquidatie:** als je op een Blue-markt toestemming gaf aan een pre-liquidatiecontract, gebruikt de alert de laagste van twee health factors: die gemeten tegen de LLTV en die gemeten tegen de pre-liquidatiegrens.
+- **Vervaldatum:** een Midnight-lening krijgt ook één herinnering in de laatste 7 dagen en één in de laatste 24 uur, en daarna een alert bij elke controle na de vervaldatum zolang er schuld openstaat.
+
+Je posities bekijken op het [Morpho-dashboard](/nl/morpho) kost niets; alerts kosten <AlertPrice />, hetzelfde plan als de Aave-alerts. Een alert geeft je tijd om in te grijpen; hij voorkomt geen liquidatie, want een prijs kan tussen twee controles bewegen.
+
+## Bronnen
+
+- [Morpho-documentatie: Variable Rate Market (Morpho Blue)](https://docs.morpho.org/learn/concepts/blue): de vijf parameters, marktnamen, door governance goedgekeurde LLTV's en IRM (geraadpleegd op 26 oktober 2026)
+- [Morpho-documentatie: Collateral, LTV and health (developers)](https://docs.morpho.org/developers/borrow/concepts/ltv): formule, schaal van de oracle, geen verrekening over markten heen, werkwijzen voor integratie (geraadpleegd op 26 oktober 2026)
+- [Morpho-documentatie: Liquidation](https://docs.morpho.org/learn/concepts/liquidation) en [Morpho-helpcentrum: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): liquidatie-incentive, waar de app de health factor toont (geraadpleegd op 26 oktober 2026)
+- [Morpho-documentatie: Interest rate model](https://docs.morpho.org/learn/concepts/irm) en [rente voor integratoren](https://docs.morpho.org/developers/borrow/concepts/interest-rates): AdaptiveCurveIRM, oplopende rente (geraadpleegd op 26 oktober 2026)
+- [Morpho-documentatie: Get data (developers)](https://docs.morpho.org/developers/borrow/tutorials/get-data): code voor health factor en liquidatieprijs (geraadpleegd op 26 oktober 2026)
+- [Morpho-documentatie: What is Midnight? (Fixed Rate Markets)](https://docs.morpho.org/learn/concepts/midnight) en [Midnight collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) (geraadpleegd op 26 oktober 2026)
+- [Morpho-documentatie: Governance organization](https://docs.morpho.org/learn/governance/organization), [contractadressen](https://docs.morpho.org/developers/contracts/addresses) en [beleid voor opname in de interface](https://docs.morpho.org/get-started/resources/interface-listing-policy) (geraadpleegd op 26 oktober 2026)
+- [morpho-blue](https://github.com/morpho-org/morpho-blue): `Morpho.sol`, `ConstantsLib.sol`, `IOracle.sol` (geraadpleegd op 26 oktober 2026)
+- [midnight](https://github.com/morpho-org/midnight): `Midnight.sol`, `ConstantsLib.sol` (geraadpleegd op 26 oktober 2026)
+- [pre-liquidation](https://github.com/morpho-org/pre-liquidation) en [morpho-blue-irm](https://github.com/morpho-org/morpho-blue-irm) (geraadpleegd op 26 oktober 2026)
+- [Morpho API-documentatie: Morpho Blue](https://docs.morpho.org/developers/api/morpho/) en [Morpho Midnight](https://docs.morpho.org/developers/api/morpho-midnight) (GraphQL-endpoint api.morpho.org/graphql, Midnight-REST-endpoints onder api.morpho.org/v0/midnight): ranglijsten van markten, posities en pre-liquidatiecontracten (geraadpleegd op 26 oktober 2026)
+- On-chain gelezen waarden van [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), de [USDC | cbBTC-oracle](https://etherscan.io/address/0xA6D6950c9F177F1De7f7757FB33539e3Ec60182a#readContract), de [WETH | wstETH-oracle](https://etherscan.io/address/0xbD60A6770b27E084E8617335ddE769241B0e71D8#readContract) en [Morpho Midnight](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract) op Ethereum in de blokken 26274950 tot 26274984, en van [Morpho Blue op Base](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) in blok 53102888 (geraadpleegd op 26 oktober 2026)
+
+_Educatieve inhoud, geen financieel advies. Alerts verkleinen het risico, maar voorkomen geen liquidatie._

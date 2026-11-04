@@ -1,0 +1,193 @@
+export const meta = {
+  slug: "morpho-midnight-leningen-met-vaste-rente",
+  title: "Morpho Midnight-leningen met vaste rente: zo werken ze",
+  description:
+    "Zo werken Midnight-leningen met vaste rente: de rente, wat je op de vervaldatum betaalt, meerdere soorten onderpand en waarom open schuld liquideerbaar is.",
+  h1: "Hoe werken Morpho Midnight-leningen met vaste rente, en wat gebeurt er op de vervaldatum?",
+  publishedAt: "2026-10-26",
+  primaryQuestion:
+    "Hoe werkt een Morpho Midnight-lening met vaste rente, en wat gebeurt er als ik op de vervaldatum niet heb afgelost?",
+  readingMinutes: 13,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Morpho Midnight is de manier van Morpho om te lenen met een vaste rente en een vaste looptijd. Je leent door
+  schuldeenheden onder hun nominale waarde te verkopen: elke eenheid geeft je nu iets minder dan één leentoken en is een
+  belofte om er op de vervaldatum van de markt precies één terug te betalen, dus de rente ligt vast op het moment dat je
+  leent en je schuld groeit niet. Vóór de vervaldatum kan je positie alleen worden geliquideerd als je onderpand,
+  gewogen met de liquidatie-LTV (LLTV) van elk onderpand, de schuld niet meer dekt (een health factor onder 1). Zodra de
+  vervaldatum voorbij is, kan elke resterende schuld worden geliquideerd, wat je health factor ook is, waarbij de bonus
+  van de liquidator in het eerste uur oploopt. Los af vóór de vervaldatum en neem daarna zelf je onderpand op.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Cijfers en de bloknummers waarop ze zijn gelezen: content/blog/snapshots/morpho-midnight-fixed-rate-loans.md */}
+
+## Wat is Morpho Midnight?
+
+Morpho Midnight is het deel van Morpho dat leningen aanbiedt met een vaste rente tot een vaste datum, de vervaldatum. De documentatie van Morpho noemt het "Fixed Rate Markets (Midnight)" (markten met vaste rente), naast Morpho Blue, de markten met variabele rente. Ben je nieuw in de rekenregels van Morpho voor de health factor (gezondheidsfactor), begin dan met [de gids over de Morpho health factor](/nl/blog/morpho-health-factor-uitgelegd), waarop deze gids voortbouwt.
+
+Midnight ging op 21 juli 2026 open voor het publiek, op Base, met één paar (cbBTC als onderpand, leningen in USDC) en een paar vervaldatums. In deze gids wordt een Midnight-markt naar dat paar genoemd: een "cbBTC/USDC-markt" neemt cbBTC als onderpand en leent USDC uit. Dezelfde contractcode draait nu op vijf netwerken:
+
+| Netwerk         | Midnight-contract heeft code sinds | Markten getoond door de API van Morpho (26 oktober 2026) |
+| --------------- | ---------------------------------- | -------------------------------------------------------- |
+| Base            | 6 juli 2026                        | Ja; 19 getoonde markten hebben open leningen             |
+| Ethereum        | 20 augustus 2026                   | Ja; 12 getoonde markten hebben open leningen             |
+| Arc             | 11 september 2026                  | Geen (er bestaan 13 markten)                             |
+| Robinhood Chain | Datum niet beschikbaar             | Geen (er bestaan 34 markten)                             |
+| Tempo           | 3 oktober 2026                     | Geen (de API toont geen markten)                         |
+
+Iedereen kan een Midnight-markt aanmaken, dus dat een markt on-chain bestaat, zegt weinig. De markten die de app van Morpho toont, zijn de markten die de API toont, en op 26 oktober 2026 stonden die allemaal op Ethereum en Base.
+
+Een eerdere post van Morpho presenteerde Midnight, samen met Vaults V2, als "Morpho V2". De lanceringspost zegt dat Midnight geen tweede versie van Blue is en die ook niet vervangt: de twee draaien naast elkaar. Het zijn aparte contracten.
+
+## Hoe is een Midnight-markt gedefinieerd?
+
+Een Midnight-markt ligt vast bij het aanmaken en verandert nooit. Ze wordt bepaald door:
+
+- **Een leentoken**, bijvoorbeeld USDC.
+- **Eén of meer soorten onderpand** (tot 128), elk met een eigen LLTV (het deel van de waarde van het onderpand dat je schuldig mag zijn vóór liquidatie), een eigen oracle (prijsbron) en een eigen liquidatiecursor, die de bonus van de liquidator bepaalt.
+- **Een vervaldatum**, een datum en tijd waarop elke lening in de markt moet worden terugbetaald.
+- **Een hersteldrempel** (rcfThreshold), die bepaalt wanneer een kleine hoeveelheid van een onderpand volledig kan worden geliquideerd (zie hieronder).
+- **Optionele gates**, die kunnen beperken wie mag uitlenen, lenen of liquideren. Een gate kan je nooit tegenhouden om af te lossen of eruit te stappen. Geen van de getoonde markten op Ethereum of Base had op 26 oktober 2026 een gate.
+
+Eén lener kan tot 16 soorten onderpand van een markt tegelijk gebruiken. Om een nieuw onderpand te accepteren of de vervaldatum te verschuiven, moet iemand een nieuwe markt aanmaken. De getoonde markten met leningen erin vervallen, op beide netwerken, op de laatste vrijdag van een maand om 15:00 UTC: 30 oktober, 27 november en 25 december 2026, en 26 maart 2027.
+
+## Hoe wordt de vaste rente bepaald, en wat ben je op de vervaldatum verschuldigd?
+
+De rente komt uit een prijs, niet uit een rentemodel. Midnight telt schuld in eenheden, en één schuldeenheid is een belofte om op de vervaldatum één leentoken terug te betalen. Om te lenen verkoop je eenheden aan uitleners tegen een prijs onder 1: bij een prijs van 0,99 ontvang je nu 0,99 USDC per eenheid en ben je op de vervaldatum 1 USDC per eenheid verschuldigd. De rente voor de hele looptijd is 1 gedeeld door de prijs, min 1, en de documentatie van Morpho maakt daar een jaarcijfer van door het te delen door het deel van een jaar dat nog over is.
+
+Prijzen komen uit aanbiedingen (offers) die uitleners en leners publiceren, dus twee leners in dezelfde markt kunnen een verschillende rente betalen. Op 26 oktober 2026 plaatste de API van Morpho de rente van de 117 leners in de cbBTC/USDC-markt op Base die op 25 december 2026 vervalt tussen 1,93% en 6,84% per jaar.
+
+Wat je verschuldigd bent, is eenvoudig: het aantal eenheden dat je verkocht, in leentokens, te betalen op de vervaldatum. Er komt niets bij zolang de lening loopt. Het contract van Midnight verandert de schuld van een lener alleen als je meer leent, aflost, eenheden terugkoopt of wordt geliquideerd; er loopt geen rente op, vóór noch na de vervaldatum.
+
+Midnight heeft twee fees, allebei per markt ingesteld en allebei nul op de twee markten in deze gids:
+
+- **Een afwikkelingsfee** (settlement fee) op elke transactie, betaald door wie een aanbieding aanneemt. Het contract begrenst die naar de tijd tot de vervaldatum, van 0,0014% voor een dag tot 0,5% voor 360 dagen.
+- **Een doorlopende fee** (continuous fee), die alleen uitleners dragen en die begrensd is op 1% per jaar.
+
+## Hoe wordt de health factor berekend met meerdere soorten onderpand?
+
+Het contract van Midnight controleert de gezondheid met een ja of nee: een positie is gezond zolang haar maximale schuld minstens zo groot is als haar schuld. De maximale schuld is de som, over elk onderpand dat je gebruikt, van de waarde in de leentoken tegen de prijs van de oracle, maal de eigen LLTV. De documentatie van Morpho schrijft de controle als maxDebt ≥ debt; de health factor is dezelfde controle als verhouding geschreven, maximale schuld gedeeld door schuld, en onder 1 kan de positie worden geliquideerd.
+
+Neem de grootste getoonde markt op Ethereum, die USDC uitleent tegen twee soorten onderpand met verschillende LLTV's: USDC zelf op 98% en cbBTC op 86%. Met cbBTC op 80.011,48 USDC (de prijs van de oracle op 26 oktober 2026) heeft de voorbeeldpositie uit [de gids over de Morpho health factor](/nl/blog/morpho-health-factor-uitgelegd), 0,5 cbBTC en 10.000 USDC aan onderpand tegenover 40.000 USDC schuld:
+
+| Onderpand   | Waarde (USDC) | LLTV | Telt mee voor (USDC) |
+| ----------- | ------------- | ---- | -------------------- |
+| 0,5 cbBTC   | 40.005,74     | 86%  | 34.404,94            |
+| 10.000 USDC | 10.000,00     | 98%  | 9.800,00             |
+| Totaal      | 50.005,74     |      | 44.204,94            |
+
+Haar health factor is 44.204,94 ÷ 40.000 = 1,105, en hij zakt onder 1 als cbBTC onder ongeveer 70.233 USDC daalt, 12,2% lager, terwijl het USDC-onderpand zijn waarde houdt. Het idee is hetzelfde als bij [een tweede onderpand op Aave](/nl/blog/aave-health-factor-uitgelegd#wat-verandert-er-met-een-tweede-onderpand): elk asset telt mee tegen zijn eigen percentage.
+
+Je kunt op elk moment onderpand toevoegen, weghalen of omwisselen, zolang een opname je gezond laat. Als de oracle van een onderpand dat je gebruikt niet meer antwoordt, mislukken gezondheidscontroles, lenen, opnames en liquidaties allemaal voor je positie zolang je schuld hebt. Aflossen werkt nog steeds, en zodra je schuld nul is, kun je opnemen zonder enige oracle.
+
+## Wanneer kan een Midnight-lening worden geliquideerd?
+
+Een Midnight-lening kan op twee manieren worden geliquideerd: als ze ongezond is, op elk moment, of als er na de vervaldatum schuld overblijft, wat haar gezondheid ook is. [Hoe liquidatie op Morpho werkt](/nl/blog/hoe-werkt-liquidatie-op-morpho) behandelt de gedeelde mechanica; hier staat wat specifiek is voor Midnight.
+
+### Vóór de vervaldatum
+
+Vóór de vervaldatum telt alleen de gezondheid. Zodra de health factor onder 1 ligt, kan een liquidator een deel van je schuld aflossen en onderpand nemen ter waarde van dat bedrag plus een bonus. De bonus wordt per onderpand ingesteld: 1 ÷ (1 − cursor × (1 − LLTV)). Voor cbBTC met een LLTV van 86% en een cursor van 0,3 is dat 1,0438, een bonus van 4,38%; voor USDC op 98% ongeveer 0,6%. Een liquidator kiest welk van je onderpanden hij neemt, en de documentatie van Morpho waarschuwt dat hij het onderpand kiest dat het meest oplevert.
+
+Hoeveel er in één keer kan verdwijnen, hangt af van de omvang. Normaal mag een liquidator alleen zoveel aflossen als nodig is om de positie weer gezond te maken. De uitzondering: als het onderpand dat na zo'n begrensde liquidatie overblijft minder zou aflossen dan de rcfThreshold van de markt, kan dat onderpand volledig worden genomen. De drempel is 3.000 USDC op de cbBTC/USDC-markt op Base in het rekenvoorbeeld hieronder en 300.000 USDC op de markt op Ethereum hierboven. Bij een lening met één onderpand onder die omvang kan de hele positie in één keer verdwijnen.
+
+### Na de vervaldatum
+
+Zodra het tijdstip van de vervaldatum voorbij is, kan elke resterende schuld worden geliquideerd, zelfs als je health factor 2 of 10 is. Het pad na de vervaldatum in het contract kijkt alleen naar de klok. De reden van Morpho is dat uitleners verwachten op de vervaldatum te kunnen opnemen, en een lener die niet betaalt, gezond of niet, houdt hen tegen.
+
+De bonus in dit pad begint op nul bij de vervaldatum en groeit gelijkmatig tot de volle bonus in 60 minuten. Als je positie na de vervaldatum ook ongezond is, kan een liquidator in plaats daarvan het pad op basis van gezondheid gebruiken en meteen de volle bonus nemen. In het pad na de vervaldatum is er geen grens aan hoeveel er kan worden afgelost, dus de hele schuld kan in één keer worden geliquideerd. Na de vervaldatum kun je geen schuld meer toevoegen, maar je kunt nog steeds aflossen, eenheden terugkopen en onderpand opnemen.
+
+<Callout tone="warning">
+  Op de exacte seconde van de vervaldatum is een gezonde positie nog veilig; een seconde later niet meer. Te laat
+  aflossen op een gezonde positie kan je tot de volle liquidatiebonus kosten, ongeveer 4,4% van de schuld bij een
+  cbBTC-lening met een LLTV van 86%.
+</Callout>
+
+Als een liquidatie schuld achterlaat die het onderpand niet kan dekken, wordt het tekort afgeschreven en gedragen door alleen de uitleners van die markt.
+
+## Hoe los je vroeg af, op de vervaldatum, of rol je door naar een latere vervaldatum?
+
+Je hebt drie manieren om uit een Midnight-lening te stappen, plus één terugvaloptie waarvoor je zelf kiest:
+
+- **Direct aflossen.** Aflossen kost precies één leentoken per eenheid, vóór, op of na de vervaldatum. Het werkt altijd, en het bepaalt het maximum dat je zou moeten betalen om vroeg uit te stappen. Vroeg aflossen geeft niets van de rente terug: je betaalt het volle bedrag dat op de vervaldatum verschuldigd is, alleen eerder.
+- **Eenheden terugkopen vóór de vervaldatum.** Je kunt in plaats daarvan eenheden kopen uit verkoopaanbiedingen van uitleners tegen een prijs onder 1, wat zoveel schuld schrapt voor minder dan de nominale waarde. Dat hangt ervan af of iemand eenheden aanbiedt op het moment dat je eruit wilt.
+- **Doorrollen naar een latere vervaldatum.** De documentatie van Morpho beschrijft hoe je in één markt aflost of terugkoopt en in een markt met een latere datum leent, in één transactie, met callbacks. De lanceringspost van Morpho in juli noemde automatisch doorrollen als een latere functie; op 26 oktober 2026 beschrijft de documentatie doorrollen alleen als iets wat je zelf doet, of via de Blue-terugvaloptie hieronder.
+- **Terugvallen op Blue.** Morpho zette een contract, BlueFallbackRolling, op alle vijf de netwerken. Als je ervoor kiest en het zowel op Midnight als op Blue toestemming geeft, kan iedereen je Midnight-schuld en je onderpand verplaatsen naar een Blue-markt met variabele rente die jij koos, vanaf een tijdstip dat jij koos. De beloning van wie dat uitvoert is een deel van de schuld dat jij instelt; het groeit tussen een begin- en een eindtijd die jij instelt, kan de hele schuld bereiken en wordt bij je nieuwe Blue-schuld opgeteld. Het werkt alleen met precies één onderpand dat overeenkomt met dat van de Blue-markt.
+
+## Wat gebeurt er met je onderpand nadat je hebt afgelost?
+
+Je onderpand blijft waar het is tot je het opneemt. Aflossen stuurt het niet terug. Zodra je schuld nul is, slaagt de gezondheidscontrole zonder een oracle te raadplegen, dus je kunt alles opnemen, en geen gate kan je tegenhouden. Alleen jij, een account waaraan je toestemming gaf, of een liquidator van een liquideerbare positie kan het verplaatsen.
+
+Hetzelfde geldt na een liquidatie: het onderpand dat de liquidator niet nam, blijft in je positie staan zodat je het kunt opnemen.
+
+## Rekenvoorbeeld: een cbBTC/USDC-lening die vervalt op 25 december 2026
+
+Deze markt, op het paar waarmee Midnight van start ging, werd aangemaakt op 14 juli 2026, een week vóór de publieke lancering, en is de grootste getoonde markt op Base. On-chain gelezen op 26 oktober 2026 om 06:06 UTC:
+
+| Veld                         | Waarde                                       |
+| ---------------------------- | -------------------------------------------- |
+| Leentoken                    | USDC                                         |
+| Onderpand                    | cbBTC, het enige                             |
+| LLTV                         | 86%                                          |
+| Liquidatiebonus              | 4,38% (cursor 0,3)                           |
+| Vervaldatum                  | 25 december 2026, 15:00 UTC, over 60,4 dagen |
+| rcfThreshold                 | 3.000 USDC                                   |
+| Gates en fees                | Geen                                         |
+| Te betalen op de vervaldatum | 1.530.235,58 USDC verdeeld over 117 leners   |
+| cbBTC-prijs                  | 80.097,33 USDC (de oracle van de markt)      |
+
+**Lenen.** De beste prijs waartegen een lener eenheden kon verkopen, was 0,9901297. Wie tegen die prijs 10.000 USDC opneemt, is op 25 december 2026 ongeveer 10.099,69 USDC verschuldigd: 0,997% voor de 60,4 dagen, ongeveer 6,0% per jaar. Die prijs verandert van minuut tot minuut.
+
+**Een typische positie.** De mediane lener is op de vervaldatum 37,08 USDC verschuldigd tegenover 0,00060018 cbBTC, ter waarde van 48,07 USDC. De maximale schuld is 48,07 × 0,86 = 41,34 USDC, dus de health factor is 41,34 ÷ 37,08 = 1,11. Hij bereikt 1 als cbBTC daalt tot ongeveer 71.838 USDC, 10,3% lager.
+
+**Als cbBTC vóór de vervaldatum net onder 71.838 USDC zakt.** De positie ligt ver onder de drempel van 3.000 USDC, dus een liquidator kan alle 37,08 USDC aflossen en cbBTC ter waarde van 38,71 USDC nemen. Van de 43,12 USDC aan cbBTC houdt de lener ongeveer 4,41 USDC over om op te nemen.
+
+**Als de lener vergeet af te lossen en cbBTC op 80.097 USDC blijft.** Vanaf 15:00:01 UTC op 25 december kan iedereen de 37,08 USDC aflossen en cbBTC nemen; een liquidator mag elke seconde na 15:00:00 handelen. De bonus groeit met de tijd: ongeveer 2,2% na een half uur, de volle 4,38% na een uur. Een liquidatie een uur of langer na de vervaldatum neemt cbBTC ter waarde van 38,71 USDC en laat de lener 9,37 USDC daarvan over. Op tijd 37,08 USDC aflossen had alle 48,07 USDC aan cbBTC behouden, netto 10,99 USDC, dus die liquidatie kost de lener 1,63 USDC, de volle bonus. Een eerdere liquidatie kost minder, maar niets dwingt een liquidator om te wachten.
+
+## Hoe verhoudt Midnight zich tot een Morpho Blue-lening met variabele rente?
+
+|                             | Morpho Blue                                                                              | Morpho Midnight                                                                                                                                                      |
+| --------------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rente                       | Verandert voortdurend met het rentemodel van de markt                                    | Vast op het moment dat je leent                                                                                                                                      |
+| Schuld                      | Groeit met de rente                                                                      | Een vast aantal eenheden, groeit niet                                                                                                                                |
+| Einddatum                   | Geen                                                                                     | Vervaldatum                                                                                                                                                          |
+| Onderpand per markt         | Eén                                                                                      | Eén of meer, elk met een eigen LLTV                                                                                                                                  |
+| Kan worden geliquideerd als | Ongezond                                                                                 | Ongezond, of bij elke schuld na de vervaldatum                                                                                                                       |
+| Bonus                       | 1 ÷ (1 − 0,3 × (1 − LLTV)), hoogstens 15%                                                | 1 ÷ (1 − cursor × (1 − LLTV)), cursor per onderpand ingesteld, geen grens van 15%                                                                                    |
+| Hoeveel in één keer         | Tot de hele schuld in één aanroep                                                        | Vóór de vervaldatum wat de gezondheid herstelt (een volledig onderpand als wat overblijft minder zou aflossen dan de rcfThreshold); na de vervaldatum de hele schuld |
+| Pre-liquidatie              | Wordt door Morpho afgebouwd, zie [Morpho pre-liquidatie](/nl/blog/morpho-pre-liquidatie) | Geen onderdeel van Midnight                                                                                                                                          |
+| Vroeg uitstappen            | Op elk moment aflossen                                                                   | Aflossen tegen nominale waarde, of eenheden terugkopen als er verkopers zijn                                                                                         |
+
+Het praktische verschil voor je health factor: op Blue kan hij alleen al door rente dalen, net als op Aave ([hoe rentepieken je health factor raken](/nl/blog/aave-rente#hoe-beinvloeden-rentepieken-je-health-factor)). Op Midnight daalt hij alleen als onderpandprijzen dalen, of als je onderpand opneemt of meer leent. In ruil daarvoor voegt Midnight een datum toe die je niet mag laten verlopen.
+
+## Hoe kunnen alerts helpen bij een Midnight-lening?
+
+Een alert kan je waarschuwen voor beide risico's van een Midnight-lening: een dalende health factor en een naderende vervaldatum. Tokenping controleert elke 5 minuten. Het [Morpho-dashboard](/nl/morpho) toont de leenposities van een wallet in markten die in de app van Morpho staan, op 14 netwerken, Blue en Midnight, en je posities bekijken kost niets. Midnight-alerts dekken markten die de API van Morpho toont. Op 26 oktober 2026 waren die er op Ethereum en Base; Tokenping dekt ook Arc en Robinhood Chain zodra Morpho daar Midnight-markten toont. Tot dan zijn er op die twee netwerken geen Midnight-alerts mogelijk.
+
+Voor een Midnight-lening:
+
+- **Gezondheid.** Tokenping berekent je health factor uit de chain met de eigen rekenregels van Morpho, nooit uit de API van Morpho. Zolang hij onder de drempel ligt die je instelt (1,02 tot 10), stuurt elke controle een bericht via elk kanaal dat je koos: Signal, Telegram of e-mail.
+- **Vervaldatum.** Je krijgt één herinnering in de laatste 7 dagen vóór de vervaldatum en één in de laatste 24 uur.
+- **Na de vervaldatum.** Zolang er schuld openstaat, stuurt elke controle een alert, omdat de lening kan worden geliquideerd wat haar health factor ook is.
+
+Alerts kosten <AlertPrice />, hetzelfde plan als de Aave-alerts. Een alert geeft je tijd om in te grijpen; hij voorkomt geen liquidatie, en een prijs kan tussen twee controles bewegen.
+
+## Bronnen
+
+- [Morpho-documentatie: Midnight concepts](https://docs.morpho.org/learn/concepts/midnight): eenheden, krediet en schuld, vroeg uitstappen, onderpand en gezondheid (geraadpleegd op 26 oktober 2026)
+- [Morpho-documentatie: Midnight liquidations](https://docs.morpho.org/learn/concepts/midnight/liquidations): de twee liquidatiepaden, de oplopende bonus na de vervaldatum en waarom onbetaalde schuld na de vervaldatum liquideerbaar is (geraadpleegd op 26 oktober 2026)
+- [Morpho-documentatie: offers](https://docs.morpho.org/learn/concepts/midnight/offers) en [gates](https://docs.morpho.org/learn/concepts/midnight/gates): doorrollen met callbacks, en wat gates wel en niet kunnen blokkeren (geraadpleegd op 26 oktober 2026)
+- [Morpho-documentatie: market mechanics](https://docs.morpho.org/developers/midnight/concepts/market-mechanics), [collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) en [fees](https://docs.morpho.org/developers/midnight/concepts/fees) (geraadpleegd op 26 oktober 2026)
+- [Morpho-documentatie: exit a borrow early](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-early) en [exit a borrow at maturity](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-by-repaying-in-full-at-maturity) (geraadpleegd op 26 oktober 2026)
+- [Morpho-documentatie: contractadressen](https://docs.morpho.org/developers/contracts/addresses): Midnight en BlueFallbackRolling op elk netwerk (geraadpleegd op 26 oktober 2026)
+- [morpho-org/midnight](https://github.com/morpho-org/midnight): Midnight.sol (gezondheidscontrole, liquidatie, aflossen, opnames), ConstantsLib.sol (fees, bonus, oploop van 60 minuten, grenzen voor onderpand) en de README van de periphery (geraadpleegd op 26 oktober 2026)
+- [morpho-org/morpho-blue](https://github.com/morpho-org/morpho-blue): de liquidatie en de bonusconstanten van Blue (geraadpleegd op 26 oktober 2026)
+- [Now live: Morpho Midnight and the new Markets App](https://morpho.org/blog/now-live-morpho-midnight) (21 juli 2026) en [Morpho Midnight: what to expect at launch](https://morpho.org/blog/morpho-midnight-what-to-expect-at-launch) (17 juli 2026) (geraadpleegd op 26 oktober 2026)
+- [Morpho Fixed Rate Markets](https://morpho.org/blog/morpho-v2-liberating-the-potential-of-onchain-loans): de eerdere post van Morpho over Midnight en Vaults V2 (geraadpleegd op 26 oktober 2026)
+- [Morpho Midnight API](https://api.morpho.org/v0/midnight/markets): getoonde markten, orderboek en posities van leners (geraadpleegd op 26 oktober 2026)
+- Midnight-contracten op [Base](https://basescan.org/address/0xAdedD8ab6dE832766Fedf0FaC4992E5C4D3EA18A) in blok 53102734 en [Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f) in blok 26274992: marktdefinities, totalen, fees en oracleprijzen (geraadpleegd op 26 oktober 2026)
+
+_Educatieve inhoud, geen financieel advies. Alerts verkleinen het risico, maar voorkomen geen liquidatie._

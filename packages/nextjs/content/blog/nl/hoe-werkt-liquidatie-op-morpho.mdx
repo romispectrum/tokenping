@@ -1,0 +1,184 @@
+export const meta = {
+  slug: "hoe-werkt-liquidatie-op-morpho",
+  title: "Hoe liquidatie op Morpho werkt: premie en oninbare schuld",
+  description:
+    "Wanneer een Morpho-lening geliquideerd kan worden, wat een liquidator mag nemen, de premie per LLTV, oninbare schuld, oracles en hoe Midnight verschilt.",
+  h1: "Wat gebeurt er als je Morpho-positie wordt geliquideerd?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Hoe werkt liquidatie op Morpho, en wat kost het de lener?",
+  readingMinutes: 13,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Een positie op Morpho Blue kan geliquideerd worden zodra de loan-to-value (LTV) boven de liquidatie-LTV (LLTV) van de
+  markt uitkomt, en dat is hetzelfde als een health factor (gezondheidsfactor) onder 1. Vanaf dan kan iedereen in één
+  transactie een deel of het geheel van je schuld aflossen en onderpand nemen ter waarde van het afgeloste bedrag maal
+  de premiefactor (liquidation incentive factor) van de markt, geprijsd door de oracle (prijsbron) van de markt. De
+  premie volgt alleen uit de LLTV: 4,38% bij een LLTV van 86%, en die gaat helemaal naar de liquidator. Wat je hebt
+  geleend, houd je, dus de premie is wat de liquidatie je kost, tenzij je onderpand de schuld niet meer dekt; dan
+  verlies je al je onderpand en vangen de uitleners van de markt de rest op als oninbare schuld (bad debt). De leningen
+  met vaste rente van Morpho Midnight voegen twee wendingen toe: vóór de vervaldatum mag één liquidatie alleen nemen wat
+  de positie weer gezond maakt, tenzij het overgebleven onderpand minder zou aflossen dan de drempel van de markt, en na
+  de vervaldatum kan elke resterende schuld geliquideerd worden, zelfs bij een gezonde positie.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* De cijfers en de bloknummers waarop ze zijn gelezen: content/blog/snapshots/how-morpho-liquidation-works.md */}
+
+## Wanneer kan een Morpho-positie geliquideerd worden?
+
+Een positie op Morpho Blue kan geliquideerd worden zodra je schuld groter is dan je onderpandwaarde maal de LLTV van de markt. Uitgedrukt in de health factor is dat elke waarde onder 1,00 ([hoe de Morpho health factor wordt berekend](/nl/blog/morpho-health-factor-uitgelegd) geeft de formule en voorbeelden).
+
+Het contract controleert dit zelf. De functie `liquidate` van Morpho Blue telt eerst de rente op die tot dat blok verschuldigd is, leest dan één keer de oracle van de markt en wordt teruggedraaid (revert) tenzij de positie ongezond is. Een positie die precies op haar LLTV staat, is nog gezond; ze moet erboven zitten.
+
+Slechts twee dingen duwen een positie over de grens:
+
+- **De prijs van het onderpand daalt** ten opzichte van het geleende token, zoals de oracle die rapporteert.
+- **Je schuld groeit** doordat er rente oploopt op een Blue-lening met variabele rente.
+
+Elke Blue-markt legt bij het aanmaken haar LLTV en haar oracle vast, en geen van beide kan daarna veranderen. Het Morpho Blue-contract heeft ook geen pauze, bevriezing of respijtperiode: Morpho kan liquidaties in een markt niet stoppen en kan jou niet tegenhouden als je wilt aflossen. De uitgever van een token kan overdrachten van dat token nog wel pauzeren of blokkeren, en dat zou beide stoppen.
+
+## Wie liquideert een Morpho-positie, en hoe?
+
+Iedereen kan dat. `liquidate` kent geen beperking op wie de functie aanroept, en Morpho liquideert zelf geen posities. Liquidators variëren van teams met bots die posities en oracleprijzen in de gaten houden tot individuen; de documentatie van Morpho merkt op dat je alleen een RPC-node nodig hebt en een wallet met genoeg van het geleende token.
+
+Wie het eerst komt, het eerst maalt. Er is geen veiling, dus liquidators concurreren op snelheid, en gasraces en MEV (het ordenen van transacties voor winst) horen erbij. Het contract stuurt het in beslag genomen onderpand naar de liquidator voordat het de geleende tokens int, zodat een bot het onderpand binnen dezelfde transactie kan verkopen en uit de opbrengst kan aflossen.
+
+Liquidaties zijn niet gegarandeerd; ze gebeuren omdat de premie loont. In de praktijk zijn ze routine: de API van Morpho telt alleen al in de markt USDC | cbBTC (86%) op Base 14.024 liquidaties.
+
+## Hoeveel van je schuld kan in één keer geliquideerd worden?
+
+Alles. Morpho Blue heeft geen close factor (het deel van de schuld dat in één keer kan worden afgelost) en geen minimumgrootte: een liquidator mag elk bedrag van je schuld aflossen, van een klein stukje tot het geheel, in één aanroep. De enige grenzen zijn dat hij niet meer kan aflossen dan je verschuldigd bent en niet meer onderpand kan nemen dan je hebt.
+
+Dit is het grootste verschil met Aave V3, dat een liquidatie beperkt tot 50% van de schuld zolang de health factor boven 0,95 ligt en de positie niet klein is ([hoeveel van een Aave-schuld in één keer geliquideerd kan worden](/nl/blog/hoe-werkt-liquidatie-op-aave#hoeveel-van-mijn-schuld-kan-in-een-keer-worden-geliquideerd)). Op Blue kan een positie die net over haar LLTV glijdt, volledig worden afgewikkeld door de eerste liquidator die langskomt.
+
+## Hoe groot is de liquidatiepremie bij elke LLTV?
+
+De premiefactor (liquidation incentive factor, LIF) wordt in het contract met een formule bepaald uit de LLTV van de markt:
+
+**LIF = min(1,15; 1 ÷ (1 − 0,3 × (1 − LLTV)))**
+
+De liquidator lost een deel van je schuld af en ontvangt onderpand ter waarde van dat bedrag maal de LIF, tegen de oracleprijs. Het deel boven 1 is de premie, betaald uit je onderpand. Morpho neemt daar geen deel van.
+
+Een markt kan alleen een LLTV gebruiken die de governance van Morpho heeft ingeschakeld. Op 26 oktober 2026 waren dit de ingeschakelde waarden, en elke Blue-markt in de API van Morpho gebruikt er een van. Met de eigen integer-rekenkunde van het contract:
+
+| LLTV  | Premiefactor    | Onderpand dat je verliest per 1.000 afgeloste schuld | Waarvan de premie |
+| ----- | --------------- | ---------------------------------------------------- | ----------------- |
+| 38,5% | 1,1500 (gecapt) | 1.150,00                                             | 150,00            |
+| 62,5% | 1,1268          | 1.126,76                                             | 126,76            |
+| 77%   | 1,0741          | 1.074,11                                             | 74,11             |
+| 86%   | 1,0438          | 1.043,84                                             | 43,84             |
+| 91,5% | 1,0262          | 1.026,17                                             | 26,17             |
+| 94,5% | 1,0168          | 1.016,78                                             | 16,78             |
+| 96,5% | 1,0106          | 1.010,61                                             | 10,61             |
+| 98%   | 1,0060          | 1.006,04                                             | 6,04              |
+
+Een LLTV van 0 is ook ingeschakeld, maar in zo'n markt kan niets worden geleend. Hoe hoger de LLTV, hoe kleiner de premie; de documentatie van Morpho legt dat uit als bescherming tegen kettingreacties van liquidaties in de riskantere markten. Ze rondt het cijfer voor 86% ook af op "approximately 1.05" (ongeveer 1,05); de exacte waarde is 1,0438.
+
+## Rekenvoorbeeld: 1 cbBTC tegenover 50.000 USDC op Base
+
+Neem de grootste vermelde Blue-markt naar geleend bedrag op Ethereum en Base: USDC | cbBTC (86%) op Base, met ongeveer 1,61 miljard USDC geleend. Op 26 oktober 2026 prijsde de oracle 1 cbBTC op 80.000,15 USDC (Base-blok 53102870). De positie is verzonnen: 1 cbBTC als onderpand en 50.000 USDC schuld.
+
+- **LTV:** 50.000 ÷ 80.000,15 = 62,5%.
+- **Health factor:** 80.000,15 × 0,86 ÷ 50.000 = 1,376.
+- **Liquidatieprijs:** 50.000 ÷ 0,86 = 58.139,53 USDC per cbBTC, 27,3% onder de oracleprijs.
+
+Rente is de langzame aanjager. Bij de leenrente van de markt van ongeveer 5,2% per jaar op 26 oktober 2026, en als die rente gelijk bleef, zou rente alleen meer dan zes jaar nodig hebben om deze positie van 62,5% naar 86% LTV te brengen. Prijs is de snelle.
+
+Ter vergelijking: over de 11.000 grootste leenposities in deze markt, die samen 96% van haar schuld vormen, zat de helft van de geleende USDC in posities onder ongeveer 54% LTV, een health factor boven ongeveer 1,59. Dat is een berekening van Tokenping op basis van de API van Morpho en de on-chain prijs, geen cijfer van Morpho.
+
+### Volledige liquidatie bij 58.139,53
+
+Net voorbij de liquidatieprijs kan een liquidator alle 50.000 USDC aflossen en 50.000 × 1,0438 ÷ 58.139,53 = 0,8977 cbBTC nemen, ter waarde van 52.192,07 USDC. Je houdt de 50.000 USDC die je leende en 0,1023 cbBTC (5.947,47 USDC), en je bent niets meer verschuldigd. De liquidatie kostte je 2.192,07 USDC vergeleken met zelf aflossen: 4,38% van de schuld.
+
+### Gedeeltelijke liquidatie van 10.000 USDC
+
+Een liquidator kan ook stoppen bij 10.000 USDC. Dat neemt 0,1795 cbBTC (10.438,41 USDC) en laat 0,8205 cbBTC over tegenover 40.000 USDC: een LTV van 83,9% en een health factor van 1,026, weer gezond. Een stukje helpt hier altijd, omdat LIF × LLTV = 0,898 onder 1 ligt. Maar niets dwingt een liquidator om het stukje te kiezen in plaats van de hele schuld.
+
+### Wat als niemand liquideert tot cbBTC op 50.000 staat?
+
+Bij 50.000 USDC is je onderpand precies je schuld waard, en dat is minder dan schuld × LIF. De hele 1 cbBTC nemen lost maar 50.000 ÷ 1,0438 = 47.900 USDC af. Je verliest al je onderpand, en de resterende 2.100 USDC wordt afgeschreven als oninbare schuld, die de uitleners van de markt opvangen.
+
+## Wat gebeurt er met oninbare schuld op Morpho Blue?
+
+Als een liquidatie een lener achterlaat zonder onderpand maar met nog wat schuld, schrijft het contract die schuld in dezelfde transactie af. Het haalt de resterende schuld van het totaal geleende bedrag van de markt en hetzelfde bedrag van haar totale aanbod, zodat elke uitlener in die markt verliest naar verhouding van zijn aandeel. Uitleners in andere markten worden niet geraakt, omdat elke Blue-markt geïsoleerd is.
+
+Oninbare schuld wordt mogelijk als het onderpand minder waard is dan de schuld maal de LIF. In een markt van 86% is dat elke LTV boven 95,8%, en die kan een positie alleen bereiken als de prijs voorbij de LLTV beweegt voordat iemand liquideert. Het gebeurt wel, al zelden in grote bedragen: de API van Morpho registreert oninbare schuld bij 1.428 Blue-liquidaties op Ethereum en Base, de meeste onder 1 Amerikaanse dollar of in markten die de Morpho-app niet vermeldt.
+
+Voor de lener is de uitkomst hoe dan ook dezelfde: al het onderpand is weg en er blijft geen schuld over. Voor uitleners hangt het af van hoe ze uitlenen: een Morpho Vault V2 geeft het verlies door in zijn sharekoers, terwijl legacy V1.1-vaults het niet doorgeven in de hunne. Aave pakt het anders aan: sinds v3.3 legt het resterende schuld vast als een deficit dat zijn Umbrella-stakers kunnen dekken ([oninbare schuld op Aave](/nl/blog/hoe-werkt-liquidatie-op-aave#kan-een-liquidatie-oninbare-schuld-achterlaten)).
+
+## Welke rol speelt de oracle bij een liquidatie?
+
+De oracle bepaalt de prijs voor elke liquidatiebeslissing. Elke markt noemt één oracle die de prijs van het onderpand in het geleende token teruggeeft, en zowel het moment waarop een positie liquideerbaar wordt als de hoeveelheid onderpand die een liquidator ontvangt, gebruiken die prijs, niet de prijzen op exchanges. Morpho kiest geen oracles: wie een markt aanmaakt, doet dat. Het oracle-adres van de markt kan nooit worden vervangen, maar de prijsfeeds die een oracle leest, kunnen worden beheerd door anderen die ze kunnen bijwerken. De BTC/USD-feed uit het Base-voorbeeld heeft bijvoorbeeld een eigenaar die hem naar een nieuwe bron kan laten wijzen.
+
+Wat een oracle meet, doet er voor jou toe. De oracle van de voorbeeldmarkt op Base gebruikt een BTC/USD-prijsfeed voor cbBTC en behandelt USDC als precies 1 Amerikaanse dollar, dus een depeg (loslaten van de koppeling aan de dollar) van een van beide tokens zou hem niet bewegen. De referentie-oracle van Morpho voor Chainlink-compatibele feeds controleert niet hoe oud een prijs is of die binnen grenzen ligt, en voegt geen controle toe op storingen van de L2-sequencer.
+
+Een oracleprobleem kan leners op twee manieren schaden:
+
+- **Een verkeerde of gemanipuleerde prijs.** De risicopagina van Morpho waarschuwt dat geen enkele oracle immuun is voor manipulatie, wat liquidaties of zelfs oninbare schuld kan veroorzaken.
+- **Een oracle die niet meer antwoordt.** Lenen, onderpand opnemen en liquideren lezen allemaal de oracle en zouden mislukken. Aflossen en onderpand toevoegen lezen hem niet, dus je kunt je positie nog verbeteren terwijl niemand haar kan liquideren.
+
+## Hoe verschillen liquidaties op Morpho Midnight?
+
+Markten van Morpho Midnight lenen één token uit tegen een vaste rente tot een vaste vervaldatum, tegen een of meer soorten onderpand, elk met een eigen LLTV, oracle en liquidatiecursor (de 0,3 in de premieformule hierboven, die Midnight per onderpand instelt). Je schuld ligt vast in eenheden, dus vóór de vervaldatum bewegen alleen de prijzen van het onderpand je health factor. Een Midnight-positie kan op twee manieren geliquideerd worden:
+
+- **Op basis van gezondheid, op elk moment** zolang de schuld groter is dan de som van de waarde van elk onderpand maal zijn LLTV. De premie is de volledige bonus van dat onderpand, en één liquidatie kan alleen aflossen wat nodig is om de positie weer gezond te maken. De uitzondering: als het onderpand dat na zo'n begrensde liquidatie overblijft minder zou aflossen dan de rcfThreshold van de markt, mag dat onderpand volledig worden genomen.
+- **Na de vervaldatum**, als er nog schuld over is, zelfs bij een gezonde positie. Er is geen limiet, en de premie begint bij nul en stijgt in 60 minuten naar de volledige bonus.
+
+De liquidator kiest welk onderpand hij neemt, en er is geen cap van 1,15; op 26 oktober 2026 gebruikte elke vermelde Midnight-markt een cursor van 0,3 met LLTV's voor onderpand van 62,5% tot 98%, die dezelfde premies geven als de tabel hierboven. Oninbare schuld wordt gedeeld door de uitleners van die markt. [Hoe leningen met vaste rente op Midnight werken](/nl/blog/morpho-midnight-leningen-met-vaste-rente) behandelt de vervaldatum, de drempels van echte markten en een rekenvoorbeeld.
+
+## Wat is pre-liquidatie?
+
+Pre-liquidatie (pre-liquidation) is een optionele toevoeging op Morpho Blue. Een lener die een pre-liquidatiecontract voor een markt heeft gemachtigd, laat liquidators dat contract gebruiken zodra de LTV een grens onder de LLTV passeert, om de schuld in stukjes af te lossen, aanroep na aanroep, tegen een premie die in dat contract is vastgelegd, tot de LTV weer onder die grens ligt. Boven de LLTV geldt nog steeds de normale liquidatie.
+
+De voorbeeldmarkt op Base heeft er een: vanaf 83,26% LTV kan het tot 0,20% van de schuld per aanroep aflossen (aanroepen kunnen zich herhalen), oplopend tot 24,53% bij 86%, tegen dezelfde premiefactor van 1,0438. Het werkt alleen als jij het hebt gemachtigd. Morpho bouwt de functie af: de app neemt geen nieuwe posities aan, en het helpcentrum vraagt leners die de functie gebruiken om haar uit te zetten. [Morpho pre-liquidatie](/nl/blog/morpho-pre-liquidatie) legt de voorwaarden uit en hoe je het controleert en intrekt.
+
+## Hoe verschilt liquidatie op Morpho van die op Aave?
+
+De kern is hetzelfde: onder 1 lost een liquidator schuld af en neemt hij onderpand plus een bonus. De regels eromheen verschillen ([hoe liquidatie op Aave werkt](/nl/blog/hoe-werkt-liquidatie-op-aave)):
+
+|                              | Aave V3                                                            | Morpho Blue                                           | Morpho Midnight                                                                                                                                                       |
+| ---------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hoeveel in één keer          | 50% of 100% van de schuld, plus een regel voor kleine restbedragen | Tot de hele schuld in één aanroep                     | Vóór de vervaldatum, wat de gezondheid herstelt (een volledig onderpand als wat overblijft minder zou aflossen dan de rcfThreshold); na de vervaldatum de hele schuld |
+| Bonus                        | Per onderpandasset ingesteld door de governance                    | Vastgelegd door de LLTV van de markt                  | Per onderpand, uit zijn LLTV en cursor                                                                                                                                |
+| Wie houdt de bonus           | Liquidator, min een protocolvergoeding                             | Liquidator, de hele bonus                             | Liquidator                                                                                                                                                            |
+| Kunnen de regels veranderen? | Governance en risk stewards kunnen ze veranderen                   | Nee, vastgelegd bij het aanmaken van de markt         | Vastgelegd bij het aanmaken van de markt                                                                                                                              |
+| Pauze                        | Assets kunnen worden gepauzeerd, met een respijtperiode            | Geen pauze                                            | Geen pauze                                                                                                                                                            |
+| Oninbare schuld              | Een deficit, dat Umbrella-stakers kunnen dekken                    | Afgeschreven ten laste van de uitleners van die markt | Verdeeld over de uitleners van die markt                                                                                                                              |
+| Wat een positie omvat        | Veel assets in één positie                                         | Eén soort onderpand, één geleend token                | Eén geleend token, meerdere soorten onderpand                                                                                                                         |
+
+## Hoe voorkom je dat je op Morpho geliquideerd wordt?
+
+- **Houd een buffer onder de LLTV.** Een positie die herstelt voordat iemand liquideert, is weer veilig, maar niets houdt de prijs tegen om verder te dalen, en de eerste liquidator die langskomt, kan je hele schuld in één keer aflossen.
+- **Los vroeg af of voeg vroeg onderpand toe.** Beide verlagen je LTV meteen, kosten geen premie en werken zelfs als de oracle uitvalt.
+- **Ken je oracle.** Controleer welke oracle je markt gebruikt en wat die meet voordat je leent.
+- **Los op Midnight af vóór de vervaldatum.** Na de vervaldatum kan elke resterende schuld geliquideerd worden, gezond of niet.
+- **Controleer een oude pre-liquidatie.** Heb je ooit "Auto-deleverage" (pre-liquidatie) aangezet: Morpho bouwt de functie af en vraagt leners om haar uit te zetten; [Morpho pre-liquidatie](/nl/blog/morpho-pre-liquidatie) laat zien hoe.
+
+## Hoe kunnen alerts helpen?
+
+Tokenping controleert elke leenpositie op Morpho waarvoor je een alert instelt elke 5 minuten, in markten die in de Morpho-app worden vermeld: Morpho Blue op 14 netwerken, en Morpho Midnight. Midnight-alerts dekken markten die de API van Morpho vermeldt. Op 26 oktober 2026 waren die op Ethereum en Base; Tokenping dekt ook Arc en Robinhood Chain zodra Morpho daar Midnight-markten vermeldt. Tokenping berekent elke health factor uit de chain met de eigen rekenregels van Morpho, niet uit de API van Morpho. Zolang een health factor onder de drempel staat die je hebt ingesteld (1,02 tot 10), stuurt elke controle een bericht via elk kanaal dat je hebt gekozen: Signal, Telegram of e-mail. Als je op een Blue-markt een pre-liquidatiecontract hebt gemachtigd, meet de alert tegen de laagste van de twee grenzen: de LLTV of de pre-liquidatiegrens. Een Midnight-lening krijgt ook één herinnering in de laatste 7 dagen en één in de laatste 24 uur vóór de vervaldatum, en daarna een alert bij elke controle na de vervaldatum zolang er schuld over is.
+
+Je kunt [je Morpho-posities bekijken](/nl/morpho); daarvoor betaal je niets. Alerts kosten <AlertPrice />. Een alert geeft je tijd om te handelen, maar een prijs kan tussen twee controles voorbij je LLTV bewegen, en een alert voorkomt geen liquidatie.
+
+## Bronnen
+
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) en [IMorpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/interfaces/IMorpho.sol), morpho-org/morpho-blue: gezondheidscontrole, liquidatie, premieformule, oninbare schuld en aannames over oracles (geraadpleegd op 26 oktober 2026)
+- [Midnight.sol](https://github.com/morpho-org/midnight/blob/main/src/Midnight.sol) en [ConstantsLib.sol](https://github.com/morpho-org/midnight/blob/main/src/libraries/ConstantsLib.sol), morpho-org/midnight: liquidatiemodi, RCF, oplopende premie en slashing (geraadpleegd op 26 oktober 2026)
+- [README van pre-liquidation en PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation), morpho-org/pre-liquidation (geraadpleegd op 26 oktober 2026)
+- [ChainlinkDataFeedLib.sol](https://github.com/morpho-org/morpho-blue-oracles/blob/main/src/morpho-chainlink/libraries/ChainlinkDataFeedLib.sol), morpho-org/morpho-blue-oracles: geen controles op ouderdom, grenzen of sequencer (geraadpleegd op 26 oktober 2026)
+- [Liquidatie op Morpho](https://docs.morpho.org/learn/concepts/liquidation): liquidators, geen veiling, tot 100% in één keer, geen protocolvergoeding, oninbare schuld in vaults (geraadpleegd op 26 oktober 2026)
+- [Ontwikkelaarsdocumentatie van Morpho: liquidatie](https://docs.morpho.org/developers/borrow/concepts/liquidation): premie per LLTV en oninbare schuld (geraadpleegd op 26 oktober 2026)
+- [Morpho-documentatie: oracles](https://docs.morpho.org/learn/concepts/oracle): keuze en onveranderlijkheid van de oracle (geraadpleegd op 26 oktober 2026)
+- [Morpho-documentatie: Morpho Blue](https://docs.morpho.org/learn/concepts/blue): permanente marktparameters en ingeschakelde LLTV's (geraadpleegd op 26 oktober 2026)
+- [Morpho-documentatie: liquidaties op Midnight](https://docs.morpho.org/learn/concepts/midnight/liquidations), [onderpand, gezondheid en liquidaties](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) en [wat Midnight is](https://docs.morpho.org/learn/concepts/midnight) (geraadpleegd op 26 oktober 2026)
+- [Morpho-documentatie: risico's](https://docs.morpho.org/learn/resources/risks): risico's van oracles, liquidatie, oninbare schuld en tegenpartijen (geraadpleegd op 26 oktober 2026)
+- [Morpho API](https://api.morpho.org/graphql): aantallen liquidaties en oninbare schuld, marktvermelding, leenrente, leenposities en Midnight-markten (geraadpleegd op 26 oktober 2026)
+- [Morpho Blue op Base](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), de markt USDC | cbBTC (86%) bij Base-blok 53102870 (geraadpleegd op 26 oktober 2026)
+- [De oracle van de markt](https://basescan.org/address/0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9#readContract) en [de BTC/USD-feed ervan](https://basescan.org/address/0x64c911996D3c6aC71f9b455B1E8E7266BcbD848F#readContract) op Base: de prijs bij blok 53102870 en de eigenaar van de feed (geraadpleegd op 26 oktober 2026)
+- [Het pre-liquidatiecontract van de markt](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374#readContract) op Base: de parameters bij blok 53102870 (geraadpleegd op 26 oktober 2026)
+- [Morpho Midnight op Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract): ingeschakelde LLTV's en liquidatiecursors bij blok 26274998 (geraadpleegd op 26 oktober 2026)
+
+_Educatieve inhoud, geen financieel advies. Alerts verkleinen het risico, maar voorkomen geen liquidatie._

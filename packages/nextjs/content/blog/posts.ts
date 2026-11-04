@@ -444,6 +444,65 @@ import MorphoMidnightFixedRateLoans, {
   meta as morphoMidnightFixedRateLoans,
 } from "~~/content/blog/morpho-midnight-fixed-rate-loans.mdx";
 import MorphoPreLiquidation, { meta as morphoPreLiquidation } from "~~/content/blog/morpho-pre-liquidation.mdx";
+import NlAaveAlertsDoNotDisturb, {
+  meta as nlAaveAlertsDoNotDisturb,
+} from "~~/content/blog/nl/aave-alerts-bij-niet-storen.mdx";
+import NlAaveEMode, { meta as nlAaveEMode } from "~~/content/blog/nl/aave-e-mode-uitgelegd.mdx";
+import NlAaveHealthFactorAlertSetup, {
+  meta as nlAaveHealthFactorAlertSetup,
+} from "~~/content/blog/nl/aave-health-factor-alert-instellen.mdx";
+import NlAaveHealthFactor, { meta as nlAaveHealthFactor } from "~~/content/blog/nl/aave-health-factor-uitgelegd.mdx";
+import NlAvoidAaveLiquidation, {
+  meta as nlAvoidAaveLiquidation,
+} from "~~/content/blog/nl/aave-liquidatie-voorkomen.mdx";
+import NlAaveLiquidationPrice, { meta as nlAaveLiquidationPrice } from "~~/content/blog/nl/aave-liquidatieprijs.mdx";
+import NlAaveInterestRates, { meta as nlAaveInterestRates } from "~~/content/blog/nl/aave-rente.mdx";
+import NlAaveMarketWindDown, { meta as nlAaveMarketWindDown } from "~~/content/blog/nl/afbouw-van-een-aave-markt.mdx";
+import NlShortFiatWithAave, { meta as nlShortFiatWithAave } from "~~/content/blog/nl/fiat-shorten-met-aave.mdx";
+import NlLiquidatedOnAaveOrMorphoWhatNow, {
+  meta as nlLiquidatedOnAaveOrMorphoWhatNow,
+} from "~~/content/blog/nl/geliquideerd-op-aave-of-morpho-wat-nu.mdx";
+import NlTokenizedStocksCollateral, {
+  meta as nlTokenizedStocksCollateral,
+} from "~~/content/blog/nl/getokeniseerde-aandelen-als-onderpand.mdx";
+import NlHowAaveLiquidationWorks, {
+  meta as nlHowAaveLiquidationWorks,
+} from "~~/content/blog/nl/hoe-werkt-liquidatie-op-aave.mdx";
+import NlHowMorphoLiquidationWorks, {
+  meta as nlHowMorphoLiquidationWorks,
+} from "~~/content/blog/nl/hoe-werkt-liquidatie-op-morpho.mdx";
+import NlCryptoBackedLoans, {
+  meta as nlCryptoBackedLoans,
+} from "~~/content/blog/nl/leningen-met-crypto-als-onderpand.mdx";
+import NlMorphoHealthFactor, {
+  meta as nlMorphoHealthFactor,
+} from "~~/content/blog/nl/morpho-health-factor-uitgelegd.mdx";
+import NlMorphoMidnightFixedRateLoans, {
+  meta as nlMorphoMidnightFixedRateLoans,
+} from "~~/content/blog/nl/morpho-midnight-leningen-met-vaste-rente.mdx";
+import NlMorphoPreLiquidation, { meta as nlMorphoPreLiquidation } from "~~/content/blog/nl/morpho-pre-liquidatie.mdx";
+import NlPrivateAaveLiquidationAlerts, {
+  meta as nlPrivateAaveLiquidationAlerts,
+} from "~~/content/blog/nl/prive-aave-liquidatie-alerts.mdx";
+import NlStablecoinDepegAave, { meta as nlStablecoinDepegAave } from "~~/content/blog/nl/stablecoin-depeg-op-aave.mdx";
+import NlAaveLiquidationAlertTools, {
+  meta as nlAaveLiquidationAlertTools,
+} from "~~/content/blog/nl/tools-voor-aave-liquidatie-alerts.mdx";
+import NlSafeAaveHealthFactor, {
+  meta as nlSafeAaveHealthFactor,
+} from "~~/content/blog/nl/veilige-aave-health-factor.mdx";
+import NlWhyAaveHealthFactorDropped, {
+  meta as nlWhyAaveHealthFactorDropped,
+} from "~~/content/blog/nl/waarom-daalde-je-aave-health-factor.mdx";
+import NlWhyAaveWithdrawOrBorrowFails, {
+  meta as nlWhyAaveWithdrawOrBorrowFails,
+} from "~~/content/blog/nl/waarom-opnemen-of-lenen-op-aave-mislukt.mdx";
+import NlWhoNeedsHealthFactorAlerts, {
+  meta as nlWhoNeedsHealthFactorAlerts,
+} from "~~/content/blog/nl/wie-heeft-health-factor-alerts-nodig.mdx";
+import NlWrappedBitcoinAaveCollateral, {
+  meta as nlWrappedBitcoinAaveCollateral,
+} from "~~/content/blog/nl/wrapped-bitcoin-als-onderpand-op-aave.mdx";
 import PlAaveAlertsDoNotDisturb, {
   meta as plAaveAlertsDoNotDisturb,
 } from "~~/content/blog/pl/alerty-aave-w-trybie-nie-przeszkadzac.mdx";
@@ -1031,5 +1090,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
     { meta: idHowMorphoLiquidationWorks, Content: IdHowMorphoLiquidationWorks },
     { meta: idMorphoPreLiquidation, Content: IdMorphoPreLiquidation },
     { meta: idMorphoMidnightFixedRateLoans, Content: IdMorphoMidnightFixedRateLoans },
+  ],
+  nl: [
+    { meta: nlAaveHealthFactor, Content: NlAaveHealthFactor },
+    { meta: nlSafeAaveHealthFactor, Content: NlSafeAaveHealthFactor },
+    { meta: nlHowAaveLiquidationWorks, Content: NlHowAaveLiquidationWorks },
+    { meta: nlAaveLiquidationPrice, Content: NlAaveLiquidationPrice },
+    { meta: nlWhyAaveHealthFactorDropped, Content: NlWhyAaveHealthFactorDropped },
+    { meta: nlAaveHealthFactorAlertSetup, Content: NlAaveHealthFactorAlertSetup },
+    { meta: nlAaveLiquidationAlertTools, Content: NlAaveLiquidationAlertTools },
+    { meta: nlAvoidAaveLiquidation, Content: NlAvoidAaveLiquidation },
+    { meta: nlPrivateAaveLiquidationAlerts, Content: NlPrivateAaveLiquidationAlerts },
+    { meta: nlCryptoBackedLoans, Content: NlCryptoBackedLoans },
+    { meta: nlShortFiatWithAave, Content: NlShortFiatWithAave },
+    { meta: nlAaveInterestRates, Content: NlAaveInterestRates },
+    { meta: nlAaveAlertsDoNotDisturb, Content: NlAaveAlertsDoNotDisturb },
+    { meta: nlAaveMarketWindDown, Content: NlAaveMarketWindDown },
+    { meta: nlStablecoinDepegAave, Content: NlStablecoinDepegAave },
+    { meta: nlAaveEMode, Content: NlAaveEMode },
+    { meta: nlWhyAaveWithdrawOrBorrowFails, Content: NlWhyAaveWithdrawOrBorrowFails },
+    { meta: nlWrappedBitcoinAaveCollateral, Content: NlWrappedBitcoinAaveCollateral },
+    { meta: nlTokenizedStocksCollateral, Content: NlTokenizedStocksCollateral },
+    { meta: nlWhoNeedsHealthFactorAlerts, Content: NlWhoNeedsHealthFactorAlerts },
+    { meta: nlLiquidatedOnAaveOrMorphoWhatNow, Content: NlLiquidatedOnAaveOrMorphoWhatNow },
+    { meta: nlMorphoHealthFactor, Content: NlMorphoHealthFactor },
+    { meta: nlHowMorphoLiquidationWorks, Content: NlHowMorphoLiquidationWorks },
+    { meta: nlMorphoPreLiquidation, Content: NlMorphoPreLiquidation },
+    { meta: nlMorphoMidnightFixedRateLoans, Content: NlMorphoMidnightFixedRateLoans },
   ],
 };

@@ -1,0 +1,183 @@
+export const meta = {
+  slug: "hoe-werkt-liquidatie-op-aave",
+  title: "Wat er gebeurt als je Aave-positie wordt geliquideerd",
+  description:
+    "Hoe liquidaties op Aave V3 nu werken: wanneer ze starten, hoeveel schuld kan worden afgelost (50% of 100%), de bonus die je betaalt en een rekenvoorbeeld.",
+  h1: "Wat gebeurt er als je Aave-positie wordt geliquideerd?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Wat gebeurt er als je wordt geliquideerd op Aave?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  Als je health factor (gezondheidsfactor) op Aave V3 onder 1 zakt, kan elk ander adres een deel van je schuld of de
+  hele schuld aflossen en onderpand nemen ter waarde van dat bedrag plus een liquidatiebonus, bijvoorbeeld 5% op WETH in
+  de Ethereum Core-markt. Eén liquidatie kan tot 50% van je schuld aflossen zolang je health factor boven 0,95 ligt en
+  zowel je onderpand in het asset dat wordt genomen als je schuld in het asset dat wordt afgelost minstens $2.000 waard
+  is; anders kan de hele schuld in dat asset in één keer weg. Je houdt de tokens die je hebt geleend en het onderpand en
+  de schuld die overblijven, dus de bonus is wat de liquidatie je kost.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Wanneer kan een Aave-positie worden geliquideerd?
+
+Een positie op Aave V3 kan worden geliquideerd zodra de health factor onder 1,00 zit. De health factor deelt de waarde van je onderpand, gewogen met de liquidatiedrempel (liquidation threshold) van elk asset, door de waarde van je schuld, dus onder 1,00 dekt het gewogen onderpand de schuld niet meer (formule en voorbeeld: [wat de Aave health factor is](/nl/blog/aave-health-factor-uitgelegd)).
+
+De contracten van Aave V3.7 controleren vijf dingen voordat een liquidatie doorgaat (`validateLiquidationCall` in `ValidationLogic.sol`):
+
+1. De health factor van de lener zit onder 1,00.
+2. Het onderpandasset dat wordt genomen en het schuldasset dat wordt afgelost zijn allebei actief en **niet gepauzeerd**.
+3. Een eventuele liquidation grace period (respijtperiode voor liquidaties) op een van beide assets is voorbij. Als de emergency guardian van Aave of governance een asset weer vrijgeeft, kan er een respijtperiode van maximaal 4 uur worden ingesteld.
+4. De lener heeft dat onderpand ingeschakeld als onderpand en heeft schuld in het gekozen schuldasset.
+5. Wie de functie aanroept is niet de lener: je kunt je eigen positie niet liquideren.
+
+Een bevroren asset kan nog steeds worden geliquideerd, omdat de controle kijkt naar "paused" (gepauzeerd), niet naar "frozen" (bevroren). Elk ander adres kan de functie `liquidationCall` van de Pool aanroepen.
+
+Het protocol waarschuwt je niet voor een liquidatie, en de eigen app van Aave op app.aave.com stuurt geen alerts. Met één volatiel onderpand en schuld in een stablecoin kun je [je liquidatieprijs op Aave berekenen](/nl/blog/aave-liquidatieprijs): de koers van het onderpand waarbij de health factor 1 bereikt.
+
+## Hoeveel van mijn schuld kan in één keer worden geliquideerd?
+
+Op Aave V3.7 bedraagt de close factor (het deel van de schuld dat in één keer kan worden afgelost) alleen 50% van je totale schuld als aan alle drie de voorwaarden is voldaan: je health factor ligt boven 0,95, je onderpand in het asset dat wordt genomen is minstens $2.000 waard, en je schuld in het asset dat wordt afgelost is minstens $2.000 waard. In alle andere gevallen kan een liquidator tot 100% van je schuld in het gekozen asset in één transactie aflossen.
+
+| Situatie op het moment van liquidatie                                                                 | Maximum dat één liquidatie kan aflossen                                                           |
+| ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Health factor boven 0,95, en het gekozen onderpand en de gekozen schuld zijn elk $2.000 of meer waard | 50% van je totale schuld over alle assets (in USD), nooit meer dan je schuld in het gekozen asset |
+| Health factor op of onder 0,95                                                                        | 100% van je schuld in het gekozen asset                                                           |
+| Het gekozen onderpand of de gekozen schuld is minder dan $2.000 waard                                 | 100% van je schuld in het gekozen asset                                                           |
+
+Deze limieten zijn constanten in `LiquidationLogic.sol` van Aave (aave-v3-origin, gelezen op 14 oktober 2026). Sinds v3.3 geldt de 50% voor de hele positie in plaats van per schuldasset. De v3.3-notities van Aave geven het voorbeeld van elk $3.000 schuld in GHO, USDC en DAI, $9.000 in totaal: alle $3.000 van een ervan kan in één aanroep worden afgelost, omdat 50% van het totaal $4.500 is.
+
+Een tweede regel voorkomt restjes (dust). Een gedeeltelijke liquidatie moet minstens $1.000 schuld in het afgeloste asset en minstens $1.000 onderpand in het genomen asset overlaten. Anders moet de liquidator die hele schuld of dat hele onderpand nemen, of de transactie wordt teruggedraaid.
+
+Een liquidatie neemt alleen onderpand ter waarde van de afgeloste schuld plus de bonus, niet al je onderpand. De liquidator lost de schuld af met eigen geld, dus de tokens die je hebt geleend blijven van jou; zolang het onderpand het dekt, is de bonus wat je verliest.
+
+Oudere gidsen beschrijven een vaste close factor van 50%, en de eigen Pool-contractreferentie op aave.com zegt nog steeds "close factor is 0.5" (geraadpleegd op 14 oktober 2026). Beide zijn verouderd: een vaste 50% was de regel van Aave V2, en de code van V3.7 waarop deze markten draaien gebruikt de regel van 50% of 100% uit de tabel.
+
+## Wat is de liquidatiebonus, en wie betaalt die?
+
+De liquidatiebonus, vaak liquidatieboete (liquidation penalty) genoemd, is het extra onderpand dat een liquidator krijgt bovenop de schuld die hij aflost, en de lener betaalt die. Bij een bonus van 5% kost het aflossen van 1.000 USDC van je schuld je 1.050 USDC aan onderpand. De treasury van Aave houdt een deel van de bonus als liquidation protocol fee (protocolvergoeding), dus de liquidator krijgt iets minder dan jij verliest.
+
+De bonus en de vergoeding die gelden, horen bij het onderpand dat wordt genomen, niet bij de schuld. Waarden van Aave V3, on-chain gelezen op 14 oktober 2026 (Ethereum-blok 26193284, Arbitrum-blok 514855406):
+
+| Markt         | Genomen onderpand | Liquidatiebonus | Protocolvergoeding (deel van de bonus) | Onderpand dat je verliest per $1.000 afgelost | Liquidator krijgt |
+| ------------- | ----------------- | --------------- | -------------------------------------- | --------------------------------------------- | ----------------- |
+| Ethereum Core | WETH              | 5%              | 10%                                    | $1.050                                        | $1.045            |
+| Ethereum Core | WBTC              | 5%              | 10%                                    | $1.050                                        | $1.045            |
+| Ethereum Core | USDC              | 4,5%            | 20%                                    | $1.045                                        | $1.036            |
+| Arbitrum      | WETH              | 5%              | 10%                                    | $1.050                                        | $1.045            |
+| Arbitrum      | WBTC              | 7%              | 10%                                    | $1.070                                        | $1.063            |
+| Arbitrum      | USDC (native)     | 5%              | 10%                                    | $1.050                                        | $1.045            |
+
+In E-Mode vervangt de bonus van de categorie die van het asset zelf als het genomen asset in de onderpandset van je categorie zit: 1% voor "ETH correlated" op Ethereum Core (gelezen bij Ethereum-blok 26193288, 14 oktober 2026), dus elke liquidatie kost minder. Governance kan elk van deze parameters wijzigen, en de risk stewards van Aave kunnen liquidatiebonussen binnen vastgestelde grenzen aanpassen, dus controleer de actuele waarden in de Aave-app.
+
+## Welk onderpand neemt de liquidator?
+
+De liquidator kiest. Elke liquidatie op Aave V3 noemt één onderpandasset om te nemen en één schuldasset om af te lossen, en de liquidator kiest het paar, dus jij hebt er geen zeggenschap over welk van je assets het eerst gaat. Alleen assets die je als onderpand hebt ingeschakeld, kunnen worden genomen; een gestort asset met "used as collateral" (gebruikt als onderpand) uitgeschakeld kan niet worden genomen, maar telt ook niet mee voor je health factor.
+
+Als het gekozen onderpand de aflossing plus de bonus niet kan dekken, verlies je dat hele asset (de liquidator krijgt het min de protocolvergoeding) en wordt er minder schuld afgelost. Omdat elke liquidatie één paar behandelt, kan een positie met meerdere assets in meerdere transacties worden geliquideerd, en zolang de health factor onder 1 blijft, kunnen er meer liquidaties volgen.
+
+## Rekenvoorbeeld: ETH daalt naar $1.420, daarna naar $1.330
+
+In dit voorbeeld lost een liquidatie bij een ETH-koers van $1.420 6.000 USDC af en kost die de lener $300 aan WETH; als niemand liquideert tot ETH op $1.330 staat, kan alle 12.000 USDC in één keer worden afgelost en verdubbelen de kosten tot $600.
+
+De positie: 10 WETH onderpand en 12.000 USDC schuld op Aave V3 Ethereum Core. WETH heeft een liquidatiedrempel van 83%, een bonus van 5% en een protocolvergoeding van 10% (on-chain gelezen bij blok 26193284, 14 oktober 2026). De ETH-koersen zijn illustratief, USDC wordt op $1,00 gezet en rente wordt genegeerd.
+
+Bij $2.400 is de health factor 24.000 × 0,83 ÷ 12.000 = 1,66. Die bereikt 1 bij een ETH-koers van 12.000 ÷ (10 × 0,83) = $1.445,78, en 0,95 bij $1.373,49.
+
+| ETH-koers                        | Health factor          | Maximum dat één liquidatie kan aflossen                                                                                                 |
+| -------------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Boven ongeveer $1.445,78         | 1,00 of hoger          | Niets; de positie kan niet worden geliquideerd                                                                                          |
+| Ongeveer $1.373,50 tot $1.445,78 | Tussen 0,95 en 1,00    | 50%: 6.000 USDC                                                                                                                         |
+| Ongeveer $1.260 tot $1.373,49    | Ongeveer 0,87 tot 0,95 | 100%: 12.000 USDC                                                                                                                       |
+| Onder ongeveer $1.260            | Onder ongeveer 0,87    | Minder dan 12.000 USDC: alle 10 WETH worden genomen en de rest wordt [oninbare schuld](#kan-een-liquidatie-oninbare-schuld-achterlaten) |
+
+### Stap 1: ETH op $1.420, health factor 0,982
+
+Bij $1.420 zijn de 10 WETH $14.200 waard, dus de health factor is 14.200 × 0,83 ÷ 12.000 = 0,982. Dat ligt boven 0,95, en je WETH-onderpand en je USDC-schuld zijn elk meer dan $2.000 waard, dus een liquidator kan maximaal 6.000 USDC aflossen.
+
+- De liquidator lost 6.000 USDC van je schuld af.
+- Je positie verliest 6.000 × 1,05 = $6.300 aan WETH (4,4366 WETH).
+- De protocolvergoeding is 10% van de bonus van $300: $30 (0,0211 WETH) gaat naar de treasury van Aave en de liquidator krijgt $6.270 (4,4155 WETH).
+- Je houdt 5,5634 WETH ($7.900) en 6.000 USDC schuld over: een health factor van 7.900 × 0,83 ÷ 6.000 = 1,093.
+
+Je nettopositie (onderpand min schuld) daalt van $2.200 naar $1.900. Het verschil van $300 is de bonus.
+
+### Stap 2: ETH op $1.330, health factor 1,024
+
+De overgebleven 5,5634 WETH zijn bij $1.330 $7.399 waard, een health factor van 7.399 × 0,83 ÷ 6.000 = 1,024, dus de positie kan bij deze koers niet opnieuw worden geliquideerd. De nieuwe liquidatieprijs is ongeveer $1.299, uit 6.000 ÷ (5,5634 × 0,83). Het halveren van de schuld duwde de liquidatieprijs omlaag; de bonus van $300 was de prijs daarvoor.
+
+### Wat als niemand liquideert tot ETH op $1.330 staat?
+
+Als de eerste liquidatie pas gebeurt als ETH al op $1.330 staat, heeft de oorspronkelijke positie een health factor van 13.300 × 0,83 ÷ 12.000 = 0,920. Dat is op of onder 0,95, dus een liquidator kan alle 12.000 USDC in één keer aflossen. Je positie verliest 12.000 × 1,05 = $12.600 aan WETH (9,4737 WETH), waarvan $60 de protocolvergoeding is en $12.540 naar de liquidator gaat. Je houdt 0,5263 WETH ($700) en bent niets meer verschuldigd; de regel tegen restjes geldt niet, omdat de schuld volledig is afgelost.
+
+De nettopositie daalt van $1.300 naar $700. Het verlies van $600 is twee keer dat van stap 1, omdat er twee keer zoveel schuld werd afgelost tegen dezelfde bonus van 5%.
+
+## Kan een liquidatie oninbare schuld achterlaten?
+
+Ja. Oninbare schuld (bad debt) ontstaat als het onderpand van een positie minder waard is dan de schuld plus de liquidatiebonus, zodat zelfs het nemen van al het onderpand niet alles aflost. Sinds Aave V3.3 verbrandt het contract de resterende schuld als een liquidatie al het onderpand van een lener opmaakt en er schuld overblijft, en registreert die als een "deficit" (tekort) op dat asset. De lener houdt geen onderpand en geen schuld over, en het verlies ligt bij het protocol.
+
+Voorbeeld met de WETH-parameters van Ethereum Core: $10.000 aan WETH als enig onderpand tegenover 9.800 USDC schuld is een health factor van 0,847. Alle 9.800 USDC aflossen bij een bonus van 5% zou $10.290 aan WETH vergen, dus alle $10.000 aan WETH wordt genomen (waarvan ongeveer $47,62 als protocolvergoeding) en ongeveer 9.524 USDC wordt afgelost (10.000 ÷ 1,05). De resterende ongeveer 276 USDC wordt een tekort.
+
+Umbrella, het staking-vangnet van Aave, kan aTokens van stakers in het getroffen asset verbranden om zulke tekorten te dekken; de activering begon op Ethereum (Aave-docs, geraadpleegd op 14 oktober 2026). Het beschermt het protocol, niet de lener, wiens onderpand dan al weg is.
+
+Dit is op Aave V3 gebeurd. Nadat USDC op 11 maart 2023 rond $0,88 had gestaan, registreerde de post-mortem van Gauntlet ongeveer $280.000 oninbare schuld in E-Mode op V3 Avalanche en ongeveer $20.000 op V3 Arbitrum, en merkte op dat zodra onderpand minder waard is dan de schuld maal één plus de bonus, elke gedeeltelijke liquidatie een account verder onder water duwt. Dat was voordat v3.3 het deficit-mechanisme toevoegde.
+
+## Stoppen liquidaties als een markt bevroren is of een L2-sequencer uitvalt?
+
+Nee, in beide gevallen niet. Op Aave V3.7 kan een bevroren asset nog steeds worden geliquideerd, en liquidaties op Arbitrum, Optimism en Base hangen niet meer af van of de L2-sequencer draait. Wat liquidaties wel blokkeert, is een pauze.
+
+- **Bevroren:** bevriezen blokkeert nieuwe posities in een asset, maar de liquidatiecontrole negeert het. Tijdens de depeg (loslaten van de koppeling aan de dollar) van USDC in maart 2023 werden stablecoins op Aave V3 Avalanche bevroren en gingen liquidaties door. Het gebridgede USDC.e op Arbitrum was op 14 oktober 2026 bevroren met een LTV van 0 (Arbitrum-blok 514855406), maar telt nog steeds mee voor de health factor tegen zijn liquidatiedrempel van 78% en kan worden genomen.
+- **L2-sequencer:** vóór v3.7 kon een sentinel-contract in L2-markten liquidaties en lenen blokkeren zolang de sequencer plat lag en een respijtperiode lang nadat hij terug was. Aave V3.7, waarop de V3-markten op Arbitrum, Optimism en Base per 14 oktober 2026 allemaal draaien, heeft de sentinel verwijderd. Een storing houdt nog steeds ieders transacties op, die van leners en liquidators gelijk, maar een positie die tijdens de storing onder 1 is gezakt, kan nu worden geliquideerd zodra de sequencer terug is.
+- **Gepauzeerd:** een gepauzeerd onderpand- of schuldasset blokkeert elke liquidatie waarbij het betrokken is. Bij het opheffen van de pauze kan de emergency guardian van Aave of governance een respijtperiode van maximaal 4 uur instellen waarin liquidaties geblokkeerd blijven, zodat leners kunnen aflossen of onderpand bijstorten; lenen is in die periode toegestaan.
+
+## Hoe verschillen liquidaties op Aave V4?
+
+Aave V4, live op Ethereum sinds 30 maart 2026 en sindsdien op Avalanche, Arc en Base, vervangt de close factor door een doel-health factor en betaalt een bonus die groeit naarmate de health factor daalt. V3 blijft ernaast draaien met zijn eigen regels.
+
+- **Doel-health factor in plaats van 50% of 100%.** Een liquidator op V4 kan alleen zoveel schuld aflossen als nodig is om de positie terug te brengen naar de doel-health factor (target health factor) van haar Spoke, 1,24 op de Ethereum Main Spoke (on-chain gelezen bij Ethereum-blok 26193995, 14 oktober 2026). De uitzondering is wanneer dat een heel klein restant zou overlaten; dan kan de hele schuld in die reserve worden afgelost.
+- **Een stijgende bonus.** De docs van Aave noemen het een Dutch auction (afslagveiling). Op de Ethereum Main Spoke begint de bonus op 90% van het maximum van het asset net onder een health factor van 1 en bereikt hij het volle maximum bij 0,90 of lager. Voor WETH, met een maximum van 5,55% (Aave V4 API, 14 oktober 2026), is dat ongeveer 5,0% net onder 1 en 5,55% bij 0,90. Er gaat een vergoeding van 10% af van de bonus, net als in V3.
+
+Tokenping volgt ook posities op Aave V4: elke Spoke op Ethereum, Avalanche, Arc en Base (20 per 16 oktober 2026), met een aparte alert voor elke Spoke, omdat elke Spoke een eigen positie en health factor bijhoudt.
+
+## Hoe verschilt een liquidatie op Aave van een op Morpho?
+
+Op Morpho Blue is er geen close factor: zodra de health factor van een positie onder 1 zit, kan een liquidator alle schuld in één aanroep aflossen. De incentive hangt alleen af van de liquidatie-LTV (LLTV) van de markt, ongeveer 0,6% bij een LLTV van 98% en begrensd op 15% bij lage LLTV's, en als het onderpand eerst op is, wordt de resterende schuld afgeschreven ten laste van de uitleners van de markt. [Hoe liquidatie op Morpho werkt](/nl/blog/hoe-werkt-liquidatie-op-morpho) geeft de formule, de incentive bij elke LLTV en een rekenvoorbeeld.
+
+## Wat kun je doen voordat je health factor 1 bereikt?
+
+Voordat de health factor 1 bereikt, kun je schuld aflossen of onderpand bijstorten; beide verhogen hem meteen en geen van beide kost een bonus. Zodra hij onder 1 zit, kan een liquidator eerder zijn dan jij, en zelfs een gedeeltelijke liquidatie kost je de bonus op het genomen onderpand: $300 voor 6.000 USDC afgelost bij een bonus van 5%.
+
+Wachten tot het laatste moment is riskant, omdat transacties kunnen mislukken of blijven hangen. In mei 2021 probeerde een gebruiker op het Polygon-forum af te lossen bij een health factor van 1,01, kreeg steeds foutmeldingen en werd geliquideerd voordat de aflossing doorging. In december 2024 beschreef een gebruiker op het Aave-forum meer dan een uur aan aflospogingen die steeds bleven hangen voordat de positie werd geliquideerd.
+
+De mogelijkheden staan in [hoe je je health factor op Aave verhoogt](/nl/blog/aave-liquidatie-voorkomen), en de redenen waarom een health factor daalt terwijl je niets doet in [waarom je Aave health factor vanzelf daalt](/nl/blog/waarom-daalde-je-aave-health-factor).
+
+Tokenping controleert je health factor op Aave elke 5 minuten, in elke Aave V3-markt op 21 netwerken en in elke Spoke van Aave V4, en stuurt je een bericht via Signal, Telegram of e-mail als die onder een drempel zit die je kiest (1,1 tot 10), en herhaalt dat bij elke controle tot hij herstelt. Een liquidatie kost minstens de bonus op het genomen onderpand. Een alert boven 1,0 kan je tijd geven om af te lossen of onderpand bij te storten, maar een snelle koersbeweging kan de health factor nog steeds tussen twee controles onder 1 brengen, en een alert kan niet voor je ingrijpen. Je kunt [je Aave V3 health factor bekijken](/nl/aave) of lezen [hoe je een health factor-alert instelt](/nl/blog/aave-health-factor-alert-instellen).
+
+## Bronnen
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), aave-dao/aave-v3-origin, branch main: regels voor de close factor, restjes en oninbare schuld (geraadpleegd op 14 oktober 2026)
+- [Aave V3 ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): voorwaarden voor liquidatie (geraadpleegd op 14 oktober 2026)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): oninbare schuld, close factor over de hele positie en het voorbeeld met GHO/USDC/DAI, drempel van $2.000 (geraadpleegd op 14 oktober 2026)
+- [Aave v3.1 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): respijtperiode voor liquidaties van maximaal 4 uur (geraadpleegd op 14 oktober 2026)
+- [Aave V3 PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol): pauzeren en de pauze opheffen met een respijtperiode is voorbehouden aan de emergency admin of pool admin, `MAX_GRACE_PERIOD = 4 hours` (geraadpleegd op 14 oktober 2026)
+- [Aave governance documentation](https://aave.com/docs/ecosystem/governance): de Protocol Emergency Guardian heeft de rol van emergency admin (geraadpleegd op 14 oktober 2026)
+- [Aave V3 Risk Stewards README](https://github.com/aave-dao/aave-v3-risk-stewards): parameters die de stewards binnen vastgestelde grenzen mogen wijzigen (geraadpleegd op 14 oktober 2026)
+- [Aave v3.7 PriceOracleSentinel removal](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/sentinel-removal.md) (geraadpleegd op 14 oktober 2026)
+- [Aave V3 Pool contract reference](https://aave.com/docs/aave-v3/smart-contracts/pool), die nog de close factor van vóór v3.3 vermeldt (geraadpleegd op 14 oktober 2026)
+- [Aave Umbrella documentation](https://aave.com/docs/aave-v3/umbrella) (geraadpleegd op 14 oktober 2026)
+- [Aave V3 PoolDataProvider op Ethereum](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): reserveconfiguratie en liquidation protocol fee voor WETH, WBTC en USDC bij blok 26193284, ongewijzigd opnieuw gelezen bij blok 26193992 (geraadpleegd op 14 oktober 2026)
+- [Aave V3 PoolDataProvider op Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): dezelfde gegevens voor WETH, WBTC, native USDC en USDC.e bij blok 514855406 (geraadpleegd op 14 oktober 2026)
+- [Aave V3 Ethereum Core Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): E-Mode-categorie 1 "ETH correlated" bij blok 26193288 (geraadpleegd op 14 oktober 2026)
+- [Aave V4 liquidations documentation](https://aave.com/docs/aave-v4/positions/liquidations) (geraadpleegd op 14 oktober 2026)
+- [Aave V4 overview](https://github.com/aave/aave-v4/blob/main/docs/overview.md) en [V4 LiquidationLogic.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/libraries/LiquidationLogic.sol), aave/aave-v4 main (geraadpleegd op 14 oktober 2026)
+- [Aave V4 Ethereum Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485): doel-health factor en bonusinstellingen bij blok 26193995 (geraadpleegd op 14 oktober 2026)
+- [Aave V4 public GraphQL API](https://api.v4.aave.com/graphql), query `reserves`: maximale liquidatiebonus en liquidatievergoeding voor WETH op de Ethereum Main Spoke (geraadpleegd op 14 oktober 2026)
+- [Aave docs changelog](https://aave.com/docs/resources/changelog): lanceringsdata van V4 (geraadpleegd op 14 oktober 2026)
+- [Gauntlet, "Aave Resilient Through USDC Volatility"](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), geplaatst op 17 maart 2023 (geraadpleegd op 14 oktober 2026)
+- [Polygon-forum, "Liquidation on polygon AAVE -JSON ERROR"](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067), geplaatst op 18 mei 2021 (geraadpleegd op 14 oktober 2026)
+- [Aave-forum, "Repeatedly Failed Repayment Attempts Leading to Liquidation"](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379), geplaatst op 23 december 2024 (geraadpleegd op 14 oktober 2026)
+- [Aave interface pull request #2084](https://github.com/aave/interface/pull/2084), die in mei 2024 de enige alertintegratie van de app verwijderde (geraadpleegd op 14 oktober 2026)
+
+_Educatieve inhoud, geen financieel advies. Alerts verkleinen het risico, maar voorkomen geen liquidatie._

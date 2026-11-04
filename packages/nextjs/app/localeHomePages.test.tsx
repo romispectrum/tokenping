@@ -101,6 +101,13 @@ const COPY: Partial<Record<Locale, CopyRules>> = {
     wrongAddress: /(?<!\p{L})(?:kamu|kau|engkau|kalian)(?!\p{L})/iu,
     claims: /waktu nyata|(?<!\p{L})(?:seketika|instan)(?!\p{L})|multi[- ]?protokol/iu,
   },
+  nl: {
+    h1Channels: /Signal en e-mail/,
+    badges: ["Signal", "E-mail"],
+    // Informal je throughout: never the formal u or uw.
+    wrongAddress: /(?<!\p{L})(?:u|uw)(?!\p{L})/u,
+    claims: /real[- ]?time|(?<!\p{L})onmiddellijk|multi[- ]?protocol/iu,
+  },
 };
 
 const TRANSLATED = LOCALES.filter(locale => locale !== "en");

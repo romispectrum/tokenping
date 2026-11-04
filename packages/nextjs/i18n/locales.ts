@@ -1,6 +1,6 @@
 // The site's languages. English is served at the root; the others under their prefix (i18n/localePaths.ts).
 
-export const LOCALES = ["en", "cs", "es", "hi", "de", "vi", "fr", "pt", "it", "pl", "tr", "id"] as const;
+export const LOCALES = ["en", "cs", "es", "hi", "de", "vi", "fr", "pt", "it", "pl", "tr", "id", "nl"] as const;
 
 export type Locale = (typeof LOCALES)[number];
 
@@ -160,6 +160,16 @@ export const LOCALE_INFO: Record<Locale, LocaleInfo> = {
     name: "Bahasa Indonesia",
     englishName: "Indonesian",
     short: "ID",
+  },
+  // Decimal comma, dot thousands ("12.000,5"), dates "14 oktober 2026".
+  nl: {
+    htmlLang: "nl",
+    ogLocale: "nl_NL",
+    intl: "nl-NL",
+    numbers: "nl-NL",
+    name: "Nederlands",
+    englishName: "Dutch",
+    short: "NL",
   },
 };
 

@@ -1,0 +1,156 @@
+export const meta = {
+  slug: "aave-rente",
+  title: "Hoe de rente op Aave werkt, en waarom die piekt",
+  description:
+    "De leenrente op Aave volgt een benuttingscurve: vlak tot een optimaal niveau, steil daarboven. De formule, echte parameters, pieken en wat je kunt doen.",
+  h1: "Hoe werkt de rente op Aave, en waarom piekt de leenrente?",
+  publishedAt: "2026-10-25",
+  primaryQuestion: "Hoe bepaalt Aave de leenrente en de stortingsrente, en waarom pieken ze?",
+  readingMinutes: 9,
+};
+
+<ShortAnswer>
+  Op Aave V3 volgt de variabele leenrente van elke asset een curve die governance vastlegt: hij stijgt rustig met de
+  benutting (utilization), het deel van de gestorte tokens dat is uitgeleend, tot een optimaal niveau, en daarboven
+  steil. Uitleners verdienen de leenrente maal de benutting, min de reserve factor. De rente wordt bij elke storting,
+  lening, aflossing en opname opnieuw berekend, dus één grote opname kan de benutting voorbij het optimale niveau duwen
+  en de rente binnen één blok vermenigvuldigen: USDC op Ethereum Core ging op 14 oktober 2026 van 4,50% naar 13,67% APR
+  en stond ongeveer 36 minuten later weer op 4,76%. Alle schuld op Aave V3 heeft een variabele rente.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* De cijfers en de bloknummers waarbij ze zijn gelezen: content/blog/snapshots/aave-interest-rates.md */}
+
+## Wat bepaalt de leenrente op Aave?
+
+Op Aave V3 wordt de leenrente van een asset door twee dingen bepaald: de benutting en de renteparameters. De benutting is het deel van de pool van de asset dat is uitgeleend: de schuld gedeeld door de schuld plus de tokens die nog beschikbaar zijn. De parameters zijn vier getallen per asset, vastgelegd door de governance van Aave, en de Risk Stewards van Aave mogen ze aanpassen in begrensde stappen en met minimale wachttijden:
+
+- **Optimale benutting (optimal usage ratio):** de benutting waarbij de curve knikt.
+- **Basisrente (base rate):** de leenrente bij 0% benutting.
+- **Slope 1:** hoeveel de rente stijgt van 0% tot de optimale benutting.
+- **Slope 2:** hoeveel hij daarna nog stijgt van de optimale benutting tot 100%.
+
+Gelezen op 25 oktober 2026 bij Ethereum-blok 26269328 en Arbitrum-blok 518125419 waren de parameters en rentes van een paar veelgebruikte assets:
+
+| Markt en asset     | Optimale benutting | Basis | Slope 1 | Slope 2 | Benutting     | Leen-APR | Stortings-APR |
+| ------------------ | ------------------ | ----- | ------- | ------- | ------------- | -------- | ------------- |
+| Ethereum Core USDC | 94%                | 0%    | 4,5%    | 10%     | 93,72%        | 4,49%    | 3,78%         |
+| Ethereum Core USDT | 92%                | 0%    | 4,5%    | 10%     | 87,81%        | 4,30%    | 3,39%         |
+| Ethereum Core WETH | 92%                | 0%    | 2,2%    | 6%      | 81,31%        | 1,94%    | 1,31%         |
+| Ethereum Core GHO  | 99%                | 4,5%  | 0%      | 0%      | niet gebruikt | 4,50%    | 0%            |
+| Arbitrum USDC      | 90%                | 0%    | 4%      | 10%     | 77,32%        | 3,44%    | 2,39%         |
+
+GHO is de uitzondering: beide slopes zijn nul, dus de rente blijft vlak, wat de benutting ook is, en hij wordt met de hand gewijzigd (zie [GHO en Aave V4](#hoe-wordt-de-rente-bepaald-voor-gho-en-op-aave-v4)).
+
+## Hoe wordt de leenrente op Aave berekend?
+
+De leenrente van Aave V3 is een rechte lijn tot de optimale benutting en een veel steilere lijn daarboven. Met U voor de benutting:
+
+**Tot de optimale benutting: leenrente = basis + slope 1 × U ÷ optimale benutting**
+
+**Daarboven: leenrente = basis + slope 1 + slope 2 × (U − optimale benutting) ÷ (1 − optimale benutting)**
+
+In het contract is U de totale schuld gedeeld door de totale schuld plus de tokens die de pool nog heeft. Met de parameters van USDC op Ethereum Core is de rente bij elke benutting:
+
+| Benutting      | Leen-APR |
+| -------------- | -------- |
+| 50%            | 2,39%    |
+| 80%            | 3,83%    |
+| 90%            | 4,31%    |
+| 94% (optimaal) | 4,50%    |
+| 95%            | 6,17%    |
+| 96%            | 7,83%    |
+| 98%            | 11,17%   |
+| 100%           | 14,50%   |
+
+Onder 94% verschuiven tien punten benutting de rente met minder dan een half punt. Daarboven voegt elk punt ongeveer 1,67 punt toe, en de laatste zes punten benutting verdrievoudigen de rente ruimschoots. Gelezen op 25 oktober 2026 stond USDC op 93,72%, net onder de knik: 4,5% × 0,9372 ÷ 0,94 geeft de 4,49% die hij rekende.
+
+De curve is zo bedoeld. Onder het optimale niveau houdt goedkoop lenen de pool in gebruik; daarboven maakt de steile rente lenen zo duur dat sommige leners aflossen en sommige houders storten, wat de benutting weer omlaag brengt en tokens beschikbaar houdt voor uitleners die willen opnemen.
+
+## Waarom piekt de leenrente op Aave?
+
+De leenrente op Aave piekt als de benutting de optimale benutting passeert, meestal omdat een grote uitlener opneemt of een grote lener leent. De rente wordt in dezelfde transactie opnieuw berekend, en elke lener van die asset betaalt vanaf dat moment de nieuwe rente tot de volgende wijziging.
+
+Op 14 oktober 2026 duwde één opname van precies 133.898.000 USDC uit Ethereum Core de benutting in één blok van 93,92% naar 99,50%:
+
+| Ethereum-blok (UTC)          | Wat er gebeurde                                | Benutting      | Leen-APR van USDC |
+| ---------------------------- | ---------------------------------------------- | -------------- | ----------------- |
+| 26194052 (14 okt., 23:32:47) | Ervoor                                         | 93,92%         | 4,50%             |
+| 26194053 (14 okt., 23:32:59) | 133.898.000 USDC opgenomen                     | 99,50%         | 13,67%            |
+| 26194088 (14 okt., 23:39:59) | Hoogste punt in het tijdvak                    | ongeveer 99,8% | 14,18%            |
+| 26194231 (15 okt., 00:08:35) | Hetzelfde adres stortte 133.898.000 USDC terug | 94,16%         | 4,76%             |
+
+Leners betaalden 36 minuten lang ongeveer drie keer de gewone rente, en de formule hierboven reproduceert elk van die percentages uit de benutting. Een piek duurt zo lang als de benutting hoog blijft: hier kwamen dezelfde tokens terug, maar in andere gevallen zijn er nieuwe uitleners of aflossingen nodig, aangetrokken door de hoge rente, om hem omlaag te brengen.
+
+Twee andere dingen veranderen een leenrente. Governance of de Risk Stewards kunnen de vier parameters wijzigen, wat de hele curve in één keer verschuift. En tussen transacties verandert de rente niet: Aave berekent hem opnieuw bij elke storting, lening, aflossing, opname en liquidatie van die asset, en de rente loopt seconde voor seconde op tegen dat percentage tot de volgende.
+
+## Waarom verdienen uitleners minder dan leners betalen?
+
+Uitleners verdienen minder dan leners betalen, omdat alleen het uitgeleende deel van de pool rente betaalt, en het protocol daar een deel van houdt. De stortingsrente is:
+
+**Stortingsrente = leenrente × benutting × (1 − reserve factor)**
+
+Voor USDC op Ethereum Core op 25 oktober 2026: 4,4866% × 0,9372 × (1 − 0,10) = 3,78%. De reserve factor, 10% voor USDC en 15% voor WETH, gaat naar de treasury van Aave. Waar een reserve een tekort heeft door oninbare schuld (bad debt), telt het contract dat ook mee aan de stortingskant, wat de stortingsrente iets verlaagt.
+
+## Wat is het verschil tussen APR en APY op Aave?
+
+De contracten slaan rentes op als APR, en de Aave-app toont APY, waarin de rente-op-rente is meegenomen. De rekenbibliotheek van de app rekent de APR elke seconde samengesteld, over een jaar van 31.536.000 seconden:
+
+**APY = (1 + APR ÷ 31.536.000)^31.536.000 − 1**
+
+De APR van 4,4866% op USDC in Ethereum Core verschijnt in de app als een APY van 4,59%. Op deze niveaus is het verschil ongeveer een tiende punt; bij een APR van 14% is het ongeveer één punt (15,0% APY).
+
+## Hoe beïnvloeden rentepieken je health factor?
+
+Een korte piek verschuift je health factor (gezondheidsfactor) nauwelijks; een hoge rente die maanden aanhoudt wel. Rente komt bij je schuld, en meer schuld verlaagt de health factor, zoals [de oorzaak rente in waarom je health factor daalt](/nl/blog/waarom-daalde-je-aave-health-factor#oorzaak-3-groeide-de-rente-op-je-schuld-sneller-dan-op-je-onderpand) uitlegt.
+
+Neem 10 WETH gestort tegen 12.000 USDC geleend op Ethereum Core, met de liquidatiedrempel (liquidation threshold) van WETH van 83% (gelezen op 14 oktober 2026) en een illustratieve ETH-prijs van $2.400: de health factor is 1,66. Inclusief wat de WETH verdient tegen zijn stortingsrente van 1,31%:
+
+| Hoe lang de rente aanhoudt | Bij 4,49% (25 oktober 2026)        | Bij 14,50% (de top van de curve) |
+| -------------------------- | ---------------------------------- | -------------------------------- |
+| 36 minuten                 | ongeveer 0,04 USDC aan rente, 1,66 | ongeveer 0,12 USDC, 1,66         |
+| 30 dagen                   | ongeveer 1,66                      | ongeveer 1,64                    |
+| Eén jaar                   | ongeveer 1,61                      | ongeveer 1,45                    |
+
+De piek van 14 oktober kostte deze positie ongeveer 12 cent. Een markt die een jaar lang aan de top van zijn curve blijft, zou haar van 1,66 naar ongeveer 1,45 brengen zonder enige prijsbeweging, en daarom verdient een langzaam afglijden een alertdrempel met ruimte over ([hoeveel buffer een health factor je geeft](/nl/blog/veilige-aave-health-factor#hoe-snel-vreten-rente-en-parameterwijzigingen-je-buffer-op)).
+
+## Wat kun je doen als je leenrente omhoogschiet?
+
+Als je leenrente omhoogschiet, controleer dan eerst de benutting van de asset op zijn pagina in de Aave-app: net boven de optimale benutting daalt de rente weer zodra de benutting daalt. Daarna heb je vier opties, elk met een prijs:
+
+- **Wachten.** Een piek door één grote opname kan eindigen als die tokens terugkomen, zoals op 14 oktober 2026. Niets garandeert dat ze terugkomen, en intussen betaal je de hoge rente.
+- **Een deel van de schuld aflossen.** Dat verlaagt zowel je rente als je risico; [hoe je je Aave health factor verhoogt](/nl/blog/aave-liquidatie-voorkomen) behandelt aflossen met je eigen tokens of met je onderpand.
+- **De schuld naar een andere asset swappen.** De interface van Aave Labs heeft een debt swap die de ene geleende asset in één transactie vervangt door een andere, op de markten Ethereum Core, Prime en EtherFi en op Arbitrum, Avalanche, Base, BNB Chain, Optimism, Polygon, Gnosis en Sonic, volgens de docs van Aave. Voor Metis, Scroll, ZKsync, Celo, Soneium, Linea, Plasma en Ink staat hij niet vermeld. De nieuwe asset heeft een eigen curve en een eigen risico als zijn prijs anders beweegt dan je oude schuld.
+- **In een andere markt lenen.** Elke markt heeft een eigen pool en een eigen benutting: op 25 oktober 2026 kostte USDC 4,49% op Ethereum Core en 3,44% op Arbitrum. Overstappen betekent aflossen in de ene markt en lenen in de andere, met onderpand op dat netwerk.
+
+## Hoe wordt de rente bepaald voor GHO en op Aave V4?
+
+GHO, de eigen stablecoin van Aave, heeft een vlakke leenrente die door mensen wordt gekozen in plaats van door de curve. Op Ethereum Core staan beide slopes in de parameters op nul, dus de rente is de basisrente, 4,50% op 25 oktober 2026. Hij wordt gewijzigd via een GHO-stewardcontract door een Risk Council die met 2 van de 3 handtekeningen beslist: met hoogstens 5 procentpunt per wijziging en hoogstens één keer per dag. De laatste wijziging, op 3 oktober 2026, verhoogde hem van 4,25% naar 4,50%; sinds november 2024 is hij 44 keer gewijzigd, tussen 3,00% en 14,50%. De oude korting voor houders van stkAAVE is met Aave v3.4 geschrapt.
+
+Aave V4 houdt een benuttingscurve, maar de docs beschrijven die als ingesteld per asset in de Hub, de pool die aan elke Spoke uitleent. Bovenop die gedeelde rente betaalt elke lener een User Risk Premium (risico-opslag per gebruiker) die afhangt van de kwaliteit van zijn onderpand: het voorbeeld van Aave is een opslag van 50% op een basisrente van 5%, wat 7,5% geeft. Twee leners van dezelfde asset op V4 kunnen dus verschillende rentes betalen, en de [sectie over V4 in de gids over de health factor](/nl/blog/aave-health-factor-uitgelegd#is-de-health-factor-anders-op-aave-v4) behandelt wat V4 verder verandert.
+
+## Kun je een vaste rente krijgen op Aave?
+
+Nee. Aave V3 had ooit een optie met stabiele rente, maar die is in 2024 na een bugmelding volledig uitgefaseerd, en Aave v3.2 heeft de code verwijderd. Elke lening op Aave V3 betaalt de variabele rente, en de vlakke rente van GHO kan binnen de grenzen van zijn steward nog altijd op elk moment worden gewijzigd.
+
+## Kan een alert je waarschuwen voor stijgende rente?
+
+Een health factor-alert volgt geen rentes; hij volgt wat rentes met je positie doen. Tokenping controleert je health factor op Aave V3 en V4 elke 5 minuten op 22 netwerken en stuurt je een bericht via Signal, Telegram of e-mail zolang hij onder de drempel ligt die je hebt ingesteld (1,1 tot 10). Een piek zoals die van 14 oktober 2026 zet hem niet in gang, omdat die de health factor nauwelijks verschuift; maanden van hoge rente wel, zodra de schuld zo ver is gegroeid dat hij je drempel passeert.
+
+Wil je een bericht over de rente zelf, dan sturen sommige andere tools rentealerts, en [onze vergelijking van alerttools voor Aave](/nl/blog/tools-voor-aave-liquidatie-alerts) zegt wat elk ervan volgt. Hoe je een health factor-alert instelt, staat in [hoe je een health factor-alert instelt](/nl/blog/aave-health-factor-alert-instellen), en je kunt eerst [je Aave V3 health factor bekijken](/nl/aave); je posities bekijken kan zonder betaling.
+
+## Bronnen
+
+- [DefaultReserveInterestRateStrategyV2.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/misc/DefaultReserveInterestRateStrategyV2.sol) en [ReserveLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ReserveLogic.sol): de rentecurve, de benutting, de stortingsrente en wanneer rentes opnieuw worden berekend (aave-v3-origin, geraadpleegd op 25 oktober 2026)
+- [Rentestrategie van Aave V3 Ethereum Core](https://etherscan.io/address/0x9ec6F08190DeA04A54f8Afc53Db96134e5E3FdFB#readContract) en [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): parameters en rentes bij blok 26269328; USDC bij blokken 26194052, 26194053, 26194088, 26194230 en 26194231 (geraadpleegd op 25 oktober 2026)
+- [Rentestrategie van Aave V3 Arbitrum](https://arbiscan.io/address/0x429F16dBA3B9e1900087Cbaa7b50D38Bc60fB73F#readContract): parameters en rentes van USDC bij blok 518125419 (geraadpleegd op 25 oktober 2026)
+- [Aave Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): renteparameters horen bij de waarden die stewards mogen wijzigen, met een maximale wijziging en een minimale wachttijd per aanpassing (geraadpleegd op 25 oktober 2026)
+- [calculateCompoundedRate in aave-utilities](https://github.com/aave/aave-utilities/blob/master/packages/math-utils/src/formatters/compounded-interest/calculate-compounded-interest.ts): van APR naar APY over 31.536.000 seconden (geraadpleegd op 25 oktober 2026)
+- [Swapfuncties van Aave](https://aave.com/docs/aave-v3/smart-contracts/swap-features.md): debt swap en aflossen met onderpand, en de markten die ze ondersteunen (geraadpleegd op 25 oktober 2026)
+- [GHO Stewards: October 2026 GHO borrow rate update](https://governance.aave.com/t/gho-stewards-october-2026-gho-borrow-rate-update/25754) (TokenLogic, 2 oktober 2026, geraadpleegd op 25 oktober 2026) en het [GHO-stewardcontract](https://etherscan.io/address/0x98217A06721Ebf727f2C8d9aD7718ec28b7aAe34#readContract): grenzen per aanpassing en de rentegeschiedenis sinds november 2024 (geraadpleegd op 25 oktober 2026)
+- [Functies van Aave v3.4](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.4/Aave-v3.4-features.md): het schrappen van de stkAAVE-korting op GHO (geraadpleegd op 25 oktober 2026)
+- [BGD: Full deprecation of stable rate](https://governance.aave.com/t/bgd-full-deprecation-of-stable-rate/16473) (31 januari 2024) en [functies van Aave v3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): stabiele rente verwijderd (geraadpleegd op 25 oktober 2026)
+- [Documentatie van Aave V4](https://aave.com/docs/aave-v4.md) en [posities in V4](https://aave.com/docs/aave-v4/positions.md): de rentecurve per asset in de Hub en de User Risk Premium (geraadpleegd op 25 oktober 2026)
+
+_Educatieve inhoud, geen financieel advies. Alerts verkleinen het risico, maar voorkomen geen liquidatie._

@@ -6,6 +6,7 @@ import { RULES as fr } from "./fr";
 import { RULES as hi } from "./hi";
 import { RULES as id } from "./id";
 import { RULES as it } from "./it";
+import { RULES as nl } from "./nl";
 import { RULES as pl } from "./pl";
 import { RULES as pt } from "./pt";
 import { RULES as tr } from "./tr";
@@ -16,4 +17,4 @@ import type { Localized } from "~~/i18n/locales";
 export type { BannedPattern, LanguageRules } from "./types";
 
 /** Every language's copy rules; a new language is a type error here until it has its file. */
-export const LANGUAGE_RULES: Localized<LanguageRules> = { en, cs, es, hi, de, vi, fr, pt, it, pl, tr, id };
+export const LANGUAGE_RULES: Localized<LanguageRules> = { en, cs, es, hi, de, vi, fr, pt, it, pl, tr, id, nl };

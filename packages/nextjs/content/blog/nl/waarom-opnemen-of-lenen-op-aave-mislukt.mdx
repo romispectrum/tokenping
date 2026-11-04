@@ -1,0 +1,133 @@
+export const meta = {
+  slug: "waarom-opnemen-of-lenen-op-aave-mislukt",
+  title: "Waarom kan ik niet opnemen of lenen op Aave? 9 oorzaken",
+  description:
+    "Waarom opnemen, lenen of aflossen op Aave V3 mislukt: de health factor-check, vrije liquiditeit, supply en borrow caps, bevroren of gepauzeerde reserves.",
+  h1: "Waarom mislukt mijn opname, lening of aflossing op Aave?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "Waarom mislukt een transactie om op Aave op te nemen, te lenen of af te lossen?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Een transactie op Aave V3 mislukt als een van de controles van het Pool-contract haar weigert, en de reden is bijna
+  altijd een van negen. De opname zou je health factor (gezondheidsfactor) onder 1 brengen. De reserve heeft minder
+  niet-uitgeleende liquiditeit dan je vraagt. De supply cap of de borrow cap van het asset is vol. De reserve is
+  bevroren (geen nieuwe stortingen of leningen) of gepauzeerd (helemaal niets, ook geen aflossingen). Het asset is niet
+  leenbaar, of niet leenbaar in je E-Mode-categorie. Je hebt onderpand met een loan-to-value (LTV) van 0, dat er eerst
+  uit moet. Of een aflossing noemt schuld die je niet hebt of tokens die je niet hebt goedgekeurd. Op Ethereum Core
+  waren op 29 oktober 2026 35 van de 66 genoteerde reserves bevroren, was de supply cap van LBTC vol tot op de laatste
+  0,07 LBTC, en was van de 2.347,5 miljoen gestorte USDC maar 134,4 miljoen beschikbaar om op te nemen.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* De cijfers en de bloknummers waarop ze zijn gelezen: content/blog/snapshots/why-aave-withdraw-or-borrow-fails.md */}
+
+## Welke controles moet een Aave-transactie doorstaan?
+
+Elke storting, opname, lening en aflossing op Aave V3 loopt via het Pool-contract, en de Pool voert een lijst controles uit in een bibliotheek die `ValidationLogic` heet voordat hij een token verplaatst. Elke controle die faalt, stopt de hele transactie met een benoemde fout: `ReserveFrozen`, `SupplyCapExceeded`, `HealthFactorLowerThanLiquidationThreshold` enzovoort. Je wallet toont meestal alleen "execution reverted" en een korte hexcode, omdat de namen in de code van Aave staan en niet in de wallet. De Aave-app controleert de meeste hiervan voordat je ondertekent, en weigert daarom vaak al voordat je ooit een transactie ziet.
+
+De controles verschillen per actie. Een opname vraagt een actieve, niet-gepauzeerde reserve, een saldo dat minstens zo groot is als het bedrag en, als je schuld hebt en het asset als onderpand telt, een health factor die daarna op of boven 1 blijft. Een lening vraagt een actieve, niet-gepauzeerde, niet-bevroren reserve waarin lenen aanstaat, ruimte onder de borrow cap en genoeg onderpand bij je LTV. Een storting vraagt een niet-bevroren reserve met ruimte onder de supply cap. Een aflossing vraagt alleen een actieve, niet-gepauzeerde reserve en schuld in dat asset. De negen oorzaken hieronder volgen die lijst, ruwweg in de volgorde waarin je ze waarschijnlijk tegenkomt.
+
+Deze gids gaat over Aave V3. De Spokes van Aave V4 hebben hun eigen configuratie, en Morpho heeft geen van deze mechanismen behalve de oracle (prijsbron) en de health factor: een markt op Morpho heeft geen caps, geen bevriezing en geen pauze.
+
+## 1. De opname zou je health factor onder 1 brengen
+
+Hier lopen leners het vaakst tegenaan. Neem je een asset op dat je als onderpand gebruikt terwijl je schuld hebt, dan herberekent de Pool je account na de opname en eist hij een health factor van minstens 1 (`HealthFactorLowerThanLiquidationThreshold`). Dezelfde controle draait als je een asset uitschakelt als onderpand of aTokens naar een ander adres overzet. Hij draait niet als je geen schuld hebt, en daarom is uit een positie met alleen stortingen altijd het hele saldo op te nemen.
+
+Neem 10 WETH op Ethereum Core tegen de oracleprijs van $2.309,84 op 29 oktober 2026 ($23.098,41), een liquidatiedrempel (liquidation threshold) van 84% en 12.000 USDC schuld. De [health factor](/nl/blog/aave-health-factor-uitgelegd) is 23.098,41 × 0,84 ÷ 12.000 = 1,617. Om hem op precies 1 te houden heb je 12.000 ÷ 0,84 = $14.285,71 aan WETH nodig, oftewel 6,185 WETH, dus je kunt hoogstens 3,815 WETH opnemen. Vraag je 4, dan wordt de transactie teruggedraaid; vraag je 3,815, dan gaat ze door en blijft er een positie over die bij de volgende kleine koersdaling geliquideerd kan worden. Het maximum in de Aave-app is precies dit getal, en alles opnemen is de snelste manier om van een veilige positie er een te maken die binnen het uur een [liquidatie-alert](/nl/blog/aave-health-factor-alert-instellen) nodig heeft.
+
+Lenen heeft een strengere variant. Een nieuwe lening moet de health factor op of boven 1 laten en moet ook passen onder je gewogen LTV: onderpand × LTV moet de schuld dekken (`CollateralCannotCoverNewBorrow`). Met WETH op een LTV van 81% dragen de 10 WETH hierboven hoogstens $18.709,71 aan schuld, en de positie die dat allemaal leent, begint op een health factor van 84 ÷ 81 = 1,037. [Wat een veilige health factor is](/nl/blog/veilige-aave-health-factor) legt uit waarom dat een dun startpunt is.
+
+## 2. De reserve heeft minder niet-uitgeleende liquiditeit dan je wilt
+
+Aave leent uit wat stortende partijen inleggen, dus een reserve heeft alleen het deel dat niemand heeft geleend. Een opname of een lening die groter is dan dat deel, mislukt, en dit geval heeft geen foutnaam van Aave: de aToken probeert het onderliggende token over te maken en het tokencontract zelf draait de transactie terug, voor USDC met "ERC20: transfer amount exceeds balance". De controle bij lenen vraagt alleen dat de hele aToken-voorraad minstens zo groot is als het bedrag, wat absurde verzoeken tegenhoudt en verder niets.
+
+Op Ethereum Core was op 29 oktober 2026 2.347.525.372,91 USDC gestort, 2.213.199.103,54 USDC geleend, en het aToken-contract hield 134.360.379,94 USDC aan: een benutting (utilization) van 94,28%, met 5,72% van de stortingen beschikbaar om op te nemen of te lenen. Een uitlener die met 200 miljoen USDC wilde vertrekken, kon dat niet, en niemand kon het tot iemand afloste of stortte. De gids over [hoe de rente op Aave werkt](/nl/blog/aave-rente) laat zien hoe dat er in de praktijk uitziet: op 14 oktober 2026 duwde één opname van 133.898.000 USDC dezelfde reserve naar een benutting van 99,50%, en de leenrente in één blok van 4,50% naar 13,67%.
+
+Als liquiditeit het probleem is, werken vier dingen. Neem een kleiner bedrag op, tot wat het contract aanhoudt. Wacht: de rentecurve is ontworpen om liquiditeit terug te trekken, en de piek van 14 oktober was na ongeveer 36 minuten voorbij, al garandeert niets dat. Neem een ander onderpand op, als je dat hebt en de health factor het toelaat. En probeer je een schuld in USDC af te lossen terwijl je aUSDC hebt, gebruik dan `repayWithATokens`: die verbrandt je aTokens tegen je schuld zonder ook maar één USDC te verplaatsen, en heeft dus helemaal geen liquiditeit nodig.
+
+## 3. De supply cap is vol
+
+Elke reserve heeft een supply cap (een plafond voor stortingen), ingesteld door de risk stewards en de governance van Aave, en een storting die het totaal erboven zou duwen, mislukt met `SupplyCapExceeded`. Een cap van 0 betekent geen cap. De cap telt de bestaande aTokens plus de rente die naar de treasury gaat, dus hij loopt vanzelf vol naarmate er rente bijkomt, zonder dat iemand iets stort.
+
+Caps knellen vaker dan mensen verwachten. Op 29 oktober 2026 was de cap van LBTC op Ethereum Core 2.690 LBTC tegenover 2.689,93 gestort: er was nog 0,07 LBTC ruimte, en een lener die 1 LBTC wilde toevoegen aan een positie onder druk, kon dat niet. sUSDe stond op 96,9% van zijn cap, tBTC op 98,9%, USDe op 91,7%, weETH op 91,2% en WBTC op 89,4%. De caps bewegen beide kanten op. Op 10 juli 2026 verlaagde LlamaRisk de supply cap van USDm op de MegaETH-instantie van Aave van 1.000.000.000 naar 300.000.000, omdat het plafond "well above current demand" (ruim boven de huidige vraag) lag; de stewards verhogen caps als de vraag komt, meestal binnen enkele dagen.
+
+Voor een lener werkt de cap als een gesloten deur: onderpand toevoegen is een van de twee manieren om een health factor te verhogen, en een volle cap neemt die voor dat asset weg. Schuld aflossen werkt nog steeds, en dat is de andere manier, net als een ander onderpand toevoegen waarvan de cap nog ruimte heeft.
+
+## 4. De borrow cap is vol
+
+Borrow caps werken op dezelfde manier voor schuld: de totale variabele schuld van de reserve mag na je lening de cap niet overschrijden (`BorrowCapExceeded`), en 0 betekent geen cap. De controle draait bij elke lening, dus een cap die al boven zijn limiet zit, stopt elke nieuwe lening van dat asset tot iemand aflost. Een volle borrow cap stopt verder niets: aflossingen, opnames en liquidaties gaan door.
+
+tBTC op Ethereum Core is het extreme geval: lenen stond op 29 oktober 2026 aan, maar de cap was 1 tBTC en er was al 2,57 tBTC geleend, dus de kleinste lening werd teruggedraaid. USDC had 2.213,2 miljoen geleend tegenover een cap van 2.700 miljoen, 82,0% benut, met 486,8 miljoen ruimte; USDT stond op 80,8%. Als de caps van de stablecoins vollopen, mislukt een lening ook al heeft de reserve misschien nog volop liquiditeit.
+
+## 5. De reserve is bevroren
+
+Een bevroren reserve accepteert geen nieuwe stortingen en geen nieuwe leningen (`ReserveFrozen` bij allebei). De documentatie van de Pool Configurator van Aave noemt wat nog werkt: aflossingen, liquidaties en opnames. Bevriezen is de manier waarop de governance een asset afbouwt zonder iemand vast te zetten; [wat er gebeurt als Aave een markt afbouwt](/nl/blog/afbouw-van-een-aave-markt) loopt de stappen door.
+
+Bevroren reserves zijn niet zeldzaam. Op 29 oktober 2026 waren 35 van de 66 reserves op Ethereum Core bevroren: CRV, MKR, UNI, LUSD, FRAX, sDAI, crvUSD, FBTC en een lange lijst Pendle PT-tokens voorbij hun vervaldatum, bijna allemaal ook met supply en borrow caps van 1. Heb je in een daarvan nog onderpand, dan kun je het opnemen en kun je eruit geliquideerd worden, maar je kunt het niet aanvullen.
+
+## 6. De reserve is gepauzeerd
+
+Pauzeren is de noodschakelaar. Een gepauzeerde reserve weigert alles: storten, lenen, aflossen, opnemen, liquideren en overdrachten van aTokens (`ReservePaused`). Op 29 oktober 2026 was geen enkele reserve op Ethereum Core gepauzeerd, en in normale weken is dat er geen.
+
+De pauze is wel gebruikt. Op 4 november 2023 pauzeerde de Guardian van Aave, na een kritiek bugbountyrapport, Aave V2 op Ethereum en een reeks assets op V3 op Arbitrum, Avalanche, Optimism en Polygon. Ongeveer een week lang kon niemand op die reserves aflossen of onderpand toevoegen, terwijl de prijzen bleven bewegen. De V3-instanties werden op 12 november 2023 weer vrijgegeven, V2 op Ethereum op 13 november na een respijtperiode (grace period) voor liquidaties van ongeveer drie uur voor leners van WETH, en CRV op V3 op Polygon op 16 november. Vandaag is die respijtperiode onderdeel van het protocol: een liquidatie tijdens de respijtperiode van een reserve mislukt met `LiquidationGraceSentinelCheckFailed`, wat leners die buitengesloten waren een kort venster geeft om af te lossen voordat liquidators in actie komen.
+
+Mislukt je transactie met een pauzefout, dan kun je op Aave niets doen tot de pauze is opgeheven. Gebruik die tijd om het geld voor de aflossing klaar te zetten op het juiste netwerk, want de respijtperiode na het opheffen wordt bepaald door de governance of de Guardian en is al eens maar drie uur geweest.
+
+## 7. Lenen staat uit voor dat asset, of is niet toegestaan in je E-Mode-categorie
+
+Veel assets kunnen als onderpand worden gestort maar niet worden geleend. Op Ethereum Core stond lenen op 29 oktober 2026 uit bij 15 niet-bevroren reserves, waaronder wstETH, cbETH, rETH, weETH, LBTC, eBTC, AAVE en XAUt, en een lening van een daarvan mislukt met `BorrowingNotEnabled`. De governance zet die vlag per reserve, en in de Aave-app zie je hem aan een ontbrekende leenknop.
+
+Zit je in een [E-Mode-categorie](/nl/blog/aave-e-mode-uitgelegd), dan geldt in plaats daarvan een andere regel: je kunt alleen de assets lenen die in de leenbare set van de categorie zitten, en al het andere mislukt met `NotBorrowableInEMode`, zelfs een asset dat je buiten de categorie wel zou kunnen lenen. De categorie "ETH correlated" van Ethereum Core laat je bijvoorbeeld WETH lenen en verder niets. De categorie verlaten lost de lening op, maar het verlaten heeft zijn eigen controles: elk asset dat je verschuldigd bent, moet buiten de categorie leenbaar zijn, en je health factor moet met de normale, lagere drempels nog steeds op of boven 1 liggen (`InvalidDebtInEmode`, `InvalidCollateralInEmode`, `HealthFactorLowerThanLiquidationThreshold`).
+
+## 8. Je hebt onderpand met een LTV van 0
+
+De governance zet de LTV van een asset op 0 als ze wil dat het asset geen nieuwe schuld meer ondersteunt, terwijl bestaande posities gewoon doorlopen. Op 29 oktober 2026 waren 11 niet-bevroren reserves op Ethereum Core als onderpand ingeschakeld met een LTV van 0, waaronder DAI (liquidatiedrempel 77%), LINK, PYUSD, USDe, sUSDe, USDS, EURC en XAUt. Zo'n asset telt via zijn liquidatiedrempel nog steeds mee in je health factor, maar voegt niets toe aan je leencapaciteit. Daar volgen twee controles uit.
+
+De eerste gaat over lenen. Heeft elk onderpand dat je hebt ingeschakeld een LTV van 0, dan is je gewogen LTV 0 en mislukt elke lening met `LtvValidationFailed`. Bij een mix, zeg DAI en WETH, gaat de lening door, begrensd door de WETH alleen.
+
+De tweede gaat over opnemen, en die verrast mensen. Heb je schuld en een ingeschakeld onderpand met een LTV van 0, dan moet het asset dat je opneemt, overzet of uitschakelt als onderpand zelf een asset met LTV 0 zijn, anders mislukt de transactie met dezelfde `LtvValidationFailed`. Het commentaar in de code zegt zelf wat de bedoeling is: de regel "ensures that a multi-collateral position needs to withdraw/transfer the ltv0 asset first" (zorgt ervoor dat een positie met meerdere soorten onderpand eerst het asset met LTV 0 moet opnemen of overzetten). Een lener met DAI en WETH die wat WETH probeert op te nemen, wordt dus geweigerd tot de DAI eruit is; voor de opname van de DAI zelf geldt nog steeds de health factor-controle. De oplossing is de volgorde: neem eerst het asset met LTV 0 op, of los genoeg af zodat de health factor beide toelaat.
+
+## 9. Een aflossing noemt schuld die je niet hebt, of tokens die je niet hebt goedgekeurd
+
+Aflossen is de eenvoudigste actie en mislukt toch, meestal om een van vijf redenen.
+
+- **Geen schuld van dat type.** `NoDebtOfSelectedType` betekent dat de Pool die je hebt aangeroepen voor dat adres geen variabele schuld in dat asset heeft. De gebruikelijke oorzaak is de verkeerde markt: Ethereum heeft aparte instanties Core, Prime en Lido, elk met een eigen Pool, en dezelfde wallet kan op de ene USDC schuldig zijn en op de andere niets. De markten van elk netwerk zijn ook apart.
+- **Een rentemodus die niet meer bestaat.** Alleen de variabele modus (2) wordt geaccepteerd; lenen tegen een stabiele rente is uit de code verdwenen, en een aanroep met modus 1 mislukt met `InvalidInterestRateModeSelected`.
+- **Geen goedkeuring (allowance).** De Pool haalt de aflossing op met `transferFrom`, dus het token heeft een goedkeuring nodig voor minstens het bedrag, of een ondertekende permit. Zonder die goedkeuring draait het tokencontract de transactie terug voordat de controles van Aave draaien.
+- **Voor iemand anders aflossen zonder bedrag.** Aflossen namens een ander adres met de waarde voor "de hele schuld" (`type(uint256).max`) mislukt met `NoExplicitAmountToRepayOnBehalf`; noem het bedrag.
+- **Restjes.** Rente loopt elke seconde op, dus een aflossing van precies het saldo dat je een minuut geleden zag, laat een paar wei schuld over. Om een schuld helemaal weg te werken, los je af met de maximale waarde, die de Pool begrenst tot wat je verschuldigd bent.
+
+## Oorzaken waar je niet meer naar hoeft te zoeken
+
+Twee oude verklaringen gelden niet meer. Isolation Mode en de bijbehorende schuldplafonds (debt ceilings) zijn in Aave V3.7 verwijderd, net als siloed borrowing, dus vandaag mislukt geen lening omdat een asset geïsoleerd is of een plafond is bereikt. En lenen tegen een stabiele rente is sinds V3.2 verdwenen, dus niets mislukt op het wisselen van rentemodus. Noemt een oudere gids een van deze oorzaken, dan beschrijft die een versie van Aave die niet meer is uitgerold.
+
+## Wat te doen als een transactie mislukt tijdens een koersdaling
+
+Een mislukte transactie is lastig in een rustige markt en een probleem in een dalende, omdat het uur dat je besteedt aan uitzoeken wat er misgaat het uur is dat je health factor nodig heeft. Een korte volgorde:
+
+1. **Lees de fout.** Simuleer de transactie in je wallet, of plak de hex-selector in de decoder van een blockexplorer; de namen hierboven vertellen je in welk geval je zit.
+2. **Los liever af dan dat je onderpand toevoegt.** Aflossen werkt door bevroren reserves en volle supply caps heen, en met `repayWithATokens` ook door lege liquiditeit heen. Onderpand toevoegen hangt af van een cap met ruimte en een niet-bevroren reserve.
+3. **Probeer kleinere bedragen.** Liquiditeit en caps zijn hoeveelheden; een opname of lening die past, gaat door terwijl de volledige mislukt.
+4. **Gebruik een ander asset.** Een ander onderpand om op te nemen, of een ander asset om af te lossen, is vaak beschikbaar als het eerste geblokkeerd is.
+5. **Controleer de instantie en het netwerk.** Een aflossing die naar het juiste asset op de verkeerde Pool gaat, mislukt met `NoDebtOfSelectedType` en kost je gas en tijd.
+6. **Laat de alert de volgende keer eerder komen.** Elk van deze gevallen kost minuten om te omzeilen. Een health factor-alert die je met ruimte instelt, koopt die minuten.
+
+Tokenping controleert je health factor op Aave elke 5 minuten, in elke markt van Aave V3 op 21 netwerken en elke Spoke van Aave V4, en stuurt je een bericht via Signal, Telegram of e-mail als hij onder een drempel ligt die je zelf kiest (1,1 tot 10), en dat bij elke controle opnieuw tot hij herstelt. Het leest het getal uit `getUserAccountData`, hetzelfde getal dat de controle bij opnemen gebruikt. Een alert kan niet voor je handelen, en niets in deze gids voorkomt liquidatie; hij vertelt je welke deur dicht is, zodat je eerst de open deur probeert. Je kunt [je health factor op Aave V3 controleren](/nl/aave) zonder te betalen; alerts kosten <AlertPrice />, één alert per markt of Spoke. [Hoe je liquidatie op Aave voorkomt](/nl/blog/aave-liquidatie-voorkomen) behandelt de keuze tussen aflossen en onderpand toevoegen in detail, en [waarom je health factor daalde](/nl/blog/waarom-daalde-je-aave-health-factor) de oorzaken waarop je reageert.
+
+## Bronnen
+
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol), [BorrowLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/BorrowLogic.sol) en [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): elke controle die hierboven wordt genoemd, de volgorde waarin ze draaien, het commentaar over LTV 0 en de vlag voor LTV nul (aave-v3-origin main, geraadpleegd op 29 oktober 2026)
+- [Errors.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/helpers/Errors.sol): de foutnamen en hun beschrijvingen (aave-v3-origin main, geraadpleegd op 29 oktober 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getAllReservesTokens`, en voor elke reserve `getReserveConfigurationData`, `getReserveCaps`, `getPaused` en `getReserveData`, in blok 26296985 (geraadpleegd op 29 oktober 2026)
+- [aEthUSDC](https://etherscan.io/address/0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c): de USDC die het aToken-contract aanhield in blok 26296985 (geraadpleegd op 29 oktober 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): prijzen van WETH en USDC in blok 26296985 (geraadpleegd op 29 oktober 2026)
+- [Aave-documentatie: Pool Configurator](https://aave.com/docs/aave-v3/smart-contracts/pool-configurator): wat bevroren en gepauzeerde reserves toestaan, caps van 0 (geraadpleegd op 29 oktober 2026)
+- [Aave v2/v3 security incident 04/11/2023](https://governance.aave.com/t/aave-v2-v3-security-incident-04-11-2023/15335): de pauzes van 4 november 2023, het opheffen ervan op 12, 13 en 16 november en de respijtperiode (geraadpleegd op 29 oktober 2026)
+- [Aave V3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): het verdwijnen van lenen tegen een stabiele rente (geraadpleegd op 29 oktober 2026)
+- [Aave V3.7: verwijdering van Isolation Mode en siloed borrowing](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/mode-removal.md) (geraadpleegd op 29 oktober 2026)
+- [Risk Stewards: Supply and Borrow Cap Reductions on Aave V3 / 2026.07.10](https://governance.aave.com/t/risk-stewards-supply-and-borrow-cap-reductions-on-aave-v3-2026-07-10/25296): de capverlagingen van LlamaRisk op MegaETH, uitgevoerd op 14 juli 2026 (geraadpleegd op 29 oktober 2026)
+
+_Educatieve inhoud, geen financieel advies. Alerts verkleinen het risico, maar voorkomen geen liquidatie._
