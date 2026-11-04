@@ -1,3 +1,4 @@
+import { RULES as bg } from "./bg";
 import { RULES as cs } from "./cs";
 import { RULES as da } from "./da";
 import { RULES as de } from "./de";
@@ -49,4 +50,5 @@ export const LANGUAGE_RULES: Localized<LanguageRules> = {
   da,
   nb,
   fil,
+  bg,
 };

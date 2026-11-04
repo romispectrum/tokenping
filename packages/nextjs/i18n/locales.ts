@@ -23,6 +23,7 @@ export const LOCALES = [
   "da",
   "nb",
   "fil",
+  "bg",
 ] as const;
 
 export type Locale = (typeof LOCALES)[number];
@@ -283,6 +284,16 @@ export const LOCALE_INFO: Record<Locale, LocaleInfo> = {
     name: "Filipino",
     englishName: "Filipino",
     short: "FIL",
+  },
+  // Bulgarian: set in the Cyrillic and Greek face.
+  bg: {
+    htmlLang: "bg",
+    ogLocale: "bg_BG",
+    intl: "bg-BG",
+    numbers: "bg-BG",
+    name: "Български",
+    englishName: "Bulgarian",
+    short: "BG",
   },
 };
 

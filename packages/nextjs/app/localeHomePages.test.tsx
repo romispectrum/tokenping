@@ -175,6 +175,13 @@ const COPY: Partial<Record<Locale, CopyRules>> = {
     wrongAddress: /(?<!\p{L})(?:po|kayo|ninyo)(?!\p{L})/iu,
     claims: /real[- ]?time|agarang (?:alerto|abiso)|multi[- ]?protocol/iu,
   },
+  bg: {
+    h1Channels: /Signal.*имейл/iu,
+    badges: ["Signal", "Имейл"],
+    // Polite вие throughout: never the informal ти forms.
+    wrongAddress: /(?<!\p{L})(?:твой|твоя|твоето|твоите|теб)(?!\p{L})/iu,
+    claims: /в реално време|мигновен\p{L}* (?:известие|известия)|мултипротоколн/iu,
+  },
 };
 
 const TRANSLATED = LOCALES.filter(locale => locale !== "en");

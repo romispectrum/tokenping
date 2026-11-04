@@ -12,6 +12,71 @@ import AaveLiquidationAlertTools, {
 import AaveLiquidationPrice, { meta as aaveLiquidationPrice } from "~~/content/blog/aave-liquidation-price.mdx";
 import AaveMarketWindDown, { meta as aaveMarketWindDown } from "~~/content/blog/aave-market-wind-down.mdx";
 import AvoidAaveLiquidation, { meta as avoidAaveLiquidation } from "~~/content/blog/avoid-aave-liquidation.mdx";
+import BgAaveEMode, { meta as bgAaveEMode } from "~~/content/blog/bg/aave-e-mode-obyasnenie.mdx";
+import BgAaveHealthFactor, { meta as bgAaveHealthFactor } from "~~/content/blog/bg/aave-health-factor-obyasnenie.mdx";
+import BgSafeAaveHealthFactor, {
+  meta as bgSafeAaveHealthFactor,
+} from "~~/content/blog/bg/bezopasen-health-factor-aave.mdx";
+import BgPrivateAaveLiquidationAlerts, {
+  meta as bgPrivateAaveLiquidationAlerts,
+} from "~~/content/blog/bg/chastni-izvestiya-za-likvidatsiya-aave.mdx";
+import BgStablecoinDepegAave, {
+  meta as bgStablecoinDepegAave,
+} from "~~/content/blog/bg/depeg-na-steyblkoyn-v-aave.mdx";
+import BgAaveLiquidationAlertTools, {
+  meta as bgAaveLiquidationAlertTools,
+} from "~~/content/blog/bg/instrumenti-za-izvestiya-za-likvidatsiya-aave.mdx";
+import BgAaveAlertsDoNotDisturb, {
+  meta as bgAaveAlertsDoNotDisturb,
+} from "~~/content/blog/bg/izvestiya-aave-v-rezhim-ne-bezpokoy.mdx";
+import BgAvoidAaveLiquidation, {
+  meta as bgAvoidAaveLiquidation,
+} from "~~/content/blog/bg/kak-da-izbegnete-likvidatsiya-v-aave.mdx";
+import BgHowAaveLiquidationWorks, {
+  meta as bgHowAaveLiquidationWorks,
+} from "~~/content/blog/bg/kak-raboti-likvidatsiyata-v-aave.mdx";
+import BgHowMorphoLiquidationWorks, {
+  meta as bgHowMorphoLiquidationWorks,
+} from "~~/content/blog/bg/kak-raboti-likvidatsiyata-v-morpho.mdx";
+import BgWhoNeedsHealthFactorAlerts, {
+  meta as bgWhoNeedsHealthFactorAlerts,
+} from "~~/content/blog/bg/koy-ima-nuzhda-ot-izvestiya-health-factor.mdx";
+import BgAaveInterestRates, { meta as bgAaveInterestRates } from "~~/content/blog/bg/lihveni-protsenti-aave.mdx";
+import BgLiquidatedOnAaveOrMorphoWhatNow, {
+  meta as bgLiquidatedOnAaveOrMorphoWhatNow,
+} from "~~/content/blog/bg/likvidiran-v-aave-ili-morpho-kakvo-sega.mdx";
+import BgMorphoHealthFactor, {
+  meta as bgMorphoHealthFactor,
+} from "~~/content/blog/bg/morpho-health-factor-obyasnenie.mdx";
+import BgMorphoMidnightFixedRateLoans, {
+  meta as bgMorphoMidnightFixedRateLoans,
+} from "~~/content/blog/bg/morpho-midnight-zaemi-s-fiksirana-lihva.mdx";
+import BgMorphoPreLiquidation, {
+  meta as bgMorphoPreLiquidation,
+} from "~~/content/blog/bg/morpho-predvaritelna-likvidatsiya.mdx";
+import BgAaveHealthFactorAlertSetup, {
+  meta as bgAaveHealthFactorAlertSetup,
+} from "~~/content/blog/bg/nastroyka-na-izvestiya-health-factor-aave.mdx";
+import BgShortFiatWithAave, { meta as bgShortFiatWithAave } from "~~/content/blog/bg/short-na-fiatna-valuta-s-aave.mdx";
+import BgTokenizedStocksCollateral, {
+  meta as bgTokenizedStocksCollateral,
+} from "~~/content/blog/bg/tokenizirani-aktsii-kato-obezpechenie.mdx";
+import BgAaveLiquidationPrice, {
+  meta as bgAaveLiquidationPrice,
+} from "~~/content/blog/bg/tsena-na-likvidatsiya-aave.mdx";
+import BgWrappedBitcoinAaveCollateral, {
+  meta as bgWrappedBitcoinAaveCollateral,
+} from "~~/content/blog/bg/wrapped-bitcoin-kato-obezpechenie-v-aave.mdx";
+import BgCryptoBackedLoans, {
+  meta as bgCryptoBackedLoans,
+} from "~~/content/blog/bg/zaemi-sreshtu-kripto-obezpechenie.mdx";
+import BgAaveMarketWindDown, { meta as bgAaveMarketWindDown } from "~~/content/blog/bg/zakrivane-na-pazar-v-aave.mdx";
+import BgWhyAaveHealthFactorDropped, {
+  meta as bgWhyAaveHealthFactorDropped,
+} from "~~/content/blog/bg/zashto-padna-health-factor-aave.mdx";
+import BgWhyAaveWithdrawOrBorrowFails, {
+  meta as bgWhyAaveWithdrawOrBorrowFails,
+} from "~~/content/blog/bg/zashto-tegleneto-ili-zaemat-v-aave-ne-uspyava.mdx";
 import CryptoBackedLoans, { meta as cryptoBackedLoans } from "~~/content/blog/crypto-backed-loans.mdx";
 import CsAaveEMode, { meta as csAaveEMode } from "~~/content/blog/cs/aave-e-mode-vysvetleni.mdx";
 import CsAaveHealthFactor, { meta as csAaveHealthFactor } from "~~/content/blog/cs/aave-health-factor-vysvetleni.mdx";
@@ -1911,5 +1976,32 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
     { meta: filHowMorphoLiquidationWorks, Content: FilHowMorphoLiquidationWorks },
     { meta: filMorphoPreLiquidation, Content: FilMorphoPreLiquidation },
     { meta: filMorphoMidnightFixedRateLoans, Content: FilMorphoMidnightFixedRateLoans },
+  ],
+  bg: [
+    { meta: bgAaveHealthFactor, Content: BgAaveHealthFactor },
+    { meta: bgSafeAaveHealthFactor, Content: BgSafeAaveHealthFactor },
+    { meta: bgHowAaveLiquidationWorks, Content: BgHowAaveLiquidationWorks },
+    { meta: bgAaveLiquidationPrice, Content: BgAaveLiquidationPrice },
+    { meta: bgWhyAaveHealthFactorDropped, Content: BgWhyAaveHealthFactorDropped },
+    { meta: bgAaveHealthFactorAlertSetup, Content: BgAaveHealthFactorAlertSetup },
+    { meta: bgAaveLiquidationAlertTools, Content: BgAaveLiquidationAlertTools },
+    { meta: bgAvoidAaveLiquidation, Content: BgAvoidAaveLiquidation },
+    { meta: bgPrivateAaveLiquidationAlerts, Content: BgPrivateAaveLiquidationAlerts },
+    { meta: bgCryptoBackedLoans, Content: BgCryptoBackedLoans },
+    { meta: bgShortFiatWithAave, Content: BgShortFiatWithAave },
+    { meta: bgAaveInterestRates, Content: BgAaveInterestRates },
+    { meta: bgAaveAlertsDoNotDisturb, Content: BgAaveAlertsDoNotDisturb },
+    { meta: bgAaveMarketWindDown, Content: BgAaveMarketWindDown },
+    { meta: bgStablecoinDepegAave, Content: BgStablecoinDepegAave },
+    { meta: bgAaveEMode, Content: BgAaveEMode },
+    { meta: bgWhyAaveWithdrawOrBorrowFails, Content: BgWhyAaveWithdrawOrBorrowFails },
+    { meta: bgWrappedBitcoinAaveCollateral, Content: BgWrappedBitcoinAaveCollateral },
+    { meta: bgTokenizedStocksCollateral, Content: BgTokenizedStocksCollateral },
+    { meta: bgWhoNeedsHealthFactorAlerts, Content: BgWhoNeedsHealthFactorAlerts },
+    { meta: bgLiquidatedOnAaveOrMorphoWhatNow, Content: BgLiquidatedOnAaveOrMorphoWhatNow },
+    { meta: bgMorphoHealthFactor, Content: BgMorphoHealthFactor },
+    { meta: bgHowMorphoLiquidationWorks, Content: BgHowMorphoLiquidationWorks },
+    { meta: bgMorphoPreLiquidation, Content: BgMorphoPreLiquidation },
+    { meta: bgMorphoMidnightFixedRateLoans, Content: BgMorphoMidnightFixedRateLoans },
   ],
 };

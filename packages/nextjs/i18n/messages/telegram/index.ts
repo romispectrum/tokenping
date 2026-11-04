@@ -1,3 +1,4 @@
+import { MESSAGES as bg } from "./bg";
 import { MESSAGES as cs } from "./cs";
 import { MESSAGES as da } from "./da";
 import { MESSAGES as de } from "./de";
@@ -53,4 +54,5 @@ export const TELEGRAM_REPLIES: Localized<TelegramReplies> = {
   da,
   nb,
   fil,
+  bg,
 };

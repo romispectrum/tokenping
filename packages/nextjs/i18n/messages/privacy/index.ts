@@ -1,3 +1,4 @@
+import { MESSAGES as bg } from "./bg";
 import { MESSAGES as cs } from "./cs";
 import { MESSAGES as da } from "./da";
 import { MESSAGES as de } from "./de";
@@ -51,4 +52,5 @@ export const PRIVACY_MESSAGES: Localized<PrivacyMessages> = {
   da,
   nb,
   fil,
+  bg,
 };

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { AAVE_MARKETS, AAVE_V4_SPOKES, marketLabel } from "~~/config/aaveConfig";
 import {
+  bgForMarket,
+  bgOnMarket,
   capitalize,
   csForMarket,
   csOnMarket,
@@ -448,6 +450,25 @@ describe("Filipino formatting", () => {
     expect(filForMarket("Base")).toBe("para sa Base");
     expect(filForMarket("Base (V4 Coinbase Stocks)")).toBe("para sa market na Base (V4 Coinbase Stocks)");
     expect(filForMarket("USDC | cbBTC (86%)", "market")).toBe("para sa market na USDC | cbBTC (86%)");
+  });
+});
+
+describe("Bulgarian formatting", () => {
+  it("joins with и and или, writes Bulgarian dates, a decimal comma, one/other plurals and the market wording", () => {
+    expect(joinList("bg", ["Signal", "Telegram", "имейл"])).toBe("Signal, Telegram и имейл");
+    expect(joinList("bg", ["Signal", "имейл"], "disjunction")).toBe("Signal или имейл");
+    expect(formatLongDate("bg", "2026-10-14")).toBe("14 октомври 2026 г.");
+    expect(formatDecimal("bg", "1.42")).toBe("1,42");
+    const networks = (n: number) => plural("bg", n, { one: `${n} мрежа`, other: `${n} мрежи` });
+    expect(networks(1)).toBe("1 мрежа");
+    expect(networks(5)).toBe("5 мрежи");
+    expect(networks(21)).toBe("21 мрежи");
+    expect(bgOnMarket("Arbitrum")).toBe("в мрежата Arbitrum");
+    expect(bgOnMarket("Ethereum (V4 Lido)")).toBe("на пазара Ethereum (V4 Lido)");
+    expect(bgOnMarket("Base", "network")).toBe("в мрежата Base");
+    expect(bgForMarket("Base")).toBe("за мрежата Base");
+    expect(bgForMarket("Base (V4 Coinbase Stocks)")).toBe("за пазара Base (V4 Coinbase Stocks)");
+    expect(bgForMarket("USDC | cbBTC (86%)", "market")).toBe("за пазара USDC | cbBTC (86%)");
   });
 });
 

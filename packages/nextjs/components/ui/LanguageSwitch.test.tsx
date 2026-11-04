@@ -28,6 +28,7 @@ describe("LanguageSwitch", () => {
 
     expect(languageLinks()).toEqual([
       ["Deutsch (Österreich)AT", "/de/blog/aave-health-factor-erklaert"],
+      ["БългарскиBG", "/bg/blog/aave-health-factor-obyasnenie"],
       ["Deutsch (Schweiz)CH", "/de/blog/aave-health-factor-erklaert"],
       ["ČeštinaCZ", "/cz/blog/aave-health-factor-vysvetleni"],
       ["Deutsch (Deutschland)DE", "/de/blog/aave-health-factor-erklaert"],
