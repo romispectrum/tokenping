@@ -63,6 +63,7 @@ const LIST_WORDS: Record<Locale, ListWords> = {
   hr: { conjunction: "i", disjunction: "ili" },
   sl: { conjunction: "in", disjunction: "ali" },
   sr: { conjunction: "i", disjunction: "ili" },
+  sv: { conjunction: "och", disjunction: "eller" },
 };
 
 /**
@@ -278,6 +279,14 @@ export const srOnMarket = (name: string, kind?: MarketNameKind) =>
 /** Serbian "za mrežu Arbitrum" for a V3 market, "za tržište Ethereum (V4 Lido)" for a V4 Spoke or a Morpho market. */
 export const srForMarket = (name: string, kind?: MarketNameKind) =>
   marketNameKind(name, kind) === "market" ? `za tržište ${name}` : `za mrežu ${name}`;
+
+/** Swedish "på Arbitrum" for a V3 market, "på marknaden Ethereum (V4 Lido)" for a V4 Spoke or a Morpho market. */
+export const svOnMarket = (name: string, kind?: MarketNameKind) =>
+  marketNameKind(name, kind) === "market" ? `på marknaden ${name}` : `på ${name}`;
+
+/** Swedish "för Arbitrum" for a V3 market, "för marknaden Ethereum (V4 Lido)" for a V4 Spoke or a Morpho market. */
+export const svForMarket = (name: string, kind?: MarketNameKind) =>
+  marketNameKind(name, kind) === "market" ? `för marknaden ${name}` : `för ${name}`;
 
 /** Vietnamese "mạng" before a V3 market's name (its network's), "thị trường" before a V4 Spoke's or a Morpho market's. */
 export const viMarketNoun = (name: string, kind?: MarketNameKind) =>

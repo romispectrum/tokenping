@@ -147,6 +147,13 @@ const COPY: Partial<Record<Locale, CopyRules>> = {
     wrongAddress: /(?<!\p{L})(?:Vi|Vas|Vam|Vama|Vaš\p{L}*)(?!\p{L})/u,
     claims: /u realnom vremenu|trenutn\p{L}+ (?:upozorenj|obaveštenj)|multi[- ]?protokol/iu,
   },
+  sv: {
+    h1Channels: /Signal.*e-post/iu,
+    badges: ["Signal", "E-post"],
+    // Du throughout: never the formal ni, er or ert.
+    wrongAddress: /(?<!\p{L})(?:Ni|Er|Ert|Era)(?!\p{L})/u,
+    claims: /realtid|omedelbar\p{L}* (?:larm|avisering)|multi[- ]?protokoll/iu,
+  },
 };
 
 const TRANSLATED = LOCALES.filter(locale => locale !== "en");

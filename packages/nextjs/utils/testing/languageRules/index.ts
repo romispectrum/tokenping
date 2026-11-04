@@ -14,6 +14,7 @@ import { RULES as pt } from "./pt";
 import { RULES as ro } from "./ro";
 import { RULES as sl } from "./sl";
 import { RULES as sr } from "./sr";
+import { RULES as sv } from "./sv";
 import { RULES as tr } from "./tr";
 import type { LanguageRules } from "./types";
 import { RULES as vi } from "./vi";
@@ -41,4 +42,5 @@ export const LANGUAGE_RULES: Localized<LanguageRules> = {
   hr,
   sl,
   sr,
+  sv,
 };

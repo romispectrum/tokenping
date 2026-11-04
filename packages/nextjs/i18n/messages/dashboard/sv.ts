@@ -1,0 +1,178 @@
+import type { DashboardMessages } from "./shared";
+import { plural, svForMarket, svOnMarket } from "~~/i18n/format";
+
+const svDays = (days: number) => plural("sv", days, { one: `${days} dag`, other: `${days} dagar` });
+
+export const MESSAGES: DashboardMessages = {
+  page: {
+    metaTitle: "Aave V3 och V4: positioner och health factor",
+    metaDescription: (networkCount, channels) =>
+      `Se säkerhet, skuld och health factor på Aave V3 och V4 på ${networkCount} nätverk. Larm via ${channels}, ett tröskelvärde per marknad.`,
+    title: "Aave V3 och V4: positioner och health factor-larm",
+    networkMarkets: (name, markets) => `${name} (marknaderna ${markets})`,
+    intro: (v3Networks, v4Networks) =>
+      `Anslut plånboken du lånar med för att se dess säkerhet, skuld och health factor på Aave V3 på ${v3Networks}, och i varje Spoke på Aave V4 på ${v4Networks}. Att titta kräver ingen transaktion.`,
+    disclosureSummary: "Vad larm kostar och hur ofta vi kontrollerar",
+    alertsCost: (channels, paymentChain) =>
+      `Vill du få ett meddelande via ${channels} när health factor för en marknad sjunker under ett tröskelvärde som du väljer? Lås upp larmen med en betalning i USDC${paymentChain ? ` på ${paymentChain}` : ""}. Du ser det aktuella priset innan du betalar.`,
+    checks: minutes =>
+      `Tokenping kontrollerar ${plural("sv", minutes, { one: "en gång i minuten", other: `var ${minutes} minuter` })}. Så länge health factor ligger under ditt tröskelvärde skickar varje kontroll ett nytt meddelande via varje kanal du har valt.`,
+    guideThreshold: "Så väljer du ett tröskelvärde",
+    guideAlerts: "Så fungerar larmen",
+    morphoDashboard: "Lånar du på Morpho? Öppna översikten för Morpho",
+  },
+  gate: {
+    title: "Anslut en plånbok för att fortsätta",
+    description:
+      "Tokenping behöver din plånboksadress för att visa dina positioner på Aave. Att ansluta flyttar inga pengar och kostar ingen avgift.",
+    connect: "Anslut plånbok",
+    connecting: "Ansluter",
+    approveInWallet: "Godkänn anslutningen i din plånbok.",
+  },
+  positionsHeading: "Dina positioner på Aave",
+  loadingDashboard: "Laddar din översikt",
+  toolbar: {
+    wallet: "Plånbok",
+    refresh: "Uppdatera positioner",
+    refreshing: "Uppdaterar",
+    loadingPositions: "Laddar positioner",
+  },
+  errors: {
+    positionsDidNotLoad: "Positionerna kunde inte laddas",
+    refreshFailed: "Uppdateringen misslyckades",
+    showingLastPositions: "Du ser positionerna från den senaste lyckade laddningen.",
+    tryAgain: "Försök igen",
+    fetchPositionsFailed: "Det gick inte att hämta positionerna på Aave",
+  },
+  totals: {
+    supplied: "Totalt insatt",
+    borrowed: "Totalt lånat",
+    netWorth: "Nettovärde",
+    noData: "Inga data",
+  },
+  networks: {
+    heading: "Marknader",
+    active: count => `${count} aktiva`,
+    noPositions: "Inga aktiva positioner på Aave hittades i de marknader som stöds.",
+    selectedRegion: "Vald marknad",
+    noneSelectedTitle: "Ingen marknad vald",
+    noneSelectedDescription: "Välj en marknad för att se positionen på Aave.",
+    otherMarkets: count => `Andra marknader (${count})`,
+    otherMarketsHint: "Marknader som Tokenping har kontrollerat där plånboken varken har en position eller ett larm.",
+    alertSet: "Larm inställt",
+    supplied: usd => `${usd} insatt,`,
+    borrowed: usd => `${usd} lånat`,
+    noPosition: "Ingen position",
+  },
+  healthFactor: {
+    srPrefix: "Health factor ",
+    noDebt: "Ingen skuld",
+    critical: "Kritisk",
+    risky: "Riskabel",
+    safe: "Säker",
+  },
+  position: {
+    market: version => (version === 4 ? "Spoke på Aave V4" : "Marknad på Aave V3"),
+    noPositionTitle: chainName => `Ingen aktiv position ${svOnMarket(chainName)}`,
+    noPositionDetail: chainName =>
+      `Aave rapporterar ingen säkerhet och ingen skuld för den här plånboken ${svOnMarket(chainName)}.`,
+    collateral: "Säkerhet",
+    debt: "Skuld",
+    netWorth: "Nettovärde",
+    suppliedTitle: "Insatt",
+    borrowedTitle: "Lånat",
+    noCollateral: "Ingen säkerhet insatt",
+    noDebt: "Ingen utestående skuld",
+    tokenIconsFrom: "Ikoner för tokens och nätverk från",
+    tokenDetailsFailedTitle: "Tokenuppgifterna kunde inte laddas",
+    tokenDetailsFailedBody:
+      "Summorna ovan kommer från Aaves kontosammanfattning. Uppdatera positionerna för att försöka igen.",
+  },
+  tokens: {
+    asset: "Tillgång",
+    supplied: "Insatt",
+    supplyApy: "APY på insättning",
+    collateral: "Som säkerhet",
+    borrowed: "Lånat",
+    rateType: "Räntetyp",
+    enabled: "På",
+    disabled: "Av",
+    stable: amount => `Stabil ${amount}`,
+    variable: amount => `Rörlig ${amount}`,
+    count: count => plural("sv", count, { one: `${count} tillgång`, other: `${count} tillgångar` }),
+  },
+  address: {
+    defaultLabel: "Adress",
+    copy: (_label, address) => `Kopiera adressen ${address}`,
+    copied: "Adressen har kopierats",
+    copyFailed: "Det gick inte att kopiera. Markera adressen och kopiera den själv.",
+  },
+  opensInNewTab: "(öppnas i en ny flik)",
+  paywall: {
+    unlockedUntil: date => `Larm upplåsta till ${date}`,
+    titleNew: "Lås upp health factor-larm",
+    titleExtend: "Förläng åtkomsten för att redigera dina larm",
+    descriptionNew:
+      "Betala en gång för att låsa upp larminställningarna och ställa in ett tröskelvärde för health factor för varje nätverk. Inget förnyas automatiskt: du betalar från din plånbok när du vill förlänga.",
+    descriptionExtend:
+      "Dina tidigare larminställningar är sparade. Betala igen för att förlänga åtkomsten och redigera dem.",
+    networkDescriptionNew: chainName =>
+      `Betala en gång för att ställa in health factor-larm ${svOnMarket(chainName)} och på andra marknader. Inget förnyas automatiskt: du betalar från din plånbok när du vill förlänga.`,
+    networkDescriptionExtend: chainName =>
+      `Dina sparade larminställningar ${svForMarket(chainName)} finns kvar i ditt konto. Betala igen för att förlänga åtkomsten och redigera dem.`,
+    connectWallet: "Anslut din plånbok för att betala för åtkomst.",
+    unconfigured: "Inget betalningskontrakt är inställt för det här nätverket.",
+    noPlan: "Ingen betald plan är tillgänglig just nu.",
+    paused: "Betalningar är pausade just nu. Försök igen senare.",
+    statusUnavailable: "Betalningsstatusen kunde inte laddas. Ladda om sidan för att försöka igen.",
+    wrongNetworkTitle: "Fel nätverk",
+    wrongNetworkBody: (walletChain, target) =>
+      `Din plånbok är på ${walletChain ?? "ett annat nätverk"}. Byt till ${target ?? "betalningsnätverket"} för att betala.`,
+    switchTo: target => `Byt till ${target ?? "betalningsnätverket"}`,
+    switching: "Byter nätverk",
+    loadingDetails: "Laddar betalningsuppgifter",
+    price: "Pris",
+    access: "Åtkomst",
+    network: "Nätverk",
+    networkFee: "Nätverksavgift",
+    networkFeeValue: symbol => `Betalas i ${symbol} för varje steg, visas i din plånbok`,
+    period: (days, about) => (about ? `Ungefär ${svDays(days)}` : svDays(days)),
+    pay: amount => `Betala ${amount}`,
+    extend: (days, amount) => `Lägg till ${svDays(days)} för ${amount}`,
+    extendHint: days =>
+      `Varje betalning lägger till ${svDays(days)} efter ditt nuvarande slutdatum. Betala så många gånger du vill; inget förnyas av sig självt.`,
+    accessExtended: date => `Åtkomsten är förlängd till ${date}.`,
+    accessActive: "Åtkomsten är aktiv. Nu kan du ställa in dina larm.",
+    paymentPending: "Betalningen är bekräftad. Åtkomsten visas strax.",
+    loading: {
+      processing: "Behandlar",
+      waitingForWallet: "Väntar på din plånbok",
+      approving: "Godkänner",
+      paying: "Betalar",
+    },
+    unavailable: "Betald åtkomst är inte tillgänglig just nu.",
+    checkFailed: "Det gick inte att kontrollera betalningsstatusen. Försök igen om en stund.",
+    approvalNotVisible: "Godkännandet är bekräftat men syns inte än. Försök igen om en stund.",
+  },
+  payment: {
+    stepsLabel: "Betalningssteg",
+    approveTitle: amount => `Godkänn ${amount}`,
+    approveHint:
+      "Låter betalningskontraktet ta exakt det här beloppet. Hoppas över om ett tidigare godkännande redan täcker det.",
+    payTitle: amount => `Betala ${amount}`,
+    payHint: "Skickar betalningen och låser upp larmen.",
+    inProgress: "Pågår",
+    done: "Klart",
+    notNeeded: "Behövs inte",
+    transaction: "Transaktion ",
+    viewOn: explorer => `Visa på ${explorer}`,
+    preparingTitle: "Förbereder betalningen",
+    preparingBody: "Kontrollerar det aktuella priset och ditt godkännande.",
+    confirmTitle: "Bekräfta i din plånbok",
+    approveSignBody: amount => `Steg 1 av 2: godkänn ${amount}. Inget skickas förrän du bekräftar.`,
+    processingOn: network => `Behandlas på ${network ?? "nätverket"}`,
+    approvePendingBody: "Steg 1 av 2: godkännandet har skickats. Sedan ber din plånbok dig att bekräfta betalningen.",
+    paySignBody: amount => `Steg 2 av 2: betala ${amount}. Inget skickas förrän du bekräftar.`,
+    payPendingBody: "Steg 2 av 2: betalningen har skickats. Larmen låses upp när nätverket har bekräftat den.",
+  },
+};

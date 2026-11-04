@@ -1,0 +1,169 @@
+export const meta = {
+  slug: "morpho-forlikvidation",
+  title: "Morphos förlikvidation: vad den är och hur du stänger av den",
+  description:
+    "Hur förlikvidation på Morpho (Auto-deleverage) säljer en del av ett lån före LLTV, varför Morpho fasar ut den och hur du kontrollerar och återkallar den.",
+  h1: "Vad är förlikvidation på Morpho, och hur kontrollerar eller stänger du av den?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Vad är förlikvidation på Morpho, och hur kontrollerar jag om den är på och stänger av den?",
+  readingMinutes: 11,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Förlikvidation (pre-liquidation) är ett kontrakt som du själv väljer att aktivera för en enskild marknad på Morpho
+  Blue (rörlig ränta). Det låter vem som helst sälja en del av din säkerhet för att betala tillbaka skuld innan din
+  position når marknadens LLTV. Morphos app hade en funktion som hette ”Auto-deleverage” (automatisk skuldminskning) och
+  som fungerar på det sättet. Morpho fasar nu ut den: appen tar inte emot nya positioner, hjälpcentret ber dem som har
+  den att stänga av den, och Morphos SDK markerade förlikvidationskoden som föråldrad (deprecated) den 22 september
+  2026. Kontrakten fungerar fortfarande, så om du en gång slog på den: kontrollera den med `isAuthorized` på Morpho
+  Blue-kontraktet och återkalla den med appens hanteringsknapp eller med `setAuthorization(contract, false)`.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Siffror, blocknummer och källor: content/blog/snapshots/morpho-pre-liquidation.md */}
+
+## Vad är förlikvidation på Morpho?
+
+Förlikvidation är en andra, tidigare likvidationsgräns som en låntagare kan lägga till på en marknad på Morpho Blue. På en vanlig Blue-marknad kan en position likvideras först när dess health factor (hälsofaktor) ligger under 1, mätt mot marknadens likvidations-LTV (LLTV); [guiden om health factor på Morpho](/sv/blog/morpho-health-factor-forklarad) förklarar det talet. Ett förlikvidationskontrakt sätter en lägre gräns, preLLTV. Mellan de två gränserna får vem som helst betala tillbaka en del av din skuld, upp till en gräns som kontraktet sätter, och ta säkerhet värd den skulden plus en bonus, i steg.
+
+Tre saker utmärker den:
+
+- **Du väljer själv att aktivera den.** Den gäller först när du har godkänt kontraktet på Morpho Blue. Utan det kan kontraktet inte röra din position.
+- **Den gäller per marknad.** Varje kontrakt är knutet till en Blue-marknad och en fast uppsättning parametrar, och det har ingen ägare, ingen administratör och ingen uppgraderingsfunktion.
+- **Den finns bara på Blue.** Morpho Midnight, marknaderna med fast ränta i [guiden om Midnight](/sv/blog/morpho-midnight-lan-med-fast-ranta), har ingen förlikvidation.
+
+Morpho presenterade fabrikskontraktet för förlikvidation den 4 mars 2025 och nämnde automatisk skuldminskning (auto-deleverage) och automatisk stängning (auto-close) som användningsområden. I kontrakten, API:t och SDK:n heter det pre-liquidation. Morphos app hade en funktion som hette ”Auto-deleverage”, som hjälpcentret beskriver på samma sätt: när din belåningsgrad (LTV) passerar ett satt tröskelvärde kan en del av positionen stängas, med en avgift bara på den stängda delen.
+
+## Finns förlikvidation fortfarande i Morpho-appen?
+
+Ingen ny förlikvidation kan ställas in i Morpho-appen. Läst den 26 oktober 2026:
+
+| Var                           | Status                                                                                                                                                                                                  |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Morpho-appen och hjälpcentret | Hjälpartikeln heter nu ”Sunsetting Auto-deleverage” (utfasning av Auto-deleverage), senast uppdaterad 13 maj 2026: funktionen tar inte emot nya positioner, och användare som har den bör stänga av den |
+| Morphos SDK                   | Varje export för förlikvidation markerades som föråldrad den 22 september 2026 (pull request 1132), ska tas bort i nästa huvudversion och får ingen efterföljare                                        |
+| Morphos dokumentation         | Sidan om förlikvidation är borta; dess gamla adress leder nu till den allmänna sidan om likvidation                                                                                                     |
+| Morphos API                   | Listar fortfarande 106 förlikvidationskontrakt på listade marknader på Ethereum (50), Base (37), Arbitrum (8), Polygon (6), Katana (3) och Unichain (2)                                                 |
+| Kontrakten                    | Oförändrade och fungerande: vem som helst kan fortfarande anropa dem mot en låntagare som har godkänt dem                                                                                               |
+
+Den sista raden är den som spelar roll om du slog på funktionen tidigare. Att en funktion fasas ut i en app upphäver inte ett godkännande som är lagrat on-chain.
+
+## Hur fungerar ett förlikvidationskontrakt?
+
+Ett förlikvidationskontrakt skapas av Morphos PreLiquidationFactory, som vem som helst kan använda: vem som helst kan driftsätta ett kontrakt för vilken Blue-marknad som helst, och varje kombination av marknad och parametrar kan bara finnas en gång. Dess fasta parametrar är:
+
+| Parameter        | Vad den sätter                                                                                                                                           |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| preLLTV          | Belåningsgraden över vilken förlikvidation är tillåten. Måste ligga under marknadens LLTV                                                                |
+| preLCF1, preLCF2 | Close factor (den del av skulden som kan betalas på en gång): den största andel av din skuld som ett anrop får betala tillbaka, vid preLLTV och vid LLTV |
+| preLIF1, preLIF2 | Incitamentsfaktorn: den återbetalda skulden multipliceras med den för att få fram säkerheten som tas, vid samma två punkter                              |
+| Orakel           | Prisflödet som avgör om du kan förlikvideras och till vilket pris din säkerhet tas. Det kan vara marknadens eget orakel eller ett annat                  |
+
+Innan kontraktet agerar kontrollerar det, med sitt eget orakels pris, att din belåningsgrad ligger över preLLTV och fortfarande på eller under LLTV. Över LLTV upphör förlikvidationen och Blues vanliga likvidation tar över. Efteråt kontrollerar Morpho Blue att din position är frisk enligt marknadens eget orakel; om inte, avbryts hela anropet (revert).
+
+Konstruktorn sätter gränser för parametrarna. Close factor kan inte sjunka när risken stiger, och bara dess första värde har ett tak på 100 %: ett kontrakt vars andra värde ligger över 100 % kan låta ett enda anrop betala tillbaka hela din skuld innan LLTV nås. Morphos standardvärden ligger långt under det. Incitamentsfaktorn måste vara minst 1 (ingen bonus) och högst 1 ÷ LLTV (en bonus på omkring 16 % på en marknad med 86 %). Morphos kodförråd säger att det taket, tillsammans med regeln att förlikvidation upphör vid LLTV, hindrar en förlikvidation från att lämna en position mindre frisk än innan.
+
+### Hur växer close factor och bonus mellan preLLTV och LLTV?
+
+Båda växer linjärt med din belåningsgrad. Kontraktet mäter hur långt du har kommit från preLLTV mot LLTV, som en andel från 0 till 1, och flyttar varje faktor den andelen av vägen från dess första värde till dess andra. Halvvägs mellan de två gränserna ligger close factor halvvägs mellan preLCF1 och preLCF2.
+
+Två begränsningar följer av koden. Close factor begränsar ett anrop, inte totalen: Morphos eget kodförråd påpekar att en likvidator kan stänga en liten del, lämna dig kvar över preLLTV och anropa igen, så att det totala stängda beloppet kan bli större än close factor. Och close factor är en andel av din skuld, inte av din säkerhet; [Aave-guiden om close factor](/sv/blog/sa-fungerar-likvidation-pa-aave#hur-mycket-av-min-skuld-kan-likvideras-pa-en-gang) tar upp samma idé på Aave.
+
+## Vilka är Morphos standardinställningar för förlikvidation?
+
+Morpho höll en standarduppsättning parametrar för var och en av åtta vanliga LLTV i sin SDK, och vart och ett av de 106 kontrakt som API:t listar använder dessa standardvärden. API:t listar bara kontrakt med kända standardparametrar, så kontrakt med andra inställningar kan finnas utan att synas där. De sex LLTV som har listade kontrakt:
+
+| Marknadens LLTV | preLLTV | Close factor (preLLTV till LLTV) | Bonus   | Förlikvidationen börjar vid en health factor på marknaden på | Listade kontrakt |
+| --------------- | ------- | -------------------------------- | ------- | ------------------------------------------------------------ | ---------------- |
+| 62,5 %          | 56,26 % | 0,75 % till 27,95 %              | 12,68 % | 1,111                                                        | 2                |
+| 77 %            | 72,74 % | 0,37 % till 25,66 %              | 7,41 %  | 1,059                                                        | 12               |
+| 86 %            | 83,26 % | 0,20 % till 24,53 %              | 4,38 %  | 1,033                                                        | 50               |
+| 91,5 %          | 89,79 % | 0,11 % till 23,92 %              | 2,62 %  | 1,019                                                        | 21               |
+| 94,5 %          | 93,37 % | 0,07 % till 23,61 %              | 1,68 %  | 1,012                                                        | 15               |
+| 96,5 %          | 95,78 % | 0,04 % till 23,41 %              | 1,06 %  | 1,008                                                        | 6                |
+
+I varje standarduppsättning är bonusen densamma i båda ändar, och den är lika stor som bonusen som Blues vanliga likvidation betalar på den marknaden. Standardvärdena gör inte försäljningen billigare per dollar; de gör varje försäljning mindre. En vanlig Blue-likvidation har ingen close factor alls, så likvidatorn får betala tillbaka hela skulden på en gång. [Så fungerar likvidation på Morpho](/sv/blog/sa-fungerar-likvidation-pa-morpho) tar upp den sidan.
+
+## Ett verkligt kontrakt: USDC | cbBTC (86%) på Base
+
+Den största listade Blue-marknaden sett till lån på Base, USDC | cbBTC (86%) (cbBTC som säkerhet, skuld i USDC, en LLTV på 86 %), har ett förlikvidationskontrakt listat i Morphos API, på `0xa7272aFc21f9C321024ED93892a1abfeb621C374`. Läst från Base den 26 oktober 2026 och kontrollerat mot Morphos API:
+
+- Bases PreLiquidationFactory bekräftar att den skapade kontraktet, och kontraktet pekar på den här marknaden.
+- preLLTV 83,26 %, close factor från 0,20 % stigande till 24,53 %, bonus 4,38 % i båda ändar: standardvärdena för 86 %.
+- Dess orakel är marknadens eget orakel. Det prissatte cbBTC till 80 000,15 USDC vid Base-blocken 53102870 och 53102952; [så fungerar likvidation på Morpho](/sv/blog/sa-fungerar-likvidation-pa-morpho) använder samma pris.
+- Marknaden hade omkring 1,61 miljarder USDC utlånade mot omkring 40 051 cbBTC, fördelat på omkring 43 000 lånepositioner.
+- Ingen förlikvidation genom det här kontraktet syntes under de ungefär 28 timmar av Base-block som lästes före block 53102692.
+
+På Ethereum har den största listade marknaden USDC | cbBTC (86%) ett kontrakt med samma parametrar, på `0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A`, som också använder sin marknads orakel.
+
+## Räkneexempel: hur mycket kan en förlikvidation ta?
+
+Ta en tänkt position på den marknaden på Base: 1 cbBTC i säkerhet och 50 000 USDC i skuld, vid 80 000,15 USDC per cbBTC. Dess health factor är 1,376 mot LLTV på 86 %, och 1,332 mot förlikvidationsgränsen på 83,26 %. Med samma orakel är förlikvidationssiffran alltid marknadssiffran gånger 0,968 (83,26 ÷ 86).
+
+Förlikvidation kan börja när cbBTC faller under 60 052,58 USDC, 24,9 % under det priset. Vanlig likvidation börjar under 58 139,53 USDC, 27,3 % under. Mellan de priserna ser den största enskilda förlikvidationen ut så här:
+
+| Belåningsgrad | Pris på cbBTC | Close factor | Återbetald skuld | Tagen säkerhet (värde i USDC) | Bonus | Belåningsgrad efteråt |
+| ------------- | ------------- | ------------ | ---------------- | ----------------------------- | ----- | --------------------- |
+| 84 %          | 59 523,81     | 6,77 %       | 3 384            | 3 533                         | 148   | 83,26 %               |
+| 85 %          | 58 823,53     | 15,65 %      | 7 825            | 8 168                         | 343   | 83,26 %               |
+| 86 %          | 58 139,53     | 24,53 %      | 12 266           | 12 803                        | 538   | 83,23 %               |
+
+Med standardvärdena för ett anrop i full storlek belåningsgraden tillbaka till ungefär preLLTV, där kontraktet stannar. Jämför med en vanlig Blue-likvidation vid 87 %: en likvidator får betala tillbaka alla 50 000 USDC och ta cbBTC värda 52 192 USDC, vilket lämnar dig med omkring 5 279 USDC i säkerhet och inget lån.
+
+## Varför valde låntagare att aktivera den, och vad kostade det dem?
+
+Argumentet för att aktivera den var mindre, gradvisa försäljningar. Morphos hjälpartikel beskriver ”Auto-deleverage” som att bara en del av en position stängs för att återställa dess hälsa, med en avgift bara på det stängda beloppet. I exemplet ovan betalade en låntagare som hade aktiverat den 148 till 538 USDC i bonus per steg, där en vanlig likvidation vid 87 % som betalar tillbaka hela lånet kostar 2 192 USDC; flera steg, eller en vanlig likvidation efter dem, kan sammanlagt bli mer.
+
+Kostnaderna:
+
+- **Försäljningen börjar tidigare.** På en marknad med 86 % kan en del av din position säljas från en health factor på marknaden på omkring 1,033, medan den health factor som Morphos hjälpcenter beskriver, mätt mot LLTV, fortfarande ligger över 1.
+- **Stegen kan upprepas.** Close factor begränsar varje anrop, inte totalen, så flera anrop kan följa på varandra så länge du ligger över preLLTV.
+- **Priset kan skilja sig.** Ett kontrakt kan använda ett annat orakel än marknadens. Alla 106 kontrakt som Morphos API listar använder sin marknads eget orakel; ett kontrakt som API:t inte listar gör det kanske inte.
+- **Ingen är tvungen att agera.** Om ingen likvidator anropar kontraktet händer ingenting före LLTV; när du passerar den kan du likvideras på vanligt sätt.
+
+Nu när funktionen fasas ut ber Morpho låntagare som fortfarande har den att stänga av den, och nya aktiveringar är stängda.
+
+## Hur kontrollerar du om du har godkänt ett?
+
+Du har godkänt ett förlikvidationskontrakt om Morpho Blues `isAuthorized(your wallet, contract)` returnerar true. Godkännandet lagras i Morpho Blue självt, inte i förlikvidationskontraktet.
+
+1. **Hitta kontraktet för din marknad.** Morphos API listar det under marknadens förlikvidationer (pre-liquidations); Morphos hjälpcenter hänvisar också till hanteringsknappen på din positions- eller marknadssida i appen.
+2. **Anropa `isAuthorized` på det nätverkets Morpho Blue-kontrakt.** I en blockutforskare (block explorer) öppnar du Blue-kontraktets läsfunktioner och anger din plånbok som första adress och förlikvidationskontraktet som andra.
+3. **Läs svaret.** True betyder att kontraktet kan förlikvidera dig; false betyder att det inte kan det.
+
+De här stegen kräver kontraktets adress, och Morphos API listar bara kontrakt med standardinställningar. Ett godkännande kan också ges med en signatur och skickas av någon annan, så det syns kanske inte i din plånboks egen transaktionslista. För att se varje adress du har godkänt tittar du på Morpho Blue-kontraktets SetAuthorization-händelser i en blockutforskare med din plånbok som godkännare (authorizer). Den senaste händelsen för varje adress visar om godkännandet fortfarande gäller, och nätverkets PreLiquidationFactory svarar true på `isPreLiquidation(address)` för de kontrakt den har skapat.
+
+En detalj spelar roll här. Blues godkännande innehåller ingen marknad: en adress du godkänner klarar Blues kontroller för dina lån, uttag och uttag av säkerhet i hela det Blue-kontraktet. Ett förlikvidationskontrakts fasta kod betalar bara någonsin tillbaka och tar ut säkerhet på sin egen marknad, men andra adresser du har godkänt är inte begränsade på det sättet.
+
+## Hur stänger du av förlikvidation?
+
+Du stänger av den genom att sätta tillbaka godkännandet till false:
+
+- **I Morpho-appen:** Morphos hjälpcenter säger att du ska klicka på hanteringsknappen på positionen i din översikt eller på marknadssidan, vilket öppnar ett fönster för att ta bort ”Auto-deleverage”.
+- **På kontraktet:** anropa `setAuthorization(pre-liquidation contract, false)` på Morpho Blue från din plånbok. Anropet misslyckas om värdet redan är false, så ett misslyckat anrop kan också betyda att det inte fanns något att ta bort.
+
+När godkännandet är återkallat misslyckas kontraktets försök att ta ut din säkerhet, och bara Blues vanliga likvidation under en health factor på 1 gäller. Det kostar gas för en transaktion.
+
+## Hur mäter Tokenping en position med förlikvidation?
+
+För en låntagare som har godkänt ett förlikvidationskontrakt på en Blue-marknad larmar Tokenping på den lägre av de två gränserna: LLTV-gränsen och förlikvidationsgränsen. Det spelar roll eftersom Morphos hjälpcenter beskriver att health factor i appen når 1 när belåningsgraden passerar LLTV, vilket också är där Blues egen likvidation börjar. På en marknad med 86 % och standardkontraktet utlöses ett tröskelvärde på 1,10 för förlikvidationsgränsen vid en health factor på marknaden på omkring 1,136, och det lägsta tröskelvärdet, 1,02, utlöses vid omkring 1,054, ungefär 2 % över gränsen där förlikvidation kan börja.
+
+När du sparar eller ändrar ett larm noterar Tokenping de förlikvidationskontrakt som Morphos API listar för den marknaden; varje kontroll läser sedan om du har godkänt vart och ett av dem och beräknar health factor från kedjan med Morphos egen matematik, aldrig från Morphos API. Ett förlikvidationskontrakt som Morphos API inte listar kontrolleras inte, så om du har godkänt ett med egna inställningar mäter larmet bara mot LLTV-gränsen.
+
+Resten fungerar som för alla larm för Morpho. Tokenping kontrollerar var 5:e minut, på 14 nätverk, och så länge din health factor ligger under ditt tröskelvärde (vad som helst från 1,02 till 10) skickar varje kontroll ett meddelande i varje kanal du har valt: Signal, Telegram eller e-post. Larm kostar <AlertPrice />, samma plan som för larm för Aave, och att [titta på dina Morpho-positioner](/sv/morpho) kräver ingen betalning. [Hur du väljer ett tröskelvärde för larm](/sv/blog/saker-aave-health-factor#hur-valjer-du-ett-troskelvarde-for-larm-steg-for-steg) går igenom avvägningen på Aave; samma resonemang gäller här. Ett larm ger dig tid att agera, ingen garanti: ett pris kan röra sig mellan två kontroller. Om du inte längre vill ha förlikvidation, återkalla den enligt ovan; ditt larm mäter då bara mot LLTV-gränsen.
+
+## Källor
+
+- [morpho-org/pre-liquidation](https://github.com/morpho-org/pre-liquidation): README, [PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidation.sol), [PreLiquidationFactory.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidationFactory.sol) och [IPreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/interfaces/IPreLiquidation.sol), för parametrarna, gränserna, interpoleringen och kontrollerna (hämtad 26 oktober 2026)
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) och [EventsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/EventsLib.sol): `isAuthorized`, `setAuthorization`, händelsen SetAuthorization, hälsokontrollen och den vanliga likvidationsbonusen (hämtad 26 oktober 2026)
+- [Introducing pre-liquidations](https://morpho.org/blog/introducing-pre-liquidations-enhanced-loan-management-on-morpho) (Morpho, 4 mars 2025): automatisk skuldminskning och automatisk stängning som användningsområden, och vanlig likvidation när ingen förlikvidation sker (hämtad 26 oktober 2026)
+- [Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (Morphos hjälpcenter, uppdaterad 13 maj 2026): inga nya positioner, hur du stänger av funktionen, vad den gjorde (hämtad 26 oktober 2026)
+- [Morphos hjälpcenter: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): appen visar varje positions health factor, och en position kan likvideras vid 1 eller lägre, när dess belåningsgrad passerar LLTV (hämtad 26 oktober 2026)
+- [Morphos SDK, pull request 1132](https://github.com/morpho-org/sdks/pull/1132) (sammanslagen 22 september 2026) och [preLiquidation.ts](https://github.com/morpho-org/sdks/blob/main/packages/blue-sdk/src/preLiquidation.ts): utfasningen och standardparametrarna (hämtad 26 oktober 2026)
+- [Morphos dokumentation: liquidation](https://docs.morpho.org/developers/borrow/concepts/liquidation): dit den gamla sidan om förlikvidation nu leder (hämtad 26 oktober 2026)
+- [Morpho API](https://api.morpho.org/graphql): listade marknader, deras förlikvidationskontrakt och orakel, och marknaderna USDC | cbBTC (86%) på Base och Ethereum (hämtad 26 oktober 2026)
+- Förlikvidationskontrakt lästa on-chain: [Base](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374) vid blocken 53102692 till 53102952 och [Ethereum](https://etherscan.io/address/0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A) vid block 26274980, med deras fabrikskontrakt, marknader och orakel (hämtad 26 oktober 2026)
+
+_Utbildningsinnehåll, inte finansiell rådgivning. Larm minskar risken men förhindrar inte likvidation._

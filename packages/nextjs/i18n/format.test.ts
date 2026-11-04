@@ -36,6 +36,8 @@ import {
   slOnMarket,
   srForMarket,
   srOnMarket,
+  svForMarket,
+  svOnMarket,
   trForMarket,
   trOnMarket,
   viMarket,
@@ -367,6 +369,24 @@ describe("Serbian formatting", () => {
     expect(srForMarket("Base")).toBe("za mrežu Base");
     expect(srForMarket("Base (V4 Coinbase Stocks)")).toBe("za tržište Base (V4 Coinbase Stocks)");
     expect(srForMarket("USDC | cbBTC (86%)", "market")).toBe("za tržište USDC | cbBTC (86%)");
+  });
+});
+
+describe("Swedish formatting", () => {
+  it("joins with och and eller, writes Swedish dates, a decimal comma, one/other plurals and the market wording", () => {
+    expect(joinList("sv", ["Signal", "Telegram", "e-post"])).toBe("Signal, Telegram och e-post");
+    expect(joinList("sv", ["Signal", "e-post"], "disjunction")).toBe("Signal eller e-post");
+    expect(formatLongDate("sv", "2026-10-14")).toBe("14 oktober 2026");
+    expect(formatDecimal("sv", "1.42")).toBe("1,42");
+    const networks = (n: number) => plural("sv", n, { one: `${n} nätverk`, other: `${n} nätverk (other)` });
+    expect(networks(1)).toBe("1 nätverk");
+    expect(networks(2)).toBe("2 nätverk (other)");
+    expect(svOnMarket("Arbitrum")).toBe("på Arbitrum");
+    expect(svOnMarket("Ethereum (V4 Lido)")).toBe("på marknaden Ethereum (V4 Lido)");
+    expect(svOnMarket("Base", "network")).toBe("på Base");
+    expect(svForMarket("Base")).toBe("för Base");
+    expect(svForMarket("Base (V4 Coinbase Stocks)")).toBe("för marknaden Base (V4 Coinbase Stocks)");
+    expect(svForMarket("USDC | cbBTC (86%)", "market")).toBe("för marknaden USDC | cbBTC (86%)");
   });
 });
 

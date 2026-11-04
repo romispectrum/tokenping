@@ -1,0 +1,184 @@
+export const meta = {
+  slug: "sa-fungerar-likvidation-pa-morpho",
+  title: "Likvidation på Morpho: incitament och osäkra fordringar",
+  description:
+    "När ett Morpho-lån kan likvideras, hur mycket en likvidator får ta, incitamentet vid varje LLTV, osäkra fordringar, orakel och vad som skiljer Midnight.",
+  h1: "Vad händer när din Morpho-position likvideras?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Hur fungerar likvidation på Morpho, och vad kostar den låntagaren?",
+  readingMinutes: 12,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  En position på Morpho Blue kan likvideras så snart dess belåningsgrad (LTV) stiger över marknadens likvidations-LTV
+  (LLTV), vilket är detsamma som en health factor (hälsofaktor) under 1. Från den stunden kan vem som helst betala
+  tillbaka en del av eller hela din skuld i en enda transaktion och ta säkerhet värd det återbetalda beloppet gånger
+  marknadens likvidationsincitamentsfaktor, prissatt av marknadens orakel. Incitamentet följer enbart av LLTV: 4,38 %
+  vid en LLTV på 86 %, och allt går till likvidatorn. Du behåller det du lånade, så incitamentet är vad likvidationen
+  kostar dig, om inte din säkerhet längre täcker skulden; då förlorar du all säkerhet och marknadens långivare bär
+  resten som osäker fordran (bad debt). Morpho Midnights lån med fast ränta lägger till två avvikelser: före
+  förfallodagen får en likvidation bara ta det som återställer positionens hälsa, om inte den kvarvarande säkerheten
+  skulle betala tillbaka mindre än marknadens tröskelvärde, och efter förfallodagen kan all kvarvarande skuld
+  likvideras, även på en frisk position.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Siffrorna och blocknumren de lästes vid: content/blog/snapshots/how-morpho-liquidation-works.md */}
+
+## När kan en Morpho-position likvideras?
+
+En position på Morpho Blue kan likvideras så snart din skuld är större än värdet på din säkerhet gånger marknadens LLTV. Uttryckt i health factor är det varje värde under 1,00 ([så beräknas health factor på Morpho](/sv/blog/morpho-health-factor-forklarad) har formeln och exempel).
+
+Kontraktet kontrollerar detta självt. Morpho Blues funktion `liquidate` lägger först till räntan som är upplupen fram till det blocket, läser sedan marknadens orakel (priskälla) en gång och avbryter (revert) om inte positionen är ohälsosam. En position som ligger exakt på sin LLTV är fortfarande frisk; den måste ligga över den.
+
+Bara två saker kan föra en position över gränsen:
+
+- **Säkerhetens pris faller** i förhållande till lånetoken, enligt oraklet.
+- **Din skuld växer** när ränta läggs på ett Blue-lån med rörlig ränta.
+
+Varje Blue-marknad låser sin LLTV och sitt orakel när den skapas, och ingen av dem kan ändras efteråt. Morpho Blue-kontraktet har inte heller någon paus, frysning eller anståndsperiod: Morpho kan inte stoppa likvidationer på en marknad eller hindra dig från att betala tillbaka. En tokens egen utgivare kan däremot fortfarande pausa eller blockera överföringar av den token, vilket skulle stoppa båda.
+
+## Vem likviderar en Morpho-position, och hur?
+
+Vem som helst. `liquidate` har ingen begränsning av vem som får anropa den, och Morpho likviderar inte själv några positioner. Likvidatorerna sträcker sig från team som kör botar som bevakar positioner och orakelpriser till enskilda personer; Morphos dokumentation påpekar att allt som krävs är en RPC-nod och en plånbok med tillräckligt av lånetoken.
+
+Den som kommer först får ta. Det finns ingen auktion, så likvidatorer tävlar i snabbhet, och gaskapplöpningar och MEV (att ordna transaktioner för vinst) är en del av det. Kontraktet skickar den beslagtagna säkerheten till likvidatorn innan lånetokens samlas in, vilket låter en bot sälja säkerheten i samma transaktion och betala tillbaka med intäkterna.
+
+Likvidationer är inte garanterade; de sker för att incitamentet lönar sig. I praktiken är de rutin: Morphos API räknar 14 024 likvidationer bara på marknaden USDC | cbBTC (86%) på Base.
+
+## Hur mycket av din skuld kan likvideras på en gång?
+
+Hela. Morpho Blue har ingen close factor (den del av skulden som kan betalas på en gång) och ingen minsta storlek: en likvidator får betala tillbaka vilket belopp som helst av din skuld, från en liten bit till hela skulden, i ett enda anrop. De enda gränserna är att likvidatorn inte kan betala tillbaka mer än du är skyldig eller beslagta mer säkerhet än du har.
+
+Det är den största skillnaden mot Aave V3, som begränsar en likvidation till 50 % av skulden så länge health factor ligger över 0,95 och positionen inte är liten ([hur mycket av en Aave-skuld som kan likvideras på en gång](/sv/blog/sa-fungerar-likvidation-pa-aave#hur-mycket-av-min-skuld-kan-likvideras-pa-en-gang)). På Blue kan en position som glider strax förbi sin LLTV stängas helt av den första likvidatorn som dyker upp.
+
+## Hur stort är likvidationsincitamentet vid varje LLTV?
+
+Likvidationsincitamentsfaktorn (liquidation incentive factor, LIF) bestäms av en formel i kontraktet, utifrån marknadens LLTV:
+
+**LIF = min(1,15; 1 ÷ (1 − 0,3 × (1 − LLTV)))**
+
+Likvidatorn betalar tillbaka en del av din skuld och får säkerhet värd det beloppet gånger LIF, till orakelpriset. Delen över 1 är incitamentet, som betalas ur din säkerhet. Morpho tar ingen andel av det.
+
+En marknad kan bara använda en LLTV som Morphos styrning (governance) har aktiverat. Den 26 oktober 2026 var detta de aktiverade värdena, och varje Blue-marknad i Morphos API använder ett av dem. Med kontraktets egen heltalsaritmetik:
+
+| LLTV   | Likvidationsincitamentsfaktor | Säkerhet du förlorar per 1 000 i återbetald skuld | Varav incitament |
+| ------ | ----------------------------- | ------------------------------------------------- | ---------------- |
+| 38,5 % | 1,1500 (taket)                | 1 150,00                                          | 150,00           |
+| 62,5 % | 1,1268                        | 1 126,76                                          | 126,76           |
+| 77 %   | 1,0741                        | 1 074,11                                          | 74,11            |
+| 86 %   | 1,0438                        | 1 043,84                                          | 43,84            |
+| 91,5 % | 1,0262                        | 1 026,17                                          | 26,17            |
+| 94,5 % | 1,0168                        | 1 016,78                                          | 16,78            |
+| 96,5 % | 1,0106                        | 1 010,61                                          | 10,61            |
+| 98 %   | 1,0060                        | 1 006,04                                          | 6,04             |
+
+En LLTV på 0 är också aktiverad, men på en sådan marknad går det inte att låna något. Ju högre LLTV, desto mindre incitament; Morphos dokumentation förklarar detta som ett skydd mot kaskadlikvidationer på de mer riskfyllda marknaderna. Där avrundas också siffran för 86 % till ”approximately 1.05” (ungefär 1,05); det exakta värdet är 1,0438.
+
+## Räkneexempel: 1 cbBTC mot 50 000 USDC på Base
+
+Ta den största listade Blue-marknaden sett till lån på Ethereum och Base: USDC | cbBTC (86%) på Base, med omkring 1,61 miljarder USDC utlånade. Den 26 oktober 2026 prissatte dess orakel 1 cbBTC till 80 000,15 USDC (Base-block 53102870). Positionen är påhittad: 1 cbBTC som säkerhet och 50 000 USDC i skuld.
+
+- **LTV:** 50 000 ÷ 80 000,15 = 62,5 %.
+- **Health factor:** 80 000,15 × 0,86 ÷ 50 000 = 1,376.
+- **Likvidationspris:** 50 000 ÷ 0,86 = 58 139,53 USDC per cbBTC, 27,3 % under orakelpriset.
+
+Räntan är den långsamma drivkraften. Med marknadens låneränta på omkring 5,2 % per år den 26 oktober 2026, och om den räntan höll i sig, skulle räntan ensam behöva mer än sex år för att föra den här positionen från 62,5 % till 86 % LTV. Priset är den snabba.
+
+Som jämförelse: bland de 11 000 största lånepositionerna på den här marknaden, som står för 96 % av dess skuld, låg hälften av de lånade USDC i positioner under omkring 54 % LTV, alltså en health factor över omkring 1,59. Det är Tokenpings beräkning utifrån Morphos API och priset on-chain, inte en siffra från Morpho.
+
+### Full likvidation vid 58 139,53
+
+Strax förbi likvidationspriset kan en likvidator betala tillbaka alla 50 000 USDC och ta 50 000 × 1,0438 ÷ 58 139,53 = 0,8977 cbBTC, värda 52 192,07 USDC. Du behåller de 50 000 USDC du lånade och 0,1023 cbBTC (5 947,47 USDC), och är inte skyldig något. Likvidationen kostade dig 2 192,07 USDC jämfört med att betala tillbaka själv: 4,38 % av skulden.
+
+### Delvis likvidation av 10 000 USDC
+
+En likvidator kan också stanna vid 10 000 USDC. Det beslagtar 0,1795 cbBTC (10 438,41 USDC) och lämnar 0,8205 cbBTC mot 40 000 USDC: en LTV på 83,9 % och en health factor på 1,026, frisk igen. En bit hjälper alltid här, eftersom LIF × LLTV = 0,898 är under 1. Men ingenting får en likvidator att välja biten framför hela skulden.
+
+### Vad händer om ingen likviderar förrän cbBTC står i 50 000?
+
+Vid 50 000 USDC är din säkerhet värd exakt din skuld, vilket är mindre än skulden × LIF. Att beslagta hela 1 cbBTC betalar bara tillbaka 50 000 ÷ 1,0438 = 47 900 USDC. Du förlorar all din säkerhet, och de återstående 2 100 USDC skrivs av som osäker fordran, som marknadens långivare bär.
+
+## Vad händer med osäkra fordringar på Morpho Blue?
+
+När en likvidation lämnar en låntagare utan säkerhet men med kvarvarande skuld skriver kontraktet av den skulden i samma transaktion. Det tar bort den återstående skulden från marknadens totala lån och samma belopp från dess totala insättningar, så varje långivare på den marknaden förlorar i proportion till sin andel. Långivare på andra marknader påverkas inte, eftersom varje Blue-marknad är isolerad.
+
+Osäkra fordringar blir möjliga när säkerheten är värd mindre än skulden gånger LIF. På en marknad med 86 % är det varje LTV över 95,8 %, som en position bara kan nå om priset rör sig förbi LLTV innan någon likviderar. Det händer, men sällan i stora belopp: Morphos API registrerar osäkra fordringar i 1 428 Blue-likvidationer på Ethereum och Base, de flesta under 1 US-dollar eller på marknader som Morpho-appen inte listar.
+
+För låntagaren blir utfallet detsamma i båda fallen: all säkerhet är borta och ingen skuld återstår. För långivare beror det på hur de lånar ut: en Morpho Vault V2 för över förlusten på sitt andelspris, medan äldre V1.1-vaults inte för över den på sitt. Aave hanterar det annorlunda: sedan v3.3 bokför Aave kvarvarande skuld som ett underskott som dess Umbrella-stakers kan täcka ([osäkra fordringar på Aave](/sv/blog/sa-fungerar-likvidation-pa-aave#kan-en-likvidation-lamna-osakra-fordringar-efter-sig)).
+
+## Vilken roll spelar oraklet vid en likvidation?
+
+Oraklet sätter priset för varje beslut om likvidation. Varje marknad pekar ut ett orakel som anger säkerhetens pris i lånetoken, och både ögonblicket då en position blir likviderbar och mängden säkerhet en likvidator får använder det priset, inte priser på börser. Morpho väljer inte orakel: det gör den som skapar marknaden. Marknadens orakeladress kan aldrig bytas ut, men de prisflöden (price feeds) ett orakel läser kan drivas av andra som kan uppdatera dem. BTC/USD-flödet i Base-exemplet har till exempel en ägare som kan peka om det till en ny källa.
+
+Vad ett orakel mäter spelar roll för dig. Oraklet på exempelmarknaden på Base använder ett BTC/USD-prisflöde för cbBTC och behandlar USDC som exakt 1 US-dollar, så en depeg (när kopplingen till dollarn släpper) hos någon av dem skulle inte påverka det. Morphos referensorakel för Chainlink-kompatibla flöden kontrollerar inte hur gammalt ett pris är eller om det ligger inom rimliga gränser, och lägger inte till någon kontroll för avbrott i L2-sekvenseraren.
+
+Ett orakelproblem kan skada låntagare på två sätt:
+
+- **Ett felaktigt eller manipulerat pris.** Morphos sida om risker varnar för att inget orakel är immunt mot manipulation, vilket kan orsaka likvidationer eller till och med osäkra fordringar.
+- **Ett orakel som slutar svara.** Att låna, ta ut säkerhet och likvidera läser alla oraklet och skulle misslyckas. Att betala tillbaka och lägga till säkerhet läser det inte, så du kan fortfarande förbättra din position medan ingen kan likvidera den.
+
+## Hur skiljer sig likvidationer på Morpho Midnight?
+
+Marknaderna på Morpho Midnight lånar ut en token till fast ränta fram till ett fastställt förfallodatum, mot en eller flera säkerheter, var och en med egen LLTV, eget orakel och egen likvidationsmarkör (liquidation cursor, 0,3 i incitamentsformeln ovan, som Midnight sätter per säkerhet). Din skuld är fast i antal enheter, så före förfallodagen är det bara säkerheternas priser som rör din health factor. En Midnight-position kan likvideras på två sätt:
+
+- **Utifrån hälsa, när som helst** så länge skulden överstiger summan av varje säkerhets värde gånger dess LLTV. Incitamentet är den säkerhetens fulla bonus, och en likvidation får bara betala tillbaka det som krävs för att göra positionen frisk igen. Undantaget: när säkerheten som återstår efter en sådan begränsad likvidation skulle betala tillbaka mindre än marknadens rcfThreshold får den säkerheten tas i sin helhet.
+- **Efter förfallodagen**, om någon skuld återstår, även på en frisk position. Det finns inget tak, och incitamentet börjar på noll och stiger till den fulla bonusen under 60 minuter.
+
+Likvidatorn väljer vilken säkerhet som ska tas, och det finns inget tak på 1,15; den 26 oktober 2026 använde varje listad Midnight-marknad en markör på 0,3 med säkerheters LLTV från 62,5 % till 98 %, vilket ger samma incitament som i tabellen ovan. Osäkra fordringar delas av den marknadens långivare. [Så fungerar Midnights lån med fast ränta](/sv/blog/morpho-midnight-lan-med-fast-ranta) går igenom förfallodagen, verkliga marknaders tröskelvärden och ett räkneexempel.
+
+## Vad är förlikvidation?
+
+Förlikvidation (pre-liquidation) är ett tillägg på Morpho Blue som du själv väljer att aktivera. En låntagare som har godkänt ett förlikvidationskontrakt för en marknad låter likvidatorer använda det, när LTV passerar en gräns satt under LLTV, för att betala tillbaka bitar av skulden, anrop efter anrop, med ett incitament som är satt i det kontraktet, tills LTV åter ligger under den gränsen. Över LLTV gäller fortfarande vanlig likvidation.
+
+Exempelmarknaden på Base har ett sådant: från 83,26 % LTV kan det betala tillbaka upp till 0,20 % av skulden per anrop (anropen kan upprepas), stigande till 24,53 % nära 86 %, med samma incitament på 1,0438. Det agerar bara om du har godkänt det. Morpho fasar ut funktionen: appen tar inte emot nya positioner, och hjälpcentret ber låntagare som har den att stänga av den. [Förlikvidation på Morpho](/sv/blog/morpho-forlikvidation) förklarar villkoren och hur du kontrollerar och återkallar den.
+
+## Hur skiljer sig likvidation på Morpho från Aave?
+
+Kärnan är densamma: under 1 betalar en likvidator tillbaka skuld och tar säkerhet plus en bonus. Reglerna runt omkring skiljer sig ([så fungerar likvidation på Aave](/sv/blog/sa-fungerar-likvidation-pa-aave)):
+
+|                          | Aave V3                                                         | Morpho Blue                            | Morpho Midnight                                                                                                                                                     |
+| ------------------------ | --------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hur mycket på en gång    | 50 % eller 100 % av skulden, plus en regel för småbelopp (dust) | Upp till hela skulden i ett anrop      | Före förfallodagen det som återställer hälsan (en hel säkerhet om det som återstår skulle betala tillbaka mindre än rcfThreshold); efter förfallodagen hela skulden |
+| Bonus                    | Sätts per säkerhetstillgång av styrningen                       | Bestäms av marknadens LLTV             | Per säkerhet, utifrån dess LLTV och markör                                                                                                                          |
+| Vem behåller bonusen     | Likvidatorn, minus en protokollavgift                           | Likvidatorn, hela                      | Likvidatorn                                                                                                                                                         |
+| Kan reglerna ändras?     | Styrningen och riskförvaltare (risk stewards) kan ändra dem     | Nej, låsta när marknaden skapas        | Låsta när marknaden skapas                                                                                                                                          |
+| Paus                     | Tillgångar kan pausas, med en anståndsperiod                    | Ingen paus                             | Ingen paus                                                                                                                                                          |
+| Osäkra fordringar        | Ett underskott som Umbrella-stakers kan täcka                   | Skrivs av mot den marknadens långivare | Fördelas på den marknadens långivare                                                                                                                                |
+| Vad en position omfattar | Många tillgångar i en position                                  | En säkerhet, en lånetoken              | En lånetoken, flera säkerheter                                                                                                                                      |
+
+## Hur undviker du att bli likviderad på Morpho?
+
+- **Håll en marginal under LLTV.** En position som återhämtar sig innan någon likviderar är säker igen, men inget hindrar priset från att falla vidare, och den första likvidatorn som dyker upp kan betala tillbaka hela din skuld på en gång.
+- **Betala tillbaka eller lägg till säkerhet i tid.** Båda sänker din LTV direkt, kostar inget incitament och fungerar även om oraklet slutar fungera.
+- **Känn ditt orakel.** Kontrollera vilket orakel din marknad använder och vad det mäter innan du lånar.
+- **På Midnight: betala tillbaka före förfallodagen.** Efter förfallodagen kan all kvarvarande skuld likvideras, frisk position eller inte.
+- **Kontrollera gamla förlikvidationer.** Om du en gång slog på ”Auto-deleverage” (förlikvidation) fasar Morpho ut den och ber låntagare att stänga av den; [Förlikvidation på Morpho](/sv/blog/morpho-forlikvidation) visar hur.
+
+## Hur kan larm hjälpa?
+
+Tokenping kontrollerar var 5:e minut varje låneposition på Morpho som du har ställt in ett larm för, på marknader som listas i Morpho-appen: Morpho Blue på 14 nätverk, och Morpho Midnight. Larm för Midnight omfattar marknader som Morphos API listar. Den 26 oktober 2026 fanns de på Ethereum och Base; Tokenping omfattar även Arc och Robinhood Chain så snart Morpho listar Midnight-marknader där. Tokenping beräknar varje health factor från kedjan med Morphos egen matematik, inte från Morphos API. Så länge en health factor ligger under tröskelvärdet du har satt (1,02 till 10) skickar varje kontroll ett meddelande i varje kanal du har valt: Signal, Telegram eller e-post. Om du har godkänt ett förlikvidationskontrakt på en Blue-marknad mäter larmet mot den lägre av de två gränserna: LLTV eller förlikvidationsgränsen. Ett lån på Midnight får också en påminnelse under sina sista 7 dagar och en under sina sista 24 timmar före förfallodagen, och sedan ett larm vid varje kontroll efter förfallodagen så länge skuld återstår.
+
+Du kan [titta på dina Morpho-positioner](/sv/morpho); det kräver ingen betalning. Larm kostar <AlertPrice />. Ett larm ger dig tid att agera, men ett pris kan röra sig förbi din LLTV mellan två kontroller, och ett larm förhindrar inte likvidation.
+
+## Källor
+
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) och [IMorpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/interfaces/IMorpho.sol), morpho-org/morpho-blue: hälsokontroll, likvidation, incitamentsformel, osäkra fordringar och antaganden om orakel (hämtad 26 oktober 2026)
+- [Midnight.sol](https://github.com/morpho-org/midnight/blob/main/src/Midnight.sol) och [ConstantsLib.sol](https://github.com/morpho-org/midnight/blob/main/src/libraries/ConstantsLib.sol), morpho-org/midnight: likvidationslägen, RCF, upptrappning av incitamentet och slashing (hämtad 26 oktober 2026)
+- [Pre-liquidation README och PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation), morpho-org/pre-liquidation (hämtad 26 oktober 2026)
+- [ChainlinkDataFeedLib.sol](https://github.com/morpho-org/morpho-blue-oracles/blob/main/src/morpho-chainlink/libraries/ChainlinkDataFeedLib.sol), morpho-org/morpho-blue-oracles: inga kontroller av prisets ålder, gränser eller sekvenserare (hämtad 26 oktober 2026)
+- [Liquidation on Morpho](https://docs.morpho.org/learn/concepts/liquidation): likvidatorer, ingen auktion, upp till 100 % på en gång, ingen protokollavgift, osäkra fordringar i vaults (hämtad 26 oktober 2026)
+- [Morphos utvecklardokumentation: liquidation](https://docs.morpho.org/developers/borrow/concepts/liquidation): incitament per LLTV och osäkra fordringar (hämtad 26 oktober 2026)
+- [Morphos dokumentation: oracles](https://docs.morpho.org/learn/concepts/oracle): val av orakel och oföränderlighet (hämtad 26 oktober 2026)
+- [Morphos dokumentation: Morpho Blue](https://docs.morpho.org/learn/concepts/blue): permanenta marknadsparametrar och aktiverade LLTV (hämtad 26 oktober 2026)
+- [Morphos dokumentation: Midnight liquidations](https://docs.morpho.org/learn/concepts/midnight/liquidations), [collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) och [what is Midnight](https://docs.morpho.org/learn/concepts/midnight) (hämtad 26 oktober 2026)
+- [Morphos dokumentation: risks](https://docs.morpho.org/learn/resources/risks): orakelrisk, likvidationsrisk, osäkra fordringar och motpartsrisk (hämtad 26 oktober 2026)
+- [Morpho API](https://api.morpho.org/graphql): antal likvidationer och osäkra fordringar, marknadslistning, låneränta, lånepositioner och Midnight-marknader (hämtad 26 oktober 2026)
+- [Morpho Blue på Base](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), marknaden USDC | cbBTC (86%) vid Base-block 53102870 (hämtad 26 oktober 2026)
+- [Marknadens orakel](https://basescan.org/address/0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9#readContract) och [dess BTC/USD-flöde](https://basescan.org/address/0x64c911996D3c6aC71f9b455B1E8E7266BcbD848F#readContract) på Base: priset vid block 53102870 och flödets ägare (hämtad 26 oktober 2026)
+- [Marknadens förlikvidationskontrakt](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374#readContract) på Base: dess parametrar vid block 53102870 (hämtad 26 oktober 2026)
+- [Morpho Midnight på Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract): aktiverade LLTV och likvidationsmarkörer vid block 26274998 (hämtad 26 oktober 2026)
+
+_Utbildningsinnehåll, inte finansiell rådgivning. Larm minskar risken men förhindrar inte likvidation._

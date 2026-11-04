@@ -1,0 +1,162 @@
+export const meta = {
+  slug: "stablecoin-depeg-pa-aave",
+  title: "Vad en stablecoin-depeg gör med ditt Aave-lån",
+  description:
+    "Hur en depeg flyttar health factor på Aave på båda sidor av lånet, hur Aave prissätter USDC, USDT och USDe med tak, och vad 2023 och 2025 visade.",
+  h1: "Vad händer med din Aave-position vid en depeg av en stablecoin?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "Vad händer med min Aave health factor vid en depeg av en stablecoin?",
+  readingMinutes: 15,
+};
+
+<ShortAnswer>
+  En depeg (när kopplingen till dollarn släpper) av en stablecoin flyttar din Aave health factor (hälsofaktor) via
+  priset från Aaves orakel (priskälla), inte via den 1 $ du har i huvudet. Om stablecoinen är din säkerhet går varje
+  cent som den faller under 1 $ rakt in i health factor, eftersom Aaves prisadaptrar för stablecoins sätter ett tak för
+  priset uppåt (1,04 $ för USDC, USDT, DAI, USDS och PYUSD på Ethereum Core, avläst 28 oktober 2026) men inget golv. Om
+  stablecoinen är din skuld höjer ett fall din health factor och en uppgång sänker den, men aldrig mer än taket
+  tillåter. USDe är specialfallet: sedan 8 mars 2025 prissätter Aave den med USDT:s prisflöde, så USDe:s marknadspris
+  når inte din health factor alls. En depeg kan flytta en position långt mellan två larmkontroller, så ett larm ger dig
+  tid, inte skydd.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Siffrorna och blocknumren de lästes vid: content/blog/snapshots/stablecoin-depeg-aave.md */}
+
+## Vad är en stablecoin-depeg, och vilken sida av ditt lån drabbas?
+
+En stablecoin depeggar när dess marknadspris lämnar den 1 $ den ska hålla. För den som lånar på Aave spelar det roll på två sidor, och de beter sig olika:
+
+- **En stablecoin som du satt in som säkerhet.** Dess orakelpris ingår som faktor i värdet på din säkerhet, så ett fall under 1 $ krymper säkerhetssidan av health factor. Det här är [orsak 5 till att en health factor sjunker](/sv/blog/varfor-sjonk-din-aave-health-factor#orsak-5-har-en-stablecoin-du-satt-in-som-sakerhet-fatt-en-depeg-nedat), och det är den farliga sidan.
+- **En stablecoin som du har lånat.** Dess orakelpris ingår som faktor i värdet på din skuld. Ett fall under 1 $ gör skulden mindre värd och höjer din health factor; en uppgång över 1 $ gör skulden mer värd och sänker den.
+
+Själva health factor är samma formel i båda fallen, förklarad i [vad Aaves health factor är](/sv/blog/aave-health-factor-forklarad):
+
+**HF = Σ(säkerhetens värde × likvidationströskel) ÷ skuldens totala värde**
+
+Båda värdena kommer från Aaves orakel. Ingenting i formeln vet att en tillgång är en stablecoin: USDC på 0,87 $ är helt enkelt en tillgång värd 0,87 $. Det som skiljer stablecoins från andra tillgångar är hur Aave prissätter dem, vilket är ämnet för det tredje avsnittet. Exemplen nedan använder parametrar från Aave V3 Ethereum Core avlästa 28 oktober 2026 vid block 26291704 (14:03:35 UTC): en likvidationströskel (liquidation threshold) på 78 % för USDC och USDT, 84 % för WETH.
+
+## Vad gör en depeg av din stablecoin-säkerhet med health factor?
+
+Ett fall i orakelpriset för en stablecoin du satt in sänker din health factor i proportion till fallet, utan att något stoppar det. Ta 20 000 USDC insatta mot 10 000 USDT lånade, båda på 1 $ för att hålla siffrorna jämna (oraklet visade 0,99971803 $ för USDC och 0,99842395 $ för USDT vid block 26291704):
+
+- Vid 1 $: 20 000 × 0,78 ÷ 10 000 = **1,56**.
+- USDC på 0,95 $: 19 000 × 0,78 ÷ 10 000 = **1,48**.
+- USDC på 0,87 $, botten i mars 2023: 17 400 × 0,78 ÷ 10 000 = **1,36**.
+- Likvidation vid 1,00 skulle kräva USDC på 10 000 ÷ (20 000 × 0,78) = **0,64 $**, med USDT oförändrad.
+
+Den positionen har marginal eftersom den lånade hälften av vad belåningsgraden (LTV) på 75 % tillåter. Samma säkerhet belånad till gränsen, 15 000 USDT, börjar på 15 600 ÷ 15 000 = **1,04**, och USDC på 0,95 $ tar den till 14 820 ÷ 15 000 = **0,99**, vilket kan likvideras. Den når 1,00 vid ett USDC-pris på ungefär **0,96 $**, ett fall på under 4 %. Vid 0,87 $ är den 0,90. En stablecoin-loop (upprepad belåning med hävstång) ser lugn ut tills oraklet rör sig, och då är bufferten det avstånd du lämnade mellan din belåningsgrad och tröskeln; [hur stor buffert en health factor ger dig](/sv/blog/saker-aave-health-factor) går igenom hur du väljer den.
+
+En detalj hjälper: bara förhållandet mellan de två orakelpriserna räknas. Om både USDC och USDT visar 0,95 $ är positionen med 15 000 USDT åter på 14 820 ÷ 14 250 = 1,04, oförändrad. Det som gjorde ont i mars 2023 var att USDC föll medan USDT inte gjorde det.
+
+Varje stablecoin du satt in är utsatt på det här sättet, i proportion till dess andel av din säkerhet. Med WETH och USDC insatta för lika stora dollarbelopp (trösklar 84 % och 78 %) är USDC ungefär 48 % av din viktade säkerhet, så ett USDC-fall på 13 % tar bort ungefär 6 % av den.
+
+## Vad gör en depeg av den stablecoin du har lånat?
+
+Om stablecoinen är din skuld är effekten omvänd och, i en riktning, begränsad. Ta 10 WETH insatta (tröskel 84 %) mot 12 000 USDT lånade, med ETH på illustrativa 2 300 $ (oraklet visade 2 335,08 $ vid block 26291704):
+
+- USDT på 1 $: 23 000 × 0,84 ÷ 12 000 = **1,61**.
+- USDT faller till 0,95 $: skulden är värd 11 400, alltså **1,69**. Vid 0,87 $ är den **1,85**. En depeg nedåt för din skuldtillgång hjälper dig.
+- USDT stiger till 1,02 $: skulden är värd 12 240, alltså **1,58**.
+- USDT stiger till 1,04 $ eller mer: skulden är värd högst 12 480, alltså **1,55**. Taket håller priset där oavsett vad marknaden säger.
+
+En lånad stablecoin kan alltså kosta dig högst ungefär 4 % av din health factor genom sitt eget pris, medan den som säkerhet kan ta bort lika mycket som den faller. Den asymmetrin kommer från adaptern, inte från Aaves riskparametrar.
+
+<Callout tone="info">
+  Det är också därför som att låna en stablecoin mot en volatil tillgång, positionen i [blanka fiatvaluta med
+  Aave](/sv/blog/blanka-fiatvaluta-med-aave), knappt är utsatt för depegs: stablecoinen är skuld, och ett fall i den är
+  goda nyheter för låntagaren.
+</Callout>
+
+## Hur prissätter Aave stablecoins?
+
+Aave värderar inte stablecoins till 1 $. Varje reserv har en priskälla som governance sätter i kontraktet AaveOracle, och för stablecoins är den källan ett Chainlink-prisflöde i USD som ligger inuti en pristaksadapter (price cap adapter) från Aaves repository för prisflöden (det repository som tidigare hette aave-capo; dess README säger att det har bytt namn till Aave Price Feeds). Adaptern för stablecoins är `PriceCapAdapterStable`, och dess `latestAnswer` gör tre saker: den läser Chainlink-flödet, returnerar taket som governance har satt om flödet ligger över det, och returnerar annars flödets pris oförändrat (ett svar från flödet som inte är positivt blir 0). Det finns inget golv.
+
+Avläst från AaveOracle på Ethereum Core vid block 26291704 (28 oktober 2026, 14:03:35 UTC), via `getSourceOfAsset` och varje adapters egna getters:
+
+| Tillgång | Likvidationströskel | Orakelpris   | Priskälla, som adaptern beskriver sig själv                 | Tak (`getPriceCap`) |
+| -------- | ------------------- | ------------ | ----------------------------------------------------------- | ------------------- |
+| USDC     | 78 %                | 0,99971803 $ | ”Capped USDC / USD” över ett ”USDC / USD”-flöde             | 1,04 $              |
+| USDT     | 78 %                | 0,99842395 $ | ”Capped USDT/USD” över ett ”USDT / USD”-flöde               | 1,04 $              |
+| USDe     | 75 %                | 0,99842395 $ | ”Capped USDT/USD” över samma USDT-flöde                     | 1,04 $ (se nedan)   |
+| DAI      | 77 %                | 0,99923138 $ | ”Capped DAI/USD” över ett ”DAI / USD”-flöde                 | 1,04 $              |
+| USDS     | 78 %                | 0,99972900 $ | ”Capped USDS/USD” över ett ”USDS / USD”-flöde               | 1,04 $              |
+| PYUSD    | 78 %                | 0,99988808 $ | ”Capped pyUSD/USD” över ett ”PYUSD / USD”-flöde             | 1,04 $              |
+| GHO      | 0 % (inte säkerhet) | 1,00000000 $ | En fast källa som inte svarar på någon av adapterns getters | inget, fast på 1 $  |
+
+Varje adapters `isCapped()` returnerade false den dagen: inget av flödena låg över sitt tak. USDe-raden behöver en kommentar: adaptern som USDe pekar på är en äldre driftsättning av samma kontrakt (skapad 1 mars 2024) som saknar gettern `getPriceCap`, så taket lästes från dess lagring, där samma 104000000 ligger. sUSDe prissätts av en annan adapter, ”Capped sUSDe / USDT / USD”, som multiplicerar växelkursen från sUSDe till USDe med USDT:s pris och visade 1,25333685 $.
+
+Vad det betyder för en låntagare:
+
+- **Över 1 $ är du skyddad som låntagare och begränsad som den som satt in.** Om USDC handlas till 1,10 $ värderar Aave den till 1,04 $, så en USDC-skuld kostar högst 4 % mer och USDC-säkerhet ger högst 4 % mer.
+- **Under 1 $ mildras ingenting.** Adaptern släpper igenom 0,95 $ eller 0,87 $ exakt. Din säkerhet är värd vad flödet säger, och din health factor följer det vid varje avläsning.
+- **Taket kan ändras.** `setPriceCap` är öppen för Aaves riskadministratörer och pooladministratörer (risk admins, pool admins), kan inte sätta ett tak under flödets aktuella pris och kan inte gå över 2 $. Taken ovan är vad som fanns on-chain 28 oktober 2026, inte ett löfte.
+- **Det är flödet som räknas, inte börspriset.** Chainlinks flöde väger samman flera handelsplatser, så priset på en enskild börs är inte orakelpriset. Om det är en tröst eller en fara beror på vilken sida av lånet du står på; de två nästa avsnitten visar båda.
+
+Orakelfel är ett separat ämne: en adapter kan felprissätta en tillgång utan någon marknadsrörelse alls, som wstETH-incidenten i mars 2026 gjorde, och [orsak 6 till att en health factor sjunker](/sv/blog/varfor-sjonk-din-aave-health-factor#orsak-6-har-ett-orakel-eller-vaxelkursfel-gett-din-sakerhet-fel-pris) tar upp det fallet.
+
+## Varför prissätts USDe med USDT:s flöde, och vad betydde det den 10 oktober 2025?
+
+Sedan 8 mars 2025 prissätter Aave V3 Ethereum Core USDe med USDT:s prisflöde, så USDe:s eget marknadspris når inte någon health factor där. Beslutet kom från ett governance-förslag, ”sUSDe and USDe Price Feed Update”, som Chaos Labs tillsammans med LlamaRisk publicerade på Aaves governance-forum 2 januari 2025. Där står med förslagets egna ord att det ”suggests hardcoding the USDe price to match the USDT price in Aave's pricing feeds” (föreslår att USDe-priset hårdkodas så att det motsvarar USDT-priset i Aaves prisflöden), med argumentet att det mesta av Ethenas hedgar är denominerade i USDT och att en prissättning av sUSDe utifrån USDe:s andrahandsmarknad utsatte positioner med sUSDe som säkerhet för kortsiktiga avvikelser och onödiga likvidationer. Tråden mötte motstånd (ett svar frågade varför man inte hårdkodade 1,00 $ i stället; ett annat oroade sig för att sUSDe-positioner nu var utsatta för USDT:s pris), och Chaos Labs kallade upplägget en tillfällig åtgärd den 16 januari 2025. Omröstningen på Snapshot pågick 3 till 6 februari 2025 och gick igenom. On-chain trädde AIP 262 i kraft i block 22002625 den 8 mars 2025 (14:01:47 UTC): AaveOracles källa för USDe byttes från en ”Capped USDe / USD”-adapter till adaptern ”Capped USDT/USD”, och källan för sUSDe till ”Capped sUSDe / USDT / USD”. Den gamla USDe/USD-adaptern finns kvar och svarar fortfarande: vid block 26291704 visade den 0,99969500 $, medan Aave prissatte USDe till USDT:s 0,99842395 $.
+
+Den 10 oktober 2025, under kraschen som drabbade hela marknaden, sattes det här på prov. LlamaRisks foruminlägg från 24 oktober 2025 beskriver ”aggressive cryptocurrency market volatility events on centralized exchanges, most notably Binance” (kraftiga volatilitetshändelser på centraliserade börser, framför allt Binance) som drev USDe:s pris på andrahandsmarknaden ”down to $0.65 at the lowest point” (ned till 0,65 $ som lägst), och säger att Chainlinks USDe/USD-flöde, som hämtar priser från flera handelsplatser, ”did not deviate significantly during this localized de-peg” (inte avvek nämnvärt under denna lokala depeg). Chaos Labs svar från 2 november 2025 ger siffran: Chainlinks USDe/USD-pris ”reached as low as $0.977” (nådde som lägst 0,977 $). Aave självt såg inget av de två priserna. Med LlamaRisks ord: ”Aave avoided immediate issues from the de-peg on Binance by pricing USDe on par with USDT” (Aave undvek direkta problem från depegen på Binance genom att prissätta USDe i nivå med USDT). LlamaRisks forskningsnotis från 18 oktober 2025 tillägger att Aaves USDe-insättningar på 1,03 miljarder $ ”remained remarkably stable” (förblev anmärkningsvärt stabila) under händelsen.
+
+Två ärliga förbehåll. För det första är det här vad källorna säger, och inget mer: ingen offentlig post-mortem som hittats för den här guiden räknar USDe-relaterade likvidationer på Aave den dagen, så den här guiden påstår inte att det inte fanns några. För det andra säger samma LlamaRisk-inlägg som ger USDT-flödet äran för att problemen undveks också att upplägget ”transfers the solvency risk to the Aave protocol” (flyttar solvensrisken till Aave-protokollet): om USDe någon gång förlorade sin täckning skulle Aaves orakel fortsätta att värdera den som USDT tills governance ingrep. LlamaRisk föreslog i det inlägget ett riskstyrt orakel för USDe med automatisk frysning; Chaos Labs avrådde från det den 2 november 2025, och tråden stängdes den 7 december 2025 utan någon registrerad omröstning. Den 28 oktober 2026 pekade USDe på Ethereum Core fortfarande på USDT-adaptern, med en likvidationströskel på 75 % och en belåningsgrad på 0.
+
+För en låntagare skär det åt båda hållen. Om du har USDe som säkerhet på Ethereum Core flyttar en försäljningsvåg i USDe på en börs inte din health factor, men en depeg av USDT skulle göra det, och det skulle även en governance-omröstning som byter tillbaka flödet. Om du har lånat USDe gör en rabatt på marknaden den billigare att köpa tillbaka, men Aave värderar ändå din skuld till USDT:s pris.
+
+## Vad hände med låntagare på Aave när USDC föll i mars 2023?
+
+Den 11 mars 2023, efter att Circle meddelat att en del av USDC:s reserver låg hos Silicon Valley Bank, föll USDC på marknaden till en botten på runt 88 cent vid ungefär 08:00 UTC, enligt Gauntlets post-mortem för Aave (17 mars 2023). Aaves USDC-pris följde Chainlink-flödet nedåt (de cappade adaptrarna kom senare, och de hade inte ändrat ett fall), och varje position med USDC som säkerhet förlorade health factor i samma takt, vilket är precis det första räkneexemplet ovan.
+
+Governance och riskteamen agerade inom några timmar, allt i den forumtråd som Gauntlet öppnade 08:13 UTC:
+
+- **09:19 UTC:** Gauntlet rekommenderade att tillfälligt pausa alla marknader på Aave V2 och V3, för att hindra likvidationer från att realisera insolvenser.
+- **10:19 UTC:** BGD Labs påpekade att Aave Guardian kunde agera direkt bara på Aave V3 Avalanche, där den kedjeöverskridande governance-infrastrukturen inte gällde, och föreslog att stablecoins där skulle frysas och få belåningsgraden 0.
+- **Runt 13:00 UTC:** Guardian frös USDC, USDT, DAI, FRAX och MAI på Aave V3 Avalanche och satte deras belåningsgrad till 0, vilket BGD Labs bekräftade i tråden, med tillägget att frysningen inte ändrade någon befintlig health factor. Aaves konto meddelade det 16:44 UTC.
+- **Ingen paus.** Gauntlets post-mortem säger att Guardian inte genomförde pausen, efter att ha vägt risken mot de strategiska och filosofiska konsekvenserna; en frysning blockerar nya insättningar och lån men låter likvidationer fortsätta.
+
+Resultatet, enligt samma post-mortem: ungefär 280 000 $ i insolvenser på Aave V3 Avalanche E-Mode och ungefär 20 000 $ på V3 Arbitrum under helgen 11 till 12 mars, ungefär 300 000 $ totalt, och inga realiserade förluster på Aave V2. Gauntlet uppskattade att V2-insolvenserna ensamma kunde ha nått ungefär 1 miljon $ vid ett USDC-pris på 80 cent. Lärdomen för en låntagare är att protokollets svar på en depeg riktar sig mot protokollet: en frysning hindrar ny risk från att komma in, den gör inte din position säkrare, och pausen som hade stoppat likvidationer användes inte.
+
+## Kan en depeg orsaka osäker fordran (bad debt), och vem betalar för den?
+
+Ja. När säkerheten faller snabbare än likvidatörerna hinner avveckla den kan en position sluta med säkerhet som är värd mindre än skulden plus likvidationsbonusen, och underskottet blir en osäker fordran. De 300 000 $ i mars 2023 var precis det, mest i en E-Mode för stablecoins där positionerna låg nära gränsen. Sedan Aave v3.3 bränns ett sådant underskott från låntagarens skuld och bokförs som ett underskott (deficit) på tillgången, och Umbrella, Aaves skyddsnät som bygger på staking, kan bränna stakade aTokens för att täcka det (aktiveringen började på Ethereum, enligt Aaves dokumentation). Inget av det hjälper låntagaren, vars säkerhet redan är borta; [kan en likvidation lämna osäker fordran](/sv/blog/sa-fungerar-likvidation-pa-aave#kan-en-likvidation-lamna-osakra-fordringar-efter-sig) har mekaniken och ett räkneexempel.
+
+## Hur skiljer sig det här på Morpho?
+
+På Morpho finns ingen prissättning av stablecoins för hela protokollet och inget tak. Varje Morpho Blue-marknad har sitt eget orakel, valt av den som skapade marknaden och fast under marknadens hela livstid, och Morphos dokumentation säger ”Once a market is deployed, its oracle address cannot be modified.” (När en marknad väl är driftsatt kan dess orakeladress inte ändras.) Vissa orakel prissätter bara säkerheten och behandlar lånetoken som 1 $, så en depeg av den lånade stablecoinen ändrar ingenting; andra innehåller ett flöde för den. Om en USDC-depeg berör din Morpho-position beror på det enda kontraktet, och [vad som flyttar en Morpho health factor](/sv/blog/morpho-health-factor-forklarad#vad-flyttar-en-morpho-health-factor) visar hur du läser det.
+
+## Vad kan du göra åt depeg-risken på Aave?
+
+Depeg-risken avgörs mest när du väljer positionen, så de användbara åtgärderna är val snarare än reaktioner:
+
+1. **Lägg stablecoinen på skuldsidan när du kan.** Lånade stablecoins kan bara skada dig genom att stiga, och taket begränsar det till ungefär 4 %. Stablecoin-säkerhet har inget golv. [Välj skuld som matchar din säkerhet](/sv/blog/undvik-likvidation-pa-aave#steg-5-valj-skuld-som-passar-din-sakerhet) går igenom paren.
+2. **Om du har stablecoin-säkerhet, håll en buffert i cent, inte i procent.** Exemplet nära gränsen ovan når 1,00 vid ungefär 0,96 $. En health factor på 1,56, samma säkerhet med en tredjedel mindre skuld, kräver 0,64 $. Bestäm vilket pris du är beredd att bli likviderad vid, och anpassa lånets storlek efter det.
+3. **Bevaka oraklet, inte börsen.** Priset som likviderar dig är `AaveOracle.getAssetPrice(asset)`, som för stablecoins på Ethereum Core är ett Chainlink-flöde under ett tak, och för USDe är USDT:s flöde. Ett pris på en enskild börs är varken nödvändigt eller tillräckligt.
+4. **Vet vad governance kan göra.** Tak och källor ändras genom omröstning eller åtgärder från riskadministratörer, och en frysning under en kris pausar inte likvidationer. Trådarna från mars 2023 och oktober 2025 ovan dokumenterar vad som gjordes.
+5. **Ha utvägen redo.** Att betala tillbaka med den depeggade stablecoinen är billigt om den är din skuld och dyrt om du måste köpa den; [hur du höjer din Aave health factor](/sv/blog/undvik-likvidation-pa-aave) listar de åtgärder som fungerar under en frysning, eftersom en frusen reserv fortfarande tillåter återbetalning.
+
+## Kan ett larm varna dig för en depeg?
+
+Ett larm kan tala om för dig att din health factor har passerat en gräns; det kan inte bromsa en depeg. Tokenping kontrollerar din health factor på Aave V3 och V4 var 5:e minut på 22 nätverk och skickar meddelanden via Signal, Telegram eller e-post så länge den ligger under det tröskelvärde du har satt (1,1 till 10). Den läser health factor från Pool-kontraktet, så priset bakom den är Aaves orakelpris, samma pris som likvidatörerna får betalt efter: ett Binance-pris på 0,65 $ för USDe når inte någon health factor på Ethereum Core, medan en Chainlink-avläsning för USDC på 0,88 $ når varje position med USDC som säkerhet, och ett larm följer om det tar health factor under ditt tröskelvärde.
+
+Fem minuter är lång tid under en depeg. Den 11 mars 2023 låg USDC redan vid 08:00 UTC på runt 88 cent, och positionen nära gränsen ovan når 1,00 vid ungefär 0,96 $, så en kontroll var 5:e minut kan hitta en sådan position redan under 1,00 vid den första kontroll som ser fallet. Det ett larm faktiskt ger dig är den långsamma delen: en stablecoin som glider till 0,98 $ och stannar där, en likvidationströskel som governance sänker, ränta som växer. Sätt tröskelvärdet där du fortfarande skulle känna dig bekväm med att agera, och kom ihåg att agera under en depeg innebär att betala tillbaka eller lägga till säkerhet på ett nätverk som alla andra använder samtidigt. [Så ställer du in ett health factor-larm](/sv/blog/stall-in-aave-health-factor-larm) går igenom stegen, larm kostar <AlertPrice />, och du kan [kontrollera din Aave V3 health factor](/sv/aave) först; att titta på dina positioner kräver ingen betalning.
+
+## Källor
+
+- [Aave V3 Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): belåningsgrad och likvidationströsklar för USDC, USDT, USDe, DAI, USDS, PYUSD, GHO och WETH vid block 26291704 (hämtad 28 oktober 2026)
+- [Aave V3 Ethereum Core AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2#readContract): `getAssetPrice` och `getSourceOfAsset` för samma tillgångar vid block 26291704, och händelsen `AssetSourceUpdated` för USDe och sUSDe vid block 22002625 (hämtad 28 oktober 2026)
+- [Capped USDC / USD-adaptern](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract), [Capped USDT/USD-adaptern](https://etherscan.io/address/0x260326c220E469358846b187eE53328303Efe19C#readContract) och [adaptern som USDe pekar på](https://etherscan.io/address/0xC26D4a1c46d884cfF6dE9800B6aE7A8Cf48B4Ff8#code), ”Aave: Ethena Correlated USDe Price Feed”, skapad 1 mars 2024: beskrivningar, tak, `isCapped` och underliggande flöden vid block 26291704 (hämtad 28 oktober 2026)
+- [PriceCapAdapterStable.sol](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol) och [README för Aave Price Feeds](https://github.com/aave-dao/aave-price-feeds): logiken för taket, åtkomstkontrollen för `setPriceCap`, namnbytet från Aave Capo (hämtad 28 oktober 2026)
+- [Aaves dokumentation om oraklet](https://aave.com/docs/ecosystem/oracle.md): källor som governance sätter per reserv (hämtad 28 oktober 2026)
+- [ARFC: sUSDe and USDe Price Feed Update](https://governance.aave.com/t/arfc-susde-and-usde-price-feed-update/20495) (Chaos Labs och LlamaRisk, 2 januari 2025, Snapshot 3 till 6 februari 2025), [AIP 262](https://vote.onaave.com/proposal/?proposalId=262) och dess [pull request med payload](https://github.com/aave-dao/aave-proposals-v3/pull/621), sammanslagen 3 mars 2025 (hämtad 28 oktober 2026)
+- [Genomförandet av AIP 262 på Ethereum](https://etherscan.io/tx/0xbb810541258db350d632e9a22ed7d7547509c67b2585dbc7a64a76b6ac8e42e0): källorna för USDe och sUSDe uppdaterade vid block 22002625, 8 mars 2025 14:01:47 UTC (hämtad 28 oktober 2026)
+- [ARFC: Ethena USDe Risk Oracle and Automated Freeze Guardian](https://governance.aave.com/t/arfc-ethena-usde-risk-oracle-and-automated-freeze-guardian/23303) (LlamaRisk, 24 oktober 2025; svar från Chaos Labs 2 november 2025; stängd 7 december 2025) (hämtad 28 oktober 2026)
+- [When Pricing Breaks: A USDe Case](https://llamarisk.com/research/when-pricing-breaks-usde) (LlamaRisk, 18 oktober 2025, hämtad 28 oktober 2026)
+- [ARC: Stablecoin Volatility Risk Parameter Recommendations](https://governance.aave.com/t/arc-stablecoin-volatility-risk-parameter-recomendations/12241) (Gauntlet, 11 mars 2023, med BGD Labs bekräftelse av frysningen samma dag) och [Aaves meddelande](https://x.com/aave/status/1634596115483086848) (11 mars 2023, 16:44 UTC) (hämtad 28 oktober 2026)
+- [Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (Gauntlet, 17 mars 2023, hämtad 28 oktober 2026)
+- [Funktionerna i Aave v3.3](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md) och [Aaves dokumentation om Umbrella](https://aave.com/docs/aave-v3/umbrella): underskott och slashing (hämtad 28 oktober 2026)
+- [Morphos dokumentation: Oracles](https://docs.morpho.org/learn/concepts/oracle): ett orakel per marknad, valt av curatorn, oföränderligt (hämtad 28 oktober 2026)
+
+_Utbildningsinnehåll, inte finansiell rådgivning. Larm minskar risken men förhindrar inte likvidation._

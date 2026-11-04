@@ -1,0 +1,156 @@
+export const meta = {
+  slug: "aave-rantor",
+  title: "Så fungerar räntorna på Aave, och varför de rusar",
+  description:
+    "Låneräntan på Aave följer en kurva: flack upp till en optimal utnyttjandegrad, brant ovanför. Formeln, verkliga parametrar, toppar och vad du kan göra.",
+  h1: "Hur fungerar räntorna på Aave, och varför skjuter låneräntorna i höjden?",
+  publishedAt: "2026-10-25",
+  primaryQuestion: "Hur bestämmer Aave låneräntan och insättningsräntan, och varför skjuter de i höjden?",
+  readingMinutes: 9,
+};
+
+<ShortAnswer>
+  På Aave V3 följer varje tillgångs rörliga låneränta en kurva som governance bestämmer: den stiger långsamt med
+  utnyttjandegraden (utilization), den andel av de insatta tokens som är utlånad, upp till en optimal nivå, och brant
+  ovanför den. De som sätter in tjänar låneräntan gånger utnyttjandegraden, minus reserve factor. Räntorna räknas om vid
+  varje insättning, lån, återbetalning och uttag, så ett enda stort uttag kan driva utnyttjandegraden förbi den optimala
+  nivån och mångdubbla räntan inom ett block: USDC på Ethereum Core gick från 4,50 % till 13,67 % APR den 14 oktober
+  2026 och var tillbaka på 4,76 % cirka 36 minuter senare. All skuld på Aave V3 har rörlig ränta.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Siffrorna och blocknumren de lästes vid: content/blog/snapshots/aave-interest-rates.md */}
+
+## Vad bestämmer låneräntan på Aave?
+
+På Aave V3 bestäms en tillgångs låneränta av två saker: dess utnyttjandegrad och dess ränteparametrar. Utnyttjandegraden är den andel av tillgångens pool som är utlånad: skulden delad med skulden plus de tokens som fortfarande finns tillgängliga. Parametrarna är fyra tal per tillgång, som Aaves governance bestämmer, och Aaves Risk Stewards får justera dem i begränsade steg och med minsta väntetider:
+
+- **Optimal utnyttjandegrad (optimal usage ratio):** utnyttjandegraden där kurvan knäcks.
+- **Basränta (base rate):** låneräntan vid 0 % utnyttjandegrad.
+- **Slope 1:** hur mycket räntan stiger från 0 % upp till den optimala utnyttjandegraden.
+- **Slope 2:** hur mycket mer den stiger från den optimala utnyttjandegraden upp till 100 %.
+
+Lästa den 25 oktober 2026 vid Ethereum-block 26269328 och Arbitrum-block 518125419 var parametrarna och räntorna för några vanliga tillgångar:
+
+| Marknad och tillgång | Optimal utnyttjandegrad | Bas   | Slope 1 | Slope 2 | Utnyttjandegrad | Låne-APR | Insättnings-APR |
+| -------------------- | ----------------------- | ----- | ------- | ------- | --------------- | -------- | --------------- |
+| Ethereum Core USDC   | 94 %                    | 0 %   | 4,5 %   | 10 %    | 93,72 %         | 4,49 %   | 3,78 %          |
+| Ethereum Core USDT   | 92 %                    | 0 %   | 4,5 %   | 10 %    | 87,81 %         | 4,30 %   | 3,39 %          |
+| Ethereum Core WETH   | 92 %                    | 0 %   | 2,2 %   | 6 %     | 81,31 %         | 1,94 %   | 1,31 %          |
+| Ethereum Core GHO    | 99 %                    | 4,5 % | 0 %     | 0 %     | används inte    | 4,50 %   | 0 %             |
+| Arbitrum USDC        | 90 %                    | 0 %   | 4 %     | 10 %    | 77,32 %         | 3,44 %   | 2,39 %          |
+
+GHO är undantaget: båda dess slopes är noll, så räntan ligger still oavsett utnyttjandegrad, och den ändras för hand (se [GHO och Aave V4](#hur-satts-rantan-for-gho-och-pa-aave-v4)).
+
+## Hur beräknas låneräntan på Aave?
+
+Låneräntan på Aave V3 är en rak linje upp till den optimala utnyttjandegraden och en mycket brantare linje ovanför den. Med U för utnyttjandegraden:
+
+**Upp till den optimala utnyttjandegraden: låneränta = bas + slope 1 × U ÷ optimal utnyttjandegrad**
+
+**Ovanför den: låneränta = bas + slope 1 + slope 2 × (U − optimal utnyttjandegrad) ÷ (1 − optimal utnyttjandegrad)**
+
+I kontraktet är U den totala skulden delad med den totala skulden plus de tokens som poolen fortfarande håller. Med USDC:s parametrar på Ethereum Core blir räntan vid varje utnyttjandegrad:
+
+| Utnyttjandegrad | Låne-APR |
+| --------------- | -------- |
+| 50 %            | 2,39 %   |
+| 80 %            | 3,83 %   |
+| 90 %            | 4,31 %   |
+| 94 % (optimal)  | 4,50 %   |
+| 95 %            | 6,17 %   |
+| 96 %            | 7,83 %   |
+| 98 %            | 11,17 %  |
+| 100 %           | 14,50 %  |
+
+Under 94 % flyttar tio procentenheter utnyttjandegrad räntan med mindre än en halv procentenhet. Ovanför lägger varje procentenhet till cirka 1,67 procentenheter, och de sista sex procentenheterna utnyttjandegrad mer än tredubblar räntan. Läst den 25 oktober 2026 låg USDC på 93,72 %, strax under knäcken: 4,5 % × 0,9372 ÷ 0,94 ger de 4,49 % som den tog ut.
+
+Kurvan är tänkt att fungera så. Under den optimala nivån håller billiga lån poolen i bruk; ovanför den gör den branta räntan det så dyrt att låna att en del låntagare betalar tillbaka och en del innehavare sätter in, vilket pressar ner utnyttjandegraden igen och lämnar tokens tillgängliga för dem som har satt in och vill ta ut.
+
+## Varför skjuter låneräntorna på Aave i höjden?
+
+Låneräntorna på Aave skjuter i höjden när utnyttjandegraden passerar den optimala utnyttjandegraden, oftast för att någon som har satt in mycket tar ut eller någon lånar ett stort belopp. Räntan räknas om i samma transaktion, och varje låntagare av den tillgången betalar den nya räntan från det ögonblicket fram till nästa ändring.
+
+Den 14 oktober 2026 drev ett enda uttag på exakt 133 898 000 USDC från Ethereum Core upp utnyttjandegraden från 93,92 % till 99,50 % i ett enda block:
+
+| Ethereum-block (UTC)         | Vad som hände                               | Utnyttjandegrad | Låne-APR för USDC |
+| ---------------------------- | ------------------------------------------- | --------------- | ----------------- |
+| 26194052 (14 okt., 23:32:47) | Före                                        | 93,92 %         | 4,50 %            |
+| 26194053 (14 okt., 23:32:59) | 133 898 000 USDC togs ut                    | 99,50 %         | 13,67 %           |
+| 26194088 (14 okt., 23:39:59) | Högsta punkten i perioden                   | cirka 99,8 %    | 14,18 %           |
+| 26194231 (15 okt., 00:08:35) | Samma adress satte in 133 898 000 USDC igen | 94,16 %         | 4,76 %            |
+
+Låntagarna betalade ungefär tre gånger den vanliga räntan i 36 minuter, och formeln ovan återger var och en av de räntorna utifrån utnyttjandegraden. En topp varar så länge utnyttjandegraden är hög: här kom samma tokens tillbaka, men i andra fall krävs nya insättningar eller återbetalningar, lockade av den höga räntan, för att få ner den.
+
+Två andra saker ändrar en låneränta. Governance eller Risk Stewards kan ändra de fyra parametrarna, vilket flyttar hela kurvan på en gång. Och mellan transaktionerna ändras räntan inte: Aave räknar om den vid varje insättning, lån, återbetalning, uttag och likvidation av den tillgången, och räntan växer till med den räntesatsen, sekund för sekund, fram till nästa.
+
+## Varför tjänar långivare mindre än låntagare betalar?
+
+De som sätter in tjänar mindre än låntagarna betalar, eftersom bara den utlånade delen av poolen betalar ränta, och protokollet behåller en del av den. Insättningsräntan är:
+
+**Insättningsränta = låneränta × utnyttjandegrad × (1 − reserve factor)**
+
+För USDC på Ethereum Core den 25 oktober 2026: 4,4866 % × 0,9372 × (1 − 0,10) = 3,78 %. Reserve factor (reservfaktorn), 10 % för USDC och 15 % för WETH, går till Aaves treasury. Där en reserv har ett underskott från osäkra fordringar (bad debt) räknar kontraktet också med det på insättningssidan, vilket sänker insättningsräntan något.
+
+## Vad är skillnaden mellan APR och APY på Aave?
+
+Kontrakten lagrar räntor som APR, och Aave-appen visar APY, som lägger till ränta på ränta. Appens matematikbibliotek räknar ränta på ränta på APR varje sekund över ett år på 31 536 000 sekunder:
+
+**APY = (1 + APR ÷ 31 536 000)^31 536 000 − 1**
+
+De 4,4866 % APR på USDC på Ethereum Core visas i appen som 4,59 % APY. På de här nivåerna är skillnaden ungefär en tiondels procentenhet; vid 14 % APR är den ungefär en procentenhet (15,0 % APY).
+
+## Hur påverkar räntetoppar din health factor?
+
+En kort topp rubbar knappt din health factor (hälsofaktor); en hög ränta som håller i sig i månader gör det. Räntan läggs till din skuld, och mer skuld sänker health factor, som [orsaken ränta i varför din health factor sjunker](/sv/blog/varfor-sjonk-din-aave-health-factor#orsak-3-har-rantan-pa-din-skuld-vuxit-snabbare-an-pa-din-sakerhet) förklarar.
+
+Ta 10 WETH insatta mot 12 000 USDC lånade på Ethereum Core, med WETH:s likvidationströskel (liquidation threshold) på 83 % (läst den 14 oktober 2026) och ett illustrativt ETH-pris på 2 400 $: health factor är 1,66. Räknat med vad WETH tjänar till sin insättningsränta på 1,31 %:
+
+| Hur länge räntan varar | Vid 4,49 % (25 oktober 2026)  | Vid 14,50 % (kurvans topp) |
+| ---------------------- | ----------------------------- | -------------------------- |
+| 36 minuter             | cirka 0,04 USDC i ränta, 1,66 | cirka 0,12 USDC, 1,66      |
+| 30 dagar               | cirka 1,66                    | cirka 1,64                 |
+| Ett år                 | cirka 1,61                    | cirka 1,45                 |
+
+Toppen den 14 oktober kostade den här positionen cirka 12 cent. En marknad som ligger kvar i toppen av sin kurva i ett år skulle ta den från 1,66 till cirka 1,45 utan någon prisrörelse alls, och därför är en långsam glidning värd ett tröskelvärde för larm med god marginal ([hur stor buffert en health factor ger dig](/sv/blog/saker-aave-health-factor#hur-snabbt-ater-ranta-och-andrade-parametrar-upp-din-buffert)).
+
+## Vad kan du göra när din låneränta rusar?
+
+När din låneränta rusar, kontrollera först tillgångens utnyttjandegrad på dess sida i Aave-appen: strax ovanför den optimala utnyttjandegraden sjunker räntan tillbaka så snart utnyttjandegraden gör det. Sedan har du fyra alternativ, vart och ett med en kostnad:
+
+- **Vänta.** En topp som orsakats av ett enda stort uttag kan ta slut när de tokens kommer tillbaka, som den 14 oktober 2026. Inget garanterar att de gör det, och under tiden betalar du den höga räntan.
+- **Betala tillbaka en del av skulden.** Det sänker både din ränta och din risk; [så höjer du din health factor på Aave](/sv/blog/undvik-likvidation-pa-aave) går igenom hur du betalar tillbaka med dina egna tokens eller med din säkerhet.
+- **Byt skulden till en annan tillgång.** Aave Labs gränssnitt har en debt swap som byter en lånad tillgång mot en annan i en enda transaktion, på marknaderna Ethereum Core, Prime och EtherFi och på Arbitrum, Avalanche, Base, BNB Chain, Optimism, Polygon, Gnosis och Sonic, enligt Aaves dokumentation. Den finns inte listad för Metis, Scroll, ZKsync, Celo, Soneium, Linea, Plasma eller Ink. Den nya tillgången har sin egen kurva och sin egen risk om dess pris rör sig annorlunda än din gamla skuld.
+- **Låna på en annan marknad.** Varje marknad har sin egen pool och sin egen utnyttjandegrad: den 25 oktober 2026 kostade USDC 4,49 % på Ethereum Core och 3,44 % på Arbitrum. Att flytta innebär att betala tillbaka på den ena marknaden och låna på den andra, med säkerhet på det nätverket.
+
+## Hur sätts räntan för GHO och på Aave V4?
+
+GHO, Aaves egen stablecoin, har en platt låneränta som människor väljer i stället för kurvan. På Ethereum Core har dess parametrar båda slopes på noll, så räntan är basräntan, 4,50 % den 25 oktober 2026. Den ändras via ett GHO-stewardkontrakt av ett Risk Council där 2 av 3 måste godkänna: med högst 5 procentenheter per ändring och högst en gång om dagen. Den senaste ändringen, den 3 oktober 2026, höjde den från 4,25 % till 4,50 %; sedan november 2024 har den ändrats 44 gånger, mellan 3,00 % och 14,50 %. Den gamla rabatten för innehavare av stkAAVE togs bort med Aave v3.4.
+
+Aave V4 behåller en kurva för utnyttjandegrad, men dokumentationen beskriver den som inställd per tillgång i Hub, poolen som lånar ut till varje Spoke. Ovanpå den gemensamma räntan betalar varje låntagare en User Risk Premium (riskpåslag per användare) som beror på kvaliteten på låntagarens säkerhet: Aaves exempel är ett påslag på 50 % på en basränta på 5 %, vilket ger 7,5 %. Två låntagare av samma tillgång på V4 kan alltså betala olika räntor, och [avsnittet om V4 i guiden om health factor](/sv/blog/aave-health-factor-forklarad#ar-health-factor-annorlunda-pa-aave-v4) går igenom vad V4 ändrar i övrigt.
+
+## Kan du få fast ränta på Aave?
+
+Nej. Aave V3 hade en gång ett alternativ med stabil ränta, men det fasades ut helt 2024 efter en buggrapport, och Aave v3.2 tog bort koden. Varje lån på Aave V3 betalar den rörliga räntan, och GHO:s platta ränta kan fortfarande ändras när som helst inom dess stewards gränser.
+
+## Kan ett larm varna dig för stigande räntor?
+
+Ett health factor-larm bevakar inte räntor; det bevakar vad räntorna gör med din position. Tokenping kontrollerar din health factor på Aave V3 och V4 var 5:e minut på 22 nätverk och skickar ett meddelande via Signal, Telegram eller e-post så länge den ligger under tröskelvärdet du har ställt in (1,1 till 10). En topp som den 14 oktober 2026 utlöser det inte, eftersom den knappt rubbar health factor; månader med hög ränta gör det, när skulden har vuxit tillräckligt för att passera ditt tröskelvärde.
+
+Vill du ha ett meddelande om själva räntan skickar en del andra verktyg räntelarm, och [vår jämförelse av larmverktyg för Aave](/sv/blog/verktyg-for-aave-likvidationslarm) visar vad vart och ett bevakar. Hur du ställer in ett health factor-larm står i [så ställer du in ett health factor-larm](/sv/blog/stall-in-aave-health-factor-larm), och du kan först [kontrollera din health factor på Aave V3](/sv/aave); att titta på dina positioner kräver ingen betalning.
+
+## Källor
+
+- [DefaultReserveInterestRateStrategyV2.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/misc/DefaultReserveInterestRateStrategyV2.sol) och [ReserveLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ReserveLogic.sol): räntekurvan, utnyttjandegraden, insättningsräntan och när räntorna räknas om (aave-v3-origin, hämtad 25 oktober 2026)
+- [Räntestrategi för Aave V3 Ethereum Core](https://etherscan.io/address/0x9ec6F08190DeA04A54f8Afc53Db96134e5E3FdFB#readContract) och [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): parametrar och räntor vid block 26269328; USDC vid blocken 26194052, 26194053, 26194088, 26194230 och 26194231 (hämtad 25 oktober 2026)
+- [Räntestrategi för Aave V3 Arbitrum](https://arbiscan.io/address/0x429F16dBA3B9e1900087Cbaa7b50D38Bc60fB73F#readContract): parametrar och räntor för USDC vid block 518125419 (hämtad 25 oktober 2026)
+- [Aave Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): ränteparametrar hör till de värden som stewards får ändra, med en största ändring och en minsta väntetid per uppdatering (hämtad 25 oktober 2026)
+- [calculateCompoundedRate i aave-utilities](https://github.com/aave/aave-utilities/blob/master/packages/math-utils/src/formatters/compounded-interest/calculate-compounded-interest.ts): från APR till APY över 31 536 000 sekunder (hämtad 25 oktober 2026)
+- [Aaves swapfunktioner](https://aave.com/docs/aave-v3/smart-contracts/swap-features.md): debt swap och återbetalning med säkerheten, och vilka marknader som stöder dem (hämtad 25 oktober 2026)
+- [GHO Stewards: October 2026 GHO borrow rate update](https://governance.aave.com/t/gho-stewards-october-2026-gho-borrow-rate-update/25754) (TokenLogic, 2 oktober 2026, hämtad 25 oktober 2026) och [GHO-stewardkontraktet](https://etherscan.io/address/0x98217A06721Ebf727f2C8d9aD7718ec28b7aAe34#readContract): gränser per uppdatering och räntehistoriken sedan november 2024 (hämtad 25 oktober 2026)
+- [Funktioner i Aave v3.4](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.4/Aave-v3.4-features.md): borttagningen av stkAAVE-rabatten på GHO (hämtad 25 oktober 2026)
+- [BGD: Full deprecation of stable rate](https://governance.aave.com/t/bgd-full-deprecation-of-stable-rate/16473) (31 januari 2024) och [funktioner i Aave v3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): stabil ränta borttagen (hämtad 25 oktober 2026)
+- [Dokumentation för Aave V4](https://aave.com/docs/aave-v4.md) och [positioner i V4](https://aave.com/docs/aave-v4/positions.md): räntekurvan per tillgång i Hub och User Risk Premium (hämtad 25 oktober 2026)
+
+_Utbildningsinnehåll, inte finansiell rådgivning. Larm minskar risken men förhindrar inte likvidation._

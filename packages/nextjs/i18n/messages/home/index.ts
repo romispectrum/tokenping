@@ -15,6 +15,7 @@ import { MESSAGES as ro } from "./ro";
 import type { HomeMessages } from "./shared";
 import { MESSAGES as sl } from "./sl";
 import { MESSAGES as sr } from "./sr";
+import { MESSAGES as sv } from "./sv";
 import { MESSAGES as tr } from "./tr";
 import { MESSAGES as vi } from "./vi";
 import type { Localized } from "~~/i18n/locales";
@@ -46,4 +47,5 @@ export const HOME_MESSAGES: Localized<HomeMessages> = {
   hr,
   sl,
   sr,
+  sv,
 };

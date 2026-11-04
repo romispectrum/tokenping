@@ -23,6 +23,7 @@ const RSS_DESCRIPTIONS: Localized<string> = {
   hr: "Vodiči o health factoru na Aaveu i Morphu, riziku likvidacije i upozorenjima.",
   sl: "Vodniki o health factorju na Aave in Morpho, tveganju likvidacije in opozorilih.",
   sr: "Vodiči o health factoru na Aaveu i Morphu, riziku od likvidacije i upozorenjima.",
+  sv: "Guider om health factor på Aave och Morpho, likvidationsrisk och larm.",
 };
 
 const XML_ENTITIES: Record<string, string> = { "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" };

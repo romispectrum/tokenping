@@ -1,0 +1,134 @@
+export const meta = {
+  slug: "likviderad-pa-aave-eller-morpho-vad-nu",
+  title: "Likviderad på Aave eller Morpho: vad du gör nu",
+  description:
+    "Så hittar du likvidationstransaktionen, ser vad som togs och vad du behöll, varför det hände och hur du undviker att likvideras en andra gång.",
+  h1: "Jag blev likviderad på Aave eller Morpho: vad nu?",
+  publishedAt: "2026-10-31",
+  primaryQuestion: "Vad ska du göra efter en likvidation på Aave eller Morpho?",
+  readingMinutes: 11,
+};
+
+<ShortAnswer>
+  Hitta först transaktionen: på Aave i appens transaktionshistorik eller bland din plånboks tokenöverföringar i en block
+  explorer, på Morpho via Morpho-appen eller Morphos öppna API, eftersom likviderarens transaktion aldrig syns i din
+  egen lista. Läs den sedan: skulden som betalades tillbaka åt dig, säkerheten som togs och skillnaden, som är bonusen
+  du betalade. De tokens du lånade är fortfarande dina, liksom all säkerhet som inte togs. På Aave betalar en
+  likvidation oftast tillbaka hälften av din skuld och lämnar kvar en position som kan likvideras igen; på Morpho kan
+  den ta nästan allt på en gång. Under de 30 dagarna fram till 30 oktober 2026 likviderades 932 låntagare på Morpho mer
+  än en gång, så det mest användbara steget är det sista: en buffert och ett larm innan du lånar igen.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Siffror och den tidpunkt de lästes: content/blog/snapshots/liquidated-on-aave-or-morpho-what-now.md */}
+
+## Hur vet du att det var en likvidation, och var finns transaktionen?
+
+Det första tecknet är oftast att en position ser fel ut: skulden är mindre än du minns, säkerheten är mycket mindre, health factor (hälsofaktor) är plötsligt högre, eller positionen är borta. En återbetalning du inte gjorde och ett uttag av säkerhet du inte signerade, i samma transaktion, är en likvidation.
+
+Transaktionen är svår att hitta eftersom du inte skickade den. Det gjorde en likviderares bot, så den finns inte i listan ”Transactions” för din adress på Etherscan, Basescan eller Arbiscan. Här letar du i stället:
+
+- **Aave, i appen.** Öppna ”Transaction history” (transaktionshistorik, app.aave.com/history) med plånboken ansluten och rätt marknad vald, och filtrera på ”Liquidation”. Varje post har tidpunkten, transaktionshashen, säkerheten som togs och skulden som betalades tillbaka.
+- **Aave, i en block explorer.** Öppna din adress och fliken ”Token transfers (ERC-20)” (tokenöverföringar). En likvidation syns som en överföring av din aToken (till exempel aEthWETH) och av din skuldtoken (variableDebtEthUSDT) till nolladressen, i en transaktion du inte signerade. Öppna den och byt till fliken ”Logs” (loggar): händelsen `LiquidationCall` på Pool-kontraktet är posten du behöver. En transaktion kan innehålla flera likvidationer av flera låntagare, så leta efter den där `user` är din adress.
+- **Morpho.** Din adress visar ingenting i explorern, eftersom din säkerhet låg i Morpho-kontraktet och likviderarens återbetalning också gick till kontraktet. Morpho-appen visar positionen mindre eller borta; Morphos öppna API listar varje likvidation av din adress (`marketTransactions` av typen Liquidation); och Morpho-kontraktets händelselogg i explorern har en händelse `Liquidate` med din adress som `borrower`.
+- **Tokenping.** [Aave-översikten](/sv/aave) och [Morpho-översikten](/sv/morpho) visar positionen som den är nu. En health factor som har hoppat från nära 1 till en bra bit över, eller en position som har försvunnit, tyder på en likvidation. Översikterna listar inga tidigare transaktioner.
+
+Spara transaktionshashen. Du behöver den för att läsa beloppen, och i många länder räknas en likvidation som en försäljning av säkerheten som togs, så din deklaration behöver den också.
+
+## Hur läser du likvidationstransaktionen?
+
+Båda protokollen skriver hela likvidationen i en enda händelse. Namnen skiljer sig, innehållet är detsamma: vilken skuld som betalades tillbaka åt dig, vilken säkerhet som togs och hur mycket av varje.
+
+**Aave V3** sänder `LiquidationCall(collateralAsset, debtAsset, user, debtToCover, liquidatedCollateralAmount, liquidator, receiveAToken)`. En verklig från Ethereum Core, block 26305893, 30 oktober 2026 kl. 13:33 UTC:
+
+| Fält                       | Värde              | Vad det betyder                                                             |
+| -------------------------- | ------------------ | --------------------------------------------------------------------------- |
+| collateralAsset            | WETH               | Tillgången som togs                                                         |
+| debtAsset                  | USDT               | Tillgången som betalades tillbaka                                           |
+| user                       | låntagarens adress | Vems positionen var                                                         |
+| debtToCover                | 1 320,785158 USDT  | Skuld som betalades tillbaka åt låntagaren, 1 319,32 USD till orakelpriset  |
+| liquidatedCollateralAmount | 0,619088749 WETH   | Säkerhet som skickades till likvideraren, 1 372,09 USD vid 2 216,31 USD/ETH |
+| liquidator                 | en kontraktsadress | Vem som betalade tillbaka och tog emot                                      |
+| receiveAToken              | false              | De tog WETH, inte aEthWETH                                                  |
+
+Ett belopp finns inte i händelsen. I samma transaktion flyttades 0,005952776 aEthWETH (13,19 USD) från låntagaren till Aaves collector-kontrakt: protokollets likvidationsavgift, 20 % av bonusen för WETH på Ethereum Core vid det blocket. Räknar man ihop det gav låntagaren WETH för 1 385,28 USD mot 1 319,32 USD i skuld, en bonus på 5 %, varav likvideraren behöll 52,77 USD och treasury 13,19 USD. Explorerns flik ”Logs” visar avgiften som en aToken-överföring till collector-kontraktet direkt efter att aToken bränts.
+
+**Morpho Blue** sänder `Liquidate(id, caller, borrower, repaidAssets, repaidShares, seizedAssets, badDebtAssets, badDebtShares)`. En verklig från marknaden USDC | cbBTC (86%) på Base, block 53265200, 30 oktober 2026 kl. 00:22 UTC:
+
+| Fält          | Värde              | Vad det betyder                                                          |
+| ------------- | ------------------ | ------------------------------------------------------------------------ |
+| id            | 0x9103c3b4…        | Marknaden                                                                |
+| caller        | likvideraren       | Vem som betalade tillbaka och tog emot                                   |
+| borrower      | låntagarens adress | Vems positionen var                                                      |
+| repaidAssets  | 2 174,732093 USDC  | Skuld som betalades tillbaka åt låntagaren                               |
+| seizedAssets  | 0,02952084 cbBTC   | Säkerhet som skickades till likvideraren, 2 270,08 USD till orakelpriset |
+| badDebtAssets | 0                  | Inget skrevs av                                                          |
+
+Oraklet (priskällan) prissatte cbBTC till 76 897,38 USDC i det blocket. Säkerheten som togs var värd 2 270,08 USD mot 2 174,73 USD i skuld, en kvot på 1,0438, vilket är exakt den likvidationsincitamentsfaktor som en marknad med 86 % betalar. Skillnaden på 95,34 USD gick i sin helhet till likvideraren: Morpho tar ingen avgift. Den transaktionen innehöll 30 `Liquidate`-händelser från en och samma likviderare, var och en med en annan låntagare, och det är så den mest hektiska minuten i en krasch ser ut i en marknads logg.
+
+## Vad togs, och vad fick du behålla?
+
+Tre saker att hålla isär:
+
+1. **Skulden som betalades tillbaka åt dig är borta, och det är också säkerheten som betalade för den.** Du är inte längre skyldig den återbetalda delen. Likvideraren betalade den med sina egna tokens och tog din säkerhet i utbyte, plus bonusen. Bonusen är kostnaden för likvidationen: i de två exemplen 65,96 USD på 1 319 USD skuld på Aave och 95,34 USD på 2 175 USD på Morpho.
+2. **De tokens du lånade är fortfarande dina.** Om du lånade USDT och använde dem ändras ingenting. Om de fortfarande ligger i din plånbok ligger de kvar där. En likvidation rör aldrig de lånade tokens som finns i din plånbok; den ändrar bara positionen.
+3. **Säkerheten som inte togs stannar i positionen.** På Aave är saldot av aToken mindre; på Morpho är säkerhetssaldot i den marknaden mindre. Om det finns skuld kvar fortsätter säkerheten att täcka den. Om ingen skuld finns kvar kan du ta ut den.
+
+Hur mycket som finns kvar beror på protokollet. På Aave V3 betalar en likvidation tillbaka högst 50 % av din totala skuld när health factor ligger över 0,95 och både säkerheten som tas och skulden som betalas tillbaka är värda minst 2 000 USD; vid 0,95 och under, eller för mindre belopp, kan den betala tillbaka hela skulden i den tillgången ([hur mycket som kan likvideras på en gång](/sv/blog/sa-fungerar-likvidation-pa-aave#hur-mycket-av-min-skuld-kan-likvideras-pa-en-gang)). Exemplet från Ethereum följde 50 %-regeln på centen: 2 638,63 USD i skuld före, 1 319,32 efter. Låntagaren behöll 0,7906 WETH (1 752 USD) mot 1 319,32 USDT, en health factor på 1,12, och den positionen kan likvideras igen om ETH faller ytterligare 10,4 %. På Aave V4 betalar en likvidation i stället tillbaka det som krävs för att föra positionen tillbaka till Spokens mål för health factor, 1,24 på Ethereum Main Spoke, så mer betalas tillbaka men det som blir kvar är säkrare ([likvidationer på Aave V4](/sv/blog/sa-fungerar-likvidation-pa-aave#hur-skiljer-sig-likvidationer-pa-aave-v4)).
+
+Morpho Blue har ingen close factor (den del av skulden som kan betalas på en gång): en likviderare får betala tillbaka upp till hela skulden i ett enda anrop ([hur mycket av din skuld som kan likvideras på en gång](/sv/blog/sa-fungerar-likvidation-pa-morpho#hur-mycket-av-din-skuld-kan-likvideras-pa-en-gang)). Likvideraren på Base tog 0,02952 av 0,03286 cbBTC, 90 % av säkerheten, och betalade tillbaka hela skulden utom 0,0005 USDC som blev kvar genom avrundning av andelar. Låntagaren behöll 0,003342 cbBTC, cirka 257 USD, och kan ta ut dem.
+
+Två saker till att kontrollera. På Aave var det likvideraren som valde vilken säkerhet som togs ([vilken säkerhet likvideraren tar](/sv/blog/sa-fungerar-likvidation-pa-aave#vilken-sakerhet-tar-likvideraren)), så en position med flera säkerhetstillgångar kan ha förlorat den du minst väntade dig. På Morpho kan ett `repaidAssets` som är mindre än du väntade dig betyda att en [förlikvidation (pre-liquidation)](/sv/blog/morpho-forlikvidation) kördes före den riktiga, vid en lägre belåningsgrad (LTV) och ett lägre incitament; appen och API:t visar båda sorterna.
+
+## Vad händer om likvidationen tog allt?
+
+Om `badDebtAssets` är över noll på Morpho, eller om Aave-händelsen lämnade dig utan säkerhet medan skuld fanns kvar, var säkerheten värd mindre än skulden plus bonusen när någon likviderade. Båda protokollen stänger positionen i stället för att jaga dig:
+
+- **Aave** (sedan V3.3) bränner den återstående skulden och bokför den som ett underskott i den reserven, som Umbrella-stakers kan täcka senare. Du står utan säkerhet och utan skuld ([kan en likvidation lämna osäkra fordringar](/sv/blog/sa-fungerar-likvidation-pa-aave#kan-en-likvidation-lamna-osakra-fordringar-efter-sig)).
+- **Morpho Blue** skriver av den återstående skulden i samma transaktion och fördelar förlusten på långivarna i den marknaden. Låntagaren står utan säkerhet och utan skuld ([vad som händer med osäkra fordringar på Morpho Blue](/sv/blog/sa-fungerar-likvidation-pa-morpho#vad-hander-med-osakra-fordringar-pa-morpho-blue)).
+
+Ingen kommer att kräva dig på mellanskillnaden, och inget ligger kvar på positionen. Men inget finns heller kvar, och förlusten på din sida är hela säkerheten, inte bara en bonus. Osäkra fordringar (bad debt) var ovanliga under exemplens månad: noll i de 393 likvidationerna i Base-marknaden för cbBTC under de tre dagarna kring kraschen, cirka 3,5 miljoner USD över alla Morphos 7 521 likvidationer under de 30 dagarna fram till 30 oktober.
+
+## Varför hände det?
+
+De två exemplen har en gemensam orsak: ingen buffert. Ett block före likvidationen på Aave var låntagarens health factor 1,0049; nästa uppdatering från Chainlink flyttade WETH från cirka 2 229,77 till 2 216,31 USD, 0,6 % lägre, och health factor blev 0,9988. Ett block före likvidationen på Morpho var Base-låntagarens health factor 1,0025; oraklet flyttade cbBTC från 77 140,46 till 76 897,38 USDC, 0,3 % lägre, och den blev 0,9993. Ingen av dem behövde en krasch. En enda vanlig prisuppdatering räckte, och i fallet Morpho kl. 00:22 UTC, i det sextimmarsfönster då [mer än en tredjedel av Morphos likvidationer](/sv/blog/vem-behover-health-factor-larm#hur-ofta-likvideras-lantagare) sker.
+
+Om din health factor inte låg så nära var det något annat som flyttade den. [Varför din health factor sjönk](/sv/blog/varfor-sjonk-din-aave-health-factor) listar sex orsaker med ett sätt att kontrollera var och en: priset på din säkerhet föll, priset på det du lånade steg, räntan på skulden växte snabbare än avkastningen på säkerheten, governance sänkte en likvidationströskel (liquidation threshold), en stablecoin du satt in fick en depeg (när kopplingen till dollarn släpper), eller ett orakel prissatte en wrapper fel. Versionen för Morpho är samma lista utan den sänkta tröskeln, eftersom en Morpho-marknads likvidations-LTV (LLTV) aldrig ändras ([vad som flyttar en health factor på Morpho](/sv/blog/morpho-health-factor-forklarad#vad-flyttar-en-morpho-health-factor)). Två fall är lätta att missa: ett lån på [Midnight](/sv/blog/morpho-midnight-lan-med-fast-ranta) som har passerat förfallodagen kan likvideras vid vilken health factor som helst, och ett lån mot [tokeniserade aktier](/sv/blog/tokeniserade-aktier-som-sakerhet) kan likvideras på ett pris på söndagskvällen som rörde sig medan priskällan var pausad.
+
+## Vad bör du göra den första timmen?
+
+1. **Läs av den återstående positionen innan du rör den.** Health factor, återstående skuld, återstående säkerhet, i [Aave-översikten](/sv/aave) eller [Morpho-översikten](/sv/morpho), i protokollets app eller i explorern. En delvis likvidation på Aave lämnar en position nära 1,1, som nästa rörelse på 10 % likviderar igen.
+2. **Bestäm om du ska stänga eller behålla.** Om du inte längre vill ha lånet, betala tillbaka resten och ta ut säkerheten; på Aave kan du betala tillbaka med själva säkerheten ([betala tillbaka med säkerheten](/sv/blog/undvik-likvidation-pa-aave#steg-4-betala-tillbaka-med-sakerhet-eller-byt-sakerhet)). Om du behåller det, betala tillbaka eller lägg till säkerhet tills health factor är där du vill ha den, inte där den var. [Att betala tillbaka höjer health factor mer per dollar än att lägga till säkerhet](/sv/blog/undvik-likvidation-pa-aave#varfor-hojer-aterbetalning-health-factor-mer-an-att-lagga-till-sakerhet).
+3. **Låna inte upp till gränsen igen.** Positionen som just likviderades vid 1,005 likvideras vid 1,005 igen. Att låna upp till samma belåningsgrad startar klockan på nytt.
+4. **Kontrollera dina andra positioner.** Varje Aave-marknad, varje V4 Spoke och varje Morpho-marknad har sin egen health factor, och samma prisrörelse som likviderade en av dem har sänkt de andra.
+5. **På Aave, kontrollera om en reserv är fryst.** När Aave frös alla DAO-marknader den 29 oktober 2026 gick det inte att lägga till säkerhet i en fryst reserv, och att betala tillbaka var det enda sättet att höja health factor ([varför ett uttag eller lån misslyckas](/sv/blog/varfor-uttag-eller-lan-pa-aave-misslyckas)).
+6. **På Morpho, kontrollera förlikvidation.** Om du hade godkänt ett kontrakt för förlikvidation är det fortfarande godkänt; [kontrollera och återkalla det](/sv/blog/morpho-forlikvidation#hur-kontrollerar-du-om-du-har-godkant-ett) om du inte längre vill ha det.
+7. **Spara underlaget.** Transaktionshashen, de två beloppen, datumet och orakelpriserna om du kan läsa dem. Explorers behåller uppgifterna, men du vill inte behöva leta efter dem i april.
+
+## Hur undviker du en andra likvidation?
+
+Av de 5 703 låntagare på Morpho som likviderades under de 30 dagarna fram till 30 oktober 2026 likviderades 932 mer än en gång. Base-låntagaren ovan var en av dem: ett lån mot cbBTC likviderat den 3 juni, ett lån mot cbZEC den 14 oktober och lånet mot cbBTC igen den 30 oktober. Varje gång kostade en bonus, och ingen ledde till någon förändring. Förändringen består av tre beslut:
+
+- **En buffert.** En health factor på 1,005 klarar ingenting. [Hur långt priserna kan falla vid varje health factor](/sv/blog/saker-aave-health-factor#hur-langt-kan-priserna-falla-fore-likvidation-vid-varje-health-factor) ger tabellen: 1,5 klarar ett fall på 33,3 %, 2 klarar 50 %. Talet du väljer beror på vad du har lånat mot vad; [metoden steg för steg](/sv/blog/saker-aave-health-factor#hur-valjer-du-ett-troskelvarde-for-larm-steg-for-steg) går igenom det, och [versionen för Morpho](/sv/blog/morpho-health-factor-forklarad#hur-valjer-du-en-buffert-och-ett-troskelvarde-for-larm) tar hänsyn till den fasta LLTV:n.
+- **Ett larm ovanför bufferten.** Ett meddelande när health factor passerar en gräns du har valt, tillräckligt tidigt för att du ska kunna agera. Tokenping kontrollerar var 5:e minut och skickar meddelanden via Signal, Telegram eller e-post; tröskelvärdet kan ligga var som helst från 1,1 till 10 på Aave och från 1,02 till 10 på Morpho. [Att ställa in ett](/sv/blog/stall-in-aave-health-factor-larm) tar några minuter. Ett larm kan inte fånga ett hopp mellan två kontroller, och det kan inte betala tillbaka något åt dig, och därför kommer det efter bufferten, inte i stället för den.
+- **Pengar du kan agera med.** Pengar för återbetalning på det nätverk där du lånade, i tillgången du är skyldig eller i en som du kan växla mitt i natten, och en telefon som släpper igenom meddelandet ([larm genom Stör ej](/sv/blog/aave-larm-i-stor-ej-lage)). Likvidationen på Morpho ovan skedde kl. 00:22 UTC; ett larm vid 1,1 hade kommit flera timmar tidigare, och bara pengar på Base hade kunnat svara på det.
+
+Om lånet var så litet att du inte skulle ha flyttat pengar för att rädda det blir den ärliga slutsatsen en annan: låna antingen mindre mot det, eller acceptera att bonusen är priset för att inte bevaka.
+
+## Hur Tokenping passar in
+
+Tokenping bevakar varje position du ställer in var 5:e minut, i varje Aave V3-marknad på 21 nätverk, varje Aave V4 Spoke och varje Morpho-marknad som Morpho-appen listar, och skickar ett meddelande via Signal, Telegram eller e-post när health factor ligger under ditt tröskelvärde. Meddelandet upprepas vid varje kontroll tills positionen har återhämtat sig, på vilket som helst av webbplatsens språk. Efter en likvidation visar översikterna vad som finns kvar: [Aave-översikten](/sv/aave) med varje marknads health factor, [Morpho-översikten](/sv/morpho) med varje marknads LTV, LLTV och health factor, beräknade från kedjan.
+
+Du kan titta på dina positioner utan att betala. Larm kostar <AlertPrice />, ett per Aave V3-marknad, V4 Spoke eller Morpho-marknad. Tokenping är i beta och har ingen garanti för drifttid, och inget larm förhindrar en likvidation.
+
+## Källor
+
+- [Ethereum-transaktion 0x5f88aa61…12fb6](https://etherscan.io/tx/0x5f88aa61ca6180e132a627c5e4d483c4098becc65359fa6af50551c405312fb6) (block 26305893): `LiquidationCall`, bränningen av aEthWETH och variableDebtEthUSDT, avgiftsöverföringen till collector-kontraktet; Aave Oracle-priser och `getUserAccountData` vid block 26305892 och 26305893; `getReserveConfigurationData` och `getLiquidationProtocolFee` för WETH, lästa via en publik RPC (hämtad 31 oktober 2026)
+- [Base-transaktion 0xc2df272f…f0178](https://basescan.org/tx/0xc2df272f36d8b0b566c24988052c1508a4c90a97999b2da5a8c8ec7f8e3f0178) (block 53265200): de 30 `Liquidate`-händelserna; Morpho Blue `position`, `market` och marknadsorakelns `price()` vid block 53265199 och 53265200, lästa via en publik RPC (hämtad 31 oktober 2026)
+- [Morpho API](https://api.morpho.org/graphql): `marketTransactions` av typen Liquidation för Base-marknaden för cbBTC från 28 till 31 oktober 2026 och för exempellåntagarens adress; `markets` för marknadens LLTV och orakel (hämtad 31 oktober 2026)
+- [Morpho API](https://api.morpho.org/graphql): alla likvidationer från 30 september 2026 08:36 UTC till 30 oktober 2026 08:36 UTC, som i [guiden om larm](/sv/blog/vem-behover-health-factor-larm) (hämtad 30 oktober 2026)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md) (funktionerna i Aave v3.3): osäkra fordringar som bränns och bokförs som underskott i reserven, reglerna för close factor, Umbrellas eliminering av underskott (hämtad 31 oktober 2026)
+- [Liquidation on Morpho](https://docs.morpho.org/learn/concepts/liquidation) (likvidation på Morpho): formeln för incitamentet, upp till 100 % i ett anrop, ingen protokollavgift (hämtad 31 oktober 2026)
+
+_Utbildningsinnehåll, inte finansiell rådgivning. Larm minskar risken men förhindrar inte likvidation._

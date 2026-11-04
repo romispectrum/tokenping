@@ -19,6 +19,7 @@ export const LOCALES = [
   "hr",
   "sl",
   "sr",
+  "sv",
 ] as const;
 
 export type Locale = (typeof LOCALES)[number];
@@ -239,6 +240,16 @@ export const LOCALE_INFO: Record<Locale, LocaleInfo> = {
     name: "Srpski",
     englishName: "Serbian",
     short: "RS",
+  },
+  // Decimal comma, space thousands ("12 000,5"), "83 %", dates "14 oktober 2026".
+  sv: {
+    htmlLang: "sv",
+    ogLocale: "sv_SE",
+    intl: "sv-SE",
+    numbers: "sv-SE",
+    name: "Svenska",
+    englishName: "Swedish",
+    short: "SE",
   },
 };
 

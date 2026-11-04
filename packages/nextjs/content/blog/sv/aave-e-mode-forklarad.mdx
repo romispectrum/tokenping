@@ -1,0 +1,202 @@
+export const meta = {
+  slug: "aave-e-mode-forklarad",
+  title: "Aave E-Mode: mer lånekapacitet, tunnare marginal",
+  description:
+    "Vad Aave V3 E-Mode är, vilka kategorier som finns på Ethereum, Arbitrum, Base och Optimism, hur health factor ändras och hur tunn en loops marginal är.",
+  h1: "Vad är Aave E-Mode, och vad gör det med din likvidationsrisk?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "Vad är Aave E-Mode, och hur nära likvidation hamnar en position med det?",
+  readingMinutes: 16,
+};
+
+<ShortAnswer>
+  E-Mode (Efficiency Mode) är en inställning i Aave V3 som låter dig låna mer mot säkerhet vars pris rör sig med
+  tillgången du lånar, som wstETH mot WETH, genom att ersätta den vanliga belåningsgraden (LTV) och likvidationströskeln
+  (liquidation threshold) med högre värden som gäller för hela kategorin. På Ethereum Core hade kategorin ”ETH
+  correlated” LTV 93 % och en likvidationströskel på 95 % den 28 oktober 2026, mot 79 % och 82 % för wstETH utanför den.
+  Formeln för health factor (hälsofaktor) ändras inte, bara tröskeln i den, så samma position visar ett högre tal.
+  Priset är en tunnare marginal: en position som är belånad till E-Mode-gränsen börjar på 95 ÷ 93 = 1,0215, och i mars
+  2026 likviderade en orakelrörelse på 2,85 % E-Mode-positioner under ungefär 1,0288. En loop (upprepad belåning med
+  hävstång) som är belånad nära den gränsen ligger under 1,1, det lägsta tröskelvärde för larm som Tokenping accepterar.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Siffrorna och blocknumren de lästes vid: content/blog/snapshots/aave-e-mode.md */}
+
+## Vad är Aave E-Mode, och varför finns det?
+
+Aave E-Mode är en inställning per konto på en Aave V3-marknad som placerar dig i en kategori av korrelerade tillgångar och tillämpar kategorins belåningsgrad, likvidationströskel och likvidationsbonus på den säkerhet kategorin listar, i stället för varje tillgångs egna parametrar. Aaves hjälpsida beskriver det som ett sätt att ”maximize their borrowing power by selecting optimized asset categories” (maximera sin lånekapacitet genom att välja optimerade tillgångskategorier). I Pool-kontraktet går du in i en kategori med `setUserEMode(categoryId)`, `getUserEMode(address)` visar vilken kategori en adress är i, och kategori 0 betyder ingen.
+
+Det finns eftersom de vanliga parametrarna är satta för det värsta fallet, en säkerhetstillgång och en skuldtillgång vars priser rör sig oberoende av varandra. När båda följer samma sak, som wstETH och WETH båda följer ETH, sänker ett fall i ETH:s dollarpris säkerheten och skulden tillsammans, och positionens hälsa rör sig knappt. Aaves riskleverantörer kan därför tillåta en högre belåningsgrad och tröskel för den kombinationen. Det som återstår är risken att de två tillgångarna glider isär, och det är den risk en E-Mode-position faktiskt är utsatt för.
+
+Sedan Aave V3.2, som införde ”liquid E-Modes”, definieras en kategori av tre saker:
+
+- **En belåningsgrad, en likvidationströskel och en likvidationsbonus** för hela kategorin.
+- **En säkerhetslista**: de reserver som får kategorins parametrar medan du är i den. Säkerhet utanför listan behåller sin egen belåningsgrad och tröskel.
+- **En lista över lånebara tillgångar**: de enda reserver du får låna medan du är i kategorin. En tillgång kan finnas på den ena listan, den andra eller båda, och kan förekomma i flera kategorier.
+
+Så ”ETH correlated” på Ethereum Core betyder inte ”låna vad som helst mot ETH”: den enda lånebara tillgången i kategorin är WETH (avläst 28 oktober 2026, block 26291736). Kategorin avgör vad du kan låna lika mycket som hur mycket.
+
+## Vilka E-Mode-kategorier finns i dag?
+
+Kategorierna nedan lästes från varje marknads Pool-kontrakt den 28 oktober 2026 med `getEModeCategoryLabel`, `getEModeCategoryCollateralConfig`, `getEModeCategoryCollateralBitmap` och `getEModeCategoryBorrowableBitmap`, med bitmapparna avkodade mot `getReservesList()`. Alla fyra Pools rapporterade revision 11 (V3.7). Governance och Risk Stewards ändrar de här parametrarna, så kontrollera kategorin i Aave-appen innan du förlitar dig på en siffra.
+
+### Ethereum Core (block 26291736)
+
+Ethereum Core hade 48 kategorier. De flesta parar en principal token från Pendle (PT) eller en Ethena-tillgång med stablecoins eller med USDe, och många listar utgångna PT:er som bara finns kvar för positioner som fortfarande avvecklas. De som en låntagare troligast stöter på:
+
+| Id  | Etikett                     | LTV  | Likvidationströskel | Bonus  | Säkerhetslista                                | Lånebara           |
+| --- | --------------------------- | ---- | ------------------- | ------ | --------------------------------------------- | ------------------ |
+| 1   | ETH correlated              | 93 % | 95 %                | 1 %    | WETH, wstETH, cbETH, rETH, weETH, osETH, ETHx | WETH               |
+| 2   | sUSDe Stablecoins           | 90 % | 92 %                | 4 %    | USDe, sUSDe                                   | USDC, USDT         |
+| 11  | USDe Stablecoin             | 90 % | 93 %                | 2 %    | USDe                                          | USDC, USDT         |
+| 4   | LBTC_WBTC                   | 84 % | 86 %                | 3 %    | LBTC                                          | WBTC               |
+| 7   | eBTC/WBTC                   | 83 % | 85 %                | 3 %    | eBTC                                          | WBTC               |
+| 22  | ezETH/wstETH                | 93 % | 95 %                | 1 %    | ezETH                                         | wstETH             |
+| 26  | weETH/wstETH ETH Correlated | 93 % | 95 %                | 1 %    | weETH                                         | WETH, wstETH       |
+| 3   | rsETH\_\_ETH_wstETH_ETHx    | 93 % | 95 %                | 1 %    | rsETH                                         | WETH, wstETH, ETHx |
+| 40  | LINK\_\_USDC_USDT           | 66 % | 71 %                | 7 %    | LINK                                          | USDC, USDT         |
+| 43  | XAUt\_\_USDC_USDT_GHO       | 70 % | 75 %                | 6 %    | XAUt                                          | USDC, USDT, GHO    |
+| 47  | PT-srUSDe Stablecoins       | 90 % | 92 %                | 4,03 % | sUSDe, PT-srUSDe-22OCT2026                    | USDC, USDT, USDe   |
+
+Två detaljer från samma avläsning. I ”ETH correlated” finns ETHx på säkerhetslistan men är flaggad med LTV 0 (kategorins `ltvzeroBitmap`), så den räknas in i health factor med 95 % men ger ingen lånekapacitet. Och kategorierna 47 och 48 (PT-srUSDe mot stablecoins och mot USDe) var de enda med V3.7-flaggan `isolated` satt; vad den gör står under reglerna för att gå in nedan. Kategorierna för LINK och XAUt visar att en kategori inte behöver vara ”korrelerad” alls: de är en andra uppsättning parametrar för att låna stablecoins mot en enda tillgång.
+
+### Arbitrum (block 519074353 till 519074731)
+
+| Id  | Etikett                          | LTV  | Likvidationströskel | Bonus | Säkerhetslista         | Lånebara     |
+| --- | -------------------------------- | ---- | ------------------- | ----- | ---------------------- | ------------ |
+| 1   | Stablecoins                      | 93 % | 95 %                | 1 %   | DAI, USDC, USD₮0, EURS | inga         |
+| 2   | ETH correlated                   | 93 % | 95 %                | 1 %   | WETH, wstETH, weETH    | WETH         |
+| 7   | wstETH/WETH ETH Correlated       | 94 % | 96 %                | 1 %   | wstETH                 | WETH         |
+| 3   | ezETH/wstETH/WETH ETH Correlated | 93 % | 95 %                | 1 %   | ezETH                  | WETH, wstETH |
+| 5   | rsETH/wstETH/WETH ETH Correlated | 93 % | 95 %                | 1 %   | rsETH                  | WETH, wstETH |
+| 4   | ezETH Stablecoins                | 72 % | 75 %                | 7,5 % | ezETH                  | USD₮0, USDC  |
+| 6   | rsETH/Stablecoins                | 72 % | 75 %                | 7,5 % | rsETH                  | USDC, USD₮0  |
+| 8   | AAVE\_\_USDCn_USDT               | 66 % | 73 %                | 10 %  | AAVE                   | USD₮0, USDC  |
+| 9   | ARB\_\_USDCn_USDT                | 58 % | 63 %                | 10 %  | ARB                    | USD₮0, USDC  |
+| 10  | tBTC\_\_USDCn_USDT               | 72 % | 75 %                | 7,5 % | tBTC                   | USD₮0, USDC  |
+
+Arbitrums kategori ”Stablecoins” har ingen lånebar tillgång, så ingen ny skuld kan öppnas i den. Dess kategori för en enda tillgång, ”wstETH/WETH ETH Correlated”, är ett snäpp generösare än Ethereums: 94 % och 96 %, en marginal vid gränsen på 96 ÷ 94 = 1,0213.
+
+### Base (block 53204166)
+
+Base hade 15 kategorier. ETH-kategorierna, och de två BTC-kategorier som flest låntagare stöter på:
+
+| Id  | Etikett           | LTV  | Likvidationströskel | Bonus  | Säkerhetslista             | Lånebara  |
+| --- | ----------------- | ---- | ------------------- | ------ | -------------------------- | --------- |
+| 1   | ETH correlated    | 90 % | 93 %                | 2 %    | WETH, cbETH, wstETH, weETH | WETH      |
+| 8   | wstETH/WETH       | 93 % | 95 %                | 1 %    | wstETH                     | WETH      |
+| 9   | cbETH/WETH        | 93 % | 95 %                | 2 %    | cbETH                      | WETH      |
+| 7   | weETH/WETH        | 93 % | 95 %                | 1,25 % | weETH                      | WETH      |
+| 2   | ezETH wstETH      | 93 % | 95 %                | 1 %    | ezETH                      | wstETH    |
+| 4   | LBTC_cbBTC        | 82 % | 84 %                | 3 %    | LBTC                       | cbBTC     |
+| 10  | cbBTC Stablecoins | 82 % | 85 %                | 4 %    | cbBTC                      | USDC, GHO |
+
+Resten parar en tillgång (wrsETH, syrupUSDC, AAVE, EURC, LBTC, tBTC, ezETH) med USDC och GHO eller med wstETH. Base visar hur en bred kategori delas upp i kategorier för en enda tillgång: kategorin ”ETH correlated” med flera tillgångar ligger på 90 % och 93 %, medan wstETH/WETH, cbETH/WETH och weETH/WETH ligger på 93 % och 95 %.
+
+### Optimism (block 158799548)
+
+| Id  | Etikett        | LTV    | Likvidationströskel | Bonus | Säkerhetslista                            | Lånebara |
+| --- | -------------- | ------ | ------------------- | ----- | ----------------------------------------- | -------- |
+| 1   | Stablecoins    | 0,01 % | 87 %                | 1 %   | DAI, USDC (bryggad och nativ), USDT, sUSD | inga     |
+| 2   | ETH correlated | 93 %   | 95 %                | 1 %   | WETH, wstETH, rETH (rETH med LTV 0)       | WETH     |
+
+Optimisms kategori ”Stablecoins” är en kvarleva, med en belåningsgrad på 0,01 % och inget lånebart. Dess kategori ”ETH correlated” har samma siffror som Ethereums.
+
+## Hur beräknas health factor i E-Mode?
+
+I E-Mode använder health factor samma formel som alltid, Σ(säkerhetens värde × likvidationströskel) ÷ skuldens värde, förutom att varje säkerhetstillgång på din kategoris säkerhetslista får kategorins tröskel i stället för sin egen. Det är den enda ändringen: `GenericLogic.calculateUserAccountData` väljer tröskeln per tillgång och `getUserAccountData` returnerar resultatet, så varje verktyg som läser det anropet visar redan E-Mode-talet. Den allmänna formeln finns i [hur Aaves health factor beräknas](/sv/blog/aave-health-factor-forklarad#hur-beraknas-health-factor-pa-aave), och [hur E-Mode ändrar health factor](/sv/blog/aave-health-factor-forklarad#hur-andrar-e-mode-health-factor) i samma guide ger kortversionen av det som följer.
+
+Ta wstETH-säkerhet värd 10 000 $ och WETH-skuld värd 9 000 $ på Ethereum Core, med parametrarna för ”ETH correlated” avlästa 28 oktober 2026 (block 26291736) och wstETH:s egna parametrar avlästa samma dag (block 26291849: belåningsgrad 79 %, likvidationströskel 82 %):
+
+1. **I E-Mode:** HF = 10 000 × 0,95 ÷ 9 000 = **1,056**. Lånegränsen är 10 000 × 0,93 = 9 300 $, så ytterligare 300 $ skulle kunna lånas.
+2. **Utanför E-Mode:** samma position skulle ha HF = 10 000 × 0,82 ÷ 9 000 = 0,911, och skulle inte kunna öppnas alls: wstETH:s belåningsgrad på 79 % begränsar lånet till 7 900 $.
+3. **Vid E-Mode-gränsen:** låna hela 9 300 $ och HF = 9 500 ÷ 9 300 = **1,0215**. Positionen är 2,1 % från likvidation samma dag som den öppnas.
+
+En vanlig position som är belånad till sin gräns börjar också på tröskel ÷ belåningsgrad, 84 ÷ 81 = 1,037 för WETH på Ethereum Core den 28 oktober 2026 (block 26291849). E-Mode krymper avståndet mellan belåningsgrad och tröskel till 2 procentenheter, och det avståndet är hela marginalen för en fullt belånad position. [Varför maximal belåning bara ger en health factor på ungefär 1,03](/sv/blog/aave-health-factor-forklarad#varfor-ger-ett-maximalt-lan-en-health-factor-pa-bara-cirka-103) går igenom samma räkning utanför E-Mode.
+
+Det som flyttar talet är också annorlunda. Med wstETH som säkerhet och WETH som skuld prissätts båda sidor utifrån ETH, så ETH:s dollarpris tar ut sig självt: om ETH halveras halveras säkerheten och skulden tillsammans och HF stannar på 1,056. Det som återstår är kursen wstETH/ETH som Aaves orakel (priskälla) rapporterar. Positionen når 1,00 när den kursen faller med 1 − 90 ÷ 95 = 5,3 %, den fullt belånade positionen när den faller med 2,1 %. [Hur E-Mode ändrar ditt likvidationspris](/sv/blog/aave-likvidationspris#hur-paverkar-e-mode-ditt-likvidationspris) gör om det här till en kurs i stället för ett dollarpris.
+
+## Hur fungerar en hävstångsloop med staking i E-Mode, och vad satsar du på?
+
+En hävstångsloop med staking sätter in wstETH, lånar WETH mot den, gör om WETH till mer wstETH och sätter in den också, och upprepar tills positionen har flera gånger startmängden wstETH mot nästan lika mycket WETH-skuld. E-Mode är det som gör den lönsam: med en belåningsgrad på 93 % kan loopen nå 1 ÷ (1 − 0,93) = 14,3 gånger startkapitalet, mot 1 ÷ (1 − 0,79) = 4,8 gånger med wstETH:s vanliga belåningsgrad.
+
+Räkna i ETH, den enhet loopen lever i. Börja med wstETH värd 10 ETH, loopa till säkerhet värd 100 ETH och en skuld på 90 WETH, så har du positionen på 1,056 ovan, med tio gångers hävstång. Den 28 oktober 2026 prissatte Aaves orakel på Ethereum Core wstETH till 2 912,79 $ och WETH till 2 335,08 $ (block 26291849), en kurs på 1,2474 ETH per wstETH som stämde med Lidos egen `stEthPerToken()` vid samma block, så 100 ETH i säkerhet är ungefär 80,2 wstETH.
+
+Två tal avgör om loopen tjänar eller förlorar, och inget av dem är ETH:s dollarpris:
+
+- **Växelkursen wstETH/ETH.** Den stiger när stakingbelöningarna växer till: Lido rapporterade en stETH-APR på 2,25 % den 28 oktober 2026 och ett 7-dagarsgenomsnitt på 2,33 %. Loopen får den avkastningen på 100 ETH medan den betalar ränta på 90, så de 10 ETH i eget kapital tjänar ungefär tio gånger skillnaden mellan de två räntorna. Ett fall i den kurs oraklet rapporterar, på grund av en marknadsrabatt på wstETH eller ett konfigurationsfel, sänker säkerheten men inte skulden, och är den enda prisrörelse som kan likvidera loopen.
+- **Låneräntan för WETH.** Skulden växer med Aaves rörliga ränta, 1,94 % APR för WETH på Ethereum Core vid block 26291849, medan den wstETH som loopen sätter in tjänar nästan ingenting från Aave självt (0,0002 % vid samma block). Så länge låneräntan ligger över stakingavkastningen förlorar loopen pengar och dess health factor glider nedåt.
+
+Lägg ihop de två för ett år med positionen med tio gångers hävstång, utan att räkna med ränta på ränta eller prisrörelser. Säkerheten växer med stakingavkastningen till ungefär 102,3 ETH. Med en låneränta på 1,94 % når skulden 91,75 WETH: det egna kapitalet är 10,55 ETH, upp 5,5 % mot 2,3 % för att bara hålla wstETH, och HF stiger till 1,059. Med en genomsnittlig låneränta på 5 % når skulden 94,5 WETH, det egna kapitalet faller till 7,8 ETH och HF glider ner till 1,028. Vid 8 % når skulden 97,2 WETH och HF är 1,000: loopen skulle likvideras av räntan ensam. Låneräntorna för WETH skjuter i höjden när utnyttjandegraden är hög; [varför Aaves låneräntor skjuter i höjden](/sv/blog/aave-rantor#varfor-skjuter-lanerantorna-pa-aave-i-hojden) förklarar kurvan.
+
+ETH:s dollarpris spelar fortfarande roll för den som äger loopen, eftersom 10 ETH i eget kapital är värt vad ETH är värt, men det spelar ingen roll för health factor. En loop är en satsning på att stakingavkastningen håller sig över låneräntan och att oraklets kurs wstETH/ETH inte faller mer än marginalen. Den andra satsningen var den som förlorades i mars 2026.
+
+## Vilka regler gäller för att gå in i och lämna en E-Mode-kategori?
+
+Att gå in i eller lämna en kategori är ett enda anrop, `setUserEMode(categoryId)` på Pool, och Pool kör tre kontroller innan det får effekt, i aave-v3-origins `ValidationLogic.validateSetUserEMode` och `SupplyLogic.executeSetUserEMode` (main-grenen, läst 28 oktober 2026):
+
+1. **Varje tillgång du lånar måste vara lånebar i målkategorin.** För en kategori betyder det dess bitmapp för lånebara tillgångar; för att lämna (kategori 0) att reserven har lån aktiverade. Felet är `InvalidDebtInEmode`. En plånbok med USDC-skuld kan inte gå in i ”ETH correlated” på Ethereum Core, där WETH är den enda lånebara tillgången, förrän USDC-skulden är återbetald.
+2. **Varje tillgång du har aktiverat som säkerhet måste behålla en belåningsgrad över noll i målkategorin.** Felet är `InvalidCollateralInEmode`. Kontrollen går via `getUserReserveLtv`, som returnerar kategorins belåningsgrad för tillgångar på dess säkerhetslista (eller 0 om kategorin flaggar dem med LTV 0), tillgångens egen belåningsgrad för säkerhet utanför listan, och 0 för säkerhet utanför listan när kategorin är isolerad.
+3. **Efter bytet måste din health factor vara 1 eller högre.** `executeSetUserEMode` byter kategori först och anropar sedan `validateHealthFactor`, så ett byte som skulle göra dig likviderbar återställs (revert).
+
+En plånbok utan insättningar eller skuld kan alltid byta, och en plånbok som redan är i den begärda kategorin får ingen ändring och inga kontroller.
+
+Två versionsnoteringar spelar roll för den som läser äldre guider. Sedan V3.2 behåller säkerhet utanför din kategoris säkerhetslista sin egen belåningsgrad och tröskel, så att ha WBTC medan du är i ”ETH correlated” är tillåtet, och WBTC räknas med WBTC:s egna parametrar: funktionsbeskrivningen för V3.2 säger att E-Mode-parametrarna ”will only apply for the ones listed as eModeCollateral” (bara gäller för dem som är listade som eModeCollateral). Sedan V3.7 kan en kategori ha flaggan `isolated` (`getIsEModeCategoryIsolated`). I en isolerad kategori får säkerhet utanför listan LTV 0 men behåller sin egen tröskel: den räknas fortfarande i health factor men ger ingen grund för nya lån, det går inte att gå in i kategorin medan sådan säkerhet är aktiverad, och att aktivera den som säkerhet inifrån kategorin nekas. Om governance slår på flaggan för en kategori som används säger anteckningarna för V3.7 att säkerhet utanför listan ”immediately becomes LTV-zero” (direkt får LTV noll) medan ”health factor is unaffected” (health factor inte påverkas). Den 28 oktober 2026 hade bara Ethereum Cores två PT-srUSDe-kategorier flaggan satt.
+
+Det som blockerar att lämna är samma tre kontroller, körda mot kategori 0. Du kan inte lämna medan du lånar en tillgång vars reserv har lån avaktiverade, och du kan inte lämna om det skulle pressa din health factor under 1, vilket är det vanliga fallet: positionen på 1,056 ovan skulle visa 0,911 utanför E-Mode, så anropet återställs. För att komma ut måste du först betala tillbaka tillräckligt med WETH, ner till en skuld på ungefär 8 200 mot 10 000 i säkerhet med wstETH:s tröskel på 82 %. E-Mode är lätt att gå in i och svårt att lämna när du väl har använt utrymmet det ger.
+
+## Vad hände med E-Mode-loopar i mars 2026?
+
+I mars 2026 sänkte en felkonfigurerad prisadapter den wstETH-växelkurs som Aave använde på marknaderna Ethereum Core och Prime med ungefär 2,85 %, och varje E-Mode-position under en health factor på ungefär 1,0288 blev likviderbar på en gång. Redogörelsen är Chaos Labs post-mortem på Aaves governance-forum, publicerad 10 mars 2026 och läst på nytt 28 oktober 2026; inget här går utöver den.
+
+Aave prissätter wstETH via en CAPO-adapter (Correlated Assets Price Oracle) som begränsar hur snabbt den kurs wstETH/stETH som adaptern rapporterar får stiga, för att blockera attacker av inflationstyp. Taket byggs av ett snapshot-förhållande, en snapshot-tidsstämpel och en maximal årlig tillväxttakt. En uppdatering satte snapshot-tidsstämpeln till en referens som var sju dagar gammal, medan en gräns on-chain (förhållandet får stiga med högst 3 % var 3:e dag) hindrade förhållandet från att nå det värde som tidsstämpeln förutsatte, så taket beräknades från en referens som var för låg. Enligt post-mortem hamnade den högsta tillåtna kursen på ungefär 1,1939, under den aktuella kursen, så taket tog över och den faktiska kursen föll med ”around 2.855%” (ungefär 2,855 %).
+
+Det den redovisar som följderna:
+
+- Ungefär 10 938 wstETH i E-Mode-likvidationer fördelade på 34 konton, som drabbade positioner ”with a health factor lower than 1.0288” (med en health factor under 1,0288).
+- Ingen osäker fordran (bad debt) för protokollet.
+- Ungefär 512 ETH som likvidatörerna fick i bonusar och i värde från kursskillnaden, varav 141 ETH i intäkter från likvidationsbonus och ungefär 13 ETH i avgifter återvanns för att kompensera drabbade användare, medan DAO:ns treasury täcker resten.
+- Lånetaket (borrow cap) för wstETH på båda marknaderna sänktes tillfälligt till 1 medan konfigurationen rättades.
+
+Rörelsens storlek är lärdomen för en loop. En position som är belånad till gränsen för ”ETH correlated” börjar på 1,0215, inom det band som likviderades; en position på 1,056 berördes inte. Ingenting i själva positionen gav någon varning, eftersom rörelsen kom från oraklets konfiguration och inte från någon marknad. Adaptern var fortfarande i bruk den 28 oktober 2026 (block 26291849): orakelkällan för wstETH på Ethereum Core beskrev sig som ”Capped wstETH / stETH(ETH) / USD”, med ett snapshot-förhållande på 1,2283 daterat 3 mars 2026, en maximal årlig tillväxt på 8,8 % och ett rapporterat förhållande på 1,2474, lika med Lidos. [Orsak 6 till att din health factor sjunker](/sv/blog/varfor-sjonk-din-aave-health-factor#orsak-6-har-ett-orakel-eller-vaxelkursfel-gett-din-sakerhet-fel-pris) tar upp kompensationen som följde.
+
+## När hjälper E-Mode inte?
+
+E-Mode gör ingenting för en position vars skuld ligger utanför kategorin, och lite för flera andra vanliga upplägg:
+
+- **Skuld som kategorin inte listar.** Du kan inte gå in alls medan du lånar den. Positionen med 10 WETH mot 12 000 USDC från guiden om health factor stannar på WETH:s egen tröskel på 84 % på Ethereum Core (block 26291849), eftersom ”ETH correlated” bara låter dig låna WETH.
+- **Säkerhet utanför listan.** Den behåller sina egna parametrar, så att lägga till WBTC i en ”ETH correlated”-position höjer health factor med WBTC:s egen tröskel, 85 % på Ethereum Core vid block 26291889, inte 95 %. I en isolerad kategori tillför den ingen lånekapacitet.
+- **Stablecoin-kategorier.** På Arbitrum och Optimism hade kategorin ”Stablecoins” ingen lånebar tillgång den 28 oktober 2026, så den kan inte användas för ett nytt lån. På Ethereum Core parar stablecoin-kategorierna en tillgång (USDe, sUSDe, en PT) med USDC och USDT vid 90 % till 94 % belåningsgrad. Risken där är en depeg (när kopplingen till dollarn släpper) av säkerheten, som en korrelerad kategori inte minskar; den tunnare marginalen gör att den slår till tidigare.
+- **Små positioner.** En likvidatör får avveckla upp till 100 % av en skuldreserv när säkerheten eller skulden det gäller är värd mindre än 2 000 $ (`LiquidationLogic`, läst 28 oktober 2026), så en liten loop som passerar 1,00 stängs i stället för att trimmas; [hur stor del av min skuld som kan likvideras på en gång](/sv/blog/sa-fungerar-likvidation-pa-aave#hur-mycket-av-min-skuld-kan-likvideras-pa-en-gang) har regeln. Bonusen på 1 % i ”ETH correlated” är liten med Aaves mått, men den betalas på hela beloppet.
+- **En tunn marginal som du inte avsåg.** Om du går in i en kategori och lånar nära dess gräns är marginalen 2 %, oavsett hur health factor såg ut före bytet.
+
+Om något av det stämmer in på din situation är de vanliga parametrarna och en bredare buffert det bättre verktyget; [hur stor buffert en health factor ger dig](/sv/blog/saker-aave-health-factor#varfor-skiljer-sig-det-sakra-talet-for-skuld-i-stablecoin-volatil-skuld-och-loopar-i-e-mode) jämför vad samma health factor betyder för en E-Mode-loop och för andra positioner.
+
+## Kan ett larm hjälpa med en E-Mode-position?
+
+Ett health factor-larm hjälper med en E-Mode-position som hålls över ungefär 1,1 till 1,15, och passar inte en loop som medvetet körs under det. Tokenping läser samma health factor som kontraktet rapporterar, från `getUserAccountData`, som redan tillämpar din E-Mode-kategori, så det finns inget att ställa in för E-Mode: talet i översikten och i meddelandena är talet en likvidatör ser.
+
+Begränsningen är tröskelvärdet. Tokenpings tröskelvärde för Aave-larm går från 1,1 till 10, med 1,5 som standard. En loop på 1,056, eller vilken position som helst som medvetet körs under 1,1, ligger under varje tröskelvärde du kan sätta. Ett larm satt på 1,1 skulle hitta health factor under det vid varje kontroll var 5:e minut och skicka ett meddelande vid varje kontroll, på varje kanal du har valt, tills positionen kommer tillbaka över 1,1. Det finns ingen snooze och ingen sammanställning; [hur ofta du får larm](/sv/blog/stall-in-aave-health-factor-larm#hur-ofta-far-du-larm) beskriver beteendet i detalj.
+
+För en tunn loop är det ärliga rådet ett av två. Behåll marginalen: kör loopen så att dess health factor ligger över den nivå du vill få höra om, säg 1,12 till 1,15 för en wstETH/WETH-loop, vilket kostar hävstång men gör att en orakelrörelse på 2,85 % inte räcker till likvidation, och sätt larmet där så att det första du får höra om är ränta som drar ner positionen. Eller acceptera de ständiga meddelandena: sätt 1,1 och behandla strömmen som signalen att du kör under den nivån, vilket få vill ha på Signal eller Telegram vid varje kontroll. Det ett larm inte kan göra i något av fallen är att reagera snabbare än oraklet: rörelsen i mars 2026 gjorde positioner likviderbara i samma ögonblick som taket slog till, och ett kontrollintervall på 5 minuter ger ingen tid att agera på det. [Hur du väljer ett tröskelvärde för larm, steg för steg](/sv/blog/saker-aave-health-factor#hur-valjer-du-ett-troskelvarde-for-larm-steg-for-steg) och [hur du ställer in ett health factor-larm](/sv/blog/stall-in-aave-health-factor-larm#steg-5-valj-ett-troskelvarde) går igenom inställningen; [hur du höjer din Aave health factor](/sv/blog/undvik-likvidation-pa-aave#steg-1-betala-tillbaka-en-del-av-skulden) tar upp vad du gör när ett meddelande kommer, vilket för en loop oftast betyder att betala tillbaka WETH.
+
+Du kan [kontrollera din Aave V3 health factor](/sv/aave) först; att titta på dina positioner kräver ingen betalning. Larm kostar <AlertPrice />, betalas på Arbitrum, ett per Aave V3-marknad eller V4 Spoke, och skickas via Signal, Telegram eller e-post. Tokenping är i beta och har ingen garanti för drifttid. För en position med 2 % marginal ersätter inget larm själva marginalen.
+
+## Källor
+
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): `POOL_REVISION`, `getReservesList`, och etiketten, säkerhetskonfigurationen, bitmapparna för säkerhet, lånebara tillgångar och LTV 0 samt flaggan isolated för kategorierna 1 till 48, vid block 26291736 (hämtad 28 oktober 2026)
+- Aave V3 Pool på [Arbitrum](https://arbiscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD), [Base](https://basescan.org/address/0xA238Dd80C259a72e81d7e4664a9801593F98d1c5) och [Optimism](https://optimistic.etherscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD): samma anrop för varje kategori, vid Arbitrum-blocken 519074353 till 519074731, Base-block 53204166 och Optimism-block 158799548 (hämtad 28 oktober 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): belåningsgrad, tröskel, bonus och räntor för WETH, wstETH och USDC vid block 26291849; WBTC vid block 26291889 (hämtad 28 oktober 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2) och dess [CAPO-adapter för wstETH](https://etherscan.io/address/0xe1D97bF61901B075E9626c8A2340a7De385861Ef): priserna för WETH och wstETH, adapterns beskrivning, snapshot-förhållande, snapshot-tidsstämpel, maximal årlig tillväxt och förhållande vid block 26291849 (hämtad 28 oktober 2026)
+- [wstETH-token](https://etherscan.io/address/0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0): `stEthPerToken()` vid block 26291849 (hämtad 28 oktober 2026)
+- [Lidos API för stETH-APR](https://eth-api.lido.fi/v1/protocol/steth/apr/sma): senaste APR och 7-dagarsgenomsnitt (hämtad 28 oktober 2026)
+- [IPool.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/interfaces/IPool.sol): getters för E-Mode, `setUserEMode` och `getUserEMode` (aave-v3-origin main, hämtad 28 oktober 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) och [LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): `validateSetUserEMode`, `getUserReserveLtv`, `executeSetUserEMode` och gränsen på 2 000 $ för close factor (den del av skulden som kan betalas på en gång) (aave-v3-origin main, hämtad 28 oktober 2026)
+- [Funktionerna i Aave V3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): liquid E-Modes, säkerhet utanför en kategori behåller sina egna parametrar, regler för att gå in och lämna (hämtad 28 oktober 2026)
+- [Isolerad E-Mode i Aave V3.7](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md): effekterna av flaggan isolated (hämtad 28 oktober 2026)
+- [Aave help: Efficiency Mode (E-mode)](https://aave.com/help/borrowing/e-mode) (hämtad 28 oktober 2026)
+- [Chaos Labs post-mortem om den felaktiga växelkursen på wstETH i instanserna Core och Prime](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): publicerad 10 mars 2026 (hämtad 28 oktober 2026)
+
+_Utbildningsinnehåll, inte finansiell rådgivning. Larm minskar risken men förhindrar inte likvidation._
