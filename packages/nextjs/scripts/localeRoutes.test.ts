@@ -55,7 +55,10 @@ describe("layout fonts", () => {
   });
 
   it("adds no font to a language Satoshi covers", () => {
-    expect(LOCALES.filter(locale => layoutFont(locale))).toEqual(["vi"]);
+    // Vietnamese, Cyrillic, Greek and Thai pages carry a font of their own; every other language is Satoshi alone.
+    const ownFont: string[] = ["vi", "ru", "uk", "bg", "el", "th"];
+    expect(LOCALES.filter(locale => layoutFont(locale) && !ownFont.includes(locale))).toEqual([]);
+    expect(layoutFont("vi")).toBeTruthy();
     expect(layoutSource("fr")).not.toContain("fontClassName");
     expect(layoutSource("fr")).not.toContain("components/fonts");
   });

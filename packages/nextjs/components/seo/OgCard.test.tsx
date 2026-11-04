@@ -66,7 +66,7 @@ describe("OgCard", () => {
   });
 
   // Satoshi has no Cyrillic or Greek, so those cards are set in Manrope, the font of their pages, with the Latin subset
-  // and the language's own script only. Plain codes: these languages are not in LOCALES yet.
+  // and the language's own script only. Plain codes, so these run whether or not the language is in LOCALES.
   it.each([
     ["ru", "cyrillic"],
     ["uk", "cyrillic"],
@@ -107,7 +107,8 @@ describe("OgCard", () => {
   });
 
   it("keeps Satoshi and Noto Sans Devanagari for every language whose script Satoshi covers", () => {
-    for (const locale of LOCALES.filter(code => code !== "vi")) {
+    const ownFont: string[] = ["vi", "ru", "uk", "bg", "el", "th"];
+    for (const locale of LOCALES.filter(code => !ownFont.includes(code))) {
       expect(ogType(locale).family).toBe("Satoshi, Noto Sans Devanagari");
       expect(renderStaticMarkup(<OgCard title="Title" footer="Footer" locale={locale} />)).toContain(
         "font-family:Satoshi, Noto Sans Devanagari",
