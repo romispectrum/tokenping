@@ -196,6 +196,13 @@ const COPY: Partial<Record<Locale, CopyRules>> = {
     wrongAddress: /(?<!\p{L})(?:ти|тебе|тобі|тобою|твій|твоя|твоє|твої|твого|твоєї)(?!\p{L})/iu,
     claims: /в реальному часі|миттєв\p{L}* (?:сповіщенн|повідомленн)|мультипротокольн/iu,
   },
+  el: {
+    h1Channels: /Signal.*email/iu,
+    badges: ["Signal", "Email"],
+    // Polite plural throughout: never εσύ or σου.
+    wrongAddress: /(?<!\p{L})(?:εσύ|σου)(?!\p{L})/u,
+    claims: /σε πραγματικό χρόνο|άμεσ\p{L}* ειδοποίηση|πολλαπλών πρωτοκόλλων/iu,
+  },
 };
 
 const TRANSLATED = LOCALES.filter(locale => locale !== "en");

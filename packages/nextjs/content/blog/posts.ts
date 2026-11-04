@@ -7950,4 +7950,326 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
       },
     },
   ],
+  el: [
+    {
+      meta: {
+        slug: "aave-health-factor-exigisi",
+        title: "Το health factor του Aave: τύπος και παραδείγματα",
+        description:
+          "Τι είναι το health factor του Aave V3, πώς υπολογίζεται με ένα παράδειγμα, γιατί κινείται από μόνο του και τι συμβαίνει όταν πέσει κάτω από 1.",
+        h1: "Τι είναι το health factor του Aave και πώς υπολογίζεται;",
+        publishedAt: "2026-10-14",
+        updatedAt: "2026-10-26",
+        primaryQuestion: "Τι είναι το health factor του Aave και πώς υπολογίζεται?",
+        readingMinutes: 16,
+      },
+    },
+    {
+      meta: {
+        slug: "asfalis-health-factor-aave",
+        title: "Ασφαλές health factor στο Aave: πίνακας περιθωρίου",
+        description:
+          "Δεν υπάρχει καθολικά ασφαλές health factor στο Aave. Δείτε πόσο μπορούν να πέσουν οι τιμές στο 1,2, 1,5 ή 2,0 και πώς επιλέγετε περιθώριο.",
+        h1: "Ποιο health factor είναι ασφαλές στο Aave;",
+        publishedAt: "2026-10-14",
+        updatedAt: "2026-10-20",
+        primaryQuestion: "Ποιο health factor είναι ασφαλές στο Aave?",
+        readingMinutes: 13,
+      },
+    },
+    {
+      meta: {
+        slug: "pos-leitourgei-i-reustopoiisi-sto-aave",
+        title: "Τι συμβαίνει όταν η θέση σας στο Aave ρευστοποιείται",
+        description:
+          "Πώς λειτουργούν σήμερα οι ρευστοποιήσεις στο Aave V3: πότε ξεκινούν, πόσο χρέος αποπληρώνεται (50% ή 100%), το μπόνους που πληρώνετε και ένα παράδειγμα.",
+        h1: "Τι συμβαίνει όταν η θέση σας στο Aave ρευστοποιείται;",
+        publishedAt: "2026-10-14",
+        updatedAt: "2026-10-26",
+        primaryQuestion: "Τι συμβαίνει όταν η θέση σας ρευστοποιείται στο Aave?",
+        readingMinutes: 15,
+      },
+    },
+    {
+      meta: {
+        slug: "timi-reustopoiisis-aave",
+        title: "Πώς υπολογίζετε την τιμή ρευστοποίησης στο Aave",
+        description:
+          "Ο τύπος της τιμής ρευστοποίησης στο Aave V3, με παραδείγματα για μία εξασφάλιση, δύο εξασφαλίσεις και ασταθές χρέος, και ένας υπολογιστής.",
+        h1: "Πώς υπολογίζετε την τιμή ρευστοποίησης στο Aave",
+        publishedAt: "2026-10-14",
+        updatedAt: "2026-10-20",
+        primaryQuestion: "Σε ποια τιμή θα ρευστοποιηθεί η θέση μου στο Aave?",
+        readingMinutes: 14,
+      },
+    },
+    {
+      meta: {
+        slug: "giati-epese-to-health-factor-aave",
+        title: "Γιατί έπεσε το health factor μου στο Aave; 6 αιτίες",
+        description:
+          "Το health factor σας στο Aave μπορεί να πέσει χωρίς να κάνετε τίποτα: τιμές, τόκοι, μειώσεις ορίων ρευστοποίησης, depeg stablecoin και σφάλματα oracle.",
+        h1: "Γιατί έπεσε το health factor μου στο Aave ενώ δεν έκανα τίποτα;",
+        publishedAt: "2026-10-14",
+        updatedAt: "2026-10-25",
+        primaryQuestion: "Γιατί πέφτει από μόνο του το health factor μου στο Aave?",
+        readingMinutes: 14,
+      },
+    },
+    {
+      meta: {
+        slug: "rythmisi-eidopoiiseon-health-factor-aave",
+        title: "Ειδοποίηση όταν πέφτει το health factor σας στο Aave",
+        description:
+          "Βήμα βήμα: μήνυμα σε Signal, Telegram ή email όταν το health factor σας στο Aave V3 ή V4 πέσει κάτω από το όριό σας. Κόστος και διακοπή.",
+        h1: "Πώς να λαμβάνετε ειδοποίηση όταν πέφτει το health factor σας στο Aave",
+        publishedAt: "2026-10-14",
+        updatedAt: "2026-10-26",
+        primaryQuestion: "Πώς ρυθμίζω μια ειδοποίηση για όταν πέφτει το health factor μου στο Aave?",
+        readingMinutes: 17,
+      },
+    },
+    {
+      meta: {
+        slug: "ergaleia-eidopoiiseon-reustopoiisis-aave",
+        title: "Σύγκριση εργαλείων ειδοποίησης ρευστοποίησης Aave (2026)",
+        description:
+          "Μια έντιμη σύγκριση εργαλείων ειδοποίησης και προστασίας για το Aave: Otomato, HF Guard, DeFi Saver, Ava, DeFi Monitor, επεκτάσεις και Tokenping.",
+        h1: "Σύγκριση εργαλείων ειδοποίησης και προστασίας από τη ρευστοποίηση στο Aave",
+        publishedAt: "2026-10-14",
+        updatedAt: "2026-10-26",
+        primaryQuestion:
+          "Ποια εργαλεία μπορούν να με ειδοποιήσουν ή να με προστατεύσουν πριν από μια ρευστοποίηση στο Aave?",
+        readingMinutes: 29,
+      },
+    },
+    {
+      meta: {
+        slug: "pos-na-apofygete-ti-reustopoiisi-sto-aave",
+        title: "Πώς να αποφύγετε τη ρευστοποίηση στο Aave: 6 πρακτικά βήματα",
+        description:
+          "Πρακτικοί τρόποι να μειώσετε τον κίνδυνο ρευστοποίησης στο Aave: αποπληρωμή, εξασφάλιση, περιθώριο, ανταλλαγές και έγκαιρη ειδοποίηση. Χωρίς εγγυήσεις.",
+        h1: "Πώς να αποφύγετε τη ρευστοποίηση στο Aave",
+        publishedAt: "2026-10-14",
+        updatedAt: "2026-10-20",
+        primaryQuestion:
+          "Πώς ανεβάζω το health factor μου στο Aave και μειώνω τον κίνδυνο ρευστοποίησης, τώρα και πριν αυτό πέσει?",
+        readingMinutes: 15,
+      },
+    },
+    {
+      meta: {
+        slug: "idiotikes-eidopoiiseis-reustopoiisis-aave",
+        title: "Ειδοποιήσεις Aave και απόρρητο: τι αποθηκεύει το Tokenping",
+        description:
+          "Τι αποθηκεύει το Tokenping, τι μένει δημόσιο on-chain, και πώς ένα alias email και ονόματα χρήστη Signal και Telegram κρατούν την ταυτότητά σας εκτός.",
+        h1: "Πώς παίρνετε ειδοποιήσεις health factor του Aave χωρίς να δώσετε την ταυτότητά σας στο Tokenping;",
+        publishedAt: "2026-10-19",
+        primaryQuestion:
+          "Μπορώ να παίρνω ειδοποιήσεις health factor του Aave χωρίς να συνδέσω την ταυτότητά μου με τη διεύθυνση του πορτοφολιού μου?",
+        readingMinutes: 15,
+      },
+    },
+    {
+      meta: {
+        slug: "daneia-me-exasfalisi-crypto",
+        title: "Δάνεια με εξασφάλιση crypto: πώς λειτουργούν και γιατί",
+        description:
+          "Πώς λειτουργεί βήμα βήμα ένα υπερεξασφαλισμένο δάνειο crypto στο Aave, σε τι διαφέρει από τράπεζα ή κεντρικό δανειστή, σε τι χρησιμεύει και οι κίνδυνοι.",
+        h1: "Πώς λειτουργούν τα δάνεια με εξασφάλιση crypto και γιατί τα παίρνουν οι άνθρωποι;",
+        publishedAt: "2026-10-19",
+        primaryQuestion: "Πώς λειτουργεί ένα δάνειο με εξασφάλιση crypto και γιατί το χρησιμοποιούν οι άνθρωποι?",
+        readingMinutes: 15,
+      },
+    },
+    {
+      meta: {
+        slug: "short-se-fiat-me-to-aave",
+        title: "Short σε fiat με δάνειο στο Aave: πώς λειτουργεί, κίνδυνοι",
+        description:
+          "Ο δανεισμός stablecoin σε δολάριο ή ευρώ με εξασφάλιση crypto είναι short σε αυτό το νόμισμα. Παράδειγμα με κέρδη, κόστος τόκου και ρευστοποίηση.",
+        h1: "Πώς ο δανεισμός ενός stablecoin στο Aave λειτουργεί ως short σε fiat",
+        publishedAt: "2026-10-19",
+        primaryQuestion: "Πώς λειτουργεί ο δανεισμός ενός stablecoin στο Aave ως θέση short σε ένα κρατικό νόμισμα?",
+        readingMinutes: 15,
+      },
+    },
+    {
+      meta: {
+        slug: "epitokia-aave",
+        title: "Επιτόκια Aave: πώς λειτουργούν και γιατί εκτινάσσονται",
+        description:
+          "Τα επιτόκια δανεισμού του Aave ακολουθούν καμπύλη: ήπια ως το βέλτιστο επίπεδο, απότομη πάνω από αυτό. Ο τύπος, πραγματικές παράμετροι και τι να κάνετε.",
+        h1: "Πώς λειτουργούν τα επιτόκια του Aave και γιατί εκτινάσσονται τα επιτόκια δανεισμού;",
+        publishedAt: "2026-10-25",
+        primaryQuestion: "Πώς ορίζει το Aave τα επιτόκια δανεισμού και κατάθεσης και γιατί εκτινάσσονται?",
+        readingMinutes: 10,
+      },
+    },
+    {
+      meta: {
+        slug: "eidopoiiseis-aave-se-mi-enochleite",
+        title: "Ειδοποιήσεις ρευστοποίησης Aave παρά το «Μην ενοχλείτε»",
+        description:
+          "Μια ειδοποίηση βοηθά μόνο αν το τηλέφωνο την αφήσει να περάσει. Πώς περνούν Signal, Telegram και email από «Μην ενοχλείτε», Focus, σίγαση και μπαταρία.",
+        h1: "Πώς βεβαιώνεστε ότι μια ειδοποίηση ρευστοποίησης του Aave θα σας ξυπνήσει τη νύχτα;",
+        publishedAt: "2026-10-25",
+        primaryQuestion: "Πώς βεβαιώνομαι ότι μια ειδοποίηση ρευστοποίησης περνά από το «Μην ενοχλείτε» τη νύχτα?",
+        readingMinutes: 11,
+      },
+    },
+    {
+      meta: {
+        slug: "kleisimo-agoras-aave",
+        title: "Τι συμβαίνει όταν το Aave κλείνει σταδιακά μια αγορά",
+        description:
+          "Το Aave κλείνει τις αγορές του σε Scroll, ZKsync, Metis, Soneium και Sonic. Τι λειτουργεί ακόμη, τι πληρώνουν οι δανειολήπτες, τι έρχεται και πώς φεύγετε.",
+        h1: "Τι συμβαίνει στο δάνειό σας στο Aave όταν η αγορά ενός δικτύου κλείνει σταδιακά;",
+        publishedAt: "2026-10-25",
+        primaryQuestion:
+          "Τι συμβαίνει στο δάνειό μου στο Aave όταν το Aave κλείνει σταδιακά την αγορά στην οποία βρίσκεται?",
+        readingMinutes: 10,
+      },
+    },
+    {
+      meta: {
+        slug: "depeg-stablecoin-sto-aave",
+        title: "Τι κάνει ένα depeg stablecoin στο δάνειό σας στο Aave",
+        description:
+          "Πώς ένα depeg κινεί το health factor στο Aave σε κάθε πλευρά του δανείου, πώς τιμολογούνται USDC, USDT και USDe και τι έδειξαν το 2023 και το 2025.",
+        h1: "Τι συμβαίνει στη θέση σας στο Aave όταν ένα stablecoin κάνει depeg;",
+        publishedAt: "2026-10-28",
+        primaryQuestion: "Τι συμβαίνει στο health factor μου στο Aave όταν ένα stablecoin κάνει depeg?",
+        readingMinutes: 17,
+      },
+    },
+    {
+      meta: {
+        slug: "aave-e-mode-exigisi",
+        title: "Aave E-Mode: περισσότερος δανεισμός, λεπτότερο περιθώριο",
+        description:
+          "Τι είναι το E-Mode του Aave V3, οι κατηγορίες του σε Ethereum, Arbitrum, Base και Optimism, πώς αλλάζει το health factor και πόσο λεπτό είναι ένα loop.",
+        h1: "Τι είναι το Aave E-Mode και τι κάνει στον κίνδυνο ρευστοποίησής σας;",
+        publishedAt: "2026-10-28",
+        primaryQuestion: "Τι είναι το Aave E-Mode και πόσο κοντά στη ρευστοποίηση φέρνει μια θέση?",
+        readingMinutes: 18,
+      },
+    },
+    {
+      meta: {
+        slug: "giati-apotygchanei-i-analipsi-i-o-daneismos-sto-aave",
+        title: "Γιατί αποτυγχάνει η ανάληψη ή ο δανεισμός στο Aave; 9 αιτίες",
+        description:
+          "Γιατί αποτυγχάνει μια ανάληψη, ένας δανεισμός ή μια αποπληρωμή στο Aave V3: health factor, ρευστότητα, ανώτατα όρια, παγωμένα reserves ή σε παύση.",
+        h1: "Γιατί αποτυγχάνει η ανάληψη, ο δανεισμός ή η αποπληρωμή σας στο Aave;",
+        publishedAt: "2026-10-29",
+        primaryQuestion: "Γιατί αποτυγχάνει μια συναλλαγή ανάληψης, δανεισμού ή αποπληρωμής στο Aave?",
+        readingMinutes: 14,
+      },
+    },
+    {
+      meta: {
+        slug: "wrapped-bitcoin-os-exasfalisi-sto-aave",
+        title: "Wrapped bitcoin σε Aave και Morpho: WBTC, cbBTC, tBTC, LBTC",
+        description:
+          "Πώς διαφέρουν WBTC, cbBTC, tBTC, LBTC και eBTC ως εξασφάλιση σε Aave V3 και Morpho: όρια, caps, oracles και τι κάνει ένα depeg του wrapper στο δάνειο.",
+        h1: "Με ποιο wrapped bitcoin να δανειστείτε ως εξασφάλιση, και τι μπορεί να πάει στραβά;",
+        publishedAt: "2026-10-29",
+        primaryQuestion: "Πώς διαφέρουν τα WBTC, cbBTC, tBTC και LBTC ως εξασφάλιση σε Aave και Morpho?",
+        readingMinutes: 15,
+      },
+    },
+    {
+      meta: {
+        slug: "tokenopoiimenes-metoches-os-exasfalisi",
+        title: "Δάνεια με τοκενοποιημένες μετοχές στο Aave και το Morpho",
+        description:
+          "Τοκενοποιημένες μετοχές ως εξασφάλιση σε Aave V4 και Morpho: η αποτίμηση από τα oracles, η παύση τιμών το Σαββατοκύριακο και το κενό της Δευτέρας.",
+        h1: "Πώς λειτουργεί ο δανεισμός με εξασφάλιση τοκενοποιημένων μετοχών και τι συμβαίνει το Σαββατοκύριακο;",
+        publishedAt: "2026-10-30",
+        primaryQuestion:
+          "Μπορείτε να δανειστείτε με εξασφάλιση τοκενοποιημένων μετοχών στο Aave ή το Morpho, και ποιοι είναι οι κίνδυνοι?",
+        readingMinutes: 12,
+      },
+    },
+    {
+      meta: {
+        slug: "poios-chreiazetai-eidopoiiseis-health-factor",
+        title: "Ποιος χρειάζεται ειδοποιήσεις health factor και ποιος όχι",
+        description:
+          "Ποιοι δανειολήπτες του Aave και του Morpho ωφελούνται από μια ειδοποίηση health factor, ποιοι λίγο, και τι δείχνουν 7.500 ρευστοποιήσεις του Morpho.",
+        h1: "Για ποιους είναι οι ειδοποιήσεις health factor και ποιοι μπορούν χωρίς αυτές;",
+        publishedAt: "2026-10-30",
+        primaryQuestion:
+          "Ποιος ωφελείται από τις ειδοποιήσεις health factor στο Aave και το Morpho, και ποιος δεν τις χρειάζεται?",
+        readingMinutes: 7,
+      },
+    },
+    {
+      meta: {
+        slug: "reustopoiithika-sto-aave-i-morpho-ti-tora",
+        title: "Ρευστοποίηση στο Aave ή το Morpho: τι κάνετε τώρα",
+        description:
+          "Πώς βρίσκετε τη συναλλαγή ρευστοποίησης, τι σας πήραν και τι κρατήσατε, γιατί συνέβη και πώς να μη ρευστοποιηθείτε δεύτερη φορά.",
+        h1: "Ρευστοποιήθηκα στο Aave ή το Morpho: τι κάνω τώρα;",
+        publishedAt: "2026-10-31",
+        primaryQuestion: "Τι πρέπει να κάνετε μετά από μια ρευστοποίηση στο Aave ή το Morpho?",
+        readingMinutes: 12,
+      },
+    },
+    {
+      meta: {
+        slug: "morpho-health-factor-exigisi",
+        title: "Το health factor του Morpho: τύπος και παραδείγματα",
+        description:
+          "Τι είναι το health factor ενός δανείου στο Morpho, πώς το υπολογίζουν τα Morpho Blue και Midnight, τι το κινεί και σε τι διαφέρει από του Aave.",
+        h1: "Τι είναι το health factor του Morpho και πώς υπολογίζεται;",
+        publishedAt: "2026-10-26",
+        primaryQuestion: "Τι είναι το health factor ενός δανείου στο Morpho και πώς υπολογίζεται?",
+        readingMinutes: 15,
+        protocol: "morpho",
+      },
+    },
+    {
+      meta: {
+        slug: "pos-leitourgei-i-reustopoiisi-sto-morpho",
+        title: "Ρευστοποίηση στο Morpho: κίνητρο και επισφαλές χρέος",
+        description:
+          "Πότε ρευστοποιείται ένα δάνειο στο Morpho, πόσα μπορεί να πάρει ο ρευστοποιητής, το κίνητρο σε κάθε LLTV, το επισφαλές χρέος, τα oracles και το Midnight.",
+        h1: "Τι συμβαίνει όταν ρευστοποιείται η θέση σας στο Morpho;",
+        publishedAt: "2026-10-26",
+        primaryQuestion: "Πώς λειτουργεί η ρευστοποίηση στο Morpho και πόσο κοστίζει στον δανειολήπτη?",
+        readingMinutes: 14,
+        protocol: "morpho",
+      },
+    },
+    {
+      meta: {
+        slug: "morpho-pro-reustopoiisi",
+        title: "Προ-ρευστοποίηση Morpho: τι είναι και πώς απενεργοποιείται",
+        description:
+          "Πώς η προ-ρευστοποίηση του Morpho (Auto-deleverage) πουλά μέρος ενός δανείου πριν από το LLTV, γιατί αποσύρεται και πώς την ελέγχετε και την ανακαλείτε.",
+        h1: "Τι είναι η προ-ρευστοποίηση στο Morpho και πώς την ελέγχετε ή την απενεργοποιείτε;",
+        publishedAt: "2026-10-26",
+        primaryQuestion:
+          "Τι είναι η προ-ρευστοποίηση στο Morpho και πώς ελέγχετε αν είναι ενεργή και την απενεργοποιείτε?",
+        readingMinutes: 13,
+        protocol: "morpho",
+      },
+    },
+    {
+      meta: {
+        slug: "morpho-midnight-daneia-stathero-epitokio",
+        title: "Δάνεια σταθερού επιτοκίου Morpho Midnight: πώς λειτουργούν",
+        description:
+          "Δάνεια σταθερού επιτοκίου στο Morpho Midnight: το επιτόκιο, τι οφείλετε στη λήξη, η υγεία με πολλές εξασφαλίσεις και γιατί ρευστοποιείται απλήρωτο χρέος.",
+        h1: "Πώς λειτουργούν τα δάνεια σταθερού επιτοκίου του Morpho Midnight και τι γίνεται στη λήξη;",
+        publishedAt: "2026-10-26",
+        primaryQuestion:
+          "Πώς λειτουργεί ένα δάνειο σταθερού επιτοκίου στο Morpho Midnight και τι γίνεται αν δεν έχετε αποπληρώσει έως τη λήξη?",
+        readingMinutes: 14,
+        protocol: "morpho",
+      },
+    },
+  ],
 };

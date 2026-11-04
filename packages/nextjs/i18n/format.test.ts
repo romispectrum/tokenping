@@ -10,6 +10,8 @@ import {
   daOnMarket,
   deForMarket,
   deOnMarket,
+  elForMarket,
+  elOnMarket,
   filForMarket,
   filOnMarket,
   formatDecimal,
@@ -521,6 +523,24 @@ describe("Ukrainian formatting", () => {
     expect(ukForMarket("Base")).toBe("для мережі Base");
     expect(ukForMarket("Base (V4 Coinbase Stocks)")).toBe("для ринку Base (V4 Coinbase Stocks)");
     expect(ukForMarket("USDC | cbBTC (86%)", "market")).toBe("для ринку USDC | cbBTC (86%)");
+  });
+});
+
+describe("Greek formatting", () => {
+  it("joins with και and ή, writes Greek dates, a decimal comma, one/other plurals and the market wording", () => {
+    expect(joinList("el", ["Signal", "Telegram", "email"])).toBe("Signal, Telegram και email");
+    expect(joinList("el", ["Signal", "email"], "disjunction")).toBe("Signal ή email");
+    expect(formatLongDate("el", "2026-10-14")).toBe("14 Οκτωβρίου 2026");
+    expect(formatDecimal("el", "1.42")).toBe("1,42");
+    const networks = (n: number) => plural("el", n, { one: `${n} δίκτυο`, other: `${n} δίκτυα` });
+    expect(networks(1)).toBe("1 δίκτυο");
+    expect(networks(2)).toBe("2 δίκτυα");
+    expect(elOnMarket("Arbitrum")).toBe("στο δίκτυο Arbitrum");
+    expect(elOnMarket("Ethereum (V4 Lido)")).toBe("στην αγορά Ethereum (V4 Lido)");
+    expect(elOnMarket("Base", "network")).toBe("στο δίκτυο Base");
+    expect(elForMarket("Base")).toBe("για το δίκτυο Base");
+    expect(elForMarket("Base (V4 Coinbase Stocks)")).toBe("για την αγορά Base (V4 Coinbase Stocks)");
+    expect(elForMarket("USDC | cbBTC (86%)", "market")).toBe("για την αγορά USDC | cbBTC (86%)");
   });
 });
 

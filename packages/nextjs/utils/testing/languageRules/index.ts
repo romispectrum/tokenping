@@ -2,6 +2,7 @@ import { RULES as bg } from "./bg";
 import { RULES as cs } from "./cs";
 import { RULES as da } from "./da";
 import { RULES as de } from "./de";
+import { RULES as el } from "./el";
 import { RULES as en } from "./en";
 import { RULES as es } from "./es";
 import { RULES as fil } from "./fil";
@@ -55,4 +56,5 @@ export const LANGUAGE_RULES: Localized<LanguageRules> = {
   bg,
   ru,
   uk,
+  el,
 };

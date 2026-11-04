@@ -70,6 +70,7 @@ const LIST_WORDS: Record<Locale, ListWords> = {
   bg: { conjunction: "и", disjunction: "или" },
   ru: { conjunction: "и", disjunction: "или" },
   uk: { conjunction: "і", disjunction: "або" },
+  el: { conjunction: "και", disjunction: "ή" },
 };
 
 /**
@@ -341,6 +342,14 @@ export const ukOnMarket = (name: string, kind?: MarketNameKind) =>
 /** Ukrainian "для мережі Arbitrum" for a V3 market, "для ринку Ethereum (V4 Lido)" for a V4 Spoke or a Morpho market. */
 export const ukForMarket = (name: string, kind?: MarketNameKind) =>
   marketNameKind(name, kind) === "market" ? `для ринку ${name}` : `для мережі ${name}`;
+
+/** Greek "στο δίκτυο Arbitrum" for a V3 market, "στην αγορά Ethereum (V4 Lido)" for a V4 Spoke or a Morpho market. */
+export const elOnMarket = (name: string, kind?: MarketNameKind) =>
+  marketNameKind(name, kind) === "market" ? `στην αγορά ${name}` : `στο δίκτυο ${name}`;
+
+/** Greek "για το δίκτυο Arbitrum" for a V3 market, "για την αγορά Ethereum (V4 Lido)" for a V4 Spoke or a Morpho market. */
+export const elForMarket = (name: string, kind?: MarketNameKind) =>
+  marketNameKind(name, kind) === "market" ? `για την αγορά ${name}` : `για το δίκτυο ${name}`;
 
 /** Vietnamese "mạng" before a V3 market's name (its network's), "thị trường" before a V4 Spoke's or a Morpho market's. */
 export const viMarketNoun = (name: string, kind?: MarketNameKind) =>

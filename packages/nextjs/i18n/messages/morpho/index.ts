@@ -2,6 +2,7 @@ import { MESSAGES as bg } from "./bg";
 import { MESSAGES as cs } from "./cs";
 import { MESSAGES as da } from "./da";
 import { MESSAGES as de } from "./de";
+import { MESSAGES as el } from "./el";
 import { MESSAGES as en } from "./en";
 import { MESSAGES as es } from "./es";
 import { MESSAGES as fil } from "./fil";
@@ -57,4 +58,5 @@ export const MORPHO_MESSAGES: Localized<MorphoMessages> = {
   bg,
   ru,
   uk,
+  el,
 };
