@@ -1,0 +1,188 @@
+export const meta = {
+  slug: "private-aave-likvidasjonsvarsler",
+  title: "Aave-varsler og personvernet ditt: hva Tokenping lagrer",
+  description:
+    "Hva Tokenping lagrer, hva som er offentlig on-chain, og hvordan et e-postalias og brukernavn på Signal og Telegram hindrer at kontakten avslører deg.",
+  h1: "Slik får du health factor-varsler for Aave uten å gi Tokenping identiteten din",
+  publishedAt: "2026-10-19",
+  primaryQuestion: "Kan jeg få health factor-varsler for Aave uten å koble identiteten min til lommebokadressen min?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Tokenping har ingen konto med passord: du logger inn ved å signere en melding med lommeboken din, og tjenesten lagrer
+  lommebokadressen din sammen med kontakten du oppgir for varsler. Gi den derfor kontakter som ikke sier noe om deg: et
+  e-postalias i stedet for din egen adresse, et brukernavn på Signal med telefonnummeret ditt skjult, og et brukernavn
+  og navn på Telegram som ikke identifiserer deg. Da avslører ikke kontakten hvem du er. Det gjør deg ikke anonym, fordi
+  betalingen din er offentlig på Arbitrum One, en lommebok du har koblet til deg andre steder, forblir koblet, og
+  tjenestene som leverer varslene dine, har sine egne registre.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Hva lagrer Tokenping, og hva samler den ikke inn?
+
+Per 19. oktober 2026 skriver lagring av et varsel én rad per lommebok, nettverk og marked (en Aave V3-pool eller en Aave V4 Spoke) til Tokenpings database. Raden inneholder:
+
+- Lommebokadressen din.
+- Nettverket, markedet og terskelen din.
+- Kanalene du valgte og språket for hver av dem.
+- E-postadressen, brukernavnet på Signal og brukernavnet på Telegram som du skrev inn, for kanalene du valgte.
+- Når varselet ble opprettet og sist endret, og når du sist sendte en testmelding på hver kanal. Det er slik grensen på én test per kanal hvert 15. minutt fungerer.
+
+Trykker du på Start i Tokenpings Telegram-bot, lagres også chat-ID-en din og tidspunktet, i en egen tabell. Svarer du på det frivillige spørsmålet «Hvordan hørte du om Tokenping?», lagres svaret ditt og tidspunktet sammen med lommebokadressen din.
+
+Tokenping ber ikke om og lagrer ikke navn, telefonnummer, passord eller identitetskontroll. Den bruker ingen sporingspiksler eller reklamecookies, lagrer ingen historikk over posisjonene dine (de leses direkte fra blokkjeden) og lagrer ingen logg over varslene den har sendt, i databasen sin. [Personvernsiden](/no/personvern) er den autoritative listen; denne guiden forklarer hva den betyr for deg og hva du kan gjøre med det.
+
+## Hvordan fungerer innlogging uten konto?
+
+Varselinnstillinger hører til en lommebokadresse, ikke til en konto. For å åpne eller endre dem signerer du en melding med den lommeboken. Det er en Sign-in with Ethereum-melding (EIP-4361) som oppgir nettstedet, adressen din og en tilfeldig engangskode. Å signere er ingen transaksjon: det koster ingen gas og godkjenner ingen token. Serveren sjekker signaturen og godtar engangskoden én gang, innen 5 minutter. Koden lagres uten adressen din og slettes når den brukes.
+
+Deretter setter nettstedet én øktcookie. Den inneholder lommebokadressen din og et utløpstidspunkt, pluss en signatur laget med en serverhemmelighet slik at den ikke kan forfalskes (den er signert, ikke kryptert), og skriptene på siden kan ikke lese den (HttpOnly). Den varer i 7 dager, og nettstedet fjerner den når du kobler fra lommeboken din på nettstedet. Mens du logger inn, holder en annen cookie engangskoden i de få minuttene. Hver varselrute handler deretter bare for lommeboken i cookien, og en forespørsel som oppgir en annen lommebok, avvises.
+
+Å se på posisjonene dine krever verken innlogging eller betaling. Nettstedets sidetall kommer fra Vercel Web Analytics, som oppgir at den identifiserer besøkende med en hash laget av forespørselen i stedet for tredjepartscookies, og forkaster den økten etter 24 timer.
+
+## Hvem kan lese kontaktopplysningene du lagrer?
+
+Gjennom appen bare den som kan signere med lommeboken din. Å lese, endre eller slette et varsel, og å sende en testmelding, krever øktcookien din, og en forespørsel som oppgir en annen lommebok, avvises. Databasetabellene er stengt for Supabases offentlige (anon) nøkkel: row level security er slått på uten policyer, og de offentlige rollene har ingen privilegier. Bare Tokenpings server, med sin service-role-nøkkel, når dem.
+
+Du kan sjekke dette i stedet for å ta det på tro, fordi koden til Tokenping er offentlig. Rutene som leser og skriver varsler, ligger i [`packages/nextjs/app/api/notifications`](https://github.com/romispectrum/tokenping/tree/main/packages/nextjs/app/api/notifications), innloggingsrutene i [`packages/nextjs/app/api/auth`](https://github.com/romispectrum/tokenping/tree/main/packages/nextjs/app/api/auth), og migreringene som stenger tabellene for den offentlige nøkkelen, i [`packages/supabase/migrations`](https://github.com/romispectrum/tokenping/tree/main/packages/supabase/migrations).
+
+Det er ikke det samme som ingen:
+
+- De som driver Tokenping, og databaseverten, kan lese radene.
+- Hvem som helst kan spørre om et bestemt brukernavn på Telegram har trykket på Start i boten. Svaret er ja eller nei, aldri en chat-ID.
+- Når en varselsjekk eller en melding feiler, kan feilen inneholde lommebokadressen din og mottakeren, og den havner i serverloggene.
+
+Personvernsidens eget råd er å ikke oppgi en e-postadresse eller et brukernavn på Signal som du ikke vil ha koblet til lommebokadressen din. Resten av denne guiden handler om hvordan du følger det.
+
+## Hvilke andre tjenester håndterer dataene dine?
+
+Tokenping kjører hos andre leverandører, og hver av dem ser en del av det du gir den. Tabellen er personvernsidens liste i kortform.
+
+| Tjeneste             | Hva den gjør                                                           | Hva den ser                                                                            |
+| -------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Vercel               | Drifter nettstedet og kjører varselsjekken hvert 5. minutt             | Hver forespørsel, inkludert IP-adressen din, og serverloggene                          |
+| Vercel Web Analytics | Teller sidevisninger                                                   | Sideadresse, henvisende side, omtrentlig sted, nettleser, operativsystem og enhetstype |
+| Supabase             | Databasen                                                              | Radene beskrevet ovenfor                                                               |
+| Resend               | Sender varsler på e-post                                               | E-postadressen din og varselteksten                                                    |
+| Fly.io-relé          | Leverer varslene videre til Signal                                     | Brukernavnet ditt på Signal og varselteksten (Signal ser dem også)                     |
+| Telegram             | Leverer varsler gjennom sitt Bot API                                   | Chat-ID-en din og varselteksten                                                        |
+| RPC-leverandører     | Svarer på lesinger fra blokkjeden                                      | Lommebokadressen som leses, og IP-adressen din når nettleseren din gjør lesingen       |
+| WalletConnect        | Videreformidler tilkoblingen til lommebokappen din, hvis du bruker den | Det lommebokappen din og nettstedet utveksler for å koble til                          |
+
+Varselteksten oppgir markedet, health factor (helsefaktor), terskelen din og tidspunktet. Den inneholder ikke lommebokadressen din.
+
+Leverandørene har sine egne registre. Resends databehandleravtale (data processing addendum) oppgir metadata, e-postadresse og meldingsinnhold som minimum av personopplysninger den behandler for en kunde, og dokumentasjonen sier at den oppbevarer e-postdata i 30 dager på alle planer, med fleksibel oppbevaringstid for Enterprise. Signal sier at tjenesten ikke kan dekryptere eller på annen måte få tilgang til innholdet i meldinger. Telegrams personvernerklæring sier at skychatter lagres på serverne deres, sterkt kryptert, mens ende-til-ende-kryptering gjelder for hemmelige chatter (Secret Chats).
+
+## Hva forblir offentlig på blokkjeden?
+
+Å betale for varsler er en transaksjon på Arbitrum One. Betalingskontrakten registrerer hver betaling i en offentlig hendelse (event): den betalende adressen, tokenet, beløpet, tidspunktet, perioden du kjøpte og den nye utløpsdatoen. Hvem som helst kan lese den, og ingen kan slette den. Kildekoden til kontrakten er [verifisert på Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553).
+
+Ingenting om varselet ditt skrives til en blokkjede: ikke terskelen, ikke e-postaliaset ditt, ikke brukernavnet ditt på Signal og ikke brukernavnet ditt på Telegram. Aave-posisjonene dine er også offentlige. ethereum.org beskriver en blokkjede som «a public database» (en offentlig database), og Tokenping leser posisjonen din med view-kall som hvem som helst kan gjøre. Koblingen mellom lommeboken din og posisjonene dens har aldri vært avhengig av Tokenping.
+
+## Hva kan Tokenping koble sammen, og hva kan den ikke?
+
+Tokenping kan koble lommebokadressen din til kontaktene du lagrer der, til markedene du låner i, til tersklene dine og til når du betalte. Tjenesten kan ikke fungere uten den koblingen: et varsel trenger en lommebok å følge med på og et sted å sende meldingen.
+
+Ut fra det som lagres i databasen, kan Tokenping ikke knytte noe av dette til navnet ditt, telefonnummeret ditt eller andre kontoer du har, med mindre en kontakt du oppgir, gjør det for den. En e-postadresse med navnet ditt i, eller et brukernavn du bruker på andre nettsteder, gjør akkurat det. Det er poenget med et alias og et anonymt brukernavn: kontakten sier ingenting om hvem du er. IP-adressen din er en egen sak: den når Vercel med hver forespørsel, ikke databasen til Tokenping, og å skjule den ligger utenfor denne guiden.
+
+Hva noen utenfra kan gjøre, er en annen liste, og ingenting av det trenger Tokenping:
+
+- Har lommeboken din et primært ENS-navn, kan hvilken som helst app slå det opp ut fra adressen.
+- Har du finansiert lommeboken fra en børs der du verifiserte identiteten din, har børsen som regel et register over det uttaket.
+- Ethvert sted der du har vist adressen ved siden av navnet ditt eller brukernavnet ditt, kobler de to sammen.
+- Betalingen din er offentlig, så hvem som helst kan se at adressen har betalt, og til når.
+
+## Hvordan bruker du et e-postalias i stedet for den ekte adressen din?
+
+Et e-postalias er en ekstra adresse som videresender til den ekte innboksen din. Tokenping og e-postleverandøren dens ser bare aliaset. SimpleLogin, tjenesten denne guiden bruker som eksempel, ser begge, fordi den videresender e-posten mellom dem. Den lages av Proton AG og har åpen kildekode, og prissiden viser en plan der du betaler ingenting, med et begrenset antall alias.
+
+1. Opprett en konto hos SimpleLogin og velg innboksen som skal ta imot de videresendte varslene.
+2. Trykk på **Random Alias** (tilfeldig alias) i kontrollpanelet til SimpleLogin, og velg tilfeldige ord eller en UUID for den venstre delen. Et eget alias fungerer også, men hold navnet ditt, brukernavnene dine og alt du bruker på andre nettsteder, utenfor det. SimpleLogin lar deg også legge til et notat på et alias, for eksempel «Tokenping», så du husker hva det er til.
+3. Skriv inn aliaset som e-postadresse i varselskjemaet (for eksempel `alice-aave@example.com`) og lagre varselet.
+4. Trykk på **Send test** for e-post og sjekk at meldingen kommer fram til den ekte innboksen din. Hvis den ikke gjør det, se i søppelpostmappen. [Guiden for å sette opp varsler](/no/blog/sett-opp-aave-health-factor-varsel) har resten av sjekkene.
+
+Varslene fra Tokenping går bare én vei, så du svarer aldri på dem, og et alias som bare tar imot, er nok. Når du slutter å bruke Tokenping, slett varselet først og deretter aliaset, slik at ingen lagret kontakt lever lenger enn den trengs.
+
+Et alias skjuler ikke alt. SimpleLogin og e-postleverandøren din ser fortsatt varslene, så det skjuler adressen din for Tokenping og Resend, ikke for tjenesten som videresender. Et alias du også bruker for en annen tjeneste, kobler de to sammen. Og det endrer ikke hva meldingen sier: markedet, health factor og terskelen din.
+
+SimpleLogin er ikke det eneste valget. DuckDuckGo Email Protection, Firefox Relay (fra Mozilla), addy.io og Apples Hide My Email (som er inkludert i et iCloud+-abonnement) gir deg også adresser som videresender til din egen. Begrensningene deres er forskjellige, så les leverandørens side før du stoler på en av dem.
+
+## Hvordan bruker du et brukernavn på Signal i stedet for telefonnummeret ditt?
+
+Et brukernavn på Signal lar noen starte en chat uten telefonnummeret ditt, og det er det Tokenping ber om: skjemaet ber aldri om et nummer. Trinnene følger Signals støttesider.
+
+1. **Opprett et brukernavn.** Åpne profilen din i Signal og trykk på @-symbolet. Brukernavn er 3 til 32 tegn (a-z, 0-9 og \_) og slutter med minst to sifre. Skjemaet til Tokenping forventer formen `alice.42`: kallenavnet ditt, et punktum og sifrene. Velg et kallenavn som ikke er navnet ditt eller et brukernavn du bruker andre steder.
+2. **Skjul nummeret ditt.** Åpne Settings (Innstillinger), deretter Privacy (Personvern), deretter Phone Number (Telefonnummer), og sett «Who can see my number» (hvem kan se nummeret mitt) til Nobody (ingen). Folk som allerede har nummeret ditt lagret i kontaktene sine, ser det fortsatt. Vil du i tillegg bare kunne nås via brukernavnet ditt, setter du «Who can find me by my number» (hvem kan finne meg via nummeret mitt) til Nobody.
+3. **Sjekk profilnavnet ditt.** Signal-profilen din har et obligatorisk fornavn og et valgfritt bilde, og Signals side sier at du kan bruke et kallenavn, ett enkelt tegn eller en emoji. Godtar du en meldingsforespørsel, kan avsenderen se profilen din.
+4. **Legg brukernavnet inn i varselet og send en test.** Skriv det inn i feltet **Brukernavn på Signal**, lagre og trykk på **Send test** for Signal. Fordi Signal-kontoen til Tokenping ikke er blant kontaktene dine, kan den første meldingen komme som en meldingsforespørsel. Gjør trinn 2 og 3 før du godtar den.
+
+Signal sier at hvis du ikke godtar en forespørsel, ser avsenderen bare brukernavnet den skrev til. Gjør du det, ser avsenderen profilnavnet ditt og kan se telefonnummeret ditt, avhengig av nummerinnstillingene dine.
+
+Et brukernavn er bare en måte å starte en chat på. Signal har fortsatt telefonnummeret du registrerte deg med, og ingenting her endrer det. Endrer eller sletter du brukernavnet, sier Signal at hvem som helst snart kan ta det gamle, og Tokenping fortsetter å sende til brukernavnet den har lagret, så oppdater varselet med en gang.
+
+## Hvordan hindrer du at en Telegram-konto identifiserer deg?
+
+Telegram passer dårligst av de tre, så les dette før du velger det. Tokenping kan bare sende meldinger til en Telegram-konto som har trykket på Start i boten, så du skriver inn @brukernavnet ditt i varselet og trykker på Start én gang. Kontoen trenger derfor et brukernavn, og Telegram sier at brukernavn er offentlige: de gjør deg søkbar i det globale søket, og folk som finner deg, kan sende deg meldinger uten nummeret ditt. Telegrams egen FAQ fraråder å lage et hvis du ikke er komfortabel med det.
+
+1. **Velg et brukernavn uten noe av ditt i.** Bruk a-z, 0-9 og understrek; Tokenping godtar 4 til 32 tegn. Sett det i Settings (Innstillinger) i Telegram.
+2. **Sjekk visningsnavnet og bildet ditt.** Telegrams personvernerklæring sier at skjermnavnet ditt ikke trenger å være det ekte navnet ditt. En bot kan se det offentlige navnet ditt, brukernavnet og profilbildene.
+3. **Sjekk nummerinnstillingen din.** Åpne Settings, deretter Privacy and Security (Personvern og sikkerhet), deretter Phone Number. Som standard ser bare folk som har deg i kontaktene sine, nummeret ditt, og Telegram sier at den som finner deg via brukernavnet, heller ikke ser det. En bot ser det ikke med mindre du gir det til den.
+4. **Koble til kontoen.** Skriv inn brukernavnet i varselet, trykk på Start i boten og vent til skjemaet viser at det er koblet til.
+
+Koden til Tokenping beholder bare chat-ID-en og brukernavnet ditt, men Telegrams Bot API gir en bot fornavnet ditt med hver melding og, når de finnes, etternavnet, brukernavnet og språkkoden din. Hvem som helst kan sjekke om et brukernavn har trykket på Start. Sender du /stop til boten, kobles chatten din fra.
+
+## Bør du bruke en egen lommebok?
+
+Bare hvis du låner fra den. Tokenping følger med på lommeboken du kobler til og ingenting annet, og tilgangen hører til lommeboken som betalte, så du kan ikke betale fra én adresse for å følge med på en posisjon som en annen har. En lommebok du bare bruker til Aave, holder posisjonen, betalingen og varslene på én adresse. Hvordan du finansierer den, etterlater likevel et offentlig spor, betalingen til Tokenping er offentlig, og lommeboken forblir pseudonym, ikke anonym. Å flytte et lån til en ny lommebok betyr som regel å lukke posisjonen og åpne den igjen, med de kostnadene og den likvidasjonsrisikoen det fører med seg, så denne guiden anbefaler det ikke.
+
+## Hva beskytter hvert trinn, og hva beskytter det ikke?
+
+| Trinn                                                     | Holder unna Tokenping og leverandørene                 | Skjuler ikke                                                                            |
+| --------------------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| E-postalias                                               | Den ekte e-postadressen din                            | Aliastjenesten ser begge adressene og varslene, og de havner i den ekte innboksen din   |
+| Brukernavn på Signal, nummer skjult                       | Telefonnummeret ditt                                   | Signal har fortsatt nummeret ditt, og godtar du en forespørsel, deles profilnavnet ditt |
+| Brukernavn og navn på Telegram som ikke identifiserer deg | Det ekte navnet og telefonnummeret ditt                | Brukernavnet er offentlig, og Telegram lagrer chatten på serverne sine                  |
+| En lommebok som bare brukes til Aave                      | Koblinger til resten av historikken til den lommeboken | Finansieringstransaksjonene og betalingen til Tokenping er offentlige                   |
+| Å slette varselet                                         | Den lagrede raden, inkludert kontakten                 | Betalingen on-chain, og det hver leverandør beholder etter sine egne regler             |
+
+## Hvordan sletter du det Tokenping lagrer?
+
+Slett varselet i oversikten: trykk på **Rediger varsel**, deretter på **Slett varsel**, og bekreft. Det fjerner innstillingene for det markedet, inkludert e-postadressen og brukernavnet på Signal, og det krever aktiv tilgang. Varselet for hvert marked slettes for seg.
+
+<Callout tone="warning">
+  At tilgangen din utløper, sletter ingenting: varselet og kontakten i det forblir lagret til du sletter varselet. Slett
+  varsler du ikke lenger vil ha, mens tilgangen din er aktiv. Har den utløpt, står det på personvernsiden hvor du kan
+  skrive til teamet for å få innstillingene dine slettet.
+</Callout>
+
+På Telegram kobles chatten din fra hvis du sender /stop til boten. Det frivillige svaret på spørsmålet om hvordan du hørte om Tokenping, kan fjernes på forespørsel, via de samme kontaktene på personvernsiden. Betalingen on-chain kan ingen slette.
+
+Koden bak alt dette ligger i [repositoriet til Tokenping](https://github.com/romispectrum/tokenping). Stemmer ikke en påstand i denne guiden med koden, si fra til teamet via kontaktene på personvernsiden.
+
+## Kilder
+
+- [Personvernsiden til Tokenping](/no/personvern) (hentet 19. oktober 2026; sist oppdatert 19. oktober 2026): hva som lagres, hvem som håndterer det, hva som er offentlig og hvordan du sletter det
+- [Kildekoden til Tokenping på GitHub](https://github.com/romispectrum/tokenping) (hentet 19. oktober 2026; repositoriet er offentlig): innlogging i `packages/nextjs/app/api/auth`, øktsjekker i `packages/nextjs/services/api/server/session.ts`, lagring av varsler i `packages/nextjs/services/notifications`, Telegram-rutene i `packages/nextjs/app/api/telegram`, migreringene i `packages/supabase/migrations` og betalingskontrakten i `packages/hardhat/contracts`
+- [TokenpingPaywall på Arbitrum One, kildekode verifisert på Sourcify](https://repo.sourcify.dev/42161/0x79872d7529cfE1c062838fACDA004Ce4BFB16553) (hentet 19. oktober 2026): hendelsen PaymentReceived
+- [SimpleLogin](https://simplelogin.io/) (hentet 19. oktober 2026): hva et alias gjør, hvem som lager tjenesten, åpen kildekode
+- [Prisene til SimpleLogin](https://simplelogin.io/pricing/) (hentet 19. oktober 2026): en plan der du betaler ingenting, med et begrenset antall alias
+- [Dokumentasjonen til SimpleLogin: opprett et alias](https://simplelogin.io/docs/getting-started/create-alias/) (hentet 19. oktober 2026)
+- [DuckDuckGo Email Protection](https://duckduckgo.com/duckduckgo-help-pages/email-protection/what-is-duckduckgo-email-protection) (hentet 19. oktober 2026)
+- [Firefox Relay](https://relay.firefox.com/) (hentet 19. oktober 2026)
+- [addy.io](https://addy.io/) (hentet 19. oktober 2026)
+- [Apple Support: Hide My Email med iCloud+](https://support.apple.com/en-us/102548) (hentet 19. oktober 2026)
+- [Signal Support: Phone Number Privacy and Usernames](https://support.signal.org/hc/en-us/articles/6712070553754-Phone-Number-Privacy-and-Usernames) (hentet 19. oktober 2026)
+- [Signal Support: Signal Profiles and Message Requests](https://support.signal.org/hc/en-us/articles/360007459591-Signal-Profiles-and-Message-Requests) (hentet 19. oktober 2026)
+- [Personvernerklæringen til Signal](https://signal.org/legal/) (hentet 19. oktober 2026)
+- [Telegram FAQ](https://telegram.org/faq) (hentet 19. oktober 2026): brukernavn, synligheten til telefonnummeret, hva boter ser
+- [Personvernerklæringen til Telegram](https://telegram.org/privacy) (hentet 19. oktober 2026)
+- [Telegram Bot API: objektene User og Chat](https://core.telegram.org/bots/api) (hentet 19. oktober 2026)
+- [Databehandleravtalen til Resend (data processing addendum)](https://resend.com/legal/dpa) (hentet 19. oktober 2026)
+- [Dokumentasjonen til Resend: langtidsoppbevaring av e-postdata](https://www.resend.com/docs/webhooks/how-to-store-webhooks-data) (hentet 19. oktober 2026)
+- [Vercel Web Analytics: personvern og etterlevelse](https://vercel.com/docs/analytics/privacy-policy) (hentet 19. oktober 2026)
+- [ENS-dokumentasjonen: primære navn](https://docs.ens.domains/web/reverse) (hentet 19. oktober 2026)
+- [ethereum.org: introduksjon til Ethereum](https://ethereum.org/en/developers/docs/intro-to-ethereum/) (hentet 19. oktober 2026)
+
+_Opplæringsinnhold, ikke finansiell rådgivning. Varsler reduserer risikoen, men forhindrer ikke likvidasjon._

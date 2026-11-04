@@ -161,6 +161,13 @@ const COPY: Partial<Record<Locale, CopyRules>> = {
     wrongAddress: /[^.!?:\s]\s+(?:De|Dem|Deres)(?!\p{L})/u,
     claims: /realtid|øjeblikkelig\p{L}* (?:alarm|besked)|multi[- ]?protokol/iu,
   },
+  nb: {
+    h1Channels: /Signal.*e-post/iu,
+    badges: ["Signal", "E-post"],
+    // Du throughout: no formal De, Dem or Deres inside a sentence ("De" opening a sentence is "they").
+    wrongAddress: /[^.!?:\s]\s+(?:De|Dem|Deres)(?!\p{L})/u,
+    claims: /sanntid|umiddelbar\p{L}* (?:varsel|melding)|multi[- ]?protokoll/iu,
+  },
 };
 
 const TRANSLATED = LOCALES.filter(locale => locale !== "en");

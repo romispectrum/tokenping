@@ -1,0 +1,182 @@
+export const meta = {
+  slug: "aave-likvidasjonspris",
+  title: "Slik regner du ut likvidasjonsprisen din på Aave",
+  description:
+    "Formelen for likvidasjonsprisen på Aave V3, med regneeksempler for én sikkerhet, to sikkerheter og volatil gjeld, pluss en kalkulator.",
+  h1: "Slik regner du ut likvidasjonsprisen din på Aave",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-20",
+  primaryQuestion: "Ved hvilken pris blir Aave-posisjonen min likvidert?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Likvidasjonsprisen din på Aave er orakelprisen på én eiendel der health factor (helsefaktor) ville falt til 1,00, med
+  alle andre priser uendret; forbi den (under for sikkerhet, over for en lånt eiendel) kan posisjonen likvideres. Med én
+  volatil sikkerhet og gjeld i en stablecoin er den gjeld ÷ (mengde sikkerhet × likvidasjonsterskel), eller dagens pris
+  ÷ health factor. For eksempel kan 10 WETH som sikkerhet for 12 000 USDC på Aave V3 Ethereum Core (likvidasjonsterskel
+  for WETH 83 % den 14. oktober 2026) likvideres når ETH faller under 1 445,78 $, med USDC regnet til 1,00 $.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Hva er en likvidasjonspris på Aave?
+
+En likvidasjonspris på Aave er prisen på én eiendel i posisjonen din der health factor ville nådd nøyaktig 1,00, med alle andre priser uendret. Aave V3 tillater likvidasjon så snart health factor er under 1,00. En likvidator kan da betale tilbake en del av eller hele gjelden din og ta sikkerhet verdt det beløpet pluss en bonus (5 % for sikkerhet i WETH på Ethereum Core, lest on-chain 14. oktober 2026). Hele prosessen står i [hva som skjer ved en likvidasjon på Aave](/no/blog/slik-fungerer-likvidasjon-pa-aave).
+
+Ha tre ting i bakhodet når du bruker tallet:
+
+- **Det er avledet.** Pool-kontrakten i Aave V3 rapporterer en health factor via `getUserAccountData`, ikke en likvidasjonspris. Du får prisen ved å løse formelen for health factor med hensyn på én eiendel; [hva health factor på Aave er](/no/blog/aave-health-factor-forklart) forklarer den formelen.
+- **Det er en orakelpris.** Aave verdsetter posisjoner med sitt eget orakel (priskilde), bygget på Chainlink-feeder og CAPO-adaptere, og Aave-appen viser den prisen som «Oracle price» (orakelpris) på siden til hver eiendel. Siste handel på en børs kan avvike.
+- **Det holder alt annet i ro.** Med to sikkerhetseiendeler eller volatil gjeld når mange kombinasjoner av priser 1,00, så én enkelt likvidasjonspris sier bare hvor langt én eiendel kan bevege seg alene.
+
+## Hva er formelen for en likvidasjonspris på Aave?
+
+For en posisjon på Aave V3 med én volatil sikkerhetseiendel og gjeld i en stablecoin er likvidasjonsprisen gjeld ÷ (mengde sikkerhet × likvidasjonsterskel), der likvidasjonsterskelen (liquidation threshold, LT) er den andelen av sikkerhetens verdi som teller med i health factor.
+
+**Likvidasjonspris = gjeld ÷ (mengde sikkerhet × likvidasjonsterskel)**
+
+Dette er health factor løst for prisen. Aave V3 regner ut HF = Σ(sikkerhetens verdi × likvidasjonsterskel) ÷ samlet verdi av gjelden, i USD. Med én sikkerhetseiendel er HF = mengde × pris × LT ÷ gjeld. Sett HF til 1 og løs for prisen.
+
+Fordi health factor allerede inneholder terskelen, finnes det en snarvei: **likvidasjonspris = dagens pris ÷ health factor**. Fallet som skal til for å nå den, er 1 − 1 ÷ HF.
+
+Andre typer posisjoner bruker en variant av den samme formelen:
+
+| Posisjon                                    | Likvidasjonspris                                                        | Snarvei fra health factor                                            |
+| ------------------------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Én volatil sikkerhet, gjeld i stablecoin    | gjeld ÷ (mengde × LT)                                                   | dagens pris ÷ HF                                                     |
+| To volatile sikkerheter, gjeld i stablecoin | (gjeld − den andre sikkerhetens verdi × dens LT) ÷ (mengde × LT)        | ingen for én enkelt pris; begge faller sammen: et fall på 1 − 1 ÷ HF |
+| Sikkerhet i stablecoin, volatil gjeld       | Σ(sikkerhetens verdi × LT) ÷ lånt mengde, en pris på oppsiden           | dagens pris × HF                                                     |
+| Sikkerhet i wstETH, gjeld i WETH, i E-Mode  | et prisforhold wstETH/ETH: gjeld i WETH ÷ (mengde wstETH × LT i E-Mode) | dagens forhold ÷ HF                                                  |
+
+### Regneeksempel: 10 WETH og 12 000 USDC på Ethereum Core
+
+Sett inn 10 WETH og lån 12 000 USDC på Aave V3 Ethereum Core. Likvidasjonsterskelen for WETH der var 83 % og belåningsgraden (LTV) 80,5 % (lest on-chain ved Ethereum-blokk 26193284, 14. oktober 2026). Eksemplet bruker ETH til 2 400 $ for runde tall; Aaves orakel viste 2 414,78 $ ved blokk 26193376 samme dag. USDC regnes som 1,00 $.
+
+| Steg                   | Utregning              | Resultat   |
+| ---------------------- | ---------------------- | ---------- |
+| Sikkerhetens verdi     | 10 × 2 400 $           | 24 000 $   |
+| Health factor          | 24 000 × 0,83 ÷ 12 000 | 1,66       |
+| Likvidasjonspris       | 12 000 ÷ (10 × 0,83)   | 1 445,78 $ |
+| Kontroll med snarveien | 2 400 ÷ 1,66           | 1 445,78 $ |
+| Fall som skal til      | 1 − 1 ÷ 1,66           | 39,8 %     |
+
+Lånegrensen er ingen sikkerhetsmargin. Med en LTV på 80,5 % holder de samme 10 WETH til opptil 19 320 $ i gjeld, noe som gir en health factor på 1,031 og en likvidasjonspris på 2 327,71 $, bare 3,0 % under 2 400 $. [Hvor stor buffer en health factor gir deg](/no/blog/trygg-aave-health-factor) går gjennom det gapet for hver eiendel.
+
+### Hvilken likvidasjonsterskel skal du bruke?
+
+Bruk likvidasjonsterskelen til det Aave-markedet posisjonen din ligger i. Aave-appen viser den som «Liquidation threshold» (likvidasjonsterskel) under «Collateral usage» (bruk som sikkerhet) på siden til hver eiendel. Samme token kan ha ulike terskler i ulike markeder, og governance kan endre dem. I E-Mode erstatter kategoriens terskel eiendelens egen bare for eiendeler i kategoriens sett av sikkerheter; all annen sikkerhet beholder sin egen terskel.
+
+| Aave V3-marked                         | Eiendel                                       | LTV             | Likvidasjonsterskel |
+| -------------------------------------- | --------------------------------------------- | --------------- | ------------------- |
+| Ethereum Core                          | WETH                                          | 80,5 %          | 83 %                |
+| Ethereum Core                          | WBTC                                          | 73 %            | 78 %                |
+| Ethereum Core                          | USDC                                          | 75 %            | 78 %                |
+| Ethereum Core, E-Mode «ETH correlated» | WETH, wstETH, cbETH, rETH, weETH, osETH, ETHx | 93 % (ETHx 0 %) | 95 %                |
+| Arbitrum                               | WETH                                          | 80 %            | 84 %                |
+| Arbitrum                               | WBTC                                          | 73 %            | 78 %                |
+| Arbitrum                               | USDC (native)                                 | 75 %            | 78 %                |
+
+Lest on-chain 14. oktober 2026 ved Ethereum-blokk 26193284 (E-Mode ved blokk 26193288) og Arbitrum-blokk 514855406. En ny lesing like etter midnatt UTC (Ethereum-blokk 26194239, Arbitrum-blokk 514896811) ga de samme verdiene og viste 0 % LTV i E-Mode for ETHx.
+
+### Er formelen annerledes på Aave V4?
+
+Aave V4, live på Ethereum, Avalanche, Arc og Base, bruker samme form med to forskjeller: én enkelt sikkerhetsfaktor (collateral factor) for hver eiendel i hver Spoke erstatter de separate verdiene for LTV og likvidasjonsterskel, og health factor regnes ut per Spoke. En posisjon på V4 kan likvideres under en health factor på 1,0, så likvidasjonsprisen er gjeld ÷ (mengde sikkerhet × sikkerhetsfaktor). Sikkerhetsfaktoren for WETH på Ethereum Main Spoke var 83 % den 14. oktober 2026 (Aave V4 API), så 10 WETH mot 12 000 USDC der ville også blitt likvidert under 1 445,78 $. Tokenping overvåker posisjoner på både V3 og V4, med et eget varsel for hver Spoke i V4.
+
+## Hvordan regner du ut en likvidasjonspris på Aave med to sikkerhetseiendeler?
+
+Med to sikkerhetseiendeler forutsetter likvidasjonsprisen for den ene at den andre beholder dagens pris: trekk den andre eiendelens vektede verdi fra gjelden din, og del deretter på mengden av den første eiendelen ganger dens likvidasjonsterskel.
+
+**Likvidasjonspris for eiendel A = (gjeld − verdien av B × LT for B) ÷ (mengde A × LT for A)**
+
+Eksempel på Aave V3 Ethereum Core: 10 WETH til 2 400 $ (LT 83 %) pluss 0,2 WBTC til illustrerende 81 500 $ (LT 78 %; oraklet viste 81 528,44 $ den 14. oktober 2026), mot 20 000 USDC i gjeld. Den vektede sikkerheten er 24 000 × 0,83 + 16 300 × 0,78 = 19 920 + 12 714 = 32 634, så health factor er 32 634 ÷ 20 000 = 1,632.
+
+| Scenario                                   | Likvidasjonspris                                     | Fall som skal til      |
+| ------------------------------------------ | ---------------------------------------------------- | ---------------------- |
+| ETH faller, WBTC blir liggende på 81 500 $ | (20 000 − 12 714) ÷ (10 × 0,83) = 877,83 $ per ETH   | 63,4 %                 |
+| WBTC faller, ETH blir liggende på 2 400 $  | (20 000 − 19 920) ÷ (0,2 × 0,78) = 512,82 $ per WBTC | 99,4 %                 |
+| Begge faller like mange prosent            | ETH til 1 470,86 $ og WBTC til 49 948 $, samtidig    | 38,7 % (1 − 1 ÷ 1,632) |
+
+De to første radene ser komfortable ut fordi hver av dem forutsetter at den andre eiendelen beholder verdien sin. Her dekker WETH alene nesten hele gjelden (19 920 i vektet verdi mot 20 000), så WBTC måtte falle 99,4 % alene. For sikkerheter som pleier å bevege seg sammen, er den tredje raden, et fall på 38,7 % i begge, den realistiske testen.
+
+## Hva om du lånte en volatil eiendel i stedet for en stablecoin?
+
+Hvis du lånte en volatil eiendel som WETH, har Aave-posisjonen din en likvidasjonspris på oppsiden: prisen på den lånte eiendelen der health factor når 1,00. Når den prisen stiger, blir gjelden mer verdt, og health factor faller.
+
+**Likvidasjonspris for den lånte eiendelen = Σ(sikkerhetens verdi × LT) ÷ lånt mengde**, eller som snarvei, dagens pris × health factor.
+
+Eksempel på Aave V3 Ethereum Core: sett inn 10 000 USDC (LT 78 %) og lån 2,5 WETH, verdt 6 000 $ med ETH til 2 400 $. Health factor er 10 000 × 0,78 ÷ 6 000 = 1,30. Posisjonen kan likvideres når ETH stiger over 7 800 ÷ 2,5 = 3 120 $ (også 2 400 × 1,30), en oppgang på 30 %.
+
+Også stablecoin-siden kan bevege seg. Aaves pris for USDC på Ethereum har et tak på 1,04 $, men priser under 1 $ går rett gjennom (taket lest on-chain ved Ethereum-blokk 26194239). USDC har mistet koblingen til dollaren før: den 11. mars 2023 falt den til et bunnivå på rundt 88 cent, ifølge Gauntlets etteranalyse (post-mortem) på Aaves forum. Ved 0,88 $ ville den samme posisjonen hatt en health factor på 8 800 × 0,78 ÷ 6 000 = 1,144, og likvidasjonsprisen for ETH ville falt fra 3 120 $ til 2 745,60 $.
+
+Når både sikkerhet og gjeld er volatile, for eksempel sikkerhet i WBTC mot gjeld i WETH, er det bare forholdet mellom de to prisene som teller: health factor når 1,00 når forholdet WBTC/ETH faller til gjelden i ETH ÷ (mengde WBTC × LT for WBTC).
+
+## Hvordan endrer E-Mode likvidasjonsprisen din?
+
+E-Mode hever likvidasjonsterskelen for korrelerte eiendeler. Når både sikkerheten og gjelden følger den samme underliggende prisen, slik wstETH og WETH begge følger ETH, blir likvidasjonsprisen et prisforhold (wstETH/ETH) heller enn en pris i dollar. På Aave V3 Ethereum Core hadde E-Mode-kategorien «ETH correlated» en LTV på 93 %, en likvidasjonsterskel på 95 % og en likvidasjonsbonus på 1 % den 14. oktober 2026. Settet av sikkerheter er WETH, wstETH, cbETH, rETH, weETH, osETH og ETHx, og WETH er den eneste eiendelen kategorien lar deg låne. Sikkerhet utenfor det settet beholder sin vanlige terskel.
+
+Med sikkerhet i wstETH og gjeld i WETH prises begge sider ut fra ETH, så dollarprisen på ETH for det meste nuller seg ut. Det som avgjør likvidasjonen, er kursen wstETH/ETH som Aaves orakel bruker:
+
+- Sett inn wstETH verdt 100 ETH til orakelets kurs, og lån 90 WETH. Health factor er 100 × 0,95 ÷ 90 = 1,056. Hvis dollarprisen på ETH halveres, halveres begge sider, og health factor blir liggende på 1,056. Hvis orakelets kurs for wstETH/ETH faller 5,3 % (1 − 90 ÷ 95), når posisjonen 1,00.
+- Ved kategoriens høyeste lånegrense, 93 WETH mot den samme sikkerheten, starter health factor på 95 ÷ 93 = 1,0215, og et fall på 2,1 % i kursen er nok.
+
+En bevegelse av den størrelsen har skjedd. Aave priser wstETH via en CAPO-adapter (Correlated Assets Price Oracle), som setter et tak på vekslingskursen den rapporterer. I mars 2026 kuttet et feilkonfigurert tak på markedene Ethereum Core og Prime kursen Aave brukte med omtrent 2,85 %. Etteranalysen fra Chaos Labs (10. mars 2026) teller omtrent 10 938 wstETH i likvidasjoner i E-Mode fordelt på 34 kontoer, og det rammet posisjoner med en health factor under omtrent 1,0288. Bevegelsen kom fra konfigurasjonen av oraklet, ikke fra markedet.
+
+## Hvorfor flytter likvidasjonsprisen din seg over tid?
+
+Likvidasjonsprisen din på Aave flytter seg selv når du ikke gjør noe, fordi det den bygger på, endrer seg: renter legges til gjelden din, innskuddsrenten legger litt til sikkerheten din, og governance kan endre likvidasjonsterskler. Dine egne transaksjoner flytter den også: å låne hever den, mens å betale tilbake eller legge til sikkerhet senker den.
+
+- **Renter.** Ta 10 WETH og 12 000 USDC i gjeld på Aave V3 Ethereum Core med ETH til 2 400 $. Den 14. oktober 2026 (blokk 26193378) var den flytende lånerenten for USDC 4,496 % APR og innskuddsrenten for WETH 1,309 % APR. Holdt konstant i et år ville de rentene ha hevet likvidasjonsprisen fra 1 445,78 $ til omtrent 1 490 $ med uendret ETH-pris. Rentene er flytende: senere samme kveld nådde lånerenten for USDC 14,1 % i mindre enn en time (blokk 26194180), da nesten all innskutt USDC var lånt ut.
+- **Senkede terskler.** I Aave V3 gjelder en lavere likvidasjonsterskel for alle åpne posisjoner på én gang, og likvidasjonsprisen skaleres med gammel LT ÷ ny LT. En hypotetisk senking for WETH fra 83 % til 80 % ville flyttet den samme posisjonens likvidasjonspris fra 1 445,78 $ til 1 500,00 $. Senkinger kommer via governance-forslag eller via Risk Stewards, som kan justere terskler innenfor konfigurerte grenser.
+- **Endret LTV teller ikke.** Å senke en eiendels LTV, selv til 0, reduserer eller fjerner lånekapasiteten den gir, men lar health factor og likvidasjonsprisen være uendret.
+- **Aave V4 er annerledes.** Endringer i sikkerhetsfaktoren gjelder normalt nye posisjoner; eksisterende posisjoner beholder de gamle innstillingene til brukeren låner, tar ut eller endrer sikkerhetsinnstillingene, eller til Governor oppdaterer dem. V4 legger også til en User Risk Premium på lånerenten for mer risikabel sikkerhet, så gjelden, og likvidasjonsprisen med den, kan vokse raskere.
+
+## Hvor nær likvidasjonsprisen er for nær?
+
+Ingen avstand til likvidasjonsprisen er trygg for alle. For én volatil sikkerhet med gjeld i en stablecoin er avstanden 1 − 1 ÷ HF: en health factor på 1,25 gir rom for et fall på 20 %, 1,5 gir 33,3 % og 2,0 gir 50 %. Hvor mye rom du trenger, avhenger av hvor volatil sikkerheten er, hvor raskt du kan betale tilbake eller legge til sikkerhet, og hvor overbelastet nettverket er akkurat da. [Hvor stor buffer en health factor gir deg](/no/blog/trygg-aave-health-factor) har hele tabellen.
+
+### Hvordan gjør du en likvidasjonspris om til en terskel for et health factor-varsel?
+
+Velg prisen der du ville handlet, og regn den om til en health factor. For én volatil sikkerhet med gjeld i en stablecoin gjelder **HF ved en gitt pris = den prisen ÷ likvidasjonsprisen**. For 10 WETH mot 12 000 USDC (likvidasjonspris 1 445,78 $) betyr det å handle ved ETH 1 800 $ en health factor på 1 800 ÷ 1 445,78 = 1,245, altså en terskel på omtrent 1,25. Med volatil gjeld snur det seg: HF = likvidasjonspris ÷ prisen på den lånte eiendelen.
+
+En terskel for health factor har to fordeler framfor et prisnivå. Den følger likvidasjonsprisen din etter hvert som renter påløper og når du endrer posisjonen, og den dekker alle sikkerhets- og gjeldseiendeler på én gang. Et fast prisvarsel blir utdatert så snart gjelden vokser.
+
+Tokenping fungerer slik: det varsler på health factor og har ingen prisvarsler. Du setter én terskel per Aave V3-marked eller Aave V4 Spoke, fra 1,1 til 10. Tokenping sjekker hvert 5. minutt og sender, ved hver sjekk der health factor er under terskelen, en melding til hver kanal du har valgt (Signal, Telegram, e-post eller flere av dem). En rask bevegelse kan krysse 1,00 mellom to sjekker, så en terskel over nivået der du ville handlet, kjøper tid; den kan ikke stoppe en likvidasjon. Stegene står i [hvordan du setter opp et health factor-varsel](/no/blog/sett-opp-aave-health-factor-varsel), eller du kan [sjekke health factor på Aave V3](/no/aave) først.
+
+## Hvordan regner du ut likvidasjonsprisen for din egen posisjon?
+
+For å regne ut din egen likvidasjonspris på Aave trenger du mengden av hver sikkerhet, likvidasjonsterskelen til hver sikkerhet, den samlede gjelden din og dagens orakelpris. Aave-appen viser alle fire.
+
+1. Noter mengden av hver sikkerhet, den samlede gjelden din og om kontoen din er i E-Mode.
+2. Finn likvidasjonsterskelen til hver sikkerhet på eiendelens side i Aave-appen («Liquidation threshold» under «Collateral usage»). I E-Mode bruker du kategoriens terskel bare for sikkerhet i kategoriens sett; all annen sikkerhet beholder sin egen terskel.
+3. Med én volatil sikkerhet og gjeld i en stablecoin deler du orakelprisen på health factor. Med to sikkerheter er prisen for A (gjeld − verdien av B × LT for B) ÷ (mengde A × LT for A). Med en lånt volatil eiendel er prisen på den Σ(sikkerhetens verdi × LT) ÷ lånt mengde. Kalkulatoren nedenfor håndterer alle tre.
+4. Regn ut på nytt etter at du har lånt, betalt tilbake eller lagt til sikkerhet, og etter en endret terskel.
+
+Regneeksempel på Aave V3 Arbitrum, der likvidasjonsterskelen for WETH var 84 % den 14. oktober 2026: 5 WETH til 2 400 $ mot 7 000 USDC gir en health factor på 12 000 × 0,84 ÷ 7 000 = 1,44 og en likvidasjonspris på 2 400 ÷ 1,44 = 1 666,67 $, et fall på 30,6 %. Med de 83 % på Ethereum Core ville den samme posisjonen blitt likvidert under 1 686,75 $.
+
+<LiquidationCalculator />
+
+Enhver kalkulator gir dagens likvidasjonspris. Renter, endrede terskler og dine egne transaksjoner flytter den etterpå, så resultatet fra forrige måned er verdt å regne ut på nytt.
+
+## Kilder
+
+- [Aave V3 GenericLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): formelen for health factor, og at terskelen i E-Mode bare gjelder kategoriens sett av sikkerheter (hentet 14. oktober 2026)
+- [Aave V3 ValidationLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): likvidasjon under en health factor på 1,00, LTV-sjekker ved lån (hentet 14. oktober 2026)
+- [Aave V3 LiquidationLogic.sol (aave-v3-origin)](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): hvor mye gjeld én likvidasjon kan betale tilbake (hentet 14. oktober 2026)
+- [PoolDataProvider for Aave V3 Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getReserveConfigurationData` ved blokk 26193284 og 26194239; `getReserveData` ved blokk 26193378 og 26194180 (hentet 14. oktober 2026; lest på nytt 15. oktober 2026)
+- [PoolDataProvider for Aave V3 Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): `getReserveConfigurationData` ved Arbitrum-blokk 514855406 og 514896811 (hentet 14. oktober 2026; lest på nytt 15. oktober 2026)
+- [Pool for Aave V3 Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): E-Mode-kategori 1 «ETH correlated»: konfigurasjon for sikkerhet og bitmappene for sikkerhet, lånbare eiendeler og LTV null (hentet 14. oktober 2026; lest på nytt 15. oktober 2026)
+- [AaveOracle på Ethereum](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): `getAssetPrice` ved blokk 26193376; `getSourceOfAsset(USDC)` ved blokk 26194239 (hentet 14. oktober 2026; lest på nytt 15. oktober 2026)
+- [Aaves prisadapter for USDC på Ethereum, «Capped USDC / USD»](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B): `getPriceCap` = 104000000 (1,04 $) ved blokk 26194239 (hentet 15. oktober 2026)
+- [Aave oracle documentation](https://aave.com/docs/ecosystem/oracle.md): Chainlink-feeder og CAPO-adaptere (hentet 14. oktober 2026)
+- [Aave price feeds repository (PriceCapAdapterStable)](https://github.com/aave-dao/aave-price-feeds): hvordan pristaket for USDC fungerer (hentet 14. oktober 2026)
+- [Gauntlet, «Aave Resilient Through USDC Volatility»](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330): bunnivået for USDC på rundt 88 cent den 11. mars 2023 (hentet 14. oktober 2026)
+- [Chaos Labs, etteranalyse av vekslingskursen for wstETH](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): CAPO-hendelsen i mars 2026 (hentet 14. oktober 2026)
+- [Aave V3 Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): hvordan risikoparametere kan endres mellom avstemninger i governance (hentet 14. oktober 2026)
+- [Aave V4 user positions documentation](https://aave.com/docs/aave-v4/positions.md): sikkerhetsfaktor og likvidasjon under en health factor på 1,0 (hentet 14. oktober 2026)
+- [Aave V4 overview (aave/aave-v4)](https://github.com/aave/aave-v4/blob/main/docs/overview.md): dynamisk risikokonfigurasjon og User Risk Premium (hentet 14. oktober 2026)
+- [Aave V4 API](https://api.v4.aave.com/graphql): spørringen `reserves`, sikkerhetsfaktoren for WETH per Spoke på Ethereum (hentet 14. oktober 2026)
+- [Aave changelog](https://aave.com/docs/resources/changelog.md): nettverk for V4 (hentet 14. oktober 2026)
+- [Aave interface source, SupplyInfo.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/SupplyInfo.tsx) og [ReserveTopDetails.tsx](https://github.com/aave/interface/blob/main/src/modules/reserve-overview/ReserveTopDetails.tsx): etikettene «Liquidation threshold» og «Oracle price» i Aave-appen (hentet 14. oktober 2026)
+
+_Opplæringsinnhold, ikke finansiell rådgivning. Varsler reduserer risikoen, men forhindrer ikke likvidasjon._

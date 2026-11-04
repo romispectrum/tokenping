@@ -9,6 +9,7 @@ import { RULES as hr } from "./hr";
 import { RULES as hu } from "./hu";
 import { RULES as id } from "./id";
 import { RULES as it } from "./it";
+import { RULES as nb } from "./nb";
 import { RULES as nl } from "./nl";
 import { RULES as pl } from "./pl";
 import { RULES as pt } from "./pt";
@@ -45,4 +46,5 @@ export const LANGUAGE_RULES: Localized<LanguageRules> = {
   sr,
   sv,
   da,
+  nb,
 };

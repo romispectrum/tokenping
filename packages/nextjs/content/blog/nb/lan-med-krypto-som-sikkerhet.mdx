@@ -1,0 +1,177 @@
+export const meta = {
+  slug: "lan-med-krypto-som-sikkerhet",
+  title: "Lån med krypto som sikkerhet: slik fungerer de og hvorfor",
+  description:
+    "Slik fungerer et oversikret kryptolån på Aave steg for steg, hvordan det skiller seg fra en bank eller sentral utlåner, hva det brukes til og risikoen.",
+  h1: "Hvordan fungerer lån med krypto som sikkerhet, og hvorfor tar folk dem?",
+  publishedAt: "2026-10-19",
+  primaryQuestion: "Hvordan fungerer et lån med krypto som sikkerhet, og hvorfor bruker folk et slikt lån?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Med et lån med krypto som sikkerhet låner du, som regel en stablecoin som USDC, mot krypto du setter inn som
+  sikkerhet, uten å selge den. På Aave er lånet oversikret: 19. oktober 2026 kunne du låne opptil 73 % av verdien av
+  WBTC eller 80,5 % av verdien av WETH på markedet Ethereum Core. Protokollet ser bare på sikkerheten, det finnes ingen
+  tilbakebetalingsdato og renten er flytende. Hvis verdien av sikkerheten faller så mye at health factor (helsefaktor)
+  synker under 1, blir en del av den solgt for å betale tilbake gjelden, og du betaler et straffegebyr. Folk bruker
+  disse lånene for å få penger uten å selge, for å bygge bro over et gap, for å refinansiere, for giring eller for å
+  sikre seg, og hver av disse bruksmåtene bærer med seg likvidasjons-, rente- og stablecoinrisiko.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Hvert on-chain-tall, hvert blokknummer og hver kilde bak denne guiden: content/blog/snapshots/crypto-backed-loans.md */}
+
+## Hva er et lån med krypto som sikkerhet?
+
+Et lån med krypto som sikkerhet er et lån som er sikret med krypto du setter inn som sikkerhet. På en låneprotokoll som Aave er det oversikret: sikkerheten må være verdt mer enn lånet, og i stedet for å sjekke inntekten din stoler protokollet på at det kan selge en del av sikkerheten hvis verdien faller for mye. Mens lånet er åpent, er sikkerheten fortsatt din, med alle prisbevegelsene, og du kan ta den tilbake når gjelden er betalt.
+
+De fleste låner stablecoins, tokens som følger en valuta: USDC og USDT følger den amerikanske dollaren, EURC følger euroen. Sikkerheten er som regel en volatil eiendel. På Aaves markeder på Ethereum og Arbitrum finnes ether som WETH og bitcoin som en token som representerer den, for eksempel WBTC eller cbBTC.
+
+To tall per sikkerhetseiendel avgjør hvor mye du kan låne og når lånet er i fare:
+
+- **Belåningsgraden (LTV)** er det meste du kan låne mot eiendelen, som andel av verdien.
+- **Likvidasjonsterskelen (liquidation threshold)** er andelen av eiendelens verdi som teller med i health factor. Når sikkerheten din, vektet på denne måten, er verdt mindre enn gjelden din, ligger health factor under 1 og posisjonen kan likvideres.
+
+| Marked        | Sikkerhet | LTV (lånegrense) | Likvidasjonsterskel | Likvidasjonsbonus |
+| ------------- | --------- | ---------------- | ------------------- | ----------------- |
+| Ethereum Core | WETH      | 80,5 %           | 83 %                | 5 %               |
+| Ethereum Core | WBTC      | 73 %             | 78 %                | 5 %               |
+| Ethereum Core | cbBTC     | 73 %             | 78 %                | 7,5 %             |
+| Arbitrum      | WETH      | 80 %             | 84 %                | 5 %               |
+| Arbitrum      | WBTC      | 73 %             | 78 %                | 7 %               |
+
+Verdiene ble lest on-chain 19. oktober 2026 fra hvert markeds PoolDataProvider, ved Ethereum-blokk 26225342 og Arbitrum-blokk 516228495. cbBTC er ikke listet på Aaves Arbitrum-marked. Aaves governance kan endre hvilken som helst av dem. Hvordan LTV og likvidasjonsterskelen skiller seg fra hverandre, forklares grundigere i [hva health factor på Aave er](/no/blog/aave-health-factor-forklart).
+
+## Hvordan fungerer et lån på Aave, steg for steg?
+
+Aave V3 er et sett smartkontrakter på hvert nettverk, og app.aave.com er ett grensesnitt mot dem. Aaves hjelpesenter beskriver hvordan du låner og betaler tilbake i en håndfull steg; dette er hva hvert steg innebærer.
+
+### Steg 1: Sett inn sikkerhet
+
+Koble til lommeboken din, velg eiendelen du vil sette inn, for eksempel WBTC, og sett den inn. Sjekk at den er slått på som sikkerhet, for bare sikkerhet teller med i hvor mye du kan låne. Tokenene ligger i markedets Pool-kontrakt, der andre brukere kan låne dem (det er det den lille innskuddsrenten betaler for). Du kan ta ut sikkerheten etter at du har betalt tilbake, eller en del av den mens du fortsatt har gjeld, så lenge health factor holder seg på 1 eller høyere etterpå.
+
+### Steg 2: Lån en stablecoin
+
+Velg stablecoin og et beløp under lånegrensen din, som er verdien av sikkerheten ganger dens LTV. Tokenene kommer inn i lommeboken din, og renten begynner å løpe med en gang, med en rentesats protokollet fastsetter ut fra hvor mye av eiendelen som er lånt ut og ut fra parametere governance kan endre (Aaves hjelpesenter, Borrow Tokens). Aave V3 har nå bare flytende rente: Pool-referansen sier at lån alltid bruker modusen for flytende rente, og merker den gamle stabile renten som utfaset siden v3.2.
+
+Flytende lånerenter 19. oktober 2026, som årlig APY slik Aave-appen viser dem (Ethereum-blokk 26225342, Arbitrum-blokk 516228495):
+
+| Marked        | USDC   | USDT (USD₮0 på Arbitrum) | GHO    | EURC                       |
+| ------------- | ------ | ------------------------ | ------ | -------------------------- |
+| Ethereum Core | 4,58 % | 4,17 %                   | 4,60 % | 4,12 %                     |
+| Arbitrum      | 3,45 % | 4,21 %                   | 4,59 % | ingen euro-stablecoin åpen |
+
+Disse rentene endrer seg hele tiden og kan hoppe. 14. oktober 2026 steg USDC-renten på Ethereum Core til 13,67 % APR i én enkelt blokk og falt tilbake omtrent 36 minutter senere, slik [hvorfor health factor på Aave synker av seg selv](/no/blog/hvorfor-falt-din-aave-health-factor#arsak-3-har-renten-pa-gjelden-din-vokst-raskere-enn-pa-sikkerheten-din) viser.
+
+### Steg 3: Følg med på health factor
+
+Health factor (HF) er sikkerheten din, vektet med hver eiendels likvidasjonsterskel, delt på gjelden din. Ta alice, som setter inn 1 WBTC på Ethereum Core når bitcoin står i illustrerende 80 000 $ (Aaves orakel (priskilde) viste 82 680,33 $ ved Ethereum-blokk 26225364 den 19. oktober 2026) og låner 24 000 USDC:
+
+- Lånegrense: 80 000 × 0,73 = 58 400 $.
+- Health factor: 80 000 × 0,78 ÷ 24 000 = 2,60.
+- Likvidasjonspris: 24 000 ÷ 0,78 = 30 769,23 $, som er 61,5 % under 80 000 $.
+
+Health factor synker når bitcoin faller, og langsomt etter hvert som renter legges til: hvis USDC-renten ble liggende på 4,58 % i året, ville gjelden være omtrent 25 099 USDC etter et år, og likvidasjonsprisen ville ha steget til omtrent 32 179 $. For å regne dette ut for din egen posisjon, se [hvordan du beregner likvidasjonsprisen din på Aave](/no/blog/aave-likvidasjonspris); for hvor mye margin du bør ha, se [hva en trygg health factor på Aave er](/no/blog/trygg-aave-health-factor).
+
+### Steg 4: Betal tilbake når du vil
+
+Det finnes ingen tilbakebetalingsdato. Aaves borrow-funksjon tar ingen løpetid i det hele tatt, og du kan betale tilbake hele eller deler av gjelden når som helst, i eiendelen du lånte (Aave V3 Pool-referansen; Aaves hjelpesenter, Repay Tokens). Betaler du tilbake alt, frigjøres sikkerheten din. Du kan også betale tilbake med sikkerhet: på markedene på Ethereum og Arbitrum kan Aaves grensesnitt selge en del av sikkerheten din for gjeldseiendelen og betale tilbake i én transaksjon (Aaves dokumentasjon, swap features).
+
+### Steg 5: Vit hva som skjer under en health factor på 1
+
+Under 1 kan hvem som helst likvidere posisjonen: de betaler tilbake en del av gjelden din og tar sikkerhet verdt det beløpet pluss en likvidasjonsbonus. Én likvidasjon kan betale tilbake opptil 50 % av gjelden så lenge health factor ligger over 0,95 og sikkerheten og gjelden hver for seg er verdt minst 2 000 $, og opptil 100 % når health factor ligger på eller under 0,95 eller en av dem er verdt mindre enn 2 000 $ (Aaves hjelpesenter).
+
+Hvis bitcoin falt til 30 000 $ kort tid etter at alice lånte, ville health factor hennes være 30 000 × 0,78 ÷ 24 000 = 0,975. En likvidator kunne betale tilbake 12 000 USDC og ta 12 000 × 1,05 ÷ 30 000 = 0,42 WBTC, slik at hun satt igjen med 0,58 WBTC mot 12 000 USDC, en health factor på 1,13. Hun ville tape 600 $ i sikkerhet utover gjelden som ble betalt tilbake, og 0,42 WBTC ville bli solgt på bunnen. Alle reglene står i [hva som skjer når posisjonen din på Aave blir likvidert](/no/blog/slik-fungerer-likvidasjon-pa-aave).
+
+## Hvordan skiller et lån med krypto som sikkerhet seg fra et banklån?
+
+De viktigste forskjellene er hva långiveren ser på, når du betaler tilbake og hva som skjer når sikkerheten taper seg i verdi:
+
+|                                      | Lån på Aave                                                                      | Typisk banklån                                                           |
+| ------------------------------------ | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Hva avgjør hvor mye du kan låne      | Verdien av sikkerheten din og dens LTV                                           | Som regel inntekten og kreditthistorikken din, pluss eventuell sikkerhet |
+| Kontroller av deg                    | Ingen fra protokollet, som bare ser på sikkerheten                               | Som regel kontroll av identitet, inntekt og kredittverdighet             |
+| Løpetid                              | Ingen: betal tilbake når du vil                                                  | Som regel en fast løpetid og en nedbetalingsplan                         |
+| Rente                                | Flytende, beregnes på nytt når utlånet i markedet endrer seg                     | Fast eller flytende, slik avtalen sier                                   |
+| Hvis sikkerheten taper seg i verdi   | Automatisk likvidasjon av tredjeparter når health factor er under 1, uten varsel | Avhenger av avtalen: krav om mer sikkerhet, en forhandling, inndrivelse  |
+| Hvem som holder sikkerheten          | Markedets smartkontrakt                                                          | Långiveren, eller en depotmottaker långiveren velger                     |
+| Hvis sikkerheten ikke dekker gjelden | Underskuddet blir et tap for protokollet, ikke et krav mot deg                   | Avhenger av avtalen og loven                                             |
+
+Den siste raden følger av hvordan Aave V3.3 og senere håndterer en likvidasjon som bruker opp all sikkerheten: den gjenværende gjelden skrives av som et underskudd (deficit) på eiendelen, slik [avsnittet om tapsført gjeld (bad debt)](/no/blog/slik-fungerer-likvidasjon-pa-aave#kan-en-likvidasjon-etterlate-tapsført-gjeld) forklarer. Sikkerheten har du likevel tapt da.
+
+## Hvordan skiller det seg fra en sentralisert kryptoutlåner?
+
+En sentralisert utlåner tar sikkerheten din i egen forvaring. Lånet kan se omtrent likt ut, men du blir selskapets kreditor, og hvis selskapet går overende, kan sikkerheten din bli sittende fast der. 2022 viste hva det betyr:
+
+- **Celsius** frøs kundenes uttak 12. juni 2022 og begjærte seg konkurs 13. juli 2022. Ifølge den amerikanske Commodity Futures Trading Commission hadde kundene satt inn omtrent 20 milliarder dollar der. I januar 2023 slo den amerikanske konkursdomstolen i New York fast at krypto på Celsius' Earn-kontoer etter bruksvilkårene var blitt Celsius' eiendom, noe som gjorde disse kundene til kreditorer uten sikkerhet.
+- **Voyager Digital** stanset handel, innskudd og uttak 1. juli 2022, etter at Three Arrows Capital ikke betalte avdrag på et lån på 15 250 BTC og 350 millioner dollar i USDC, og begjærte Chapter 11-konkurs 5. juli 2022.
+- **Genesis** hindret investorer i programmet Gemini Earn i å ta ut pengene sine i november 2022, da selskapet holdt omtrent 900 millioner dollar av eiendelene deres, ifølge den amerikanske Securities and Exchange Commission, og begjærte Chapter 11 den 19. januar 2023.
+- **BlockFi** begjærte Chapter 11 den 28. november 2022, noen dager etter å ha stanset uttak da FTX kollapset.
+
+På Aave ligger sikkerheten i en offentlig smartkontrakt med regler alle kan lese, ikke på et selskaps balanse. Det bytter ut ett sett risikoer med et annet, som omtales under [risikoene](#hva-er-risikoene-ved-et-lan-med-krypto-som-sikkerhet) nedenfor: feil i koden, orakelfeil, beslutninger i governance og forvaringen bak wrapped bitcoin. Én av dem er viktig her: Aaves emergency admin eller pool admin kan sette en eiendel på pause, og mens den er satt på pause, kan ingen ta den ut eller betale den tilbake (Aaves kontrakter PoolConfigurator og ValidationLogic).
+
+## Hva bruker folk lån med krypto som sikkerhet til?
+
+### Kontanter uten å selge
+
+Én grunn er å få penger og samtidig beholde kryptoen, ofte fordi eieren venter at den skal stige eller vil beholde den i årevis. Lånet beholder hele oppsiden og hele nedsiden til sikkerheten, legger til renter og kan tvinge frem et salg i verst tenkelige øyeblikk hvis prisen faller langt nok.
+
+Å ta lånet selger ikke sikkerheten din: den er fortsatt din. Om innskuddet av sikkerhet, lånet, renten eller en likvidasjon får skattemessige følger, avhenger av landet ditt og noen ganger av protokollens vilkår. Den britiske skattemyndighetens veiledning sier for eksempel at det avhenger av vilkårene til en DeFi-låneplattform om det å gi den sikkerhet regnes som en avhendelse, og der det ikke gjør det, behandles salget av sikkerhet ved en likvidasjon som låntakerens eget (HMRC Cryptoassets Manual, CRYPTO61640). Denne guiden gir ikke skatteråd; sjekk reglene der du bor.
+
+### Utgifter eller å bygge bro over et gap
+
+Noen låner for å dekke en utgift før penger de venter, kommer inn, for eksempel en regning som forfaller før et salg eller en lønn. Avveiningen er at ingenting avslutter lånet for deg: det finnes ingen tilbakebetalingsdato, renten kan stige mens du venter, og det har egne kostnader å veksle stablecoins til penger på en bankkonto, og tilbake igjen for å betale.
+
+### Refinansiering
+
+Et lån et annet sted kan flyttes til Aave hvis renten på Aave er lavere, og på Aave kan en gjeld byttes fra én stablecoin til en annen i én transaksjon med grensesnittets debt swap (Aaves dokumentasjon, swap features). Avveiningen: rentene er flytende, så dagens billigere eiendel kan bli dyrere neste måned, og å bytte fra en dollar-stablecoin til en euro-stablecoin endrer hvilken valuta du skylder, som er temaet i [å shorte fiat med et lån på Aave](/no/blog/shorte-fiatvaluta-med-aave).
+
+### Giring
+
+For å øke eksponeringen låner noen stablecoins, kjøper mer av sikkerheten og setter inn den også. Hvis alice brukte sine 24 000 USDC til å kjøpe 0,3 WBTC til 80 000 $ og satte dem inn, ville hun ha 1,3 WBTC mot 24 000 USDC: en health factor på 3,38 og en likvidasjonspris på 23 668,64 $. Hver bevegelse i bitcoin treffer henne nå 1,3 ganger så hardt som å eie 1 bitcoin direkte, og gjentar hun denne loopen (gjentatt belåning med giring), presses health factor mot 1.
+
+### Sikring og shorting
+
+Å låne en eiendel og selge den er et veddemål om at den skal falle: sett inn stablecoins, lån WETH og selg den, så tjener posisjonen hvis ETH faller og beveger seg mot likvidasjon hvis ETH stiger ([guiden om trygg health factor](/no/blog/trygg-aave-health-factor) viser hvor langt den kan stige). Å låne en dollar- eller euro-stablecoin mot bitcoin er speilbildet, en short på valutaen mot sikkerheten, som noen bitcoinere kaller å shorte fiat; [å shorte fiat med et lån på Aave](/no/blog/shorte-fiatvaluta-med-aave) regner gjennom det med tall.
+
+## Hva er risikoene ved et lån med krypto som sikkerhet?
+
+- **Likvidasjon.** Under en health factor på 1 kan deler av eller hele gjelden betales med sikkerheten din, og du taper bonusen i tillegg: 5 % til 7,5 % for eiendelene i den første tabellen. Likvidasjoner utføres av konkurrerende boter, så de kan komme raskt (Aaves hjelpesenter).
+- **Sikkerhetens volatilitet.** Bitcoin toppet på omtrent 69 000 $ i november 2021 og lå på omtrent 17 000 $ i midten av juni 2022, et fall på omtrent 75 %, og gikk under 16 000 $ etter at FTX gikk overende i november 2022 (ECBs blogg). Med WBTCs likvidasjonsterskel på 78 % ville til og med et lån på 20 % av sikkerhetens verdi, tatt på toppen i 2021, ha blitt likvidert innen midten av juni 2022.
+- **Flytende renter.** Renten er ikke fast for noen periode, og renter senker health factor over tid selv når prisene står stille.
+- **Depeg av stablecoins.** En depeg er når koblingen til dollaren ryker. USDC falt til rundt 0,88 $ den 11. mars 2023, etter at Circle opplyste at 3,3 milliarder dollar av reservene lå i Silicon Valley Bank, og var tilbake over 0,99 $ innen 13. mars (Gauntlets innlegg på Aaves forum; Circle). TerraUSD, en algoritmisk stablecoin, mistet koblingen i mai 2022 og falt nesten til null, noe som ifølge amerikanske SEC visket ut 40 milliarder dollar i markedsverdi. Hvis stablecoinen du skylder, faller, blir gjelden din billigere; hvis en stablecoin du bruker som sikkerhet, faller, synker health factor.
+- **Wrapped bitcoin.** Bitcoin på Aave er en token som er dekket av bitcoin noen andre holder eller en bro kontrollerer. WBTC sier for eksempel at hver token er dekket av bitcoin i forvaring. Hvis den dekningen sviktet, kunne tokenen tape seg i verdi uansett hva bitcoin selv gjorde.
+- **Smartkontrakter, orakler og governance.** En feil i koden, en feil pris eller en endret parameter kan treffe en posisjon uten at markedet beveger seg. I mars 2026 senket et feiljustert vekslingskursorakel på Aaves markeder Ethereum Core og Prime den effektive wstETH-kursen med omtrent 2,85 % og utløste likvidasjoner av omtrent 10 938 wstETH fordelt på 34 kontoer, ifølge Chaos Labs' post-mortem ([mer om orakelfeil](/no/blog/hvorfor-falt-din-aave-health-factor#arsak-6-har-en-feil-i-orakel-eller-vekslingskurs-gitt-sikkerheten-din-feil-pris)). Governance kan også senke en likvidasjonsterskel for alle åpne posisjoner ([mer om senkede terskler](/no/blog/hvorfor-falt-din-aave-health-factor#arsak-4-har-governance-eller-risk-stewards-senket-en-likvidasjonsterskel)).
+- **Å gjøre alt selv.** Du har nøklene, du sender transaksjonene, og i et marked som beveger seg raskt, kan en tilbakebetaling ta lengre tid å bli bekreftet enn du regner med.
+
+## Hvordan følger du med på et lån?
+
+Aaves egne grensesnitt viser health factor mens du har dem åpne, men sender deg ingen melding når den synker, slik [guiden om health factor-varsler](/no/blog/sett-opp-aave-health-factor-varsel#sender-aave-varsler-om-health-factor) forklarer. Én måte å følge med på er å velge den health factor der du ville gripe inn, ved å betale tilbake en del av gjelden eller legge til sikkerhet, og la et eget verktøy varsle deg når posisjonen kommer dit. Tokenping sjekker hvert 5. minutt og sender deg meldinger mens health factor er under terskelen du har satt; [oppsettguiden](/no/blog/sett-opp-aave-health-factor-varsel) går gjennom det. Et varsel gir deg tid til å handle, ikke beskyttelse, og [hvordan du unngår likvidasjon på Aave](/no/blog/unnga-likvidasjon-pa-aave) tar for seg hva du gjør med den tiden.
+
+## Kilder
+
+- Aave V3 Ethereum Core [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) og Arbitrum [PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): LTV, likvidasjonsterskler, bonuser og flytende lånerenter lest on-chain ved Ethereum-blokk 26225342 og Arbitrum-blokk 516228495 (RPC-data hentet 19. oktober 2026)
+- [Aave V3 Ethereum Core AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): WBTC-pris 82 680,33 $ ved Ethereum-blokk 26225364 (RPC-data hentet 19. oktober 2026)
+- [Aave Help: Borrow Tokens](https://aave.com/help/borrowing/borrow-tokens) (hentet 19. oktober 2026)
+- [Aave Help: Repay Tokens](https://aave.com/help/borrowing/repay-tokens) (hentet 19. oktober 2026)
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (hentet 19. oktober 2026)
+- [Aave V3 Pool smart contract reference](https://aave.com/docs/aave-v3/smart-contracts/pool): parametere for borrow og repay, bare flytende rente, stabil rente utfaset i v3.2 (hentet 19. oktober 2026)
+- [Aave docs: swap features](https://aave.com/docs/aave-v3/smart-contracts/swap-features): tilbakebetaling med sikkerhet og debt swap (hentet 19. oktober 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) og [PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol), aave-v3-origin: uttak mens du låner, pauser og hvem som kan sette dem (hentet 19. oktober 2026)
+- [CFTCs pressemelding 8749-23 om Celsius Network](https://www.cftc.gov/PressRoom/PressReleases/8749-23), 13. juli 2023: omtrent 20 milliarder dollar satt inn, uttak frosset 12. juni 2022, konkursbegjæring 13. juli 2022 (hentet 19. oktober 2026)
+- [US Bankruptcy Court, Southern District of New York: avgjørelse om eierskapet til eiendelene på Celsius Earn-kontoer](https://www.nysb.uscourts.gov/sites/default/files/opinions/312902_1822_opinion.pdf), 4. januar 2023 (hentet 19. oktober 2026)
+- [Voyager Digital: markedsoppdatering](https://www.newswire.ca/news-releases/voyager-digital-provides-market-update-851734302.html), 1. juli 2022, og [Voyager Digital: kunngjøring om Chapter 11](https://www.newswire.ca/news-releases/voyager-digital-commences-financial-restructuring-process-to-maximize-value-for-all-stakeholders-888320107.html), 5. juli 2022 (begge hentet 19. oktober 2026)
+- [SECs pressemelding 2023-7 om Genesis og programmet Gemini Earn](https://www.sec.gov/news/press-release/2023-7), 12. januar 2023 (hentet 19. oktober 2026)
+- [SECs pressemelding 2024-37 om Genesis](https://www.sec.gov/newsroom/press-releases/2024-37), 19. mars 2024: Chapter 11-begjæringer levert 19. januar 2023 (hentet 19. oktober 2026)
+- [CoinDesk: BlockFi files for bankruptcy as FTX contagion spreads](https://www.coindesk.com/policy/2022/11/28/ftx-fallout-continues-as-crypto-lender-blockfi-declares-bankruptcy), 28. november 2022 (hentet 19. oktober 2026)
+- [The ECB Blog: Bitcoin's last stand](https://www.ecb.europa.eu/press/blog/date/2022/html/ecb.blog221130~5301eecd19.en.html), 30. november 2022: fallet fra omtrent 69 000 $ til omtrent 17 000 $ og under 16 000 $ (hentet 19. oktober 2026)
+- [Gauntlet: Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), Aaves governanceforum, 17. mars 2023 (hentet 19. oktober 2026)
+- [Circle: $3.3 Billion of USDC Reserve Risk Removed, Dollar De-peg Closes](https://www.circle.com/pressroom/3-3-billion-of-usdc-reserve-risk-removed-dollar-de-peg-closes), 12. mars 2023 (hentet 19. oktober 2026)
+- [SECs pressemelding 2024-73 om Terraform](https://www.sec.gov/newsroom/press-releases/2024-73), 13. juni 2024: UST-depegen i mai 2022 (hentet 19. oktober 2026)
+- [WBTC](https://wbtc.network/): hvordan WBTC er dekket (hentet 19. oktober 2026)
+- [Chaos Labs: Post-Mortem, Exchange Rate Misalignment on wstETH Core and Prime Instances](https://governance.aave.com/t/24269), Aaves governanceforum, 10. mars 2026 (hentet 19. oktober 2026)
+- [HMRC Cryptoassets Manual, CRYPTO61640: DeFi lending and staking, collateral](https://www.gov.uk/hmrc-internal-manuals/cryptoassets-manual/crypto61640), oppdatert 28. november 2025 (hentet 19. oktober 2026)
+
+_Opplæringsinnhold, ikke finansiell rådgivning. Varsler reduserer risikoen, men forhindrer ikke likvidasjon._

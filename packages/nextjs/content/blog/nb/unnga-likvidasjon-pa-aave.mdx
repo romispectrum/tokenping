@@ -1,0 +1,149 @@
+export const meta = {
+  slug: "unnga-likvidasjon-pa-aave",
+  title: "Slik unngår du likvidasjon på Aave: 6 praktiske trinn",
+  description:
+    "Praktiske grep mot likvidasjon på Aave: betal tilbake, legg til sikkerhet, hold en buffer, bytt sikkerhet eller gjeld og få varsel tidlig. Ingen garantier.",
+  h1: "Slik unngår du likvidasjon på Aave",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-20",
+  primaryQuestion: "Hvordan hever jeg min Aave health factor og senker likvidasjonsrisikoen, nå og før den faller?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  Du senker likvidasjonsrisikoen på Aave ved å heve health factor (helsefaktor) og holde den godt over 1: betal tilbake
+  en del av gjelden, legg til sikkerhet, lån godt under grensen din, eller bytt sikkerhet eller gjeld slik at lånet
+  avhenger mindre av én volatil pris. Å betale tilbake en dollar gjeld hever health factor mer enn å sette inn en dollar
+  sikkerhet. Ingenting av dette fjerner risikoen, og tilbakebetalinger kan feile i urolige markeder, så hvis du handler
+  tidlig, har du mer å gå på.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Hva kan du gjøre nå hvis Aave health factor faller?
+
+Du kan betale tilbake en del av gjelden eller legge til sikkerhet, på samme nettverk og i samme Aave-marked som lånet. Begge deler hever health factor så snart transaksjonen er bekreftet, og en dollar tilbakebetalt hever den mer enn en dollar ny sikkerhet. Hvis lommeboken ikke har midler til overs, kan Aave Labs-grensesnittet (app.aave.com) [betale tilbake gjeld med sikkerheten din](#trinn-4-betal-tilbake-med-sikkerhet-eller-bytt-sikkerhet).
+
+Health factor (HF) er USD-verdien av hver sikkerhetseiendel ganget med dens likvidasjonsterskel (liquidation threshold), lagt sammen og delt på USD-verdien av gjelden din. Under 1,00 kan posisjonen likvideres. Formelen er forklart i [hva Aave health factor er](/no/blog/aave-health-factor-forklart). Når tiden er knapp, er det fire ting som teller:
+
+- **Riktig posisjon.** På Aave V3 har hvert nettverks pool sin egen health factor, og det har også hvert marked på Ethereum (Core, Prime, EtherFi, Horizon). Sikkerhet på Ethereum hjelper ikke et lån på Arbitrum.
+- **Tid.** Tilbakebetalinger som sendes nær HF 1, kan feile eller bli hengende i et travelt marked. To forumbrukere, i 2021 og 2024, ble likvidert mens de fortsatt prøvde å betale tilbake ([Trinn 6](#trinn-6-fa-varsel-tidlig-og-handle-tidlig) har detaljene), så hvis du handler mens HF er tydelig over 1, har du mer å gå på.
+- **Hva som skjer under 1.** På Aave V3 kan en likvidator betale tilbake opptil 50 % av gjelden din på én gang, eller 100 % av gjelden i én eiendel når HF er 0,95 eller lavere eller sikkerheten eller gjelden det gjelder, er under 2 000 $, og tar sikkerhet verdt den gjelden pluss en bonus (5 % for WETH på Ethereum Core ved blokk 26193284, 14. oktober 2026). Aave V4 har ingen close factor (den delen av gjelden som kan betales på én gang): en likvidator betaler bare tilbake nok til å bringe HF tilbake til målet for Spoken. Se [hva som skjer ved en likvidasjon på Aave](/no/blog/slik-fungerer-likvidasjon-pa-aave).
+- **Hva som ikke hjelper.** En frysing av markedet eller en endring i belåningsgraden (LTV) holder ikke en likvidasjon unna, og et avbrudd i en L2-sequencer gir deg ikke lenger noen fristperiode. Se [hva som ikke beskytter deg mot likvidasjon](#hva-beskytter-deg-ikke-mot-likvidasjon).
+
+## Trinn 1: Betal tilbake en del av gjelden
+
+Å betale tilbake gjeld hever Aave health factor med en gang, fordi HF deler vektet sikkerhet på gjeld, og en tilbakebetaling krymper gjelden. Ta en posisjon på Aave V3 Ethereum Core med 10 WETH satt inn til illustrative 2 400 $ og 12 000 USDC lånt. Likvidasjonsterskelen for WETH var 83 % ved Ethereum-blokk 26193284 (14. oktober 2026), så HF = 24 000 × 0,83 ÷ 12 000 = 1,66. Å betale tilbake 1 000 USDC løfter den til 19 920 ÷ 11 000 = 1,811.
+
+### Hvorfor hever tilbakebetaling health factor mer enn å legge til sikkerhet?
+
+Ny sikkerhet teller bare med sin likvidasjonsterskel, mens tilbakebetalt gjeld teller fullt. På Aave V3 Ethereum Core legger 1 000 $ i WETH til 830 $ vektet sikkerhet, men å betale tilbake 1 000 USDC fjerner hele 1 000 $ av gjelden. For posisjonen med 10 WETH og 12 000 USDC i gjeld, med ETH på 2 400 $ og USDC på 1 $:
+
+| Hva du gjør med 1 000 $                                          | Vektet sikkerhet | Gjeld    | Health factor | ETH-pris ved HF 1 | ETH-fall for å nå den |
+| ---------------------------------------------------------------- | ---------------- | -------- | ------------- | ----------------- | --------------------- |
+| Ingenting (utgangspunkt)                                         | 19 920 $         | 12 000 $ | 1,660         | 1 445,78 $        | 39,8 %                |
+| Sett inn 0,4167 WETH til                                         | 20 750 $         | 12 000 $ | 1,729         | 1 387,95 $        | 42,2 %                |
+| Betal tilbake 1 000 USDC fra lommeboken                          | 19 920 $         | 11 000 $ | 1,811         | 1 325,30 $        | 44,8 %                |
+| Betal tilbake 1 000 USDC ved å selge WETH-sikkerhet, før gebyrer | 19 090 $         | 11 000 $ | 1,735         | 1 382,92 $        | 42,4 %                |
+
+Generelt slår det å betale tilbake X $ det å sette inn X $ av en eiendel med terskel LT når HF > LT × (1 − X ÷ gjeld). Aave V3 krever at hver terskel ganget med likvidasjonsbonusen er høyst 100 %, med bonusen over 100 %, så hver terskel er under 100 %. Enhver posisjon som ikke kan likvideres (HF på minst 1), tjener derfor mer på å betale tilbake. Å sette inn er den direkte veien når du har sikkerhetseiendelen og helst ikke vil selge den; å selge den for å betale tilbake lånet ville hevet HF mer, før byttekostnader.
+
+## Trinn 2: Legg til sikkerhet, eller aktiver en eiendel du allerede har satt inn
+
+Å sette inn sikkerhet hever Aave health factor med den tilførte verdien ganget med eiendelens likvidasjonsterskel. På Aave V3 Ethereum Core legger 1 000 $ i WETH til 830 $ (terskel 83 %), og 1 000 $ i WBTC eller USDC legger til 780 $ (78 %), ifølge avlesninger på kjeden ved blokk 26193284 14. oktober 2026. En eiendel du har satt inn, men aldri aktivert som sikkerhet, teller først når du slår på «use as collateral» (bruk som sikkerhet) for den. Fire regler i Aave V3 kan blokkere disse veiene:
+
+- **Eiendeler med LTV 0 kan ikke aktiveres.** Belåningsgraden (LTV) er andelen av en eiendels verdi du kan låne mot. Aave V3 aktiverer ikke en eiendel med LTV 0 som sikkerhet. En eiendel du allerede hadde aktivert, teller fortsatt mot HF med sin terskel, men gir ingen lånekapasitet. Brokoblet USDC.e på Arbitrum er et eksempel: LTV 0, terskel 78 % og fryst mens governance avvikler den (Arbitrum-blokk 514855406, 14. oktober 2026).
+- **Frosne eiendeler kan ikke settes inn.** En fryst reserve avviser nye innskudd. Tilbakebetaling av gjeld i en fryst eiendel fungerer fortsatt, fordi en tilbakebetaling bare krever at reserven er aktiv og ikke på pause.
+- **Fulle innskuddstak.** En reserve som har nådd innskuddstaket (supply cap), avviser nye innskudd til det blir ledig plass.
+- **Eiendeler på pause.** En reserve på pause avviser nye innskudd og enhver endring av innstillingen «use as collateral».
+
+## Trinn 3: Hold en buffer under lånegrensen
+
+Å låne godt under maksimum gir mest rom, fordi en posisjon ved lånegrensen starter med en health factor på bare likvidasjonsterskel ÷ LTV. På Aave V3 Ethereum Core er det 83 % ÷ 80,5 % ≈ 1,031 for WETH, 78 % ÷ 73 % ≈ 1,068 for WBTC og 78 % ÷ 75 % = 1,04 for USDC (blokk 26193284, 14. oktober 2026). Med hele 19 320 $ lånt mot 10 WETH til 2 400 $ gjør et fall i ETH på 3,0 %, til 2 327,71 $, posisjonen likviderbar.
+
+Tallet «borrow limit used» (brukt av lånegrensen) i låneapper er gjeld ÷ (sikkerhet × LTV), ikke health factor. Med WETH som sikkerhet på Ethereum Core betyr 80 % brukt av grensen en HF på cirka 1,29.
+
+Bufferen må også tåle det som senker HF mens du ikke gjør noe: renter, terskelkutt fra governance, depeg (når koblingen til dollaren ryker) og feil i oraklet (priskilden), som er beskrevet i [hvorfor Aave health factor faller av seg selv](/no/blog/hvorfor-falt-din-aave-health-factor). Tall per eiendel står i [hvor stor buffer en health factor gir deg](/no/blog/trygg-aave-health-factor). Aave V4 erstatter paret LTV og terskel med én sikkerhetsfaktor per sikkerhetseiendel i hver Spoke, så tallene for LT ÷ LTV her gjelder bare V3.
+
+## Trinn 4: Betal tilbake med sikkerhet eller bytt sikkerhet
+
+Hvis lommeboken ikke har midler til overs, kan Aave Labs-grensesnittet (app.aave.com) betale tilbake gjeld ved å selge en del av sikkerheten din, eller bytte én sikkerhetseiendel mot en annen, i én transaksjon gjennom swap-adapterkontrakter som kan bruke et flash loan fra Aave. Aaves dokumentasjon oppgir begge funksjonene for alle de sju nettverkene denne guiden dekker, blant andre (14. oktober 2026).
+
+For bytter som rutes gjennom CoW Protocol, oppgir dokumentasjonen gebyrer (per 14. oktober 2026) på 0 bps for gjeldsbytter, 15 bps for andre bytter mellom korrelerte eiendeler (som ETH og wstETH) og 25 bps for alle andre bytter. Noen nettverk ruter gjennom ParaSwap i stedet. Prispåvirkning, slippage og gas kommer i tillegg, pluss en flash loan-premie på 0,05 % hos Aave når adapteren tar et flash loan (alle sju nettverk, lest 15. oktober 2026). Adapteren trenger også en godkjenning (allowance) eller en signert permit for å flytte aTokens, tokenene som representerer sikkerheten du har satt inn.
+
+### Hever tilbakebetaling med sikkerhet Aave health factor?
+
+Ja, så lenge health factor er over likvidasjonsterskelen til sikkerheten du selger, før gebyrer og slippage. Å selge X $ i sikkerhet for å betale tilbake X $ i gjeld gir en ny HF på (HF × gjeld − X × LT) ÷ (gjeld − X), som slår den gamle nøyaktig når HF > LT. Hver terskel i Aave V3 er under 100 %, så enhver posisjon som ikke kan likvideres, tjener på det. Den tjener mindre enn ved tilbakebetaling fra lommeboken: med 10 WETH og 12 000 USDC i gjeld på Aave V3 Ethereum Core (HF 1,66 ved ETH på 2 400 $) gir salg av WETH for 1 000 $ for å betale tilbake 1 000 USDC 1,735, mot 1,811 fra lommeboken. Et gebyr på 25 bps og flash loan-premien på 0,05 %, cirka 3 $ til sammen, gir fortsatt 1,735.
+
+### Kan et bytte av sikkerhet på Aave senke health factor og likevel kutte risikoen?
+
+Ja. Å bytte volatil sikkerhet til en stablecoin med lavere terskel kan senke HF litt og samtidig gjøre posisjonen langt mindre utsatt for den volatile prisen. Ta 10 WETH og 12 000 USDC i gjeld på Aave V3 Ethereum Core ved ETH på 2 400 $, og bytt 5 WETH (12 000 $) til USDC. Vektet sikkerhet blir 5 × 2 400 × 0,83 + 12 000 × 0,78 = 19 320 $, så HF faller fra 1,66 til 1,61, fordi terskelen for USDC (78 %) er lavere enn for WETH (83 %). Men nå når HF 1 bare hvis ETH faller til cirka 636 $, et fall på 73,5 %, i stedet for 1 445,78 $, et fall på 39,8 %. Et gebyr på 25 bps (30 $) og flash loan-premien (0,0025 WETH, 6 $) gir en HF på cirka 1,608 og flytter den prisen til cirka 642 $. Health factor alene viser ikke hvilken pris som kan skade deg; det gjør sammensetningen av sikkerhet og gjeld.
+
+## Trinn 5: Velg gjeld som passer til sikkerheten din
+
+Typen gjeld du har, avgjør hvilken prisbevegelse som kan likvidere deg. Mot gjeld i stablecoin faller health factor (HF) når prisen på sikkerheten faller. Mot volatil gjeld faller den når den lånte eiendelen stiger. Med korrelerte eiendeler i E-Mode avhenger den av vekslingskursen mellom dem slik oraklet rapporterer den. Eksemplene bruker parametere for Aave V3 Ethereum Core lest 14. oktober 2026 (blokk 26193284; E-Mode ved blokk 26193288), med ETH på 2 400 $:
+
+| Sikkerhet og gjeld                   | Hva som senker HF                                                                  | Eksempel                                                                                                                                    |
+| ------------------------------------ | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| WETH satt inn, USDC lånt             | ETH som faller; renter. USDC som glir under 1 $, krymper denne gjelden og hever HF | 10 WETH mot 12 000 USDC: HF 1,66, som når 1 hvis ETH faller 39,8 %, til 1 445,78 $                                                          |
+| USDC satt inn, WETH lånt             | ETH som stiger; USDC som glir under 1 $                                            | 10 000 USDC (terskel 78 %) mot 6 000 $ i WETH: HF 1,30, som når 1 hvis ETH stiger 30 %, til 3 120 $. Ved en USDC-pris på 0,88 $ er HF 1,144 |
+| wstETH satt inn, WETH lånt, i E-Mode | Kursen mellom wstETH og ETH som oraklet rapporterer; renter                        | E-Mode «ETH correlated»: LTV 93 %, terskel 95 %. Ved lånegrensen er HF 95 ÷ 93 ≈ 1,0215, så en bevegelse på 2,1 % i kursen når 1            |
+
+- **Stablecoins får faktisk depeg.** På Ethereum setter Aaves priskilde for USDC et tak på 1,04 $ (blokk 26193376, 14. oktober 2026), men slipper ethvert fall under 1 $ rett gjennom. 11. mars 2023 nådde USDC et bunnpunkt på rundt 88 cent, ifølge Gauntlets post-mortem for Aave.
+- **E-Mode passer bare med matchende gjeld.** Du kan bare gå inn i en E-Mode-kategori hvis hvert eksisterende lån er blant eiendelene kategorien tillater å låne. På Ethereum Core tillater «ETH correlated» bare lån av WETH, så et USDC-lån mot WETH kan ikke bruke den.
+- **Korrelert betyr ikke risikofritt.** I mars 2026 kuttet en konfigurasjonsfeil i CAPO-adapteren (Correlated Assets Price Oracle) på Ethereum Core og Prime wstETH-kursen Aave brukte, med cirka 2,85 %. Chaos Labs' post-mortem (10. mars 2026) teller omtrent 10 938 wstETH likvidert i E-Mode fordelt på 34 kontoer, og det rammet posisjoner med HF under cirka 1,0288.
+- **Du kan bytte gjeldseiendel.** Gjeldsbyttet i Aave Labs-grensesnittet flytter et lån til en annen lånt eiendel i én transaksjon, til 0 bps når det rutes gjennom CoW Protocol (Aaves dokumentasjon, 14. oktober 2026).
+
+## Trinn 6: Få varsel tidlig og handle tidlig
+
+Et varsel satt ved en health factor der du fortsatt ville handlet, gir deg tid til å betale tilbake eller legge til sikkerhet før HF når 1, men det kan ikke handle for deg. Tilbakebetalinger som startes nær 1, kan feile eller bli hengende. En bruker på Polygons forum (Aave V2, mai 2021) som prøvde å betale tilbake ved HF 1,01, fikk feil gang på gang og ble likvidert før tilbakebetalingen gikk gjennom. I desember 2024 beskrev en bruker på Aaves forum mer enn en time med ventende forsøk på tilbakebetaling som endte i likvidasjon. Aaves eget grensesnitt viser health factor, men sender ingen push-varsler; lenken til HAL-varsler ble fjernet 30. mai 2024 fordi HAL hadde lagt ned.
+
+Én måte å velge nivå på: velg prisen der du ville handlet, regn ut HF ved den prisen, og sett varselet der. Med WETH som sikkerhet og USDC som gjeld gir et varsel ved 1,3 rom for et ytterligere fall i ETH på 23,1 % før HF når 1 (1 − 1 ÷ 1,3). Hele tabellen står i [hvor stor buffer en health factor gir deg](/no/blog/trygg-aave-health-factor).
+
+Tokenping er ett alternativ. Den sjekker Aave health factor hvert 5. minutt på 22 nettverk, hvert Aave V3-marked på 21 av dem (24 markeder, blant dem Ethereums Core, Prime, EtherFi og Horizon) og hver Aave V4 Spoke på Ethereum, Avalanche, Arc og Base, og sender deg en melding på Signal, Telegram eller e-post så lenge HF er under terskelen du har satt for det V3-markedet eller den V4 Spoken, fra 1,1 til 10 (standard 1,5). Du kan [sjekke health factor på Aave V3](/no/aave) i oversikten der; varsler koster <AlertPrice />, betalt på Arbitrum. Begrensningene:
+
+- Den leser bare posisjonen din, uten noen godkjenning på Aave, så den kan ikke betale tilbake for deg.
+- En bevegelse som krysser 1,0 mellom to sjekker, blir ikke fanget opp i tide.
+- Den overvåker bare lommeboken du kobler til.
+- Så lenge du er under terskelen, gjentar den meldingen hvert 5. minutt, og den sender ingen melding om at posisjonen har hentet seg inn.
+
+Oppsettet står i [hvordan du setter opp et health factor-varsel](/no/blog/sett-opp-aave-health-factor-varsel); verktøy som ikke koster noe, og automatisering som kan betale tilbake for deg, finner du i [verktøy for likvidasjonsvarsler på Aave sammenlignet](/no/blog/verktoy-for-aave-likvidasjonsvarsler).
+
+## Hva beskytter deg ikke mot likvidasjon?
+
+På Aave V3 stopper verken et fryst marked, et kutt i LTV (selv til 0) eller sikkerhet i en annen lommebok, et annet marked eller et annet nettverk en likvidasjon, og siden V3.7 gir et avbrudd i en L2-sequencer deg ikke lenger ekstra tid når sequenceren er tilbake. En pause blokkerer likvidasjoner, men den blokkerer også dine egne tilbakebetalinger. Grunnen: en likvidasjon på Aave V3 krever bare en health factor (HF) under 1,00, at reservene for både sikkerheten og gjelden er aktive og ikke på pause, og at en eventuell fristperiode for likvidasjon (grace period) er over.
+
+- **Et fryst marked.** Frysing stopper nye innskudd og lån, men likvidasjonskontrollen ser bort fra frys-flagget.
+- **Et kutt i LTV, selv til 0.** LTV begrenser bare nye lån, mens HF bruker likvidasjonsterskelen. En endring i LTV verken senker HF eller beskytter den.
+- **Et avbrudd i en L2-sequencer.** Før V3.7 blokkerte en sentinel-kontrakt på Aaves L2-markeder de fleste likvidasjoner mens sequenceren var nede og i en fristperiode etter at den kom tilbake. Aave V3.7 fjernet den kontrollen, og alle de sju nettverkene denne guiden sjekket, blant dem Arbitrum, Optimism og Base, kjører V3.7. Når en sequencer er tilbake, fortsetter likvidasjonene uten noen fristperiode der du rekker å fylle på.
+- **En pause.** Når pausen på en reserve oppheves, kan Protocol Emergency Guardian (multisig-kontoen som har Aaves rolle som nødadministrator) eller governance legge til en fristperiode for likvidasjon på opptil 4 timer. En pause er et nødtiltak som låntakere ikke styrer, og mens den varer, kan du heller ikke betale tilbake eller sette inn den eiendelen.
+- **Sikkerhet et annet sted.** Tokens i lommeboken din, i et annet Aave-marked eller på et annet nettverk teller ikke med i denne posisjonens HF.
+
+## Kilder
+
+- [Aave V3 GenericLogic.sol: beregning av health factor](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol), aave-v3-origin main (hentet 14. oktober 2026)
+- [Aave V3 ValidationLogic.sol: kontroller for innskudd (fryst, på pause, innskuddstak), lån, tilbakebetaling, sikkerhet og likvidasjon](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol) (hentet 14. oktober 2026)
+- [Aave V3 SupplyLogic.sol: for å aktivere en eiendel som sikkerhet kreves en LTV som ikke er null](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) (hentet 14. oktober 2026)
+- [Aave V3 LiquidationLogic.sol: regler for close factor og dust](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol) (hentet 14. oktober 2026)
+- [Aave V3 PoolConfigurator.sol: grenser for terskel og bonus, hvem som kan sette på pause, tak på 4 timer for fristperioden](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol) (hentet 14. oktober 2026)
+- [Aave V3.6 features: regler for LTV 0](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.6/Aave-v3.6-features.md) (hentet 14. oktober 2026)
+- [Aave V3.7 sentinel removal](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/sentinel-removal.md): hva L2-sentinelen blokkerte, og fristperioden etter gjenoppretting (hentet 14. oktober 2026)
+- [Endringslogg for Aaves dokumentasjon](https://aave.com/docs/resources/changelog): Aave V2 på Polygon (14. april 2021), lanseringen av Aave V3 (16. mars 2022) og utrullingen av V3.7 til alle sju nettverk (hentet 14. oktober 2026)
+- [Aaves dokumentasjon: governance](https://aave.com/docs/ecosystem/governance): Protocol Emergency Guardian har rollen `EMERGENCY_ADMIN` (hentet 14. oktober 2026)
+- [Aaves dokumentasjon: swap-funksjoner (tilbakebetaling med sikkerhet, bytte av sikkerhet og gjeld, flash loans, gebyrer, markeder)](https://aave.com/docs/aave-v3/smart-contracts/swap-features) (hentet 14. oktober 2026)
+- [Aave V4 overview](https://github.com/aave/aave-v4/blob/main/docs/overview.md) og [Spoke.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/Spoke.sol), aave/aave-v4 main: én sikkerhetsfaktor per sikkerhet, som må være under 100 %, og en mål-health factor i stedet for en close factor (hentet 14. oktober 2026)
+- [Aaves dokumentasjon: posisjoner i Aave V4](https://aave.com/docs/aave-v4/positions): health factor per Spoke (hentet 14. oktober 2026)
+- [Aave V3 PoolDataProvider på Ethereum](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): `getReserveConfigurationData` for WETH, WBTC og USDC ved blokk 26193284, uendret ved blokk 26194005 (hentet 14. oktober 2026)
+- [Aave V3 Pool på Ethereum (Core)](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2#readContract): `getEModeCategoryCollateralConfig(1)` og `getEModeCategoryBorrowableBitmap(1)` for «ETH correlated» ved blokk 26193288, uendret ved blokk 26194006 (hentet 14. oktober 2026)
+- [Aave V3 PoolDataProvider på Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b#readContract): konfigurasjonen for USDC.e ved Arbitrum-blokk 514855406, uendret ved blokk 514886152 (hentet 14. oktober 2026)
+- [Aave Address Book](https://github.com/aave-dao/aave-address-book): adresser til pooler og swap-adaptere. `FLASHLOAN_PREMIUM_TOTAL` = 5 (0,05 %) og `POOL_REVISION` = 11 på alle sju pooler denne guiden dekker, lest 00:23 UTC (Ethereum-blokk 26194302), uten noen adapter registrert som gebyrfri flash loan-låntaker på Ethereum eller Arbitrum (hentet 15. oktober 2026)
+- [Prisadapter for USDC i Aave V3 på Ethereum, «Capped USDC / USD»](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract): `getPriceCap` = 1,04 $ ved blokk 26193376 (hentet 14. oktober 2026)
+- [aave-price-feeds PriceCapAdapterStable.sol: priser over taket begrenses, fall under 1 $ slippes gjennom](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol) (hentet 14. oktober 2026)
+- [Polygons forum: «Liquidation on polygon AAVE -JSON ERROR», 18. mai 2021](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067) (hentet 14. oktober 2026)
+- [Aaves governance-forum: «Repeatedly Failed Repayment Attempts Leading to Liquidation», 23. desember 2024](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379) (hentet 14. oktober 2026)
+- [Gauntlet: «Aave Resilient Through USDC Volatility», 17. mars 2023](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (hentet 14. oktober 2026)
+- [Chaos Labs: post-mortem om wstETH-vekslingskursen for instansene Core og Prime, 10. mars 2026](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269) (hentet 14. oktober 2026)
+- [Aave help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations), som ber låntakere følge med på health factor jevnlig, og [kildekoden til aave/interface](https://github.com/aave/interface), som har advarsler i appen ved lav health factor og ingen varslingsfunksjon (kildekoden kontrollert 14. oktober 2026, hjelpesiden hentet 15. oktober 2026)
+- [aave/interface pull request #2084: «chore: remove hal», slått sammen 30. mai 2024](https://github.com/aave/interface/pull/2084) (hentet 14. oktober 2026)
+
+_Opplæringsinnhold, ikke finansiell rådgivning. Varsler reduserer risikoen, men forhindrer ikke likvidasjon._

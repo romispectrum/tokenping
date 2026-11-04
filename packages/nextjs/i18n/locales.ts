@@ -21,6 +21,7 @@ export const LOCALES = [
   "sr",
   "sv",
   "da",
+  "nb",
 ] as const;
 
 export type Locale = (typeof LOCALES)[number];
@@ -261,6 +262,16 @@ export const LOCALE_INFO: Record<Locale, LocaleInfo> = {
     name: "Dansk",
     englishName: "Danish",
     short: "DK",
+  },
+  // Norwegian Bokmål under /no. Decimal comma, space thousands ("12 000,5"), "83 %", dates "14. oktober 2026".
+  nb: {
+    htmlLang: "nb",
+    ogLocale: "nb_NO",
+    intl: "nb-NO",
+    numbers: "nb-NO",
+    name: "Norsk",
+    englishName: "Norwegian",
+    short: "NO",
   },
 };
 

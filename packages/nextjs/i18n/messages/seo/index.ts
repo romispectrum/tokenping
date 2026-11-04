@@ -9,6 +9,7 @@ import { MESSAGES as hr } from "./hr";
 import { MESSAGES as hu } from "./hu";
 import { MESSAGES as id } from "./id";
 import { MESSAGES as it } from "./it";
+import { MESSAGES as nb } from "./nb";
 import { MESSAGES as nl } from "./nl";
 import { MESSAGES as pl } from "./pl";
 import { MESSAGES as pt } from "./pt";
@@ -46,4 +47,5 @@ export const SEO_MESSAGES: Localized<SeoMessages> = {
   sr,
   sv,
   da,
+  nb,
 };

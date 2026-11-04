@@ -1,0 +1,133 @@
+export const meta = {
+  slug: "hvorfor-uttak-eller-lan-pa-aave-feiler",
+  title: "Hvorfor kan jeg ikke ta ut eller låne på Aave? 9 årsaker",
+  description:
+    "Hvorfor et uttak, lån eller en tilbakebetaling på Aave V3 feiler: health factor-sjekken, ledig likviditet, tak, frosne eller pausede reserver.",
+  h1: "Hvorfor feiler uttaket, lånet eller tilbakebetalingen min på Aave?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "Hvorfor feiler en transaksjon for uttak, lån eller tilbakebetaling på Aave?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  En transaksjon på Aave V3 feiler når en av Pool-kontraktens sjekker avviser den, og årsaken er nesten alltid en av ni.
+  Uttaket ville senke din health factor (helsefaktor) under 1. Reserven har mindre ledig, ikke utlånt likviditet enn du
+  ber om. Innskuddstaket (supply cap) eller lånetaket (borrow cap) for eiendelen er fullt. Reserven er frosset (ingen
+  nye innskudd eller lån) eller pauset (ingenting i det hele tatt, heller ikke tilbakebetalinger). Eiendelen kan ikke
+  lånes, eller kan ikke lånes i din E-Mode-kategori. Du har sikkerhet med en belåningsgrad (LTV) på 0, som må ut først.
+  Eller en tilbakebetaling gjelder gjeld du ikke har eller tokens du ikke har godkjent. På Ethereum Core 29. oktober
+  2026 var 35 av de 66 listede reservene frosset, innskuddstaket for LBTC var fullt så nær som de siste 0,07 LBTC, og
+  bare 134,4 millioner av de 2 347,5 millioner innskutte USDC var der å ta ut.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Tallene og blokknumrene de er lest av ved: content/blog/snapshots/why-aave-withdraw-or-borrow-fails.md */}
+
+## Hvilke sjekker må en Aave-transaksjon bestå?
+
+Hvert innskudd, uttak, lån og hver tilbakebetaling på Aave V3 går gjennom Pool-kontrakten, og Pool kjører en liste med sjekker i et bibliotek som heter `ValidationLogic` før den flytter en token. Hver sjekk som slår feil, stopper hele transaksjonen med en navngitt feil: `ReserveFrozen`, `SupplyCapExceeded`, `HealthFactorLowerThanLiquidationThreshold` og så videre. Lommeboken din viser som regel bare «execution reverted» og en kort hex-kode, fordi navnene ligger i Aaves kode, ikke i lommeboken. Aave-appen sjekker det meste av dette før du signerer, og derfor nekter den ofte før du i det hele tatt ser en transaksjon.
+
+Sjekkene er forskjellige for hver handling. Et uttak krever en aktiv reserve som ikke er pauset, en saldo som er minst like stor som beløpet, og, hvis du har gjeld og eiendelen teller som sikkerhet, en health factor som holder seg på minst 1 etterpå. Et lån krever en aktiv reserve som verken er pauset eller frosset og der lån er slått på, plass under lånetaket og nok sikkerhet ved din LTV. Et innskudd krever en reserve som ikke er frosset, med plass under innskuddstaket. En tilbakebetaling krever bare en aktiv reserve som ikke er pauset, og gjeld i den eiendelen. De ni årsakene nedenfor følger den listen, omtrent i den rekkefølgen du sannsynligvis møter dem.
+
+Denne guiden gjelder Aave V3. Spokes i Aave V4 har sin egen konfigurasjon, og Morpho har ingen av disse mekanismene bortsett fra orakelet (priskilden) og health factor: et Morpho-marked har ingen tak, ingen frysing og ingen pause.
+
+## 1. Uttaket ville etterlate health factor under 1
+
+Dette er den låntakere oftest møter. Når du tar ut en eiendel du bruker som sikkerhet mens du har gjeld, regner Pool kontoen din om etter uttaket og krever en health factor på minst 1 (`HealthFactorLowerThanLiquidationThreshold`). Den samme sjekken kjøres når du slår av en eiendel som sikkerhet eller overfører aTokens til en annen adresse. Den kjøres ikke når du ikke har gjeld, og derfor kan hele saldoen alltid tas ut fra en ren innskuddsposisjon.
+
+Ta 10 WETH på Ethereum Core til orakelprisen 2 309,84 $ 29. oktober 2026 (23 098,41 $), en likvidasjonsterskel (liquidation threshold) på 84 % og 12 000 USDC i gjeld. [Health factor](/no/blog/aave-health-factor-forklart) er 23 098,41 × 0,84 ÷ 12 000 = 1,617. For å holde den på nøyaktig 1 trenger du 12 000 ÷ 0,84 = 14 285,71 $ i WETH, eller 6,185 WETH, så det meste du kan ta ut, er 3,815 WETH. Ber du om 4, blir transaksjonen avbrutt (revert); ber du om 3,815, går den gjennom og etterlater en posisjon som neste prisbevegelse nedover gjør likviderbar. Aave-appens maksimum er nettopp dette tallet, og å ta ut alt er den raskeste måten å gjøre en trygg posisjon om til en som trenger et [likvidasjonsvarsel](/no/blog/sett-opp-aave-health-factor-varsel) innen en time.
+
+Lån har en strengere slektning. Et nytt lån må etterlate health factor på minst 1 og må i tillegg få plass under din vektede LTV: sikkerhet × LTV må dekke gjelden (`CollateralCannotCoverNewBorrow`). Med WETH på en LTV på 81 % bærer de 10 WETH ovenfor høyst 18 709,71 $ i gjeld, og posisjonen som låner alt, starter på en health factor på 84 ÷ 81 = 1,037. [Hva en trygg health factor er](/no/blog/trygg-aave-health-factor) forklarer hvorfor det er et tynt sted å starte.
+
+## 2. Reserven har mindre ikke utlånt likviditet enn du vil ha
+
+Aave låner ut det innskyterne setter inn, så en reserve holder bare den delen ingen har lånt. Et uttak, eller et lån, som er større enn den delen, feiler, og dette tilfellet har ikke noe feilnavn i Aave: aToken prøver å overføre den underliggende tokenen ut, og selve tokenkontrakten avbryter, for USDC med «ERC20: transfer amount exceeds balance». Lånesjekken spør bare om hele aToken-beholdningen er minst like stor som beløpet, noe som fanger absurde forespørsler og ingenting annet.
+
+På Ethereum Core 29. oktober 2026 var 2 347 525 372,91 USDC innskutt, 2 213 199 103,54 USDC lånt, og aToken-kontrakten holdt 134 360 379,94 USDC: 94,28 % utnyttelsesgrad, 5,72 % av innskuddene tilgjengelig for uttak eller lån. En innskyter som ville gå ut med 200 millioner USDC, kunne ikke det, og ingen kunne før noen betalte tilbake eller satte inn. Guiden om [hvordan rentene på Aave fungerer](/no/blog/aave-renter) viser hvordan det ser ut i praksis: 14. oktober 2026 presset et enkelt uttak på 133 898 000 USDC den samme reserven til 99,50 % utnyttelsesgrad, og lånerenten fra 4,50 % til 13,67 % i én blokk.
+
+Fire ting virker når likviditeten er problemet. Ta ut et mindre beløp, opp til det kontrakten holder. Vent: rentekurven er laget for å trekke likviditet tilbake, og toppen 14. oktober var over på omtrent 36 minutter, men ingenting garanterer det. Ta ut en annen sikkerhetseiendel, hvis du har en og health factor tillater det. Og hvis du prøver å betale tilbake USDC-gjeld, men har aUSDC, bruk `repayWithATokens`: den brenner dine aTokens mot gjelden uten å flytte en eneste USDC, så den trenger ingen likviditet i det hele tatt.
+
+## 3. Innskuddstaket er fullt
+
+Hver reserve har et innskuddstak, satt av Aaves risikoforvaltere (risk stewards) og governance, og et innskudd som ville presse totalen forbi det, feiler med `SupplyCapExceeded`. Et tak på 0 betyr ingen tak. Taket teller de aTokens som finnes, pluss renter som er tilfalt fellesskassen (treasury), så det fylles av seg selv etter hvert som renter påløper, uten at noen setter inn.
+
+Takene slår inn oftere enn folk tror. 29. oktober 2026 var LBTC-taket på Ethereum Core 2 690 LBTC mot 2 689,93 innskutt: plassen som var igjen, var 0,07 LBTC, og en låntaker som ville legge 1 LBTC til en presset posisjon, kunne ikke det. sUSDe lå på 96,9 % av taket sitt, tBTC på 98,9 %, USDe på 91,7 %, weETH på 91,2 % og WBTC på 89,4 %. Takene går begge veier. 10. juli 2026 kuttet LlamaRisk innskuddstaket for USDm på Aaves MegaETH-instans fra 1 000 000 000 til 300 000 000 fordi taket lå «well above current demand» (godt over dagens etterspørsel); forvalterne hever takene når etterspørselen kommer, som regel i løpet av noen dager.
+
+For en låntaker betyr taket en stengt dør: å legge til sikkerhet er en av de to måtene å heve en health factor på, og et fullt tak fjerner den for den eiendelen. Å betale tilbake gjeld virker fortsatt, og det er den andre måten, og det samme gjør det å legge til en annen sikkerhetseiendel som har plass under taket.
+
+## 4. Lånetaket er fullt
+
+Lånetak virker på samme måte for gjeld: reservens samlede gjeld med flytende rente etter lånet ditt får ikke overstige taket (`BorrowCapExceeded`), og 0 betyr ingen tak. Sjekken kjøres ved hvert lån, så et tak som allerede er over grensen, stopper hvert nytt lån av den eiendelen til noen betaler tilbake. Et fullt lånetak stopper ingenting annet: tilbakebetalinger, uttak og likvidasjoner går gjennom.
+
+tBTC på Ethereum Core er ytterpunktet: lån var slått på 29. oktober 2026, men taket var 1 tBTC og 2,57 tBTC var allerede lånt, så selv det minste lånet ble avbrutt. USDC hadde 2 213,2 millioner lånt mot et tak på 2 700 millioner, 82,0 % brukt, med 486,8 millioner i plass; USDT lå på 80,8 %. Når stablecoin-takene fylles, feiler et lån selv om reserven kanskje fortsatt har god likviditet.
+
+## 5. Reserven er frosset
+
+En frosset reserve tar ikke imot nye innskudd og ingen nye lån (`ReserveFrozen` for begge). Aaves dokumentasjon for Pool Configurator lister opp hva som fortsatt virker: tilbakebetalinger, likvidasjoner og uttak. Frysing er måten governance avvikler en eiendel på uten å stenge noen inne; [hva som skjer når Aave avvikler et marked](/no/blog/nar-aave-avvikler-et-marked) går gjennom trinnene.
+
+Frosne reserver er ikke sjeldne. 29. oktober 2026 var 35 av de 66 reservene på Ethereum Core frosset: CRV, MKR, UNI, LUSD, FRAX, sDAI, crvUSD, FBTC og en lang liste med Pendle PT-tokens som har passert forfallsdatoen, nesten alle i tillegg med innskudds- og lånetak på 1. Har du fortsatt sikkerhet i en slik reserve, kan du ta den ut, og du kan bli likvidert ut av den, men du kan ikke fylle på.
+
+## 6. Reserven er pauset
+
+Pause er nødbryteren. En pauset reserve avviser alt: innskudd, lån, tilbakebetaling, uttak, likvidasjon og overføringer av aTokens (`ReservePaused`). Ingen reserve på Ethereum Core var pauset 29. oktober 2026, og i vanlige uker er ingen det.
+
+Pausen har vært brukt. 4. november 2023, etter en kritisk rapport i et bug bounty-program, pauset Aaves Guardian Aave V2 på Ethereum og et sett med eiendeler på V3 Arbitrum, Avalanche, Optimism og Polygon. I omtrent en uke kunne ingen betale tilbake eller legge til sikkerhet i de reservene, mens prisene fortsatte å bevege seg. V3-instansene ble satt i gang igjen 12. november 2023, V2 Ethereum 13. november etter en karensperiode for likvidasjon (grace period) på omtrent tre timer for WETH-låntakere, og CRV på V3 Polygon 16. november. I dag er den karensperioden en del av protokollen: en likvidasjon i en reserves karensperiode feiler med `LiquidationGraceSentinelCheckFailed`, noe som gir låntakere som var stengt ute, et kort vindu til å betale tilbake før likvidatorene slår til.
+
+Feiler transaksjonen din med en pausefeil, er det ingenting å gjøre på Aave før pausen oppheves. Bruk tiden til å ha pengene til tilbakebetalingen klare på riktig nettverk, fordi karensperioden etter at en pause oppheves, bestemmes av governance eller Guardian og har vært så kort som tre timer.
+
+## 7. Lån er slått av for eiendelen, eller ikke tillatt i din E-Mode-kategori
+
+Mange eiendeler kan settes inn som sikkerhet, men ikke lånes. På Ethereum Core 29. oktober 2026 var lån slått av på 15 reserver som ikke var frosset, blant dem wstETH, cbETH, rETH, weETH, LBTC, eBTC, AAVE og XAUt, og et lån av noen av dem feiler med `BorrowingNotEnabled`. Flagget settes av governance per reserve og vises i Aave-appen som en låneknapp som mangler.
+
+Er du i en [E-Mode-kategori](/no/blog/aave-e-mode-forklart), erstattes den regelen av en annen: du kan bare låne eiendelene i kategoriens sett av lånbare eiendeler, og alt annet feiler med `NotBorrowableInEMode`, selv en eiendel du kunne lånt utenfor kategorien. Ethereum Cores kategori «ETH correlated» lar deg for eksempel låne WETH og ingenting annet. Å forlate kategorien løser lånet, men å forlate den kjører egne sjekker: hver eiendel du skylder, må kunne lånes utenfor kategorien, og din health factor må fortsatt være minst 1 med de vanlige, lavere tersklene (`InvalidDebtInEmode`, `InvalidCollateralInEmode`, `HealthFactorLowerThanLiquidationThreshold`).
+
+## 8. Du har sikkerhet med en LTV på 0
+
+Governance setter en eiendels LTV til 0 når den vil at eiendelen skal slutte å bære ny gjeld mens eksisterende posisjoner fortsetter. 29. oktober 2026 var 11 reserver på Ethereum Core som ikke var frosset, slått på som sikkerhet med en LTV på 0, blant dem DAI (likvidasjonsterskel 77 %), LINK, PYUSD, USDe, sUSDe, USDS, EURC og XAUt. En slik eiendel teller fortsatt med i din health factor, gjennom likvidasjonsterskelen sin, men gir ikke noe til lånekapasiteten din. To sjekker følger av det.
+
+Den første gjelder lån. Hvis all sikkerhet du har slått på, har en LTV på 0, er din vektede LTV 0, og ethvert lån feiler med `LtvValidationFailed`. Med en blanding, for eksempel DAI og WETH, går lånet gjennom, begrenset av WETH alene.
+
+Den andre gjelder uttak, og den overrasker folk. Hvis du har gjeld og noe sikkerhet som er slått på, med en LTV på 0, må eiendelen du tar ut, overfører eller slår av som sikkerhet, selv være en eiendel med LTV 0, ellers feiler transaksjonen med den samme `LtvValidationFailed`. Kodens egen kommentar sier hva hensikten er: regelen «ensures that a multi-collateral position needs to withdraw/transfer the ltv0 asset first» (sørger for at en posisjon med flere typer sikkerhet først må ta ut eller overføre LTV 0-eiendelen). En låntaker med DAI og WETH som prøver å ta ut litt WETH, blir altså nektet til DAI er ute; health factor-sjekken gjelder fortsatt for selve DAI-uttaket. Løsningen er rekkefølgen: ta ut LTV 0-eiendelen først, eller betal tilbake så mye at health factor tillater begge.
+
+## 9. En tilbakebetaling gjelder gjeld du ikke har, eller tokens du ikke har godkjent
+
+Tilbakebetalinger er den enkleste handlingen og feiler likevel, som regel av en av fem grunner.
+
+- **Ingen gjeld av den typen.** `NoDebtOfSelectedType` betyr at den Pool du kalte, ikke har noen gjeld med flytende rente i den eiendelen for den adressen. Den vanlige årsaken er feil marked: Ethereum har separate instanser Core, Prime og Lido, hver med sin egen Pool, og den samme lommeboken kan skylde USDC på én og ingenting på en annen. Markedene på hvert nettverk er også separate.
+- **En rentemodus som ikke finnes lenger.** Bare modusen for flytende rente (2) godtas; lån med stabil rente er fjernet fra koden, og et kall med modus 1 feiler med `InvalidInterestRateModeSelected`.
+- **Ingen allowance.** Pool trekker tilbakebetalingen med `transferFrom`, så tokenen trenger en godkjenning (approval) for minst beløpet, eller en signert permit. Uten den avbryter tokenkontrakten før Aaves sjekker kjøres.
+- **Betale for noen andre uten beløp.** Å betale tilbake for en annen adresse med verdien for «hele gjelden» (`type(uint256).max`) feiler med `NoExplicitAmountToRepayOnBehalf`; oppgi beløpet.
+- **Støvbeløp (dust).** Renter påløper hvert sekund, så en tilbakebetaling av nøyaktig den saldoen du så for et minutt siden, etterlater noen få wei gjeld. For å rydde bort en gjeld helt betaler du tilbake med maksverdien, som Pool begrenser til det du skylder.
+
+## Årsaker du kan slutte å lete etter
+
+To gamle forklaringer gjelder ikke lenger. Isolation Mode og gjeldstakene (debt ceilings) som fulgte med, ble fjernet i Aave V3.7, og det samme ble siloed borrowing, så ingen lån feiler i dag fordi en eiendel er isolert eller et gjeldstak er nådd. Og lån med stabil rente har vært borte siden V3.2, så ingenting feiler på et bytte av rentemodus. Nevner en eldre guide en av disse, beskriver den en versjon av Aave som ikke lenger er i drift.
+
+## Hva du gjør når en transaksjon feiler under et prisfall
+
+En mislykket transaksjon er irriterende i et rolig marked og et problem i et fallende, fordi timen du bruker på å finne feilen, er timen din health factor trenger. En kort rekkefølge å følge:
+
+1. **Les feilen.** Simuler transaksjonen i lommeboken din, eller lim hex-selektoren inn i dekoderen til en blokkutforsker; navnene ovenfor forteller deg hvilket tilfelle du er i.
+2. **Betal heller tilbake enn å legge til sikkerhet.** Tilbakebetaling virker gjennom frosne reserver og fulle innskuddstak, og med `repayWithATokens` virker den også når likviditeten er tom. Å legge til sikkerhet krever et tak med plass og en reserve som ikke er frosset.
+3. **Prøv mindre beløp.** Likviditet og tak er mengder; et uttak eller lån som får plass, går gjennom mens det fulle feiler.
+4. **Bruk en annen eiendel.** En annen sikkerhet å ta ut, eller en annen eiendel å betale tilbake, er ofte tilgjengelig når den første er blokkert.
+5. **Sjekk instansen og nettverket.** En tilbakebetaling som sendes til riktig eiendel i feil Pool, feiler med `NoDebtOfSelectedType` og koster deg gas og tid.
+6. **Ta varselet tidligere neste gang.** Hvert av disse tilfellene tar minutter å komme rundt. Et health factor-varsel som er satt opp med god margin, kjøper deg de minuttene.
+
+Tokenping sjekker din health factor på Aave hvert 5. minutt, i hvert Aave V3-marked på 21 nettverk og hver Aave V4 Spoke, og sender deg en melding på Signal, Telegram eller e-post når den er under en terskel du velger (1,1 til 10), og gjentar det ved hver sjekk til den har hentet seg inn. Tokenping leser tallet fra `getUserAccountData`, det samme tallet som uttakssjekken bruker. Et varsel kan ikke handle for deg, og ingenting i denne guiden forhindrer likvidasjon; den forteller deg hvilken dør som er stengt, slik at du prøver den åpne først. Du kan [sjekke din health factor på Aave V3](/no/aave) uten å betale; varsler koster <AlertPrice />, ett per marked eller Spoke. [Hvordan du unngår likvidasjon på Aave](/no/blog/unnga-likvidasjon-pa-aave) går gjennom valget mellom å betale tilbake og å legge til sikkerhet i detalj, og [hvorfor din health factor falt](/no/blog/hvorfor-falt-din-aave-health-factor) årsakene du reagerer på.
+
+## Kilder
+
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol), [BorrowLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/BorrowLogic.sol) og [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): hver sjekk som er nevnt ovenfor, rekkefølgen de kjøres i, kommentaren om LTV 0 og flagget for null-LTV (aave-v3-origin main, hentet 29. oktober 2026)
+- [Errors.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/helpers/Errors.sol): feilnavnene og beskrivelsene deres (aave-v3-origin main, hentet 29. oktober 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getAllReservesTokens`, og for hver reserve `getReserveConfigurationData`, `getReserveCaps`, `getPaused` og `getReserveData`, ved blokk 26296985 (hentet 29. oktober 2026)
+- [aEthUSDC](https://etherscan.io/address/0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c): USDC-beholdningen i aToken-kontrakten ved blokk 26296985 (hentet 29. oktober 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): prisene på WETH og USDC ved blokk 26296985 (hentet 29. oktober 2026)
+- [Aave docs: Pool Configurator](https://aave.com/docs/aave-v3/smart-contracts/pool-configurator): hva frosne og pausede reserver tillater, tak på 0 (hentet 29. oktober 2026)
+- [Aave v2/v3 security incident 04/11/2023](https://governance.aave.com/t/aave-v2-v3-security-incident-04-11-2023/15335): pausene 4. november 2023, opphevelsene 12., 13. og 16. november og karensperioden (hentet 29. oktober 2026)
+- [Aave V3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): fjerningen av lån med stabil rente (hentet 29. oktober 2026)
+- [Aave V3.7: isolation mode and siloed borrowing removal](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/mode-removal.md) (hentet 29. oktober 2026)
+- [Risk Stewards: Supply and Borrow Cap Reductions on Aave V3 / 2026.07.10](https://governance.aave.com/t/risk-stewards-supply-and-borrow-cap-reductions-on-aave-v3-2026-07-10/25296): LlamaRisks kutt i takene på MegaETH, gjennomført 14. juli 2026 (hentet 29. oktober 2026)
+
+_Opplæringsinnhold, ikke finansiell rådgivning. Varsler reduserer risikoen, men forhindrer ikke likvidasjon._

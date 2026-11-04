@@ -1,0 +1,183 @@
+export const meta = {
+  slug: "slik-fungerer-likvidasjon-pa-aave",
+  title: "Hva som skjer når Aave-posisjonen din blir likvidert",
+  description:
+    "Slik fungerer likvidasjoner på Aave V3 i dag: når de utløses, hvor mye gjeld som kan betales (50 % eller 100 %), bonusen du betaler og et regneeksempel.",
+  h1: "Hva skjer når Aave-posisjonen din blir likvidert?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Hva skjer når du blir likvidert på Aave?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  Når din health factor (helsefaktor) på Aave V3 faller under 1, kan hvilken som helst annen adresse betale tilbake en
+  del av eller hele gjelden din og ta sikkerhet verdt det beløpet pluss en likvidasjonsbonus, for eksempel 5 % på WETH i
+  markedet Ethereum Core. Én likvidasjon kan betale tilbake opptil 50 % av gjelden din så lenge health factor ligger
+  over 0,95 og både sikkerheten din i eiendelen som tas og gjelden din i eiendelen som betales tilbake er verdt minst 2
+  000 $; ellers kan hele gjelden i den eiendelen gå på én gang. Du beholder tokenene du lånte og den sikkerheten og
+  gjelden som er igjen, så bonusen er det likvidasjonen koster deg.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Når kan en Aave-posisjon bli likvidert?
+
+En posisjon på Aave V3 kan likvideres så snart health factor er under 1,00. Health factor deler verdien av sikkerheten din, vektet med hver eiendels likvidasjonsterskel (liquidation threshold), på verdien av gjelden din, så under 1,00 dekker den vektede sikkerheten ikke lenger gjelden (formel og eksempel: [hva health factor på Aave er](/no/blog/aave-health-factor-forklart)).
+
+Kontraktene i Aave V3.7 sjekker fem ting før en likvidasjon går gjennom (`validateLiquidationCall` i `ValidationLogic.sol`):
+
+1. Låntakerens health factor er under 1,00.
+2. Sikkerhetseiendelen som tas og gjeldseiendelen som betales tilbake er begge aktive og **ikke pauset**.
+3. En eventuell utsettelsesperiode for likvidasjoner (liquidation grace period) på en av eiendelene er over. Når Aaves emergency guardian eller governance opphever pausen for en eiendel, kan de sette en utsettelsesperiode på opptil 4 timer.
+4. Låntakeren har slått på den sikkerheten som sikkerhet og skylder den valgte gjeldseiendelen.
+5. Den som kaller funksjonen er ikke låntakeren: du kan ikke likvidere din egen posisjon.
+
+En fryst eiendel kan fortsatt likvideres, fordi sjekken ser på «paused» (pauset), ikke «frozen» (fryst). Hvilken som helst annen adresse kan kalle Poolens funksjon `liquidationCall`.
+
+Protokollet varsler deg ikke før en likvidasjon, og Aaves egen app på app.aave.com sender ingen varsler. Med én volatil sikkerhet og gjeld i en stablecoin kan du [regne ut likvidasjonsprisen din på Aave](/no/blog/aave-likvidasjonspris): prisen på sikkerheten der health factor når 1.
+
+## Hvor mye av gjelden min kan likvideres på én gang?
+
+På Aave V3.7 er close factor (den delen av gjelden som kan betales på én gang) 50 % av den samlede gjelden din bare når tre vilkår er oppfylt samtidig: health factor ligger over 0,95, sikkerheten din i eiendelen som tas er verdt minst 2 000 $, og gjelden din i eiendelen som betales tilbake er verdt minst 2 000 $. I alle andre tilfeller kan en likvidator betale tilbake opptil 100 % av gjelden din i den valgte eiendelen i én enkelt transaksjon.
+
+| Situasjonen i det øyeblikket likvidasjonen skjer                                                                 | Det meste én likvidasjon kan betale tilbake                                                                |
+| ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Health factor over 0,95, og den valgte sikkerheten og den valgte gjelden er hver for seg verdt 2 000 $ eller mer | 50 % av den samlede gjelden din i alle eiendeler (i USD), aldri mer enn gjelden din i den valgte eiendelen |
+| Health factor på eller under 0,95                                                                                | 100 % av gjelden din i den valgte eiendelen                                                                |
+| Den valgte sikkerheten eller den valgte gjelden er verdt mindre enn 2 000 $                                      | 100 % av gjelden din i den valgte eiendelen                                                                |
+
+Disse grensene er konstanter i Aaves `LiquidationLogic.sol` (aave-v3-origin, lest 14. oktober 2026). Siden v3.3 gjelder 50 % hele posisjonen i stedet for hver gjeldseiendel for seg. Aaves notater til v3.3 gir eksemplet med 3 000 $ i gjeld i hver av GHO, USDC og DAI, 9 000 $ til sammen: alle 3 000 $ i en av dem kan betales tilbake i ett kall, fordi 50 % av totalen er 4 500 $.
+
+En annen regel hindrer støvrester (dust). En delvis likvidasjon må etterlate minst 1 000 $ gjeld i eiendelen som betales tilbake og minst 1 000 $ sikkerhet i eiendelen som tas. Ellers må likvidatoren ta hele den gjelden eller hele den sikkerheten, og gjør den ikke det, blir transaksjonen reversert (revert).
+
+En likvidasjon tar bare sikkerhet verdt den tilbakebetalte gjelden pluss bonusen, ikke all sikkerheten din. Likvidatoren betaler gjelden med egne midler, så tokenene du lånte forblir dine; så lenge sikkerheten dekker det, er bonusen det du taper.
+
+Eldre guider beskriver en fast close factor på 50 %, og Aaves egen referanse for Pool-kontrakten på aave.com sier fortsatt «close factor is 0.5» (hentet 14. oktober 2026). Begge er utdaterte: fast 50 % var regelen i Aave V2, og V3.7-koden disse markedene kjører, bruker regelen med 50 % eller 100 % i tabellen.
+
+## Hva er likvidasjonsbonusen, og hvem betaler den?
+
+Likvidasjonsbonusen, ofte kalt likvidasjonsstraff (liquidation penalty), er den ekstra sikkerheten en likvidator får i tillegg til gjelden den betaler tilbake, og det er låntakeren som betaler den. Med en bonus på 5 % koster det deg sikkerhet verdt 1 050 USDC å gjøre opp 1 000 USDC av gjelden din. Aaves treasury beholder en del av bonusen som protokollavgift ved likvidasjon (liquidation protocol fee), så likvidatoren får litt mindre enn du taper.
+
+Bonusen og avgiften som gjelder, hører til sikkerheten som tas, ikke til gjelden. Verdier i Aave V3 lest on-chain 14. oktober 2026 (Ethereum-blokk 26193284, Arbitrum-blokk 514855406):
+
+| Marked        | Sikkerhet som tas | Likvidasjonsbonus | Protokollavgift (andel av bonusen) | Sikkerhet du taper per 1 000 $ som betales tilbake | Likvidatoren får |
+| ------------- | ----------------- | ----------------- | ---------------------------------- | -------------------------------------------------- | ---------------- |
+| Ethereum Core | WETH              | 5 %               | 10 %                               | 1 050 $                                            | 1 045 $          |
+| Ethereum Core | WBTC              | 5 %               | 10 %                               | 1 050 $                                            | 1 045 $          |
+| Ethereum Core | USDC              | 4,5 %             | 20 %                               | 1 045 $                                            | 1 036 $          |
+| Arbitrum      | WETH              | 5 %               | 10 %                               | 1 050 $                                            | 1 045 $          |
+| Arbitrum      | WBTC              | 7 %               | 10 %                               | 1 070 $                                            | 1 063 $          |
+| Arbitrum      | USDC (native)     | 5 %               | 10 %                               | 1 050 $                                            | 1 045 $          |
+
+I E-Mode erstatter kategoriens bonus eiendelens egen hvis eiendelen som tas er med i kategoriens sett av sikkerheter: 1 % for «ETH correlated» på Ethereum Core (lest ved Ethereum-blokk 26193288, 14. oktober 2026), så hver likvidasjon koster mindre. Governance kan endre alle disse parameterne, og Aaves risk stewards kan justere likvidasjonsbonuser innenfor fastsatte grenser, så sjekk gjeldende verdier i Aave-appen.
+
+## Hvilken sikkerhet tar likvidatoren?
+
+Likvidatoren velger. Hver likvidasjon på Aave V3 angir én sikkerhetseiendel som skal tas og én gjeldseiendel som skal betales tilbake, og det er likvidatoren som velger paret, så du har ikke noe å si om hvilken av eiendelene dine som går først. Bare eiendeler du har slått på som sikkerhet, kan tas; en innskutt eiendel der «used as collateral» er slått av, kan ikke tas, men den bidrar heller ikke til health factor.
+
+Hvis den valgte sikkerheten ikke dekker tilbakebetalingen pluss bonusen, mister du hele den eiendelen (likvidatoren får den minus protokollavgiften), og mindre gjeld blir betalt tilbake. Fordi hver likvidasjon håndterer ett par, kan en posisjon med flere eiendeler likvideres i flere transaksjoner, og så lenge health factor holder seg under 1, kan flere likvidasjoner følge.
+
+## Regneeksempel: ETH faller til 1 420 $, deretter til 1 330 $
+
+I dette eksemplet betaler en likvidasjon ved en ETH-pris på 1 420 $ tilbake 6 000 USDC og koster låntakeren 300 $ i WETH; hvis ingen likviderer før ETH står i 1 330 $, kan alle 12 000 USDC betales tilbake på én gang, og kostnaden dobles til 600 $.
+
+Posisjonen: 10 WETH i sikkerhet og 12 000 USDC i gjeld på Aave V3 Ethereum Core. WETH har en likvidasjonsterskel på 83 %, en bonus på 5 % og en protokollavgift på 10 % (lest on-chain ved blokk 26193284, 14. oktober 2026). ETH-prisene er illustrerende, USDC regnes som 1,00 $, og renter er holdt utenfor.
+
+Ved 2 400 $ er health factor 24 000 × 0,83 ÷ 12 000 = 1,66. Den når 1 ved en ETH-pris på 12 000 ÷ (10 × 0,83) = 1 445,78 $, og 0,95 ved 1 373,49 $.
+
+| ETH-pris                          | Health factor         | Det meste én likvidasjon kan betale tilbake                                                                             |
+| --------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Over omtrent 1 445,78 $           | 1,00 eller høyere     | Ingenting; posisjonen kan ikke likvideres                                                                               |
+| Omtrent 1 373,50 $ til 1 445,78 $ | Mellom 0,95 og 1,00   | 50 %: 6 000 USDC                                                                                                        |
+| Omtrent 1 260 $ til 1 373,49 $    | Omtrent 0,87 til 0,95 | 100 %: 12 000 USDC                                                                                                      |
+| Under omtrent 1 260 $             | Under omtrent 0,87    | Mindre enn 12 000 USDC: alle 10 WETH tas, og resten blir [tapsført gjeld](#kan-en-likvidasjon-etterlate-tapsført-gjeld) |
+
+### Steg 1: ETH ved 1 420 $, health factor 0,982
+
+Ved 1 420 $ er de 10 WETH verdt 14 200 $, så health factor er 14 200 × 0,83 ÷ 12 000 = 0,982. Det er over 0,95, og sikkerheten din i WETH og gjelden din i USDC er hver for seg verdt mer enn 2 000 $, så en likvidator kan betale tilbake høyst 6 000 USDC.
+
+- Likvidatoren betaler tilbake 6 000 USDC av gjelden din.
+- Posisjonen din mister 6 000 × 1,05 = 6 300 $ i WETH (4,4366 WETH).
+- Protokollavgiften er 10 % av bonusen på 300 $: 30 $ (0,0211 WETH) går til Aaves treasury, og likvidatoren får 6 270 $ (4,4155 WETH).
+- Du sitter igjen med 5,5634 WETH (7 900 $) og 6 000 USDC i gjeld: en health factor på 7 900 × 0,83 ÷ 6 000 = 1,093.
+
+Nettoposisjonen din (sikkerhet minus gjeld) faller fra 2 200 $ til 1 900 $. Differansen på 300 $ er bonusen.
+
+### Steg 2: ETH ved 1 330 $, health factor 1,024
+
+De gjenværende 5,5634 WETH er verdt 7 399 $ ved 1 330 $, en health factor på 7 399 × 0,83 ÷ 6 000 = 1,024, så posisjonen kan ikke likvideres igjen ved denne prisen. Den nye likvidasjonsprisen er omtrent 1 299 $, fra 6 000 ÷ (5,5634 × 0,83). Da gjelden ble halvert, falt likvidasjonsprisen; bonusen på 300 $ var kostnaden.
+
+### Hva om ingen likviderer før ETH står i 1 330 $?
+
+Hvis den første likvidasjonen først skjer når ETH allerede står i 1 330 $, har den opprinnelige posisjonen en health factor på 13 300 × 0,83 ÷ 12 000 = 0,920. Det er på eller under 0,95, så en likvidator kan betale tilbake alle 12 000 USDC på én gang. Posisjonen din mister 12 000 × 1,05 = 12 600 $ i WETH (9,4737 WETH), hvorav 60 $ er protokollavgiften og 12 540 $ går til likvidatoren. Du beholder 0,5263 WETH (700 $) og skylder ingenting; regelen om støvrester gjelder ikke, fordi gjelden ble gjort opp helt.
+
+Nettoposisjonen faller fra 1 300 $ til 700 $. Tapet på 600 $ er dobbelt så stort som i steg 1, fordi dobbelt så mye gjeld ble betalt tilbake med den samme bonusen på 5 %.
+
+## Kan en likvidasjon etterlate tapsført gjeld?
+
+Ja. Tapsført gjeld (bad debt) oppstår når sikkerheten i en posisjon er verdt mindre enn gjelden pluss likvidasjonsbonusen, slik at ikke engang all sikkerheten er nok til å betale tilbake alt. Siden Aave V3.3 gjelder det at når en likvidasjon bruker opp all sikkerheten til en låntaker og det fortsatt er gjeld igjen, brenner kontrakten den gjenværende gjelden og bokfører den som et «deficit» (underskudd) på den eiendelen. Låntakeren står igjen uten sikkerhet og uten gjeld, og tapet havner hos protokollet.
+
+Eksempel med parameterne for WETH på Ethereum Core: 10 000 $ i WETH som eneste sikkerhet mot 9 800 USDC i gjeld gir en health factor på 0,847. Å gjøre opp alle 9 800 USDC med en bonus på 5 % ville kreve 10 290 $ i WETH, så alle 10 000 $ i WETH tas (omtrent 47,62 $ av det som protokollavgift), og omtrent 9 524 USDC betales tilbake (10 000 ÷ 1,05). De omtrent 276 USDC som er igjen, blir et underskudd.
+
+Umbrella, Aaves sikkerhetsnett basert på staking, kan brenne stakernes aTokens i den berørte eiendelen for å dekke slike underskudd; aktiveringen startet på Ethereum (Aaves dokumentasjon, hentet 14. oktober 2026). Det beskytter protokollet, ikke låntakeren, hvis sikkerhet allerede er borte.
+
+Dette har skjedd på Aave V3. Etter at USDC ble handlet til omtrent 0,88 $ den 11. mars 2023, registrerte Gauntlets etteranalyse (post-mortem) omtrent 280 000 $ i tapsført gjeld på V3 Avalanche i E-Mode og omtrent 20 000 $ på V3 Arbitrum, og påpekte at når sikkerheten er verdt mindre enn gjelden ganger én pluss bonusen, presser hver delvise likvidasjon kontoen dypere under vann. Det var før v3.3 la til mekanismen for underskudd.
+
+## Stopper likvidasjoner når et marked er fryst eller en L2-sequencer er nede?
+
+Nei, i ingen av tilfellene. På Aave V3.7 kan en fryst eiendel fortsatt likvideres, og likvidasjoner på Arbitrum, Optimism og Base avhenger ikke lenger av om L2-sequenceren er oppe. Det som faktisk blokkerer likvidasjoner, er en pause.
+
+- **Fryst:** frysing blokkerer nye posisjoner i en eiendel, men likvidasjonssjekken ser bort fra den. Under depegen (når koblingen til dollaren ryker) til USDC i mars 2023 ble stablecoins på Aave V3 Avalanche fryst, og likvidasjonene fortsatte. Brokoblet USDC.e på Arbitrum var fryst med en LTV på 0 den 14. oktober 2026 (Arbitrum-blokk 514855406), men teller likevel med i health factor med sin likvidasjonsterskel på 78 % og kan tas.
+- **L2-sequencer:** før v3.7 kunne en sentinel-kontrakt på L2-markeder blokkere likvidasjoner og lån mens sequenceren var nede og i en utsettelsesperiode etter at den kom tilbake. Aave V3.7, som V3-markedene på Arbitrum, Optimism og Base alle kjører per 14. oktober 2026, fjernet sentinel-kontrakten. Et avbrudd holder fortsatt igjen alles transaksjoner, både låntakeres og likvidatorers, men en posisjon som falt under 1 under avbruddet, kan nå likvideres så snart sequenceren er tilbake.
+- **Pauset:** en pauset sikkerhets- eller gjeldseiendel blokkerer hver likvidasjon som involverer den. Når pausen oppheves, kan Aaves emergency guardian eller governance sette en utsettelsesperiode på opptil 4 timer der likvidasjoner forblir blokkert, slik at låntakere kan betale tilbake eller legge til sikkerhet; lån er tillatt i det vinduet.
+
+## Hvordan er likvidasjoner annerledes på Aave V4?
+
+Aave V4, live på Ethereum siden 30. mars 2026 og siden da på Avalanche, Arc og Base, erstatter close factor med en mål-health factor (target health factor) og betaler en bonus som vokser når health factor faller. V3 fortsetter å kjøre ved siden av med sine egne regler.
+
+- **Mål-health factor i stedet for 50 % eller 100 %.** En likvidator på V4 kan bare betale tilbake så mye gjeld som skal til for å bringe posisjonen tilbake til sin Spokes mål-health factor, 1,24 på Ethereum Main Spoke (lest on-chain ved Ethereum-blokk 26193995, 14. oktober 2026). Unntaket er når det ville etterlatt en svært liten rest; da kan hele gjelden i den reserven gjøres opp.
+- **En stigende bonus.** Aaves dokumentasjon kaller det en nederlandsk auksjon (Dutch auction). På Ethereum Main Spoke starter bonusen på 90 % av eiendelens maksimum rett under en health factor på 1 og når fullt maksimum ved 0,90 eller lavere. For WETH, med et maksimum på 5,55 % (Aave V4 API, 14. oktober 2026), blir det omtrent 5,0 % rett under 1 og 5,55 % ved 0,90. En avgift på 10 % trekkes fra bonusen, som i V3.
+
+Tokenping overvåker også posisjoner på Aave V4: hver Spoke på Ethereum, Avalanche, Arc og Base (20 per 16. oktober 2026), med et eget varsel for hver Spoke, fordi hver Spoke har sin egen posisjon og health factor.
+
+## Hvordan er en likvidasjon på Aave forskjellig fra en på Morpho?
+
+På Morpho Blue finnes det ingen close factor: så snart health factor for en posisjon er under 1, kan en likvidator betale tilbake hele gjelden i ett kall. Insentivet avhenger bare av markedets likvidasjons-LTV (LLTV), omtrent 0,6 % ved en LLTV på 98 % og høyst 15 % for lave LLTV-er, og hvis sikkerheten tar slutt først, blir den gjenværende gjelden avskrevet mot markedets långivere. [Slik fungerer likvidasjon på Morpho](/no/blog/slik-fungerer-likvidasjon-pa-morpho) har formelen, insentivet ved hver LLTV og et regneeksempel.
+
+## Hva kan du gjøre før health factor når 1?
+
+Før health factor når 1, kan du betale tilbake gjeld eller legge til sikkerhet; begge deler hever den med en gang, og ingen av dem koster noen bonus. Når den først er under 1, kan en likvidator komme deg i forkjøpet, og selv en delvis likvidasjon koster deg bonusen på sikkerheten som tas: 300 $ for 6 000 USDC som betales tilbake med en bonus på 5 %.
+
+Å vente til siste øyeblikk er risikabelt, fordi transaksjoner kan feile eller bli hengende. I mai 2021 prøvde en bruker på Polygons forum å betale tilbake ved en health factor på 1,01, fikk feil gang på gang og ble likvidert før tilbakebetalingen gikk gjennom. I desember 2024 beskrev en bruker på Aaves forum mer enn en times forsøk på tilbakebetaling som stadig ble hengende før posisjonen ble likvidert.
+
+Alternativene finner du i [hvordan du hever health factor på Aave](/no/blog/unnga-likvidasjon-pa-aave), og grunnene til at health factor faller mens du ikke gjør noe, i [hvorfor health factor på Aave faller av seg selv](/no/blog/hvorfor-falt-din-aave-health-factor).
+
+Tokenping sjekker health factor på Aave hvert 5. minutt, i hvert Aave V3-marked på 21 nettverk og i hver Aave V4 Spoke, og sender deg en melding på Signal, Telegram eller e-post når den er under en terskel du velger (1,1 til 10), og gjentar det ved hver sjekk til den har hentet seg inn igjen. Likvidasjon koster minst bonusen på sikkerheten som tas. Et varsel satt over 1,0 kan gi deg tid til å betale tilbake eller legge til sikkerhet, men en rask prisbevegelse kan likevel ta health factor under 1 mellom to sjekker, og et varsel kan ikke handle for deg. Du kan [sjekke health factor på Aave V3](/no/aave) eller lese [hvordan du setter opp et health factor-varsel](/no/blog/sett-opp-aave-health-factor-varsel).
+
+## Kilder
+
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol), aave-dao/aave-v3-origin, gren main: regler for close factor, støvrester og tapsført gjeld (hentet 14. oktober 2026)
+- [Aave V3 ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): vilkår for likvidasjon (hentet 14. oktober 2026)
+- [Aave v3.3 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md): tapsført gjeld, close factor for hele posisjonen og eksemplet med GHO/USDC/DAI, grensen på 2 000 $ (hentet 14. oktober 2026)
+- [Aave v3.1 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.1/Aave-v3.1-features.md): utsettelsesperiode for likvidasjoner på opptil 4 timer (hentet 14. oktober 2026)
+- [Aave V3 PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol): å pause og oppheve en pause med utsettelsesperiode er forbeholdt emergency admin eller pool admin, `MAX_GRACE_PERIOD = 4 hours` (hentet 14. oktober 2026)
+- [Aave governance documentation](https://aave.com/docs/ecosystem/governance): Protocol Emergency Guardian har rollen emergency admin (hentet 14. oktober 2026)
+- [Aave V3 Risk Stewards README](https://github.com/aave-dao/aave-v3-risk-stewards): parametere som stewards kan endre innenfor fastsatte grenser (hentet 14. oktober 2026)
+- [Aave v3.7 PriceOracleSentinel removal](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/sentinel-removal.md) (hentet 14. oktober 2026)
+- [Aave V3 Pool contract reference](https://aave.com/docs/aave-v3/smart-contracts/pool), som fortsatt oppgir close factor fra før v3.3 (hentet 14. oktober 2026)
+- [Aave Umbrella documentation](https://aave.com/docs/aave-v3/umbrella) (hentet 14. oktober 2026)
+- [Aave V3 PoolDataProvider på Ethereum](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): reservekonfigurasjon og liquidation protocol fee for WETH, WBTC og USDC ved blokk 26193284, uendret ved ny lesing ved blokk 26193992 (hentet 14. oktober 2026)
+- [Aave V3 PoolDataProvider på Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): de samme lesingene for WETH, WBTC, native USDC og USDC.e ved blokk 514855406 (hentet 14. oktober 2026)
+- [Aave V3 Ethereum Core Pool](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): E-Mode-kategori 1 «ETH correlated» ved blokk 26193288 (hentet 14. oktober 2026)
+- [Aave V4 liquidations documentation](https://aave.com/docs/aave-v4/positions/liquidations) (hentet 14. oktober 2026)
+- [Aave V4 overview](https://github.com/aave/aave-v4/blob/main/docs/overview.md) og [V4 LiquidationLogic.sol](https://github.com/aave/aave-v4/blob/main/src/spoke/libraries/LiquidationLogic.sol), aave/aave-v4 main (hentet 14. oktober 2026)
+- [Aave V4 Ethereum Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485): mål-health factor og bonusinnstillinger ved blokk 26193995 (hentet 14. oktober 2026)
+- [Aave V4 public GraphQL API](https://api.v4.aave.com/graphql), spørringen `reserves`: maksimal likvidasjonsbonus og likvidasjonsavgift for WETH på Ethereum Main Spoke (hentet 14. oktober 2026)
+- [Aave docs changelog](https://aave.com/docs/resources/changelog): lanseringsdatoer for V4 (hentet 14. oktober 2026)
+- [Gauntlet, «Aave Resilient Through USDC Volatility»](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), publisert 17. mars 2023 (hentet 14. oktober 2026)
+- [Polygons forum, «Liquidation on polygon AAVE -JSON ERROR»](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067), publisert 18. mai 2021 (hentet 14. oktober 2026)
+- [Aaves forum, «Repeatedly Failed Repayment Attempts Leading to Liquidation»](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379), publisert 23. desember 2024 (hentet 14. oktober 2026)
+- [Aave interface pull request #2084](https://github.com/aave/interface/pull/2084), som fjernet appens eneste varselintegrasjon i mai 2024 (hentet 14. oktober 2026)
+
+_Opplæringsinnhold, ikke finansiell rådgivning. Varsler reduserer risikoen, men forhindrer ikke likvidasjon._

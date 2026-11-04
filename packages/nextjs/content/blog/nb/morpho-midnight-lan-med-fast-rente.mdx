@@ -1,0 +1,193 @@
+export const meta = {
+  slug: "morpho-midnight-lan-med-fast-rente",
+  title: "Morpho Midnight-lån med fast rente: slik fungerer de",
+  description:
+    "Slik fungerer Morpho Midnight-lån med fast rente: renten, hva du skylder på forfallsdatoen, flere sikkerheter og hvorfor ubetalt gjeld kan likvideres.",
+  h1: "Hvordan fungerer Morpho Midnight-lån med fast rente, og hva skjer på forfallsdatoen?",
+  publishedAt: "2026-10-26",
+  primaryQuestion:
+    "Hvordan fungerer et Morpho Midnight-lån med fast rente, og hva skjer hvis jeg ikke har betalt tilbake innen forfallsdatoen?",
+  readingMinutes: 13,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Morpho Midnight er Morphos utlån med fast rente og fast løpetid. Du låner ved å selge gjeldsenheter under pålydende
+  verdi: hver enhet gir deg litt mindre enn én lånetoken nå og er et løfte om å betale tilbake nøyaktig én på markedets
+  forfallsdato, så renten låses når du låner, og gjelden din vokser ikke. Før forfallsdatoen kan posisjonen din bare
+  likvideres hvis sikkerheten din, vektet med hver sikkerhets likvidasjons-LTV (LLTV), ikke lenger dekker gjelden (en
+  health factor under 1). Når forfallsdatoen er passert, kan all gjeld som står igjen likvideres uansett health factor,
+  og likvidatorens bonus stiger i løpet av den første timen. Betal tilbake før forfallsdatoen, og ta deretter ut
+  sikkerheten din selv.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Tallene og blokknumrene de ble lest ved: content/blog/snapshots/morpho-midnight-fixed-rate-loans.md */}
+
+## Hva er Morpho Midnight?
+
+Morpho Midnight er den delen av Morpho som tilbyr lån med fast rente frem til en fast dato, forfallsdatoen. Morphos dokumentasjon kaller det «Fixed Rate Markets (Midnight)» (markeder med fast rente), ved siden av Morpho Blue, Morphos markeder med flytende rente. Hvis du er ny når det gjelder hvordan Morpho regner ut health factor (helsefaktor), bør du begynne med [guiden om Morphos health factor](/no/blog/morpho-health-factor-forklart), som denne guiden bygger på.
+
+Midnight åpnet for alle 21. juli 2026, på Base, med ett par (cbBTC som sikkerhet, lån i USDC) og noen få forfallsdatoer. I denne guiden navngis et Midnight-marked etter paret sitt: et «cbBTC/USDC-marked» tar cbBTC som sikkerhet og låner ut USDC. Den samme kontraktkoden kjører nå på fem nettverk:
+
+| Nettverk        | Midnight-kontrakten har hatt kode siden | Markeder listet av Morphos API (26. oktober 2026) |
+| --------------- | --------------------------------------- | ------------------------------------------------- |
+| Base            | 6. juli 2026                            | Ja; 19 listede markeder har åpne lån              |
+| Ethereum        | 20. august 2026                         | Ja; 12 listede markeder har åpne lån              |
+| Arc             | 11. september 2026                      | Ingen (13 markeder finnes)                        |
+| Robinhood Chain | Dato ikke tilgjengelig                  | Ingen (34 markeder finnes)                        |
+| Tempo           | 3. oktober 2026                         | Ingen (API-et viser ingen markeder)               |
+
+Hvem som helst kan opprette et Midnight-marked, så at et marked finnes on-chain, sier lite. Markedene Morphos app viser, er de som API-et lister, og 26. oktober 2026 lå alle disse på Ethereum og Base.
+
+Et tidligere innlegg fra Morpho presenterte Midnight, sammen med Vaults V2, som «Morpho V2». Lanseringsinnlegget sier at Midnight verken er en andre versjon av Blue eller en erstatning for den: de to kjører side om side. De er separate kontrakter.
+
+## Hvordan er et Midnight-marked definert?
+
+Et Midnight-marked fastsettes når det opprettes, og endres aldri. Det er definert av:
+
+- **En lånetoken**, for eksempel USDC.
+- **Én eller flere sikkerheter** (opptil 128), hver med sin egen LLTV (den andelen av sikkerhetens verdi du kan skylde før likvidasjon), sitt eget orakel (priskilde) og sin egen likvidasjonscursor, som bestemmer likvidatorens bonus.
+- **En forfallsdato**, en dato og et klokkeslett da alle lån i markedet forfaller.
+- **En gjenvinningsterskel** (rcfThreshold), som avgjør når en liten mengde av en sikkerhet kan likvideres i sin helhet (se nedenfor).
+- **Valgfrie gates**, som kan begrense hvem som får låne ut, låne eller likvidere. En gate kan aldri hindre deg i å betale tilbake eller gå ut. Ingen av de listede markedene på Ethereum eller Base hadde en gate 26. oktober 2026.
+
+Én låntaker kan bruke opptil 16 av et markeds sikkerheter samtidig. For å godta en ny sikkerhet eller flytte forfallsdatoen må noen opprette et nytt marked. De listede markedene med lån i, på begge nettverkene, forfaller den siste fredagen i en måned kl. 15:00 UTC: 30. oktober, 27. november og 25. desember 2026, og 26. mars 2027.
+
+## Hvordan settes den faste renten, og hva skylder du på forfallsdatoen?
+
+Renten kommer fra en pris, ikke fra en rentemodell. Midnight teller gjeld i enheter, og én gjeldsenhet er et løfte om å betale tilbake én lånetoken på forfallsdatoen. For å låne selger du enheter til långivere til en pris under 1: til en pris på 0,99 får du 0,99 USDC nå for hver enhet og skylder 1 USDC per enhet på forfallsdatoen. Renten for hele løpetiden er 1 delt på prisen, minus 1, og Morphos dokumentasjon gjør den om til et årlig tall ved å dele den på den andelen av et år som gjenstår.
+
+Prisene kommer fra tilbud som långivere og låntakere publiserer, så to låntakere i samme marked kan betale ulik rente. Den 26. oktober 2026 oppga Morphos API rentene til de 117 låntakerne i cbBTC/USDC-markedet på Base med forfall 25. desember 2026 til mellom 1,93 % og 6,84 % per år.
+
+Hva du skylder, er enkelt: antallet enheter du solgte, i lånetoken, som forfaller på forfallsdatoen. Ingenting legges til mens lånet løper. Midnights kontrakt endrer en låntakers gjeld bare når du låner mer, betaler tilbake, kjøper tilbake enheter eller blir likvidert; ingen rente påløper, verken før eller etter forfallsdatoen.
+
+Midnight har to gebyrer, begge satt per marked og begge null i de to markedene i denne guiden:
+
+- **Et oppgjørsgebyr** på hver handel, betalt av den som tar et tilbud. Kontrakten setter et tak for det etter tiden til forfallsdatoen, fra 0,0014 % for én dag opp til 0,5 % for 360 dager.
+- **Et løpende gebyr**, som bare bæres av långivere og har et tak på 1 % per år.
+
+## Hvordan regnes health factor ut med flere sikkerheter?
+
+Midnights kontrakt sjekker helsen med et ja eller nei: en posisjon er sunn så lenge den maksimale gjelden er minst like stor som gjelden. Den maksimale gjelden er summen, over hver sikkerhet du bruker, av verdien i lånetoken til orakelets pris ganger sikkerhetens egen LLTV. Morphos dokumentasjon skriver sjekken som maxDebt ≥ debt; health factor er den samme sjekken skrevet som en brøk, maksimal gjeld delt på gjeld, og under 1 kan posisjonen likvideres.
+
+Ta det største listede markedet på Ethereum, som låner ut USDC mot to sikkerheter med ulik LLTV: USDC selv med 98 % og cbBTC med 86 %. Med cbBTC på 80 011,48 USDC (orakelets pris 26. oktober 2026) har eksempelposisjonen fra [guiden om Morphos health factor](/no/blog/morpho-health-factor-forklart), 0,5 cbBTC og 10 000 USDC i sikkerhet mot 40 000 USDC i gjeld:
+
+| Sikkerhet   | Verdi (USDC) | LLTV | Teller som (USDC) |
+| ----------- | ------------ | ---- | ----------------- |
+| 0,5 cbBTC   | 40 005,74    | 86 % | 34 404,94         |
+| 10 000 USDC | 10 000,00    | 98 % | 9 800,00          |
+| Totalt      | 50 005,74    |      | 44 204,94         |
+
+Health factor er 44 204,94 ÷ 40 000 = 1,105, og den faller under 1 hvis cbBTC faller under omtrent 70 233 USDC, 12,2 % lavere, så lenge USDC-sikkerheten holder verdien. Tanken er den samme som med [en ekstra sikkerhet på Aave](/no/blog/aave-health-factor-forklart#hva-endres-med-en-sikkerhet-til): hver eiendel teller med sin egen sats.
+
+Du kan legge til, fjerne eller bytte sikkerheter når som helst, så lenge et uttak lar posisjonen være sunn. Hvis orakelet for en av sikkerhetene du bruker slutter å svare, feiler helsesjekker, lån, uttak og likvidasjoner for posisjonen din så lenge du har gjeld. Å betale tilbake fungerer fortsatt, og når gjelden din er null, kan du ta ut uten noe orakel.
+
+## Når kan et Midnight-lån likvideres?
+
+Et Midnight-lån kan likvideres på to måter: når det er usunt, når som helst, eller når det står igjen gjeld etter forfallsdatoen, uansett helse. [Slik fungerer likvidasjon på Morpho](/no/blog/slik-fungerer-likvidasjon-pa-morpho) går gjennom den felles mekanikken; her er det som er spesielt for Midnight.
+
+### Før forfallsdatoen
+
+Før forfallsdatoen teller bare helsen. Når health factor er under 1, kan en likvidator betale tilbake en del av gjelden din og ta sikkerhet verdt det beløpet pluss en bonus. Bonusen settes per sikkerhet: 1 ÷ (1 − cursor × (1 − LLTV)). For cbBTC med en LLTV på 86 % og en cursor på 0,3 blir det 1,0438, en bonus på 4,38 %; for USDC med 98 %, omtrent 0,6 %. En likvidator velger hvilken av sikkerhetene dine som tas, og Morphos dokumentasjon advarer om at de velger den som lønner seg best.
+
+Hvor mye som kan gå på én gang, avhenger av størrelsen. Vanligvis kan en likvidator bare betale tilbake så mye som trengs for å gjøre posisjonen sunn igjen. Unntaket: når sikkerheten som står igjen etter en slik begrenset likvidasjon ville betale tilbake mindre enn markedets rcfThreshold, kan den sikkerheten tas i sin helhet. Terskelen er 3 000 USDC i cbBTC/USDC-markedet på Base i regneeksempelet nedenfor og 300 000 USDC i Ethereum-markedet ovenfor. På et lån med én sikkerhet under den størrelsen kan hele posisjonen gå på én gang.
+
+### Etter forfallsdatoen
+
+Når forfallstidspunktet er passert, kan all gjeld som står igjen likvideres selv om health factor er 2 eller 10. Kontraktens vei etter forfall sjekker bare klokken. Morphos begrunnelse er at långivere regner med å kunne ta ut pengene sine på forfallsdatoen, og en låntaker som ikke har betalt, sunn eller ikke, stopper dem.
+
+Bonusen på denne veien starter på null ved forfall og vokser jevnt til full bonus i løpet av 60 minutter. Hvis posisjonen din også er usunn etter forfallsdatoen, kan en likvidator i stedet bruke den helsebaserte veien og ta full bonus med en gang. På veien etter forfall finnes det ikke noe tak for hvor mye som kan betales tilbake, så hele gjelden kan likvideres på én gang. Etter forfallsdatoen kan du ikke lenger ta opp mer gjeld, men du kan fortsatt betale tilbake, kjøpe tilbake enheter og ta ut sikkerhet.
+
+<Callout tone="warning">
+  I selve forfallssekundet er en sunn posisjon fortsatt trygg; ett sekund senere er den ikke det. Å betale tilbake for
+  sent på en sunn posisjon kan koste deg opptil hele likvidasjonsbonusen, omtrent 4,4 % av gjelden på et cbBTC-lån med
+  en LLTV på 86 %.
+</Callout>
+
+Hvis en likvidasjon etterlater gjeld som sikkerheten ikke kan dekke, avskrives underskuddet og deles bare av det markedets långivere.
+
+## Hvordan betaler du tilbake før tiden, på forfallsdatoen eller ruller over til en senere forfallsdato?
+
+Du har tre veier ut av et Midnight-lån, pluss én reserveløsning du selv må velge å bruke:
+
+- **Betal tilbake direkte.** Å betale tilbake koster nøyaktig én lånetoken per enhet, før, på eller etter forfallsdatoen. Det fungerer alltid, og det setter det meste du bør betale for å gå ut før tiden. Å betale tilbake før tiden gir deg ingen rente tilbake: du betaler hele beløpet som forfaller på forfallsdatoen, bare tidligere.
+- **Kjøp tilbake enheter før forfallsdatoen.** Du kan i stedet kjøpe enheter fra långiveres salgstilbud til en pris under 1, som sletter like mye gjeld for mindre enn pålydende verdi. Det forutsetter at noen tilbyr enheter akkurat når du vil gå ut.
+- **Rull over til en senere forfallsdato.** Morphos dokumentasjon beskriver å betale tilbake eller kjøpe tilbake i ett marked og låne i et marked med senere forfallsdato i én og samme transaksjon, ved hjelp av callbacks. Morphos lanseringsinnlegg i juli nevnte automatisk overrulling som en senere funksjon; 26. oktober 2026 beskriver dokumentasjonen overrulling bare som noe du gjør selv, eller via reserveløsningen med Blue nedenfor.
+- **Fall tilbake på Blue.** Morpho har rullet ut en kontrakt, BlueFallbackRolling, på alle fem nettverkene. Hvis du velger å bruke den og godkjenner den på både Midnight og Blue, kan hvem som helst flytte Midnight-gjelden og -sikkerheten din til et Blue-marked med flytende rente som du har valgt, fra et tidspunkt du har valgt. Den som utfører flyttingen, får som belønning en andel av gjelden som du setter; den vokser mellom et start- og et sluttidspunkt du setter, kan nå hele gjelden og legges til den nye Blue-gjelden din. Det krever nøyaktig én sikkerhet som samsvarer med Blue-markedets.
+
+## Hva skjer med sikkerheten din etter at du har betalt tilbake?
+
+Sikkerheten din blir liggende der den er til du tar den ut. Å betale tilbake sender den ikke tilbake. Når gjelden din er null, består helsesjekken uten å spørre noe orakel, så du kan ta ut alt, og ingen gate kan stoppe deg. Bare du, en konto du har godkjent, eller en likvidator av en posisjon som kan likvideres, kan flytte den.
+
+Det samme gjelder etter en likvidasjon: den sikkerheten likvidatoren ikke tok, blir liggende i posisjonen din, klar til å tas ut.
+
+## Regneeksempel: et cbBTC/USDC-lån med forfall 25. desember 2026
+
+Dette markedet, på paret Midnight ble lansert med, ble opprettet 14. juli 2026, en uke før den offentlige lanseringen, og er det største listede markedet på Base. Lest on-chain 26. oktober 2026 kl. 06:06 UTC:
+
+| Felt                      | Verdi                                       |
+| ------------------------- | ------------------------------------------- |
+| Lånetoken                 | USDC                                        |
+| Sikkerhet                 | cbBTC, den eneste                           |
+| LLTV                      | 86 %                                        |
+| Likvidasjonsbonus         | 4,38 % (cursor 0,3)                         |
+| Forfallsdato              | 25. desember 2026, 15:00 UTC, om 60,4 dager |
+| rcfThreshold              | 3 000 USDC                                  |
+| Gates og gebyrer          | Ingen                                       |
+| Skyldes på forfallsdatoen | 1 530 235,58 USDC fordelt på 117 låntakere  |
+| cbBTC-pris                | 80 097,33 USDC (markedets orakel)           |
+
+**Å låne.** Den beste prisen en låntaker kunne selge enheter til, var 0,9901297. Å ta 10 000 USDC til den prisen betyr å skylde omtrent 10 099,69 USDC 25. desember 2026: 0,997 % for de 60,4 dagene, omtrent 6,0 % per år. Den prisen endrer seg fra minutt til minutt.
+
+**En typisk posisjon.** Medianlåntakeren skylder 37,08 USDC på forfallsdatoen mot 0,00060018 cbBTC, verdt 48,07 USDC. Den maksimale gjelden er 48,07 × 0,86 = 41,34 USDC, så health factor er 41,34 ÷ 37,08 = 1,11. Den når 1 hvis cbBTC faller til omtrent 71 838 USDC, 10,3 % lavere.
+
+**Hvis cbBTC faller like under 71 838 USDC før forfallsdatoen.** Posisjonen ligger langt under terskelen på 3 000 USDC, så en likvidator kan betale tilbake alle 37,08 USDC og ta cbBTC verdt 38,71 USDC. Av de 43,12 USDC i cbBTC beholder låntakeren omtrent 4,41 USDC som kan tas ut.
+
+**Hvis låntakeren glemmer å betale tilbake og cbBTC holder seg på 80 097 USDC.** Fra kl. 15:00:01 UTC 25. desember kan hvem som helst betale tilbake de 37,08 USDC og ta cbBTC; en likvidator kan handle når som helst etter 15:00:00. Bonusen vokser med tiden: omtrent 2,2 % etter tretti minutter, hele 4,38 % etter en time. En likvidasjon en time eller mer etter forfall tar cbBTC verdt 38,71 USDC og etterlater 9,37 USDC av det til låntakeren. Å betale tilbake 37,08 USDC i tide ville ha beholdt alle 48,07 USDC i cbBTC, netto 10,99 USDC, så den likvidasjonen koster låntakeren 1,63 USDC, hele bonusen. En tidligere likvidasjon koster mindre, men ingenting får en likvidator til å vente.
+
+## Hvordan står Midnight seg mot et Morpho Blue-lån med flytende rente?
+
+|                                       | Morpho Blue                                                                                 | Morpho Midnight                                                                                                                                                              |
+| ------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rente                                 | Endres hele tiden med markedets rentemodell                                                 | Låses når du låner                                                                                                                                                           |
+| Gjeld                                 | Vokser med renten                                                                           | Et fast antall enheter, vokser ikke                                                                                                                                          |
+| Sluttdato                             | Ingen                                                                                       | Forfallsdatoen                                                                                                                                                               |
+| Sikkerhet per marked                  | Én                                                                                          | Én eller flere, hver med sin egen LLTV                                                                                                                                       |
+| Kan likvideres når                    | Usunn                                                                                       | Usunn, eller all gjeld etter forfallsdatoen                                                                                                                                  |
+| Bonus                                 | 1 ÷ (1 − 0,3 × (1 − LLTV)), høyst 15 %                                                      | 1 ÷ (1 − cursor × (1 − LLTV)), cursor satt per sikkerhet, ikke noe tak på 15 %                                                                                               |
+| Hvor mye på én gang                   | Opptil hele gjelden i ett kall                                                              | Før forfallsdatoen, det som gjenoppretter helsen (en hel sikkerhet hvis det som står igjen ville betale tilbake mindre enn rcfThreshold); etter forfallsdatoen, hele gjelden |
+| Forhåndslikvidasjon (pre-liquidation) | Fases ut av Morpho, se [forhåndslikvidasjon på Morpho](/no/blog/morpho-forhandslikvidasjon) | Ikke en del av Midnight                                                                                                                                                      |
+| Gå ut før tiden                       | Betal tilbake når som helst                                                                 | Betal tilbake til pålydende verdi, eller kjøp tilbake enheter hvis det finnes selgere                                                                                        |
+
+Den praktiske forskjellen for din health factor: på Blue kan den falle av renten alene, som på Aave ([hvordan rentetopper påvirker din health factor](/no/blog/aave-renter#hvordan-pavirker-rentetopper-din-health-factor)). På Midnight faller den bare når prisene på sikkerheten faller, eller når du tar ut sikkerhet eller låner mer. Til gjengjeld legger Midnight til en dato du ikke må gå glipp av.
+
+## Hvordan kan varsler hjelpe med et Midnight-lån?
+
+Et varsel kan advare deg om begge risikoene ved et Midnight-lån: en fallende health factor og en forfallsdato som nærmer seg. Tokenping sjekker hvert 5. minutt. [Morpho-oversikten](/no/morpho) viser en lommeboks låneposisjoner i markeder som er listet i Morphos app på 14 nettverk, Blue og Midnight, og å se på posisjonene dine krever ingen betaling. Midnight-varsler dekker markeder som Morphos API lister. Den 26. oktober 2026 lå de på Ethereum og Base; Tokenping dekker også Arc og Robinhood Chain når Morpho lister Midnight-markeder der. Inntil da er det ikke mulig å få Midnight-varsler på de to nettverkene.
+
+For et Midnight-lån:
+
+- **Helse.** Tokenping regner ut din health factor fra kjeden med Morphos egen matematikk, aldri fra Morphos API. Så lenge den er under terskelen du har satt (1,02 til 10), sender hver sjekk en melding på hver kanal du har valgt: Signal, Telegram eller e-post.
+- **Forfallsdato.** Du får én påminnelse i løpet av de siste 7 dagene før forfallsdatoen og én i løpet av de siste 24 timene.
+- **Etter forfallsdatoen.** Så lenge det står igjen gjeld, sender hver sjekk et varsel, fordi lånet kan likvideres uansett health factor.
+
+Varsler koster <AlertPrice />, samme plan som Aave-varsler. Et varsel gir deg tid til å handle; det forhindrer ikke likvidasjon, og en pris kan bevege seg mellom to sjekker.
+
+## Kilder
+
+- [Morphos dokumentasjon: Midnight concepts](https://docs.morpho.org/learn/concepts/midnight): enheter, kreditt og gjeld, å gå ut før tiden, sikkerhet og helse (hentet 26. oktober 2026)
+- [Morphos dokumentasjon: Midnight liquidations](https://docs.morpho.org/learn/concepts/midnight/liquidations): de to likvidasjonsveiene, den stigende bonusen etter forfall og hvorfor ubetalt gjeld kan likvideres etter forfallsdatoen (hentet 26. oktober 2026)
+- [Morphos dokumentasjon: offers](https://docs.morpho.org/learn/concepts/midnight/offers) og [gates](https://docs.morpho.org/learn/concepts/midnight/gates): overrulling med callbacks, og hva gates kan og ikke kan blokkere (hentet 26. oktober 2026)
+- [Morphos dokumentasjon: market mechanics](https://docs.morpho.org/developers/midnight/concepts/market-mechanics), [collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) og [fees](https://docs.morpho.org/developers/midnight/concepts/fees) (hentet 26. oktober 2026)
+- [Morphos dokumentasjon: exit a borrow early](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-early) og [exit a borrow at maturity](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-by-repaying-in-full-at-maturity) (hentet 26. oktober 2026)
+- [Morphos dokumentasjon: contract addresses](https://docs.morpho.org/developers/contracts/addresses): Midnight og BlueFallbackRolling på hvert nettverk (hentet 26. oktober 2026)
+- [morpho-org/midnight](https://github.com/morpho-org/midnight): Midnight.sol (helsesjekk, likvidasjon, tilbakebetaling, uttak), ConstantsLib.sol (gebyrer, bonus, opptrapping over 60 minutter, grenser for sikkerheter) og periphery-README-en (hentet 26. oktober 2026)
+- [morpho-org/morpho-blue](https://github.com/morpho-org/morpho-blue): Blues konstanter for likvidasjon og bonus (hentet 26. oktober 2026)
+- [Now live: Morpho Midnight and the new Markets App](https://morpho.org/blog/now-live-morpho-midnight) (21. juli 2026) og [Morpho Midnight: what to expect at launch](https://morpho.org/blog/morpho-midnight-what-to-expect-at-launch) (17. juli 2026) (hentet 26. oktober 2026)
+- [Morpho Fixed Rate Markets](https://morpho.org/blog/morpho-v2-liberating-the-potential-of-onchain-loans): Morphos tidligere innlegg om Midnight og Vaults V2 (hentet 26. oktober 2026)
+- [Morpho Midnight API](https://api.morpho.org/v0/midnight/markets): listede markeder, ordrebok og låntakernes posisjoner (hentet 26. oktober 2026)
+- Midnight-kontrakter på [Base](https://basescan.org/address/0xAdedD8ab6dE832766Fedf0FaC4992E5C4D3EA18A) ved blokk 53102734 og [Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f) ved blokk 26274992: markedsdefinisjoner, totaler, gebyrer og orakelpriser (hentet 26. oktober 2026)
+
+_Opplæringsinnhold, ikke finansiell rådgivning. Varsler reduserer risikoen, men forhindrer ikke likvidasjon._

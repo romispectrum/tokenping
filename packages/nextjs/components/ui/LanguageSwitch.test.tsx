@@ -40,6 +40,7 @@ describe("LanguageSwitch", () => {
       ["Bahasa IndonesiaID", "/id/blog/faktor-kesehatan-aave"],
       ["ItalianoIT", "/it/blog/fattore-di-salute-aave"],
       ["NederlandsNL", "/nl/blog/aave-health-factor-uitgelegd"],
+      ["NorskNO", "/no/blog/aave-health-factor-forklart"],
       ["PolskiPL", "/pl/blog/wspolczynnik-zdrowia-aave"],
       ["PortuguêsPT", "/pt/blog/fator-de-saude-aave"],
       ["RomânăRO", "/ro/blog/health-factor-aave-explicat"],
